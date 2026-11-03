@@ -14,6 +14,7 @@ inline bool operator!=(const Rect&a,const Rect&b){return !(a==b);}
 struct Context {
  uint64_t token=0;uintptr_t window=0;uint32_t pid=0,match=0;
  int width=0,height=0,cameraX=0,cameraY=0;
+ uint64_t projection=0;
 };
 struct Surface {
  uint64_t id=0;int order=0;Context context{};Rect rect{};
@@ -35,7 +36,7 @@ inline bool sameCutouts(const std::shared_ptr<const std::vector<Rect>>&a,const s
 }
 inline bool valid(const Surface&s,const Context&c){
  bool image=c.token&&s.context.token==c.token&&s.context.window==c.window&&s.context.pid==c.pid&&
-  s.context.match==c.match&&s.context.width==c.width&&s.context.height==c.height&&
+  s.context.match==c.match&&s.context.width==c.width&&s.context.height==c.height&&s.context.projection==c.projection&&
   (!s.cameraBound||(s.context.cameraX==c.cameraX&&s.context.cameraY==c.cameraY))&&
   s.id&&s.rect.w>0&&s.rect.h>0&&s.rect.w<=8192&&s.rect.h<=8192&&
   uint64_t(s.rect.w)*s.rect.h<=16*1024*1024&&
@@ -70,6 +71,17 @@ inline Rect intersection(const Rect&a,const Rect&b){
  const int64_t left=std::max<int64_t>(a.x,b.x),top=std::max<int64_t>(a.y,b.y);
  const int64_t right=std::min<int64_t>(int64_t(a.x)+a.w,int64_t(b.x)+b.w),bottom=std::min<int64_t>(int64_t(a.y)+a.h,int64_t(b.y)+b.h);
  return a.w>0&&a.h>0&&b.w>0&&b.h>0&&right>left&&bottom>top?Rect{int(left),int(top),int(right-left),int(bottom-top)}:Rect{};
+}
+// Preserve a native radar/widget drawn over the map. Camera-bound overlays
+// leave this current client-space rectangle transparent on CPU and GPU paths.
+inline void excludeMapRect(Surface&surface,const Rect&excluded){
+ if(!surface.cameraBound||excluded.w<=0||excluded.h<=0)return;
+ const auto area=intersection(surface.rect,excluded);if(area.w<=0||area.h<=0)return;
+ auto spans=std::make_shared<std::vector<Rect>>();if(surface.cutouts)*spans=*surface.cutouts;
+ if(spans->size()+size_t(area.h)>16384){surface.opacity=0;return;}
+ spans->reserve(spans->size()+size_t(area.h));
+ for(int y=0;y<area.h;++y)spans->push_back({area.x-surface.rect.x,area.y-surface.rect.y+y,area.w,1});
+ surface.cutouts=std::move(spans);
 }
 inline void order(std::vector<Surface>&layers,const Context&context){
  layers.erase(std::remove_if(layers.begin(),layers.end(),[&](const Surface&s){return !valid(s,context);}),layers.end());
@@ -145,7 +157,7 @@ public:
  bool update(const Context&context,std::vector<Surface>layers){
   if(context.width<1||context.height<1||context.width>8192||context.height>8192||uint64_t(context.width)*context.height>16*1024*1024)return false;
   order(layers,context);if(std::any_of(layers.begin(),layers.end(),[](const auto&s){return bool(s.gpu);}))return false;dirty_={};dirtyRegions_.clear();collapsed_=false;
-  bool full=context_.token!=context.token||context_.window!=context.window||context_.pid!=context.pid||context_.match!=context.match||context_.width!=context.width||context_.height!=context.height||pixels_.size()!=size_t(context.width)*context.height;
+  bool full=context_.token!=context.token||context_.window!=context.window||context_.pid!=context.pid||context_.match!=context.match||context_.width!=context.width||context_.height!=context.height||context_.projection!=context.projection||pixels_.size()!=size_t(context.width)*context.height;
   auto duplicate=[](const std::vector<Surface>&surfaces){for(size_t n=0;n<surfaces.size();++n)for(size_t m=0;m<n;++m)if(surfaces[n].id==surfaces[m].id)return true;return false;};
   full=full||duplicate(layers)||duplicate(layers_);
   if(full){pixels_.resize(size_t(context.width)*context.height);include({0,0,context.width,context.height});}

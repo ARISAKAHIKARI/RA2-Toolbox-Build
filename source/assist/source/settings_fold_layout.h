@@ -3,7 +3,7 @@
 #include <set>
 #include <vector>
 namespace assist { namespace settingsfold {
-struct Item {int page,y,height,group;};
+struct Item {int page,y,height,group;bool hidden=false;};
 struct Placed {int y;bool hidden;};
 // Reflow complete overlapping rows, preserving labels, combo dropdown sizes,
 // and list/button columns. Only visibility and coordinates change: children
@@ -14,8 +14,8 @@ inline std::vector<Placed> layout(const std::vector<Item>&items,const std::set<i
   std::stable_sort(order.begin(),order.end(),[&](size_t a,size_t b){return items[a].y<items[b].y;});int removed=0;
   for(size_t at=0;at<order.size();){size_t end=at+1;const int top=items[order[at]].y;int bottom=top+items[order[at]].height;
    while(end<order.size()&&items[order[end]].y<bottom){const auto&i=items[order[end++]];bottom=std::max(bottom,i.y+i.height);}
-   bool shown=false;for(size_t n=at;n<end;++n){const auto&i=items[order[n]];shown|=!i.group||opened.count(i.group)!=0;}
-   for(size_t n=at;n<end;++n){const auto&i=items[order[n]];result[order[n]]={i.y-removed,i.group&&opened.count(i.group)==0};}
+   bool shown=false;for(size_t n=at;n<end;++n){const auto&i=items[order[n]];shown|=!i.hidden&&(!i.group||opened.count(i.group)!=0);}
+   for(size_t n=at;n<end;++n){const auto&i=items[order[n]];result[order[n]]={i.y-removed,i.hidden||(i.group&&opened.count(i.group)==0)};}
    if(!shown)removed+=bottom-top+14;at=end;
   }
  }

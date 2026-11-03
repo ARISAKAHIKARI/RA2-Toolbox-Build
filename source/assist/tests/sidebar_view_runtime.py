@@ -19,7 +19,7 @@ def save(m,s):m.u.mem_write(m.SH,bytes(s))
 def fixture():
  spec=importlib.util.spec_from_file_location('sidebar_fixture',Path(__file__).with_name('entry_runtime_regression.py'));m=importlib.util.module_from_spec(spec);m.fixture_paths=[a.game,a.dll];spec.loader.exec_module(m)
  m.w(0xa8b230,m.alloc());m.b(0xa8ed80,1);m.w(0x886fb8,800);m.w(0x886fbc,600);m.b(0xa8eb7c,1);m.b(0xa8ed6b,0)
- m.surfaces={};m.freed=[];m.born=[];m.layout=[];m.before={at:bytes(m.u.mem_read(at,n))for at,n in sites}
+ m.surfaces={};m.freed=[];m.born=[];m.layout=[];m.dirty=[];m.redraw=[];m.w(0xb73550,1);m.before={at:bytes(m.u.mem_read(at,n))for at,n in sites}
  def hook(at,fn):return m.u.hook_add(UC_HOOK_CODE,lambda uc,pc,size,_:fn(),begin=at,end=at)
  m.add_hook=hook
  def arg(i):return m.r(m.u.reg_read(UC_X86_REG_ESP)+4+i*4)
@@ -46,6 +46,9 @@ def fixture():
  def geometry():
   rect=bytes(m.u.mem_read(arg(0),16));m.layout.append(struct.unpack('<4i',rect));m.u.mem_write(0x886fa0,rect);m.u.mem_write(0xb0ce28,rect);m.ret(0,1)
  hook(0x4a8960,geometry);hook(0x6d5f60,lambda:m.ret(0,1))
+ def dirty():m.dirty.append((this(),tuple(arg(i) for i in range(4)),arg(4)));m.ret(0,5)
+ m.dirty_hook=hook(0x6d2790,dirty)
+ hook(0x4f42f0,lambda:(m.redraw.append((this(),arg(0))),m.ret(0,1)))
  # Preserve the real Render prologue and epilogue. Replace only the native
  # drawing middle with a jump to its verified final instruction boundary.
  hook(0x4f4492,lambda:m.u.reg_write(UC_X86_REG_EIP,0x4f459d))
@@ -102,6 +105,48 @@ def ownership():
  assert [m.r(0x88731c),m.r(0x8872fc)]==m.original and set(m.freed)==set(owned)
  assert all(bytes(m.u.mem_read(at,n))==m.before[at]for at,n in sites)
 check('complete-group-waits-render-expands-and-restores-owned-pair',ownership)
+
+def refresh_after_geometry():
+ m=fixture();assert not m.dirty and not m.redraw
+ active(m);assert m.dirty==[(m.r(0x887324),(0,0,800,600),1)] and m.redraw==[(0x87f7e8,2)]
+ paints=[row for row in m.posted_messages if row[1]==15];assert paints==[(1,15,0,0)],paints
+ # Repeated wakes in one simulation frame do not repeat the whole-area work;
+ # the next two observed frames cover the native incremental double buffers.
+ m.hook();assert len(m.dirty)==1
+ for _ in range(2):m.w(0xa8ed84,m.r(0xa8ed84)+1);m.hook()
+ assert len(m.dirty)==3 and len(m.redraw)==3
+ m.w(0xa8ed84,m.r(0xa8ed84)+1);m.hook();assert len(m.dirty)==3
+ assert [row for row in m.posted_messages if row[1]==15]==paints
+ s=state(m);s.sidebarMode=0;save(m,s);m.hook()
+ assert m.dirty[-1]==(m.r(0x887324),(0,0,800,600),1)
+ assert len([row for row in m.posted_messages if row[1]==15])==2
+check('geometry-immediately-dirties-native-map-marks-redraw-and-posts-one-nonreentrant-paint',refresh_after_geometry)
+
+def paused_render_refresh():
+ m=fixture();active(m);frame=m.r(0xa8ed84);assert len(m.dirty)==1
+ m.hook();assert len(m.dirty)==1
+ for _ in range(2):render(m);m.hook()
+ assert len(m.dirty)==3 and m.r(0xa8ed84)==frame
+ render(m);m.hook();assert len(m.dirty)==3
+ assert len([row for row in m.posted_messages if row[1]==15])==1
+check('paused-simulation-complete-render-serial-retries-dirty-without-same-wake-work',paused_render_refresh)
+
+def native_dirty_abi():
+ m=fixture();m.u.hook_del(m.dirty_hook);storage=m.alloc(20*16)
+ m.w(0xb0ce7c,storage);m.w(0xb0ce80,16);m.w(0xb0ce88,0)
+ oldframe=m.r(0xa8ed84);unit=bytes(m.u.mem_read(m.unit,0x800))
+ # Actual private native function, not a substitute: ECX plus Rect-by-value
+ # and bool on the stack; the verified RET 0x14 must balance all five words.
+ m.run(0x6d2790,(0,0,800,600,1),m.r(0x887324))
+ assert m.r(0xb0ce88)==1
+ assert struct.unpack('<4iB',m.u.mem_read(storage,17))==(0,0,800,600,1)
+ assert m.r(0xa8ed84)==oldframe and bytes(m.u.mem_read(m.unit,0x800))==unit
+check('actual-native-dirty-area-by-value-bool-and-ret20-ABI',native_dirty_abi)
+
+def redraw_signature():
+ m=fixture();m.u.mem_write(0x6d2790,b'\x90');render(m);m.hook()
+ assert state(m).sidebarStatus==-1 and not m.born and not m.layout and not m.dirty and not m.redraw
+check('changed-native-redraw-ABI-refused-before-surface-allocation',redraw_signature)
 
 def deferred():
  m=fixture();active(m);owned=[m.r(0x88731c),m.r(0x8872fc)]

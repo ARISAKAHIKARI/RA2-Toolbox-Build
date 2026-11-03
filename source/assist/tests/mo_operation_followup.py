@@ -68,11 +68,12 @@ def host_source(directory=SOURCE):
 #include <cstring>
 #include <string>
 #include "mo_orders.h"
+#include "native_viewport_host.h"
 #include "../../external_reader/source/projection.h"
 using namespace assist;using DWORD=uint32_t;
 static uint32_t pid=1,epoch=7,clockValue=1000;static bool foreground=true;
 struct Snapshot {bool chat=false;int cameraX=0,cameraY=0,width=800,height=600;}snap;
-struct Wire {long moOrdersPreviewSeq=0;moorders::Preview moOrdersPreview;uint32_t moFeatures=7;}wire;
+struct Wire {long moOrdersPreviewSeq=0;moorders::Preview moOrdersPreview;uint32_t moFeatures=7;int32_t viewportSerial=0,viewZoomBusy=0;uint32_t viewportActive=0,viewportGeneration=0,viewportHostCapabilities=0;int32_t viewportPhysical[4]{},viewportLogical[4]{};}wire;
 static Wire*shared=&wire;
 static uint32_t commandMatch(){return epoch;}static bool foregroundGame(){return foreground;}
 static void MemoryBarrier(){}static uint32_t GetTickCount(){return clockValue;}

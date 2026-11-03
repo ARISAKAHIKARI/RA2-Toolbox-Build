@@ -24,7 +24,7 @@
 #include "dodge_compute.h"
 #include "native_placement_policy.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=90;
+constexpr uint32_t Magic=0x41533130, Version=92;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -230,7 +230,15 @@ struct Shared {
  volatile uint32_t sidebarMode=0;volatile int32_t sidebarStatus=0; // 0 full / 2 hidden; experimental native layout
  volatile int32_t techParameterStatus=0;volatile uint32_t techParameterError=0,techParameterSlots=0,techParameterExceptions=0;
  volatile uint32_t smallMapClamp=0;volatile int32_t smallMapClampStatus=0;
-
+ // MO viewport state: default capabilities=0 keeps the existing zoom path.
+ volatile long viewportSerial=0;volatile uint32_t viewportActive=0,viewportGeneration=0,viewportHostCapabilities=0;
+ int32_t viewportPhysical[4]{},viewportLogical[4]{};
+ volatile uint32_t pointerViewportGeneration=0;
+ uint32_t reservedAssist91Tail=0; // retain previous ABI padding before the v92 tail
+ volatile uint32_t techEnhanceImplementation=0; // 0 legacy rule data / 1 exact local TechLevel interception
+ volatile int32_t techEnhanceParameterStatus=0;
+ volatile uint32_t techEnhanceParameterError=0,techEnhanceParameterSlots=0,techEnhanceParameterExceptions=0;
+ moorders::Options moOptions;
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

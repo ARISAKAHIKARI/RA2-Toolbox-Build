@@ -1,6 +1,6 @@
 """Run the production host subscription/scheduling code across two TUs."""
 from pathlib import Path
-import subprocess,tempfile
+import subprocess,tempfile,os
 root=Path(__file__).resolve().parents[2]
 header=r'''
 #pragma once
@@ -164,6 +164,12 @@ int main(){
  clockMs+=151;pulse(nullptr,0);keyDown[VK_RBUTTON]=false;pulse(nullptr,0);assert(!takePointer(a,press,dropped));
  setPointerContext(a,3,true);pulse(nullptr,0);keyDown[VK_MBUTTON]=true;pulse(nullptr,0);
  assert(takePointer(a,press,dropped)&&press.match==3);keyDown[VK_MBUTTON]=false;pulse(nullptr,0);
+ // Zoom changes invalidate queued physical captures; new edges carry the
+ // active generation so a later Runtime consumer cannot use a stale point.
+ setPointerContext(a,3,true,7);pulse(nullptr,0);keyDown[VK_MBUTTON]=true;pulse(nullptr,0);
+ setPointerContext(a,3,true,8);assert(!takePointer(a,press,dropped));keyDown[VK_MBUTTON]=false;pulse(nullptr,0);
+ setPointerContext(a,3,true,8);pulse(nullptr,0);keyDown[VK_MBUTTON]=true;pulse(nullptr,0);
+ assert(takePointer(a,press,dropped)&&press.viewportGeneration==8);keyDown[VK_MBUTTON]=false;pulse(nullptr,0);
  assert(otherRelease(a)&&unhooks==0&&block.enabled==2);assert(wake(c));assert(!wake(a)&&!release(Client::Assist,a));
  failPost=true;block.wakePending=0;wake(c);assert(block.wakePending==0&&health(c).postError==5);failPost=false;wake(c);assert(block.wakePending==1&&health(c).postError==0);
  int before=posts;clockMs+=251;wake(c);assert(posts==before+1); // bounded lost-wake recovery
@@ -258,8 +264,9 @@ bool otherRelease(gameinput::Subscription h){return gameinput::release(gameentry
 '''
 with tempfile.TemporaryDirectory() as temp:
  p=Path(temp);(p/'windows.h').write_text(header);(p/'mmsystem.h').write_text('');(p/'main.cpp').write_text(body);(p/'other.cpp').write_text(other)
- subprocess.run(['g++','-std=c++17','-pthread','-I'+temp,'-I'+str(root/'shared/source'),str(p/'main.cpp'),str(p/'other.cpp'),'-o',str(p/'test')],check=True)
- subprocess.run([str(p/'test')],check=True)
+ zig=os.environ.get('RA2_TEST_ZIG');compiler=[zig,'c++','-target','x86-windows-gnu'] if zig else ['g++'];exe=p/('test.exe' if os.name=='nt' else 'test')
+ subprocess.run([*compiler,'-std=c++17','-pthread','-I'+temp,'-I'+str(root/'shared/source'),str(p/'main.cpp'),str(p/'other.cpp'),'-o',str(exe)],check=True)
+ subprocess.run([str(exe)],check=True)
 print('PASS shared host: one hook pair; 200 concurrent subscriptions; independent release; cadence/coalescing; failed post/unhook recovery; dead-thread migration; stale tokens; balanced input')
 
 print('PASS cursor refresh uses host input manager, validates target/focus, times out without holding scheduler mutex')

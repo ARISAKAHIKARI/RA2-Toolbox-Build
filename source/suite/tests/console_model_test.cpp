@@ -1,3 +1,6 @@
+#ifdef NDEBUG
+#error "console regression checks must be enabled"
+#endif
 #include "../source/console_model.h"
 #include <atomic>
 #include <cstdlib>
@@ -180,6 +183,22 @@ void serialization() {
     CHECK(encodeAck(structured) == encodeAck(a,true,{},73));
     CHECK(encodeAck(structured).find("\"revision\":73") != std::string::npos);
 }
+void immediateActions() {
+    auto wire=action("press");wire.insert(wire.size()-1,",\"inputTime\":123456");
+    const auto parsed=parseMessage(wire);CHECK(parsed&&parsed.message.action.inputTime==123456&&parsed.message.action.receivedAt==0);
+    for(const auto&v:{"0","-1","1.5","true","\"123\"","9007199254740992"}){
+        auto bad=action("press");bad.insert(bad.size()-1,std::string(",\"inputTime\":")+v);CHECK(!parseMessage(bad));
+    }
+    auto bad=action("press");bad.insert(bad.size()-1,",\"receivedAt\":123456");CHECK(!parseMessage(bad));
+    Action a;a.receivedAt=1000;a.inputTime=5000;
+    CHECK(immediateFresh(a,1000,5000));CHECK(immediateFresh(a,1150,5150));
+    CHECK(!immediateFresh(a,1151,5000));CHECK(!immediateFresh(a,1000,5151));
+    CHECK(!immediateFresh(a,999,5000));CHECK(!immediateFresh(a,1000,4999));
+    a.receivedAt=0;CHECK(!immediateFresh(a,1000,5000));a.receivedAt=1000;a.inputTime=0;CHECK(!immediateFresh(a,1000,5000));
+    auto state=fixture();auto&c=state.controls[0];c.runtimeError=c.groupHeader=c.collapsible=c.collapsedDefault=c.immediate=true;
+    const auto encoded=encodeSnapshot(state);
+    for(const auto&key:{"runtimeError","groupHeader","collapsible","collapsedDefault","immediate"})CHECK(encoded.find(std::string("\"")+key+"\":true")!=std::string::npos);
+}
 void mailbox() {
     ActionMailbox box(2);
     Action a; a.seq = 1;
@@ -279,7 +298,7 @@ int main(int argc, char** argv) {
         std::cout << consolemodel::encodeSnapshot(fixture()) << '\n';
         return 0;
     }
-    parser(); serialization(); mailbox(); snapshots();
+    parser(); serialization(); immediateActions(); mailbox(); snapshots();
     std::cout << "console_model: " << checks.load() << " checks passed\n";
     return 0;
 }

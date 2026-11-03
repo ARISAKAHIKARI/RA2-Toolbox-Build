@@ -48,7 +48,7 @@ static bool techTransitionProductionPending(uint32_t house){
  // Restoring a patched sidebar can make the native prune pass cancel a
  // legacy product. Keep that mode until the player finishes/cancels it.
  const unsigned offsets[]={0x53AC,0x53B0,0x53B4,0x53B8,0x53BC,0x53CC};
- auto denied=[&](uint32_t type){return !type||typeSlot(type)<0||(techImplementation==3&&techDataOwns(type))||call<int>(0x4F7870,house,(void*)(uintptr_t)type,false,true)<=0;};
+ auto denied=[&](uint32_t type){return !type||typeSlot(type)<0||techLegacyEnhancementOwns(type)||(techImplementation==3&&techDataOwns(type))||call<int>(0x4F7870,house,(void*)(uintptr_t)type,false,true)<=0;};
  for(unsigned offset:offsets){uint32_t factory=0,owner=0,product=0,items=0;int count=0;
   if(!read(house+offset,&factory,4))return true;if(!factory)continue;
   if(factory<0x10000||!read(factory+0x6C,&owner,4)||owner!=house||!read(factory+0x58,&product,4)||
@@ -97,6 +97,7 @@ static void refreshTech(uint32_t house,DWORD now){techRefresh=now;
   if(!restored||!nativeTextTechRetired()){snap.techOpen=0;techPending=true;snap.techError=-11;return;}
   if(!requestTechParameters(house)){snap.techOpen=0;techPending=true;snap.techError=-45;return;}
  }else if(techmode::data(techImplementation)){
+  if(!restoreTechEnhanceParameters()){snap.techOpen=0;techPending=true;snap.techError=-45;return;}
   if(!restoreTechParameters()){snap.techOpen=0;techPending=true;snap.techError=-45;return;}
   // Data mode first retires all instruction patches, then changes only the
   // explicitly selected Type rules. Native CanBuild still gates every icon.
@@ -104,6 +105,7 @@ static void refreshTech(uint32_t house,DWORD now){techRefresh=now;
   if(!restored||!nativeTechRetired()){snap.techOpen=0;techPending=true;snap.techError=-11;return;}
   if(!applyTechData(house)){snap.techOpen=0;techPending=true;snap.techError=-44;return;}
  }else{
+  if(!restoreTechEnhanceParameters()){snap.techOpen=0;techPending=true;snap.techError=-45;return;}
   if(!restoreTechParameters()){snap.techOpen=0;techPending=true;snap.techError=-45;return;}
   if(!restoreTechData()){snap.techOpen=0;techPending=true;snap.techError=-44;return;}
   if(!setTechSites(true)){snap.techOpen=0;techPending=false;snap.techError=-11;return;}

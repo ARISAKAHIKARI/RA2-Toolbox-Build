@@ -21,11 +21,12 @@ def main():
 using namespace assist;
 constexpr int MaxTypes=4;constexpr uint32_t UnsafeTech=4096;
 struct Type {int kind=40,index=0;};struct Snapshot {int typeCount=2;Type types[MaxTypes];} snap;
-struct Settings {uint32_t flags=UnsafeTech;bool techEnhance=true;} options,*sh=&options;
+struct Settings {uint32_t flags=UnsafeTech;bool techEnhance=true;uint32_t techEnhanceImplementation=0;} options,*sh=&options;
 struct Tracker {uint32_t epoch=1;} sessionTracker;
 static uint32_t lastHouse=0x10000,typePointers[MaxTypes]{0x20000,0x22000};static unsigned techImplementation=3;
 static bool techAllowed[MaxTypes]{true,true},enhancementChangedCatalogue=false,catalogueDirty=false,catalogueReady=true;
-static uint32_t catalogueAt=0;static bool enhancementOwned=false,enhancementFail=false;static unsigned enhancementRestores=0;
+static uint32_t catalogueAt=0;static bool techEnhanceParametersRetired(){return true;} // independent HW component off in this rule-journal fixture
+static bool enhancementOwned=false,enhancementFail=false;static unsigned enhancementRestores=0;
 struct Memory {std::map<uint32_t,uint8_t> bytes;uint32_t unreadable=0,failWrite=0;bool failAfter=false;unsigned writes=0;
  template<class T>void seed(uint32_t at,T value){auto*p=(const uint8_t*)&value;for(unsigned i=0;i<sizeof value;++i)bytes[at+i]=p[i];}
  bool read(uint32_t at,void*out,size_t n){if(unreadable>=at&&unreadable<uint64_t(at)+n)return false;auto*p=(uint8_t*)out;for(unsigned i=0;i<n;++i){auto it=bytes.find(at+i);if(it==bytes.end())return false;p[i]=it->second;}return true;}

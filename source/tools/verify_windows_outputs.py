@@ -191,9 +191,9 @@ def verify(root, host_arch='x86', neural_helper=False, webview2=False):
             a = host.at_rva(host.exports()['AssistHostProtocolInfo'], 8)
             b = bridge.at_rva(bridge.exports()['AssistProtocolInfo'], 8)
             protocol, shared_bytes = struct.unpack('<II', a)
-            if a != b or protocol != 90 or not shared_bytes:
+            if a != b or protocol != 92 or shared_bytes != 6584992:
                 raise ValueError('host/bridge protocol or Shared structure size mismatch')
-            marker = 'Local\\RA2Assist_v090_\0'.encode('utf-16le')
+            marker = 'Local\\RA2Assist_v092_\0'.encode('utf-16le')
             if 'AssistHostMappingPrefix' not in host.exports() or host.at_rva(host.exports()['AssistHostMappingPrefix'],len(marker)) != marker:
                 raise ValueError('host mapping namespace mismatch')
             if bridge.at_rva(bridge.exports()['AssistMappingPrefix'], len(marker)) != marker:

@@ -62,7 +62,7 @@ static uint32_t clockValue=1000;static int notifications=0,formationJobCount=0;
 static struct Shared{
  bool stop=false,foreground=true;uint32_t heartbeat=1000;
  volatile long formationSeq=0,formationPolicySeq=0,moGesturePolicySeq=0;
- uint32_t moFeatures=0;moorders::GesturePolicy moGestures;
+ uint32_t moFeatures=0;moorders::GesturePolicy moGestures;moorders::Options moOptions;
  formation::Policy formationPolicy;formation::Preview formationPreview;
  int formationJobs=0,formationAccepted=0,formationRejected=0;
  uint32_t formationConsumedUntil=0,formationKey=0,formationKeyAck=0,formationKeyCode=0;

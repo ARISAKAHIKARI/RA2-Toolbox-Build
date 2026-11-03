@@ -65,6 +65,8 @@
 #include "ui_layout.h"
 #include "additional_settings.h"
 #include "placement_event_input.h"
+#include "destruct_owner_input.h"
+#include "native_viewport_host.h"
 #include "settings_fold_layout.h"
 #include "runtime_feature_demand.h"
 #include "signatures.h"
@@ -144,7 +146,7 @@ static visual::Motion statusMotion;static visual::LabelView statusViews[MaxLabel
 static_assert(external::status::Maximum<=MaxLabels,"Unit status markers share the existing Motion capacity");
 static assist::PlayerTestInfo playerChoices[32]{};static int playerChoiceCount;static uint32_t playerChoicesMatch;
 static DWORD playerChoicesTick,playerChoicesPid;static std::wstring destructPendingTarget;
-static int playerChoicesCurrent=-1;static bool destructForeignNoticeShown;
+static int playerChoicesCurrent=-1;
 static constexpr const wchar_t* DestructForeignNotice=L"联机跨所属方自毁需要“保留事件所属方”已启用；当前关闭、恢复中或不可用，本次不会发送。";
 static uint64_t techAcknowledgedHash=0;static bool techMode;static bool autoRevealNewMatch=false;static uint32_t autoRevealMatch=0,autoRevealRetry=0,autoRevealDone=0,autoRevealPID=0;
 static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;
@@ -227,6 +229,18 @@ static void syncSettingDependencies(bool force=false,bool immediate=false);
 static void readSnapshot();static void syncTypeConfig();static void fillTypeBindings(bool force=false);static void typeBindingFields();
 static std::wstring path(const wchar_t*s){return root+L"\\"+s;}static std::wstring wide(const char*s){std::wstring w;while(*s)w+=wchar_t((unsigned char)*s++);return w;}
 static std::wstring hoverHelp;
+static void setConsoleFeedback(HWND control,const std::wstring&text);
+static void setConsoleTooltip(HWND control,const std::wstring&text);
+static void updateConsoleFoldErrors();
+static void setConsoleRuntimeError(HWND control,bool failed){
+#ifdef RA2_CONSOLE_WEBVIEW2
+ if(!control)return;
+ if(failed)SetPropW(control,L"RA2.Console.RuntimeError",reinterpret_cast<HANDLE>(1));
+ else RemovePropW(control,L"RA2.Console.RuntimeError");
+#else
+ (void)control;(void)failed;
+#endif
+}
 static void setStatus(const std::wstring&s){if(statusText!=s){statusText=s;if(hoverHelp.empty())SetWindowTextW(statusLabel,s.c_str());}}
 static void notify(const std::wstring&s){toast=s;toastUntil=GetTickCount()+DWORD(toastMs);setStatus(s);}
 static void diag(const std::wstring &s){
@@ -458,6 +472,7 @@ static int desiredHotkeyMode(){
 }
 static int registeredHotkeyMode=0;
 static uint32_t commandMatch();static uint32_t displayMatch();
+static bool destructOwnerKeyConflict(WORD key);
 static void synchronizeHotkeyKeys(){uint8_t down[256]{};for(unsigned key=0;key<256;++key)down[key]=(GetAsyncKeyState(int(key))&0x8000)!=0;hotkeyRegistry.synchronize(down,registeredHotkeyMode==1?displayMatch():commandMatch());}
 static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.allHotkeys,[](int slot,WORD chord){
  if(keygesture::sampledOnly(chord))return true;
@@ -482,6 +497,11 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(LOBYTE(idleAircraftKey)&&!registerKey(1701,idleAircraftKey))++failures;
  for(int i=0;i<9;++i)if(LOBYTE(socialKeys[i])&&!registerKey(1710+i,socialKeys[i]))++failures;
  if(LOBYTE(extra.variantKey)&&!registerKey(1700,WORD(extra.variantKey)))++failures;
+ // Destruction never joins a colliding/fanout group, including later edits.
+ if(extra.destructSelectedOwner&&LOBYTE(extra.destructSelectedOwnerKey)){
+  if(destructOwnerKeyConflict(WORD(extra.destructSelectedOwnerKey))||!destructownerhost::exclusive(hotkeyRegistry,extra.destructSelectedOwnerKey)||
+     !registerKey(destructownerhost::Hotkey,WORD(extra.destructSelectedOwnerKey)))++failures;
+ }
  synchronizeHotkeyKeys();if(failures)notify(L"有 "+std::to_wstring(failures)+L" 个快捷键冲突或注册失败，请更换组合，修改后自动生效。");
 }
 static std::wstring serializeIDs(const std::set<std::string>& ids){
@@ -589,6 +609,7 @@ static bool userCommand(int c){return c!=OpenTech;}
 static DWORD discoverGamePid(); // Same window filter used by attach(), without installing a second Hook.
 static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWORD delayMs=0,uint32_t token=0,uint64_t typeHash=0){
  if(c==PlaceCompletedBuilding)return false; // A frozen placement is never deferred.
+ if(c==DestructPlayer)return false; // Current selection is valid only at this input edge.
  if(!enabled)return false;
  if(c==RevealMap&&(!extra.experimentalReveal||extra.renderReveal))return false;
  DWORD now=GetTickCount();
@@ -601,11 +622,13 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  if(command==PlaceCompletedBuilding){notify(L"建筑放置须使用原生事件放置快捷键重新提交。");return;}
  if((command==Produce||command==CancelTechProduction)&&!buildingmodes::toolOrders(techImplementation,snap.techOpen)){notify(L"原生面板模式请使用游戏建造栏生产或取消。");return;}
  if(!enabled){notify(L"战术控制已暂停，请先启用后再发送指令。");return;}
- // Whole-House destruction is an immediate explicit button action. Never
+ const DWORD inputAt=GetTickCount();const uint32_t inputPID=pid,inputMatch=commandMatch();const Shared*inputConnection=shared;
+ // Whole-House destruction is an immediate explicit input action. Never
  // carry it across a reconnect, busy bridge or deferred command queue.
- if(command==DestructPlayer&&(!shared||!game||!pid||!IsWindow(game)||!commandFresh(GetTickCount())||
-    !commandFocus()||incoming.chat||shared->request!=shared->ack||shared->ack!=ack||commandQueue.size||fromQueue||retries)){
-  notify(L"自毁请求未提交：请等待当前对局和命令连接就绪后重新点击。");return;
+ if(command==DestructPlayer&&(!extra.destructSelectedOwner||arg||arg2||requestToken||!shared||!game||!pid||!IsWindow(game)||!commandFresh(GetTickCount())||
+    !commandFocus()||incoming.chat||shared->request!=shared->ack||shared->ack!=ack||commandQueue.size||fromQueue||retries||hasSelection||
+    shared->selectRequest!=shared->selectAck||shared->pointer.request!=shared->pointer.ack||shared->viewZoomBusy)){
+  notify(L"自毁请求未提交：请先开启功能，并等待当前对局及命令连接就绪后重新执行。");return;
  }
  const uint64_t intentTypes=typeListHash(snap.types,snap.typeCount);
  if(command==OpenTech)arg2=techImplementation;
@@ -626,17 +649,11 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  }
  if(snap.status<0){notify(L"游戏操作暂不可用，本次指令未执行。");return;}
  readSnapshot();now=GetTickCount();
- if(command==DestructPlayer&&(playerChoicesPid!=pid||playerChoicesMatch!=commandMatch())){
-  notify(L"自毁请求未提交：对局已改变，请重新选择所属方。");return;
+ if(command==DestructPlayer&&(pid!=inputPID||!inputMatch||commandMatch()!=inputMatch||shared!=inputConnection||DWORD(now-inputAt)>150)){
+  notify(L"自毁请求未提交：输入已过期或对局已改变，请重新选择并执行。");return;
  }
- if(command==DestructPlayer){
-  // Without the complete active adapter, native multiplayer sending rewrites
-  // the event House. Runtime rechecks adapter availability at final enqueue.
-  long seq=shared->seq;if(seq&1){notify(L"所属方列表正在更新，本次自毁请求未提交。");return;}
-  MemoryBarrier();int session=shared->data.session,current=shared->playerCurrent;bool preserve=networkHouseReady();MemoryBarrier();
-  if(seq!=shared->seq){notify(L"所属方列表正在更新，本次自毁请求未提交。");return;}
-  if(eventdelivery::isMultiplayer(session)&&(current<0||(requestToken!=uint32_t(current)&&!preserve))){notify(DestructForeignNotice);return;}
- }
+ // arg=0 asks Runtime to validate every current selected unit/UID/House,
+ // reject mixed owners and recheck the cross-House network adapter there.
  if(typeIndexedCommand(command,arg)&&intentTypes!=typeListHash(snap.types,snap.typeCount)){
   if(fromQueue&&(command==ProduceReserved||command==ProduceDeferred))constructionResult(-13,0,uint32_t(arg2),requestToken);
   else notify(L"单位清单已改变，请重新选择后提交。");return;
@@ -819,6 +836,9 @@ static void reapBridges(){DWORD now=GetTickCount();for(size_t i=0;i<retiredBridg
  else{if(DWORD(now-r.lastWake)>=100){r.lastWake=now;wakeRetiredBridge(r);}++i;}}
 }
 static void releaseBridge(){
+ // Logical lease loss happens here, even if a retired view stays mapped for
+ // Runtime cleanup. Never wait for a later paint to notice shared=nullptr.
+ nativeviewhost::mappingLost(shared);
  commandcursor::clear();
  if(hook)logBridgeHealth(true); // preserve the last IPC evidence before unmapping
  resetPlanning();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;cooperativeDelivered=cooperativeReceipt=0;retryCooperative=false;submittedCooperative.clear();acceptedCooperative.clear();processedCooperative.clear();cooperativeSourcePool={};
@@ -850,12 +870,43 @@ static bool bridgeFailed(const std::wstring&reason,DWORD error=0){
  if(bridgeFailure!=text){bridgeFailure=text;critical(L"command bridge failure: "+text+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));}
  setStatus(text);return false;
 }
+// A new Host cannot assume identity projection while a previous controller's
+// Runtime may still own R. Probe before the first read-only sample as well as
+// before creating a command mapping; an absent name alone cannot retire a
+// previously observed active lease. The helper owns the bounded retry clock.
+static void observeNativeViewportPrior(const Shared*prior,bool valid){
+ const auto expected=nativeviewhost::processIdentity();
+ if(valid&&prior&&prior->pid==expected.pid)nativeviewhost::probeExisting(expected,prior);
+ else nativeviewhost::probeUnknown(expected);
+}
+static void probeNativeViewportMapping(){
+ if(!pid||shared||!nativeviewhost::probeDue())return;
+ const auto expected=nativeviewhost::processIdentity();
+ if(!expected.pid||expected.pid!=pid){nativeviewhost::probeUnknown(expected);return;}
+ wchar_t name[100];mappingName(name,expected.pid);
+ HANDLE probe=OpenFileMappingW(FILE_MAP_READ,FALSE,name);
+ if(!probe){
+  const DWORD error=GetLastError();
+  if(error==ERROR_FILE_NOT_FOUND)nativeviewhost::probeAbsent(expected);
+  else nativeviewhost::probeUnknown(expected);
+  return;
+ }
+ const Shared*view=static_cast<const Shared*>(MapViewOfFile(probe,FILE_MAP_READ,0,0,sizeof(Shared)));
+ if(view){
+  const bool valid=view->magic==Magic&&view->version==Version&&view->pid==expected.pid;
+  if(valid)nativeviewhost::probeExisting(expected,view);
+  else nativeviewhost::probeUnknown(expected);
+  UnmapViewOfFile(view);
+ }else nativeviewhost::probeUnknown(expected);
+ CloseHandle(probe);
+}
 static bool ensureBridge(){
  if(!enabled)return false; // A secondary display alone never installs the command runtime.
  if(shared)return true;
  // Runtime feature maintenance still checks local playable state and exact signatures.
  if(!game)return false;
  if(!gameinput::runtimeAvailable())return bridgeFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",GetLastError());DWORD now=GetTickCount();
+ probeNativeViewportMapping();
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
  gameinput::NativeWindowProbe native{};
  if(!gameinput::nativeWindow(pid,gameThread,&native)){
@@ -878,6 +929,7 @@ static bool ensureBridge(){
   Shared*prior=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));
   const DWORD viewError=prior?0:GetLastError();
   bool valid=prior&&prior->magic==Magic&&prior->version==Version&&prior->pid==pid;
+  observeNativeViewportPrior(prior,valid);
   bool ours=valid&&prior->owner==GetCurrentProcessId(),ownerDead=false;
   if(valid&&!ours){HANDLE process=OpenProcess(SYNCHRONIZE,FALSE,prior->owner);ownerDead=process?WaitForSingleObject(process,0)==WAIT_OBJECT_0:GetLastError()==ERROR_INVALID_PARAMETER;if(process)CloseHandle(process);}
   bool stopped=valid&&(ours||ownerDead)&&prior->stop==2;
@@ -897,7 +949,8 @@ static bool ensureBridge(){
  }
  shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared){DWORD error=GetLastError();releaseBridge();return bridgeFailed(L"映射命令共享内存失败",error);}
  uint32_t hostWindow=gameinput::windowToken(ui);if(!hostWindow){releaseBridge();return bridgeFailed(L"工具箱窗口句柄无法与 32 位运行组件互通",ERROR_INVALID_WINDOW_HANDLE);}
- memset(shared,0,sizeof *shared);shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=hostWindow;shared->heartbeat=now;shared->flags=flags();shared->scanMs=8;shared->repairMs=repairMs;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
+ memset(shared,0,sizeof *shared);shared->viewportHostCapabilities=nativeviewportprojection::HostHandshake;
+ shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=hostWindow;shared->heartbeat=now;shared->flags=flags();shared->scanMs=8;shared->repairMs=repairMs;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
  shared->megaQueueMode=megaQueueMode;shared->objectQueueMode=objectQueueMode;shared->driverStatus=0;syncAdditional();syncTypeConfig();
  shared->clockTick=now;shared->clockStart=0;shared->clockFrequency=0;
  module=gameinput::runtimeModule();
@@ -949,6 +1002,9 @@ static bool attach(){
   diag(L"external OpenProcess failed pid="+std::to_wstring(c.pid)+L" error="+std::to_wstring(code));return false;
  }
  pid=c.pid;gameThread=c.thread;game=external::discovery::resolveYrppWindow(externalReader,pid,c.window,&gameThread,&gameWindowFromYrpp);
+ {const auto process=externalReader.connectionIdentity();FILETIME created{},exited{},kernel{},user{};
+  const uint64_t creation=process&&GetProcessTimes(process->handle,&created,&exited,&kernel,&user)?(uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime:0;
+  nativeviewhost::bindProcess(pid,creation);}
  critical(L"read-attached pid="+std::to_wstring(pid)+L" hwnd="+std::to_wstring(uintptr_t(game))+L" tid="+std::to_wstring(gameThread)+(gameWindowFromYrpp?L" windowSource=YRpp-0xB73550":L" windowSource=validated-fallback-or-none"));
  critical(gamebuild::describe([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);}));
  wchar_t imagePath[32768]{};DWORD pathLength=32768;
@@ -1015,6 +1071,10 @@ static void mergeExternal(){
 #include "../../shared/source/pipeline_timing.h"
 static external::attacktrace::Recorder attackRecorder;
 static void sampleExternal(DWORD now){
+ probeNativeViewportMapping();
+ nativeviewhost::Transform viewportTransform;const bool viewportKnown=nativeviewhost::sampleTransform(shared,viewportTransform);
+ externalSampler.viewport(viewportTransform,viewportKnown);
+ if(viewportKnown){motion.projection(viewportTransform.generation);statusMotion.projection(viewportTransform.generation);enemyMotion.projection(viewportTransform.generation);}
  static pipelineperf::Window timings(L"information-sample",{L"total"});pipelineperf::Scope total(timings,0,critical);
  if(shared&&shared->viewZoomBusy)return;
  
@@ -1272,11 +1332,13 @@ static bool constructionDisplayFresh(){
 #include "../../external_reader/source/sidebar_shapes.h"
 static external::sidebar::Cache sidebarShapes;
 static void serviceSuperweaponPanel(){
+ nativeviewhost::Transform transform;if(!nativeviewhost::sampleTransform(shared,transform)){superweaponPanel.hide();return;}
  superweaponOptions.enabled=enabled&&extra.superweaponPanel&&overlayvisibility::visible();
  superweaponPanel.update(game,pid,commandMatch(),enabled&&foregroundGame()&&!snap.chat&&commandFresh(GetTickCount())&&constructionDisplayFresh(),superweaponOptions,
   [](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);},
   [](int index,uint32_t instance,uint32_t type){send(SelectSuper,index,int(instance),0,false,type);},
-  [](const swsidebar::Options&options){superweaponOptions=options;changedSetting();});
+  [](const swsidebar::Options&options){superweaponOptions=options;changedSetting();},transform.active?transform.physical.x+transform.physical.w:0,transform);
+ if(!nativeviewhost::stable(shared,transform))superweaponPanel.hide();
 }
 static void serviceConstruction(){buildreserve::service();serviceSuperweaponPanel();}
 static void hideConstruction(){buildreserve::hide();superweaponPanel.hide();}
@@ -1287,17 +1349,18 @@ struct Surface{HDC dc{};HBITMAP bitmap{},old{};BYTE*bits{};int w{},h{};~Surface(
 #include "watch_windows.h"
 #include "world_presentation.h"
 namespace worldrender {
-struct Job {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::function<void(Graphics&)> draw;overlaycompositor::Context context;POINT relative{};};
-struct Frame {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::vector<uint32_t> pixels;overlaycompositor::Context context;POINT relative{};};
+struct Job {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::function<void(Graphics&)> draw;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;};
+struct Frame {uint32_t pid,match,tick;int w,h,clientW,clientH;POINT origin;std::vector<uint32_t> pixels;overlaycompositor::Context context;POINT relative{};uint64_t projection=0;};
 static std::shared_ptr<const Frame> rasterize(const Job&j){
  if(j.w<1||j.h<1||j.w>8192||j.h>8192||uint64_t(j.w)*j.h>16*1024*1024)return {};
- auto out=std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->pixels.resize(size_t(j.w)*j.h);
+ auto out=std::make_shared<Frame>();out->pid=j.pid;out->match=j.match;out->tick=j.tick;out->w=j.w;out->h=j.h;out->clientW=j.clientW;out->clientH=j.clientH;out->origin=j.origin;out->context=j.context;out->relative=j.relative;out->projection=j.projection;out->pixels.resize(size_t(j.w)*j.h);
  Bitmap bm(j.w,j.h,j.w*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(out->pixels.data()));{Graphics g(&bm);j.draw(g);}return out;
 }
 static asyncwork::Latest<Job,Frame> worker(rasterize);
 static std::shared_ptr<const Frame> displayed;
 static worldpresentation::Submission submission;
 static void submit(Job input){
+ nativeviewhost::Transform transform;if(!nativeviewhost::sampleTransform(shared,transform)||input.projection!=nativeviewhost::key(transform))return;
  submission.submitted();input.context=overlaycompositor::host().capture(uintptr_t(game),pid);
  if(input.context.token&&(input.context.cameraX!=snap.cameraX||input.context.cameraY!=snap.cameraY))input.context.token=0;
  POINT origin{};ClientToScreen(game,&origin);input.relative={input.origin.x-origin.x,input.origin.y-origin.y};
@@ -1305,6 +1368,7 @@ static void submit(Job input){
 }
 static void invalidate(){overlaycompositor::host().hide(overlaycompositor::World);if(!submission.invalidate())return;worker.invalidate();displayed.reset();}
 static void present(){auto frame=worker.get();
+ nativeviewhost::Transform transform;if(!nativeviewhost::sampleTransform(shared,transform)||!frame||frame->projection!=nativeviewhost::key(transform)){overlaycompositor::host().hide(overlaycompositor::World);hideWorldOverlay();return;}
  auto context=overlaycompositor::host().capture(uintptr_t(game),pid);
  if(context.token&&IsWindowVisible(overlay))ShowWindow(overlay,SW_HIDE);
  if(!frame||frame->pid!=pid||frame->match!=snap.match){overlaycompositor::host().hide(overlaycompositor::World);return;}
@@ -1319,6 +1383,9 @@ static void present(){auto frame=worker.get();
   displayed=frame;return;
  }
  overlaycompositor::host().hide(overlaycompositor::World);
+ // The compatibility HWND has no per-layer radar cutout. During the
+ // radar-only transition, keep it hidden until the compositor can mask it.
+ if((shared&&shared->sidebarStatus==3)||(extra.sidebarEnabled&&extra.sidebarMode==1)){hideWorldOverlay();return;}
  if((frame==displayed&&IsWindowVisible(overlay))||DWORD(GetTickCount()-frame->tick)>500)return;
  if(!surface.resize(frame->w,frame->h))return;memcpy(surface.bits,frame->pixels.data(),frame->pixels.size()*4);
  POINT origin{};ClientToScreen(game,&origin);origin.x+=frame->relative.x;origin.y+=frame->relative.y;POINT zero{};
@@ -1340,6 +1407,13 @@ static void paint(){
  // scan can fail for one refresh without invalidating that completed scene.
  // Pass the readable/hidden distinction through before the legacy UI gates.
  {pipelineperf::Scope handoff(timings,2);renderupgrade::update(origin,r,displayState);}
+ nativeviewhost::Transform viewportTransform;
+ if(!nativeviewhost::sampleTransform(shared,viewportTransform)||externalSampler.sampledViewport()!=viewportTransform){worldrender::invalidate();hideWorldOverlay();clearPassengerDisplay();return;}
+ static uint64_t projectionKey=~uint64_t(0);const uint64_t currentProjection=nativeviewhost::key(viewportTransform);
+ if(projectionKey!=currentProjection){projectionKey=currentProjection;++paintRevision;clearPassengerDisplay();worldrender::invalidate();}
+ motion.projection(viewportTransform.generation);statusMotion.projection(viewportTransform.generation);enemyMotion.projection(viewportTransform.generation);
+ const auto mapClip=nativeviewhost::clip(viewportTransform,snap.width,snap.height);
+ auto onMap=[=](float x,float y){return !viewportTransform.active||nativeviewportprojection::contains(mapClip,int(std::floor(x)),int(std::floor(y)));};
  const auto passive=passiveDisplayState(displayState,r);
  if(passive==overlaydisplay::State::Hidden){worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
  if(passive==overlaydisplay::State::Hold){
@@ -1356,19 +1430,22 @@ static void paint(){
  pipelineperf::Scope hud(timings,4);
  if(!enabled||!foregroundGame()||snap.chat){worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();hideConstruction();clearPassengerDisplay();return;}
  DWORD now=sampleClock(shared);int labelCount=motion.render(renderNow,labelViews);
+ for(int i=0;i<labelCount;++i)nativeviewhost::localPoint(viewportTransform,labelViews[i].x,labelViews[i].y);
  const auto&statusFrame=externalSampler.unitStatuses();
  int statusCount=statusOptions()&&externalData&&external::status::fresh(statusFrame,externalData->match,renderNow)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
  const auto&rawEnemyFrame=externalSampler.enemyMarkers();
+ for(int i=0;i<statusCount;++i)nativeviewhost::localPoint(viewportTransform,statusViews[i].x,statusViews[i].y);
  int rawEnemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(rawEnemyFrame,externalData->match,renderNow)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups,clusteredEnemies,clusteredEnemyViews):0;
  std::copy(clusteredEnemyViews,clusteredEnemyViews+enemyCount,enemyViews);
+ for(int i=0;i<enemyCount;++i)nativeviewhost::localPoint(viewportTransform,enemyViews[i].x,enemyViews[i].y);
  const auto&enemyFrame=clusteredEnemies;
  updateAircraftButton(origin,r);formationhost::update();
  const auto moDrawing=moordershost::drawing();
  const auto placementDrawing=placementdrawing::capture();
  auto opaquePanels=overlaystack::opaqueBoxes(game,snap.width,snap.height);
  static std::vector<RECT> priorOpaquePanels;if(priorOpaquePanels.size()!=opaquePanels.size()||(!opaquePanels.empty()&&memcmp(priorOpaquePanels.data(),opaquePanels.data(),opaquePanels.size()*sizeof(RECT)))){priorOpaquePanels=opaquePanels;++paintRevision;}
- auto passengerBubbles=passengerView(renderNow);
+ auto passengerBubbles=passengerView(renderNow,viewportTransform);
  auto airLines=airway::lines();
  auto nativeBadges=buildreserve::nativeBadges();
  uint32_t pausedTabs=0,idleTabs=0;
@@ -1396,10 +1473,10 @@ static void paint(){
  if(idleTabs)for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){const auto&f=sidebarShapes.frames[i];include(f.x*sx,f.y*sy,f.width*sx,f.height*sy);}
  if(hasToast||summary)include(panelX-3,top-3,panelW+6,(hasToast&&summary)?62.f:32.f);
  for(int i=0;i<labelCount;++i){auto&l=labelViews[i];float z=viewport::factor(labelScalePercent);include(l.x*sx-140*z,l.y*sy-70*z,280*z,110*z);}
- for(int i=0;i<snap.crateCount;++i){auto&c=snap.crates[i];include(c.x*sx-110,c.y*sy-33,220,46);}
- for(int i=0;i<snap.threatCount;++i){auto&t=snap.threats[i];include(std::min(t.x,t.tx)*sx-10,std::min(t.y,t.ty)*sy-10,std::abs(t.x-t.tx)*sx+20,std::abs(t.y-t.ty)*sy+20);}
+ for(int i=0;i<snap.crateCount;++i){auto c=snap.crates[i];nativeviewhost::localPoint(viewportTransform,c.x,c.y);include(c.x*sx-110,c.y*sy-33,220,46);}
+ for(int i=0;i<snap.threatCount;++i){auto t=snap.threats[i];nativeviewhost::localPoint(viewportTransform,t.x,t.y);nativeviewhost::localPoint(viewportTransform,t.tx,t.ty);include(std::min(t.x,t.tx)*sx-10,std::min(t.y,t.ty)*sy-10,std::abs(t.x-t.tx)*sx+20,std::abs(t.y-t.ty)*sy+20);}
  for(int i=0;i<statusCount;++i){const auto&v=statusViews[i];const auto&m=statusFrame.items[i];auto b=statusbadges::bounds(v.x,v.y,m.buffs,m.parasite!=0);include(b.x,b.y,b.w,b.h);}
- for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))include(v.x*sx-10,v.y*sy-12,300,54);}
+ for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(onMap(v.x,v.y)&&(viewportTransform.active||external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height)))include(v.x*sx-10,v.y*sy-12,300,54);}
  if(right<=left||bottom<=up){worldrender::invalidate();hideWorldOverlay();return;}
  static Snapshot drawn{};static visual::LabelView drawnViews[MaxLabels];static int drawnCount;static bool lastToast,lastPanel,lastSummary;static std::wstring oldToast;static int oldW,oldH,oldMargin;static uint32_t revision;
  static external::enemies::Marker drawnEnemies[external::enemies::Maximum];static visual::LabelView drawnEnemyViews[MaxLabels];static int drawnEnemyCount,drawnEnemyWidth,drawnEnemyHeight;
@@ -1423,6 +1500,7 @@ static void paint(){
  drawnPlacement=placementDrawing;drawnMo=moDrawing;drawnSpiderPhase=spiderPhase;drawnPassengers=passengerBubbles;drawn.width=snap.width;drawn.height=snap.height;drawnShapeRevision=sidebarShapes.revision;drawnAirLines=airLines;drawnBadges=nativeBadges;drawnIdleTabs=idleTabs;drawnTabPhase=tabPhase;
  auto labels=std::vector<visual::LabelView>(labelViews,labelViews+labelCount),enemies=std::vector<visual::LabelView>(enemyViews,enemyViews+enemyCount),statuses=std::vector<visual::LabelView>(statusViews,statusViews+statusCount);
  auto threats=std::vector<Threat>(snap.threats,snap.threats+snap.threatCount);auto crates=std::vector<CrateMark>(snap.crates,snap.crates+snap.crateCount);
+ for(auto&t:threats){nativeviewhost::localPoint(viewportTransform,t.x,t.y);nativeviewhost::localPoint(viewportTransform,t.tx,t.ty);}for(auto&c:crates)nativeviewhost::localPoint(viewportTransform,c.x,c.y);
  std::array<external::sidebar::Frame,4> shapes; // immutable sidebar SHP pixels
  for(int i=0;i<4;++i)if(idleTabs&(1u<<i))shapes[i]=sidebarShapes.frames[i];
  auto draw=[=,labelViews=std::move(labels),enemyViews=std::move(enemies),statusViews=std::move(statuses),formation=formationhost::drawing(),used=snap.used,capacity=snap.capacity,toast=toast,labelScale=labelScalePercent](Graphics&g) mutable {
@@ -1434,23 +1512,25 @@ static void paint(){
   for(const auto&b:nativeBadges){SolidBrush tag(Color(230,97,67,14));g.FillRectangle(&tag,b.x*sx,b.y*sy,b.w*sx,b.h*sy);
    std::wstring numbers;for(int i=0;i<construction::Capacity;++i)if(b.positions&(1<<i))numbers+=std::to_wstring(i+1);
    drawText(g,numbers,b.x*sx+2,b.y*sy,std::max(8.f,10.f*sy),Color(255,255,239,158));}
-  auto enemyClip=g.Save();g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy),CombineModeIntersect);
-  for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height))drawEnemyMarker(g,enemyFrame.items[i],v,sx,sy);}g.Restore(enemyClip);
+  auto mapState=g.Save();if(viewportTransform.active)g.SetClip(RectF(float(mapClip.x),float(mapClip.y),float(mapClip.w),float(mapClip.h)),CombineModeIntersect);
+  auto enemyClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy),CombineModeIntersect);
+  for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(onMap(v.x,v.y)&&(viewportTransform.active||external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height)))drawEnemyMarker(g,enemyFrame.items[i],v,sx,sy);}g.Restore(enemyClip);
   Pen flightPen(Color(210,130,235,160),1.5f);flightPen.SetEndCap(LineCapArrowAnchor);for(auto l:airLines){g.DrawLine(&flightPen,float(l.x)*sx,float(l.y)*sy,float(l.tx)*sx,float(l.ty)*sy);g.DrawEllipse(&flightPen,float(l.tx)*sx-3,float(l.ty)*sy-3,6.f,6.f);}
   Pen threatPen(Color(185,245,114,223),1.6f);threatPen.SetEndCap(LineCapArrowAnchor);
   for(int i=0;i<threats.size();++i){auto&t=threats[i];float x=t.x*sx,y=t.y*sy,tx=t.tx*sx,ty=t.ty*sy;g.DrawLine(&threatPen,x,y,tx,ty);g.DrawEllipse(&threatPen,tx-7,ty-7,14.f,14.f);}
   Pen cratePen(Color(245,255,205,82),2.f);
   for(int i=0;i<crates.size();++i){auto&c=crates[i];float x=c.x*sx,y=c.y*sy;g.DrawRectangle(&cratePen,x-10,y-9,20.f,18.f);std::wstring text=c.preview<0?L"随机箱":std::wstring(L"预设 · ")+crateName(c.preview);drawText(g,text,x-text.size()*6,y-29,12,Color(255,255,216,117));}
-  auto statusClip=g.Save();g.SetClip(RectF(0,0,float(statusFrame.width),float(statusFrame.height)),CombineModeIntersect);
+  auto statusClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,float(statusFrame.width),float(statusFrame.height)),CombineModeIntersect);
   for(int i=0;i<statusCount;++i)drawUnitStatus(g,statusFrame.items[i],statusViews[i],spiderPhase);g.Restore(statusClip);
   for(int i=0;i<labelCount;++i)drawLabel(g,labelViews[i],sx,sy,labelScale);
   for(const auto&b:passengerBubbles)drawPassengerBubble(g,b);
-  formationhost::draw(g,formation);moordershost::draw(g,moDrawing);placementdrawing::draw(g,placementDrawing);
+  g.Restore(mapState);formationhost::draw(g,formation);moordershost::draw(g,moDrawing);placementdrawing::draw(g,placementDrawing);
   float y=top;
   if(summary){std::wstring text=L"载员 "+std::to_wstring(used)+L" / "+std::to_wstring(capacity)+L" · 剩余 "+std::to_wstring(std::max(0,capacity-used));SolidBrush bg(Color(150,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,26.f);drawText(g,text,panelX+10,y+4,13,Color::White);y+=30;}
   if(hasToast){SolidBrush bg(Color(155,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,27.f);drawText(g,toast,panelX+10,y+4,12,Color(255,220,233,247));y+=31;}
  };
- worldrender::submit({pid,snap.match,GetTickCount(),w,h,physicalW,physicalH,origin,std::move(draw)});
+ if(!nativeviewhost::stable(shared,viewportTransform)){worldrender::invalidate();hideWorldOverlay();return;}
+ worldrender::Job job{pid,snap.match,GetTickCount(),w,h,physicalW,physicalH,origin,std::move(draw)};job.projection=currentProjection;worldrender::submit(std::move(job));
 
 }
 #include "frame_clock.h"
@@ -1543,14 +1623,15 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
   std::wstring message;
   if(r>0&&n==1)message=L"自毁请求已入队："+destructPendingTarget+L"；实际执行以游戏为准。";
   else if(r==-42)message=std::wstring(L"自毁请求未入队：")+DestructForeignNotice;
-  else if(r==-4||r==-7)message=L"自毁请求未入队：所选所属方已失效或对局已改变，请重新选择。";
+  else if(r==-7)message=L"自毁请求未入队：请选择同一所属方的存活单位；空选、混合所属方或选取身份改变时不执行。";
+  else if(r==-4)message=L"自毁请求未入队：对局已改变，请重新选择后执行。";
   else if(r==-8)message=L"自毁请求未入队：请先关闭游戏聊天输入框。";
   else if(r==-6)message=L"自毁请求未入队：事件队列已满或提交失败，请稍后重新点击。";
   else if(r==-12)message=L"自毁请求未入队：当前游戏版本不支持此事件入口。";
   else message=L"自毁请求未入队；请确认当前对局与所选所属方仍有效。";
   if(r==-10||r==-15){critical(L"Destruct command exception result="+std::to_wstring(r));logBridgeHealth(true);}
   if(r==-6)critical(L"Destruct submission failed: "+submitDiagnostic());
-  SetWindowTextW(GetDlgItem(ui,9186),message.c_str());notify(message);return;
+  setConsoleFeedback(GetDlgItem(ui,9186),message);setConsoleRuntimeError(GetDlgItem(ui,9186),r<0);notify(message);return;
  }
  if(c==SelectSuper&&shared->arg==-1){if(r>0)notify(L"已取消超级武器目标选择。");return;}
  if(c==AirPathMove){airPathResult(r,n,uint32_t(shared->arg),shared->requestToken);return;}
@@ -1649,9 +1730,17 @@ static void publishSuiteDisplay(){
  suite::publishDisplaySettings(state);
 #endif
 }
+static void updateControlModeStatus(DWORD now){
+ const int status=shared?shared->playerControlStatus:0;const bool fresh=shared&&commandFresh(now);
+ std::wstring label=extra.controlImplementation==1?L"高危 · 原生控制判定 Hook：":L"高危 · Master 基本指令修改：";
+ label+=status<0?L"应用或还原未完成，请检查日志":!fresh?(extra.controlAll?L"等待对局及连接就绪":L"关闭"):
+  !extra.controlAll?(status?L"等待还原":L"关闭"):status==int(extra.controlRequest())?(extra.masterControlRequested()?L"三处指令已修改，联机效果未验证":L"已启用，联机效果未验证"):L"等待切换完成";
+ if(fresh)label+=L" · 当前玩家 "+std::to_wstring(shared->playerCurrent+1);
+ SetWindowTextW(GetDlgItem(ui,865),label.c_str());
+}
 static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
- static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();
+ static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();updateControlModeStatus(now);
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（实验性）":L"等待生效";};
  std::wstring enhancement=L"高危 · 科技加强：";
  if(shared&&shared->techEnhanceStatus<0)enhancement+=shared->techEnhanceCount?L"仍有未还原字段（"+std::to_wstring(shared->techEnhanceCount)+L" 项），请查看日志":L"字段不兼容或已被修改，请查看日志";
@@ -1662,6 +1751,12 @@ static void updateModeStatus(DWORD now){
  else if(shared->techEnhanceStatus==1)enhancement+=L"已启用（"+std::to_wstring(shared->techEnhanceCount)+L" 项）";
  else enhancement+=L"等待生效";
  SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());
+ {const int p=shared?shared->techEnhanceParameterStatus:0;const wchar_t*label=p==1?L"已安装":p==2?L"等待安装／恢复":p==-1?L"原生入口不兼容":p==-2?L"没有空闲硬件断点":p==-3?L"Windows 线程操作失败":p==-4?L"断点已被其他工具改变":p==-5?L"线程归属不匹配":p==-6?L"与当前科技模式不兼容":p==-7?L"当前生产未完成，等待安全切换":L"关闭";
+  std::wstring text=std::wstring(L"科技加强参数拦截：")+label;
+  if(shared){text+=L" · 命中 "+std::to_wstring(shared->techEnhanceParameterExceptions)+L" 次";if(p<0)text+=L" · 错误 "+std::to_wstring(shared->techEnhanceParameterError);}
+  SetWindowTextW(GetDlgItem(ui,9471),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9471),p<0);
+ }
+
  updatePlacementEventUI();
  std::wstring riskStatus=extra.placementImplementation==buildingmodes::PlacementEvent?
   std::wstring(L"原生事件放置：")+(!buildAnywhereMode?L"关闭":phase?L"等待游戏就绪":snap.placementStatus==2?L"已就绪；自动匹配当前建筑／防御栏，按配置键预览，左键放置":snap.placementStatus<0?L"旧补丁未能还原或版本不兼容，未启用":L"等待旧补丁还原并启用"):
@@ -1690,14 +1785,14 @@ static void updateModeStatus(DWORD now){
  std::wstring renderText=(extra.mapStrategy!=0)?L"高危 · 地图显示：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  {int c=shared?shared->smallMapClampStatus:0;const wchar_t*status=c==1?L"已安装单轴／双轴修正":c==2?L"当前地图无需修正":c==3?L"等待有效几何":c==-2?L"入口冲突或还原未完成":L"关闭";SetWindowTextW(GetDlgItem(ui,9464),(std::wstring(L"小图相机：")+status).c_str());}
- {int s=shared?shared->sidebarStatus:0;const wchar_t*status=s==1?L"已隐藏":s==2?L"等待绘制安全点":s==-1?L"不支持当前显示几何":s==-2?L"版本或 Hook 冲突":s==-3?L"原生布局切换失败":L"完整";SetWindowTextW(GetDlgItem(ui,9407),(std::wstring(L"侧边栏：")+status).c_str());}
+ {int s=shared?shared->sidebarStatus:0;const wchar_t*status=s==1?L"已全部隐藏":s==3?L"只保留雷达":s==2?L"等待绘制安全点":s==-1?L"不支持当前显示几何":s==-2?L"版本或 Hook 冲突":s==-3?L"原生布局切换失败":L"完整";SetWindowTextW(GetDlgItem(ui,9407),(std::wstring(L"侧边栏：")+status).c_str());}
  {int p=shared?shared->pauseViewStatus:0;const wchar_t*status=p==1?L"运行中":p==2?L"已暂停":p==3?L"等待前进一帧":p==-1?L"仅支持单机／战役":p==-2?L"版本或 Hook 冲突":p==-3?L"原生暂停调用失败":p==-4?L"跨过多帧，已暂停":L"关闭";
   std::wstring text=std::wstring(L"逐帧操作：")+status;SetWindowTextW(GetDlgItem(ui,9406),text.c_str());}
  {int z=shared?shared->viewZoomStatus:viewzoom::Waiting;std::wstring text=L"视角缩放：";
   if(!shared)text+=extra.viewZoomEnabled?L"等待连接":L"关闭";
-  else switch(z){case viewzoom::Off:text+=L"100%";break;case viewzoom::Applied:text+=std::to_wstring(shared->viewZoomApplied)+L"% · "+std::to_wstring(shared->viewZoomWidth)+L" × "+std::to_wstring(shared->viewZoomHeight);break;
+  else switch(z){case viewzoom::Off:text+=L"100%";break;case viewzoom::Applied:text+=(viewzoom::caption(shared->viewZoomApplied)?std::wstring(viewzoom::caption(shared->viewZoomApplied)):std::to_wstring(shared->viewZoomApplied)+L"%")+L" · "+std::to_wstring(shared->viewZoomWidth)+L" × "+std::to_wstring(shared->viewZoomHeight);break;
    case viewzoom::Renderer:text+=L"需要带 Zoom 接口的 CnC-DDraw";break;case viewzoom::Native:text+=L"游戏版本不兼容，或游戏使用原生窗口模式";break;
-   case viewzoom::Dimensions:text+=L"目标解析度超出范围（640×480 至 8192×8192）";break;
+   case viewzoom::Dimensions:text+=L"目标地图光栅超出范围（64–8192，最多 4000 万像素）";break;
    case viewzoom::ResizeFailed:text+=L"切换失败，已恢复上一次倍率";break;case viewzoom::RestoreFailed:text+=L"恢复失败，请重新启动游戏";break;
    case viewzoom::Fault:text+=L"原生切换异常，请重新启动游戏";break;
    case viewzoom::Presentation:text+=L"存在黑边或渲染器改变视窗大小；请用等比例普通窗口模式";break;
@@ -1706,13 +1801,15 @@ static void updateModeStatus(DWORD now){
  }
  SetWindowTextW(GetDlgItem(ui,888),!extra.scrollRefreshMode?L"高刷策略：仅光标（沿用光标页设置）":shared&&shared->scrollRefreshStatus<0?L"高刷策略：接口不兼容，保持原版画面刷新":shared&&shared->scrollRefreshStatus==1?(extra.scrollRefreshMode==3?L"高刷策略：强制高刷 · 实验性功能已启用":extra.scrollRefreshMode==2?L"高刷策略：全部 · 实验性功能已启用":L"高刷策略：光标＋拖屏 · 实验性功能已启用"):L"高刷策略：等待游戏前台就绪");
  if(shared&&shared->scrollRefreshStatus==1&&shared->scrollRefreshRateMilli){wchar_t label[160];swprintf(label,160,L"%s · 绘制调用 %.1f Hz（非屏幕 FPS） · 最长间隔 %.1f ms",extra.scrollRefreshMode==3?L"强制高刷":extra.scrollRefreshMode==2?L"全部（实验性）":L"光标＋拖屏（实验性）",shared->scrollRefreshRateMilli/1000.0,shared->scrollRefreshMaxGapUs/1000.0);SetWindowTextW(GetDlgItem(ui,888),label);}
- SetWindowTextW(GetDlgItem(ui,9184),!extra.lowDamageFilter?L"低伤害过滤：关闭":shared&&shared->lowDamageStatus==1?L"高危 · 低伤害过滤：原生索敌及工具自动命令":shared&&shared->lowDamageStatus==2?L"低伤害过滤：仅工具自动命令":L"低伤害过滤：等待就绪或补丁冲突");
+ const int lowDamage=shared?shared->lowDamageStatus:0;
+ setConsoleTooltip(GetDlgItem(ui,9182),lowDamage<0?L"应用或还原未完成，请检查日志":!extra.lowDamageFilter?L"关闭":lowDamage==1?L"高危：原生索敌及工具自动命令":lowDamage==2?L"仅工具自动命令":L"等待就绪");
+ setConsoleFeedback(GetDlgItem(ui,9184),lowDamage<0?L"低伤害过滤应用或还原未完成，请检查日志中的冲突。":L"");
  {
   const bool fresh=shared&&commandFresh(now);
-  auto stateText=[&](bool requested,int state){return !fresh?(requested?L"等待对局及连接就绪":L"关闭"):
-   state<0?L"不可用，请检查游戏版本或功能冲突":state==2?L"正在处理待发事件并恢复":
+  auto stateText=[&](bool requested,int state){return state<0?L"不可用或还原失败，请检查游戏版本或功能冲突":
+   !fresh?(requested?L"等待对局及连接就绪":L"关闭"):state==2?L"正在处理待发事件并恢复":
    state==1?(requested?L"已启用（实验性）":L"正在关闭"):requested?L"等待适配启用":L"关闭";};
-  std::wstring network=L"高危 · 事件所属方保留：";if(extra.masterControlRequested()){network+=L"Master 基本模式下不请求启用";if(shared&&shared->networkHouseStatus)network+=L"（旧状态待还原或检查）";}else network+=stateText(extra.networkHouseRequested(),shared?shared->networkHouseStatus:0);
+  std::wstring network=L"高危 · 事件所属方保留：";if(shared&&shared->networkHouseStatus<0)network+=stateText(extra.networkHouseRequested(),shared->networkHouseStatus);else if(extra.masterControlRequested()){network+=L"Master 基本模式下不请求启用";if(shared&&shared->networkHouseStatus)network+=L"（旧状态待还原或检查）";}else network+=stateText(extra.networkHouseRequested(),shared?shared->networkHouseStatus:0);
   SetWindowTextW(GetDlgItem(ui,9188),network.c_str());
   std::wstring sell=L"高危 · 原生变卖光标：";
   if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
@@ -1721,17 +1818,18 @@ static void updateModeStatus(DWORD now){
   std::wstring mega=L"高危 · 原生成功入口观察：";mega+=stateText(extra.nativeMegaGateway,shared?shared->nativeMegaGatewayStatus:0);
   SetWindowTextW(GetDlgItem(ui,9192),mega.c_str());
   std::wstring owner=L"高危 · 控制命令所属方：";
-  if(extra.masterControlRequested())owner+=L"Master 基本模式下不请求启用";
+  if(shared&&shared->controlCommandOwnerStatus<0)owner+=stateText(extra.commandOwnerRequested(),shared->controlCommandOwnerStatus);
+  else if(extra.masterControlRequested())owner+=L"Master 基本模式下不请求启用";
   else if(extra.controlCommandOwner&&!extra.controlAll)owner+=L"等待开启跨玩家操控";
   else if(fresh&&extra.commandOwnerRequested()&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady())owner+=L"等待事件所属方保留已启用";
   else owner+=stateText(extra.commandOwnerRequested(),shared?shared->controlCommandOwnerStatus:0);
   SetWindowTextW(GetDlgItem(ui,9194),owner.c_str());
-  const int cs=shared?shared->crcMapShadowStatus:0;std::wstring crc=L"全图 CRC 原值镜像：";
-  if(!fresh)crc+=extra.crcMapShadow?L"等待新对局及连接":L"关闭";
-  else if(cs==-4||cs==-3)crc+=L"原值不可信，请在新对局揭示前开启";
+  const int cs=shared?shared->crcMapShadowStatus:0;std::wstring crc=L"高危 · 全图 CRC 原值镜像：";
+  if(cs==-4||cs==-3)crc+=L"原值不可信，请在新对局揭示前开启";
   else if(cs==-5)crc+=L"仅支持联机的自动地图全开";
   else if(cs==-6)crc+=L"暂不支持Ares/Phobos扩展";
   else if(cs<0)crc+=L"站点不兼容或恢复冲突";
+  else if(!fresh)crc+=extra.crcMapShadow?L"等待新对局及连接":L"关闭";
   else if(cs==1){crc+=extra.crcMapShadow?L"实验已启用":L"正在关闭";crc+=L" · 跟踪"+std::to_wstring(shared->crcMapShadowTracked)+L"方 · 替代"+std::to_wstring(shared->crcMapShadowSubstitutions)+L"次";}
   else crc+=extra.crcMapShadow?L"等待适配":L"关闭";
   SetWindowTextW(GetDlgItem(ui,9197),crc.c_str());
@@ -1754,36 +1852,55 @@ static void updateModeStatus(DWORD now){
  }else progress+=L"未启用 / 等待游戏";
  SetWindowTextW(GetDlgItem(ui,815),progress.c_str());
  const wchar_t*phaseText=phase==1?L"已暂停":phase==2?L"未连接":phase==3?L"暂不可用":commandMatch()?L"等待游戏恢复":L"正在读取对局";
- std::wstring nt=phase?phaseText:snap.nativeHookStatus<0?L"战术暂不可用，相关功能已停用":L"移动任务 "+std::to_wstring(snap.advancedUnits)+L" · 待处理乘员 "+std::to_wstring(snap.unloadPending)+L" · 逃生跟踪 "+std::to_wstring(snap.ejectWatched);
+ std::wstring nt=!phase&&snap.nativeHookStatus<0?L"战术暂不可用，相关功能已停用":L"";
  if(!phase&&commandQueue.size)nt+=L" | 待处理命令 "+std::to_wstring(commandQueue.size);
- if(!phase&&magnetronMode)nt+=L" | 磁电攻击 "+std::to_wstring(snap.magnetShots)+
-   L" · 未确认 "+std::to_wstring(snap.magnetUnverified);
+ if(!phase&&magnetronMode&&snap.magnetUnverified)nt+=L" · 磁电命令未确认 "+std::to_wstring(snap.magnetUnverified);
  if(snap.hookConflicts>0)nt+=L" · 检测到功能冲突，请查看日志";
  if(shared&&snap.lastSubmitError)nt+=L" · 部分指令未执行，请查看日志";
- static std::wstring oldNativeText;if(nt!=oldNativeText){oldNativeText=nt;SetWindowTextW(nativeStatus,nt.c_str());}
+ setConsoleTooltip(hookChecks[0],L"移动任务 "+std::to_wstring(snap.advancedUnits));
+ setConsoleTooltip(hookChecks[1],L"待处理乘员 "+std::to_wstring(snap.unloadPending));
+ setConsoleTooltip(ejectCheck,L"逃生跟踪 "+std::to_wstring(snap.ejectWatched));
+ setConsoleTooltip(magnetronCheck,L"磁电攻击 "+std::to_wstring(snap.magnetShots)+L" · 未确认 "+std::to_wstring(snap.magnetUnverified));
+ static std::wstring oldNativeText;if(nt!=oldNativeText){oldNativeText=nt;setConsoleFeedback(nativeStatus,nt);}
  bool csRequested=(csMode&&hookAutoCS)||csHoldEnabled;
  std::wstring csText=L"自动 CS："+std::wstring(featureavailability::AutoCS?(csMode?(hookAutoCS?L"开":L"未允许"):L"关"):L"暂不可用")+L" · 按键 CS："+(csHoldEnabled?(LOBYTE(csHoldKey)?L"开":L"仅鼠标"):L"关");
  if(phase)csText+=L" · "+std::wstring(phaseText);else if(csRequested)csText+=snap.csHookStatus<0?L" · 暂不可用":snap.csHookStatus==1?L" · 已就绪":L" · 等待对局";
- static std::wstring oldCSText;if(csText!=oldCSText){oldCSText=csText;SetWindowTextW(csStatus,csText.c_str());}
+ setConsoleTooltip(csCheck,csText);setConsoleTooltip(csHoldEdit,csText);
+ const std::wstring csError=!phase&&csRequested&&snap.csHookStatus<0?L"移动攻击暂不可用，请检查日志。":L"";
+ static std::wstring oldCSText;if(csError!=oldCSText){oldCSText=csError;setConsoleFeedback(csStatus,csError);}
  std::wstring oreText=oreMode?L"排队 "+std::to_wstring(snap.oreQueued)+L" · 进场 "+std::to_wstring(snap.oreDocking):L"自动卸矿已关闭";
  if(oreMode){oreText+=L" · 完成卸矿 "+std::to_wstring(snap.oreDelivered)+
    L" · 未确认 "+std::to_wstring(snap.oreUnverified);}
  if(phase)oreText+=L" · "+std::wstring(phaseText);else if(snap.oreManual)oreText+=L" · 手动接管 "+std::to_wstring(snap.oreManual);
  static std::wstring oldOreText;if(oreText!=oldOreText){oldOreText=oreText;SetWindowTextW(oreStatus,oreText.c_str());}
+ setConsoleRuntimeError(GetDlgItem(ui,9197),shared&&shared->crcMapShadowStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,9188),shared&&shared->networkHouseStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,865),shared&&shared->playerControlStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,815),snap.techError<0||(shared&&shared->techParameterStatus<0));
+ setConsoleRuntimeError(GetDlgItem(ui,9194),shared&&shared->controlCommandOwnerStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,9184),shared&&shared->lowDamageStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,9190),shared&&shared->nativeSellCursorStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,9192),shared&&shared->nativeMegaGatewayStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,9098),shared&&shared->techEnhanceStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,9093),shared&&shared->viewZoomStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,9407),shared&&shared->sidebarStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,9406),shared&&shared->pauseViewStatus<0);
+ setConsoleRuntimeError(GetDlgItem(ui,9464),shared&&shared->smallMapClampStatus<0);
+ setConsoleRuntimeError(nativeStatus,snap.nativeHookStatus<0||snap.hookConflicts>0||(shared&&snap.lastSubmitError));
+ setConsoleRuntimeError(csStatus,csRequested&&snap.csHookStatus<0);
+ updateConsoleFoldErrors();
 }
 static void updatePlayerTestUI(bool force=false){
  if(!playertest::Available)return;
  const DWORD now=GetTickCount();
  const bool ready=enabled&&game&&pid&&shared&&commandFresh(now)&&!incoming.chat;
  const bool idle=ready&&shared->request==shared->ack&&shared->ack==ack&&!commandQueue.size;
- const int row=int(SendDlgItemMessageW(ui,862,CB_GETCURSEL,0,0));
  const bool cached=ready&&playerChoicesTick&&DWORD(now-playerChoicesTick)<500&&playerChoicesPid==pid&&playerChoicesMatch==commandMatch();
- const bool cachedAllowed=row>=0&&row<playerChoiceCount&&(!eventdelivery::isMultiplayer(incoming.session)||(playerChoicesCurrent>=0&&(playerChoices[row].index==playerChoicesCurrent||networkHouseReady())));
  EnableWindow(GetDlgItem(ui,862),idle&&cached&&playerChoiceCount>0);
- EnableWindow(GetDlgItem(ui,9185),idle&&cached&&cachedAllowed);
+ EnableWindow(GetDlgItem(ui,9185),idle&&extra.destructSelectedOwner);
  if(!ready){playerChoicesTick=0;return;}
  static DWORD last=0;if(!force&&DWORD(now-last)<200)return;last=now;
- playerChoicesTick=0;EnableWindow(GetDlgItem(ui,862),FALSE);EnableWindow(GetDlgItem(ui,9185),FALSE);
+ playerChoicesTick=0;EnableWindow(GetDlgItem(ui,862),FALSE);
  PlayerTestInfo list[32]{};int count=0,current=-1,status=0;uint32_t epoch=0;
  long before=shared->seq;if(before&1)return;MemoryBarrier();count=shared->playerCount;
  if(count<0||count>32)return;memcpy(list,shared->players,size_t(count)*sizeof(list[0]));current=shared->playerCurrent;status=shared->playerControlStatus;epoch=shared->data.match;
@@ -1797,15 +1914,7 @@ static void updatePlayerTestUI(bool force=false){
   memcpy(playerChoices,list,sizeof list);playerChoiceCount=count;playerChoicesMatch=epoch;SendDlgItemMessageW(ui,862,CB_SETCURSEL,chosen,0);
  }
  playerChoicesTick=now;playerChoicesPid=pid;playerChoicesCurrent=current;
- const int selected=int(SendDlgItemMessageW(ui,862,CB_GETCURSEL,0,0));
- const bool foreign=selected>=0&&selected<count&&eventdelivery::isMultiplayer(incoming.session)&&(current<0||(list[selected].index!=current&&!networkHouseReady()));
  EnableWindow(GetDlgItem(ui,862),idle&&epoch==commandMatch()&&count>0);
- EnableWindow(GetDlgItem(ui,9185),idle&&epoch==commandMatch()&&selected>=0&&selected<count&&!foreign);
- if(foreign){SetWindowTextW(GetDlgItem(ui,9186),DestructForeignNotice);destructForeignNoticeShown=true;}
- else if(destructForeignNoticeShown){SetWindowTextW(GetDlgItem(ui,9186),L"自毁：所选所属方可提交实验请求；已入队不代表已自毁。");destructForeignNoticeShown=false;}
- std::wstring label=extra.controlImplementation==1?L"高危 · 原生控制判定 Hook：":L"高危 · Master 基本指令修改：";
- label+=status<0?L"应用或还原未完成，请检查日志":!extra.controlAll?(status?L"等待还原":L"关闭"):status==int(extra.controlRequest())?(extra.masterControlRequested()?L"三处指令已修改，联机效果未验证":L"已启用，联机效果未验证"):L"等待切换完成";
- label+=L" · 当前玩家 "+std::to_wstring(current+1);SetWindowTextW(GetDlgItem(ui,865),label.c_str());
 }
 #include "shift_click_host.h"
 #include "command_cursor_host.h"
@@ -1907,6 +2016,9 @@ static void tick(){
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){
   shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;
+  // The high marker announces this Host's handshake; low capability bits are
+  // granted only after Runtime publishes a stable, compatible viewport.
+  shared->viewportHostCapabilities=nativeviewhost::capabilityRequest(shared);
   gameinput::setFastTactical(hook,shared->dodgeEnabled||shared->dodgeActive||shared->scrollRefreshHz);
   DWORD wakePeriod=shared->foreground?16:(shared->dodgeEnabled||shared->dodgeActive||shared->missileEnabled||shared->missileHeld||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
@@ -1983,14 +2095,15 @@ static void tick(){
  }
 
 }
-struct PageControl {HWND hwnd;int page;uilayout::Rect rect;int visibleHeight;std::wstring help;int fold=0;uilayout::Rect fullRect{};bool foldHidden=false;};static std::vector<PageControl> pageControls;static int activePage=0;static HWND featureSearch;
-static int activeFoldGroup=0;static std::set<int>openedSettingGroups;
+struct PageControl {HWND hwnd;int page;uilayout::Rect rect;int visibleHeight;std::wstring help;int fold=0;uilayout::Rect fullRect{};bool foldHidden=false;bool feedbackHidden=false;};static std::vector<PageControl> pageControls;static int activePage=0;static HWND featureSearch;
+static int activeFoldGroup=0;static std::set<int>openedSettingGroups,failedSettingGroups;
 static void applySettingsFolds(){
- std::vector<settingsfold::Item> items;for(const auto&c:pageControls)items.push_back({c.page,c.fullRect.y,c.visibleHeight,c.fold});
- const auto placed=settingsfold::layout(items,openedSettingGroups);
+ std::vector<settingsfold::Item> items;for(const auto&c:pageControls)items.push_back({c.page,c.fullRect.y,c.visibleHeight,c.fold,c.feedbackHidden});
+ auto visibleGroups=openedSettingGroups;visibleGroups.insert(failedSettingGroups.begin(),failedSettingGroups.end());
+ const auto placed=settingsfold::layout(items,visibleGroups);
  for(size_t n=0;n<pageControls.size();++n){auto&c=pageControls[n];c.rect=c.fullRect;c.rect.y=placed[n].y;c.foldHidden=placed[n].hidden;}
  std::set<int>groups;for(const auto&c:pageControls)if(c.fold)groups.insert(c.fold);
- for(int id:groups)SetDlgItemTextW(ui,id,openedSettingGroups.count(id)?L"收起设置":L"展开设置");
+ for(int id:groups)SetDlgItemTextW(ui,id,failedSettingGroups.count(id)?L"错误 · 已展开":openedSettingGroups.count(id)?L"收起设置":L"展开设置");
 }
 static int pageBottom(){int bottom=uilayout::BodyTop;for(const auto&c:pageControls)if(c.page==activePage&&!c.foldHidden)bottom=std::max(bottom,c.rect.y+c.visibleHeight);return bottom+6;}
 static unsigned panelDpi=96;static int scrollX=0;static bool arrangingPanel=false;
@@ -2019,6 +2132,23 @@ static void layoutPanel(){
  si.nMax=uilayout::Width-1;si.nPage=std::max(1,width);si.nPos=scrollX;SetScrollInfo(ui,SB_HORZ,&si,TRUE);
  arrangingPanel=false;RedrawWindow(ui,nullptr,nullptr,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN|RDW_UPDATENOW);
 }
+static void setConsoleFeedback(HWND control,const std::wstring&text){
+ if(!control)return;SetWindowTextW(control,text.c_str());
+ for(auto&c:pageControls)if(c.hwnd==control){const bool hidden=text.empty();if(c.feedbackHidden!=hidden){c.feedbackHidden=hidden;applySettingsFolds();layoutPanel();}return;}
+}
+// Error visibility is a separate overlay on the user's fold preference.
+// Never overwrite openedSettingGroups to reveal a failed apply/restore.
+static void updateConsoleFoldErrors(){
+ std::set<int>next;
+ if(shared&&shared->crcMapShadowStatus<0)next.insert(9613);
+ if(shared&&shared->networkHouseStatus<0)next.insert(9614);
+ if(shared&&shared->playerControlStatus<0)next.insert(9612);
+ if(snap.techError<0||(shared&&shared->techParameterStatus<0))next.insert(9607);
+ if(next==failedSettingGroups)return;failedSettingGroups=std::move(next);applySettingsFolds();layoutPanel();
+}
+static void setConsoleTooltip(HWND control,const std::wstring&text){
+ if(!control)return;for(const auto&c:pageControls)if(c.hwnd==control){const auto next=c.help+(text.empty()?L"":L"\n"+text);const auto old=reinterpret_cast<const std::wstring*>(GetPropW(control,L"RA2.Tip.Text"));if(!old||*old!=next)modernui::tip(control,next);return;}
+}
 static void applyPanelDpi(unsigned dpi){
  dpi=modernui::panelDpi(dpi,false);if(dpi==panelDpi&&ready)return;panelDpi=dpi;
  HFONT next=modernui::makeFont(modernui::BodyPixels,panelDpi);if(next){for(const auto&c:pageControls){SendMessageW(c.hwnd,WM_SETFONT,(WPARAM)next,FALSE);if(GetPropW(c.hwnd,L"RA2.Heading.Font"))modernui::heading(c.hwnd,panelDpi);}auto old=font;font=next;if(old)DeleteObject(old);}
@@ -2026,6 +2156,7 @@ static void applyPanelDpi(unsigned dpi){
 }
 static bool toggleSettingsFold(int id){
  if(!id||std::none_of(pageControls.begin(),pageControls.end(),[&](const auto&c){return c.fold==id;}))return false;
+ if(failedSettingGroups.count(id)){notify(L"此项仍有错误，相关状态保持展开；错误解除后恢复原收纳设置。");return true;}
  if(openedSettingGroups.erase(id)){
   // A fold can also be invoked from accessibility or a posted command while
   // an edit still owns focus. Never leave focus inside the hidden settings.
@@ -2066,22 +2197,26 @@ static void finalizeTacticalLayout(){
 #ifdef RA2_CONSOLE_WEBVIEW2
 static void prepareConsoleSettingsModel(){
  struct Group {int fold;const wchar_t*name;};
- static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9609,L"计算模式"}};
- int groupPages[9],groupRows[9];std::fill(std::begin(groupPages),std::end(groupPages),-999);std::fill(std::begin(groupRows),std::end(groupRows),-999);
- for(const auto&c:pageControls){const int id=GetDlgCtrlID(c.hwnd);if(id>=9601&&id<=9609){groupPages[id-9601]=c.page;groupRows[id-9601]=c.fullRect.y;}}
- // Native folds are only a compatibility detail. Publish every field and let
- // the new view own fold/search state without altering a saved feature value.
- for(const auto&group:groups)openedSettingGroups.insert(group.fold);
- applySettingsFolds();
+ static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9609,L"计算模式"},{9610,L"单位类型清单"},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"全图 CRC 原值镜像"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻参数"}};
+ constexpr size_t count=sizeof(groups)/sizeof(groups[0]);int groupPages[count],groupRows[count];
+ std::fill(std::begin(groupPages),std::end(groupPages),-999);std::fill(std::begin(groupRows),std::end(groupRows),-999);
+ for(const auto&c:pageControls)for(size_t i=0;i<count;++i)if(GetDlgCtrlID(c.hwnd)==groups[i].fold){groupPages[i]=c.page;groupRows[i]=c.fullRect.y;}
+ // Export every setting without changing native fold preferences. The DOM
+ // owns its own collapsed set; header controls remain outside its detail body.
  for(const auto&c:pageControls){
-  const int id=GetDlgCtrlID(c.hwnd);
+  const int id=GetDlgCtrlID(c.hwnd);bool foldButton=false;
   SetPropW(c.hwnd,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(c.fullRect.y)+1));
   SetPropW(c.hwnd,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(c.fullRect.x)+1));
-  for(const auto&group:groups){
-   if(c.fold==group.fold||(groupPages[group.fold-9601]==c.page&&groupRows[group.fold-9601]==c.fullRect.y))
-    SetPropW(c.hwnd,L"RA2.Console.Group",reinterpret_cast<HANDLE>(const_cast<wchar_t*>(group.name)));
+  for(size_t i=0;i<count;++i){const auto&g=groups[i];const bool header=!c.fold&&groupPages[i]==c.page&&groupRows[i]==c.fullRect.y;
+   if(c.fold!=g.fold&&!header)continue;
+   SetPropW(c.hwnd,L"RA2.Console.Group",reinterpret_cast<HANDLE>(const_cast<wchar_t*>(g.name)));
+   SetPropW(c.hwnd,L"RA2.Console.Collapsible",reinterpret_cast<HANDLE>(1));
+   if(!openedSettingGroups.count(g.fold))SetPropW(c.hwnd,L"RA2.Console.CollapsedDefault",reinterpret_cast<HANDLE>(1));
+   if(header&&id!=g.fold)SetPropW(c.hwnd,L"RA2.Console.GroupHeader",reinterpret_cast<HANDLE>(1));
+   foldButton|=id==g.fold;
   }
-  if((id>=9601&&id<=9609)||id==989||id==990||id==991){SetPropW(c.hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(c.hwnd,SW_HIDE);}
+  if(id==9185)SetPropW(c.hwnd,L"RA2.Console.Immediate",reinterpret_cast<HANDLE>(1));
+  if(foldButton||id==989||id==990||id==991){SetPropW(c.hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(c.hwnd,SW_HIDE);}
  }
  layoutPanel();
 }
@@ -2098,6 +2233,14 @@ static void bindSuper(){std::string id=selectedSuperID();if(id.empty()){notify(L
 #include "type_bindings_ui.h"
 #include "extra_settings_io.h"
 #include "pointer_host.h"
+static void submitDestructSelectedOwner(){
+ if(!extra.destructSelectedOwner){notify(L"请先自愿开启高危的“自毁选定单位的所属方”。");return;}
+ destructPendingTarget=L"当前选定单位的所属方";
+ const uint32_t before=shared?shared->request:0;
+ send(DestructPlayer,0,0,0,false,0);
+ if(shared&&shared->request!=before&&shared->command==DestructPlayer)
+  setConsoleFeedback(GetDlgItem(ui,9186),L"等待自毁请求入队回执：当前选定单位的所属方");
+}
 #include "hotkey_host.h"
 #include "auto_settings_ui.h"
 #include "ui_dependencies.h"
@@ -2210,22 +2353,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   return 0;
  }
  if(id==862&&HIWORD(wp)==CBN_SELCHANGE){if(!updatingControls)updatePlayerTestUI(true);return 0;}
- if(id==9185&&HIWORD(wp)==BN_CLICKED){
-  if(updatingControls)return 0;
-  updatePlayerTestUI(true);
-  int row=int(SendDlgItemMessageW(w,862,CB_GETCURSEL,0,0));
-  if(!enabled||!shared||!commandFresh(GetTickCount())||incoming.chat||shared->request!=shared->ack||shared->ack!=ack||commandQueue.size){notify(L"请等待当前对局就绪及上一条指令处理完成，再提交自毁请求。");return 0;}
-  if(!playerChoicesTick||DWORD(GetTickCount()-playerChoicesTick)>=500||playerChoicesPid!=pid||playerChoicesMatch!=commandMatch()||row<0||row>=playerChoiceCount){notify(L"请先从最新列表明确选择一个所属方；自毁将作用于该方全部单位和建筑。");return 0;}
-  const auto selected=playerChoices[row];
-  if(eventdelivery::isMultiplayer(incoming.session)&&(playerChoicesCurrent<0||(selected.index!=playerChoicesCurrent&&!networkHouseReady()))){notify(DestructForeignNotice);return 0;}
-  destructPendingTarget=L"所属方 #"+std::to_wstring(selected.index)+L" · "+std::wstring((wchar_t*)selected.name);
-  uint32_t before=shared->request;
-  send(DestructPlayer,int(selected.pointer),int(selected.id),0,false,uint32_t(selected.index));
-  if(shared&&shared->request!=before&&shared->command==DestructPlayer){
-   SetWindowTextW(GetDlgItem(w,9186),(L"等待自毁请求入队回执："+destructPendingTarget).c_str());
-   EnableWindow(GetDlgItem(w,9185),FALSE);EnableWindow(GetDlgItem(w,862),FALSE);
-  }return 0;
- }
+ if(id==9185&&HIWORD(wp)==BN_CLICKED){if(!updatingControls)submitDestructSelectedOwner();return 0;}
  if(id==863||id==864){
   if(!playertest::SwitchAvailable){notify(L"切换操控方暂不可用。");return 0;}
   if(!shared||!commandFresh(GetTickCount())||shared->request!=shared->ack){notify(L"请等待游戏就绪后再切换。");return 0;}

@@ -1,0 +1,125 @@
+{
+  "baseline": "5983b943e90694f7b2630608bc464d6f8ee148e3",
+  "scope": "Source-bound controlled Windows C++ fixtures. Win32 window IO and game connection are simulated. No game process operation or multiplayer acceptance.",
+  "results": {
+    "destruct-host": {
+      "results": {
+        "x86_64": {
+          "checks": 85,
+          "passed": true,
+          "scope": "actual Host send, immediate input, fresh WM_HOTKEY, delayed/stale/held-key rejection, UI and INI routes; simulated Win32"
+        },
+        "x86": {
+          "checks": 85,
+          "passed": true,
+          "scope": "actual Host send, immediate input, fresh WM_HOTKEY, delayed/stale/held-key rejection, UI and INI routes; simulated Win32"
+        }
+      },
+      "sources": {
+        "main.cpp": "466a04b14563bc386c52a0471336940c9acdc8eebb401cda0168bf171db26855",
+        "hotkey_host.h": "96b4b924f0b649c2c759dcc843972aa00356c1342b0a4dd96518775e5b9d9698",
+        "extra_settings_io.h": "196a257bcc18392302185e3c8e11b97ffa33ca31ae3bd4f92ac312abe1439bfe",
+        "auto_settings_ui.h": "17e6f162b1d7da2e4e2b8614572b87a85585a17beba6592340a808e32e0da991",
+        "type_bindings_ui.h": "27c1d3b2cf4d7b53aaa65cb936d367baeb4cd89a4e0d9bf813e5c3f4e204d0a2",
+        "tactical_controls.h": "57b2243618795d98a04bcf32f0232dcf1a63e5d3b99a158adf9071cdd365f6a5",
+        "additional_settings.h": "eb5025c9902ec6f0e5342ffa96aa64f91ccc6f9d1b46664b5f456ebc31e03c24",
+        "destruct_owner_input.h": "cb95b66a20dbf304e7b7e6007967555b618cb68c807d6d31a857d6ef5ffc7808",
+        "runtime_feature_demand.h": "079e14d17348e6101ac1017082e6c4e4eaf0428f9d7ca81376cddbc2316f7225"
+      },
+      "scope": "actual Host command and hotkey routes; simulated Win32; no game process or network test"
+    },
+    "settings-folds": {
+      "x86_64": {
+        "checks": 3797,
+        "passed": true,
+        "groups": 14,
+        "scope": "actual category packing/fold/click/focus/search/conditional feedback routes; simulated Win32 windows"
+      },
+      "x86": {
+        "checks": 3797,
+        "passed": true,
+        "groups": 14,
+        "scope": "actual category packing/fold/click/focus/search/conditional feedback routes; simulated Win32 windows"
+      }
+    },
+    "building-host": {
+      "x86_64": {
+        "checks": 134,
+        "passed": true,
+        "scope": "actual Host submission/UI/config/hotkey routes with simulated Win32 and read-only game memory"
+      },
+      "x86": {
+        "checks": 134,
+        "passed": true,
+        "scope": "actual Host submission/UI/config/hotkey routes with simulated Win32 and read-only game memory"
+      }
+    }
+  },
+  "baseline_counterexamples": [
+    {
+      "case": "unit type list",
+      "baseline_group_member": false,
+      "final_group_member": true
+    },
+    {
+      "case": "ore counts",
+      "baseline_group_member": false,
+      "final_group_member": true
+    },
+    {
+      "case": "production progress",
+      "baseline_group_member": false,
+      "final_group_member": true
+    },
+    {
+      "case": "compute detail",
+      "baseline_group_member": false,
+      "final_group_member": true
+    },
+    {
+      "case": "CRC visible high-risk label",
+      "baseline": false,
+      "final": true
+    }
+  ],
+  "production_sha256": {
+    "source/assist/source/main.cpp": "466a04b14563bc386c52a0471336940c9acdc8eebb401cda0168bf171db26855",
+    "source/assist/source/tactical_controls.h": "57b2243618795d98a04bcf32f0232dcf1a63e5d3b99a158adf9071cdd365f6a5",
+    "source/assist/source/auto_settings_ui.h": "17e6f162b1d7da2e4e2b8614572b87a85585a17beba6592340a808e32e0da991",
+    "source/assist/source/additional_settings.h": "eb5025c9902ec6f0e5342ffa96aa64f91ccc6f9d1b46664b5f456ebc31e03c24",
+    "source/assist/source/extra_settings_io.h": "196a257bcc18392302185e3c8e11b97ffa33ca31ae3bd4f92ac312abe1439bfe",
+    "source/assist/source/type_bindings_ui.h": "27c1d3b2cf4d7b53aaa65cb936d367baeb4cd89a4e0d9bf813e5c3f4e204d0a2",
+    "source/assist/source/hotkey_host.h": "96b4b924f0b649c2c759dcc843972aa00356c1342b0a4dd96518775e5b9d9698",
+    "source/assist/source/settings_fold_layout.h": "084529370788389dbc79b428a509ea7b69366f588d874bbc431647616984d128",
+    "source/assist/source/hover_help.h": "eb77e96854bb9bd6c518b508ba32b90a0b475de4b85ebdb5f7aac3b09868591c",
+    "source/assist/source/runtime_feature_demand.h": "079e14d17348e6101ac1017082e6c4e4eaf0428f9d7ca81376cddbc2316f7225",
+    "source/assist/source/destruct_owner_input.h": "cb95b66a20dbf304e7b7e6007967555b618cb68c807d6d31a857d6ef5ffc7808",
+    "source/suite/source/settings_categories.h": "5b5ad88e48f87ceca28ecde618ed95bf31277097dc53a2f986bc12e43e7893f3"
+  },
+  "fixture_sha256": {
+    "source/assist/tests/settings_folds.py": "210f16c4f8c16b4cce5394fa83cfb894b49debc1c3fa4206bfc19f65f5e76204",
+    "source/assist/tests/settings_folds.cpp": "ff6c291fc7525e562aa7a276d56fccac14c94ec827ae9228f5e2d5d0dcef487d",
+    "source/assist/tests/destruct_owner_host.py": "6dd3798b6a9e6ce92bc6a7ee47db337c7f62d06ac88603cf5095b0ffa475fc6c",
+    "source/assist/tests/destruct_owner_host.cpp": "118ba034961fd62981dd3823f52b7ed82cc70eb9c237cb7f626cbdbdd43877cf",
+    "source/assist/tests/building_event_host.py": "04bae6426a88bf20766b44c42d89726029463c933bbb044ed1cf76f46185f483",
+    "source/assist/tests/building_event_host.cpp": "5ba6b0ff5238ff42391304fdb08b3550005c62be4766b87f4056ed4cd65e78de"
+  },
+  "baseline_sha256": {
+    "source/assist/source/main.cpp": "3a72f02428c6d88c35a10552c40c5319078ec104f225cebbc93d5d61359a354a",
+    "source/assist/source/tactical_controls.h": "14570f2557db2d11459cde91b4ab15ee47182cf92a771a7fb3c6bcaff8052f88",
+    "source/assist/source/auto_settings_ui.h": "677bcce2ec546c597ca5ab8b79a748b10f4fed007a70adb852968d626dce67bc",
+    "source/assist/source/additional_settings.h": "5f950800b7f28f6f1c33170081f2d722c4fd123daecaf09478ee0ecc4e764290",
+    "source/assist/source/extra_settings_io.h": "7eaa32798b574ceaf0dc104463d0c4d93519eea7e1dfa85810e7fe889dd1a179",
+    "source/assist/source/type_bindings_ui.h": "cde57dc8de239d60576d9baa2075afc643d7643024b46ac4c3dd930e46b74832",
+    "source/assist/source/hotkey_host.h": "5a47e5b3c0f1ff9c6accbf36793ffc2fd4af70ea7935a773d3eb99d4895cf72b",
+    "source/assist/source/settings_fold_layout.h": "da42ec51497cb087dcc5867a24bc9aa5af1583e699bcd082487667d2d9f4479b",
+    "source/assist/source/hover_help.h": "65bd59386a19810debe0d1ae7fda5038676d381cf029f9654b3e0ab814180dab",
+    "source/assist/source/runtime_feature_demand.h": "c8a03cbbe3f5fb140735e4bcb6ee44482dfc2098805a8fda7dfba73b09d14130",
+    "source/suite/source/settings_categories.h": "2c2561b14661b78ae94a0c6c53761a36613a7f0be74ea68ab30c8d3c49152702"
+  },
+  "historical_checkpoint": {
+    "superseded_for_current_ui_error_visibility_by": "console-fold-error-visibility.json",
+    "latest_source_match_claimed": false,
+    "reason": "This report binds its recorded 466a04b... Host main and 3797 fold checks. It predates automatic visibility for folded apply/restore errors and the final build. Its recorded source hashes and results are retained unchanged as historical evidence."
+  }
+}

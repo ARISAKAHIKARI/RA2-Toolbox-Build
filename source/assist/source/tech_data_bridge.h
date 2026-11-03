@@ -30,6 +30,7 @@ static bool restoreTechData(){
  return ok&&!techDataRestoring;
 }
 static bool techDataBlocksEnhancement(){
+ if((sh&&sh->techEnhance&&sh->techEnhanceImplementation==1)||!techEnhanceParametersRetired())return true;
  if(techmode::parameters(techImplementation)&&sh&&(sh->flags&UnsafeTech))return true;
  if(techImplementation==3&&sh&&(sh->flags&UnsafeTech)){
   // High-water tracking is per game tick, not the once/second sidebar refresh.

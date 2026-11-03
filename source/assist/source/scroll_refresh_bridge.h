@@ -63,7 +63,9 @@ static bool highScrollInterfaces(){
         !memcmp((void*)0x692B60,edge,sizeof edge)&&!memcmp((void*)0x693440,drag,sizeof drag);
 }
 static bool zoomClientPoint(HWND,POINT&);
+static bool nativeViewNeedsTracking();
 static void highScrollTick(uint64_t now){
+ if(nativeViewNeedsTracking()){if(scrollRefreshActive)restoreHighScroll();if(sh)sh->scrollRefreshStatus=-2;return;}
  if(!featureavailability::SceneRefresh){if(scrollRefreshActive)restoreHighScroll();if(sh)sh->scrollRefreshStatus=0;return;}
  if(!sh->scrollRefreshMode||sh->scrollRefreshMode>3||!sh->scrollRefreshHz){
   if(scrollRefreshActive)restoreHighScroll();return;

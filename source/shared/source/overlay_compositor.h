@@ -42,7 +42,7 @@ struct Node {Surface surface;uint64_t lastSeen=0;};
 struct UploadStatistics {uint64_t count=0,lastTick=0,intervalMs=0,maxGapMs=0,failures=0;};
 class Host {
  std::mutex mutex;std::condition_variable cv;std::thread thread;
- std::map<uint64_t,Node> nodes;Context context{};
+ std::map<uint64_t,Node> nodes;Context context{};overlaycomposition::Rect mapExclusion{};
  uint64_t generation=0,revision=0,heartbeat=0;bool enabled=false,stop=false,top=false;
  int rate=60;DWORD error=0;bool startupFailed=false;std::atomic<HWND> ownedWindow{nullptr};
  UploadStatistics uploadStatistics_{};bool uploadContinuous_=false;
@@ -87,7 +87,7 @@ class Host {
     const auto now=GetTickCount64();
     for(auto i=nodes.begin();i!=nodes.end();)if(now-i->second.lastSeen>750){i=nodes.erase(i);++revision;}else ++i;
     current=context;version=revision;submission.observe(version);active=enabled&&now-heartbeat<500;highest=top;hz=rate;
-    for(const auto&n:nodes)if(overlaycomposition::valid(n.second.surface,current))layers.push_back(n.second.surface);
+    for(const auto&n:nodes)if(overlaycomposition::valid(n.second.surface,current)){layers.push_back(n.second.surface);overlaycomposition::excludeMapRect(layers.back(),mapExclusion);}
    }
    const HWND target=reinterpret_cast<HWND>(current.window);DWORD fg=0;GetWindowThreadProcessId(GetForegroundWindow(),&fg);
    RECT client{};POINT origin{};
@@ -119,7 +119,7 @@ class Host {
      std::unique_lock<std::mutex>lock(mutex);if(stop||!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY||rate!=requestedHz)continue;
      // A worker may finish while the output cadence is waiting. Present the
      // newest complete layer set, without holding an older frame one interval.
-     if(version!=revision){layers.clear();for(const auto&n:nodes)if(overlaycomposition::valid(n.second.surface,current))layers.push_back(n.second.surface);version=revision;
+     if(version!=revision){layers.clear();for(const auto&n:nodes)if(overlaycomposition::valid(n.second.surface,current)){layers.push_back(n.second.surface);overlaycomposition::excludeMapRect(layers.back(),mapExclusion);}version=revision;
       if(std::none_of(layers.begin(),layers.end(),[](const Surface&s){return bool(s.gpu);}))continue;
      }
     }
@@ -188,16 +188,17 @@ class Host {
  }
 public:
  ~Host(){shutdown();}
+ void setMapExclusion(overlaycomposition::Rect area){std::lock_guard<std::mutex>lock(mutex);if(area!=mapExclusion){mapExclusion=area;++revision;cv.notify_one();}}
  void setDiagnosticsSink(pipelineperf::Sink sink){diagnosticsSink_.store(sink,std::memory_order_relaxed);}
- Context configure(uintptr_t window,uint32_t pid,uint32_t match,int width,int height,int cameraX,int cameraY,bool active,bool highest,int hz,bool deferCamera=false){
+ Context configure(uintptr_t window,uint32_t pid,uint32_t match,int width,int height,int cameraX,int cameraY,bool active,bool highest,int hz,bool deferCamera=false,uint64_t projection=0){
   std::lock_guard<std::mutex>lock(mutex);if(stop)return {};
   active=active&&window&&pid&&match&&width>0&&height>0&&width<=8192&&height<=8192&&uint64_t(width)*height<=16*1024*1024;
-  bool changed=enabled!=active||context.window!=window||context.pid!=pid||context.match!=match||context.width!=width||context.height!=height;
+  bool changed=enabled!=active||context.window!=window||context.pid!=pid||context.match!=match||context.width!=width||context.height!=height||context.projection!=projection;
   if(changed){nodes.clear();++generation;++revision;uploadStatistics_={};uploadContinuous_=false;}
   if(top!=highest){top=highest;++revision;}
   const int committedX=deferCamera&&!changed?context.cameraX:cameraX,committedY=deferCamera&&!changed?context.cameraY:cameraY;
   if(context.cameraX!=committedX||context.cameraY!=committedY)++revision;
-  context={generation,window,pid,match,width,height,committedX,committedY};enabled=active;heartbeat=GetTickCount64();rate=hz;
+  context={generation,window,pid,match,width,height,committedX,committedY,projection};enabled=active;heartbeat=GetTickCount64();rate=hz;
   if(active&&!thread.joinable())thread=std::thread([this]{run();});cv.notify_one();
   auto desired=context;desired.cameraX=cameraX;desired.cameraY=cameraY;return active?desired:Context{};
  }
@@ -230,7 +231,7 @@ public:
  bool replaceGroupAt(const Context&desired,const std::vector<uint64_t>&ids,std::vector<Surface>layers){
   std::lock_guard<std::mutex>lock(mutex);
   if(!enabled||startupFailed||!overlaycomposition::groupIds(ids)||desired.token!=context.token||desired.window!=context.window||
-    desired.pid!=context.pid||desired.match!=context.match||desired.width!=context.width||desired.height!=context.height||
+    desired.pid!=context.pid||desired.match!=context.match||desired.width!=context.width||desired.height!=context.height||desired.projection!=context.projection||
     !overlaycomposition::groupValid(ids,layers,desired))return false;
   const bool cameraChanged=desired.cameraX!=context.cameraX||desired.cameraY!=context.cameraY;
   context=desired;const bool ok=replaceGroupLocked(ids,std::move(layers));

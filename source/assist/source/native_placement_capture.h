@@ -36,8 +36,15 @@ template<class Read>bool targetUsable(Read read,int x,int y){
  const uint32_t index=uint32_t(y*512+x);
  if(!field(read,0x87F924,cells)||cells<0x10000||!field(read,0x87F928,count)||count<=int(index)||count>512*512||
     !field(read,cells+index*4,p)||p<0x10000||!read(p+0x24,xy,sizeof xy)||xy[0]!=x||xy[1]!=y||
-    !field(read,p+0x11B,level)||!field(read,p+0x11C,slope)||!bounds.usable(x,y,level,slope!=0)||
+    !field(read,p+0x11B,level)||!field(read,p+0x11C,slope)||
     !field(read,cells+index*4,again)||again!=p||!field(read,0x87F924,again)||again!=cells)return false;
- int after=0;return field(read,0x87F928,after)&&after==count&&external::mapbounds::sample(read)==bounds;
+ // Native 578540(true) evaluates the live visible rectangle with the cell's
+ // elevation. It does not first apply CoordinatesLegal's x+y bottom limit:
+ // that extra check rejects native-usable raised and bottom-edge cells.
+ int z=level;if(slope&&x+y<bounds.width+2*bounds.top+4+z)++z;
+ const bool usable=x+y>bounds.width+2*bounds.top+z&&
+  x+y<=bounds.width+2*(bounds.top+bounds.rows)+2+z&&
+  x-y<2*(bounds.left+bounds.columns)-bounds.width&&y-x<bounds.width-2*bounds.left;
+ int after=0;return usable&&field(read,0x87F928,after)&&after==count&&external::mapbounds::sample(read)==bounds;
 }
 }} // assist::nativeplacement

@@ -102,6 +102,7 @@ static constexpr Probe Probes[]={
 template<class Read> bool compatible(uint32_t site,Read read){
  if(!experimentalpatch::size(site))return false;
  if(nativesidebarpolicy::find(site))return nativesidebarpolicy::compatible(site,read);
+ if(nativeviewportpolicy::find(site))return nativeviewportpolicy::compatible(site,read);
  if(auto s=directpatch::find(site))return directpatch::compatible(*s,read);
  if(site==experimentalpatch::ControlHouse){
   // Native unpacked entry and the two supplied platform forwarders have the

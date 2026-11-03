@@ -25,6 +25,7 @@ class Panel {
  HWND window_=nullptr,game_=nullptr;uint32_t pid_=0,match_=0;bool inputReady_=false,shown_=false,drag_=false,buttonDown_=false;
  DWORD sampled_=0;int width_=0,height_=0,clientW_=0,clientH_=0,mapRight_=0,screenW_=0,logicalMapRight_=0,scroll_=0,hover_=-1,pressed_=-1;
  int left_=0,top_=0,pressX_=0,pressY_=0;POINT dragOffset_{};
+ nativeviewportprojection::Transform viewport_{};
  Options options_;Read read_;std::function<void(int,uint32_t,uint32_t)>select_;std::function<void(const Options&)>changed_;
  Entry pressedEntry_;std::array<uint16_t,256>palette_{};bool paletteReady_=false;
  std::vector<Entry> entries_;std::map<uint32_t,Icon>icons_;assist::construction::PanelBuffer buffer_;
@@ -127,7 +128,8 @@ public:
  // pixels (before scaling to the HWND client), not the enlarged zoom-out R.
  // It is transient geometry and must not be saved in Options.
  void update(HWND game,uint32_t process,uint32_t match,bool inputReady,const Options&options,Read read,
-             std::function<void(int,uint32_t,uint32_t)>select,std::function<void(const Options&)>changed,int physicalMapRight=0){
+             std::function<void(int,uint32_t,uint32_t)>select,std::function<void(const Options&)>changed,int physicalMapRight=0,const nativeviewportprojection::Transform&transform={}){
+  if(viewport_!=transform){hide();sampled_=0;viewport_=transform;}
   if(!drag_)options_=options;options_.scale=std::clamp(options_.scale,75,200);options_.rows=std::clamp(options_.rows,1,20);read_=std::move(read);select_=std::move(select);changed_=std::move(changed);
   if(!overlayvisibility::visible()||!options.enabled||!game||!match||!IsWindow(game)||IsIconic(game)||GetForegroundWindow()!=game){hide();return;}
   if(pid_!=process||match_!=match||game_!=game){hide();pid_=process;match_=match;game_=game;icons_.clear();paletteReady_=false;entries_.clear();sampled_=0;scroll_=0;}
@@ -135,7 +137,7 @@ public:
   if(!window_){WNDCLASSW wc{};wc.hInstance=GetModuleHandleW(nullptr);wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2ToolboxDetachedSuperweapon139";wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));RegisterClassW(&wc);
    window_=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,wc.lpszClassName,L"超级武器",WS_POPUP,0,0,1,1,nullptr,nullptr,wc.hInstance,this);if(!window_)return;}
   DWORD now=GetTickCount();if(!sampled_||DWORD(now-sampled_)>=100){std::vector<Entry> next;int w=0,h=0,right=0;
-   if(!sample(read_,next,w,h,right)){inputReady_=false;if(!sampled_||DWORD(now-sampled_)>=250)hide();return;}
+   if(!sample(read_,next,w,h,right,transform)){inputReady_=false;if(!sampled_||DWORD(now-sampled_)>=250)hide();return;}
    bool changedEntries=next!=entries_;entries_=std::move(next);sampled_=now;screenW_=w;logicalMapRight_=right;
    for(auto it=icons_.begin();it!=icons_.end();)if(std::none_of(entries_.begin(),entries_.end(),[&](const Entry&e){return e.type==it->first;}))it=icons_.erase(it);else ++it;
    if(changedEntries)InvalidateRect(window_,nullptr,FALSE);

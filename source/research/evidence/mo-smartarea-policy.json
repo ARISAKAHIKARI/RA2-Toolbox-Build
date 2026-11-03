@@ -1,0 +1,199 @@
+{
+  "schema": "ra2-mo-smartarea-policy-v1",
+  "sources": {
+    "assist/source/autoload.h": "3724b7bb1f2bd3e0db845ab2f78b3ba30d8933e560b4ee7b831dcb3b077da0c6",
+    "assist/source/bridge.cpp": "dae877ec4e39061a7263d832403daacc8b5f8780a6706457b9ee6a4c44051885",
+    "assist/source/command_gateway.h": "a0a5676e5bd28af90ca10e374c7dbc9d8a96098b2a6b446c42063f795bc76198",
+    "assist/source/cooperative_bridge.h": "6c4b7ef78dc7bdc82ec5e4d1e684e9a6a4a25c53a2be82c93cd4edfe8069161e",
+    "assist/source/cooperative_types.h": "772262665827e1c50b7664db08d70cac5c83fdd6ebb4c0262d5fdb870fe1b7af",
+    "assist/source/formation_bridge.h": "450bf1cc5d1b8683ae0e761aaa8bd2c48f48c76290fae7f9b9dee9ac0180c159",
+    "assist/source/mo_gesture_bridge.h": "dae684bba83d4fd0fc11632beac721ee4f4186e57b9ea0f825e9add0e1f751d7",
+    "assist/source/mo_orders.h": "4ee97b30839a17d291239b37038466760650b8cd11e2af5574f7a116b30778ef",
+    "assist/source/mo_orders_bridge.h": "c5c57a560140fe3dafd6668b2f36bc47ee53cc38a41da1273b64d640c9c5035e",
+    "assist/source/mo_orders_host.h": "611dcce9cdd533ae872bad566cf9ea754772a138f15daf48c64dd32d009c12c1",
+    "assist/source/mo_patrol_graph.h": "57f4285c49e3b15d5b633740c1f53bd15f9a3f1230c8561169a82db41f5c39d9",
+    "assist/source/mo_patrol_planning_bridge.h": "e012bb381778cdd5ea12acdf049329a5690ff4cb3973149b34d69ccd472474a7",
+    "assist/source/unit_task_arbiter.h": "29fd9bd07e5045dbb07b6b7f5a69e97002544544caad428b01c7d8647e02adcd",
+    "assist/tests/entry_runtime_regression.py": "9fcdf125ea4637c96143445914a6dcf3342fc264eed0ee5bb95381bac3936851",
+    "assist/tests/fixtures/mo_smartarea_baseline/manifest.json": "c3fc8c9940ba8cfcd6459211374a9c01cbd70a6e84eecb26f41c8c48a3677ada",
+    "assist/tests/fixtures/mo_smartarea_baseline/mo_orders_bridge.h": "a604c5480937a65f10f482d1448c5abd61e48e9d6c78920d2c8b6e2e46f3fe1c",
+    "assist/tests/fixtures/mo_smartarea_baseline/mo_orders_geometry.h": "d635eae3e6dce6d59659e988a798d69fa67aea9410a53dba9a4ef7e304d9136f",
+    "assist/tests/fixtures/mo_smartarea_baseline/native_mission.inc": "9b83b869213b6636b1dbd56e0c9da4ad02d366a9491cb9ebfb337fb3e1d5853b",
+    "assist/tests/formation_quick_bridge_test.py": "d9ad88d44a33d04d94c38e8caf25596a892cbfbbdc7d399e62b8f79d751b3ea0",
+    "assist/tests/mo_operation_followup.py": "bcedf89bbb721d76c01b4be70ab8bc8df2bbda29e33a784424932e76bbd790f2",
+    "assist/tests/mo_options.cpp": "03a9e98f2faba95ff081c611dc35fd9dcb447071778dc46350bc089027ba9445",
+    "assist/tests/mo_options.py": "54529af25f1d37c635d1828a7674a3135af9185502e2972b81b2feb1f29a7c4b",
+    "assist/tests/mo_orders_bridge_test.py": "26117c2d2c40f56885806f952eecb9f478877d8eeb78a4b21468c3f38d577155",
+    "assist/tests/smartarea_capacity.cpp": "b77944edeb00f0374809fac8d7a390b55acade545a5a7b11514460c8ba86fab3",
+    "assist/tests/smartarea_capacity.py": "70e3105adbfc14f787b8c36656588a681ec0dc22d9ea1cc426c83c495b582367",
+    "external_reader/source/game_view.h": "1cb66241d90ea90ed29b516651a7ba8313a672364ee542e6a051dd2aa6123063",
+    "research/2026-11-03-mo-smartarea-and-policy.md": "710dc2f0ff27810d9f0fbdbd9eaa143a0a2b6eb91f2776ad9f87bdc9a59e818a"
+  },
+  "scope": "Source-bound Windows x86/x64 actual bridge/GameView/reservation/nativeMission/policy code with controlled engine/queue/clock/Win32 boundaries. No game process, engine arrival or multiplayer acceptance.",
+  "upstream_commit": "80850c7acf7d43d112975583b4fee5037c800263",
+  "upstream": [
+    "src/order/SmartArea.cpp::SA_BldFix",
+    "src/order/SmartArea.cpp::SA_GarrQuota",
+    "src/order/FuzzyAttack.cpp::FA_EnsureInit",
+    "src/order/PatrolCircle.cpp::PC_EnsureInit"
+  ],
+  "capacity": {
+    "results": {
+      "current": {
+        "x86_64": {
+          "passed": true,
+          "checks": 3856,
+          "capacity_matrix_cases": 588,
+          "scope": "actual bridge/GameView/reservation/nativeMission with controlled queue/clock boundaries"
+        },
+        "x86": {
+          "passed": true,
+          "checks": 3856,
+          "capacity_matrix_cases": 588,
+          "scope": "actual bridge/GameView/reservation/nativeMission with controlled queue/clock boundaries"
+        }
+      },
+      "baseline": {
+        "x86_64": {
+          "passed": true,
+          "checks": 6,
+          "counterexamples": [
+            "SelectMove-no-Enter",
+            "ten-infantry-six-four",
+            "high-backend-bypasses-post-clock-capacity"
+          ]
+        },
+        "x86": {
+          "passed": true,
+          "checks": 6,
+          "counterexamples": [
+            "SelectMove-no-Enter",
+            "ten-infantry-six-four",
+            "high-backend-bypasses-post-clock-capacity"
+          ]
+        }
+      }
+    },
+    "baseline": {
+      "scope": "Historical production source immediately before SmartArea capacity/options phase; tests only. Source before current work was a parent-verified phase checkpoint based on 5983b943e90694f7b2630608bc464d6f8ee148e3. No claim this entire checkpoint equals that commit.",
+      "files": {
+        "mo_orders_bridge.h": "a604c5480937a65f10f482d1448c5abd61e48e9d6c78920d2c8b6e2e46f3fe1c",
+        "native_mission.inc": "9b83b869213b6636b1dbd56e0c9da4ad02d366a9491cb9ebfb337fb3e1d5853b",
+        "mo_orders_geometry.h": "d635eae3e6dce6d59659e988a798d69fa67aea9410a53dba9a4ef7e304d9136f"
+      },
+      "original_sources": {
+        "mo_orders_bridge.h": "assist/source/mo_orders_bridge.h",
+        "native_mission.inc": "assist/source/bridge.cpp::nativeMission",
+        "mo_orders_geometry.h": "assist/source/mo_orders.h"
+      },
+      "original_full_bridge_sha256": "8dc807f49dadf694876835c5eeb96262a5cdeded43f635aba5be8b8daea79d3d"
+    },
+    "sources": {
+      "assist/source/mo_orders_bridge.h": "c5c57a560140fe3dafd6668b2f36bc47ee53cc38a41da1273b64d640c9c5035e",
+      "assist/source/mo_orders.h": "4ee97b30839a17d291239b37038466760650b8cd11e2af5574f7a116b30778ef",
+      "assist/source/mo_gesture_bridge.h": "dae684bba83d4fd0fc11632beac721ee4f4186e57b9ea0f825e9add0e1f751d7",
+      "assist/source/bridge.cpp": "dae877ec4e39061a7263d832403daacc8b5f8780a6706457b9ee6a4c44051885",
+      "assist/source/cooperative_bridge.h": "6c4b7ef78dc7bdc82ec5e4d1e684e9a6a4a25c53a2be82c93cd4edfe8069161e",
+      "assist/source/cooperative_types.h": "772262665827e1c50b7664db08d70cac5c83fdd6ebb4c0262d5fdb870fe1b7af",
+      "external_reader/source/game_view.h": "1cb66241d90ea90ed29b516651a7ba8313a672364ee542e6a051dd2aa6123063",
+      "assist/source/command_gateway.h": "a0a5676e5bd28af90ca10e374c7dbc9d8a96098b2a6b446c42063f795bc76198",
+      "assist/source/unit_task_arbiter.h": "29fd9bd07e5045dbb07b6b7f5a69e97002544544caad428b01c7d8647e02adcd",
+      "assist/source/autoload.h": "3724b7bb1f2bd3e0db845ab2f78b3ba30d8933e560b4ee7b831dcb3b077da0c6",
+      "assist/tests/smartarea_capacity.cpp": "b77944edeb00f0374809fac8d7a390b55acade545a5a7b11514460c8ba86fab3",
+      "assist/tests/smartarea_capacity.py": "70e3105adbfc14f787b8c36656588a681ec0dc22d9ea1cc426c83c495b582367",
+      "assist/tests/mo_orders_bridge_test.py": "26117c2d2c40f56885806f952eecb9f478877d8eeb78a4b21468c3f38d577155",
+      "assist/tests/formation_quick_bridge_test.py": "d9ad88d44a33d04d94c38e8caf25596a892cbfbbdc7d399e62b8f79d751b3ea0",
+      "assist/tests/fixtures/mo_smartarea_baseline/manifest.json": "c3fc8c9940ba8cfcd6459211374a9c01cbd70a6e84eecb26f41c8c48a3677ada",
+      "assist/tests/fixtures/mo_smartarea_baseline/mo_orders_bridge.h": "a604c5480937a65f10f482d1448c5abd61e48e9d6c78920d2c8b6e2e46f3fe1c",
+      "assist/tests/fixtures/mo_smartarea_baseline/mo_orders_geometry.h": "d635eae3e6dce6d59659e988a798d69fa67aea9410a53dba9a4ef7e304d9136f",
+      "assist/tests/fixtures/mo_smartarea_baseline/native_mission.inc": "9b83b869213b6636b1dbd56e0c9da4ad02d366a9491cb9ebfb337fb3e1d5853b"
+    },
+    "changed_during_run": [],
+    "scope": "Actual mo_orders bridge, GameView entry readers, entryReserved and nativeMission routing; synthetic world and modeled queue/clock/Win32 boundaries; no game process or multiplayer acceptance."
+  },
+  "options": {
+    "results": {
+      "x86_64": {
+        "passed": true,
+        "checks": 3748,
+        "default_geometry_cases": 320,
+        "scope": "production Options/geometry/capture/patrol with modeled native IO"
+      },
+      "x86": {
+        "passed": true,
+        "checks": 3748,
+        "default_geometry_cases": 320,
+        "scope": "production Options/geometry/capture/patrol with modeled native IO"
+      }
+    },
+    "sources": {
+      "assist/source/mo_orders.h": "4ee97b30839a17d291239b37038466760650b8cd11e2af5574f7a116b30778ef",
+      "assist/source/mo_gesture_bridge.h": "dae684bba83d4fd0fc11632beac721ee4f4186e57b9ea0f825e9add0e1f751d7",
+      "assist/source/mo_orders_bridge.h": "c5c57a560140fe3dafd6668b2f36bc47ee53cc38a41da1273b64d640c9c5035e",
+      "assist/source/bridge.cpp": "dae877ec4e39061a7263d832403daacc8b5f8780a6706457b9ee6a4c44051885",
+      "assist/source/mo_patrol_graph.h": "57f4285c49e3b15d5b633740c1f53bd15f9a3f1230c8561169a82db41f5c39d9",
+      "assist/source/mo_patrol_planning_bridge.h": "e012bb381778cdd5ea12acdf049329a5690ff4cb3973149b34d69ccd472474a7",
+      "assist/tests/mo_options.py": "54529af25f1d37c635d1828a7674a3135af9185502e2972b81b2feb1f29a7c4b",
+      "assist/tests/mo_options.cpp": "03a9e98f2faba95ff081c611dc35fd9dcb447071778dc46350bc089027ba9445",
+      "assist/tests/smartarea_capacity.py": "70e3105adbfc14f787b8c36656588a681ec0dc22d9ea1cc426c83c495b582367",
+      "assist/tests/smartarea_capacity.cpp": "b77944edeb00f0374809fac8d7a390b55acade545a5a7b11514460c8ba86fab3",
+      "assist/tests/mo_orders_bridge_test.py": "26117c2d2c40f56885806f952eecb9f478877d8eeb78a4b21468c3f38d577155",
+      "assist/tests/formation_quick_bridge_test.py": "d9ad88d44a33d04d94c38e8caf25596a892cbfbbdc7d399e62b8f79d751b3ea0",
+      "assist/tests/fixtures/mo_smartarea_baseline/mo_orders_geometry.h": "d635eae3e6dce6d59659e988a798d69fa67aea9410a53dba9a4ef7e304d9136f"
+    },
+    "changed_during_run": [],
+    "baseline": {
+      "scope": "Historical production source immediately before SmartArea capacity/options phase; tests only. Source before current work was a parent-verified phase checkpoint based on 5983b943e90694f7b2630608bc464d6f8ee148e3. No claim this entire checkpoint equals that commit.",
+      "files": {
+        "mo_orders_bridge.h": "a604c5480937a65f10f482d1448c5abd61e48e9d6c78920d2c8b6e2e46f3fe1c",
+        "native_mission.inc": "9b83b869213b6636b1dbd56e0c9da4ad02d366a9491cb9ebfb337fb3e1d5853b",
+        "mo_orders_geometry.h": "d635eae3e6dce6d59659e988a798d69fa67aea9410a53dba9a4ef7e304d9136f"
+      },
+      "original_sources": {
+        "mo_orders_bridge.h": "assist/source/mo_orders_bridge.h",
+        "native_mission.inc": "assist/source/bridge.cpp::nativeMission",
+        "mo_orders_geometry.h": "assist/source/mo_orders.h"
+      },
+      "original_full_bridge_sha256": "8dc807f49dadf694876835c5eeb96262a5cdeded43f635aba5be8b8daea79d3d"
+    },
+    "scope": "Actual MO pure geometry, native gesture snapshot/capture and patrol state machine with controlled world/queue/Win32 boundaries. No game process or multiplayer acceptance."
+  },
+  "operation_regression": {
+    "pass": true,
+    "assertions_active": true,
+    "baseline": null,
+    "source_sha256": {
+      "mo_orders_bridge.h": "c5c57a560140fe3dafd6668b2f36bc47ee53cc38a41da1273b64d640c9c5035e",
+      "formation_bridge.h": "450bf1cc5d1b8683ae0e761aaa8bd2c48f48c76290fae7f9b9dee9ac0180c159",
+      "mo_orders_host.h": "611dcce9cdd533ae872bad566cf9ea754772a138f15daf48c64dd32d009c12c1"
+    },
+    "results": [
+      {
+        "fixture": "runtime",
+        "exit_code": 0,
+        "stdout": "PASS 255 actual MO bridge staged patrol/cancellation/admission checks\n",
+        "stderr": ""
+      },
+      {
+        "fixture": "quick",
+        "exit_code": 0,
+        "stdout": "PASS production quick placement: quotas survive commit and remembered-formation translation; chord cancellation and click release destination\n",
+        "stderr": ""
+      },
+      {
+        "fixture": "host",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    ]
+  },
+  "prior_regressions": {
+    "mo_orders_bridge_checks": 42,
+    "quick_placement": "PASS; actual quotas/continuation/commit/chord/release fixture"
+  },
+  "reproduce": {
+    "capacity": "python assist/tests/smartarea_capacity.py --zig <zig-0.13.0> --out <out>/capacity",
+    "options": "python assist/tests/mo_options.py --zig <zig-0.13.0> --out <out>/options"
+  }
+}

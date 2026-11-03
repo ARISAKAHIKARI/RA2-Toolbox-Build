@@ -12,17 +12,19 @@ struct AdditionalSettings {
  uint32_t missionModeKeys[3]{}; // Sleep, Guard, Harmless; empty by default
  bool formationEnabled=false;uint32_t formationHold=18,formationKeys[6]={'Z','X','C','V','B','N'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
+ bool destructSelectedOwner=false;uint32_t destructSelectedOwnerKey=0;
  int controlImplementation=0; // 0=Master basic instruction patches, 1=native predicate Hook.
  bool controlCommandOwner=false;
  bool networkHousePreserve=false,nativeSellCursor=false;
  bool crcMapShadow=false;
  bool nativeMegaGateway=false; // Optional native observer; ordinary input uses the message path.
  bool nativeCombatQueries=false; // Explicit engine selector/range calls; raw observations are the default.
- bool techEnhance=false;int placementImplementation=0;
+ bool techEnhance=false;int techEnhanceImplementation=0;int placementImplementation=0;
  uint32_t placementEventKey='G'|(6<<8); // Explicit one-shot completed-building placement.
  bool viewZoomEnabled=false;int viewZoomPercent=100;uint32_t sidebarMode=0;bool sidebarEnabled=false,smallMapClamp=false;
  uint32_t moFeatures=0;bool superweaponPanel=false;
  moorders::GesturePolicy moGestures;
+ moorders::Options moOptions;
  uint32_t viewZoomKeys[3]={0xBD|(6<<8),0xBB|(6<<8),0x08|(6<<8)},sidebarKey=0x7A,pauseKeys[2]={0x74,0x75};
  int scrollRefreshMode=0; // cursor / scrolling / scene / forced redraw
 #ifndef RA2_UNIFIED

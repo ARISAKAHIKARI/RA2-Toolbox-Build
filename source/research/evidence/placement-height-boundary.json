@@ -1,0 +1,191 @@
+{
+  "status": "PASS",
+  "total": 89225,
+  "old_mismatch_count": 3515,
+  "fixed_mismatches": 0,
+  "first_old_mismatches": [
+    {
+      "x": 104,
+      "y": 89,
+      "level": 0,
+      "slope": 0,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 0,
+      "slope": 1,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 0,
+      "slope": 2,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 0,
+      "slope": 15,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 0,
+      "slope": 255,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 1,
+      "slope": 0,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 1,
+      "slope": 1,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 1,
+      "slope": 2,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 1,
+      "slope": 15,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 1,
+      "slope": 255,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 2,
+      "slope": 0,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 2,
+      "slope": 1,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 2,
+      "slope": 2,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 2,
+      "slope": 15,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 2,
+      "slope": 255,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 6,
+      "slope": 0,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 6,
+      "slope": 1,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 6,
+      "slope": 2,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 6,
+      "slope": 15,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    },
+    {
+      "x": 104,
+      "y": 89,
+      "level": 6,
+      "slope": 255,
+      "native": true,
+      "old_tool": false,
+      "fixed": true
+    }
+  ],
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "game_process_opened": false,
+  "boundary": "Native 578540(true), synthetic indexed Cell values; this does not prove such Cells are allocated on every real map."
+}

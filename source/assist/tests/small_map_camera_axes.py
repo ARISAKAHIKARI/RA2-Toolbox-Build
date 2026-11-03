@@ -34,7 +34,9 @@ using namespace assist;
 namespace experimentalpatch{constexpr uint32_t CameraClamp=0x6D8640;}
 struct RiskSite{uint32_t address;unsigned size;uint8_t before[16],after[16];};
 static struct{bool stop=false;uint32_t owner=1,smallMapClamp=0;int32_t smallMapClampStatus=0;}wire,*sh=&wire;
-static bool fault=false,installed=false,foreign=false,lease=true;static int installs=0,restores=0,checks=0;
+static bool fault=false,installed=false,foreign=false,lease=true,nativeTracking=false,nativeRaster=false;static int installs=0,restores=0,checks=0;
+static bool nativeViewNeedsTracking(){return nativeTracking;}
+static bool nativeViewRenderNeeded(){return nativeRaster;}
 static std::map<uint32_t,int>memory;
 template<class T>static T get(uint32_t p){return T(memory[p]);}
 static bool restoreRiskSite(RiskSite&){++restores;if(foreign&&installed)return false;installed=false;return true;}
@@ -45,6 +47,8 @@ static int GuardedRiskAction(int action,uint32_t point,uint32_t){CHECK(action==7
 static void geometry(int w,int h,int vw,int vh){int v[]={200,2,3,w,h,vw,vh};uint32_t fields[]={0x87F8DC,0x87F8E4,0x87F8E8,0x87F8EC,0x87F8F0,0x886FA8,0x886FAC};for(int i=0;i<7;++i)memory[fields[i]]=v[i];}
 int main(){
  geometry(20,40,1920,900);smallMapCameraTick();CHECK(!installed&&sh->smallMapClampStatus==0&&installs==0);
+ nativeTracking=true;smallMapCameraTick();CHECK(installed&&sh->smallMapClampStatus==1);nativeTracking=false;smallMapCameraTick();CHECK(!installed&&sh->smallMapClampStatus==0);
+ nativeTracking=nativeRaster=true;smallMapCameraTick();CHECK(installed);sh->stop=true;lease=false;smallMapCameraTick();restoreSmallMapCamera();CHECK(installed);smallcamera::Point held{100000,100000};smallMapClamp(&held);CHECK(held.x==smallcamera::center(cameraGeometry()).x);nativeRaster=nativeTracking=false;smallMapCameraTick();CHECK(!installed);sh->stop=false;lease=true;
  sh->smallMapClamp=1;smallMapCameraTick();CHECK(installed&&sh->smallMapClampStatus==1);
  smallcamera::Point p{100000,100000};CHECK(smallMapClamp(&p));auto center=smallcamera::center(cameraGeometry());CHECK(p.x==center.x&&p.y==smallcamera::limits(cameraGeometry()).bottom);
  geometry(40,10,800,1080);smallMapCameraTick();p={-100000,-100000};CHECK(smallMapClamp(&p));center=smallcamera::center(cameraGeometry());CHECK(p.y==center.y&&p.x==smallcamera::limits(cameraGeometry()).left);

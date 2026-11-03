@@ -1,12 +1,14 @@
 #include "middle_input_host.h"
+#include "../../shared/source/native_viewport_projection.h"
 // Host capture uses polling. Optional suppression lives only in the common Runtime message boundary.
 #include "control_mode_policy.h"
 static void servicePointer(){
- static pointerinput::Intent leftCapture{};static bool leftCaptured=false;
+ static pointerinput::Intent leftCapture{};static bool leftCaptured=false;static uint32_t pointerCaptureGeneration=0;
  const DWORD capturedNow=GetTickCount();
  auto visible=external::display::inspect([](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);});
- const bool inputReady=!formationInputOwns()&&!runtimeMiddleOwnsNow()&&shared&&!shared->viewZoomBusy&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
- gameinput::setPointerContext(hook,commandMatch(),inputReady);
+ nativeviewportprojection::Transform viewport{};const bool viewportStable=nativeviewhost::sampleTransform(shared,viewport);
+ const bool inputReady=viewportStable&&!formationInputOwns()&&!runtimeMiddleOwnsNow()&&shared&&!shared->viewZoomBusy&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
+ gameinput::setPointerContext(hook,commandMatch(),inputReady,viewport.generation);
  if(pointerMatches.active()&&(!inputReady||!extra.allHotkeys||pointerMatches.revision!=settingsRevision||
     pointerMatches.capture.match!=commandMatch()||pointerMatches.capture.inputSerial!=gameinput::pointerCancelSerial(hook)))pointerMatches.clear();
  if(!inputReady)leftCaptured=false;
@@ -51,11 +53,12 @@ static void servicePointer(){
   if(shared->cooperativeRequest.serial!=pointerMatches.cooperativeBefore&&
      (shared->cooperativeRequest.serial!=cooperativeDelivered||shared->cooperativePlan!=shared->cooperativeAck||retryCooperative))return;
   pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;
-  box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();return;
+  if(!viewportStable||viewport.generation!=pointerCaptureGeneration){pointerMatches.clear();return;}
+  shared->pointerViewportGeneration=pointerCaptureGeneration;box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();return;
  }
  gameinput::PointerPress e{};DWORD dropped=0;
  if(!gameinput::takePointer(hook,e,dropped)){if(dropped)notify(L"输入过密，部分增强请求未接收。");return;}
- if(!inputReady||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
+ if(!inputReady||e.viewportGeneration!=viewport.generation||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
  // Resolve captured down-edge keys too: Runtime preview publication may follow this edge.
  if(middleinput::ownsPointer(e.operation==7?6:e.operation,runtimeGesturePolicy(),runtimeGestureEnabled(),e.keys))return;
  // The explicit unload command owns this same chord. A polled native D/S/X
@@ -110,8 +113,8 @@ static void servicePointer(){
  if(e.operation==7&&in.operation==pointerinput::PlayerSelect)return;
  if(e.operation==7){leftCapture=in;leftCaptured=true;return;}
  if(e.operation==6)leftCaptured=false;
- pointerMatches.begin(in,routes,routeCount,settingsRevision);pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;
- box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();
+ pointerCaptureGeneration=e.viewportGeneration;pointerMatches.begin(in,routes,routeCount,settingsRevision);pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;
+ shared->pointerViewportGeneration=pointerCaptureGeneration;box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();
 }
 
 

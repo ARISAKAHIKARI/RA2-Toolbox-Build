@@ -12,6 +12,10 @@ struct NativePlacementCompletion {
 static NativePlacementCompletion placementCompletions[8];
 static constexpr DWORD NativePlacementCompletionTimeout=10000;
 static void nativePlacementCompletionReset(){for(auto&p:placementCompletions)p={};}
+static bool nativePlacementCompletionOwns(const nativeplacement::Offer&o){
+ for(const auto&p:placementCompletions)if(p.scenario&&p.offer.match==o.match&&p.offer.house==o.house&&p.offer.houseID==o.houseID&&p.offer.product==o.product&&p.offer.productID==o.productID&&p.offer.type==o.type&&p.offer.typeID==o.typeID)return true;
+ return false;
+}
 static bool nativePlacementCompletionPending(){for(const auto&p:placementCompletions)if(p.scenario)return true;return false;}
 template<class T>static bool nativePlacementCompletionField(uint32_t at,T&value){
  return at>=0x10000&&uint64_t(at)+sizeof(T)<0x80000000ull&&read(at,&value,sizeof value);
@@ -90,6 +94,21 @@ static void nativePlacementQueued(const nativeplacement::Offer&offer,DWORD now){
  if(!slot){slot=&placementCompletions[0];for(auto&p:placementCompletions)if(DWORD(now-p.queuedAt)>DWORD(now-slot->queuedAt))slot=&p;}
  *slot=pending; // Bounded local observation; dropping an old receipt never writes UI.
 }
+// Q/W use independent completed-building caches, populated by the native
+// sidebar. Normal MouseUp calls 734270(product); direct Place bypasses it.
+static bool nativePlacementCompletionQuick(const NativePlacementCompletion&p){
+ uint32_t q=0,w=0;if(!read(0xB0FE5C,&q,4)||!read(0xB0FE60,&w,4))return false;
+ if(q!=p.offer.product&&w!=p.offer.product)return true;
+ uint8_t code[45]{};if(!read(0x734270,code,sizeof code))return false;uint32_t hash=2166136261u;
+ for(auto b:code)hash=(hash^b)*16777619u;if(hash!=0x61003681u)return false;
+ int frame=-1;uint32_t q2=0,w2=0;
+ if(nativePlacementCompletionWorld(p,frame)!=1||nativePlacementCompletionProduct(p)!=1||nativePlacementCompletionIdle()!=1||
+    !read(0xB0FE5C,&q2,4)||!read(0xB0FE60,&w2,4)||q!=q2||w!=w2)return false;
+ // Never call with null: native null would clear both unrelated caches.
+ call<void>(0x734270,p.offer.product);
+ if(!read(0xB0FE5C,&q,4)||!read(0xB0FE60,&w,4))return false;
+ return q!=p.offer.product&&w!=p.offer.product;
+}
 static void nativePlacementCompletionTick(DWORD now){
  if(!sh||sh->stop||fault){nativePlacementCompletionReset();return;}
  for(auto&p:placementCompletions){
@@ -101,6 +120,7 @@ static void nativePlacementCompletionTick(DWORD now){
   const int product=nativePlacementCompletionProduct(p);if(product<0){p={};continue;}if(!product)continue;
   const bool active=nativePlacementCompletionCursor(p,0x11A4,0x4A8BF0,0xC44D9D5Eu);
   const bool copy=nativePlacementCompletionCursor(p,0x1190,0x4A8D50,0xDC84E30Eu);
-  if(active&&copy)p={};
+  const bool quick=nativePlacementCompletionQuick(p);
+  if(active&&copy&&quick)p={};
  }
 }

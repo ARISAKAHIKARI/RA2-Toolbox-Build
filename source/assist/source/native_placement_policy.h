@@ -24,6 +24,7 @@ struct alignas(8) Preview {
  int32_t active=0,cellX=0,cellY=0,x=0,y=0,z=0,width=0,height=0,status=0;
  double zScale=.0866025403784;
  int32_t cameraX=0,cameraY=0,viewportX=0,viewportY=0;
+ uint32_t viewportGeneration=0;
 };
 static_assert(std::is_standard_layout<Offer>::value&&std::is_trivial<Offer>::value,"placement offer IPC");
 static_assert(std::is_standard_layout<Request>::value&&std::is_trivial<Request>::value,"placement request IPC");

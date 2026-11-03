@@ -108,4 +108,5 @@ int main(){
  assert(DrawCaller(&local,&allowed)==1);retire(service);assert(DrawCaller(&local,&allowed)==0);
  assert(RemoveVectoredExceptionHandler(foreign));
  puts("PASS: real Windows x86 two CALL execution breakpoints; 20000 quantified hits; own-thread context install/readback/restore; argument-only change; House/type gates; foreign exception pass-through; foreign slots preserved; insufficient slots refused; foreign replacement preserved on restore; unchanged code; no game");
+ return 0;
 }

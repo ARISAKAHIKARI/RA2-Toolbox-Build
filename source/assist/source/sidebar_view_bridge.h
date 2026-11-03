@@ -4,6 +4,10 @@
 // Native local-presentation adapter. Geometry R and clipping buffers belong to
 // view_zoom_bridge; this module owns physical A, sidebar input, and the columns.
 struct NativeSidebarRect {int x=0,y=0,w=0,h=0;};
+static bool nativeViewNeedsTracking(),nativeViewRenderNeeded(),nativeViewQuiesce();
+static bool nativeViewCurrentGeometry(const NativeSidebarRect&,const NativeSidebarRect&);
+static unsigned nativeViewSidebarRetirement();static void nativeViewSidebarRetired();
+extern "C" int __cdecl GuardedNativeViewAction(unsigned,unsigned);
 static void* nativeViewNewSurface(int,int);
 static void nativeViewFreeSurface(void*);
 static int nativeSidebarMode=0;
@@ -11,6 +15,9 @@ static bool nativeSidebarInstalled=false,nativeSidebarGeometryChanged=false;
 static unsigned sidebarViewRenderDepth=0,sidebarViewRenderSerial=0;
 static bool sidebarViewTracking=false,sidebarViewFailed=false,sidebarViewConflict=false,sidebarViewTouched=false;
 static bool sidebarViewGeometryUncertain=false,sidebarViewApplied=false;
+static unsigned sidebarViewDirtyFrames=0;
+static int sidebarViewDirtyFrame=-1;
+static unsigned sidebarViewDirtySerial=UINT32_MAX;
 static NativeSidebarRect sidebarViewAppliedWindow{},sidebarViewAppliedArea{};
 static void* sidebarViewAppliedPair[2]{};
 extern "C" int __cdecl GuardedSidebarViewAction(unsigned,unsigned);
@@ -31,10 +38,11 @@ static bool nativeSidebarWindow(NativeSidebarRect&r){
  int w=get<int>(0x886FB8),h=get<int>(0x886FBC);
  if(w<640||w>8192||h<240||h>8192)return false;r={0,0,w,h};return true;
 }
-static bool nativeSidebarArea(NativeSidebarRect&r){
+static bool nativeSidebarArea(NativeSidebarRect&r,int mode=-1){
  if(!nativeSidebarWindow(r))return false;
  r.h-=32;
- if(nativeSidebarMode==0){int sw=nativeSidebarWidth();r.w-=sw;
+ if(mode<0)mode=nativeSidebarMode;
+ if(mode==0){int sw=nativeSidebarWidth();r.w-=sw;
   r.x=get<uint8_t>(0xA8EB7C)||get<uint8_t>(0xA8ED6B)?0:sw;
  }
  return r.w>64&&r.h>64;
@@ -58,6 +66,7 @@ static bool nativeSidebarTopHit(int x,int y){
  int col=nativeSidebarColumnX();return col>=0&&x>=col&&x<col+r.w&&y>=r.y&&y<r.y+r.h;
 }
 static bool nativeSidebarTopHit(){POINT p{};return nativeSidebarMouse(p)&&nativeSidebarTopHit(p.x,p.y);}
+static bool nativeSidebarUIHit(int x,int y){NativeSidebarRect r{};if(!nativeSidebarKeep(r))return false;const int col=nativeSidebarColumnX();return col>=0&&x>=col&&x<col+r.w&&y>=0&&y<r.h;}
 static void nativeSidebarColumn(bool layout=false){
  if(!nativeSidebarInstalled)return;
  int col=nativeSidebarColumnX();if(col<0)return;
@@ -280,8 +289,15 @@ original:
 extern "C" int __cdecl AssistSidebarViewAction(unsigned action,unsigned argument){
  if(action==22){sidebarViewTickImpl();return 1;}
  if(action==23)return restoreSidebarViewImpl()?1:0;
- if(action==20){++sidebarViewRenderDepth;return 1;}
- if(action==21){if(sidebarViewRenderDepth&&!--sidebarViewRenderDepth)++sidebarViewRenderSerial;return 1;}
+ if(action==20){
+  if(sidebarViewRenderDepth||(sh&&sh->viewZoomBusy))return 2; // recursive/incomplete layout presentation
+  if(nativeViewRenderNeeded()&&GuardedNativeViewAction(0,0)!=1)return 2;
+  ++sidebarViewRenderDepth;return 1;
+ }
+ if(action==21){
+  if(sidebarViewRenderDepth){if(nativeViewRenderNeeded())GuardedNativeViewAction(6,0);if(!--sidebarViewRenderDepth)++sidebarViewRenderSerial;}
+  return 1;
+ }
  if(sidebarViewFailed)return 0;
  return action>=32?nativeSidebarAction(action-32,argument):0;
 }
@@ -305,6 +321,8 @@ static __declspec(naked) void sidebarViewRenderEnter(){__asm {
  push 20
  call GuardedSidebarViewAction
  add esp,8
+ cmp eax,1
+ jne rejected
  fxrstor [esp]
  mov esp,ebx
  popad
@@ -312,6 +330,12 @@ static __declspec(naked) void sidebarViewRenderEnter(){__asm {
  sub esp,8
  mov eax,dword ptr ds:[88731Ch]
  push 4F4488h
+ ret
+rejected:
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
  ret
 }}
 static __declspec(naked) void sidebarViewRenderLeave(){__asm {
@@ -361,18 +385,42 @@ static bool sidebarViewPairMatches(void*c,void*m){
  return c&&m&&c!=m&&(c==sidebarViewAppliedPair[0]||c==sidebarViewAppliedPair[1])&&
   (m==sidebarViewAppliedPair[0]||m==sidebarViewAppliedPair[1]);
 }
+static bool sidebarViewRedrawCompatible(){
+ struct Check{uint32_t at;unsigned n,hash;};
+ static constexpr Check checks[]={{0x6D2790,12,0xCB533DD6u},{0x6D2B3F,3,0x6395A2F9u},{0x4F42F0,16,0xBDBC694Cu}};
+ for(const auto&c:checks){uint8_t bytes[16]{};if(!read(c.at,bytes,c.n))return false;uint32_t hash=2166136261u;for(unsigned i=0;i<c.n;++i)hash=(hash^bytes[i])*16777619u;if(hash!=c.hash)return false;}
+ return true;
+}
+static void sidebarViewRefresh(bool changed=false){
+ if(changed){sidebarViewDirtyFrames=3;sidebarViewDirtyFrame=-1;sidebarViewDirtySerial=UINT32_MAX;}
+ const int frame=get<int>(0xA8ED84);const uint32_t tactical=get<uint32_t>(0x887324);
+ if(!sidebarViewDirtyFrames||(sidebarViewDirtyFrame==frame&&sidebarViewDirtySerial==sidebarViewRenderSerial)||tactical<0x10000||!sidebarViewRedrawCompatible())return;
+ NativeSidebarRect window{};const auto view=get<NativeSidebarRect>(0x886FA0);
+ if(!nativeSidebarWindow(window)||view.w<64||view.h<64||view.w>8192||view.h>8192)return;
+ NativeViewRect dirty{0,0,window.w>view.w?window.w:view.w,window.h>view.h?window.h:view.h};
+ // Verified native ABI: ECX=Tactical, Rectangle by value plus a stack bool;
+ // 6D2B3F returns 0x14 bytes. Do not guess the upstream fastcall typedef.
+ call<void>(0x6D2790,tactical,dirty,true);
+ call<void>(0x4F42F0,0x87F7E8,2);
+ sidebarViewDirtyFrame=frame;sidebarViewDirtySerial=sidebarViewRenderSerial;--sidebarViewDirtyFrames;
+ sceneFrame=-2147483647;sceneTick=0;
+ if(changed){const HWND windowHandle=reinterpret_cast<HWND>(uintptr_t(get<uint32_t>(0xB73550)));
+  if(windowHandle)PostMessageW(windowHandle,WM_PAINT,0,0);
+ }
+}
 static bool sidebarViewGeometry(){
  const uint32_t t=get<uint32_t>(0x887324);NativeSidebarRect area{};
- if(t<0x10000||!nativeSidebarArea(area))return false;
+ if(t<0x10000||!nativeSidebarArea(area)||!sidebarViewRedrawCompatible())return false;
  const int c[4]={get<int>(t+0xD64),get<int>(t+0xD68),get<int>(t+0xD74),get<int>(t+0xD78)};
  sidebarViewGeometryUncertain=true;
  put<NativeSidebarRect>(0x886FA0,area);call<void>(0x4A8960,0x87F7E8,&area);
  put<int>(t+0xD64,c[0]);put<int>(t+0xD68,c[1]);put<int>(t+0xD74,c[2]);put<int>(t+0xD78,c[3]);
  if(!nativeViewRectEqual(get<NativeViewRect>(0xB0CE28),{area.x,area.y,area.w,area.h}))call<void>(0x6D5F60,t,(void*)0x886FA0);
  nativeSidebarAfterLayout();put<uint8_t>(0x884B8E,1);put<uint8_t>(0x884B8F,1);put<uint32_t>(0xB0CD44,0);
- sceneFrame=-2147483647;sceneTick=0;sidebarViewGeometryUncertain=false;return true;
+ sidebarViewRefresh(true);sidebarViewGeometryUncertain=false;return true;
 }
 static bool restoreSidebarViewImpl(){
+ if(!nativeViewQuiesce()){if(sh)sh->sidebarStatus=2;return false;}
  // A foreign tracking hook can hide an in-flight Render. Retain its surface
  // lease until process shutdown rather than interpreting missing depth as idle.
  if(nativeSidebarInstalled&&!sidebarViewTrackingIntact())return false;
@@ -381,6 +429,29 @@ static bool restoreSidebarViewImpl(){
   if(!intact){sidebarViewConflict=true;if(sh)sh->sidebarStatus=-2;return false;}
  }
  if(sidebarViewRendering()){if(sh)sh->sidebarStatus=2;return false;}
+ const unsigned newGeneration=nativeViewSidebarRetirement();
+ if(newGeneration){
+  // Native has proved a complete new pair/buffer generation and retired its
+  // private raster. Never destroy old sidebar objects the engine may already
+  // have destroyed, nor restore their stale saved gadget flags/pointers.
+  if(newGeneration==2){
+   NativeSidebarRect area{};void*c=get<void*>(0x88731C),*m=get<void*>(0x8872FC);
+   if(!nativeSidebarArea(area,0)||nativeSidebarSurfaceWidth(c,0x7C)<area.x+area.w||nativeSidebarSurfaceWidth(c,0x80)<area.y+area.h||
+      nativeSidebarSurfaceWidth(m,0x7C)<area.x+area.w||nativeSidebarSurfaceWidth(m,0x80)<area.y+area.h){if(sh)sh->sidebarStatus=2;return false;}
+  }
+  for(unsigned i=0;i<7;++i)if(!restoreRiskSite(nativeSidebarSites[i])){sidebarViewConflict=true;if(sh)sh->sidebarStatus=-2;return false;}
+  nativeSidebarOwned[0]=nativeSidebarOwned[1]=nativeSidebarSaved[0]=nativeSidebarSaved[1]=nullptr;
+  for(auto&held:nativeSidebarGadgetHeld)held=false;nativeSidebarLastGadgetFrame=-1;nativeSidebarMode=0;
+  if(newGeneration==2){
+   if(sh)InterlockedExchange(&sh->viewZoomBusy,1);
+   const bool applied=sidebarViewGeometry();if(sh){MemoryBarrier();InterlockedExchange(&sh->viewZoomBusy,0);}
+   if(!applied){if(sh)sh->sidebarStatus=-3;return false;}
+  }
+  bool released=true;for(auto&site:nativeSidebarSites)released=restoreRiskSite(site)&&released;
+  if(!released){sidebarViewConflict=true;if(sh)sh->sidebarStatus=-2;return false;}
+  nativeSidebarInstalled=sidebarViewTracking=sidebarViewFailed=sidebarViewConflict=sidebarViewTouched=sidebarViewGeometryUncertain=sidebarViewApplied=false;
+  sidebarViewRenderSerial=0;nativeSidebarViewGadget=nullptr;sidebarViewAppliedPair[0]=sidebarViewAppliedPair[1]=nullptr;nativeViewSidebarRetired();if(sh)sh->sidebarStatus=0;return true;
+ }
  // No narrow saved pair may replace a possibly widened/partially rebuilt
  // viewport after a native failure. Process teardown releases this lease.
  if(nativeSidebarInstalled&&(sidebarViewFailed||sidebarViewGeometryUncertain)){if(sh)sh->sidebarStatus=-3;return false;}
@@ -394,7 +465,7 @@ static bool restoreSidebarViewImpl(){
  bool ok=true;for(unsigned i=0;i<7;++i)ok=restoreRiskSite(nativeSidebarSites[i])&&ok;
  if(nativeSidebarInstalled){
   nativeSidebarMode=0;nativeSidebarLastGadgetFrame=-1;nativeSidebarGadgets();nativeSidebarColumn(true);
-  sidebarViewGeometry();
+  if(!sidebarViewGeometry()){if(sh)sh->sidebarStatus=-3;return false;}
   nativeSidebarReleaseSurfaces();
  }
  for(auto&site:nativeSidebarSites)ok=restoreRiskSite(site)&&ok;
@@ -403,7 +474,9 @@ static bool restoreSidebarViewImpl(){
 }
 static void sidebarViewTickImpl(){
  if(!sh)return;
- if(sh->stop||fault||sh->sidebarMode!=2){restoreSidebarView();return;}
+ const bool nativeRequested=nativeViewNeedsTracking();
+ const int desiredMode=sh->sidebarMode<=2?int(sh->sidebarMode):0;
+ if(sh->stop||fault||(desiredMode==0&&!nativeRequested)){restoreSidebarView();return;}
  if(sidebarViewConflict){sh->sidebarStatus=-2;return;}
  if(sidebarViewFailed){sh->sidebarStatus=-3;return;}
  if(sidebarViewRendering()){sh->sidebarStatus=2;return;}
@@ -430,23 +503,32 @@ static void sidebarViewTickImpl(){
   }
   NativeSidebarRect window{};const auto area=get<NativeSidebarRect>(0x886FA0);
   if(!nativeSidebarWindow(window)||memcmp(&window,&sidebarViewAppliedWindow,sizeof window)||
-     memcmp(&area,&sidebarViewAppliedArea,sizeof area)){
+     (memcmp(&area,&sidebarViewAppliedArea,sizeof area)&&!nativeViewCurrentGeometry(area,sidebarViewAppliedArea))){
    // Another display owner changed its layout. Do not replay old geometry or
    // saved surfaces over that owner's new generation.
    sidebarViewConflict=true;sh->sidebarStatus=-2;return;
   }
-  nativeSidebarGadgets();sh->sidebarStatus=1;return;
+  if(desiredMode!=nativeSidebarMode){
+   if(!nativeViewQuiesce()){sh->sidebarStatus=2;return;}
+   nativeSidebarMode=desiredMode;InterlockedExchange(&sh->viewZoomBusy,1);
+   const bool applied=nativeSidebarExpandSurfaces()&&sidebarViewGeometry();
+   MemoryBarrier();InterlockedExchange(&sh->viewZoomBusy,0);
+   if(!applied){sh->sidebarStatus=-3;return;}
+   sidebarViewAppliedWindow=window;sidebarViewAppliedArea=get<NativeSidebarRect>(0x886FA0);
+   sidebarViewAppliedPair[0]=get<void*>(0x88731C);sidebarViewAppliedPair[1]=get<void*>(0x8872FC);
+  }
+  nativeSidebarGadgets();sidebarViewRefresh();sh->sidebarStatus=desiredMode==1?3:desiredMode==2?1:0;return;
  }
- NativeSidebarRect window{};if(!nativeSidebarWindow(window)){sh->sidebarStatus=-1;return;}
+ NativeSidebarRect window{};if(!nativeSidebarWindow(window)||!sidebarViewRedrawCompatible()){sh->sidebarStatus=-1;return;}
  for(unsigned i=0;i<11;++i)if(!installRiskSite(nativeSidebarSites[i])){restoreSidebarView();sh->sidebarStatus=-2;return;}
- nativeSidebarInstalled=true;nativeSidebarMode=2;InterlockedExchange(&sh->viewZoomBusy,1);
+ nativeSidebarInstalled=true;nativeSidebarMode=desiredMode;InterlockedExchange(&sh->viewZoomBusy,1);
  const bool applied=nativeSidebarExpandSurfaces()&&sidebarViewGeometry();
  MemoryBarrier();InterlockedExchange(&sh->viewZoomBusy,0);
  if(!applied){restoreSidebarView();sh->sidebarStatus=-1;return;}
  sidebarViewAppliedWindow=window;sidebarViewAppliedArea=get<NativeSidebarRect>(0x886FA0);
  sidebarViewApplied=true;
  sidebarViewAppliedPair[0]=get<void*>(0x88731C);sidebarViewAppliedPair[1]=get<void*>(0x8872FC);
- sh->sidebarStatus=1;
+ sh->sidebarStatus=desiredMode==1?3:desiredMode==2?1:0;
 }
 
 static bool restoreSidebarView(){

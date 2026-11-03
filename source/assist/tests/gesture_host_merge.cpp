@@ -13,6 +13,7 @@
 #include "../source/runtime_feature_demand.h"
 #include "../../suite/source/settings_categories.h"
 #include "../../external_reader/source/projection.h"
+#include "../source/native_viewport_host.h"
 using namespace assist;
 static AdditionalSettings extra;
 struct PanelOptions {bool detached=false,collapsed=false;int x=20,y=150,scale=100,rows=8;} superweaponOptions;
@@ -38,7 +39,7 @@ static short fixtureKey(int key){return physical[key]?short(0x8000):0;}
 #define GetAsyncKeyState fixtureKey
 static uint32_t commandMatch(){return matchId;}static bool foregroundGame(){return foreground;}static bool commandFresh(uint32_t){return fresh;}
 struct State{bool chat=false;int cameraX=0,cameraY=0,width=800,height=600;}snap;
-struct Wire {long moGesturePolicySeq=0,moOrdersPreviewSeq=0;moorders::GesturePolicy moGestures;uint32_t moFeatures=0;struct{int enabled=0;}formationPolicy;moorders::Preview moOrdersPreview,formationPreview;} wire;
+struct Wire {long moGesturePolicySeq=0,moOrdersPreviewSeq=0;moorders::GesturePolicy moGestures;moorders::Options moOptions;uint32_t moFeatures=0;struct{int enabled=0;}formationPolicy;moorders::Preview moOrdersPreview,formationPreview;} wire;
 static Wire*shared=&wire;static int hook=0;
 namespace gameinput {static void keySnapshot(int,uint8_t*keys){std::copy(recorded.begin(),recorded.end(),keys);}}
 namespace modernui {static std::wstring hotkeyName(WORD key){return std::to_wstring(key);}}
@@ -69,6 +70,7 @@ int main(){
  // Policy seqlock fallback is seeded from this session's configuration.
  ++matchId;wire.moGesturePolicySeq|=1;extra.moGestures.keys[0]='H';check(runtimeGesturePolicy().keys[0]=='H');wire.moGesturePolicySeq++;
  Drawing a,b;check(sameDrawing(a,b));a.active=b.active=true;a.preview.count=b.preview.count=1;a.preview.nodeCount=b.preview.nodeCount=1;check(sameDrawing(a,b));b.preview.tick=99;check(sameDrawing(a,b));b.preview.lines[0].to.x=1;check(!sameDrawing(a,b));b=a;b.projection.cameraX=1;check(!sameDrawing(a,b));b=a;b.hint=L"new key";check(!sameDrawing(a,b));b=a;b.preview.nodes[0].z=1;check(!sameDrawing(a,b));
+ b=a;b.transform.generation=1;check(!sameDrawing(a,b));
  {int id=9405;check(suite::categories::row(4,&id,1)==suite::categories::Video);}
  for(int id:{9404,9407,9450,9451,9452,9453,9403,9406,9454,9455,9462,9463,9464})check(suite::categories::row(4,&id,1)==suite::categories::Experimental);
  for(int id:{9400,9401,9402,9440,9446,9460})check(suite::categories::row(1,&id,1)==suite::categories::Control);

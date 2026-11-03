@@ -8,6 +8,14 @@
 // this header is pure geometry and preview data, with no engine calls.
 namespace assist { namespace moorders {
 constexpr uint32_t Fuzzy=1,Area=2,Patrol=4,QuickFormation=8;
+// MO_ExperienceEnhancements@80850c7a: Range is the full scan-box side;
+// PatrolSize is the full square/strip width (native integer half=Size/2).
+struct Options {
+ uint32_t range=4,squad=4,patrolSize=4,nodeStep=2,loopClose=3,loopStep=3,commit=1;
+};
+static_assert(sizeof(Options)==28,"MO policy ABI");
+inline bool validOptions(const Options&o){return o.range>=2&&o.range<=16&&o.squad>=2&&o.squad<=16&&o.patrolSize>=2&&o.patrolSize<=16&&o.nodeStep>=1&&o.nodeStep<=8&&o.loopClose>=2&&o.loopClose<=16&&o.loopStep>=2&&o.loopStep<=16&&o.commit<=1;}
+inline bool sameOptions(const Options&a,const Options&b){return a.range==b.range&&a.squad==b.squad&&a.patrolSize==b.patrolSize&&a.nodeStep==b.nodeStep&&a.loopClose==b.loopClose&&a.loopStep==b.loopStep&&a.commit==b.commit;}
 constexpr int GestureCount=4;
 struct GesturePolicy {
  uint32_t keys[GestureCount]={17,16,'Z',0};
@@ -76,33 +84,34 @@ struct Preview {
  Line lines[Lines]{};Point nodes[Nodes]{};
 };
 inline int distance(Point a,Point b){return std::max(std::abs(a.x-b.x),std::abs(a.y-b.y));}
-inline void sample(Point*nodes,int&n,Point p,bool force=false){
+inline void sample(Point*nodes,int&n,Point p,bool force=false,int step=2){
  if(n&&nodes[n-1].x==p.x&&nodes[n-1].y==p.y)return;
- if(n&&!force&&distance(nodes[n-1],p)<2)return;
+ if(n&&!force&&distance(nodes[n-1],p)<std::clamp(step,1,8))return;
  if(n<Nodes)nodes[n++]=p;else nodes[Nodes-1]=p;
 }
 // Small clicks form a square. An open stroke makes a narrow rectangle; a
 // closed freehand stroke preserves its entire shape, resampled to native's
 // sixteen-node limit rather than truncating the start of a longer stroke.
-inline int patrol(const Point*nodes,int n,Point*out){
- if(!nodes||!out||n<=0)return 0;n=std::min(n,Nodes);
+inline int patrol(const Point*nodes,int n,Point*out,const Options&options={}){
+ if(!nodes||!out||n<=0||!validOptions(options))return 0;n=std::min(n,Nodes);
  Point a=nodes[0],b=nodes[n-1];
- if(n>=4&&distance(a,b)<3){
+ if(n>=4&&distance(a,b)<int(options.loopClose)){
   double lengths[Nodes]{};for(int i=1;i<n;++i)lengths[i]=lengths[i-1]+std::hypot(double(nodes[i].x-nodes[i-1].x),double(nodes[i].y-nodes[i-1].y));
   double closing=std::hypot(double(a.x-b.x),double(a.y-b.y));double total=lengths[n-1]+closing;
-  if(total>=8){int count=std::clamp(int(std::ceil(total/3.)),4,Waypoints),used=0,seg=0;
+  if(total>=8){int count=std::clamp(int(std::ceil(total/options.loopStep)),4,Waypoints),used=0,seg=0;
    for(int i=0;i<count;++i){double at=total*i/count;while(seg+1<n&&lengths[seg+1]<at)++seg;Point left=nodes[seg],right=seg+1<n?nodes[seg+1]:a;double len=seg+1<n?lengths[seg+1]-lengths[seg]:closing;double ratio=len>0?(at-lengths[seg])/len:0;Point p{int(std::lround(left.x+(right.x-left.x)*ratio)),int(std::lround(left.y+(right.y-left.y)*ratio)),0};
     if(!used||distance(out[used-1],p))out[used++]=p;
    }if(used>=4)return used;
   }
  }
- if(distance(a,b)<2){out[0]={b.x-2,b.y-2};out[1]={b.x+2,b.y-2};out[2]={b.x+2,b.y+2};out[3]={b.x-2,b.y+2};return 4;}
+ const int half=int(options.patrolSize/2);
+ if(distance(a,b)<2){out[0]={b.x-half,b.y-half};out[1]={b.x+half,b.y-half};out[2]={b.x+half,b.y+half};out[3]={b.x-half,b.y+half};return 4;}
  double dx=b.x-a.x,dy=b.y-a.y,len=std::hypot(dx,dy);dx/=len;dy/=len;
- const double sideX=-dy*2,sideY=dx*2;
- out[0]={int(std::lround(a.x-dx*2+sideX)),int(std::lround(a.y-dy*2+sideY))};
- out[1]={int(std::lround(b.x+dx*2+sideX)),int(std::lround(b.y+dy*2+sideY))};
- out[2]={int(std::lround(b.x+dx*2-sideX)),int(std::lround(b.y+dy*2-sideY))};
- out[3]={int(std::lround(a.x-dx*2-sideX)),int(std::lround(a.y-dy*2-sideY))};return 4;
+ const double sideX=-dy*half,sideY=dx*half;
+ out[0]={int(std::lround(a.x-dx*half+sideX)),int(std::lround(a.y-dy*half+sideY))};
+ out[1]={int(std::lround(b.x+dx*half+sideX)),int(std::lround(b.y+dy*half+sideY))};
+ out[2]={int(std::lround(b.x+dx*half-sideX)),int(std::lround(b.y+dy*half-sideY))};
+ out[3]={int(std::lround(a.x-dx*half-sideX)),int(std::lround(a.y-dy*half-sideY))};return 4;
 }
 // Fuzzy attack keeps groups large enough to focus fire. The remainder is
 // balanced over the selected targets; no actor is duplicated or omitted.

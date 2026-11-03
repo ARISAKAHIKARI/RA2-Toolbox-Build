@@ -1,0 +1,41 @@
+{
+  "scope": "Compile/run the shared A/R transform contract on Windows x86 and x64.",
+  "pass": true,
+  "results": [
+    {
+      "target": "x86-windows-gnu",
+      "status": "PASS",
+      "checks": 51,
+      "flags": [
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG"
+      ],
+      "assertions_enabled": true,
+      "exe_sha256": "93a6b1e4b0ec38987ee30d7b116042a2f67a6f6ad54c9a91e6563c5cf8eeffc9",
+      "stdout": "Native viewport projection checks=51; assertions enabled; Windows ABI; no game\n"
+    },
+    {
+      "target": "x86_64-windows-gnu",
+      "status": "PASS",
+      "checks": 51,
+      "flags": [
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG"
+      ],
+      "assertions_enabled": true,
+      "exe_sha256": "76db01187cbbc8064b1438c54f2036bbbf17d77bbee5f5e09a6c6e33b915f2f1",
+      "stdout": "Native viewport projection checks=51; assertions enabled; Windows ABI; no game\n"
+    }
+  ],
+  "source_sha256": {
+    "source\\assist\\tests\\native_viewport_projection.cpp": "51d8aa0a1919e1fc62a245e837da984e165c99985e15662f9793e7eec8ec3c31",
+    "source\\shared\\source\\native_viewport_projection.h": "0c1b0ab1c6904d44ad6b240320601c93cad92be28ef61d1f72a492e8179ca4d6"
+  },
+  "game_process_tested": false
+}

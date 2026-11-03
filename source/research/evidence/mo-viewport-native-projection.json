@@ -1,0 +1,370 @@
+{
+  "scope": "Native flat-map projection plus explicit physical-A/logical-R roundtrip contract.\n\nOnly original CoordsToClient/ClientToCoords/CoordsToCell execute in Unicorn.\nThe map and Tactical inverse matrix are synthetic. No map-only zoom adapter,\nhardware rendering, real Windows input, elevation or netplay is validated.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "candidate_installed": false,
+  "game_process_opened": false,
+  "physical_logical_map_fields_added_to_product": false,
+  "results": [
+    {
+      "physical_A": [
+        0,
+        0,
+        632,
+        568
+      ],
+      "logical_R": [
+        0,
+        0,
+        1264,
+        1136
+      ],
+      "percent": 50,
+      "native_render_point": [
+        100,
+        200
+      ],
+      "screen_point": [
+        50,
+        100
+      ],
+      "mapped_native_query_point": [
+        100,
+        200
+      ],
+      "native_cell": [
+        50,
+        60
+      ],
+      "unmapped_physical_query_cell": [
+        46,
+        58
+      ],
+      "status": "PASS"
+    },
+    {
+      "physical_A": [
+        0,
+        0,
+        632,
+        568
+      ],
+      "logical_R": [
+        0,
+        0,
+        843,
+        757
+      ],
+      "percent": 75,
+      "native_render_point": [
+        100,
+        200
+      ],
+      "screen_point": [
+        74,
+        150
+      ],
+      "mapped_native_query_point": [
+        98,
+        199
+      ],
+      "native_cell": [
+        50,
+        60
+      ],
+      "unmapped_physical_query_cell": [
+        48,
+        59
+      ],
+      "status": "PASS"
+    },
+    {
+      "physical_A": [
+        0,
+        0,
+        632,
+        568
+      ],
+      "logical_R": [
+        0,
+        0,
+        632,
+        568
+      ],
+      "percent": 100,
+      "native_render_point": [
+        100,
+        200
+      ],
+      "screen_point": [
+        100,
+        200
+      ],
+      "mapped_native_query_point": [
+        100,
+        200
+      ],
+      "native_cell": [
+        50,
+        60
+      ],
+      "unmapped_physical_query_cell": [
+        50,
+        60
+      ],
+      "status": "PASS"
+    },
+    {
+      "physical_A": [
+        0,
+        0,
+        632,
+        568
+      ],
+      "logical_R": [
+        0,
+        0,
+        506,
+        454
+      ],
+      "percent": 125,
+      "native_render_point": [
+        100,
+        200
+      ],
+      "screen_point": [
+        124,
+        250
+      ],
+      "mapped_native_query_point": [
+        99,
+        199
+      ],
+      "native_cell": [
+        50,
+        60
+      ],
+      "unmapped_physical_query_cell": [
+        52,
+        61
+      ],
+      "status": "PASS"
+    },
+    {
+      "physical_A": [
+        0,
+        0,
+        632,
+        568
+      ],
+      "logical_R": [
+        0,
+        0,
+        421,
+        379
+      ],
+      "percent": 150,
+      "native_render_point": [
+        100,
+        200
+      ],
+      "screen_point": [
+        150,
+        299
+      ],
+      "mapped_native_query_point": [
+        99,
+        199
+      ],
+      "native_cell": [
+        50,
+        60
+      ],
+      "unmapped_physical_query_cell": [
+        54,
+        62
+      ],
+      "status": "PASS"
+    },
+    {
+      "physical_A": [
+        168,
+        0,
+        632,
+        568
+      ],
+      "logical_R": [
+        0,
+        0,
+        1264,
+        1136
+      ],
+      "percent": 50,
+      "native_render_point": [
+        100,
+        200
+      ],
+      "screen_point": [
+        218,
+        100
+      ],
+      "mapped_native_query_point": [
+        100,
+        200
+      ],
+      "native_cell": [
+        50,
+        60
+      ],
+      "unmapped_physical_query_cell": [
+        49,
+        55
+      ],
+      "status": "PASS"
+    },
+    {
+      "physical_A": [
+        168,
+        0,
+        632,
+        568
+      ],
+      "logical_R": [
+        0,
+        0,
+        843,
+        757
+      ],
+      "percent": 75,
+      "native_render_point": [
+        100,
+        200
+      ],
+      "screen_point": [
+        242,
+        150
+      ],
+      "mapped_native_query_point": [
+        98,
+        199
+      ],
+      "native_cell": [
+        50,
+        60
+      ],
+      "unmapped_physical_query_cell": [
+        51,
+        56
+      ],
+      "status": "PASS"
+    },
+    {
+      "physical_A": [
+        168,
+        0,
+        632,
+        568
+      ],
+      "logical_R": [
+        0,
+        0,
+        632,
+        568
+      ],
+      "percent": 100,
+      "native_render_point": [
+        100,
+        200
+      ],
+      "screen_point": [
+        268,
+        200
+      ],
+      "mapped_native_query_point": [
+        100,
+        200
+      ],
+      "native_cell": [
+        50,
+        60
+      ],
+      "unmapped_physical_query_cell": [
+        53,
+        57
+      ],
+      "status": "PASS"
+    },
+    {
+      "physical_A": [
+        168,
+        0,
+        632,
+        568
+      ],
+      "logical_R": [
+        0,
+        0,
+        506,
+        454
+      ],
+      "percent": 125,
+      "native_render_point": [
+        100,
+        200
+      ],
+      "screen_point": [
+        292,
+        250
+      ],
+      "mapped_native_query_point": [
+        99,
+        199
+      ],
+      "native_cell": [
+        50,
+        60
+      ],
+      "unmapped_physical_query_cell": [
+        55,
+        58
+      ],
+      "status": "PASS"
+    },
+    {
+      "physical_A": [
+        168,
+        0,
+        632,
+        568
+      ],
+      "logical_R": [
+        0,
+        0,
+        421,
+        379
+      ],
+      "percent": 150,
+      "native_render_point": [
+        100,
+        200
+      ],
+      "screen_point": [
+        318,
+        299
+      ],
+      "mapped_native_query_point": [
+        99,
+        199
+      ],
+      "native_cell": [
+        50,
+        60
+      ],
+      "unmapped_physical_query_cell": [
+        57,
+        60
+      ],
+      "status": "PASS"
+    }
+  ],
+  "pass": true
+}

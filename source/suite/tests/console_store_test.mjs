@@ -11,7 +11,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const script = fs.readFileSync(path.join(here, '../frontend/app.js'), 'utf8');
 const context = vm.createContext({ console, Date, Map, Set, Object, Number, String, Boolean, RangeError });
 vm.runInContext(script, context);
-const { ConsoleStore, groupControls, encodeHotkey, keyName, canonical, validText, placeAfter } = context.RA2ConsoleCore;
+const { ConsoleStore, groupControls, encodeHotkey, keyName, canonical, validText, placeAfter, groupPresentation } = context.RA2ConsoleCore;
 const tests = [];
 function test(name, run) { tests.push({ name, run }); }
 function setup(controls = []) {
@@ -267,6 +267,25 @@ test('close-check accepts only positive safe nonce values and bounds the count',
   assert.equal(store.drafts.size,10001);assert.equal(store.closed,false);
 });
 
+test('all fifteen groups preserve pinned master controls and recover the saved collapse preference',()=>{
+  for(let group=9601;group<=9615;++group){
+    const controls=[canonical({id:1,type:'toggle',label:'开关',groupHeader:true,collapsible:true,collapsedDefault:true}),canonical({id:2,type:'label',label:'正常状态',collapsible:true})];
+    let view=groupPresentation(controls,true);assert.equal(view.collapsed,true);assert.equal(view.headers.length,1);assert.equal(view.details.length,1);
+    controls[1]=canonical({...controls[1],runtimeError:true});view=groupPresentation(controls,true);assert.equal(view.collapsed,false);assert.equal(view.forced,true);
+    controls[1]=canonical({...controls[1],runtimeError:false});assert.equal(groupPresentation(controls,true).collapsed,true);
+    assert.equal(groupPresentation(controls,false).collapsed,false);assert.equal(groupPresentation(controls,true,true).collapsed,false);
+    assert.equal(groupPresentation(controls,true,false,new Set([2])).forced,true);
+  }
+});
+test('metadata and immediate actions retain the original click time and reject duplicate pending execution',()=>{
+  const {store,messages}=setup([{id:1,type:'button',label:'立即自毁',immediate:true,groupHeader:true,collapsible:true,collapsedDefault:true,runtimeError:true}]);
+  const c=store.getControl(1);for(const key of ['immediate','groupHeader','collapsible','collapsedDefault','runtimeError'])assert.equal(c[key],true);
+  const before=Date.now();assert.equal(store.act(1,'press'),true);const sent=messages.at(-1);assert.ok(sent.inputTime>=before&&sent.inputTime<=Date.now());
+  assert.equal(Object.hasOwn(sent,'receivedAt'),false);assert.equal(store.act(1,'press'),false);assert.equal(messages.length,1);
+  store.receive({kind:'ack',protocol:1,module:0,generation:1,id:1,seq:sent.seq,ok:false,error:'已过期'});
+  assert.equal(store.act(1,'press'),true);assert.ok(messages.at(-1).seq>sent.seq);
+});
+
 let failed=0;
 for (const {name,run} of tests) { try { run(); console.log(`PASS ${name}`); } catch(error) { failed++; console.error(`FAIL ${name}\n${error.stack}`); } }
 if (failed) process.exitCode=1; else console.log(`${tests.length} console model tests passed`);
@@ -277,8 +296,8 @@ if (!failed && process.argv.includes('--browser')) {
   const {chromium} = require(modulePath);
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(),'ra2-console-'));
   const html = path.join(temporary,'console.html');
-  execFileSync('python3',[path.join(here,'../../tools/bundle_console.py'),'--output',html]);
-  const browser = await chromium.launch({headless:true,args:['--no-sandbox']});
+  execFileSync(process.env.CONSOLE_PYTHON || 'python3',[path.join(here,'../../tools/bundle_console.py'),'--output',html]);
+  const browser = await chromium.launch({headless:true,...(process.env.CONSOLE_BROWSER_CHANNEL?{channel:process.env.CONSOLE_BROWSER_CHANNEL}:{}),args:['--no-sandbox']});
   let page;const errors=[],consoleErrors=[];
   const screenshotPath=process.env.CONSOLE_SCREENSHOT || path.join(temporary,'console-desktop.png');
   const diagnosticsPrefix=screenshotPath.replace(/\.png$/i,'');
@@ -370,6 +389,20 @@ if (!failed && process.argv.includes('--browser')) {
     await page.getByText('<img src=x onerror=window.__bad=1>',{exact:true}).waitFor();
     assert.equal(await page.locator('#settings img').count(),0);
     assert.equal(await page.evaluate(()=>window.__bad),undefined);
+    // Exercise real DOM folds, pinned switches, hover-only explanations and
+    // error recovery, including all groups exported by the native metadata.
+    const folded=[];for(let n=9601;n<=9615;++n){const group=`参数组 ${n}`;folded.push({id:n*10,type:'toggle',label:`主开关 ${n}`,group,groupHeader:true,collapsible:true,collapsedDefault:true,hint:'只在悬停时显示说明'}, {id:n*10+1,type:'number',label:`子参数 ${n}`,group,text:'3',collapsible:true,collapsedDefault:true,hint:'子参数说明'}, {id:n*10+2,type:'label',label:`正常状态 ${n}`,group,collapsible:true,collapsedDefault:true});}
+    const foldedState=(controls)=>({kind:'state',protocol:1,module:0,generation:4,revision:revision++,page:'cursor',title:'收纳回归',controls,status:''});
+    await receive(foldedState(folded));await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
+    await page.getByLabel('主开关 9601',{exact:true}).waitFor();assert.equal(await page.locator('.settings-group.collapsed').count(),15);
+    assert.equal(await page.getByLabel('子参数 9601',{exact:true}).isVisible(),false,'folding details must preserve the master switch');
+    const first=page.locator('.settings-group').filter({has:page.getByText('参数组 9601',{exact:true})});
+    assert.equal(await first.locator('.group-header-controls .setting-row').getAttribute('title'),'只在悬停时显示说明');assert.equal(await first.locator('.setting-description:visible').count(),0,'ordinary help must not occupy a row');
+    const failing=new Set([9607,9612,9613,9614]);await receive(foldedState(folded.map(c=>failing.has(Math.floor(c.id/10))&&c.type==='label'?{...c,label:`错误待还原 ${Math.floor(c.id/10)}`,runtimeError:true}:c)));
+    for(const n of failing){const section=page.locator('.settings-group').filter({has:page.getByText(`参数组 ${n}`,{exact:true})});await section.scrollIntoViewIfNeeded();await page.getByText(`错误待还原 ${n}`,{exact:true}).waitFor();assert.equal(await section.locator('.group-summary').getAttribute('aria-expanded'),'true');await section.locator('.group-summary').click();assert.equal(await section.locator('.group-summary').getAttribute('aria-expanded'),'true','a real error cannot be collapsed');}
+    await receive(foldedState(folded));await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===15);assert.equal(await page.locator('.settings-group.collapsed').count(),15,'recovery restores the prior closed preference');
+    const danger=[{id:9185,type:'button',label:'立即自毁',immediate:true}];await receive({kind:'state',protocol:1,module:0,generation:5,revision:1,page:'cursor',controls:danger,status:''});await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
+    const button=page.getByRole('button',{name:'立即自毁',exact:true});await button.waitFor();const sentBefore=await page.evaluate(()=>window.__sent.length);await button.dblclick();const submitted=await page.evaluate(()=>window.__sent.slice(-1)[0]);assert.equal(await page.evaluate(()=>window.__sent.length),sentBefore+1);assert.equal(submitted.action,'press');assert.ok(submitted.inputTime>0);assert.equal(Object.hasOwn(submitted,'receivedAt'),false);
     assert.deepEqual(errors,[],'browser must not emit uncaught JS errors');
     console.log('PASS browser fixture: all control types, drafts, gestures, module navigation, error/persistence status, 3000-row virtualization, responsive layout');
   } finally {

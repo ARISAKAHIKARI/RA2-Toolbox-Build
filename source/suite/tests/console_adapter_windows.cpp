@@ -1,3 +1,6 @@
+#ifdef NDEBUG
+#error "console regression checks must be enabled"
+#endif
 // Real Win32 fixture: compile/run on Windows; cross compilation alone is not
 // evidence that native control dispatch or desktop visibility passed.
 #define UNICODE
@@ -13,7 +16,7 @@ constexpr UINT MutateChoice=WM_APP+180,TryShow=WM_APP+181,ReplaceEdit=WM_APP+182
 struct Fixture {
  Host host;HANDLE ready=CreateEventW(nullptr,TRUE,FALSE,nullptr),mutated=CreateEventW(nullptr,FALSE,FALSE,nullptr),nestedEntered=CreateEventW(nullptr,TRUE,FALSE,nullptr),nestedRelease=CreateEventW(nullptr,TRUE,FALSE,nullptr),prepareAck=CreateEventW(nullptr,TRUE,FALSE,nullptr),verifyAck=CreateEventW(nullptr,TRUE,FALSE,nullptr);
  HWND pane=nullptr,toggle=nullptr,edit=nullptr,choice=nullptr,list=nullptr,hotkey=nullptr,slider=nullptr,readonlyEdit=nullptr,tabs=nullptr,noIdEdit=nullptr,editableCombo=nullptr;
- std::atomic<DWORD> thread{0},actionThread{0};std::atomic<unsigned> toggles{0},edits{0},selections{0},activations{0},keys{0},scrolls{0},tabChanges{0},anonymousEdits{0},comboEdits{0};
+ std::atomic<DWORD> thread{0},actionThread{0};std::atomic<unsigned> toggles{0},edits{0},selections{0},activations{0},keys{0},scrolls{0},tabChanges{0},anonymousEdits{0},comboEdits{0},immediatePresses{0};
  std::atomic<int> checked{0},key{0},position{0};std::atomic<bool> hidden{false},dialogRecognized{false},nested{false},reentered{false};
  std::atomic<bool> closingScenario{false},prepareAfterActive{false},preparedUnchanged{false},prepareArgs{false};std::atomic<DWORD> prepareThread{0};std::atomic<unsigned> prepareCount{0};
  int preparedChecked=0;std::wstring preparedText;unsigned preparedToggles=0,preparedEdits=0;
@@ -21,8 +24,8 @@ struct Fixture {
  ~Fixture(){CloseHandle(ready);CloseHandle(mutated);CloseHandle(nestedEntered);CloseHandle(nestedRelease);CloseHandle(prepareAck);CloseHandle(verifyAck);}
 };
 Fixture* fixture=nullptr;
-int failures=0;
-void check(bool value,const char* label){if(!value){++failures;std::fprintf(stderr,"FAIL %s\n",label);}}
+int failures=0,checks=0;
+void check(bool value,const char* label){++checks;if(!value){++failures;std::fprintf(stderr,"FAIL %s\n",label);}}
 LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b){
  auto& f=*fixture;
  if(m==WM_CREATE){
@@ -41,11 +44,14 @@ LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b){
   ctl(WC_TREEVIEWW,L"原生树",0,10,370,260,108);
   ctl(L"STATIC",L"可输入",0,10,410,80,0);f.editableCombo=ctl(L"COMBOBOX",L"125",CBS_DROPDOWN,110,410,160,109);SendMessageW(f.editableCombo,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(L"100"));SendMessageW(f.editableCombo,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(L"150"));SetWindowTextW(f.editableCombo,L"125");
   ctl(L"BUTTON",L"嵌套任务",BS_PUSHBUTTON,10,450,260,111);
+  auto immediate=ctl(L"BUTTON",L"即时操作",BS_PUSHBUTTON,10,490,260,112);
+  for(const auto*key:{L"RA2.Console.Immediate",L"RA2.Console.Collapsible",L"RA2.Console.CollapsedDefault",L"RA2.Console.GroupHeader",L"RA2.Console.RuntimeError"})SetPropW(immediate,key,reinterpret_cast<HANDLE>(1));
   return 0;
  }
  if(m==WM_COMMAND){f.actionThread=GetCurrentThreadId();int id=LOWORD(a),notification=HIWORD(a);
   if(f.nested)f.reentered=true;
   if(id==111&&notification==BN_CLICKED){f.nested=true;SetEvent(f.nestedEntered);DWORD started=GetTickCount();while(WaitForSingleObject(f.nestedRelease,0)!=WAIT_OBJECT_0&&DWORD(GetTickCount()-started)<4000){MSG message{};while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){TranslateMessage(&message);DispatchMessageW(&message);}MsgWaitForMultipleObjectsEx(0,nullptr,10,QS_ALLINPUT,MWMO_INPUTAVAILABLE);}f.nested=false;if(f.closingScenario)SetWindowTextW(f.noIdEdit,L"当前操作的最终值");return 0;}
+  if(id==112&&notification==BN_CLICKED)++f.immediatePresses;
   if(id==100&&notification==BN_CLICKED){++f.toggles;f.checked=int(SendMessageW(f.toggle,BM_GETCHECK,0,0));}
   if(id==101&&notification==EN_CHANGE)++f.edits;
   if(id==102&&notification==CBN_SELCHANGE)++f.selections;
@@ -84,6 +90,18 @@ std::shared_ptr<const consolemodel::Snapshot> awaitSnapshot(Fixture& f,const std
 bool action(Fixture& f,const consolemodel::Snapshot& snapshot,uint32_t id,const char* verb,uint64_t seq,int value=0,const std::string& text={},bool checked=false,bool expected=true){
  consolemodel::Action a;a.module=snapshot.module;a.generation=snapshot.generation;a.id=id;a.seq=seq;a.action=verb;a.value=value;a.text=text;a.checked=checked;
  bool admitted=f.host.post(a);if(!admitted){check(!expected,"invalid action rejected at admission");return false;}consolemodel::Ack receipt;bool got=false;pumpUntil([&]{while(f.host.takeAck(receipt))if(receipt.seq==seq){got=true;return true;}return false;});check(got,"action receipt");if(got){f.lastAck=receipt;check(receipt.ok==expected,"action result");check(receipt.ok?receipt.revision>0:receipt.revision==0,"success receipt promises a future authoritative revision");}return got&&receipt.ok;
+}
+void immediateRegression(Fixture& f){
+ f.host.navigate(0,-1,"video/immediate");auto snapshot=awaitSnapshot(f,[](const consolemodel::Snapshot&s){return s.page=="video/immediate";});if(!snapshot)return;
+ const auto*c=find(*snapshot,"button","即时操作"),*nested=find(*snapshot,"button","嵌套任务");check(c&&nested,"immediate controls sampled");if(!c||!nested)return;
+ check(c->immediate&&c->groupHeader&&c->collapsible&&c->collapsedDefault&&c->runtimeError,"all five native metadata flags reach snapshot");
+ auto make=[&](uint64_t seq,uint32_t id){consolemodel::Action a;a.module=0;a.generation=snapshot->generation;a.id=id;a.seq=seq;a.action="press";return a;};
+ auto receipt=[&](uint64_t seq,bool okay){bool got=false;pumpUntil([&]{consolemodel::Ack a;while(f.host.takeAck(a))if(a.seq==seq){got=true;check(a.ok==okay,"immediate disposition");check(okay||(!a.error.empty()&&!a.revision),"expired operation has an explicit error and no success revision");}return got;});check(got,"immediate acknowledgement");};
+ auto fresh=make(1,c->id);fresh.inputTime=consoleadapter::detail::utcMilliseconds();fresh.receivedAt=1;check(f.host.post(fresh),"fresh immediate admitted");receipt(1,true);check(f.immediatePresses==1,"fresh operation executes exactly once despite caller supplied stale receivedAt");
+ auto absent=make(2,c->id);check(f.host.post(absent),"missing click time admitted for explicit rejection");receipt(2,false);check(f.immediatePresses==1,"missing renderer timestamp cannot execute");
+ auto old=make(3,c->id);old.inputTime=consoleadapter::detail::utcMilliseconds()-1000;check(f.host.post(old),"old renderer operation queued");receipt(3,false);check(f.immediatePresses==1,"time before native admission counts against immediate freshness");
+ ResetEvent(f.nestedEntered);ResetEvent(f.nestedRelease);f.reentered=false;auto hold=make(4,nested->id);check(f.host.post(hold),"blocking operation admitted");check(pumpUntil([&]{return WaitForSingleObject(f.nestedEntered,0)==WAIT_OBJECT_0;}),"native modal holds service");
+ auto queued=make(5,c->id);queued.inputTime=consoleadapter::detail::utcMilliseconds();check(f.host.post(queued),"immediate operation initially fresh behind modal");pumpUntil([]{return false;},180);check(f.immediatePresses==1,"queued immediate cannot run inside nested native pump");SetEvent(f.nestedRelease);receipt(5,false);check(f.immediatePresses==1&&!f.reentered,"expired operation never executes after modal returns");
 }
 void closePreparationRegression(Fixture& f){
  f.host.navigate(0,-1,"video/shutdown");
@@ -159,7 +177,8 @@ int main(){
  }
  PostMessageW(f.pane,TryShow,0,0);WaitForSingleObject(f.mutated,4000);check(f.hidden,"backend pane cannot become visible");check(f.dialogRecognized,"backend-owned native modal belongs to console focus");
  f.host.navigate(1,-1,"monitor");check(!f.host.latestSnapshot(),"navigation never reuses previous module snapshot");
+ immediateRegression(f);
  closePreparationRegression(f);
  PostMessageW(f.pane,WM_CLOSE,0,0);check(WaitForSingleObject(thread,4000)==WAIT_OBJECT_0,"owner exits");CloseHandle(thread);DestroyWindow(shell);
- std::printf("console adapter Win32 fixture: %d failures\n",failures);return failures?1:0;
+ std::printf("console adapter Win32 fixture: %d checks, %d failures\n",checks,failures);return failures?1:0;
 }

@@ -13,7 +13,7 @@ def main():
  src=Path(__file__).resolve().parents[1]/'source';sidebar=(src/'sidebar.h').read_text(encoding='utf-8');placement=(src/'placement_bridge.h').read_text(encoding='utf-8');bridge=(src/'bridge.cpp').read_text(encoding='utf-8');master=(src/'master_tech_bridge.h').read_text(encoding='utf-8')
  names=['static int typeSlot(uint32_t type)','static int typeTab(','static void sidebarRedraw(','static int canonicalKind(','static bool hasCameo(','static uint32_t techFactory(','static bool techTransitionProductionPending(','static bool ensureTechCameo(','static void restoreTech(','static void observeMasterCameos(','static void refreshTech(']
  functions='\n'.join(block(sidebar,x) for x in names)
- retire='\n'.join(block(placement,x) for x in ['static bool nativeTechRetired(','static bool nativePlacementRetired(','static bool setTechSites('])
+ retire='\n'.join(block(placement,x) for x in ['static bool nativeTextTechRetired(','static bool nativeTechRetired(','static bool nativePlacementRetired(','static bool setTechSites('])
  place=placement[placement.index(' if((sh->flags&BuildAnywhere)&&sh->placementImplementation==2)'):placement.index(' if(airpathpolicy::native(',placement.index('static void placementTick()'))]
  dispatch=block(bridge,'else if(c==OpenTech)')+'\n'+block(bridge,'else if(c==Produce||c==CancelTechProduction)')
  code=r'''
@@ -60,7 +60,12 @@ static bool dataApplyOK=true,dataRestoreOK=true,dataOwned=false;static int dataA
 static bool applyTechData(uint32_t){++dataApplies;if(!dataApplyOK)return false;dataOwned=true;return true;}
 static bool restoreTechData(){++dataRestores;if(dataOwned&&!dataRestoreOK)return false;dataOwned=false;return true;}
 static bool techDataPending(){return dataOwned;}
+static bool restoreTechParameters(){return true;}
+static bool requestTechParameters(uint32_t){return true;}
+static bool techParametersRetired(){return true;}
+static bool restoreTechEnhanceParameters(){return true;} // independent hardware modes off
 static bool techDataOwns(uint32_t){return dataOwned;}
+static bool techLegacyEnhancementOwns(uint32_t){return false;} // legacy enhancement off in this mode fixture
 static bool nativeProduceEvent(uint32_t,const Type&,bool=false,int kind=0x0E){++events;eventKind=kind;return true;}
 static void watchReservedSidebar(uint32_t,int,int,uint32_t,DWORD){++watches;}
 static hookregistry::Registry<> codeHookRegistry;

@@ -22,6 +22,24 @@ static techenhancement::IdentityState enhancementWorld(){
  // there; only an actual world/session change or rewind retires old data.
  return scenario==enhancementScenario&&session==enhancementSession&&frame>=enhancementFrame?State::Current:State::Retired;
 }
+// A legacy TechLevel writer may still be the only permission keeping a
+// native in-flight product legal. Do not restore it before async DR readiness.
+static bool techLegacyEnhancementOwns(uint32_t type){
+ if(enhancementWorld()==techenhancement::IdentityState::Retired)return false;
+ for(unsigned i=0;i<techenhancement::Count;++i){const auto&r=enhancedTypes[i];if(r.owned&&r.pointer==type&&techenhancement::inspect(techenhancement::Rules[i],r,read)!=techenhancement::IdentityState::Retired)return true;}
+ return false;
+}
+static bool techLegacyEnhancementProductionPending(uint32_t house){
+ bool owned=false;for(const auto&r:enhancedTypes)owned|=r.owned;if(!owned)return false;
+ const unsigned offsets[]={0x53AC,0x53B0,0x53B4,0x53B8,0x53BC,0x53CC};
+ for(unsigned offset:offsets){uint32_t factory=0,product=0,items=0,owner=0;int count=0;
+  if(!read(house+offset,&factory,4))return true;if(!factory)continue;
+  if(factory<0x10000||!read(factory+0x6C,&owner,4)||owner!=house||!read(factory+0x58,&product,4)||!read(factory+0x44,&items,4)||!read(factory+0x50,&count,4)||count<0||count>128)return true;
+  if(product&&(product<0x10000||techLegacyEnhancementOwns(typeOf(product,kind(product)))))return true;
+  if(count&&(items<0x10000||uint64_t(items)+uint64_t(count)*4>UINT32_MAX))return true;
+  for(int i=0;i<count;++i){uint32_t type=0;if(!read(items+uint32_t(i)*4,&type,4)||techLegacyEnhancementOwns(type))return true;}
+ }return false;
+}
 static bool restoreTechEnhancement(){
  const auto result=techenhancement::restoreRecords(enhancedTypes,enhancementWorld(),read,enhancementWrite);
  enhancementRequested=false;enhancementRestoring=!result.complete;enhancementConflict=!result.ok;
@@ -32,6 +50,9 @@ static bool restoreTechEnhancement(){
 }
 static void techEnhancementTick(DWORD now){
  if(!sh)return;
+ if(sh->techEnhance&&sh->techEnhanceImplementation==1&&enhancementRequested&&enhancementWorld()==techenhancement::IdentityState::Current&&techLegacyEnhancementProductionPending(enhancementHouse)){
+  enhancementFrame=get<int>(0xA8ED84);deferTechEnhancementParameters();return;
+ }
  if(techDataBlocksEnhancement()){
   const bool restored=restoreTechEnhancement();
   sh->techEnhanceStatus=restored?0:techenhancement::Incompatible;return;

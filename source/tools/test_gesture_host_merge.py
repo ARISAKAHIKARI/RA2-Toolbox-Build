@@ -57,9 +57,13 @@ assert 'if(runtimeMiddleOwnsNow()){typeTap.clear();variantTap.clear();hotkeyPend
 assert main.count('serviceSuperweaponPanel();') == 1
 assert 'send(SelectSuper,index,int(instance),0,false,type)' in main
 assert 'superweaponOptions.enabled=enabled&&extra.superweaponPanel&&overlayvisibility::visible();' in main
-for removed in ('nativeviewportprojection', 'viewportSerial'):
-    assert removed not in main + io
-assert 'shared->sidebarMode=extra.sidebarEnabled&&extra.sidebarMode==2?2u:0u;' in io
+# The map-only viewport is now a separately gated experimental feature. Host
+# announces the handshake and delegates capability selection; the Host must
+# never mutate Runtime's seqlock directly.
+assert 'shared->viewportHostCapabilities=nativeviewportprojection::HostHandshake' in main
+assert 'shared->viewportHostCapabilities=nativeviewhost::capabilityRequest(shared)' in main
+assert 'viewportSerial' not in main + io
+assert 'shared->sidebarMode=extra.sidebarEnabled&&extra.sidebarMode<=2?extra.sidebarMode:0u;' in io
 assert 'shared->pauseViewKeys[0]=extra.pauseKeys[0]' in io
 controls = read('tactical_controls.h')
 for id in (9400, 9401, 9402, 9405):

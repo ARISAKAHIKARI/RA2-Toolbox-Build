@@ -33,6 +33,11 @@ constexpr UINT_PTR PaneSubclass = 0x636f6e70, ControlSubclass = 0x636f6e63;
 constexpr DWORD SamplePeriod = 200;
 class Host;
 namespace detail {
+inline uint64_t utcMilliseconds(){
+ FILETIME time{};GetSystemTimeAsFileTime(&time);
+ const uint64_t ticks=(uint64_t(time.dwHighDateTime)<<32)|time.dwLowDateTime;
+ return ticks/10000-11644473600000ull;
+}
 inline std::string utf8(const std::wstring& value) {
  if(value.empty())return {};
  int n=WideCharToMultiByte(CP_UTF8,0,value.data(),int(value.size()),nullptr,0,nullptr,nullptr);
@@ -135,6 +140,11 @@ class Host {
   // These are lifetime-stable metadata supplied on the owning module thread.
   // The compatibility tree's old folds/scroll offsets do not own DOM layout.
   if(auto group=reinterpret_cast<const wchar_t*>(GetPropW(w,L"RA2.Console.Group")))c.group=detail::utf8(group);
+   c.runtimeError=GetPropW(w,L"RA2.Console.RuntimeError")!=nullptr;
+   c.groupHeader=GetPropW(w,L"RA2.Console.GroupHeader")!=nullptr;
+   c.collapsible=GetPropW(w,L"RA2.Console.Collapsible")!=nullptr;
+   c.collapsedDefault=GetPropW(w,L"RA2.Console.CollapsedDefault")!=nullptr;
+   c.immediate=GetPropW(w,L"RA2.Console.Immediate")!=nullptr;
   if(GetPropW(w,L"RA2.Console.Skip"))c.visible=false;
   if(auto row=GetPropW(w,L"RA2.Console.Row")){const LONG top=LONG(reinterpret_cast<INT_PTR>(row)-1),height=MulDiv(out.rect.bottom-out.rect.top,96,int(modernui::windowDpi(w)));out.rect.top=top;out.rect.bottom=top+height;c.row=int(top);}
   if(auto column=GetPropW(w,L"RA2.Console.Column")){const LONG left=LONG(reinterpret_cast<INT_PTR>(column)-1),width=MulDiv(out.rect.right-out.rect.left,96,int(modernui::windowDpi(w)));out.rect.left=left;out.rect.right=left+width;c.column=int(left);}
@@ -195,6 +205,9 @@ class Host {
   if(!entry||!IsWindow(entry->window))return "设置控件已经失效";HWND w=entry->window;
   if(!detail::visibleStyle(w,p.window.load())||!detail::enabled(w,p.window.load()))return "此设置当前不可用";
   auto current=read(p,*entry);auto& c=current.control;if(!c.visible)return "此控件不属于当前设置页面";if(!c.enabled)return c.hint.empty()?"此设置当前不可用":c.hint;
+   // Immediate game actions resolve selection only at the current input
+   // edge. Owner-thread stalls and browser delivery cannot renew that edge.
+   if(c.immediate&&(action.action!="press"||!consolemodel::immediateFresh(action,GetTickCount64(),detail::utcMilliseconds())))return "本次即时操作已过期，请重新选择后点击；不会延后执行";
   if(c.type=="choice"&&current.optionIdentity!=entry->optionIdentity){entry->token=nextToken_.fetch_add(1);entry->optionIdentity=current.optionIdentity;p.lastContent.clear();p.dirty=true;return "选项清单已经更新，请重新选择";}
   std::wstring value;if(!detail::wide(action.text,value)||value.find(L'\0')!=std::wstring::npos)return "无效的设置文本";
   UINT notification=0;bool notifyCommand=true;const auto& verb=action.action;const int nativeId=GetDlgCtrlID(w);
@@ -274,7 +287,8 @@ public:
   {std::lock_guard<std::mutex> lock(navigationMutex_);if(selected_.module!=action.module||!latest_||latest_->module!=action.module||latest_->generation!=action.generation)return false;}
   auto& p=ports_[action.module];std::lock_guard<std::mutex> admission(p.submissionMutex);if(closing_||!p.window.load()||action.generation!=p.generation)return false;
   unsigned count=outstanding_.load();while(count<512&&!outstanding_.compare_exchange_weak(count,count+1)){}if(count>=512)return false;
-  if(!p.actions.tryPush(action)){--outstanding_;return false;}wake(p);return true;
+  auto admitted=action;admitted.receivedAt=GetTickCount64();
+  if(!p.actions.tryPush(admitted)){--outstanding_;return false;}wake(p);return true;
  }
  void dirty(unsigned module){if(module<ports_.size()){ports_[module].dirty=true;wake(ports_[module]);}}
  std::shared_ptr<const consolemodel::Snapshot> takeSnapshot(){notificationPending_=false;std::lock_guard<std::mutex> lock(navigationMutex_);if(!snapshotPending_)return {};snapshotPending_=false;return latest_;}

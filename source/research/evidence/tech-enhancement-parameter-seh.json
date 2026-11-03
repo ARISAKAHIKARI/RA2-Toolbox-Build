@@ -1,0 +1,98 @@
+{
+  "pass": true,
+  "scope": "Run the exact TechEnhance product SEH guard in a standalone Windows x86 process.",
+  "source_sha256": {
+    "source/assist/source/tech_ui_breakpoint_guard.h": "52b7843f28beb5fb8ac40d24e91f32288b9e2c480d009eae0b6f55aeee5e322e",
+    "source/assist/tests/tech_enhancement_parameter_seh_boundary.cpp": "0ba753325c2b60e20682f787d92e02c8ce078143e02ca8e888a4f8f205b386ca",
+    "source/assist/tests/tech_enhancement_parameter_seh.cpp": "72a68bca4ef3d5a5f3042eadf16a28d9da114442ce932ef12a46cd657850e369",
+    "source/assist/tests/tech_enhancement_parameter_seh.py": "3d0b336d9adeae3e5d3b8406e969cd1cc81d2a88ff132b0a43e1a24b0e3aba03"
+  },
+  "source_hash_stable": true,
+  "assertions_enabled": true,
+  "game_process_tested": false,
+  "admission_and_engine_callbacks_modeled": true,
+  "product_guard_unmodified": true,
+  "exe_sha256": "0f1a41e212ac6ca42bf058f9bbda764d9ba1a40a07bb482a4c4e81ac4fa74805",
+  "object_sha256": "9a8be6e3a00ce58e155516918130c9766558c743e07d292f3e43af19063a65f4",
+  "commands": [
+    [
+      "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+      "c++",
+      "-target",
+      "x86-windows-msvc",
+      "-nostdlib",
+      "-nostdinc",
+      "-O2",
+      "-fms-extensions",
+      "-fno-stack-protector",
+      "-c",
+      "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\tech_enhancement_parameter_seh_boundary.cpp",
+      "-o",
+      "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\tech-enhance-parameter-implementation\\seh-final\\probe-seh.o"
+    ],
+    [
+      "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+      "c++",
+      "-target",
+      "x86-windows-gnu",
+      "-std=c++17",
+      "-O2",
+      "-UNDEBUG",
+      "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\tech_enhancement_parameter_seh.cpp",
+      "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\tech-enhance-parameter-implementation\\seh-final\\probe-seh.o",
+      "-o",
+      "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\tech-enhance-parameter-implementation\\seh-final\\probe-seh.exe"
+    ]
+  ],
+  "runs": [
+    {
+      "exit_code": 0,
+      "stdout": "PASS: real Windows x86 product Probe SEH success/AV/nested/reject/depth16; finally LIFO and LastError; classifier AV fails closed; modeled admission/engine callbacks, no game\n"
+    },
+    {
+      "exit_code": 0,
+      "stdout": "PASS: real Windows x86 product Probe SEH success/AV/nested/reject/depth16; finally LIFO and LastError; classifier AV fails closed; modeled admission/engine callbacks, no game\n"
+    },
+    {
+      "exit_code": 0,
+      "stdout": "PASS: real Windows x86 product Probe SEH success/AV/nested/reject/depth16; finally LIFO and LastError; classifier AV fails closed; modeled admission/engine callbacks, no game\n"
+    },
+    {
+      "exit_code": 0,
+      "stdout": "PASS: real Windows x86 product Probe SEH success/AV/nested/reject/depth16; finally LIFO and LastError; classifier AV fails closed; modeled admission/engine callbacks, no game\n"
+    },
+    {
+      "exit_code": 0,
+      "stdout": "PASS: real Windows x86 product Probe SEH success/AV/nested/reject/depth16; finally LIFO and LastError; classifier AV fails closed; modeled admission/engine callbacks, no game\n"
+    },
+    {
+      "exit_code": 0,
+      "stdout": "PASS: real Windows x86 product Probe SEH success/AV/nested/reject/depth16; finally LIFO and LastError; classifier AV fails closed; modeled admission/engine callbacks, no game\n"
+    },
+    {
+      "exit_code": 0,
+      "stdout": "PASS: real Windows x86 product Probe SEH success/AV/nested/reject/depth16; finally LIFO and LastError; classifier AV fails closed; modeled admission/engine callbacks, no game\n"
+    },
+    {
+      "exit_code": 0,
+      "stdout": "PASS: real Windows x86 product Probe SEH success/AV/nested/reject/depth16; finally LIFO and LastError; classifier AV fails closed; modeled admission/engine callbacks, no game\n"
+    },
+    {
+      "exit_code": 0,
+      "stdout": "PASS: real Windows x86 product Probe SEH success/AV/nested/reject/depth16; finally LIFO and LastError; classifier AV fails closed; modeled admission/engine callbacks, no game\n"
+    },
+    {
+      "exit_code": 0,
+      "stdout": "PASS: real Windows x86 product Probe SEH success/AV/nested/reject/depth16; finally LIFO and LastError; classifier AV fails closed; modeled admission/engine callbacks, no game\n"
+    }
+  ],
+  "checks": [
+    "normal stdcall result",
+    "real PAGE_NOACCESS AV handled",
+    "nested AV unwinds in LIFO finally",
+    "rejected admission never invokes native model",
+    "depth16 rejection and exact recovery",
+    "LastError on success/fault/nesting/rejection",
+    "VEH classifier guard catches only expected AV path"
+  ]
+}

@@ -8,7 +8,9 @@ static int selectedTypeIndex(){
 static WORD typeBinding(const char* id){for(auto&b:typeBindings)if(b.id==id)return b.key;return 0;}
 static WORD comparableKey(WORD k){auto value=keygesture::normalize(k);return keygesture::mode(value)==keygesture::Mode::Hold?WORD(value&~keygesture::ModeMask):value;}
 static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
- if(extra.allHotkeys||!LOBYTE(key))return false;key=comparableKey(key);
+ if(!LOBYTE(key))return false;
+ if(LOBYTE(extra.destructSelectedOwnerKey)&&hotkeyroute::canonical(key)==hotkeyroute::canonical(WORD(extra.destructSelectedOwnerKey)))return true;
+ if(extra.allHotkeys)return false;key=comparableKey(key);
  for(auto k:hotkeys)if(comparableKey(k)==key)return true;
  for(auto&b:swBindings)if(comparableKey(b.key)==key)return true;
  if(ignore.empty())for(auto&b:typeBindings)if(comparableKey(b.key)==key)return true;
@@ -18,6 +20,21 @@ static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
  if(comparableKey(WORD(extra.variantKey))==key)return true;
  if(comparableKey(WORD(extra.placementEventKey))==key)return true;
  return (!toggle&&comparableKey(csKey)==key)||comparableKey(advancedKey)==key||comparableKey(unloadKey)==key||comparableKey(ejectKey)==key||comparableKey(csHoldKey)==key||comparableKey(magnetronKey)==key;
+}
+static bool destructOwnerKeyConflict(WORD key){
+ if(!LOBYTE(key))return false;
+ const auto physical=hotkeyroute::canonical(key);auto same=[&](uint32_t chord){return LOBYTE(chord)&&hotkeyroute::canonical(WORD(chord))==physical;};
+ for(auto chord:hotkeys)if(same(chord))return true;
+ for(const auto&b:swBindings)if(same(b.key))return true;
+ for(const auto&b:typeBindings)if(same(b.key))return true;
+ for(auto chord:socialKeys)if(same(chord))return true;
+ for(auto chord:extra.watchKeys)if(same(chord))return true;
+ for(auto chord:extra.viewZoomKeys)if(same(chord))return true;
+ for(auto chord:extra.missionModeKeys)if(same(chord))return true;
+ for(auto chord:extra.formationKeys)if(same(chord))return true;
+ for(auto chord:extra.pauseKeys)if(same(chord))return true;
+ for(uint32_t chord:{uint32_t(idleAircraftKey),uint32_t(csKey),uint32_t(advancedKey),uint32_t(unloadKey),uint32_t(ejectKey),uint32_t(csHoldKey),uint32_t(magnetronKey),extra.variantKey,extra.placementEventKey,extra.stickyKey,extra.sidebarKey,extra.overlayKey})if(same(chord))return true;
+ return false;
 }
 static void syncTypeConfig(){
  if(!shared)return;

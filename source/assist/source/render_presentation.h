@@ -36,7 +36,7 @@ template<class Request>auto neuralFlag(const Request&r,int)->decltype(bool(r.neu
 template<class Request>bool neuralFlag(const Request&,long){return false;}
 template<class Request>bool compatible(const Request&a,const Request&b){
  return a.pid==b.pid&&a.match==b.match&&a.context.token==b.context.token&&
-  a.context.window==b.context.window&&a.context.width==b.context.width&&a.context.height==b.context.height&&
+  a.context.window==b.context.window&&a.context.width==b.context.width&&a.context.height==b.context.height&&a.context.projection==b.context.projection&&
   a.reveal==b.reveal&&a.generation==b.generation&&a.materialRefresh==b.materialRefresh&&
   a.detail==b.detail&&a.colorPrecision==b.colorPrecision&&a.paletteRange==b.paletteRange&&
   a.pixelScaleMode==b.pixelScaleMode&&gpuFlag(a,0)==gpuFlag(b,0)&&neuralFlag(a,0)==neuralFlag(b,0)&&a.width==b.width&&a.height==b.height&&
@@ -87,8 +87,8 @@ public:
  void observe(uintptr_t window,uint32_t pid,uint32_t match,int width,int height,const external::mainview::View&view,uint32_t now){
   key={0,window,pid,match,width,height};view_=view;tick_=now;valid_=true;
  }
- bool retain(uintptr_t window,uint32_t pid,uint32_t match,int width,int height,uint32_t now)const{
-  return valid_&&key.window==window&&key.pid==pid&&key.match==match&&key.width==width&&key.height==height&&recent(now,tick_,ViewReadGrace);
+ bool retain(uintptr_t window,uint32_t pid,uint32_t match,int width,int height,uint32_t now,const nativeviewportprojection::Transform&transform={})const{
+  return valid_&&key.window==window&&key.pid==pid&&key.match==match&&key.width==width&&key.height==height&&view_.transform==transform&&recent(now,tick_,ViewReadGrace);
  }
  const external::mainview::View&view()const{return view_;}
 };

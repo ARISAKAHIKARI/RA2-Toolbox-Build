@@ -155,14 +155,15 @@ public:
   // Each independent producer publishes a complete layer transaction. A bad
   // timer/font/passenger read discards that producer, not every other UI layer.
   // The outer task still rejects a camera/frame/identity race for the whole UI.
-  size_t total=0;auto capture=[&](auto producer){Plan next;Painter painter(next,view.width,view.height,width,height);bool fontUsed=false;
+  const auto physicalView=mainview::physicalView(view);
+  size_t total=0;auto capture=[&](auto producer,bool physical=false){Plan next;Painter painter(next,physical?physicalView.width:view.width,physical?physicalView.height:view.height,width,height);bool fontUsed=false;
    if(!producer(painter,next,fontUsed)||!painter.good()||(fontUsed&&!font_.stable(read)))return;
    size_t count=0;for(const auto&layer:next.layers)count+=layer.size();if(total+count>262144)return;total+=count;
    for(size_t n=0;n<out.layers.size();++n)out.layers[n].insert(out.layers[n].end(),next.layers[n].begin(),next.layers[n].end());
    out.messages+=next.messages;out.timers+=next.timers;out.primary+=next.primary;out.rallies+=next.rallies;
   };
-  capture([&](Painter&p,Plan&next,bool&font){p.lane(0);return labels(read,view,p,next,font);});
-  capture([&](Painter&p,Plan&next,bool&font){p.lane(1);return timers(read,view,p,next,font);});
+  capture([&](Painter&p,Plan&next,bool&font){p.lane(0);return labels(read,physicalView,p,next,font);},true);
+  capture([&](Painter&p,Plan&next,bool&font){p.lane(1);return timers(read,physicalView,p,next,font);},true);
   capture([&](Painter&p,Plan&next,bool&font){return buildings(read,view,objects,p,next,font);});
   capture([&](Painter&p,Plan&,bool&font){return statuses(read,view,objects,p,font);});
   capture([&](Painter&p,Plan&,bool&){return pips(read,view,objects,p);});

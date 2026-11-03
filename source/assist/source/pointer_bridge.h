@@ -1,6 +1,7 @@
 // Explicit input mailbox consumed ONLY inside the ordinary leased Assist tick.
 // Original click, mission constructor and received-event functions stay intact.
 #include "input_feedback.h"
+#include "../../shared/source/native_viewport_projection.h"
 #include "disabled_feature_policy.h"
 static uint32_t pointerFeedback=0;
 static uint32_t pointerSeen,pointerCancelSeen,pointerTarget,pointerTargetID,pointerCell;
@@ -21,22 +22,25 @@ static void pointerFinish(int result){
  if(b.rejected<0)b.rejected=0;MemoryBarrier();b.ack=b.request;notifyHost();
 }
 static bool pointerLocation(const pointerinput::Intent&i){
+ if(nativeSidebarUIHit(i.x,i.y))return false;
  uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return false;
  if(i.width!=get<int>(0x8A00A4)||i.height!=get<int>(0x8A00A8)||
     i.cameraX!=get<int>(tactical+0xB0)||i.cameraY!=get<int>(tactical+0xB4))return false;
- int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);
+ nativeviewportprojection::Transform view{};if(!nativeViewTransform(view))return false;
+ int width=view.active?view.physical.w:get<int>(0xB0CE30),height=view.active?view.physical.h:get<int>(0xB0CE34);
  // ProcessClickCoords does not check upper bounds. Never query the sidebar.
  if(width<=0||height<=0||width>i.width||height>i.height)return false;
  // ProcessClickCoords adds the tactical surface origin itself. The host
  // supplies full-client pixels, just like WWMouse before native callers
  // subtract 886FA0/4 (4AE546..4AE553).
- int viewX=get<int>(0x886FA0),viewY=get<int>(0x886FA4);
+ int viewX=view.physical.x,viewY=view.physical.y;
  if(viewX<0||viewY<0||viewX>=i.width||viewY>=i.height||i.x<viewX||i.y<viewY||
     i.x>=i.width||i.y>=i.height||i.x-viewX>=width||i.y-viewY>=height)return false;
- struct Point{int x,y;}point{i.x-viewX,i.y-viewY};struct Cell{short x,y;}cell{};
+ NativeViewPoint point{i.x,i.y};if(!nativeViewMapPoint(point)||!nativeViewTransformUnchanged(view))return false;
+ point.x-=view.logical.x;point.y-=view.logical.y;struct Cell{short x,y;}cell{};
  struct Coord{int x,y,z;}coord{};uint32_t object=0;uint8_t a=0,b=0;
  // YRpp DisplayClass::ProcessClickCoords: thiscall, six pointer arguments.
- call<void>(0x692300,0x87F7E8,&point,&cell,&coord,&object,&a,&b);
+ if(!nativeViewQuery(&point,&cell,&coord,&object,&a,&b)||!nativeViewTransformUnchanged(view))return false;
  if(cell.x<=0||cell.y<=0||cell.x>=512||cell.y>=512||!readMapCell(cell.x,cell.y))return false;
  if(object&&!worldObjects.contains(object))return false;
  // Forced entry may click a building footprint covered by another object.
@@ -54,6 +58,11 @@ static bool pointerLocation(const pointerinput::Intent&i){
   Coord ground{int(cell.x)*256+128,int(cell.y)*256+128,0};
   coord.z=call<int>(0x578080,0x87F7E8,&ground);
  }
+ // Ground-height lookup and object reads can themselves cross a viewport or
+ // camera transition. Never publish a click derived from the previous view.
+ if(!nativeViewTransformUnchanged(view)||get<uint32_t>(0x887324)!=tactical||
+    i.width!=get<int>(0x8A00A4)||i.height!=get<int>(0x8A00A8)||
+    i.cameraX!=get<int>(tactical+0xB0)||i.cameraY!=get<int>(tactical+0xB4))return false;
  pointerGroundZ=coord.z;pointerCell=uint32_t(cell.y*1000+cell.x);pointerTarget=object;pointerTargetID=object?get<uint32_t>(object+0x10):0;return true;
 }
 static bool pointerEntryOrder(uint32_t p,int mission,uint32_t cell,bool planning){
@@ -82,6 +91,8 @@ static void pointerTick(){
   if(pointerActive&&pointerSeen==request&&request!=b.ack)pointerFinish(-7);
  }
  if(request==b.ack)return;
+ nativeviewportprojection::Transform viewport{};
+ if(!nativeviewportprojection::sample(sh,viewport)||viewport.generation!=sh->pointerViewportGeneration){pointerFinish(-7);return;}
  const auto&i=b.intent;DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
  if(!pointerActive||pointerSeen!=request){pointerActive=true;pointerSeen=request;pointerFeedback=0;pointerAt=0;b.accepted=b.rejected=0;memset(pointerDone,0,sizeof pointerDone);
   const bool next=(i.bindings&pointerinput::BatchNext)!=0,start=(i.bindings&pointerinput::BatchStart)!=0;

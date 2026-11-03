@@ -1,0 +1,184 @@
+{
+  "source_sha256": {
+    "source/assist/tests/tech_enhancement_parameter_runtime.py": "a076be19edbe25cc9cc457258c612a0baa23be5e0d46966d656f301a39d401fa",
+    "source/assist/tests/tech_ui_parameter_runtime.py": "7124d6f3965af2250c804fb103211508f1f87190d241f0724174f210b8397ef1",
+    "source/assist/tests/entry_runtime_regression.py": "9fcdf125ea4637c96143445914a6dcf3342fc264eed0ee5bb95381bac3936851",
+    "source/assist/tests/pdb_fixture_symbol.py": "afe1d6acfe895b19ade0ffed870f9f9ca0451f2173482d58204531ce2eb15411",
+    "source/assist/source/bridge.cpp": "cb204049f511bd377d1ccbc539e6fb761a0bdc4f0d5cdbae7ab60e78da767044",
+    "source/assist/source/protocol.h": "2e25a0e83c1e7833a1428852bb64e3cc5c9235c010100ee0a4f26403a6ea50de",
+    "source/assist/source/tech_ui_breakpoint_core.h": "f2e76adbce1ff897872871d5cd4ba96b5551d26e4aa3ea9b9c264bae4362b2df",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "e6674048953af50d912ee7193b6d5d5d9faa1d22298cfbba221c68fa8a96ae49",
+    "source/assist/source/tech_ui_breakpoint_guard.h": "52b7843f28beb5fb8ac40d24e91f32288b9e2c480d009eae0b6f55aeee5e322e",
+    "source/assist/source/tech_enhancement_parameter_policy.h": "3aa967146c42e63304eee90e35d88905c48b4bc33341dc1cf118255204118a79",
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/tech_enhancement_bridge.h": "c0bd0dc399d102d21431678396d9056897f0dcbaf65f152eb65a4492c57b4bb3",
+    "source/assist/source/tech_data_bridge.h": "86817838ae50cebf6441f66b34d96121b7dc8d477307fa1bcaf4d452e9ccd9c1",
+    "source/assist/source/sidebar.h": "8816fb05eed6f070c7ac4dc955543e63d6684ff04f163f035b1ef25480bd744d"
+  },
+  "hash_stable_during_test": true,
+  "scope": "Compiled exact TechLevel Runtime + native CanBuild in an isolated x86 world.\nWindows debug APIs are modeled; native DR/VEH is a separate own-process fixture.\nThe compiled classifier changes EFLAGS at actual private CanBuild Jcc boundaries.\nNo game process or multiplayer session is opened.\n",
+  "pass": true,
+  "checks": 28,
+  "results": [
+    {
+      "case": "exact_enhancement_cold_session_0",
+      "status": "PASS",
+      "native_private_CanBuild_and_compiled_EFLAGS_classifier": true,
+      "native_cameo_added_without_Type_or_text_writes": true,
+      "full_legacy_writer_blocked": true
+    },
+    {
+      "case": "exact_enhancement_cold_session_3",
+      "status": "PASS",
+      "native_private_CanBuild_and_compiled_EFLAGS_classifier": true,
+      "native_cameo_added_without_Type_or_text_writes": true,
+      "full_legacy_writer_blocked": true
+    },
+    {
+      "case": "native_gate_0xc98",
+      "status": "PASS",
+      "other_native_condition_preserved": "0xc98"
+    },
+    {
+      "case": "native_gate_0xda0",
+      "status": "PASS",
+      "other_native_condition_preserved": "0xda0"
+    },
+    {
+      "case": "native_gate_0xda4",
+      "status": "PASS",
+      "other_native_condition_preserved": "0xda4"
+    },
+    {
+      "case": "native_gate_0xd9b",
+      "status": "PASS",
+      "other_native_condition_preserved": "0xd9b"
+    },
+    {
+      "case": "native_gate_0xd9c",
+      "status": "PASS",
+      "other_native_condition_preserved": "0xd9c"
+    },
+    {
+      "case": "native_gate_0xd9d",
+      "status": "PASS",
+      "other_native_condition_preserved": "0xd9d"
+    },
+    {
+      "case": "native_gate_0x3b8",
+      "status": "PASS",
+      "other_native_condition_preserved": "0x3b8"
+    },
+    {
+      "case": "mode4_and_exact_enhancement_coexist_then_partial_off",
+      "status": "PASS",
+      "four_sites_share_one_service": true,
+      "partial_enhancement_off_retains_full_slots": true
+    },
+    {
+      "case": "insufficient_slots_refuses_only_new_enhancement",
+      "status": "PASS",
+      "existing_full_ready_permission_and_foreign_slots_preserved": true
+    },
+    {
+      "case": "compiled_exact_callback_identity_world_caller_and_flags_gates",
+      "status": "PASS",
+      "House_Type_UID_level_world_caller_args_stop_gates": true,
+      "only_arithmetic_EFLAGS_changed": true
+    },
+    {
+      "case": "insufficient_slots_refuses_only_new_full_permission",
+      "status": "PASS",
+      "existing_exact_enhancement_preserved_when_new_full_cannot_get_two_slots": true
+    },
+    {
+      "case": "exact_to_legacy_switch_waits_for_dependent_production_then_restores",
+      "status": "PASS",
+      "mode_switch_keeps_original_permission_until_dependent_product_finishes": true,
+      "legacy_writer_waits_for_confirmed_hardware_retirement": true
+    },
+    {
+      "case": "exact_enhancement_stop_waits_for_verified_full_cleanup",
+      "status": "PASS",
+      "stop_ack_after_confirmed_all_groups_and_VEH_retirement": true
+    },
+    {
+      "case": "exact_enhancement_background_keeps_ownership",
+      "status": "PASS",
+      "focus_switch_retains_hardware_ownership": true
+    },
+    {
+      "case": "exact_comparison_signature_changed_refused_without_game_writes",
+      "status": "PASS",
+      "unsupported_native_comparison_refused_before_DR_install": true
+    },
+    {
+      "case": "native_prerequisite_owned_False",
+      "status": "PASS",
+      "actual_native_Prerequisite_condition_preserved": true,
+      "genuine_building_owned": false
+    },
+    {
+      "case": "native_prerequisite_owned_True",
+      "status": "PASS",
+      "actual_native_Prerequisite_condition_preserved": true,
+      "genuine_building_owned": true
+    },
+    {
+      "case": "missing_factory_prevents_cameo",
+      "status": "PASS",
+      "no_icon_without_genuine_factory_model": true
+    },
+    {
+      "case": "legacy_to_exact_handoff_owned_queue_False",
+      "status": "PASS",
+      "old_permission_kept_until_dependent_legacy_product_finishes": true,
+      "queued_product": false,
+      "no_invalid_Type_minus1_without_ready_DR_gap": true
+    },
+    {
+      "case": "legacy_to_exact_handoff_owned_queue_True",
+      "status": "PASS",
+      "old_permission_kept_until_dependent_legacy_product_finishes": true,
+      "queued_product": true,
+      "no_invalid_Type_minus1_without_ready_DR_gap": true
+    },
+    {
+      "case": "ordinary_product_does_not_block_legacy_to_exact_handoff",
+      "status": "PASS",
+      "ordinary_native_product_does_not_block_legacy_handoff": true
+    },
+    {
+      "case": "legacy_enhancement_busy_blocks_full_mode_3",
+      "status": "PASS",
+      "new_full_mode_request_preserves_legacy_enhancement_until_dependent_product_completes": true
+    },
+    {
+      "case": "legacy_enhancement_busy_blocks_full_mode_4",
+      "status": "PASS",
+      "new_full_mode_request_preserves_legacy_enhancement_until_dependent_product_completes": true
+    },
+    {
+      "case": "failed_VEH_removal_keeps_error_visible_until_true_retirement",
+      "status": "PASS",
+      "retained_VEH_error_visible_after_DR_zero": true,
+      "unrequested_full_group_reports_off": true,
+      "stop_waits_for_handler_cleanup": true
+    },
+    {
+      "case": "full_group_failed_VEH_removal_does_not_claim_off_or_blame_unused_enhancement",
+      "status": "PASS",
+      "full_group_handler_failure_visible_without_phantom_enhancement_error": true
+    },
+    {
+      "case": "healthy_shared_sibling_does_not_make_stopped_group_look_pending_or_failed",
+      "status": "PASS",
+      "healthy_full_sibling_can_keep_shared_VEH_while_enhancement_is_truly_off": true
+    }
+  ],
+  "dll_sha256": "0588081dea0ae72f6f9152e9e21dd09d6d348ef3e8d30a1b96e79b1c7071ba2b",
+  "pdb_sha256": "3aa50159a2b7a377c011c65650de3b872b977cc433364b4209c70eef1e5dcf26",
+  "private_game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "game_process_tested": false,
+  "windows_debug_api_modeled": true
+}

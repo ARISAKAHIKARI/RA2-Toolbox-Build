@@ -6,6 +6,15 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 科技加強精確等級參數 | [21白名單、原生Jcc／四DR交易與雙向在產交接](2026-11-03-tech-enhancement-exact-parameters.md) | Assist92 TechEnhance EFLAGS 4F7951 4F7B66 exact-Level1 four-slots legacy-handoff no-text no-rules |
+| 1.0.41-pre.1 MO 接續與視野依賴 | [倍率、雷達遮罩、退出夾限及完整構建](2026-11-03-pre1-mo-followup.md) | Assist92 MAX radar-only native-widget retirement 6D8640 SmartArea WebView2 |
+| MO 區域進樓、公平配額與操作政策 | [Select/Move補令、pending容量與七欄捕獲](2026-11-03-mo-smartarea-and-policy.md) | SmartArea InfantryAbsorb Enter7 forceConstructed Options28 Assist92 Commit |
+| 1.0.41-pre.1 Web 控制臺整合 | [真正三方合併、15 組收納與即時操作時效](2026-11-03-console-pre1-integration.md) | WebView2 4b6bb9cc 35-delta metadata runtimeError immediate TTL owner-thread |
+| MO 地圖縮放 Host A/R 整合 | [物理錨點、換代失效、能力握手與啟動探查](2026-11-03-mo-viewport-host-projection.md) | Assist91 Transform physical logical generation HostHandshake Lifecycle mappingLost probeDue |
+| Native viewport 首幀與重連未知狀態 | [唯讀 mapping 探測、101 項真 Win32 驗證](2026-11-03-viewport-first-frame-probe.md) | probeExisting probeAbsent HostHandshake first-frame prior mapping PID creation |
+| 收納狀態中的真正錯誤與還原失敗 | [錯誤自動展開、偏好還原與 4063 項驗證](2026-11-03-console-fold-error-visibility.md) | failedSettingGroups restore CRC network control tech Master error-visible |
+| 控制臺摺疊與當下選取所屬方自毀 | [14 組收納、一次性快捷鍵與高危標記](2026-11-02-console-folds-and-selected-owner-destruct.md) | Destruct arg0 owner selection immediate hotkey1735 folds14 CRC high-risk |
+| 原生放置高地底邊與待確認產品重啟 | [578540 true、高程邊界與重複入隊入口](2026-11-02-placement-height-boundary-reentry.md) | 578540 CoordinatesLegal 568300 bottom elevation pending Place |
 | Place 成功後只清原產品的原生游標 | [有限監看、active/copy 原生 setter 與產品身分](2026-11-02-native-placement-completion-ui.md) | 4A8BF0 4A8D50 product UID OnMap completion no-fake-click |
 | 科技不改指令／規則的可選原生面板模式 | [硬體斷點、參數權限、衝突與恢復](2026-11-02-tech-ui-parameter-interception.md) | Assist90 buildLimitOnly HWBP VEH parameter native-sidebar no-text no-rules |
 | 放置預覽幀差、原生中心與落地後 UI 收尾 | [持續性、地形高度、viewport 與產品確認](2026-11-02-native-placement-persistence-and-projection.md) | Place foundation 4A8BF0 4A8D50 578080 forward-frame viewport completion |
@@ -225,3 +234,7 @@
 - [逐幀、整畫面縮放、十三處側欄實驗與資源所有權](2026-11-02-experimental-view-controls.md)
 
 - [新操作、小地圖與實驗顯示：本輪整合、效能與構建證據](2026-11-02-mo-render-followup.md)
+
+- [原生與工具卸礦完成後接管最近礦格、玩家命令優先與輕量觀察](2026-11-03-native-unload-harvest-handoff.md)
+- [側欄立即重畫、MO 十七原始 ABI 與 A/R 整合契約](2026-11-02-sidebar-redraw-and-mo-viewport-contract.md)（6D2790 RET14 WM_PAINT RenderSerial 4F4480 4F459D map-only；早期調查，後續實作見下文）
+- [MO 原生地圖縮放：A/R、共用完整 Render、輸入／重連與世代退役](2026-11-03-mo-native-viewport.md)

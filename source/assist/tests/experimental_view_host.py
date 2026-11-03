@@ -16,11 +16,12 @@ def block(text,needle):
 def generate():
     io=(SRC/'extra_settings_io.h').read_text(encoding='utf-8-sig')
     route=block((SRC/'auto_settings_ui.h').read_text(encoding='utf-8-sig'),'static bool autoSettingChanged(')
+    option_route=block(route,' if(id>=9480&&id<=9485')+'\n'+block(route,' if(id==9486&&notification')
     main=(SRC/'main.cpp').read_text(encoding='utf-8-sig');hotkey=(SRC/'hotkey_host.h').read_text(encoding='utf-8-sig')
     load=block(io,'static void loadAdditionalSettings()');load=load[load.index(' extra.viewZoomEnabled='):load.index(' extra.techEnhance=')]
     save=block(io,'static bool saveAdditionalSettings()');save=save[save.index(' const wchar_t*gestureNames'):save.index(' write(L"Experimental",L"TechEnhance"')]
     sync=block(io,'static void syncAdditional()');sync=sync[sync.index(' shared->viewZoomPercent='):sync.index(' shared->buildTimeTooltip=')]
-    route=route[route.index(' if((id==9090'):route.index(' if(id==886')]
+    route=route[route.index(' if((id==9090'):route.index(' if(id==886')]+'\n'+option_route
     register='\n'.join(l for l in main.splitlines() if l.startswith(' if(extra.sidebarEnabled&&LOBYTE') or l.startswith(' if(extra.viewZoomEnabled){for(int i=0;i<3;'))
     assert register.count('registerKey')==2
     hotkey=block(hotkey,' if(wp==1734&&extra.sidebarEnabled)')+'\n'+block(hotkey,' if(wp>=1720&&wp<=1722&&extra.viewZoomEnabled)')
@@ -60,16 +61,19 @@ static HWND ui=nullptr;
 static HWND fixtureItem(HWND,int id){return reinterpret_cast<HWND>(intptr_t(id));}
 static LRESULT fixtureSend(HWND h,UINT message,WPARAM wp,LPARAM){int id=int(intptr_t(h));if(message==CB_SETCURSEL||message==BM_SETCHECK||message==HKM_SETHOTKEY){controlValues[id]=LRESULT(wp);return 0;}return controlValues[id];}
 static LRESULT fixtureSendItem(HWND w,int id,UINT m,WPARAM p,LPARAM l){return fixtureSend(fixtureItem(w,id),m,p,l);}
+static UINT fixtureNumber(HWND,int id,BOOL*ok,BOOL){*ok=controlValues.count(id)!=0;return UINT(controlValues[id]);}
+static void setStatus(const std::wstring&){}
 #define GetDlgItem fixtureItem
 #define SendMessageW fixtureSend
 #define SendDlgItemMessageW fixtureSendItem
+#define GetDlgItemInt fixtureNumber
 struct ControlUpdate{};
 struct MatchState{int clears=0;void clear(){++clears;}}pointerMatches;
 static void changedSetting(){++changed;}
 static void notify(const std::wstring&){++notified;}
 static std::map<int,WORD> registered;
 static bool registerKey(int id,WORD key){if(LOBYTE(key))registered[id]=key;return true;}
-static struct Wire{uint32_t viewZoomPercent=100,sidebarMode=0,smallMapClamp=0,pauseViewKeys[2]{},moFeatures=0;volatile long moGesturePolicySeq=0;moorders::GesturePolicy moGestures;}wire,*shared=&wire;
+static struct Wire{uint32_t viewZoomPercent=100,sidebarMode=0,smallMapClamp=0,pauseViewKeys[2]{},moFeatures=0;volatile long moGesturePolicySeq=0;moorders::GesturePolicy moGestures;moorders::Options moOptions;}wire,*shared=&wire;
 static void registerKeys(){registered.clear();int failures=0;
 ''' + register + r'''
  assert(!failures);}
@@ -95,11 +99,17 @@ int main(){
  loadTargetedSettings();registerKeys();syncAdditional();
  check(!extra.smallMapClamp&&!wire.smallMapClamp&&!extra.sidebarEnabled&&extra.sidebarMode==0&&!extra.viewZoomEnabled&&extra.viewZoomPercent==100&&!extra.moFeatures&&!coldDemand());
  check(registered.empty()&&extra.sidebarKey==VK_F11&&extra.pauseKeys[0]==VK_F5&&extra.pauseKeys[1]==VK_F6);
+ check(moorders::validOptions(extra.moOptions)&&moorders::sameOptions(extra.moOptions,wire.moOptions));
+ for(int id=9480;id<=9485;++id){controlValues[id]=id==9483?8:16;auto before=published;check(changeSetting(id,EN_CHANGE)&&published==before+1);}
+ check(extra.moOptions.range==16&&extra.moOptions.squad==16&&extra.moOptions.patrolSize==16&&extra.moOptions.nodeStep==8&&extra.moOptions.loopClose==16&&extra.moOptions.loopStep==16);
+ auto options=extra.moOptions;controlValues[9483]=9;check(changeSetting(9483,EN_CHANGE)&&moorders::sameOptions(options,extra.moOptions));
+ controlValues[9486]=BST_UNCHECKED;check(changeSetting(9486,BN_CLICKED)&&!wire.moOptions.commit);controlValues[9486]=BST_CHECKED;check(changeSetting(9486,BN_CLICKED)&&wire.moOptions.commit);
+ saveTargetedSettings();extra.moOptions={};loadTargetedSettings();check(moorders::sameOptions(extra.moOptions,options));
  // Independent opt-in must connect even while its display mode is full.
  controlValues[9462]=BST_CHECKED;check(changeSetting(9462,BN_CLICKED));check(extra.sidebarEnabled&&extra.sidebarMode==0&&coldDemand()&&registered.count(1734)&&wire.sidebarMode==0);
- controlValues[9404]=1;check(changeSetting(9404,CBN_SELCHANGE));check(extra.sidebarMode==2&&wire.sidebarMode==2);
- executeExperimentalHotkey(1734);check(extra.sidebarMode==0&&wire.sidebarMode==0&&coldDemand());executeExperimentalHotkey(1734);check(extra.sidebarMode==2&&wire.sidebarMode==2);
- controlValues[9462]=BST_UNCHECKED;check(changeSetting(9462,BN_CLICKED));check(!registered.count(1734)&&wire.sidebarMode==0&&!coldDemand());auto old=changed;executeExperimentalHotkey(1734);check(extra.sidebarMode==2&&changed==old&&wire.sidebarMode==0);
+ controlValues[9404]=1;check(changeSetting(9404,CBN_SELCHANGE));check(extra.sidebarMode==1&&wire.sidebarMode==1);
+ executeExperimentalHotkey(1734);check(extra.sidebarMode==2&&wire.sidebarMode==2&&coldDemand());executeExperimentalHotkey(1734);check(extra.sidebarMode==0&&wire.sidebarMode==0);
+ controlValues[9462]=BST_UNCHECKED;check(changeSetting(9462,BN_CLICKED));check(!registered.count(1734)&&wire.sidebarMode==0&&!coldDemand());auto old=changed;executeExperimentalHotkey(1734);check(extra.sidebarMode==0&&changed==old&&wire.sidebarMode==0);
  // Unrelated MO status id must not be interpreted as a checkbox.
  check(!changeSetting(9460,BN_CLICKED));
  // Small-map clamping is independent from zoom/sidebar and needs Runtime
@@ -109,9 +119,9 @@ int main(){
  controlValues[9463]=BST_UNCHECKED;check(changeSetting(9463,BN_CLICKED));check(!extra.smallMapClamp&&!wire.smallMapClamp&&!coldDemand());saveTargetedSettings();
  // Every ratio is routed from the real control and publishes the value.
  controlValues[9090]=BST_CHECKED;check(changeSetting(9090,BN_CLICKED));check(coldDemand()&&registered.count(1720)&&registered.count(1721)&&registered.count(1722));
- for(int i=0;i<5;++i){controlValues[9091]=i;check(changeSetting(9091,CBN_SELCHANGE));check(extra.viewZoomPercent==viewzoom::Levels[i]&&wire.viewZoomPercent==uint32_t(viewzoom::Levels[i]));}
- executeExperimentalHotkey(1720);check(extra.viewZoomPercent==125&&wire.viewZoomPercent==125);executeExperimentalHotkey(1721);check(extra.viewZoomPercent==150);executeExperimentalHotkey(1721);check(extra.viewZoomPercent==150);executeExperimentalHotkey(1722);check(extra.viewZoomPercent==100&&wire.viewZoomPercent==100);
- controlValues[9091]=0;check(changeSetting(9091,CBN_SELCHANGE));executeExperimentalHotkey(1720);check(extra.viewZoomPercent==50);check(changeSetting(9092,BN_CLICKED)&&extra.viewZoomPercent==100);
+ for(int i=0;i<viewzoom::Count;++i){controlValues[9091]=i;check(changeSetting(9091,CBN_SELCHANGE));check(extra.viewZoomPercent==viewzoom::Levels[i]&&wire.viewZoomPercent==uint32_t(viewzoom::Levels[i]));}
+ executeExperimentalHotkey(1720);check(extra.viewZoomPercent==300&&wire.viewZoomPercent==300);executeExperimentalHotkey(1721);check(extra.viewZoomPercent==400);executeExperimentalHotkey(1721);check(extra.viewZoomPercent==400);executeExperimentalHotkey(1722);check(extra.viewZoomPercent==100&&wire.viewZoomPercent==100);
+ controlValues[9091]=0;check(changeSetting(9091,CBN_SELCHANGE));executeExperimentalHotkey(1720);check(extra.viewZoomPercent==0);check(changeSetting(9092,BN_CLICKED)&&extra.viewZoomPercent==100);
  controlValues[9090]=BST_UNCHECKED;check(changeSetting(9090,BN_CLICKED));check(!coldDemand()&&!registered.count(1720)&&wire.viewZoomPercent==100);old=changed;executeExperimentalHotkey(1721);check(extra.viewZoomPercent==100&&changed==old);
  // Six configurable hotkeys write the correct independent slot and republish.
  for(int id=9450;id<=9455;++id){controlValues[id]=('A'+id-9450)|(6<<8);auto before=published;check(changeSetting(id,EN_CHANGE)&&published==before+1);uint32_t expected=uint32_t(controlValues[id]);check(id<=9452?extra.viewZoomKeys[id-9450]==expected:id==9453?extra.sidebarKey==expected:extra.pauseKeys[id-9454]==expected);}
@@ -122,9 +132,9 @@ int main(){
  extra.sidebarEnabled=true;extra.sidebarMode=0;extra.viewZoomEnabled=true;extra.viewZoomPercent=125;extra.moFeatures=23;auto before=extra;saveTargetedSettings();extra={};loadTargetedSettings();
  check(extra.sidebarEnabled&&extra.sidebarMode==0&&extra.viewZoomEnabled&&extra.viewZoomPercent==125&&extra.moFeatures==23);
  for(int i=0;i<3;++i)check(extra.viewZoomKeys[i]==before.viewZoomKeys[i]);for(int i=0;i<2;++i)check(extra.pauseKeys[i]==before.pauseKeys[i]);check(extra.sidebarKey==before.sidebarKey);
- ini[{L"Experimental",L"SidebarEnabled"}]=0;ini[{L"Experimental",L"SidebarMode"}]=2;ini[{L"ViewZoom",L"Enabled"}]=0;ini[{L"ViewZoom",L"Percent"}]=67;ini[{L"MOControls",L"Features"}]=31;loadTargetedSettings();syncAdditional();
+ ini[{L"Experimental",L"SidebarEnabled"}]=0;ini[{L"Experimental",L"SidebarMode"}]=2;ini[{L"ViewZoom",L"Enabled"}]=0;ini[{L"ViewZoom",L"Percent"}]=51;ini[{L"MOControls",L"Features"}]=31;loadTargetedSettings();syncAdditional();
  check(!extra.sidebarEnabled&&extra.sidebarMode==2&&wire.sidebarMode==0&&!extra.viewZoomEnabled&&extra.viewZoomPercent==100&&wire.viewZoomPercent==100&&extra.moFeatures==23);
- ini[{L"Experimental",L"SidebarMode"}]=1;loadTargetedSettings();check(extra.sidebarMode==0);
+ ini[{L"Experimental",L"SidebarMode"}]=1;loadTargetedSettings();check(extra.sidebarMode==1);
  // All requested controls and their labels/status stay in Experimental;
  // external superweapon panel retains its separate Video classification.
  for(int id:{9090,9091,9092,9093,9403,9404,9406,9407,9450,9451,9452,9453,9454,9455,9462,9463,9464})check(suite::categories::row(4,&id,1)==suite::categories::Experimental);

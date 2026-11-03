@@ -8,7 +8,7 @@ static external::ReadSession reader;static external::sidebarindicators::Engine e
 static asyncwork::Latest<Request,Result>worker([](const Request&r)->std::shared_ptr<const Result>{
  if(readerPid!=r.pid||readerMatch!=r.match){reader.close();engine.reset();readerPid=r.pid;readerMatch=r.match;}
  if(!reader.open(r.pid))return {};reader.begin();auto read=[](uint32_t p,void*out,size_t n){return reader.read(p,out,n);};auto fresh=[](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
- external::mainview::View view;if(!external::mainview::sample(fresh,view)||view.house!=r.view.house||view.screenW!=r.view.screenW||view.screenH!=r.view.screenH||view.x!=r.view.x||view.width!=r.view.width)return {};
+ external::mainview::View view;if(!external::mainview::sample(fresh,view,r.view.transform)||view.house!=r.view.house||view.screenW!=r.view.screenW||view.screenH!=r.view.screenH||view.x!=r.view.x||view.width!=r.view.width||view.transform!=r.view.transform)return {};
  auto result=std::make_shared<Result>();result->request=r;result->sampled=GetTickCount();external::sidebarindicators::Sample sample;
  if(!external::sidebarindicators::capture(fresh,view.house,view.frame,sample)||!engine.render(read,view,sample,r.context.width,r.context.height,r.harvesters,r.power,result->bounds,result->pixels))return {};
  return result;

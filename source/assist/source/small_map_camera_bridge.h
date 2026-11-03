@@ -4,13 +4,15 @@
 #endif
 // Uses the existing game-thread patch manager, never a second hook owner.
 static smallcamera::Geometry cameraGeometry(){return {get<int>(0x87F8DC),get<int>(0x87F8E4),get<int>(0x87F8E8),get<int>(0x87F8EC),get<int>(0x87F8F0),get<int>(0x886FA8),get<int>(0x886FAC)};}
+static bool nativeViewNeedsTracking();
+static bool nativeViewRenderNeeded();
 static bool smallMapCameraRequested(){
  if(!sh||sh->stop||fault)return false;
 #ifdef RA2_HOOK_DIAGNOSTICS
  // The diagnostic tester owns its zero-patch baseline and explicit group.
  return hookdiagnostic::camera(sh->owner);
 #else
- return sh->smallMapClamp!=0;
+ return sh->smallMapClamp!=0||nativeViewNeedsTracking();
 #endif
 }
 // Original method does not use ECX; both ABIs pop its one Point* argument.
@@ -22,14 +24,18 @@ static bool __stdcall smallMapClamp(smallcamera::Point*p){
  if(!p)return false;
  const int result=GuardedRiskAction(7,uint32_t(uintptr_t(p)),0);
  // Preserve original clamp semantics if the common Capture lease is denied.
- return result?result==2:smallcamera::clampNative(cameraGeometry(),*p);
+ return result?result==2:nativeViewRenderNeeded()?smallcamera::clamp(cameraGeometry(),*p):smallcamera::clampNative(cameraGeometry(),*p);
 }
 static RiskSite cameraSite{experimentalpatch::CameraClamp,5,{0xA1,0xE4,0xF8,0x87,0},{}};
 static bool releaseSmallMapCamera(){
+ // Stop/fault cannot remove a dependency beneath a retained raster. This
+ // only retains existing ownership; no new camera adapter is installed here.
+ if(nativeViewRenderNeeded()){if(sh)sh->smallMapClampStatus=smallcamera::Waiting;return false;}
  const bool restored=restoreRiskSite(cameraSite);if(sh)sh->smallMapClampStatus=restored?smallcamera::Off:smallcamera::Conflict;return restored;
 }
 static void restoreSmallMapCamera(){releaseSmallMapCamera();}
 static void smallMapCameraTick(){
+ if(sh&&(sh->stop||fault)&&nativeViewRenderNeeded()){sh->smallMapClampStatus=smallcamera::Waiting;return;}
  if(!smallMapCameraRequested()){restoreSmallMapCamera();return;}
  const auto geometry=cameraGeometry();
  if(!smallcamera::valid(geometry)){if(releaseSmallMapCamera())sh->smallMapClampStatus=smallcamera::Waiting;return;}

@@ -1,16 +1,21 @@
 #include "middle_input_host.h"
 // Each colliding action enters the existing request/selection channel in turn.
 static bool dispatchHotkeyGroup(hotkeyroute::Group group){
+ if(destructownerhost::immediate(group,[]{
+  if(destructOwnerKeyConflict(WORD(extra.destructSelectedOwnerKey))){notify(L"自毁必须使用独立快捷键，请更换组合。");return;}
+  submitDestructSelectedOwner();
+ }))return true;
  placementeventhost::immediate(group,[]{submitPlacementEvent();});
  return group.actions.empty()||hotkeyPending.add(group,GetTickCount(),commandMatch());
 }
 static void executeHotkey(WPARAM wp,bool fanout){
- if(wp==1734&&extra.sidebarEnabled){extra.sidebarMode=extra.sidebarMode==2?0u:2u;{ControlUpdate guard;SendDlgItemMessageW(ui,9404,CB_SETCURSEL,extra.sidebarMode==2?1:0,0);}changedSetting();syncAdditional();return;}
+ if(wp==destructownerhost::Hotkey){notify(L"自毁按键已失效，请在游戏中重新按键。");return;}
+ if(wp==1734&&extra.sidebarEnabled){extra.sidebarMode=(extra.sidebarMode+1u)%3u;{ControlUpdate guard;SendDlgItemMessageW(ui,9404,CB_SETCURSEL,extra.sidebarMode,0);}changedSetting();syncAdditional();return;}
  if(wp==placementeventhost::Hotkey){notify(L"放置按键已失效，请在游戏中重新按键。");return;}
  if(wp>=1720&&wp<=1722&&extra.viewZoomEnabled){
   extra.viewZoomPercent=wp==1722?100:viewzoom::step(extra.viewZoomPercent,wp==1720?-1:1);
   {ControlUpdate guard;SendDlgItemMessageW(ui,9091,CB_SETCURSEL,viewzoom::index(extra.viewZoomPercent),0);}
-  save();syncAdditional();notify(L"视角缩放请求："+std::to_wstring(extra.viewZoomPercent)+L"%");return;
+  save();syncAdditional();notify(L"视角缩放请求："+(viewzoom::caption(extra.viewZoomPercent)?std::wstring(viewzoom::caption(extra.viewZoomPercent)):std::to_wstring(extra.viewZoomPercent)+L"%"));return;
  }
  if(wp==1723){send(StickyGuard);return;}
  if(wp>=1724&&wp<1724+selectedmode::Count){send(selectedmode::command(int(wp-1724)));return;}
@@ -38,6 +43,7 @@ static void serviceHotkeyBatch(){
  uint8_t keys[256]{};for(unsigned i=0;i<256;++i)keys[i]=(GetAsyncKeyState(i)&0x8000)!=0;
  hotkeyRegistry.sample(keys,GetTickCount(),commandMatch(),[](hotkeyroute::Group out){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(out);dispatchHotkeyGroup(std::move(out));});
  hotkeyroute::Group delayed;while(hotkeyRegistry.expired(GetTickCount(),commandMatch(),delayed)){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(delayed);
+  destructownerhost::immediate(delayed,[]{notify(L"自毁按键与延迟手势冲突，请配置独立按键后重试。");});
   placementeventhost::immediate(delayed,[]{notify(L"放置按键与延迟手势冲突，请配置独立按键后重试。");});dispatchHotkeyGroup(std::move(delayed));}
  for(unsigned n=0;n<hotkeyroute::Pending::Capacity;++n){
   if(hasSelection||commandQueue.size||shared->request!=shared->ack||shared->selectRequest!=shared->selectAck)return;
@@ -62,7 +68,10 @@ static void handleHotkey(WPARAM id,LPARAM event){
  if(!extra.allHotkeys)hotkeyroute::firstPerGesture(selected);
  // WM_HOTKEY can itself wait in the Windows queue. An old place edge must
  // not resolve the current cursor after a long blocked UI callback.
- if(DWORD(GetTickCount()-DWORD(GetMessageTime()))>150)placementeventhost::immediate(selected,[]{notify(L"放置按键已过期，请重新按键。");});
+ if(DWORD(GetTickCount()-DWORD(GetMessageTime()))>150){
+  destructownerhost::immediate(selected,[]{notify(L"自毁按键已过期，请重新按键。");});
+  placementeventhost::immediate(selected,[]{notify(L"放置按键已过期，请重新按键。");});
+ }
  if(!dispatchHotkeyGroup(std::move(selected)))notify(L"快捷键请求队列已满，本次组合未提交。");
  serviceHotkeyBatch();
 }

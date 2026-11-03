@@ -3,24 +3,33 @@
 #include <cmath>
 #include "display_state.h"
 #include "projection.h"
+#include "../../shared/source/native_viewport_projection.h"
 namespace external { namespace mainview {
 struct View {
  uint32_t scenario=0,house=0,tactical=0;int frame=-1;
  int cameraX=0,cameraY=0,screenW=0,screenH=0,x=0,y=0,width=0,height=0;
+ nativeviewportprojection::Transform transform{};
+ nativeviewportprojection::Rect physical()const{return transform.active?transform.physical:nativeviewportprojection::Rect{x,y,width,height};}
  bool valid()const{
   return scenario>=0x10000&&house>=0x10000&&tactical>=0x10000&&frame>=0&&
    screenW>=320&&screenH>=200&&screenW<=8192&&screenH<=8192&&
-   x>=0&&y>=0&&width>0&&height>0&&int64_t(x)+width<=screenW&&int64_t(y)+height<=screenH&&
+   x>=0&&y>=0&&width>0&&height>0&&
+   (!transform.active||(nativeviewportprojection::valid(transform.logical)&&nativeviewportprojection::valid(transform.physical)&&transform.logical==nativeviewportprojection::Rect{x,y,width,height}))&&
+   physical().x>=0&&physical().y>=0&&int64_t(physical().x)+physical().w<=screenW&&int64_t(physical().y)+physical().h<=screenH&&
    uint64_t(screenW)*screenH<=16*1024*1024&&std::abs(int64_t(cameraX))<1000000&&std::abs(int64_t(cameraY))<1000000;
  }
 };
+inline View physicalView(View view){
+ if(view.transform.active){const auto a=view.physical();view.x=a.x;view.y=a.y;view.width=a.w;view.height=a.h;view.transform={};}
+ return view;
+}
 inline bool sameViewport(const View&a,const View&b){
  return a.scenario==b.scenario&&a.house==b.house&&a.tactical==b.tactical&&
   a.cameraX==b.cameraX&&a.cameraY==b.cameraY&&a.screenW==b.screenW&&a.screenH==b.screenH&&
-  a.x==b.x&&a.y==b.y&&a.width==b.width&&a.height==b.height;
+  a.x==b.x&&a.y==b.y&&a.width==b.width&&a.height==b.height&&a.transform==b.transform;
 }
-template<class Read>bool sample(Read read,View&out){
- View a;int rect[4]{};uint8_t running=0;
+template<class Read>bool sample(Read read,View&out,const nativeviewportprojection::Transform&transform={}){
+ View a;a.transform=transform;int rect[4]{};uint8_t running=0;
  if(!read(0xA8B230,&a.scenario,4)||!read(0xA83D4C,&a.house,4)||!read(0x887324,&a.tactical,4)||a.tactical<0x10000||
   !read(0xA8ED84,&a.frame,4)||!read(0xA8E9A0,&running,1)||running!=1||!display::inspect(read).visible()||
   !read(0x8A00A4,&a.screenW,4)||!read(0x8A00A8,&a.screenH,4)||

@@ -4,8 +4,8 @@
 #include "mo_orders.h"
 #include "mo_patrol_graph.h"
 struct MoActor {uint32_t pointer=0,id=0,token=0;};
-struct MoTarget {uint32_t pointer=0,id=0,type=0;int assigned=0,reserved=0;};
-struct MoQueued {MoActor actor;uint32_t target=0,targetPointer=0,targetType=0;int mission=0;};
+struct MoTarget {uint32_t pointer=0,id=0,type=0;int assigned=0,reserved=0,pending=0;};
+struct MoQueued {MoActor actor;uint32_t target=0,targetPointer=0,targetType=0;int mission=0,entrySlots=0;};
 static MoActor moActors[moorders::Actors];static int moActorCount=0;
 static MoTarget moTargets[moorders::Targets];static int moTargetCount=0;
 static MoQueued moQueue[moorders::Actors];static int moQueueCount=0,moQueueAt=0;
@@ -19,6 +19,7 @@ static bool moWaypointSubmitted=false;static mopatrol::Path moPaths[moorders::Ac
 static int moSubmitting=0,moSubmittingActor=-1;
 struct MoSubmission {int previous,actor;MoSubmission(int kind,int index=-1):previous(moSubmitting),actor(moSubmittingActor){moSubmitting=kind;moSubmittingActor=index;}~MoSubmission(){moSubmitting=previous;moSubmittingActor=actor;}};
 static uint32_t moGestureButton=0,moSuppressedButton=0;static moorders::GesturePolicy moCapturedGestures;
+static moorders::Options moCapturedOptions;
 static bool moCapturedPolicy();
 #include "mo_patrol_planning_bridge.h"
 static moorders::Preview moPreview;
@@ -62,9 +63,29 @@ static bool moNeutral(uint32_t p){uint32_t owner=get<uint32_t>(p+0x21C),country=
 static bool moEngineer(uint32_t p){return kind(p)==1&&get<bool>(typeOf(p,1)+0xEC3);}
 static bool moCivilBuilding(uint32_t p){return kind(p)==3&&get<int>(typeOf(p,3)+0x634)==-1&&moNeutral(p);}
 static bool moDamaged(uint32_t p){uint32_t t=typeOf(p,kind(p));int hp=get<int>(p+0x6C),maximum=t?get<int>(t+0xA0):0;return hp>0&&maximum>hp&&maximum<=10000000;}
+// Behaviour reference: MO_ExperienceEnhancements@80850c7a SmartArea.cpp
+// SA_BldFix / SA_GarrQuota. These are original building flags; the native
+// compatibility query and the normal Enter event retain their authority.
+static bool moOwnInfantryAbsorb(uint32_t p){
+ if(kind(p)!=3)return false;uint32_t owner=0,t=typeOf(p,3);uint8_t absorb=0;
+ return t&&read(p+0x21C,&owner,4)&&owner==lastHouse&&read(t+0x16AF,&absorb,1)&&absorb;
+}
+static bool moBuildingEnterFallback(uint32_t p,uint32_t q,unsigned action,bool engineer){
+ if((action!=1&&action!=2)||engineer||kind(q)!=3)return false;
+ uint32_t owner=0,t=typeOf(q,3);uint8_t a=0,b=0;const int sk=kind(p);
+ if(!t||!read(q+0x21C,&owner,4)||owner!=lastHouse)return false;
+ if(sk==1){if(!read(t+0x16AF,&a,1)||!a)return false;}
+ else if(sk==2){if(!read(t+0x16AB,&a,1)||!read(t+0x16AE,&b,1)||(!a&&!b))return false;}
+ else return false;
+ return clickView.entryCompatible(p,q,lastHouse);
+}
 static int moActionMission(uint32_t p,uint32_t q){
  unsigned action=0;if(!GuardedEnterAction(get<uint32_t>(get<uint32_t>(p)+0x74),p,q,&action))return -1;
  const int sk=kind(p),tk=kind(q);const bool engineer=moEngineer(p);
+ // Select/Move on our bunker/absorber is a UI omission, not a cell Move.
+ // Enter must carry the building object as Destination. Engineers keep the
+ // original repair/capture path, and allied/foreign buildings do not opt in.
+ if(moBuildingEnterFallback(p,q,action,engineer))return 7;
  // Tank bunkers / repair docks use the already verified native radio/Enter
  // route. Their building destination must not be treated as infantry sabotage.
  if((action==3||action==9||action==16||action==26)&&clickView.entryCompatible(p,q,lastHouse)){
@@ -99,7 +120,8 @@ static void moFindTargets(){
   if(moMode==int(moorders::Fuzzy)&&node!=moStrokeCount)break;
   if(node<moStrokeCount&&moStroke[node].x==moCurrent.x&&moStroke[node].y==moCurrent.y)continue;
   auto center=node==moStrokeCount?moCurrent:moStroke[node];
-  for(int radius=0;radius<=2;++radius)for(int y=-2;y<2;++y)for(int x=-2;x<2;++x){if(std::max(std::abs(x),std::abs(y))!=radius)continue;uint32_t cell=readMapCell(center.x+x,center.y+y);if(!cell)continue;
+  const int half=int(moCapturedOptions.range/2),end=int(moCapturedOptions.range)-half;
+  for(int radius=0;radius<=std::max(half,end-1);++radius)for(int y=-half;y<end;++y)for(int x=-half;x<end;++x){if(std::max(std::abs(x),std::abs(y))!=radius)continue;uint32_t cell=readMapCell(center.x+x,center.y+y);if(!cell)continue;
    uint32_t p=get<uint32_t>(cell+0xE4);for(int steps=0;p>=0x10000&&steps<256;++steps){
     uint32_t next=0;if(!read(p+0x30,&next,sizeof next))break;moAddTarget(p);if(next==p)break;p=next;
    }
@@ -109,6 +131,14 @@ static void moFindTargets(){
 static moorders::Point moCoords(uint32_t p){return {get<int>(p+0x9C),get<int>(p+0xA0),get<int>(p+0xA4)};}
 static moorders::Point moGround(moorders::Point p){bool valid=readMapCell(p.x,p.y)!=0;p.x=p.x*256+128;p.y=p.y*256+128;p.z=valid?call<int>(0x578080,0x87F7E8,&p):0;return p;}
 static void moLine(moorders::Point a,moorders::Point b){if(moPreview.count<moorders::Lines)moPreview.lines[moPreview.count++]={a,b};}
+static int moPendingEntry(const MoActor&a,const MoTarget&t){
+ // Most candidates have no prior entry order. Scan the world once per target,
+ // not once per candidate pair; only an actor replacing its own reservation
+ // needs the existing exact ignore-ID query.
+ if(clickView.entryDestination(a.pointer)==t.pointer)return entryReserved(t.pointer,a.id,lastHouse);
+ for(int i=0;i<entryReservationCount;++i)if(entryReservations[i].id==a.id&&entryReservations[i].target==t.id)return entryReserved(t.pointer,a.id,lastHouse);
+ return t.pending;
+}
 static bool moAssign(int actor,int target,bool commit,int*missionOut=nullptr){
  auto&a=moActors[actor];auto&t=moTargets[target];if(!moActorValid(a)||worldByID(t.id)!=t.pointer||!live(t.pointer))return false;
  int mission=moActionMission(a.pointer,t.pointer);if(moMode==int(moorders::Fuzzy)&&mission!=1)return false;if(mission<0)return false;
@@ -116,17 +146,18 @@ static bool moAssign(int actor,int target,bool commit,int*missionOut=nullptr){
  bool single=entry&&((engineer&&tk==3&&(get<uint32_t>(t.pointer+0x21C)==lastHouse||moNeutral(t.pointer)))||
                        (tk==2&&(mission==8||(mission==7&&get<uint32_t>(t.pointer+0x21C)!=lastHouse))));
  if(single&&t.assigned)return false;
- if(entry&&!engineer){auto capacity=clickView.capacity(t.pointer);if(capacity.maximum>0){slots=clickView.entrySlots(a.pointer,t.pointer);if(slots<=0||capacity.used+t.reserved+slots>capacity.maximum)return false;}}
+ if(entry&&!engineer){auto capacity=clickView.capacity(t.pointer);if(capacity.maximum>0){slots=clickView.entrySlots(a.pointer,t.pointer);int pending=moPendingEntry(a,t);if(slots<=0||int64_t(capacity.used)+pending+t.reserved+slots>capacity.maximum)return false;}else if(moOwnInfantryAbsorb(t.pointer))return false;}
  if(missionOut)*missionOut=mission;if(!commit)return true;
  ++t.assigned;t.reserved+=slots;moLine(moCoords(a.pointer),moCoords(t.pointer));
- if(!moHolding&&moQueueCount<moorders::Actors)moQueue[moQueueCount++]={a,t.id,t.pointer,t.type,mission};return true;
+ if(!moHolding&&moQueueCount<moorders::Actors)moQueue[moQueueCount++]={a,t.id,t.pointer,t.type,mission,slots};return true;
 }
 static void moAssignments(bool preview){
  moFindTargets();moPreview.count=0;if(!preview)moQueueCount=moQueueAt=0;
  const int count=std::min(moActorCount,preview?64:moorders::Actors),targets=std::min(moTargetCount,preview?96:moorders::Targets);
+ for(int j=0;j<targets;++j){auto&t=moTargets[j];t.pending=moMode==int(moorders::Area)&&clickView.capacity(t.pointer).maximum>0?entryReserved(t.pointer,0,lastHouse):0;}
  bool assigned[moorders::Actors]{};
  if(moMode==int(moorders::Fuzzy)){
-  int groups=moorders::groups(count,targets);for(int i=0;i<count&&groups;++i){int first=moorders::groupTarget(i,count,groups);
+  int groups=moorders::groups(count,targets,int(moCapturedOptions.squad));for(int i=0;i<count&&groups;++i){int first=moorders::groupTarget(i,count,groups);
    for(int offset=0;offset<groups;++offset){int j=(first+offset)%groups;if(moAssign(i,j,true)){assigned[i]=true;break;}}
   }
  }else{
@@ -135,7 +166,17 @@ static void moAssignments(bool preview){
     if(moAssign(i,j,false,&mission)&&(mission==8||mission==17)&&moAssign(i,j,true)){assigned[i]=true;progress=true;break;}}
    if(!progress)break;
   }
-  for(int j=0;j<targets;++j)for(int i=0;i<count&&moTargets[j].assigned<4;++i){if(!assigned[i]&&moAssign(i,j,true))assigned[i]=true;}
+  // Once civilian garrisons have taken their prepass, spread the remaining
+  // infantry over our absorbers one per building per round. A nearer building
+  // must not consume the remainder before its equally available neighbour.
+  for(int pass=0;pass<count;++pass){bool progress=false;
+   for(int j=0;j<targets;++j)if(moOwnInfantryAbsorb(moTargets[j].pointer)){
+    for(int i=0;i<count;++i)if(!assigned[i]&&kind(moActors[i].pointer)==1&&!moEngineer(moActors[i].pointer)){
+     int mission=-1;if(moAssign(i,j,false,&mission)&&mission==7&&moAssign(i,j,true)){assigned[i]=true;progress=true;break;}
+    }
+   }if(!progress)break;
+  }
+  for(int j=0;j<targets;++j)for(int i=0;i<count&&moTargets[j].assigned<int(moCapturedOptions.squad);++i){if(!assigned[i]&&moAssign(i,j,true))assigned[i]=true;}
   for(int i=0;i<count;++i)if(!assigned[i]){
    // Remaining units select the closest compatible target, preserving quotas.
    int best=-1;int64_t nearest=INT64_MAX;auto a=moCoords(moActors[i].pointer);
@@ -159,10 +200,34 @@ static bool moGraphCommitReady(){
  mopatrol::Actor actors[moorders::Actors];for(int i=0;i<moActorCount;++i){auto&a=moActors[i];if(!actorLeaseArbiter.canIssue(match,get<int>(0xA8ED84),a.id,a.pointer,a.token,taskarbiter::Owner::Generic)||!moGraphRoute(i,true))return false;actors[i]={a.pointer,a.id};}
  return mopatrol::exclusive([](uint32_t at,void*out,size_t n){return read(at,out,n);},lastHouse,actors,moActorCount);
 }
+static bool moEntryReservationRoom(uint32_t actor){
+ if(entryReservationCount<cooperative::MaxSources)return true;
+ for(int i=0;i<entryReservationCount;++i)if(entryReservations[i].id==actor)return true;return false;
+}
+static bool moEntryDispatchable(const MoQueued&q){
+ if(q.entrySlots<=0||q.mission!=7||!moActorValid(q.actor)||!moEntryReservationRoom(q.actor.id)||
+    worldByID(q.target)!=q.targetPointer||!live(q.targetPointer)||typeOf(q.targetPointer,kind(q.targetPointer))!=q.targetType||
+    moActionMission(q.actor.pointer,q.targetPointer)!=q.mission)return false;
+ const auto c=clickView.capacity(q.targetPointer);const int slots=clickView.entrySlots(q.actor.pointer,q.targetPointer);
+ return c.maximum>0&&c.used>=0&&slots==q.entrySlots&&
+  int64_t(c.used)+entryReserved(q.targetPointer,q.actor.id,lastHouse)+slots<=c.maximum;
+}
+static void moRememberEntry(const MoQueued&q,int frame){
+ // Share pending reservations with the existing boarding path: orders already
+ // in OutList are not yet reflected in Passengers. Replace this actor's prior
+ // reservation only AFTER the replacement event actually queued.
+ for(int i=0;i<entryReservationCount;)if(entryReservations[i].id==q.actor.id)entryReservations[i]=entryReservations[--entryReservationCount];else ++i;
+ if(entryReservationCount<cooperative::MaxSources)entryReservations[entryReservationCount++]={q.actor.id,q.target,q.targetType,q.actor.token,frame,q.entrySlots};
+}
 static bool validateMoSubmission(const intent::EventOrder&order){
  const bool connect=order.domain==vanilla::Domain::Waypoints;
  if(!moSubmitting)return !connect;
  if(!moOrdersContext()||moEpoch!=match||moHouse!=lastHouse||!moCapturedPolicy())return false;
+ if(moSubmitting==4){
+  if(moSubmittingActor<0||moSubmittingActor>=moQueueCount)return false;const auto&q=moQueue[moSubmittingActor];
+  return order.domain==vanilla::Domain::MegaMission&&!order.appendWaypoint&&order.player==get<int>(lastHouse+0x30)&&
+   uint32_t(order.a)==q.actor.id&&order.mission==7&&!order.b&&uint32_t(order.c)==q.target&&order.tagC==0x34&&moEntryDispatchable(q);
+ }
  if(moSubmitting==3)return order.domain==vanilla::Domain::NoOptions&&order.eventKind==vanilla::EventType::PlanCommit&&moGraphCommitReady();
  if(moSubmittingActor<0||moSubmittingActor>=moActorCount)return false;const auto&a=moActors[moSubmittingActor];
  if(!moActorValid(a)||uint32_t(order.a)!=a.id||order.player!=get<int>(lastHouse+0x30))return false;
@@ -175,11 +240,11 @@ static void moUpdateOutline(){
  if(moMode==int(moorders::Patrol)){
   moorders::Point stroke[moorders::Nodes],route[moorders::Waypoints];int count=moStrokeCount;
   std::copy(moStroke,moStroke+count,stroke);moorders::sample(stroke,count,moCurrent,true);
-  int n=moorders::patrol(stroke,count,route);bool valid=n>=4;moPreview.count=0;
+  int n=moorders::patrol(stroke,count,route,moCapturedOptions);bool valid=n>=4;moPreview.count=0;
   for(int i=0;i<n;++i)valid&=readMapCell(route[i].x,route[i].y)!=0;
   for(int i=0;i<n;++i){moPreview.nodes[i]=moGround(route[i]);if(valid)moLine(moPreview.nodes[i],moGround(route[(i+1)%n]));}moPreview.nodeCount=n;
  }else{
-  auto center=moCurrent;moorders::Point corners[]={{center.x-2,center.y-2},{center.x+2,center.y-2},{center.x+2,center.y+2},{center.x-2,center.y+2}};
+  auto center=moCurrent;const int half=int(moCapturedOptions.range/2),end=int(moCapturedOptions.range)-half;moorders::Point corners[]={{center.x-half,center.y-half},{center.x+end,center.y-half},{center.x+end,center.y+end},{center.x-half,center.y+end}};
   for(int i=0;i<4;++i)moPreview.nodes[i]=moGround(corners[i]);moPreview.nodeCount=4;
  }
  moOutlineDirty=false;moOutlineAt=sampleClock(sh);
@@ -190,7 +255,7 @@ static void moBuildPreview(){
  moUpdateOutline();moPreviewAt=sampleClock(sh);moOrdersPublish();
 }
 static void moSamplePreview(moorders::Point point){
- moOutlineDirty|=moCurrent.x!=point.x||moCurrent.y!=point.y;moCurrent=point;moorders::sample(moStroke,moStrokeCount,point);
+ moOutlineDirty|=moCurrent.x!=point.x||moCurrent.y!=point.y;moCurrent=point;moorders::sample(moStroke,moStrokeCount,point,false,moMode==int(moorders::Patrol)?int(moCapturedOptions.nodeStep):2);
  const DWORD now=sampleClock(sh);
  // Target legality/assignment is bounded separately from visual tracking.
  if(moMode!=int(moorders::Patrol)&&DWORD(now-moPreviewAt)>=80)moBuildPreview();
@@ -201,7 +266,7 @@ static void moCommit(){
  sh->moOrderAccepted=sh->moOrderRejected=0;moHolding=false;moFeedback=true;moStarted=sampleClock(sh);moStartFrame=get<int>(0xA8ED84);
  if(moMode==int(moorders::Patrol)){
   if(!moGraphEmpty()){sh->moOrderStatus=uint32_t(-17);resetMoOrders();return;}
-  moRouteCount=moorders::patrol(moStroke,moStrokeCount,moRoute);
+  moRouteCount=moorders::patrol(moStroke,moStrokeCount,moRoute,moCapturedOptions);
   for(int i=0;i<moRouteCount;++i)if(!readMapCell(moRoute[i].x,moRoute[i].y)){sh->moOrderStatus=uint32_t(-4);sh->moOrderRejected=moActorCount;resetMoOrders();return;}
  }
  // Explicit player intent cancels the same automatic jobs as a native click.
@@ -213,7 +278,7 @@ static void moCommit(){
  }else moAssignments(false);
  moPreview.active=0;moOrdersPublish();sh->moOrderStatus=1;
 }
-static bool moCapturedPolicy(){return moReadGestures()&&moorders::sameGestures(moCapturedGestures,moRuntimeGestures)&&(moGestureEnabled()&uint32_t(moMode))&&!(moorders::gestureConflicts(moRuntimeGestures,moGestureEnabled())&uint32_t(moMode));}
+static bool moCapturedPolicy(){return moReadGestures()&&moorders::sameGestures(moCapturedGestures,moRuntimeGestures)&&moorders::sameOptions(moCapturedOptions,moRuntimeOptions)&&(moGestureEnabled()&uint32_t(moMode))&&!(moorders::gestureConflicts(moRuntimeGestures,moGestureEnabled())&uint32_t(moMode));}
 static bool moCapturedHold(){
  if(!moCapturedPolicy())return false;const int index=moorders::gestureIndex(uint32_t(moMode));if(index<0)return false;
  uint8_t keys[256]{};moGestureKeyboard(keys);return moorders::gestureHeld(keys,moCapturedGestures.keys[index]);
@@ -248,7 +313,7 @@ static bool moOrdersMessage(MSG*msg){
  moPlanningReset();moEpoch=match;moHouse=lastHouse;
  if(resolved.mode==moorders::Patrol&&!moGraphEmpty()){sh->moOrderStatus=uint32_t(-17);moSuppressedButton=edge.button;return swallow();}
  if(resolved.mode==moorders::Patrol&&!moPlanningCapture(msg)){sh->moOrderStatus=uint32_t(-15);moSuppressedButton=edge.button;return swallow();}
- moQueueCount=moQueueAt=moStage=0;moMode=int(resolved.mode);moHover=hover;moStrokeCount=0;moCapturedGestures=moRuntimeGestures;moGestureButton=moSuppressedButton=edge.button;
+ moQueueCount=moQueueAt=moStage=0;moMode=int(resolved.mode);moHover=hover;moStrokeCount=0;moCapturedGestures=moRuntimeGestures;moCapturedOptions=moRuntimeOptions;moGestureButton=moSuppressedButton=edge.button;
  moCurrent=point;moorders::sample(moStroke,moStrokeCount,point);moHolding=true;moBuildPreview();return swallow();
 }
 static void moOrdersTick(uint32_t house,int frame,DWORD now){
@@ -262,8 +327,13 @@ static void moOrdersTick(uint32_t house,int frame,DWORD now){
  int visited=0;
  while(moQueueAt<moQueueCount&&outgoingRoom()>0&&visited++<24){auto&q=moQueue[moQueueAt];
   if(!moActorValid(q.actor)||worldByID(q.target)!=q.targetPointer||!live(q.targetPointer)||typeOf(q.targetPointer,kind(q.targetPointer))!=q.targetType||moActionMission(q.actor.pointer,q.targetPointer)!=q.mission){++sh->moOrderRejected;++moQueueAt;continue;}
-  bool attack=q.mission==1;bool queued=nativeMission(house,q.actor.id,q.mission,attack?q.target:0,attack?0:q.target,attack?0:0x34,0,0,taskarbiter::Owner::Generic);
-  if(!queued)break;++sh->moOrderAccepted;++moQueueAt;if(moFeedback){moFeedback=false;inputFeedback(q.actor.pointer,q.targetPointer,!attack);}
+  const bool guardedEntry=q.entrySlots>0&&q.mission==7;
+  if(guardedEntry&&!moEntryDispatchable(q)){++sh->moOrderRejected;++moQueueAt;continue;}
+  bool attack=q.mission==1;MoSubmission scope(guardedEntry?4:0,moQueueAt);
+  // The optional native high-level MP backend bypasses our post-clock guard.
+  // Capacity-bound Enter always selects the ordinary constructed transport.
+  bool queued=nativeMission(house,q.actor.id,q.mission,attack?q.target:0,attack?0:q.target,attack?0:0x34,0,0,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::Local,false,false,guardedEntry);
+  if(!queued)break;if(guardedEntry)moRememberEntry(q,frame);++sh->moOrderAccepted;++moQueueAt;if(moFeedback){moFeedback=false;inputFeedback(q.actor.pointer,q.targetPointer,!attack);}
  }
  if(!moStage){if(moQueueAt==moQueueCount){sh->moOrderStatus=2;}return;}
  // Native patrol graph: every point for every actor, wait for token material-
@@ -289,6 +359,7 @@ static void moOrdersTick(uint32_t house,int frame,DWORD now){
  }
  if(moStage==4&&frame>moStageFrame){bool closed=true;
   for(int i=0;i<moActorCount;++i){if(!moActorValid(moActors[i])){++sh->moOrderRejected;resetMoOrders();return;}closed&=moGraphRoute(i,true);}
+  if(closed&&!moCapturedOptions.commit){moPlanningReset();sh->moOrderAccepted+=moActorCount;moStage=0;moWaypointSubmitted=false;sh->moOrderStatus=2;return;}
   MoSubmission scope(3);if(closed&&outgoingRoom()>0&&moGraphCommitReady()&&moPlanningFinish(house)){
    sh->moOrderAccepted+=moActorCount;moStage=0;moWaypointSubmitted=false;sh->moOrderStatus=2;
   }

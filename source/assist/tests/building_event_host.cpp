@@ -15,6 +15,7 @@
 #include "../source/additional_settings.h"
 #include "../source/settings_dependencies.h"
 #include "../source/hotkey_routes.h"
+#include "../source/destruct_owner_input.h"
 #include "../source/runtime_feature_demand.h"
 #include "../../suite/source/settings_categories.h"
 using namespace assist;
@@ -63,6 +64,8 @@ static void write(const wchar_t*s,const wchar_t*k,int v){ini[std::wstring(s)+L"/
 static bool save(){++saved;return true;}static void fillTech(bool){++filled;}static void registerKeys(){++registered;}static void changedSetting(){++settingsChanged;}static void syncAdditional(){++synced;}
 static int sentCommand=0,sentArgument=0,sentImplementation=-1;
 static void send(int command,int arg=0,int arg2=0);
+static void submitDestructSelectedOwner(){assert(false&&"placement fixture must not route destructive input");}
+static bool destructOwnerKeyConflict(WORD){assert(false&&"placement fixture must not check destructive input");return false;}
 // Runner extracts these real load/save/UI branches and hotkey dispatch from
 // production. No copied version of their routing is allowed in the fixture.
 #include HOST_BUILDING_ROUTES

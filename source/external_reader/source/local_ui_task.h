@@ -18,12 +18,12 @@ private:
  std::shared_ptr<const Result>run(const Input&input){const auto&r=input.request;
   if(pid_!=r.pid||match_!=r.match){reader_.close();engine_.reset();for(auto&p:old_)p.clear();images_={};pid_=r.pid;match_=r.match;}
   if(!reader_.open(r.pid))return {};reader_.begin();auto fresh=[&](uint32_t p,void*out,size_t n){return reader_.readFresh(p,out,n);};auto read=[&](uint32_t p,void*out,size_t n){return reader_.read(p,out,n);};mainview::View before;
-  if(!mainview::sample(fresh,before)||!mainview::sameViewport(before,r.view)||before.frame<r.view.frame)return {};uint32_t sampled=clock_();Plan plan;
+  if(!mainview::sample(fresh,before,r.view.transform)||!mainview::sameViewport(before,r.view)||before.frame<r.view.frame)return {};uint32_t sampled=clock_();Plan plan;
   if(!engine_.capture(read,fresh,before,input.objects,r.width,r.height,plan,sampled))return {};
   for(size_t lane=0;lane<plan.layers.size();++lane){auto&primitives=plan.layers[lane];if(primitives.empty()){images_[lane]={};old_[lane].clear();}
    else if(primitives!=old_[lane]){nativefeedback::Canvas canvas;nativefeedback::Rect bounds;if(!nativefeedback::paintInteractions(primitives,{},canvas,bounds)){images_[lane]={};old_[lane].clear();continue;}images_[lane]={bounds,std::make_shared<const std::vector<uint32_t>>(std::move(canvas.pixels))};old_[lane]=std::move(primitives);}
   }
-  mainview::View after;if(!mainview::sample(fresh,after)||!mainview::sameViewport(before,after)||after.frame<before.frame||uint32_t(clock_()-sampled)>150)return {};
+  mainview::View after;if(!mainview::sample(fresh,after,r.view.transform)||!mainview::sameViewport(before,after)||after.frame<before.frame||uint32_t(clock_()-sampled)>150)return {};
   auto result=std::make_shared<Result>();result->request=r;result->view=before;result->sampledTick=sampled;result->images=images_;result->messages=plan.messages;result->timers=plan.timers;result->primary=plan.primary;result->rallies=plan.rallies;return result;
  }
 public:

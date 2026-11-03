@@ -5,6 +5,7 @@
 #include <cwchar>
 #include <functional>
 #include <vector>
+#include "../../shared/source/native_viewport_projection.h"
 namespace swsidebar {
 struct Options {
  bool enabled=false,detached=false,collapsed=false;
@@ -37,7 +38,8 @@ inline bool selectable(const Read&read,const Entry&e){
 }
 // Shared with the existing bridge/tactical_sampler and the fixed upstream
 // reference. No layout is inferred from an unadjusted YRpp structure.
-inline bool sample(const Read&read,std::vector<Entry>&out,int&screenW,int&screenH,int&mapRight){
+inline bool sample(const Read&read,std::vector<Entry>&out,int&screenW,int&screenH,int&mapRight,const nativeviewportprojection::Transform&transform={}){
+ if(transform.active&&(!nativeviewportprojection::valid(transform.physical)||!nativeviewportprojection::valid(transform.logical)))return false;
  uint32_t house=0,items=0,houseAfter=0;int count=0,capacity=0,frame=0,frameAfter=0,viewX=0,viewW=0;
  if(!get(read,0xA83D4C,house)||house<0x10000||!get(read,0xA8ED84,frame)||frame<0||
     !get(read,house+0x258,items)||!get(read,house+0x25C,capacity)||!get(read,house+0x264,count)||
@@ -73,7 +75,7 @@ inline bool sample(const Read&read,std::vector<Entry>&out,int&screenW,int&screen
  for(const auto&e:next){uint32_t owner=0,type=0;uint8_t present=0;
   if(!get(read,e.instance+0x2C,owner)||owner!=house||!get(read,e.instance+0x28,type)||type!=e.type||!get(read,e.instance+0x6D,present)||!present)return false;
  }
- out=std::move(next);mapRight=viewX+viewW;return true;
+ out=std::move(next);mapRight=transform.active?transform.physical.x+transform.physical.w:viewX+viewW;return true;
 }
 
 }

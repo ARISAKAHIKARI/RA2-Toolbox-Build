@@ -18,7 +18,8 @@ static bool oreMiner(uint32_t type){return type&&oreTypeAllowed(type,true)&&
 #include "combat_probe_bridge.h"
 static planner::World planningWorld;static int planningFrame=-1;static uint32_t planningSerial,inputSerial;
 static int pausedOreFrame=-1;
-static void clearOreOrders(){oreConfigRevision=-1;oreConfig={};manualVersions.clear();planningFrame=pausedOreFrame=-1;inputSerial=planningSerial=0;snap.oreQueued=snap.oreDocking=snap.oreIssued=snap.oreManual=0;}
+static void oreHarvestReset();
+static void clearOreOrders(){oreHarvestReset();oreConfigRevision=-1;oreConfig={};manualVersions.clear();planningFrame=pausedOreFrame=-1;inputSerial=planningSerial=0;snap.oreQueued=snap.oreDocking=snap.oreIssued=snap.oreManual=0;}
 static void cancelOreJob(uint32_t pointer){if(worldObjects.contains(pointer)){int k=kind(pointer);uint32_t type=typeOf(pointer,k);bool miner=k==2&&type&&refreshOreConfig()&&oreMiner(type);uint32_t id=get<uint32_t>(pointer+0x10);
   manualVersions.change(id,miner?pointer:0,miner);pauseMissileForManual(id,pointer);releaseAutoOwner(id);++inputSerial;}}
 static void observePausedOre(uint32_t house,int frame){
@@ -83,8 +84,13 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   }
  }
  if(advanced||ore||defense||drop)for(int pass=0;pass<2;++pass)for(int i=0;i<all.count&&w.count<planner::MaxActors;++i){uint32_t p=item(all,i);int k=p?kind(p):-1;
-  if(k<0||get<int>(p+0x6C)<=0||!get<bool>(p+0x74))continue;
-  bool ownActor=get<uint32_t>(p+0x21C)==house;if(ownActor!=(pass==0))continue;if(!advanced&&!defense&&!drop&&(!ownActor||(k!=2&&k!=3)))continue;
+  if(k<0||get<int>(p+0x6C)<=0)continue;
+  bool ownActor=get<uint32_t>(p+0x21C)==house;
+  // Native refinery/chrono transitions may temporarily hide the unloading
+  // miner. Keep its read-only unloading evidence; it cannot receive orders
+  // until the separate live/on-map admission succeeds after completion.
+  if(!get<bool>(p+0x74)&&!(ore&&ownActor&&k==2&&get<bool>(p+0x6D1)))continue;
+  if(ownActor!=(pass==0))continue;if(!advanced&&!defense&&!drop&&(!ownActor||(k!=2&&k!=3)))continue;
   uint32_t type=typeOf(p,k);if(!type)continue;
   bool tracked=advanced&&ownActor&&orderIndex(p)>=0;
   bool dropSource=drop&&ownActor&&rawMagnetron(p,featuretypes::MagnetronDrop);
@@ -99,7 +105,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   a.mission=get<int>(p+0xAC);a.queued=get<int>(p+0xB4);a.cost=get<int>(type+0x610);a.veterancy=get<float>(p+0x150);a.manualVersion=manualVersions.get(a.id);
   if(ownActor)a.flags|=planner::Own;else if(enemy)a.flags|=planner::Enemy;
   if(get<bool>(p+0x83))a.flags|=planner::Selected;if(get<bool>(p+0x1C8))a.flags|=planner::Disabled;
-  if(get<bool>(p+0x81))a.flags|=planner::Limbo;if(!get<bool>(p+0x90))a.flags|=planner::OffMap;
+  if(get<bool>(p+0x81))a.flags|=planner::Limbo;if(!get<bool>(p+0x74)||!get<bool>(p+0x90))a.flags|=planner::OffMap;
   if(get<uint32_t>(p+0x11C))a.flags|=planner::Transported;if(get<int>(p+0x220)!=0)a.flags|=planner::Cloaked;
   a.target=rawObjectID(get<uint32_t>(p+0x2B4));uint32_t destination=k!=3?get<uint32_t>(p+0x5A4):0;a.destination=rawObjectID(destination);
   if(destination>=0x10000&&!a.destination){int x=get<short>(destination+0x24),y=get<short>(destination+0x26);if(readMapCell(x,y)==destination)a.destinationCell=uint32_t(y*1000+x);}
@@ -149,10 +155,12 @@ static bool rawDockLinked(uint32_t refinery,uint32_t unit){
  int n=get<int>(refinery+0xE8);uint32_t links=get<uint32_t>(refinery+0xE4);if(n<0||n>256||(n&&links<0x10000))return true;
  for(int i=0;i<n;++i)if(get<uint32_t>(links+i*4)==unit)return true;return false;
 }
+#include "ore_harvest_bridge.h"
 static bool externalOrderValid(const planner::Order&o,uint32_t house){
  uint32_t unit=worldByID(o.unit);if(!unit||!own(unit,house)||manualVersions.get(o.unit)!=o.token||(stickyOwns(unit)&&o.purpose!=planner::MagnetronDropOrder))return false;
  if(get<int>(unit+0x6C)<=0||!get<bool>(unit+0x74)||get<bool>(unit+0x81)||!get<bool>(unit+0x90)||get<bool>(unit+0x1C8)||get<uint32_t>(unit+0x11C))return false;
  if(burstOwns(o.unit)||dodgeOwns(o.unit))return false;
+ if(o.purpose==planner::OreHarvestOrder)return oreHarvestOrderValid(o,house);
  if(o.purpose==planner::MagnetronDropOrder)return o.mission==13&&!o.target&&!o.destination&&!o.destinationTag&&!o.pursuit&&o.refinery&&rawMagnetronDrop(unit,worldByID(o.refinery),house);
  int globalIndex=orderIndex(unit);if(globalIndex>=0&&nativeOrders[globalIndex].global&&(!sh->magnetronGlobal||(o.mission==2&&!o.pursuit)))return false;
  bool defense=o.purpose==planner::DefenseOrder,combat=o.purpose==1||o.purpose==3,mag=o.purpose==3;
@@ -224,7 +232,9 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  if(!actorFrameArbiter.canIssue(o.unit,o.token)){++snap.planDeferred;return 0;}
  if(!planningRoom(0)||!outgoingRoom()){++snap.planDeferred;return 0;}
  if(o.purpose==planner::MagnetronDropOrder){if(!nativeObjectEvent(get<int>(house+0x30),vanilla::EventType::Idle,o.unit,OrderAuthority::Local,nullptr,true))return 0;int index=orderIndex(worldByID(o.unit));if(index>=0)nativeOrders[index].attacking=false;consumePlanning(0);return 1;}
- const bool nearest=o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
+ // Native Harvest click uses (10,nullptr,clickedCell,nullptr), not Move's
+ // nearest-accessible override. Preserve that exact target packing.
+ const bool nearest=o.purpose!=planner::OreHarvestOrder&&o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
  if(!nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,nearest?o.destination:0,nearest?11:0,
     o.purpose==3?taskarbiter::Owner::Magnetron:(o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore))return -1;
  consumePlanning(0);

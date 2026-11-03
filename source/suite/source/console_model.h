@@ -22,6 +22,7 @@ struct Control {
     std::uint32_t id = 0;
     std::string type, label, text, group, hint, presentation;
     bool enabled = true, visible = true, readonly = false, checked = false;
+    bool runtimeError = false, groupHeader = false, collapsible = false, collapsedDefault = false, immediate = false;
     int selected = -1, min = 0, max = 100, step = 1, row = 0, column = 0;
     std::vector<std::string> options;
 };
@@ -37,7 +38,15 @@ struct Action {
     std::string action, text;
     int value = 0;
     bool checked = false;
+    // inputTime is renderer click time (UTC milliseconds). receivedAt is
+    // assigned once by the native admission path and is never deserialized.
+    std::uint64_t inputTime = 0, receivedAt = 0;
 };
+constexpr std::uint64_t ImmediateMaxAge = 150;
+inline bool immediateFresh(const Action& a,std::uint64_t nowTick,std::uint64_t nowUtc){
+    return a.receivedAt && a.inputTime && nowTick>=a.receivedAt && nowTick-a.receivedAt<=ImmediateMaxAge &&
+        nowUtc>=a.inputTime && nowUtc-a.inputTime<=ImmediateMaxAge;
+}
 struct Ack {
     unsigned module = 0;
     std::uint64_t generation = 0, id = 0, seq = 0;
@@ -279,7 +288,7 @@ public:
         if (!kind || kind->type != Field::String) return fail("Missing message kind");
         Message parsed;
         if (kind->text == "action") {
-            if (!allowed({"kind","protocol","module","generation","id","seq","action","value"})) return false;
+            if (!allowed({"kind","protocol","module","generation","id","seq","action","value","inputTime"})) return false;
             parsed.kind = MessageKind::Action;
             auto& a = parsed.action;
             if (!integer("module", 0, 2, n)) return false;
@@ -290,6 +299,8 @@ public:
             a.id = static_cast<std::uint64_t>(n);
             if (!integer("seq", 1, MaxSafeInteger, n)) return false;
             a.seq = static_cast<std::uint64_t>(n);
+            n = 0; if (!integer("inputTime", 1, MaxSafeInteger, n, false)) return false;
+            a.inputTime = static_cast<std::uint64_t>(n);
             const auto* action = field("action");
             if (!action || action->type != Field::String) return fail("Missing action kind");
             a.action = action->text;
@@ -377,6 +388,9 @@ inline std::string encodeSnapshot(const Snapshot& s) {
             ",\"presentation\":" + detail::quote(c.presentation) +
             ",\"enabled\":" + detail::boolean(c.enabled) + ",\"visible\":" + detail::boolean(c.visible) +
             ",\"readonly\":" + detail::boolean(c.readonly) + ",\"checked\":" + detail::boolean(c.checked) +
+            ",\"runtimeError\":" + detail::boolean(c.runtimeError) + ",\"groupHeader\":" + detail::boolean(c.groupHeader) +
+            ",\"collapsible\":" + detail::boolean(c.collapsible) + ",\"collapsedDefault\":" + detail::boolean(c.collapsedDefault) +
+            ",\"immediate\":" + detail::boolean(c.immediate) +
             ",\"selected\":" + std::to_string(c.selected) + ",\"min\":" + std::to_string(c.min) +
             ",\"max\":" + std::to_string(c.max) + ",\"step\":" + std::to_string(c.step) +
             ",\"row\":" + std::to_string(c.row) + ",\"column\":" + std::to_string(c.column) + ",\"options\":[";

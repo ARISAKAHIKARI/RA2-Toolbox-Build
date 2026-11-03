@@ -21,7 +21,7 @@ static struct {int frame=-1;std::map<uint32_t,int>issued;void begin(uint32_t,int
 static struct {bool allowed=true;bool canIssue(uint32_t,int,uint32_t,uint32_t,uint32_t,taskarbiter::Owner){return allowed;}}actorLeaseArbiter;
 static std::vector<intent::EventOrder> events;
 static bool submitConstructed(const intent::EventOrder&o){if(!validateMoSubmission(o)||constructors::admit(o)!=constructors::Verdict::Ready)return false;events.push_back(o);return true;}
-static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target,uint32_t cell,int targetKind,int extra1=0,int extra2=0,taskarbiter::Owner owner=taskarbiter::Owner::Generic,void*receipt=nullptr,int tag=-1,OrderAuthority=OrderAuthority::Local,bool append=false){
+static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target,uint32_t cell,int targetKind,int extra1=0,int extra2=0,taskarbiter::Owner owner=taskarbiter::Owner::Generic,void*receipt=nullptr,int tag=-1,OrderAuthority=OrderAuthority::Local,bool append=false,bool cooperativeTakeover=false,bool forceConstructed=false){
  actorFrameArbiter.begin(match,snap.frame);if(!actorFrameArbiter.canIssue(id,manualVersions.get(id)))return false;
  auto order=intent::mega(get<int>(house+0x30),id,mission,target,target?0x34:0,cell,uint8_t(targetKind),extra1,uint8_t(extra2));order.appendWaypoint=append;
  if(!submitConstructed(order))return false;actorFrameArbiter.record(id,manualVersions.get(id),owner);commands.push_back({id,cell});return true;
@@ -31,7 +31,11 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
 static bool nativeReady(){return true;}static bool stickyOwns(uint32_t){return false;}
 static bool nativeEnemy(uint32_t p,uint32_t h){return get<uint32_t>(p+0x21C)!=h;}
 static bool GuardedEnterAction(uint32_t,uint32_t,uint32_t,unsigned*out){*out=5;return true;}
-static struct {struct Capacity{int occupants=0,maximum=0,used=0;};bool entryCompatible(uint32_t,uint32_t,uint32_t){return false;}Capacity capacity(uint32_t){return {};}int entrySlots(uint32_t,uint32_t){return 1;}}clickView;
+static struct {struct Capacity{int occupants=0,maximum=0,used=0;};bool entryCompatible(uint32_t,uint32_t,uint32_t){return false;}Capacity capacity(uint32_t){return {};}int entrySlots(uint32_t,uint32_t){return 1;}uint32_t entryDestination(uint32_t){return 0;}}clickView;
+#include "cooperative_types.h"
+struct EnterReservation{uint32_t id,target,type,token;int frame,slots;};
+static EnterReservation entryReservations[cooperative::MaxSources];static int entryReservationCount=0;
+static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}
 static bool IsWindow(HWND h){return h==1;}static int posted=0;static bool PostMessageW(HWND,UINT,WPARAM,LPARAM){++posted;return true;}
 #include "mo_orders_bridge.h"
 static int checks=0;static void check(bool b){++checks;assert(b);}

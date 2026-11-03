@@ -34,6 +34,31 @@ static int destructPlayerTarget(uint32_t house,uint32_t expectedID,uint32_t expe
  }
  return 1;
 }
+struct DestructSelectedItem{uint32_t object=0,id=0,table=0,owner=0;};
+struct DestructSelectedSnapshot{uint32_t items=0,scenario=0,house=0,houseID=0;int count=0,index=-1,frame=-1;DestructSelectedItem objects[4096]{};};
+static DestructSelectedSnapshot destructSelected;static bool destructSelectedArmed=false;
+static bool captureDestructSelection(DestructSelectedSnapshot&out){
+ out={};Vec v{};if(!read(0xA8ECB8,&v,sizeof v)||v.count<=0||v.count>4096||v.capacity<v.count||v.items<0x10000||
+ !read(0xA8B230,&out.scenario,4)||out.scenario<0x10000||!read(0xA8ED84,&out.frame,4)||out.frame<0)return false;
+ out.items=v.items;out.count=v.count;
+ for(int i=0;i<v.count;++i){auto&o=out.objects[i];uint8_t selected=0,alive=0,onMap=0,limbo=0;int hp=0;
+  if(!read(v.items+uint32_t(i)*4,&o.object,4)||o.object<0x10000||!read(o.object,&o.table,4)||
+   (o.table!=0x7F5C70&&o.table!=0x7EB058&&o.table!=0x7E3EBC&&o.table!=0x7E22A4)||
+   !read(o.object+0x10,&o.id,4)||!o.id||!read(o.object+0x21C,&o.owner,4)||o.owner<0x10000||
+   !read(o.object+0x83,&selected,1)||!selected||!read(o.object+0x90,&alive,1)||!alive||
+   !read(o.object+0x74,&onMap,1)||!onMap||!read(o.object+0x81,&limbo,1)||limbo||
+   !read(o.object+0x6C,&hp,4)||hp<=0)return false;
+  if(!out.house)out.house=o.owner;else if(out.house!=o.owner)return false;
+ }
+ Vec after{};uint32_t scenario=0;int frame=-1;
+ return read(0xA8ECB8,&after,sizeof after)&&after.items==v.items&&after.count==v.count&&after.capacity==v.capacity&&
+  read(0xA8B230,&scenario,4)&&scenario==out.scenario&&read(0xA8ED84,&frame,4)&&frame==out.frame&&
+  read(out.house+0x10,&out.houseID,4)&&out.houseID&&read(out.house+0x30,&out.index,4)&&out.index>=0&&out.index<32;
+}
+static bool sameDestructSelection(const DestructSelectedSnapshot&a,const DestructSelectedSnapshot&b){
+ if(a.items!=b.items||a.scenario!=b.scenario||a.frame!=b.frame||a.count!=b.count||a.house!=b.house||a.houseID!=b.houseID||a.index!=b.index)return false;
+ for(int i=0;i<a.count;++i){const auto&x=a.objects[i];const auto&y=b.objects[i];if(x.object!=y.object||x.id!=y.id||x.table!=y.table||x.owner!=y.owner)return false;}return true;
+}
 static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority authority){
  if(!lastHouse||o.player<0||o.player>=32)return false;
  if(o.domain==vanilla::Domain::NoOptions&&o.eventKind==vanilla::EventType::Destruct){
@@ -41,8 +66,14 @@ static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority autho
   // even for the local House. Other automatic/local senders cannot opt in.
   if(authority!=OrderAuthority::DestructPlayerTest||!sh||sh->stop||sh->command!=DestructPlayer||
      sh->request==sh->ack||sh->requestMatch!=match||DWORD(sampleClock(sh)-sh->requestTick)>3500||
-     DWORD(sampleClock(sh)-sh->heartbeat)>=3000||sh->requestToken!=uint32_t(o.player))return false;
-  int valid=destructPlayerTarget(uint32_t(sh->arg),uint32_t(sh->arg2),sh->requestToken);
+     DWORD(sampleClock(sh)-sh->heartbeat)>=3000)return false;
+  int valid=-7;
+  if(sh->arg==0){
+   static DestructSelectedSnapshot current;
+   if(sh->arg2||sh->requestToken||!destructSelectedArmed||!captureDestructSelection(current)||
+      !sameDestructSelection(destructSelected,current)||current.index!=o.player){snap.lastSubmitError=7;return false;}
+   valid=destructPlayerTarget(current.house,current.houseID,uint32_t(current.index));
+  }else{if(sh->requestToken!=uint32_t(o.player))return false;valid=destructPlayerTarget(uint32_t(sh->arg),uint32_t(sh->arg2),sh->requestToken);}
   if(valid==-42)snap.lastSubmitError=42;
   return valid>0;
  }
@@ -65,15 +96,22 @@ static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority autho
 static int destructPlayerCommand(uint32_t house,uint32_t expectedID,uint32_t expectedIndex){
  snap.lastSubmitError=0;
  if(!gameentry::active(gameentry::Client::Assist)||!simulationReady())return -3;
+ destructSelectedArmed=false;
+ if(!house){
+  if(expectedID||expectedIndex||!captureDestructSelection(destructSelected))return -7;
+  house=destructSelected.house;expectedID=destructSelected.houseID;expectedIndex=uint32_t(destructSelected.index);
+  destructSelectedArmed=true;
+ }
  int valid=destructPlayerTarget(house,expectedID,expectedIndex);
- if(valid<0){if(valid==-42)snap.lastSubmitError=42;return valid;}
+ if(valid<0){destructSelectedArmed=false;if(valid==-42)snap.lastSubmitError=42;return valid;}
  static const uint8_t ctor[]={0x53,0x8B,0x5C,0x24,0x0C,0x8B,0xC3,0x56};
- if(memcmp((void*)0x4C66C0,ctor,sizeof ctor))return -12;
+ if(memcmp((void*)0x4C66C0,ctor,sizeof ctor)){destructSelectedArmed=false;return -12;}
  intent::EventOrder event{};event.domain=vanilla::Domain::NoOptions;
  event.eventKind=vanilla::EventType::Destruct;event.player=int(expectedIndex);
  // The receiver owns all effects. This path only appends the vanilla event;
  // a successful return means queued, not that the House was destroyed.
- return submitConstructed(event,OrderAuthority::DestructPlayerTest)?1:snap.lastSubmitError==42?-42:-6;
+ const bool queued=submitConstructed(event,OrderAuthority::DestructPlayerTest);destructSelectedArmed=false;
+ return queued?1:snap.lastSubmitError==42?-42:snap.lastSubmitError==7?-7:-6;
 }
 static bool samePlayerWorld(){
  // Readiness can drop temporarily in menus; it is not a world identity.

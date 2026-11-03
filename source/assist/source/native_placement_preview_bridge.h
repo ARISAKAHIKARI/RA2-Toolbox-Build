@@ -2,6 +2,7 @@
 // Only this mode's matched down/up pair is consumed. Sidebar and native tools
 // keep their messages; an unrelated native cursor cancels this mode first.
 #include "native_placement_geometry.h"
+#include "../../shared/source/native_viewport_projection.h"
 #include "native_placement_completion_bridge.h"
 #include "../../external_reader/source/projection.h"
 static nativeplacement::Preview placementView;
@@ -30,12 +31,13 @@ static bool nativePlacementInputContext(bool preview=false){
 static int nativePlacementArm(uint32_t house,DWORD now){
  if(placementView.active){nativePlacementReset();return 2;}
  if(!nativePlacementInputContext())return -4;
+ nativeviewportprojection::Transform transform{};if(!nativeviewportprojection::sample(sh,transform))return -7;
  int tab=-1,after=-1;nativeplacement::Offer offer{};
  uint32_t scenario=0,verifyScenario=0;
  if(!read(0xA8B230,&scenario,4)||scenario<0x10000||!read(0x87F7E8+0x539C,&tab,4)||tab<0||tab>1||!nativePlacementCapture(house,tab,now,offer)||
-    !read(0xA8B230,&verifyScenario,4)||scenario!=verifyScenario||
+    nativePlacementCompletionOwns(offer)||!read(0xA8B230,&verifyScenario,4)||scenario!=verifyScenario||
     !read(0x87F7E8+0x539C,&after,4)||after!=tab)return -7;
- placementView={};placementView.offer=offer;placementView.active=1;placementScenario=scenario;++placementPreviewSerial;
+ placementView={};placementView.offer=offer;placementView.active=1;placementView.viewportGeneration=transform.generation;placementScenario=scenario;++placementPreviewSerial;
  int foundation=-1;
  if(read(offer.type+0xEF0,&foundation,4)&&foundation>=0&&foundation<21){
   read(0x8192B8+uint32_t(foundation)*4,&placementView.width,4);read(0x819310+uint32_t(foundation)*4,&placementView.height,4);
@@ -45,6 +47,7 @@ static int nativePlacementArm(uint32_t house,DWORD now){
 }
 static bool nativePlacementRenew(DWORD now,bool preview=false){
  if(!placementView.active||!nativePlacementInputContext(preview))return false;
+ nativeviewportprojection::Transform transform{};if(!nativeviewportprojection::sample(sh,transform)||transform.generation!=placementView.viewportGeneration)return false;
  uint32_t scenario=0;if(!read(0xA8B230,&scenario,4)||scenario!=placementScenario)return false;
  int tab=-1;nativeplacement::Offer current{};
  if(!read(0x87F7E8+0x539C,&tab,4)||tab!=placementView.offer.tab||
@@ -62,15 +65,16 @@ static bool nativePlacementPoint(HWND window,POINT point,nativeplacement::Reques
     !read(0x887324,&tactical,4)||tactical<0x10000||!read(tactical+0xB0,&r.cameraX,4)||!read(tactical+0xB4,&r.cameraY,4)||
     !read(0x8A00A4,&r.width,4)||!read(0x8A00A8,&r.height,4))return false;
  r.screenX=int(int64_t(point.x)*r.width/client.right);r.screenY=int(int64_t(point.y)*r.height/client.bottom);
- static const uint8_t query[]={0x8B,0x44,0x24,0x10,0x83,0xEC,0x18,0x8B};
- if(!nativePlacementViewport(r,view)||!nativePlacementSignature(0x692300,query,sizeof query))return false;
+ nativeviewportprojection::Transform transform{};
+ if(!nativeViewTransform(transform)||!nativePlacementViewport(r,view)||view.generation!=transform.generation||
+    transform.generation!=placementView.viewportGeneration||!nativeViewQueryCompatible())return false;
  if(inside)*inside=true;
- struct Point{int x,y;}p{r.screenX-view.x,r.screenY-view.y};vanilla::Cell cell{};struct Coord{int x,y,z;}coord{};uint32_t object=0;uint8_t a=0,b=0;
- call<void>(0x692300,0x87F7E8,&p,&cell,&coord,&object,&a,&b);
+ NativeViewPoint p{r.screenX,r.screenY};if(!nativeViewMapPoint(p)||!nativeViewTransformUnchanged(transform))return false;
+ p.x-=transform.logical.x;p.y-=transform.logical.y;vanilla::Cell cell{};struct Coord{int x,y,z;}coord{};uint32_t object=0;uint8_t a=0,b=0;
+ if(!nativeViewQuery(&p,&cell,&coord,&object,&a,&b)||!nativeViewTransformUnchanged(transform))return false;
  NativePlacementViewport after{};if(!nativePlacementViewport(r,after)||!(after==view)||!nativeplacement::cell(cell.x,cell.y))return false;
  auto readOnly=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
  const auto origin=nativeplacement::origin(cell.x,cell.y,placementView.width,placementView.height);
- r.cellX=origin.x;r.cellY=origin.y;placementView.cellX=origin.x;placementView.cellY=origin.y;
  // ClientToCoords returns Z=0. Resolve the same real ground height as normal
  // native cursor projection, rather than drawing the footprint on that plane.
  uint8_t bytes[12]{};uint32_t hash=2166136261u;
@@ -78,10 +82,15 @@ static bool nativePlacementPoint(HWND window,POINT point,nativeplacement::Reques
  if(hash!=0x8FFFDB45u)return false;
  struct Ground{int x,y,z;}ground{int(cell.x)*256+128,int(cell.y)*256+128,0};
  const int height=call<int>(0x578080,0x87F7E8,&ground);if(height < -1048576||height>1048576)return false;
+ const double zScale=external::projectionZScale(readOnly);
+ const int status=nativeplacement::targetUsable(readOnly,origin.x,origin.y)?1:2;
+ NativePlacementViewport finalView{};
+ if(!nativeViewTransformUnchanged(transform)||!nativePlacementViewport(r,finalView)||!(finalView==view))return false;
+ r.cellX=origin.x;r.cellY=origin.y;placementView.cellX=origin.x;placementView.cellY=origin.y;
  placementView.x=origin.x*256;placementView.y=origin.y*256;placementView.z=height;
- placementView.zScale=external::projectionZScale(readOnly);
- placementView.cameraX=view.cameraX;placementView.cameraY=view.cameraY;placementView.viewportX=view.x;placementView.viewportY=view.y;
- placementView.status=nativeplacement::targetUsable(readOnly,origin.x,origin.y)?1:2;
+ placementView.zScale=zScale;
+ placementView.cameraX=view.cameraX;placementView.cameraY=view.cameraY;placementView.viewportX=transform.logical.x;placementView.viewportY=transform.logical.y;
+ placementView.status=status;
  return true;
 }
 static bool nativePlacementInteractiveValid(const NativePlacementSubmission&s){

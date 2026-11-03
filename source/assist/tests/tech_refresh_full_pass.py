@@ -54,6 +54,7 @@ template<class T>static T get(uint32_t){return T(frame);}
 static bool setTechSites(bool){++siteCalls;return sitesOK;}
 static bool restoreTechData(){return true;}
 static bool restoreTechParameters(){return true;}
+static bool restoreTechEnhanceParameters(){return true;} // independent HW component off
 static bool requestTechParameters(uint32_t){return true;}
 static bool applyTechData(uint32_t){return true;}
 static bool nativeTextTechRetired(){return true;}

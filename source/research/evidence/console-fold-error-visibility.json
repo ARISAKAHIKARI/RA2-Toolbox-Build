@@ -1,0 +1,197 @@
+{
+  "schema": "ra2.console-fold-error-visibility.v1",
+  "scope": "Actual production Host layout/status functions extracted and compiled for x86/x64. Simulated Win32 windows and Shared state. No game process operation, GUI visual acceptance or multiplayer test.",
+  "tested_main_sha256": "4b491c372bc98b4904533d46c90bc962e35cf1ecb752230f81ce5b063854468f",
+  "results": {
+    "settings-folds": {
+      "x86_64": {
+        "checks": 4063,
+        "passed": true,
+        "groups": 14,
+        "scope": "actual category packing/fold/click/focus/search/Shared errors and recovery/conditional feedback routes; assertions active; simulated Win32 windows"
+      },
+      "x86": {
+        "checks": 4063,
+        "passed": true,
+        "groups": 14,
+        "scope": "actual category packing/fold/click/focus/search/Shared errors and recovery/conditional feedback routes; assertions active; simulated Win32 windows"
+      }
+    },
+    "destruct-host": {
+      "results": {
+        "x86_64": {
+          "checks": 85,
+          "passed": true,
+          "scope": "actual Host send, immediate input, fresh WM_HOTKEY, delayed/stale/held-key rejection, UI and INI routes; simulated Win32"
+        },
+        "x86": {
+          "checks": 85,
+          "passed": true,
+          "scope": "actual Host send, immediate input, fresh WM_HOTKEY, delayed/stale/held-key rejection, UI and INI routes; simulated Win32"
+        }
+      },
+      "sources": {
+        "main.cpp": "4b491c372bc98b4904533d46c90bc962e35cf1ecb752230f81ce5b063854468f",
+        "hotkey_host.h": "96b4b924f0b649c2c759dcc843972aa00356c1342b0a4dd96518775e5b9d9698",
+        "extra_settings_io.h": "196a257bcc18392302185e3c8e11b97ffa33ca31ae3bd4f92ac312abe1439bfe",
+        "auto_settings_ui.h": "17e6f162b1d7da2e4e2b8614572b87a85585a17beba6592340a808e32e0da991",
+        "type_bindings_ui.h": "27c1d3b2cf4d7b53aaa65cb936d367baeb4cd89a4e0d9bf813e5c3f4e204d0a2",
+        "tactical_controls.h": "ac6ee69e322564b4c1ae61286e241ff47b028601283be2dd39738fd65d461581",
+        "additional_settings.h": "eb5025c9902ec6f0e5342ffa96aa64f91ccc6f9d1b46664b5f456ebc31e03c24",
+        "destruct_owner_input.h": "cb95b66a20dbf304e7b7e6007967555b618cb68c807d6d31a857d6ef5ffc7808",
+        "runtime_feature_demand.h": "079e14d17348e6101ac1017082e6c4e4eaf0428f9d7ca81376cddbc2316f7225"
+      },
+      "scope": "actual Host command and hotkey routes; simulated Win32; no game process or network test"
+    },
+    "building-host": {
+      "x86_64": {
+        "checks": 134,
+        "passed": true,
+        "scope": "actual Host submission/UI/config/hotkey routes with simulated Win32 and read-only game memory"
+      },
+      "x86": {
+        "checks": 134,
+        "passed": true,
+        "scope": "actual Host submission/UI/config/hotkey routes with simulated Win32 and read-only game memory"
+      }
+    }
+  },
+  "assertions_active": {
+    "compiler_flag": "-UNDEBUG",
+    "source_guard": "NDEBUG undefined before cassert; settings_folds.cpp compile-time #error if NDEBUG reintroduced",
+    "failure_mechanism": "check() invokes actual assert; counted checks; source expressions extracted unchanged"
+  },
+  "cases_added": [
+    "CRC negative status forces group9613 visible; clear restores prior collapsed/open state",
+    "Network sender negative forces group9614 visible, including disabled/Master/stale connection",
+    "Player control negative forces group9612 visible; status independent of roster reads",
+    "Tech error and HW parameter error force group9607 visible; clear preserves user preference",
+    "Four groups fail and recover independently; error fold cannot hide outstanding failure",
+    "Low-damage restore=-2 stays visible after checkbox off; success removes row",
+    "Command-owner restore failure stays explicit after disable/Master/stale connection; success returns ordinary text"
+  ],
+  "production_sha256": {
+    "source/assist/source/main.cpp": "4b491c372bc98b4904533d46c90bc962e35cf1ecb752230f81ce5b063854468f",
+    "source/assist/source/tactical_controls.h": "ac6ee69e322564b4c1ae61286e241ff47b028601283be2dd39738fd65d461581",
+    "source/assist/source/auto_settings_ui.h": "17e6f162b1d7da2e4e2b8614572b87a85585a17beba6592340a808e32e0da991",
+    "source/assist/source/additional_settings.h": "eb5025c9902ec6f0e5342ffa96aa64f91ccc6f9d1b46664b5f456ebc31e03c24",
+    "source/assist/source/extra_settings_io.h": "196a257bcc18392302185e3c8e11b97ffa33ca31ae3bd4f92ac312abe1439bfe",
+    "source/assist/source/type_bindings_ui.h": "27c1d3b2cf4d7b53aaa65cb936d367baeb4cd89a4e0d9bf813e5c3f4e204d0a2",
+    "source/assist/source/hotkey_host.h": "96b4b924f0b649c2c759dcc843972aa00356c1342b0a4dd96518775e5b9d9698",
+    "source/assist/source/settings_fold_layout.h": "084529370788389dbc79b428a509ea7b69366f588d874bbc431647616984d128",
+    "source/assist/source/hover_help.h": "810cc7b123786cce4e9764700bc9814c585ef9e1ff4ea09ae6f62ec253d53955",
+    "source/assist/source/runtime_feature_demand.h": "079e14d17348e6101ac1017082e6c4e4eaf0428f9d7ca81376cddbc2316f7225",
+    "source/assist/source/destruct_owner_input.h": "cb95b66a20dbf304e7b7e6007967555b618cb68c807d6d31a857d6ef5ffc7808",
+    "source/suite/source/settings_categories.h": "5b5ad88e48f87ceca28ecde618ed95bf31277097dc53a2f986bc12e43e7893f3"
+  },
+  "fixture_sha256": {
+    "source/assist/tests/settings_folds.py": "6358ece888d4a9219e474c1fceeb7409248c1f45c5e7f8160e506975cab993f4",
+    "source/assist/tests/settings_folds.cpp": "fded353dc7a8358ec417f0799b936f1213253ca945449492577d12b7b7f63dc0",
+    "source/assist/tests/destruct_owner_host.py": "6dd3798b6a9e6ce92bc6a7ee47db337c7f62d06ac88603cf5095b0ffa475fc6c",
+    "source/assist/tests/destruct_owner_host.cpp": "118ba034961fd62981dd3823f52b7ed82cc70eb9c237cb7f626cbdbdd43877cf",
+    "source/assist/tests/building_event_host.py": "04bae6426a88bf20766b44c42d89726029463c933bbb044ed1cf76f46185f483",
+    "source/assist/tests/building_event_host.cpp": "5ba6b0ff5238ff42391304fdb08b3550005c62be4766b87f4056ed4cd65e78de"
+  },
+  "source_current_matches_checkpoint": {
+    "source/assist/source/main.cpp": true,
+    "source/assist/source/tactical_controls.h": true,
+    "source/assist/source/auto_settings_ui.h": true,
+    "source/assist/source/additional_settings.h": true,
+    "source/assist/source/extra_settings_io.h": true,
+    "source/assist/source/type_bindings_ui.h": true,
+    "source/assist/source/hotkey_host.h": true,
+    "source/assist/source/settings_fold_layout.h": true,
+    "source/assist/source/hover_help.h": true,
+    "source/assist/source/runtime_feature_demand.h": true,
+    "source/assist/source/destruct_owner_input.h": true,
+    "source/suite/source/settings_categories.h": true
+  },
+  "artifact_sha256": {
+    "diagnostics/next-ui-ore-view/settings-folds-error-review/result.json": "58d13eb2c8dfcfae2b81eeb4d4c9eacf014ea5911b573a5bb931112e1158bf65",
+    "diagnostics/next-ui-ore-view/settings-folds-error-review/production-layout.inc": "0af37c82f314b645c6e2268230c98fa52b0d410010066cbf2fcdfa7c16931167",
+    "diagnostics/next-ui-ore-view/settings-folds-error-review/x86_64.exe": "721670ad0940a6927e18b8e726a391575d997d90b60aecb89589be6c9125941d",
+    "diagnostics/next-ui-ore-view/settings-folds-error-review/x86.exe": "dc9963da58e606c007520f11b0e875fc4534ddcd3b76459ed1fb793bcbd4796c",
+    "diagnostics/next-ui-ore-view/settings-folds-error-review/x86_64.log": "25c2a13f2ea82be342d00e96ee736cbeb7321f30f22902ff781c0c27fda67be1",
+    "diagnostics/next-ui-ore-view/settings-folds-error-review/x86.log": "25c2a13f2ea82be342d00e96ee736cbeb7321f30f22902ff781c0c27fda67be1",
+    "diagnostics/next-ui-ore-view/destruct-host-error-review/result.json": "8c91c6064caa7964361d704e55d25b6f53279c36e7eb103bc2b6d4908957855c",
+    "diagnostics/next-ui-ore-view/building-host-error-review/result.json": "09de14c20ec48759174c6bfa0614e96042fc7cc41291836c41973286dc1fac75",
+    "diagnostics/next-ui-ore-view/fold-error-host-build/result.json": "3a8981c25447af42a95b53c0c2a252d4f81c7818e940ec961e240fe25c56b0e3",
+    "diagnostics/next-ui-ore-view/fold-error-host-build/commands.json": "953ed3dd5b8e0ba4dc26134c74e65fa37c9f5715bed8d33d799ad292af174fff"
+  },
+  "complete_host_compile_historical_checkpoint": {
+    "passed": true,
+    "source_unchanged_during_build": true,
+    "host": "x64",
+    "exe_sha256": "36a3a82a47df54610d1f9e4a7cf081012c5c49e3ef7967c7e55f047ce3b76330",
+    "main_sha256": "6e54a9b22961d1df24feaf4cdcdd688b51bb13f2822a734305cedf9244ab584f",
+    "matches_tested_main": false,
+    "note": "All three Host modules compiled and linked before final 9194 error-priority line. Not final EXE; not launched."
+  },
+  "compiled_final": {
+    "host_sha256": "cc195aa33260e10433f02d163f19025ca236fe1bbfe6bd6e295786cda5367191",
+    "main_sha256": "7f4ab4fa300630a668895f350d15b5703c79578b49b41a6dfc2fd6ee28e2c364",
+    "settings_folds": {
+      "x86_64": {
+        "checks": 4063,
+        "passed": true,
+        "groups": 14,
+        "scope": "actual category packing/fold/click/focus/search/Shared errors and recovery/conditional feedback routes; assertions active; simulated Win32 windows"
+      },
+      "x86": {
+        "checks": 4063,
+        "passed": true,
+        "groups": 14,
+        "scope": "actual category packing/fold/click/focus/search/Shared errors and recovery/conditional feedback routes; assertions active; simulated Win32 windows"
+      }
+    },
+    "destruct_host": {
+      "results": {
+        "x86_64": {
+          "checks": 85,
+          "passed": true,
+          "scope": "actual Host send, immediate input, fresh WM_HOTKEY, delayed/stale/held-key rejection, UI and INI routes; simulated Win32"
+        },
+        "x86": {
+          "checks": 85,
+          "passed": true,
+          "scope": "actual Host send, immediate input, fresh WM_HOTKEY, delayed/stale/held-key rejection, UI and INI routes; simulated Win32"
+        }
+      },
+      "sources": {
+        "main.cpp": "7f4ab4fa300630a668895f350d15b5703c79578b49b41a6dfc2fd6ee28e2c364",
+        "hotkey_host.h": "96b4b924f0b649c2c759dcc843972aa00356c1342b0a4dd96518775e5b9d9698",
+        "extra_settings_io.h": "196a257bcc18392302185e3c8e11b97ffa33ca31ae3bd4f92ac312abe1439bfe",
+        "auto_settings_ui.h": "17e6f162b1d7da2e4e2b8614572b87a85585a17beba6592340a808e32e0da991",
+        "type_bindings_ui.h": "27c1d3b2cf4d7b53aaa65cb936d367baeb4cd89a4e0d9bf813e5c3f4e204d0a2",
+        "tactical_controls.h": "ac6ee69e322564b4c1ae61286e241ff47b028601283be2dd39738fd65d461581",
+        "additional_settings.h": "eb5025c9902ec6f0e5342ffa96aa64f91ccc6f9d1b46664b5f456ebc31e03c24",
+        "destruct_owner_input.h": "cb95b66a20dbf304e7b7e6007967555b618cb68c807d6d31a857d6ef5ffc7808",
+        "runtime_feature_demand.h": "079e14d17348e6101ac1017082e6c4e4eaf0428f9d7ca81376cddbc2316f7225"
+      },
+      "scope": "actual Host command and hotkey routes; simulated Win32; no game process or network test"
+    },
+    "building_host": {
+      "x86_64": {
+        "checks": 134,
+        "passed": true,
+        "scope": "actual Host submission/UI/config/hotkey routes with simulated Win32 and read-only game memory"
+      },
+      "x86": {
+        "checks": 134,
+        "passed": true,
+        "scope": "actual Host submission/UI/config/hotkey routes with simulated Win32 and read-only game memory"
+      }
+    }
+  },
+  "compiled_final_pending_root": false,
+  "historical_report": {
+    "path": "console-folds-selected-owner-destruct.json",
+    "sha256": "c4305c289fe9b103e7c02c15b61bf9bed201a3ab4e6f905e14c095861d070281",
+    "latest_source_match_claimed": false
+  },
+  "limits": [
+    "Final compiled Host is bound above; native event execution, RA2OL synchronization and real GUI visuals were not acceptance-tested."
+  ],
+  "checkpoint_status": "historical native 14-group checkpoint before WebView2 integration",
+  "superseded_by": "console-pre1-integration.json"
+}

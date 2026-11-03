@@ -1,12 +1,13 @@
 // Explicit one-shot native Place. Reads factory/product state and appends the
 // ordinary event; never edits Type, factory, ownership or placement code.
 #include "native_placement_capture.h"
+#include "../../shared/source/native_viewport_projection.h"
 #include "native_placement_completion_bridge.h"
 #include "activation_diagnostic.h"
 struct NativePlacementViewport {
- uint32_t tactical=0;int width=0,height=0,cameraX=0,cameraY=0,x=0,y=0,viewWidth=0,viewHeight=0;
+ uint32_t tactical=0,generation=0;int width=0,height=0,cameraX=0,cameraY=0,x=0,y=0,viewWidth=0,viewHeight=0;
  bool operator==(const NativePlacementViewport&o)const{return tactical==o.tactical&&width==o.width&&height==o.height&&
-  cameraX==o.cameraX&&cameraY==o.cameraY&&x==o.x&&y==o.y&&viewWidth==o.viewWidth&&viewHeight==o.viewHeight;}
+  generation==o.generation&&cameraX==o.cameraX&&cameraY==o.cameraY&&x==o.x&&y==o.y&&viewWidth==o.viewWidth&&viewHeight==o.viewHeight;}
 };
 struct NativePlacementSubmission {nativeplacement::Request request{};NativePlacementViewport view{};uint32_t serial=0;bool interactive=false;};
 static int nativePlacementArm(uint32_t,DWORD);
@@ -14,10 +15,14 @@ static bool nativePlacementInteractiveValid(const NativePlacementSubmission&);
 static bool nativePlacementViewport(const nativeplacement::Request&r,NativePlacementViewport&v){
  auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
  using nativeplacement::field;
+ nativeviewportprojection::Transform transform{};if(!nativeviewportprojection::sample(sh,transform))return false;v.generation=transform.generation;
+ if(nativeSidebarUIHit(r.screenX,r.screenY))return false;
  if(!nativeplacement::screen(r)||!field(reader,0x887324,v.tactical)||v.tactical<0x10000||
     !field(reader,0x8A00A4,v.width)||!field(reader,0x8A00A8,v.height)||v.width!=r.width||v.height!=r.height||
-    !field(reader,v.tactical+0xB0,v.cameraX)||!field(reader,v.tactical+0xB4,v.cameraY)||v.cameraX!=r.cameraX||v.cameraY!=r.cameraY||
-    !field(reader,0x886FA0,v.x)||!field(reader,0x886FA4,v.y)||!field(reader,0xB0CE30,v.viewWidth)||!field(reader,0xB0CE34,v.viewHeight))return false;
+    !field(reader,v.tactical+0xB0,v.cameraX)||!field(reader,v.tactical+0xB4,v.cameraY)||v.cameraX!=r.cameraX||v.cameraY!=r.cameraY)return false;
+ if(transform.active){v.x=transform.physical.x;v.y=transform.physical.y;v.viewWidth=transform.physical.w;v.viewHeight=transform.physical.h;}
+ else if(!field(reader,0x886FA0,v.x)||!field(reader,0x886FA4,v.y)||!field(reader,0xB0CE30,v.viewWidth)||!field(reader,0xB0CE34,v.viewHeight))return false;
+ nativeviewportprojection::Transform verify{};if(!nativeviewportprojection::sample(sh,verify)||verify!=transform)return false;
  return v.x>=0&&v.y>=0&&v.viewWidth>0&&v.viewHeight>0&&v.viewWidth<=v.width&&v.viewHeight<=v.height&&
   r.screenX>=v.x&&r.screenY>=v.y&&r.screenX-v.x<v.viewWidth&&r.screenY-v.y<v.viewHeight;
 }
@@ -48,7 +53,7 @@ static void nativePlacementOffers(DWORD now){
  if(!read(0xA83D4C,&house,4)||house!=lastHouse||!read(0xA8ED84,&frame,4)||frame!=snap.frame||
     !read(0xA8B238,&session,4)||session!=snap.session||!eventdelivery::mayQueue(session))return;
  for(int tab=0;tab<nativeplacement::MaxOffers;++tab){nativeplacement::Offer offer{};
-  if(nativePlacementCapture(lastHouse,tab,now,offer))snap.placementOffers[snap.placementOfferCount++]=offer;
+  if(nativePlacementCapture(lastHouse,tab,now,offer)&&!nativePlacementCompletionOwns(offer))snap.placementOffers[snap.placementOfferCount++]=offer;
  }
 }
 static bool nativePlacementSignature(uint32_t at,const uint8_t*expected,size_t n){uint8_t bytes[16]{};return n<=sizeof bytes&&read(at,bytes,n)&&!memcmp(bytes,expected,n);}
@@ -81,16 +86,21 @@ static int nativePlacementCommand(uint32_t house,DWORD now){
  if(sh->arg2==1)return nativePlacementArm(house,now);
  NativePlacementSubmission submission{};submission.request=sh->placementRequest;submission.serial=sh->request;
  auto&r=submission.request;
- if(!nativeplacement::fresh(r.offer,match,now,snap.frame)||r.offer.house!=house||sh->arg!=r.offer.slot||
+ if(nativePlacementCompletionOwns(r.offer)||!nativeplacement::fresh(r.offer,match,now,snap.frame)||r.offer.house!=house||sh->arg!=r.offer.slot||
     sh->requestTypeHash!=r.offer.typeHash)return -7;
  nativeplacement::Offer current{};
  if(!nativePlacementCapture(house,r.offer.tab,now,current)||!nativeplacement::sameIdentity(r.offer,current))return -7;
- static const uint8_t query[]={0x8B,0x44,0x24,0x10,0x83,0xEC,0x18,0x8B};
- if(!nativePlacementViewport(r,submission.view)||!nativePlacementSignature(0x692300,query,sizeof query))return -4;
- struct Point{int x,y;}point{r.screenX-submission.view.x,r.screenY-submission.view.y};
+ nativeviewportprojection::Transform transform{};
+ // This legacy one-shot mailbox has no capture generation. Reject while a
+ // scaled view is active rather than interpreting an old click in a new view.
+ if(!nativeViewTransform(transform)||transform.active||!nativePlacementViewport(r,submission.view)||
+    submission.view.generation!=transform.generation||!nativeViewQueryCompatible())return -4;
+ NativeViewPoint point{r.screenX,r.screenY};
+ if(!nativeViewMapPoint(point)||!nativeViewTransformUnchanged(transform))return -4;
+ point.x-=transform.logical.x;point.y-=transform.logical.y;
  vanilla::Cell cell{};struct Coord{int x,y,z;}coord{};uint32_t object=0;uint8_t a=0,b=0;
  // Query only, in the same leased game-thread route as pointerLocation().
- call<void>(0x692300,0x87F7E8,&point,&cell,&coord,&object,&a,&b);
+ if(!nativeViewQuery(&point,&cell,&coord,&object,&a,&b)||!nativeViewTransformUnchanged(transform))return -4;
  r.cellX=cell.x;r.cellY=cell.y;
  const auto order=intent::placeBuilding(get<int>(house+0x30),r.offer.typeIndex,r.offer.naval,cell);
  if(!validateNativePlacement(order,&submission))return -7;

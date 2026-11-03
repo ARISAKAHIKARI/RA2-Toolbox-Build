@@ -25,9 +25,11 @@ using Event=vanilla::Packet;
 static Shared*sh;static Snapshot snap;
 static uint32_t lastHouse,match,typePointers[MaxTypes];static int outgoingBudget=10;
 static DWORD clockNow=1000;static bool ready=true,retired=true,clockOkay=true,fault=false;
-static uint32_t failRead=0;static std::function<void()> queryMutation,ctorMutation,clockMutation;
+static uint32_t failRead=0;static std::function<void()> queryMutation,ctorMutation,clockMutation,floorMutation;
 static int queries=0,constructorsCalled=0,clockCalls=0,reads=0,floorHeight=0;
-static int completionActiveCalls=0,completionCopyCalls=0;
+static int queriedX=0,queriedY=0;
+static int completionActiveCalls=0,completionCopyCalls=0,completionQuickCalls=0;
+static const uint8_t quickCode[45]={0x33,0xc0,0x3b,0xc8,0x75,0x0b,0xa3,0x5c,0xfe,0xb0,0x00,0xa3,0x60,0xfe,0xb0,0x00,0xc3,0x3b,0x0d,0x5c,0xfe,0xb0,0x00,0x75,0x06,0xa3,0x5c,0xfe,0xb0,0x00,0xc3,0x3b,0x0d,0x60,0xfe,0xb0,0x00,0x75,0x05,0xa3,0x60,0xfe,0xb0,0x00,0xc3};
 static Event*constructedPacket=nullptr;
 static uint8_t ctorCode[8]{},queryCode[8]{},floorCode[12]={0x83,0xec,0x08,0x8b,0x4c,0x24,0x0c,0x56,0x8b,0x01,0x8b,0x51};
 static uint8_t completionActiveCode[12]={0x83,0xEC,0x08,0x53,0x8B,0xD9,0x56,0x8B,0x83,0x7C,0x11,0};
@@ -42,6 +44,7 @@ static void* queueCopy(void*dest,const void*src,size_t n){void*out=memory(uint32
 template<class T>static T get(uint32_t p){auto at=memory(p,sizeof(T));assert(at);return *(T*)at;}
 template<class T>static void put(uint32_t p,T v){auto at=memory(p,sizeof(T));assert(at);*(T*)at=v;}
 static bool read(uint32_t p,void*out,size_t n){++reads;if(failRead&&p<=failRead&&uint64_t(p)+n>failRead)return false;
+ if(p==0x734270&&n==45){memcpy(out,quickCode,45);return true;}
  if(p==0x578080&&n==12){memcpy(out,floorCode,12);return true;}
  if(p==0x4A8BF0&&n==12){memcpy(out,completionActiveCode,12);return true;}
  if(p==0x4A8D50&&n==12){memcpy(out,completionCopyCode,12);return true;}
@@ -64,7 +67,7 @@ template<class R,class...Args>static R call(uint32_t address,uint32_t self,Args.
  if constexpr(sizeof...(Args)==6){
   using First=typename std::tuple_element<0,decltype(values)>::type;
   if constexpr(std::is_pointer<First>::value){
-   assert(address==0x692300&&self==0x87F7E8);++queries;
+   assert(address==0x692300&&self==0x87F7E8);++queries;queriedX=std::get<0>(values)->x;queriedY=std::get<0>(values)->y;
    auto cell=std::get<1>(values);cell->x=70;cell->y=70;if(queryMutation)queryMutation();
   }else if constexpr(std::is_pointer<typename std::tuple_element<5,decltype(values)>::type>::value){
    assert(address==0x4C6AE0);++constructorsCalled;auto*e=(Event*)(uintptr_t)self;constructedPacket=e;
@@ -72,15 +75,31 @@ template<class R,class...Args>static R call(uint32_t address,uint32_t self,Args.
    int fields[]={int(std::get<2>(values)),int(std::get<3>(values)),int(std::get<4>(values))};
    memcpy(e->payload,fields,12);memcpy(e->payload+12,std::get<5>(values),4);if(ctorMutation)ctorMutation();
   }else assert(false&&"unexpected six-field constructor");
+ }else if constexpr(sizeof...(Args)==0){
+  assert(address==0x734270&&self>=0x10000);++completionQuickCalls;
+  if(get<uint32_t>(0xB0FE5C)==self)put<uint32_t>(0xB0FE5C,0);
+  else if(get<uint32_t>(0xB0FE60)==self)put<uint32_t>(0xB0FE60,0);
  }else if constexpr(sizeof...(Args)==1){
   assert(self==0x87F7E8);
   if constexpr(std::is_void<R>::value){
    assert(std::get<0>(values)==nullptr&&(address==0x4A8BF0||address==0x4A8D50));
    if(address==0x4A8BF0){++completionActiveCalls;put<uint32_t>(self+0x117C,0);}else{++completionCopyCalls;put<uint32_t>(self+0x118C,0);}
-  }else{assert(address==0x578080);return R(floorHeight);}
+  }else{assert(address==0x578080);if(floorMutation)floorMutation();return R(floorHeight);}
  }
  else assert(false&&"unexpected constructor in placement test");
  if constexpr(!std::is_void<R>::value)return R{};
+}
+// Execute the production viewport conversion and lease wrapper with a
+// controlled query sink. The original engine is never attached or called.
+struct NativeViewRect{int x=0,y=0,w=0,h=0;};
+struct NativeViewPoint{int x=0,y=0;};
+namespace gameentry {enum class Client{Assist};static bool active(Client){return true;}}
+#include "../source/native_viewport_query.h"
+struct FixtureCell{short x,y;};struct FixtureCoord{int x,y,z;};
+extern "C" int __cdecl GuardedNativeViewQuery(void*p,void*c,void*d,void*o,void*a,void*b){
+ const auto token=BeginNativeViewQuery();if(!token)return 0;
+ call<void>(0x692300,0x87F7E8,(NativeViewPoint*)p,(FixtureCell*)c,(FixtureCoord*)d,(uint32_t*)o,(uint8_t*)a,(uint8_t*)b);
+ EndNativeViewQuery(token);return 1;
 }
 struct NativePlacementSubmission;
 static bool validateNativePlacement(const intent::EventOrder&,const NativePlacementSubmission*);
@@ -93,6 +112,7 @@ static bool validateMoSubmission(const intent::EventOrder&o){return o.domain==va
 #undef memcpy
 static int notifications=0;static void notifyHost(){++notifications;}
 static HWND fixtureForeground(){return (HWND)0x1234;}
+static bool nativeSidebarUIHit(int,int){return false;}
 static DWORD fixtureWindowPid(HWND,DWORD*out){*out=GetCurrentProcessId();return 1;}
 static BOOL fixtureRect(HWND,RECT*out){*out={0,0,800,600};return TRUE;}
 static BOOL fixtureCursor(POINT*out){*out={100,100};return TRUE;}
@@ -112,8 +132,8 @@ constexpr uint32_t House=0x20010000,BuildingType=0x20020000,Factory=0x20030000,P
 static void reset(){
  memset(globals,0,sizeof globals);memset(objects,0,sizeof objects);memset(sh,0,sizeof *sh);memset(&snap,0,sizeof snap);
  memset(typePointers,0,sizeof typePointers);lastHouse=House;match=7;clockNow=1000;ready=retired=clockOkay=true;failRead=0;
- outgoingBudget=10;queryMutation=ctorMutation=clockMutation={};queries=constructorsCalled=clockCalls=reads=0;constructedPacket=nullptr;
- fault=false;completionActiveCalls=completionCopyCalls=0;nativePlacementCompletionReset();
+ outgoingBudget=10;queryMutation=ctorMutation=clockMutation=floorMutation={};queries=constructorsCalled=clockCalls=reads=0;queriedX=queriedY=0;constructedPacket=nullptr;
+ fault=false;completionActiveCalls=completionCopyCalls=completionQuickCalls=0;nativePlacementCompletionReset();
  floorHeight=0;placementView={};placementCapturedButtons=0;sh->heartbeat=clockNow;put<uint32_t>(0xB73550,0x1234);put<int>(0x8809A0,-1);put<int>(0x8192B8,2);put<int>(0x819310,3);
  sh->foreground=1;sh->flags=BuildAnywhere;sh->placementImplementation=2;sh->request=1;sh->command=PlaceCompletedBuilding;sh->requestMatch=match;sh->requestTick=clockNow;
  snap.status=snap.commandStatus=1;snap.frame=300;snap.match=match;snap.session=3;snap.typeCount=1;snap.types[0].kind=7;snap.types[0].index=0;
@@ -249,6 +269,22 @@ int main(){
  assert(nativePlacementPoint((HWND)0x1234,{200,100},aligned,alignedView)&&aligned.cellX==70&&aligned.cellY==69);
  assert(placementView.x==70*256&&placementView.y==69*256&&placementView.z==104&&placementView.viewportX==168&&placementView.viewportY==32);
  assert(placementView.zScale==external::Projection{}.zScale);++checks;
+ // Active scaled map: physical mouse pixels must be transformed exactly once
+ // before the engine query, and the Host preview is in logical coordinates.
+ reset();sh->arg2=1;sh->viewportActive=1;sh->viewportGeneration=5;
+ sh->viewportPhysical[0]=100;sh->viewportPhysical[1]=50;sh->viewportPhysical[2]=400;sh->viewportPhysical[3]=300;
+ sh->viewportLogical[0]=0;sh->viewportLogical[1]=0;sh->viewportLogical[2]=800;sh->viewportLogical[3]=600;
+ put<int>(0x886FA0,0);put<int>(0x886FA4,0);put<int>(0x886FA8,800);put<int>(0x886FAC,600);
+ assert(nativePlacementCommand(House,clockNow)==2);
+ assert(nativePlacementPoint((HWND)0x1234,{300,200},aligned,alignedView)&&queriedX==400&&queriedY==300&&placementView.viewportX==0&&placementView.viewportY==0);++checks;
+ sh->placementRequest=aligned;sh->arg=aligned.offer.slot;sh->requestTypeHash=aligned.offer.typeHash;sh->arg2=0;
+ const int beforeLegacy=queries;assert(nativePlacementCommand(House,clockNow)<0&&queries==beforeLegacy&&queued()==0);++checks;
+ assert(!nativePlacementPoint((HWND)0x1234,{50,20},aligned,alignedView)&&placementView.active);++checks;
+ queryMutation=[](){sh->viewportGeneration=6;};assert(!nativePlacementPoint((HWND)0x1234,{300,200},aligned,alignedView)&&queued()==0);++checks;
+ queryMutation={};sh->viewportGeneration=5;floorMutation=[](){sh->viewportGeneration=6;};
+ assert(!nativePlacementPoint((HWND)0x1234,{300,200},aligned,alignedView)&&queued()==0);++checks;
+ sh->viewportGeneration=5;floorMutation=[](){put<int>(Tactical+0xB0,999);};
+ assert(!nativePlacementPoint((HWND)0x1234,{300,200},aligned,alignedView)&&queued()==0);++checks;floorMutation={};
  // A playable-area rejection is a red position, never a modal cancellation.
  reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);
  put<int>(0x87F7E8+0x100,50);put<int>(0x87F7E8+0x108,50);nativePlacementTick(clockNow);
@@ -260,6 +296,22 @@ int main(){
  failRead=Cell+0x1000+0x24;nativePlacementTick(clockNow);assert(placementView.active&&placementView.status==2);
  down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down));up=mouse(WM_LBUTTONUP);assert(nativePlacementMessage(&up)&&queued()==0);++checks;
  failRead=0;nativePlacementTick(clockNow);assert(placementView.active&&placementView.status==1);++checks;
+ // Native usable area extends beyond CoordinatesLegal's bottom boundary,
+ // especially with elevation. A real indexed Cell with matching coordinates
+ // is required, and geometry changes still fail closed.
+ reset();auto rd=[](uint32_t at,void*out,size_t count){return read(at,out,count);};
+ put<uint32_t>(Cells+(151*512+150)*4,Cell);put<int16_t>(Cell+0x24,150);put<int16_t>(Cell+0x26,151);
+ assert(nativeplacement::targetUsable(rd,150,151));++checks;
+ put<int16_t>(Cell+0x24,149);assert(!nativeplacement::targetUsable(rd,150,151));++checks;
+ put<int16_t>(Cell+0x24,150);put<int16_t>(Cell+0x26,156);put<uint32_t>(Cells+(156*512+150)*4,Cell);
+ put<int8_t>(Cell+0x11B,6);assert(nativeplacement::targetUsable(rd,150,156));++checks;
+ put<int8_t>(Cell+0x11B,0);assert(!nativeplacement::targetUsable(rd,150,156));++checks;
+ reset();
+ // A new viewport generation must retire an old frozen-coordinate preview.
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);
+ sh->viewportGeneration=1;nativePlacementTick(clockNow);assert(!placementView.active&&queued()==0);++checks;
+ reset();sh->arg2=1;sh->viewportSerial=1;assert(nativePlacementCommand(House,clockNow)<0&&!placementView.active&&queued()==0);++checks;
+ reset();
  // Loading another scenario before the ordinary sample cannot reuse this modal.
  put<uint32_t>(0xA8B230,0x200A9000);nativePlacementTick(clockNow);assert(!placementView.active&&queued()==0);++checks;
  // Both actual admission routes register a receipt only after the real
@@ -277,16 +329,34 @@ int main(){
  for(int route=0;route<2;++route){
   reset();if(route)queuePreview();else assert(nativePlacementCommand(House,clockNow)==1&&nativePlacementCompletionPending());
   assert(queued()==1&&!completionActiveCalls&&!completionCopyCalls);++checks;
-  nativeCursor(0x11A4);nativeCursor(0x1190);nativePlacementReset();
+  nativePlacementOffers(clockNow);assert(snap.placementOfferCount==0);
+  sh->arg2=1;assert(nativePlacementCommand(House,clockNow)<0&&!placementView.active&&queued()==1);
+  sh->arg2=0;assert(nativePlacementCommand(House,clockNow)<0&&queued()==1);++checks;
+  nativeCursor(0x11A4);nativeCursor(0x1190);
+  put<uint32_t>(0xB0FE5C+(route?4:0),Product);put<uint32_t>(0xB0FE5C+(route?0:4),Product+0x100);nativePlacementReset();
   nativePlacementTick(clockNow);assert(nativePlacementCompletionPending()&&get<uint32_t>(0x87F7E8+0x11A4)==Product&&!completionActiveCalls&&!completionCopyCalls);++checks;
   put<uint32_t>(Factory+0x58,0);put<int>(Factory+0x24,0);nativePlacementTick(clockNow);
-  assert(nativePlacementCompletionPending()&&queued()==1&&!completionActiveCalls&&!completionCopyCalls);++checks;
+  assert(nativePlacementCompletionPending()&&queued()==1&&!completionActiveCalls&&!completionCopyCalls&&!completionQuickCalls&&get<uint32_t>(0xB0FE5C+(route?4:0))==Product);++checks;
   // The observer keeps working after the modal closes and focus changes.
   sh->foreground=0;clockNow+=1100;onMap();nativePlacementTick(clockNow);
-  assert(!nativePlacementCompletionPending()&&queued()==1&&completionActiveCalls==1&&completionCopyCalls==1);
+  assert(!nativePlacementCompletionPending()&&queued()==1&&completionActiveCalls==1&&completionCopyCalls==1&&completionQuickCalls==1);
+  assert(get<uint32_t>(0xB0FE5C+(route?4:0))==0&&get<uint32_t>(0xB0FE5C+(route?0:4))==Product+0x100);
   for(auto offset:{0x11A4,0x1190})assert(!get<uint32_t>(0x87F7E8+offset)&&!get<uint32_t>(0x87F7E8+offset+4)&&get<int>(0x87F7E8+offset+8)==-1);++checks;
   nativePlacementTick(clockNow);assert(queued()==1&&completionActiveCalls==1&&completionCopyCalls==1);++checks;
  }
+ // If the event was never delivered, expiration releases the local receipt
+ // and allows an explicit new attempt; no event is sent automatically.
+ reset();queuePreview();clockNow+=10001;sh->heartbeat=clockNow;nativePlacementTick(clockNow);
+ assert(!nativePlacementCompletionPending()&&queued()==1);sh->arg2=1;
+ assert(nativePlacementCommand(House,clockNow)==2&&placementView.active&&queued()==1);++checks;
+ // Native helper clears at most one Q/W cache per call, and never null-calls.
+ reset();queuePreview();onMap();put<uint32_t>(0xB0FE5C,Product);put<uint32_t>(0xB0FE60,Product);nativePlacementTick(clockNow);
+ assert(nativePlacementCompletionPending()&&completionQuickCalls==1&&get<uint32_t>(0xB0FE5C)==0&&get<uint32_t>(0xB0FE60)==Product);
+ nativePlacementTick(clockNow);assert(!nativePlacementCompletionPending()&&completionQuickCalls==2&&get<uint32_t>(0xB0FE60)==0&&queued()==1);++checks;
+ // A foreign/replaced or unreadable native routine must never be invoked.
+ reset();queuePreview();onMap();put<uint32_t>(0xB0FE5C,Product);failRead=0x734270;nativePlacementTick(clockNow);
+ assert(nativePlacementCompletionPending()&&!completionQuickCalls&&get<uint32_t>(0xB0FE5C)==Product);
+ failRead=0;nativePlacementTick(clockNow);assert(!nativePlacementCompletionPending()&&completionQuickCalls==1&&!get<uint32_t>(0xB0FE5C));++checks;
  reset();queuePreview();nativeCursor(0x11A4,Product+0x100);nativeCursor(0x1190);onMap();nativePlacementTick(clockNow);
  assert(get<uint32_t>(0x87F7E8+0x11A4)==Product+0x100&&!get<uint32_t>(0x87F7E8+0x1190)&&!completionActiveCalls&&completionCopyCalls==1&&queued()==1);++checks;
  reset();queuePreview();nativeCursor(0x11A4);onMap();put<uint32_t>(Product+0x10,32);nativePlacementTick(clockNow);

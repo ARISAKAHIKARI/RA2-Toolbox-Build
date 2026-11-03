@@ -51,7 +51,7 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  selectionContext=r.context;
  auto read=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};
  external::mainview::View before;
- if(!external::mainview::sample(read,before))return false;
+ if(!nativeviewhost::sample(shared,read,before)){unsafeView=unsafeWorld=true;return false;}
  if(!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame){unsafeView=unsafeWorld=true;return false;}
  nf::Band band;std::vector<nf::Selected> selected;
  const bool bandOK=nf::band(read,r.view.tactical,band);
@@ -64,7 +64,7 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
   external::nativeeffects::mergeCutouts(cutouts,r.width,r.height));
  const double sx=double(r.width)/r.view.width,sy=double(r.height)/r.view.height;
  external::mainview::View after;
- if(!external::mainview::sample(read,after))return false;
+ if(!nativeviewhost::sample(shared,read,after)){unsafeView=unsafeWorld=true;return false;}
  if(!renderpresentation::sameProjection(before,after)||after.frame<before.frame){unsafeView=unsafeWorld=true;return false;}
  // A failed native-effect mask must never retain an older transparent hole:
  // it could expose an unrelated pixel after the beam/animation has moved.
@@ -113,7 +113,8 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
   out={im.width,im.height,im.x+im.canvasWidth/2,im.y+im.canvasHeight/2,std::move(im.pixels)};return true;
  },cursor)||!cursor.image||!current.same(cursor.mouse))return false;
  const auto&im=*cursor.image;
- auto dst=nf::cursorRect(pos.x-left,pos.y-top,im.x,im.y,im.width,im.height,current.hotX,current.hotY,sx,sy);
+ const auto physical=r.view.physical();
+ auto dst=nf::cursorRect(pos.x-left,pos.y-top,im.x,im.y,im.width,im.height,current.hotX,current.hotY,double(r.width)/physical.w,double(r.height)/physical.h);
  auto clip=nf::intersect(dst,{0,0,r.width,r.height});
  // A valid cursor crop can lie entirely beyond the viewport boundary.
  bool covered=!clip.valid();

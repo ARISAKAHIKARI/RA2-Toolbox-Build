@@ -23,6 +23,17 @@ static void syncSecondaryLayoutControls(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ if(id==9253&&notification==BN_CLICKED){
+  extra.destructSelectedOwner=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
+  registerKeys();changedSetting();updatePlayerTestUI(true);
+  if(!extra.destructSelectedOwner)setConsoleFeedback(GetDlgItem(ui,9186),L"");return true;
+ }
+ if(id==9254&&edit){
+  const WORD next=WORD(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));const auto old=extra.destructSelectedOwnerKey;
+  const bool conflict=destructOwnerKeyConflict(next);
+  if(conflict){ControlUpdate guard;SendMessageW(GetDlgItem(ui,id),HKM_SETHOTKEY,old,0);notify(L"自毁必须使用独立快捷键；已保留原按键。");return true;}
+  extra.destructSelectedOwnerKey=next;registerKeys();changedSetting();return true;
+ }
  if(id==9420&&edit){extra.overlayKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
  if(id==9160&&notification==BN_CLICKED){infoAdaptive=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;syncInformationRate(true);changedSetting();return true;}
  if(id>=9000&&id<9000+compute::Count&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));uint32_t bit=1u<<(id-9000);
@@ -46,8 +57,8 @@ static bool autoSettingChanged(int id,int notification){
  if(id==830&&notification==BN_CLICKED){minimapEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(!minimapEnabled)minimap::hidePrimary();changedSetting();return true;}
  if((id==9090&&notification==BN_CLICKED)||(id==9091&&select)||(id==9092&&notification==BN_CLICKED)){
   if(id==9090)extra.viewZoomEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
-  if(id==9091){int index=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));extra.viewZoomPercent=viewzoom::Levels[std::clamp(index,0,4)];}
-  if(id==9092){extra.viewZoomPercent=100;SendMessageW(GetDlgItem(ui,9091),CB_SETCURSEL,2,0);}
+  if(id==9091){int index=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));extra.viewZoomPercent=viewzoom::Levels[std::clamp(index,0,viewzoom::Count-1)];}
+  if(id==9092){extra.viewZoomPercent=100;SendMessageW(GetDlgItem(ui,9091),CB_SETCURSEL,viewzoom::index(100),0);}
   registerKeys();changedSetting();syncAdditional();return true;
  }
  if(id>=9440&&id<=9447){int index=(id-9440)/2;
@@ -59,7 +70,7 @@ static bool autoSettingChanged(int id,int notification){
  if(id==9403&&notification==BN_CLICKED){if(SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED)extra.moFeatures|=16u;else extra.moFeatures&=~16u;changedSetting();syncAdditional();return true;}
  if(id==9463&&notification==BN_CLICKED){extra.smallMapClamp=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9462&&notification==BN_CLICKED){extra.sidebarEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();changedSetting();syncAdditional();return true;}
- if(id==9404&&select){extra.sidebarMode=SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)==1?2u:0u;changedSetting();syncAdditional();return true;}
+ if(id==9404&&select){extra.sidebarMode=uint32_t(std::clamp(int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)),0,2));changedSetting();syncAdditional();return true;}
  if(id==9405&&notification==BN_CLICKED){extra.superweaponPanel=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==886&&select){extra.scrollRefreshMode=0;SendMessageW(GetDlgItem(ui,id),CB_SETCURSEL,0,0);changedSetting();syncAdditional();return true;}
  if(id==9096&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=buildingmodes::PlacementEvent){extra.placementImplementation=mode;resetPlacementEvent();changedSetting();syncAdditional();registerKeys();updatePlacementEventUI();}return true;}
@@ -70,6 +81,12 @@ static bool autoSettingChanged(int id,int notification){
   extra.placementEventKey=next;registerKeys();changedSetting();return true;
  }
  if(id==9097&&notification==BN_CLICKED){extra.techEnhance=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
+ if(id==9470&&select){extra.techEnhanceImplementation=std::clamp(int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)),0,1);changedSetting();syncAdditional();return true;}
+ if(id>=9480&&id<=9485&&edit){BOOL ok=FALSE;const int value=int(GetDlgItemInt(ui,id,&ok,FALSE));const int lo=id==9483?1:2,hi=id==9483?8:16;
+  if(!ok||value<lo||value>hi){setStatus(L"此项有效范围："+std::to_wstring(lo)+L"–"+std::to_wstring(hi));return true;}
+  uint32_t*fields[]={&extra.moOptions.range,&extra.moOptions.squad,&extra.moOptions.patrolSize,&extra.moOptions.nodeStep,&extra.moOptions.loopClose,&extra.moOptions.loopStep};
+  *fields[id-9480]=uint32_t(value);changedSetting();syncAdditional();return true;}
+ if(id==9486&&notification==BN_CLICKED){extra.moOptions.commit=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==810&&notification==BN_CLICKED){extra.c4Test=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();return true;}
  if(id==9180&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=1){extra.c4Mode=uint32_t(mode);infantryEntryResult.clear();pointerMatches.clear();changedSetting();}return true;}
  if(id>=9181&&id<=9183&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==9181)extra.missileReserve=on;else if(id==9182)extra.lowDamageFilter=on;else extra.lowDamageNetwork=on;changedSetting();syncAdditional();return true;}

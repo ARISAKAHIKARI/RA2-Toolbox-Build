@@ -29,8 +29,8 @@ struct Health {
  DWORD nativeThread=0,nativeTick=0,nativeEax=0,nativeEcx=0,nativeEsi=0,nativeEbp=0;
 };
 inline bool heldBinding(uint32_t binding);
-struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
-struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
+struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0,viewportGeneration=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
+struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0,viewportGeneration=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
 struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr,process=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false,frameSampling=false,diagnosticFrame=false;std::shared_ptr<framesignal::Client> frameSignal;
 #ifdef _WIN64
  uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0;
@@ -165,11 +165,11 @@ inline void reapTargets(){
 }
 // Capture identity belongs to the producer, never to the dequeueing feature.
 inline void disarmPointer(PointerQueue&q){q.focused=false;q.rightArmed=false;q.leftArmed=false;q.count=q.head=0;++q.cancelSerial;}
-inline void setPointerContext(Subscription id,uint32_t match,bool enabled){
+inline void setPointerContext(Subscription id,uint32_t match,bool enabled,uint32_t viewportGeneration=0){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
  for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&q=h.targets[l.target].pointer;
-  enabled=enabled&&match!=0;if(q.match!=match||q.enabled!=enabled)disarmPointer(q);
-  q.match=match;q.enabled=enabled;q.contextAt=GetTickCount();return;
+  enabled=enabled&&match!=0;if(q.match!=match||q.enabled!=enabled||q.viewportGeneration!=viewportGeneration)disarmPointer(q);
+  q.match=match;q.enabled=enabled;q.viewportGeneration=viewportGeneration;q.contextAt=GetTickCount();return;
  }
 }
 // Polling belongs to the EXE manager. No low-level mouse/keyboard hooks and no
@@ -208,7 +208,7 @@ inline void pollPointer(Target&t,DWORD now){
  if(pressed&8){q.rightArmed=located;q.rightDragged=false;q.rightOrigin=hit;++q.cancelSerial;for(unsigned i=0;i<256;++i)q.rightKeys[i]=physical[i];}
  int operation=(pressed&112u)?5:left?6:(pressed&128)?7:follow?4:(pressed&1)?1:(pressed&2)?2:(pressed&4)?3:0;
  if(!operation)return;if(operation!=4&&operation!=6&&!(pressed&8))++q.cancelSerial;
- PointerPress e{};e.tick=now;e.serial=q.cancelSerial;e.match=q.match;e.operation=operation;RECT rect{};
+ PointerPress e{};e.tick=now;e.serial=q.cancelSerial;e.match=q.match;e.viewportGeneration=q.viewportGeneration;e.operation=operation;RECT rect{};
  if(!GetCursorPos(&e.point)||!ScreenToClient(t.window,&e.point)||!GetClientRect(t.window,&rect))return;
  e.width=rect.right;e.height=rect.bottom;
  if(e.width<=0||e.height<=0||e.point.x<0||e.point.y<0||e.point.x>=e.width||e.point.y>=e.height)return;

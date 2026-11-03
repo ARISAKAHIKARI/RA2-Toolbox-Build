@@ -22,6 +22,7 @@ static Shared shared,*sh=&shared;static bool fault=false;
 static uint32_t match=7,lastHouse=0x20010000;
 static uint8_t globals[0x500000]{},objects[0x100000]{};
 static uint8_t activeCode[12]={0x83,0xEC,0x08,0x53,0x8B,0xD9,0x56,0x8B,0x83,0x7C,0x11,0};
+static uint8_t quickCode[45]={0x33,0xc0,0x3b,0xc8,0x75,0x0b,0xa3,0x5c,0xfe,0xb0,0x00,0xa3,0x60,0xfe,0xb0,0x00,0xc3,0x3b,0x0d,0x5c,0xfe,0xb0,0x00,0x75,0x06,0xa3,0x5c,0xfe,0xb0,0x00,0xc3,0x3b,0x0d,0x60,0xfe,0xb0,0x00,0x75,0x05,0xa3,0x60,0xfe,0xb0,0x00,0xc3};
 static uint8_t copyCode[12]={0x83,0xEC,0x08,0x53,0x8B,0xD9,0x56,0x8B,0x83,0x8C,0x11,0};
 static uint32_t failRead=0;static bool partialFailure=true;
 static int calls=0,activeCalls=0,copyCalls=0,writes=0;static std::function<void(uint32_t)> onCall;
@@ -34,7 +35,7 @@ static void* memory(uint32_t at,size_t n){
 template<class T>static void set(uint32_t at,T value){void*p=memory(at,sizeof value);assert(p);memcpy(p,&value,sizeof value);}
 template<class T>static T value(uint32_t at){T out{};void*p=memory(at,sizeof out);assert(p);memcpy(&out,p,sizeof out);return out;}
 static bool read(uint32_t at,void*out,size_t n){
- const void*p=at==0x4A8BF0&&n==12?activeCode:at==0x4A8D50&&n==12?copyCode:memory(at,n);
+ const void*p=at==0x734270&&n==45?quickCode:at==0x4A8BF0&&n==12?activeCode:at==0x4A8D50&&n==12?copyCode:memory(at,n);
  if(!p)return false;
  if(failRead&&at<=failRead&&uint64_t(at)+n>failRead){if(partialFailure&&n)memcpy(out,p,n-1);return false;}
  memcpy(out,p,n);return true;
@@ -44,11 +45,17 @@ template<class T>static void put(uint32_t at,T v){
  assert(sizeof(T)==4&&(at%4)==0);++writes;set(at,v);
 }
 template<class R,class...Args>static R call(uint32_t function,uint32_t self,Args...args){
- static_assert(std::is_void<R>::value&&sizeof...(Args)==1,"only local foundation setters may be called");
- assert(self==Map&&std::get<0>(std::make_tuple(args...))==nullptr);
- assert(function==0x4A8BF0||function==0x4A8D50);++calls;
- if(function==0x4A8BF0){++activeCalls;set<uint32_t>(Map+0x117C,0);}else{++copyCalls;set<uint32_t>(Map+0x118C,0);}
- if(onCall)onCall(function);
+ static_assert(std::is_void<R>::value);
+ if constexpr(sizeof...(Args)==0){
+  assert(function==0x734270&&self>=0x10000);
+  if(value<uint32_t>(0xB0FE5C)==self)set<uint32_t>(0xB0FE5C,0);
+  else if(value<uint32_t>(0xB0FE60)==self)set<uint32_t>(0xB0FE60,0);
+ }else{
+  static_assert(sizeof...(Args)==1);assert(self==Map&&std::get<0>(std::make_tuple(args...))==nullptr);
+  assert(function==0x4A8BF0||function==0x4A8D50);++calls;
+  if(function==0x4A8BF0){++activeCalls;set<uint32_t>(Map+0x117C,0);}else{++copyCalls;set<uint32_t>(Map+0x118C,0);}
+  if(onCall)onCall(function);
+ }
 }
 #include "../source/native_placement_completion_bridge.h"
 static nativeplacement::Offer offer;

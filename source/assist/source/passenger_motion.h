@@ -8,6 +8,7 @@ class Motion {
  visual::LabelView views_[MaxLabels]{};
 public:
  void clear(){motion_.clear();}
+ void projection(uint32_t generation){motion_.projection(generation);}
  const visual::LabelView* update(const std::vector<external::passengers::Bubble>& bubbles,
                                uint32_t match,int frame,uint32_t sampled,uint32_t render,
                                int cameraX,int cameraY){
