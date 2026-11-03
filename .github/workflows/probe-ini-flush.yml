@@ -1,0 +1,85 @@
+name: Probe native profile-cache flush semantics
+on:
+  push:
+    branches: [codex/console-ini-flush-probe-20261103]
+    paths: [.github/workflows/probe-ini-flush.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Observe genuine Win32 writes and cache flush return values
+        shell: pwsh
+        run: |
+          $definition=@'
+          using System;
+          using System.Runtime.InteropServices;
+          using System.Text;
+          public static class NativeProfileProbe {
+            [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+            static extern bool WritePrivateProfileStringW(string section,string key,string value,string path);
+            [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+            static extern uint GetPrivateProfileStringW(string section,string key,string fallback,StringBuilder buffer,uint count,string path);
+            [DllImport("kernel32.dll")] static extern void SetLastError(uint error);
+            public static int[] Call(string section,string key,string value,string path) {
+              SetLastError(0);
+              bool result=WritePrivateProfileStringW(section,key,value,path);
+              int error=Marshal.GetLastWin32Error();
+              return new int[]{result?1:0,error};
+            }
+            public static string Read(string path) {
+              var value=new StringBuilder(256);
+              GetPrivateProfileStringW("Probe","Value","<missing>",value,256,path);
+              return value.ToString();
+            }
+          }
+          '@
+          Add-Type -TypeDefinition $definition
+          $directory=Join-Path $env:RUNNER_TEMP ("ra2-ini-probe-"+[guid]::NewGuid().ToString("N"))
+          New-Item -ItemType Directory $directory | Out-Null
+          $valid=Join-Path $directory 'valid.ini'
+          $absent=Join-Path $directory 'absent.ini'
+          $badParent=Join-Path $directory 'missing/invalid.ini'
+          $readonly=Join-Path $directory 'readonly.ini'
+          [IO.File]::WriteAllBytes($valid,[byte[]](0xff,0xfe))
+          [IO.File]::WriteAllBytes($readonly,[byte[]](0xff,0xfe))
+          $rows=[Collections.Generic.List[object]]::new()
+          function Observe($name,$section,$key,$value,$path) {
+            $result=[NativeProfileProbe]::Call($section,$key,$value,$path)
+            $exists=$path -and [IO.File]::Exists($path)
+            $rows.Add([pscustomobject]@{name=$name;returned=$result[0];lastError=$result[1];fileExists=[bool]$exists;value=$(if($path){[NativeProfileProbe]::Read($path)}else{'<global>'});disk=$(if($exists){[IO.File]::ReadAllText($path)}else{'<absent>'})})
+          }
+          try {
+            Observe 'write-existing' 'Probe' 'Value' 'saved' $valid
+            Observe 'flush-existing-first' $null $null $null $valid
+            Observe 'flush-existing-repeat' $null $null $null $valid
+            Observe 'flush-global-after-existing' $null $null $null $null
+            Observe 'flush-absent-file' $null $null $null $absent
+            Observe 'flush-missing-parent' $null $null $null $badParent
+            Observe 'write-missing-parent' 'Probe' 'Value' 'must-fail' $badParent
+            Observe 'write-absent-valid-parent' 'Probe' 'Value' 'created' $absent
+            Observe 'flush-newly-created' $null $null $null $absent
+            [IO.File]::SetAttributes($readonly,[IO.FileAttributes]::ReadOnly)
+            Observe 'write-readonly' 'Probe' 'Value' 'must-fail' $readonly
+            Observe 'flush-readonly' $null $null $null $readonly
+            [IO.File]::SetAttributes($readonly,[IO.FileAttributes]::Normal)
+            Observe 'flush-directory-as-filename' $null $null $null $directory
+            Observe 'flush-global-final' $null $null $null $null
+          } finally {
+            [IO.File]::SetAttributes($readonly,[IO.FileAttributes]::Normal)
+            [NativeProfileProbe]::Call($null,$null,$null,$null) | Out-Null
+            Remove-Item -Recurse -Force $directory
+          }
+          New-Item -ItemType Directory results | Out-Null
+          $rows | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 results/native-ini-probe.json
+          $rows | Format-Table name,returned,lastError,fileExists,value | Out-String | Tee-Object results/native-ini-probe.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2-console-native-ini-probe
+          retention-days: 7
+          if-no-files-found: warn
+          path: results/
