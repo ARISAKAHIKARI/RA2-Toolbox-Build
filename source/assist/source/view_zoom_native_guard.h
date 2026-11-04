@@ -1,4 +1,6 @@
 #pragma once
+#include "exception_policy.h"
+extern "C" void* _exception_info();
 extern "C" int __cdecl AssistNativeViewAction(unsigned,unsigned);
 extern "C" void __cdecl AssistNativeViewFailed();
 extern "C" void __cdecl AssistNativeViewUnlockOne();
@@ -25,7 +27,7 @@ extern "C" int __cdecl AssistNativeViewMousePoint(void*);
 extern "C" unsigned __cdecl GuardedNativeViewWndEnter(unsigned argument,unsigned returnAddress){
  const unsigned long savedError=GetLastError();unsigned result=~0u;
  __try {result=AssistNativeViewWndEnter(argument,returnAddress);}
- __except((_exception_code()==0xC0000005u||_exception_code()==0xC0000006u)?1:0){result=~0u;}
+ __except(assistguard::noReportAccess(_exception_info())){result=~0u;}
  SetLastError(savedError);return result;
 }
 extern "C" unsigned __cdecl GuardedNativeViewWndLeave(){
@@ -34,6 +36,6 @@ extern "C" unsigned __cdecl GuardedNativeViewWndLeave(){
 extern "C" int __cdecl GuardedNativeViewMousePoint(void*point){
  const unsigned long savedError=GetLastError();int result=0;
  __try {result=AssistNativeViewMousePoint(point);}
- __except((_exception_code()==0xC0000005u||_exception_code()==0xC0000006u)?1:0){result=0;}
+ __except(assistguard::noReportAccess(_exception_info())){result=0;}
  SetLastError(savedError);return result;
 }

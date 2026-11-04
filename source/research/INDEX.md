@@ -259,3 +259,5 @@
 - [小地圖頂部裁切、底部導航與真實視口](2026-11-04-minimap-camera-overview.md)（Tactical overview／native backing 身分／R 視口／排除端點；受控測試，實機待驗收）
 
 - [Runtime(8) 單步異常、故障鎖存及同進程重連殘留](2026-11-04-runtime-single-step-fault-reconnect.md)（80000004／4F7870／fault未清／callback仍活；來源與實機日誌分析，未修改Runtime）
+
+- [pre.7 Hook 異常傳遞、SEH 擁有者清理與重新連接](2026-11-05-runtime-exception-policy.md)（Search／access-only fallback／exact lease／publication abort／fault retirement；Windows 自有程序與產品編譯）

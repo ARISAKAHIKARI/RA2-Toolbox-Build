@@ -43,7 +43,7 @@
   class ConsoleStore {
     constructor(send = () => {}, changed = () => {}, options = {}) {
       this.send = send; this.changed = changed; this.pages = new Map(); this.pending = new Map(); this.drafts = new Map(); this.errors = new Map(); this.generation = new Map();
-      this.current = { module: 0, category: 0 }; this.shell = { version: '1.0.41-pre.6', modules: [], closing: false }; this.seq = options.initialSeq ?? Date.now() * 1024; this.connected = false; this.closed = false; this.notice='';
+      this.current = { module: 0, category: 0 }; this.shell = { version: '1.0.41-pre.7', modules: [], closing: false }; this.seq = options.initialSeq ?? Date.now() * 1024; this.connected = false; this.closed = false; this.notice='';
       if (!safeInteger(this.seq) || this.seq > Number.MAX_SAFE_INTEGER - 1024) throw new RangeError('Invalid initial action sequence');
     }
     emit(message) { this.send({ ...message, protocol: PROTOCOL }); }
@@ -352,7 +352,7 @@
     const category = CATEGORIES[selectedCategory], state = store.state, currentPage = pageKey(store.current.module,store.current.category);
     if (renderedPage !== currentPage) { clearGroups(); renderedPage = currentPage; }
     [...$('navigation').children].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
-    $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '1.0.41-pre.6';
+    $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '1.0.41-pre.7';
     $('videoTabs').hidden = selectedCategory !== 0; $('categoryNote').hidden = selectedCategory === 0;
     [...$('videoTabs').children].forEach(button => { const selected=Number(button.dataset.module) === videoModule;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;button.setAttribute('aria-controls','settings'); });
     const moduleState = store.shell.modules.find(module => module.module === videoModule); $('moduleToggleWrap').hidden = selectedCategory !== 0 || !moduleState; if (moduleState) { $('moduleToggle').checked = Boolean(moduleState.enabled); $('moduleToggle').disabled = store.closed || !moduleState.ready; $('moduleToggleLabel').textContent=moduleState.enabled?'模块已启用':'启用此模块'; }

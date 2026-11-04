@@ -140,9 +140,10 @@ extern "C" bool CursorTooltipOwnsHiddenMouse(){
  void* p=nullptr;LONG ref=0;DWORD vt=0,getter=0;
  // -1 + our one held HideCursor = native visible count 0. Leave additional
  // game hides (< -1), replacement objects and foreign getters untouched.
- const bool ours=current(&p,&ref)&&p==held&&ref==-1&&
-  read(DWORD(uintptr_t(p)),&vt,4)&&read(vt+0x28,&getter,4)&&getter==0x7B89F0;
- gameentry::leave(lease);return ours;
+ bool ours=false;
+ runtimeunwind::run([&]{ours=current(&p,&ref)&&p==held&&ref==-1&&
+  read(DWORD(uintptr_t(p)),&vt,4)&&read(vt+0x28,&getter,4)&&getter==0x7B89F0;},[&]{gameentry::leave(lease);});
+ return ours;
 }
 // Return Windows cursor control to its prior owner. Balance only our own
 // ShowCursor increments; do not unconditionally toggle visibility on detach.
@@ -409,7 +410,7 @@ static void disconnectCursor(){
 }
 extern "C" void CursorRuntimeMessage(int code,WPARAM wp,LPARAM lp){
  if(code<0)return;
- gameentry::Scope entry(gameentry::Client::Cursor);if(!entry)return;
+ gameentry::scoped(gameentry::Client::Cursor,false,[&]{
  if(!s){
   wchar_t name[80];mapName(name,GetCurrentProcessId());
   mapping=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,name);
@@ -427,14 +428,16 @@ extern "C" void CursorRuntimeMessage(int code,WPARAM wp,LPARAM lp){
  // Stop ACK is published only after restore(). Release this mapping so a
  // subsequent session cannot inherit the old native cursor/cache state.
  if(stopping&&!held&&s->state==0&&!s->error)disconnectCursor();
+ });
 }
 extern "C" void CursorRuntimeWatchdog(){
  if(!s)return;
  const bool dead=owner&&WaitForSingleObject(owner,0)==WAIT_OBJECT_0;
  if(s->command!=2&&!dead)return;
- gameentry::Scope entry(gameentry::Client::Cursor);if(!entry)return;
+ gameentry::scoped(gameentry::Client::Cursor,false,[&]{
  bool ok=restore();s->error=ok?0:4;if(ok)s->state=0;s->command=ok?0:2;
  if(ok)disconnectCursor();
+ });
 }
 // WH_CALLWNDPROCRET is called AFTER the game has processed WM_SETCURSOR.
 // The external scheduling pulse alone cannot prevent Windows' default arrow flashing
@@ -459,9 +462,9 @@ static bool isDialogMessage(HWND w){
 extern "C" void CursorRuntimePost(int code,WPARAM wp,LPARAM lp){
  __declspec(align(16)) BYTE fx[512];
  __asm {fxsave fx}
+ runtimeunwind::run([&]{
  if(code>=0&&s&&lp&&s->menuSuspend!=2){
-  gameentry::Scope entry(gameentry::Client::Cursor);
-  if(entry){
+  gameentry::scoped(gameentry::Client::Cursor,false,[&]{
   const CWPRETSTRUCT* ev=(const CWPRETSTRUCT*)lp;
   if(ev->message==WM_SETCURSOR){
    if(s->nativeBlank&&held&&s->state==1&&insideGameWindow(ev->hwnd)){
@@ -475,8 +478,9 @@ extern "C" void CursorRuntimePost(int code,WPARAM wp,LPARAM lp){
     if(GetCursor()!=nativeCursor){SetCursor(nativeCursor);InterlockedIncrement(&s->postSetCursorRepairs);}
    }
   }
-  }
+  });
  }
- __asm {fxrstor fx}
+ },[&]{auto* state=fx;__asm {mov eax,state
+ fxrstor [eax]}});
 
 }
