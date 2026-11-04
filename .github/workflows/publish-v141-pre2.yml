@@ -82,6 +82,11 @@ jobs:
           if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
           Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
           New-Item -ItemType Directory -Force diagnostics/console-win32,fixtures | Out-Null
+      - name: Verify the one-slot map flag callback on real Windows
+        shell: pwsh
+        run: |
+          python source/assist/tests/map_visibility_windows.py --zig $env:ZIG_EXE --out diagnostics/console-win32/map-hardware
+          if($LASTEXITCODE -ne 0){throw 'Map hardware fixture failed'}
       - name: Activate Common Controls 6 for the independent fixture process
         shell: pwsh
         run: |
@@ -112,8 +117,6 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'Hardware control fixture failed'}
           python source/assist/tests/tech_enhancement_parameter_windows.py --zig $env:ZIG_EXE --build-dir diagnostics/console-win32/technology-four --output diagnostics/console-win32/technology-four/result.json
           if($LASTEXITCODE -ne 0){throw 'Technology slot regression failed'}
-          python source/assist/tests/map_visibility_windows.py --zig $env:ZIG_EXE --out diagnostics/console-win32/map-hardware
-          if($LASTEXITCODE -ne 0){throw 'Map hardware fixture failed'}
           python source/assist/tests/tech_ui_publish_windows.py --zig $env:ZIG_EXE --out diagnostics/console-win32/retirement
           if($LASTEXITCODE -ne 0){throw 'Hardware retirement diagnostics regression failed'}
           python source/assist/tests/tech_enhancement_parameter_settings.py --zig $env:ZIG_EXE --build-dir diagnostics/console-win32/level-switch --output diagnostics/console-win32/level-switch/result.json

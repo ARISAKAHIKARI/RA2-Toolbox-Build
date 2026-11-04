@@ -1,10 +1,21 @@
 // Actual production callback and Service, synthetic gate in this own process.
 // World/request flags are explicit seams; no game process is opened.
-#define main baselineTechnologyFixtureMain
-#include "tech_ui_breakpoint_windows.cpp"
-#undef main
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include "../source/tech_ui_breakpoint_core.h"
 #include "../source/map_visibility_parameter_policy.h"
-#include <initializer_list>
+#ifdef NDEBUG
+#error Hardware verification requires assertions.
+#endif
+static void wait(assist::techbp::Service&s){const DWORD at=GetTickCount();while(s.pending()){assert(DWORD(GetTickCount()-at)<5000);Sleep(1);}}
+static void retire(assist::techbp::Service&s){const DWORD at=GetTickCount();while(!s.retire()){assert(DWORD(GetTickCount()-at)<5000);Sleep(1);}}
+struct DebugAccess{HANDLE target;CONTEXT value{};bool okay=false;};
+static DWORD WINAPI debugWorker(void*raw){auto&j=*static_cast<DebugAccess*>(raw);const DWORD prior=SuspendThread(j.target);if(prior==DWORD(-1))return 1;if(!prior){j.value.ContextFlags=CONTEXT_DEBUG_REGISTERS;j.okay=GetThreadContext(j.target,&j.value)!=FALSE;}assert(ResumeThread(j.target)!=DWORD(-1));return 0;}
+static CONTEXT debug(){DebugAccess j{};j.target=OpenThread(THREAD_SUSPEND_RESUME|THREAD_GET_CONTEXT|THREAD_SET_CONTEXT,FALSE,GetCurrentThreadId());assert(j.target);HANDLE h=CreateThread(nullptr,0,debugWorker,&j,0,nullptr);assert(h&&WaitForSingleObject(h,5000)==WAIT_OBJECT_0&&j.okay);CloseHandle(h);CloseHandle(j.target);return j.value;}
 namespace mapvisibility=assist::mapvisibility;
 static constexpr uint32_t ExperimentalReveal=0x04000000;
 struct MapFixtureShared{volatile uint32_t mapVisibility=1,stop=0,renderReveal=0,flags=0;}mapWire,*sh=&mapWire;
@@ -34,7 +45,7 @@ extern "C" __declspec(noinline) void MapSibling4(){MemoryBarrier();}
 static bool sameMapDebug(const CONTEXT&a,const CONTEXT&b){return a.Dr0==b.Dr0&&a.Dr1==b.Dr1&&a.Dr2==b.Dr2&&a.Dr3==b.Dr3&&a.Dr7==b.Dr7;}
 int main(){
  SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);setbuf(stdout,nullptr);unsigned checks=0;
- auto check=[&](bool okay){++checks;if(!okay){std::fprintf(stderr,"Map check %u failed; error=%lu hits=%ld\n",checks,GetLastError(),techparameters::mapExceptions);std::abort();}};
+ auto check=[&](bool okay){++checks;if(!okay){fprintf(stderr,"Map check %u failed; error=%lu hits=%ld\n",checks,GetLastError(),techparameters::mapExceptions);abort();}};
  auto*page=VirtualAlloc(reinterpret_cast<void*>(0x6D0000),65536,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE);check(page==reinterpret_cast<void*>(0x6D0000));
  auto*code=reinterpret_cast<uint8_t*>(assist::mapvisibility::PrefixAddress);
  memcpy(code,assist::mapvisibility::Prefix,sizeof assist::mapvisibility::Prefix);
@@ -42,11 +53,12 @@ int main(){
  const uint8_t suffix[]={0xBF,0xFE,0xFF,0xFF,0xFF,0xBB,8,0,0,0,0xC3};memcpy(code+10,suffix,sizeof suffix);
  FlushInstructionCache(GetCurrentProcess(),code,21);uint8_t originalCode[21]{};memcpy(originalCode,code,21);
  alignas(4) uint8_t cell[0x130]{};auto&bits=*reinterpret_cast<volatile uint32_t*>(cell+0x12C);
- for(uint32_t value:{0u,8u,16u,24u,128u,255u}){bits=value;check(CallMapGate(cell)==(value&24?-1:-2)&&bits==value);}
+ const uint32_t values[]={0u,8u,16u,24u,128u,255u};
+ for(uint32_t value:values){bits=value;check(CallMapGate(cell)==(value&24?-1:-2)&&bits==value);}
  CONTEXT original=debug();assist::techbp::Service service;
  const uint32_t sites[5]={uint32_t(uintptr_t(&MapSibling0)),assist::mapvisibility::Address,uint32_t(uintptr_t(&MapSibling2)),uint32_t(uintptr_t(&MapSibling3)),uint32_t(uintptr_t(&MapSibling4))};
  check(service.configure(sites,2,mapCallback));wait(service);check(service.activeTags()==2&&__builtin_popcount(service.lease.mask)==1);
- for(uint32_t value:{0u,8u,16u,24u,128u,255u}){bits=value;check(CallMapGate(cell)==-1&&bits==value);}
+ for(uint32_t value:values){bits=value;check(CallMapGate(cell)==-1&&bits==value);}
  // Exercise every production permission guard while a real DR remains installed.
  bits=0;sh->mapVisibility=0;check(CallMapGate(cell)==-2);sh->mapVisibility=1;
  techparameters::policy.showing=0;check(CallMapGate(cell)==-2);techparameters::policy.showing=1;
@@ -64,5 +76,5 @@ int main(){
  registersBefore=debug();check(service.configure(sites,31,mapCallback));wait(service);check(service.state==assist::techbp::Slots&&service.activeTags()==29&&sameMapDebug(registersBefore,debug()));
  retire(service);check(sameMapDebug(original,debug())&&!memcmp(code,originalCode,21));
  check(VirtualFree(page,0,MEM_RELEASE)!=FALSE);
- std::printf("{\"pass\":true,\"checks\":%u,\"real_own_process_DR_used\":true,\"production_callback_extracted\":true,\"world_is_seam\":true,\"game_process_accessed\":false,\"synthetic_cell_and_code_unchanged_after_calls\":true}\n",checks);
+ printf("{\"pass\":true,\"checks\":%u,\"real_own_process_DR_used\":true,\"production_callback_extracted\":true,\"world_is_seam\":true,\"game_process_accessed\":false,\"synthetic_cell_and_code_unchanged_after_calls\":true}\n",checks);
 }
