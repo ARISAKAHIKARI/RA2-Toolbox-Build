@@ -4,6 +4,7 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
+import re
 import struct
 import sys
 import xml.etree.ElementTree as ET
@@ -13,6 +14,22 @@ from pe32_image import Image
 from prepare_console_sdk import VERSION as WEBVIEW2_VERSION, validate_bytes as validate_sdk_bytes
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def read_release_version(header=ROOT / 'shared/source/release_version.h'):
+    text = header.read_text('utf-8')
+    version = re.search(r'^#define\s+RA2_RELEASE_VERSION\s+"(\d+\.\d+\.\d+\.\d+)"[ \t]*$', text, re.M)
+    label = re.search(r'^#define\s+RA2_RELEASE_VERSION_W\s+L"([^"\r\n]+)"[ \t]*$', text, re.M)
+    parts = re.search(r'^#define\s+RA2_RELEASE_VERSION_PARTS\s+(\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+)[ \t]*$', text, re.M)
+    if not version or not label or not parts:
+        raise ValueError('release_version.h must define numeric, display and four-part versions')
+    numeric = tuple(int(part) for part in parts.group(1).split(','))
+    if any(part > 65535 for part in numeric) or numeric != tuple(map(int, version.group(1).split('.'))):
+        raise ValueError('release_version.h numeric version and VERSION_PARTS differ')
+    return version.group(1), label.group(1)
+
+
+RELEASE_FILE_VERSION, RELEASE_LABEL = read_release_version()
 NAMES = ('RA2Toolbox.exe','GameRuntime.dll')
 BROKER = 'GameRuntimeHost32.exe'
 NEURAL = 'RA2NeuralRenderer.exe'
@@ -163,8 +180,10 @@ def verify(root, host_arch='x86', neural_helper=False, webview2=False):
                        and not x.lower().startswith(('api-ms-win-', 'ext-ms-win-'))]
             if unknown:
                 raise ValueError('unbundled non-system dependency: ' + ', '.join(unknown))
-            if "1.0.41.2".encode("utf-16le") not in pe.resource_bytes():
-                raise ValueError("file version resource mismatch")
+            versions = pe.resource_blobs(16, 1)
+            expected_version = (RELEASE_FILE_VERSION + '\0').encode('utf-16le')
+            if not versions or any(expected_version not in blob for _, blob in versions):
+                raise ValueError('file version resource mismatch: expected ' + RELEASE_FILE_VERSION)
             images[name] = pe
             recs[name] = {'bytes': len(buf), 'sha256': digest, 'machine': pe.architecture,
                           'sections': pe.section_count, 'entry_rva': hex(pe.entry),
@@ -215,9 +234,7 @@ def verify(root, host_arch='x86', neural_helper=False, webview2=False):
             recs['GameRuntime.dll']['runtime_protocol']=4
             recs['GameRuntime.dll']['runtime_control_bytes']=176
             resource = host.resource_bytes()
-            if '1.0.41.2'.encode('utf-16le') not in resource:
-                raise ValueError('EXE version resource mismatch')
-            for text in (b'requireAdministrator', b'PerMonitorV2', b'1.0.41.2'):
+            for text in (b'requireAdministrator', b'PerMonitorV2'):
                 if text not in resource:
                     raise ValueError('EXE manifest missing: ' + text.decode())
             for name in NAMES:
@@ -249,10 +266,10 @@ def main():
         return 1
     architecture_label = 'PE32/ABI' if args.host_arch == 'x86' else 'x64 host/x86 runtime/broker ABI'
     (root / 'BUILD-VERIFIED-v130.tag').write_text(
-        f'v1.0.41-pre.2 SingleRuntime: {architecture_label}/import/version checks passed\n'
+        f'v{RELEASE_LABEL} SingleRuntime: {architecture_label}/import/version checks passed\n'
         'Game runtime and multiplayer not tested\n', encoding='utf-8')
     (root / 'WINDOWS_BUILD_ARTIFACTS.json').write_text(json.dumps({
-        'label': '1.0.41-pre.2 SingleRuntime', 'file_version': '1.0.41.2',
+        'label': RELEASE_LABEL + ' SingleRuntime', 'file_version': RELEASE_FILE_VERSION,
         'host_architecture': args.host_arch, 'runtime_architecture': 'x86',
         'cursor_protocol': CURSOR_PROTOCOL, 'console_ui': 'webview2' if args.webview2 else 'native',
         'neural_helper_verified': args.neural_helper, 'neural_runtime_tested': False,
@@ -260,9 +277,9 @@ def main():
         'dependency_check': {2: 'two', 3: 'three', 4: 'four'}[len(recs)] + ' project binaries use Windows system DLLs' + ('; pinned x64 Microsoft WebView2 loader bundled; Evergreen Runtime required' if args.webview2 else ' only'),
     }, ensure_ascii=False, indent=2), encoding='utf-8')
     if args.host_arch == 'x86':
-        print('PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version 1.0.41.2')
+        print(f'PASS: 2 current PE32 x86 outputs; hooks exported; ABI/Shared size match; version {RELEASE_FILE_VERSION}')
     else:
-        print(f'PASS: {len(recs)} current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version 1.0.41.2')
+        print(f'PASS: {len(recs)} current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version {RELEASE_FILE_VERSION}')
     if args.neural_helper:
         print('PASS: optional x64 neural helper PE/manifest/system dependencies; DLSS hardware/runtime execution not tested')
     if args.webview2:
@@ -275,7 +292,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-
-
-
-
