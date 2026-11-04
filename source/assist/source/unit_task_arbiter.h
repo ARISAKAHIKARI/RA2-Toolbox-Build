@@ -19,7 +19,7 @@ constexpr uint32_t syntheticSuperWeaponActor(int swIndex){
  return 0x90000000u|(uint32_t(swIndex)&0xFFFFu);
 }
 struct Claim {uint32_t actor=0,manualVersion=0;Owner owner=Owner::Generic;};
-template<int Capacity=2048> struct FrameArbiter {
+template<int Capacity=8192> struct FrameArbiter {
  Claim actors[Capacity]{};int count=0,frame=-1;uint32_t match=0;
  void clear(){count=0;frame=-1;match=0;}
  void begin(uint32_t m,int f){if(match!=m||frame!=f){count=0;match=m;frame=f;}}
@@ -56,7 +56,7 @@ inline int priority(Owner o){
  }
  return 0;
 }
-template<int Capacity=2048> struct LeaseArbiter {
+template<int Capacity=8192> struct LeaseArbiter {
  Lease leases[Capacity]{};int count=0;
  void clear(){count=0;}
  int find(uint32_t actor)const{for(int i=0;i<count;++i)if(leases[i].actor==actor)return i;return -1;}

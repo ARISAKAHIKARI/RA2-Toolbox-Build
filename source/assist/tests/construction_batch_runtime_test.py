@@ -9,9 +9,10 @@ import tempfile
 
 root=Path(__file__).resolve().parents[2]
 source=(root/'assist/source/bridge.cpp').read_text()
-begin=source.index(' else if(c==ProduceDeferred){')
+begin=source.index(' else if(c==ProduceReserved){')
 end=source.index(' else if(c==Produce||c==CancelTechProduction)',begin)
-branch=source[begin:end].replace(' else if(c==ProduceDeferred)', ' if(c==ProduceDeferred)',1)
+branch=source[begin:end].replace(' else if(c==ProduceReserved)', ' if(c==ProduceReserved)',1)
+helper=(root/'assist/source/sidebar.h').read_text();a=helper.index('static bool reservationCanBuild(');b=helper.index('\n}',a)+2;helper=helper[a:b]
 body=r'''
 #include <cassert>
 #include <cstdint>
@@ -20,26 +21,33 @@ body=r'''
 using uint32_t=std::uint32_t;
 struct Type{int kind=0,index=0,naval=0;};
 struct Snapshot{Type types[4]{};int typeCount=1;};
-struct Shared{uint32_t flags=0;};
+struct Shared{uint32_t flags=0,arg2=0;};
 static constexpr uint32_t ReserveConstruction=1;
 static Snapshot snap;static Shared shared,*sh=&shared;
 static uint32_t typePointers[4]{0x600000};
 static uint32_t house=0x500000;static std::map<uint32_t,uint32_t> mem;
 static int c=1,arg=0,result=0,n=0,events=0,canBuild=1;
-static bool cameo=true,factoryFound=true,append=true;
-static constexpr int ProduceDeferred=1;
+static bool cameo=true,factoryFound=true,append=true,fullPermission=false;static int nativeLimit=1;
+static constexpr int ProduceDeferred=1,ProduceReserved=2;
 template<class T>T get(uint32_t address){auto i=mem.find(address);return i==mem.end()?T{}:T(i->second);}
-template<class T,class...A>T call(uint32_t,A...){return T(canBuild);}
+template<class T>T call(uint32_t,uint32_t,void*,bool limited,bool){return T(limited?nativeLimit:canBuild);}
+static bool techGate(uint32_t,uint32_t){return false;}
+static bool techParameterReservationAllowed(uint32_t,uint32_t){return fullPermission;}
+'''+helper+r'''
 static int typeTab(int){return snap.types[arg].kind==7?0:snap.types[arg].kind==16?2:3;}
 static bool hasCameo(int,int){return cameo;}
 static bool techFactory(uint32_t,uint32_t){return factoryFound;}
 static bool nativeProduceEvent(uint32_t,const Type&,bool){++events;return append;}
 static void watchReservedSidebar(uint32_t,int,int,uint32_t,int){}
+static uint32_t worldByID(uint32_t){return 0x800000;}
+static bool own(uint32_t,uint32_t){return true;}
+static int kind(uint32_t){return 3;}
 static int now=10;
-static int run(int kind,uint32_t offset,int waiting,uint32_t product=0x700000,bool naval=false,bool owner=true){
- snap.types[0]={kind,0,int(naval)};mem[house+offset]=0x710000;
+static int run(int category,uint32_t offset,int waiting,uint32_t product=0x700000,bool naval=false,bool owner=true,int command=ProduceDeferred){
+ c=command;
+ snap.types[0]={category,0,int(naval)};mem[house+offset]=0x710000;
  mem[0x710000+0x6C]=owner?house:house+4;mem[0x710000+0x50]=waiting;mem[0x710000+0x58]=product;
- result=n=0;
+ mem[0x800000+0x90]=1;result=n=0;
 '''+branch+r'''
  return result;
 }
@@ -55,7 +63,11 @@ int main(){
  assert(run(16,0x53B0,1,0x700000,false,false)==-9&&n==0&&events==8);
  cameo=false;assert(run(16,0x53B0,0)==-9);cameo=true;
  canBuild=0;assert(run(16,0x53B0,0)==-9);canBuild=1;
- factoryFound=false;assert(run(16,0x53B0,0)==-9);factoryFound=true;
+ factoryFound=false;assert(run(16,0x53B0,0)==-9);assert(run(7,0x53BC,0,0,false,true,ProduceReserved)==-9);factoryFound=true;
+ canBuild=0;fullPermission=true;assert(run(16,0x53B0,0)==0&&n==1);
+ assert(run(7,0x53BC,0,0,false,true,ProduceReserved)==0&&n==1);
+ nativeLimit=0;assert(run(16,0x53B0,0)==-9);nativeLimit=1;
+ fullPermission=false;assert(run(16,0x53B0,0)==-9);canBuild=1;
  sh->flags=0;assert(run(16,0x53B0,0)==-4);
  std::cout<<"PASS: shipped ProduceDeferred branch accepts busy native unit factories; buildings still require empty factory; native eligibility gates remain\n";
 }

@@ -72,14 +72,14 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  static uint32_t lastMode;uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0)|(drop?1u<<31:0);
  if(planningFrame==frame&&planningSerial==inputSerial&&lastMode==mode)return false;planningFrame=frame;planningSerial=inputSerial;if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);lastMode=mode;
  auto&w=planningWorld;w.match=match;w.tick=now;w.frame=frame;w.count=w.intentCount=w.refineryCount=w.combatCount=0;w.inputSerial=inputSerial;
- Vec all=vec(0xA8EC78);static uint32_t refineryTypes[128],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;
+ Vec all=vec(0xA8EC78);static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;
  // Dock compatibility is type metadata. Cache it instead of rescanning all
  // combat units just to discover the same refinery types on every frame.
  if(ore){Vec types=vec(0xA83CE0,4096);
   if(configChanged||dockMatch!=match||dockItems!=types.items||dockCount!=types.count||frame-dockFrame>=60){
    dockMatch=match;dockItems=types.items;dockCount=types.count;dockFrame=frame;refineryTypesCount=0;
-   for(int i=0;i<types.count&&refineryTypesCount<128;++i){uint32_t type=item(types,i);if(type<0x10000||!oreMiner(type))continue;
-    Vec docks=vec(type+0x3E8,256);for(int j=0;j<docks.count&&refineryTypesCount<128;++j){uint32_t dock=item(docks,j);bool known=false;for(int n=0;n<refineryTypesCount;++n)if(refineryTypes[n]==dock)known=true;if(dock&&!known&&oreTypeAllowed(dock,false))refineryTypes[refineryTypesCount++]=dock;}
+   for(int i=0;i<types.count&&refineryTypesCount<512;++i){uint32_t type=item(types,i);if(type<0x10000||!oreMiner(type))continue;
+    Vec docks=vec(type+0x3E8,256);for(int j=0;j<docks.count&&refineryTypesCount<512;++j){uint32_t dock=item(docks,j);bool known=false;for(int n=0;n<refineryTypesCount;++n)if(refineryTypes[n]==dock)known=true;if(dock&&!known&&oreTypeAllowed(dock,false))refineryTypes[refineryTypesCount++]=dock;}
    }
   }
  }

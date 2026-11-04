@@ -74,7 +74,7 @@ inline MouseEdge gestureMouseEdge(uint32_t message,uintptr_t wParam){
 inline uint32_t gestureUpMessage(uint32_t button){return button==1?0x208:button==2||button==3?0x20C:button==4?0x205:button==6?0x202:0;}
 // Compatibility helper for old callers; production uses the shared policy.
 template<class Keys>inline uint32_t claimsMiddle(uint32_t features,const Keys&keys){return resolveGesture(GesturePolicy{},features&7u,1,keys).mode;}
-constexpr int Actors=256,Targets=256,Nodes=64,Waypoints=16,Lines=128;
+constexpr int Actors=1024,Targets=1024,Nodes=256,Waypoints=32,Lines=1024;
 struct Point {int x=0,y=0,z=0;}; // World leptons in previews, map cells in geometry.
 struct Line {Point from,to;};
 struct Preview {
@@ -91,7 +91,7 @@ inline void sample(Point*nodes,int&n,Point p,bool force=false,int step=2){
 }
 // Small clicks form a square. An open stroke makes a narrow rectangle; a
 // closed freehand stroke preserves its entire shape, resampled to native's
-// sixteen-node limit rather than truncating the start of a longer stroke.
+// fixed waypoint limit rather than truncating the start of a longer stroke.
 inline int patrol(const Point*nodes,int n,Point*out,const Options&options={}){
  if(!nodes||!out||n<=0||!validOptions(options))return 0;n=std::min(n,Nodes);
  Point a=nodes[0],b=nodes[n-1];

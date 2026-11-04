@@ -1,0 +1,112 @@
+{
+  "supported_pe_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "cases": [
+    {
+      "case": "native_house_grant_gate",
+      "allowed": 0,
+      "disableable": 0,
+      "grant_path": true
+    },
+    {
+      "case": "native_existing_source_gate",
+      "allowed": 0,
+      "disableable": 0,
+      "source_retained": true
+    },
+    {
+      "case": "native_house_grant_gate",
+      "allowed": 0,
+      "disableable": 1,
+      "grant_path": false
+    },
+    {
+      "case": "native_existing_source_gate",
+      "allowed": 0,
+      "disableable": 1,
+      "source_retained": false
+    },
+    {
+      "case": "native_house_grant_gate",
+      "allowed": 1,
+      "disableable": 0,
+      "grant_path": true
+    },
+    {
+      "case": "native_existing_source_gate",
+      "allowed": 1,
+      "disableable": 0,
+      "source_retained": true
+    },
+    {
+      "case": "native_house_grant_gate",
+      "allowed": 1,
+      "disableable": 1,
+      "grant_path": true
+    },
+    {
+      "case": "native_existing_source_gate",
+      "allowed": 1,
+      "disableable": 1,
+      "source_retained": true
+    },
+    {
+      "case": "native_present_instance_maintenance",
+      "one_time": 0,
+      "skip_normal_revoke": false
+    },
+    {
+      "case": "native_present_instance_maintenance",
+      "one_time": 1,
+      "skip_normal_revoke": true
+    },
+    {
+      "case": "native_can_fire",
+      "suspended": 0,
+      "ready": 0,
+      "result": 0
+    },
+    {
+      "case": "native_can_fire",
+      "suspended": 0,
+      "ready": 1,
+      "result": 1
+    },
+    {
+      "case": "native_can_fire",
+      "suspended": 1,
+      "ready": 0,
+      "result": 0
+    },
+    {
+      "case": "native_can_fire",
+      "suspended": 1,
+      "ready": 1,
+      "result": 0
+    },
+    {
+      "case": "native_normal_grant_with_session_disabled",
+      "present": true,
+      "timer_registered": true,
+      "recharge_frames": 900,
+      "session_flag_unchanged": true
+    },
+    {
+      "case": "native_repeat_grant_idempotent",
+      "pass_": true
+    },
+    {
+      "case": "native_one_time_grant_with_session_disabled",
+      "present": true,
+      "one_time": true,
+      "ready": true,
+      "timer_registered": true,
+      "session_flag_unchanged": true
+    }
+  ],
+  "seams": [],
+  "game_process_accessed": false,
+  "game_network_events_sent": false,
+  "launch_effects_executed": false,
+  "scope": "Execute original SW permission branches/Grant/CanFire in a synthetic x86 world.\nRequires the user's private supported PE; never opens a live game or sends events.\n",
+  "pass": true
+}

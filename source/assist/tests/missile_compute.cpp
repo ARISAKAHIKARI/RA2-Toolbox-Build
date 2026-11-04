@@ -3,7 +3,7 @@
 #include <cstdio>
 using namespace assist::missilecompute;
 int main(){
- Input i;i.frame=1;i.match=1;i.count=6;i.targetCount=2;
+ static Input i;i.frame=1;i.match=1;i.count=6;i.targetCount=2;
  for(int s=0;s<6;++s){i.sources[s].id=s+1;for(int t=0;t<2;++t)i.edges[s][t]={40,uint32_t(100+t*100),0,1};}
  i.targets[0]={20,0,40,1};i.targets[1]={21,0,120,1};
  auto counts=[&](Result r,int*attack,int&hold){for(int n=0;n<r.count;++n){auto&o=r.orders[n];if(o.action==Attack)++attack[o.target];else if(o.action==Advance)++hold;}};
@@ -25,7 +25,7 @@ int main(){
  i.targetCount=0;i.sources[0].held=1;r=calculate(i);assert(r.count==1&&r.orders[0].action==Release);
  // Covered leader permits advances; grace, loss of trailing targets, urgency
  // or unavailable covering shots keeps guns firing on the current threat.
- for(int reason=0;reason<5;++reason){Input q;q.frame=1;q.count=3;q.targetCount=2;q.targets[0]={20,0,100,0};q.targets[1]={21,0,100,0};
+ for(int reason=0;reason<5;++reason){static Input q;q={};q.frame=1;q.count=3;q.targetCount=2;q.targets[0]={20,0,100,0};q.targets[1]={21,0,100,0};
   for(int n=0;n<3;++n){q.sources[n].id=n+1;q.edges[n][0]={120,100,0,1};q.edges[n][1]={120,200,10,0};}
   auto first=calculate(q);int held=0;for(int n=0;n<first.count;++n)held+=first.orders[n].action==Advance;assert(held==2);
   for(int n=0;n<3;++n){q.sources[n].held=1;if(reason==0)q.sources[n].releaseFrames=30;if(reason==1)q.sources[n].releaseFrames=20;if(reason==4)q.sources[n].cooldown=20;}
@@ -44,10 +44,10 @@ int main(){
  r=calculate(i);assert(r.count==2&&r.orders[0].action==Advance&&r.orders[1].action==Advance&&r.orders[0].target!=r.orders[1].target);
  // Our attack must be released if all candidates leave the eligible band.
  i.targetCount=0;i.sources[0].managed=1;r=calculate(i);assert(r.count==1&&r.orders[0].action==Release);
- i.count=-1;assert(!calculate(i).count);i.count=65;assert(!calculate(i).count);
- i={};i.frame=1;i.count=i.targetCount=64;i.mode=Even;
- for(int s=0;s<64;++s){i.sources[s].id=s+1;i.targets[s]={uint32_t(100+s),0,100,0};for(int t=0;t<64;++t)i.edges[s][t]={40,uint32_t(s+t),0,1};}
- r=calculate(i);assert(r.count==64);bool used[64]{};for(int n=0;n<r.count;++n){assert(!used[r.orders[n].source]);used[r.orders[n].source]=true;}
+ i.count=-1;assert(!calculate(i).count);i.count=MaxSources+1;assert(!calculate(i).count);
+ i={};i.frame=1;i.count=i.targetCount=MaxSources;i.mode=Even;
+ for(int s=0;s<MaxSources;++s){i.sources[s].id=s+1;i.targets[s]={uint32_t(100+s),0,100,0};for(int t=0;t<MaxTargets;++t)i.edges[s][t]={40,uint32_t(s+t),0,1};}
+ r=calculate(i);assert(r.count==MaxSources);bool used[MaxSources]{};for(int n=0;n<r.count;++n){assert(!used[r.orders[n].source]);used[r.orders[n].source]=true;}
  // New reservation strategy: future targets and excess guns sleep, while
  // ready covering attacks are ordered first. Completed shots reserve damage.
  i={};i.frame=1;i.count=3;i.targetCount=2;i.mode=Smart|ReserveSleep;

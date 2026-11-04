@@ -31,7 +31,7 @@ class Stage {
  std::vector<Params> params_;
  VkDeviceSize flagBytes_=0,uploadBytes_=0;
  bool tried_=false,ready_=false,prepared_=false;
- static constexpr VkDeviceSize AtlasBytes=96ull*1024*1024;
+ static constexpr VkDeviceSize AtlasBytes=120ull*1024*1024;
  static constexpr uint64_t AtlasWords=AtlasBytes/4;
  static constexpr VkDeviceSize ColorAtlasBytes=Core::AtlasBytes;
  static constexpr uint64_t ColorAtlasWords=ColorAtlasBytes/4;

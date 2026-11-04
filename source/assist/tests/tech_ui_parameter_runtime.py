@@ -124,14 +124,14 @@ def occupied():
  return {'no_free_slots_refused_without_any_debug_context_write':True}
 check('occupied_debug_slots_fail_closed',occupied)
 def signature():
- m=fixture();m.u.mem_write(0x6a97c3,b'\x90');changed=codehash(m);s=send(m)
- assert s.techParameterStatus==-1 and not m.jobs and not m.dr_writes and not m.sidebar_add_calls
+ m=fixture();settle(m);jobs=len(m.jobs);m.u.mem_write(0x6a97c3,b'\x90');changed=codehash(m);s=send(m)
+ assert s.techParameterStatus==-1 and len(m.jobs)==jobs and not m.dr_writes and not m.sidebar_add_calls
  assert codehash(m)==changed and ruleshash(m)==m.original_rules
 check('full_instruction_signature_incompatible_refused',signature)
 def production(old,new):
  m=fixture()
  if old==4:ready(m)
- else:s=send(m,old);assert s.data.techOpen==old+1
+ else:settle(m);s=send(m,old);assert s.data.techOpen==old+1
  f=m.alloc();m.w(m.house+0x53b4,f);m.w(f+0x6c,m.house);m.w(f+0x58,m.unit)
  before_code=codehash(m);before_dr=tuple(m.dr);before_rules=ruleshash(m);s=send(m,new)
  assert result(s)==-43 and s.data.techOpen==old+1 and tuple(m.dr)==before_dr
@@ -141,8 +141,25 @@ def production(old,new):
  m.canbuild_full_result=1;s=send(m,new);assert result(s)!=-43
  return {'old':old,'new':new,'non_native_production_retains_previous_mode':True,'native_eligible_busy_product_allowed':True}
 for old,new in ((0,4),(1,4),(2,4),(4,0),(4,1),(4,2),(4,3)):check('production_transition_%d_to_%d'%(old,new),lambda old=old,new=new:production(old,new))
+def reservation(command,granted=True,limited=1,factory=True):
+ m=fixture();s=ready(m);m.canbuild_full_result=0;m.canbuild_limit_result=limited;m.factory_available=factory
+ slot=next(i for i,t in enumerate(s.data.types[:s.data.typeCount]) if t.kind==7)
+ typ=m.buildT;ruleshash_before=ruleshash(m)
+ s.flags|=268435456
+ if not granted:s.flags&=~4096
+ s.command=command;s.arg=slot;s.arg2=12 if command==20 else 0;s.request+=1;s.requestTick=m.clock;s.requestMatch=s.data.match;s.requestTypeHash=typehash(s)
+ save(m,s);m.canbuild_calls.clear()
+ s=tick(m)
+ expected=granted and limited>0 and factory
+ assert result(s)==(0 if expected else -9) and s.count==int(expected),(command,granted,limited,factory,result(s))
+ assert any(c[1]==typ and c[2]==int(granted) for c in m.canbuild_calls),m.canbuild_calls
+ assert codehash(m)==m.original_code and ruleshash(m)==ruleshash_before
+ return {'command':command,'full_technology':granted,'native_build_limit':limited,'factory_available':factory,'accepted':expected,'canbuild_modeled':True,'native_produce_constructor_executed':expected}
+for command in (20,27):
+ for granted,limit,factory in ((True,1,True),(False,1,True),(True,0,True),(True,1,False)):
+  check('reservation_%d_full%d_limit%d_factory%d'%(command,granted,limit,factory),lambda command=command,granted=granted,limit=limit,factory=factory:reservation(command,granted,limit,factory))
 def enhancement():
- m=fixture();m.u.mem_write(m.t+0x24,b'HOWI'+bytes(21));m.w(m.t+0x634,-1);s=state(m);s.techEnhance=1;save(m,s);tick(m);assert m.r(m.t+0x634)==1
+ m=fixture();settle(m);m.u.mem_write(m.t+0x24,b'HOWI'+bytes(21));m.w(m.t+0x634,-1);s=state(m);s.techEnhance=1;save(m,s);tick(m);assert m.r(m.t+0x634)==1
  s=ready(m);assert s.techEnhance==1 and m.r(m.t+0x634)==0xffffffff and s.techEnhanceStatus==0
  for _ in range(12):s=tick(m);assert m.r(m.t+0x634)==0xffffffff and s.techEnhance==1
  send(m,on=False);settle(m)

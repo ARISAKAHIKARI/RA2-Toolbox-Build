@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 namespace assist { namespace ore {
-constexpr int MaxJobs=256;
+constexpr int MaxJobs=1024;
 inline double storageAmount(const float(&values)[4]){double total=0;for(float value:values){if(!(value>=0&&value<1000000))return -1;total+=value;}return total;}
 constexpr int DockStallFrames=180,MaxDockAttempts=3;
 constexpr int NearDockCells=2,FarDockCells=4,YieldRetryFrames=30,YieldTimeoutFrames=180,TurnTimeoutFrames=360;

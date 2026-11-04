@@ -29,6 +29,12 @@ static bool techGate(uint32_t type,uint32_t house){
  int slot=typeSlot(type);return slot>=0&&techAllowed[slot];
 }
 
+// Reservation uses the same live whitelist as full technology. The native
+// build-limit path retains limits; factory ownership/power checks stay native.
+static bool techParameterReservationAllowed(uint32_t type,uint32_t house);
+static bool reservationCanBuild(uint32_t type,uint32_t house){
+ return type&&call<int>(0x4F7870,house,(void*)(uintptr_t)type,techGate(type,house)||techParameterReservationAllowed(type,house),true)>0;
+}
 static int typeSlot(uint32_t type){for(int i=0;i<snap.typeCount;++i)if(typePointers[i]==type)return i;return -1;}
 static int typeTab(int i){auto&t=snap.types[i];return callFast<int>(0x6ABC60,t.kind,t.index,0);}
 static void sidebarRedraw(int tab){if(tab<0||tab>3)return;put<bool>(Tabs+tab*3988+60,true);put<bool>(Sidebar+0x53A6,true);put<bool>(Sidebar+0x53A7,true);}

@@ -12,7 +12,7 @@
 static_assert(sizeof(void*)==4,"The game hook broker must be x86");
 namespace {
 struct Target {DWORD pid=0,thread=0;HWND window=nullptr;HANDLE process=nullptr;HHOOK message=nullptr,post=nullptr;uint32_t token=0;};
-Target targets[8];uint32_t serial=0;HMODULE module=nullptr;HOOKPROC messageProc=nullptr,postProc=nullptr;
+Target targets[32];uint32_t serial=0;HMODULE module=nullptr;HOOKPROC messageProc=nullptr,postProc=nullptr;
 bool remove(Target&t){
  bool ok=true;if(t.post){if(UnhookWindowsHookEx(t.post)||GetLastError()==ERROR_INVALID_HOOK_HANDLE)t.post=nullptr;else ok=false;}
  if(t.message){if(UnhookWindowsHookEx(t.message)||GetLastError()==ERROR_INVALID_HOOK_HANDLE)t.message=nullptr;else ok=false;}

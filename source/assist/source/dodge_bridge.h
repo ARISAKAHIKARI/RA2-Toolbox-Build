@@ -8,7 +8,7 @@ struct DodgeJob {
  gateway::Receipt receipt{};
  int reverseFrame=-1;
 };
-static DodgeJob dodgeJobs[128];static int dodgeCursor,dodgeJobCursor;static uint32_t dodgeSerial,dodgeTask;static bool dodgePending;
+static DodgeJob dodgeJobs[512];static int dodgeCursor,dodgeJobCursor;static uint32_t dodgeSerial,dodgeTask;static bool dodgePending;
 struct DodgeThreatRef {uint32_t pointer,target;bool projectile;};static DodgeThreatRef dodgeThreatRefs[8192];static int dodgeThreatCount;
 static void collectDodgeThreats(){
  dodgeThreatCount=0;
@@ -85,7 +85,7 @@ static void dodgeObserve(uint32_t p,uint32_t house,dodgecompute::Source&s){
 }
 static int createDodge(const dodgecompute::Source&s){
  int n=dodgeIndex(s.id);if(n>=0)return n;
- if(dodgeCount==128){int oldest=-1;for(int k=0;k<dodgeCount;++k)if(!dodgeJobs[k].active&&(oldest<0||dodgeJobs[k].lastSeen<dodgeJobs[oldest].lastSeen))oldest=k;
+ if(dodgeCount==512){int oldest=-1;for(int k=0;k<dodgeCount;++k)if(!dodgeJobs[k].active&&(oldest<0||dodgeJobs[k].lastSeen<dodgeJobs[oldest].lastSeen))oldest=k;
   if(oldest<0)return -1;dodgeJobs[oldest]=dodgeJobs[--dodgeCount];}
  n=dodgeCount++;auto&j=dodgeJobs[n];j={};j.serial=++dodgeSerial;if(!j.serial)j.serial=++dodgeSerial;
  j.id=s.id;j.pointer=s.pointer;j.token=s.token;j.lastSeen=s.frame;return n;

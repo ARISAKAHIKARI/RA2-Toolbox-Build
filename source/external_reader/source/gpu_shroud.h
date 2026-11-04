@@ -8,7 +8,7 @@
 // Integer GPU kernels consume the exact double-coordinate decisions below.
 namespace external { namespace gpushroud {
 constexpr uint32_t BinSize=32,StampWords=12;
-constexpr size_t MaximumCells=512*512,MaximumStamps=2*MaximumCells,MaximumMetadataWords=16*1024*1024;
+constexpr size_t MaximumCells=512*512,MaximumStamps=2*MaximumCells,MaximumMetadataWords=32*1024*1024;
 constexpr size_t MaximumCoordinates=8*1024*1024,MaximumReferences=8*1024*1024;
 constexpr uint64_t MaximumRasterWork=512ull*1024*1024;
 struct Source {
@@ -43,7 +43,7 @@ struct Packed {
  Params params;
 };
 inline bool pack(const Plan&plan,Packed&out,const std::vector<uint32_t>*sourceOffsets=nullptr){
- out={};if(plan.width<1||plan.height<1||plan.width>8192||plan.height>8192||uint64_t(plan.width)*plan.height>16*1024*1024||
+ out={};if(plan.width<1||plan.height<1||plan.width>8192||plan.height>8192||uint64_t(plan.width)*plan.height>32*1024*1024||
    plan.samplesX<1||plan.samplesX>4||plan.samplesY<1||plan.samplesY>4||plan.sources.size()>94||plan.stamps.size()>MaximumStamps||
    plan.coordinates.size()>MaximumCoordinates||plan.references.size()>MaximumReferences||
    plan.binColumns!=uint32_t((plan.width+31)/32)||plan.ranges.size()!=size_t(plan.binColumns)*((plan.height+31)/32)+1||
@@ -79,7 +79,7 @@ class Builder {
 public:
  void reset(){images_={};}
  template<class Load>bool build(const radar::Geometry&g,const std::vector<radar::shroudmask::Cell>&cells,int w,int h,double spanX,double spanY,bool fog,Load load,std::shared_ptr<const Plan>&out,double originX=0,double originY=0){
-  out.reset();if(!g.valid()||w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||cells.size()>MaximumCells||
+  out.reset();if(!g.valid()||w<1||h<1||w>8192||h>8192||uint64_t(w)*h>32*1024*1024||cells.size()>MaximumCells||
    !std::isfinite(originX)||!std::isfinite(originY)||std::abs(originX)>1e7||std::abs(originY)>1e7||!std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0||spanX>32768||spanY>32768)return false;
   std::array<std::array<bool,47>,2> needed{};
   for(const auto&cell:cells){if(cell.index>=512*512||!g.legal(int(cell.index%512),int(cell.index/512)))return false;if(cell.shade.shroud==127)continue;

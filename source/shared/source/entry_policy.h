@@ -4,7 +4,7 @@ namespace gameentry {
 // Enter is non-reentrant scheduling. Capture is an explicit same-module
 // nested callback lease; every level has a unique, LIFO-only release token.
 struct Policy {
- static constexpr uint32_t MaxDepth=32;
+ static constexpr uint32_t MaxDepth=128;
  uint32_t thread=0,module=0,client=0,token=0,serial=0,boundClient=0,depth=0;
  uint32_t tokens[MaxDepth]{};
  uint32_t nextToken(){

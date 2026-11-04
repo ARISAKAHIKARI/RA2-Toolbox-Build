@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 namespace nativeorders {
-constexpr int MaxOrders=2048, MaxPassengers=2048, WorkPerFrame=64, EventBudget=8;
+constexpr int MaxOrders=8192, MaxPassengers=8192, WorkPerFrame=64, EventBudget=8;
 inline double value(int cost,float veterancy,int veteranPercent=200,int elitePercent=300){
  if(cost<0)cost=0;
  int weight=veterancy>=2?elitePercent:veterancy>=1?veteranPercent:100;

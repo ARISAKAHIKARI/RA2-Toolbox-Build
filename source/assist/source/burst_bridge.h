@@ -6,7 +6,7 @@ static bursteligibility::Source burstSource(uint32_t p){
  int k=kind(p);return bursteligibility::inspect(p,typeOf(p,k),k,[](uint32_t at,void*out,size_t size){memcpy(out,(const void*)(uintptr_t)at,size);return true;});
 }
 struct BurstJob {uint32_t serial=0,id=0,pointer=0,token=0,target=0,targetPointer=0;int phase=0,sentFrame=0,fireStamp=0;}; // -1 waits only for the first shot
-static BurstJob burstJobs[256];static int burstCursor,burstJobCursor,burstFrame=-1;
+static BurstJob burstJobs[1024];static int burstCursor,burstJobCursor,burstFrame=-1;
 static uint32_t burstSerial,burstTask;static bool burstPending;
 static DWORD burstSampleAt;
 static burstcompute::Input burstInput;static burstcompute::Result burstResult;
@@ -53,7 +53,7 @@ static void applyBurstResult(const burstcompute::Result&r,uint32_t house,int fra
   auto fresh=burstcompute::decide(s);const auto&d=r.decisions[n];
   if(d.done&&fresh.done){cancelBurst(old.id);continue;}
   if(d.mission<0||d.mission!=fresh.mission)continue;
-  if(d.mission==13&&(s.weapon!=old.weapon||!s.eligible||(j<0&&burstCount>=256)))continue;
+  if(d.mission==13&&(s.weapon!=old.weapon||!s.eligible||(j<0&&burstCount>=1024)))continue;
   if(!planningRoom(3)||!outgoingRoom())return;
   if(nativeMission(house,s.id,d.mission,d.mission==1?s.target:0,0,0,0,0,taskarbiter::Owner::BurstRefresh)){
    consumePlanning(3);++sh->burstIssued;
@@ -80,7 +80,7 @@ static bool burstControlTick(uint32_t house,int frame,DWORD now){
  Vec all=vec(0xA8EC78);int visited=0;
  for(;visited<all.count&&i.count<burstcompute::MaxSources;++visited){uint32_t p=item(all,(burstCursor+visited)%all.count);
   if(!p||get<int>(p+0xAC)!=1||!get<uint32_t>(p+0x2B4)||!own(p,house)||burstOwns(get<uint32_t>(p+0x10))||!burstEnabled(p))continue;
-  burstcompute::Source s{};if(!burstObserve(p,worldObjects.contains(get<uint32_t>(p+0x2B4))?get<uint32_t>(p+0x2B4):0,house,s)||!s.eligible||!s.inRange||s.moving||s.burst<2||burstCount>=256)continue;
+  burstcompute::Source s{};if(!burstObserve(p,worldObjects.contains(get<uint32_t>(p+0x2B4))?get<uint32_t>(p+0x2B4):0,house,s)||!s.eligible||!s.inRange||s.moving||s.burst<2||burstCount>=1024)continue;
   auto&job=burstJobs[burstCount++];job={++burstSerial,s.id,p,s.token,s.target,s.targetPointer,-1,frame,s.fireStamp};
   s.job=job.serial;s.phase=-1;s.sentFrame=frame;s.previousFire=s.fireStamp;i.sources[i.count++]=s;
  }if(all.count)burstCursor=(burstCursor+visited)%all.count;

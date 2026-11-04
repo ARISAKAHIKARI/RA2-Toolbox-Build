@@ -10,8 +10,8 @@ int main(){
  auto sameBucket=choose(1280,720,1600,900);assert(sameBucket.valid&&sameBucket.rasterScale==fractional.rasterScale);
  assert(choose(1920,1080,1280,720).rasterScale==1);
  assert(choose(1024,768,2560,1440).rasterScale==3); // greatest axis governs geometry density
- assert(choose(4096,4096,4096,4096).valid); // inclusive 16M-pixel allocation bound
- assert(!choose(4096,4097,4096,4096).valid);
+ assert(choose(8192,4096,8192,4096).valid); // inclusive 32M-pixel allocation bound
+ assert(!choose(8192,4097,8192,4097).valid);
  assert(!choose(1024,768,8193,768).valid);
  assert(!choose(1024,768,4097,768).valid); // physical ratio above 4x must fall back
  assert(!choose(0,720,1920,1080).valid&&!choose(1280,-1,1920,1080).valid);

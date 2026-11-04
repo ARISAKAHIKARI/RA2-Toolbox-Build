@@ -92,7 +92,7 @@ static void restoreBuildTimeTooltip();
 static void restoreViewZoom();static void restorePauseView();static void pauseViewTick();
 static bool restoreSidebarView();static bool sidebarViewRendering();static void sidebarViewTick();
 static void nativePlacementReset();static void nativePlacementTick(DWORD);static void nativePlacementCompletionReset();
-static uint32_t repairIDs[2048];static int repairCount,repairAt,repairDone;
+static uint32_t repairIDs[8192];static int repairCount,repairAt,repairDone;
 // Request serial zero is valid after wrap; pending state is explicit.
 static bool pendingAckReady,repairAckPending;
 static uint32_t repairAckRequest;static DWORD repairAckStarted;
@@ -119,10 +119,10 @@ static void recordReceipt(const gateway::Receipt&r){
  ++snap.receiptWrite;
  if(snap.receiptCount<RecentReceiptCapacity)++snap.receiptCount;
 }
-static gateway::MissionObserver<128> missionObserver;
+static gateway::MissionObserver<1024> missionObserver;
 static bool externalInputFrame=false;static int inputFrame=-1;static uint32_t inputMatch=0;
-static taskarbiter::FrameArbiter<2048> actorFrameArbiter;
-static taskarbiter::LeaseArbiter<2048> actorLeaseArbiter;
+static taskarbiter::FrameArbiter<8192> actorFrameArbiter;
+static taskarbiter::LeaseArbiter<8192> actorLeaseArbiter;
 static bool bridgePinned,autoWas;static DWORD lastAuto,techRefresh;
 static repairdelivery::Pending<> pendingRepairs;
 static void resetPointerInput();static void restoreClickHooks();static void resetCooperativeState();static void clickHooksTick(uint32_t);static void cooperativeTick(uint32_t,int,DWORD);
@@ -234,7 +234,7 @@ static void publishSnapshot(DWORD now){
 using Event=vanilla::Packet;
 static_assert(sizeof(Event)==111,"YRpp NetworkEvent ABI mismatch");
 static int outgoingRoom(){
- int frame=get<int>(0xA8ED84);if(frame!=outgoingFrame){outgoingFrame=frame;outgoingBudget=24;}
+ int frame=get<int>(0xA8ED84);if(frame!=outgoingFrame){outgoingFrame=frame;outgoingBudget=64;}
  const int mode=get<int>(0xA8B238);
  if(outgoingBudget<=0||!eventdelivery::mayQueue(mode))return 0;
  // One interface, session-specific transport: MO OrderUtil uses DoList for
@@ -758,9 +758,9 @@ static bool featureRestorationComplete(){
 static int recurringBudget(EventLane lane){
  bool external=(sh->moFeatures&7u)||moOrdersPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||runtimeCoopPending||sh->plannerTracking||sh->runtimeTracking||sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck;
  bool repairs=repairAt<repairCount,loading=loadLedger.count!=0,unloading=unloadCount!=0;
- if(lane==EventLane::Planning)return repairs||(sh->flags&AutoRepair)||loading||unloading?12:24;
- if(external)return 4;
- return 24-4*((lane!=EventLane::Repair&&repairs)+(lane!=EventLane::Boarding&&loading)+(lane!=EventLane::Unload&&unloading));
+ if(lane==EventLane::Planning)return repairs||(sh->flags&AutoRepair)||loading||unloading?32:64;
+ if(external)return 16;
+ return 64-16*((lane!=EventLane::Repair&&repairs)+(lane!=EventLane::Boarding&&loading)+(lane!=EventLane::Unload&&unloading));
 }
 #include "runtime_planner_bridge.h"
 #include "planning_budget.h"
@@ -820,11 +820,11 @@ static int collectRepairs(uint32_t house,DWORD now,bool refresh=false){
  if(!internal&&!refresh){repairFrames.clear();repairTaskSeen=sh->repairComputed;}
  Vec v=vec(0xA8EB40);repairCount=repairAt=repairDone=0;auto&in=sh->repairInput;
  if(!internal){in.match=match;in.tick=now;in.frame=get<int>(0xA8ED84);in.count=0;}
- for(int i=0;i<v.count&&repairCount<2048;++i){uint32_t p=item(v,i);if(!p||!own(p,house))continue;uint32_t t=typeOf(p,3),id=get<uint32_t>(p+0x10);
+ for(int i=0;i<v.count&&repairCount<8192;++i){uint32_t p=item(v,i);if(!p||!own(p,house))continue;uint32_t t=typeOf(p,3),id=get<uint32_t>(p+0x10);
   if(!t||!featureTypeAllowed(featuretypes::RepairBuilding,t)||(!(sh->flags&RepairUnrepairable)&&!get<uint8_t>(t+0x157A)))continue;
   decisions::RepairView view{get<int>(p+0x6C),get<int>(t+0xA0),true,get<bool>(p+0x6E8),pendingRepairs.contains(id,p)};
   if(internal){if(decisions::shouldRepair(view))repairIDs[repairCount++]=id;}
-  else if(in.count<2048)in.items[in.count++]={id,view};
+  else if(in.count<8192)in.items[in.count++]={id,view};
  }
  if(internal)return repairCount;
  repairCalculationPending=true;if(!refresh)repairCalculationStarted=now;const uint32_t serial=compute::nextTask(sh->repairTask);repairFrames.retain(serial,in);MemoryBarrier();sh->repairTask=serial;notifyHost();return -30;
@@ -836,7 +836,7 @@ static void repairCalculationTick(DWORD now){
  if(compute::newer(completed,repairTaskSeen)){
   const long seq=sh->repairResultSeq;if(!(seq&1)){MemoryBarrier();repairResultCopy=sh->repairResult;MemoryBarrier();
    if(seq==sh->repairResultSeq&&completed==sh->repairComputed){repairTaskSeen=completed;const auto*input=repairFrames.find(completed);const auto&r=repairResultCopy;
-    if(input&&r.count>=0&&r.count<=2048&&r.match==input->match&&r.tick==input->tick&&r.frame==input->frame&&
+    if(input&&r.count>=0&&r.count<=8192&&r.match==input->match&&r.tick==input->tick&&r.frame==input->frame&&
        freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&!get<bool>(0xA8BC60+25)){
      repairCalculationPending=false;repairCount=repairAt=repairDone=0;
      for(int i=0;i<r.count;++i){bool known=false;for(int j=0;j<input->count;++j)if(input->items[j].id==r.ids[i]){known=true;break;}if(known)repairIDs[repairCount++]=r.ids[i];}return;
@@ -927,8 +927,9 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   uint32_t origin=worldByID(uint32_t(sh->arg2));
   if(!(sh->flags&ReserveConstruction)||arg<0||arg>=snap.typeCount||snap.types[arg].kind!=7||!origin||!own(origin,house)||kind(origin)!=3||get<bool>(origin+0x81)||!get<bool>(origin+0x90))result=-4;
   else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t f=tab==0||tab==1?get<uint32_t>(house+(tab?0x53CC:0x53BC)):0;
-   if(tab<0||tab>1||!hasCameo(7,t.index)||!typePointers[arg]||call<int>(0x4F7870,house,(void*)(uintptr_t)typePointers[arg],false,true)<=0)result=-9;
+   if(tab<0||tab>1||!hasCameo(7,t.index)||!typePointers[arg]||!reservationCanBuild(typePointers[arg],house))result=-9;
    else if(f>=0x10000&&(get<uint32_t>(f+0x58)||get<int>(f+0x50)>0))result=-9;
+   else if(!techFactory(typePointers[arg],house))result=-9;
    else if(nativeProduceEvent(house,t,true)){n=1;watchReservedSidebar(house,t.index,tab,uint32_t(sh->arg2),now);}else result=-6;
   }
  }
@@ -936,7 +937,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   if(!(sh->flags&ReserveConstruction)||arg<0||arg>=snap.typeCount||!typePointers[arg])result=-4;
   else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t offset=t.kind==3?0x53AC:t.kind==16?0x53B0:t.kind==40?(t.naval?0x53B8:0x53B4):t.kind==7?(tab==1?0x53CC:0x53BC):0;
    uint32_t factory=offset?get<uint32_t>(house+offset):0;
-   if(!offset||tab<0||tab>3||!hasCameo(t.kind,t.index)||call<int>(0x4F7870,house,(void*)(uintptr_t)typePointers[arg],false,true)<=0)result=-9;
+   if(!offset||tab<0||tab>3||!hasCameo(t.kind,t.index)||!reservationCanBuild(typePointers[arg],house))result=-9;
    else if(factory>=0x10000&&(get<uint32_t>(factory+0x6C)!=house||
       (t.kind==7&&(get<uint32_t>(factory+0x58)||get<int>(factory+0x50)>0))))result=-9;
    // FactoryClass +0x50 contains QueuedObjects.Count and +0x58 the active

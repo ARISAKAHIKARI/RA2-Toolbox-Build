@@ -39,7 +39,7 @@ def fixture(session=3,foreign=None):
  # synthetic stack, then resume the unchanged native Jcc using its new flags.
  # This emulates exception dispatch; true Windows dispatch is tested separately.
  def run(address,args=(),self=0):
-  if address==m.entry and args==(0,1,0):m.w(m.SH+0x700000+20,m.r(m.SH+0x700000+20)|1);args=(0,1,m.SH+0x700100)
+  if address==m.entry and args==(0,1,0):m.w(m.CONTROL+20,m.r(m.CONTROL+20)|1);args=(0,1,m.CONTROL+0x100)
   sp=m.STACK+0x1e000;m.u.mem_write(sp,struct.pack('<'+'I'*(len(args)+1),m.STOP,*args));m.u.reg_write(UC_X86_REG_ESP,sp);m.u.reg_write(UC_X86_REG_ECX,self)
   for attempts in range(200):
    m.u.emu_start(address,m.STOP,count=2000000)

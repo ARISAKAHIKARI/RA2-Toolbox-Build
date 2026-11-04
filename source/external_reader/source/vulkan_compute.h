@@ -60,7 +60,7 @@ protected:
  static constexpr bool AllowSoftware=false;
 #endif
  static constexpr VkDeviceSize AtlasBytes=128ull*1024*1024;
- static constexpr uint64_t MaxPixels=16ull*1024*1024,MaxCoordinates=4ull*1024*1024;
+ static constexpr uint64_t MaxPixels=32ull*1024*1024,MaxCoordinates=4ull*1024*1024;
  struct Buffer {VkBuffer buffer=VK_NULL_HANDLE;VkDeviceMemory memory=VK_NULL_HANDLE;VkDeviceSize size=0;void* mapped=nullptr;bool coherent=false,cached=false;VkDeviceSize allocationBytes=0;};
  struct Tile {std::weak_ptr<const std::vector<uint32_t>> owner;const void* address=nullptr;uint32_t offset=0,count=0;uint64_t used=0;};
  struct Coordinate {uint32_t a,b,weight,pad;};
@@ -85,7 +85,7 @@ protected:
 #ifdef RA2_VULKAN_MAPPED_BUDGET_BYTES
  static constexpr uint64_t MappedBudget=RA2_VULKAN_MAPPED_BUDGET_BYTES;
 #else
- static constexpr uint64_t MappedBudget=sizeof(void*)>=8?768ull*1024*1024:512ull*1024*1024;
+ static constexpr uint64_t MappedBudget=sizeof(void*)>=8?1536ull*1024*1024:512ull*1024*1024;
 #endif
  void memoryDiagnostics(){diagnostics_.allocatedBufferBytes=allocatedBufferBytes_;diagnostics_.mappedBufferBytes=mappedBufferBytes_;diagnostics_.peakMappedBufferBytes=peakMappedBufferBytes_;diagnostics_.readbackCached=readback_.cached;}
  static std::atomic<bool>& quarantined(){static std::atomic<bool> value{false};return value;}
@@ -141,6 +141,7 @@ protected:
  }
  bool buffer(Buffer& b,VkDeviceSize bytes,VkBufferUsageFlags usage,bool host,bool exact=false,VkDeviceSize maximum=0){
   if(maximum&&bytes>maximum)return fail("Vulkan buffer budget exceeded");
+  if((usage&VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)&&bytes>properties_.limits.maxStorageBufferRange)return fail("Vulkan device storage range exceeded");
   if(bytes<=b.size&&b.buffer)return true;
   destroy(b);VkDeviceSize capacity=exact?bytes:4096;while(capacity<bytes)capacity*=2;if(maximum)capacity=std::min(capacity,maximum);
   VkBufferCreateInfo info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};info.size=capacity;info.usage=usage;info.sharingMode=VK_SHARING_MODE_EXCLUSIVE;

@@ -4,7 +4,7 @@
 #include "unload_policy.h"
 namespace assist { namespace unloadcompute {
 // Plain observations only. No process addresses are dereferenced by this code.
-constexpr int MaxSources=64,MaxTargets=8192;
+constexpr int MaxSources=256,MaxTargets=16384;
 struct State {
  int stage=0,sentFrame=0,seenUnload=0,retries=0,x=0,y=0,stableSince=0,deployedSince=0;
  uint32_t sleepObserved=0;

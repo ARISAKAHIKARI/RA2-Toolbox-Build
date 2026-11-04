@@ -26,7 +26,7 @@ for label,names in [('Cursor',[b'_CursorRuntimeMessage@12',b'CursorRuntimeMessag
                     ('Filter',[b'_AssistRuntimeFilter',b'AssistRuntimeFilter'])]:
     at=resolve(names)
     m.u.hook_add(UC_HOOK_CODE,lambda uc,pc,size,unused,label=label:trace.append(label),begin=at,end=at)
-control=m.SH+0x700000;message=m.SH+0x700200
+control=m.CONTROL;message=m.CONTROL+0x200
 rows=[]
 def check(name,fn):
     try:fn();rows.append(dict(case=name,status='PASS'))

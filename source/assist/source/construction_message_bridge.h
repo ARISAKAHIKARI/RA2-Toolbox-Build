@@ -16,7 +16,7 @@ static bool reservationContext(construction::InputPolicy&policy,DWORD now){
     !external::display::inspect([](uint32_t at,void*out,size_t n){return read(at,out,n);}).visible())return false;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);if(foreground!=GetCurrentProcessId())return false;
  long seq=sh->reservePolicySeq;if(seq&1)return false;MemoryBarrier();policy=sh->reservePolicy;MemoryBarrier();
- if(seq!=sh->reservePolicySeq||policy.match!=match||policy.house!=lastHouse||policy.tab<0||policy.tab>1||policy.slots>5||policy.count<0||policy.count>5||(!policy.slots&&!policy.count)||DWORD(now-policy.tick)>150)return false;
+ if(seq!=sh->reservePolicySeq||policy.match!=match||policy.house!=lastHouse||policy.tab<0||policy.tab>1||policy.slots>construction::Capacity||policy.count<0||policy.count>construction::Capacity||(!policy.slots&&!policy.count)||DWORD(now-policy.tick)>150)return false;
  uint32_t f=get<uint32_t>(lastHouse+(policy.tab?0x53CC:0x53BC));
  return f>=0x10000&&get<uint32_t>(f+0x6C)==lastHouse&&get<uint32_t>(f+0x58)==policy.parent&&
   get<uint32_t>(policy.parent+0x10)==policy.parentID&&get<int>(f+0x24)>=0&&get<int>(f+0x24)<=54;

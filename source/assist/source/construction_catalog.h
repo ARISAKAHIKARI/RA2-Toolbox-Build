@@ -35,15 +35,17 @@ public:
   predicted=owned;for(int i:future)if(i>=0&&i<count)++predicted[i];return true;
  }
  uint32_t type(int index)const{return index>=0&&index<count?get<uint32_t>(types+index*4):0;}
- bool possible(uint32_t t,int kind=7,bool naval=false,bool forecast=true)const{
+ bool possible(uint32_t t,int kind=7,bool naval=false,bool forecast=true,bool technology=false)const{
   if(t<0x10000)return false;
+  const auto&counts=forecast?predicted:owned;
+  if(!technology){
   int level=get<int>(t+0x634,-1);if(level<0||level>tech)return false;
   if(!countryAllowed(get<uint32_t>(t+0x6CC),get<uint32_t>(t+0xDA0),get<uint32_t>(t+0xDA4),parent,country))return false;
   // Third/Soviet/Allied stolen-tech flags are D9B..D9D, not D9D..D9F.
   for(int i=0;i<3;++i)if(get<uint8_t>(t+0xD9B+i,1)&&!get<uint8_t>(house+0x2BC+i))return false;
   std::vector<int> needs,overrides;if(!list(t+0x638,needs)||!list(t+0x654,overrides))return false;
-  const auto&counts=forecast?predicted:owned;
   if(!available(needs,overrides,counts,groups))return false;
+  }
   if(kind!=7){bool producer=false;for(int n=0;n<count;++n)if(counts[n]>0){uint32_t b=type(n);
    if(b&&get<int>(b+0xEB8,-1)==kind&&bool(get<uint8_t>(b+0xCCE))==naval){producer=true;break;}}
    if(!producer)return false;
@@ -55,6 +57,6 @@ public:
  bool preview(int index)const{uint32_t t=type(index);if(!possible(t)||possible(t,7,false,false))return false;
   int limit=get<int>(t+0x3B8);return limit<=0||int64_t(limits[index])+predicted[index]-owned[index]<limit;
  }
- bool append(int index){uint32_t t=type(index);if(!possible(t))return false;++predicted[index];return true;}
+ bool append(int index,bool technology=false){uint32_t t=type(index);if(!possible(t,7,false,true,technology))return false;++predicted[index];return true;}
 };
 }}

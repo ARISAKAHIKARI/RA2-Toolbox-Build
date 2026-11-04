@@ -3,7 +3,7 @@
 #include <climits>
 #include <algorithm>
 namespace assist { namespace missilecompute {
-constexpr int MaxSources=64,MaxTargets=64,MaxOrders=64,LookAhead=30,CoveragePercent=120,MaxAdvanceFrames=60,AdvanceLeash=1024,ReleaseGraceFrames=30;
+constexpr int MaxSources=256,MaxTargets=256,MaxOrders=256,LookAhead=30,CoveragePercent=120,MaxAdvanceFrames=60,AdvanceLeash=1024,ReleaseGraceFrames=30;
 enum Mode { Smart=0, Even=1 };
 constexpr int ReserveSleep=2,TransientBusy=-2;
 constexpr int ShotReserveFrames=12;

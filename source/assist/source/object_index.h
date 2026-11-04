@@ -24,7 +24,7 @@ struct ObjectIndex {
  }
 };
 struct ManualVersions {
- static constexpr unsigned Size=8192;
+ static constexpr unsigned Size=32768;
  uint32_t ids[Size]{},versions[Size]{},orePointers[Size]{};
  uint8_t oreState[Size]{},oreExpected[Size]{};
  uint16_t pausedSlots[Size]{},pausedPosition[Size]{};unsigned used=0,pausedCount=0;

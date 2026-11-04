@@ -25,7 +25,7 @@
 #include "dodge_compute.h"
 #include "native_placement_policy.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=93;
+constexpr uint32_t Magic=0x41533130, Version=94;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -144,7 +144,7 @@ struct Shared {
  // Source stamps survive calculation/IPC. Existing tick fields now carry
  // acquisition time, not submission time. Both peers require protocol 33.
  int planFrame,cooperativeFrame;uint32_t cooperativeMatch;
- int cooperativeProcessed,cooperativeResult;uint32_t cooperativeAcceptedBits[16];
+ int cooperativeProcessed,cooperativeResult;uint32_t cooperativeAcceptedBits[(cooperative::MaxSources+31)/32];
  pointerinput::Mailbox pointer;
  volatile long pointerPolicySeq;pointerinput::NativePolicy pointerPolicy;pointerinput::SuppressedClick suppressedClick;
  // Immutable until selectAck; -3 selects the union of this match-bound mask.

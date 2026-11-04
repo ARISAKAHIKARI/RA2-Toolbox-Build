@@ -66,6 +66,11 @@ static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame=
 static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
 static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
+// A requested full-technology whitelist also protects a reservation while the
+// Runtime is installing/restoring that mode. Only Runtime authorizes production.
+static bool technologyRequested(int index){
+ const int slot=typeSlot(index);return techMode&&slot>=0&&slot<snap.typeCount&&techAllowed(snap.types[slot]);
+}
 static std::wstring nameOf(int index){int slot=typeSlot(index);return slot>=0?std::wstring((const wchar_t*)snap.types[slot].name):L"未知类型";}
 static void result(int status,int count,uint32_t id,uint32_t token){for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.id!=id||b.token!=token||!token||b.stage!=1)continue;
  if(status>0&&count>0&&tab>=2){if(b.unitLane>=0&&b.unitLane<4&&unitBudgetMatch==b.match&&unitBudgetHouse==b.house){
@@ -83,9 +88,9 @@ template<class C>static bool loadForecast(C&catalogue){
  if(!catalogue.load(house,building))return false;
  // FIFO prerequisites may cross building/defense tabs; only extend reachable
  // chains. Never count a blocked reservation as its own prerequisite.
- size_t at[2]{};for(int pass=0;pass<10;++pass){bool changed=false;
+ size_t at[2]{};for(int pass=0;pass<2*construction::Capacity;++pass){bool changed=false;
   for(int tab=0;tab<2;++tab){auto&b=books[tab];if(b.match!=commandMatch()||b.house!=house)continue;
-   if(at[tab]<b.items.size()&&catalogue.append(b.items[at[tab]])){++at[tab];changed=true;}}
+   if(at[tab]<b.items.size()&&catalogue.append(b.items[at[tab]],technologyRequested(b.items[at[tab]]))){++at[tab];changed=true;}}
   if(!changed)break;
  }return true;
 }
@@ -102,7 +107,7 @@ static void collectChoices(){
   int tab=t.kind==7?(get<int>(type+0xE08,-1)==5?1:0):t.kind==16?2:(t.kind==40||t.kind==3)?3:-1;
   if(tab!=activeTab)continue;bool native=nativeHere(t.kind,t.index);
   bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
-  bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0)&&!catalogue.possible(type,t.kind,t.naval!=0,false);
+  bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,technologyRequested(index))&&!catalogue.possible(type,t.kind,t.naval!=0,false,technologyRequested(index));
   if(queued||(!native&&future)||(native&&(tab>=2||(current[tab]&&get<int>(factory(tab)+0x24)==54))))choices.push_back({slot,index,tab,type,!native});
  }
 }
@@ -136,8 +141,8 @@ static void reserveChoice(Choice c,bool fromNative=false,bool nativeCaptured=fal
  if((p&&(p!=current[activeTab]||identity!=currentID[activeTab]))||get<uint32_t>(0xA83D4C)!=house)return;
  if(!b.items.empty()&&(b.match!=commandMatch()||b.house!=house||(b.source&&p&&b.id!=identity))){cancel(activeTab);return;}
  refreshChoices();bool valid=fromNative&&nativeCameo(c.index,c.tab)&&typeSlot(c.index)==c.slot;for(const auto&choice:choices)if(choice.index==c.index&&choice.type==c.type)valid=true;if(!valid)return;
- if(!b.add(c.index,activeTab>=2?construction::UnitCapacity:construction::Capacity)){
-  notify(activeTab>=2?L"本类预定已满（30 项）；右键叠放区取消最上层，Shift＋右键清空。":L"本类预定已满（5 项）；右键叠放区取消最上层，Shift＋右键清空。");return;}
+ if(!b.add(c.index,activeTab>=2?construction::UnitReservationCapacity:construction::Capacity)){
+  notify(activeTab>=2?L"本类预定已满（128 项）；右键叠放区取消最上层，Shift＋右键清空。":L"本类预定已满（32 项）；右键叠放区取消最上层，Shift＋右键清空。");return;}
  if(b.items.size()==1){b.match=commandMatch();b.house=house;b.source=p;b.id=identity;}
  if(!fromNative||nativeCaptured)requestReservationSound();
  queueLog(activeTab,fromNative?L"reserved-native-click":L"reserved-extra-panel");
@@ -182,7 +187,7 @@ static std::vector<construction::NativeBadge> nativeBadges(){
  auto frame=nativeDisplay.sample([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);},
   {pid,commandMatch(),house,snap.width,snap.height},GetTickCount());
  if(!frame)return out;int tab=frame->tab;if(tab<0||tab>1)return out;auto&b=books[tab];if(b.match!=commandMatch()||b.house!=house)return out;
- for(const auto&c:frame->cells){int mask=0;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index)mask|=1<<i;
+ for(const auto&c:frame->cells){uint32_t mask=0;for(int i=0;i<int(b.items.size())&&i<32;++i)if(b.items[i]==c.index)mask|=1u<<i;
   if(mask)out.push_back({c.x,c.y+c.h-16,c.w,16,mask});}
  return out;
 }
@@ -245,18 +250,18 @@ static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest
    MoveToEx(dc,layout.x(67),layout.y(40),nullptr);LineTo(dc,layout.x(77),layout.y(40));
    MoveToEx(dc,layout.x(72),layout.y(35),nullptr);LineTo(dc,layout.x(72),layout.y(45));SelectObject(dc,old);DeleteObject(plus);
   }
-  if(activeTab>=2&& !b.items.empty()){
-   int row=std::min(int(b.items.size()),construction::Capacity)-1,y=construction::StackTop+row*construction::StackStep;
+  if(!b.items.empty()){
+   int row=std::min(int(b.items.size()),construction::VisibleCapacity)-1,y=construction::StackTop+row*construction::StackStep;
    RECT counter=painter.rect(104,y+28,138,y+46);SetTextColor(dc,b.stage?RGB(229,186,100):RGB(147,220,224));
-   std::wstring label=std::to_wstring(b.items.size())+L"/30";DrawTextW(dc,label.c_str(),-1,&counter,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
-  }else for(int i=0;i<construction::Capacity;++i){RECT dot=painter.rect(55+i*7,layout.stackBottom()+3,59+i*7,layout.stackBottom()+5);HBRUSH h=CreateSolidBrush(i<int(b.items.size())?RGB(105,196,197):RGB(47,65,82));FillRect(dc,&dot,h);DeleteObject(h);}
+   std::wstring label=std::to_wstring(b.items.size())+L"/"+std::to_wstring(activeTab>=2?construction::UnitReservationCapacity:construction::Capacity);DrawTextW(dc,label.c_str(),-1,&counter,DT_CENTER|DT_SINGLELINE|DT_VCENTER);
+  }else for(int i=0;i<construction::VisibleCapacity;++i){RECT dot=painter.rect(55+i*7,layout.stackBottom()+3,59+i*7,layout.stackBottom()+5);HBRUSH h=CreateSolidBrush(i<int(b.items.size())?RGB(105,196,197):RGB(47,65,82));FillRect(dc,&dot,h);DeleteObject(h);}
   for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n){const auto&c=choices[n];auto found=request.types.find(c.index);if(found==request.types.end())continue;
    const auto&t=found->second;int x=(n-scroll)%2*72+6,y=(n-scroll)/2*66+layout.headerHeight();
    painter.panelBox(dc,painter.rect(x-3,y-1,x+63,y+65),n==hoverChoice?RGB(36,56,72):RGB(23,36,49),n==hoverChoice?RGB(109,200,205):RGB(43,62,80));
    painter.paintIcon(dc,c.index,x,y,c.future);
    RECT name=painter.rect(x-3,y+48,x+63,y+64);SetTextColor(dc,c.future?RGB(131,146,157):RGB(217,229,237));DrawTextW(dc,(const wchar_t*)t.name,-1,&name,DT_CENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    std::wstring numbers;int occurrences=0;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index){++occurrences;if(activeTab<2){if(!numbers.empty())numbers+=L" ";numbers+=std::to_wstring(i+1);}}
-   if(activeTab>=2&&occurrences)numbers=L"×"+std::to_wstring(occurrences);
+   if((activeTab>=2||occurrences>construction::VisibleCapacity)&&occurrences)numbers=L"×"+std::to_wstring(occurrences);
    if(!numbers.empty()){RECT badge=painter.rect(x,y+30,x+60,y+48);HBRUSH tag=CreateSolidBrush(RGB(29,89,99));FillRect(dc,&badge,tag);DeleteObject(tag);SetTextColor(dc,RGB(208,247,240));DrawTextW(dc,numbers.c_str(),-1,&badge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
   }SelectObject(dc,previous);const bool ready=GdiFlush()!=FALSE;
  if(ready)memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);return ready?out:std::shared_ptr<const Painted>{};
@@ -407,7 +412,7 @@ static void service(){
  }
  auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> forecast(read);
  if(usable()&&loadForecast(forecast))for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.items.empty()||b.stage||b.source)continue;
-  int slot=typeSlot(b.head());if(slot<0||!forecast.possible(typePointer(b.head()),absKind(b.head()),get<uint8_t>(typePointer(b.head())+0xCCE)!=0)){
+  int slot=typeSlot(b.head());if(slot<0||!forecast.possible(typePointer(b.head()),absKind(b.head()),get<uint8_t>(typePointer(b.head())+0xCCE)!=0,true,technologyRequested(b.head()))){
    if(!b.missing)b.missing=now;else if(uint32_t(now-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
   }else b.missing=0;
  }

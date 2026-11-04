@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 namespace assist { namespace dodgecompute {
-constexpr int MaxSources=32,MaxThreats=32;
+constexpr int MaxSources=128,MaxThreats=128;
 // No destinations, trajectory scoring or replacement Attack/Guard orders.
 // Scatter is selected here; the synchronized native receiver owns movement.
 struct Source {

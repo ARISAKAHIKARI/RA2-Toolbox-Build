@@ -28,7 +28,7 @@ struct Raster {
   return build(terrain.geo,cells,w,h,spanX,spanY,fog,load,originX,originY);
  }
  template<class Load> bool build(const Geometry&g,const std::vector<Cell>&cells,int w,int h,double spanX,double spanY,bool fog,Load load,double originX=0,double originY=0){
-  if(!g.valid()||w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||!std::isfinite(originX)||!std::isfinite(originY)||
+  if(!g.valid()||w<1||h<1||w>8192||h>8192||uint64_t(w)*h>32*1024*1024||!std::isfinite(originX)||!std::isfinite(originY)||
      !std::isfinite(spanX)||!std::isfinite(spanY)||spanX<=0||spanY<=0)return false;
   std::array<std::array<voxel::Image,47>,2> images;
   std::array<std::array<bool,47>,2> needed{};

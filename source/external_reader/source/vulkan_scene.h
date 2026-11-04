@@ -24,11 +24,11 @@ class FrameResolve : public Resolve {
  DirectOutput direct_{*this};
  using Source=immutableatlas::Source;using Resident=immutableatlas::Resident;using UploadPlan=immutableatlas::Plan;
  struct SceneParams {uint32_t width,height,drawsOffset,binsOffset,refsOffset,binColumns,depthOffset,fogOffset,clipLeft,clipTop,clipRight,clipBottom,depthWidth,depthXOffset,depthYOffset,guideOffset,baseMotionX,baseMotionY,depthFar,depthScale,firstDraw,lastDraw,stateOffset,zaOffset,phase,alphaOffset,alphaCount,nativeScene,nativeScaleX,nativeScaleY,format,reserved;};
- static constexpr VkDeviceSize MaterialBytes=96ull*1024*1024;
+ static constexpr VkDeviceSize MaterialBytes=120ull*1024*1024;
  gpuvoxel::Stage voxels_{*this};
  gpuxbrz::Stage xbrz_{*this};
  gpushroud::Stage shroud_{*this};
- static constexpr uint32_t Missing=0xffffffffu,DrawWords=64,MaxDraws=65536,MaxRefs=2*1024*1024;
+ static constexpr uint32_t Missing=0xffffffffu,DrawWords=64,MaxDraws=131072,MaxRefs=8*1024*1024;
  Buffer materials_,materialUpload_,commands_;
  gpumotion::History motionHistory_;std::shared_ptr<const gpumotion::Guides> guides_;bool guidesBuffered_=false;
  int guideRejectedWidth_=0,guideRejectedHeight_=0;uint64_t guideAllocationFailures_=0;

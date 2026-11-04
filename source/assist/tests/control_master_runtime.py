@@ -22,8 +22,8 @@ def check(name,fn):
  try:rows.append({'case':name,'status':'PASS',**(fn() or {})});print('PASS',name,flush=True)
  except Exception as e:rows.append({'case':name,'status':'FAIL','error':repr(e)});traceback.print_exc()
 def cold(session):
- m=fixture(session);before=stable_data(m);m.w(m.SH+0x700000+16,0);m.w(0xa8ed84,5000);s=tick(m);assert s.seq==0 and sites(m)==m.originals
- s.controlAll=2;save(m,s);m.w(m.SH+0x700000+16,1);s=tick(m);assert_master(m,s);epoch=s.data.match
+ m=fixture(session);before=stable_data(m);m.w(m.CONTROL+16,0);m.w(0xa8ed84,5000);s=tick(m);assert s.seq==0 and sites(m)==m.originals
+ s.controlAll=2;save(m,s);m.w(m.CONTROL+16,1);s=tick(m);assert_master(m,s);epoch=s.data.match
  s=setmode(m,0);assert s.playerControlStatus==0 and sites(m)==m.originals
  s=setmode(m,2);assert_master(m,s);assert s.data.match==epoch and stable_data(m)==before
  return {'cold_frame':5002,'same_epoch_on_off_on':True,'House_flags_CurrentPlayer_objectOwner_unchanged':True}

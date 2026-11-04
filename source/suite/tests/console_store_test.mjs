@@ -154,11 +154,11 @@ test('large immutable state revisions keep drafts and resolve only the changed s
   assert.equal(store.pending.size,0); assert.equal(store.value(store.getControl(1500),'text'),'尚未提交'); assert.equal(groupControls(store.state.controls).size,30);
 });
 test('UTF8 send limits match native decoded bytes and reject invalid string boundaries',()=>{
-  assert.equal(validText('中'.repeat(5461)),true);assert.equal(validText('中'.repeat(5462)),false);
-  assert.equal(validText('😀'.repeat(4096)),true);assert.equal(validText('😀'.repeat(4097)),false);
-  assert.equal(validText('x'.repeat(16384)),true);assert.equal(validText('x'.repeat(16385)),false);
+  assert.equal(validText('中'.repeat(21845)),true);assert.equal(validText('中'.repeat(21846)),false);
+  assert.equal(validText('😀'.repeat(16384)),true);assert.equal(validText('😀'.repeat(16385)),false);
+  assert.equal(validText('x'.repeat(65536)),true);assert.equal(validText('x'.repeat(65537)),false);
   assert.equal(validText('\ud800'),false);assert.equal(validText('\udc00'),false);assert.equal(validText('a\u0000b'),false);
-  const {store,messages}=setup([textControl]);store.beginEdit(1);store.draft(1,'中'.repeat(5462));
+  const {store,messages}=setup([textControl]);store.beginEdit(1);store.draft(1,'中'.repeat(21846));
   assert.equal(store.commit(1),false);assert.equal(messages.length,0);assert.equal(store.drafts.size,1);assert.ok(store.error(1));
   store.cancelEdit(1);assert.equal(store.drafts.size,0);assert.equal(store.error(1),'');
 });
@@ -215,8 +215,8 @@ test('authoritative normalized state before its ACK revision settles without ano
 });
 test('serialized JSON size is bounded separately from decoded text size',()=>{
   const {store,messages}=setup([textControl]);
-  assert.equal(validText('\u0001'.repeat(16384)),true);
-  assert.equal(store.act(1,'text','\u0001'.repeat(16384)),false);
+  assert.equal(validText('\u0001'.repeat(65536)),true);
+  assert.equal(store.act(1,'text','\u0001'.repeat(65536)),false);
   assert.equal(messages.length,0);assert.equal(store.pending.size,0);
   assert.equal(store.act(1,'range',2147483648),false);
 });

@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <vector>
 namespace assist { namespace cooperative {
-constexpr int MaxSources=512,MaxTargets=512;
+constexpr int MaxSources=1024,MaxTargets=1024;
 enum Mode { Enter=1,AirFirst=2,AirSecond=3,AirDamage=4,AirSingle=5 };
 constexpr int DamageRadius=5*256;
 constexpr double MaximumExpectedDamage=1000000000.0;

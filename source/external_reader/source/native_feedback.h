@@ -115,7 +115,7 @@ inline uint32_t over(uint32_t s,uint32_t d){
 }
 struct Canvas {
  int width=0,height=0;std::vector<uint32_t> pixels;
- bool reset(int w,int h){width=height=0;pixels.clear();if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024)return false;width=w;height=h;pixels.assign(size_t(w)*h,0);return true;}
+ bool reset(int w,int h){width=height=0;pixels.clear();if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>32*1024*1024)return false;width=w;height=h;pixels.assign(size_t(w)*h,0);return true;}
  void dot(int x,int y,uint32_t color){if(x>=0&&y>=0&&x<width&&y<height){auto&d=pixels[size_t(y)*width+x];d=over(color,d);}}
  void fill(Rect r,uint32_t c){r=intersect(r,{0,0,width,height});for(int y=r.y;y<r.y+r.h;++y)for(int x=r.x;x<r.x+r.w;++x)dot(x,y,c);}
  // Clip before rasterization to bound work for offscreen beams.

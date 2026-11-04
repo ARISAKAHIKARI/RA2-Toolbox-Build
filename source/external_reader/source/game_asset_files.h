@@ -34,7 +34,7 @@ public:
  bool load(const std::string&nm,std::vector<uint8_t>&out){if(root.empty())return false;auto key=name(nm);auto loose=size(nm);auto found=cache.find(key);if(!loose&&found!=cache.end()){found->second.used=++clock;out=found->second.bytes;return true;}
   if(!directory.load(nm,out,[&](auto&file,uint64_t at,void*p,size_t n){return read(file,at,p,n);},loose))return false;
   if(loose)return true; // Loose mod overrides can appear/change independently of MIX stamps.
-  constexpr size_t Budget=64*1024*1024;while(cachedBytes+out.size()>Budget&&!cache.empty()){auto old=cache.begin();for(auto i=cache.begin();i!=cache.end();++i)if(i->second.used<old->second.used)old=i;cachedBytes-=old->second.bytes.size();cache.erase(old);}
+  constexpr size_t Budget=256*1024*1024;while(cachedBytes+out.size()>Budget&&!cache.empty()){auto old=cache.begin();for(auto i=cache.begin();i!=cache.end();++i)if(i->second.used<old->second.used)old=i;cachedBytes-=old->second.bytes.size();cache.erase(old);}
   if(out.size()<=Budget){cache.emplace(key,Cached{out,++clock});cachedBytes+=out.size();}return true;
  }
 };
