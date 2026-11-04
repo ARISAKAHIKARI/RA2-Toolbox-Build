@@ -516,7 +516,7 @@ static void placementTick(){
  sh->lowDamageStatus=!lowOK?-2:!sh->lowDamageFilter?0:riskLowDamageActive?1:2;
  const bool ownerGuardReady=!sh->controlCommandOwner||(controlCommandOwnerReady(lastHouse)&&
   (!eventdelivery::isMultiplayer(get<int>(0xA8B238))||networkHousePreserveReady()));
- controlSitesTick(controlmode::master(sh->controlAll)||(controlmode::native(sh->controlAll)&&ownerGuardReady));
+ controlSitesTick(controlmode::parameters(sh->controlAll)||controlmode::master(sh->controlAll)||(controlmode::native(sh->controlAll)&&ownerGuardReady));
  if(controlHouseFlagsPending())sh->playerControlStatus=-2;
  // Infantry entry uses ordinary task/planning events. Never install either
  // capability override, including when an older configuration enables C4Test.

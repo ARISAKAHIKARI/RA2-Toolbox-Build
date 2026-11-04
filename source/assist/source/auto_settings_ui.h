@@ -81,6 +81,7 @@ static bool autoSettingChanged(int id,int notification){
   extra.placementEventKey=next;registerKeys();changedSetting();return true;
  }
  if(id==9097&&notification==BN_CLICKED){extra.techEnhance=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
+ if(id==9472&&notification==BN_CLICKED){extra.techEnhanceCompareLevel=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9470&&select){extra.techEnhanceImplementation=std::clamp(int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)),0,1);changedSetting();syncAdditional();return true;}
  if(id>=9480&&id<=9485&&edit){BOOL ok=FALSE;const int value=int(GetDlgItemInt(ui,id,&ok,FALSE));const int lo=id==9483?1:2,hi=id==9483?8:16;
   if(!ok||value<lo||value>hi){setStatus(L"此项有效范围："+std::to_wstring(lo)+L"–"+std::to_wstring(hi));return true;}
@@ -98,9 +99,9 @@ static bool autoSettingChanged(int id,int notification){
  if(id==9191&&notification==BN_CLICKED){extra.nativeMegaGateway=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9198&&notification==BN_CLICKED){extra.nativeCombatQueries=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9193&&notification==BN_CLICKED){extra.controlCommandOwner=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();syncAdditional();return true;}
- if(id==9250&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode<0||mode>1)return true;
+ if(id==9250&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode<0||mode>2)return true;
   extra.controlImplementation=mode;pointerMatches.clear();changedSetting();syncAdditional();
-  notify(mode==0?L"已选择 Master 基本指令修改；开启后直接修改三处游戏指令，不启用命令所属方或事件所属方保留。旧状态还原完成后生效，高危，仍有联机风险。":L"已选择原生判定 Hook；开启后会修改游戏代码，仍有联机风险。");return true;
+  notify(mode==0?L"已选择不改指令的控制实现；断点不足时会显示错误，不自动切回代码补丁。":mode==2?L"已选择 Master 基本指令修改；开启后直接修改三处游戏指令，不启用命令所属方或事件所属方保留。旧状态还原完成后生效，高危，仍有联机风险。":L"已选择原生判定 Hook；开启后会修改游戏代码，仍有联机风险。");return true;
  }
  if(id==9196&&notification==BN_CLICKED){extra.crcMapShadow=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9195&&select){int policy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(policy>=0&&policy<=2){extra.aircraftAllocationPolicy=policy;pointerMatches.clear();changedSetting();syncAdditional();}return true;}

@@ -633,5 +633,19 @@
     "mo_viewport": "opt-in high-risk experimental MO-style map-only viewport with coordinated native rendering, input, Host projections and guarded ownership handoff",
     "game_tested": false,
     "multiplayer_tested": false
+  },
+  "hardware_control_parameters": {
+    "baseline_commit": "5253aef9c15659e3ed2df3412cc18311338b9fe7",
+    "assist_protocol": 93,
+    "shared_bytes": 6585000,
+    "control_hardware_slots": 1,
+    "full_technology_hardware_slots": 1,
+    "enhancement_hardware_slots": 1,
+    "optional_level_compare_hardware_slots": 1,
+    "optional_level_compare_default": false,
+    "hardware_slots_per_thread": 4,
+    "admission": "actual owner-thread debug register readback; UI rejects unknown or insufficient budgets; backend transaction preserves existing/foreign groups",
+    "game_tested": false,
+    "multiplayer_tested": false
   }
 }

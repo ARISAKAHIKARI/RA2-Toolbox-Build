@@ -9,11 +9,13 @@ static bool failRemoval=false;static unsigned rejectedRemovals=0;
 static ULONG testRemoveVeh(PVOID handler){if(failRemoval){++rejectedRemovals;SetLastError(ERROR_INVALID_HANDLE);return 0;}return RemoveVectoredExceptionHandler(handler);}
 #define RemoveVectoredExceptionHandler testRemoveVeh
 #include TECH_CORE_HEADER
+#include "../source/tech_enhancement_parameter_policy.h"
 #undef RemoveVectoredExceptionHandler
-struct Shared {int techParameterStatus=0;unsigned techParameterError=0,techParameterSlots=0,techParameterExceptions=0;int techEnhanceParameterStatus=0;unsigned techEnhanceParameterError=0,techEnhanceParameterSlots=0,techEnhanceParameterExceptions=0;}wire,*sh=&wire;
+struct Shared {uint32_t hardwareSlotBudget=0;int techParameterStatus=0;unsigned techParameterError=0,techParameterSlots=0,techParameterExceptions=0;int techEnhanceParameterStatus=0;unsigned techEnhanceParameterError=0,techEnhanceParameterSlots=0,techEnhanceParameterExceptions=0;}wire,*sh=&wire;
 namespace techparameters {
-static assist::techbp::Service service;static bool desired=false,enhancementDesired=false;static int failure=0,enhancementFailure=0;static unsigned refusedGroups=0,resourceGroups=0;static volatile LONG fullExceptions=0,enhancementExceptions=0;
-namespace techbp=assist::techbp;
+inline constexpr uint32_t FullGroup=1u;
+static assist::techbp::Service service;static bool desired=false,enhancementDesired=false,enhancementCompareRequested=true;static int failure=0,enhancementFailure=0;static unsigned refusedGroups=0,resourceGroups=0;static volatile LONG fullExceptions=0,enhancementExceptions=0;
+namespace techbp=assist::techbp;namespace techenhanceparams=assist::techenhanceparams;
 #include TECH_PUBLISH_ROUTES
 }
 static unsigned checks=0;static void check(bool okay){++checks;if(!okay){std::fprintf(stderr,"check %u failed\n",checks);std::abort();}}

@@ -1,7 +1,7 @@
 name: Prepare console architecture workspace
 on:
   push:
-    branches: [codex/console-architecture-20261103]
+    branches: [codex/console-architecture-20261103, codex/control-hardware-20261104]
     paths: [.github/workflows/prepare-console-workspace.yml]
   workflow_dispatch:
 permissions:

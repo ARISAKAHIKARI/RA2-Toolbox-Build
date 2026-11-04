@@ -16,6 +16,7 @@ def block(text,needle):
  while depth:depth+=(text[end]=='{')-(text[end]=='}');end+=1
  return text[start:end]
 need=['static bool healthy(){','static bool ready(uint32_t group){']
+need+=['static uint32_t enhancementTags(){','static bool enhancementReady(){']
 if 'static bool groupOff(uint32_t group){' in s:need.append('static bool groupOff(uint32_t group){')
 need.append('static void publish(){')
 current=out/'current-publish.inc';current.write_text('\n'.join(block(s,n)for n in need),encoding='utf-8')

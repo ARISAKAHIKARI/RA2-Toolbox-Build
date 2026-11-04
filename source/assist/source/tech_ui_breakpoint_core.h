@@ -1,24 +1,27 @@
 #pragma once
 #include <windows.h>
 #include <stdint.h>
+#include "../../shared/source/hardware_slot_budget.h"
 // Dedicated-thread CONTEXT changes; no target-process code, virtual table,
 // rules, event queue or executable allocation is written here.
 namespace assist { namespace techbp {
+inline constexpr unsigned SiteCount=5;
+inline constexpr uint32_t AllTags=(1u<<SiteCount)-1;
 enum Status {Off=0,Ready=1,Waiting=2,Signature=-1,Slots=-2,System=-3,Foreign=-4,Thread=-5};
 struct Registers {uint32_t address[4]{},control=0,status=0;};
 inline uint32_t slotMask(unsigned n){return (3u<<(n*2))|(15u<<(16+n*4));}
 inline uint32_t enabled(unsigned n){return 1u<<(n*2);}
 struct Lease {
- uint32_t sites[4]{},before[4]{};uint8_t tag[4]{},alternative[4]{};uint32_t mask=0,uncertain=0;
+ uint32_t sites[SiteCount]{},before[4]{};uint8_t tag[4]{},alternative[4]{};uint32_t mask=0,uncertain=0;
  unsigned actualTag(const Registers&r,unsigned n)const{
-  if(!(mask&(1u<<n))||(r.control&slotMask(n))!=enabled(n))return 4;
+  if(!(mask&(1u<<n))||(r.control&slotMask(n))!=enabled(n))return SiteCount;
   if(r.address[n]==sites[tag[n]])return tag[n];
-  return (uncertain&(1u<<n))&&r.address[n]==sites[alternative[n]]?alternative[n]:4;
+  return (uncertain&(1u<<n))&&r.address[n]==sites[alternative[n]]?alternative[n]:SiteCount;
  }
- bool exact(const Registers&r,unsigned n)const{return actualTag(r,n)<4;}
+ bool exact(const Registers&r,unsigned n)const{return actualTag(r,n)<SiteCount;}
  uint32_t tags()const{uint32_t result=0;for(unsigned n=0;n<4;++n)if((mask&(1u<<n))&&!(uncertain&(1u<<n)))result|=1u<<tag[n];return result;}
  int configure(Registers&r,const uint32_t*addresses,uint32_t wanted){
-  if(!addresses||wanted&~15u||r.control&(1u<<13))return Slots;
+  if(!addresses||wanted&~AllTags||r.control&(1u<<13))return Slots;
   if(mask&&!intact(r))return Foreign;
   for(unsigned n=0;n<4;++n)if((mask&(1u<<n))&&(wanted&(1u<<actualTag(r,n)))&&addresses[actualTag(r,n)]!=sites[actualTag(r,n)])return Foreign;
   Lease next=*this;Registers after=r;
@@ -31,19 +34,19 @@ struct Lease {
   uint32_t missing=wanted&~next.tags();unsigned free[4]{},count=0;
   for(unsigned n=0;n<4;++n)if(!after.address[n]&&!(after.control&slotMask(n)))free[count++]=n;
   if(unsigned(__builtin_popcount(missing))>count)return Slots; // transaction: no changes at all
-  unsigned index=0;for(unsigned t=0;t<4;++t)if(missing&(1u<<t)){
+  unsigned index=0;for(unsigned t=0;t<SiteCount;++t)if(missing&(1u<<t)){
    if(!addresses[t])return Signature;const unsigned n=free[index++];next.before[n]=after.address[n];next.tag[n]=uint8_t(t);next.mask|=1u<<n;
    after.address[n]=addresses[t];after.control=(after.control&~slotMask(n))|enabled(n);after.status&=~(1u<<n);
   }
-  for(unsigned t=0;t<4;++t)if(wanted&(1u<<t))next.sites[t]=addresses[t];*this=next;r=after;return wanted?Ready:Off;
+  for(unsigned t=0;t<SiteCount;++t)if(wanted&(1u<<t))next.sites[t]=addresses[t];*this=next;r=after;return wanted?Ready:Off;
  }
- int install(Registers&r){if(mask)return Foreign;const uint32_t requested[4]={sites[0],sites[1],0,0};return configure(r,requested,3);}
+ int install(Registers&r){if(mask)return Foreign;const uint32_t requested[SiteCount]={sites[0],sites[1]};return configure(r,requested,3);}
  bool intact(const Registers&r)const{if(!mask)return false;for(unsigned n=0;n<4;++n)if((mask&(1u<<n))&&!exact(r,n))return false;return true;}
  Lease remaining(const Registers&r)const{Lease kept=*this;for(unsigned n=0;n<4;++n)if(mask&(1u<<n)){
-  unsigned actual=actualTag(r,n);if(actual>=4)kept.mask&=~(1u<<n);else kept.tag[n]=uint8_t(actual);
+  unsigned actual=actualTag(r,n);if(actual>=SiteCount)kept.mask&=~(1u<<n);else kept.tag[n]=uint8_t(actual);
  }kept.uncertain=0;return kept;}
  static Lease possible(const Lease&a,const Lease&b){
-  Lease result=a;for(unsigned t=0;t<4;++t)if(b.sites[t])result.sites[t]=b.sites[t];
+  Lease result=a;for(unsigned t=0;t<SiteCount;++t)if(b.sites[t])result.sites[t]=b.sites[t];
   for(unsigned n=0;n<4;++n)if(b.mask&(1u<<n)){
    if(!(result.mask&(1u<<n))){result.mask|=1u<<n;result.tag[n]=b.tag[n];result.before[n]=b.before[n];}
    else if(result.tag[n]!=b.tag[n]){result.uncertain|=1u<<n;result.alternative[n]=b.tag[n];}
@@ -63,8 +66,14 @@ public:
  volatile LONG confirmed=0;
 private:
  HANDLE thread_=nullptr,worker_=nullptr;DWORD owner_=0;PVOID handler_=nullptr;
- uint32_t requested_[4]{},wanted_=0,operationGroups_=0;
+ uint32_t requested_[SiteCount]{},wanted_=0,operationGroups_=0;
  volatile LONG job_=0,operation_=0; // job 0 idle, 1 running, 2 completed
+ volatile LONG budget_=0;DWORD budgetAt_=0;
+ static uint32_t budget(const Registers&r,const Lease&lease){
+  if(r.control&(1u<<13))return 0;unsigned free=0,owned=0;uint32_t tags=0;
+  for(unsigned n=0;n<4;++n){if(!r.address[n]&&!(r.control&slotMask(n)))++free;else if(lease.exact(r,n)){++owned;tags|=1u<<lease.actualTag(r,n);}}
+  return slotbudget::pack(free,owned,4-free-owned,tags);
+ }
  static Service*&instance(){static Service*p=nullptr;return p;}
  static Registers registers(const CONTEXT&c){Registers r;r.address[0]=c.Dr0;r.address[1]=c.Dr1;r.address[2]=c.Dr2;r.address[3]=c.Dr3;r.control=c.Dr7;r.status=c.Dr6;return r;}
  static void registers(CONTEXT&c,const Registers&r){c.ContextFlags=CONTEXT_DEBUG_REGISTERS;c.Dr0=r.address[0];c.Dr1=r.address[1];c.Dr2=r.address[2];c.Dr3=r.address[3];c.Dr7=r.control;c.Dr6=r.status;}
@@ -83,7 +92,8 @@ private:
      else {
       Registers before=registers(context),after=before;const Lease original=s.lease;Lease proposed=original;
       bool retiring=false;
-      if(s.operation_==1)result=proposed.install(after);
+      if(s.operation_==5)result=Off; // read-only admission probe: no VEH and no register writes
+      else if(s.operation_==1)result=proposed.install(after);
       else if(s.operation_==4)result=proposed.configure(after,s.requested_,s.wanted_);
       else if(s.operation_==2){retiring=true;result=proposed.restore(after);}
       else if(proposed.intact(before))result=Ready;
@@ -100,6 +110,7 @@ private:
        error=GetLastError();result=System;
       }else{
        const Registers actual=registers(verify);s.lease=possible.remaining(actual);s.confirmed=1;
+       s.budgetAt_=GetTickCount();InterlockedExchange(&s.budget_,LONG(budget(actual,s.lease)));
        if(retiring){if(s.lease.mask)result=System;}
        else if((s.operation_==1||s.operation_==3||s.operation_==4)&&committed&&result!=Slots&&result!=Signature&&
           s.lease.tags()!=proposed.tags())result=Foreign;
@@ -125,7 +136,7 @@ private:
   return EXCEPTION_CONTINUE_EXECUTION;
  }
  bool start(unsigned operation){
-  poll();if(job_)return false;operationGroups_=lease.uncertain?15u:lease.tags();if(operation==1)operationGroups_|=3;else if(operation==4)operationGroups_|=wanted_;operation_=LONG(operation);InterlockedExchange(&job_,1);
+  poll();if(job_)return false;InterlockedExchange(&budget_,0);operationGroups_=lease.uncertain?AllTags:lease.tags();if(operation==1)operationGroups_|=3;else if(operation==4)operationGroups_|=wanted_;operation_=LONG(operation);InterlockedExchange(&job_,1);
   worker_=CreateThread(nullptr,0,worker,this,0,nullptr);
   if(!worker_){lastError=LONG(GetLastError());state=System;job_=0;return false;}return true;
  }
@@ -153,15 +164,21 @@ public:
   if(lease.mask)return audit();state=Waiting;return start(1);
  }
  bool configure(const uint32_t*sites,uint32_t wanted,Callback fn){
-  poll();if(job_)return false;const DWORD current=GetCurrentThreadId();if(owner_&&owner_!=current){state=Thread;return false;}
+  poll();if(job_)return false;if(!sites||(wanted&~AllTags)){state=Slots;return false;}const DWORD current=GetCurrentThreadId();if(owner_&&owner_!=current){state=Thread;return false;}
   if(!thread_){thread_=OpenThread(THREAD_SUSPEND_RESUME|THREAD_GET_CONTEXT|THREAD_SET_CONTEXT|SYNCHRONIZE,FALSE,current);if(!thread_){lastError=LONG(GetLastError());state=System;return false;}owner_=current;}
-  callback=fn;for(unsigned i=0;i<4;++i)requested_[i]=sites[i];wanted_=wanted;
+  callback=fn;for(unsigned i=0;i<SiteCount;++i)requested_[i]=(wanted&(1u<<i))?sites[i]:0;wanted_=wanted;
   if(!handler_){
    if(instance()&&instance()!=this){state=Foreign;return false;}HMODULE pin=nullptr;
    if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCWSTR>(&vectored),&pin)){lastError=LONG(GetLastError());state=System;return false;}
    instance()=this;handler_=AddVectoredExceptionHandler(1,vectored);if(!handler_){lastError=LONG(GetLastError());instance()=nullptr;state=System;return false;}
   }
   if(activeTags()==wanted){state=wanted?Ready:Off;return true;}state=Waiting;return start(4);
+ }
+ uint32_t slotBudget()const{return !job_&&budgetAt_&&DWORD(GetTickCount()-budgetAt_)<=1000?uint32_t(InterlockedCompareExchange(const_cast<volatile LONG*>(&budget_),0,0)):0;}
+ bool inspect(){
+  poll();if(job_)return false;if(lease.mask)return audit();const DWORD current=GetCurrentThreadId();if(owner_&&owner_!=current){state=Thread;return false;}
+  if(!thread_){thread_=OpenThread(THREAD_SUSPEND_RESUME|THREAD_GET_CONTEXT|THREAD_SET_CONTEXT|SYNCHRONIZE,FALSE,current);if(!thread_){lastError=LONG(GetLastError());state=System;return false;}owner_=current;}
+  return start(5);
  }
  bool audit(){if(pending())return false;return start(3);}
  bool retire(){
