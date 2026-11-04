@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Hook 清理漏掉 Cursor 佈局槽與故障退休 | [Runtime(9)、兩槽共享與27項隔離檢查](2026-11-05-hook-cleanup-shared-tooltip.md) | gate6 7F74C8 7F74D8 fault cleanup-only pinned reconnect SINGLE_STEP-unresolved |
 | 新 MRGA 信标函数证据（未投产） | [新采集 ABI 与严格 profile 候选](2026-11-04-platform-beacon-current-capture.md) | 431410 C3A000 153CD0 ret4 proposed-only |
 | 平台 Reveal 上下文跳板与采集缺口 | [原生 fallback 不等于透明授权](2026-11-04-platform-reveal-wrapper-boundary.md) | 577D90 577E1E 577F03 MEM_PRIVATE handler-missing no-authorization |
 | 蜘蛛自动功能（用户暂停，未实现） | [字段、射程与工作恢复检查点](2026-11-04-parasite-automation-pending.md) | pending no-backend parasite manual-priority queue-semantics |
@@ -259,3 +260,4 @@
 - [小地圖頂部裁切、底部導航與真實視口](2026-11-04-minimap-camera-overview.md)（Tactical overview／native backing 身分／R 視口／排除端點；受控測試，實機待驗收）
 
 - [Runtime(8) 單步異常、故障鎖存及同進程重連殘留](2026-11-04-runtime-single-step-fault-reconnect.md)（80000004／4F7870／fault未清／callback仍活；來源與實機日誌分析，未修改Runtime）
+

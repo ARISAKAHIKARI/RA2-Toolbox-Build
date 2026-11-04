@@ -189,6 +189,9 @@ static void disconnect(){
  if(!featureRestorationComplete())return;
  if(sh&&sh->magic==Magic&&sh->version==Version&&sh->pid==GetCurrentProcessId()&&sh->stop){MemoryBarrier();sh->stop=2;}
  InterlockedExchange(&hostWorkPending,0);if(controllerProcess)CloseHandle(controllerProcess);controllerProcess=nullptr;controllerPID=controllerCheckAt=0;restoreFrameDriver();InterlockedExchange(&messageGameThread,0);sessionTracker.update(false,0,-1,-1);hookWorld.reset();commandDormant=worldCleanupPending=false;if(sh)UnmapViewOfFile(sh);sh=nullptr;if(mapping)CloseHandle(mapping);mapping=nullptr;lastHouse=pendingAck=0;pendingAckReady=false;
+ // The DLL is pinned across Host restarts. Only a fully retired connection
+ // may release its fault latch so a new Host can open a fresh mapping.
+ fault=false;
 }
 static_assert(Signatures[8].address==startupcompat::BeaconEntry,"ClearBeacons signature index");
 static_assert(Signatures[9].address==startupdependency::RevealEntry,"Map::Reveal signature index");
@@ -753,9 +756,11 @@ static bool featureRestorationComplete(){
  // 55DE81 belongs to Runtime's independent read-only frame notification
  // channel. It has its own cleanup and must not deadlock Assist detachment.
  const unsigned runtimeOnly=(codeHookRegistry.active(0x55DE81)?1u:0u)+
-  (!buildTimeTooltipActive&&codeHookRegistry.active(0x7F74D8)?1u:0u);
+  (!buildTimeTooltipActive&&codeHookRegistry.active(0x7F74D8)?1u:0u)+
+  (codeHookRegistry.active(0x7F74C8)?1u:0u);
  // A released build-time claim may leave the shared tooltip slot owned by
- // Cursor. Runtime separately retires it after the last client detaches.
+ // Cursor. Its separate layout slot also belongs to Cursor. Runtime retires
+ // both after the last client detaches; neither blocks Assist-only cleanup.
  return codeHookRegistry.installed()==runtimeOnly&&!crcMapInstalled&&!networkSenderInstalled&&
   !shroudMaterials.active()&&!enhancementRestoring&&!techDataPending()&&mapVisibilityParametersRetired()&&techParametersRetired()&&techEnhanceParametersRetired()&&controlParametersRetired()&&nativeViewRetired()&&!controlHouseFlagsPending();
 }
@@ -1143,6 +1148,10 @@ static void tick(){
   restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();
   restoreFrameDriver();disconnect();return;
  }
+ // Keep polling asynchronous retirement after a fault, without admitting
+ // commands or returning to normal world/feature maintenance. The failed
+ // connection stays latched until its Host stops or exits and detach finishes.
+ if(fault){reset();snap.status=snap.bridgeStatus=-2;snap.commandStatus=0;publishSnapshot(now);return;}
  if((snap.techOpen||techPending||techDataPending())&&!(sh->flags&UnsafeTech))restoreTech();
  if(techDataRestoring&&techImplementation!=3)restoreTechData();
  const auto worldSample=worldlife::capture(read);const auto worldChange=hookWorld.observe(worldSample);
@@ -1299,9 +1308,9 @@ static void dispatchFromTrigger(dispatchrouter::Trigger trigger,DWORD now,const 
  // Producers and event gateway do not know which provider woke this tick.
  // The shared request/ack serials and unit arbiter prevent redispatching an
  // already accepted user request when ownership changes between callbacks.
- if(!fault||(sh&&sh->stop)){
-  GuardedAssistTick();
- }
+ // tick() has a cleanup-only fault path. Starving it here strands pending
+ // debug-register retirement and prevents a later Host from reconnecting.
+ GuardedAssistTick();
  // Install / remove experimental hooks only from the original message path.
  if(trigger==dispatchrouter::Trigger::Message)maintainScheduler();
  InterlockedExchange(&schedulerBusy,0);
@@ -1313,7 +1322,7 @@ extern "C" void EndAssistCapture(unsigned token){
  gameentry::Request r{};r.module=gameentry::moduleIdentity();r.client=gameentry::Client::Assist;r.token=token;gameentry::leave(r);
 }
 extern "C" void AssistTick(){if(gameentry::active(gameentry::Client::Assist))tick();}
-extern "C" void AssistFault(){superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();restoreSidebarView();nativePlacementReset();nativePlacementCompletionReset();restorePauseView();restoreCrcMapShadow();restoreBuildTimeTooltip();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();restorePlayerContext();faultContext={};nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;fault=true;resetMoOrders();restoreClickHooks();resetCooperativeState();resetFormation();resetMissileControl();resetBurstControl();resetDodgeControl();clearNativeOrders();restorePlacement();restoreTech();restoreCSHook();if(sh){sh->result=-10;InterlockedIncrement(&sh->seq);sh->data.status=-2;sh->data.bridgeStatus=-2;sh->data.commandStatus=0;sh->data.labels=0;MemoryBarrier();InterlockedIncrement(&sh->seq);sh->ack=sh->request;sh->selectResult=sh->planResult=-10;sh->selectAck=sh->selectRequest;sh->planAccepted=0;sh->planAcceptedMask=sh->planRejectedMask=0;sh->planAck=sh->planRequest;notifyHost();}}
+extern "C" void AssistFault(){fault=true;maintainTechParameters();superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();restoreSidebarView();nativePlacementReset();nativePlacementCompletionReset();restorePauseView();restoreCrcMapShadow();restoreBuildTimeTooltip();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();restorePlayerContext();faultContext={};nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;resetMoOrders();restoreClickHooks();resetCooperativeState();resetFormation();resetMissileControl();resetBurstControl();resetDodgeControl();clearNativeOrders();restorePlacement();restoreTech();restoreCSHook();if(sh){sh->result=-10;InterlockedIncrement(&sh->seq);sh->data.status=-2;sh->data.bridgeStatus=-2;sh->data.commandStatus=0;sh->data.labels=0;MemoryBarrier();InterlockedIncrement(&sh->seq);sh->ack=sh->request;sh->selectResult=sh->planResult=-10;sh->selectAck=sh->selectRequest;sh->planAccepted=0;sh->planAcceptedMask=sh->planRejectedMask=0;sh->planAck=sh->planRequest;notifyHost();}}
 extern "C" void GuardedAssistTick();
 #include "native_message_policy.h"
 extern "C" void AssistRuntimeMessage(int code,WPARAM wp,LPARAM lp){
@@ -1330,6 +1339,7 @@ extern "C" void AssistRuntimeWatchdog(){
  GuardedAssistTick(); // stop/dead-controller branch only; never normal work
 }
 extern "C" bool AssistRuntimeDetached(){return sh==nullptr;}
+
 
 
 
