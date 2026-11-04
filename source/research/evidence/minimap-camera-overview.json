@@ -31,5 +31,45 @@
   "multiplayer_tested": false,
   "screenshots": "User-provided bug evidence only; generated annotation is not verification",
   "native_camera_limits_changed": false,
-  "shared_world_projection_changed": false
+  "shared_world_projection_changed": false,
+  "code_commit": "f7c28255b1bd90b3537ffc063c201aceaaebf19d",
+  "windows_focused_fixtures": "pass",
+  "windows_paired_compile": "pass",
+  "ci_run": 41859071422,
+  "ci_artifact_id": 13339713279,
+  "ci_artifact_sha256": "077128eea96ad4ce3fc993caa555482da51e90a7459bd82679567c2a9f17be6e",
+  "package": {
+    "bytes": 3590025,
+    "sha256": "5a75a849368b480f5e2f9fdbd86424a96145930175df762e1bb568a5c63882fc",
+    "name": "RA2Toolbox-1.0.41-pre.6-x64-Update.zip"
+  },
+  "paired_files": [
+    {
+      "sha256": "99b9a01f2a60c94c15e0dfb507c09e2706392a3d0012fade1a39156c88d72af8",
+      "name": "RA2Toolbox.exe",
+      "bytes": 9053696
+    },
+    {
+      "sha256": "0d7fc54232b2cfb06c7b087b88a52480e1fdec55dc85b78e4df5a4ef5b4121cf",
+      "name": "GameRuntime.dll",
+      "bytes": 15646208
+    },
+    {
+      "sha256": "63c7b217b5b23419c1e0bef9a834c7eaf7a14c1b20d6b1691994ef1cd646534f",
+      "name": "GameRuntimeHost32.exe",
+      "bytes": 214528
+    },
+    {
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6",
+      "name": "WebView2Loader.dll",
+      "bytes": 194912
+    }
+  ],
+  "existing_fixture_failure": {
+    "fixture": "assist/tests/minimap_overlay.cpp:138",
+    "baseline_main_blob": "72e64862995350e075256f8bf3b5c63819c840e6",
+    "baseline_compile": 0,
+    "baseline_run": -6,
+    "same_assertion_before_and_after": true
+  }
 }

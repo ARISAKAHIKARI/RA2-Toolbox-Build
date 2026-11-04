@@ -24,3 +24,9 @@
 `assist/tests/minimap_overview.cpp` 使用真正 Sampler/SceneRenderer/發布判定；測出 native crop 不含而 overview 可畫出的北緣 TMP 像素，覆蓋上下相機端點、奇數視口、原生來源身分、私人 bank、同 frame 劇情改界和原投影不變。這些是受控記憶體／資產替身的工具箱行為，不是使用者場景的 Windows 截圖、真實 GPU 或雙機聯機驗收。
 
 本輪新版本為 `1.0.41-pre.6`；精簡的配套 Windows 編譯流程為 `.github/workflows/compile-minimap-hotfix.yml`。兩項蜘蛛自動功能仍暫停；本次修正不聲稱解決此前仍未經使用者驗收的注入問題。
+
+## 配套編譯與交付
+
+Windows x64 的兩項 focused fixture、完整 Host/x86 Runtime/broker 編譯及 PE/ABI/版本檢查通過。產品來源為 `f7c28255b1bd90b3537ffc063c201aceaaebf19d`，Actions run `41859071422`、artifact `13339713279`。更新包 `RA2Toolbox-1.0.41-pre.6-x64-Update.zip` 為 3,590,025 bytes，SHA-256 `5a75a849368b480f5e2f9fdbd86424a96145930175df762e1bb568a5c63882fc`。
+
+額外嘗試的舊 `minimap_overlay.cpp` 在第138行 catalogue 斷言失敗；隔離回置 main 的原始 radar_map blob 後同樣失敗，已確認為本輪之前存在的 fixture 失敗，不把它列為通過。新兩項 fixture 及本輪實際 Tactical 模組交叉編譯均通過。此文件檢查點僅補交付證據，不變更已編譯產品程式碼。
