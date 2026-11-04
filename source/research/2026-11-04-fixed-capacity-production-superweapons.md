@@ -69,3 +69,18 @@
 ## 验证边界
 
 固定容量测试覆盖旧边界之外的命令 FIFO、1024 人协同及重试身份、8192 所有权、16384 修理 tombstone 复用、256 轨迹尾部更新；另运行相应现有算法、生产预定、控制台、783 项跨位数 ABI 与 Windows 配对构建。原生超武用例的摘要见 `evidence/2026-11-04-superweapon-disabled-native.json`。编译 DLL 的 22 例通过，含两种预定在有／无科技许可、建造数量失败、无工厂时的 8 例；摘要见 `evidence/2026-11-04-capacity-production-runtime.json`。CI 的最终结果以对应提交构建为准。没有打开真实游戏，没有验证视觉、超武发射效果或联机。
+
+
+## 联机授予：地图触发动作与网络命令的区别
+
+问题：是否有联机可用的授予超武机制，特别是任意普通对局中只安装本机工具箱的情况？
+
+本轮核对固定上游 CnCNet/YRpp `d9795546950fcc75a94325ffc83b44d16ec34ce2` 的 `GeneralDefinitions.h`、`TActionClass.h`、`EventClass.h`、`ScenarioClass.h`，并复查本仓库 `bridge.cpp::superSelect`。本轮是源码契约检查与同步设计分析，没有新增原生执行或多人试验；前文 17 例只证明该私有 PE 的本机 Grant/维护/CanFire 行为。
+
+- `TriggerAction::AddOneTimeSuperWeapon=0x21`（十进制 33）、`AddRepeatingSuperWeapon=0x22`（34）是地图触发动作。YRpp 对应 `TActionClass::Grant1ShotSW` `0x6E1BD0` 和 `GrantPermanentSW` `0x6E1C40`，声明为 thiscall，参数为 House、源对象、Trigger、Cell 引用。这些地址本轮仅由固定头文件核对，未执行其原始函数。
+- 上述 TriggerAction 编号不能填入网络 EventType 直接发送。已核对的原生网络事件表中 `SpecialPlace=0x12` 是带超武编号和目标格的使用事件；工具当前也按该结构发送已有超武的使用事件，入口先检查 Present、所属方及 CanFire。没有从这份事件契约中找到任意授予超武的通用 Grant 事件；这不是对一切未知原生路径的不可行性证明。
+- `EventType::Special=0x18` 携带 `ScenarioFlags`。其已命名字段为 CTF、资源生长、联盟、迷雾等，不能把它直接当成 GameModeOptions::SWAllowed 的广播接口；未知位没有在本轮核实。
+
+同步层面的结论：地图已有授予触发逻辑，由所有客户端在一致游戏逻辑中执行，具备联机同步机制；具体地图、模式及禁用超武选项组合仍需实测。只在本机调用 `Super::Grant(true,...)` 不会自动广播授予，之后补发 SpecialPlace 也不能据此保证各端授予状态一致。不存在“上一轮本机授予通过，所以已联机可用”的推论。
+
+因此，当前工具箱没有已验证的“任意地图、仅本机安装、无须其他客户端配合”的联机强制授予功能。共同地图触发器，或所有参与同步的客户端使用配套的同步授予实现，是可选方向；后者属于尚未实现和验证的新方案。不能把独立本机调用地图授予函数冒充地图触发器同步。
