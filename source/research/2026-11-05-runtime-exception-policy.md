@@ -35,3 +35,11 @@ Runtime、bridge 和 Cursor 以 GNU x86 `-fno-exceptions` 編譯。只把全局 
 - 產品 guard、bridge、Runtime、Cursor 實際 Windows 目標物件編譯通過。完整配套編譯及 Windows fixture 的最終結果綁定至交付證據，不把本機僅連結的 exe 稱為已執行。
 
 本版為 `1.0.41-pre.8`；保留 pre.6 小地圖及 pre.7 共享提示框雙槽清理修正。Cursor 專用布局槽 `7F74C8` 與已釋放 Assist claim 的共享文字槽，依 pre.7 的同一所有權規則排除，不阻止 Assist 退休；未知活動站點及仍有責任的資源仍阻止 handoff。現場硬體例外漏接的詳細原因、實際遊戲畫面和雙機聯機仍未驗收。
+
+## 最終配套交付證據
+
+產品來源 `4331dbd04f50994ab786883889a42ce3f2669b73`；Windows 專用 CI https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/actions/runs/41872126498 通過真實 x86 SEH fixture、共享提示框清理回歸及完整 x64 Host／x86 Runtime／Broker 配套編譯與 PE／版本驗證。
+
+成品 `RA2Toolbox-1.0.41-pre.8-x64-Update.zip`，3593793 bytes，SHA-256 `84b1b0e3f4051754ce7f7764f59036470b4d8564804c15aec77bdb58fff43970`。四個配套檔案雜湊與工作流程 artifact 身分見 [交付證據](evidence/runtime-exception-policy.json)。
+
+升級必須退出遊戲與工具箱再整包覆蓋；現行遊戲內 pinned 的舊 Runtime 無法藉重啟工具箱替換。以上為自有程序及編譯證據，沒有實際遊戲／雙機驗收。
