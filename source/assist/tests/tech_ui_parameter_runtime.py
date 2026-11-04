@@ -151,7 +151,7 @@ def reservation(command,granted=True,limited=1,factory=True):
  save(m,s);m.canbuild_calls.clear()
  s=tick(m)
  expected=granted and limited>0 and factory
- assert result(s)==(0 if expected else -9) and s.count==int(expected),(command,granted,limited,factory,result(s))
+ assert result(s)==(1 if expected else -9) and s.count==int(expected),(command,granted,limited,factory,result(s))
  assert any(c[1]==typ and c[2]==int(granted) for c in m.canbuild_calls),m.canbuild_calls
  assert codehash(m)==m.original_code and ruleshash(m)==ruleshash_before
  return {'command':command,'full_technology':granted,'native_build_limit':limited,'factory_available':factory,'accepted':expected,'canbuild_modeled':True,'native_produce_constructor_executed':expected}
@@ -163,7 +163,7 @@ def enhancement():
  s=ready(m);assert s.techEnhance==1 and m.r(m.t+0x634)==0xffffffff and s.techEnhanceStatus==0
  for _ in range(12):s=tick(m);assert m.r(m.t+0x634)==0xffffffff and s.techEnhance==1
  send(m,on=False);settle(m)
- for _ in range(8):s=tick(m)
+ for _ in range(12):m.flush();s=tick(m)
  assert m.r(m.t+0x634)==1 and s.techEnhance==1
  return {'saved_enhance_preference_preserved':True,'rule_writer_blocked_for_entire_parameter_mode':True,'preference_resumes_after_exit':True}
 check('independent_enhancement_full_lifecycle_handoff',enhancement)

@@ -1,6 +1,9 @@
 #include "../source/command_delivery.h"
 #include "../source/cooperative_plan.h"
+#include "../source/burst_compute.h"
+#include "../source/dodge_compute.h"
 #include "../source/mo_orders.h"
+#include "../source/outgoing_batch.h"
 #include "../source/repair_delivery.h"
 #include "../source/unit_task_arbiter.h"
 #include <cassert>
@@ -15,6 +18,20 @@ int main(){
  assert(!queue.add({Produce,128,0,1,1,100}));
  for(int i=0;i<128;++i){delivery::Item out;assert(queue.peek(101,1,1,true,out)&&out.arg==i);queue.consume();}
  assert(!queue.size);
+ outgoing::Batch batch;batch.begin(1);
+ for(int i=0;i<32;++i)batch.accept();
+ assert(batch.done(32)&&batch.acceptedMask==0xffffffffu&&!batch.rejectedMask);
+ batch.begin(2);for(int i=0;i<32;++i)batch.reject();
+ assert(batch.rejectedMask==0xffffffffu&&!batch.acceptedMask);
+
+ burstcompute::Input burst;burst.count=256;
+ for(auto&s:burst.sources){s.target=s.currentTarget=1;s.mission=1;s.burst=2;s.index=1;s.eligible=s.inRange=1;}
+ auto shots=burstcompute::calculate(burst);assert(shots.count==256);
+ for(const auto&d:shots.decisions)assert(d.mission==13);
+ dodgecompute::Input dodge;dodge.count=128;
+ for(auto&s:dodge.sources){s.count=128;s.freshThreat=1;s.shots[127]=123;}
+ auto scatters=dodgecompute::calculate(dodge);assert(scatters.count==128);
+ for(const auto&d:scatters.decisions)assert(d.scatter);
 
  // Exercise allocation and retry identities above the old 512-source limit.
  cooperative::Input input;input.mode=cooperative::AirFirst;input.clicked=2000;
