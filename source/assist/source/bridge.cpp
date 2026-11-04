@@ -16,6 +16,7 @@
 #include "../../shared/source/runtime_fault.h"
 #include "signatures.h"
 #include "startup_signature_compat.h"
+#include "startup_dependency_policy.h"
 #include "autoload.h"
 #include "outgoing_batch.h"
 #include "object_index.h"
@@ -190,6 +191,7 @@ static void disconnect(){
  InterlockedExchange(&hostWorkPending,0);if(controllerProcess)CloseHandle(controllerProcess);controllerProcess=nullptr;controllerPID=controllerCheckAt=0;restoreFrameDriver();InterlockedExchange(&messageGameThread,0);sessionTracker.update(false,0,-1,-1);hookWorld.reset();commandDormant=worldCleanupPending=false;if(sh)UnmapViewOfFile(sh);sh=nullptr;if(mapping)CloseHandle(mapping);mapping=nullptr;lastHouse=pendingAck=0;pendingAckReady=false;
 }
 static_assert(Signatures[8].address==startupcompat::BeaconEntry,"ClearBeacons signature index");
+static_assert(Signatures[9].address==startupdependency::RevealEntry,"Map::Reveal signature index");
 static bool startupSignature(const Signature&s){
  unsigned char b[12];if(s.length>sizeof b||!read(s.address,b,s.length))return false;
  if(!memcmp(b,s.bytes,s.length))return true;
@@ -208,7 +210,8 @@ static bool startupSignature(const Signature&s){
  unsigned char body[startupcompat::BeaconBytes];
  return read(target,body,sizeof body)&&startupcompat::beaconBody(body,sizeof body,module);
 }
-static bool signatures(){for(auto&s:Signatures)if(!startupSignature(s))return false;return true;}
+static bool revealSignature(){return startupSignature(Signatures[9]);}
+static bool signatures(){return startupdependency::coreReady(Signatures,[](const Signature&s){return startupSignature(s);});}
 static void notifyHost(){
  if(!sh||!sh->hostWindow)return;
  if(!InterlockedCompareExchange(&sh->hostNotifyPending,1,0)&&!PostMessageW((HWND)(uintptr_t)sh->hostWindow,DataMessage,sh->pid,0))InterlockedExchange(&sh->hostNotifyPending,0);
@@ -899,7 +902,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else if(c==AutoBoard){result=autoLoad(house);n=snap.loadIssued;if(result==-30){loadAckRequest=req;loadAckPending=true;return;}}
  else if(c>=CombatSelection&&c<=DamagedSelection)n=selectFilter(house,c);
  else if(c>=IdleHarvester&&c<=IdleTransport)n=findIdle(house,c);
- else if(c==ClearBeacons){if(!startupSignature(Signatures[8]))result=-11;else {call<void>(0x431410,0x89C3B0,get<int>(house+0x30));n=1;}}
+ else if(c==ClearBeacons){if(!startupSignature(Signatures[8]))result=-12;else {call<void>(0x431410,0x89C3B0,get<int>(house+0x30));n=1;}}
  else if(c==RevealMap&&(!(sh->flags&ExperimentalReveal)||sh->renderReveal)){result=-21;}
  else if(c==RevealMap){
   // Early in a restarted match, House can be valid before its map-cell array.
@@ -907,6 +910,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   uint32_t cells=get<uint32_t>(0x87F7E8+316);
   int capacity=get<int>(0x87F7E8+320);
   if(cells<0x10000||capacity<=0||capacity>512*512)result=-14;
+  else if(!revealSignature())result=-12;
   else if(!crcMapToolBegin(house))result=-22;
   else {call<void>(0x577D90,0x87F7E8,(void*)house);crcMapToolEnd();n=1;}
  }
@@ -1087,6 +1091,8 @@ static void suspendedOptions(){
  if(!sh->networkHousePreserve||!controlmode::sender(sh->controlAll))restoreNetworkSender();
  if(!sh->buildTimeTooltip)restoreBuildTimeTooltip();
  if(!sh->crcMapShadow)restoreCrcMapShadow();
+ if(sh->renderReveal==3)directMapRevealReady();
+ else if(!directGroupRestore(directpatch::Group::Map))snap.renderRevealStatus=-2;
  if(!sh->renderReveal)renderRevealTick(false);
  if(!sh->techEnhance)restoreTechEnhancement();
  if(!(sh->flags&BuildAnywhere)){riskPlacementActive=false;restoreRiskSite(riskSites[0]);directGroupRestore(directpatch::Group::Placement);}
@@ -1178,7 +1184,8 @@ static void tick(){
  // Local playable state above is sufficient; do not wait for remote FrameInfo.
  snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;
  // A temporary loading/platform signature mismatch must not poison the
- // pinned Runtime for its entire lifetime. Still require every exact probe.
+ // pinned Runtime for its entire lifetime. Still require every exact core
+ // probe; optional native commands enforce their own dependencies at use.
  if(!checked&&(!signatureRetryAt||DWORD(now-signatureRetryAt)>=1000)){
   signatureRetryAt=now;good=signatures();checked=good;
  }
@@ -1323,6 +1330,7 @@ extern "C" void AssistRuntimeWatchdog(){
  GuardedAssistTick(); // stop/dead-controller branch only; never normal work
 }
 extern "C" bool AssistRuntimeDetached(){return sh==nullptr;}
+
 
 
 

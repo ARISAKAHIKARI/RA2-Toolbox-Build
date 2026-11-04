@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 平台实机 Hook 已连接但可选入口阻断全局 | [19项核心与命令依赖隔离](2026-11-04-platform-startup-dependency-isolation.md) | commandStatus3 431410 577D90 E9 core19 ClearBeacons RevealMap SpySat owned-only |
 | 随机名称平台的后台子渲染捕获 | [旧逻辑历史与全窗口树发现](2026-11-04-background-renderer-discovery.md) | random-name background child EnumWindows EnumChildWindows once-per-PID strict-image fingerprint MRGA preserved |
 | 硬件断点热路径性能 | [即时签名核验、归属分类与诊断计数](2026-11-04-breakpoint-hotpath-performance.md) | Full/Enhance no-RPM/FNV hot snapshots owner counters foreign passthrough real-DR comparison |
 | 单槽硬件黑幕显示开关 | [共用四槽、互斥与 Assist96](2026-11-04-map-visibility-one-slot-switch.md) | Map bit2 ZF6D88FC slots23-vs29 default-off display-only pre2 |
@@ -249,3 +250,4 @@
 - [MO 原生地圖縮放：A/R、共用完整 Render、輸入／重連與世代退役](2026-11-03-mo-native-viewport.md)
 
 - [固定容量扩容、科技全开生产预定与禁用超武](2026-11-04-fixed-capacity-production-superweapons.md)（Assist94；SW 原始指令 17 例；无真实游戏／联机验证）
+

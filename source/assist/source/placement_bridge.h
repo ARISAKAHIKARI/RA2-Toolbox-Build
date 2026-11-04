@@ -476,6 +476,13 @@ static bool redrawRevealTest(){
  if(tactical<0x10000||!riskRenderContextReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return false;
  call<void>(0x6D2790,tactical,area,false);return true;
 }
+static bool directMapRevealReady(){
+ if(revealSignature())return true;
+ // This helper may also run while command work is suspended. Retire only
+ // owned sites; it never installs a group or repairs another writer's bytes.
+ directGroupRestore(directpatch::Group::Map);snap.renderRevealStatus=-2;
+ return false;
+}
 static void renderRevealTick(bool redraw=true){
  prepareRiskSites();static uint32_t priorStrategy=0;const bool priorRender=riskRenderActive;
  const bool materialWanted=shroudpolicy::materialMode(sh->renderReveal);
@@ -489,7 +496,10 @@ static void renderRevealTick(bool redraw=true){
  }else if(!materialOff){riskRenderActive=false;restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);directGroupRestore(directpatch::Group::Map);snap.renderRevealStatus=-2;
  }else if(sh->renderReveal==3){
   riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);
-  bool ok=a&&b&&directGroupEnable(directpatch::Group::Map);
+  // The SpySat gate in this legacy group can reach Map::Reveal. Check that
+  // dependency both before installation and on every maintenance pass; a
+  // later foreign replacement retires only sites still owned by this group.
+  bool ok=a&&b&&directMapRevealReady()&&directGroupEnable(directpatch::Group::Map);
   if(!ok)directGroupRestore(directpatch::Group::Map);
   snap.renderRevealStatus=ok?1:-2;
  }else{
@@ -549,4 +559,5 @@ static void placementTick(){
  }else{riskAirActive=false;bool a=restoreRiskSite(riskSites[1]),b=restoreRiskSite(riskSites[2]);
   snap.nativeAirStatus=a&&b?((sh->flags&NativeAirWaypoints)&&airpathpolicy::events(get<int>(0xA8B238),false,true,sh->nativeAirNetwork)?2:0):-2;}
 }
+
 

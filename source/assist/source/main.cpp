@@ -70,6 +70,7 @@
 #include "settings_fold_layout.h"
 #include "runtime_feature_demand.h"
 #include "signatures.h"
+#include "startup_dependency_policy.h"
 #include "../../external_reader/source/watch_slots.h"
 #include "view_zoom.h"
 #include "superweapon_sidebar_host.h"
@@ -264,6 +265,86 @@ static const wchar_t* runtimeStage(LONG stage){
  }
 }
 static std::wstring hex32(DWORD value){wchar_t out[16];swprintf(out,16,L"0x%08X",unsigned(value));return out;}
+struct StartupProbeDiagnosticCache {DWORD pid=0;uint64_t generation=0;std::wstring fingerprint;bool modulesPending=false;DWORD moduleError=0;};
+static StartupProbeDiagnosticCache startupProbeDiagnosticCache[2];
+static void resetStartupProbeDiagnostics(){for(auto&cache:startupProbeDiagnosticCache)cache={};}
+static const wchar_t* startupProbeDependency(uint32_t address){
+ switch(startupdependency::dependency(address)){
+ case startupdependency::Dependency::ClearBeacons:return L"optional-ClearBeacons feature=清除信标";
+ case startupdependency::Dependency::Reveal:return L"optional-Reveal feature=原生全图";
+ default:return L"Core";
+ }
+}
+static std::wstring startupProbeTargetRegion(DWORD target,HANDLE query,DWORD queryError){
+ MEMORY_BASIC_INFORMATION region{};
+ if(!query||VirtualQueryEx(query,reinterpret_cast<LPCVOID>(uintptr_t(target)),&region,sizeof region)!=sizeof region)
+  return L" targetQuery=unavailable Win32="+std::to_wstring(query?GetLastError():queryError);
+ const wchar_t*type=region.Type==MEM_IMAGE?L"MEM_IMAGE":region.Type==MEM_PRIVATE?L"MEM_PRIVATE":region.Type==MEM_MAPPED?L"MEM_MAPPED":L"none";
+ const wchar_t*state=region.State==MEM_COMMIT?L"MEM_COMMIT":region.State==MEM_RESERVE?L"MEM_RESERVE":region.State==MEM_FREE?L"MEM_FREE":L"unknown";
+ return std::wstring(L" targetType=")+type+L" targetState="+state+L" targetProtect="+hex32(region.Protect)+
+  L" targetAllocationProtect="+hex32(region.AllocationProtect)+L" targetAllocationBase="+hex32(DWORD(uintptr_t(region.AllocationBase)))+
+  L" targetRegionBase="+hex32(DWORD(uintptr_t(region.BaseAddress)))+L" targetRegionSize="+std::to_wstring(uint64_t(region.RegionSize));
+}
+static std::wstring startupProbeTargetModule(DWORD target,const std::vector<MODULEENTRY32W>&modules,DWORD error){
+ if(error)return L" targetModule=unavailable Win32="+std::to_wstring(error);
+ for(const auto&entry:modules){const uint64_t base=uint64_t(uintptr_t(entry.modBaseAddr));
+  if(uint64_t(target)>=base&&uint64_t(target)-base<entry.modBaseSize){
+   std::wstring name=entry.szModule;const auto slash=name.find_last_of(L"\\/");if(slash!=std::wstring::npos)name.erase(0,slash+1);
+   return L" targetModule="+name+L" targetRva="+hex32(DWORD(uint64_t(target)-base));
+  }
+ }
+ return L" targetModule=not-in-module-snapshot";
+}
+static void logStartupProbeDifferences(bool optionalOnly){
+ autolog::ErrorGuard errorGuard;
+ struct Evidence {std::wstring text;DWORD target=0;bool jump=false;};
+ std::vector<Evidence> evidence;std::wstring fingerprint;unsigned differences=0,unreadable=0;
+ HANDLE query=nullptr;bool queryAttempted=false;DWORD queryError=0;
+ for(const auto&s:Signatures){
+  if((!startupdependency::requiredAtStartup(s.address))!=optionalOnly)continue;
+  Evidence item;item.text=L" pid="+std::to_wstring(pid)+L" dependency="+startupProbeDependency(s.address)+L" site="+hex32(s.address);
+  uint8_t actual[12]{};
+  if(!externalReader.readFresh(s.address,actual,s.length)){
+   ++unreadable;item.text=L"startup-probe-unreadable"+item.text+L" Win32="+std::to_wstring(externalReader.lastReadError);
+  }else if(memcmp(actual,s.bytes,s.length)){
+   ++differences;std::wstring expected,found;wchar_t byte[4];
+   for(unsigned j=0;j<s.length;++j){swprintf(byte,4,L"%02X",unsigned(s.bytes[j]));expected+=byte;swprintf(byte,4,L"%02X",unsigned(actual[j]));found+=byte;}
+   item.text=L"startup-probe-byte-difference"+item.text+L" expected="+expected+L" actual="+found;
+   if(s.length>=5&&actual[0]==0xE9){
+    DWORD displacement=0;memcpy(&displacement,actual+1,sizeof displacement);item.target=DWORD(s.address)+5u+displacement;item.jump=true;
+    if(!queryAttempted){queryAttempted=true;query=OpenProcess(PROCESS_QUERY_INFORMATION,FALSE,pid);if(!query)queryError=GetLastError();}
+    item.text+=L" jump=E9 target="+hex32(item.target)+startupProbeTargetRegion(item.target,query,queryError);
+   }
+  }else continue;
+  fingerprint+=item.text+L"\n";evidence.push_back(std::move(item));
+ }
+ if(query)CloseHandle(query);
+ auto&cache=startupProbeDiagnosticCache[optionalOnly?1:0];const uint64_t generation=externalReader.generation();
+ const bool sameIdentity=cache.pid==pid&&cache.generation==generation;
+ const bool retryModules=sameIdentity&&cache.fingerprint==fingerprint&&cache.modulesPending;
+ if(sameIdentity&&cache.fingerprint==fingerprint&&!retryModules)return;
+ if(!sameIdentity){cache.modulesPending=false;cache.moduleError=0;}
+ const bool hadEvidence=sameIdentity&&!cache.fingerprint.empty();cache.pid=pid;cache.generation=generation;cache.fingerprint=std::move(fingerprint);
+ if(evidence.empty()&&!hadEvidence)return;
+ // Metadata is evidence only. The host does not evaluate the in-process
+ // MRGA replacement-body compatibility guard or authorize either command.
+ std::vector<MODULEENTRY32W> modules;DWORD moduleError=0;
+ if(std::any_of(evidence.begin(),evidence.end(),[](const Evidence&item){return item.jump;})){
+  HANDLE snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPMODULE|TH32CS_SNAPMODULE32,pid);
+  if(snapshot==INVALID_HANDLE_VALUE)moduleError=GetLastError();
+  else{MODULEENTRY32W entry{};entry.dwSize=sizeof entry;
+   if(Module32FirstW(snapshot,&entry))do{modules.push_back(entry);if(modules.size()>=256)break;}while(Module32NextW(snapshot,&entry));
+   else moduleError=GetLastError();
+   CloseHandle(snapshot);
+  }
+ }
+ const bool repeatedModuleFailure=retryModules&&moduleError&&moduleError==cache.moduleError;
+ cache.modulesPending=moduleError!=0;cache.moduleError=moduleError;
+ if(repeatedModuleFailure)return;
+ critical(L"startup-probe-dependencies pid="+std::to_wstring(pid)+L" scope="+(optionalOnly?L"optional":L"core")+
+  L" byteDifferences="+std::to_wstring(differences)+L" unreadable="+std::to_wstring(unreadable)+L" compatibility=host-not-evaluated");
+ for(auto&item:evidence){if(item.jump)item.text+=startupProbeTargetModule(item.target,modules,moduleError);critical(item.text);}
+}
 static void logLoadedGameModules(){
  autolog::ErrorGuard error;
  HANDLE snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPMODULE|TH32CS_SNAPMODULE32,pid);
@@ -1212,6 +1293,12 @@ static void readSnapshot(){
     L" patches="+std::to_wstring(incoming.inputPatchMask));
    loggedMatch=incoming.match;loggedReady=incoming.commandStatus;loggedFlags=shared->flags;loggedSent=incoming.queueSent;entryLogAt=logNow;
   }
+  static DWORD optionalProbeAt=0,optionalProbePid=0;static uint64_t optionalProbeGeneration=0;
+  if(first){resetStartupProbeDiagnostics();optionalProbeAt=logNow-5000;optionalProbePid=0;optionalProbeGeneration=0;}
+  const uint64_t probeGeneration=externalReader.generation();
+  if(pid&&incoming.status==1&&(pid!=optionalProbePid||probeGeneration!=optionalProbeGeneration||DWORD(logNow-optionalProbeAt)>=5000)){
+   optionalProbeAt=logNow;optionalProbePid=pid;optionalProbeGeneration=probeGeneration;logStartupProbeDifferences(true);
+  }
   static DWORD activationLogAt=0;static int activationState=0;
   if(incoming.commandStatus>=2&&incoming.commandStatus<=4&&
      (activationState!=incoming.commandStatus||DWORD(logNow-activationLogAt)>=5000)){
@@ -1220,13 +1307,7 @@ static void readSnapshot(){
    externalReader.readFresh(0xA8B54C,&players,4);externalReader.readFresh(0xA8B8C2,&oos,1);externalReader.readFresh(0x8B41F8,ring,sizeof ring);
    critical(L"activation-wait state="+std::to_wstring(incoming.commandStatus)+L" frame="+std::to_wstring(incoming.frame)+
     L" players="+std::to_wstring(players)+L" nativeOOS="+std::to_wstring(oos)+L" DoList="+std::to_wstring(ring[0])+L"/"+std::to_wstring(ring[1])+L"/"+std::to_wstring(ring[2]));
-   if(incoming.commandStatus==3)for(const auto&s:Signatures){uint8_t actual[12]{};
-    if(!externalReader.readFresh(s.address,actual,s.length)){critical(L"startup-probe-unreadable site="+hex32(s.address));continue;}
-    if(memcmp(actual,s.bytes,s.length)){std::wstring expected,found;wchar_t byte[4];
-     for(unsigned j=0;j<s.length;++j){swprintf(byte,4,L"%02X",unsigned(s.bytes[j]));expected+=byte;swprintf(byte,4,L"%02X",unsigned(actual[j]));found+=byte;}
-     critical(L"startup-probe-difference site="+hex32(s.address)+L" expected="+expected+L" actual="+found);
-    }
-   }
+   if(incoming.commandStatus==3)logStartupProbeDifferences(false);
   }else if(incoming.commandStatus==1)activationState=0;
   snap.bridgeStatus=incoming.status;
   snap.commandStatus=incoming.commandStatus;
@@ -2636,6 +2717,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  ShowWindow(ui,show);
 #endif
  syncInformationRate(true);startClock();uimessages::Queue messages;MSG m;while(messages.get(m)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}
+
 
 
 
