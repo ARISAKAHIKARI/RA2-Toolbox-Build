@@ -5,6 +5,7 @@ on:
     paths: [.github/workflows/finalize-v141-pre2.yml, .github/workflows/publish-v141-pre2.yml]
 permissions:
   contents: write
+  actions: read
 concurrency:
   group: finalize-v141-pre2
   cancel-in-progress: false
