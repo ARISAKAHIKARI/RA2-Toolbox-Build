@@ -1,0 +1,122 @@
+{
+  "private_game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "scope": "Private native trigger34/regrant/retention and ordinary Fire_SW admission.\n\nSynthetic x86 memory only. Stops before Launch; no effects or network peers.\nLocal trigger presentation calls are explicit UI sinks in one separate case.\n",
+  "cases": [
+    {
+      "case": "native_trigger34_disabled_session",
+      "present": 1,
+      "one_time": 0,
+      "can_hold": 0,
+      "timer_start": 100,
+      "duration": 900,
+      "ready": 0
+    },
+    {
+      "case": "native_trigger34_repeated_without_loss",
+      "start_unchanged": true,
+      "one_call_each_game_frame": 180,
+      "session_flag_unchanged": true
+    },
+    {
+      "case": "native_existing_instance_retention",
+      "can_hold": 1,
+      "one_time": 0,
+      "defeated": 0,
+      "skip_normal_source_revoke": false
+    },
+    {
+      "case": "native_existing_instance_retention",
+      "can_hold": 0,
+      "one_time": 0,
+      "defeated": 0,
+      "skip_normal_source_revoke": true
+    },
+    {
+      "case": "native_existing_instance_retention",
+      "can_hold": 1,
+      "one_time": 1,
+      "defeated": 0,
+      "skip_normal_source_revoke": true
+    },
+    {
+      "case": "native_existing_instance_retention",
+      "can_hold": 0,
+      "one_time": 0,
+      "defeated": 1,
+      "skip_normal_source_revoke": false
+    },
+    {
+      "case": "native_trigger34_local_ui",
+      "calls": [
+        {
+          "entry": "0x6a6300",
+          "ecx": 8910824,
+          "args": [
+            31,
+            0
+          ]
+        },
+        {
+          "entry": "0x6abc60",
+          "ecx": 31,
+          "args": [
+            0
+          ]
+        },
+        {
+          "entry": "0x6a60a0",
+          "ecx": 8910824,
+          "args": [
+            1
+          ]
+        }
+      ],
+      "native_grant_executed": true,
+      "ui_functions_modeled": true
+    },
+    {
+      "case": "native_ordinary_house_fire_admission",
+      "present": 0,
+      "ready": 0,
+      "timer_started": 0,
+      "reached_launch": false
+    },
+    {
+      "case": "native_ordinary_house_fire_admission",
+      "present": 0,
+      "ready": 1,
+      "timer_started": 1,
+      "reached_launch": false
+    },
+    {
+      "case": "native_ordinary_house_fire_admission",
+      "present": 1,
+      "ready": 0,
+      "timer_started": 1,
+      "reached_launch": false
+    },
+    {
+      "case": "native_ordinary_house_fire_admission",
+      "present": 1,
+      "ready": 1,
+      "timer_started": 0,
+      "reached_launch": false
+    },
+    {
+      "case": "native_ordinary_house_fire_admission",
+      "present": 1,
+      "ready": 1,
+      "timer_started": 1,
+      "reached_launch": true
+    }
+  ],
+  "game_process_accessed": false,
+  "network_events_sent": false,
+  "launch_effects_executed": false,
+  "ui_sinks_in_one_case": [
+    "0x6a6300",
+    "0x6abc60",
+    "0x6a60a0"
+  ],
+  "pass": true
+}

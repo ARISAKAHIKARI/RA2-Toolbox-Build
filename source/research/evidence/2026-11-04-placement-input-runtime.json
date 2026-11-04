@@ -1,0 +1,224 @@
+{
+  "scope": "Controlled compiled Runtime input replay plus production-header seams; no game process/reception/netplay.",
+  "runtime": {
+    "fixed": {
+      "scope": "Replay compiled Runtime placement clicks without a Host-ready pulse.\n\nThe real DLL manager/filter/dispatcher/placement admission/ctor/queue execute.\nThe established harness supplies Win32/world services; ProcessClickCoords is\nan explicit flat-cell query sink. Audio worker creation fails as a Win32 seam.\nPlacement reception/effects are not executed.\n",
+      "checks": 8,
+      "cases": [
+        {
+          "case": "completed_product_published",
+          "status": "PASS"
+        },
+        {
+          "case": "arm_without_event",
+          "status": "PASS"
+        },
+        {
+          "case": "new_frame_down_consumed_without_event",
+          "status": "PASS"
+        },
+        {
+          "case": "new_frame_up_queues_once_without_host_ready",
+          "status": "PASS"
+        },
+        {
+          "case": "queue_acceptance_clears_both_exact_quick_caches",
+          "status": "PASS"
+        },
+        {
+          "case": "original_place_payload_and_sp_schedule",
+          "status": "PASS"
+        },
+        {
+          "case": "q_before_host_sample_clears_both_exact_caches",
+          "status": "PASS"
+        },
+        {
+          "case": "extra_release_cannot_duplicate_event",
+          "status": "PASS"
+        }
+      ],
+      "query_sink_calls": 5,
+      "baseline_refusal_expected": false,
+      "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "dll_sha256": "0fb1a03dc710304d1d22d770c5abf2070137b1e4697bc85ab5a7f041cabe7312",
+      "game_process_accessed": false,
+      "placement_reception_executed": false,
+      "multiplayer_tested": false,
+      "pass": true
+    },
+    "baseline": {
+      "scope": "Replay compiled Runtime placement clicks without a Host-ready pulse.\n\nThe real DLL manager/filter/dispatcher/placement admission/ctor/queue execute.\nThe established harness supplies Win32/world services; ProcessClickCoords is\nan explicit flat-cell query sink. Audio worker creation fails as a Win32 seam.\nPlacement reception/effects are not executed.\n",
+      "checks": 4,
+      "cases": [
+        {
+          "case": "completed_product_published",
+          "status": "PASS"
+        },
+        {
+          "case": "arm_without_event",
+          "status": "PASS"
+        },
+        {
+          "case": "new_frame_down_consumed_without_event",
+          "status": "PASS"
+        },
+        {
+          "case": "baseline_stale_release_refused",
+          "status": "PASS"
+        }
+      ],
+      "query_sink_calls": 2,
+      "baseline_refusal_expected": true,
+      "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "dll_sha256": "5a1f81b8486d0d110823f71220d8ba131d6906df567792ffb2835eb57c2ed47a",
+      "game_process_accessed": false,
+      "placement_reception_executed": false,
+      "multiplayer_tested": false,
+      "pass": true
+    },
+    "dispatch": {
+      "scope": "Execute the compiled Runtime message boundary, observing actual service entries.\n\nWin32/world are mocked by the established Runtime harness. The real DLL's\nGameRuntimeHook and AssistRuntimeFilter execute; no game process is opened.\nThis proves dispatch reachability/gating, not gesture execution or multiplayer.\n",
+      "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "dll_sha256": "0fb1a03dc710304d1d22d770c5abf2070137b1e4697bc85ab5a7f041cabe7312",
+      "checks": 31,
+      "passed": true,
+      "results": [
+        {
+          "case": "route_0x200",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x100",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x101",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x104",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x105",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x201",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x202",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x203",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x204",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x205",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x206",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x207",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x208",
+          "status": "PASS"
+        },
+        {
+          "case": "route_0x209",
+          "status": "PASS"
+        },
+        {
+          "case": "route_side_1_0x20b",
+          "status": "PASS"
+        },
+        {
+          "case": "route_side_1_0x20c",
+          "status": "PASS"
+        },
+        {
+          "case": "route_side_1_0x20d",
+          "status": "PASS"
+        },
+        {
+          "case": "route_side_2_0x20b",
+          "status": "PASS"
+        },
+        {
+          "case": "route_side_2_0x20c",
+          "status": "PASS"
+        },
+        {
+          "case": "route_side_2_0x20d",
+          "status": "PASS"
+        },
+        {
+          "case": "unrelated_0x0",
+          "status": "PASS"
+        },
+        {
+          "case": "unrelated_0x20",
+          "status": "PASS"
+        },
+        {
+          "case": "unrelated_0x20a",
+          "status": "PASS"
+        },
+        {
+          "case": "unrelated_0x20e",
+          "status": "PASS"
+        },
+        {
+          "case": "unrelated_0xf",
+          "status": "PASS"
+        },
+        {
+          "case": "no_tactical_0",
+          "status": "PASS"
+        },
+        {
+          "case": "no_tactical_2",
+          "status": "PASS"
+        },
+        {
+          "case": "negative_hook_code",
+          "status": "PASS"
+        },
+        {
+          "case": "peek_without_remove",
+          "status": "PASS"
+        },
+        {
+          "case": "null_message",
+          "status": "PASS"
+        },
+        {
+          "case": "cursor_before_tactical_before_filter",
+          "status": "PASS"
+        }
+      ],
+      "game_tested": false,
+      "multiplayer_tested": false
+    }
+  },
+  "completion_linux": {
+    "checks": 117,
+    "pass": true,
+    "assertions_active": true,
+    "sanitizers": "ASan/UBSan; leak scan disabled because ptrace blocks /proc task reads",
+    "windows_api_seam": "DWORD typedef only"
+  },
+  "windows_ci": "Actual x86 placement fixture and x86/x64 completion fixture are required by compile-console.yml."
+}

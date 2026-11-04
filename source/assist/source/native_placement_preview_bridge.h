@@ -58,6 +58,11 @@ static bool nativePlacementWindow(HWND window){
  if(!window||uintptr_t(window)!=get<uint32_t>(0xB73550))return false;
  DWORD owner=0;return GetWindowThreadProcessId(window,&owner)&&owner==GetCurrentProcessId();
 }
+// Physical placement input must not depend on the next Host-ready pulse.
+// The manager samples through the ordinary dispatcher before strict admission.
+static bool nativePlacementWantsInputSample(const MSG*msg){
+ return msg&&sh&&!sh->stop&&!fault&&(placementView.active||nativePlacementCompletionPending())&&nativePlacementWindow(msg->hwnd);
+}
 static bool nativePlacementPoint(HWND window,POINT point,nativeplacement::Request&r,NativePlacementViewport&view,bool*inside=nullptr){
  if(inside)*inside=false;
  r={};r.offer=placementView.offer;RECT client{};uint32_t tactical=0;
