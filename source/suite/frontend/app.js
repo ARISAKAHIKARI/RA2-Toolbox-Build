@@ -158,14 +158,49 @@
   function virtualKey(event) { if (Number.isInteger(event.keyCode) && event.keyCode > 0 && event.keyCode <= 255 && event.keyCode !== 229) return event.keyCode; const code = event.code || ''; if (/^Key[A-Z]$/.test(code)) return code.charCodeAt(3); if (/^Digit[0-9]$/.test(code)) return code.charCodeAt(5); if (/^F(?:[1-9]|1[0-9]|2[0-4])$/.test(code)) return 111 + Number(code.slice(1)); if (/^Numpad[0-9]$/.test(code)) return 96 + Number(code.slice(6)); return SPECIAL_KEYS[code] || SPECIAL_KEYS[event.key] || (event.key?.length === 1 ? event.key.toUpperCase().charCodeAt(0) : 0); }
   function encodeHotkey(event, previous = 0) { if (event.metaKey) return null; const vk = virtualKey(event); if (!vk || vk > 255) return null; let mods = (event.shiftKey ? 0x100 : 0) | (event.ctrlKey ? 0x200 : 0) | (event.altKey ? 0x400 : 0); if (vk === 16) mods &= ~0x100; if (vk === 17) mods &= ~0x200; if (vk === 18) mods &= ~0x400; return (previous & 0xb000) | mods | vk; }
   function keyName(value) { const vk = value & 255; if (!vk) return '未绑定'; const names = { 1:'鼠标左键',2:'鼠标右键',4:'鼠标中键',5:'鼠标侧键 1',6:'鼠标侧键 2',8:'Backspace',9:'Tab',13:'Enter',16:'Shift',17:'Ctrl',18:'Alt',19:'Pause',20:'Caps Lock',27:'Esc',32:'Space',33:'Page Up',34:'Page Down',35:'End',36:'Home',37:'←',38:'↑',39:'→',40:'↓',45:'Insert',46:'Delete',144:'Num Lock',145:'Scroll Lock',186:';',187:'=',188:',',189:'-',190:'.',191:'/',192:'`',219:'[',220:'\\',221:']',222:"'" }; const prefix = []; if ((value & 0x200) && vk !== 17) prefix.push('Ctrl'); if ((value & 0x100) && vk !== 16) prefix.push('Shift'); if ((value & 0x400) && vk !== 18) prefix.push('Alt'); const name = names[vk] || (vk >= 112 && vk <= 135 ? `F${vk - 111}` : vk >= 96 && vk <= 105 ? `Num ${vk - 96}` : String.fromCharCode(vk)); return [...prefix, name].join(' + '); }
-  function groupControls(controls, query = '') { const groups = new Map(), needle = query.trim().toLocaleLowerCase(); let heading = '常用设置'; for (const control of controls) { if (control.visible === false) continue; if (control.type === 'heading') { heading = control.label || control.text || heading; continue; } if (control.type === 'label' && !control.label && !control.text) continue; const name = control.group || heading; if (needle && ![control.label,control.text,control.hint,name,...control.options].join(' ').toLocaleLowerCase().includes(needle)) continue; if (!groups.has(name)) groups.set(name, []); groups.get(name).push(control); } return groups; }
+  function groupControls(controls, query = '') {
+    const groups=new Map(),needle=query.trim().toLocaleLowerCase();let heading='常用设置';
+    for(const control of controls) {
+      if(control.visible===false)continue;
+      if(control.type==='heading'){heading=control.label || control.text || heading;continue;}
+      if(control.type==='label' && !control.label && !control.text)continue;
+      const name=control.group || heading;
+      if(!groups.has(name))groups.set(name,[]);groups.get(name).push(control);
+    }
+    if(needle)for(const [name,items] of groups) {
+      const matches=settingLines(items).filter(line=>line.some(control=>[control.label,control.text,control.hint,name,...control.options].join(' ').toLocaleLowerCase().includes(needle))).flat();
+      if(matches.length)groups.set(name,matches);else groups.delete(name);
+    }
+    return groups;
+  }
+  // The adapter already exports the original logical row. Keep its related
+  // editors together instead of turning every native widget into a full row.
+  // Missing/default coordinates must never combine unrelated settings.
+  function settingLines(controls) {
+    const lines=[];
+    for (const control of controls) {
+      const previous=lines.at(-1), positioned=control.row>0 && control.column>0;
+      if (positioned && previous && previous[0].row===control.row && previous[0].column>0) previous.push(control);
+      else lines.push([control]);
+    }
+    return lines;
+  }
+  function inlineLabel(control, hasPreset=false) {
+    if(control.type==='hotkey')return hasPreset?'自定义键':control.options.includes('hold')?'按住键':'快捷键';
+    if(control.type==='choice') {
+      if(control.options.includes('仅鼠标') && control.options.includes('自定义'))return '按键';
+      if(control.options.includes('中键') && control.options.includes('侧键 1'))return '鼠标';
+      return '选项';
+    }
+    return {number:'数值',range:'数值',text:'内容'}[control.type] || '';
+  }
   function groupPresentation(controls,userCollapsed,searching=false,ackErrors=new Set()) {
     const forced=controls.some(control=>control.runtimeError || ackErrors.has(control.id));
     return {forced,collapsed:Boolean(userCollapsed)&&!searching&&!forced,
       headers:controls.filter(control=>control.groupHeader && !['label','heading'].includes(control.type)),
       details:controls.filter(control=>!control.groupHeader)};
   }
-  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, groupPresentation, keyName, encodeHotkey, virtualKey, validText, placeAfter, MODES });
+  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, groupPresentation, keyName, encodeHotkey, virtualKey, validText, placeAfter, MODES });
   if (typeof document === 'undefined') return;
 
   const $ = id => document.getElementById(id);
@@ -201,7 +236,7 @@
   document.addEventListener('keydown', event => { if (!capture && event.ctrlKey && event.key.toLowerCase() === 'f') { event.preventDefault(); $('search').focus(); $('search').select(); } });
   const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const group = entry.target._group; if (!group) continue; group.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateGroup(group); else if (!group.body.contains(document.activeElement)) unmountGroup(group); } }, { root: $('contentScroll'), rootMargin: '600px' }) : null;
   function clearGroups() { for (const group of groupNodes.values()) { observer?.unobserve(group.section); releaseChunks(group); group.section.remove(); } groupNodes.clear(); }
-  const estimateRows = controls => controls.reduce((height,control) => height + (control.type === 'label' ? 48 : control.type === 'hotkey' ? 92 : 72),0);
+  const estimateRows = controls => settingLines(controls).reduce((height,line) => height + (line.some(control=>control.type==='hotkey') ? 72 : 44),0);
   const chunkObserver = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const chunk = entry.target._chunk; if (!chunk) continue; chunk.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateChunk(chunk); else unmountChunk(chunk); } }, {root:$('contentScroll'),rootMargin:'500px'}) : null;
   function makeGroup(name) {
     const section=document.createElement('section'),summary=document.createElement('button'),title=document.createElement('span'),count=document.createElement('span'),header=document.createElement('div'),body=document.createElement('div');
@@ -213,9 +248,36 @@
     observer?.observe(section);return group;
   }
   function releaseChunks(group) { for (const chunk of group.chunks) { chunkObserver?.unobserve(chunk.element); chunk.element.remove(); } group.chunks=[]; group.chunkSignature=''; }
-  function unmountGroup(group) { if (group.body.contains(document.activeElement)) return; const measured=group.body.getBoundingClientRect().height; group.body.style.minHeight = `${measured || estimateRows(group.controls)}px`; releaseChunks(group); group.body.replaceChildren(); group.rows.clear(); }
-  function unmountChunk(chunk) { if (chunk.element.contains(document.activeElement)) return; const measured=chunk.element.getBoundingClientRect().height; chunk.element.style.minHeight=`${measured || estimateRows(chunk.controls)}px`; chunk.element.replaceChildren(); chunk.rows.clear(); }
-  function updateRows(container,rows,controls) { const ids = new Set(controls.map(control=>control.id)); for (const [id,row] of rows) if (!ids.has(id)) { row.element.remove(); rows.delete(id); } let after=null; for (const control of controls) { let row=rows.get(control.id); if (!row || row.type!==control.type || row.presentation!==control.presentation || Boolean(row.textInput)!==(control.type==='choice' && !control.readonly && control.presentation!=='list')) { const next=makeRow(control); if(row) row.element.replaceWith(next.element); row=next; rows.set(control.id,row); } row.control=control; patchRow(row); placeAfter(container,row.element,after); after=row.element; } }
+  function unmountGroup(group) { if (group.body.contains(document.activeElement)) return; const measured=group.body.getBoundingClientRect().height; group.body.style.minHeight = `${measured || estimateRows(group.controls)}px`; releaseChunks(group); group.body.replaceChildren();group.body._settingLines?.clear(); group.rows.clear(); }
+  function unmountChunk(chunk) { if (chunk.element.contains(document.activeElement)) return; const measured=chunk.element.getBoundingClientRect().height; chunk.element.style.minHeight=`${measured || estimateRows(chunk.controls)}px`; chunk.element.replaceChildren();chunk.element._settingLines?.clear(); chunk.rows.clear(); }
+  function updateRows(container,rows,controls,groupTitle='') {
+    const ids=new Set(controls.map(control=>control.id));
+    for(const [id,row] of rows)if(!ids.has(id)){row.element.remove();rows.delete(id);}
+    const lines=container._settingLines || (container._settingLines=new Map()), wanted=new Set();let after=null;
+    for(const members of settingLines(controls)) {
+      const first=members[0],key=first.row>0 && first.column>0?`row:${first.row}`:`id:${first.id}`;
+      wanted.add(key);let line=lines.get(key);
+      if(!line){line=document.createElement('div');line.className='settings-line';lines.set(key,line);}
+      const compound=members.length>1,name=first.label || first.text;
+      line.classList.toggle('compound-row',compound);
+      const hasPreset=members.some(control=>control.type==='choice' && control.options.includes('仅鼠标') && control.options.includes('自定义'));
+      let previous=null;
+      for(const [index,control] of members.entries()) {
+        let row=rows.get(control.id);
+        if(!row || row.type!==control.type || row.presentation!==control.presentation || Boolean(row.textInput)!==(control.type==='choice' && !control.readonly && control.presentation!=='list')) {
+          const next=makeRow(control);if(row)row.element.replaceWith(next.element);row=next;rows.set(control.id,row);
+        }
+        row.control=control;
+        row.inlineLabel=compound && index>0 && control.label===name?inlineLabel(control,hasPreset):null;
+        if(control.groupHeader && control.label===groupTitle)row.inlineLabel='';
+        // A pushbutton already carries its action name. Do not print it twice.
+        if(control.type==='button' && control.label===control.text)row.inlineLabel='';
+        patchRow(row);placeAfter(line,row.element,previous);previous=row.element;
+      }
+      placeAfter(container,line,after);after=line;
+    }
+    for(const [key,line] of lines)if(!wanted.has(key)){line.remove();lines.delete(key);}
+  }
   function updateChunk(chunk) { if (!chunk.intersecting && chunkObserver && !chunk.element.contains(document.activeElement)) { unmountChunk(chunk); return; } chunk.element.style.minHeight=''; updateRows(chunk.element,chunk.rows,chunk.controls); }
   function updateGroup(group) {
     const key=`${renderedPage}/${group.name}`;
@@ -227,14 +289,16 @@
     group.summary.querySelector('.chevron').toggleAttribute('hidden',!group.hasDetails);
     group.summary.setAttribute('aria-expanded',String(!state.collapsed));
     const countText=`${group.controls.length} 项${state.forced?' · 需要处理':''}`;if(group.count.textContent!==countText)group.count.textContent=countText;
-    updateRows(group.header,group.headerRows,state.headers);group.header.hidden=!state.headers.length;
+    updateRows(group.header,group.headerRows,state.headers,group.name);group.header.hidden=!state.headers.length;group.section.classList.toggle('has-header-controls',Boolean(state.headers.length));
     group.body.hidden=state.collapsed;if(state.collapsed)return;
     if(!group.intersecting&&observer&&!group.body.contains(document.activeElement)){unmountGroup(group);return;}
     group.body.style.minHeight='';const details=state.details;
     if(details.length>48&&chunkObserver){
-      const signature=details.map(control=>control.id).join(',');
-      if(group.chunkSignature!==signature){releaseChunks(group);group.body.replaceChildren();group.rows.clear();group.chunkSignature=signature;for(let index=0;index<details.length;index+=24){const element=document.createElement('div'),controls=details.slice(index,index+24),chunk={element,controls,rows:new Map(),intersecting:false};element.className='rows-chunk';element.style.minHeight=`${estimateRows(controls)}px`;element._chunk=chunk;group.chunks.push(chunk);group.body.append(element);chunkObserver.observe(element);}}
-      group.chunks.forEach((chunk,index)=>{chunk.controls=details.slice(index*24,index*24+24);updateChunk(chunk);});
+      const signature=details.map(control=>`${control.id}:${control.row}:${control.column}`).join(',');
+      const lines=settingLines(details),chunks=[];let batch=[];
+      for(const line of lines){if(batch.length && batch.length+line.length>24){chunks.push(batch);batch=[];}batch.push(...line);}if(batch.length)chunks.push(batch);
+      if(group.chunkSignature!==signature){releaseChunks(group);group.body.replaceChildren();group.rows.clear();group.body._settingLines?.clear();group.chunkSignature=signature;for(const controls of chunks){const element=document.createElement('div'),chunk={element,controls,rows:new Map(),intersecting:false};element.className='rows-chunk';element.style.minHeight=`${estimateRows(controls)}px`;element._chunk=chunk;group.chunks.push(chunk);group.body.append(element);chunkObserver.observe(element);}}
+      group.chunks.forEach((chunk,index)=>{chunk.controls=chunks[index];updateChunk(chunk);});
     }else{if(group.chunks.length){releaseChunks(group);group.body.replaceChildren();}updateRows(group.body,group.rows,details);}
   }
   function updateFoldAction() {
@@ -264,17 +328,17 @@
   function bindText(row,input) { input.autocomplete = 'off'; input.spellcheck = false; input.addEventListener('focus',() => { store.beginEdit(row.control.id); store.draft(row.control.id,input.value); }); input.addEventListener('input',() => store.draft(row.control.id,input.value)); input.addEventListener('blur',() => store.commit(row.control.id)); input.addEventListener('keydown',event => { if (event.key === 'Enter') { event.preventDefault(); store.commit(row.control.id); input.blur(); } else if (event.key === 'Escape') { event.preventDefault(); store.cancelEdit(row.control.id); input.blur(); } }); }
   function patchRow(row) {
     const control = row.control, error = store.error(control.id); row.element.dataset.pending = String(store.isPending(control.id)); row.element.classList.toggle('is-disabled',!control.enabled); row.element.classList.toggle('has-error',Boolean(error)||control.runtimeError);
-    const labelText=control.label || (control.type === 'label' ? control.text : '设置'), hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(row.label.textContent!==labelText) row.label.textContent=labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent; row.element.title = control.hint;
+    const labelText=row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置')), hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText; row.element.title = control.hint;
     if (!row.input) return;
     const disabled = !control.enabled || store.closed || store.state?.generation!==store.generation.get(store.current.module);
     row.element.classList.toggle('is-disabled',disabled);
-    row.input.disabled = disabled; row.input.setAttribute('aria-label',control.label || control.text || '设置');
+    row.input.disabled = disabled; row.input.setAttribute('aria-label',row.inlineLabel?`${control.label} · ${row.inlineLabel}`:control.label || control.text || '设置');
     if (control.type === 'toggle') { row.input.checked = Boolean(store.value(control,'toggle'));row.toggleState.textContent=row.input.checked?'已开启':'已关闭'; }
     else if (control.type === 'button') { row.input.textContent = control.text || control.label || '执行'; row.input.disabled = disabled || store.isPending(control.id); }
     else if (control.type === 'choice') { const optionSignature = JSON.stringify(control.options); if (row.optionSignature !== optionSignature) { row.optionSignature = optionSignature; row.input.replaceChildren(...control.options.map((text,index) => { const option = document.createElement('option'); option.value = String(index); option.textContent = text; return option; })); } const index = Number(store.value(control,'select')); if (row.input.selectedIndex !== index) row.input.selectedIndex = index; if (row.textInput) { row.textInput.disabled = disabled; if (document.activeElement !== row.textInput) row.textInput.value = String(store.value(control,'text')); } }
     else if (control.type === 'text' || control.type === 'number') { row.input.readOnly = control.readonly; if (document.activeElement !== row.input || control.readonly) row.input.value = String(store.value(control,'text')); }
     else if (control.type === 'range') { row.input.min = control.min; row.input.max = control.max; row.input.step = control.step; const value = store.value(control,'range'); if (document.activeElement !== row.input) row.input.value = value; row.output.textContent = String(value); }
-    else if (control.type === 'hotkey') { const value = Math.max(0,Number(store.value(control,'hotkey')) || 0), modes = control.options.filter(option => ['press','release','hold'].includes(option)); const allowed = modes.length ? modes : ['press','release','hold']; const signature = allowed.join(','); if (signature !== row.modeSignature) { row.modeSignature = signature; row.mode.replaceChildren(...allowed.map(name => { const option = document.createElement('option'); option.value = String(MODES[name]); option.textContent = {press:'按下触发',release:'松开触发',hold:'持续按住'}[name]; return option; })); } const keyboardOnly = control.options.includes('keyboardOnly'); if (row.keyboardOnly !== keyboardOnly) { row.keyboardOnly = keyboardOnly; row.special.replaceChildren(...[['特殊按键…',0],['Esc',27],['Enter',13],['Tab',9],...(!keyboardOnly ? [['鼠标左键',1],['鼠标右键',2],['鼠标中键',4],['鼠标侧键 1',5],['鼠标侧键 2',6]] : [])].map(([text,vk]) => { const option = document.createElement('option'); option.textContent = text; option.value = String(vk); return option; })); } const mode = value & 0x3000 || (allowed.includes('hold') && allowed.length === 1 ? MODES.hold : MODES.press); row.mode.value = String(mode); row.double.checked = Boolean(value & 0x8000); row.mode.disabled = row.double.disabled = row.clear.disabled = disabled || !(value & 255); row.special.disabled = disabled; row.input.textContent = capture?.row === row ? '请按下组合键…' : keyName(value); row.input.classList.toggle('capturing',capture?.row === row); }
+    else if (control.type === 'hotkey') { const value = Math.max(0,Number(store.value(control,'hotkey')) || 0), modes = control.options.filter(option => ['press','release','hold'].includes(option)); const allowed = modes.length ? modes : ['press','release','hold']; const signature = allowed.join(','); if (signature !== row.modeSignature) { row.modeSignature = signature; row.mode.replaceChildren(...allowed.map(name => { const option = document.createElement('option'); option.value = String(MODES[name]); option.textContent = {press:'按下触发',release:'松开触发',hold:'持续按住'}[name]; return option; })); }row.mode.hidden=allowed.length===1; const keyboardOnly = control.options.includes('keyboardOnly'); if (row.keyboardOnly !== keyboardOnly) { row.keyboardOnly = keyboardOnly; row.special.replaceChildren(...[['特殊按键…',0],['Esc',27],['Enter',13],['Tab',9],...(!keyboardOnly ? [['鼠标左键',1],['鼠标右键',2],['鼠标中键',4],['鼠标侧键 1',5],['鼠标侧键 2',6]] : [])].map(([text,vk]) => { const option = document.createElement('option'); option.textContent = text; option.value = String(vk); return option; })); } const mode = value & 0x3000 || (allowed.includes('hold') && allowed.length === 1 ? MODES.hold : MODES.press); row.mode.value = String(mode); row.double.checked = Boolean(value & 0x8000); row.mode.disabled = row.double.disabled = row.clear.disabled = disabled || !(value & 255); row.special.disabled = disabled; row.input.textContent = capture?.row === row ? '请按下组合键…' : keyName(value); row.input.classList.toggle('capturing',capture?.row === row); }
   }
   function startCapture(row) { stopCapture(); capture = { row, modifier: null, usedModifier: false }; row.input.focus(); patchRow(row); }
   function stopCapture() { const previous = capture?.row; capture = null; if (previous) patchRow(previous); }
@@ -312,3 +376,4 @@
   global.addEventListener('beforeunload',() => stopCapture());
   store.ready(); schedule();
 })(globalThis);
+

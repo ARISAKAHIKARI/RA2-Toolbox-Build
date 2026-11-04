@@ -11,7 +11,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const script = fs.readFileSync(path.join(here, '../frontend/app.js'), 'utf8');
 const context = vm.createContext({ console, Date, Map, Set, Object, Number, String, Boolean, RangeError });
 vm.runInContext(script, context);
-const { ConsoleStore, groupControls, encodeHotkey, keyName, canonical, validText, placeAfter, groupPresentation } = context.RA2ConsoleCore;
+const { ConsoleStore, groupControls, settingLines, encodeHotkey, keyName, canonical, validText, placeAfter, groupPresentation } = context.RA2ConsoleCore;
 const tests = [];
 function test(name, run) { tests.push({ name, run }); }
 function setup(controls = []) {
@@ -286,6 +286,19 @@ test('metadata and immediate actions retain the original click time and reject d
   assert.equal(store.act(1,'press'),true);assert.ok(messages.at(-1).seq>sent.seq);
 });
 
+test('searching one editor retains its feature and never merges missing row coordinates',()=>{
+  const feature=[
+    {id:1,type:'toggle',label:'高级进驻',checked:true,column:20},
+    {id:2,type:'choice',label:'高级进驻',options:['仅鼠标','Alt','Ctrl','Shift','自定义'],column:240},
+    {id:3,type:'hotkey',label:'高级进驻',selected:18,options:['hold'],column:350},
+    {id:4,type:'choice',label:'高级进驻',options:['停用','中键','侧键 1','侧键 2','右键','左键'],column:510}
+  ].map(control=>canonical({...control,row:120,group:'键鼠组合操作'}));
+  const other=canonical({id:5,type:'toggle',label:'自动维修',row:158,column:20,group:'键鼠组合操作'});
+  assert.deepEqual(Array.from(groupControls([...feature,other],'左键').values()).flat().map(c=>c.id),[1,2,3,4]);
+  assert.equal(settingLines([...feature,other]).length,2);
+  assert.equal(settingLines([canonical({id:6,type:'text'}),canonical({id:7,type:'text'})]).length,2);
+});
+
 let failed=0;
 for (const {name,run} of tests) { try { run(); console.log(`PASS ${name}`); } catch(error) { failed++; console.error(`FAIL ${name}\n${error.stack}`); } }
 if (failed) process.exitCode=1; else console.log(`${tests.length} console model tests passed`);
@@ -434,6 +447,39 @@ if (!failed && process.argv.includes('--browser')) {
     await receive(foldedState(folded));await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===15);assert.equal(await page.locator('.settings-group.collapsed').count(),15,'recovery restores the prior closed preference');
     const danger=[{id:9185,type:'button',label:'立即自毁',immediate:true}];await receive({kind:'state',protocol:1,module:0,generation:5,revision:1,page:'cursor',controls:danger,status:''});await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
     const button=page.getByRole('button',{name:'立即自毁',exact:true});await button.waitFor();const sentBefore=await page.evaluate(()=>window.__sent.length);await button.dblclick();const submitted=await page.evaluate(()=>window.__sent.slice(-1)[0]);assert.equal(await page.evaluate(()=>window.__sent.length),sentBefore+1);assert.equal(submitted.action,'press');assert.ok(submitted.inputTime>0);assert.equal(Object.hasOwn(submitted,'receivedAt'),false);
+    // Reproduce the shipped native row from tactical_controls.h: one feature,
+    // four independent control tokens, one name and compact inline editors.
+    const compound=[
+      {id:702,type:'toggle',label:'高级进驻',checked:true,column:20},
+      {id:703,type:'choice',label:'高级进驻',selected:1,options:['仅鼠标','Alt','Ctrl','Shift','自定义'],readonly:true,column:240},
+      {id:704,type:'hotkey',label:'高级进驻',selected:0x2012,options:['hold'],column:350},
+      {id:740,type:'choice',label:'高级进驻',selected:5,options:['停用','中键','侧键 1','侧键 2','右键','左键'],readonly:true,column:510}
+    ].map(control=>({...control,row:120,group:'键鼠组合操作'}));
+    const compactState=(patch={})=>({kind:'state',protocol:1,module:0,generation:6,revision:revision++,page:'cursor',controls:compound,status:'',...patch});
+    await receive(compactState());await page.setViewportSize({width:1240,height:880});await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
+    const line=page.locator('.compound-row');await line.waitFor();
+    assert.equal(await line.count(),1);assert.equal(await line.locator('.setting-row').count(),4);
+    assert.equal(await line.locator('.setting-label').filter({hasText:/^高级进驻$/}).count(),1);
+    assert.ok((await line.boundingBox()).height<=96,'the complete feature must fit in at most two compact lines on desktop');
+    await page.getByLabel('高级进驻 · 鼠标',{exact:true}).selectOption('1');
+    action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,740);assert.equal(action.action,'select');assert.equal(action.value,1);
+    const compactKey=page.getByRole('button',{name:'高级进驻 · 自定义键',exact:true});await compactKey.click();
+    await compactKey.evaluate(element=>{window.__compactKey=element;});await receive(compactState({controls:compound.map(c=>c.id===702?{...c,checked:false}:c)}));
+    await page.waitForFunction(()=>!document.getElementById('control-0-702').checked);
+    assert.equal(await compactKey.evaluate(element=>element===window.__compactKey && document.activeElement===element),true,'background revisions preserve the focused editor node');
+    await page.keyboard.press('Escape');
+    for(const viewport of [{width:1794,height:900},{width:1240,height:880},{width:720,height:780},{width:390,height:720}]) {
+      await page.setViewportSize(viewport);await assertFits();
+      await page.screenshot({path:diagnosticsPrefix+'-compact-'+viewport.width+'.png',fullPage:false});
+    }
+    await page.setViewportSize({width:1240,height:880});await page.getByLabel('高级进驻',{exact:true}).click();
+    action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,702);assert.equal(action.action,'toggle');
+    await page.locator('#search').fill('左键');await page.waitForFunction(()=>document.getElementById('resultCount').textContent==='找到 4 项设置');
+    assert.equal(await line.locator('.setting-row').count(),4,'search retains sibling editors and the feature switch');await page.locator('#search').fill('');
+    const pinned=[{id:880,type:'toggle',label:'科技设置',group:'科技设置',groupHeader:true,collapsible:true,collapsedDefault:true},{id:881,type:'number',label:'科技等级',text:'1',group:'科技设置',collapsible:true,collapsedDefault:true}];
+    await receive(compactState({generation:7,controls:pinned}));await page.getByLabel('科技设置',{exact:true}).waitFor();
+    assert.equal(await page.locator('.group-header-controls .setting-label:visible').count(),0,'a pinned switch shares the group title');
+    await page.getByLabel('科技设置',{exact:true}).click();assert.equal(await page.evaluate(()=>window.__sent.at(-1).id),880);
     assert.deepEqual(errors,[],'browser must not emit uncaught JS errors');
     console.log('PASS browser fixture: all control types, drafts, gestures, module navigation, error/persistence status, 3000-row virtualization, responsive layout');
   } finally {
@@ -454,3 +500,4 @@ if (!failed && process.argv.includes('--browser')) {
     await browser.close();
   }
 }
+

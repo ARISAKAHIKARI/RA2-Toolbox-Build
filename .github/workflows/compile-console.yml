@@ -1,7 +1,7 @@
 name: Compile WebView2 console and x86 game components
 on:
   push:
-    branches: [main, codex/console-architecture-20261103, codex/control-hardware-20261104, codex/capacity-production-20261104, codex/placement-input-20261104, codex/superweapon-grant-20261104]
+    branches: [main, codex/console-architecture-20261103, codex/control-hardware-20261104, codex/capacity-production-20261104, codex/placement-input-20261104, codex/superweapon-grant-20261104, codex/console-density-20261104]
     paths: [source/**, .github/workflows/compile-console.yml]
   workflow_dispatch:
 permissions:
@@ -204,3 +204,4 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
           path: diagnostics/console-build.log
+
