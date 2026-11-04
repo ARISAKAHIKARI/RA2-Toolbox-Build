@@ -109,10 +109,10 @@ extern "C" int __cdecl AssistNetworkSend(unsigned transport,unsigned buffer,int 
  }else if(!networkSenderCancelForeign(true)){
   networkSenderFaulted=true;networkSenderState=networksender::Blocked;networkSenderPublish();return 0;
  }
- networkSenderPacking=requested;networkSenderCacheDirty=networkSenderCacheDirty||requested;
- const uint32_t before=get<uint32_t>(0xB0487C);
- const int sent=networkSenderOriginal(transport,buffer,capacity,delay,serial);
- networkSenderPacking=false;
+ const bool previousPacking=networkSenderPacking;
+ networkSenderCacheDirty=networkSenderCacheDirty||requested;
+ const uint32_t before=get<uint32_t>(0xB0487C);int sent=0;
+ runtimeunwind::run([&]{networkSenderPacking=requested;sent=networkSenderOriginal(transport,buffer,capacity,delay,serial);},[&]{networkSenderPacking=previousPacking;});
  if(networkSenderFaulted){networkSenderState=networksender::Blocked;networkSenderPublish();}
  if(sh)sh->networkHousePackets+=get<uint32_t>(0xB0487C)-before;
  return sent;
@@ -125,7 +125,7 @@ extern "C" void __cdecl AssistNetworkSenderAbort(){
  // guarded entry/maintenance may publish status and cancel unsent work safely.
 }
 static int __fastcall networkSenderEntry(unsigned transport,unsigned buffer,int capacity,int delay,int serial){
- RuntimeFPScope fp;return GuardedNetworkSend(transport,buffer,capacity,delay,serial);
+ RuntimeFPScope fp;int result=0;runtimeunwind::run([&]{result=GuardedNetworkSend(transport,buffer,capacity,delay,serial);},[&]{fp.restore();});return result;
 }
 // Called after the original FrameInfo has filled Frame/CRC/count/Delay, before
 // either encoder. Only House changes. CRC is the original global game-state

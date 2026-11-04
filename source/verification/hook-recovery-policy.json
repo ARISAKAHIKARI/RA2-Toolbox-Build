@@ -1,6 +1,6 @@
 {
   "scope": "Execute the production cleanup predicate, disconnect and dispatcher with fake resources.\nNo Windows exception delivery, game execution or multiplayer behavior is tested.\n",
-  "production_source": "/workspace/scratch/6dd98d52d3f3/source/assist/source/bridge.cpp",
+  "production_source": "/workspace/scratch/2e06a3f2ecab/ra2-hook-recovery/source/assist/source/bridge.cpp",
   "status": "PASS",
   "output": "PASS 27 production cleanup and dispatcher checks\n",
   "game_tested": false

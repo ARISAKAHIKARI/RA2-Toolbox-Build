@@ -39,6 +39,15 @@ jobs:
           if($LASTEXITCODE){exit $LASTEXITCODE}
           python source/assist/tests/breakpoint_transaction_gate.py --output diagnostics/breakpoint-transaction-gate.json
           if($LASTEXITCODE){exit $LASTEXITCODE}
+          python source/assist/tests/fault_reconnect.py --zig "$env:ZIG_EXE" --out diagnostics/fault-reconnect
+          if($LASTEXITCODE){exit $LASTEXITCODE}
+      - name: Verify real x86 exception forwarding and owned cleanup
+        shell: pwsh
+        run: |
+          python source/assist/tests/exception_policy.py --zig "$env:ZIG_EXE" --out diagnostics/exception-policy
+          if($LASTEXITCODE){exit $LASTEXITCODE}
+          python source/assist/tests/runtime_scope_windows.py --zig "$env:ZIG_EXE" --out diagnostics/runtime-scope
+          if($LASTEXITCODE){exit $LASTEXITCODE}
       - name: Verify real x86 hardware exceptions and transaction ordering
         shell: pwsh
         run: |
@@ -98,4 +107,7 @@ jobs:
             diagnostics/breakpoint-transaction-windows.json
             diagnostics/tech-ui-breakpoint-windows.json
             diagnostics/tech-enhancement-parameter-windows.json
+            diagnostics/fault-reconnect/result.json
+            diagnostics/exception-policy/result.json
+            diagnostics/runtime-scope/result.json
 

@@ -263,3 +263,5 @@
 
 
 - [硬體斷點 owner 交會與偵錯例外分流](2026-11-05-breakpoint-owner-rendezvous.md)（pre.8；延遲交易／debug SEH 分流；現場首發來源仍待確認）
+
+- [Runtime 例外轉交與 SEH 擁有狀態清理](2026-11-05-runtime-exception-policy.md)（與 owner 交會整合；外層處理／入口鎖／FP／發布序列）

@@ -1,0 +1,7 @@
+{
+  "source": "source/assist/source/bridge.cpp",
+  "source_revision": "7285b5e (bridge source unchanged from 9eb8feef1306ddb5428f094b9dcf7e8fc9e92ae8)",
+  "source_sha256": "af72ce2451494bf444d23e3372953d8fb4d88c3fdded6aa69cc90d23559c73d3",
+  "routes_inc_sha256": "05c9ebf733c235938d3be726a8ea4d71190a40a1fed7c6df510ec65ec51a4bc2",
+  "scope": "Exact production disconnect, tick admission/stop prefix, dispatcher, fault, watchdog and detached routes; normal work is replaced with an observation counter."
+}

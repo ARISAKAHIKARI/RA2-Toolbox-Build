@@ -29,11 +29,10 @@ def function(signature):
 predicate = function('static bool featureRestorationComplete(){')
 disconnect = function('static void disconnect(){')
 dispatcher = function('static void dispatchFromTrigger(dispatchrouter::Trigger trigger,DWORD now,const MSG* message){')
-fault_branch = function('if(fault){reset();snap.status=snap.bridgeStatus=-2;')
-# Check placement in the actual entry: stop/dead-controller handling first,
-# fault cleanup second, normal world inspection only after both return.
+fault_branch = function('if(fault){maintainTechParameters();disconnect();return;}')
+# A fault retires its old resources before opening any replacement mailbox.
 tick = function('static void tick(){')
-assert tick.index('restoreFrameDriver();disconnect();return;') < tick.index(fault_branch) < tick.index('const auto worldSample=')
+assert tick.index(fault_branch) < tick.index('if(!sh){') < tick.index('const auto worldSample=')
 fault_handler = function('extern "C" void AssistFault(){')
 assert fault_handler.index('fault=true;') < fault_handler.index('restoreMapVisibilityParameters();')
 
@@ -63,9 +62,11 @@ HANDLE controllerProcess=(void*)1,mapping=(void*)2;
 LONG hostWorkPending=1,messageGameThread=1,schedulerBusy=0;
 unsigned resets=0,unmaps=0,closed=0,guards=0,maintained=0;
 unsigned publications=0,normalWork=0;
+struct FaultContext{unsigned phase=0,source=0,target=0;}faultContext;
 struct Snapshot{int status=0,bridgeStatus=0,commandStatus=0;}snap;
 void publishSnapshot(DWORD){++publications;}
 void restorePlayerContext(){}void reset(){++resets;}void restoreFrameDriver(){}
+void maintainTechParameters(){}
 void MemoryBarrier(){}void CloseHandle(HANDLE){++closed;}void UnmapViewOfFile(void*){++unmaps;}
 unsigned GetCurrentProcessId(){return 77;}unsigned GetCurrentThreadId(){return 88;}
 LONG InterlockedExchange(LONG*p,LONG v){LONG old=*p;*p=v;return old;}
@@ -73,6 +74,8 @@ LONG InterlockedCompareExchange(LONG*p,LONG v,LONG old){LONG got=*p;if(got==old)
 struct Session{void update(bool,int,int,int){}}sessionTracker;
 struct World{void reset(){}}hookWorld;
 namespace gameentry{enum class Client{Assist};struct Scope{Scope(Client,bool){}operator bool()const{return true;}};}
+namespace gameentry{template<class Fn>bool scoped(Client,bool,Fn&&fn){fn();return true;}}
+namespace runtimeunwind{template<class Body,class Cleanup>void run(Body&&body,Cleanup&&cleanup){body();cleanup();}}
 namespace dispatchrouter{enum class Trigger{Message,Frame};}
 struct MSG{unsigned message;uintptr_t wParam,lParam;};
 constexpr unsigned WM_NULL=0,WakeTag=44;
@@ -111,10 +114,10 @@ int main(){
  schedulerBusy=0;dispatchFromTrigger(dispatchrouter::Trigger::Message,4,nullptr);check(guards==2);
  hostWorkPending=1;dispatchFromTrigger(dispatchrouter::Trigger::Frame,5,nullptr);check(guards==2&&hostWorkPending==1);
  fault=false;dispatchFromTrigger(dispatchrouter::Trigger::Message,6,nullptr);check(guards==3);
- fault=true;const unsigned before=resets;routeTick(7);
- check(resets==before+1&&publications==1&&normalWork==0);
- check(snap.status==-2&&snap.bridgeStatus==-2&&snap.commandStatus==0&&fault);
- fault=false;routeTick(8);check(normalWork==1&&publications==1);
+ fault=true;techRetired=false;const unsigned before=resets;routeTick(7);
+ check(resets==before+1&&normalWork==0&&fault&&sh==&shared);
+ techRetired=true;routeTick(8);check(!fault&&!sh&&normalWork==0);
+ routeTick(9);check(normalWork==1&&publications==0);
  std::printf("PASS %u production cleanup and dispatcher checks\n",checks);
 }
 '''
