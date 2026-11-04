@@ -21,6 +21,7 @@
 ## 环境要求
 
 - Windows 10／11，目标游戏为 32 位《尤里的复仇》进程。
+- x64 控制台需要 Microsoft Edge WebView2 Evergreen Runtime；请完整解压配套的 `WebView2Loader.dll`。
 - 原版主要适配 YR 1.001；可识别 `gamemd.exe`、`gamemd-spawn.exe` 和 `gamemd-ares.exe` 等进程。扩展版本的功能可用性取决于实际游戏映像。
 - 工具箱目录需要可写，用于保存设置、缓存和日志。
 
@@ -31,6 +32,8 @@
 ## 设置
 
 界面分为视频、控制、自动功能、游戏规则、实验性功能五类，取消原三大板块总开关。快捷键和鼠标键在对应功能中配置，修改后即时保存。
+
+参数组可单独展开或收起，主开关保持可见；错误状态会自动展开。`Ctrl+F` 搜索当前页，`Esc` 清除搜索；视频页签支持方向键和 `Home`／`End` 切换。右上角显示正在编辑、应用、保存或保存失败的状态。
 
 配置保存在程序目录中的 `Toolbox.ini`、`Assist.ini` 和 `settings.ini`。更新时保留这些文件即可沿用已有设置；首次运行会建立默认配置。
 
@@ -53,7 +56,7 @@ ZIG=/path/to/zig-0.13.0/zig bash source/build-zig.sh
 python3 source/tools/verify_windows_outputs.py
 ```
 
-x64 混合架构版本使用 `source/build-zig-x64.sh`，输出目录通过 `RA2_OUTPUT_DIR` 指定，包含 `RA2Toolbox.exe`、`GameRuntime.dll` 和 `GameRuntimeHost32.exe`。x86 构建结果为 `source/RA2Toolbox.exe` 和 `source/GameRuntime.dll`。Windows 构建脚本会在完成后校验这两个文件；发布包使用同一次验证的配套产物。
+x64 混合架构版本使用 `source/build-zig-x64.sh`，默认构建 WebView2 控制台；输出目录通过 `RA2_OUTPUT_DIR` 指定，包含 `RA2Toolbox.exe`、`GameRuntime.dll`、`GameRuntimeHost32.exe`、`WebView2Loader.dll` 和配套许可说明。x86 构建结果为 `source/RA2Toolbox.exe` 和 `source/GameRuntime.dll`。Windows 构建脚本会在完成后校验这两个文件；发布包使用同一次验证的配套产物。
 
 ## 目录结构
 

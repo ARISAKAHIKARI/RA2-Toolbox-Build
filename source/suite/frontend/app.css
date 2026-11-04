@@ -48,7 +48,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 .brand strong { display: block; font-size: 15px; font-weight: 650; letter-spacing: .3px; }
 .brand div > span { display: block; margin-top: 5px; color: var(--muted); font-size: 10px; letter-spacing: 1px; }
-.brand b { margin-left: 3px; font-weight: 500; letter-spacing: .2px; }
+.brand b { font-weight: 500; letter-spacing: .2px; white-space: nowrap; }
 .nav-label { margin: 40px 14px 13px; font-size: 11px; color: #859ba5; letter-spacing: 1.5px; }
 .navigation { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
 .nav-button {
