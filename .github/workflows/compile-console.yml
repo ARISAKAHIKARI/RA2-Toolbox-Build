@@ -1,7 +1,7 @@
 name: Compile WebView2 console and x86 game components
 on:
   push:
-    branches: [codex/console-architecture-20261103]
+    branches: [main, codex/console-architecture-20261103]
     paths: [source/**, .github/workflows/compile-console.yml]
   workflow_dispatch:
 permissions:

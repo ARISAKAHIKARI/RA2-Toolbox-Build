@@ -11,17 +11,17 @@
   <div class="app-shell">
     <aside class="sidebar" aria-label="工具箱导航">
       <div class="brand"><span class="brand-mark" aria-hidden="true">R2</span><div><strong>红警工具箱</strong><span>TOOLBOX <b id="version">1.0.41-pre.1</b></span></div></div>
-      <p class="nav-label">工作空间</p>
+      <p class="nav-label">功能设置</p>
       <nav id="navigation" class="navigation" aria-label="功能分类"></nav>
       <div class="sidebar-bottom"><span class="connection-dot" id="connectionDot"></span><span id="connectionText" role="status">正在连接</span><span class="connection-pulse" aria-hidden="true"></span></div>
     </aside>
     <main class="workspace">
       <header class="topbar"><span class="breadcrumb">工具箱<span>/</span><b id="breadcrumb">视频</b></span><div class="topbar-right"><span class="save-state" id="saveState" role="status">设置自动保存</span><span class="quiet-pill">本地控制台</span></div></header>
-      <div class="page-heading"><div><p class="eyebrow" id="eyebrow">DISPLAY &amp; VIDEO</p><h1 id="pageTitle">视频</h1><p class="page-description" id="pageDescription">调整画面、光标与监控视图。</p></div><label id="moduleToggleWrap" class="module-toggle" hidden><span>启用此模块</span><input id="moduleToggle" type="checkbox" role="switch"><span class="switch-track"></span></label></div>
+      <div class="page-heading"><div><p class="eyebrow" id="eyebrow">DISPLAY &amp; VIDEO</p><h1 id="pageTitle">视频</h1><p class="page-description" id="pageDescription">调整画面、光标与监控视图。</p></div><label id="moduleToggleWrap" class="module-toggle" hidden><span id="moduleToggleLabel">启用此模块</span><input id="moduleToggle" type="checkbox" role="switch" aria-label="启用此模块"><span class="switch-track" aria-hidden="true"></span></label></div>
       <div class="page-tools"><div class="tabs" id="videoTabs" role="tablist" aria-label="视频设置"><button type="button" role="tab" data-module="0" aria-selected="true">光标与渲染</button><button type="button" role="tab" data-module="1" aria-selected="false">监控视图</button></div><div id="categoryNote" class="category-note" hidden>每项功能独立启用</div><div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg><input id="search" type="search" placeholder="搜索当前页面…" aria-label="搜索当前页面" autocomplete="off"><kbd>Ctrl F</kbd></div></div>
       <div class="page-info"><span id="resultCount">正在载入设置</span><button id="foldAll" class="text-button" type="button" hidden>全部折叠</button></div>
       <div id="globalNotice" class="global-notice" role="alert" hidden></div>
-      <div class="content-scroll" id="contentScroll" tabindex="-1"><div id="settings" class="settings"></div><div id="emptyState" class="empty-state" hidden><span class="empty-icon" aria-hidden="true">⌕</span><h2>没有匹配的设置</h2><p>试试功能名称或其他关键词。</p><button class="subtle-button" id="clearSearch" type="button">清除搜索</button></div><div id="loadingState" class="loading-state"><div class="skeleton-heading"></div><div class="skeleton-row"></div><div class="skeleton-row short"></div><div class="skeleton-row"></div><p id="loadingText">正在连接功能模块…</p></div></div>
+      <div class="content-scroll" id="contentScroll" tabindex="-1" role="region" aria-label="功能设置"><div id="settings" class="settings"></div><div id="emptyState" class="empty-state" hidden><span class="empty-icon" aria-hidden="true">⌕</span><h2>没有匹配的设置</h2><p>试试功能名称或其他关键词。</p><button class="subtle-button" id="clearSearch" type="button">清除搜索</button></div><div id="loadingState" class="loading-state"><div class="skeleton-heading"></div><div class="skeleton-row"></div><div class="skeleton-row short"></div><div class="skeleton-row"></div><p id="loadingText">正在连接功能模块…</p></div></div>
       <footer class="statusbar"><div><span class="status-icon" aria-hidden="true"></span><span id="statusText">界面已就绪，正在等待模块状态。</span></div><span id="pendingCount"></span></footer>
     </main>
   </div>

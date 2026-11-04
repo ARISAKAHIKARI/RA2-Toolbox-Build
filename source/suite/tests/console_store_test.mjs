@@ -333,6 +333,30 @@ if (!failed && process.argv.includes('--browser')) {
     await receive({kind:'shell',protocol:1,version:'1.0.41-pre.1',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
     await receive(snapshot()); await page.getByLabel('渲染升级',{exact:true}).waitFor();
     await page.screenshot({path:screenshotPath,fullPage:false});
+    const assertFits = async () => {
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'the shell must fit the viewport');
+      assert.deepEqual(await page.locator('.setting-editor').evaluateAll(editors=>editors.filter(element=>element.getClientRects().length).flatMap(editor=>[...editor.children]).filter(element=>element.getClientRects().length).filter(element=>{const box=element.getBoundingClientRect(),bounds=document.getElementById('contentScroll').getBoundingClientRect();return box.left<bounds.left-1||box.right>bounds.right+1;}).map(element=>element.getAttribute('aria-label')||element.className)),[],'every visible editor must fit inside the settings pane');
+    };
+    await assertFits();
+    assert.equal(await page.locator('#saveState').getAttribute('data-state'),'saved');
+    const tabs=page.getByRole('tab');await tabs.nth(0).focus();await page.keyboard.press('ArrowRight');
+    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),1);
+    await page.waitForFunction(()=>document.querySelector('[data-module="1"]').tabIndex===0);
+    await page.keyboard.press('Home');
+    await page.waitForFunction(()=>document.querySelector('[data-module="0"]').getAttribute('aria-selected')==='true');
+    await page.keyboard.press('Control+f');await page.keyboard.type('渲染升级');
+    await page.waitForFunction(()=>document.getElementById('resultCount').textContent==='找到 1 项设置');
+    assert.equal(await page.locator('#foldAll').isVisible(),false,'search results remain expanded');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>document.getElementById('search').value==='');
+    await page.getByLabel('绘制方式',{exact:true}).waitFor();
+    for(const viewport of [{width:720,height:780},{width:540,height:720},{width:390,height:720}]){
+      await page.setViewportSize(viewport);await page.getByRole('button',{name:'队形预览快捷键',exact:true}).scrollIntoViewIfNeeded();await assertFits();
+      await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
+      await page.screenshot({path:diagnosticsPrefix+'-'+viewport.width+'.png',fullPage:false});
+    }
+    await page.setViewportSize({width:1240,height:880});
+    await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
     assert.equal(await page.getByRole('heading',{name:'视频',exact:true}).count(),1);
     assert.equal(await page.getByLabel('未连接时的功能',{exact:true}).isDisabled(),true);
     const switchBox=await page.getByLabel('渲染升级',{exact:true}).boundingBox();assert.ok(switchBox.width>=24 && switchBox.height>=24,'accessible switch owns a full pointer target');
@@ -368,6 +392,8 @@ if (!failed && process.argv.includes('--browser')) {
     await page.waitForFunction(()=>document.getElementById('saveState').textContent!=='已保存');
     await receive({kind:'shell',protocol:1,error:'目录不可写，请选择其他位置。',config:{pending:1,busy:false,failed:true,error:'配置保存失败'}});
     await page.getByRole('alert').filter({hasText:'目录不可写'}).waitFor();
+    assert.equal(await page.locator('#saveState').getAttribute('data-state'),'error');
+    await page.screenshot({path:diagnosticsPrefix+'-save-error.png',fullPage:false});
     await receive({kind:'shell',protocol:1,error:'',config:{pending:0,busy:false,failed:false}});
     await page.getByRole('button',{name:'自动功能',exact:true}).click();
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2); assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),2);
@@ -395,6 +421,11 @@ if (!failed && process.argv.includes('--browser')) {
     const foldedState=(controls)=>({kind:'state',protocol:1,module:0,generation:4,revision:revision++,page:'cursor',title:'收纳回归',controls,status:''});
     await receive(foldedState(folded));await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
     await page.getByLabel('主开关 9601',{exact:true}).waitFor();assert.equal(await page.locator('.settings-group.collapsed').count(),15);
+    assert.equal(await page.locator('#foldAll').textContent(),'全部展开','default collapsed groups must expose the correct bulk action');
+    await page.locator('#foldAll').click();await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===0);
+    assert.equal(await page.locator('#foldAll').textContent(),'全部折叠');
+    await page.locator('#foldAll').click();await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===15);
+    await page.setViewportSize({width:1240,height:880});await page.screenshot({path:diagnosticsPrefix+'-folded.png',fullPage:false});
     assert.equal(await page.getByLabel('子参数 9601',{exact:true}).isVisible(),false,'folding details must preserve the master switch');
     const first=page.locator('.settings-group').filter({has:page.getByText('参数组 9601',{exact:true})});
     assert.equal(await first.locator('.group-header-controls .setting-row').getAttribute('title'),'只在悬停时显示说明');assert.equal(await first.locator('.setting-description:visible').count(),0,'ordinary help must not occupy a row');

@@ -170,7 +170,7 @@
 
   const $ = id => document.getElementById(id);
   const CATEGORIES = [ ['视频','DISPLAY & VIDEO','调整画面、光标与监控视图。','<rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path>'], ['控制','INPUT & CONTROL','设置操作方式、快捷键与单位命令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'], ['自动功能','AUTOMATION','按需开启战术辅助与自动处理。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'], ['游戏规则','GAME RULES','管理游戏规则与相关功能选项。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'], ['实验性功能','EXPERIMENTAL','查看实验性选项及当前可用状态。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'] ];
-  let selectedCategory = 0, videoModule = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, foldAll = false, userNavigated = false, restoredNavigation = false;
+  let selectedCategory = 0, videoModule = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, nextGroupId = 0, userNavigated = false, restoredNavigation = false;
   const groupNodes = new Map(), collapsed = new Set(), foldPreferencesSeen = new Set();
   const bridge = global.chrome?.webview;
   const store = new ConsoleStore(message => { if (bridge?.postMessage) bridge.postMessage(message); }, schedule);
@@ -180,10 +180,24 @@
   function navigate(category, module = videoModule, restored = false) { if (!restored) userNavigated = true; selectedCategory = category; if (category === 0) videoModule = module; search = ''; $('search').value = ''; capture = null; if (restored) { store.current = {module: category === 0 ? videoModule : 2,category}; schedule(); } else store.navigate(category === 0 ? videoModule : 2, category); $('contentScroll').scrollTop = 0; }
   for (let index = 0; index < CATEGORIES.length; index++) { const button = document.createElement('button'); button.className = 'nav-button'; button.type = 'button'; button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${CATEGORIES[index][3]}</svg><span></span>`; button.querySelector('span').textContent = CATEGORIES[index][0]; button.title = CATEGORIES[index][0]; button.addEventListener('click', () => navigate(index)); $('navigation').append(button); }
   $('videoTabs').addEventListener('click', event => { const button = event.target.closest('button[data-module]'); if (button) navigate(0, Number(button.dataset.module)); });
+  $('videoTabs').addEventListener('keydown', event => {
+    if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+    event.preventDefault();
+    const buttons = [...$('videoTabs').children], current = buttons.indexOf(document.activeElement);
+    const index = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (Math.max(0,current) + (event.key === 'ArrowRight' ? 1 : buttons.length - 1)) % buttons.length;
+    navigate(0,Number(buttons[index].dataset.module)); buttons[index].focus();
+  });
+  $('search').setAttribute('aria-keyshortcuts','Control+f');
   $('search').addEventListener('input', event => { search = event.target.value; schedule(); });
+  $('search').addEventListener('keydown', event => { if (event.key === 'Escape' && !capture) { event.preventDefault(); $('search').value = search = ''; schedule(); } });
   $('clearSearch').addEventListener('click', () => { $('search').value = search = ''; schedule(); $('search').focus(); });
   $('moduleToggle').addEventListener('change', event => store.enable(videoModule, event.target.checked));
-  $('foldAll').addEventListener('click', () => { foldAll = !foldAll; for (const name of groupNodes.keys()) { const key = `${renderedPage}/${name}`; if (foldAll) collapsed.add(key); else collapsed.delete(key); } schedule(); });
+  $('foldAll').addEventListener('click', () => {
+    const groups = [...groupNodes.values()].filter(group => group.hasDetails && !group.forced);
+    const shouldCollapse = groups.some(group => !group.body.hidden);
+    for (const group of groups) { const key = `${renderedPage}/${group.name}`; foldPreferencesSeen.add(key); if (shouldCollapse) collapsed.add(key); else collapsed.delete(key); }
+    schedule();
+  });
   document.addEventListener('keydown', event => { if (!capture && event.ctrlKey && event.key.toLowerCase() === 'f') { event.preventDefault(); $('search').focus(); $('search').select(); } });
   const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const group = entry.target._group; if (!group) continue; group.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateGroup(group); else if (!group.body.contains(document.activeElement)) unmountGroup(group); } }, { root: $('contentScroll'), rootMargin: '600px' }) : null;
   function clearGroups() { for (const group of groupNodes.values()) { observer?.unobserve(group.section); releaseChunks(group); group.section.remove(); } groupNodes.clear(); }
@@ -193,9 +207,9 @@
     const section=document.createElement('section'),summary=document.createElement('button'),title=document.createElement('span'),count=document.createElement('span'),header=document.createElement('div'),body=document.createElement('div');
     section.className='settings-group';summary.className='group-summary';summary.type='button';title.className='group-title';title.textContent=name;count.className='group-count';header.className='group-header-controls';
     const arrow=document.createElementNS('http://www.w3.org/2000/svg','svg');arrow.setAttribute('viewBox','0 0 12 12');arrow.setAttribute('class','chevron');arrow.innerHTML='<path d="m3 4 3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5"/>';
-    summary.append(title,count,arrow);body.className='group-body';section.append(summary,header,body);
+    summary.append(title,count,arrow);body.className='group-body';body.id=`settings-group-${++nextGroupId}`;summary.setAttribute('aria-controls',body.id);section.append(summary,header,body);
     const group={name,section,summary,count,header,headerRows:new Map(),body,controls:[],rows:new Map(),chunks:[],intersecting:!observer};section._group=group;
-    summary.addEventListener('click',()=>{if(group.forced){notify('此组仍有错误，状态保持展开；解除后恢复原收纳设置。');return;}const key=`${renderedPage}/${name}`;foldPreferencesSeen.add(key);if(collapsed.has(key))collapsed.delete(key);else collapsed.add(key);updateGroup(group);});
+    summary.addEventListener('click',()=>{if(group.forced){notify('此组仍有错误，状态保持展开；解除后恢复原收纳设置。');return;}const key=`${renderedPage}/${name}`;foldPreferencesSeen.add(key);if(collapsed.has(key))collapsed.delete(key);else collapsed.add(key);updateGroup(group);updateFoldAction();});
     observer?.observe(section);return group;
   }
   function releaseChunks(group) { for (const chunk of group.chunks) { chunkObserver?.unobserve(chunk.element); chunk.element.remove(); } group.chunks=[]; group.chunkSignature=''; }
@@ -207,10 +221,12 @@
     const key=`${renderedPage}/${group.name}`;
     if(!foldPreferencesSeen.has(key)){foldPreferencesSeen.add(key);if(group.controls.some(control=>control.collapsible&&control.collapsedDefault))collapsed.add(key);}
     const ackErrors=new Set(group.controls.filter(control=>store.error(control.id)).map(control=>control.id));
-    const state=groupPresentation(group.controls,collapsed.has(key),Boolean(search),ackErrors);group.forced=state.forced;
+    const state=groupPresentation(group.controls,collapsed.has(key),Boolean(search.trim()),ackErrors);group.forced=state.forced;
     group.section.classList.toggle('collapsed',state.collapsed);group.section.classList.toggle('has-runtime-error',state.forced);
+    group.hasDetails=state.details.length>0;group.summary.disabled=!group.hasDetails;
+    group.summary.querySelector('.chevron').toggleAttribute('hidden',!group.hasDetails);
     group.summary.setAttribute('aria-expanded',String(!state.collapsed));
-    const countText=`${state.details.length} 项${state.forced?' · 需要处理':''}`;if(group.count.textContent!==countText)group.count.textContent=countText;
+    const countText=`${group.controls.length} 项${state.forced?' · 需要处理':''}`;if(group.count.textContent!==countText)group.count.textContent=countText;
     updateRows(group.header,group.headerRows,state.headers);group.header.hidden=!state.headers.length;
     group.body.hidden=state.collapsed;if(state.collapsed)return;
     if(!group.intersecting&&observer&&!group.body.contains(document.activeElement)){unmountGroup(group);return;}
@@ -221,11 +237,17 @@
       group.chunks.forEach((chunk,index)=>{chunk.controls=details.slice(index*24,index*24+24);updateChunk(chunk);});
     }else{if(group.chunks.length){releaseChunks(group);group.body.replaceChildren();}updateRows(group.body,group.rows,details);}
   }
+  function updateFoldAction() {
+    const groups=[...groupNodes.values()].filter(group=>group.hasDetails&&!group.forced);
+    $('foldAll').hidden=Boolean(search.trim())||!groups.length;
+    $('foldAll').textContent=groups.every(group=>group.body.hidden)?'全部展开':'全部折叠';
+  }
   function makeRow(control) {
     const element = document.createElement('div'), copy = document.createElement('div'), label = document.createElement('label'), description = document.createElement('p'), editor = document.createElement('div'); element.className = 'setting-row'; copy.className = 'setting-copy'; label.className = 'setting-label'; description.className = 'setting-description'; editor.className = 'setting-editor'; copy.append(label,description); element.append(copy,editor);
+    element.dataset.type=control.type;
     const row = { element, copy, label, description, editor, control, type: control.type, presentation: control.presentation, input: null };
     const send = (action,value) => { if (!store.act(row.control.id,action,value)) notify('此操作目前不可用，请等待设置同步。'); };
-    if (control.type === 'toggle') { const toggle = document.createElement('label'), input = document.createElement('input'), track = document.createElement('span'); toggle.className = 'toggle'; input.type = 'checkbox'; input.setAttribute('role','switch'); track.className = 'switch-track'; input.addEventListener('change',event => send('toggle',event.target.checked)); toggle.append(input,track); editor.append(toggle); row.input = input; }
+    if (control.type === 'toggle') { const toggle = document.createElement('label'), input = document.createElement('input'), track = document.createElement('span'), state = document.createElement('span'); toggle.className = 'toggle'; input.type = 'checkbox'; input.setAttribute('role','switch'); track.className = 'switch-track';track.setAttribute('aria-hidden','true');state.className='toggle-state';state.setAttribute('aria-hidden','true'); input.addEventListener('change',event => send('toggle',event.target.checked)); toggle.append(input,state,track); editor.append(toggle); row.input = input;row.toggleState=state; }
     else if (control.type === 'button') { const button = document.createElement('button'); button.className = 'setting-button'; button.type = 'button'; button.addEventListener('click',event => {if(row.control.immediate&&event.detail>1)return;send('press');}); button.addEventListener('keydown',event=>{if(row.control.immediate&&event.repeat&&['Enter',' '].includes(event.key)){event.preventDefault();event.stopPropagation();}}); editor.append(button); row.input = button; }
     else if (control.type === 'choice') {
       const select = document.createElement('select'); select.addEventListener('change',event => { if (Number(event.target.value) >= 0) send('select',Number(event.target.value)); });
@@ -247,7 +269,7 @@
     const disabled = !control.enabled || store.closed || store.state?.generation!==store.generation.get(store.current.module);
     row.element.classList.toggle('is-disabled',disabled);
     row.input.disabled = disabled; row.input.setAttribute('aria-label',control.label || control.text || '设置');
-    if (control.type === 'toggle') row.input.checked = Boolean(store.value(control,'toggle'));
+    if (control.type === 'toggle') { row.input.checked = Boolean(store.value(control,'toggle'));row.toggleState.textContent=row.input.checked?'已开启':'已关闭'; }
     else if (control.type === 'button') { row.input.textContent = control.text || control.label || '执行'; row.input.disabled = disabled || store.isPending(control.id); }
     else if (control.type === 'choice') { const optionSignature = JSON.stringify(control.options); if (row.optionSignature !== optionSignature) { row.optionSignature = optionSignature; row.input.replaceChildren(...control.options.map((text,index) => { const option = document.createElement('option'); option.value = String(index); option.textContent = text; return option; })); } const index = Number(store.value(control,'select')); if (row.input.selectedIndex !== index) row.input.selectedIndex = index; if (row.textInput) { row.textInput.disabled = disabled; if (document.activeElement !== row.textInput) row.textInput.value = String(store.value(control,'text')); } }
     else if (control.type === 'text' || control.type === 'number') { row.input.readOnly = control.readonly; if (document.activeElement !== row.input || control.readonly) row.input.value = String(store.value(control,'text')); }
@@ -263,24 +285,26 @@
   global.addEventListener('blur',stopCapture);
   function render() {
     const category = CATEGORIES[selectedCategory], state = store.state, currentPage = pageKey(store.current.module,store.current.category);
-    if (renderedPage !== currentPage) { clearGroups(); renderedPage = currentPage; foldAll = false; }
+    if (renderedPage !== currentPage) { clearGroups(); renderedPage = currentPage; }
     [...$('navigation').children].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
     $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '1.0.41-pre.1';
     $('videoTabs').hidden = selectedCategory !== 0; $('categoryNote').hidden = selectedCategory === 0;
-    [...$('videoTabs').children].forEach(button => button.setAttribute('aria-selected',String(Number(button.dataset.module) === videoModule)));
-    const moduleState = store.shell.modules.find(module => module.module === videoModule); $('moduleToggleWrap').hidden = selectedCategory !== 0 || !moduleState; if (moduleState) { $('moduleToggle').checked = Boolean(moduleState.enabled); $('moduleToggle').disabled = store.closed || !moduleState.ready; }
+    [...$('videoTabs').children].forEach(button => { const selected=Number(button.dataset.module) === videoModule;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;button.setAttribute('aria-controls','settings'); });
+    const moduleState = store.shell.modules.find(module => module.module === videoModule); $('moduleToggleWrap').hidden = selectedCategory !== 0 || !moduleState; if (moduleState) { $('moduleToggle').checked = Boolean(moduleState.enabled); $('moduleToggle').disabled = store.closed || !moduleState.ready; $('moduleToggleLabel').textContent=moduleState.enabled?'模块已启用':'启用此模块'; }
     const serviceReady=store.connected && store.shell.servicesReady && store.shell.modules.some(module=>module.ready); $('connectionDot').classList.toggle('ready',serviceReady && !store.closed); $('connectionText').textContent = store.closed ? '正在退出' : serviceReady ? '控制台就绪' : store.connected ? '模块初始化中' : '正在连接';
     const config = store.shell.config || {};
     $('saveState').textContent = config.failed ? '保存失败' : store.pending.size ? '正在应用设置…' : config.pending || config.busy ? '保存中…' : store.drafts.size ? '正在编辑' : store.shell.config ? '已保存' : '设置自动保存'; $('pendingCount').textContent = store.pending.size ? `${store.pending.size} 项等待确认` : '';
+    $('saveState').dataset.state=config.failed?'error':store.pending.size||config.pending||config.busy?'busy':store.drafts.size?'editing':store.shell.config?'saved':'idle';
     const globalError = String(store.shell.error || (config.failed ? config.error || '配置保存失败，请检查目录权限后重试。' : '') || store.notice);
     $('globalNotice').textContent = globalError; $('globalNotice').hidden = !globalError;
     $('statusText').textContent = store.closed ? '正在关闭模块并保存设置…' : globalError || state?.status || (store.connected ? '操作会自动保存，独立功能可按需启用。' : '界面已就绪，正在等待模块状态。');
     $('loadingState').hidden = Boolean(state); $('loadingText').textContent = !bridge ? '此页面需要由红警工具箱打开。' : '正在等待功能模块状态…';
     if (!state) { $('resultCount').textContent = '正在载入设置'; $('emptyState').hidden = true; $('foldAll').hidden = true; return; }
     const groups = groupControls(state.controls,search), count = [...groups.values()].reduce((sum,controls) => sum + controls.length,0);
-    $('resultCount').textContent = search ? `找到 ${count} 项设置` : `${count} 项设置 · ${groups.size} 个分组`; $('foldAll').hidden = !count; $('foldAll').textContent = foldAll ? '全部展开' : '全部折叠'; $('emptyState').hidden = count > 0;
+    $('resultCount').textContent = search ? `找到 ${count} 项设置` : `${count} 项设置 · ${groups.size} 个分组`; $('emptyState').hidden = count > 0;
     for (const [name,group] of groupNodes) if (!groups.has(name)) { observer?.unobserve(group.section); releaseChunks(group); group.section.remove(); groupNodes.delete(name); }
     let after = null; for (const [name,controls] of groups) { let group = groupNodes.get(name); if (!group) { group = makeGroup(name); groupNodes.set(name,group); } group.controls = controls; placeAfter($('settings'),group.section,after); after = group.section; updateGroup(group); }
+    updateFoldAction();
     if (store.errors.size) { const latest = [...store.errors.values()].at(-1); if (latest !== render.lastError) { render.lastError = latest; notify(latest); } }
     if (config.failed && config.error && config.error !== render.lastConfigError) { render.lastConfigError = config.error; notify(config.error); }
   }
