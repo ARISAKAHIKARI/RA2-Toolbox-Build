@@ -500,4 +500,3 @@ if (!failed && process.argv.includes('--browser')) {
     await browser.close();
   }
 }
-

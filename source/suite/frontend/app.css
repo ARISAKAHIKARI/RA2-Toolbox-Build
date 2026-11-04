@@ -293,4 +293,3 @@ h1 { margin: 0; font-size: 23px; font-weight: 650; letter-spacing: -.3px; line-h
   .toggle input:checked ~ .switch-track, .module-toggle input:checked + .switch-track { background: Highlight; }
   .toggle input:checked ~ .switch-track::after, .module-toggle input:checked + .switch-track::after { background: HighlightText; }
 }
-

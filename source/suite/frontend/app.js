@@ -376,4 +376,3 @@
   global.addEventListener('beforeunload',() => stopCapture());
   store.ready(); schedule();
 })(globalThis);
-
