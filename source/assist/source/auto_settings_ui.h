@@ -71,6 +71,7 @@ static bool autoSettingChanged(int id,int notification){
  if(id==9463&&notification==BN_CLICKED){extra.smallMapClamp=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9462&&notification==BN_CLICKED){extra.sidebarEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();changedSetting();syncAdditional();return true;}
  if(id==9404&&select){extra.sidebarMode=uint32_t(std::clamp(int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)),0,2));changedSetting();syncAdditional();return true;}
+ if(id==9490&&notification==BN_CLICKED){extra.superweaponGrant=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9405&&notification==BN_CLICKED){extra.superweaponPanel=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==886&&select){extra.scrollRefreshMode=0;SendMessageW(GetDlgItem(ui,id),CB_SETCURSEL,0,0);changedSetting();syncAdditional();return true;}
  if(id==9096&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=buildingmodes::PlacementEvent){extra.placementImplementation=mode;resetPlacementEvent();changedSetting();syncAdditional();registerKeys();updatePlacementEventUI();}return true;}

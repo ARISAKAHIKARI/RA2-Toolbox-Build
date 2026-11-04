@@ -280,6 +280,10 @@ toggle(9462,L"高危：启用侧栏显示实验",extra.sidebarEnabled);next();
 label(L"右侧建造栏",20,260);choices(combo(9404),{L"完整侧栏",L"只保留雷达",L"隐藏侧栏"},int(extra.sidebarMode));next();
 label(L"切换侧栏快捷键",20,306);{auto h=key(9453,extra.sidebarKey);modernui::pressKey(h);modernui::keyboardOnly(h);}next();
 note(L"实验性：开启实验后默认 F11 循环切换完整／只保留雷达／隐藏。完整绘制一轮后，在安全点调整原生地图范围和显示表面；遇到其他程序改写或不兼容版本会拒绝启用。",44);item(L"STATIC",L"侧边栏：完整",20,605,9407);next();
+toggle(9490,L"高危：每帧持续授予全部超武（实验性）",extra.superweaponGrant);next();
+note(L"默认关闭。对当前玩家的全部已注册超武，每个观察到的游戏帧执行一次原生持续授予，保留正常充能。关闭只停止后续授予，已有授予保留到本局结束。会改变超武状态，联机可能不同步。",85);
+item(L"STATIC",L"持续授予超武：关闭",20,605,9491,0,44);next(44);
+
 toggle(9405,L"独立超级武器面板",extra.superweaponPanel);next();
 note(L"超武面板可拖动、折叠，点击超武后使用原生目标光标选择位置。",44);
 toggle(9403,L"高危：暂停与逐帧（单机实验性）",(extra.moFeatures&16u)!=0);next();

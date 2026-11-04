@@ -6,6 +6,8 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 超武每帧持续授予实验开关 | [原生动作、开关生命周期与 Assist95](2026-11-04-superweapon-per-frame-switch.md) | GrantPermanentSW nativeAction per-observed-frame default-off no-DR no-broadcast |
+| 地图全开的硬件断点候选 | [单槽黑幕帧选择与完整功能边界](2026-11-04-map-visibility-hardware-candidate.md) | GetOcclusion 6D88FC ZF Cell12C one-slot five-sites no-write |
 | 原生放置跨帧点击与 Q/W 入队清理 | [调度刷新、双缓存与完成观察](2026-11-04-placement-input-queue-cleanup.md) | Host-ready0 exact-frame MouseUp734270 QW queued cleanup |
 | 超武每帧持续授予与永久保留 | [动作34、CanHold 与接收端使用检查](2026-11-04-superweapon-per-frame-permanent-grant.md) | 6E1C40 CanHold60 180frames AddCameo Fire_SW multiplayer |
 | 控制全部硬件入口与共用四槽 | [严格所属编号、Full 单入口与 Assist93](2026-11-04-control-hardware-parameters.md) | HWBP VEH control50B6F0 CanBuild4F7870 1+2+1 no-text no-owner strict-return |

@@ -1,0 +1,101 @@
+{
+  "passed": true,
+  "scope": "Replay the original mode0 shroud-frame gate with a hardware-style context edit.\n\nOnly models an execution breakpoint clearing ZF at 6D88FC. Does not install a\nWindows breakpoint or execute unit/radar rendering, selection or map revealing.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "cases": [
+    {
+      "cell_visibility_bits": 0,
+      "force_branch": false,
+      "shroud_frame_accumulator": 4294967294,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 0,
+      "force_branch": true,
+      "shroud_frame_accumulator": 4294967295,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 8,
+      "force_branch": false,
+      "shroud_frame_accumulator": 4294967295,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 8,
+      "force_branch": true,
+      "shroud_frame_accumulator": 4294967295,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 16,
+      "force_branch": false,
+      "shroud_frame_accumulator": 4294967295,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 16,
+      "force_branch": true,
+      "shroud_frame_accumulator": 4294967295,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 24,
+      "force_branch": false,
+      "shroud_frame_accumulator": 4294967295,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 24,
+      "force_branch": true,
+      "shroud_frame_accumulator": 4294967295,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 128,
+      "force_branch": false,
+      "shroud_frame_accumulator": 4294967294,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 128,
+      "force_branch": true,
+      "shroud_frame_accumulator": 4294967295,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 255,
+      "force_branch": false,
+      "shroud_frame_accumulator": 4294967295,
+      "game_memory_writes": 0,
+      "pass_": true
+    },
+    {
+      "cell_visibility_bits": 255,
+      "force_branch": true,
+      "shroud_frame_accumulator": 4294967295,
+      "game_memory_writes": 0,
+      "pass_": true
+    }
+  ],
+  "checks": 12,
+  "candidate_slots": 1,
+  "sample_has_existing_forwarders": [
+    "0x6D88FE -> 0xB7D891 -> 0x6D8903",
+    "0x6D8903 -> 0xB7D89B -> 0x6D8908"
+  ],
+  "game_process_accessed": false,
+  "windows_veh_tested": false,
+  "full_map_rendering_tested": false,
+  "multiplayer_tested": false
+}

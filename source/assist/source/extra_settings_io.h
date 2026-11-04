@@ -38,6 +38,7 @@ static void loadAdditionalSettings(){
  extra.sidebarKey=uint32_t(value(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey))&65535;extra.pauseKeys[0]=uint32_t(value(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]))&65535;extra.pauseKeys[1]=uint32_t(value(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]))&65535;
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
  extra.techEnhanceCompareLevel=value(L"Experimental",L"TechEnhanceCompareLevel",0)!=0;
+ extra.superweaponGrant=value(L"Experimental",L"SuperweaponPermanentGrant",0)!=0;
  extra.techEnhanceImplementation=std::clamp(value(L"Experimental",L"TechEnhanceImplementation",0),0,1);
  extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.destructSelectedOwner=value(L"Experimental",L"DestructSelectedOwner",0)!=0;
@@ -139,6 +140,7 @@ static bool saveAdditionalSettings(){
  write(L"Compatibility",L"NoCodeWriteDefaultsVersion",1);
  write(L"ViewZoom",L"Enabled",extra.viewZoomEnabled);write(L"ViewZoom",L"Percent",extra.viewZoomPercent);
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
+ write(L"Experimental",L"SuperweaponPermanentGrant",extra.superweaponGrant);
  write(L"Experimental",L"TechEnhanceImplementation",extra.techEnhanceImplementation);write(L"Experimental",L"TechEnhanceCompareLevel",extra.techEnhanceCompareLevel);
  write(L"Hotkeys",L"PlaceCompletedBuilding",extra.placementEventKey);
  write(L"Experimental",L"CrcMapIsClearShadow",extra.crcMapShadow);
@@ -249,6 +251,7 @@ static void syncAdditional(){
  shared->pauseViewKeys[0]=extra.pauseKeys[0];shared->pauseViewKeys[1]=extra.pauseKeys[1];
  shared->moFeatures=extra.moFeatures&23u;
  InterlockedIncrement(&shared->moGesturePolicySeq);shared->moGestures=extra.moGestures;shared->moOptions=extra.moOptions;MemoryBarrier();InterlockedIncrement(&shared->moGesturePolicySeq);
+ shared->superweaponGrant=extra.superweaponGrant;
  shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;shared->techEnhanceImplementation=uint32_t(extra.techEnhanceImplementation);shared->techEnhanceCompareLevel=extra.techEnhanceCompareLevel;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->crcMapShadow=extra.crcMapShadow;

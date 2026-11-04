@@ -83,7 +83,7 @@ extern "C" void AssistRuntimeFilter(void* message){
  // Refresh through the existing dispatcher; never relax event frame checks.
  {
   gameentry::Scope inspect(gameentry::Client::Assist);if(!inspect)return;
-  if(!nativePlacementWantsInputSample(static_cast<const MSG*>(message))){GuardedAssistFilter(message);return;}
+  if(!superweaponGrantWantsInputSample(static_cast<const MSG*>(message))&&!nativePlacementWantsInputSample(static_cast<const MSG*>(message))){GuardedAssistFilter(message);return;}
  }
  InterlockedExchange(&hostWorkPending,1);
  dispatchFromTrigger(dispatchrouter::Trigger::Message,GetTickCount(),static_cast<const MSG*>(message));
