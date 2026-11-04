@@ -1,11 +1,11 @@
 {
-  "baseline": "7285b5e66003ec91d1414f060bc5915c51040e4a",
-  "release": "1.0.41-pre.7",
+  "baseline": "98ff5db7872407b86aa0be7849755e9728116fa2",
+  "release": "1.0.41-pre.8",
   "policy": "Global native faults reported and forwarded; debug/control/unwind never converted to global invalidation; local access-only fallbacks",
   "source_sha256": {
     "source/assist/source/guard.cpp": "c426754273f6686bb32d641b0105594cdc4ac2c9d9efa5cc1cf6ca47c5dc0793",
     "source/assist/source/exception_policy.h": "43162e417c1429b720d2bd2a5cfff24d8b8b991e5fd0d017b2e1cee8af44d991",
-    "source/assist/source/bridge.cpp": "be37ba29c816601b12d8da08bc3e27d0456862b8c60d26a6dae2f3ddf03c40a7",
+    "source/assist/source/bridge.cpp": "dfbaa56577ad550a325f937364e7e12c29a54ac307f018c1b79625a81bddad17",
     "source/shared/source/runtime_seh_scope.h": "a9b404935e2b0b9fac4c594d4c27e31b08c0141c5f0d7e25e63557991cb271f7",
     "source/shared/source/game_entry_client.h": "56389cd8b1b8b9eb4408666094e9076ab1f89bc4fd79df19f86a4b03814ec6f7",
     "source/shared/source/runtime_fp_scope.h": "a85a7e2fe80a8ec888f127b938ab6f48ed689333fb2f6a46f3e74bdb0c0b1099",
@@ -36,5 +36,12 @@
   },
   "live_game": false,
   "multiplayer": false,
-  "hardware_rejection_cause": "not established; Runtime(8) lacks DR/lease rejection snapshot"
+  "hardware_rejection_cause": "not established; Runtime(8) lacks DR/lease rejection snapshot",
+  "supersedes_intermediate_policy_commit": "b432f0f4d7fb455bb6860701897575c449d96d81",
+  "inherits_pre7_shared_tooltip_fix": "088034345dddbf43ff45b2f5d2fa2bf385a6d039",
+  "shared_tooltip_cleanup_fixture": {
+    "pass": true,
+    "checks": 27
+  },
+  "windows_own_process_seh_intermediate": "PASS run41870012292 step5; merged pre8 repeats checks"
 }

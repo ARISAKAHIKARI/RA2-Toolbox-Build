@@ -32,7 +32,7 @@ static DWORD controllerPID,controllerCheckAt,lastHouse,pendingAck;
 static volatile LONG schedulerBusy,hostWorkPending,messageGameThread;
 static unsigned nativeMegaQueueCallDepth,nativeObjectQueueCallDepth;
 struct{int phase=0,source=0,target=0;}faultContext;
-struct{int frame=0;}snap;
+struct{int frame=0,status=0,bridgeStatus=0,commandStatus=0,labels=0;}snap;
 struct{void update(bool,int,int,int){}}sessionTracker;
 struct{void reset(){}}hookWorld;
 static int missileHoldCount;static bool missileCleanup;
@@ -42,6 +42,7 @@ static unsigned entryDepth;
 static uint32_t inputMatch;static int inputFrame;static bool externalInputFrame;
 static bool throwTick,throwFilter,callbackOwnsLease,sampleInput;
 static unsigned filterCalls;
+static unsigned publications;
 static LONG InterlockedExchange(volatile LONG*p,LONG v){LONG old=*p;*p=v;return old;}
 static LONG InterlockedCompareExchange(volatile LONG*p,LONG v,LONG expected){LONG old=*p;if(old==expected)*p=v;return old;}
 static LONG InterlockedIncrement(volatile LONG*p){return ++*p;}
@@ -62,6 +63,7 @@ static void reset(){++resetCalls;}
 static void indexWorld(int){}static bool releaseMissileHolds(uint32_t,int,DWORD){return true;}
 template<class T>static T get(uint32_t){return T();}
 static void stickyTick(bool){}static void notifyHost(){}
+static void publishSnapshot(DWORD){++publications;if(sh){sh->data.status=snap.status;sh->data.bridgeStatus=snap.bridgeStatus;sh->data.commandStatus=snap.commandStatus;sh->data.labels=snap.labels;}}
 #include BRIDGE_UNWIND_HELPERS
 #define NOOP(name) static void name(){}
 NOOP(superweaponGrantReset) NOOP(restoreMapVisibilityParameters) NOOP(restoreControlParameters)
@@ -112,6 +114,7 @@ static void seed(bool attached=true){
  ordinaryCalls=pollCalls=resetCalls=opens=views=unmaps=closes=guardedCalls=0;
  pendingPolls=0;directOwner=unsafeHandoff=controllerDead=false;entryAllowed=true;
  throwTick=throwFilter=callbackOwnsLease=sampleInput=false;filterCalls=0;
+ publications=0;snap={};
  inputMatch=0;inputFrame=-1;externalInputFrame=false;
 }
 static void message(){hostWorkPending=1;dispatchFromTrigger(dispatchrouter::Trigger::Message,5000,nullptr);}
@@ -119,10 +122,16 @@ static bool attachedFault(){
  seed();pendingPolls=3;AssistFault();
  const bool reported=fault&&storage.data.status==-2&&storage.result==-10&&storage.ack==storage.request;
  message();const bool held=fault&&sh==&storage&&storage.stop==0&&!unmaps&&!ordinaryCalls&&!opens;
- for(unsigned n=0;fault&&n<5;++n)message();
- const bool retired=!fault&&!sh&&!mapping&&unmaps==1&&!ordinaryCalls&&pollCalls==3&&!unsafeHandoff;
- message();
- return reported&&held&&retired&&sh==&storage&&ordinaryCalls==1&&opens==1&&views==1;
+ message();message();
+ AssistRuntimeWatchdog();
+ const bool latched=!pendingPolls&&fault&&sh==&storage&&mapping&&storage.stop==0&&!AssistRuntimeDetached()&&!unmaps&&!ordinaryCalls&&!opens&&storage.data.status==-2&&storage.data.bridgeStatus==-2&&publications>=3;
+ // Even completed feature retirement cannot replace a live failed mailbox.
+ storage.stop=1;directOwner=true;AssistRuntimeWatchdog();
+ const bool retained=fault&&sh==&storage&&storage.stop==1&&!unmaps&&!ordinaryCalls;
+ directOwner=false;AssistRuntimeWatchdog();
+ const bool retired=!fault&&!sh&&!mapping&&storage.stop==2&&unmaps==1&&!ordinaryCalls&&!unsafeHandoff;
+ storage={};message();
+ return reported&&held&&latched&&retained&&retired&&sh==&storage&&ordinaryCalls==1&&opens==1&&views==1;
 }
 static bool nullFault(){
  seed(false);pendingPolls=3;AssistFault();
@@ -135,14 +144,17 @@ static bool nullFault(){
  return held&&pending&&retired&&sh==&storage&&ordinaryCalls==1&&opens==1;
 }
 static bool stopFault(){
- seed();pendingPolls=1;directOwner=true;storage.stop=1;AssistFault();
+ seed();pendingPolls=2;directOwner=true;storage.stop=1;AssistFault();
  AssistRuntimeWatchdog();
  const bool pending=fault&&sh==&storage&&storage.stop==1&&!unmaps&&!ordinaryCalls;
  directOwner=false;AssistRuntimeWatchdog();
  const bool retired=!fault&&!sh&&storage.stop==2&&unmaps==1&&!ordinaryCalls&&!unsafeHandoff;
  // A replacement Host creates a new live mailbox after the old stop ack.
  storage={};message();
- return pending&&retired&&sh==&storage&&ordinaryCalls==1;
+ const bool reconnected=sh==&storage&&ordinaryCalls==1;
+ seed();pendingPolls=2;storage.heartbeat=1000;controllerDead=true;AssistFault();AssistRuntimeWatchdog();
+ const bool deadOwner=!fault&&!sh&&!mapping&&storage.stop==0&&unmaps==1&&!ordinaryCalls&&!unsafeHandoff;
+ return pending&&retired&&reconnected&&deadOwner;
 }
 static bool watchdogAdmission(){
  seed(false);AssistRuntimeWatchdog();
@@ -210,6 +222,6 @@ int main(){
  const bool attached=attachedFault(),nullIPC=nullFault(),stop=stopFault(),watchdog=watchdogAdmission(),dispatch=dispatcherAdmission();
  const bool unwind=dispatcherUnwind(),lifetime=callbackLifetime(),input=inputUnwind();
  const bool publication=publicationUnwind(),depth=nativeDepthUnwind();
- std::printf("{\"pass\":%s,\"cases\":{\"attached_fault_cleanup_then_reconnect\":%s,\"null_ipc_fault_retains_ownership_then_reconnect\":%s,\"stop_fault_cleanup_then_replacement_host\":%s,\"watchdog_never_admits_live_work\":%s,\"dispatcher_preserves_entry_and_grant_gates\":%s,\"forwarded_unwind_releases_only_owned_scheduler_and_entry\":%s,\"callback_retains_lease_until_return\":%s,\"both_input_branches_release_entry_on_unwind\":%s,\"partial_publication_invalidates_and_closes_owned_sequence\":%s,\"native_depth_releases_only_owned_nested_increments\":%s}}\n",
+ std::printf("{\"pass\":%s,\"cases\":{\"attached_fault_stays_latched_until_explicit_stop\":%s,\"null_ipc_fault_retains_ownership_then_reconnect\":%s,\"stop_or_dead_owner_retirement_then_fresh_host\":%s,\"watchdog_never_admits_live_work\":%s,\"dispatcher_preserves_entry_and_grant_gates\":%s,\"forwarded_unwind_releases_only_owned_scheduler_and_entry\":%s,\"callback_retains_lease_until_return\":%s,\"both_input_branches_release_entry_on_unwind\":%s,\"partial_publication_invalidates_and_closes_owned_sequence\":%s,\"native_depth_releases_only_owned_nested_increments\":%s}}\n",
   attached&&nullIPC&&stop&&watchdog&&dispatch&&unwind&&lifetime&&input&&publication&&depth?"true":"false",attached?"true":"false",nullIPC?"true":"false",stop?"true":"false",watchdog?"true":"false",dispatch?"true":"false",unwind?"true":"false",lifetime?"true":"false",input?"true":"false",publication?"true":"false",depth?"true":"false");
 }

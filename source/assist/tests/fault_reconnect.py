@@ -99,9 +99,9 @@ def main():
                           'routes_sha256': sha(include), **json.loads(run.stdout)}
     old, new = results['baseline'], results['current']
     expected_old_failures = {
-        'attached_fault_cleanup_then_reconnect',
+        'attached_fault_stays_latched_until_explicit_stop',
         'null_ipc_fault_retains_ownership_then_reconnect',
-        'stop_fault_cleanup_then_replacement_host',
+        'stop_or_dead_owner_retirement_then_fresh_host',
         'forwarded_unwind_releases_only_owned_scheduler_and_entry',
     }
     assert {name for name, passed in old['cases'].items() if not passed} == expected_old_failures, old

@@ -762,8 +762,8 @@ static bool featureRestorationComplete(){
   (!buildTimeTooltipActive&&codeHookRegistry.active(0x7F74D8)?1u:0u)+
   (codeHookRegistry.active(0x7F74C8)?1u:0u);
  // A released build-time claim may leave the shared tooltip slot owned by
- // Cursor. Its separate layout slot also belongs to Cursor. Runtime retires
- // both after the last client detaches; neither blocks Assist-only cleanup.
+ // Cursor, which also owns the tooltip layout slot. Runtime separately
+ // retires those slots and verifies NativeTooltipDetached before handoff.
  return codeHookRegistry.installed()==runtimeOnly&&!crcMapInstalled&&!networkSenderInstalled&&
   !shroudMaterials.active()&&!enhancementRestoring&&!techDataPending()&&mapVisibilityParametersRetired()&&techParametersRetired()&&techEnhanceParametersRetired()&&controlParametersRetired()&&nativeViewRetired()&&!controlHouseFlagsPending();
 }
@@ -1146,9 +1146,9 @@ template<class Fn>static void withInputPublication(Shared*value,uint32_t session
  });
 }
 static void tick(){
- // Legacy explicit faults may leave asynchronous ownership to retire. Keep
- // polling cleanup even without IPC, and admit no ordinary work this tick.
- if(fault){maintainTechParameters();disconnect();return;}
+ // A detached legacy fault may still own asynchronous retirement. Finish it
+ // before opening a fresh mailbox; mapped failures retain their Host below.
+ if(fault&&!sh){maintainTechParameters();disconnect();return;}
  if(!sh){wchar_t n[80];mapName(n,GetCurrentProcessId());mapping=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,n);if(!mapping)return;sh=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));}
  // A deferred disconnect must never turn an invalid mapping into a usable
  // command connection on the next callback.
@@ -1169,6 +1169,9 @@ static void tick(){
   restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();
   restoreFrameDriver();disconnect();return;
  }
+ // The failed connection remains latched until explicit stop or a dead Host.
+ // Retry retirement and publish failure without reopening ordinary work.
+ if(fault){reset();snap.status=snap.bridgeStatus=-2;snap.commandStatus=0;snap.labels=0;publishSnapshot(now);return;}
  if((snap.techOpen||techPending||techDataPending())&&!(sh->flags&UnsafeTech))restoreTech();
  if(techDataRestoring&&techImplementation!=3)restoreTechData();
  const auto worldSample=worldlife::capture(read);const auto worldChange=hookWorld.observe(worldSample);
