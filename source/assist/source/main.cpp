@@ -577,10 +577,23 @@ static uint32_t requestedHardwareTags(){
  return (extra.mapVisibility?slotbudget::Map:0u)|(extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
   (extra.techEnhance&&extra.techEnhanceImplementation==1?(slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u)):0u);
 }
-static bool hardwareBudgetAvailable(uint32_t additional){return slotbudget::allows(currentHardwareBudget(),requestedHardwareTags()|additional);}
+static bool hardwareBudgetAvailable(uint32_t additional){
+ const auto budget=currentHardwareBudget(),wanted=requestedHardwareTags()|additional;
+ // Without a fresh register snapshot this is a saved four-slot plan only.
+ // Runtime still admits installation using actual registers and ownership.
+ return slotbudget::known(budget)?slotbudget::allows(budget,wanted):!(wanted&~31u)&&slotbudget::count(wanted)<=4;
+}
 static std::wstring hardwareBudgetReason(uint32_t additional){
- const auto budget=currentHardwareBudget();if(!slotbudget::known(budget))return L"尚未完成游戏主线程断点检查，请等待对局就绪";
+ const auto budget=currentHardwareBudget();if(!slotbudget::known(budget))return L"硬件断点预设超出预算：需要 "+std::to_wstring(slotbudget::count(requestedHardwareTags()|additional))+L" 槽，总计只有 4 槽";
  return L"硬件断点不足：本次需要新增 "+std::to_wstring(slotbudget::needed(budget,requestedHardwareTags()|additional))+L" 槽，空闲 "+std::to_wstring(slotbudget::free(budget))+L" 槽";
+}
+static std::wstring hardwareBudgetStatus(){
+ const auto budget=currentHardwareBudget();const auto planned=slotbudget::count(requestedHardwareTags());
+ std::wstring text=L"硬件断点：预设 "+std::to_wstring(planned)+L" / 4 槽";
+ if(planned>4)text+=L"（超出预算，请关闭一项）";
+ if(slotbudget::known(budget))text+=L" · 实际本工具 "+std::to_wstring(slotbudget::owned(budget))+L" · 其他占用 "+std::to_wstring(slotbudget::foreign(budget))+L" · 空闲 "+std::to_wstring(slotbudget::free(budget));
+ else text+=L" · 可预先设置，连接后复核实际占用";
+ return text;
 }
 
 static bool networkHouseReady(){return extra.networkHouseRequested()&&shared&&shared->networkHousePreserve&&shared->networkHouseStatus==1;}
@@ -1754,8 +1767,7 @@ static void updateControlModeStatus(DWORD now){
 static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();updateControlModeStatus(now);
- {const auto budget=currentHardwareBudget();std::wstring text=L"硬件断点：总计 4 槽 · ";
-  text+=slotbudget::known(budget)?L"本工具 "+std::to_wstring(slotbudget::owned(budget))+L" · 其他占用 "+std::to_wstring(slotbudget::foreign(budget))+L" · 空闲 "+std::to_wstring(slotbudget::free(budget)):L"等待主线程检查（暂不可开启）";
+ {const auto text=hardwareBudgetStatus();
   SetWindowTextW(GetDlgItem(ui,9473),text.c_str());}
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（实验性）":L"等待生效";};
  std::wstring enhancement=L"高危 · 科技加强：";

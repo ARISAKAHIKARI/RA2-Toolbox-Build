@@ -66,7 +66,7 @@ static void syncSettingDependencies(bool force,bool immediate){
   auto placement=placements.find(control);const PageControl* placed=placement==placements.end()?nullptr:placement->second;
   std::wstring help=placed?placed->help:L"";
   if(help.empty())help=dependencyWindowText(control);
-  if(!availability.enabled())help=std::wstring(L"当前不可用：")+settingsdeps::reason(availability.missing)+(availability.missing==settingsdeps::Need::Unavailable?L"。相关快捷键与旧启用设置不执行。\r\n":availability.missing==settingsdeps::Need::HardwareBudget?L"。请先释放槽位或等待对局检查；关闭已启用功能始终可用。\r\n":L"。已保存的子设置保留，开启父功能后恢复。\r\n")+help;
+  if(!availability.enabled())help=std::wstring(L"当前不可用：")+settingsdeps::reason(availability.missing)+(availability.missing==settingsdeps::Need::Unavailable?L"。相关快捷键与旧启用设置不执行。\r\n":availability.missing==settingsdeps::Need::HardwareBudget?L"。请先关闭其他硬件功能释放槽位；离线可按四槽预算预设，连接后复核实际占用。关闭已启用功能始终可用。\r\n":L"。已保存的子设置保留，开启父功能后恢复。\r\n")+help;
   if(dependencyTips[control]!=help){dependencyTips[control]=help;modernui::tip(control,help);}
   auto addCaption=[&](HWND w){auto&text=dependencyCaption(w);captions[w]=availability.enabled()?text.original:std::wstring(L"[")+settingsdeps::reason(availability.missing)+L"] "+text.original;};
   wchar_t cls[32]{};GetClassNameW(control,cls,32);if(!_wcsicmp(cls,L"BUTTON"))addCaption(control);

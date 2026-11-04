@@ -39,7 +39,7 @@ inline const wchar_t* reason(Need need){
  case Need::Missile:return L"需先开启防空火控";
  case Need::LowDamage:return L"需先开启低伤害过滤";
  case Need::ControlAll:return L"需先开启跨玩家操控";
- case Need::HardwareBudget:return L"硬件断点不足或尚未完成检查";
+ case Need::HardwareBudget:return L"硬件断点预算不足";
  case Need::ExactTechnology:return L"需开启科技加强并选择精确科技等级实现";
  case Need::NativeControl:return L"需选择原生判定 Hook 实现";
  case Need::NetworkControlAllowed:return L"当前控制实现不能使用所属方保留 Hook";

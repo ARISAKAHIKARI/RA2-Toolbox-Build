@@ -34,12 +34,17 @@ static int SendMessageW(int,int message,int v,int){switch(message){case BM_GETCH
 static uint32_t currentHardwareBudget(){return budget;}
 TAGS
 AVAILABLE
-static settingsdeps::State state(){settingsdeps::State s;BLOCKED return s;}
+REASON
+STATUS
+static settingsdeps::State state(){settingsdeps::State s;using settingsdeps::Need;s.set(Need::ExactTechnology,extra.techEnhance&&extra.techEnhanceImplementation==1);BLOCKED return s;}
 static bool route(int id,int notification,bool select=false){BRANCHES return false;}
 static bool click(int on){checked=on;if(!settingsdeps::decision(9492,state()).enabled()){checked=extra.mapVisibility;return false;}return route(9492,BN_CLICKED);}
 int main(){unsigned checks=0;auto check=[&](bool b){assert(b);++checks;};
  load();syncAdditional();check(!extra.mapVisibility&&!wire.mapVisibility&&!runtimeFeatureDemand(0,extra,false,false));
- check(!click(1)&&!extra.mapVisibility); // Unknown budget denies enable.
+ for(int id:{860,420,9097,9492})check(settingsdeps::decision(id,state()).enabled());
+ check(click(1)&&extra.mapVisibility&&wire.mapVisibility); // Offline configuration uses the four-slot plan.
+ save();extra.mapVisibility=false;load();check(extra.mapVisibility);check(click(0));
+ check(hardwareBudgetStatus().find(L"预设 0 / 4")!=std::wstring::npos&&hardwareBudgetStatus().find(L"连接后复核")!=std::wstring::npos);
  budget=slotbudget::pack(4,0,0,0);check(click(1)&&extra.mapVisibility&&wire.mapVisibility&&requestedHardwareTags()==slotbudget::Map);check(runtimeFeatureDemand(0,extra,false,false));
  budget=slotbudget::pack(0,4,0,23);check(click(0)&&!extra.mapVisibility&&!wire.mapVisibility); // Disable remains available.
  extra.controlAll=true;extra.techEnhance=true;extra.techEnhanceImplementation=1;techMode=true;
@@ -47,6 +52,24 @@ int main(){unsigned checks=0;auto check=[&](bool b){assert(b);++checks;};
  extra.techEnhanceCompareLevel=true;check(!hardwareBudgetAvailable(slotbudget::Compare));extra.techEnhanceCompareLevel=false;
  check(click(0));extra.techEnhanceCompareLevel=true;budget=slotbudget::pack(0,4,0,29);check(!click(1)&&!extra.mapVisibility&&requestedHardwareTags()==29);
  budget=slotbudget::pack(0,3,1,21);extra.techEnhanceCompareLevel=false;check(!click(1));
+ // All combinations can be planned offline, while the fifth physical slot
+ // remains unavailable. Planning never turns an unknown live budget into a
+ // valid Runtime installation budget.
+ budget=0;
+ for(unsigned plan=0;plan<32;++plan){
+  extra.controlAll=bool(plan&slotbudget::Control);techMode=bool(plan&slotbudget::Full);extra.mapVisibility=bool(plan&slotbudget::Map);
+  extra.techEnhance=bool(plan&slotbudget::Enhance);extra.techEnhanceImplementation=1;extra.techEnhanceCompareLevel=bool(plan&slotbudget::Compare);
+  const auto wanted=requestedHardwareTags();
+  for(auto tag:{slotbudget::Full,slotbudget::Map,slotbudget::Enhance,slotbudget::Compare,slotbudget::Control})
+   check(hardwareBudgetAvailable(tag)==(slotbudget::count(wanted|tag)<=4));
+  check(!slotbudget::allows(currentHardwareBudget(),wanted));
+ }
+ extra=AdditionalSettings{};extra.controlAll=true;extra.techEnhance=true;extra.techEnhanceImplementation=1;techMode=true;
+ check(click(1)&&requestedHardwareTags()==23);check(!hardwareBudgetAvailable(slotbudget::Compare));check(settingsdeps::decision(9472,state()).missing==settingsdeps::Need::HardwareBudget);
+ check(hardwareBudgetReason(slotbudget::Compare).find(L"需要 5 槽")!=std::wstring::npos);
+ budget=slotbudget::pack(0,3,1,21);check(!hardwareBudgetAvailable(0)&&extra.mapVisibility&&wire.mapVisibility);
+ check(hardwareBudgetStatus().find(L"预设 4 / 4")!=std::wstring::npos&&hardwareBudgetStatus().find(L"其他占用 1")!=std::wstring::npos);
+ check(click(0)&&!extra.mapVisibility);budget=0;check(hardwareBudgetAvailable(slotbudget::Map));
  extra=AdditionalSettings{};techMode=false;budget=slotbudget::pack(4,0,0,0);
  for(int strategy:{1,2,3,4,7,8}){extra.mapStrategy=strategy;const int c=changes;check(click(1)&&!extra.mapVisibility&&!checked&&changes==c);}
  extra.mapStrategy=0;extra.manualReveal=true;check(click(1)&&!extra.mapVisibility&&!checked);extra.manualReveal=false;check(click(1)&&extra.mapVisibility);
@@ -56,7 +79,7 @@ int main(){unsigned checks=0;auto check=[&](bool b){assert(b);++checks;};
  std::printf("PASS map settings/admission checks=%u\n",checks);
 }
 '''
-parts={'LOAD':load,'SAVE':save,'SYNC':sync,'TAGS':block(host,'static uint32_t requestedHardwareTags()'),'AVAILABLE':block(host,'static bool hardwareBudgetAvailable('),'BLOCKED':re.search(r'if\(!extra\.mapVisibility[^\n]+',deps)[0],'BRANCHES':branches}
+parts={'LOAD':load,'SAVE':save,'SYNC':sync,'TAGS':block(host,'static uint32_t requestedHardwareTags()'),'AVAILABLE':block(host,'static bool hardwareBudgetAvailable('),'REASON':block(host,'static std::wstring hardwareBudgetReason('),'STATUS':block(host,'static std::wstring hardwareBudgetStatus('),'BLOCKED':deps[deps.index('if(!extra.controlAll'):deps.index('s.set(Need::ControlAll')],'BRANCHES':branches}
 for k,v in parts.items():cpp=cpp.replace(k,v)
 cp=a.out/'settings.cpp';exe=a.out/'settings';cp.write_text(cpp)
 subprocess.run(['g++','-std=c++17','-O2','-UNDEBUG','-I'+str(src),str(cp),'-o',str(exe)],check=True)
