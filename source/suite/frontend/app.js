@@ -268,7 +268,7 @@
           const next=makeRow(control);if(row)row.element.replaceWith(next.element);row=next;rows.set(control.id,row);
         }
         row.control=control;
-        row.element.dataset.settingLevel=control.type==='label'?'status':subsettings || (compound && index>0)?'secondary':'primary';
+        row.element.dataset.settingLevel=control.type==='label'?'status':subsettings || (compound && index>0) || !['toggle','button'].includes(control.type)?'secondary':'primary';
         row.inlineLabel=compound && index>0 && control.label===name?inlineLabel(control,hasPreset):null;
         if(control.groupHeader && control.label===groupTitle)row.inlineLabel='';
         // A pushbutton already carries its action name. Do not print it twice.

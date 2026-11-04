@@ -345,6 +345,7 @@ if (!failed && process.argv.includes('--browser')) {
     const receive=async message=>page.evaluate(message=>window.__receive(message),message);
     await receive({kind:'shell',protocol:1,version:'1.0.41-pre.3',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
     await receive(snapshot()); await page.getByLabel('渲染升级',{exact:true}).waitFor();
+    assert.equal(await page.getByLabel('绘制方式',{exact:true}).evaluate(element=>element.closest('.setting-row').dataset.settingLevel),'secondary','ordinary parameter rows must read below feature switches');
     await page.screenshot({path:screenshotPath,fullPage:false});
     const assertFits = async () => {
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'the shell must fit the viewport');
@@ -490,7 +491,38 @@ if (!failed && process.argv.includes('--browser')) {
     await page.locator('.group-summary').click();await page.getByLabel('科技等级',{exact:true}).waitFor();
     assert.equal(await page.locator('.group-body .setting-row').getAttribute('data-setting-level'),'secondary','details inherit the main switch hierarchy');
     await assertFits();
-    await page.getByLabel('科技设置',{exact:true}).click();assert.equal(await page.evaluate(()=>window.__sent.at(-1).id),880);
+    await page.getByLabel('科技设置',{exact:true}).click();action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,880);
+    await receive({kind:'ack',protocol:1,module:0,generation:7,id:880,seq:action.seq,ok:true});
+    await receive(compactState({generation:7,controls:pinned.map(control=>control.id===880?{...control,checked:action.value}:control)}));
+    // A clean, correctly routed acceptance view: ordinary saved settings,
+    // two complete feature rows, and an expanded master/detail group.
+    await page.getByRole('button',{name:'控制',exact:true}).click();
+    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2);assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),1);
+    const hierarchyControls=[
+      ...compound.map(control=>control.type==='hotkey'?{...control,selected:0x3012}:control),
+      {id:477,type:'toggle',label:'磁电轮换攻击',checked:true,row:164,column:20,group:'键鼠组合操作'},
+      {id:479,type:'hotkey',label:'磁电轮换攻击',selected:0x3412,options:['hold'],row:164,column:240,group:'键鼠组合操作'},
+      {id:478,type:'choice',label:'磁电轮换攻击',selected:1,options:['停用','中键','侧键 1','侧键 2','右键','左键'],readonly:true,row:164,column:510,group:'键鼠组合操作'},
+      {id:705,type:'toggle',label:'飞机分配攻击',checked:false,group:'飞机分配攻击',groupHeader:true,collapsible:true},
+      {id:750,type:'number',label:'每个目标分配上限',text:'2',hint:'限制同时分配给同一目标的飞机数量。',group:'飞机分配攻击',collapsible:true},
+      {id:751,type:'choice',label:'目标优先级',selected:0,options:['当前目标','剩余生命','距离最近'],readonly:true,group:'飞机分配攻击',collapsible:true},
+      {id:752,type:'label',label:'设置已保存 · 进入对局后生效',group:'飞机分配攻击',collapsible:true}
+    ];
+    const controlPage=(revision,controls=hierarchyControls)=>({kind:'state',protocol:1,module:2,generation:2,revision,page:'tactical/1',title:'控制',controls,status:'设置已保存 · 可在进入游戏前调整'});
+    await receive(controlPage(1));await page.getByLabel('飞机分配攻击',{exact:true}).waitFor();
+    await page.getByLabel('飞机分配攻击',{exact:true}).click();action=await page.evaluate(()=>window.__sent.at(-1));
+    assert.equal(action.module,2);assert.equal(action.id,705);assert.equal(action.value,true);
+    await receive({kind:'ack',protocol:1,module:2,generation:2,id:705,seq:action.seq,ok:true,revision:2});
+    await receive(controlPage(2,hierarchyControls.map(control=>control.id===705?{...control,checked:true}:control)));
+    await page.waitForFunction(()=>!window.RA2Console.store.pending.size && !window.RA2Console.store.drafts.size && document.getElementById('saveState').dataset.state==='saved' && document.getElementById('globalNotice').hidden);
+    await page.locator('#toast').waitFor({state:'hidden',timeout:10000});
+    assert.equal(await page.getByRole('button',{name:'控制',exact:true}).getAttribute('aria-current'),'page');
+    await page.getByLabel('每个目标分配上限',{exact:true}).waitFor();await page.mouse.move(0,0);
+    for(const viewport of [{width:1240,height:880},{width:720,height:780},{width:390,height:720}]) {
+      await page.setViewportSize(viewport);await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});await assertFits();
+      await page.screenshot({path:diagnosticsPrefix+'-hierarchy-'+viewport.width+'.png',fullPage:false});
+    }
+    await page.setViewportSize({width:1240,height:880});
     assert.deepEqual(errors,[],'browser must not emit uncaught JS errors');
     console.log('PASS browser fixture: all control types, drafts, gestures, module navigation, error/persistence status, 3000-row virtualization, responsive layout');
   } finally {
