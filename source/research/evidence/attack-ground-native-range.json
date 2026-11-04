@@ -1,0 +1,116 @@
+{
+  "scope": "Execute supported original YR range checks for own-object versus own-cell targeting.\nMap lookup, visibility, vtable coordinate/weapon access and obstacle checks are\nsynthetic. The original range arithmetic and comparisons execute unchanged.\nThis is not full firing, projectile physics, Windows or multiplayer validation.\nPrivate executable bytes are read locally and never included in the output.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "results": [
+    {
+      "case": "self_zero_subcell",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": true,
+      "full_common_fire_error": false,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "cell_zero_subcell",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": false,
+      "full_common_fire_error": false,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "self_zero_high_ground",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": true,
+      "full_common_fire_error": false,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "self_minimum_range",
+      "status": "PASS",
+      "range": 256,
+      "minimum": 1,
+      "result": false,
+      "full_common_fire_error": false,
+      "native_distance_comparison": false
+    },
+    {
+      "case": "cell_normal_range",
+      "status": "PASS",
+      "range": 256,
+      "minimum": 0,
+      "result": true,
+      "full_common_fire_error": false,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "cell_zero_centered",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": true,
+      "full_common_fire_error": false,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "self_zero_common_fire_error",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": 0,
+      "full_common_fire_error": true,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "cell_zero_common_fire_error",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": 8,
+      "full_common_fire_error": true,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "self_zero_reloading",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": 3,
+      "full_common_fire_error": true,
+      "native_distance_comparison": false
+    },
+    {
+      "case": "self_zero_out_of_ammo",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": 1,
+      "full_common_fire_error": true,
+      "native_distance_comparison": false
+    },
+    {
+      "case": "self_area_fire_zero_subcell",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": false,
+      "full_common_fire_error": false,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "cell_area_fire_zero_subcell",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": true,
+      "full_common_fire_error": false,
+      "native_distance_comparison": true
+    }
+  ],
+  "game_tested": false,
+  "multiplayer_tested": false
+}

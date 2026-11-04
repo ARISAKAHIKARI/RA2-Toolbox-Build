@@ -1,0 +1,86 @@
+name: Compile own-ground attack hotkey
+on:
+  push:
+    branches: [codex/attack-own-ground-20261105]
+    paths: [source/**, .github/workflows/compile-own-ground.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: own-ground-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-x64:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            source
+            .github
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force artifacts/console,diagnostics | Out-Null
+      - name: Verify production own-ground input and batching policy
+        shell: pwsh
+        run: |
+          python source/assist/tests/attack_ground_policy.py --output diagnostics/attack-ground-policy.json
+          if($LASTEXITCODE){exit $LASTEXITCODE}
+      - name: Compile the modern x64 host and paired x86 Runtime and broker
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/artifacts/console"
+          bash source/build-zig-x64.sh > diagnostics/console-build.log 2>&1 || { tail -100 diagnostics/console-build.log; exit 1; }
+          tail -50 diagnostics/console-build.log
+          python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+      - name: Record the paired build identity
+        shell: pwsh
+        run: |
+          $files=@()
+          foreach($name in 'RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe','WebView2Loader.dll'){
+            $path="artifacts/console/$name"
+            $files+=@{name=$name;bytes=(Get-Item $path).Length;sha256=(Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          @{commit=$env:GITHUB_SHA;branch=$env:GITHUB_REF_NAME;host='x64';runtime='x86';broker='x86';console='WebView2 MVVM';webview2_sdk='1.0.4314.35';compile_only=$true;game_tested=$false;files=$files} | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 artifacts/console/CONSOLE_COMPILE.json
+      - name: Upload the modern console binaries and required loader notices
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-Console-MVVM-x64
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/console/RA2Toolbox.exe
+            artifacts/console/GameRuntime.dll
+            artifacts/console/GameRuntimeHost32.exe
+            artifacts/console/WebView2Loader.dll
+            artifacts/console/licenses/WebView2/LICENSE.txt
+            artifacts/console/licenses/WebView2/NOTICE.txt
+            artifacts/console/BUILD_SOURCE_MANIFEST.json
+            artifacts/console/BUILD_TARGET.json
+            artifacts/console/WINDOWS_BUILD_ARTIFACTS.json
+            artifacts/console/CONSOLE_COMPILE.json
+      - name: Preserve compiler diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-Console-MVVM-build-log
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            diagnostics/console-build.log
+            diagnostics/attack-ground-policy.json
+

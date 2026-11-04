@@ -715,6 +715,7 @@ static DWORD discoverGamePid(); // Same window filter used by attach(), without 
 static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWORD delayMs=0,uint32_t token=0,uint64_t typeHash=0){
  if(c==PlaceCompletedBuilding)return false; // A frozen placement is never deferred.
  if(c==DestructPlayer)return false; // Current selection is valid only at this input edge.
+ if(c==AttackOwnGround)return false; // Never resolve a delayed input against a later selection.
  if(!enabled)return false;
  if(c==RevealMap&&(!extra.experimentalReveal||extra.renderReveal))return false;
  DWORD now=GetTickCount();
@@ -727,7 +728,13 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  if(command==PlaceCompletedBuilding){notify(L"建筑放置须使用原生事件放置快捷键重新提交。");return;}
  if((command==Produce||command==CancelTechProduction)&&!buildingmodes::toolOrders(techImplementation,snap.techOpen)){notify(L"原生面板模式请使用游戏建造栏生产或取消。");return;}
  if(!enabled){notify(L"战术控制已暂停，请先启用后再发送指令。");return;}
+ if(command==AttackOwnGround&&!shared&&game)ensureBridge(); // Connect, without staging a stale selection action.
  const DWORD inputAt=GetTickCount();const uint32_t inputPID=pid,inputMatch=commandMatch();const Shared*inputConnection=shared;
+ if(command==AttackOwnGround&&(arg||arg2||requestToken||fromQueue||retries||!shared||!game||!pid||!IsWindow(game)||
+    !commandFocus()||!commandFresh(inputAt)||incoming.chat||shared->request!=shared->ack||shared->ack!=ack||commandQueue.size||hasSelection||
+    shared->selectRequest!=shared->selectAck||shared->pointer.request!=shared->pointer.ack||shared->viewZoomBusy)){
+  notify(L"攻击脚下未提交：请等待当前对局及命令连接就绪，再重新按键或点击。");return;
+ }
  // Whole-House destruction is an immediate explicit input action. Never
  // carry it across a reconnect, busy bridge or deferred command queue.
  if(command==DestructPlayer&&(!extra.destructSelectedOwner||arg||arg2||requestToken||!shared||!game||!pid||!IsWindow(game)||!commandFresh(GetTickCount())||
@@ -754,6 +761,9 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  }
  if(snap.status<0){notify(L"游戏操作暂不可用，本次指令未执行。");return;}
  readSnapshot();now=GetTickCount();
+ if(command==AttackOwnGround&&(pid!=inputPID||!inputMatch||commandMatch()!=inputMatch||shared!=inputConnection||DWORD(now-inputAt)>150)){
+  notify(L"攻击脚下未提交：输入已过期或对局已改变，请重新执行。");return;
+ }
  if(command==DestructPlayer&&(pid!=inputPID||!inputMatch||commandMatch()!=inputMatch||shared!=inputConnection||DWORD(now-inputAt)>150)){
   notify(L"自毁请求未提交：输入已过期或对局已改变，请重新选择并执行。");return;
  }
@@ -768,6 +778,7 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  // Mode syncing must not enqueue automatically every 50ms.
  // Explicit gameplay commands are staged while the match is loading or bridge is busy.
  if(!connected||(!fromQueue&&commandQueue.size&&userCommand(command))){
+  if(command==AttackOwnGround){notify(L"攻击脚下未提交：连接正忙，请重新执行。");return;}
   if(command==DestructPlayer){notify(L"自毁请求未提交：游戏状态已改变，请重新选择所属方后点击。");return;}
   if(userCommand(command)&&queueCommand(command,arg,arg2,commandMatch(),retries,0,requestToken)){
    logCommandWait();notify(L"指令已排队，尚未提交。"+commandWaitReason());return;
@@ -1718,6 +1729,11 @@ static std::wstring submitDiagnostic(){
 }
 static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;MemoryBarrier();ack=a;commandLatency=sentAt?DWORD(GetTickCount()-sentAt):0;int r=shared->result,n=shared->count,c=shared->command;
  diag(L"ack command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
+ if(c==AttackOwnGround){
+  std::wstring message=r>0?(n?L"攻击脚下请求已入队："+std::to_wstring(n)+L" 个单位；开火仍遵循原生射程、冷却和弹药。":L"没有可下令的己方地面单位。"):
+   L"攻击脚下未全部提交（已入队 "+std::to_wstring(n)+L" 个）："+(r==-41?L"所选单位仍处于 Sticky。":r==-40?L"当前会话不支持此指令。":r==-42?L"所选单位超过 8192 个。":L"指令过期、单位状态改变或事件提交失败，请重新执行。");
+  setConsoleFeedback(GetDlgItem(ui,9176),message);setConsoleRuntimeError(GetDlgItem(ui,9176),r<0);notify(message);return;
+ }
  if(c==PlaceCompletedBuilding){
   notify(r==2?(shared->placementPreview.active?L"已自动匹配当前栏的完成建筑：地基预览已开启，左键放置，右键或 Esc 取消。":L"已取消放置预览。"):r>0&&n==1?L"建筑放置事件已提交；是否落地以游戏结果为准。":L"预览未开启：请先退出原生建造／维修／出售／超武光标，确认当前建筑／防御栏有已完成产品。");
   updatePlacementEventUI();return;
@@ -2336,7 +2352,7 @@ static void prepareConsoleSettingsModel(){
    if(header&&id!=g.fold)SetPropW(c.hwnd,L"RA2.Console.GroupHeader",reinterpret_cast<HANDLE>(1));
    foldButton|=id==g.fold;
   }
-  if(id==9185)SetPropW(c.hwnd,L"RA2.Console.Immediate",reinterpret_cast<HANDLE>(1));
+  if(id==9185||id==9176)SetPropW(c.hwnd,L"RA2.Console.Immediate",reinterpret_cast<HANDLE>(1));
   if(foldButton||id==989||id==990||id==991){SetPropW(c.hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(c.hwnd,SW_HIDE);}
  }
  layoutPanel();
@@ -2717,6 +2733,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  ShowWindow(ui,show);
 #endif
  syncInformationRate(true);startClock();uimessages::Queue messages;MSG m;while(messages.get(m)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}
+
 
 
 

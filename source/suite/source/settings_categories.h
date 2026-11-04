@@ -17,7 +17,8 @@ inline int row(int section,const int*ids,unsigned count){
  if(section==3)return Video;
  if(section==2||section==5)return Automatic;
  for(unsigned i=0;i<count;++i){int id=ids[i];if(id==9042||id==446||id==447||(id>=9000&&id<9015)||id==832||id==833)return Automatic;
-  if(id==473||id==474||(id>=9170&&id<=9175)||id==788||id==9191||id==9192)return Control;}
+  if(id==473||id==474||(id>=9170&&id<=9177)||id==788||id==9191||id==9192)return Control;}
  return section==4?Experimental:Control;
 }
 }}
+

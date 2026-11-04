@@ -1,14 +1,25 @@
 #include "middle_input_host.h"
+// Selection-dependent attacks are resolved only at the live input edge.
+static void ownGroundHotkey(hotkeyroute::Group&group,bool edge){
+ const int id=1724+selectedmode::OwnGround;bool found=false;
+ for(int action:group.actions)found|=action==id;if(!found)return;
+ const bool exclusive=group.actions.size()==1;
+ for(size_t n=0;n<group.actions.size();)if(group.actions[n]==id){group.actions.erase(group.actions.begin()+n);if(n<group.bindings.size())group.bindings.erase(group.bindings.begin()+n);}else ++n;
+ if(edge&&exclusive)send(AttackOwnGround);
+ else notify(edge?L"攻击脚下请使用独立快捷键，避免同时改变选区。":L"攻击脚下按键已过期，请重新按键。");
+}
 // Each colliding action enters the existing request/selection channel in turn.
-static bool dispatchHotkeyGroup(hotkeyroute::Group group){
+static bool dispatchHotkeyGroup(hotkeyroute::Group group,bool inputEdge=true){
  if(destructownerhost::immediate(group,[]{
   if(destructOwnerKeyConflict(WORD(extra.destructSelectedOwnerKey))){notify(L"自毁必须使用独立快捷键，请更换组合。");return;}
   submitDestructSelectedOwner();
  }))return true;
+ ownGroundHotkey(group,inputEdge);
  placementeventhost::immediate(group,[]{submitPlacementEvent();});
  return group.actions.empty()||hotkeyPending.add(group,GetTickCount(),commandMatch());
 }
 static void executeHotkey(WPARAM wp,bool fanout){
+ if(wp==1724+selectedmode::OwnGround){notify(L"攻击脚下按键已失效，请重新按键。");return;}
  if(wp==destructownerhost::Hotkey){notify(L"自毁按键已失效，请在游戏中重新按键。");return;}
  if(wp==1734&&extra.sidebarEnabled){extra.sidebarMode=(extra.sidebarMode+1u)%3u;{ControlUpdate guard;SendDlgItemMessageW(ui,9404,CB_SETCURSEL,extra.sidebarMode,0);}changedSetting();syncAdditional();return;}
  if(wp==placementeventhost::Hotkey){notify(L"放置按键已失效，请在游戏中重新按键。");return;}
@@ -44,7 +55,7 @@ static void serviceHotkeyBatch(){
  hotkeyRegistry.sample(keys,GetTickCount(),commandMatch(),[](hotkeyroute::Group out){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(out);dispatchHotkeyGroup(std::move(out));});
  hotkeyroute::Group delayed;while(hotkeyRegistry.expired(GetTickCount(),commandMatch(),delayed)){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(delayed);
   destructownerhost::immediate(delayed,[]{notify(L"自毁按键与延迟手势冲突，请配置独立按键后重试。");});
-  placementeventhost::immediate(delayed,[]{notify(L"放置按键与延迟手势冲突，请配置独立按键后重试。");});dispatchHotkeyGroup(std::move(delayed));}
+  placementeventhost::immediate(delayed,[]{notify(L"放置按键与延迟手势冲突，请配置独立按键后重试。");});dispatchHotkeyGroup(std::move(delayed),false);}
  for(unsigned n=0;n<hotkeyroute::Pending::Capacity;++n){
   if(hasSelection||commandQueue.size||shared->request!=shared->ack||shared->selectRequest!=shared->selectAck)return;
   hotkeyroute::Action action;if(!hotkeyPending.pop(GetTickCount(),commandMatch(),action))return;
@@ -69,11 +80,13 @@ static void handleHotkey(WPARAM id,LPARAM event){
  // WM_HOTKEY can itself wait in the Windows queue. An old place edge must
  // not resolve the current cursor after a long blocked UI callback.
  if(DWORD(GetTickCount()-DWORD(GetMessageTime()))>150){
+  ownGroundHotkey(selected,false);
   destructownerhost::immediate(selected,[]{notify(L"自毁按键已过期，请重新按键。");});
   placementeventhost::immediate(selected,[]{notify(L"放置按键已过期，请重新按键。");});
  }
  if(!dispatchHotkeyGroup(std::move(selected)))notify(L"快捷键请求队列已满，本次组合未提交。");
  serviceHotkeyBatch();
 }
+
 
 
