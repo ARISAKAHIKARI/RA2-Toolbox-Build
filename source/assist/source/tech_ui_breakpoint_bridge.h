@@ -1,6 +1,7 @@
 #include "tech_ui_breakpoint_core.h"
 #include "tech_enhancement_parameter_policy.h"
 #include "control_parameter_policy.h"
+#include "map_visibility_parameter_policy.h"
 extern "C" int __cdecl GuardedTechUiParameter(void*,unsigned);
 extern "C" int __cdecl GuardedTechEnhancementProbe(unsigned,unsigned);
 extern "C" unsigned BeginTechEnhancementProbe();extern "C" void EndTechEnhancementProbe(unsigned);
@@ -19,16 +20,18 @@ namespace techparameters {
 inline constexpr uint32_t FullGroup=1u;
 struct TypeIdentity{uint32_t pointer=0,id=0,table=0;};
 struct EnhancedIdentity{TypeIdentity type;uint32_t items=0;int index=-1,level=0;};
-struct Policy{volatile LONG enabled=0;uint32_t house=0,houseID=0,scenario=0;int session=-1,frame=-1;TypeIdentity types[1024]{};volatile LONG enhanced=0,controlling=0,compareLevel=0;EnhancedIdentity enhancement[techenhancement::Count]{};};
+struct Policy{volatile LONG enabled=0;uint32_t house=0,houseID=0,scenario=0;int session=-1,frame=-1;TypeIdentity types[1024]{};volatile LONG enhanced=0,controlling=0,compareLevel=0,showing=0;EnhancedIdentity enhancement[techenhancement::Count]{};};
 static Policy policy;static techbp::Service service;
+static bool mapDesired=false,mapRedrawPending=false;static int mapFailure=0;static volatile LONG mapExceptions=0;static bool lastMapPresentation=false;
 static int failure=0,enhancementFailure=0,controlFailure=0;static bool desired=false,enhancementDesired=false,controlDesired=false,enhancementCompareRequested=false;
 static DWORD auditAt=0,retryAt=0,enhancementParameterScan=0;static uint32_t attempted=0,refusedGroups=0,resourceGroups=0;
 static volatile LONG fullExceptions=0,enhancementExceptions=0,controlExceptions=0;static unsigned probeDepth=0;static uint32_t probeToken=0;
-static constexpr uint32_t sites[5]={0x4F7870,0,0x4F7951,0x4F7B66,controlparams::Entry};
+static constexpr uint32_t sites[5]={0x4F7870,mapvisibility::Address,0x4F7951,0x4F7B66,controlparams::Entry};
 inline unsigned hash(uint32_t p){return ((p>>4)*2654435761u)&1023u;}
 static bool signature(uint32_t at,unsigned n,uint32_t expected){uint8_t bytes[32]{};if(n>sizeof bytes||!read(at,bytes,n))return false;uint32_t h=2166136261u;for(unsigned i=0;i<n;++i)h=(h^bytes[i])*16777619u;return h==expected;}
 static bool nativeCompatible(){return signature(0x6A97C3,20,0xD3C40F9Du)&&signature(0x6AA777,15,0x26F9619Eu)&&signature(0x4F7870,16,0x6995B50Eu);}
 static bool enhancementCompatible(){return signature(0x4F794A,13,0x0FC7BB79u)&&signature(0x4F7B5C,16,0x15DAD6B8u)&&signature(0x4F7870,16,0x6995B50Eu);}
+static bool mapCompatible(){uint8_t bytes[sizeof mapvisibility::Prefix]{};return read(mapvisibility::PrefixAddress,bytes,sizeof bytes)&&mapvisibility::compatible(bytes);}
 static bool enhancedRequested(){return sh&&sh->techEnhance&&sh->techEnhanceImplementation==techenhanceparams::Exact&&!sh->stop&&!fault;}
 static bool healthy(){return service.state!=techbp::System&&service.state!=techbp::Foreign&&service.state!=techbp::Thread;}
 static bool ready(uint32_t group){return healthy()&&(service.activeTags()&group)==group;}
@@ -44,6 +47,9 @@ static bool groupOff(uint32_t group){
 static void publish(){
  if(!sh)return;const uint32_t active=service.activeTags();
  sh->hardwareSlotBudget=service.slotBudget();
+ const bool mapPresentation=policy.showing!=0;if(mapPresentation!=lastMapPresentation){mapRedrawPending=true;lastMapPresentation=mapPresentation;}
+ sh->mapVisibilityStatus=mapFailure?mapFailure:mapDesired?(ready(mapvisibility::Tag)?techbp::Ready:(refusedGroups&mapvisibility::Tag)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(mapvisibility::Tag)?techbp::Off:service.state<0?service.state:techbp::Waiting;
+ sh->mapVisibilityError=uint32_t(service.lastError);sh->mapVisibilityExceptions=uint32_t(mapExceptions);
  sh->techParameterStatus=failure?failure:desired?(ready(FullGroup)?techbp::Ready:(refusedGroups&FullGroup)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(FullGroup)?techbp::Off:service.state<0?service.state:techbp::Waiting;
  sh->techParameterError=uint32_t(service.lastError);sh->techParameterSlots=__builtin_popcount(active&FullGroup);sh->techParameterExceptions=uint32_t(fullExceptions);
  sh->techEnhanceParameterStatus=enhancementFailure?enhancementFailure:enhancementDesired?(enhancementReady()?techbp::Ready:(refusedGroups&12)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(12)?techbp::Off:service.state<0?service.state:techbp::Waiting;
@@ -54,7 +60,7 @@ static bool captureWorld(uint32_t house){
  if(!sh||sh->stop||fault||house!=lastHouse||!house||get<uint32_t>(0xA83D4C)!=house)return false;
  uint32_t scenario=0,id=0;int frame=-1,session=-1;
  if(!read(0xA8B230,&scenario,4)||!scenario||!read(0xA8ED84,&frame,4)||frame<0||!read(0xA8B238,&session,4)||!eventdelivery::mayQueue(session)||!read(house+0x10,&id,4)||!id)return false;
- if(policy.house!=house||policy.houseID!=id||policy.scenario!=scenario||policy.session!=session||frame<policy.frame){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);}
+ if(policy.house!=house||policy.houseID!=id||policy.scenario!=scenario||policy.session!=session||frame<policy.frame){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
  policy.house=house;policy.houseID=id;policy.scenario=scenario;policy.frame=frame;policy.session=session;return true;
 }
 static bool capture(uint32_t house){
@@ -70,11 +76,12 @@ static bool world(){
   get<int>(0xA8B238)==policy.session&&get<int>(0xA8ED84)>=policy.frame&&get<bool>(0xA8E9A0)&&policy.house!=get<uint32_t>(0xAC1198)&&!get<bool>(policy.house+0x1F5)&&!get<bool>(policy.house+0x1F6)&&!get<bool>(policy.house+0x1F8);
 }
 static bool configure(){
- const uint32_t wanted=(desired&&!failure?FullGroup:0u)|(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7)?enhancementTags():0u)|(controlDesired&&!controlFailure?16u:0u);service.poll();if(!service.resources())resourceGroups=0;
+ const uint32_t wanted=(desired&&!failure?FullGroup:0u)|(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7)?enhancementTags():0u)|(controlDesired&&!controlFailure?16u:0u)|(mapDesired&&!mapFailure?mapvisibility::Tag:0u);service.poll();if(!service.resources())resourceGroups=0;
  if(!service.pending()){refusedGroups&=~service.activeTags();if(service.state==techbp::Slots)refusedGroups|=attempted&~service.activeTags();}
  if(service.pending()){publish();return false;}
  if(!healthy()){
   InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);
+  InterlockedExchange(&policy.showing,0);if(mapDesired)mapFailure=int(service.state);
   if(controlDesired)controlFailure=int(service.state);
   if(desired)failure=int(service.state);if(enhancementDesired)enhancementFailure=int(service.state);service.retire();publish();return false;
  }
@@ -87,12 +94,23 @@ static bool configure(){
  if(desired&&!failure)InterlockedExchange(&policy.enabled,ready(FullGroup)?1:0);
  if(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7))InterlockedExchange(&policy.enhanced,ready(4)?1:0);
  if(controlDesired&&!controlFailure)InterlockedExchange(&policy.controlling,ready(16)?1:0);
+ if(mapDesired&&!mapFailure)InterlockedExchange(&policy.showing,ready(mapvisibility::Tag)?1:0);
  publish();return service.activeTags()==wanted;
 }
+}
+static bool mapVisibilityParameter(CONTEXT&context){
+ using namespace techparameters;
+ if(context.Eip!=mapvisibility::Address)return false;
+ InterlockedIncrement(&mapExceptions);
+ if(!policy.showing||!sh||!sh->mapVisibility||sh->stop||fault||sh->renderReveal||(sh->flags&ExperimentalReveal)||!world())return false;
+ // Local byte reads inside the existing SEH boundary avoid a syscall per tile.
+ if(!mapvisibility::compatible(reinterpret_cast<const volatile uint8_t*>(uintptr_t(mapvisibility::PrefixAddress))))return false;
+ context.EFlags=mapvisibility::visibleFlags(context.EFlags);return true;
 }
 extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
  using namespace techparameters;auto&context=*static_cast<CONTEXT*>(raw);
  if(tag>=5||context.Eip!=sites[tag])return 0;
+ if(tag==1)return mapVisibilityParameter(context)?1:0;
  if(tag==4){
   InterlockedIncrement(&controlExceptions);
   if(!policy.controlling||!sh||!controlmode::parameters(sh->controlAll)||sh->stop||fault||!controlparams::world(policy.house,policy.houseID,policy.scenario,policy.session,policy.frame,controlparams::guardedRead)||!controlparams::house(context.Ecx,controlparams::guardedRead)||context.Esp<0x10000)return 0;
@@ -100,7 +118,6 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
   context.Eip=controlparams::destination(caller);return 1;
  }
  if(tag<2)InterlockedIncrement(&fullExceptions);else InterlockedIncrement(&enhancementExceptions);
- if(tag==1)return 0; // retired second Full caller tag; no new lease requests it.
  if(tag==0){
   // The original CALL has already pushed its return address. Classify the
   // two native UI callers before any expensive world/type queries.
@@ -130,20 +147,36 @@ extern "C" unsigned BeginTechEnhancementProbe(){using namespace techparameters;i
  const auto*start=reinterpret_cast<const uint8_t*>(&AssistTechEnhancementProbeCall);if(memcmp(start,stub,sizeof stub))return 0;
  techEnhanceProbeReturn=uint32_t(uintptr_t(start+20));if(!probeDepth)probeToken=uint32_t(InterlockedCompareExchange(&gameentry::activeToken,0,0));return ++probeDepth;}
 extern "C" void EndTechEnhancementProbe(unsigned token){using namespace techparameters;if(token&&token==probeDepth)--probeDepth;else probeDepth=0;if(!probeDepth)probeToken=0;}
+static bool mapVisibilityParametersRetired(){using namespace techparameters;return groupOff(mapvisibility::Tag);}
+static bool restoreMapVisibilityParameters(){
+ using namespace techparameters;const bool changed=mapDesired||(service.lease.tags()&mapvisibility::Tag)||service.lease.uncertain;
+ if(policy.showing)mapRedrawPending=true;InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;
+ if(changed)attempted=0;refusedGroups&=~mapvisibility::Tag;configure();return mapVisibilityParametersRetired();
+}
+static void mapVisibilityParametersTick(uint32_t house){
+ using namespace techparameters;
+ if(!sh||sh->stop||fault||!sh->mapVisibility)restoreMapVisibilityParameters();
+ else if(sh->renderReveal||(sh->flags&ExperimentalReveal)){restoreMapVisibilityParameters();mapFailure=-6;publish();}
+ else if(!mapCompatible()){restoreMapVisibilityParameters();mapFailure=techbp::Signature;publish();}
+ else if(!captureWorld(house)){InterlockedExchange(&policy.showing,0);mapFailure=techbp::Thread;publish();}
+ else{mapFailure=0;mapDesired=true;configure();}
+ if(mapRedrawPending&&redrawRevealTest())mapRedrawPending=false;
+}
 static bool techParametersRetired(){using namespace techparameters;return !(service.lease.mask&&((service.lease.tags()&FullGroup)||service.lease.uncertain))&&!service.pending()&&((service.lease.tags()&(techbp::AllTags&~FullGroup))||!service.resources());}
 static bool techEnhanceParametersRetired(){using namespace techparameters;return !(service.lease.mask&&((service.lease.tags()&12)||service.lease.uncertain))&&!service.pending()&&((service.lease.tags()&(techbp::AllTags&~12u))||!service.resources());}
 static bool restoreTechParameters(){using namespace techparameters;const bool changed=desired||(service.lease.tags()&FullGroup)||service.lease.uncertain;InterlockedExchange(&policy.enabled,0);desired=false;failure=0;if(changed)attempted=0;refusedGroups&=~FullGroup;configure();return techParametersRetired();}
 static bool restoreTechEnhanceParameters(){using namespace techparameters;const bool changed=enhancementDesired||(service.lease.tags()&12)||service.lease.uncertain;InterlockedExchange(&policy.enhanced,0);enhancementDesired=false;enhancementFailure=0;if(changed)attempted=0;refusedGroups&=~12u;configure();return techEnhanceParametersRetired();}
 static void maintainTechParameters(){
  using namespace techparameters;service.poll();
- if(!sh||sh->stop||fault){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;InterlockedExchange(&policy.controlling,0);}
+ if(!sh||sh->stop||fault){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
  else if(!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;}
  if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;}
+ if(!sh||sh->stop||fault||!sh->mapVisibility){InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;}
  configure();
  // An idle game still publishes an actual read-only resource snapshot before
  // the first activation. Stop/fault never starts another inspection worker.
  static DWORD inspected=0;const DWORD now=GetTickCount();
- if(sh&&!sh->stop&&!fault&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
+ if(sh&&!sh->stop&&!fault&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
 }
 static bool requestTechParameters(uint32_t house){
  using namespace techparameters;maintainTechParameters();if(failure){publish();return false;}

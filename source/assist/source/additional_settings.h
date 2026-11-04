@@ -23,7 +23,7 @@ struct AdditionalSettings {
  uint32_t placementEventKey='G'|(6<<8); // Explicit one-shot completed-building placement.
  bool viewZoomEnabled=false;int viewZoomPercent=100;uint32_t sidebarMode=0;bool sidebarEnabled=false,smallMapClamp=false;
  uint32_t moFeatures=0;bool superweaponPanel=false;
- bool superweaponGrant=false;
+ bool superweaponGrant=false,mapVisibility=false;
  moorders::GesturePolicy moGestures;
  moorders::Options moOptions;
  uint32_t viewZoomKeys[3]={0xBD|(6<<8),0xBB|(6<<8),0x08|(6<<8)},sidebarKey=0x7A,pauseKeys[2]={0x74,0x75};

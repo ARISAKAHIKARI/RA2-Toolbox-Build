@@ -42,7 +42,7 @@ int main(){unsigned checks=0;auto check=[&](bool b){assert(b);++checks;};
   check(runtimeFeatureDemand(0,extra,false,false)==bool(on));save();extra.superweaponGrant=!on;load();check(extra.superweaponGrant==bool(on));
  }
  int ids[]={9490};check(suite::categories::row(4,ids,1)==suite::categories::Experimental);
- check(Version==95);std::printf("PASS superweapon settings checks=%u\n",checks);
+ check(Version==96);std::printf("PASS superweapon settings checks=%u\n",checks);
 }
 '''.replace('LOAD',load).replace('SAVE',save).replace('SYNC',sync).replace('BRANCH',branch)
 cpp_path=a.out/'settings.cpp';exe=a.out/'settings';cpp_path.write_text(cpp)

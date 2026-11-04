@@ -18,6 +18,7 @@ static settingsdeps::State currentSettingDependencies(){
  if(!techMode&&techImplementation==buildingmodes::TechParameters&&!hardwareBudgetAvailable(slotbudget::Full))s.hardwareBlocked|=2;
  if(!extra.techEnhance&&extra.techEnhanceImplementation==1&&!hardwareBudgetAvailable(slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u)))s.hardwareBlocked|=4;
  if(!extra.techEnhanceCompareLevel&&!hardwareBudgetAvailable(slotbudget::Compare))s.hardwareBlocked|=8;
+ if(!extra.mapVisibility&&!hardwareBudgetAvailable(slotbudget::Map))s.hardwareBlocked|=16;
  s.set(Need::ControlAll,extra.controlAll);s.set(Need::Formation,extra.formationEnabled);
  s.set(Need::NativeControl,extra.nativeControlRequested());s.set(Need::NetworkControlAllowed,controlmode::sender(extra.controlRequest()));
  s.set(Need::Watch,extra.watchEnabled||extra.watchSecondary);s.set(Need::WatchSecondary,extra.watchSecondary);
@@ -88,7 +89,7 @@ static bool rejectUnavailableSetting(int id,int notification){
  }
  const auto availability=settingsdeps::decision(id,currentSettingDependencies());if(availability.enabled())return false;
  {ControlUpdate guard;auto found=dependencyBindings.find(id);if(found!=dependencyBindings.end())found->second.rejectChange(availability);}
- if(availability.missing==settingsdeps::Need::HardwareBudget){const uint32_t tags=id==860?slotbudget::Control:id==420?slotbudget::Full:id==9472?slotbudget::Compare:slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u);notify(hardwareBudgetReason(tags)+L"；未开启。");}
+ if(availability.missing==settingsdeps::Need::HardwareBudget){const uint32_t tags=id==860?slotbudget::Control:id==420?slotbudget::Full:id==9472?slotbudget::Compare:id==9492?slotbudget::Map:slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u);notify(hardwareBudgetReason(tags)+L"；未开启。");}
  else notify(std::wstring(settingsdeps::reason(availability.missing))+L"；原有子设置已保留。");return true;
 }
 struct DependencyCommandRefresh {

@@ -25,7 +25,7 @@
 #include "dodge_compute.h"
 #include "native_placement_policy.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=95;
+constexpr uint32_t Magic=0x41533130, Version=96;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -246,6 +246,9 @@ struct Shared {
  volatile int32_t superweaponGrantStatus=0; // 0 off, 1 active, 2 waiting, -1 signatures, -2 identity, -3 native result
  volatile uint32_t superweaponGrantCount=0;
  volatile int32_t superweaponGrantFrame=-1;
+ volatile uint32_t mapVisibility=0; // one-slot display-only experiment
+ volatile int32_t mapVisibilityStatus=0;
+ volatile uint32_t mapVisibilityError=0,mapVisibilityExceptions=0;
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

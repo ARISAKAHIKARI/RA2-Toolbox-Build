@@ -70,6 +70,7 @@ MagnetronMove=0
 AntiTheft=0
 [Experimental]
 SuperweaponPermanentGrant=0
+HardwareMapVisibility=0
 NativeTechProduction=0
 BuildAnywhere=0
 InfantryC4=0

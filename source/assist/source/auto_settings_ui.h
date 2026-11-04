@@ -71,6 +71,11 @@ static bool autoSettingChanged(int id,int notification){
  if(id==9463&&notification==BN_CLICKED){extra.smallMapClamp=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9462&&notification==BN_CLICKED){extra.sidebarEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();changedSetting();syncAdditional();return true;}
  if(id==9404&&select){extra.sidebarMode=uint32_t(std::clamp(int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)),0,2));changedSetting();syncAdditional();return true;}
+ if(id==9492&&notification==BN_CLICKED){
+  const bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
+  if(on&&(extra.mapStrategy!=0||extra.manualReveal)){ControlUpdate guard;SendMessageW(GetDlgItem(ui,id),BM_SETCHECK,BST_UNCHECKED,0);notify(L"请先关闭其他黑幕绘制方式与手动地图揭示。");return true;}
+  extra.mapVisibility=on;changedSetting();syncAdditional();return true;
+ }
  if(id==9490&&notification==BN_CLICKED){extra.superweaponGrant=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9405&&notification==BN_CLICKED){extra.superweaponPanel=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==886&&select){extra.scrollRefreshMode=0;SendMessageW(GetDlgItem(ui,id),CB_SETCURSEL,0,0);changedSetting();syncAdditional();return true;}
@@ -108,10 +113,12 @@ static bool autoSettingChanged(int id,int notification){
  if(id==9195&&select){int policy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(policy>=0&&policy<=2){extra.aircraftAllocationPolicy=policy;pointerMatches.clear();changedSetting();syncAdditional();}return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
  if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(selected>=0&&selected<=5){extra.c4Mouse=selected==5?6:selected;changedSetting();}return true;}
+ if(id==808&&select&&extra.mapVisibility&&SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)!=0){ControlUpdate guard;SendMessageW(GetDlgItem(ui,id),CB_SETCURSEL,shroudpolicy::uiIndex(extra.mapStrategy),0);notify(L"请先关闭硬件黑幕显示实验。");return true;}
  if(id==808&&select){int strategy=shroudpolicy::strategyFromUI(int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)));if(strategy<0)return true;
   extra.mapStrategy=strategy;extra.renderReveal=shroudpolicy::runtimeMode(strategy);extra.experimentalReveal=shroudpolicy::revealEnabled(extra.manualReveal,strategy);autoRevealNewMatch=shroudpolicy::automaticReveal(strategy);
   for(int i=0;i<commandQueue.size;)if(commandQueue.slots[i].command==RevealMap)commandQueue.discard(i);else ++i;
   autoRevealMatch=autoRevealDone=autoRevealRetry=0;changedSetting();syncAdditional();notify(strategy==3?L"地图全开将在对局就绪后自动执行；此模式有联机不同步风险。":L"地图显示策略已更新。");return true;}
+ if(id==9199&&notification==BN_CLICKED&&extra.mapVisibility&&SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED){ControlUpdate guard;SendMessageW(GetDlgItem(ui,id),BM_SETCHECK,BST_UNCHECKED,0);notify(L"请先关闭硬件黑幕显示实验。");return true;}
  if(id==9199&&notification==BN_CLICKED){
   extra.manualReveal=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
   extra.experimentalReveal=shroudpolicy::revealEnabled(extra.manualReveal,extra.mapStrategy);

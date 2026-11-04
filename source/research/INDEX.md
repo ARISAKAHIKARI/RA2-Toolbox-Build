@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 单槽硬件黑幕显示开关 | [共用四槽、互斥与 Assist96](2026-11-04-map-visibility-one-slot-switch.md) | Map bit2 ZF6D88FC slots23-vs29 default-off display-only pre2 |
 | 超武每帧持续授予实验开关 | [原生动作、开关生命周期与 Assist95](2026-11-04-superweapon-per-frame-switch.md) | GrantPermanentSW nativeAction per-observed-frame default-off no-DR no-broadcast |
 | 地图全开的硬件断点候选 | [单槽黑幕帧选择与完整功能边界](2026-11-04-map-visibility-hardware-candidate.md) | GetOcclusion 6D88FC ZF Cell12C one-slot five-sites no-write |
 | 原生放置跨帧点击与 Q/W 入队清理 | [调度刷新、双缓存与完成观察](2026-11-04-placement-input-queue-cleanup.md) | Host-ready0 exact-frame MouseUp734270 QW queued cleanup |

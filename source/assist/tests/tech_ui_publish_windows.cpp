@@ -10,10 +10,12 @@ static ULONG testRemoveVeh(PVOID handler){if(failRemoval){++rejectedRemovals;Set
 #define RemoveVectoredExceptionHandler testRemoveVeh
 #include TECH_CORE_HEADER
 #include "../source/tech_enhancement_parameter_policy.h"
+#include "../source/map_visibility_parameter_policy.h"
 #undef RemoveVectoredExceptionHandler
-struct Shared {uint32_t hardwareSlotBudget=0;int techParameterStatus=0;unsigned techParameterError=0,techParameterSlots=0,techParameterExceptions=0;int techEnhanceParameterStatus=0;unsigned techEnhanceParameterError=0,techEnhanceParameterSlots=0,techEnhanceParameterExceptions=0;}wire,*sh=&wire;
+struct Shared {int mapVisibilityStatus=0;uint32_t mapVisibilityError=0,mapVisibilityExceptions=0;uint32_t hardwareSlotBudget=0;int techParameterStatus=0;unsigned techParameterError=0,techParameterSlots=0,techParameterExceptions=0;int techEnhanceParameterStatus=0;unsigned techEnhanceParameterError=0,techEnhanceParameterSlots=0,techEnhanceParameterExceptions=0;}wire,*sh=&wire;
 namespace techparameters {
-inline constexpr uint32_t FullGroup=1u;
+inline constexpr uint32_t FullGroup=1u;namespace mapvisibility=assist::mapvisibility;
+static bool mapDesired=false,lastMapPresentation=false,mapRedrawPending=false;static int mapFailure=0;static LONG mapExceptions=0;static struct{LONG showing=0;}policy;
 static assist::techbp::Service service;static bool desired=false,enhancementDesired=false,enhancementCompareRequested=true;static int failure=0,enhancementFailure=0;static unsigned refusedGroups=0,resourceGroups=0;static volatile LONG fullExceptions=0,enhancementExceptions=0;
 namespace techbp=assist::techbp;namespace techenhanceparams=assist::techenhanceparams;
 #include TECH_PUBLISH_ROUTES
