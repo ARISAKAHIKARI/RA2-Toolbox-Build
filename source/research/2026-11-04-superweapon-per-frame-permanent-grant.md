@@ -38,3 +38,5 @@
 `assist/tests/superweapon_periodic_grant_native.py`：12 cases PASS，含禁用局首次持续授予、逐帧 180 次不重置、四组保留门、当前玩家侧栏调用，以及五组 ordinary House::Fire_SW 的发射准入。摘要为 `evidence/2026-11-04-superweapon-per-frame-native.json`。
 
 除单独一例明确替换 AddCameo/tab/redraw 呈现为 sink 外，Grant、永久标记、保留门及 Fire_SW/ClickFire 均执行原始指令；在 Launch 入口停止。PostClick、ChargeDrain、发射后的完整生命周期、真实倒计时 UI 与禁用超武的双机对局尚未覆盖。没有新增强制授予开关，也没有将地图动作伪装成网络事件发送。
+
+后续按用户要求已加入默认关闭的[每帧持续授予实验开关](2026-11-04-superweapon-per-frame-switch.md)。上文“未新增开关”描述的是先前原生研究阶段；联机同步边界保持不变。

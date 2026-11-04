@@ -127,6 +127,7 @@ static BOOL fixtureClient(HWND,POINT*){return TRUE;}
 #define GetCursorPos fixtureCursor
 #define ScreenToClient fixtureClient
 #include "../source/native_placement_bridge.h"
+static bool superweaponGrantWantsInputSample(const MSG*){return false;}
 namespace dispatchrouter {enum class Trigger {Message};}
 static volatile LONG hostWorkPending=0;
 static int inputDispatches=0,filterCalls=0;static bool sampleAllowed=true;

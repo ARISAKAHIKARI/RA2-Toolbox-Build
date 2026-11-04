@@ -25,7 +25,7 @@
 #include "dodge_compute.h"
 #include "native_placement_policy.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=94;
+constexpr uint32_t Magic=0x41533130, Version=95;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -242,6 +242,10 @@ struct Shared {
  moorders::Options moOptions;
  volatile uint32_t techEnhanceCompareLevel=0; // optional second level-comparison breakpoint
  volatile uint32_t hardwareSlotBudget=0; // one atomic readback snapshot, zero means unknown
+ volatile uint32_t superweaponGrant=0; // explicit experimental local permanent grant, default off
+ volatile int32_t superweaponGrantStatus=0; // 0 off, 1 active, 2 waiting, -1 signatures, -2 identity, -3 native result
+ volatile uint32_t superweaponGrantCount=0;
+ volatile int32_t superweaponGrantFrame=-1;
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

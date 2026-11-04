@@ -17,7 +17,7 @@ inline bool runtimeFeatureDemand(uint32_t configured,const AdditionalSettings&ex
  return extra.smallMapClamp||extra.controlRequest()!=controlmode::Off||extra.commandOwnerRequested()||
   extra.networkHouseRequested()||extra.renderReveal||extra.crcMapShadow||
   extra.nativeSellCursor||extra.nativeMegaGateway||extra.techEnhance||extra.destructSelectedOwner||
-  extra.sidebarEnabled||extra.viewZoomEnabled||extra.lowDamageFilter||extra.formationEnabled||(extra.moFeatures&23u)||extra.dodgeEnabled||
+  extra.superweaponGrant||extra.sidebarEnabled||extra.viewZoomEnabled||extra.lowDamageFilter||extra.formationEnabled||(extra.moFeatures&23u)||extra.dodgeEnabled||
   extra.missileDefense||extra.magnetronGlobal||extra.magnetronDrop;
 }
 }

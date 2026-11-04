@@ -34,7 +34,7 @@ int main(){
  for(auto flag:bits){check(!demand(0,off));check(demand(flag,off));check(!demand(0,off));}
  bool AdditionalSettings::*features[]={&AdditionalSettings::controlAll,&AdditionalSettings::networkHousePreserve,
   &AdditionalSettings::crcMapShadow,&AdditionalSettings::nativeSellCursor,&AdditionalSettings::nativeMegaGateway,
-  &AdditionalSettings::techEnhance,&AdditionalSettings::lowDamageFilter,&AdditionalSettings::formationEnabled,
+  &AdditionalSettings::superweaponGrant,&AdditionalSettings::techEnhance,&AdditionalSettings::lowDamageFilter,&AdditionalSettings::formationEnabled,
   &AdditionalSettings::dodgeEnabled,&AdditionalSettings::missileDefense,&AdditionalSettings::magnetronGlobal,
   &AdditionalSettings::magnetronDrop,&AdditionalSettings::viewZoomEnabled,&AdditionalSettings::sidebarEnabled,&AdditionalSettings::smallMapClamp};
  for(auto field:features){auto settings=off;check(!demand(0,settings));settings.*field=true;check(demand(0,settings));settings.*field=false;check(!demand(0,settings));}

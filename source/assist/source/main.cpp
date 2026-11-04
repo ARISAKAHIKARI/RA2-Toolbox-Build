@@ -1773,6 +1773,12 @@ static void updateModeStatus(DWORD now){
   SetWindowTextW(GetDlgItem(ui,9471),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9471),p<0);
  }
 
+ {const int s=shared?shared->superweaponGrantStatus:0;
+  std::wstring text=L"持续授予超武：";
+  text+=!extra.superweaponGrant?L"关闭（已有授予保留本局）":s==-1?L"原生函数不兼容":s==-2?L"超武／玩家身份不匹配":s==-3?L"原生授予结果异常":phase||s!=1?L"等待游戏就绪":L"已启用";
+  if(extra.superweaponGrant&&s==1&&shared)text+=L" · "+std::to_wstring(shared->superweaponGrantCount)+L" 项 · 游戏帧 "+std::to_wstring(shared->superweaponGrantFrame);
+  SetWindowTextW(GetDlgItem(ui,9491),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9491),extra.superweaponGrant&&s<0);
+ }
  updatePlacementEventUI();
  std::wstring riskStatus=extra.placementImplementation==buildingmodes::PlacementEvent?
   std::wstring(L"原生事件放置：")+(!buildAnywhereMode?L"关闭":phase?L"等待游戏就绪":snap.placementStatus==2?L"已就绪；自动匹配当前建筑／防御栏，按配置键预览，左键放置":snap.placementStatus<0?L"旧补丁未能还原或版本不兼容，未启用":L"等待旧补丁还原并启用"):
@@ -2040,7 +2046,7 @@ static void tick(){
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   static renderpresentation::StatusCadence computeStatusCadence;
-  gameinput::setFrameSampling(hook,enabled&&shared->computeApplied!=compute::All);
+  gameinput::setFrameSampling(hook,enabled&&(shared->superweaponGrant||shared->computeApplied!=compute::All));
   const uint64_t computeStatusKey=uint64_t(shared->computeApplied)|(uint64_t(computeRequested)<<32)|(uint64_t(showDetails)<<63);
   if(ready&&GetDlgItem(ui,833)&&computeStatusCadence.due(computeStatusKey,now)){
   std::wstring text=L"当前生效：";for(int i=0;i<compute::Count;++i){if(i)text+=i%2?L" · ":L"\r\n";text+=compute::label(i);text+=compute::inside(shared->computeApplied,compute::Feature(i))?L"：游戏内":L"：工具箱";}

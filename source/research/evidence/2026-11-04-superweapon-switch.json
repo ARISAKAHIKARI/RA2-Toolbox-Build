@@ -1,0 +1,234 @@
+{
+  "scope": "Actual compiled Runtime/native functions plus extracted settings IO/control model; no game process, effects or netplay.",
+  "runtime": {
+    "scope": "Execute the compiled Runtime permanent-grant switch against original x86.\n\nWin32 (including failed worker creation) and local presentation are explicit harness seams. Native map action34,\nGrant and timer registration execute. No game process, Launch or network peers.\nThe negative signature case deliberately corrupts/restores emulator code only.\n",
+    "passed": true,
+    "checks": 15,
+    "cases": [
+      {
+        "case": "default_off_no_native_grants",
+        "status": "PASS"
+      },
+      {
+        "case": "disabled_sw_session_grants_all_registered_supers",
+        "status": "PASS"
+      },
+      {
+        "case": "native_permanent_flags_and_normal_charge",
+        "status": "PASS"
+      },
+      {
+        "case": "same_game_frame_does_not_repeat",
+        "status": "PASS"
+      },
+      {
+        "case": "one_grant_each_observed_frame_for_180_frames",
+        "status": "PASS"
+      },
+      {
+        "case": "timer_registration_is_not_duplicated",
+        "status": "PASS"
+      },
+      {
+        "case": "physical_message_samples_new_frame_without_host_ready",
+        "status": "PASS"
+      },
+      {
+        "case": "missing_super_is_regranted_next_frame",
+        "status": "PASS"
+      },
+      {
+        "case": "off_stops_calls_and_preserves_native_grants",
+        "status": "PASS"
+      },
+      {
+        "case": "reenable_in_same_frame_is_fresh_request",
+        "status": "PASS"
+      },
+      {
+        "case": "defeated_house_is_not_granted",
+        "status": "PASS"
+      },
+      {
+        "case": "incompatible_signature_refuses_native_call",
+        "status": "PASS"
+      },
+      {
+        "case": "foreign_owner_refused",
+        "status": "PASS"
+      },
+      {
+        "case": "later_valid_frame_recovers",
+        "status": "PASS"
+      },
+      {
+        "case": "no_fire_or_production_events_queued",
+        "status": "PASS"
+      }
+    ],
+    "grant_calls": 370,
+    "per_frame_repeated_frames": 180,
+    "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "dll_sha256": "4d8ea6b130e1b71102a86ca7bb941e7550e7e4e20466e3e49744257a137c5a09",
+    "game_process_accessed": false,
+    "launch_executed": false,
+    "multiplayer_tested": false
+  },
+  "settings": {
+    "passed": true,
+    "scope": "Execute the actual switch handler and INI/Shared statements with UI/IO seams.",
+    "source_sha256": {
+      "additional_settings.h": "5c05ffb941b79901a164954e07998ec0be8c3a7bca6fce1a1cd6241b4c324805",
+      "extra_settings_io.h": "6d48ae16dda66ece230ca618c45b6ef68d8223ca4a14e531b1636da83887e6e7",
+      "auto_settings_ui.h": "15dddf59c65b1c3aec4367dfb67d0ceb1836613a62cd0f7547500540c44785e5",
+      "protocol.h": "eea71178175e58b2d09218c7b5168ac4f6b4225c8e324e56f64d0cc04a0d86d1",
+      "runtime_feature_demand.h": "95432c54dba833a4290e7d7d5de950d2867eeb92e9a9a0424c6c97277a50a250"
+    },
+    "stdout": "PASS superweapon settings checks=22\n",
+    "real_windows_ui": false
+  },
+  "dispatch": {
+    "scope": "Execute the compiled Runtime message boundary, observing actual service entries.\n\nWin32/world are mocked by the established Runtime harness. The real DLL's\nGameRuntimeHook and AssistRuntimeFilter execute; no game process is opened.\nThis proves dispatch reachability/gating, not gesture execution or multiplayer.\n",
+    "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "dll_sha256": "4d8ea6b130e1b71102a86ca7bb941e7550e7e4e20466e3e49744257a137c5a09",
+    "checks": 31,
+    "passed": true,
+    "results": [
+      {
+        "case": "route_0x200",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x100",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x101",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x104",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x105",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x201",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x202",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x203",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x204",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x205",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x206",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x207",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x208",
+        "status": "PASS"
+      },
+      {
+        "case": "route_0x209",
+        "status": "PASS"
+      },
+      {
+        "case": "route_side_1_0x20b",
+        "status": "PASS"
+      },
+      {
+        "case": "route_side_1_0x20c",
+        "status": "PASS"
+      },
+      {
+        "case": "route_side_1_0x20d",
+        "status": "PASS"
+      },
+      {
+        "case": "route_side_2_0x20b",
+        "status": "PASS"
+      },
+      {
+        "case": "route_side_2_0x20c",
+        "status": "PASS"
+      },
+      {
+        "case": "route_side_2_0x20d",
+        "status": "PASS"
+      },
+      {
+        "case": "unrelated_0x0",
+        "status": "PASS"
+      },
+      {
+        "case": "unrelated_0x20",
+        "status": "PASS"
+      },
+      {
+        "case": "unrelated_0x20a",
+        "status": "PASS"
+      },
+      {
+        "case": "unrelated_0x20e",
+        "status": "PASS"
+      },
+      {
+        "case": "unrelated_0xf",
+        "status": "PASS"
+      },
+      {
+        "case": "no_tactical_0",
+        "status": "PASS"
+      },
+      {
+        "case": "no_tactical_2",
+        "status": "PASS"
+      },
+      {
+        "case": "negative_hook_code",
+        "status": "PASS"
+      },
+      {
+        "case": "peek_without_remove",
+        "status": "PASS"
+      },
+      {
+        "case": "null_message",
+        "status": "PASS"
+      },
+      {
+        "case": "cursor_before_tactical_before_filter",
+        "status": "PASS"
+      }
+    ],
+    "game_tested": false,
+    "multiplayer_tested": false
+  },
+  "cold_demand_checks": 146,
+  "cold_demand_pass": true,
+  "abi": {
+    "passed": true,
+    "checks": 787,
+    "protocol": 95,
+    "shared_bytes": 23141824,
+    "windows_images_executed": false
+  }
+}
