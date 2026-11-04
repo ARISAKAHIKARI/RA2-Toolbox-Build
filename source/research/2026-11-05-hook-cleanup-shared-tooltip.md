@@ -34,6 +34,12 @@ Runtime(8) 已記錄的 static fault 問題這次實作修正：
 
 `assist/tests/hook_recovery_policy.py` 抽取實際 production 清理判斷、disconnect、dispatcher 及 fault 分支，編譯執行。修正前在「Cursor 兩槽存在，Assist 自身已清完」第2項失敗；修正後27項通過，包括雙槽+Frame、仍持有建造時間、未知活動站點、各種未退休資源、stop 確認、fault 清除時機、故障期間仍接收清理機會、沒有 grant／重入時不消耗錯誤工作，以及 fault 分支不繼續正常路徑。
 
-結果：[hook-recovery-policy.json](../verification/hook-recovery-policy.json)。日誌轉換證據：[runtime9-hook-recovery.json](evidence/runtime9-hook-recovery.json)。測試只使用合成資源和 Win32 替身；不包含真實硬體斷點、例外派發、遊戲畫面、同步或聯機結果。Windows 配對編譯由專用 workflow 執行，編譯結果須另行核對後交付。
+結果：[hook-recovery-policy.json](../verification/hook-recovery-policy.json)。日誌轉換證據：[runtime9-hook-recovery.json](evidence/runtime9-hook-recovery.json)。測試只使用合成資源和 Win32 替身；不包含真實硬體斷點、例外派發、遊戲畫面、同步或聯機結果。Windows 配對編譯、版本、架構、ABI、依賴及下載產物一致性已通過，見後文最終產品紀錄。
 
 下一步：實機確認已不再卡 gate6，並補充 SINGLE_STEP 拒絕時的完整 debug-register／lease 快照以識別首發漏接。不能把本次 C++ 判斷測試當成已重現該競態。
+
+## Windows 配對產品
+
+專用 run `41866664413` 已成功，產品源提交 `088034345dddbf43ff45b2f5d2fa2bf385a6d039`。Windows 的同一 production-function fixture 27項通過；三個核心 PE 版本均為 `1.0.41.7`，Host x64、Runtime/Broker x86，Cursor155／Assist96／Runtime4 及依賴檢查通過。下載 archive 與 GitHub digest、四個檔案與 CI 記錄的 SHA-256 均一致。
+
+更新包 `RA2Toolbox-1.0.41-pre.7-x64-Update.zip`，3572886 bytes，SHA-256 `cd1e047dc1493537e871419dc0a1c0ce376b174b65152ff78b6bf12148f30b22`。包內只有四個執行元件、WebView2 兩個必要許可檔與使用者更新說明；不含源碼、日誌或開發清單。覆蓋 DLL 前需退出遊戲與工具箱。最終證據：[hook-recovery-windows-build.json](evidence/hook-recovery-windows-build.json)。這不增加實機或聯機驗收的宣稱。

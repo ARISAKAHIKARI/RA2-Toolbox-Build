@@ -1,0 +1,42 @@
+{
+  "source_commit": "088034345dddbf43ff45b2f5d2fa2bf385a6d039",
+  "workflow_run": 41866664413,
+  "workflow_conclusion": "success",
+  "artifact_sha256": "156032c0d190f5c76678b732f93189eaf6781b163fa6d1762b37575c856def66",
+  "windows_policy": {
+    "scope": "Execute the production cleanup predicate, disconnect and dispatcher with fake resources.\nNo Windows exception delivery, game execution or multiplayer behavior is tested.\n",
+    "production_source": "D:\\a\\RA2-Toolbox-Build\\RA2-Toolbox-Build\\source\\assist\\source\\bridge.cpp",
+    "status": "PASS",
+    "output": "PASS 27 production cleanup and dispatcher checks\n",
+    "game_tested": false
+  },
+  "files": [
+    {
+      "bytes": 9053696,
+      "name": "RA2Toolbox.exe",
+      "sha256": "8d1e0a2dadfb410a5cee2dca03b2eefe64db57da2e2a477c82ec8bbeb5f91c71"
+    },
+    {
+      "bytes": 15646208,
+      "name": "GameRuntime.dll",
+      "sha256": "852fa30f672ad66471d112b496b3f49047fa850e746f3f2978a48409d48d9e26"
+    },
+    {
+      "bytes": 214528,
+      "name": "GameRuntimeHost32.exe",
+      "sha256": "8677bdedccba679ef15c7801e2fc6350e94e8e3b4d52ff80da19475064af3448"
+    },
+    {
+      "bytes": 194912,
+      "name": "WebView2Loader.dll",
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  ],
+  "package": {
+    "name": "RA2Toolbox-1.0.41-pre.7-x64-Update.zip",
+    "bytes": 3572886,
+    "sha256": "cd1e047dc1493537e871419dc0a1c0ce376b174b65152ff78b6bf12148f30b22"
+  },
+  "game_tested": false,
+  "multiplayer_tested": false
+}
