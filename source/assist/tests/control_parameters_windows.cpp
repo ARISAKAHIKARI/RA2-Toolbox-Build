@@ -67,6 +67,7 @@ static bool controlCallback(void*raw,uint32_t tag){
 static double measure(bool active){LARGE_INTEGER a{},b{},f{};assert(QueryPerformanceFrequency(&f)&&QueryPerformanceCounter(&a));for(unsigned n=0;n<10000;++n){assert(PermissionCaller(&other)==int(active));assert(OwnerCaller(&other)==other.tag);assert(PlanningCaller(&other)==other.tag);}assert(QueryPerformanceCounter(&b));return double(b.QuadPart-a.QuadPart)*1000000.0/double(f.QuadPart);}
 static bool sameDebug(const CONTEXT&a,const CONTEXT&b){return a.Dr0==b.Dr0&&a.Dr1==b.Dr1&&a.Dr2==b.Dr2&&a.Dr3==b.Dr3&&a.Dr7==b.Dr7;}
 int main(){
+ SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);setbuf(stdout,nullptr);
  assert(OwnerCaller(&other)==other.tag);ownerReturn=predicateReturn;assert(PlanningCaller(&other)==other.tag);planningReturn=predicateReturn;assert(ownerReturn!=planningReturn);
  assert(DrawCaller(&local,&allowed)==0);drawReturn=returned;assert(PruneCaller(&local,&allowed)==2);pruneReturn=returned;
  const uint32_t sites[5]={uint32_t(uintptr_t(&SampleCanBuild)),uint32_t(uintptr_t(&foreignMarker)),uint32_t(uintptr_t(&Enhancement0)),uint32_t(uintptr_t(&Enhancement1)),uint32_t(uintptr_t(&ControlPredicate))};
@@ -75,9 +76,9 @@ int main(){
  for(unsigned i=0;i<9;++i)memcpy(code[i],functions[i],96);const House savedLocal=local,savedOther=other;
  const double baselineUs=measure(false);assist::techbp::Service service;
  assert(service.inspect());wait(service);auto budget=service.slotBudget();assert(assist::slotbudget::known(budget)&&assist::slotbudget::free(budget)==4&&!assist::slotbudget::owned(budget)&&!service.handler_&&sameDebug(original,debug()));retire(service);
- // Disabled nonzero foreign addresses reserve slots too. Read-only inspection
- // must neither install a VEH nor change any debug register.
- CONTEXT foreign=original;foreign.Dr0=sites[1];foreign.Dr1=sites[1];debug(&foreign);assert(service.inspect());wait(service);budget=service.slotBudget();assert(assist::slotbudget::foreign(budget)==2&&assist::slotbudget::free(budget)==2&&!service.handler_&&sameDebug(foreign,debug()));retire(service);debug(&original);
+ // Read-only inspection must neither install a VEH nor change either enabled
+ // foreign slot. Compare the actual Windows readback, including reserved bits.
+ CONTEXT foreign=original;foreign.Dr0=sites[1];foreign.Dr1=sites[1];foreign.Dr7|=1|4;debug(&foreign);foreign=debug();assert(foreign.Dr0==sites[1]&&foreign.Dr1==sites[1]);assert(service.inspect());wait(service);budget=service.slotBudget();printf("BUDGET foreign2 packed=%08x state=%ld free=%u foreign=%u handler=%d\n",budget,service.state,assist::slotbudget::free(budget),assist::slotbudget::foreign(budget),int(service.handler_!=nullptr));assert(assist::slotbudget::foreign(budget)==2&&assist::slotbudget::free(budget)==2&&!service.handler_&&sameDebug(foreign,debug()));retire(service);debug(&original);
  assert(service.configure(sites,16,controlCallback));wait(service);assert(service.activeTags()==16&&__builtin_popcount(service.lease.mask)==1);
  assert(PermissionCaller(&local)==1&&PermissionCaller(&other)==1);assert(OwnerCaller(&local)==local.tag&&OwnerCaller(&other)==other.tag);assert(PlanningCaller(&local)==local.tag&&PlanningCaller(&other)==other.tag);
  controlEnabled=false;assert(PermissionCaller(&other)==0&&OwnerCaller(&other)==other.tag);controlEnabled=true;

@@ -138,7 +138,7 @@ jobs:
           if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
           Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
           New-Item -ItemType Directory -Force artifacts/console,diagnostics | Out-Null
-      - name: Compile the modern x64 host and unchanged x86 Runtime and broker
+      - name: Compile the modern x64 host and paired x86 Runtime and broker
         shell: bash
         run: |
           set -euo pipefail

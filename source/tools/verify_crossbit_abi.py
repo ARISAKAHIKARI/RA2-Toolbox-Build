@@ -238,7 +238,7 @@ def main():
     if differences:
         print(json.dumps(differences, indent=2))
         raise SystemExit('FAIL: Windows x86/x64 shared-memory layouts differ')
-    # Protocol92 appends the independent precise TechLevel parameter diagnostics.
+    # Protocol93 appends optional TechLevel comparison and atomic slot-budget diagnostics.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
     print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol93 Shared6585000, Runtime176, manager108')
