@@ -2,3 +2,6 @@
 source/third_party/xbrz/* -text
 # Preserve official Khronos header/license Git blob bytes across checkouts.
 source/third_party/vulkan/** -text
+
+# Frozen fixture digest is over the committed bytes on every platform.
+/source/assist/tests/fixtures/fault_reconnect_baseline/routes.inc -text

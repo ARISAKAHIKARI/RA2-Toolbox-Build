@@ -2,7 +2,7 @@ name: Compile Hook recovery hotfix
 on:
   push:
     branches: [codex/hook-recovery-20261105]
-    paths: [source/**, .github/workflows/compile-hook-recovery.yml]
+    paths: [source/**, .gitattributes, .github/workflows/compile-hook-recovery.yml]
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,6 +12,8 @@ concurrency:
 jobs:
   windows-x64:
     runs-on: windows-2022
+    env:
+      PYTHONUTF8: '1'
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
