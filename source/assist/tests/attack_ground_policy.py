@@ -9,9 +9,9 @@ def extract(text,signature):
  start=text.index(signature);opening=text.index('{',start);depth=1;end=opening+1
  while depth:depth+=(text[end]=='{')-(text[end]=='}');end+=1
  return text[start:end]
-protocol=(root/'source/protocol.h').read_text()
+protocol=(root/'source/protocol.h').read_text(encoding='utf-8')
 commands=protocol[protocol.index('enum Command '):protocol.index('enum Flags ')]
-hotkey=extract((root/'source/hotkey_host.h').read_text(),'static void ownGroundHotkey(')
+hotkey=extract((root/'source/hotkey_host.h').read_text(encoding='utf-8'),'static void ownGroundHotkey(')
 code=r'''
 #include <cassert>
 #include <cstdint>
@@ -53,8 +53,8 @@ bool nativeMission(uint32_t,uint32_t id,int mission,uint32_t target,uint32_t des
  if(failed)return false;assert(budget>0);--budget;events.push_back({id,target,tag});return true;
 }
 '''
-code+='#include '+json.dumps(str(root/'source/attack_ground_bridge.h'))+'\n'
-code+='#include '+json.dumps(str(root.parents[0]/'suite/source/settings_categories.h'))+'\n'
+code+='#include '+json.dumps((root/'source/attack_ground_bridge.h').as_posix())+'\n'
+code+='#include '+json.dumps((root.parents[0]/'suite/source/settings_categories.h').as_posix())+'\n'
 code+=r'''
 namespace hotkeyroute{struct Group{std::vector<int>actions,bindings;};}
 int notifications=0,keySends=0;
@@ -112,7 +112,7 @@ int main(){unsigned checks=0;auto check=[&](bool x){++checks;if(!x){std::fprintf
 '''
 compiler=shlex.split(os.environ['CXX']) if os.environ.get('CXX') else [os.environ.get('ZIG_EXE') or os.environ['ZIG'],'c++',*(['-target','x86_64-windows-gnu'] if os.name=='nt' else [])] if os.environ.get('ZIG_EXE') or os.environ.get('ZIG') else [shutil.which('g++') or 'c++']
 with tempfile.TemporaryDirectory(prefix='own-ground-') as directory:
- tmp=Path(directory);cpp=tmp/'test.cpp';exe=tmp/('test.exe' if os.name=='nt' else 'test');cpp.write_text(code)
+ tmp=Path(directory);cpp=tmp/'test.cpp';exe=tmp/('test.exe' if os.name=='nt' else 'test');cpp.write_text(code,encoding='utf-8')
  subprocess.run([*compiler,'-std=c++17','-O2','-UNDEBUG',str(cpp),'-o',str(exe)],check=True)
  r=subprocess.run([str(exe)],capture_output=True,text=True)
  if r.returncode:raise RuntimeError(r.stderr or r.stdout)
