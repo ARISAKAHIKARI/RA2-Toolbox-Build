@@ -1,0 +1,393 @@
+{
+  "scope": "Final DLL native Sell cursor adapters and original CanSell/constructor/OutList.\nSynthetic Win32/world. Real manager installs the two fixed adapters; original\nSell cursor blocks and sale construction run, but no network sender, receiver,\nrefund or building destruction executes. Owner adjustment is not sale completion.\n",
+  "dll_sha256": "24c405af124ec60c88b92c47b0cbaca9ab02ba1ed7530f5631f442520f43a08c",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "cursor_0_enabled",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_off",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_network_off",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_ai_no_scheduler",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_own",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_wrong_kind",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_foreground",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_not_sell_mode",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_drained",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_unsellable",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_0_already_selling",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_enabled",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_off",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_network_off",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_ai_no_scheduler",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_own",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_wrong_kind",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_foreground",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_not_sell_mode",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_drained",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_unsellable",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_5_already_selling",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_enabled",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_off",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_network_off",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_ai_no_scheduler",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_own",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_wrong_kind",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_foreground",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_not_sell_mode",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_drained",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_unsellable",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_3_already_selling",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_enabled",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_off",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_network_off",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_ai_no_scheduler",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_own",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_allied",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_wrong_kind",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_foreground",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_not_sell_mode",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_drained",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_unsellable",
+      "status": "PASS"
+    },
+    {
+      "case": "cursor_4_already_selling",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_expired_time",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_expired_frame",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_object_id",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_owner_id",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_owner_index",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_owner_changed",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_house_slot",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_toggle_off",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_preserve_off",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_chat_after",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_foreground_after",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_can_sell_after",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_queue_safe_limit",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_queue_full",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_bad_tail",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_repeat_without_cursor",
+      "status": "PASS"
+    },
+    {
+      "case": "revalidate_wrong_thread",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_conflict_0x6929e5",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_conflict_0x4ac179",
+      "status": "PASS"
+    },
+    {
+      "case": "toggle_restores_both_sites",
+      "status": "PASS"
+    },
+    {
+      "case": "abi_6929e5_False",
+      "status": "PASS"
+    },
+    {
+      "case": "abi_6929e5_True",
+      "status": "PASS"
+    },
+    {
+      "case": "abi_4ac179_False",
+      "status": "PASS"
+    },
+    {
+      "case": "abi_4ac179_True",
+      "status": "PASS"
+    }
+  ]
+}

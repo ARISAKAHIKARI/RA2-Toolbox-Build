@@ -1,0 +1,41 @@
+{
+  "pass": true,
+  "scope": "Execute actual 9470 routing and INI/Shared assignments with bounded UI/IO models.",
+  "source_sha256": {
+    "source/assist/source/additional_settings.h": "9bb7debbd98aa8d237f0c1992ffb9b2f47c2d2c72d1324248b8d772f05ff9ca7",
+    "source/assist/source/extra_settings_io.h": "efc65500c4064031818c7c7c0d1a2b72f7b81321501f351eb22c49b3402cd717",
+    "source/assist/source/auto_settings_ui.h": "ca32fa1e0a9657c757c7f73b8493180c414099ff803189321466dfa2cb8a94d3",
+    "source/assist/tests/tech_enhancement_parameter_settings.py": "715086a28a8b60a49f569a324605f0a9ce07ae01be045f1b4db97f082fb170a4"
+  },
+  "production_code_extracted": true,
+  "assertions_enabled": true,
+  "results": [
+    {
+      "target": "x86-windows-gnu",
+      "checks": 22,
+      "exe_sha256": "ba0d2a6472b3bf9263ef256d9f53af98a7cebdae064d5a3c8efe15218ef494cd",
+      "stdout": "TechEnhance settings checks=22; actual 9470/load/save/sync; UI/IO modeled\n",
+      "flags": [
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG"
+      ]
+    },
+    {
+      "target": "x86_64-windows-gnu",
+      "checks": 22,
+      "exe_sha256": "897091d47b3b9ae5c9e4ec3bd3942fc3172df476cb6b08d26622914bdfcc81e1",
+      "stdout": "TechEnhance settings checks=22; actual 9470/load/save/sync; UI/IO modeled\n",
+      "flags": [
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG"
+      ]
+    }
+  ],
+  "game_process_tested": false
+}

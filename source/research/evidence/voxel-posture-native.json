@@ -1,0 +1,72 @@
+{
+  "result": "PASS",
+  "pinned_yrpp_commit": "b22f1860dd7b100cad57123d4ca5d459b9020d88",
+  "results": [
+    {
+      "executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "cases": 1344,
+      "maximum_matrix_coefficient_error": 1.1959252921300845e-07,
+      "tolerance": 0.001,
+      "passed": true,
+      "worst_synthetic_case": [
+        5,
+        5,
+        100,
+        0,
+        0,
+        100,
+        3,
+        0,
+        -0.12,
+        0.18,
+        1.0,
+        1.0
+      ],
+      "type_virtual_boundary_calls": 2352,
+      "code_range_sha256": {
+        "Drive.Draw_Matrix": "506cd0619b22332667d2b00e41d586987da071d88b2f7575c3a258e3d599a3cf",
+        "Ship.Draw_Matrix": "f0f113976fa6800d7c4fb20f4bebc7c4da640312f44ebb0b90300c068f3fc400",
+        "base.Draw_Matrix": "fd8ac9031eb51f261c465593bfaa21b0461823755e1c08618c4428fdd2318759",
+        "ramp.copy": "4643fc4f8b82e81bbf7ea0cdb82ca8f527072c77878bd3f13c060a2473415eb5",
+        "ramp.interpolate": "8b1453205b52e44c74d9a6ec7d49cd20d619a1b061d6556bc1085d5d43174b19",
+        "quaternion.slerp": "5c905a8dc3513a81938e01b54ca333c8b2bae87397b434364098c30def0dffcc"
+      }
+    },
+    {
+      "executable_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "cases": 1344,
+      "maximum_matrix_coefficient_error": 1.1959252921300845e-07,
+      "tolerance": 0.001,
+      "passed": true,
+      "worst_synthetic_case": [
+        5,
+        5,
+        100,
+        0,
+        0,
+        100,
+        3,
+        0,
+        -0.12,
+        0.18,
+        1.0,
+        1.0
+      ],
+      "type_virtual_boundary_calls": 2352,
+      "code_range_sha256": {
+        "Drive.Draw_Matrix": "506cd0619b22332667d2b00e41d586987da071d88b2f7575c3a258e3d599a3cf",
+        "Ship.Draw_Matrix": "f0f113976fa6800d7c4fb20f4bebc7c4da640312f44ebb0b90300c068f3fc400",
+        "base.Draw_Matrix": "fd8ac9031eb51f261c465593bfaa21b0461823755e1c08618c4428fdd2318759",
+        "ramp.copy": "4643fc4f8b82e81bbf7ea0cdb82ca8f527072c77878bd3f13c060a2473415eb5",
+        "ramp.interpolate": "8b1453205b52e44c74d9a6ec7d49cd20d619a1b061d6556bc1085d5d43174b19",
+        "quaternion.slerp": "5c905a8dc3513a81938e01b54ca333c8b2bae87397b434364098c30def0dffcc"
+      }
+    }
+  ],
+  "scope": "actual Drive/Ship Draw_Matrix, native timer, ramp quaternion and rocking arithmetic; synthetic objects/types/ramp tables; no game loop or renderer",
+  "not_certified": [
+    "custom/other locomotors",
+    "native shadow matrix",
+    "live-game or multiplayer rendering"
+  ]
+}

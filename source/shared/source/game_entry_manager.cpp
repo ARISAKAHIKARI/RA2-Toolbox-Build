@@ -4,6 +4,8 @@
 #include "entry_policy.h"
 #include "experimental_patch_policy.h"
 #include "patch_context.h"
+#include "master_control_policy.h"
+#include "multiplayer_patch_gate.h"
 #include "../../assist/source/hook_registry.h"
 using namespace gameentry;
 static Policy policy;
@@ -37,6 +39,9 @@ static Result applyPatch(const Request&r){
  const auto transition=patches.proposal(r.address,r.before,r.after,r.length);
  if(transition==assist::hookregistry::Transition::Deny)return Result::PatchDenied;
  if(transition==assist::hookregistry::Transition::Install){
+  if(!multiplayerpatch::mayInstall([](uint32_t at,void*out,size_t n){
+   SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)at,out,n,&got)&&got==n;
+  }))return Result::PatchDenied;
   // Entry bytes alone do not establish the adapter's stack/continuation ABI.
   // Restoration must remain possible after a dependency changes.
   if(!patchcontext::compatible(r.address,[](uint32_t at,void*out,size_t n){
@@ -46,12 +51,35 @@ static Result applyPatch(const Request&r){
       uintptr_t(p)+n>uintptr_t(info.BaseAddress)+info.RegionSize)return false;
    memcpy(out,p,n);return true;
   }))return Result::PatchDenied;
-  if(directpatch::find(r.address)){
+  if(auto site=nativesidebarpolicy::find(r.address);site&&site->kind==nativesidebarpolicy::Kind::Bytes){
+   if(!nativesidebarpolicy::installed(r.address,r.after,r.length))return Result::PatchDenied;
+  }else if(directpatch::find(r.address)){
    if(!directpatch::installed(r.address,r.after,r.length))return Result::PatchDenied;
+  }else if(mastercontrol::installed(r.address,r.after,r.length)){
+   // Do not expose the unconditional predicate until BOTH strict owner calls
+   // are owned by this module. Matching foreign bytes are not our ownership.
+   if(r.address==experimentalpatch::ControlHouse)for(unsigned i=0;i<2;++i){
+    const auto&s=mastercontrol::Sites[i];const int owner=patches.find(s.address);
+    if(owner<0||!patches.active(s.address)||patches.conflict(s.address)||patchModules[owner]!=r.module||
+       memcmp(patches.slots[owner].patch,s.after,5))return Result::PatchDenied;
+    uint8_t actual[5]{};SIZE_T got=0;
+    if(!ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)s.address,actual,5,&got)||got!=5||memcmp(actual,s.after,5))return Result::PatchDenied;
+   }
+   // Only this exact three-site adaptation may target the verified game leaf.
+   // Keep ordinary detours restricted to this Runtime module.
+   if(!mastercontrol::original(r.address,r.before,r.length)||!mastercontrol::compatible([](uint32_t at,void*out,size_t n){
+    MEMORY_BASIC_INFORMATION info{};const void*p=(const void*)(uintptr_t)at;
+    if(!VirtualQuery(p,&info,sizeof info)||info.State!=MEM_COMMIT||info.AllocationBase!=GetModuleHandleW(nullptr)||
+       (info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||uintptr_t(p)+n>uintptr_t(info.BaseAddress)+info.RegionSize)return false;
+    memcpy(out,p,n);return true;
+   }))return Result::PatchDenied;
   }else{
   const uint32_t target=experimentalpatch::destination(r.address,r.after,r.length);MEMORY_BASIC_INFORMATION info{};
   if(!target||!VirtualQuery((void*)(uintptr_t)target,&info,sizeof info)||info.State!=MEM_COMMIT||
-     info.AllocationBase!=self||info.Type!=MEM_IMAGE||!(info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)))return Result::PatchDenied;
+     info.AllocationBase!=self||info.Type!=MEM_IMAGE||(info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||
+     (nativeviewportpolicy::dataOperand(r.address)&&uintptr_t(target)+sizeof(uint32_t)>uintptr_t(info.BaseAddress)+info.RegionSize)||
+     (nativeviewportpolicy::dataOperand(r.address)?!(info.Protect&(PAGE_READONLY|PAGE_READWRITE|PAGE_WRITECOPY|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)):
+       !(info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY))))return Result::PatchDenied;
   HMODULE pin=nullptr;if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,
     reinterpret_cast<LPCWSTR>(target),&pin))return Result::SystemFailure;
   }
@@ -93,7 +121,7 @@ extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
  }
  Result result=Result::Invalid;bool retain=false;
  if(r->operation==Operation::Enter||r->operation==Operation::Capture){
-  const bool priorDead=(policy.thread&&policy.thread!=tid)?isBoundThreadDead(policy.thread):false;
+  const bool priorDead=!owned&&isBoundThreadDead(policy.thread);
   result=policy.enter(tid,*r,priorDead);
   if(result==Result::Ok){
    // Nested capture already owns a live outer lease on this exact thread.

@@ -25,9 +25,9 @@ struct ControlUpdate {};static int ui=0;constexpr int CB_SETCURSEL=3;static void
 static uint32_t now=1000,scene=8;static uint32_t GetTickCount(){return now;}
 static AdditionalSettings extra;static Snapshot snap{};static auto memory=std::make_unique<Shared>();static Shared*shared=memory.get();
 static bool enabled=true,focused=true,hasSelection=false,ejectMode=false,hookEject=false,csMode=false,hookAutoCS=false;
-static bool formationInputOwns(){return false;}static bool formationHotkey(WORD){return false;}namespace watchhost {static int pins=0;static uint32_t lastKey=0;static void pin(uint32_t key){lastKey=key;++pins;}}
+static bool formationOwns=false;static bool formationInputOwns(){return formationOwns;}static bool formationHotkey(WORD){return false;}namespace watchhost {static int pins=0;static uint32_t lastKey=0;static void pin(uint32_t key){lastKey=key;++pins;}}
 static bool foregroundGame(){return focused;}static bool freshConnection=true;static bool commandFresh(uint32_t){return freshConnection;}static uint32_t commandMatch(){return scene;}
-static int doubleMs=350;static typekeys::Tap typeTap,variantTap;static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
+static int doubleMs=350;static typekeys::Tap typeTap,variantTap,formationTap;static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
 static int repairCheck=1,ejectCheck=2,csCheck=3,hookChecks[4]={4,5,6,7};static std::map<int,int>controls;
 static int SendMessageW(int id,int msg,int value,int){if(msg==BM_SETCHECK)controls[id]=value;return controls[id];}
 struct Binding{std::string id;WORD key;};static std::vector<Binding>typeBindings,swBindings;
@@ -36,6 +36,7 @@ static uint32_t pid=123;static bool externalData=true;static uint32_t sampleRend
 static struct {uint32_t idleAircraftTick=1000;int idleAircraftCount=3;uint32_t idleAircraftIDs[8192]={10,20,30};}externalSampler;
 static std::vector<uint32_t> selectedAircraft;
 static int hook=0;namespace gameinput {uint8_t keys[256]{};uint32_t serial[256]{};void keySnapshot(int,uint8_t*k,uint32_t*s){memcpy(k,keys,256);memcpy(s,serial,1024);}}
+static short GetAsyncKeyState(unsigned vk){return gameinput::keys[vk]?-32768:0;}
 static unsigned notifications=0,saves=0;static void notify(const std::wstring&){++notifications;}static void save(){++saves;}
 static struct{int size=0;}commandQueue;
 static std::vector<int>commands;static std::vector<std::pair<int,bool>> selections;
@@ -44,6 +45,7 @@ static void sendSelection(int index,bool global,const uint8_t* =nullptr,uint32_t
 '''+(r/'assist/source/idle_aircraft_selection.h').read_text()+'''static WORD socialKeys[9]{};static WORD idleAircraftKey=0x650;static WORD hotkeys[12]{},csKey=0,advancedKey=0,unloadKey=0,ejectKey=0,csHoldKey=0,magnetronKey=0;\nstatic WORD comparableKey'''+conflict+body+r'''
 static void ack(){shared->ack=shared->request;shared->selectAck=shared->selectRequest;serviceHotkeyBatch();}
 int main(){
+ extra.allHotkeys=false;hotkeys[0]='G';assert(keyConflict('G'|0x3000,"",false));assert(keyConflict('G'|0x1000,"",false));assert(!keyConflict('G'|0x2000,"",false));
  extra.allHotkeys=false;hotkeys[0]=0x641;assert(keyConflict(0xe41,"",false));extra.allHotkeys=true;assert(!keyConflict(0x641,"",false));snap.status=1;snap.renderStatus=1;snap.match=8;snap.typeCount=1;snap.types[0].kind=40;std::strcpy(snap.types[0].id,"TANK");typeBindings.push_back({"TANK",0x641});
  auto install=[](int,uint16_t){return true;};for(int id:{1001,1100,1700,1699})assert(hotkeyRegistry.add(id,0x641,true,install));
  const intptr_t event=(65<<16)|(MOD_CONTROL|MOD_ALT);
@@ -96,14 +98,44 @@ int main(){
  // Configured double-only commands execute once, after the second tap.
  hotkeyRegistry.clear();hotkeyPending.clear();assert(hotkeyRegistry.add(1730,0x8000|'Q',false,install));
  auto pins=watchhost::pins;handleHotkey(1730,'Q'<<16);assert(watchhost::pins==pins);now+=100;handleHotkey(1730,'Q'<<16);assert(watchhost::pins==pins+1);
- // Bare modifiers use physical press serials, never held-key timer repeats.
+ // Bare modifiers use physical transitions, never held-key timer repeats.
  hotkeyRegistry.clear();assert(hotkeyRegistry.add(1730,0x8000|17,false,install));
+ hotkeyRegistry.synchronize(gameinput::keys,scene);
  gameinput::keys[17]=1;gameinput::serial[17]=1;serviceHotkeyBatch();serviceHotkeyBatch();assert(watchhost::pins==pins+1);
  gameinput::keys[17]=0;serviceHotkeyBatch();now+=100;gameinput::keys[17]=3;gameinput::serial[17]=2;serviceHotkeyBatch();assert(watchhost::pins==pins+2);
  // A pending first tap is discarded on focus loss.
- gameinput::keys[17]=1;gameinput::serial[17]=3;now+=50;serviceHotkeyBatch();focused=false;serviceHotkeyBatch();focused=true;
+ gameinput::keys[17]=0;serviceHotkeyBatch();gameinput::keys[17]=1;gameinput::serial[17]=3;now+=50;serviceHotkeyBatch();focused=false;serviceHotkeyBatch();focused=true;
  gameinput::serial[17]=4;now+=100;serviceHotkeyBatch();assert(watchhost::pins==pins+2);
- gameinput::serial[17]=5;now+=100;serviceHotkeyBatch();assert(watchhost::pins==pins+3);
+ gameinput::keys[17]=0;serviceHotkeyBatch();gameinput::keys[17]=1;gameinput::serial[17]=5;now+=100;serviceHotkeyBatch();assert(watchhost::pins==pins+2);
+ gameinput::keys[17]=0;serviceHotkeyBatch();gameinput::keys[17]=1;now+=100;serviceHotkeyBatch();assert(watchhost::pins==pins+3);
+
+ // The formation fallback must discard a first tap whenever input context
+ // disappears, including the consumed-input grace interval after closing.
+ auto formationFirst=[&]{formationTap.clear();assert(!formationTap.press('X',now,scene,350));};
+ formationOwns=true;shared->formationPreview.active=1;formationFirst();focused=false;serviceHotkeyBatch();focused=true;assert(!formationTap.press('X',now+100,scene,350));
+ formationFirst();snap.chat=1;serviceHotkeyBatch();snap.chat=0;assert(!formationTap.press('X',now+100,scene,350));
+ formationFirst();freshConnection=false;serviceHotkeyBatch();freshConnection=true;assert(!formationTap.press('X',now+100,scene,350));
+ formationFirst();shared->formationPreview.active=0;serviceHotkeyBatch();assert(!formationTap.press('X',now+100,scene,350));
+ formationFirst();enabled=false;serviceHotkeyBatch();enabled=true;assert(!formationTap.press('X',now+100,scene,350));formationOwns=false;
+
+ // The WM_HOTKEY dispatcher must not execute a release action at key down.
+ hotkeyRegistry.clear();hotkeyPending.clear();memset(gameinput::keys,0,256);assert(hotkeyRegistry.add(1723,'X'|0x200|0x2000,false,install));hotkeyRegistry.synchronize(gameinput::keys,scene);
+ auto releaseCount=commands.size();gameinput::keys[17]=gameinput::keys['X']=1;
+ handleHotkey(1723,('X'<<16)|MOD_CONTROL);assert(commands.size()==releaseCount);serviceHotkeyBatch();assert(commands.size()==releaseCount);
+ gameinput::keys['X']=0;serviceHotkeyBatch();assert(commands.size()==releaseCount+1&&commands.back()==StickyGuard);ack();
+ gameinput::keys['X']=1;handleHotkey(1723,('X'<<16)|MOD_CONTROL);gameinput::keys[17]=0;serviceHotkeyBatch();gameinput::keys[17]=1;serviceHotkeyBatch();gameinput::keys['X']=0;serviceHotkeyBatch();assert(commands.size()==releaseCount+1);
+ hotkeyRegistry.clear();memset(gameinput::keys,0,256);assert(hotkeyRegistry.add(1723,'Q'|0xa000,false,install));hotkeyRegistry.synchronize(gameinput::keys,scene);
+ gameinput::keys['Q']=1;handleHotkey(1723,'Q'<<16);gameinput::keys['Q']=0;serviceHotkeyBatch();now+=100;
+ gameinput::keys['Q']=1;handleHotkey(1723,'Q'<<16);assert(commands.size()==releaseCount+1);gameinput::keys['Q']=0;serviceHotkeyBatch();assert(commands.size()==releaseCount+2);ack();
+ // Mixed legacy/explicit Press type groups have one stable interpretation,
+ // regardless of the catalogue row that owns the OS registration.
+ typeBindings.push_back({"PLANE",WORD(0x1641)});extra.allHotkeys=false;
+ for(bool reversed:{false,true}){
+  if(reversed)std::reverse(typeBindings.begin(),typeBindings.end());
+  hotkeyRegistry.clear();assert(hotkeyRegistry.add(1100,typeBindings[0].key,false,install));
+  now+=1000;handleHotkey(1100,event);assert(!selections.back().second);ack();
+  now+=100;handleHotkey(1100,event);assert(!selections.back().second);ack();
+ }
 
 }
 '''

@@ -1,0 +1,151 @@
+{
+  "scope": "Compile the actual placement completion header with fail-closed native UI seams.\n\nNo game process, input or network operation is performed. Optional private PE\nvalidation executes only the two original nullptr setter paths in x86 emulation,\nwith their redraw marker primitive replaced by an explicit checked seam.\n",
+  "architectures": {
+    "x86": {
+      "checks": 92,
+      "assertions_active": true,
+      "pass": true
+    },
+    "x86_64": {
+      "checks": 92,
+      "assertions_active": true,
+      "pass": true
+    }
+  },
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "native_setter_fnv12": {
+    "0x4a8bf0": "C44D9D5E",
+    "0x4a8d50": "DC84E30E"
+  },
+  "native_setter_paths": [
+    {
+      "entry": "0x4a8bf0",
+      "existing_foundation": false,
+      "redraw_marker_calls": 0,
+      "foundation_only_writes": 2,
+      "thiscall_ret4_and_nonvolatile_abi": true,
+      "cursor_identity_unchanged": true,
+      "pass": true
+    },
+    {
+      "entry": "0x4a8bf0",
+      "existing_foundation": true,
+      "redraw_marker_calls": 1,
+      "foundation_only_writes": 2,
+      "thiscall_ret4_and_nonvolatile_abi": true,
+      "cursor_identity_unchanged": true,
+      "pass": true
+    },
+    {
+      "entry": "0x4a8d50",
+      "existing_foundation": false,
+      "redraw_marker_calls": 0,
+      "foundation_only_writes": 2,
+      "thiscall_ret4_and_nonvolatile_abi": true,
+      "cursor_identity_unchanged": true,
+      "pass": true
+    },
+    {
+      "entry": "0x4a8d50",
+      "existing_foundation": true,
+      "redraw_marker_calls": 1,
+      "foundation_only_writes": 2,
+      "thiscall_ret4_and_nonvolatile_abi": true,
+      "cursor_identity_unchanged": true,
+      "pass": true
+    }
+  ],
+  "game_hash_stable": true,
+  "source_sha256": {
+    "assist\\source\\native_placement_completion_bridge.h": "6f28cf7fd3ec9821fc8635addc96d1ee20a406144a6dc58a4cb91be7ee3f3421",
+    "assist\\tests\\native_placement_completion.cpp": "04bae49cac0a8881ef24e0e396f6795b676a35d47bb55aad4697ccf38c823c12",
+    "assist\\tests\\native_placement_completion.py": "5492046169eb38e81951e2f2397f160511fd3a5c6bf5f8334bc2abd63e00cf9e",
+    "assist\\source\\native_placement_policy.h": "8bf753dbf236535de9c2cf9c7aee24dcd755a38cb1683ca3bae0449eb765d175"
+  },
+  "artifact_provenance": {
+    "workspace_root": "C:/Users/guich/Documents/Codex/2026-10-31/ji-yu",
+    "original_report": "C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/diagnostics/placement-view-hotfix/placement-completion/result.json",
+    "captured_utc": "2026-11-02T15:07:32.293016+00:00",
+    "source_hashes_rechecked": true,
+    "artifacts": {
+      "diagnostics/placement-view-hotfix/placement-completion/result.json": {
+        "sha256": "b3a780fdcd48e16d6b174712a7c8215515354a331ebbeda6c060f4a994f8f4d4",
+        "bytes": 2364
+      },
+      "diagnostics/placement-view-hotfix/placement-completion/x86.log": {
+        "sha256": "d63c0c627f7ede7c0e12c8659568acb2246d01ef215f33c1159b0f9f7a949dcd",
+        "bytes": 52
+      },
+      "diagnostics/placement-view-hotfix/placement-completion/x86_64.log": {
+        "sha256": "d63c0c627f7ede7c0e12c8659568acb2246d01ef215f33c1159b0f9f7a949dcd",
+        "bytes": 52
+      },
+      "diagnostics/placement-view-hotfix/placement-completion/x86-build.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "diagnostics/placement-view-hotfix/placement-completion/x86_64-build.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "diagnostics/placement-view-hotfix/placement-completion-integrated/test.log": {
+        "sha256": "47ed4e8e42ebf4c9d2b09018c4f6da77b13eb0a3a444282a10137274f1c31cec",
+        "bytes": 61
+      },
+      "diagnostics/placement-view-hotfix/placement-completion-integrated/sources.json": {
+        "sha256": "3403a6fda4784b31f346611a11e03092b14e768b3022e9f4416b47179ac90811",
+        "bytes": 1263
+      }
+    },
+    "standalone_logs": {
+      "x86.log": "{\"checks\":92,\"assertions_active\":true,\"pass\":true}\n",
+      "x86_64.log": "{\"checks\":92,\"assertions_active\":true,\"pass\":true}\n",
+      "x86-build.log": "",
+      "x86_64-build.log": ""
+    }
+  },
+  "reproduce": {
+    "script": "source/assist/tests/native_placement_completion.py",
+    "command": "python source/assist/tests/native_placement_completion.py --zig <zig-0.13.0/zig.exe> --game <private-gamemd-spawn.exe> --out <isolated-output>",
+    "dependencies": [
+      "Zig 0.13.0 C++17 Windows GNU targets",
+      "Python 3",
+      "pefile",
+      "unicorn"
+    ],
+    "assertions": "-UNDEBUG plus fixture #error NDEBUG and fail-fast assert",
+    "private_image_not_distributed": true
+  },
+  "integration": {
+    "script": "source/tools/test_native_placement.py",
+    "command": "python source/tools/test_native_placement.py --zig <zig-0.13.0/zig.exe> --build-dir <isolated-output>",
+    "test_log": "native placement production admission/queue PASS checks=103\n",
+    "source_sha256": {
+      "assist/source/bridge.cpp": "07487ab0b126173d4970fd720801ef53f7c89267bd84fef976fe2006f7d43886",
+      "assist/source/native_placement_bridge.h": "c46a34d9b5b38dc64df57be6b340d8aa24dc87492fcd6873722d7269e0539fdc",
+      "assist/source/native_placement_preview_bridge.h": "b126f156f5540b84dbddf4c0e7cd7b4c6a4ec4f145407463351f5de312e81a93",
+      "assist/source/native_placement_capture.h": "d314b686c6dfce187b7921d0a38efefbc7274dc1b0f698585d44fd1087d0af95",
+      "assist/source/native_placement_policy.h": "8bf753dbf236535de9c2cf9c7aee24dcd755a38cb1683ca3bae0449eb765d175",
+      "assist/source/native_placement_geometry.h": "94ecff73ab3f3ccf6f8b498d5c126ebd2184601c74837b0892d8dc182e407c98",
+      "assist/source/native_placement_completion_bridge.h": "6f28cf7fd3ec9821fc8635addc96d1ee20a406144a6dc58a4cb91be7ee3f3421",
+      "external_reader/source/projection.h": "7bc77f6e6ea1960247f751622a390ea08f47505a6f0cc743c043698fd44c4953",
+      "assist/source/constructor_adapter.h": "a7adfb02011432ea41c4358d69d51526ccbcf36d9308ce205bb75ebb16016733",
+      "assist/source/vanilla_constructor_catalog.h": "78e77c217943beffa000fbfd7a749f0043fa617498a5a1c48f917a3b27276040",
+      "assist/tests/native_placement_bridge.cpp": "a1125e5b0f5a48de0b58674aabacfa223b0cb5945de271e4f6c0189e3e244515"
+    },
+    "source_hashes_current_match": {
+      "assist/source/bridge.cpp": true,
+      "assist/source/native_placement_bridge.h": true,
+      "assist/source/native_placement_preview_bridge.h": true,
+      "assist/source/native_placement_capture.h": true,
+      "assist/source/native_placement_policy.h": true,
+      "assist/source/native_placement_geometry.h": true,
+      "assist/source/native_placement_completion_bridge.h": true,
+      "external_reader/source/projection.h": true,
+      "assist/source/constructor_adapter.h": true,
+      "assist/source/vanilla_constructor_catalog.h": true,
+      "assist/tests/native_placement_bridge.cpp": true
+    },
+    "pass": true
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "scope": "Pinned public v17 sources plus ordinary on-disk hook descriptors; no actual execution of Spawner, game network, or multiplayer. Existing portable policy regression executed separately.",
+  "spawner_source_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+  "yrpp_commit": "b22f1860dd7b100cad57123d4ca5d459b9020d88",
+  "ordinary_dll_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+  "source_files": {
+    "YRpp/Unsorted.h": {
+      "bytes": 24833,
+      "sha256": "7fa0a9ca17c3109cdf285ff1320f18cc5d8f47cad5fbba43f6dcbbd25f813ee6"
+    },
+    "src/Ext/Event/Body.cpp": {
+      "bytes": 2546,
+      "sha256": "db04770f7f8de526ce0e8bde5511c254697f1ff98ef0947aa69173790b603778"
+    },
+    "src/Ext/Event/Body.h": {
+      "bytes": 1447,
+      "sha256": "1776cf2c25b29d1f23c9afa9d93fa083ce024436d9ac7da40d6bf8e3538f56aa"
+    },
+    "src/Spawner/NetHack.cpp": {
+      "bytes": 3876,
+      "sha256": "76aa1015dfc9d7381d9a274cad4c2184c1d629540f4cc0664740591995e49aa5"
+    },
+    "src/Spawner/NetHack.h": {
+      "bytes": 1550,
+      "sha256": "a3f235c238a7aa70cbde4423dd542ccb3f149a79e2da62e4fbed31e8498f8172"
+    },
+    "src/Spawner/ProtocolZero.Hook.cpp": {
+      "bytes": 2856,
+      "sha256": "54f643658ffabd634c2a6c2b814dd6a2cc3e131daca2c819da8da68dc30b6e56"
+    },
+    "src/Spawner/ProtocolZero.LatencyLevel.cpp": {
+      "bytes": 3363,
+      "sha256": "7f0baf63e6fbde196c230615e7cb35e94a046b8f6ae38abcd75762db7f3f5fa1"
+    },
+    "src/Spawner/ProtocolZero.LatencyLevel.h": {
+      "bytes": 1563,
+      "sha256": "aee4d70151383e3b44864c9ffa17cdebdda46cb599dd3b64d231a520f169012a"
+    },
+    "src/Spawner/ProtocolZero.cpp": {
+      "bytes": 3632,
+      "sha256": "15f23c5d36694b82b3c6814500f0c8d4333034314e5d7c790babfeb9813ea31b"
+    },
+    "src/Spawner/ProtocolZero.h": {
+      "bytes": 1107,
+      "sha256": "5bcaaa7b1c208a62a457251d806689985020a09e5c47cc851ac24b60248ca37b"
+    },
+    "src/Spawner/Spawner.Config.cpp": {
+      "bytes": 9621,
+      "sha256": "18d27baf51bd74e5eb8f8400bf701e746fbd2dfc852d9edcf71f4a790d073dba"
+    },
+    "src/Spawner/Spawner.Config.h": {
+      "bytes": 5380,
+      "sha256": "1b2588395325ff4dec6d2dce544c241ad725fae862de97fae5a7f619725f1ad7"
+    },
+    "src/Spawner/Spawner.Hook.cpp": {
+      "bytes": 8037,
+      "sha256": "782046c7ba9a070fc3ffa4ab1ed3723f438bcf23b18dd451a8d0272e97211b7e"
+    },
+    "src/Spawner/Spawner.cpp": {
+      "bytes": 22605,
+      "sha256": "38e0d0ab1cb14e55ab80e8cb2b1359725d554ba728e7669359fbdee75622a6e6"
+    }
+  },
+  "protocol_hooks_confirmed": [
+    {
+      "address": 5008584,
+      "address_hex": "0x004C6CC8",
+      "size": 5,
+      "name": "Networking_RespondToEvent"
+    },
+    {
+      "address": 6600446,
+      "address_hex": "0x0064B6FE",
+      "size": 6,
+      "name": "sub_64B660_GetEventSize"
+    },
+    {
+      "address": 6603534,
+      "address_hex": "0x0064C30E",
+      "size": 6,
+      "name": "sub_64BDD0_GetEventSize2"
+    },
+    {
+      "address": 6602365,
+      "address_hex": "0x0064BE7D",
+      "size": 6,
+      "name": "sub_64BDD0_GetEventSize1"
+    },
+    {
+      "address": 6585842,
+      "address_hex": "0x00647DF2",
+      "size": 5,
+      "name": "QueueAIMultiplayer__ProtocolZero3"
+    },
+    {
+      "address": 6604184,
+      "address_hex": "0x0064C598",
+      "size": 6,
+      "name": "ExecuteDoList__ProtocolZero"
+    },
+    {
+      "address": 6586036,
+      "address_hex": "0x00647EB4",
+      "size": 8,
+      "name": "QueueAIMultiplayer__ProtocolZero2"
+    },
+    {
+      "address": 6585963,
+      "address_hex": "0x00647E6B",
+      "size": 5,
+      "name": "QueueAIMultiplayer__ProtocolZero_SetTiming"
+    },
+    {
+      "address": 5627296,
+      "address_hex": "0x0055DDA0",
+      "size": 5,
+      "name": "MainLoop_AfterRender__ProtocolZero"
+    },
+    {
+      "address": 5013521,
+      "address_hex": "0x004C8011",
+      "size": 8,
+      "name": "EventClassExecute__ProtocolZero"
+    },
+    {
+      "address": 6584011,
+      "address_hex": "0x006476CB",
+      "size": 5,
+      "name": "QueueAIMultiplayer__ProtocolZero_ResponseTime"
+    },
+    {
+      "address": 6585323,
+      "address_hex": "0x00647BEB",
+      "size": 9,
+      "name": "QueueAIMultiplayer__ProtocolZero1"
+    },
+    {
+      "address": 6584093,
+      "address_hex": "0x0064771D",
+      "size": 5,
+      "name": "QueueAIMultiplayer__ProtocolZero_SetTiming"
+    },
+    {
+      "address": 6585541,
+      "address_hex": "0x00647CC5",
+      "size": 5,
+      "name": "QueueAIMultiplayer__ProtocolZero_ResponseTime"
+    }
+  ],
+  "our_adapter_site_count": 5,
+  "our_adapter_probe_count": 8,
+  "direct_intersections": [],
+  "response_time2": {
+    "event_kind": "0x30",
+    "event_bytes": 111,
+    "payload_offset": 7,
+    "payload_bytes": 2,
+    "owner": "HouseClass::CurrentPlayer ArrayIndex",
+    "our_foreign_gameplay_admission": false
+  },
+  "network_globals": {
+    "wire_protocol": "0xA8B24C = 2 under ordinary network initialization even if spawn.ini Protocol=0",
+    "frame_send_rate": "0xA8B554",
+    "max_ahead": "0xA8B550",
+    "precalc_max_ahead": "0xA8B56C"
+  },
+  "ordinary_network_path": {
+    "direct": "Original payload sendto/recvfrom",
+    "tunnel": "4-byte routing prefix added/removed below native game packet formation",
+    "game_udp_calls": [
+      "0x7B3D75",
+      "0x7B3EEC"
+    ],
+    "our_udp_replacement": false
+  },
+  "policy_regression": {
+    "result": "PASS",
+    "circular_queues": 16512,
+    "ordered_house_partitions": 4088,
+    "kind_0x30_excluded": true
+  },
+  "conclusions": [
+    "No identified extension EventClass ABI mismatch for standard local-player commands: both native EventClass and extension remain111bytes and standard kinds are not redefined.",
+    "No direct intersection between14 protocol/event extension descriptors and5 sender sites or8 context probes; this doesnot prove complete compatibility because both participate in the same native functions.",
+    "ProtocolZero current-player timing records are not invalidated by the foreign-gameplay guard: the guard applies only to foreign House; exact compiled Runtime path still requires the parent controlled test.",
+    "Wire protocol2 is admitted by our0..2 protocol gate; spawn.ini Protocol0 toggles adaptive timing, not an incompatible unsupported wire version.",
+    "Our standard enqueue preserves original constructor bytes in OutList and leaves original sender frame/timing/capacity, network helper and tunnel processing in charge.",
+    "Foreign-House preservation remains an experimental semantic risk independent of this protocol extension; this report doesnot certify cross-sender scheduling or multiplayer compatibility."
+  ],
+  "important_source_version_difference": "Separate previously inspected234c16 snapshot uses ResponseTime2=0x31 and includes event-name hooks; exact releasedv17 source and descriptors here use0x30. Commit chronology is not asserted. Do not substitute another snapshot when interpreting this release."
+}

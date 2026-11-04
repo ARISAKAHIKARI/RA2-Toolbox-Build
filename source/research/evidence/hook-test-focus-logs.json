@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-01",
+  "source_commit": "3613e3336609286b7340943c68785b215ae10f78",
+  "logs": [
+    {
+      "file": "hook-test-20261101-105400-27704.log",
+      "sha256": "650034c9372cb252880195aaff45232dae3c8715f7b1d1f734bc8a83a03ba517",
+      "baseline_sites": 51,
+      "stop_sites": 51,
+      "changed_sites_at_stop": [],
+      "native_oos_reported": false,
+      "timeline": [
+        "2026-11-01 10:54:00.836 STEP 1/3 只读基线（不加载 Runtime）",
+        "2026-11-01 10:54:01.147 OBSERVE_BEGIN verified installed set; 30 seconds",
+        "2026-11-01 10:54:35.680 USER_VERDICT normal (observed 30 seconds; not certification)",
+        "2026-11-01 10:54:36.039 STEP 2/3 Windows 消息 Hook + Runtime，功能全关",
+        "2026-11-01 10:54:36.637 OBSERVE_BEGIN verified installed set; 30 seconds",
+        "2026-11-01 10:54:41.194 STATE frame=2867 match=1 command=1 installed=0 conflicts=0 runtime-stage=2 control=0 network=0 crc=0 tech-result=0",
+        "2026-11-01 10:54:46.195 STATE frame=3165 match=1 command=1 installed=0 conflicts=0 runtime-stage=2 control=0 network=0 crc=0 tech-result=0",
+        "2026-11-01 10:54:48.442 STOP 观察期间 Hook 集合/回调状态改变，保存现场",
+        "2026-11-01 10:54:48.951 STATE frame=3330 match=1 command=1 installed=0 conflicts=0 runtime-stage=2 control=0 network=0 crc=0 tech-result=0",
+        "2026-11-01 10:54:49.194 STOPPED cleanup=Runtime-acknowledged-and-baseline-restored"
+      ]
+    },
+    {
+      "file": "hook-test-20261101-110831-4764.log",
+      "sha256": "1d977bac3e7e3bb89b03294fd3fa6c4b37789e17f1ac89c1904ed3f9e4b6348e",
+      "baseline_sites": 51,
+      "stop_sites": 51,
+      "changed_sites_at_stop": [],
+      "native_oos_reported": false,
+      "timeline": [
+        "2026-11-01 11:08:32.611 STEP 1/3 只读基线（不加载 Runtime）",
+        "2026-11-01 11:08:32.953 OBSERVE_BEGIN verified installed set; 30 seconds",
+        "2026-11-01 11:09:06.937 USER_VERDICT normal (observed 30 seconds; not certification)",
+        "2026-11-01 11:09:07.336 STEP 2/3 Windows 消息 Hook + Runtime，功能全关",
+        "2026-11-01 11:09:08.056 OBSERVE_BEGIN verified installed set; 30 seconds",
+        "2026-11-01 11:09:08.066 STATE frame=3338 match=1 command=1 installed=0 conflicts=0 runtime-stage=2 control=0 network=0 crc=0 tech-result=0",
+        "2026-11-01 11:09:13.063 STATE frame=3600 match=1 command=1 installed=0 conflicts=0 runtime-stage=2 control=0 network=0 crc=0 tech-result=0",
+        "2026-11-01 11:09:18.080 STATE frame=3888 match=1 command=1 installed=0 conflicts=0 runtime-stage=2 control=0 network=0 crc=0 tech-result=0",
+        "2026-11-01 11:09:19.836 STOP 观察期间 Hook 集合/回调状态改变，保存现场",
+        "2026-11-01 11:09:20.395 STATE frame=4033 match=1 command=1 installed=0 conflicts=0 runtime-stage=2 control=0 network=0 crc=0 tech-result=0",
+        "2026-11-01 11:09:20.406 STOPPED cleanup=Runtime-acknowledged-and-baseline-restored"
+      ]
+    }
+  ],
+  "interpretation": "Generic verifier stop, not native OOS; all stop bytes match baseline. Exact failed subcondition was not recorded by old host. Snapshot busy/age/focus recovery is plausible, not uniquely proven."
+}

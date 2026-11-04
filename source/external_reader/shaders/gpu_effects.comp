@@ -1,0 +1,114 @@
+#version 450
+// GPL-3.0: ordered destination batches adapted from Vera20K
+// terrain_surface_lines.rs/wgsl @ 3d42426b2e9c. RGBA policy matches this
+// external reader; source/CPU geometry never reads the frame's color pixels.
+layout(local_size_x=8,local_size_y=8) in;
+layout(std430,binding=1) readonly buffer Materials {uint material[];};
+layout(std430,binding=2) readonly buffer Commands {uint command[];};
+layout(std430,binding=3) coherent buffer Output {uint pixel[];};
+layout(push_constant) uniform Params {
+ uint width,height,drawsOffset,binsOffset,refsOffset,columns,fogOffset,snapshotOffset;
+ uint left,top,right,bottom,zaOffset,nativeScene,format,reserved;
+} p;
+uint wordF(uint c,bool f){return f?((c>>9u)&0x7c00u)|((c>>6u)&0x3e0u)|((c>>3u)&31u):((c>>8u)&0xf800u)|((c>>5u)&0x7e0u)|((c>>3u)&31u);}
+uint expandWord(uint w,bool f){
+ const uint five[32]=uint[32](0,8,16,25,33,41,49,58,66,74,82,90,99,107,115,123,132,140,148,156,164,173,181,189,197,206,214,222,230,238,247,255);
+ const uint six[64]=uint[64](0,4,8,12,16,20,24,28,32,36,40,45,49,53,57,61,65,69,73,77,81,85,89,93,97,101,105,109,113,117,121,125,129,133,138,142,146,150,154,158,162,166,170,174,178,182,186,190,194,198,202,206,210,214,219,223,227,231,235,239,243,247,251,255);
+ return 0xff000000u|(five[(w>>(f?10u:11u))&31u]<<16u)|((f?five[(w>>5u)&31u]:six[(w>>5u)&63u])<<8u)|five[w&31u];}
+
+uint u(uint i,uint n){return command[p.drawsOffset+i*32u+n];}
+float f(uint i,uint n){return uintBitsToFloat(u(i,n));}
+uint byteAt(uint offset,uint at){return (material[offset+at/4u]>>((at%4u)*8u))&255u;}
+uint over(uint s,uint d){uint inv=255u-(s>>24),o=0;for(uint sh=0;sh<32;sh+=8)o|=min(255u,((s>>sh)&255u)+(((d>>sh)&255u)*inv+127u)/255u)<<sh;return o;}
+uint lit(uint dst,uint rgb,uint mask,bool add){uint o=0xff000000u;for(uint sh=0;sh<24;sh+=8){uint src=((rgb>>sh)&255u)*mask/127u,old=(dst>>sh)&255u;o|=(add?min(255u,old+src):src+old*(127u-mask)/127u)<<sh;}return o;}
+int roundAway(float v){return int(sign(v)*floor(abs(v)+0.5));}
+int lineHits(uint i,ivec2 at){
+ vec2 a=vec2(f(i,8),f(i,9)),b=vec2(f(i,10),f(i,11)),delta=b-a;int count=int(u(i,12));if(count==0)return at==ivec2(roundAway(a.x),roundAway(a.y))?1:0;
+ if(count==1){int hits=0;for(int n=0;n<=1;++n){vec2 q=a+delta*float(n);if(at==ivec2(roundAway(q.x),roundAway(q.y)))++hits;}return hits;}
+ bool majorX=abs(delta.x)>=abs(delta.y);float extent=majorX?delta.x:delta.y;
+ if(abs(extent)<0.00001)return at==ivec2(roundAway(a.x),roundAway(a.y))?count+1:0;
+ float center=(float(majorX?at.x:at.y)-(majorX?a.x:a.y))*float(count)/extent;
+ int first=max(0,int(floor(center))-3),last=min(count,int(ceil(center))+3),hits=0;
+ for(int n=first;n<=last;++n){vec2 q=a+delta*float(n)/float(count);if(at==ivec2(roundAway(q.x),roundAway(q.y)))++hits;}return hits;
+}
+bool radarHit(uint i,ivec2 at){
+ ivec2 a=ivec2(u(i,8),u(i,9)),b=ivec2(u(i,10),u(i,11));int dx=b.x-a.x,dy=abs(b.y-a.y),signY=b.y<a.y?-1:1;
+ bool majorX=dx>dy;int major=max(dx,dy),minor=min(dx,dy),count=major+int(dx==0||dy==0);
+ if(major==0)return all(equal(at,a));int n=majorX?at.x-a.x:(at.y-a.y)*signY;if(n<0||n>=count)return false;
+ // Error > 0, with the diagonal endpoint excluded by Surface::DrawLine.
+ int m=(2*n*minor+major-1)/(2*major);ivec2 q=a+(majorX?ivec2(n,m*signY):ivec2(m,n*signY));return all(equal(at,q));
+}
+int boltHits(uint i,ivec2 at){
+ ivec2 a=ivec2(u(i,8),u(i,9)),b=ivec2(u(i,10),u(i,11)),d=abs(b-a),step=ivec2(a.x<b.x?1:-1,a.y<b.y?1:-1);int r=int(u(i,13));bool majorX=d.x>=d.y;int major=majorX?d.x:d.y,minor=majorX?d.y:d.x;
+ if(major==0)return all(lessThanEqual(abs(at-a),ivec2(r)))?1:0;
+ int center=(majorX?at.x-a.x:at.y-a.y)*(majorX?step.x:step.y),hits=0;
+ for(int n=max(0,center-r);n<=min(major,center+r);++n){int m=(n*minor*2+major)/(major*2);ivec2 q=a+(majorX?ivec2(n,m):ivec2(m,n))*step;if(all(lessThanEqual(abs(at-q),ivec2(r))))++hits;}return hits;
+}
+bool insideWave(uint i,ivec2 at){
+ float crosses[6];uint count=0,vertices=u(i,20);for(uint n=0;n<vertices;++n){uint next=(n+1u)%vertices;vec2 a=vec2(f(i,8+2*n),f(i,9+2*n)),b=vec2(f(i,8+2*next),f(i,9+2*next));float y=float(at.y)+.5;if((a.y>y)!=(b.y>y))crosses[count++]=a.x+(y-a.y)*(b.x-a.x)/(b.y-a.y);}
+ for(uint n=1;n<count;++n)for(uint k=n;k>0&&crosses[k]<crosses[k-1];--k){float t=crosses[k];crosses[k]=crosses[k-1];crosses[k-1]=t;}
+ for(uint n=0;n+1<count;n+=2)if(at.x>=int(ceil(crosses[n]))&&at.x<=int(floor(crosses[n+1])))return true;return false;
+}
+uint rawAlpha(ivec2 q){if(any(lessThan(q,ivec2(0)))||any(greaterThanEqual(q,ivec2(p.width,p.height))))return 0u;uint at=uint(q.y)*p.width+uint(q.x);return p.nativeScene!=0u?(pixel[p.zaOffset+at]>>16u)&255u:p.fogOffset==0xffffffffu?127u:byteAt(p.fogOffset,at);}
+uvec3 unpackWord(uint w,bool f){return uvec3(((w>>(f?10u:11u))&31u)<<3u,((w>>5u)&(f?31u:63u))<<(f?3u:2u),(w&31u)<<3u);}
+uint packWide(uvec3 c,bool f){return (((c.x>>3u)<<(f?10u:11u))|((c.y>>(f?3u:2u))<<5u)|(c.z>>3u))&65535u;}
+uint nativeLineColor(uint dst,uint rgb,uint a,uint mode,uint strength,bool format){if(a==0u&&mode!=3u)return dst;uvec3 d=unpackWord(wordF(dst,format),format),s=uvec3((rgb>>16u)&255u,(rgb>>8u)&255u,rgb&255u),outValue;
+ if(mode==3u){outValue=uvec3(min(ivec3(d)+((ivec3(d)*int(strength))>>8),ivec3(255)));}
+ else if(mode==2u){uint w=wordF(rgb,format);if(a==127u)return expandWord(w,format);outValue=unpackWord(w,format)*a>>7u;}
+ else if(mode==1u){outValue=d+((s*a)>>7u);uint count=0u,excess=0u;for(int n=0;n<3;++n)if(outValue[n]>=255u){++count;excess+=outValue[n]-255u;}if(count==1u)excess>>=1u;if(count>0u&&count<3u)for(int n=0;n<3;++n)if(outValue[n]<255u)outValue[n]+=excess;outValue=min(outValue,uvec3(255u));}
+ else outValue=(((d*(256u-strength))>>8u)+((s*strength)>>8u))*a>>7u;
+ return expandWord(packWide(outValue,format),format);}
+uint nativeWaveColor(uint source,uint kind,int strength,bool format){uvec3 c=unpackWord(wordF(source,format),format);if(kind==0u){c.y=min(255u,c.y+((uint(strength)*c.y)>>8u));c.z=min(255u,c.z+((uint(strength)*c.z)>>8u));}
+ else if(kind==3u){c.x=min(255u,c.x+((uint(strength/2)*c.x)>>8u));c.z=min(255u,c.z+((uint(strength)*c.z*4u)>>8u));}
+ else{c.x=min(255u,c.x+uint(max(0,strength*64)>>8));c.z=min(255u,c.z+uint(max(0,strength*96)>>8));}return expandWord(packWide(c,format),format);}
+uint nativeAAColor(uint old,uint rgb,uint alpha,uint sw,uint dw,bool format){uvec3 dst=unpackWord(wordF(old,format),format),src=uvec3((rgb>>16u)&255u,(rgb>>8u)&255u,rgb&255u),outValue=min(((dst*dw+src*sw)*alpha)>>15u,uvec3(255u));return expandWord(packWide(outValue,format)&65535u,format);}
+void serialAA(uint i){vec2 scale=vec2(f(i,8),f(i,9));uint base=u(i,3);for(uint n=0u;n<u(i,12);++n){uint op=base+n*10u;ivec2 q[2]=ivec2[2](ivec2(material[op],material[op+1u]),ivec2(material[op+2u],material[op+3u]));ivec2 at[2]=ivec2[2](ivec2(floor((vec2(q[0])+.5)*scale)),ivec2(floor((vec2(q[1])+.5)*scale)));
+ if(any(lessThan(at[0],ivec2(0)))||any(greaterThanEqual(at[0],ivec2(p.width,p.height))))continue;uint address=uint(at[0].y)*p.width+uint(at[0].x);if(p.nativeScene!=0u&&material[op+4u]>=(pixel[p.zaOffset+address]&65535u))continue;uint alpha=rawAlpha(at[0]);if(alpha==0u)continue;
+ uint old[2];for(int k=0;k<2;++k)old[k]=any(lessThan(at[k],ivec2(0)))||any(greaterThanEqual(at[k],ivec2(p.width,p.height)))?0xff000000u:pixel[uint(at[k].y)*p.width+uint(at[k].x)];uint nextValue[2];for(int k=0;k<2;++k)nextValue[k]=nativeAAColor(old[material[op+9u]!=0u?1-k:k],u(i,1),alpha,material[op+5u+uint(k)*2u],material[op+6u+uint(k)*2u],u(i,14)!=0u);
+ for(int k=0;k<2;++k){ivec2 l=max(ivec2(0),ivec2(ceil(vec2(q[k])*scale-.5))),r=min(ivec2(p.width,p.height),ivec2(ceil((vec2(q[k])+1.)*scale-.5)));for(int y=l.y;y<r.y;++y)for(int x=l.x;x<r.x;++x)pixel[uint(y)*p.width+uint(x)]=nextValue[k];}memoryBarrierBuffer();}}
+void main(){
+ if(p.format==1u){if(any(notEqual(gl_GlobalInvocationID,uvec3(0u))))return;serialAA(p.reserved);return;}
+ uvec2 at=gl_GlobalInvocationID.xy+uvec2(p.left,p.top);if(at.x>=p.right||at.y>=p.bottom||at.x>=p.width||at.y>=p.height)return;
+ uint address=at.y*p.width+at.x,visible=p.fogOffset==0xffffffffu?127u:min(127u,byteAt(p.fogOffset,address));
+ uint bin=(at.y/32u)*p.columns+at.x/32u,start=command[p.binsOffset+2u*bin],count=command[p.binsOffset+2u*bin+1u],dst=pixel[address],bolt=0;
+ for(uint n=0;n<count;++n){uint i=command[p.refsOffset+start+n];if(at.x<u(i,4)||at.y<u(i,5)||at.x>=u(i,6)||at.y>=u(i,7))continue;uint kind=u(i,0),rgb=u(i,1);if(visible==0u&&kind!=1u&&kind!=9u&&kind!=10u&&kind!=5u&&kind!=6u&&kind!=7u&&kind!=8u)continue;
+  if(kind==10u){vec2 scale=vec2(f(i,10),f(i,11));ivec2 q=ivec2(floor((vec2(at)+.5)/scale));int row=q.y-int(u(i,8));if(row<0||row>=int(u(i,9)))continue;uint base=u(i,3),start=material[base+uint(row)*2u],end=start+material[base+uint(row)*2u+1u]*2u;
+   uint low=start,high=end;while(low<high){uint middle=low+((high-low)/4u)*2u;if(int(material[base+middle])<q.x)low=middle+2u;else high=middle;}for(uint op=low;op<end&&int(material[base+op])==q.x;op+=2u){uint z=material[base+op+1u];if(u(i,12)==4u){dst=expandWord(wordF(u(i,1),u(i,14)!=0u),u(i,14)!=0u);continue;}if(p.nativeScene!=0u&&z>=(pixel[p.zaOffset+address]&65535u))continue;ivec2 gate=ivec2(at);if(u(i,12)==1u)gate.x=int(floor((float(int(u(i,15)))+.5)*scale.x));dst=nativeLineColor(dst,u(i,1),rawAlpha(gate),u(i,12),u(i,13),u(i,14)!=0u);}
+  }else if(kind==9u){vec2 scale=vec2(f(i,8),f(i,9));ivec2 q=ivec2(floor((vec2(at)+.5)/scale));int row=q.y-int(u(i,15));if(row<0||row>=int(u(i,14)))continue;int inset=u(i,1)==0u||u(i,1)==3u?3:0;if(q.x<inset||q.y<inset||q.x>int(u(i,19))-inset||q.y>int(u(i,20))-inset)continue;
+   int l=int(material[u(i,3)+uint(row)*2u]),r=int(material[u(i,3)+uint(row)*2u+1u]);if(q.x<l||q.x>r)continue;uint z=uint(32768-int(u(i,12))-q.y-2)&65535u;if(p.nativeScene!=0u&&z>=(pixel[p.zaOffset+address]&65535u))continue;
+   uint waveKind=u(i,1);if(waveKind==1u||waveKind==2u){dst=nativeWaveColor(dst,waveKind,int(u(i,13)),u(i,18)!=0u);continue;}
+   int index=abs(q.y-int(u(i,11)))*300+abs(q.x-int(u(i,10)));if(index<0||index>=90000||u(i,31)==0xffffffffu)continue;uint table=u(i,31);int distance=int(byteAt(table,uint(index)*2u)|(byteAt(table,uint(index)*2u+1u)<<8u)),sineIndex=distance+int(u(i,13));if(sineIndex<0||sineIndex>=(waveKind==3u?1002:500))continue;
+   uint sineByte=180000u+uint(sineIndex+(waveKind==3u?0:502))*2u;int sine=int(byteAt(table,sineByte)|(byteAt(table,sineByte+1u)<<8u));if(sine>=32768)sine-=65536;int magnitude=abs(sine);if(waveKind==3u)magnitude=min(magnitude,9);if(magnitude>12)continue;int multiple=magnitude<=1?0:magnitude<=6?1:magnitude<=9?2:3;
+   int pitch=int(u(i,19));const ivec2 direction[8]=ivec2[8](ivec2(0,-1),ivec2(1,-1),ivec2(1,0),ivec2(1,1),ivec2(0,1),ivec2(-1,1),ivec2(-1,0),ivec2(-1,-1));ivec2 d=direction[min(u(i,2),7u)];int linear=q.y*pitch+q.x+(d.y*pitch+d.x)*multiple;if(linear<0||linear>=pitch*int(u(i,20)))continue;ivec2 source=ivec2(floor((vec2(linear%pitch,linear/pitch)+.5)*scale));if(any(lessThan(source,ivec2(0)))||any(greaterThanEqual(source,ivec2(p.width,p.height))))continue;
+   int brightness=int(material[table+45501u+uint(magnitude)]);dst=nativeWaveColor(pixel[p.snapshotOffset+uint(source.y)*p.width+uint(source.x)],waveKind,brightness,u(i,18)!=0u);
+  }else if(kind==7u){ivec2 q=ivec2(floor((vec2(at)+.5-vec2(f(i,8),f(i,9)))/vec2(f(i,10),f(i,11))));if(all(greaterThanEqual(q,ivec2(0)))&&q.x<int(u(i,14))&&q.y<int(u(i,15))){uint c=material[u(i,3)+uint(q.y)*u(i,14)+uint(q.x)];if((c>>24u)!=0u)dst=c;}}
+  else if(kind==8u){if(radarHit(i,ivec2(at)))dst=0xff000000u|rgb;}
+  else if(kind==5u){
+   if(u(i,1)==1u){dst=0xffffffffu;continue;}
+   vec2 nativeSize=vec2(u(i,10),u(i,11)),local=floor(vec2(at)*nativeSize/vec2(p.width,p.height));
+   // Our output is the tactical crop; the game's 32-pixel command bar is
+   // outside it. Use Composite's full-height centre (height-32 == crop).
+   vec2 centre=floor(nativeSize*.5),delta=local-centre;float radial=(1.-dot(delta,delta)/max(1.,dot(centre,centre)))*5.;
+   float angle=radial*radial*f(i,9),rawFloat=angle*2607.594482421875;int raw=rawFloat<2147483520.&&rawFloat>=-2147483648.?int(rawFloat):int(0x80000000u),index=(raw/2)%8192;if(index<0)index+=8192;int cosine=index+2048;
+   if((raw&1)!=0){if(index<8191)++index;if(cosine<10239)++cosine;}
+   float sn=uintBitsToFloat(material[u(i,3)+uint(index)]),cs=uintBitsToFloat(material[u(i,3)+uint(cosine)]);
+   ivec2 sampleNative=clamp(ivec2(vec2(sn*delta.y+cs*delta.x,cs*delta.y-sn*delta.x)+centre),ivec2(0),ivec2(nativeSize)-1);
+   uvec2 q=min(uvec2(vec2(sampleNative)*vec2(p.width,p.height)/nativeSize),uvec2(p.width-1u,p.height-1u));uint source=pixel[p.snapshotOffset+q.y*p.width+q.x],weight=u(i,8)&65535u;
+   uvec3 c=uvec3((source>>19u)&31u,(source>>10u)&63u,(source>>3u)&31u),maximum=uvec3(31u,63u,31u);c+=((maximum-c)*weight)>>8u;
+   uvec3 bytes=(c*255u+maximum/2u)/maximum;dst=0xff000000u|(bytes.r<<16u)|(bytes.g<<8u)|bytes.b;
+  }else if(kind==6u){uint phase=u(i,8),lerp=phase&4095u;if((phase&4096u)!=0u)lerp=4096u-lerp;uint color=0u;
+   for(uint sh=0u;sh<24u;sh+=8u)color|=(((((u(i,1)>>sh)&255u)*(4096u-lerp))+(((u(i,2)>>sh)&255u)*lerp))>>12u)<<sh;
+   if(u(i,9)==0u){uint r=(color>>19u)&31u,g=(color>>10u)&63u,b=(color>>3u)&31u;color=(((r<<3u)|(r>>2u))<<16u)|(((g<<2u)|(g>>4u))<<8u)|(b<<3u)|(b>>2u);}dst=0xff000000u|color;
+  }else if(kind==0u){int hits=lineHits(i,ivec2(at));for(int k=0;k<hits;++k)dst=lit(dst,rgb,visible,u(i,2)!=0u);}
+  else if(kind==1u){ivec2 q=ivec2(floor((vec2(at)+.5)/vec2(f(i,10),f(i,11))))-ivec2(u(i,8),u(i,9));if(all(greaterThanEqual(q,ivec2(0)))&&q.x<256&&q.y<128){uint m=byteAt(u(i,3),uint(q.y)*256u+uint(q.x));if(m!=0u){bool f555=u(i,14)!=0u;uint word=wordF(dst,f555),flags=u(i,2);uvec3 c=uvec3(((word>>(f555?10u:11u))&31u)<<3u,((word>>5u)&(f555?31u:63u))<<(f555?3u:2u),(word&31u)<<3u);
+    for(uint n=0u;n<3u;++n){if((flags&1u)!=0u)c[n]=c[n]*(256u-m)>>8u;else if((flags&(2u<<n))==0u)c[n]=min(c[n]*(256u+m)>>8u,255u);}dst=expandWord(wordF((c.x<<16u)|(c.y<<8u)|c.z,f555),f555);}}}
+
+  else if(kind==2u&&p.nativeScene==0u){ivec2 q=clamp(ivec2((vec2(at)-vec2(f(i,8),f(i,9)))/vec2(f(i,10),f(i,11))),ivec2(0),ivec2(u(i,14)-1u,u(i,15)-1u));uint index=byteAt(u(i,3),uint(q.y)*u(i,14)+uint(q.x));if(index!=0){uint o=0xff000000u;for(uint sh=0;sh<24;sh+=8){uint old=(dst>>sh)&255u,value=min(255u,old*index/128u);o|=((value*visible+old*(127u-visible))/127u)<<sh;}dst=o;}}
+  else if(kind==3u&&insideWave(i,ivec2(at))){
+   vec2 scale=vec2(f(i,23),f(i,24));float distance=length((vec2(at)-vec2(f(i,21),f(i,22)))/scale);int sine=int(sin((distance+float(int(u(i,25))))*(u(i,26)==3u?.1:.125))*12.+.49);int mag=min(u(i,26)==3u?9:12,abs(sine)),multiple=mag<=1?0:mag<=6?1:mag<=9?2:3;
+   const ivec2 directions[8]=ivec2[8](ivec2(0,-1),ivec2(1,-1),ivec2(1,0),ivec2(1,1),ivec2(0,1),ivec2(-1,1),ivec2(-1,0),ivec2(-1,-1));vec2 delta=vec2(directions[u(i,27)])*float(multiple)*scale;ivec2 q=clamp(ivec2(at)+ivec2(roundAway(delta.x),roundAway(delta.y)),ivec2(0),ivec2(p.width-1u,p.height-1u));
+   uint source=pixel[p.snapshotOffset+uint(q.y)*p.width+uint(q.x)],o=0xff000000u;for(uint sh=0;sh<24;sh+=8){uint value=min(255u,(((source>>sh)&255u)*uint(110+mag*8))/128u);o|=((value*visible+((dst>>sh)&255u)*(127u-visible))/127u)<<sh;}dst=o;
+  }else if(kind==4u){int hits=boltHits(i,ivec2(at));for(int k=0;k<hits;++k)bolt=over(rgb,bolt);}
+ }
+ if(bolt!=0u){uint masked=0;for(uint sh=0;sh<32;sh+=8)masked|=((((bolt>>sh)&255u)*visible+63u)/127u)<<sh;dst=over(masked,dst);}pixel[address]=dst;
+}

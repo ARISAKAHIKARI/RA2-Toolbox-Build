@@ -1,0 +1,186 @@
+{
+  "scope": "Capture actual DLL Shroud/Fog drawing cost and write boundaries.\n\nRequires Python 3 with pefile and unicorn (for example: pip install pefile unicorn).\nUsage: python shroud_draw_capture.py path/to/capture-fixture.exe path/to/GameRuntime.dll --output draw.json\n\nUses the neighboring no_interception_runtime.py / entry_runtime_regression.py\nfixtures. Six cases exercise native, transparent and half-transparent Shroud\nand Fog on a loaded, uncompressed 32x32 SHP with a native 32x32 BSurface.\nThe original bounds/pixel/alpha-address helpers and native surface vtable run;\nWin32 and the separate redraw-on-setting boundary are mocked. Lazy resource\nloading, the upper Cell::DrawShroud selector and real Windows SEH dispatch are\nnot exercised. Counts are emulated memory operations and manager calls, not\nWindows timings, multiplayer validation or evidence about CRC causality.\n",
+  "dll_sha256": "24c405af124ec60c88b92c47b0cbaca9ab02ba1ed7530f5631f442520f43a08c",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "windows_timing_tested": false,
+  "manager_operation_names": {
+    "1": "Leave",
+    "5": "Capture",
+    "6": "Validate"
+  },
+  "results": [
+    {
+      "case": "draw_mode_0_shroud",
+      "status": "PASS",
+      "mode": 0,
+      "fog": false,
+      "manager_operations": {},
+      "writes": {
+        "stack": 1149,
+        "surface_lock_count": 2,
+        "alpha_pixels": 1024
+      },
+      "pixel_reads": {
+        "source_pixels": 1024
+      },
+      "native_calls": {
+        "0x69e7e0": 1,
+        "0x69e580": 2,
+        "0x69e740": 1,
+        "0x4114b0": 1,
+        "0x4115f0": 1,
+        "0x411570": 1
+      },
+      "fp_state_preserved": true,
+      "alpha_values": {
+        "64": 1024
+      },
+      "surface_lock_final": 0
+    },
+    {
+      "case": "draw_mode_0_fog",
+      "status": "PASS",
+      "mode": 0,
+      "fog": true,
+      "manager_operations": {},
+      "writes": {
+        "stack": 1112,
+        "surface_lock_count": 2,
+        "alpha_pixels": 1024
+      },
+      "pixel_reads": {
+        "source_pixels": 1024,
+        "alpha_pixels": 1024
+      },
+      "native_calls": {
+        "0x69e7e0": 1,
+        "0x69e580": 2,
+        "0x69e740": 1,
+        "0x4114b0": 1,
+        "0x4115f0": 1,
+        "0x411570": 1
+      },
+      "fp_state_preserved": true,
+      "alpha_values": {
+        "64": 1024
+      },
+      "surface_lock_final": 0
+    },
+    {
+      "case": "draw_mode_1_shroud",
+      "status": "PASS",
+      "mode": 1,
+      "fog": false,
+      "manager_operations": {
+        "5": 1,
+        "1": 1
+      },
+      "writes": {
+        "stack": 195,
+        "seh_chain_fixture": 2,
+        "runtime_dll": 27
+      },
+      "pixel_reads": {},
+      "native_calls": {},
+      "fp_state_preserved": true,
+      "alpha_values": {
+        "127": 1024
+      },
+      "surface_lock_final": 0
+    },
+    {
+      "case": "draw_mode_1_fog",
+      "status": "PASS",
+      "mode": 1,
+      "fog": true,
+      "manager_operations": {
+        "5": 1,
+        "1": 1
+      },
+      "writes": {
+        "stack": 193,
+        "seh_chain_fixture": 2,
+        "runtime_dll": 27
+      },
+      "pixel_reads": {},
+      "native_calls": {},
+      "fp_state_preserved": true,
+      "alpha_values": {
+        "127": 1024
+      },
+      "surface_lock_final": 0
+    },
+    {
+      "case": "draw_mode_2_shroud",
+      "status": "PASS",
+      "mode": 2,
+      "fog": false,
+      "manager_operations": {
+        "5": 1,
+        "6": 1027,
+        "1": 1
+      },
+      "writes": {
+        "stack": 31135,
+        "seh_chain_fixture": 2,
+        "runtime_dll": 4135,
+        "surface_lock_count": 2,
+        "alpha_pixels": 1024
+      },
+      "pixel_reads": {
+        "source_pixels": 1024,
+        "alpha_pixels": 1024
+      },
+      "native_calls": {
+        "0x69e7e0": 1,
+        "0x69e580": 2,
+        "0x69e740": 1,
+        "0x4114b0": 1,
+        "0x4115f0": 1,
+        "0x411570": 1
+      },
+      "fp_state_preserved": true,
+      "alpha_values": {
+        "96": 1024
+      },
+      "surface_lock_final": 0
+    },
+    {
+      "case": "draw_mode_2_fog",
+      "status": "PASS",
+      "mode": 2,
+      "fog": true,
+      "manager_operations": {
+        "5": 1,
+        "6": 1027,
+        "1": 1
+      },
+      "writes": {
+        "stack": 31133,
+        "seh_chain_fixture": 2,
+        "runtime_dll": 4135,
+        "surface_lock_count": 2,
+        "alpha_pixels": 1024
+      },
+      "pixel_reads": {
+        "source_pixels": 1024,
+        "alpha_pixels": 1024
+      },
+      "native_calls": {
+        "0x69e7e0": 1,
+        "0x69e580": 2,
+        "0x69e740": 1,
+        "0x4114b0": 1,
+        "0x4115f0": 1,
+        "0x411570": 1
+      },
+      "fp_state_preserved": true,
+      "alpha_values": {
+        "96": 1024
+      },
+      "surface_lock_final": 0
+    }
+  ]
+}

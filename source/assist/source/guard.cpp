@@ -14,14 +14,15 @@ extern "C" int AssistExceptionFilter(void* raw,unsigned boundary){
  }
  return 1;
 }
-// A failed read-only native legality query rejects this batch before submission.
-// Other exceptions still reach the outer Runtime fault boundary.
+// A failed native legality query rejects this batch before submission. SEH
+// bounds faults, not side effects of platform/MOD overrides. UI marks this risk.
 extern "C" int GuardedEnterAction(unsigned address,unsigned source,unsigned target,unsigned* action){
  __try {*action=((unsigned(__thiscall*)(void*,void*,bool))address)((void*)source,(void*)target,true);return 1;}
  __except(_exception_code()==0xc0000005u?AssistExceptionFilter(_exception_info(),9):0){return 0;}
 }
 // YRpp virtual SelectWeapon (+2E4), GetWeapon (+3F8), IsCloseEnough (+3A8).
-// Read-only queries, on the bound game thread; no click/fire/mission mutation.
+// Explicit experimental compatibility path. Platform/MOD virtual-method side
+// effects are not verified; default callers use the raw query wrapper instead.
 extern "C" int GuardedCombatWeapon(unsigned source,unsigned target,unsigned* weapon,int* selected,int* close,int* airborne){
  __try {
   auto table=*(unsigned**)source;
@@ -39,9 +40,6 @@ extern "C" int GuardedCombatWeapon(unsigned source,unsigned target,unsigned* wea
 extern "C" int GuardedObjectAir(unsigned object,int* airborne){
  __try {*airborne=((bool(__thiscall*)(void*))(*(unsigned**)object)[0x54/4])((void*)object);return 1;}
  __except(_exception_code()==0xc0000005u?AssistExceptionFilter(_exception_info(),9):0){return 0;}
-}
-extern "C" int GuardedMissileWeapon(unsigned source,unsigned target,unsigned* weapon){
- int slot=0,close=0,airborne=0;return GuardedCombatWeapon(source,target,weapon,&slot,&close,&airborne)>0&&close;
 }
 extern "C" unsigned BeginAssistCapture();
 extern "C" void EndAssistCapture(unsigned);
@@ -78,3 +76,49 @@ extern "C" int GuardedViewResize(unsigned enableZoom,int width,int height){
  __try {((void(__cdecl*)())enableZoom)();return ((bool(__fastcall*)(int,int))0x560BF0)(width,height)?1:0;}
  __except(AssistExceptionFilter(_exception_info(),12)){return -1;}
 }
+
+
+// Native sender callback: the outer wrapper owns one capture lease across all
+// original packing/timing/transport calls; cleanup runs before releasing it.
+extern "C" int __cdecl AssistNetworkSend(unsigned,unsigned,int,int,int);
+extern "C" void __cdecl AssistNetworkSenderAbort();
+extern "C" int __cdecl GuardedNetworkSend(unsigned transport,unsigned buffer,int capacity,int delay,int serial){
+ const unsigned long savedError=GetLastError();
+ unsigned token=BeginAssistCapture();if(!token){SetLastError(savedError);return 0;}
+ int result=0;
+ __try {
+  __try {result=AssistNetworkSend(transport,buffer,capacity,delay,serial);}
+  __except(AssistExceptionFilter(_exception_info(),13)){AssistNetworkSenderAbort();}
+ }__finally {EndAssistCapture(token);SetLastError(savedError);}
+ return result;
+}
+
+// A failed local text query retains the original tooltip and other services.
+extern "C" unsigned AssistBuildTimeTooltip(unsigned,unsigned);
+extern "C" void AssistBuildTimeTooltipFailed();
+extern "C" unsigned GuardedBuildTimeTooltip(unsigned id,unsigned original){
+ const unsigned long savedError=GetLastError();
+ unsigned token=BeginAssistCapture();if(!token){SetLastError(savedError);return original;}
+ unsigned result=original;
+ __try {
+  __try {result=AssistBuildTimeTooltip(id,original);}
+  __except(AssistExceptionFilter(_exception_info(),17)){AssistBuildTimeTooltipFailed();result=original;}
+ }__finally {EndAssistCapture(token);SetLastError(savedError);}
+ return result;
+}
+
+// CRC leaves return the already-loaded native EBX on failure. No game writes
+// or CRC/RNG recomputation in this boundary; capture is owned by native logic.
+extern "C" unsigned __cdecl AssistMapCrcShadow(unsigned,unsigned,unsigned);
+extern "C" void __cdecl AssistMapCrcAbort();
+extern "C" unsigned __cdecl GuardedMapCrcShadow(unsigned op,unsigned house,unsigned savedEBX){
+ const unsigned long savedError=GetLastError();unsigned result=savedEBX;
+ __try {result=AssistMapCrcShadow(op,house,savedEBX);}
+ __except(AssistExceptionFilter(_exception_info(),14)){AssistMapCrcAbort();}
+ SetLastError(savedError);return result;
+}
+
+#include "pause_view_guard.h"
+
+#include "sidebar_view_guard.h"
+#include "tech_ui_breakpoint_guard.h"

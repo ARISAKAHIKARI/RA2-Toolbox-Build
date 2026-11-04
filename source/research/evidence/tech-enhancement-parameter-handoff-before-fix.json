@@ -1,0 +1,15 @@
+{
+  "old_mode": "legacy rule data TechLevel1",
+  "requested_mode": "exact parameters",
+  "active_product_still_present": true,
+  "type_level_after_first_transition_tick": 4294967295,
+  "installed_DR_slots": 0,
+  "new_mode_status": 2,
+  "unsafe_gap_reproduced": true,
+  "dll_sha256": "b4140037650dc95fb4821c2497cedaaa476eae3c7ad111c3c7a8ef564d2dc6b8",
+  "pdb_sha256": "dbb0ce7d90ca1d100e47b9f44aebe108a94744cc54c65bba0278b9ad19ca5ebd",
+  "private_game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "scope": "Compiled Runtime synthetic in-flight product; observes permission gap only. No native prune/Abandon execution, no game process or multiplayer.",
+  "game_process_tested": false,
+  "multiplayer_tested": false
+}

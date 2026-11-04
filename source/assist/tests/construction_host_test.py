@@ -7,7 +7,7 @@ root=Path(__file__).resolve().parents[2]
 source=(root/'assist/source/construction_host.h').read_text()
 source='\n'.join(line for line in source.splitlines() if not line.startswith('#include'))
 a=source.index('static external::ReadSession paintReader;');b=source.index('static void service()',a)
-source=source[:a]+'static int proc=0;\n'+source[b:]
+source=source[:a]+'static int proc=0;\nstatic void resetPaint(){paintReady=false;} static void requestPaint(){} static void pumpPaint(){}\n'+source[b:]
 prefix=r'''
 #include "native_hotkeys.h"
 #include "construction_catalog.h"
@@ -41,6 +41,9 @@ struct Reader{std::vector<uint8_t>bytes=std::vector<uint8_t>(0x1000000);uint32_t
 }externalReader;
 namespace assist { namespace construction {struct PanelBuffer{void clear(){}};}}
 namespace um{struct IconCache{void open(const wchar_t*,const std::filesystem::path&){}};inline IconCache& sharedIconCache(){static IconCache c;return c;}}
+static bool displayHold=false;
+static bool constructionDisplayVisible(){return focused&&(snap.renderStatus==1||displayHold)&&!snap.chat;}
+static bool constructionDisplayFresh(){return constructionDisplayVisible()&&snap.renderStatus==1&&!displayHold;}
 static DWORD GetTickCount(){return now;}static bool foregroundGame(){return focused;}static bool commandFresh(uint32_t){return fresh;}static uint32_t commandMatch(){return match;}
 static bool queueCommand(int c,int a,int b,uint32_t m,int retries=0,uint32_t delay=0,uint32_t token=0){return queueAccept&&commandQueue.add({c,a,b,pid,m,now,retries,now+delay,token});}
 static void notify(const std::wstring&s){message=s;}static void critical(const std::wstring&){}
@@ -173,10 +176,11 @@ int main(){
  setup();reserve(choice(1));fresh=false;tick();assert(geometryReady&&books[0].items==std::vector<int>({1})&&reservationPolicy.slots==0);
  reserve(choice(1));assert(books[0].items.size()==1);place();assert(commandQueue.size==0&&geometryReady);
  fresh=true;tick();assert(commandQueue.size==0);tick();assert(commandQueue.size==1);
- setup();snap.chat=1;tick();assert(geometryReady&&reservationPolicy.slots==0);snap.chat=0;tick();assert(reservationPolicy.slots==5);
+ setup();displayHold=true;snap.renderStatus=0;tick(1);assert(geometryReady&&reservationPolicy.slots==0);displayHold=false;snap.renderStatus=1;tick();assert(geometryReady&&reservationPolicy.slots==5);
+ setup();snap.chat=1;tick();assert(!geometryReady&&reservationPolicy.slots==0);snap.chat=0;tick();assert(reservationPolicy.slots==5);
  snap.renderStatus=0;tick();assert(!geometryReady&&reservationPolicy.slots==0);snap.renderStatus=1;tick();assert(geometryReady);
  focused=false;tick();assert(!geometryReady);focused=true;tick();assert(geometryReady);
- std::cout<<"PASS: read-only panel survives command suspension/chat; closed input/no Produce; resumes once; menu/focus still hide\n";
+ std::cout<<"PASS: read-only panel survives command suspension; closed input/no Produce; resumes once; chat/menu/focus hide consistently with main gate\n";
 
  // A queued barracks predicts infantry; no infantry factory exists yet.
  setup();reserve(choice(1));w(T+0x2000+0xEB8,16);uint32_t I=T+0x6000;

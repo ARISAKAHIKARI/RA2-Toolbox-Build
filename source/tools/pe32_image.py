@@ -1,9 +1,13 @@
-"""Small, dependency-free PE32 reader for release checks (not an executable loader)."""
+"""Small PE reader for release checks, with explicit opt-in PE32+ support.
+
+The default remains strict x86 PE32 because game-image audits use this reader.
+This module only reads file bytes; it never loads or executes an image.
+"""
 import struct
 
 
 class Image:
-    def __init__(self, data):
+    def __init__(self, data, *, allow_x64=False):
         self.data = data
         if self.take(0, 2) != b'MZ':
             raise ValueError('MZ header missing')
@@ -12,8 +16,19 @@ class Image:
             raise ValueError('PE signature missing')
         self.machine, self.section_count = self.unpack('<HH', self.nt + 4)
         self.optional = self.nt + 24
-        if self.machine != 0x14c or self.u16(self.optional) != 0x10b:
+        self.optional_size = self.u16(self.nt + 20)
+        self.take(self.optional, self.optional_size)
+        magic = self.u16(self.optional)
+        self.is_x64 = self.machine == 0x8664 and magic == 0x20b
+        if not (self.machine == 0x14c and magic == 0x10b) and not (allow_x64 and self.is_x64):
             raise ValueError('not x86 PE32')
+        minimum = 112 if self.is_x64 else 96
+        if self.optional_size < minimum:
+            raise ValueError('truncated PE optional header')
+        self.pointer_bytes = 8 if self.is_x64 else 4
+        self.directory_count_offset = 108 if self.is_x64 else 92
+        self.directory_offset = 112 if self.is_x64 else 96
+        self.architecture = 'PE32+ x64' if self.is_x64 else 'PE32 x86'
         self.characteristics = self.u16(self.nt + 22)
         self.entry = self.u32(self.optional + 16)
         self.sections = []
@@ -60,9 +75,14 @@ class Image:
         raise ValueError('unterminated PE string')
 
     def directory(self, number):
-        if self.u32(self.optional + 92) <= number:
+        if number < 0:
+            raise ValueError('invalid data directory number')
+        if self.u32(self.optional + self.directory_count_offset) <= number:
             return 0, 0
-        return self.unpack('<II', self.optional + 96 + number * 8)
+        at = self.directory_offset + number * 8
+        if at + 8 > self.optional_size:
+            raise ValueError('data directory outside optional header')
+        return self.unpack('<II', self.optional + at)
 
     def resource_blobs(self, resource_type, resource_id):
         """Read exact type/id language leaves, not arbitrary resource strings."""
@@ -136,11 +156,17 @@ class Image:
             name = self.cstring(row[3])
             functions = []
             for j in range(65536):
-                value = self.unpack('<I', self.offset((row[0] or row[4]) + j * 4, 4))[0]
+                width = self.pointer_bytes
+                value = self.unpack('<Q' if self.is_x64 else '<I',
+                                    self.offset((row[0] or row[4]) + j * width, width))[0]
                 if not value:
                     break
-                functions.append(f'ordinal:{value & 0xffff}' if value & 0x80000000
-                                 else self.cstring(value + 2))
+                if value & (1 << (width * 8 - 1)):
+                    functions.append(f'ordinal:{value & 0xffff}')
+                else:
+                    if value > 0xffffffff:
+                        raise ValueError('import name RVA exceeds 32 bits')
+                    functions.append(self.cstring(value + 2))
             else:
                 raise ValueError('unterminated import thunk table')
             result[name] = functions

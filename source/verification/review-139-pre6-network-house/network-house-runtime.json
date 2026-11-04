@@ -1,0 +1,202 @@
+{
+  "scope": "Actual DLL managed sender adapter with native packing and decode fixtures.\n\nSynthetic Win32, Houses and capture-only transport. Runs the installed DLL's\nthunks, native 649CA0/64B660 and 64BDD0; protocol 0 wire records are parsed.\nNo live peer, platform transport, event effects or complete House scheduler.\nAI/nonhuman Houses may be skipped by the original scheduler and are rejected\nas foreign adapter targets. MegaMission byte 0D is native cache metadata.\nFault cases test safe reads and deferred mapping cleanup. An optional matching\nPDB resolves the actual Abort body, not Windows SEH dispatch or exception unwind.\n",
+  "dll_sha256": "24c405af124ec60c88b92c47b0cbaca9ab02ba1ed7530f5631f442520f43a08c",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "pdb_sha256": "725d5b2351da19a4f7e2bebb918f82873ff57471f035640b25917cbac51b2e7c",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "runtime_foreign_destruct_through_sender_protocol_0",
+      "status": "PASS",
+      "runtime_command": 32,
+      "foreign_house": 1,
+      "same_native_local_and_decoded_event": true
+    },
+    {
+      "case": "runtime_foreign_destruct_through_sender_protocol_1",
+      "status": "PASS",
+      "runtime_command": 32,
+      "foreign_house": 1,
+      "same_native_local_and_decoded_event": true
+    },
+    {
+      "case": "runtime_foreign_destruct_through_sender_protocol_2",
+      "status": "PASS",
+      "runtime_command": 32,
+      "foreign_house": 1,
+      "same_native_local_and_decoded_event": true
+    },
+    {
+      "case": "installed_native_sender_session_3_protocol_0",
+      "status": "PASS",
+      "native_packets": 1,
+      "managed_sites": 5,
+      "leaf_register_fp_checks": 8,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "installed_native_sender_session_3_protocol_1",
+      "status": "PASS",
+      "native_packets": 3,
+      "managed_sites": 5,
+      "leaf_register_fp_checks": 14,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "installed_native_sender_session_3_protocol_2",
+      "status": "PASS",
+      "native_packets": 3,
+      "managed_sites": 5,
+      "leaf_register_fp_checks": 14,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "installed_native_sender_session_4_protocol_0",
+      "status": "PASS",
+      "native_packets": 1,
+      "managed_sites": 5,
+      "leaf_register_fp_checks": 8,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "installed_native_sender_session_4_protocol_1",
+      "status": "PASS",
+      "native_packets": 3,
+      "managed_sites": 5,
+      "leaf_register_fp_checks": 14,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "installed_native_sender_session_4_protocol_2",
+      "status": "PASS",
+      "native_packets": 3,
+      "managed_sites": 5,
+      "leaf_register_fp_checks": 14,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "rejection_singleplayer_0",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_singleplayer_5",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_unsupported_protocol",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_context_conflict",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_site_conflict",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_invalid_ring",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "callback_target_invalidation_protocol_1",
+      "status": "PASS",
+      "completed_prefix": 1,
+      "failed_group_not_consumed": true
+    },
+    {
+      "case": "callback_target_invalidation_protocol_2",
+      "status": "PASS",
+      "completed_prefix": 1,
+      "failed_group_not_consumed": true
+    },
+    {
+      "case": "foreign_filter_ai",
+      "status": "PASS",
+      "no_foreign_execution": true
+    },
+    {
+      "case": "foreign_filter_observer",
+      "status": "PASS",
+      "no_foreign_execution": true
+    },
+    {
+      "case": "foreign_filter_non_gameplay",
+      "status": "PASS",
+      "no_foreign_execution": true
+    },
+    {
+      "case": "foreign_filter_invalid_index",
+      "status": "PASS",
+      "no_foreign_execution": true
+    },
+    {
+      "case": "foreign_filter_wrong_thread",
+      "status": "PASS",
+      "no_foreign_execution": true
+    },
+    {
+      "case": "readiness_paused",
+      "status": "PASS",
+      "foreign_never_rewritten_as_local": true,
+      "same_world_foreign_cancelled": true
+    },
+    {
+      "case": "readiness_heartbeat_expired",
+      "status": "PASS",
+      "foreign_never_rewritten_as_local": true,
+      "same_world_foreign_cancelled": true
+    },
+    {
+      "case": "readiness_stopped",
+      "status": "PASS",
+      "foreign_never_rewritten_as_local": true,
+      "same_world_foreign_cancelled": true
+    },
+    {
+      "case": "readiness_changed_world",
+      "status": "PASS",
+      "foreign_never_rewritten_as_local": true,
+      "same_world_foreign_cancelled": false
+    },
+    {
+      "case": "fault_boundary_cached_house_unmapped",
+      "status": "PASS",
+      "cached_house_page_unmapped": true,
+      "safe_read_failures": 4,
+      "queue_unchanged": true,
+      "gate_retained": true
+    },
+    {
+      "case": "fault_boundary_stop_deferred_invalid_ring",
+      "status": "PASS",
+      "deferred_stop_ticks": 2,
+      "mapping_and_hooks_retained_until_safe": true,
+      "final_stop_ack": 2,
+      "foreign_cancelled": 1
+    },
+    {
+      "case": "fault_boundary_stop_deferred_changed_world",
+      "status": "PASS",
+      "deferred_stop_ticks": 2,
+      "mapping_and_hooks_retained_until_safe": true,
+      "final_stop_ack": 2,
+      "foreign_cancelled": 0
+    },
+    {
+      "case": "fault_boundary_abort_body_invalid_world_and_shared",
+      "status": "PASS",
+      "direct_abort_rva": "0x7a90",
+      "shared_and_cached_house_unmapped": true,
+      "only_dll_local_writes": 3,
+      "windows_seh_dispatch_tested": false
+    }
+  ]
+}

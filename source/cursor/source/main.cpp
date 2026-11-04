@@ -1,6 +1,8 @@
 #include "../../external_reader/source/shared_reader.h"
 #include "../../external_reader/source/process_discovery.h"
 #include "../../shared/source/modern_ui.h"
+#include "../../shared/source/ui_message_queue.h"
+#include "../../shared/source/settings_dialog.h"
 #include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/disabled_choices.h"
 #include "../../shared/source/release_version.h"
@@ -9,6 +11,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include "../../shared/source/bounded_shutdown.h"
 #include <tlhelp32.h>
 #include <shellapi.h>
 #include <commdlg.h>
@@ -25,6 +28,12 @@
 #include "../../shared/source/command_cursor_hint.h"
 #ifdef RA2_UNIFIED
 #include "suite_host.h"
+#endif
+#ifdef RA2_CONSOLE_WEBVIEW2
+#include "../../shared/source/async_ini_store.h"
+#define WritePrivateProfileStringW asyncini::write
+#define GetPrivateProfileStringW asyncini::cachedReadString
+#define GetPrivateProfileIntW asyncini::cachedReadInt
 #endif
 #include "scale.h"
 #include "features.h"
@@ -48,6 +57,9 @@
 #include "super_hotspot.h"
 #include "snapshot_latch.h"
 #include "stream_inference.h"
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+static bool consoleClosePrepared=false;
+#endif
 static HWND hud,hudBox;static bool manualCursorPause=false,systemCursorGuard=true,nativeMenuHold=false;static DWORD nativeMenuCandidateAt=0,lastObservedFrameAt=0;static int previousObservedFrame=-1;static std::vector<CursorRange> fallbackDefs;static CursorRangeTracker fallbackTracker;static bool hudEnabled=false;static std::wstring hudText;static unsigned hudUpdates=0,hudCommits=0,hudMotion=0,hudChanges=0;static double updateFps=0,commitFps=0,motionFps=0,changeFps=0;static uint32_t hudEpoch=0,hudPaintAt=0;static int hudLastFrame=-1;static uint32_t diagIndex=0xffffffff,diagLegacy=0xffffffff;static int scrollX=0,scrollY=0;static bool uiReady=false;
 struct ControlBounds { HWND handle; uidpi::Rect logical; };
 static std::vector<ControlBounds> controlOrigins;
@@ -56,8 +68,8 @@ static HFONT uiFont=nullptr, titleFont=nullptr, actionFont=nullptr;
 static bool uiLayoutBusy=false;
 // Compact first-run panel; legacy controls are shown only in Advanced.
 static bool advancedOpen=false;
-static constexpr int compactContentW=770,compactContentH=394;
-static constexpr int advancedContentW=770,advancedContentH=1354;
+static constexpr int compactContentW=770;static int compactContentH=394;
+static constexpr int advancedContentW=770;static int advancedContentH=1354;
 static int uiContentW=compactContentW,uiContentH=compactContentH;
 static constexpr int advancedOffsetY=325;
 static std::vector<HWND> advancedControls;
@@ -78,8 +90,15 @@ static void rebuildDisplay();
 static bool superCenter=true;static HWND superCenterBox;static superhot::Centers superCenters;
 static void textIfChanged(HWND w,const std::wstring& text){if(!IsWindow(w))return;int n=GetWindowTextLengthW(w);std::wstring old(size_t(n)+1,L'\0');GetWindowTextW(w,&old[0],n+1);old.resize(n);if(old!=text)SetWindowTextW(w,text.c_str());}
 
-static std::wstring root,gameDir,cacheKey,mode=L"hide";
+static std::wstring root,gameDir,cacheKey,mode=L"keep";
 static external::ReadSession cursorReader;static DWORD pid=0,threadId=0;static HWND game=nullptr,mainw,overlay,statusw;
+static int cursorDialog(const wchar_t*text,const wchar_t*title,UINT flags){
+#ifdef RA2_UNIFIED
+ return settingsdialog::message(mainw,true,text,title,flags);
+#else
+ return settingsdialog::message(mainw,false,text,title,flags);
+#endif
+}
 static Asset asset;static Bytes original;static DWORD palette[256];static bool loaded=false,running=false,installOwned=false;
 static bool hideConfirmed=false;static LONG lastRehideSeen=0;static gameinput::Subscription hook;static HANDLE mapping;static Shared* shared;
 // v1.2.7: platform host matching + immediate Hook on start.
@@ -227,8 +246,16 @@ static void updatePrimaryAction(){
  suite::reportEnabled(0,enabled);
 #endif
  textIfChanged(primaryAction,enabled?L"暂停":L"开启");
- textIfChanged(subTitleLabel,mode==L"hide"?(nativeGameRefresh?L"Hook · 游戏内刷新":L"光标显示与补帧 · 设置自动生效"):mode==L"sha"?L"透明 SHA · 外置光标":L"保留原光标 · 外置光标");
+ textIfChanged(subTitleLabel,mode==L"hide"?L"隐藏原光标 · 保留名称和价格提示":mode==L"sha"?L"透明 SHA · 外置光标":L"保留原光标 · 外置光标");
  std::wstring state=manualCursorPause?L"光标已暂停（F9 恢复）":!autoStart?L"已关闭":autoPaused?L"需要检查 · 展开高级设置":running?L"运行中":L"等待游戏启动";
+ if(running&&enabled&&!manualCursorPause&&mode==L"hide"){
+  if(!shared||shared->state==0)state=L"等待游戏执行隐藏原光标";
+  else if(shared->state==2||shared->command==2)state=L"原光标恢复待完成";
+  else if(shared->state<0)state=L"隐藏原光标未成功 · 展开查看原因";
+  else if(shared->tooltipState<0)state=L"原光标已隐藏 · 名称和价格提示修复未成功";
+  else if(shared->tooltipState==0)state=L"原光标已隐藏 · 等待提示修复";
+  else state=L"运行中 · 原光标已隐藏";
+ }
  textIfChanged(statusw,state);
  static int lastPaint=-1;int paint=running?2:enabled?1:0;
  if(lastPaint!=paint){lastPaint=paint;InvalidateRect(primaryAction,NULL,FALSE);InvalidateRect(mainw,NULL,FALSE);}
@@ -416,7 +443,7 @@ static bool anyGame(){auto scan=external::discovery::scan();return scan.processC
 static void install(){if(gameDir.empty()||!loaded)fail("Select the game folder first; bundled assets must be readable");if(anyGame())fail("Exit all Yuri game processes before installing");std::wstring dst=gameDir+L"\\mouse.sha",mark=dst+L".cursor-preview-state",bak=dst+L".cursor-preview-backup";if(exists(mark)||exists(bak))fail("Existing preview state/backup found. Restore first; never overwrite backups");if(manuallyBlankSHA()){status(L"检测到手动放入的透明 SHA，已可直接选择替换 SHA 模式；没有本程序的自动恢复备份。");return;}Bytes blank=encode(asset,true);save(cacheKey+L"\\transparent.sha",blank);bool had=exists(dst);if(had&&!CopyFileW(dst.c_str(),bak.c_str(),TRUE))fail("Backup failed");Bytes m={uint8_t(had?1:0)};try{save(mark,m);save(dst,blank);}catch(...){if(had)CopyFileW(bak.c_str(),dst.c_str(),FALSE);else DeleteFileW(dst.c_str());throw;}installOwned=true;status(L"透明 SHA 已安装。重开游戏，连接，再启动外部光标。不要叠加旧 HWCursor。");}
 static void restoreFile(){if(gameDir.empty())fail("Attach once to identify the game directory");if(anyGame())fail("Exit all Yuri game processes before restoring SHA");std::wstring dst=gameDir+L"\\mouse.sha",mark=dst+L".cursor-preview-state",bak=dst+L".cursor-preview-backup";if(!exists(mark)){
   if(manuallyBlankSHA()){
-   if(MessageBoxW(mainw,L"检测到此前手动放入的透明 mouse.sha。\n将用本程序内置的已验证的缓存原图恢复；同时保留当前透明文件的唯一备份。确定？",L"恢复手动透明 SHA",MB_YESNO|MB_ICONQUESTION)!=IDYES)return;
+   if(cursorDialog(L"检测到此前手动放入的透明 mouse.sha。\n将用本程序内置的已验证的缓存原图恢复；同时保留当前透明文件的唯一备份。确定？",L"恢复手动透明 SHA",MB_YESNO|MB_ICONQUESTION)!=IDYES)return;
    const std::wstring manualBackup=dst+L".manual-transparent-backup";
    if(exists(manualBackup))fail("Manual backup already exists; do not overwrite it");
    if(!CopyFileW(dst.c_str(),manualBackup.c_str(),TRUE))fail("Cannot back up manually installed SHA");
@@ -480,7 +507,7 @@ static void exitNativeMenu(){
  }
  log(L"Game dialog closed; native display resumes while game Hide remains paired");
 }
-static void hookStart(bool hide=true){if(!selectGameWindow()||!gameinput::nativeWindow(pid,threadId))fail("Game main window is still initializing; waiting to connect");if(!gameinput::runtimeModule())fail("GameRuntime.dll missing or incompatible; replace EXE and runtime together");bridgeFrame.clear();lanboStream.reset();lastSampleProbeAt=0;nativeStartAt=GetTickCount();nativeInvisibleAt=0;hideConfirmed=false;lastRehideSeen=0;wchar_t name[80];mapName(name,pid);mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,NULL,PAGE_READWRITE,0,sizeof(Shared),name);if(!mapping)fail("Shared mapping failed");shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared)fail("Map view failed");memset(shared,0,sizeof(*shared));shared->magic=MAGIC;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->heartbeat=GetTickCount();
+static void hookStart(bool hide=true){if(!selectGameWindow()||!gameinput::nativeWindow(pid,threadId))fail("Game main window is still initializing; waiting to connect");if(!gameinput::runtimeAvailable())fail("GameRuntime.dll or x86 hook broker missing/incompatible; replace the complete paired package");bridgeFrame.clear();lanboStream.reset();lastSampleProbeAt=0;nativeStartAt=GetTickCount();nativeInvisibleAt=0;hideConfirmed=false;lastRehideSeen=0;wchar_t name[80];mapName(name,pid);mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,NULL,PAGE_READWRITE,0,sizeof(Shared),name);if(!mapping)fail("Shared mapping failed");shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared)fail("Map view failed");memset(shared,0,sizeof(*shared));shared->magic=MAGIC;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->heartbeat=GetTickCount();
  shared->sampledFrame=-1;shared->sampledFirst=-1;
  shared->sampledHotX=-1;shared->sampledHotY=-1;
  shared->cursorCanvasW=asset.w;shared->cursorCanvasH=asset.h;shared->cursorFrameCount=LONG(asset.frames.size());
@@ -617,18 +644,20 @@ static void applyHideMode(){
  if(selected!=L"hide"&&nativeGameRefresh){nativeGameRefresh=false;SendMessageW(nativeBox,CB_SETCURSEL,0,0);WritePrivateProfileStringW(L"Display",L"GameThreadRefresh",L"0",ini().c_str());}
  noCursorMode=blank;
  mode=selected;WritePrivateProfileStringW(L"Startup",L"Mode",mode.c_str(),ini().c_str());
+ WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
  if(noCursorMode)status(L"已选择无光标诊断模式；Ctrl+Alt+F11 停止并恢复，F10 切换覆盖层。");
  else if(mode==L"sha")status(L"已选择替换 SHA：请退出游戏后点击“安装透明 SHA”，再重新启动游戏。安装前会备份现有文件。");
- else if(mode==L"hide")status(L"已选择 Hook 隐藏：不改游戏文件，但需游戏线程 Hook；联机平台可能不兼容。");
+ else if(mode==L"hide")status(L"已选择隐藏原光标；使用原生 HideCursor，并保留单位名称和建造价格提示。");
  else status(L"已选择不隐藏：不修改游戏文件，原始光标和外部光标可能同时出现。");
  if(shouldResume){try{start();}catch(const std::exception& e){autoPaused=true;status(L"切换后未能启动："+widen(e.what()));}}
 }
 static void autoTick(){DWORD now=GetTickCount();if(uint32_t(now-lastAutoCheck)<1000)return;lastAutoCheck=now;if(autoPaused&&cursorReader.valid()&&!live())autoPaused=false;if(!autoStart||autoPaused||running||!playbackReady)return;try{attach(true);start();}catch(const std::exception& e){status(L"自动等待："+widen(e.what()));}}
 static void leaveGame(){
  bridgeFrame.clear();lanboStream.reset();usingHeldSample=false;
- // If the replacement is not visible, restore the original immediately.
- // Prevents blank cursor on platform foreground switches, menus, and Alt-Tab.
- if(mode==L"hide")hookStop(40);
+ // Leaving the client changes presentation, not the subscription lifetime.
+ // Keep our paired native hide and tooltip slot; Runtime releases only its
+ // Windows cursor presentation while the desktop/other app owns the pointer.
+ if(mode==L"hide"&&shared){shared->menuSuspend=2;gameinput::wake(hook);}nativeInvisibleAt=0;
  lastPhase=size_t(-1);nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();if(wasInside){lastFrame=-2;tween.reset();timing.resetObservation();activeMotion.reset();}wasInside=false;refreshTries=0;burst.cancel();SetRectEmpty(&clickRegion);ShowWindow(overlay,SW_HIDE);if(hud)ShowWindow(hud,SW_HIDE);}
 static void refreshGameCursor(){if(nativeGameRefresh&&mode==L"hide")return;/* Do not force Windows arrow while native cursor owns it. */if(!focusRefresh||refreshTries<=0||int32_t(GetTickCount()-refreshAt)<0)return;--refreshTries;refreshAt=GetTickCount()+150;gameinput::refreshCursor(game,pid);}
 static void bitmap(int w,int h){if(dib&&dibw==w&&dibh==h)return;if(dib){SelectObject(memdc,oldbm);DeleteObject(dib);dib=0;}if(!memdc)memdc=CreateCompatibleDC(NULL);BITMAPINFO bi={};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=w;bi.bmiHeader.biHeight=-h;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;dib=CreateDIBSection(memdc,&bi,DIB_RGB_COLORS,&dibbits,NULL,0);if(!dib)fail("Overlay bitmap failed");oldbm=(HBITMAP)SelectObject(memdc,dib);dibw=w;dibh=h;}
@@ -668,6 +697,14 @@ static void draw(){
 #endif
  cursorReader.begin(); // task-local diagnostics; immediate reads never cache old frames
  pollOriginalResource();if(!running)return;if(shared){shared->heartbeat=GetTickCount();
+  if(mode==L"hide"){
+   static LONG shownState=-99,shownCommand=-99,shownTooltip=-99;
+   const LONG state=shared->state,command=shared->command,tooltip=shared->tooltipState;
+   if(state!=shownState||command!=shownCommand||tooltip!=shownTooltip){
+    shownState=state;shownCommand=command;shownTooltip=tooltip;updatePrimaryAction();
+    log(L"Cursor activation: hide="+std::to_wstring(state)+L", command="+std::to_wstring(command)+L", tooltip="+std::to_wstring(tooltip));
+   }
+  }
   LONG repairs=shared->postSetCursorRepairs;
   DWORD stamp=GetTickCount();
   if(repairs!=lastPostRepairSeen && uint32_t(stamp-lastPostRepairLogAt)>=2000){
@@ -680,13 +717,6 @@ static void draw(){
    lastRehideSeen=rehide;
   }
   if(shared->state==-1){LONG err=shared->error;if(nativeGameRefresh)autoPaused=true;stop();status(L"HideCursor 未执行，错误码 "+std::to_wstring(err)+L"；没有强制绕过校验。");return;}if(shared->state==1&&!hideConfirmed){hideConfirmed=true;log(L"Hide bridge running on game GUI thread; frame sampled="+std::to_wstring(shared->sampledFrame));}if(hideConfirmed&&shared->state==0&&shared->command==0&&!nativeMenuHold&&!shared->menuSuspend){stop();status(L"HideCursor 已恢复或看门狗超时，已停止外部显示。");return;}}
- if(nativeGameRefresh&&!noCursorMode&&mode==L"hide"&&shared&&!nativeMenuHold&&!shared->menuSuspend){
-  if(shared->nativeVisible)nativeInvisibleAt=0;
-  else if(!nativeInvisibleAt)nativeInvisibleAt=GetTickCount();
-  else if(uint32_t(GetTickCount()-nativeInvisibleAt)>2000){
-   autoPaused=true;stop();status(L"游戏线程光标未显示，已恢复原光标");return;
-  }
- }
  if(!live()){stop();status(L"游戏已退出。透明版可点击恢复 SHA。");return;}
  HWND fg=GetForegroundWindow();DWORD fp=0;GetWindowThreadProcessId(fg,&fp);
  bool compatibleForeground=(fp==pid)||platformHostMatches(fg,fp);
@@ -696,7 +726,7 @@ static void draw(){
   exitNativeMenu();
   // A transient modal dialog may have set the bridge flag before the host
   // sees a visible dialog; do not remain stuck in the menu cursor state.
-  if(shared->menuSuspend&&!nativeMenuHold){shared->menuSuspend=0;shared->nativeEnabled=1;}
+  if(shared->menuSuspend==1&&!nativeMenuHold){shared->menuSuspend=0;shared->nativeEnabled=1;}
   shared->gameWindow=(DWORD)(uintptr_t)game;
  }
  if(!IsWindow(game)||fg!=observedForeground||!IsWindowVisible(game)){observedForeground=fg;lastWindowCheck=GetTickCount();DWORD oldThread=threadId;HWND oldWindow=game;selectGameWindow();if(game!=oldWindow){lastFrame=-2;lastPhase=size_t(-1);wasInside=false;log(L"Render window changed; reacquired without activation");}if(shared&&oldThread!=threadId){stop();status(L"游戏窗口线程变化，等待自动重新连接 HideCursor。");return;}}
@@ -712,9 +742,21 @@ static void draw(){
   leaveGame();visibilityDiagnostic(L"游戏前台窗口与渲染窗口不一致",fp);return;
  }
  if(!wasInside){
-  // Re-arm at game focus/client re-entry, BEFORE presenting the first overlay.
+  // Normally the subscription survived Alt-Tab; resume presentation in place.
+  if(shared&&shared->menuSuspend==2){shared->menuSuspend=0;nativeInvisibleAt=0;gameinput::wake(hook);}
+  // First attach / explicit pause recovery still needs a subscription.
   if(mode==L"hide"&&!manualCursorPause&&!hook){try{hookStart();}catch(const std::exception& e){hookStop();log(L"Hook re-arm failed: "+widen(e.what()));stop();return;}}
   hudEpoch=inputNow();nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();hudUpdates=hudCommits=hudMotion=hudChanges=0;hudLastFrame=-1;hudPaintAt=0;wasInside=true;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();refreshTries=3;refreshAt=GetTickCount();if(!nativeGameRefresh)overlaystack::place(overlay,overlaystack::Layer::Cursor,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);log(L"Game focus/client re-entered: redraw and cursor refresh, no simulated activation clicks");}
+ // A hidden native cursor is expected while the game loses its foreground
+ // or client area. Check only after those exits and the suspension resume,
+ // which resets the timeout before the bridge receives its first new frame.
+ if(nativeGameRefresh&&!noCursorMode&&mode==L"hide"&&shared&&!nativeMenuHold&&!shared->menuSuspend){
+  if(shared->nativeVisible)nativeInvisibleAt=0;
+  else if(!nativeInvisibleAt)nativeInvisibleAt=GetTickCount();
+  else if(uint32_t(GetTickCount()-nativeInvisibleAt)>2000){
+   autoPaused=true;stop();status(L"游戏线程光标未显示，已恢复原光标");return;
+  }
+ }
  if(noCursorMode){
   ShowWindow(overlay,SW_HIDE);diagAnimation=L"无光标诊断：不发布鼠标图像";
   if(!manualCursorPause&&shared&&shared->state!=1&&uint32_t(GetTickCount()-nativeStartAt)>2000){
@@ -1152,7 +1194,7 @@ static void applyControlDpi(HWND w,UINT next){
  uiDpi=next;
  if(uiReady){setUiFont();viewport(w,scrollX,scrollY);relayout(w);}
 }
-static void error(const std::exception& e){std::wstring s=widen(e.what());status(L"错误："+s);MessageBoxW(mainw,s.c_str(),L"高刷光标 v" RA2_RELEASE_VERSION_W,MB_OK|MB_ICONWARNING);}
+static void error(const std::exception& e){std::wstring s=widen(e.what());status(L"错误："+s);cursorDialog(s.c_str(),L"高刷光标 v" RA2_RELEASE_VERSION_W,MB_OK|MB_ICONWARNING);}
 static int numeric(HWND w,int min,int max){wchar_t b[32];GetWindowTextW(w,b,32);wchar_t* end;long n=wcstol(b,&end,10);if(end==b||*end||n<min||n>max)fail("Invalid numeric setting; check the range in README");return (int)n;}
 static void applyTargetRate(){
  wchar_t text[32];GetWindowTextW(targetBox,text,32);
@@ -1210,7 +1252,7 @@ static void resizePrimaryPanel(HWND w){
   nh=std::min(nh,workHeight);
  }
  scrollX=scrollY=0;
- if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD))SetWindowPos(w,NULL,0,0,nw,nh,SWP_NOZORDER|SWP_NOMOVE|SWP_NOACTIVATE);
+ if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)&&!GetPropW(w,L"RA2.Suite.Managed"))SetWindowPos(w,NULL,0,0,nw,nh,SWP_NOZORDER|SWP_NOMOVE|SWP_NOACTIVATE);
  viewport(w,0,0);relayout(w);
 }
 static void toggleAdvanced(HWND w){
@@ -1306,12 +1348,24 @@ static void pollPrepare(){
 
 static bool cursorCloseAllowed(){
  if(mode==L"sha"&&live()&&(exists(gameDir+L"\\mouse.sha.cursor-preview-state")||manuallyBlankSHA()))
-  return MessageBoxW(mainw,L"游戏正在使用透明光标。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明 SHA",MB_YESNO|MB_ICONWARNING)==IDYES;
+  return cursorDialog(L"游戏正在使用透明光标。退出工具箱后可能看不到指针。\n建议先退出游戏，再恢复 SHA。仍退出？",L"透明 SHA",MB_YESNO|MB_ICONWARNING)==IDYES;
  return true;
 }
-#include "ddraw_settings_ui.h"
 #include "refresh_settings_ui.h"
 static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(m==suite::PrepareClose){
+  if(!consoleClosePrepared){
+   consoleClosePrepared=true;KillTimer(w,152);KillTimer(w,150);
+   for(int id=1;id<=4;++id)UnregisterHotKey(w,id);
+   if(uiReady)applyTargetRate();
+   if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}
+  }
+  suite::closePrepared(0);return 0;
+ }
+ if(consoleClosePrepared&&(m==WM_COMMAND||m==WM_TIMER||m==WM_HOTKEY||m==WM_DISPLAYCHANGE||m==WM_SETTINGCHANGE||
+    m==suite::ModuleEnable||m==suite::ApplyDisplaySetting||m==suite::DisplaySettingsChanged||m==suite::RefreshRateChanged))return 0;
+#endif
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,m,b))return 0;
  if(m==suite::DisplaySettingsChanged){syncRefreshControls();return 0;}
@@ -1351,15 +1405,13 @@ static LRESULT CALLBACK wndproc(HWND w,UINT m,WPARAM a,LPARAM b){
      SelectObject(dc,saved);DeleteObject(separator);}
    EndPaint(w,&ps);return 0;}
 case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(advancedOpen?510:376,uiDpi),uidpi::scale(240,uiDpi)};return 0;}
- case WM_SIZE:viewport(w,scrollX,scrollY);return 0;
- case WM_MOUSEWHEEL:viewport(w,scrollX,scrollY-GET_WHEEL_DELTA_WPARAM(a)/WHEEL_DELTA*uidpi::scale(60,uiDpi));return 0;
+ case WM_SIZE:viewport(w,scrollX,scrollY);relayout(w);return 0;
+ case WM_MOUSEWHEEL:{int amount=pagewheel::delta(w,a,uidpi::scale(60,uiDpi));if(amount)viewport(w,scrollX,scrollY-amount);return 0;}
  case WM_VSCROLL:case WM_HSCROLL:{int bar=m==WM_VSCROLL?SB_VERT:SB_HORZ;SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,bar,&si);int n=si.nPos;switch(LOWORD(a)){case SB_LINEUP:n-=uidpi::scale(28,uiDpi);break;case SB_LINEDOWN:n+=uidpi::scale(28,uiDpi);break;case SB_PAGEUP:n-=si.nPage;break;case SB_PAGEDOWN:n+=si.nPage;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:n=si.nTrackPos;break;case SB_TOP:n=0;break;case SB_BOTTOM:n=si.nMax;break;}viewport(w,bar==SB_HORZ?n:scrollX,bar==SB_VERT?n:scrollY);return 0;}
  case WM_TIMER:if(a==152){KillTimer(w,152);if(uiReady)applyTargetRate();return 0;}if(a==150){KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}return 0;}break;
  case WM_COMMAND:if(!uiReady)return 0;
 #ifdef RA2_UNIFIED
  if(refreshSettingCommand(a,b))return 0;
- if(LOWORD(a)==157&&HIWORD(a)==BN_CLICKED){ddrawsettings::configure(false);return 0;}
- if(LOWORD(a)==158&&HIWORD(a)==BN_CLICKED){ddrawsettings::configure(true);return 0;}
 #endif
  if((HWND)b==targetBox&&(HIWORD(a)==CBN_SELCHANGE||HIWORD(a)==CBN_EDITCHANGE)){SetTimer(w,152,HIWORD(a)==CBN_SELCHANGE?1:300,NULL);return 0;}
  if((HWND)b==modeBox&&HIWORD(a)==CBN_SELCHANGE){try{applyHideMode();updateRefresh(true);updatePrimaryAction();}catch(const std::exception& e){SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);error(e);}return 0;}
@@ -1381,6 +1433,7 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
    cursorReader.close();
    nativeGameRefresh=selected;readRestricted=false;
    WritePrivateProfileStringW(L"Display",L"GameThreadRefresh",selected?L"1":L"0",ini().c_str());
+   WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
    if(resume)start();
   }
   updateRefresh(true);updatePrimaryAction();
@@ -1393,7 +1446,7 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
   // Only scale the original 96-DPI layout, never the previous DPI layout.
   UINT next=HIWORD(a);applyControlDpi(w,next);
   const RECT* r=reinterpret_cast<const RECT*>(b);
-  if(r&&!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD))SetWindowPos(w,NULL,r->left,r->top,r->right-r->left,r->bottom-r->top,
+  if(r&&!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)&&!GetPropW(w,L"RA2.Suite.Managed"))SetWindowPos(w,NULL,r->left,r->top,r->right-r->left,r->bottom-r->top,
                    SWP_NOZORDER|SWP_NOACTIVATE);
   viewport(w,scrollX,scrollY);relayout(w);return 0;
  }
@@ -1407,10 +1460,16 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
 #ifdef RA2_UNIFIED
  if(a!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
- KillTimer(w,152);if(uiReady)applyTargetRate();KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}
 #ifndef RA2_UNIFIED
  if(!cursorCloseAllowed())return 0;
 #endif
+#if !defined(RA2_UNIFIED) || !defined(RA2_CONSOLE_WEBVIEW2)
+ boundedshutdown::begin();
+#endif
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+ if(!consoleClosePrepared)
+#endif
+ {KillTimer(w,152);if(uiReady)applyTargetRate();KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}}
  stop();DestroyWindow(w);return 0;
  case WM_DESTROY:if(playbackCancel)playbackCancel->store(true);if(prepareProcess){HANDLE cancel=CreateFileW(prepareCancel.c_str(),GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);if(cancel!=INVALID_HANDLE_VALUE)CloseHandle(cancel);CloseHandle(prepareProcess);prepareProcess=nullptr;}if(uiFont){DeleteObject(uiFont);uiFont=NULL;}if(titleFont){DeleteObject(titleFont);titleFont=NULL;}if(actionFont){DeleteObject(actionFont);actionFont=NULL;}if(panelBrush){DeleteObject(panelBrush);panelBrush=NULL;}if(headerBrush){DeleteObject(headerBrush);headerBrush=NULL;}if(statusBrush){DeleteObject(statusBrush);statusBrush=NULL;}PostQuitMessage(0);return 0;}return DefWindowProcW(w,m,a,b);}
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
@@ -1419,8 +1478,12 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  noCursorMode=blankPreset;
  /* DPI awareness is set by the embedded PerMonitorV2 manifest before any window exists. */ wchar_t path[32768];GetModuleFileNameW(NULL,path,32768);root=path;root=root.substr(0,root.find_last_of(L"\\"));if(wcsstr(cmd,L"sha"))mode=L"sha";else if(wcsstr(cmd,L"hide"))mode=L"hide";else if(wcsstr(cmd,L"keep"))mode=L"keep";else{wchar_t remembered[16]={};GetPrivateProfileStringW(L"Startup",L"Mode",L"",remembered,16,ini().c_str());if(!wcscmp(remembered,L"sha")||!wcscmp(remembered,L"hide")||!wcscmp(remembered,L"keep"))mode=remembered;else if(!*remembered){wchar_t previousDir[32768]={};GetPrivateProfileStringW(L"Target",L"Directory",L"",previousDir,32768,ini().c_str());if(*previousDir&&exists(std::wstring(previousDir)+L"\\mouse.sha.cursor-preview-state"))mode=L"sha";}}
  if(lanboPreset)mode=L"hide";
+ // Preserve the selected mode. A missing historical migration marker is
+ // not permission to replace an already saved hide preference with keep.
+ const bool explicitCursorSelection=lanboPreset||wcsstr(cmd,L"hide")||wcsstr(cmd,L"keep")||wcsstr(cmd,L"sha");
  HANDLE mutex=CreateMutexW(NULL,FALSE,L"Local\\RA2ExternalCursor3Modes");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(NULL,L"程序已在运行。",L"提示",MB_OK);return 0;}
  if(!wcsstr(cmd,L"restore"))WritePrivateProfileStringW(L"Startup",L"Mode",mode.c_str(),ini().c_str());
+ if(!wcsstr(cmd,L"restore")&&explicitCursorSelection)WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
  WNDCLASSW wc={};wc.hInstance=inst;wc.lpfnWndProc=wndproc;wc.lpszClassName=L"RA2CursorControl3";wc.hCursor=LoadCursor(NULL,IDC_ARROW);panelBrush=CreateSolidBrush(modernui::Background);headerBrush=CreateSolidBrush(modernui::Field);statusBrush=CreateSolidBrush(modernui::Surface);wc.hbrBackground=panelBrush;RegisterClassW(&wc);wc.lpfnWndProc=overlayProc;wc.lpszClassName=L"RA2CursorOverlay3";wc.hbrBackground=NULL;wc.hCursor=NULL;RegisterClassW(&wc);
  wc.lpfnWndProc=hudProc;wc.lpszClassName=L"RA2CursorHUD9";RegisterClassW(&wc);
  std::wstring title=L"高刷光标 v" RA2_RELEASE_VERSION_W;
@@ -1432,7 +1495,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  statusw=CreateWindowW(L"STATIC",L"等待游戏",WS_CHILD|WS_VISIBLE,15,115,735,44,mainw,NULL,inst,NULL);SendMessageW(statusw,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  HWND labelMode=CreateWindowW(L"STATIC",L"原光标",WS_CHILD|WS_VISIBLE,15,172,90,22,mainw,NULL,inst,NULL);SendMessageW(labelMode,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  modeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,105,168,380,110,mainw,NULL,inst,NULL);
- for(const wchar_t* text:{L"保留原光标",L"隐藏原光标",L"透明 SHA",L"无光标诊断"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
+ for(const wchar_t* text:{L"保留原光标",L"隐藏原光标",L"透明 SHA",L"高危：无光标诊断"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
  SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);SendMessageW(modeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
 
 
@@ -1468,10 +1531,10 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
 #endif
  focusRefresh=GetPrivateProfileIntW(L"Startup",L"FocusRefresh",0,ini().c_str())!=0;
  autoStartBox=CreateWindowW(L"BUTTON",L"自动检测",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,15,705,520,26,mainw,(HMENU)8,inst,NULL);SendMessageW(autoStartBox,BM_SETCHECK,autoStart?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(autoStartBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- nativeGameRefresh=GetPrivateProfileIntW(L"Display",L"GameThreadRefresh",0,ini().c_str())!=0;
- if(wcsstr(cmd,L"--game-refresh"))nativeGameRefresh=true;
+ nativeGameRefresh=mode==L"hide"&&GetPrivateProfileIntW(L"Display",L"GameThreadRefresh",0,ini().c_str())!=0;
+ if(wcsstr(cmd,L"--game-refresh")&&mode==L"hide")nativeGameRefresh=true;
  nativeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,114,174,226,130,mainw,(HMENU)12,inst,NULL);
- SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"外置光标");SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"游戏内光标");
+ SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"外置光标");SendMessageW(nativeBox,CB_ADDSTRING,0,(LPARAM)L"游戏内光标（需隐藏模式）");
  SendMessageW(nativeBox,CB_SETCURSEL,nativeGameRefresh?1:0,0);
  hudEnabled=GetPrivateProfileIntW(L"Display",L"HUD",0,ini().c_str())!=0;hudBox=CreateWindowW(L"BUTTON",L"状态面板",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,540,705,210,26,mainw,(HMENU)9,inst,NULL);SendMessageW(hudBox,BM_SETCHECK,hudEnabled?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(hudBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  // Keep the existing settings intact, but move them into an initially hidden
@@ -1490,8 +1553,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   else if(child!=nativeBox){logical.y+=advancedOffsetY;advancedControls.push_back(child);ShowWindow(child,SW_HIDE);}
   controlOrigins.push_back({child,logical});
  }
- titleLabel=CreateWindowW(L"STATIC",L"高刷鼠标",WS_CHILD|WS_VISIBLE,20,16,220,26,mainw,nullptr,inst,nullptr);
- subTitleLabel=CreateWindowW(L"STATIC",L"光标显示与补帧 · 设置自动生效",WS_CHILD|WS_VISIBLE,20,44,320,22,mainw,nullptr,inst,nullptr);
+ titleLabel=CreateWindowW(L"STATIC",L"光标与渲染",WS_CHILD|WS_VISIBLE,20,16,220,26,mainw,nullptr,inst,nullptr);
+ subTitleLabel=CreateWindowW(L"STATIC",L"光标、场景画质与特效 · 各项独立启用",WS_CHILD|WS_VISIBLE,20,44,320,22,mainw,nullptr,inst,nullptr);
  primaryAction=CreateWindowW(L"BUTTON",L"暂停",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,20,128,132,34,mainw,(HMENU)101,inst,nullptr);
  advancedAction=CreateWindowW(L"BUTTON",L"高级设置 ▾",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,164,128,176,34,mainw,(HMENU)102,inst,nullptr);
  quickInfo=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE,20,250,320,20,mainw,nullptr,inst,nullptr);
@@ -1534,18 +1597,18 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  modernui::tip(refreshModeBox,L"当前仅保留光标高刷；拖屏、全部及强制高刷暂不可用。");
  modernui::tip(targetBox,L"自动跟随显示器；也可输入 30–500 FPS，当前用于光标刷新。");
  EnableWindow(refreshModeBox,FALSE);
- basic(L"STATIC",L"黑幕绘制",20,332,88,22,0);
- shroudModeBox=basic(L"COMBOBOX",L"",114,328,626,150,156,CBS_DROPDOWNLIST|WS_TABSTOP);
- for(const wchar_t*text:{L"关闭",L"受控模式（半透明）",L"受控模式（透明）",L"原生揭示（实验性）",L"直接模式（全图）"})SendMessageW(shroudModeBox,CB_ADDSTRING,0,(LPARAM)text);
- EnableWindow(shroudModeBox,FALSE);modernui::tip(shroudModeBox,L"受控模式改变黑幕绘制；原生揭示调用游戏揭示流程；直接模式使用已验证的固定判定修改。均为实验性功能。");
- basic(L"BUTTON",L"配置 DDraw 高刷…",20,366,350,32,157,BS_PUSHBUTTON|WS_TABSTOP);
- basic(L"BUTTON",L"恢复 DDraw 配置…",390,366,350,32,158,BS_PUSHBUTTON|WS_TABSTOP);
+#endif
+#ifdef RA2_UNIFIED
+ auto videoControl=[&](const wchar_t* cls,const wchar_t* text,DWORD style,int x,int y,int width,int height,int id){return basic(cls,text,x,y,width,height,id,style);};
+ const int videoEnd=renderVideoSettings.create(videoControl,suite::VideoGroup::Render,416,20,720);
+ const int shift=videoEnd-438;for(auto&c:controlOrigins)if(c.handle==advancedHeader||std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())c.logical.y+=shift;
+ compactContentH=videoEnd+20;advancedContentH+=shift;uiContentH=advancedOpen?advancedContentH:compactContentH;
 #endif
  // Main and advanced settings share one width, palette and renderer.
  for(auto& c:controlOrigins){
   if(c.handle==statusw)c.logical.w=690;
   if(c.handle==subTitleLabel||c.handle==quickInfo)c.logical.w=720;
-  if(c.handle==quickInfo)c.logical.y=418;
+  if(c.handle==quickInfo)c.logical.y=366;
   if(c.handle==primaryAction)c.logical={20,128,354,34};
   if(c.handle==advancedAction)c.logical={386,128,354,34};
   if(c.handle==nativeBox||c.handle==targetBox)c.logical.w=626;
@@ -1553,7 +1616,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   if(!_wcsicmp(cls,L"BUTTON")||!_wcsicmp(cls,L"EDIT")||!_wcsicmp(cls,L"COMBOBOX"))
    SetWindowLongPtrW(c.handle,GWL_STYLE,GetWindowLongPtrW(c.handle,GWL_STYLE)|WS_TABSTOP);
  }
- modernui::tip(primaryAction,L"开关高刷显示；快捷键 Ctrl+Alt+F11。设置修改后自动保存并生效。");
+ modernui::tip(primaryAction,L"开关高刷显示；快捷键 Ctrl+Alt+F11。隐藏原光标使用原生 HideCursor，并保留单位名称和建造价格提示。设置自动保存。");
  modernui::tip(styleBox,L"选择独立光标包；不会覆盖游戏目录。");
  modernui::tip(prepareButton,L"在本机生成光标动画补帧；可再次点击取消。已完成分段会保留。");
  modernui::tip(import,L"导入兼容红警或尤里布局的 SHA 文件与色盘。");
@@ -1591,17 +1654,38 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  }
  #endif
 #ifdef RA2_UNIFIED
- suite::registerPane(0,mainw);
+#ifdef RA2_CONSOLE_WEBVIEW2
+ // The modern view owns collapsed sections. Keep the old advanced fields
+ // available to the typed settings adapter, including offscreen controls.
+ if(!advancedOpen)toggleAdvanced(mainw);
+ SetPropW(advancedAction,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(advancedAction,SW_HIDE);
+ for(const auto&c:controlOrigins){
+  SetPropW(c.handle,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(c.logical.y)+1));
+  SetPropW(c.handle,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(c.logical.x)+1));
+  if(std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())SetPropW(c.handle,L"RA2.Console.Group",reinterpret_cast<HANDLE>(const_cast<wchar_t*>(L"高级光标设置")));
+ }
+#endif
+ suite::registerPane(0,mainw,wndproc);
 #else
  ShowWindow(mainw,SW_SHOW);
 #endif
- updatePrimaryAction();if(wcsstr(cmd,L"restore")){try{restoreFile();MessageBoxW(mainw,lastStatus.c_str(),L"恢复 SHA",MB_OK);}catch(const std::exception& e){error(e);}DestroyWindow(mainw);return 0;}RegisterHotKey(mainw,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F11);RegisterHotKey(mainw,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F12);RegisterHotKey(mainw,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F10);RegisterHotKey(mainw,4,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F9);timeBeginPeriod(1);QueryPerformanceFrequency(&freq);LARGE_INTEGER next;QueryPerformanceCounter(&next);updateRefresh(true);MSG msg;bool quit=false;
+ updatePrimaryAction();if(wcsstr(cmd,L"restore")){try{restoreFile();cursorDialog(lastStatus.c_str(),L"恢复 SHA",MB_OK);}catch(const std::exception& e){error(e);}DestroyWindow(mainw);return 0;}RegisterHotKey(mainw,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F11);RegisterHotKey(mainw,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F12);RegisterHotKey(mainw,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F10);RegisterHotKey(mainw,4,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F9);timeBeginPeriod(1);QueryPerformanceFrequency(&freq);LARGE_INTEGER next;QueryPerformanceCounter(&next);updateRefresh(true);MSG msg;bool quit=false;
  HANDLE frameTimer=CreateWaitableTimerExW(nullptr,nullptr,0x2,TIMER_ALL_ACCESS);
  if(!frameTimer)frameTimer=CreateWaitableTimerW(nullptr,FALSE,nullptr);
- LONGLONG armedDeadline=0;
+ LONGLONG armedDeadline=0;uimessages::Queue messages;
  while(!quit){
-  while(PeekMessageW(&msg,NULL,0,0,PM_REMOVE)){if(msg.message==WM_QUIT){quit=true;break;}TranslateMessage(&msg);DispatchMessageW(&msg);}
+  unsigned dispatched=0;
+  while(dispatched++<32&&messages.peek(msg)){if(msg.message==WM_QUIT){quit=true;break;}TranslateMessage(&msg);DispatchMessageW(&msg);}
   if(quit)break;
+#if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
+  if(consoleClosePrepared){
+   // Keep only the owner message pump alive until the shell has drained the
+   // configuration service and requests actual restoration/close.
+   if(frameTimer&&armedDeadline){CancelWaitableTimer(frameTimer);armedDeadline=0;}
+   MsgWaitForMultipleObjectsEx(0,nullptr,INFINITE,QS_ALLINPUT,MWMO_INPUTAVAILABLE);
+   continue;
+  }
+#endif
   motionPoll();autoTick();updateRefresh();pollPrepare();
   LARGE_INTEGER now;QueryPerformanceCounter(&now);
   if(now.QuadPart>=next.QuadPart){

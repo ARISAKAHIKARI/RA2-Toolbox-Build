@@ -1,9 +1,11 @@
 #ifdef RA2_UNIFIED
+#include "../../suite/source/video_settings_ui.h"
+static suite::VideoSettings monitorVideoSettings;
 static bool syncingUnitSettings=false;static HWND unitSettingControls[suite::DisplayOptionCount]{},unitInfoRateStatus;
 static int statsInformationFPS();
 static void syncUnitInformationRate(){if(unitInfoRateStatus)SetWindowTextW(unitInfoRateStatus,(L"当前："+std::to_wstring(statsInformationFPS())+L" Hz").c_str());}
 static void syncUnitSettings(bool force=false){
- suite::DisplayState state;if(!suite::readDisplaySettings(state))return;
+ monitorVideoSettings.sync(force);suite::DisplayState state;if(!suite::readDisplaySettings(state))return;
  syncingUnitSettings=true;
  for(int i=0;i<suite::DisplayOptionCount;++i)if(auto control=unitSettingControls[i]){
   EnableWindow(control,TRUE);
@@ -23,6 +25,7 @@ template<class Create> static void createUnitSettings(Create ctl){
  toggle(suite::EnemyMarkers,L"敌方单位提示",58);
  toggle(suite::Capacity,L"载具载员与容量",96);
  toggle(suite::AllTransports,L"同时显示未选中的载具",130,374);
+ modernui::tip(unitSettingControls[suite::AllTransports],L"需先开启“载具载员与容量”。关闭父功能时保留此选项，重新开启后恢复使用。");
  toggle(suite::Iron,L"铁幕 / 力场剩余时间",174);
  toggle(suite::Frozen,L"冷冻剩余时间",212);
  toggle(suite::Parasite,L"蜘蛛寄生标志",250);
@@ -42,12 +45,15 @@ template<class Create> static void createUnitSettings(Create ctl){
  unitInfoRateStatus=ctl(L"STATIC",L"当前：— Hz",0,354,534,326,23,614);
  modernui::tip(unitSettingControls[suite::InfoAdaptive],L"跟随游戏所在屏幕的名义刷新率；未运行游戏时使用工具箱所在屏幕。最高 500 Hz，读取失败时使用 60 Hz。");
  modernui::tip(unitSettingControls[suite::InfoFPS],L"手动目标为 5–500 Hz。启用自适应时保留此值，关闭自适应后恢复使用。");
+ monitorVideoSettings.create(ctl,suite::VideoGroup::Monitor,606,14,666);
  syncUnitSettings();
 }
 static bool unitSettingCommand(WPARAM wp){
+ if(monitorVideoSettings.command(wp))return true;
  int option=LOWORD(wp)-600;if(option<0||option>=suite::DisplayOptionCount||!unitSettingControls[option])return false;
  if(syncingUnitSettings)return true;
  auto h=unitSettingControls[option];auto type=suite::displaySpecs[option].control;
+ if(!IsWindowEnabled(h)){syncUnitSettings(true);return true;}
  if(type==suite::DisplayControl::Check&&HIWORD(wp)==BN_CLICKED)suite::requestDisplaySetting(option,SendMessageW(h,BM_GETCHECK,0,0)==BST_CHECKED);
  else if(type==suite::DisplayControl::Number&&HIWORD(wp)==EN_CHANGE){BOOL ok=FALSE;int value=GetDlgItemInt(ui,LOWORD(wp),&ok,FALSE);if(ok)suite::requestDisplaySetting(option,value);}
  else if(HIWORD(wp)==EN_KILLFOCUS)syncUnitSettings(true);return true;

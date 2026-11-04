@@ -1,0 +1,112 @@
+{
+  "scope": "Compiled mode4 lifecycle/stack-only UI interception in an x86 synthetic world.\n\nWin32 thread/debug-register installation is modeled here; the separate native\ntech_ui_breakpoint_windows.cpp fixture runs real own-process Windows DR/VEH.\nNo game process, platform detection or multiplayer session is exercised.\n",
+  "dll_sha256": "f7a0dd9bf0a48216c2fc8fabd12915010bc18ddfc8d1657c48a97b81e4e07555",
+  "hash_stable_during_test": true,
+  "game_fixture_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "windows_debug_api_modeled": true,
+  "game_process_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "cold_native_parameters_session_0",
+      "status": "PASS",
+      "native_icons": 3,
+      "same_world_background_retained": true,
+      "only_stack_bool_changed": true,
+      "text_and_type_bytes_unchanged": true,
+      "toolbox_produce_blocked": true
+    },
+    {
+      "case": "cold_native_parameters_session_3",
+      "status": "PASS",
+      "native_icons": 3,
+      "same_world_background_retained": true,
+      "only_stack_bool_changed": true,
+      "text_and_type_bytes_unchanged": true,
+      "toolbox_produce_blocked": true
+    },
+    {
+      "case": "compiled_callback_identity_and_immediate_gates",
+      "status": "PASS",
+      "wrong_house_type_uid_vtable_args_site_world_and_stop_rejected": true,
+      "exact_full_argument_instruction_signature_checked": true
+    },
+    {
+      "case": "occupied_debug_slots_fail_closed",
+      "status": "PASS",
+      "no_free_slots_refused_without_any_debug_context_write": true
+    },
+    {
+      "case": "full_instruction_signature_incompatible_refused",
+      "status": "PASS"
+    },
+    {
+      "case": "production_transition_0_to_4",
+      "status": "PASS",
+      "old": 0,
+      "new": 4,
+      "non_native_production_retains_previous_mode": true,
+      "native_eligible_busy_product_allowed": true
+    },
+    {
+      "case": "production_transition_1_to_4",
+      "status": "PASS",
+      "old": 1,
+      "new": 4,
+      "non_native_production_retains_previous_mode": true,
+      "native_eligible_busy_product_allowed": true
+    },
+    {
+      "case": "production_transition_2_to_4",
+      "status": "PASS",
+      "old": 2,
+      "new": 4,
+      "non_native_production_retains_previous_mode": true,
+      "native_eligible_busy_product_allowed": true
+    },
+    {
+      "case": "production_transition_4_to_0",
+      "status": "PASS",
+      "old": 4,
+      "new": 0,
+      "non_native_production_retains_previous_mode": true,
+      "native_eligible_busy_product_allowed": true
+    },
+    {
+      "case": "production_transition_4_to_1",
+      "status": "PASS",
+      "old": 4,
+      "new": 1,
+      "non_native_production_retains_previous_mode": true,
+      "native_eligible_busy_product_allowed": true
+    },
+    {
+      "case": "production_transition_4_to_2",
+      "status": "PASS",
+      "old": 4,
+      "new": 2,
+      "non_native_production_retains_previous_mode": true,
+      "native_eligible_busy_product_allowed": true
+    },
+    {
+      "case": "production_transition_4_to_3",
+      "status": "PASS",
+      "old": 4,
+      "new": 3,
+      "non_native_production_retains_previous_mode": true,
+      "native_eligible_busy_product_allowed": true
+    },
+    {
+      "case": "independent_enhancement_full_lifecycle_handoff",
+      "status": "PASS",
+      "saved_enhance_preference_preserved": true,
+      "rule_writer_blocked_for_entire_parameter_mode": true,
+      "preference_resumes_after_exit": true
+    },
+    {
+      "case": "stop_waits_for_hardware_resources",
+      "status": "PASS",
+      "stop_ack_waits_for_confirmed_dr_restore_and_own_veh_removal": true
+    }
+  ]
+}

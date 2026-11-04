@@ -6,11 +6,17 @@ from pathlib import Path
 import subprocess,tempfile
 root=Path(__file__).resolve().parents[2]
 suite=(root/'suite/source/main.cpp').read_text()
-bus=' void publishDisplaySettings'+suite.split(' void publishDisplaySettings',1)[1].split('\n}\nstatic void save()',1)[0]
+bus_start=suite.index(' void publishDisplaySettings')
+bus_end=suite.index('\nstatic void save()',bus_start)
+bus=suite[bus_start:bus_end].rsplit('\n}',1)[0]
 assist=(root/'assist/source/main.cpp').read_text()
 forward=assist.split(' if(msg==suite::ApplyDisplaySetting){',1)[1].split('\n if(msg==suite::ModuleEnable)',1)[0]
 forward=forward.rsplit('}',1)[0]
-register=suite.split(' void registerPane(int module,HWND pane){',1)[1].split('  auto style=',1)[0]
+register_body=suite.split(' void registerPane(int module,HWND pane){',1)[1].split('\n void reportEnabled',1)[0]
+# This fixture exercises only display-bus startup ordering. The asynchronous
+# native-window adoption immediately following it has a separate HWND fixture.
+register,register_boundary,_=register_body.partition('  modernui::styleChildren(pane);')
+assert register_boundary,'Display registration bus prefix changed; update the focused fixture boundary'
 io=(root/'assist/source/extra_settings_io.h').read_text()
 sync='static void syncRefreshRate()'+io.split('static void syncRefreshRate()',1)[1].split('static void syncAdditional()',1)[0]
 update='static void updateRefresh(bool force=false){'+(root/'cursor/source/main.cpp').read_text().split('static void updateRefresh(bool force=false){',1)[1].split('static uint32_t inputNow()',1)[0]
@@ -29,6 +35,8 @@ prefix=r'''
 #include <iostream>
 using HWND=int;using WPARAM=uintptr_t;using LPARAM=intptr_t;using BOOL=int;
 constexpr int TRUE=1,FALSE=0,BST_CHECKED=1,BST_UNCHECKED=0,BN_CLICKED=0,CBN_SELCHANGE=1,EN_CHANGE=2,EN_KILLFOCUS=3;
+constexpr int HKM_SETHOTKEY=30,HKM_GETHOTKEY=31,CB_ADDSTRING=32,CB_GETCURSEL=33,CBS_DROPDOWNLIST=34;
+constexpr const wchar_t*HOTKEY_CLASSW=L"HOTKEY";
 constexpr int BM_SETCHECK=1,CB_SETCURSEL=2,WM_COMMAND=3,BM_GETCHECK=4,EM_SETLIMITTEXT=5;
 constexpr int BS_AUTOCHECKBOX=1,WS_TABSTOP=2,WS_BORDER=4,ES_NUMBER=8,ES_AUTOHSCROLL=16;
 namespace suite {constexpr int ApplyDisplaySetting=83,DisplaySettingsChanged=84,RefreshRateChanged=85;}
@@ -38,6 +46,7 @@ static std::mutex displayMutex;static suite::DisplayState displayState;static bo
 static std::atomic<int> posted{0},refreshPosts{0};
 static int requestedOption=-1,requestedValue=-1;
 static bool PostMessageW(HWND h,int msg,WPARAM wp,LPARAM lp){assert(h);assert(msg==83||msg==84||msg==85);if(msg==85){assert(h==7);++refreshPosts;}if(msg==83){requestedOption=int(wp);requestedValue=int(lp);}++posted;return true;}
+namespace suite {static struct {bool post(unsigned index,int msg,WPARAM wp=0,LPARAM lp=0){auto h=displayPanes[index].load();return h&&PostMessageW(h,msg,wp,lp);}} frontend;}
 static bool ready=true,updatingControls=false;static int ui=7,notifications=0,lastID=0,lastNotification=0;
 static std::map<int,int> fields;static std::map<int,std::wstring> texts;static std::map<int,bool> available;
 static bool unitSyncMode=false;static int focused=0,statsRate=144;
@@ -47,15 +56,18 @@ static WPARAM MAKEWPARAM(int id,int notification){return id|(notification<<16);}
 static int LOWORD(WPARAM value){return int(value&65535);}static int HIWORD(WPARAM value){return int(value>>16);}
 static int SendMessageW(int h,int message,WPARAM wp,LPARAM lp){
  if(message==WM_COMMAND){assert(!updatingControls&&h==ui);++notifications;lastID=wp&65535;lastNotification=wp>>16;assert(lp==lastID);}
- else if(message==BM_GETCHECK)return fields[h];
+ else if(message==BM_GETCHECK||message==CB_GETCURSEL||message==HKM_GETHOTKEY)return fields[h];
+ else if(message==CB_ADDSTRING)return 0;
  else {assert(updatingControls||unitSyncMode);fields[h]=int(wp);}return 0;
 }
 static int proc(int h,int message,WPARAM wp,LPARAM lp){SendMessageW(h,message,wp,lp);return 0;}
 static void SetWindowTextW(int h,const wchar_t* text){assert(updatingControls||unitSyncMode);texts[h]=text;if(!texts[h].empty()&&(texts[h][0]==L'-'||(texts[h][0]>=L'0'&&texts[h][0]<=L'9')))fields[h]=std::stoi(text);}
+static void GetWindowTextW(int h,wchar_t*out,int n){wcsncpy(out,texts[h].c_str(),n-1);out[n-1]=0;}
 static int GetFocus(){return focused;}static void EnableWindow(int h,bool on){available[h]=on;}
+static bool IsWindowEnabled(int h){auto i=available.find(h);return i==available.end()||i->second;}
 static int GetDlgItemInt(int,int h,BOOL* ok,int){*ok=fields.count(h)!=0;return fields[h];}
 static int statsInformationFPS(){return statsRate;}
-namespace modernui {static void heading(int){}static void tip(int,const wchar_t*){}}
+namespace modernui {static void pressKey(int){}static void heading(int){}static void tip(int,const wchar_t*){}}
 static void publishSuiteDisplay(){}
 static struct {unsigned scrollRefreshHz=0,scrollRefreshMode=0;int sampleIntervalMs=0;} runtimeState,*shared=&runtimeState;
 static struct {int scrollRefreshMode=0;} extra;
@@ -114,17 +126,25 @@ int main(){
  config.values[InfoAdaptive]=0;config.infoRate=144;publishDisplaySettings(config);syncUnitSettings();assert(fields[613]==0&&available[609]&&fields[609]==144);
  focused=609;fields[609]=120;syncUnitSettings();assert(fields[609]==120);syncUnitSettings(true);assert(fields[609]==144);focused=0;unitSyncMode=false;
  fields[613]=1;assert(unitSettingCommand(MAKEWPARAM(613,BN_CLICKED))&&requestedOption==InfoAdaptive&&requestedValue==1);
+ // Disabled controls cannot bypass dependencies through synthetic notifications.
+ // Their saved child values survive and are restored in the mirrored UI.
+ unitSyncMode=true;config.values[Capacity]=0;config.values[AllTransports]=1;publishDisplaySettings(config);syncUnitSettings(true);
+ assert(!available[604]&&fields[604]==1);int disabledPosts=posted;fields[604]=0;
+ assert(unitSettingCommand(MAKEWPARAM(604,BN_CLICKED))&&fields[604]==1&&posted==disabledPosts);
+ config.values[InfoAdaptive]=1;publishDisplaySettings(config);syncUnitSettings(true);disabledPosts=posted;fields[609]=500;
+ assert(unitSettingCommand(MAKEWPARAM(609,EN_CHANGE))&&fields[609]==144&&posted==disabledPosts);
+ config.values[InfoAdaptive]=0;publishDisplaySettings(config);syncUnitSettings(true);unitSyncMode=false;
  assert(!unitSettingCommand(MAKEWPARAM(614,BN_CLICKED)));
  int ratePosts=posted;config.infoRate=240;publishDisplaySettings(config);assert(posted==ratePosts+2);publishDisplaySettings(config);assert(posted==ratePosts+2);
  std::atomic<bool> done{false};std::thread writer([&]{for(int n=1;n<=10000;++n){DisplayState s;s.values.fill(n);s.rateMilli=n;s.gapUs=n;s.infoRate=n;publishDisplaySettings(s);}done=true;});
  do{if(readDisplaySettings(out)){if(out.rateMilli){for(auto v:out.values)assert(v==out.rateMilli);assert(out.gapUs==out.rateMilli&&out.infoRate==out.rateMilli);}}}while(!done);
  writer.join();assert(readDisplaySettings(out)&&out.rateMilli==10000);int count=posted;publishDisplaySettings(out);assert(posted==count);
- std::cout<<"PASS 14 routed setting IDs: valid endpoints, invalid edits, owner-thread notifications and not-ready suppression; adaptive/manual controls, local rate readback and retained manual target\n";
+ std::cout<<"PASS 62 routed setting IDs: valid endpoints, invalid edits, owner-thread notifications and not-ready suppression; adaptive/manual controls, local rate readback and retained manual target\n";
  std::cout<<"PASS 10000 cross-thread state publications: coherent snapshots and unchanged-state notification coalescing\n";
 }
 '''
 with tempfile.TemporaryDirectory(prefix='suite-display-') as temp:
     cpp=Path(temp)/'test.cpp';exe=Path(temp)/'test'
-    cpp.write_text(prefix+'\nnamespace suite {\n'+bus+'\nvoid registerDisplayPane(int module,HWND pane){'+register+'}\n}\n'+sync+update+'\nstatic int forwardDisplay(int w,WPARAM wp,LPARAM lp){'+forward+'}\n#include "../../unit_monitor/source/display_settings_ui.h"\n'+suffix)
+    cpp.write_text(prefix+'\nnamespace suite {\n'+bus+'\nvoid registerDisplayPane(int module,HWND pane){displayPanes[module]=pane;'+register+'}\n}\n'+sync+update+'\nstatic int forwardDisplay(int w,WPARAM wp,LPARAM lp){'+forward+'}\n#include "../../unit_monitor/source/display_settings_ui.h"\n'+suffix)
     subprocess.run(['g++','-std=c++17','-O2','-pthread','-I'+str(root/'suite/source'),str(cpp),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)

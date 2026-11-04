@@ -33,7 +33,7 @@ struct RECT {LONG left=0,top=0,right=0,bottom=0;};struct POINT {LONG x=0,y=0;};s
 struct BLENDFUNCTION {BYTE BlendOp,BlendFlags,SourceConstantAlpha,AlphaFormat;};
 constexpr int SW_HIDE=0,SWP_NOMOVE=1,SWP_NOSIZE=2,SWP_NOACTIVATE=4,SWP_SHOWWINDOW=8,AC_SRC_OVER=0,AC_SRC_ALPHA=1,ULW_ALPHA=2;
 static HWND handle(uintptr_t n){return reinterpret_cast<HWND>(n);}
-static DWORD now=1000;static bool focused=false,battleVisible=true,processAlive=true,readerValid=true;
+static DWORD now=1000;static uint64_t connectionGeneration=42;static bool focused=false,battleVisible=true,processAlive=true,readerValid=true;
 static HWND game=handle(1),ui=handle(2),overlay=handle(3),secondaryOverlay=handle(4);static DWORD pid=10,threadId=11;
 static std::map<HWND,bool> visible;static unsigned uploads=0,placements=0,primaryRenders=0,primaryPresents=0,primaryVisibility=0,samples=0;
 static POINT uploadedOrigin;static SIZE uploadedSize;static bool primaryReportedVisible=false;
@@ -48,15 +48,21 @@ static BOOL UpdateLayeredWindow(HWND w,void*,POINT*p,SIZE*s,HDC,POINT*,int,BLEND
 namespace overlaystack {enum class Layer {Statistics};static bool place(HWND w,Layer,int,int,int,int,int flags){assert(flags&SWP_NOACTIVATE);if(flags&SWP_SHOWWINDOW)visible[w]=true;++placements;return true;}}
 namespace secondarydisplay {struct Target {void*monitor=nullptr;RECT work;bool available()const{return monitor&&work.right>work.left&&work.bottom>work.top;}};static Target selected{handle(20),{-1600,-100,0,800}};struct Monitor {Target get(HWND,HWND,DWORD){return selected;}};}
 static secondarydisplay::Monitor secondaryMonitor;
-namespace um {constexpr int MaxTypes=64,MaxPlayers=8;struct Snapshot {int status=1,typeCount=1,playerCount=1,paletteReady=1,missingIcons=0,readErrors=0;uint32_t match=7,tick=1000;};}
-static std::unique_ptr<um::Snapshot> snap(new um::Snapshot),incoming(new um::Snapshot);
+namespace um {constexpr int MaxTypes=64,MaxPlayers=8;struct Snapshot {int status=1,typeCount=1,playerCount=1,paletteReady=1,missingIcons=0,readErrors=0;uint32_t match=7,tick=1000;};
+static bool samePresentation(const Snapshot&a,const Snapshot&b){return a.status==b.status&&a.match==b.match&&a.playerCount==b.playerCount;}}
+static std::shared_ptr<const um::Snapshot> snap=std::make_shared<const um::Snapshot>();
 static int desiredStatus=1;static uint32_t desiredMatch=7;
 struct Sampler {um::Snapshot sample(DWORD t,bool){++samples;um::Snapshot s;s.status=desiredStatus;s.match=desiredMatch;s.tick=t;return s;}struct Probe {int stage=0,address=0;};Probe probe(){return {};}};
-static std::unique_ptr<Sampler> sampler(new Sampler);
-struct Reader {int lastReadError=0;bool alive(){return processAlive;}bool valid(){return readerValid;}void begin(){}bool readFresh(uint32_t,void*out,size_t n){if(n==4)*static_cast<int*>(out)=1920;return true;}} reader;
+struct Request {uint64_t generation;DWORD pid;uint64_t connection;};struct SampleResult {Request request;std::shared_ptr<const um::Snapshot> snapshot;Sampler::Probe probe{};int openError=0,readError=0;};
+static uint64_t samplingGeneration=1;static std::shared_ptr<const SampleResult> appliedSample;
+struct SamplingWorker {std::shared_ptr<const SampleResult> latest;
+ void invalidate(){latest.reset();}auto get(){return latest;}
+ void submit(Request r){if(!r.pid){latest.reset();return;}Sampler sampler;auto s=std::make_shared<const um::Snapshot>(sampler.sample(GetTickCount(),true));latest=std::make_shared<const SampleResult>(SampleResult{r,s});}
+} samplingWorker;
+struct Reader {int lastReadError=0;bool alive(){return processAlive;}bool valid(){return readerValid;}uint64_t generation(){return connectionGeneration;}void begin(){}bool readFresh(uint32_t,void*out,size_t n){if(n==4)*static_cast<int*>(out)=1920;return true;}} reader;
 namespace external {
 namespace display {struct State {bool readable=true;int tactical=1,specialDialog=0,dialogCount=0;bool visible()const{return battleVisible;}};template<class F>State inspect(F){return {};}}
-namespace layout {static std::wstring description(int){return L"probe";}}
+namespace layout {using Result=Sampler::Probe;static std::wstring description(int){return L"probe";}}
 namespace discovery {struct Found {struct {HWND window;DWORD pid=10,thread=11;} best;};static HWND resolveYrppWindow(Reader&,DWORD,HWND,DWORD*t){*t=threadId;return game;}static Found scan(DWORD){return {{game,pid,threadId}};}}
 }
 struct Recovery {template<class T>bool due(DWORD,bool,T,bool){return false;}void suspend(){}void submitted(bool){}};
@@ -68,12 +74,13 @@ static bool enabled=false,demo=false,secondaryEnabled=true,secondaryActive=false
 static int page=0,scalePercent=100,leftMargin=6,topMargin=20,paintedAlpha=-1;
 static int secondaryX=0,secondaryY=0;
 static DWORD lastSearch=0,lastGood=1000,lastData=0,oldMatch=7;
-static bool changed(const um::Snapshot&a,const um::Snapshot&b){return a.status!=b.status||a.match!=b.match||a.playerCount!=b.playerCount;}
 static std::wstring status;static void setStatus(const std::wstring&s){status=s;}static void visibilityStatus(const std::wstring&){}
 static void log(const wchar_t*){}static void pollTab(){}static void refreshInformationRate(DWORD){}static void demoData(){}
 static int statsInformationFPS(){return 144;}
 struct Clock {bool active=false;void state(bool on,int){active=on;}bool running(){return false;}} statsFrameClock;
 static void statsVisible(bool value){++primaryVisibility;primaryReportedVisible=value;}
+static void hidePrimaryStats(){visible[overlay]=false;}
+static void resetPrimaryRender(){}
 namespace tabui {static bool displayRequested(bool hidden,bool,bool,bool){return !hidden;}}
 static struct Tabs {void loseFocus(){}bool visible(){return false;}}tabs;
 static struct Fade {bool desired=false;void hide(){desired=false;}void target(bool on,DWORD){desired=on;}int value(DWORD){return desired?255:0;}}fade;
@@ -89,8 +96,8 @@ static bool secondaryUploaded=false;static DWORD secondaryLastSubmit=0;
 placement=source[source.index('static POINT secondaryPosition('):source.index('static SecondaryDrag secondaryDrag;')]
 drag_host='static SecondaryDrag secondaryDrag;\nstatic void resetSecondary();\nstatic void finishSecondaryDrag(){secondaryDrag.active=false;}\n'
 post=r'''
-static void detach(){resetSecondary();game=nullptr;pid=threadId=0;sampler.reset();*snap={};snap->status=0;lastGood=0;}
-static void attach(){if(!processAlive)return;game=handle(1);pid=10;threadId=11;sampler=std::make_unique<Sampler>();}
+static void detach(){resetSecondary();game=nullptr;pid=threadId=0;++samplingGeneration;samplingWorker.invalidate();appliedSample.reset();auto data=std::make_shared<um::Snapshot>();data->status=0;snap=data;lastGood=0;}
+static void attach(){if(!processAlive)return;game=handle(1);pid=10;threadId=11;}
 static struct Cache {std::atomic<unsigned> loaded{0};bool writeFailed=false;}iconCache;
 static void render(int,int,POINT,int,int){++primaryRenders;renderDirty=false;}static void present(POINT,int,int,int,int,int,bool){++primaryPresents;statsVisible(true);visible[overlay]=true;}
 '''
@@ -137,7 +144,11 @@ int main(){
  secondarydisplay::selected={};++now;tick(true);assert(!visible[secondaryOverlay]&&!secondaryRenderedFrame&&!statsFrameClock.active);
  secondarydisplay::selected={handle(21),{1920,0,3840,1040}};++now;tick(true);assert(visible[secondaryOverlay]&&uploadedOrigin.x==1920&&uploadedOrigin.y==0&&secondaryWidth==1152&&secondaryHeight==1040);
  // A round transition rejects the previous asynchronous frame before publish.
- desiredMatch=8;now=1600;tick(true);assert(samples==3&&oldMatch==8&&secondaryRenderedFrame->request.match==8);
+ desiredMatch=8;now=1600;tick(true);assert(samples==3&&oldMatch==7);++now;tick(true);assert(oldMatch==8&&secondaryRenderedFrame->request.match==8);
+ // The same PID with a different process connection cannot publish an old
+ // worker completion, even when its snapshot and session generation look valid.
+ auto stale=std::make_shared<SampleResult>(*samplingWorker.latest);auto wrong=std::make_shared<um::Snapshot>(*stale->snapshot);wrong->match=9;stale->snapshot=wrong;samplingWorker.latest=stale;
+ ++connectionGeneration;++now;tick(true);assert(oldMatch==8);--connectionGeneration;samplingWorker.latest=appliedSample;
  secondaryEnabled=false;++now;tick(true);assert(!secondaryActive&&!visible[secondaryOverlay]&&!statsFrameClock.active);
  unsigned count=samples;now=1900;tick(false);assert(samples==count);
  secondaryEnabled=true;now=2200;tick(true);assert(samples==count+1&&visible[secondaryOverlay]);
@@ -151,6 +162,6 @@ with tempfile.TemporaryDirectory(prefix='secondary-stats-') as directory:
                 function('static void paintSecondaryDragGrip(UnitSurface&surface)')+
                 function('static void resetSecondary(){')+
                 function('static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame)')+
-                post+function('static void tick(bool displayFrame=false)')+scenario)
+                post+function('static void consumeSample(DWORD now)')+function('static void tick(bool displayFrame=false)')+scenario)
  subprocess.run(['g++','-std=c++17','-O2','-Wall','-Wextra','-Wno-misleading-indentation','-Wno-missing-field-initializers',str(cpp),'-o',str(exe)],check=True)
  subprocess.run([str(exe)],check=True)

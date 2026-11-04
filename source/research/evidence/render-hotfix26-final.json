@@ -1,0 +1,115 @@
+{
+  "release": "1.0.39-pre.7 Hotfix26",
+  "product_source_remote_commit": "0ad8b52653f0720fc4f61ef7c7d601b69990a169",
+  "product_source_remote_tree": "7382e42c1b2a01d00cee63fc566f1104fd60ee62",
+  "product_source_local_commit": "cfb33089b046bf848203bf2abf23b7ed85d88e4e",
+  "source_url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/commit/0ad8b52653f0720fc4f61ef7c7d601b69990a169",
+  "source_correspondence": {
+    "frozen_files": 1466,
+    "unchanged_during_build": true,
+    "all_local_blobs_match_complete_remote_tree": true,
+    "remote_tree_truncated": false,
+    "historical_unmaterialized_paths_preserved": true
+  },
+  "compiler": "Zig 0.13.0; x86_64-windows-gnu host, x86-windows-gnu runtime/broker",
+  "build_exit_code": 0,
+  "static_only": true,
+  "abi": {
+    "protocol": 81,
+    "layout_entries": 678,
+    "differences": {},
+    "pe_parser_negative_checks": "pass",
+    "wire_baseline_matches": true,
+    "passed": true,
+    "executed_windows_images": false,
+    "fixture_sha256": "95ff58dd425c100facf99036cf4e64e994daba8903f17afa731ed77ea0c6342e"
+  },
+  "pe": {
+    "passed": true,
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86",
+    "file_version": "1.0.39.7",
+    "unbundled_runtime_dependencies": false,
+    "manifest": "EXE RT_MANIFEST/1/Common Controls6/amd64; verified",
+    "files": {
+      "RA2Toolbox.exe": {
+        "bytes": 8336896,
+        "sha256": "f3911866fddaf423cebb970c9a88cda13635ce7b987964888c81cbdfc68a50eb",
+        "machine": "PE32+ x64"
+      },
+      "GameRuntime.dll": {
+        "bytes": 5247488,
+        "sha256": "aeaf457c1886a357b33ec32fb838a09a738fc9e1730716bde31b6aa696eb5237",
+        "machine": "PE32 x86"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "39d2103882f6c18f26b352be1e2b35b670bb25d65be9c6447aab48429be0af71",
+        "machine": "PE32 x86"
+      }
+    }
+  },
+  "shader_static_validation": [
+    {
+      "variant": "SceneShader",
+      "source_sha256": "1b407c8363c115620c8d911056483d8ec507b22533986a4392bc046268538890",
+      "spirv_sha256": "506cefd53a1f6f9e3f41ad2520fd9b4218c9ae1e2075eb4bbcd16e24d18509b3",
+      "bytes": 182656
+    },
+    {
+      "variant": "Scene64Shader",
+      "source_sha256": "1b407c8363c115620c8d911056483d8ec507b22533986a4392bc046268538890",
+      "spirv_sha256": "62f271474a283db305cb33c96a4dfbbb497f2341336f1ab1750bc0b677ac5c6c",
+      "bytes": 260432
+    },
+    {
+      "variant": "ScenePagesShader",
+      "source_sha256": "1b407c8363c115620c8d911056483d8ec507b22533986a4392bc046268538890",
+      "spirv_sha256": "99dc1f0f358f2e941da6726cecbde911706439d51441efcb5fb95262557da457",
+      "bytes": 167416
+    },
+    {
+      "variant": "ScenePagesBankedShader",
+      "source_sha256": "1b407c8363c115620c8d911056483d8ec507b22533986a4392bc046268538890",
+      "spirv_sha256": "990731376efd5343c18c540411cea9065c3a56d240521cf6ecea105a03529436",
+      "bytes": 170692
+    },
+    {
+      "variant": "AreaShader",
+      "source_sha256": "d0296f55c1a72353f3a75adce77f4ac9aeff4060b2eaa76626d6985acb013d41",
+      "spirv_sha256": "85724bc93c3ade8f399db843cce713ceb7f318b857e86bec6d1a7070da221c4d",
+      "bytes": 19796
+    },
+    {
+      "variant": "AreaBankedShader",
+      "source_sha256": "d0296f55c1a72353f3a75adce77f4ac9aeff4060b2eaa76626d6985acb013d41",
+      "spirv_sha256": "bf1bb353b97f225d40a56d8ef7a739020ea11b40ec75bb1cb6506a32c4dfd11d",
+      "bytes": 25600
+    },
+    {
+      "source_sha256": "138a75461c1bb0c67c5ff50146d8f8d8c333cc1d097db6260ea239b02ffab73f",
+      "spirv_sha256": "ad416ec56337be03d26f0d8775fbb58a61989660878e5b5af35b7d836da96cd4",
+      "bytes": 65548,
+      "graphics_driver_loaded": false
+    },
+    {
+      "source_sha256": "8f38340d79537ba98a17230423dd7bccc51bd1c1ca0daa6bc932dea52adbbab2",
+      "spirv_sha256": "d19f0aab6c7cebec4a240aedfda069a78f4ab404b6ad398af1f4f6ff6f92620d",
+      "bytes": 6532,
+      "words": 1633
+    }
+  ],
+  "executed": {
+    "cpu_fixture_suites": false,
+    "native_instructions": false,
+    "vulkan": false,
+    "d3d": false,
+    "windows": false,
+    "game": false,
+    "multiplayer": false,
+    "fps_measurement": false
+  },
+  "build_log_sha256": "ff5b4f54067164e3346a7a771de6c4f91c267567460ffa3c675330410cdc16c1",
+  "limits_note": "source/research/2026-10-31-native-surface-hotfix26.md"
+}

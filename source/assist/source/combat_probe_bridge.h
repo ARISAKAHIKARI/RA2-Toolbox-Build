@@ -1,10 +1,9 @@
-// Native read-only observations owned by GameRuntime. No target, range or
-// mission fields are changed to answer a query. Both planners consume values.
-extern "C" int GuardedCombatWeapon(unsigned,unsigned,unsigned*,int*,int*,int*);
+// Raw observations are the default. Engine selectors/range calls require the
+// explicit experimental option; both planners consume the resulting values.
 static planner::CombatProbe probeCombatPair(uint32_t p,uint32_t q,const planner::Actor& actor,const planner::Actor& victim,int padding){
  planner::CombatProbe result{};result.target=get<uint32_t>(q+0x10);
  uint32_t weapon=0;int slot=0,close=0,airborne=0;
- int status=GuardedCombatWeapon(p,q,&weapon,&slot,&close,&airborne);
+ int status=combatWeaponQuery(p,q,&weapon,&slot,&close,&airborne);
  if(status<0){result.flags=4;return result;}if(!status)return result;
  planner::Actor source=actor,target=victim;
  source.flags|=planner::FixedWeapon;source.weapons[0]=rawWeaponInfo(weapon,true);

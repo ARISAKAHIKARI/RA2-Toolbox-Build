@@ -1,0 +1,10 @@
+{
+  "commit": "5983b943e90694f7b2630608bc464d6f8ee148e3",
+  "repository": "ARISAKAHIKARI/RA2-Toolbox-Build",
+  "original_directory": "source/external_reader/source",
+  "scope": "Historical production source copied only as offline test inputs. Never included by production. Verified against the fixed GitHub commit; the runner checks hashes before namespace-isolated compilation.",
+  "files": {
+    "main_viewport.h": "7e5b8a58febc0a612b8c148535484713bd5e89199a7615d05c346d193fc9a64c",
+    "tactical_sampler.h": "328b598c2e009c087bba89bbb755051647493d423ba316aea915cd9fc8f67299"
+  }
+}

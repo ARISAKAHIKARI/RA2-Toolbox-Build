@@ -1,0 +1,39 @@
+#version 450
+// Four adjacent destination pixels are packed into one word. Every pixel has
+// one writer; source-cell and shroud/fog order is retained in each 32x32 bin.
+layout(local_size_x=64,local_size_y=1,local_size_z=1) in;
+layout(set=0,binding=0,std430) readonly buffer Alpha {uint value[];} alpha;
+layout(set=0,binding=1,std430) readonly buffer Metadata {uint value[];} metadata;
+layout(set=0,binding=2,std430) writeonly buffer Output {uint value[];} outputMask;
+layout(push_constant) uniform Params {
+ uint width,height,samplesX,samplesY,stampOffset,coordinateOffset,rangeOffset,referenceOffset,binColumns,outputOffset;
+} p;
+uint samplePixel(uint pixel){
+ uint px=pixel%p.width,py=pixel/p.width,bin=(py/32u)*p.binColumns+px/32u;
+ uint first=metadata.value[p.rangeOffset+bin],last=metadata.value[p.rangeOffset+bin+1u];
+ uint sum=0u;
+ for(uint sy=0u;sy<p.samplesY;++sy)for(uint sx=0u;sx<p.samplesX;++sx){
+  uint result=2u;
+  for(uint reference=first;reference<last;++reference){
+   uint stamp=p.stampOffset+metadata.value[p.referenceOffset+reference]*12u;
+   uvec4 rect=uvec4(metadata.value[stamp],metadata.value[stamp+1u],metadata.value[stamp+2u],metadata.value[stamp+3u]);
+   if(px<rect.x||py<rect.y||px>=rect.z||py>=rect.w)continue;
+   uint sourceWidth=metadata.value[stamp+5u],sourceHeight=metadata.value[stamp+6u];
+   int ix=int(metadata.value[p.coordinateOffset+metadata.value[stamp+8u]+(px-rect.x)*p.samplesX+sx]);
+   int iy=int(metadata.value[p.coordinateOffset+metadata.value[stamp+9u]+(py-rect.y)*p.samplesY+sy]);
+   if(ix<0||iy<0||uint(ix)>=sourceWidth||uint(iy)>=sourceHeight)continue;
+   uint incoming=alpha.value[metadata.value[stamp+4u]+uint(iy)*sourceWidth+uint(ix)];
+   if(metadata.value[stamp+7u]==0u){if(incoming!=254u)result=incoming;}
+   else if(incoming>127u)continue;
+   else result=uint(max(0,int(result)+int(incoming)-127));
+  }sum+=result;
+ }
+ uint samples=p.samplesX*p.samplesY;return (sum+samples/2u)/samples;
+}
+void main(){
+ uint word=gl_GlobalInvocationID.x+gl_GlobalInvocationID.y*gl_NumWorkGroups.x*64u,count=p.width*p.height;
+ if(word>=(count+3u)/4u)return;
+ uint packed=0u;
+ for(uint n=0u;n<4u;++n){uint pixel=word*4u+n;if(pixel<count)packed|=samplePixel(pixel)<<(n*8u);}
+ outputMask.value[p.outputOffset+word]=packed;
+}

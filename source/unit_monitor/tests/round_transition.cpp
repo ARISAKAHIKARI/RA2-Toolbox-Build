@@ -92,5 +92,5 @@ int main(){
   for(uint32_t address:{uint32_t(0xA8E9A0),uint32_t(Enemy+90154)}){f.m.fail=address;assert(f.sample().status==0);f.m.fail=0;f.m.put(0xA8ED84,200);assert(f.sample().match==epoch);++cases;}
   f.m.put<uint8_t>(0xA8E9A0,0);assert(f.sample().status==0);f.m.put<uint8_t>(0xA8E9A0,1);assert(f.sample().match!=epoch);++cases;
  }
- std::cout<<cases<<" round-transition sampler regressions passed\n";
+ std::cout<<cases<<" round-transition sampler regressions passed\n";return 0;
 }

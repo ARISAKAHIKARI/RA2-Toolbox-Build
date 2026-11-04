@@ -1,0 +1,247 @@
+{
+  "question": "What do official v0.0.0.17 Hardened map/shroud patches change, and do they prove trainer bypass of a map legality check?",
+  "method": "Read-only on-disk PE metadata and disassembly; no target DLL execution, no game execution, no modification of product or anti-cheat.",
+  "spawner_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+  "yrpp_commit": "b22f1860dd7b100cad57123d4ca5d459b9020d88",
+  "binaries": {
+    "normal": {
+      "sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+      "size": 233472
+    },
+    "hardened": {
+      "sha256": "62466e9e534ceb15c5d71fb05c62ad98a2b2b4903c569ed0c82189ef86ea3b7d",
+      "size": 417792
+    }
+  },
+  "shared_special_cell_patch": {
+    "normal": [
+      {
+        "address": 6032944,
+        "address_hex": "0x005C0E30",
+        "size": 2,
+        "data_va_hex": "0x1002E834",
+        "file_backed_data": true,
+        "data_hex": "b001"
+      }
+    ],
+    "hardened": [
+      {
+        "address": 6032944,
+        "address_hex": "0x005C0E30",
+        "size": 2,
+        "data_va_hex": "0x1002F8C4",
+        "file_backed_data": true,
+        "data_hex": "b001"
+      }
+    ]
+  },
+  "special_cell_source": "src/Misc/Bugfixes.Desyncs.cpp:352-356: fixes desync caused by shrouding check at a specific cell; sets Session.MPGameMode->SkipCheatCheck() true. This is official behavior shared by both inspected DLLs, not evidence of trainer changes.",
+  "trainer_map_patch_intervals": [
+    {
+      "address": "0x508e60",
+      "width": 2,
+      "exact_interval_overlaps": [],
+      "nearby_patches": []
+    },
+    {
+      "address": "0x508eba",
+      "width": 2,
+      "exact_interval_overlaps": [],
+      "nearby_patches": []
+    },
+    {
+      "address": "0x508f8f",
+      "width": 2,
+      "exact_interval_overlaps": [],
+      "nearby_patches": []
+    },
+    {
+      "address": "0x577b3a",
+      "width": 2,
+      "exact_interval_overlaps": [],
+      "nearby_patches": []
+    },
+    {
+      "address": "0x6d88fc",
+      "width": 2,
+      "exact_interval_overlaps": [],
+      "nearby_patches": [
+        {
+          "address": 7178499,
+          "address_hex": "0x006D8903",
+          "size": 5,
+          "data_va_hex": "0x100634B4",
+          "file_backed_data": true,
+          "data_hex": "e900000000"
+        },
+        {
+          "address": 7178494,
+          "address_hex": "0x006D88FE",
+          "size": 5,
+          "data_va_hex": "0x100634AC",
+          "file_backed_data": true,
+          "data_hex": "e900000000"
+        }
+      ]
+    }
+  ],
+  "hardened_added_map_patches": [
+    {
+      "patch": {
+        "address": 4714481,
+        "address_hex": "0x0047EFF1",
+        "size": 5,
+        "data_va_hex": "0x1006349C",
+        "file_backed_data": true,
+        "data_hex": "e900000000"
+      },
+      "initializer_rva": "0x1380",
+      "initializer_in_array": true,
+      "helper_rva": "0xecb0",
+      "native_continuation": "0x47f018"
+    },
+    {
+      "patch": {
+        "address": 4715102,
+        "address_hex": "0x0047F25E",
+        "size": 5,
+        "data_va_hex": "0x100634BC",
+        "file_backed_data": true,
+        "data_hex": "e900000000"
+      },
+      "initializer_rva": "0x1390",
+      "initializer_in_array": true,
+      "helper_rva": "0xece0",
+      "native_continuation": "0x47f274"
+    },
+    {
+      "patch": {
+        "address": 5792890,
+        "address_hex": "0x0058647A",
+        "size": 5,
+        "data_va_hex": "0x100634A4",
+        "file_backed_data": true,
+        "data_hex": "e900000000"
+      },
+      "initializer_rva": "0x13a0",
+      "initializer_in_array": true,
+      "helper_rva": "0xed00",
+      "native_continuation": "0x586489"
+    },
+    {
+      "patch": {
+        "address": 7178494,
+        "address_hex": "0x006D88FE",
+        "size": 5,
+        "data_va_hex": "0x100634AC",
+        "file_backed_data": true,
+        "data_hex": "e900000000"
+      },
+      "initializer_rva": "0x13b0",
+      "initializer_in_array": true,
+      "helper_rva": "0xed30",
+      "native_continuation": "0x6d8908"
+    },
+    {
+      "patch": {
+        "address": 7178499,
+        "address_hex": "0x006D8903",
+        "size": 5,
+        "data_va_hex": "0x100634B4",
+        "file_backed_data": true,
+        "data_hex": "e900000000"
+      },
+      "initializer_rva": "0x13c0",
+      "initializer_in_array": true,
+      "helper_rva": "0xed50",
+      "native_continuation": "0x6d8908"
+    }
+  ],
+  "helper_semantics": {
+    "0xecb0": "Sets byte [0x89e7c5]=1, [0x89e794]=DLL+0x4d8e8 (embedded SHROUD), [0x89e790]=DLL+0x37e60 (embedded FOG), jumps 0x47f018.",
+    "0xece0": "Sets byte [0x89e7c5]=1 and [0x89e760]=DLL+0x37e60 (embedded FOG), jumps 0x47f274.",
+    "0xed00": "Tests byte [EAX+0x12c] bit 8; returns AL=1 if clear, AL=0 if set; restores ESI and 8 stack bytes; jumps 0x586489. Public CellClass layout maps +0x12c to AltFlags, whose mask 0x08 is Mapped.",
+    "0xed30": "Sets EDI=-2 and EBX=8, jumps 0x6d8908.",
+    "0xed50": "Sets EBX=8, jumps 0x6d8908."
+  },
+  "embedded_shapes": {
+    "FOG": {
+      "va": "0x10037e60",
+      "type": 0,
+      "width": 60,
+      "height": 30,
+      "frame_count": 96,
+      "selected_frames": [
+        {
+          "frame": 0,
+          "width": 60,
+          "height": 30,
+          "offset": "0x908",
+          "flags": "0xcccc0000",
+          "pixel_histogram": {
+            "127": 900,
+            "254": 900
+          }
+        },
+        {
+          "frame": 15,
+          "width": 60,
+          "height": 30,
+          "offset": "0x7280",
+          "flags": "0xcccc0000",
+          "pixel_histogram": {
+            "66": 900,
+            "254": 900
+          }
+        }
+      ]
+    },
+    "SHROUD": {
+      "va": "0x1004d8e8",
+      "type": 0,
+      "width": 60,
+      "height": 30,
+      "frame_count": 96,
+      "selected_frames": [
+        {
+          "frame": 0,
+          "width": 60,
+          "height": 30,
+          "offset": "0x908",
+          "flags": "0xcccc0000",
+          "pixel_histogram": {
+            "127": 900,
+            "254": 900
+          }
+        },
+        {
+          "frame": 15,
+          "width": 60,
+          "height": 30,
+          "offset": "0x7280",
+          "flags": "0xcccc0000",
+          "pixel_histogram": {
+            "2": 900,
+            "254": 900
+          }
+        }
+      ]
+    }
+  },
+  "startup": "Public Main.Hook.cpp:31-35 unconditionally calls Main::ExeRun at native 0x7cd810; Main.cpp:30-35 calls Patch::ApplyStatic first. The five relative displacements are initialized by functions present in the observed initializer pointer array. Actual user load order/runtime bytes are not captured here.",
+  "source_refs": [
+    "https://github.com/CnCNet/yrpp-spawner/blob/fbe8d7d2620584d04ba14fa3580943bfa1448d40/src/Main.Hook.cpp#L23-L35",
+    "https://github.com/CnCNet/yrpp-spawner/blob/fbe8d7d2620584d04ba14fa3580943bfa1448d40/src/Misc/Bugfixes.Desyncs.cpp#L352-L356",
+    "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/CellClass.h#L471-L488",
+    "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/GeneralDefinitions.h#L730-L745",
+    "https://github.com/Phobos-developers/YRpp/blob/b22f1860dd7b100cad57123d4ca5d459b9020d88/FileFormats/SHP.h"
+  ],
+  "bounds": [
+    "No exact .patch/.syhks interval overlap at the five trainer two-byte sites in these particular DLL tables. Static tables do not cover all dynamic writes or indirect code checks.",
+    "0x6d88fc is immediately followed by Hardened replacements at +2 and +7; code-context compatibility is different even without an exact interval overlap.",
+    "The five traced helpers contain local resource/visibility operations and native continuation jumps; no CRC compare, network send, report, or termination call in those helper bodies. This does not exclude checks elsewhere in the full DLL.",
+    "Resource replacement and visibility predicates are not themselves proof of anti-cheat detection or a detection bypass.",
+    "No actual user CnCNet executable/DLL hash, load order, or disconnect trace has been compared in this subtask.",
+    "A trainer capture outside multiplayer legality-check gates cannot establish that the trainer bypasses those gates."
+  ]
+}

@@ -17,6 +17,7 @@ static DWORD ownerId;
 static Shared* s;
 static HANDLE mapping,owner;
 static void* held;
+static DWORD heldVtable;
 
 static LONG hiddenRef;
 static DWORD lastInspectAt,lastSampleAt;
@@ -119,6 +120,30 @@ static bool current(void** p,LONG* ref){
  *p=0;*ref=0;
  return read(0x887640,p,4)&&valid(*p)&&read((DWORD)(*p)+12,ref,4);
 }
+enum class HeldMouseState { Unavailable, Replaced, Current };
+static HeldMouseState heldMouse(void*&p,LONG*ref=nullptr){
+ p=nullptr;if(!read(0x887640,&p,4))return HeldMouseState::Unavailable;
+ if(p!=held)return HeldMouseState::Replaced;
+ DWORD vt=0,slots[5]{};
+ if(!read(DWORD(uintptr_t(p)),&vt,sizeof vt))return HeldMouseState::Unavailable;
+ if(vt!=heldVtable||vt<0x10000)return HeldMouseState::Replaced;
+ if(!read(vt,slots,sizeof slots))return HeldMouseState::Unavailable;
+ if(slots[1]!=0x7B8A00||slots[3]!=0x7B9930||slots[4]!=0x7B9750)return HeldMouseState::Replaced;
+ if(ref&&!read(DWORD(uintptr_t(p))+12,ref,sizeof *ref))return HeldMouseState::Unavailable;
+ return HeldMouseState::Current;
+}
+extern "C" bool CursorTooltipNeeded(){return held&&s&&s->state==1;}
+extern "C" void CursorTooltipStatus(int status){if(s)s->tooltipState=status;}
+extern "C" bool CursorTooltipOwnsHiddenMouse(){
+ if(!CursorTooltipNeeded())return false;
+ gameentry::Request lease{};if(!gameentry::capture(gameentry::Client::Cursor,lease))return false;
+ void* p=nullptr;LONG ref=0;DWORD vt=0,getter=0;
+ // -1 + our one held HideCursor = native visible count 0. Leave additional
+ // game hides (< -1), replacement objects and foreign getters untouched.
+ const bool ours=current(&p,&ref)&&p==held&&ref==-1&&
+  read(DWORD(uintptr_t(p)),&vt,4)&&read(vt+0x28,&getter,4)&&getter==0x7B89F0;
+ gameentry::leave(lease);return ours;
+}
 // Return Windows cursor control to its prior owner. Balance only our own
 // ShowCursor increments; do not unconditionally toggle visibility on detach.
 static void nativeRelease(){
@@ -194,6 +219,7 @@ static HCURSOR nativeBuild(LONG* accepted){
 }
 static void nativeRefresh(){
  if(!s)return;
+ if(s->menuSuspend==2){nativeRelease();menuBalanceRelease();return;}
  if(s->nativeBlank&&held&&s->state==1){
   if(!blankActive){nativeRelease();blankOld=GetCursor();blankActive=true;}
   SetCursor(NULL);s->nativeVisible=0;return;
@@ -275,23 +301,27 @@ static void publishSample(){
 static bool restore(){
  nativeRelease();menuBalanceRelease();
  if(!held)return true;
- void* prev=held;held=0;
- void* cur=0;
- // Never invoke an address through a stale/replaced mouse object.
- bool ok=read(0x887640,&cur,4)&&cur==prev&&valid(cur);
- if(ok)invoke(cur,0x7B9750); // a single paired restore for the held hide
+ void* cur=nullptr;const auto identity=heldMouse(cur);
+ // A failed read does not retire our one held Hide. Keep the old identity
+ // and mapping until a later game-thread watchdog can prove what happened.
+ if(identity==HeldMouseState::Unavailable)return false;
+ if(identity==HeldMouseState::Current)invoke(cur,0x7B9750);
+ // A confirmed replacement is no longer our mouse; never call its object
+ // or an old vtable merely to balance a reference from a retired lifetime.
+ held=nullptr;heldVtable=0;
  if(s){s->observedRef=0;s->hiddenRef=0;}
- return ok;
+ return true;
 }
 static void invalidate(LONG error){
  bool restored=restore();
- if(s){s->error=restored?error:4;s->state=-1;s->command=0;}
+ if(s){s->error=restored?error:4;if(restored){s->state=-1;s->command=0;}else s->command=2;}
 }
 static bool initialHide(){
  void* p=0;LONG before=0,after=0;
  if(!current(&p,&before)) {s->error=1;return false;}
  if(before<0||before>hidewatch::maxReference){s->error=2;return false;}
- held=p;
+ DWORD vt=0;if(!read(DWORD(uintptr_t(p)),&vt,sizeof vt)){s->error=1;return false;}
+ held=p;heldVtable=vt;
  invoke(p,0x7B9930);
  if(!read((DWORD)p+12,&after,4)||!hidewatch::oneHideWasPaired(before,after)){
   // If an unexpected implementation is encountered, undo only our call.
@@ -304,7 +334,9 @@ static bool initialHide(){
 static void inspect(bool release){
  if(!held||!s||s->state!=1)return;
  void* p=0;LONG ref=0;
- if(!current(&p,&ref)||p!=held){invalidate(4);return;}
+ const auto identity=heldMouse(p,&ref);
+ if(identity==HeldMouseState::Unavailable)return;
+ if(identity==HeldMouseState::Replaced){invalidate(4);return;}
  s->observedRef=ref;
  int32_t pending=hidewatch::required(ref,hiddenRef);
  if(pending<0){invalidate(7);return;}
@@ -336,16 +368,31 @@ static void tick(){
  }
  if(!lastOwnerCheck||DWORD(stamp-lastOwnerCheck)>=100||s->command){
   lastOwnerCheck=stamp;
-  if(!owner||WaitForSingleObject(owner,0)!=WAIT_TIMEOUT||DWORD(stamp-s->heartbeat)>5000){
-   bool ok=restore();s->error=ok?0:4;s->state=0;s->command=0;return;
+  if(!owner&&ownerId)owner=OpenProcess(SYNCHRONIZE,FALSE,ownerId);
+  // Only the retained process object's exit proves controller death. A
+  // stalled heartbeat or failed query pauses work without losing our hide.
+  if(owner&&WaitForSingleObject(owner,0)==WAIT_OBJECT_0){
+   bool ok=restore();s->error=ok?0:4;if(ok)s->state=0;s->command=ok?0:2;return;
   }
  }
+ // Explicit stop must remain serviceable while paused or owner liveness is
+ // unknown; other requests stay pending until the live controller resumes.
+ if(s->command!=2&&(!owner||WaitForSingleObject(owner,0)!=WAIT_TIMEOUT||DWORD(stamp-s->heartbeat)>5000))return;
  LONG cmd=InterlockedExchange(&s->command,0);
- if(cmd==2){bool ok=restore();s->error=ok?0:4;s->state=0;return;}
+ if(cmd==2){bool ok=restore();s->error=ok?0:4;if(ok)s->state=0;else s->command=2;return;}
  if(InterlockedExchange(&s->resourceRequest,0))GuardedCursorResource();
- if(cmd==3){s->state=0;return;} // resource-only session; never hides a cursor
- if(cmd==1){if(held){s->state=1;}else{if(!initialHide()&&s->state!=-1)s->state=-1;}return;}
+ if(cmd==3){
+  // A resource-only restart may reuse a mapping whose prior hide still
+  // awaits restoration. It cannot acknowledge idle while owning that hide.
+  bool ok=restore();s->error=ok?0:4;s->state=ok?0:2;if(!ok)s->command=2;return;
+ }
+ if(cmd==1){if(held){s->state=1;}else if(!initialHide()&&s->state!=-1){
+  // The Hide call can succeed before its confirmation read fails. Until
+  // the paired restore is resolved, do not publish a detached/error ACK.
+  s->state=held?2:-1;
+ }return;}
  if(!held)return;
+ if(s->menuSuspend==2){nativeRefresh();return;} // retain Hook/hide; suspend presentation and game sampling
  DWORD now=GetTickCount();
  bool pressed=(GetAsyncKeyState(VK_RBUTTON)&0x8000)!=0;
  bool released=rightReleased||(rightWasDown&&!pressed);
@@ -383,11 +430,10 @@ extern "C" void CursorRuntimeMessage(int code,WPARAM wp,LPARAM lp){
 }
 extern "C" void CursorRuntimeWatchdog(){
  if(!s)return;
- DWORD now=GetTickCount();
- bool dead=!owner||WaitForSingleObject(owner,0)!=WAIT_TIMEOUT;
- if(s->command!=2&&!dead&&DWORD(now-s->heartbeat)<=5000)return;
+ const bool dead=owner&&WaitForSingleObject(owner,0)==WAIT_OBJECT_0;
+ if(s->command!=2&&!dead)return;
  gameentry::Scope entry(gameentry::Client::Cursor);if(!entry)return;
- bool ok=restore();s->error=ok?0:4;s->state=0;s->command=0;
+ bool ok=restore();s->error=ok?0:4;if(ok)s->state=0;s->command=ok?0:2;
  if(ok)disconnectCursor();
 }
 // WH_CALLWNDPROCRET is called AFTER the game has processed WM_SETCURSOR.
@@ -399,6 +445,7 @@ static bool insideGameWindow(HWND w){
  HWND renderer=(HWND)(uintptr_t)s->gameWindow;
  return IsWindow(renderer)&&GetAncestor(w,GA_ROOT)==GetAncestor(renderer,GA_ROOT);
 }
+extern "C" bool CursorRuntimeDetached(){return s==nullptr;}
 static bool isDialogMessage(HWND w){
  if(!w)return false;
  HWND root=GetAncestor(w,GA_ROOT);
@@ -412,7 +459,7 @@ static bool isDialogMessage(HWND w){
 extern "C" void CursorRuntimePost(int code,WPARAM wp,LPARAM lp){
  __declspec(align(16)) BYTE fx[512];
  __asm {fxsave fx}
- if(code>=0&&s&&lp){
+ if(code>=0&&s&&lp&&s->menuSuspend!=2){
   gameentry::Scope entry(gameentry::Client::Cursor);
   if(entry){
   const CWPRETSTRUCT* ev=(const CWPRETSTRUCT*)lp;

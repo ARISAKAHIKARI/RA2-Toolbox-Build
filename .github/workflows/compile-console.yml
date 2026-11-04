@@ -1,0 +1,166 @@
+name: Compile WebView2 console and x86 game components
+on:
+  push:
+    branches: [main, codex/console-architecture-20261103]
+    paths: [source/**, .github/workflows/compile-console.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: console-compile-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  console-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the console state model
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics/console-browser
+          node source/suite/tests/console_store_test.mjs 2>&1 | tee diagnostics/console-browser/model.log
+      - name: Install the pinned browser fixture dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx --no-install playwright install --with-deps chromium
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Exercise actual Chromium controls and capture the desktop layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CONSOLE_SCREENSHOT="$PWD/diagnostics/console-browser/console-desktop.png"
+          node source/suite/tests/console_store_test.mjs --browser 2>&1 | tee diagnostics/console-browser/browser.log
+      - name: Preserve the controlled UI screenshot and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-Console-MVVM-browser
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics/console-browser/
+  console-win32-fixtures:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - name: Install Zig 0.13.0 for the isolated Win32 fixtures
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force diagnostics/console-win32,fixtures | Out-Null
+      - name: Activate Common Controls 6 for the independent fixture process
+        shell: pwsh
+        run: |
+          $manifest='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="RA2.Console.Fixture" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly><assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="amd64" publicKeyToken="6595b64144ccf1df" language="*"/></dependentAssembly></dependency><trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security><requestedPrivileges><requestedExecutionLevel level="asInvoker" uiAccess="false"/></requestedPrivileges></security></trustInfo></assembly>'
+          Set-Content -Encoding utf8NoBOM fixtures/fixture.manifest $manifest
+          Set-Content -Encoding ascii fixtures/fixture.rc '1 24 "fixture.manifest"'
+          Push-Location fixtures
+          & $env:ZIG_EXE rc /fo fixture.res fixture.rc
+          $status=$LASTEXITCODE
+          Pop-Location
+          if($status -ne 0){throw 'Fixture activation manifest compilation failed'}
+      - name: Execute native control dispatch and asynchronous INI file fixtures
+        shell: pwsh
+        run: |
+          $flags=@('-target','x86_64-windows-gnu','-std=c++17','-O2','-UNDEBUG')
+          & $env:ZIG_EXE c++ @flags source/suite/tests/console_adapter_windows.cpp fixtures/fixture.res -o fixtures/console_adapter_windows.exe -lkernel32 -luser32 -lgdi32 -lcomctl32 2>&1 | Tee-Object diagnostics/console-win32/adapter-build.log
+          if($LASTEXITCODE -ne 0){throw 'Console adapter fixture compilation failed'}
+          & ./fixtures/console_adapter_windows.exe 2>&1 | Tee-Object diagnostics/console-win32/adapter.log
+          if($LASTEXITCODE -ne 0){throw 'Console adapter real Win32 fixture failed'}
+          & $env:ZIG_EXE c++ @flags source/suite/tests/async_ini_store_test.cpp -o fixtures/async_ini_store_test.exe -lkernel32 2>&1 | Tee-Object diagnostics/console-win32/ini-build.log
+          if($LASTEXITCODE -ne 0){throw 'INI store fixture compilation failed'}
+          & ./fixtures/async_ini_store_test.exe 2>&1 | Tee-Object diagnostics/console-win32/ini.log
+          if($LASTEXITCODE -ne 0){throw 'INI store real Win32 file fixture failed'}
+      - name: Preserve isolated Win32 fixture diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-Console-MVVM-win32-fixtures
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics/console-win32/
+  windows-x64:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            source
+            .github
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force artifacts/console,diagnostics | Out-Null
+      - name: Compile the modern x64 host and unchanged x86 Runtime and broker
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/artifacts/console"
+          bash source/build-zig-x64.sh > diagnostics/console-build.log 2>&1 || { tail -100 diagnostics/console-build.log; exit 1; }
+          tail -50 diagnostics/console-build.log
+          python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+      - name: Record the paired build identity
+        shell: pwsh
+        run: |
+          $files=@()
+          foreach($name in 'RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe','WebView2Loader.dll'){
+            $path="artifacts/console/$name"
+            $files+=@{name=$name;bytes=(Get-Item $path).Length;sha256=(Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          @{commit=$env:GITHUB_SHA;branch=$env:GITHUB_REF_NAME;host='x64';runtime='x86';broker='x86';console='WebView2 MVVM';webview2_sdk='1.0.4314.35';compile_only=$true;game_tested=$false;files=$files} | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 artifacts/console/CONSOLE_COMPILE.json
+      - name: Upload the modern console binaries and required loader notices
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-Console-MVVM-x64
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/console/RA2Toolbox.exe
+            artifacts/console/GameRuntime.dll
+            artifacts/console/GameRuntimeHost32.exe
+            artifacts/console/WebView2Loader.dll
+            artifacts/console/licenses/WebView2/LICENSE.txt
+            artifacts/console/licenses/WebView2/NOTICE.txt
+            artifacts/console/BUILD_SOURCE_MANIFEST.json
+            artifacts/console/BUILD_TARGET.json
+            artifacts/console/WINDOWS_BUILD_ARTIFACTS.json
+            artifacts/console/CONSOLE_COMPILE.json
+      - name: Preserve compiler diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-Console-MVVM-build-log
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics/console-build.log

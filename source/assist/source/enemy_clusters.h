@@ -8,32 +8,37 @@
 #include <unordered_map>
 #include <vector>
 namespace assist { namespace enemyclusters {
-constexpr int Radius=2*256;
+constexpr int Radius=3*256;
 struct Group {std::vector<int> members;int left=0,top=0,right=0,bottom=0;};
 inline int64_t square(int64_t n){return n*n;}
 inline bool coordinate(const external::enemies::Marker&m){return m.worldX>=0&&m.worldY>=0&&m.worldX<512*256&&m.worldY<512*256;}
-inline bool fits(const Group&g,const external::enemies::Marker&m,const external::enemies::Frame&f){
- int64_t dx=std::max(std::abs(int64_t(m.worldX)-g.left),std::abs(int64_t(m.worldX)-g.right));
- int64_t dy=std::max(std::abs(int64_t(m.worldY)-g.top),std::abs(int64_t(m.worldY)-g.bottom));
- if(square(dx)+square(dy)<=square(Radius))return true;
- for(int i:g.members){const auto&p=f.items[i];if(square(int64_t(m.worldX)-p.worldX)+square(int64_t(m.worldY)-p.worldY)>square(Radius))return false;}
- return true;
-}
 inline std::vector<Group> group(const external::enemies::Frame&f){
  std::vector<Group> groups;int count=std::clamp(f.count,0,external::enemies::Maximum);
  std::vector<int> order(count);std::iota(order.begin(),order.end(),0);
  std::sort(order.begin(),order.end(),[&](int a,int b){return std::tie(f.items[a].id,f.items[a].object)<std::tie(f.items[b].id,f.items[b].object);});
  using Key=std::tuple<uint32_t,uint32_t,int,int,int>;
  std::map<Key,std::vector<int>> buckets;
- for(int i:order){const auto&m=f.items[i];int chosen=-1;
-  bool mobile=m.kind>=0&&m.kind<3&&coordinate(m);int bx=mobile?m.worldX/Radius:0,by=mobile?m.worldY/Radius:0;
-  if(mobile)for(int y=by-1;y<=by+1;++y)for(int x=bx-1;x<=bx+1;++x){
+ constexpr int BucketWidth=Radius/2,Neighbours=(Radius+BucketWidth-1)/BucketWidth;
+ std::vector<int> parents(count);std::iota(parents.begin(),parents.end(),0);
+ auto root=[&](int i){while(parents[i]!=i){parents[i]=parents[parents[i]];i=parents[i];}return i;};
+ // Components, not a maximum group diameter: every pair within three cells
+ // supplies an edge, including a later unit bridging two existing groups.
+ for(int i:order){const auto&m=f.items[i];
+  bool mobile=m.kind>=0&&m.kind<3&&coordinate(m);int bx=mobile?m.worldX/BucketWidth:0,by=mobile?m.worldY/BucketWidth:0;
+  if(mobile)for(int y=by-Neighbours;y<=by+Neighbours;++y)for(int x=bx-Neighbours;x<=bx+Neighbours;++x){
    auto found=buckets.find({m.owner,m.type,m.kind,x,y});if(found==buckets.end())continue;
-   for(int candidate:found->second)if((chosen<0||candidate<chosen)&&fits(groups[candidate],m,f))chosen=candidate;
+   // A half-radius square is entirely connected. One cross-bucket edge
+   // joins its whole component; skip it once joined, avoiding quadratic
+   // pair checks for a crowded army or many units sharing one cell.
+   int a=root(i),b=root(found->second.front());if(a==b)continue;
+   if(x==bx&&y==by){parents[a]=b;continue;}
+   for(int j:found->second){const auto&p=f.items[j];if(square(int64_t(m.worldX)-p.worldX)+square(int64_t(m.worldY)-p.worldY)<=square(Radius)){parents[a]=b;break;}}
   }
-  if(chosen<0){chosen=int(groups.size());groups.push_back({{},m.worldX,m.worldY,m.worldX,m.worldY});
-   if(mobile)buckets[{m.owner,m.type,m.kind,bx,by}].push_back(chosen);
-  }
+  if(mobile)buckets[{m.owner,m.type,m.kind,bx,by}].push_back(i);
+ }
+ std::vector<int> component(count,-1);
+ for(int i:order){const auto&m=f.items[i];int r=root(i),chosen=component[r];
+  if(chosen<0){component[r]=chosen=int(groups.size());groups.push_back({{},m.worldX,m.worldY,m.worldX,m.worldY});}
   auto&g=groups[chosen];g.members.push_back(i);g.left=std::min(g.left,m.worldX);g.right=std::max(g.right,m.worldX);g.top=std::min(g.top,m.worldY);g.bottom=std::max(g.bottom,m.worldY);
  }
  return groups;

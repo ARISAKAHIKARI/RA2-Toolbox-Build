@@ -35,7 +35,7 @@ struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;i
 static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;
 static ObjectIndex watchedPassengers;
 static void restoreNativeHooks();
-static void clearNativeOrders(){globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;restoreNativeHooks();resetUnloadCalculation();}
+static void clearNativeOrders(bool retireHooks){globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;if(retireHooks)restoreNativeHooks();resetUnloadCalculation();}
 static bool nativeMember(Vec,uint32_t p){return worldObjects.contains(p);}
 static bool nativeReady(){return simulationReady()&&sh->foreground&&!get<bool>(0xA8BC60+25);}
 
@@ -151,7 +151,7 @@ static void watchEjections(uint32_t house,int frame,Vec all){
 #include "unload_compute_bridge.h"
 static void smartUnloadTick(uint32_t house,int frame,int&budget){
  serviceUnloadCalculation(house,frame,budget);
- if(!unloadCalculationPending){unloadExternalInput.count=0;unloadExternalInput.targetCount=0;unloadExternalInput.match=match;unloadExternalInput.tick=sampleClock(sh);unloadExternalInput.frame=frame;}
+ if(externalInputFrame){unloadExternalInput.count=0;unloadExternalInput.targetCount=0;unloadExternalInput.match=match;unloadExternalInput.tick=sampleClock(sh);unloadExternalInput.frame=frame;}
  Vec all=vec(0xA8EC78),inf=vec(0xA83DE8);watchEjections(house,frame,all);int todo=unloadCount;if(todo>nativeorders::WorkPerFrame)todo=nativeorders::WorkPerFrame;
  while(todo--&&unloadCount){if(unloadCursor>=unloadCount)unloadCursor=0;int i=unloadCursor++;auto&r=unloadPassengers[i];uint32_t p=r.p;
   bool member=nativeMember(inf,p),carrierMember=nativeMember(all,r.carrier);
@@ -218,7 +218,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
     collectUnloadSource(input,r,house,frame);
     auto decision=unloadcompute::decide(input.sources[0],input.targets,input.actions[0],input.targetCount);
     done=applyUnloadDecision(r,input,0,decision,house,frame,budget,false);
-   }else if(!unloadCalculationPending&&unloadExternalInput.count<unloadcompute::MaxSources){
+   }else if(externalInputFrame&&unloadExternalInput.count<unloadcompute::MaxSources){
     collectUnloadSource(unloadExternalInput,r,house,frame);
    }
   }
@@ -243,8 +243,8 @@ static void nativeOrdersTick(uint32_t house,int frame){
  advancedObjects.clear();for(int i=0;i<nativeCount;++i)advancedObjects.add(nativeOrders[i].p,nativeOrders[i].id,uint32_t(i+1));
  // Match the pending-input horizon. After it expires, normal mission, queued
  // mission, destination and target checks still protect an ongoing command.
- if(sh->magnetronGlobal&&!snap.chat&&globalMagnetronPauseOverflow<0){Vec all=vec(0xA8EC78);
-  for(int n=0;n<all.count&&nativeCount<nativeorders::MaxOrders;++n){uint32_t p=item(all,n);if(!p||!own(p,house)||!rawMagnetron(p)||stickyOwns(p)||formationOwns(get<uint32_t>(p+0x10))||globalMagnetronPauseIndex.contains(p)||orderIndex(p)>=0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x5A4)||get<uint32_t>(p+0x2B4)||get<uint32_t>(p+0x2AC))continue;
+ if(sh->magnetronGlobal&&!snap.chat&&globalMagnetronPauseOverflow<0){
+  for(int n=0;n<globalVehicleCandidateCount&&nativeCount<nativeorders::MaxOrders;++n){uint32_t p=globalVehicleCandidates[n];if(!p||!own(p,house)||!rawMagnetron(p)||stickyOwns(p)||formationOwns(get<uint32_t>(p+0x10))||globalMagnetronPauseIndex.contains(p)||orderIndex(p)>=0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x5A4)||get<uint32_t>(p+0x2B4)||get<uint32_t>(p+0x2AC))continue;
    int m=get<int>(p+0xAC),q=get<int>(p+0xB4);if((m!=5&&m!=6&&m!=11&&m!=13)||(q!=-1&&q!=m))continue;
    int x=get<int>(p+0x9C)/256,y=get<int>(p+0xA0)/256;if(x<=0||x>=512||y<=0||y>=512)continue;
    auto&o=nativeOrders[nativeCount++];o={};o.p=p;o.id=get<uint32_t>(p+0x10);o.token=manualVersions.get(o.id);o.mode=planner::MagnetronMove;o.cell=o.nearest=y*1000+x;o.gx=x*256+128;o.gy=y*256+128;o.global=true;o.progress.hold=true;

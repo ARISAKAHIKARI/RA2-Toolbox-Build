@@ -16,9 +16,11 @@ class Motion {
  State banks[2][MaxLabels]{};int hash[MaxLabels*2]{};int bank=0,count=0;
  uint32_t match=0,tick=0,camTick=0,camSpan=0;int frame=0;bool initialized=false;
  float camFromX=0,camFromY=0;int camX=0,camY=0;
+ uint32_t projectionGeneration=0;
  static unsigned slot(uint32_t id){return (id*2654435761u)&(MaxLabels*2-1);}
 public:
  void clear(){initialized=false;count=0;}
+ void projection(uint32_t generation){if(projectionGeneration!=generation){clear();projectionGeneration=generation;}}
  void update(const Snapshot&s){update(s,s.frame);}
  void update(const Snapshot&s,int displayFrame){
   uint32_t now=s.sampledTick;bool reset=!initialized||match!=s.match||displayFrame<frame;

@@ -1,0 +1,115 @@
+{
+  "scope": "Bounded read-only static comparison of two DLL files in the official Git repository at exact commits. No DLL loaded/executed; no EXE downloaded. Does not verify the contents of a complete installer ZIP, the user installation, or the modules loaded in any user match.",
+  "repository": "CnCNet/cncnet-yr-client-package",
+  "path_in_repository": "package/CnCNet-Spawner.dll",
+  "ref_api": [
+    "https://api.github.com/repos/CnCNet/cncnet-yr-client-package/git/ref/tags/yr-9.3.5",
+    "https://api.github.com/repos/CnCNet/cncnet-yr-client-package/git/ref/heads/develop"
+  ],
+  "classification": "Both sampled repository versions contain the previously identified runtime code-integrity and selected game-data-integrity mechanisms. Their filename does not distinguish ordinary from hardened behavior. They are distinct binaries; neither is identical to either previously analyzedv0.0.0.17 DLL.",
+  "samples": [
+    {
+      "label": "yr-9.3.5",
+      "commit": "2c0d58dab10ebcd429a17bfdf6c33e0d1e1222e3",
+      "git_blob_sha": "04d41571d12bd7190f14b7e6c3b9b4b5620dccad",
+      "size": 423936,
+      "sha256": "72229ff26ef037261a8190707d3a71f13d7bbaabeb9955b8a9cb0697b94bfabd",
+      "source_url": "https://raw.githubusercontent.com/CnCNet/cncnet-yr-client-package/2c0d58dab10ebcd429a17bfdf6c33e0d1e1222e3/package/CnCNet-Spawner.dll",
+      "path": "audit/official-client-package/yr-9.3.5/CnCNet-Spawner.dll",
+      "proof": {
+        "control_helper_rva": "0x103D0",
+        "baseline_rva": "0x10240",
+        "verifier_rva": "0x10040",
+        "load_completion_helper_rva": "0x102E0",
+        "scenario_success_helper_rva": "0x103B0",
+        "data_verifier_rva": "0xFD50",
+        "fatal_rva": "0xFC50",
+        "fatal_direct_callers": [
+          "0xFDCA",
+          "0xFE23",
+          "0xFE6E",
+          "0x10113"
+        ],
+        "patch_targets": {
+          "0x50B6F0": "0x103D0",
+          "0x55D8B4": "0x10040",
+          "0x683E94": "0x103B0",
+          "0x67E6E0": "0x102E0",
+          "0x55DE9A": "0xFD50"
+        },
+        "crc_address_form": "Verifier and baseline read data constant0xFFBFEFFF and complement it to0x401000; CRC table pointer resolves to0x81F7B4. This different encoding explains absent immediate0x401000 references; it does not remove the scan.",
+        "house_check_qualification": "Observed CurrentPlayer snapshot comparison and the additional CurrentFrame>100, CurrentPlayer==Observer, !Defeated conditional match the earlier analyzed behavior."
+      },
+      "descriptor_counts": {
+        "hooks": 219,
+        "patches": 73
+      },
+      "verified_behaviors": {
+        "control_predicate": "50B6F0 patch initializer targets the listed helper. Non-Campaign returns whether the tested House pointer equals CurrentPlayer; Campaign retains IsHumanPlayer/IsInPlayerControl behavior.",
+        "runtime_code_crc": "Relevant patch descriptors were joined to their CRT initializers and actual targets. Baseline writes CRCs of248*16KiB from0x401000; verifier in Session modes3/4 cycles through one block and compares its CRC against the stored baseline. Extent is[0x401000,0x7E1000).",
+        "baseline_reachability": "The683E94 helper calls the baseline then reproduces the success epilogue; the67E6E0 helper tail-calls the same baseline after its completion work.",
+        "selected_data_checks": "Data-verification body compares BuildingType offsets0xEB4,0x170C,0x157A against snapshots and contains CurrentPlayer/observer checks. Resolved static pointers identify Session=A8B238, CurrentPlayer=A83D4C and Observer=AC1198.",
+        "failure_path": "Three data-check callers and one code-CRC mismatch caller directly call the listed fatal function. Its shape resets/combines register markers, clearsEDI, copies it toEBP and jumps toEBP=0. This is not a normal return or a demonstrated FRAMEINFO synchronization-error dialog."
+      },
+      "evidence_files": [
+        "audit/official-client-package/yr-9.3.5/pe-metadata.json",
+        "audit/official-client-package/yr-9.3.5/public-dll.disassembly.asm"
+      ]
+    },
+    {
+      "label": "develop",
+      "commit": "c0a7af45562128a6f75912167878c613d673cd3e",
+      "git_blob_sha": "7d613bd7e12888951e5d046b7ca049cfa7924bba",
+      "size": 770560,
+      "sha256": "bf38996016a51637a4f1fce9620a6f8b684209e41fb791e821426e7ab16947e7",
+      "source_url": "https://raw.githubusercontent.com/CnCNet/cncnet-yr-client-package/c0a7af45562128a6f75912167878c613d673cd3e/package/CnCNet-Spawner.dll",
+      "path": "audit/official-client-package/develop/CnCNet-Spawner.dll",
+      "proof": {
+        "control_helper_rva": "0x4A630",
+        "baseline_rva": "0x4A3E0",
+        "verifier_rva": "0x4A540",
+        "load_completion_helper_rva": "0x4A4D0",
+        "scenario_success_helper_rva": "0x4A520",
+        "data_verifier_rva": "0x4A050",
+        "fatal_rva": "0x49F20",
+        "fatal_direct_callers": [
+          "0x4A0CB",
+          "0x4A130",
+          "0x4A183",
+          "0x4A60F"
+        ],
+        "patch_targets": {
+          "0x50B6F0": "0x4A630",
+          "0x55D8B4": "0x4A540",
+          "0x683E94": "0x4A520",
+          "0x67E6E0": "0x4A4D0",
+          "0x55DE9A": "0x4A050"
+        },
+        "crc_address_form": "Baseline/verifier directly use0x401000 and table0x81F7B4.",
+        "house_check_qualification": "CurrentPlayer/observer checks are present, but an additional DLL boolean gate can skip this group. That flag meaning was intentionally not traced; do not claim all conditions identical to stable orv17."
+      },
+      "descriptor_counts": {
+        "hooks": 294,
+        "patches": 78
+      },
+      "verified_behaviors": {
+        "control_predicate": "50B6F0 patch initializer targets the listed helper. Non-Campaign returns whether the tested House pointer equals CurrentPlayer; Campaign retains IsHumanPlayer/IsInPlayerControl behavior.",
+        "runtime_code_crc": "Relevant patch descriptors were joined to their CRT initializers and actual targets. Baseline writes CRCs of248*16KiB from0x401000; verifier in Session modes3/4 cycles through one block and compares its CRC against the stored baseline. Extent is[0x401000,0x7E1000).",
+        "baseline_reachability": "The683E94 helper calls the baseline then reproduces the success epilogue; the67E6E0 helper tail-calls the same baseline after its completion work.",
+        "selected_data_checks": "Data-verification body compares BuildingType offsets0xEB4,0x170C,0x157A against snapshots and contains CurrentPlayer/observer checks. Resolved static pointers identify Session=A8B238, CurrentPlayer=A83D4C and Observer=AC1198.",
+        "failure_path": "Three data-check callers and one code-CRC mismatch caller directly call the listed fatal function. Its shape resets/combines register markers, clearsEDI, copies it toEBP and jumps toEBP=0. This is not a normal return or a demonstrated FRAMEINFO synchronization-error dialog."
+      },
+      "evidence_files": [
+        "audit/official-client-package/develop/pe-metadata.json",
+        "audit/official-client-package/develop/public-dll.disassembly.asm"
+      ]
+    }
+  ],
+  "limits": [
+    "No claim that the user currently runs either sampled DLL.",
+    "No substitution of a develop-branch sample for the stable-tag sample.",
+    "No full reverse engineering of either package DLL or every added mechanism.",
+    "No inference from file size or changedRVA alone; classification uses descriptors, initializer-to-target linkage, inspected control flow, resolved data pointers and failure-path cross-references.",
+    "No bypass instructions or executable modifications."
+  ]
+}

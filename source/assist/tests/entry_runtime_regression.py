@@ -44,14 +44,18 @@ class Order(C.Structure):
 
 class TaskReceiptSummary(C.Structure):
     _fields_=[(x,C.c_uint32) for x in 'serial match unit target queuedAt observedAt'.split()]+[(x,C.c_uint8) for x in 'phase failure owner flags'.split()]
+class NativePlacementOffer(C.Structure):
+    _fields_=[(x,C.c_uint32) for x in 'match tick'.split()]+[(x,C.c_int32) for x in 'frame slot tab'.split()]+[(x,C.c_uint32) for x in 'house houseID factory factoryID product productID type typeID'.split()]+[(x,C.c_int32) for x in 'typeIndex naval'.split()]+[('typeHash',C.c_uint64)]
+class NativePlacementRequest(C.Structure):
+    _fields_=[('offer',NativePlacementOffer)]+[(x,C.c_int32) for x in 'cellX cellY screenX screenY width height cameraX cameraY'.split()]
 class Snapshot(C.Structure):
-    _fields_=[(x,C.c_int32) for x in 'status frame session width height labels swCount typeCount selected transports used capacity factories busyFactories pausedFactories completedFactories credits techOpen match noticeSerial notice scanMicros'.split()]+[('label',Label*2048),('supers',Super*32),('types',Type*512),('threatCount',C.c_int32),('crateCount',C.c_int32),('threats',Threat*128),('crates',Crate*256)]+[(x,C.c_int32) for x in 'techVisible techUnavailable techError autoRepair repairTotal loadUnits loadVehicles loadIssued loadWaiting loadUnassigned sampledTick cameraX cameraY crateHookStatus crateResultCount crateResultSerial'.split()]+[('crateResults',CrateResult*16)]+[(x,C.c_int32) for x in 'chat csHookStatus csConverted nativeHookStatus advancedUnits unloadPending unloadIssued ejectWatched inputPatchMask oreQueued oreDocking oreIssued placementStatus nativeAirStatus controlMicros worldMicros displayMicros oreManual oreYielded'.split()]+[(x,C.c_uint32) for x in 'oreDelivered oreUnverified magnetShots magnetUnverified hookInstalled hookConflicts queueSent queueFull queueTimingFailure planDeferred'.split()]+[('megaQueueStatus',C.c_int32),('megaQueueAccepted',C.c_uint32),('megaQueueRejected',C.c_uint32),('objectQueueStatus',C.c_int32),('objectQueueAccepted',C.c_uint32),('objectQueueRejected',C.c_uint32)]+[(x,C.c_int32) for x in 'readStatus bridgeStatus commandStatus renderStatus'.split()]+[(x,C.c_uint32) for x in 'queuedEvents observedEvents commandRejected receiptCancelled receiptExpired receiptDropped receiptWrite receiptCount'.split()]+[('recentReceipts',TaskReceiptSummary*32),('entryThread',C.c_uint32),('entryCalls',C.c_uint32),('entryReentrant',C.c_uint32),('entryContended',C.c_uint32),('entryWrongThread',C.c_uint32),('c4TestStatus',C.c_int32),('renderRevealStatus',C.c_int32),('lastSubmitError',C.c_int32)]
+    _fields_=[(x,C.c_int32) for x in 'status frame session width height labels swCount typeCount selected transports used capacity factories busyFactories pausedFactories completedFactories credits techOpen match noticeSerial notice scanMicros'.split()]+[('label',Label*2048),('supers',Super*32),('types',Type*512),('threatCount',C.c_int32),('crateCount',C.c_int32),('threats',Threat*128),('crates',Crate*256)]+[(x,C.c_int32) for x in 'techVisible techUnavailable techError autoRepair repairTotal loadUnits loadVehicles loadIssued loadWaiting loadUnassigned sampledTick cameraX cameraY crateHookStatus crateResultCount crateResultSerial'.split()]+[('crateResults',CrateResult*16)]+[(x,C.c_int32) for x in 'chat csHookStatus csConverted nativeHookStatus advancedUnits unloadPending unloadIssued ejectWatched inputPatchMask oreQueued oreDocking oreIssued placementStatus nativeAirStatus controlMicros worldMicros displayMicros oreManual oreYielded'.split()]+[(x,C.c_uint32) for x in 'oreDelivered oreUnverified magnetShots magnetUnverified hookInstalled hookConflicts queueSent queueFull queueTimingFailure planDeferred'.split()]+[('megaQueueStatus',C.c_int32),('megaQueueAccepted',C.c_uint32),('megaQueueRejected',C.c_uint32),('objectQueueStatus',C.c_int32),('objectQueueAccepted',C.c_uint32),('objectQueueRejected',C.c_uint32)]+[(x,C.c_int32) for x in 'readStatus bridgeStatus commandStatus renderStatus'.split()]+[(x,C.c_uint32) for x in 'queuedEvents observedEvents commandRejected receiptCancelled receiptExpired receiptDropped receiptWrite receiptCount'.split()]+[('recentReceipts',TaskReceiptSummary*32),('entryThread',C.c_uint32),('entryCalls',C.c_uint32),('entryReentrant',C.c_uint32),('entryContended',C.c_uint32),('entryWrongThread',C.c_uint32),('c4TestStatus',C.c_int32),('renderRevealStatus',C.c_int32),('lastSubmitError',C.c_int32),('placementOfferCount',C.c_int32),('placementOffers',NativePlacementOffer*2)]
 class CooperativeSource(C.Structure):
     _fields_=[('id',C.c_uint32),('token',C.c_uint32)]
 class CooperativeRequest(C.Structure):
-    _fields_=[(x,C.c_uint32) for x in 'serial match tick target type'.split()]+[(x,C.c_int32) for x in 'frame mode count cameraX cameraY viewWidth viewHeight'.split()]+[('sources',CooperativeSource*512)]
+    _fields_=[(x,C.c_uint32) for x in 'serial match tick target type'.split()]+[(x,C.c_int32) for x in 'frame mode count cameraX cameraY viewWidth viewHeight'.split()]+[('sources',CooperativeSource*512),('centerObject',C.c_uint32)]
 class CooperativeAssignment(C.Structure):
-    _fields_=[(x,C.c_uint32) for x in 'id token target type'.split()]
+    _fields_=[(x,C.c_uint32) for x in 'id token target type'.split()]+[('expectedDamage',C.c_double)]
 class PointerSource(C.Structure):
  _fields_=[('id',C.c_uint32),('pointer',C.c_uint32)]
 class PointerIntent(C.Structure):
@@ -130,6 +134,7 @@ class PlayerTestInfo(C.Structure):
  _fields_=[(x,C.c_uint32) for x in ("pointer","id")]+[(x,C.c_int32) for x in ("index","human")]+[("name",C.c_uint16*21)]
 class MissileSource(C.Structure):
  _fields_=[(x,C.c_uint32) for x in 'id pointer token current pending'.split()]+[(x,C.c_int32) for x in 'cooldown held pendingMission advanceFrames releaseFrames managed'.split()]
+ _fields_ += [('committedTarget',C.c_uint32),('committedDamage',C.c_int32)]
 class MissileTarget(C.Structure):
  _fields_=[('id',C.c_uint32),('pointer',C.c_uint32),('hp',C.c_int32),('threatening',C.c_uint32)]
 class MissileEdge(C.Structure):
@@ -148,10 +153,31 @@ class FormationSlot(C.Structure):
     _fields_=[(x,C.c_int32) for x in 'x y z'.split()]+[('valid',C.c_uint32)]
 class FormationPreview(C.Structure):
     _fields_=[(x,C.c_uint32) for x in 'match tick active dragging revision'.split()]+[(x,C.c_int32) for x in 'shape count ax ay'.split()]+[('facing',C.c_double),('units',FormationUnit*256),('slots',FormationSlot*256)]
+# Unused by this sender fixture, but kept at its real protocol83 size/alignment.
+# The production ABI report verifies the complete concrete C++ structure.
+class CooperativeFrameInput(C.Structure):
+    _fields_=[('_align',C.c_uint64),('_opaque',C.c_uint8*(2410584-8))]
+class MoGesturePolicy(C.Structure):
+    _fields_=[('keys',C.c_uint32*4),('buttons',C.c_uint32*4)]
+class MoOptions(C.Structure):
+    _fields_=[(x,C.c_uint32) for x in 'range squad patrolSize nodeStep loopClose loopStep commit'.split()]
+class MoPoint(C.Structure):
+    _fields_=[(x,C.c_int32) for x in 'x y z'.split()]
+class MoLine(C.Structure):
+    _fields_=[('fromPoint',MoPoint),('toPoint',MoPoint)]
+class MoPreview(C.Structure):
+    _fields_=[(x,C.c_uint32) for x in 'match tick active'.split()]+[(x,C.c_int32) for x in 'mode count nodeCount'.split()]+[('zScale',C.c_double),('lines',MoLine*128),('nodes',MoPoint*64)]
+class NativePlacementPreview(C.Structure):
+    _fields_=[('offer',NativePlacementOffer)]+[(x,C.c_uint32) for x in ('match','tick')]+[(x,C.c_int32) for x in 'active cellX cellY x y z width height status'.split()]+[('zScale',C.c_double)]+[(x,C.c_int32) for x in 'cameraX cameraY viewportX viewportY'.split()]+[('viewportGeneration',C.c_uint32)]
 class Shared(C.Structure):
-    _fields_=[(x,C.c_uint32) for x in 'magic version pid owner heartbeat stop foreground flags scanMs request ack command arg arg2 requestToken requestTick requestMatch result count seq'.split()]+[('data',Snapshot),('techAllowed',C.c_uint8*512),('repairMs',C.c_uint32),('clockStart',C.c_uint64),('clockFrequency',C.c_uint64),('clockTick',C.c_uint32),('csSeq',C.c_int32),('csMatch',C.c_uint32),('csAllowed',C.c_uint8*512)]+[(x,C.c_uint32) for x in 'advancedKey pathTimeout veteranPercent elitePercent selectRequest selectAck selectIndex selectGlobal selectObjectID selectTick selectMatch selectResult selectCount csHoldKey'.split()]+[('worldSeq',C.c_int32),('world',World)]+[(x,C.c_uint32) for x in 'planRequest planAck planTick planMatch planCount planAccepted planResult'.split()]+[('plan',Order*24),('plannerTracking',C.c_uint32),('hostWindow',C.c_uint32),('hostNotifyPending',C.c_int32),('gameWakePending',C.c_int32),('magnetronKey',C.c_uint32),('planAcceptedMask',C.c_uint32),('planRejectedMask',C.c_uint32)]+[(x,C.c_uint32) for x in 'externalDisplay loadMode loadRadius enterKey airKey1 airKey2'.split()]+[('cooperativeSeq',C.c_int32),('cooperativeRequest',CooperativeRequest)]+[(x,C.c_uint32) for x in 'cooperativePlan cooperativeAck cooperativeSerial cooperativeTick'.split()]+[(x,C.c_int32) for x in 'cooperativeCount cooperativeAccepted cooperativeRejected cooperativeMode'.split()]+[('cooperativeOrders',CooperativeAssignment*512),('clickHookStatus',C.c_int32)]+[(x,C.c_uint32) for x in 'driverMode driverTarget megaQueueMode objectQueueMode'.split()]+[('driverStatus',C.c_int32),('driverTicks',C.c_uint32),('driverLastTick',C.c_uint32)]+[(x,C.c_uint32) for x in 'productionRequest productionAck productionMatch productionTick'.split()]+[('productionCount',C.c_int32),('productionTypes',C.c_int32*4),('planFrame',C.c_int32),('cooperativeFrame',C.c_int32),('cooperativeMatch',C.c_uint32),('cooperativeProcessed',C.c_int32),('cooperativeResult',C.c_int32),('cooperativeAcceptedBits',C.c_uint32*16),('pointer',PointerMailbox),('pointerPolicySeq',C.c_int32),('pointerPolicy',NativePolicy),('suppressedClick',SuppressedClick),('selectTypes',C.c_uint8*512),('oreConfigSeq',C.c_int32),('oreConfig',OreConfig),('featureConfigSeq',C.c_int32),('featureConfig',FeatureConfig),('c4Test',C.c_uint32),('advancedRangeCells',C.c_uint32),('renderReveal',C.c_uint32)]+[(x,C.c_uint32) for x in 'uiSoundRequest uiSoundAck uiSoundTick uiSoundMatch'.split()]+[('reservePolicySeq',C.c_int32),('reservePolicy',ReservationPolicy),('reserveInput',C.c_uint32),('reserveConsumed',C.c_uint32),('reserveClick',ReservationClick)]+[(x,C.c_uint32) for x in 'computeRequested computeApplied advancedScanHz advancedPriority runtimeTracking runtimePlannerMicros'.split()]+[('loadTask',C.c_uint32),('loadComputed',C.c_uint32),('loadInput',LoadInput),('loadResult',LoadResult),('repairTask',C.c_uint32),('repairComputed',C.c_uint32),('repairInput',RepairInput),('repairResult',RepairResult),('quotaConfigSeq',C.c_int32),('quotaConfig',QuotaConfig),('runtimeCoopDone',C.c_uint32),('runtimeCoopAccepted',C.c_int32),('runtimeCoopRejected',C.c_int32)]+[('unloadInputSeq',C.c_int32),('unloadResultSeq',C.c_int32),('unloadTask',C.c_uint32),('unloadComputed',C.c_uint32),('unloadInput',UnloadInput),('unloadResult',UnloadResult)]+[(x,C.c_uint32) for x in ('controlAll','switchPlayerEnabled')]+[(x,C.c_int32) for x in ('playerCount','playerCurrent','playerOriginal','playerControlStatus')]+[(x,C.c_uint32) for x in 'missileEnabled missileScanHz missileInputSeq missileResultSeq missileTask missileComputed'.split()]+[('missileInput',MissileInput),('missileResult',MissileResult)]+[(x,C.c_uint32) for x in 'missileSources missileTargets missileIssued'.split()]+[(x,C.c_uint32) for x in 'burstEnabled burstHoldEnabled burstHeld burstInputSeq burstResultSeq burstTask burstComputed'.split()]+[('burstInput',BurstInput),('burstResult',BurstResult)]+[(x,C.c_uint32) for x in 'burstActive burstIssued dodgeEnabled dodgeInputSeq dodgeResultSeq dodgeTask dodgeComputed'.split()]+[('dodgeInput',DodgeInput),('dodgeResult',DodgeResult)]+[(x,C.c_uint32) for x in 'dodgeActive dodgeIssued'.split()]+[('players',PlayerTestInfo*32),('scrollRefreshMode',C.c_uint32),('scrollRefreshHz',C.c_uint32),('scrollRefreshStatus',C.c_int32),('scrollRefreshDraws',C.c_uint32),('scrollRefreshRateMilli',C.c_uint32),('scrollRefreshMaxGapUs',C.c_uint32),('viewZoomPercent',C.c_uint32),('viewZoomBusy',C.c_int32),('viewZoomStatus',C.c_int32),('viewZoomApplied',C.c_int32),('viewZoomWidth',C.c_int32),('viewZoomHeight',C.c_int32),('magnetronDrop',C.c_uint32)]+[(x,C.c_uint32) for x in 'missileScope missileAllocation magnetronGlobal missileHeld'.split()]+[('formationPolicySeq',C.c_int32),('formationSeq',C.c_int32),('formationPolicy',FormationPolicy),('formationPreview',FormationPreview)]+[(x,C.c_uint32) for x in 'formationKey formationKeyAck formationKeyCode formationConsumedUntil formationAccepted formationRejected formationJobs'.split()]+[('cameraSeq',C.c_int32)]+[(x,C.c_uint32) for x in 'cameraAck cameraTick cameraMatch'.split()]+[('cameraTargetX',C.c_int32),('cameraTargetY',C.c_int32),('dodgeMode',C.c_uint32),('placementImplementation',C.c_uint32),('techEnhance',C.c_uint32),('requestTypeHash',C.c_uint64),('techEnhanceStatus',C.c_int32),('techEnhanceCount',C.c_uint32)]
+    _fields_=[(x,C.c_uint32) for x in 'magic version pid owner heartbeat stop foreground flags scanMs request ack command arg arg2 requestToken requestTick requestMatch result count seq'.split()]+[('data',Snapshot),('techAllowed',C.c_uint8*512),('repairMs',C.c_uint32),('clockStart',C.c_uint64),('clockFrequency',C.c_uint64),('clockTick',C.c_uint32),('csSeq',C.c_int32),('csMatch',C.c_uint32),('csAllowed',C.c_uint8*512)]+[(x,C.c_uint32) for x in 'advancedKey pathTimeout veteranPercent elitePercent selectRequest selectAck selectIndex selectGlobal selectObjectID selectTick selectMatch selectResult selectCount csHoldKey'.split()]+[('computeFrameSeq',C.c_int32),('computeFrameSerial',C.c_uint32),('computeFrameMatch',C.c_uint32),('computeFrameTick',C.c_uint32),('computeFrame',C.c_int32),('worldSeq',C.c_int32),('world',World)]+[(x,C.c_uint32) for x in 'planRequest planAck planTick planMatch planCount planAccepted planResult'.split()]+[('plan',Order*24),('plannerTracking',C.c_uint32),('hostWindow',C.c_uint32),('hostNotifyPending',C.c_int32),('gameWakePending',C.c_int32),('magnetronKey',C.c_uint32),('planAcceptedMask',C.c_uint32),('planRejectedMask',C.c_uint32)]+[(x,C.c_uint32) for x in 'externalDisplay loadMode loadRadius enterKey airKey1 airKey2'.split()]+[('cooperativeSeq',C.c_int32),('cooperativeRequest',CooperativeRequest),('cooperativeInputFrame',CooperativeFrameInput),('cooperativeFrameWanted',C.c_uint32)]+[(x,C.c_uint32) for x in 'cooperativePlan cooperativeAck cooperativeSerial cooperativeTick'.split()]+[(x,C.c_int32) for x in 'cooperativeCount cooperativeAccepted cooperativeRejected cooperativeMode'.split()]+[('cooperativeOrders',CooperativeAssignment*512),('clickHookStatus',C.c_int32)]+[(x,C.c_uint32) for x in 'driverMode driverTarget megaQueueMode objectQueueMode'.split()]+[('driverStatus',C.c_int32),('driverTicks',C.c_uint32),('driverLastTick',C.c_uint32)]+[(x,C.c_uint32) for x in 'productionRequest productionAck productionMatch productionTick'.split()]+[('productionCount',C.c_int32),('productionTypes',C.c_int32*4),('planFrame',C.c_int32),('cooperativeFrame',C.c_int32),('cooperativeMatch',C.c_uint32),('cooperativeProcessed',C.c_int32),('cooperativeResult',C.c_int32),('cooperativeAcceptedBits',C.c_uint32*16),('pointer',PointerMailbox),('pointerPolicySeq',C.c_int32),('pointerPolicy',NativePolicy),('suppressedClick',SuppressedClick),('selectTypes',C.c_uint8*512),('oreConfigSeq',C.c_int32),('oreConfig',OreConfig),('featureConfigSeq',C.c_int32),('featureConfig',FeatureConfig),('c4Test',C.c_uint32),('advancedRangeCells',C.c_uint32),('renderReveal',C.c_uint32)]+[(x,C.c_uint32) for x in 'uiSoundRequest uiSoundAck uiSoundTick uiSoundMatch'.split()]+[('reservePolicySeq',C.c_int32),('reservePolicy',ReservationPolicy),('reserveInput',C.c_uint32),('reserveConsumed',C.c_uint32),('reserveClick',ReservationClick)]+[(x,C.c_uint32) for x in 'computeRequested computeApplied advancedScanHz advancedPriority runtimeTracking runtimePlannerMicros'.split()]+[('loadResultSeq',C.c_int32),('repairResultSeq',C.c_int32),('loadTask',C.c_uint32),('loadComputed',C.c_uint32),('loadInput',LoadInput),('loadResult',LoadResult),('repairTask',C.c_uint32),('repairComputed',C.c_uint32),('repairInput',RepairInput),('repairResult',RepairResult),('quotaConfigSeq',C.c_int32),('quotaConfig',QuotaConfig),('runtimeCoopDone',C.c_uint32),('runtimeCoopAccepted',C.c_int32),('runtimeCoopRejected',C.c_int32)]+[('unloadInputSeq',C.c_int32),('unloadResultSeq',C.c_int32),('unloadTask',C.c_uint32),('unloadComputed',C.c_uint32),('unloadInput',UnloadInput),('unloadResult',UnloadResult)]+[(x,C.c_uint32) for x in ('controlAll','switchPlayerEnabled')]+[(x,C.c_int32) for x in ('playerCount','playerCurrent','playerOriginal','playerControlStatus')]+[(x,C.c_uint32) for x in 'missileEnabled missileScanHz missileInputSeq missileResultSeq missileTask missileComputed'.split()]+[('missileInput',MissileInput),('missileResult',MissileResult)]+[(x,C.c_uint32) for x in 'missileSources missileTargets missileIssued'.split()]+[(x,C.c_uint32) for x in 'burstEnabled burstHoldEnabled burstHeld burstInputSeq burstResultSeq burstTask burstComputed'.split()]+[('burstInput',BurstInput),('burstResult',BurstResult)]+[(x,C.c_uint32) for x in 'burstActive burstIssued dodgeEnabled dodgeInputSeq dodgeResultSeq dodgeTask dodgeComputed'.split()]+[('dodgeInput',DodgeInput),('dodgeResult',DodgeResult)]+[(x,C.c_uint32) for x in 'dodgeActive dodgeIssued'.split()]+[('players',PlayerTestInfo*32),('scrollRefreshMode',C.c_uint32),('scrollRefreshHz',C.c_uint32),('scrollRefreshStatus',C.c_int32),('scrollRefreshDraws',C.c_uint32),('scrollRefreshRateMilli',C.c_uint32),('scrollRefreshMaxGapUs',C.c_uint32),('viewZoomPercent',C.c_uint32),('viewZoomBusy',C.c_int32),('viewZoomStatus',C.c_int32),('viewZoomApplied',C.c_int32),('viewZoomWidth',C.c_int32),('viewZoomHeight',C.c_int32),('magnetronDrop',C.c_uint32)]+[(x,C.c_uint32) for x in 'missileScope missileAllocation magnetronGlobal missileHeld'.split()]+[('formationPolicySeq',C.c_int32),('formationSeq',C.c_int32),('formationPolicy',FormationPolicy),('formationPreview',FormationPreview)]+[(x,C.c_uint32) for x in 'formationKey formationKeyAck formationKeyCode formationConsumedUntil formationAccepted formationRejected formationJobs'.split()]+[('cameraSeq',C.c_int32)]+[(x,C.c_uint32) for x in 'cameraAck cameraTick cameraMatch'.split()]+[('cameraTargetX',C.c_int32),('cameraTargetY',C.c_int32),('dodgeMode',C.c_uint32),('placementImplementation',C.c_uint32),('techEnhance',C.c_uint32),('requestTypeHash',C.c_uint64),('techEnhanceStatus',C.c_int32),('techEnhanceCount',C.c_uint32)]
+    _fields_ += [(x,C.c_uint32) for x in ('nativeAirNetwork','missileReserve','lowDamageFilter','lowDamageNetwork')]+[('lowDamageStatus',C.c_int32)]
+    _fields_ += [(x,C.c_uint32) for x in ('networkHousePreserve','nativeSellCursor')]+[(x,C.c_int32) for x in ('networkHouseStatus','nativeSellCursorStatus')]+[(x,C.c_uint32) for x in ('networkHousePackets','networkHouseDropped','nativeSellCursorPasses','nativeSellOwnerAdjusted','nativeMegaGateway')]+[('nativeMegaGatewayStatus',C.c_int32)]+[(x,C.c_uint32) for x in ('nativeMegaGatewayAccepted','nativeMegaGatewaySkipped')]
+    _fields_ += [('controlCommandOwner',C.c_uint32),('controlCommandOwnerStatus',C.c_int32),('controlCommandOwnerAccepted',C.c_uint32),('controlCommandOwnerRejected',C.c_uint32),('buildTimeTooltip',C.c_uint32),('buildTimeTooltipStatus',C.c_int32),('crcMapShadow',C.c_uint32),('crcMapShadowStatus',C.c_int32),('crcMapShadowTracked',C.c_uint32),('crcMapShadowSubstitutions',C.c_uint32),('crcMapShadowFaults',C.c_uint32),('aircraftAllocationPolicy',C.c_uint32),('nativeCombatQueries',C.c_uint32),('placementRequest',NativePlacementRequest)]
+    _fields_ += [(x,C.c_uint32) for x in 'moFeatures moOrderStatus moOrderAccepted moOrderRejected'.split()]+[('moOrdersPreviewSeq',C.c_int32),('moOrdersPreview',MoPreview),('moGesturePolicySeq',C.c_int32),('moGestures',MoGesturePolicy)]
+    _fields_ += [('pauseViewStatus',C.c_int32),('pauseViewKeys',C.c_uint32*2),('placementPreviewSeq',C.c_int32),('placementPreview',NativePlacementPreview),('sidebarMode',C.c_uint32),('sidebarStatus',C.c_int32),('techParameterStatus',C.c_int32),('techParameterError',C.c_uint32),('techParameterSlots',C.c_uint32),('techParameterExceptions',C.c_uint32),('smallMapClamp',C.c_uint32),('smallMapClampStatus',C.c_int32),('viewportSerial',C.c_int32),('viewportActive',C.c_uint32),('viewportGeneration',C.c_uint32),('viewportHostCapabilities',C.c_uint32),('viewportPhysical',C.c_int32*4),('viewportLogical',C.c_int32*4),('pointerViewportGeneration',C.c_uint32),('reservedAssist91Tail',C.c_uint32),('techEnhanceImplementation',C.c_uint32),('techEnhanceParameterStatus',C.c_int32),('techEnhanceParameterError',C.c_uint32),('techEnhanceParameterSlots',C.c_uint32),('techEnhanceParameterExceptions',C.c_uint32),('moOptions',MoOptions)]
     def __init__(self,*args,**kw):
-        super().__init__(*args,**kw);self.computeRequested=1984;self.computeApplied=1984;self.missileScanHz=10;self.advancedScanHz=10
+        super().__init__(*args,**kw);self.computeRequested=1984;self.computeApplied=1984;self.missileScanHz=10;self.advancedScanHz=10;self.missileReserve=1
 
 u=Uc(UC_ARCH_X86,UC_MODE_32)
 fixture_paths=globals().get("fixture_paths",sys.argv[1:3])
@@ -168,7 +194,7 @@ for pe in images:
     u.mem_map(pe.OPTIONAL_HEADER.ImageBase,(pe.OPTIONAL_HEADER.SizeOfImage+4095)&~4095)
     u.mem_write(pe.OPTIONAL_HEADER.ImageBase,pe.get_memory_mapped_image())
 SH=0x20000000;HEAP=0x21000000;STACK=0x30000000;STOP=0x31000000;STUB=0x32000000
-for a,n in [(0,0x10000),(SH,0x600000),(HEAP,0x400000),(STACK-0x100000,0x120000),(STOP,0x10000),(STUB,0x10000)]:u.mem_map(a,n)
+for a,n in [(0,0x10000),(SH,0x800000),(HEAP,0x400000),(STACK-0x100000,0x120000),(STOP,0x10000),(STUB,0x10000)]:u.mem_map(a,n)
 def w(a,v):u.mem_write(a,struct.pack('<I',v&0xffffffff))
 def r(a):return struct.unpack('<I',u.mem_read(a,4))[0]
 def b(a,v):u.mem_write(a,bytes([int(v)]))
@@ -232,13 +258,16 @@ def on_code(uc,a,size,_):
         elif n in ('GetTickCount','timeGetTime'):ret(clock,0)
         elif n=='OpenFileMappingW':
             name=string_at(arg(2),True);mapping_names.append(name)
-            ret(2 if name in ('Local\\RA2Runtime_v3_123_456_','Local\\RA2Runtime_v4_123_456_') else 1 if name==os.environ.get('RA2_FIXTURE_MAPPING_NAME',f'Local\\RA2Assist_v{struct.unpack("<I",dll.get_data(protocol_export.address,4))[0]:03}_123') else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v154_123' else 0,3)
-        elif n=='MapViewOfFile':ret(SH+0x500000 if arg(0)==2 else 0x22000000 if arg(0)==3 else SH,5)
+            ret(2 if name in ('Local\\RA2Runtime_v3_123_456_','Local\\RA2Runtime_v4_123_456_') else 1 if name==os.environ.get('RA2_FIXTURE_MAPPING_NAME',f'Local\\RA2Assist_v{struct.unpack("<I",dll.get_data(protocol_export.address,4))[0]:03}_123') else 3 if cursor_mapping_enabled and name=='Local\\RA2CursorBridge_v155_123' else 0,3)
+        elif n=='MapViewOfFile':ret(SH+0x700000 if arg(0)==2 else 0x22000000 if arg(0)==3 else SH,5)
         elif n=='SetTimer':watchdog_callback=arg(3);watchdog_threads.append(current_thread);ret(0 if fail_watchdog_timer else 1,4)
         elif n=='wsprintfW':
-            value='Local\\RA2CursorBridge_v154_123';u.mem_write(arg(0),(value+'\0').encode('utf-16le'));ret(len(value),0)
+            value='Local\\RA2CursorBridge_v155_123';u.mem_write(arg(0),(value+'\0').encode('utf-16le'));ret(len(value),0)
         elif n=='ReadProcessMemory':
             u.mem_write(arg(2),bytes(u.mem_read(arg(1),arg(3))));w(arg(4),arg(3));ret(1,5)
+        elif n=='WriteProcessMemory':
+            writes=globals().setdefault('process_memory_writes',[]);writes.append((arg(1),arg(3)))
+            u.mem_write(arg(1),bytes(u.mem_read(arg(2),arg(3))));w(arg(4),arg(3));ret(1,5)
         elif n in ('QueryPerformanceCounter','QueryPerformanceFrequency'):
             u.mem_write(arg(0),struct.pack('<Q',globals().get('precise_us',clock*1000) if n.endswith('Counter') else 1000000));counter+=10;ret(1,1)
         elif n=='VirtualProtect':w(arg(3),0x20);ret(1,4)
@@ -307,14 +336,15 @@ def on_code(uc,a,size,_):
         if globals().get("execute_native_selection",False) and a in (0x48dc90,0x6fbfa0):return
         calls.append((a,u.reg_read(UC_X86_REG_ECX),[arg(i) for i in range(2)]))
         ret(1,{0x48dc90:0,0x6fbfa0:0,0x6d2420:2,0x431410:1,0x577d90:1,0x4a8bf0:1,0x4ac8c0:1,0x4ac660:1}[a])
+native_stub_hooks={}
 for target in list(imports)+[0x4f7870,0x5f7900,0x6abc60,0x6a6300,0x6d2140,0x578080,0x473460,0x51e3b0,0x73fd50,0x6cc360,0x48dc90,0x6fbfa0,0x6d2420,0x431410,0x577d90,0x4a8bf0,0x4ac8c0,0x4ac660]:
-    u.hook_add(UC_HOOK_CODE,on_code,begin=target,end=target)
+    native_stub_hooks[target]=u.hook_add(UC_HOOK_CODE,on_code,begin=target,end=target)
 def run(address,args=(),self=0):
     # Existing command regressions now enter through the production runtime.
     # A host wake sets the ready bit; an absent request is separately tested.
     if address==globals().get('entry') and args==(0,1,0):
-        w(SH+0x500000+20,r(SH+0x500000+20)|1)
-        args=(0,1,SH+0x500100)
+        w(SH+0x700000+20,r(SH+0x700000+20)|1)
+        args=(0,1,SH+0x700100)
 
     sp=STACK+0x1e000;u.mem_write(sp,struct.pack('<'+'I'*(len(args)+1),STOP,*args));u.reg_write(UC_X86_REG_ESP,sp);u.reg_write(UC_X86_REG_ECX,self)
     try:u.emu_start(address,STOP,count=2000000)
@@ -364,7 +394,7 @@ u.mem_write(0x87f7e8+360,struct.pack('<iii hh',0,0,1,20,30))
 class EntryRequest(C.Structure):
  _fields_=[(n,C.c_uint32) for n in 'size version operation client module token bindThread address length'.split()]+[('before',C.c_uint8*16),('after',C.c_uint8*16)]+[(n,C.c_uint32) for n in 'gameThread activeModule installed conflicts active conflict entries reentrant contended wrongThread'.split()]
 assert C.sizeof(EntryRequest)==108
-control=SH+0x500000
+control=SH+0x700000
 manager_export=broker.OPTIONAL_HEADER.ImageBase+next(x.address for x in broker.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'ManageGameEntry')
 def manager_call(req):
  req.size=108;req.version=int.from_bytes(broker.get_data(next(x.address for x in broker.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GameEntryManagerInfo'),4),'little');u.mem_write(control,bytes(req));run(manager_export,(control,));result=C.c_int32(u.reg_read(UC_X86_REG_EAX)).value
@@ -396,12 +426,21 @@ for section in dll.sections:
    objaddr=struct.unpack_from('<I',code,1)[0]
    if dll.OPTIONAL_HEADER.ImageBase+0x70000<=objaddr<dll.OPTIONAL_HEADER.ImageBase+dll.OPTIONAL_HEADER.SizeOfImage:
     ctor_calls.append((dll.OPTIONAL_HEADER.ImageBase+section.VirtualAddress+off+10+struct.unpack_from('<i',code,6)[0],objaddr))
-assert len(ctor_calls)==1,('Planner initializer tail',ctor_calls)
-run(ctor_calls[0][0],(),ctor_calls[0][1])
-s=Shared();s.viewZoomPercent=100;s.magic=0x41533130;s.advancedRangeCells=2;s.version=int.from_bytes(dll.get_data(next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'AssistProtocolInfo'),4),'little');s.pid=123;s.heartbeat=clock;s.foreground=1;s.flags=1|2|4|16|32;s.scanMs=100;s.repairMs=2000
+if len(ctor_calls)==1:
+ run(ctor_calls[0][0],(),ctor_calls[0][1])
+else:
+ # Zig inlines the constructors into one initializer. Execute its real body;
+ # only destructor registration is a fixture sink (no Windows CRT teardown).
+ from pdb_fixture_symbol import function_address
+ pdb=Path(fixture_paths[1]).with_suffix('.pdb')
+ initializer=function_address(dll,pdb,b'_GLOBAL__sub_I_bridge.cpp')
+ atexit=function_address(dll,pdb,b'_atexit')
+ sink=u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:ret(0,0),begin=atexit,end=atexit)
+ run(initializer);u.hook_del(sink)
+s=Shared();s.moOptions=MoOptions(4,4,4,2,3,3,1);s.viewZoomPercent=100;s.magic=0x41533130;s.advancedRangeCells=2;s.version=int.from_bytes(dll.get_data(next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'AssistProtocolInfo'),4),'little');s.pid=123;s.heartbeat=clock;s.foreground=1;s.flags=1|2|4|16|32;s.scanMs=100;s.repairMs=2000
 u.mem_write(SH,bytes(s));entry=dll.OPTIONAL_HEADER.ImageBase+next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GameRuntimeHook')
-u.mem_write(SH+0x500000,struct.pack('<10I',0x52543236,struct.unpack('<I',dll.get_data(next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GameRuntimeInfo'),4))[0],123,456,1,1,1,clock,0,0))
-u.mem_write(SH+0x500100,struct.pack('<7I',0,0,0x52545736,456,0,0,0))
+u.mem_write(SH+0x700000,struct.pack('<10I',0x52543236,struct.unpack('<I',dll.get_data(next(e.address for e in dll.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GameRuntimeInfo'),4))[0],123,456,1,1,1,clock,0,0))
+u.mem_write(SH+0x700100,struct.pack('<7I',0,0,0x52545736,456,0,0,0))
 def hook():
     global clock
     clock+=110;w(SH+Shared.heartbeat.offset,clock);run(entry,(0,1,0));return Shared.from_buffer_copy(u.mem_read(SH,C.sizeof(Shared)))
@@ -417,6 +456,9 @@ def timing_callback(uc,a,size,_):
 u.hook_add(UC_HOOK_CODE,timing_callback,begin=timer,end=timer)
 
 if __name__ == '__main__':
+ # A loaded world needs a Scenario identity as well as the existing map and
+ # House fixtures. A missing Scenario correctly keeps the Runtime unready.
+ w(0xa8b230,alloc())
  for mode,backend in ((5,0),(5,1),(0,0),(0,1),(3,0),(4,0),(3,1),(4,1)):
   clock+=5100
   w(0xa8b238,mode);w(0xa8ed84,r(0xa8ed84)+10)
@@ -480,7 +522,8 @@ if __name__ == '__main__':
  round_id=s.data.match;old_request=s.request
  b(0xa8e9a0,0)
  s=Shared.from_buffer_copy(u.mem_read(SH,C.sizeof(Shared)));s.command=15;s.request+=1;s.requestTick=clock;s.requestMatch=round_id;u.mem_write(SH,bytes(s))
- for _ in range(20):s=hook();assert s.data.match==round_id and s.ack==old_request and s.data.commandStatus==0
+ # The explicit Paused diagnostic is 9; it must not acknowledge the request.
+ for _ in range(20):s=hook();assert s.data.match==round_id and s.ack==old_request and s.data.commandStatus==9
  b(0xa8e9a0,1);s=hook();assert s.data.match==round_id and s.ack==s.request and s.data.commandStatus==1
  print('PASS 2.2-second engine suspension preserves the same match, pending request and loading jobs; resumes without a new round')
  # A slow UI heartbeat with a live owner is not a reason to disconnect/reset.
@@ -543,9 +586,15 @@ if __name__ == '__main__':
   saved_at=at;at=frame_at
   frame_original=bytes(u.mem_read(at,5));frame_patch=b'\xe9'+struct.pack('<I',(entry-at-5)&0xffffffff)
   result,_=manager_call(patch_request(frame_original,frame_patch))
-  assert result==-5,(hex(frame_at),result)
+  if frame_at==0x55d360:
+   # This exact native loop entry is now the explicit SP pause experiment.
+   # Its caller enforces session/opt-in; the central writer owns exact bytes.
+   assert result==1,(hex(frame_at),result)
+   assert manager_call(patch_request(frame_patch,frame_original))[0]==1
+   assert bytes(u.mem_read(at,5))==frame_original
+  else:assert result==-5,(hex(frame_at),result)
   at=saved_at
- print('PASS central manager denies every retired frame/input hook candidate')
+ print('PASS central manager admits/restores the explicit pause entry and denies retired frame/input candidates')
  patch_lease.operation=1;assert manager_call(patch_lease)[0]==1
  assert manager_call(idle)[0]==-3
  print('PASS patch writes require a current manager lease; idle, stale and foreign owners cannot write')
@@ -569,4 +618,5 @@ if __name__ == '__main__':
 
  import hashlib, json
  print("VERIFIED_INPUT_SHA256 " + json.dumps({str(p.name):hashlib.sha256(p.read_bytes()).hexdigest() for p in [Path(sys.argv[1]),*[Path(fixture_paths[1]).with_name(n) for n in ("GameRuntime.dll",)]]},sort_keys=True))
+
 

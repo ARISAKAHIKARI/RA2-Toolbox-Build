@@ -1,8 +1,59 @@
+#include "../../shared/source/key_gesture.h"
 static void loadAdditionalSettings(){
- extra.viewZoomEnabled=false;extra.viewZoomPercent=100; // temporarily unavailable, including saved settings
+ superweaponOptions.detached=value(L"Display",L"SuperweaponDetached",0)!=0;superweaponOptions.collapsed=value(L"Display",L"SuperweaponCollapsed",0)!=0;
+ superweaponOptions.x=std::clamp(value(L"Display",L"SuperweaponX",20),0,32768);superweaponOptions.y=std::clamp(value(L"Display",L"SuperweaponY",150),0,32768);
+ superweaponOptions.scale=std::clamp(value(L"Display",L"SuperweaponScale",100),75,200);superweaponOptions.rows=std::clamp(value(L"Display",L"SuperweaponRows",8),1,20);
+ // Older releases persisted these two implicit defaults as if the user had
+ // opted in. Migrate once; subsequent explicit high-risk choices are retained.
+ const bool explicitPatchPreferences=value(L"Compatibility",L"NoCodeWriteDefaultsVersion",0)>=1;
+ buildTimeTooltipEnabled=explicitPatchPreferences&&value(L"Display",L"BuildTimeTooltip",0)!=0;harvesterCounterEnabled=value(L"Display",L"HarvesterCounter",0)!=0;powerDeltaEnabled=value(L"Display",L"PowerDelta",0)!=0;
+ renderProcessing=value(L"Display",L"RenderProcessing",value(L"Display",L"RenderExtraQuality",0))!=0;
+ renderXbrzEnabled=value(L"Display",L"RenderXbrzEnabled",0)!=0;
+ renderColorPrecision=std::clamp(value(L"Display",L"RenderColorPrecision",1),0,1);
+ renderHighRefresh=value(L"Display",L"RenderHighRefresh",1)!=0;
+ renderMaterialRefresh=value(L"Display",L"RenderMaterialRefresh",1)!=0;
+ renderSceneDetail=std::clamp(value(L"Display",L"RenderSceneDetail",1),0,1);
+ renderUpgradeEnabled=value(L"Display",L"RenderUpgrade",0)!=0;
+ unifiedOverlayEnabled=value(L"Display",L"UnifiedOverlay",0)!=0;
+ renderUpgradeLayer=std::clamp(value(L"Display",L"RenderUpgradeLayer",1),0,1);
+ renderUpgradeLayer=1; // Migrate the old opaque-on-top mode; information and input feedback must remain visible.
+ renderPaletteRange=std::clamp(value(L"Display",L"RenderPaletteRange",1),0,1);
+ renderPixelScale=std::clamp(value(L"Display",L"RenderPixelScale",3),0,3);
+ renderPhysicalOutput=value(L"Display",L"RenderPhysicalOutput",0)!=0;
+ renderVulkanEnabled=value(L"Display",L"RenderVulkan",1)!=0;
+ renderParticleEffects=value(L"Display",L"RenderParticles",1)!=0;renderLaserEffects=value(L"Display",L"RenderLasers",1)!=0;
+ renderVoxelLighting=value(L"Display",L"RenderVoxelLighting",1)!=0;renderSpriteLighting=value(L"Display",L"RenderSpriteLighting",1)!=0;
+ extra.viewZoomEnabled=value(L"ViewZoom",L"Enabled",0)!=0;extra.viewZoomPercent=value(L"ViewZoom",L"Percent",100);if(!viewzoom::valid(extra.viewZoomPercent))extra.viewZoomPercent=100;
+ extra.moFeatures=uint32_t(value(L"MOControls",L"Features",0))&23u;extra.superweaponPanel=value(L"Display",L"SuperweaponPanel",0)!=0;
+ extra.moOptions.range=uint32_t(std::clamp(value(L"MOControls",L"Range",4),2,16));extra.moOptions.squad=uint32_t(std::clamp(value(L"MOControls",L"Squad",4),2,16));
+ extra.moOptions.patrolSize=uint32_t(std::clamp(value(L"MOControls",L"PatrolSize",4),2,16));extra.moOptions.nodeStep=uint32_t(std::clamp(value(L"MOControls",L"NodeStep",2),1,8));
+ extra.moOptions.loopClose=uint32_t(std::clamp(value(L"MOControls",L"LoopClose",3),2,16));extra.moOptions.loopStep=uint32_t(std::clamp(value(L"MOControls",L"LoopStep",3),2,16));extra.moOptions.commit=value(L"MOControls",L"AutoCommit",1)!=0;
+ const wchar_t*gestureNames[]={L"FuzzyOrder",L"AreaOrder",L"PatrolCircle",L"FormationQuick"};
+ for(int i=0;i<moorders::GestureCount;++i){auto hold=std::wstring(gestureNames[i])+L"HoldKey",button=std::wstring(gestureNames[i])+L"MouseButton";
+  extra.moGestures.keys[i]=uint32_t(value(L"Mouse",hold.c_str(),extra.moGestures.keys[i]))&65535;
+  int physical=std::clamp(value(L"Mouse",button.c_str(),1),0,6);extra.moGestures.buttons[i]=physical==5?0:uint32_t(physical);}
+ const wchar_t*zoomKeys[]={L"ViewZoomOut",L"ViewZoomIn",L"ViewZoomReset"};for(int i=0;i<3;++i)extra.viewZoomKeys[i]=uint32_t(value(L"Hotkeys",zoomKeys[i],extra.viewZoomKeys[i]))&65535;
+ extra.smallMapClamp=value(L"Experimental",L"SmallMapClamp",0)!=0;
+ extra.sidebarEnabled=value(L"Experimental",L"SidebarEnabled",0)!=0;extra.sidebarMode=uint32_t(std::clamp(value(L"Experimental",L"SidebarMode",0),0,2));
+ extra.sidebarKey=uint32_t(value(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey))&65535;extra.pauseKeys[0]=uint32_t(value(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]))&65535;extra.pauseKeys[1]=uint32_t(value(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]))&65535;
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
- extra.placementImplementation=std::clamp(value(L"Experimental",L"PlacementImplementation",0),0,1);
+ extra.techEnhanceImplementation=std::clamp(value(L"Experimental",L"TechEnhanceImplementation",0),0,1);
+ extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
+ extra.destructSelectedOwner=value(L"Experimental",L"DestructSelectedOwner",0)!=0;
+ extra.destructSelectedOwnerKey=uint32_t(value(L"Hotkeys",L"DestructSelectedOwner",0))&65535;
+ extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
+ extra.nativeSellCursor=value(L"Experimental",L"NativeSellCursor",0)!=0;
+ extra.nativeMegaGateway=explicitPatchPreferences&&value(L"Experimental",L"NativeMegaGateway",0)!=0;
+ extra.nativeCombatQueries=value(L"Experimental",L"NativeCombatQueries",0)!=0;
+ extra.controlCommandOwner=value(L"Experimental",L"ControlCommandOwner",0)!=0;
+ // Replace the former flag implementation in slot 0; retain the native slot
+ // and saved companion preferences, which remain suppressed in Master mode.
+ extra.controlImplementation=value(L"Experimental",L"ControlImplementation",0)==1?1:0;
+ extra.placementImplementation=buildingmodes::placement(value(L"Experimental",L"PlacementImplementation",0));
+ extra.placementEventKey=value(L"Hotkeys",L"PlaceCompletedBuilding",extra.placementEventKey)&65535;
+ extra.overlayKey=value(L"Hotkeys",L"OverlayToggle",0xC0)&65535;
  extra.stickyKey=value(L"Hotkeys",L"StickyGuard",extra.stickyKey)&65535;
+ for(int i=0;i<selectedmode::Count;++i)extra.missionModeKeys[i]=value(L"Hotkeys",selectedmode::setting(i),0)&65535;
  extra.watchSecondary=value(L"Watch",L"SecondaryEnabled",0)!=0;
  extra.watchSecondaryX=std::clamp(value(L"Watch",L"SecondaryX",10000),0,10000);extra.watchSecondaryY=std::clamp(value(L"Watch",L"SecondaryY",0),0,10000);
  extra.watchEnabled=value(L"Watch",L"Enabled",0)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",0)!=0;for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};extra.watchKeys[n]=value(L"Watch",keys[n],n?extra.watchKeys[0]:extra.watchKeys[n])&65535;}
@@ -28,20 +79,23 @@ static void loadAdditionalSettings(){
  extra.burstEnabled=extra.burstHoldEnabled=false;extra.burstKey=0; // Retired: ignore old INI values.
  extra.missileScope=std::clamp(value(L"MissileDefense",L"TargetScope",0),0,1);extra.missileAllocation=std::clamp(value(L"MissileDefense",L"Allocation",0),0,1);extra.magnetronGlobal=value(L"Magnetron",L"Global",0)!=0;
  extra.missileDefense=value(L"MissileDefense",L"Enabled",0)!=0;extra.missileScanHz=std::clamp(value(L"MissileDefense",L"ScanHz",10),1,60);
+ extra.missileReserve=value(L"MissileDefense",L"SleepReserve",1)!=0;extra.lowDamageFilter=value(L"Combat",L"FilterLowDamage",0)!=0;extra.lowDamageNetwork=value(L"Combat",L"NativeFilterInMultiplayer",0)!=0;
  extra.antiTheft=value(L"Modes",L"AntiTheft",0)!=0;
  extra.scrollRefreshMode=0; // only cursor refresh is available in this release
 #ifndef RA2_UNIFIED
  extra.scrollRefreshHz=std::clamp(value(L"Experimental",L"ScrollRefreshHz",120),30,500);
 #endif
- extra.c4Test=value(L"Experimental",L"InfantryC4",0)!=0;
+ extra.c4Test=featureavailability::InfantryForcedEntry&&value(L"Experimental",L"InfantryC4",0)!=0;
+ extra.c4Mode=uint32_t(std::clamp(value(L"Experimental",L"InfantryEntryMode",0),0,1));
  extra.c4Key=value(L"Experimental",L"C4HoldKey",'C'|(4<<8));extra.c4Mouse=std::clamp(value(L"Experimental",L"C4Mouse",1),0,6);if(extra.c4Mouse==5)extra.c4Mouse=1;
  for(int i=0;i<9;++i)socialKeys[i]=WORD(value(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",0)&65535);
- extra.mapStrategy=std::clamp(value(L"Display",L"ShroudStrategy",value(L"Experimental",L"RenderReveal",0)?2:0),0,4);
- extra.renderReveal=extra.mapStrategy==1?2:extra.mapStrategy==2?1:extra.mapStrategy==4?3:0;
- extra.experimentalReveal=extra.mapStrategy==3;
+ extra.mapStrategy=shroudpolicy::savedStrategy(value(L"Display",L"ShroudStrategy",shroudpolicy::legacyStrategy(value(L"Experimental",L"RenderReveal",0))));
+ extra.renderReveal=shroudpolicy::runtimeMode(extra.mapStrategy);
+ extra.manualReveal=value(L"Experimental",L"ManualReveal",value(L"Experimental",L"RevealMap",0))!=0;
+ extra.experimentalReveal=shroudpolicy::revealEnabled(extra.manualReveal,extra.mapStrategy);
  extra.nativeAirWaypoints=value(L"Experimental",L"NativeAirWaypoints",0)!=0;
  extra.airWaypoints=value(L"Aircraft",L"ZWaypoints",0)!=0;
- int pathMode=std::clamp(value(L"Aircraft",L"WaypointMode",extra.nativeAirWaypoints?2:extra.airWaypoints?1:0),0,2);extra.airWaypoints=pathMode==1;extra.nativeAirWaypoints=pathMode==2;extra.airPathKey=uint32_t(value(L"Aircraft",L"WaypointHoldKey",0));
+ int pathMode=std::clamp(value(L"Aircraft",L"WaypointMode",extra.nativeAirWaypoints?2:extra.airWaypoints?1:0),0,4);extra.airWaypoints=pathMode==1;extra.nativeAirWaypoints=pathMode>=2;extra.nativeAirNetwork=pathMode>=3?uint32_t(pathMode-2):0;extra.airPathKey=uint32_t(value(L"Aircraft",L"WaypointHoldKey",0));
  extra.productionReminderMask=uint32_t(value(L"Production",L"ReminderLines",0))&63;
  extra.constructionQueue=value(L"Production",L"ReserveNext",0)!=0;
  extra.idleAircraft=value(L"Display",L"IdleAircraftIndicator",0)!=0;
@@ -59,10 +113,11 @@ static void loadAdditionalSettings(){
 
  extra.loadMode=std::clamp(value(L"AutoLoad",L"Logic",0),0,1);extra.loadRadius=std::clamp(value(L"AutoLoad",L"RangeCells",30),1,512);
  extra.enter=value(L"Cooperative",L"AdvancedEnter",0)!=0;extra.air=value(L"Cooperative",L"AircraftSpread",0)!=0;
+ extra.aircraftAllocationPolicy=std::clamp(value(L"Cooperative",L"AircraftAllocationPolicy",0),0,2);
  extra.enterKey=value(L"Cooperative",L"EnterHoldKey",18)&65535;extra.airKey1=value(L"Cooperative",L"AirHoldKey1",17)&65535;extra.airKey2=value(L"Cooperative",L"AirHoldKey2",0)&65535;
 
  extra.diskKey=value(L"SpecialClick",L"DiskHoldKey",17)&65535;extra.sellKey=value(L"SpecialClick",L"SellHoldKey",17)&65535;
- extra.disk=value(L"SpecialClick",L"DiskPrimary",0)!=0;extra.sellDrained=value(L"SpecialClick",L"SellDrained",0)!=0;extra.sellVehicles=value(L"SpecialClick",L"SellVehicles",0)!=0;const bool commandsConfigured=value(L"Experimental",L"PlayerCommandOptionsVersion",0)>=1;extra.sellEnemy=false;extra.controlAll=playertest::Available&&value(L"Experimental",L"ControlAll",0)!=0;extra.switchPlayerEnabled=false;
+ extra.disk=value(L"SpecialClick",L"DiskPrimary",0)!=0;extra.sellDrained=value(L"SpecialClick",L"SellDrained",0)!=0;extra.sellVehicles=value(L"SpecialClick",L"SellVehicles",0)!=0;const bool sellOptIn=value(L"Experimental",L"EnemyBuildingSellOptInVersion",0)>=1;extra.sellEnemy=playertest::SellAvailable&&sellOptIn&&value(L"SpecialClick",L"SellEnemyBuildings",0)!=0;extra.controlAll=playertest::Available&&value(L"Experimental",L"ControlAll",0)!=0;extra.switchPlayerEnabled=false;
  extra.frozen=value(L"Display",L"Frozen",0)!=0;extra.variantKey=value(L"TypeSelection",L"VariantKey",'T'|(2<<8))&65535;
  extra.defaults=cooperative::bounded({value(L"AircraftQuota",L"First",1),value(L"AircraftQuota",L"Second",2),value(L"AircraftQuota",L"Maximum",0)});
  wchar_t entries[32768]{};GetPrivateProfileSectionW(L"AircraftQuotaOverrides",entries,32768,path(L"Assist.ini").c_str());
@@ -71,9 +126,31 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
- write(L"ViewZoom",L"Enabled",0);write(L"ViewZoom",L"Percent",100);
+ write(L"Display",L"SuperweaponDetached",superweaponOptions.detached);write(L"Display",L"SuperweaponCollapsed",superweaponOptions.collapsed);write(L"Display",L"SuperweaponX",superweaponOptions.x);write(L"Display",L"SuperweaponY",superweaponOptions.y);write(L"Display",L"SuperweaponScale",superweaponOptions.scale);write(L"Display",L"SuperweaponRows",superweaponOptions.rows);
+ const wchar_t*gestureNames[]={L"FuzzyOrder",L"AreaOrder",L"PatrolCircle",L"FormationQuick"};
+ for(int i=0;i<moorders::GestureCount;++i){auto hold=std::wstring(gestureNames[i])+L"HoldKey",button=std::wstring(gestureNames[i])+L"MouseButton";write(L"Mouse",hold.c_str(),extra.moGestures.keys[i]);write(L"Mouse",button.c_str(),extra.moGestures.buttons[i]);}
+ const wchar_t*zoomKeys[]={L"ViewZoomOut",L"ViewZoomIn",L"ViewZoomReset"};for(int i=0;i<3;++i)write(L"Hotkeys",zoomKeys[i],extra.viewZoomKeys[i]);
+ write(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey);write(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]);write(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]);
+ write(L"Experimental",L"SmallMapClamp",extra.smallMapClamp);
+ write(L"Experimental",L"SidebarEnabled",extra.sidebarEnabled);write(L"Experimental",L"SidebarMode",extra.sidebarMode);
+ write(L"MOControls",L"Features",extra.moFeatures&23u);write(L"Display",L"SuperweaponPanel",extra.superweaponPanel);
+ write(L"MOControls",L"Range",extra.moOptions.range);write(L"MOControls",L"Squad",extra.moOptions.squad);write(L"MOControls",L"PatrolSize",extra.moOptions.patrolSize);write(L"MOControls",L"NodeStep",extra.moOptions.nodeStep);write(L"MOControls",L"LoopClose",extra.moOptions.loopClose);write(L"MOControls",L"LoopStep",extra.moOptions.loopStep);write(L"MOControls",L"AutoCommit",extra.moOptions.commit);
+ write(L"Compatibility",L"NoCodeWriteDefaultsVersion",1);
+ write(L"ViewZoom",L"Enabled",extra.viewZoomEnabled);write(L"ViewZoom",L"Percent",extra.viewZoomPercent);
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
+ write(L"Experimental",L"TechEnhanceImplementation",extra.techEnhanceImplementation);
+ write(L"Hotkeys",L"PlaceCompletedBuilding",extra.placementEventKey);
+ write(L"Experimental",L"CrcMapIsClearShadow",extra.crcMapShadow);
+ write(L"Experimental",L"DestructSelectedOwner",extra.destructSelectedOwner);
+ write(L"Hotkeys",L"DestructSelectedOwner",extra.destructSelectedOwnerKey);
+ write(L"Experimental",L"NetworkHousePreserve",extra.networkHousePreserve);write(L"Experimental",L"NativeSellCursor",extra.nativeSellCursor);
+ write(L"Experimental",L"NativeMegaGateway",extra.nativeMegaGateway);
+ write(L"Experimental",L"NativeCombatQueries",extra.nativeCombatQueries);
+ write(L"Experimental",L"ControlCommandOwner",extra.controlCommandOwner);
+ write(L"Experimental",L"ControlImplementation",extra.controlImplementation);
+ write(L"Hotkeys",L"OverlayToggle",extra.overlayKey);
  write(L"Hotkeys",L"StickyGuard",extra.stickyKey);
+ for(int i=0;i<selectedmode::Count;++i)write(L"Hotkeys",selectedmode::setting(i),extra.missionModeKeys[i]);
  write(L"Watch",L"SecondaryEnabled",extra.watchSecondary);
  write(L"Watch",L"SecondaryX",extra.watchSecondaryX);write(L"Watch",L"SecondaryY",extra.watchSecondaryY);
  write(L"Watch",L"Enabled",extra.watchEnabled);write(L"Watch",L"DangerCarriers",extra.watchDanger);for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};write(L"Watch",keys[n],extra.watchKeys[n]);}
@@ -86,6 +163,22 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"ShroudStrategy",extra.mapStrategy);
  write(L"Display",L"MinimapPosition",minimapPosition);write(L"Display",L"MinimapX",minimapX);write(L"Display",L"MinimapY",minimapY);
  write(L"Display",L"MinimapAlignX",minimapAlignX);write(L"Display",L"MinimapAlignY",minimapAlignY);
+ write(L"Display",L"RenderUpgrade",renderUpgradeEnabled);
+ write(L"Display",L"BuildTimeTooltip",buildTimeTooltipEnabled);write(L"Display",L"HarvesterCounter",harvesterCounterEnabled);write(L"Display",L"PowerDelta",powerDeltaEnabled);
+ write(L"Display",L"RenderProcessing",renderProcessing);
+ write(L"Display",L"RenderXbrzEnabled",renderXbrzEnabled);
+ write(L"Display",L"UnifiedOverlay",unifiedOverlayEnabled);
+ write(L"Display",L"RenderUpgradeLayer",renderUpgradeLayer);
+ write(L"Display",L"RenderPaletteRange",renderPaletteRange);
+ write(L"Display",L"RenderColorPrecision",renderColorPrecision);
+ write(L"Display",L"RenderPixelScale",renderPixelScale);
+ write(L"Display",L"RenderHighRefresh",renderHighRefresh);
+ write(L"Display",L"RenderMaterialRefresh",renderMaterialRefresh);
+ write(L"Display",L"RenderSceneDetail",renderSceneDetail);
+ write(L"Display",L"RenderPhysicalOutput",renderPhysicalOutput);
+ write(L"Display",L"RenderVulkan",renderVulkanEnabled);
+ write(L"Display",L"RenderParticles",renderParticleEffects);write(L"Display",L"RenderLasers",renderLaserEffects);
+ write(L"Display",L"RenderVoxelLighting",renderVoxelLighting);write(L"Display",L"RenderSpriteLighting",renderSpriteLighting);
  write(L"Display",L"MinimapMode",minimapMode);
  write(L"Display",L"MinimapSecondary",minimapSecondary);
  write(L"Display",L"MinimapSecondaryX",minimapSecondaryX);write(L"Display",L"MinimapSecondaryY",minimapSecondaryY);write(L"Display",L"MinimapSecondaryWidth",minimapSecondaryWidth);
@@ -99,22 +192,23 @@ static bool saveAdditionalSettings(){
  write(L"BurstRefresh",L"Enabled",0);write(L"BurstRefresh",L"HoldEnabled",0);write(L"BurstRefresh",L"HoldKey",0);
  write(L"MissileDefense",L"TargetScope",extra.missileScope);write(L"MissileDefense",L"Allocation",extra.missileAllocation);write(L"Magnetron",L"Global",extra.magnetronGlobal);
  write(L"MissileDefense",L"Enabled",extra.missileDefense);write(L"MissileDefense",L"ScanHz",extra.missileScanHz);
- write(L"Modes",L"AntiTheft",extra.antiTheft);WritePrivateProfileStringW(L"Experimental",L"RevealMap",nullptr,path(L"Assist.ini").c_str());
+ write(L"MissileDefense",L"SleepReserve",extra.missileReserve);write(L"Combat",L"FilterLowDamage",extra.lowDamageFilter);write(L"Combat",L"NativeFilterInMultiplayer",extra.lowDamageNetwork);
+ write(L"Modes",L"AntiTheft",extra.antiTheft);write(L"Experimental",L"ManualReveal",extra.manualReveal);WritePrivateProfileStringW(L"Experimental",L"RevealMap",nullptr,path(L"Assist.ini").c_str());
  write(L"Experimental",L"RefreshStrategy",extra.scrollRefreshMode);
 #ifndef RA2_UNIFIED
  write(L"Experimental",L"ScrollRefreshHz",extra.scrollRefreshHz);
 #endif
- write(L"Experimental",L"InfantryC4",extra.c4Test);write(L"Experimental",L"C4HoldKey",extra.c4Key);write(L"Experimental",L"C4Mouse",extra.c4Mouse);
- write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Aircraft",L"WaypointMode",extra.nativeAirWaypoints?2:extra.airWaypoints?1:0);write(L"Aircraft",L"WaypointHoldKey",extra.airPathKey);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Production",L"ReminderLines",extra.productionReminderMask);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
+ write(L"Experimental",L"InfantryC4",extra.c4Test);write(L"Experimental",L"C4HoldKey",extra.c4Key);write(L"Experimental",L"C4Mouse",extra.c4Mouse);write(L"Experimental",L"InfantryEntryMode",extra.c4Mode);
+ write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Aircraft",L"WaypointMode",airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));write(L"Aircraft",L"WaypointHoldKey",extra.airPathKey);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Production",L"ReminderLines",extra.productionReminderMask);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
  write(L"Display",L"ParasiteMarker",extra.parasiteMarker);write(L"Display",L"CrateBuffMarkers",extra.crateBuffMarkers);
  write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);write(L"Mouse",L"OverrideNative",extra.overrideNative);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);
 
  write(L"AutoLoad",L"Logic",extra.loadMode);write(L"AutoLoad",L"RangeCells",extra.loadRadius);
- write(L"Cooperative",L"AdvancedEnter",extra.enter);write(L"Cooperative",L"AircraftSpread",extra.air);write(L"Cooperative",L"EnterHoldKey",extra.enterKey);write(L"Cooperative",L"AirHoldKey1",extra.airKey1);write(L"Cooperative",L"AirHoldKey2",extra.airKey2);
+ write(L"Cooperative",L"AircraftAllocationPolicy",extra.aircraftAllocationPolicy);write(L"Cooperative",L"AdvancedEnter",extra.enter);write(L"Cooperative",L"AircraftSpread",extra.air);write(L"Cooperative",L"EnterHoldKey",extra.enterKey);write(L"Cooperative",L"AirHoldKey1",extra.airKey1);write(L"Cooperative",L"AirHoldKey2",extra.airKey2);
  write(L"SpecialClick",L"DiskHoldKey",extra.diskKey);write(L"SpecialClick",L"SellHoldKey",extra.sellKey);
  write(L"SpecialClick",L"DiskPrimary",extra.disk);write(L"SpecialClick",L"SellDrained",extra.sellDrained);write(L"SpecialClick",L"SellVehicles",extra.sellVehicles);write(L"SpecialClick",L"SellEnemyBuildings",playertest::SellAvailable&&extra.sellEnemy);
- write(L"Experimental",L"PlayerCommandOptionsVersion",1);write(L"Experimental",L"ControlAll",playertest::Available&&extra.controlAll);write(L"Experimental",L"SwitchPlayerEnabled",0);
+ write(L"Experimental",L"PlayerCommandOptionsVersion",1);write(L"Experimental",L"EnemyBuildingSellOptInVersion",1);write(L"Experimental",L"ControlAll",playertest::Available&&extra.controlAll);write(L"Experimental",L"SwitchPlayerEnabled",0);
  write(L"Display",L"Frozen",extra.frozen);write(L"TypeSelection",L"VariantKey",extra.variantKey);
  write(L"AircraftQuota",L"First",extra.defaults.first);write(L"AircraftQuota",L"Second",extra.defaults.second);write(L"AircraftQuota",L"Maximum",extra.defaults.maximum);
  std::wstring block;for(const auto&entry:targetQuotas){const auto&q=entry.second;block+=wide(entry.first.c_str())+L"="+std::to_wstring(q.first)+L","+std::to_wstring(q.second)+L","+std::to_wstring(q.maximum);block.push_back(0);}block.push_back(0);if(block.size()==1)block.push_back(0);
@@ -127,11 +221,11 @@ static void readTargetQuota(){ControlUpdate guard;auto id=quotaID();if(id.empty(
 }
 static bool extraNumber(int control,int minimum,int maximum,int&out){BOOL ok;int n=GetDlgItemInt(ui,700+control,&ok,FALSE);if(!ok||n<minimum||n>maximum)return false;out=n;return true;}
 static bool readAdditionalControls(){
- AdditionalSettings next=extra;next.loadMode=SendMessageW(extraControls[LoadLogic],CB_GETCURSEL,0,0)==1?1:0;
+ AdditionalSettings next=extra;next.aircraftAllocationPolicy=std::clamp(int(SendMessageW(extraControls[AircraftPolicy],CB_GETCURSEL,0,0)),0,2);next.loadMode=SendMessageW(extraControls[LoadLogic],CB_GETCURSEL,0,0)==1?1:0;
  if(!extraNumber(LoadRadius,1,512,next.loadRadius)||!extraNumber(DefaultFirst,0,512,next.defaults.first)||!extraNumber(DefaultSecond,0,512,next.defaults.second)||!extraNumber(DefaultMaximum,0,512,next.defaults.maximum)){notify(L"请输入有效的范围（1–512）和受击数（0–512）。");return false;}
  auto binding=[](int preset,int custom){return presetKey(int(SendMessageW(extraControls[preset],CB_GETCURSEL,0,0)),uint32_t(SendMessageW(extraControls[custom],HKM_GETHOTKEY,0,0)));};
  next.enterKey=binding(EnterPreset,EnterCustom);next.airKey1=binding(AirPreset1,AirCustom1);next.airKey2=binding(AirPreset2,AirCustom2);
- if(!extra.allHotkeys&&next.airKey1&&next.airKey1==next.airKey2){notify(L"飞机攻击的两个按键需要不同。");return false;}
+ if(!extra.allHotkeys&&keygesture::physical(next.airKey1)&&keygesture::normalize(next.airKey1,keygesture::Mode::Hold)==keygesture::normalize(next.airKey2,keygesture::Mode::Hold)){notify(L"飞机攻击的两个按键需要不同。");return false;}
  next.enter=SendMessageW(extraControls[EnterEnabled],BM_GETCHECK,0,0)==BST_CHECKED;next.air=SendMessageW(extraControls[AirEnabled],BM_GETCHECK,0,0)==BST_CHECKED;
  extra=next;return true;
 }
@@ -148,10 +242,21 @@ static void syncRefreshRate(){extra.scrollRefreshMode=0;if(!shared)return;
 }
 static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
- extra.viewZoomEnabled=false;extra.viewZoomPercent=100;shared->viewZoomPercent=100;
- shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;
+ shared->viewZoomPercent=extra.viewZoomEnabled?uint32_t(extra.viewZoomPercent):100;
+ shared->smallMapClamp=extra.smallMapClamp;
+ shared->sidebarMode=extra.sidebarEnabled&&extra.sidebarMode<=2?extra.sidebarMode:0u;
+ shared->pauseViewKeys[0]=extra.pauseKeys[0];shared->pauseViewKeys[1]=extra.pauseKeys[1];
+ shared->moFeatures=extra.moFeatures&23u;
+ InterlockedIncrement(&shared->moGesturePolicySeq);shared->moGestures=extra.moGestures;shared->moOptions=extra.moOptions;MemoryBarrier();InterlockedIncrement(&shared->moGesturePolicySeq);
+ shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;shared->techEnhanceImplementation=uint32_t(extra.techEnhanceImplementation);
+ shared->nativeAirNetwork=extra.nativeAirNetwork;
+ shared->crcMapShadow=extra.crcMapShadow;
+ shared->networkHousePreserve=extra.networkHouseRequested();shared->nativeSellCursor=extra.nativeSellCursor;
+ shared->nativeMegaGateway=extra.nativeMegaGateway;
+ shared->nativeCombatQueries=extra.nativeCombatQueries;
+ shared->controlCommandOwner=extra.commandOwnerRequested();
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
- syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlAll;shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;
+ shared->missileReserve=extra.missileDefense&&extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageFilter&&extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlRequest();shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=featureavailability::InfantryForcedEntry&&extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;shared->aircraftAllocationPolicy=extra.aircraftAllocationPolicy;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;
@@ -170,9 +275,13 @@ static void serviceCooperative(){
  uint32_t receipt=shared->cooperativeAck;
  if(receipt!=cooperativeReceipt){
   MemoryBarrier();cooperativeReceipt=receipt;
-  for(size_t i=0;i<submittedCooperative.size()&&i<cooperative::MaxSources;++i)
+  for(size_t i=0;i<submittedCooperative.size()&&i<cooperative::MaxSources;++i){
    if(shared->cooperativeAcceptedBits[i/32]&(uint32_t(1)<<(i%32)))acceptedCooperative.push_back(submittedCooperative[i]);
-  retryCooperative=shared->cooperativeResult==-7&&
+   if(i<size_t(std::max(0,shared->cooperativeProcessed)))processedCooperative.push_back(submittedCooperative[i]);
+  }
+  if(cooperative::damageMode(cooperativePending.mode))retryCooperative=(shared->cooperativeResult==-7||(shared->cooperativeResult==1&&shared->cooperativeRejected>0))&&
+   cooperative::retrySourcePool(cooperativePending,cooperativeSourcePool,processedCooperative)&&freshness::intentAlive(cooperativePending.tick,now);
+  else retryCooperative=shared->cooperativeResult==-7&&
    cooperative::retryRemaining(cooperativePending,submittedCooperative.data(),int(submittedCooperative.size()),shared->cooperativeProcessed)&&
    freshness::intentAlive(cooperativePending.tick,now);
   submittedCooperative.clear();
@@ -185,35 +294,28 @@ static void serviceCooperative(){
  if(seq!=shared->cooperativeSeq)return;
  if(request.count>cooperative::MaxSources&&request.serial!=cooperativeDelivered){cooperativeDelivered=request.serial;retryCooperative=false;notify(L"选区超过 512 个，增强请求未提交。");return;}
  bool retry=retryCooperative&&request.serial==cooperativePending.serial&&request.match==cooperativePending.match;
- if(retry)request=cooperativePending;else {retryCooperative=false;acceptedCooperative.clear();}
+ if(retry)request=cooperativePending;else {retryCooperative=false;acceptedCooperative.clear();processedCooperative.clear();cooperativeSourcePool=request;}
  if(!cooperative::valid(request)||(!retry&&request.serial==cooperativeDelivered)||request.match!=snap.match||DWORD(now-request.tick)<8)return;
  if(!freshness::intentAlive(request.tick,now)){
   cooperativeDelivered=request.serial;retryCooperative=false;notify(L"协同请求已超时，请重新下令。");return;
  }
- // Guard reads bypass the task cache. Cached re-reading of frame/house would
- // merely compare a snapshot with itself and hide a game transition.
- // Sampling may span frames within the source-age budget. Requiring every
- // field in one frame would starve large selections; live checks remain final.
- externalReader.begin();uint32_t houseBefore=0,houseAfter=0;int frameBefore=-1,frameAfter=-1;
- DWORD acquired=GetTickCount();
- if(!externalReader.readFresh(0xA83D4C,&houseBefore,sizeof houseBefore)||houseBefore<0x10000||
-    !externalReader.readFresh(0xA8ED84,&frameBefore,sizeof frameBefore)||frameBefore<0)return;
- auto input=external::cooperativeInput(external::SharedReadView{&externalReader},request,[](uint32_t type){char id[24]{};externalReader.read(type+0x24,id,23);auto found=targetQuotas.find(id);return found==targetQuotas.end()?extra.defaults:found->second;});
- if(retry&&request.mode!=cooperative::Enter)for(auto&t:input.targets)
-  for(const auto&o:acceptedCooperative)if(o.target==t.id&&o.type==t.type)++t.prior;
- // Apply host filters before allocation so excluded sources never reserve capacity.
- const auto sourceFeature=request.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
- auto permitted=[&](featuretypes::Feature f,uint32_t type){char id[24]{};return !featureTypes.filters[f].custom||(type>=0x10000&&externalReader.read(type+0x24,id,23)&&featuretypes::allowed(featureTypes,f,id));};
- for(size_t i=0;i<input.units.size();++i){bool sourceAllowed=permitted(sourceFeature,input.units[i].type);
-  for(size_t j=0;j<input.targets.size();++j)if(!sourceAllowed||(request.mode==cooperative::Enter&&!permitted(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
- }
+ // Read the immutable game-thread frame capture; never independently scan
+ // another game frame from the host/UI while preparing this command.
+ shared->cooperativeFrameWanted=request.serial;
+ const long batch=shared->computeFrameSeq;if(batch&1)return;
+ static auto captured=std::make_unique<cooperative::FrameInput>();MemoryBarrier();
+ if(!cooperative::copyFrame(*captured,shared->cooperativeInputFrame))return;MemoryBarrier();
+ if(batch!=shared->computeFrameSeq||captured->request.serial!=request.serial||captured->match!=uint32_t(snap.match)||captured->frame!=shared->computeFrame){wakeGame();return;}
+ const DWORD acquired=captured->tick;const int frameBefore=captured->frame;
+ if(!freshness::valid(captured->match,snap.match,acquired,frameBefore,now,shared->computeFrame,freshness::Cooperative)){wakeGame();return;}
+ auto input=cooperative::unpack(*captured);cooperative::restrictSources(input,request);
+ if(retry)cooperative::reserveAccepted(input,acceptedCooperative);
  auto assignments=cooperative::allocate(input);
- if(!externalReader.readFresh(0xA8ED84,&frameAfter,sizeof frameAfter)||
-    !externalReader.readFresh(0xA83D4C,&houseAfter,sizeof houseAfter)||houseAfter!=houseBefore||frameAfter<frameBefore||
-    !freshness::valid(request.match,snap.match,acquired,frameBefore,GetTickCount(),frameAfter,freshness::Cooperative)||
+ if(!freshness::valid(request.match,shared->computeFrameMatch,acquired,frameBefore,GetTickCount(),shared->computeFrame,freshness::Cooperative)||
     !freshness::intentAlive(request.tick,GetTickCount())||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeSeq!=seq){wakeGame();return;}
+ shared->cooperativeFrameWanted=0;
  cooperativeDelivered=request.serial;retryCooperative=false;
- if(assignments.empty()){notify(L"屏幕内没有可分配的同类空位或有效敌方目标。");return;}
+ if(assignments.empty()){notify(cooperative::damageMode(request.mode)?L"预计伤害已足额，或没有有效的可分配目标。":L"屏幕内没有可分配的同类空位或有效敌方目标。");return;}
  cooperativePending=request;submittedCooperative=assignments;
  memcpy(shared->cooperativeOrders,assignments.data(),assignments.size()*sizeof(cooperative::Assignment));
  shared->cooperativeCount=int(assignments.size());shared->cooperativeMode=request.mode;shared->cooperativeSerial=request.serial;
@@ -221,5 +323,6 @@ static void serviceCooperative(){
  MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->cooperativePlan);wakeGame();
  if(assignments.size()<size_t(request.count))notify(L"已分配 "+std::to_wstring(assignments.size())+L" 个；其余单位受容量、受击上限或目标兼容性限制。");
 }
+
 
 

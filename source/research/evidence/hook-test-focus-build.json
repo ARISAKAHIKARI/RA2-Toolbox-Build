@@ -1,0 +1,76 @@
+{
+  "date": "2026-11-01",
+  "base_commit": "3613e3336609286b7340943c68785b215ae10f78",
+  "supported_game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "compiler": "Zig 0.13.0",
+  "source_sha256": {
+    "source/assist/source/bridge.cpp": "2295fcdab59abf05cd4a9e5793f7decb0da80543a850ae560992176b6d7e9961",
+    "source/assist/source/build_time_tooltip.h": "d1b9e733d8eaaf2861e47cc07476a9c730fc456b6ccd5e3488f83bb0eb308ddb",
+    "source/assist/source/scroll_refresh_bridge.h": "a68fba9c5d7cb12d9091f764f76382feb53338dde3701646423791971ecc00d1",
+    "source/assist/tests/cursor_tooltip_windows.cpp": "3d4234ee352eb61e93f58ede42dd3ca4ce9cb7abfd20083dbeeb78de711a620c",
+    "source/BUILD_SOURCE_MANIFEST.json": "fb5d6e4f1e2c6e01d0900fb1ec4d938634e6d48cbe6800f3493a9fabaf80d290",
+    "source/cursor/source/bridge.h": "da41742b5af8053b902cd1247a9e058949a1a070c8ecfa78628bdfcf2085e8df",
+    "source/cursor/source/hide.cpp": "cad941f6c1312280815fbc575ce29169a910a9d2f80ed22fc505814852c096b2",
+    "source/cursor/source/main.cpp": "7f2a04cb3c48b6e34b699a2e1599ca715bbd49032072ce5edbfe422846232ead",
+    "source/game_runtime/source/frame_signal_runtime.h": "54c18569998ff76a2da7ceedf267ba10e2ebe1b46ec7a31875d746c3536b2130",
+    "source/hook_diagnostics/README.md": "eb19ec462fc06c1aaccf63893daef083ed1d3c08bf4a3b54814771f64c8608ce",
+    "source/hook_diagnostics/source/main.cpp": "7c41c74c7c82da58474f3b57c47bebbcc18cae4b57adf3f31aa16d7c7dc0def2",
+    "source/hook_diagnostics/source/observation_gate.h": "a847e7d3943c5c652599b95a5f7cd9773141df5413473c68fa7d14c0faf7b2b9",
+    "source/hook_diagnostics/source/selection.h": "3eafd070a9e375ea92edb8e4d87532dfc9936c5a35be91b1047127123ece8352",
+    "source/hook_diagnostics/source/sequence.h": "c1c39487689fd27950f3bff2b74d47fae7f0470ffe2009c5dd7e80cf74baeb13",
+    "source/hook_diagnostics/tests/sequence.cpp": "ea11c0a081428b5a0c2932d8be5e48746513a4b0cd741164935165dd7b7f6a54",
+    "source/tools/build_hook_diagnostics.py": "333b16759b368aaa4af4ba6459b49297b26e8aa1c7a3b962bd8bb19f0b2f8e94"
+  },
+  "tests": {
+    "native_fixture": {
+      "build_exit": 0,
+      "test_exit": 0,
+      "stdout": "PASS native tooltip: original suppression reproduced; names/prices, shared owners, native extra hides, ABI and cleanup\nPASS frame adapter: all GPR/ESP/EFLAGS/FXSAVE preserved; native store; live/stale/absent callbacks; MP fallback and explicit diagnostic opt-in\nPASS focus lifecycle: cursor presentation suspension retains hide/tooltip ownership; temporary frame pause and stale samples retain installed diagnostic site\nSynthetic Win32 execution only: no RA2OL/game visual or multiplayer claim.\n"
+    },
+    "crossbit": {
+      "passed": true,
+      "layout_entries": 685,
+      "differences": {}
+    },
+    "diagnostic_sequence": "PASS: early normal after verified installation; optional/off baselines; manual skip; excluded shared sites never scheduled; OOS/restoration failures block advancement; focus freeze and bounded snapshot retry; all 51 sites accounted for",
+    "production_pe": "passed",
+    "diagnostic_pe": "passed",
+    "diagnostic_ui_and_broker": "passed: actual hidden selection UI/defaults/controls bounds/stopped-OOS next-group/invalid PID; x64 host to x86 broker/DLL loader; no game attached"
+  },
+  "files": {
+    "toolbox": {
+      "RA2Toolbox.exe": {
+        "bytes": 8414720,
+        "sha256": "5f4e1b4f62fedafa70ed67c67c38e6cc3c53b01ff0d3d99e38d74d380e472685"
+      },
+      "GameRuntime.dll": {
+        "bytes": 5272576,
+        "sha256": "69c9e0fc877aac9b0104cd3a0b37b2b245a1b7fe4aab372626322b4cbfdab2af"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "35df1a581d60a763c1771cc49017220e7481515d432de3a13c8c15a58ad80f45"
+      }
+    },
+    "hook_test": {
+      "RA2HookTest.exe": {
+        "bytes": 468992,
+        "sha256": "394d425f376d69e0dffd2910752285df0794d7ab33d66e50eb7e238982361cdd"
+      },
+      "GameRuntime.dll": {
+        "bytes": 5273600,
+        "sha256": "46a93779f97ecf90ee8eeb4b585d8e15dd7d41e4ad402376b01cfa788ca83a66"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "35df1a581d60a763c1771cc49017220e7481515d432de3a13c8c15a58ad80f45"
+      }
+    }
+  },
+  "limits": {
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "visual_tested": false,
+    "platform_hook_detection_proven": false
+  }
+}

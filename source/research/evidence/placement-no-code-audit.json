@@ -1,0 +1,153 @@
+{
+  "executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "private_executable_modified": false,
+  "game_executed": false,
+  "engine_code_modified_in_emulator": false,
+  "checks": 12,
+  "direct_call_candidates": {
+    "0x4a8eb0": [
+      "0x4a9480",
+      "0x4aba59"
+    ],
+    "0x4a9070": [
+      "0x4a94d5"
+    ],
+    "0x4c6ae0": [
+      "0x4abb55",
+      "0x6a8ee8",
+      "0x6ab3fc"
+    ]
+  },
+  "cases": [
+    {
+      "case": "near",
+      "returned": 1,
+      "calls": {
+        "0x4a8eb0": 1
+      }
+    },
+    {
+      "case": "far",
+      "returned": 0,
+      "calls": {
+        "0x4a8eb0": 1
+      }
+    },
+    {
+      "case": "far_expanded_adjacent",
+      "returned": 1,
+      "calls": {
+        "0x4a8eb0": 1
+      }
+    },
+    {
+      "case": "far_PlaceAnywhere_only",
+      "returned": 0,
+      "calls": {
+        "0x4a8eb0": 1
+      }
+    },
+    {
+      "case": "CanPlaceHere",
+      "place_anywhere": 0,
+      "ground_substitute": false,
+      "returned": 0,
+      "calls": {
+        "0x464ac0": 1,
+        "0x716150": 1,
+        "cell_legality_substitute": 1
+      }
+    },
+    {
+      "case": "CanPlaceHere",
+      "place_anywhere": 0,
+      "ground_substitute": true,
+      "returned": 1,
+      "calls": {
+        "0x464ac0": 1,
+        "0x716150": 1,
+        "cell_legality_substitute": 1
+      }
+    },
+    {
+      "case": "CanPlaceHere",
+      "place_anywhere": 1,
+      "ground_substitute": false,
+      "returned": 1,
+      "calls": {
+        "0x464ac0": 1
+      }
+    },
+    {
+      "case": "CanPlaceHere",
+      "place_anywhere": 1,
+      "ground_substitute": true,
+      "returned": 1,
+      "calls": {
+        "0x464ac0": 1
+      }
+    },
+    {
+      "case": "Place_event_to_Unlimbo_initial_legality",
+      "factory_complete_substitute": false,
+      "ground_substitute": false,
+      "place_anywhere": 0,
+      "move_result": null,
+      "calls": {
+        "0x4c70e1": 1,
+        "0x4fb0e0": 1,
+        "factory_complete_substitute": 1
+      }
+    },
+    {
+      "case": "Place_event_to_Unlimbo_initial_legality",
+      "factory_complete_substitute": true,
+      "ground_substitute": false,
+      "place_anywhere": 0,
+      "move_result": 7,
+      "calls": {
+        "0x4c70e1": 1,
+        "0x4fb0e0": 1,
+        "factory_complete_substitute": 1,
+        "0x440580": 1,
+        "0x449440": 1,
+        "0x464ac0": 1,
+        "0x716150": 1,
+        "cell_legality_substitute": 1
+      }
+    },
+    {
+      "case": "Place_event_to_Unlimbo_initial_legality",
+      "factory_complete_substitute": true,
+      "ground_substitute": true,
+      "place_anywhere": 0,
+      "move_result": 0,
+      "calls": {
+        "0x4c70e1": 1,
+        "0x4fb0e0": 1,
+        "factory_complete_substitute": 1,
+        "0x440580": 1,
+        "0x449440": 1,
+        "0x464ac0": 1,
+        "0x716150": 1,
+        "cell_legality_substitute": 1
+      }
+    },
+    {
+      "case": "Place_event_to_Unlimbo_initial_legality",
+      "factory_complete_substitute": true,
+      "ground_substitute": false,
+      "place_anywhere": 1,
+      "move_result": 0,
+      "calls": {
+        "0x4c70e1": 1,
+        "0x4fb0e0": 1,
+        "factory_complete_substitute": 1,
+        "0x440580": 1,
+        "0x449440": 1,
+        "0x464ac0": 1
+      }
+    }
+  ],
+  "boundary": "Original x86 functions; factory/object/geometry services and Cell legality are explicit substitutes. Event execution stops after Unlimbo initial legality. No completed building, Windows UI, platform or netplay claim."
+}

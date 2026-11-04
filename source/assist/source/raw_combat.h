@@ -2,6 +2,7 @@
 // 0x7177C0/7E0 (weapon arrays), 0x771C70 (weapon layout), 0x6FC94F (rearm),
 // and INI readers for Organic / BalloonHover. No virtual/game decision calls.
 #include "weapon_policy.h"
+static bool rawObjectAirborne(uint32_t p,int k){return k==0||get<bool>(p+0x134)||get<int>(p+0x94)==3||get<bool>(p+0x84)||get<bool>(p+0x8D);}
 static uint32_t rawWeapon(uint32_t type,float veterancy,int index){
  uint32_t weapon=get<uint32_t>(type+0x898+index*28);
  if(veterancy>=2.0f&&get<uint32_t>(type+0xA94+index*28))weapon=get<uint32_t>(type+0xA94+index*28);return weapon;
@@ -45,7 +46,7 @@ static void rawCombatInfo(uint32_t p,uint32_t type,int k,planner::Actor& a,bool 
  if(get<uint32_t>(p+0x2C0)&&get<bool>(p+0x2C4))a.flags|=planner::Controlled;
  if(k!=3&&get<uint32_t>(p+0x694))a.flags|=planner::Infested;
  if(get<bool>(p+0x270)||get<uint32_t>(p+0x278))a.flags|=planner::TemporalTarget;
- if(k==0||get<bool>(p+0x134)||get<int>(p+0x94)==3||get<bool>(p+0x84)||get<bool>(p+0x8D))a.flags|=planner::Airborne;
+ if(rawObjectAirborne(p,k))a.flags|=planner::Airborne;
  if(get<uint32_t>(p+0x2B0)||get<bool>(p+0x427)||get<uint32_t>(p+0x428)||(k!=3&&get<bool>(p+0x6AD)))a.flags|=planner::Manipulated;
  if(get<bool>(type+0xD97))a.flags|=planner::Organic;
  if(remaining(get<int>(p+0x18C),get<int>(p+0x194),get<int>(0xA8ED84))||get<bool>(type+0x233)||!get<bool>(type+0x231))a.flags|=planner::Protected;

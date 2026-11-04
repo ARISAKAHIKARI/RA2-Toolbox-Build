@@ -5,17 +5,26 @@
 #include "../../shared/source/runtime_fault.h"
 #include "../../shared/source/game_entry_client.h"
 #include "../../shared/source/runtime_fp_scope.h"
+#include "frame_signal_runtime.h"
+#include "native_tooltip_runtime.h"
 extern "C" void AssistRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimePost(int,WPARAM,LPARAM);
 extern "C" void AssistRuntimeWatchdog();
 extern "C" void AssistRuntimeFilter(void*);
 extern "C" void CursorRuntimeWatchdog();
+extern "C" bool AssistRuntimeDetached();
+extern "C" bool CursorRuntimeDetached();
 extern "C" void EntryRuntimeDetach();
 extern "C" __declspec(dllexport) const uint32_t GameRuntimeInfo[2]={runtime::Version,sizeof(runtime::Control)};
 static runtime::Control* control;
 static HANDLE mapping,controller;
-static DWORD controllerID;
+static DWORD controllerID;static HWND frameWakeWindow;
+extern "C" void RuntimeFrameReady(){
+ auto*c=control;if(!c||!frameWakeWindow||!(c->enabled&runtime::Tactical)||DWORD(GetTickCount()-c->heartbeat)>500)return;
+ InterlockedOr(&c->ready,runtime::Tactical);
+ if(!InterlockedCompareExchange(&c->wakePending,1,0)&&!PostMessageW(frameWakeWindow,WM_NULL,runtime::WakeTag,controllerID))InterlockedExchange(&c->wakePending,0);
+}
 static PVOID exceptionObserver;
 static DWORD observerThread;
 static volatile LONG observingException;
@@ -102,12 +111,12 @@ struct WakeTrace {
  }}
  ~WakeTrace(){if(handle){if(view)UnmapViewOfFile(view);CloseHandle(handle);}}
 };
-static void cleanup(){AssistRuntimeWatchdog();CursorRuntimeWatchdog();}
+static void cleanup(){AssistRuntimeWatchdog();CursorRuntimeWatchdog();NativeTooltipMaintain(false);}
 static void CALLBACK watchdogProc(HWND,UINT,UINT_PTR,DWORD){
  RuntimeFPScope fp;
  // This timer only restores stale/disconnected clients. It never schedules
  // new user work. The host owns normal cadence and the command mailboxes.
- if(!InterlockedCompareExchange(&dispatching,1,0)){cleanup();InterlockedExchange(&dispatching,0);}
+ if(!InterlockedCompareExchange(&dispatching,1,0)){cleanup();frameobserver::maintain(controller&&WaitForSingleObject(controller,0)==WAIT_TIMEOUT?controllerID:0);InterlockedExchange(&dispatching,0);}
 }
 static bool ensureWatchdog(runtime::Stage* failure=nullptr){
  DWORD tid=GetCurrentThreadId();if(watchdog&&watchdogThread==tid)return true;
@@ -133,6 +142,12 @@ static bool connect(DWORD owner,WakeTrace& trace){
  if(controller&&WaitForSingleObject(controller,0)!=WAIT_OBJECT_0){trace.report(runtime::ControllerBusy);return false;}
  trace.retainBeforeReconnect(owner);
  cleanup();
+ // A watchdog attempt can defer restoration (e.g. unsent foreign events).
+ // Retain the OLD controller transport until both services actually detach;
+ // attempting cleanup is not proof that it completed.
+ if(!AssistRuntimeDetached()||!CursorRuntimeDetached()||!NativeTooltipDetached()){
+  trace.report(runtime::ControllerBusy,ERROR_BUSY);return false;
+ }
  if(control)UnmapViewOfFile(control);control=nullptr;
  if(mapping)CloseHandle(mapping);mapping=nullptr;
  if(controller)CloseHandle(controller);controller=nullptr;controllerID=0;
@@ -157,7 +172,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
    // run consecutively, each releasing its execution scope before the next.
    bool bound=false;{gameentry::Scope entry(gameentry::Client::Assist,true);bound=bool(entry);}
    if(bound){
-    if(msg->message==WM_NULL&&msg->wParam==runtime::WakeTag)connect(DWORD(msg->lParam),trace);
+    if(msg->message==WM_NULL&&msg->wParam==runtime::WakeTag){if(connect(DWORD(msg->lParam),trace))frameWakeWindow=msg->hwnd;}
     if(control&&ensureWatchdog()){
      if(msg->message==WM_NULL&&msg->wParam==runtime::WakeTag&&DWORD(msg->lParam)==controllerID)InterlockedExchange(&control->wakePending,0);
      LONG ready=InterlockedExchange(&control->ready,0)&InterlockedCompareExchange(&control->enabled,0,0);
@@ -165,7 +180,9 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
       // Cursor work cannot be starved by a stream of tactical commands.
       if(ready&runtime::Cursor)CursorRuntimeMessage(code,wp,lp);
       if(ready&runtime::Tactical)AssistRuntimeMessage(code,wp,lp);
-      if((control->enabled&runtime::Tactical)&&(msg->message==WM_MOUSEMOVE||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP||msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONDBLCLK||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONUP))AssistRuntimeFilter((void*)lp);
+      if(ready)NativeTooltipMaintain(true);
+      if((control->enabled&runtime::Tactical)&&(msg->message==WM_MOUSEMOVE||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP||msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONDBLCLK||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONDBLCLK||msg->message==WM_RBUTTONUP||msg->message==WM_MBUTTONDOWN||msg->message==WM_MBUTTONDBLCLK||msg->message==WM_MBUTTONUP||msg->message==WM_XBUTTONDOWN||msg->message==WM_XBUTTONDBLCLK||msg->message==WM_XBUTTONUP))AssistRuntimeFilter((void*)lp);
+      frameobserver::maintain(controllerID);
       if(ready)InterlockedIncrement(&control->dispatches);
      }else cleanup();
     }

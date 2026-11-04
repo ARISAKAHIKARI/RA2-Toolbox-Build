@@ -1,0 +1,291 @@
+{
+  "scope": "Read-only public upstream source scan. No game executable or actual installed platform compared. Private submodules not inspected.",
+  "targets": [
+    {
+      "name": "ControlHouse",
+      "address": "0x50B6F0",
+      "size": 5
+    },
+    {
+      "name": "ControlOwner",
+      "address": "0x6339BA",
+      "size": 5
+    },
+    {
+      "name": "ControlPlanning",
+      "address": "0x637E40",
+      "size": 5
+    },
+    {
+      "name": "NativeMegaGateway",
+      "address": "0x646F4E",
+      "size": 7
+    },
+    {
+      "name": "ControlMegaOwner",
+      "address": "0x646EF5",
+      "size": 10
+    },
+    {
+      "name": "ControlMegaFOwner",
+      "address": "0x646FD2",
+      "size": 10
+    },
+    {
+      "name": "ControlPlanningOwner",
+      "address": "0x6FFC93",
+      "size": 8
+    },
+    {
+      "name": "ControlObjectOwner",
+      "address": "0x6FFE2B",
+      "size": 5
+    },
+    {
+      "name": "NetworkSender",
+      "address": "0x649CA0",
+      "size": 5
+    },
+    {
+      "name": "PlainHouse",
+      "address": "0x649E1E",
+      "size": 7
+    },
+    {
+      "name": "CompressedHouse",
+      "address": "0x64B9D4",
+      "size": 7
+    },
+    {
+      "name": "NetworkPack",
+      "address": "0x64B660",
+      "size": 6
+    },
+    {
+      "name": "Dictionary",
+      "address": "0x64B4EA",
+      "size": 10
+    }
+  ],
+  "repos": [
+    {
+      "repo": "CnCNet/yr-patches",
+      "sha": "0318b1f1bddcc9c664c50ebee820cde74a662f47",
+      "inspected_files": [
+        "inc/macros/datatypes.inc",
+        "inc/macros/extern.inc",
+        "inc/macros/hack.inc",
+        "inc/macros/helpers.h",
+        "inc/macros/patch.h",
+        "inc/macros/patch.inc",
+        "inc/macros/proc.inc",
+        "inc/macros/setsym.inc",
+        "inc/macros/string.inc",
+        "src/Hook_Main_Loop.c",
+        "src/absolute_prism_bug_fix.asm",
+        "src/ares.c",
+        "src/auto_ss.asm",
+        "src/blowfish_dll_disable_option.asm",
+        "src/chat_disable.asm",
+        "src/chrono_patches.asm",
+        "src/cloaked_patches.asm",
+        "src/copy-protection.c",
+        "src/custom.mix.asm",
+        "src/custom_connection_timeout.asm",
+        "src/disable_edge_scrolling.asm",
+        "src/disable_wol_menu.asm",
+        "src/exception_catch.c",
+        "src/fix_common_crashes.asm",
+        "src/fix_mouse_not_found_error.asm",
+        "src/graphics-patch.asm",
+        "src/hide_names_qm.c",
+        "src/hide_names_qm_s.asm",
+        "src/high_res_fix.asm",
+        "src/invisible_mcv_exploit_fix.asm",
+        "src/isomappack5_limit_extend.asm",
+        "src/loading.c",
+        "src/loading_dll.c",
+        "src/misc_debug.asm",
+        "src/mods/saved_games_in_subdir.asm",
+        "src/movie_playback_disable_option.asm",
+        "src/multi-engineer_enhancements.asm",
+        "src/multi_spectators_hack.asm",
+        "src/no-cd.asm",
+        "src/no_window_frame.asm",
+        "src/online_optimizations.asm",
+        "src/ports_from_ares.asm",
+        "src/ra2mode_fixes.asm",
+        "src/rage_quit.asm",
+        "src/rename_logs.asm",
+        "src/self_spy_exploit_fix.asm",
+        "src/silent_cheer.asm",
+        "src/single-proc-affinity.c",
+        "src/spawner/add_player_node.c",
+        "src/spawner/chat_ignore.c",
+        "src/spawner/coop.asm",
+        "src/spawner/extended_events.asm",
+        "src/spawner/extended_events_c.c",
+        "src/spawner/load_spawn.c",
+        "src/spawner/nethack.c",
+        "src/spawner/predetermined_alliances.c",
+        "src/spawner/protocol_zero.asm",
+        "src/spawner/protocol_zero_c.c",
+        "src/spawner/random_map.asm",
+        "src/spawner/selectable_colors.c",
+        "src/spawner/selectable_countries.c",
+        "src/spawner/selectable_handicaps.c",
+        "src/spawner/selectable_spawns.c",
+        "src/spawner/skip_score.c",
+        "src/spawner/spectators.asm",
+        "src/statistics.asm",
+        "src/text_triggers.c",
+        "src/type_select_hacks.asm",
+        "src/video_mode_hack.asm",
+        "src/win8_compat-func.c",
+        "src/win8_compat.asm",
+        "src/write_jpg_png.c",
+        "src/yr_util.c"
+      ],
+      "parsed_hook_jump_intervals": 169,
+      "exact_target_literal_references": [],
+      "parsed_interval_overlaps": [],
+      "nearby_references": [
+        {
+          "path": "src/spawner/extended_events_c.c",
+          "line": 22,
+          "text": "SETDWORD(0x0064B706+2, _EventLengths);"
+        },
+        {
+          "path": "src/statistics.asm",
+          "line": 503,
+          "text": "jmp 0x0064B2ED"
+        },
+        {
+          "path": "src/statistics.asm",
+          "line": 506,
+          "text": "jmp 0x0064B352"
+        }
+      ]
+    },
+    {
+      "repo": "CnCNet/yrpp-spawner",
+      "sha": "234c16f2ec6bb59cb2dc71779084b3f696d1840f",
+      "inspected_files": [
+        "src/CnCNetYR/AppIcon.cpp",
+        "src/CnCNetYR/Misc.cpp",
+        "src/CnCNetYR/OpenTopCloak.cpp",
+        "src/CnCNetYR/Ra2Mode.cpp",
+        "src/CnCNetYR/Ra2Mode.h",
+        "src/Ext/Event/Body.cpp",
+        "src/Ext/Event/Body.h",
+        "src/Ext/INIClass/Body.cpp",
+        "src/Ext/INIClass/Body.h",
+        "src/Main.Config.cpp",
+        "src/Main.Config.h",
+        "src/Main.Ext.cpp",
+        "src/Main.Hook.cpp",
+        "src/Main.cpp",
+        "src/Main.h",
+        "src/Misc/Blowfish/Hooks.Blowfish.cpp",
+        "src/Misc/Blowfish/blowfish.cpp",
+        "src/Misc/Blowfish/blowfish.h",
+        "src/Misc/Bugfixes.ClampTacticalPos.cpp",
+        "src/Misc/Bugfixes.CommonCrashes.cpp",
+        "src/Misc/Bugfixes.Desyncs.cpp",
+        "src/Misc/Bugfixes.Desyncs.h",
+        "src/Misc/Bugfixes.ExceptionCatch.cpp",
+        "src/Misc/Bugfixes.IsoMapPack5Limit.cpp",
+        "src/Misc/Bugfixes.LocalInterfaces.cpp",
+        "src/Misc/Bugfixes.cpp",
+        "src/Misc/CopyProtection.cpp",
+        "src/Misc/DisableEdgeScrolling.cpp",
+        "src/Misc/GameSpeed.cpp",
+        "src/Misc/InGameChat.cpp",
+        "src/Misc/MPDebug.cpp",
+        "src/Misc/NoCD.cpp",
+        "src/Misc/Observers.Visibility.cpp",
+        "src/Misc/Observers.cpp",
+        "src/Misc/QuickExit.cpp",
+        "src/Misc/Radar.CameraDrag.cpp",
+        "src/Misc/SavedGamesInSubdir.cpp",
+        "src/Misc/SilentCheer.cpp",
+        "src/Misc/SkipCreateAppMutex.cpp",
+        "src/Misc/SkipScoreScreen.cpp",
+        "src/Misc/VideoMode.cpp",
+        "src/Spawner/CustomMixes.cpp",
+        "src/Spawner/NetHack.cpp",
+        "src/Spawner/NetHack.h",
+        "src/Spawner/ProtocolZero.Hook.cpp",
+        "src/Spawner/ProtocolZero.LatencyLevel.cpp",
+        "src/Spawner/ProtocolZero.LatencyLevel.h",
+        "src/Spawner/ProtocolZero.cpp",
+        "src/Spawner/ProtocolZero.h",
+        "src/Spawner/QuickMatch.cpp",
+        "src/Spawner/RandomMap.cpp",
+        "src/Spawner/Spawner.Config.cpp",
+        "src/Spawner/Spawner.Config.h",
+        "src/Spawner/Spawner.Hook.cpp",
+        "src/Spawner/Spawner.cpp",
+        "src/Spawner/Spawner.h",
+        "src/Spawner/Statistics.cpp",
+        "src/UI/Hooks.DialogsEscape.cpp",
+        "src/UI/Hooks.SaveButton.cpp",
+        "src/Utilities/Debug.cpp",
+        "src/Utilities/Debug.h",
+        "src/Utilities/DumperTypes.h",
+        "src/Utilities/Macro.h",
+        "src/Utilities/Patch.cpp",
+        "src/Utilities/Patch.h",
+        "src/version.h"
+      ],
+      "parsed_hook_jump_intervals": 223,
+      "exact_target_literal_references": [],
+      "parsed_interval_overlaps": [],
+      "nearby_references": [
+        {
+          "path": "src/Ext/Event/Body.cpp",
+          "line": 81,
+          "text": "DEFINE_HOOK(0x64B6FE, sub_64B660_GetEventSize, 0x6)"
+        },
+        {
+          "path": "src/Ext/Event/Body.cpp",
+          "line": 91,
+          "text": "return 0x64B71D;"
+        },
+        {
+          "path": "src/Misc/MPDebug.cpp",
+          "line": 83,
+          "text": "DEFINE_HOOK(0x649C43, MPDebug_RestoreStallIndicatorBackground, 0x7)"
+        },
+        {
+          "path": "src/Misc/MPDebug.cpp",
+          "line": 89,
+          "text": "return 0x649C7D;"
+        },
+        {
+          "path": "src/Spawner/Statistics.cpp",
+          "line": 254,
+          "text": "enum { Send = 0x64B2ED, DontSend = 0x64B352 };"
+        }
+      ]
+    }
+  ],
+  "client_source": {
+    "repo": "CnCNet/xna-cncnet-client",
+    "sha": "54ff7cb7ab35ec0e2caa140be5cec35e1bb870f9",
+    "verified_paths": [
+      "DXMainClient/Online/FileHashCalculator.cs",
+      "DXMainClient/Online/CnCNetGameCheck.cs",
+      "DXMainClient/DXGUI/Multiplayer/GameLobby/CnCNetGameLobby.cs",
+      "DXMainClient/DXGUI/Multiplayer/CnCNet/CnCNetLobby.cs"
+    ],
+    "mechanisms": [
+      "Disk-file SHA1 comparison and lobby notices",
+      "In-game process identification followed by Process.Kill"
+    ],
+    "not_established": [
+      "Matching the user's installed binary",
+      "Generic hook memory-integrity check causing this incident"
+    ]
+  }
+}

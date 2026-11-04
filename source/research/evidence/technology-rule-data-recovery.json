@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "checks": 144,
+  "failures": 0,
+  "actual_policy_header": "assist/source/tech_data_policy.h",
+  "scope": "Synthetic memory ownership, partial write rollback, unavailable world, changed identity and foreign value recovery.",
+  "game_tested": false,
+  "multiplayer_tested": false
+}

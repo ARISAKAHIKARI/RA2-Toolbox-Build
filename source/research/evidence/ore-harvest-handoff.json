@@ -1,0 +1,621 @@
+{
+  "schema": "ra2.ore-harvest-handoff.v1",
+  "captured_utc": "2026-11-02T16:43:13.529012+00:00",
+  "source_frozen": true,
+  "scope": "Production header/admission, real same-process RPM microfixture, original private PE paths; compiled intermediate Runtime core and pre-fix counterexample; no live game or netplay",
+  "source_validation": {
+    "scope": "Build the real ore observer/search and complete production admission functions.\n\nSynthetic private memory and the nativeMission event boundary are explicit seams;\nno game process, mouse input, native pathfinder or networking is operated.\n",
+    "architectures": {
+      "x86": {
+        "checks": 68,
+        "assertions_active": true,
+        "normal_reads": 749,
+        "normal_max_cell_reads_per_frame": 135,
+        "idle_100_frames_reads": 1228,
+        "idle_map_cell_reads": 0,
+        "native_same_process_rpm": {
+          "miners": 129,
+          "frames": 100,
+          "reads": 67909,
+          "microseconds_per_frame": 211.137
+        },
+        "pass": true
+      },
+      "x86_64": {
+        "checks": 68,
+        "assertions_active": true,
+        "normal_reads": 749,
+        "normal_max_cell_reads_per_frame": 135,
+        "idle_100_frames_reads": 1228,
+        "idle_map_cell_reads": 0,
+        "native_same_process_rpm": {
+          "miners": 129,
+          "frames": 100,
+          "reads": 67909,
+          "microseconds_per_frame": 141.647
+        },
+        "pass": true
+      }
+    },
+    "native_paths": {
+      "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "game_hash_stable": true,
+      "resource_entry": "0x485020",
+      "resource_cases": [
+        {
+          "overlay_data": 0,
+          "native_value": 25
+        },
+        {
+          "overlay_data": 1,
+          "native_value": 50
+        },
+        {
+          "overlay_data": 255,
+          "native_value": 6400
+        }
+      ],
+      "no_overlay_and_nonresource_return_zero": true,
+      "harvest_action": 6,
+      "native_switch_arm": "0x4d7e8e",
+      "native_clicked_mission": {
+        "mission": 10,
+        "target": null,
+        "destination": "clicked cell",
+        "nearest": null
+      },
+      "native_stack_cleanup_valid": true,
+      "game_process_operated": false,
+      "redraw_or_pathfinder_called": false
+    },
+    "source_sha256": {
+      "assist/source/ore_harvest_bridge.h": "6c3a5ece1566af1138398c499691d3ab9d2ac5c8a785f6cc878190d5737a305a",
+      "assist/source/ore_harvest_search.h": "a84805e129bbc190efd84f8baa70bd3ff9b1ff833ad51f482e3f69e9e488ab6e",
+      "assist/source/external_orders_bridge.h": "fccb8adebf01b31890d6c784d1a66f3b9aee0de8bef30ff48f8fa65a54a49449",
+      "assist/source/planner_types.h": "c49c1f163b5434cb69558cf1ee871d98cd91bd8e2c8e2e1b52025b3936327666",
+      "assist/source/ore_queue.h": "772e255a4353db5c1508cf5471f2a078885376d64856e5624f17fe3c11c3d4be",
+      "assist/source/bridge.cpp": "8dc807f49dadf694876835c5eeb96262a5cdeded43f635aba5be8b8daea79d3d",
+      "assist/tests/ore_harvest_handoff.cpp": "963ce735e59c309ef71cfeae6ee119672e6b6efc14021f6b584cce6666546905",
+      "assist/tests/ore_harvest_handoff.py": "f6cb4864011812890053cb47278dcbc51c22922ade2582bdc102e469f3012696"
+    }
+  },
+  "current_source_hashes_match": {
+    "assist/source/ore_harvest_bridge.h": true,
+    "assist/source/ore_harvest_search.h": true,
+    "assist/source/external_orders_bridge.h": true,
+    "assist/source/planner_types.h": true,
+    "assist/source/ore_queue.h": true,
+    "assist/source/bridge.cpp": false,
+    "assist/tests/ore_harvest_handoff.cpp": true,
+    "assist/tests/ore_harvest_handoff.py": true
+  },
+  "standalone_logs": {
+    "x86": "{\"checks\":68,\"assertions_active\":true,\"normal_reads\":749,\"normal_max_cell_reads_per_frame\":135,\"idle_100_frames_reads\":1228,\"idle_map_cell_reads\":0,\"native_same_process_rpm\":{\"miners\":129,\"frames\":100,\"reads\":67909,\"microseconds_per_frame\":217.849},\"pass\":true}\n",
+    "x86_64": "{\"checks\":68,\"assertions_active\":true,\"normal_reads\":749,\"normal_max_cell_reads_per_frame\":135,\"idle_100_frames_reads\":1228,\"idle_map_cell_reads\":0,\"native_same_process_rpm\":{\"miners\":129,\"frames\":100,\"reads\":67909,\"microseconds_per_frame\":142.686},\"pass\":true}\n"
+  },
+  "compiled_intermediate_core": {
+    "scope": "Compiled Runtime native-unload observation before cadence and real Harvest queue.\n\nThe matching shared ABI comes from entry_runtime_regression. The Runtime,\noriginal event constructor and queue run in x86 emulation; world/Win32 inputs\nare controlled fixtures. This is not a live game or multiplayer test.\n",
+    "dll_sha256": "9c2cbe974ea2bbbee73f4ef327ec7235d914725d043b072b773a2f30b7d4c125",
+    "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "passed": true,
+    "game_process_operated": false,
+    "multiplayer_tested": false,
+    "results": [
+      {
+        "case": "native-unload-before-cadence-to-one-real-Harvest-event",
+        "status": "PASS",
+        "all_runtime_mask": 32767,
+        "scan_ms": 1000,
+        "no_heavy_world_resample_during_native_unload": true,
+        "native_unload_without_tool_enter_observed": true,
+        "empty_hold_while_still_unloading_no_order": true,
+        "one_original_harvest_event": true,
+        "nearest_from_refinery_dock": 102106,
+        "target_none_destination_cell_nearest_none": true,
+        "native_none_tag_opaque_id": 10
+      },
+      {
+        "case": "later-explicit-player-command-wins",
+        "status": "PASS",
+        "actual_manual_SetGuard_command_queued": true,
+        "original_unload_episode_cancelled": true,
+        "no_extra_harvest_after_manual_command": true
+      },
+      {
+        "case": "world-replacement-no-old-Harvest",
+        "status": "PASS",
+        "scenario_replacement_discards_old_unload_evidence": true
+      }
+    ]
+  },
+  "compiled_before_queued_guard": {
+    "scope": "Compiled Runtime native-unload observation before cadence and real Harvest queue.\n\nThe matching shared ABI comes from entry_runtime_regression. The Runtime,\noriginal event constructor and queue run in x86 emulation; world/Win32 inputs\nare controlled fixtures. This is not a live game or multiplayer test.\n",
+    "dll_sha256": "9c2cbe974ea2bbbee73f4ef327ec7235d914725d043b072b773a2f30b7d4c125",
+    "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "passed": false,
+    "game_process_operated": false,
+    "multiplayer_tested": false,
+    "results": [
+      {
+        "case": "native-unload-before-cadence-to-one-real-Harvest-event",
+        "status": "PASS",
+        "all_runtime_mask": 32767,
+        "scan_ms": 1000,
+        "no_heavy_world_resample_during_native_unload": true,
+        "native_unload_without_tool_enter_observed": true,
+        "empty_hold_while_still_unloading_no_order": true,
+        "one_original_harvest_event": true,
+        "nearest_from_refinery_dock": 102106,
+        "target_none_destination_cell_nearest_none": true,
+        "native_none_tag_opaque_id": 10
+      },
+      {
+        "case": "later-explicit-player-command-wins",
+        "status": "PASS",
+        "actual_manual_SetGuard_command_queued": true,
+        "original_unload_episode_cancelled": true,
+        "no_extra_harvest_after_manual_command": true
+      },
+      {
+        "case": "world-replacement-no-old-Harvest",
+        "status": "PASS",
+        "scenario_replacement_discards_old_unload_evidence": true
+      },
+      {
+        "case": "uncaptured-native-queued-mission-wins",
+        "status": "FAIL",
+        "error": "AssertionError('a native queued Guard must retain precedence even without an input token change')"
+      }
+    ]
+  },
+  "expected_counterexample_case": "uncaptured-native-queued-mission-wins",
+  "compiled_final": {
+    "scope": "Compiled Runtime native-unload observation before cadence and real Harvest queue.\n\nThe matching shared ABI comes from entry_runtime_regression. The Runtime,\noriginal event constructor and queue run in x86 emulation; world/Win32 inputs\nare controlled fixtures. This is not a live game or multiplayer test.\n",
+    "dll_sha256": "70c0e8ca37ffb3bd10638f9a2361e6c43165b1b873a5b795f46d6ca9066114c5",
+    "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "passed": true,
+    "game_process_operated": false,
+    "multiplayer_tested": false,
+    "results": [
+      {
+        "case": "native-unload-before-cadence-to-one-real-Harvest-event",
+        "status": "PASS",
+        "all_runtime_mask": 32767,
+        "scan_ms": 1000,
+        "no_heavy_world_resample_during_native_unload": true,
+        "native_unload_without_tool_enter_observed": true,
+        "empty_hold_while_still_unloading_no_order": true,
+        "one_original_harvest_event": true,
+        "nearest_from_refinery_dock": 102106,
+        "target_none_destination_cell_nearest_none": true,
+        "native_none_tag_opaque_id": 10
+      },
+      {
+        "case": "later-explicit-player-command-wins",
+        "status": "PASS",
+        "actual_manual_SetGuard_command_queued": true,
+        "original_unload_episode_cancelled": true,
+        "no_extra_harvest_after_manual_command": true
+      },
+      {
+        "case": "world-replacement-no-old-Harvest",
+        "status": "PASS",
+        "scenario_replacement_discards_old_unload_evidence": true
+      },
+      {
+        "case": "uncaptured-native-queued-mission-wins",
+        "status": "PASS",
+        "native_queued_Guard_preserved_without_input_capture": true,
+        "no_extra_harvest": true
+      }
+    ]
+  },
+  "compiled_final_validation_pending": false,
+  "compiled_final_required_cases": 4,
+  "reproduce": {
+    "source_fixture": "python source/assist/tests/ore_harvest_handoff.py --zig <zig-0.13.0/zig.exe> --game <private-exe> --out <isolated-output>",
+    "compiled_runtime": "python source/assist/tests/ore_harvest_runtime.py <private-exe> <GameRuntime.dll> --output <runtime-report.json>",
+    "inventory_counterexample": "python source/assist/tests/ore_harvest_handoff.py --zig <zig-0.13.0/zig.exe> --observer-header <diagnostics/next-ui-ore-view/ore-inventory-reuse-before/ore_harvest_bridge.h> --out <isolated-output>  # expected exit 3",
+    "transport_runtime": "python source/assist/tests/ore_harvest_transport_runtime.py <private-exe> <GameRuntime.dll> --output <transport-report.json>"
+  },
+  "scripts_sha256": {
+    "source/assist/tests/ore_harvest_handoff.py": "f6cb4864011812890053cb47278dcbc51c22922ade2582bdc102e469f3012696",
+    "source/assist/tests/ore_harvest_handoff.cpp": "963ce735e59c309ef71cfeae6ee119672e6b6efc14021f6b584cce6666546905",
+    "source/assist/tests/ore_harvest_runtime.py": "9ae717f07162f4aab402b07ef1e4436548a46baa42c73dc1229101f51ff01dac",
+    "source/assist/tests/entry_runtime_regression.py": "c6c8cc7ca22e83aeb632350536317d0a01bfd4af8ca5020f2d300f1d8d77662a",
+    "source/assist/tests/ore_harvest_transport_runtime.py": "f8048cfce7e16209e8984ff30b0f89f958ecb05be0bd2415d5a7298d23907500"
+  },
+  "artifacts": {
+    "diagnostics/next-ui-ore-view/ore-harvest/result.json": {
+      "sha256": "b394c9d93e78b0de40ddf4f251cc48672b46a1837f9bad1d9b9b44817478df22",
+      "bytes": 2827
+    },
+    "diagnostics/next-ui-ore-view/ore-harvest/x86.log": {
+      "sha256": "3fa711b4ff3267453982e8cf083550ae7aa41eb6fe6f22432ffd24f508b1f90c",
+      "bytes": 263
+    },
+    "diagnostics/next-ui-ore-view/ore-harvest/x86_64.log": {
+      "sha256": "694cdcff121ffd9bb6f4d59b944dabd907e6e7f95711ee01a778b62651bd2fad",
+      "bytes": 263
+    },
+    "diagnostics/next-ui-ore-view/ore-harvest/x86-build.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "diagnostics/next-ui-ore-view/ore-harvest/x86_64-build.log": {
+      "sha256": "2aabe70b84162de03ce6c87dd048860e3da0f0927802a38de83c9ba7af6dfc22",
+      "bytes": 614
+    },
+    "diagnostics/next-ui-ore-view/ore-harvest-runtime.json": {
+      "sha256": "5c9792b0f844f463d2b0ab32de4418d42822170795d484144d74b60fd5a21829",
+      "bytes": 1548
+    },
+    "diagnostics/next-ui-ore-view/ore-harvest-runtime-before-queued-guard.json": {
+      "sha256": "2005ffebd37d17d8ca7cc0133de6e40f5549aaead3fafd16f6dc944397c1ed8a",
+      "bytes": 1761
+    },
+    "diagnostics/next-ui-ore-view/ore-inventory-reuse-before/result.json": {
+      "sha256": "ee6b975c5e97239008907716fa9aa87d56bd3cd8312a5fd41c1e22444377b3ac",
+      "bytes": 544
+    },
+    "diagnostics/next-ui-ore-view/ore-inventory-reuse-before/x86.log": {
+      "sha256": "bf596c45cd88da052bb85e71a369fef6bf23d7082c1fe27c69796203c73ff5e9",
+      "bytes": 73
+    },
+    "diagnostics/next-ui-ore-view/ore-inventory-reuse-before/ore_harvest_bridge.h": {
+      "sha256": "6104154f95f2f8a20f3aa04d88c82db5809db5c0ec0509d0a27fc348a7b14517",
+      "bytes": 17656
+    },
+    "diagnostics/next-ui-ore-view/ore-harvest-transport-runtime.json": {
+      "sha256": "6fc3491dd64edfcc907f2006b05cac2c54147415762abfd87892b151ed2e4e6b",
+      "bytes": 4071
+    }
+  },
+  "limitations": [
+    "NativeMission boundary is a seam in the C++ source fixture; compiled Runtime test separately executes original constructors/queue",
+    "Windows RPM timing uses this fixture process private buffers, not game FPS",
+    "Static nearest/passability filtering does not prove connected path reachability; native event reception owns pathfinding",
+    "The old intermediate DLL predates final queued -1/Harvest10 guard; its expected failing fourth case is not a failure of the final frozen source",
+    "Final compiled DLL must run all four current Runtime cases and be recorded by DLL hash",
+    "Private executable and raw dumps are not distributed; persistent notebook unavailable this turn",
+    "Bounded metadata revalidation is 30 observed native frames or 500ms, rather than an immediate constructor hook; an entirely shorter unobserved lifetime cannot be reconstructed"
+  ],
+  "source_validation_before_inventory_fix": {
+    "scope": "Build the real ore observer/search and complete production admission functions.\n\nSynthetic private memory and the nativeMission event boundary are explicit seams;\nno game process, mouse input, native pathfinder or networking is operated.\n",
+    "architectures": {
+      "x86": {
+        "checks": 64,
+        "assertions_active": true,
+        "normal_reads": 749,
+        "normal_max_cell_reads_per_frame": 135,
+        "idle_100_frames_reads": 1207,
+        "idle_map_cell_reads": 0,
+        "native_same_process_rpm": {
+          "miners": 129,
+          "frames": 100,
+          "reads": 65200,
+          "microseconds_per_frame": 204.912
+        },
+        "pass": true
+      },
+      "x86_64": {
+        "checks": 64,
+        "assertions_active": true,
+        "normal_reads": 749,
+        "normal_max_cell_reads_per_frame": 135,
+        "idle_100_frames_reads": 1207,
+        "idle_map_cell_reads": 0,
+        "native_same_process_rpm": {
+          "miners": 129,
+          "frames": 100,
+          "reads": 65200,
+          "microseconds_per_frame": 134.018
+        },
+        "pass": true
+      }
+    },
+    "native_paths": {
+      "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "game_hash_stable": true,
+      "resource_entry": "0x485020",
+      "resource_cases": [
+        {
+          "overlay_data": 0,
+          "native_value": 25
+        },
+        {
+          "overlay_data": 1,
+          "native_value": 50
+        },
+        {
+          "overlay_data": 255,
+          "native_value": 6400
+        }
+      ],
+      "no_overlay_and_nonresource_return_zero": true,
+      "harvest_action": 6,
+      "native_switch_arm": "0x4d7e8e",
+      "native_clicked_mission": {
+        "mission": 10,
+        "target": null,
+        "destination": "clicked cell",
+        "nearest": null
+      },
+      "native_stack_cleanup_valid": true,
+      "game_process_operated": false,
+      "redraw_or_pathfinder_called": false
+    },
+    "source_sha256": {
+      "assist/source/ore_harvest_bridge.h": "6104154f95f2f8a20f3aa04d88c82db5809db5c0ec0509d0a27fc348a7b14517",
+      "assist/source/ore_harvest_search.h": "a84805e129bbc190efd84f8baa70bd3ff9b1ff833ad51f482e3f69e9e488ab6e",
+      "assist/source/external_orders_bridge.h": "fccb8adebf01b31890d6c784d1a66f3b9aee0de8bef30ff48f8fa65a54a49449",
+      "assist/source/planner_types.h": "c49c1f163b5434cb69558cf1ee871d98cd91bd8e2c8e2e1b52025b3936327666",
+      "assist/source/ore_queue.h": "772e255a4353db5c1508cf5471f2a078885376d64856e5624f17fe3c11c3d4be",
+      "assist/source/bridge.cpp": "ba58dcb350d64f1843dd910058102aa5ad8dee5d8143b056b59c19b20c0852e7",
+      "assist/tests/ore_harvest_handoff.cpp": "71f8ca48a0f313fa96d1b8d2df8bafe05627d1d48d95151beef0816ab4ceab69",
+      "assist/tests/ore_harvest_handoff.py": "017fe9daaf61df11623ac1eec0b8b0bb5958aa4d30960270f7c6e8a02dbacd96"
+    }
+  },
+  "source_binding_note": "Final fixture and compiled Runtime reports are bound to the shipped source and DLL; synthetic tests do not establish live game or multiplayer behavior.",
+  "inventory_reuse_counterexample": {
+    "scope": "Build the real ore observer/search and complete production admission functions.\n\nSynthetic private memory and the nativeMission event boundary are explicit seams;\nno game process, mouse input, native pathfinder or networking is operated.\n",
+    "architectures": {
+      "x86": {
+        "pass": false,
+        "exit_code": 3,
+        "log": "check ordinal=63 pending=0 events=0 miners=0 frame=300\nassert b at 120\n"
+      }
+    },
+    "observer_header_sha256": "6104154f95f2f8a20f3aa04d88c82db5809db5c0ec0509d0a27fc348a7b14517"
+  },
+  "inventory_revalidation_policy": {
+    "max_native_frames": 30,
+    "max_milliseconds": 500,
+    "whichever_expires_first": true,
+    "ordinary_pointer_or_config_change_refreshes_immediately": true,
+    "preserves_original_episode_token": true,
+    "does_not_rescan_all_metadata_every_frame": true
+  },
+  "compiled_intermediate_transport": {
+    "schema": "ra2.ore-harvest-transport.v1",
+    "case_count": 8,
+    "required_case_count": 8,
+    "scope": "Independent 8-way native Harvest transport/gateway interaction probe.\nUses the actual compiled Runtime plus its current shared regression world.\nNo game process is accessed; original constructors and event transports run in\nisolated x86 emulation with explicit world/Win32 seams.\n",
+    "dll_sha256": "9c2cbe974ea2bbbee73f4ef327ec7235d914725d043b072b773a2f30b7d4c125",
+    "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "input_hashes_stable": true,
+    "script_sha256": "f8048cfce7e16209e8984ff30b0f89f958ecb05be0bd2415d5a7298d23907500",
+    "source_fixture_sha256": "9ae717f07162f4aab402b07ef1e4436548a46baa42c73dc1229101f51ff01dac",
+    "shared_model_sha256": "c6c8cc7ca22e83aeb632350536317d0a01bfd4af8ca5020f2d300f1d8d77662a",
+    "passed": true,
+    "game_process_operated": false,
+    "results": [
+      {
+        "case": "session-0-backend-0-gateway-0",
+        "status": "PASS",
+        "session": 0,
+        "backend": 0,
+        "gateway": 0,
+        "gateway_active_verified": false,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-0-backend-0-gateway-1",
+        "status": "PASS",
+        "session": 0,
+        "backend": 0,
+        "gateway": 1,
+        "gateway_active_verified": true,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-0-backend-1-gateway-0",
+        "status": "PASS",
+        "session": 0,
+        "backend": 1,
+        "gateway": 0,
+        "gateway_active_verified": false,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-0-backend-1-gateway-1",
+        "status": "PASS",
+        "session": 0,
+        "backend": 1,
+        "gateway": 1,
+        "gateway_active_verified": true,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-3-backend-0-gateway-0",
+        "status": "PASS",
+        "session": 3,
+        "backend": 0,
+        "gateway": 0,
+        "gateway_active_verified": false,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-3-backend-0-gateway-1",
+        "status": "PASS",
+        "session": 3,
+        "backend": 0,
+        "gateway": 1,
+        "gateway_active_verified": true,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-3-backend-1-gateway-0",
+        "status": "PASS",
+        "session": 3,
+        "backend": 1,
+        "gateway": 0,
+        "gateway_active_verified": false,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 1,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-3-backend-1-gateway-1",
+        "status": "PASS",
+        "session": 3,
+        "backend": 1,
+        "gateway": 1,
+        "gateway_active_verified": true,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 1,
+        "gateway_own_skips": 1
+      }
+    ]
+  },
+  "compiled_final_transport": {
+    "schema": "ra2.ore-harvest-transport.v1",
+    "case_count": 8,
+    "required_case_count": 8,
+    "scope": "Independent 8-way native Harvest transport/gateway interaction probe.\nUses the actual compiled Runtime plus its current shared regression world.\nNo game process is accessed; original constructors and event transports run in\nisolated x86 emulation with explicit world/Win32 seams.\n",
+    "dll_sha256": "70c0e8ca37ffb3bd10638f9a2361e6c43165b1b873a5b795f46d6ca9066114c5",
+    "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "input_hashes_stable": true,
+    "script_sha256": "f8048cfce7e16209e8984ff30b0f89f958ecb05be0bd2415d5a7298d23907500",
+    "source_fixture_sha256": "9ae717f07162f4aab402b07ef1e4436548a46baa42c73dc1229101f51ff01dac",
+    "shared_model_sha256": "c6c8cc7ca22e83aeb632350536317d0a01bfd4af8ca5020f2d300f1d8d77662a",
+    "passed": true,
+    "game_process_operated": false,
+    "results": [
+      {
+        "case": "session-0-backend-0-gateway-0",
+        "status": "PASS",
+        "session": 0,
+        "backend": 0,
+        "gateway": 0,
+        "gateway_active_verified": false,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-0-backend-0-gateway-1",
+        "status": "PASS",
+        "session": 0,
+        "backend": 0,
+        "gateway": 1,
+        "gateway_active_verified": true,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-0-backend-1-gateway-0",
+        "status": "PASS",
+        "session": 0,
+        "backend": 1,
+        "gateway": 0,
+        "gateway_active_verified": false,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-0-backend-1-gateway-1",
+        "status": "PASS",
+        "session": 0,
+        "backend": 1,
+        "gateway": 1,
+        "gateway_active_verified": true,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-3-backend-0-gateway-0",
+        "status": "PASS",
+        "session": 3,
+        "backend": 0,
+        "gateway": 0,
+        "gateway_active_verified": false,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-3-backend-0-gateway-1",
+        "status": "PASS",
+        "session": 3,
+        "backend": 0,
+        "gateway": 1,
+        "gateway_active_verified": true,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 2,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-3-backend-1-gateway-0",
+        "status": "PASS",
+        "session": 3,
+        "backend": 1,
+        "gateway": 0,
+        "gateway_active_verified": false,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 1,
+        "gateway_own_skips": 0
+      },
+      {
+        "case": "session-3-backend-1-gateway-1",
+        "status": "PASS",
+        "session": 3,
+        "backend": 1,
+        "gateway": 1,
+        "gateway_active_verified": true,
+        "one_native_Harvest_event": true,
+        "correct_SP_DoList_or_MP_OutList": true,
+        "own_event_not_manual_recaptured": true,
+        "mega_queue_status": 1,
+        "gateway_own_skips": 1
+      }
+    ]
+  },
+  "compiled_final_transport_pending": false,
+  "compiled_final_transport_required_cases": 8
+}

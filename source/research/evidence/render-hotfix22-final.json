@@ -1,0 +1,71 @@
+{
+  "name": "Hotfix22 native Z planning rendering and Vera gap audit",
+  "created_utc": "2026-10-31T01:14:53.488489+00:00",
+  "remote_baseline": "1b9ecb3b08932ba905212ce0259d8c25ada7ac93",
+  "local_implementation_commit": "68e0e2634ee327dccb50f0ff3ef3ad831dedfbd8",
+  "upstream": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+  "build": {
+    "exit": 0,
+    "compiler": "Zig 0.13.0",
+    "script": "source/build-zig-x64.sh",
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86",
+    "version": "1.0.39.7",
+    "binary_validation_exit": 0,
+    "binary_summary": {
+      "RA2Toolbox.exe": {
+        "bytes": 7262720,
+        "sha256": "a4024c9e03aa50d198d5314e914a592852a2f7c950950bbba692abd28b6e1206",
+        "machine": "PE32+ x64"
+      },
+      "GameRuntime.dll": {
+        "bytes": 4963328,
+        "sha256": "8c51336abf7c9ab27d6028d5f2e7151788d955123d5bb67405abc951df1c0719",
+        "machine": "PE32 x86"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "22c060e2d69e581f6921009fe90fed358295b3b0413d5f038d04dc2d0400711f",
+        "machine": "PE32 x86"
+      }
+    },
+    "output": "",
+    "warnings": [
+      "existing camera_assets dangling-else",
+      "existing NativeCanvas shared_ptr::unique deprecation"
+    ]
+  },
+  "source_sha256": {
+    "THIRD_PARTY_NOTICES.md": "36c227b4f21c1194ba69d854599f8df6ff8280bf62b9f95953b423a88c1ada9e",
+    "source/BUILD_SOURCE_MANIFEST.json": "439d681ba381511ae6abb08e5d47f8a5ab778b02203f1d7f642cf62d3dfbb8ef",
+    "source/assist/source/render_feedback_host.h": "838ce9b455ac8aaaeecafa290a98af7b0bad338d4de25d860dd74bdc630bb98f",
+    "source/assist/source/render_upgrade_host.h": "1c47bd06e0269ca151d6f6125aa4a9315c101bd16bfd2514d5745627f0154dee",
+    "source/external_reader/source/local_ui_renderer.h": "573f72cbbb7cb20440b91027e95d045d0649ebe900d6317801a90ebec1d7df9c",
+    "source/external_reader/source/local_ui_task.h": "d6667a423801a4104b93b5d3d0e800d0908a8c7815e06389f0abb9850c9fe317",
+    "source/external_reader/source/native_planning.h": "663d77752904cf372f4e67ac480349b8801c4c098f130107bf774b8280ec1c96",
+    "source/research/2026-10-31-native-planning-render-hotfix22.md": "d16db0d0a998182f013d5a131920a2605a338b6d9dfa15f3da3719bf508d3374",
+    "source/research/2026-10-31-vera-render-gaps-and-gpu-roadmap.md": "83c9ce328a8ce69e144f853e7f2e6792845de427fb06586c4a7b6b56500324d5",
+    "source/research/INDEX.md": "345bbcd3d03b1a9e1fa29310379527696ed16c708a18ffc4bff05df750694dc8"
+  },
+  "scope": {
+    "cpu_fixture_suites_run": false,
+    "native_instruction_execution": false,
+    "vulkan_executed": false,
+    "d3d11_executed": false,
+    "windows_loader_executed": false,
+    "game_executed": false,
+    "fps_measured": false,
+    "shaders_changed": false
+  },
+  "notes": [
+    "Source review and cross compilation, not live visual certification.",
+    "No gameplay event, hook or protocol change.",
+    "Retained graph replaces the incorrect Foot navigation queue UI producer.",
+    "Native cell/ramp parity and approximate badge length threshold remain bounded compatibility limits."
+  ],
+  "research": [
+    "source/research/2026-10-31-native-planning-render-hotfix22.md",
+    "source/research/2026-10-31-vera-render-gaps-and-gpu-roadmap.md"
+  ]
+}

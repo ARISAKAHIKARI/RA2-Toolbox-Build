@@ -1,0 +1,11 @@
+{
+  "scope": "Historical exact-function extract before retired VEH diagnostics fix; runtime Service itself is always compiled from current production header.",
+  "original_bridge_sha256": "f356620319965e178cc4372324fdd8d4113bd0ae7aecdcbcd6e5b31cdf53454f",
+  "original_core_sha256": "611472aacf10559c5af9baf193dbe9c0ee2bdf2a31a50f8a61852261c2e54a2d",
+  "publish_inc_sha256": "5b4780a6b4fc0453513d3c31e6e448d394e5434993ae8f6f2e325b6b64cb18f3",
+  "source_functions": [
+    "techparameters::healthy",
+    "techparameters::ready",
+    "techparameters::publish"
+  ]
+}

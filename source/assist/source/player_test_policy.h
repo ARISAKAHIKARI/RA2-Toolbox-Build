@@ -3,8 +3,10 @@
 namespace assist { namespace playertest {
 // Product availability, shared by host and Runtime; not a user setting.
 constexpr bool Available=true;
-// Disabled separately at the user's request; stale profiles/IPC cannot enable it.
-constexpr bool SellAvailable=false;
+// Explicit enemy-building sale experiment; off until opted in by the user.
+constexpr bool SellAvailable=true;
+// One explicit button request, never a persistent automatic capability.
+constexpr bool DestructAvailable=true;
 // Player-context replacement is independent of manual event submission.
 // Keep the crashing path disabled, including stale shared-memory requests.
 constexpr bool SwitchAvailable=false;
@@ -15,3 +17,4 @@ inline bool eligible(int index,bool passive,bool spectator,bool defeated,const c
 }
 inline bool manualMission(int mission){return mission==1||mission==2;} // explicit move/attack only
 }}
+

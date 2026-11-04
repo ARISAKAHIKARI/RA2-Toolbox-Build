@@ -1,6 +1,15 @@
 #pragma once
 #include "radar_map.h"
 namespace external { namespace radar {
+// Worker identity (pid/match/mode/profile) is checked by its generation. This
+// predicate permits skipping a hidden diagram only while a complete real
+// scene of the same world and requested size can remain on screen.
+inline bool reusableRealScene(const Frame&previous,const Frame&current,int width,int height){
+ return previous.terrain&&current.terrain&&previous.scene&&previous.frame<=current.frame&&
+  previous.terrain->reveal==current.terrain->reveal&&previous.terrain->geo.same(current.terrain->geo)&&
+  previous.scene->width==width&&previous.scene->height==height&&
+  (previous.scene->gpu||previous.scene->pixels.size()==size_t(width)*height);
+}
 struct PublicationContext {uint32_t house=0,cells=0;int frame=-1;bool active=false;mapbounds::Bounds bounds;bool readable=false;int rawWidth=0,rawHeight=0;};
 template<class Read>PublicationContext publicationContext(Read read){
  PublicationContext out;uint8_t battlefield=0;
@@ -12,11 +21,16 @@ template<class Read>PublicationContext publicationContext(Read read){
  out.active=out.readable&&battlefield==1&&display.visible();return out;
 }
 inline bool sameWorld(const Frame&sample,const PublicationContext&current){
- return sample.terrain&&current.active&&current.house==sample.terrain->geo.house&&current.cells==sample.terrain->geo.cells&&current.frame>=sample.frame&&current.bounds.valid()&&current.bounds==sample.terrain->geo.bounds&&current.rawWidth==sample.terrain->geo.rawWidth&&current.rawHeight==sample.terrain->geo.rawHeight;
+ return sample.terrain&&current.active&&current.house==sample.terrain->geo.house&&current.cells==sample.terrain->geo.cells&&current.frame>=sample.frame&&current.bounds.valid()&&current.bounds==sample.terrain->geo.bounds&&current.rawWidth==sample.terrain->geo.sourceWidth()&&current.rawHeight==sample.terrain->geo.sourceHeight();
 }
 // Check age when sampling ends, not after disk IO and CPU rasterization. A
 // render taking three game ticks is still a valid completed image of this map.
 inline bool freshMarkers(const Frame&sample,const PublicationContext&sampled){
  return sameWorld(sample,sampled)&&int64_t(sampled.frame)-sample.frame<=2;
+}
+// A completed, validated bank crosses a thread boundary. Its usable age is
+// wall time: two game ticks can be only a few milliseconds at fast game speed.
+inline bool recentMarkers(const Frame&sample,const PublicationContext&current,uint32_t now,uint32_t maximumAge=100){
+ return sample.markerScanValid&&sameWorld(sample,current)&&uint32_t(now-sample.tick)<=maximumAge;
 }
 }}

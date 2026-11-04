@@ -6,9 +6,11 @@ static int selectedTypeIndex(){
  return index>=0&&index<int(savedTypes.types.size())&&savedTypes.types[index].kind!=7?index:-1;
 }
 static WORD typeBinding(const char* id){for(auto&b:typeBindings)if(b.id==id)return b.key;return 0;}
-static WORD comparableKey(WORD k){return MAKEWORD(LOBYTE(k),HIBYTE(k)&(HOTKEYF_CONTROL|HOTKEYF_ALT|HOTKEYF_SHIFT|0x80));}
+static WORD comparableKey(WORD k){auto value=keygesture::normalize(k);return keygesture::mode(value)==keygesture::Mode::Hold?WORD(value&~keygesture::ModeMask):value;}
 static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
- if(extra.allHotkeys||!LOBYTE(key))return false;key=comparableKey(key);
+ if(!LOBYTE(key))return false;
+ if(LOBYTE(extra.destructSelectedOwnerKey)&&hotkeyroute::canonical(key)==hotkeyroute::canonical(WORD(extra.destructSelectedOwnerKey)))return true;
+ if(extra.allHotkeys)return false;key=comparableKey(key);
  for(auto k:hotkeys)if(comparableKey(k)==key)return true;
  for(auto&b:swBindings)if(comparableKey(b.key)==key)return true;
  if(ignore.empty())for(auto&b:typeBindings)if(comparableKey(b.key)==key)return true;
@@ -16,7 +18,23 @@ static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
  if(extra.watchEnabled)for(auto binding:extra.watchKeys)if(comparableKey(WORD(binding))==key)return true;
  for(auto social:socialKeys)if(comparableKey(social)==key)return true;
  if(comparableKey(WORD(extra.variantKey))==key)return true;
+ if(comparableKey(WORD(extra.placementEventKey))==key)return true;
  return (!toggle&&comparableKey(csKey)==key)||comparableKey(advancedKey)==key||comparableKey(unloadKey)==key||comparableKey(ejectKey)==key||comparableKey(csHoldKey)==key||comparableKey(magnetronKey)==key;
+}
+static bool destructOwnerKeyConflict(WORD key){
+ if(!LOBYTE(key))return false;
+ const auto physical=hotkeyroute::canonical(key);auto same=[&](uint32_t chord){return LOBYTE(chord)&&hotkeyroute::canonical(WORD(chord))==physical;};
+ for(auto chord:hotkeys)if(same(chord))return true;
+ for(const auto&b:swBindings)if(same(b.key))return true;
+ for(const auto&b:typeBindings)if(same(b.key))return true;
+ for(auto chord:socialKeys)if(same(chord))return true;
+ for(auto chord:extra.watchKeys)if(same(chord))return true;
+ for(auto chord:extra.viewZoomKeys)if(same(chord))return true;
+ for(auto chord:extra.missionModeKeys)if(same(chord))return true;
+ for(auto chord:extra.formationKeys)if(same(chord))return true;
+ for(auto chord:extra.pauseKeys)if(same(chord))return true;
+ for(uint32_t chord:{uint32_t(idleAircraftKey),uint32_t(csKey),uint32_t(advancedKey),uint32_t(unloadKey),uint32_t(ejectKey),uint32_t(csHoldKey),uint32_t(magnetronKey),extra.variantKey,extra.placementEventKey,extra.stickyKey,extra.sidebarKey,extra.overlayKey})if(same(chord))return true;
+ return false;
 }
 static void syncTypeConfig(){
  if(!shared)return;
@@ -34,7 +52,7 @@ static void typeBindingFields(){
  ControlUpdate guard;
  int i=selectedTypeIndex();const char*id=i>=0?savedTypes.types[i].id:"";
  SendMessageW(typeKey,HKM_SETHOTKEY,typeBinding(id),0);SendMessageW(typeCS,BM_SETCHECK,csUnits.count(id)?BST_CHECKED:BST_UNCHECKED,0);
- EnableWindow(typeCS,i>=0&&(savedTypes.types[i].kind==16||savedTypes.types[i].kind==40));
+ EnableWindow(typeCS,featureavailability::AutoCS&&i>=0&&(savedTypes.types[i].kind==16||savedTypes.types[i].kind==40));
 }
 static void fillTypeBindings(bool force){
  if(SendMessageW(typeList,CB_GETDROPPEDSTATE,0,0))return;
@@ -65,7 +83,7 @@ static void bindType(bool remove){
  else {notify(L"单位快捷键已达上限。");return;}
  typeTap.clear();bool persisted=save();registerKeys();fillTypeBindings(true);
  notify(!persisted?L"保存失败：请检查 Assist.ini 所在目录的写入权限。":
-   LOBYTE(key)?L"组合已保存：同快捷键合并选中，单按屏幕内、双按全图。":L"已解除此单位快捷键。");
+   LOBYTE(key)?typekeys::implicitDouble(typeBindings,key)?L"组合已保存：同快捷键合并选中，单按屏幕内、双按全图。":L"组合已保存：同手势合并选中，按配置的按下/松开手势触发；双击手势选全图。":L"已解除此单位快捷键。");
 }
 
 static void featureTypeFields(){ControlUpdate guard;const auto&f=featureTypes.filters[featureTypeIndex];

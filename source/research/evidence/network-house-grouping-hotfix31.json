@@ -1,0 +1,373 @@
+{
+  "scope": "Actual DLL managed sender adapter with native packing and decode fixtures.\n\nSynthetic Win32, Houses and capture-only transport. Runs the installed DLL's\nthunks, native 649CA0/64B660 and 64BDD0; protocol 0 wire records are parsed.\nNo live peer, platform transport, event effects or complete House scheduler.\nAI/nonhuman Houses may be skipped by the original scheduler and are rejected\nas foreign adapter targets. MegaMission byte 0D is native cache metadata.\nFault cases test safe reads and deferred mapping cleanup. An optional matching\nPDB resolves the actual Abort body, not Windows SEH dispatch or exception unwind.\n",
+  "dll_sha256": "13bdf68fb43a76c8f51542d0939687dfacdd932e9ab5b608d775d192ed1d9cd9",
+  "game_fixture_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "pdb_sha256": "568c818af51ce70c1d0cff5f6c2ac068b74a666504fbf3a3c362cc9f8efbf767",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "runtime_foreign_destruct_through_sender_protocol_0",
+      "status": "PASS",
+      "runtime_command": 32,
+      "foreign_house": 1,
+      "same_native_local_and_decoded_event": true
+    },
+    {
+      "case": "runtime_foreign_destruct_through_sender_protocol_1",
+      "status": "PASS",
+      "runtime_command": 32,
+      "foreign_house": 1,
+      "same_native_local_and_decoded_event": true
+    },
+    {
+      "case": "runtime_foreign_destruct_through_sender_protocol_2",
+      "status": "PASS",
+      "runtime_command": 32,
+      "foreign_house": 1,
+      "same_native_local_and_decoded_event": true
+    },
+    {
+      "case": "own_wire_protocol_0",
+      "status": "PASS",
+      "packet_sha256": [
+        "a768611c070fa705530c10340e1f0dc25b78d3074d1b69de4c41535e237d4c27"
+      ],
+      "native_crc_recomputations": 0,
+      "event_houses": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "own_wire_protocol_1",
+      "status": "PASS",
+      "packet_sha256": [
+        "6b5d606fd82e9b224a92dc44208fb010085ef82bf05b39737ba4254a1bbe5836"
+      ],
+      "native_crc_recomputations": 0,
+      "event_houses": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "own_wire_protocol_2",
+      "status": "PASS",
+      "packet_sha256": [
+        "85a4cb29ab3c7907a1911a2f62aa58ff610d1dda15a76be178d22baa64c7b7f0"
+      ],
+      "native_crc_recomputations": 0,
+      "event_houses": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": "installed_native_sender_session_3_protocol_0",
+      "status": "PASS",
+      "native_packets": 3,
+      "packet_houses": [
+        0,
+        1,
+        0
+      ],
+      "foreign_events_in_one_packet": 3,
+      "native_crc_count_delay_preserved": true,
+      "managed_sites": 7,
+      "leaf_register_fp_checks": 21,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "installed_native_sender_session_3_protocol_1",
+      "status": "PASS",
+      "native_packets": 3,
+      "packet_houses": [
+        0,
+        1,
+        0
+      ],
+      "foreign_events_in_one_packet": 3,
+      "native_crc_count_delay_preserved": true,
+      "managed_sites": 7,
+      "leaf_register_fp_checks": 17,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "installed_native_sender_session_3_protocol_2",
+      "status": "PASS",
+      "native_packets": 3,
+      "packet_houses": [
+        0,
+        1,
+        0
+      ],
+      "foreign_events_in_one_packet": 3,
+      "native_crc_count_delay_preserved": true,
+      "managed_sites": 7,
+      "leaf_register_fp_checks": 17,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "installed_native_sender_session_4_protocol_0",
+      "status": "PASS",
+      "native_packets": 3,
+      "packet_houses": [
+        0,
+        1,
+        0
+      ],
+      "foreign_events_in_one_packet": 3,
+      "native_crc_count_delay_preserved": true,
+      "managed_sites": 7,
+      "leaf_register_fp_checks": 21,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "installed_native_sender_session_4_protocol_1",
+      "status": "PASS",
+      "native_packets": 3,
+      "packet_houses": [
+        0,
+        1,
+        0
+      ],
+      "foreign_events_in_one_packet": 3,
+      "native_crc_count_delay_preserved": true,
+      "managed_sites": 7,
+      "leaf_register_fp_checks": 17,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "installed_native_sender_session_4_protocol_2",
+      "status": "PASS",
+      "native_packets": 3,
+      "packet_houses": [
+        0,
+        1,
+        0
+      ],
+      "foreign_events_in_one_packet": 3,
+      "native_crc_count_delay_preserved": true,
+      "managed_sites": 7,
+      "leaf_register_fp_checks": 17,
+      "foreign_cancelled": 2
+    },
+    {
+      "case": "rejection_singleplayer_0",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_singleplayer_5",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_unsupported_protocol",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_context_conflict",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_site_conflict",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_frame_site_conflict",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_plain_site_conflict",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "rejection_invalid_ring",
+      "status": "PASS",
+      "blocked_without_event_send": true
+    },
+    {
+      "case": "callback_target_invalidation_protocol_0",
+      "status": "PASS",
+      "completed_prefix": 1,
+      "failed_group_not_consumed": true
+    },
+    {
+      "case": "callback_target_invalidation_protocol_1",
+      "status": "PASS",
+      "completed_prefix": 1,
+      "failed_group_not_consumed": true
+    },
+    {
+      "case": "callback_target_invalidation_protocol_2",
+      "status": "PASS",
+      "completed_prefix": 1,
+      "failed_group_not_consumed": true
+    },
+    {
+      "case": "foreign_filter_ai",
+      "status": "PASS",
+      "no_foreign_execution": true
+    },
+    {
+      "case": "foreign_filter_observer",
+      "status": "PASS",
+      "no_foreign_execution": true
+    },
+    {
+      "case": "foreign_filter_non_gameplay",
+      "status": "PASS",
+      "no_foreign_execution": true
+    },
+    {
+      "case": "foreign_filter_invalid_index",
+      "status": "PASS",
+      "no_foreign_execution": true
+    },
+    {
+      "case": "foreign_filter_wrong_thread",
+      "status": "PASS",
+      "no_foreign_execution": true
+    },
+    {
+      "case": "readiness_paused",
+      "status": "PASS",
+      "foreign_never_rewritten_as_local": true,
+      "same_world_foreign_cancelled": true
+    },
+    {
+      "case": "readiness_heartbeat_expired",
+      "status": "PASS",
+      "foreign_never_rewritten_as_local": true,
+      "same_world_foreign_cancelled": true
+    },
+    {
+      "case": "readiness_stopped",
+      "status": "PASS",
+      "foreign_never_rewritten_as_local": true,
+      "same_world_foreign_cancelled": true
+    },
+    {
+      "case": "readiness_changed_world",
+      "status": "PASS",
+      "foreign_never_rewritten_as_local": true,
+      "same_world_foreign_cancelled": false
+    },
+    {
+      "case": "fault_boundary_cached_house_unmapped",
+      "status": "PASS",
+      "cached_house_page_unmapped": true,
+      "safe_read_failures": 4,
+      "queue_unchanged": true,
+      "gate_retained": true
+    },
+    {
+      "case": "fault_boundary_stop_deferred_invalid_ring",
+      "status": "PASS",
+      "deferred_stop_ticks": 2,
+      "mapping_and_hooks_retained_until_safe": true,
+      "final_stop_ack": 2,
+      "foreign_cancelled": 1
+    },
+    {
+      "case": "fault_boundary_stop_deferred_changed_world",
+      "status": "PASS",
+      "deferred_stop_ticks": 2,
+      "mapping_and_hooks_retained_until_safe": true,
+      "final_stop_ack": 2,
+      "foreign_cancelled": 0
+    },
+    {
+      "case": "fault_boundary_abort_body_invalid_world_and_shared",
+      "status": "PASS",
+      "direct_abort_rva": "0x9330",
+      "shared_and_cached_house_unmapped": true,
+      "only_dll_local_writes": 3,
+      "windows_seh_dispatch_tested": false
+    }
+  ],
+  "fixture_maintenance": [
+    "Current protocol82 Shared size and all254 declared offsets checked against680-entry C++ ABI report",
+    "Zig real global initializer resolved through matching PDB; only destructor registration sink mocked",
+    "RuntimeControl mapping moved outside current Shared; optional frame mapping open attempts fail in the fixture and are not reconnections",
+    "Protocol0 native consumed-events return value remains0; callback recheck uses that native convention"
+  ],
+  "controlled_cases_passed": 36,
+  "own_wire_HF30_identical": {
+    "own_wire_protocol_0": [
+      "a768611c070fa705530c10340e1f0dc25b78d3074d1b69de4c41535e237d4c27"
+    ],
+    "own_wire_protocol_1": [
+      "6b5d606fd82e9b224a92dc44208fb010085ef82bf05b39737ba4254a1bbe5836"
+    ],
+    "own_wire_protocol_2": [
+      "85a4cb29ab3c7907a1911a2f62aa58ff610d1dda15a76be178d22baa64c7b7f0"
+    ]
+  },
+  "pure_policy": {
+    "circular_queues": 16512,
+    "ordered_House_partitions": 4088
+  },
+  "live_network_tested": false,
+  "windows_loader_tested": false,
+  "baseline_source_github": "af8ecd85c1bc5df2f2334931f128d3d380f7270b",
+  "new_addresses": {
+    "common_frame_group": "0x649D61,5bytes; original mov eax,[0xA8B24C], continue649D66; callback sees native ESP+10 remaining bound and EBX header",
+    "protocol0_loop_bound": "0x649DBC,8bytes; mov edx,[esp+14],mov esi,[esp+10]; cap ESI only, continue649DC4 original CMP",
+    "native_crc_provider": "0xAC51FC read at649D4C; copied toFrameInfo+7 at649D57; no replacement",
+    "native_crc_recompute": "0x64DAB0; not called by new sending path",
+    "history_comparison": "0x64C68F..64C6F2; global history B04474 indexed by(Frame-Delay)&255, from existing notes"
+  },
+  "scope_limits": [
+    "Synthetic Win32/world and capture-only transport; actual compiled DLL and native x86 packer/decoder instructions run in Unicorn",
+    "No real socket, platform transport, full simulation, live peers, Windows loader or multiplayer validation",
+    "Cross-sender same-House scheduler order and receiver MegaMission dictionary collisions remain unresolved",
+    "A game-layer Send/Flush boundary is not a promise about every platform outer UDP encapsulation"
+  ],
+  "production_outputs": {
+    "RA2Toolbox.exe": {
+      "bytes": 8398848,
+      "sha256": "77b4caad03a79ac865cfab0ab3d8f27f209ba4378a6755ab7f87092f56380ff6"
+    },
+    "GameRuntime.dll": {
+      "bytes": 5254144,
+      "sha256": "13bdf68fb43a76c8f51542d0939687dfacdd932e9ab5b608d775d192ed1d9cd9"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 207872,
+      "sha256": "9e8a29a4c9e7636f77c0cdae7e2eb4a48fa742d03016fcc14d738c5d44de8a3d"
+    }
+  },
+  "build_validation": {
+    "mixed_arch_production_build_exit": 0,
+    "static_windows_outputs_exit": 0,
+    "crossbit_ABI_entries": 680,
+    "crossbit_ABI_differences": {},
+    "fixture_Shared_offsets_verified": 254
+  }
+}

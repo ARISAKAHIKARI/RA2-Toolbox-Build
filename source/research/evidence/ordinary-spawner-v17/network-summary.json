@@ -1,0 +1,113 @@
+{
+  "product": {
+    "source_commit": "b372ace50101e0099a5e9533c50470b4cabb1536",
+    "release_commit": "5508c80f7b81abad4fc51847eb7f3530acddc9af",
+    "dll_sha256": "eba0ce9f13376aa193942a4765b07fc28e2f63d7a577bed9450325d8e951f4f7"
+  },
+  "ordinary_spawner": {
+    "variant": "CnCNetYR non-Hardened v0.0.0.17",
+    "source_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+    "dll_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d"
+  },
+  "engine_fixture_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "findings": [
+    {
+      "classification": "no demonstrated ordinary-specific standard-local-order format conflict",
+      "evidence": "ordinary_timing_roundtrip.py executes actual ordinary event-size exports through a modeled Syringe register bridge with released Toolbox thunks and original native codec; eight cases preserve 0x30 two-byte timing and ordinary MegaMission records"
+    },
+    {
+      "classification": "confirmed conditional design defect in current released optional foreign-House preservation",
+      "condition": "NetworkHousePreserve enabled and a foreign House actually preserved; two senders share same Event.House and a third receiver retains per-House source-group cache",
+      "evidence": "release_cross_sender_cache.py uses actual current released five sender thunks; protocol1/2 real House1 source group201/202 becomes101/102 at receiver after an intervening foreign-House packet; no-intervention controls correct",
+      "ordinary_specific": false,
+      "default_enabled": false
+    },
+    {
+      "classification": "existing unproven simulation consistency risk",
+      "condition": "ControlAll shared gameplay predicate/owner queries or full-native multiplayer aircraft arrival advancement enabled locally; no whole-world dual-peer test",
+      "evidence": "current placement_bridge.h and air_path_policy.h; prior notebook notes; not established as user failure cause"
+    }
+  ],
+  "defaults": {
+    "NetworkHousePreserve": false,
+    "ControlCommandOwner": false,
+    "ControlAll": false,
+    "NativeMegaGateway": true,
+    "NativeAirNetwork": 0
+  },
+  "protocol_notes": {
+    "tool_host_ipc": 80,
+    "native_event_bytes": 111,
+    "ordinary_v17_ResponseTime2": "0x30",
+    "spawner_comm_protocol": 2,
+    "spawn_ini_protocol0_enables_adaptive_timing": true,
+    "older_234c16_ResponseTime2": "0x31"
+  },
+  "reports": {
+    "release-network-house-runtime.json": {
+      "sha256": "d9f4d7961c53666c9d762ec39dae51d40746408b82ea4ef664fc8ec57510b36f",
+      "cases": 29,
+      "pass": 29,
+      "scope": "Actual DLL managed sender adapter with native packing and decode fixtures.\n\nSynthetic Win32, Houses and capture-only transport. Runs the installed DLL's\nthunks, native 649CA0/64B660 and 64BDD0; protocol 0 wire records are parsed.\nNo live peer, platform transport, event effects or complete House scheduler.\nAI/nonhuman Houses may be skipped by the original scheduler and are rejected\nas foreign adapter targets. MegaMission byte 0D is native cache metadata.\nFault cases test safe reads and deferred mapping cleanup. An optional matching\nPDB resolves the actual Abort body, not Windows SEH dispatch or exception unwind.\n"
+    },
+    "release-options-off.json": {
+      "sha256": "3785e834e0f1aceb3d6214141449f54115e6b9c70731610d41acc07631dfcd68",
+      "cases": 6,
+      "pass": 6,
+      "scope": "Bounded release-DLL control-order comparison; no world tick or real transport."
+    },
+    "release-mega-gateway.json": {
+      "sha256": "98c6c2a7580d6d54a7fa2dd05da1219eeca4c12bc6ae4faca2f8526bd79cd355",
+      "cases": 82,
+      "pass": 82,
+      "scope": "Compiled success adapter with original QueueMegaMission/constructor/OutList.\nSynthetic Win32 and world; manager installation and capture lease are real DLL\npaths. No receiver, simulation mission execution, or multiplayer certification.\n"
+    },
+    "release-cross-sender-cache.json": {
+      "sha256": "622b7d5becd4eb1fda30549a03fc57012f40aa453ec355751052c60ab094e1b1",
+      "cases": 4,
+      "pass": 4,
+      "scope": "Current released DLL sender thunks against a second native sender and third decoder.\n\nSynthetic Win32/world. Executes real released NetworkHousePreserve machine code,\noriginal constructors, sender, compressor and decoder. Does not map the Spawner\nmodule, run sockets, dispatch missions or prove actual multiplayer OOS.\n"
+    },
+    "ordinary-timing-roundtrip.json": {
+      "sha256": "27aec947404450c7d45c3eb93f8a202cefd7791fc9398a3b788d4099c70b9909",
+      "cases": 8,
+      "pass": 8,
+      "scope": "Bounded ordinary-v17 event-size hooks with the released Toolbox sender.\n\nActual ordinary DLL exports supply extended-event sizes; a modeled Syringe\nREGISTERS bridge invokes those exports and applies their register/continuation\nresults. Real game constructors/sender/codec and actual Toolbox thunks run.\nSynthetic Win32/world/capture-only transport; not full Spawner initialization,\nProtocolZero timing/sockets, event effects or real multiplayer validation.\n"
+    }
+  },
+  "limitations": [
+    "No live Windows CnCNet client or sockets",
+    "No complete Spawner initialization or ProtocolZero adaptive timing loop",
+    "No simulation mission effects or real multiplayer CRC outcome",
+    "Completed bounded network cases use sample3; requested sample4 cases are BLOCKED by modified native sender continuation into zero-filled file-backed padding. No deployment identity inferred."
+  ],
+  "followup_portable_validation": {
+    "portable-cache-sample3.json": {
+      "status": "PASS",
+      "sha256": "e48b19ac7407c16b8fa3269d8576769a9de1f17dc6aa3fd97c06ada132ed827d",
+      "executed_cases": 4,
+      "pass": 4
+    },
+    "portable-timing-sample3.json": {
+      "status": "PASS",
+      "sha256": "727ed5244898318ffc0150c1381b78dd90a0fce20ba10e2e7933feff780efb4c",
+      "executed_cases": 8,
+      "pass": 8
+    },
+    "release-cross-sender-cache-sample4.json": {
+      "status": "BLOCKED",
+      "sha256": "2c702a4642d0d29ef116a6977dd8959fc672eb8eaed752e33b9d2014a5c09034",
+      "executed_cases": 0,
+      "pass": 0,
+      "planned_cases": 4
+    },
+    "ordinary-timing-roundtrip-sample4.json": {
+      "status": "BLOCKED",
+      "sha256": "131c421322c7f2a0b0fc2925814dd3c5a10ac4e8b7856e0dad40784fd501c2de",
+      "executed_cases": 0,
+      "pass": 0,
+      "planned_cases": 8
+    },
+    "sample4_mapping_conclusion": "Required native sender continuation 0x64B9F7 is E9 3B 2C 53 00 -> 0xB7E637, beyond .p_text VirtualSize end 0xB7E3CC and within raw padding. Raw file offset 0x482637 and mapped bytes both zero. No code replacement or missing-byte reconstruction attempted; no sample4 network compatibility conclusion."
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-29",
+  "new_game_addresses": false,
+  "scope": "GPU triangle pixel coverage/local depth/earliest tie/color+index; CPU native pose/light/bounds; final scene owns single readback",
+  "packet_layout": {
+    "triangle_bytes": 64,
+    "push_bytes": 32,
+    "storage_bindings": 4,
+    "passes": 3
+  },
+  "cpu_oracle": {
+    "cases": 96,
+    "pixels": 261025,
+    "triangles": 15915,
+    "candidate_pixels": 1083427,
+    "rgba": "exact",
+    "indices": "exact",
+    "depth": "exact",
+    "optimized": "pass",
+    "asan_ubsan": "pass; LSan disabled"
+  },
+  "actual_vulkan_raster": {
+    "run_id": 40742034261,
+    "job_id": 123005885508,
+    "commit": "bd5314e7ae4fcdc711f4ab7068ee78c223f34ad0",
+    "stage_snapshot_sha256": "6a3fd170afae625423c97245b444089b68f178881088b98a4a477f044e8f2428",
+    "cases": 96,
+    "exact_color_index_pixels": 261025,
+    "software_device": "llvmpipe LLVM20.1.2",
+    "offset_sentinels": "pass",
+    "asan_ubsan": "pass",
+    "validation": "pass"
+  },
+  "shader": {
+    "source_sha256": "38eb4e939c58eaf6d4d6b588063bae80afdfb78abd46eb22c575e38bf9f12c58",
+    "passes": [
+      {
+        "name": "DepthShader",
+        "spirv_sha256": "5bf0238c2046c1c8a0069d89cf2c0bbade093deeda7c05694a9cfd849f369585",
+        "bytes": 5052,
+        "words": 1263
+      },
+      {
+        "name": "WinnerShader",
+        "spirv_sha256": "91c3adad4b88f62c2ee76c3b1baf0da6c1be5cc5cfdb17d4fb52502859e3dbda",
+        "bytes": 5236,
+        "words": 1309
+      },
+      {
+        "name": "ResolveShader",
+        "spirv_sha256": "fcc36cfc51bbff4a35222e202da3f01f7289ff5f6adcff9b5387e8451ebd18db",
+        "bytes": 3120,
+        "words": 780
+      }
+    ]
+  },
+  "current_source_sha256": {
+    "source/external_reader/source/gpu_voxel.h": "0fc19fe5e7e77f1e924fb49d4d56e6a9b30169aed0259deddee66d502f9f5d10",
+    "source/external_reader/source/vulkan_voxel_backend.h": "5b9a661adc7d164f26436743eaae22d02b1e9a0142ae0dd668429952ff894974",
+    "source/external_reader/shaders/gpu_voxel_raster.comp": "38eb4e939c58eaf6d4d6b588063bae80afdfb78abd46eb22c575e38bf9f12c58",
+    "source/external_reader/source/gpu_voxel_cache.h": "f752096bb2b5ca5922e3feeff88eb5b01d984bef08be07a168b8e3f87b1f5f6c"
+  },
+  "production_asset_regression": "game_assets_host_test.py passed including deferred slope/shadow same-frame Surface fallback and retained geometry",
+  "scene_integration": {
+    "test": "gpu_voxel_scene.cpp",
+    "local_cpu_fallback_cases": 96,
+    "actual_vulkan": "pending main integration CI"
+  },
+  "hardware_fps_measured": false,
+  "remaining": [
+    "native VPL and exact bounds/pose preparation remain CPU",
+    "no real game or hardware GPU visual/performance claim",
+    "unknown locomotor and native Shadow_Matrix limits unchanged"
+  ],
+  "prepared_cache": {
+    "budget_bytes": 67108864,
+    "max_entries": 256,
+    "geometry": "fresh capture lifetime nonce, shared copy/move, not object/data pointer",
+    "key": "RGBA256 +27 exact scalar words +exact VPLsemantic snapshot identity",
+    "fresh_vpl_warm_repeats": 40,
+    "body_shadow_warm_repeats": 10,
+    "posture_body_only_invalidation": "pass",
+    "palette_pose_raster_vpl_capture_replacement": "pass",
+    "same_address_new_control_block": "rejected",
+    "lru_oversized_reset": "pass",
+    "asan_ubsan": "pass"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "scope": "Historical production source immediately before SmartArea capacity/options phase; tests only. Source before current work was a parent-verified phase checkpoint based on 5983b943e90694f7b2630608bc464d6f8ee148e3. No claim this entire checkpoint equals that commit.",
+  "files": {
+    "mo_orders_bridge.h": "a604c5480937a65f10f482d1448c5abd61e48e9d6c78920d2c8b6e2e46f3fe1c",
+    "native_mission.inc": "9b83b869213b6636b1dbd56e0c9da4ad02d366a9491cb9ebfb337fb3e1d5853b",
+    "mo_orders_geometry.h": "d635eae3e6dce6d59659e988a798d69fa67aea9410a53dba9a4ef7e304d9136f"
+  },
+  "original_sources": {
+    "mo_orders_bridge.h": "assist/source/mo_orders_bridge.h",
+    "native_mission.inc": "assist/source/bridge.cpp::nativeMission",
+    "mo_orders_geometry.h": "assist/source/mo_orders.h"
+  },
+  "original_full_bridge_sha256": "8dc807f49dadf694876835c5eeb96262a5cdeded43f635aba5be8b8daea79d3d"
+}

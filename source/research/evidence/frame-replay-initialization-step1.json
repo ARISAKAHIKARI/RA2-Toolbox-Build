@@ -1,0 +1,341 @@
+{
+  "verification": {
+    "identical_argb_floatdepth_u16z_alpha_cases": 32,
+    "resized_and_replayed": true,
+    "digest_values": [
+      "4640398399386974037",
+      "12371660736537455031",
+      "17524478244570298197",
+      "10378164237031074231",
+      "4640398399386974037",
+      "5792545708906832666",
+      "17524478244570298197",
+      "12972700981313594138",
+      "9268959104457677228",
+      "16182729576673640983",
+      "5575896953104013740",
+      "18231804146521932311",
+      "9268959104457677228",
+      "4851843277669245788",
+      "5575896953104013740",
+      "1208320613716042588",
+      "4640398399386974037",
+      "12371660736537455031",
+      "17524478244570298197",
+      "10378164237031074231",
+      "4640398399386974037",
+      "5792545708906832666",
+      "17524478244570298197",
+      "12972700981313594138",
+      "9268959104457677228",
+      "16182729576673640983",
+      "5575896953104013740",
+      "18231804146521932311",
+      "9268959104457677228",
+      "4851843277669245788",
+      "5575896953104013740",
+      "1208320613716042588"
+    ],
+    "gpu_executed": false
+  },
+  "runs": [
+    {
+      "variant": "baseline",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 7.848102,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 14.352911,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 29.509798,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 37.155382,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "candidate",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 5.813227,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 12.819866,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 26.072212,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 32.953584,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "candidate",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 6.671032,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 12.395021,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 27.50939,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 33.342789,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "baseline",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 6.681607,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 12.180703,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 28.692621,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 36.247652,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "candidate",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 5.712059,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 12.956984,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 24.360562,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 31.242803,
+          "digest": "10309123569078343753"
+        }
+      ]
+    },
+    {
+      "variant": "baseline",
+      "timings": [
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 0,
+          "median_ms": 7.17957,
+          "digest": "12869024814175558787"
+        },
+        {
+          "width": 1280,
+          "height": 720,
+          "objects": 160,
+          "median_ms": 12.622272,
+          "digest": "5996660681124487446"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 0,
+          "median_ms": 29.683348,
+          "digest": "16654046778691900291"
+        },
+        {
+          "width": 2560,
+          "height": 1440,
+          "objects": 160,
+          "median_ms": 34.692642,
+          "digest": "10309123569078343753"
+        }
+      ]
+    }
+  ],
+  "summary": [
+    {
+      "width": 1280,
+      "height": 720,
+      "objects": 0,
+      "baseline_ms": 7.17957,
+      "candidate_ms": 5.813227,
+      "reduction_pct": 19.03098653540532,
+      "baseline_rounds": [
+        7.848102,
+        6.681607,
+        7.17957
+      ],
+      "candidate_rounds": [
+        5.813227,
+        6.671032,
+        5.712059
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "objects": 160,
+      "baseline_ms": 12.622272,
+      "candidate_ms": 12.819866,
+      "reduction_pct": -1.5654392489719657,
+      "baseline_rounds": [
+        14.352911,
+        12.180703,
+        12.622272
+      ],
+      "candidate_rounds": [
+        12.819866,
+        12.395021,
+        12.956984
+      ]
+    },
+    {
+      "width": 2560,
+      "height": 1440,
+      "objects": 0,
+      "baseline_ms": 29.509798,
+      "candidate_ms": 26.072212,
+      "reduction_pct": 11.64896486245009,
+      "baseline_rounds": [
+        29.509798,
+        28.692621,
+        29.683348
+      ],
+      "candidate_rounds": [
+        26.072212,
+        27.50939,
+        24.360562
+      ]
+    },
+    {
+      "width": 2560,
+      "height": 1440,
+      "objects": 160,
+      "baseline_ms": 36.247652,
+      "candidate_ms": 32.953584,
+      "reduction_pct": 9.087672768432016,
+      "baseline_rounds": [
+        37.155382,
+        36.247652,
+        34.692642
+      ],
+      "candidate_rounds": [
+        32.953584,
+        33.342789,
+        31.242803
+      ]
+    }
+  ],
+  "scope": "portable synthetic CPU replay timing only; not live game or GPU performance",
+  "baseline_remote_commit": "60fc8a3411a4d3ec68c75cabc1486a2a0257f9b5",
+  "source_sha256": {
+    "source/external_reader/source/camera_raster.h": "510c7d278e67cc7dd70eabde0b919987e4a311337580ce0ed97f440ea73957c5",
+    "source/external_reader/source/gpu_scene_record.h": "e520b40c3ef3a10f3fcfc93080206a2cc6652bf044ea37c26536b8cccb439637",
+    "source/assist/tests/frame_replay_initialization.cpp": "df6da635a59a8bb951394577d97a732a32369853d73e8861c26ceea42ed1cd02"
+  },
+  "additional_checks": {
+    "render_recovery": "passed portable CPU",
+    "gpu_scene_record": "passed 36 portable CPU replay cases, no GPU device"
+  },
+  "windows_cross_build": {
+    "compiler": "Zig 0.13.0",
+    "architectures": {
+      "RA2Toolbox.exe": "x64",
+      "GameRuntime.dll": "x86",
+      "GameRuntimeHost32.exe": "x86"
+    },
+    "static_pe_import_manifest_passed": true,
+    "binaries": {
+      "RA2Toolbox.exe": "e9f51e70c30debfd2c7aeb0e2f12279ee238ed65160553af5bf1a4c7c70a3631",
+      "GameRuntime.dll": "cd7ccd4724d81a8119e2407f09fa85f3d2eb25aa6a31a74229af96440c3d4db3",
+      "GameRuntimeHost32.exe": "43b118aef078b4610561ec8eb34d3c81d1a4cb3f3618e9c3707a03306e53efb1"
+    },
+    "game_or_gpu_executed": false
+  }
+}

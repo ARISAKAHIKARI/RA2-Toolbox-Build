@@ -1,0 +1,169 @@
+{
+  "schema": "ra2-mo-viewport-host-projection-v1",
+  "baseline_commit": "5983b943e90694f7b2630608bc464d6f8ee148e3",
+  "scope": "Host A/R math, synthetic readonly sampling, CPU rendering, recorded GDI+ drawing IO, lifecycle/handshake and fixture-only Win32 identities; no game process or DDraw/GPU/multiplayer acceptance.",
+  "sources": {
+    "assist/source/air_path_host.h": "9e362450c6b87e783a8ad4f081cfac7e3289c307e7908fa4108b242d064aa34a",
+    "assist/source/formation_host.h": "b80171ebeb2587adaa0e8f0f3dd949540161d15f9d23e86ca37e4d8b827eb95f",
+    "assist/source/label_motion.h": "a1c11d506dad1118f7584913798fb19046209058fc7f73129c396dae11671e85",
+    "assist/source/main.cpp": "7f4ab4fa300630a668895f350d15b5703c79578b49b41a6dfc2fd6ee28e2c364",
+    "assist/source/mo_orders_host.h": "611dcce9cdd533ae872bad566cf9ea754772a138f15daf48c64dd32d009c12c1",
+    "assist/source/native_viewport_host.h": "e387c302b034573eef6451571cc5f2c2539e07a85ee2764ea723c334ff5a91e8",
+    "assist/source/passenger_draw.h": "fb3633dee45b68a3c6a65709f9eafb64c2b72f0df906659f4cb2e4107009763c",
+    "assist/source/passenger_motion.h": "c15bb3ba5f03cccc8e4a6f8b31ff680dba521bac2d70dc1f33c7ec3396e0e6df",
+    "assist/source/placement_event_drawing.h": "bc2134ba93849be27409b36c820434eafb5710c1d389d0eb08920f8b5df49e53",
+    "assist/source/protocol.h": "9254a8224f16e44eef2fab6135f2d9ecf29cfeb9557397bb2976aaf249fb923d",
+    "assist/source/render_feedback_host.h": "d598b7017bae8db1d77b7ba4349ca22bddd46deeced4be2e7c19a93d4586190e",
+    "assist/source/render_presentation.h": "5ef3cee4771039d440b3a4c831f4456fb4b2127fb288bb8099ed38e01aefdcad",
+    "assist/source/render_upgrade_host.h": "6072b0f00d9887ee8a115e8735a2811ac106396c9ac29e3202944fd3861f07b8",
+    "assist/source/sidebar_indicator_host.h": "25d7cd9cde7b7f826f495d489cd763ca6ae8093c071009d49a0712ad9e7c7484",
+    "assist/source/superweapon_sidebar_host.h": "2fdab9d6ff232e6fbd6d49fcfa785f6e0f70feea8a1f3abaf971030e5ce6f3ef",
+    "assist/source/superweapon_sidebar_model.h": "4cfcbea10399d19b5ed22cb09a9ee6a4f1c3944d0b6b2eb1c369747b1849ba26",
+    "assist/tests/fixtures/mo_viewport_baseline_5983/main_viewport.h": "7e5b8a58febc0a612b8c148535484713bd5e89199a7615d05c346d193fc9a64c",
+    "assist/tests/fixtures/mo_viewport_baseline_5983/manifest.json": "abb44b5d8da7aa7be086652b013d8be045edc337ca5d7721da8c52be83ee8815",
+    "assist/tests/fixtures/mo_viewport_baseline_5983/tactical_sampler.h": "328b598c2e009c087bba89bbb755051647493d423ba316aea915cd9fc8f67299",
+    "assist/tests/mo_viewport_drawings.cpp": "fc865f49c8dcbb2a9084c78c75252db3a95c6afa7464039c6685a55259c7e5fd",
+    "assist/tests/mo_viewport_drawings.py": "b2e416177ffad40f30d6b1c3aac6a836b5b1bd827b81f1c138cd9835258faf19",
+    "assist/tests/mo_viewport_host.cpp": "e55b9c5cf8ba508beb51ef7925481c5a5a6e1f4f9b7620f418e4b892c8bea7f4",
+    "assist/tests/mo_viewport_host.py": "34711e38c6973c2f76c6a85c59626637d97289342291c1255fb7bd2dc5198c0c",
+    "assist/tests/mo_viewport_scene.cpp": "51bd063c44a287638d82a6e784918a50e0884155e9f644126c9a1e4fd1ad93ca",
+    "assist/tests/mo_viewport_scene.py": "a6483a258156f43c246eada3b6d68c5391a653980eee45db88723be22d32a403",
+    "assist/tests/radar_trigger_projection.cpp": "3454b4d9fe3c5a22755ea7b2075b83812dd6992263e2a0350408208be69f45fe",
+    "external_reader/source/local_ui_renderer.h": "9f1c62105e028c7520e87ba302dc33093acef0e85929f47df50295575fa1b5a9",
+    "external_reader/source/local_ui_task.h": "8015089a96e9c4571bab40eb442502c4f7bf1f9f5429a8a1b598bb0a6f67d4f4",
+    "external_reader/source/main_viewport.h": "59d9c252ac59591f3c2c3e17480d0fd2a5985b5a0660c0cdb9cad07c0803ea9c",
+    "external_reader/source/radar_scene.h": "b2881fa5938344304e950175de7aebfd1917869f2503c09509a765f520988aff",
+    "external_reader/source/sidebar_indicators.h": "ee3fdf9a88d48b8c34f5f48cbc5b9a297b05170693ecbe67a5b54fc1a87ac0d1",
+    "external_reader/source/tactical_sampler.h": "4be24d4ce48c5e4d4bee1333b59c1ad639412fe5562a6ae0887b71c8b1de7b71",
+    "shared/source/native_viewport_projection.h": "0c1b0ab1c6904d44ad6b240320601c93cad92be28ef61d1f72a492e8179ca4d6",
+    "shared/source/overlay_composition.h": "34f62bbb9d2d80acc4314b9e4f494f2a6ddd58904cd86cde5667664a5bcd580a",
+    "shared/source/overlay_compositor.h": "700f9a91c72e1c1c7ee6469e8aa358b636c754a254e9c84c42252e794512104b"
+  },
+  "reports": {
+    "core": {
+      "results": {
+        "x86_64": {
+          "passed": true,
+          "checks": 390,
+          "views": 10,
+          "baseline_rejected_views": 4,
+          "scope": "actual View/sample/crop/leases/compositor/motion and sampler source; baseline source counterexamples; synthetic read-only memory"
+        },
+        "x86": {
+          "passed": true,
+          "checks": 390,
+          "views": 10,
+          "baseline_rejected_views": 4,
+          "scope": "actual View/sample/crop/leases/compositor/motion and sampler source; baseline source counterexamples; synthetic read-only memory"
+        }
+      },
+      "baseline": {
+        "commit": "5983b943e90694f7b2630608bc464d6f8ee148e3",
+        "repository": "ARISAKAHIKARI/RA2-Toolbox-Build",
+        "original_directory": "source/external_reader/source",
+        "scope": "Historical production source copied only as offline test inputs. Never included by production. Verified against the fixed GitHub commit; the runner checks hashes before namespace-isolated compilation.",
+        "files": {
+          "main_viewport.h": "7e5b8a58febc0a612b8c148535484713bd5e89199a7615d05c346d193fc9a64c",
+          "tactical_sampler.h": "328b598c2e009c087bba89bbb755051647493d423ba316aea915cd9fc8f67299"
+        }
+      },
+      "sources": {
+        "assist/source/native_viewport_host.h": "e387c302b034573eef6451571cc5f2c2539e07a85ee2764ea723c334ff5a91e8",
+        "shared/source/native_viewport_projection.h": "0c1b0ab1c6904d44ad6b240320601c93cad92be28ef61d1f72a492e8179ca4d6",
+        "external_reader/source/main_viewport.h": "59d9c252ac59591f3c2c3e17480d0fd2a5985b5a0660c0cdb9cad07c0803ea9c",
+        "assist/source/render_presentation.h": "5ef3cee4771039d440b3a4c831f4456fb4b2127fb288bb8099ed38e01aefdcad",
+        "shared/source/overlay_composition.h": "34f62bbb9d2d80acc4314b9e4f494f2a6ddd58904cd86cde5667664a5bcd580a",
+        "external_reader/source/tactical_sampler.h": "4be24d4ce48c5e4d4bee1333b59c1ad639412fe5562a6ae0887b71c8b1de7b71",
+        "assist/source/protocol.h": "9254a8224f16e44eef2fab6135f2d9ecf29cfeb9557397bb2976aaf249fb923d",
+        "assist/source/label_motion.h": "a1c11d506dad1118f7584913798fb19046209058fc7f73129c396dae11671e85",
+        "assist/source/passenger_motion.h": "c15bb3ba5f03cccc8e4a6f8b31ff680dba521bac2d70dc1f33c7ec3396e0e6df",
+        "assist/source/superweapon_sidebar_model.h": "4cfcbea10399d19b5ed22cb09a9ee6a4f1c3944d0b6b2eb1c369747b1849ba26",
+        "assist/tests/mo_viewport_host.cpp": "e55b9c5cf8ba508beb51ef7925481c5a5a6e1f4f9b7620f418e4b892c8bea7f4",
+        "assist/tests/mo_viewport_host.py": "34711e38c6973c2f76c6a85c59626637d97289342291c1255fb7bd2dc5198c0c"
+      },
+      "changed_during_run": [],
+      "scope": "Source-bound production math, View and CPU pixel fixtures. Real Win32 identity checks only inspect the fixture and a hidden copy of itself. No game process, native Render or multiplayer acceptance."
+    },
+    "drawings": {
+      "results": {
+        "x86_64": {
+          "passed": true,
+          "checks": 21,
+          "scope": "actual placement/MO/formation/air-path drawing and capture functions; recorded GDI+ calls and Shared snapshots; no Windows rendering acceptance"
+        },
+        "x86": {
+          "passed": true,
+          "checks": 21,
+          "scope": "actual placement/MO/formation/air-path drawing and capture functions; recorded GDI+ calls and Shared snapshots; no Windows rendering acceptance"
+        }
+      },
+      "sources": {
+        "assist/source/placement_event_drawing.h": "bc2134ba93849be27409b36c820434eafb5710c1d389d0eb08920f8b5df49e53",
+        "assist/source/mo_orders_host.h": "611dcce9cdd533ae872bad566cf9ea754772a138f15daf48c64dd32d009c12c1",
+        "assist/source/formation_host.h": "b80171ebeb2587adaa0e8f0f3dd949540161d15f9d23e86ca37e4d8b827eb95f",
+        "assist/source/air_path_host.h": "9e362450c6b87e783a8ad4f081cfac7e3289c307e7908fa4108b242d064aa34a",
+        "assist/source/native_viewport_host.h": "e387c302b034573eef6451571cc5f2c2539e07a85ee2764ea723c334ff5a91e8",
+        "assist/source/protocol.h": "9254a8224f16e44eef2fab6135f2d9ecf29cfeb9557397bb2976aaf249fb923d",
+        "shared/source/native_viewport_projection.h": "0c1b0ab1c6904d44ad6b240320601c93cad92be28ef61d1f72a492e8179ca4d6",
+        "assist/tests/mo_viewport_drawings.cpp": "fc865f49c8dcbb2a9084c78c75252db3a95c6afa7464039c6685a55259c7e5fd",
+        "assist/tests/mo_viewport_drawings.py": "b2e416177ffad40f30d6b1c3aac6a836b5b1bd827b81f1c138cd9835258faf19"
+      },
+      "changed_during_run": [],
+      "scope": "Actual drawing/capture functions compiled with recorded GDI+ IO; no native Windows rendering acceptance."
+    },
+    "scene": {
+      "results": {
+        "x86_64": {
+          "passed": true,
+          "checks": 20,
+          "cases": 5,
+          "physical_output": [
+            632,
+            568
+          ],
+          "stable_reference_pixels": 1213038,
+          "stable_mismatches": 0,
+          "scope": "actual Sampler and CPU SceneRenderer R crop to A-sized output; original R-sized render reference and physical-crop counterexample; synthetic terrain/assets"
+        },
+        "x86": {
+          "passed": true,
+          "checks": 20,
+          "cases": 5,
+          "physical_output": [
+            632,
+            568
+          ],
+          "stable_reference_pixels": 1213038,
+          "stable_mismatches": 0,
+          "scope": "actual Sampler and CPU SceneRenderer R crop to A-sized output; original R-sized render reference and physical-crop counterexample; synthetic terrain/assets"
+        }
+      },
+      "sources": {
+        "external_reader/source/radar_scene.h": "b2881fa5938344304e950175de7aebfd1917869f2503c09509a765f520988aff",
+        "external_reader/source/main_viewport.h": "59d9c252ac59591f3c2c3e17480d0fd2a5985b5a0660c0cdb9cad07c0803ea9c",
+        "assist/source/native_viewport_host.h": "e387c302b034573eef6451571cc5f2c2539e07a85ee2764ea723c334ff5a91e8",
+        "shared/source/native_viewport_projection.h": "0c1b0ab1c6904d44ad6b240320601c93cad92be28ef61d1f72a492e8179ca4d6",
+        "assist/tests/radar_trigger_projection.cpp": "3454b4d9fe3c5a22755ea7b2075b83812dd6992263e2a0350408208be69f45fe",
+        "assist/tests/mo_viewport_scene.cpp": "51bd063c44a287638d82a6e784918a50e0884155e9f644126c9a1e4fd1ad93ca",
+        "assist/tests/mo_viewport_scene.py": "a6483a258156f43c246eada3b6d68c5391a653980eee45db88723be22d32a403"
+      },
+      "changed_during_run": [],
+      "scope": "Actual CPU SceneRenderer and synthetic terrain/assets; no native Render, DDraw, GPU or game process acceptance."
+    }
+  },
+  "full_host_translation_unit": {
+    "passed": true,
+    "target": "x86_64-windows-gnu",
+    "optimization": "O1",
+    "command": "zig c++ -target x86_64-windows-gnu -std=c++17 -O1 -DRA2_UNIFIED -DRA2_GPU_FAULT_GUARD -DwWinMain=TacticalEntry -Isuite/source -c assist/source/main.cpp -o <out>/assist-check.o",
+    "seconds": 77.62,
+    "object_sha256": "9e488fda488e22ae5ab031d686f92ecb9b1b2e898d4d39bcb792d57e60cc65e0",
+    "changed_during_compile": [],
+    "note": "Compile-only integration check. This object is not a delivered release executable."
+  },
+  "reproduce": {
+    "core": "python assist/tests/mo_viewport_host.py --zig <zig-0.13.0> --out <out>/core",
+    "drawings": "python assist/tests/mo_viewport_drawings.py --zig <zig-0.13.0> --out <out>/drawings",
+    "scene": "python assist/tests/mo_viewport_scene.py --zig <zig-0.13.0> --out <out>/scene"
+  }
+}

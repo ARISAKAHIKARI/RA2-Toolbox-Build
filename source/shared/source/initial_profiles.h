@@ -4,6 +4,10 @@
 // First use only. Never replace an existing user profile during an update.
 namespace initialprofiles {
 inline constexpr wchar_t Assist[]=L"\xFEFF" LR"RA2INI([Display]
+RenderParticles=1
+RenderLasers=1
+RenderVoxelLighting=1
+RenderSpriteLighting=1
 FPS=500
 LabelRefreshVersion=1
 TopMargin=20
@@ -194,6 +198,7 @@ RangeCells=30
 [Cooperative]
 AdvancedEnter=0
 AircraftSpread=0
+AircraftAllocationPolicy=0
 EnterHoldKey=18
 AirHoldKey1=0
 AirHoldKey2=0

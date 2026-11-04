@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-31",
+  "source_only": true,
+  "no_game_execution": true,
+  "pins": {
+    "CnCNet_yr_patches": "0318b1f1bddcc9c664c50ebee820cde74a662f47",
+    "YRpp": "d9795546950fcc75a94325ffc83b44d16ec34ce2",
+    "Vera20K": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+    "Phobos": "f06797ec39f2b60b9fa5b6da69288c36d189b712"
+  },
+  "retrieved_files": [
+    {
+      "path": "inc/Sidebar.inc",
+      "sha": "8d7fa7f1043a8b81b01204f98c9f5ff7cb800317"
+    },
+    {
+      "path": "TechnoTypeClass.h",
+      "sha": "c817f49118b4c8b23b5f7bb4b08c677ca57723f9"
+    },
+    {
+      "path": "UnitClass.h",
+      "sha": "2d69ce9a230a4516cf6942598f462e5f4c3a68f7"
+    },
+    {
+      "path": "BuildingClass.h",
+      "sha": "6e28fed8b6d3b2f63e61a8d68fdbae22288c1a31"
+    },
+    {
+      "path": "TechnoClass.h",
+      "sha": "8af9d48463819a5879c2b0a0e205a98644551c47"
+    },
+    {
+      "path": "FootClass.h",
+      "sha": "e2e590756515a69d1cd6b0f6d91bbc98f79b4aa5"
+    },
+    {
+      "path": "UnitTypeClass.h",
+      "sha": "a48b36b18fa5d076fe8b9fba5ce0d5b167346c77"
+    },
+    {
+      "path": "BuildingTypeClass.h",
+      "sha": "74545e1cbf7a547ab83bfb14adcbcd08b771877a"
+    },
+    {
+      "path": "CaptureManagerClass.h",
+      "sha": "5287bd48c8df0216cb3e08182de9033f6b9ba1a7"
+    },
+    {
+      "path": "SpawnManagerClass.h",
+      "sha": "e1ac9600fd5572fc621d5edbf32f6d26f5b78eca"
+    },
+    {
+      "path": "RulesClass.h",
+      "sha": "33406f7f1450cf84f382ea751c4b6ce58a53b480"
+    },
+    {
+      "path": "TacticalClass.h",
+      "sha": "56f1189665cbb93e82fb8e2b56b09a237d6858f3"
+    },
+    {
+      "path": "src/app/presentation/radial_indicators.rs",
+      "sha": "124ae8311091c17d59ec8dcdf617e852f5c098ff"
+    },
+    {
+      "path": "src/Misc/Hooks.UI.cpp",
+      "sha": "f5f1c410e474f7c6e95b6142d9bc5ae4e6719374"
+    },
+    {
+      "path": "src/Ext/House/Body.cpp",
+      "sha": "69eca7a8740569a713d84a638599a8e94cc8f1fc"
+    },
+    {
+      "path": "src/Ext/Techno/Body.cpp",
+      "sha": "a675df62e84a0ec3a8601b5bc66ffd988b9d1767"
+    },
+    {
+      "path": "src/cloaked_patches.asm",
+      "sha": "73c3d49d970f1972044dd7fb37d9b2c780b2ddf6"
+    },
+    {
+      "path": "src/Phobos.INI.cpp",
+      "sha": "9ae3a89eead758e27a9ee7485284446f2b3e2f96"
+    },
+    {
+      "path": "src/Ext/Side/Body.h",
+      "sha": "7c69ee4220d55584c29a9af718750586c0db9d0c"
+    }
+  ]
+}

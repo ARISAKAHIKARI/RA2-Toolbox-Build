@@ -1,0 +1,78 @@
+name: Validate frontend input and independent panes
+on:
+  push:
+    branches: [codex/fix-render-feedback-20261029]
+    paths:
+      - 'source/**'
+      - '.github/workflows/validate-frontend.yml'
+      - '.github/workflows/validate-render-feedback-fixes.yml'
+      - '.github/workflows/validate-x64-render.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-controls:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86-windows-gnu, x86_64-windows-gnu]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force frontend-logs,frontend-tests | Out-Null
+      - name: Exercise actual Win32 controls and asynchronous pane windows
+        shell: pwsh
+        env:
+          FRONTEND_TARGET: ${{ matrix.target }}
+        run: |
+          foreach($name in 'frontend_controls_windows','frontend_panes_windows'){
+            & $env:ZIG_EXE c++ -target $env:FRONTEND_TARGET -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "frontend-tests/$name.exe" -luser32 -lgdi32 -lcomctl32
+            if($LASTEXITCODE -ne 0){throw "Frontend fixture compilation failed: $name"}
+            & "./frontend-tests/$name.exe" 2>&1 | Tee-Object "frontend-logs/$name.log"
+            if($LASTEXITCODE -ne 0){throw "Frontend controlled-window fixture failed: $name"}
+            if(-not(Select-String -Quiet -Path "frontend-logs/$name.log" -Pattern '^PASS:')){throw "Frontend fixture PASS marker missing: $name"}
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-controls-${{ matrix.target }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: frontend-logs/*.log
+  portable-gestures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify gesture transitions and settings dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p frontend-logs
+          for name in key_gesture hotkey_routes type_hotkey settings_dependencies command_cursor_host formation; do
+            g++ -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "/tmp/frontend-$name"
+            "/tmp/frontend-$name" 2>&1 | tee "frontend-logs/$name.log"
+          done
+          for name in modern_ui_test hold_key_ui_test auto_settings_ui_test hotkey_host_test secondary_display_host_test super_binding_ui_test formation_switch_test ui_geometry_test suite_display_test cursor_settings_ui_test native_key_gesture_test frontend_visibility_test frontend_restore_test settings_dialog_test; do
+            python3 "source/assist/tests/$name.py" 2>&1 | tee "frontend-logs/$name.log"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-portable-gestures
+          if-no-files-found: warn
+          retention-days: 14
+          path: frontend-logs/*.log

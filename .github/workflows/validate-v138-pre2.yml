@@ -76,8 +76,9 @@ jobs:
           python3 source/assist/tests/world_overlay_invalidation_test.py
           python3 source/assist/tests/construction_host_test.py
           python3 source/assist/tests/construction_batch_runtime_test.py
+          g++ -std=c++17 -O2 -c source/third_party/xbrz/xbrz.cpp -o /tmp/render-xbrz.o
           for test in label_motion passenger_motion pacing enemy_markers enemy_clusters watch_view watch_host watch_slots watch_shroud_mask visual_pose voxel_preview game_assets live_ini cameo_catalog camera_raster building_animations building_components voxel_lighting radar_paint_gate secondary_radar_layout radar_scene radar_shroud_mask radar_shroud_assets minimap_overlay map_bounds formation formation_host sprite_formats terrain_preview art_variants garrison_frame radar_boundary native_canvas repair_visuals projectile_visuals scene_lighting command_delivery direct_modes; do
-            g++ -std=c++17 -O2 "source/assist/tests/$test.cpp" -o "/tmp/$test"
+            g++ -std=c++17 -O2 "source/assist/tests/$test.cpp" /tmp/render-xbrz.o -o "/tmp/$test"
             "/tmp/$test"
           done
           g++ -std=c++17 -O2 -pthread source/assist/tests/latest_worker.cpp -o /tmp/latest-worker
@@ -107,6 +108,7 @@ jobs:
           # Zig's optimized Windows compile must not omit those expressions.
           printf '#include <cassert>\n#ifdef NDEBUG\n#error Windows numerical assertions are disabled\n#endif\n' > /tmp/windows-numerical-assert-probe.cpp
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG -c /tmp/windows-numerical-assert-probe.cpp -o /tmp/windows-numerical-assert-probe.o
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -c source/third_party/xbrz/xbrz.cpp -o /tmp/windows-render-xbrz.o
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/voxel_lighting.cpp -o source/voxel-lighting-test.exe
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/voxel_preview.cpp -o source/voxel-preview-test.exe
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/building_components.cpp -o source/building-components-test.exe
@@ -118,9 +120,9 @@ jobs:
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/radar_shroud_mask.cpp -o source/radar-shroud-mask-test.exe
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/radar_shroud_assets.cpp -o source/radar-shroud-assets-test.exe
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/watch_shroud_mask.cpp -o source/watch-shroud-mask-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/native_canvas.cpp -o source/native-canvas-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/repair_visuals.cpp -o source/repair-visuals-test.exe
-          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/projectile_visuals.cpp -o source/projectile-visuals-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/native_canvas.cpp /tmp/windows-render-xbrz.o -o source/native-canvas-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/repair_visuals.cpp /tmp/windows-render-xbrz.o -o source/repair-visuals-test.exe
+          "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/projectile_visuals.cpp /tmp/windows-render-xbrz.o -o source/projectile-visuals-test.exe
       - name: Validate final PE files and bridge ABI
         run: python3 source/tools/verify_windows_outputs.py
       - uses: actions/upload-artifact@v4

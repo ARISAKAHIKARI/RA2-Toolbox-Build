@@ -1,0 +1,321 @@
+{
+  "scope": "Compiled ClickedEvent House adapter with original Target/constructor/OutList.\nSynthetic Win32 and world; real unified manager/capture and native instructions.\nNo sender, receiver, unit effects, planning execution or real multiplayer test.\n",
+  "dll_sha256": "24c405af124ec60c88b92c47b0cbaca9ab02ba1ed7530f5631f442520f43a08c",
+  "game_fixture_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "foreign_object_0_01",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_0_02",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_0_06",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_0_07",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_0_09",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_0_0a",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_0_11",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_0_15",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_0_16",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_5_01",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_5_02",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_5_06",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_5_07",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_5_09",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_5_0a",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_5_11",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_5_15",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_5_16",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_3_01",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_3_02",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_3_06",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_3_07",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_3_09",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_3_0a",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_3_11",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_3_15",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_3_16",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_4_01",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_4_02",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_4_06",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_4_07",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_4_09",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_4_0a",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_4_11",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_4_15",
+      "status": "PASS"
+    },
+    {
+      "case": "foreign_object_4_16",
+      "status": "PASS"
+    },
+    {
+      "case": "all_256_kinds_only_explicit_object_allowlist",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_control_off",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_toggle_off_before_tick",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_network_off",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_network_conflict",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_ai_no_scheduler",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_dead",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_limbo",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_unknown_id",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_zero_id",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_wrong_tag",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_owner_invalid",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_owner_index",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_owner_slot",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_passive",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_neutral",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_observer",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_defeated",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_planning",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_foreground",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_expired_heartbeat",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_wrong_thread",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_queue_full",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_bad_tail",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_bad_head",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_tail_mismatch",
+      "status": "PASS"
+    },
+    {
+      "case": "reject_missing_mega_adapter",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_unchanged_normal",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_unchanged_control_off",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_unchanged_network_off",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_unchanged_toggle_off_before_tick",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_unchanged_chat",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_unchanged_foreground",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_unchanged_planning",
+      "status": "PASS"
+    },
+    {
+      "case": "own_native_unchanged_unknown_kind",
+      "status": "PASS"
+    },
+    {
+      "case": "option_off_keeps_original_foreign_local_house_behavior",
+      "status": "PASS"
+    },
+    {
+      "case": "option_disable_restores_original_site",
+      "status": "PASS"
+    },
+    {
+      "case": "signature_conflict_preserves_foreign_bytes",
+      "status": "PASS"
+    },
+    {
+      "case": "adapter_abi_own",
+      "status": "PASS"
+    },
+    {
+      "case": "adapter_abi_foreign",
+      "status": "PASS"
+    },
+    {
+      "case": "adapter_abi_rejected",
+      "status": "PASS"
+    }
+  ]
+}

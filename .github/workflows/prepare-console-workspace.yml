@@ -1,0 +1,89 @@
+name: Prepare console architecture workspace
+on:
+  push:
+    branches: [codex/console-architecture-20261103]
+    paths: [.github/workflows/prepare-console-workspace.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            source
+            docs
+            .github
+            verification
+            release
+            packages/v1.0.39-pre.6
+            packages/v1.0.39-pre.7
+      - name: Package the clean git-backed development workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote set-url origin https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build.git
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          test -z "$(git status --porcelain)"
+          python3 - <<'PY'
+          import configparser, pathlib
+          c=configparser.ConfigParser()
+          c.read('.git/config')
+          assert not any('extraheader' in k.lower() or 'credential' in k.lower() for s in c.sections() for k in c[s]), 'Unexpected authentication material in repository config'
+          assert pathlib.Path('.git/shallow').is_file(), 'Expected shallow clone boundary'
+          assert pathlib.Path('AGENTS.md').is_file()
+          assert pathlib.Path('source/suite/source/main.cpp').is_file()
+          assert pathlib.Path('source/assist/tests').is_dir()
+          PY
+          tar -czf "$RUNNER_TEMP/console-refactor-source.tar.gz" .
+          SOURCE_ARCHIVE="$RUNNER_TEMP/console-refactor-source.tar.gz" python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess
+          p=pathlib.Path(os.environ['SOURCE_ARCHIVE'])
+          info={'commit':os.environ['GITHUB_SHA'],'branch':os.environ['GITHUB_REF_NAME'],'functional_base':'1852e60884fb0fe9724f963fece0e065dc7ae9c9','git_metadata_included':True,'shallow':True,'working_tree_clean':True,'sparse_checkout_excludes':'historical binary payload and historical package archives','source_files':len(subprocess.check_output(['git','ls-files','source']).splitlines()),'archive_bytes':p.stat().st_size,'archive_sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
+          p.with_name('console-refactor-source.json').write_text(json.dumps(info,indent=2)+'\n')
+          print(json.dumps(info))
+          PY
+      - name: Upload the ready source workspace
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-console-refactor-source
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/console-refactor-source.tar.gz
+            ${{ runner.temp }}/console-refactor-source.json
+  linux-zig:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Prepare the official Linux Zig 0.13.0 toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl --fail --location --retry 3 https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz -o zig-official.tar.xz
+          curl --fail --location --retry 3 https://ziglang.org/download/index.json -o zig-index.json
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          expected=json.loads(pathlib.Path('zig-index.json').read_text())['0.13.0']['x86_64-linux']['shasum']
+          actual=hashlib.sha256(pathlib.Path('zig-official.tar.xz').read_bytes()).hexdigest()
+          assert actual==expected, 'Official Zig SHA-256 mismatch'
+          PY
+          tar -xJf zig-official.tar.xz
+          test "$(./zig-linux-x86_64-0.13.0/zig version)" = 0.13.0
+          tar -czf zig-linux-0.13.0.tar.gz zig-linux-x86_64-0.13.0
+          sha256sum zig-linux-0.13.0.tar.gz > zig-linux-0.13.0.sha256
+      - name: Upload the local build toolchain
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-console-linux-zig-0.13.0
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/zig-linux-0.13.0.tar.gz
+            ${{ runner.temp }}/zig-linux-0.13.0.sha256

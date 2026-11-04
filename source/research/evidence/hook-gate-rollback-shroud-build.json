@@ -1,0 +1,111 @@
+{
+  "base_commit": "156f19dee2cc3fb2b3122e79cc14fc7234d9b199",
+  "changes": [
+    "Remove peer FrameInfo/CRC installation prerequisite in host, Runtime, central patch writer and diagnostics",
+    "Restore explicit TechEnhance opt-in for multiplayer; retain ownership and rollback",
+    "Reject incomplete whole-map and live shroud candidates; retain same-world complete front"
+  ],
+  "files": {
+    "toolbox": {
+      "RA2Toolbox.exe": {
+        "bytes": 8414720,
+        "sha256": "5b769050b90fb221ece1b4779e88af08b80db620a2cb92c3543ee84a66cdfad9"
+      },
+      "GameRuntime.dll": {
+        "bytes": 5270528,
+        "sha256": "af3443a2210a477c519352a42ff9ed73ef1964be8a597987394867db30014775"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "a799ed5312752c76ab2be61ec2f9373f32f8e1fa7cca23ed578d0ac93e55e2ab"
+      }
+    },
+    "hook_test": {
+      "RA2HookTest.exe": {
+        "bytes": 443904,
+        "sha256": "0ecfe015eac762438de266a6db11e7c719c0496e75421a52864476ad85bc948f"
+      },
+      "GameRuntime.dll": {
+        "bytes": 5271040,
+        "sha256": "93227218f5fdd5c0e8c4e95d976e97b0bd98d53d63cceef7cc610f14e6d2970b"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "a799ed5312752c76ab2be61ec2f9373f32f8e1fa7cca23ed578d0ac93e55e2ab"
+      }
+    }
+  },
+  "source_blobs": {
+    ".github/workflows/validate-peer-sync-hooks.yml": "fdf76dbbc07b29d205bc09b17fa4e737224cee3a",
+    "source/BUILD_SOURCE_MANIFEST.json": "c3ee09418c2036cec3d77735518f02393215aeea",
+    "source/assist/source/main.cpp": "b437f2f5443e49121b1ea0f938d0a9f838c60132",
+    "source/assist/source/bridge.cpp": "5fd9cee47bd7a91080754bd872c8e32eeb5baad0",
+    "source/assist/source/hook_readiness.h": "daf272bdc4f0579e2d59dba8379a4a16d375f882",
+    "source/assist/source/tech_enhancement.h": "2f1b368631204f27b14707f9bc4c2e8bc066d642",
+    "source/assist/source/tech_enhancement_bridge.h": "e0f81273a9ceebcf9bf5da5f57ef5080c1eb7244",
+    "source/assist/tests/initial_sync_gate.cpp": "e5086de77e26a421577e93795d678600837c33ca",
+    "source/assist/tests/tech_enhancement_recovery.cpp": "6256984456074ee2ad29bf0dac30db1e2e15deb9",
+    "source/assist/tests/radar_visibility_publication.cpp": "aa88c77c8bb37d2d0fa11d5593371dd070deba23",
+    "source/external_reader/source/radar_map.h": "fa177a72f2859a14feb2b50d918d5edf75c222c4",
+    "source/external_reader/source/radar_live_shroud.h": "8f2b6fdc9f29a4323b89b3670086620409e3b3df",
+    "source/game_runtime/source/frame_signal_runtime.h": "94317b13782b33849451e8c689f058c3885b5668",
+    "source/shared/source/multiplayer_patch_gate.h": "c8754f80e4f25e5ca815889d8fef431c11941c24",
+    "source/hook_diagnostics/source/main.cpp": "27b322609e453b1ad3fbef4b0bb3132de9ac3f59",
+    "source/hook_diagnostics/README.md": "9aba3dbc4f9bf8c7d1cb627dee69759d3337a6d6",
+    "source/research/INDEX.md": "3ec6b5ebc2042d7bb31eb056b1a733c28b633869",
+    "source/research/2026-11-01-hook-gate-rollback-shroud-publication.md": "f943a44e48af6ddbc519a6d1cb2daf5c2e84126a",
+    "source/research/2026-10-31-peer-sync-hook-activation-audit.md": "136226524469ea249fcb398d809fca9daa917a64",
+    "source/research/2026-11-01-latent-desync-mutation-audit.md": "445dd1196ffaf1f7edea6e8416eabb17f4d0cbad",
+    "source/research/2026-11-01-ra2ol-hook-isolation-diagnostics.md": "63265a56de77074f43b44cd8d9932c5d79124e96"
+  },
+  "deleted": [
+    "source/assist/source/initial_sync_bridge.h"
+  ],
+  "regressions": {
+    "tests": [
+      {
+        "name": "initial_sync_gate",
+        "build_exit": 0,
+        "test_exit": 0,
+        "stdout": "PASS: 19 retired observer and current local-only patch-readiness cases; no game or network execution\n"
+      },
+      {
+        "name": "tech_enhancement_recovery",
+        "build_exit": 0,
+        "test_exit": 0,
+        "stdout": ""
+      },
+      {
+        "name": "radar_boundary",
+        "build_exit": 0,
+        "test_exit": 0,
+        "stdout": "PASS signed south-edge TMP, native raw 2x1 flat clip and exact backing dimensions, four-side playfield reveal, explored/shrouded border policy\n"
+      },
+      {
+        "name": "radar_shroud_mask",
+        "build_exit": 0,
+        "test_exit": 0,
+        "stdout": "PASS native flat shroud anchor, asymmetric edge frames, fog alpha, height independence and post-composition masking\n"
+      },
+      {
+        "name": "radar_visibility_publication",
+        "build_exit": 0,
+        "test_exit": 0,
+        "stdout": "PASS: 10 incomplete terrain batches rejected; front retained/recovered; live masks reject missing reads; null cells and page fallback remain valid; world changes invalidate\r\n",
+        "scope": "Final source including projection-offset read failures"
+      }
+    ],
+    "game_tested": false,
+    "multiplayer_tested": false
+  },
+  "diagnostics": {
+    "ui_smoke_exit": 0,
+    "broker_smoke_exit": 0,
+    "pe_abi_checks_exit": 0,
+    "game_attached": false
+  },
+  "production_pe_checks_exit": 0,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "visual_tested": false
+}

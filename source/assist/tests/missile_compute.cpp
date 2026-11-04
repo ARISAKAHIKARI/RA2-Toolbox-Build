@@ -48,5 +48,29 @@ int main(){
  i={};i.frame=1;i.count=i.targetCount=64;i.mode=Even;
  for(int s=0;s<64;++s){i.sources[s].id=s+1;i.targets[s]={uint32_t(100+s),0,100,0};for(int t=0;t<64;++t)i.edges[s][t]={40,uint32_t(s+t),0,1};}
  r=calculate(i);assert(r.count==64);bool used[64]{};for(int n=0;n<r.count;++n){assert(!used[r.orders[n].source]);used[r.orders[n].source]=true;}
- puts("PASS smart/even quotas, staggered entry, advance acquisition, excess locks, cooldown, pending, release and capacity");
+ // New reservation strategy: future targets and excess guns sleep, while
+ // ready covering attacks are ordered first. Completed shots reserve damage.
+ i={};i.frame=1;i.count=3;i.targetCount=2;i.mode=Smart|ReserveSleep;
+ i.targets[0]={20,0,100,0};i.targets[1]={21,0,100,0};
+ for(int s=0;s<3;++s){i.sources[s].id=s+1;i.edges[s][0]={120,100,0,1};i.edges[s][1]={120,200,10,0};}
+ r=calculate(i);assert(r.count==3&&r.orders[0].action==Attack);
+ assert(r.orders[1].action==Hold&&r.orders[2].action==Hold);
+ i.targetCount=1;i.sources[0].committedTarget=20;i.sources[0].committedDamage=120;i.sources[0].cooldown=20;
+ r=calculate(i);assert(r.count==3);for(int s=0;s<r.count;++s)assert(r.orders[s].action==Hold);
+ i.sources[0].pendingMission=TransientBusy;r=calculate(i);assert(r.count==2);
+ i.sources[0].pendingMission=-1;i.sources[0].committedDamage=0;i.sources[0].cooldown=0;
+ for(auto&s:i.sources){s.held=1;s.pending=20;}
+ r=calculate(i);assert(r.count==3&&r.orders[0].action==Attack);
+ assert(r.orders[1].action==Hold&&r.orders[2].action==Hold);
+ // A held lease is recorded at enqueue; it can outlive an unobserved Sleep.
+ // Runtime must receive the Hold proposal to inspect the actual native task.
+ i={};i.frame=1;i.count=i.targetCount=1;i.mode=Smart|ReserveSleep;
+ i.targets[0]={20,0,100,0};i.sources[0].id=1;i.sources[0].held=1;
+ i.sources[0].managed=1;i.sources[0].pending=20;i.sources[0].current=20;
+ i.edges[0][0]={120,100,10,0};
+ r=calculate(i);assert(r.count==1&&r.orders[0].action==Hold&&r.orders[0].target==0);
+ i.count=3;for(auto&s:i.sources)s.held=1;
+ i.targetCount=0;r=calculate(i);assert(r.count==3);for(int n=0;n<r.count;++n)assert(r.orders[n].action==Release);
+ puts("PASS legacy allocation plus sleep reservation, fired-shot coverage, wake order, transient burst and cleanup");
 }
+

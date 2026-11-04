@@ -1,0 +1,203 @@
+{
+  "scope": "Execute unpatched native shroud/fog drawers with replacement alpha SHP data.\nPrivate EXE and matching runtime DLL are inputs, never outputs. This proves\nthe leaf blitter's material semantics only, not resource lifetime or netplay.\n",
+  "exe_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "dll_sha256": "60fa36886561ca47ab7c641776042cc47ffba87464fdcbe1bfb0228ec5b6c31c",
+  "engine_code_writes": 0,
+  "windows_tested": false,
+  "resource_lifetime_tested": false,
+  "multiplayer_tested": false,
+  "cases": [
+    {
+      "source": 2,
+      "replacement": "original",
+      "fog": false,
+      "material": 2,
+      "alpha": 2,
+      "status": "PASS"
+    },
+    {
+      "source": 2,
+      "replacement": "original",
+      "fog": true,
+      "material": 2,
+      "alpha": 2,
+      "status": "PASS"
+    },
+    {
+      "source": 2,
+      "replacement": "clear",
+      "fog": false,
+      "material": 127,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 2,
+      "replacement": "clear",
+      "fog": true,
+      "material": 127,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 2,
+      "replacement": "half",
+      "fog": false,
+      "material": 65,
+      "alpha": 65,
+      "status": "PASS"
+    },
+    {
+      "source": 2,
+      "replacement": "half",
+      "fog": true,
+      "material": 65,
+      "alpha": 65,
+      "status": "PASS"
+    },
+    {
+      "source": 64,
+      "replacement": "original",
+      "fog": false,
+      "material": 64,
+      "alpha": 64,
+      "status": "PASS"
+    },
+    {
+      "source": 64,
+      "replacement": "original",
+      "fog": true,
+      "material": 64,
+      "alpha": 64,
+      "status": "PASS"
+    },
+    {
+      "source": 64,
+      "replacement": "clear",
+      "fog": false,
+      "material": 127,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 64,
+      "replacement": "clear",
+      "fog": true,
+      "material": 127,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 64,
+      "replacement": "half",
+      "fog": false,
+      "material": 96,
+      "alpha": 96,
+      "status": "PASS"
+    },
+    {
+      "source": 64,
+      "replacement": "half",
+      "fog": true,
+      "material": 96,
+      "alpha": 96,
+      "status": "PASS"
+    },
+    {
+      "source": 127,
+      "replacement": "original",
+      "fog": false,
+      "material": 127,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 127,
+      "replacement": "original",
+      "fog": true,
+      "material": 127,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 127,
+      "replacement": "clear",
+      "fog": false,
+      "material": 127,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 127,
+      "replacement": "clear",
+      "fog": true,
+      "material": 127,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 127,
+      "replacement": "half",
+      "fog": false,
+      "material": 127,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 127,
+      "replacement": "half",
+      "fog": true,
+      "material": 127,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 254,
+      "replacement": "original",
+      "fog": false,
+      "material": 254,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 254,
+      "replacement": "original",
+      "fog": true,
+      "material": 254,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 254,
+      "replacement": "clear",
+      "fog": false,
+      "material": 254,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 254,
+      "replacement": "clear",
+      "fog": true,
+      "material": 254,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 254,
+      "replacement": "half",
+      "fog": false,
+      "material": 254,
+      "alpha": 127,
+      "status": "PASS"
+    },
+    {
+      "source": 254,
+      "replacement": "half",
+      "fog": true,
+      "material": 254,
+      "alpha": 127,
+      "status": "PASS"
+    }
+  ]
+}

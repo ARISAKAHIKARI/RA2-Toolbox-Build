@@ -1,0 +1,331 @@
+{
+  "scope": "Controlled original Sell/ClickedEvent/cursor eligibility; no full refund/removal or transport.",
+  "capture_sha256": "94ac595e7a6fef82839b7959f3f926a52708fc857fbc65aa9ff88428dff3f4bd",
+  "supported_source_exe_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "results": [
+    {
+      "path": "Building::Sell(-1)",
+      "session": 0,
+      "local": 0,
+      "owner": 0,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission",
+        "sound"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 0,
+      "local": 0,
+      "owner": 1,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 0,
+      "local": 1,
+      "owner": 0,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 0,
+      "local": 1,
+      "owner": 1,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission",
+        "sound"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 3,
+      "local": 0,
+      "owner": 0,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission",
+        "sound"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 3,
+      "local": 0,
+      "owner": 1,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 3,
+      "local": 1,
+      "owner": 0,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 3,
+      "local": 1,
+      "owner": 1,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission",
+        "sound"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 4,
+      "local": 0,
+      "owner": 0,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission",
+        "sound"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 4,
+      "local": 0,
+      "owner": 1,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 4,
+      "local": 1,
+      "owner": 0,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 4,
+      "local": 1,
+      "owner": 1,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission",
+        "sound"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 5,
+      "local": 0,
+      "owner": 0,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission",
+        "sound"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 5,
+      "local": 0,
+      "owner": 1,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 5,
+      "local": 1,
+      "owner": 0,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell(-1)",
+      "session": 5,
+      "local": 1,
+      "owner": 1,
+      "queued_mission": 19,
+      "calls": [
+        "NextMission",
+        "sound"
+      ],
+      "outlist": 0,
+      "status": "PASS"
+    },
+    {
+      "path": "ClickedEvent(Sell)",
+      "local": 0,
+      "owner": 0,
+      "planning": 0,
+      "outlist": 1,
+      "event_house": 0,
+      "mission_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "path": "ClickedEvent(Sell)",
+      "local": 0,
+      "owner": 0,
+      "planning": 1,
+      "outlist": 0,
+      "event_house": null,
+      "mission_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "path": "ClickedEvent(Sell)",
+      "local": 0,
+      "owner": 1,
+      "planning": 0,
+      "outlist": 1,
+      "event_house": 0,
+      "mission_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "path": "ClickedEvent(Sell)",
+      "local": 0,
+      "owner": 1,
+      "planning": 1,
+      "outlist": 0,
+      "event_house": null,
+      "mission_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "path": "ClickedEvent(Sell)",
+      "local": 1,
+      "owner": 0,
+      "planning": 0,
+      "outlist": 1,
+      "event_house": 1,
+      "mission_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "path": "ClickedEvent(Sell)",
+      "local": 1,
+      "owner": 0,
+      "planning": 1,
+      "outlist": 0,
+      "event_house": null,
+      "mission_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "path": "ClickedEvent(Sell)",
+      "local": 1,
+      "owner": 1,
+      "planning": 0,
+      "outlist": 1,
+      "event_house": 1,
+      "mission_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "path": "ClickedEvent(Sell)",
+      "local": 1,
+      "owner": 1,
+      "planning": 1,
+      "outlist": 0,
+      "event_house": null,
+      "mission_unchanged": true,
+      "status": "PASS"
+    },
+    {
+      "path": "Sell cursor 6929CD",
+      "local": 0,
+      "owner": 0,
+      "allow": true,
+      "status": "PASS"
+    },
+    {
+      "path": "Sell cursor 6929CD",
+      "local": 0,
+      "owner": 1,
+      "allow": false,
+      "status": "PASS"
+    },
+    {
+      "path": "Sell cursor 6929CD",
+      "local": 1,
+      "owner": 0,
+      "allow": false,
+      "status": "PASS"
+    },
+    {
+      "path": "Sell cursor 6929CD",
+      "local": 1,
+      "owner": 1,
+      "allow": true,
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell alternate branch",
+      "branch": "no_gate",
+      "calls": [],
+      "status": "PASS"
+    },
+    {
+      "path": "Building::Sell alternate branch",
+      "branch": "type_gate",
+      "calls": [
+        "type_operation",
+        "object_D4",
+        "object_F8"
+      ],
+      "status": "PASS"
+    }
+  ]
+}

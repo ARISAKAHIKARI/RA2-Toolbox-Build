@@ -6,6 +6,131 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| WebView2 控制臺啟動失敗急修 | [真 Runtime 導航自我取消、精確 URI／ID 與 native smoke](2026-11-04-webview-navigation-startup-hotfix.md) | WebView2 NavigateToString data-uri about:blank NavigationId OPERATION_CANCELED Host-only |
+| 科技加強精確等級參數 | [21白名單、原生Jcc／四DR交易與雙向在產交接](2026-11-03-tech-enhancement-exact-parameters.md) | Assist92 TechEnhance EFLAGS 4F7951 4F7B66 exact-Level1 four-slots legacy-handoff no-text no-rules |
+| 1.0.41-pre.1 MO 接續與視野依賴 | [倍率、雷達遮罩、退出夾限及完整構建](2026-11-03-pre1-mo-followup.md) | Assist92 MAX radar-only native-widget retirement 6D8640 SmartArea WebView2 |
+| MO 區域進樓、公平配額與操作政策 | [Select/Move補令、pending容量與七欄捕獲](2026-11-03-mo-smartarea-and-policy.md) | SmartArea InfantryAbsorb Enter7 forceConstructed Options28 Assist92 Commit |
+| 1.0.41-pre.1 Web 控制臺整合 | [真正三方合併、15 組收納與即時操作時效](2026-11-03-console-pre1-integration.md) | WebView2 4b6bb9cc 35-delta metadata runtimeError immediate TTL owner-thread |
+| MO 地圖縮放 Host A/R 整合 | [物理錨點、換代失效、能力握手與啟動探查](2026-11-03-mo-viewport-host-projection.md) | Assist91 Transform physical logical generation HostHandshake Lifecycle mappingLost probeDue |
+| Native viewport 首幀與重連未知狀態 | [唯讀 mapping 探測、101 項真 Win32 驗證](2026-11-03-viewport-first-frame-probe.md) | probeExisting probeAbsent HostHandshake first-frame prior mapping PID creation |
+| 收納狀態中的真正錯誤與還原失敗 | [錯誤自動展開、偏好還原與 4063 項驗證](2026-11-03-console-fold-error-visibility.md) | failedSettingGroups restore CRC network control tech Master error-visible |
+| 控制臺摺疊與當下選取所屬方自毀 | [14 組收納、一次性快捷鍵與高危標記](2026-11-02-console-folds-and-selected-owner-destruct.md) | Destruct arg0 owner selection immediate hotkey1735 folds14 CRC high-risk |
+| 原生放置高地底邊與待確認產品重啟 | [578540 true、高程邊界與重複入隊入口](2026-11-02-placement-height-boundary-reentry.md) | 578540 CoordinatesLegal 568300 bottom elevation pending Place |
+| Place 成功後只清原產品的原生游標 | [有限監看、active/copy 原生 setter 與產品身分](2026-11-02-native-placement-completion-ui.md) | 4A8BF0 4A8D50 product UID OnMap completion no-fake-click |
+| 科技不改指令／規則的可選原生面板模式 | [硬體斷點、參數權限、衝突與恢復](2026-11-02-tech-ui-parameter-interception.md) | Assist90 buildLimitOnly HWBP VEH parameter native-sidebar no-text no-rules |
+| 放置預覽幀差、原生中心與落地後 UI 收尾 | [持續性、地形高度、viewport 與產品確認](2026-11-02-native-placement-persistence-and-projection.md) | Place foundation 4A8BF0 4A8D50 578080 forward-frame viewport completion |
+| 地圖觸發後 backing 不變的活動投影 | [原生 SetVisibleRect 與小地圖私人採樣](2026-11-02-trigger-radar-active-projection.md) | 654490 ActiveProjection backing bounds SceneBank trigger |
+| 小圖單一維度拖屏固定 | [MOEnhancement 分軸行為及獨立開關](2026-11-02-small-map-axis-clamp.md) | 6D8640 Clamp_Center one-axis viewport opt-in |
+| 科技不改程式碼／規則的 UI 參數攔截候選 | [兩處原生 CALL、棧參數與未驗證斷點方案](2026-11-02-tech-ui-only-breakpoint-feasibility.md) | CanBuild Classic buildLimitOnly 6A97D2 6AA781 DRx VEH no-text no-rule research-only |
+| MOControls2 新操作合入，保留本分支 Hook 策略 | [配置、超武面板、原生閉環與合併邊界](2026-11-02-mo-controls-scoped-merge.md) | Assist88 configurable gestures fresh PlanToken PlanConnect loopStart PlanCommit scoped-merge |
+| 隱藏光標保留提示框與偏好 | [原生文字／佈局雙槽修復](2026-11-02-cursor-hide-tooltip-layout.md) | Cursor155 RefCount 7F74C8 478BA0 tooltip layout no-high-risk |
+| 功能收納、渲染耗時與副相機連續定位 | [本輪實作、對照與完整構建](2026-11-02-render-ui-followup.md) | settings-folds Timeline VXL HVA geometry prefetch InstanceOrder current-anchor |
+| 原生面板科技資料模式與還原責任 | [規則欄位、面板與模式切換](2026-11-01-native-sidebar-tech-data-mode.md) | CanBuild data-journal TechEnhance native-sidebar Assist87 |
+| 原生事件任意建造正式選項 | [完工產品、游標與入隊邊界](2026-11-01-native-placement-event-implementation.md) | Place factory-UID frozen-cursor no-code |
+| 觀察窗誤消失與讀取能力遺失 | [生命欄位、換代、批讀與輸入重用](2026-11-01-watch-lifetime-reader-performance.md) | IsAlive IsOnMap display-epoch typed-prefetch Timeline |
+| 小地圖星級的最終面板合成 | [相同場景標記與 CPU/GPU 對照](2026-11-01-radar-final-panel-insignia.md) | PIPS14 PIPS15 physical-pixels immutable-scene WARP |
+| 建造提示按檔位上限換算 | [原生速度分支與估算規則](2026-11-01-build-time-speed-ceiling.md) | GameSpeed A8EB60 multiplayer-cap 647C43 nominal-FPS |
+| 原生 Place 接收鏈與超距離／陰影放置候選 | [實際判定鏈與 12 項隔離驗證](2026-11-01-placement-event-reception.md) | Place0B ObjectUnlimbo5F4F3C legality no-text native-event |
+| 科技全開的規則資料／原生生產事件候選 | [原生門檻與 31 項隔離驗證](2026-11-01-tech-no-code-feasibility.md) | CanBuild FindFactory Produce PrerequisiteOverride DoubleOwned data-only no-text |
+| 快取預算、重複計費與整庫清空 | [只讀審計與容量調整邊界](2026-11-01-cache-budget-audit.md) | TotalBytes-unused per-context shared-owner LRU RAM VRAM resident |
+| VXL 舊新姿態同占預算導致永遠無法發布 | [重現、修復與回退素材保留](2026-11-01-pose-cache-transition-liveness.md) | PosePixels displayed wanted cache self-lock current frameFrom immutable-front |
+| 動態物件 palette 捕獲的重複跨進程讀取 | [首次欄位批讀與雙讀驗證](2026-11-01-palette-read-batching.md) | first-field bulk fresh RPM identity parent palette-race fallback |
+| 地形逐畫面重複查詢、完整世界與新鮮驗證 | [正式渲染器對照與頁快取成本](2026-11-01-terrain-presentation-read-cost.md) | converter metadata cell-intensity fresh-verify ProcessReader full-world |
+| 控制標記替換為修改大師基本指令模式 | [配置、所有權與產品驗證](2026-11-01-master-control-implementation.md) · [原生指令及 ABI](2026-11-01-master-control-native-audit.md) | Assist86 Master direct-jump 50B6F0 6339BA 637E40 strict-before-common restore-order |
+| 任意建造不改程式碼候選與資料旗標區分 | [原生 Place、距離與落地合法性](2026-11-01-placement-no-code-feasibility.md) | Place0B proximity4A8EB0 AdjacentEB4 PlaceAnywhere1703 Unlimbo preliminary-legality |
+| 局中首次啟用：連接需求漏項與具體阻塞診斷 | [已修缺口、冷啟用與實機邊界](2026-11-01-midgame-feature-activation.md) | needsBridge cold-enable requested-applied commandStatus Scenario fixture |
+| 動態 VXL／SHP 核心、素材重用與裁切前准入 | [實作、來源與逐位對照](2026-11-01-actor-render-performance.md) | HVA normal-pages SIMD SHP physical-material VPL clip-admission |
+| 回退前後 CPU 繪製效能與安全並行 | [歷史對照與分區回放](2026-11-01-shp-kernel-and-cpu-replay.md) | HF29 parallel-rows full-target ordered barriers exact-Z-A |
+| 全鏈路顯示效能：讀取、排程、計畫與呈現 | [修正、受控量測與實機邊界](2026-11-01-end-to-end-render-performance.md) | batched-RPM COW-TMP CPU-plan-reuse immutable-panels dirty-upload timing |
+| 覆蓋層連續性、面板尺寸合成、星級與觀戰 Hook 保留 | [修正、原生 HWND 寬度與驗證邊界](2026-11-01-render-continuity-and-hook-lifetime.md) | camera-independent HUD checked materials output-sized renderer HWND DWORD scene-bank observer hook-ownership |
+| 科技純資料候選、同世界 epoch 改變後還原責任 | [尚未實作的候選與已修的還原錯誤](2026-11-01-tech-data-candidates-and-recovery.md) | CanBuild direct-E8 Type634 Prerequisite648 Scenario epoch restore |
+| 控制標記資料模式、跨epoch還原與普通事件功能分類更正 | [實作、互斥與驗證](2026-11-01-control-house-flag-mode.md) | Assist85 House1ED data-only mode2 native-query classification epoch ownership |
+| 控制／科技純資料方案核對，科技清單一次刷新 | [判定分支、舊版依據與驗證](2026-11-01-control-tech-data-only-review.md) | House1EC 1ED CurrentPlayer 50B6F0 TechLevel 634 full-pass no-frame-slicing |
+| 深入不同步審查：失敗恢復、TID 回收、過期指令與查詢副作用 | [六項修正、原生查詢高危選項與驗證](2026-11-01-deep-desync-followup.md) | Assist84 native-query opt-in frame-write-failure thread-identity stale-heartbeat shroud-read-retry AirPathMove |
+| 優先無程式碼改寫、原生事件與高危分類 | [功能遷移、51 站點與驗證範圍](2026-11-01-no-code-preferred-feature-migration.md) | no-code-preferred v0720 native-events polling material-alpha high-risk migration |
+| 恢復普通聯機幀通知與測試預設，保留切屏修正 | [使用者確認的回退範圍](2026-11-01-frame-notification-policy-rollback.md) | native-frame session0/5/3/4 no-forced-polling no-default-skip focus-retained |
+| 測試器切屏誤停、可選基線與手動略過 | [日誌對照、焦點生命週期與回歸](2026-11-01-hook-test-focus-selection.md) | no-native-OOS seqlock retry focus-retains-hooks optional-baselines early-verdict shared-site-exclusion |
+| 高刷光標吞掉單位／價格提示；RA2OL 第三組幀通知首次 OOS | [原生分支、共同槽所有權與日誌結論](2026-11-01-cursor-tooltip-frame-oos.md) | RefCount -1 GetToolTipText479050 Sidebar6D1800 shared7F74D8 Frame55DE81 message-fallback explicit-diagnostic not-detection-proof |
+| 依使用者要求撤回首次同步／科技模式封鎖，修正不完整陰影發布 | [回退範圍、欄位與回歸](2026-11-01-hook-gate-rollback-shroud-publication.md) | no-peer-sync-prerequisite TechEnhance opt-in incomplete-mask keep-front selector-read-failure projection-offset |
+| RA2OL 同步錯誤的逐組 Hook 測試版、隱式相機補丁與小地圖閃爍候選 | [流程、來源證據與實測邊界](2026-11-01-ra2ol-hook-isolation-diagnostics.md) · [操作／編譯說明](../hook_diagnostics/README.md) | RA2OL 30seconds explicit-verdict isolated-groups 48+3 14denied CameraClamp6D8640 diagnostic-opt-in incomplete-shroud not-netplay |
+| 首次同步之后仍会分叉的直接写入与恢复遗漏 | [后续不同步审计与修复](2026-11-01-latent-desync-mutation-audit.md) | TechLevel SP-only failed-write ownership retry MapIsClear read-failure premature-unhook stop-ack all-patches native-query side-effects |
+| 宿主 Hook/订阅生命周期与目标槽回收 | [Hotfix33 回收修正与受控证据](2026-10-31-host-hook-lifecycle-hotfix33.md) | 8targets 32leases 1404 retained-process reap failed-unhook capacity |
+| 首次远端 FrameInfo 匹配门槛、51 站点清单与重连/恢复审查 | [实现与联机风险边界](2026-10-31-peer-sync-hook-activation-audit.md) | pending-executed CRC-history read-only activation 8targets 32leases invalid-HHOOK cleanup-handoff control-native-fallback |
+| Hotfix32全图MapIsClear实验镜像、自然写入与开局/局中启用时机 | [实现、地址、生命周期与验证范围](2026-10-31-crc-map-shadow-hotfix32.md) | Assist83 MapIsClear shadow 8sites natural-write runtime21 lifecycle5 cached-signatures computeApplied new-epoch not-netplay |
+| CRC原值镜像机制与当前功能的直接/间接影响 | [模型、14项原生验证及边界](2026-10-31-crc-shadow-and-feature-classification.md) · [证据](evidence/crc-shadow-research.json) | MapIsClear64DCCA mirror natural-write same-value identity no-production-hook CRC-input |
+| Hotfix31连续House分包、协议0匹配帧头与CRC边界 | [实现与受控验证](2026-10-31-network-house-grouping-hotfix31.md) · [36项证据](evidence/network-house-grouping-hotfix31.json) | FrameInfo649D61 protocol0 limit649DBC globalCRC no-recompute native7sites own-wire-identical |
+| Hotfix30完整A查表、原生专用内核与精确整帧SIMD | [实现、对照与测量](2026-10-31-native-blitter-performance-hotfix30.md) · [原始轮次](evidence/native-blitter-hotfix30.json) | blitter full-A SSE2 127 exact 8192 four-plane 1440p CPU12.505ms not-game-FPS |
+| YRpp原生绘制性能参考：专用blitter、A查表、RLE跨度、VXL姿态缓存和可见/脏区 | [源码核对与路线](2026-10-31-yrpp-native-rendering-performance-reference.md) | YRpp d979554 AlphaLightingRemap palette RLE voxel cache dirty areas native packed |
+| HF29之后逐项评估回合与CPU冗余初始化候选 | [合回条件、对照和下一步](2026-10-31-performance-remerge-after-hotfix29.md) | confirmed-recovery separate-branch CPU memory initialization benchmark no-direct-output |
+| Hotfix29恢复完成帧主体、GPU回读呈现与原始素材 | [恢复方案与验证](2026-10-31-stable-render-recovery-hotfix29.md) | complete-front single-owner no-interop CPU full-surface waterline fence bounded1500 quality-paused |
+| HF28整合自审：迁移不完整、阶段/水线Z/最终呈现边界与测试缺口 | [源码问题与验收范围](2026-10-31-render-integration-self-audit.md) | BuildingBase Display Extras Spotlight CPU GPU half-pixel waterline duplicated source work SEH DirectComposition untested row bands |
+| Hotfix28用户CPU乱序/约250ms与GPU崩溃反馈：显示清单、并行合成、故障隔离 | [修复与证据边界](2026-10-31-render-recovery-hotfix28.md) | Display8A0360 stride24 native order row bands Z A cloak barrier palette lookup CPU reuse GPU SEH fault log no live proof |
+| Hotfix27后渲染遗漏与建造五因素复核 | [当前遗漏/计时判定](2026-10-31-render-timing-audit-after-hotfix27.md) · [证据](evidence/render-timing-audit-after-hotfix27.json) | BuildSpeed power54 rate255 ready+1 unproven health brackets bomb selfheal talk control-link airstrike Fly Hover Jumpjet Rocket phase Chrono radial |
+| Hotfix27建造提示框、54格/供电期限与GPU范围/电弧/建筑混合部件 | [计时/ABI/实施与边界](2026-10-31-build-time-and-render-hotfix27.md) · [证据](evidence/build-time-render-hotfix27.json) | CCToolTip7F74D8 TimeToBuild6F47A0 Factory54 rate255 LowPower4CA6E0 DesiredFPSA8B558 radial pairedAA EBolt phase building B8 C0 recoil3D8 3F8 |
+| Hotfix26原生Z/A、跨页位移隐形、完整色阶与光束/临时灯光 | [原生字段/实施记录](2026-10-31-native-surface-hotfix26.md) | unsigned16 signed candidate ABuffer AlphaShape word-offset Foot ZFudge native Wave RadBeam2 Spotlight90 FullColorData Laser AA transient light |
+| Hotfix25共同帧输入、来源历史、协作快照与协议81 | [输入/执行/ABI](2026-10-31-coherent-compute-frame-hotfix25.md) | computeFrameSeq latest source history 16 consumer bits cooperativeInputFrame protocol81 |
+| Hotfix25卸载顺序、特殊pips、范围提示、CnCNet隐形准入与Phobos指示器 | [实施/字段/差异](2026-10-31-render-counters-hotfix25.md) · [原生证据](evidence/render-hotfix25-native.json) · [固定上游](evidence/render-hotfix25-upstream.json) | tether Unload16 spawn garrison absorber mind-control radial 6ED harvester active power delta |
+| Hotfix24原生帧完成通知、独立高刷位置与保留实例更新 | [原生位置/ABI/边界](2026-10-31-frame-notified-high-refresh-hotfix24.md) · [构建记录](evidence/render-hotfix24-final.json) | 55DE81 A8ED84 SetEvent latest bounded extrapolation shadow depth 64-byte |
+| Hotfix23第二轮11入口：原生保存图/材质/尾迹、地面层、信标雷达、PixelFX和Chrono | [实施/字段/边界](2026-10-31-vera-scene-extras-hotfix23.md) · [静态证据](evidence/render-hotfix23-native.json) | Fogged8B3D10 trailABCB78 CellFC PixelFX7EFDA4 ChronoA9FAB0 sin84F084 Rubble14F4 Smudge3C |
+| Vera第二轮绘制缺口：迷雾保存图、隐形伪装、沉船、污迹、尾迹、信标、雷达事件、桥影、废墟、闪光与整屏扭曲 | [额外11项审计](2026-10-31-vera-render-additional-gaps.md) | FoggedObject DrawState Sinking Smudge LineTrail Beacon RadarEvent BridgeShadow Rubble PixelFX ChronoScreen SLOP ZShape |
+| 真正Z路径点/规划图、共享前驱/回环/高亮与剩余绘制差距和GPU路线 | [Hotfix22路径点](2026-10-31-native-planning-render-hotfix22.md) · [差距/GPU清单](2026-10-31-vera-render-gaps-and-gpu-roadmap.md) | PlanMgr AC4B30 AC4C78 token514 event NetID loop fresh readset UI5 static terrain async GPU HVA A-buffer |
+| Vera绘制12领域梳理、GPU动态原尺寸页、延后色盘、565混合、波形依赖及资源UI | [迁移总表](2026-10-30-vera-render-migration-map.md) · [Hotfix21实施](2026-10-30-vera-render-integration-hotfix21.md) | indexed palette native page Z readonly RGB565 dependency wave resource pip PC53 chop UI isolation |
+| 小地图 GPU 完整帧、盯防共用世界管线、PIPS2 与采矿 SHP | [世界／UI 迁移 Hotfix20](2026-10-30-world-ui-minimap-hotfix20.md) | direct minimap no readback ordered effects watch shared world PIPS2 ANIM plain Convert no native holes |
+| 世界输入常驻、当前相机整帧与观察窗 GPU 直出，删除边缘复制 | [呈现管线 Hotfix19](2026-10-30-world-pipeline-hotfix19.md) | world snapshot camera redraw tactical scissor sidebar shared SRV direct watch no edge replication |
+| Vera20K 批绘、GPU 直出、场景/VXL 耗时、矿石与树影 | [渲染 Hotfix18](2026-10-30-scene-hotfix18.md) | shared texture DirectComposition no readback ordered effects wave VXL pose tint LRU ore Terrain shadow |
+| 1000 Hz 最新状态采样、GPU 回读/深度缓存、拖屏连续性与有界退出 | [渲染延迟 Hotfix17](2026-10-30-render-latency-hotfix17.md) | latest snapshot high resolution readback cached depth reuse scroll close timeout parity merge |
+| CPU/GPU 共享场景对象清单、原生 GPU 与画质解耦、静止 VXL 缓存 | [CPU/GPU 场景对齐](2026-10-30-cpu-gpu-scene-parity.md) | ddf0002 native Vulkan VPL revision object coverage |
+| HVA 多帧、独立碎片／程序化效果与队形公共画布 | [动画与队形 Hotfix15](2026-10-30-animation-effects-formation-hotfix15.md) | HVA frames VoxelAnim rawVXL quaternion LaserDraw Wave AlphaShape points ViewportCanvas |
+| 本地 UI 独立绘制、当前原生字体与 Vera20k 对照 | [独立本地 UI Hotfix14](2026-10-30-independent-local-ui-hotfix14.md) | GAME.FNT CSF primary rally font cache worker no broad UI cutouts |
+| 共享缩放前素材、五类界面与粒子／本地 UI 边界 | [共享场景与本地 UI Hotfix13](2026-10-30-shared-scenes-local-ui-hotfix13.md) | SceneBank NativeImageBank particles defaults messages timers primary rally |
+| 持续规划后台线程、全局磁电索引、固定名额与动画类别审计 | [规划线程与动画 Hotfix12](2026-10-30-planner-thread-animation-audit-hotfix12.md) | UI ValueTask receipts expiry VXL256 selection512 EBolt128 SHP translucency x87 cooperative frozen keys |
+| 迷雾素材替换与单位统计、副相机及进程识别性能 | [素材与工具箱性能 Hotfix11](2026-10-30-shroud-material-and-toolbox-performance-hotfix11.md) | SHP GetData 69E740 refs lazy alpha127 restoration async statistics VPL cache |
+| 批量读取、行并行、GPU 基础档、耗时解码预算及迷雾替换验证 | [读取/GPU/动画 Hotfix10](2026-10-30-reader-gpu-budget-hotfix10.md) | prefetch64KiB rows4 atlas CSR decode budget transient VPL SHP127 replacement |
+| 只开启渲染升级时的默认重处理、基础快速模式及高速游戏时效 | [快速模式与高速采样 Hotfix9](2026-10-30-fast-mode-and-high-speed.md) | 72ms 260ms RenderProcessing xBRZ explicit terrain thread wallclock actor age |
+| 独立采样与整帧绘制时钟、小地图全图源数据及 TMP 解码复用 | [独立整帧时钟 Hotfix8](2026-10-30-independent-full-frame-clock.md) | Recurring 5-500Hz 500ms lease completion notify scene bank shared TMP force full upload |
+| 设置页首次加载慢与切换空白、原子类别布局、输入绘制饥饿 | [设置页生命周期 Hotfix7](2026-10-29-settings-page-lifecycle.md) | latest category foreground lag relative z order shared tooltip 600 fair message pump |
+| 独立读取与绘制、相同覆盖层去重、点击分区强制恢复 | [读取与呈现提速 Hotfix6](2026-10-29-independent-scene-reading.md) | Latest two observations separate ReadSession epoch cutouts equal no dirty upload WM_SIZE navigation |
+| 最小化恢复空白与基地车展开／收起消失 | [恢复与过渡帧补修](2026-10-29-restore-and-buildup.md) | Z order IsIconic same layout make priority retry sampled Pose |
+| 切出游戏后按钮与滚动条失效，真实控件恢复 | [控制台原生输入](2026-10-29-console-native-input.md) | AltTab real HWND no cloak no WM_PRINT cancelled move SendInput hit test |
+| 全部分区滚动后控件失效、帧率分项与基地车展开边界 | [滚动输入补查](2026-10-29-scroll-input-followup.md) | WM_PRINT idle timer capture sampling fence readback MCV pending |
+| 坡面阴影、光束／采矿与单位 UI、SHP 炮塔、素材动作、拖屏和退出响应 | [渲染与退出补查 hotfix2](2026-10-29-render-hotfix2.md) | Shadow_Matrix Laser Gather Ammo IFV SHP turret sequence partial visible Cadence ASYNCWINDOWPOS modal |
+| pre.7 类型清单依赖、队形双击上下文、窗口退役与 CI 启动前失败复核 | [前端补查 hotfix1](2026-10-29-frontend-hotfix1.md) | dependency19 type-list Tap context stale connection HWND retirement CI runner0 no-steps |
+| 工具箱独立设置窗口、依赖约束、明确快捷键手势与页面滚轮 | [前端输入与响应](2026-10-29-frontend-input-responsiveness.md) | popup DWM cloak latest processing dependency60 Press Release Hold Double keyboardOnly wheel |
+| 64 位工具箱、32 位 Runtime／Hook 辅助程序与真实共享 ABI | [跨位数宿主](2026-10-29-x64-host-runtime-broker.md) | x64 x86 broker148 Shared4169840 ABI632 owner PID Hook cleanup |
+| DLSS 5 官方 NGX 接口、独立进程、逐像素引导与历史消费 | [神经渲染接入](2026-10-29-dlss5-neural-integration.md) | DLSSNR NGX RGBA16F motion depth confidence cancellation sequence Reset |
+| GPU 原生场景的运动、反向正交深度及保护信息 | [神经渲染引导图](2026-10-29-neural-motion-depth-guides.md) | MotionIdentity camera source lifetime per-pixel guides sequence OOM fallback |
+| 覆盖层临时读失败、预定面板完整帧、小地图缓存与拖屏预取 | [宿主闪烁与性能优化](2026-10-29-overlay-panel-render-optimization.md) | ReadLease120ms probe8ms front spare dirty64 prefetch64 same pixels |
+| 原生世界绘制与UI阶段分离、关闭绘制的限制 | [原生绘制停止可行性](2026-10-29-native-render-suppression-feasibility.md) | 4F4480 6D3D10 phase2 feedback 47EC90 A9FAB0 no-code-writes blocked |
+| 小地图分页GPU面积缩小与变化页积分缓存 | [小地图GPU缩小](2026-10-29-minimap-gpu-area.md) | sparse128pages area4x4 prefix Float64 owner one readback CPU fallback |
+| Vulkan GPU 场景、xBRZ、VXL、迷雾与故障回退 | [Vulkan 计算实验](2026-10-29-vulkan-compute-resolve.md) | Vulkan1.0 native1x xBRZ Float64 VXL 128MiB atlas one readback mask sticky CI x86 |
+| 原版 xBRZ 1.9 两阶段 GPU 重建、原生 SHP 输入与设备自检 | [GPU xBRZ 算法与缓存](2026-10-29-gpu-xbrz.md) | argbUnbuffered2/3/4 preprocess rotations Float64 NoContraction golden 8167384 weak owner fence |
+| 原生 SHROUD/FOG GPU 栅格、整数覆盖及不可变遮罩缓存 | [GPU 原生迷雾](2026-10-29-gpu-native-shroud-raster.md) | SHP127 0xFE area samples bins packed alpha Plan same readback bounded cache |
+| VXL GPU 三角形光栅、确定性深度赢家和整帧缓存 | [GPU VXL 光栅](2026-10-29-gpu-voxel-raster.md) | Prepared64 atomicMax Z atomicMin tie VPL CPU pose deferred raster retained atlas |
+| CnC-DDraw 表面/色盘更新、常驻纹理和最终 GPU 呈现参考 | [DDraw GPU 参考边界](2026-10-29-ddraw-gpu-reference.md) | Flip Blt Unlock palette D3D9 OpenGL persistent texture DirectComposition layered readback |
+| 矿石动画仅重建受影响地形页并保留远处 GPU 素材 | [地形局部重建](2026-10-29-terrain-dirty-recomposition.md) | overlayFrame 128px dirty pages256 native bank COW xBRZ262 halo owner full fallback |
+| 渲染层级、局部合成、页存储复用、原子滚屏与迷雾源/目标分离 | [反馈与性能修复](2026-10-29-render-feedback-performance.md) | layer5 Incremental monitor Hz epoch8192 zero allocations overscan96 atomic camera fresh shroud sourceHidden 1MiB |
+| 普通指令线、真实色表与建筑放置红绿格原生反馈保留 | [原生命令与放置反馈](2026-10-29-native-order-placement-feedback.md) | DrawActionLine 4DC060 7049C0 47EC90 foundation cellsel sparse cutout readonly |
+| 矿石/覆盖图误用alpha124与Drive/Ship原生坡面矩阵 | [覆盖图不透明与VXL坡面](2026-10-29-overlay-opacity-voxel-posture.md) | overlay255 ILoco674 Draw_Matrix 4AFF60 69F670 Ramp Slerp rocking 2688 |
+| 小地图边缘半格 TMP 与渲染升级短暂失败/光标切换闪烁 | [裁剪与连续呈现](2026-10-28-minimap-crop-render-continuity.md) | sourceColor TMP extra signed Level fixed viewport completed sample age feedback cursor grace |
+| 普通 CnCNetYR v17 全补丁／guard、真实相机退让、浮点及事件往返与保留所属方缺陷 | [普通版兼容性复核](2026-10-28-cncnet-ordinary-compatibility.md) | ordinary 6D8640 CameraClamp 39 245 75 151 ProtocolZero 0x30 NetworkHousePreserve BLOCKED |
+| SHP／连续地形改用未修改的上游 xBRZ 1.9 与实际倍率解析 | [xBRZ 集成](2026-10-28-xbrz-integration.md) | xBRZ Zenju GPL alpha premultiplied live light TMP halo seams RGB8 source hashes |
+| 光照前原素材判边、浮点重建与最终颜色量化 | [颜色重建精度](2026-10-28-light-aware-reconstruction.md) | unlit edge float light filter RGB8 emissive coverage |
+| 当前视口 TMP／地面覆盖物目标像素颜色与深度合成 | [目标像素地形](2026-10-28-target-terrain-composition.md) | TMP overlay target pixels actual ratio cached terrain depth cliff shadow |
+| 飞机5格战车120%覆盖与单目标限额派出 | [飞机伤害分配策略](2026-10-28-aircraft-damage-allocation.md) | aircraft damage 120% five cells single target accepted reservation IPC80 |
+| 派出飞机的原生单对象取消选中与选区保留 | [原生单对象取消选择](2026-10-28-aircraft-selection.md) | Deselect 5F44A0 vtable150 CurrentObjects FindIndex aircraft selected subset |
+| 实际游戏视口／目标像素比例与光照前 RGB 颜色精度 | [自适应采样与颜色精度](2026-10-28-adaptive-color-precision.md) | actual ratio 1.5x 3x 4x RGB888 continuous light RGB565 source palette |
+| 素材高刷现场光照、同地址运行时色表变化与逐素材失效 | [现场光照与色表刷新](2026-10-28-live-light-palette-refresh.md) | live palette RGB565 LightConvert same-frame lighting content cache |
+| 渲染升级目标像素深度合成、VXL 2× 几何与已观察状态素材高刷 | [精细场景与素材高刷](2026-10-28-material-refresh-detail.md) | device pixels 256 facings observed interpolation SHP alpha pause teleport cache |
+| 普通 CnCNet 無額外反作弊的掉線排查：原版同步、ControlAll新增路徑與可見性／浮點修復 | [普通版不同步排查](2026-10-27-cncnet-ordinary-desync-triage.md) | native events OOS NativeMegaGateway MapIsClear 4147D5 70F1E3 MXCSR RecalcAttributes |
+| 戰網實際部署辨識：普通／Hardened同檔名，官方stable／develop DLL均具加固機制 | [客戶端套件與DLL辨識](2026-10-27-cncnet-client-package-variant.md) | CnCNet-Spawner.dll cncnet5.dll yr-9.3.5 SHA256 FC50 49F20 actual loaded module |
+| CnCNet Hardened 原理：程式碼／資料完整性、地圖規則封包CRC、事件拒絕及原版OOS與故意異常恢復分離 | [反作弊原理](2026-10-26-cncnet-anticheat-principles.md) | EA00 EB60 E530 401000 7E1000 E5E0 E690 E2E0 E3F0 WOLGameID EEE0 EF10 HouseIndex E530 return ESP CONTEXT VEH |
+| 修改大師全圖的顯示／SpySat路徑、Skirmish採集與原版特殊格檢查 | [全圖與地圖檢查](2026-10-26-trainer-map-cheatcheck.md) | 6D88FC 577B3A 577D90 5C0E30 SkipCheatCheck Scenario RNG Session5 Phobos2115 |
+| 官方CnCNet v17 Hardened實際DLL：ControlHouse同址與額外House驗證 | [Hardened二進位](2026-10-26-cncnet-hardened-binary-audit.md) | 50B6F0 EC50 EEE0 64BE75 .patch .syhks00 6D88FE SHROUD FOG |
+| Hook 衝突、回復殘留／UI遮蔽與 CnCNet 額外檢查 | [Hook與平台檢查](2026-10-26-hook-conflicts-cncnet-checks.md) | HookRegistry partial restore NativeMegaGateway CnCNet hardened verification FileHash ProcessKill |
+| 控制全部1.0.37／1.0.38回歸、Hook時機、同House跨發送者順序與Owner關閉對照 | [控制回歸審計](2026-10-26-control-138-regression-audit.md) | ControlAll 64C380 DoList order sender House ControlCommandOwner NativeMegaGateway |
+| 透明／半透明迷霧、同步摘要隔離與逐像素管理器開銷 | [迷霧聯機審計](2026-10-26-shroud-network-audit.md) | 47F038 47F274 87E8A4 64DAB0 MapIsClear 1027 Validate halfShroud |
+| 网络所属方五点适配、单位Owner四点发令、出售与任务仲裁 | [pre.6 网络所属方保留](2026-10-26-network-house-preserve-pre6.md) | 649CA0 64B660 64B4EA 541040 FrameInfo cache 6929E5 4AC179 646F4E 646EF5 646FD2 6FFC93 6FFE2B IPC79 |
+| 自毁按钮、联网所属方覆盖与接收解包 | [pre.5 自毁与网络所属方](2026-10-26-destruct-button-pre5.md) | Destruct 08 649CA0 64B660 64BDD0 FrameInfo CurrentHouse OutList DoList |
 | 1.0.38 小地图原生黑幕／雾边缘和雷达右下底色 | [正式版黑幕与底色](2026-10-26-native-minimap-shroud-and-underlay.md) | DrawShroud 4801F0 6D8700 SHROUD.SHP FOG.SHP alpha RadarColor 654EA0 |
 | 原生雷達四側內縮、raw 2×1 地格裁切與完整幀閃爍 | [pre.12 南緣與發布](2026-10-25-minimap-bottom-pixels-pre12.md) | SetVisibleRect 567230 FillTerrainColors 654EA0 raw 1240 1244 south vector |
 | 步兵／載具原生佇列、工廠 29+1 容額與逐幀預定提交 | [pre.12 單位預定研究](2026-10-25-unit-reservation-native-queue.md) | FactoryClass QueuedObjects Count 50 Object 58 ProduceDeferred UnitCapacity 30 |
@@ -84,3 +209,33 @@
 
 - [1.0.37 正式版设置持久化、默认值与显示调查](2026-10-24-stable-settings-137.md)
 
+
+- [2026-10-26：联机事件、原版每帧摘要与飞机联机实验](2026-10-26-network-event-audit.md)：基线 v1.0.38，原版64DAB0的ROL+加法摘要、科技limitOnly路径、FrameInfo历史比较、原生规划本机DoList、Sticky的BalloonHover条件路径和Ctrl+Alt重复门槛测试。
+
+- [2026-10-26：32 种任务和 Sleep / Guard / Harmless 模式](2026-10-26-selected-mission-modes.md)：MegaMission=04 携带任务编号；真实32项分派、四类对象处理器、空处理器与AttackMove预处理；Selling/Rescue/Wait限制；pre.2 三组可配置按键的事件投递及验证边界。
+
+- [2026-10-26：建筑格进入、火控留枪与2%索敌](2026-10-26-entry-fire-control-pre3.md)：Capture/Sabotage目的地Cell；工程师Ctrl+Alt对象/格子分支区别；Sleep预留及短期已射伤害；原版double Verses与float阈值边界；原生索敌过滤的联机范围。
+
+
+- [2026-10-26：对手建筑变卖实验与所属方自毁事件](2026-10-26-enemy-sell-pre4.md)：Sell=0x16、实际Owner编号、默认关闭及旧配置迁移；Destruct=0x08、Exit/AboutToExit/RemovePlayer区别；4FC980标志与定时器、4FC6D0销毁后继及联机证据边界。
+
+
+| 共享场景与缩放前结果、五类 UI、粒子与本地消息／倒计时保留 | [Hotfix13](2026-10-30-shared-scenes-local-ui-hotfix13.md) | SceneBank SceneRenderer NativeImageBank Particle MessageList BitFont DrawTimer PrimaryFactory ArchiveTarget |
+
+- [Hotfix16：基础路径与整图延迟调查及 CPU 修复](2026-10-30-render-latency-hotfix16.md)：原尺寸像素热点、128 项 xBRZ 缓存抖动、分页并行；CPU 积分跨帧缓存与不变对象页误标脏修复、定向检查和构建。
+
+- [MO新操作預覽節奏、框消失與軌跡末端](2026-11-02-mo-operation-preview-followup.md)
+
+- [原生建造自動匹配、地基預覽與點擊配對](2026-11-02-native-placement-preview.md)
+
+- [科技圖示逐觀測幀補缺與早期版本身份](2026-11-02-tech-cameo-frame-maintenance.md)
+
+- [小地圖即時遮罩、完整發布與最終尺寸地形快取](2026-11-02-minimap-live-mask-and-target-prefix.md)
+
+- [逐幀、整畫面縮放、十三處側欄實驗與資源所有權](2026-11-02-experimental-view-controls.md)
+
+- [新操作、小地圖與實驗顯示：本輪整合、效能與構建證據](2026-11-02-mo-render-followup.md)
+
+- [原生與工具卸礦完成後接管最近礦格、玩家命令優先與輕量觀察](2026-11-03-native-unload-harvest-handoff.md)
+- [側欄立即重畫、MO 十七原始 ABI 與 A/R 整合契約](2026-11-02-sidebar-redraw-and-mo-viewport-contract.md)（6D2790 RET14 WM_PAINT RenderSerial 4F4480 4F459D map-only；早期調查，後續實作見下文）
+- [MO 原生地圖縮放：A/R、共用完整 Render、輸入／重連與世代退役](2026-11-03-mo-native-viewport.md)

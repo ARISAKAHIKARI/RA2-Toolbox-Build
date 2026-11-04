@@ -1,0 +1,26 @@
+{
+  "scope": "Actual official ordinary DLL CRT patch-data constructor only, under Unicorn; no host DLL execution or live game",
+  "dll_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+  "cases": [
+    {
+      "module_base": "0x10000000",
+      "initializer_rva": "0x1080",
+      "descriptor_data_rva": "0x3b1d4",
+      "game_site": "0x6d8640",
+      "bytes": "e90ba4920f",
+      "target_rva": "0x2a50",
+      "cdecl_stack_balanced": true,
+      "volatile_ecx_after": "0x10002a50"
+    },
+    {
+      "module_base": "0x18000000",
+      "initializer_rva": "0x1080",
+      "descriptor_data_rva": "0x3b1d4",
+      "game_site": "0x6d8640",
+      "bytes": "e90ba49217",
+      "target_rva": "0x2a50",
+      "cdecl_stack_balanced": true,
+      "volatile_ecx_after": "0x18002a50"
+    }
+  ]
+}

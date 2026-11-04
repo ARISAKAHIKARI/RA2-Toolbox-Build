@@ -25,6 +25,7 @@ static void collectDodgeThreats(){
  Vec all=vec(0xA8EC78);for(int n=0;n<all.count&&dodgeThreatCount<8192;++n){uint32_t q=item(all,n);if(kind(q)!=2)continue;
   uint32_t t=get<uint32_t>(q+0x2B4);if(!worldObjects.contains(t))t=get<uint32_t>(q+0x5A4);if(worldObjects.contains(t))dodgeThreatRefs[dodgeThreatCount++]={q,t,false};}
 }
+static compute::FrameHistory<dodgecompute::Input> dodgeFrames;static uint32_t dodgeApplied=0;
 static dodgecompute::Input dodgeInput;static dodgecompute::Result dodgeResult;
 static int dodgeIndex(uint32_t id){for(int n=0;n<dodgeCount;++n)if(dodgeJobs[n].id==id)return n;return -1;}
 static bool dodgeOwns(uint32_t id){int n=dodgeIndex(id);return n>=0&&dodgeJobs[n].active;}
@@ -37,7 +38,7 @@ static void finishDodge(DodgeJob&j,bool cancelled=false){
  recordReceipt(j.receipt);j.active=false;
 }
 static void cancelDodge(uint32_t id){int n=dodgeIndex(id);if(n>=0){finishDodge(dodgeJobs[n],true);dodgeJobs[n]=dodgeJobs[--dodgeCount];}}
-static void resetDodgeControl(){dodgeCount=dodgeCursor=dodgeJobCursor=0;dodgePending=false;if(sh)sh->dodgeActive=sh->dodgeIssued=0;}
+static void resetDodgeControl(){dodgeCount=dodgeCursor=dodgeJobCursor=0;dodgePending=false;dodgeFrames.clear();dodgeApplied=sh?sh->dodgeComputed:0;if(sh)sh->dodgeActive=sh->dodgeIssued=0;}
 static bool dodgeSource(uint32_t p,uint32_t house){
  if(!p||stickyOwns(p))return false;int k=kind(p);if((k!=1&&k!=2)||!own(p,house)||!live(p)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||!featureObjectAllowed(featuretypes::Dodge,p))return false;
  planner::Actor a{};rawCombatInfo(p,typeOf(p,k),k,a,false);if(a.flags&(planner::Airborne|planner::Manipulated|planner::Protected))return false;
@@ -107,10 +108,11 @@ static void updateDodgeJobs(uint32_t house,int frame,DWORD now){
   ++n;
  }
 }
-static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int frame,DWORD now){
- if(r.match!=dodgeInput.match||r.tick!=dodgeInput.tick||r.frame!=dodgeInput.frame||r.count!=dodgeInput.count||r.count<0||r.count>dodgecompute::MaxSources)return;
+static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int frame,DWORD now,const dodgecompute::Input*source=nullptr){
+ const auto&input=source?*source:dodgeInput;
+ if(r.match!=input.match||r.tick!=input.tick||r.frame!=input.frame||r.count!=input.count||r.count<0||r.count>dodgecompute::MaxSources)return;
  for(int n=0;n<r.count;++n){if(!freshness::valid(r.match,match,r.tick,r.frame,now,frame,freshness::Tactical)||snap.chat)break;
-  const auto&old=dodgeInput.sources[n];uint32_t p=worldByID(old.id);int j=dodgeIndex(old.id);
+  const auto&old=input.sources[n];uint32_t p=worldByID(old.id);int j=dodgeIndex(old.id);
   if(p!=old.pointer||manualVersions.get(old.id)!=old.token||!dodgeSource(p,house)){cancelDodge(old.id);continue;}
   if((old.job&&(j<0||dodgeJobs[j].serial!=old.job))||(!old.job&&j>=0))continue;
   dodgecompute::Source s{};dodgeObserve(p,house,s);auto liveDecision=dodgecompute::decide(s);auto d=r.decisions[n];
@@ -133,18 +135,22 @@ static bool dodgeControlTick(uint32_t house,int frame,DWORD now){
  collectDodgeThreats();updateDodgeJobs(house,frame,now);
  if(sh->dodgeEnabled&&sh->dodgeMode==0){dodgePending=false;return reverseDodgeTick(house,frame,now);}
  reverseWasEnabled=false;
- if(dodgePending){if(!freshness::valid(dodgeInput.match,match,dodgeInput.tick,dodgeInput.frame,now,frame,freshness::Tactical))dodgePending=false;
-  else if(sh->dodgeComputed==dodgeTask){long seq=sh->dodgeResultSeq;if(seq&1)return false;MemoryBarrier();dodgeResult=sh->dodgeResult;MemoryBarrier();if(seq!=sh->dodgeResultSeq)return false;dodgePending=false;applyDodgeResult(dodgeResult,house,frame,now);}else return false;}
+ const bool outside=!compute::inside(sh->computeApplied,compute::Dodge);
+ if(outside&&compute::newer(sh->dodgeComputed,dodgeApplied)){
+  const uint32_t completed=sh->dodgeComputed;long seq=sh->dodgeResultSeq;
+  if(!(seq&1)){MemoryBarrier();dodgeResult=sh->dodgeResult;MemoryBarrier();if(seq==sh->dodgeResultSeq&&completed==sh->dodgeComputed){dodgeApplied=completed;if(const auto*source=dodgeFrames.find(completed)){applyDodgeResult(dodgeResult,house,frame,now,source);if(const auto*c=dodgeFrames.cursors(completed)){dodgeCursor=(*c)[0];dodgeJobCursor=(*c)[1];}}}}
+ }
+ if(outside&&!externalInputFrame)return false;
  auto&i=dodgeInput;i={};i.match=match;i.tick=now;i.frame=frame;
  // Rotate active jobs too: a pending batch must not starve the remaining units.
  int checkedJobs=0;
  for(;checkedJobs<dodgeCount&&i.count<dodgecompute::MaxSources/2;++checkedJobs){auto&j=dodgeJobs[(dodgeJobCursor+checkedJobs)%dodgeCount];if(j.active)dodgeObserve(j.pointer,house,i.sources[i.count++]);}
- if(dodgeCount)dodgeJobCursor=(dodgeJobCursor+checkedJobs)%dodgeCount;
+ const int nextJobCursor=dodgeCount?(dodgeJobCursor+checkedJobs)%dodgeCount:0;if(!outside)dodgeJobCursor=nextJobCursor;
  Vec all=vec(0xA8EC78);int visited=0,checked=0;
  if(sh->dodgeEnabled)for(;visited<all.count&&i.count<dodgecompute::MaxSources&&checked<dodgecompute::MaxSources;++visited){uint32_t p=item(all,(dodgeCursor+visited)%all.count);if(!dodgeSource(p,house)||dodgeOwns(get<uint32_t>(p+0x10)))continue;++checked;
   dodgecompute::Source s{};dodgeObserve(p,house,s);if(s.count)i.sources[i.count++]=s;}
- if(all.count)dodgeCursor=(dodgeCursor+visited)%all.count;sh->dodgeActive=0;for(int n=0;n<dodgeCount;++n)if(dodgeJobs[n].active)++sh->dodgeActive;
+ const int nextCursor=all.count?(dodgeCursor+visited)%all.count:0;if(!outside)dodgeCursor=nextCursor;sh->dodgeActive=0;for(int n=0;n<dodgeCount;++n)if(dodgeJobs[n].active)++sh->dodgeActive;
  if(!i.count)return true;
  if(compute::inside(sh->computeApplied,compute::Dodge))applyDodgeResult(dodgecompute::calculate(i),house,frame,now);
- else {InterlockedIncrement(&sh->dodgeInputSeq);MemoryBarrier();sh->dodgeInput=i;dodgeTask=sh->dodgeTask+1;sh->dodgeTask=dodgeTask;MemoryBarrier();InterlockedIncrement(&sh->dodgeInputSeq);dodgePending=true;notifyHost();}return true;
+ else {InterlockedIncrement(&sh->dodgeInputSeq);MemoryBarrier();sh->dodgeInput=i;dodgeTask=compute::nextTask(sh->dodgeTask);dodgeFrames.retain(dodgeTask,i,{nextCursor,nextJobCursor,0});sh->dodgeTask=dodgeTask;MemoryBarrier();InterlockedIncrement(&sh->dodgeInputSeq);dodgePending=true;notifyHost();}return true;
 }

@@ -1,0 +1,383 @@
+{
+  "pass": true,
+  "checks": 31,
+  "private_game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "query": "Can exact TechLevel=1 semantics be emulated for two native sidebar callers without text or Type rule writes?",
+  "candidate_sites": {
+    "0x4f794a": {
+      "length": 13,
+      "fnv1a": "0FC7BB79"
+    },
+    "0x4f7b5c": {
+      "length": 16,
+      "fnv1a": "15DAD6B8"
+    }
+  },
+  "interception": "execution breakpoint candidate at post-CMP Jcc 4F7951 and 4F7B66; emulation replaces only arithmetic EFLAGS as CMP(1,rhs), leaving Jcc/body original",
+  "actual_native_functions": [
+    "CanBuild 4F7870",
+    "vector copy",
+    "counter access",
+    "native UnitType/InfantryType vtables"
+  ],
+  "not_tested": [
+    "hardware DR/VEH at these new sites",
+    "real Windows game/sidebar",
+    "AI other callers",
+    "MP synchronization",
+    "Factory/Produce completion"
+  ],
+  "mocked": [
+    "malloc/free",
+    "synthetic Building mission"
+  ],
+  "game_process_opened": false,
+  "production_or_tests_modified": false,
+  "raw_exe_unchanged": true,
+  "results": [
+    {
+      "case": "hidden_level_minus1",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "house_level0",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "unbuildable",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "required_country",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "forbidden_country",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "missing_prerequisite",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "owned_prerequisite",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "buildlimit0",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "attained_positive_buildlimit",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": -1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "attained_lifetime_buildlimit",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "prereq_override_real_building",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "stolen_requirement_0",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "stolen_requirement_1",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "stolen_requirement_2",
+      "ui_return": "0x6a97d7",
+      "includeProduction": 0,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "hidden_level_minus1",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "house_level0",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "unbuildable",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "required_country",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "forbidden_country",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "missing_prerequisite",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "owned_prerequisite",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "buildlimit0",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "attained_positive_buildlimit",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": -1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "attained_lifetime_buildlimit",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "prereq_override_real_building",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "stolen_requirement_0",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "stolen_requirement_1",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "stolen_requirement_2",
+      "ui_return": "0x6aa786",
+      "includeProduction": 1,
+      "native_result": 0,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "lunar_InfantryType_level_2",
+      "native_result": 1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "lunar_InfantryType_level_10",
+      "native_result": 1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    },
+    {
+      "case": "lunar_InfantryType_level_100",
+      "native_result": 1,
+      "equals_synthetic_TypeLevel1_reference": true,
+      "EFLAGS_only_sites": [
+        "0x4f7951",
+        "0x4f7b66"
+      ],
+      "text_Type_House_unchanged": true
+    }
+  ]
+}

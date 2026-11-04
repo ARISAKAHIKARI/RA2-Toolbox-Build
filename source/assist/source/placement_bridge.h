@@ -1,12 +1,27 @@
 // Explicit experimental game-judgment opt-ins. Sole writer: GameEntryManager.
 #include "../../shared/source/experimental_patch_policy.h"
 #include "../../shared/source/patch_context.h"
+#include "shroud_material_bridge.h"
 extern "C" int __cdecl GuardedRiskAction(unsigned,unsigned,unsigned);
 static bool riskControlActive;
+static bool riskControlNativeJump;
+static uint32_t riskControlNativeTarget=0x50B6F5;
 static bool riskPlacementActive=false,riskAirActive=false,riskRenderActive=false,riskC4Active=false;
+static bool riskLowDamageActive=false;
+static bool riskLowDamageAllHouses=false;
+static const double lowDamageThreshold=0.02;
 static bool riskRenderRedrawPending=false;
+static bool riskRenderContextReady(bool captured=false){
+ if((!captured&&!gameentry::active(gameentry::Client::Assist))||fault||!hookWorld.bound||!get<bool>(0xA8E9A0))return false;
+ const auto&world=hookWorld.world;const int frame=get<int>(0xA8ED84);
+ // Capture callbacks are guarded. These hot visual leaves compare the
+ // confirmed world without interpreting observer/defeated as destruction.
+ return get<uint32_t>(0xA8B230)==world.scenario&&get<uint32_t>(0x87F924)==world.cells&&get<int>(0x87F928)==world.count&&
+  get<int>(0xA8B238)==world.session&&frame>=world.frame&&frame<INT32_MAX&&
+  external::display::inspect([](uint32_t at,void*out,size_t n){memcpy(out,(void*)(uintptr_t)at,n);return true;}).visible();
+}
 static bool riskContextReady(bool captured=false){
- if((!captured&&!gameentry::active(gameentry::Client::Assist))||fault||!lastHouse||!get<bool>(0xA8E9A0))return false;
+ if(!riskRenderContextReady(captured)||!lastHouse)return false;
  // Native callbacks see the current frame: equality with the last message
  // snapshot would make the behavior disappear between host samples.
  const uint32_t house=get<uint32_t>(0xA83D4C);const int frame=get<int>(0xA8ED84);
@@ -20,24 +35,31 @@ static bool riskReady(bool captured=false){
  const DWORD heartbeat=sh->heartbeat; // Capture before the clock; host writes concurrently.
  return DWORD(sampleClock(sh)-heartbeat)<3000&&riskContextReady(captured);
 }
+static bool riskRenderReady(bool captured=false){return sh&&!sh->stop&&DWORD(sampleClock(sh)-sh->heartbeat)<3000&&riskRenderContextReady(captured);}
 #include "shroud_render_bridge.h"
 static int smallMapCameraAction(uint32_t),highScrollAction(uint32_t);
+static int nativeSellCursorAction(unsigned,uint32_t,uint32_t);static int nativeMegaGatewayAction(unsigned,uint32_t,uint32_t);
+static int controlCommandOwnerAction(unsigned,uint32_t,uint32_t);static int controlObjectOwnerAction(unsigned,uint32_t,uint32_t);
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
  // Only GuardedRiskAction calls this helper, after obtaining a Capture lease.
  // Keep live world checks, but don't re-enter Validate on every drawn cell.
- if(op==8)return riskReady(true)?highScrollAction(object):0;
- if(op==7)return riskReady(true)?smallMapCameraAction(object):0;
+ if(op==13)return controlCommandOwnerAction(op,object,house);
+ if(op==14)return controlObjectOwnerAction(op,object,house);
+ if(op==8)return riskRenderReady(true)?highScrollAction(object):0;
+ if(op==7)return riskRenderReady(true)?smallMapCameraAction(object):0;
  if(op==5)return techGate(object,house);
- if(op==3&&(!riskRenderActive||!sh||!sh->renderReveal))return 0;
- if(!riskReady(true)){if(op==3)riskRenderRedrawPending=true;return 0;}
- if(op==6)return riskControlActive&&sh->controlAll&&playableHouse(house);
+ if(op==3){if(!riskRenderActive||!sh||!sh->renderReveal)return 0;if(!riskRenderReady(true)){riskRenderRedrawPending=true;return 0;}return sh->renderReveal==2?halfShroud(object,house!=0):1;}
+ if(!riskReady(true))return 0;
+ if(op==9||op==10)return nativeSellCursorAction(op,object,house);
+ if(op==11)return nativeMegaGatewayAction(op,object,house);
+ if(op==6)return riskControlActive&&controlmode::native(sh->controlAll)&&playableHouse(house)&&
+  (!sh->controlCommandOwner||house==lastHouse||controlCommandOwnerReady(house));
  if(op==4)return 0; // retired: preserve native movement and C4 capability checks
- if(op==3)return sh->renderReveal==2?halfShroud(object,house!=0):1;
  if(op==0)return riskPlacementActive&&(sh->flags&BuildAnywhere)&&house==get<uint32_t>(lastHouse+0x30)&&object>=0x10000&&
    call<int>(get<uint32_t>(get<uint32_t>(object)+0x2C),object)==7;
- if(!riskAirActive||!airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0))return 0;
+ if(!riskAirActive||!airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0,sh->nativeAirNetwork))return 0;
  if(op==1)return 1; // AircraftType::CanUseWaypoint, the native UI gate.
- if(op!=2||!own(object,lastHouse)||kind(object)!=0||get<uint32_t>(object+0x5D4)||
+ if(op!=2||!airpathpolicy::arrival(get<int>(0xA8B238),true,sh->nativeAirNetwork)||!own(object,lastHouse)||kind(object)!=0||get<uint32_t>(object+0x5D4)||
     get<uint32_t>(object+0x294)||get<uint8_t>(object+0x6CA))return 0;
  // YRpp TechnoClass::TryNextPlanningTokenNode: native planning owns its tokens
  // and event construction. No external queue, mission/target write, OutList
@@ -324,15 +346,30 @@ original:
 // The capture shows a shared control predicate, not selection-only calls.
 // Installed only as one manager-owned group after context/heartbeat preflight.
 // These hot leaf functions do no polling, lease acquisition, allocation or IO.
-static __declspec(naked) void riskControlEntry(){__asm {
- mov eax,1
+#include "control_predicate_thunks.h"
+// Keep the native x87 pop/condition path, correcting only the automatic
+// acquisition threshold for the local House. Explicit Attack does not use it.
+static __declspec(naked) void riskLowDamageEntry(){__asm {
+ pushfd
+ push eax
+ cmp byte ptr [riskLowDamageActive],0
+ je original
+ cmp byte ptr [riskLowDamageAllHouses],0
+ jne filtered
+ mov eax,[edi+21Ch]
+ cmp eax,dword ptr ds:[0A83D4Ch]
+ jne original
+filtered:
+ pop eax
+ popfd
+ fcomp qword ptr [lowDamageThreshold]
+ push 6F7D4Ah
  ret
-}}
-static __declspec(naked) void riskControlOwnerEntry(){__asm {
- mov edx,dword ptr ds:[0A83D4Ch]
- xor eax,eax
- cmp ecx,edx
- sete al
+original:
+ pop eax
+ popfd
+ fcomp dword ptr ds:[7F4E38h]
+ push 6F7D4Ah
  ret
 }}
 struct RiskSite {uint32_t address;unsigned size;uint8_t before[16],after[16];};
@@ -345,10 +382,11 @@ static RiskSite riskSites[]={
  {experimentalpatch::C4Execution,6,{0x8A,0x81,0xC2,0x0E,0,0},{}},
  {experimentalpatch::TechDraw,5,{0xE8,0x99,0xE0,0xE4,0xFF},{}},
  {experimentalpatch::TechPrune,5,{0xE8,0xEA,0xD0,0xE4,0xFF},{}},
- {experimentalpatch::C4Movement,6,{0x8A,0x81,0xC2,0x0E,0,0},{}}
+ {experimentalpatch::C4Movement,6,{0x8A,0x81,0xC2,0x0E,0,0},{}},
+ {experimentalpatch::LowDamage,6,{0xD8,0x1D,0x38,0x4E,0x7F,0},{}}
 };
 static void prepareRiskSites(){static bool ready=false;if(ready)return;ready=true;
- const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry)),uint32_t(uintptr_t(&riskC4Entry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskC4MovementEntry))};
+ const uint32_t targets[]={uint32_t(uintptr_t(&riskPlacementEntry)),uint32_t(uintptr_t(&riskAirTypeEntry)),uint32_t(uintptr_t(&riskAirArrivalEntry)),uint32_t(uintptr_t(&riskShroudEntry)),uint32_t(uintptr_t(&riskFogEntry)),uint32_t(uintptr_t(&riskC4Entry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskTechEntry)),uint32_t(uintptr_t(&riskC4MovementEntry)),uint32_t(uintptr_t(&riskLowDamageEntry))};
  for(unsigned i=0;i<sizeof(riskSites)/sizeof(riskSites[0]);++i){auto&s=riskSites[i];
   if(s.size==4)memcpy(s.after,&targets[i],4);
   else{memset(s.after,0x90,s.size);s.after[0]=experimentalpatch::callSite(s.address)?0xE8:0xE9;uint32_t offset=targets[i]-s.address-5;memcpy(s.after+1,&offset,4);}
@@ -368,8 +406,27 @@ static bool installRiskSite(RiskSite&s){
 }
 #include "master_tech_bridge.h"
 #include "direct_modes_bridge.h"
+static bool nativeTextTechRetired(){
+ if(riskTechActive)return false;
+ auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
+ if(!techmode::retired(riskSites[6],codeHookRegistry,reader)||!techmode::retired(riskSites[7],codeHookRegistry,reader))return false;
+ for(const auto&s:masterTechSites)if(!techmode::retired(s,codeHookRegistry,reader))return false;
+ return true;
+}
+static bool nativeTechRetired(){return nativeTextTechRetired()&&techParametersRetired();}
+static bool nativePlacementRetired(){
+ if(riskPlacementActive)return false;
+ auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
+ if(!techmode::retired(riskSites[0],codeHookRegistry,reader))return false;
+ for(const auto&s:directpatch::Sites)if(s.group==directpatch::Group::Placement&&!techmode::retired(s,codeHookRegistry,reader))return false;
+ // No retired older placement entry may retain ownership either.
+ return !codeHookRegistry.active(0x464AC0)&&!codeHookRegistry.conflict(0x464AC0);
+}
 static bool setTechSites(bool enabled){
  prepareRiskSites();prepareMasterTech();riskTechActive=false;
+ // Defense in depth: callers cannot accidentally install the default pair
+ // when they request the rule-data implementation.
+ if(enabled&&(techmode::data(techImplementation)||techmode::parameters(techImplementation)))enabled=false;
  if(enabled&&techImplementation==2){
   // The old call gates and master prune have adjacent ABI dependencies.
   // Restore the old pair before preflighting the complete new group.
@@ -385,51 +442,27 @@ static bool setTechSites(bool enabled){
  if(enabled&&masterOff){riskTechActive=installRiskSite(riskSites[6])&&installRiskSite(riskSites[7]);if(riskTechActive)return true;}
  bool a=restoreRiskSite(riskSites[6]),b=restoreRiskSite(riskSites[7]);return !enabled&&masterOff&&a&&b;
 }
-// Preserve both owner-index paths before enabling the common predicate.
-// 0x637E40 is a verified CALL boundary. Never write the sample's 0x6378E0.
-static RiskSite controlSites[]={
- {experimentalpatch::ControlOwner,5,{0xE8,0x31,0x7D,0xED,0xFF},{}},
- {experimentalpatch::ControlPlanning,5,{0xE8,0xAB,0x38,0xED,0xFF},{}},
- {experimentalpatch::ControlHouse,5,{0xA1,0x38,0xB2,0xA8,0},{}}
-};
-static void controlSitesTick(bool enabled){
- enabled=enabled&&playertest::Available;
- if(riskControlActive&&!enabled&&riskContextReady())unselect();
- riskControlActive=false;bool ok=true;
- static bool prepared=false;
- if(!prepared){
-  for(auto&s:controlSites){const uint32_t target=uint32_t(uintptr_t(s.address==experimentalpatch::ControlHouse?&riskControlEntry:&riskControlOwnerEntry));
-   s.after[0]=experimentalpatch::callSite(s.address)?0xE8:0xE9;const uint32_t offset=target-s.address-5;memcpy(s.after+1,&offset,4);}
-  prepared=true;
- }
- if(enabled){
-  auto&s=controlSites[2];uint8_t original[5]{};
-  if(!codeHookRegistry.active(s.address)){
-   if(!read(s.address,original,5)||!hookregistry::knownOriginal(s.address,original,5))ok=false;
-   else memcpy(s.before,original,5);
-  }
-  if(ok)for(auto&site:controlSites)if(!installRiskSite(site)){ok=false;break;}
- }
- // Restore the common predicate first; preserve foreign bytes on conflict.
- if(!enabled||!ok)for(int i=2;i>=0;--i)if(!restoreRiskSite(controlSites[i]))ok=false;
- riskControlActive=enabled&&ok;if(sh)sh->playerControlStatus=ok?(enabled?1:0):-2;
-}
+#include "control_sites_bridge.h"
 static bool redrawRevealTest();
 static void restoreSmallMapCamera(),restoreHighScroll();
 static void restorePlacement(){
  restoreSmallMapCamera();restoreHighScroll();
- const bool wasRendered=riskRenderActive;
- riskPlacementActive=riskAirActive=riskRenderActive=riskC4Active=false;prepareRiskSites();
+ const bool wasRendered=riskRenderActive||shroudMaterials.active();
+ const bool materialRestored=shroudMaterials.restore(read,writeShroudMaterial);
+ riskPlacementActive=riskAirActive=riskRenderActive=riskC4Active=riskLowDamageActive=riskLowDamageAllHouses=false;prepareRiskSites();
  controlSitesTick(false);
+ if(restoreControlHouseFlags())controlHouseFlagFailed=false;
+ else if(sh)sh->playerControlStatus=-2;
  bool directPlace=directGroupRestore(directpatch::Group::Placement);
  bool directMap=directGroupRestore(directpatch::Group::Map);
  bool place=restoreRiskSite(riskSites[0])&&directPlace;
  bool type=restoreRiskSite(riskSites[1]),arrival=restoreRiskSite(riskSites[2]);
  snap.placementStatus=place?0:-2;snap.nativeAirStatus=type&&arrival?0:-2;
  bool shroud=restoreRiskSite(riskSites[3]),fog=restoreRiskSite(riskSites[4]);
- snap.renderRevealStatus=shroud&&fog&&directMap?0:-2;
+ snap.renderRevealStatus=shroud&&fog&&directMap&&materialRestored?0:-2;
  bool c4Arrival=restoreRiskSite(riskSites[5]),c4Movement=restoreRiskSite(riskSites[8]);
  snap.c4TestStatus=c4Arrival&&c4Movement?0:-2;
+ if(sh)sh->lowDamageStatus=restoreRiskSite(riskSites[9])?0:-2;
  // Stop/host exit still needs one native redraw after restoring the leaves.
  // A destroyed, changed, paused or faulted world must never be called here.
  riskRenderRedrawPending=riskRenderRedrawPending||wasRendered;
@@ -440,18 +473,21 @@ static bool redrawRevealTest(){
  static const uint8_t signature[]={0x83,0xEC,0x58,0x8B,0x0D,0x88,0xCE,0xB0,0};uint8_t actual[sizeof signature]{};
  const uint32_t tactical=get<uint32_t>(0x887324);
  struct Area {int x,y,w,h;};Area area{};
- if(tactical<0x10000||!riskContextReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return false;
+ if(tactical<0x10000||!riskRenderContextReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return false;
  call<void>(0x6D2790,tactical,area,false);return true;
 }
-static void placementTick(){
- prepareRiskSites();
- static uint32_t priorStrategy=0;
- bool priorRender=riskRenderActive;controlSitesTick(sh->controlAll!=0);
- // Infantry entry is now an ordinary planning event. Never install either
- // capability override, including when an older configuration enables C4Test.
- riskC4Active=false;
- {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:sh->c4Test?1:0;}
- if(sh->renderReveal==3){
+static void renderRevealTick(bool redraw=true){
+ prepareRiskSites();static uint32_t priorStrategy=0;const bool priorRender=riskRenderActive;
+ const bool materialWanted=shroudpolicy::materialMode(sh->renderReveal);
+ const bool materialOff=materialWanted||shroudMaterials.restore(read,writeShroudMaterial);
+ if(!materialWanted&&shroudMaterials.changed())riskRenderRedrawPending=true;
+ if(materialWanted){
+  riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);
+  const bool directOff=directGroupRestore(directpatch::Group::Map);
+  snap.renderRevealStatus=a&&b&&directOff?shroudMaterials.update(sh->renderReveal==4?1:2,GetTickCount(),read,writeShroudMaterial):-2;
+  if(shroudMaterials.changed())riskRenderRedrawPending=true;
+ }else if(!materialOff){riskRenderActive=false;restoreRiskSite(riskSites[3]);restoreRiskSite(riskSites[4]);directGroupRestore(directpatch::Group::Map);snap.renderRevealStatus=-2;
+ }else if(sh->renderReveal==3){
   riskRenderActive=false;bool a=restoreRiskSite(riskSites[3]),b=restoreRiskSite(riskSites[4]);
   bool ok=a&&b&&directGroupEnable(directpatch::Group::Map);
   if(!ok)directGroupRestore(directpatch::Group::Map);
@@ -466,8 +502,33 @@ static void placementTick(){
  }
  if(priorRender!=riskRenderActive||priorStrategy!=sh->renderReveal)riskRenderRedrawPending=true;
  priorStrategy=sh->renderReveal;
- if(riskRenderRedrawPending&&redrawRevealTest())riskRenderRedrawPending=false;
- if((sh->flags&BuildAnywhere)&&sh->placementImplementation==1){
+ if(redraw&&riskRenderRedrawPending&&redrawRevealTest())riskRenderRedrawPending=false;
+}
+static void placementTick(){
+ prepareRiskSites();
+ riskLowDamageActive=false;
+ // Tool-side target filtering does not need to alter the engine's automatic
+ // acquisition. The separately labelled native option is required in SP too.
+ bool lowRequested=sh->lowDamageFilter&&sh->lowDamageNetwork;
+ bool lowOK=lowRequested?installRiskSite(riskSites[9]):restoreRiskSite(riskSites[9]);
+ riskLowDamageActive=lowRequested&&lowOK;
+ riskLowDamageAllHouses=riskLowDamageActive&&eventdelivery::isMultiplayer(get<int>(0xA8B238));
+ sh->lowDamageStatus=!lowOK?-2:!sh->lowDamageFilter?0:riskLowDamageActive?1:2;
+ const bool ownerGuardReady=!sh->controlCommandOwner||(controlCommandOwnerReady(lastHouse)&&
+  (!eventdelivery::isMultiplayer(get<int>(0xA8B238))||networkHousePreserveReady()));
+ controlSitesTick(controlmode::master(sh->controlAll)||(controlmode::native(sh->controlAll)&&ownerGuardReady));
+ if(controlHouseFlagsPending())sh->playerControlStatus=-2;
+ // Infantry entry uses ordinary task/planning events. Never install either
+ // capability override, including when an older configuration enables C4Test.
+ riskC4Active=false;
+ {bool a=restoreRiskSite(riskSites[5]),b=restoreRiskSite(riskSites[8]);snap.c4TestStatus=!a||!b?-2:featureavailability::InfantryForcedEntry&&sh->c4Test?1:0;}
+ renderRevealTick();
+ if((sh->flags&BuildAnywhere)&&sh->placementImplementation==2){
+  riskPlacementActive=false;
+  const bool oldOff=restoreRiskSite(riskSites[0]);
+  const bool directOff=directGroupRestore(directpatch::Group::Placement);
+  snap.placementStatus=oldOff&&directOff&&nativePlacementRetired()?2:-2;
+ }else if((sh->flags&BuildAnywhere)&&sh->placementImplementation==1){
   riskPlacementActive=false;bool off=restoreRiskSite(riskSites[0]);
   bool ok=off&&directGroupEnable(directpatch::Group::Placement);
   if(!ok)directGroupRestore(directpatch::Group::Placement);
@@ -477,13 +538,15 @@ static void placementTick(){
   if((sh->flags&BuildAnywhere)&&sh->placementImplementation==0&&directOff){riskPlacementActive=installRiskSite(riskSites[0]);snap.placementStatus=riskPlacementActive?1:-2;}
   else{riskPlacementActive=false;bool off=restoreRiskSite(riskSites[0]);snap.placementStatus=off&&directOff?0:-2;}
  }
- if(airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0)){
+ if(airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0,sh->nativeAirNetwork)){
+  const bool advance=airpathpolicy::arrival(get<int>(0xA8B238),true,sh->nativeAirNetwork);
   static const uint8_t nextSignature[]={0x81,0xEC,0xE0,0,0,0,0x53,0x56,0x8B,0xF1};uint8_t actual[sizeof nextSignature]{};
-  bool supported=read(0x6385C0,actual,sizeof actual)&&!memcmp(actual,nextSignature,sizeof actual);
+  bool supported=!advance||(read(0x6385C0,actual,sizeof actual)&&!memcmp(actual,nextSignature,sizeof actual));
   // Behavior first, frontend last. Partial installation rolls back as a group.
-  riskAirActive=supported&&installRiskSite(riskSites[2])&&installRiskSite(riskSites[1]);
+  riskAirActive=supported&&(advance?installRiskSite(riskSites[2]):restoreRiskSite(riskSites[2]))&&installRiskSite(riskSites[1]);
   if(!riskAirActive){restoreRiskSite(riskSites[1]);restoreRiskSite(riskSites[2]);}
-  snap.nativeAirStatus=riskAirActive?1:supported?-2:-1;
+  snap.nativeAirStatus=riskAirActive?(airpathpolicy::multiplayer(get<int>(0xA8B238))?(advance?4:3):1):supported?-2:-1;
  }else{riskAirActive=false;bool a=restoreRiskSite(riskSites[1]),b=restoreRiskSite(riskSites[2]);
-  snap.nativeAirStatus=a&&b?((sh->flags&NativeAirWaypoints)&&airpathpolicy::events(get<int>(0xA8B238),false,true)?2:0):-2;}
+  snap.nativeAirStatus=a&&b?((sh->flags&NativeAirWaypoints)&&airpathpolicy::events(get<int>(0xA8B238),false,true,sh->nativeAirNetwork)?2:0):-2;}
 }
+

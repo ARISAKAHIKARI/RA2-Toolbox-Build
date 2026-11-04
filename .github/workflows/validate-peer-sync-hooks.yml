@@ -1,0 +1,126 @@
+name: Validate hook readiness, lifecycle and shroud publication
+on:
+  push:
+    branches: [codex/crc-map-shadow-hotfix32-20261031]
+    paths: ['source/**', '.github/workflows/validate-peer-sync-hooks.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: peer-sync-hooks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise production policies and emit the native site inventory
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics
+          for name in initial_sync_gate initial_sync_compiletime tech_enhancement_recovery crc_shadow_recovery hook_registry_policy experimental_patch_policy; do
+            g++ -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "/tmp/$name"
+            "/tmp/$name" | tee "diagnostics/$name.log"
+          done
+          g++ -std=c++17 -O2 -c source/third_party/xbrz/xbrz.cpp -o /tmp/shroud-test-xbrz.o
+          for name in radar_visibility_publication radar_boundary radar_shroud_mask; do
+            g++ -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" /tmp/shroud-test-xbrz.o -o "/tmp/$name"
+            "/tmp/$name" | tee "diagnostics/$name.log"
+          done
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/hook_inventory.cpp -o /tmp/hook_inventory
+          /tmp/hook_inventory > diagnostics/hook-inventory.json
+          python3 -m json.tool diagnostics/hook-inventory.json
+          g++ -std=c++17 -O2 -UNDEBUG source/hook_diagnostics/tests/sequence.cpp -o /tmp/hook-diagnostic-sequence
+          /tmp/hook-diagnostic-sequence | tee diagnostics/hook-diagnostic-sequence.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: peer-sync-policy-and-inventory
+          path: diagnostics/*
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the pinned Zig compiler
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force diagnostics,artifacts | Out-Null
+      - name: Run actual Windows control-thunk and stale-HHOOK regressions
+        shell: pwsh
+        run: |
+          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG -fms-extensions -fasm-blocks -fno-stack-protector source/assist/tests/control_predicate_windows.cpp -o artifacts/control-predicate-test.exe -lkernel32
+          if($LASTEXITCODE -ne 0){throw 'Control thunk test compilation failed'}
+          & ./artifacts/control-predicate-test.exe | Tee-Object diagnostics/control-predicate.log
+          if($LASTEXITCODE -ne 0){throw 'Control thunk regression failed'}
+          & $env:ZIG_EXE c++ -target x86_64-windows-gnu -std=c++17 -O2 -UNDEBUG source/assist/tests/host_target_cleanup_windows.cpp -o artifacts/host-target-cleanup-test.exe -lkernel32 -luser32 -lwinmm -lgdi32
+          if($LASTEXITCODE -ne 0){throw 'Host cleanup test compilation failed'}
+          & ./artifacts/host-target-cleanup-test.exe | Tee-Object diagnostics/host-target-cleanup.log
+          if($LASTEXITCODE -ne 0){throw 'Stale target cleanup regression failed'}
+          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG source/hook_diagnostics/tests/camera_gate.cpp -o artifacts/camera-diagnostic-gate.exe -luser32
+          if($LASTEXITCODE -ne 0){throw 'Diagnostic camera gate compilation failed'}
+          & ./artifacts/camera-diagnostic-gate.exe | Tee-Object diagnostics/camera-diagnostic-gate.log
+          if($LASTEXITCODE -ne 0){throw 'Diagnostic camera gate regression failed'}
+      - name: Build the production x64 host, x86 Runtime and broker
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_OUTPUT_DIR="$PWD/artifacts/build"
+          bash source/build-zig-x64.sh > diagnostics/build.log 2>&1 || { tail -80 diagnostics/build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root artifacts/build --host-arch x64
+          python source/tools/verify_crossbit_abi.py --zig "$ZIG_EXE" --output diagnostics/crossbit-abi.json
+      - name: Execute native tooltip and frame adapter regressions
+        shell: pwsh
+        run: |
+          python source/tools/test_cursor_tooltip_windows.py --zig $env:ZIG_EXE --output diagnostics/cursor-tooltip
+          if($LASTEXITCODE -ne 0){throw 'Native tooltip/frame regression failed'}
+      - name: Build and verify the standalone 30-second Hook observer
+        shell: pwsh
+        run: |
+          python source/tools/build_hook_diagnostics.py --zig $env:ZIG_EXE --base-build artifacts/build --output artifacts/hook-test
+          if($LASTEXITCODE -ne 0){throw 'Diagnostic build/UI/broker smoke failed'}
+          python source/tools/verify_hook_diagnostics.py --root artifacts/hook-test
+          if($LASTEXITCODE -ne 0){throw 'Diagnostic PE/ABI validation failed'}
+          Copy-Item source/hook_diagnostics/README.md artifacts/hook-test/README.md
+          @{commit=$env:GITHUB_SHA;run_id=$env:GITHUB_RUN_ID;game_tested=$false;multiplayer_tested=$false;scope='Diagnostic UI/broker loader and PE/ABI checks; no game attached'} | ConvertTo-Json | Set-Content -Encoding utf8 artifacts/hook-test/HOOK_TEST_BUILD.json
+      - name: Record test-build identity and scope
+        shell: pwsh
+        run: |
+          $files=@()
+          foreach($name in 'RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe'){
+            $p=Join-Path 'artifacts/build' $name
+            $files+=@{name=$name;sha256=(Get-FileHash $p -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          @{commit=$env:GITHUB_SHA;run_id=$env:GITHUB_RUN_ID;files=$files;game_tested=$false;multiplayer_tested=$false;scope='Windows synthetic thunk/handle regressions and production build; no game transport or full Reveal'} | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 artifacts/build/PEER_SYNC_BUILD.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: peer-sync-windows-diagnostics
+          path: diagnostics/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: peer-sync-experimental-build-not-netplay-certified
+          path: artifacts/build/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: isolated-hook-test-not-netplay-certified
+          path: |
+            artifacts/hook-test/RA2HookTest.exe
+            artifacts/hook-test/GameRuntime.dll
+            artifacts/hook-test/GameRuntimeHost32.exe
+            artifacts/hook-test/HOOK_TEST_VERIFIED.json
+            artifacts/hook-test/HOOK_TEST_BUILD.json
+            artifacts/hook-test/BUILD_TARGET.json
+            artifacts/hook-test/README.md
+          if-no-files-found: error

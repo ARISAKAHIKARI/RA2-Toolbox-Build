@@ -1,0 +1,32 @@
+{
+  "scope": "Portable C++ planner and patch registry assertions; not Windows loading, game execution or multiplayer validation.",
+  "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "test": "assist/tests/missile_compute.cpp",
+      "source_sha256": "62f73d13f2720e9105ae36323f17df1ad164fb3fd889c00be4aac5d327d2a4b2",
+      "compiler_flags": [
+        "-std=c++17",
+        "-O2"
+      ],
+      "compile_exit_code": 0,
+      "run_exit_code": 0,
+      "stdout": "PASS legacy allocation plus sleep reservation, fired-shot coverage, wake order, transient burst and cleanup",
+      "status": "PASS"
+    },
+    {
+      "test": "assist/tests/experimental_patch_policy.cpp",
+      "source_sha256": "e1751bb0fa7454f9c44972bbf05e21d94c2f43df79152e877b9c67b9f46a47b5",
+      "compiler_flags": [
+        "-std=c++17",
+        "-O2"
+      ],
+      "compile_exit_code": 0,
+      "run_exit_code": 0,
+      "stdout": "PASS: eight-site allowlist, shape/length checks, install/restore and sticky foreign conflict; retired sites denied",
+      "status": "PASS"
+    }
+  ]
+}

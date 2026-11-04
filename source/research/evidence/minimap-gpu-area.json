@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-29",
+  "scope": "Host whole-map native-pixel minimap area/filter/fog GPU path; no new engine address, hook, protocol or game memory writes",
+  "prior_notebook_version": 80,
+  "native_game_sha_abi": "not applicable to host algorithm",
+  "native_oracle": {
+    "channels": 749296,
+    "max_error": 0,
+    "actual_gpu": false
+  },
+  "actual_gpu": {
+    "run_id": 40801399801,
+    "commit": "d3084cf33f25c18aa8e4a4785bdc1a2cb0fce56e",
+    "job_id": 123210095828,
+    "device": "llvmpipe (LLVM20.1.2,256bits)",
+    "software": true,
+    "asan_ubsan": true,
+    "khronos_validation": true,
+    "frames": 32,
+    "channels": 3507092,
+    "max_error": 0,
+    "production_scene_channels": 642312,
+    "warm_uploads": 0,
+    "warm_prefix_builds": 0,
+    "final_readbacks_new_frame": 1,
+    "static_scene_dispatches": 0,
+    "static_scene_readbacks": 0,
+    "production_scene_error_upper_bound": 1
+  },
+  "page_size": 128,
+  "coarse_integral_block": 4,
+  "prefix_bytes_per_page": 13068,
+  "maximum_pages": 2048,
+  "raw_gpu_bytes": 134217728,
+  "prefix_gpu_bytes": 26763264,
+  "mapped_budget_bytes": 536870912,
+  "source_cache_key": [
+    "vector address",
+    "shared ownership",
+    "native page mutation revision"
+  ],
+  "source_retention": "strong only during synchronous Plan submission; weak persistent GPU cache",
+  "tests": [
+    "shrunk/upscaled/mixed axes",
+    "fractional span and page boundary",
+    "sparse and deleted pages",
+    "vector address reused with new shared owner",
+    "in-place native page mutation forces1upload+prefix rebuild",
+    "CPU native page budget releases after canvas destruction",
+    "current native fog shares batch",
+    "unchanged static Scene owner retained",
+    "full-mask CPU/GPU toggle fallback",
+    "2688/19 outer-edge 1ulp clamp",
+    "exact1:1 NativeCanvas nativeRow with nonopaque page/background alpha still produces opaque RGB",
+    "64KiB forced mapped-budget Area cleanup extension included in final mandatory GPU fixture"
+  ],
+  "cpu_remaining": [
+    "game reads and validation",
+    "asset decode",
+    "native TMP/SHP/VXL/Z/shadow composition",
+    "diagram mode and marker/text drawing",
+    "final Win32 presentation"
+  ],
+  "hardware_gpu_fps_verified": false,
+  "live_game_verified": false,
+  "new_files_sha256": {
+    "external_reader/source/gpu_area.h": "48d9089048ad64635f3807a78f196f1dbaef3ea9cec8993620f23ef075c724f0",
+    "external_reader/source/vulkan_area.h": "788e726c892531fde6b07506464cf2985f3b69be183e184705e067022aa77ce8",
+    "external_reader/source/vulkan_area_spirv.h": "188882f55cdd2aad472f3dd6f522f8dff6d408130fe7e91969af0c30c95ab9a2",
+    "external_reader/source/native_canvas.h": "eeb28105a2129086a9d8b90dc73de01a0d1953246cf781d2712add6cd2dffa26",
+    "external_reader/source/xbrz_adapter.h": "1b05eb027a41326a250676e4db660cbb32f36b3f034e31380821b1647b2338a5",
+    "external_reader/source/radar_scene.h": "ffeb2cd891185894c4fbd98f49525955d8f6c20c06515e71953be4e8431de2e8",
+    "external_reader/shaders/vulkan_area.comp": "86372801cdc32acd3968c5aec29ef6c670c7b4d9e3c0a2ce20ad8c5be413b48d",
+    "tools/build_vulkan_area.py": "a4ce1130d4dda94135bb1fad62af199d6970553fbadff5dc3f52e19afd08f61d",
+    "assist/tests/native_area.cpp": "ca50972a41b0ce6eca756bba556daa141fcb59141ae697ab75c1038963684bc5",
+    "assist/tests/vulkan_area.cpp": "b3aada64b929ac24fd8f81d12de1857fb3a7d3039b2a7e6cfb3d794ecf4750b7"
+  }
+}

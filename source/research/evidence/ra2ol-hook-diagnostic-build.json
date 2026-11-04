@@ -1,0 +1,71 @@
+{
+  "base_commit": "2214328080900dd2c177c3082b7538b4035fe1da",
+  "scope": "Windows compiled diagnostic host, broker loader, synthetic gate/sequence tests and PE checks; no game attached",
+  "supported_engine_sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "engine_sample_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "platform_reported_by_user": "RA2OL",
+  "coverage": {
+    "allowlisted": 51,
+    "scheduled_unique": 48,
+    "conditional_camera": "0x6D8640",
+    "disabled": [
+      "0x51A4D8",
+      "0x51C32B",
+      "0x4A9840"
+    ],
+    "denied_legacy": 14,
+    "stages_including_baselines": 21
+  },
+  "tools": {
+    "zig": "0.13.0",
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86"
+  },
+  "checks": [
+    {
+      "name": "sequence.cpp",
+      "scope": "Windows x64 synthetic policy and source catalog coverage",
+      "exit_code": 0
+    },
+    {
+      "name": "camera_gate.cpp",
+      "scope": "Windows x86 synthetic identity, heartbeat and default-off gate",
+      "exit_code": 0
+    },
+    {
+      "name": "RA2HookTest.exe --ui-smoke",
+      "scope": "Actual hidden UI creation, invalid PID refusal and bundle hashes",
+      "exit_code": 0
+    },
+    {
+      "name": "RA2HookTest.exe --broker-smoke",
+      "scope": "Actual x64/x86 broker handshake and LoadLibraryW in broker; no game hook",
+      "exit_code": 0
+    },
+    {
+      "name": "verify_hook_diagnostics.py",
+      "scope": "Actual PE architecture/import/manifest/exports/Assist83/Runtime4/Entry3",
+      "exit_code": 0
+    }
+  ],
+  "files": {
+    "RA2HookTest.exe": {
+      "bytes": 463360,
+      "sha256": "5b6d89539b1e22024fc8ffd24899f1bd0542b31b5d580b70b3027526bd515aa8",
+      "machine": "PE32+ x64"
+    },
+    "GameRuntime.dll": {
+      "bytes": 5277696,
+      "sha256": "d7a2a9ba2295ff7beb7163ef4431079c2b6a0d4c8e96383ef188c50db9099462",
+      "machine": "PE32 x86"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 207872,
+      "sha256": "e6a3f59588cffee48bb74ca245a6126406eee0e35ea27f9f9df67fab8829286d",
+      "machine": "PE32 x86"
+    }
+  }
+}

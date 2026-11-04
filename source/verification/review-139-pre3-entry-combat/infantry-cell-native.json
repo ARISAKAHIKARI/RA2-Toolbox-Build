@@ -1,0 +1,344 @@
+{
+  "scope": "Captured native infantry click classification, event send and cell-entry gates.\n\nSynthetic keyboard/map/world and network-ID packing queries. Native action\nselection, click dispatch, ClickedMission, QueueMegaMission and Event constructor\nexecute unchanged. Geometry-driven selection of object versus cell is NOT\nreproduced; forced action-boundary cases prove dispatch only. No full pathfinding,\narrival, building capture/destruction or live multiplayer validation.\n",
+  "supported_exe_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "case": "native_engineer_object_click",
+      "keys": [],
+      "action": 9,
+      "event_type": 4,
+      "mission": 8,
+      "target": "none",
+      "destination": "building_network_ID",
+      "status": "PASS"
+    },
+    {
+      "case": "native_engineer_object_click",
+      "keys": [
+        17
+      ],
+      "action": 9,
+      "event_type": 4,
+      "mission": 8,
+      "target": "none",
+      "destination": "building_network_ID",
+      "status": "PASS"
+    },
+    {
+      "case": "native_engineer_object_click",
+      "keys": [
+        18
+      ],
+      "action": 9,
+      "event_type": 4,
+      "mission": 8,
+      "target": "none",
+      "destination": "building_network_ID",
+      "status": "PASS"
+    },
+    {
+      "case": "native_engineer_object_click",
+      "keys": [
+        17,
+        18
+      ],
+      "action": 9,
+      "event_type": 4,
+      "mission": 8,
+      "target": "none",
+      "destination": "building_network_ID",
+      "status": "PASS"
+    },
+    {
+      "case": "native_ctrl_alt_cell_click",
+      "engineer": false,
+      "action": 26,
+      "mission": 11,
+      "target": "cell",
+      "destination": "none",
+      "status": "PASS"
+    },
+    {
+      "case": "native_ctrl_alt_cell_click",
+      "engineer": true,
+      "action": 26,
+      "mission": 11,
+      "target": "cell",
+      "destination": "none",
+      "status": "PASS"
+    },
+    {
+      "case": "selected_action_cell_dispatch_boundary",
+      "injected_action": 9,
+      "mission": 8,
+      "target": "none",
+      "destination": "cell",
+      "native_sender_and_constructor": true,
+      "status": "PASS"
+    },
+    {
+      "case": "selected_action_cell_dispatch_boundary",
+      "injected_action": 16,
+      "mission": 17,
+      "target": "none",
+      "destination": "cell",
+      "native_sender_and_constructor": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 8,
+      "engineer": false,
+      "C4": false,
+      "destination": "building",
+      "passed_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 8,
+      "engineer": false,
+      "C4": false,
+      "destination": "building_cell",
+      "passed_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 8,
+      "engineer": false,
+      "C4": false,
+      "destination": "other_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 8,
+      "engineer": true,
+      "C4": false,
+      "destination": "building",
+      "passed_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 8,
+      "engineer": true,
+      "C4": false,
+      "destination": "building_cell",
+      "passed_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 8,
+      "engineer": true,
+      "C4": false,
+      "destination": "other_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 8,
+      "engineer": false,
+      "C4": true,
+      "destination": "building",
+      "passed_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 8,
+      "engineer": false,
+      "C4": true,
+      "destination": "building_cell",
+      "passed_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 8,
+      "engineer": false,
+      "C4": true,
+      "destination": "other_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 17,
+      "engineer": false,
+      "C4": false,
+      "destination": "building",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 17,
+      "engineer": false,
+      "C4": false,
+      "destination": "building_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 17,
+      "engineer": false,
+      "C4": false,
+      "destination": "other_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 17,
+      "engineer": true,
+      "C4": false,
+      "destination": "building",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 17,
+      "engineer": true,
+      "C4": false,
+      "destination": "building_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 17,
+      "engineer": true,
+      "C4": false,
+      "destination": "other_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 17,
+      "engineer": false,
+      "C4": true,
+      "destination": "building",
+      "passed_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 17,
+      "engineer": false,
+      "C4": true,
+      "destination": "building_cell",
+      "passed_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 17,
+      "engineer": false,
+      "C4": true,
+      "destination": "other_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 11,
+      "engineer": false,
+      "C4": false,
+      "destination": "building",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 11,
+      "engineer": false,
+      "C4": false,
+      "destination": "building_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 11,
+      "engineer": false,
+      "C4": false,
+      "destination": "other_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 11,
+      "engineer": true,
+      "C4": false,
+      "destination": "building",
+      "passed_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 11,
+      "engineer": true,
+      "C4": false,
+      "destination": "building_cell",
+      "passed_this_gate": true,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 11,
+      "engineer": true,
+      "C4": false,
+      "destination": "other_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 11,
+      "engineer": false,
+      "C4": true,
+      "destination": "building",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 11,
+      "engineer": false,
+      "C4": true,
+      "destination": "building_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_mission_and_destination_gate",
+      "mission": 11,
+      "engineer": false,
+      "C4": true,
+      "destination": "other_cell",
+      "passed_this_gate": false,
+      "status": "PASS"
+    },
+    {
+      "case": "native_capture_sabotage_tick_keeps_cell_destination",
+      "mission": 8,
+      "status": "PASS"
+    },
+    {
+      "case": "native_capture_sabotage_tick_keeps_cell_destination",
+      "mission": 17,
+      "status": "PASS"
+    }
+  ]
+}

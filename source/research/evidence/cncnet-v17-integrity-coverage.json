@@ -1,0 +1,37 @@
+{
+  "table_va": "0x81F7B4",
+  "table_valid": true,
+  "table_stable": true,
+  "table_matches_reflected_crc32_polynomial_edb88320": true,
+  "code_range": {
+    "start": "0x401000",
+    "end_exclusive": "0x7e1000",
+    "block_bytes": 16384,
+    "block_count": 248,
+    "total_bytes": 4063232
+  },
+  "known_toolbox_sites_covered": [
+    "0x50b6f0",
+    "0x6339ba",
+    "0x637e40",
+    "0x646f4e",
+    "0x646ef5",
+    "0x646fd2",
+    "0x6ffc93",
+    "0x6ffe2b",
+    "0x649ca0",
+    "0x649e1e",
+    "0x64b9d4",
+    "0x64b660",
+    "0x64b4ea",
+    "0x47f038",
+    "0x47f274",
+    "0x508e60",
+    "0x508eba",
+    "0x508f8f",
+    "0x577b3a",
+    "0x6d88fc"
+  ],
+  "not_covered": [],
+  "limits": "Pure arithmetic and on-disk native capture table verification. No live integrity scanner execution; no end-to-end user failure attribution."
+}

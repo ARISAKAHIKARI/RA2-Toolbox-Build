@@ -1,0 +1,15 @@
+{
+  "dll_sha256": "ce071e51441c19d6cee4c2c57c6ba79e2493c477fe2ac66ab53d3877a5a9d745",
+  "reported_enhancement_status": 0,
+  "DR_addresses": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "VEH_still_registered": true,
+  "false_Off_reproduced": true,
+  "debug_API_modeled": true,
+  "game_process_tested": false,
+  "scope": "Compiled Runtime with modeled RemoveVectoredExceptionHandler failure; DR addresses cleared but remaining VEH resource is falsely displayed Off. Stop acknowledgement was separately retained; this is a diagnostic regression, not proven permission fail-open."
+}

@@ -1,0 +1,263 @@
+{
+  "result": "PASS",
+  "production_helper": {
+    "matrix_cases": 1344,
+    "floor_cases": 3150,
+    "maximum_matrix_coefficient_error": 5.963554683408034e-08,
+    "maximum_floor_height_error": 0
+  },
+  "scope": "Actual native Drive/Ship Shadow_Matrix, base Shadow_Point, Object GetHeight and screen-height functions. Synthetic ramps and objects. Only Map GetCell/GetFloorHeight boundaries substituted; no real game or visual validation.",
+  "results": [
+    {
+      "exact_floor_height": {
+        "cases": 1575,
+        "maximum_height_error": 0,
+        "scope": "Actual Map GetFloorHeight -> Cell GetFloorHeight with native ramp table initialization, 21 ramps, signed levels and within-cell XY; synthetic map/objects; no stubbed floor height"
+      },
+      "executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "matrix_cases": 672,
+      "maximum_matrix_coefficient_error": 5.960464477539063e-08,
+      "distinct_matrices": 84,
+      "synthetic_map_cell_boundary_calls": 672,
+      "synthetic_floor_height_boundary_calls": 10,
+      "shadow_point_cases": [
+        {
+          "world_z": 0,
+          "synthetic_floor_z": 0,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 0
+        },
+        {
+          "world_z": 52,
+          "synthetic_floor_z": 52,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 8
+        },
+        {
+          "world_z": 104,
+          "synthetic_floor_z": 104,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 15
+        },
+        {
+          "world_z": 156,
+          "synthetic_floor_z": 156,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 23
+        },
+        {
+          "world_z": 208,
+          "synthetic_floor_z": 208,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 15
+        },
+        {
+          "world_z": 104,
+          "synthetic_floor_z": 0,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            15
+          ],
+          "old_level_based_drop": 15
+        },
+        {
+          "world_z": 728,
+          "synthetic_floor_z": 0,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            106
+          ],
+          "old_level_based_drop": 106
+        },
+        {
+          "world_z": 520,
+          "synthetic_floor_z": 104,
+          "on_bridge": true,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 15
+        },
+        {
+          "world_z": 624,
+          "synthetic_floor_z": 208,
+          "on_bridge": true,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 15
+        },
+        {
+          "world_z": 832,
+          "synthetic_floor_z": 208,
+          "on_bridge": true,
+          "native_shadow_point": [
+            0,
+            30
+          ],
+          "old_level_based_drop": 46
+        }
+      ],
+      "code_range_sha256": {
+        "Drive.Shadow_Matrix": "35b54937e689fb98727f24fce5d367be55012908a24fcf4d4e5559c8d4d48bc3",
+        "Ship.Shadow_Matrix": "1f90f836ce9ce36abfed3c7e31ea8edbadf5ed49d8fa684c8d5b76bfa2f3be56",
+        "base.Shadow_Matrix": "ad5c53ed321412206c62ca430b2a0608832350f71fc4263315dc1ab0b38dd7c8",
+        "base.Shadow_Point": "87b91894277df114ef994dad77f54c10c8985733b54af693c5c4d9c42adb0a9d",
+        "Object.GetHeight": "aa894ae7e4dea5509c5d7027393cb5093ce31426e80649008f74f29c6c7aac9c",
+        "screenHeight": "ef5aaaffa67d7a34ade1bbe5582b0c30a9c3ee4c7ac837a3bec904eb18c0e13c",
+        "Map.GetFloorHeight": "da9455b1bf1952e5e720859331297847db37f66c4c05fb3e735ccf5946169bc2",
+        "Cell.GetFloorHeight": "8d39a020e0badbb7fe79770e9f5d8c8f48904276a3c8ce2402d5f53970878475"
+      }
+    },
+    {
+      "exact_floor_height": {
+        "cases": 1575,
+        "maximum_height_error": 0,
+        "scope": "Actual Map GetFloorHeight -> Cell GetFloorHeight with native ramp table initialization, 21 ramps, signed levels and within-cell XY; synthetic map/objects; no stubbed floor height"
+      },
+      "executable_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "matrix_cases": 672,
+      "maximum_matrix_coefficient_error": 5.960464477539063e-08,
+      "distinct_matrices": 84,
+      "synthetic_map_cell_boundary_calls": 672,
+      "synthetic_floor_height_boundary_calls": 10,
+      "shadow_point_cases": [
+        {
+          "world_z": 0,
+          "synthetic_floor_z": 0,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 0
+        },
+        {
+          "world_z": 52,
+          "synthetic_floor_z": 52,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 8
+        },
+        {
+          "world_z": 104,
+          "synthetic_floor_z": 104,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 15
+        },
+        {
+          "world_z": 156,
+          "synthetic_floor_z": 156,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 23
+        },
+        {
+          "world_z": 208,
+          "synthetic_floor_z": 208,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 15
+        },
+        {
+          "world_z": 104,
+          "synthetic_floor_z": 0,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            15
+          ],
+          "old_level_based_drop": 15
+        },
+        {
+          "world_z": 728,
+          "synthetic_floor_z": 0,
+          "on_bridge": false,
+          "native_shadow_point": [
+            0,
+            106
+          ],
+          "old_level_based_drop": 106
+        },
+        {
+          "world_z": 520,
+          "synthetic_floor_z": 104,
+          "on_bridge": true,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 15
+        },
+        {
+          "world_z": 624,
+          "synthetic_floor_z": 208,
+          "on_bridge": true,
+          "native_shadow_point": [
+            0,
+            0
+          ],
+          "old_level_based_drop": 15
+        },
+        {
+          "world_z": 832,
+          "synthetic_floor_z": 208,
+          "on_bridge": true,
+          "native_shadow_point": [
+            0,
+            30
+          ],
+          "old_level_based_drop": 46
+        }
+      ],
+      "code_range_sha256": {
+        "Drive.Shadow_Matrix": "35b54937e689fb98727f24fce5d367be55012908a24fcf4d4e5559c8d4d48bc3",
+        "Ship.Shadow_Matrix": "1f90f836ce9ce36abfed3c7e31ea8edbadf5ed49d8fa684c8d5b76bfa2f3be56",
+        "base.Shadow_Matrix": "ad5c53ed321412206c62ca430b2a0608832350f71fc4263315dc1ab0b38dd7c8",
+        "base.Shadow_Point": "87b91894277df114ef994dad77f54c10c8985733b54af693c5c4d9c42adb0a9d",
+        "Object.GetHeight": "aa894ae7e4dea5509c5d7027393cb5093ce31426e80649008f74f29c6c7aac9c",
+        "screenHeight": "ef5aaaffa67d7a34ade1bbe5582b0c30a9c3ee4c7ac837a3bec904eb18c0e13c",
+        "Map.GetFloorHeight": "da9455b1bf1952e5e720859331297847db37f66c4c05fb3e735ccf5946169bc2",
+        "Cell.GetFloorHeight": "8d39a020e0badbb7fe79770e9f5d8c8f48904276a3c8ce2402d5f53970878475"
+      }
+    }
+  ],
+  "conclusion": "Shadow matrix uses current Cell RampType, not interpolated locomotor Draw_Matrix; Shadow_Point uses exact world Z minus slope floor height and bridge height, not integer Cell Level."
+}

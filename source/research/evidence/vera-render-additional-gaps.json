@@ -1,0 +1,209 @@
+{
+  "date": "2026-10-31",
+  "kind": "source_audit_only",
+  "note": "source/research/2026-10-31-vera-render-additional-gaps.md",
+  "question": "Additional Vera20K rendering producers and optimizations beyond the first roadmap",
+  "baseline": {
+    "repository": "ARISAKAHIKARI/RA2-Toolbox-Build",
+    "remote_commit": "c7b052b2f5aee28bafafd5bd962b0de30db1ad6f",
+    "local_commit": "a751c12b24fa6cd15861c96913fa0b1bb386f9b2",
+    "release": "Hotfix22"
+  },
+  "upstream": {
+    "repository": "ARISAKAHIKARI/vera20k",
+    "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+    "sources": [
+      {
+        "path": "src/render/smudge.rs",
+        "blob_sha": "2fd8e76968a8466812b53d6caba2c1f716bfe133",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/smudge.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/render/sinking.rs",
+        "blob_sha": "9800fcda3cfec08dab9f13876d4a6ef9f79ff7b9",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/sinking.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/render/draw_state.rs",
+        "blob_sha": "55e4f1cddada9da82d2333584f9fdf930cecb4c7",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/draw_state.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/render/line_trail.rs",
+        "blob_sha": "9d81e81ef3c37984d6b5b1a2cbbfdfdd67305119",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/line_trail.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/render/beacon_art.rs",
+        "blob_sha": "6f6df1802dc8186e5790770de062d0c68331ae74",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/beacon_art.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/render/radar/events.rs",
+        "blob_sha": "a546fea815fe9dbee5e4fce65ff295b24e23aa4b",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/radar/events.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/render/pixel_fx_sparkles.rs",
+        "blob_sha": "a60aeefaec2a7da5a76f2b115ae0bd8e4cbea425",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/pixel_fx_sparkles.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/render/bridge_atlas.rs",
+        "blob_sha": "50c4c3fac1b5ab4c6700c59305e7752a1d3a95ae",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/bridge_atlas.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/render/overlay_zshape.rs",
+        "blob_sha": "7c93fbd53830930bdf94b4d18b25e6c298691832",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/overlay_zshape.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/render/chrono_screen.rs",
+        "blob_sha": "4ba46241f18590212815c0514c4ea705f5405c22",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/chrono_screen.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/app/presentation/instances/bridges.rs",
+        "blob_sha": "e861a9731d835b105b6bad681988ed2cb8f4600b",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/app/presentation/instances/bridges.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/app/presentation/instances/fogged.rs",
+        "blob_sha": "9690124c6aef2850972eb44f644a95145e4ae9b6",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/app/presentation/instances/fogged.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/app/presentation/instances/overlays.rs",
+        "blob_sha": "bea24b024e17f3596926c6ea3e36298fece79e49",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/app/presentation/instances/overlays.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/app/presentation/instances/units.rs",
+        "blob_sha": "f412c315f93d7c9d63cfa340477d4b5deb50c328",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/app/presentation/instances/units.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/app/presentation/render/build_instances.rs",
+        "blob_sha": "3bba16a3d4d1f2420b7cf77c381b6e23d5d2a75f",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/app/presentation/render/build_instances.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/app/presentation/render/mod.rs",
+        "blob_sha": "5246929c0fa042c964aef9f8b4921b61a90a6ec4",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/app/presentation/render/mod.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/render/radar/minimap.rs",
+        "blob_sha": "5e0d6d7f417e6971bdb4375307f54213a61826bb",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/render/radar/minimap.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/app/chrono_screen.rs",
+        "blob_sha": "6a2eb8f76662342328fceae1ebd816bf55eccdf2",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/app/chrono_screen.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/app/presentation/line_trails.rs",
+        "blob_sha": "81e3ce81e96b1a7e1c3fbb4a9281c9632f7cccf5",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/app/presentation/line_trails.rs",
+        "read_source_blob_verified": true
+      },
+      {
+        "path": "src/rules/building_rubble.rs",
+        "blob_sha": "b916644277a93069b9237a05e28ef8f08541f75c",
+        "url": "https://github.com/ARISAKAHIKARI/vera20k/blob/3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f/src/rules/building_rubble.rs",
+        "read_source_blob_verified": true
+      }
+    ]
+  },
+  "historical_supported_executable_sha256": [
+    "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a"
+  ],
+  "coverage": {
+    "new_candidates": 11,
+    "existing_depth_refinement": "Raw slope overlay Z-shapes",
+    "production_code_changed": false,
+    "build_run": false,
+    "cpu_fixtures_run": false,
+    "gpu_run": false,
+    "windows_run": false,
+    "game_run": false,
+    "new_binary_analysis": false,
+    "upstream_oracles": "References from source only; not executed or independently revalidated in this audit"
+  },
+  "limitations": [
+    "Runtime ABI layouts remain to be adapted and validated before implementation",
+    "Smudge multi-cell origin dedup does not cover partial clears or mixed cell materials",
+    "Custom Rubble= art is an explicit unbound upstream branch",
+    "PixelFX sparkle phases use hash/cycle approximation",
+    "ChronoScreen GPU f32 and resize/load recovery are not native exactness claims",
+    "FX_EMP and FX_MIRROR identifiers are not implemented proven material effects",
+    "GPU proposals have no measured speedup"
+  ],
+  "local_comparison": [
+    {
+      "path": "source/external_reader/source/radar_map.h",
+      "sha256": "1028ca0cf503c106d56c6261361a747624f358d8614a914fe5628f6462f4e1bb"
+    },
+    {
+      "path": "source/external_reader/source/radar_scene.h",
+      "sha256": "82cddaa50d0a52b3b956c2757474b98b0230c90413d4cab3d19882c1a7a9d74f"
+    },
+    {
+      "path": "source/external_reader/source/watch_view.h",
+      "sha256": "6145abc877bf1739ba6ed11b584b9149e6fa0b4c56107a8b2af0081993f630ea"
+    },
+    {
+      "path": "source/external_reader/source/watch_focus.h",
+      "sha256": "237c2d04ccc0902ca99ac98f0082b71c7f24bf6ee087a09c005bb31e49e6f332"
+    },
+    {
+      "path": "source/external_reader/source/visual_pose.h",
+      "sha256": "5c10cad733559e1cb7c720da71891059da77ec2a2cc1e417f9a0a8470ab43f51"
+    },
+    {
+      "path": "source/external_reader/source/camera_assets.h",
+      "sha256": "10cd2ae30e8b19657effffcd979536f740d95b73d5fcd0585c597c7654177754"
+    },
+    {
+      "path": "source/external_reader/source/terrain_sprite.h",
+      "sha256": "c5fec045cff7250a92aa31f46e7af52c13549ad95fb10bdd9dd19ebe326ea85c"
+    },
+    {
+      "path": "source/external_reader/source/art_variants.h",
+      "sha256": "52d624289b81b3aaa27e4cdfce87247b1e8ad6aee8cafb095f4422fca49990df"
+    },
+    {
+      "path": "source/external_reader/source/projectile_visuals.h",
+      "sha256": "f558e93cc0dcbedf6a4a032a2e5ae0ec72bb98009f3ec33ae04f1dd280e597ae"
+    },
+    {
+      "path": "source/external_reader/source/world_effects.h",
+      "sha256": "c300e629618420268c07a25efad278b12bb82fb69082be883bccf359c9268dc2"
+    },
+    {
+      "path": "source/external_reader/source/repair_visuals.h",
+      "sha256": "c6193200f93e8473cf6475deba719771ca58b4873649df57fdc9076657654e54"
+    }
+  ]
+}

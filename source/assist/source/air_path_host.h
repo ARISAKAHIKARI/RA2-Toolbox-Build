@@ -1,11 +1,12 @@
 #include <deque>
+#include "native_viewport_host.h"
 namespace airway {
 struct Point {uint32_t cell=0;int z=0;};
 struct Job {uint32_t id=0,pointer=0,token=0,match=0;std::deque<Point> points;int stage=0,attempts=0,x=0,y=0,z=0,previousX=0,previousY=0;bool selected=false,observedMove=false,previousValid=false;DWORD sent=0,progress=0,firstIssued=0;int64_t nearest=INT64_MAX;};
 struct Line {int x,y,tx,ty;};
 static std::vector<Job> jobs;static size_t cursor=0;static bool ended=false;static DWORD sampled=0;
-static bool native(){return airpathpolicy::native(snap.session,extra.nativeAirWaypoints&&!extra.airPathKey);}
-static bool active(){return airpathpolicy::events(snap.session,extra.airWaypoints||(extra.nativeAirWaypoints&&extra.airPathKey),extra.nativeAirWaypoints&&!extra.airPathKey);}
+static bool native(){return airpathpolicy::native(snap.session,extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork);}
+static bool active(){return airpathpolicy::events(snap.session,extra.airWaypoints||(extra.nativeAirWaypoints&&extra.airPathKey),extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork);}
 template<class K>static bool held(const K&keys){return extra.airPathKey?pointerinput::matchesHold(keys,extra.airPathKey,pointerinput::Enhanced):nativekeyhost::current().held(nativekeys::Planning,keys);}
 static bool held(){uint8_t keys[256]{};nativekeyhost::down(keys);return held(keys);}
 static void reset(){for(int n=0;n<commandQueue.size;)if(commandQueue.slots[n].command==AirPathMove)commandQueue.discard(n);else ++n;jobs.clear();cursor=0;ended=false;sampled=0;}
@@ -84,8 +85,9 @@ static void service(){
   if(j.stage==0&&sent<4&&int32_t(now-j.sent)>=0&&queueCommand(AirPathMove,int(j.id),int(goal.cell),j.match,0,0,j.token)){j.stage=1;j.sent=now;if(!j.firstIssued)j.firstIssued=now;++j.attempts;++sent;}
  }
 }
-static std::vector<Line> lines(){std::vector<Line> out;if(!active())return out;external::Projection projection{snap.cameraX,snap.cameraY,snap.width,snap.height};
+static std::vector<Line> lines(){std::vector<Line> out;if(!active())return out;nativeviewhost::Transform transform;if(!nativeviewhost::sampleTransform(shared,transform))return out;external::Projection projection{snap.cameraX,snap.cameraY,transform.active?transform.logical.w:snap.width,transform.active?transform.logical.h:snap.height};
  for(const auto&j:jobs){if(!j.selected||j.match!=commandMatch())continue;int x=0,y=0;external::project(projection,j.x,j.y,j.z,x,y);
-  for(auto point:j.points){int tx=0,ty=0;external::project(projection,int(point.cell%1000)*256+128,int(point.cell/1000)*256+128,point.z,tx,ty);out.push_back({x,y,tx,ty});x=tx;y=ty;if(out.size()>=256)return out;}
+  for(auto point:j.points){int tx=0,ty=0;external::project(projection,int(point.cell%1000)*256+128,int(point.cell/1000)*256+128,point.z,tx,ty);int a=x,b=y,c=tx,d=ty;if(nativeviewhost::localPoint(transform,a,b)&&nativeviewhost::localPoint(transform,c,d))out.push_back({a,b,c,d});x=tx;y=ty;if(out.size()>=256)return out;}
  }return out;}
 }
+

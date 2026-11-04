@@ -1,0 +1,73 @@
+{
+  "question": "Complete the recorded world Z/A, word-offset cloak, slope depth and special-effect production gaps after Hotfix25.",
+  "supported_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "evidence_level": [
+    "pinned upstream source inspection",
+    "private supported-image static disassembly",
+    "production cross compilation and shader/PE/ABI static verification only"
+  ],
+  "references": {
+    "vera": "ARISAKAHIKARI/vera20k@3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+    "yrpp": "CnCNet/YRpp@d9795546950fcc75a94325ffc83b44d16ec34ce2"
+  },
+  "addresses": {
+    "z": "4373B0/437A10/547CF0; ZBuffer887644 default8000/clearFFFF",
+    "foot": "4DAFC0,703B10,703CC0,703E70,704000,704240,704350; TypeDC0/DC4/DC8/DCC",
+    "cloak": "70BE50; Abstract10,Techno24C; signed wrapped sum %400",
+    "alpha": "420E90/420F40; full byte LUT product/127",
+    "palette": "48E91D,55621E/556300; Convert16C/170/174; 512 bytes per u16 shade",
+    "slope": "54530E..545458,4AF038..4AF0FB/437AAB; SLOP raw file; Cell11C",
+    "laser": "550260/5509F0,4CB3D0; atan8610B4",
+    "aa": "4BC750,4BCC0D,4BD556,4BD646/68F,4BD85B/8C0; public cubic257 table",
+    "wave": "75F020/75FA90/7602E0/7609E0; B4669C/B45E68/B46648",
+    "radiation": "659CA0/659FF0; step90,count8C,currentAmplitude80",
+    "lights": "5FF850,83358C; 8B4190/435BE0/436E80; A80208/62E280; 447AC0/4555D0/5B3040",
+    "math": "4CAC40/4CACB0/4CAD00/4CAD80; 8650BC/84F084/859094"
+  },
+  "production_owners": [
+    "native_surface.h",
+    "native_foot_depth.h",
+    "native_effect_math.h",
+    "native_line_cubic.h",
+    "native_combat_light.h",
+    "native_page_masks.h",
+    "gpu_draw_encoding.h",
+    "camera_raster.h",
+    "gpu_scene_record.h",
+    "object_canvas.h",
+    "vulkan_scene.h",
+    "vulkan_area_objects.h",
+    "vulkan_area.h",
+    "world_effects.h",
+    "gpu_effect_plan.h"
+  ],
+  "internal_abi": {
+    "draw_words": 64,
+    "scene_push_bytes": 128,
+    "area_push_bytes": 60,
+    "effect_push_bytes": 64
+  },
+  "wire_protocols": {
+    "assist": 81,
+    "runtime": 4,
+    "game_entry": 3,
+    "frame_signal": 1
+  },
+  "not_executed": [
+    "CPU fixture suites",
+    "native instructions",
+    "Windows loader",
+    "live game",
+    "Vulkan",
+    "D3D",
+    "multiplayer",
+    "FPS measurement"
+  ],
+  "unresolved": [
+    "Exact parity of every x87 chop53 intermediate",
+    "Commutation of minified effects with native-size final integration",
+    "Separate local UI radial AA/Z and approximate EBolt strand generator",
+    "Arbitrary mixed SHP/VXL attachments and recoil",
+    "Unknown mod vtables, out-of-allocation depth reads and native performance-drop gates"
+  ]
+}

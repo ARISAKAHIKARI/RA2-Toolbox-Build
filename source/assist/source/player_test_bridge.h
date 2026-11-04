@@ -13,18 +13,105 @@ static bool playableHouse(uint32_t house){
  for(int n=0;n<nodes.count;++n){uint32_t node=item(nodes,n);if(node>=0x10000&&get<int>(node+0x6B)==-1&&get<int>(node+0x6F)==index)spectator=true;}
  return playertest::eligible(index,passive,spectator,ended[0]||ended[1]||ended[3],id);
 }
+static bool enemyBuildingSellAllowed(uint32_t object){
+ // This changes only which manual Sell requests the toolbox may construct.
+ // It does not change ownership, CurrentPlayer or any receiver-side check.
+ return playertest::SellAvailable&&sh&&(sh->flags&SellEnemy)&&lastHouse&&
+  object&&worldObjects.contains(object)&&kind(object)==3&&nativeEnemy(object,lastHouse)&&
+  playableHouse(get<uint32_t>(object+0x21C));
+}
+static int destructPlayerTarget(uint32_t house,uint32_t expectedID,uint32_t expectedIndex){
+ if(!playertest::DestructAvailable||!lastHouse||!playableHouse(lastHouse)||
+    !house||!playableHouse(house)||get<bool>(house+0x1F7))return -4;
+ Vec houses=vec(0xA80228,32);
+ if(expectedIndex>=uint32_t(houses.count)||item(houses,int(expectedIndex))!=house||
+    get<uint32_t>(house+0x10)!=expectedID||get<int>(house+0x30)!=int(expectedIndex))return -7;
+ // The unadapted native sender replaces House with CurrentHouse. Foreign
+ // Destruct is admitted only while the complete managed preservation group is ready.
+ if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&house!=lastHouse){
+  if(!networkHousePreserveReady())return -42;
+  if(!networkSenderHouse(int(expectedIndex)))return -4;
+ }
+ return 1;
+}
+struct DestructSelectedItem{uint32_t object=0,id=0,table=0,owner=0;};
+struct DestructSelectedSnapshot{uint32_t items=0,scenario=0,house=0,houseID=0;int count=0,index=-1,frame=-1;DestructSelectedItem objects[4096]{};};
+static DestructSelectedSnapshot destructSelected;static bool destructSelectedArmed=false;
+static bool captureDestructSelection(DestructSelectedSnapshot&out){
+ out={};Vec v{};if(!read(0xA8ECB8,&v,sizeof v)||v.count<=0||v.count>4096||v.capacity<v.count||v.items<0x10000||
+ !read(0xA8B230,&out.scenario,4)||out.scenario<0x10000||!read(0xA8ED84,&out.frame,4)||out.frame<0)return false;
+ out.items=v.items;out.count=v.count;
+ for(int i=0;i<v.count;++i){auto&o=out.objects[i];uint8_t selected=0,alive=0,onMap=0,limbo=0;int hp=0;
+  if(!read(v.items+uint32_t(i)*4,&o.object,4)||o.object<0x10000||!read(o.object,&o.table,4)||
+   (o.table!=0x7F5C70&&o.table!=0x7EB058&&o.table!=0x7E3EBC&&o.table!=0x7E22A4)||
+   !read(o.object+0x10,&o.id,4)||!o.id||!read(o.object+0x21C,&o.owner,4)||o.owner<0x10000||
+   !read(o.object+0x83,&selected,1)||!selected||!read(o.object+0x90,&alive,1)||!alive||
+   !read(o.object+0x74,&onMap,1)||!onMap||!read(o.object+0x81,&limbo,1)||limbo||
+   !read(o.object+0x6C,&hp,4)||hp<=0)return false;
+  if(!out.house)out.house=o.owner;else if(out.house!=o.owner)return false;
+ }
+ Vec after{};uint32_t scenario=0;int frame=-1;
+ return read(0xA8ECB8,&after,sizeof after)&&after.items==v.items&&after.count==v.count&&after.capacity==v.capacity&&
+  read(0xA8B230,&scenario,4)&&scenario==out.scenario&&read(0xA8ED84,&frame,4)&&frame==out.frame&&
+  read(out.house+0x10,&out.houseID,4)&&out.houseID&&read(out.house+0x30,&out.index,4)&&out.index>=0&&out.index<32;
+}
+static bool sameDestructSelection(const DestructSelectedSnapshot&a,const DestructSelectedSnapshot&b){
+ if(a.items!=b.items||a.scenario!=b.scenario||a.frame!=b.frame||a.count!=b.count||a.house!=b.house||a.houseID!=b.houseID||a.index!=b.index)return false;
+ for(int i=0;i<a.count;++i){const auto&x=a.objects[i];const auto&y=b.objects[i];if(x.object!=y.object||x.id!=y.id||x.table!=y.table||x.owner!=y.owner)return false;}return true;
+}
 static bool authorizePlayerOrder(const intent::EventOrder&o,OrderAuthority authority){
  if(!lastHouse||o.player<0||o.player>=32)return false;
+ if(o.domain==vanilla::Domain::NoOptions&&o.eventKind==vanilla::EventType::Destruct){
+  // An explicit, current one-shot request is the only Destruct authorization,
+  // even for the local House. Other automatic/local senders cannot opt in.
+  if(authority!=OrderAuthority::DestructPlayerTest||!sh||sh->stop||sh->command!=DestructPlayer||
+     sh->request==sh->ack||sh->requestMatch!=match||DWORD(sampleClock(sh)-sh->requestTick)>3500||
+     DWORD(sampleClock(sh)-sh->heartbeat)>=3000)return false;
+  int valid=-7;
+  if(sh->arg==0){
+   static DestructSelectedSnapshot current;
+   if(sh->arg2||sh->requestToken||!destructSelectedArmed||!captureDestructSelection(current)||
+      !sameDestructSelection(destructSelected,current)||current.index!=o.player){snap.lastSubmitError=7;return false;}
+   valid=destructPlayerTarget(current.house,current.houseID,uint32_t(current.index));
+  }else{if(sh->requestToken!=uint32_t(o.player))return false;valid=destructPlayerTarget(uint32_t(sh->arg),uint32_t(sh->arg2),sh->requestToken);}
+  if(valid==-42)snap.lastSubmitError=42;
+  return valid>0;
+ }
+ if(authority==OrderAuthority::DestructPlayerTest)return false;
  if(authority==OrderAuthority::Local)return o.player==get<int>(lastHouse+0x30);
  if(!playertest::Available)return false;
  if(!sh||sh->stop||DWORD(sampleClock(sh)-sh->heartbeat)>=3000)return false;
- if(authority==OrderAuthority::PlayerTest){if(!sh->controlAll||o.domain!=vanilla::Domain::MegaMission||!playertest::manualMission(o.mission))return false;}
+ if(authority==OrderAuthority::PlayerTest){if(!controlmode::proxyOrders(sh->controlAll)||o.domain!=vanilla::Domain::MegaMission||!playertest::manualMission(o.mission))return false;}
  else if(authority==OrderAuthority::SellPlayerTest){if(!playertest::SellAvailable||!(sh->flags&SellEnemy)||o.domain!=vanilla::Domain::Object||o.eventKind!=0x16)return false;}
  else return false;
  uint32_t object=worldByID(uint32_t(o.a));if(!object||!live(object)||o.tagA!=0x34)return false;
- if(authority==OrderAuthority::SellPlayerTest&&kind(object)!=3)return false;
+ if(authority==OrderAuthority::SellPlayerTest&&!enemyBuildingSellAllowed(object))return false;
  uint32_t house=get<uint32_t>(object+0x21C);
- return playableHouse(house)&&o.player==get<int>(house+0x30);
+ if(!playableHouse(house)||o.player!=get<int>(house+0x30))return false;
+ if(authority==OrderAuthority::PlayerTest&&sh->controlCommandOwner&&house!=lastHouse&&!controlCommandOwnerReady(house)){
+  snap.lastSubmitError=42;++sh->controlCommandOwnerRejected;return false;
+ }
+ return true;
+}
+static int destructPlayerCommand(uint32_t house,uint32_t expectedID,uint32_t expectedIndex){
+ snap.lastSubmitError=0;
+ if(!gameentry::active(gameentry::Client::Assist)||!simulationReady())return -3;
+ destructSelectedArmed=false;
+ if(!house){
+  if(expectedID||expectedIndex||!captureDestructSelection(destructSelected))return -7;
+  house=destructSelected.house;expectedID=destructSelected.houseID;expectedIndex=uint32_t(destructSelected.index);
+  destructSelectedArmed=true;
+ }
+ int valid=destructPlayerTarget(house,expectedID,expectedIndex);
+ if(valid<0){destructSelectedArmed=false;if(valid==-42)snap.lastSubmitError=42;return valid;}
+ static const uint8_t ctor[]={0x53,0x8B,0x5C,0x24,0x0C,0x8B,0xC3,0x56};
+ if(memcmp((void*)0x4C66C0,ctor,sizeof ctor)){destructSelectedArmed=false;return -12;}
+ intent::EventOrder event{};event.domain=vanilla::Domain::NoOptions;
+ event.eventKind=vanilla::EventType::Destruct;event.player=int(expectedIndex);
+ // The receiver owns all effects. This path only appends the vanilla event;
+ // a successful return means queued, not that the House was destroyed.
+ const bool queued=submitConstructed(event,OrderAuthority::DestructPlayerTest);destructSelectedArmed=false;
+ return queued?1:snap.lastSubmitError==42?-42:snap.lastSubmitError==7?-7:-6;
 }
 static bool samePlayerWorld(){
  // Readiness can drop temporarily in menus; it is not a world identity.
@@ -93,3 +180,4 @@ static void publishPlayers(){
   auto&info=sh->players[sh->playerCount++];info={};info.pointer=p;info.id=get<uint32_t>(p+0x10);info.index=get<int>(p+0x30);info.human=get<bool>(p+0x1ED);read(p+90154,info.name,40);info.name[20]=0;
  }
 }
+

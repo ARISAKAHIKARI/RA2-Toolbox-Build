@@ -1,0 +1,86 @@
+{
+  "release": "1.0.39-pre.7 Hotfix28",
+  "evidence": "static-only frozen production build; user-reported disorder, ~250ms and GPU crash not reproduced",
+  "created_utc": "2026-10-31T11:17:21.932515+00:00",
+  "frozen_files_unchanged_and_remote_blob_equal": 1479,
+  "local_entries": 1479,
+  "local_remote_mismatches": [],
+  "remote_tree_entries": 3569,
+  "preserved_base_unmodified_blobs": 3341,
+  "product_source_local_commit": "0f53aae65978588bdd6af06c1feee7a9b68a9b62",
+  "product_source_remote_commit": "66bddb5727fb614bf6d7114e3060b34b6e1bceb3",
+  "product_remote_tree": "3304baa071b5c7bd7d3b865fb04c64f008bf67d7",
+  "toolchain": "Zig 0.13.0",
+  "production_build_exit_code": 0,
+  "build_command": "ZIG=<Zig0.13.0> RA2_OUTPUT_DIR=<clean-output> bash source/build-zig-x64.sh",
+  "pe_static_passed": true,
+  "abi_entries": 680,
+  "wire": {
+    "assist": 82,
+    "shared_bytes": 6580472,
+    "runtime": 4,
+    "entry": 3,
+    "frame_signal": 1
+  },
+  "gpu_fault_guard_static": {
+    "inspection": "COFF/PE bytes and unwind data only; no fault callback or Windows code executed",
+    "object_machine": "x64",
+    "object_sha256": "dcdd709ed149aa13baf53943cea5bd97e6a83c74d557ac75282322e96b2d44eb",
+    "guard_rva": "0x36f8f0",
+    "guard_code_prefix_matches": 1,
+    "unwind_flags": 3,
+    "seh_handler": "0x3e2770",
+    "seh_import": "__C_specific_handler",
+    "exception_record_size_bytes": 152,
+    "fault_address_offset_bytes": 8,
+    "guarded_codes": [
+      "0xC0000005",
+      "0xC0000006",
+      "0xC000001D"
+    ]
+  },
+  "binaries": {
+    "RA2Toolbox.exe": {
+      "bytes": 8399872,
+      "sha256": "a975531d4410ea13160360722277e04d26102d8c3ccb098bef13658d57fb2ede",
+      "machine": "PE32+ x64"
+    },
+    "GameRuntime.dll": {
+      "bytes": 5253120,
+      "sha256": "8748ae3769b692731d91513429a22a7d9cae56d1da479b5e6c0588b1b64b13c3",
+      "machine": "PE32 x86"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 207872,
+      "sha256": "59af515529130bbb3fff9cfa64a60d1f6b5fcd455e19902688ae09db493cc13a",
+      "machine": "PE32 x86"
+    }
+  },
+  "validation_logs_sha256": {
+    "build-hotfix28-final.log": "3b0f35a5b4552bbcf96d23497e4246f274f02d1125d6175cc6f37f1eb2d1a317",
+    "abi-hotfix28-final.log": "cfac4999a42cf3abf65109cdd8154dc7e94d9a9197f656ec75b3c5cfa50487a7",
+    "pe-hotfix28-final.log": "60ae7fc638e1e5fc1d99945191b5a59e4084559a63b57d2d86329b07e28a2dfe"
+  },
+  "shader_sources_changed": false,
+  "executed": {
+    "cpu_fixture_suites": false,
+    "native_instructions": false,
+    "windows_or_game": false,
+    "vulkan_d3d": false,
+    "multiplayer": false,
+    "fps_measurements": false
+  },
+  "runtime_performance_claimed": false,
+  "gpu_crash_root_cause_confirmed": false,
+  "gpu_guard_scope": "FrameResolve scene generation and normal failure cleanup, including its imported D3D resources; no claim of universal process recovery",
+  "remaining": [
+    "Actual disorder/performance/crash require user-environment observation",
+    "Special/direct-draw families and complete native Z/A equivalence remain open",
+    "New native selection/status icon work isolated and not shipped",
+    "Construction ready-tail +1 convention still lacks end-to-end proof"
+  ],
+  "ci_status_claimed": false,
+  "private_executable_or_raw_dump_included": false,
+  "stable_latest_tag": "v1.0.38",
+  "stable_latest_changed": false
+}

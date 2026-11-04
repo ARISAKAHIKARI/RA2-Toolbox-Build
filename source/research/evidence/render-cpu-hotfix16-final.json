@@ -1,0 +1,586 @@
+{
+  "baseline_commit": "99c2b3e0a81fdd810b19f9e25eb7e3bb5e5aebdf",
+  "source_blobs_matched_before_edit": 1340,
+  "vulkan_executed": false,
+  "live_game_tested": false,
+  "physical_gpu_tested": false,
+  "benchmark": [
+    {
+      "actors": 640,
+      "motion": "--all",
+      "native": [
+        3840,
+        1920
+      ],
+      "output": [
+        320,
+        160
+      ],
+      "trials": 3,
+      "frames_per_trial": 20,
+      "pixel_checksums_equal": true,
+      "summary": {
+        "before": {
+          "median_ms": 15.7192,
+          "resolve_mean_ms": 6.29979
+        },
+        "after": {
+          "median_ms": 13.0328,
+          "resolve_mean_ms": 3.54334
+        }
+      },
+      "runs": {
+        "before": [
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 16.3738,
+            "p95_ms": 19.0721,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.0754917,
+              "materials": 0.233662,
+              "objects": 9.41746,
+              "resolve": 6.29979,
+              "effects": 0.0002925
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 14.7442,
+            "p95_ms": 16.7146,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.094642,
+              "materials": 0.230435,
+              "objects": 8.19132,
+              "resolve": 5.98932,
+              "effects": 0.00025595
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 15.7192,
+            "p95_ms": 17.6929,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.0697251,
+              "materials": 0.227576,
+              "objects": 8.62789,
+              "resolve": 6.3607,
+              "effects": 0.000248
+            }
+          }
+        ],
+        "after": [
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 13.0328,
+            "p95_ms": 14.5755,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.0836777,
+              "materials": 0.20085,
+              "objects": 8.74021,
+              "resolve": 3.54334,
+              "effects": 0.00026025
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 13.6194,
+            "p95_ms": 17.278,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.0780354,
+              "materials": 0.422951,
+              "objects": 9.37743,
+              "resolve": 3.64139,
+              "effects": 0.0002518
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 12.8076,
+            "p95_ms": 14.8057,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.088236,
+              "materials": 0.234516,
+              "objects": 8.91232,
+              "resolve": 3.43217,
+              "effects": 0.00030355
+            }
+          }
+        ]
+      }
+    },
+    {
+      "actors": 640,
+      "motion": "--one",
+      "native": [
+        3840,
+        1920
+      ],
+      "output": [
+        320,
+        160
+      ],
+      "trials": 3,
+      "frames_per_trial": 20,
+      "pixel_checksums_equal": true,
+      "summary": {
+        "before": {
+          "median_ms": 8.14987,
+          "resolve_mean_ms": 6.33801
+        },
+        "after": {
+          "median_ms": 2.35672,
+          "resolve_mean_ms": 0.643011
+        }
+      },
+      "runs": {
+        "before": [
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 8.14987,
+            "p95_ms": 8.91943,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0813984,
+              "materials": 0.193049,
+              "objects": 1.43277,
+              "resolve": 6.33801,
+              "effects": 0.0002017
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 8.58047,
+            "p95_ms": 9.90509,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0642769,
+              "materials": 0.213204,
+              "objects": 1.58763,
+              "resolve": 6.47938,
+              "effects": 0.0002518
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 8.02688,
+            "p95_ms": 8.86339,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0676528,
+              "materials": 0.208206,
+              "objects": 1.50298,
+              "resolve": 5.90446,
+              "effects": 0.00018465
+            }
+          }
+        ],
+        "after": [
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 2.23379,
+            "p95_ms": 2.47103,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0429238,
+              "materials": 0.175093,
+              "objects": 1.42734,
+              "resolve": 0.55989,
+              "effects": 6.01e-05
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 2.35672,
+            "p95_ms": 2.99809,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0517305,
+              "materials": 0.202166,
+              "objects": 1.49283,
+              "resolve": 0.643011,
+              "effects": 8.215e-05
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 640,
+            "frames": 20,
+            "median_ms": 2.45811,
+            "p95_ms": 3.31717,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0553017,
+              "materials": 0.193406,
+              "objects": 1.5964,
+              "resolve": 0.792395,
+              "effects": 9.165e-05
+            }
+          }
+        ]
+      }
+    },
+    {
+      "actors": 1280,
+      "motion": "--all",
+      "native": [
+        3840,
+        1920
+      ],
+      "output": [
+        320,
+        160
+      ],
+      "trials": 3,
+      "frames_per_trial": 20,
+      "pixel_checksums_equal": true,
+      "summary": {
+        "before": {
+          "median_ms": 21.8816,
+          "resolve_mean_ms": 5.90987
+        },
+        "after": {
+          "median_ms": 19.9363,
+          "resolve_mean_ms": 3.43312
+        }
+      },
+      "runs": {
+        "before": [
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 23.4505,
+            "p95_ms": 33.6062,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.0907879,
+              "materials": 0.427929,
+              "objects": 16.5469,
+              "resolve": 6.7864,
+              "effects": 0.00031905
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 21.2683,
+            "p95_ms": 25.8129,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.0695753,
+              "materials": 0.40586,
+              "objects": 15.6166,
+              "resolve": 5.62756,
+              "effects": 0.00020295
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 21.8816,
+            "p95_ms": 26.0621,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.0797655,
+              "materials": 0.399023,
+              "objects": 15.4696,
+              "resolve": 5.90987,
+              "effects": 0.0002563
+            }
+          }
+        ],
+        "after": [
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 19.9363,
+            "p95_ms": 25.3646,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.0936395,
+              "materials": 0.431753,
+              "objects": 16.4796,
+              "resolve": 3.52803,
+              "effects": 0.00036095
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 20.5787,
+            "p95_ms": 25.2137,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.0749277,
+              "materials": 0.422528,
+              "objects": 16.5394,
+              "resolve": 3.43312,
+              "effects": 0.000284
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 19.7027,
+            "p95_ms": 24.9248,
+            "checksum": 6959570589855696655,
+            "stages_mean_ms": {
+              "terrain": 0.0731142,
+              "materials": 0.441174,
+              "objects": 16.513,
+              "resolve": 3.28215,
+              "effects": 0.00027095
+            }
+          }
+        ]
+      }
+    },
+    {
+      "actors": 1280,
+      "motion": "--one",
+      "native": [
+        3840,
+        1920
+      ],
+      "output": [
+        320,
+        160
+      ],
+      "trials": 3,
+      "frames_per_trial": 20,
+      "pixel_checksums_equal": true,
+      "summary": {
+        "before": {
+          "median_ms": 9.68903,
+          "resolve_mean_ms": 5.95476
+        },
+        "after": {
+          "median_ms": 4.25549,
+          "resolve_mean_ms": 0.658562
+        }
+      },
+      "runs": {
+        "before": [
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 9.00752,
+            "p95_ms": 10.6038,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0706979,
+              "materials": 0.406058,
+              "objects": 2.65927,
+              "resolve": 5.95476,
+              "effects": 0.0002663
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 9.68903,
+            "p95_ms": 11.6201,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0746484,
+              "materials": 0.477404,
+              "objects": 3.11387,
+              "resolve": 5.91429,
+              "effects": 0.00021385
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 10.124,
+            "p95_ms": 12.5069,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0720433,
+              "materials": 0.413636,
+              "objects": 3.14404,
+              "resolve": 6.30725,
+              "effects": 0.0002393
+            }
+          }
+        ],
+        "after": [
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 4.25549,
+            "p95_ms": 4.64817,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0526036,
+              "materials": 0.497667,
+              "objects": 2.9599,
+              "resolve": 0.658562,
+              "effects": 8.65e-05
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 4.39043,
+            "p95_ms": 4.8368,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0629474,
+              "materials": 0.43351,
+              "objects": 2.96027,
+              "resolve": 0.792032,
+              "effects": 9.815e-05
+            }
+          },
+          {
+            "width": 320,
+            "height": 160,
+            "actors": 1280,
+            "frames": 20,
+            "median_ms": 4.06118,
+            "p95_ms": 5.55584,
+            "checksum": 18281425263603422667,
+            "stages_mean_ms": {
+              "terrain": 0.0540918,
+              "materials": 0.480166,
+              "objects": 3.18229,
+              "resolve": 0.595938,
+              "effects": 0.00011115
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "cpu_checks": [
+    {
+      "name": "native_canvas",
+      "code": 0,
+      "seconds": 5.45,
+      "tail": "PASS native 1:1 color/depth/shadow equivalence across page seams, opaque exact-size presentation, sparse/dirty rows, fractional-viewport area filter, copy-on-write presentation, large sparse planes and bounded failure\n"
+    },
+    {
+      "name": "object_canvas",
+      "code": 0,
+      "seconds": 7.45,
+      "tail": "PASS native page batching matches serial RGBA/depth; parallel pages, exact reuse, move/removal/order/light/base invalidation, stable GPU area owners, one VXL/shadow raster for96 objects, bounded failure recovery\n"
+    },
+    {
+      "name": "radar_scene",
+      "code": 0,
+      "seconds": 35.88,
+      "tail": "PASS scene publication, native animation frame-zero/advance, independent door/roof cache, shared source art, fair retained poses, ground/air layers, shroud policy, resource/wall/bridge light, native area presentation/cache/budget recovery, projectile effects and main-only status exclusion, resize and reset\n"
+    },
+    {
+      "name": "native_area",
+      "code": 0,
+      "seconds": 5.3,
+      "tail": "PASS sparse native area oracle channels=749296 max_error=0; fractional spans, page edges/holes, large shrink, upscale, opaque-RGB contract and invalid-plan output preservation\n"
+    },
+    {
+      "name": "native_repaint",
+      "code": 0,
+      "seconds": 10.65,
+      "tail": "PASS: sparse native page repaint equals full color/depth/shadow/underlay reconstruction; source and far raw-cache owners unchanged, deletion dirtiness, page-aligned coverage, fork/clean recovery and bounded failure\n"
+    },
+    {
+      "name": "terrain_partial_scene",
+      "code": 0,
+      "seconds": 22.66,
+      "tail": "PASS actual SceneRenderer partial terrain: 10 isolated overlay banks, 730 partial cells / 4030 initial full cells, 8036352 exact output pixels; changing/removed/attachment-only bounds, overlapping cliff/shadow/actor/baseRGB, native+1.5x xBRZ, source/palette/current local/global light guards\n"
+    },
+    {
+      "name": "watch_view",
+      "code": 0,
+      "seconds": 3.89,
+      "tail": "PASS automatic dangerous carrier, hover/selection pin, 121 cells, range edge, fog, passengers/cloak exclusion, dead/recycled target, corrupt list and map bounds\n"
+    }
+  ],
+  "windows_build": {
+    "compiler": "Zig 0.13.0",
+    "status": "PASS",
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86",
+    "static_pe_abi_dependency_validation": "PASS",
+    "binaries": {
+      "RA2Toolbox.exe": {
+        "bytes": 6875136,
+        "sha256": "887202a58d34c3695cb322a22f6135d601281e7b1495368eac96580903c4b965",
+        "machine": "0x8664"
+      },
+      "GameRuntime.dll": {
+        "bytes": 4963328,
+        "sha256": "fc85efe15b2735515cca98a096e0af329d193ddbd555fb999965b01f39872d68",
+        "machine": "0x14c"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "e2d6ff67a08accba3450aee2744d7d44b0e40dd7218c6e8e725984b708d4db95",
+        "machine": "0x14c"
+      }
+    }
+  }
+}

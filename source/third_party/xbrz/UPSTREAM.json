@@ -1,0 +1,38 @@
+{
+  "name": "xBRZ",
+  "version": "1.9",
+  "author": "Zenju",
+  "upstream": "https://sourceforge.net/projects/xbrz/",
+  "archive_url": "https://downloads.sourceforge.net/project/xbrz/xBRZ/xBRZ_1.9.zip",
+  "archive_sha256": "b2dff73b3abd24a18a7cde78d5ff5ed8f0922296dce6ed734dce2264cd0a0fc9",
+  "release_date": "2026-01-24",
+  "sourceforge_file_date": "2026-01-25",
+  "license": "GPL-3.0 with upstream linking exception (see License.txt and source file headers)",
+  "local_modifications": false,
+  "files": [
+    {
+      "path": "License.txt",
+      "sha256": "321429c853d59b621414832581e93ff38586c348aa2de43c7e571b33423d670a"
+    },
+    {
+      "path": "xbrz.cpp",
+      "sha256": "882346f5f6703f286c55d4089af7a8f63140fe13a133318e4be64891689bee0c"
+    },
+    {
+      "path": "xbrz.h",
+      "sha256": "004e4ee01324d7c9c6870a02aab58e5344eb209e8940cb7f3302b9f9547a1197"
+    },
+    {
+      "path": "Changelog.txt",
+      "sha256": "f8acd72e104483a7285fd707ca25f9e38f783cf47a225426deb63f4939a37279"
+    },
+    {
+      "path": "xbrz_config.h",
+      "sha256": "e7301f66ddbe0785b54b9621148d8d4143f33207be91c430a99847f6e9eb5fda"
+    },
+    {
+      "path": "xbrz_tools.h",
+      "sha256": "72202a6a259d0f1b6811c7402cea5b0eeec7479c2e8c5d017ec4bcff8eb1296b"
+    }
+  ]
+}

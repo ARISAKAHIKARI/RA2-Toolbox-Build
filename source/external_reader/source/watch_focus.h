@@ -15,7 +15,9 @@ template<class Read> LifeSample life(Read read,Target t){
  if(s.id!=t.id){s.state=Life::Reused;return s;}
  // An unsupported vtable is not proof that the tracked object died.
  if(s.vtable!=0x7F5C70&&s.vtable!=0x7EB058&&s.vtable!=0x7E3EBC&&s.vtable!=0x7E22A4)return s;
- if(!read(t.pointer+0x6C,&s.health,4)||!read(t.pointer+0x74,&s.alive,1)||!read(t.pointer+0x81,&s.limbo,1)||!read(t.pointer+0x90,&s.onMap,1)||!read(t.pointer+0x11C,&s.transport,4)||!read(t.pointer+0x220,&s.cloak,4))return s;
+ // ObjectClass +74 is IsOnMap; +90 is IsAlive. An alive unit can be
+ // temporarily off-map without being in Limbo or inside a transport.
+ if(!read(t.pointer+0x6C,&s.health,4)||!read(t.pointer+0x74,&s.onMap,1)||!read(t.pointer+0x81,&s.limbo,1)||!read(t.pointer+0x90,&s.alive,1)||!read(t.pointer+0x11C,&s.transport,4)||!read(t.pointer+0x220,&s.cloak,4))return s;
  s.state=s.health>0&&(s.alive||s.limbo||s.transport||s.cloak)?Life::Present:Life::Dead;return s;
 }
 struct Anchor {Target target;int x=0,y=0,z=0;bool located=false;int kind=-1,discoveryFrame=-1;bool searched=false;uint32_t discoveryCursor=0;};

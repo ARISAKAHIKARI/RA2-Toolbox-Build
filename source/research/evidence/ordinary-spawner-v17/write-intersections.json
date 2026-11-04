@@ -1,0 +1,310 @@
+{
+  "scope": "All production GameEntryManager allowlisted write spans, including dormant sites; static ordinary binary descriptors. Dynamic writes separately recorded.",
+  "toolbox_release": "v1.0.39-pre.6",
+  "toolbox_code_commit": "b372ace50101e0099a5e9533c50470b4cabb1536",
+  "toolbox_release_commit": "5508c80f7b81abad4fc51847eb7f3530acddc9af",
+  "toolbox_release_runtime_sha256": "eba0ce9f13376aa193942a4765b07fc28e2f63d7a577bed9450325d8e951f4f7",
+  "upstream_source_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+  "ordinary_sha256": "58f198973bd0fd3b0e1b2c42fc6c545efe1fd399680abc2e8d6e9e189751614d",
+  "source_sha256": {
+    "source/shared/source/experimental_patch_policy.h": "ea764e63f99cb645490b1d722a2e96f984b7b7c73dc8d16c3630eb461d5cb541",
+    "source/shared/source/direct_patch_policy.h": "0e28d97bd65e5b37e290af17a23d8c598be88de9fc1d8a30ee935e89227ef1c5"
+  },
+  "parser_sha256": "9ecad81f1edd6dffddefebee6c01fa772b57180c5cef16b06829d219970ac419",
+  "ordinary_hooks": 196,
+  "ordinary_patches": 49,
+  "descriptor_coverage_method": {
+    "interval_rule": "Half-open address ranges use coverage_size when present, otherwise size; nonpositive unresolved coverage is rejected.",
+    "zero_declared_size_policy": "Conservative source-skipped-block envelope from hook address to callback return location. This is not an assertion that the loader overwrites 25 bytes.",
+    "zero_declared_size_hooks": [
+      {
+        "address": 4424458,
+        "address_hex": "0x43830a",
+        "size": 0,
+        "declared_size": 0,
+        "coverage_size": 25,
+        "name": "BlowStraw_Key_BlowfishEngine_Allocation",
+        "coverage_end_hex": "0x438323",
+        "coverage_reason": "Conservative complete callback-skipped source block; actual loader overwrite length is not established.",
+        "coverage_source": "src/Misc/Blowfish/Hooks.Blowfish.cpp",
+        "coverage_source_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+        "coverage_callback_return_hex": "0x438323"
+      },
+      {
+        "address": 4424154,
+        "address_hex": "0x4381da",
+        "size": 0,
+        "declared_size": 0,
+        "coverage_size": 25,
+        "name": "BlowPipe_Key_BlowfishEngine_Allocation",
+        "coverage_end_hex": "0x4381f3",
+        "coverage_reason": "Conservative complete callback-skipped source block; actual loader overwrite length is not established.",
+        "coverage_source": "src/Misc/Blowfish/Hooks.Blowfish.cpp",
+        "coverage_source_commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+        "coverage_callback_return_hex": "0x4381f3"
+      }
+    ]
+  },
+  "verified_upstream_source_pin": {
+    "repository": "CnCNet/yrpp-spawner",
+    "commit": "fbe8d7d2620584d04ba14fa3580943bfa1448d40",
+    "tree": "0a1f3074b95213b5a36b7938e2b711950f179513",
+    "verified_blobs": 69,
+    "source_pin_sha256": "28e9717e2eedd47145bd89e6c1a37b5b6b62cae041c5b300520cecc41c956e3b"
+  },
+  "toolbox_allowlist": [
+    {
+      "address": 4287158,
+      "address_hex": "0x416ab6",
+      "size": 10,
+      "name": "AirArrival"
+    },
+    {
+      "address": 4478794,
+      "address_hex": "0x44574a",
+      "size": 5,
+      "name": "MasterBuild"
+    },
+    {
+      "address": 4478869,
+      "address_hex": "0x445795",
+      "size": 5,
+      "name": "MasterUnit"
+    },
+    {
+      "address": 4478928,
+      "address_hex": "0x4457d0",
+      "size": 5,
+      "name": "MasterInfantry"
+    },
+    {
+      "address": 4478992,
+      "address_hex": "0x445810",
+      "size": 5,
+      "name": "MasterAir"
+    },
+    {
+      "address": 4714552,
+      "address_hex": "0x47f038",
+      "size": 5,
+      "name": "ShroudDraw"
+    },
+    {
+      "address": 4715124,
+      "address_hex": "0x47f274",
+      "size": 5,
+      "name": "FogDraw"
+    },
+    {
+      "address": 4886192,
+      "address_hex": "0x4a8eb0",
+      "size": 5,
+      "name": "Placement"
+    },
+    {
+      "address": 4886211,
+      "address_hex": "0x4a8ec3",
+      "size": 6,
+      "name": "Direct0x4A8EC3"
+    },
+    {
+      "address": 4886926,
+      "address_hex": "0x4a918e",
+      "size": 2,
+      "name": "Direct0x4A918E"
+    },
+    {
+      "address": 4888640,
+      "address_hex": "0x4a9840",
+      "size": 8,
+      "name": "ScrollMap"
+    },
+    {
+      "address": 4899193,
+      "address_hex": "0x4ac179",
+      "size": 9,
+      "name": "NativeSellOwner"
+    },
+    {
+      "address": 5279328,
+      "address_hex": "0x508e60",
+      "size": 2,
+      "name": "Direct0x508E60"
+    },
+    {
+      "address": 5279418,
+      "address_hex": "0x508eba",
+      "size": 2,
+      "name": "Direct0x508EBA"
+    },
+    {
+      "address": 5279631,
+      "address_hex": "0x508f8f",
+      "size": 2,
+      "name": "Direct0x508F8F"
+    },
+    {
+      "address": 5289712,
+      "address_hex": "0x50b6f0",
+      "size": 5,
+      "name": "ControlHouse"
+    },
+    {
+      "address": 5350616,
+      "address_hex": "0x51a4d8",
+      "size": 6,
+      "name": "C4Execution"
+    },
+    {
+      "address": 5358379,
+      "address_hex": "0x51c32b",
+      "size": 6,
+      "name": "C4Movement"
+    },
+    {
+      "address": 5733178,
+      "address_hex": "0x577b3a",
+      "size": 2,
+      "name": "Direct0x577B3A"
+    },
+    {
+      "address": 6502842,
+      "address_hex": "0x6339ba",
+      "size": 5,
+      "name": "ControlOwner"
+    },
+    {
+      "address": 6520384,
+      "address_hex": "0x637e40",
+      "size": 5,
+      "name": "ControlPlanning"
+    },
+    {
+      "address": 6582005,
+      "address_hex": "0x646ef5",
+      "size": 10,
+      "name": "ControlMegaOwner"
+    },
+    {
+      "address": 6582094,
+      "address_hex": "0x646f4e",
+      "size": 7,
+      "name": "NativeMegaSuccess"
+    },
+    {
+      "address": 6582226,
+      "address_hex": "0x646fd2",
+      "size": 10,
+      "name": "ControlMegaFOwner"
+    },
+    {
+      "address": 6593696,
+      "address_hex": "0x649ca0",
+      "size": 5,
+      "name": "NetworkSend"
+    },
+    {
+      "address": 6594078,
+      "address_hex": "0x649e1e",
+      "size": 7,
+      "name": "NetworkPlainHouse"
+    },
+    {
+      "address": 6599914,
+      "address_hex": "0x64b4ea",
+      "size": 10,
+      "name": "NetworkDictionary"
+    },
+    {
+      "address": 6600288,
+      "address_hex": "0x64b660",
+      "size": 6,
+      "name": "NetworkPack"
+    },
+    {
+      "address": 6601172,
+      "address_hex": "0x64b9d4",
+      "size": 7,
+      "name": "NetworkCompressedHouse"
+    },
+    {
+      "address": 6892005,
+      "address_hex": "0x6929e5",
+      "size": 5,
+      "name": "NativeSellCursor"
+    },
+    {
+      "address": 6985682,
+      "address_hex": "0x6a97d2",
+      "size": 5,
+      "name": "TechDraw"
+    },
+    {
+      "address": 6989697,
+      "address_hex": "0x6aa781",
+      "size": 5,
+      "name": "TechPrune"
+    },
+    {
+      "address": 6989704,
+      "address_hex": "0x6aa788",
+      "size": 6,
+      "name": "MasterPrune"
+    },
+    {
+      "address": 7177792,
+      "address_hex": "0x6d8640",
+      "size": 5,
+      "name": "CameraClamp"
+    },
+    {
+      "address": 7178492,
+      "address_hex": "0x6d88fc",
+      "size": 2,
+      "name": "Direct0x6D88FC"
+    },
+    {
+      "address": 7306564,
+      "address_hex": "0x6f7d44",
+      "size": 6,
+      "name": "LowDamage"
+    },
+    {
+      "address": 7339155,
+      "address_hex": "0x6ffc93",
+      "size": 8,
+      "name": "ControlPlanningOwner"
+    },
+    {
+      "address": 7339563,
+      "address_hex": "0x6ffe2b",
+      "size": 5,
+      "name": "ControlObjectOwner"
+    },
+    {
+      "address": 8268040,
+      "address_hex": "0x7e2908",
+      "size": 4,
+      "name": "AirType"
+    }
+  ],
+  "intersections": [
+    {
+      "toolbox": {
+        "address": 7177792,
+        "address_hex": "0x6d8640",
+        "size": 5,
+        "name": "CameraClamp"
+      },
+      "ordinary_family": "patches",
+      "ordinary": {
+        "address": 7177792,
+        "address_hex": "0x6d8640",
+        "size": 5,
+        "data_va_hex": "0x1003b1d4",
+        "file_backed_data": false,
+        "data_hex": null
+      }
+    }
+  ]
+}

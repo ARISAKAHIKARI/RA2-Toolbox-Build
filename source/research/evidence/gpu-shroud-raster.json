@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-29",
+  "scope": "GPU native SHROUD/FOG raster and packed alpha cache; no new game offsets or engine calls",
+  "cpu_oracle": {
+    "cases": 13,
+    "exact_alpha_pixels": 10755133,
+    "production_reference": "radar::shroudmask::Raster::build",
+    "optimized": "pass",
+    "asan_ubsan": "pass (LSan disabled)",
+    "timing": "Dense synthetic4K CPU stamp311.408ms vsCPUcoordinate/bin plan7.979ms; diagnostic only, not GPU or game FPS"
+  },
+  "shader": {
+    "run": 40742252357,
+    "commit": "54f766d46d213c71fdc758b02fb782714ed130b3",
+    "source_sha256": "331d054b1b5fce4de1b20c540a2a18431812dc54f747af3c43f6c3f73de39289",
+    "spirv_sha256": "2de6bf0402be4e5c0404f6ebf2c22995d8c8d33b60796958249fbc8dc307ecb1",
+    "spirv_bytes": 6572,
+    "artifact_sha256": "9ac3d2e8b9ffc9d958df940bf9953e5919a32894e50e57832b79d4f77ed63626"
+  },
+  "actual_vulkan": {
+    "run": 40742855018,
+    "job": 123008773039,
+    "commit": "12c91301ce811f4457cc7bdaa479b94d401f3b67",
+    "frames": 28,
+    "exact_alpha_pixels": 38099066,
+    "warm_mask_dispatches": 0,
+    "warm_source_uploads": 0,
+    "readbacks_per_frame": 1,
+    "canaries_abandoned_record_changed_source": "pass",
+    "asan_ubsan": "pass (LSan disabled)",
+    "validation_layer": "pass; generated runtime log scanned by Python",
+    "software_device": "llvmpipe (LLVM20.1.2,256bits)",
+    "log": "gpu-shroud-actual-40742855018.log"
+  },
+  "win32_x86": "Zig0.13.0 -O2 -UNDEBUG crosscompile pass; not GPU execution",
+  "later_change": "Explicit workgroup/crop input guards and idempotent Stage.release non-inflight OOM cleanup after independent CI; valid-case algorithm and shader unchanged. Final coordinator CI must rerun.",
+  "hardware_fps_measured": false,
+  "source_sha256": {
+    "source/external_reader/source/gpu_shroud.h": "eb7d224d0e608468aed88f38fcc0bb546ae28b96a3ca0011e3e99ef0e7a4d596",
+    "source/external_reader/source/vulkan_shroud_backend.h": "e9f2bfac0996983a5be3273901e431cfd3a2fca2c9df15d6a8da66bf4f7b8aef",
+    "source/external_reader/shaders/gpu_shroud.comp": "331d054b1b5fce4de1b20c540a2a18431812dc54f747af3c43f6c3f73de39289",
+    "source/assist/tests/gpu_shroud.cpp": "48efd16b1f38c0dabf5c4b3e19fac070f69861698c7941d683e64cb72778b2a6",
+    "source/assist/tests/vulkan_shroud.cpp": "d4e041dc6cab4f38a9fd7f53ea4382399aeb73b3516dd49ac6f3e8bd3a56376b"
+  },
+  "frame_integration_fixture": "vulkan_shroud_scene.cpp compiles Linux and Win32 x86 -O2 -UNDEBUG; actual coordinator execution delegated to its main CI."
+}

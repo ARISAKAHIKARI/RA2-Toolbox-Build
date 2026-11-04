@@ -1,0 +1,139 @@
+{
+  "schema": "ra2.webview-navigation-startup-hotfix-evidence.v1",
+  "status": "PASS",
+  "baseline_commit": "afc071d00070d392cd1e4be9749ad833029b08d3",
+  "scope": "Host console navigation only; Runtime/broker/protocol unchanged",
+  "source_sha256": {
+    "source/suite/source/web_console.cpp": "20e074f69e82c7865ce7659538c9fee4ffd44a492f54a37c269346b85d45f770",
+    "source/suite/source/web_console.h": "68aa5a392c99542277993f0353b800425223b795dbfea4d822a9043e0c22763f",
+    "source/suite/tests/web_console_navigation_windows.cpp": "beb1474122c0b9a14e9b616a8cad389334d41fc4ffcf66a6a6dd2548f56f263c",
+    "source/suite/tests/web_console_navigation_windows.py": "0d11673be11c54ce8b3a288f0d1c780e663b285d652aaeeec694bc80fc002417",
+    "source/suite/tests/web_console_contract_test.py": "7207e64b2f2c837a8e39b78c76a18726b8f6f25f491aa3c833941ecd82895e2f",
+    "source/tools/bundle_console.py": "d0bc75cdc662a680b2cee7f36bafcf883bc937c99c7578ca3f6b412d46d534f3",
+    "source/suite/frontend/index.html": "672d65e4a9e8cad746841d9edcf0378aa6421e9fea2f4db721187a5ba1aa6af1",
+    "source/suite/frontend/app.css": "8f024452c3ed05addae2c3f79bdabb7b835ecd853a335f19e3fc7a562491763d",
+    "source/suite/frontend/app.js": "591388e4a810efc9d7e3564018bb65875810de2afe6e5665701e3c37eda00f11"
+  },
+  "baseline_original_cpp_sha256": "f86da1aa8a77789839df34679cd139b1ee2b34d2dedbe30c63417d9b8399d6b7",
+  "runtime_version": "156.0.4314.58",
+  "webview2_sdk": "1.0.4314.35",
+  "before": {
+    "schema": "ra2.webview-navigation-windows.v1",
+    "exit_code": 1,
+    "localappdata": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\webview-navigation-hotfix\\before\\localappdata",
+    "exe_sha256": "9b42fce4d7d6c65a19f33d980c32e9a097ef873b1a6e7f2788c6cc807b4f0d39",
+    "source_sha256": {
+      "suite\\source\\web_console.cpp": "5bc77a4b73462f63d2b26dac563d22e58e64c2042b298aedc8a5548c32a2e05d",
+      "suite\\source\\web_console.h": "68aa5a392c99542277993f0353b800425223b795dbfea4d822a9043e0c22763f",
+      "suite\\tests\\web_console_navigation_windows.cpp": "6c351ed683f08dd7d98ad4d8d407e0f0be4c0ee57cda192d7c75bbced9ea641d",
+      "suite\\tests\\web_console_navigation_windows.py": "ddbdd7a5de9ec36a630559acd877d2e95c68cbc745bf22587cc43e26b5886a55"
+    },
+    "result": {
+      "status": "FAIL",
+      "create_admitted": true,
+      "navigation_ready": false,
+      "frontend_ready": false,
+      "messages": 0,
+      "error": "控制台页面加载失败，请重新打开工具箱。",
+      "game_process_accessed": false
+    },
+    "game_process_accessed": false
+  },
+  "after": {
+    "schema": "ra2.webview-navigation-windows.v1",
+    "exit_code": 0,
+    "localappdata": "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\webview-navigation-hotfix\\after-complete\\localappdata",
+    "exe_sha256": "38bae8c88ec4bd2d0846bf147ff97ef73d9fb302212acdd503abe86754967dee",
+    "source_sha256": {
+      "suite\\source\\web_console.cpp": "20e074f69e82c7865ce7659538c9fee4ffd44a492f54a37c269346b85d45f770",
+      "suite\\source\\web_console.h": "68aa5a392c99542277993f0353b800425223b795dbfea4d822a9043e0c22763f",
+      "suite\\tests\\web_console_navigation_windows.cpp": "beb1474122c0b9a14e9b616a8cad389334d41fc4ffcf66a6a6dd2548f56f263c",
+      "suite\\tests\\web_console_navigation_windows.py": "0d11673be11c54ce8b3a288f0d1c780e663b285d652aaeeec694bc80fc002417"
+    },
+    "result": {
+      "status": "PASS",
+      "create_admitted": true,
+      "navigation_ready": true,
+      "frontend_ready": true,
+      "snapshot_posted": true,
+      "dom_ready": true,
+      "action_received": true,
+      "denied_navigation_keeps_document": true,
+      "capture_preview": true,
+      "capture_hr": 0,
+      "messages": 2,
+      "error": "",
+      "game_process_accessed": false
+    },
+    "game_process_accessed": false
+  },
+  "controlled_contract": {
+    "schema": "ra2.webview-navigation-contract.v1",
+    "status": "PASS",
+    "platform": "nt",
+    "fake_com_executed": true,
+    "assertions_enabled": true,
+    "assertions_in_harness": 58,
+    "sdk_interface_identities": 12,
+    "sdk_production_compile_link": true,
+    "webview_runtime_executed": false,
+    "game_process_accessed": false,
+    "source_sha256": {
+      "source/suite/source/web_console.cpp": "20e074f69e82c7865ce7659538c9fee4ffd44a492f54a37c269346b85d45f770",
+      "source/suite/source/web_console.h": "68aa5a392c99542277993f0353b800425223b795dbfea4d822a9043e0c22763f",
+      "source/suite/tests/web_console_contract_test.py": "7207e64b2f2c837a8e39b78c76a18726b8f6f25f491aa3c833941ecd82895e2f"
+    }
+  },
+  "native_trace": {
+    "before": {
+      "navigation_id": 2,
+      "starting_uri_kind": "embedded-data",
+      "host_canceled": true,
+      "is_success_hr": 0,
+      "is_success": false,
+      "web_error_hr": 0,
+      "web_error_status": 14,
+      "source_hr": 0,
+      "source_kind": "about:blank"
+    },
+    "after": {
+      "navigation_id": 2,
+      "starting_uri_kind": "embedded-data",
+      "host_admitted": true,
+      "is_success_hr": 0,
+      "is_success": true,
+      "web_error_hr": 0,
+      "web_error_status": 0,
+      "source_hr": 0,
+      "source_kind": "about:blank",
+      "denied_after_ready_ids": [
+        3,
+        4,
+        5
+      ],
+      "denied_after_ready_web_error_status": 14
+    }
+  },
+  "artifact_sha256": {
+    "before/result.json": "c03dde653306b3922d8ab73c99170890f82b424e126014b66536784f06f912b7",
+    "before/smoke.log": "f8fc23a5f861cc98a2d8bbcdd3f76ce094ae740502ec18f40aa6ee90ec378a11",
+    "after-complete/result.json": "dc721df116e51e627880d59c1418a3687127ff3fef0533674c7114b519529233",
+    "after-complete/smoke.log": "f197597e18f9729249b6b3bbd705db418c5a840ee624f698e5f00f307e40d6cd",
+    "after-complete/build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "after-complete/capture.png": "2cd57e0fa587ef4222a76a437d0da653bac0a4237d926d215b71e07afe09acc9",
+    "after-complete/generated/web_console_assets.h": "8cad312556e9bb0d065fb31f72aacbd526ab784b652d8020a23cb439c7196942",
+    "contract-result.json": "f405793c2bf435a41b40b4dc58de175935e55fb699b5ad0c032c99db7e1eaf12",
+    "contract.log": "3f932e3e8701a639ff29a3ee14c4ebfe444bd616ecf1ecdeb11dc32855d6676c"
+  },
+  "artifacts_relative_to": "work/ra2-hook-audit/diagnostics/webview-navigation-hotfix",
+  "native_source_unchanged_since_run": true,
+  "native_visual_reviewed": true,
+  "game_process_accessed": false,
+  "user_cache_accessed": false,
+  "limits": [
+    "actual native fixture includes production Host and bundled frontend, not full tool backend",
+    "older Runtime about:blank Starting form not verified",
+    "no RA2OL or game synchronization claims",
+    "before instrumented CPP differs from original backup only diagnostic/test instrumentation; hashes separate"
+  ]
+}

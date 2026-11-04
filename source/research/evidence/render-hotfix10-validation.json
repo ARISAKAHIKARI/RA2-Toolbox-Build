@@ -1,0 +1,50 @@
+{
+  "baseline": "25f2d60fe6ecc6203cd982206b5f32a0389640f4",
+  "label": "1.0.39-pre.7-Hotfix10",
+  "compiled_input_files": 394,
+  "compiled_inputs_unchanged": true,
+  "windows_pe_static_checks": "PASS",
+  "windows_ui_tested": false,
+  "live_game_tested": false,
+  "multiplayer_tested": false,
+  "gpu_hardware_tested": false,
+  "gpu_reason": "Vulkan instance unavailable in this execution environment",
+  "ci_passed": false,
+  "tests": {
+    "process_reader_pages": "PASS: 16 adjacent pages -> one RPM, fresh epochs and failed-span fallback",
+    "parallel_rows": "PASS: 80 exact frames, 200 concurrent submissions, 4 observed threads",
+    "immutable_atlas": "PASS: 300 randomized allocation epochs match Hotfix9",
+    "native_nearest_plan": "PASS: 64 admitted/fallback crops, 2878500 exact pixels",
+    "transient_scene": "PASS: >8 ordinary admissions, 40 animations with 160 units, slow decode budget and expired-instance isolation",
+    "gpu_scene_renderer": "PASS CPU fallback/oracle: 66 scenes, 18374400 channel comparisons, 2505600 mask pixels; actual GPU used=0",
+    "gpu_scene_record": "PASS: 12 ordered source ownership/shadow/attachment replay oracles",
+    "gpu_depth_plan": "PASS: 6 cases, 548 depth/2192 channel comparisons; actual GPU used=0",
+    "render_upgrade_scene": "PASS native crop/shroud/cache regression",
+    "radar_scene": "PASS existing scene/animation/building/projectile/repair regression",
+    "settings_dependencies": "PASS: 80 constrained controls",
+    "render_material_settings": "PASS: 32 configuration combinations; removed neural control/legacy INI inert",
+    "shroud_material_capture": "PASS: 24 original native leaf cases; not a resource lifetime/netplay test"
+  },
+  "atlas_cpu_benchmark": {
+    "source_references": 4096,
+    "median_samples": 15,
+    "baseline_ms": 3.41366,
+    "optimized_ms": 0.227988,
+    "ratio": 14.973,
+    "scope": "Only CPU immutable atlas planning, not whole-frame/GPU/FPS"
+  },
+  "binary_files": {
+    "RA2Toolbox.exe": {
+      "bytes": 6545920,
+      "sha256": "e620c37990ac18434dc7565cffdbfdded6fa8c40006b0282371af8f90c162d6e"
+    },
+    "GameRuntime.dll": {
+      "bytes": 4944896,
+      "sha256": "1ad8236fa793be19cf1ea9d600779906c15f72c1214bd6b7f81344e8731e5aa9"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 207872,
+      "sha256": "1ad480712474fa63cefada74e8801963b291362d03554acfbbf878515f84c432"
+    }
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "scope": "Cursor startup preservation and complete native tooltip text/layout repair; isolated tests only",
+  "native_pipeline": {
+    "build_command": [
+      "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+      "c++",
+      "-target",
+      "x86-windows-gnu",
+      "-std=c++17",
+      "-O2",
+      "-UNDEBUG",
+      "-fms-extensions",
+      "-fasm-blocks",
+      "-fno-stack-protector",
+      "-fno-builtin",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\cursor_tooltip_windows.cpp",
+      "-Wl,--image-base,0x400000",
+      "-o",
+      "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\cursor-hide-layout\\cursor_tooltip_windows.exe",
+      "-lkernel32",
+      "-luser32",
+      "-lgdi32",
+      "-lwinmm"
+    ],
+    "build_exit": 0,
+    "test_exit": 0,
+    "stdout": "PASS native complete tooltip pipeline: 8 visible/hidden/text-only/fixed/extra-hide pairs; private native manager+layout; exact text+rectangle+active-item parity; callee registers/ESP; foreign-slot retry\nPASS native tooltip: original suppression reproduced; names/prices, shared owners, native extra hides, ABI and cleanup\nPASS cursor restore: transient global/object/vtable reads retain ownership and retry; replacement avoids stale calls; post-Hide failure and resource-only restart retain pending restore\nPASS Cursor-only cold enable: actual message entry hides and owns both tooltip slots without Assist/frame features; stop restores\nPASS frame write failures: post-write install failure retains ownership; failed restore retains old channel; post-write restore failure recovers without stale ownership\nPASS frame adapter: GPR/ESP/EFLAGS/FXSAVE preserved; normal sessions use polling; explicit diagnostic installs; deselection and owner-exit restore\nPASS focus lifecycle: cursor hide/tooltip ownership retained; selected diagnostic frame hook survives pause/stale sample\nSynthetic Win32 execution only: no RA2OL/game visual or multiplayer claim.\n",
+    "stderr": "",
+    "private_pe_sha256": "247f72881e1a68c8fc305e3702dc0100a72d17601305999026393c340d5daeb0",
+    "native_function_sha256": {
+      "0x479050": "a563d96fcf47d1122747eb44e6e41bec6dbe03decb99b365bdbb5d4e90ffabcc",
+      "0x478ba0": "fb68563f5977b2dac7f943a2585a79fda8c40ecbc63db2d4597ba223fc848fe5",
+      "0x724ad0": "a10271481094c08bd323b09b1b358582b7266f2d8f69b73711c8f14f9c293820"
+    },
+    "scope": "Synthetic x86 Win32 process; optional native tooltip code read from private PE; no game process opened",
+    "game_tested": false,
+    "multiplayer_tested": false
+  },
+  "startup_activation": {
+    "scope": "Actual source function extraction; isolated stubs; no game process",
+    "results": [
+      {
+        "target": "x86-windows-gnu",
+        "build_command": [
+          "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+          "c++",
+          "-target",
+          "x86-windows-gnu",
+          "-std=c++17",
+          "-O2",
+          "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\cursor-hide-startup\\cursor_startup_activation.cpp",
+          "-o",
+          "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\cursor-hide-startup\\cursor_startup_activation-x86-windows-gnu.exe",
+          "-luser32",
+          "-lkernel32"
+        ],
+        "exit": 0,
+        "stdout": "PASS 28 actual Cursor startup/start/status checks: saved preferences, command overrides, cold Hide independent of frame/native display, resource-only Keep, truthful pending/failure/ready UI\n",
+        "stderr": ""
+      },
+      {
+        "target": "x86_64-windows-gnu",
+        "build_command": [
+          "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+          "c++",
+          "-target",
+          "x86_64-windows-gnu",
+          "-std=c++17",
+          "-O2",
+          "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\cursor-hide-startup\\cursor_startup_activation.cpp",
+          "-o",
+          "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\cursor-hide-startup\\cursor_startup_activation-x86_64-windows-gnu.exe",
+          "-luser32",
+          "-lkernel32"
+        ],
+        "exit": 0,
+        "stdout": "PASS 28 actual Cursor startup/start/status checks: saved preferences, command overrides, cold Hide independent of frame/native display, resource-only Keep, truthful pending/failure/ready UI\n",
+        "stderr": ""
+      }
+    ]
+  },
+  "inventory": {
+    "allowlisted": 52,
+    "scheduled": 48,
+    "product_disabled": 3,
+    "cursor_only": 1,
+    "registry_policy": "PASS",
+    "diagnostic_sequence": "PASS"
+  },
+  "game_process_opened": false,
+  "multiplayer_tested": false
+}

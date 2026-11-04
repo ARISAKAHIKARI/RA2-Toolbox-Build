@@ -24,7 +24,7 @@ struct World {
 inline bool validWorldCounts(int actors,int intents,int refineries){return actors>=0&&actors<=MaxActors&&intents>=0&&intents<=MaxIntents&&refineries>=0&&refineries<=MaxRefineries;}
 inline bool validWorld(const World&w){if(w.combatCount<0||w.combatCount>MaxCombatProbes||w.frame<0||!validWorldCounts(w.count,w.intentCount,w.refineryCount))return false;for(int i=0;i<w.refineryCount;++i)if(w.refineries[i].count<0||w.refineries[i].count>MaxWaitingCells)return false;return true;}
 // OreYield is a guarded native Move through the existing plan mailbox.
-enum OrderPurpose { OreOrder=0, CombatOrder=1, OreRelease=2, MagnetronOrder=3, OreYield=4, DefenseOrder=5, MagnetronDropOrder=6 };
+enum OrderPurpose { OreOrder=0, CombatOrder=1, OreRelease=2, MagnetronOrder=3, OreYield=4, DefenseOrder=5, MagnetronDropOrder=6, OreHarvestOrder=7 };
 struct Order {
  uint32_t unit,token,target,destination;int mission,destinationTag,purpose;uint32_t refinery;uint32_t pursuit=0;
 };

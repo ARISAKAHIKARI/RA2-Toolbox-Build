@@ -20,12 +20,12 @@ struct ColorMatrix {float m[5][5]{};};static int presentedInterpolation=-1,prese
 constexpr int PixelFormat32bppPARGB=1,CombineModeIntersect=1,CombineModeExclude=3,UnitPixel=2,InterpolationModeNearestNeighbor=5,PixelOffsetModeHalf=4;
 struct Graphics {int Save(){return 0;}void Restore(int){}void SetClip(RectF r,int mode){if(mode==CombineModeExclude)excluded.push_back(r);}void TranslateTransform(float,float){}void SetInterpolationMode(int value){presentedInterpolation=value;}void SetPixelOffsetMode(int value){presentedPixelOffset=value;}void FillRectangle(SolidBrush*,float,float,float,float){}void DrawRectangle(Pen*,float,float,float,float){}void FillPolygon(SolidBrush*,PointF*,int){}void DrawEllipse(Pen*,float x,float y,float w,float h){drawnEllipses.emplace_back(x,y,w,h);}void DrawImage(Bitmap*bitmap,RectF rect,float,float,float,float,int,ImageAttributes*){++draws;drawnSources.emplace_back(bitmap->width,bitmap->height);drawnRects.push_back(rect);drawnGains.push_back(drawnMatrix.m[0][0]);}};
 namespace gameassets {
- static bool partial=false;
+ static bool partial=false,voxelMode=false,slowVoxel=false;static std::set<int> voxelSeen;
  static uint64_t assetGeneration=1;static uint32_t forcedColor=0;
  static uint64_t revision(){return assetGeneration;}
  static std::wstring lightingStatus(){return L"test";}
  static std::string failure;
- struct ActorArt {external::voxel::Model model;int marker=0;};
+ struct ActorArt {external::voxel::Model model;int marker=0;bool voxel=false;};
  static struct {size_t count(){return 1;}}files;
  static void update(){}static bool palette(bool,std::array<uint32_t,256>&){return false;}static std::string text(uint32_t,int){return {};}
  static bool tile(uint32_t,unsigned,const std::array<uint32_t,256>&pal,external::voxel::Image&image){++tileCalls;image.width=image.height=1;image.pixels={pal[3]};return true;}
@@ -33,12 +33,13 @@ namespace gameassets {
  static int buildingFrame(uint32_t,uint32_t){return 0;}
  static bool overlay(uint32_t,uint32_t,int,external::voxel::Image&,bool=false){return false;}
  static bool captureAnimation(uint32_t,uint32_t,uint32_t,uint32_t,uint32_t,ActorArt&){return false;}
- static bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&art){++captures;if(id==1)return false;art.marker=id;return true;}
+ static bool captureActor(uint32_t,uint32_t,uint32_t id,ActorArt&art){++captures;if(id==1)return false;art.marker=id;art.voxel=voxelMode;return true;}
  static size_t artBytes(const ActorArt&a){return a.model.faces.size()*sizeof(external::voxel::Face);}
- static bool renderActor(const ActorArt&,const external::visual::Pose&pose,external::voxel::Image&image){++renders;image.width=image.height=2;image.incomplete=partial;uint32_t color=pose.buildingFlags||pose.doorFrame>=0?uint32_t(0xff000000|pose.buildingFlags<<8|(pose.doorFrame+1)):uint32_t(0xff000000|pose.body<<8|pose.turret);image.pixels.assign(4,forcedColor?forcedColor:color);return true;}
+ static bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::voxel::Image&image){++renders;if(art.voxel){voxelSeen.insert(art.marker);if(slowVoxel)clockValue+=6;}image.width=image.height=2;image.incomplete=partial;uint32_t color=pose.buildingFlags||pose.doorFrame>=0?uint32_t(0xff000000|pose.buildingFlags<<8|(pose.doorFrame+1)):uint32_t(0xff000000|pose.body<<8|pose.turret);image.pixels.assign(4,forcedColor?forcedColor:color);return true;}
 }
 #include "../source/watch_engine.h"
 struct Backend {
+ uint64_t voxelLightingRevision()const{return 1;}bool voxelLightingAvailable()const{return true;}
  using ActorArt=gameassets::ActorArt;std::string&failure=gameassets::failure;
  void identity(uint32_t,uint32_t){}uint64_t revision(){return gameassets::revision();}
  bool palette(bool b,std::array<uint32_t,256>&p){return gameassets::palette(b,p);}
@@ -72,8 +73,8 @@ int main(){
  changedImage.pixels[0]=previousPixel; // Same mask is applied to recomposed actor art.
  int before=captures,oldRenders=renders;put(actors[1]+0x388,uint16_t(32768));put(actors[1]+0x3A0,uint16_t(49152));clockValue+=50;engine.update(clockValue);assert(captures==before&&renders>oldRenders);
  auto a=std::find_if(engine.views[0].frame.actors.begin(),engine.views[0].frame.actors.end(),[](auto&a){return a.target.id==2;});assert(a!=engine.views[0].frame.actors.end());assert(engine.images.at(engine.imageKey(*a)).image.pixels[0]==0xff001018);
- // All 299 valid models turn together: the 16-item work budget must retain
- // the previous real image for actors whose new pose is still waiting.
+ // All 299 valid models turn together: the time budget must retain the
+ // previous real image for actors whose new pose is still waiting.
  for(auto p:actors)put(p+0x388,uint16_t(2048));clockValue+=50;engine.update(clockValue);draws=0;engine.drawView(g,engine.views[0]);assert(draws==1&&engine.views[0].raster.color.size()==640*512);assert(engine.images.size()<=600);
  assert(tileCalls==0&&engine.tiles.empty()); // no transparent success cache before palette arrives
  put(0xABBED0+9,uint8_t(32));clockValue+=50;engine.update(clockValue);assert(tileCalls==1&&engine.tiles.begin()->second.ready&&engine.tiles.begin()->second.image.pixels[0]!=0);
@@ -168,7 +169,20 @@ int main(){
   for(int n=0;n<20;++n)engine.refreshAssets(recovery,clockValue);
   assert(captures==oldCaptures&&renders==oldRendered);gameassets::forcedColor=0;
  }
+ // All 300 poses fit a cheap pass; there is no 256-pose presentation cutoff.
+ engine.reset();external::watch::Frame many;gameassets::voxelMode=true;
+ for(int i=0;i<300;++i){external::watch::Actor a;a.kind=2;a.type=0x70000+i*16;a.owner=0x30000;a.target={uint32_t(0x10000+i*256),uint32_t(1000+i)};many.actors.push_back(a);}
+ auto preload=[&](){for(const auto&a:many.actors){auto&source=engine.actorArt[engine.artKey(a)];source.ready=true;source.art.voxel=true;source.art.marker=a.target.id;source.art.model.faces.resize(1);}};
+ // Synchronize asset identity before preloading the backend double.
+ external::watch::Frame emptyFrame;engine.refreshAssets(emptyFrame,clockValue);preload();gameassets::voxelSeen.clear();engine.refreshAssets(many,clockValue);
+ assert(gameassets::voxelSeen.size()==300);
+ // One costly pose per pass: every actor changes continuously. Rotation must
+ // still reach the tail, including exactly budget+1 entries (no skipped item).
+ gameassets::voxelSeen.clear();gameassets::slowVoxel=true;
+ for(int frame=1;frame<=300;++frame){for(auto&a:many.actors)a.pose.frame=frame;engine.refreshAssets(many,clockValue);}
+ assert(gameassets::voxelSeen.size()==300);gameassets::slowVoxel=gameassets::voxelMode=false;
  engine.enabled=false;clockValue+=50;engine.update(clockValue);assert(!engine.shown);engine.reset();assert(engine.images.empty()&&engine.actorArt.empty());
- std::cout<<"PASS 300 unique types, retained poses, independent door/roof frames, cache transitions, clamped off-center focus with drawable border scenery and reset\n";
+ std::cout<<"PASS 300 unique types and continuously changing VXL fairness without 256 cutoff, retained poses, independent door/roof frames, cache transitions, clamped off-center focus with drawable border scenery and reset\n";
+ return 0;
 }
 

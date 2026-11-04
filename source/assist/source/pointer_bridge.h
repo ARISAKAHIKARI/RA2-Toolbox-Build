@@ -1,12 +1,9 @@
 // Explicit input mailbox consumed ONLY inside the ordinary leased Assist tick.
 // Original click, mission constructor and received-event functions stay intact.
 #include "input_feedback.h"
+#include "../../shared/source/native_viewport_projection.h"
+#include "disabled_feature_policy.h"
 static uint32_t pointerFeedback=0;
-static bool pointerCommitPending=false;static uint32_t pointerCommitMatch=0,pointerCommitHouse=0;
-static bool pointerCommit(){
- intent::EventOrder o{};o.domain=vanilla::Domain::NoOptions;o.player=get<int>(lastHouse+0x30);o.eventKind=vanilla::EventType::PlanCommit;
- return submitConstructed(o);
-}
 static uint32_t pointerSeen,pointerCancelSeen,pointerTarget,pointerTargetID,pointerCell;
 static int pointerGroundZ;static int pointerAt;static bool pointerActive;
 static uint32_t pointerTokens[pointerinput::MaxSources];
@@ -14,7 +11,7 @@ static uint8_t pointerDone[pointerinput::MaxSources],pointerBatchFollow[pointeri
 static uint32_t pointerBatchTickets[pointerinput::MaxSources],pointerBatchRequest;static bool pointerBatchValid;
 static pointerinput::Intent pointerBatchCapture;
 static void resetPointerInput(){
- pointerCommitPending=false;pointerFeedback=0;pointerBatchValid=false;pointerBatchRequest=0;pointerActive=false;pointerSeen=pointerCancelSeen=pointerTarget=pointerTargetID=pointerCell=0;pointerAt=0;
+ pointerFeedback=0;pointerBatchValid=false;pointerBatchRequest=0;pointerActive=false;pointerSeen=pointerCancelSeen=pointerTarget=pointerTargetID=pointerCell=0;pointerAt=0;
  memset(pointerTokens,0,sizeof pointerTokens);memset(pointerDone,0,sizeof pointerDone);
 }
 static void pointerFinish(int result){
@@ -25,22 +22,25 @@ static void pointerFinish(int result){
  if(b.rejected<0)b.rejected=0;MemoryBarrier();b.ack=b.request;notifyHost();
 }
 static bool pointerLocation(const pointerinput::Intent&i){
+ if(nativeSidebarUIHit(i.x,i.y))return false;
  uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return false;
  if(i.width!=get<int>(0x8A00A4)||i.height!=get<int>(0x8A00A8)||
     i.cameraX!=get<int>(tactical+0xB0)||i.cameraY!=get<int>(tactical+0xB4))return false;
- int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);
+ nativeviewportprojection::Transform view{};if(!nativeViewTransform(view))return false;
+ int width=view.active?view.physical.w:get<int>(0xB0CE30),height=view.active?view.physical.h:get<int>(0xB0CE34);
  // ProcessClickCoords does not check upper bounds. Never query the sidebar.
  if(width<=0||height<=0||width>i.width||height>i.height)return false;
  // ProcessClickCoords adds the tactical surface origin itself. The host
  // supplies full-client pixels, just like WWMouse before native callers
  // subtract 886FA0/4 (4AE546..4AE553).
- int viewX=get<int>(0x886FA0),viewY=get<int>(0x886FA4);
+ int viewX=view.physical.x,viewY=view.physical.y;
  if(viewX<0||viewY<0||viewX>=i.width||viewY>=i.height||i.x<viewX||i.y<viewY||
     i.x>=i.width||i.y>=i.height||i.x-viewX>=width||i.y-viewY>=height)return false;
- struct Point{int x,y;}point{i.x-viewX,i.y-viewY};struct Cell{short x,y;}cell{};
+ NativeViewPoint point{i.x,i.y};if(!nativeViewMapPoint(point)||!nativeViewTransformUnchanged(view))return false;
+ point.x-=view.logical.x;point.y-=view.logical.y;struct Cell{short x,y;}cell{};
  struct Coord{int x,y,z;}coord{};uint32_t object=0;uint8_t a=0,b=0;
  // YRpp DisplayClass::ProcessClickCoords: thiscall, six pointer arguments.
- call<void>(0x692300,0x87F7E8,&point,&cell,&coord,&object,&a,&b);
+ if(!nativeViewQuery(&point,&cell,&coord,&object,&a,&b)||!nativeViewTransformUnchanged(view))return false;
  if(cell.x<=0||cell.y<=0||cell.x>=512||cell.y>=512||!readMapCell(cell.x,cell.y))return false;
  if(object&&!worldObjects.contains(object))return false;
  // Forced entry may click a building footprint covered by another object.
@@ -58,34 +58,41 @@ static bool pointerLocation(const pointerinput::Intent&i){
   Coord ground{int(cell.x)*256+128,int(cell.y)*256+128,0};
   coord.z=call<int>(0x578080,0x87F7E8,&ground);
  }
+ // Ground-height lookup and object reads can themselves cross a viewport or
+ // camera transition. Never publish a click derived from the previous view.
+ if(!nativeViewTransformUnchanged(view)||get<uint32_t>(0x887324)!=tactical||
+    i.width!=get<int>(0x8A00A4)||i.height!=get<int>(0x8A00A8)||
+    i.cameraX!=get<int>(tactical+0xB0)||i.cameraY!=get<int>(tactical+0xB4))return false;
  pointerGroundZ=coord.z;pointerCell=uint32_t(cell.y*1000+cell.x);pointerTarget=object;pointerTargetID=object?get<uint32_t>(object+0x10):0;return true;
 }
-static bool pointerAppendEntry(uint32_t p,int mission,uint32_t building){
- // Explicit user experiment: serialize a planning order without normal
+static bool pointerEntryOrder(uint32_t p,int mission,uint32_t cell,bool planning){
+ if(!featureavailability::InfantryForcedEntry)return false;
+ // Explicit user experiment: serialize a cell-destination order without normal
  // mission feasibility, allegiance, immobilization or automation arbitration.
  // The unified constructor/queue still owns packet format and transport.
  uint32_t id=get<uint32_t>(p+0x10);DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
- auto order=intent::mega(get<int>(lastHouse+0x30),id,mission,mission==7?0:building,mission==7?0:0x34,building,0x34,0,0);
- order.appendWaypoint=true;if(!submitConstructed(order))return false;
+ auto order=intent::mega(get<int>(lastHouse+0x30),id,mission,0,0,cell,0x0B,0,0);
+ order.appendWaypoint=planning;if(!submitConstructed(order))return false;
  showOrderLines(p);releaseAutoOwner(id);actorFrameArbiter.begin(match,frame);
  actorFrameArbiter.record(id,manualVersions.get(id),taskarbiter::Owner::Generic);
- gateway::Receipt receipt{};gateway::Intent intent{match,now,id,building,manualVersions.get(id)};
+ gateway::Receipt receipt{};gateway::Intent intent{match,now,id,0,manualVersions.get(id)};
  gateway::planned(receipt,missionObserver.allocateSerial(),intent);gateway::submitted(receipt,now);
  recordReceipt(receipt);actorLeaseArbiter.record(match,frame,id,p,manualVersions.get(id),taskarbiter::Owner::Generic,receipt.serial);
  return true;
 }
 static void pointerTick(){
- // Retry only the unsent commit, never duplicate an accepted planning node.
- if(pointerCommitPending){
-  if(pointerCommitMatch!=match||pointerCommitHouse!=lastHouse)pointerCommitPending=false;
-  else if(get<bool>(0x87F7E8+0x11B3))pointerCommitPending=false;
-  else if(!nativeReady()||!pointerCommit())return;else pointerCommitPending=false;
- }
  auto&b=sh->pointer;uint32_t request=b.request;MemoryBarrier();
+ // Refuse retired input before coordinate queries, cancellation of existing
+ // jobs, or native event construction, including queued/stale host requests.
+ if(request!=b.ack&&!featuregate::pointer(b.intent.operation)){
+  pointerFeedback=0;pointerBatchValid=false;b.accepted=0;pointerFinish(-4);return;
+ }
  if(pointerCancelSeen!=b.cancelSerial){pointerCancelSeen=b.cancelSerial;
   if(pointerActive&&pointerSeen==request&&request!=b.ack)pointerFinish(-7);
  }
  if(request==b.ack)return;
+ nativeviewportprojection::Transform viewport{};
+ if(!nativeviewportprojection::sample(sh,viewport)||viewport.generation!=sh->pointerViewportGeneration){pointerFinish(-7);return;}
  const auto&i=b.intent;DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
  if(!pointerActive||pointerSeen!=request){pointerActive=true;pointerSeen=request;pointerFeedback=0;pointerAt=0;b.accepted=b.rejected=0;memset(pointerDone,0,sizeof pointerDone);
   const bool next=(i.bindings&pointerinput::BatchNext)!=0,start=(i.bindings&pointerinput::BatchStart)!=0;
@@ -94,13 +101,14 @@ static void pointerTick(){
      (next&&!continuation)||(next&&start)||DWORD(now-i.tick)>((continuation||i.operation==pointerinput::C4Test)?1500u:150u)||frame<i.frame||frame-i.frame>((continuation||i.operation==pointerinput::C4Test)?90:8)||
      i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>9){pointerFinish(-7);return;}
   if(!continuation)pointerBatchValid=false;
+  if(cooperativeSingleInput(i.bindings)&&(i.bindings&pointerinput::Shift)){pointerFinish(-4);return;}
   if(i.operation!=pointerinput::Cancel){
    bool shiftUnsupported=(i.bindings&pointerinput::Shift)&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick)||!(i.bindings&(pointerinput::Advanced|pointerinput::Magnetron|pointerinput::CS|pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)));
    uint32_t tactical=get<uint32_t>(0x887324);
    bool location=continuation?(tactical>=0x10000&&i.width==get<int>(0x8A00A4)&&i.height==get<int>(0x8A00A8)&&i.cameraX==get<int>(tactical+0xB0)&&i.cameraY==get<int>(tactical+0xB4)):pointerLocation(i);
    // Z sets DisplayClass::PlanningMode. AirWaypoint only records a validated
    // point for the host; rejecting it here would reject its own activation key.
-   // C4Test appends native planning nodes; Z release owns their commit.
+   // Forced entry appends only while Z is held; native Z release owns commit.
    // Other orders keep the exclusion; never change native PlanningMode here.
    const bool nativePlanningBlocked=get<bool>(0x87F7E8+0x11B3)&&i.operation!=pointerinput::AirWaypoint&&i.operation!=pointerinput::C4Test;
    if((shiftUnsupported&&i.operation!=pointerinput::PlayerSelect&&i.operation!=pointerinput::PlayerOrder&&i.operation!=pointerinput::C4Test)||nativePlanningBlocked||!location){pointerFinish(-4);return;}
@@ -114,7 +122,7 @@ static void pointerTick(){
      if(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::LeftClick)&&pointerTarget&&own(pointerTarget,lastHouse)&&!(i.bindings&pointerinput::NativeForced)){
       unsigned action=0;if(!GuardedEnterAction(get<uint32_t>(get<uint32_t>(p)+0x74),p,pointerTarget,&action)||action==0||action==2||action==7||action==8||action==30||action==31||action==32){pointerTokens[n]=manualVersions.get(i.sources[n].id);continue;}
      }
-     cancelNative(p,!(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::RightClick)));
+     if(!cooperativeSingleInput(i.bindings))cancelNative(p,i.operation!=pointerinput::C4Test&&!(i.operation==pointerinput::FollowNative&&(i.bindings&pointerinput::RightClick)));
      if(i.operation==pointerinput::FollowNative)observeNativeOreIntent(p,pointerTarget,pointerCell,i.bindings);
     }pointerTokens[n]=manualVersions.get(i.sources[n].id);}
    else if(pointerBatchTickets[n]){actorLeaseArbiter.release(match,i.sources[n].id,pointerBatchTickets[n]);pointerBatchTickets[n]=0;}
@@ -129,13 +137,13 @@ static void pointerTick(){
  // Give the original input at least one simulation turn before appending.
  if((i.bindings&(pointerinput::RightClick|pointerinput::LeftClick))&&frame==i.frame)return;
  if(i.operation==pointerinput::PlayerSelect){
-  if(!playertest::Available||!sh->controlAll||!riskControlActive||!pointerTarget||!live(pointerTarget)||!playableHouse(get<uint32_t>(pointerTarget+0x21C))){pointerFinish(-4);return;}
+  if(!playertest::Available||!controlmode::proxyOrders(sh->controlAll)||!riskControlActive||!pointerTarget||!live(pointerTarget)||!playableHouse(get<uint32_t>(pointerTarget+0x21C))){pointerFinish(-4);return;}
   if(!(i.bindings&pointerinput::Shift))unselect();
   b.accepted=get<bool>(pointerTarget+0x83)||selection(pointerTarget);pointerFinish(b.accepted?1:-4);return;
  }
  if(i.operation==pointerinput::AirWaypoint){
   b.resolvedCell=pointerCell;b.resolvedTarget=pointerTargetID;b.resolvedZ=pointerGroundZ;memset(b.sourceAccepted,0,sizeof b.sourceAccepted);
-  if(!airpathpolicy::events(get<int>(0xA8B238),(sh->flags&AirWaypoints)!=0,(sh->flags&NativeAirWaypoints)!=0)){pointerFinish(-4);return;}
+  if(!airpathpolicy::events(get<int>(0xA8B238),(sh->flags&AirWaypoints)!=0,(sh->flags&NativeAirWaypoints)!=0,sh->nativeAirNetwork)){pointerFinish(-4);return;}
   for(int n=0;n<i.count;++n){uint32_t p=worldByID(i.sources[n].id);if(p&&p==i.sources[n].pointer&&own(p,lastHouse)&&kind(p)==0&&!get<bool>(p+0x81)&&!get<uint32_t>(p+0x11C)){b.sourceTokens[n]=manualVersions.get(i.sources[n].id);b.sourceAccepted[n/32]|=1u<<(n%32);++b.accepted;}}
   pointerFinish(1);return;
  }
@@ -155,11 +163,15 @@ static void pointerTick(){
  bool suppressed=blocked.match==i.match&&blocked.x==i.x&&blocked.y==i.y&&
   ((i.bindings&pointerinput::RightClick)?blocked.physical==4:(i.bindings&pointerinput::LeftClick)?blocked.physical==6:false)&&
   (int32_t(i.tick-blocked.tick)>=-150&&int32_t(i.tick-blocked.tick)<=150);
+ const bool singleCooperative=cooperativeSingleInput(i.bindings);
+ // A native click already delivered to the whole group cannot be turned into
+ // a subset afterwards. Exclusive middle/side inputs need no native suppression.
+ if(singleCooperative&&((i.bindings&(pointerinput::RightClick|pointerinput::LeftClick))&&!suppressed||!pointerTarget)){pointerFinish(-4);return;}
  bool follow=!suppressed&&(i.operation==pointerinput::FollowNative||(i.bindings&pointerinput::RightClick));
  while(examined++<i.count){int n=pointerAt++;if(pointerAt>=i.count)pointerAt=0;if(pointerDone[n])continue;
   uint32_t p=worldByID(i.sources[n].id);
   if(i.operation==pointerinput::PlayerOrder){
-   if(!playertest::Available||!sh->controlAll||!p||p!=i.sources[n].pointer||!live(p)||!playableHouse(get<uint32_t>(p+0x21C))||get<uint32_t>(p+0x11C)){pointerDone[n]=1;continue;}
+   if(!playertest::Available||!controlmode::proxyOrders(sh->controlAll)||!riskControlActive||!p||p!=i.sources[n].pointer||!live(p)||!playableHouse(get<uint32_t>(p+0x21C))||get<uint32_t>(p+0x11C)){pointerDone[n]=1;continue;}
    if(submitted>=limit||outgoingRoom()<=0){++remaining;continue;}
    uint32_t owner=get<uint32_t>(p+0x21C);int mission=pointerTarget?1:2;
    if(pointerTarget==p){pointerDone[n]=1;continue;}
@@ -168,17 +180,14 @@ static void pointerTick(){
   if(!p||p!=i.sources[n].pointer||!own(p,lastHouse)||(i.operation!=pointerinput::C4Test&&(get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)))||
      (!follow&&manualVersions.get(i.sources[n].id)!=pointerTokens[n])){pointerDone[n]=1;continue;}
   if(i.operation==pointerinput::C4Test){
-   // Native append/commit only. No C4 capability or destination-feasibility
+   // Native events only. No C4 capability or destination-feasibility
    // preflight here and no local capability patch after event delivery.
    if(!sh->c4Test||kind(p)!=1){pointerDone[n]=1;continue;}
-   const bool editing=get<bool>(0x87F7E8+0x11B3);const int cost=editing?1:2;
-   if(submitted+cost>limit||outgoingRoom()<cost){++remaining;continue;}
-   uint32_t type=typeOf(p,1);
-   int mission=get<bool>(type+0xEC3)?8:get<bool>(type+0xEBE)?7:get<bool>(type+0xEC2)?17:7;
-   if(pointerAppendEntry(p,mission,pointerTargetID)){
+   const bool editing=get<bool>(0x87F7E8+0x11B3);
+   if(submitted>=limit||outgoingRoom()<1){++remaining;continue;}
+   int mission=pointerinput::entryMission(i.bindings);
+   if(pointerEntryOrder(p,mission,pointerCell,editing)){
     ++b.accepted;if(!pointerFeedback)pointerFeedback=p;++submitted;pointerDone[n]=1;
-    if(!editing){pointerCommitPending=true;pointerCommitMatch=match;pointerCommitHouse=lastHouse;
-     if(pointerCommit()){pointerCommitPending=false;++submitted;}else return;}
    }else ++remaining;
    continue;
   }
@@ -192,7 +201,7 @@ static void pointerTick(){
    bool mag=(i.bindings&pointerinput::Magnetron)&&(sh->flags&MagnetronInput)&&rawMagnetron(p);
    bool advanced=(i.bindings&pointerinput::Advanced)&&(sh->flags&AdvancedInput)&&featureObjectAllowed(featuretypes::AdvancedAttack,p);
    bool cs=i.operation==pointerinput::AttackMove||((i.bindings&pointerinput::CS)&&csAllowedFor(p,true));
-   if(!result&&!(i.bindings&pointerinput::Shift)&&(mag||advanced||cs)&&(kind(p)==1||kind(p)==2)&&nativeEnemy(pointerTarget,lastHouse)&&rawArmed(p)){
+   if(!singleCooperative&&!result&&!(i.bindings&pointerinput::Shift)&&(mag||advanced||cs)&&(kind(p)==1||kind(p)==2)&&nativeEnemy(pointerTarget,lastHouse)&&rawArmed(p)){
     if((i.bindings&pointerinput::LeftClick)&&!suppressed){
      if(get<uint32_t>(p+0x2B4)!=pointerTarget||(get<int>(p+0xAC)!=1&&get<int>(p+0xB4)!=1)){++remaining;continue;}
      result=1;nativeObserved=true;
@@ -234,5 +243,6 @@ static void pointerTick(){
  }
  if(!remaining)pointerFinish(1);
 }
+
 
 

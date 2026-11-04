@@ -1,13 +1,18 @@
 #pragma once
 #include <windows.h>
 #include <mutex>
+#include <cwchar>
 #include <mmsystem.h>
 #include "precise_clock.h"
 #include "key_gesture.h"
 #include "game_entry_api.h"
 #include "runtime_protocol.h"
+#include "frame_signal_client.h"
 #include "message_query.h"
 #include "../../external_reader/source/shared_reader.h"
+#ifdef _WIN64
+#include "runtime_broker_client.h"
+#endif
 // EXE-owned subscriptions and cadence. Features never choose a DLL, callback,
 // Win32 hook kind, or injection path. One GETMESSAGE + POST pair per game.
 namespace gameinput {
@@ -23,20 +28,32 @@ struct Health {
  DWORD nativeSerial=0,nativeCode=0,nativeAddress=0,nativeOperation=0,nativeAccess=0;
  DWORD nativeThread=0,nativeTick=0,nativeEax=0,nativeEcx=0,nativeEsi=0,nativeEbp=0;
 };
-inline bool heldBinding(uint32_t binding){
- const unsigned vk=binding&255,mods=binding>>8;if(!vk)return false;
- if(!(GetAsyncKeyState(vk)&0x8000))return false;if(binding==16||binding==17||binding==18)return true;
- return bool(GetAsyncKeyState(16)&0x8000)==bool(mods&1)&&bool(GetAsyncKeyState(17)&0x8000)==bool(mods&2)&&bool(GetAsyncKeyState(18)&0x8000)==bool(mods&4);
-}
-struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
-struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
-struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false;};
+inline bool heldBinding(uint32_t binding);
+struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0,viewportGeneration=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
+struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0,viewportGeneration=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
+struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr,process=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false,frameSampling=false,diagnosticFrame=false;std::shared_ptr<framesignal::Client> frameSignal;
+#ifdef _WIN64
+ uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0;
+#endif
+};
 struct Lease {Subscription id=0;gameentry::Client client{};unsigned target=0;};
 struct Host {std::recursive_mutex mutex;Target targets[8]{};Lease leases[32]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;const wchar_t* installStage=L"not-started";};
 inline Host& host(){static Host*value=new Host;return *value;}
 inline const wchar_t* installationStage(){auto&h=host();std::lock_guard<std::recursive_mutex> lock(h.mutex);return h.installStage;}
+struct Capacity {unsigned targets=0,subscriptions=0;};
+inline Capacity capacity(){
+ auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);Capacity value;
+ for(auto&t:h.targets)if(t.pid)++value.targets;
+ for(auto&l:h.leases)if(l.id)++value.subscriptions;
+ return value;
+}
 inline uint32_t mask(gameentry::Client c){return c==gameentry::Client::Assist?runtime::Tactical:c==gameentry::Client::Cursor?runtime::Cursor:0;}
 inline HMODULE runtimeModule(){
+#ifdef _WIN64
+ // A PE32 runtime is intentionally never loaded as executable code into the
+ // PE32+ host. The paired x86 broker validates exports and owns the HHOOKs.
+ return nullptr;
+#else
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);if(h.module)return h.module;
  wchar_t path[32768];DWORD n=GetModuleFileNameW(nullptr,path,32768);if(!n||n>=32768)return nullptr;
  while(n&&path[n-1]!=L'\\'&&path[n-1]!=L'/')--n;
@@ -47,6 +64,33 @@ inline HMODULE runtimeModule(){
  auto entry=(const uint32_t*)GetProcAddress(m,"GameEntryManagerInfo");
  if(!info||info[0]!=runtime::Version||info[1]!=sizeof(runtime::Control)||!entry||entry[0]!=gameentry::Version||entry[1]!=sizeof(gameentry::Request)||!GetProcAddress(m,"GameRuntimeHook")||!GetProcAddress(m,"GameRuntimePostHook")){FreeLibrary(m);SetLastError(ERROR_REVISION_MISMATCH);return nullptr;}
  h.module=m;return m;
+#endif
+}
+inline bool runtimeAvailable(){
+#ifdef _WIN64
+ return runtimebroker::client().transport(runtime::Version,sizeof(runtime::Control),gameentry::Version,sizeof(gameentry::Request));
+#else
+ return runtimeModule()!=nullptr;
+#endif
+}
+inline bool assistIdentity(HMODULE module,uint32_t version,uint32_t bytes,const wchar_t*prefix){
+#ifdef _WIN64
+ uint32_t actualVersion=0,actualBytes=0;
+ if(!runtimebroker::client().identity(actualVersion,actualBytes,prefix))return false;
+ bool valid=actualVersion==version&&actualBytes==bytes;if(!valid)SetLastError(ERROR_REVISION_MISMATCH);return valid;
+#else
+ auto info=reinterpret_cast<const uint32_t*>(GetProcAddress(module,"AssistProtocolInfo"));
+ auto text=reinterpret_cast<const wchar_t*>(GetProcAddress(module,"AssistMappingPrefix"));
+ return info&&info[0]==version&&info[1]==bytes&&text&&wcscmp(text,prefix)==0;
+#endif
+}
+inline uint32_t windowToken(HWND window){
+ // HWND values are interoperable across Windows bitness, unlike pointers.
+ // Verify the low-width handle still names exactly this window's process and
+ // thread before publishing it to the unchanged x86 mailbox.
+ uint32_t raw=uint32_t(uintptr_t(window));DWORD owner=0,roundOwner=0;
+ DWORD thread=GetWindowThreadProcessId(window,&owner),roundThread=GetWindowThreadProcessId((HWND)(uintptr_t)raw,&roundOwner);
+ return raw&&thread&&thread==roundThread&&owner==roundOwner?raw:0;
 }
 inline void post(Target&t,uint32_t bits){
  if(!t.control)return;
@@ -95,23 +139,52 @@ inline Health health(Subscription id){
  }}
  return {};
 }
+inline bool releaseHook(HHOOK&hook){
+ if(!hook)return true;
+ // Windows may already have removed a hook when its target thread exits.
+ // Treat that exact result as detached; retain real failures for a retry.
+ if(!UnhookWindowsHookEx(hook)&&GetLastError()!=ERROR_INVALID_HOOK_HANDLE)return false;
+ hook=nullptr;return true;
+}
 inline bool clear(Target&t){
- if(t.post){if(!UnhookWindowsHookEx(t.post))return false;t.post=nullptr;}
- if(t.message){if(!UnhookWindowsHookEx(t.message))return false;t.message=nullptr;}
- if(t.control)UnmapViewOfFile(t.control);if(t.mapping)CloseHandle(t.mapping);t={};return true;
+#ifdef _WIN64
+ if(t.brokerToken&&!runtimebroker::client().remove(t.pid,t.brokerToken,t.brokerGeneration))return false;
+#endif
+ if(!releaseHook(t.post)||!releaseHook(t.message))return false;
+ if(t.control)UnmapViewOfFile(t.control);if(t.mapping)CloseHandle(t.mapping);if(t.process)CloseHandle(t.process);t={};return true;
+}
+inline void reapTargets(){
+ auto&h=host();
+ // Use the retained process object, not a fresh PID lookup or a transient
+ // HWND. A failed wait/denied query never proves that a live target exited.
+ for(unsigned i=0;i<8;++i){auto&t=h.targets[i];if(!t.pid)continue;
+  bool dead=t.process&&WaitForSingleObject(t.process,0)==WAIT_OBJECT_0,used=false;
+  for(auto&l:h.leases)if(l.id&&l.target==i){if(dead)l={};else used=true;}
+  if(!used){if(t.control)InterlockedExchange(&t.control->enabled,0);clear(t);}
+ }
 }
 // Capture identity belongs to the producer, never to the dequeueing feature.
 inline void disarmPointer(PointerQueue&q){q.focused=false;q.rightArmed=false;q.leftArmed=false;q.count=q.head=0;++q.cancelSerial;}
-inline void setPointerContext(Subscription id,uint32_t match,bool enabled){
+inline void setPointerContext(Subscription id,uint32_t match,bool enabled,uint32_t viewportGeneration=0){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
  for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&q=h.targets[l.target].pointer;
-  enabled=enabled&&match!=0;if(q.match!=match||q.enabled!=enabled)disarmPointer(q);
-  q.match=match;q.enabled=enabled;q.contextAt=GetTickCount();return;
+  enabled=enabled&&match!=0;if(q.match!=match||q.enabled!=enabled||q.viewportGeneration!=viewportGeneration)disarmPointer(q);
+  q.match=match;q.enabled=enabled;q.viewportGeneration=viewportGeneration;q.contextAt=GetTickCount();return;
  }
 }
 // Polling belongs to the EXE manager. No low-level mouse/keyboard hooks and no
 // game input is swallowed or rewritten. Right UP follows the native click.
 inline void keySnapshot(Subscription id,uint8_t*out,uint32_t*serial=nullptr){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);memset(out,0,256);for(auto&l:h.leases)if(id&&l.id==id){auto&t=h.targets[l.target];memcpy(out,t.keys.held,256);if(serial)memcpy(serial,t.keys.serial,256*sizeof(uint32_t));return;}}
+inline bool heldBinding(uint32_t binding){
+ if(!(binding&255)||!keygesture::isHold(binding))return false;
+ uint8_t keys[256]{};for(unsigned code:{binding&255,16u,17u,18u})keys[code]=(GetAsyncKeyState(code)&0x8000)!=0;
+ if(binding&keygesture::Double){
+  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);
+  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
+  for(auto&t:h.targets)if(t.pid==foreground&&t.pointer.focused&&(t.keys.held[binding&255]&2)){keys[binding&255]|=keys[binding&255]?2:0;break;}
+ }
+ return keygesture::matchesHold(keys,binding);
+}
 inline void pollPointer(Target&t,DWORD now){
  auto&q=t.pointer;DWORD fg=0;GetWindowThreadProcessId(GetForegroundWindow(),&fg);
  const int keys[]={VK_MBUTTON,VK_XBUTTON1,VK_XBUTTON2,VK_RBUTTON,'S','D','X',VK_LBUTTON};
@@ -135,7 +208,7 @@ inline void pollPointer(Target&t,DWORD now){
  if(pressed&8){q.rightArmed=located;q.rightDragged=false;q.rightOrigin=hit;++q.cancelSerial;for(unsigned i=0;i<256;++i)q.rightKeys[i]=physical[i];}
  int operation=(pressed&112u)?5:left?6:(pressed&128)?7:follow?4:(pressed&1)?1:(pressed&2)?2:(pressed&4)?3:0;
  if(!operation)return;if(operation!=4&&operation!=6&&!(pressed&8))++q.cancelSerial;
- PointerPress e{};e.tick=now;e.serial=q.cancelSerial;e.match=q.match;e.operation=operation;RECT rect{};
+ PointerPress e{};e.tick=now;e.serial=q.cancelSerial;e.match=q.match;e.viewportGeneration=q.viewportGeneration;e.operation=operation;RECT rect{};
  if(!GetCursorPos(&e.point)||!ScreenToClient(t.window,&e.point)||!GetClientRect(t.window,&rect))return;
  e.width=rect.right;e.height=rect.bottom;
  if(e.width<=0||e.height<=0||e.point.x<0||e.point.y<0||e.point.x>=e.width||e.point.y>=e.height)return;
@@ -160,16 +233,32 @@ inline void setFastTactical(Subscription id,bool enabled){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
  for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){h.targets[l.target].fastTactical=enabled;updateTimer();return;}
 }
+inline bool nativeFrameSampling(Subscription id){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id){auto&t=h.targets[l.target];framesignal::Stamp stamp;if(t.frameSignal&&t.frameSignal->current(stamp)&&stamp.state==framesignal::Native&&stamp.serial>0&&stamp.frequency>0){LARGE_INTEGER q{};QueryPerformanceCounter(&q);return double(q.QuadPart-stamp.qpc)*1000./stamp.frequency<100.;}}return false;}
+inline void setFrameSampling(Subscription id,bool enabled,bool diagnostic=false){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&t=h.targets[l.target];if(!enabled||t.diagnosticFrame!=diagnostic)t.frameSignal.reset();t.frameSampling=enabled;t.diagnosticFrame=enabled&&diagnostic;return;}}
 inline void CALLBACK pulse(void*,BOOLEAN){
  auto&h=host();if(InterlockedCompareExchange(&h.pulseBusy,1,0))return;
  struct Reset {volatile LONG*value;~Reset(){InterlockedExchange(value,0);}} reset{&h.pulseBusy};
- std::lock_guard<std::recursive_mutex>lock(h.mutex);DWORD now=GetTickCount();const uint64_t precise=preciseclock::micros();
+ std::lock_guard<std::recursive_mutex>lock(h.mutex);reapTargets();DWORD now=GetTickCount();const uint64_t precise=preciseclock::micros();
  for(unsigned i=0;i<8;++i){auto&t=h.targets[i];if(!t.pid)continue;
   uint32_t enabled=0;for(auto&l:h.leases)if(l.id&&l.target==i)enabled|=mask(l.client);
   if(!enabled){clear(t);continue;}if(!t.control)continue;
+#ifdef _WIN64
+  if(!runtimebroker::client().alive(t.brokerGeneration)){
+   InterlockedExchange(&t.control->enabled,0);
+   if(t.brokerRetry&&int32_t(now-t.brokerRetry)<0)continue;t.brokerRetry=now+1000;
+   if(!runtimebroker::client().install(t.pid,t.thread,uint32_t(uintptr_t(t.window)),t.brokerToken,t.brokerGeneration)){t.lastPostError=GetLastError();continue;}
+   InterlockedExchange(&t.control->enabled,LONG(enabled));t.lastPostError=0;
+  }
+#endif
+  bool nativeFrames=false;
+  // Normal frame sampling keeps the 4 ms message pulse below. It reads the
+  // existing frame counter and does not request a game-code notification hook.
+  if((enabled&runtime::Tactical)&&t.frameSampling&&t.diagnosticFrame){if(!t.frameSignal)t.frameSignal=std::make_shared<framesignal::Client>();if(t.frameSignal->open(t.pid,framesignal::Compute|framesignal::ExplicitDiagnostic)){t.frameSignal->heartbeat();framesignal::Stamp stamp;if(t.frameSignal->current(stamp)&&stamp.state==framesignal::Native&&stamp.frequency>0&&stamp.serial>0){LARGE_INTEGER q{};QueryPerformanceCounter(&q);nativeFrames=double(q.QuadPart-stamp.qpc)*1000./stamp.frequency<100.;}}}
+  else t.frameSignal.reset();
+  t.control->heartbeat=now;
   if(enabled&runtime::Tactical)pollPointer(t,now);
   uint32_t ready=0;if((enabled&runtime::Cursor)&&precise-t.cursorAt>=4000){t.cursorAt=precise;ready|=runtime::Cursor;}
-  const uint64_t tacticalPeriod=t.fastTactical&&t.pointer.enabled&&t.pointer.focused?1000:16000;
+  const uint64_t tacticalPeriod=nativeFrames?100000:t.frameSampling?4000:t.fastTactical&&t.pointer.enabled&&t.pointer.focused?1000:16000;
   if((enabled&runtime::Tactical)&&precise-t.tacticalAt>=tacticalPeriod){t.tacticalAt=precise;ready|=runtime::Tactical;}
   if(ready)post(t,ready);
  }
@@ -193,13 +282,28 @@ inline HWND nativeWindow(DWORD pid,DWORD thread,NativeWindowProbe* detail=nullpt
  SetLastError(ERROR_SUCCESS);
  return window;
 }
+// Recreated HWND on the existing game thread is a delivery-address change,
+// not a reason to stop Runtime or release either thread Hook/subscriber.
+inline bool rebindWindow(Subscription id,HWND window){
+ auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
+ for(const auto&lease:h.leases)if(id&&lease.id==id){
+  auto&t=h.targets[lease.target];DWORD owner=0;
+  if(!window||GetWindowThreadProcessId(window,&owner)!=t.thread||owner!=t.pid||nativeWindow(t.pid,t.thread)!=window)return false;
+  if(t.window!=window){t.window=window;t.pointer={};if(t.control)InterlockedExchange(&t.control->wakePending,0);}
+  return true;
+ }
+ return false;
+}
 inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND window){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
  h.installStage=L"window-owner-check";
  DWORD actual=0,tid=window?GetWindowThreadProcessId(window,&actual):0;
  if(!mask(client)||!pid||!thread||actual!=pid||tid!=thread){SetLastError(ERROR_INVALID_PARAMETER);return 0;}
  h.installStage=L"native-window-check";window=nativeWindow(pid,thread);if(!window)return 0;
- h.installStage=L"load-runtime";HMODULE m=runtimeModule();if(!m)return 0;
+ h.installStage=L"load-runtime";if(!runtimeAvailable())return 0;HMODULE m=runtimeModule();
+ // Also recover forgotten leases of exited games and partial installations
+ // before the host timer existed. Live subscribers keep their transport.
+ reapTargets();
  h.installStage=L"subscription-slots";
  Lease*slot=nullptr;for(auto&l:h.leases)if(!l.id){slot=&l;break;}if(!slot){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
  unsigned at=8;for(unsigned i=0;i<8;++i)if(h.targets[i].pid==pid){at=i;break;}
@@ -209,11 +313,18 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
   bool dead=old?WaitForSingleObject(old,0)==WAIT_OBJECT_0:GetLastError()==ERROR_INVALID_PARAMETER;if(old)CloseHandle(old);
   if(!dead){SetLastError(ERROR_BUSY);return 0;}
   // Keep subscriptions and mapping; replace transport only after old thread exits.
-  if(t.post){UnhookWindowsHookEx(t.post);t.post=nullptr;}if(t.message){UnhookWindowsHookEx(t.message);t.message=nullptr;}
+#ifdef _WIN64
+  if(t.brokerToken&&!runtimebroker::client().remove(t.pid,t.brokerToken,t.brokerGeneration))return 0;
+  t.brokerToken=t.brokerGeneration=0;
+#endif
+  if(!releaseHook(t.post)||!releaseHook(t.message))return 0;
   t.pointer={};t.thread=thread;t.window=window;if(t.control)InterlockedExchange(&t.control->wakePending,0);
  }
- if(at==8){for(unsigned i=0;i<8;++i)if(!h.targets[i].pid){at=i;break;}if(at==8){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
+ if(at==8){h.installStage=L"target-slots";for(unsigned i=0;i<8;++i)if(!h.targets[i].pid){at=i;break;}if(at==8){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
   auto&t=h.targets[at];t.pid=pid;t.thread=thread;t.window=window;
+  // Best-effort synchronization rights only; existing platforms that deny
+  // this handle retain the normal explicit-release path.
+  t.process=OpenProcess(SYNCHRONIZE,FALSE,pid);
   h.installStage=L"shared-mapping";
   wchar_t name[96];runtime::mapName(name,pid,GetCurrentProcessId());t.mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(runtime::Control),name);
   if(t.mapping)t.control=(runtime::Control*)MapViewOfFile(t.mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(runtime::Control));
@@ -227,9 +338,16 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
  // The HWND may be recreated on the same thread between loading and play.
  // All subscribers must wake the current native window, including old leases.
  if(t.window!=window){t.window=window;if(t.control)InterlockedExchange(&t.control->wakePending,0);}
+#ifdef _WIN64
+ h.installStage=L"x86-hook-broker";
+ if(!runtimebroker::client().install(pid,thread,uint32_t(uintptr_t(window)),t.brokerToken,t.brokerGeneration)){
+  DWORD error=GetLastError();bool used=false;for(auto&l:h.leases)if(l.id&&l.target==at)used=true;if(!used)clear(t);SetLastError(error);return 0;
+ }
+#else
  if(!t.message){h.installStage=L"WH_GETMESSAGE";t.message=SetWindowsHookExW(WH_GETMESSAGE,(HOOKPROC)GetProcAddress(m,"GameRuntimeHook"),m,thread);}
  if(t.message&&!t.post){h.installStage=L"WH_CALLWNDPROCRET";t.post=SetWindowsHookExW(WH_CALLWNDPROCRET,(HOOKPROC)GetProcAddress(m,"GameRuntimePostHook"),m,thread);}
  if(!t.message||!t.post){DWORD error=GetLastError();bool used=false;for(auto&l:h.leases)if(l.id&&l.target==at)used=true;if(!used)clear(t);SetLastError(error);return 0;}
+#endif
  h.installStage=L"host-timer";
  if(!h.timer&&!CreateTimerQueueTimer(&h.timer,nullptr,pulse,nullptr,4,4,WT_EXECUTEDEFAULT)){DWORD error=GetLastError();clear(t);SetLastError(error);return 0;}
  if(!++h.next)++h.next;*slot={h.next,client,at};InterlockedOr(&t.control->enabled,LONG(mask(client)));post(t,mask(client));h.installStage=L"installed-awaiting-callback";return slot->id;

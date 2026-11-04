@@ -1,5 +1,6 @@
 #include "construction_catalog.h"
 #include "native_cameos.h"
+#include "native_badge_display.h"
 #include "construction_buffer.h"
 #include "../../unit_monitor/source/icon_cache.h"
 #include "../../unit_monitor/source/cameo_reader.h"
@@ -10,8 +11,11 @@ static construction::Book books[4];static std::vector<Choice> choices;static HWN
 static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;
 static int activeTab=-1,selectedTab=-1,lastNativeTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
 static construction::NativeFrame nativeFrame;static uint32_t nativeAt=0;
+static construction::NativeDisplay nativeDisplay;
 static HFONT panelFont;static int fontHeight=0;static bool geometryReady=false;
-static construction::PanelBuffer panelBuffer;
+static construction::PanelBuffer panelBuffer,panelSpare;
+static construction::Layout paintedLayout;static bool paintReady=false;
+static void resetPaint();static void requestPaint();static void pumpPaint();static bool panelInputReady();
 template<class T>static T get(uint32_t at,T fallback={}){T v{};return externalReader.readFresh(at,&v,sizeof v)?v:fallback;}
 static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}
 static int absKind(int index){return index<65536?7:index>>16;}
@@ -58,7 +62,7 @@ static bool factoryState(int tab,uint32_t&f,uint32_t&p){
 }
 static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];critical(L"Construction queue: "+std::wstring(reason)+L" tab="+std::to_wstring(tab)+L" match="+std::to_wstring(b.match)+L" parent="+std::to_wstring(b.id)+L" stage="+std::to_wstring(b.stage)+L" head="+std::to_wstring(b.head())+L" count="+std::to_wstring(b.items.size()));}
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
-static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;if(window)ShowWindow(window,SW_HIDE);}
+static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;nativeDisplay.clear();resetPaint();if(window)ShowWindow(window,SW_HIDE);}
 static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
 static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
@@ -103,9 +107,9 @@ static void collectChoices(){
  }
 }
 static void resizePanel(){
- if(!window||!geometryReady)return;POINT origin{};RECT previous{};
+ if(!window||!geometryReady||!paintReady)return;POINT origin{};RECT previous{};
  if(!ClientToScreen(game,&origin))return;
- const int x=origin.x+layout.left(),y=origin.y+layout.top(),w=layout.width(),h=layout.height();
+ const int x=origin.x+paintedLayout.left(),y=origin.y+paintedLayout.top(),w=paintedLayout.width(),h=paintedLayout.height();
  const bool visible=IsWindowVisible(window)!=0;
  if(visible&&GetWindowRect(window,&previous)&&previous.left==x&&previous.top==y&&previous.right-previous.left==w&&previous.bottom-previous.top==h)return;
  // Do not repeatedly raise a stationary panel above sibling overlays. On a
@@ -113,7 +117,7 @@ static void resizePanel(){
  overlaystack::place(window,overlaystack::Layer::Construction,x,y,w,h,SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS|(visible?SWP_NOZORDER:SWP_SHOWWINDOW));
 }
 static bool usable();
-static bool displayReady(){return extra.constructionQueue&&enabled&&foregroundGame()&&snap.renderStatus==1;}
+static bool displayReady(){return extra.constructionQueue&&enabled&&foregroundGame()&&constructionDisplayVisible();}
 static void refreshChoices(){
  collectChoices();layout.content(activeTab>=0&&activeTab<4?int(books[activeTab].items.size()):0,int(choices.size()));
  int maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll,0,maximum);
@@ -122,9 +126,9 @@ static void refreshChoices(){
   policy={commandMatch(),house,current[activeTab],currentID[activeTab],GetTickCount(),activeTab,uint32_t(construction::Capacity-books[activeTab].items.size())};
   policy.count=int(books[activeTab].items.size());for(int n=0;n<policy.count;++n)policy.queued[n]=books[activeTab].items[n];
  }
- publishReservationPolicy(policy);resizePanel();
+ publishReservationPolicy(policy);
 }
-static bool usable(){return displayReady()&&!snap.chat&&commandFresh(GetTickCount());}
+static bool usable(){return extra.constructionQueue&&enabled&&foregroundGame()&&snap.renderStatus==1&&!snap.chat&&commandFresh(GetTickCount())&&constructionDisplayFresh();}
 static void reserveChoice(Choice c,bool fromNative=false,bool nativeCaptured=false){
  if(!usable()||activeTab<0||activeTab>3||c.tab!=activeTab)return;auto&b=books[activeTab];
  if(b.stage){notify(L"生产请求正在提交，请等原版队列更新后再预定。");return;}
@@ -137,7 +141,7 @@ static void reserveChoice(Choice c,bool fromNative=false,bool nativeCaptured=fal
  if(b.items.size()==1){b.match=commandMatch();b.house=house;b.source=p;b.id=identity;}
  if(!fromNative||nativeCaptured)requestReservationSound();
  queueLog(activeTab,fromNative?L"reserved-native-click":L"reserved-extra-panel");
- refreshChoices();if(window)InvalidateRect(window,nullptr,FALSE);
+ refreshChoices();requestPaint();
 }
 static void reserve(int item){if(item>=0&&item<int(choices.size()))reserveChoice(choices[item]);}
 static bool readNative(){nativeAt=GetTickCount();return construction::readNative([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);},nativeFrame);}
@@ -151,7 +155,7 @@ static void removeItem(int tab,int item,bool all=false){
  else if(item==0&&b.stage){for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b.stage=b.attempts=0;b.unitLane=-1;b.token=b.sent=b.retry=0;b.items.erase(b.items.begin());if(b.items.empty())cancel(tab);}
  else{b.items.erase(b.items.begin()+item);if(b.items.empty())cancel(tab);}
  if(b.items.size()<before)requestReservationSound();
- queueLog(tab,all?L"user-cleared-reservations":L"user-canceled-reservation");refreshChoices();if(window)InvalidateRect(window,nullptr,FALSE);
+ queueLog(tab,all?L"user-cleared-reservations":L"user-canceled-reservation");refreshChoices();requestPaint();
 
 }
 static void removeTop(bool all=false){if(activeTab>=0&&activeTab<4)removeItem(activeTab,int(books[activeTab].items.size())-1,all);}
@@ -172,20 +176,22 @@ static void consumeNativeClick(){
  int slot=typeSlot(c.index);uint32_t types=get<uint32_t>(0xA83C68+4);int count=get<int>(0xA83C68+16,-1);
  if(slot>=0&&types>=0x10000&&c.index>=0&&c.index<count&&count<=4096){uint32_t type=get<uint32_t>(types+c.index*4);if(type>=0x10000)reserveChoice({slot,c.index,c.tab,type,false},true,true);}
 }
+static int nativeBadgeTab(){return nativeDisplay.tab();}
 static std::vector<construction::NativeBadge> nativeBadges(){
- std::vector<construction::NativeBadge> out;if(!displayReady()||get<uint32_t>(0xA83D4C)!=house)return out;
- if(!nativeAt||uint32_t(GetTickCount()-nativeAt)>=16)readNative();
- int tab=nativeFrame.tab;if(tab<0||tab>1)return out;auto&b=books[tab];if(b.match!=commandMatch()||b.house!=house)return out;
- for(const auto&c:nativeFrame.cells){int mask=0;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index)mask|=1<<i;
+ std::vector<construction::NativeBadge> out;if(!displayReady()||get<uint32_t>(0xA83D4C)!=house){nativeDisplay.clear();return out;}
+ auto frame=nativeDisplay.sample([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);},
+  {pid,commandMatch(),house,snap.width,snap.height},GetTickCount());
+ if(!frame)return out;int tab=frame->tab;if(tab<0||tab>1)return out;auto&b=books[tab];if(b.match!=commandMatch()||b.house!=house)return out;
+ for(const auto&c:frame->cells){int mask=0;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index)mask|=1<<i;
   if(mask)out.push_back({c.x,c.y+c.h-16,c.w,16,mask});}
  return out;
 }
 static external::ReadSession paintReader;static external::cameraassets::Context<external::ReadSession> paintAssets(paintReader);
 static bool loadPanelAsset(const char*n,std::vector<uint8_t>&b){return paintAssets.cameo(n,b);}
-struct PaintRequest {uint32_t pid,match,tick;int activeTab,scroll,hoverChoice,hoverQueue,width,height;construction::Layout layout;construction::Book book;std::vector<Choice> choices;std::map<int,assist::Type> types;std::map<int,uint32_t> pointers;LOGFONTW font{};};
-struct Painted {PaintRequest request;std::vector<uint32_t> pixels;};
+struct PaintRequest {uint32_t pid,match,tick,house;int activeTab,scroll,hoverChoice,hoverQueue,width,height;construction::Layout layout;construction::Book book;std::vector<Choice> choices;std::map<int,assist::Type> types;std::map<int,uint32_t> pointers;LOGFONTW font{};std::vector<uint8_t> visual,input;};
+struct Painted {PaintRequest request;std::vector<uint32_t> pixels;bool incomplete=false;};
 struct PanelPainter {
- const PaintRequest&request;construction::Layout layout;external::ReadSession&externalReader;external::cameraassets::Context<external::ReadSession>&assets;
+ const PaintRequest&request;construction::Layout layout;external::ReadSession&externalReader;external::cameraassets::Context<external::ReadSession>&assets;bool&incomplete;
 RECT rect(int x,int y,int r,int bottom){return {layout.x(x),layout.y(y),layout.x(r),layout.y(bottom)};}
 void paintIcon(HDC dc,int index,int x,int y,bool gray){
  auto found=request.types.find(index);if(found==request.types.end())return;const auto&t=found->second;
@@ -197,7 +203,7 @@ void paintIcon(HDC dc,int index,int x,int y,bool gray){
  if(ready){uint32_t pixels[60*48];for(int i=0;i<60*48;++i){uint32_t color=palette.palette[type.icon[i]];if(gray){unsigned value=(((color>>16)&255)*3+((color>>8)&255)*6+(color&255))/10;color=(value<<16)|(value<<8)|value;}pixels[i]=color&0xFFFFFF;}
   BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=60;info.bmiHeader.biHeight=-48;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
   SetStretchBltMode(dc,COLORONCOLOR);StretchDIBits(dc,icon.left,icon.top,icon.right-icon.left,icon.bottom-icon.top,0,0,60,48,pixels,&info,DIB_RGB_COLORS,SRCCOPY);
- }else{HBRUSH empty=CreateSolidBrush(gray?RGB(35,42,50):RGB(40,61,79));FillRect(dc,&icon,empty);DeleteObject(empty);SetTextColor(dc,RGB(217,229,237));DrawTextW(dc,(const wchar_t*)t.name,-1,&icon,DT_CENTER|DT_VCENTER|DT_WORDBREAK);}
+ }else{incomplete=true;HBRUSH empty=CreateSolidBrush(gray?RGB(35,42,50):RGB(40,61,79));FillRect(dc,&icon,empty);DeleteObject(empty);SetTextColor(dc,RGB(217,229,237));DrawTextW(dc,(const wchar_t*)t.name,-1,&icon,DT_CENTER|DT_VCENTER|DT_WORDBREAK);}
 }
 void panelBox(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius=4){
  HBRUSH brush=CreateSolidBrush(fill);HPEN pen=CreatePen(PS_SOLID,std::max(1,layout.x(1)),edge);
@@ -212,11 +218,12 @@ static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest
  auto out=std::make_shared<Painted>();out->request=request;out->pixels.resize(size_t(width)*height);
  BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=width;info.bmiHeader.biHeight=-height;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
  void*bits=nullptr;HDC dc=CreateCompatibleDC(nullptr);HBITMAP bitmap=CreateDIBSection(dc,&info,DIB_RGB_COLORS,&bits,nullptr,0);if(!dc||!bitmap){if(bitmap)DeleteObject(bitmap);if(dc)DeleteDC(dc);return {};}
- auto old=SelectObject(dc,bitmap);HFONT font=CreateFontIndirectW(&request.font);RECT client{0,0,width,height};auto layout=request.layout;const auto&choices=request.choices;int activeTab=request.activeTab,scroll=request.scroll,hoverChoice=request.hoverChoice,hoverQueue=request.hoverQueue;
- PanelPainter painter{request,layout,paintReader,paintAssets};
+ auto old=SelectObject(dc,bitmap);if(!old||old==HGDI_ERROR){DeleteObject(bitmap);DeleteDC(dc);return {};}
+ HFONT font=CreateFontIndirectW(&request.font);if(!font){SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);return {};}RECT client{0,0,width,height};auto layout=request.layout;const auto&choices=request.choices;int activeTab=request.activeTab,scroll=request.scroll,hoverChoice=request.hoverChoice,hoverQueue=request.hoverQueue;
+ PanelPainter painter{request,layout,paintReader,paintAssets,out->incomplete};
   HBRUSH background=CreateSolidBrush(RGB(17,26,37));FillRect(dc,&client,background);DeleteObject(background);
   painter.panelBox(dc,client,RGB(17,26,37),RGB(58,75,94),8);
-  auto previous=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);
+  auto previous=SelectObject(dc,font);if(!previous||previous==HGDI_ERROR){SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);return {};}SetBkMode(dc,TRANSPARENT);
   const wchar_t* tabs[]={L"建筑",L"防御",L"步兵",L"载具"};
   for(int tab=0;tab<4;++tab){
    RECT r=painter.rect(tab*36+2,2,(tab+1)*36-2,21);
@@ -251,42 +258,92 @@ static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest
    std::wstring numbers;int occurrences=0;for(int i=0;i<int(b.items.size());++i)if(b.items[i]==c.index){++occurrences;if(activeTab<2){if(!numbers.empty())numbers+=L" ";numbers+=std::to_wstring(i+1);}}
    if(activeTab>=2&&occurrences)numbers=L"×"+std::to_wstring(occurrences);
    if(!numbers.empty()){RECT badge=painter.rect(x,y+30,x+60,y+48);HBRUSH tag=CreateSolidBrush(RGB(29,89,99));FillRect(dc,&badge,tag);DeleteObject(tag);SetTextColor(dc,RGB(208,247,240));DrawTextW(dc,numbers.c_str(),-1,&badge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-  }SelectObject(dc,previous);GdiFlush();
- memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);return out;
+  }SelectObject(dc,previous);const bool ready=GdiFlush()!=FALSE;
+ if(ready)memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);return ready?out:std::shared_ptr<const Painted>{};
 });
+// A complete frame and its matching geometry are promoted together. Pending
+// worker results never clear the visible HWND, and no active hit test can use
+// a newer tab/scroll/queue than the pixels actually shown.
+static std::shared_ptr<const Painted> paintedFrame;
+static std::shared_ptr<const PaintRequest> requestedPaint;
+static uint32_t requestedAt=0,paintRetryAt=0;
+static bool samePaintWorld(const PaintRequest&r){return r.pid==pid&&r.match==commandMatch()&&r.house==house;}
+static void resetPaint(){
+ if(paintedFrame||requestedPaint)paintWorker.invalidate();
+ paintedFrame.reset();requestedPaint.reset();requestedAt=paintRetryAt=0;paintReady=false;panelBuffer.clear();panelSpare.clear();
+}
+static PaintRequest capturePaint(){
+ PaintRequest request{pid,commandMatch(),GetTickCount(),house,activeTab,scroll,hoverChoice,hoverQueue,layout.width(),layout.height(),layout,books[activeTab],choices,{},{},{},{},{}};
+ GetObjectW(panelFont?panelFont:font,sizeof request.font,&request.font);
+ auto add=[&](int index){int slot=typeSlot(index);if(slot>=0){request.types[index]=snap.types[slot];request.pointers[index]=typePointer(index);}};
+ for(int i=request.book.visibleStart();i<int(request.book.items.size());++i)add(request.book.items[i]);
+ for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n)add(choices[n].index);
+ auto bytes=[&](const void*at,size_t n){const auto*b=static_cast<const uint8_t*>(at);request.input.insert(request.input.end(),b,b+n);};
+ auto value=[&](const auto&v){bytes(&v,sizeof v);};
+ for(int n:{request.activeTab,request.scroll,request.width,request.height,layout.gameWidth,layout.gameHeight,layout.clientWidth,layout.clientHeight,layout.scalePercent,layout.rows,layout.queueCount,layout.choiceCount})value(n);
+ value(layout.zoom);value(request.book.stage);value(request.book.items.size());for(int n:request.book.items)value(n);
+ value(request.choices.size());for(const auto&c:request.choices){value(c.slot);value(c.index);value(c.tab);value(c.type);value(c.future);}
+ for(const auto&item:request.types){value(item.first);const auto&t=item.second;bytes(t.id,sizeof t.id);bytes(t.name,sizeof t.name);value(t.kind);value(t.index);value(t.naval);value(request.pointers.at(item.first));}
+ request.visual=request.input;auto visual=[&](const void*at,size_t n){const auto*b=static_cast<const uint8_t*>(at);request.visual.insert(request.visual.end(),b,b+n);};
+ visual(&request.font,sizeof request.font);visual(&request.hoverChoice,sizeof request.hoverChoice);visual(&request.hoverQueue,sizeof request.hoverQueue);
+ return request;
+}
+static void requestPaint(){
+ if(!geometryReady||!window||activeTab<0||activeTab>3||!constructionDisplayFresh())return;
+ auto request=std::make_shared<PaintRequest>(capturePaint());
+ if((paintedFrame&&!samePaintWorld(paintedFrame->request))||(requestedPaint&&!samePaintWorld(*requestedPaint))){resetPaint();ShowWindow(window,SW_HIDE);}
+ if(requestedPaint&&samePaintWorld(*requestedPaint)&&requestedPaint->visual==request->visual){
+  // Failed/missing icons retry without making the ordinary stable panel a
+  // permanent 10Hz raster job. A failed worker gets the same bounded retry.
+  const bool complete=paintedFrame&&paintedFrame->request.visual==request->visual&&!paintedFrame->incomplete;
+  if(complete||uint32_t(request->tick-requestedAt)<1000)return;
+ }
+ requestedAt=request->tick;requestedPaint=request;paintWorker.submit(*request);
+}
+static bool panelInputReady(){
+ RECT client{};return paintReady&&paintedFrame&&requestedPaint&&samePaintWorld(paintedFrame->request)&&
+  paintedFrame->request.input==requestedPaint->input&&GetClientRect(window,&client)&&
+  client.right-client.left==paintedFrame->request.width&&client.bottom-client.top==paintedFrame->request.height;
+}
+static void pumpPaint(){
+ if(!geometryReady||!window||!requestedPaint||!constructionDisplayFresh())return;
+ if(paintRetryAt&&int32_t(GetTickCount()-paintRetryAt)>=0){paintRetryAt=0;InvalidateRect(window,nullptr,FALSE);}
+ auto completed=paintWorker.get();
+ if(!completed||completed==paintedFrame||!samePaintWorld(completed->request)||completed->request.input!=requestedPaint->input||
+    completed->request.width<1||completed->request.height<1||completed->pixels.size()!=size_t(completed->request.width)*completed->request.height)return;
+ HDC target=GetDC(window);if(!target)return;
+ HDC next=panelSpare.acquire(target,completed->request.width,completed->request.height);
+ BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=completed->request.width;info.bmiHeader.biHeight=-completed->request.height;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
+ const bool uploaded=next&&SetDIBitsToDevice(next,0,0,completed->request.width,completed->request.height,0,0,0,completed->request.height,completed->pixels.data(),&info,DIB_RGB_COLORS)==UINT(completed->request.height)&&GdiFlush();
+ ReleaseDC(window,target);if(!uploaded)return;
+ panelBuffer.swap(panelSpare);paintedFrame=std::move(completed);paintedLayout=paintedFrame->request.layout;paintReady=true;
+ resizePanel();InvalidateRect(window,nullptr,FALSE);
+}
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_MOUSEACTIVATE)return MA_NOACTIVATE;if(msg==WM_ERASEBKGND)return 1;
- if(msg==WM_MOUSEMOVE&&geometryReady){
+ if(msg==WM_MOUSEMOVE&&geometryReady&&panelInputReady()){
   int x=short(LOWORD(lp)),y=short(HIWORD(lp));int choice=layout.choiceAt(x,y,scroll,int(choices.size()));
   int queue=activeTab>=0&&activeTab<4?layout.queueAt(x,y,int(books[activeTab].items.size())):-1;
-  if(choice!=hoverChoice||queue!=hoverQueue){hoverChoice=choice;hoverQueue=queue;InvalidateRect(w,nullptr,FALSE);}
+  if(choice!=hoverChoice||queue!=hoverQueue){hoverChoice=choice;hoverQueue=queue;requestPaint();}
   TRACKMOUSEEVENT track{sizeof track,TME_LEAVE,w,0};TrackMouseEvent(&track);return 0;
  }
- if(msg==WM_MOUSELEAVE){hoverChoice=hoverQueue=-1;InvalidateRect(w,nullptr,FALSE);return 0;}
- if(msg==WM_MOUSEWHEEL){if(!geometryReady)return 0;int delta=short(HIWORD(wp)),maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll+(delta<0?2:-2),0,maximum);InvalidateRect(w,nullptr,FALSE);return 0;}
- if(msg==WM_LBUTTONUP||msg==WM_RBUTTONUP){if(!geometryReady||!usable())return 0;int x=short(LOWORD(lp)),y=short(HIWORD(lp));
+ if(msg==WM_MOUSELEAVE){hoverChoice=hoverQueue=-1;requestPaint();return 0;}
+ if(msg==WM_MOUSEWHEEL){if(!geometryReady||!panelInputReady())return 0;int delta=short(HIWORD(wp)),maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll+(delta<0?2:-2),0,maximum);requestPaint();return 0;}
+ if(msg==WM_LBUTTONUP||msg==WM_RBUTTONUP){if(!geometryReady||!panelInputReady()||!usable())return 0;int x=short(LOWORD(lp)),y=short(HIWORD(lp));
   if(msg==WM_LBUTTONUP&&y>=0&&y<layout.y(24)&&x>=0&&x<layout.width()){
-   selectedTab=std::min(3,int(int64_t(x)*4/layout.width()));activeTab=selectedTab;scroll=0;refreshChoices();InvalidateRect(w,nullptr,FALSE);return 0;}
+   selectedTab=std::min(3,int(int64_t(x)*4/layout.width()));activeTab=selectedTab;scroll=0;refreshChoices();requestPaint();return 0;}
   if(msg==WM_RBUTTONUP){if(activeTab<0||activeTab>3)return 0;bool all=(wp&MK_SHIFT)!=0;int slot=layout.queueAt(x,y,int(books[activeTab].items.size()));if(slot>=0)removeTop(all);else{int n=layout.choiceAt(x,y,scroll,int(choices.size()));if(n>=0){auto&items=books[activeTab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==choices[n].index){removeItem(activeTab,i,all);break;}}}}
   else reserve(layout.choiceAt(x,y,scroll,int(choices.size())));return 0;
  }
- if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC target=BeginPaint(w,&ps);RECT client{};GetClientRect(w,&client);
-  if(!geometryReady||activeTab<0||activeTab>3){EndPaint(w,&ps);return 0;}
-  PaintRequest request{pid,commandMatch(),GetTickCount(),activeTab,scroll,hoverChoice,hoverQueue,int(client.right),int(client.bottom),layout,books[activeTab],choices,{},{},{}};
-  GetObjectW(panelFont?panelFont:font,sizeof request.font,&request.font);
-  auto add=[&](int index){int slot=typeSlot(index);if(slot>=0){request.types[index]=snap.types[slot];request.pointers[index]=typePointer(index);}};
-  for(int i=request.book.visibleStart();i<int(request.book.items.size());++i)add(request.book.items[i]);
-  for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n)add(choices[n].index);
-  paintWorker.submit(std::move(request));auto completed=paintWorker.get();
-  if(completed&&completed->request.pid==pid&&completed->request.match==commandMatch()&&completed->request.width==client.right&&completed->request.height==client.bottom&&completed->request.activeTab==activeTab&&completed->request.scroll==scroll){
-   BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=client.right;info.bmiHeader.biHeight=-client.bottom;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
-   SetDIBitsToDevice(target,0,0,client.right,client.bottom,0,0,0,client.bottom,completed->pixels.data(),&info,DIB_RGB_COLORS);
-  }else{HBRUSH background=CreateSolidBrush(RGB(17,26,37));FillRect(target,&client,background);DeleteObject(background);}
+ if(msg==WM_PAINT){PAINTSTRUCT ps{};HDC target=BeginPaint(w,&ps);
+  if(geometryReady&&paintReady&&!panelBuffer.present(target))paintRetryAt=GetTickCount()+250;
   EndPaint(w,&ps);return 0;
  }
  return DefWindowProcW(w,msg,wp,lp);
 }
 static void service(){
+ if(extra.constructionQueue&&geometryReady&&!constructionDisplayFresh())publishReservationPolicy({});
+ pumpPaint();
  // Observe every service tick, before the slower catalogue refresh. Native
  // unavailable tabs may ignore the key, but the reservation tab still follows.
  static bool previous[4]{};uint8_t keys[256]{};nativekeyhost::down(keys);int requested=-1;
@@ -297,6 +354,7 @@ static void service(){
  for(int tab=2;tab<4;++tab){const auto&b=books[tab];if(b.streaming&&!b.items.empty()&&!b.stage&&int32_t(now-b.retry)>=0)streaming=true;}
  if(refreshed&&uint32_t(now-refreshed)<100&&!streaming)return;refreshed=now;
  if(!extra.constructionQueue){reset();return;}if(!displayReady()){hide();return;}
+ if(!constructionDisplayFresh()||snap.renderStatus!=1){publishReservationPolicy({});return;}
  house=get<uint32_t>(0xA83D4C);if(house<0x10000){hide();return;}
  if(lastPID!=pid){reset();lastPID=pid;wchar_t image[32768]{};DWORD length=32768;if(externalReader.imagePath(image,&length))icons.open(image,std::filesystem::path(root)/L"cache"/L"icons");}
  for(int tab=0;tab<4;++tab){auto&b=books[tab];
@@ -353,6 +411,9 @@ static void service(){
    if(!b.missing)b.missing=now;else if(uint32_t(now-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
   }else b.missing=0;
  }
+ // A hidden overlay closes only its click surface. The production FIFO above
+ // continues to submit and acknowledge native orders while displays are off.
+ if(!overlayvisibility::visible()){hide();return;}
  int nativeTab=get<int>(0x87F7E8+0x539C,-1);if(nativeTab!=lastNativeTab){lastNativeTab=nativeTab;selectedTab=-1;}
  activeTab=selectedTab>=0?selectedTab:nativeTab;
  if(activeTab<0||activeTab>3){hide();return;}
@@ -369,8 +430,8 @@ static void service(){
  }
  int desired=std::max(8,layout.y(13));if(!panelFont||fontHeight!=desired){HFONT next=CreateFontW(-desired,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Microsoft YaHei UI");if(next){if(panelFont)DeleteObject(panelFont);panelFont=next;fontHeight=desired;}}
  if(!window){WNDCLASSW cls{};cls.hInstance=GetModuleHandleW(nullptr);cls.lpfnWndProc=proc;cls.lpszClassName=L"RA2ConstructionReserve110";cls.hCursor=LoadCursorW(nullptr,IDC_HAND);RegisterClassW(&cls);window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST|WS_EX_LAYERED,cls.lpszClassName,L"建筑预定",WS_POPUP,0,0,layout.width(),layout.height(),nullptr,nullptr,cls.hInstance,nullptr);if(window)SetLayeredWindowAttributes(window,0,construction::PanelOpacity,LWA_ALPHA);}
- if(window){geometryReady=true;resizePanel();InvalidateRect(window,nullptr,FALSE);}
+ if(window){geometryReady=true;requestPaint();pumpPaint();resizePanel();}
 }
-static void destroy(){paintWorker.shutdown();if(window)DestroyWindow(window);window=nullptr;panelBuffer.clear();if(panelFont)DeleteObject(panelFont);panelFont=nullptr;fontHeight=0;reset();}
+static void destroy(){paintWorker.shutdown();if(window)DestroyWindow(window);window=nullptr;panelBuffer.clear();panelSpare.clear();if(panelFont)DeleteObject(panelFont);panelFont=nullptr;fontHeight=0;reset();}
 }
 

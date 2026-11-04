@@ -1,11 +1,12 @@
 #pragma once
 #include "game_view.h"
+#include "animation_blend.h"
 #include <set>
 namespace external { namespace animations {
 // Native PlayAnim (451890) stores an absolute-coordinate Anim in the building's
 // slots without setting OwnerObject. Only SetOwnerObject makes Location relative
 // to the owner's CENTER (422BE0 / 447AC0). These are two different relationships.
-struct State {uint32_t object=0,id=0,type=0,parent=0,parentId=0,owner=0;int x=0,y=0,z=0,frame=0,zAdjust=0,sort=0,layer=2;bool normalLight=false;};
+struct State {uint32_t object=0,id=0,type=0,parent=0,parentId=0,owner=0;int x=0,y=0,z=0,frame=0,zAdjust=0,sort=0,layer=2,blend=0;bool normalLight=false;};
 template<class Read>bool foundation(Read read,uint32_t type,int&w,int&h){
  GameView<Read> g(read);int index=g.template get<int>(type+0xEF0,-1);if(index<0||index>=21)return false;
  w=g.template get<int>(0x8192B8+index*4);h=g.template get<int>(0x819310+index*4);return w>0&&w<=32&&h>0&&h<=32;
@@ -35,6 +36,9 @@ template<class Read>bool capture(Read read,uint32_t object,uint32_t parent,uint3
  if(value<0||value>=8192||start<0||start>=8192)return false;next.frame=value+start;
  next.zAdjust=g.template get<int>(object+0x100);next.normalLight=g.template get<uint8_t>(next.type+0x35D)!=0;
  next.sort=g.template get<int>(object+0x104);next.layer=attachedTo?2:g.template get<int>(next.type+0x364,2);
+ next.blend=animations::blend(g.template get<uint32_t>(object+0x190),g.template get<uint8_t>(object+0x119)!=0,g.template get<uint8_t>(next.type+0x368)!=0,
+  g.template get<int>(0xA8EB78),g.template get<int>(next.type+0x2D8),g.template get<uint8_t>(next.type+0x36A)!=0,value,g.template get<int>(next.type+0x2C0),g.template get<int>(next.type+0x2EC),g.template get<uint8_t>(object+0x178));
+ if(next.blend<0)return false;
  if(next.frame>=8192||std::abs(int64_t(next.zAdjust))>8192||std::abs(int64_t(next.sort))>32768||next.layer<0||next.layer>4)return false;
  if((parent&&(g.template get<uint32_t>(parent+0x10)!=parentId||g.template get<uint32_t>(link)!=object))||g.template get<uint32_t>(object+0x10)!=next.id||g.template get<uint32_t>(object+0xC8)!=next.type||g.template get<uint32_t>(object+0xCC)!=attachedTo)return false;
  out=next;return true;

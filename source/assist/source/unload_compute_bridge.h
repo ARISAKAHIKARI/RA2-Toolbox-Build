@@ -1,9 +1,10 @@
 // Included by native_orders_bridge.h, under the sole Runtime dispatcher.
 static unloadcompute::Input unloadLocalInput,unloadExternalInput;
 static unloadcompute::Result unloadResultCopy;
+static compute::FrameHistory<unloadcompute::Input> unloadFrames;static uint32_t unloadApplied=0;
 static bool unloadCalculationPending;
 static uint32_t unloadCalculationSerial;
-static void resetUnloadCalculation(){unloadCalculationPending=false;unloadExternalInput.count=0;}
+static void resetUnloadCalculation(){unloadCalculationPending=false;unloadFrames.clear();unloadApplied=sh?sh->unloadComputed:0;unloadExternalInput.count=0;}
 static unloadcompute::View unloadView(const UnloadPassenger&r,int frame){
  unloadcompute::View v{};const uint32_t p=r.p,t=typeOf(p,1);
  v.frame=frame;v.mode=r.mode;v.landedFrame=r.landedFrame;
@@ -91,30 +92,24 @@ static bool applyUnloadDecision(UnloadPassenger&r,const unloadcompute::Input&inp
  return decision.doneAfter!=0;
 }
 static void serviceUnloadCalculation(uint32_t house,int frame,int&budget){
- if(!unloadCalculationPending)return;
- uint32_t now=sampleClock(sh);
- if(!freshness::valid(unloadExternalInput.match,match,unloadExternalInput.tick,unloadExternalInput.frame,now,frame,freshness::Tactical)){
-  unloadCalculationPending=false;return;
- }
- if(sh->unloadComputed!=unloadCalculationSerial)return;
- long before=sh->unloadResultSeq;if(before&1)return;MemoryBarrier();
- memcpy(&unloadResultCopy,&sh->unloadResult,sizeof(unloadResultCopy));MemoryBarrier();
- if(before!=sh->unloadResultSeq||sh->unloadComputed!=unloadCalculationSerial)return;
- unloadCalculationPending=false;const auto&result=unloadResultCopy;
- if(result.match!=unloadExternalInput.match||result.tick!=unloadExternalInput.tick||result.frame!=unloadExternalInput.frame||result.count!=unloadExternalInput.count)return;
- for(int n=0;n<result.count;++n){const auto&s=unloadExternalInput.sources[n];
+ const uint32_t completed=sh->unloadComputed;if(!compute::newer(completed,unloadApplied))return;
+ long before=sh->unloadResultSeq;if(before&1)return;MemoryBarrier();memcpy(&unloadResultCopy,&sh->unloadResult,sizeof(unloadResultCopy));MemoryBarrier();
+ if(before!=sh->unloadResultSeq||completed!=sh->unloadComputed)return;unloadApplied=completed;
+ const auto*source=unloadFrames.find(completed);if(!source)return;const auto&input=*source;const auto&result=unloadResultCopy;
+ if(!freshness::valid(input.match,match,input.tick,input.frame,sampleClock(sh),frame,freshness::Tactical)||result.match!=input.match||result.tick!=input.tick||result.frame!=input.frame||result.count!=input.count)return;
+ for(int n=0;n<result.count;++n){const auto&s=input.sources[n];
   for(int i=0;i<unloadCount;++i)if(unloadPassengers[i].job==s.job){auto&r=unloadPassengers[i];
    if(!compute::inside(sh->computeApplied,r.mode==0?compute::Unload:compute::Escape)&&
-      applyUnloadDecision(r,unloadExternalInput,n,result.decisions[n],house,frame,budget,true)){
+      applyUnloadDecision(r,input,n,result.decisions[n],house,frame,budget,true)){
     finishUnloadFollowup(r,frame);r=unloadPassengers[--unloadCount];
    }break;
   }
  }
 }
 static void publishUnloadCalculation(){
- if(unloadCalculationPending||!unloadExternalInput.count)return;
+ if(!externalInputFrame||!unloadExternalInput.count)return;
  InterlockedIncrement(&sh->unloadInputSeq);MemoryBarrier();
  memcpy(&sh->unloadInput,&unloadExternalInput,sizeof(unloadExternalInput));
- unloadCalculationSerial=sh->unloadTask+1;sh->unloadTask=unloadCalculationSerial;
+ unloadCalculationSerial=compute::nextTask(sh->unloadTask);unloadFrames.retain(unloadCalculationSerial,unloadExternalInput);sh->unloadTask=unloadCalculationSerial;
  MemoryBarrier();InterlockedIncrement(&sh->unloadInputSeq);unloadCalculationPending=true;notifyHost();
 }

@@ -1,0 +1,8 @@
+/source/build-x64/
+/source/.deps/
+/source/suite/source/web_console_assets.h
+/source/suite/frontend/console.html
+/source/research/evidence/projection-bin/
+
+__pycache__/
+*.py[cod]

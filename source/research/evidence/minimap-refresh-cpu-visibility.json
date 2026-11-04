@@ -1,0 +1,462 @@
+{
+  "passed": true,
+  "baseline_commit": "2bb821569c19e79a5869ec043b2ee47fcade1d7a",
+  "source_sha256": {
+    "external_reader\\source\\radar_scene.h": "b2881fa5938344304e950175de7aebfd1917869f2503c09509a765f520988aff",
+    "external_reader\\source\\radar_live_shroud.h": "4cd38b58eab0db9069057fd5ef294966468cace2852e5fa2c0da80a231138358",
+    "external_reader\\source\\radar_map.h": "5bc9bc255d5d43243d96a78854380591e16cabf40330a1f32a3bb92782a34d50",
+    "external_reader\\source\\gpu_scene_record.h": "9b24af7d943da57e44e247f3038ddbd453658fc04b3a7d33c3e74cf324df8050",
+    "external_reader\\source\\gpu_motion.h": "cdc2338ac3685ac53ae80f9681b387bf4b258e3ec748ffeaf108f5093d37c7f7",
+    "external_reader\\source\\gpu_shroud.h": "c805317afcc75f3834fe8e51954636c27dc0b4c7e64acaaa88cdbd137e6edb33",
+    "external_reader\\source\\vulkan_scene_types.h": "3c923c1b964cafc4fee5b87646011e206ee9b7ae1861e1b7ed2507e8923afac0",
+    "external_reader\\source\\vulkan_scene.h": "095809b5536d74f38acb017e1a9a079e59d3e0879d57327faee2cfe31d79c22b",
+    "external_reader\\source\\vulkan_shroud_backend.h": "4b3abf2fa9dc496f01791395d936b6696fd60731dcdc02410f4df32e567b0248",
+    "external_reader\\source\\viewport_canvas.h": "4d6c1ddeb0198c57790d7f6e6ff9911f8789f7312389e9b873cacb3d64572596",
+    "assist\\source\\minimap_overlay.h": "1c9aee29e59607377d658b207fb1bb7781dd7700116713875df1668ba09b3316",
+    "third_party\\xbrz\\xbrz.cpp": "882346f5f6703f286c55d4089af7a8f63140fe13a133318e4be64891689bee0c",
+    "assist\\tests\\radar_sampler_compact.cpp": "8f45c8e43841db5ccfd6ca237defcfd42965867ea885c1f3e7b7f3834a570465",
+    "assist\\tests\\radar_live_exploration.cpp": "9420c12d58870cd489c62d9e67eb062056b3c3a5bdf538854c3b528a82271a1a",
+    "assist\\tests\\cpu_terrain_prefix.cpp": "7141576caf672bf0ae15231e9001fc5136fe4d8d83601e94a9311ea4f3adfb38",
+    "assist\\tests\\radar_large_map.cpp": "f0c7540d25c6b48902d98158341fdcf36180ce5d46882b6b87be1b838cc472d3",
+    "assist\\tests\\radar_visibility_publication.cpp": "bbc2a5cd90e98568c1aedb9de50f5035f16e0b0117d216035c7057c781825080",
+    "assist\\tests\\radar_boundary.cpp": "8199c7c163b6b969033185def2b435d7b7f7229e417ec341ca31b17f0174951d",
+    "assist\\tests\\radar_shroud_mask.cpp": "6046c5a65c505e2c81aaa25f9d3cbc3a05c866ab8b095b29c5559ba4b6a3085f",
+    "assist\\tests\\radar_output_scene.cpp": "c1bf2b24ae6cc3879ee89ef562fc413fb8ba7f025450b6908e781cd4e949986e",
+    "assist\\tests\\radar_cpu_reuse.cpp": "ec0d8e34a06ebe3dc758cb7d710a69faa6ca3cb93667d7a4c732446803f5de3b",
+    "tools\\test_minimap_refresh_windows.py": "6a34b400fb955d94bebe49128c8b8f3320647518259190b41c95eb06f1f59473"
+  },
+  "baseline_sha256": {
+    "radar_scene.h": "797b88a0a1c008567dbcba0cac8e2947ab555e34539c94a7cea8a2fce9136bbe",
+    "radar_live_shroud.h": "7ad465923913900e1be103a769866b5742183e3b4dd97033eff6b8d5375a6e49",
+    "gpu_scene_record.h": "2af1c7a9449942dc13adb2d311b7d29179b5485d9e3d764a5f8400272dacb877"
+  },
+  "results": [
+    {
+      "name": "radar_sampler_compact",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_sampler_compact.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_sampler_compact-x64.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 4.016000000000531,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS actual Sampler 128x128 (32640 physical Cells): complete publication 64 -> 8 bounded steps, unchanged colors/shade/material identities; maximum 4096 physical Cell reads/step <=4096; short read rejects/retries complete bank. CPU complete sweep 5.438100 -> 5.417000 ms (not frame rate).\n"
+        }
+      ],
+      "exe_sha256": "c7139c3b8fc31aa9de39597be94bb39141e4297b2e1783f637f3220a83df5c44"
+    },
+    {
+      "name": "radar_sampler_compact",
+      "arch": "x86",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_sampler_compact.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_sampler_compact-x86.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 3.891000000000531,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS actual Sampler 128x128 (32640 physical Cells): complete publication 64 -> 8 bounded steps, unchanged colors/shade/material identities; maximum 4096 physical Cell reads/step <=4096; short read rejects/retries complete bank. CPU complete sweep 4.414000 -> 4.860700 ms (not frame rate).\n"
+        }
+      ],
+      "exe_sha256": "e5ccfc7cafe6ec9fd08b35cedc9c0a42fbe75f8ed2b5913998892cd446cff30e"
+    },
+    {
+      "name": "radar_live_exploration",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_live_exploration.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-lgdi32",
+        "-luser32",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_live_exploration-x64.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 49.35899999999947,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS actual SceneRenderer 16 fresh visibility epochs + moving actor: terrain-prefix hits=16/16; every frame equal to a cold renderer, alpha changes invalidate.\nPASS actual SceneRenderer: 2bb alternating stale terrain/shade banks reproduce flashing; current full-map visibility stays clear, unchanged terrain draws stay cached; 30Hz mask budget, read failure retention/recovery, valid darkening and frame rewind.\n"
+        }
+      ],
+      "exe_sha256": "90434c82c1fc2f9d27315090e26b4a79980c25d3f625f64480745b48f0980ecf"
+    },
+    {
+      "name": "radar_live_exploration",
+      "arch": "x86",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_live_exploration.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-lgdi32",
+        "-luser32",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_live_exploration-x86.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 48.35899999999947,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS actual SceneRenderer 16 fresh visibility epochs + moving actor: terrain-prefix hits=16/16; every frame equal to a cold renderer, alpha changes invalidate.\nPASS actual SceneRenderer: 2bb alternating stale terrain/shade banks reproduce flashing; current full-map visibility stays clear, unchanged terrain draws stay cached; 30Hz mask budget, read failure retention/recovery, valid darkening and frame rewind.\n"
+        }
+      ],
+      "exe_sha256": "746e35f3141e1dbe8ac647b96bfe374233e62232040c4c2c1ddf7a4d0d723743"
+    },
+    {
+      "name": "cpu_terrain_prefix",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\cpu_terrain_prefix.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-lgdi32",
+        "-luser32",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\cpu_terrain_prefix-x64.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 11.17200000000048,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS actual GpuSceneRecord CPU replay: 10000 static TMP calls + moving actor at 600x300 from 6000x3000 source; 32 RGBA/Z/nativeZ/A comparisons equal; prefix hits 31/31 eligible. Mean 2.664650 -> 0.378531 ms; alpha/scale/base-owner invalidation. Cache plane bytes=1980000, maximum bounded plane bytes=23068672.\n"
+        },
+        {
+          "exit_code": 0,
+          "output": "PASS actual GpuSceneRecord CPU replay: 10000 static TMP calls + moving actor at 600x300 from 6000x3000 source; 32 RGBA/Z/nativeZ/A comparisons equal; prefix hits 31/31 eligible. Mean 2.733088 -> 0.376397 ms; alpha/scale/base-owner invalidation. Cache plane bytes=1980000, maximum bounded plane bytes=23068672.\n"
+        },
+        {
+          "exit_code": 0,
+          "output": "PASS actual GpuSceneRecord CPU replay: 10000 static TMP calls + moving actor at 600x300 from 6000x3000 source; 32 RGBA/Z/nativeZ/A comparisons equal; prefix hits 31/31 eligible. Mean 2.653609 -> 0.338044 ms; alpha/scale/base-owner invalidation. Cache plane bytes=1980000, maximum bounded plane bytes=23068672.\n"
+        }
+      ],
+      "exe_sha256": "4aa2e9e8489ac91150b12de382b8da5f3785a296ce9f1fa399c749d6b2b90ce9"
+    },
+    {
+      "name": "cpu_terrain_prefix",
+      "arch": "x86",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\cpu_terrain_prefix.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-lgdi32",
+        "-luser32",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\cpu_terrain_prefix-x86.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 10.95300000000043,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS actual GpuSceneRecord CPU replay: 10000 static TMP calls + moving actor at 600x300 from 6000x3000 source; 32 RGBA/Z/nativeZ/A comparisons equal; prefix hits 31/31 eligible. Mean 3.512925 -> 0.472709 ms; alpha/scale/base-owner invalidation. Cache plane bytes=1980000, maximum bounded plane bytes=23068672.\n"
+        },
+        {
+          "exit_code": 0,
+          "output": "PASS actual GpuSceneRecord CPU replay: 10000 static TMP calls + moving actor at 600x300 from 6000x3000 source; 32 RGBA/Z/nativeZ/A comparisons equal; prefix hits 31/31 eligible. Mean 3.574169 -> 0.492934 ms; alpha/scale/base-owner invalidation. Cache plane bytes=1980000, maximum bounded plane bytes=23068672.\n"
+        },
+        {
+          "exit_code": 0,
+          "output": "PASS actual GpuSceneRecord CPU replay: 10000 static TMP calls + moving actor at 600x300 from 6000x3000 source; 32 RGBA/Z/nativeZ/A comparisons equal; prefix hits 31/31 eligible. Mean 3.601734 -> 0.481469 ms; alpha/scale/base-owner invalidation. Cache plane bytes=1980000, maximum bounded plane bytes=23068672.\n"
+        }
+      ],
+      "exe_sha256": "a6caab8b9fbd0ad3bc26dfa2faa62620906cc8f3c0296106bc23a41d01b5264f"
+    },
+    {
+      "name": "radar_large_map",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_large_map.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-lgdi32",
+        "-luser32",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_large_map-x64.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 46.89099999999962,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS actual 256x256 map: 130816 physical Cells, 130561 visibility cells, 130816 terrain draws at 320x160 (15360x7680 source), page count=10731, capture=22.457400 ms, fresh calls=53893; shroud stamps=130561 metadata=14516748 bytes (<64MiB); complete CPU render and short-read recovery equal. DrawJob=440 bytes; bounded 262144-record DrawJob storage=115343360 bytes. GPU 16-bit index admission remains 65536, larger scenes use complete CPU replay.\nPASS visibility warm 256x256: 130561 captured cells, mean 25.292125 -> 10.511738 ms (8 paired captures); large comparison lifts ONLY original 65536-cell admission to reach its unchanged 8192-page/map algorithm; original admission separately rejected; unordered page bytes refresh every epoch, <=16384 retained pages (64MiB page payload maximum per Live instance; not process resident RAM).\nPASS visibility warm 128x128: 32513 captured cells, mean 3.076287 -> 2.478487 ms (8 paired captures); exact original 2bb Live baseline; unordered page bytes refresh every epoch, <=16384 retained pages (64MiB page payload maximum per Live instance; not process resident RAM).\n"
+        }
+      ],
+      "exe_sha256": "f278d95b26f213475fd1ff18e8d33c386942b58aa98904a08a59d15968e6fc7a"
+    },
+    {
+      "name": "radar_large_map",
+      "arch": "x86",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_large_map.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-lgdi32",
+        "-luser32",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_large_map-x86.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 46.125,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS actual 256x256 map: 130816 physical Cells, 130561 visibility cells, 130816 terrain draws at 320x160 (15360x7680 source), page count=10731, capture=22.474800 ms, fresh calls=53893; shroud stamps=130561 metadata=14516748 bytes (<64MiB); complete CPU render and short-read recovery equal. DrawJob=336 bytes; bounded 262144-record DrawJob storage=88080384 bytes. GPU 16-bit index admission remains 65536, larger scenes use complete CPU replay.\nPASS visibility warm 256x256: 130561 captured cells, mean 23.541663 -> 12.661362 ms (8 paired captures); large comparison lifts ONLY original 65536-cell admission to reach its unchanged 8192-page/map algorithm; original admission separately rejected; unordered page bytes refresh every epoch, <=16384 retained pages (64MiB page payload maximum per Live instance; not process resident RAM).\nPASS visibility warm 128x128: 32513 captured cells, mean 3.563613 -> 3.165012 ms (8 paired captures); exact original 2bb Live baseline; unordered page bytes refresh every epoch, <=16384 retained pages (64MiB page payload maximum per Live instance; not process resident RAM).\n"
+        }
+      ],
+      "exe_sha256": "19271e1dc0e6184cae2fcc3b522b13c7d50b75e58e65651a34d839572b6185e2"
+    },
+    {
+      "name": "radar_visibility_publication",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_visibility_publication.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_visibility_publication-x64.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 4.813000000000102,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS: 22 incomplete terrain batches rejected; front retained/recovered; live masks reject missing reads; null cells and page fallback remain valid; world changes invalidate\n"
+        }
+      ],
+      "exe_sha256": "06df9970d57c5c007211629406c3d0ebcbf514464f82966bb2045d6c4890778d"
+    },
+    {
+      "name": "radar_boundary",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_boundary.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-lgdi32",
+        "-luser32",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_boundary-x64.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 13.67199999999957,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS signed south-edge TMP, native raw 2x1 flat clip and exact backing dimensions, four-side playfield reveal, explored/shrouded border policy\n"
+        }
+      ],
+      "exe_sha256": "206acc9e4266a80bab5c8d3f4db62b0a5e5078740e8840a63e3b92edfe09f7e7"
+    },
+    {
+      "name": "radar_shroud_mask",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_shroud_mask.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_shroud_mask-x64.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 6.780999999999949,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS native flat shroud anchor, asymmetric edge frames, fog alpha, height independence and post-composition masking\n"
+        }
+      ],
+      "exe_sha256": "52d6c46a9931aeeac8c7354aca82ec1c72b1b2fe64584ef3601a3b4038b865c6"
+    },
+    {
+      "name": "radar_output_scene",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_output_scene.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-lgdi32",
+        "-luser32",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_output_scene-x64.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 54.5619999999999,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS production SceneRenderer: output-sized radar retains colors/domain; static forceFrame=false executes TMP; fallback reuse rejects size/reveal/identity/rewind changes; one revision read and recovery; native PIPS 14/15 immutable metadata, final-panel size and scene ownership; watch world zero native pages\n"
+        }
+      ],
+      "exe_sha256": "44f8a68c9202512e2d1443788b7695d416d9f7c998d983daec12131dc52e219e"
+    },
+    {
+      "name": "radar_cpu_reuse",
+      "arch": "x64",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-w",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\assist\\tests\\radar_cpu_reuse.cpp",
+        "-DRA2_REFERENCE_SCENE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/scene_reference.h\"",
+        "-DRA2_REFERENCE_RECORD=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/record_reference.h\"",
+        "-DRA2_REFERENCE_LIVE=\"C:/Users/guich/Documents/Codex/2026-10-31/ji-yu/work/ra2-hook-audit/diagnostics/mo-render-followup/minimap-final/live_reference.h\"",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\checkout\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-lgdi32",
+        "-luser32",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\ra2-hook-audit\\diagnostics\\mo-render-followup\\minimap-final\\radar_cpu_reuse-x64.exe"
+      ],
+      "build_exit_code": 0,
+      "build_seconds": 44.95299999999952,
+      "runs": [
+        {
+          "exit_code": 0,
+          "output": "PASS actual SceneRenderer CPU: every-request revision/light/palette; immutable reuse; same-frame light/palette invalidation; failed read recovery; CPU decoration exclusion. repeated_mean_ms=0.160571 reused=120/120 converter_table_changed=1\n"
+        }
+      ],
+      "exe_sha256": "db5d6be2427823540a12b495677aa02519a4ca062449dea09a18d140b3174b82"
+    }
+  ],
+  "live_game_tested": false,
+  "hardware_gpu_tested": false,
+  "notes": [
+    "Large visibility performance comparison lifts only the original 65536-cell admission; original admission is separately rejected.",
+    "GPU 16-bit draw-reference admission remains 65536; 262144 is the bounded CPU recording/replay ceiling.",
+    "Page and prefix byte bounds are held/charged payloads, not process resident memory."
+  ]
+}

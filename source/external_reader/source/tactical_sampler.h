@@ -13,6 +13,7 @@
 #include "enemy_markers.h"
 #include "unit_status.h"
 #include "projection.h"
+#include "../../shared/source/native_viewport_projection.h"
 #include "idle_aircraft.h"
 #include <unordered_map>
 namespace external {
@@ -22,6 +23,7 @@ template<class Read> class TacticalSampler {
  int sceneFrame_=-1,sceneX_=0,sceneY_=0,sceneWidth_=0,sceneHeight_=0;uint32_t sceneFlags_=0,selectionHash_=0,sceneAt_=0;
  struct LabelSource {uint32_t object=0,id=0,type=0,owner=0;int kind=-1;bool selected=false;};
  LabelSource labelSources_[assist::MaxLabels]{};display::State display_{};
+ nativeviewportprojection::Transform viewport_{},sampledViewport_{};bool viewportReady_=true;
  status::Frame statuses_{};uint32_t statusOptions_=0,sceneStatusOptions_=0;
  enemies::Frame enemies_{};bool sceneEnemies_=false;int sceneEnemyWidth_=0,sceneEnemyHeight_=0;uint32_t enemyOwnerSignature_=0,sceneEnemyOwners_=0;
  struct EnemyOwner {uint32_t pointer=0,color=0;int index=-1;};
@@ -169,6 +171,8 @@ public:
  display::State displayState()const{return display_;}
  const enemies::Frame& enemyMarkers()const{return enemies_;}
  const status::Frame& unitStatuses()const{return statuses_;}
+ const nativeviewportprojection::Transform&sampledViewport()const{return sampledViewport_;}
+ void viewport(const nativeviewportprojection::Transform&t,bool ready=true){if(viewport_!=t||viewportReady_!=ready)sceneFrame_=-1;viewport_=t;viewportReady_=ready;}
  void productionReminders(uint32_t enabled,uint32_t&idle,uint32_t&paused)const{idle=paused=0;for(int i=0;i<6;++i){unsigned tab=i<4?i:3;if(!(enabled&(1u<<i))||(activeTabs_&(1u<<tab)))continue;if(idleLines_&(1u<<i))idle|=1u<<tab;if(pausedLines_&(1u<<i))paused|=1u<<tab;}}
  void reset(){idleLines_=pausedLines_=activeTabs_=0;idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_={};statuses_={};statusOptions_=sceneStatusOptions_=0;sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
@@ -188,6 +192,7 @@ public:
  }
  const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false,uint32_t statusOptions=0){
   statusOptions_=statusOptions&3;state_.sampledTick=now;state_.renderStatus=0;display_=display::inspect(read_);
+  sampledViewport_=viewport_;if(!viewportReady_){state_.labels=state_.threatCount=state_.crateCount=0;enemies_.count=statuses_.count=0;return state_;}
   probe_=layout::inspect(read_);
   if(probe_.stage!=layout::Stage::Ready){
    enemies_.count=statuses_.count=0;
@@ -212,6 +217,7 @@ public:
   }
   state_.status=1;state_.renderStatus=display_.visible()?1:0;state_.frame=frame;state_.match=serial_;state_.session=get<int>(0xA8B238);state_.chat=get<uint8_t>(0xA8BC60+25);state_.credits=get<int>(house+0x30C);
   uint32_t tactical=get<uint32_t>(0x887324);Projection proj;proj.width=state_.width=get<int>(0x8A00A4);proj.height=state_.height=get<int>(0x8A00A8);
+  if(viewport_.active){if(!nativeviewportprojection::valid(viewport_.logical)||!nativeviewportprojection::valid(viewport_.physical)){state_.renderStatus=0;return state_;}proj.width=viewport_.logical.w;proj.height=viewport_.logical.h;}
   int priorX=state_.cameraX,priorY=state_.cameraY;
   proj.cameraX=state_.cameraX=get<int>(tactical+0xB0);proj.cameraY=state_.cameraY=get<int>(tactical+0xB4);proj.zScale=get<double>(0xB0CD48,0.0866025403784);
   const bool showEnemies=enemyMarkers&&state_.renderStatus==1;Projection enemyProj=proj;

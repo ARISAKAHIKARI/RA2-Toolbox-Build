@@ -1,0 +1,91 @@
+{
+  "scope": "Bounded release-DLL control-order comparison; no world tick or real transport.",
+  "dll_sha256": "24c405af124ec60c88b92c47b0cbaca9ab02ba1ed7530f5631f442520f43a08c",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "limitations": [
+    "Synthetic Win32/world; original constructor, sender and compressed decoder run.",
+    "No baseline 1.0.38 DLL executed; gateway-disabled behavior compared with release default-enabled behavior.",
+    "No Windows platform, full simulation or real netplay."
+  ],
+  "results": [
+    {
+      "protocol": 0,
+      "route": "native",
+      "network_option": false,
+      "owner_option": false,
+      "gateway_off_vs_on_exact_equal": true,
+      "outlist_house": 0,
+      "sent_local_and_remote_house": 0,
+      "constructor_args_equal": true,
+      "wire_bytes_equal": true,
+      "no_dolist_before_sender": true,
+      "status": "PASS"
+    },
+    {
+      "protocol": 0,
+      "route": "tool_alt",
+      "network_option": false,
+      "owner_option": false,
+      "gateway_off_vs_on_exact_equal": true,
+      "outlist_house": 1,
+      "sent_local_and_remote_house": 0,
+      "constructor_args_equal": true,
+      "wire_bytes_equal": true,
+      "no_dolist_before_sender": true,
+      "status": "PASS"
+    },
+    {
+      "protocol": 1,
+      "route": "native",
+      "network_option": false,
+      "owner_option": false,
+      "gateway_off_vs_on_exact_equal": true,
+      "outlist_house": 0,
+      "sent_local_and_remote_house": 0,
+      "constructor_args_equal": true,
+      "wire_bytes_equal": true,
+      "no_dolist_before_sender": true,
+      "status": "PASS"
+    },
+    {
+      "protocol": 1,
+      "route": "tool_alt",
+      "network_option": false,
+      "owner_option": false,
+      "gateway_off_vs_on_exact_equal": true,
+      "outlist_house": 1,
+      "sent_local_and_remote_house": 0,
+      "constructor_args_equal": true,
+      "wire_bytes_equal": true,
+      "no_dolist_before_sender": true,
+      "status": "PASS"
+    },
+    {
+      "protocol": 2,
+      "route": "native",
+      "network_option": false,
+      "owner_option": false,
+      "gateway_off_vs_on_exact_equal": true,
+      "outlist_house": 0,
+      "sent_local_and_remote_house": 0,
+      "constructor_args_equal": true,
+      "wire_bytes_equal": true,
+      "no_dolist_before_sender": true,
+      "status": "PASS"
+    },
+    {
+      "protocol": 2,
+      "route": "tool_alt",
+      "network_option": false,
+      "owner_option": false,
+      "gateway_off_vs_on_exact_equal": true,
+      "outlist_house": 1,
+      "sent_local_and_remote_house": 0,
+      "constructor_args_equal": true,
+      "wire_bytes_equal": true,
+      "no_dolist_before_sender": true,
+      "status": "PASS"
+    }
+  ]
+}

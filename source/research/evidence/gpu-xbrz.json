@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-29",
+  "scope": "Derived Vulkan port of unmodified upstream xBRZ1.9 default argbUnbuffered2/3/4x; actual software GPU evidence at pinned bootstrap, not hardware/live-game performance proof",
+  "upstream": {
+    "version": "1.9",
+    "author": "Zenju",
+    "cpu_vendor_modified": false,
+    "cpp_sha256": "882346f5f6703f286c55d4089af7a8f63140fe13a133318e4be64891689bee0c",
+    "all_vendor_hashes_verified": true,
+    "gpu_shader_is_repository_GPL_derived_port": true
+  },
+  "algorithm": {
+    "color_format": "argbUnbuffered",
+    "factors": [
+      2,
+      3,
+      4
+    ],
+    "default_configuration_only": true,
+    "out_of_bounds": "transparent0",
+    "input_output": "nativePARGB to straightARGB to xBRZ to PARGB; exact unsigned gradients and marshaling",
+    "passes": [
+      "(W+1)x(H+1) independent corner preprocess",
+      "WxH invocation owns factor^2 output and applies0/90/180/270 rotations in order"
+    ],
+    "workgroup": [
+      8,
+      8,
+      1
+    ],
+    "storage_bindings": 3,
+    "push_constant_bytes": 24,
+    "float64_required": true,
+    "device_precision_limit": "Float64/NoContraction does not prove every hardware sqrt/divide decision for all inputs"
+  },
+  "compiled_shaders": {
+    "common_sha256": "e727e77ba91ba92aaa2734001eb2911c5d331fbf60f14411c49cfa03f3c514e3",
+    "kernels": {
+      "vulkan_xbrz_preprocess.comp": {
+        "source_sha256": "3c1a2b1eab38c94ee61a773036f2a4a8dfb6899227b564e09f103804cab04540",
+        "spirv_sha256": "6edb2bf203c907309f7f6e578a5e1667f2b7a450702c46563c85039defe8b539",
+        "bytes": 33820,
+        "words": 8455,
+        "float64": true,
+        "no_contraction_decorations": 242
+      },
+      "vulkan_xbrz_scale.comp": {
+        "source_sha256": "4d37ed484c31b6608efd804cf991d9cb9a0155923cc5464c4e22f150fb98cf12",
+        "spirv_sha256": "5ef22cf94cd36a759c3b27ae88218e4ffeb847cf3a212a016c9760b9fae8eb7c",
+        "bytes": 85612,
+        "words": 21403,
+        "float64": true,
+        "no_contraction_decorations": 259
+      }
+    }
+  },
+  "semantic_cpu_model": {
+    "gpu_execution": false,
+    "cases": 190,
+    "factors": [
+      2,
+      3,
+      4
+    ],
+    "exact_pixels": 5052583,
+    "shader_sha256": {
+      "vulkan_xbrz_common.glsl": "e727e77ba91ba92aaa2734001eb2911c5d331fbf60f14411c49cfa03f3c514e3",
+      "vulkan_xbrz_preprocess.comp": "3c1a2b1eab38c94ee61a773036f2a4a8dfb6899227b564e09f103804cab04540",
+      "vulkan_xbrz_scale.comp": "4d37ed484c31b6608efd804cf991d9cb9a0155923cc5464c4e22f150fb98cf12"
+    },
+    "checks": [
+      "nonzero source/flag/output offsets",
+      "prefix/suffix canaries",
+      "8x8 workgroup overhang",
+      "premultiplied invariant"
+    ],
+    "optimized": "PASS",
+    "asan_ubsan": "PASS with ASAN_OPTIONS=detect_leaks=0; no LSan claim",
+    "compiler_fp_contract": "off"
+  },
+  "actual_software_vulkan": {
+    "run_id": 40743255379,
+    "commit": "deb54f6c8c649fb26dff3e8c791b7f267e3c6b7b",
+    "job_id": 123010185357,
+    "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/actions/runs/40743255379",
+    "test": "gpu_xbrz.cpp --require",
+    "cases": 190,
+    "factors": [
+      2,
+      3,
+      4
+    ],
+    "frames": 589,
+    "exact_upstream_pixels": 8167384,
+    "fresh_builds": 570,
+    "warm_frames": 16,
+    "warm_uploads": 0,
+    "warm_builds": 0,
+    "normal_final_readbacks": 1,
+    "device": "llvmpipe (LLVM20.1.2,256bits)",
+    "actual_dispatch": true,
+    "asan_ubsan": "PASS; detect_leaks=0",
+    "validation": "Khronos validation plus Python error-log filter clean",
+    "result_line": "PASS GPU xBRZ actual compute cases=190 factors2,3,4 frames=589 exact_upstream_pixels=8167384 fresh_builds=570 warm_frames=16 warm_uploads=0/warm_builds=0 final_readbacks=1 software=1 device=llvmpipe (LLVM 20.1.2, 256 bits); not hardware performance proof"
+  },
+  "startup_device_check": {
+    "source_dimensions": [
+      7,
+      7
+    ],
+    "factors": [
+      2,
+      3,
+      4
+    ],
+    "combined_output_dimensions": [
+      63,
+      28
+    ],
+    "production": "FrameResolve.verifyXbrz one-time coordinator frame, sticky raw-reconstruction rejection on mismatch",
+    "cpu_golden_preflight": "gpu_xbrz.cpp compares generated goldens against current platform untouched upstream",
+    "limitation": "finite device check, not all-input proof"
+  },
+  "cache_and_frame": {
+    "raw_atlas_bytes": 100663296,
+    "coordinator_color_atlas_bytes": 134217728,
+    "raw_identity": [
+      "weak shared owner",
+      "object address",
+      "width/height"
+    ],
+    "raw_shared_across_factors": true,
+    "generated_output_identity_includes_factor_dimensions": true,
+    "stage_submit_readback": false,
+    "cache_commit": "only after complete coordinator fence success",
+    "SHP_input": "native sized currently lit PARGB; weak immutable Image identity plus gains/precision;4M native pixels/128 entries"
+  },
+  "local": {
+    "native_compile": "PASS",
+    "win32_x86_zig013_crosscompile": "PASS",
+    "device": "no ICD",
+    "default_run": "explicit GPU_XBRZ_UNAVAILABLE after CPU golden PASS",
+    "required_run": "exit1 expected capability negative control"
+  },
+  "limits": [
+    "No hardware GPU FPS measurement",
+    "No live game/visual/network validation",
+    "CPU model is not SPIR-V execution",
+    "Bootstrap evidence does not predeclare later production frontend or final main CI success",
+    "Native terrain composition and game reads still CPU; coordinator final image readback remains"
+  ],
+  "new_game_addresses_or_calls": false
+}

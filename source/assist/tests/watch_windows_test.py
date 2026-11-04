@@ -45,8 +45,20 @@ namespace cameraassets {template<class Reader>struct Context:Backend {
  std::string text(uint32_t p,int n){return gameassets::text(p,n);}
 };}
 }
-#include "../source/watch_host.h"
+#include "../../external_reader/source/render_profile.h"
+#include "../source/shroud_policy.h"
+namespace watchtest {
+// Tracking-window tests isolate the compositor boundary. The shared scene
+// renderer and source freshness have their own production fixture.
+template<class Reader,class Assets>struct Renderer:watchengine::Renderer<Reader,Assets>{
+ using Base=watchengine::Renderer<Reader,Assets>;using Base::Base;
+ bool sharedSource=false,gpuAttempted=false,gpuUsed=false;uint32_t sourceTick=0;
+ void features(const external::presentation::Profile&){}
+ bool update(uint32_t now){sourceTick=now;Base::update(now);return true;}
+};}
+@WATCH_HOST@
 '''
+prefix=prefix.replace('@WATCH_HOST@',(root/'assist/source/watch_host.h').read_text().replace('#include \"watch_scene.h\"','').replace('watchscene::Renderer<','watchtest::Renderer<'))
 shim=r'''
 #include "../../shared/source/overlay_recovery.h"
 using namespace assist;
@@ -169,6 +181,6 @@ int main(){
 if __name__=='__main__':
  with tempfile.TemporaryDirectory() as tmp:
   cpp=Path(tmp)/'watch.cpp';exe=Path(tmp)/'watch';cpp.write_text(prefix+shim)
-  subprocess.run(['g++','-std=c++17','-O1','-pthread','-I'+str(root/'assist/tests'),str(cpp),'-o',str(exe)],check=True)
+  subprocess.run(['g++','-std=c++17','-O1','-pthread','-I'+str(root/'assist/tests'),str(cpp),str(root/'third_party/xbrz/xbrz.cpp'),'-o',str(exe)],check=True)
   subprocess.run([str(exe)],check=True)
 

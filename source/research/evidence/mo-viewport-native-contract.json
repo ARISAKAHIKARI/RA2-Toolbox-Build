@@ -1,0 +1,296 @@
+{
+  "scope": "Read-only disassembly and native displaced-instruction replay for MO viewport ABI.\n\nThis never installs the 17-site candidate. It verifies original bytes, complete\ninstruction boundaries and actual original register/stack behavior in Unicorn.\nIt does not verify a replacement adapter, GPU rendering, Windows input or netplay.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "upstream_commit": "33ed558bd38f36b5012eddcc9c0fb109cc68e38a",
+  "candidate_installed": false,
+  "replacement_adapter_verified": false,
+  "game_process_opened": false,
+  "multiplayer_tested": false,
+  "results": [
+    {
+      "site": "004F4480",
+      "bytes": 8,
+      "role": "render-enter",
+      "original_fnv1a": "B89747A0",
+      "instruction_boundaries": [
+        {
+          "at": "004F4480",
+          "size": 3
+        },
+        {
+          "at": "004F4483",
+          "size": 5
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "004F4492",
+      "bytes": 5,
+      "role": "cursor-suspend",
+      "original_fnv1a": "85661D93",
+      "instruction_boundaries": [
+        {
+          "at": "004F4492",
+          "size": 5
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "004F44CB",
+      "bytes": 5,
+      "role": "map-resume",
+      "original_fnv1a": "4FFB7879",
+      "instruction_boundaries": [
+        {
+          "at": "004F44CB",
+          "size": 5
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "004F44FD",
+      "bytes": 5,
+      "role": "chrome-suspend",
+      "original_fnv1a": "BE841AD1",
+      "instruction_boundaries": [
+        {
+          "at": "004F44FD",
+          "size": 2
+        },
+        {
+          "at": "004F44FF",
+          "size": 1
+        },
+        {
+          "at": "004F4500",
+          "size": 2
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "004F4505",
+      "bytes": 6,
+      "role": "chrome-resume",
+      "original_fnv1a": "5D133EB0",
+      "instruction_boundaries": [
+        {
+          "at": "004F4505",
+          "size": 6
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "004F451B",
+      "bytes": 5,
+      "role": "map-complete",
+      "original_fnv1a": "F9E53DDD",
+      "instruction_boundaries": [
+        {
+          "at": "004F451B",
+          "size": 5
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "00692B60",
+      "bytes": 7,
+      "role": "edge-input",
+      "original_fnv1a": "22BAD32D",
+      "instruction_boundaries": [
+        {
+          "at": "00692B60",
+          "size": 3
+        },
+        {
+          "at": "00692B63",
+          "size": 1
+        },
+        {
+          "at": "00692B64",
+          "size": 1
+        },
+        {
+          "at": "00692B65",
+          "size": 1
+        },
+        {
+          "at": "00692B66",
+          "size": 1
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "00692300",
+      "bytes": 7,
+      "role": "click-query",
+      "original_fnv1a": "7EB9315B",
+      "instruction_boundaries": [
+        {
+          "at": "00692300",
+          "size": 4
+        },
+        {
+          "at": "00692304",
+          "size": 3
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "006930A0",
+      "bytes": 8,
+      "role": "button-message",
+      "original_fnv1a": "BEFB3E5B",
+      "instruction_boundaries": [
+        {
+          "at": "006930A0",
+          "size": 5
+        },
+        {
+          "at": "006930A5",
+          "size": 3
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "006D7840",
+      "bytes": 5,
+      "role": "shroud-current-surface",
+      "original_fnv1a": "C554C6D5",
+      "instruction_boundaries": [
+        {
+          "at": "006D7840",
+          "size": 3
+        },
+        {
+          "at": "006D7843",
+          "size": 1
+        },
+        {
+          "at": "006D7844",
+          "size": 1
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "006A7089",
+      "bytes": 7,
+      "role": "tooltip-process",
+      "original_fnv1a": "96640A23",
+      "instruction_boundaries": [
+        {
+          "at": "006A7089",
+          "size": 2
+        },
+        {
+          "at": "006A708B",
+          "size": 2
+        },
+        {
+          "at": "006A708D",
+          "size": 3
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "007F7B60",
+      "bytes": 4,
+      "role": "mouse-get-coords-pointer",
+      "original_fnv1a": "BC0B6D87",
+      "replay": "actual original virtual target returns raw physical point and RET4",
+      "status": "PASS"
+    },
+    {
+      "site": "00478BD1",
+      "bytes": 6,
+      "role": "mouse-A-origin",
+      "original_fnv1a": "4E1B3BA0",
+      "instruction_boundaries": [
+        {
+          "at": "00478BD1",
+          "size": 6
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "00478BD7",
+      "bytes": 5,
+      "role": "mouse-A-width",
+      "original_fnv1a": "0D749CB9",
+      "instruction_boundaries": [
+        {
+          "at": "00478BD7",
+          "size": 5
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "00478C17",
+      "bytes": 5,
+      "role": "mouse-A-rectangle",
+      "original_fnv1a": "7ADAD92F",
+      "instruction_boundaries": [
+        {
+          "at": "00478C17",
+          "size": 5
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "00478E4A",
+      "bytes": 6,
+      "role": "mouse-A-origin-second",
+      "original_fnv1a": "D1A14280",
+      "instruction_boundaries": [
+        {
+          "at": "00478E4A",
+          "size": 6
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    },
+    {
+      "site": "00478E50",
+      "bytes": 6,
+      "role": "mouse-A-width-second",
+      "original_fnv1a": "D5865F10",
+      "instruction_boundaries": [
+        {
+          "at": "00478E50",
+          "size": 6
+        }
+      ],
+      "replay": "actual displaced native instructions reach aligned continuation with expected registers/stack",
+      "status": "PASS"
+    }
+  ],
+  "pass": true
+}

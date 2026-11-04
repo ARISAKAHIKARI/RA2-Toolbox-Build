@@ -1,0 +1,62 @@
+{
+  "pass": true,
+  "scope": "Real own-process Windows DR/VEH four-site exact-TechLevel transaction fixture.",
+  "source_sha256": {
+    "source/assist/source/tech_ui_breakpoint_core.h": "f2e76adbce1ff897872871d5cd4ba96b5551d26e4aa3ea9b9c264bae4362b2df",
+    "source/assist/source/tech_enhancement_parameter_policy.h": "3aa967146c42e63304eee90e35d88905c48b4bc33341dc1cf118255204118a79",
+    "source/assist/tests/tech_ui_breakpoint_windows.cpp": "3f9f90689585f8fbb3bca740b01c24a133b7cedfa479ff971a060b92239a1234",
+    "source/assist/tests/tech_enhancement_parameter_windows.cpp": "8ad85b67c4c8cd6a7983b67e6a4f35c7645baa70f7dad0735706156d61f4069d",
+    "source/assist/tests/tech_enhancement_parameter_windows.py": "78c677b315638ea134d58bf087b84088eaf7c1105f740359f552ad608c5e307e"
+  },
+  "exe_sha256": "301e00274e1e924daac96ecc0bdc4c35a43d21a7a0de8da09d20498081da560f",
+  "compiler_flags": [
+    "-target",
+    "x86-windows-gnu",
+    "-std=c++17",
+    "-O2",
+    "-UNDEBUG",
+    "-fms-extensions",
+    "-fasm-blocks"
+  ],
+  "assertions_enabled": true,
+  "game_process_tested": false,
+  "multiplayer_tested": false,
+  "runs": [
+    {
+      "stdout": "configure requested=3 prior=0\nconfigure done state=1 active=3 mask=12\nconfigure requested=15 prior=3\nconfigure done state=-2 active=3 mask=12\nconfigure requested=15 prior=3\nconfigure done state=1 active=15 mask=15\nJOINT_QPC iterations=10000 exceptions=60000 baseline_us=37.300 active_us=502795.600 additional_us_per_exception=8.379305\nconfigure requested=3 prior=15\nconfigure done state=1 active=3 mask=12\nconfigure requested=12 prior=3\nconfigure done state=1 active=12 mask=3\nconfigure requested=3 prior=12\nconfigure done state=-3 active=0 mask=3\nconfigure requested=12 prior=0\nconfigure done state=1 active=12 mask=3\nconfigure requested=3 prior=12\nconfigure done state=-4 active=12 mask=3\nPASS: four-site real Windows DR transaction, retained existing full pair on insufficient slots, exact flags/House/Type/TechLevel gate, 60000 quantified exceptions, partial removal, ambiguous readback and false Set restore, unchanged code/type, no game\n",
+      "baseline_us": 37.3,
+      "active_us": 502795.6,
+      "additional_us_per_exception": 8.379305,
+      "exact_own_exceptions": 60000
+    },
+    {
+      "stdout": "configure requested=3 prior=0\nconfigure done state=1 active=3 mask=12\nconfigure requested=15 prior=3\nconfigure done state=-2 active=3 mask=12\nconfigure requested=15 prior=3\nconfigure done state=1 active=15 mask=15\nJOINT_QPC iterations=10000 exceptions=60000 baseline_us=34.900 active_us=518639.500 additional_us_per_exception=8.643410\nconfigure requested=3 prior=15\nconfigure done state=1 active=3 mask=12\nconfigure requested=12 prior=3\nconfigure done state=1 active=12 mask=3\nconfigure requested=3 prior=12\nconfigure done state=-3 active=0 mask=3\nconfigure requested=12 prior=0\nconfigure done state=1 active=12 mask=3\nconfigure requested=3 prior=12\nconfigure done state=-4 active=12 mask=3\nPASS: four-site real Windows DR transaction, retained existing full pair on insufficient slots, exact flags/House/Type/TechLevel gate, 60000 quantified exceptions, partial removal, ambiguous readback and false Set restore, unchanged code/type, no game\n",
+      "baseline_us": 34.9,
+      "active_us": 518639.5,
+      "additional_us_per_exception": 8.64341,
+      "exact_own_exceptions": 60000
+    },
+    {
+      "stdout": "configure requested=3 prior=0\nconfigure done state=1 active=3 mask=12\nconfigure requested=15 prior=3\nconfigure done state=-2 active=3 mask=12\nconfigure requested=15 prior=3\nconfigure done state=1 active=15 mask=15\nJOINT_QPC iterations=10000 exceptions=60000 baseline_us=39.900 active_us=493171.400 additional_us_per_exception=8.218858\nconfigure requested=3 prior=15\nconfigure done state=1 active=3 mask=12\nconfigure requested=12 prior=3\nconfigure done state=1 active=12 mask=3\nconfigure requested=3 prior=12\nconfigure done state=-3 active=0 mask=3\nconfigure requested=12 prior=0\nconfigure done state=1 active=12 mask=3\nconfigure requested=3 prior=12\nconfigure done state=-4 active=12 mask=3\nPASS: four-site real Windows DR transaction, retained existing full pair on insufficient slots, exact flags/House/Type/TechLevel gate, 60000 quantified exceptions, partial removal, ambiguous readback and false Set restore, unchanged code/type, no game\n",
+      "baseline_us": 39.9,
+      "active_us": 493171.4,
+      "additional_us_per_exception": 8.218858,
+      "exact_own_exceptions": 60000
+    }
+  ],
+  "cases": [
+    "real four simultaneous execution breakpoints",
+    "post-CMP EFLAGS-only virtual level1, native Jcc retained",
+    "House and Type gates reject other objects",
+    "House level0 still denied",
+    "existing full pair unchanged when two foreign slots block enhancement",
+    "foreign slots never overwritten",
+    "adding/removing only enhancement preserves full slots",
+    "full to enhancement-only transactional switch",
+    "readback failure retains both candidate slot owners and VEH",
+    "false successful Set readback preserves actual old enhancement sites",
+    "exact 60000 own exceptions per run and QPC overhead",
+    "code and Type bytes unchanged",
+    "full retirement restores original DR context"
+  ]
+}

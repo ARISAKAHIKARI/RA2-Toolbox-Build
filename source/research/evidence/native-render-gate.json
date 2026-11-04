@@ -1,0 +1,779 @@
+{
+  "scope": "Original Tactical admission to world/feedback blocks; query/surface boundaries doubled, no full draw, Windows or game FPS proof",
+  "product_changes": false,
+  "samples": [
+    {
+      "sample": "gamemd-spawn(3).exe",
+      "sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "mouse_vtable": {
+        "address": "0x7e1964",
+        "rtti": ".?AVMouseClass@@",
+        "render_slot_3c": "0x4F4480",
+        "draw_slot_40": "0x6D0A20",
+        "global_initializer_instruction": "0x40D1B2"
+      },
+      "map_trace": {
+        "status": "PASS_with_Tactical_surface_and_auxiliary_draw_doubles",
+        "cases": [
+          {
+            "redraw_level": 0,
+            "coarse_gate_state": 0,
+            "calls": [
+              {
+                "call": "Tactical_Render",
+                "phase": 0,
+                "redraw": 0
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 1,
+                "redraw": 0
+              },
+              {
+                "call": "Map_virtual_40",
+                "redraw": 0
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 2,
+                "redraw": 0
+              }
+            ],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 0,
+            "coarse_gate_state": 1,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 0,
+            "coarse_gate_state": 2,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 0,
+            "coarse_gate_state": 3,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 1,
+            "coarse_gate_state": 0,
+            "calls": [
+              {
+                "call": "Tactical_Render",
+                "phase": 0,
+                "redraw": 1
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 1,
+                "redraw": 1
+              },
+              {
+                "call": "Map_virtual_40",
+                "redraw": 0
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 2,
+                "redraw": 1
+              }
+            ],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 1,
+            "coarse_gate_state": 1,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 1,
+            "coarse_gate_state": 2,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 1,
+            "coarse_gate_state": 3,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 2,
+            "coarse_gate_state": 0,
+            "calls": [
+              {
+                "call": "Tactical_Render",
+                "phase": 0,
+                "redraw": 1
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 1,
+                "redraw": 1
+              },
+              {
+                "call": "Map_virtual_40",
+                "redraw": 1
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 2,
+                "redraw": 1
+              }
+            ],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 2,
+            "coarse_gate_state": 1,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 2,
+            "coarse_gate_state": 2,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 2,
+            "coarse_gate_state": 3,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          }
+        ]
+      },
+      "ranges": [
+        {
+          "start": "0x4f4480",
+          "end_exclusive": "0x4f45a9",
+          "sha256": "4a9c13e1beca48c5d0f1f0062a3c88a236362eb7d032cd33e8ddaafcf61481f3"
+        },
+        {
+          "start": "0x6d3d10",
+          "end_exclusive": "0x6d3e9b",
+          "sha256": "4912a0877794880d5f7694c443f188f0a9f8c841c25c6af0eb125964ae7790e3"
+        },
+        {
+          "start": "0x6d4582",
+          "end_exclusive": "0x6d4764",
+          "sha256": "49b7315ec5e08bd275328bcb6e9cfcf5ca5b342f5c290df0cecd1f015fe1a138"
+        },
+        {
+          "start": "0x53bae0",
+          "end_exclusive": "0x53baee",
+          "sha256": "02dcff77d81ca828dc0ddd138f602079ff2a00a479aa6d174b593e5ea938187d"
+        },
+        {
+          "start": "0x40d1b2",
+          "end_exclusive": "0x40d1bc",
+          "sha256": "22d2c5c8b703f17a6bc63d008a411f39180d00bc696f50a454f5339f132eb876"
+        },
+        {
+          "start": "0x7e1964",
+          "end_exclusive": "0x7e19ac",
+          "sha256": "ad7c10d69df91301d6ae7bc3275058334f13157fd7094c8e39b9656290bbb344"
+        }
+      ],
+      "cases": [
+        {
+          "phase": 0,
+          "case": "clean_static",
+          "outcome": "return_before_feedback",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "camera_changed",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "dirty_regions",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "redraw_requested",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "tactical_redraw_flag",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "animated_visible",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "clean_static",
+          "outcome": "return_before_feedback",
+          "surface_copies": 1
+        },
+        {
+          "phase": 1,
+          "case": "camera_changed",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "dirty_regions",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "redraw_requested",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "tactical_redraw_flag",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "animated_visible",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "clean_static",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "camera_changed",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "dirty_regions",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "redraw_requested",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "tactical_redraw_flag",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "animated_visible",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        }
+      ]
+    },
+    {
+      "sample": "gamemd-spawn(4).exe",
+      "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "mouse_vtable": {
+        "address": "0x7e1964",
+        "rtti": ".?AVMouseClass@@",
+        "render_slot_3c": "0x4F4480",
+        "draw_slot_40": "0x6D0A20",
+        "global_initializer_instruction": "0x40D1B2"
+      },
+      "map_trace": {
+        "status": "not_executed_platform_modified_body",
+        "cases": []
+      },
+      "ranges": [
+        {
+          "start": "0x4f4480",
+          "end_exclusive": "0x4f45a9",
+          "sha256": "e105ce611739e0aa8f8550fa03b95f073dc63479fbfaace171c43098ca7ad64f"
+        },
+        {
+          "start": "0x6d3d10",
+          "end_exclusive": "0x6d3e9b",
+          "sha256": "4912a0877794880d5f7694c443f188f0a9f8c841c25c6af0eb125964ae7790e3"
+        },
+        {
+          "start": "0x6d4582",
+          "end_exclusive": "0x6d4764",
+          "sha256": "4314e5a81ec23a9794b479fd8718d7e4120748ed95beb59bc0f519a7886b5090"
+        },
+        {
+          "start": "0x53bae0",
+          "end_exclusive": "0x53baee",
+          "sha256": "02dcff77d81ca828dc0ddd138f602079ff2a00a479aa6d174b593e5ea938187d"
+        },
+        {
+          "start": "0x40d1b2",
+          "end_exclusive": "0x40d1bc",
+          "sha256": "22d2c5c8b703f17a6bc63d008a411f39180d00bc696f50a454f5339f132eb876"
+        },
+        {
+          "start": "0x7e1964",
+          "end_exclusive": "0x7e19ac",
+          "sha256": "ad7c10d69df91301d6ae7bc3275058334f13157fd7094c8e39b9656290bbb344"
+        }
+      ],
+      "cases": [
+        {
+          "phase": 0,
+          "case": "clean_static",
+          "outcome": "return_before_feedback",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "camera_changed",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "dirty_regions",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "redraw_requested",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "tactical_redraw_flag",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "animated_visible",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "clean_static",
+          "outcome": "return_before_feedback",
+          "surface_copies": 1
+        },
+        {
+          "phase": 1,
+          "case": "camera_changed",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "dirty_regions",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "redraw_requested",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "tactical_redraw_flag",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "animated_visible",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "clean_static",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "camera_changed",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "dirty_regions",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "redraw_requested",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "tactical_redraw_flag",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "animated_visible",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        }
+      ]
+    },
+    {
+      "sample": "gamemd-spawn(5).exe",
+      "sha256": "ebb8b7bd07236c9ba7cbb2ad01bdca82b99faf2fccf08d79f7f60f59c4d77707",
+      "mouse_vtable": {
+        "address": "0x7e1964",
+        "rtti": ".?AVMouseClass@@",
+        "render_slot_3c": "0x4F4480",
+        "draw_slot_40": "0x6D0A20",
+        "global_initializer_instruction": "0x40D1B2"
+      },
+      "map_trace": {
+        "status": "PASS_with_Tactical_surface_and_auxiliary_draw_doubles",
+        "cases": [
+          {
+            "redraw_level": 0,
+            "coarse_gate_state": 0,
+            "calls": [
+              {
+                "call": "Tactical_Render",
+                "phase": 0,
+                "redraw": 0
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 1,
+                "redraw": 0
+              },
+              {
+                "call": "Map_virtual_40",
+                "redraw": 0
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 2,
+                "redraw": 0
+              }
+            ],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 0,
+            "coarse_gate_state": 1,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 0,
+            "coarse_gate_state": 2,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 0,
+            "coarse_gate_state": 3,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 1,
+            "coarse_gate_state": 0,
+            "calls": [
+              {
+                "call": "Tactical_Render",
+                "phase": 0,
+                "redraw": 1
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 1,
+                "redraw": 1
+              },
+              {
+                "call": "Map_virtual_40",
+                "redraw": 0
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 2,
+                "redraw": 1
+              }
+            ],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 1,
+            "coarse_gate_state": 1,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 1,
+            "coarse_gate_state": 2,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 1,
+            "coarse_gate_state": 3,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 2,
+            "coarse_gate_state": 0,
+            "calls": [
+              {
+                "call": "Tactical_Render",
+                "phase": 0,
+                "redraw": 1
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 1,
+                "redraw": 1
+              },
+              {
+                "call": "Map_virtual_40",
+                "redraw": 1
+              },
+              {
+                "call": "Tactical_Render",
+                "phase": 2,
+                "redraw": 1
+              }
+            ],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 2,
+            "coarse_gate_state": 1,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 2,
+            "coarse_gate_state": 2,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          },
+          {
+            "redraw_level": 2,
+            "coarse_gate_state": 3,
+            "calls": [],
+            "redraw_consumed": true,
+            "surface_pointer_restored": true
+          }
+        ]
+      },
+      "ranges": [
+        {
+          "start": "0x4f4480",
+          "end_exclusive": "0x4f45a9",
+          "sha256": "4a9c13e1beca48c5d0f1f0062a3c88a236362eb7d032cd33e8ddaafcf61481f3"
+        },
+        {
+          "start": "0x6d3d10",
+          "end_exclusive": "0x6d3e9b",
+          "sha256": "4912a0877794880d5f7694c443f188f0a9f8c841c25c6af0eb125964ae7790e3"
+        },
+        {
+          "start": "0x6d4582",
+          "end_exclusive": "0x6d4764",
+          "sha256": "49b7315ec5e08bd275328bcb6e9cfcf5ca5b342f5c290df0cecd1f015fe1a138"
+        },
+        {
+          "start": "0x53bae0",
+          "end_exclusive": "0x53baee",
+          "sha256": "02dcff77d81ca828dc0ddd138f602079ff2a00a479aa6d174b593e5ea938187d"
+        },
+        {
+          "start": "0x40d1b2",
+          "end_exclusive": "0x40d1bc",
+          "sha256": "22d2c5c8b703f17a6bc63d008a411f39180d00bc696f50a454f5339f132eb876"
+        },
+        {
+          "start": "0x7e1964",
+          "end_exclusive": "0x7e19ac",
+          "sha256": "ad7c10d69df91301d6ae7bc3275058334f13157fd7094c8e39b9656290bbb344"
+        }
+      ],
+      "cases": [
+        {
+          "phase": 0,
+          "case": "clean_static",
+          "outcome": "return_before_feedback",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "camera_changed",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "dirty_regions",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "redraw_requested",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "tactical_redraw_flag",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 0,
+          "case": "animated_visible",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "clean_static",
+          "outcome": "return_before_feedback",
+          "surface_copies": 1
+        },
+        {
+          "phase": 1,
+          "case": "camera_changed",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "dirty_regions",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "redraw_requested",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "tactical_redraw_flag",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 1,
+          "case": "animated_visible",
+          "outcome": "world_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "clean_static",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "camera_changed",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "dirty_regions",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "redraw_requested",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "tactical_redraw_flag",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        },
+        {
+          "phase": 2,
+          "case": "animated_visible",
+          "outcome": "feedback_block",
+          "surface_copies": 0
+        }
+      ]
+    }
+  ],
+  "date": "2026-10-29",
+  "native_world_disable_implemented": false,
+  "engine_data_or_code_written": false,
+  "prior_notebook_version": 80,
+  "conclusion": "Phase separation is a research candidate; no verified independent world-disable data flag. Existing coarse surface-transition gate also suppresses feedback and UI. No product interception implemented.",
+  "boundary_limitations": [
+    "Tactical admission stops at world or feedback block",
+    "visible-animation query and surface boundaries are explicit doubles",
+    "Map Tactical/UI/surface calls are explicit doubles",
+    "sample4 modified Map body is not restored or executed",
+    "No full draw, native Z/cutout compatibility, Windows, game FPS or multiplayer proof"
+  ]
+}

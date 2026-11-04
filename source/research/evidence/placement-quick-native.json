@@ -1,0 +1,67 @@
+{
+  "status": "PASS",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "cases": [
+    {
+      "case": "native_set_and_get",
+      "build_category": 0,
+      "pass": true
+    },
+    {
+      "case": "native_set_and_get",
+      "build_category": 5,
+      "pass": true
+    },
+    {
+      "case": "native_clear",
+      "input_q": 536875008,
+      "input_w": 536879104,
+      "object": 536875008,
+      "output": [
+        0,
+        536879104
+      ],
+      "pass": true
+    },
+    {
+      "case": "native_clear",
+      "input_q": 536879104,
+      "input_w": 536875008,
+      "object": 536875008,
+      "output": [
+        536879104,
+        0
+      ],
+      "pass": true
+    },
+    {
+      "case": "native_clear",
+      "input_q": 536879104,
+      "input_w": 536879104,
+      "object": 536875008,
+      "output": [
+        536879104,
+        536879104
+      ],
+      "pass": true
+    },
+    {
+      "case": "native_clear",
+      "input_q": 536875008,
+      "input_w": 536879104,
+      "object": 0,
+      "output": [
+        0,
+        0
+      ],
+      "pass": true
+    },
+    {
+      "case": "both_equal_requires_two_calls",
+      "pass": true
+    }
+  ],
+  "count": 7,
+  "game_process_opened": false,
+  "boundary": "Original x86 cache setter/getters and object-specific clear on synthetic memory; Q UI rendering and real Place receiver are not executed."
+}

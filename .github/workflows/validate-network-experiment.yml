@@ -1,0 +1,49 @@
+name: Build network experiments 1.0.39-pre.6
+on:
+  push:
+    branches: [experiment/network-events-20261026]
+    paths: ["source/**", ".github/workflows/validate-network-experiment.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-x86:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+      - name: Build Win32 binaries
+        working-directory: source
+        shell: pwsh
+        run: |
+          $env:RA2_NO_PAUSE='1'
+          cmd /d /c "call BUILD_ZIG.cmd > build-network.log 2>&1"
+          $status=$LASTEXITCODE
+          Get-Content build-network.log -Tail 60
+          if($status -ne 0){throw "Build failed: $status"}
+          foreach($p in 'RA2Toolbox.exe','GameRuntime.dll'){
+            if(!(Test-Path $p)){throw "Missing $p"}
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2-Toolbox-1.0.39-pre.6-network-experiments
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            source/RA2Toolbox.exe
+            source/GameRuntime.dll
+            source/research/2026-10-26-network-event-audit.md
+            source/research/2026-10-26-selected-mission-modes.md
+            source/research/2026-10-26-entry-fire-control-pre3.md
+            source/research/2026-10-26-enemy-sell-pre4.md
+            source/research/2026-10-26-destruct-button-pre5.md
+            source/research/2026-10-26-network-house-preserve-pre6.md

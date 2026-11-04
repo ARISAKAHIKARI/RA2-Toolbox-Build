@@ -3,14 +3,32 @@
 #include <windows.h>
 #include "../../shared/source/modern_ui.h"
 #include "display_settings.h"
+#include "settings_categories.h"
+#ifdef RA2_CONSOLE_WEBVIEW2
+#include "console_adapter.h"
+#else
+#include "frontend_panes.h"
+#endif
+#include "../../shared/source/overlay_visibility.h"
 namespace suite {
+inline bool overlaysVisible(){return overlayvisibility::visible();}
 constexpr UINT PaneLayout=WM_APP+80,ModuleEnable=WM_APP+81,CloseCheck=WM_APP+82;
 constexpr UINT ApplyDisplaySetting=WM_APP+83,DisplaySettingsChanged=WM_APP+84,RefreshRateChanged=WM_APP+85,SelectCategory=WM_APP+86;
+#ifdef RA2_CONSOLE_WEBVIEW2
+constexpr UINT PrepareClose=consoleadapter::PrepareCloseMessage;
+void closePrepared(int module);
+#endif
 constexpr WPARAM CloseToken=0x52413253;
-struct Layout {RECT rect;bool visible;unsigned dpi=96;};
+#ifdef RA2_CONSOLE_WEBVIEW2
+inline consoleadapter::Host frontend;
+#else
+using Layout=frontendpanes::Layout;
+inline frontendpanes::Host frontend;
+#endif
+inline bool managedPane(HWND w){return frontend.managed(w);}
 HWND parent();
 bool enabled(int module);
-void registerPane(int module,HWND pane);
+void registerPane(int module,HWND pane,WNDPROC ownerProc=nullptr);
 void reportEnabled(int module,bool value);
 void requestClose();
 void closeDecision(bool allow);
@@ -24,10 +42,13 @@ unsigned refreshRate();
 void publishDisplaySettings(const DisplayState& state);
 bool readDisplaySettings(DisplayState& state);
 bool requestDisplaySetting(int option,int value);
-// Executed on each module's UI thread. Layout requests own their payload.
+// Executed on each module's UI thread. A single latest-state mailbox replaces
+// per-resize heap payloads; no child/owner input-queue attachment is involved.
 inline bool layoutMessage(HWND w,UINT m,LPARAM lp){
- if(m!=PaneLayout)return false;auto p=(Layout*)lp;modernui::styleChildren(w);SendMessageW(w,modernui::DpiMessage,p->dpi,0);
- SetWindowPos(w,nullptr,p->rect.left,p->rect.top,p->rect.right-p->rect.left,p->rect.bottom-p->rect.top,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS);
- ShowWindow(w,p->visible?SW_SHOWNOACTIVATE:SW_HIDE);delete p;return true;
+#ifdef RA2_CONSOLE_WEBVIEW2
+ (void)w;(void)lp;return m==PaneLayout;
+#else
+ (void)lp;return frontend.apply(w,m,modernui::DpiMessage);
+#endif
 }
 }

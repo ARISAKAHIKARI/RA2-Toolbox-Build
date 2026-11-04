@@ -1,0 +1,192 @@
+{
+  "audit": "HF28 render integration self-review",
+  "date": "2026-10-31",
+  "evidence_level": "source review and algebraic counterexample only; no execution",
+  "local_baseline_commit": "a0c0b9dddeee54f53e3724bdcaaeafb12d792cfa",
+  "remote_baseline_commit": "c2c4675ea6c6990217cb6c37a94634b8e7ad3a79",
+  "product_source_remote_commit": "66bddb5727fb614bf6d7114e3060b34b6e1bceb3",
+  "findings": [
+    {
+      "id": "F1",
+      "priority": "P1",
+      "topic": "BuildingBase and Display dynamic pieces not split into native phases"
+    },
+    {
+      "id": "F2",
+      "priority": "P1",
+      "topic": "World Extras/local UI and persistent-light ordering differ from pinned reference"
+    },
+    {
+      "id": "F3",
+      "priority": "P1",
+      "topic": "Native waterline Z clip differs between CPU and GPU at downscale",
+      "algebraic_case": {
+        "scale_y": 0.5,
+        "anchor_y": 0,
+        "material_clip_bottom": 100,
+        "cpu_native_clip": 100,
+        "gpu_native_clip": 99,
+        "executed": false
+      }
+    },
+    {
+      "id": "F4",
+      "priority": "P1",
+      "topic": "Scene fault guard excludes final D3D/DirectComposition presentation and some teardown"
+    },
+    {
+      "id": "F5",
+      "priority": "P2",
+      "topic": "CPU performs GPU-only source preparation and repeats whole-source/attachment preparation across bands",
+      "performance_measured": false
+    },
+    {
+      "id": "F6",
+      "priority": "P2",
+      "topic": "Display helper checks frame before final identity reads; outer native-notification fence mitigates only that mode"
+    }
+  ],
+  "unconfirmed_risk": "D3D owner retention during ordinary queue timeout/destruction; NT import reference semantics prevent declaring confirmed UAF",
+  "rejected_guesses": [
+    "SpriteCached default image is initialized, not a default null dereference",
+    "cutout spans are checked by overlaycomposition::valid before GPU compositor use",
+    "native fields were not missing from the existing completed-frame cache key"
+  ],
+  "sources": {
+    "source/external_reader/source/radar_scene.h": {
+      "sha256": "89b7a8df6c384d2e1be68e8b1f1ba9c69cccb275cdfd19b4fdeea1ed36953b50",
+      "git_blob": "52385f7ffe5f2acfbf5cd6107713b47890a1be9a",
+      "bytes": 63683
+    },
+    "source/external_reader/source/scene_extra_layers.h": {
+      "sha256": "8e124afe87a0ca9d933c6e9238dda646cefebd60cedd8b11747fcda6d0bf034d",
+      "git_blob": "5046c26ed466a12f3d4755f692dc314058486db7",
+      "bytes": 13464
+    },
+    "source/external_reader/source/world_scene_pipeline.h": {
+      "sha256": "e3782be62126f4cede833ec6c70eb114096c890270cfb7296754b613f010e0c2",
+      "git_blob": "6d7d7f71c8859c60aeac57650f3c2a4d3e0099ed",
+      "bytes": 13725
+    },
+    "source/assist/source/render_feedback_host.h": {
+      "sha256": "838ce9b455ac8aaaeecafa290a98af7b0bad338d4de25d860dd74bdc630bb98f",
+      "git_blob": "b7ec4de253396df24449bb6dd580ebeab904ddf1",
+      "bytes": 9722
+    },
+    "source/external_reader/source/world_effects.h": {
+      "sha256": "da65b14f35efef01467faea84a3d9ec9e4aafe9127c25f231e796fa5dbf5ca92",
+      "git_blob": "9c5ba6e05bebec7cb5e640fa0c91abba1c945310",
+      "bytes": 29208
+    },
+    "source/external_reader/source/camera_raster.h": {
+      "sha256": "1f7695389f3d7d0d6b0e7646861a3783bec54e5e502e2ca391f5f90564fab597",
+      "git_blob": "f99184d766a466d259acf347a1d6ef08f0a2ae28",
+      "bytes": 21468
+    },
+    "source/external_reader/source/gpu_scene_record.h": {
+      "sha256": "90fb55687bfd30c501e9a9921c4fef172eaee9051f2628190b145b6a879edad9",
+      "git_blob": "e8d24add3915c8716496f6bda8242ffd77a82779",
+      "bytes": 17695
+    },
+    "source/external_reader/source/native_surface.h": {
+      "sha256": "118943b5f85b27125ee59223274c3526e86ab6ab837d05df3591896ed91e3f43",
+      "git_blob": "33319d9bbf58081298c71b70924b6f5ef4935215",
+      "bytes": 5114
+    },
+    "source/external_reader/source/viewport_canvas.h": {
+      "sha256": "f185423647e994dcf6bbc0e805f6476ab8c5970bb5c8c7d5e66e702fb19349ef",
+      "git_blob": "ab78476155226281874345f41284a5f5947ceb2e",
+      "bytes": 17415
+    },
+    "source/external_reader/source/native_display_order.h": {
+      "sha256": "f22345c070d0a6ba77dcb1e88ca72c269ef978658eebff30ba35376e9b81dd2e",
+      "git_blob": "5936890ea17ce6ec50d8da2f0e6659f0490b2b19",
+      "bytes": 1404
+    },
+    "source/external_reader/source/vulkan_scene.h": {
+      "sha256": "45e9e0a855624052eac19226c32356cc48320add3a185f8b62f5f68288b45320",
+      "git_blob": "3e0e8aba0a82ddb57d043803606f46db0520ba20",
+      "bytes": 43249
+    },
+    "source/external_reader/source/vulkan_present.h": {
+      "sha256": "fd87a7c9dad87d564025ccf3b7d5411ee8eb3dc78a8381778a108f1bf92989f0",
+      "git_blob": "419d60acb077dde4c369c06ac306bd682a4b3c0c",
+      "bytes": 8525
+    },
+    "source/shared/source/overlay_compositor.h": {
+      "sha256": "814edabbef17574a9f0e3dc7eff8d7ba08cb35be952a3b24d84672b38ccb14b8",
+      "git_blob": "f7dce5aa0ef3d34effdf70b68575ce8af09c5f3e",
+      "bytes": 18430
+    },
+    "source/shared/source/gpu_compositor.h": {
+      "sha256": "ab321d964e8e41b74569364a05dd7c1a7d9e05f5315c8df0cd6dda16c36e1416",
+      "git_blob": "77c6ec472e7e1792771c3ab134266fa8b280ef82",
+      "bytes": 16462
+    },
+    "source/shared/source/gpu_surface_win32.h": {
+      "sha256": "0dad55c9665aa983d1b141a7e2ed6a8864e79a93d893a912ac9f1f57cbeffa6e",
+      "git_blob": "5ca10b272b39addc31ccc2f5e08e2e1ffafe971f",
+      "bytes": 6060
+    },
+    "source/shared/source/parallel_rows.h": {
+      "sha256": "93936d7cc4987d47cb6bdcff58fddd511b1edef1564c71caed00d1cfbc7713a4",
+      "git_blob": "0326a21fd1bf1aa1f70ea38e943bdd48bb3b458c",
+      "bytes": 2540
+    },
+    "source/assist/source/render_upgrade_host.h": {
+      "sha256": "ce23b85a76f7d94e72477514c5700eb8cbf632bea946d28e456c59c478db78fb",
+      "git_blob": "7758b8fee44137af85d7ad40969823276e563a0f",
+      "bytes": 37057
+    },
+    "source/assist/tests/gpu_scene_record.cpp": {
+      "sha256": "d104922b3521f060148bc8c159759c889c991252c114686c011fe0886d8329f5",
+      "git_blob": "830252dfe241c6da9ca336944eb630bc7ada85a4",
+      "bytes": 9117
+    },
+    "source/assist/tests/camera_native_rows.cpp": {
+      "sha256": "33a797160a7eed4603803284388494b20998b5b74a6f0ccd2dbb04fb91f1e5ef",
+      "git_blob": "d12d01ab758016e838fd3e43c4ad3f77ffd162cc",
+      "bytes": 2279
+    },
+    "source/assist/tests/vulkan_scene.cpp": {
+      "sha256": "61177dbf37e4f93e28f99447abaa3f166d424178613a67652dccd9890cccd35a",
+      "git_blob": "e7c8774e604dba950c07014f7f0149bea67b4ae0",
+      "bytes": 5033
+    },
+    "source/assist/tests/render_backend_parity.cpp": {
+      "sha256": "6d9063ea9edb1719117017526c76de24104e9c53723f2390f3b03afaeb9ae26a",
+      "git_blob": "5572a5a038c70a2a54e2b4ba62b0b1221a7cb645",
+      "bytes": 3392
+    }
+  },
+  "pinned_upstream": {
+    "repository": "ARISAKAHIKARI/vera20k",
+    "commit": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+    "files": {
+      "draw_passes.rs": {
+        "sha256": "7b404094290bbf1bafbb0a6aaf2f188322e42f3adcc2990ad762c9c013075295",
+        "git_blob": "ae72ca82a467e54051a2305104a2fd35635a5e25",
+        "bytes": 56343
+      },
+      "object_stages.rs": {
+        "sha256": "4083b20ce3725d483f0e302def3de9437246589e80938e8a4aefcb0d822c491f",
+        "git_blob": "fb8140f82b57771ef2706e8fb89a19d70b878c31",
+        "bytes": 7766
+      }
+    },
+    "retrieved_pinned_content_written_exactly": true,
+    "prior_reference_copy_difference": "one extra trailing newline; no non-trailing-newline source differences"
+  },
+  "executed": {
+    "cpu_fixture_suites": false,
+    "windows_or_game": false,
+    "vulkan_d3d_directcomposition": false,
+    "native_instructions": false,
+    "multiplayer": false,
+    "fps_measurements": false
+  },
+  "prior_HF28_checks": "production cross compile, 680 wire layouts, PE/import/SEH linkage, ZIP hashes; not real-game render validation",
+  "product_code_changed": false,
+  "new_binary_created": false,
+  "stable_latest_changed": false
+}

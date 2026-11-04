@@ -1,0 +1,271 @@
+{
+  "scope": "Compiled map-only viewport dispatcher with synthetic Win32/graphics primitives.\n\nExecutes actual original Render prologue/phase order/epilogue and all compiled\nadapters. Native rendering, DSurface/Z/A allocation and presentation are modeled.\nNo game process, Windows visual output, GPU correctness or netplay is claimed.\n",
+  "dll_sha256": "70c0e8ca37ffb3bd10638f9a2361e6c43165b1b873a5b795f46d6ca9066114c5",
+  "pdb_sha256": "c0e828fa640ff297a846f9ec6c948fffc58acb8522bf770809faaf2e6811b3e9",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "source_sha256": {
+    "source/assist/tests/native_viewport_runtime.py": "a4894613aeebfef67cb2d9ceef1d9105d323e167bbf2a4e3ca37d308f01f499e",
+    "source/assist/tests/sidebar_view_runtime.py": "081050d64805e18e8d6441a4a68ffe200fe928c818efaa7e9ee9c8f2daab7108",
+    "source/assist/tests/pdb_fixture_symbol.py": "afe1d6acfe895b19ade0ffed870f9f9ca0451f2173482d58204531ce2eb15411",
+    "source/assist/source/view_zoom_native_state.h": "84b214b6c98e4acbd24093ac900158a861f05887402deb533a0ea0a42136aef3",
+    "source/assist/source/view_zoom_native_bridge.h": "0e1cf015f57d1c4149eae7ff46118e35f8762cf06e97265c163246bf752367ed",
+    "source/assist/source/view_zoom_native_guard.h": "4573915ab6895a6df7cac39c451985d0549e2f1cf67c85be7b199f1b2cf33ea1",
+    "source/assist/source/view_zoom_bridge.h": "e15a55943402984e884cfbfcad3a6db55064fbf965dab64372f0de249f2e59b0",
+    "source/assist/source/view_zoom_legacy_bridge.h": "abe424b223e539bbe1efadc166f0751824c0602b655dfa55f2bf40a309163d4c",
+    "source/assist/source/native_viewport_query.h": "4ce3ba0fc20eaa56a1dd8890f1faa429ded5c919adca65a1547a56697a44ede0",
+    "source/assist/source/sidebar_view_bridge.h": "f11c2b7c51c56e2cfaa4bcbbb880ed9546eb591de9c65f7cc90a7ada6bdf470f",
+    "source/assist/source/sidebar_view_guard.h": "8a3c6b7ba8bb46996d89b4cc1bf83e1d931ea8cf8b830f2f483127577037cf9c",
+    "source/shared/source/native_viewport_policy.h": "8052da79622f3dad0e9328e78b28149f99c3a7a20616b995be0705e4b90da5c7",
+    "source/shared/source/native_viewport_projection.h": "0c1b0ab1c6904d44ad6b240320601c93cad92be28ef61d1f72a492e8179ca4d6",
+    "source/assist/source/protocol.h": "9254a8224f16e44eef2fab6135f2d9ecf29cfeb9557397bb2976aaf249fb923d"
+  },
+  "hash_stable_during_test": true,
+  "checks": 34,
+  "results": [
+    {
+      "case": "compiled-native-map-only-render-and-roundtrip",
+      "status": "PASS",
+      "physical_UI_native_raster_separated": true,
+      "map_three_passes_then_window_UI_and_present": true,
+      "native_mouse_one_transform": true,
+      "same_thread_owned_surface_swap_and_restore": true
+    },
+    {
+      "case": "fresh-host-handshake-publishes-real-inactive-and-waits-before-native",
+      "status": "PASS",
+      "fresh_publication_not_memset_zero": true,
+      "no_transient_legacy_resize_before_host_ack": true
+    },
+    {
+      "case": "active-private-state-republished-into-cleared-wire-with-same-generation",
+      "status": "PASS",
+      "private_active_transform_republished_without_new_generation": true
+    },
+    {
+      "case": "native-percent-75",
+      "status": "PASS"
+    },
+    {
+      "case": "native-percent-125",
+      "status": "PASS"
+    },
+    {
+      "case": "native-percent-150",
+      "status": "PASS"
+    },
+    {
+      "case": "sidebar-mode-0-left-True",
+      "status": "PASS"
+    },
+    {
+      "case": "sidebar-mode-2-left-False",
+      "status": "PASS"
+    },
+    {
+      "case": "sidebar-mode-2-left-True",
+      "status": "PASS"
+    },
+    {
+      "case": "native-keeps-shared-render-owner-during-focus",
+      "status": "PASS"
+    },
+    {
+      "case": "native-keeps-shared-render-owner-during-paused",
+      "status": "PASS"
+    },
+    {
+      "case": "native-keeps-shared-render-owner-during-observer",
+      "status": "PASS"
+    },
+    {
+      "case": "off-callback-after-map-before-true-render-leave-retains-all-allocations",
+      "status": "PASS",
+      "map_completion_does_not_end_render_lease": true
+    },
+    {
+      "case": "loading-render-before-next-tick-waits-and-recovers-same-world",
+      "status": "PASS",
+      "loading_is_recoverable_wait_not_permanent_foreign_conflict": true
+    },
+    {
+      "case": "cross-scenario-same-pair-addresses-retire-old-journal-with-fresh-current-layout",
+      "status": "PASS",
+      "same_addresses_do_not_authorize_old_sidebar_destructor_or_saved_pair_replay": true,
+      "current_centres_preserved": true
+    },
+    {
+      "case": "cross-rewind-same-pair-addresses-retire-old-journal-with-fresh-current-layout",
+      "status": "PASS",
+      "same_addresses_do_not_authorize_old_sidebar_destructor_or_saved_pair_replay": true,
+      "current_centres_preserved": true
+    },
+    {
+      "case": "full-new-native-generation-cleans-both-owners-without-old-pair-replay",
+      "status": "PASS",
+      "complete_new_pair_and_buffers_adopt_only_current_geometry": true
+    },
+    {
+      "case": "window-resize-waits-for-adequate-new-native-pair-and-never-replays-old-A",
+      "status": "PASS",
+      "no_replay_of_old_A_after_window_changes": true
+    },
+    {
+      "case": "foreign-surface-holds-cleanup-without-free-or-geometry-write",
+      "status": "PASS",
+      "foreign_memory_preserved_and_cleanup_held": true
+    },
+    {
+      "case": "foreign-buffer-holds-cleanup-without-free-or-geometry-write",
+      "status": "PASS",
+      "foreign_memory_preserved_and_cleanup_held": true
+    },
+    {
+      "case": "foreign-tracking-holds-cleanup-without-free-or-geometry-write",
+      "status": "PASS",
+      "foreign_memory_preserved_and_cleanup_held": true
+    },
+    {
+      "case": "foreign-phase-holds-cleanup-without-free-or-geometry-write",
+      "status": "PASS",
+      "foreign_memory_preserved_and_cleanup_held": true
+    },
+    {
+      "case": "invalid-new-raster-target-retains-healthy-previous-render-and-input",
+      "status": "PASS",
+      "oversized_request_does_not_poison_previous_active_Render_or_input": true,
+      "giant_raster_allocation_not_tested": true
+    },
+    {
+      "case": "new-scene-gadget-flag-0-old-mode-0",
+      "status": "PASS",
+      "new_scene_native_gadget_flag_preserved": 0,
+      "old_hidden_mode": 0
+    },
+    {
+      "case": "new-scene-gadget-flag-1-old-mode-0",
+      "status": "PASS",
+      "new_scene_native_gadget_flag_preserved": 1,
+      "old_hidden_mode": 0
+    },
+    {
+      "case": "new-scene-gadget-flag-0-old-mode-2",
+      "status": "PASS",
+      "new_scene_native_gadget_flag_preserved": 0,
+      "old_hidden_mode": 2
+    },
+    {
+      "case": "new-scene-gadget-flag-1-old-mode-2",
+      "status": "PASS",
+      "new_scene_native_gadget_flag_preserved": 1,
+      "old_hidden_mode": 2
+    },
+    {
+      "case": "compiled-seven-render-adapters-register-stack-and-FX-replay",
+      "status": "PASS",
+      "compiled_sites": {
+        "0x4f4480": {
+          "GPR_stack_displaced_replay": true,
+          "FX_state_preserved": true
+        },
+        "0x4f4492": {
+          "GPR_stack_displaced_replay": true,
+          "FX_state_preserved": true
+        },
+        "0x4f44cb": {
+          "GPR_stack_displaced_replay": true,
+          "FX_state_preserved": true
+        },
+        "0x4f44fd": {
+          "GPR_stack_displaced_replay": true,
+          "FX_state_preserved": true
+        },
+        "0x4f4505": {
+          "GPR_stack_displaced_replay": true,
+          "FX_state_preserved": true
+        },
+        "0x4f451b": {
+          "GPR_stack_displaced_replay": true,
+          "FX_state_preserved": true
+        },
+        "0x4f459d": {
+          "GPR_stack_displaced_replay": true,
+          "FX_state_preserved": true
+        }
+      },
+      "shared_true_Render_leave_also_verified": true
+    },
+    {
+      "case": "native-Wnd-mapping-nested-depth-limit-LIFO-and-retirement-denial",
+      "status": "PASS",
+      "bounded_16_frames_nested_LIFO": true,
+      "caller_LPARAM_never_mutated": true
+    },
+    {
+      "case": "compiled-Wnd-entry-and-return-thunk-shadow-LPARAM-and-RET16",
+      "status": "PASS",
+      "actual_compiled_Wnd_entry_and_return_thunk_RET16": true,
+      "native_body_modeled": true,
+      "native_return_value_and_FX_preserved": true
+    },
+    {
+      "case": "compiled-edge-click-shroud-and-five-physical-A-data-operand-sites",
+      "status": "PASS",
+      "compiled_sites": {
+        "0x692b60": {
+          "complete_displaced_prologue_stack": 40,
+          "FX_and_DF_preserved": true
+        },
+        "0x692300": {
+          "complete_displaced_prologue_stack": 24,
+          "FX_and_DF_preserved": true
+        },
+        "0x6d7840": {
+          "complete_displaced_prologue_stack": 80,
+          "FX_and_DF_preserved": true
+        },
+        "0x478bd1": {
+          "operand_points_to_physical_A": true
+        },
+        "0x478bd7": {
+          "operand_points_to_physical_A": true
+        },
+        "0x478c17": {
+          "operand_points_to_physical_A": true
+        },
+        "0x478e4a": {
+          "operand_points_to_physical_A": true
+        },
+        "0x478e50": {
+          "operand_points_to_physical_A": true
+        },
+        "0x6a7089": {
+          "process_tooltip_without_duplicate_native_draw": true,
+          "GPR_FX_preserved": true
+        },
+        "0x7f7b60": {
+          "virtual_pointer_returns_mapped_point_RET4_FX_preserved": true
+        }
+      }
+    },
+    {
+      "case": "active-programmatic-692300-query-accepts-Capture-lease-and-finally-releases-depth",
+      "status": "PASS",
+      "WM_style_Capture_lease_admits_query": true,
+      "no_second_mouse_classification_for_already_mapped_query": true,
+      "native_body_modeled": true
+    },
+    {
+      "case": "capability-loss-during-native-Render-does-not-start-legacy-until-retired",
+      "status": "PASS",
+      "legacy_starts_only_after_native_true_render_retirement": true
+    },
+    {
+      "case": "native-viewport-explicitly-excludes-extra-scroll-refresh-in-all-ownership-phases",
+      "status": "PASS",
+      "SceneRefresh_extra_Render_rejected_during_demand_active_and_retirement": true
+    }
+  ],
+  "pass": true,
+  "game_process_tested": false,
+  "multiplayer_tested": false
+}

@@ -1,0 +1,56 @@
+{
+  "schema": "ra2.tech-ui-publish-windows.v1",
+  "scope": "Own-process x86 DR retirement plus source-bound native UI diagnostics.\n\nActual Windows Suspend/Get/Set/readback/Resume and production Service; only\nRemoveVectoredExceptionHandler failure is injected. No game process touched.\n",
+  "architecture": "x86",
+  "source_sha256": {
+    "assist\\source\\tech_ui_breakpoint_core.h": "f2e76adbce1ff897872871d5cd4ba96b5551d26e4aa3ea9b9c264bae4362b2df",
+    "assist\\source\\tech_ui_breakpoint_bridge.h": "e6674048953af50d912ee7193b6d5d5d9faa1d22298cfbba221c68fa8a96ae49",
+    "assist\\tests\\tech_ui_publish_windows.cpp": "a58585aa415b3f8a59c12433aacd85d3218b5310584a29020edaf1e9c3ff7de6",
+    "assist\\tests\\tech_ui_publish_windows.py": "0e8fd8799dcd26a274a41b30a32d958f29a3a36874a62352a74cba7f81516010",
+    "assist\\tests\\fixtures\\tech_ui_publish_baseline\\publish.inc": "5b4780a6b4fc0453513d3c31e6e448d394e5434993ae8f6f2e325b6b64cb18f3",
+    "assist\\tests\\fixtures\\tech_ui_publish_baseline\\manifest.json": "bb78053458fef97a77ce2379b446d53f00883b2600295446830f18517c2d6a0c"
+  },
+  "changed_during_run": [],
+  "baseline": {
+    "scope": "Historical exact-function extract before retired VEH diagnostics fix; runtime Service itself is always compiled from current production header.",
+    "original_bridge_sha256": "f356620319965e178cc4372324fdd8d4113bd0ae7aecdcbcd6e5b31cdf53454f",
+    "original_core_sha256": "611472aacf10559c5af9baf193dbe9c0ee2bdf2a31a50f8a61852261c2e54a2d",
+    "publish_inc_sha256": "5b4780a6b4fc0453513d3c31e6e448d394e5434993ae8f6f2e325b6b64cb18f3",
+    "source_functions": [
+      "techparameters::healthy",
+      "techparameters::ready",
+      "techparameters::publish"
+    ]
+  },
+  "results": {
+    "baseline": {
+      "exit_code": 0,
+      "exe_sha256": "44f6c761112353f5012646d540ad8acfb3bc7783865f4a600c5a179692ff7c26",
+      "extract_sha256": "5b4780a6b4fc0453513d3c31e6e448d394e5434993ae8f6f2e325b6b64cb18f3",
+      "pass": true,
+      "checks": 14,
+      "before_fix_expected": true,
+      "failed_remove_status": 0,
+      "remove_failures": 1,
+      "real_own_process_DR_used": true,
+      "game_process_accessed": false,
+      "assertions_enabled": true
+    },
+    "current": {
+      "exit_code": 0,
+      "exe_sha256": "0d894fd91ff696f8b731755bbd777a31bcc39d2d66196f67300bc8fb3b432894",
+      "extract_sha256": "c5fe37f3962eb79b0d09a4f341e11cd0a8bbd374f5be78a9f3fa905679acac59",
+      "pass": true,
+      "checks": 15,
+      "before_fix_expected": false,
+      "failed_remove_status": -3,
+      "remove_failures": 1,
+      "real_own_process_DR_used": true,
+      "game_process_accessed": false,
+      "assertions_enabled": true
+    }
+  },
+  "pass": true,
+  "game_process_accessed": false,
+  "assertions_enabled": true
+}

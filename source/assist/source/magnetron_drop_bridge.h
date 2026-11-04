@@ -1,4 +1,4 @@
-extern "C" int GuardedObjectAir(unsigned,int*);
+
 #include "magnetron_drop.h"
 static bool rawMagnetronDrop(uint32_t source,uint32_t victim,uint32_t house){
  if(!source||!victim||!sh->magnetronDrop||!own(source,house)||!rawMagnetron(source,featuretypes::MagnetronDrop)||get<uint32_t>(source+0x2AC)!=victim||
@@ -33,9 +33,9 @@ static bool rawMagnetronDrop(uint32_t source,uint32_t victim,uint32_t house){
             !get<bool>(q+0x134)&&!get<bool>(q+0x84)&&!get<bool>(q+0x8D)&&get<int>(q+0x94)!=3){
      struct {int x,y,z;} below{get<int>(q+0x9C),get<int>(q+0xA0),get<int>(q+0xA4)};
      // Even low hovering objects (below IsInAir's threshold) are excluded.
-     int air=0; // native height/air queries are read-only
+     int air=0; // raw airborne fields by default; optional native compatibility query
      if(below.x/256==position.x/256&&below.y/256==position.y/256&&
-        below.z==call<int>(0x578080,0x87F7E8,&below)&&GuardedObjectAir(q,&air)&&!air)g.groundVehicle=true;
+        below.z==call<int>(0x578080,0x87F7E8,&below)&&objectAirQuery(q,&air)&&!air)g.groundVehicle=true;
     }
    }
   }

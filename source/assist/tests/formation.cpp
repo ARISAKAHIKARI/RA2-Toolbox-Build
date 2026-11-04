@@ -3,6 +3,10 @@
 #include <iostream>
 using namespace assist::formation;
 int main(){Point p[Maximum];uint32_t keys[]={90,90,67,90,90,90};assert(cycle(0,90,keys)==1);assert(cycle(1,90,keys)==3);assert(cycle(3,90,keys)==4);assert(cycle(4,90,keys)==5);assert(cycle(5,90,keys)==0);assert(cycle(0,67,keys)==2);assert(cycle(2,88,keys)==2);
+ uint32_t gestureKeys[]={'Z',uint32_t('Z'|0x1000),uint32_t('Z'|0x1800),uint32_t('Z'|0x9000),uint32_t('Z'|0x2000),uint32_t('Z'|0x3000)};
+ assert(cycle(0,'Z'|0x1000,gestureKeys)==1);assert(cycle(1,'Z',gestureKeys)==2);assert(cycle(2,'Z'|0x1800,gestureKeys)==0);
+ assert(cycle(0,'Z'|0x8000,gestureKeys)==3);assert(cycle(0,'Z'|0x2000,gestureKeys)==0);assert(cycle(0,'Z'|0x3000,gestureKeys)==0);
+ assert(shapeKey('Z'|0x1800)=='Z'&&shapeKey('Z'|0x2000)==0&&shapeKey('Z'|0x3000)==0);
  for(int n=0;n<360;++n){double a=n*Pi/180,x=std::cos(a),y=std::sin(a),f=dragFacing(x,y,0);double sx=std::cos(f)-std::sin(f),sy=(std::cos(f)+std::sin(f))*.5;assert(std::abs(sx*y-sy*x)<1e-9&&sx*x+sy*y>0);}assert(dragFacing(0,0,.7)==.7);
  for(int n=1;n<=Maximum;++n)for(int shape=0;shape<Shapes;++shape)for(double t:{0.,.1,.5,1.}){layout(n,shape,t,false,p);double x=0,y=0;for(int i=0;i<n;++i){assert(std::isfinite(p[i].x)&&std::isfinite(p[i].y));x+=p[i].x;y+=p[i].y;for(int j=0;j<i;++j)assert(std::hypot(p[i].x-p[j].x,p[i].y-p[j].y)>.001);if(t==1&&shape!=5)assert(std::abs(p[i].y)<1e-9);}assert(std::abs(x)<1e-7&&std::abs(y)<1e-7);}
  layout(100,0,0,false,p);double x=0,y=0;for(auto q:p){(void)q;}for(int i=0;i<100;++i){x=std::max(x,std::abs(p[i].x));y=std::max(y,std::abs(p[i].y));}assert(x/y>1.2&&x/y<1.6);

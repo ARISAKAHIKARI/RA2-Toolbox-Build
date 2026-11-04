@@ -1,0 +1,119 @@
+{
+  "name": "Hotfix21 grouped Vera rendering integration",
+  "created_utc": "2026-10-30T18:26:38.678618+00:00",
+  "remote_baseline": "9d38179b0ba2140cd8bfa6f4b691ab482615209f",
+  "local_implementation_commit": "3da45226fab373de7782c629412ee489fd4734d4",
+  "upstream": "3d42426b2e9c1b4cf913a7dbbaaf8bf7d3b6bc7f",
+  "scope_map": "source/research/2026-10-30-vera-render-migration-map.md",
+  "build": {
+    "exit": 0,
+    "compiler": "Zig 0.13.0",
+    "script": "source/build-zig-x64.sh",
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86",
+    "version": "1.0.39.7",
+    "binary_validation_exit": 0,
+    "binary_summary": {
+      "RA2Toolbox.exe": {
+        "bytes": 7227904,
+        "sha256": "a52c75856c1e0299df1f928de01d16fb89421cbed374074a45b09c47834c07b8",
+        "machine": "PE32+ x64"
+      },
+      "GameRuntime.dll": {
+        "bytes": 4963328,
+        "sha256": "fd906376e61bdb50071f0c145d2b4b7f1a91ca2b6884cee26e1bcd02e19b25ca",
+        "machine": "PE32 x86"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 207872,
+        "sha256": "a99b6e401aafffae60714b647baa6031780313bc11b6b4c4e25ac2d5b48c55e9",
+        "machine": "PE32 x86"
+      }
+    },
+    "output": "PASS: 3 current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version 1.0.39.7\nPASS: no unbundled third-party or compiler-runtime DLL dependencies\nPASS: actual EXE RT_MANIFEST/1 enables x64 Common Controls 6 for subclass helper imports\nNOTE: static validation does not execute the Windows loader or the game\n",
+    "warnings": [
+      "existing camera_assets dangling-else",
+      "existing NativeCanvas shared_ptr::unique deprecation"
+    ]
+  },
+  "static_shader": {
+    "graphics_driver_loaded": false,
+    "compile_and_spirv_validation_exit": 0,
+    "variants": [
+      {
+        "variant": "SceneShader",
+        "source_sha256": "825a9ebe16e03df1f1148a9e2ef053d5e73270e4c397f024b395cb5d0efcb10d",
+        "spirv_sha256": "fb13524c8457d9f48031336e23e4fa4458586ca9c864a4d09721ad23eb85be08",
+        "bytes": 35136
+      },
+      {
+        "variant": "Scene64Shader",
+        "source_sha256": "825a9ebe16e03df1f1148a9e2ef053d5e73270e4c397f024b395cb5d0efcb10d",
+        "spirv_sha256": "91a4be078fd74309787e55f7392cd63cb57e3f406c87b6a9b1b3202054ddc00b",
+        "bytes": 59400
+      },
+      {
+        "variant": "ScenePagesShader",
+        "source_sha256": "825a9ebe16e03df1f1148a9e2ef053d5e73270e4c397f024b395cb5d0efcb10d",
+        "spirv_sha256": "f953f5dfb426281f84d5fbe9b348cfdc314d6828426beeaf5ba52526a0b86c96",
+        "bytes": 30076
+      },
+      {
+        "variant": "ScenePagesBankedShader",
+        "source_sha256": "825a9ebe16e03df1f1148a9e2ef053d5e73270e4c397f024b395cb5d0efcb10d",
+        "spirv_sha256": "e9730702bbe94a0f6c8ef3a753d8c1731872ad695033893f13293a786c608f5d",
+        "bytes": 31488
+      }
+    ]
+  },
+  "source_sha256": {
+    "THIRD_PARTY_NOTICES.md": "2e39e3d8fef3852e3bfd5cf59e914097daeb444232e6a1a2cae0c6662e406aae",
+    "source/external_reader/shaders/vulkan_scene.comp": "825a9ebe16e03df1f1148a9e2ef053d5e73270e4c397f024b395cb5d0efcb10d",
+    "source/external_reader/source/camera_assets.h": "10cd2ae30e8b19657effffcd979536f740d95b73d5fcd0585c597c7654177754",
+    "source/external_reader/source/camera_raster.h": "a69ba3dfe5c35906e8d8b66e17431695b355983c9c44af891e721661bd7f7f43",
+    "source/external_reader/source/gpu_area.h": "63dadc3213f4c977612565695bf8cff7724ed54776cac01da42fefc707d614ab",
+    "source/external_reader/source/gpu_draw_encoding.h": "f2c7c04fca6bc0762a60c4dbb38f216b141223929eb3ec32e8090be6e09c4ec6",
+    "source/external_reader/source/gpu_effect_plan.h": "ada1b35ef3fcb49cb82ca346e05e9b24e91385c4209fdc91e9e4a839db20cdee",
+    "source/external_reader/source/gpu_scene_record.h": "766d16403bebb9b1070802ea65ddb7a4e60d499cd68a073ee75a7b93730aaad9",
+    "source/external_reader/source/gpu_voxel.h": "235f2c0f145cd47ba0d3502feff2c95a1fcce34a6762eb41a7754eeb2108cd9c",
+    "source/external_reader/source/local_ui_renderer.h": "f350767f8954ac52b980011c4a3d0118f2b194f72a3ad0cd9017dd87b7314897",
+    "source/external_reader/source/local_ui_task.h": "9e0415a258bc3c92f48ab2b7f27e466bde88dd7258ab833237f04b4c289085e7",
+    "source/external_reader/source/material_blend.h": "2040a944e17054006f0c91cfab14aef87d756a43f66ebc2360845d28fb1f267a",
+    "source/external_reader/source/native_canvas.h": "e5b299d2eac750b09e9b9944561a45a260bec447465954321e0415a7d0d5522a",
+    "source/external_reader/source/native_packed_color.h": "6dc960dec1fb6ae6364d37b37bda0404bdcf6e4604f255315448f7da5a31ef26",
+    "source/external_reader/source/native_pip_numeric.h": "2945bb65ef78d0040084c7ae8acf497ec52fc0472ae26ce947be5b7694cdc56a",
+    "source/external_reader/source/native_unit_ui_stencil.h": "6512276a172b3d810d72b1b317393c4dd8d3ddbb3c446f2f6ce4ebb08c1205fc",
+    "source/external_reader/source/object_canvas.h": "e9e6b114bf909296a95adbc03a3e5f86f19b7b81aa55c693c1115a6147111e5a",
+    "source/external_reader/source/radar_scene.h": "82cddaa50d0a52b3b956c2757474b98b0230c90413d4cab3d19882c1a7a9d74f",
+    "source/external_reader/source/scene_frame_reuse.h": "ce735be38d429b98e7f91283fd9e94ab7a7943351000950051ac4e09563db55d",
+    "source/external_reader/source/voxel_preview.h": "b69b4320bbb11bfadab3aebaf2b107e646257806f296597982b20bcc7ecd6e9a",
+    "source/external_reader/source/vulkan_area.h": "768671f137273c2d601826b23b8badc89b69d28e051a9c1f7a545efd74773bdb",
+    "source/external_reader/source/vulkan_area_objects.h": "d094ff9434e447ccce7896762fd7b74912b9d306d6d83ac1ccec2cf56d857bc2",
+    "source/external_reader/source/vulkan_compute.h": "49b615768c5ab766845c38ffd14594c8962b6e6a0e405ed16f9ca59dc4c090d0",
+    "source/external_reader/source/vulkan_scene.h": "e087fcc69f3810297abc96a4109408895a1c2df42ed241ac95f845a5006e952b",
+    "source/external_reader/source/vulkan_scene_spirv.h": "e30e932685ca55618eff07181e305169cb1507bfd2187ae8bacff973c0abc6e4",
+    "source/external_reader/source/vulkan_scene_types.h": "cce4e21a70663d5e5cae4b7c2b0a77a245f1f99253bbe3861105acc0723b7579",
+    "source/external_reader/source/world_scene_pipeline.h": "d41ce493a4bd0a4c8bae52ac9484169c9a12f61121363583850d15998923e1ac",
+    "source/research/2026-10-30-vera-render-integration-hotfix21.md": "fdeec998eef75993e251507acc81d0db555334eec8105eaa9338842e9530b1e6",
+    "source/research/2026-10-30-vera-render-migration-map.md": "5cda230bf8a8275e34cb0beb6d9e080678d24fc89b80d9dd2daae9e1602f2954",
+    "source/research/INDEX.md": "f35876952aa5abc2dab6d05337780091158b9b19e6ca2d017cae7feba9ce3a14",
+    "source/tools/build_vulkan_scene.py": "ca8f87b95869597475c378936b322b8a95b24d44a41321066087e3305ca87315"
+  },
+  "not_executed": [
+    "CPU fixture suites (user requested compilation only)",
+    "Vulkan device/shader execution",
+    "D3D11/DirectComposition execution",
+    "Windows loader",
+    "native instruction fixtures",
+    "live game",
+    "FPS and end-to-end latency"
+  ],
+  "remaining": [
+    "Native sidebar and construction/placement state machine retained separately",
+    "Full special-state spawn/mind-control/garrison/absorber UI and tether redraw not migrated",
+    "Full native A-buffer and arbitrary 16-bit packed formats not certified",
+    "PC53 resource count is bounded to admitted positive whole storage inputs; invalid/custom fractional storage is rejected",
+    "GPU/native visual equivalence and dragging artifacts require actual user-side game observation"
+  ]
+}

@@ -1,6 +1,8 @@
 #pragma once
 #include "game_view.h"
 #include "building_components.h"
+#include "voxel_posture.h"
+#include "voxel_shadow.h"
 namespace external { namespace visual {
 constexpr double Pi=3.14159265358979323846;
 // FacingClass::Current (4C93D0): interpolate the signed shortest turn using
@@ -18,7 +20,24 @@ inline unsigned bucket(uint16_t raw){return ((unsigned(raw)+1024)>>11)&31;}
 // isometric projection with this positive world-space angle, not its inverse.
 inline double radians(unsigned direction){return (int(direction)-8)*(2*Pi/32);}
 inline unsigned previewBody(int heading){return unsigned(8+heading)&31;}
-struct Pose {uint8_t body=0,turret=0;int frame=0,variant=-1,buildingFlags=0,doorFrame=-1;};
+struct Pose {
+ uint8_t body=0,turret=0;int frame=0,variant=-1,buildingFlags=0,doorFrame=-1;
+ // Presentation metadata, never written to the engine. Fine angles are 1/256
+ // turns; raw facing retains the already verified FacingClass::Current value.
+ int bodyFine=-1,turretFine=-1,frameFrom=-1,frameWeight=255;int hvaBody=0,hvaTurret=0;
+ uint16_t rawBody=0,rawTurret=0,rawBarrel=0x4000;bool rawFacing=false,voxel=false;
+ std::array<float,2> recoil{};bool recoilActive=false,gunPoseValid=true,buildingGunVisible=true;int gunFrame=0;
+ voxelposture::State posture;
+ voxelshadow::State shadow;
+ int turretFrame=-1;
+ int sequence=-1;
+};
+inline uint64_t postureSignature(const Pose&p){auto body=voxelposture::signature(p.posture);auto shadow=p.shadow.known?voxelposture::signature(p.shadow.posture):0;uint64_t hash=shadow?(body*1099511628211ull)^shadow:body;
+ auto fold=[&](uint32_t v){hash=(hash^v)*1099511628211ull;};fold(p.rawBarrel);fold(p.recoilActive);fold(p.gunPoseValid);fold(p.buildingGunVisible);fold(uint32_t(p.gunFrame));for(float f:p.recoil){uint32_t bits;std::memcpy(&bits,&f,4);fold(bits);}return hash;}
+inline double fineRadians(int fine,unsigned fallback){return fine>=0?(double(fine)-64)*(2*Pi/256):radians(fallback);}
+// Unit::DrawAsSHP 73CCAE..73CD08: the turret is a separate 32-facing bank
+// in the same SHP, after all eight WalkFrames banks, independent of hull yaw.
+inline int shpTurretFrame(uint16_t rawTurret,int walkFrames){return walkFrames>=0&&walkFrames<=127?walkFrames*8+int((bucket(rawTurret)+4)&31):-1;}
 template<class Read>int infantryFrame(GameView<Read>&g,uint32_t type,int sequence,int stage,unsigned body){
  uint32_t list=g.template get<uint32_t>(type+0xE3C);if(sequence<0||sequence>=42||list<0x10000)return -1;
  uint32_t s=list+uint32_t(sequence)*36;int start=g.template get<int>(s,-1),count=g.template get<int>(s+4),stride=g.template get<int>(s+8);
@@ -33,16 +52,25 @@ template<class Read>int previewFrame(GameView<Read>&g,uint32_t type,int kind,int
  return 0;
 }
 template<class Read>Pose pose(GameView<Read>&g,uint32_t p,uint32_t type,int kind,int frame){
- Pose out;out.body=bucket(facing(g,p+0x388,frame));out.turret=g.template get<uint8_t>(type+0xCA1)?bucket(facing(g,p+0x3A0,frame)):out.body;
+ Pose out;out.voxel=kind!=1&&g.template get<uint32_t>(type+0xB0)!=0;out.rawBody=facing(g,p+0x388,frame);out.rawTurret=g.template get<uint8_t>(type+0xCA1)?facing(g,p+0x3A0,frame):out.rawBody;out.rawFacing=true;
+ out.body=bucket(out.rawBody);out.turret=bucket(out.rawTurret);out.rawBarrel=facing(g,p+0x370,frame);out.gunFrame=g.template get<int>(p+0x148);
+ if(kind==3&&g.template get<uint8_t>(type+0x16C5)){int mission=g.template get<int>(p+0xAC),queued=g.template get<int>(p+0xB4),stage=g.template get<int>(p+0xF8),start=g.template get<int>(type+0xF04),count=g.template get<int>(type+0xF08);out.buildingGunVisible=g.template get<uint8_t>(type+0x16CA)||!(((mission==18||queued==18)&&int64_t(stage)<int64_t(start)+count-1)||(mission==19&&stage>0));}
+ if(g.template get<uint8_t>(type+0xCA2))for(unsigned n=0;n<2;++n){struct Recoil{int control[4];float speed,travel;uint32_t state;int left;}a{},b{};const uint32_t at=p+0x3D8+n*32;
+  if(!g.bytes(at,&a,sizeof a)||!g.bytes(at,&b,sizeof b)||std::memcmp(&a,&b,sizeof a)||a.state>3||!std::isfinite(a.travel)||std::abs(a.travel)>4096){out.gunPoseValid=false;continue;}out.recoil[n]=a.state?a.travel:0;out.recoilActive|=a.state!=0;
+ }
+ if(out.voxel){int count=g.template get<int>(g.template get<uint32_t>(type+0xB4)+8,1),turretCount=g.template get<int>(g.template get<uint32_t>(type+0xBC)+8,1);int bodyCounter=kind==3?0:g.template get<int>(p+0x538),turretCounter=g.template get<int>(p+0x148);out.hvaBody=count>1&&count<=4096?bodyCounter%count:0;out.hvaTurret=out.hvaBody?out.hvaBody:turretCount>1&&turretCount<=4096?turretCounter%turretCount:0;out.posture=voxelposture::capture(g,p,type,kind,frame);out.shadow=voxelshadow::capture(g,p,kind);}
  if(g.template get<int>(type+0x808)>0&&!g.template get<uint8_t>(type+0xCD5)){int variant=g.template get<int>(p+0x124,-1);if(variant>=0&&variant<18)out.variant=variant;}
  if(kind==1){
   int sequence=g.template get<int>(p+0x6C4);if(sequence==-1)sequence=0;
+  out.sequence=sequence;
   // Native Infantry::ShapeNumber 518D80 uses this direction lookup, not the
   // SequenceFacing metadata (which is consumed when loading the sequence).
   out.frame=infantryFrame(g,type,sequence,g.template get<int>(p+0xF8),out.body);
  }else if(kind==2&&!g.template get<uint32_t>(type+0xB0)){
+  if(g.template get<uint8_t>(type+0xCA1))out.turretFrame=shpTurretFrame(out.rawTurret,g.template get<int8_t>(type+0xE5C));
   int dir=g.template get<int>(type+0xE3C)==8?((unsigned(facing(g,p+0x388,frame))+4096)/8192+1)&7:0;
   int firing=g.template get<int>(p+0x6C0,-1),stand=g.template get<int>(type+0xE1C),walk=g.template get<int8_t>(type+0xE5C);
+  out.sequence=firing>=0?1:stand>0?2:3;
   if(firing>=0)out.frame=g.template get<int>(type+0xE30)+dir*g.template get<int8_t>(type+0xE5D)+firing/2;
   else if(stand>0)out.frame=g.template get<int>(type+0xE28)+dir*stand;
   else out.frame=g.template get<int>(type+0xE2C)+dir*std::max(0,walk)+std::max(0,g.template get<int>(p+0x538))%std::max(1,walk);

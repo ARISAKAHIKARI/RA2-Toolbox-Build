@@ -1,0 +1,174 @@
+name: Validate rendering upgrade experiment
+on:
+  push:
+    branches: [experiment/render-upgrade-v139pre6-20261028]
+    paths: ['source/**', '.github/workflows/validate-render-upgrade.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: render-upgrade-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  integrate:
+    if: github.ref == 'refs/heads/experiment/render-upgrade-v139pre6-20261028'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      source_sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Materialize reviewed integration once
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f source/tools/render_upgrade_integrated.tag ]; then
+            python source/tools/materialize_render_upgrade.py
+            printf 'Feature base 47f0e6382da9964b7a337c9c1365de4d846b9092; canonical integration materialized.\n' > source/tools/render_upgrade_integrated.tag
+          fi
+          python source/tools/materialize_native_feedback.py
+          python source/tools/validate_render_upgrade.py
+          python source/tools/validate_native_feedback.py
+          python source/tools/validate_pixel_upgrade.py
+          python source/tools/validate_physical_presentation.py
+          python source/tools/validate_material_refresh.py
+          python source/tools/validate_color_resolution.py
+          python source/tools/validate_aircraft_allocation.py
+      - name: Compile and run portable rendering regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -c source/third_party/xbrz/xbrz.cpp -o /tmp/render-xbrz.o
+          for name in render_upgrade render_upgrade_scene radar_scene radar_shroud_mask native_canvas native_feedback native_feedback_scene pixel_upgrade xbrz_scaling material_motion material_scene viewport_detail live_palette_cache live_scene_lighting live_voxel_scene watch_live_palette color_precision color_scene palette_recovery resolution_sampling color_reconstruction terrain_viewport cooperative robust_cooperative aircraft_damage aircraft_damage_reader physical_presentation; do
+            g++ -std=c++17 -O2 source/assist/tests/$name.cpp /tmp/render-xbrz.o -o /tmp/$name-test
+            /tmp/$name-test
+          done
+      - name: Verify settings persistence
+        shell: bash
+        run: |
+          python source/assist/tests/render_material_settings.py
+          python source/assist/tests/game_assets_host_test.py
+          python source/assist/tests/auto_settings_ui_test.py
+      - name: Verify same-frame indexed art AB and produce copyright-free demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          python source/assist/tests/shp_palette_ab.py
+          python source/tools/shp_palette_ab.py --demo --out source/ab-demo
+      - name: Upload A/B demonstration images and matching-frame report
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-Palette-2x-AB-synthetic-reference
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            source/ab-demo/*.png
+            source/ab-demo/AB_manifest.json
+      - name: Commit ordinary integration sources on this experimental branch
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add source/assist/source/extra_settings_io.h source/assist/source/main.cpp source/assist/source/tactical_controls.h source/external_reader/source/native_canvas.h source/external_reader/source/radar_scene.h source/external_reader/source/radar_shroud_mask.h source/shared/source/overlay_stack.h source/shared/source/overlay_compositor.h source/unit_monitor/source/main.cpp source/tools/render_upgrade_integrated.tag
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Integrate native selection, cursor and effect feedback into atomic presentation groups'
+            git push origin HEAD:refs/heads/experiment/render-upgrade-v139pre6-20261028
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+  windows-x86:
+    needs: integrate
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.integrate.outputs.source_sha }}
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+      - name: Verify integration and native-crop regressions
+        shell: pwsh
+        run: |
+          python source/tools/validate_render_upgrade.py
+          if($LASTEXITCODE -ne 0){throw 'Render integration contract failed'}
+          python source/tools/validate_native_feedback.py
+          if($LASTEXITCODE -ne 0){throw 'Native feedback contract failed'}
+          python source/tools/validate_pixel_upgrade.py
+          if($LASTEXITCODE -ne 0){throw 'RGB888 and xBRZ integration contract failed'}
+          python source/tools/validate_physical_presentation.py
+          if($LASTEXITCODE -ne 0){throw 'Physical output integration contract failed'}
+          python source/tools/validate_material_refresh.py
+          if($LASTEXITCODE -ne 0){throw 'Live lighting/palette integration contract failed'}
+          python source/tools/validate_color_resolution.py
+          if($LASTEXITCODE -ne 0){throw 'Color precision/adaptive resolution integration contract failed'}
+          python source/tools/validate_aircraft_allocation.py
+          if($LASTEXITCODE -ne 0){throw 'Aircraft allocation integration contract failed'}
+          python source/assist/tests/shp_palette_ab.py
+          if($LASTEXITCODE -ne 0){throw 'Single SHP frame AB PNG regression failed'}
+          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -c source/third_party/xbrz/xbrz.cpp -o xbrz-test.o
+          if($LASTEXITCODE -ne 0){throw 'xBRZ compile failed'}
+          foreach($name in 'render_upgrade','render_upgrade_scene','radar_scene','radar_shroud_mask','native_canvas','native_feedback','native_feedback_scene','pixel_upgrade','xbrz_scaling','material_motion','material_scene','viewport_detail','live_palette_cache','live_scene_lighting','live_voxel_scene','watch_live_palette','color_precision','color_scene','palette_recovery','resolution_sampling','color_reconstruction','terrain_viewport','cooperative','robust_cooperative','aircraft_damage','aircraft_damage_reader','physical_presentation'){
+            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" xbrz-test.o -o "$name-test.exe"
+            if($LASTEXITCODE -ne 0){throw "Test compile failed: $name"}
+            & ".\$name-test.exe" | Tee-Object -FilePath source/render-tests.log -Append
+            if($LASTEXITCODE -ne 0){throw "Test failed: $name"}
+          }
+      - name: Test actual passive compositor and atomic feedback group
+        shell: pwsh
+        run: |
+          foreach($name in 'overlay_compositor_windows','native_feedback_windows','physical_presentation_windows'){
+            & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" xbrz-test.o -o "$name-test.exe" -lgdi32 -luser32
+            if($LASTEXITCODE -ne 0){throw "Compositor test compilation failed: $name"}
+            & ".\$name-test.exe" | Tee-Object -FilePath source/render-tests.log -Append
+            if($LASTEXITCODE -ne 0){throw "Compositor test failed: $name"}
+          }
+      - name: Build feature-line Win32 binaries
+        working-directory: source
+        shell: pwsh
+        run: |
+          $env:RA2_NO_PAUSE='1'
+          cmd /d /c 'call BUILD_ZIG.cmd > build-render-upgrade.log 2>&1'
+          $status=$LASTEXITCODE
+          Get-Content build-render-upgrade.log -Tail 100
+          if($status -ne 0){throw "Build failed: $status"}
+          python tools/verify_windows_outputs.py
+          if($LASTEXITCODE -ne 0){throw 'PE/version/ABI/dependency verification failed'}
+          $files=@()
+          foreach($p in 'RA2Toolbox.exe','GameRuntime.dll'){
+            if(!(Test-Path $p)){throw "Missing $p"}
+            $files += [ordered]@{name=$p;bytes=(Get-Item $p).Length;sha256=(Get-FileHash $p -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          $commit=(git rev-parse HEAD).Trim()
+          [ordered]@{commit=$commit;base='47f0e6382da9964b7a337c9c1365de4d846b9092';branch='experiment/render-upgrade-v139pre6-20261028';run=$env:GITHUB_RUN_ID;configuration='render-native-feedback-v139pre6';merged_layers=@('native-viewport-scene','world-information','primary-statistics','selection-feedback','native-software-cursor');electric_bolts='approximate-visual-reconstruction';indexed_palette_24bit='opt-in-full-range';scale_2x='nearest-or-xbrz-1.9';physical_output='opt-in-full-monitor-verified';fractional_1_5x='xbrz-then-target-resolve';exclusive_fullscreen='suspected-mode-change-disable-not-verified';material_refresh='observed-state-interpolation-target-5-to-500Hz';voxel_detail='observed-viewport-to-client-1-to-4x-geometry-256-directions';color_precision='continuous-rgb-light-before-xbrz';terrain_composition='continuous-native-rgb-xbrz-nearest-source-depth';aircraft_allocation='legacy-or-5-cell-vehicles-120-percent-or-single-target-120-percent-deselect';assist_protocol=80;scene_composition='target-pixel-depth';game_clock_changed=$false;live_palette_refresh='two-coherent-content-samples';opaque_frame_reuse=$false;xbrz_integrated=$true;all_native_effects_complete=$false;live_game_verified=$false;multiplayer_verified=$false;files=$files} | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 render-build.json
+      - name: Upload successful experimental binaries
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-Toolbox-render-upgrade-experiment
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            source/RA2Toolbox.exe
+            source/GameRuntime.dll
+      - name: Upload diagnostics separately
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2-render-upgrade-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            source/build-render-upgrade.log
+            source/render-tests.log
+            source/render-build.json
+            source/research/2026-10-28-render-upgrade.md
+            source/research/2026-10-28-native-render-feedback.md

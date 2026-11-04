@@ -3,6 +3,8 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <unordered_map>
+#include "native_surface.h"
 namespace external { namespace lighting {
 // Raw palettes contain expanded RGB, not a rendered lighting ramp. Read the
 // current ambient and LightConvert tint separately; never call the renderer.
@@ -10,10 +12,30 @@ namespace external { namespace lighting {
 struct State {
  int ambient=100;std::array<int,3> tint{{1000,1000,1000}};
  int intensity=-1; // Native cell intensity already includes Ambient/Ground/Level.
- bool operator==(const State&o)const{return ambient==o.ambient&&tint==o.tint&&intensity==o.intensity;}
+ unsigned paletteRows=53;bool scalar=false,rgb555=false;std::shared_ptr<const std::vector<uint32_t>>table;
+ bool operator==(const State&o)const{return ambient==o.ambient&&tint==o.tint&&intensity==o.intensity&&paletteRows==o.paletteRows&&scalar==o.scalar&&rgb555==o.rgb555&&table==o.table;}
  bool operator!=(const State&o)const{return !(*this==o);}
  std::array<float,3> gains()const{int value=intensity<0?ambient*10:intensity;return {{value*tint[0]/1000000.f,value*tint[1]/1000000.f,value*tint[2]/1000000.f}};}
 };
+template<class Read>void converterMetadata(Read read,uint32_t convert,State&out){
+ int rows=0;uint32_t vt=0;std::array<int,6>format{},after{};out.table.reset();
+ if(read(0x8A0DD0,format.data(),sizeof format)&&read(0x8A0DD0,after.data(),sizeof after)&&format==after)out.rgb555=format==std::array<int,6>{{10,3,0,3,5,3}};
+ if(convert<0x10000||convert>0xfffffe90u||!read(convert+0x16C,&rows,4)||rows<1||rows>256||!read(convert,&vt,4)||(vt!=0x7E5358&&vt!=0x7ED0A4))return;
+ out.paletteRows=unsigned(rows);out.scalar=vt==0x7E5358;
+ // FullColorData contains the evaluated native palette rows. Capture one
+ // immutable table per converter and committed game frame, retaining pointer
+ // identity when its content is unchanged. No neutral-row reconstruction.
+ struct Entry{int frame=-1,rows=0;uint32_t data=0;std::shared_ptr<const std::vector<uint32_t>>table;};static thread_local std::unordered_map<uint32_t,Entry>cache;static thread_local uint32_t scenario=0;
+ uint32_t map=0,data=0;int frame=-1,bpp=0;read(0xA8B230,&map,4);read(0xA8ED84,&frame,4);if(scenario!=map||cache.size()>1024){cache.clear();scenario=map;}
+ if(!read(convert+4,&bpp,4)||bpp!=2||!read(convert+0x170,&data,4)||data<0x10000||uint64_t(data)+uint64_t(rows)*512>0x100000000ull)return;
+ auto&entry=cache[convert];if(frame>=0&&entry.frame==frame&&entry.rows==rows&&entry.data==data&&entry.table){out.table=entry.table;return;}
+ std::vector<uint16_t>words(size_t(rows)*256);int rowsAfter=0;uint32_t dataAfter=0;if(!read(data,words.data(),words.size()*2)||!read(convert+0x170,&dataAfter,4)||dataAfter!=data||!read(convert+0x16C,&rowsAfter,4)||rowsAfter!=rows)return;
+ bool same=entry.table&&entry.table->size()==words.size();if(same)for(size_t n=0;n<words.size();++n)if((*entry.table)[n]!=words[n]){same=false;break;}
+ if(!same)entry.table=std::make_shared<const std::vector<uint32_t>>(words.begin(),words.end());entry.frame=frame;entry.rows=rows;entry.data=data;out.table=entry.table;
+}
+
+inline nativesurface::Palette palette(const State&s,bool object){nativesurface::Palette p;p.rows=s.paletteRows;p.brightness=s.intensity<0?s.ambient*10:s.intensity;
+ for(int n=0;n<3;++n)p.scale[n]=s.scalar?65536:nativesurface::scale16(s.tint[n]);p.special=object;p.scalar=s.scalar;p.rgb555=s.rgb555;p.table=s.table;return p;}
 template<class Read>bool converterTint(Read read,uint32_t convert,std::array<int,3>&out){
  if(convert<0x10000||convert>0xfffffe00)return false;
  uint8_t tinted=0;if(!read(convert+0x1B0,&tinted,1)||tinted>1)return false;
@@ -22,6 +44,31 @@ template<class Read>bool converterTint(Read read,uint32_t convert,std::array<int
  uint8_t again=2;if(!read(at,after.data(),12)||after!=current||!read(convert+0x1B0,&again,1)||again!=tinted)return false;
  out=current;return true;
 }
+// One presentation/read epoch only. Thousands of cells usually share the
+// same converter; validate its tint once rather than five reads per cell.
+// Cache failures as failures, so callers retain their own fallback tint.
+struct TintCache {
+ struct Entry {std::array<int,3> tint{};bool valid=false,metadataReady=false;
+  unsigned inputRows=0,rows=0;bool inputScalar=false,input555=false,scalar=false,rgb555=false;
+  std::shared_ptr<const std::vector<uint32_t>>table;
+ };
+ std::unordered_map<uint32_t,Entry> entries;
+ template<class Read>bool sample(Read read,uint32_t convert,std::array<int,3>&out){
+  auto found=entries.find(convert);
+  if(found==entries.end()){Entry e;e.valid=converterTint(read,convert,e.tint);found=entries.emplace(convert,e).first;}
+  if(!found->second.valid)return false;out=found->second.tint;return true;
+ }
+ template<class Read>void shade(Read read,uint32_t convert,State&out){
+  sample(read,convert,out.tint);auto&e=entries.find(convert)->second;
+  // Metadata is shared by the same converter during this presentation too.
+  // Its failure paths preserve some incoming fields, so include those inputs
+  // rather than caching a complete State (cell intensity remains individual).
+  if(!e.metadataReady||e.inputRows!=out.paletteRows||e.inputScalar!=out.scalar||e.input555!=out.rgb555){
+   e.inputRows=out.paletteRows;e.inputScalar=out.scalar;e.input555=out.rgb555;
+   converterMetadata(read,convert,out);e.rows=out.paletteRows;e.scalar=out.scalar;e.rgb555=out.rgb555;e.table=out.table;e.metadataReady=true;
+  }else{out.paletteRows=e.rows;out.scalar=e.scalar;out.rgb555=e.rgb555;out.table=e.table;}
+ }
+};
 // 705D70: ordinary SHP and VXL use their owner's ColorScheme, including a
 // type-specific CustomPalette vector. A cell's LightConvert is terrain art;
 // its RGB tint must not leak onto these objects.
@@ -64,12 +111,12 @@ enum class Layer {Object,Terrain,Bridge};
 // Read the engine's evaluated cell, not a second approximation of [Lighting].
 // 484680 combines height, Ground and current ambient (including special modes),
 // then applies the slope/light-source intensity for terrain and bridge layers.
-template<class Read>State cell(Read read,uint32_t p,const State&fallback,Layer layer=Layer::Object,bool localTint=true){
+template<class Read>State cell(Read read,uint32_t p,const State&fallback,Layer layer=Layer::Object,bool localTint=true,TintCache*tints=nullptr){
  if(p<0x10000||p>0xfffffe00)return fallback;
  uint32_t scale=0,convert=0;int16_t values[3]{},after[3]{};
  if(!read(p+0x104,&scale,4)||scale>262144||!read(p+0x34,&convert,4)||(!scale&&convert<0x10000)||
     !read(p+0x10A,values,6)||std::any_of(values,values+3,[](int x){return x<0||x>2000;}))return fallback;
- State out=fallback;out.intensity=values[int(layer)];if(localTint)converterTint(read,convert,out.tint);
+ State out=fallback;out.intensity=values[int(layer)];if(localTint){if(tints)tints->shade(read,convert,out);else{converterTint(read,convert,out.tint);converterMetadata(read,convert,out);}}
  if(!read(p+0x10A,after,6)||memcmp(values,after,6))return fallback;
  return out;
 }
@@ -107,7 +154,7 @@ template<class Read>State object(Read read,uint32_t type,uint32_t owner,int kind
  if(kind==3&&!voxel&&type>=0x10000&&type<=0xffffe8fcu&&read(type+0x1702,&terrainPalette,1)&&terrainPalette)
   return at(read,x,y,z,fallback,true); // 705EC1: also replaces ExtraLight with cell terrain intensity.
  State out=at(read,x,y,z,fallback,false,false);
- converterTint(read,objectConverter(read,type,owner),out.tint);
+ uint32_t converter=objectConverter(read,type,owner);converterTint(read,converter,out.tint);converterMetadata(read,converter,out);
  if(kind>=0&&kind<=2){
   // Unit::Draw 73D0C3 adds ExtraUnitLight before selecting VXL or SHP.
   // Infantry::Draw 519457 and Aircraft::Draw 414925 use separate fields.
@@ -142,7 +189,7 @@ template<class Read>State animation(Read read,uint32_t object,uint32_t type,int 
  (void)z;uint32_t p=cellAt(read,x,y);auto source=animationSource(read,object,type,p);
  State out=cell(read,p,fallback,source.layer,false);
  if(source.ownIntensity){int intensity=-1;if(read(object+0xFC,&intensity,4)&&intensity>=0&&intensity<=2000)out.intensity=intensity;}
- if(source.tintable)converterTint(read,source.converter,out.tint);else out.tint={{1000,1000,1000}};
+ if(source.tintable)converterTint(read,source.converter,out.tint);else out.tint={{1000,1000,1000}};converterMetadata(read,source.converter,out);
  uint8_t normal=0;if(type>=0x10000&&type<=0xfffffca2u&&read(type+0x35D,&normal,1)&&normal)out.intensity=1000;
  // A one-shade (UI/AltPalette) converter ignores the per-pixel brightness.
  int shades=0;if(source.converter>=0x10000&&source.converter<=0xfffffe90u&&read(source.converter+0x16C,&shades,4)&&shades==1)out.intensity=1000;

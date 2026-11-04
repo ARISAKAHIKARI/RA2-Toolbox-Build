@@ -18,6 +18,7 @@ namespace external {using ReadSession=Reader;}
 static auto storage=std::make_unique<Shared>();static Shared*shared=storage.get();
 static bool enabled=true,focused=true,fresh=true;static uint32_t pid=77,clockNow=1000,featureFlags=AdvancedInput|AircraftSpread|CustomCS;
 static uint8_t keys[256]{};static Snapshot incoming;static AdditionalSettings extra;
+static int hook=0;namespace gameinput {static void keySnapshot(int,uint8_t*out){std::memcpy(out,keys,256);}}
 static featuretypes::Config featureTypes;
 static uint32_t advancedKey='G'|(4<<8),magnetronKey='M'|(4<<8),csHoldKey='G'|(2<<8);
 static uint32_t settingsRevision=1;
@@ -43,6 +44,7 @@ commandcursor::Mode mode(){clockNow+=33;serviceCommandCursorHint();return comman
 int main(){
  using namespace commandcursor;
  fixture();keys['G']=keys[18]=1;assert(mode()==Advanced);
+ advancedKey|=0x8000;assert(mode()==commandcursor::None);keys['G']=3;assert(mode()==Advanced);keys[18]=0;assert(mode()==commandcursor::None);keys[18]=1;advancedKey&=~0x8000;keys['G']=1;
  keys['G']=0;assert(mode()==commandcursor::None);keys['G']=1;assert(mode()==Advanced);
  fresh=false;assert(mode()==commandcursor::None);fresh=true;focused=false;assert(mode()==commandcursor::None);focused=true;
  incoming.chat=1;assert(mode()==commandcursor::None);incoming.chat=0;

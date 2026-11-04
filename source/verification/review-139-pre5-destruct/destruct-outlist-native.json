@@ -1,0 +1,169 @@
+{
+  "scope": "Execute original Destruct-emission basic blocks, constructor and ring append.\nControlled House, stack and native clock callback; no UI selection/dialog click,\nnetwork transfer, receiver execution or House destruction is simulated.\n",
+  "game_sha256": "2fcb478cb2e0de00b1af1a6c82e9b55e56e0b555f20f3c0a018e8aaddc58b0c8",
+  "supported_source_exe_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+  "results": [
+    {
+      "start": "0x48ca34",
+      "end": "0x48caa1",
+      "house": 0,
+      "count_before": 0,
+      "tail_before": 0,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48ca34",
+      "end": "0x48caa1",
+      "house": 0,
+      "count_before": 127,
+      "tail_before": 127,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48ca34",
+      "end": "0x48caa1",
+      "house": 0,
+      "count_before": 128,
+      "tail_before": 0,
+      "appended": false,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48ca34",
+      "end": "0x48caa1",
+      "house": 1,
+      "count_before": 0,
+      "tail_before": 0,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48ca34",
+      "end": "0x48caa1",
+      "house": 1,
+      "count_before": 127,
+      "tail_before": 127,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48ca34",
+      "end": "0x48caa1",
+      "house": 1,
+      "count_before": 128,
+      "tail_before": 0,
+      "appended": false,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cab2",
+      "end": "0x48cb22",
+      "house": 0,
+      "count_before": 0,
+      "tail_before": 0,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cab2",
+      "end": "0x48cb22",
+      "house": 0,
+      "count_before": 127,
+      "tail_before": 127,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cab2",
+      "end": "0x48cb22",
+      "house": 0,
+      "count_before": 128,
+      "tail_before": 0,
+      "appended": false,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cab2",
+      "end": "0x48cb22",
+      "house": 1,
+      "count_before": 0,
+      "tail_before": 0,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cab2",
+      "end": "0x48cb22",
+      "house": 1,
+      "count_before": 127,
+      "tail_before": 127,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cab2",
+      "end": "0x48cb22",
+      "house": 1,
+      "count_before": 128,
+      "tail_before": 0,
+      "appended": false,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cbae",
+      "end": "0x48cc1e",
+      "house": 0,
+      "count_before": 0,
+      "tail_before": 0,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cbae",
+      "end": "0x48cc1e",
+      "house": 0,
+      "count_before": 127,
+      "tail_before": 127,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cbae",
+      "end": "0x48cc1e",
+      "house": 0,
+      "count_before": 128,
+      "tail_before": 0,
+      "appended": false,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cbae",
+      "end": "0x48cc1e",
+      "house": 1,
+      "count_before": 0,
+      "tail_before": 0,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cbae",
+      "end": "0x48cc1e",
+      "house": 1,
+      "count_before": 127,
+      "tail_before": 127,
+      "appended": true,
+      "status": "PASS"
+    },
+    {
+      "start": "0x48cbae",
+      "end": "0x48cc1e",
+      "house": 1,
+      "count_before": 128,
+      "tail_before": 0,
+      "appended": false,
+      "status": "PASS"
+    }
+  ]
+}

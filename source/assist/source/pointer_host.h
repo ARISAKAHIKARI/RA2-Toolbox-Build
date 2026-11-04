@@ -1,10 +1,14 @@
+#include "middle_input_host.h"
+#include "../../shared/source/native_viewport_projection.h"
 // Host capture uses polling. Optional suppression lives only in the common Runtime message boundary.
+#include "control_mode_policy.h"
 static void servicePointer(){
- static pointerinput::Intent leftCapture{};static bool leftCaptured=false;
+ static pointerinput::Intent leftCapture{};static bool leftCaptured=false;static uint32_t pointerCaptureGeneration=0;
  const DWORD capturedNow=GetTickCount();
  auto visible=external::display::inspect([](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);});
- const bool inputReady=!formationInputOwns()&&shared&&!shared->viewZoomBusy&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
- gameinput::setPointerContext(hook,commandMatch(),inputReady);
+ nativeviewportprojection::Transform viewport{};const bool viewportStable=nativeviewhost::sampleTransform(shared,viewport);
+ const bool inputReady=viewportStable&&!formationInputOwns()&&!runtimeMiddleOwnsNow()&&shared&&!shared->viewZoomBusy&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
+ gameinput::setPointerContext(hook,commandMatch(),inputReady,viewport.generation);
  if(pointerMatches.active()&&(!inputReady||!extra.allHotkeys||pointerMatches.revision!=settingsRevision||
     pointerMatches.capture.match!=commandMatch()||pointerMatches.capture.inputSerial!=gameinput::pointerCancelSerial(hook)))pointerMatches.clear();
  if(!inputReady)leftCaptured=false;
@@ -23,7 +27,7 @@ static void servicePointer(){
  if(ack!=box.ack){ack=box.ack;MemoryBarrier();
   if(box.intent.operation==pointerinput::C4Test){
    infantryEntryResultMatch=box.intent.match;
-   infantryEntryResult=L"命令已入队 "+std::to_wstring(std::max(0,box.accepted))+L" 个";
+   infantryEntryResult=std::wstring(pointerinput::entryLabel((box.intent.bindings&pointerinput::EntrySabotage)?1:0))+L"：命令已入队 "+std::to_wstring(std::max(0,box.accepted))+L" 个";
    if(box.result==-8)infantryEntryResult+=L"；未点中建筑";
    else if(box.result==-4)infantryEntryResult+=L"；点击位置或对象已变化";
    else if(box.result==-7)infantryEntryResult+=L"；输入已过期或被新操作取消";
@@ -49,11 +53,14 @@ static void servicePointer(){
   if(shared->cooperativeRequest.serial!=pointerMatches.cooperativeBefore&&
      (shared->cooperativeRequest.serial!=cooperativeDelivered||shared->cooperativePlan!=shared->cooperativeAck||retryCooperative))return;
   pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;
-  box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();return;
+  if(!viewportStable||viewport.generation!=pointerCaptureGeneration){pointerMatches.clear();return;}
+  shared->pointerViewportGeneration=pointerCaptureGeneration;box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();return;
  }
  gameinput::PointerPress e{};DWORD dropped=0;
  if(!gameinput::takePointer(hook,e,dropped)){if(dropped)notify(L"输入过密，部分增强请求未接收。");return;}
- if(!inputReady||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
+ if(!inputReady||e.viewportGeneration!=viewport.generation||e.serial!=box.cancelSerial||e.match!=commandMatch())return;
+ // Resolve captured down-edge keys too: Runtime preview publication may follow this edge.
+ if(middleinput::ownsPointer(e.operation==7?6:e.operation,runtimeGesturePolicy(),runtimeGestureEnabled(),e.keys))return;
  // The explicit unload command owns this same chord. A polled native D/S/X
  // cancellation arriving afterwards must not erase its passenger follow-up.
  if(e.operation==5&&hookSmartUnload&&LOBYTE(unloadKey)&&
@@ -73,10 +80,10 @@ static void servicePointer(){
   bindings,saleEnabled,extra.allHotkeys,routes);
  if(airway::active()&&!airway::ended&&airway::selectedAircraft()&&airway::held(e.keys)&&(e.operation==4||e.operation==6||e.operation==7)){routes[0]={pointerinput::AirWaypoint,e.operation==4?uint32_t(pointerinput::RightClick):uint32_t(pointerinput::LeftClick)};routeCount=1;}
  if(extra.c4Test&&extra.c4Mouse&&uint32_t(e.operation==7?6:e.operation)==extra.c4Mouse&&pointerinput::matchesHold(e.keys,extra.c4Key,pointerinput::Enhanced)){
-  pointerinput::MouseRoute test{pointerinput::C4Test,pointerinput::PerFeatureMouse|(extra.c4Mouse==4?uint32_t(pointerinput::RightClick):extra.c4Mouse==6?uint32_t(pointerinput::LeftClick):0)};
+  pointerinput::MouseRoute test{pointerinput::C4Test,pointerinput::PerFeatureMouse|(extra.c4Mode==1?uint32_t(pointerinput::EntrySabotage):0)|(extra.c4Mouse==4?uint32_t(pointerinput::RightClick):extra.c4Mouse==6?uint32_t(pointerinput::LeftClick):0)};
   if(extra.allHotkeys&&routeCount&&routes[0].operation!=pointerinput::FollowNative)routes[routeCount++]=test;else{routes[0]=test;routeCount=1;}
  }
- if(playertest::Available&&extra.controlAll&&e.keys[VK_MENU]&&!e.keys[VK_CONTROL]&&(e.operation==7||e.operation==6||e.operation==4)){routes[0]={e.operation==4?pointerinput::PlayerOrder:pointerinput::PlayerSelect,(e.keys[VK_SHIFT]?uint32_t(pointerinput::Shift):0)};routeCount=1;}
+ if(playertest::Available&&shared&&controlmode::proxyOrders(shared->controlAll)&&e.keys[VK_MENU]&&!e.keys[VK_CONTROL]&&(e.operation==7||e.operation==6||e.operation==4)){routes[0]={e.operation==4?pointerinput::PlayerOrder:pointerinput::PlayerSelect,(e.keys[VK_SHIFT]?uint32_t(pointerinput::Shift):0)};routeCount=1;}
  if(!routeCount)return;in.operation=routes[0].operation;in.bindings=routes[0].bindings;
  if(in.operation==pointerinput::Sell&&!(in.bindings&pointerinput::Control))return;
  // Plain native clicks also carry mining hand-back, even when Auto CS is off.
@@ -106,8 +113,9 @@ static void servicePointer(){
  if(e.operation==7&&in.operation==pointerinput::PlayerSelect)return;
  if(e.operation==7){leftCapture=in;leftCaptured=true;return;}
  if(e.operation==6)leftCaptured=false;
- pointerMatches.begin(in,routes,routeCount,settingsRevision);pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;
- box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();
+ pointerCaptureGeneration=e.viewportGeneration;pointerMatches.begin(in,routes,routeCount,settingsRevision);pointerMatches.cooperativeBefore=shared->cooperativeRequest.serial;
+ shared->pointerViewportGeneration=pointerCaptureGeneration;box.intent=pointerMatches.next();MemoryBarrier();InterlockedIncrement((volatile LONG*)&box.request);wakeGame();
 }
+
 
 

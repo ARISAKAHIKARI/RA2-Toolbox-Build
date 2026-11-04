@@ -4,6 +4,7 @@
 #include "cameo_reader.h"
 #include "owned_counter.h"
 #include "round_state.h"
+#include "type_index.h"
 #include "../../external_reader/source/catalogue_stamp.h"
 #include "../../external_reader/source/layout_probe.h"
 
@@ -20,9 +21,10 @@ struct PtrList {
 inline bool sameAscii(const char* a,const char* b){for(;*a&&*b;a++,b++){char x=*a,y=*b;if(x>='A'&&x<='Z')x+=32;if(y>='A'&&y<='Z')y+=32;if(x!=y)return false;}return *a==*b;}
 
 template<class Read,class Resolve> class Sampler {
+ TypeIndex typeIndex_;
  Read read; Resolve resolve;AssetLoad files=nullptr;CameoResolve resolveCameo=nullptr; IconCache* cache=nullptr; Snapshot state{};external::layout::Result probe_{}; roundstate::Stamp previous{}; bool haveRound=false; int iconCursor=0; uint32_t ticks=0,matchSerial=0,catalogueAt=0;uint64_t catalogueHash=0;bool catalogueReady=false; bool prevBuildings=true; uint8_t iconBuffer[32+256*1024]{}; int ownedBuffer[4096]{};
  const Snapshot& invalidate(uint32_t tick,bool forgetRound=false){
-  memset(&state,0,sizeof state);state.tick=tick;state.match=matchSerial;if(forgetRound)haveRound=false;catalogueReady=false;catalogueHash=0;iconCursor=0;return state;
+  memset(&state,0,sizeof state);typeIndex_.clear();state.tick=tick;state.match=matchSerial;if(forgetRound)haveRound=false;catalogueReady=false;catalogueHash=0;iconCursor=0;return state;
  }
  template<class T>T get(uint32_t a,T def={}) {T v{};return read(a,&v,sizeof(v))?v:def;}
  bool bytes(uint32_t a,void* p,size_t n){return read(a,p,n);}
@@ -31,7 +33,7 @@ template<class Read,class Resolve> class Sampler {
   if(n<0||n>limit||cap<n||cap>65536||(!p&&n)){state.readErrors++;return {};}
   PtrList r;r.n=n;if(n&&!bytes(p,r.data(),n*4)){state.readErrors++;return {};}return r;
  }
- int find(uint32_t p){for(int i=0;i<state.typeCount;i++)if(state.types[i].ptr==p)return i;return -1;}
+ int find(uint32_t p){return typeIndex_.find(p);}
  bool loadIcon(Type&t){return readCameo(read,resolve,t,iconBuffer,sizeof iconBuffer,files);}
  void palette(){state.paletteReady=0;readCameoPalette(read,state,files);}
  void types(bool buildings,bool newRound) {
@@ -49,6 +51,7 @@ template<class Read,class Resolve> class Sampler {
     state.types[state.typeCount++]=pending;
    }
   }
+  typeIndex_.rebuild(state);
  }
  void owned(Player& player,uint32_t house){
   // CountOwnedNow: real ownership (including passengers/garrison), not

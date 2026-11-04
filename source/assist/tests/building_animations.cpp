@@ -27,6 +27,10 @@ int main(){
  put(b+0x55C,0u);put(b+0x5C8,0u);external::animations::State state;assert(!external::animations::capture(read,a,b,42,state));put(b+0x55C,a);
  int count=0;auto race=[&](uint32_t p,void*out,size_t n){if(p==a+0x10&&++count==2)put(a+0x10,78u);return read(p,out,n);};assert(!external::animations::capture(race,a,b,42,state));put(a+0x10,77u);
  auto removed=[&](uint32_t p,void*out,size_t n){if(p==b+0x55C&&n==4)put(b+0x55C,0u);return read(p,out,n);};assert(!external::animations::capture(removed,a,b,42,state));
+ // Every regular and damage slot is sampled. Refinery/charging animation
+ // names do not have to appear in a whitelist to enter this same pipeline.
+ for(unsigned n=0;n<29;++n){uint32_t pointer=0x30000+n*0x200;std::memcpy(mem.data()+pointer,mem.data()+a,0x1C8);put(pointer+0x10,1000u+n);put(pointer+0xAC,int(n));put(b+(n<21?0x55C+n*4:0x5C8+(n-21)*4),pointer);}
+ states=external::animations::attached(read,b,42);assert(states.size()==29);for(unsigned n=0;n<29;++n)assert(states[n].id==1000+n&&states[n].frame==int(n));
  external::voxel::Image mask,image;mask.canvasWidth=mask.width=396;mask.canvasHeight=mask.height=477;mask.x=-198;mask.y=-238;mask.indices.assign(396*477,66);
  image.width=4;image.height=2;image.pixels.assign(8,0xffffffff);mask.indices[446*396+198]=69;
  external::camera::buildingDepth(image,mask,1,1,0,0);assert(image.depth[0]==-8&&image.depth[1]==-11);

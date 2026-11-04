@@ -27,7 +27,7 @@ static bool burstObserve(uint32_t p,uint32_t q,uint32_t house,burstcompute::Sour
  if(burstSource(p).managed)return false;
  planner::Actor source{},target{};rawCombatInfo(p,typeOf(p,k),k,source,true);rawCombatInfo(q,typeOf(q,tk),tk,target,false);
  if(source.flags&(planner::Manipulated|planner::OutOfAmmo|planner::SustainedFire))return false;
- uint32_t weapon=0;int slot=0,close=0,air=0;if(GuardedCombatWeapon(p,q,&weapon,&slot,&close,&air)<=0)return false;
+ uint32_t weapon=0;int slot=0,close=0,air=0;if(combatWeaponQuery(p,q,&weapon,&slot,&close,&air)<=0)return false;
  source.flags|=planner::FixedWeapon;source.weapons[0]=rawWeaponInfo(weapon,true);if(air)target.flags|=planner::Airborne;else target.flags&=~planner::Airborne;
  if(!planner::compatibleTarget(source,target,false)||source.weapons[0].flags&(planner::HealingWeapon|planner::MindControlWeapon|planner::TemporalWeapon|planner::ParasiteWeapon|planner::LocomotorWeapon))return false;
  s.id=get<uint32_t>(p+0x10);s.pointer=p;s.token=manualVersions.get(s.id);s.target=get<uint32_t>(q+0x10);s.targetPointer=q;s.weapon=weapon;

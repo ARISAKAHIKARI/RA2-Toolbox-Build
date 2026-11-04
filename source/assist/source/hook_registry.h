@@ -2,15 +2,38 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include "crc_shadow_policy.h"
 #include "../../shared/source/direct_patch_policy.h"
+#include "../../shared/source/native_sidebar_policy.h"
+#include "../../shared/source/native_viewport_policy.h"
 // Game-thread-only ownership bookkeeping, NOT a stop-the-world x86 patcher.
 // A stale/foreign site is sticky: never overwrite it on retries or detach.
 namespace assist { namespace hookregistry {
-enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Unknown };
+enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Combat, NetworkTransport, NativeSell, NativeMega, ControlCommand, CrcShadow, Viewport, Unknown };
 inline Owner ownerAt(uint32_t a){
+ if(nativesidebarpolicy::find(a))return Owner::Sidebar;
+ if(nativeviewportpolicy::find(a))return Owner::Viewport;
+ if(crcshadow::findSite(a))return Owner::CrcShadow;
  if(auto s=directpatch::find(a))return s->group==directpatch::Group::Map?Owner::RenderMask:Owner::Placement;
  switch(a){
- case 0x0055D360: return Owner::Frame;
+ case 0x007F74D8:return Owner::Sidebar;
+ case 0x007F74C8:return Owner::Cursor;
+ case 0x00646EF5:return Owner::ControlCommand;
+ case 0x00646FD2:return Owner::ControlCommand;
+ case 0x006FFC93:return Owner::ControlCommand;
+ case 0x006FFE2B:return Owner::ControlCommand;
+
+ case 0x00649CA0:return Owner::NetworkTransport;
+ case 0x00649E1E:return Owner::NetworkTransport;
+ case 0x0064B9D4:return Owner::NetworkTransport;
+ case 0x0064B660:return Owner::NetworkTransport;
+ case 0x0064B4EA:return Owner::NetworkTransport;
+ case 0x00649D61:case 0x00649DBC:return Owner::NetworkTransport;
+ case 0x006929E5:return Owner::NativeSell;
+ case 0x004AC179:return Owner::NativeSell;
+ case 0x00646F4E:return Owner::NativeMega;
+ case 0x006F7D44:return Owner::Combat;
+ case 0x0055DE81:case 0x0055D360: return Owner::Frame;
  case 0x00646E90: return Owner::CS;
  case 0x00731BF0: return Owner::Cursor;
  case 0x006FFE00: return Owner::NativeEvent;
@@ -33,8 +56,25 @@ inline Owner ownerAt(uint32_t a){
 }
 inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  if(!bytes)return false;
+ if(nativesidebarpolicy::find(at))return nativesidebarpolicy::original(at,bytes,size);
+ if(nativeviewportpolicy::find(at))return nativeviewportpolicy::original(at,bytes,size);
+ if(auto s=crcshadow::findSite(at))return size==s->size&&!memcmp(bytes,s->original,size);
  if(directpatch::find(at))return directpatch::original(at,bytes,size);
  const uint8_t*signature=nullptr;unsigned expected=0;
+ static const uint8_t pre6NetworkSend[]={0x83,0xEC,0x1C,0x53,0x55};
+ static const uint8_t pre6NetworkPlainHouse[]={0x88,0x8C,0x40,0xD6,0x02,0xA8,0x00};
+ static const uint8_t pre6NetworkCompressedHouse[]={0x88,0x8C,0x40,0xD6,0x02,0xA8,0x00};
+ static const uint8_t pre6NetworkPack[]={0x81,0xEC,0x94,0x00,0x00,0x00};
+ static const uint8_t pre6NetworkDictionary[]={0x8B,0xCA,0xC7,0x44,0x24,0x10,0x00,0x00,0x00,0x00};
+ static const uint8_t houseFrameGroup[]={0xA1,0x4C,0xB2,0xA8,0x00};
+ static const uint8_t housePlainLimit[]={0x8B,0x54,0x24,0x14,0x8B,0x74,0x24,0x10};
+ static const uint8_t pre6NativeSellCursor[]={0xE8,0x06,0x8D,0xE7,0xFF};
+ static const uint8_t pre6NativeSellOwner[]={0x8B,0x0D,0x4C,0x3D,0xA8,0x00,0x8B,0x51,0x30};
+ static const uint8_t pre6NativeMegaSuccess[]={0xB0,0x01,0x5F,0x5E,0x83,0xC4,0x70};
+ static const uint8_t pre6ControlMegaOwner[]={0x81,0x3D,0xC8,0x02,0xA8,0x00,0x80,0x00,0x00,0x00};
+ static const uint8_t pre6ControlMegaFOwner[]={0x81,0x3D,0xC8,0x02,0xA8,0x00,0x80,0x00,0x00,0x00};
+ static const uint8_t pre6ControlPlanningOwner[]={0x83,0xEC,0x70,0xB9,0x1B,0x00,0x00,0x00};
+ static const uint8_t pre6ControlObjectOwner[]={0x8B,0x42,0x30,0x51,0x50};
  static const uint8_t frame[]={0xA0,0xA0,0xE9,0xA8,0x00};
  static const uint8_t cs[]={0x83,0xEC,0x70,0x32,0xC0};
  static const uint8_t cursor[]={0x51,0xA0,0x58,0xFE,0xB0,0x00};
@@ -49,6 +89,7 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t shroud[]={0x8B,0x45,0x10,0x53,0x56};
  static const uint8_t fog[]={0x8B,0x44,0x24,0x38,0x53};
  static const uint8_t c4[]={0x8A,0x81,0xC2,0x0E,0,0};
+ static const uint8_t lowDamage[]={0xD8,0x1D,0x38,0x4E,0x7F,0};
  static const uint8_t scrolling[]={0x8B,0x44,0x24,0x08,0x8A,0x4C,0x24,0x0C};
  static const uint8_t camera[]={0xA1,0xE4,0xF8,0x87,0};
  static const uint8_t controlEntries[3][5]={{0xA1,0x38,0xB2,0xA8,0},{0xE9,0xFB,0x2A,0x67,0},{0xE9,0x8B,0x2C,0x67,0}};
@@ -57,8 +98,27 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  static const uint8_t sidebarRefresh[]={0xE8,0xEA,0xD0,0xE4,0xFF};
  static const uint8_t masterEnum[]={0x6A,1,0x6A,0,0x8B},masterPrune[]={0x0F,0x85,0xDA,2,0,0};
  switch(at){
+ case 0x007F74D8:{static const uint8_t original[]={0x50,0x90,0x47,0};return size==4&&!memcmp(bytes,original,4);}
+ case 0x007F74C8:{static const uint8_t original[]={0xA0,0x8B,0x47,0};return size==4&&!memcmp(bytes,original,4);}
+ case 0x00646EF5:signature=pre6ControlMegaOwner;expected=sizeof pre6ControlMegaOwner;break;
+ case 0x00646FD2:signature=pre6ControlMegaFOwner;expected=sizeof pre6ControlMegaFOwner;break;
+ case 0x006FFC93:signature=pre6ControlPlanningOwner;expected=sizeof pre6ControlPlanningOwner;break;
+ case 0x006FFE2B:signature=pre6ControlObjectOwner;expected=sizeof pre6ControlObjectOwner;break;
+
+ case 0x00649CA0:signature=pre6NetworkSend;expected=sizeof pre6NetworkSend;break;
+ case 0x00649E1E:signature=pre6NetworkPlainHouse;expected=sizeof pre6NetworkPlainHouse;break;
+ case 0x0064B9D4:signature=pre6NetworkCompressedHouse;expected=sizeof pre6NetworkCompressedHouse;break;
+ case 0x0064B660:signature=pre6NetworkPack;expected=sizeof pre6NetworkPack;break;
+ case 0x0064B4EA:signature=pre6NetworkDictionary;expected=sizeof pre6NetworkDictionary;break;
+ case 0x00649D61:signature=houseFrameGroup;expected=sizeof houseFrameGroup;break;
+ case 0x00649DBC:signature=housePlainLimit;expected=sizeof housePlainLimit;break;
+ case 0x006929E5:signature=pre6NativeSellCursor;expected=sizeof pre6NativeSellCursor;break;
+ case 0x004AC179:signature=pre6NativeSellOwner;expected=sizeof pre6NativeSellOwner;break;
+ case 0x00646F4E:signature=pre6NativeMegaSuccess;expected=sizeof pre6NativeMegaSuccess;break;
+ case 0x006F7D44:signature=lowDamage;expected=sizeof lowDamage;break;
  case 0x44574A:case 0x445795:case 0x4457D0:case 0x445810:signature=masterEnum;expected=5;break;
  case 0x6AA788:signature=masterPrune;expected=6;break;
+ case 0x0055DE81:{static const uint8_t committed[]={0x89,0x15,0x84,0xED,0xA8,0};return size==6&&!memcmp(bytes,committed,6);}
  case 0x0055D360:signature=frame;expected=sizeof frame;break;
  case 0x00646E90:signature=cs;expected=sizeof cs;break;
  case 0x00731BF0:signature=cursor;expected=sizeof cursor;break;
@@ -92,7 +152,7 @@ struct Slot {
  uint8_t size=0;bool active=false,conflict=false;
 };
 enum class Transition : uint8_t { Deny, Install, Restore };
-template<unsigned Capacity=64> struct Registry {
+template<unsigned Capacity=128> struct Registry {
  static constexpr unsigned CapacityLimit=Capacity;
  Slot slots[Capacity]{};unsigned used=0;
  int find(uint32_t a)const{for(unsigned i=0;i<used;++i)if(slots[i].address==a)return int(i);return -1;}
@@ -109,6 +169,11 @@ template<unsigned Capacity=64> struct Registry {
  unsigned installed()const{unsigned n=0;for(unsigned i=0;i<used;++i)if(slots[i].active)++n;return n;}
  Transition proposal(uint32_t address,const uint8_t*before,const uint8_t*after,unsigned n)const{
   if(!before||!after||!n||n>16||address<0x10000||ownerAt(address)==Owner::Unknown||!memcmp(before,after,n))return Transition::Deny;
+  // Starting-address ownership alone does not protect an overlapping range.
+  // A failed/conflicted active patch still owns its bytes until restored.
+  for(unsigned j=0;j<used;++j){const auto&s=slots[j];
+   if(s.active&&s.address!=address&&uint64_t(address)<uint64_t(s.address)+s.size&&uint64_t(s.address)<uint64_t(address)+n)return Transition::Deny;
+  }
   int i=find(address);if(i<0)return used<Capacity&&knownOriginal(address,before,n)?Transition::Install:Transition::Deny;
   const Slot&s=slots[i];if(s.conflict||s.owner!=ownerAt(address)||s.size!=n)return Transition::Deny;
   if(s.active)return !memcmp(before,s.patch,n)&&!memcmp(after,s.original,n)?Transition::Restore:Transition::Deny;
@@ -126,3 +191,4 @@ template<unsigned Capacity=64> struct Registry {
  // No reset: a foreign patch survives match changes and failed restores.
 };
 }}
+

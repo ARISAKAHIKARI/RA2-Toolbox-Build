@@ -12,7 +12,10 @@ import json
 root=Path(__file__).resolve().parents[2]
 source=(root/'assist/source/main.cpp').read_text()
 def function(signature):
-    start=source.index(signature); end=source.index('{',start)+1; depth=1
+    start=source.index(signature)
+    while source.find(';',start)<source.index('{',start):
+        start=source.index(signature,start+len(signature))
+    end=source.index('{',start)+1; depth=1
     while depth:
         depth+=(source[end]=='{')-(source[end]=='}');end+=1
     return source[start:end]
@@ -39,8 +42,8 @@ static struct {bool watchSecondary=false,experimentalReveal=false;uint32_t watch
 static struct Snapshot {int renderStatus=1,status=1,readStatus=1;bool chat=false;uint32_t match=99;char types[1]{};int typeCount=0;}snap,raw;
 static const Snapshot*externalData=&raw;
 static DWORD now=1000;static DWORD GetTickCount(){return now;}
-static bool modifierDown[3]{};
-static short GetAsyncKeyState(int key){assert(key>=16&&key<=18);return modifierDown[key-16]?short(0x8000):0;}
+static bool modifierDown[3]{},keyDown[256]{};
+static short GetAsyncKeyState(int key){assert(key>=0&&key<256);return ((key>=16&&key<=18)?modifierDown[key-16]:keyDown[key])?short(0x8000):0;}
 static bool foregroundGame(){return focused;}
 static unsigned monitorQueries=0;
 namespace secondarydisplay {struct Target{bool available()const{return monitorPresent;}};struct Monitor{Target get(HWND,HWND,DWORD){++monitorQueries;return {};}};}
@@ -73,6 +76,7 @@ static void registerKeys(){++registered;}
 static void setStatus(const std::wstring&){}
 static void resetConstruction(){}static void resetAirPath(){}static void clearPassengerDisplay(){}
 static void hideAircraftButton(){}static void hideConstruction(){}
+static void hideWorldOverlay(){++primaryHidden;}
 static void ShowWindow(HWND,int){++primaryHidden;}
 static struct Recovery{void suspend(){}}overlayRecovery;
 namespace worldrender {static void invalidate(){}}
@@ -124,13 +128,21 @@ int main(){
  hotkeyRegistry.clear();extra.watchKeys[0]=0x657;extra.watchKeys[1]=0x8657;bind(1730,0x657);bind(1731,0x8657);
  unsigned before=pins;readOnlyWatchHotkey(1730,chord('W',3));assert(pins==before);
  now+=100;readOnlyWatchHotkey(1730,chord('W',3));assert(pins==before+1&&watchhost::pinned.back()==0x8657);
- now+=400;readOnlyWatchHotkey(1730,chord('W',3));now+=351;serviceReadOnlyWatchKeys();assert(pins==before+2&&watchhost::pinned.back()==0x657);
+ now+=400;readOnlyWatchHotkey(1730,chord('W',3));modifierDown[1]=modifierDown[2]=true;now+=351;serviceReadOnlyWatchKeys();assert(pins==before+2&&watchhost::pinned.back()==0x657);modifierDown[1]=modifierDown[2]=false;
  // Bare Shift is sampled only on a fresh edge in the active game; holding it
  // across foreground/round changes never adds another watch panel.
  hotkeyRegistry.clear();extra.watchKeys[0]=16;bind(1730,16);serviceReadOnlyWatchKeys();before=pins;
  modifierDown[0]=true;serviceReadOnlyWatchKeys();assert(pins==before+1);
  serviceReadOnlyWatchKeys();assert(pins==before+1);focused=false;serviceReadOnlyWatchKeys();focused=true;serviceReadOnlyWatchKeys();assert(pins==before+1);
  ++raw.match;serviceReadOnlyWatchKeys();assert(pins==before+1);modifierDown[0]=false;serviceReadOnlyWatchKeys();modifierDown[0]=true;serviceReadOnlyWatchKeys();assert(pins==before+2);
+ // Explicit release waits for the main key to rise while Ctrl remains held.
+ modifierDown[0]=false;hotkeyRegistry.clear();extra.watchKeys[0]=0x2000|0x0257;bind(1730,uint16_t(extra.watchKeys[0]));serviceReadOnlyWatchKeys();before=pins;
+ modifierDown[1]=true;keyDown['W']=true;readOnlyWatchHotkey(1730,chord('W',MOD_CONTROL));serviceReadOnlyWatchKeys();assert(pins==before);
+ keyDown['W']=false;serviceReadOnlyWatchKeys();assert(pins==before+1);
+ keyDown['W']=true;readOnlyWatchHotkey(1730,chord('W',MOD_CONTROL));modifierDown[1]=false;serviceReadOnlyWatchKeys();keyDown['W']=false;serviceReadOnlyWatchKeys();assert(pins==before+1);
+ hotkeyRegistry.clear();extra.watchKeys[0]=0xa257;bind(1730,uint16_t(extra.watchKeys[0]));serviceReadOnlyWatchKeys();before=pins;
+ modifierDown[1]=true;keyDown['W']=true;readOnlyWatchHotkey(1730,chord('W',MOD_CONTROL));serviceReadOnlyWatchKeys();keyDown['W']=false;serviceReadOnlyWatchKeys();assert(pins==before);
+ now+=100;keyDown['W']=true;readOnlyWatchHotkey(1730,chord('W',MOD_CONTROL));serviceReadOnlyWatchKeys();assert(pins==before);keyDown['W']=false;serviceReadOnlyWatchKeys();assert(pins==before+1);
  enabled=true;assert(!readOnlyWatchHotkey(1730,chord(16,0))&&desiredHotkeyMode()==2);
  // Turning off the last requested output performs the normal full detach.
  enabled=false;extra.watchSecondary=false;pauseAssistControls();assert(detaches==1&&!readerOpen&&!clockActive);

@@ -58,8 +58,8 @@ template<class Read> bool refresh(Read read,Frame&out){
   if(a.kind==projectiles::Kind){projectiles::State s;if(!projectiles::capture(read,p,s)||s.id!=a.target.id||s.type!=a.type)return false;
    a.owner=s.owner;a.x=s.x;a.y=s.y;a.z=s.z;a.pose=s.pose;a.drawZ=s.drawZ;a.sort=s.sort;a.layer=s.layer;a.onBridge=s.onBridge;a.light=projectiles::light(read,s);
    int cx=a.x/256-out.cx+out.radius,cy=a.y/256-out.cy+out.radius;if(cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])return false;continue;}
-  if(a.kind==5){animations::State state;if(!animations::capture(read,p,a.parent.pointer,a.parent.id,state)||state.type!=a.type||state.id!=a.target.id)return false;a.x=state.x;a.y=state.y;a.z=state.z;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.onBridge=g.template get<uint8_t>(state.parent+0x8C)!=0;a.light=lighting::animation(read,a.target.pointer,a.type,a.x,a.y,a.z,out.light);continue;}
-  if(a.kind==4){if(g.template get<uint32_t>(p)!=0x7F522C||g.template get<uint32_t>(p+0x10)!=a.target.id||g.template get<uint8_t>(p+0xCD)||g.template get<int>(p+0x6C)<=0||g.template get<uint32_t>(p+0xC8)!=a.type)return false;a.stage=g.template get<int>(p+0xAC);}
+  if(a.kind==5){animations::State state;if(!animations::capture(read,p,a.parent.pointer,a.parent.id,state)||state.type!=a.type||state.id!=a.target.id)return false;a.x=state.x;a.y=state.y;a.z=state.z;a.pose.frame=state.frame;a.pose.variant=state.blend;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.onBridge=g.template get<uint8_t>(state.parent+0x8C)!=0;a.light=lighting::animation(read,a.target.pointer,a.type,a.x,a.y,a.z,out.light);continue;}
+  if(a.kind==4){if(g.template get<uint32_t>(p)!=0x7F522C||g.template get<uint32_t>(p+0x10)!=a.target.id||g.template get<uint8_t>(p+0xCD)||g.template get<int>(p+0x6C)<=0||g.template get<uint32_t>(p+0xC8)!=a.type)return false;a.stage=g.template get<uint8_t>(a.type+0x2B3)?g.template get<int>(p+0xAC):int(g.template get<int>(p+0x6C)<2);}
   else{if(!valid(g,a.target)||g.kind(p)!=a.kind||g.type(p,a.kind)!=a.type||g.template get<uint32_t>(p+0x21C)!=a.owner)return false;a.health=g.template get<int>(p+0x6C);a.pose=visual::pose(g,p,a.type,a.kind,g.template get<int>(0xA8ED84));}
   a.layer=std::clamp(g.template get<int>(p+0x94,2),0,4);a.onBridge=g.template get<uint8_t>(p+0x8C)!=0;a.x=g.template get<int>(p+0x9C,-1);a.y=g.template get<int>(p+0xA0,-1);a.z=g.template get<int>(p+0xA4);
   int cx=a.x/256-out.cx+out.radius,cy=a.y/256-out.cy+out.radius;
@@ -140,16 +140,16 @@ template<class Read> Frame sample(Read read,Target focus,bool reveal,int radius=
  // Trees and static terrain are ObjectClass instances, outside TechnoClass::Array.
  for(auto p:g.vec(0xA8E988)){if(g.template get<uint32_t>(p)!=0x7F522C||g.template get<uint8_t>(p+0xCD)||g.template get<int>(p+0x6C)<=0)continue;
   int x=g.template get<int>(p+0x9C,-1),y=g.template get<int>(p+0xA0,-1);if(x<0||y<0)continue;int cx=x/256-out.cx,cy=y/256-out.cy;if(cx<-out.radius||cx>out.radius||cy<-out.radius||cy>out.radius||!out.cells[(cy+out.radius)*out.side+cx+out.radius])continue;
-  Actor a;a.target={p,g.template get<uint32_t>(p+0x10)};a.x=x;a.y=y;a.z=g.template get<int>(p+0xA4);a.type=g.template get<uint32_t>(p+0xC8);a.kind=4;a.stage=g.template get<int>(p+0xAC);a.color=0xff83a95bu;a.light=lighting::terrainObject(read,a.type,a.x,a.y,a.z,out.light);out.actors.push_back(a);
+  Actor a;a.target={p,g.template get<uint32_t>(p+0x10)};a.x=x;a.y=y;a.z=g.template get<int>(p+0xA4);a.type=g.template get<uint32_t>(p+0xC8);a.kind=4;a.stage=g.template get<uint8_t>(a.type+0x2B3)?g.template get<int>(p+0xAC):int(g.template get<int>(p+0x6C)<2);a.color=0xff83a95bu;a.light=lighting::terrainObject(read,a.type,a.x,a.y,a.z,out.light);out.actors.push_back(a);
  }
  size_t bodies=out.actors.size();for(size_t i=0;i<bodies;++i){auto body=out.actors[i];if(body.kind!=3)continue;
-  for(const auto&state:animations::attached(read,body.target.pointer,body.target.id)){Actor a;a.target={state.object,state.id};a.parent=body.target;a.onBridge=body.onBridge;a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.light=lighting::animation(read,a.target.pointer,a.type,a.x,a.y,a.z,out.light);out.actors.push_back(a);}
+  for(const auto&state:animations::attached(read,body.target.pointer,body.target.id)){Actor a;a.target={state.object,state.id};a.parent=body.target;a.onBridge=body.onBridge;a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.pose.variant=state.blend;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.light=lighting::animation(read,a.target.pointer,a.type,a.x,a.y,a.z,out.light);out.actors.push_back(a);}
  }
  std::set<uint32_t> seen;for(const auto&a:out.actors)if(a.kind==5)seen.insert(a.target.pointer);
  for(const auto&state:animations::all(read)){if(!seen.insert(state.object).second)continue;
   int cx=state.x/256-out.cx+out.radius,cy=state.y/256-out.cy+out.radius;
   if(cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])continue;
-  Actor a;a.target={state.object,state.id};a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.light=lighting::animation(read,a.target.pointer,a.type,a.x,a.y,a.z,out.light);out.actors.push_back(a);
+  Actor a;a.target={state.object,state.id};a.type=state.type;a.owner=state.owner;a.x=state.x;a.y=state.y;a.z=state.z;a.kind=5;a.pose.frame=state.frame;a.pose.variant=state.blend;a.drawZ=state.zAdjust;a.sort=state.sort;a.layer=state.layer;a.light=lighting::animation(read,a.target.pointer,a.type,a.x,a.y,a.z,out.light);out.actors.push_back(a);
  }
  for(const auto&s:projectiles::all(read)){
   int cx=s.x/256-out.cx+out.radius,cy=s.y/256-out.cy+out.radius;if(cx<0||cy<0||cx>=out.side||cy>=out.side||!out.cells[cy*out.side+cx])continue;
