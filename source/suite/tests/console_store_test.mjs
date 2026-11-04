@@ -343,7 +343,7 @@ if (!failed && process.argv.includes('--browser')) {
     let revision=1;
     const snapshot=(patch={})=>({kind:'state',protocol:1,module:0,generation:1,revision:revision++,page:'cursor',title:'光标与渲染',status:'已连接 · 170 Hz',controls,...patch});
     const receive=async message=>page.evaluate(message=>window.__receive(message),message);
-    await receive({kind:'shell',protocol:1,version:'1.0.41-pre.4',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
+    await receive({kind:'shell',protocol:1,version:'1.0.41-pre.5',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
     await receive(snapshot()); await page.getByLabel('渲染升级',{exact:true}).waitFor();
     assert.equal(await page.getByLabel('绘制方式',{exact:true}).evaluate(element=>element.closest('.setting-row').dataset.settingLevel),'secondary','ordinary parameter rows must read below feature switches');
     await page.screenshot({path:screenshotPath,fullPage:false});

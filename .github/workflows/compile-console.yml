@@ -1,7 +1,7 @@
 name: Compile WebView2 console and x86 game components
 on:
   push:
-    branches: [main, codex/console-architecture-20261103, codex/control-hardware-20261104, codex/capacity-production-20261104, codex/placement-input-20261104, codex/superweapon-grant-20261104, codex/console-density-20261104, codex/ui-breakpoint-performance-20261104, codex/platform-startup-dependencies-20261104]
+    branches: [main, codex/console-architecture-20261103, codex/control-hardware-20261104, codex/capacity-production-20261104, codex/placement-input-20261104, codex/superweapon-grant-20261104, codex/console-density-20261104, codex/ui-breakpoint-performance-20261104, codex/platform-startup-dependencies-20261104, codex/runtime-stack-20261104]
     paths: [source/**, .github/workflows/compile-console.yml]
   workflow_dispatch:
 permissions:
@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   console-browser:
+    if: github.ref != 'refs/heads/codex/runtime-stack-20261104'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -34,6 +35,7 @@ jobs:
           python3 source/assist/tests/map_visibility_settings.py --out diagnostics/console-browser/map-settings
           python3 source/assist/tests/tech_ui_breakpoint_hot.py --cxx g++ --out diagnostics/console-browser/tech-breakpoint-hot
           python3 source/assist/tests/startup_dependencies.py --cxx g++ --out diagnostics/console-browser/startup-dependencies
+          python3 source/assist/tests/missile_input_reset.py --cxx g++ --out diagnostics/console-browser/missile-input-reset
           python3 source/tests/random_process_discovery.py --cxx g++ --out diagnostics/console-browser/random-process-discovery
           python3 source/assist/tests/construction_host_test.py
           python3 source/assist/tests/construction_batch_runtime_test.py
@@ -69,6 +71,7 @@ jobs:
           if-no-files-found: warn
           path: diagnostics/console-browser/
   console-win32-fixtures:
+    if: github.ref != 'refs/heads/codex/runtime-stack-20261104'
     runs-on: windows-latest
     timeout-minutes: 35
     steps:

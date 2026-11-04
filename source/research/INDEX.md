@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| pre.4 导弹输入聚合临时与栈溢出 | [超大临时与原位重置](2026-11-04-missile-input-stack-overflow.md) | C00000FD BA672 418D0 Input104418 placement-new DMI Zig013 |
 | 平台实机 Hook 已连接但可选入口阻断全局 | [19项核心与命令依赖隔离](2026-11-04-platform-startup-dependency-isolation.md) | commandStatus3 431410 577D90 E9 core19 ClearBeacons RevealMap SpySat owned-only |
 | 随机名称平台的后台子渲染捕获 | [旧逻辑历史与全窗口树发现](2026-11-04-background-renderer-discovery.md) | random-name background child EnumWindows EnumChildWindows once-per-PID strict-image fingerprint MRGA preserved |
 | 硬件断点热路径性能 | [即时签名核验、归属分类与诊断计数](2026-11-04-breakpoint-hotpath-performance.md) | Full/Enhance no-RPM/FNV hot snapshots owner counters foreign passthrough real-DR comparison |

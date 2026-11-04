@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <climits>
 #include <algorithm>
+#include <new>
 namespace assist { namespace missilecompute {
 constexpr int MaxSources=256,MaxTargets=256,MaxOrders=256,LookAhead=30,CoveragePercent=120,MaxAdvanceFrames=60,AdvanceLeash=1024,ReleaseGraceFrames=30;
 enum Mode { Smart=0, Even=1 };
@@ -15,6 +16,12 @@ struct Target {uint32_t id=0,pointer=0;int hp=0;uint32_t threatening=0;};
 struct Edge {int damage=0;uint32_t distance=0;int eta=0,close=1;};
 struct Input {uint32_t match=0,tick=0;int frame=-1,count=0,targetCount=0,mode=Smart;
  Source sources[MaxSources];Target targets[MaxTargets];Edge edges[MaxSources][MaxTargets];};
+inline void reset(Input& input){
+ // Construct directly in the existing storage. Input{} assignment can put
+ // a >1 MiB temporary on the game's default 1 MiB stack before an early-out.
+ // Placement value-initialization allocates nothing and preserves all DMI.
+ ::new(static_cast<void*>(&input)) Input{};
+}
 struct Assignment {int source=0,target=-1,action=Attack;};
 struct Result {uint32_t match=0,tick=0;int frame=-1,count=0;Assignment orders[MaxOrders];};
 inline bool valid(const Input&i){return i.frame>=0&&i.count>=0&&i.count<=MaxSources&&i.targetCount>=0&&i.targetCount<=MaxTargets&&i.mode>=0&&i.mode<=3;}
@@ -103,4 +110,5 @@ inline Result calculate(const Input&i){
  return r;
 }
 } }
+
 

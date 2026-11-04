@@ -183,7 +183,7 @@ static bool missileControlTick(uint32_t house,int frame,DWORD now){
  if(frame==missileFrame)return false;
  if(!outside&&missileScanned&&DWORD(now-missileScanTick)<1000u/std::clamp(uint32_t(sh->missileScanHz),1u,60u))return false;
  missileFrame=frame;missileScanTick=now;missileScanned=true;
- auto&i=missileInput;i={};i.match=match;i.tick=now;i.frame=frame;i.mode=sh->missileAllocation|(sh->missileReserve?missilecompute::ReserveSleep:0);
+ auto&i=missileInput;missilecompute::reset(i);i.match=match;i.tick=now;i.frame=frame;i.mode=sh->missileAllocation|(sh->missileReserve?missilecompute::ReserveSleep:0);
  Vec all=vec(0xA8EC78);int visited=0;
  for(;visited<all.count&&i.targetCount<missilecompute::MaxTargets;++visited){uint32_t q=item(all,(missileTargetCursor+visited)%all.count);if(!missileTarget(q,house))continue;
   sampleMissileMotion(q,frame);uint32_t victim=worldObjects.contains(get<uint32_t>(q+0x2B4))?get<uint32_t>(q+0x2B4):0;
@@ -211,4 +211,5 @@ static bool missileControlTick(uint32_t house,int frame,DWORD now){
  else {InterlockedIncrement(&sh->missileInputSeq);MemoryBarrier();memcpy(&sh->missileInput,&i,sizeof i);missileSerial=compute::nextTask(sh->missileTask);missileFrames.retain(missileSerial,i,{nextSourceCursor,nextTargetCursor,nextManagedCursor});sh->missileTask=missileSerial;MemoryBarrier();InterlockedIncrement(&sh->missileInputSeq);missilePending=true;notifyHost();}
  return true;
 }
+
 

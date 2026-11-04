@@ -1,0 +1,75 @@
+{
+  "pass": true,
+  "scope": "Check all Input defaults and compare old/new Windows x86 reset stack usage.",
+  "source_sha256": {
+    "source/assist/tests/missile_input_reset.cpp": "718e39b694f42545dc0d6e18b1480d0290b1cc4628c9b96ad6a73bb27b0a2185",
+    "source/assist/source/missile_compute.h": "4ec27f1eeeb1b79bb0804c65581211e5385adc9c4762b1fcc9225fc327386166",
+    "source/assist/tests/missile_input_reset.py": "10506ea7ae7ae9fdab6d1eca256a6232d3cd0c00dc515d0e52e9080cabef6bc8"
+  },
+  "semantic_flags": [
+    "-std=c++17",
+    "-O2",
+    "-UNDEBUG"
+  ],
+  "semantic_result": {
+    "pass": true,
+    "checks": 1993806,
+    "field_comparisons": 1599012,
+    "passes": 6,
+    "input_bytes": 1066008,
+    "padding_compared": false,
+    "heap_inputs": 2,
+    "game_process_tested": false
+  },
+  "executable_sha256": "19ed2638e6e87845db5cdcb76a06e62bd9be4b9a79451d0e15f34cf248606cfa",
+  "windows_executed": false,
+  "game_process_tested": false,
+  "multiplayer_tested": false,
+  "windows_x86_codegen": {
+    "pass": true,
+    "flags": [
+      "c++",
+      "-target",
+      "x86-windows-gnu",
+      "-std=c++17",
+      "-O2",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-S",
+      "-DMISSILE_RESET_CODEGEN=1"
+    ],
+    "old_aggregate": {
+      "largest_explicit_stack_allocation": 1066008,
+      "stack_probe": true,
+      "memcpy": true,
+      "calls": [
+        "__alloca",
+        "_memset",
+        "_memset",
+        "_memcpy"
+      ]
+    },
+    "production_helper": {
+      "largest_explicit_stack_allocation": 0,
+      "stack_probe": false,
+      "memcpy": false,
+      "calls": [
+        "_memset",
+        "_memset"
+      ]
+    },
+    "assembly_sha256": "82a04b80c4681a27a02334adc06fe16cac758074492c59eb52fcab0629e82fe5"
+  },
+  "source_commit": "4baa78ba34032f1b69096d37db8a0a6d2714d54c",
+  "runtime7_sha256": "c39ad8c007195b47d3224f4d60f5fde133e13a1768a818702cdf29ded1441f43",
+  "fault_evidence": {
+    "code": "0xC00000FD",
+    "runtime_rva": "0xBA672",
+    "candidate_caller_rva": "0x418D0",
+    "candidate_stack_allocation": 1066144,
+    "input_bytes": 1066008,
+    "pe_default_stack_reserve": 1048576,
+    "actual_thread_teb_captured": false
+  },
+  "game_image_sha256": "ebb8b7bd07236c9ba7cbb2ad01bdca82b99faf2fccf08d79f7f60f59c4d77707"
+}
