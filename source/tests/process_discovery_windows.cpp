@@ -34,6 +34,24 @@ static int child(int argc,wchar_t** argv){
  if(window)DestroyWindow(window);
  CloseHandle(ready);CloseHandle(stop);return 0;
 }
+static DWORD waitForChildWithMessages(HANDLE process,DWORD timeout){
+ const DWORD began=GetTickCount();
+ for(;;){
+  const DWORD elapsed=DWORD(GetTickCount()-began);
+  const DWORD waited=MsgWaitForMultipleObjects(1,&process,FALSE,
+   elapsed<timeout?timeout-elapsed:0,QS_ALLINPUT);
+  if(waited!=WAIT_OBJECT_0+1)return waited;
+  // A reparented renderer sends synchronous parent notifications while its
+  // window is destroyed. The owning controller must keep dispatching those
+  // messages while waiting for this controlled child to exit.
+  MSG msg{};
+  while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)){
+   TranslateMessage(&msg);DispatchMessageW(&msg);
+   if(DWORD(GetTickCount()-began)>=timeout)break;
+  }
+  if(DWORD(GetTickCount()-began)>=timeout)return WaitForSingleObject(process,0);
+ }
+}
 struct Child {
  PROCESS_INFORMATION pi{};HANDLE ready=nullptr,stop=nullptr;
  Child(const Child&)=delete;Child& operator=(const Child&)=delete;
@@ -41,7 +59,7 @@ struct Child {
  ~Child(){
   if(stop)SetEvent(stop);
   if(pi.hProcess){
-   if(WaitForSingleObject(pi.hProcess,5000)==WAIT_TIMEOUT)TerminateProcess(pi.hProcess,99);
+   if(waitForChildWithMessages(pi.hProcess,5000)==WAIT_TIMEOUT)TerminateProcess(pi.hProcess,99);
    CloseHandle(pi.hProcess);
   }
   if(pi.hThread)CloseHandle(pi.hThread);
@@ -62,7 +80,10 @@ struct Child {
  }
  void finish(){
   require(SetEvent(stop)!=FALSE,"stop fixture");
-  require(WaitForSingleObject(pi.hProcess,5000)==WAIT_OBJECT_0,"child exited");
+  const DWORD waited=waitForChildWithMessages(pi.hProcess,5000);
+  if(waited!=WAIT_OBJECT_0)std::fprintf(stderr,"child exit wait pid=%lu result=0x%08lx error=%lu\n",
+   pi.dwProcessId,waited,waited==WAIT_FAILED?GetLastError():0);
+  require(waited==WAIT_OBJECT_0,"child exited");
   DWORD code=99;require(GetExitCodeProcess(pi.hProcess,&code)&&code==0,"child successful exit");
  }
 };
@@ -157,7 +178,9 @@ int wmain(int argc,wchar_t**argv){
    WindowReader reader{renderer};
    require(resolveYrppWindow(reader,process.pi.dwProcessId)==renderer,
     "authoritative nested renderer HWND remains PID checked");
+   std::fprintf(stderr,"PASS background nested renderer discovery; stopping child pid=%lu\n",process.pi.dwProcessId);
    process.finish();
+   std::fputs("PASS background nested renderer cleanup\n",stderr);
   }
   // Different casing is tested using the actual executable basename in a separate directory.
   const auto mixedRoot=files.root+L"\\mixed";require(CreateDirectoryW(mixedRoot.c_str(),nullptr)!=FALSE,"mixed-case directory");
