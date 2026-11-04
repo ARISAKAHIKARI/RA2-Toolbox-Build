@@ -43,5 +43,56 @@
     "pass": true,
     "checks": 27
   },
-  "windows_own_process_seh_intermediate": "PASS run41870012292 step5; merged pre8 repeats checks"
+  "final_delivery": {
+    "baseline": "98ff5db7872407b86aa0be7849755e9728116fa2",
+    "inherits_pre7": "088034345dddbf43ff45b2f5d2fa2bf385a6d039",
+    "branch": "codex/runtime-exception-policy-20261105",
+    "version": "1.0.41-pre.8",
+    "commit": "4331dbd04f50994ab786883889a42ce3f2669b73",
+    "code_tree": "c9c5d9242a78ffc413be573216f750724eb821df",
+    "ci_run": 41872126498,
+    "ci_url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/actions/runs/41872126498",
+    "ci_job": 126721881254,
+    "artifact": {
+      "id": 13345767322,
+      "name": "RA2Toolbox-Console-MVVM-x64",
+      "bytes": 3682814,
+      "sha256": "153e2309a2ab247b5fdf2cb71e26c2884f2ee81bc6d619ecd7bd07302df10bda",
+      "head_sha": "4331dbd04f50994ab786883889a42ce3f2669b73"
+    },
+    "paired_files": [
+      {
+        "bytes": 9053696,
+        "sha256": "552c753575b1fdbf4dc65d961b86c103d9543110cca6d260ced7c9ba54b8c236",
+        "name": "RA2Toolbox.exe"
+      },
+      {
+        "bytes": 15654400,
+        "sha256": "e3f9c0a07400768ffc49f82e729ec7326f9559f152b874a49bbc571cc6a71fd1",
+        "name": "GameRuntime.dll"
+      },
+      {
+        "bytes": 214528,
+        "sha256": "fed0a32ea89233e7af40c45d8d63d6d774e8822693b752bffdeac8a97b08570d",
+        "name": "GameRuntimeHost32.exe"
+      },
+      {
+        "bytes": 194912,
+        "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6",
+        "name": "WebView2Loader.dll"
+      }
+    ],
+    "portable_policy_checks": 706,
+    "source_extracted_lifecycle_cases": 10,
+    "baseline_reproduced_failures": 4,
+    "shared_tooltip_checks": 27,
+    "windows_focused_seh": "PASS final merged pre8 run41872126498 step5: actual x86 SEH forwarding48, reentry48, finally3; owned manager/FP cleanup; inherited shared-tooltip27",
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "package": {
+      "bytes": 3593793,
+      "sha256": "84b1b0e3f4051754ce7f7764f59036470b4d8564804c15aec77bdb58fff43970",
+      "file_name": "RA2Toolbox-1.0.41-pre.8-x64-Update.zip"
+    }
+  }
 }

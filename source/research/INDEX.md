@@ -262,6 +262,6 @@
 - [Runtime(8) 單步異常、故障鎖存及同進程重連殘留](2026-11-04-runtime-single-step-fault-reconnect.md)（80000004／4F7870／fault未清／callback仍活；來源與實機日誌分析，未修改Runtime）
 
 
-- [硬體斷點 owner 交會與偵錯例外分流](2026-11-05-breakpoint-owner-rendezvous.md)（pre.9；延遲交易／debug SEH 分流；現場首發來源仍待確認）
+- [pre.8 Hook 異常傳遞、SEH 擁有者清理與重新連接](2026-11-05-runtime-exception-policy.md)（Search／access-only fallback／exact lease／publication abort／fault retirement；Windows 自有程序與產品編譯）
 
-- [Runtime 例外轉交與 SEH 擁有狀態清理](2026-11-05-runtime-exception-policy.md)（與 owner 交會整合；外層處理／入口鎖／FP／發布序列）
+- [硬體斷點 owner 交會與偵錯例外分流](2026-11-05-breakpoint-owner-rendezvous.md)（pre.9；Windows DR／SEH、延遲交易與配對成品通過；實機首發來源待確認）

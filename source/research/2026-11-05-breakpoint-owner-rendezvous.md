@@ -31,3 +31,12 @@ Microsoft 參考：
 
 
 整合保留新版例外策略的明確故障邊界：已有 IPC 的 legacy fault 維持清理／報告，等待 Host stop 或死亡再完成退休；無 IPC 的殘留 fault 可清完後再接新 Host。全域 debug／native 例外正常走外部處理鏈，不進 legacy fault。所有產品標記統一為 pre.9，避免與其他分支 pre.8 混淆。
+
+
+## 最終 Windows 配對交付
+
+源提交 `dde2f56b3c663f3355d1c7ca0c436f5a2ba8ee58`，專用 run `41873387844` 全部成功；真正 x86 SEH 48個路由／48次正常重入、3個SEH scope／FP場景，延遲worker 32次重配與32次audit均通過。兩槽60000次、四站點180000次自有程序硬體例外通過；來源抽取的27項清理、20項交易／filter及10個故障／展開場景通過。
+
+成品版本 `1.0.41.9`，Host x64、Runtime／Broker x86、Cursor155／Assist96／Runtime4。下載 archive digest、四個檔案與CI SHA-256、PE架構及版本均一致。更新包 `RA2Toolbox-1.0.41-pre.9-x64-Update.zip`，3576161 bytes，SHA-256 `3d846f6f3e96a8130df1d651af9a0ca903cda9f71b5fcf86fb51c1ed34d9b0d5`。只含四個執行元件、必要許可及使用者更新說明。
+
+[完整交付證據](evidence/breakpoint-owner-rendezvous-windows.json)。升級前退出遊戲與工具箱，整包覆蓋後再啟動；遊戲內 pinned DLL 不能只重啟Host替換。實際遊戲／聯機與Runtime(9)首發單步來源仍未驗收。
