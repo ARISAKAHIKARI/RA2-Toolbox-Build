@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
-#include <initializer_list>
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -66,10 +65,12 @@ void hitChecks(){
  auto hit=[&](uint32_t eip){const TestLease savedLease=lease;const TestRegisters savedRegisters=registers;auto result=assist::techbp::ownedHit(lease,registers,eip,5);check(!memcmp(&lease,&savedLease,sizeof lease)&&!memcmp(&registers,&savedRegisters,sizeof registers));return result;};
  auto result=hit(lease.sites[0]);check(result.slots==1&&result.tag==0);
  registers.status=0;check(!hit(lease.sites[0]).slots);registers.status=1;
- for(uint32_t foreign:{2u,4u,8u,0x2000u,0x4000u,0x8000u}){registers.status=1|foreign;check(!hit(lease.sites[0]).slots);}registers.status=1;
+ const uint32_t foreignCauses[]={2u,4u,8u,0x2000u,0x4000u,0x8000u};
+ for(uint32_t foreign:foreignCauses){registers.status=1|foreign;check(!hit(lease.sites[0]).slots);}registers.status=1;
  check(!hit(lease.sites[0]+1).slots);
  // Global enable and each non-execution RW/LEN configuration are foreign.
- for(uint32_t control:{0u,2u,3u,0x10001u,0x20001u,0x40001u,0x80001u}){registers.control=control;check(!hit(lease.sites[0]).slots);}registers.control=1;
+ const uint32_t foreignControls[]={0u,2u,3u,0x10001u,0x20001u,0x40001u,0x80001u};
+ for(uint32_t control:foreignControls){registers.control=control;check(!hit(lease.sites[0]).slots);}registers.control=1;
  registers.address[0]=lease.sites[4];check(!hit(lease.sites[4]).slots);
  lease.uncertain=1;lease.alternative[0]=4;result=hit(lease.sites[4]);check(result.slots==1&&result.tag==4);
  check(!hit(lease.sites[0]).slots);lease.uncertain=0;registers.address[0]=lease.sites[0];
