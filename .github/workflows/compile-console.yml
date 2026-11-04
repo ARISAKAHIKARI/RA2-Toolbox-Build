@@ -1,7 +1,7 @@
 name: Compile WebView2 console and x86 game components
 on:
   push:
-    branches: [main, codex/console-architecture-20261103, codex/control-hardware-20261104, codex/capacity-production-20261104]
+    branches: [main, codex/console-architecture-20261103, codex/control-hardware-20261104, codex/capacity-production-20261104, codex/placement-input-20261104]
     paths: [source/**, .github/workflows/compile-console.yml]
   workflow_dispatch:
 permissions:
@@ -116,6 +116,13 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'Independent level comparison setting failed'}
           python source/tools/verify_crossbit_abi.py --zig $env:ZIG_EXE --output diagnostics/console-win32/abi.json
           if($LASTEXITCODE -ne 0){throw 'Protocol 94 ABI mismatch'}
+      - name: Verify native placement click admission and local UI completion
+        shell: pwsh
+        run: |
+          python source/tools/test_native_placement.py --zig $env:ZIG_EXE --build-dir diagnostics/console-win32/placement-entry
+          if($LASTEXITCODE -ne 0){throw 'Native placement input/queue regression failed'}
+          python source/assist/tests/native_placement_completion.py --zig $env:ZIG_EXE --out diagnostics/console-win32/placement-completion
+          if($LASTEXITCODE -ne 0){throw 'Native placement local UI completion failed'}
       - name: Preserve isolated Win32 fixture diagnostics
         if: always()
         uses: actions/upload-artifact@v4

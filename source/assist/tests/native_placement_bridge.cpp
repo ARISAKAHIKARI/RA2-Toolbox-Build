@@ -93,7 +93,11 @@ template<class R,class...Args>static R call(uint32_t address,uint32_t self,Args.
 // controlled query sink. The original engine is never attached or called.
 struct NativeViewRect{int x=0,y=0,w=0,h=0;};
 struct NativeViewPoint{int x=0,y=0;};
-namespace gameentry {enum class Client{Assist};static bool active(Client){return true;}}
+namespace gameentry {
+ enum class Client{Assist};static bool allowed=true;static int depth=0;
+ static bool active(Client){return true;}
+ struct Scope{bool entered;explicit Scope(Client):entered(allowed&&!depth){if(entered)++depth;}~Scope(){if(entered)--depth;}explicit operator bool()const{return entered;}};
+}
 #include "../source/native_viewport_query.h"
 struct FixtureCell{short x,y;};struct FixtureCoord{int x,y,z;};
 extern "C" int __cdecl GuardedNativeViewQuery(void*p,void*c,void*d,void*o,void*a,void*b){
@@ -123,6 +127,23 @@ static BOOL fixtureClient(HWND,POINT*){return TRUE;}
 #define GetCursorPos fixtureCursor
 #define ScreenToClient fixtureClient
 #include "../source/native_placement_bridge.h"
+namespace dispatchrouter {enum class Trigger {Message};}
+static volatile LONG hostWorkPending=0;
+static int inputDispatches=0,filterCalls=0;static bool sampleAllowed=true;
+static void dispatchFromTrigger(dispatchrouter::Trigger,DWORD,const MSG*){
+ assert(gameentry::depth==0);++inputDispatches;
+ if(!sampleAllowed)return;
+ if(InterlockedExchange(&hostWorkPending,0))snap.frame=get<int>(0xA8ED84);
+ nativePlacementTick(clockNow);
+}
+extern "C" int GuardedAssistFilter(void*message){
+ assert(gameentry::depth==1);++filterCalls;
+ if(nativePlacementCompletionPending())nativePlacementCompletionTick(clockNow);
+ return message&&nativePlacementMessage(static_cast<MSG*>(message));
+}
+#define GetTickCount() clockNow
+#include "native_placement_filter_extract.h"
+#undef GetTickCount
 #undef GetForegroundWindow
 #undef GetWindowThreadProcessId
 #undef GetClientRect
@@ -133,6 +154,7 @@ static void reset(){
  memset(globals,0,sizeof globals);memset(objects,0,sizeof objects);memset(sh,0,sizeof *sh);memset(&snap,0,sizeof snap);
  memset(typePointers,0,sizeof typePointers);lastHouse=House;match=7;clockNow=1000;ready=retired=clockOkay=true;failRead=0;
  outgoingBudget=10;queryMutation=ctorMutation=clockMutation=floorMutation={};queries=constructorsCalled=clockCalls=reads=0;queriedX=queriedY=0;constructedPacket=nullptr;
+ inputDispatches=filterCalls=0;sampleAllowed=gameentry::allowed=true;gameentry::depth=0;hostWorkPending=0;
  fault=false;completionActiveCalls=completionCopyCalls=completionQuickCalls=0;nativePlacementCompletionReset();
  floorHeight=0;placementView={};placementCapturedButtons=0;sh->heartbeat=clockNow;put<uint32_t>(0xB73550,0x1234);put<int>(0x8809A0,-1);put<int>(0x8192B8,2);put<int>(0x819310,3);
  sh->foreground=1;sh->flags=BuildAnywhere;sh->placementImplementation=2;sh->request=1;sh->command=PlaceCompletedBuilding;sh->requestMatch=match;sh->requestTick=clockNow;
@@ -231,6 +253,20 @@ int main(){
  // nor the native event gateway may submit until the exact frame is sampled.
  down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down)&&queued()==0);up=mouse(WM_LBUTTONUP);assert(nativePlacementMessage(&up)&&queued()==0&&placementView.active);++checks;
  snap.frame=get<int>(0xA8ED84);nativePlacementTick(clockNow);down=mouse(WM_LBUTTONDOWN);assert(nativePlacementMessage(&down));up=mouse(WM_LBUTTONUP);assert(nativePlacementMessage(&up)&&queued()==1);++checks;
+ // Execute the actual Runtime filter adapter without a Host-ready pulse.
+ // It refreshes BEFORE acquiring the filter lease; strict admission remains.
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);
+ put<int>(0xA8ED84,301);down=mouse(WM_LBUTTONDOWN);AssistRuntimeFilter(&down);
+ assert(inputDispatches==1&&filterCalls==1&&down.message==WM_NULL&&snap.frame==301&&!queued());++checks;
+ put<int>(0xA8ED84,302);up=mouse(WM_LBUTTONUP);AssistRuntimeFilter(&up);
+ assert(inputDispatches==2&&filterCalls==2&&up.message==WM_NULL&&snap.frame==302&&queued()==1);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);sampleAllowed=false;
+ put<int>(0xA8ED84,301);down=mouse(WM_LBUTTONDOWN);AssistRuntimeFilter(&down);up=mouse(WM_LBUTTONUP);AssistRuntimeFilter(&up);
+ assert(inputDispatches==2&&snap.frame==300&&!queued()&&placementView.active);++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);gameentry::allowed=false;
+ down=mouse(WM_LBUTTONDOWN);AssistRuntimeFilter(&down);assert(!inputDispatches&&!filterCalls&&down.message==WM_LBUTTONDOWN&&!queued());++checks;
+ reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);down=mouse(WM_LBUTTONDOWN);down.hwnd=(HWND)0x5678;AssistRuntimeFilter(&down);
+ assert(!inputDispatches&&filterCalls==1&&down.message==WM_LBUTTONDOWN&&!queued());++checks;
  // This permission admits forward frames only; it does not accept rewind,
  // changed session, changed House, or a replaced completed product.
  reset();sh->arg2=1;assert(nativePlacementCommand(House,clockNow)==2);put<int>(0xA8ED84,299);auto motion=mouse(WM_MOUSEMOVE);assert(!nativePlacementMessage(&motion)&&!placementView.active&&queued()==0);++checks;
@@ -336,7 +372,7 @@ int main(){
   put<uint32_t>(0xB0FE5C+(route?4:0),Product);put<uint32_t>(0xB0FE5C+(route?0:4),Product+0x100);nativePlacementReset();
   nativePlacementTick(clockNow);assert(nativePlacementCompletionPending()&&get<uint32_t>(0x87F7E8+0x11A4)==Product&&!completionActiveCalls&&!completionCopyCalls);++checks;
   put<uint32_t>(Factory+0x58,0);put<int>(Factory+0x24,0);nativePlacementTick(clockNow);
-  assert(nativePlacementCompletionPending()&&queued()==1&&!completionActiveCalls&&!completionCopyCalls&&!completionQuickCalls&&get<uint32_t>(0xB0FE5C+(route?4:0))==Product);++checks;
+  assert(nativePlacementCompletionPending()&&queued()==1&&!completionActiveCalls&&!completionCopyCalls&&completionQuickCalls==1&&get<uint32_t>(0xB0FE5C+(route?4:0))==0);++checks;
   // The observer keeps working after the modal closes and focus changes.
   sh->foreground=0;clockNow+=1100;onMap();nativePlacementTick(clockNow);
   assert(!nativePlacementCompletionPending()&&queued()==1&&completionActiveCalls==1&&completionCopyCalls==1&&completionQuickCalls==1);
@@ -349,10 +385,17 @@ int main(){
  reset();queuePreview();clockNow+=10001;sh->heartbeat=clockNow;nativePlacementTick(clockNow);
  assert(!nativePlacementCompletionPending()&&queued()==1);sh->arg2=1;
  assert(nativePlacementCommand(House,clockNow)==2&&placementView.active&&queued()==1);++checks;
+ // Queue acceptance itself clears the exact native quick cache, before
+ // OnMap and before any periodic sample. The unrelated cache survives.
+ reset();put<uint32_t>(0xB0FE5C,Product);put<uint32_t>(0xB0FE60,Product+0x100);queuePreview();
+ assert(completionQuickCalls==1&&!get<uint32_t>(0xB0FE5C)&&get<uint32_t>(0xB0FE60)==Product+0x100&&!get<uint8_t>(Product+0x74));++checks;
+ // A Q key arriving before the next Host sample also retires a republished
+ // exact cache, using the pending observer through the real filter adapter.
+ put<uint32_t>(0xB0FE5C,Product);MSG key{};key.hwnd=(HWND)0x1234;key.message=WM_KEYDOWN;key.wParam='Q';AssistRuntimeFilter(&key);
+ assert(completionQuickCalls==2&&!get<uint32_t>(0xB0FE5C)&&key.message==WM_KEYDOWN&&queued()==1);++checks;
  // Native helper clears at most one Q/W cache per call, and never null-calls.
  reset();queuePreview();onMap();put<uint32_t>(0xB0FE5C,Product);put<uint32_t>(0xB0FE60,Product);nativePlacementTick(clockNow);
- assert(nativePlacementCompletionPending()&&completionQuickCalls==1&&get<uint32_t>(0xB0FE5C)==0&&get<uint32_t>(0xB0FE60)==Product);
- nativePlacementTick(clockNow);assert(!nativePlacementCompletionPending()&&completionQuickCalls==2&&get<uint32_t>(0xB0FE60)==0&&queued()==1);++checks;
+ assert(!nativePlacementCompletionPending()&&completionQuickCalls==2&&get<uint32_t>(0xB0FE5C)==0&&get<uint32_t>(0xB0FE60)==0&&queued()==1);++checks;
  // A foreign/replaced or unreadable native routine must never be invoked.
  reset();queuePreview();onMap();put<uint32_t>(0xB0FE5C,Product);failRead=0x734270;nativePlacementTick(clockNow);
  assert(nativePlacementCompletionPending()&&!completionQuickCalls&&get<uint32_t>(0xB0FE5C)==Product);
@@ -365,7 +408,8 @@ int main(){
  assert(nativePlacementCompletionPending()&&!completionActiveCalls&&queued()==1);++checks;
  failRead=0;nativePlacementTick(clockNow);assert(!nativePlacementCompletionPending()&&completionActiveCalls==1&&queued()==1);++checks;
  reset();queuePreview();nativeCursor(0x11A4);onMap();put<uint8_t>(0x87F7E8+0x11B0,1);nativePlacementTick(clockNow);
- assert(!nativePlacementCompletionPending()&&!completionActiveCalls&&get<uint32_t>(0x87F7E8+0x11A4)==Product&&queued()==1);++checks;
+ assert(nativePlacementCompletionPending()&&!completionActiveCalls&&get<uint32_t>(0x87F7E8+0x11A4)==Product&&queued()==1);++checks;
+ put<uint8_t>(0x87F7E8+0x11B0,0);nativePlacementTick(clockNow);assert(!nativePlacementCompletionPending()&&completionActiveCalls==1&&queued()==1);++checks;
  reset();outgoingBudget=0;assert(nativePlacementCommand(House,clockNow)<0&&!nativePlacementCompletionPending()&&!queued());++checks;
  reset();queuePreview();nativeCursor(0x11A4);onMap();put<int>(0xA8ED84,299);nativePlacementTick(clockNow);
  assert(!nativePlacementCompletionPending()&&!completionActiveCalls&&queued()==1);++checks;

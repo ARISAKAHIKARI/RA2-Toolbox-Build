@@ -25,6 +25,7 @@ extern "C" int AssistFilterMessage(void* raw){
  bool keyContext=sh&&!sh->stop&&!fault&&sh->foreground&&!get<bool>(0xA8BC60+25)&&DWORD(sampleClock(sh)-sh->heartbeat)<=150;
  recordRuntimeGesture(msg,keyContext,match,sampleClock(sh));
  if(pauseViewMessage(msg))return 1;
+ if(nativePlacementCompletionPending())nativePlacementCompletionTick(sampleClock(sh));
  if(nativePlacementMessage(msg))return 1;
  if(moOrdersMessage(msg))return 1;
  if(formationMessage(msg))return 1;
@@ -78,6 +79,14 @@ extern "C" int AssistFilterMessage(void* raw){
 }
 extern "C" int GuardedAssistFilter(void*);
 extern "C" void AssistRuntimeFilter(void* message){
+ // Input can arrive in a new simulation frame without a Host-ready bit.
+ // Refresh through the existing dispatcher; never relax event frame checks.
+ {
+  gameentry::Scope inspect(gameentry::Client::Assist);if(!inspect)return;
+  if(!nativePlacementWantsInputSample(static_cast<const MSG*>(message))){GuardedAssistFilter(message);return;}
+ }
+ InterlockedExchange(&hostWorkPending,1);
+ dispatchFromTrigger(dispatchrouter::Trigger::Message,GetTickCount(),static_cast<const MSG*>(message));
  gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
  GuardedAssistFilter(message);
 }
