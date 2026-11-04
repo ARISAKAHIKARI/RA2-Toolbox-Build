@@ -1,0 +1,24 @@
+{
+  "scope": "read-only captured bytes and region metadata; no production compatibility authorization",
+  "capture_zip_sha256": "39b10d1e2a4338ce9b2f92449429b28c5e365ce3859a1b47220217240f19fe71",
+  "reported_game_file_sha256": "ebb8b7bd07236c9ba7cbb2ad01bdca82b99faf2fccf08d79f7f60f59c4d77707",
+  "game_image_base": "0x400000",
+  "game_image_size": "0x794000",
+  "reveal_main_range": {"begin": "0x577D90", "end_exclusive": "0x577F24", "bytes": 404, "all_valid": true, "all_stable": true},
+  "reported_handler_module": {"basename": "MRGA1.DLL", "base": "0x55770000", "image_size": "0xC3A000", "full_image_captured": false},
+  "wrapper_region_contract": {"bytes": 4096, "state": "MEM_COMMIT", "type": "MEM_PRIVATE", "protection": "PAGE_EXECUTE_READ", "allocation_base_equals_target": true, "all_valid": true, "stable_mask_present": false},
+  "wrappers": [
+    {"site": "0x577D90", "target": "0x03D60000", "handler": "0x558B6AB0", "handler_rva": "0x146AB0", "fallback_offset": "0x74", "resume": "0x577D95", "code_bytes": 126, "code_sha256": "2e90a130e9a32218f3157183f5a3ec00504711d442976d6d745ff193506fe505", "page_sha256": "65d83ab0b44dd8d46f9b2e8b242efee13ba94f0d4e1686b03b5f2c57cf2838d1", "source": "platform-private-276.mem", "separate_target_page_equal": true},
+    {"site": "0x577E1E", "target": "0x03D70000", "handler": "0x558B6AD0", "handler_rva": "0x146AD0", "fallback_offset": "0x74", "fallback_native_call": "0x4ADEE0", "resume": "0x577E23", "code_bytes": 126, "code_sha256": "946ce7c59e7cc8848c20b0d020f8b55bfef7b4b812c0087d42708b27f62e07b1", "page_sha256": "d26ff522c47a2387968b077e347cdc9e7e1bfb6ac1757b45c5a34de5e8f1c74e", "source": "platform-private-277.mem"},
+    {"site": "0x577F03", "target": "0x03D80000", "handler": "0x558B6B20", "handler_rva": "0x146B20", "fallback_offset": "0x74", "fallback_native_call": "0x4ADCD0", "resume": "0x577F08", "code_bytes": 126, "code_sha256": "581b9348c2548a679cc640d0f1f0e407bd97f20127819219572c6fa55f03e072", "page_sha256": "8846aecbeedaeb1c81569101dbc5cabfe4ac5fdf98bc5b577da55c850f3791e2", "source": "platform-private-278.mem"}
+  ],
+  "shared_failure_handler_rva": "0x98A80",
+  "adjacent_function_hook": {"site": "0x577F30", "target": "0x03D90000", "outside_reveal_main_range": true},
+  "conditional_fallback_abi": {"convention": "thiscall shape", "stack_arguments": 1, "ret_address": "0x577F21", "ret_pop_bytes": 4},
+  "unresolved": ["three module handler bodies and their transitive dependencies are not captured", "actual handler return destinations and context mutations", "complete platform Reveal semantics and live multiplayer behavior"],
+  "production_files_changed": false,
+  "unknown_replacement_authorized": false,
+  "platform_handler_executed": false,
+  "live_feature_acceptance_tested": false,
+  "multiplayer_tested": false
+}

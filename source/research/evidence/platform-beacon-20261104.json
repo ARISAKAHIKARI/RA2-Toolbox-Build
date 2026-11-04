@@ -1,0 +1,196 @@
+{
+  "pass": true,
+  "scope": "bounded instruction interpreter over GNU objdump decoding of the actual captured 295-byte x86 function; five platform callees explicit fixtures; not Windows or real platform execution",
+  "main_image_sha256": "ebb8b7bd07236c9ba7cbb2ad01bdca82b99faf2fccf08d79f7f60f59c4d77707",
+  "module": "MRGA1.DLL",
+  "module_image_bytes": 12820480,
+  "target_rva": "0x153CD0",
+  "instruction_count": 97,
+  "body_bytes": 295,
+  "body_normalized_sha256": "e358b23e0021705cce6de0e00b10b08e3dbc8f9eca156f13cb0fe8f87ed0392c",
+  "callee_saved_and_ret4_verified": true,
+  "cases": [
+    {
+      "name": "owner_minus1",
+      "pass": true,
+      "steps": 20,
+      "callee_rvas": [
+        "0x1aab20",
+        "0x1549e0"
+      ],
+      "destroy_count": 0,
+      "free_count": 0
+    },
+    {
+      "name": "owner_zero",
+      "pass": true,
+      "steps": 38,
+      "callee_rvas": [
+        "0x1aab20",
+        "0x1549e0",
+        "0x1552f0"
+      ],
+      "destroy_count": 0,
+      "free_count": 0
+    },
+    {
+      "name": "owner_seven",
+      "pass": true,
+      "steps": 38,
+      "callee_rvas": [
+        "0x1aab20",
+        "0x1549e0",
+        "0x1552f0"
+      ],
+      "destroy_count": 0,
+      "free_count": 0
+    },
+    {
+      "name": "owner_eight",
+      "pass": true,
+      "steps": 20,
+      "callee_rvas": [
+        "0x1aab20",
+        "0x1549e0"
+      ],
+      "destroy_count": 0,
+      "free_count": 0
+    },
+    {
+      "name": "platform_guard",
+      "pass": true,
+      "steps": 12,
+      "callee_rvas": [
+        "0x1aab20"
+      ],
+      "destroy_count": 0,
+      "free_count": 0
+    },
+    {
+      "name": "platform_state",
+      "pass": true,
+      "steps": 16,
+      "callee_rvas": [
+        "0x1aab20"
+      ],
+      "destroy_count": 0,
+      "free_count": 0
+    },
+    {
+      "name": "player_count_zero",
+      "pass": true,
+      "steps": 23,
+      "callee_rvas": [
+        "0x1aab20",
+        "0x1549e0"
+      ],
+      "destroy_count": 0,
+      "free_count": 0
+    },
+    {
+      "name": "player_array_null",
+      "pass": true,
+      "steps": 26,
+      "callee_rvas": [
+        "0x1aab20",
+        "0x1549e0"
+      ],
+      "destroy_count": 0,
+      "free_count": 0
+    },
+    {
+      "name": "player_slot_null",
+      "pass": true,
+      "steps": 28,
+      "callee_rvas": [
+        "0x1aab20",
+        "0x1549e0"
+      ],
+      "destroy_count": 0,
+      "free_count": 0
+    },
+    {
+      "name": "mixed_owner_zero",
+      "pass": true,
+      "steps": 103,
+      "callee_rvas": [
+        "0x1aab20",
+        "0x1549e0",
+        "0x1545c0",
+        "0x4b404e",
+        "0x1545c0",
+        "0x1552f0"
+      ],
+      "destroy_count": 2,
+      "free_count": 1
+    },
+    {
+      "name": "mixed_owner_seven",
+      "pass": true,
+      "steps": 95,
+      "callee_rvas": [
+        "0x1aab20",
+        "0x1549e0",
+        "0x1545c0",
+        "0x4b404e",
+        "0x1552f0"
+      ],
+      "destroy_count": 1,
+      "free_count": 1
+    },
+    {
+      "name": "mixed_null_and_nonowner",
+      "pass": true,
+      "steps": 61,
+      "callee_rvas": [
+        "0x1aab20",
+        "0x1549e0",
+        "0x1552f0"
+      ],
+      "destroy_count": 0,
+      "free_count": 0
+    }
+  ],
+  "private_bytes_published": false,
+  "capture_zip_sha256": "39b10d1e2a4338ce9b2f92449429b28c5e365ce3859a1b47220217240f19fe71",
+  "module_pe_header_in_capture": false,
+  "target_fragment_double_read": false,
+  "entry_valid_and_double_read_stable": true,
+  "target_fragment_all_65536_bytes_readable": true,
+  "memory": {
+    "state": "MEM_COMMIT",
+    "type": "MEM_IMAGE",
+    "protection": "PAGE_EXECUTE_READ",
+    "allocation_owner": "MRGA1.DLL"
+  },
+  "new_profile": {
+    "image_bytes": "0xC3A000",
+    "target_rva": "0x153CD0",
+    "body_bytes": 295,
+    "normalized_fnv1a64": "9a9251001227c441",
+    "normalized_sha256": "e358b23e0021705cce6de0e00b10b08e3dbc8f9eca156f13cb0fe8f87ed0392c",
+    "module_absolute_operand_offsets": [
+      4,
+      63,
+      99,
+      105,
+      279
+    ]
+  },
+  "old_profile": {
+    "image_bytes": "0xBBD000",
+    "target_rva": "0x12FB60",
+    "body_bytes": 295,
+    "normalized_fnv1a64": "78fb89765759f745",
+    "normalized_sha256": "1a301b27344f26b9dd704499a4334db86bca9ecfe6911e3e6e14bc1a8f5497ae"
+  },
+  "external_callee_rvas": [
+    "0x1AAB20",
+    "0x1549E0",
+    "0x1545C0",
+    "0x4B404E",
+    "0x1552F0"
+  ],
+  "production_modified": false,
+  "interpreter_script_sha256": "920eb332a2561f6433e44c219fc8f24c45a93950962796d6c0662517148343f7"
+}

@@ -1,0 +1,193 @@
+{
+  "pass": true,
+  "scope": "static PE32 product disassembly of released Runtime; no private game bytes or live execution",
+  "source_commit": "ff657f291dbb60f48f357364d4b3fe887de1b231",
+  "runtime_sha256": "9d4233bbb3586a11e839c3e65faa32b236cee9cb75faf126f75aaad8021e82ae",
+  "runtime_preferred_image_base": "0x10000000",
+  "baseline": {
+    "runtime_sha256": "349e61129d23130bfe0e7fef9551b335c9896cb2e6e290a36ebe08dff8334a9e",
+    "probe_rva": "0xBA660",
+    "fault_instruction_rva": "0xBA672",
+    "missile_function_rva": "0x418D0",
+    "missile_probe_call_rva": "0x418DE",
+    "missile_fixed_frame_bytes": 1066144,
+    "direct_probe_callers": 30
+  },
+  "product_scan": {
+    "probe_rvas": [
+      "0xba620",
+      "0xba660"
+    ],
+    "callers": [
+      {
+        "rva": "0xc959",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 14876
+      },
+      {
+        "rva": "0x17407",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 27680
+      },
+      {
+        "rva": "0x176b0",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 53304
+      },
+      {
+        "rva": "0x1856e",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 14672
+      },
+      {
+        "rva": "0x20508",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 24592
+      },
+      {
+        "rva": "0x2815e",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 24624
+      },
+      {
+        "rva": "0x2cc39",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 4124
+      },
+      {
+        "rva": "0x2fcc9",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 8392
+      },
+      {
+        "rva": "0x3613e",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 4240
+      },
+      {
+        "rva": "0x3c2c9",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 71772
+      },
+      {
+        "rva": "0x4066e",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 16608
+      },
+      {
+        "rva": "0x437a3",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 4100
+      },
+      {
+        "rva": "0x4ad69",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 8276
+      },
+      {
+        "rva": "0x4d039",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 65624
+      },
+      {
+        "rva": "0x500b5",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 16436
+      },
+      {
+        "rva": "0x5def9",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 32828
+      },
+      {
+        "rva": "0x7655c",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 4104
+      },
+      {
+        "rva": "0x77935",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 4104
+      },
+      {
+        "rva": "0x77e2e",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 33968
+      },
+      {
+        "rva": "0x786ee",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 53360
+      },
+      {
+        "rva": "0x795db",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 27680
+      },
+      {
+        "rva": "0x860c9",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 8296
+      },
+      {
+        "rva": "0x873b9",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 8272
+      },
+      {
+        "rva": "0xa122e",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 17528
+      },
+      {
+        "rva": "0xa447e",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 8560
+      },
+      {
+        "rva": "0xb077e",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 8544
+      },
+      {
+        "rva": "0xb804d",
+        "helper_rva": "0xba620",
+        "immediate_bytes": null
+      },
+      {
+        "rva": "0xdadfb",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 16428
+      },
+      {
+        "rva": "0xdb4fb",
+        "helper_rva": "0xba620",
+        "immediate_bytes": 16436
+      }
+    ]
+  },
+  "fixed_immediate_callers": 28,
+  "variable_callers": 1,
+  "largest_fixed_probe_frame_bytes": 71772,
+  "old_0x1044a0_probe_frame_present": false,
+  "missile_control_tick": {
+    "rva": "0x418D0",
+    "prologue_stack_subtraction_rva": "0x418D9",
+    "fixed_frame_bytes": 3224,
+    "fixed_frame_hex": "0xC98",
+    "entry_stack_probe": false,
+    "disabled_check_rva": "0x418FA",
+    "disabled_branch_rva": "0x41901",
+    "disabled_destination_rva": "0x4199B",
+    "disabled_check_after_prune_preserved": true
+  },
+  "bounds": [
+    "Probe scan enumerates both byte-identified x86 helper variants and all disassembled direct call sites.",
+    "Fixed EAX immediate allocations are separated from the one variable CRT allocation; this is not a complete dynamic call-chain stack bound.",
+    "Product verification confirms the old large temporary is absent; it does not constitute user-platform or multiplayer acceptance."
+  ],
+  "private_game_read_for_this_audit": false,
+  "windows_executed": false,
+  "game_process_tested": false,
+  "multiplayer_tested": false
+}

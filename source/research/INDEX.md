@@ -6,6 +6,9 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 新 MRGA 信标函数证据（未投产） | [新采集 ABI 与严格 profile 候选](2026-11-04-platform-beacon-current-capture.md) | 431410 C3A000 153CD0 ret4 proposed-only |
+| 平台 Reveal 上下文跳板与采集缺口 | [原生 fallback 不等于透明授权](2026-11-04-platform-reveal-wrapper-boundary.md) | 577D90 577E1E 577F03 MEM_PRIVATE handler-missing no-authorization |
+| 蜘蛛自动功能（用户暂停，未实现） | [字段、射程与工作恢复检查点](2026-11-04-parasite-automation-pending.md) | pending no-backend parasite manual-priority queue-semantics |
 | pre.4 导弹输入聚合临时与栈溢出 | [超大临时与原位重置](2026-11-04-missile-input-stack-overflow.md) | C00000FD BA672 418D0 Input104418 placement-new DMI Zig013 |
 | 平台实机 Hook 已连接但可选入口阻断全局 | [19项核心与命令依赖隔离](2026-11-04-platform-startup-dependency-isolation.md) | commandStatus3 431410 577D90 E9 core19 ClearBeacons RevealMap SpySat owned-only |
 | 随机名称平台的后台子渲染捕获 | [旧逻辑历史与全窗口树发现](2026-11-04-background-renderer-discovery.md) | random-name background child EnumWindows EnumChildWindows once-per-PID strict-image fingerprint MRGA preserved |
