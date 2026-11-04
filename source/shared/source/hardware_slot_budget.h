@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 namespace assist { namespace slotbudget {
-inline constexpr uint32_t Known=0x80000000u,Full=1u,Enhance=4u,Compare=8u,Control=16u;
+inline constexpr uint32_t Known=0x80000000u,Full=1u,Map=2u,Enhance=4u,Compare=8u,Control=16u;
 inline unsigned count(uint32_t tags){return unsigned(__builtin_popcount(tags));}
 inline uint32_t pack(unsigned free,unsigned owned,unsigned foreign,uint32_t tags){
  return free<=4&&owned<=4&&foreign<=4&&free+owned+foreign==4&&!(tags&~31u)&&count(tags)==owned?

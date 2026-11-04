@@ -574,7 +574,7 @@ static bool commandChannelReady(){return controllink::ready(commandLink());}
 static bool commandFresh(DWORD now){return commandChannelReady()&&DWORD(now-lastData)<1500;}
 static uint32_t currentHardwareBudget(){return shared&&commandFresh(GetTickCount())?shared->hardwareSlotBudget:0;}
 static uint32_t requestedHardwareTags(){
- return (extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
+ return (extra.mapVisibility?slotbudget::Map:0u)|(extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
   (extra.techEnhance&&extra.techEnhanceImplementation==1?(slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u)):0u);
 }
 static bool hardwareBudgetAvailable(uint32_t additional){return slotbudget::allows(currentHardwareBudget(),requestedHardwareTags()|additional);}
@@ -1773,6 +1773,12 @@ static void updateModeStatus(DWORD now){
   SetWindowTextW(GetDlgItem(ui,9471),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9471),p<0);
  }
 
+ {const int s=shared?shared->mapVisibilityStatus:0;
+  std::wstring text=L"硬件黑幕显示：";
+  text+=s==-6?L"请先关闭其他地图显示／揭示模式":s==-1?L"原生显示入口不兼容":s==-2?L"没有空闲硬件断点":s<0?L"断点配置或还原失败":!extra.mapVisibility?(s?L"等待释放槽位":L"关闭"):s==1?L"已启用 · 1 槽":L"等待游戏就绪";
+  if(shared&&extra.mapVisibility)text+=L" · 命中 "+std::to_wstring(shared->mapVisibilityExceptions)+L" 次";
+  SetWindowTextW(GetDlgItem(ui,9493),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9493),s<0);
+ }
  {const int s=shared?shared->superweaponGrantStatus:0;
   std::wstring text=L"持续授予超武：";
   text+=!extra.superweaponGrant?L"关闭（已有授予保留本局）":s==-1?L"原生函数不兼容":s==-2?L"超武／玩家身份不匹配":s==-3?L"原生授予结果异常":phase||s!=1?L"等待游戏就绪":L"已启用";

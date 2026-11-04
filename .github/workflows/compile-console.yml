@@ -31,6 +31,7 @@ jobs:
           node source/suite/tests/console_store_test.mjs 2>&1 | tee diagnostics/console-browser/model.log
           python3 source/assist/tests/control_parameters.py --out diagnostics/console-browser/control-policy
           python3 source/assist/tests/superweapon_grant_settings.py --out diagnostics/console-browser/superweapon-settings
+          python3 source/assist/tests/map_visibility_settings.py --out diagnostics/console-browser/map-settings
           python3 source/assist/tests/construction_host_test.py
           python3 source/assist/tests/construction_batch_runtime_test.py
           for name in fixed_capacity formation_quick missile_compute cooperative; do
@@ -111,12 +112,14 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'Hardware control fixture failed'}
           python source/assist/tests/tech_enhancement_parameter_windows.py --zig $env:ZIG_EXE --build-dir diagnostics/console-win32/technology-four --output diagnostics/console-win32/technology-four/result.json
           if($LASTEXITCODE -ne 0){throw 'Technology slot regression failed'}
+          python source/assist/tests/map_visibility_windows.py --zig $env:ZIG_EXE --out diagnostics/console-win32/map-hardware
+          if($LASTEXITCODE -ne 0){throw 'Map hardware fixture failed'}
           python source/assist/tests/tech_ui_publish_windows.py --zig $env:ZIG_EXE --out diagnostics/console-win32/retirement
           if($LASTEXITCODE -ne 0){throw 'Hardware retirement diagnostics regression failed'}
           python source/assist/tests/tech_enhancement_parameter_settings.py --zig $env:ZIG_EXE --build-dir diagnostics/console-win32/level-switch --output diagnostics/console-win32/level-switch/result.json
           if($LASTEXITCODE -ne 0){throw 'Independent level comparison setting failed'}
           python source/tools/verify_crossbit_abi.py --zig $env:ZIG_EXE --output diagnostics/console-win32/abi.json
-          if($LASTEXITCODE -ne 0){throw 'Protocol 95 ABI mismatch'}
+          if($LASTEXITCODE -ne 0){throw 'Protocol 96 ABI mismatch'}
       - name: Verify native placement click admission and local UI completion
         shell: pwsh
         run: |
