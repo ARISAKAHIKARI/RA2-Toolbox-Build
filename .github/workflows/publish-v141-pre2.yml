@@ -240,7 +240,14 @@ jobs:
         run: |
           set -euo pipefail
           tag=v1.0.41-pre.2
-          if gh api "repos/$GH_REPO/releases/tags/$tag" > release-before.json 2> release-query.log; then
+          gh api "repos/$GH_REPO/releases?per_page=100" > release-list.json
+          python - <<'PYCODE'
+          import json
+          matches=[r for r in json.load(open('release-list.json')) if r['tag_name']=='v1.0.41-pre.2']
+          assert len(matches)<=1
+          json.dump(matches[0] if matches else {},open('release-before.json','w'))
+          PYCODE
+          if python -c "import json,sys;sys.exit(0 if json.load(open('release-before.json')) else 1)"; then
             python - <<'PYCODE'
           import json,os
           r=json.load(open('release-before.json'))
@@ -254,7 +261,13 @@ jobs:
           cd downloaded
           sha256sum -c SHA256SUMS.txt
           cd ..
-          gh api "repos/$GH_REPO/releases/tags/$tag" > release-draft.json
+          gh api "repos/$GH_REPO/releases?per_page=100" > release-list.json
+          python - <<'PYCODE'
+          import json
+          matches=[r for r in json.load(open('release-list.json')) if r['tag_name']=='v1.0.41-pre.2']
+          assert len(matches)==1
+          json.dump(matches[0],open('release-draft.json','w'))
+          PYCODE
           python - <<'PYCODE'
           import json,os
           r=json.load(open('release-draft.json'))
@@ -262,8 +275,13 @@ jobs:
           assert r['draft'] and r['prerelease'] and r['target_commitish']==os.environ['GITHUB_SHA']
           assert {a['name'] for a in r['assets']}==expected and all(a['size']>0 for a in r['assets'])
           PYCODE
-          gh release edit "$tag" --draft=false --prerelease --latest=false
-          gh api "repos/$GH_REPO/releases/tags/$tag" > published-release.json
+          python - <<'PYCODE'
+          import json,os,subprocess
+          release=json.load(open('release-draft.json'));assert isinstance(release['id'],int)
+          json.dump({'draft':False,'prerelease':True,'make_latest':'false'},open('publish-request.json','w'))
+          with open('published-release.json','w') as out:
+              subprocess.run(['gh','api','--method','PATCH','repos/'+os.environ['GH_REPO']+'/releases/'+str(release['id']),'--input','publish-request.json'],stdout=out,check=True)
+          PYCODE
           python - <<'PYCODE'
           import json,os
           r=json.load(open('published-release.json'))
