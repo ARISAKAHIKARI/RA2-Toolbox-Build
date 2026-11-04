@@ -1,0 +1,35 @@
+{
+  "baseline": "1e52021a20f9372727a3df7ea748610c533ea7a3",
+  "version": "1.0.41-pre.6",
+  "scope": "Source audit and portable production helper/Sampler/Renderer fixture; no private game bytes read this round",
+  "source_sha256": {
+    "source/external_reader/source/radar_map.h": "a6f54ccaaedcfbccf6268589bb5d9b48cf184b58ae473718df9e2ff23540c81f",
+    "source/assist/source/minimap_overlay.h": "7620e053c6754d75cf2964dd7b40a984004dcc7dfaecd27458dd922a21bef7a9",
+    "source/assist/source/minimap_viewport.h": "c662a236b1812e391fb6ce8d3986990edd29bea5a7f4fac555829107da6eea75",
+    "source/assist/tests/minimap_viewport.cpp": "07696906dc24047cc23ab8824c650b6b3dc5ef0a9a0ff43eb14e8e99d2308d03",
+    "source/assist/tests/minimap_overview.cpp": "4de86764b1217148e138f78c78621dd7eb1c067c537e79272d4051edaf5b904c"
+  },
+  "checks": [
+    {
+      "name": "minimap_viewport",
+      "result": "pass",
+      "tool": "g++ ASAN/UBSAN; detect_leaks=0"
+    },
+    {
+      "name": "minimap_overview",
+      "result": "pass",
+      "tool": "g++ -O1 linked production xbrz.cpp"
+    },
+    {
+      "name": "console_model",
+      "result": "pass",
+      "count": 30
+    }
+  ],
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "screenshots": "User-provided bug evidence only; generated annotation is not verification",
+  "native_camera_limits_changed": false,
+  "shared_world_projection_changed": false
+}

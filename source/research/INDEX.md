@@ -255,3 +255,5 @@
 
 - [固定容量扩容、科技全开生产预定与禁用超武](2026-11-04-fixed-capacity-production-superweapons.md)（Assist94；SW 原始指令 17 例；无真实游戏／联机验证）
 
+
+- [小地圖頂部裁切、底部導航與真實視口](2026-11-04-minimap-camera-overview.md)（Tactical overview／native backing 身分／R 視口／排除端點；受控測試，實機待驗收）

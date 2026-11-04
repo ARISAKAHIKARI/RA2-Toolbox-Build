@@ -66,6 +66,23 @@ struct Geometry {
  }
  void project(double x,double y,double&u,double&v)const{u=(x-y+offsetX)/rawWidth;v=(x+y-offsetY)/rawHeight;}
 };
+// A complete Tactical overview has different edges from the native Radar
+// crop. Use the camera's pixel extent for this panel only; retain the actual
+// Radar allocation/offset as the source identity for fresh publication reads.
+// This changes neither the game's VisibleRect nor its camera clamp.
+inline bool tacticalOverviewProjection(const Geometry&source,Geometry&out){
+ if(!source.valid())return false;
+ Geometry native=source;native.rawWidth=source.sourceWidth();native.rawHeight=source.sourceHeight();
+ native.offsetX=source.sourceOffsetX();native.offsetY=source.sourceOffsetY();native.projectionAdjusted=false;
+ if(!native.valid())return false;Geometry next=native;const auto extent=source.bounds.cameraExtent();
+ next.offsetX=int(-extent.left/30.);next.offsetY=int(extent.top/15.);
+ next.rawWidth=int((extent.right-extent.left)/30.);next.rawHeight=int((extent.bottom-extent.top)/15.);
+ next.backingWidth=native.rawWidth;next.backingHeight=native.rawHeight;
+ next.backingOffsetX=native.offsetX;next.backingOffsetY=native.offsetY;
+ next.projectionAdjusted=next.rawWidth!=next.backingWidth||next.rawHeight!=next.backingHeight||
+  next.offsetX!=next.backingOffsetX||next.offsetY!=next.backingOffsetY;
+ if(!next.valid())return false;out=next;return true;
+}
 // Read-only replay of RadarClass::SetVisibleRect's geometric result. Its
 // original Cell iterator and mode-1 usable predicate were checked together,
 // including terrain Level and top-slope adjustment. This is radar projection,
@@ -152,7 +169,8 @@ public:
  explicit Sampler(Read r):read_(r),view_(r){}
  void effects(bool particles,bool lasers){particles_=particles;lasers_=lasers;}
  void reset(bool keepProjection=false){if(!keepProjection)projection_.reset();geo_={};discardPending();terrain_.reset();lastFrame_=-1;++revision_;}
- bool radarProjectionCompatible(const Frame&frame){Geometry projected;return frame.terrain&&projection_.resolve(read_,frame.terrain->geo,projected)&&projected.same(frame.terrain->geo);}
+ bool radarProjectionCompatible(const Frame&frame,bool tacticalOverview=false){Geometry projected;return frame.terrain&&
+  (tacticalOverview?tacticalOverviewProjection(frame.terrain->geo,projected):projection_.resolve(read_,frame.terrain->geo,projected))&&projected.same(frame.terrain->geo);}
  unsigned revision()const{return revision_;}
  bool hasTerrain()const{return bool(terrain_);}
  Frame terrainFrame(uint32_t now)const{Frame out;out.terrain=terrain_;out.tick=now;out.frame=lastFrame_;return out;}
@@ -165,7 +183,7 @@ public:
   if(terrain_||!frame.terrain||frame.terrain->art.empty())return;
   reset();terrain_=frame.terrain;geo_=terrain_->geo;reveal_=terrain_->reveal;lastFrame_=frame.frame;++revision_;
  }
- bool step(uint32_t reveal,int budget=4096,bool real=false,bool compactTraversal=false,bool activeRadarProjection=false){
+ bool step(uint32_t reveal,int budget=4096,bool real=false,bool compactTraversal=false,bool activeRadarProjection=false,bool tacticalOverview=false){
   // These are preview pixels, not the game's half-opacity shroud blitter.
   // Every display override exposes the unmasked minimap; native mode alone
   // follows the explored/fog cells. Keep this policy in the immutable bank.
@@ -176,7 +194,8 @@ public:
   if(!read_(Map+0x1490,&g.offsetX,sizeof g.offsetX)||!read_(Map+0x1498,&g.offsetY,sizeof g.offsetY)){discardPending();return false;}
   int frame=get<int>(0xA8ED84,-1);if(!g.valid()||frame<0||get<uint8_t>(0xA8E9A0)!=1 ){discardPending();return false;}
   if(!display::inspect(read_).visible())return false;
-  if(activeRadarProjection){Geometry active;if(!projection_.resolve(read_,g,active)){discardPending();return false;}g=active;}
+  if(tacticalOverview){Geometry active;if(!tacticalOverviewProjection(g,active)){discardPending();return false;}g=active;}
+  else if(activeRadarProjection){Geometry active;if(!projection_.resolve(read_,g,active)){discardPending();return false;}g=active;}
   if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset(activeRadarProjection);geo_=g;reveal_=reveal;}lastFrame_=frame;
   if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)||(!reveal&&!shroudselector::readLookup(read_,frameLookup_))){discardPending();return false;}
    if(!reveal)maskBits_.resize(512*512);

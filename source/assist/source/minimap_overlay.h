@@ -16,6 +16,7 @@
 #include "../../shared/source/pipeline_timing.h"
 #include "radar_paint_gate.h"
 #include "radar_panel.h"
+#include "minimap_viewport.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -41,11 +42,11 @@ class Worker {
     auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
     auto shared=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount(),true);
     if(shared&&(!external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount())||!external::radar::supportsEffects(*shared,r.selection.profile.particles,r.selection.profile.lasers)))shared.reset();
-    // Shared world banks retain the engine's allocated RGB backing. A
-    // scenario trigger can change the radar span without reallocating it;
-    // such a bank cannot be used as this panel's current projection.
-    if(shared&&!sampler.radarProjectionCompatible(*shared))shared.reset();
-    sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1,true,true);
+    // This panel covers the full Tactical camera extent, including the top
+    // strip omitted by native Radar. Keep its adjusted bank private; shared
+    // world banks retain their native source projection.
+    if(shared&&!sampler.radarProjectionCompatible(*shared,true))shared.reset();
+    sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1,true,false,true);
     const auto sampleReads=reader.reads,samplePages=reader.prefetchedPages;
     reader.begin();int frame=reader.get<int>(0xA8ED84,-1);sample.finish();
     if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
@@ -190,7 +191,9 @@ static void invalidateDisplays(){secondaryMonitor.invalidate();primaryPaintGate.
 static void navigate(HWND w,LPARAM lp){
  DWORD now=GetTickCount();bool requested=w==secondaryWindow?minimapSecondary:minimapEnabled;
  if(!shared||!enabled||!requested||!foregroundGame()||snap.chat||!commandFresh(now)||!frame||!frame->terrain||DWORD(now-frame->tick)>500||dragMatch!=commandMatch()){cancelDrag();return;}
- RECT r{};GetClientRect(w,&r);int x=0,y=0;if(!external::radar::navigate(frame->terrain->geo,short(LOWORD(lp)),short(HIWORD(lp)),r.right,r.bottom,std::max(1,snap.width-160),snap.height,x,y))return;
+ external::mainview::View view;auto fresh=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};
+ if(!minimapview::sample(shared,fresh,frame->terrain->geo,view))return;
+ RECT r{};GetClientRect(w,&r);int x=0,y=0;if(!minimapview::navigate(frame->terrain->geo,view,short(LOWORD(lp)),short(HIWORD(lp)),r.right,r.bottom,x,y))return;
  InterlockedIncrement(&shared->cameraSeq);shared->cameraMatch=commandMatch();shared->cameraTick=sampleClock(shared);shared->cameraTargetX=x;shared->cameraTargetY=y;MemoryBarrier();InterlockedIncrement(&shared->cameraSeq);wakeGame();
 }
 static SecondaryEdit secondaryHit(HWND w,int x,int y){
@@ -206,11 +209,11 @@ static void destroy(){clear();worker.shutdown();if(window)DestroyWindow(window);
 static bool presentation(int width,int height,std::shared_ptr<const external::radar::Scene>&image,radargate::Visual&visual){
  if(!frame||!frame->terrain||!frame->terrain->geo.valid()||width<3||height<3)return false;
  bool real=minimapMode==1&&bool(frame->scene);image=real?frame->scene:frame->map;if(!image)return false;
- const int mw=width-2,mh=height-2;visual={};visual.image=image;visual.width=width;visual.height=height;visual.real=real;
+ external::mainview::View view;auto fresh=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};
+ const auto&g=frame->terrain->geo;if(!minimapview::sample(shared,fresh,g,view))return false;
+ visual={};visual.image=image;visual.width=width;visual.height=height;visual.real=real;
  // Diagram markers and radar feedback are already ordered by the worker.
- const auto&g=frame->terrain->geo;double left=(snap.cameraX/30.0+g.offsetX)/g.rawWidth,top=(snap.cameraY/15.0-g.offsetY)/g.rawHeight;
- double right=left+std::max(0,snap.width-160)/30.0/g.rawWidth,bottom=top+snap.height/15.0/g.rawHeight;
- visual.view={1+int(std::clamp(left,0.,1.)*(mw-1)),1+int(std::clamp(top,0.,1.)*(mh-1)),1+int(std::clamp(right,0.,1.)*(mw-1)),1+int(std::clamp(bottom,0.,1.)*(mh-1)),0};return true;
+ return minimapview::rectangle(g,view,width,height,visual.view);
 }
 static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_NCHITTEST)return HTCLIENT;
