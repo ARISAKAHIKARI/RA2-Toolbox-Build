@@ -4,6 +4,7 @@
 #include "formation.h"
 #include "air_path_policy.h"
 #include <stdint.h>
+#include "../../shared/source/hardware_slot_budget.h"
 #include <stddef.h>
 #include "planner_types.h"
 #include "ore_type_config.h"
@@ -24,7 +25,7 @@
 #include "dodge_compute.h"
 #include "native_placement_policy.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=92;
+constexpr uint32_t Magic=0x41533130, Version=93;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -239,6 +240,8 @@ struct Shared {
  volatile int32_t techEnhanceParameterStatus=0;
  volatile uint32_t techEnhanceParameterError=0,techEnhanceParameterSlots=0,techEnhanceParameterExceptions=0;
  moorders::Options moOptions;
+ volatile uint32_t techEnhanceCompareLevel=0; // optional second level-comparison breakpoint
+ volatile uint32_t hardwareSlotBudget=0; // one atomic readback snapshot, zero means unknown
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

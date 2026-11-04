@@ -40,10 +40,13 @@ static bool installRiskSite(RiskSite&s){
  if(codeHookRegistry.active(s.address)){uint8_t b[16]{};if(read(s.address,b,s.size)&&!memcmp(b,s.after,s.size))return !codeHookRegistry.conflict(s.address);codeHookRegistry.markConflict(s.address);return false;}
  return gameentry::patch(gameentry::Client::Assist,s.address,s.before,s.after,s.size);
 }
+static bool hardwareOwned=false,hardwareCleanup=true;static int hardwareStatus=3;static unsigned hardwareRequests=0;
+static bool restoreControlParameters(){if(!hardwareCleanup)return false;hardwareOwned=false;return true;}
+static bool controlParametersRetired(){return !hardwareOwned;}static int requestControlParameters(){++hardwareRequests;hardwareOwned=hardwareStatus==3;return hardwareStatus;}
 #include "../source/control_sites_bridge.h"
 static const uint8_t nativeTail[]={0xB8,1,0,0,0,0xC3,0x8B,0x15,0x4C,0x3D,0xA8,0,0x33,0xC0,0x3B,0xCA,0x0F,0x94,0xC0,0xC3};
 static const uint8_t entries[][5]={{0xA1,0x38,0xB2,0xA8,0},{0xE9,0xFB,0x2A,0x67,0},{0xE9,0x8B,0x2C,0x67,0}};
-static void seed(int variant=1){memory.clear();codeHookRegistry={};shared={};writes.clear();controlSitesMode=0;riskControlActive=false;legacyPending=false;companions=true;failInstall=failRestore=0;afterWrite=false;
+static void seed(int variant=1){memory.clear();codeHookRegistry=hookregistry::Registry<>{};shared={};writes.clear();controlSitesMode=0;riskControlActive=false;legacyPending=false;companions=true;failInstall=failRestore=0;afterWrite=false;hardwareOwned=false;hardwareCleanup=true;hardwareStatus=3;hardwareRequests=0;
  for(const auto&p:patchcontext::Probes)bytes(p.address,p.bytes,p.size);
  for(const auto&s:mastercontrol::Sites)bytes(s.address,s.before,5);
  bytes(0x50B6F0,entries[variant],5);const uint8_t native[]={0x85,0xC0,0x75,0x1D},forward[]={0xCC,0xCC,0xCC,0xCC};bytes(0x50B6F5,variant?forward:native,4);bytes(0x50B710,nativeTail,sizeof nativeTail);
@@ -83,5 +86,10 @@ int main(){
  seed(0);memory[0x50B6F5]=0xCC;enabled();assert(writes.empty());
  seed();enabled();shared.controlAll=0;controlSitesSuspend();assert(!controlSitesOwned());
  seed();shared.controlAll=99;controlSitesTick(true);assert(writes.empty()&&shared.playerControlStatus==0);
+ seed();shared.controlAll=controlmode::Parameters;controlSitesTick(true);assert(writes.empty()&&hardwareOwned&&shared.playerControlStatus==3&&hardwareRequests==1);
+ controlSitesSuspend();assert(hardwareOwned&&writes.empty());
+ hardwareCleanup=false;shared.controlAll=controlmode::Native;controlSitesTick(true);assert(shared.playerControlStatus==-2&&writes.empty()&&hardwareOwned);
+ hardwareCleanup=true;controlSitesTick(true);assert(!hardwareOwned&&shared.playerControlStatus==1&&writes.size()==3);stopped();
+ seed();shared.controlAll=controlmode::Parameters;hardwareStatus=-12;controlSitesTick(true);assert(writes.empty()&&shared.playerControlStatus==-12&&!riskControlActive);stopped();
  puts("PASS Master production bridge: 3 exact variants, ordered install/restore, Native transitions, suspension, preflight, companions, post-write errors, pending retry and foreign conflict preservation");
 }

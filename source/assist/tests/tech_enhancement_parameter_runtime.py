@@ -31,7 +31,7 @@ def fixture(session=3,foreign=None):
  m.hits=[];m.pending_bp=None;m.skip_bp=None
  def hook(uc,pc,size,_):
   if m.skip_bp==pc:m.skip_bp=None;return
-  tag={0x6a97d2:0,0x6aa781:1,0x4f7951:2,0x4f7b66:3}.get(pc)
+  tag={0x4f7870:0,0x4f7951:2,0x4f7b66:3}.get(pc)
   if tag is None or not any(m.dr[n]==pc and (m.dr[5]&(3<<(2*n))) for n in range(4)):return
   m.pending_bp=tag;uc.emu_stop()
  m.u.hook_add(UC_HOOK_CODE,hook)
@@ -60,8 +60,8 @@ def fixture(session=3,foreign=None):
  m.run=run
  m.original_code=codehash(m);m.original_rules=ruleshash(m);return m
 
-def enhance(m,on=True,implementation=1):
- s=state(m);s.techEnhance=int(on);s.techEnhanceImplementation=implementation;save(m,s)
+def enhance(m,on=True,implementation=1,compare=True):
+ s=state(m);s.techEnhance=int(on);s.techEnhanceImplementation=implementation;s.techEnhanceCompareLevel=int(compare);save(m,s)
  for _ in range(10):m.flush();s=tick(m)
  return s
 
@@ -83,17 +83,17 @@ for field,value,byte in ((0xc98,1,True),(0xda0,2,False),(0xda4,1,False),(0xd9b,1
  check('native_gate_'+hex(field),lambda field=field,value=value,byte=byte:gated(field,value,byte))
 
 def coexist():
- m=fixture();s=ready(m);before=m.dr[:];s=enhance(m);assert s.techParameterStatus==1 and s.techEnhanceParameterStatus==1 and s.techParameterSlots==2 and s.techEnhanceParameterSlots==2
- assert m.dr[0:2]==before[0:2]
- s=enhance(m,False);assert s.techParameterSlots==2 and s.techEnhanceParameterSlots==0 and m.dr[0:2]==before[0:2]
+ m=fixture();s=ready(m);before=m.dr[:];s=enhance(m);assert s.techParameterStatus==1 and s.techEnhanceParameterStatus==1 and s.techParameterSlots==1 and s.techEnhanceParameterSlots==2
+ assert m.dr[0:1]==before[0:1]
+ s=enhance(m,False);assert s.techParameterSlots==1 and s.techEnhanceParameterSlots==0 and m.dr[0:1]==before[0:1]
  assert codehash(m)==m.original_code and ruleshash(m)==m.original_rules
- return {'four_sites_share_one_service':True,'partial_enhancement_off_retains_full_slots':True}
+ return {'three_technology_sites_share_one_service':True,'partial_enhancement_off_retains_full_slots':True}
 check('mode4_and_exact_enhancement_coexist_then_partial_off',coexist)
 
 def slots():
  foreign=[0x12340000,0x12340010,0,0,0,5];m=fixture(foreign=foreign);s=ready(m);before=m.dr[:];s=enhance(m)
  assert s.techParameterStatus==1 and s.techEnhanceParameterStatus==-2 and m.dr==before,(s.techParameterStatus,s.techEnhanceParameterStatus,m.dr,before)
- assert s.techParameterSlots==2 and s.techEnhanceParameterSlots==0
+ assert s.techParameterSlots==1 and s.techEnhanceParameterSlots==0
  return {'existing_full_ready_permission_and_foreign_slots_preserved':True}
 check('insufficient_slots_refuses_only_new_enhancement',slots)
 
@@ -131,7 +131,7 @@ def reverse_slots():
  m=fixture(foreign=[0x12340000,0x12340010,0,0,0,5]);s=enhance(m);before=m.dr[:];assert s.techEnhanceParameterStatus==1
  send(m);s=settle(m);assert s.techEnhanceParameterStatus==1 and s.techParameterStatus==-2 and m.dr==before,(s.techEnhanceParameterStatus,s.techParameterStatus,m.dr)
  assert probe(m)==1
- return {'existing_exact_enhancement_preserved_when_new_full_cannot_get_two_slots':True}
+ return {'existing_exact_enhancement_preserved_when_new_full_cannot_get_one_slot':True}
 check('insufficient_slots_refuses_only_new_full_permission',reverse_slots)
 
 def mode_hold():
@@ -228,7 +228,7 @@ def full_failed_veh_removal():
 check('full_group_failed_VEH_removal_does_not_claim_off_or_blame_unused_enhancement',full_failed_veh_removal)
 def shared_handler_not_error():
  m=fixture();ready(m);enhance(m);m.remove_veh_fails=True;s=enhance(m,False)
- assert s.techParameterStatus==1 and s.techEnhanceParameterStatus==0 and s.techParameterSlots==2 and s.techEnhanceParameterSlots==0 and m.vehs
+ assert s.techParameterStatus==1 and s.techEnhanceParameterStatus==0 and s.techParameterSlots==1 and s.techEnhanceParameterSlots==0 and m.vehs
  m.remove_veh_fails=False
  return {'healthy_full_sibling_can_keep_shared_VEH_while_enhancement_is_truly_off':True}
 check('healthy_shared_sibling_does_not_make_stopped_group_look_pending_or_failed',shared_handler_not_error)

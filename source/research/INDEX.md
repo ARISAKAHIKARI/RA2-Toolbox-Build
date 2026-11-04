@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 控制全部硬件入口与共用四槽 | [严格所属编号、Full 单入口与 Assist93](2026-11-04-control-hardware-parameters.md) | HWBP VEH control50B6F0 CanBuild4F7870 1+2+1 no-text no-owner strict-return |
 | WebView2 控制臺啟動失敗急修 | [真 Runtime 導航自我取消、精確 URI／ID 與 native smoke](2026-11-04-webview-navigation-startup-hotfix.md) | WebView2 NavigateToString data-uri about:blank NavigationId OPERATION_CANCELED Host-only |
 | 科技加強精確等級參數 | [21白名單、原生Jcc／四DR交易與雙向在產交接](2026-11-03-tech-enhancement-exact-parameters.md) | Assist92 TechEnhance EFLAGS 4F7951 4F7B66 exact-Level1 four-slots legacy-handoff no-text no-rules |
 | 1.0.41-pre.1 MO 接續與視野依賴 | [倍率、雷達遮罩、退出夾限及完整構建](2026-11-03-pre1-mo-followup.md) | Assist92 MAX radar-only native-widget retirement 6D8640 SmartArea WebView2 |

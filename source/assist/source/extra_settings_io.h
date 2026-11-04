@@ -37,6 +37,7 @@ static void loadAdditionalSettings(){
  extra.sidebarEnabled=value(L"Experimental",L"SidebarEnabled",0)!=0;extra.sidebarMode=uint32_t(std::clamp(value(L"Experimental",L"SidebarMode",0),0,2));
  extra.sidebarKey=uint32_t(value(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey))&65535;extra.pauseKeys[0]=uint32_t(value(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]))&65535;extra.pauseKeys[1]=uint32_t(value(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]))&65535;
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
+ extra.techEnhanceCompareLevel=value(L"Experimental",L"TechEnhanceCompareLevel",0)!=0;
  extra.techEnhanceImplementation=std::clamp(value(L"Experimental",L"TechEnhanceImplementation",0),0,1);
  extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.destructSelectedOwner=value(L"Experimental",L"DestructSelectedOwner",0)!=0;
@@ -46,9 +47,9 @@ static void loadAdditionalSettings(){
  extra.nativeMegaGateway=explicitPatchPreferences&&value(L"Experimental",L"NativeMegaGateway",0)!=0;
  extra.nativeCombatQueries=value(L"Experimental",L"NativeCombatQueries",0)!=0;
  extra.controlCommandOwner=value(L"Experimental",L"ControlCommandOwner",0)!=0;
- // Replace the former flag implementation in slot 0; retain the native slot
- // and saved companion preferences, which remain suppressed in Master mode.
- extra.controlImplementation=value(L"Experimental",L"ControlImplementation",0)==1?1:0;
+ // Slot 0 now selects hardware parameters; retain native slot 1 and legacy Master slot 2
+ // and saved companion preferences, which remain suppressed in hardware/Master modes.
+ extra.controlImplementation=controlmode::implementation(value(L"Experimental",L"ControlImplementation",0));
  extra.placementImplementation=buildingmodes::placement(value(L"Experimental",L"PlacementImplementation",0));
  extra.placementEventKey=value(L"Hotkeys",L"PlaceCompletedBuilding",extra.placementEventKey)&65535;
  extra.overlayKey=value(L"Hotkeys",L"OverlayToggle",0xC0)&65535;
@@ -138,7 +139,7 @@ static bool saveAdditionalSettings(){
  write(L"Compatibility",L"NoCodeWriteDefaultsVersion",1);
  write(L"ViewZoom",L"Enabled",extra.viewZoomEnabled);write(L"ViewZoom",L"Percent",extra.viewZoomPercent);
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
- write(L"Experimental",L"TechEnhanceImplementation",extra.techEnhanceImplementation);
+ write(L"Experimental",L"TechEnhanceImplementation",extra.techEnhanceImplementation);write(L"Experimental",L"TechEnhanceCompareLevel",extra.techEnhanceCompareLevel);
  write(L"Hotkeys",L"PlaceCompletedBuilding",extra.placementEventKey);
  write(L"Experimental",L"CrcMapIsClearShadow",extra.crcMapShadow);
  write(L"Experimental",L"DestructSelectedOwner",extra.destructSelectedOwner);
@@ -248,7 +249,7 @@ static void syncAdditional(){
  shared->pauseViewKeys[0]=extra.pauseKeys[0];shared->pauseViewKeys[1]=extra.pauseKeys[1];
  shared->moFeatures=extra.moFeatures&23u;
  InterlockedIncrement(&shared->moGesturePolicySeq);shared->moGestures=extra.moGestures;shared->moOptions=extra.moOptions;MemoryBarrier();InterlockedIncrement(&shared->moGesturePolicySeq);
- shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;shared->techEnhanceImplementation=uint32_t(extra.techEnhanceImplementation);
+ shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;shared->techEnhanceImplementation=uint32_t(extra.techEnhanceImplementation);shared->techEnhanceCompareLevel=extra.techEnhanceCompareLevel;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->crcMapShadow=extra.crcMapShadow;
  shared->networkHousePreserve=extra.networkHouseRequested();shared->nativeSellCursor=extra.nativeSellCursor;

@@ -8,7 +8,7 @@ static RiskSite controlSites[]={
 };
 static uint32_t controlSitesMode=controlmode::Off;
 static bool controlSitesOwned(){for(const auto&s:controlSites)if(codeHookRegistry.active(s.address))return true;return false;}
-static bool controlTransitionPending(){return controlHouseFlagsPending()||(controlmode::master(controlSitesMode)&&controlSitesOwned());}
+static bool controlTransitionPending(){return !controlParametersRetired()||controlHouseFlagsPending()||(controlmode::master(controlSitesMode)&&controlSitesOwned());}
 static bool restoreControlSites(){
  riskControlActive=false;
  // Master has no callback gate. While its unconditional predicate remains,
@@ -20,15 +20,29 @@ static bool restoreControlSites(){
  return ok&&!controlSitesOwned();
 }
 static void controlSitesSuspend(){
+ if(sh&&controlmode::parameters(sh->controlAll)){if(controlSitesOwned()&&!restoreControlSites())sh->playerControlStatus=-16;return;}
  // Focus/menu suspension retains the current implementation. An explicit
  // off/mode change still retires it; installation waits for playable context.
- if(!sh||!controlmode::valid(sh->controlAll)||sh->controlAll!=controlSitesMode){
-  const bool ok=restoreControlSites();if(sh)sh->playerControlStatus=ok?0:-2;
+ if(!sh||!controlmode::valid(sh->controlAll)||sh->controlAll!=controlSitesMode||!controlParametersRetired()||sh->playerControlStatus==int(controlmode::Parameters)){
+  const bool parameters=restoreControlParameters(),code=restoreControlSites();if(sh)sh->playerControlStatus=parameters&&code?0:-2;
  }
 }
 static void controlSitesTick(bool enabled){
  const uint32_t requested=sh&&controlmode::valid(sh->controlAll)?sh->controlAll:controlmode::Off;
  enabled=enabled&&playertest::Available&&requested!=controlmode::Off&&!controlHouseFlagsPending();
+ // The no-code mode must never pass through either patch installer. A sibling
+ // hardware lease may remain while this group is asynchronously retiring.
+ if(controlmode::parameters(requested)){
+  riskControlActive=false;
+  if(!restoreControlSites()||controlHouseFlagsPending()||!controlCompanionsRetired()){
+   restoreControlParameters();if(sh)sh->playerControlStatus=-16;return;
+  }
+  if(enabled)sh->playerControlStatus=requestControlParameters();
+  else{const bool retired=restoreControlParameters();if(sh)sh->playerControlStatus=retired?0:-2;}
+  return;
+ }
+ if(!restoreControlParameters()){riskControlActive=false;if(sh)sh->playerControlStatus=-2;return;}
+
  if(riskControlActive&&(!enabled||requested!=controlSitesMode)&&riskContextReady())unselect();
  riskControlActive=false;
  if(!enabled||requested!=controlSitesMode){

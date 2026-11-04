@@ -572,6 +572,17 @@ static uint32_t displayMatch(){return externalData&&externalData->status==1?exte
 static bool uninitializedBridgeTimedOut(){return shared&&!commandMatch()&&attachAt&&DWORD(GetTickCount()-attachAt)>8000&&(!lastData||DWORD(GetTickCount()-lastData)>8000)&&shared->request==shared->ack;}
 static bool commandChannelReady(){return controllink::ready(commandLink());}
 static bool commandFresh(DWORD now){return commandChannelReady()&&DWORD(now-lastData)<1500;}
+static uint32_t currentHardwareBudget(){return shared&&commandFresh(GetTickCount())?shared->hardwareSlotBudget:0;}
+static uint32_t requestedHardwareTags(){
+ return (extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
+  (extra.techEnhance&&extra.techEnhanceImplementation==1?(slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u)):0u);
+}
+static bool hardwareBudgetAvailable(uint32_t additional){return slotbudget::allows(currentHardwareBudget(),requestedHardwareTags()|additional);}
+static std::wstring hardwareBudgetReason(uint32_t additional){
+ const auto budget=currentHardwareBudget();if(!slotbudget::known(budget))return L"尚未完成游戏主线程断点检查，请等待对局就绪";
+ return L"硬件断点不足：本次需要新增 "+std::to_wstring(slotbudget::needed(budget,requestedHardwareTags()|additional))+L" 槽，空闲 "+std::to_wstring(slotbudget::free(budget))+L" 槽";
+}
+
 static bool networkHouseReady(){return extra.networkHouseRequested()&&shared&&shared->networkHousePreserve&&shared->networkHouseStatus==1;}
 static std::wstring commandWaitReason(){
  if(!shared)return bridgeFailure.empty()?L"正在连接游戏，指令尚未提交。":bridgeFailure;
@@ -1732,19 +1743,23 @@ static void publishSuiteDisplay(){
 }
 static void updateControlModeStatus(DWORD now){
  const int status=shared?shared->playerControlStatus:0;const bool fresh=shared&&commandFresh(now);
- std::wstring label=extra.controlImplementation==1?L"高危 · 原生控制判定 Hook：":L"高危 · Master 基本指令修改：";
- label+=status<0?L"应用或还原未完成，请检查日志":!fresh?(extra.controlAll?L"等待对局及连接就绪":L"关闭"):
-  !extra.controlAll?(status?L"等待还原":L"关闭"):status==int(extra.controlRequest())?(extra.masterControlRequested()?L"三处指令已修改，联机效果未验证":L"已启用，联机效果未验证"):L"等待切换完成";
+ std::wstring label=extra.controlImplementation==0?L"硬件控制（不改指令）：":extra.controlImplementation==1?L"高危 · 原生控制判定 Hook：":L"高危 · Master 基本指令修改：";
+ const wchar_t* hardwareError=status==-11?L"原生入口不兼容":status==-12?L"没有空闲断点，请关闭一项科技参数功能后重试":status==-13?L"Windows 线程操作或恢复失败":status==-14?L"断点已被其他工具改变":status==-15?L"线程归属不匹配":status==-16?L"旧控制或所属方补丁尚未还原":L"应用或还原未完成，请检查日志";
+ label+=status<0?hardwareError:!fresh?(extra.controlAll?L"等待对局及连接就绪":L"关闭"):
+  !extra.controlAll?(status?L"等待还原":L"关闭"):status==int(extra.controlRequest())?(extra.parameterControlRequested()?L"已启用，原指令及归属保留":extra.masterControlRequested()?L"三处指令已修改，联机效果未验证":L"已启用，联机效果未验证"):L"等待切换完成";
  if(fresh)label+=L" · 当前玩家 "+std::to_wstring(shared->playerCurrent+1);
  SetWindowTextW(GetDlgItem(ui,865),label.c_str());
 }
 static void updateModeStatus(DWORD now){
  int phase=!enabled?1:!game?2:snap.status<0?3:(snap.status!=1||(shared&&commandMatch()&&snap.commandStatus!=1))?4:0;
  static int oldPhase=-1;static DWORD last; if(phase==oldPhase&&DWORD(now-last)<200)return;oldPhase=phase;last=now;publishSuiteDisplay();updateControlModeStatus(now);
+ {const auto budget=currentHardwareBudget();std::wstring text=L"硬件断点：总计 4 槽 · ";
+  text+=slotbudget::known(budget)?L"本工具 "+std::to_wstring(slotbudget::owned(budget))+L" · 其他占用 "+std::to_wstring(slotbudget::foreign(budget))+L" · 空闲 "+std::to_wstring(slotbudget::free(budget)):L"等待主线程检查（暂不可开启）";
+  SetWindowTextW(GetDlgItem(ui,9473),text.c_str());}
  auto riskText=[&](bool wanted,int state)->std::wstring{if(state==-2)return L"启用或关闭失败，请查看日志";if(state==-1)return L"不支持此游戏版本";if(!wanted)return state==1?L"等待恢复":L"关闭";return phase?L"等待游戏就绪":state==1?L"已启用（实验性）":L"等待生效";};
  std::wstring enhancement=L"高危 · 科技加强：";
  if(shared&&shared->techEnhanceStatus<0)enhancement+=shared->techEnhanceCount?L"仍有未还原字段（"+std::to_wstring(shared->techEnhanceCount)+L" 项），请查看日志":L"字段不兼容或已被修改，请查看日志";
- else if((techImplementation==buildingmodes::TechParameters&&techMode)||snap.techOpen==5)enhancement+=L"由原生面板参数拦截模式暂停；退出后恢复独立开关设置";
+ else if(extra.techEnhanceImplementation==0&&((techImplementation==buildingmodes::TechParameters&&techMode)||snap.techOpen==5))enhancement+=L"由原生面板参数拦截模式暂停；退出后恢复独立开关设置";
  else if((techImplementation==buildingmodes::TechData&&techMode)||snap.techOpen==4)enhancement+=L"由原生面板规则数据模式协调；退出并还原后恢复独立开关设置";
  else if(!extra.techEnhance)enhancement+=L"关闭";
  else if(!shared||phase)enhancement+=L"等待游戏就绪";
@@ -1753,7 +1768,7 @@ static void updateModeStatus(DWORD now){
  SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());
  {const int p=shared?shared->techEnhanceParameterStatus:0;const wchar_t*label=p==1?L"已安装":p==2?L"等待安装／恢复":p==-1?L"原生入口不兼容":p==-2?L"没有空闲硬件断点":p==-3?L"Windows 线程操作失败":p==-4?L"断点已被其他工具改变":p==-5?L"线程归属不匹配":p==-6?L"与当前科技模式不兼容":p==-7?L"当前生产未完成，等待安全切换":L"关闭";
   std::wstring text=std::wstring(L"科技加强参数拦截：")+label;
-  if(shared){text+=L" · 命中 "+std::to_wstring(shared->techEnhanceParameterExceptions)+L" 次";if(p<0)text+=L" · 错误 "+std::to_wstring(shared->techEnhanceParameterError);}
+  if(shared){text+=L" · 占用 "+std::to_wstring(shared->techEnhanceParameterSlots)+L" 槽 · 命中 "+std::to_wstring(shared->techEnhanceParameterExceptions)+L" 次";if(p<0)text+=L" · 错误 "+std::to_wstring(shared->techEnhanceParameterError);}
   SetWindowTextW(GetDlgItem(ui,9471),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9471),p<0);
  }
 
@@ -1809,7 +1824,7 @@ static void updateModeStatus(DWORD now){
   auto stateText=[&](bool requested,int state){return state<0?L"不可用或还原失败，请检查游戏版本或功能冲突":
    !fresh?(requested?L"等待对局及连接就绪":L"关闭"):state==2?L"正在处理待发事件并恢复":
    state==1?(requested?L"已启用（实验性）":L"正在关闭"):requested?L"等待适配启用":L"关闭";};
-  std::wstring network=L"高危 · 事件所属方保留：";if(shared&&shared->networkHouseStatus<0)network+=stateText(extra.networkHouseRequested(),shared->networkHouseStatus);else if(extra.masterControlRequested()){network+=L"Master 基本模式下不请求启用";if(shared&&shared->networkHouseStatus)network+=L"（旧状态待还原或检查）";}else network+=stateText(extra.networkHouseRequested(),shared?shared->networkHouseStatus:0);
+  std::wstring network=L"高危 · 事件所属方保留：";if(shared&&shared->networkHouseStatus<0)network+=stateText(extra.networkHouseRequested(),shared->networkHouseStatus);else if(extra.basicControlRequested()){network+=L"当前控制模式下不请求启用";if(shared&&shared->networkHouseStatus)network+=L"（旧状态待还原或检查）";}else network+=stateText(extra.networkHouseRequested(),shared?shared->networkHouseStatus:0);
   SetWindowTextW(GetDlgItem(ui,9188),network.c_str());
   std::wstring sell=L"高危 · 原生变卖光标：";
   if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
@@ -1819,7 +1834,7 @@ static void updateModeStatus(DWORD now){
   SetWindowTextW(GetDlgItem(ui,9192),mega.c_str());
   std::wstring owner=L"高危 · 控制命令所属方：";
   if(shared&&shared->controlCommandOwnerStatus<0)owner+=stateText(extra.commandOwnerRequested(),shared->controlCommandOwnerStatus);
-  else if(extra.masterControlRequested())owner+=L"Master 基本模式下不请求启用";
+  else if(extra.basicControlRequested())owner+=L"当前控制模式下不请求启用";
   else if(extra.controlCommandOwner&&!extra.controlAll)owner+=L"等待开启跨玩家操控";
   else if(fresh&&extra.commandOwnerRequested()&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady())owner+=L"等待事件所属方保留已启用";
   else owner+=stateText(extra.commandOwnerRequested(),shared?shared->controlCommandOwnerStatus:0);
@@ -1838,7 +1853,7 @@ static void updateModeStatus(DWORD now){
  std::wstring progress=snap.techError==-44?L"高危 · 科技规则数据尚未完成应用或恢复，不能视为已关闭；请查看日志。\n":snap.techError==-43?L"当前科技模式仍生效；请完成并放置或取消相应生产后等待切换。\n":
   snap.techOpen==5?L"实验性 · 原生面板参数拦截（不改指令／规则）：":snap.techOpen==4?L"高危 · 原生面板规则数据模式：":snap.techOpen>0?L"高危旧模式 · 生产进度：":techMode&&techImplementation==buildingmodes::TechParameters?L"等待参数拦截模式就绪：":techMode&&techImplementation==buildingmodes::TechData?L"高危 · 等待规则数据模式就绪：":L"生产进度：";uint32_t owner=0;
  if(shared&&(techImplementation==buildingmodes::TechParameters||snap.techOpen==5)){
-  const int state=shared->techParameterStatus;const wchar_t*label=state==1?L"已安装":state==2?L"等待安装／恢复":state==-1?L"原生查询不兼容":state==-2?L"没有两个空闲硬件断点":state==-3?L"Windows 线程操作失败":state==-4?L"断点状态已被其他工具改变":state==-5?L"线程归属不匹配":L"关闭";
+  const int state=shared->techParameterStatus;const wchar_t*label=state==1?L"已安装":state==2?L"等待安装／恢复":state==-1?L"原生查询不兼容":state==-2?L"没有空闲硬件断点":state==-3?L"Windows 线程操作失败":state==-4?L"断点状态已被其他工具改变":state==-5?L"线程归属不匹配":L"关闭";
   progress+=std::wstring(L"\n参数拦截：")+label+L" · 命中 "+std::to_wstring(shared->techParameterExceptions)+L" 次";
   if(state<0)progress+=L" · 错误 "+std::to_wstring(shared->techParameterError);progress+=L"\n";
  }

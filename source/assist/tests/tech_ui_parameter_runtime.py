@@ -83,18 +83,18 @@ def settle(m):
  return s
 def ready(m):
  s=send(m);assert result(s)==-45 and s.data.techOpen==0 and s.techParameterStatus==2,(result(s),s.data.techOpen,s.techParameterStatus)
- s=settle(m);assert s.data.techOpen==5 and s.data.techError==0 and s.techParameterStatus==1 and s.techParameterSlots==2,(s.data.techOpen,s.data.techError,s.techParameterStatus)
+ s=settle(m);assert s.data.techOpen==5 and s.data.techError==0 and s.techParameterStatus==1 and s.techParameterSlots==1,(s.data.techOpen,s.data.techError,s.techParameterStatus)
  return s
 def invoke(m,tag=0,house=None,pointer=None,limit=0,include=None,site=None):
- context=m.alloc();args=m.alloc();site=(0x6a97d2 if tag==0 else 0x6aa781) if site is None else site
+ context=m.alloc();args=m.alloc();site=0x4f7870 if site is None else site
  m.w(context+172,m.house if house is None else house);m.w(context+184,site);m.w(context+196,args)
- values=(m.t if pointer is None else pointer,limit,tag if include is None else include)
- m.u.mem_write(args,struct.pack('<3I',*values));before=bytes(m.u.mem_read(context,716));sp=m.STACK+0x1d000
- m.u.mem_write(sp,struct.pack('<3I',m.STOP,context,tag));m.u.reg_write(UC_X86_REG_ESP,sp);m.u.emu_start(m.apply,m.STOP,count=200000)
+ values=((0x6a97d7 if tag==0 else 0x6aa786),m.t if pointer is None else pointer,limit,tag if include is None else include)
+ m.u.mem_write(args,struct.pack('<4I',*values));before=bytes(m.u.mem_read(context,716));sp=m.STACK+0x1d000
+ m.u.mem_write(sp,struct.pack('<3I',m.STOP,context,0));m.u.reg_write(UC_X86_REG_ESP,sp);m.u.emu_start(m.apply,m.STOP,count=200000)
  assert m.u.reg_read(UC_X86_REG_EIP)==m.STOP and m.u.reg_read(UC_X86_REG_ESP)==sp+4
  assert bytes(m.u.mem_read(context,716))==before,'callback changed CONTEXT'
- after=struct.unpack('<3I',m.u.mem_read(args,12));assert after[0]==values[0] and after[2]==values[2]
- return m.u.reg_read(UC_X86_REG_EAX),after
+ after=struct.unpack('<4I',m.u.mem_read(args,16));assert after[0]==values[0] and after[1]==values[1] and after[3]==values[3]
+ return m.u.reg_read(UC_X86_REG_EAX),after[1:]
 def check(name,fn):
  try:rows.append({'case':name,'status':'PASS',**(fn() or {})});print('PASS',name,flush=True)
  except Exception as ex:rows.append({'case':name,'status':'FAIL','error':repr(ex)});traceback.print_exc()
@@ -104,14 +104,14 @@ def cold(session):
  assert codehash(m)==m.original_code and ruleshash(m)==m.original_rules
  for command in (12,22):assert result(send(m,command=command,arg=0))==-4
  for tag in (0,1):assert invoke(m,tag)==(1,(m.t,1,tag))
- s.foreground=0;save(m,s);s=tick(m);assert s.techParameterSlots==2 and s.data.techOpen==5 and s.data.match==epoch
+ s.foreground=0;save(m,s);s=tick(m);assert s.techParameterSlots==1 and s.data.techOpen==5 and s.data.match==epoch
  s=send(m,on=False);assert s.data.techOpen==0;s=settle(m);assert s.techParameterSlots==0 and not m.vehs and not any(m.dr[:4])
  assert invoke(m)[0]==0;ready(m);assert codehash(m)==m.original_code and ruleshash(m)==m.original_rules
  return {'native_icons':3,'same_world_background_retained':True,'only_stack_bool_changed':True,'text_and_type_bytes_unchanged':True,'toolbox_produce_blocked':True}
 for session in (0,3):check('cold_native_parameters_session_'+str(session),lambda session=session:cold(session))
 def gates():
  m=fixture();ready(m)
- for kwargs in ({'house':m.enemy},{'pointer':m.enemyUnit},{'limit':1},{'include':1},{'tag':1,'include':0},{'site':0x4f7870}):assert invoke(m,**kwargs)[0]==0,kwargs
+ for kwargs in ({'house':m.enemy},{'pointer':m.enemyUnit},{'limit':1},{'include':1},{'tag':1,'include':0},{'site':0x6a97d2}):assert invoke(m,**kwargs)[0]==0,kwargs
  for address,value in ((m.house+0x10,78),(m.t+0x10,999),(m.t,0x12345678),(0xa8b230,m.alloc()),(0xa8b238,5),(0xa8ed84,0),(0xa8e9a0,0),(m.implementation,0),(m.SH+m.Shared.stop.offset,1),(m.SH+m.Shared.flags.offset,0)):
   old=m.r(address);m.w(address,value);assert invoke(m)[0]==0,hex(address);m.w(address,old)
  old=bytes(m.u.mem_read(0x6a97c3,1));m.u.mem_write(0x6a97c3,b'\x90');assert invoke(m)[0]==0 and m.r(m.policy)==0;m.u.mem_write(0x6a97c3,old)

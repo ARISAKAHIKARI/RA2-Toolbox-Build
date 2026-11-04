@@ -56,7 +56,7 @@ static void check(bool okay){assert(okay);++checks;}
 static void add(int id,int page,int y,int visible,int group=0,int height=0){HWND h=HWND(INT_PTR(ids.size()+10));ids[h]=id;pageControls.push_back({h,page,{20,y,300,height?height:visible},visible,{},group});}
 static PageControl&control(int id){return *std::find_if(pageControls.begin(),pageControls.end(),[&](const auto&c){return ids[c.hwnd]==id;});}
 int main(){
- for(int id:{9097,9098,9470,9471})check(suite::categories::row(4,&id,1)==suite::categories::Rules);
+ for(int id:{9097,9098,9470,9471,9472})check(suite::categories::row(4,&id,1)==suite::categories::Rules);
  add(705,1,0,26);add(9601,1,0,26);add(0,1,40,26,9601);add(9195,1,40,26,9601,240);add(710,1,80,26,9601);
  add(9050,1,120,26);add(9602,1,120,26);add(9056,1,160,26,9602,180);add(9051,1,200,26,9602);
  add(719,1,240,26);add(455,0,0,26);add(456,0,0,26);add(899,4,0,26);

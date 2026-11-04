@@ -13,8 +13,13 @@ static settingsdeps::State currentSettingDependencies(){
  s.set(Need::GPU,renderVulkanEnabled);s.set(Need::Detail,effectiveRenderDetail()!=0);
  s.set(Need::Quality,renderProcessing);s.set(Need::Reconstruction,renderXbrzEnabled);
  s.set(Need::Missile,extra.missileDefense);s.set(Need::LowDamage,extra.lowDamageFilter);
+ s.set(Need::ExactTechnology,extra.techEnhance&&extra.techEnhanceImplementation==1);
+ if(!extra.controlAll&&extra.controlImplementation==0&&!hardwareBudgetAvailable(slotbudget::Control))s.hardwareBlocked|=1;
+ if(!techMode&&techImplementation==buildingmodes::TechParameters&&!hardwareBudgetAvailable(slotbudget::Full))s.hardwareBlocked|=2;
+ if(!extra.techEnhance&&extra.techEnhanceImplementation==1&&!hardwareBudgetAvailable(slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u)))s.hardwareBlocked|=4;
+ if(!extra.techEnhanceCompareLevel&&!hardwareBudgetAvailable(slotbudget::Compare))s.hardwareBlocked|=8;
  s.set(Need::ControlAll,extra.controlAll);s.set(Need::Formation,extra.formationEnabled);
- s.set(Need::NativeControl,extra.nativeControlRequested());s.set(Need::NetworkControlAllowed,!extra.masterControlRequested());
+ s.set(Need::NativeControl,extra.nativeControlRequested());s.set(Need::NetworkControlAllowed,controlmode::sender(extra.controlRequest()));
  s.set(Need::Watch,extra.watchEnabled||extra.watchSecondary);s.set(Need::WatchSecondary,extra.watchSecondary);
  s.set(Need::Minimap,minimapEnabled||minimapSecondary);s.set(Need::MinimapPrimary,minimapEnabled);
  s.set(Need::MinimapSecondary,minimapSecondary);s.set(Need::CustomMinimap,minimapPosition==3);
@@ -45,8 +50,8 @@ static DependencyCaption& dependencyCaption(HWND w){
 static void syncSettingDependencies(bool force,bool immediate){
  if(!ready||!ui||updatingControls)return;
  static DWORD polled=0;const DWORD now=GetTickCount();if(!force&&!immediate&&polled&&DWORD(now-polled)<120)return;polled=now;
- const auto state=currentSettingDependencies();static uint64_t previous=~uint64_t(0);
- if(!force&&state.available==previous)return;previous=state.available;
+ const auto state=currentSettingDependencies();static uint64_t previous=~uint64_t(0);static uint32_t previousBlocked=~uint32_t(0);
+ if(!force&&state.available==previous&&state.hardwareBlocked==previousBlocked)return;previous=state.available;previousBlocked=state.hardwareBlocked;
  ControlUpdate guard;std::map<HWND,std::wstring> captions;
  // Build each index once per changed dependency state, instead of searching
  // the complete settings tree separately for every dependent field.
@@ -60,7 +65,7 @@ static void syncSettingDependencies(bool force,bool immediate){
   auto placement=placements.find(control);const PageControl* placed=placement==placements.end()?nullptr:placement->second;
   std::wstring help=placed?placed->help:L"";
   if(help.empty())help=dependencyWindowText(control);
-  if(!availability.enabled())help=std::wstring(L"当前不可用：")+settingsdeps::reason(availability.missing)+(availability.missing==settingsdeps::Need::Unavailable?L"。相关快捷键与旧启用设置不执行。\r\n":L"。已保存的子设置保留，开启父功能后恢复。\r\n")+help;
+  if(!availability.enabled())help=std::wstring(L"当前不可用：")+settingsdeps::reason(availability.missing)+(availability.missing==settingsdeps::Need::Unavailable?L"。相关快捷键与旧启用设置不执行。\r\n":availability.missing==settingsdeps::Need::HardwareBudget?L"。请先释放槽位或等待对局检查；关闭已启用功能始终可用。\r\n":L"。已保存的子设置保留，开启父功能后恢复。\r\n")+help;
   if(dependencyTips[control]!=help){dependencyTips[control]=help;modernui::tip(control,help);}
   auto addCaption=[&](HWND w){auto&text=dependencyCaption(w);captions[w]=availability.enabled()?text.original:std::wstring(L"[")+settingsdeps::reason(availability.missing)+L"] "+text.original;};
   wchar_t cls[32]{};GetClassNameW(control,cls,32);if(!_wcsicmp(cls,L"BUTTON"))addCaption(control);
@@ -74,9 +79,17 @@ static void syncSettingDependencies(bool force,bool immediate){
 }
 static bool rejectUnavailableSetting(int id,int notification){
  if(notification!=BN_CLICKED&&notification!=CBN_SELCHANGE&&notification!=EN_CHANGE)return false;
+ if(notification==CBN_SELCHANGE){
+  const int selected=int(SendDlgItemMessageW(ui,id,CB_GETCURSEL,0,0));uint32_t tags=0;int previous=0;
+  if(id==9250&&selected==0&&extra.controlAll){tags=slotbudget::Control;previous=extra.controlImplementation;}
+  else if(id==896&&selected==buildingmodes::TechParameters&&techMode){tags=slotbudget::Full;previous=techImplementation;}
+  else if(id==9470&&selected==1&&extra.techEnhance){tags=slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u);previous=extra.techEnhanceImplementation;}
+  if(tags&&!hardwareBudgetAvailable(tags)){ControlUpdate guard;SendDlgItemMessageW(ui,id,CB_SETCURSEL,previous,0);notify(hardwareBudgetReason(tags)+L"；未切换实现。");return true;}
+ }
  const auto availability=settingsdeps::decision(id,currentSettingDependencies());if(availability.enabled())return false;
  {ControlUpdate guard;auto found=dependencyBindings.find(id);if(found!=dependencyBindings.end())found->second.rejectChange(availability);}
- notify(std::wstring(settingsdeps::reason(availability.missing))+L"；原有子设置已保留。");return true;
+ if(availability.missing==settingsdeps::Need::HardwareBudget){const uint32_t tags=id==860?slotbudget::Control:id==420?slotbudget::Full:id==9472?slotbudget::Compare:slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u);notify(hardwareBudgetReason(tags)+L"；未开启。");}
+ else notify(std::wstring(settingsdeps::reason(availability.missing))+L"；原有子设置已保留。");return true;
 }
 struct DependencyCommandRefresh {
  bool refresh=ready&&!updatingControls;

@@ -216,8 +216,8 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 92, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 6584992,
+    baseline = {'assist::Version': 93, 'runtime::Version': 4, 'gameentry::Version': 3,
+                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 6585000,
                 'assist::Shared.aircraftAllocationPolicy': 6580640,
                 'assist::Shared.nativeCombatQueries': 6580644,
                 'sizeof(runtime::Control)': 176, 'sizeof(gameentry::Request)': 108,
@@ -241,7 +241,7 @@ def main():
     # Protocol92 appends the independent precise TechLevel parameter diagnostics.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol92 Shared6584992, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol93 Shared6585000, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 

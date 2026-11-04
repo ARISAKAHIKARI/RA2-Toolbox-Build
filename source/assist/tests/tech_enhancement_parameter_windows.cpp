@@ -41,6 +41,10 @@ int main(){
  assert((*reinterpret_cast<uint8_t*>(uintptr_t(sites[2]))&0xF0)==0x70&&(*reinterpret_cast<uint8_t*>(uintptr_t(sites[3]))&0xF0)==0x70);
  uint8_t codeBefore[80];memcpy(codeBefore,reinterpret_cast<void*>(&ExactCanBuild),sizeof codeBefore);ExactType typeBefore=exactAllowed;
  assist::techbp::Service service;const double baseline=calls(10000,false);
+ // One slot only virtualizes the -1 gate; the native second comparison still
+ // sees -1. The optional second slot compares level 1 and rejects House 0.
+ configured(service,sites,4);assert(service.activeTags()==4&&__builtin_popcount(service.lease.mask)==1);assert(ExactCanBuild(&local,&exactAllowed,0)==1&&ExactCanBuild(&local,&exactAllowed,1)==1);
+ exactAllowed.level=11;assert(ExactCanBuild(&local,&exactAllowed,5)==0);configured(service,sites,12);assert(ExactCanBuild(&local,&exactAllowed,5)==1&&ExactCanBuild(&local,&exactAllowed,0)==0);exactAllowed=typeBefore;retire(service);
  CONTEXT foreign=original;foreign.Dr0=DWORD(uintptr_t(&foreignMarker));foreign.Dr1=foreign.Dr0+1;foreign.Dr7|=1|4;debug(&foreign);
  configured(service,sites,3);assert(service.activeTags()==3);CONTEXT fullOnly=debug();assert(DrawCaller(&local,&allowed)==1);
  configured(service,sites,15);assert(service.state==assist::techbp::Slots&&service.activeTags()==3);CONTEXT refused=debug();assert(refused.Dr0==fullOnly.Dr0&&refused.Dr1==fullOnly.Dr1&&refused.Dr2==fullOnly.Dr2&&refused.Dr3==fullOnly.Dr3&&refused.Dr7==fullOnly.Dr7);assert(DrawCaller(&local,&allowed)==1&&ExactCanBuild(&local,&exactAllowed,1)==0);

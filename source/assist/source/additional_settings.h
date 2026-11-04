@@ -13,13 +13,13 @@ struct AdditionalSettings {
  bool formationEnabled=false;uint32_t formationHold=18,formationKeys[6]={'Z','X','C','V','B','N'},formationMouse=2;
  bool controlAll=false,switchPlayerEnabled=false;
  bool destructSelectedOwner=false;uint32_t destructSelectedOwnerKey=0;
- int controlImplementation=0; // 0=Master basic instruction patches, 1=native predicate Hook.
+ int controlImplementation=0; // 0=hardware parameters (no code writes), 1=native Hook, 2=legacy Master.
  bool controlCommandOwner=false;
  bool networkHousePreserve=false,nativeSellCursor=false;
  bool crcMapShadow=false;
  bool nativeMegaGateway=false; // Optional native observer; ordinary input uses the message path.
  bool nativeCombatQueries=false; // Explicit engine selector/range calls; raw observations are the default.
- bool techEnhance=false;int techEnhanceImplementation=0;int placementImplementation=0;
+ bool techEnhance=false,techEnhanceCompareLevel=false;int techEnhanceImplementation=0;int placementImplementation=0;
  uint32_t placementEventKey='G'|(6<<8); // Explicit one-shot completed-building placement.
  bool viewZoomEnabled=false;int viewZoomPercent=100;uint32_t sidebarMode=0;bool sidebarEnabled=false,smallMapClamp=false;
  uint32_t moFeatures=0;bool superweaponPanel=false;
@@ -51,8 +51,10 @@ struct AdditionalSettings {
  uint32_t diskKey=17,sellKey=17;
  uint32_t enterKey=18,airKey1=17,airKey2=0,variantKey='T'|(2<<8);
  cooperative::Quota defaults{};
- uint32_t controlRequest()const{return !controlAll?controlmode::Off:controlImplementation==1?controlmode::Native:controlmode::Master;}
+ uint32_t controlRequest()const{return !controlAll?controlmode::Off:controlImplementation==1?controlmode::Native:controlImplementation==2?controlmode::Master:controlmode::Parameters;}
  bool nativeControlRequested()const{return controlmode::native(controlRequest());}
+ bool parameterControlRequested()const{return controlmode::parameters(controlRequest());}
+ bool basicControlRequested()const{return parameterControlRequested()||masterControlRequested();}
  bool masterControlRequested()const{return controlmode::master(controlRequest());}
  bool commandOwnerRequested()const{return nativeControlRequested()&&controlCommandOwner;}
  bool networkHouseRequested()const{return networkHousePreserve&&controlmode::sender(controlRequest());}

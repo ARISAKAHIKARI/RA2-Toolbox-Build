@@ -13,12 +13,12 @@ enum class Need : unsigned {
  Watch, WatchSecondary, Minimap, MinimapPrimary, MinimapSecondary, CustomMinimap,
  ShiftClick, AppendClicks, Ore, CustomMiners, CustomRefineries, Production,
  ManualRate, Capacity, Advanced, C4, Dodge, Construction, BuildAnywhere,
- Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, NativeControl, NetworkControlAllowed, EventPlacement, ToolTechnologyOrders, TypeListFirst
+ Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, NativeControl, NetworkControlAllowed, EventPlacement, ToolTechnologyOrders, ExactTechnology, HardwareBudget, TypeListFirst
 };
 constexpr Need typeListNeed(int feature){return Need(unsigned(Need::TypeListFirst)+unsigned(feature));}
 static_assert(unsigned(Need::TypeListFirst)+featuretypes::Count<=64,"dependency state covers every type filter");
 struct State {
- uint64_t available=0;
+ uint64_t available=0;uint32_t hardwareBlocked=0; // UI admission bits: control/full/enhance/compare
  void set(Need need,bool on){const auto bit=uint64_t(1)<<unsigned(need);if(on)available|=bit;else available&=~bit;}
  bool has(Need need)const{return need==Need::None||(available&(uint64_t(1)<<unsigned(need)))!=0;}
 };
@@ -39,8 +39,10 @@ inline const wchar_t* reason(Need need){
  case Need::Missile:return L"需先开启防空火控";
  case Need::LowDamage:return L"需先开启低伤害过滤";
  case Need::ControlAll:return L"需先开启跨玩家操控";
+ case Need::HardwareBudget:return L"硬件断点不足或尚未完成检查";
+ case Need::ExactTechnology:return L"需开启科技加强并选择精确科技等级实现";
  case Need::NativeControl:return L"需选择原生判定 Hook 实现";
- case Need::NetworkControlAllowed:return L"Master 基本模式启用时不能使用所属方保留 Hook";
+ case Need::NetworkControlAllowed:return L"当前控制实现不能使用所属方保留 Hook";
  case Need::Formation:return L"需先开启队形排列";
  case Need::Watch:return L"需先开启主屏或副屏跟踪";
  case Need::WatchSecondary:return L"需先开启副屏跟踪";
@@ -81,12 +83,16 @@ inline Decision decision(int id,const State&s){
   if(feature!=featuretypes::BurstRefresh)return require(s,{typeListNeed(feature)});
  }
  switch(id){
+ case 860:if(s.hardwareBlocked&1)return {Need::HardwareBudget};return {};
+ case 420:if(s.hardwareBlocked&2)return {Need::HardwareBudget};return {};
+ case 9097:if(s.hardwareBlocked&4)return {Need::HardwareBudget};return {};
  case 108:case 208:return require(s,{Need::ManualReveal});
  case 9324:case 9306:case 9313:return require(s,{Need::Render});
  case 9304:case 9307:case 9308:case 9309:case 9314:return require(s,{Need::Render,Need::Quality});
  case 9305:return require(s,{Need::Render,Need::Quality,Need::Reconstruction});
  case 9040:case 9041:case 9181:case 881:return require(s,{Need::Missile});
  case 9183:return require(s,{Need::LowDamage});
+ case 9472:if(!s.has(Need::ExactTechnology))return {Need::ExactTechnology};return s.hardwareBlocked&8?Decision{Need::HardwareBudget}:Decision{};
  case 9193:return require(s,{Need::ControlAll,Need::NativeControl});
  case 9187:return require(s,{Need::NetworkControlAllowed});
  case 9056:return require(s,{Need::Formation});
@@ -122,7 +128,7 @@ inline Decision decision(int id,const State&s){
 }
 inline bool effective(bool saved,int id,const State&s){return saved&&decision(id,s).enabled();}
 inline constexpr int BasicControls[]={
- 9304,9305,9306,9307,9308,9309,9313,9314,9324,9040,9041,9181,881,9183,9193,9187,9056,
+ 860,420,9097,9472,9304,9305,9306,9307,9308,9309,9313,9314,9324,9040,9041,9181,881,9183,9193,9187,9056,
  9061,9164,9165,9065,831,850,851,852,9100,9101,9166,9167,9168,796,797,
  781,782,783,784,9070,9071,9072,9073,9074,9075,303,310,787,818,802,812,
  9180,895,817,9096,9251,9252,423,814,710,711,712,713,714,751,715,716,717,718,312,445,446,447,448,466,810,811,108,208
