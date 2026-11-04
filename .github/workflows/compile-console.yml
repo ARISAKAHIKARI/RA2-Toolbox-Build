@@ -33,6 +33,7 @@ jobs:
           python3 source/assist/tests/superweapon_grant_settings.py --out diagnostics/console-browser/superweapon-settings
           python3 source/assist/tests/map_visibility_settings.py --out diagnostics/console-browser/map-settings
           python3 source/assist/tests/tech_ui_breakpoint_hot.py --cxx g++ --out diagnostics/console-browser/tech-breakpoint-hot
+          python3 source/tests/random_process_discovery.py --cxx g++ --out diagnostics/console-browser/random-process-discovery
           python3 source/assist/tests/construction_host_test.py
           python3 source/assist/tests/construction_batch_runtime_test.py
           for name in fixed_capacity formation_quick missile_compute cooperative; do
@@ -93,6 +94,13 @@ jobs:
         run: |
           python source/assist/tests/map_visibility_windows.py --zig $env:ZIG_EXE --out diagnostics/console-win32/map-hardware
           if($LASTEXITCODE -ne 0){throw 'Map hardware fixture failed'}
+      - name: Verify background platform child windows on real Windows
+        shell: pwsh
+        run: |
+          & $env:ZIG_EXE c++ -target x86-windows-gnu -std=c++17 -O2 -municode source/tests/process_discovery_windows.cpp -o diagnostics/console-win32/process-discovery.exe -luser32 2>&1 | Tee-Object diagnostics/console-win32/process-discovery-build.log
+          if($LASTEXITCODE -ne 0){throw 'Process discovery fixture compilation failed'}
+          & diagnostics/console-win32/process-discovery.exe 2>&1 | Tee-Object diagnostics/console-win32/process-discovery.log
+          if($LASTEXITCODE -ne 0){throw 'Process discovery real Windows fixture failed'}
       - name: Activate Common Controls 6 for the independent fixture process
         shell: pwsh
         run: |

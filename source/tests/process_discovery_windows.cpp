@@ -84,6 +84,10 @@ struct WindowReader {
  }
  bool read(uint32_t,void*,size_t){require(false,"must bypass stale reader cache");return false;}
 };
+struct OwnedWindow {
+ HWND value=nullptr;
+ ~OwnedWindow(){if(value)DestroyWindow(value);}
+};
 int wmain(int argc,wchar_t**argv){
  if(argc>1&&std::wstring(argv[1])==L"--child")return child(argc,argv);
  try{
@@ -130,6 +134,31 @@ int wmain(int argc,wchar_t**argv){
    process.finish();
   };
   for(int mode=0;mode<4;++mode){check(ares,mode);check(spawn,mode);}
+  {
+   // Reparent a controlled spawn process's only HWND into a hidden platform
+   // host belonging to this controller. The foreground is deliberately not
+   // this host, and the renderer is nested two levels below it.
+   OwnedWindow host{CreateWindowExW(0,L"STATIC",L"Hidden platform fixture",WS_POPUP,
+    0,0,900,700,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr)};
+   require(host.value!=nullptr,"background platform host");
+   OwnedWindow container{CreateWindowExW(0,L"STATIC",L"Nested platform fixture",WS_CHILD,
+    0,0,900,700,host.value,nullptr,GetModuleHandleW(nullptr),nullptr)};
+   require(container.value!=nullptr,"nested platform container");
+   Child process;process.start(spawn,0,++serial);
+   const HWND renderer=scan(process.pi.dwProcessId).best.window;
+   require(renderer!=nullptr,"initial controlled renderer HWND");
+   SetWindowLongPtrW(renderer,GWL_STYLE,WS_CHILD|WS_VISIBLE);
+   SetParent(renderer,container.value);
+   require(GetParent(renderer)==container.value&&GetForegroundWindow()!=host.value,
+    "renderer embedded in nonforeground host");
+   const auto found=scan(process.pi.dwProcessId);
+   require(found.best.pid==process.pi.dwProcessId&&found.best.window==renderer&&
+    found.best.thread&&found.windowCount==1,"discover background nested renderer exactly once");
+   WindowReader reader{renderer};
+   require(resolveYrppWindow(reader,process.pi.dwProcessId)==renderer,
+    "authoritative nested renderer HWND remains PID checked");
+   process.finish();
+  }
   // Different casing is tested using the actual executable basename in a separate directory.
   const auto mixedRoot=files.root+L"\\mixed";require(CreateDirectoryW(mixedRoot.c_str(),nullptr)!=FALSE,"mixed-case directory");
   const auto mixed=mixedRoot+L"\\GaMeMd-ArEs.ExE";
@@ -150,7 +179,8 @@ int wmain(int argc,wchar_t**argv){
    process.finish();
   }
   require(scan().processCount==0,"all fixture processes exited");
-  std::puts("PASS real Windows Ares/spawn discovery: visible, minimized, hidden, windowless, mixed case, PID ownership, fresh HWND, ambiguity, unrelated executable");
+  std::puts("PASS real Windows Ares/spawn discovery: visible, minimized, hidden, windowless, background nested renderer, mixed case, PID ownership, fresh HWND, ambiguity, unrelated executable");
   return 0;
  }catch(const std::exception&){return 1;}
 }
+
