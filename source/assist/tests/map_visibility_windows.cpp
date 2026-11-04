@@ -7,10 +7,10 @@
 #include <initializer_list>
 namespace mapvisibility=assist::mapvisibility;
 static constexpr uint32_t ExperimentalReveal=0x04000000;
-struct MapFixtureShared{uint32_t mapVisibility=1,stop=0,renderReveal=0,flags=0;}mapWire,*sh=&mapWire;
-static bool fault=false;
+struct MapFixtureShared{volatile uint32_t mapVisibility=1,stop=0,renderReveal=0,flags=0;}mapWire,*sh=&mapWire;
+static volatile bool fault=false;
 namespace techparameters {
- static struct{LONG showing=1;}policy;static LONG mapExceptions=0;static bool worldReady=true;
+ static struct{volatile LONG showing=1;}policy;static volatile LONG mapExceptions=0;static volatile bool worldReady=true;
  static bool world(){return worldReady;}
 }
 #include MAP_CALLBACK_EXTRACT
@@ -34,14 +34,14 @@ extern "C" __declspec(noinline) void MapSibling4(){MemoryBarrier();}
 static bool sameMapDebug(const CONTEXT&a,const CONTEXT&b){return a.Dr0==b.Dr0&&a.Dr1==b.Dr1&&a.Dr2==b.Dr2&&a.Dr3==b.Dr3&&a.Dr7==b.Dr7;}
 int main(){
  SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);setbuf(stdout,nullptr);unsigned checks=0;
- auto check=[&](bool okay){assert(okay);++checks;};
+ auto check=[&](bool okay){++checks;if(!okay){std::fprintf(stderr,"Map check %u failed; error=%lu hits=%ld\n",checks,GetLastError(),techparameters::mapExceptions);std::abort();}};
  auto*page=VirtualAlloc(reinterpret_cast<void*>(0x6D0000),65536,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE);check(page==reinterpret_cast<void*>(0x6D0000));
  auto*code=reinterpret_cast<uint8_t*>(assist::mapvisibility::PrefixAddress);
  memcpy(code,assist::mapvisibility::Prefix,sizeof assist::mapvisibility::Prefix);
  // Fixture continuation: EDI=-2; EBX=8; ret. Not a game dump or game patch.
  const uint8_t suffix[]={0xBF,0xFE,0xFF,0xFF,0xFF,0xBB,8,0,0,0,0xC3};memcpy(code+10,suffix,sizeof suffix);
  FlushInstructionCache(GetCurrentProcess(),code,21);uint8_t originalCode[21]{};memcpy(originalCode,code,21);
- alignas(4) uint8_t cell[0x130]{};auto&bits=*reinterpret_cast<uint32_t*>(cell+0x12C);
+ alignas(4) uint8_t cell[0x130]{};auto&bits=*reinterpret_cast<volatile uint32_t*>(cell+0x12C);
  for(uint32_t value:{0u,8u,16u,24u,128u,255u}){bits=value;check(CallMapGate(cell)==(value&24?-1:-2)&&bits==value);}
  CONTEXT original=debug();assist::techbp::Service service;
  const uint32_t sites[5]={uint32_t(uintptr_t(&MapSibling0)),assist::mapvisibility::Address,uint32_t(uintptr_t(&MapSibling2)),uint32_t(uintptr_t(&MapSibling3)),uint32_t(uintptr_t(&MapSibling4))};
