@@ -1,0 +1,92 @@
+name: Finalize verified 1.0.41-pre.2 draft
+on:
+  push:
+    branches: [codex/finalize-pre2-20261104]
+    paths: [.github/workflows/finalize-v141-pre2.yml, .github/workflows/publish-v141-pre2.yml]
+permissions:
+  contents: write
+concurrency:
+  group: finalize-v141-pre2
+  cancel-in-progress: false
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the successful program checks and exact draft identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GH_REPO" = ARISAKAHIKARI/RA2-Toolbox-Build
+          gh api "repos/$GH_REPO/actions/runs/41802208862" > validation-run.json
+          gh api "repos/$GH_REPO/actions/runs/41802208862/jobs?per_page=100" > validation-jobs.json
+          gh api "repos/$GH_REPO/compare/9f24b2ad79d60a061b4a6b25ae0657eac21298f2...main" > ancestry.json
+          gh api "repos/$GH_REPO/releases/433712855" > release-before.json
+          python - <<'PY'
+          import json
+          load=lambda p:json.load(open(p))
+          commit='9f24b2ad79d60a061b4a6b25ae0657eac21298f2'
+          run=load('validation-run.json');assert run['head_sha']==commit and run['status']=='completed'
+          jobs=load('validation-jobs.json')['jobs'];required={'console-browser','console-win32-fixtures','windows-x64'}
+          for name in required:
+              matches=[j for j in jobs if j['name']==name]
+              assert len(matches)==1 and matches[0]['status']=='completed' and matches[0]['conclusion']=='success',name
+          ancestry=load('ancestry.json');assert ancestry['merge_base_commit']['sha']==commit and ancestry['status'] in {'ahead','identical'}
+          r=load('release-before.json');assert r['id']==433712855 and r['tag_name']=='v1.0.41-pre.2' and r['target_commitish']==commit and r['prerelease']
+          expected={
+            'RA2Toolbox-1.0.41-pre.2-x64-Full.zip':'85082cea7db537d00c500923177082ba0f5df7f705b5f6c7469c56d28068f3ac',
+            'RA2Toolbox-1.0.41-pre.2-x64-Update.zip':'9d73a7998f38d2aa70b58dcb324cc899b473eb591c84e82a2553b8b8a9aa32ae',
+            'release-manifest.json':'fe24253b81b925f27bb2485e229a4b5ee681271c723eb6a8b1039fc79d48f618',
+            'SHA256SUMS.txt':'02903ecbcddfb5246954d0f2db68fe1cc87881069bde67ee9a452f722d7a0281',
+          }
+          assert {a['name'] for a in r['assets']}==set(expected)
+          for a in r['assets']:assert a['size']>0 and a['digest']=='sha256:'+expected[a['name']]
+          json.dump(expected,open('expected-assets.json','w'))
+          PY
+      - name: Re-download the frozen assets, check all hashes, then publish by release ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release download v1.0.41-pre.2 --dir verified
+          python - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          expected=json.load(open('expected-assets.json'));root=Path('verified')
+          assert {p.name for p in root.iterdir()}==set(expected)
+          for name,digest in expected.items():assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest,name
+          manifest=json.loads((root/'release-manifest.json').read_text())
+          assert manifest['source_commit']=='9f24b2ad79d60a061b4a6b25ae0657eac21298f2' and manifest['assist_protocol']==96 and manifest['file_version']=='1.0.41.2'
+          subprocess.run(['sha256sum','-c','SHA256SUMS.txt'],cwd=root,check=True)
+          before=json.load(open('release-before.json'))
+          if before['draft']:
+              request=Path('publish-request.json');request.write_text(json.dumps({'draft':False,'prerelease':True,'make_latest':'false'}))
+              with open('published-release.json','w') as out:
+                  subprocess.run(['gh','api','--method','PATCH','repos/'+os.environ['GH_REPO']+'/releases/433712855','--input',str(request)],stdout=out,check=True)
+          else:Path('published-release.json').write_text(json.dumps(before))
+          r=json.load(open('published-release.json'));assert not r['draft'] and r['prerelease'] and r['tag_name']=='v1.0.41-pre.2' and r['target_commitish']==manifest['source_commit']
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out:out.write('Published '+r['html_url']+'\n')
+          PY
+          gh api "repos/$GH_REPO/git/ref/tags/v1.0.41-pre.2" > published-tag.json
+          python - <<'PY'
+          import json
+          tag=json.load(open('published-tag.json'))
+          assert tag['object']['type']=='commit' and tag['object']['sha']=='9f24b2ad79d60a061b4a6b25ae0657eac21298f2'
+          PY
+      - name: Preserve the verified publication identity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.41-pre.2-finalized
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            published-release.json
+            published-tag.json
+            expected-assets.json
+            verified/SHA256SUMS.txt
