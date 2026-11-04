@@ -261,3 +261,5 @@
 
 - [Runtime(8) 單步異常、故障鎖存及同進程重連殘留](2026-11-04-runtime-single-step-fault-reconnect.md)（80000004／4F7870／fault未清／callback仍活；來源與實機日誌分析，未修改Runtime）
 
+
+- [硬體斷點 owner 交會與偵錯例外分流](2026-11-05-breakpoint-owner-rendezvous.md)（pre.8；延遲交易／debug SEH 分流；現場首發來源仍待確認）

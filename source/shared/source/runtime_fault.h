@@ -2,6 +2,7 @@
 // Fixed-width, x86 SEH diagnostic ABI; no Windows SDK dependency in the MSVC
 // exception boundary. This is IPC reporting, never an execution entry point.
 namespace runtimefault {
+inline constexpr bool captureException(unsigned code){return code!=0x80000003u&&code!=0x80000004u;}
 enum Phase : unsigned { Idle=0, LoadCollect=1, LoadLegality=2, LoadAssign=3, LoadSubmit=4, LoadRetry=5 };
 struct Context {unsigned phase=0,source=0,target=0;};
 }

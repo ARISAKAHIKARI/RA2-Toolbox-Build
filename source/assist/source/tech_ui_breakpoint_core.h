@@ -135,9 +135,23 @@ private:
   return EXCEPTION_CONTINUE_EXECUTION;
  }
  bool start(unsigned operation){
+  // Updating a live owner from an arbitrary caller could suspend it inside
+  // VEH with an older exception CONTEXT still waiting to be resumed. Only
+  // the owner may open this boundary; a dead owner needs no rendezvous.
+  if(!thread_||(GetCurrentThreadId()!=owner_&&WaitForSingleObject(thread_,0)!=WAIT_OBJECT_0))return false;
   poll();if(job_)return false;InterlockedExchange(&budget_,0);operationGroups_=lease.uncertain?AllTags:lease.tags();if(operation==1)operationGroups_|=3;else if(operation==4)operationGroups_|=wanted_;operation_=LONG(operation);InterlockedExchange(&job_,1);
   worker_=CreateThread(nullptr,0,worker,this,0,nullptr);
-  if(!worker_){lastError=LONG(GetLastError());state=System;job_=0;return false;}return true;
+  if(!worker_){lastError=LONG(GetLastError());state=System;job_=0;return false;}
+  // Stay in Runtime code until this transaction has resumed the owner and
+  // published its verified lease. Returning to native code while the worker
+  // is pending permits an old hardware-exception snapshot to race a new
+  // lease (and to restore old DR state when that exception continues).
+  // This short rendezvous is only for install/audit/retire, never per hit.
+  if(WaitForSingleObject(worker_,INFINITE)!=WAIT_OBJECT_0){
+   // A failed wait is not permission to escape while suspension is pending.
+   while(InterlockedCompareExchange(&job_,0,0)!=2)Sleep(1);
+  }
+  poll();return true;
  }
 public:
  void poll(){if(job_==2&&worker_&&WaitForSingleObject(worker_,0)==WAIT_OBJECT_0){CloseHandle(worker_);worker_=nullptr;MemoryBarrier();InterlockedExchange(&job_,0);}}

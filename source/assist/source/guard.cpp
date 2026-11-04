@@ -8,6 +8,9 @@ struct ExceptionPointers32 {ExceptionRecord32* record;void* context;};
 static_assert(sizeof(void*)==4&&sizeof(ExceptionRecord32)==80,"Windows x86 SEH ABI");
 extern "C" int AssistExceptionFilter(void* raw,unsigned boundary){
  const auto* pointers=(const ExceptionPointers32*)raw;const auto* record=pointers?pointers->record:nullptr;
+ // Debug exceptions belong to the debugger/VEH/outer SEH chain. Unwinding
+ // them as an Assist failure permanently disables an otherwise live bridge.
+ if(!record||!runtimefault::captureException(record->code))return 0;
  if(record){
   const bool access=(record->code==0xc0000005u||record->code==0xc0000006u)&&record->count>=2;
   AssistReportException(boundary,record->code,(unsigned)record->address,access?record->info[0]:~0u,access?record->info[1]:0);

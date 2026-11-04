@@ -4,15 +4,19 @@
 #include <cassert>
 #include <cstring>
 static volatile LONG contextReads=0,failReadAt=0,skipSetOnce=0;
+static volatile LONG suspendDelayMs=0;
+static DWORD WINAPI fixtureSuspend(HANDLE thread){const LONG delay=InterlockedCompareExchange(&suspendDelayMs,0,0);if(delay)Sleep(DWORD(delay));return SuspendThread(thread);}
 static BOOL WINAPI fixtureGet(HANDLE thread,LPCONTEXT context){LONG n=InterlockedIncrement(&contextReads);if(failReadAt==n){SetLastError(ERROR_ACCESS_DENIED);return FALSE;}return GetThreadContext(thread,context);}
 static BOOL WINAPI fixtureSet(HANDLE thread,const CONTEXT*context){if(InterlockedExchange(&skipSetOnce,0))return TRUE;return SetThreadContext(thread,context);}
 #define GetThreadContext fixtureGet
 #define SetThreadContext fixtureSet
+#define SuspendThread fixtureSuspend
 #define private public
 #include "../source/tech_ui_breakpoint_core.h"
 #undef private
 #undef SetThreadContext
 #undef GetThreadContext
+#undef SuspendThread
 #ifdef NDEBUG
 #error Hardware breakpoint verification requires -UNDEBUG.
 #endif

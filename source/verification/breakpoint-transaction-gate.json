@@ -1,0 +1,12 @@
+{
+  "scope": "Execute production start/poll/filter with delayed worker and modeled Win32 handles.\nChecks transaction ordering and SEH filter decisions, not OS exception delivery or game behavior.\n",
+  "pass": true,
+  "source_sha256": {
+    "/workspace/scratch/2e06a3f2ecab/ra2-hook-recovery/source/assist/source/tech_ui_breakpoint_core.h": "8b471bcc6a55e1cc4ad8c15e8a124b1001ac74e62acc2b72d780cb70a7e4ba9e",
+    "/workspace/scratch/2e06a3f2ecab/ra2-hook-recovery/source/assist/source/guard.cpp": "3d5e6a1c389ea74c1b1f1d8c7c6dc0e3d009c5cc9c4c2bb10cf3976b1c61a785",
+    "/workspace/scratch/2e06a3f2ecab/ra2-hook-recovery/source/shared/source/runtime_fault.h": "050ca99ac345beacd63ed27a4a692f50a0b5c89d92e88046195028356efc7cb5"
+  },
+  "stdout": "PASS 20 production transaction and debug-filter checks\n",
+  "windows_exception_delivery_tested": false,
+  "game_tested": false
+}

@@ -34,7 +34,20 @@ jobs:
           New-Item -ItemType Directory -Force artifacts/console,diagnostics | Out-Null
       - name: Verify production cleanup and fault recovery policy
         shell: pwsh
-        run: python source/assist/tests/hook_recovery_policy.py --output diagnostics/hook-recovery-policy.json
+        run: |
+          python source/assist/tests/hook_recovery_policy.py --output diagnostics/hook-recovery-policy.json
+          if($LASTEXITCODE){exit $LASTEXITCODE}
+          python source/assist/tests/breakpoint_transaction_gate.py --output diagnostics/breakpoint-transaction-gate.json
+          if($LASTEXITCODE){exit $LASTEXITCODE}
+      - name: Verify real x86 hardware exceptions and transaction ordering
+        shell: pwsh
+        run: |
+          python source/assist/tests/breakpoint_transaction_windows.py --zig "$env:ZIG_EXE" --build-dir diagnostics/transaction --output diagnostics/breakpoint-transaction-windows.json
+          if($LASTEXITCODE){exit $LASTEXITCODE}
+          python source/assist/tests/tech_ui_breakpoint_windows.py --zig "$env:ZIG_EXE" --build-dir diagnostics/slots --output diagnostics/tech-ui-breakpoint-windows.json
+          if($LASTEXITCODE){exit $LASTEXITCODE}
+          python source/assist/tests/tech_enhancement_parameter_windows.py --zig "$env:ZIG_EXE" --build-dir diagnostics/exact --output diagnostics/tech-enhancement-parameter-windows.json
+          if($LASTEXITCODE){exit $LASTEXITCODE}
       - name: Compile the modern x64 host and paired x86 Runtime and broker
         shell: bash
         run: |
@@ -81,4 +94,8 @@ jobs:
           path: |
             diagnostics/console-build.log
             diagnostics/hook-recovery-policy.json
+            diagnostics/breakpoint-transaction-gate.json
+            diagnostics/breakpoint-transaction-windows.json
+            diagnostics/tech-ui-breakpoint-windows.json
+            diagnostics/tech-enhancement-parameter-windows.json
 
