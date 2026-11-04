@@ -325,7 +325,7 @@ static void moOrdersTick(uint32_t house,int frame,DWORD now){
  // Standard-object commands each get one final native capability/identity
  // check immediately before submission. Accepted commands are never retried.
  int visited=0;
- while(moQueueAt<moQueueCount&&outgoingRoom()>0&&visited++<24){auto&q=moQueue[moQueueAt];
+ while(moQueueAt<moQueueCount&&outgoingRoom()>0&&visited++<64){auto&q=moQueue[moQueueAt];
   if(!moActorValid(q.actor)||worldByID(q.target)!=q.targetPointer||!live(q.targetPointer)||typeOf(q.targetPointer,kind(q.targetPointer))!=q.targetType||moActionMission(q.actor.pointer,q.targetPointer)!=q.mission){++sh->moOrderRejected;++moQueueAt;continue;}
   const bool guardedEntry=q.entrySlots>0&&q.mission==7;
   if(guardedEntry&&!moEntryDispatchable(q)){++sh->moOrderRejected;++moQueueAt;continue;}

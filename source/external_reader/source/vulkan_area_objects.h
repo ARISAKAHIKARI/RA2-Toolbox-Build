@@ -66,7 +66,7 @@ public:
   if(!core_.buffer(nativeZ_,nativeBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,false,false,std::min<uint64_t>(core_.properties_.limits.maxStorageBufferRange,uint64_t(MaximumPages)*PagePixels*2)))return fail("GPU native Z atlas unavailable");
   std::vector<Source>colors,materials;std::vector<std::array<size_t,8>>sources;std::vector<std::array<int,4>>bounds;
   uint64_t candidates=0;for(const auto&d:draws){const auto&t=d.source;if(p.nativeSurface&&!d.nativeDepth.enabled&&!d.skipZ)return fail("Native page source lacks depth metadata; CPU fallback");uint64_t pixels=uint64_t(t.width)*t.height;
-   if(t.width<1||t.height<1||t.width>8192||t.height>8192||pixels>16*1024*1024||(!t.pixels&&!d.gpuRaster)||(t.pixels&&t.pixels->size()!=pixels)||(t.depth&&t.depth->size()!=pixels)||(t.indices&&t.indices->size()!=pixels)||
+   if(t.width<1||t.height<1||t.width>8192||t.height>8192||pixels>32*1024*1024||(!t.pixels&&!d.gpuRaster)||(t.pixels&&t.pixels->size()!=pixels)||(t.depth&&t.depth->size()!=pixels)||(t.indices&&t.indices->size()!=pixels)||
       d.rasterScale<1||d.rasterScale>4||d.sampling!=vulkancompute::Sampling::Nearest||!std::isfinite(d.left)||!std::isfinite(d.top)||!std::isfinite(d.scaleX)||!std::isfinite(d.scaleY)||d.scaleX<=0||d.scaleY<=0||d.scaleX>8||d.scaleY>8||!std::isfinite(d.depthBase)||!std::isfinite(d.lift)||d.mixStrength>255||d.translucency>3||!std::isfinite(d.clipBottom)||d.nativeBlend>3||(d.nativeBlend&&d.smoothRGB))return fail("Invalid native-page draw");
    for(float gain:d.gains)if(!std::isfinite(gain)||gain<0||gain>16)return fail("Invalid native-page lighting");
    std::array<size_t,8>s{{colors.size(),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1),size_t(-1)}};
@@ -99,7 +99,7 @@ public:
    for(size_t j=0;j<pages.size();++j){const auto&page=p.pages[pages[j]];metadata[params_[31]+(page.y*columns+page.x)*2+1]=uint32_t(j+1);}
    for(uint32_t n=0;n<draws.size();++n)if(draws[n].displace)displaced_.push_back(n);
   }
-  if(metadata.size()>16*1024*1024||!core_.buffer(commands_,metadata.size()*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true))return fail("GPU native-page commands unavailable");
+  if(metadata.size()>32*1024*1024||!core_.buffer(commands_,metadata.size()*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true))return fail("GPU native-page commands unavailable");
   std::memcpy(commands_.mapped,metadata.data(),metadata.size()*4);if(!core_.flush(commands_)||!upload(colors,colorPlan_,colorUpload_,colorCopies_)||!upload(materials,materialPlan_,materialUpload_,materialCopies_))return fail("GPU native-page upload failed");
   std::vector<gpuvoxel::Stage::Job>voxels;std::set<std::pair<uint32_t,uint32_t>>seen;
   for(size_t n=0;n<draws.size();++n)if(draws[n].gpuRaster){const auto&s=sources[n];auto key=std::make_pair(colorPlan_.offsets[s[0]],materialPlan_.offsets[s[2]]);if((colorPlan_.changed(s[0])||materialPlan_.changed(s[2]))&&seen.insert(key).second)voxels.push_back({draws[n].gpuRaster,key.first,key.second});}

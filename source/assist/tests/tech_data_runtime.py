@@ -66,7 +66,7 @@ def ready(m,s):
  assert codehash(m)==m.original_code,'rule-data mode changed executable section'
 
 def installed(m):
- at=m.SH+0x700000;saved=bytes(m.u.mem_read(at,108));q=m.request(3);result,stats=m.manager_call(q);m.u.mem_write(at,saved);assert result==1;return stats.installed
+ at=m.CONTROL;saved=bytes(m.u.mem_read(at,108));q=m.request(3);result,stats=m.manager_call(q);m.u.mem_write(at,saved);assert result==1;return stats.installed
 
 def original(m):return all(fields(m,t)==ORIGINAL for t in m.types)
 def check(name,fn):
@@ -74,8 +74,8 @@ def check(name,fn):
  except Exception as e:rows.append({'case':name,'status':'FAIL','error':repr(e)});traceback.print_exc()
 
 def cold(session):
- m=fixture(session);m.w(m.SH+0x700000+16,0);m.w(0xa8ed84,5000);s=tick(m);assert s.seq==0 and original(m)
- m.w(m.SH+0x700000+16,1);s=activate(m);epoch=s.data.match;assert len(m.sidebar_add_calls)==3 and s.data.techVisible==3 and installed(m)==0
+ m=fixture(session);m.w(m.CONTROL+16,0);m.w(0xa8ed84,5000);s=tick(m);assert s.seq==0 and original(m)
+ m.w(m.CONTROL+16,1);s=activate(m);epoch=s.data.match;assert len(m.sidebar_add_calls)==3 and s.data.techVisible==3 and installed(m)==0
  assert all(row[1]==tuple(f[2] for f in FIELDS) for row in m.full_before_data)
  for command in (12,22):assert result(send(m,command=command,arg=0))==-4
  assert m.r(0x8b41f8)==0 and m.r(0xa802c8)==0

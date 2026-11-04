@@ -14,8 +14,8 @@
 
 namespace consolemodel {
 constexpr unsigned Protocol = 1;
-constexpr std::size_t MaxMessageBytes = 65536;
-constexpr std::size_t MaxTextBytes = 16384;
+constexpr std::size_t MaxMessageBytes = 262144;
+constexpr std::size_t MaxTextBytes = 65536;
 constexpr std::uint64_t MaxSafeInteger = 9007199254740991ULL;
 
 struct Control {

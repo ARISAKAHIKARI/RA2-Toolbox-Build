@@ -49,7 +49,7 @@ def fixture(mode=5):
 def state(m):return m.Shared.from_buffer_copy(m.u.mem_read(m.SH,C.sizeof(m.Shared)))
 def save(m,s):m.u.mem_write(m.SH,bytes(s))
 def message(m,kind,key,repeat=False):
- ptr=m.SH+0x700300;m.u.mem_write(ptr,struct.pack('<7I',0,kind,key,0x40000000 if repeat else 0,0,0,0))
+ ptr=m.CONTROL+0x300;m.u.mem_write(ptr,struct.pack('<7I',0,kind,key,0x40000000 if repeat else 0,0,0,0))
  if kind in (0x100,0x104):m.held_keys.add(key)
  if kind in (0x101,0x105):m.held_keys.discard(key)
  m.run(m.entry,(0,1,ptr))

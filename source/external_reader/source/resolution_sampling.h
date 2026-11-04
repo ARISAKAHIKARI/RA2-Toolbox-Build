@@ -3,8 +3,8 @@
 #include <cmath>
 #include <cstdint>
 namespace external { namespace resolutionsampling {
-constexpr int MaxDimension=8192,MaxRasterScale=4;
-constexpr uint64_t MaxPixels=16*1024*1024;
+constexpr int MaxDimension=16384,MaxRasterScale=4;
+constexpr uint64_t MaxPixels=32*1024*1024;
 struct Selection {
  bool valid=false;
  double scaleX=1,scaleY=1;

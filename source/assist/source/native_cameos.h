@@ -49,6 +49,6 @@ template<class Read>bool readNative(Read read,NativeFrame&out){
  NativeView view;if(!readNativeView(read,view)){out={};return false;}
  out.tab=view.tab;out.top=view.top;out.width=view.width;out.height=view.height;out.cells.assign(view.cells,view.cells+view.count);return true;
 }
-struct NativeBadge {int x=0,y=0,w=0,h=0,positions=0;bool operator==(const NativeBadge&o)const{return x==o.x&&y==o.y&&w==o.w&&h==o.h&&positions==o.positions;}};
+struct NativeBadge {int x=0,y=0,w=0,h=0;uint32_t positions=0;bool operator==(const NativeBadge&o)const{return x==o.x&&y==o.y&&w==o.w&&h==o.h&&positions==o.positions;}};
 }}
 

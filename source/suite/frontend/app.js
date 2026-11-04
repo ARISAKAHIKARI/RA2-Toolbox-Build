@@ -8,7 +8,7 @@
   const controlKey = (module, id) => `${module}:${id}`;
   const safeInteger = value => Number.isSafeInteger(value) && value >= 0;
   function placeAfter(container,node,after) { if(node.parentNode!==container || node.previousSibling!==after) container.insertBefore(node,after?after.nextSibling:container.firstChild); }
-  function validText(value,maxBytes=16384) {
+  function validText(value,maxBytes=65536) {
     if (typeof value !== 'string') return false;
     let bytes=0;
     for(let index=0;index<value.length;index++) {
@@ -145,7 +145,7 @@
       const message = { kind: 'action', module: state.module, generation: state.generation, id, seq, action };
       if (action !== 'press') message.value = value;
       if (control.immediate) message.inputTime = Date.now();
-      if(!validText(JSON.stringify({...message,protocol:PROTOCOL}),65536)) {this.errors.set(key,'编辑内容超过可发送长度，尚未提交。');this.changed('error');return false;}
+      if(!validText(JSON.stringify({...message,protocol:PROTOCOL}),262144)) {this.errors.set(key,'编辑内容超过可发送长度，尚未提交。');this.changed('error');return false;}
       this.seq=seq;this.pending.set(key, { module: state.module, generation: state.generation, page:state.page,id,seq, action, value, revision: state.revision, sentAt: Date.now(), acknowledged: false, observedRevision:0,requiredRevision:0 }); this.errors.delete(key); this.notice='';
       this.emit(message); this.changed('action'); return true;
     }

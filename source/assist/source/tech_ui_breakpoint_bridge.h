@@ -150,6 +150,12 @@ static bool requestTechParameters(uint32_t house){
  if(!nativeCompatible()){failure=techbp::Signature;InterlockedExchange(&policy.enabled,0);desired=false;configure();return false;}
  if(!restoreTechEnhancement()||!capture(house)){publish();return false;}desired=true;configure();return ready(FullGroup)&&!failure;
 }
+static bool techParameterReservationAllowed(uint32_t type,uint32_t house){
+ using namespace techparameters;
+ return sh&&(sh->flags&UnsafeTech)&&snap.techOpen&&techmode::parameters(techImplementation)&&
+  desired&&!failure&&policy.enabled&&ready(FullGroup)&&house==lastHouse&&house==policy.house&&
+  world()&&fullType(type)&&nativeCompatible();
+}
 static int techEnhancementCatalogueLevel(uint32_t type,int level){
  if(!techparameters::enhancedRequested()||!type||(!techenhancement::eligible(techenhancement::Rules[9],level)&&level!=-1))return level;
  uint32_t table=0;char id[24]{};if(!read(type,&table,4)||!read(type+0x24,id,sizeof id)||!memchr(id,0,sizeof id))return level;

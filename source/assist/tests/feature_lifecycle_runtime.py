@@ -36,11 +36,11 @@ for pre in (False,True):check('placement_'+('before_first_ready' if pre else 'mi
 def cold(display):
  m=fixture();s=state(m);s.flags=0;s.externalDisplay=display;save(m,s)
  # The live game already advanced while no tactical subscription existed.
- m.w(0xa8ed84,5000);m.w(m.SH+0x700000+16,0)
+ m.w(0xa8ed84,5000);m.w(m.CONTROL+16,0)
  s=tick(m);assert s.seq==0 and bytes(m.u.mem_read(SITE,5))==RAW
  # First enable creates the tactical subscription and publishes its options
  # before the first Assist callback, exactly as ensureBridge does.
- s.flags=65536;save(m,s);m.w(m.SH+0x700000+16,1);s=tick(m)
+ s.flags=65536;save(m,s);m.w(m.CONTROL+16,1);s=tick(m)
  assert s.data.frame>=5000 and s.data.commandStatus==1 and s.data.placementStatus==1
  epoch=s.data.match;s.flags=0;save(m,s);s=tick(m)
  assert s.data.match==epoch and s.data.placementStatus==0 and bytes(m.u.mem_read(SITE,5))==RAW

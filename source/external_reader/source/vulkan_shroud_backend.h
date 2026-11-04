@@ -8,7 +8,7 @@ namespace external { namespace gpushroud {
 // back. Unchanged Plan identity reuses a persistent packed device mask.
 class Stage {
  using Owner=vulkancompute::Resolve;using Buffer=Owner::Buffer;
- static constexpr size_t AlphaWords=256*1024,MaximumMetadataWords=16*1024*1024;
+ static constexpr size_t AlphaWords=256*1024,MaximumMetadataWords=32*1024*1024;
  struct SourceResident {std::weak_ptr<const std::vector<uint8_t>> owner;const void*address=nullptr;uint32_t offset=0,count=0;};
  Owner&owner_;Buffer alpha_,metadata_,mask_;
  VkDescriptorSetLayout descriptorLayout_=VK_NULL_HANDLE;VkPipelineLayout pipelineLayout_=VK_NULL_HANDLE;
@@ -55,7 +55,7 @@ public:
  uint64_t uploads()const{return uploads_;}uint64_t uploadedBytes()const{return uploadedBytes_;}uint64_t dispatches()const{return dispatches_;}uint64_t copies()const{return copies_;}
  bool prepare(std::shared_ptr<const Plan>plan,VkBuffer target,uint32_t targetOffsetWords,VkDeviceSize targetBytes){
   auto&o=owner_;uploads_=uploadedBytes_=dispatches_=copies_=0;pending_.reset();
-  if(!plan||!target||plan->width<1||plan->height<1||plan->width>8192||plan->height>8192||uint64_t(plan->width)*plan->height>16*1024*1024||
+  if(!plan||!target||plan->width<1||plan->height<1||plan->width>8192||plan->height>8192||uint64_t(plan->width)*plan->height>32*1024*1024||
     (uint64_t(targetOffsetWords)+plan->outputWords())*4>targetBytes||!withinGpuBudget(*plan))return o.fail("Invalid GPU native shroud budget");
   if(!initialize())return false;
   target_=target;targetOffset_=VkDeviceSize(targetOffsetWords)*4;

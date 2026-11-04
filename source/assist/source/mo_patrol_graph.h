@@ -14,7 +14,7 @@ template<class Read>class Capture {
 public:
  explicit Capture(Read read):read_(read){}
  bool read(uint32_t at,void*out,size_t size){
-  if(at<0x10000||uint64_t(at)+size>0x100000000ull||blocks_.size()>=65536||bytes_+size>4*1024*1024)return false;
+  if(at<0x10000||uint64_t(at)+size>0x100000000ull||blocks_.size()>=65536||bytes_+size>16*1024*1024)return false;
   Block b{at,std::vector<uint8_t>(size)};if(!read_(at,b.bytes.data(),size))return false;
   std::memcpy(out,b.bytes.data(),size);bytes_+=size;blocks_.push_back(std::move(b));return true;
  }
@@ -45,7 +45,7 @@ template<class Read>bool noOtherPending(Capture<Read>&c,uint32_t house,const Act
  }return true;
 }
 template<class Read>bool empty(Read read,uint32_t house,const Actor*actors,int count){
- if(!actors||count<1||count>256)return false;Capture<Read> c(read);
+ if(!actors||count<1||count>1024)return false;Capture<Read> c(read);
  for(int i=0;i<count;++i){Path p;if(!c.path(actors[i],house,p)||!p.nodes.empty()||p.pending!=-1||p.length!=-1||p.start!=-1)return false;}
  return noOtherPending(c,house,actors,count)&&c.stable();
 }

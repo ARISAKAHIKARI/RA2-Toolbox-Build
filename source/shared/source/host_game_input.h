@@ -30,14 +30,14 @@ struct Health {
 };
 inline bool heldBinding(uint32_t binding);
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0,viewportGeneration=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
-struct PointerQueue {PointerPress items[16]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0,viewportGeneration=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
+struct PointerQueue {PointerPress items[128]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0,viewportGeneration=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
 struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr,process=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false,frameSampling=false,diagnosticFrame=false;std::shared_ptr<framesignal::Client> frameSignal;
 #ifdef _WIN64
  uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0;
 #endif
 };
 struct Lease {Subscription id=0;gameentry::Client client{};unsigned target=0;};
-struct Host {std::recursive_mutex mutex;Target targets[8]{};Lease leases[32]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;const wchar_t* installStage=L"not-started";};
+struct Host {std::recursive_mutex mutex;Target targets[32]{};Lease leases[256]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;const wchar_t* installStage=L"not-started";};
 inline Host& host(){static Host*value=new Host;return *value;}
 inline const wchar_t* installationStage(){auto&h=host();std::lock_guard<std::recursive_mutex> lock(h.mutex);return h.installStage;}
 struct Capacity {unsigned targets=0,subscriptions=0;};
@@ -157,7 +157,7 @@ inline void reapTargets(){
  auto&h=host();
  // Use the retained process object, not a fresh PID lookup or a transient
  // HWND. A failed wait/denied query never proves that a live target exited.
- for(unsigned i=0;i<8;++i){auto&t=h.targets[i];if(!t.pid)continue;
+ for(unsigned i=0;i<32;++i){auto&t=h.targets[i];if(!t.pid)continue;
   bool dead=t.process&&WaitForSingleObject(t.process,0)==WAIT_OBJECT_0,used=false;
   for(auto&l:h.leases)if(l.id&&l.target==i){if(dead)l={};else used=true;}
   if(!used){if(t.control)InterlockedExchange(&t.control->enabled,0);clear(t);}
@@ -214,12 +214,12 @@ inline void pollPointer(Target&t,DWORD now){
  if(e.width<=0||e.height<=0||e.point.x<0||e.point.y<0||e.point.x>=e.width||e.point.y>=e.height)return;
  for(unsigned i=0;i<256;++i)e.keys[i]=operation==4?q.rightKeys[i]:operation==6?q.leftKeys[i]:physical[i];
  // Modifier authorization belongs to the configured host binding resolver.
- if(q.count==16){++q.dropped;return;}q.items[(q.head+q.count++)%16]=e;
+ if(q.count==128){++q.dropped;return;}q.items[(q.head+q.count++)%128]=e;
 }
 inline DWORD pointerCancelSerial(Subscription id){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id)return h.targets[l.target].pointer.cancelSerial;return 0;}
 inline bool takePointer(Subscription id,PointerPress&out,DWORD&dropped){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
- for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&q=h.targets[l.target].pointer;dropped=q.dropped;q.dropped=0;if(!q.count)return false;out=q.items[q.head];q.head=(q.head+1)%16;--q.count;return true;}return false;
+ for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&q=h.targets[l.target].pointer;dropped=q.dropped;q.dropped=0;if(!q.count)return false;out=q.items[q.head];q.head=(q.head+1)%128;--q.count;return true;}return false;
 }
 inline void updateTimer(){
  auto&h=host();bool fast=false;
@@ -239,7 +239,7 @@ inline void CALLBACK pulse(void*,BOOLEAN){
  auto&h=host();if(InterlockedCompareExchange(&h.pulseBusy,1,0))return;
  struct Reset {volatile LONG*value;~Reset(){InterlockedExchange(value,0);}} reset{&h.pulseBusy};
  std::lock_guard<std::recursive_mutex>lock(h.mutex);reapTargets();DWORD now=GetTickCount();const uint64_t precise=preciseclock::micros();
- for(unsigned i=0;i<8;++i){auto&t=h.targets[i];if(!t.pid)continue;
+ for(unsigned i=0;i<32;++i){auto&t=h.targets[i];if(!t.pid)continue;
   uint32_t enabled=0;for(auto&l:h.leases)if(l.id&&l.target==i)enabled|=mask(l.client);
   if(!enabled){clear(t);continue;}if(!t.control)continue;
 #ifdef _WIN64
@@ -306,8 +306,8 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
  reapTargets();
  h.installStage=L"subscription-slots";
  Lease*slot=nullptr;for(auto&l:h.leases)if(!l.id){slot=&l;break;}if(!slot){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
- unsigned at=8;for(unsigned i=0;i<8;++i)if(h.targets[i].pid==pid){at=i;break;}
- if(at<8&&h.targets[at].thread!=thread){
+ unsigned at=32;for(unsigned i=0;i<32;++i)if(h.targets[i].pid==pid){at=i;break;}
+ if(at<32&&h.targets[at].thread!=thread){
   h.installStage=L"previous-thread-still-alive";
   auto&t=h.targets[at];HANDLE old=OpenThread(SYNCHRONIZE,FALSE,t.thread);
   bool dead=old?WaitForSingleObject(old,0)==WAIT_OBJECT_0:GetLastError()==ERROR_INVALID_PARAMETER;if(old)CloseHandle(old);
@@ -320,7 +320,7 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
   if(!releaseHook(t.post)||!releaseHook(t.message))return 0;
   t.pointer={};t.thread=thread;t.window=window;if(t.control)InterlockedExchange(&t.control->wakePending,0);
  }
- if(at==8){h.installStage=L"target-slots";for(unsigned i=0;i<8;++i)if(!h.targets[i].pid){at=i;break;}if(at==8){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
+ if(at==32){h.installStage=L"target-slots";for(unsigned i=0;i<32;++i)if(!h.targets[i].pid){at=i;break;}if(at==32){SetLastError(ERROR_NOT_ENOUGH_MEMORY);return 0;}
   auto&t=h.targets[at];t.pid=pid;t.thread=thread;t.window=window;
   // Best-effort synchronization rights only; existing platforms that deny
   // this handle retain the normal explicit-release path.

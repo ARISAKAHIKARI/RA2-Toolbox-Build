@@ -7,7 +7,7 @@ namespace external { namespace gpuvoxel {
 // queue, waits on a fence or reads pixels back to the CPU. All actor results
 // stay in the same color/material atlases consumed by final scene composition.
 class Stage {
- static constexpr VkDeviceSize TriangleBudget=96ull*1024*1024;
+ static constexpr VkDeviceSize TriangleBudget=120ull*1024*1024;
  vulkancompute::Resolve&core_;
  using Buffer=vulkancompute::Resolve::Buffer;
  VkDescriptorSetLayout descriptorLayout_=VK_NULL_HANDLE;

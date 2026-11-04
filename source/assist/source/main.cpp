@@ -1521,7 +1521,8 @@ static void paint(){
    for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){auto&f=shapes[i];Bitmap shape(f.width,f.height,f.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(f.pixels.data()));g.DrawImage(&shape,RectF(f.x*sx,f.y*sy,f.width*sx,f.height*sy));}g.Restore(state);
   }
   for(const auto&b:nativeBadges){SolidBrush tag(Color(230,97,67,14));g.FillRectangle(&tag,b.x*sx,b.y*sy,b.w*sx,b.h*sy);
-   std::wstring numbers;for(int i=0;i<construction::Capacity;++i)if(b.positions&(1<<i))numbers+=std::to_wstring(i+1);
+   std::wstring numbers;int count=0;for(int i=0;i<construction::Capacity;++i)if(b.positions&(1u<<i)){++count;numbers+=std::to_wstring(i+1)+L" ";}
+   if(count>construction::VisibleCapacity)numbers=L"×"+std::to_wstring(count);
    drawText(g,numbers,b.x*sx+2,b.y*sy,std::max(8.f,10.f*sy),Color(255,255,239,158));}
   auto mapState=g.Save();if(viewportTransform.active)g.SetClip(RectF(float(mapClip.x),float(mapClip.y),float(mapClip.w),float(mapClip.h)),CombineModeIntersect);
   auto enemyClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy),CombineModeIntersect);

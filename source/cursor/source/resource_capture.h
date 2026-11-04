@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 namespace cursorresource {
-constexpr unsigned MaxFrames=4096,MaxBytes=4*1024*1024;
+constexpr unsigned MaxFrames=16384,MaxBytes=16*1024*1024;
 inline unsigned u16(const unsigned char* p){return unsigned(p[0])|(unsigned(p[1])<<8);}
 inline uint32_t u32(const unsigned char* p){return uint32_t(p[0])|(uint32_t(p[1])<<8)|(uint32_t(p[2])<<16)|(uint32_t(p[3])<<24);}
 // Raw SHA layout only. References must be resolved by the caller first.

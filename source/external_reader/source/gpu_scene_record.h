@@ -152,7 +152,7 @@ public:
  bool replay(Surface&surface,cpureplay::Stats*stats=nullptr)const{
   if(stats)*stats={};cpuPrefixReused_=false;
   // basePixels stays captured for fallback even when GPU base tiles are used.
-  if(frame_.width<1||frame_.height<1||uint64_t(frame_.width)*frame_.height>16*1024*1024||!validDepth(frame_))return false;
+  if(frame_.width<1||frame_.height<1||uint64_t(frame_.width)*frame_.height>32*1024*1024||!validDepth(frame_))return false;
   const std::vector<uint32_t>*base=fallbackBase_.get();std::vector<uint32_t>generated;
   if(!base||base->size()!=size_t(frame_.width)*frame_.height){if(!cpuBaseFallback_||!cpuBaseFallback_(generated)||generated.size()!=size_t(frame_.width)*frame_.height)return false;base=&generated;}
   if(!frame_.baseDepth||!surface.resetFrame(frame_.width,frame_.height,*base,frame_.baseDepthWidth?nullptr:frame_.baseDepth.get()))return false;

@@ -41,7 +41,7 @@ public:
   if(!read(at,data.data(),data.size())||data[0]>identity_.fields[1]*8)return nullptr;
   if(!data[0])return nullptr;
   g.width=data[0];g.ink.resize(size_t(g.width)*g.rows);for(int y=0;y<g.rows;++y)for(int x=0;x<g.width;++x){bool on=(data[1+y*identity_.fields[1]+x/8]&(0x80u>>(x%8)))!=0;g.ink[size_t(y)*g.width+x]=uint8_t(missing?!on:on);}
-  if(bytes_+g.ink.size()>16*1024*1024||glyphs_.size()>=4096){glyphs_.clear();bytes_=0;}bytes_+=g.ink.size();++decodes_;auto p=glyphs_.emplace(ch,std::move(g));return &p.first->second;
+  if(bytes_+g.ink.size()>64*1024*1024||glyphs_.size()>=16384){glyphs_.clear();bytes_=0;}bytes_+=g.ink.size();++decodes_;auto p=glyphs_.emplace(ch,std::move(g));return &p.first->second;
  }
  template<class Read>bool measure(Read read,const std::u16string&text,int&width){int64_t value=0;for(auto ch:text){if(ch=='\r'||ch=='\n')continue;if(ch=='\t'){value=(value+64)/64*64;continue;}auto*g=glyph(read,ch);if(!g)return false;value+=g->width+1;if(value>1048576)return false;}width=int(value);return true;}
 };

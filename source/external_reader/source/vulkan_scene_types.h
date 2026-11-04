@@ -6,7 +6,7 @@ namespace external { namespace gpueffects {struct Plan;} namespace gpuvoxel {str
 // Full 256x256 isometric maps contain more than 65536 physical Cell tiles.
 // Recording/CPU replay and motion use a bounded ceiling. GPU reference words
 // still contain 16-bit draw indices and retain their separate 65536 limit.
-constexpr size_t MaximumSceneDraws=262144;
+constexpr size_t MaximumSceneDraws=524288;
 // Immutable aliases must own their actual source Image/ScaledImage storage.
 struct Texture {
  std::shared_ptr<const std::vector<uint32_t>> pixels;

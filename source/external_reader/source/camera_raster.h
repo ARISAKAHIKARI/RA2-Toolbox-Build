@@ -62,7 +62,7 @@ public:
  std::vector<uint16_t> nativeZ;
 private:
  bool resetStorage(int w,int h,uint32_t background,const std::vector<uint32_t>*base,const std::vector<float>*initialDepth,bool depthWillBeWritten){
-  if(w<=0||h<=0||w>8192||h>8192||uint64_t(w)*h>16*1024*1024||
+  if(w<=0||h<=0||w>8192||h>8192||uint64_t(w)*h>32*1024*1024||
      (base&&base->size()!=size_t(w)*h)||(initialDepth&&initialDepth->size()!=size_t(w)*h)){
    width_=height_=0;color.clear();depth.clear();return false;
   }

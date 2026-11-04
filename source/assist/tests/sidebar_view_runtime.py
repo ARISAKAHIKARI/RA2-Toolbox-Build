@@ -54,7 +54,7 @@ def fixture():
  hook(0x4f4492,lambda:m.u.reg_write(UC_X86_REG_EIP,0x4f459d))
  oldrun=m.run
  def run(address,args=(),self=0):
-  if address==m.entry and args==(0,1,0):m.w(m.SH+0x700000+20,m.r(m.SH+0x700000+20)|1);args=(0,1,m.SH+0x700100)
+  if address==m.entry and args==(0,1,0):m.w(m.CONTROL+20,m.r(m.CONTROL+20)|1);args=(0,1,m.CONTROL+0x100)
   sp=m.STACK+0x1e000;m.u.mem_write(sp,struct.pack('<'+'I'*(len(args)+1),m.STOP,*args));m.u.reg_write(UC_X86_REG_ESP,sp);m.u.reg_write(UC_X86_REG_ECX,self)
   m.u.emu_start(address,m.STOP,count=20000000)
   assert m.u.reg_read(UC_X86_REG_EIP)==m.STOP,'instruction budget'

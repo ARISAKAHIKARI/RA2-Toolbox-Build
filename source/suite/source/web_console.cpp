@@ -10,9 +10,9 @@
 
 namespace consoleweb {
 namespace {
-constexpr size_t IncomingLimit = 64 * 1024;
-constexpr size_t OutgoingLimit = 2 * 1024 * 1024;
-constexpr size_t DeliveryLimit = 128;
+constexpr size_t IncomingLimit = 256 * 1024;
+constexpr size_t OutgoingLimit = 8 * 1024 * 1024;
+constexpr size_t DeliveryLimit = 1024;
 constexpr UINT DeliverMessage = WM_APP + 0x34a;
 
 // SDK interface identities are explicit because Microsoft's MIDL_INTERFACE

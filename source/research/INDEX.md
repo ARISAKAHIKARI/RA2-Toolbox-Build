@@ -240,3 +240,5 @@
 - [原生與工具卸礦完成後接管最近礦格、玩家命令優先與輕量觀察](2026-11-03-native-unload-harvest-handoff.md)
 - [側欄立即重畫、MO 十七原始 ABI 與 A/R 整合契約](2026-11-02-sidebar-redraw-and-mo-viewport-contract.md)（6D2790 RET14 WM_PAINT RenderSerial 4F4480 4F459D map-only；早期調查，後續實作見下文）
 - [MO 原生地圖縮放：A/R、共用完整 Render、輸入／重連與世代退役](2026-11-03-mo-native-viewport.md)
+
+- [固定容量扩容、科技全开生产预定与禁用超武](2026-11-04-fixed-capacity-production-superweapons.md)（Assist94；SW 原始指令 17 例；无真实游戏／联机验证）

@@ -12,6 +12,8 @@ prefix=r'''
 #include "native_hotkeys.h"
 #include "construction_catalog.h"
 #include "native_cameos.h"
+#include "native_badge_display.h"
+#include "../../shared/source/overlay_visibility.h"
 #include "command_delivery.h"
 #include <cassert>
 #include <iostream>
@@ -24,7 +26,7 @@ namespace gameinput{struct PointerPress {uint32_t tick=0,serial=0,match=0;int op
 struct WNDCLASSW{void*hInstance;int lpfnWndProc;const wchar_t*lpszClassName;void*hCursor;};
 constexpr int VK_RBUTTON=2,VK_SHIFT=16,SW_HIDE=0,FALSE=0,FW_NORMAL=0,DEFAULT_CHARSET=0,OUT_DEFAULT_PRECIS=0,CLIP_DEFAULT_PRECIS=0,CLEARTYPE_QUALITY=0,DEFAULT_PITCH=0,IDC_HAND=0,WS_EX_TOOLWINDOW=0,WS_EX_NOACTIVATE=0,WS_EX_TOPMOST=0,WS_EX_LAYERED=0x80000,LWA_ALPHA=2,WS_POPUP=0,SWP_NOACTIVATE=1,SWP_SHOWWINDOW=2,SWP_NOOWNERZORDER=4,SWP_NOCOPYBITS=8,SWP_NOZORDER=16;
 static void*HWND_TOPMOST=nullptr;static HWND game=(void*)2;static uint32_t now=1000,pid=1,match=1;static int clientWidth=3840,clientHeight=2160;
-static bool enabled=true,focused=true,fresh=true,queueAccept=true;static std::wstring root=L"/tmp",message;
+static bool techMode=false,techWhitelist=true;static bool enabled=true,focused=true,fresh=true,queueAccept=true;static std::wstring root=L"/tmp",message;
 static int constructionScalePercent=100,soundRequests=0,panelAlpha=0;
 static void requestReservationSound(){++soundRequests;}
 static construction::InputPolicy reservationPolicy;static construction::InputClick inputClick;static bool inputPending=false;
@@ -32,7 +34,8 @@ static void publishReservationPolicy(const construction::InputPolicy&p){reservat
 static bool takeReservationClick(construction::InputClick&out){if(!inputPending)return false;inputPending=false;out=inputClick;reservationPolicy={};return true;}
 static bool SetLayeredWindowAttributes(HWND,int,int alpha,int flags){assert(flags==LWA_ALPHA);panelAlpha=alpha;return true;}
 static struct{bool constructionQueue=true;}extra;
-static struct{int typeCount=3,chat=0,renderStatus=1;struct{int kind=7,index=0,naval=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
+static struct{int typeCount=3,chat=0,renderStatus=1,width=2560,height=1440;struct{int kind=7,index=0,naval=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
+static bool techAllowed(const decltype(snap.types[0])&){return techWhitelist;}
 static delivery::Queue commandQueue;
 struct Reader{std::vector<uint8_t>bytes=std::vector<uint8_t>(0x1000000);uint32_t fail=0;
  bool readFresh(uint32_t p,void*out,size_t n){if(p<0x10000||p+n>bytes.size()||(fail&&p<=fail&&p+n>fail))return false;memcpy(out,bytes.data()+p,n);return true;}
@@ -63,7 +66,7 @@ static constexpr uint32_t H=0x500000,C=0x510000,R=0x520000,T=0x600000,P=0x700000
 static void w(uint32_t p,int v){externalReader.put(p,v);}static void byte(uint32_t p,uint8_t v){externalReader.put(p,v);}
 static void list(uint32_t p,std::initializer_list<int> v){static uint32_t items=0x900000;w(p+4,items);w(p+8,v.size());w(p+16,v.size());for(int i:v){w(items,i);items+=4;}items+=32;}
 static void setup(){
- buildreserve::reset();commandQueue.clear();soundRequests=0;externalReader.bytes.assign(0x1000000,0);externalReader.fail=0;extra.constructionQueue=true;focused=fresh=enabled=queueAccept=true;++match;++now;
+ techMode=false;techWhitelist=true;buildreserve::reset();commandQueue.clear();soundRequests=0;externalReader.bytes.assign(0x1000000,0);externalReader.fail=0;extra.constructionQueue=true;focused=fresh=enabled=queueAccept=true;++match;++now;
  w(0xA8ED84,10);w(0xA83D4C,H);w(H+0x34,C);w(C+0xB4,0);w(C+0xB8,0);w(H+0x1D4,10);w(0x8871E0,R);
  list(0xA83C68,{T,T+0x2000,T+0x4000});list(R+0x358,{0});for(int g=1;g<6;++g)list(R+0x358+g*28,{});
  for(int i=0;i<3;++i){auto t=T+i*0x2000;snap.types[i].index=i;w(t+0x634,1);w(t+0x6CC,1);w(t+0xDA0,-1);w(t+0xDA4,-1);w(t+0xDF8,i);list(t+0x638,i==1?std::initializer_list<int>{-1}:i==2?std::initializer_list<int>{1}:std::initializer_list<int>{});list(t+0x654,{});}
@@ -81,7 +84,7 @@ int main(){
 
  setup();assert(choice(0)<0&&choice(1)>=0&&choice(2)<0);assert(choices[choice(1)].future);assert(layout.width()==216&&layout.x(60)==90&&layout.y(48)==72);
  constructionScalePercent=150;tick();assert(layout.width()==324&&layout.x(60)==135);constructionScalePercent=100;tick();
- reserve(choice(1));assert(choice(2)>=0);reserve(choice(2));reserve(choice(1));reserveChoice({0,0,0,T,false},true);reserve(choice(0));assert(books[0].items==std::vector<int>({1,2,1,0,0}));reserve(choice(0));assert(books[0].items.size()==5);
+ reserve(choice(1));assert(choice(2)>=0);reserve(choice(2));reserve(choice(1));reserveChoice({0,0,0,T,false},true);reserve(choice(0));assert(books[0].items==std::vector<int>({1,2,1,0,0}));reserve(choice(0));assert(books[0].items.size()==6);removeTop();
  removeTop();assert(books[0].items==std::vector<int>({1,2,1,0}));removeItem(0,1);assert(books[0].items==std::vector<int>({1,1,0}));removeTop(true);assert(books[0].items.empty());
  reserve(choice(1));w(P+0x6C,0);byte(P+0x74,0);for(int i=0;i<20;++i)tick();assert(books[0].items==std::vector<int>({1})&&commandQueue.size==0);w(F+0x58,0);tick();tick(300);assert(books[0].items.empty());
  setup();reserve(choice(1));w(F+0x58,0);tick();assert(!books[0].items.empty());tick(300);assert(books[0].items.empty());
@@ -121,8 +124,8 @@ int main(){
  bool shift=false;auto press=[&](int op,int x=2420,int y=240){gameinput::PointerPress e;e.tick=now;e.match=match;e.serial=42;e.operation=op;e.width=clientWidth;e.height=clientHeight;e.keys[VK_RBUTTON]=op==5;e.keys[VK_SHIFT]=shift;e.point={x*3/2,y*3/2};return nativePointer(e);};
  auto deliverRemove=[&](bool all=false){inputClick={now,match,H,P,100,0,0,2,uint32_t(all)};inputPending=true;consumeNativeClick();};
  auto deliver=[&](int index=0){inputClick={now,match,H,P,100,0,index,1,0};inputPending=true;consumeNativeClick();};
- nativeSetup();assert(reservationPolicy.slots==5);assert(press(7));assert(press(6));assert(books[0].items.empty()); // polling cannot duplicate Runtime input
- deliver();assert(books[0].items==std::vector<int>({0})&&soundRequests==1&&reservationPolicy.slots==4);
+ nativeSetup();assert(reservationPolicy.slots==construction::Capacity);assert(press(7));assert(press(6));assert(books[0].items.empty()); // polling cannot duplicate Runtime input
+ deliver();assert(books[0].items==std::vector<int>({0})&&soundRequests==1&&reservationPolicy.slots==construction::Capacity-1);
  auto badges=nativeBadges();assert(badges.size()==1&&badges[0].x==2400&&badges[0].y==253&&badges[0].positions==1);
  deliver();assert(books[0].items.size()==2&&soundRequests==2);press(5);press(4);assert(books[0].items.size()==2);deliverRemove();assert(books[0].items.size()==1);
  shift=true;press(5);press(4);shift=false;deliverRemove(true);assert(books[0].items.empty());
@@ -132,9 +135,14 @@ int main(){
  nativeSetup();inputClick={now,match,H,P,999,0,0};inputPending=true;consumeNativeClick();assert(books[0].items.empty());
  nativeSetup();focused=false;deliver();assert(books[0].items.empty());focused=true;
  nativeSetup();w(0x87F7E8+0x1544+84,3);w(0x87F7E8+0x1544+88+2*52,2);w(0x87F7E8+0x1544+92+2*52,7);deliver(2);assert(books[0].items==std::vector<int>({2}));
- nativeSetup();for(int i=0;i<5;++i)deliver();assert(reservationPolicy.slots==0&&soundRequests==5);deliver();assert(books[0].items.size()==5&&soundRequests==5);
+ nativeSetup();for(int i=0;i<construction::Capacity;++i)deliver();assert(reservationPolicy.slots==0&&soundRequests==construction::Capacity);deliver();assert(books[0].items.size()==construction::Capacity&&soundRequests==construction::Capacity);
  hide();assert(!reservationPolicy.slots);
  std::cout<<"PASS: Runtime input consumer exactly once, no polling duplicate, native right/Shift cancel, match/age/parent/focus/capacity authorization\n";
+ // Technology-only reservations survive original TechLevel=-1 and absent
+ // prerequisites while the mode is requested, including its install interval.
+ setup();reserve(choice(1));books[0].source=0;techMode=true;w(T+0x2000+0x634,-1);tick(700);assert(!books[0].items.empty());
+ w(P+0x10,100);w(F+0x58,P);tick(700);assert(!books[0].items.empty());
+ techWhitelist=false;w(F+0x58,0);byte(P+0x81,0);byte(P+0x90,1);w(H+0x5550,0);tick();tick(700);assert(books[0].items.empty());
  // Same game frame: wall-clock ticks cannot release next Produce.
  setup();reserve(choice(1));byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,2);w(0x87F7E8+0x1544+88+52,1);w(0x87F7E8+0x1544+92+52,7);
  tick(110,false);for(int i=0;i<20;++i)tick(110,false);assert(commandQueue.size==0);tick();assert(commandQueue.size==1);
@@ -168,7 +176,7 @@ int main(){
  int shortHeight=layout.height();reserve(choice(1));assert(soundRequests==1&&layout.queueCount==1&&layout.height()>shortHeight);
  reserveChoice({0,0,0,T,false},true);assert(soundRequests==1); // original sidebar owns its sound
  focused=false;reserve(choice(1));assert(soundRequests==1);focused=true;
- while(books[0].items.size()<5)reserve(choice(1));int heard=soundRequests;reserve(choice(1));assert(soundRequests==heard); // rejected click stays quiet
+ while(books[0].items.size()<construction::Capacity)reserve(choice(1));int heard=soundRequests;reserve(choice(1));assert(soundRequests==heard); // rejected click stays quiet
  removeTop(true);assert(layout.queueCount==0&&layout.height()==shortHeight);
  std::cout<<"PASS: 2016 content/scale/viewport combinations, fitted growth/shrink, 236/255 alpha, successful add/cancel feedback, clear once and no sound on empty/locked cancel\n";
  // A live read-only panel must survive a suspended command lane. Native
@@ -176,15 +184,15 @@ int main(){
  setup();reserve(choice(1));fresh=false;tick();assert(geometryReady&&books[0].items==std::vector<int>({1})&&reservationPolicy.slots==0);
  reserve(choice(1));assert(books[0].items.size()==1);place();assert(commandQueue.size==0&&geometryReady);
  fresh=true;tick();assert(commandQueue.size==0);tick();assert(commandQueue.size==1);
- setup();displayHold=true;snap.renderStatus=0;tick(1);assert(geometryReady&&reservationPolicy.slots==0);displayHold=false;snap.renderStatus=1;tick();assert(geometryReady&&reservationPolicy.slots==5);
- setup();snap.chat=1;tick();assert(!geometryReady&&reservationPolicy.slots==0);snap.chat=0;tick();assert(reservationPolicy.slots==5);
+ setup();displayHold=true;snap.renderStatus=0;tick(1);assert(geometryReady&&reservationPolicy.slots==0);displayHold=false;snap.renderStatus=1;tick();assert(geometryReady&&reservationPolicy.slots==construction::Capacity);
+ setup();snap.chat=1;tick();assert(!geometryReady&&reservationPolicy.slots==0);snap.chat=0;tick();assert(reservationPolicy.slots==construction::Capacity);
  snap.renderStatus=0;tick();assert(!geometryReady&&reservationPolicy.slots==0);snap.renderStatus=1;tick();assert(geometryReady);
  focused=false;tick();assert(!geometryReady);focused=true;tick();assert(geometryReady);
  std::cout<<"PASS: read-only panel survives command suspension; closed input/no Produce; resumes once; chat/menu/focus hide consistently with main gate\n";
 
  // A queued barracks predicts infantry; no infantry factory exists yet.
  setup();reserve(choice(1));w(T+0x2000+0xEB8,16);uint32_t I=T+0x6000;
- list(0xA8E348,{I});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{1});list(I+0x654,{});
+ list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{1});list(I+0x654,{});
  snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
  selectedTab=activeTab=2;refreshChoices();assert(choice(encode(16,0))>=0);reserve(choice(encode(16,0)));
  assert(books[2].items.size()==1&&!books[2].source);tick();assert(books[2].items.size()==1&&commandQueue.size==0);
@@ -195,7 +203,7 @@ int main(){
  removeItem(0,0,true);tick();tick(600);assert(books[1].items.empty());
  // Unit production waits for native cameo; consumes exactly once at ACK.
  snap.typeCount=3;setup();reserve(choice(1));w(T+0x2000+0xEB8,16);
- list(0xA8E348,{I});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{1});list(I+0x654,{});
+ list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{1});list(I+0x654,{});
  snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
  selectedTab=activeTab=2;refreshChoices();reserve(choice(encode(16,0)));tick();assert(commandQueue.size==0);
  uint32_t infantryStrip=0x87F7E8+0x1544+2*3988;w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);
@@ -208,18 +216,23 @@ int main(){
  list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{});list(I+0x654,{});
  w(F+0x58,0);selectedTab=activeTab=2;w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);
  tick();assert(geometryReady&&choice(encode(16,0))>=0&&books[2].items.empty());reserve(choice(encode(16,0)));assert(books[2].items.size()==1);
- // All 30 reservations drain into the same native FactoryClass queue while
- // the previous unit is still active; the 31st reservation is rejected.
+ // A larger host FIFO preserves the native 30-item factory window; remaining
+ // reservations stay pending until the game consumes native entries.
  setup();snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
  list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{});list(I+0x654,{});
  w(H+0x53B0,F);w(F+0x6C,H);w(F+0x58,0);w(F+0x50,0);
  w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);selectedTab=activeTab=2;refreshChoices();
- assert(choice(encode(16,0))>=0);for(int i=0;i<30;++i)reserve(choice(encode(16,0)));
- assert(books[2].items.size()==30&&books[2].visibleStart()==25&&layout.queueCount==5);
- int sounds=soundRequests;reserve(choice(encode(16,0)));assert(books[2].items.size()==30&&sounds==soundRequests);
- for(int accepted=0;accepted<30;++accepted){tick(accepted?20:110);assert(commandQueue.size==1&&books[2].stage==1&&commandQueue.slots[0].arg==3);
-  uint32_t token=books[2].token;commandQueue.clear();result(1,1,0,token);result(1,1,0,token);
-  w(F+0x58,P);w(F+0x50,accepted); // one active, remainder in native QueuedObjects
+ assert(choice(encode(16,0))>=0);for(int i=0;i<construction::UnitReservationCapacity;++i)reserve(choice(encode(16,0)));
+ assert(books[2].items.size()==construction::UnitReservationCapacity&&books[2].visibleStart()==construction::UnitReservationCapacity-construction::VisibleCapacity&&layout.queueCount==5);
+ int sounds=soundRequests;reserve(choice(encode(16,0)));assert(books[2].items.size()==construction::UnitReservationCapacity&&sounds==soundRequests);
+ for(int accepted=0;accepted<construction::UnitCapacity;++accepted){tick(accepted?20:110);assert(commandQueue.size==1&&books[2].stage==1&&commandQueue.slots[0].arg==3);
+  uint32_t token=books[2].token;commandQueue.clear();result(1,1,0,token);result(1,1,0,token);w(F+0x58,P);w(F+0x50,accepted);
+ }
+ tick();assert(commandQueue.size==0&&books[2].items.size()==construction::UnitReservationCapacity-construction::UnitCapacity);
+ for(int accepted=construction::UnitCapacity;accepted<construction::UnitReservationCapacity;++accepted){
+  w(F+0x58,0);w(F+0x50,0);tick();assert(commandQueue.size==1&&books[2].stage==1);
+  uint32_t token=books[2].token;commandQueue.clear();result(1,1,0,token);w(F+0x58,P);w(F+0x50,0);
+  if(accepted+1<construction::UnitReservationCapacity)unitRoom(0);
  }
  assert(books[2].items.empty()&&commandQueue.size==0&&unitBudgets[0].pending==1);
  uint32_t replacement=F+0x400;w(H+0x53B0,replacement);w(replacement+0x6C,H);w(replacement+0x58,0);w(replacement+0x50,29);
@@ -257,9 +270,9 @@ int main(){
  selectedTab=activeTab=3;refreshChoices();for(int index:{encode(40,0),encode(3,0),encode(40,1)}){int c=choice(index);assert(c>=0);reserve(c);}
  assert(books[3].items.size()==3);for(int slot:{3,4,5}){tick();assert(commandQueue.size==1&&commandQueue.slots[0].arg==slot);
   uint32_t token=books[3].token;commandQueue.clear();result(1,1,0,token);assert(books[3].items.size()==size_t(5-slot));}
- std::cout<<"PASS: visible first unit cameo, 30-item burst/31st rejection, native full queue and ACK shadow, separate ground/air/naval factories\n";
+ std::cout<<"PASS: visible first unit cameo, 128-item FIFO with a native 30-item window, native full queue and ACK shadow, separate ground/air/naval factories\n";
  assert(!l.set(0,0,3840,2160));
- std::cout<<"PASS: actual host service FIFO5/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions\n";
+ std::cout<<"PASS: actual host service FIFO32/128/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions\n";
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:

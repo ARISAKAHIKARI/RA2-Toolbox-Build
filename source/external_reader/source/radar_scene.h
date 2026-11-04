@@ -202,7 +202,7 @@ public:
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false,bool forceFrame=false,double decodeBudgetMs=4.){
   const bool warming=!materialsReady_;materialsReady_=false;decodeStats_={};stageStats_={};requestedObjects_=drawnObjects_=0;
   auto stageAt=std::chrono::steady_clock::now();auto stage=[&](double&ms){auto now=std::chrono::steady_clock::now();ms=std::chrono::duration<double,std::milli>(now-stageAt).count();stageAt=now;};
-  if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?8192:2048)||height>(region.active?8192:2048)||uint64_t(width)*height>16*1024*1024)return {};
+  if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?16384:4096)||height>(region.active?16384:4096)||uint64_t(width)*height>32*1024*1024)return {};
   const bool gpuMode=(region.active||outputSized_)&&gpuPresentation(assets,0);
   // Geometry quality belongs to Assets. Both quality settings share actor,
   // attachment, repair, depth and mask composition on the GPU.
@@ -345,7 +345,7 @@ public:
     auto&paint=prepared_[position];if(!probeChanged_)paint=prepare(index);
     if(cell.type&&(!coverageLocal_||coverage_.tile(origin.x,origin.y))){
      auto&tile=tiles_[{cell.type,cell.sub}];
-     if(!tile.ready&&paletteReady&&loads<64&&(!tile.retry||int32_t(frame.tick-tile.retry)>=0)){++loads;tile.ready=assets.tile(cell.type,cell.sub,palette,*tile.image);if(tile.ready){auto n=camera::pixels(*tile.image);if(staticPixels+n<=16*1024*1024)staticPixels+=n;else{tile.ready=false;tile.image=std::make_shared<voxel::Image>();}}tile.retry=frame.tick+2000;}
+     if(!tile.ready&&paletteReady&&loads<64&&(!tile.retry||int32_t(frame.tick-tile.retry)>=0)){++loads;tile.ready=assets.tile(cell.type,cell.sub,palette,*tile.image);if(tile.ready){auto n=camera::pixels(*tile.image);if(staticPixels+n<=64*1024*1024)staticPixels+=n;else{tile.ready=false;tile.image=std::make_shared<voxel::Image>();}}tile.retry=frame.tick+2000;}
      if(!tile.ready&&paletteReady&&loads>=64&&!tile.retry)break;
      pending_.terrainSource(index,tile.ready?tile.image:nullptr,px,py,base,paint.light,int(cell.level));
      if(tile.ready){camera::Material material;material.nativeZ=true;material.nativeZAdjust=-15*int(cell.level);pending_.blit(*tile.image,px,py,1,1,base,paint.light,0,0,material);}
@@ -460,7 +460,7 @@ public:
     maskedBaseScene_.reset();maskPixels_.reset();}
    maskSource_=complete_;maskFog_=fog;
   }
-  auto alphaAsset=[&](uint32_t pointer)->std::shared_ptr<const voxel::Image>{auto found=effectAlphas_.find(pointer);if(found==effectAlphas_.end()){voxel::Image image;if(!alphaImage(assets,pointer,image,0))return {};size_t bytes=0;for(const auto&item:effectAlphas_)bytes+=camera::pixels(*item.second)*5;if(bytes+camera::pixels(image)*5>16*1024*1024)effectAlphas_.clear();found=effectAlphas_.emplace(pointer,std::make_shared<const voxel::Image>(std::move(image))).first;}return found->second;};
+  auto alphaAsset=[&](uint32_t pointer)->std::shared_ptr<const voxel::Image>{auto found=effectAlphas_.find(pointer);if(found==effectAlphas_.end()){voxel::Image image;if(!alphaImage(assets,pointer,image,0))return {};size_t bytes=0;for(const auto&item:effectAlphas_)bytes+=camera::pixels(*item.second)*5;if(bytes+camera::pixels(image)*5>64*1024*1024)effectAlphas_.clear();found=effectAlphas_.emplace(pointer,std::make_shared<const voxel::Image>(std::move(image))).first;}return found->second;};
   const double projectionScale=projectionZScale(read);
   auto nativeBase=prepareWorldOnly_?camera::NativeCanvas{}:background_.fork();
   if(!detail&&!prepareWorldOnly_&&!nativePageMasks_.prepare(nativeBase,*frame.terrain,masked,fog,frame.effects&&frame.effects->world?frame.effects->world.get():nullptr,features_.particles,projectionScale,[&](bool fog,int n,voxel::Image&out){return assets.shroud(fog,n,out);},alphaAsset))return {};
@@ -648,7 +648,7 @@ public:
    if(features_.particles&&frame.effects&&frame.effects->world)for(const auto&a:frame.effects->world->alphas){
     auto found=effectAlphas_.find(a.image);if(found==effectAlphas_.end()){voxel::Image image;if(!alphaImage(assets,a.image,image,0))continue;
      size_t bytes=0;for(const auto&item:effectAlphas_)bytes+=camera::pixels(*item.second)*5;
-     if(bytes+camera::pixels(image)*5>16*1024*1024)effectAlphas_.clear();
+     if(bytes+camera::pixels(image)*5>64*1024*1024)effectAlphas_.clear();
      found=effectAlphas_.emplace(a.image,std::make_shared<const voxel::Image>(std::move(image))).first;
     }packet->alphas.emplace(found->first,found->second);
    }

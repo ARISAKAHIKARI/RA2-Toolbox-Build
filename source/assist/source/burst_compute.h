@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 namespace assist { namespace burstcompute {
-constexpr int MaxSources=64;
+constexpr int MaxSources=256;
 // The host and Runtime run this same value-only state decision. Observation
 // and accepted transitions stay in Runtime; no timer or burst-index writes.
 struct Source {

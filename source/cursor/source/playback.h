@@ -59,8 +59,8 @@ class RasterCache {
  size_t resident=0;uint64_t clock=0;
 public:
  uint64_t hits=0,misses=0;
- static constexpr size_t Budget=64u*1024*1024;
- static constexpr size_t MaxSlots=4096;
+ static constexpr size_t Budget=256u*1024*1024;
+ static constexpr size_t MaxSlots=16384;
  void clear(){entries.clear();resident=0;clock=hits=misses=0;}
  size_t bytes()const{return resident;}
  const motion::Image& get(const Frame& frame,int w,int h){

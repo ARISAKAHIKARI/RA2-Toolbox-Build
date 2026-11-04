@@ -3,8 +3,8 @@
 namespace nativecache {
 // Original groups include 20-frame loops at rate=4. At high refresh their
 // entire visible cycle exceeds 512 handles, so retain a full cycle safely.
-constexpr int Slots=2048;
-constexpr uint32_t PixelBudget=32u*1024*1024;
+constexpr int Slots=4096;
+constexpr uint32_t PixelBudget=128u*1024*1024;
 struct Tag {int w,h,hx,hy;uint64_t hash;};
 inline bool same(const Tag& a,const Tag& b){return a.w==b.w&&a.h==b.h&&a.hx==b.hx&&a.hy==b.hy&&a.hash==b.hash;}
 inline uint64_t hash(const uint32_t* pixels,unsigned count){

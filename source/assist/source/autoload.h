@@ -3,7 +3,7 @@
 #include <algorithm>
 
 namespace assist { namespace loading {
-constexpr int MaxInfantry=512, MaxVehicles=128, GraceFrames=90;
+constexpr int MaxInfantry=1024, MaxVehicles=256, GraceFrames=90;
 struct Infantry {uint32_t object=0,id=0;int x=0,y=0,slots=0;uint32_t type=0;int kind=1;uint32_t ticket=0,queuedAt=0;};
 struct Vehicle {uint32_t object=0,id=0;int x=0,y=0,capacity=0,used=0,reserved=0;double sizeLimit=128;int passengers=0;};
 struct Observation {int mission=0,queued=-1;uint32_t target=0,destination=0;};

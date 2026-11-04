@@ -4,7 +4,7 @@ namespace assist { namespace repairdelivery {
 struct Observation {bool valid=false,repairing=false,healthy=false;};
 // Repair is a toggle. A timer cannot establish that a previous toggle was
 // consumed. Keep pending identities until actual state/identity evidence.
-template<unsigned Size=4096> struct Pending {
+template<unsigned Size=16384> struct Pending {
  static_assert(Size&&!(Size&(Size-1)),"power-of-two capacity required");
  struct Slot {uint32_t id=0,pointer=0;uint8_t state=0;}; // 0 empty, 1 used, 2 tombstone
  Slot slots[Size]{};unsigned count=0;

@@ -25,7 +25,7 @@ struct Stats {uint64_t candidatePixels=0,admitted=0,culled=0;bool needs64=false,
 // packet has empty bounds and Missing offsets and can never enter a bin.
 inline const char* append(const FrameJob&frame,std::vector<Source>&colors,std::vector<Source>&materials,std::vector<Indices>&drawSources,std::vector<Bounds>&bounds,Stats&stats){
  stats={};drawSources.clear();bounds.clear();drawSources.reserve(frame.draws.size());bounds.reserve(frame.draws.size());
- constexpr uint64_t MaxPixels=16ull*1024*1024;
+ constexpr uint64_t MaxPixels=32ull*1024*1024;
  for(const auto&d:frame.draws){
   const auto&t=d.source;
   if((!t.pixels&&!d.gpuRaster)||t.width<1||t.height<1||t.width>8192||t.height>8192||uint64_t(t.width)*t.height>MaxPixels||(t.pixels&&uint64_t(t.width)*t.height!=t.pixels->size())||(t.depth&&t.depth->size()!=uint64_t(t.width)*t.height)||(t.indices&&t.indices->size()!=uint64_t(t.width)*t.height)||d.rasterScale<1||d.rasterScale>4||!std::isfinite(d.left)||!std::isfinite(d.top)||!std::isfinite(d.scaleX)||!std::isfinite(d.scaleY)||d.scaleX<=0||d.scaleY<=0||d.scaleX>8||d.scaleY>8||!std::isfinite(d.depthBase)||!std::isfinite(d.lift)||uint32_t(d.sampling)>3)return "Invalid GPU scene sprite";

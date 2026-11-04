@@ -5,8 +5,8 @@
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
-  "build_protocol": 92,
-  "validation": "Host-only console navigation hotfix: actual own-process WebView2 startup/messages, console regressions and paired PE validation. Runtime/broker/Loader are byte-identical to afc071d; its gameplay regressions are inherited, not newly executed. No live game or RA2OL multiplayer validation.",
+  "build_protocol": 94,
+  "validation": "Protocol 94 fixed-capacity expansion and full-technology reservation integration. Portable host/runtime branch fixtures, cross-bitness ABI and paired Windows/browser CI; private native SW grant/revoke/readiness probe. No live game, launch effects or multiplayer validation.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
@@ -645,6 +645,31 @@
     "optional_level_compare_default": false,
     "hardware_slots_per_thread": 4,
     "admission": "actual owner-thread debug register readback; UI rejects unknown or insufficient budgets; backend transaction preserves existing/foreign groups",
+    "game_tested": false,
+    "multiplayer_tested": false
+  },
+  "fixed_capacity_production_followup": {
+    "baseline_commit": "70d9ba37b7340079435e6b48fa52a303c47f449f",
+    "assist_protocol": 94,
+    "shared_bytes": 23141808,
+    "capacity_policy": "Fixed enlarged ceilings; no adaptive sizing; 8 GiB is a reference rather than a global cap",
+    "preserved": [
+      "four hardware DR slots and mode costs",
+      "technology/type directories",
+      "statistics snapshots",
+      "three watch windows"
+    ],
+    "building_reservations": 32,
+    "unit_reservations": 128,
+    "native_unit_queue_window": 30,
+    "command_staging": 128,
+    "cooperative_sources": 1024,
+    "formation_actors": 1024,
+    "mo_nodes": 256,
+    "repair_candidates": 8192,
+    "frame_ownership": 8192,
+    "reservation_permission": "Current full-technology type whitelist shares native build-limit validation; original eligibility remains when permission is absent",
+    "superweapon": "Research only: disabled-session normal grants can be revoked; native one-time grant succeeds in the isolated supported PE",
     "game_tested": false,
     "multiplayer_tested": false
   }

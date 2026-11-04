@@ -26,7 +26,7 @@ int main(){
  assert(line[3].x==line[1].x&&line[3].y==line[1].y);
  quick::layout(group,4,groups,curve,0,0,line,[](int,int,bool){return false;});
  for(auto&s:line)assert(!s.valid);
- quick::Path longPath;for(int n=0;n<200;++n)longPath.push(n*2,5);assert(longPath.count==quick::NodeLimit);assert(longPath.nodes[quick::NodeLimit-1].x==398);
- longPath.push(399,5,true);assert(longPath.nodes[quick::NodeLimit-1].x==399);
+ quick::Path longPath;for(int n=0;n<quick::NodeLimit+136;++n)longPath.push(n*2,5);assert(longPath.count==quick::NodeLimit);assert(longPath.nodes[quick::NodeLimit-1].x==2*(quick::NodeLimit+135));
+ longPath.push(2*(quick::NodeLimit+135)+1,5,true);assert(longPath.nodes[quick::NodeLimit-1].x==2*(quick::NodeLimit+135)+1);
  assert(Shapes==6); // Configured key count and shared policy size stay stable.
 }
