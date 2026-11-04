@@ -69,6 +69,9 @@ struct FaultPhase {
  ~FaultPhase(){faultContext=previous;}
 };
 static unsigned nativeMegaQueueCallDepth,nativeObjectQueueCallDepth; // own leased calls skip duplicate user-input conversion
+template<class Fn>static void withNativeQueueCallDepth(unsigned&depth,Fn&&work){
+ ++depth;runtimeunwind::run([&]{work();},[&]{--depth;});
+}
 static volatile LONG schedulerBusy;
 static volatile LONG hostWorkPending; // one coalesced grant from the Runtime host-message ingress
 static volatile LONG messageGameThread; // Thread confirmed by WH_GETMESSAGE for this game window.
@@ -189,8 +192,8 @@ static void disconnect(){
  if(!featureRestorationComplete())return;
  if(sh&&sh->magic==Magic&&sh->version==Version&&sh->pid==GetCurrentProcessId()&&sh->stop){MemoryBarrier();sh->stop=2;}
  InterlockedExchange(&hostWorkPending,0);if(controllerProcess)CloseHandle(controllerProcess);controllerProcess=nullptr;controllerPID=controllerCheckAt=0;restoreFrameDriver();InterlockedExchange(&messageGameThread,0);sessionTracker.update(false,0,-1,-1);hookWorld.reset();commandDormant=worldCleanupPending=false;if(sh)UnmapViewOfFile(sh);sh=nullptr;if(mapping)CloseHandle(mapping);mapping=nullptr;lastHouse=pendingAck=0;pendingAckReady=false;
- // The DLL is pinned across Host restarts. Only a fully retired connection
- // may release its fault latch so a new Host can open a fresh mapping.
+ // The pinned DLL outlives a Host connection. Only completed retirement and
+ // transport teardown release its legacy fault latch for a fresh connection.
  fault=false;
 }
 static_assert(Signatures[8].address==startupcompat::BeaconEntry,"ClearBeacons signature index");
@@ -465,9 +468,9 @@ static bool submitMegaMission(uint32_t house,uint32_t id,int mission,
  const megaqueue::Target destinationArg{destination,destinationTag,{0,0,0}};
  using Native=bool (__fastcall*)(int,const megaqueue::Target*,uint32_t,uint32_t,const megaqueue::Target*);
  const int beforeCount=get<int>(0xA802C8),beforeTail=get<int>(0xA802D0);
- ++nativeMegaQueueCallDepth;
- bool success=((Native)(uintptr_t)0x646E90)(mission,&targetArg,id,0x34,&destinationArg);
- --nativeMegaQueueCallDepth;
+ bool success=false;withNativeQueueCallDepth(nativeMegaQueueCallDepth,[&]{
+  success=((Native)(uintptr_t)0x646E90)(mission,&targetArg,id,0x34,&destinationArg);
+ });
  const int afterCount=get<int>(0xA802C8),afterTail=get<int>(0xA802D0);
  if(!megaqueue::appended(beforeCount,beforeTail,afterCount,afterTail)){
   snap.megaQueueStatus=int(megaqueue::Result::NoAppend);
@@ -641,9 +644,9 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,Ord
  // NetworkEvents is unsigned char; x86 thiscall passes a 32-bit stack slot.
  const int preCount=get<int>(0xA802C8),preTail=get<int>(0xA802D0);
  using NativeClicked=bool (__thiscall*)(void*,uint32_t);
- ++nativeObjectQueueCallDepth;
- const bool accepted=((NativeClicked)(uintptr_t)method)((void*)(uintptr_t)object,uint32_t(eventType));
- --nativeObjectQueueCallDepth;
+ bool accepted=false;withNativeQueueCallDepth(nativeObjectQueueCallDepth,[&]{
+  accepted=((NativeClicked)(uintptr_t)method)((void*)(uintptr_t)object,uint32_t(eventType));
+ });
  const int postCount=get<int>(0xA802C8),postTail=get<int>(0xA802D0);
  if(!objectqueue::appended(preCount,preTail,postCount,postTail)){
   // DO NOT retry through handcrafted enqueue! A return of true can hide
@@ -759,8 +762,8 @@ static bool featureRestorationComplete(){
   (!buildTimeTooltipActive&&codeHookRegistry.active(0x7F74D8)?1u:0u)+
   (codeHookRegistry.active(0x7F74C8)?1u:0u);
  // A released build-time claim may leave the shared tooltip slot owned by
- // Cursor. Its separate layout slot also belongs to Cursor. Runtime retires
- // both after the last client detaches; neither blocks Assist-only cleanup.
+ // Cursor, which also owns the tooltip layout slot. Runtime separately
+ // retires those slots and verifies NativeTooltipDetached before handoff.
  return codeHookRegistry.installed()==runtimeOnly&&!crcMapInstalled&&!networkSenderInstalled&&
   !shroudMaterials.active()&&!enhancementRestoring&&!techDataPending()&&mapVisibilityParametersRetired()&&techParametersRetired()&&techEnhanceParametersRetired()&&controlParametersRetired()&&nativeViewRetired()&&!controlHouseFlagsPending();
 }
@@ -1127,7 +1130,25 @@ static bool controllerExited(DWORD now){
   if(!controllerProcess)return GetLastError()==ERROR_INVALID_PARAMETER;}
  return WaitForSingleObject(controllerProcess,0)==WAIT_OBJECT_0;
 }
+template<class Fn>static void withInputPublication(Shared*value,uint32_t session,DWORD now,int frame,bool advanced,Fn&&tailWork){
+ bool complete=false;InterlockedIncrement(&value->computeFrameSeq);
+ runtimeunwind::run([&]{tailWork();complete=true;},[&]{
+  if(complete){
+   if(advanced){value->computeFrameMatch=session;value->computeFrameTick=now;value->computeFrame=frame;++value->computeFrameSerial;}
+  }else{
+   // A platform-owned unwind must close our sequence without presenting a
+   // partial sample as complete. Recapture on the next admitted tick; events
+   // and their request/ack state are left to the existing delivery guards.
+   value->computeFrameMatch=value->computeFrameTick=0;value->computeFrame=-1;
+   inputMatch=0;inputFrame=-1;externalInputFrame=false;
+  }
+  MemoryBarrier();InterlockedIncrement(&value->computeFrameSeq);notifyHost();
+ });
+}
 static void tick(){
+ // A detached legacy fault may still own asynchronous retirement. Finish it
+ // before opening a fresh mailbox; mapped failures retain their Host below.
+ if(fault&&!sh){maintainTechParameters();disconnect();return;}
  if(!sh){wchar_t n[80];mapName(n,GetCurrentProcessId());mapping=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,n);if(!mapping)return;sh=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));}
  // A deferred disconnect must never turn an invalid mapping into a usable
  // command connection on the next callback.
@@ -1148,10 +1169,9 @@ static void tick(){
   restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();
   restoreFrameDriver();disconnect();return;
  }
- // Keep polling asynchronous retirement after a fault, without admitting
- // commands or returning to normal world/feature maintenance. The failed
- // connection stays latched until its Host stops or exits and detach finishes.
- if(fault){reset();snap.status=snap.bridgeStatus=-2;snap.commandStatus=0;publishSnapshot(now);return;}
+ // The failed connection remains latched until explicit stop or a dead Host.
+ // Retry retirement and publish failure without reopening ordinary work.
+ if(fault){reset();snap.status=snap.bridgeStatus=-2;snap.commandStatus=0;snap.labels=0;publishSnapshot(now);return;}
  if((snap.techOpen||techPending||techDataPending())&&!(sh->flags&UnsafeTech))restoreTech();
  if(techDataRestoring&&techImplementation!=3)restoreTechData();
  const auto worldSample=worldlife::capture(read);const auto worldChange=hookWorld.observe(worldSample);
@@ -1214,8 +1234,8 @@ static void tick(){
   }else{catalogueReady=false;scanTypes();}
  }
  externalInputFrame=inputMatch!=match||inputFrame!=frame;if(externalInputFrame){inputMatch=match;inputFrame=frame;}
- InterlockedIncrement(&sh->computeFrameSeq);
- struct InputPublication {Shared*value;uint32_t session,tick;int frame;bool advanced;~InputPublication(){if(advanced){value->computeFrameMatch=session;value->computeFrameTick=tick;value->computeFrame=frame;++value->computeFrameSerial;}MemoryBarrier();InterlockedIncrement(&value->computeFrameSeq);notifyHost();}} inputPublication{sh,match,now,frame,externalInputFrame};
+ bool finishSnapshot=false;
+ withInputPublication(sh,match,now,frame,externalInputFrame,[&]{
  // Control time belongs to the dispatcher, never to the optional display scan.
  rebuildPlayerSidebar(house);lastFrame=frame;snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;snap.commandStatus=1;pauseViewTick();buildTimeTooltipTick();
  snap.chat=get<bool>(0xA8BC60+25);if(!sh->foreground||snap.chat)runtimeKeys.clear();
@@ -1278,6 +1298,9 @@ static void tick(){
  else if(cameraMoved)shiftScene(cx-cameraX,cy-cameraY);
  else if(!externalInputFrame&&!cmd&&!summaryChanged&&!planningChanged&&!missileChanged&&!burstChanged&&!dodgeChanged&&DWORD(now-snap.sampledTick)<250)return;
  cameraX=cx;cameraY=cy;snap.cameraX=cx;snap.cameraY=cy;
+ finishSnapshot=true;
+ });
+ if(!finishSnapshot)return;
  }
  QueryPerformanceCounter(&end);if(active)snap.displayMicros=micros(worldEnd,end,frequency);
  snap.scanMicros=micros(start,end,frequency);publishSnapshot(now);
@@ -1293,27 +1316,28 @@ static void maintainScheduler(){if(sh){sh->driverMode=scheduler::Message;sh->dri
 // One place owns provider choice, fallback and the execution lock.
 // This adapter does not contain feature decisions or EventClass operations.
 static void dispatchFromTrigger(dispatchrouter::Trigger trigger,DWORD now,const MSG* message){
- gameentry::Scope processEntry(gameentry::Client::Assist,trigger==dispatchrouter::Trigger::Message);
- if(!processEntry)return;
- if(trigger==dispatchrouter::Trigger::Message){
-  InterlockedExchange(&messageGameThread,LONG(GetCurrentThreadId()));
-  if(sh&&message&&message->message==WM_NULL&&message->wParam==WakeTag&&message->lParam==sh->owner)
-   InterlockedExchange(&sh->gameWakePending,0);
- }
- if(trigger!=dispatchrouter::Trigger::Message)return;
- if(InterlockedCompareExchange(&schedulerBusy,1,0)!=0)return;
- // A frame callback is a safe execution point, not an independent producer.
- // Preserve the grant on rejected entry/router/reentrancy; consume only here.
- if(!InterlockedExchange(&hostWorkPending,0)){InterlockedExchange(&schedulerBusy,0);return;}
- // Producers and event gateway do not know which provider woke this tick.
- // The shared request/ack serials and unit arbiter prevent redispatching an
- // already accepted user request when ownership changes between callbacks.
- // tick() has a cleanup-only fault path. Starving it here strands pending
- // debug-register retirement and prevents a later Host from reconnecting.
- GuardedAssistTick();
- // Install / remove experimental hooks only from the original message path.
- if(trigger==dispatchrouter::Trigger::Message)maintainScheduler();
- InterlockedExchange(&schedulerBusy,0);
+ gameentry::scoped(gameentry::Client::Assist,trigger==dispatchrouter::Trigger::Message,[&]{
+  if(trigger==dispatchrouter::Trigger::Message){
+   InterlockedExchange(&messageGameThread,LONG(GetCurrentThreadId()));
+   if(sh&&message&&message->message==WM_NULL&&message->wParam==WakeTag&&message->lParam==sh->owner)
+    InterlockedExchange(&sh->gameWakePending,0);
+  }
+  if(trigger!=dispatchrouter::Trigger::Message)return;
+  if(InterlockedCompareExchange(&schedulerBusy,1,0)!=0)return;
+  const auto previousFaultContext=faultContext;
+  // Only the successful CAS owns this release, including an SEH unwind.
+  runtimeunwind::run([&]{
+   // A frame callback is a safe execution point, not an independent producer.
+   // Preserve the grant on rejected entry/router/reentrancy; consume only here.
+   if(!InterlockedExchange(&hostWorkPending,0))return;
+   // Producers and event gateway do not know which provider woke this tick.
+   // The shared request/ack serials and unit arbiter prevent redispatching an
+   // already accepted user request when ownership changes between callbacks.
+   GuardedAssistTick(); // tick owns normal admission and cleanup-only faults
+   // Install / remove experimental hooks only from the original message path.
+   if(trigger==dispatchrouter::Trigger::Message)maintainScheduler();
+  },[&]{faultContext=previousFaultContext;InterlockedExchange(&schedulerBusy,0);});
+ });
 }
 extern "C" unsigned BeginAssistCapture(){
  gameentry::Request r{};return gameentry::capture(gameentry::Client::Assist,r)?r.token:0;
@@ -1332,14 +1356,16 @@ extern "C" void AssistRuntimeMessage(int code,WPARAM wp,LPARAM lp){
  }
 }
 extern "C" void AssistRuntimeWatchdog(){
- if(!sh)return;
- const DWORD now=sampleClock(sh);
- if(!sh->stop&&!(DWORD(now-sh->heartbeat)>3000&&controllerExited(now)))return;
- gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
- GuardedAssistTick(); // stop/dead-controller branch only; never normal work
+ if(!fault){
+  if(!sh)return;
+  const DWORD now=sampleClock(sh);
+  if(!sh->stop&&!(DWORD(now-sh->heartbeat)>3000&&controllerExited(now)))return;
+ }
+ gameentry::scoped(gameentry::Client::Assist,false,[]{
+  GuardedAssistTick(); // fault/stop/dead-controller cleanup only; never normal work
+ });
 }
-extern "C" bool AssistRuntimeDetached(){return sh==nullptr;}
-
+extern "C" bool AssistRuntimeDetached(){return sh==nullptr&&!fault;}
 
 
 

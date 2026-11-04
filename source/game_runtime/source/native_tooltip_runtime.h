@@ -49,7 +49,7 @@ static bool __declspec(naked) __thiscall visibleLayout(void*,void*){
 }
 static bool __fastcall layoutEntry(void*self,void*,void*rectangle){
  bool ours=false;
- {RuntimeFPScope fp;ours=CursorTooltipNeeded()&&layoutCompatible()&&CursorTooltipOwnsHiddenMouse();}
+ {RuntimeFPScope fp;runtimeunwind::run([&]{ours=CursorTooltipNeeded()&&layoutCompatible()&&CursorTooltipOwnsHiddenMouse();},[&]{fp.restore();});}
  if(ours)return visibleLayout(self,rectangle);
  return ((bool(__thiscall*)(void*,void*))LayoutOriginal)(self,rectangle);
 }
@@ -65,15 +65,16 @@ static wchar_t* __fastcall entry(void*self,void*,unsigned id){
  auto text=((wchar_t*(__thiscall*)(void*,unsigned))Original)(self,id);
  if(!text&&CursorTooltipNeeded()){
   bool ours=false;
-  {RuntimeFPScope fp;ours=compatible()&&CursorTooltipOwnsHiddenMouse();}
+  {RuntimeFPScope fp;runtimeunwind::run([&]{ours=compatible()&&CursorTooltipOwnsHiddenMouse();},[&]{fp.restore();});}
   // Only OUR one held hide may be discounted. A second engine hide, a
   // different mouse object or an unknown wrapper retains the native result.
   // Do not write RefCount, ShowCursor, HideName, RNG or gameplay objects.
   if(ours)text=((wchar_t*(__thiscall*)(void*,unsigned))Provider)((void*)Sidebar,id);
  }
  if(!text||!buildTimeWanted)return text;
- RuntimeFPScope fp;
- return reinterpret_cast<wchar_t*>(uintptr_t(GuardedBuildTimeTooltip(id,unsigned(uintptr_t(text)))));
+ RuntimeFPScope fp;wchar_t* result=nullptr;
+ runtimeunwind::run([&]{result=reinterpret_cast<wchar_t*>(uintptr_t(GuardedBuildTimeTooltip(id,unsigned(uintptr_t(text)))));},[&]{fp.restore();});
+ return result;
 }
 static bool maintain(bool allowInstall){
  const bool cursorWanted=CursorTooltipNeeded(),wanted=buildTimeWanted||cursorWanted;
@@ -111,6 +112,6 @@ extern "C" bool NativeTooltipBuildTime(bool wanted){
  return wanted?nativetooltip::installed:(!nativetooltip::installed||CursorTooltipNeeded());
 }
 extern "C" void NativeTooltipMaintain(bool allowInstall){
- gameentry::Scope entry(gameentry::Client::Assist);if(entry)nativetooltip::maintain(allowInstall);
+ gameentry::scoped(gameentry::Client::Assist,false,[&]{nativetooltip::maintain(allowInstall);});
 }
 extern "C" bool NativeTooltipDetached(){return !nativetooltip::installed&&!nativetooltip::layoutInstalled&&!nativetooltip::buildTimeWanted;}

@@ -81,13 +81,14 @@ extern "C" int GuardedAssistFilter(void*);
 extern "C" void AssistRuntimeFilter(void* message){
  // Input can arrive in a new simulation frame without a Host-ready bit.
  // Refresh through the existing dispatcher; never relax event frame checks.
- {
-  gameentry::Scope inspect(gameentry::Client::Assist);if(!inspect)return;
-  if(!superweaponGrantWantsInputSample(static_cast<const MSG*>(message))&&!nativePlacementWantsInputSample(static_cast<const MSG*>(message))){GuardedAssistFilter(message);return;}
- }
+ bool refresh=false;
+ gameentry::scoped(gameentry::Client::Assist,false,[&]{
+  refresh=superweaponGrantWantsInputSample(static_cast<const MSG*>(message))||nativePlacementWantsInputSample(static_cast<const MSG*>(message));
+  if(!refresh)GuardedAssistFilter(message);
+ });
+ if(!refresh)return;
  InterlockedExchange(&hostWorkPending,1);
  dispatchFromTrigger(dispatchrouter::Trigger::Message,GetTickCount(),static_cast<const MSG*>(message));
- gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
- GuardedAssistFilter(message);
+ gameentry::scoped(gameentry::Client::Assist,false,[&]{GuardedAssistFilter(message);});
 }
 

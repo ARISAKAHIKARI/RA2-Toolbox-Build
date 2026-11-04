@@ -17,7 +17,10 @@ static bool moOutlineDirty=false;
 static int moStageFrame=0,moStartFrame=0;static bool moHolding=false,moFeedback=false;
 static bool moWaypointSubmitted=false;static mopatrol::Path moPaths[moorders::Actors];
 static int moSubmitting=0,moSubmittingActor=-1;
-struct MoSubmission {int previous,actor;MoSubmission(int kind,int index=-1):previous(moSubmitting),actor(moSubmittingActor){moSubmitting=kind;moSubmittingActor=index;}~MoSubmission(){moSubmitting=previous;moSubmittingActor=actor;}};
+template<class Work>static void moSubmission(int kind,int index,Work&& work){
+ const int previous=moSubmitting,actor=moSubmittingActor;
+ runtimeunwind::run([&]{moSubmitting=kind;moSubmittingActor=index;work();},[&]{moSubmitting=previous;moSubmittingActor=actor;});
+}
 static uint32_t moGestureButton=0,moSuppressedButton=0;static moorders::GesturePolicy moCapturedGestures;
 static moorders::Options moCapturedOptions;
 static bool moCapturedPolicy();
@@ -329,11 +332,14 @@ static void moOrdersTick(uint32_t house,int frame,DWORD now){
   if(!moActorValid(q.actor)||worldByID(q.target)!=q.targetPointer||!live(q.targetPointer)||typeOf(q.targetPointer,kind(q.targetPointer))!=q.targetType||moActionMission(q.actor.pointer,q.targetPointer)!=q.mission){++sh->moOrderRejected;++moQueueAt;continue;}
   const bool guardedEntry=q.entrySlots>0&&q.mission==7;
   if(guardedEntry&&!moEntryDispatchable(q)){++sh->moOrderRejected;++moQueueAt;continue;}
-  bool attack=q.mission==1;MoSubmission scope(guardedEntry?4:0,moQueueAt);
-  // The optional native high-level MP backend bypasses our post-clock guard.
-  // Capacity-bound Enter always selects the ordinary constructed transport.
-  bool queued=nativeMission(house,q.actor.id,q.mission,attack?q.target:0,attack?0:q.target,attack?0:0x34,0,0,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::Local,false,false,guardedEntry);
-  if(!queued)break;if(guardedEntry)moRememberEntry(q,frame);++sh->moOrderAccepted;++moQueueAt;if(moFeedback){moFeedback=false;inputFeedback(q.actor.pointer,q.targetPointer,!attack);}
+  bool attack=q.mission==1,queued=false;
+  moSubmission(guardedEntry?4:0,moQueueAt,[&]{
+   // The optional native high-level MP backend bypasses our post-clock guard.
+   // Capacity-bound Enter always selects the ordinary constructed transport.
+   queued=nativeMission(house,q.actor.id,q.mission,attack?q.target:0,attack?0:q.target,attack?0:0x34,0,0,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::Local,false,false,guardedEntry);
+   if(!queued)return;if(guardedEntry)moRememberEntry(q,frame);++sh->moOrderAccepted;++moQueueAt;if(moFeedback){moFeedback=false;inputFeedback(q.actor.pointer,q.targetPointer,!attack);}
+  });
+  if(!queued)break;
  }
  if(!moStage){if(moQueueAt==moQueueCount){sh->moOrderStatus=2;}return;}
  // Native patrol graph: every point for every actor, wait for token material-
@@ -341,7 +347,7 @@ static void moOrdersTick(uint32_t house,int frame,DWORD now){
  if(moStage==1){
   while(moNodeAt<moRouteCount&&outgoingRoom()>0){auto&a=moActors[moActorAt];
    if(!moActorValid(a)){++sh->moOrderRejected;resetMoOrders();return;}
-   else {uint32_t cell=uint32_t(moRoute[moNodeAt].y*1000+moRoute[moNodeAt].x);MoSubmission scope(1,moActorAt);if(!nativeMission(house,a.id,2,0,cell,11,cell,11,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::Local,true))break;moWaypointSubmitted=true;}
+   else {uint32_t cell=uint32_t(moRoute[moNodeAt].y*1000+moRoute[moNodeAt].x);bool queued=false;moSubmission(1,moActorAt,[&]{queued=nativeMission(house,a.id,2,0,cell,11,cell,11,taskarbiter::Owner::Generic,nullptr,-1,OrderAuthority::Local,true);if(queued)moWaypointSubmitted=true;});if(!queued)break;}
    if(++moActorAt==moActorCount){moActorAt=0;++moNodeAt;}
   }
   if(moNodeAt==moRouteCount){moStage=2;moStageFrame=frame;moActorAt=0;}
@@ -354,14 +360,14 @@ static void moOrdersTick(uint32_t house,int frame,DWORD now){
    if(!moActorValid(a)){++sh->moOrderRejected;resetMoOrders();return;}
    actorFrameArbiter.begin(match,frame);if(!actorFrameArbiter.canIssue(a.id,a.token))break;
    intent::EventOrder connect{};connect.domain=vanilla::Domain::Waypoints;connect.player=get<int>(house+0x30);connect.eventKind=vanilla::EventType::PlanConnect;connect.a=a.id;connect.tagA=0x34;connect.b=moRoute[0].y*1000+moRoute[0].x;connect.tagB=11;
-   MoSubmission scope(2,moActorAt);if(!submitConstructed(connect))break;actorFrameArbiter.record(a.id,a.token,taskarbiter::Owner::Generic);++moActorAt;
+   bool queued=false;moSubmission(2,moActorAt,[&]{queued=submitConstructed(connect);if(queued){actorFrameArbiter.record(a.id,a.token,taskarbiter::Owner::Generic);++moActorAt;}});if(!queued)break;
   }if(moActorAt==moActorCount){moStage=4;moStageFrame=frame;}
  }
  if(moStage==4&&frame>moStageFrame){bool closed=true;
   for(int i=0;i<moActorCount;++i){if(!moActorValid(moActors[i])){++sh->moOrderRejected;resetMoOrders();return;}closed&=moGraphRoute(i,true);}
   if(closed&&!moCapturedOptions.commit){moPlanningReset();sh->moOrderAccepted+=moActorCount;moStage=0;moWaypointSubmitted=false;sh->moOrderStatus=2;return;}
-  MoSubmission scope(3);if(closed&&outgoingRoom()>0&&moGraphCommitReady()&&moPlanningFinish(house)){
+  moSubmission(3,-1,[&]{if(closed&&outgoingRoom()>0&&moGraphCommitReady()&&moPlanningFinish(house)){
    sh->moOrderAccepted+=moActorCount;moStage=0;moWaypointSubmitted=false;sh->moOrderStatus=2;
-  }
+  }});
  }
 }
