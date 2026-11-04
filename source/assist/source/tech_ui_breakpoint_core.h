@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include "../../shared/source/hardware_slot_budget.h"
+#include "tech_ui_breakpoint_hot.h"
 // Dedicated-thread CONTEXT changes; no target-process code, virtual table,
 // rules, event queue or executable allocation is written here.
 namespace assist { namespace techbp {
@@ -125,14 +126,12 @@ private:
  static LONG CALLBACK vectored(EXCEPTION_POINTERS*p){
   Service*s=instance();if(!s||!p||!p->ExceptionRecord||!p->ContextRecord||
    p->ExceptionRecord->ExceptionCode!=EXCEPTION_SINGLE_STEP||GetCurrentThreadId()!=s->owner_)return EXCEPTION_CONTINUE_SEARCH;
-  auto&c=*p->ContextRecord;const Registers r=registers(c);uint32_t ours=0,tag=0;
-  for(unsigned n=0;n<4;++n)if((r.status&(1u<<n))&&s->lease.exact(r,n)&&c.Eip==s->lease.sites[s->lease.actualTag(r,n)]){ours|=1u<<n;tag=s->lease.actualTag(r,n);}
-  if(!ours)return EXCEPTION_CONTINUE_SEARCH;
+  auto&c=*p->ContextRecord;const Registers r=registers(c);const Hit hit=ownedHit(s->lease,r,c.Eip,SiteCount);
+  if(!hit.slots)return EXCEPTION_CONTINUE_SEARCH;
   // Other hardware/TF/debug-register causes belong to their existing handler.
   // Pass the original CONTEXT through without even changing RF or Dr6.
-  if(r.status&(0xE00Fu&~ours))return EXCEPTION_CONTINUE_SEARCH;
-  c.Dr6&=~ours;c.EFlags|=0x10000u;InterlockedIncrement(&s->exceptions);
-  if(s->callback&&s->callback(&c,tag))InterlockedIncrement(&s->changed);
+  c.Dr6&=~hit.slots;c.EFlags|=0x10000u;countOwner(s->exceptions);
+  if(s->callback&&s->callback(&c,hit.tag))countOwner(s->changed);
   return EXCEPTION_CONTINUE_EXECUTION;
  }
  bool start(unsigned operation){
@@ -189,3 +188,4 @@ public:
  }
 };
 }}
+

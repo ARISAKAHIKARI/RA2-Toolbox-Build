@@ -10,6 +10,7 @@
 #include "../source/control_parameter_policy.h"
 #include "../source/control_mode_policy.h"
 #include "../source/tech_enhancement_parameter_policy.h"
+#include "../source/tech_ui_breakpoint_hot.h"
 #include "../../shared/source/hardware_slot_budget.h"
 using namespace assist;
 static unsigned checks=0;
@@ -24,7 +25,7 @@ static unsigned techImplementation=4;static bool compatible=true;static uint32_t
 namespace techmode{static bool parameters(unsigned mode){return mode==4;}}
 struct Shared {uint32_t controlAll=controlmode::Parameters,stop=0,flags=UnsafeTech;}storage,*sh=&storage;
 struct Policy {int controlling=1,enabled=1;uint32_t house=0x10000,houseID=10,scenario=0x60000;int session=3,frame=100;}policy;
-static bool fault=false;static bool fullType(uint32_t p){return p==0x60000;}static bool nativeCompatible(){return compatible;}
+static bool fault=false;static bool fullType(uint32_t p){return p==0x60000;}static bool nativeCompatibleHot(){return compatible;}
 static void InterlockedExchange(int*p,int value){*p=value;}
 static int controlExceptions=0;static void InterlockedIncrement(int*p){++*p;}
 namespace controlparams {
@@ -87,3 +88,4 @@ int main(){
  }
  std::printf("PASS: %u production control callback, strict caller, original byte, no-data-write and fail-closed checks\n",checks);
 }
+

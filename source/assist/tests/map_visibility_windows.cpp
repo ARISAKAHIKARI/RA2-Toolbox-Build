@@ -17,6 +17,7 @@ struct DebugAccess{HANDLE target;CONTEXT value{};bool okay=false;};
 static DWORD WINAPI debugWorker(void*raw){auto&j=*static_cast<DebugAccess*>(raw);const DWORD prior=SuspendThread(j.target);if(prior==DWORD(-1))return 1;if(!prior){j.value.ContextFlags=CONTEXT_DEBUG_REGISTERS;j.okay=GetThreadContext(j.target,&j.value)!=FALSE;}assert(ResumeThread(j.target)!=DWORD(-1));return 0;}
 static CONTEXT debug(){DebugAccess j{};j.target=OpenThread(THREAD_SUSPEND_RESUME|THREAD_GET_CONTEXT|THREAD_SET_CONTEXT,FALSE,GetCurrentThreadId());assert(j.target);HANDLE h=CreateThread(nullptr,0,debugWorker,&j,0,nullptr);assert(h&&WaitForSingleObject(h,5000)==WAIT_OBJECT_0&&j.okay);CloseHandle(h);CloseHandle(j.target);return j.value;}
 namespace mapvisibility=assist::mapvisibility;
+namespace techbp=assist::techbp;
 static constexpr uint32_t ExperimentalReveal=0x04000000;
 struct MapFixtureShared{volatile uint32_t mapVisibility=1,stop=0,renderReveal=0,flags=0;}mapWire,*sh=&mapWire;
 static volatile bool fault=false;
@@ -78,3 +79,4 @@ int main(){
  check(VirtualFree(page,0,MEM_RELEASE)!=FALSE);
  printf("{\"pass\":true,\"checks\":%u,\"real_own_process_DR_used\":true,\"production_callback_extracted\":true,\"world_is_seam\":true,\"game_process_accessed\":false,\"synthetic_cell_and_code_unchanged_after_calls\":true}\n",checks);
 }
+

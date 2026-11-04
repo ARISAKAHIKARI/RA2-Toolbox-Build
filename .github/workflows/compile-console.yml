@@ -1,7 +1,7 @@
 name: Compile WebView2 console and x86 game components
 on:
   push:
-    branches: [main, codex/console-architecture-20261103, codex/control-hardware-20261104, codex/capacity-production-20261104, codex/placement-input-20261104, codex/superweapon-grant-20261104, codex/console-density-20261104]
+    branches: [main, codex/console-architecture-20261103, codex/control-hardware-20261104, codex/capacity-production-20261104, codex/placement-input-20261104, codex/superweapon-grant-20261104, codex/console-density-20261104, codex/ui-breakpoint-performance-20261104]
     paths: [source/**, .github/workflows/compile-console.yml]
   workflow_dispatch:
 permissions:
@@ -32,6 +32,7 @@ jobs:
           python3 source/assist/tests/control_parameters.py --out diagnostics/console-browser/control-policy
           python3 source/assist/tests/superweapon_grant_settings.py --out diagnostics/console-browser/superweapon-settings
           python3 source/assist/tests/map_visibility_settings.py --out diagnostics/console-browser/map-settings
+          python3 source/assist/tests/tech_ui_breakpoint_hot.py --cxx g++ --out diagnostics/console-browser/tech-breakpoint-hot
           python3 source/assist/tests/construction_host_test.py
           python3 source/assist/tests/construction_batch_runtime_test.py
           for name in fixed_capacity formation_quick missile_compute cooperative; do
@@ -82,6 +83,11 @@ jobs:
           if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
           Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
           New-Item -ItemType Directory -Force diagnostics/console-win32,fixtures | Out-Null
+      - name: Verify the breakpoint hot path and signature cost on real Windows
+        shell: pwsh
+        run: |
+          python source/assist/tests/tech_ui_breakpoint_hot.py --zig $env:ZIG_EXE --out diagnostics/console-win32/tech-breakpoint-hot
+          if($LASTEXITCODE -ne 0){throw 'Hardware breakpoint hot path checks failed'}
       - name: Verify the one-slot map flag callback on real Windows
         shell: pwsh
         run: |

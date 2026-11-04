@@ -343,7 +343,7 @@ if (!failed && process.argv.includes('--browser')) {
     let revision=1;
     const snapshot=(patch={})=>({kind:'state',protocol:1,module:0,generation:1,revision:revision++,page:'cursor',title:'光标与渲染',status:'已连接 · 170 Hz',controls,...patch});
     const receive=async message=>page.evaluate(message=>window.__receive(message),message);
-    await receive({kind:'shell',protocol:1,version:'1.0.41-pre.1',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
+    await receive({kind:'shell',protocol:1,version:'1.0.41-pre.3',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
     await receive(snapshot()); await page.getByLabel('渲染升级',{exact:true}).waitFor();
     await page.screenshot({path:screenshotPath,fullPage:false});
     const assertFits = async () => {
@@ -460,6 +460,12 @@ if (!failed && process.argv.includes('--browser')) {
     const line=page.locator('.compound-row');await line.waitFor();
     assert.equal(await line.count(),1);assert.equal(await line.locator('.setting-row').count(),4);
     assert.equal(await line.locator('.setting-label').filter({hasText:/^高级进驻$/}).count(),1);
+    assert.equal(await line.locator('[data-setting-level="primary"]').count(),1);
+    assert.equal(await line.locator('[data-setting-level="secondary"]').count(),3);
+    const hierarchy=await line.evaluate(element=>{const labels=[...element.querySelectorAll('.setting-label')],main=getComputedStyle(labels[0]),sub=getComputedStyle(labels[1]),name=labels[0].getBoundingClientRect(),toggle=element.querySelector('.toggle').getBoundingClientRect();return{mainSize:parseFloat(main.fontSize),subSize:parseFloat(sub.fontSize),mainWeight:Number(main.fontWeight),subWeight:Number(sub.fontWeight),mainColor:main.color,subColor:sub.color,switchGap:toggle.left-name.right};});
+    assert.ok(hierarchy.mainSize>hierarchy.subSize && hierarchy.mainWeight>hierarchy.subWeight,'feature names must read above their smaller subsettings');
+    assert.notEqual(hierarchy.mainColor,hierarchy.subColor,'secondary captions must use their quieter color');
+    assert.ok(hierarchy.switchGap>=0 && hierarchy.switchGap<=16,'the feature switch must stay beside its name');
     assert.ok((await line.boundingBox()).height<=96,'the complete feature must fit in at most two compact lines on desktop');
     await page.getByLabel('高级进驻 · 鼠标',{exact:true}).selectOption('1');
     action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,740);assert.equal(action.action,'select');assert.equal(action.value,1);
@@ -479,6 +485,11 @@ if (!failed && process.argv.includes('--browser')) {
     const pinned=[{id:880,type:'toggle',label:'科技设置',group:'科技设置',groupHeader:true,collapsible:true,collapsedDefault:true},{id:881,type:'number',label:'科技等级',text:'1',group:'科技设置',collapsible:true,collapsedDefault:true}];
     await receive(compactState({generation:7,controls:pinned}));await page.getByLabel('科技设置',{exact:true}).waitFor();
     assert.equal(await page.locator('.group-header-controls .setting-label:visible').count(),0,'a pinned switch shares the group title');
+    const pinnedGap=await page.locator('.settings-group').evaluate(element=>element.querySelector('.toggle').getBoundingClientRect().left-element.querySelector('.group-title').getBoundingClientRect().right);
+    assert.ok(pinnedGap>=0 && pinnedGap<=16,'the pinned master switch must sit beside the shared title');
+    await page.locator('.group-summary').click();await page.getByLabel('科技等级',{exact:true}).waitFor();
+    assert.equal(await page.locator('.group-body .setting-row').getAttribute('data-setting-level'),'secondary','details inherit the main switch hierarchy');
+    await assertFits();
     await page.getByLabel('科技设置',{exact:true}).click();assert.equal(await page.evaluate(()=>window.__sent.at(-1).id),880);
     assert.deepEqual(errors,[],'browser must not emit uncaught JS errors');
     console.log('PASS browser fixture: all control types, drafts, gestures, module navigation, error/persistence status, 3000-row virtualization, responsive layout');

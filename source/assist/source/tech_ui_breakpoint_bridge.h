@@ -28,9 +28,14 @@ static DWORD auditAt=0,retryAt=0,enhancementParameterScan=0;static uint32_t atte
 static volatile LONG fullExceptions=0,enhancementExceptions=0,controlExceptions=0;static unsigned probeDepth=0;static uint32_t probeToken=0;
 static constexpr uint32_t sites[5]={0x4F7870,mapvisibility::Address,0x4F7951,0x4F7B66,controlparams::Entry};
 inline unsigned hash(uint32_t p){return ((p>>4)*2654435761u)&1023u;}
-static bool signature(uint32_t at,unsigned n,uint32_t expected){uint8_t bytes[32]{};if(n>sizeof bytes||!read(at,bytes,n))return false;uint32_t h=2166136261u;for(unsigned i=0;i<n;++i)h=(h^bytes[i])*16777619u;return h==expected;}
-static bool nativeCompatible(){return signature(0x6A97C3,20,0xD3C40F9Du)&&signature(0x6AA777,15,0x26F9619Eu)&&signature(0x4F7870,16,0x6995B50Eu);}
-static bool enhancementCompatible(){return signature(0x4F794A,13,0x0FC7BB79u)&&signature(0x4F7B5C,16,0x15DAD6B8u)&&signature(0x4F7870,16,0x6995B50Eu);}
+static techbp::SignatureSnapshot<20> nativeDraw;static techbp::SignatureSnapshot<15> nativePrune;static techbp::SignatureSnapshot<16> nativeEntry;
+static techbp::SignatureSnapshot<13> enhancementLimit;static techbp::SignatureSnapshot<16> enhancementCompare,enhancementEntry;
+static bool nativeCompatible(){return nativeDraw.refresh(0x6A97C3,0xD3C40F9Du,read)&&nativePrune.refresh(0x6AA777,0x26F9619Eu,read)&&nativeEntry.refresh(0x4F7870,0x6995B50Eu,read);}
+static bool enhancementCompatible(){return enhancementLimit.refresh(0x4F794A,0x0FC7BB79u,read)&&enhancementCompare.refresh(0x4F7B5C,0x15DAD6B8u,read)&&enhancementEntry.refresh(0x4F7870,0x6995B50Eu,read);}
+// These local reads are confined to GuardedTechUiParameter's SEH scope. Other
+// callers keep the safe admission reader above. No validation is frame-cached.
+static bool nativeCompatibleHot(){return nativeDraw.matches(reinterpret_cast<const volatile uint8_t*>(0x6A97C3))&&nativePrune.matches(reinterpret_cast<const volatile uint8_t*>(0x6AA777))&&nativeEntry.matches(reinterpret_cast<const volatile uint8_t*>(0x4F7870));}
+static bool enhancementCompatibleHot(){return enhancementLimit.matches(reinterpret_cast<const volatile uint8_t*>(0x4F794A))&&enhancementCompare.matches(reinterpret_cast<const volatile uint8_t*>(0x4F7B5C))&&enhancementEntry.matches(reinterpret_cast<const volatile uint8_t*>(0x4F7870));}
 static bool mapCompatible(){uint8_t bytes[sizeof mapvisibility::Prefix]{};return read(mapvisibility::PrefixAddress,bytes,sizeof bytes)&&mapvisibility::compatible(bytes);}
 static bool enhancedRequested(){return sh&&sh->techEnhance&&sh->techEnhanceImplementation==techenhanceparams::Exact&&!sh->stop&&!fault;}
 static bool healthy(){return service.state!=techbp::System&&service.state!=techbp::Foreign&&service.state!=techbp::Thread;}
@@ -101,7 +106,7 @@ static bool configure(){
 static bool mapVisibilityParameter(CONTEXT&context){
  using namespace techparameters;
  if(context.Eip!=mapvisibility::Address)return false;
- InterlockedIncrement(&mapExceptions);
+ techbp::countOwner(mapExceptions);
  if(!policy.showing||!sh||!sh->mapVisibility||sh->stop||fault||sh->renderReveal||(sh->flags&ExperimentalReveal)||!world())return false;
  // Local byte reads inside the existing SEH boundary avoid a syscall per tile.
  if(!mapvisibility::compatible(reinterpret_cast<const volatile uint8_t*>(uintptr_t(mapvisibility::PrefixAddress))))return false;
@@ -112,12 +117,12 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
  if(tag>=5||context.Eip!=sites[tag])return 0;
  if(tag==1)return mapVisibilityParameter(context)?1:0;
  if(tag==4){
-  InterlockedIncrement(&controlExceptions);
+  techbp::countOwner(controlExceptions);
   if(!policy.controlling||!sh||!controlmode::parameters(sh->controlAll)||sh->stop||fault||!controlparams::world(policy.house,policy.houseID,policy.scenario,policy.session,policy.frame,controlparams::guardedRead)||!controlparams::house(context.Ecx,controlparams::guardedRead)||context.Esp<0x10000)return 0;
   uint32_t caller=0;if(!controlparams::guardedRead(context.Esp,&caller,4)||caller<0x10000)return 0;
   context.Eip=controlparams::destination(caller);return 1;
  }
- if(tag<2)InterlockedIncrement(&fullExceptions);else InterlockedIncrement(&enhancementExceptions);
+ if(tag<2)techbp::countOwner(fullExceptions);else techbp::countOwner(enhancementExceptions);
  if(tag==0){
   // The original CALL has already pushed its return address. Classify the
   // two native UI callers before any expensive world/type queries.
@@ -126,17 +131,17 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
   if((!draw&&!prune)||pointer<0x10000||args[2]||args[3]!=(draw?0u:1u))return 0;
   if(!policy.enabled||!sh||!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)||context.Ecx!=policy.house||!world())return 0;
   if(!fullType(pointer))return 0;
-  if(!nativeCompatible()){InterlockedExchange(&policy.enabled,0);return 0;}
+  if(!nativeCompatibleHot()){InterlockedExchange(&policy.enabled,0);return 0;}
   args[2]=1;return 1;
  }
- if(!world())return 0;
- if(!policy.enhanced||!sh->techEnhance||(tag==3&&!policy.compareLevel)||!enhancementCompatible())return 0;
+ if(!policy.enhanced||!sh||!sh->techEnhance||(tag==3&&!policy.compareLevel))return 0;
  const uint32_t stack=context.Esp,returnAddress=get<uint32_t>(stack+0x4C),pointer=get<uint32_t>(stack+0x50);
  if(context.Ebp!=policy.house||get<uint32_t>(stack+0x10)!=policy.house||get<uint32_t>(stack+0x54)||
   (tag==2?context.Edi:context.Ecx)!=pointer||pointer<0x10000)return 0;
  const uint32_t include=get<uint32_t>(stack+0x58);const bool caller=(returnAddress==0x6A97D7&&include==0)||(returnAddress==0x6AA786&&include==1)||
   (probeDepth&&returnAddress==techEnhanceProbeReturn&&include==1&&probeToken&&uint32_t(InterlockedCompareExchange(&gameentry::activeToken,0,0))==probeToken);
  if(!caller)return 0;
+ if(!world()||!enhancementCompatibleHot())return 0;
  for(unsigned i=0;i<techenhancement::Count;++i){const auto&t=policy.enhancement[i];if(t.type.pointer!=pointer)continue;
   if(get<uint32_t>(pointer)!=t.type.table||get<uint32_t>(pointer+0x10)!=t.type.id||get<int>(pointer+0x634)!=t.level||
      get<uint32_t>(techenhancement::Rules[i].array+4)!=t.items||t.index<0||t.index>=get<int>(techenhancement::Rules[i].array+16)||get<uint32_t>(t.items+uint32_t(t.index)*4)!=pointer)return 0;
@@ -265,3 +270,4 @@ static int requestControlParameters(){
  if(!captureWorld(lastHouse)){InterlockedExchange(&policy.controlling,0);controlDesired=false;configure();return 0;}
  controlDesired=true;configure();return status();
 }
+

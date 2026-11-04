@@ -3,6 +3,7 @@
 #include "tech_ui_breakpoint_windows.cpp"
 #undef main
 #include "../source/control_parameter_policy.h"
+#include <initializer_list>
 static volatile uint32_t predicateReturn=0;
 static uint32_t ownerReturn=0,planningReturn=0;
 static bool controlEnabled=true;
@@ -100,8 +101,14 @@ int main(){
  assert(service.configure(sites,1,controlCallback));wait(service);failReadAt=contextReads+2;assert(service.configure(sites,16,controlCallback));wait(service);assert(service.state==assist::techbp::System&&service.lease.mask&&service.lease.uncertain&&service.resources());
  assert(PermissionCaller(&other)==1);failReadAt=0;retire(service);assert(sameDebug(original,debug()));
  // Mixed foreign single-step causes pass the COMPLETE context unchanged.
- assert(service.configure(sites,16,controlCallback));wait(service);CONTEXT mixed=debug();mixed.Eip=sites[4];mixed.Dr6=service.lease.mask|(1u<<14);const CONTEXT untouched=mixed;
- EXCEPTION_RECORD record{};record.ExceptionCode=EXCEPTION_SINGLE_STEP;EXCEPTION_POINTERS ep{&record,&mixed};assert(assist::techbp::Service::vectored(&ep)==EXCEPTION_CONTINUE_SEARCH&&!memcmp(&mixed,&untouched,sizeof mixed));retire(service);
+ assert(service.configure(sites,16,controlCallback));wait(service);const CONTEXT owned=debug();
+ EXCEPTION_RECORD record{};record.ExceptionCode=EXCEPTION_SINGLE_STEP;
+ for(uint32_t cause:{uint32_t(15u&~service.lease.mask),1u<<13,1u<<14,1u<<15}){
+  CONTEXT mixed=owned;mixed.Eip=sites[4];mixed.Dr6=service.lease.mask|cause;const CONTEXT untouched=mixed;const LONG hits=service.exceptions,changed=service.changed;
+  EXCEPTION_POINTERS ep{&record,&mixed};assert(assist::techbp::Service::vectored(&ep)==EXCEPTION_CONTINUE_SEARCH&&!memcmp(&mixed,&untouched,sizeof mixed)&&service.exceptions==hits&&service.changed==changed);
+ }
+ retire(service);
  for(unsigned i=0;i<9;++i)assert(!memcmp(code[i],functions[i],96));assert(!memcmp(&local,&savedLocal,sizeof local)&&!memcmp(&other,&savedOther,sizeof other));assert(sameDebug(original,debug()));
  puts("PASS control hardware: one real execution breakpoint; strict owner and planning callers; unchanged code and House data; read-only free/foreign/owned admission budgets; joint 2/3/4-slot transactions; 5-site refusal preserves existing groups; same-slot uncertain tag4 cleanup; mixed foreign exception context preserved; immediate off; complete retirement");
 }
+

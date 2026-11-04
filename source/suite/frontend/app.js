@@ -43,7 +43,7 @@
   class ConsoleStore {
     constructor(send = () => {}, changed = () => {}, options = {}) {
       this.send = send; this.changed = changed; this.pages = new Map(); this.pending = new Map(); this.drafts = new Map(); this.errors = new Map(); this.generation = new Map();
-      this.current = { module: 0, category: 0 }; this.shell = { version: '1.0.41-pre.1', modules: [], closing: false }; this.seq = options.initialSeq ?? Date.now() * 1024; this.connected = false; this.closed = false; this.notice='';
+      this.current = { module: 0, category: 0 }; this.shell = { version: '1.0.41-pre.3', modules: [], closing: false }; this.seq = options.initialSeq ?? Date.now() * 1024; this.connected = false; this.closed = false; this.notice='';
       if (!safeInteger(this.seq) || this.seq > Number.MAX_SAFE_INTEGER - 1024) throw new RangeError('Invalid initial action sequence');
     }
     emit(message) { this.send({ ...message, protocol: PROTOCOL }); }
@@ -250,7 +250,7 @@
   function releaseChunks(group) { for (const chunk of group.chunks) { chunkObserver?.unobserve(chunk.element); chunk.element.remove(); } group.chunks=[]; group.chunkSignature=''; }
   function unmountGroup(group) { if (group.body.contains(document.activeElement)) return; const measured=group.body.getBoundingClientRect().height; group.body.style.minHeight = `${measured || estimateRows(group.controls)}px`; releaseChunks(group); group.body.replaceChildren();group.body._settingLines?.clear(); group.rows.clear(); }
   function unmountChunk(chunk) { if (chunk.element.contains(document.activeElement)) return; const measured=chunk.element.getBoundingClientRect().height; chunk.element.style.minHeight=`${measured || estimateRows(chunk.controls)}px`; chunk.element.replaceChildren();chunk.element._settingLines?.clear(); chunk.rows.clear(); }
-  function updateRows(container,rows,controls,groupTitle='') {
+  function updateRows(container,rows,controls,groupTitle='',subsettings=false) {
     const ids=new Set(controls.map(control=>control.id));
     for(const [id,row] of rows)if(!ids.has(id)){row.element.remove();rows.delete(id);}
     const lines=container._settingLines || (container._settingLines=new Map()), wanted=new Set();let after=null;
@@ -259,7 +259,7 @@
       wanted.add(key);let line=lines.get(key);
       if(!line){line=document.createElement('div');line.className='settings-line';lines.set(key,line);}
       const compound=members.length>1,name=first.label || first.text;
-      line.classList.toggle('compound-row',compound);
+      line.classList.toggle('compound-row',compound);line.classList.toggle('subsettings-line',subsettings);
       const hasPreset=members.some(control=>control.type==='choice' && control.options.includes('仅鼠标') && control.options.includes('自定义'));
       let previous=null;
       for(const [index,control] of members.entries()) {
@@ -268,6 +268,7 @@
           const next=makeRow(control);if(row)row.element.replaceWith(next.element);row=next;rows.set(control.id,row);
         }
         row.control=control;
+        row.element.dataset.settingLevel=control.type==='label'?'status':subsettings || (compound && index>0)?'secondary':'primary';
         row.inlineLabel=compound && index>0 && control.label===name?inlineLabel(control,hasPreset):null;
         if(control.groupHeader && control.label===groupTitle)row.inlineLabel='';
         // A pushbutton already carries its action name. Do not print it twice.
@@ -278,7 +279,7 @@
     }
     for(const [key,line] of lines)if(!wanted.has(key)){line.remove();lines.delete(key);}
   }
-  function updateChunk(chunk) { if (!chunk.intersecting && chunkObserver && !chunk.element.contains(document.activeElement)) { unmountChunk(chunk); return; } chunk.element.style.minHeight=''; updateRows(chunk.element,chunk.rows,chunk.controls); }
+  function updateChunk(chunk) { if (!chunk.intersecting && chunkObserver && !chunk.element.contains(document.activeElement)) { unmountChunk(chunk); return; } chunk.element.style.minHeight=''; updateRows(chunk.element,chunk.rows,chunk.controls,'',chunk.subsettings); }
   function updateGroup(group) {
     const key=`${renderedPage}/${group.name}`;
     if(!foldPreferencesSeen.has(key)){foldPreferencesSeen.add(key);if(group.controls.some(control=>control.collapsible&&control.collapsedDefault))collapsed.add(key);}
@@ -297,9 +298,9 @@
       const signature=details.map(control=>`${control.id}:${control.row}:${control.column}`).join(',');
       const lines=settingLines(details),chunks=[];let batch=[];
       for(const line of lines){if(batch.length && batch.length+line.length>24){chunks.push(batch);batch=[];}batch.push(...line);}if(batch.length)chunks.push(batch);
-      if(group.chunkSignature!==signature){releaseChunks(group);group.body.replaceChildren();group.rows.clear();group.body._settingLines?.clear();group.chunkSignature=signature;for(const controls of chunks){const element=document.createElement('div'),chunk={element,controls,rows:new Map(),intersecting:false};element.className='rows-chunk';element.style.minHeight=`${estimateRows(controls)}px`;element._chunk=chunk;group.chunks.push(chunk);group.body.append(element);chunkObserver.observe(element);}}
-      group.chunks.forEach((chunk,index)=>{chunk.controls=chunks[index];updateChunk(chunk);});
-    }else{if(group.chunks.length){releaseChunks(group);group.body.replaceChildren();}updateRows(group.body,group.rows,details);}
+      if(group.chunkSignature!==signature){releaseChunks(group);group.body.replaceChildren();group.rows.clear();group.body._settingLines?.clear();group.chunkSignature=signature;for(const controls of chunks){const element=document.createElement('div'),chunk={element,controls,rows:new Map(),intersecting:false,subsettings:Boolean(state.headers.length)};element.className='rows-chunk';element.style.minHeight=`${estimateRows(controls)}px`;element._chunk=chunk;group.chunks.push(chunk);group.body.append(element);chunkObserver.observe(element);}}
+      group.chunks.forEach((chunk,index)=>{chunk.controls=chunks[index];chunk.subsettings=Boolean(state.headers.length);updateChunk(chunk);});
+    }else{if(group.chunks.length){releaseChunks(group);group.body.replaceChildren();}updateRows(group.body,group.rows,details,'',Boolean(state.headers.length));}
   }
   function updateFoldAction() {
     const groups=[...groupNodes.values()].filter(group=>group.hasDetails&&!group.forced);
@@ -351,7 +352,7 @@
     const category = CATEGORIES[selectedCategory], state = store.state, currentPage = pageKey(store.current.module,store.current.category);
     if (renderedPage !== currentPage) { clearGroups(); renderedPage = currentPage; }
     [...$('navigation').children].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
-    $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '1.0.41-pre.1';
+    $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '1.0.41-pre.3';
     $('videoTabs').hidden = selectedCategory !== 0; $('categoryNote').hidden = selectedCategory === 0;
     [...$('videoTabs').children].forEach(button => { const selected=Number(button.dataset.module) === videoModule;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;button.setAttribute('aria-controls','settings'); });
     const moduleState = store.shell.modules.find(module => module.module === videoModule); $('moduleToggleWrap').hidden = selectedCategory !== 0 || !moduleState; if (moduleState) { $('moduleToggle').checked = Boolean(moduleState.enabled); $('moduleToggle').disabled = store.closed || !moduleState.ready; $('moduleToggleLabel').textContent=moduleState.enabled?'模块已启用':'启用此模块'; }
