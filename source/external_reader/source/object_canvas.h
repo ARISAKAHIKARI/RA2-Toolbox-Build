@@ -13,13 +13,15 @@ public:
   bool operator==(const Draw&b)const{return image.get()==b.image.get()&&!image.owner_before(b.image)&&!b.image.owner_before(image)&&
     x==b.x&&y==b.y&&base==b.base&&lift==b.lift&&drop==b.drop&&light==b.light&&material==b.material&&object==b.object&&id==b.id;}
  };
- struct Stats {size_t changed=0,reused=0,removed=0,references=0,rasterBuilds=0,rasterHits=0;}stats_;
+ struct Stats {size_t changed=0,reused=0,removed=0,references=0,rasterBuilds=0,rasterHits=0,orderedReplayPages=0,cloakDependencyPages=0;}stats_;
 private:
  struct Entry {
   bool hasBase=false;std::weak_ptr<NativeCanvas::Page>base;uint64_t version=0;
   std::vector<Draw>draws;std::shared_ptr<NativeCanvas::Page>page;std::shared_ptr<const std::vector<uint8_t>>alpha;
  };
  std::map<uint32_t,Entry>pages_;std::weak_ptr<NativeCanvas::Budget>budget_;
+ struct CloakSource {bool present=false;std::weak_ptr<NativeCanvas::Page>page;uint64_t revision=0;};
+ std::map<uint32_t,CloakSource>cloakSources_;
  struct Raster {std::weak_ptr<const voxel::Image>source;std::shared_ptr<const voxel::Image>image;size_t bytes=0;uint64_t used=0;};
  std::map<const voxel::Image*,Raster>rasters_;size_t rasterBytes_=0;uint64_t rasterSerial_=0;
  int width_=0,height_=0;uint64_t revision_=0;uint32_t background_=0; colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
@@ -45,7 +47,7 @@ private:
   return image;
  }
 public:
- void clear(){pages_.clear();rasters_.clear();rasterBytes_=rasterSerial_=0;budget_.reset();width_=height_=0;++revision_;stats_={};}
+ void clear(){pages_.clear();cloakSources_.clear();rasters_.clear();rasterBytes_=rasterSerial_=0;budget_.reset();width_=height_=0;++revision_;stats_={};}
  const Stats&stats()const{return stats_;}uint64_t revision()const{return revision_;}
  // Vera's retained native source -> ordered draws -> final resolve contract.
  // Only metadata is built here. CPU rasterization is deferred to compose()
@@ -100,15 +102,56 @@ public:
     int x=NativeCanvas::pageX(k)*NativeCanvas::PageSize,y=NativeCanvas::pageY(k)*NativeCanvas::PageSize;
     out.dirtyRects_.push_back({x,y,std::min(x+NativeCanvas::PageSize,base.width_),std::min(y+NativeCanvas::PageSize,base.height_)});
    };
+   // A cloak reads a finite set of native pixels, not the entire framebuffer.
+   // Replay the connected components of changed pages and cloak read/write
+   // dependencies in global painter order. Including both ends is essential:
+   // an unchanged source's final cached pixels may contain a LATER draw, and
+   // a changed source must also invalidate its otherwise unchanged readers.
+   std::set<uint32_t>invalid,replay;std::map<uint32_t,uint32_t>links;
+   if(hasCloak){for(const auto&p:pages_)if(!jobs.count(p.first))invalid.insert(p.first);
+    for(const auto&job:jobs){auto source=base.pages_.find(job.first);auto page=source==base.pages_.end()?nullptr:source->second;auto cached=pages_.find(job.first);
+     if(cached==pages_.end()||!cached->second.page||!same(cached->second,page,job.second,base.nativeAlpha(job.first)))invalid.insert(job.first);
+    }
+   }
+   auto root=[&](uint32_t k){auto at=links.emplace(k,k).first;uint32_t r=k;while(links.find(r)->second!=r)r=links.find(r)->second;
+    while(at->second!=r){uint32_t next=at->second;at->second=r;at=links.find(next);}return r;
+   };
+   std::map<uint32_t,CloakSource>sources;
+   if(hasCloak){
+    std::function<void(const Draw&,const voxel::Image&,float,Material,float)>connect;
+    connect=[&](const Draw&draw,const voxel::Image&image,float dy,Material material,float drop){
+     for(const auto&part:image.attachments)if(part.shadow&&!image.shadowsAfter&&(!part.airborneShadow||drop>0))connect(draw,part,dy+drop,material.shifted(drop),0);
+     if(material.displace&&image.nativeDepth.voxel&&image.rasterScale>0){
+      int l=std::clamp(int(std::floor(draw.x+float(image.x)/image.rasterScale)),base.paintLeft_,base.paintRight_),r=std::clamp(int(std::ceil(draw.x+float(image.x+image.width)/image.rasterScale)),base.paintLeft_,base.paintRight_);
+      int t=std::clamp(int(std::floor(draw.y+dy+float(image.y)/image.rasterScale)),base.paintTop_,base.paintBottom_),b=std::clamp(int(std::ceil(draw.y+dy+float(image.y+image.height)/image.rasterScale)),base.paintTop_,base.paintBottom_);
+      const int64_t limit=int64_t(base.width_)*base.height_;
+      for(int y=t;y<b;++y)for(int x=l;x<r;){const int end=std::min(r,(x/128+1)*128);const uint32_t destination=NativeCanvas::key(x/128,y/128);
+       int64_t first=int64_t(y)*base.width_+x+material.cloakWords,last=first+end-x;first=std::max(int64_t(0),first);last=std::min(limit,last);
+       while(first<last){const int sx=int(first%base.width_),sy=int(first/base.width_);const uint32_t source=NativeCanvas::key(sx/128,sy/128);auto a=root(destination),b=root(source);if(a!=b)links[b]=a;
+        if(!sources.count(source)){auto at=base.pages_.find(source);auto page=at==base.pages_.end()?nullptr:at->second;sources.emplace(source,CloakSource{bool(page),page,page?page->revision:0});}
+        first+=std::min({last-first,int64_t(base.width_-sx),int64_t(128-sx%128)});
+       }x=end;
+      }
+     }
+     for(const auto&part:image.attachments)if((!part.shadow||image.shadowsAfter)&&(!part.airborneShadow||drop>0))connect(draw,part,dy+(part.shadow?drop:0),material.shifted(part.shadow?drop:0),0);
+    };
+    for(const auto&draw:ordered)connect(draw,*draw.image,0,draw.material,draw.drop);
+    // Source-only base pages are not necessarily jobs. Their mutation must
+    // still invalidate a cloak whose own destination page did not change.
+    for(const auto&source:sources){auto old=cloakSources_.find(source.first);const auto&now=source.second;
+     if(old==cloakSources_.end()||old->second.present!=now.present||(now.present&&(old->second.page.lock()!=now.page.lock()||old->second.revision!=now.revision)))invalid.insert(source.first);
+    }
+    std::set<uint32_t>components;for(uint32_t key:invalid)if(links.count(key))components.insert(root(key));
+    for(const auto&link:links)if(components.count(root(link.first)))replay.insert(link.first);
+   }
+   cloakSources_=std::move(sources);stats_.cloakDependencyPages=links.size();
+   replay.insert(invalid.begin(),invalid.end());
    for(auto p=pages_.begin();p!=pages_.end();)if(!jobs.count(p->first)){if(relativeOutput)dirty(p->first);p=pages_.erase(p);++stats_.removed;}else ++p;
-   // A displaced read can cross any page, and a negative offset observes
-   // pixels already written by this same draw. Reuse only an entire identical
-   // ordered transaction; page-local reuse cannot preserve that dependency.
-   bool orderedReplay=false;if(hasCloak){orderedReplay=stats_.removed!=0;for(const auto&job:jobs){auto source=base.pages_.find(job.first);auto page=source==base.pages_.end()?nullptr:source->second;auto cached=pages_.find(job.first);if(cached==pages_.end()||!cached->second.page||!same(cached->second,page,job.second,base.nativeAlpha(job.first))){orderedReplay=true;break;}}}
+   const bool orderedReplay=hasCloak&&!replay.empty();
    struct Work {uint32_t key;Entry*entry;};std::vector<Work>changed;changed.reserve(jobs.size());
    for(auto&job:jobs){auto source=base.pages_.find(job.first);std::shared_ptr<NativeCanvas::Page>sourcePage=source==base.pages_.end()?nullptr:source->second;
     auto&entry=pages_[job.first];
-    const bool reused=!orderedReplay&&entry.page&&same(entry,sourcePage,job.second,base.nativeAlpha(job.first));
+    const bool reused=!replay.count(job.first)&&entry.page&&same(entry,sourcePage,job.second,base.nativeAlpha(job.first));
     if(reused){++stats_.reused;}
     else{
      // A previous synchronous presentation normally released its page owners.
@@ -120,7 +163,12 @@ public:
      // page budget remains authoritative for both static and dynamic storage.
      while(!reusable&&!out.room()){
       auto evict=std::find_if(pages_.begin(),pages_.end(),[&](const auto&p){return p.first!=job.first&&p.second.page&&(!out.pages_.count(p.first)||out.pages_.at(p.first)!=p.second.page);});
-      if(evict==pages_.end())return fail();evict->second.page.reset();
+      if(evict==pages_.end())return fail();
+      // Eviction can turn a later cache hit into a rebuild after its cloak
+      // dependency component was planned. Restart cold rather than publish a
+      // page initialized here but omitted from the ordered replay subset.
+      if(hasCloak){clear();out={};return compose(base,draws,out,false);}
+      evict->second.page.reset();
      }
      entry.alpha=base.nativeAlpha(job.first);entry.hasBase=bool(sourcePage);entry.base=sourcePage;entry.version=sourcePage?sourcePage->revision:0;entry.draws=std::move(job.second);
      if(reusable){if(sourcePage)entry.page->surface=sourcePage->surface;else if(!entry.page->surface.reset(NativeCanvas::PageSize,NativeCanvas::PageSize,base.background_))return fail();}
@@ -133,6 +181,7 @@ public:
    std::atomic<bool>failed{false};
    auto initialize=[&](const Work&work){auto&surface=work.entry->page->surface;int x=NativeCanvas::pageX(work.key)*128,y=NativeCanvas::pageY(work.key)*128;surface.nativeView(y,1,1,base.width_,base.height_,x);surface.writeRows(0,128);if(!base.terrainSources().empty())surface.nativeBase(work.entry->alpha);};
    if(orderedReplay){
+    stats_.orderedReplayPages=changed.size();
     for(const auto&work:changed)initialize(work);
     // Flatten attachments in the same shadow/body order as Surface::blit.
     // Only the cloak body needs a global scanline walk; ordinary planes have
@@ -142,7 +191,7 @@ public:
      for(const auto&part:image.attachments)if(part.shadow&&!image.shadowsAfter&&(!part.airborneShadow||drop>0))paintPlane(draw,part,dy+drop,material.shifted(drop),0);
      int l=std::clamp(int(std::floor(draw.x+float(image.x)/image.rasterScale)),base.paintLeft_,base.paintRight_),r=std::clamp(int(std::ceil(draw.x+float(image.x+image.width)/image.rasterScale)),base.paintLeft_,base.paintRight_);
      int t=std::clamp(int(std::floor(draw.y+dy+float(image.y)/image.rasterScale)),base.paintTop_,base.paintBottom_),b=std::clamp(int(std::ceil(draw.y+dy+float(image.y+image.height)/image.rasterScale)),base.paintTop_,base.paintBottom_);
-     auto paint=[&](int px,int py,int first,int last){auto page=out.pages_.find(NativeCanvas::key(px,py));if(page==out.pages_.end())return;auto&surface=page->second->surface;surface.writeRows(first-py*128,last-py*128);surface.nativeRead([&out](int x,int y){return out.pixel(x,y);});surface.blit(image,draw.x-px*128,draw.y+dy-py*128,1,1,draw.base,draw.light,draw.lift,0,false,material,false);surface.nativeRead({});surface.writeRows(0,128);if(surface.failed())failed=true;};
+     auto paint=[&](int px,int py,int first,int last){uint32_t key=NativeCanvas::key(px,py);if(!replay.count(key))return;auto page=out.pages_.find(key);if(page==out.pages_.end())return;auto&surface=page->second->surface;surface.writeRows(first-py*128,last-py*128);surface.nativeRead([&out](int x,int y){return out.pixel(x,y);});surface.blit(image,draw.x-px*128,draw.y+dy-py*128,1,1,draw.base,draw.light,draw.lift,0,false,material,false);surface.nativeRead({});surface.writeRows(0,128);if(surface.failed())failed=true;};
      if(l<r&&t<b){if(material.displace&&image.nativeDepth.voxel){for(int y=t;y<b;++y)for(int x=l/128;x<=(r-1)/128;++x)paint(x,y/128,y,y+1);}else for(int y=t/128;y<=(b-1)/128;++y)for(int x=l/128;x<=(r-1)/128;++x)paint(x,y,std::max(t,y*128),std::min(b,(y+1)*128));}
      for(const auto&part:image.attachments)if((!part.shadow||image.shadowsAfter)&&(!part.airborneShadow||drop>0))paintPlane(draw,part,dy+(part.shadow?drop:0),material.shifted(part.shadow?drop:0),0);
     };
@@ -160,3 +209,4 @@ public:
  }
 };
 }}
+

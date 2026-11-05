@@ -6,14 +6,14 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
-#include <deque>
+#include <list>
 #include <vector>
 #include <algorithm>
 #include "process_connection.h"
 namespace external {
 // Read-only handle. No allocation, injection, protection or write API for the game.
 struct ReaderDiagnostics {
- uint32_t reads=0,errors=0,pageHits=0,pageMisses=0,pageFallbacks=0,prefetchedPages=0,prefetchMisses=0;
+ uint32_t reads=0,errors=0,pageHits=0,pageMisses=0,pageFallbacks=0,prefetchedPages=0,prefetchMisses=0,pageEvictions=0,pageCurrentEvictions=0;
  // Read-only diagnostics: do not change access rights or game memory.
  DWORD lastOpenError=0,lastReadError=0,lastRegionQueryError=0;
  uint32_t lastFailedAddress=0;
@@ -26,8 +26,9 @@ struct ReaderDiagnostics {
 // sessions; only the immutable connection is shared, never cache/diagnostics.
 class ProcessReader : public ReaderDiagnostics {
  std::shared_ptr<const ProcessConnection> connection_;
- struct Page {std::array<unsigned char,4096> bytes;uint64_t epoch=0;};
- HANDLE query_{};std::unordered_map<uint32_t,Page> pages_;std::deque<uint32_t> pageOrder_;
+ using PageOrder=std::list<uint32_t>;
+ struct Page {std::array<unsigned char,4096> bytes;uint64_t epoch=0;PageOrder::iterator order;};
+ HANDLE query_{};std::unordered_map<uint32_t,Page> pages_;PageOrder pageOrder_;
  uint64_t epoch_=0;size_t pageAllocations_=0;
  // A partly unreadable page cannot fill the cache. Retry its fields directly
  // for this sample instead of repeating the failing 4 KiB read for each one.
@@ -35,17 +36,25 @@ class ProcessReader : public ReaderDiagnostics {
  std::vector<uint32_t> prefetchPages_;
  auto storage(uint32_t page)->decltype(pages_)::iterator{
   auto it=pages_.find(page);if(it!=pages_.end())return it;
-  if(pages_.size()==8192){auto node=pages_.extract(pageOrder_.front());pageOrder_.pop_front();node.key()=page;node.mapped().epoch=0;it=pages_.insert(std::move(node)).position;}
-  else{it=pages_.try_emplace(page).first;++pageAllocations_;}
-  pageOrder_.push_back(page);return it;
+  if(pages_.size()==8192){auto slot=pageOrder_.begin();auto node=pages_.extract(*slot);++pageEvictions;if(node.mapped().epoch==epoch_)++pageCurrentEvictions;
+   *slot=page;node.key()=page;node.mapped().epoch=0;it=pages_.insert(std::move(node)).position;
+  }else{
+   // An unread/failed slot belongs before current pages. Only a successful
+   // page fill below promotes it, including fills through prefetch().
+   pageOrder_.push_front(page);
+   try{it=pages_.try_emplace(page).first;}catch(...){pageOrder_.pop_front();throw;}
+   it->second.order=pageOrder_.begin();++pageAllocations_;
+  }
+  return it;
  }
+ void current(Page&cached){cached.epoch=epoch_;pageOrder_.splice(pageOrder_.end(),pageOrder_,cached.order);}
  const Page* cachedPage(uint32_t page){
   auto it=pages_.find(page);if(it!=pages_.end()&&it->second.epoch==epoch_){++pageHits;return &it->second;}
   ++pageMisses;if(failedPages_.count(page))return nullptr;
   if(it==pages_.end())it=storage(page);
   auto&cached=it->second;cached.epoch=0;SIZE_T got=0;++reads;
   if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)page,cached.bytes.data(),cached.bytes.size(),&got)&&got==cached.bytes.size()){
-   cached.epoch=epoch_;return &cached;
+   current(cached);return &cached;
   }
   if(failedPages_.size()<8192)failedPages_.insert(page);return nullptr;
  }
@@ -71,7 +80,7 @@ public:
  // Keep address-to-storage bindings between observations, never their old
  // values. The first access in a new epoch refills the page from the game.
  // This avoids freeing/allocating thousands of 4 KiB nodes every frame.
- void begin(){if(!++epoch_){pages_.clear();pageOrder_.clear();epoch_=1;}failedPages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=prefetchedPages=prefetchMisses=0;lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
+ void begin(){if(!++epoch_){pages_.clear();pageOrder_.clear();epoch_=1;}failedPages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=prefetchedPages=prefetchMisses=pageEvictions=pageCurrentEvictions=0;lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
  size_t cachedPageStorage()const{return pages_.size();}
  size_t pageBufferAllocations()const{return pageAllocations_;}
  // Adjacent actor pages enter this epoch in one bounded RPM call. A failed
@@ -91,7 +100,7 @@ public:
    // Isolated pages are already optimal in the ordinary lazy reader.
    if(end-first>1){SIZE_T got=0;++reads;size_t n=(end-first)*4096;
     if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)wanted[first],bytes.data(),n,&got)&&got==n){
-     for(size_t i=first;i<end;++i){auto&cached=storage(wanted[i])->second;std::memcpy(cached.bytes.data(),bytes.data()+(i-first)*4096,4096);cached.epoch=epoch_;++prefetchedPages;}
+     for(size_t i=first;i<end;++i){auto&cached=storage(wanted[i])->second;std::memcpy(cached.bytes.data(),bytes.data()+(i-first)*4096,4096);current(cached);++prefetchedPages;}
     }else ++prefetchMisses;
    }first=end;
   }
@@ -147,3 +156,4 @@ public:
 struct ReadView {ProcessReader*reader;bool operator()(uint32_t p,void*out,size_t n)const{return reader->read(p,out,n);}};
 struct NoResolve {uint32_t operator()(uint32_t)const{return 0;}};
 }
+

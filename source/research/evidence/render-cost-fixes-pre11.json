@@ -1,0 +1,343 @@
+{
+  "baseline_commit": "6476ccf5af5d9783ed69bb27709aa58b0ecdc5f8",
+  "scope": "Production external Host code; controlled CPU and read-double fixtures. No game PE, live game, same-scene FPS or multiplayer acceptance.",
+  "source_sha256": {
+    "source/external_reader/source/object_canvas.h": "c107e74a3dbe5e5ddda5bc6f3c84e958b041fb52ed3898d8512359b2b574a43c",
+    "source/external_reader/source/process_reader.h": "c936b776e9d3b9142aacb363af7261b3af4307b866b28085ac600ca2691f5c61",
+    "source/assist/source/render_upgrade_host.h": "61eb5fe0fe8be7c49bef3070571610516541b1a6c8e5832aa39374da2c51335c",
+    "source/assist/source/watch_scene.h": "00fb8cc5d34c51d6bfb7dae964390c2a9eca8646a964bc5f1f36ef799d15a082"
+  },
+  "cloak": {
+    "baseline_commit": "6476ccf5af5d9783ed69bb27709aa58b0ecdc5f8",
+    "baseline_header_sha256": "a1643adcfd87c924791914dd46a0653d118c67e9bf7feba970844f2a7eaa6d91",
+    "current_header_sha256": "c107e74a3dbe5e5ddda5bc6f3c84e958b041fb52ed3898d8512359b2b574a43c",
+    "benchmark_source_sha256": "9e76c0e5672f4d007ea5feaf2a33e4dc0157e3d2f4b0ddb80d87510491cedfc2",
+    "commands": {
+      "baseline": "g++ -std=c++17 -O2 -pthread '-DOBJECT_CANVAS_HEADER=\"../../external_reader/source/object_canvas_cloak_baseline.h\"' source/assist/tests/object_cloak_replay.cpp source/third_party/xbrz/xbrz.cpp -o /tmp/object-cloak-baseline",
+      "scoped": "g++ -std=c++17 -O2 -pthread -DEXPECT_SCOPED_CLOAK source/assist/tests/object_cloak_replay.cpp source/third_party/xbrz/xbrz.cpp -o /tmp/object-cloak-replay",
+      "run_baseline": "/tmp/object-cloak-baseline --benchmark",
+      "run_scoped": "/tmp/object-cloak-replay --benchmark",
+      "correctness": "/tmp/object-cloak-replay --correctness"
+    },
+    "scope": "Linux production ObjectCanvas CPU composition; synthetic opaque TMP/actor/voxel-cloak images; 4096x2048 native framebuffer; 4096 TMPs,64actors,one moving cloak;12successive changed updates per sample; excludes input reads, GPU, final minimap downscale, presentation, game and netplay",
+    "results": [
+      {
+        "round": 0,
+        "variant": "baseline",
+        "exit_code": 0,
+        "stdout": "BENCH 4096x2048 4096 TMPs 64 actors one moving cloak: median_ms=135.220635 changed_pages_mean=512.000 reused_pages_mean=0.000\n",
+        "stderr": ""
+      },
+      {
+        "round": 0,
+        "variant": "scoped",
+        "exit_code": 0,
+        "stdout": "BENCH 4096x2048 4096 TMPs 64 actors one moving cloak: median_ms=1.307109 changed_pages_mean=2.000 reused_pages_mean=510.000\n",
+        "stderr": ""
+      },
+      {
+        "round": 1,
+        "variant": "baseline",
+        "exit_code": 0,
+        "stdout": "BENCH 4096x2048 4096 TMPs 64 actors one moving cloak: median_ms=145.459736 changed_pages_mean=512.000 reused_pages_mean=0.000\n",
+        "stderr": ""
+      },
+      {
+        "round": 1,
+        "variant": "scoped",
+        "exit_code": 0,
+        "stdout": "BENCH 4096x2048 4096 TMPs 64 actors one moving cloak: median_ms=1.394934 changed_pages_mean=2.000 reused_pages_mean=510.000\n",
+        "stderr": ""
+      },
+      {
+        "round": 2,
+        "variant": "baseline",
+        "exit_code": 0,
+        "stdout": "BENCH 4096x2048 4096 TMPs 64 actors one moving cloak: median_ms=129.616399 changed_pages_mean=512.000 reused_pages_mean=0.000\n",
+        "stderr": ""
+      },
+      {
+        "round": 2,
+        "variant": "scoped",
+        "exit_code": 0,
+        "stdout": "BENCH 4096x2048 4096 TMPs 64 actors one moving cloak: median_ms=1.416266 changed_pages_mean=2.000 reused_pages_mean=510.000\n",
+        "stderr": ""
+      }
+    ],
+    "correctness": [
+      {
+        "variant": "scoped",
+        "exit_code": 0,
+        "stdout": "PASS cloak replay: 32 full RGBA/depth/native-Z/alpha comparisons; boundary moves, late source writers, signed/wrapped/outside offsets, chained cloaks, attachment/drop/clip, source-only base mutation, removal and retained front\n",
+        "stderr": ""
+      },
+      {
+        "variant": "baseline",
+        "exit_code": -6,
+        "stdout": "",
+        "stderr": "mismatch (500,500) rgba ff00aa21/ffde3173 depth 142.000000/142.000000 native 32266/32266\nobject-cloak-baseline: source/assist/tests/object_cloak_replay.cpp:26: void equal(const external::camera::NativeCanvas&, const external::camera::NativeCanvas&): Assertion `false' failed.\n"
+      }
+    ],
+    "checks": {
+      "cold_warm_full_rgba_depth_native_z_alpha_comparisons": 32,
+      "budget_refusal_recovery": true,
+      "raster_scales": [
+        1,
+        2,
+        3
+      ],
+      "non_page_multiple_width": 517,
+      "existing_object_canvas_regression": {
+        "exit_code": 0,
+        "command": "g++ -std=c++17 -O2 -pthread source/assist/tests/object_canvas.cpp source/third_party/xbrz/xbrz.cpp -o /tmp/object-canvas-existing && /tmp/object-canvas-existing",
+        "stdout": "PASS native page batching matches serial RGBA/depth; parallel pages, exact reuse, move/removal/order/light/base invalidation, stable GPU area owners, one VXL/shadow raster for96 objects, bounded failure recovery"
+      }
+    }
+  },
+  "reader": {
+    "scope": "actual production header with bounded Win32 read doubles; no real Windows syscalls/game/netplay/FPS",
+    "baseline_source_commit": "6476ccf5af5d9783ed69bb27709aa58b0ecdc5f8",
+    "baseline_reader_sha256": "083cc34e068e970d8a3021a65cc22b80b08cfdee28c00d63076c7427ead76438",
+    "current_reader_sha256": "c936b776e9d3b9142aacb363af7261b3af4307b866b28085ac600ca2691f5c61",
+    "before": [
+      {
+        "scenario": "object_clustered",
+        "pages": 8191,
+        "fields": 12,
+        "read_calls": 8191,
+        "page_hits": 90101,
+        "page_misses": 8191,
+        "page_buffers": 8191,
+        "copied_MiB": 31.996
+      },
+      {
+        "scenario": "field_major",
+        "pages": 8191,
+        "fields": 12,
+        "read_calls": 8191,
+        "page_hits": 90101,
+        "page_misses": 8191,
+        "page_buffers": 8191,
+        "copied_MiB": 31.996
+      },
+      {
+        "scenario": "object_clustered",
+        "pages": 8192,
+        "fields": 12,
+        "read_calls": 8192,
+        "page_hits": 90112,
+        "page_misses": 8192,
+        "page_buffers": 8192,
+        "copied_MiB": 32.0
+      },
+      {
+        "scenario": "field_major",
+        "pages": 8192,
+        "fields": 12,
+        "read_calls": 8192,
+        "page_hits": 90112,
+        "page_misses": 8192,
+        "page_buffers": 8192,
+        "copied_MiB": 32.0
+      },
+      {
+        "scenario": "object_clustered",
+        "pages": 8193,
+        "fields": 12,
+        "read_calls": 8193,
+        "page_hits": 90123,
+        "page_misses": 8193,
+        "page_buffers": 8192,
+        "copied_MiB": 32.004
+      },
+      {
+        "scenario": "field_major",
+        "pages": 8193,
+        "fields": 12,
+        "read_calls": 98316,
+        "page_hits": 0,
+        "page_misses": 98316,
+        "page_buffers": 8192,
+        "copied_MiB": 384.047
+      },
+      {
+        "scenario": "object_clustered",
+        "pages": 16384,
+        "fields": 12,
+        "read_calls": 16384,
+        "page_hits": 180224,
+        "page_misses": 16384,
+        "page_buffers": 8192,
+        "copied_MiB": 64.0
+      },
+      {
+        "scenario": "field_major",
+        "pages": 16384,
+        "fields": 12,
+        "read_calls": 196608,
+        "page_hits": 0,
+        "page_misses": 196608,
+        "page_buffers": 8192,
+        "copied_MiB": 768.0
+      },
+      {
+        "scenario": "old_epoch_fifo_eviction",
+        "old_bindings": 8192,
+        "current_pages_before_insert": 1,
+        "insert_calls": 1,
+        "reread_current_page_calls": 1,
+        "stale_pages_available": 8191
+      },
+      {
+        "scenario": "prefetch_evicts_current_not_stale",
+        "old_bindings": 8192,
+        "current_hot_pages": 4096,
+        "new_prefetch_pages": 4096,
+        "prefetch_calls": 256,
+        "hot_reread_calls": 4096,
+        "actual_current_working_set": 8192,
+        "buffers": 8192
+      }
+    ],
+    "after": [
+      {
+        "scenario": "object_clustered",
+        "pages": 8191,
+        "fields": 12,
+        "read_calls": 8191,
+        "page_hits": 90101,
+        "page_misses": 8191,
+        "page_buffers": 8191,
+        "copied_MiB": 31.996
+      },
+      {
+        "scenario": "field_major",
+        "pages": 8191,
+        "fields": 12,
+        "read_calls": 8191,
+        "page_hits": 90101,
+        "page_misses": 8191,
+        "page_buffers": 8191,
+        "copied_MiB": 31.996
+      },
+      {
+        "scenario": "object_clustered",
+        "pages": 8192,
+        "fields": 12,
+        "read_calls": 8192,
+        "page_hits": 90112,
+        "page_misses": 8192,
+        "page_buffers": 8192,
+        "copied_MiB": 32.0
+      },
+      {
+        "scenario": "field_major",
+        "pages": 8192,
+        "fields": 12,
+        "read_calls": 8192,
+        "page_hits": 90112,
+        "page_misses": 8192,
+        "page_buffers": 8192,
+        "copied_MiB": 32.0
+      },
+      {
+        "scenario": "object_clustered",
+        "pages": 8193,
+        "fields": 12,
+        "read_calls": 8193,
+        "page_hits": 90123,
+        "page_misses": 8193,
+        "page_buffers": 8192,
+        "copied_MiB": 32.004
+      },
+      {
+        "scenario": "field_major",
+        "pages": 8193,
+        "fields": 12,
+        "read_calls": 98316,
+        "page_hits": 0,
+        "page_misses": 98316,
+        "page_buffers": 8192,
+        "copied_MiB": 384.047
+      },
+      {
+        "scenario": "object_clustered",
+        "pages": 16384,
+        "fields": 12,
+        "read_calls": 16384,
+        "page_hits": 180224,
+        "page_misses": 16384,
+        "page_buffers": 8192,
+        "copied_MiB": 64.0
+      },
+      {
+        "scenario": "field_major",
+        "pages": 16384,
+        "fields": 12,
+        "read_calls": 196608,
+        "page_hits": 0,
+        "page_misses": 196608,
+        "page_buffers": 8192,
+        "copied_MiB": 768.0
+      },
+      {
+        "scenario": "old_epoch_fifo_eviction",
+        "old_bindings": 8192,
+        "current_pages_before_insert": 1,
+        "insert_calls": 1,
+        "reread_current_page_calls": 0,
+        "stale_pages_available": 8191
+      },
+      {
+        "scenario": "prefetch_evicts_current_not_stale",
+        "old_bindings": 8192,
+        "current_hot_pages": 4096,
+        "new_prefetch_pages": 4096,
+        "prefetch_calls": 256,
+        "hot_reread_calls": 0,
+        "actual_current_working_set": 8192,
+        "buffers": 8192
+      }
+    ],
+    "policy_tests": "source/assist/tests/process_reader_pages_test.py: PASS",
+    "limits": [
+      "Fixed 8192-page budget retained.",
+      "Field-major working sets above capacity still thrash; this change repairs stale eviction priority, not the capacity cliff.",
+      "No proof the target game scene exceeded the cache or triggered this pattern.",
+      "No measured real RPM latency or game FPS gain."
+    ]
+  },
+  "sampler": {
+    "budgets": [
+      4096,
+      8192,
+      16384
+    ],
+    "geometry_sizes": [
+      64,
+      128
+    ],
+    "cell_counts": [
+      8128,
+      32640
+    ],
+    "main_jobs_before": [
+      32,
+      32
+    ],
+    "main_jobs_after": [
+      1,
+      4
+    ],
+    "watch_jobs_before": [
+      16,
+      16
+    ],
+    "watch_jobs_after": [
+      1,
+      2
+    ],
+    "all_fields_equal": true,
+    "short_read_and_geometry_recovery": true
+  }
+}

@@ -47,7 +47,8 @@ public:
   if(bank&&(!external::radar::recentMarkers(*bank,current,now)||!external::radar::supportsEffects(*bank,profile_.particles,profile_.lasers)))bank.reset();sharedSource=bool(bank);
   if(!bank){
    if(auto prior=external::radar::sceneBank().get(process,epoch,revealMap,now))sampler_.seedTerrain(*prior);
-   sampler_.effects(profile_.particles,profile_.lasers);if(!sampler_.step(revealMap,16384,true))return false;
+   // Empty 512x512 grid slots must not consume a camera job's Cell budget.
+   sampler_.effects(profile_.particles,profile_.lasers);if(!sampler_.step(revealMap,16384,true,true))return false;
    auto sampled=sampler_.snapshot(now,current.frame);sampled.observedMs=clock();external::radar::preparePoses(sampled,read_);
    if(!sampled.markerScanValid||!external::radar::recentMarkers(sampled,external::radar::publicationContext(fresh),now))return false;
    bank=std::make_shared<const external::radar::Frame>(std::move(sampled));external::radar::sceneBank().publish(process,epoch,true,bank);
@@ -98,3 +99,4 @@ public:
  }
 };
 }
+

@@ -268,3 +268,6 @@
 
 - [選中己方單位攻擊腳下與零射程目標](2026-11-05-attack-own-ground.md)（pre.9 整合；保留最新 Hook／例外政策，受控測試；實機發射與聯機待驗證）
 - [小地圖、副相機、隊形預覽與渲染升級共用效能](2026-11-05-shared-render-performance.md)（pre.10；LiveINI 失敗重掃、共用光照、CPU prefix／批次失效、GPU adaptive bins；受控對照，非實機 FPS）
+
+
+- [隐形全图重画、读取缓存淘汰及地形采样等待](2026-11-05-render-cost-fixes-pre11.md)（pre.11；CPU 局部依赖回放、epoch 旧页优先、compact traversal；受控对照，非实机 FPS）

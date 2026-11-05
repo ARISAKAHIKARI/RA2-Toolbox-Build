@@ -101,8 +101,57 @@ int main(){
  batchFail=true;reader.begin();reader.prefetch(actors,0x800);assert(reader.prefetchMisses==1&&reader.errors==0);
  for(auto at:actors)assert(reader.read(at,value,4)&&value[0]==28);
  assert(reader.reads==17&&reader.pageMisses==16);batchFail=false;
+ // A new address must reuse an old-epoch binding before evicting a page
+ // already refreshed in this epoch. FIFO used to evict the sole hot page.
+ {
+  external::ProcessReader bounded;assert(bounded.open(7));
+  constexpr uint32_t base=0x100000;
+  for(unsigned p=0;p<8192;++p)assert(bounded.read(base+p*4096+16,value,4));
+  bounded.begin();assert(bounded.read(base+16,value,4));
+  const auto buffers=bounded.pageBufferAllocations(),allocs=allocationCalls;
+  assert(bounded.read(base+8192*4096+16,value,4));
+  assert(bounded.read(base+16,value,4));
+  assert(bounded.reads==2&&bounded.pageHits==1&&bounded.pageEvictions==1&&bounded.pageCurrentEvictions==0);
+  assert(bounded.pageBufferAllocations()==buffers&&allocationCalls==allocs);
+  // A failed page is never promoted ahead of valid current pages. Its field
+  // fallback and the following insertion leave the same hot page cached.
+  completePage=false;assert(bounded.read(0x12010,value,4));completePage=true;
+  assert(bounded.read(base+8193*4096+16,value,4));
+  assert(bounded.read(base+16,value,4));
+  assert(bounded.pageCurrentEvictions==0&&bounded.pageFallbacks==1&&bounded.errors==0);
+ }
+ // 4096 hot + 4096 new pages fit the unchanged 8192-page capacity. Keep all
+ // current hot data while replacing the other 4096 stale bindings. The
+ // old FIFO policy unnecessarily reread every hot page after prefetch.
+ {
+  external::ProcessReader bounded;assert(bounded.open(7));
+  constexpr uint32_t base=0x100000;
+  std::vector<uint32_t> next;next.reserve(4096);
+  for(unsigned p=8192;p<12288;++p)next.push_back(base+p*4096);
+  // Reserve the reusable prefetch plan before checking zero warm allocation.
+  bounded.prefetch(next,4096);bounded.close();assert(bounded.open(7));
+  for(unsigned p=0;p<8192;++p)assert(bounded.read(base+p*4096+16,value,4));
+  bounded.begin();for(unsigned p=0;p<4096;++p)assert(bounded.read(base+p*4096+16,value,4));
+  const auto buffers=bounded.pageBufferAllocations(),allocs=allocationCalls;
+  const auto calls=bounded.reads;bounded.prefetch(next,4096);
+  assert(bounded.reads-calls==256&&bounded.prefetchedPages==4096);
+  const auto afterPrefetch=bounded.reads;
+  for(unsigned p=0;p<4096;++p)assert(bounded.read(base+p*4096+16,value,4));
+  assert(bounded.reads==afterPrefetch&&bounded.pageEvictions==4096&&bounded.pageCurrentEvictions==0);
+  assert(bounded.cachedPageStorage()==8192&&bounded.pageBufferAllocations()==buffers&&allocationCalls==allocs);
+  // Existing stale bindings refreshed by a batch must also move after stale
+  // pages; testing only new prefetch insertions would miss this path.
+  bounded.begin();bounded.prefetch(next,4096);
+  const auto afterBatch=bounded.reads;
+  for(unsigned p=0;p<4096;++p)assert(bounded.read(base+(p+12288)*4096+16,value,4));
+  for(auto at:next)assert(bounded.read(at+16,value,4));
+  assert(bounded.reads==afterBatch+4096&&bounded.pageCurrentEvictions==0);
+  // A new observation still reloads bytes; ordering never prolongs validity.
+  memoryVersion=202;bounded.begin();assert(bounded.read(next[0]+16,value,4)&&value[0]==218);
+  assert(bounded.reads==1&&bounded.pageEvictions==0&&bounded.pageCurrentEvictions==0);
+ }
  reader.close();assert(reader.cachedPageStorage()==0&&!reader.read(0x100010,value,4));
- std::cout<<"PASS ProcessReader: partial-page fallback, fresh epoch values, zero warm page-buffer allocations, bounded address churn, coalesced actor reads/failure fallback and process-close invalidation\n";
+ std::cout<<"PASS ProcessReader: partial-page fallback, fresh epochs, zero warm allocations, bounded churn, stale-first lazy/prefetch reuse, failed-slot priority, coalesced reads and process-close invalidation\n";
 }
 '''.replace('@READER@', json.dumps(str(root / 'external_reader/source/process_reader.h')))
 with tempfile.TemporaryDirectory(prefix='ra2-reader-pages-') as tmp:
@@ -112,3 +161,4 @@ with tempfile.TemporaryDirectory(prefix='ra2-reader-pages-') as tmp:
     subprocess.run(['g++','-std=c++17','-O2','-UNDEBUG','-I'+str(directory),
                     str(directory/'test.cpp'),'-o',str(directory/'test')],check=True)
     subprocess.run([str(directory/'test')],check=True,timeout=20)
+
