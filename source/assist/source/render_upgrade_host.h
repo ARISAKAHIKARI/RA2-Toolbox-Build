@@ -79,7 +79,8 @@ static asyncwork::Recurring<Request,external::radar::Frame> terrainWorker([](con
  }
  if(!terrainReader.open(r.pid))return {};
  if(!terrainSampler.hasTerrain())if(auto bank=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount()))terrainSampler.seedTerrain(*bank);
- // Budget physical Cells, not empty slots in the fixed 512x512 pointer grid.
+ // Count admitted Cells, not empty slots in the fixed 512x512 grid.
+ // The ordinary traversal otherwise needs 32 scheduled jobs on every map.
  if(!terrainSampler.step(r.reveal,8192,true,true))return {};
  auto data=terrainSampler.terrainFrame(GetTickCount());if(!data.terrain)return {};
  auto fresh=[](uint32_t p,void*out,size_t n){return terrainReader.readFresh(p,out,n);};
@@ -461,4 +462,3 @@ static void presentCompleted(){
  update(origin,client,state);
 }
 }
-

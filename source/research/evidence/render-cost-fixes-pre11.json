@@ -4,7 +4,7 @@
   "source_sha256": {
     "source/external_reader/source/object_canvas.h": "c107e74a3dbe5e5ddda5bc6f3c84e958b041fb52ed3898d8512359b2b574a43c",
     "source/external_reader/source/process_reader.h": "c936b776e9d3b9142aacb363af7261b3af4307b866b28085ac600ca2691f5c61",
-    "source/assist/source/render_upgrade_host.h": "61eb5fe0fe8be7c49bef3070571610516541b1a6c8e5832aa39374da2c51335c",
+    "source/assist/source/render_upgrade_host.h": "42525539fde5ca328316e5e0365dd4018043128cff5420d0de74646667e993de",
     "source/assist/source/watch_scene.h": "00fb8cc5d34c51d6bfb7dae964390c2a9eca8646a964bc5f1f36ef799d15a082"
   },
   "cloak": {
