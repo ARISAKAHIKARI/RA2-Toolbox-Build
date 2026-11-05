@@ -150,7 +150,8 @@ void compose(uvec2 inputAt,uint pageJob){
  if((p.phase&1u)==0u){depth=uintBitsToFloat(outputImage.v[p.stateOffset+outputAt]);}
  uint za=(p.phase&1u)!=0u?(65535u|((p.nativeScene!=0u?alphaAt(at):127u)<<16u)):outputImage.v[p.zaOffset+outputAt];
  activeAlpha=(za>>16u)&255u;uint nativeZ=za&65535u;
- uint bin=(at.y/32u)*p.binColumns+at.x/32u,first=commands.v[p.binsOffset+bin*2u],count=commands.v[p.binsOffset+bin*2u+1u];
+ uint binShift=p.reserved==8u?3u:p.reserved==16u?4u:5u;
+ uint bin=(at.y>>binShift)*p.binColumns+(at.x>>binShift),first=commands.v[p.binsOffset+bin*2u],count=commands.v[p.binsOffset+bin*2u+1u];
 #endif
 #ifdef SCENE_PAGES
  uint nativeZ=65535u;activeAlpha=commands.v[j+5u]==Missing?127u:byteAt(commands.v[j+5u],local.y*128u+local.x);

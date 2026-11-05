@@ -1,0 +1,7 @@
+{
+  "base_commit": "dde2f56b3c663f3355d1c7ca0c436f5a2ba8ee58",
+  "source": "source/external_reader/source/scene_lighting.h",
+  "source_git_blob_sha": "fff60aedd824dd3f3697c211e9d97104702d4495",
+  "fixture_sha256": "804387b728b47475943721d554d8109e1a10af61f55947d13eeeed832aaf62dc",
+  "changes": "Extracted object function only; renamed objectBefore."
+}

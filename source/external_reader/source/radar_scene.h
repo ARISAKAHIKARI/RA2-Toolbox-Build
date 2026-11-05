@@ -72,6 +72,8 @@ template<class Assets>class SceneRenderer {
  template<class A>static bool sharedActor(A&a,const typename A::ActorArt&art,const visual::Pose&pose,std::shared_ptr<const voxel::Image>&out,long){voxel::Image image;if(!a.renderActor(art,pose,image))return false;camera::opaque(image);out=std::make_shared<const voxel::Image>(std::move(image));return true;}
  template<class A>static auto captureActor(A&a,const Marker&m,typename A::ActorArt&art,int)->decltype(a.captureActor(m.object,m.type,m.id,art,&m.pose,m.disguised?m.kind:-1,m.owner),bool()){return a.captureActor(m.object,m.type,m.id,art,&m.pose,m.disguised?m.kind:-1,m.owner);}
  template<class A>static bool captureActor(A&a,const Marker&m,typename A::ActorArt&art,long){return a.captureActor(m.object,m.type,m.id,art);}
+ template<class Read>static auto readCount(const Read&read,int)->decltype(uint64_t(read.reader->reads),std::pair<bool,uint64_t>{}){return {true,uint64_t(read.reader->reads)};}
+ template<class Read>static std::pair<bool,uint64_t> readCount(const Read&,long){return {false,0};}
  template<class Read>static auto currentVisibility(Read read,int)->decltype(read.fresh(0,nullptr,0),bool()){return true;}
  template<class Read>static bool currentVisibility(Read,long){return false;}
  struct CellReadPlan {std::vector<uint32_t> pages;size_t first=~size_t(0),end=~size_t(0);void clear(){pages.clear();first=end=~size_t(0);}};
@@ -93,15 +95,20 @@ template<class Assets>class SceneRenderer {
  template<class A>static auto alphaImage(A&a,uint32_t pointer,voxel::Image&out,int)->decltype(a.effectAlpha(pointer,out),bool()){return a.effectAlpha(pointer,out);}
  template<class A>static bool alphaImage(A&,uint32_t,voxel::Image&,long){return false;}
  std::map<uint32_t,std::shared_ptr<const voxel::Image>>effectAlphas_;
- void invalidateArt(const ArtKey&key){
-  for(auto i=sprites_.begin();i!=sprites_.end();)if(artKey(i->first)==key)i=sprites_.erase(i);else ++i;
-  for(auto i=displayed_.begin();i!=displayed_.end();)if(artKey(i->second)==key)i=displayed_.erase(i);else ++i;
+ void invalidateArts(const std::set<ArtKey>&keys){
+  if(keys.empty())return;stageStats_.invalidationKeys=keys.size();
+  // Many palette/VPL changes in one presentation retire one combined set.
+  // Repeated full-cache scans made this work proportional to art * poses.
+  for(auto i=sprites_.begin();i!=sprites_.end();){++stageStats_.invalidationVisits;if(keys.count(artKey(i->first)))i=sprites_.erase(i);else ++i;}
+  for(auto i=displayed_.begin();i!=displayed_.end();){++stageStats_.invalidationVisits;if(keys.count(artKey(i->second)))i=displayed_.erase(i);else ++i;}
  }
  std::array<uint32_t,256> terrainPalette_{};bool terrainPaletteReady_=false;
  colorprecision::Mode precision_=colorprecision::Mode::NativeSteps;
  lighting::State buildingLight_;uint64_t voxelLightRevision_=0;bool voxelLightKnown_=false;
  struct DecodeStats {unsigned attempts=0,hits=0;double milliseconds=0,budget=0;} decodeStats_;
  struct StageStats {double terrainMs=0,materialsMs=0,palettesMs=0,decodeMs=0,voxelMs=0,objectsMs=0,resolveMs=0,effectsMs=0;size_t overlayScanCells=0,actors=0,terrainLightCells=0,terrainGeometryChecks=0,terrainProbeCopies=0;bool reused=false;
+  bool readCountsKnown=false;uint64_t terrainReads=0,paletteReads=0,decodeReads=0,voxelReads=0,objectReads=0,resolveReads=0,effectReads=0;
+  uint64_t setupReads=0,terrainScanReads=0,maskReads=0,extraReads=0;size_t artWanted=0,artScanned=0,invalidationKeys=0,invalidationVisits=0;
   double visibilityMs=0;size_t visibilityCalls=0,visibilityPages=0,visibilityCells=0;bool visibilityAttempted=false,cpuTerrainReused=false;
   RenderFailure failure=RenderFailure::None;uint32_t failureObject=0,failureType=0,failureID=0;int failureKind=-1,rasterScale=0,hvaBody=0,hvaTurret=0;
   bool voxelLightAvailable=false,voxelLightChanged=false,gunPoseValid=false,postureAvailable=false,shadowAvailable=false;
@@ -201,7 +208,9 @@ public:
  void features(const presentation::Profile&p){if(p.voxelLighting!=features_.voxelLighting||p.spriteLighting!=features_.spriteLighting){art_.clear();sprites_.clear();displayed_.clear();voxelLightKnown_=false;}features_=p;}
  template<class Read>std::shared_ptr<const Scene> render(const Frame&frame,int width,int height,Read read,Assets&assets,SceneRegion region={},unsigned pixelScaleMode=0,bool refined=false,bool liveVoxels=true,bool highColorPrecision=false,bool forceFrame=false,double decodeBudgetMs=4.){
   const bool warming=!materialsReady_;materialsReady_=false;decodeStats_={};stageStats_={};requestedObjects_=drawnObjects_=0;
-  auto stageAt=std::chrono::steady_clock::now();auto stage=[&](double&ms){auto now=std::chrono::steady_clock::now();ms=std::chrono::duration<double,std::milli>(now-stageAt).count();stageAt=now;};
+  const auto initialReads=readCount(read,0);stageStats_.readCountsKnown=initialReads.first;uint64_t readAt=initialReads.second,phaseReadAt=initialReads.second;
+  auto phaseReads=[&](uint64_t&out){const auto count=readCount(read,0);if(count.first){out=count.second-phaseReadAt;phaseReadAt=count.second;}};
+  auto stageAt=std::chrono::steady_clock::now();auto stage=[&](double&ms,uint64_t&reads){auto now=std::chrono::steady_clock::now();ms=std::chrono::duration<double,std::milli>(now-stageAt).count();stageAt=now;const auto count=readCount(read,0);if(count.first){reads=count.second-readAt;readAt=count.second;}};
   if(!frame.terrain||!frame.terrain->geo.valid()||frame.terrain->art.size()!=512*512||width<3||height<3||width>(region.active?16384:4096)||height>(region.active?16384:4096)||uint64_t(width)*height>32*1024*1024)return {};
   const bool gpuMode=(region.active||outputSized_)&&gpuPresentation(assets,0);
   // Geometry quality belongs to Assets. Both quality settings share actor,
@@ -235,6 +244,7 @@ public:
   std::array<uint32_t,256> liveTerrainPalette{};const bool paletteReady=assets.palette(true,liveTerrainPalette);
   if(!paletteReady&&terrainPaletteReady_){stageStats_.failure=RenderFailure::TerrainPalette;return {};}
   if(paletteReady){if(terrainPaletteReady_&&terrainPalette_!=liveTerrainPalette){tiles_.clear();clearBackground();}terrainPalette_=liveTerrainPalette;terrainPaletteReady_=true;}
+  phaseReads(stageStats_.setupReads);
   // A pending bank cannot combine lighting from two different global states.
   if(building_&&buildingLight_!=scene){building_.reset();pending_={};prepared_.clear();cursor_=baseCursor_=0;}
 
@@ -367,6 +377,7 @@ public:
   if(committed&&region.active&&!verifyVisible(true))return {};
   // An incomplete bank may only reuse a synchronously validated crop.
   if(!complete_||(building_&&!visibleVerified))return {};
+  phaseReads(stageStats_.terrainScanReads);
   // Scale the CURRENT lit terrain as one continuous native RGB backing.
   // Filtering individual transparent TMP diamonds introduces artificial
   // image borders at every adjoining tile; presentRegion supplies a source
@@ -469,8 +480,10 @@ public:
   auto draw=[&](const voxel::Image&i,float x,float y,float sx,float sy,float z,const lighting::State&light,float lift=1,float drop=0,std::shared_ptr<const voxel::Image>owner={},vulkancompute::MotionIdentity motion={},camera::Material material={}){if(detail&&!prepareWorldOnly_)detailed_.blit(i,x,y,sx,sy,z,light,lift,drop,std::move(owner),std::move(motion),material);else{if(!owner||owner.get()!=&i)owner=std::make_shared<const voxel::Image>(i);objectDraws.push_back({std::move(owner),x,y,z,lift,drop,light,material,motion.object,motion.id});}};
 
   const auto&geo=frame.terrain->geo;int work=0;size_t pixels=0;std::vector<const Marker*> fallbacks;
+  phaseReads(stageStats_.maskReads);
   if(!extraLayers_.ground(frame,read,assets,scene,draw)||!extraLayers_.frozen(frame,read,assets,scene,projectionScale,draw))return {};
-  stage(stageStats_.terrainMs);auto markers=frame.markers;
+  phaseReads(stageStats_.extraReads);
+  stage(stageStats_.terrainMs,stageStats_.terrainReads);auto markers=frame.markers;
   if(!features_.particles)markers.erase(std::remove_if(markers.begin(),markers.end(),[](const Marker&m){return m.kind==7||m.kind==8||(m.kind==5&&!m.parent);}),markers.end());
   if(region.active&&!prepareWorldOnly_)markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){
    double x=(double(m.x)-m.y)*30/256.+geo.offsetX*30,y=(double(m.x)+m.y)*15/256.-geo.offsetY*15-screenHeight(m.z,projectionScale);
@@ -493,27 +506,29 @@ public:
    else{wanted.insert(i->second);++i;}}
   if(sprites_.size()>1024){for(auto i=sprites_.begin();i!=sprites_.end();)if(!wanted.count(i->first))i=sprites_.erase(i);else ++i;}
   if(art_.size()>512){for(auto i=art_.begin();i!=art_.end();)if(!artWanted.count(i->first))i=art_.erase(i);else ++i;}
+  std::set<ArtKey> invalidArts;stageStats_.artWanted=artWanted.size();
   const auto lightRevision=voxelRevision(assets,0);const bool voxelLightChanged=!lightRevision.first||!voxelLightKnown_||voxelLightRevision_!=lightRevision.second;
   voxelLightKnown_=lightRevision.first;voxelLightRevision_=lightRevision.second;
-  if(liveVoxels&&voxelLightChanged)for(const auto&source:art_)if(voxelArt(source.second,0))invalidateArt(source.first);
+  if(liveVoxels&&voxelLightChanged)for(const auto&source:art_)if(voxelArt(source.second,0))invalidArts.insert(source.first);
   stageStats_.candidates=markers.size();stageStats_.rasterScale=rasterScale(assets,0);stageStats_.voxelLightAvailable=lightRevision.first;stageStats_.voxelLightChanged=voxelLightChanged;
   std::set<ArtKey> unavailablePalettes;
-  for(const auto&key:artWanted){auto source=art_.find(key);if(source==art_.end())continue;bool changed=false;
-   if(!refreshPalette(assets,source->second,changed,0)){invalidateArt(key);unavailablePalettes.insert(key);}
-   else if(changed)invalidateArt(key);
+  for(const auto&key:artWanted){++stageStats_.artScanned;auto source=art_.find(key);if(source==art_.end())continue;bool changed=false;
+   if(!refreshPalette(assets,source->second,changed,0)){invalidArts.insert(key);unavailablePalettes.insert(key);}
+   else if(changed)invalidArts.insert(key);
   }
   for(const auto&m:markers)if(m.kind==4){bool changed=false;
-   if(!refreshOverlay(assets,m.type,game.template get<uint32_t>(m.type+0xA4),m.pose.frame,true,changed,0)){invalidateArt(artKey(m));unavailablePalettes.insert(artKey(m));}
-   else if(changed)invalidateArt(artKey(m));
+   if(!refreshOverlay(assets,m.type,game.template get<uint32_t>(m.type+0xA4),m.pose.frame,true,changed,0)){invalidArts.insert(artKey(m));unavailablePalettes.insert(artKey(m));}
+   else if(changed)invalidArts.insert(artKey(m));
   }
+  invalidateArts(invalidArts);
   if(!unavailablePalettes.empty()){
    // Explosions, smoke and projectiles may expire between the immutable
    // observation and this render. Drop only those instances, never the whole
    // completed world because one transient no longer has a live palette.
-   for(const auto&m:markers)if(m.kind<5&&unavailablePalettes.count(artKey(m))){recordFailure(RenderFailure::ActorPalette,m);stage(stageStats_.palettesMs);return {};}
+   for(const auto&m:markers)if(m.kind<5&&unavailablePalettes.count(artKey(m))){recordFailure(RenderFailure::ActorPalette,m);stage(stageStats_.palettesMs,stageStats_.paletteReads);return {};}
    markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){return m.kind>=5&&unavailablePalettes.count(artKey(m));}),markers.end());
   }
-  stage(stageStats_.palettesMs);
+  stage(stageStats_.palettesMs,stageStats_.paletteReads);
   for(const auto&i:sprites_)pixels+=camera::pixels(*i.second.image);size_t artBytes=0;for(const auto&i:art_)artBytes+=Assets::cost(i.second);
   if(pixels>rendermemory::PosePixels*3/4){for(auto i=sprites_.begin();i!=sprites_.end()&&pixels>rendermemory::PosePixels/2;)if(!wanted.count(i->first)){pixels-=camera::pixels(*i->second.image);i=sprites_.erase(i);}else ++i;}
   if(artBytes>rendermemory::Geometry*3/4){for(auto i=art_.begin();i!=art_.end()&&artBytes>rendermemory::Geometry/2;)if(!artWanted.count(i->first)){artBytes-=Assets::cost(i->second);i=art_.erase(i);}else ++i;}
@@ -551,7 +566,7 @@ public:
   work=0;lane=DecodeClock::now();
   for(size_t scanned=0;scanned<decodeMarkers.size()&&room(unsigned(work),lane,.40);++scanned){const auto&m=decodeMarkers[actorCursor_++%decodeMarkers.size()];if(!priority.count(imageKey(m)))decode(m,false);}
   decodeStats_.milliseconds=std::chrono::duration<double,std::milli>(DecodeClock::now()-decodeStarted).count();
-  stage(stageStats_.decodeMs);
+  stage(stageStats_.decodeMs,stageStats_.decodeReads);
   stageStats_.geometryBytes=artBytes;stageStats_.posePixels=pixels;
   if(liveVoxels){
    // Refresh VPL and palette provenance every pass; reuse pose pixels only
@@ -559,13 +574,13 @@ public:
    // A reader without revision support retains the conservative live path.
    std::set<ImageKey> rastered;size_t liveFaces=0;
    for(const auto&m:markers){auto source=art_.find(artKey(m));
-    if(source==art_.end()){if(m.pose.voxel&&m.kind<5){recordFailure(RenderFailure::MissingVoxelArt,m);stage(stageStats_.voxelMs);return {};}continue;}
+    if(source==art_.end()){if(m.pose.voxel&&m.kind<5){recordFailure(RenderFailure::MissingVoxelArt,m);stage(stageStats_.voxelMs,stageStats_.voxelReads);return {};}continue;}
     if(!voxelArt(source->second,0))continue;auto key=imageKey(m);if(!rastered.insert(key).second)continue;
     auto cachedImage=sprites_.find(key);
     if(!voxelLightChanged&&cachedImage!=sprites_.end()&&cachedImage->second.ready&&!cachedImage->second.image->incomplete){++decodeStats_.hits;continue;}
-    liveFaces+=faceCount(source->second,0);stageStats_.liveFaces=liveFaces;if(liveFaces>rendermemory::LiveFaces){if(m.kind>=5)continue;recordFailure(RenderFailure::VoxelFaceBudget,m);stage(stageStats_.voxelMs);return {};}
+    liveFaces+=faceCount(source->second,0);stageStats_.liveFaces=liveFaces;if(liveFaces>rendermemory::LiveFaces){if(m.kind>=5)continue;recordFailure(RenderFailure::VoxelFaceBudget,m);stage(stageStats_.voxelMs,stageStats_.voxelReads);return {};}
     clearAssetFailure(assets,0);std::shared_ptr<const voxel::Image>image;const bool drawn=sharedActor(assets,source->second,m.pose,image,0);
-    if(!drawn||!image||image->incomplete){if(m.kind>=5)continue;recordFailure(!drawn?RenderFailure::VoxelRaster:!image?RenderFailure::VoxelImageMissing:RenderFailure::VoxelIncomplete,m);stageStats_.assetFailure=assetFailure(assets,0);stage(stageStats_.voxelMs);return {};}
+    if(!drawn||!image||image->incomplete){if(m.kind>=5)continue;recordFailure(!drawn?RenderFailure::VoxelRaster:!image?RenderFailure::VoxelImageMissing:RenderFailure::VoxelIncomplete,m);stageStats_.assetFailure=assetFailure(assets,0);stage(stageStats_.voxelMs,stageStats_.voxelReads);return {};}
     auto&cached=sprites_[key];size_t previous=camera::pixels(*cached.image),next=camera::pixels(*image);
     if(m.kind<5&&pixels-previous+next>rendermemory::PosePixels){
      // Old displayed poses are useful fallbacks for time-budgeted SHP and
@@ -588,18 +603,18 @@ public:
      if(retired)for(auto i=displayed_.begin();i!=displayed_.end();)if(!sprites_.count(i->second))i=displayed_.erase(i);else ++i;
     }
     stageStats_.posePixels=pixels;stageStats_.replacementPixels=previous;stageStats_.newPixels=next;
-    if(pixels-previous+next>rendermemory::PosePixels){if(m.kind>=5)continue;recordFailure(RenderFailure::VoxelPoseBudget,m);stage(stageStats_.voxelMs);return {};}
+    if(pixels-previous+next>rendermemory::PosePixels){if(m.kind>=5)continue;recordFailure(RenderFailure::VoxelPoseBudget,m);stage(stageStats_.voxelMs,stageStats_.voxelReads);return {};}
     pixels=pixels-previous+next;cached.image=std::move(image);cached.ready=true;cached.retry=0;
    }
   }
   for(const auto&m:markers){auto key=imageKey(m);auto i=sprites_.find(key);if(i!=sprites_.end()&&i->second.ready)displayed_[{m.object,m.id}]=key;}
   materialsReady_=!backgroundIncomplete_&&!building_;
   for(const auto&m:decodeMarkers){auto source=art_.find(artKey(m));if(liveVoxels&&source!=art_.end()&&voxelArt(source->second,0))continue;auto found=sprites_.find(imageKey(m));materialsReady_&=found!=sprites_.end()&&found->second.ready&&!found->second.image->incomplete;}
-  stage(stageStats_.voxelMs);stageStats_.materialsMs=stageStats_.palettesMs+stageStats_.decodeMs+stageStats_.voxelMs;stageStats_.actors=markers.size();
+  stage(stageStats_.voxelMs,stageStats_.voxelReads);stageStats_.materialsMs=stageStats_.palettesMs+stageStats_.decodeMs+stageStats_.voxelMs;stageStats_.actors=markers.size();
   auto order=tetherdraw::order(markers,!prepareWorldOnly_);
   // Native ground animations share object order (Layer, GetYSort). A blanket
   // final animation pass incorrectly paints pumps/fire over foreground units.
-  gatherShapes_.begin();
+  lighting::ObjectLightContext objectLights;gatherShapes_.begin();
   for(const auto*marker:order){const auto&m=*marker;if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256)continue;
    ++requestedObjects_;
    auto found=sprites_.find(imageKey(m));if(found==sprites_.end()||!found->second.ready){auto old=displayed_.find({m.object,m.id});if(old!=displayed_.end())found=sprites_.find(old->second);}
@@ -613,7 +628,7 @@ public:
      if(old!=sprites_.end()&&old->second.ready&&materialblend::image(*old->second.image,*image,unsigned(m.pose.frameWeight),lift,blended)){imageOwner=std::make_shared<const voxel::Image>(std::move(blended));image=imageOwner.get();}
     }
     const bool relight=(source!=art_.end()&&voxelArt(source->second,0))?features_.voxelLighting:features_.spriteLighting;
-    auto light=(!relight||m.kind==7||m.kind==8)?lighting::State{}:m.kind==6?projectiles::light(read,uint32_t(m.pose.variant)):m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<int8_t>(cell+0x11B);
+    auto light=(!relight||m.kind==7||m.kind==8)?lighting::State{}:m.kind==6?projectiles::light(read,uint32_t(m.pose.variant)):m.kind==5?lighting::animation(read,m.object,m.type,m.x,m.y,m.z,scene):m.kind==4?lighting::terrainObject(read,m.type,m.x,m.y,m.z,scene):lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene,&objectLights);uint32_t cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;bool bridge=m.onBridge;int level=game.template get<int8_t>(cell+0x11B);
     vulkancompute::MotionIdentity motion;motion.object=m.object;motion.id=m.id;motion.type=m.type;motion.kind=uint32_t(m.kind);motion.known=guideEnabled_&&detail&&m.object>=0x10000&&m.type>=0x10000&&m.id!=0xffffffffu&&m.kind>=0&&m.kind<=6;
     auto material=m.material;if(!material.nativeZ){material.nativeZ=true;material.nativeZAdjust=-screenHeight(m.z,projectionScale)-2;}if(m.waterline>0)material.clipBottom=float(m.waterline-geo.offsetY*15)-py;
     draw(*image,px,py,1,1,float((int64_t(m.x)+m.y)*15/256.)-15+camera::anchorY(m.kind)-m.drawZ+(bridge?60:0),light,m.kind==4?12:(m.kind==3||m.kind==5)?2:1,m.pose.shadow.known?float(m.pose.shadow.drop):float(std::max(0,screenHeight(m.z,projectionScale)-(level+(bridge?4:0))*15)),std::move(imageOwner),std::move(motion),material);
@@ -623,7 +638,7 @@ public:
      if(nativeeffects::gather(read,object,frame.frame,gather)){uint32_t shape=0;if(read(nativeeffects::GatherShape,&shape,4))if(auto effect=gatherShapes_.get(read,shape,gather.frame,0x87F6C0)){
       const int x=m.x+gather.point.x-gather.location.x,y=m.y+gather.point.y-gather.location.y;
       const float gx=float(int((int64_t(x)-y)*30/256)+geo.offsetX*30),gy=float(int((int64_t(x)+y)*15/256)-geo.offsetY*15-screenHeight(m.z,projectionScale));
-      auto effectLight=features_.spriteLighting?lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene):lighting::State{};
+      auto effectLight=features_.spriteLighting?lighting::object(read,m.type,m.owner,m.kind,m.x,m.y,m.z,scene,&objectLights):lighting::State{};
       draw(*effect,gx,gy,1,1,float((int64_t(m.x)+m.y)*15/256)-15-m.drawZ+(bridge?60:0),effectLight,3,0,effect,motion);
      }}
     }
@@ -652,7 +667,7 @@ public:
      found=effectAlphas_.emplace(a.image,std::make_shared<const voxel::Image>(std::move(image))).first;
     }packet->alphas.emplace(found->first,found->second);
    }
-   preparedWorld_=std::move(packet);stage(stageStats_.objectsMs);
+   preparedWorld_=std::move(packet);stage(stageStats_.objectsMs,stageStats_.objectReads);
    auto out=std::make_shared<Scene>();out->width=width;out->height=height;return out;
   }
   // Local status glyphs are drawn by local_ui_task on the main view only.
@@ -669,7 +684,7 @@ public:
   const bool nativeObjectsGpu=areaGpuMode&&objectCanvas_.planGPU(nativeBase,objectDraws,width,height,spanX_,spanY_,nativeAreaPlan);
   if(!detail&&!nativeObjectsGpu&&!objectCanvas_.compose(nativeBase,objectDraws,view,incrementalNative)){dynamicFailure_=true;return {};}
   if(view.failed()){dynamicFailure_=true;return {};}
-  stage(stageStats_.objectsMs);
+  stage(stageStats_.objectsMs,stageStats_.objectReads);
   const bool worldEffects=frame.effects&&frame.effects->world&&!frame.effects->world->empty();
   const bool radarExtras=!region.active&&sceneextras::hasRadar(frame);
   const auto radarRanks=region.active?nullptr:sceneextras::radarRanks(frame,read,extraLayers_);
@@ -706,7 +721,7 @@ public:
   const bool reusableResolve=gpuMode_||cpuReusable;
   const auto*reusePlan=reusableResolve&&fallbacks.empty()&&effectPlanReady&&!guideEnabled_?
    detailed_.completeGpuPlan(masked?maskPixels_:nullptr,masked?gpuMaskPlan_:nullptr):nullptr;
-  if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(previous->gpu);stageStats_.reused=true;auto result=sceneextras::withRadarRanks(previous,radarRanks);if(result!=previous)gpuFrameReuse_.completed(*reusePlan,result);stage(stageStats_.resolveMs);return result;}}}
+  if(reusePlan){if(auto previous=gpuFrameReuse_.get(*reusePlan)){if(!previous->gpu||gpupresent::available()){xbrzadapter::gpuState().used=bool(previous->gpu);stageStats_.reused=true;auto result=sceneextras::withRadarRanks(previous,radarRanks);if(result!=previous)gpuFrameReuse_.completed(*reusePlan,result);stage(stageStats_.resolveMs,stageStats_.resolveReads);return result;}}}
   else gpuFrameReuse_.reset();
   const bool directReady=directPresentation_&&gpuMode_&&effectPlanReady&&!guideEnabled_;
   auto*maskReadback=!directReady&&masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_?&mask_.alpha:nullptr;
@@ -730,7 +745,7 @@ public:
    nativePresentation_.background=detailKey_;nativePresentation_.objects=objectCanvas_.revision();nativePresentation_.gpu=areaGpuMode;nativePresentation_.used=areaUsed;
    nativePresentation_.mask=areaUsed&&masked?gpuMaskPlan_:nullptr;nativePresentation_.fog=areaUsed&&masked?maskPixels_:nullptr;
   }
-  stageStats_.cpuTerrainReused=detail&&detailed_.cpuTerrainReused();stage(stageStats_.resolveMs);
+  stageStats_.cpuTerrainReused=detail&&detailed_.cpuTerrainReused();stage(stageStats_.resolveMs,stageStats_.resolveReads);
   const bool gpuEffectsDone=effectPlanReady&&((gpuMode_&&detailed_.gpuCompleted())||(areaUsed&&areaEffects));out->boltsRendered=gpuEffectsDone&&features_.lasers&&frame.effects&&frame.effects->boltsValid;
   if(!out->gpu&&masked&&gpuMaskPlan_&&cpuMaskPlan_!=gpuMaskPlan_&&(!areaUsed||!fallbacks.empty()||worldEffects)){
    // CPU replay and missing-art dots need a native mask; a successful whole
@@ -755,7 +770,7 @@ public:
   if(radarExtras&&!gpuEffectsDone){sceneextras::RadarCPU sink(*out);sceneextras::radarDecorations(frame,width,height,read,assets,extraLayers_,sink);}
   if(areaGpuMode&&staticView){areaCachedGpu_=areaUsed;if(masked)maskedBaseScene_=out;else baseScene_=out;}
   if(reusePlan&&(detailed_.gpuCompleted()||cpuReusable))gpuFrameReuse_.completed(*reusePlan,out);else gpuFrameReuse_.reset();
-  stage(stageStats_.effectsMs);return out;
+  stage(stageStats_.effectsMs,stageStats_.effectReads);return out;
  }
 };
 }}

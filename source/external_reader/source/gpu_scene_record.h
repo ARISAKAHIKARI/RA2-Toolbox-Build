@@ -125,7 +125,7 @@ public:
  uint64_t litBuilds()const{return litBuilds_;}uint64_t litHits()const{return litHits_;}size_t litBytes()const{return litBytes_;}
  bool prefixAvailable()const{return prefixReady_;}
  bool cpuPrefixReused()const{return cpuPrefixReused_;}
- void retainPrefix(){prefixReady_=valid_;prefixDraws_=frame_.draws.size();prefixReplay_=replay_.size();}
+ void retainPrefix(){cpuPrefix_={};cpuPrefixReused_=false;prefixReady_=valid_;prefixDraws_=frame_.draws.size();prefixReplay_=replay_.size();}
  void begin(int width,int height,std::shared_ptr<const std::vector<uint32_t>>base,std::shared_ptr<const std::vector<float>>depth,colorprecision::Mode precision,
             std::shared_ptr<const std::vector<vulkancompute::TileJob>>baseTiles={},std::function<bool(std::vector<uint32_t>&)>cpuBaseFallback={},GpuDepthPlan depthPlan={},bool retainTerrainPrefix=false){
   reset(retainTerrainPrefix);frame_.width=width;frame_.height=height;frame_.basePixels=std::move(base);fallbackBase_=frame_.basePixels;frame_.baseDepth=std::move(depth);precision_=precision;cpuBaseFallback_=std::move(cpuBaseFallback);
@@ -155,16 +155,27 @@ public:
   if(frame_.width<1||frame_.height<1||uint64_t(frame_.width)*frame_.height>32*1024*1024||!validDepth(frame_))return false;
   const std::vector<uint32_t>*base=fallbackBase_.get();std::vector<uint32_t>generated;
   if(!base||base->size()!=size_t(frame_.width)*frame_.height){if(!cpuBaseFallback_||!cpuBaseFallback_(generated)||generated.size()!=size_t(frame_.width)*frame_.height)return false;base=&generated;}
-  if(!frame_.baseDepth||!surface.resetFrame(frame_.width,frame_.height,*base,frame_.baseDepthWidth?nullptr:frame_.baseDepth.get()))return false;
+  std::vector<gpueffects::Command>alphas;if(frame_.nativeScene&&frame_.effects)for(const auto&c:frame_.effects->commands)if(c.words[0]==gpueffects::Alpha&&c.indices)alphas.push_back(c);
+  auto sameAlphas=[&]{if(alphas.size()!=cpuPrefix_.alphas.size())return false;for(size_t n=0;n<alphas.size();++n)if(alphas[n].words!=cpuPrefix_.alphas[n].words||alphas[n].indices!=cpuPrefix_.alphas[n].indices)return false;return true;};
+  const bool cacheable=prefixReady_&&prefixReplay_&&prefixReplay_<=replay_.size()&&alphas.size()<=8192&&
+    uint64_t(frame_.width)*frame_.height<=2*1024*1024&&frame_.basePixels&&!frame_.baseDepthWidth;
+  const bool cached=cacheable&&cpuPrefix_.base==frame_.basePixels&&cpuPrefix_.depth==frame_.baseDepth&&
+    cpuPrefix_.fog==frame_.fogAlpha&&cpuPrefix_.mask==frame_.maskPlan&&sameAlphas()&&
+    cpuPrefix_.width==frame_.width&&cpuPrefix_.height==frame_.height&&cpuPrefix_.native==frame_.nativeScene&&
+    cpuPrefix_.scaleX==frame_.nativeScaleX&&cpuPrefix_.scaleY==frame_.nativeScaleY&&cpuPrefix_.precision==precision_&&
+    cpuPrefix_.color.size()==size_t(frame_.width)*frame_.height;
+  if(cached){
+   if(!surface.restoreFrame(frame_.width,frame_.height,cpuPrefix_.color,cpuPrefix_.z,cpuPrefix_.nativeZ,cpuPrefix_.alpha))return false;
+  }else if(!frame_.baseDepth||!surface.resetFrame(frame_.width,frame_.height,*base,frame_.baseDepthWidth?nullptr:frame_.baseDepth.get()))return false;
   surface.precision(precision_);surface.nativeView(0,frame_.nativeScaleX,frame_.nativeScaleY,int(std::ceil(frame_.width/frame_.nativeScaleX)),int(std::ceil(frame_.height/frame_.nativeScaleY)));
-  if(frame_.nativeScene){std::shared_ptr<const std::vector<uint8_t>>mask=frame_.fogAlpha;
+  if(!cached&&frame_.nativeScene){std::shared_ptr<const std::vector<uint8_t>>mask=frame_.fogAlpha;
    if(frame_.maskPlan){auto a=std::make_shared<std::vector<uint8_t>>();if(!gpushroud::reference(*frame_.maskPlan,*a))return false;mask=a;}
    auto a=mask?std::make_shared<std::vector<uint8_t>>(*mask):std::make_shared<std::vector<uint8_t>>(size_t(frame_.width)*frame_.height,127);
    if(frame_.effects)for(const auto&command:frame_.effects->commands)if(command.words[0]==gpueffects::Alpha&&command.indices){const auto&w=command.words;
     for(uint32_t y=w[5];y<w[7];++y)for(uint32_t x=w[4];x<w[6];++x){int xx=int((x-gpueffects::real(w[8]))/gpueffects::real(w[10])),yy=int((y-gpueffects::real(w[9]))/gpueffects::real(w[11]));if(xx<0||yy<0||xx>=int(w[14])||yy>=int(w[15]))continue;size_t at=size_t(y)*frame_.width+x;(*a)[at]=uint8_t(std::min(255u,unsigned((*a)[at])*(*command.indices)[size_t(yy)*w[14]+xx]/127u));}}
    surface.nativeBase(a,false);
   }
-  if(frame_.baseDepthWidth>0){
+  if(!cached&&frame_.baseDepthWidth>0){
    // The GPU consumes this compact native plane directly. Only an actual CPU
    // fallback expands it to the output framebuffer's depth layout.
    for(int y=0;y<frame_.height;++y){size_t row=size_t((*frame_.baseDepthYs)[y])*frame_.baseDepthWidth;
@@ -189,22 +200,13 @@ public:
   // Mask/alpha changes affect native palette conversion BEFORE composition,
   // so all their owners must agree; multiplying a cached color afterwards
   // would be wrong. Dynamic actors are never included in this prefix cache.
-  std::vector<gpueffects::Command>alphas;if(frame_.nativeScene&&frame_.effects)for(const auto&c:frame_.effects->commands)if(c.words[0]==gpueffects::Alpha&&c.indices)alphas.push_back(c);
-  auto sameAlphas=[&]{if(alphas.size()!=cpuPrefix_.alphas.size())return false;for(size_t n=0;n<alphas.size();++n)if(alphas[n].words!=cpuPrefix_.alphas[n].words||alphas[n].indices!=cpuPrefix_.alphas[n].indices)return false;return true;};
-  const bool cacheable=prefixReady_&&prefixReplay_&&prefixReplay_<=replay_.size()&&alphas.size()<=8192&&
-    uint64_t(frame_.width)*frame_.height<=2*1024*1024&&frame_.basePixels&&!frame_.baseDepthWidth;
-  const bool cached=cacheable&&cpuPrefix_.base==frame_.basePixels&&cpuPrefix_.depth==frame_.baseDepth&&
-    cpuPrefix_.fog==frame_.fogAlpha&&cpuPrefix_.mask==frame_.maskPlan&&sameAlphas()&&
-    cpuPrefix_.width==frame_.width&&cpuPrefix_.height==frame_.height&&cpuPrefix_.native==frame_.nativeScene&&
-    cpuPrefix_.scaleX==frame_.nativeScaleX&&cpuPrefix_.scaleY==frame_.nativeScaleY&&cpuPrefix_.precision==precision_&&
-    cpuPrefix_.color.size()==size_t(frame_.width)*frame_.height;
   auto savePrefix=[&]{if(!cacheable)return;cpuPrefix_.base=frame_.basePixels;cpuPrefix_.depth=frame_.baseDepth;
    cpuPrefix_.fog=frame_.fogAlpha;cpuPrefix_.mask=frame_.maskPlan;cpuPrefix_.alphas=alphas;
    cpuPrefix_.width=frame_.width;cpuPrefix_.height=frame_.height;cpuPrefix_.native=frame_.nativeScene;
    cpuPrefix_.scaleX=frame_.nativeScaleX;cpuPrefix_.scaleY=frame_.nativeScaleY;cpuPrefix_.precision=precision_;
    cpuPrefix_.color=surface.color;cpuPrefix_.z=surface.depth;cpuPrefix_.nativeZ=surface.nativeZ;cpuPrefix_.alpha=surface.alphaPlane();};
   size_t first=0,work=0;
-  if(cached){surface.color=cpuPrefix_.color;surface.depth=cpuPrefix_.z;surface.nativeZ=cpuPrefix_.nativeZ;surface.alpha(cpuPrefix_.alpha);first=prefixReplay_;cpuPrefixReused_=true;}
+  if(cached){first=prefixReplay_;cpuPrefixReused_=true;}
   for(size_t n=first;n<replay_.size();++n){
    if(!cached&&n==prefixReplay_&&cacheable){segment(first,n,work);if(rowFailed||surface.failed())return false;savePrefix();first=n;work=0;}
    const auto&call=replay_[n];

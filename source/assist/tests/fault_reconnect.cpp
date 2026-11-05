@@ -72,7 +72,7 @@ NOOP(nativePlacementReset) NOOP(nativePlacementCompletionReset) NOOP(restorePaus
 NOOP(restoreCrcMapShadow) NOOP(restoreBuildTimeTooltip) NOOP(restoreNativeSellCursor)
 NOOP(restoreNativeMegaGateway) NOOP(restoreControlObjectOwner) NOOP(restoreControlCommandOwner)
 NOOP(restoreNetworkSender) NOOP(restoreTechEnhancement) NOOP(restorePlayerContext)
-NOOP(resetMoOrders) NOOP(restoreClickHooks) NOOP(resetCooperativeState) NOOP(resetFormation)
+NOOP(resetOwnGround) NOOP(resetMoOrders) NOOP(restoreClickHooks) NOOP(resetCooperativeState) NOOP(resetFormation)
 NOOP(resetMissileControl) NOOP(resetBurstControl) NOOP(resetDodgeControl) NOOP(clearNativeOrders)
 NOOP(restorePlacement) NOOP(restoreTech) NOOP(restoreCSHook)
 #undef NOOP

@@ -265,3 +265,6 @@
 - [pre.8 Hook 異常傳遞、SEH 擁有者清理與重新連接](2026-11-05-runtime-exception-policy.md)（Search／access-only fallback／exact lease／publication abort／fault retirement；Windows 自有程序與產品編譯）
 
 - [硬體斷點 owner 交會與偵錯例外分流](2026-11-05-breakpoint-owner-rendezvous.md)（pre.9；Windows DR／SEH、延遲交易與配對成品通過；實機首發來源待確認）
+
+- [選中己方單位攻擊腳下與零射程目標](2026-11-05-attack-own-ground.md)（pre.9 整合；保留最新 Hook／例外政策，受控測試；實機發射與聯機待驗證）
+- [小地圖、副相機、隊形預覽與渲染升級共用效能](2026-11-05-shared-render-performance.md)（pre.10；LiveINI 失敗重掃、共用光照、CPU prefix／批次失效、GPU adaptive bins；受控對照，非實機 FPS）

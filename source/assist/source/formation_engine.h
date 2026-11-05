@@ -54,7 +54,8 @@ void update(const formation::Preview&next,const external::Projection&projection)
  visuals.clear();missing=0;wanted.clear();preview=next;
  int facing=int(std::lround(next.facing*32/(2*formation::Pi)))&31;wantedFacing=facing;int work=0;auto started=std::chrono::steady_clock::now();auto room=[&]{return work==0||(work<512&&std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count()<decodeBudgetMs);};for(auto&entry:models){bool changed=false;if(!refresh(assets,entry.second.art,changed,0)){entry.second.ready=false;entry.second.attempted=false;entry.second.views.clear();}else if(changed){entry.second.views.clear();++revision;}}
  for(int n=0;n<next.count;++n)if(next.slots[n].valid){int x,y;if(external::project(projection,next.slots[n].x,next.slots[n].y,next.slots[n].z,x,y))wanted.push_back(modelKey(next.units[n]));}
- const size_t start=next.count?decodeCursor%next.count:0;
+  const size_t start=next.count?decodeCursor%next.count:0;
+  external::lighting::ObjectLightContext objectLights;
  for(int scanned=0;scanned<next.count;++scanned){int n=int((start+scanned)%next.count);const auto&u=next.units[n];const auto&s=next.slots[n];if(!s.valid)continue;int x,y;if(!external::project(projection,s.x,s.y,s.z,x,y))continue;
   if(word(u.pointer+0x10)!=u.id)continue;auto key=modelKey(u);
   // Ownership can change between the wanted scan and this fresh read.
@@ -72,7 +73,7 @@ void update(const formation::Preview&next,const external::Projection&projection)
    if(!roomForImage(external::camera::pixels(*rendered))){++missing;continue;}it=c.views.emplace(facing,std::move(rendered)).first;++revision;
   }
   auto image=it->second;c.viewUsed[facing]=++useSerial;
-  visuals.push_back({x,y,image,external::lighting::object(read,u.type,std::get<1>(key),u.kind,s.x,s.y,s.z,sceneLight)});
+   visuals.push_back({x,y,image,external::lighting::object(read,u.type,std::get<1>(key),u.kind,s.x,s.y,s.z,sceneLight,&objectLights)});
  }
  std::sort(visuals.begin(),visuals.end(),[](const Visual&a,const Visual&b){if(a.y!=b.y)return a.y<b.y;if(a.x!=b.x)return a.x<b.x;return std::less<const external::voxel::Image*>{}(a.image.get(),b.image.get());});
  uint64_t hash=(uint64_t(revision)<<32)^uint64_t(facing+1)*1099511628211ull^uint64_t(next.shape+1)*16777619ull^missing;for(const auto&v:visuals){hash=(hash^uint32_t(v.x))*1099511628211ull;hash=(hash^uint32_t(v.y))*1099511628211ull;hash=(hash^uintptr_t(v.image.get()))*1099511628211ull;hash=(hash^uint32_t(v.light.intensity))*1099511628211ull;for(int c:v.light.tint)hash=(hash^uint32_t(c))*1099511628211ull;}if(hash!=visualSignature){visualSignature=hash;++paintRevision;}

@@ -2,6 +2,7 @@
 #include "vulkan_scene_types.h"
 #include "gpu_draw_encoding.h"
 #include "gpu_scene_sources.h"
+#include "gpu_scene_bins.h"
 #include "vulkan_present.h"
 #include "gpu_motion.h"
 #include "vulkan_scene_spirv.h"
@@ -28,8 +29,10 @@ class FrameResolve : public Resolve {
  gpuvoxel::Stage voxels_{*this};
  gpuxbrz::Stage xbrz_{*this};
  gpushroud::Stage shroud_{*this};
- static constexpr uint32_t Missing=0xffffffffu,DrawWords=64,MaxDraws=131072,MaxRefs=8*1024*1024;
+ static constexpr uint32_t Missing=0xffffffffu,DrawWords=64,MaxDraws=65536,MaxRefs=8*1024*1024;
  Buffer materials_,materialUpload_,commands_;
+ scenebins::Plan bins_;
+ std::vector<uint32_t>metadata_;
  gpumotion::History motionHistory_;std::shared_ptr<const gpumotion::Guides> guides_;bool guidesBuffered_=false;
  int guideRejectedWidth_=0,guideRejectedHeight_=0;uint64_t guideAllocationFailures_=0;
  std::vector<Resident> colorResident_,materialResident_;
@@ -106,6 +109,7 @@ public:
  bool render(int w,int h,const std::vector<TileJob>&jobs,std::vector<uint32_t>&out){guides_.reset();motionHistory_.clear();if(guidesBuffered_&&!inFlight_){destroy(output_);destroy(readback_);guidesBuffered_=false;}for(const auto&job:jobs)if(job.reconstructionFactor){FrameJob frame;frame.width=w;frame.height=h;frame.baseTiles=jobs;return renderFrame(frame,out);}colorResident_.clear();const bool ok=Resolve::render(w,h,jobs,out);if(!ok)cleanupFailure();return ok;}
  std::shared_ptr<const gpumotion::Guides> guides()const{return guides_;}
  uint64_t guideAllocationFailures()const{return guideAllocationFailures_;}
+ const scenebins::Cost&sceneBinCost()const{return bins_.cost;}
  bool renderFrame(const FrameJob&frame,std::vector<uint32_t>&out,std::vector<uint8_t>*maskOut=nullptr,std::shared_ptr<const gpupresent::Frame>*gpuOut=nullptr){
   guides_.reset();if(gpuOut)gpuOut->reset();if(abandoned_)return false;
   struct Context {FrameResolve*self;const FrameJob*frame;std::vector<uint32_t>*out;std::vector<uint8_t>*mask;std::shared_ptr<const gpupresent::Frame>*gpu;}context{this,&frame,&out,maskOut,gpuOut};
@@ -118,7 +122,11 @@ private:
   faultStage_=1;
   const auto started=std::chrono::steady_clock::now();diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;diagnostics_.prepareMilliseconds=diagnostics_.waitMilliseconds=diagnostics_.readbackMilliseconds=0;
   const int w=frame.width,h=frame.height;const uint64_t pixels=uint64_t(std::max(0,w))*std::max(0,h);
-  if(disabled_)return false;if(w<1||h<1||w>8192||h>8192||pixels>MaxPixels||frame.draws.size()>MaxDraws||(bool(frame.basePixels)==!frame.baseTiles.empty())||(frame.basePixels&&frame.basePixels->size()!=pixels)||(frame.baseDepth&&frame.baseDepthWidth==0&&frame.baseDepth->size()!=pixels)||(frame.fogAlpha&&frame.fogAlpha->size()!=pixels))return fail("Invalid GPU scene frame");
+  if(disabled_)return false;
+  // The upper reference bits encode read-only runs; draw IDs occupy 16 bits.
+  // Reject the whole packet before submission so the caller replays every draw.
+  if(frame.draws.size()>MaxDraws)return fail("GPU scene draw references exceed 16-bit budget; complete CPU fallback");
+  if(w<1||h<1||w>8192||h>8192||pixels>MaxPixels||(bool(frame.basePixels)==!frame.baseTiles.empty())||(frame.basePixels&&frame.basePixels->size()!=pixels)||(frame.baseDepth&&frame.baseDepthWidth==0&&frame.baseDepth->size()!=pixels)||(frame.fogAlpha&&frame.fogAlpha->size()!=pixels))return fail("Invalid GPU scene frame");
   if(!frame.collectGuides||w!=guideRejectedWidth_||h!=guideRejectedHeight_)guideRejectedWidth_=guideRejectedHeight_=0;
   gpumotion::Plan guidePlan;
   std::vector<Source>colors,materials;std::vector<std::array<size_t,8>>drawSources;size_t baseSource=0,baseDepth=0,baseDepthX=0,baseDepthY=0,fog=0;
@@ -162,28 +170,21 @@ private:
   {std::set<std::pair<uint32_t,uint32_t>>seen;voxelJobs.erase(std::remove_if(voxelJobs.begin(),voxelJobs.end(),[&](const gpuvoxel::Stage::Job&job){return !seen.insert({job.colorOffset,job.indexOffset}).second;}),voxelJobs.end());}
   if(!voxels_.prepare(voxelJobs,atlas_.buffer,AtlasBytes,materials_.buffer,MaterialBytes))return false;
   std::vector<VkBufferCopy>colorCopies,materialCopies;if(!uploadPlan(colors,colorPlan,upload_,colorCopies,AtlasBytes)||!uploadPlan(materials,materialPlan,materialUpload_,materialCopies,MaterialBytes))return false;
-  const uint32_t cols=(uint32_t(w)+31)/32,rows=(uint32_t(h)+31)/32;const size_t binCount=size_t(cols)*rows;
-  // CSR bins keep exact painter order with three contiguous allocations,
-  // instead of thousands of per-bin vectors growing on every presentation.
-  std::vector<uint32_t>counts(binCount,0),starts(binCount+1,0);
-  auto visitBins=[&](size_t n,auto&&visit){const auto&r=bounds[n];if(r[0]>=r[2]||r[1]>=r[3])return;
-   for(int y=r[1]/32;y<=(r[3]-1)/32;++y)for(int x=r[0]/32;x<=(r[2]-1)/32;++x)visit(size_t(y)*cols+x);
-  };
-  for(size_t n=0;n<bounds.size();++n)visitBins(n,[&](size_t bin){++counts[bin];});
-  uint64_t refs=0;for(size_t bin=0;bin<binCount;++bin){starts[bin]=uint32_t(refs);refs+=counts[bin];if(refs>MaxRefs)return fail("GPU scene bin budget exceeded");}starts[binCount]=uint32_t(refs);
-  std::vector<uint32_t>references(size_t(refs),0);auto positions=starts;
-  for(size_t n=0;n<bounds.size();++n)visitBins(n,[&](size_t bin){references[positions[bin]++]=uint32_t(n);});
+  if(!scenebins::build(bounds,w,h,bins_,MaxRefs,{frame.clipLeft,frame.clipTop,frame.clipRight,frame.clipBottom}))return fail("GPU scene bin budget exceeded");
+  const uint32_t cols=bins_.cost.columns;const size_t binCount=bins_.counts.size();
+  const auto&counts=bins_.counts;const auto&starts=bins_.starts;auto&references=bins_.references;
   // Vera read-only reduction: opaque bodies replace every preceding admitted
   // color in this Z-read-only span. Encode spans in the upper reference bits;
   // the shader seeks the last admitted opaque pixel, then replays its tail.
   if(!frame.nativeScene)encodeReadOnlyRuns(frame.draws,references,starts);
-  std::vector<uint32_t>metadata(frame.draws.size()*DrawWords);auto offset=[&](const UploadPlan&p,size_t n){return n==size_t(-1)?Missing:p.offsets[n];};
+  auto&metadata=metadata_;metadata.resize(frame.draws.size()*DrawWords);auto offset=[&](const UploadPlan&p,size_t n){return n==size_t(-1)?Missing:p.offsets[n];};
   for(size_t n=0;n<frame.draws.size();++n){const auto&d=frame.draws[n];const auto&s=drawSources[n];auto*dst=metadata.data()+n*DrawWords;
    std::array<uint32_t,8>at{{offset(colorPlan,s[0]),offset(materialPlan,s[1]),offset(materialPlan,s[2]),offset(colorPlan,s[3]),offset(colorPlan,s[4]),offset(materialPlan,s[5]),offset(materialPlan,s[6]),offset(materialPlan,s[7])}};
    encodeDraw(d,at,bounds[n],dst);
    if(collectGuides){dst[28]=bits(guidePlan.draws[n][0]);dst[29]=bits(guidePlan.draws[n][1]);dst[30]=guidePlan.eligible[n];}
   }
   SceneParams params{uint32_t(w),uint32_t(h),0,uint32_t(metadata.size()),0,cols,frame.baseDepth?materialPlan.offsets[baseDepth]:Missing,(frame.maskPlan||frame.fogAlpha)?materialPlan.offsets[fog]:Missing,uint32_t(std::clamp(frame.clipLeft,0,w)),uint32_t(std::clamp(frame.clipTop,0,h)),uint32_t(frame.clipRight<0?w:std::clamp(frame.clipRight,0,w)),uint32_t(frame.clipBottom<0?h:std::clamp(frame.clipBottom,0,h)),uint32_t(frame.baseDepthWidth),frame.baseDepthWidth?materialPlan.offsets[baseDepthX]:Missing,frame.baseDepthWidth?materialPlan.offsets[baseDepthY]:Missing,Missing,0,0,0,0};
+  params.reserved=bins_.cost.size;
   if(collectGuides&&pixels*28>properties_.limits.maxStorageBufferRange){guideRejectedWidth_=w;guideRejectedHeight_=h;collectGuides=false;motionHistory_.clear();}
   if(collectGuides){params.guideOffset=uint32_t(pixels*4);params.baseMotionX=bits(guidePlan.base[0]);params.baseMotionY=bits(guidePlan.base[1]);params.depthFar=bits(frame.motion.depthFar);params.depthScale=bits(1.f/(frame.motion.depthNear-frame.motion.depthFar));}
   params.refsOffset=params.binsOffset+uint32_t(binCount*2);metadata.reserve(metadata.size()+binCount*2+references.size());for(size_t bin=0;bin<binCount;++bin){metadata.push_back(starts[bin]);metadata.push_back(counts[bin]);}metadata.insert(metadata.end(),references.begin(),references.end());

@@ -1,0 +1,7 @@
+{
+  "base_commit": "dde2f56b3c663f3355d1c7ca0c436f5a2ba8ee58",
+  "source": "source/external_reader/source/live_ini.h",
+  "source_git_blob_sha": "52e7fb92f2903a51e3404070e68ed0b31a6e0642",
+  "fixture_sha256": "7e85927a293f6c7fbae03388f42b56293a9e22960f57682b26ab3b314472da30",
+  "changes": "Class names prefixed Before; include relocated to same production art_metadata.h. No algorithm changes."
+}

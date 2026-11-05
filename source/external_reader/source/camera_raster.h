@@ -123,6 +123,17 @@ public:
  bool resetFrame(int w,int h,const std::vector<uint32_t>&base,const std::vector<float>*initialDepth){
   return resetStorage(w,h,0,&base,initialDepth,true);
  }
+ // Restore a verified completed terrain prefix without first initializing
+ // base pixels/depth and shading a native mask that would be overwritten.
+ // No plane is shared mutably: the dynamic tail receives its own full copy.
+ bool restoreFrame(int w,int h,const std::vector<uint32_t>&pixels,const std::vector<float>&z,
+                   const std::vector<uint16_t>&native,std::shared_ptr<const std::vector<uint8_t>>alpha){
+  if(w<=0||h<=0||w>8192||h>8192||uint64_t(w)*h>32*1024*1024||
+     pixels.size()!=size_t(w)*h||z.size()!=pixels.size()||native.size()!=pixels.size())return false;
+  width_=w;height_=h;reconstructionFailed_=false;color=pixels;depth=z;nativeZ=native;alpha_=std::move(alpha);
+  nativeRead_={};writeTop_=0;writeBottom_=h;nativeOriginX_=nativeOriginY_=outputOriginY_=0;
+  nativeScaleX_=nativeScaleY_=1;nativePitch_=w;nativeViewHeight_=h;return true;
+ }
  int width()const{return width_;}int height()const{return height_;}
  void precision(colorprecision::Mode mode){precision_=mode==colorprecision::Mode::SmoothRGB?mode:colorprecision::Mode::NativeSteps;}
  colorprecision::Mode precision()const{return precision_;}

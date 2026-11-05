@@ -1,0 +1,125 @@
+name: Publish verified pre10 render performance package
+on:
+  push:
+    branches: [codex/release-pre10-renderperf-20261105]
+    paths: ['packages/v1.0.41-pre.10/publish-ready.json']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v141-pre10-renderperf
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify pinned sources and the exact already-tested packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile
+          root=pathlib.Path.cwd()
+          package=root/'packages/v1.0.41-pre.10'
+          ready=json.loads((package/'publish-ready.json').read_text())
+          assert ready['tag']=='v1.0.41-pre.10'
+          assert os.environ['GITHUB_REF']=='refs/heads/'+ready['branch']
+          for relative,wanted in ready['compiled_source_sha256'].items():
+              p=root/'source'/relative
+              assert p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest()==wanted,relative
+          for item in ready['assets']:
+              p=package/item['name'];data=p.read_bytes()
+              assert len(data)==item['bytes'] and hashlib.sha256(data).hexdigest()==item['sha256'],item['name']
+              if p.suffix=='.zip':
+                  with zipfile.ZipFile(p) as z: assert z.testzip() is None
+          update=next(x for x in ready['assets'] if x['name'].endswith('-Update.zip'))
+          source=next(x for x in ready['assets'] if x['name'].endswith('-Source.zip'))
+          with zipfile.ZipFile(package/update['name']) as z:
+              target=json.loads(z.read('BUILD_TARGET.json'))
+              assert target['version']=='1.0.41-pre.10' and target['file_version']=='1.0.41.10'
+              assert target['host']=='x64' and target['runtime']=='x86' and target['broker']=='x86'
+              assert {'RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe','WebView2Loader.dll'} <= set(z.namelist())
+              integration=json.loads(z.read('INTEGRATION.json'))
+              assert integration['game_tested'] is False and integration['multiplayer_tested'] is False
+              for name in ('cpu','gpu','lighting','live_ini','review','review_live_ini'):
+                  assert json.loads(z.read('diagnostics/'+name+'.json'))['passed']
+          with zipfile.ZipFile(package/source['name']) as z:
+              for relative,wanted in ready['compiled_source_sha256'].items():
+                  assert hashlib.sha256(z.read('source/'+relative)).hexdigest()==wanted,relative
+          manifest=json.loads((package/'release-manifest.json').read_text())
+          assert manifest['artifacts']==[x for x in ready['assets'] if x['name']!='release-manifest.json']
+          PY
+      - name: Create a new draft without replacing an existing release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$GH_REPO/releases?per_page=100" --slurp > releases-before.json
+          python3 - <<'PY'
+          import json,os,pathlib,re,subprocess
+          tag=subprocess.run(['gh','api',f'repos/{os.environ["GH_REPO"]}/git/ref/tags/v1.0.41-pre.10'],text=True,capture_output=True)
+          assert tag.returncode!=0,'Refusing to replace an existing pre10 tag'
+          if not re.search(r'\(HTTP 404\)',tag.stderr):
+              raise SystemExit('Cannot prove pre10 tag is absent: '+tag.stderr)
+          pages=json.load(open('releases-before.json'))
+          assert not any(x['tag_name']=='v1.0.41-pre.10' for page in pages for x in page),'Refusing to replace an existing pre10 release'
+          request=dict(tag_name='v1.0.41-pre.10',target_commitish=os.environ['GITHUB_SHA'],draft=True,prerelease=True,make_latest='false',
+              name='紅警工具箱 1.0.41-pre.10 — 共用渲染效能與化學兵整合',body=pathlib.Path('packages/v1.0.41-pre.10/RELEASE_NOTES.md').read_text())
+          pathlib.Path('release-request.json').write_text(json.dumps(request))
+          PY
+          gh api --method POST "repos/$GH_REPO/releases" --input release-request.json > release-state.json
+      - name: Upload only the validated allowlisted assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,subprocess,urllib.parse
+          package=pathlib.Path('packages/v1.0.41-pre.10')
+          ready=json.loads((package/'publish-ready.json').read_text())
+          state=json.load(open('release-state.json'));assert state['draft'] and state['prerelease']
+          url=state['upload_url'].split('{')[0]
+          for item in ready['assets']:
+              p=package/item['name']
+              response=subprocess.check_output(['gh','api','--method','POST',url+'?name='+urllib.parse.quote(item['name']),'-H','Content-Type: application/octet-stream','--input',str(p)])
+              asset=json.loads(response);assert asset['state']=='uploaded' and asset['size']==item['bytes']
+          PY
+      - name: Download and verify the draft before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,subprocess
+          ready=json.loads(pathlib.Path('packages/v1.0.41-pre.10/publish-ready.json').read_text())
+          state=json.load(open('release-state.json'));repo=os.environ['GH_REPO']
+          current=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/releases/{state["id"]}']))
+          assert current['draft'] and current['target_commitish']==os.environ['GITHUB_SHA']
+          assets=current['assets'];assert {a['name'] for a in assets}=={x['name'] for x in ready['assets']}
+          for item in ready['assets']:
+              asset=next(a for a in assets if a['name']==item['name'])
+              data=subprocess.check_output(['gh','api',f'repos/{repo}/releases/assets/{asset["id"]}','-H','Accept: application/octet-stream'])
+              assert len(data)==item['bytes'] and hashlib.sha256(data).hexdigest()==item['sha256'],item['name']
+          tag=subprocess.run(['gh','api',f'repos/{repo}/commits/v1.0.41-pre.10'],text=True,capture_output=True)
+          if tag.returncode==0:
+              assert json.loads(tag.stdout)['sha']==os.environ['GITHUB_SHA'],'pre10 tag changed during upload'
+          elif not re.search(r'\(HTTP 404\)',tag.stderr):
+              raise SystemExit('Cannot verify pre10 tag before publication: '+tag.stderr)
+          pathlib.Path('release-publish.json').write_text(json.dumps(dict(draft=False,prerelease=True,make_latest='false')))
+          PY
+          release_id=$(python3 -c "import json;print(json.load(open('release-state.json'))['id'])")
+          gh api --method PATCH "repos/$GH_REPO/releases/$release_id" --input release-publish.json > published-release.json
+          gh api "repos/$GH_REPO/commits/v1.0.41-pre.10" --jq .sha > tag-commit.txt
+          python3 - <<'PY'
+          import json,os,pathlib
+          release=json.load(open('published-release.json'))
+          assert not release['draft'] and release['prerelease'] and release['tag_name']=='v1.0.41-pre.10'
+          assert pathlib.Path('tag-commit.txt').read_text().strip()==os.environ['GITHUB_SHA']
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:f.write(release['html_url']+'\n\nAll three release assets were downloaded and SHA-256 verified before publication.\n')
+          print(release['html_url'])
+          PY

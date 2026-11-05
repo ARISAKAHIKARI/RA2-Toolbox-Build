@@ -1,0 +1,15 @@
+{
+  "name": "RA2-Toolbox-1.0.41-pre.10-RenderPerf-x64",
+  "artifacts": [
+    {
+      "name": "RA2-Toolbox-1.0.41-pre.10-RenderPerf-x64-Update.zip",
+      "bytes": 3649176,
+      "sha256": "74142ad11cafb4d463b4c1ed73c9777f5aaa175a9731c5bed5bbaef48468f2b7"
+    },
+    {
+      "name": "RA2-Toolbox-1.0.41-pre.10-RenderPerf-x64-Source.zip",
+      "bytes": 3304597,
+      "sha256": "0de619e7aadfb9ade66f6fae317645f372e8d6bd1466d54d4ba290149fed5dec"
+    }
+  ]
+}

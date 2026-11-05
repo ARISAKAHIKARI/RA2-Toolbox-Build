@@ -16,8 +16,9 @@ inline bool runtimeFeatureDemand(uint32_t configured,const AdditionalSettings&ex
  // command-owner preference alone is not an enabled native-control feature.
  return extra.smallMapClamp||extra.controlRequest()!=controlmode::Off||extra.commandOwnerRequested()||
   extra.networkHouseRequested()||extra.renderReveal||extra.crcMapShadow||
-  extra.nativeSellCursor||extra.nativeMegaGateway||extra.techEnhance||extra.destructSelectedOwner||
+  extra.nativeSellCursor||extra.nativeMegaGateway||extra.techEnhance||extra.destructSelectedOwner||(extra.missionModeKeys[selectedmode::OwnGround]&255u)||
   extra.mapVisibility||extra.superweaponGrant||extra.sidebarEnabled||extra.viewZoomEnabled||extra.lowDamageFilter||extra.formationEnabled||(extra.moFeatures&23u)||extra.dodgeEnabled||
   extra.missileDefense||extra.magnetronGlobal||extra.magnetronDrop;
 }
 }
+

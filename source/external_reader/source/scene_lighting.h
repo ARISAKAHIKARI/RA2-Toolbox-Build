@@ -148,21 +148,42 @@ template<class Read>State terrainObject(Read read,uint32_t type,int x,int y,int 
  }
  return out;
 }
-template<class Read>State object(Read read,uint32_t type,uint32_t owner,int kind,int x,int y,int z,const State&fallback){
+// One presentation only. Resolve each object's actual converter and cell as
+// before, then share only the converter's validated tint/metadata and the
+// Rules extra-light value. A new context observes same-frame live edits and
+// retries failures; no mutable reader or cross-presentation data is shared.
+struct ObjectLightContext {
+ TintCache tints;
+ struct Extra {bool sampled=false,valid=false;int32_t value=0;};
+ std::array<Extra,3> extras{};
+ template<class Read>bool extra(Read read,int kind,int32_t&value){
+  if(kind<0||kind>2)return false;
+  auto&e=extras[kind];
+  if(!e.sampled){
+   e.sampled=true;uint32_t rules=0,after=0;
+   const uint32_t offset=kind==2?0x17D4:(kind==1?0x17D8:0x17DC);
+   e.valid=read(0x8871E0,&rules,4)&&rules>=0x10000&&uint64_t(rules)+offset+4<=0x100000000ull&&
+    read(rules+offset,&e.value,4)&&read(0x8871E0,&after,4)&&after==rules;
+  }
+  value=e.value;return e.valid;
+ }
+};
+template<class Read>State object(Read read,uint32_t type,uint32_t owner,int kind,int x,int y,int z,const State&fallback,ObjectLightContext*context=nullptr){
  uint8_t terrainPalette=0,voxel=0;
  if(type>=0x10000&&type<=0xfffffdc9u)read(type+0x236,&voxel,1);
  if(kind==3&&!voxel&&type>=0x10000&&type<=0xffffe8fcu&&read(type+0x1702,&terrainPalette,1)&&terrainPalette)
   return at(read,x,y,z,fallback,true); // 705EC1: also replaces ExtraLight with cell terrain intensity.
  State out=at(read,x,y,z,fallback,false,false);
- uint32_t converter=objectConverter(read,type,owner);converterTint(read,converter,out.tint);converterMetadata(read,converter,out);
+ uint32_t converter=objectConverter(read,type,owner);
+ if(context)context->tints.shade(read,converter,out);else{converterTint(read,converter,out.tint);converterMetadata(read,converter,out);}
  if(kind>=0&&kind<=2){
   // Unit::Draw 73D0C3 adds ExtraUnitLight before selecting VXL or SHP.
   // Infantry::Draw 519457 and Aircraft::Draw 414925 use separate fields.
   // Rules parsing stores config*1000 as signed integers, despite public
   // float declarations. Never infer one class's light from another class.
   uint32_t rules=0,after=0,offset=kind==2?0x17D4:(kind==1?0x17D8:0x17DC);int32_t extra=0;
-  if(read(0x8871E0,&rules,4)&&rules>=0x10000&&uint64_t(rules)+offset+4<=0x100000000ull&&read(rules+offset,&extra,4)&&
-     read(0x8871E0,&after,4)&&after==rules){
+  if(context?context->extra(read,kind,extra):(read(0x8871E0,&rules,4)&&rules>=0x10000&&uint64_t(rules)+offset+4<=0x100000000ull&&read(rules+offset,&extra,4)&&
+     read(0x8871E0,&after,4)&&after==rules)){
    int64_t base=out.intensity<0?int64_t(out.ambient)*10:out.intensity;
    out.intensity=int(std::clamp<int64_t>(base+extra,0,2000)); // presentation range; negative is not fallback ambient
   }
