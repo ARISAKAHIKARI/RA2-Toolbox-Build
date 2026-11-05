@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.41-pre.13",
-  "version": "1.0.41-pre.13",
+  "name": "RA2 Toolbox 1.0.41",
+  "version": "1.0.41",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
   "build_protocol": 96,
-  "validation": "Mixed generated TMP/SHP/VXL-HVA/animated-effects workloads; globally bounded optional CPU terrain prefixes and GPU phase CSR filtering with original-CSR pixel oracles; preserves pre.12 read-cache and rendering corrections. Physical GPU/game FPS and multiplayer acceptance remain unverified.",
+  "validation": "Rebuilt from verified pre.14 production source; paired PE architecture/version, protocol, dependency and release-package hashes checked. Earlier controlled render and Hook validations retain their recorded scope; physical GPU/game FPS and multiplayer acceptance remain unverified.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
@@ -38,7 +38,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.41-pre.13 mixed-scene GPU phase reference corrections; source and paired compile identity recorded by dedicated workflow; real-game acceptance pending",
+  "release_status": "1.0.41 stable release, built from the verified pre.14 source; experimental feature switches retain their existing defaults and validation boundaries.",
   "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; collapsible per-feature groups, runtime error visibility and timestamped immediate actions",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
