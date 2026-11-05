@@ -62,6 +62,16 @@ jobs:
           if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
           Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
           New-Item -ItemType Directory -Force artifacts/console,diagnostics | Out-Null
+      - name: Validate single-player FPS callback and shared hardware service on Windows x86
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          for name in single_player_fps_windows tech_ui_breakpoint_windows; do
+            "$ZIG" c++ -target x86-windows-gnu -fms-extensions -fasm-blocks -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "diagnostics/$name.exe" -lkernel32 -luser32
+            "diagnostics/$name.exe" > "diagnostics/$name.log"
+            cat "diagnostics/$name.log"
+          done
       - name: Compile modern x64 host and paired x86 Runtime and broker
         shell: bash
         run: |
@@ -90,16 +100,6 @@ jobs:
           export ZIG="$(cygpath -u "$ZIG_EXE")"
           for name in building_animations radar_output_scene; do
             "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" source/third_party/xbrz/xbrz.cpp -o "diagnostics/$name.exe" -lkernel32 -luser32 -lgdi32 -lpsapi -lshell32 -lole32
-            "diagnostics/$name.exe" > "diagnostics/$name.log"
-            cat "diagnostics/$name.log"
-          done
-      - name: Validate single-player FPS callback and shared hardware service on Windows x86
-        shell: bash
-        run: |
-          set -euo pipefail
-          export ZIG="$(cygpath -u "$ZIG_EXE")"
-          for name in single_player_fps_windows tech_ui_breakpoint_windows; do
-            "$ZIG" c++ -target x86-windows-gnu -fms-extensions -fasm-blocks -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "diagnostics/$name.exe" -lkernel32 -luser32
             "diagnostics/$name.exe" > "diagnostics/$name.log"
             cat "diagnostics/$name.log"
           done

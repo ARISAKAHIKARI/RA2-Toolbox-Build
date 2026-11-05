@@ -5,7 +5,7 @@ extern "C" void* _exception_info();
 // another engine entry, logging or swallowing unrelated debug exceptions.
 extern "C" int __cdecl AssistTechUiParameter(void*,unsigned);
 extern "C" int __cdecl GuardedTechUiParameter(void*context,unsigned tag){
- const DWORD saved=GetLastError();int result=0;
+ const unsigned long saved=GetLastError();int result=0;
  __try {__try {result=AssistTechUiParameter(context,tag);}
   __except(assistguard::noReportAccess(_exception_info())){result=0;}}
  __finally {SetLastError(saved);}return result;
