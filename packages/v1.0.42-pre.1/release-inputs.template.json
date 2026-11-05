@@ -1,0 +1,17 @@
+{
+  "ready": false,
+  "version": "1.0.42-pre.1",
+  "file_version": "1.0.42.1",
+  "tag": "v1.0.42-pre.1",
+  "branch": "codex/building-animation-insignia-fix-20261105",
+  "baseline_commit": "513aeb4cf03238cce956bd35e0c9381c2a7cc484",
+  "compiled_source_commit": null,
+  "compiled_source_sha256": {},
+  "reports": {
+    "building_animation": null,
+    "insignia_scale": null,
+    "watch_tracking": null,
+    "review": null
+  },
+  "notes": "Root must fill actual final source commit, the exact build logs/source-before.json map, and passing report JSON paths, then set ready=true. Do not use fabricated hashes or placeholder reports."
+}

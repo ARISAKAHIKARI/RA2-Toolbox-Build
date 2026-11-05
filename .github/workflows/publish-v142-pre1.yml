@@ -1,0 +1,44 @@
+name: Publish verified 1.0.42-pre.1 building animation, insignia and camera fixes
+on:
+  push:
+    branches: [codex/building-animation-insignia-fix-20261105]
+    paths: ['packages/v1.0.42-pre.1/publish-ready.json']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v142-pre1-building-animation-insignia
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          sparse-checkout: |
+            source
+            packages/v1.0.42-pre.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact tested source and packages, upload own draft, download and publish prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          python packages/v1.0.42-pre.1/publish_release.py
+      - name: Preserve publication identity and download verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.42-pre.1-publication
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            publication/*.json
