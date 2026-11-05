@@ -57,7 +57,7 @@ jobs:
           manifest=json.loads((package/'release-manifest.json').read_text())
           assert manifest['artifacts']==[x for x in ready['assets'] if x['name']!='release-manifest.json']
           PY
-      - name: Create a new draft without replacing an existing release
+      - name: Create or resume only this publication's own draft
         shell: bash
         run: |
           set -euo pipefail
@@ -69,12 +69,29 @@ jobs:
           if not re.search(r'\(HTTP 404\)',tag.stderr):
               raise SystemExit('Cannot prove pre10 tag is absent: '+tag.stderr)
           pages=json.load(open('releases-before.json'))
-          assert not any(x['tag_name']=='v1.0.41-pre.10' for page in pages for x in page),'Refusing to replace an existing pre10 release'
+          ready=json.loads(pathlib.Path('packages/v1.0.41-pre.10/publish-ready.json').read_text())
+          matches=[x for page in pages for x in page if x['tag_name']=='v1.0.41-pre.10']
+          resume=ready.get('resume_draft')
+          if matches:
+              assert len(matches)==1 and resume,'Refusing to replace an existing pre10 release'
+              prior=matches[0]
+              assert prior['id']==resume['id'] and prior['draft'] and prior['prerelease']
+              assert prior['author']['login']=='github-actions[bot]'
+              assert prior['target_commitish'] in (resume['original_commit'],os.environ['GITHUB_SHA'])
+              assert {a['name'] for a in prior['assets']} <= {a['name'] for a in ready['assets']}
+              pathlib.Path('resume-release-id.txt').write_text(str(prior['id']))
+          else:
+              assert not resume,'Expected the pinned resumable draft; refusing to create another release'
           request=dict(tag_name='v1.0.41-pre.10',target_commitish=os.environ['GITHUB_SHA'],draft=True,prerelease=True,make_latest='false',
               name='紅警工具箱 1.0.41-pre.10 — 共用渲染效能與化學兵整合',body=pathlib.Path('packages/v1.0.41-pre.10/RELEASE_NOTES.md').read_text())
           pathlib.Path('release-request.json').write_text(json.dumps(request))
           PY
-          gh api --method POST "repos/$GH_REPO/releases" --input release-request.json > release-state.json
+          if test -s resume-release-id.txt; then
+            release_id=$(cat resume-release-id.txt)
+            gh api --method PATCH "repos/$GH_REPO/releases/$release_id" --input release-request.json > release-state.json
+          else
+            gh api --method POST "repos/$GH_REPO/releases" --input release-request.json > release-state.json
+          fi
       - name: Upload only the validated allowlisted assets
         shell: bash
         run: |
@@ -85,7 +102,14 @@ jobs:
           ready=json.loads((package/'publish-ready.json').read_text())
           state=json.load(open('release-state.json'));assert state['draft'] and state['prerelease']
           url=state['upload_url'].split('{')[0]
+          existing={a['name']:a for a in state['assets']}
+          assert set(existing) <= {x['name'] for x in ready['assets']}
           for item in ready['assets']:
+              if item['name'] in existing:
+                  asset=existing[item['name']]
+                  assert asset['size']==item['bytes'] and asset['state']=='uploaded'
+                  assert asset.get('digest') in (None,'sha256:'+item['sha256'])
+                  continue
               p=package/item['name']
               response=subprocess.check_output(['gh','api','--method','POST',url+'?name='+urllib.parse.quote(item['name']),'-H','Content-Type: application/octet-stream','--input',str(p)])
               asset=json.loads(response);assert asset['state']=='uploaded' and asset['size']==item['bytes']
@@ -105,9 +129,10 @@ jobs:
               asset=next(a for a in assets if a['name']==item['name'])
               data=subprocess.check_output(['gh','api',f'repos/{repo}/releases/assets/{asset["id"]}','-H','Accept: application/octet-stream'])
               assert len(data)==item['bytes'] and hashlib.sha256(data).hexdigest()==item['sha256'],item['name']
-          tag=subprocess.run(['gh','api',f'repos/{repo}/commits/v1.0.41-pre.10'],text=True,capture_output=True)
+          tag=subprocess.run(['gh','api',f'repos/{repo}/git/ref/tags/v1.0.41-pre.10'],text=True,capture_output=True)
           if tag.returncode==0:
-              assert json.loads(tag.stdout)['sha']==os.environ['GITHUB_SHA'],'pre10 tag changed during upload'
+              commit=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/commits/v1.0.41-pre.10']))
+              assert commit['sha']==os.environ['GITHUB_SHA'],'pre10 tag changed during upload'
           elif not re.search(r'\(HTTP 404\)',tag.stderr):
               raise SystemExit('Cannot verify pre10 tag before publication: '+tag.stderr)
           pathlib.Path('release-publish.json').write_text(json.dumps(dict(draft=False,prerelease=True,make_latest='false')))

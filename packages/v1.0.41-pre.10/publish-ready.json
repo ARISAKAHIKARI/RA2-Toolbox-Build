@@ -796,5 +796,9 @@
       "bytes": 456,
       "sha256": "d7c8199d27dafadb8f3056db80f6d1703ef3a5b06de830346c670880f436563b"
     }
-  ]
+  ],
+  "resume_draft": {
+    "id": 434632554,
+    "original_commit": "32f49cbc1e050c5049178706068ec30cf1125fb5"
+  }
 }
