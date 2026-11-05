@@ -34,15 +34,61 @@ private:
   static constexpr size_t Bytes=size_t(PageSize+1)*(PageSize+1)*sizeof(std::array<uint32_t,3>);
   inline static std::atomic<size_t> retained{0};
   inline static std::atomic<uint64_t> builds{0};
+#ifdef RA2_CPU_AREA_CACHE_BYTES
+  static constexpr size_t Limit=RA2_CPU_AREA_CACHE_BYTES;
+#else
+  static constexpr size_t Limit=rendermemory::AreaPrefixes;
+#endif
   std::vector<std::array<uint32_t,3>>sum;uint64_t revision=0;bool cached=false;
   ~AreaPrefix(){if(cached)retained.fetch_sub(Bytes,std::memory_order_relaxed);}
-  bool retain(){auto bytes=retained.load(std::memory_order_relaxed);
-   while(bytes<=rendermemory::AreaPrefixes-Bytes)if(retained.compare_exchange_weak(bytes,bytes+Bytes,std::memory_order_relaxed)){cached=true;return true;}return false;
+  static bool reserve(size_t cost){if(cost>Limit)return false;auto bytes=retained.load(std::memory_order_relaxed);
+   while(bytes<=Limit-cost)if(retained.compare_exchange_weak(bytes,bytes+cost,std::memory_order_relaxed))return true;return false;}
+  bool retain(){cached=reserve(Bytes);return cached;}
+ };
+ // Exact integer/half-integer reduction needs only each output box's sum,
+ // rather than a 129x129 RGB integral image for every changed native page.
+ // Coordinates and weights use half-pixels; their sums remain exact integers.
+ struct BoxReduction {
+  struct Credit {size_t bytes=0;~Credit(){if(bytes)AreaPrefix::retained.fetch_sub(bytes,std::memory_order_relaxed);}}credit;
+  int x=0,y=0,stepX=0,stepY=0,firstX=0,firstY=0,columns=0,rows=0;uint64_t revision=0;
+  std::vector<std::array<uint64_t,3>>sum;
+  inline static std::atomic<uint64_t>builds{0};
+  bool matches(int px,int py,int sx,int sy,uint64_t version)const{return x==px&&y==py&&stepX==sx&&stepY==sy&&revision==version;}
+  static std::array<uint64_t,3>box(const Surface&s,int left,int top,int right,int bottom){
+   std::array<uint64_t,3>total{};const int first=(left+1)/2,last=right/2;
+   for(int y=top/2;y<(bottom+1)/2;++y){const auto*row=s.color.data()+size_t(y)*PageSize;uint64_t rb=0,g=0;
+    // Separate 32-bit red/blue lanes cannot carry within a 128-pixel row.
+    for(int x=first;x<last;++x){const uint32_t c=row[x];rb+=(uint64_t(c&0xff0000u)<<16)|(c&255u);g+=(c>>8)&255u;}
+    rb*=2;g*=2;
+    if(left&1){const uint32_t c=row[left/2];rb+=(uint64_t(c&0xff0000u)<<16)|(c&255u);g+=(c>>8)&255u;}
+    if(right&1){const uint32_t c=row[right/2];rb+=(uint64_t(c&0xff0000u)<<16)|(c&255u);g+=(c>>8)&255u;}
+    const unsigned weight=unsigned(std::min(bottom,2*y+2)-std::max(top,2*y));
+    total[0]+=(rb>>32)*weight;total[1]+=g*weight;total[2]+=uint32_t(rb)*uint64_t(weight);
+   }return total;
   }
  };
  struct Page {
   std::shared_ptr<Budget> budget;Surface surface;uint64_t revision=0;
   mutable std::mutex prefixMutex;mutable std::shared_ptr<const AreaPrefix>area;
+  mutable std::shared_ptr<const BoxReduction>reduction;
+  std::shared_ptr<const BoxReduction>boxes(int x,int y,int sx,int sy)const{
+   std::lock_guard<std::mutex>lock(prefixMutex);
+   if(reduction&&reduction->matches(x,y,sx,sy,revision))return reduction;
+   // Reuse the small table only after every reader of its old revision has
+   // released it. Frozen snapshots/concurrent scales keep their own sums.
+   const bool reusable=reduction&&reduction.use_count()==1&&reduction->x==x&&reduction->y==y&&reduction->stepX==sx&&reduction->stepY==sy;
+   auto next=reusable?std::const_pointer_cast<BoxReduction>(reduction):std::shared_ptr<BoxReduction>{};
+   if(!reusable)reduction.reset();if(area&&area->revision!=revision)area.reset();
+   if(!next)next=std::make_shared<BoxReduction>();next->x=x;next->y=y;next->stepX=sx;next->stepY=sy;next->revision=revision;
+   const int left=x*PageSize*2,top=y*PageSize*2,right=left+PageSize*2,bottom=top+PageSize*2;
+   next->firstX=left/sx;next->firstY=top/sy;next->columns=(right+sx-1)/sx-next->firstX;next->rows=(bottom+sy-1)/sy-next->firstY;
+   const size_t count=size_t(next->columns)*next->rows,cost=sizeof(BoxReduction)+count*sizeof(next->sum[0])+128;
+   if(!reusable){if(!AreaPrefix::reserve(cost))return {};next->credit.bytes=cost;next->sum.resize(count);}
+   for(int yy=0;yy<next->rows;++yy)for(int xx=0;xx<next->columns;++xx){const int ox=next->firstX+xx,oy=next->firstY+yy;
+    next->sum[size_t(yy)*next->columns+xx]=BoxReduction::box(surface,std::max(left,ox*sx)-left,std::max(top,oy*sy)-top,std::min(right,(ox+1)*sx)-left,std::min(bottom,(oy+1)*sy)-top);
+   }
+   ++BoxReduction::builds;reduction=next;return next;
+  }
   std::shared_ptr<const AreaPrefix>prefix(bool build)const{
    std::lock_guard<std::mutex>lock(prefixMutex);
    if(area&&area->revision==revision)return area;
@@ -157,8 +203,35 @@ public:
   }
  };
 public:
- struct AreaCacheStats {size_t bytes;uint64_t builds;};
- static AreaCacheStats areaCacheStats(){return {AreaPrefix::retained.load(std::memory_order_relaxed),AreaPrefix::builds.load(std::memory_order_relaxed)};}
+private:
+ bool presentBoxes(int width,int height,std::vector<uint32_t>&out,int stepX,int stepY)const{
+  try{
+   const int columns=(width*stepX+PageSize*2-1)/(PageSize*2),rows=(height*stepY+PageSize*2-1)/(PageSize*2);
+   std::vector<std::shared_ptr<const BoxReduction>>boxes(size_t(columns)*rows);
+   struct Work {int x,y;const Page*page;};std::vector<Work>work;work.reserve(pages_.size());
+   for(const auto&e:pages_){const int x=pageX(e.first),y=pageY(e.first);if(x<columns&&y<rows)work.push_back({x,y,e.second.get()});}
+   std::atomic<bool>ready{true};
+   parallelrows::rows(work.size(),work.size()*size_t(PageSize)*PageSize,[&](size_t first,size_t last){
+    try{for(size_t n=first;n<last;++n){const auto&w=work[n];auto reduced=w.page->boxes(w.x,w.y,stepX,stepY);if(!reduced){ready=false;continue;}boxes[size_t(w.y)*columns+w.x]=std::move(reduced);}}
+    catch(const std::bad_alloc&){ready=false;}
+   });
+   if(!ready)return false;
+   const uint64_t area=uint64_t(stepX)*stepY;
+   // Three integer channel divisions plus page gathers per output pixel.
+   parallelrows::rows(size_t(height),size_t(width)*height*3,[&](size_t first,size_t last){
+    for(int y=int(first);y<int(last);++y)for(int x=0;x<width;++x){const int l=x*stepX,t=y*stepY,r=l+stepX,b=t+stepY;uint64_t total[3]{};
+     for(int py=t/(PageSize*2);py<=(b-1)/(PageSize*2);++py)for(int px=l/(PageSize*2);px<=(r-1)/(PageSize*2);++px){const auto&p=boxes[size_t(py)*columns+px];
+      if(p){const auto&sum=p->sum[size_t(y-p->firstY)*p->columns+x-p->firstX];for(int c=0;c<3;++c)total[c]+=sum[c];}
+      else{const uint64_t coverage=uint64_t(std::min(r,(px+1)*PageSize*2)-std::max(l,px*PageSize*2))*(std::min(b,(py+1)*PageSize*2)-std::max(t,py*PageSize*2));for(int c=0;c<3;++c)total[c]+=coverage*((background_>>(16-c*8))&255);}
+     }
+     uint32_t color=0xff000000u;for(int c=0;c<3;++c)color|=uint32_t((total[c]+area/2)/area)<<(16-c*8);out[size_t(y)*width+x]=color;
+    }
+   });return true;
+  }catch(const std::bad_alloc&){return false;}
+ }
+public:
+ struct AreaCacheStats {size_t bytes;uint64_t builds;uint64_t boxBuilds;};
+ static AreaCacheStats areaCacheStats(){const auto boxes=BoxReduction::builds.load(std::memory_order_relaxed);return {AreaPrefix::retained.load(std::memory_order_relaxed),AreaPrefix::builds.load(std::memory_order_relaxed)+boxes,boxes};}
  bool reset(int width,int height,std::shared_ptr<Budget>budget={},uint32_t background=0xff080c08u){
   retained_=false;underlays_.reset();
   regionCache_.reset();terrainSources_.reset();nativeAlpha_.reset();pages_.clear();dirty_.clear();dirtyRects_.clear();repaintPages_.clear();repainting_=false;failed_=dynamic_=false;width_=height_=0;paintLeft_=paintTop_=paintRight_=paintBottom_=0;background_=background;budget_=budget?std::move(budget):sharedBudget();
@@ -375,6 +448,7 @@ public:
   if(spanX<=0)spanX=width_;if(spanY<=0)spanY=height_;if(spanX>width_||spanY>height_||!std::isfinite(spanX)||!std::isfinite(spanY))return false;
   if(spanX==width&&spanY==height){out.resize(size_t(width)*height);for(int y=0;y<height;++y)nativeRow(y,0,width,out.data()+size_t(y)*width);return true;}
   out.resize(size_t(width)*height);double sx=spanX/width,sy=spanY/height;
+  if(sx>=2&&sy>=2&&std::floor(sx*2)==sx*2&&std::floor(sy*2)==sy*2&&presentBoxes(width,height,out,int(sx*2),int(sy*2)))return true;
   parallelrows::rows(size_t(height),size_t(std::ceil(spanX))*size_t(std::ceil(spanY)),[&](size_t first,size_t last){Filter filter(*this);
    for(int y=int(first);y<int(last);++y)for(int x=0;x<width;++x)out[size_t(y)*width+x]=filter.pixel(x*sx,y*sy,(x+1)*sx,(y+1)*sy);
   });return true;

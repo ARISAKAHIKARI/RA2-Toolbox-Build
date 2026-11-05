@@ -1,5 +1,8 @@
 #pragma once
-#include "../../external_reader/source/object_canvas.h"
+#ifndef OBJECT_CANVAS_HEADER
+#define OBJECT_CANVAS_HEADER "../../external_reader/source/object_canvas.h"
+#endif
+#include OBJECT_CANVAS_HEADER
 #include "../../external_reader/source/asset_decode.h"
 #include "../../external_reader/source/gpu_effect_plan.h"
 #include "gpu_voxel_cases.h"
