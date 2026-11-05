@@ -6,7 +6,7 @@
 // Dedicated-thread CONTEXT changes; no target-process code, virtual table,
 // rules, event queue or executable allocation is written here.
 namespace assist { namespace techbp {
-inline constexpr unsigned SiteCount=5;
+inline constexpr unsigned SiteCount=6;
 inline constexpr uint32_t AllTags=(1u<<SiteCount)-1;
 enum Status {Off=0,Ready=1,Waiting=2,Signature=-1,Slots=-2,System=-3,Foreign=-4,Thread=-5};
 struct Registers {uint32_t address[4]{},control=0,status=0;};

@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.42-pre.1",
-  "version": "1.0.42-pre.1",
+  "name": "RA2 Toolbox 1.0.42-pre.2",
+  "version": "1.0.42-pre.2",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
-  "build_protocol": 96,
-  "validation": "Local-damage replay and revision-checked partial box sums preserve RGBA, float depth, native Z and alpha; immutable static lists retain order and source identity; bounded row workers serve concurrent views. GPU direct presentation remains suspended by the existing HF29 recovery policy. No new game or physical GPU acceptance.",
+  "build_protocol": 97,
+  "validation": "Building-slot terminal frame retention and ordinary-SHP rank scaling controlled fixtures; single-player FPS rational QPC deadlines and own-process Windows callback/service checks. Prior CPU local-damage optimization retained. Real-game visual/FPS and multiplayer behavior unverified.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
@@ -18,7 +18,8 @@
     "Experimental.CrcMapIsClearShadow": "default0; HIGH RISK MapIsClear-only original-value input at native CRC; MP automatic/native reveal only; enable before first tool reveal in a new match; not a full reveal or platform compatibility guarantee",
     "Experimental.NativeMegaGateway": "default0 after one-time migration; explicit HIGH RISK successful native command observer",
     "Experimental.NativeCombatQueries": "default0; raw weapon/range observations by default; explicit experimental native virtual queries, not code patches",
-    "Experimental.ManualReveal": "default0; migrates legacy RevealMap into manual permission only; Ctrl+Alt+O and button explicitly invoke original577D90; enabling alone never reveals"
+    "Experimental.ManualReveal": "default0; migrates legacy RevealMap into manual permission only; Ctrl+Alt+O and button explicitly invoke original577D90; enabling alone never reveals",
+    "SinglePlayer.FPS": "default0=native; integer10–240 simulation FPS; session0/5 only; shared hardware tag32; native speed option untouched"
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,
@@ -38,7 +39,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.42-pre.1 CPU local damage and immutable terrain lists; paired build and pixel equivalence are verified separately from game FPS.",
+  "release_status": "1.0.42-pre.2 CPU local damage and immutable terrain lists; paired build and pixel equivalence are verified separately from game FPS.",
   "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; collapsible per-feature groups, runtime error visibility and timestamped immediate actions",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -674,6 +675,14 @@
     "superweapon": "Research only: disabled-session normal grants can be revoked; native one-time grant succeeds in the isolated supported PE",
     "game_tested": false,
     "multiplayer_tested": false
+  },
+  "animation_rank_fps_followup": {
+    "assist_protocol": 97,
+    "shared_bytes": 23141856,
+    "base_commit": "2ca6b9635bf27fb1af59e66038f75691fbcc2d70",
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "note": "research/2026-11-05-animation-rank-single-player-fps.md"
   }
 }
 

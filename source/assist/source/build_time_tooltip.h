@@ -72,7 +72,8 @@ extern "C" unsigned AssistBuildTimeTooltip(unsigned id,unsigned original){
  // Use the selected speed's maximum, not measured/adaptively reduced FPS.
  // Single-player unlimited speed 6 is estimated at speed 5 by user request.
  int speed=-1;read(0xA8EB60,&speed,sizeof speed);
- const unsigned fps=buildtime::allowedRate(session,speed);
+ const unsigned custom=singlefps::activeRate();
+ const unsigned fps=custom?custom:buildtime::allowedRate(session,speed);
  static wchar_t text[256];unsigned used=0;
  // Process724AD0 copies at most 256 UTF-16 units without adding a NUL.
  // Refuse rather than truncate a translated name or another extension's text.

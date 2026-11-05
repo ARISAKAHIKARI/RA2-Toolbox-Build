@@ -9,6 +9,7 @@ struct VideoEntry {DisplayOption option;VideoGroup group;const wchar_t*label;con
 inline constexpr VideoEntry videoEntries[]={
  {OverlayToggleKey,VideoGroup::Render,L"所有覆盖层显隐键（默认 · / `）",L""},
  {RenderUpgrade,VideoGroup::Render,L"渲染升级（入口暂不可用）",L""},
+ {SinglePlayerFPS,VideoGroup::Render,L"单机游戏 FPS（0 = 原版，10–240）",L""},
  {RenderHighRefresh,VideoGroup::Render,L"高刷移动补帧（只读帧号取样）",L""},
  {RenderPhysical,VideoGroup::Render,L"按显示器物理像素绘制",L""},
  {RenderUnified,VideoGroup::Render,L"合并世界信息与监控覆盖层",L""},

@@ -1,4 +1,4 @@
-name: Compile local CPU damage and shared row team
+name: Compile animation, rank SHP and single-player FPS update
 on:
   push:
     branches: [codex/render-local-dirty-20261105]
@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p diagnostics
-          for name in object_canvas_damage native_box_reduce object_canvas_terrain_prefix object_cloak_replay; do
+          for name in single_player_fps building_animations rank_sprite_scaling object_canvas_damage; do
             g++ -std=c++17 -O2 -pthread "source/assist/tests/$name.cpp" source/third_party/xbrz/xbrz.cpp -ldl -o "/tmp/$name"
             if [ "$name" = object_cloak_replay ]; then
               "/tmp/$name" --correctness > "diagnostics/$name.log"
@@ -83,6 +83,26 @@ jobs:
           "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 source/assist/tests/parallel_rows_shared.cpp -o diagnostics/shared-rows.exe -lkernel32
           diagnostics/shared-rows.exe > diagnostics/shared-rows.log
           cat diagnostics/shared-rows.log
+      - name: Check terminal building slots and ordinary SHP rank output on Windows
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          for name in building_animations radar_output_scene; do
+            "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" source/third_party/xbrz/xbrz.cpp -o "diagnostics/$name.exe" -lkernel32 -luser32 -lgdi32 -lpsapi -lshell32 -lole32
+            "diagnostics/$name.exe" > "diagnostics/$name.log"
+            cat "diagnostics/$name.log"
+          done
+      - name: Validate single-player FPS callback and shared hardware service on Windows x86
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          for name in single_player_fps_windows tech_ui_breakpoint_windows; do
+            "$ZIG" c++ -target x86-windows-gnu -fms-extensions -fasm-blocks -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "diagnostics/$name.exe" -lkernel32 -luser32
+            "diagnostics/$name.exe" > "diagnostics/$name.log"
+            cat "diagnostics/$name.log"
+          done
       - name: Record identity and assemble update package
         shell: python
         run: |
@@ -91,10 +111,10 @@ jobs:
           root=Path('artifacts/console')
           names=['RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe','WebView2Loader.dll']
           files=[dict(name=n,bytes=(root/n).stat().st_size,sha256=hashlib.sha256((root/n).read_bytes()).hexdigest()) for n in names]
-          info=dict(version='1.0.42-pre.1',commit=os.environ['GITHUB_SHA'],branch=os.environ['GITHUB_REF_NAME'],host='x64',runtime='x86',broker='x86',console='WebView2',game_tested=False,multiplayer_tested=False,files=files)
+          info=dict(version='1.0.42-pre.2',commit=os.environ['GITHUB_SHA'],branch=os.environ['GITHUB_REF_NAME'],host='x64',runtime='x86',broker='x86',console='WebView2',game_tested=False,multiplayer_tested=False,files=files)
           Path('diagnostics/paired-build.json').write_text(json.dumps(info,indent=2)+'\n',encoding='utf-8')
-          readme='RA2 Toolbox 1.0.42-pre.1 (x64)\n\n退出游戏和工具箱后，将本包全部文件覆盖到原完整安装。保留已有 INI、assets 和 cache。主程序、Runtime、32位入口程序与 WebView2Loader 必须成套更新。\n需要 Microsoft Edge WebView2 Evergreen Runtime。\n\n本版减少 CPU 页内恢复与重绘，复用静态地形任务，并按局部变化更新缩图缓存；多视图共享有上限的工作线程。\nGPU 沿用当前回读呈现路径。实机帧率、物理 GPU 性能与联机表现仍待验证。\n'
-          package=Path('artifacts/RA2Toolbox-1.0.42-pre.1-x64-Update.zip')
+          readme='RA2 Toolbox 1.0.42-pre.2 (x64)\n\n退出游戏和工具箱后，将本包全部文件覆盖到原完整安装。保留已有 INI、assets 和 cache。主程序、Runtime、32位入口程序与 WebView2Loader 必须成套更新。\n需要 Microsoft Edge WebView2 Evergreen Runtime。\n\n新增单机游戏 FPS 设置：0 恢复原版，10–240 自定义（如 40、45、50）；联机不生效。设置位于显示设置，和渲染刷新率分开。\n本版修正建筑槽内末帧动画的提前剔除；星级标志改为普通 SHP 合成，与其他素材一起缩放。保留上一版 CPU 局部重绘与共享线程优化。\nGPU 沿用当前回读呈现路径。实机帧率、物理 GPU 性能与联机表现仍待验证。\n'
+          package=Path('artifacts/RA2Toolbox-1.0.42-pre.2-x64-Update.zip')
           with zipfile.ZipFile(package,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
               for n in names:z.write(root/n,n)
               for p in sorted((root/'licenses').rglob('*')):
@@ -105,14 +125,18 @@ jobs:
       - name: Upload update package and build identity
         uses: actions/upload-artifact@v4
         with:
-          name: RA2Toolbox-1.0.42-pre.1-x64-Update
+          name: RA2Toolbox-1.0.42-pre.2-x64-Update
           retention-days: 14
           if-no-files-found: error
           path: |
-            artifacts/RA2Toolbox-1.0.42-pre.1-x64-Update.zip
+            artifacts/RA2Toolbox-1.0.42-pre.2-x64-Update.zip
             diagnostics/paired-build.json
             diagnostics/local-damage.log
             diagnostics/shared-rows.log
+            diagnostics/building_animations.log
+            diagnostics/radar_output_scene.log
+            diagnostics/single_player_fps_windows.log
+            diagnostics/tech_ui_breakpoint_windows.log
             artifacts/console/BUILD_SOURCE_MANIFEST.json
             artifacts/console/BUILD_TARGET.json
             artifacts/console/WINDOWS_BUILD_ARTIFACTS.json

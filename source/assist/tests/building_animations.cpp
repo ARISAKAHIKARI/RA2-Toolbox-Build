@@ -12,6 +12,18 @@ int main(){
  put(a+0xAC,0);states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==0);
  put(a+0x11A,uint8_t(1));put(a+0x11C,3);put(a+0xAC,9);put(t+0x2B4,2);states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==11); // native Draw uses Value + Start even when paused
  put(a+0x19E,uint8_t(1));put(a+0xAC,0);put(t+0x2B4,0);states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==0); // powered-off / neutral pump
+ // End notification does not remove a live final pose held in a building
+ // slot. Repeated observations retain the native frame without advancing it.
+ put(a+0x179,uint8_t(1));put(a+0x11A,uint8_t(1));put(a+0xAC,11);put(t+0x2B4,0);
+ for(int n=0;n<240;++n){states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==11);}
+ put(a+0x90,uint8_t(0));assert(external::animations::attached(read,b,42).empty());put(a+0x90,uint8_t(1));
+ put(b+0x55C,0u);put(b+0x5C8,0u);assert(external::animations::attached(read,b,42).empty());put(b+0x55C,a);put(b+0x5C8,a);
+ put(a+0x179,uint8_t(0));put(a+0x11A,uint8_t(0));
+ // Native display indexes Value + Start, including a reverse boundary with
+ // a negative relative Value. Failed reads must not become that valid value.
+ put(a+0xAC,-1);put(t+0x2B4,12);states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==11);
+ auto missingValue=[&](uint32_t p,void*out,size_t n){return p!=a+0xAC&&read(p,out,n);};assert(external::animations::attached(missingValue,b,42).empty());
+ put(t+0x2B4,0);assert(external::animations::attached(read,b,42).empty());put(a+0xAC,0);
  put(a+0x19D,uint8_t(1));assert(external::animations::attached(read,b,42).empty());put(a+0x19D,uint8_t(0));
  put(a+0xAC,9000);assert(external::animations::attached(read,b,42).empty());put(a+0xAC,3);
  put(a+0xCC,b+4);assert(external::animations::attached(read,b,42).empty());put(a+0xCC,0u);

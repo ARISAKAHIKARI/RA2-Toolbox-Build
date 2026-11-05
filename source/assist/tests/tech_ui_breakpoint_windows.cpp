@@ -110,6 +110,12 @@ int main(){
  assert(service.enable(a,b,apply));wait(service);skipSetOnce=1;
  assert(!service.retire());wait(service);assert(service.state==assist::techbp::System&&service.occupied());
  assert(DrawCaller(&local,&allowed)==1);retire(service);assert(DrawCaller(&local,&allowed)==0);
+ // Logical FPS tag 5 shares the same four physical slots and ownership.
+ uint32_t sites[assist::techbp::SiteCount]{};sites[0]=a;sites[5]=b;
+ assert(service.configure(sites,33,apply));wait(service);assert(service.state==assist::techbp::Ready&&service.activeTags()==33);
+ assert(DrawCaller(&local,&allowed)==1&&PruneCaller(&local,&allowed)==3);
+ assert(assist::slotbudget::tags(service.slotBudget())==33);retire(service);
+ after=debug();assert(after.Dr0==original.Dr0&&after.Dr1==original.Dr1&&after.Dr7==original.Dr7);
  assert(RemoveVectoredExceptionHandler(foreign));
  puts("PASS: real Windows x86 two CALL execution breakpoints; 20000 quantified hits; own-thread context install/readback/restore; argument-only change; House/type gates; foreign exception pass-through; foreign slots preserved; insufficient slots refused; foreign replacement preserved on restore; unchanged code; no game");
  return 0;

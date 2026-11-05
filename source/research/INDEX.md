@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 建築末幀、星級縮放與單機 FPS | [普通 SHP 與精確單機限速](2026-11-05-animation-rank-single-player-fps.md) | TimeToDie slot Start+Value rank 55D7BC QPC Assist97 tag32 SP-only |
 | Hook 清理漏掉 Cursor 佈局槽與故障退休 | [Runtime(9)、兩槽共享與27項隔離檢查](2026-11-05-hook-cleanup-shared-tooltip.md) | gate6 7F74C8 7F74D8 fault cleanup-only pinned reconnect SINGLE_STEP-unresolved |
 | 新 MRGA 信标函数证据（未投产） | [新采集 ABI 与严格 profile 候选](2026-11-04-platform-beacon-current-capture.md) | 431410 C3A000 153CD0 ret4 proposed-only |
 | 平台 Reveal 上下文跳板与采集缺口 | [原生 fallback 不等于透明授权](2026-11-04-platform-reveal-wrapper-boundary.md) | 577D90 577E1E 577F03 MEM_PRIVATE handler-missing no-authorization |

@@ -64,6 +64,7 @@
 #include "pointer_batch.h"
 #include "ui_layout.h"
 #include "additional_settings.h"
+#include "single_player_fps.h"
 #include "placement_event_input.h"
 #include "destruct_owner_input.h"
 #include "native_viewport_host.h"
@@ -655,14 +656,14 @@ static bool commandChannelReady(){return controllink::ready(commandLink());}
 static bool commandFresh(DWORD now){return commandChannelReady()&&DWORD(now-lastData)<1500;}
 static uint32_t currentHardwareBudget(){return shared&&commandFresh(GetTickCount())?shared->hardwareSlotBudget:0;}
 static uint32_t requestedHardwareTags(){
- return (extra.mapVisibility?slotbudget::Map:0u)|(extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
+ return (extra.singlePlayerFPS>0?slotbudget::FPS:0u)|(extra.mapVisibility?slotbudget::Map:0u)|(extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
   (extra.techEnhance&&extra.techEnhanceImplementation==1?(slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u)):0u);
 }
 static bool hardwareBudgetAvailable(uint32_t additional){
  const auto budget=currentHardwareBudget(),wanted=requestedHardwareTags()|additional;
  // Without a fresh register snapshot this is a saved four-slot plan only.
  // Runtime still admits installation using actual registers and ownership.
- return slotbudget::known(budget)?slotbudget::allows(budget,wanted):!(wanted&~31u)&&slotbudget::count(wanted)<=4;
+ return slotbudget::known(budget)?slotbudget::allows(budget,wanted):!(wanted&~63u)&&slotbudget::count(wanted)<=4;
 }
 static std::wstring hardwareBudgetReason(uint32_t additional){
  const auto budget=currentHardwareBudget();if(!slotbudget::known(budget))return L"硬件断点预设超出预算：需要 "+std::to_wstring(slotbudget::count(requestedHardwareTags()|additional))+L" 槽，总计只有 4 槽";
@@ -1893,6 +1894,10 @@ static void updateModeStatus(DWORD now){
   text+=!extra.superweaponGrant?L"关闭（已有授予保留本局）":s==-1?L"原生函数不兼容":s==-2?L"超武／玩家身份不匹配":s==-3?L"原生授予结果异常":phase||s!=1?L"等待游戏就绪":L"已启用";
   if(extra.superweaponGrant&&s==1&&shared)text+=L" · "+std::to_wstring(shared->superweaponGrantCount)+L" 项 · 游戏帧 "+std::to_wstring(shared->superweaponGrantFrame);
   SetWindowTextW(GetDlgItem(ui,9491),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9491),extra.superweaponGrant&&s<0);
+ }
+ {const int s=shared?shared->singlePlayerFPSStatus:0;std::wstring text=L"单机游戏 FPS：";
+  text+=!extra.singlePlayerFPS?L"原版速度":s==-6?L"联机不生效":s==-1?L"原生限速入口不兼容":s==-2?L"没有空闲硬件断点":s<0?L"限速配置失败":s==1?L"目标 "+std::to_wstring(extra.singlePlayerFPS)+L" FPS":L"等待单机游戏就绪";
+  SetWindowTextW(GetDlgItem(ui,9495),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9495),s<0&&s!=-6);
  }
  updatePlacementEventUI();
  std::wstring riskStatus=extra.placementImplementation==buildingmodes::PlacementEvent?

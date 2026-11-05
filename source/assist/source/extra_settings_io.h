@@ -1,5 +1,6 @@
 #include "../../shared/source/key_gesture.h"
 static void loadAdditionalSettings(){
+ {const int rate=value(L"SinglePlayer",L"FPS",0);extra.singlePlayerFPS=singlefps::valid(unsigned(rate))?rate:0;}
  superweaponOptions.detached=value(L"Display",L"SuperweaponDetached",0)!=0;superweaponOptions.collapsed=value(L"Display",L"SuperweaponCollapsed",0)!=0;
  superweaponOptions.x=std::clamp(value(L"Display",L"SuperweaponX",20),0,32768);superweaponOptions.y=std::clamp(value(L"Display",L"SuperweaponY",150),0,32768);
  superweaponOptions.scale=std::clamp(value(L"Display",L"SuperweaponScale",100),75,200);superweaponOptions.rows=std::clamp(value(L"Display",L"SuperweaponRows",8),1,20);
@@ -129,6 +130,7 @@ static void loadAdditionalSettings(){
  }
 }
 static bool saveAdditionalSettings(){
+ write(L"SinglePlayer",L"FPS",extra.singlePlayerFPS);
  write(L"Display",L"SuperweaponDetached",superweaponOptions.detached);write(L"Display",L"SuperweaponCollapsed",superweaponOptions.collapsed);write(L"Display",L"SuperweaponX",superweaponOptions.x);write(L"Display",L"SuperweaponY",superweaponOptions.y);write(L"Display",L"SuperweaponScale",superweaponOptions.scale);write(L"Display",L"SuperweaponRows",superweaponOptions.rows);
  const wchar_t*gestureNames[]={L"FuzzyOrder",L"AreaOrder",L"PatrolCircle",L"FormationQuick"};
  for(int i=0;i<moorders::GestureCount;++i){auto hold=std::wstring(gestureNames[i])+L"HoldKey",button=std::wstring(gestureNames[i])+L"MouseButton";write(L"Mouse",hold.c_str(),extra.moGestures.keys[i]);write(L"Mouse",button.c_str(),extra.moGestures.buttons[i]);}
@@ -249,6 +251,7 @@ static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
  shared->viewZoomPercent=extra.viewZoomEnabled?uint32_t(extra.viewZoomPercent):100;
  shared->smallMapClamp=extra.smallMapClamp;
+ shared->singlePlayerFPS=uint32_t(extra.singlePlayerFPS);
  shared->sidebarMode=extra.sidebarEnabled&&extra.sidebarMode<=2?extra.sidebarMode:0u;
  shared->pauseViewKeys[0]=extra.pauseKeys[0];shared->pauseViewKeys[1]=extra.pauseKeys[1];
  shared->moFeatures=extra.moFeatures&23u;

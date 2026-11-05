@@ -26,7 +26,7 @@ static bool mapDesired=false,mapRedrawPending=false;static int mapFailure=0;stat
 static int failure=0,enhancementFailure=0,controlFailure=0;static bool desired=false,enhancementDesired=false,controlDesired=false,enhancementCompareRequested=false;
 static DWORD auditAt=0,retryAt=0,enhancementParameterScan=0;static uint32_t attempted=0,refusedGroups=0,resourceGroups=0;
 static volatile LONG fullExceptions=0,enhancementExceptions=0,controlExceptions=0;static unsigned probeDepth=0;static uint32_t probeToken=0;
-static constexpr uint32_t sites[5]={0x4F7870,mapvisibility::Address,0x4F7951,0x4F7B66,controlparams::Entry};
+static constexpr uint32_t sites[techbp::SiteCount]={0x4F7870,mapvisibility::Address,0x4F7951,0x4F7B66,controlparams::Entry,singlefps::Entry};
 inline unsigned hash(uint32_t p){return ((p>>4)*2654435761u)&1023u;}
 static techbp::SignatureSnapshot<20> nativeDraw;static techbp::SignatureSnapshot<15> nativePrune;static techbp::SignatureSnapshot<16> nativeEntry;
 static techbp::SignatureSnapshot<13> enhancementLimit;static techbp::SignatureSnapshot<16> enhancementCompare,enhancementEntry;
@@ -52,6 +52,7 @@ static bool groupOff(uint32_t group){
 static void publish(){
  if(!sh)return;const uint32_t active=service.activeTags();
  sh->hardwareSlotBudget=service.slotBudget();
+ sh->singlePlayerFPSStatus=singlefps::failure?singlefps::failure:singlefps::desired?(ready(singlefps::Tag)&&sh->singlePlayerFPSActive?techbp::Ready:(refusedGroups&singlefps::Tag)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(singlefps::Tag)?techbp::Off:techbp::Waiting;
  const bool mapPresentation=policy.showing!=0;if(mapPresentation!=lastMapPresentation){mapRedrawPending=true;lastMapPresentation=mapPresentation;}
  sh->mapVisibilityStatus=mapFailure?mapFailure:mapDesired?(ready(mapvisibility::Tag)?techbp::Ready:(refusedGroups&mapvisibility::Tag)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(mapvisibility::Tag)?techbp::Off:service.state<0?service.state:techbp::Waiting;
  sh->mapVisibilityError=uint32_t(service.lastError);sh->mapVisibilityExceptions=uint32_t(mapExceptions);
@@ -81,13 +82,14 @@ static bool world(){
   get<int>(0xA8B238)==policy.session&&get<int>(0xA8ED84)>=policy.frame&&get<bool>(0xA8E9A0)&&policy.house!=get<uint32_t>(0xAC1198)&&!get<bool>(policy.house+0x1F5)&&!get<bool>(policy.house+0x1F6)&&!get<bool>(policy.house+0x1F8);
 }
 static bool configure(){
- const uint32_t wanted=(desired&&!failure?FullGroup:0u)|(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7)?enhancementTags():0u)|(controlDesired&&!controlFailure?16u:0u)|(mapDesired&&!mapFailure?mapvisibility::Tag:0u);service.poll();if(!service.resources())resourceGroups=0;
+ const uint32_t wanted=(desired&&!failure?FullGroup:0u)|(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7)?enhancementTags():0u)|(controlDesired&&!controlFailure?16u:0u)|(mapDesired&&!mapFailure?mapvisibility::Tag:0u)|(singlefps::desired&&!singlefps::failure?singlefps::Tag:0u);service.poll();if(!service.resources())resourceGroups=0;
  if(!service.pending()){refusedGroups&=~service.activeTags();if(service.state==techbp::Slots)refusedGroups|=attempted&~service.activeTags();}
  if(service.pending()){publish();return false;}
  if(!healthy()){
   InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);
   InterlockedExchange(&policy.showing,0);if(mapDesired)mapFailure=int(service.state);
   if(controlDesired)controlFailure=int(service.state);
+  singlefps::disable();if(singlefps::desired)singlefps::failure=int(service.state);
   if(desired)failure=int(service.state);if(enhancementDesired)enhancementFailure=int(service.state);service.retire();publish();return false;
  }
  const DWORD now=sh?sampleClock(sh):GetTickCount();
@@ -100,6 +102,7 @@ static bool configure(){
  if(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7))InterlockedExchange(&policy.enhanced,ready(4)?1:0);
  if(controlDesired&&!controlFailure)InterlockedExchange(&policy.controlling,ready(16)?1:0);
  if(mapDesired&&!mapFailure)InterlockedExchange(&policy.showing,ready(mapvisibility::Tag)?1:0);
+ if(singlefps::desired&&!singlefps::failure)singlefps::enabled=ready(singlefps::Tag);else singlefps::disable();
  publish();return service.activeTags()==wanted;
 }
 }
@@ -114,7 +117,8 @@ static bool mapVisibilityParameter(CONTEXT&context){
 }
 extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
  using namespace techparameters;auto&context=*static_cast<CONTEXT*>(raw);
- if(tag>=5||context.Eip!=sites[tag])return 0;
+ if(tag>=techbp::SiteCount||context.Eip!=sites[tag])return 0;
+ if(tag==5)return singlefps::parameter(context)?1:0;
  if(tag==1)return mapVisibilityParameter(context)?1:0;
  if(tag==4){
   techbp::countOwner(controlExceptions);
@@ -172,7 +176,7 @@ static bool techEnhanceParametersRetired(){using namespace techparameters;return
 static bool restoreTechParameters(){using namespace techparameters;const bool changed=desired||(service.lease.tags()&FullGroup)||service.lease.uncertain;InterlockedExchange(&policy.enabled,0);desired=false;failure=0;if(changed)attempted=0;refusedGroups&=~FullGroup;configure();return techParametersRetired();}
 static bool restoreTechEnhanceParameters(){using namespace techparameters;const bool changed=enhancementDesired||(service.lease.tags()&12)||service.lease.uncertain;InterlockedExchange(&policy.enhanced,0);enhancementDesired=false;enhancementFailure=0;if(changed)attempted=0;refusedGroups&=~12u;configure();return techEnhanceParametersRetired();}
 static void maintainTechParameters(){
- using namespace techparameters;service.poll();
+ using namespace techparameters;service.poll();singlefps::maintain();
  if(!sh||sh->stop||fault){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
  else if(!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;}
  if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;}
@@ -181,7 +185,7 @@ static void maintainTechParameters(){
  // An idle game still publishes an actual read-only resource snapshot before
  // the first activation. Stop/fault never starts another inspection worker.
  static DWORD inspected=0;const DWORD now=GetTickCount();
- if(sh&&!sh->stop&&!fault&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
+ if(sh&&!sh->stop&&!fault&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!singlefps::desired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
 }
 static bool requestTechParameters(uint32_t house){
  using namespace techparameters;maintainTechParameters();if(failure){publish();return false;}
@@ -269,5 +273,13 @@ static int requestControlParameters(){
  if(!controlparams::compatible(read)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=techbp::Signature;configure();return status();}
  if(!captureWorld(lastHouse)){InterlockedExchange(&policy.controlling,0);controlDesired=false;configure();return 0;}
  controlDesired=true;configure();return status();
+}
+
+
+static bool singlePlayerFPSRetired(){return techparameters::groupOff(singlefps::Tag);}
+static bool restoreSinglePlayerFPS(){
+ using namespace techparameters;singlefps::disable();singlefps::desired=false;singlefps::failure=0;
+ refusedGroups&=~singlefps::Tag;configure();
+ if(!singlePlayerFPSRetired())return false;singlefps::release();publish();return true;
 }
 

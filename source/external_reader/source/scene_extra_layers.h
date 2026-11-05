@@ -11,7 +11,7 @@ namespace external { namespace sceneextras {
 // building_rubble.rs and beacon_art.rs. Cache art, never live object state.
 class Layers {
  liveshape::Cache rankShapes_;
- std::map<int,std::pair<std::shared_ptr<const voxel::Image>,std::shared_ptr<const std::vector<uint8_t>>>> ranks_;
+ std::map<int,std::pair<std::shared_ptr<const voxel::Image>,std::shared_ptr<const voxel::Image>>> ranks_;
  enum Mode {Overlay,OverlayShadow,Smudge,Rubble,RubbleShadow,FrozenBody,FrozenShadow,Bib,Animation,BeaconShape};
  using Key=std::tuple<uint32_t,uint32_t,int,uint32_t,int,int>;
  struct Cached {std::array<uint32_t,256>palette{};std::shared_ptr<const voxel::Image>image;std::shared_ptr<const std::vector<uint8_t>>rgba;};
@@ -58,9 +58,8 @@ public:
  template<class Read>std::shared_ptr<const voxel::Image> rankGlyph(Read read,int frame){
   if(frame!=14&&frame!=15&&frame!=19)return {};uint32_t shape=0;if(!read(0xAC147C,&shape,4))return {};
   auto image=rankShapes_.get(read,shape,frame,0x87F6C4);if(!image)return {};
-  auto&entry=ranks_[frame];if(entry.first!=image){auto rgba=std::make_shared<std::vector<uint8_t>>(image->pixels.size()*4);std::memcpy(rgba->data(),image->pixels.data(),rgba->size());entry={image,std::move(rgba)};}return image;
+  auto&entry=ranks_[frame];if(entry.first!=image){auto draw=std::make_shared<voxel::Image>(*image);draw->skipZ=true;draw->writeDepth=false;entry={image,std::move(draw)};}return entry.second;
  }
- std::shared_ptr<const std::vector<uint8_t>> rankBytes(int frame)const{auto i=ranks_.find(frame);return i==ranks_.end()?nullptr:i->second.second;}
  std::shared_ptr<const std::vector<uint8_t>>imageBytes(const std::shared_ptr<const voxel::Image>&image){for(auto&item:images_)if(item.second.image==image){if(!item.second.rgba){auto bytes=std::make_shared<std::vector<uint8_t>>(image->pixels.size()*4);std::memcpy(bytes->data(),image->pixels.data(),bytes->size());item.second.rgba=bytes;}return item.second.rgba;}return {};}
  void begin(){palettes_.clear();frameCounts_.clear();rankShapes_.begin();}
  void reset(){images_.clear();palettes_.clear();frameCounts_.clear();terrain_.reset();cells_.clear();bytes_=0;rankShapes_.reset();ranks_.clear();}

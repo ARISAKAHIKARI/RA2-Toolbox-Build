@@ -19,7 +19,11 @@ template<class Read>bool capture(Read read,uint32_t object,uint32_t parent,uint3
  GameView<Read> g(read);if(object<0x10000)return false;
  if(parent&&(parent<0x10000||g.template get<uint32_t>(parent)!=0x7E3EBC||g.template get<uint32_t>(parent+0x10)!=parentId||g.template get<int>(parent+0x6C)<=0))return false;
  uint32_t link=parent?slot(read,parent,object):0,attachedTo=g.template get<uint32_t>(object+0xCC);
- if((parent&&!link)||g.template get<uint32_t>(object)!=0x7E3354||(parent&&attachedTo&&attachedTo!=parent)||!g.template get<uint8_t>(object+0x90)||g.template get<uint8_t>(object+0x179)||g.template get<uint8_t>(object+0x19D))return false;
+ // TimeToDie is an update/end notification, not a Draw_It visibility gate.
+ // A building can still hold this live animation in its slot at the final
+ // frame. Keep sampling it until the slot/identity/liveness actually changes;
+ // do not age out a paused or completed pose like a transient explosion.
+ if((parent&&!link)||g.template get<uint32_t>(object)!=0x7E3354||(parent&&attachedTo&&attachedTo!=parent)||!g.template get<uint8_t>(object+0x90)||(!parent&&g.template get<uint8_t>(object+0x179))||g.template get<uint8_t>(object+0x19D))return false;
  State next;next.object=object;next.parent=parent;next.parentId=parentId;next.id=g.template get<uint32_t>(object+0x10);next.type=g.template get<uint32_t>(object+0xC8);next.owner=g.template get<uint32_t>(parent?parent+0x21C:object+0x180);
  if(!next.id||next.type<0x10000)return false;
  int location[3]{};if(!read(object+0x9C,location,sizeof location))return false;
@@ -32,8 +36,10 @@ template<class Read>bool capture(Read read,uint32_t object,uint32_t parent,uint3
  if(next.x<0||next.y<0||next.x>=512*256||next.y>=512*256)return false;
  // Draw_It 42303F always uses Value + Type.Start, including paused/power-off
  // animations. PausedAnimFrame is saved update state, not a second draw frame.
- int value=g.template get<int>(object+0xAC,-1),start=g.template get<int>(next.type+0x2B4,-1);
- if(value<0||value>=8192||start<0||start>=8192)return false;next.frame=value+start;
+ int value=0,start=0;
+ if(!read(object+0xAC,&value,sizeof value)||!read(next.type+0x2B4,&start,sizeof start)||
+    value<=-8192||value>=8192||start<0||start>=8192)return false;
+ next.frame=value+start;if(next.frame<0||next.frame>=8192)return false;
  next.zAdjust=g.template get<int>(object+0x100);next.normalLight=g.template get<uint8_t>(next.type+0x35D)!=0;
  next.sort=g.template get<int>(object+0x104);next.layer=attachedTo?2:g.template get<int>(next.type+0x364,2);
  next.blend=animations::blend(g.template get<uint32_t>(object+0x190),g.template get<uint8_t>(object+0x119)!=0,g.template get<uint8_t>(next.type+0x368)!=0,

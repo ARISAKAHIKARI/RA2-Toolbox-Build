@@ -176,6 +176,7 @@ static bool autoSettingChanged(int id,int notification){
  case 9164:numeric=&extra.watchSecondaryX;hi=10000;break;case 9165:numeric=&extra.watchSecondaryY;hi=10000;break;
  case 9166:numeric=&minimapSecondaryX;hi=10000;break;case 9167:numeric=&minimapSecondaryY;hi=10000;break;
  case 9168:numeric=&minimapSecondaryWidth;lo=160;hi=4096;break;
+ case 9494:numeric=&extra.singlePlayerFPS;hi=240;break;
  case 310:numeric=&fps;lo=5;hi=500;break;case 311:numeric=&topMargin;hi=4096;break;
  case 816:numeric=&labelScalePercent;lo=50;hi=250;break;
  case 817:numeric=&constructionScalePercent;lo=50;hi=250;break;
@@ -190,7 +191,7 @@ static bool autoSettingChanged(int id,int notification){
  case 471:numeric=&toastMs;lo=500;hi=60000;break;case 701:numeric=&extra.loadRadius;lo=1;hi=512;break;
  case 710:numeric=&extra.defaults.first;hi=512;break;case 711:numeric=&extra.defaults.second;hi=512;break;
  case 712:numeric=&extra.defaults.maximum;hi=512;break;}
- if(numeric&&edit){if(number(lo,hi,*numeric)){if(id==310)syncInformationRate(true);if(id==444)typeTap.clear();changedSetting();if(id==887)syncAdditional();}return true;}
+ if(numeric&&edit){if(id==9494){BOOL ok=FALSE;unsigned rate=GetDlgItemInt(ui,id,&ok,FALSE);if(!ok||!singlefps::valid(rate)){setStatus(L"单机游戏 FPS：填 0 恢复原版，或填 10–240；例如 40、45、50。");return true;}if(rate&&!hardwareBudgetAvailable(slotbudget::FPS)){setStatus(hardwareBudgetReason(slotbudget::FPS));return true;}}if(number(lo,hi,*numeric)){if(id==310)syncInformationRate(true);if(id==444)typeTap.clear();changedSetting();if(id==887||id==9494){syncAdditional();if(id==9494)wakeGame();}}return true;}
  if(id==714&&edit){if(!quotaID().empty())readTargetQuota();return true;}
  if((id==715&&notification==BN_CLICKED)||(id>=716&&id<=718&&edit)){
   auto type=quotaID();if(type.empty()){setStatus(L"请先选择类型或输入有效的对象 ID。");return true;}

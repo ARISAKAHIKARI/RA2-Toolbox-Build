@@ -25,6 +25,7 @@ static bool demand(uint32_t flags,const AdditionalSettings&extra,bool displayRea
 }
 int main(){
  AdditionalSettings off;check(!demand(0,off));
+ {auto settings=off;settings.singlePlayerFPS=45;check(demand(0,settings));settings.singlePlayerFPS=0;check(!demand(0,settings));}
  for(uint32_t feature:{1u,2u,4u,7u,16u,23u}){auto settings=off;settings.moFeatures=feature;check(demand(0,settings));settings.moFeatures=0;check(!demand(0,settings));}
  {auto settings=off;settings.superweaponPanel=true;check(!demand(0,settings));}
  const uint32_t bits[]={AutoRepair,AutoCS,NativeOrders,EjectAssist,UnsafeTech,AdvancedInput,
