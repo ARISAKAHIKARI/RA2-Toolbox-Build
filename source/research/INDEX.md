@@ -275,3 +275,5 @@
 - [读取预算扩展、CPU全量并行与GPU重绘/图集突增](2026-11-05-render-cost-expansion-pre12.md)（pre.12；256MiB/1GiB、GPU位移页闭包/坐标索引、前缀/图集/地形LRU；受控对照与Vulkan CI）
 
 - [地形、SHP、VXL、动画与粒子混合场景持续渲染](2026-11-05-mixed-scene-render-stress.md)（固定生成素材；CPU 两档各300帧、五次全局失效；软件Vulkan视口／全图各120帧及三帧冷对照；Area子阶段计时未采集；非游戏FPS）
+
+- [混合场景重复地形与GPU阶段引用](2026-11-05-mixed-scene-render-optimizations-pre13.md)（pre.13；按阶段CSR与原始路径像素对照，最终证据见研究笔记）

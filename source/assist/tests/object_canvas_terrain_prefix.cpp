@@ -1,0 +1,24 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+#ifndef OBJECT_CANVAS_HEADER
+#define OBJECT_CANVAS_HEADER "../../external_reader/source/object_canvas.h"
+#endif
+#include OBJECT_CANVAS_HEADER
+#include <cassert>
+#include <cstdio>
+using namespace external;
+static std::shared_ptr<voxel::Image>image(int w,int h,uint32_t c,bool cloak=false){auto p=std::make_shared<voxel::Image>();p->width=w;p->height=h;p->pixels.resize(size_t(w)*h);for(int y=0;y<h;++y)for(int x=0;x<w;++x)p->pixels[size_t(y)*w+x]=c^uint32_t((x*3+y*7)&31);p->nativeDepth.enabled=true;p->nativeDepth.voxel=cloak;p->nativeDepth.gradient=nativesurface::Gradient::Flat;return p;}
+static void equal(const camera::NativeCanvas&a,const camera::NativeCanvas&b){assert(a.width()==b.width()&&a.height()==b.height()&&a.pageKeys()==b.pageKeys());for(int y=0;y<a.height();++y)for(int x=0;x<a.width();++x)assert(a.pixel(x,y)==b.pixel(x,y)&&a.depth(x,y)==b.depth(x,y)&&a.nativeDepth(x,y)==b.nativeDepth(x,y)&&a.nativeAlphaAt(x,y)==b.nativeAlphaAt(x,y));}
+static camera::NativeCanvas ground(const std::shared_ptr<voxel::Image>&tile,std::shared_ptr<camera::NativeCanvas::Budget>b={}){camera::NativeCanvas c;assert(c.reset(1024,768,b));size_t id=0;for(int y=0;y<768;y+=32)for(int x=0;x<1024;x+=64)c.terrainSource(id++,tile,float(x),float(y),0,{},0);return c;}
+static unsigned comparisons=0;
+static void changes(){auto tile=image(64,32,0xff408060),body=image(50,45,0xffcc6633),cloak=image(49,43,0xff506080,true);auto base=ground(tile);camera::ObjectCanvas warm;std::vector<camera::ObjectCanvas::Draw>d(2);d[0].image=body;d[0].x=130;d[0].y=130;d[0].base=100;d[0].material.nativeZ=true;d[1]=d[0];d[1].image=cloak;d[1].x=127.5f;d[1].y=125.75f;d[1].material.displace=true;d[1].material.cloakWords=-1024-3;
+ auto check=[&]{camera::ObjectCanvas cold;camera::NativeCanvas a,b;assert(warm.compose(base,d,a,true));assert(cold.compose(base,d,b));equal(a,b);++comparisons;};check();check();for(int n=0;n<8;++n){d[0].x+=2;d[1].y+=3;check();}lighting::State light;light.intensity=650;light.tint={{750,1000,500}};base.terrainSource(0,tile,0,0,0,light,1);check();assert(warm.stats().prefixBuilds<48&&warm.stats().reused>0);auto changed=image(64,32,0xffa07722);base.terrainSource(2,changed,128,0,0,{},0);check();
+ auto alpha=std::make_shared<camera::NativeCanvas::AlphaPages>();(*alpha)[257]=std::make_shared<const std::vector<uint8_t>>(16384,63);base.nativeAlpha(alpha);check();(*alpha)[257]=std::make_shared<const std::vector<uint8_t>>(16384,100);check();base.nativeAlpha(std::shared_ptr<const camera::NativeCanvas::AlphaPages>{});check();base.restrictPaint(0,0,512,512);check();base.restrictPaint(0,0,1024,768);check();base.precision(colorprecision::Mode::SmoothRGB);check();base.precision(colorprecision::Mode::NativeSteps);check();for(int offset:{-1,1,-1025,1025,-1000000,1000000,1024*500}){d[1].material.cloakWords=offset;check();}
+ auto part=*cloak;part.x=-30;part.y=5;part.shadow=true;part.airborneShadow=true;auto attached=std::make_shared<voxel::Image>(*cloak);attached->attachments.push_back(part);attached->shadowsAfter=true;d[1].image=attached;d[1].drop=15;check();d[1].material.clipBottom=9;check();d.clear();check();assert(base.reset(1024,768,{},0xff123456));base.terrainSource(0,tile,30,30,0,{},0);check();auto fork=base.fork();auto patch=image(40,40,0xffaabbcc);patch->skipZ=true;fork.blit(*patch,10,10,1,1,0,{},0);base=std::move(fork);check();}
+static std::vector<camera::ObjectCanvas::Draw>actors(const std::shared_ptr<voxel::Image>&p,int frame){std::vector<camera::ObjectCanvas::Draw>d;for(int y=0;y<6;++y)for(int x=0;x<8;++x){camera::ObjectCanvas::Draw q;q.image=p;q.x=float(x*128+40+frame%4);q.y=float(y*128+40);q.base=100;q.material.nativeZ=true;d.push_back(q);}return d;}
+static void sharedPool(){auto tile=image(64,32,0xff408060),body=image(16,16,0xffbb7733);const size_t before=camera::ObjectCanvas::terrainPrefixPoolBytes();for(int pass=0;pass<24;++pass){auto budget=std::make_shared<camera::NativeCanvas::Budget>();budget->maximum=110;auto base=ground(tile,budget);camera::ObjectCanvas a,b;camera::NativeCanvas frontA,frontB;
+ for(int frame=0;frame<3;++frame){frontA={};frontB={};camera::NativeCanvas nextA,nextB;auto draws=actors(body,frame);assert(a.compose(base,draws,nextA,true));assert(b.compose(base,draws,nextB,true));equal(nextA,nextB);++comparisons;assert(budget->pages<=110);frontA=std::move(nextA);frontB=std::move(nextB);}
+ assert(a.terrainPrefixPages()>0&&budget->pages==96);
+ }assert(camera::ObjectCanvas::terrainPrefixPoolBytes()==before);}
+int main(){changes();assert(camera::ObjectCanvas::terrainPrefixPoolBytes()==0);sharedPool();assert(camera::ObjectCanvas::terrainPrefixPoolBytes()==0);std::printf("PASS terrain CPU prefix %u complete four-plane comparisons; static/material/alpha/crop/COW changes; two-view shared mandatory pool;24 destroyed-prefix lifetimes return every byte credit\n",comparisons);}

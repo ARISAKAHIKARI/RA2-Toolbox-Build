@@ -13,13 +13,28 @@ public:
   bool operator==(const Draw&b)const{return image.get()==b.image.get()&&!image.owner_before(b.image)&&!b.image.owner_before(image)&&
     x==b.x&&y==b.y&&base==b.base&&lift==b.lift&&drop==b.drop&&light==b.light&&material==b.material&&object==b.object&&id==b.id;}
  };
- struct Stats {size_t changed=0,reused=0,removed=0,references=0,rasterBuilds=0,rasterHits=0,orderedReplayPages=0,cloakDependencyPages=0;}stats_;
+ struct Stats {size_t prefixBuilds=0,prefixHits=0,prefixRasterCalls=0,changed=0,reused=0,removed=0,references=0,rasterBuilds=0,rasterHits=0,orderedReplayPages=0,cloakDependencyPages=0;}stats_;
 private:
  struct Entry {
-  bool hasBase=false;std::weak_ptr<NativeCanvas::Page>base;uint64_t version=0;
+  bool hasBase=false;std::weak_ptr<NativeCanvas::Page>base;uint64_t version=0,used=0;
   std::vector<Draw>draws;std::shared_ptr<NativeCanvas::Page>page;std::shared_ptr<const std::vector<uint8_t>>alpha;
  };
- std::map<uint32_t,Entry>pages_;std::weak_ptr<NativeCanvas::Budget>budget_;
+ std::map<uint32_t,Entry>pages_;uint64_t prefixSerial_=0;
+ struct PrefixCharge {
+  inline static std::atomic<size_t>used{0};static constexpr size_t Limit=
+#ifdef RA2_CPU_TERRAIN_PREFIX_BYTES
+   RA2_CPU_TERRAIN_PREFIX_BYTES;
+#else
+   sizeof(void*)>=8?256ull*1024*1024:64ull*1024*1024;
+#endif
+  size_t bytes=0;explicit PrefixCharge(size_t n){auto now=used.load(std::memory_order_relaxed);while(n<=Limit&&now<=Limit-n)if(used.compare_exchange_weak(now,now+n,std::memory_order_relaxed)){bytes=n;break;}}
+  ~PrefixCharge(){if(bytes)used.fetch_sub(bytes,std::memory_order_relaxed);}PrefixCharge(const PrefixCharge&)=delete;
+ };
+ // Charge is destroyed LAST, after every owned Page plane and Draw buffer.
+ struct PrefixState {PrefixCharge charge;Entry entry;explicit PrefixState(size_t bytes):charge(bytes){}};
+ std::map<uint32_t,std::shared_ptr<PrefixState>>terrainPrefixes_;
+ static std::shared_ptr<NativeCanvas::Budget>prefixPageBudget(){static auto b=[](){auto p=std::make_shared<NativeCanvas::Budget>();p->maximum=std::numeric_limits<size_t>::max();return p;}();return b;}
+std::weak_ptr<NativeCanvas::Budget>budget_;
  struct CloakSource {bool present=false;std::weak_ptr<NativeCanvas::Page>page;uint64_t revision=0;};
  std::map<uint32_t,CloakSource>cloakSources_;
  GpuSceneRecord areaRecord_;std::shared_ptr<const void>areaTerrainOwner_;
@@ -51,7 +66,10 @@ private:
   return image;
  }
 public:
- void clear(){pages_.clear();cloakSources_.clear();areaRecord_.clear();areaTerrainOwner_.reset();areaTerrainRefs_.clear();areaTerrainDraws_=areaTerrainRefCount_=0;areaBlank_.reset();rasters_.clear();rasterBytes_=rasterSerial_=0;budget_.reset();width_=height_=0;++revision_;stats_={};}
+ void clear(){terrainPrefixes_.clear();pages_.clear();cloakSources_.clear();areaRecord_.clear();areaTerrainOwner_.reset();areaTerrainRefs_.clear();areaTerrainDraws_=areaTerrainRefCount_=0;areaBlank_.reset();rasters_.clear();rasterBytes_=rasterSerial_=0;budget_.reset();width_=height_=0;++revision_;stats_={};}
+ size_t terrainPrefixBytes()const{size_t bytes=0;for(const auto&e:terrainPrefixes_)bytes+=e.second->charge.bytes;return bytes;}
+ size_t terrainPrefixPages()const{size_t n=0;for(const auto&e:terrainPrefixes_)n+=bool(e.second->entry.page);return n;}
+ static size_t terrainPrefixPoolBytes(){return PrefixCharge::used.load();}
  const Stats&stats()const{return stats_;}uint64_t revision()const{return revision_;}
  // Vera's retained native source -> ordered draws -> final resolve contract.
  // Only metadata is built here. CPU rasterization is deferred to compose()
@@ -97,11 +115,11 @@ public:
    relativeOutput=false;clear();budget_=base.budget_;width_=base.width_;height_=base.height_;background_=base.background_;precision_=base.precision_;
   }
   try{
-   std::map<uint32_t,std::vector<Draw>>jobs;
-   auto ordered=draws;if(!base.terrainSources().empty()){std::vector<Draw>all;all.reserve(base.terrainSources().size()+draws.size());for(const auto&t:base.terrainSources())if(t.image)all.push_back({t.image,t.x,t.y,t.base,0,0,t.light,t.material});all.insert(all.end(),draws.begin(),draws.end());ordered=std::move(all);}
+   std::map<uint32_t,std::vector<Draw>>jobs,terrainJobs;bool prefixMetadataAvailable=true,prefixPlanningReady=false;
+   size_t terrainCount=0;auto ordered=draws;if(!base.terrainSources().empty()){std::vector<Draw>all;all.reserve(base.terrainSources().size()+draws.size());for(const auto&t:base.terrainSources())if(t.image)all.push_back({t.image,t.x,t.y,t.base,0,0,t.light,t.material});terrainCount=all.size();all.insert(all.end(),draws.begin(),draws.end());ordered=std::move(all);}
    for(auto&d:ordered){d.image=native(d.image);if(!d.image)return fail();}
    const bool hasCloak=std::any_of(ordered.begin(),ordered.end(),[](const Draw&d){return d.material.displace;});
-   for(const auto&draw:ordered){float left=1e7f,top=1e7f,right=-1e7f,bottom=-1e7f;
+   for(size_t drawIndex=0;drawIndex<ordered.size();++drawIndex){const auto&draw=ordered[drawIndex];float left=1e7f,top=1e7f,right=-1e7f,bottom=-1e7f;
     NativeCanvas::imageBounds(*draw.image,draw.x,draw.y,draw.drop,left,top,right,bottom);
     if(!std::isfinite(left)||!std::isfinite(top)||!std::isfinite(right)||!std::isfinite(bottom))return fail();
     int l=std::clamp(int(std::floor(std::clamp(left,-1e7f,1e7f))),base.paintLeft_,base.paintRight_);
@@ -110,7 +128,7 @@ public:
     int b=std::clamp(int(std::ceil(std::clamp(bottom,-1e7f,1e7f))),base.paintTop_,base.paintBottom_);
     if(l>=r||t>=b)continue;
     for(int y=t/NativeCanvas::PageSize;y<=(b-1)/NativeCanvas::PageSize;++y)for(int x=l/NativeCanvas::PageSize;x<=(r-1)/NativeCanvas::PageSize;++x){
-     if(++stats_.references>64*1024*1024/sizeof(Draw))return fail();jobs[NativeCanvas::key(x,y)].push_back(draw);
+     if(++stats_.references>64*1024*1024/sizeof(Draw))return fail();jobs[NativeCanvas::key(x,y)].push_back(draw);if(drawIndex<terrainCount&&prefixMetadataAvailable)try{terrainJobs[NativeCanvas::key(x,y)].push_back(draw);}catch(const std::bad_alloc&){prefixMetadataAvailable=false;terrainJobs.clear();terrainPrefixes_.clear();}
     }
    }
    if(!base.terrainSources().empty())for(const auto&page:base.pages_)jobs.try_emplace(page.first);
@@ -165,12 +183,65 @@ public:
    replay.insert(invalid.begin(),invalid.end());
    for(auto p=pages_.begin();p!=pages_.end();)if(!jobs.count(p->first)){if(relativeOutput)dirty(p->first);p=pages_.erase(p);++stats_.removed;}else ++p;
    const bool orderedReplay=hasCloak&&!replay.empty();
+   std::set<uint32_t>prefixApplied;
+   struct PrefixTask {uint32_t key;std::shared_ptr<PrefixState>state;std::shared_ptr<NativeCanvas::Page>source;const std::vector<Draw>*draws;std::shared_ptr<const std::vector<uint8_t>>alpha;};
+   std::vector<PrefixTask>prefixTasks;
+   try{
+   if(!terrainCount||!prefixMetadataAvailable)terrainPrefixes_.clear();
+   else{
+    ++prefixSerial_;std::set<uint32_t>wantedPrefixes;
+    for(const auto&job:jobs){auto source=base.pages_.find(job.first);auto sourcePage=source==base.pages_.end()?nullptr:source->second;auto old=pages_.find(job.first);
+     if(!replay.count(job.first)&&old!=pages_.end()&&old->second.page&&same(old->second,sourcePage,job.second,base.nativeAlpha(job.first)))continue;
+     wantedPrefixes.insert(job.first);auto found=terrainPrefixes_.find(job.first);
+     if(found!=terrainPrefixes_.end()&&(!found->second->entry.page||!same(found->second->entry,sourcePage,terrainJobs[job.first],base.nativeAlpha(job.first))))terrainPrefixes_.erase(found);
+    }
+    // Reclaim only this renderer's inactive prefixes. Newly admitted/current
+    // entries are never evicted again during this frame. Other views consume
+    // the same strictly charged byte pool and can simply decline admission.
+    std::vector<std::pair<uint64_t,uint32_t>>inactive;for(const auto&e:terrainPrefixes_)if(!wantedPrefixes.count(e.first))inactive.push_back({e.second->entry.used,e.first});std::sort(inactive.begin(),inactive.end());size_t evictAt=0;
+    for(const auto&job:jobs)if(wantedPrefixes.count(job.first)){auto source=base.pages_.find(job.first);auto sourcePage=source==base.pages_.end()?nullptr:source->second;const auto&staticDraws=terrainJobs[job.first];auto found=terrainPrefixes_.find(job.first);
+     if(found!=terrainPrefixes_.end()){found->second->entry.used=prefixSerial_;++stats_.prefixHits;continue;}
+     // Capacity for a native Page's RGBA/depth/native-Z planes and the exact
+     // static Draw copy, including conservative node/control-block overhead.
+     const size_t estimate=sizeof(PrefixState)+sizeof(NativeCanvas::Page)+size_t(128)*128*10+staticDraws.size()*sizeof(Draw)*2+1024;
+     auto state=std::make_shared<PrefixState>(estimate);
+     while(!state->charge.bytes&&evictAt<inactive.size()){terrainPrefixes_.erase(inactive[evictAt++].second);state=std::make_shared<PrefixState>(estimate);}
+     if(!state->charge.bytes)continue;
+     terrainPrefixes_[job.first]=state;prefixTasks.push_back({job.first,std::move(state),sourcePage,&staticDraws,base.nativeAlpha(job.first)});
+    }
+    std::atomic<size_t>buildCount{0},rasterCount{0};
+    parallelrows::rows(prefixTasks.size(),prefixTasks.size()*size_t(128)*128,[&](size_t first,size_t last){
+     for(size_t n=first;n<last;++n){const auto&task=prefixTasks[n];auto&prefix=task.state->entry;
+      try{
+       auto page=std::make_shared<NativeCanvas::Page>(prefixPageBudget());
+       if(task.source){const auto&src=task.source->surface;if(!page->surface.restoreFrame(128,128,src.color,src.depth,src.nativeZ,src.alphaPlane()))continue;}
+       else if(base.background_!=0xff080c08u)std::fill(page->surface.color.begin(),page->surface.color.end(),base.background_);
+       page->surface.precision(base.precision_);int px=NativeCanvas::pageX(task.key)*128,py=NativeCanvas::pageY(task.key)*128;
+       page->surface.nativeView(py,1,1,base.width_,base.height_,px);page->surface.writeRows(0,128);page->surface.nativeBase(task.alpha);
+       for(const auto&draw:*task.draws)page->surface.blit(*draw.image,draw.x-px,draw.y-py,1,1,draw.base,draw.light,draw.lift,draw.drop,false,draw.material);
+       if(page->surface.failed())continue;
+       prefix.draws=*task.draws;
+       const auto&surface=page->surface;const size_t actual=sizeof(PrefixState)+sizeof(NativeCanvas::Page)+surface.color.capacity()*4+surface.depth.capacity()*4+surface.nativeZ.capacity()*2+prefix.draws.capacity()*sizeof(Draw)+1024;
+       if(actual>task.state->charge.bytes){prefix=Entry{};continue;}
+       prefix.hasBase=bool(task.source);prefix.base=task.source;prefix.version=task.source?task.source->revision:0;prefix.alpha=task.alpha;prefix.used=prefixSerial_;prefix.page=std::move(page);++prefix.page->revision;
+       ++buildCount;rasterCount.fetch_add(task.draws->size(),std::memory_order_relaxed);
+      }catch(const std::bad_alloc&){prefix.page.reset();}
+     }
+    });stats_.prefixBuilds=buildCount;stats_.prefixRasterCalls=rasterCount;
+    for(const auto&task:prefixTasks)if(!task.state->entry.page)terrainPrefixes_.erase(task.key);
+    prefixPlanningReady=true;
+   }
+   }catch(const std::bad_alloc&){terrainPrefixes_.clear();prefixTasks.clear();prefixApplied.clear();stats_.prefixBuilds=stats_.prefixHits=stats_.prefixRasterCalls=0;prefixPlanningReady=false;}
    struct Work {uint32_t key;Entry*entry;};std::vector<Work>changed;changed.reserve(jobs.size());
    for(auto&job:jobs){auto source=base.pages_.find(job.first);std::shared_ptr<NativeCanvas::Page>sourcePage=source==base.pages_.end()?nullptr:source->second;
     auto&entry=pages_[job.first];
     const bool reused=!replay.count(job.first)&&entry.page&&same(entry,sourcePage,job.second,base.nativeAlpha(job.first));
     if(reused){++stats_.reused;}
     else{
+     std::shared_ptr<PrefixState>prefixOwner;
+     std::shared_ptr<NativeCanvas::Page>terrainPage;
+     if(terrainCount&&prefixPlanningReady){auto at=terrainPrefixes_.find(job.first);if(at!=terrainPrefixes_.end()){prefixOwner=at->second;terrainPage=prefixOwner->entry.page;}}
+     auto initialPage=terrainPage?terrainPage:sourcePage;
      // A previous synchronous presentation normally released its page owners.
      // Reuse those two 128x128 buffers instead of free/allocate/copy per page.
      // A retained snapshot forces COW and keeps its old color/depth immutable.
@@ -188,15 +259,16 @@ public:
       evict->second.page.reset();
      }
      entry.alpha=base.nativeAlpha(job.first);entry.hasBase=bool(sourcePage);entry.base=sourcePage;entry.version=sourcePage?sourcePage->revision:0;entry.draws=std::move(job.second);
-     if(reusable){if(sourcePage)entry.page->surface=sourcePage->surface;else if(!entry.page->surface.reset(NativeCanvas::PageSize,NativeCanvas::PageSize,base.background_))return fail();}
-     else entry.page=sourcePage?std::make_shared<NativeCanvas::Page>(*sourcePage):std::make_shared<NativeCanvas::Page>(base.budget_);
-     if(!sourcePage&&base.background_!=0xff080c08u)std::fill(entry.page->surface.color.begin(),entry.page->surface.color.end(),base.background_);
+     if(reusable){if(initialPage)entry.page->surface=initialPage->surface;else if(!entry.page->surface.reset(NativeCanvas::PageSize,NativeCanvas::PageSize,base.background_))return fail();}
+     else{entry.page=std::make_shared<NativeCanvas::Page>(base.budget_);if(initialPage)entry.page->surface=initialPage->surface;entry.page->revision=sourcePage?sourcePage->revision:0;}
+     if(!initialPage&&base.background_!=0xff080c08u)std::fill(entry.page->surface.color.begin(),entry.page->surface.color.end(),base.background_);
+     if(terrainPage)prefixApplied.insert(job.first);
      entry.page->surface.precision(base.precision_);++entry.page->revision;changed.push_back({job.first,&entry});++stats_.changed;
     }
     out.pages_[job.first]=entry.page;if(!relativeOutput||!reused)dirty(job.first);
    }
    std::atomic<bool>failed{false};
-   auto initialize=[&](const Work&work){auto&surface=work.entry->page->surface;int x=NativeCanvas::pageX(work.key)*128,y=NativeCanvas::pageY(work.key)*128;surface.nativeView(y,1,1,base.width_,base.height_,x);surface.writeRows(0,128);if(!base.terrainSources().empty())surface.nativeBase(work.entry->alpha);};
+   auto initialize=[&](const Work&work){auto&surface=work.entry->page->surface;int x=NativeCanvas::pageX(work.key)*128,y=NativeCanvas::pageY(work.key)*128;surface.nativeView(y,1,1,base.width_,base.height_,x);surface.writeRows(0,128);if(!base.terrainSources().empty()&&!prefixApplied.count(work.key))surface.nativeBase(work.entry->alpha);};
    std::vector<Work>independent;
    if(orderedReplay){
     // Global invalidation (e.g. current lighting) need not serialize distant
@@ -207,21 +279,23 @@ public:
     // Flatten attachments in the same shadow/body order as Surface::blit.
     // Only the cloak body needs a global scanline walk; ordinary planes have
     // no framebuffer read dependency and can visit each page as a unit.
+    bool paintingTerrain=false;
     std::function<void(const Draw&,const voxel::Image&,float,Material,float)>paintPlane;
     paintPlane=[&](const Draw&draw,const voxel::Image&image,float dy,Material material,float drop){
      for(const auto&part:image.attachments)if(part.shadow&&!image.shadowsAfter&&(!part.airborneShadow||drop>0))paintPlane(draw,part,dy+drop,material.shifted(drop),0);
      int l=std::clamp(int(std::floor(draw.x+float(image.x)/image.rasterScale)),base.paintLeft_,base.paintRight_),r=std::clamp(int(std::ceil(draw.x+float(image.x+image.width)/image.rasterScale)),base.paintLeft_,base.paintRight_);
      int t=std::clamp(int(std::floor(draw.y+dy+float(image.y)/image.rasterScale)),base.paintTop_,base.paintBottom_),b=std::clamp(int(std::ceil(draw.y+dy+float(image.y+image.height)/image.rasterScale)),base.paintTop_,base.paintBottom_);
-     auto paint=[&](int px,int py,int first,int last){uint32_t key=NativeCanvas::key(px,py);if(!replay.count(key)||!links.count(key))return;auto page=out.pages_.find(key);if(page==out.pages_.end())return;auto&surface=page->second->surface;surface.writeRows(first-py*128,last-py*128);surface.nativeRead([&out](int x,int y){return out.pixel(x,y);});surface.blit(image,draw.x-px*128,draw.y+dy-py*128,1,1,draw.base,draw.light,draw.lift,0,false,material,false);surface.nativeRead({});surface.writeRows(0,128);if(surface.failed())failed=true;};
+     auto paint=[&](int px,int py,int first,int last){uint32_t key=NativeCanvas::key(px,py);if(!replay.count(key)||!links.count(key)||(paintingTerrain&&prefixApplied.count(key)))return;auto page=out.pages_.find(key);if(page==out.pages_.end())return;auto&surface=page->second->surface;surface.writeRows(first-py*128,last-py*128);surface.nativeRead([&out](int x,int y){return out.pixel(x,y);});surface.blit(image,draw.x-px*128,draw.y+dy-py*128,1,1,draw.base,draw.light,draw.lift,0,false,material,false);surface.nativeRead({});surface.writeRows(0,128);if(surface.failed())failed=true;};
      if(l<r&&t<b){if(material.displace&&image.nativeDepth.voxel){for(int y=t;y<b;++y)for(int x=l/128;x<=(r-1)/128;++x)paint(x,y/128,y,y+1);}else for(int y=t/128;y<=(b-1)/128;++y)for(int x=l/128;x<=(r-1)/128;++x)paint(x,y,std::max(t,y*128),std::min(b,(y+1)*128));}
      for(const auto&part:image.attachments)if((!part.shadow||image.shadowsAfter)&&(!part.airborneShadow||drop>0))paintPlane(draw,part,dy+(part.shadow?drop:0),material.shifted(part.shadow?drop:0),0);
     };
-    for(const auto&draw:ordered)paintPlane(draw,*draw.image,0,draw.material,draw.drop);
+    for(size_t n=0;n<ordered.size();++n){paintingTerrain=n<terrainCount;const auto&draw=ordered[n];paintPlane(draw,*draw.image,0,draw.material,draw.drop);}
    }else independent=std::move(changed);
    parallelrows::rows(independent.size(),independent.size()*size_t(NativeCanvas::PageSize)*NativeCanvas::PageSize,[&](size_t first,size_t last){
     try{for(size_t n=first;n<last;++n){const auto&work=independent[n];auto&surface=work.entry->page->surface;
       const int x=NativeCanvas::pageX(work.key)*NativeCanvas::PageSize,y=NativeCanvas::pageY(work.key)*NativeCanvas::PageSize;initialize(work);
-      for(const auto&draw:work.entry->draws)surface.blit(*draw.image,draw.x-x,draw.y-y,1,1,draw.base,draw.light,draw.lift,draw.drop,false,draw.material);
+      const size_t firstDraw=prefixApplied.count(work.key)?terrainJobs.at(work.key).size():0;
+      for(size_t n=firstDraw;n<work.entry->draws.size();++n){const auto&draw=work.entry->draws[n];surface.blit(*draw.image,draw.x-x,draw.y-y,1,1,draw.base,draw.light,draw.lift,draw.drop,false,draw.material);}
       if(surface.failed())failed=true;
      }}catch(const std::bad_alloc&){failed=true;}
    });

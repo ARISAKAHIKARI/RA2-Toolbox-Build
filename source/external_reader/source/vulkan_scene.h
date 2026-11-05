@@ -3,6 +3,7 @@
 #include "gpu_draw_encoding.h"
 #include "gpu_scene_sources.h"
 #include "gpu_scene_bins.h"
+#include "gpu_phase_csr.h"
 #include "vulkan_present.h"
 #include "gpu_motion.h"
 #include "vulkan_scene_spirv.h"
@@ -197,12 +198,28 @@ private:
   }
   params.firstDraw=0;params.lastDraw=uint32_t(frame.draws.size());params.stateOffset=uint32_t(pixels);params.zaOffset=uint32_t(pixels*2);params.phase=1;params.nativeScene=frame.nativeScene;params.nativeScaleX=bits(frame.nativeScaleX);params.nativeScaleY=bits(frame.nativeScaleY);params.alphaOffset=uint32_t(metadata.size());params.alphaCount=0;
   if(frame.nativeScene&&frame.effects)for(size_t n=0;n<frame.effects->commands.size();++n)if(frame.effects->commands[n].words[0]==gpueffects::Alpha){auto c=frame.effects->commands[n].words;c[3]=effectSources[n]==size_t(-1)?Missing:materialPlan.offsets[effectSources[n]];metadata.insert(metadata.end(),c.begin(),c.end());++params.alphaCount;}
+  const size_t originalMetadataWords=metadata.size();const phasecsr::Binding originalBins{params.binsOffset,params.refsOffset};std::vector<phasecsr::Binding>phaseBins;
+  {
+   const auto phases=phasecsr::partition(uint32_t(frame.draws.size()),[&](uint32_t n){return scenesources::active(bounds[n])&&frame.draws[n].displace;});
+   const uint64_t storageWords=properties_.limits.maxStorageBufferRange/4,remaining=storageWords>metadata.size()?storageWords-metadata.size():0;
+   const auto phased=phasecsr::build(references,starts,uint32_t(frame.draws.size()),phases,remaining);
+   phasecsr::append(phased,metadata,originalBins,phaseBins,storageWords);
+  }
   if(metadata.empty())metadata.push_back(0);const VkDeviceSize outputBytes=pixels*4,totalOutputBytes=outputBytes*(collectGuides?7:1),maskBytes=maskOut&&frame.maskPlan?frame.maskPlan->outputWords()*4:0,allocatedOutputBytes=std::max(totalOutputBytes,outputBytes*((waveSnapshot||hasDisplacement)?4:3));
   const bool direct=gpuOut&&!collectGuides&&!maskOut&&direct_.prepare(w,h);
   if(allocatedOutputBytes>properties_.limits.maxStorageBufferRange||uint64_t(metadata.size())*4>properties_.limits.maxStorageBufferRange)return fail("GPU scene storage range exceeded; CPU fallback");
   if(direct)destroy(readback_);
   if(guidesBuffered_&&!collectGuides){destroy(output_);destroy(readback_);}guidesBuffered_=collectGuides;
-  if(!buffer(output_,allocatedOutputBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false,collectGuides)||(!direct&&!buffer(readback_,totalOutputBytes+maskBytes,VK_BUFFER_USAGE_TRANSFER_DST_BIT,true,collectGuides))||!buffer(commands_,metadata.size()*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true)){
+  bool framebufferReady=buffer(output_,allocatedOutputBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,false,collectGuides)&&(direct||buffer(readback_,totalOutputBytes+maskBytes,VK_BUFFER_USAGE_TRANSFER_DST_BIT,true,collectGuides));
+  if(framebufferReady){
+   bool commandsReady=buffer(commands_,metadata.size()*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true);
+   if(!commandsReady&&!phaseBins.empty()){
+    metadata.resize(originalMetadataWords);phaseBins.clear();
+    commandsReady=buffer(commands_,metadata.size()*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true);
+   }
+   framebufferReady=commandsReady;
+  }
+  if(!framebufferReady){
    if(collectGuides){++guideAllocationFailures_;destroy(output_);destroy(readback_);guidesBuffered_=false;motionHistory_.clear();FrameJob fallback=frame;fallback.collectGuides=false;const bool raw=renderFrameImpl(fallback,out,maskOut,gpuOut);guideRejectedWidth_=w;guideRejectedHeight_=h;return raw;}
    return fatal("GPU scene framebuffer allocation failed");
   }
@@ -223,7 +240,7 @@ private:
   if(!voxelJobs.empty())voxels_.record(command_);
   if(!baseDispatches.empty()){vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,pipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,pipelineLayout_,0,1,&descriptors_,0,nullptr);for(const auto&d:baseDispatches){vkCmdPushConstants_(command_,pipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(Params),&d.params);vkCmdDispatch_(command_,(d.params.width+7)/8,(d.params.height+7)/8,1);}VkMemoryBarrier resolve{VK_STRUCTURE_TYPE_MEMORY_BARRIER};resolve.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT;resolve.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&resolve,0,nullptr,0,nullptr);}
   vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,needs64?scene64Pipeline_:scenePipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,scenePipelineLayout_,0,1,&sceneDescriptors_,0,nullptr);
-  size_t sceneDispatches=0;auto dispatchScene=[&](uint32_t first,uint32_t last,bool serial,bool final){params.firstDraw=first;params.lastDraw=last;params.phase=(sceneDispatches?0u:1u)|(serial?2u:0u)|(final?4u:0u);vkCmdPushConstants_(command_,scenePipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(params),&params);vkCmdDispatch_(command_,serial?1:(w+7)/8,serial?1:(h+7)/8,1);++sceneDispatches;VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);};
+  size_t sceneDispatches=0;auto dispatchScene=[&](uint32_t first,uint32_t last,bool serial,bool final){const auto binding=sceneDispatches<phaseBins.size()?phaseBins[sceneDispatches]:originalBins;params.binsOffset=binding.binsOffset;params.refsOffset=binding.refsOffset;params.firstDraw=first;params.lastDraw=last;params.phase=(sceneDispatches?0u:1u)|(serial?2u:0u)|(final?4u:0u);vkCmdPushConstants_(command_,scenePipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(params),&params);vkCmdDispatch_(command_,serial?1:(w+7)/8,serial?1:(h+7)/8,1);++sceneDispatches;VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);};
   uint32_t first=0;for(uint32_t n=0;n<frame.draws.size();++n)if(scenesources::active(bounds[n])&&frame.draws[n].displace){if(n>first||!sceneDispatches)dispatchScene(first,n,false,false);dispatchScene(n,n+1,true,false);first=n+1;}dispatchScene(first,uint32_t(frame.draws.size()),false,true);
   for(auto d:effectDispatches){d.params[7]=uint32_t(pixels*3);d.params[12]=params.zaOffset;d.params[13]=frame.nativeScene;
    VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=d.snapshot?VK_ACCESS_TRANSFER_READ_BIT|VK_ACCESS_TRANSFER_WRITE_BIT:VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;
@@ -252,3 +269,4 @@ private:
  }
 };
 }}
+

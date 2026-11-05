@@ -1,6 +1,7 @@
 #pragma once
 #include "gpu_area.h"
 #include "gpu_draw_encoding.h"
+#include "gpu_phase_csr.h"
 #include "immutable_atlas_plan.h"
 #include "vulkan_voxel_backend.h"
 #include "vulkan_scene_spirv.h"
@@ -18,6 +19,7 @@ class ObjectStage {
  VkDescriptorSetLayout layout_=VK_NULL_HANDLE;VkPipelineLayout pipelineLayout_=VK_NULL_HANDLE;VkDescriptorPool pool_=VK_NULL_HANDLE;
  VkDescriptorSet set_=VK_NULL_HANDLE;VkPipeline pipeline_=VK_NULL_HANDLE;bool ready_=false,banked_=false;uint32_t jobs_=0;
  uint64_t uploads_=0,uploaded_=0,sceneDispatches_=0;std::vector<uint32_t>displaced_;std::map<std::pair<uint32_t,uint32_t>,uint32_t>alphaOffsets_;
+ phasecsr::Binding originalBins_;std::vector<phasecsr::Binding>phaseBins_;
  template<class T>static Source source(const std::shared_ptr<const std::vector<T>>&v,uint64_t revision=0){return v?Source{std::shared_ptr<const void>(v,v.get()),v->data(),v->size()*sizeof(T),false,revision}:Source{};}
  bool fail(const char*why){return core_.fail(why);}
  void barrier(VkCommandBuffer command,VkPipelineStageFlags from,VkPipelineStageFlags to,VkAccessFlags src,VkAccessFlags dst){
@@ -57,10 +59,10 @@ public:
   if(core_.device_){for(auto*b:{&colors_,&materials_,&commands_,&colorUpload_,&materialUpload_,&nativeZ_})core_.destroy(*b);
    if(pipeline_)core_.vkDestroyPipeline_(core_.device_,pipeline_,nullptr);if(pool_)core_.vkDestroyDescriptorPool_(core_.device_,pool_,nullptr);
    if(pipelineLayout_)core_.vkDestroyPipelineLayout_(core_.device_,pipelineLayout_,nullptr);if(layout_)core_.vkDestroyDescriptorSetLayout_(core_.device_,layout_,nullptr);
-  }alphaOffsets_.clear();pipeline_=VK_NULL_HANDLE;pool_=VK_NULL_HANDLE;pipelineLayout_=VK_NULL_HANDLE;layout_=VK_NULL_HANDLE;set_=VK_NULL_HANDLE;ready_=false;jobs_=0;colorResident_.clear();materialResident_.clear();
+  }alphaOffsets_.clear();phaseBins_.clear();pipeline_=VK_NULL_HANDLE;pool_=VK_NULL_HANDLE;pipelineLayout_=VK_NULL_HANDLE;layout_=VK_NULL_HANDLE;set_=VK_NULL_HANDLE;ready_=false;jobs_=0;colorResident_.clear();materialResident_.clear();
  }
  bool prepare(const Plan&p,const std::vector<uint32_t>&slots,const std::vector<size_t>&dirty,const std::array<Buffer*,4>&banks,bool banked){
-  jobs_=0;sceneDispatches_=0;displaced_.clear();uploads_=uploaded_=0;std::vector<size_t>pages;for(auto n:dirty)if(p.nativeSurface||!p.pages[n].draws.empty())pages.push_back(n);if(pages.empty())return true;
+  jobs_=0;sceneDispatches_=0;displaced_.clear();phaseBins_.clear();uploads_=uploaded_=0;std::vector<size_t>pages;for(auto n:dirty)if(p.nativeSurface||!p.pages[n].draws.empty())pages.push_back(n);if(pages.empty())return true;
   if(!p.objects||p.objects->size()>65536||pages.size()>core_.properties_.limits.maxComputeWorkGroupCount[2])return fail("GPU native-page job budget exceeded");
   if(!ready_&&!initialize(banked)){release();return false;}const auto&draws=*p.objects;uint32_t maximumSlot=0;for(uint32_t slot:slots)maximumSlot=std::max(maximumSlot,slot+1);const uint64_t nativeBytes=p.nativeSurface?uint64_t(maximumSlot)*PagePixels*2:4;
   if(!core_.buffer(nativeZ_,nativeBytes,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,false,false,std::min<uint64_t>(core_.properties_.limits.maxStorageBufferRange,uint64_t(MaximumPages)*PagePixels*2)))return fail("GPU native Z atlas unavailable");
@@ -99,7 +101,20 @@ public:
    for(size_t j=0;j<pages.size();++j){const auto&page=p.pages[pages[j]];metadata[params_[31]+(page.y*columns+page.x)*2+1]=uint32_t(j+1);}
    for(uint32_t n=0;n<draws.size();++n)if(draws[n].displace)displaced_.push_back(n);
   }
-  if(metadata.size()>32*1024*1024||!core_.buffer(commands_,metadata.size()*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true))return fail("GPU native-page commands unavailable");
+  const size_t originalMetadataWords=metadata.size();originalBins_={params_[3],params_[4]};
+  {
+   const auto phases=phasecsr::partition(uint32_t(draws.size()),[&](uint32_t n){return p.nativeSurface&&draws[n].displace;});
+   const uint64_t storageWords=std::min<uint64_t>(32*1024*1024,core_.properties_.limits.maxStorageBufferRange/4),remaining=storageWords>metadata.size()?storageWords-metadata.size():0;
+   const auto phased=phasecsr::build(references,starts,uint32_t(draws.size()),phases,remaining);
+   phasecsr::append(phased,metadata,originalBins_,phaseBins_,storageWords);
+  }
+  if(metadata.size()>32*1024*1024)return fail("GPU native-page commands unavailable");
+  bool commandsReady=core_.buffer(commands_,metadata.size()*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true);
+  if(!commandsReady&&!phaseBins_.empty()){
+   metadata.resize(originalMetadataWords);phaseBins_.clear();
+   commandsReady=core_.buffer(commands_,metadata.size()*4,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,true);
+  }
+  if(!commandsReady)return fail("GPU native-page commands unavailable");
   std::memcpy(commands_.mapped,metadata.data(),metadata.size()*4);if(!core_.flush(commands_)||!upload(colors,colorPlan_,colorUpload_,colorCopies_)||!upload(materials,materialPlan_,materialUpload_,materialCopies_))return fail("GPU native-page upload failed");
   std::vector<gpuvoxel::Stage::Job>voxels;std::set<std::pair<uint32_t,uint32_t>>seen;
   for(size_t n=0;n<draws.size();++n)if(draws[n].gpuRaster){const auto&s=sources[n];auto key=std::make_pair(colorPlan_.offsets[s[0]],materialPlan_.offsets[s[2]]);if((colorPlan_.changed(s[0])||materialPlan_.changed(s[2]))&&seen.insert(key).second)voxels.push_back({draws[n].gpuRaster,key.first,key.second});}
@@ -115,7 +130,7 @@ public:
   barrier(command,VK_PIPELINE_STAGE_TRANSFER_BIT|VK_PIPELINE_STAGE_HOST_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT|VK_ACCESS_HOST_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT);
   voxels_.record(command);barrier(command,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT);
   core_.vkCmdBindPipeline_(command,VK_PIPELINE_BIND_POINT_COMPUTE,pipeline_);core_.vkCmdBindDescriptorSets_(command,VK_PIPELINE_BIND_POINT_COMPUTE,pipelineLayout_,0,1,&set_,0,nullptr);
-  const uint32_t count=params_[21];auto dispatch=[&](uint32_t first,uint32_t last,bool serial){params_[20]=first;params_[21]=last;params_[24]=(sceneDispatches_?0u:1u)|(serial?2u:0u);core_.vkCmdPushConstants_(command,pipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof params_,params_.data());core_.vkCmdDispatch_(command,serial?1:16,serial?1:16,serial?1:jobs_);++sceneDispatches_;barrier(command,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT,VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT);};
+  const uint32_t count=params_[21];auto dispatch=[&](uint32_t first,uint32_t last,bool serial){const auto binding=sceneDispatches_<phaseBins_.size()?phaseBins_[sceneDispatches_]:originalBins_;params_[3]=binding.binsOffset;params_[4]=binding.refsOffset;params_[20]=first;params_[21]=last;params_[24]=(sceneDispatches_?0u:1u)|(serial?2u:0u);core_.vkCmdPushConstants_(command,pipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof params_,params_.data());core_.vkCmdDispatch_(command,serial?1:16,serial?1:16,serial?1:jobs_);++sceneDispatches_;barrier(command,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT,VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT);};
   uint32_t first=0;for(uint32_t index:displaced_){if(index>first||!sceneDispatches_)dispatch(first,index,false);dispatch(index,index+1,true);first=index+1;}dispatch(first,count,false);
  }
  void commit(){if(!jobs_)return;colorResident_=std::move(colorPlan_.retained);materialResident_=std::move(materialPlan_.retained);voxels_.commit();}
@@ -127,3 +142,4 @@ public:
  uint64_t dispatches()const{return jobs_?sceneDispatches_+voxels_.stats().dispatches:0;}uint64_t rasters()const{return jobs_?voxels_.stats().jobs:0;}
 };
 }}
+
