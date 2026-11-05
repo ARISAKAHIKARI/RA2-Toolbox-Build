@@ -1116,7 +1116,9 @@
   },
   "windows_ci": {
     "run": 42013648001,
-    "status": "pending"
+    "status": "success",
+    "job": 127198968089,
+    "artifact": 13408708459
   },
   "earlier_measurements": "Earlier render-build/final-*,area-*,partial-* experiments are provisional; final_single_view uses quiet-* after local compilation/tests stopped. Do not substitute earlier lower medians as final values.",
   "concurrent_final": {
@@ -2479,5 +2481,6 @@
     "job": 127198967850,
     "conclusion": "success",
     "scope": "392 framebuffer and clip comparisons;177/75086 scalar area oracles;103 terrain-prefix and32cloak checks;shared team600submissions/40failures"
-  }
+  },
+  "delivery_evidence": "pre42-verified-delivery.json"
 }

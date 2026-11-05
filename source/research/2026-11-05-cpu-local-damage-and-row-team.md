@@ -36,3 +36,13 @@ AMD EPYC9V74，9个可见逻辑CPU、8核cgroup配额，g++13.3.0、-O2 -pthread
 正式版1.0.41的 `source/shared/source/gpu_surface.h` 将 `DirectPresentationEnabled` 设为false；HF29因崩溃／闪烁反馈暂停跨API直出，当前Vulkan计算后仍是fence完成、CPU像素回读、layered-window呈现。此前“已经GPU直出”的说法不准确，应区分已有实现与实际启用。
 
 本轮没有启用该旧路径，没有修改shader、硬件等待额度或实现多帧异步GPU流水线。GPU直出／异步呈现需要另行处理资源所有权和实机恢复验证；不把本次CPU改善说成物理GPU加速。
+
+## 最终配对交付
+
+最终源码c9f933698cf3132cb2a0b91dbb43cf20ad4fe364的[CI42013648001](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/actions/runs/42013648001) Linux及Windows作业均成功。实际Windows原生进程通过392组局部绘制/缓存检查及600并发任务、40异常回调退休检查。
+
+下载artifact与GitHub摘要一致；内层更新ZIP和四组件逐一匹配CI哈希。本地独立核对PE资源版本1.0.42.1、x64主程序/x86 Runtime和broker、导出、mapping、协议及依赖全部通过。
+
+更新包`RA2Toolbox-1.0.42-pre.1-x64-Update.zip`共3543048字节，SHA-256`e1d0c5c9f48374fb0d6518a63acaf93e0ad21e010fb9947ef8fa4f63d36d5c4e`，只包含四个执行组件、WebView2许可和中文更新说明。退出游戏和工具箱后成套覆盖已有完整安装，保留原配置。本轮没有新建GitHub Release或更改既有正式标签。
+
+完整[交付身份](evidence/pre42-verified-delivery.json)保留组件验证细节。Windows编译和受控检查不增加真实游戏、物理GPU或联机验收的宣称。
