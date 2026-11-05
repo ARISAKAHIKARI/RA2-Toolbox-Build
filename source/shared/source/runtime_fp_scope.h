@@ -6,6 +6,7 @@
 struct alignas(16) RuntimeFPScope {
  uint8_t saved[512];
  uint32_t mxcsr=0x1F80;
+ bool held=false;
  DWORD lastError=GetLastError();
  RuntimeFPScope(){
   auto* state=saved;auto* control=&mxcsr;
@@ -17,11 +18,13 @@ struct alignas(16) RuntimeFPScope {
    mov eax,control
    ldmxcsr [eax]
   }
+  held=true;
  }
- ~RuntimeFPScope(){auto* state=saved;__asm {
+ void restore(){if(!held)return;held=false;auto* state=saved;__asm {
   mov eax,state
   fxrstor [eax]
  }SetLastError(lastError);}
+ ~RuntimeFPScope(){restore();}
  RuntimeFPScope(const RuntimeFPScope&)=delete;
  RuntimeFPScope&operator=(const RuntimeFPScope&)=delete;
 };

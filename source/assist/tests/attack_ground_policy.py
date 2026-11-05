@@ -27,7 +27,8 @@ static_assert(AttackOwnGround==34&&PlaceCompletedBuilding==33&&SetSleep==29);
 static_assert(selectedmode::Count==4&&selectedmode::command(3)==AttackOwnGround&&selectedmode::index(AttackOwnGround)==3);
 struct Shared{uint32_t request=1,stop=0;int result=0,count=0;}shared,*sh=&shared;
 uint32_t match=1,pendingAck=0;bool pendingAckReady=false,fault=false,ready=true,session=true;
-int budget=24,voices=0,forcedCount=-1,failed=false,cancelled=0;
+int outgoingBudget=24;int &budget=outgoingBudget;int voices=0,forcedCount=-1,failed=false,cancelled=0;
+bool singleplayer=true;int shotResult=1;std::vector<uint32_t>shots;
 std::unordered_map<uint32_t,uint32_t>memory,kinds,types,ids,tokens;
 std::vector<uint32_t>selection;
 struct Event{uint32_t id,target;int tag;};std::vector<Event>events;
@@ -46,7 +47,8 @@ uint32_t rawWeapon(uint32_t type,float,int){return memory[type+0x898];}
 uint32_t readMapCell(int x,int y){return x>=0&&x<512&&y>=0&&y<512?0x88000:0;}
 bool simulationReady(){return ready;}bool outgoingRoom(){return budget>0;}
 void cancelNative(uint32_t,bool){++cancelled;}void inputFeedback(uint32_t,int,bool){++voices;}
-namespace eventdelivery{bool mayQueue(int){return session;}}
+namespace eventdelivery{bool mayQueue(int){return session;}bool isSingleplayer(int){return singleplayer;}}
+int ownGroundShot(uint32_t p,int slot,bool&voiced){assert(slot==0);if(shotResult>0){shots.push_back(ids[p]);cancelNative(p,false);if(!voiced){voiced=true;inputFeedback(p,0,false);}}return shotResult;}
 namespace taskarbiter{enum class Owner{Generic};}
 bool nativeMission(uint32_t,uint32_t id,int mission,uint32_t target,uint32_t dest,int destTag,uint32_t nearest,int nearestTag,taskarbiter::Owner,uint32_t*,int tag){
  assert(mission==1&&!dest&&!destTag&&!nearest&&!nearestTag&&(tag==11||tag==0x34));
@@ -69,14 +71,14 @@ uint32_t actor(int index,int range=256,bool area=false){
 void fresh(){
  resetOwnGround();shared={};shared.request=1;sh=&shared;match=1;fault=false;ready=session=true;
  budget=24;voices=0;forcedCount=-1;failed=false;cancelled=0;pendingAckReady=false;pendingAck=0;
- memory.clear();kinds.clear();types.clear();ids.clear();tokens.clear();selection.clear();events.clear();w(0xa8ed84,10);
+ memory.clear();kinds.clear();types.clear();ids.clear();tokens.clear();selection.clear();events.clear();shots.clear();singleplayer=true;shotResult=1;w(0xa8ed84,10);
 }
 int main(){unsigned checks=0;auto check=[&](bool x){++checks;if(!x){std::fprintf(stderr,"failed check %u\n",checks);std::abort();}};
  fresh();actor(0,0);actor(1,0,true);actor(2,256);attackOwnGroundCommand(0x90000,100,1);
- check(events.size()==3&&events[0].tag==0x34&&events[0].target==1000);
- check(events[1].tag==11&&events[2].tag==11&&events[1].target==10010);
+ check(shots==std::vector<uint32_t>{1000}&&events.size()==2&&cancelled==3);
+ check(events[0].tag==11&&events[1].tag==11&&events[0].target==10010);
  check(!ownground::job.pending&&pendingAckReady&&shared.count==3&&voices==1);
- fresh();for(int i=0;i<60;++i)actor(i,i%2?0:256);attackOwnGroundCommand(0x90000,100,1);
+ fresh();for(int i=0;i<60;++i)actor(i,256);attackOwnGroundCommand(0x90000,100,1);
  check(events.size()==24&&ownground::job.pending&&!pendingAckReady);
  budget=24;ownGroundTick(0x90000,10,101);check(events.size()==24); // no second send in same frame
  tokens[1050]=1;w(0x1000000+49*4096+0x6c,0);selection.clear();actor(500,0);
@@ -102,6 +104,21 @@ int main(){unsigned checks=0;auto check=[&](bool x){++checks;if(!x){std::fprintf
  check(events.empty()&&shared.result==-7);
  for(bool pause:{false,true}){fresh();actor(0);budget=0;attackOwnGroundCommand(0x90000,100,1);
   if(pause)ready=false;else w(0xa8bc60+25,1);budget=24;ownGroundTick(0x90000,11,116);check(events.empty()&&shared.result==-7);}
+ fresh();actor(0,0);singleplayer=false;attackOwnGroundCommand(0x90000,100,1);
+ check(shots.empty()&&events.empty()&&shared.result==-43&&cancelled==0);
+ fresh();actor(0,0);actor(1,256);singleplayer=false;attackOwnGroundCommand(0x90000,100,1);
+ check(shots.empty()&&events.size()==1&&shared.count==1&&shared.result==-43);
+ fresh();actor(0,0);shotResult=0;attackOwnGroundCommand(0x90000,100,1);
+ check(shots.empty()&&events.empty()&&shared.count==0&&budget==23&&cancelled==0&&!ownground::job.pending);
+ fresh();actor(0,0);shotResult=-43;attackOwnGroundCommand(0x90000,100,1);
+ check(shared.result==-43&&shots.empty()&&cancelled==0);
+ fresh();unit=actor(0,0);budget=0;attackOwnGroundCommand(0x90000,100,1);w(unit+0x9c,3000);
+ budget=24;ownGroundTick(0x90000,11,116);check(shots.empty()&&shared.count==0);
+ fresh();for(int i=0;i<25;++i)actor(i,0);attackOwnGroundCommand(0x90000,100,1);
+ check(shots.size()==24&&events.empty()&&ownground::job.pending&&budget==0);
+ budget=24;ownGroundTick(0x90000,11,116);check(shots.size()==25&&shared.count==25&&voices==1);
+ fresh();unit=actor(0,0);budget=0;attackOwnGroundCommand(0x90000,100,1);w(types[unit]+0x898,0);
+ budget=24;ownGroundTick(0x90000,11,116);check(shots.empty()&&shared.count==0);
  hotkeyroute::Group key{{1727},{1727}};ownGroundHotkey(key,true);check(keySends==1&&key.actions.empty());
  key={{1727},{1727}};ownGroundHotkey(key,false);check(keySends==1&&notifications==1&&key.actions.empty());
  key={{1727,1001},{1727,1001}};ownGroundHotkey(key,true);check(keySends==1&&notifications==2&&key.actions==std::vector<int>{1001});

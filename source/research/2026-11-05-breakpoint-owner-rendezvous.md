@@ -2,7 +2,7 @@
 
 ## 問題與證據範圍
 
-基線 `codex/hook-recovery-20261105@98ff5db7872407b86aa0be7849755e9728116fa2`；本輪版本 `1.0.41-pre.8`，不改 Assist96／Cursor155／Runtime4。
+基線 `codex/hook-recovery-20261105@98ff5db7872407b86aa0be7849755e9728116fa2`；本輪版本 `1.0.41-pre.9`，不改 Assist96／Cursor155／Runtime4。
 使用者要求持續處理 Hook 動輒失效。先讀研究 INDEX、Runtime(8)／共享提示框清理筆記與持久 SQLite v129；沿用 Runtime(9) 的 `0x80000004 @0x004F7951`、Runtime(8) 的 `0x004F7870` 現場紀錄。
 未取得現場完整 EXE SHA-256 或當次例外 DR／lease 快照；不新增引擎入口、不重新反組譯私人遊戲映像。既有科技站點及 ABI 不變。
 
@@ -14,7 +14,7 @@
 
 此交會只作用於安裝／重配／稽核／退休／資源探測，不作用於每次硬體命中；代價是交易期間 owner 短暫等待，實際遊戲停頓成本仍未測量。受支援呼叫路徑是 Runtime 正常維護／清理，不可從任意外部 VEH 回呼啟動交易。
 
-另有獨立且確定的問題：`AssistExceptionFilter()` 對所有例外回傳 EXECUTE_HANDLER，故外部 SINGLE_STEP／BREAKPOINT 在外層 SEH 才被處理時也會觸發 AssistFault。現在這兩種例外回傳 CONTINUE_SEARCH、不記為 Assist 故障、不改 CONTEXT；由原 debugger／VEH／外層 SEH 負責。這不是按 CanBuild 地址吞掉未知例外，也不保證沒有接收者的外部例外可繼續執行。真正的 AV／in-page／非法指令等原有處理與故障清理保留。
+另有獨立且確定的問題：`AssistExceptionFilter()` 對所有例外回傳 EXECUTE_HANDLER，故外部 SINGLE_STEP／BREAKPOINT 在外層 SEH 才被處理時也會觸發 AssistFault。現在這兩種例外回傳 CONTINUE_SEARCH、不記為 Assist 故障、不改 CONTEXT；由原 debugger／VEH／外層 SEH 負責。這不是按 CanBuild 地址吞掉未知例外，也不保證沒有接收者的外部例外可繼續執行。一併整合 `4331dbd04f50994ab786883889a42ce3f2669b73` 的完整例外策略：真正的全域故障記錄後仍往外傳遞，只有明確定義回傳值的本地 AV／in-page 邊界可恢復。入口鎖、FP、序列、嵌套計數以真實 SEH finally 釋放；見 [例外策略筆記](2026-11-05-runtime-exception-policy.md)。這避免外部處理者展開堆疊後，只依賴 GNU C++ 析構而遺留 Runtime 鎖。
 
 Microsoft 參考：
 - [SetThreadContext](https://learn.microsoft.com/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadcontext)：目標需先掛起。
@@ -25,6 +25,18 @@ Microsoft 參考：
 
 `assist/tests/breakpoint_transaction_gate.py` 抽取 production start／poll／AssistExceptionFilter，用延遲 worker 和合成 Win32 handle 執行。舊 start 在第2項（交易尚未完成已返回）失敗；新版本20項通過，涵蓋重配、audit、wait失敗、CreateThread失敗、非owner拒絕、owner退出清理、外部debug分流及原有真故障報告。這不模擬 Windows 核心 CONTEXT／例外派發。
 
-原有 production 清理／排程27項、hot helper 2101項通過。Windows 真實 x86 DR／VEH 測試已列入專用 workflow：延遲 worker 的32次重配與32次audit、既有兩槽與四站點交易、混合／外部例外、未知槽保留及精確退休。Windows 執行結果、成品編譯與配對身分在成功後另行補記。
+整合後 production 清理／排程27項、延遲交易／filter20項、例外決策706項、故障重連及展開10個場景通過；原 hot helper 2101項亦通過。Windows 真實 x86 DR／VEH 測試已列入專用 workflow：延遲 worker 的32次重配與32次audit、既有兩槽與四站點交易、混合／外部例外、未知槽保留及精確退休。Windows 執行結果、成品編譯與配對身分在成功後另行補記。
 
 來源交錯風險與舊 start 提早返回已受控確認；**尚未以真實 Windows 重現 Runtime(9) 當次 lease／VEH 交錯，不能認定已證實或消除首個 `0x004F7951` 單步的所有來源**。尚無使用者遊戲、畫面、平台或聯機驗收。化學兵腳下攻擊與蜘蛛自動功能維持暫停。
+
+
+整合保留新版例外策略的明確故障邊界：已有 IPC 的 legacy fault 維持清理／報告，等待 Host stop 或死亡再完成退休；無 IPC 的殘留 fault 可清完後再接新 Host。全域 debug／native 例外正常走外部處理鏈，不進 legacy fault。所有產品標記統一為 pre.9，避免與其他分支 pre.8 混淆。
+
+
+## 最終 Windows 配對交付
+
+源提交 `dde2f56b3c663f3355d1c7ca0c436f5a2ba8ee58`，專用 run `41873387844` 全部成功；真正 x86 SEH 48個路由／48次正常重入、3個SEH scope／FP場景，延遲worker 32次重配與32次audit均通過。兩槽60000次、四站點180000次自有程序硬體例外通過；來源抽取的27項清理、20項交易／filter及10個故障／展開場景通過。
+
+成品版本 `1.0.41.9`，Host x64、Runtime／Broker x86、Cursor155／Assist96／Runtime4。下載 archive digest、四個檔案與CI SHA-256、PE架構及版本均一致。更新包 `RA2Toolbox-1.0.41-pre.9-x64-Update.zip`，3576161 bytes，SHA-256 `3d846f6f3e96a8130df1d651af9a0ca903cda9f71b5fcf86fb51c1ed34d9b0d5`。只含四個執行元件、必要許可及使用者更新說明。
+
+[完整交付證據](evidence/breakpoint-owner-rendezvous-windows.json)。升級前退出遊戲與工具箱，整包覆蓋後再啟動；遊戲內 pinned DLL 不能只重啟Host替換。實際遊戲／聯機與Runtime(9)首發單步來源仍未驗收。

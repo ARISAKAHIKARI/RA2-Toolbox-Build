@@ -1,6 +1,6 @@
 #pragma once
 #include "view_zoom_native_state.h"
-static int __cdecl nativeViewGuarded(unsigned action,uint32_t argument){RuntimeFPScope fp;return GuardedNativeViewAction(action,argument);}
+static int __cdecl nativeViewGuarded(unsigned action,uint32_t argument){RuntimeFPScope fp;int result=0;runtimeunwind::run([&]{result=GuardedNativeViewAction(action,argument);},[&]{fp.restore();});return result;}
 static __declspec(naked) void nativeViewMapEntry(){__asm {
  pushfd
  pushad
@@ -420,7 +420,7 @@ static bool nativeViewRestoreImpl(){
  if(!nativeViewRetirement.valid)nativeViewSidebarRetired();
  nativeViewError=0;nativeViewQueryBlocked=false;nativeViewPublish(viewzoom::Off);return nativeViewRetired();
 }
-static bool nativeViewRestore(){RuntimeFPScope fp;return GuardedNativeViewAction(21,0)!=0;}
+static bool nativeViewRestore(){return nativeViewGuarded(21,0)!=0;}
 static void nativeViewTickImpl(){
  if(!sh)return;
  const int requested=featureavailability::zoomPercent(int(sh->viewZoomPercent));
@@ -473,4 +473,4 @@ static void nativeViewTickImpl(){
  nativeViewActive=true;nativeViewWorldWait=false;nativeZoomApplied=requested;nativeViewDirty=4;nativeViewDirtySerial=UINT32_MAX;nativeViewMutationEnd();
  resetPointerInput();nativeViewPublish(viewzoom::Applied,true);sidebarViewRefresh(true);smallMapCameraTick();
 }
-static void nativeViewTick(){RuntimeFPScope fp;GuardedNativeViewAction(20,0);}
+static void nativeViewTick(){nativeViewGuarded(20,0);}

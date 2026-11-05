@@ -1730,8 +1730,8 @@ static std::wstring submitDiagnostic(){
 static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;MemoryBarrier();ack=a;commandLatency=sentAt?DWORD(GetTickCount()-sentAt):0;int r=shared->result,n=shared->count,c=shared->command;
  diag(L"ack command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
  if(c==AttackOwnGround){
-  std::wstring message=r>0?(n?L"攻击脚下请求已入队："+std::to_wstring(n)+L" 个单位；开火仍遵循原生射程、冷却和弹药。":L"没有可下令的己方地面单位。"):
-   L"攻击脚下未全部提交（已入队 "+std::to_wstring(n)+L" 个）："+(r==-41?L"所选单位仍处于 Sticky。":r==-40?L"当前会话不支持此指令。":r==-42?L"所选单位超过 8192 个。":L"指令过期、单位状态改变或事件提交失败，请重新执行。");
+  std::wstring message=r>0?(n?L"攻击脚下已处理："+std::to_wstring(n)+L" 个单位。零射程单机开火一次；冷却、无弹药等原生限制仍有效。":L"没有可执行的己方地面单位，或单位当前不能开火。"):
+   L"攻击脚下部分未执行（已处理 "+std::to_wstring(n)+L" 个）："+(r==-43?L"零射程补充开火仅支持单机及已识别的原生入口。":r==-41?L"所选单位仍处于 Sticky。":r==-40?L"当前会话不支持此指令。":r==-42?L"所选单位超过 8192 个。":L"指令过期、单位状态改变或事件提交失败，请重新执行。");
   setConsoleFeedback(GetDlgItem(ui,9176),message);setConsoleRuntimeError(GetDlgItem(ui,9176),r<0);notify(message);return;
  }
  if(c==PlaceCompletedBuilding){

@@ -19,6 +19,7 @@ source = a.core.read_text(encoding='utf-8')
 root = Path(__file__).parents[2]
 guard_path = root / 'assist/source/guard.cpp'
 fault_path = root / 'shared/source/runtime_fault.h'
+policy_path = root / 'assist/source/exception_policy.h'
 guard = guard_path.read_text(encoding='utf-8')
 
 def function(text, signature):
@@ -75,6 +76,7 @@ struct Service{
 harness += function(source, ' void poll(){') + '\n'
 harness += function(source, ' bool start(unsigned operation){') + '\n};\n'
 harness += fault_path.read_text(encoding='utf-8').replace('#pragma once', '') + '\n'
+harness += policy_path.read_text(encoding='utf-8').replace('#pragma once', '') + '\n'
 harness += r'''
 struct ExceptionRecord32 {unsigned code,flags;void*nested,*address;unsigned count,info[15];};
 struct ExceptionPointers32 {ExceptionRecord32*record;void*context;};
@@ -109,7 +111,7 @@ int main(){
  record.code=0xc0000005u;record.count=2;record.info[0]=1;record.info[1]=0xdead;
  check(AssistExceptionFilter(&pointers,9)==1&&reports==1&&lastBoundary==9&&lastCode==record.code&&lastOp==1&&lastAccess==0xdead);
  record.code=0xc0000006u;check(AssistExceptionFilter(&pointers,9)==1&&reports==2);
- record.code=0xc000001du;check(AssistExceptionFilter(&pointers,1)==1&&reports==3&&lastOp==~0u&&!lastAccess);
+ record.code=0xc000001du;check(AssistExceptionFilter(&pointers,1)==0&&reports==3&&lastOp==~0u&&!lastAccess);
  std::printf("PASS %u production transaction and debug-filter checks\n",checks);
 }
 '''
@@ -132,5 +134,5 @@ with tempfile.TemporaryDirectory(prefix='breakpoint-gate-') as directory:
 if a.output:
     a.output.parent.mkdir(parents=True, exist_ok=True)
     a.output.write_text(json.dumps({'scope':__doc__, 'pass':True, 'source_sha256':{
-        str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in (a.core,guard_path,fault_path)},
+        str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in (a.core,guard_path,fault_path,policy_path)},
         'stdout':run.stdout, 'windows_exception_delivery_tested':False, 'game_tested':False}, indent=2)+'\n')

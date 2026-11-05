@@ -1,21 +1,26 @@
 #include "../../shared/source/runtime_fault.h"
+#include "exception_policy.h"
 extern "C" __declspec(dllimport) unsigned long __stdcall GetLastError();
 extern "C" __declspec(dllimport) void __stdcall SetLastError(unsigned long);
 extern "C" void* _exception_info();
 extern "C" unsigned long _exception_code();
-struct ExceptionRecord32 {unsigned code,flags;void* nested;void* address;unsigned count,info[15];};
-struct ExceptionPointers32 {ExceptionRecord32* record;void* context;};
+using ExceptionRecord32=assistguard::Record;
+using ExceptionPointers32=assistguard::Pointers;
 static_assert(sizeof(void*)==4&&sizeof(ExceptionRecord32)==80,"Windows x86 SEH ABI");
+// Cleanup is owned by the caller. A resumed exception keeps this scope live;
+// the callback runs on normal return or when an outer handler unwinds it.
+extern "C" void RuntimeScopedCall(void* context,void(__cdecl*body)(void*),void(__cdecl*cleanup)(void*)){
+ __try {body(context);}
+ __finally {cleanup(context);}
+}
 extern "C" int AssistExceptionFilter(void* raw,unsigned boundary){
  const auto* pointers=(const ExceptionPointers32*)raw;const auto* record=pointers?pointers->record:nullptr;
- // Debug exceptions belong to the debugger/VEH/outer SEH chain. Unwinding
- // them as an Assist failure permanently disables an otherwise live bridge.
- if(!record||!runtimefault::captureException(record->code))return 0;
- if(record){
-  const bool access=(record->code==0xc0000005u||record->code==0xc0000006u)&&record->count>=2;
-  AssistReportException(boundary,record->code,(unsigned)record->address,access?record->info[0]:~0u,access?record->info[1]:0);
- }
- return 1;
+ if(!record)return 0;
+ const auto action=assistguard::disposition(boundary,record->code,record->flags);
+ if(action==assistguard::Disposition::Search)return 0;
+ const bool access=assistguard::accessFault(record->code)&&record->count>=2;
+ AssistReportException(boundary,record->code,(unsigned)record->address,access?record->info[0]:~0u,access?record->info[1]:0);
+ return action==assistguard::Disposition::ReportHandle?1:0;
 }
 // A failed native legality query rejects this batch before submission. SEH
 // bounds faults, not side effects of platform/MOD overrides. UI marks this risk.
@@ -47,31 +52,31 @@ extern "C" int GuardedObjectAir(unsigned object,int* airborne){
 extern "C" unsigned BeginAssistCapture();
 extern "C" void EndAssistCapture(unsigned);
 extern "C" int __cdecl AssistRiskAction(unsigned,unsigned,unsigned);
-extern "C" void AssistFault();
 extern "C" int __cdecl GuardedRiskAction(unsigned op,unsigned object,unsigned house){
  const unsigned long savedError=GetLastError();
  unsigned token=BeginAssistCapture();if(!token){SetLastError(savedError);return 0;}
  int result=0;
  __try {
   __try {result=AssistRiskAction(op,object,house);}
-  __except(AssistExceptionFilter(_exception_info(),11)){AssistFault();}
+  __except(AssistExceptionFilter(_exception_info(),11)){}
  }__finally {EndAssistCapture(token);SetLastError(savedError);}
  return result;
 }
 // Compile this tiny boundary with the MSVC x86 ABI. MinGW x86's DWARF
 // exception mode cannot emit Windows SEH funclets reliably.
+// Report native dispatcher faults without claiming ownership or disabling
+// Hooks. The caller/OS retains exception dispatch and unwind decisions.
 extern "C" void AssistTick();
-extern "C" void AssistFault();
 extern "C" void GuardedAssistTick() {
     __try { AssistTick(); }
-    __except(AssistExceptionFilter(_exception_info(),1)) { AssistFault(); }
+    __except(AssistExceptionFilter(_exception_info(),1)) {}
 }
 
 
 extern "C" int AssistFilterMessage(void*);
 extern "C" int GuardedAssistFilter(void* message){
  __try{return AssistFilterMessage(message);}
- __except(AssistExceptionFilter(_exception_info(),10)){AssistFault();return 0;}
+ __except(AssistExceptionFilter(_exception_info(),10)){return 0;}
 }
 
 

@@ -37,7 +37,7 @@ static void __declspec(naked) committedAdapter(){
 }
 static void releaseChannel(){if(channel)UnmapViewOfFile(channel);channel=nullptr;if(event)CloseHandle(event);if(mapping)CloseHandle(mapping);event=mapping=nullptr;owner=0;}
 static void maintain(DWORD requestedOwner){
- gameentry::Scope entry(gameentry::Client::Assist);if(!entry)return;
+ gameentry::scoped(gameentry::Client::Assist,false,[&]{
  const DWORD error=GetLastError();
  // A live controller's temporary pause must not remove/reinstall the site.
  // Heartbeat freshness gates callback work and NEW installation separately.
@@ -84,5 +84,6 @@ static void maintain(DWORD requestedOwner){
   MemoryBarrier();InterlockedExchange(&channel->state,ok?framesignal::Native:framesignal::SignatureRejected);
  }
  SetLastError(error);
+ });
 }
 }

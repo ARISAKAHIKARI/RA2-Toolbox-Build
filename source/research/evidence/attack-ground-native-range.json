@@ -1,5 +1,5 @@
 {
-  "scope": "Execute supported original YR range checks for own-object versus own-cell targeting.\nMap lookup, visibility, vtable coordinate/weapon access and obstacle checks are\nsynthetic. The original range arithmetic and comparisons execute unchanged.\nThis is not full firing, projectile physics, Windows or multiplayer validation.\nPrivate executable bytes are read locally and never included in the output.\n",
+  "scope": "Execute supported original YR range checks, SetTarget and direct Fire(self).\nMap/visibility/coordinate/weapon/muzzle/locomotor and bullet-allocation IO are\nsynthetic. Original range, complete fire-error overrides, Fire, rearm and ammo\npaths execute unchanged. This is not projectile physics or real-game/MP validation.\nPrivate executable bytes are read locally and never included in the output.\n",
   "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
   "results": [
     {
@@ -9,6 +9,8 @@
       "minimum": 0,
       "result": true,
       "full_common_fire_error": false,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": true
     },
     {
@@ -18,6 +20,8 @@
       "minimum": 0,
       "result": false,
       "full_common_fire_error": false,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": true
     },
     {
@@ -27,6 +31,8 @@
       "minimum": 0,
       "result": true,
       "full_common_fire_error": false,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": true
     },
     {
@@ -36,6 +42,8 @@
       "minimum": 1,
       "result": false,
       "full_common_fire_error": false,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": false
     },
     {
@@ -45,6 +53,8 @@
       "minimum": 0,
       "result": true,
       "full_common_fire_error": false,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": true
     },
     {
@@ -54,6 +64,8 @@
       "minimum": 0,
       "result": true,
       "full_common_fire_error": false,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": true
     },
     {
@@ -63,6 +75,8 @@
       "minimum": 0,
       "result": 0,
       "full_common_fire_error": true,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": true
     },
     {
@@ -72,6 +86,8 @@
       "minimum": 0,
       "result": 8,
       "full_common_fire_error": true,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": true
     },
     {
@@ -81,6 +97,8 @@
       "minimum": 0,
       "result": 3,
       "full_common_fire_error": true,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": false
     },
     {
@@ -90,6 +108,8 @@
       "minimum": 0,
       "result": 1,
       "full_common_fire_error": true,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": false
     },
     {
@@ -99,6 +119,8 @@
       "minimum": 0,
       "result": false,
       "full_common_fire_error": false,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
       "native_distance_comparison": true
     },
     {
@@ -108,6 +130,96 @@
       "minimum": 0,
       "result": true,
       "full_common_fire_error": false,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "self_settarget_becomes_cell",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": true,
+      "full_common_fire_error": false,
+      "direct_fire": false,
+      "settarget_canonicalization": true,
+      "native_distance_comparison": false
+    },
+    {
+      "case": "self_infantry_ready_override",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": 0,
+      "full_common_fire_error": true,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "self_unit_ready_override",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": 0,
+      "full_common_fire_error": true,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "self_infantry_reloading_override",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": 3,
+      "full_common_fire_error": true,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
+      "native_distance_comparison": false
+    },
+    {
+      "case": "self_infantry_empty_override",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": 1,
+      "full_common_fire_error": true,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
+      "native_distance_comparison": false
+    },
+    {
+      "case": "self_unit_facing_override",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": 2,
+      "full_common_fire_error": true,
+      "direct_fire": false,
+      "settarget_canonicalization": false,
+      "native_distance_comparison": true
+    },
+    {
+      "case": "self_infantry_native_shot",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": true,
+      "full_common_fire_error": false,
+      "direct_fire": true,
+      "settarget_canonicalization": false,
+      "native_distance_comparison": false
+    },
+    {
+      "case": "self_unit_native_shot",
+      "status": "PASS",
+      "range": 0,
+      "minimum": 0,
+      "result": true,
+      "full_common_fire_error": false,
+      "direct_fire": true,
+      "settarget_canonicalization": false,
       "native_distance_comparison": true
     }
   ],

@@ -4,6 +4,7 @@
 #endif
 #include <windows.h>
 #include "game_entry_api.h"
+#include "runtime_seh_scope.h"
 namespace gameentry {
 using Manage=int32_t (__stdcall*)(Request*);
 // All game components are linked into GameRuntime.dll. There is no runtime
@@ -46,10 +47,17 @@ inline bool active(Client c){
 struct Scope {
  Request request{};bool acquired=false;
  Scope(Client c,bool bind=false):acquired(enter(c,bind,request)){}
- ~Scope(){if(acquired)leave(request);}
+ void release(){if(acquired){acquired=false;leave(request);}}
+ ~Scope(){release();}
  explicit operator bool()const{return acquired;}
  Scope(const Scope&)=delete;Scope&operator=(const Scope&)=delete;
 };
+// Own the exact Enter lease outside the SEH callback frame. The same release
+// runs after an ordinary return or a platform-owned exception unwind.
+template<class Fn>bool scoped(Client client,bool bind,Fn&& fn){
+ Scope entry(client,bind);if(!entry)return false;
+ runtimeunwind::run([&]{fn();},[&]{entry.release();});return true;
+}
 inline bool patch(Client c,uint32_t at,const uint8_t*before,const uint8_t*after,unsigned n){
  if(!before||!after||n>16||!n)return false;
  Request r{};r.operation=Operation::Patch;r.client=c;r.module=moduleIdentity();r.address=at;r.length=n;r.token=uint32_t(InterlockedCompareExchange(&activeToken,0,0));

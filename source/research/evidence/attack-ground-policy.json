@@ -1,6 +1,6 @@
 {
   "scope": "Compile and exercise production own-ground batching and hotkey admission with fake game IO.\nNative event delivery, full game execution and multiplayer behavior are not tested here.\n",
   "status": "PASS",
-  "output": "PASS 27 production own-ground batching/input checks\n",
+  "output": "PASS 35 production own-ground batching/input checks\n",
   "game_tested": false
 }

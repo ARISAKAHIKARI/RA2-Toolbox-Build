@@ -6,7 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
-| 選中單位攻擊腳下快捷鍵 | [零射程 self／AreaFire cell、批次原生下令](2026-11-05-attack-own-ground.md) | command34 CtrlAltF 6F77B0 6FC0B0 Range0 self Cell11 Object34 no-new-Hook |
+| 選中單位攻擊腳下快捷鍵 | [SetTarget 反證、單機原生 Fire(self) 與地格批次](2026-11-05-attack-own-ground.md) | command34 CtrlAltF 6FCDB0 51DF60 741340 Range0 SP-only native-Fire rearm ammo no-new-Hook |
 | Hook 清理漏掉 Cursor 佈局槽與故障退休 | [Runtime(9)、兩槽共享與27項隔離檢查](2026-11-05-hook-cleanup-shared-tooltip.md) | gate6 7F74C8 7F74D8 fault cleanup-only pinned reconnect SINGLE_STEP-unresolved |
 | 新 MRGA 信标函数证据（未投产） | [新采集 ABI 与严格 profile 候选](2026-11-04-platform-beacon-current-capture.md) | 431410 C3A000 153CD0 ret4 proposed-only |
 | 平台 Reveal 上下文跳板与采集缺口 | [原生 fallback 不等于透明授权](2026-11-04-platform-reveal-wrapper-boundary.md) | 577D90 577E1E 577F03 MEM_PRIVATE handler-missing no-authorization |
@@ -263,5 +263,7 @@
 - [Runtime(8) 單步異常、故障鎖存及同進程重連殘留](2026-11-04-runtime-single-step-fault-reconnect.md)（80000004／4F7870／fault未清／callback仍活；來源與實機日誌分析，未修改Runtime）
 
 
-- [硬體斷點 owner 交會與偵錯例外分流](2026-11-05-breakpoint-owner-rendezvous.md)（pre.8；延遲交易／debug SEH 分流；現場首發來源仍待確認）
+- [pre.8 Hook 異常傳遞、SEH 擁有者清理與重新連接](2026-11-05-runtime-exception-policy.md)（Search／access-only fallback／exact lease／publication abort／fault retirement；Windows 自有程序與產品編譯）
+
+- [硬體斷點 owner 交會與偵錯例外分流](2026-11-05-breakpoint-owner-rendezvous.md)（pre.9；Windows DR／SEH、延遲交易與配對成品通過；實機首發來源待確認）
 

@@ -1,5 +1,6 @@
 """Execute the production cleanup predicate, disconnect and dispatcher with fake resources.
-No Windows exception delivery, game execution or multiplayer behavior is tested.
+Entry/cleanup callback transport is substituted. No Windows exception delivery,
+game execution or multiplayer behavior is tested.
 """
 import argparse
 import json
@@ -63,7 +64,8 @@ HANDLE controllerProcess=(void*)1,mapping=(void*)2;
 LONG hostWorkPending=1,messageGameThread=1,schedulerBusy=0;
 unsigned resets=0,unmaps=0,closed=0,guards=0,maintained=0;
 unsigned publications=0,normalWork=0;
-struct Snapshot{int status=0,bridgeStatus=0,commandStatus=0;}snap;
+struct Snapshot{int status=0,bridgeStatus=0,commandStatus=0,labels=0;}snap;
+struct{int phase=0,source=0,target=0;}faultContext;
 void publishSnapshot(DWORD){++publications;}
 void restorePlayerContext(){}void reset(){++resets;}void restoreFrameDriver(){}
 void MemoryBarrier(){}void CloseHandle(HANDLE){++closed;}void UnmapViewOfFile(void*){++unmaps;}
@@ -72,7 +74,12 @@ LONG InterlockedExchange(LONG*p,LONG v){LONG old=*p;*p=v;return old;}
 LONG InterlockedCompareExchange(LONG*p,LONG v,LONG old){LONG got=*p;if(got==old)*p=v;return got;}
 struct Session{void update(bool,int,int,int){}}sessionTracker;
 struct World{void reset(){}}hookWorld;
-namespace gameentry{enum class Client{Assist};struct Scope{Scope(Client,bool){}operator bool()const{return true;}};}
+// These wrappers only deliver callbacks in this resource model; they do not
+// model Windows SEH or the real entry manager's thread/token arbitration.
+namespace runtimeunwind{template<class Body,class Cleanup>void run(Body&&body,Cleanup&&cleanup){
+ try{body();}catch(...){cleanup();throw;}cleanup();
+}}
+namespace gameentry{enum class Client{Assist};template<class Fn>bool scoped(Client,bool,Fn&&fn){fn();return true;}}
 namespace dispatchrouter{enum class Trigger{Message,Frame};}
 struct MSG{unsigned message;uintptr_t wParam,lParam;};
 constexpr unsigned WM_NULL=0,WakeTag=44;

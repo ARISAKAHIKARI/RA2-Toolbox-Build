@@ -1,0 +1,74 @@
+{
+  "version": "1.0.41-pre.9",
+  "source_commit": "dde2f56b3c663f3355d1c7ca0c436f5a2ba8ee58",
+  "parents_include": [
+    "088034345dddbf43ff45b2f5d2fa2bf385a6d039",
+    "4331dbd04f50994ab786883889a42ce3f2669b73"
+  ],
+  "workflow_run": 41873387844,
+  "workflow_job": 126726444281,
+  "workflow_conclusion": "success",
+  "artifact": {
+    "id": 13346099575,
+    "sha256": "4a1d24bab0daaee15fae705e00ced0cdcd0d6e7ff4b75398b6affb97f59e6f84"
+  },
+  "paired_files": [
+    {
+      "name": "RA2Toolbox.exe",
+      "sha256": "20f1809fe91ec3c2dd88b7d3e1653afabbec0a0c37cdba61791b778045357be3",
+      "bytes": 9053696
+    },
+    {
+      "name": "GameRuntime.dll",
+      "sha256": "23f8ad8d374b17d5739bd3b91d9d491b46434ce8b83883f6a9c67e8c8dacef1e",
+      "bytes": 15654912
+    },
+    {
+      "name": "GameRuntimeHost32.exe",
+      "sha256": "c19952a48bc46421fda1602db178f08f7856fb1ae429e7b32647176ab79a300b",
+      "bytes": 214528
+    },
+    {
+      "name": "WebView2Loader.dll",
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6",
+      "bytes": 194912
+    }
+  ],
+  "abi": {
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86",
+    "assist_protocol": 96,
+    "cursor_protocol": 155,
+    "runtime_protocol": 4,
+    "console_ui": "webview2",
+    "game_tested": false,
+    "webview2_sdk": "1.0.4314.35",
+    "webview2_loader": "WebView2Loader.dll",
+    "webview2_runtime": "Microsoft Edge WebView2 Evergreen Runtime"
+  },
+  "package": {
+    "name": "RA2Toolbox-1.0.41-pre.9-x64-Update.zip",
+    "bytes": 3576161,
+    "sha256": "3d846f6f3e96a8130df1d651af9a0ca903cda9f71b5fcf86fb51c1ed34d9b0d5"
+  },
+  "windows_checks": {
+    "cleanup": 27,
+    "transaction_and_filter": 20,
+    "native_seh_routing": 48,
+    "native_normal_reentries": 48,
+    "native_scoped_unwind_cases": 3,
+    "delayed_worker_reconfigurations": 32,
+    "delayed_worker_audits": 32,
+    "two_slot_exceptions": 60000,
+    "four_site_exceptions": 180000,
+    "fault_reconnect_scenarios": 10
+  },
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "first_game_single_step_source_reproduced": false,
+  "checkout_fix": {
+    "old_crlf_digest_matches": false,
+    "fixed_digest_matches": true
+  }
+}

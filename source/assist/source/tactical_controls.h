@@ -263,7 +263,7 @@ detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 heading(4,904,L"高级与实验性设置",L"各项按实际实现单独标注。全图 CRC 原值镜像属于高危；原生武器／射程查询仍不标高危。详细限制悬停查看。");
 button(9094,L"Sticky 驻守（实验性／支持联机进入）",20,306);key(9095,extra.stickyKey);next();note(L"所选地面单位进入 Sticky=6；默认 Ctrl+Alt+S，可改组合或双击。联机仅支持同步进入，重复键不重发，退出尚未实现。单机可再次按键或手动下令解除；实际进入后显示金色标记。");
 for(int i=0;i<selectedmode::Count;++i){button(9170+2*i,selectedmode::label(i),20,306);key(9171+2*i,extra.missionModeKeys[i]);next();}
-note(L"前三项为一次原版任务，默认未绑定；驻守是 Guard=5。攻击脚下默认 Ctrl+Alt+F，可改组合键或双击，对选中的己方步兵、战车各自下令；零射程武器按原生判定选择自身或当前格，不修改射程、冷却及弹药。这些命令不解除 Sticky。",84);
+note(L"前三项为一次原版任务，默认未绑定；驻守是 Guard=5。攻击脚下默认 Ctrl+Alt+F，可改组合键或双击。普通武器攻击各自当前格；零射程非区域武器在单机尝试原生开火一次，冷却或无弹药时跳过，联机不执行此补充开火。这些命令不解除 Sticky。",84);
 csCheck=toggle(446,L"自动移动攻击（CS，暂不可用）",csMode,20,306);csKeyEdit=key(447,csKey);next();
 csHoldCheck=toggle(473,L"按键移动攻击（CS）",csHoldEnabled,20,210);csHoldEdit=key(474,csHoldKey,240,258,true);mouse(pointerinput::MouseCS);next();
 note(L"自动 CS 暂不可用，旧设置与开关快捷键不再执行。按键 CS 保留，使用原版移动攻击命令。");
