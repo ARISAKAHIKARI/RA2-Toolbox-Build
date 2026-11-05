@@ -55,7 +55,7 @@ class Surface {
  // the original float division/floor: reciprocal multiplication changes
  // coverage at fractional pixel boundaries. Attachments run outside the loop.
  std::vector<int> sourceColumns_;
- int nativeOriginX_=0,nativeOriginY_=0,nativeViewHeight_=0,nativePitch_=0,writeTop_=0,writeBottom_=0,outputOriginY_=0;std::function<uint32_t(int,int)>nativeRead_;float nativeScaleX_=1,nativeScaleY_=1;
+ int nativeOriginX_=0,nativeOriginY_=0,nativeViewHeight_=0,nativePitch_=0,writeTop_=0,writeBottom_=0,writeLeft_=0,writeRight_=0,outputOriginY_=0;std::function<uint32_t(int,int)>nativeRead_;float nativeScaleX_=1,nativeScaleY_=1;
  std::shared_ptr<const std::vector<uint8_t>> alpha_;
 public:
  std::vector<uint32_t> color;std::vector<float> depth;
@@ -69,7 +69,7 @@ private:
   width_=w;height_=h;reconstructionFailed_=false;
   if(base)color=*base;else color.assign(size_t(w)*h,background);
   if(initialDepth)depth=*initialDepth;else if(depthWillBeWritten)depth.resize(color.size());else depth.assign(color.size(),-std::numeric_limits<float>::infinity());
-  nativeZ.assign(color.size(),65535);alpha_.reset();nativeRead_={};writeTop_=0;writeBottom_=h;nativeOriginX_=nativeOriginY_=outputOriginY_=0;nativeScaleX_=nativeScaleY_=1;nativePitch_=w;nativeViewHeight_=h;return true;
+  nativeZ.assign(color.size(),65535);alpha_.reset();nativeRead_={};writeTop_=writeLeft_=0;writeBottom_=h;writeRight_=w;nativeOriginX_=nativeOriginY_=outputOriginY_=0;nativeScaleX_=nativeScaleY_=1;nativePitch_=w;nativeViewHeight_=h;return true;
  }
  template<bool ReadZ,bool WriteZ,bool PixelDepth,bool Table>
  void indexedRows(const voxel::Image&i,const nativesurface::PaletteLookup&palette,const nativesurface::Walk&walk,
@@ -131,8 +131,20 @@ public:
   if(w<=0||h<=0||w>8192||h>8192||uint64_t(w)*h>32*1024*1024||
      pixels.size()!=size_t(w)*h||z.size()!=pixels.size()||native.size()!=pixels.size())return false;
   width_=w;height_=h;reconstructionFailed_=false;color=pixels;depth=z;nativeZ=native;alpha_=std::move(alpha);
-  nativeRead_={};writeTop_=0;writeBottom_=h;nativeOriginX_=nativeOriginY_=outputOriginY_=0;
+  nativeRead_={};writeTop_=writeLeft_=0;writeBottom_=h;writeRight_=w;nativeOriginX_=nativeOriginY_=outputOriginY_=0;
   nativeScaleX_=nativeScaleY_=1;nativePitch_=w;nativeViewHeight_=h;return true;
+ }
+ // Unchanged pixels retain the previous complete frame. Restore every depth
+ // plane inside the damaged rectangle before replaying its ordered draws.
+ bool restoreRegion(const Surface*source,uint32_t background,int left,int top,int right,int bottom){
+  if(width_<=0||height_<=0||color.size()!=size_t(width_)*height_||depth.size()!=color.size()||nativeZ.size()!=color.size()||
+     (source&&(source->width_!=width_||source->height_!=height_||source->color.size()!=color.size()||source->depth.size()!=color.size()||source->nativeZ.size()!=color.size())))return false;
+  left=std::clamp(left,0,width_);right=std::clamp(right,left,width_);top=std::clamp(top,0,height_);bottom=std::clamp(bottom,top,height_);
+  for(int y=top;y<bottom;++y){const size_t at=size_t(y)*width_+left,n=size_t(right-left);
+   if(source){std::copy_n(source->color.data()+at,n,color.data()+at);std::copy_n(source->depth.data()+at,n,depth.data()+at);std::copy_n(source->nativeZ.data()+at,n,nativeZ.data()+at);}
+   else{std::fill_n(color.data()+at,n,background);std::fill_n(depth.data()+at,n,-std::numeric_limits<float>::infinity());std::fill_n(nativeZ.data()+at,n,uint16_t(65535));}
+  }
+  if(source)alpha_=source->alpha_;reconstructionFailed_=false;nativeRead_={};return true;
  }
  int width()const{return width_;}int height()const{return height_;}
  void precision(colorprecision::Mode mode){precision_=mode==colorprecision::Mode::SmoothRGB?mode:colorprecision::Mode::NativeSteps;}
@@ -140,7 +152,8 @@ public:
  bool failed()const{return reconstructionFailed_;}
  void nativeView(int originY,float scaleX,float scaleY,int pitch,int viewHeight,int originX=0){nativeOriginX_=originX;nativeOriginY_=originY;nativeScaleX_=scaleX;nativeScaleY_=scaleY;nativePitch_=pitch;nativeViewHeight_=viewHeight;}
  void nativeRead(std::function<uint32_t(int,int)>read){nativeRead_=std::move(read);}
- void writeRows(int top,int bottom){writeTop_=std::clamp(top,0,height_);writeBottom_=std::clamp(bottom,writeTop_,height_);}
+ void writeRows(int top,int bottom){writeLeft_=0;writeRight_=width_;writeTop_=std::clamp(top,0,height_);writeBottom_=std::clamp(bottom,writeTop_,height_);}
+ void writeRect(int left,int top,int right,int bottom){writeLeft_=std::clamp(left,0,width_);writeRight_=std::clamp(right,writeLeft_,width_);writeTop_=std::clamp(top,0,height_);writeBottom_=std::clamp(bottom,writeTop_,height_);}
  // Row workers own private buffers but use the original viewport's native
  // Z/clip origin. This is distinct from the map-page nativeOriginY.
  void outputRowOrigin(int y){outputOriginY_=y;}
@@ -173,6 +186,7 @@ public:
   int x1=std::clamp(int(std::ceil(std::clamp(left+i.width*pxScale,-1e7f,1e7f))),0,width_),y1=std::clamp(int(std::ceil(std::clamp(top+i.height*pyScale,-1e7f,1e7f))),0,height_);
   y1=std::min(y1,int(std::ceil(std::clamp(ay+material.clipBottom*sy-.5f,-1e7f,1e7f))));
   y0=std::max({y0,writeTop_,firstRow});y1=std::min({y1,writeBottom_,lastRow});
+  x0=std::max(x0,writeLeft_);x1=std::min(x1,writeRight_);
   if(x0>=x1||y0>=y1){if(parts)for(const auto&part:i.attachments)if((!part.shadow||i.shadowsAfter)&&(!part.airborneShadow||shadowDrop>0))blit(part,ax,ay+(part.shadow?shadowDrop*sy:0),sx,sy,base,light,lift,0,smooth,material.shifted(part.shadow?shadowDrop:0),true,scratch,firstRow,lastRow);return;}
   Light transform(light,precision_);bool zData=i.depth.size()==i.pixels.size(),indexed=i.indices.size()==i.pixels.size();
   const bool nativeDepth=i.nativeDepth.enabled;const bool rgb555=light.rgb555||material.rgb555;auto nativePalette=lighting::palette(light,i.objectPalette);
