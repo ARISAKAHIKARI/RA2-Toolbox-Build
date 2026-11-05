@@ -1,0 +1,37 @@
+{
+  "version": "1.0.41-pre.10",
+  "commit": "276235401d3d31ed0e27c639f718609a6a9f3c55",
+  "workflow_run": 41941472508,
+  "paired_files": [
+    {
+      "sha256": "29208a5f40546562a47463acb5e73cc5c906db88b959e8d48078c64d6c44639f",
+      "bytes": 9057280,
+      "name": "RA2Toolbox.exe"
+    },
+    {
+      "sha256": "236b114bd9e953e758380996631605c3111c2b1da0168dd192dc1e80376df251",
+      "bytes": 15856640,
+      "name": "GameRuntime.dll"
+    },
+    {
+      "sha256": "f47389c9312444b43a18540f249ccf21d41917601ca7786d4a32bc9bd22823ee",
+      "bytes": 214528,
+      "name": "GameRuntimeHost32.exe"
+    },
+    {
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6",
+      "bytes": 194912,
+      "name": "WebView2Loader.dll"
+    }
+  ],
+  "package_sha256": "7f3cdbf0a52c496b4f93948ea87eecba6095e5590e69e40e891cdf49d3e83471",
+  "package_bytes": 3580438,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "focused_checks": {
+    "batch_input": 37,
+    "native_pe_controlled": 40,
+    "native_adapter": 31
+  },
+  "hook_baseline": "3be939057d72bfa3e4b3bb0a55b593412d3423be"
+}

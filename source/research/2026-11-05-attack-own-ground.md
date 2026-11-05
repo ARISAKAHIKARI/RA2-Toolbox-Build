@@ -48,3 +48,10 @@ Runtime 在原命令執行入口固定當時選中的己方存活步兵／戰車
 - 證據為 [原生樣本3](evidence/attack-ground-native-range.json)、[原生樣本4](evidence/attack-ground-native-range-cncnet.json)、[批次／輸入](evidence/attack-ground-policy.json)。Windows 配對編譯另由專用 workflow 驗證，不把編譯或合成 IO 測試當成遊戲內／聯機驗收。
 
 待實機確認：WEEDGUY 實際武器選擇與完整攻擊／核彈行為、Suicide／粒子／特殊 MOD 的完整效果、平台覆寫的開火函式，以及真實雙機同步。沒有宣稱修正所有零射程 MOD 武器或允許原本受特殊開火條件禁止的武器。
+
+
+## 配對構建完成
+
+`276235401d3d31ed0e27c639f718609a6a9f3c55` 的 Windows workflow `41941472508` 成功；Windows 37項 production 輸入／批次檢查、完整 x64 Host／x86 Runtime／x86 Broker 構建及既有輸出驗證全部通過。下載 artifact ZIP 的 SHA-256 與 GitHub 摘要一致，四個交付檔案逐一核對編譯清單的雜湊、架構，三個自家 PE 檔案版本均為1.0.41.10，Assist96／Cursor155／Runtime4 配對。
+
+產品更新包只含四個執行檔、WebView2 授權及使用說明；不包含開發清單、原始碼、私有 EXE 或測試紀錄。詳見 [構建及更新包摘要](evidence/attack-ground-windows-build.json)。編譯成功不代表完整實機或聯機驗收。
