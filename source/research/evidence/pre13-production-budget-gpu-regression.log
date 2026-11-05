@@ -1,0 +1,55 @@
+PASS phase CSR host regression
+PASS terrain CPU prefix 103 complete four-plane comparisons; static/material/alpha/crop/COW changes; two-view shared mandatory pool;24 destroyed-prefix lifetimes return every byte credit
+CASE initial pages=15 rebuild=15 comparisons=0 uploads=16 bytes=1048628 total_ms=15946.751
+CASE identical pages=15 rebuild=0 comparisons=15 uploads=0 bytes=3512 total_ms=575.895
+CASE cross-page-move pages=15 rebuild=4 comparisons=15 uploads=4 bytes=294936 total_ms=732.878
+CASE earlier-source-writer pages=15 rebuild=4 comparisons=15 uploads=4 bytes=294936 total_ms=720.513
+CASE later-source-writer pages=15 rebuild=4 comparisons=15 uploads=4 bytes=294936 total_ms=726.527
+CASE signed-wrapped-outside pages=15 rebuild=2 comparisons=15 uploads=2 bytes=162504 total_ms=665.794
+CASE signed-wrapped-outside pages=15 rebuild=2 comparisons=15 uploads=2 bytes=162504 total_ms=648.400
+CASE signed-wrapped-outside pages=15 rebuild=2 comparisons=15 uploads=2 bytes=162504 total_ms=647.063
+CASE signed-wrapped-outside pages=15 rebuild=2 comparisons=15 uploads=2 bytes=162504 total_ms=644.059
+CASE signed-wrapped-outside pages=15 rebuild=2 comparisons=15 uploads=2 bytes=162504 total_ms=657.480
+CASE signed-wrapped-outside pages=15 rebuild=2 comparisons=15 uploads=2 bytes=162504 total_ms=660.892
+CASE signed-wrapped-outside pages=15 rebuild=7 comparisons=15 uploads=7 bytes=493452 total_ms=850.003
+CASE chained-cloaks pages=15 rebuild=6 comparisons=15 uploads=6 bytes=427280 total_ms=804.820
+CASE painter-order-change pages=15 rebuild=4 comparisons=15 uploads=4 bytes=294408 total_ms=497.476
+CASE one-cloak-removed pages=15 rebuild=3 comparisons=15 uploads=3 bytes=228052 total_ms=464.785
+CASE raster-scale pages=15 rebuild=6 comparisons=15 uploads=7 bytes=435660 total_ms=814.192
+CASE scaled-move pages=15 rebuild=6 comparisons=15 uploads=6 bytes=427232 total_ms=817.841
+CASE scaled-remove pages=15 rebuild=6 comparisons=15 uploads=6 bytes=426192 total_ms=550.085
+CASE raster-scale pages=15 rebuild=6 comparisons=15 uploads=7 bytes=435660 total_ms=807.446
+CASE scaled-move pages=15 rebuild=6 comparisons=15 uploads=6 bytes=427232 total_ms=817.907
+CASE scaled-remove pages=15 rebuild=6 comparisons=15 uploads=6 bytes=426192 total_ms=556.869
+CASE attachment pages=15 rebuild=9 comparisons=15 uploads=10 bytes=642908 total_ms=931.127
+CASE clipped-attachment pages=15 rebuild=9 comparisons=15 uploads=9 bytes=626020 total_ms=929.228
+CASE native-alpha-change pages=15 rebuild=9 comparisons=15 uploads=10 bytes=642404 total_ms=923.098
+CASE expired-alpha-removal pages=15 rebuild=9 comparisons=15 uploads=9 bytes=626020 total_ms=931.302
+CASE nonunit-native-scale pages=15 rebuild=15 comparisons=15 uploads=15 bytes=1023028 total_ms=1151.363
+CASE restore-native-scale pages=15 rebuild=11 comparisons=15 uploads=11 bytes=758380 total_ms=999.758
+CASE source-only-initial pages=2 rebuild=2 comparisons=2 uploads=2 bytes=135808 total_ms=104.834
+CASE source-only-change pages=2 rebuild=2 comparisons=2 uploads=2 bytes=135808 total_ms=103.538
+CASE source-only-removal pages=1 rebuild=1 comparisons=1 uploads=1 bytes=69860 total_ms=54.103
+CASE source-only-restored pages=2 rebuild=2 comparisons=1 uploads=2 bytes=135808 total_ms=104.994
+CASE last-cloak-removed pages=1 rebuild=0 comparisons=1 uploads=0 bytes=3512 total_ms=13.481
+CASE plain-object-after-cloak pages=1 rebuild=1 comparisons=1 uploads=1 bytes=69596 total_ms=26.089
+CASE large-initial pages=512 rebuild=512 comparisons=0 uploads=513 bytes=34945316 total_ms=29479.311
+CASE large-identical pages=512 rebuild=0 comparisons=512 uploads=0 bytes=16384 total_ms=13557.875
+CASE large-moving-cloak pages=512 rebuild=2 comparisons=512 uploads=2 bytes=1217884 total_ms=13628.594
+CASE large-moving-cloak pages=512 rebuild=2 comparisons=512 uploads=2 bytes=1217884 total_ms=13614.942
+CASE large-moving-cloak pages=512 rebuild=2 comparisons=512 uploads=2 bytes=1217884 total_ms=13593.145
+CASE large-full-light-change pages=512 rebuild=512 comparisons=512 uploads=512 bytes=34918692 total_ms=27174.988
+CASE nonnative-shared-owner pages=4 rebuild=4 comparisons=0 uploads=4 bytes=263776 total_ms=53.207
+CASE nonnative-warm pages=4 rebuild=0 comparisons=4 uploads=0 bytes=1616 total_ms=1.526
+CASE nonnative-one-dirty pages=4 rebuild=1 comparisons=4 uploads=1 bytes=67156 total_ms=1.594
+CASE nonnative-removal pages=3 rebuild=0 comparisons=3 uploads=0 bytes=1616 total_ms=0.977
+CASE context-native-initial pages=3 rebuild=3 comparisons=0 uploads=4 bytes=215124 total_ms=2450.973
+CASE context-native-to-plain pages=3 rebuild=3 comparisons=0 uploads=3 bytes=198236 total_ms=1.424
+CASE context-plain-to-native pages=3 rebuild=3 comparisons=0 uploads=3 bytes=198740 total_ms=74.409
+CASE context-background-change pages=3 rebuild=3 comparisons=0 uploads=3 bytes=198740 total_ms=73.641
+PASS actual Vulkan area cloak reuse frames=47 exact_RGBA_words=1156923; warm/cold identity, dependency mutation/removal, signed offsets, raster scales, native fallback, shared owners and full-light invalidation
+CANDIDATE path=viewport tier=medium draws=4992 phases=7 parallel=4 bins=3600 refs=17891 selected=1 extra_bytes=186716 host_ref_visits=35782 old_parallel_tests=18320384 new_parallel_tests=4577024 count_ratio=4.00268 reason=parallel phase CSR selected
+CANDIDATE path=area_all_pages tier=medium draws=4992 phases=7 parallel=4 bins=4512 refs=26170 selected=1 extra_bytes=249008 host_ref_visits=52340 old_parallel_tests=107192320 new_parallel_tests=26783744 count_ratio=4.00214 reason=parallel phase CSR selected
+CANDIDATE path=viewport tier=high draws=19968 phases=27 parallel=14 bins=14400 refs=71173 selected=1 extra_bytes=1897292 host_ref_visits=142346 old_parallel_tests=255084032 new_parallel_tests=18207488 count_ratio=14.0098 reason=parallel phase CSR selected
+CANDIDATE path=area_all_pages tier=high draws=19968 phases=27 parallel=14 bins=16256 refs=104641 selected=1 extra_bytes=2238936 host_ref_visits=209282 old_parallel_tests=1500133376 new_parallel_tests=107075584 count_ratio=14.01 reason=parallel phase CSR selected
+FAIL phase CSR: original viewport GPU failed: GPU scene timed out/lost; CPU fallback

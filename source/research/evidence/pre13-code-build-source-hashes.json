@@ -1,0 +1,62 @@
+[
+  {
+    "path": "source/external_reader/source/gpu_phase_csr.h",
+    "length": 8270,
+    "sha256": "be470908c89a6bec9f6f8caeed165d9de26316e4afbc5f29e09036f611a0c2bc"
+  },
+  {
+    "path": "source/external_reader/source/vulkan_scene.h",
+    "length": 40464,
+    "sha256": "5562f033b4a706730fca5ea0051176bbeb7f4c7c43b6e39e522746ba126351ef"
+  },
+  {
+    "path": "source/external_reader/source/vulkan_area_objects.h",
+    "length": 19398,
+    "sha256": "a89e5299d0057647481640da6dc84d26d24827b5ce66c4d36831dd332daa0532"
+  },
+  {
+    "path": "source/external_reader/source/object_canvas.h",
+    "length": 28850,
+    "sha256": "04ee01ff6668400ba23c082e3681fb5f07d8379b065d33e9c762e700868f3cea"
+  },
+  {
+    "path": "source/assist/tests/gpu_phase_csr.cpp",
+    "length": 8052,
+    "sha256": "8a9ccba3205c3fee6d0d4e7e6a49bfeb9d7ac78aa15ff708f6b5446562e99ffc"
+  },
+  {
+    "path": "source/assist/tests/gpu_phase_csr_vulkan.cpp",
+    "length": 9006,
+    "sha256": "14ef30e23c224f3ab7704ea08b4ab048791474015f08a60cb3b9544a61ab60b4"
+  },
+  {
+    "path": "source/assist/tests/object_canvas_terrain_prefix.cpp",
+    "length": 4866,
+    "sha256": "fdfc329e9d0e16de6223116d8f5b9d8a3eb7955abd3a6332770ef4de9f5f42c8"
+  },
+  {
+    "path": "source/shared/source/release_version.h",
+    "length": 144,
+    "sha256": "7bec7ed233d57d8fa3a4a9e37bc178afa000d0f7adf18322955be3aaa20985ec"
+  },
+  {
+    "path": "source/BUILD_SOURCE_MANIFEST.json",
+    "length": 52672,
+    "sha256": "4c5260820c6e650724f653c5058133cf82c2d43038eb35d6c23dd6c02bb566bf"
+  },
+  {
+    "path": ".github/workflows/compile-render-mixed-optimizations.yml",
+    "length": 11010,
+    "sha256": "b1e69ca4fb8666874e66d854cd8ad4b155233ac68dfe9420b138093739420d76"
+  },
+  {
+    "path": "source/research/2026-11-05-mixed-scene-render-optimizations-pre13.md",
+    "length": 1275,
+    "sha256": "3b874ee8a91716eeaa3d26e16a2876c19e90dbe565e6d0f54f896379dbf8c045"
+  },
+  {
+    "path": "source/research/INDEX.md",
+    "length": 38930,
+    "sha256": "3c41e009c659b13c70de23aa1bb6b5404f650709fbb33b98dad8f4467aadce11"
+  }
+]

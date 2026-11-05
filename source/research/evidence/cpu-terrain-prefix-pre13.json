@@ -1,0 +1,86 @@
+{
+  "scope": "Alternating in-process production-equivalent baseline vs isolated CPU terrain-prefix prototype. Real synthetic TMP/SHP-RLE/VXL-HVA decoder workload, complete page RGBA/depth/native-Z/alpha vector comparisons each frame. No game FPS/hardware GPU claim.",
+  "measured_candidate_production_equivalent_sha256": "c3b41e48af3e734e798ad5829f256496e2f703f4e4465d14f3450f4cdb2bef98",
+  "final_source_sha256": "04ee01ff6668400ba23c082e3681fb5f07d8379b065d33e9c762e700868f3cea",
+  "final_source_changes_after_measurement": [
+    "Per-prefix charge padding256\u21921024 to cover bounded128-column Surface scratch/control allocation overhead.",
+    "Copy only source Page four planes with Surface.restoreFrame; avoid incidentally inheriting Surface caches. Mixed workload base contains no native Page surfaces, so branch not entered in measured stream."
+  ],
+  "separate_optional_pool": {
+    "x64_bytes": 268435456,
+    "x86_bytes": 67108864,
+    "charge_ownership": "PrefixState charge member precedes Entry; local shared PrefixState owner outlives Page aliases",
+    "mandatory_output_pool": "Always allocate Page(base.budget_); copy Surface only, never inherit prefix Page budget",
+    "oom_fallback": "All optional metadata/planning/work admission bad_alloc branches clear own optional state and continue original full replay",
+    "actual_capacity_check": true,
+    "private_cache_budget": "Process-wide atomic CAS byte admission; no foreign cache mutation or locks"
+  },
+  "results": {
+    "high": {
+      "tier": "high",
+      "frames": 140,
+      "four_plane_comparisons": 140,
+      "baseline_warm_compose_median_ms": 67.856576,
+      "prefix_warm_compose_median_ms": 40.5270235,
+      "baseline_light_phase_compose_median_ms": 70.069932,
+      "prefix_light_phase_compose_median_ms": 84.50347,
+      "baseline_cold_first_ms": 155.494719,
+      "prefix_cold_first_ms": 164.283588,
+      "prefix_builds": 3048,
+      "prefix_hits": 125785,
+      "prefix_raster_calls": 87600,
+      "prefix_owned_bytes": 174676288,
+      "prefix_pages": 1016
+    },
+    "medium": {
+      "tier": "medium",
+      "frames": 140,
+      "four_plane_comparisons": 140,
+      "baseline_warm_compose_median_ms": 17.0723745,
+      "prefix_warm_compose_median_ms": 9.687924,
+      "baseline_light_phase_compose_median_ms": 17.1855195,
+      "prefix_light_phase_compose_median_ms": 24.1247085,
+      "baseline_cold_first_ms": 47.71411,
+      "prefix_cold_first_ms": 52.785798,
+      "prefix_builds": 846,
+      "prefix_hits": 32723,
+      "prefix_raster_calls": 22032,
+      "prefix_owned_bytes": 48288240,
+      "prefix_pages": 282
+    }
+  },
+  "invalidations": {
+    "baseline_vs_prefix_cases": 31,
+    "changes": [
+      "single TMP identity",
+      "per-tile lighting/tint/level material",
+      "alpha replacement/removal",
+      "crop",
+      "colour precision",
+      "positive/negative/wrapped/outside cloak offsets",
+      "shadow attachments/drop/clip",
+      "custom background",
+      "base COW"
+    ]
+  },
+  "production_regression": {
+    "source": "source/assist/tests/object_canvas_terrain_prefix.cpp",
+    "comparisons": 103,
+    "test_pool_bytes": 8388608,
+    "cross_view_lifetimes": 24,
+    "pool_credits_returned": true,
+    "note": "Targeted test ran preceding candidatec3b41e; rootCI/finalproduction tests validate final04ee source."
+  },
+  "independent_review_evidence": "/workspace/scratch/1887e4107280/threads-audit/cpu_prefix_review_evidence.json",
+  "review_findings_fixed": [
+    "Initial sequential prefix cold regression replaced with parallel fill",
+    "Same-pool optional prefixes could starve mandatory cross-view outputs; separate globally charged pool",
+    "Expired source/budget-shrink stale prefix invalidation independent of admission",
+    "Local PrefixState ownership maintains strict RAII byte charge across fail/cold retry"
+  ],
+  "limitations": [
+    "Warm composition improves; initial cold and global lighting refresh add cache-build/copy costs, recorded explicitly.",
+    "Image ownership stays shared with existing asset caches; charge bounds owned Page planes/Draw metadata, not duplicate accounting of source assets.",
+    "Measured prototype excludes final whole-map resolve/effects; root final300-frame complete-stage benchmark uses exact final source."
+  ]
+}

@@ -1,0 +1,230 @@
+{
+  "scope": "Read-only review of scratch CPU static-terrain prefix candidate; no production or prototype source edits by reviewer. Actual compositor/Surface/Page-budget code with synthetic immutable images.",
+  "pressure_case": {
+    "world_pixels": [
+      1024,
+      768
+    ],
+    "world_pages": 48,
+    "separate_budget_pages_per_renderer": 110,
+    "actors": 48,
+    "actor_movement": "one 16x16 actor moves on every page each frame",
+    "retained_front": "previous full front retained until new compose completes",
+    "before_fix_frames": [
+      {
+        "frame": 0,
+        "four_planes_equal": true,
+        "baseline_ms": 12.713712,
+        "prefix_ms": 13.448459,
+        "prefix_builds": 48,
+        "prefix_hits": 0,
+        "retained_prefix_pages": 48,
+        "baseline_resident_pages": 48,
+        "candidate_resident_pages": 96
+      },
+      {
+        "frame": 1,
+        "four_planes_equal": true,
+        "baseline_ms": 11.08722,
+        "prefix_ms": 8.761525,
+        "prefix_builds": 0,
+        "prefix_hits": 48,
+        "retained_prefix_pages": 0,
+        "baseline_resident_pages": 96,
+        "candidate_resident_pages": 96
+      },
+      {
+        "frame": 2,
+        "four_planes_equal": true,
+        "baseline_ms": 8.616727,
+        "prefix_ms": 16.727356,
+        "prefix_builds": 48,
+        "prefix_hits": 0,
+        "retained_prefix_pages": 0,
+        "baseline_resident_pages": 96,
+        "candidate_resident_pages": 96
+      },
+      {
+        "frame": 3,
+        "four_planes_equal": true,
+        "baseline_ms": 5.329002,
+        "prefix_ms": 19.178314,
+        "prefix_builds": 48,
+        "prefix_hits": 0,
+        "retained_prefix_pages": 0,
+        "baseline_resident_pages": 96,
+        "candidate_resident_pages": 96
+      },
+      {
+        "frame": 4,
+        "four_planes_equal": true,
+        "baseline_ms": 10.526735,
+        "prefix_ms": 17.464742,
+        "prefix_builds": 48,
+        "prefix_hits": 0,
+        "retained_prefix_pages": 0,
+        "baseline_resident_pages": 96,
+        "candidate_resident_pages": 96
+      },
+      {
+        "frame": 5,
+        "four_planes_equal": true,
+        "baseline_ms": 8.254992,
+        "prefix_ms": 13.806027,
+        "prefix_builds": 48,
+        "prefix_hits": 0,
+        "retained_prefix_pages": 0,
+        "baseline_resident_pages": 96,
+        "candidate_resident_pages": 96
+      }
+    ],
+    "after_fix_frames": [
+      {
+        "frame": 0,
+        "four_planes_equal": true,
+        "baseline_ms": 10.511993,
+        "prefix_ms": 13.026723,
+        "prefix_builds": 48,
+        "prefix_hits": 0,
+        "retained_prefix_pages": 48,
+        "baseline_resident_pages": 48,
+        "candidate_resident_pages": 96
+      },
+      {
+        "frame": 1,
+        "four_planes_equal": true,
+        "baseline_ms": 10.568143,
+        "prefix_ms": 11.606998,
+        "prefix_builds": 0,
+        "prefix_hits": 14,
+        "retained_prefix_pages": 14,
+        "baseline_resident_pages": 96,
+        "candidate_resident_pages": 110
+      },
+      {
+        "frame": 2,
+        "four_planes_equal": true,
+        "baseline_ms": 7.671002,
+        "prefix_ms": 7.664211,
+        "prefix_builds": 0,
+        "prefix_hits": 14,
+        "retained_prefix_pages": 14,
+        "baseline_resident_pages": 96,
+        "candidate_resident_pages": 110
+      },
+      {
+        "frame": 3,
+        "four_planes_equal": true,
+        "baseline_ms": 7.809931,
+        "prefix_ms": 6.350691,
+        "prefix_builds": 0,
+        "prefix_hits": 14,
+        "retained_prefix_pages": 14,
+        "baseline_resident_pages": 96,
+        "candidate_resident_pages": 110
+      },
+      {
+        "frame": 4,
+        "four_planes_equal": true,
+        "baseline_ms": 7.19884,
+        "prefix_ms": 5.795985,
+        "prefix_builds": 0,
+        "prefix_hits": 14,
+        "retained_prefix_pages": 14,
+        "baseline_resident_pages": 96,
+        "candidate_resident_pages": 110
+      },
+      {
+        "frame": 5,
+        "four_planes_equal": true,
+        "baseline_ms": 7.51747,
+        "prefix_ms": 5.446158,
+        "prefix_builds": 0,
+        "prefix_hits": 14,
+        "retained_prefix_pages": 14,
+        "baseline_resident_pages": 96,
+        "candidate_resident_pages": 110
+      }
+    ],
+    "before_warm_problem": "48 optional prefix pages rebuilt then all discarded every warm frame",
+    "after_warm_result": "zero optional prefix builds;14 cached prefix pages reused and retained;mandatory COW batch fits",
+    "fixed_page_budget_honored": true
+  },
+  "shrink_case": {
+    "budget_before": 64,
+    "budget_after": 31,
+    "world_pixels": [
+      128,
+      128
+    ],
+    "mutation": "replace static terrain source image immediately after shrinking budget with old front retained",
+    "fixed_result": "PASS exact RGBA/depth/native-Z/alpha and changed RGB; stale prefix not applied"
+  },
+  "review_conclusion": "The original retained-front all-prefix churn and subsequent cross-view shared-base-budget blocker were addressed. The final candidate uses globally charged optional prefix storage, copies mandatory output Pages into the base budget, and keeps a PrefixState owner alive through every local Page alias. Independent final checks cover two-view shared mandatory budget, repeated global-ledger zero lifetimes, concurrent global-pool saturation and exact four-plane two-view outputs. No overall real-game/FPS/multiplayer acceptance is claimed.",
+  "timing_limit": "Captured CPU timings are exploratory and noisy with concurrent tests; use deterministic rebuild/retention/four-plane counts. Not game FPS, Windows presentation, GPU, or multiplayer acceptance.",
+  "source_binding_note": "Owner archived original pressure prototype before update. Old binary predates the subsequently added shrink function in current fixture; both archived header and executed binary hashes are retained.",
+  "sha256": {
+    "baseline_header": {
+      "path": "/workspace/scratch/1887e4107280/cpu-prefix-prototype/baseline_object_canvas.h",
+      "sha256": "0d51ca9be9e1b497669c172d0ac7e8d65c52a1da65d29aba89c5989aa53242d3"
+    },
+    "archived_candidate_before_pressure_fix": {
+      "path": "/workspace/scratch/1887e4107280/cpu-prefix-prototype/prefix_before_pressurefix.h",
+      "sha256": "5625df38b243c8ab00101aad00892a1c760ca1c769577a587e0719cb58054128"
+    },
+    "fixed_candidate_header": {
+      "path": "/workspace/scratch/1887e4107280/cpu-prefix-prototype/prefix_object_canvas.h",
+      "sha256": "abdb4bf71ce9a9dd3ef7d62fd10b080e332e6bbe974e739a9d046ef3a5b75c6b"
+    },
+    "review_fixture_current_including_added_shrink_case": {
+      "path": "/workspace/scratch/1887e4107280/threads-audit/cpu_prefix_pressure.cpp",
+      "sha256": "efcf752185a1e2070b0631d72053d9951d9352807be18ff3bd38345357681240"
+    },
+    "old_binary": {
+      "path": "/tmp/cpu-prefix-pressure-review",
+      "sha256": "e259bfd1fb17587e96fde4cf9e956a986de6c70c22b069c1ccd6559cb639717a"
+    },
+    "fixed_binary": {
+      "path": "/tmp/cpu-prefix-pressure-review-fixed",
+      "sha256": "556989f35fec301a08292f7f870d9046ed0a9eb3f9650b0e742ed1f6032c55ad"
+    }
+  },
+  "raw_old_output": "frame=0 exact_four_planes=1 baseline_ms=12.713712 prefix_ms=13.448459 prefix_builds=48 hits=0 retained_prefix_pages=48 baseline_live=48 prefix_live=96\nframe=1 exact_four_planes=1 baseline_ms=11.087220 prefix_ms=8.761525 prefix_builds=0 hits=48 retained_prefix_pages=0 baseline_live=96 prefix_live=96\nframe=2 exact_four_planes=1 baseline_ms=8.616727 prefix_ms=16.727356 prefix_builds=48 hits=0 retained_prefix_pages=0 baseline_live=96 prefix_live=96\nframe=3 exact_four_planes=1 baseline_ms=5.329002 prefix_ms=19.178314 prefix_builds=48 hits=0 retained_prefix_pages=0 baseline_live=96 prefix_live=96\nframe=4 exact_four_planes=1 baseline_ms=10.526735 prefix_ms=17.464742 prefix_builds=48 hits=0 retained_prefix_pages=0 baseline_live=96 prefix_live=96\nframe=5 exact_four_planes=1 baseline_ms=8.254992 prefix_ms=13.806027 prefix_builds=48 hits=0 retained_prefix_pages=0 baseline_live=96 prefix_live=96\nSUMMARY retained-front budget=110, world_pages=48, candidate_builds=240 hits=48 final_prefix_pages=0\n",
+  "raw_fixed_output": "frame=0 exact_four_planes=1 baseline_ms=10.511993 prefix_ms=13.026723 prefix_builds=48 hits=0 retained_prefix_pages=48 baseline_live=48 prefix_live=96\nframe=1 exact_four_planes=1 baseline_ms=10.568143 prefix_ms=11.606998 prefix_builds=0 hits=14 retained_prefix_pages=14 baseline_live=96 prefix_live=110\nframe=2 exact_four_planes=1 baseline_ms=7.671002 prefix_ms=7.664211 prefix_builds=0 hits=14 retained_prefix_pages=14 baseline_live=96 prefix_live=110\nframe=3 exact_four_planes=1 baseline_ms=7.809931 prefix_ms=6.350691 prefix_builds=0 hits=14 retained_prefix_pages=14 baseline_live=96 prefix_live=110\nframe=4 exact_four_planes=1 baseline_ms=7.198840 prefix_ms=5.795985 prefix_builds=0 hits=14 retained_prefix_pages=14 baseline_live=96 prefix_live=110\nframe=5 exact_four_planes=1 baseline_ms=7.517470 prefix_ms=5.446158 prefix_builds=0 hits=14 retained_prefix_pages=14 baseline_live=96 prefix_live=110\nSUMMARY retained-front budget=110, world_pages=48, candidate_builds=48 hits=70 final_prefix_pages=14\nPASS cached prefix + budget shrink 64->31 + changed static tile: four planes match; stale prefix not applied; prefix_builds=1 prefix_pages=1\n",
+  "production_adoption_status": "No remaining blocker identified in the final separate optional-pool prototype within this bounded independent review; production integration/build and game acceptance remain separate.",
+  "new_cross_view_blocker": {
+    "status": "Resolved in final independently tested separate-pool prototype",
+    "origin": "Owner finding relayed by root after the independent single-owner review",
+    "independently_reproduced_by_this_review": false,
+    "mechanism": "Optional prefix Pages held by renderer A consume the shared base/mandatory NativeCanvas Page budget. Renderer B can trim only its own prefix cache, so mandatory allocations may fail even when the corresponding baseline renderers fit without A optional cache.",
+    "required_resolution": "Optional cache admission/ownership must not prevent other renderers from using otherwise sufficient mandatory canvas capacity; cross-view failure and recovery need validation.",
+    "timebox_policy": "Root requested short timebox; defer CPU prefix cache if not resolved and validated.",
+    "single_owner_results_remain_valid": true,
+    "resolution": "Global atomic RAII optional-prefix byte admission plus independent prefix Page pool; output allocates Page(base.budget_) and copies only Surface. Local PrefixState shared ownership outlives Page aliases during failure/cold restart."
+  },
+  "final_separate_pool_review": {
+    "two_view_cycles": 24,
+    "mandatory_pool_pages_per_cycle": 96,
+    "mandatory_pool_ceiling": 110,
+    "optional_prefix_pages_each_view": 48,
+    "exact_four_plane_view_comparisons": 48,
+    "global_optional_ledger_zero_before_every_cycle_and_after_teardown": true,
+    "cumulative_prefix_pages_created": 2304,
+    "concurrent_views": 4,
+    "mandatory_pages_each_concurrent_view": 512,
+    "optional_pages_admitted_at_saturation": 1611,
+    "maximum_optional_pages_attempted": 2048,
+    "sampled_peak_optional_byte_charge": 268418376,
+    "optional_byte_cap": 268435456,
+    "final_optional_byte_charge": 0,
+    "final_all_mandatory_page_counts": 0,
+    "held_owner_lifetime_review": "PrefixOwner declared before terrainPage and initialPage; PrefixState charge declared before Entry so charge credit returns after owned buffers; verified in final source.",
+    "allocation_failure_review": "State allocation precedes atomic charge in constructor; failed optional insert/planning/build cleanup releases states; no output Page copies inherit optional Page budget.",
+    "raw_output": "cycle=0 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=1 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=2 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=3 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=4 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=5 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=6 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=7 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=8 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=9 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=10 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=11 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=12 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=13 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=14 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=15 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=16 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=17 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=18 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=19 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=20 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=21 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=22 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=23 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\nPASS cross-view mandatory Page accounting and repeated RAII lifetime cycles=24 prefix_pages_created=2304; mandatory outputs96/110; stable prefix admission after >256MiB cumulative allocation\nPASS simultaneous optional-pool saturation:4views x512mandatory Pages; optional admitted=1611/2048, peak_charge=268418376 cap=268435456, final_optional_charge=0, final_mandatory_pages=0\n",
+    "sha256": {
+      "/workspace/scratch/1887e4107280/cpu-prefix-prototype/prefix_object_canvas.h": "8e5539aae1b4447cb70e70ecabf604d8d0593657811cb9ecf9e91174327d6f24",
+      "/workspace/scratch/1887e4107280/threads-audit/cpu_prefix_crossview.cpp": "5af317517a476cb7e50fc351671659b3bbffefde0867da39b09242b552084d99",
+      "/tmp/cpu-prefix-crossview-review-final": "082def66dc191eeacf51d7af468ad981cde93f8fdee89763d7e7b89881deed96"
+    }
+  }
+}

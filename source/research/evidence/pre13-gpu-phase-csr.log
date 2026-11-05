@@ -1,0 +1,12 @@
+CANDIDATE path=viewport tier=medium draws=4992 phases=7 parallel=4 bins=3600 refs=17891 selected=1 extra_bytes=186716 host_ref_visits=35782 old_parallel_tests=18320384 new_parallel_tests=4577024 count_ratio=4.00268 reason=parallel phase CSR selected
+CANDIDATE path=area_all_pages tier=medium draws=4992 phases=7 parallel=4 bins=4512 refs=26170 selected=1 extra_bytes=249008 host_ref_visits=52340 old_parallel_tests=107192320 new_parallel_tests=26783744 count_ratio=4.00214 reason=parallel phase CSR selected
+CANDIDATE path=viewport tier=high draws=19968 phases=27 parallel=14 bins=14400 refs=71173 selected=1 extra_bytes=1897292 host_ref_visits=142346 old_parallel_tests=255084032 new_parallel_tests=18207488 count_ratio=14.0098 reason=parallel phase CSR selected
+CANDIDATE path=area_all_pages tier=high draws=19968 phases=27 parallel=14 bins=16256 refs=104641 selected=1 extra_bytes=2238936 host_ref_visits=209282 old_parallel_tests=1500133376 new_parallel_tests=107075584 count_ratio=14.01 reason=parallel phase CSR selected
+GPU_EXACT path=viewport frame=20 RGBA_words=921600 phase_metadata_bytes=186716 dispatches=104 device=llvmpipe (LLVM 20.1.2, 256 bits) software=1
+GPU_EXACT path=viewport frame=60 RGBA_words=921600 phase_metadata_bytes=186672 dispatches=8 device=llvmpipe (LLVM 20.1.2, 256 bits) software=1
+GPU_EXACT path=viewport frame=130 RGBA_words=921600 phase_metadata_bytes=186568 dispatches=8 device=llvmpipe (LLVM 20.1.2, 256 bits) software=1
+GPU_EXACT path=area frame=20 RGBA_words=131072 phase_metadata_bytes=249008 native_pages=282 dispatches=107
+GPU_EXACT path=area frame=60 RGBA_words=131072 phase_metadata_bytes=248956 native_pages=282 dispatches=11
+GPU_EXACT path=area frame=130 RGBA_words=131072 phase_metadata_bytes=249012 native_pages=282 dispatches=11
+GPU_EXACT path=encoded_viewport RGBA_words=18432 phase_metadata_bytes=2976
+PASS actual Vulkan original-vs-phase-CSR: 3 moving frames each viewport/whole-map area plus encoded non-native viewport; exact RGBA, unchanged dispatch count, shader binaries unchanged

@@ -1,0 +1,134 @@
+{
+  "version": "1.0.41-pre.13",
+  "commit": "80b424d976a42b6beb3601b47d3d82052369f729",
+  "branch": "codex/render-mixed-optimizations-20261105",
+  "host": "x64",
+  "runtime": "x86",
+  "broker": "x86",
+  "console": "WebView2",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "files": [
+    {
+      "name": "RA2Toolbox.exe",
+      "bytes": 8860160,
+      "sha256": "2843deb5683c986972bf626063764ab0d774e67ec5751f2f285792df8e367721"
+    },
+    {
+      "name": "GameRuntime.dll",
+      "bytes": 15822848,
+      "sha256": "f680a4ec5b687d011486f19d790320c7e5a8a738425ec10f71652fb917b29ff8"
+    },
+    {
+      "name": "GameRuntimeHost32.exe",
+      "bytes": 214528,
+      "sha256": "02662215d758d8e16cf3c66c3f46605db8f583227a6f3ea3133d6e3ac90ee337"
+    },
+    {
+      "name": "WebView2Loader.dll",
+      "bytes": 194912,
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  ],
+  "package": {
+    "name": "RA2Toolbox-1.0.41-pre.13-x64-Update.zip",
+    "bytes": 3527929,
+    "sha256": "bc18815dee0945ebe40c366af74e8c6d1566af3a6e4beedec2b91736d5dd936e"
+  },
+  "artifact_digest": "sha256:51d438497790913f30334795598a5ce1c1f068440f6b3e2d41c268b513402d59",
+  "artifact_id": 13386265960,
+  "workflow_run": 41961155793,
+  "windows_build_status": "success",
+  "verified_components": [
+    {
+      "name": "RA2Toolbox.exe",
+      "machine": "0x8664",
+      "version": "1.0.41.13",
+      "sha256": "2843deb5683c986972bf626063764ab0d774e67ec5751f2f285792df8e367721"
+    },
+    {
+      "name": "GameRuntime.dll",
+      "machine": "0x14c",
+      "version": "1.0.41.13",
+      "sha256": "f680a4ec5b687d011486f19d790320c7e5a8a738425ec10f71652fb917b29ff8"
+    },
+    {
+      "name": "GameRuntimeHost32.exe",
+      "machine": "0x14c",
+      "version": "1.0.41.13",
+      "sha256": "02662215d758d8e16cf3c66c3f46605db8f583227a6f3ea3133d6e3ac90ee337"
+    },
+    {
+      "name": "WebView2Loader.dll",
+      "machine": "0x8664",
+      "version": "1.0.4314.35",
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  ],
+  "gpu_validation_status": "pass",
+  "gpu_validation_run": 41961872602,
+  "gpu_validation_job": 127029881522,
+  "gpu_validation_source_commit": "30e8ac5ea42072753ff3e330c0c0a7bb43eb005b",
+  "gpu_exact_rgba_words": 3176448,
+  "production_budget_area_validation_frames": 47,
+  "production_budget_area_exact_rgba_words": 1156923,
+  "validation_adapter": {
+    "workflow_commit": "30e8ac5ea42072753ff3e330c0c0a7bb43eb005b",
+    "production_source_commit": "80b424d976a42b6beb3601b47d3d82052369f729",
+    "original_header_sha256": "5562f033b4a706730fca5ea0051176bbeb7f4c7c43b6e39e522746ba126351ef",
+    "test_header_sha256": "2b8114da20279bba142fb512a51ab8f64b40384f13ab95baf22017d4797929d9",
+    "only_change": "Explicit software-device fence10s to60s; physical hardware fence remains100ms",
+    "hardware_fps_evidence": false
+  },
+  "initial_gpu_job_status": "failed original viewport first-render wait before pixel comparison; rawtimedout/lost diagnostic; separate recorded software-only adapter passed",
+  "cpu_final_300frames_per_tier": true,
+  "cpu_final_hashes_match_baseline": true,
+  "benchmark_library_save_status": "Request timedout; outcomeunknown; no automaticretry",
+  "benchmark_metadata": {
+    "commit": "80b424d976a42b6beb3601b47d3d82052369f729",
+    "architecture": "x64",
+    "kind": "headless synthetic mixed rendering benchmark",
+    "files": [
+      {
+        "name": "CPU-MixedScene.exe",
+        "bytes": 793600,
+        "sha256": "3afdc69cb15064d047be80392a95088fb4e1af5e132862cb6a1d6f72f945ca5c"
+      },
+      {
+        "name": "GPU-MixedScene.exe",
+        "bytes": 1767936,
+        "sha256": "385dd3f395964799cb23b00db2133537163b0da3ab3bb15407ad61a37ba245dd"
+      }
+    ],
+    "artifact_digest": "sha256:de19230d8c62daa98a021d9347b80633ff6de50ce8d19c6b1a6e39e495ebca11",
+    "ci_run": 41961155793,
+    "artifact_id": 13385238023,
+    "synthetic_assets": true,
+    "real_game_fps": false,
+    "cpu_measured_frames": 300,
+    "gpu_ci_status": "pass: actual software Vulkan original-vs-filtered CSR3176448exact RGBAwords; viewport3frames/area3frames/encodedviewport1; old120frame reports labeled pre12 baseline",
+    "packaging_changes": [
+      "Removed compiler PDB/import-library intermediates",
+      "Added Chinese instructions and measured reports/previews",
+      "High launcher viewport resolution2560x1440; medium1280x720",
+      "Launchers preserve stdout/errors in logs"
+    ],
+    "area_substage_timing_available": false,
+    "original_vs_filtered_validation_run": 41961872602,
+    "package_sha256": "a45133b75c9fdce0b02628a5d93bbe15ecc3516a5828c6d957b5e76f46088b41",
+    "package_bytes": 1615992,
+    "baseline_pre12_software_status": {
+      "viewport": "pass;120movingframes+3coldoracles;Mesa software only",
+      "area": "pass;120movingframes+3coldoracles;Mesa software only"
+    },
+    "gpu_exact_rgba_words": 3176448,
+    "validation_adapter": {
+      "workflow_commit": "30e8ac5ea42072753ff3e330c0c0a7bb43eb005b",
+      "production_source_commit": "80b424d976a42b6beb3601b47d3d82052369f729",
+      "original_header_sha256": "5562f033b4a706730fca5ea0051176bbeb7f4c7c43b6e39e522746ba126351ef",
+      "test_header_sha256": "2b8114da20279bba142fb512a51ab8f64b40384f13ab95baf22017d4797929d9",
+      "only_change": "Explicit software-device fence10s to60s; physical hardware fence remains100ms",
+      "hardware_fps_evidence": false
+    }
+  }
+}

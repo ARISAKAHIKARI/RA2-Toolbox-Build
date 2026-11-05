@@ -1,0 +1,941 @@
+{
+  "schema": "ra2.mixed-render-optimizations-pre13.v1",
+  "product_source_commit": "80b424d976a42b6beb3601b47d3d82052369f729",
+  "version": "1.0.41-pre.13",
+  "runtime_version": "1.0.41.13",
+  "baseline_runtime": "7201805 (pre.12)",
+  "baseline_mixed_fixture_source": "4fe27b6bd1c258df0c502ae2154638880034f913",
+  "behavior_scope": "external render algorithms and generated fixture validation; Hooks/wire ABI/Runtime behavior retained except version markers",
+  "input_sha256": {
+    "final_cpu": "d32a230ab722695cedf32fe760db75293304b0f1403cafefe7ae1ae8616db0b5",
+    "prototype_cpu": "60265d803112ab785e6b3efe825141bb91d6d3e16c9bfb4fbbdc9133798a6479",
+    "independent_prefix_review": "8e1cdede08d2b3ba0b561f0efe6087572faa3c1985c8e9b34a22ed65b67d88c8",
+    "provenance": "b470734d8b03cb6a381edf6c79d686114a671b18065228c2e8a9247f954172e9"
+  },
+  "source_sha256": {
+    "source/external_reader/source/object_canvas.h": "04ee01ff6668400ba23c082e3681fb5f07d8379b065d33e9c762e700868f3cea",
+    "source/external_reader/source/native_canvas.h": "bfc87f408d4c63d1042f96fc2b32e2284a614b1eaa4055dda7a493ae051d3376",
+    "source/external_reader/source/gpu_phase_csr.h": "be470908c89a6bec9f6f8caeed165d9de26316e4afbc5f29e09036f611a0c2bc",
+    "source/external_reader/source/vulkan_scene.h": "5562f033b4a706730fca5ea0051176bbeb7f4c7c43b6e39e522746ba126351ef",
+    "source/external_reader/source/vulkan_area_objects.h": "a89e5299d0057647481640da6dc84d26d24827b5ce66c4d36831dd332daa0532",
+    "source/external_reader/shaders/vulkan_scene.comp": "94af9a9a764331a87b4acfb9f5dc159bbcd93db463eb5f57eec786f505f43760",
+    "source/external_reader/source/vulkan_scene_spirv.h": "00da936a02b86ef2e7c8a88c60b0ce730d5aba73de21c98bbe8370a877e48298",
+    "source/assist/tests/gpu_phase_csr.cpp": "8a9ccba3205c3fee6d0d4e7e6a49bfeb9d7ac78aa15ff708f6b5446562e99ffc",
+    "source/assist/tests/gpu_phase_csr_vulkan.cpp": "14ef30e23c224f3ab7704ea08b4ab048791474015f08a60cb3b9544a61ab60b4",
+    "source/assist/tests/cpu_mixed_render_stress.cpp": "1205e89be84d98d59b5a210fcf35b8129459be7a66c5ebcb21b5c572b14bac2a",
+    "source/assist/tests/mixed_render_workload.h": "b5e8d2d62bec1dea0e839662176881203e8dcab4fa07a3e0b34330cdfa13361f"
+  },
+  "cpu_final": {
+    "source_commit": "80b424d976a42b6beb3601b47d3d82052369f729",
+    "object_canvas_sha256": "04ee01ff6668400ba23c082e3681fb5f07d8379b065d33e9c762e700868f3cea",
+    "scope": "Same generated encoded mixed fixture and CPU environment as baseline;20warmup+300movingframes/tier incl5globalterrainchanges. No physicalGPU/game/presentFPS result.",
+    "reports": {
+      "medium": {
+        "baseline": {
+          "path": "CPU ObjectCanvas -> NativeCanvas::present -> WorldEffects::Painter",
+          "tier": "medium",
+          "synthetic_encoded_assets": true,
+          "real_game_fps": false,
+          "seed": 23063,
+          "frames": 300,
+          "warmup_frames": 20,
+          "output": [
+            512,
+            256
+          ],
+          "native_world": [
+            3840,
+            1920
+          ],
+          "counts": {
+            "terrain": 4096,
+            "shp_actors": 256,
+            "vxl_actors": 128,
+            "animated_shp": 64,
+            "particle_points": 192,
+            "beams": 24,
+            "vxl_model_exposed_faces": 1362,
+            "vxl_unique_poses": 32,
+            "prepared_triangle_total": 84612,
+            "decoded_tmp_frames": 16,
+            "decoded_shp_rle_frames": 64,
+            "decoded_vxl_hva_parts": 3
+          },
+          "initialization_ms": 10.764411,
+          "cold_first_frame_ms": 74.725981,
+          "cold_voxel_rasters": 32,
+          "completed_changed_frames": 300,
+          "final_pixel_hash": "9814405553787979367",
+          "visible_content_checks": {
+            "shp_pixels_different_from_terrain": 6267,
+            "vxl_pixels_different_from_terrain": 4412,
+            "animation_pixels_different_from_terrain": 1641,
+            "effect_pixels_different_from_full_world": 1202
+          },
+          "verification_hash_and_preview_excluded_from_timings": true,
+          "stages": {
+            "state_update": {
+              "median_ms": 0.075364,
+              "p95_ms": 0.136085,
+              "p99_ms": 0.268375,
+              "min_ms": 0.063936,
+              "max_ms": 0.310117
+            },
+            "native_composition": {
+              "median_ms": 17.717371,
+              "p95_ms": 23.717784,
+              "p99_ms": 27.943666,
+              "min_ms": 14.269637,
+              "max_ms": 60.949052
+            },
+            "whole_map_resolve": {
+              "median_ms": 9.8443595,
+              "p95_ms": 12.610876,
+              "p99_ms": 15.291103,
+              "min_ms": 6.35984,
+              "max_ms": 17.480154
+            },
+            "particles_and_beams": {
+              "median_ms": 0.0604615,
+              "p95_ms": 0.096786,
+              "p99_ms": 0.204439,
+              "min_ms": 0.047421,
+              "max_ms": 0.452041
+            },
+            "frame_compute": {
+              "median_ms": 27.5498565,
+              "p95_ms": 35.048395,
+              "p99_ms": 39.901457,
+              "min_ms": 23.862738,
+              "max_ms": 71.15638
+            }
+          },
+          "terrain_light_phase_interval_frames": 60,
+          "terrain_light_updates_including_setup": 6,
+          "work_per_frame": {
+            "changed_native_pages": {
+              "median": 239,
+              "p95": 243,
+              "p99": 282,
+              "min": 234,
+              "max": 282
+            },
+            "reused_native_pages": {
+              "median": 43,
+              "p95": 46,
+              "p99": 47,
+              "min": 0,
+              "max": 48
+            },
+            "new_voxel_raster_jobs": {
+              "median": 0,
+              "p95": 0,
+              "p99": 0,
+              "min": 0,
+              "max": 0
+            }
+          }
+        },
+        "pre13": {
+          "path": "CPU ObjectCanvas -> NativeCanvas::present -> WorldEffects::Painter",
+          "tier": "medium",
+          "synthetic_encoded_assets": true,
+          "real_game_fps": false,
+          "seed": 23063,
+          "frames": 300,
+          "warmup_frames": 20,
+          "output": [
+            512,
+            256
+          ],
+          "native_world": [
+            3840,
+            1920
+          ],
+          "counts": {
+            "terrain": 4096,
+            "shp_actors": 256,
+            "vxl_actors": 128,
+            "animated_shp": 64,
+            "particle_points": 192,
+            "beams": 24,
+            "vxl_model_exposed_faces": 1362,
+            "vxl_unique_poses": 32,
+            "prepared_triangle_total": 84612,
+            "decoded_tmp_frames": 16,
+            "decoded_shp_rle_frames": 64,
+            "decoded_vxl_hva_parts": 3
+          },
+          "initialization_ms": 11.543198,
+          "cold_first_frame_ms": 75.553902,
+          "cold_voxel_rasters": 32,
+          "completed_changed_frames": 300,
+          "final_pixel_hash": "9814405553787979367",
+          "visible_content_checks": {
+            "shp_pixels_different_from_terrain": 6267,
+            "vxl_pixels_different_from_terrain": 4412,
+            "animation_pixels_different_from_terrain": 1641,
+            "effect_pixels_different_from_full_world": 1202
+          },
+          "verification_hash_and_preview_excluded_from_timings": true,
+          "stages": {
+            "state_update": {
+              "median_ms": 0.0840715,
+              "p95_ms": 0.136926,
+              "p99_ms": 0.23909,
+              "min_ms": 0.062645,
+              "max_ms": 2.925752
+            },
+            "native_composition": {
+              "median_ms": 10.759476,
+              "p95_ms": 14.974613,
+              "p99_ms": 21.403649,
+              "min_ms": 9.069197,
+              "max_ms": 23.590912
+            },
+            "whole_map_resolve": {
+              "median_ms": 9.4739875,
+              "p95_ms": 10.698494,
+              "p99_ms": 17.047695,
+              "min_ms": 6.297958,
+              "max_ms": 27.517219
+            },
+            "particles_and_beams": {
+              "median_ms": 0.0640265,
+              "p95_ms": 0.097256,
+              "p99_ms": 0.171589,
+              "min_ms": 0.052449,
+              "max_ms": 0.246723
+            },
+            "frame_compute": {
+              "median_ms": 20.414251,
+              "p95_ms": 26.995332,
+              "p99_ms": 33.726737,
+              "min_ms": 16.739755,
+              "max_ms": 40.935374
+            }
+          },
+          "terrain_light_phase_interval_frames": 60,
+          "terrain_light_updates_including_setup": 6,
+          "work_per_frame": {
+            "changed_native_pages": {
+              "median": 239,
+              "p95": 243,
+              "p99": 282,
+              "min": 234,
+              "max": 282
+            },
+            "reused_native_pages": {
+              "median": 43,
+              "p95": 46,
+              "p99": 47,
+              "min": 0,
+              "max": 48
+            },
+            "new_voxel_raster_jobs": {
+              "median": 0,
+              "p95": 0,
+              "p99": 0,
+              "min": 0,
+              "max": 0
+            }
+          }
+        }
+      },
+      "high": {
+        "baseline": {
+          "path": "CPU ObjectCanvas -> NativeCanvas::present -> WorldEffects::Painter",
+          "tier": "high",
+          "synthetic_encoded_assets": true,
+          "real_game_fps": false,
+          "seed": 23063,
+          "frames": 300,
+          "warmup_frames": 20,
+          "output": [
+            512,
+            256
+          ],
+          "native_world": [
+            7680,
+            3840
+          ],
+          "counts": {
+            "terrain": 16384,
+            "shp_actors": 1024,
+            "vxl_actors": 512,
+            "animated_shp": 256,
+            "particle_points": 768,
+            "beams": 96,
+            "vxl_model_exposed_faces": 1362,
+            "vxl_unique_poses": 32,
+            "prepared_triangle_total": 84612,
+            "decoded_tmp_frames": 16,
+            "decoded_shp_rle_frames": 64,
+            "decoded_vxl_hva_parts": 3
+          },
+          "initialization_ms": 11.873583,
+          "cold_first_frame_ms": 175.646861,
+          "cold_voxel_rasters": 32,
+          "completed_changed_frames": 300,
+          "final_pixel_hash": "1950456590559741562",
+          "visible_content_checks": {
+            "shp_pixels_different_from_terrain": 8749,
+            "vxl_pixels_different_from_terrain": 5879,
+            "animation_pixels_different_from_terrain": 2310,
+            "effect_pixels_different_from_full_world": 4647
+          },
+          "verification_hash_and_preview_excluded_from_timings": true,
+          "stages": {
+            "state_update": {
+              "median_ms": 0.2809835,
+              "p95_ms": 0.465772,
+              "p99_ms": 0.929422,
+              "min_ms": 0.234764,
+              "max_ms": 1.170305
+            },
+            "native_composition": {
+              "median_ms": 68.040516,
+              "p95_ms": 76.246752,
+              "p99_ms": 79.004122,
+              "min_ms": 62.833837,
+              "max_ms": 86.694871
+            },
+            "whole_map_resolve": {
+              "median_ms": 26.6348465,
+              "p95_ms": 30.863366,
+              "p99_ms": 34.088859,
+              "min_ms": 18.296509,
+              "max_ms": 89.298037
+            },
+            "particles_and_beams": {
+              "median_ms": 0.2363415,
+              "p95_ms": 0.350418,
+              "p99_ms": 0.644602,
+              "min_ms": 0.214914,
+              "max_ms": 1.042131
+            },
+            "frame_compute": {
+              "median_ms": 95.6100565,
+              "p95_ms": 105.204769,
+              "p99_ms": 110.814996,
+              "min_ms": 85.261279,
+              "max_ms": 160.446276
+            }
+          },
+          "terrain_light_phase_interval_frames": 60,
+          "terrain_light_updates_including_setup": 6,
+          "work_per_frame": {
+            "changed_native_pages": {
+              "median": 918,
+              "p95": 924,
+              "p99": 1016,
+              "min": 910,
+              "max": 1016
+            },
+            "reused_native_pages": {
+              "median": 98,
+              "p95": 103,
+              "p99": 105,
+              "min": 0,
+              "max": 106
+            },
+            "new_voxel_raster_jobs": {
+              "median": 0,
+              "p95": 0,
+              "p99": 0,
+              "min": 0,
+              "max": 0
+            }
+          }
+        },
+        "pre13": {
+          "path": "CPU ObjectCanvas -> NativeCanvas::present -> WorldEffects::Painter",
+          "tier": "high",
+          "synthetic_encoded_assets": true,
+          "real_game_fps": false,
+          "seed": 23063,
+          "frames": 300,
+          "warmup_frames": 20,
+          "output": [
+            512,
+            256
+          ],
+          "native_world": [
+            7680,
+            3840
+          ],
+          "counts": {
+            "terrain": 16384,
+            "shp_actors": 1024,
+            "vxl_actors": 512,
+            "animated_shp": 256,
+            "particle_points": 768,
+            "beams": 96,
+            "vxl_model_exposed_faces": 1362,
+            "vxl_unique_poses": 32,
+            "prepared_triangle_total": 84612,
+            "decoded_tmp_frames": 16,
+            "decoded_shp_rle_frames": 64,
+            "decoded_vxl_hva_parts": 3
+          },
+          "initialization_ms": 11.803391,
+          "cold_first_frame_ms": 193.294361,
+          "cold_voxel_rasters": 32,
+          "completed_changed_frames": 300,
+          "final_pixel_hash": "1950456590559741562",
+          "visible_content_checks": {
+            "shp_pixels_different_from_terrain": 8749,
+            "vxl_pixels_different_from_terrain": 5879,
+            "animation_pixels_different_from_terrain": 2310,
+            "effect_pixels_different_from_full_world": 4647
+          },
+          "verification_hash_and_preview_excluded_from_timings": true,
+          "stages": {
+            "state_update": {
+              "median_ms": 0.3196575,
+              "p95_ms": 0.525833,
+              "p99_ms": 0.754698,
+              "min_ms": 0.234884,
+              "max_ms": 0.787618
+            },
+            "native_composition": {
+              "median_ms": 42.440914,
+              "p95_ms": 56.855954,
+              "p99_ms": 84.715417,
+              "min_ms": 38.090924,
+              "max_ms": 103.124417
+            },
+            "whole_map_resolve": {
+              "median_ms": 26.5856925,
+              "p95_ms": 31.410164,
+              "p99_ms": 52.978994,
+              "min_ms": 20.248847,
+              "max_ms": 140.549983
+            },
+            "particles_and_beams": {
+              "median_ms": 0.234909,
+              "p95_ms": 0.370419,
+              "p99_ms": 0.54356,
+              "min_ms": 0.209917,
+              "max_ms": 0.769831
+            },
+            "frame_compute": {
+              "median_ms": 69.665386,
+              "p95_ms": 93.208414,
+              "p99_ms": 117.040775,
+              "min_ms": 61.172853,
+              "max_ms": 184.452782
+            }
+          },
+          "terrain_light_phase_interval_frames": 60,
+          "terrain_light_updates_including_setup": 6,
+          "work_per_frame": {
+            "changed_native_pages": {
+              "median": 918,
+              "p95": 924,
+              "p99": 1016,
+              "min": 910,
+              "max": 1016
+            },
+            "reused_native_pages": {
+              "median": 98,
+              "p95": 103,
+              "p99": 105,
+              "min": 0,
+              "max": 106
+            },
+            "new_voxel_raster_jobs": {
+              "median": 0,
+              "p95": 0,
+              "p99": 0,
+              "min": 0,
+              "max": 0
+            }
+          }
+        }
+      }
+    },
+    "compiler": "g++13.3.0 -std=c++17 -O2 -pthread",
+    "cpu_environment": {
+      "vendor_id": "AuthenticAMD",
+      "model name": "AMD EPYC 9V74 80-Core Processor",
+      "cpu cores": "9",
+      "logical_processors_visible": 9,
+      "cgroup_cpu_max": "800000 100000"
+    },
+    "final_hashes_match_baseline": true
+  },
+  "cpu_prototype": {
+    "scope": "Alternating in-process production-equivalent baseline vs isolated CPU terrain-prefix prototype. Real synthetic TMP/SHP-RLE/VXL-HVA decoder workload, complete page RGBA/depth/native-Z/alpha vector comparisons each frame. No game FPS/hardware GPU claim.",
+    "measured_candidate_production_equivalent_sha256": "c3b41e48af3e734e798ad5829f256496e2f703f4e4465d14f3450f4cdb2bef98",
+    "final_source_sha256": "04ee01ff6668400ba23c082e3681fb5f07d8379b065d33e9c762e700868f3cea",
+    "final_source_changes_after_measurement": [
+      "Per-prefix charge padding256→1024 to cover bounded128-column Surface scratch/control allocation overhead.",
+      "Copy only source Page four planes with Surface.restoreFrame; avoid incidentally inheriting Surface caches. Mixed workload base contains no native Page surfaces, so branch not entered in measured stream."
+    ],
+    "separate_optional_pool": {
+      "x64_bytes": 268435456,
+      "x86_bytes": 67108864,
+      "charge_ownership": "PrefixState charge member precedes Entry; local shared PrefixState owner outlives Page aliases",
+      "mandatory_output_pool": "Always allocate Page(base.budget_); copy Surface only, never inherit prefix Page budget",
+      "oom_fallback": "All optional metadata/planning/work admission bad_alloc branches clear own optional state and continue original full replay",
+      "actual_capacity_check": true,
+      "private_cache_budget": "Process-wide atomic CAS byte admission; no foreign cache mutation or locks"
+    },
+    "results": {
+      "high": {
+        "tier": "high",
+        "frames": 140,
+        "four_plane_comparisons": 140,
+        "baseline_warm_compose_median_ms": 67.856576,
+        "prefix_warm_compose_median_ms": 40.5270235,
+        "baseline_light_phase_compose_median_ms": 70.069932,
+        "prefix_light_phase_compose_median_ms": 84.50347,
+        "baseline_cold_first_ms": 155.494719,
+        "prefix_cold_first_ms": 164.283588,
+        "prefix_builds": 3048,
+        "prefix_hits": 125785,
+        "prefix_raster_calls": 87600,
+        "prefix_owned_bytes": 174676288,
+        "prefix_pages": 1016
+      },
+      "medium": {
+        "tier": "medium",
+        "frames": 140,
+        "four_plane_comparisons": 140,
+        "baseline_warm_compose_median_ms": 17.0723745,
+        "prefix_warm_compose_median_ms": 9.687924,
+        "baseline_light_phase_compose_median_ms": 17.1855195,
+        "prefix_light_phase_compose_median_ms": 24.1247085,
+        "baseline_cold_first_ms": 47.71411,
+        "prefix_cold_first_ms": 52.785798,
+        "prefix_builds": 846,
+        "prefix_hits": 32723,
+        "prefix_raster_calls": 22032,
+        "prefix_owned_bytes": 48288240,
+        "prefix_pages": 282
+      }
+    },
+    "invalidations": {
+      "baseline_vs_prefix_cases": 31,
+      "changes": [
+        "single TMP identity",
+        "per-tile lighting/tint/level material",
+        "alpha replacement/removal",
+        "crop",
+        "colour precision",
+        "positive/negative/wrapped/outside cloak offsets",
+        "shadow attachments/drop/clip",
+        "custom background",
+        "base COW"
+      ]
+    },
+    "production_regression": {
+      "source": "source/assist/tests/object_canvas_terrain_prefix.cpp",
+      "comparisons": 103,
+      "test_pool_bytes": 8388608,
+      "cross_view_lifetimes": 24,
+      "pool_credits_returned": true,
+      "note": "Targeted test ran preceding candidatec3b41e; rootCI/finalproduction tests validate final04ee source."
+    },
+    "independent_review_evidence": "/workspace/scratch/1887e4107280/threads-audit/cpu_prefix_review_evidence.json",
+    "review_findings_fixed": [
+      "Initial sequential prefix cold regression replaced with parallel fill",
+      "Same-pool optional prefixes could starve mandatory cross-view outputs; separate globally charged pool",
+      "Expired source/budget-shrink stale prefix invalidation independent of admission",
+      "Local PrefixState ownership maintains strict RAII byte charge across fail/cold retry"
+    ],
+    "limitations": [
+      "Warm composition improves; initial cold and global lighting refresh add cache-build/copy costs, recorded explicitly.",
+      "Image ownership stays shared with existing asset caches; charge bounds owned Page planes/Draw metadata, not duplicate accounting of source assets.",
+      "Measured prototype excludes final whole-map resolve/effects; root final300-frame complete-stage benchmark uses exact final source."
+    ]
+  },
+  "cpu_independent_review": {
+    "scope": "Read-only review of scratch CPU static-terrain prefix candidate; no production or prototype source edits by reviewer. Actual compositor/Surface/Page-budget code with synthetic immutable images.",
+    "pressure_case": {
+      "world_pixels": [
+        1024,
+        768
+      ],
+      "world_pages": 48,
+      "separate_budget_pages_per_renderer": 110,
+      "actors": 48,
+      "actor_movement": "one 16x16 actor moves on every page each frame",
+      "retained_front": "previous full front retained until new compose completes",
+      "before_fix_frames": [
+        {
+          "frame": 0,
+          "four_planes_equal": true,
+          "baseline_ms": 12.713712,
+          "prefix_ms": 13.448459,
+          "prefix_builds": 48,
+          "prefix_hits": 0,
+          "retained_prefix_pages": 48,
+          "baseline_resident_pages": 48,
+          "candidate_resident_pages": 96
+        },
+        {
+          "frame": 1,
+          "four_planes_equal": true,
+          "baseline_ms": 11.08722,
+          "prefix_ms": 8.761525,
+          "prefix_builds": 0,
+          "prefix_hits": 48,
+          "retained_prefix_pages": 0,
+          "baseline_resident_pages": 96,
+          "candidate_resident_pages": 96
+        },
+        {
+          "frame": 2,
+          "four_planes_equal": true,
+          "baseline_ms": 8.616727,
+          "prefix_ms": 16.727356,
+          "prefix_builds": 48,
+          "prefix_hits": 0,
+          "retained_prefix_pages": 0,
+          "baseline_resident_pages": 96,
+          "candidate_resident_pages": 96
+        },
+        {
+          "frame": 3,
+          "four_planes_equal": true,
+          "baseline_ms": 5.329002,
+          "prefix_ms": 19.178314,
+          "prefix_builds": 48,
+          "prefix_hits": 0,
+          "retained_prefix_pages": 0,
+          "baseline_resident_pages": 96,
+          "candidate_resident_pages": 96
+        },
+        {
+          "frame": 4,
+          "four_planes_equal": true,
+          "baseline_ms": 10.526735,
+          "prefix_ms": 17.464742,
+          "prefix_builds": 48,
+          "prefix_hits": 0,
+          "retained_prefix_pages": 0,
+          "baseline_resident_pages": 96,
+          "candidate_resident_pages": 96
+        },
+        {
+          "frame": 5,
+          "four_planes_equal": true,
+          "baseline_ms": 8.254992,
+          "prefix_ms": 13.806027,
+          "prefix_builds": 48,
+          "prefix_hits": 0,
+          "retained_prefix_pages": 0,
+          "baseline_resident_pages": 96,
+          "candidate_resident_pages": 96
+        }
+      ],
+      "after_fix_frames": [
+        {
+          "frame": 0,
+          "four_planes_equal": true,
+          "baseline_ms": 10.511993,
+          "prefix_ms": 13.026723,
+          "prefix_builds": 48,
+          "prefix_hits": 0,
+          "retained_prefix_pages": 48,
+          "baseline_resident_pages": 48,
+          "candidate_resident_pages": 96
+        },
+        {
+          "frame": 1,
+          "four_planes_equal": true,
+          "baseline_ms": 10.568143,
+          "prefix_ms": 11.606998,
+          "prefix_builds": 0,
+          "prefix_hits": 14,
+          "retained_prefix_pages": 14,
+          "baseline_resident_pages": 96,
+          "candidate_resident_pages": 110
+        },
+        {
+          "frame": 2,
+          "four_planes_equal": true,
+          "baseline_ms": 7.671002,
+          "prefix_ms": 7.664211,
+          "prefix_builds": 0,
+          "prefix_hits": 14,
+          "retained_prefix_pages": 14,
+          "baseline_resident_pages": 96,
+          "candidate_resident_pages": 110
+        },
+        {
+          "frame": 3,
+          "four_planes_equal": true,
+          "baseline_ms": 7.809931,
+          "prefix_ms": 6.350691,
+          "prefix_builds": 0,
+          "prefix_hits": 14,
+          "retained_prefix_pages": 14,
+          "baseline_resident_pages": 96,
+          "candidate_resident_pages": 110
+        },
+        {
+          "frame": 4,
+          "four_planes_equal": true,
+          "baseline_ms": 7.19884,
+          "prefix_ms": 5.795985,
+          "prefix_builds": 0,
+          "prefix_hits": 14,
+          "retained_prefix_pages": 14,
+          "baseline_resident_pages": 96,
+          "candidate_resident_pages": 110
+        },
+        {
+          "frame": 5,
+          "four_planes_equal": true,
+          "baseline_ms": 7.51747,
+          "prefix_ms": 5.446158,
+          "prefix_builds": 0,
+          "prefix_hits": 14,
+          "retained_prefix_pages": 14,
+          "baseline_resident_pages": 96,
+          "candidate_resident_pages": 110
+        }
+      ],
+      "before_warm_problem": "48 optional prefix pages rebuilt then all discarded every warm frame",
+      "after_warm_result": "zero optional prefix builds;14 cached prefix pages reused and retained;mandatory COW batch fits",
+      "fixed_page_budget_honored": true
+    },
+    "shrink_case": {
+      "budget_before": 64,
+      "budget_after": 31,
+      "world_pixels": [
+        128,
+        128
+      ],
+      "mutation": "replace static terrain source image immediately after shrinking budget with old front retained",
+      "fixed_result": "PASS exact RGBA/depth/native-Z/alpha and changed RGB; stale prefix not applied"
+    },
+    "review_conclusion": "The original retained-front all-prefix churn and subsequent cross-view shared-base-budget blocker were addressed. The final candidate uses globally charged optional prefix storage, copies mandatory output Pages into the base budget, and keeps a PrefixState owner alive through every local Page alias. Independent final checks cover two-view shared mandatory budget, repeated global-ledger zero lifetimes, concurrent global-pool saturation and exact four-plane two-view outputs. No overall real-game/FPS/multiplayer acceptance is claimed.",
+    "timing_limit": "Captured CPU timings are exploratory and noisy with concurrent tests; use deterministic rebuild/retention/four-plane counts. Not game FPS, Windows presentation, GPU, or multiplayer acceptance.",
+    "source_binding_note": "Owner archived original pressure prototype before update. Old binary predates the subsequently added shrink function in current fixture; both archived header and executed binary hashes are retained.",
+    "sha256": {
+      "baseline_header": {
+        "path": "/workspace/scratch/1887e4107280/cpu-prefix-prototype/baseline_object_canvas.h",
+        "sha256": "0d51ca9be9e1b497669c172d0ac7e8d65c52a1da65d29aba89c5989aa53242d3"
+      },
+      "archived_candidate_before_pressure_fix": {
+        "path": "/workspace/scratch/1887e4107280/cpu-prefix-prototype/prefix_before_pressurefix.h",
+        "sha256": "5625df38b243c8ab00101aad00892a1c760ca1c769577a587e0719cb58054128"
+      },
+      "fixed_candidate_header": {
+        "path": "/workspace/scratch/1887e4107280/cpu-prefix-prototype/prefix_object_canvas.h",
+        "sha256": "abdb4bf71ce9a9dd3ef7d62fd10b080e332e6bbe974e739a9d046ef3a5b75c6b"
+      },
+      "review_fixture_current_including_added_shrink_case": {
+        "path": "/workspace/scratch/1887e4107280/threads-audit/cpu_prefix_pressure.cpp",
+        "sha256": "efcf752185a1e2070b0631d72053d9951d9352807be18ff3bd38345357681240"
+      },
+      "old_binary": {
+        "path": "/tmp/cpu-prefix-pressure-review",
+        "sha256": "e259bfd1fb17587e96fde4cf9e956a986de6c70c22b069c1ccd6559cb639717a"
+      },
+      "fixed_binary": {
+        "path": "/tmp/cpu-prefix-pressure-review-fixed",
+        "sha256": "556989f35fec301a08292f7f870d9046ed0a9eb3f9650b0e742ed1f6032c55ad"
+      }
+    },
+    "raw_old_output": "frame=0 exact_four_planes=1 baseline_ms=12.713712 prefix_ms=13.448459 prefix_builds=48 hits=0 retained_prefix_pages=48 baseline_live=48 prefix_live=96\nframe=1 exact_four_planes=1 baseline_ms=11.087220 prefix_ms=8.761525 prefix_builds=0 hits=48 retained_prefix_pages=0 baseline_live=96 prefix_live=96\nframe=2 exact_four_planes=1 baseline_ms=8.616727 prefix_ms=16.727356 prefix_builds=48 hits=0 retained_prefix_pages=0 baseline_live=96 prefix_live=96\nframe=3 exact_four_planes=1 baseline_ms=5.329002 prefix_ms=19.178314 prefix_builds=48 hits=0 retained_prefix_pages=0 baseline_live=96 prefix_live=96\nframe=4 exact_four_planes=1 baseline_ms=10.526735 prefix_ms=17.464742 prefix_builds=48 hits=0 retained_prefix_pages=0 baseline_live=96 prefix_live=96\nframe=5 exact_four_planes=1 baseline_ms=8.254992 prefix_ms=13.806027 prefix_builds=48 hits=0 retained_prefix_pages=0 baseline_live=96 prefix_live=96\nSUMMARY retained-front budget=110, world_pages=48, candidate_builds=240 hits=48 final_prefix_pages=0\n",
+    "raw_fixed_output": "frame=0 exact_four_planes=1 baseline_ms=10.511993 prefix_ms=13.026723 prefix_builds=48 hits=0 retained_prefix_pages=48 baseline_live=48 prefix_live=96\nframe=1 exact_four_planes=1 baseline_ms=10.568143 prefix_ms=11.606998 prefix_builds=0 hits=14 retained_prefix_pages=14 baseline_live=96 prefix_live=110\nframe=2 exact_four_planes=1 baseline_ms=7.671002 prefix_ms=7.664211 prefix_builds=0 hits=14 retained_prefix_pages=14 baseline_live=96 prefix_live=110\nframe=3 exact_four_planes=1 baseline_ms=7.809931 prefix_ms=6.350691 prefix_builds=0 hits=14 retained_prefix_pages=14 baseline_live=96 prefix_live=110\nframe=4 exact_four_planes=1 baseline_ms=7.198840 prefix_ms=5.795985 prefix_builds=0 hits=14 retained_prefix_pages=14 baseline_live=96 prefix_live=110\nframe=5 exact_four_planes=1 baseline_ms=7.517470 prefix_ms=5.446158 prefix_builds=0 hits=14 retained_prefix_pages=14 baseline_live=96 prefix_live=110\nSUMMARY retained-front budget=110, world_pages=48, candidate_builds=48 hits=70 final_prefix_pages=14\nPASS cached prefix + budget shrink 64->31 + changed static tile: four planes match; stale prefix not applied; prefix_builds=1 prefix_pages=1\n",
+    "production_adoption_status": "No remaining blocker identified in the final separate optional-pool prototype within this bounded independent review; production integration/build and game acceptance remain separate.",
+    "new_cross_view_blocker": {
+      "status": "Resolved in final independently tested separate-pool prototype",
+      "origin": "Owner finding relayed by root after the independent single-owner review",
+      "independently_reproduced_by_this_review": false,
+      "mechanism": "Optional prefix Pages held by renderer A consume the shared base/mandatory NativeCanvas Page budget. Renderer B can trim only its own prefix cache, so mandatory allocations may fail even when the corresponding baseline renderers fit without A optional cache.",
+      "required_resolution": "Optional cache admission/ownership must not prevent other renderers from using otherwise sufficient mandatory canvas capacity; cross-view failure and recovery need validation.",
+      "timebox_policy": "Root requested short timebox; defer CPU prefix cache if not resolved and validated.",
+      "single_owner_results_remain_valid": true,
+      "resolution": "Global atomic RAII optional-prefix byte admission plus independent prefix Page pool; output allocates Page(base.budget_) and copies only Surface. Local PrefixState shared ownership outlives Page aliases during failure/cold restart."
+    },
+    "final_separate_pool_review": {
+      "two_view_cycles": 24,
+      "mandatory_pool_pages_per_cycle": 96,
+      "mandatory_pool_ceiling": 110,
+      "optional_prefix_pages_each_view": 48,
+      "exact_four_plane_view_comparisons": 48,
+      "global_optional_ledger_zero_before_every_cycle_and_after_teardown": true,
+      "cumulative_prefix_pages_created": 2304,
+      "concurrent_views": 4,
+      "mandatory_pages_each_concurrent_view": 512,
+      "optional_pages_admitted_at_saturation": 1611,
+      "maximum_optional_pages_attempted": 2048,
+      "sampled_peak_optional_byte_charge": 268418376,
+      "optional_byte_cap": 268435456,
+      "final_optional_byte_charge": 0,
+      "final_all_mandatory_page_counts": 0,
+      "held_owner_lifetime_review": "PrefixOwner declared before terrainPage and initialPage; PrefixState charge declared before Entry so charge credit returns after owned buffers; verified in final source.",
+      "allocation_failure_review": "State allocation precedes atomic charge in constructor; failed optional insert/planning/build cleanup releases states; no output Page copies inherit optional Page budget.",
+      "raw_output": "cycle=0 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=1 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=2 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=3 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=4 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=5 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=6 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=7 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=8 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=9 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=10 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=11 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=12 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=13 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=14 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=15 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=16 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=17 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=18 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=19 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=20 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=21 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=22 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\ncycle=23 two_views_four_planes=1 mandatory_pages=96/110 optional_prefix_pages=48+48\nPASS cross-view mandatory Page accounting and repeated RAII lifetime cycles=24 prefix_pages_created=2304; mandatory outputs96/110; stable prefix admission after >256MiB cumulative allocation\nPASS simultaneous optional-pool saturation:4views x512mandatory Pages; optional admitted=1611/2048, peak_charge=268418376 cap=268435456, final_optional_charge=0, final_mandatory_pages=0\n",
+      "sha256": {
+        "/workspace/scratch/1887e4107280/cpu-prefix-prototype/prefix_object_canvas.h": "8e5539aae1b4447cb70e70ecabf604d8d0593657811cb9ecf9e91174327d6f24",
+        "/workspace/scratch/1887e4107280/threads-audit/cpu_prefix_crossview.cpp": "5af317517a476cb7e50fc351671659b3bbffefde0867da39b09242b552084d99",
+        "/tmp/cpu-prefix-crossview-review-final": "082def66dc191eeacf51d7af468ad981cde93f8fdee89763d7e7b89881deed96"
+      }
+    }
+  },
+  "cpu_hash_checks": {
+    "medium": {
+      "baseline_final_RGBA_hash": "9814405553787979367",
+      "pre13_final_RGBA_hash": "9814405553787979367",
+      "equal": true
+    },
+    "high": {
+      "baseline_final_RGBA_hash": "1950456590559741562",
+      "pre13_final_RGBA_hash": "1950456590559741562",
+      "equal": true
+    }
+  },
+  "gpu_host_candidates": [
+    {
+      "path": "viewport",
+      "tier": "medium",
+      "draws": 4992,
+      "phases": 7,
+      "parallel": 4,
+      "bins": 3600,
+      "refs": 17891,
+      "selected": 1,
+      "extra_bytes": 186716,
+      "host_ref_visits": 35782,
+      "old_parallel_tests": 18320384,
+      "new_parallel_tests": 4577024,
+      "count_ratio": 4.00268
+    },
+    {
+      "path": "area_all_pages",
+      "tier": "medium",
+      "draws": 4992,
+      "phases": 7,
+      "parallel": 4,
+      "bins": 4512,
+      "refs": 26170,
+      "selected": 1,
+      "extra_bytes": 249008,
+      "host_ref_visits": 52340,
+      "old_parallel_tests": 107192320,
+      "new_parallel_tests": 26783744,
+      "count_ratio": 4.00214
+    },
+    {
+      "path": "viewport",
+      "tier": "high",
+      "draws": 19968,
+      "phases": 27,
+      "parallel": 14,
+      "bins": 14400,
+      "refs": 71173,
+      "selected": 1,
+      "extra_bytes": 1897292,
+      "host_ref_visits": 142346,
+      "old_parallel_tests": 255084032,
+      "new_parallel_tests": 18207488,
+      "count_ratio": 14.0098
+    },
+    {
+      "path": "area_all_pages",
+      "tier": "high",
+      "draws": 19968,
+      "phases": 27,
+      "parallel": 14,
+      "bins": 16256,
+      "refs": 104641,
+      "selected": 1,
+      "extra_bytes": 2238936,
+      "host_ref_visits": 209282,
+      "old_parallel_tests": 1500133376,
+      "new_parallel_tests": 107075584,
+      "count_ratio": 14.01
+    }
+  ],
+  "gpu_host_raw_output": "CANDIDATE path=viewport tier=medium draws=4992 phases=7 parallel=4 bins=3600 refs=17891 selected=1 extra_bytes=186716 host_ref_visits=35782 old_parallel_tests=18320384 new_parallel_tests=4577024 count_ratio=4.00268 reason=parallel phase CSR selected\nCANDIDATE path=area_all_pages tier=medium draws=4992 phases=7 parallel=4 bins=4512 refs=26170 selected=1 extra_bytes=249008 host_ref_visits=52340 old_parallel_tests=107192320 new_parallel_tests=26783744 count_ratio=4.00214 reason=parallel phase CSR selected\nCANDIDATE path=viewport tier=high draws=19968 phases=27 parallel=14 bins=14400 refs=71173 selected=1 extra_bytes=1897292 host_ref_visits=142346 old_parallel_tests=255084032 new_parallel_tests=18207488 count_ratio=14.0098 reason=parallel phase CSR selected\nCANDIDATE path=area_all_pages tier=high draws=19968 phases=27 parallel=14 bins=16256 refs=104641 selected=1 extra_bytes=2238936 host_ref_visits=209282 old_parallel_tests=1500133376 new_parallel_tests=107075584 count_ratio=14.01 reason=parallel phase CSR selected\n",
+  "gpu_host_test_output": "LEGACY_SEEK cross-phase bin preserved; out-of-phase opaque seek remains unchanged\nPROPERTY selected=2351 encoded=851 exact_phase_color_checks=237495\nBOUNDARY empty dispatches, singleton serials, draw 65535, 65 phases and phase-64 run handled\nPACKING uint-word offsets exact, strong metadata fallback; allocation failures=16\nPASS phase CSR host regression\n",
+  "gpu_optional_policy": {
+    "maximum_phases": 65,
+    "maximum_extra_command_bytes": 8388608,
+    "serial_CSR": "original",
+    "shader_changed": false,
+    "cross_phase_encoded_run": "retain original whole bin, including legacy seek-before-phase behavior",
+    "host_failure": "clean original CSR fallback, original metadata unchanged",
+    "device_commands_failure": "remove appended optional data and retry original commands allocation once",
+    "other_device_failures": "no optional retry of output/readback/voxel allocation",
+    "temporary_CPU_metadata": "additional to extra packed command cap"
+  },
+  "ci": {
+    "product_run": 41961155793,
+    "product_jobs_total": 3,
+    "windows_paired_product_build": "pending_root_verified_delivery",
+    "benchmark_windows_build": "compiled and verified by root; source80b424d",
+    "product_gpu_job": 127027576464,
+    "product_gpu_checks_passed": {
+      "pure_CSR": true,
+      "CPU_prefix_regressions": 103,
+      "existing_actual_vulkan_frames": 47,
+      "existing_actual_vulkan_exact_RGBA_words": 1156923
+    },
+    "new_fixture_first_attempt": {
+      "status": "failed before any GPU_EXACT output at first ORIGINAL viewport",
+      "reason": "GPU scene timed out/lost; CPU fallback",
+      "VkResult_separately_logged": false,
+      "no_claim_of_new_CSR_incorrectness_or_confirmed_timeout_cause": true
+    },
+    "validation_adapter": {
+      "commit": "30e8ac5ea42072753ff3e330c0c0a7bb43eb005b",
+      "run": 41961872602,
+      "job": 127029881522,
+      "status": "pass",
+      "change": "CI workspace software fence allowance10s to60s only; adapter before/after SHA and diff saved in artifact",
+      "production_source_unchanged": "80b424d976a42b6beb3601b47d3d82052369f729",
+      "production_hardware_wait_ms": 100,
+      "production_software_wait_s": 10,
+      "validation_software_wait_s": 60,
+      "artifact_id": 13385857408,
+      "artifact_sha256": "6ff8d52c60168220cc4d9b39cfec923a4e8e32578d81ed002112e737990e827d",
+      "actual_original_vs_filtered": {
+        "viewport_frames": [
+          20,
+          60,
+          130
+        ],
+        "viewport_RGBA_words_each": 921600,
+        "area_frames": [
+          20,
+          60,
+          130
+        ],
+        "area_RGBA_words_each": 131072,
+        "encoded_non_native_viewport_words": 18432,
+        "total_exact_RGBA_words": 3176448,
+        "viewport_dispatches_unchanged": {
+          "cold": 104,
+          "steady": 8
+        },
+        "area_dispatches_unchanged": {
+          "cold": 107,
+          "steady": 11
+        },
+        "shader_unchanged": true,
+        "device": "software Vulkan; no physical GPU timing result"
+      }
+    },
+    "product_gpu_job_status": "new original-vs-filtered fixture failed at first original viewport after preceding regressions passed"
+  },
+  "risks_and_limits": [
+    "High complete-frame P99 worsens110.814996 to117.040775ms and maximum160.446276 to184.452782ms.",
+    "High cold first frame worsens175.646861 to193.294361ms; global-light prefix rebuild cost is retained.",
+    "Median complete-frame reduction does not mean every frame or full repaint is fast.",
+    "32 prepared VXL poses remain cached; no new steady-frame voxel raster jobs.",
+    "Prototype140-frame A/B usedc3b41e source; final300-frame timings use04ee01 source after charge-padding and Surface-only copy changes.",
+    "Final per-tier RGBA hash equality is one final-frame check, not every frame of real game output.",
+    "GPU4x/14x ratios are deterministic parallel reference-check counts, not GPU timing/FPS gains.",
+    "New actualGPU CSR equality passes under validation-only60s software allowance; initial10s-condition failure is retained separately.",
+    "No game sampling, engine simulation, Windows desktop presentation, physical GPU throughput/hardware-timeout or multiplayer acceptance."
+  ]
+}

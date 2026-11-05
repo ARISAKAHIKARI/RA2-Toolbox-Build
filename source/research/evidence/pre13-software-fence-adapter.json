@@ -1,0 +1,8 @@
+{
+  "workflow_commit": "30e8ac5ea42072753ff3e330c0c0a7bb43eb005b",
+  "production_source_commit": "80b424d976a42b6beb3601b47d3d82052369f729",
+  "original_header_sha256": "5562f033b4a706730fca5ea0051176bbeb7f4c7c43b6e39e522746ba126351ef",
+  "test_header_sha256": "2b8114da20279bba142fb512a51ab8f64b40384f13ab95baf22017d4797929d9",
+  "only_change": "Explicit software-device fence10s to60s; physical hardware fence remains100ms",
+  "hardware_fps_evidence": false
+}

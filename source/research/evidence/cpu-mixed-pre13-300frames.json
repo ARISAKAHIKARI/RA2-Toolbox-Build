@@ -1,0 +1,440 @@
+{
+  "source_commit": "80b424d976a42b6beb3601b47d3d82052369f729",
+  "object_canvas_sha256": "04ee01ff6668400ba23c082e3681fb5f07d8379b065d33e9c762e700868f3cea",
+  "scope": "Same generated encoded mixed fixture and CPU environment as baseline;20warmup+300movingframes/tier incl5globalterrainchanges. No physicalGPU/game/presentFPS result.",
+  "reports": {
+    "medium": {
+      "baseline": {
+        "path": "CPU ObjectCanvas -> NativeCanvas::present -> WorldEffects::Painter",
+        "tier": "medium",
+        "synthetic_encoded_assets": true,
+        "real_game_fps": false,
+        "seed": 23063,
+        "frames": 300,
+        "warmup_frames": 20,
+        "output": [
+          512,
+          256
+        ],
+        "native_world": [
+          3840,
+          1920
+        ],
+        "counts": {
+          "terrain": 4096,
+          "shp_actors": 256,
+          "vxl_actors": 128,
+          "animated_shp": 64,
+          "particle_points": 192,
+          "beams": 24,
+          "vxl_model_exposed_faces": 1362,
+          "vxl_unique_poses": 32,
+          "prepared_triangle_total": 84612,
+          "decoded_tmp_frames": 16,
+          "decoded_shp_rle_frames": 64,
+          "decoded_vxl_hva_parts": 3
+        },
+        "initialization_ms": 10.764411,
+        "cold_first_frame_ms": 74.725981,
+        "cold_voxel_rasters": 32,
+        "completed_changed_frames": 300,
+        "final_pixel_hash": "9814405553787979367",
+        "visible_content_checks": {
+          "shp_pixels_different_from_terrain": 6267,
+          "vxl_pixels_different_from_terrain": 4412,
+          "animation_pixels_different_from_terrain": 1641,
+          "effect_pixels_different_from_full_world": 1202
+        },
+        "verification_hash_and_preview_excluded_from_timings": true,
+        "stages": {
+          "state_update": {
+            "median_ms": 0.075364,
+            "p95_ms": 0.136085,
+            "p99_ms": 0.268375,
+            "min_ms": 0.063936,
+            "max_ms": 0.310117
+          },
+          "native_composition": {
+            "median_ms": 17.717371,
+            "p95_ms": 23.717784,
+            "p99_ms": 27.943666,
+            "min_ms": 14.269637,
+            "max_ms": 60.949052
+          },
+          "whole_map_resolve": {
+            "median_ms": 9.8443595,
+            "p95_ms": 12.610876,
+            "p99_ms": 15.291103,
+            "min_ms": 6.35984,
+            "max_ms": 17.480154
+          },
+          "particles_and_beams": {
+            "median_ms": 0.0604615,
+            "p95_ms": 0.096786,
+            "p99_ms": 0.204439,
+            "min_ms": 0.047421,
+            "max_ms": 0.452041
+          },
+          "frame_compute": {
+            "median_ms": 27.5498565,
+            "p95_ms": 35.048395,
+            "p99_ms": 39.901457,
+            "min_ms": 23.862738,
+            "max_ms": 71.15638
+          }
+        },
+        "terrain_light_phase_interval_frames": 60,
+        "terrain_light_updates_including_setup": 6,
+        "work_per_frame": {
+          "changed_native_pages": {
+            "median": 239,
+            "p95": 243,
+            "p99": 282,
+            "min": 234,
+            "max": 282
+          },
+          "reused_native_pages": {
+            "median": 43,
+            "p95": 46,
+            "p99": 47,
+            "min": 0,
+            "max": 48
+          },
+          "new_voxel_raster_jobs": {
+            "median": 0,
+            "p95": 0,
+            "p99": 0,
+            "min": 0,
+            "max": 0
+          }
+        }
+      },
+      "pre13": {
+        "path": "CPU ObjectCanvas -> NativeCanvas::present -> WorldEffects::Painter",
+        "tier": "medium",
+        "synthetic_encoded_assets": true,
+        "real_game_fps": false,
+        "seed": 23063,
+        "frames": 300,
+        "warmup_frames": 20,
+        "output": [
+          512,
+          256
+        ],
+        "native_world": [
+          3840,
+          1920
+        ],
+        "counts": {
+          "terrain": 4096,
+          "shp_actors": 256,
+          "vxl_actors": 128,
+          "animated_shp": 64,
+          "particle_points": 192,
+          "beams": 24,
+          "vxl_model_exposed_faces": 1362,
+          "vxl_unique_poses": 32,
+          "prepared_triangle_total": 84612,
+          "decoded_tmp_frames": 16,
+          "decoded_shp_rle_frames": 64,
+          "decoded_vxl_hva_parts": 3
+        },
+        "initialization_ms": 11.543198,
+        "cold_first_frame_ms": 75.553902,
+        "cold_voxel_rasters": 32,
+        "completed_changed_frames": 300,
+        "final_pixel_hash": "9814405553787979367",
+        "visible_content_checks": {
+          "shp_pixels_different_from_terrain": 6267,
+          "vxl_pixels_different_from_terrain": 4412,
+          "animation_pixels_different_from_terrain": 1641,
+          "effect_pixels_different_from_full_world": 1202
+        },
+        "verification_hash_and_preview_excluded_from_timings": true,
+        "stages": {
+          "state_update": {
+            "median_ms": 0.0840715,
+            "p95_ms": 0.136926,
+            "p99_ms": 0.23909,
+            "min_ms": 0.062645,
+            "max_ms": 2.925752
+          },
+          "native_composition": {
+            "median_ms": 10.759476,
+            "p95_ms": 14.974613,
+            "p99_ms": 21.403649,
+            "min_ms": 9.069197,
+            "max_ms": 23.590912
+          },
+          "whole_map_resolve": {
+            "median_ms": 9.4739875,
+            "p95_ms": 10.698494,
+            "p99_ms": 17.047695,
+            "min_ms": 6.297958,
+            "max_ms": 27.517219
+          },
+          "particles_and_beams": {
+            "median_ms": 0.0640265,
+            "p95_ms": 0.097256,
+            "p99_ms": 0.171589,
+            "min_ms": 0.052449,
+            "max_ms": 0.246723
+          },
+          "frame_compute": {
+            "median_ms": 20.414251,
+            "p95_ms": 26.995332,
+            "p99_ms": 33.726737,
+            "min_ms": 16.739755,
+            "max_ms": 40.935374
+          }
+        },
+        "terrain_light_phase_interval_frames": 60,
+        "terrain_light_updates_including_setup": 6,
+        "work_per_frame": {
+          "changed_native_pages": {
+            "median": 239,
+            "p95": 243,
+            "p99": 282,
+            "min": 234,
+            "max": 282
+          },
+          "reused_native_pages": {
+            "median": 43,
+            "p95": 46,
+            "p99": 47,
+            "min": 0,
+            "max": 48
+          },
+          "new_voxel_raster_jobs": {
+            "median": 0,
+            "p95": 0,
+            "p99": 0,
+            "min": 0,
+            "max": 0
+          }
+        }
+      }
+    },
+    "high": {
+      "baseline": {
+        "path": "CPU ObjectCanvas -> NativeCanvas::present -> WorldEffects::Painter",
+        "tier": "high",
+        "synthetic_encoded_assets": true,
+        "real_game_fps": false,
+        "seed": 23063,
+        "frames": 300,
+        "warmup_frames": 20,
+        "output": [
+          512,
+          256
+        ],
+        "native_world": [
+          7680,
+          3840
+        ],
+        "counts": {
+          "terrain": 16384,
+          "shp_actors": 1024,
+          "vxl_actors": 512,
+          "animated_shp": 256,
+          "particle_points": 768,
+          "beams": 96,
+          "vxl_model_exposed_faces": 1362,
+          "vxl_unique_poses": 32,
+          "prepared_triangle_total": 84612,
+          "decoded_tmp_frames": 16,
+          "decoded_shp_rle_frames": 64,
+          "decoded_vxl_hva_parts": 3
+        },
+        "initialization_ms": 11.873583,
+        "cold_first_frame_ms": 175.646861,
+        "cold_voxel_rasters": 32,
+        "completed_changed_frames": 300,
+        "final_pixel_hash": "1950456590559741562",
+        "visible_content_checks": {
+          "shp_pixels_different_from_terrain": 8749,
+          "vxl_pixels_different_from_terrain": 5879,
+          "animation_pixels_different_from_terrain": 2310,
+          "effect_pixels_different_from_full_world": 4647
+        },
+        "verification_hash_and_preview_excluded_from_timings": true,
+        "stages": {
+          "state_update": {
+            "median_ms": 0.2809835,
+            "p95_ms": 0.465772,
+            "p99_ms": 0.929422,
+            "min_ms": 0.234764,
+            "max_ms": 1.170305
+          },
+          "native_composition": {
+            "median_ms": 68.040516,
+            "p95_ms": 76.246752,
+            "p99_ms": 79.004122,
+            "min_ms": 62.833837,
+            "max_ms": 86.694871
+          },
+          "whole_map_resolve": {
+            "median_ms": 26.6348465,
+            "p95_ms": 30.863366,
+            "p99_ms": 34.088859,
+            "min_ms": 18.296509,
+            "max_ms": 89.298037
+          },
+          "particles_and_beams": {
+            "median_ms": 0.2363415,
+            "p95_ms": 0.350418,
+            "p99_ms": 0.644602,
+            "min_ms": 0.214914,
+            "max_ms": 1.042131
+          },
+          "frame_compute": {
+            "median_ms": 95.6100565,
+            "p95_ms": 105.204769,
+            "p99_ms": 110.814996,
+            "min_ms": 85.261279,
+            "max_ms": 160.446276
+          }
+        },
+        "terrain_light_phase_interval_frames": 60,
+        "terrain_light_updates_including_setup": 6,
+        "work_per_frame": {
+          "changed_native_pages": {
+            "median": 918,
+            "p95": 924,
+            "p99": 1016,
+            "min": 910,
+            "max": 1016
+          },
+          "reused_native_pages": {
+            "median": 98,
+            "p95": 103,
+            "p99": 105,
+            "min": 0,
+            "max": 106
+          },
+          "new_voxel_raster_jobs": {
+            "median": 0,
+            "p95": 0,
+            "p99": 0,
+            "min": 0,
+            "max": 0
+          }
+        }
+      },
+      "pre13": {
+        "path": "CPU ObjectCanvas -> NativeCanvas::present -> WorldEffects::Painter",
+        "tier": "high",
+        "synthetic_encoded_assets": true,
+        "real_game_fps": false,
+        "seed": 23063,
+        "frames": 300,
+        "warmup_frames": 20,
+        "output": [
+          512,
+          256
+        ],
+        "native_world": [
+          7680,
+          3840
+        ],
+        "counts": {
+          "terrain": 16384,
+          "shp_actors": 1024,
+          "vxl_actors": 512,
+          "animated_shp": 256,
+          "particle_points": 768,
+          "beams": 96,
+          "vxl_model_exposed_faces": 1362,
+          "vxl_unique_poses": 32,
+          "prepared_triangle_total": 84612,
+          "decoded_tmp_frames": 16,
+          "decoded_shp_rle_frames": 64,
+          "decoded_vxl_hva_parts": 3
+        },
+        "initialization_ms": 11.803391,
+        "cold_first_frame_ms": 193.294361,
+        "cold_voxel_rasters": 32,
+        "completed_changed_frames": 300,
+        "final_pixel_hash": "1950456590559741562",
+        "visible_content_checks": {
+          "shp_pixels_different_from_terrain": 8749,
+          "vxl_pixels_different_from_terrain": 5879,
+          "animation_pixels_different_from_terrain": 2310,
+          "effect_pixels_different_from_full_world": 4647
+        },
+        "verification_hash_and_preview_excluded_from_timings": true,
+        "stages": {
+          "state_update": {
+            "median_ms": 0.3196575,
+            "p95_ms": 0.525833,
+            "p99_ms": 0.754698,
+            "min_ms": 0.234884,
+            "max_ms": 0.787618
+          },
+          "native_composition": {
+            "median_ms": 42.440914,
+            "p95_ms": 56.855954,
+            "p99_ms": 84.715417,
+            "min_ms": 38.090924,
+            "max_ms": 103.124417
+          },
+          "whole_map_resolve": {
+            "median_ms": 26.5856925,
+            "p95_ms": 31.410164,
+            "p99_ms": 52.978994,
+            "min_ms": 20.248847,
+            "max_ms": 140.549983
+          },
+          "particles_and_beams": {
+            "median_ms": 0.234909,
+            "p95_ms": 0.370419,
+            "p99_ms": 0.54356,
+            "min_ms": 0.209917,
+            "max_ms": 0.769831
+          },
+          "frame_compute": {
+            "median_ms": 69.665386,
+            "p95_ms": 93.208414,
+            "p99_ms": 117.040775,
+            "min_ms": 61.172853,
+            "max_ms": 184.452782
+          }
+        },
+        "terrain_light_phase_interval_frames": 60,
+        "terrain_light_updates_including_setup": 6,
+        "work_per_frame": {
+          "changed_native_pages": {
+            "median": 918,
+            "p95": 924,
+            "p99": 1016,
+            "min": 910,
+            "max": 1016
+          },
+          "reused_native_pages": {
+            "median": 98,
+            "p95": 103,
+            "p99": 105,
+            "min": 0,
+            "max": 106
+          },
+          "new_voxel_raster_jobs": {
+            "median": 0,
+            "p95": 0,
+            "p99": 0,
+            "min": 0,
+            "max": 0
+          }
+        }
+      }
+    }
+  },
+  "compiler": "g++13.3.0 -std=c++17 -O2 -pthread",
+  "cpu_environment": {
+    "vendor_id": "AuthenticAMD",
+    "model name": "AMD EPYC 9V74 80-Core Processor",
+    "cpu cores": "9",
+    "logical_processors_visible": 9,
+    "cgroup_cpu_max": "800000 100000"
+  },
+  "final_hashes_match_baseline": true
+}
