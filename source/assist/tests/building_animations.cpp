@@ -12,6 +12,26 @@ int main(){
  put(a+0xAC,0);states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==0);
  put(a+0x11A,uint8_t(1));put(a+0x11C,3);put(a+0xAC,9);put(t+0x2B4,2);states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==11); // native Draw uses Value + Start even when paused
  put(a+0x19E,uint8_t(1));put(a+0xAC,0);put(t+0x2B4,0);states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==0); // powered-off / neutral pump
+ // Native DrawIfVisible/Draw_It do not require IsAlive: AI can be inactive
+ // while a verified building slot retains its exact visible pose. Never
+ // infer a last frame or keep an animation after its slot/identity disappears.
+ put(a+0x90,uint8_t(0));put(a+0xAC,19);put(t+0x2B4,20);
+ for(int repeat=0;repeat<20;++repeat){states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==39);}
+ external::animations::State inactive;assert(!external::animations::capture(read,a,0,0,inactive)); // unowned globals remain conservative
+ assert(external::animations::attached(read,b,41).empty()); // stale parent identity is not a held frame
+ for(uint32_t flag:{0x81u,0x179u,0x19Du}){put(a+flag,uint8_t(1));assert(external::animations::attached(read,b,42).empty());put(a+flag,uint8_t(0));}
+ for(uint32_t flag:{0x81u,0x179u,0x19Du}){auto unavailable=[&](uint32_t p,void*out,size_t n){return p!=a+flag&&read(p,out,n);};assert(external::animations::attached(unavailable,b,42).empty());}
+ for(uint32_t flag:{0x81u,0x179u,0x19Du}){
+  int reads=0;auto changed=[&](uint32_t p,void*out,size_t n){if(p==a+flag&&++reads==2)put(p,uint8_t(1));return read(p,out,n);};assert(external::animations::attached(changed,b,42).empty());put(a+flag,uint8_t(0));
+  reads=0;auto unavailable=[&](uint32_t p,void*out,size_t n){return !(p==a+flag&&++reads==2)&&read(p,out,n);};assert(external::animations::attached(unavailable,b,42).empty());
+ }
+ put(a+0x90,uint8_t(1));put(a+0x81,uint8_t(1));assert(external::animations::attached(read,b,42).empty());put(a+0x81,uint8_t(0));
+ put(a+0x90,uint8_t(0));put(a+0x10,0u);assert(external::animations::attached(read,b,42).empty());put(a+0x10,77u);
+ put(b+0x55C,0u);put(b+0x5C8,0u);assert(external::animations::attached(read,b,42).empty());put(b+0x55C,a);put(b+0x5C8,a);
+ put(a+0x90,uint8_t(1));put(a+0xAC,0);put(t+0x2B4,0);
+ auto aliveUnknown=[&](uint32_t p,void*out,size_t n){return p!=a+0x90&&read(p,out,n);};assert(!external::animations::capture(aliveUnknown,a,0,0,inactive));
+ int aliveReads=0;auto aliveChanged=[&](uint32_t p,void*out,size_t n){if(p==a+0x90&&++aliveReads==2)put(p,uint8_t(0));return read(p,out,n);};assert(!external::animations::capture(aliveChanged,a,0,0,inactive));put(a+0x90,uint8_t(1));
+ aliveReads=0;auto aliveLaterUnknown=[&](uint32_t p,void*out,size_t n){return !(p==a+0x90&&++aliveReads==2)&&read(p,out,n);};assert(!external::animations::capture(aliveLaterUnknown,a,0,0,inactive));
  put(a+0x19D,uint8_t(1));assert(external::animations::attached(read,b,42).empty());put(a+0x19D,uint8_t(0));
  put(a+0xAC,9000);assert(external::animations::attached(read,b,42).empty());put(a+0xAC,3);
  put(a+0xCC,b+4);assert(external::animations::attached(read,b,42).empty());put(a+0xCC,0u);

@@ -236,6 +236,13 @@ int main(int argc,char**argv){
  memory[anim+0x196]=memory[animType+0x35D]=0;word(memory,anim+0xD4,0);assert(gameassets::captureAnimation(anim,animType,502,building,501,art));
  assert(!image.writeDepth&&image.pixels[0]>>24==255);memory[anim+0x11A]=1;word(memory,anim+0x11C,9);word(memory,anim+0xAC,0);word(memory,animType+0x2B4,0);
  states=external::animations::attached(gameassets::context.read,building,501);assert(states.size()==1&&states[0].frame==0);ap.frame=0;assert(gameassets::renderActor(art,ap,image)&&image.pixels[0]!=0);
+ // A native-visible inactive animation in its verified building slot keeps
+ // the exact observed final pose. Capture and real SHP rendering both accept
+ // it; no timer advancement or deleted-instance image retention is involved.
+ memory[anim+0x90]=0;word(memory,anim+0xAC,11);word(memory,animType+0x2B4,12);
+ for(int repeat=0;repeat<20;++repeat){states=external::animations::attached(gameassets::context.read,building,501);assert(states.size()==1&&states[0].frame==23);assert(gameassets::captureAnimation(anim,animType,502,building,501,art));ap.frame=states[0].frame;assert(gameassets::renderActor(art,ap,image)&&image.pixels[0]==external::voxel::premultiply(art.colors[26],1,255));}
+ for(uint32_t flag:{0x81u,0x179u,0x19Du}){memory[anim+flag]=1;assert(!gameassets::captureAnimation(anim,animType,502,building,501,art));memory[anim+flag]=0;}
+ memory[anim+0x90]=1;word(memory,anim+0xAC,0);word(memory,animType+0x2B4,0);
  // A detached/reused pointer cannot load using a stale parent association.
  word(memory,building+0x55C+3*4,0);assert(!gameassets::captureAnimation(anim,animType,502,building,501,art));
  // A voxel still uses 3D depth internally, but not as a terrain depth plane.
@@ -600,3 +607,4 @@ with tempfile.TemporaryDirectory() as tmp:
  exe=p/'test'
  subprocess.run(['g++','-std=c++17','-O2','-I'+str(p),'-I'+str(root),str(p/'test.cpp'),str(root/'source/third_party/xbrz/xbrz.cpp'),'-o',str(exe)],check=True)
  subprocess.run([str(exe),*sys.argv[1:]],check=True)
+

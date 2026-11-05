@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include "screen_sprite_scale.h"
 // Immutable screen annotations belong to the completed scene, not the newest
 // sampler frame. Only their anchors scale with the panel; native PIPS pixels
 // retain their readable minimum of one physical output pixel.
@@ -25,7 +26,9 @@ inline std::vector<Draw> place(const std::shared_ptr<const Annotations>&annotati
  for(const auto&g:annotations->glyphs){if(!g.pixels||g.width<1||g.height<1||g.width>1024||g.height>1024||g.pixels->size()!=size_t(g.width)*g.height||!std::isfinite(g.u)||!std::isfinite(g.v)||std::abs(g.u)>16||std::abs(g.v)>16)continue;
   const double x=1+g.u*w+2+g.x*sx,y=1+g.v*h+2+g.y*sy,dw=g.width*sx,dh=g.height*sy;
   if(!std::isfinite(x)||!std::isfinite(y)||dw>8192||dh>8192||x>=width-1||y>=height-1||x+dw<=1||y+dh<=1)continue;
-  result.push_back({int(std::floor(x)),int(std::floor(y)),int(std::ceil(dw)),int(std::ceil(dh)),g.width,g.height,g.pixels});
+  const int targetW=int(std::ceil(dw)),targetH=int(std::ceil(dh));
+  auto raster=screensprites::cache().get(g.pixels,g.width,g.height,targetW,targetH);
+  result.push_back({int(std::floor(x)),int(std::floor(y)),targetW,targetH,raster.width,raster.height,std::move(raster.pixels)});
  }return result;
 }
 inline uint32_t over(uint32_t src,uint32_t dst){

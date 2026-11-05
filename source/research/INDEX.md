@@ -219,6 +219,8 @@
 
 此前已有 Scatter 研究继续保留在 [SCATTER_RESEARCH.md](../SCATTER_RESEARCH.md)，不因建立本索引重做或重新宣称完成原版躲弹复现。
 
+- [副相机建筑附属动画静止显示准入](2026-11-05-building-animation-draw-eligibility.md)：原生 DrawIfVisible/Draw_It 与 IsAlive 更新条件区分；只允许稳定父槽、非 limbo/TimeToDie/Invisible 的精确已观察姿态；38 组 x86 控制与读取/像素负控，不声称已观察到用户夹子终态或游戏视觉验收。
+
 
 
 - [1.0.37 正式版设置持久化、默认值与显示调查](2026-10-24-stable-settings-137.md)
@@ -279,3 +281,8 @@
 - [混合场景重复地形与GPU阶段引用](2026-11-05-mixed-scene-render-optimizations-pre13.md)（pre.13；CPU两档300帧中位改善／High尾延迟变差；65阶段CSR；验证专用软件等待额度下原始／筛选GPU对照）
 
 - [CPU整图面积缩小和地形恢复](2026-11-05-cpu-area-reduction-pre14.md)（pre.14；两档完整/增量各300帧同机逐帧输出哈希一致；可选缩图表、地形列表复用与并行帧恢复；非游戏/物理GPU FPS）
+
+- [星级 SHP 素材缩放与屏幕锚点](2026-11-05-rank-material-scaling.md)（v1.0.41 基线；共用普通 SHP 的 CPU 重建与 alpha；主渲染／小地图最终尺寸，受控旧版对照与 WARP，非实机验证）
+
+- [副相机身份转换、完整容器链与实时固定点](2026-11-05-watch-conversion-container-tracking.md)（v1.0.41 基线；MCV 新 UID 差分／无证据固定点、八层运输／驻军／碉堡、Unknown-live、严格可见性；只读外部路径，实机待验收）
+- [1.0.42-pre.1 建筑动画、星级缩放与副相机跟踪](2026-11-05-render-fixes-release.md)（最新 1.0.41 基线；针对性源码／原生受控／软件 GPU 证据及实机验收边界）

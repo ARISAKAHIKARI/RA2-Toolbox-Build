@@ -1,0 +1,121 @@
+{
+  "baseline_commit": "513aeb4cf03238cce956bd35e0c9381c2a7cc484",
+  "version": "1.0.42-pre.1",
+  "game_tested": false,
+  "windows_game_visual_tested": false,
+  "multiplayer_tested": false,
+  "passed": true,
+  "tested_source_sha256": {
+    "shared/source/screen_sprite_scale.h": "d6eb9f8f6275b67f768bcdb0a2d8492b747d756a276ee07058a1596b8af32b3f",
+    "shared/source/sprite_scale_cpu.h": "019a95855823993578a08900ba6cfab0e5d8438036312bb05f8470c911b5b114",
+    "shared/source/panel_glyphs.h": "d120d6057b8f92056f4e10f449ee17bcbdb582bdeb73d17bc0dce7e90fa11568",
+    "external_reader/source/xbrz_adapter.h": "e2b54db9136d976d198b4170f3e765ce684ac31a8c5514e1b3031667b7f95cfa",
+    "external_reader/source/local_ui_renderer.h": "cf3505e8d015baf3dfe04b6a71ef77262b17cc0469328b638ebbb79a5abdaf03",
+    "external_reader/source/local_ui_task.h": "3e27d218caa4150ae99b413247de28b61409790037c0a3c1c410d4d5d4e68223"
+  },
+  "scope": "Shared ordinary-SHP CPU scaling; rank source-bound negative control, fractional geometry, immutable cache and software GPU/GDI composition.",
+  "validation": {
+    "passed": true,
+    "base_commit": "513aeb4cf03238cce956bd35e0c9381c2a7cc484",
+    "source_level_only": true,
+    "game_tested": false,
+    "source_hash_stable": true,
+    "source_hash_stable_scope": [
+      "shared/source/screen_sprite_scale.h",
+      "shared/source/sprite_scale_cpu.h",
+      "shared/source/panel_glyphs.h",
+      "external_reader/source/xbrz_adapter.h",
+      "external_reader/source/local_ui_renderer.h",
+      "external_reader/source/local_ui_task.h",
+      "assist/tests/rank_sprite_scaling.cpp",
+      "assist/tests/rank_sprite_scaling.py"
+    ],
+    "final_sha256": {
+      "shared/source/screen_sprite_scale.h": "d6eb9f8f6275b67f768bcdb0a2d8492b747d756a276ee07058a1596b8af32b3f",
+      "shared/source/sprite_scale_cpu.h": "019a95855823993578a08900ba6cfab0e5d8438036312bb05f8470c911b5b114",
+      "shared/source/panel_glyphs.h": "d120d6057b8f92056f4e10f449ee17bcbdb582bdeb73d17bc0dce7e90fa11568",
+      "external_reader/source/xbrz_adapter.h": "e2b54db9136d976d198b4170f3e765ce684ac31a8c5514e1b3031667b7f95cfa",
+      "external_reader/source/local_ui_renderer.h": "cf3505e8d015baf3dfe04b6a71ef77262b17cc0469328b638ebbb79a5abdaf03",
+      "external_reader/source/local_ui_task.h": "3e27d218caa4150ae99b413247de28b61409790037c0a3c1c410d4d5d4e68223",
+      "assist/tests/rank_sprite_scaling.cpp": "a2581b80d278cc724e31404266dd7947348acc7ea26d1c4f88b8778351197e87",
+      "assist/tests/rank_sprite_scaling.py": "b67affec360055545c38e98f2b85d644ba4047976268a81915e8d03f45417ccc",
+      "assist/tests/radar_panel_glyphs_windows.cpp": "ec42fbfbc0c0e661176e00ab60b5e1e5c799ae68dcfe5ed5b71e852e62abe801",
+      "assist/tests/radar_panel_glyphs_windows.py": "3e44401988aef18c7db3c5a86a8029ec6b42322228209d3fa602640ecd8030f9",
+      "research/2026-11-05-rank-material-scaling.md": "42fdde07321bc8beb00dba927423784b944ccc891bfeb588921b399a2d75c12f"
+    },
+    "rank_regression": {
+      "passed": true,
+      "scope": "Source-bound rank-only sprite reconstruction and pinned negative control.",
+      "source_hash_stable": true,
+      "source_sha256": {
+        "shared/source/screen_sprite_scale.h": "d6eb9f8f6275b67f768bcdb0a2d8492b747d756a276ee07058a1596b8af32b3f",
+        "shared/source/sprite_scale_cpu.h": "019a95855823993578a08900ba6cfab0e5d8438036312bb05f8470c911b5b114",
+        "shared/source/panel_glyphs.h": "d120d6057b8f92056f4e10f449ee17bcbdb582bdeb73d17bc0dce7e90fa11568",
+        "external_reader/source/xbrz_adapter.h": "e2b54db9136d976d198b4170f3e765ce684ac31a8c5514e1b3031667b7f95cfa",
+        "external_reader/source/local_ui_renderer.h": "cf3505e8d015baf3dfe04b6a71ef77262b17cc0469328b638ebbb79a5abdaf03",
+        "external_reader/source/local_ui_task.h": "3e27d218caa4150ae99b413247de28b61409790037c0a3c1c410d4d5d4e68223",
+        "assist/tests/rank_sprite_scaling.cpp": "a2581b80d278cc724e31404266dd7947348acc7ea26d1c4f88b8778351197e87",
+        "assist/tests/rank_sprite_scaling.py": "b67affec360055545c38e98f2b85d644ba4047976268a81915e8d03f45417ccc"
+      },
+      "baseline": {
+        "base_commit": "513aeb4cf03238cce956bd35e0c9381c2a7cc484",
+        "files": {
+          "local_ui_renderer.h": {
+            "source": "external_reader/source/local_ui_renderer.h",
+            "sha256": "4b582aca7c3cd6c299a5eaa46df1ba1ba6770b1424729d0a5d8159233998da85",
+            "git_blob_sha": "775aa6131b9f6f64fcfd65a685db47a2b397726b"
+          },
+          "panel_glyphs.h": {
+            "source": "shared/source/panel_glyphs.h",
+            "sha256": "42a42e057978d5feb7d8e44bc9662465c7b223857b6fb392c2c62049c3a03c64",
+            "git_blob_sha": "464dd53d4f1544716c783e78dde3893825517728"
+          },
+          "xbrz_adapter.h": {
+            "sha256": "5d9f9b3d41434faac8059131aeacc7fd7572136f247caa01eebad08193f7a498",
+            "git_blob_sha": "2b2949d61f1bfb0cbdec6d203d518dd5d41cc58f"
+          }
+        }
+      },
+      "stdout": "PASS 2906 rank scaling assertions; 18 enlarged main rank cases reject pinned old block-pixel output; 1x/reduction and other UI exact; automatic local reconstruction with recovery scale=1; profile invalidation; immutable palette/cache/alpha; minimap unchanged anchors and physical minimum; ordinary SHP CPU extraction exact; oversized/budget fallback. No game execution.\n",
+      "command": [
+        "C:\\Users\\guich\\Documents\\Codex\\2026-10-31\\ji-yu\\work\\toolchain\\zig-windows-x86_64-0.13.0\\zig.exe",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O1",
+        "-UNDEBUG",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-11-05\\new-chat\\work\\latest\\source\\assist\\tests\\rank_sprite_scaling.cpp",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-11-05\\new-chat\\work\\latest\\source\\third_party\\xbrz\\xbrz.cpp",
+        "-DRANK_BASELINE_CLASSES=\"C:/Users/guich/Documents/Codex/2026-11-05/new-chat/work/render-fixes/rank-tests/production-classes.inc\"",
+        "-DRANK_BASELINE_PANEL=\"C:/Users/guich/Documents/Codex/2026-11-05/new-chat/work/render-fixes/rank-tests/baseline-panel.inc\"",
+        "-DRANK_BASELINE_CPU=\"C:/Users/guich/Documents/Codex/2026-11-05/new-chat/work/render-fixes/rank-tests/baseline-sprite.inc\"",
+        "-o",
+        "C:\\Users\\guich\\Documents\\Codex\\2026-11-05\\new-chat\\work\\render-fixes\\rank-tests\\rank_sprite_scaling.exe",
+        "-lgdi32",
+        "-luser32",
+        "-lgdiplus",
+        "-lole32"
+      ],
+      "build_seconds": 10.312522699998226,
+      "run_seconds": 0.18963620002614334,
+      "game_tested": false
+    },
+    "warp_regression": {
+      "radar_panel_glyphs_windows": {
+        "returncode": 0,
+        "output": "PASS 13 final-panel sizes actual GDI Buffer vs production GPU shader WARP: native RGB exact, reconstructed premultiplied-alpha RGB <=1 quantization unit; fractional resize, clipping/chrome, failed-stage retention, immutable publication repaint\n"
+      },
+      "radar_output_scene": {
+        "returncode": 0,
+        "output": "PASS production SceneRenderer: output-sized radar retains colors/domain; static forceFrame=false executes TMP; fallback reuse rejects size/reveal/identity/rewind changes; one revision read and recovery; native PIPS 14/15 immutable metadata, final-panel size and scene ownership; watch world zero native pages\n"
+      }
+    },
+    "notes": [
+      "World recovery defaults remain unchanged; rank materials independently call the SAME ordinary-SHP pure CPU factor/scale/sample/alpha functions at actual enlarged output size.",
+      "Rank/source-bound 2906 assertions and 18 pinned-old negative controls pass. Ordinary SHP CPU extraction exact.",
+      "13 CPU/GPU final panel sizes: native RGB exact; reconstructed premultiplied-alpha RGB differs at most 1 integer blend quantization unit.",
+      "SceneRenderer regression passes. No actual game/FPS/online claim."
+    ]
+  }
+}

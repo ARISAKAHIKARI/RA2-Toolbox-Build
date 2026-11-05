@@ -10,6 +10,7 @@
 #include "native_unit_ui_stencil.h"
 #include "native_planning.h"
 #include "native_radial_indicators.h"
+#include "../../shared/source/screen_sprite_scale.h"
 #include <set>
 namespace external {namespace localui {
 // Main-view UI rendered from values and real font coverage. No framebuffer,
@@ -44,6 +45,22 @@ public:
  bool good()const{return !overflow_;}
  void lane(size_t value){lane_=std::min<size_t>(value,LayerCount-1);}
  void fill(nativefeedback::Rect r,uint32_t color){r=nativefeedback::intersect(r,{0,0,nativeW_,nativeH_});if(!r.valid()||overflow_)return;auto edge=[](int v,double s){return int(std::ceil(v*s-.5));};int x=edge(r.x,sx_),y=edge(r.y,sy_),right=edge(r.x+r.w,sx_),bottom=edge(r.y+r.h,sy_);auto result=nativefeedback::intersect({x,y,right-x,bottom-y},{0,0,width_,height_});if(!result.valid())return;if(total_>=262144){overflow_=true;return;}plan_.layers[lane_].push_back({result,color});++total_;}
+ void rank(const std::shared_ptr<const voxel::Image>&image,int x,int y){
+  if(!image||image->width<1||image->height<1||image->pixels.size()!=size_t(image->width)*image->height)return;
+  // Recovery keeps world reconstruction disabled. A scaled rank is a tiny,
+  // independent screen sprite; reconstruct only it at the actual output size.
+  const int nx=x+image->x,ny=y+image->y;auto edge=[](int v,double s){return int(std::ceil(v*s-.5));};
+  const int left=edge(nx,sx_),top=edge(ny,sy_),right=edge(nx+image->width,sx_),bottom=edge(ny+image->height,sy_);
+  if(right<=0||bottom<=0||left>=width_||top>=height_||right<=left||bottom<=top)return;
+  const auto source=std::shared_ptr<const std::vector<uint32_t>>(image,&image->pixels);
+  auto raster=screensprites::cache().get(source,image->width,image->height,right-left,bottom-top);
+  if(!raster.pixels)return;
+  if(raster.pixels==source){for(int row=0;row<image->height;++row)for(int col=0;col<image->width;){uint32_t color=image->pixels[size_t(row)*image->width+col];if(!(color>>24)){++col;continue;}int start=col++;while(col<image->width&&image->pixels[size_t(row)*image->width+col]==color)++col;fill({nx+start,ny+row,col-start,1},color);}return;}
+  const auto clip=nativefeedback::intersect({left,top,right-left,bottom-top},{0,0,width_,height_});
+  for(int row=clip.y;row<clip.y+clip.h;++row)for(int col=clip.x;col<clip.x+clip.w;){uint32_t color=(*raster.pixels)[size_t(row-top)*raster.width+col-left];if(!(color>>24)){++col;continue;}int start=col++;while(col<clip.x+clip.w&&(*raster.pixels)[size_t(row-top)*raster.width+col-left]==color)++col;
+   if(total_>=262144){overflow_=true;return;}plan_.layers[lane_].push_back({{start,row,col-start,1},color});++total_;
+  }
+ }
  template<class Read>bool text(BitmapFont&font,Read read,const std::u16string&s,int x,int y,uint32_t color,uint32_t flags=0,bool background=false,int mx=1,int my=1,int maxWidth=INT32_MAX){
   int measured=0;if(!font.measure(read,s,measured))return false;if(flags&0x100)x-=measured/2;else if(flags&0x200)x-=measured;if(background)fill({x-mx,y-my,measured+2*mx,font.lineHeight()+2*my},0xFF000000);
   int start=x;const int rightLimit=int(std::min<int64_t>(nativeW_,int64_t(x)+maxWidth));
@@ -67,8 +84,8 @@ public:
 class Engine {
  BitmapFont font_;Strings strings_;
  liveshape::Cache shapes_;nativeeffects::UnitUIStencil unitPips_;
- template<class Read>bool icon(Read read,Painter&p,uint32_t shape,int frame,int x,int y,uint32_t palette=0x87F6C4,bool required=false){
-  auto image=shapes_.get(read,shape,frame,palette);if(!image)return !required;
+  template<class Read>bool icon(Read read,Painter&p,uint32_t shape,int frame,int x,int y,uint32_t palette=0x87F6C4,bool required=false,bool reconstructRank=false){
+  auto image=shapes_.get(read,shape,frame,palette);if(!image)return !required;if(reconstructRank){p.rank(image,x,y);return p.good();}
   for(int row=0;row<image->height;++row)for(int col=0;col<image->width;){uint32_t color=image->pixels[size_t(row)*image->width+col];if(!(color>>24)){++col;continue;}int start=col++;while(col<image->width&&image->pixels[size_t(row)*image->width+col]==color)++col;p.fill({x+image->x+start,y+image->y+row,col-start,1},color);}return p.good();
  }
  template<class Read>bool pips(Read read,const mainview::View&v,const std::vector<nativefeedback::Object>&objects,Painter&p){
@@ -79,7 +96,7 @@ class Engine {
   auto project=[&](nativefeedback::Point3 q){return std::array<int,2>{{int((int64_t(q.x)-q.y)*30/256)-v.cameraX,int((int64_t(q.x)+q.y)*15/256)-screenHeight(q.z,scale)-v.cameraY}};};
   for(const auto&o:objects){int kind=game.kind(o.pointer);if(kind<0||kind!=o.kind||game.template get<uint32_t>(o.pointer+0x10)!=o.id||game.type(o.pointer,kind)!=o.type||!game.live(o.pointer)||game.template get<int>(o.pointer+0x220)!=0)continue;nativefeedback::Point3 point;if(!read(o.pointer+0x9C,&point,12)||!nativefeedback::worldPoint(point))continue;int w=1,h=1;if(kind==3&&animations::foundation(read,o.type,w,h)){point.x+=(w-1)*128;point.y+=(h-1)*128;}auto at=project(point);
    // Raw Veterancy, before selected/hovered health admission (70A990).
-   if(o.owner==v.house||!game.template get<uint32_t>(o.pointer+0x518)){float raw=0;if(read(o.pointer+0x150,&raw,4)&&std::isfinite(raw)){int rank=raw<0?19:raw>=2?15:raw>=1?14:-1;if(rank>=0){uint32_t shape=game.template get<uint32_t>(0xAC147C);if(!icon(read,p,shape,rank,at[0]+(kind==1?5:10),at[1]+(kind==1?2:6)))return false;}}}
+   if(o.owner==v.house||!game.template get<uint32_t>(o.pointer+0x518)){float raw=0;if(read(o.pointer+0x150,&raw,4)&&std::isfinite(raw)){int rank=raw<0?19:raw>=2?15:raw>=1?14:-1;if(rank>=0){uint32_t shape=game.template get<uint32_t>(0xAC147C);if(!icon(read,p,shape,rank,at[0]+(kind==1?5:10),at[1]+(kind==1?2:6),0x87F6C4,false,true))return false;}}}
    if(o.owner==v.house&&game.template get<uint8_t>(o.pointer+0x83)){int group=game.template get<int>(o.pointer+0x214,-1);if(group>=0&&group<10){int x=at[0]-14,y=at[1]-(kind==1?29:26);if(kind==3){x=at[0]-4-(w+h)*15;y=at[1]-36+(h-w)*15/2;}if(!fontUsed&&!font_.begin(read))return false;fontUsed=true;uint32_t color=0;if(!houseColor(read,o.owner,color)||!p.text(font_,read,number((group+1)%10),x,y,color,0x49,true,2,-2))return false;}}
    if(kind==3){repairvisuals::Sprite repair;if(repairvisuals::sample(read,o.pointer,o.id,repair)){auto q=project({repair.x,repair.y,repair.z});if(!icon(read,p,repair.shape,repair.frame,q[0],q[1],0x87F6C8))return false;}}
   }return true;

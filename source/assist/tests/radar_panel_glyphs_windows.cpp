@@ -44,5 +44,15 @@ int main(){
  }
  auto small=panelglyphs::place(ranks,52,22),large=panelglyphs::place(ranks,302,122);assert(small[0].width==3&&large[0].width==3&&small[0].x!=large[0].x);
  auto first=std::make_shared<Image>(image);radargate::Visual v;v.image=first;v.width=102;v.height=42;assert(gate.needsVisual(v));gate.committedVisual(v);assert(!gate.needsVisual(v));auto next=std::make_shared<Image>(*first);next->ranks.reset();v.image=next;assert(gate.needsVisual(v));assert(first->ranks==ranks);
- ReleaseDC(nullptr,screen);std::printf("PASS %u final-panel sizes actual GDI Buffer vs production GPU shader WARP RGB equality; native one/three-star pixels, fractional resize, clipping/chrome, failed-stage retention, immutable publication repaint\n",cases);
+ // Reconstructed rank textures are shared by final CPU/GPU placement, not
+ // independently filtered by two backends. Include fractional output, source
+ // premultiplied transparency, view-frame overlap and clipped edge glyphs.
+ auto shaped=std::make_shared<std::vector<uint32_t>>(25);const uint32_t pattern[]={0,0,0xffffffff,0,0,0,0x80808080,0xffffffff,0xffffffff,0,0xffffffff,0xffffffff,0xffffff00,0xffffffff,0xffffffff,0,0xffffffff,0,0xffffffff,0,0xffffffff,0,0,0,0xffffffff};std::copy_n(pattern,25,shaped->begin());
+ auto reconstructed=std::make_shared<panelglyphs::Annotations>();reconstructed->worldWidth=100;reconstructed->worldHeight=40;reconstructed->glyphs={{.25,.4,-2,-2,5,5,shaped},{.99,.05,0,-2,5,5,shaped},{.1,-.01,-3,0,5,5,shaped}};image.ranks=reconstructed;
+ for(auto size:std::vector<std::pair<int,int>>{{52,22},{102,42},{152,62},{202,82},{302,122},{402,162},{172,92},{1202,482}}){radargate::Visual visual;visual.width=size.first;visual.height=size.second;visual.real=true;visual.view={int(size.first*.25)+3,int(size.second*.4)+2,int(size.first*.6),int(size.second*.7)};
+  radarpanel::PixelBuffer target;assert(target.acquire(screen,visual.width,visual.height));assert(buffer.stage(screen,image,visual)&&buffer.promote()&&buffer.present(target.acquire(screen,visual.width,visual.height),visual.width,visual.height));assert(GdiFlush());auto expected=gpu.render(image,visual);
+  for(size_t n=0;n<expected.size();++n)for(int shift:{0,8,16}){int difference=std::abs(int((target.pixels()[n]>>shift)&255)-int((expected[n]>>shift)&255));if(difference>1){std::printf("reconstructed mismatch size=%dx%d pixel=%zu cpu=%08x gpu=%08x\n",visual.width,visual.height,n,target.pixels()[n],expected[n]);assert(false);}}
+  auto draws=panelglyphs::place(reconstructed,visual.width,visual.height);assert(!draws.empty());for(const auto&draw:draws)if(spritecpu::factor(double(draw.width)/5,double(draw.height)/5)){assert(draw.pixels!=shaped&&draw.sourceWidth==draw.width&&draw.sourceHeight==draw.height);for(auto pixel:*draw.pixels)for(int shift:{0,8,16})assert(((pixel>>shift)&255)<=(pixel>>24));}else assert(draw.pixels==shaped);++cases;
+ }
+ ReleaseDC(nullptr,screen);std::printf("PASS %u final-panel sizes actual GDI Buffer vs production GPU shader WARP: native RGB exact, reconstructed premultiplied-alpha RGB <=1 quantization unit; fractional resize, clipping/chrome, failed-stage retention, immutable publication repaint\n",cases);
 }

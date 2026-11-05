@@ -9,7 +9,7 @@ inc=out/'production-shader.inc';inc.write_text(parameters+'\n'+shader+'\n',encod
 results={}
 for name in ('radar_panel_glyphs_windows','radar_output_scene'):
  exe=out/(name+'.exe');cmd=[str(Path(a.zig).resolve()),'c++','-target','x86_64-windows-gnu','-std=c++17','-O1','-UNDEBUG',str(here/(name+'.cpp')),'-DRADAR_PANEL_SHADER="'+inc.as_posix()+'"','-o',str(exe),'-lgdi32','-luser32','-ldxguid']
- if name=='radar_output_scene':cmd.append(str(source/'third_party/xbrz/xbrz.cpp'))
+ cmd.append(str(source/'third_party/xbrz/xbrz.cpp'))
  built=subprocess.run(cmd,capture_output=True,text=True);(out/(name+'-build.log')).write_text(built.stdout+built.stderr,encoding='utf-8')
  if built.returncode:raise SystemExit(built.stdout+built.stderr)
  ran=subprocess.run([str(exe)],capture_output=True,text=True);(out/(name+'.log')).write_text(ran.stdout+ran.stderr,encoding='utf-8');print(ran.stdout+ran.stderr)

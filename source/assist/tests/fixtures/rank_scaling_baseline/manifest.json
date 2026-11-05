@@ -1,0 +1,19 @@
+{
+  "base_commit": "513aeb4cf03238cce956bd35e0c9381c2a7cc484",
+  "files": {
+    "local_ui_renderer.h": {
+      "source": "external_reader/source/local_ui_renderer.h",
+      "sha256": "4b582aca7c3cd6c299a5eaa46df1ba1ba6770b1424729d0a5d8159233998da85",
+      "git_blob_sha": "775aa6131b9f6f64fcfd65a685db47a2b397726b"
+    },
+    "panel_glyphs.h": {
+      "source": "shared/source/panel_glyphs.h",
+      "sha256": "42a42e057978d5feb7d8e44bc9662465c7b223857b6fb392c2c62049c3a03c64",
+      "git_blob_sha": "464dd53d4f1544716c783e78dde3893825517728"
+    },
+    "xbrz_adapter.h": {
+      "sha256": "5d9f9b3d41434faac8059131aeacc7fd7572136f247caa01eebad08193f7a498",
+      "git_blob_sha": "2b2949d61f1bfb0cbdec6d203d518dd5d41cc58f"
+    }
+  }
+}

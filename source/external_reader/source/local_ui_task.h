@@ -4,6 +4,8 @@
 #include "../../shared/source/latest_worker.h"
 #include <functional>
 namespace external {namespace localui {
+template<class R>auto sameProfile(const R&a,const R&b,int)->decltype(a.profile==b.profile,bool()){return a.profile==b.profile;}
+template<class R>bool sameProfile(const R&,const R&,long){return true;}
 // One reader/cache owner and replaceable pending input. Font discovery, text
 // layout, string-table lookup and rasterization never run on the UI thread.
 template<class Request,class Reader>class Task {
@@ -30,7 +32,7 @@ public:
  explicit Task(std::function<uint32_t()>clock):clock_(std::move(clock)),worker_([this](const Input&i){return run(i);}){}
  void submit(const Request&r,const std::vector<nativefeedback::Object>&objects){Input input;input.request=r;for(const auto&o:objects)if(o.kind>=0&&o.kind<=3)input.objects.push_back(o);worker_.submit(std::move(input));}
  std::shared_ptr<const Result>get(){return worker_.get();}
- std::shared_ptr<const Result>visible(const Request&r,uint32_t now){auto result=worker_.get();if(!result||result->request.pid!=r.pid||result->request.match!=r.match||result->request.generation!=r.generation||result->request.width!=r.width||result->request.height!=r.height||result->request.context.token!=r.context.token||!mainview::sameViewport(result->view,r.view)||r.view.frame<result->view.frame||uint32_t(now-result->sampledTick)>150)return {};return result;}
+ std::shared_ptr<const Result>visible(const Request&r,uint32_t now){auto result=worker_.get();if(!result||!sameProfile(result->request,r,0)||result->request.pid!=r.pid||result->request.match!=r.match||result->request.generation!=r.generation||result->request.width!=r.width||result->request.height!=r.height||result->request.context.token!=r.context.token||!mainview::sameViewport(result->view,r.view)||r.view.frame<result->view.frame||uint32_t(now-result->sampledTick)>150)return {};return result;}
  void invalidate(){worker_.invalidate();}void shutdown(){worker_.shutdown();}
 };
 }}

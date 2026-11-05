@@ -1,0 +1,15 @@
+{
+  "baseline_commit": "513aeb4cf03238cce956bd35e0c9381c2a7cc484",
+  "baseline_release": "v1.0.41",
+  "repository": "ARISAKAHIKARI/RA2-Toolbox-Build",
+  "purpose": "Exact frozen source negative controls; original bytes unchanged, not production headers.",
+  "files": [
+    {
+      "path": "building_animations.h",
+      "origin_repo_path": "source/external_reader/source/building_animations.h",
+      "size": 4850,
+      "git_blob_sha": "b267dd759c9a62dea39ce9e0f5a340410186b58b",
+      "sha256": "b895964cfcbb3c1f9f80bd10052e6fbb56ddf58c5bf49fb5807b5762a2d48ab7"
+    }
+  ]
+}

@@ -19,7 +19,12 @@ template<class Read>bool capture(Read read,uint32_t object,uint32_t parent,uint3
  GameView<Read> g(read);if(object<0x10000)return false;
  if(parent&&(parent<0x10000||g.template get<uint32_t>(parent)!=0x7E3EBC||g.template get<uint32_t>(parent+0x10)!=parentId||g.template get<int>(parent+0x6C)<=0))return false;
  uint32_t link=parent?slot(read,parent,object):0,attachedTo=g.template get<uint32_t>(object+0xCC);
- if((parent&&!link)||g.template get<uint32_t>(object)!=0x7E3354||(parent&&attachedTo&&attachedTo!=parent)||!g.template get<uint8_t>(object+0x90)||g.template get<uint8_t>(object+0x179)||g.template get<uint8_t>(object+0x19D))return false;
+ uint8_t alive=1,limbo=0,dying=0,invisible=0;
+ if(!read(object+0x81,&limbo,1)||!read(object+0x179,&dying,1)||!read(object+0x19D,&invisible,1)||(!parent&&!read(object+0x90,&alive,1)))return false;
+ // Alive controls Anim::AI advancement, not native DrawIfVisible/Draw_It.
+ // A stable building slot may therefore still display an inactive pose.
+ // Keep the conservative alive requirement for unowned global instances.
+ if((parent&&!link)||g.template get<uint32_t>(object)!=0x7E3354||(parent&&attachedTo&&attachedTo!=parent)||(!parent&&!alive)||limbo||dying||invisible)return false;
  State next;next.object=object;next.parent=parent;next.parentId=parentId;next.id=g.template get<uint32_t>(object+0x10);next.type=g.template get<uint32_t>(object+0xC8);next.owner=g.template get<uint32_t>(parent?parent+0x21C:object+0x180);
  if(!next.id||next.type<0x10000)return false;
  int location[3]{};if(!read(object+0x9C,location,sizeof location))return false;
@@ -41,6 +46,7 @@ template<class Read>bool capture(Read read,uint32_t object,uint32_t parent,uint3
  if(next.blend<0)return false;
  if(next.frame>=8192||std::abs(int64_t(next.zAdjust))>8192||std::abs(int64_t(next.sort))>32768||next.layer<0||next.layer>4)return false;
  if((parent&&(g.template get<uint32_t>(parent+0x10)!=parentId||g.template get<uint32_t>(link)!=object))||g.template get<uint32_t>(object+0x10)!=next.id||g.template get<uint32_t>(object+0xC8)!=next.type||g.template get<uint32_t>(object+0xCC)!=attachedTo)return false;
+ if(!read(object+0x81,&limbo,1)||!read(object+0x179,&dying,1)||!read(object+0x19D,&invisible,1)||(!parent&&!read(object+0x90,&alive,1))||limbo||dying||invisible||(!parent&&!alive))return false;
  out=next;return true;
 }
 template<class Read>std::vector<State> attached(Read read,uint32_t parent,uint32_t parentId){
