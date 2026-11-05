@@ -1,0 +1,105 @@
+name: Mixed SHP VXL render stress
+on:
+  push:
+    branches: [codex/render-mixed-stress-20261105]
+    paths: [source/assist/tests/**, .github/workflows/render-mixed-stress.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mixed-render-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  software-vulkan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        path: [viewport, area]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - name: Prepare software Vulkan driver
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! sudo apt-get -o Acquire::http::Timeout=30 install -y mesa-vulkan-drivers libvulkan1; then
+            sudo apt-get -o Acquire::http::Timeout=30 update -qq
+            sudo apt-get -o Acquire::http::Timeout=30 install -y mesa-vulkan-drivers libvulkan1
+          fi
+          mkdir -p diagnostics
+          driver=$(python3 -c 'from pathlib import Path; print(next(Path("/usr/share/vulkan/icd.d").glob("*lvp*.json")))')
+          echo "VK_ICD_FILENAMES=$driver" >> "$GITHUB_ENV"
+          cat "$driver" > diagnostics/vulkan-driver.json
+          lscpu > diagnostics/cpu.txt
+      - name: Compile and run continuous mixed scene
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -pthread -DRA2_VULKAN_TEST_SOFTWARE source/assist/tests/gpu_mixed_render_stress.cpp source/third_party/xbrz/xbrz.cpp -ldl -o /tmp/gpu-mixed
+          /tmp/gpu-mixed --tier medium --frames 120 --warmup 20 --path ${{ matrix.path }} --json diagnostics/gpu-mixed-${{ matrix.path }}.json --preview diagnostics/mixed > diagnostics/run.log 2>&1 || { tail -60 diagnostics/run.log; exit 1; }
+          tail -5 diagnostics/run.log
+      - name: Preserve mixed scene data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MixedScene-SoftwareVulkan-${{ matrix.path }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics
+  windows-benchmark:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zig
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force artifacts/mixed,diagnostics | Out-Null
+      - name: Compile standalone x64 CPU and hardware GPU scene runners
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIG="$(cygpath -u "$ZIG_EXE")"
+          "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 source/assist/tests/cpu_mixed_render_stress.cpp source/third_party/xbrz/xbrz.cpp -o artifacts/mixed/CPU-MixedScene.exe -lkernel32 -luser32 -lgdi32
+          "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 source/assist/tests/gpu_mixed_render_stress.cpp source/third_party/xbrz/xbrz.cpp -o artifacts/mixed/GPU-MixedScene.exe -lkernel32 -luser32 -lgdi32
+      - name: Package reproducible scene runners
+        shell: python
+        run: |
+          from pathlib import Path
+          import hashlib,json,os,zipfile
+          root=Path('artifacts/mixed')
+          for tier,flag in [('Medium',''),('High','--high')]:
+              gpu=tier.lower()
+              text='@echo off\ncd /d "%~dp0"\nGPU-MixedScene.exe --tier '+gpu+' --frames 300 --warmup 20 --path both --json GPU-'+tier+'.json --preview GPU-'+tier+'\nCPU-MixedScene.exe '+flag+' --frames 300 --warmup 20 --output CPU-'+tier+'.json --preview CPU-'+tier+'.ppm\npause\n'
+              (root/('Run-'+tier+'.cmd')).write_text(text,encoding='ascii')
+          readme='RA2 Toolbox pre.12 mixed rendering benchmark\n\nRun Run-Medium.cmd or Run-High.cmd. This standalone program uses generated TMP/SHP-RLE/VXL-HVA assets; it does not open or modify the game. GPU runner requires hardware Vulkan. Reports contain complete-frame compute timings and headless throughput, not display or game FPS.\n\nMedium:4096 terrain,256 SHP,128 VXL,64 animations,192 particles,24 beams. High:16384 terrain,1024 SHP,512 VXL,256 animations,768 particles,96 beams. All objects/effects animate, terrain lighting changes every60updates. Warmup20+measured300updates; three cold checks run after the timing loop.\n\nSend the generated CPU/GPU JSON reports for analysis. Full RGBA readback is included. Renderer initialization, game sampling and Windows presentation are excluded from steady-state timings. PPM previews show actual output.\n\nSource: https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/tree/'+os.environ['GITHUB_SHA']+'/source/assist/tests\n'
+          (root/'README.txt').write_text(readme,encoding='utf-8')
+          (root/'licenses').mkdir(exist_ok=True)
+          for src,name in [('LICENSE-GPL','GPL-3.0.txt'),('source/third_party/xbrz/License.txt','xBRZ-License.txt')]:
+              (root/'licenses'/name).write_bytes(Path(src).read_bytes())
+          files=[dict(name=p.name,bytes=p.stat().st_size,sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for p in sorted(root.glob('*.exe'))]
+          info=dict(commit=os.environ['GITHUB_SHA'],architecture='x64',kind='headless synthetic mixed rendering benchmark',files=files)
+          (root/'BUILD.json').write_text(json.dumps(info,indent=2)+'\n')
+          target=Path('artifacts/RA2Toolbox-pre12-MixedScene-Benchmark-x64.zip')
+          with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
+              for p in sorted(root.rglob('*')):
+                  if p.is_file():z.write(p,p.relative_to(root))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MixedScene-Benchmark-Windows-x64
+          retention-days: 14
+          if-no-files-found: error
+          path: artifacts/RA2Toolbox-pre12-MixedScene-Benchmark-x64.zip
