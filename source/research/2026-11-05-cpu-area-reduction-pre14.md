@@ -34,4 +34,15 @@ AMD EPYC 9V74，9个可见逻辑CPU，8核配额，g++13.3.0、-O2 -pthread。�
 
 ## 限制
 
-这是CPU生成场景计算，不包含游戏采样、显示器呈现或物理GPU耗时。高档完整输出30.3ms／增量29.1ms，以及约75–79ms的P99仍未达到170Hz的每帧约5.88ms预算；全局失效、冷首帧和新VXL姿态仍有额外成本。本次不声称GPU帧率或联机验收。Windows配套构建和交付身份完成后补记。
+这是CPU生成场景计算，不包含游戏采样、显示器呈现或物理GPU耗时。高档完整输出30.3ms／增量29.1ms，以及约75–79ms的P99仍未达到170Hz的每帧约5.88ms预算；全局失效、冷首帧和新VXL姿态仍有额外成本。本次不声称GPU帧率或联机验收。Windows配套构建与交付身份见下文。
+
+
+## Windows 配对交付
+
+固定源码 `255b9cc4ede99e723e5f04a770029caed201c9de` 的 [CI41972280099](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/actions/runs/41972280099) 两项作业均成功。Windows原生进程的177组缩图、75,086个标量像素对照、脏区外哨兵、10个实际可选分配失败与缓存归还检查通过。
+
+四个文件的SHA-256、PE架构与资源版本已与CI清单逐一核对：Host x64，Runtime/broker x86，三个自家PE均为1.0.41.14；Microsoft WebView2Loader为x64的1.0.4314.35。下载artifact与GitHub摘要一致，内层更新包与CI打包身份也一致。
+
+更新包 `RA2Toolbox-1.0.41-pre.14-x64-Update.zip`，3535187字节，SHA-256 `4f5a4ce2d6550db234043fb314c6135b323f51f6494e888a429879b33c9b6b9f`。只含四个执行组件、WebView2许可和更新说明；不含源码、开发日志或用户配置。覆盖前退出游戏与工具箱。完整来源：[交付身份](evidence/pre14-verified-delivery.json)。
+
+Windows构建/受控CPU检查不增加真实游戏、物理GPU、桌面呈现或联机验收的宣称。

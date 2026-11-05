@@ -1,0 +1,83 @@
+{
+  "version": "1.0.41-pre.14",
+  "commit": "255b9cc4ede99e723e5f04a770029caed201c9de",
+  "branch": "codex/render-cpu-reduction-20261105",
+  "host": "x64",
+  "runtime": "x86",
+  "broker": "x86",
+  "console": "WebView2",
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "files": [
+    {
+      "name": "RA2Toolbox.exe",
+      "bytes": 8873472,
+      "sha256": "6961e31274fa19ecf80b9d9c04c042929f17f8a150bdb4ffc19bc35230584696"
+    },
+    {
+      "name": "GameRuntime.dll",
+      "bytes": 15822848,
+      "sha256": "ea11c8349e349db5d4d3fe03b30b797c3db31430d0f7704e1ef970e697fd9947"
+    },
+    {
+      "name": "GameRuntimeHost32.exe",
+      "bytes": 214528,
+      "sha256": "b6a6c74fc692b8787fbd556863748e26c4f9347afd3d3bc2564980e654adaba2"
+    },
+    {
+      "name": "WebView2Loader.dll",
+      "bytes": 194912,
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  ],
+  "package": {
+    "name": "RA2Toolbox-1.0.41-pre.14-x64-Update.zip",
+    "bytes": 3535187,
+    "sha256": "4f5a4ce2d6550db234043fb314c6135b323f51f6494e888a429879b33c9b6b9f"
+  },
+  "windows_fixture": "PASS exact box reduction: 177 cases, 75086 scalar pixel oracles; sparse/partial pages, half pixels, COW, dirty-only writes, in-place revisions, two concurrent scales,10 injected optional allocation failures and complete cache-credit retirement",
+  "verified_components": [
+    {
+      "name": "RA2Toolbox.exe",
+      "machine": "0x8664",
+      "versions": [
+        "1.0.41.14"
+      ],
+      "sha256": "6961e31274fa19ecf80b9d9c04c042929f17f8a150bdb4ffc19bc35230584696",
+      "bytes": 8873472
+    },
+    {
+      "name": "GameRuntime.dll",
+      "machine": "0x14c",
+      "versions": [
+        "1.0.41.14"
+      ],
+      "sha256": "ea11c8349e349db5d4d3fe03b30b797c3db31430d0f7704e1ef970e697fd9947",
+      "bytes": 15822848
+    },
+    {
+      "name": "GameRuntimeHost32.exe",
+      "machine": "0x14c",
+      "versions": [
+        "1.0.41.14"
+      ],
+      "sha256": "b6a6c74fc692b8787fbd556863748e26c4f9347afd3d3bc2564980e654adaba2",
+      "bytes": 214528
+    },
+    {
+      "name": "WebView2Loader.dll",
+      "machine": "0x8664",
+      "versions": [
+        "1.0.4314.35"
+      ],
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6",
+      "bytes": 194912
+    }
+  ],
+  "artifact_id": 13390956320,
+  "artifact_digest": "sha256:afcb5921bd41f75ae5317d868e541cbfd2c81d7d30d57cafa41bf175547788d8",
+  "workflow_run": 41972280099,
+  "windows_build_status": "success",
+  "linux_checks_status": "success",
+  "physical_gpu_measured": false
+}
