@@ -309,7 +309,7 @@ public:
      // Surface's reconstruction caches and scratch belong to that lane.
      if(terrainPage)initialPage=std::shared_ptr<NativeCanvas::Page>(prefixOwner,terrainPage.get());
      if(partial)++stats_.partialPages;stats_.restoredPixels+=size_t(damage[2]-damage[0])*(damage[3]-damage[1])+(previous?size_t(128)*128:0);
-     ++entry.page->revision;changed.push_back({job.first,&entry,std::move(initialPage),std::move(previous),!reusable,partial,damage});++stats_.changed;
+     entry.page->changed(damage,partial&&reusable);changed.push_back({job.first,&entry,std::move(initialPage),std::move(previous),!reusable,partial,damage});++stats_.changed;
     }
     out.pages_[job.first]=entry.page;if(!relativeOutput||!reused)dirty(job.first,relativeOutput?damage:std::array<int,4>{{0,0,128,128}});
    }

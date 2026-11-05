@@ -17,18 +17,19 @@ static void equal(const camera::NativeCanvas&a,const camera::NativeCanvas&b){
  ++comparisons;
 }
 static uint64_t hash(const camera::NativeCanvas&a){uint64_t v=1469598103934665603ull;for(int y=0;y<a.height();++y)for(int x=0;x<a.width();++x)v=(v^a.pixel(x,y))*1099511628211ull;return v;}
-static void changes(bool terrain,bool retained){
+static void changes(bool terrain,bool retained,bool half){
  auto tile=image(64,32,0xff407030),body=image(23,29,0xffbb6633),top=image(19,27,0x80402010);
  auto attached=std::make_shared<voxel::Image>(*body);auto shadow=*body;shadow.shadow=true;shadow.writeDepth=false;shadow.x=-17;shadow.y=18;attached->attachments.push_back(shadow);
  camera::NativeCanvas base;assert(base.reset(384,256));if(terrain){size_t n=0;for(int y=0;y<256;y+=32)for(int x=0;x<384;x+=64)base.terrainSource(n++,tile,float(x),float(y),0,{},0);}
  camera::ObjectCanvas warm;camera::NativeCanvas front;std::vector<uint32_t>incremental;
+ const int outWidth=half?109:96,outHeight=half?56:64;const double spanX=half?381.5:384,spanY=half?252:256;
  std::vector<camera::ObjectCanvas::Draw>d(3);d[0].image=attached;d[0].x=41.25f;d[0].y=38.5f;d[0].base=100;d[0].material.nativeZ=true;d[0].id=1;
  d[1]=d[0];d[1].image=top;d[1].x=49;d[1].y=41;d[1].base=105;d[1].id=2;d[2]=d[0];d[2].x=254.5f;d[2].y=112.25f;d[2].id=3;
  auto check=[&]{
   const uint64_t frozen=hash(front);if(!retained)front={};
   camera::ObjectCanvas cold;camera::NativeCanvas next,reference;assert(warm.compose(base,d,next,true));assert(cold.compose(base,d,reference));equal(next,reference);
   if(warm.stats().partialPages){++partialFrames;assert(warm.stats().restoredPixels<(warm.stats().changed+warm.stats().partialPages)*16384);}
-  std::vector<uint32_t>full;assert(reference.present(96,64,full));if(incremental.empty())assert(next.present(96,64,incremental));else assert(next.presentDirty(96,64,incremental));assert(full==incremental);
+  std::vector<uint32_t>full;assert(reference.present(outWidth,outHeight,full,spanX,spanY));if(incremental.empty())assert(next.present(outWidth,outHeight,incremental,spanX,spanY));else assert(next.presentDirty(outWidth,outHeight,incremental,spanX,spanY));assert(full==incremental);
   if(retained&&front.width())assert(hash(front)==frozen);front=std::move(next);
  };
  check();for(int n=0;n<15;++n){d[0].x+=.75f;d[0].y+=.25f;d[0].drop=float(n%3)*3;check();}
@@ -39,7 +40,8 @@ static void changes(bool terrain,bool retained){
  for(int n=0;n<6;++n){d[0].x+=1;d.back().x+=1.5f;d.back().y+=.75f;check();}d.pop_back();check();d[0].x+=1;check();
  auto alpha=std::make_shared<camera::NativeCanvas::AlphaPages>();(*alpha)[0]=std::make_shared<const std::vector<uint8_t>>(16384,70);base.nativeAlpha(alpha);check();d[0].x+=1;check();
  if(terrain){auto changed=image(64,32,0xffaa7722);base.terrainSource(0,changed,0,0,0,{},0);check();d[0].x+=1;check();}
- base.restrictPaint(0,0,256,200);check();d[0].y+=1;check();base.restrictPaint(0,0,384,256);check();d.clear();check();
+ base.restrictPaint(0,0,256,200);check();d[0].y+=1;check();base.restrictPaint(0,0,384,256);check();
+ front={};d[0].x+=1;{camera::NativeCanvas skipped;assert(warm.compose(base,d,skipped,true));}d[0].y+=1;incremental.clear();check();d.clear();check();
 }
 static void clipping(){
  for(bool indexed:{false,true})for(int scale:{1,2})for(int phase=0;phase<8;++phase){
@@ -53,5 +55,5 @@ static void clipping(){
   ++comparisons;
  }
 }
-int main(){for(bool terrain:{false,true})for(bool retained:{false,true})changes(terrain,retained);clipping();assert(partialFrames>50);assert(camera::ObjectCanvas::terrainPrefixPoolBytes()==0);
- std::printf("PASS local damage: %u exact comparisons, %u partial frames; RGBA/float-Z/native-Z/alpha, COW retained fronts, dirty resolves, shadows/translucency/order/removal/terrain/clip/cloak and horizontal blit sentinels\n",comparisons,partialFrames);}
+int main(){for(bool terrain:{false,true})for(bool retained:{false,true})for(bool half:{false,true})changes(terrain,retained,half);clipping();assert(partialFrames>50);assert(camera::ObjectCanvas::terrainPrefixPoolBytes()==0);
+ std::printf("PASS local damage: %u exact comparisons, %u partial frames; RGBA/float-Z/native-Z/alpha, COW retained fronts, integer/half-step dirty resolves and skipped revisions, shadows/translucency/order/removal/terrain/clip/cloak and horizontal blit sentinels\n",comparisons,partialFrames);}

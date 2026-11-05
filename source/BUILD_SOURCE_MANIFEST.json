@@ -6,7 +6,7 @@
   "resources": "Update package reuses existing assets/profiles/preprocessing runtime/engine",
   "resources_legacy_reuse": true,
   "build_protocol": 96,
-  "validation": "Local-damage replay preserves RGBA, float depth, native Z and alpha; immutable static lists retain order and source identity. GPU direct presentation remains suspended by the existing HF29 recovery policy. No new game or physical GPU acceptance.",
+  "validation": "Local-damage replay and revision-checked partial box sums preserve RGBA, float depth, native Z and alpha; immutable static lists retain order and source identity; bounded row workers serve concurrent views. GPU direct presentation remains suspended by the existing HF29 recovery policy. No new game or physical GPU acceptance.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",

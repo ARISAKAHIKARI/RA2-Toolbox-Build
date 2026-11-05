@@ -69,6 +69,8 @@ private:
  };
  struct Page {
   std::shared_ptr<Budget> budget;Surface surface;uint64_t revision=0;
+  uint64_t changedFrom=0,changedTo=0;bool localChange=false;std::array<int,4>changedRect{{0,0,PageSize,PageSize}};
+  void changed(const std::array<int,4>&rect,bool local){changedFrom=revision;changedTo=++revision;changedRect=rect;localChange=local;}
   mutable std::mutex prefixMutex;mutable std::shared_ptr<const AreaPrefix>area;
   mutable std::shared_ptr<const BoxReduction>reduction;
   std::shared_ptr<const BoxReduction>boxes(int x,int y,int sx,int sy)const{
@@ -76,7 +78,10 @@ private:
    if(reduction&&reduction->matches(x,y,sx,sy,revision))return reduction;
    // Reuse the small table only after every reader of its old revision has
    // released it. Frozen snapshots/concurrent scales keep their own sums.
-   const bool reusable=reduction&&reduction.use_count()==1&&reduction->x==x&&reduction->y==y&&reduction->stepX==sx&&reduction->stepY==sy;
+   const bool compatible=reduction&&reduction->x==x&&reduction->y==y&&reduction->stepX==sx&&reduction->stepY==sy;
+   const bool incremental=compatible&&localChange&&changedTo==revision&&changedFrom==reduction->revision;
+   const bool reusable=compatible&&reduction.use_count()==1;
+   auto previous=incremental?reduction:std::shared_ptr<const BoxReduction>{};
    auto next=reusable?std::const_pointer_cast<BoxReduction>(reduction):std::shared_ptr<BoxReduction>{};
    if(!reusable)reduction.reset();if(area&&area->revision!=revision)area.reset();
    if(!next)next=std::make_shared<BoxReduction>();next->x=x;next->y=y;next->stepX=sx;next->stepY=sy;next->revision=revision;
@@ -84,7 +89,13 @@ private:
    next->firstX=left/sx;next->firstY=top/sy;next->columns=(right+sx-1)/sx-next->firstX;next->rows=(bottom+sy-1)/sy-next->firstY;
    const size_t count=size_t(next->columns)*next->rows,cost=sizeof(BoxReduction)+count*sizeof(next->sum[0])+128;
    if(!reusable){if(!AreaPrefix::reserve(cost))return {};next->credit.bytes=cost;next->sum.resize(count);}
-   for(int yy=0;yy<next->rows;++yy)for(int xx=0;xx<next->columns;++xx){const int ox=next->firstX+xx,oy=next->firstY+yy;
+   int firstColumn=0,firstRow=0,lastColumn=next->columns,lastRow=next->rows;
+   if(incremental){
+    if(!reusable)next->sum=previous->sum;
+    firstColumn=std::max(0,(left+changedRect[0]*2)/sx-next->firstX);lastColumn=std::min(lastColumn,(left+changedRect[2]*2+sx-1)/sx-next->firstX);
+    firstRow=std::max(0,(top+changedRect[1]*2)/sy-next->firstY);lastRow=std::min(lastRow,(top+changedRect[3]*2+sy-1)/sy-next->firstY);
+   }
+   for(int yy=firstRow;yy<lastRow;++yy)for(int xx=firstColumn;xx<lastColumn;++xx){const int ox=next->firstX+xx,oy=next->firstY+yy;
     next->sum[size_t(yy)*next->columns+xx]=BoxReduction::box(surface,std::max(left,ox*sx)-left,std::max(top,oy*sy)-top,std::min(right,(ox+1)*sx)-left,std::min(bottom,(oy+1)*sy)-top);
    }
    ++BoxReduction::builds;reduction=next;return next;
