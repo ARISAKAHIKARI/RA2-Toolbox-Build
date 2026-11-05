@@ -38,6 +38,7 @@ struct Objects{bool contains(uint32_t p){return ids.count(p)!=0;}}worldObjects;
 struct Versions{uint32_t get(uint32_t id){return tokens[id];}}manualVersions;
 struct Vec{int count;};Vec vec(uint32_t){return {forcedCount>=0?forcedCount:int(selection.size())};}
 uint32_t item(Vec,int n){return selection.at(n);}int kind(uint32_t p){return kinds[p];}
+bool read(uint32_t p,void*,size_t){return ids.count(p)!=0&&memory[p+0x2b4]!=0xdeadu;}
 bool own(uint32_t p,uint32_t house){return memory[p+0x21c]==house;}
 bool live(uint32_t p){return memory[p+0x6c]>0;}bool stickyOwns(uint32_t){return false;}
 uint32_t worldByID(uint32_t id){for(auto x:ids)if(x.second==id)return x.first;return 0;}
@@ -118,6 +119,9 @@ int main(){unsigned checks=0;auto check=[&](bool x){++checks;if(!x){std::fprintf
  check(shots.size()==24&&events.empty()&&ownground::job.pending&&budget==0);
  budget=24;ownGroundTick(0x90000,11,116);check(shots.size()==25&&shared.count==25&&voices==1);
  fresh();unit=actor(0,0);budget=0;attackOwnGroundCommand(0x90000,100,1);w(types[unit]+0x898,0);
+ budget=24;ownGroundTick(0x90000,11,116);check(shots.empty()&&shared.count==0);
+ fresh();selection={0,0x10000};attackOwnGroundCommand(0x90000,100,1);check(events.empty()&&shots.empty()&&shared.count==0);
+ fresh();unit=actor(0,0);budget=0;attackOwnGroundCommand(0x90000,100,1);w(unit+0x2b4,0xdead);
  budget=24;ownGroundTick(0x90000,11,116);check(shots.empty()&&shared.count==0);
  hotkeyroute::Group key{{1727},{1727}};ownGroundHotkey(key,true);check(keySends==1&&key.actions.empty());
  key={{1727},{1727}};ownGroundHotkey(key,false);check(keySends==1&&notifications==1&&key.actions.empty());

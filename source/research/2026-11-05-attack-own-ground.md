@@ -43,7 +43,7 @@ Runtime 在原命令執行入口固定當時選中的己方存活步兵／戰車
 ## 驗證與交付邊界
 
 - `assist/tests/attack_ground_native.py`：兩份私有 PE 的40項原生受控檢查；輸出只含 SHA、結果及範圍，不含原始指令。
-- `assist/tests/attack_ground_policy.py`：抽取真實 production 批次及快捷鍵函式編譯執行，35項通過。含60單位分三幀、換選區、manual token／死亡／UID變更、超時、換對局、Sticky、失敗、聊天／暫停、request不匹配、過期／衝突快捷鍵、控制頁分類，以及 SP／MP、冷卻略過、武器／地格改變和零射程分幀預算。
+- `assist/tests/attack_ground_policy.py`：抽取真實 production 批次及快捷鍵函式編譯執行，37項通過。含60單位分三幀、換選區、manual token／死亡／UID變更、超時、換對局、Sticky、失敗、聊天／暫停、request不匹配、過期／衝突快捷鍵、控制頁分類，以及 SP／MP、冷卻略過、武器／地格改變和零射程分幀預算、空選取指針和瞬發後來源記憶體失效。
 - `assist/tests/attack_ground_native_policy.cpp`：production 原生轉接函式31項，驗證 SP／入口所有權／簽名拒絕、原生錯誤碼、self 參數、語音在 Suicide 開火前、粒子回傳空值及無重試。只有合成 IO，不當成實機證明。
 - 證據為 [原生樣本3](evidence/attack-ground-native-range.json)、[原生樣本4](evidence/attack-ground-native-range-cncnet.json)、[批次／輸入](evidence/attack-ground-policy.json)。Windows 配對編譯另由專用 workflow 驗證，不把編譯或合成 IO 測試當成遊戲內／聯機驗收。
 

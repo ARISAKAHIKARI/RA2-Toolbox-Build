@@ -12,8 +12,12 @@ static void finish(int result){
 }
 static void resetOwnGround(){ownground::finish(-7);}
 static bool ownGroundEligible(uint32_t p,uint32_t house){
+ // A preceding instant/self-destruct shot can remove another selected unit
+ // before this frame's world index is rebuilt. Probe before raw field access.
+ unsigned char state[0x6E4];
+ if(p<0x10000||!worldObjects.contains(p)||!read(p,state,sizeof state))return false;
  const int k=kind(p);
- return worldObjects.contains(p)&&own(p,house)&&live(p)&&(k==1||k==2)&&
+ return (k==1||k==2)&&own(p,house)&&live(p)&&
   !get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&!get<bool>(p+0x1C8);
 }
 static void ownGroundTick(uint32_t house,int frame,DWORD now){
