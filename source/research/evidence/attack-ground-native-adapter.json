@@ -1,0 +1,8 @@
+{
+  "scope": "Production SP native adapter compiled with synthetic memory and native calls; no real game/Windows/MP execution",
+  "status": "PASS",
+  "checks": 31,
+  "compiler": "g++ -std=c++17 -O2 -UNDEBUG",
+  "source": "source/assist/tests/attack_ground_native_policy.cpp",
+  "game_tested": false
+}
