@@ -42,3 +42,5 @@ CameraAssets::tile越界即清空整库改为复用nativeimages::BasicBank<Key>�
 完整原始轮次见 `evidence/render-cost-expansion-pre12.json` 和 `shared-tile-bank-pre12.json`；所有源码/测试均在仓库，无私有游戏素材。独立代码复核覆盖CPU并行依赖、GPU前缀失效与页闭包。
 
 仍有明确边界：超过65,536个DrawJob的GPU引用编码仍回退CPU，本轮没有扩大16-bit编码。实际游戏、物理显卡前后FPS和联机尚未验收；不能把上述各阶段数字相加，也不能宣称所有全图冷绘都不会卡顿。
+
+软件Vulkan大场景冷绘制超过原CI10秒等待；只在显式软件测试构建把Area等待上限扩至60秒，正式硬件仍100ms。小场景已逐word对照；完整结果以成功的workflow为准，不把测试时限延长写成加速。

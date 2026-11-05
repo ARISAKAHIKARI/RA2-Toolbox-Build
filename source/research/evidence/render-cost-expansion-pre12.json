@@ -5,7 +5,7 @@
     "source/external_reader/source/read_page_budget.h": "5efbf3e5a3922fa16d0e73e0e32ae3507d16b283bf3a524fa5c0a48c1a5addbb",
     "source/external_reader/source/object_canvas.h": "c890275d65f83ed9eaf19a4a6545c67037b25e58c642ff5798377e0b14ed54ba",
     "source/external_reader/source/gpu_scene_record.h": "c95464ef9ae88e78ad99ef9e3e1923f6058109deeae690940306a4eabae07f77",
-    "source/external_reader/source/vulkan_area.h": "43d31b7025c800bbfd67a94b2753d290f630f8bedf4d77512d3dd2164158da89",
+    "source/external_reader/source/vulkan_area.h": "b582e6694492eedeff698e0591e755a433f9d06c38339c1300500f186bb42c9f",
     "source/external_reader/source/gpu_area_residency.h": "b19f426c35b889c7920803bae08397e70db88901815a0e5bb4e6ad4545193c87",
     "source/external_reader/source/immutable_atlas_plan.h": "e690f39d07be2d3a23f1c274f2c4c68ab6891150433ae02d2b5d8ea888005261",
     "source/external_reader/source/camera_assets.h": "e8c38cb3e0d85f0f29aa085c81a9877f206c890e673554c4cad9a802c240652a",
@@ -389,5 +389,7 @@
   "actual_vulkan_status": "See compile-render-cost-fixes workflow; local backend unavailable, not counted as pass",
   "game_tested": false,
   "physical_gpu_tested": false,
-  "multiplayer_tested": false
+  "multiplayer_tested": false,
+  "software_vulkan_test_wait_seconds": 60,
+  "production_hardware_area_wait_milliseconds": 100
 }
