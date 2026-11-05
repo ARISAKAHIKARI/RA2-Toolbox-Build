@@ -1,0 +1,56 @@
+name: Validate mixed scene GPU phase CSR
+on:
+  push:
+    branches: [codex/render-mixed-validation-20261105]
+    paths: [.github/workflows/validate-render-phase-csr.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-vs-phase-csr:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - name: Prepare software Vulkan driver
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y mesa-vulkan-drivers libvulkan1
+          mkdir -p diagnostics
+          driver=$(python3 -c 'from pathlib import Path;print(next(Path("/usr/share/vulkan/icd.d").glob("*lvp*.json")))')
+          echo "VK_ICD_FILENAMES=$driver" >> "$GITHUB_ENV"
+          cat "$driver" > diagnostics/vulkan-driver.json
+      - name: Record software-only fence adapter
+        shell: python
+        run: |
+          from pathlib import Path
+          import hashlib,json,os,difflib
+          p=Path('source/external_reader/source/vulkan_scene.h')
+          before=p.read_bytes()
+          assert hashlib.sha256(before).hexdigest()=='5562f033b4a706730fca5ea0051176bbeb7f4c7c43b6e39e522746ba126351ef'
+          old=b'AllowSoftware&&diagnostics_.softwareDevice?10000000000ull:100000000ull'
+          new=b'AllowSoftware&&diagnostics_.softwareDevice?60000000000ull:100000000ull'
+          assert before.count(old)==1
+          after=before.replace(old,new)
+          p.write_bytes(after)
+          Path('diagnostics/software-fence-adapter.patch').write_text(''.join(difflib.unified_diff(before.decode().splitlines(True),after.decode().splitlines(True),fromfile=str(p)+' original',tofile=str(p)+' software-test-only')))
+          info=dict(workflow_commit=os.environ['GITHUB_SHA'],production_source_commit='80b424d976a42b6beb3601b47d3d82052369f729',original_header_sha256=hashlib.sha256(before).hexdigest(),test_header_sha256=hashlib.sha256(after).hexdigest(),only_change='Explicit software-device fence10s to60s; physical hardware fence remains100ms',hardware_fps_evidence=False)
+          Path('diagnostics/software-fence-adapter.json').write_text(json.dumps(info,indent=2)+'\n')
+      - name: Compare original and filtered CSR on actual software Vulkan
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -pthread -DRA2_VULKAN_TEST_SOFTWARE source/assist/tests/gpu_phase_csr_vulkan.cpp source/third_party/xbrz/xbrz.cpp -ldl -o /tmp/gpu-phase-csr
+          /tmp/gpu-phase-csr > diagnostics/gpu-phase-csr.log 2>&1 || { cat diagnostics/gpu-phase-csr.log; exit 1; }
+          cat diagnostics/gpu-phase-csr.log
+      - name: Preserve exact pixel comparison and test adapter provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre13-GPU-phase-original-comparison
+          retention-days: 14
+          path: diagnostics
