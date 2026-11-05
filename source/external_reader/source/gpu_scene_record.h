@@ -120,7 +120,7 @@ public:
   if(!keep){prefixReady_=false;prefixDraws_=prefixReplay_=0;cpuPrefix_={};}cpuPrefixReused_=false;
  }
  void clear(){reset();frame_={};replay_=std::vector<Replay>{};litSources_.clear();litIndex_.clear();litBytes_=serial_=litBuilds_=litHits_=0;}
- void beginObjects(int width,int height,colorprecision::Mode precision){reset();frame_.width=width;frame_.height=height;precision_=precision;valid_=width>0&&height>0&&width<=32768&&height<=32768;}
+ void beginObjects(int width,int height,colorprecision::Mode precision,bool retainTerrainPrefix=false){reset(retainTerrainPrefix);frame_.width=width;frame_.height=height;precision_=precision;valid_=width>0&&height>0&&width<=32768&&height<=32768;}
  void nativeView(float sx,float sy,bool enabled){frame_.nativeScene=enabled;frame_.nativeScaleX=sx;frame_.nativeScaleY=sy;}
  uint64_t litBuilds()const{return litBuilds_;}uint64_t litHits()const{return litHits_;}size_t litBytes()const{return litBytes_;}
  bool prefixAvailable()const{return prefixReady_;}
@@ -220,3 +220,4 @@ public:
  }
 };
 }}
+

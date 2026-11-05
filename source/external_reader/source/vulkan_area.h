@@ -1,6 +1,7 @@
 #pragma once
 #include "vulkan_compute.h"
 #include "gpu_area.h"
+#include "gpu_area_residency.h"
 #include "vulkan_area_spirv.h"
 #include "vulkan_shroud_backend.h"
 #include "vulkan_present.h"
@@ -9,6 +10,7 @@
 #include "scene_frame_reuse.h"
 #include "gpu_effects_spirv.h"
 #include <unordered_map>
+#include <unordered_set>
 namespace external {namespace vulkancompute {
 // Whole-map resolve preserves native painter/Z composition. Sparse immutable
 // pages stay resident; only changed pages rebuild exact integer4x4 integrals.
@@ -17,14 +19,14 @@ class AreaResolve : public Resolve {
  VkDescriptorSet effectsSet_=VK_NULL_HANDLE;VkPipeline effectsPipeline_=VK_NULL_HANDLE;
  struct Resident {std::weak_ptr<const std::vector<uint32_t>>owner;const void*address=nullptr;uint32_t slot=0;uint64_t version=0;uint32_t x=0,y=0;
   std::vector<uint32_t>draws;std::weak_ptr<const std::vector<uint8_t>>alpha;std::weak_ptr<const std::vector<DrawJob>>objects;};
- gpuarea::ObjectStage objectsStage_{*this};std::shared_ptr<const std::vector<DrawJob>>previousObjects_;int nativeWidth_=0,nativeHeight_=0;
+ gpuarea::ObjectStage objectsStage_{*this};std::shared_ptr<const std::vector<DrawJob>>previousObjects_;int nativeWidth_=0,nativeHeight_=0;bool nativeSurface_=false;uint32_t nativeBackground_=0;
  struct AreaParams {uint32_t width,height,nativeWidth,nativeHeight,columns,tableOffset,xOffset,yOffset,background,fogOffset,buildCount,buildOffset,phase,nativeSurface,alphaTableOffset;};
  Buffer prefix_,metadata_,rawBanks_[3];gpushroud::Stage mask_{*this};bool banked_=false;uint32_t storageBindings_=4;
  VkDescriptorSetLayout areaLayout_=VK_NULL_HANDLE;VkPipelineLayout areaPipelineLayout_=VK_NULL_HANDLE;VkDescriptorPool areaPool_=VK_NULL_HANDLE;VkDescriptorSet areaSet_=VK_NULL_HANDLE;VkPipeline areaPipeline_=VK_NULL_HANDLE;
- std::vector<Resident>residents_;uint64_t prefixBuilds_=0;bool areaReady_=false;VkDeviceSize areaAtlasBytes_=AtlasBytes;
+ std::vector<Resident>residents_;uint64_t prefixBuilds_=0,residentComparisons_=0;bool areaReady_=false;VkDeviceSize areaAtlasBytes_=AtlasBytes;
  static constexpr uint64_t PrefixBytes=uint64_t(gpuarea::MaximumPages)*gpuarea::PrefixWords*4;
  static bool samePage(const Resident&r,const gpuarea::Page&p,const std::shared_ptr<const std::vector<DrawJob>>&objects){
-  if(r.alpha.lock()!=p.nativeAlpha)return false;
+  if(r.alpha.lock()!=p.nativeAlpha||r.alpha.owner_before(p.nativeAlpha)||p.nativeAlpha.owner_before(r.alpha))return false;
   if(r.x!=p.x||r.y!=p.y||r.version!=p.version||r.address!=p.pixels.get()||r.owner.owner_before(p.pixels)||p.pixels.owner_before(r.owner)||r.draws.size()!=p.draws.size())return false;
   if(r.draws.empty())return true;auto old=r.objects.lock();if(!old||!objects)return false;
   for(size_t n=0;n<r.draws.size();++n)if(!camera::samePixels((*old)[r.draws[n]],(*objects)[p.draws[n]]))return false;return true;
@@ -54,11 +56,11 @@ class AreaResolve : public Resolve {
   auto status=vkCreateComputePipelines_(device_,VK_NULL_HANDLE,1,&cp,nullptr,&effectsPipeline_);vkDestroyShaderModule_(device_,shader,nullptr);return status==VK_SUCCESS||fatal("GPU area effects pipeline failed");
  }
  bool renderArea(const gpuarea::Plan&p,std::vector<uint32_t>&out,std::shared_ptr<const gpupresent::Frame>*gpuOut){
-  const auto started=std::chrono::steady_clock::now();diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=0;prefixBuilds_=0;
+  const auto started=std::chrono::steady_clock::now();diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=0;prefixBuilds_=residentComparisons_=0;
   if(disabled_)return false;if(!gpuarea::valid(p))return fail("Invalid sparse GPU area plan");
   if(p.mask&&(p.mask->width!=p.width||p.mask->height!=p.height))return fail("GPU area mask dimensions disagree");if(!initializeArea())return false;
   if(p.effects&&(!p.effects->valid||p.effects->width!=p.width||p.effects->height!=p.height))return fail("GPU area effects dimensions disagree");
-  if(nativeWidth_!=p.nativeWidth||nativeHeight_!=p.nativeHeight){residents_.clear();nativeWidth_=p.nativeWidth;nativeHeight_=p.nativeHeight;}
+  if(nativeWidth_!=p.nativeWidth||nativeHeight_!=p.nativeHeight||nativeSurface_!=p.nativeSurface||nativeBackground_!=p.background){residents_.clear();nativeWidth_=p.nativeWidth;nativeHeight_=p.nativeHeight;nativeSurface_=p.nativeSurface;nativeBackground_=p.background;}
   const auto requiredAtlas=gpuarea::atlasBytes(p.pages.size(),banked_?uint64_t(gpuarea::MaximumPages)*gpuarea::PagePixels*4:properties_.limits.maxStorageBufferRange);
   if(!requiredAtlas)return fail("GPU area native pages exceed device storage-buffer range; CPU fallback");
   if(banked_){const uint64_t rawBytes=uint64_t(p.pages.size())*gpuarea::PagePixels*4;
@@ -67,16 +69,20 @@ class AreaResolve : public Resolve {
   }else if(atlas_.size<requiredAtlas){residents_.clear();if(!buffer(atlas_,requiredAtlas,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT,false,true))return fatal("GPU area atlas growth failed; CPU fallback");}
   areaAtlasBytes_=atlas_.size;for(const auto&bank:rawBanks_)areaAtlasBytes_+=bank.size;
   std::vector<Resident>active;std::vector<uint32_t>pageSlots;std::vector<size_t>dirty;std::vector<uint8_t>used(gpuarea::MaximumPages);
-  std::unordered_multimap<const void*,size_t>residentIndex;residentIndex.reserve(residents_.size());
-  for(size_t n=0;n<residents_.size();++n)residentIndex.emplace(residents_[n].address,n);
+  // Coordinates are unique after valid(). Thousands of virtual pages may
+  // share one blank owner; indexing by that owner made matching quadratic.
+  std::unordered_map<uint64_t,size_t>residentIndex;residentIndex.reserve(residents_.size());
+  for(size_t n=0;n<residents_.size();++n)residentIndex.emplace(gpuarea::pageKey(residents_[n].x,residents_[n].y),n);
+  std::unordered_set<uint64_t>currentPages;currentPages.reserve(p.pages.size());
   // A page is identified by its world coordinates AND all ordered draws.
   // Different pages may share one blank source, but never a composed slot.
   for(const auto&page:p.pages){Resident a{page.pixels,page.pixels.get(),gpuarea::Missing,page.version,page.x,page.y,page.draws,page.nativeAlpha,p.objects};
-   auto range=residentIndex.equal_range(a.address);for(auto i=range.first;i!=range.second;++i){const auto&r=residents_[i->second];if(!used[r.slot]&&samePage(r,page,p.objects)){a.slot=r.slot;used[a.slot]=1;break;}}active.push_back(std::move(a));}
+   const auto key=gpuarea::pageKey(page.x,page.y);currentPages.insert(key);auto found=residentIndex.find(key);
+   if(found!=residentIndex.end()){const auto&r=residents_[found->second];++residentComparisons_;if(!used[r.slot]&&samePage(r,page,p.objects)){a.slot=r.slot;used[a.slot]=1;}}active.push_back(std::move(a));}
   uint32_t free=0,slots=1;for(size_t n=0;n<active.size();++n){auto&a=active[n];if(a.slot==gpuarea::Missing){while(free<used.size()&&used[free])++free;if(free==used.size())return fail("GPU area resident budget exceeded");a.slot=free;used[free]=1;dirty.push_back(n);}slots=std::max(slots,a.slot+1);}
   for(const auto&a:active)pageSlots.push_back(a.slot);
-  bool displacement=false;if(p.objects)for(const auto&draw:*p.objects)displacement|=draw.displace;
-  if(p.nativeSurface&&((displacement&&!dirty.empty())||!objectsStage_.coversNativeZ(slots))){dirty.clear();for(size_t n=0;n<p.pages.size();++n)dirty.push_back(n);}
+  if(p.nativeSurface&&!objectsStage_.coversNativeZ(slots)){dirty.resize(p.pages.size());std::iota(dirty.begin(),dirty.end(),size_t(0));}
+  else if(p.nativeSurface){std::vector<uint64_t>removed;for(const auto&r:residents_){auto key=gpuarea::pageKey(r.x,r.y);if(!currentPages.count(key))removed.push_back(key);}gpuarea::expandNativeDirty(p,dirty,removed);}
 
   std::array<Buffer*,4>banks{{&atlas_,&rawBanks_[0],&rawBanks_[1],&rawBanks_[2]}};
   if(!objectsStage_.prepare(p,pageSlots,dirty,banks,banked_))return false;
@@ -138,8 +144,9 @@ class AreaResolve : public Resolve {
 public:
  AreaResolve()=default;~AreaResolve(){releaseArea();}
  uint64_t prefixBuilds()const{return prefixBuilds_;}
+ uint64_t residentComparisons()const{return residentComparisons_;}
  uint64_t nativeAtlasBytes()const{return areaAtlasBytes_;}bool bankedStorage()const{return banked_;}
- void reused(){prefixBuilds_=0;diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=0;}
+ void reused(){prefixBuilds_=residentComparisons_=0;diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=0;}
  bool render(const gpuarea::Plan&p,std::vector<uint32_t>&out,std::shared_ptr<const gpupresent::Frame>*gpuOut=nullptr){
   if(gpuOut)gpuOut->reset();
   bool ok=false;try{ok=renderArea(p,out,gpuOut);}catch(const std::bad_alloc&){fatal("GPU area host allocation failed; CPU fallback");}
@@ -147,3 +154,4 @@ public:
  }
 };
 }}
+

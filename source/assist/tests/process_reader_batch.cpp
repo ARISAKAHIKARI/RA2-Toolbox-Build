@@ -10,7 +10,7 @@ int main(){
  constexpr uint32_t Base=0x18000000;constexpr size_t Bytes=40*1024*1024;
  auto*memory=static_cast<uint8_t*>(VirtualAlloc((void*)(uintptr_t)Base,Bytes,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));assert(memory&&uintptr_t(memory)==Base);
  for(size_t n=0;n<Bytes;++n)memory[n]=uint8_t(n*37+n/4096);
- external::ProcessReader reader;assert(reader.open(GetCurrentProcessId()));
+ external::ProcessReader reader(external::readpages::sharedBudget(),8192);assert(reader.open(GetCurrentProcessId()));
  std::array<uint8_t,0x148> observed{};
  std::vector<uint32_t> crossing{Base+4090,Base+8190};reader.prefetch(crossing,observed.size());assert(reader.prefetchedPages==3&&reader.reads==1);
  for(auto address:crossing){assert(reader.read(address,observed.data(),observed.size()));assert(!std::memcmp(observed.data(),memory+address-Base,observed.size()));}
@@ -54,3 +54,4 @@ int main(){
  std::printf("PASS ProcessReader: cross-page cache/freshness/failure/eviction; 8192 Cell chunk pages=%zu RPM=%u; 20 fresh sweeps scalar RPM=%llu ms=%.3f, batch RPM=%llu ms=%.3f\n",pages,batchedCalls,(unsigned long long)scalar.first,scalar.second,(unsigned long long)batch.first,batch.second);
  reader.close();assert(VirtualFree(memory,0,MEM_RELEASE));
 }
+

@@ -10,6 +10,40 @@ concurrency:
   group: render-cost-fixes-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  gpu-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            source
+      - name: Install Vulkan software driver
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y mesa-vulkan-drivers libvulkan1
+          mkdir -p diagnostics
+          driver=$(rg --files /usr/share/vulkan/icd.d | rg '/lvp[^/]*\.json$' | head -n1)
+          test -n "$driver"
+          echo "VK_ICD_FILENAMES=$driver" >> "$GITHUB_ENV"
+          cat "$driver" > diagnostics/vulkan-driver.json
+      - name: Compare actual Vulkan cold and partial native pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -pthread -DRA2_VULKAN_TEST_SOFTWARE source/assist/tests/gpu_area_cloak_reuse.cpp source/third_party/xbrz/xbrz.cpp -ldl -o /tmp/ra2-gpu-area-cloak
+          /tmp/ra2-gpu-area-cloak --require > diagnostics/gpu-area-cloak.log 2>&1 || { cat diagnostics/gpu-area-cloak.log; exit 1; }
+          cat diagnostics/gpu-area-cloak.log
+      - name: Preserve GPU comparison report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-pre12-Vulkan-comparison
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics
   windows-x64:
     runs-on: windows-2022
     timeout-minutes: 45
@@ -50,10 +84,10 @@ jobs:
           root=Path('artifacts/console')
           names=['RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe','WebView2Loader.dll']
           files=[dict(name=n,bytes=(root/n).stat().st_size,sha256=hashlib.sha256((root/n).read_bytes()).hexdigest()) for n in names]
-          info=dict(version='1.0.41-pre.11',commit=os.environ['GITHUB_SHA'],branch=os.environ['GITHUB_REF_NAME'],host='x64',runtime='x86',broker='x86',console='WebView2',game_tested=False,multiplayer_tested=False,files=files)
+          info=dict(version='1.0.41-pre.12',commit=os.environ['GITHUB_SHA'],branch=os.environ['GITHUB_REF_NAME'],host='x64',runtime='x86',broker='x86',console='WebView2',game_tested=False,multiplayer_tested=False,files=files)
           Path('diagnostics/paired-build.json').write_text(json.dumps(info,indent=2)+'\n',encoding='utf-8')
-          readme='RA2 Toolbox 1.0.41-pre.11 (x64)\n\nExit both the game and toolbox before replacing all included files together. Preserve your existing INI, assets and cache. Requires Microsoft Edge WebView2 Evergreen Runtime.\n\nCorrections: compact terrain sampling; reuse stale read-cache pages before current pages; scoped native cloak replay. Includes pre.10 rendering improvements, pre.9 Hook recovery and attack-own-ground.\n\nCompiled from '+info['commit']+'. Real-game FPS and multiplayer acceptance remain unverified.\n'
-          package=Path('artifacts/RA2Toolbox-1.0.41-pre.11-x64-Update.zip')
+          readme='RA2 Toolbox 1.0.41-pre.12 (x64)\n\nExit both the game and toolbox before replacing all included files together. Preserve your existing INI, assets and cache. Requires Microsoft Edge WebView2 Evergreen Runtime.\n\nCorrections: compact terrain sampling; reuse stale read-cache pages before current pages; parallel full CPU replay; retained GPU terrain plans and dependency-scoped GPU pages; bounded shared read-cache growth; incremental tile/atlas eviction. Includes pre.10 rendering improvements, pre.9 Hook recovery and attack-own-ground.\n\nCompiled from '+info['commit']+'. Real-game FPS and multiplayer acceptance remain unverified.\n'
+          package=Path('artifacts/RA2Toolbox-1.0.41-pre.12-x64-Update.zip')
           with zipfile.ZipFile(package,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
               for n in names:z.write(root/n,n)
               for p in sorted((root/'licenses').rglob('*')):
@@ -64,11 +98,11 @@ jobs:
       - name: Upload update package and build identity
         uses: actions/upload-artifact@v4
         with:
-          name: RA2Toolbox-1.0.41-pre.11-x64-Update
+          name: RA2Toolbox-1.0.41-pre.12-x64-Update
           retention-days: 14
           if-no-files-found: error
           path: |
-            artifacts/RA2Toolbox-1.0.41-pre.11-x64-Update.zip
+            artifacts/RA2Toolbox-1.0.41-pre.12-x64-Update.zip
             diagnostics/paired-build.json
             artifacts/console/BUILD_SOURCE_MANIFEST.json
             artifacts/console/BUILD_TARGET.json

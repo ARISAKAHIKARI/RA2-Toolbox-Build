@@ -26,7 +26,11 @@ int main(){
  std::vector<Resident>oldResident,newResident;unsigned passed=0;
  for(unsigned epoch=0;epoch<300;++epoch){std::vector<Source>input;
   for(unsigned i=0;i<1000;++i){unsigned n=random()%2048;auto owner=owners[n];input.push_back({owner,owner->data(),owner->size()*4,(n%4)==0,uint64_t(epoch%3)});}
-  Plan oldPlan,newPlan;bool a=reference(input,oldResident,oldPlan,256*1024),b=build(input,newResident,newPlan,256*1024);assert(a==b&&a);
+  // Exact offset parity remains the normal-capacity contract. The pressure
+  // policy intentionally reclaims inactive residents before the old global
+  // repack; its complete simulated GPU-byte oracle lives in
+  // immutable_atlas_pressure.cpp rather than requiring the old bad offsets.
+  Plan oldPlan,newPlan;bool a=reference(input,oldResident,oldPlan,4*1024*1024),b=build(input,newResident,newPlan,4*1024*1024);assert(a==b&&a);
   assert(oldPlan.offsets==newPlan.offsets&&oldPlan.dirty==newPlan.dirty&&oldPlan.bytes==newPlan.bytes);
   for(size_t i=0;i<input.size();++i)assert(newPlan.changed(i)==(std::find(oldPlan.dirty.begin(),oldPlan.dirty.end(),i)!=oldPlan.dirty.end()));
   oldResident=std::move(oldPlan.retained);newResident=std::move(newPlan.retained);++passed;

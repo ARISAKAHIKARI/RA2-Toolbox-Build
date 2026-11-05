@@ -1,0 +1,8 @@
+{
+  "baseline_commit": "e9e51d340a8a832bc5374af74c0dcd34a51ec5e3",
+  "original_file": "source/external_reader/source/camera_assets.h",
+  "original_file_git_blob": "3afd854c86226ea3d122d68084ff3a216295da22",
+  "extracted_function": "Context::tile",
+  "sha256": "bd97ad6aa78102f475170b91fe4fa2798415534d5c9a3da9049325c61b6494a0",
+  "scope": "Exact tile function; only SharedTiles byte ceiling injected by runner. Source lookup/decoder/IO are controlled fixture boundaries, image/cache implementation is production."
+}

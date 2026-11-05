@@ -1,0 +1,37 @@
+{
+  "baseline_commit": "e9e51d340a8a832bc5374af74c0dcd34a51ec5e3",
+  "scope": "Exact old/current production CameraAssets::tile function bodies and production BasicBank. Decoder, file IO and resource-pointer field reads are controlled fixture boundaries; only cache byte ceiling injected.",
+  "injected_budget_bytes": 12582912,
+  "capacity_probe": {
+    "hot_tiles": 40,
+    "old_decodes": 40,
+    "new_decodes": 0,
+    "old_resource_identity_reads": 166,
+    "new_resource_identity_reads": 166,
+    "new_resident_charge_bytes": 12505248
+  },
+  "production_boundary_equivalence_cases": 13,
+  "actor_bank_regression": "PASS: original native_image_bank.cpp,10000 concurrent reads,world/profile/palette isolation,LRU ownership and oversized/incomplete guards",
+  "additional_checks": [
+    "TMP nativeShape/nativeShapeCoverage and immutable palette/blend array capacity charged",
+    "Immutable held-owner lifetime after eviction",
+    "4 concurrent put/get workers preserve byte admission",
+    "Process/match/files.revision/resource/subtile/palette key retained",
+    "Process-zero no-cache bypass",
+    "Disk fallback then live-memory fallback behavior",
+    "Read/decode failure immediate recovery"
+  ],
+  "limitations": [
+    "No real TMP decoder timing",
+    "No Windows/game/runtime FPS or multiplayer measurement",
+    "Capacity is injected at12MiB to reproduce existing all-clear policy without allocating1GiB"
+  ],
+  "source_sha256": {
+    "external_reader/source/camera_assets.h": "e8c38cb3e0d85f0f29aa085c81a9877f206c890e673554c4cad9a802c240652a",
+    "external_reader/source/native_image_bank.h": "93e1425540202716d23b328b7cb5d94a06144f8f928e64f0edbea087a3764eb3",
+    "assist/tests/shared_tile_bank.cpp": "1cca2fa8cef574f9e14c73251669b806c43399943c7b4ca61b88f7ed2ff94ff5",
+    "tools/test_shared_tile_bank.py": "7abfd65cfad297d6113137a79e40034b5d463f90e3aff4a33b8c9d39193ee293",
+    "assist/tests/fixtures/shared_tile_baseline/camera_tile.inc": "bd97ad6aa78102f475170b91fe4fa2798415534d5c9a3da9049325c61b6494a0"
+  },
+  "sanitizers": "ASan/UBSan PASS; ASAN_OPTIONS=detect_leaks=0 because LeakSanitizer cannot enumerate /proc tasks in this environment"
+}

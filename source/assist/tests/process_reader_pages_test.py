@@ -53,7 +53,8 @@ BOOL ReadProcessMemory(HANDLE,const void*at,void*out,SIZE_T size,SIZE_T*got){
  *got=size;return TRUE;
 }
 int main(){
- external::ProcessReader reader;assert(reader.open(7));
+ external::readpages::Budget legacyBudget(8192);
+ external::ProcessReader reader(legacyBudget,8192);assert(reader.open(7));
  uint8_t value[4]{};
  for(int n=0;n<10;++n){
   assert(reader.read(0x12010+n*4,value,sizeof value));
@@ -104,7 +105,7 @@ int main(){
  // A new address must reuse an old-epoch binding before evicting a page
  // already refreshed in this epoch. FIFO used to evict the sole hot page.
  {
-  external::ProcessReader bounded;assert(bounded.open(7));
+  external::ProcessReader bounded(external::readpages::sharedBudget(),8192);assert(bounded.open(7));
   constexpr uint32_t base=0x100000;
   for(unsigned p=0;p<8192;++p)assert(bounded.read(base+p*4096+16,value,4));
   bounded.begin();assert(bounded.read(base+16,value,4));
@@ -124,7 +125,7 @@ int main(){
  // current hot data while replacing the other 4096 stale bindings. The
  // old FIFO policy unnecessarily reread every hot page after prefetch.
  {
-  external::ProcessReader bounded;assert(bounded.open(7));
+  external::ProcessReader bounded(external::readpages::sharedBudget(),8192);assert(bounded.open(7));
   constexpr uint32_t base=0x100000;
   std::vector<uint32_t> next;next.reserve(4096);
   for(unsigned p=8192;p<12288;++p)next.push_back(base+p*4096);
@@ -150,7 +151,7 @@ int main(){
   memoryVersion=202;bounded.begin();assert(bounded.read(next[0]+16,value,4)&&value[0]==218);
   assert(bounded.reads==1&&bounded.pageEvictions==0&&bounded.pageCurrentEvictions==0);
  }
- reader.close();assert(reader.cachedPageStorage()==0&&!reader.read(0x100010,value,4));
+ reader.close();assert(reader.cachedPageStorage()==0&&legacyBudget.used()==0&&!reader.read(0x100010,value,4));
  std::cout<<"PASS ProcessReader: partial-page fallback, fresh epochs, zero warm allocations, bounded churn, stale-first lazy/prefetch reuse, failed-slot priority, coalesced reads and process-close invalidation\n";
 }
 '''.replace('@READER@', json.dumps(str(root / 'external_reader/source/process_reader.h')))

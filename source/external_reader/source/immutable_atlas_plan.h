@@ -32,11 +32,25 @@ inline bool build(const std::vector<Source>&input,const std::vector<Resident>&re
  for(size_t n=0;n<out.retained.size();++n){const auto&r=out.retained[n];if(r.offset<cursor||uint64_t(r.offset)+r.words>maximum/4)return false;
   if(cursor<r.offset)gaps.push_back({cursor,r.offset});cursor=uint64_t(r.offset)+r.words;retainedIndex.emplace(r.address,n);}
  if(cursor<maximum/4)gaps.push_back({cursor,maximum/4});
- std::vector<bool> dirty(active.size(),false);bool repack=false;
- for(size_t n=0;n<active.size();++n){const auto&s=input[original[n]];auto range=retainedIndex.equal_range(s.owner.get());bool found=false;
-  for(auto it=range.first;it!=range.second;++it)if(identical(out.retained[it->second],s)){active[n].offset=out.retained[it->second].offset;found=true;break;}
-  if(found)continue;
+ // Resolve ALL current bindings before allocating any new source. Sources
+ // later in painter order are still live and may not be reclaimed as holes.
+ std::vector<bool> present(active.size(),false),dirty(active.size(),false);bool repack=false,reclaimed=false;
+ for(size_t n=0;n<active.size();++n){const auto&s=input[original[n]];auto range=retainedIndex.equal_range(s.owner.get());
+  for(auto it=range.first;it!=range.second;++it)if(identical(out.retained[it->second],s)){active[n].offset=out.retained[it->second].offset;present[n]=true;break;}
+ }
+ for(size_t n=0;n<active.size();++n){if(present[n])continue;
   auto gap=std::find_if(gaps.begin(),gaps.end(),[&](const Gap&g){return g.end-g.offset>=active[n].words;});
+  if(gap==gaps.end()&&!reclaimed){
+   // Asset caches retain owners long after their last draw. A full atlas can
+   // therefore hold thousands of unused, still-alive bindings. Reclaim those
+   // before repacking; moving active bindings would re-upload/rasterize them
+   // all for one small new sprite. Keep current offsets and first-fit order.
+   out.retained.clear();for(size_t keep=0;keep<active.size();++keep)if(present[keep]||dirty[keep])out.retained.push_back(active[keep]);
+   std::sort(out.retained.begin(),out.retained.end(),[](const Resident&a,const Resident&b){return a.offset<b.offset;});
+   gaps.clear();cursor=0;for(const auto&r:out.retained){if(cursor<r.offset)gaps.push_back({cursor,r.offset});cursor=uint64_t(r.offset)+r.words;}
+   if(cursor<maximum/4)gaps.push_back({cursor,maximum/4});reclaimed=true;
+   gap=std::find_if(gaps.begin(),gaps.end(),[&](const Gap&g){return g.end-g.offset>=active[n].words;});
+  }
   if(gap==gaps.end()){repack=true;break;}active[n].offset=uint32_t(gap->offset);gap->offset+=active[n].words;
   if(gap->offset==gap->end)gaps.erase(gap);out.retained.push_back(active[n]);dirty[n]=true;
  }
@@ -46,3 +60,4 @@ inline bool build(const std::vector<Source>&input,const std::vector<Resident>&re
  return true;
 }
 }}
+

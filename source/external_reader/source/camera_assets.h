@@ -50,9 +50,7 @@ template<class Reader>class Context {
  std::map<PaletteSampleKey,PaletteSample>presentationPalettes_;
  uint64_t paletteSamples_=0,paletteSampleHits_=0;
  using SharedTileKey=std::tuple<uint32_t,uint32_t,uint32_t,uint32_t,unsigned,uint64_t,std::array<uint32_t,256>>;
- inline static std::mutex sharedTileMutex_;
- inline static std::map<SharedTileKey,std::shared_ptr<const external::voxel::Image>> sharedTiles_;
- inline static size_t sharedTileBytes_=0;
+ inline static nativeimages::BasicBank<SharedTileKey> sharedTiles_{rendermemory::SharedTiles};
 public:
  struct Read {Reader*reader;bool operator()(uint32_t p,void*out,size_t n)const{return reader->readFresh(p,out,n);}};
  Read read;
@@ -289,14 +287,13 @@ bool resourceSprite(uint32_t type,uint32_t pointer,const std::array<uint32_t,256
 }
 bool tile(uint32_t type,unsigned sub,const std::array<uint32_t,256>&pal,external::voxel::Image&out){
  const uint32_t resource=word(type+0xA4);const SharedTileKey key{process_,match_,type,resource,sub,files.revision(),pal};
- if(process_){std::shared_ptr<const external::voxel::Image> cached;
-  {std::lock_guard<std::mutex>lock(sharedTileMutex_);auto found=sharedTiles_.find(key);if(found!=sharedTiles_.end())cached=found->second;}
+ if(process_){auto cached=sharedTiles_.get(key);
   if(cached){out=*cached;return true;}
  }
  auto retain=[&]{if(process_){
-  auto cost=[](auto&&self,const external::voxel::Image&i)->size_t{size_t n=4*(i.pixels.size()+i.depth.size())+i.indices.size();for(const auto&a:i.attachments)n+=self(self,a);return n;};
-  const size_t bytes=cost(cost,out);if(bytes<=rendermemory::SharedTiles){auto image=std::make_shared<const external::voxel::Image>(out);std::lock_guard<std::mutex>lock(sharedTileMutex_);
-   if(!sharedTiles_.count(key)){if(sharedTileBytes_+bytes>rendermemory::SharedTiles){sharedTiles_.clear();sharedTileBytes_=0;}sharedTiles_[key]=std::move(image);sharedTileBytes_+=bytes;}}
+  // Share the byte-bounded LRU policy used by actor images. One new tile must
+  // not discard every hot terrain palette/subtile binding in all view workers.
+  sharedTiles_.put(key,std::make_shared<const external::voxel::Image>(out));
  }return true;};
  std::vector<uint8_t> bytes;auto filename=text(type+0x2F5,14);std::string reason;
  if(!filename.empty()&&files.load(filename,bytes)&&external::assets::tmp(std::move(bytes),sub,pal,out,&reason))return retain();
@@ -700,3 +697,4 @@ bool renderActor(const ActorArt&art,const external::visual::Pose&pose,external::
 
 };
 }}
+

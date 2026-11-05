@@ -1,0 +1,393 @@
+{
+  "baseline_commit": "e9e51d340a8a832bc5374af74c0dcd34a51ec5e3",
+  "source_sha256": {
+    "source/external_reader/source/process_reader.h": "9f6dbbc69799c3c5dc9e9b002aa03367d459b9fc091a366170ad1c404edf9d8c",
+    "source/external_reader/source/read_page_budget.h": "5efbf3e5a3922fa16d0e73e0e32ae3507d16b283bf3a524fa5c0a48c1a5addbb",
+    "source/external_reader/source/object_canvas.h": "c890275d65f83ed9eaf19a4a6545c67037b25e58c642ff5798377e0b14ed54ba",
+    "source/external_reader/source/gpu_scene_record.h": "c95464ef9ae88e78ad99ef9e3e1923f6058109deeae690940306a4eabae07f77",
+    "source/external_reader/source/vulkan_area.h": "43d31b7025c800bbfd67a94b2753d290f630f8bedf4d77512d3dd2164158da89",
+    "source/external_reader/source/gpu_area_residency.h": "b19f426c35b889c7920803bae08397e70db88901815a0e5bb4e6ad4545193c87",
+    "source/external_reader/source/immutable_atlas_plan.h": "e690f39d07be2d3a23f1c274f2c4c68ab6891150433ae02d2b5d8ea888005261",
+    "source/external_reader/source/camera_assets.h": "e8c38cb3e0d85f0f29aa085c81a9877f206c890e673554c4cad9a802c240652a",
+    "source/external_reader/source/native_image_bank.h": "93e1425540202716d23b328b7cb5d94a06144f8f928e64f0edbea087a3764eb3"
+  },
+  "reader": {
+    "baseline_commit": "e9e51d340a8a832bc5374af74c0dcd34a51ec5e3",
+    "scope": "production ProcessReader header with bounded Win32 read doubles; no real Windows process/game/GPU/netplay/FPS",
+    "raw_page_policy": {
+      "x64_session_MiB": 256,
+      "x64_process_MiB": 1024,
+      "x86_session_MiB": 64,
+      "x86_process_MiB": 256,
+      "allocation": "on demand",
+      "fixed_per_reader_scratch_bytes": 4096,
+      "pool_excludes": [
+        "map/list/negative-cache metadata",
+        "fixed per-reader scratch",
+        "temporary prefetch scratch"
+      ]
+    },
+    "controlled_counts": [
+      {
+        "pages": 8193,
+        "fields": 12,
+        "before_RPM_calls": 98316,
+        "after_RPM_calls": 8193
+      },
+      {
+        "pages": 16384,
+        "fields": 12,
+        "before_RPM_calls": 196608,
+        "after_RPM_calls": 16384
+      }
+    ],
+    "checks": [
+      "zero page allocation before first read",
+      "zero warm allocations",
+      "new epoch fresh values",
+      "small injected pool exact cap/release/recovery",
+      "new-session scratch at exhausted budget and cross-page reads",
+      "at most one speculative batch if no page slot can be admitted",
+      "bad_alloc at list/map-node/rehash claim rollback",
+      "bounded no-allocation recycling after allocation failure",
+      "failed page direct-range recovery",
+      "concurrent atomic claims",
+      "pressure-ticket stale-prefix retirement only on owner begin",
+      "all previous observation working pages preserved",
+      "up to4MiB reusable floor underpressure",
+      "exact cap release and newly enabled session growth after retirement",
+      "160000 concurrent denial tickets with no reset/lost notification"
+    ],
+    "files": {
+      "source/external_reader/source/process_reader.h": "9f6dbbc69799c3c5dc9e9b002aa03367d459b9fc091a366170ad1c404edf9d8c",
+      "source/external_reader/source/read_page_budget.h": "5efbf3e5a3922fa16d0e73e0e32ae3507d16b283bf3a524fa5c0a48c1a5addbb",
+      "source/assist/tests/process_reader_pages_test.py": "197f2a88609416eebd3772ac08f4b7283257e0b444f0d98ce598fc3cf640f6e5",
+      "source/assist/tests/process_reader_batch.cpp": "716b8ecf80e48ee068e84e349f9dee97f49acf9bacc306a660601ee348508543",
+      "source/assist/tests/process_reader_budget_test.py": "33994d0a35a197826a8caaf7bda98aaa9da4e97ad48e63711d797c11fd33f06b"
+    },
+    "limits": [
+      "The shared pool limits dynamic raw page storage, not all toolbox allocations.",
+      "Budget exhaustion retries growth on the next epoch and recycles existing storage meanwhile.",
+      "No game-scene footprint or frame-rate claim.",
+      "A reader that never resumes or closes cannot be forcibly reclaimed by another thread; active owners retire genuinely stale pages when pressure is observed."
+    ],
+    "pressure_reclaim": {
+      "trigger": "new monotonic shared-budget denial ticket",
+      "scope": "own-thread begin, stale list prefix older than finished epoch",
+      "floor_pages": "min(1024,session_limit/4)",
+      "normal_unpressured_scan": false,
+      "controlled_case": {
+        "old_session_pages": 8,
+        "last_working_pages": 1,
+        "retired_stale_pages": 6,
+        "floor_pages": 2,
+        "new_session_grew_after_release": true
+      }
+    }
+  },
+  "cpu_and_plan": {
+    "baseline_commit": "e9e51d340a8a832bc5374af74c0dcd34a51ec5e3",
+    "scope": "Linux production ObjectCanvas CPU full native repaint + GPU host plan generation only; no real GPU execution, process reads, downscale/present, gameplay or netplay in this report. CPU all TMP light changes on every pass, no cached pages reused. GPU plan static terrain plus one moving actor; final DrawJobs/page refs retained in full.",
+    "results": [
+      {
+        "round": 0,
+        "variant": "pre11_cpu",
+        "exit_code": 0,
+        "stdout": "FULL 4096x2048 cloak=0 median_ms=43.954037 changed_mean=512.000 reused_mean=0.000 hashes=4357271377629471939,17666531156556274947\nFULL 4096x2048 cloak=1 median_ms=145.427954 changed_mean=512.000 reused_mean=0.000 hashes=11344343822644030075,6341930045922299779\nFULL 2560x1440 cloak=0 median_ms=25.248160 changed_mean=240.000 reused_mean=0.000 hashes=1021864324861821667,554348374294459779\nFULL 2560x1440 cloak=1 median_ms=67.015118 changed_mean=240.000 reused_mean=0.000 hashes=1296449757177316187,666832161558683139\n",
+        "stderr": ""
+      },
+      {
+        "round": 0,
+        "variant": "scoped_parallel_cpu",
+        "exit_code": 0,
+        "stdout": "FULL 4096x2048 cloak=0 median_ms=37.533942 changed_mean=512.000 reused_mean=0.000 hashes=4357271377629471939,17666531156556274947\nFULL 4096x2048 cloak=1 median_ms=38.837728 changed_mean=512.000 reused_mean=0.000 hashes=11344343822644030075,6341930045922299779\nFULL 2560x1440 cloak=0 median_ms=18.351228 changed_mean=240.000 reused_mean=0.000 hashes=1021864324861821667,554348374294459779\nFULL 2560x1440 cloak=1 median_ms=19.064412 changed_mean=240.000 reused_mean=0.000 hashes=1296449757177316187,666832161558683139\n",
+        "stderr": ""
+      },
+      {
+        "round": 0,
+        "variant": "pre11_gpu_plan",
+        "exit_code": 0,
+        "stdout": "PASS GPU area host plan: 28 cold/warm DrawJobs and page-reference comparisons; dynamic tails, source/light/level COW, crop, precision, alpha, rejected-tail recovery, stable blank identity and background change\nPLAN 4096x2048 TMPs=4096 median_ms=1.354022 pages=512 draws=4160\nPLAN 8192x4096 TMPs=16384 median_ms=11.312927 pages=2048 draws=16448\n",
+        "stderr": ""
+      },
+      {
+        "round": 0,
+        "variant": "retained_gpu_plan",
+        "exit_code": 0,
+        "stdout": "PASS GPU area host plan: 28 cold/warm DrawJobs and page-reference comparisons; dynamic tails, source/light/level COW, crop, precision, alpha, rejected-tail recovery, stable blank identity and background change\nPLAN 4096x2048 TMPs=4096 median_ms=0.156256 pages=512 draws=4160\nPLAN 8192x4096 TMPs=16384 median_ms=0.619233 pages=2048 draws=16448\n",
+        "stderr": ""
+      },
+      {
+        "round": 1,
+        "variant": "pre11_cpu",
+        "exit_code": 0,
+        "stdout": "FULL 4096x2048 cloak=0 median_ms=38.506468 changed_mean=512.000 reused_mean=0.000 hashes=4357271377629471939,17666531156556274947\nFULL 4096x2048 cloak=1 median_ms=123.820222 changed_mean=512.000 reused_mean=0.000 hashes=11344343822644030075,6341930045922299779\nFULL 2560x1440 cloak=0 median_ms=18.718699 changed_mean=240.000 reused_mean=0.000 hashes=1021864324861821667,554348374294459779\nFULL 2560x1440 cloak=1 median_ms=54.558184 changed_mean=240.000 reused_mean=0.000 hashes=1296449757177316187,666832161558683139\n",
+        "stderr": ""
+      },
+      {
+        "round": 1,
+        "variant": "scoped_parallel_cpu",
+        "exit_code": 0,
+        "stdout": "FULL 4096x2048 cloak=0 median_ms=37.999530 changed_mean=512.000 reused_mean=0.000 hashes=4357271377629471939,17666531156556274947\nFULL 4096x2048 cloak=1 median_ms=38.799999 changed_mean=512.000 reused_mean=0.000 hashes=11344343822644030075,6341930045922299779\nFULL 2560x1440 cloak=0 median_ms=17.850305 changed_mean=240.000 reused_mean=0.000 hashes=1021864324861821667,554348374294459779\nFULL 2560x1440 cloak=1 median_ms=19.294432 changed_mean=240.000 reused_mean=0.000 hashes=1296449757177316187,666832161558683139\n",
+        "stderr": ""
+      },
+      {
+        "round": 1,
+        "variant": "pre11_gpu_plan",
+        "exit_code": 0,
+        "stdout": "PASS GPU area host plan: 28 cold/warm DrawJobs and page-reference comparisons; dynamic tails, source/light/level COW, crop, precision, alpha, rejected-tail recovery, stable blank identity and background change\nPLAN 4096x2048 TMPs=4096 median_ms=1.490490 pages=512 draws=4160\nPLAN 8192x4096 TMPs=16384 median_ms=11.665809 pages=2048 draws=16448\n",
+        "stderr": ""
+      },
+      {
+        "round": 1,
+        "variant": "retained_gpu_plan",
+        "exit_code": 0,
+        "stdout": "PASS GPU area host plan: 28 cold/warm DrawJobs and page-reference comparisons; dynamic tails, source/light/level COW, crop, precision, alpha, rejected-tail recovery, stable blank identity and background change\nPLAN 4096x2048 TMPs=4096 median_ms=0.162279 pages=512 draws=4160\nPLAN 8192x4096 TMPs=16384 median_ms=0.709842 pages=2048 draws=16448\n",
+        "stderr": ""
+      },
+      {
+        "round": 2,
+        "variant": "pre11_cpu",
+        "exit_code": 0,
+        "stdout": "FULL 4096x2048 cloak=0 median_ms=38.732184 changed_mean=512.000 reused_mean=0.000 hashes=4357271377629471939,17666531156556274947\nFULL 4096x2048 cloak=1 median_ms=127.866483 changed_mean=512.000 reused_mean=0.000 hashes=11344343822644030075,6341930045922299779\nFULL 2560x1440 cloak=0 median_ms=18.564205 changed_mean=240.000 reused_mean=0.000 hashes=1021864324861821667,554348374294459779\nFULL 2560x1440 cloak=1 median_ms=55.872897 changed_mean=240.000 reused_mean=0.000 hashes=1296449757177316187,666832161558683139\n",
+        "stderr": ""
+      },
+      {
+        "round": 2,
+        "variant": "scoped_parallel_cpu",
+        "exit_code": 0,
+        "stdout": "FULL 4096x2048 cloak=0 median_ms=38.203538 changed_mean=512.000 reused_mean=0.000 hashes=4357271377629471939,17666531156556274947\nFULL 4096x2048 cloak=1 median_ms=39.483996 changed_mean=512.000 reused_mean=0.000 hashes=11344343822644030075,6341930045922299779\nFULL 2560x1440 cloak=0 median_ms=18.281182 changed_mean=240.000 reused_mean=0.000 hashes=1021864324861821667,554348374294459779\nFULL 2560x1440 cloak=1 median_ms=19.258747 changed_mean=240.000 reused_mean=0.000 hashes=1296449757177316187,666832161558683139\n",
+        "stderr": ""
+      },
+      {
+        "round": 2,
+        "variant": "pre11_gpu_plan",
+        "exit_code": 0,
+        "stdout": "PASS GPU area host plan: 28 cold/warm DrawJobs and page-reference comparisons; dynamic tails, source/light/level COW, crop, precision, alpha, rejected-tail recovery, stable blank identity and background change\nPLAN 4096x2048 TMPs=4096 median_ms=1.329805 pages=512 draws=4160\nPLAN 8192x4096 TMPs=16384 median_ms=10.729739 pages=2048 draws=16448\n",
+        "stderr": ""
+      },
+      {
+        "round": 2,
+        "variant": "retained_gpu_plan",
+        "exit_code": 0,
+        "stdout": "PASS GPU area host plan: 28 cold/warm DrawJobs and page-reference comparisons; dynamic tails, source/light/level COW, crop, precision, alpha, rejected-tail recovery, stable blank identity and background change\nPLAN 4096x2048 TMPs=4096 median_ms=0.161218 pages=512 draws=4160\nPLAN 8192x4096 TMPs=16384 median_ms=0.891467 pages=2048 draws=16448\n",
+        "stderr": ""
+      }
+    ],
+    "commands": {
+      "cpu_baseline": "g++ -std=c++17 -O2 -pthread source/assist/tests/object_full_repaint.cpp source/third_party/xbrz/xbrz.cpp -o /tmp/object-full-baseline (compiled against untouched pre11 object_canvas.h)",
+      "cpu_current": "g++ -std=c++17 -O2 -pthread source/assist/tests/object_full_repaint.cpp source/third_party/xbrz/xbrz.cpp -o /tmp/object-full-scoped",
+      "plan_baseline": "g++ -std=c++17 -O2 -pthread source/assist/tests/object_gpu_plan_reuse.cpp source/third_party/xbrz/xbrz.cpp -o /tmp/object-plan-baseline (compiled before plan prefix/blank changes)",
+      "plan_current": "g++ -std=c++17 -O2 -pthread -DEXPECT_STATIC_AREA_PLAN source/assist/tests/object_gpu_plan_reuse.cpp source/third_party/xbrz/xbrz.cpp -o /tmp/object-plan-retained",
+      "plan_asan": "g++ -std=c++17 -O1 -g -pthread -fsanitize=address,undefined -fno-omit-frame-pointer -DEXPECT_STATIC_AREA_PLAN source/assist/tests/object_gpu_plan_reuse.cpp source/third_party/xbrz/xbrz.cpp -o /tmp/object-plan-sanitized; ASAN_OPTIONS=detect_leaks=0 /tmp/object-plan-sanitized"
+    },
+    "source_sha256": {
+      "source/external_reader/source/object_canvas.h": "c890275d65f83ed9eaf19a4a6545c67037b25e58c642ff5798377e0b14ed54ba",
+      "source/external_reader/source/gpu_scene_record.h": "c95464ef9ae88e78ad99ef9e3e1923f6058109deeae690940306a4eabae07f77",
+      "source/assist/tests/object_full_repaint.cpp": "19dc40feeb2a99c20b148e4f9f05441e3ceeb864e57a029d8a4910f2943af549",
+      "source/assist/tests/object_gpu_plan_reuse.cpp": "7d763d8e2bcf7b7cd090cd21abe41e1b5a361b71981bbf0c334c7228b2e1cc31"
+    },
+    "cpu_full_plane_hashes_match": true,
+    "summary_median_of_three_rounds_ms": {
+      "pre11_cpu:4096x2048:cloak0": 38.732184,
+      "pre11_cpu:4096x2048:cloak1": 127.866483,
+      "pre11_cpu:2560x1440:cloak0": 18.718699,
+      "pre11_cpu:2560x1440:cloak1": 55.872897,
+      "scoped_parallel_cpu:4096x2048:cloak0": 37.99953,
+      "scoped_parallel_cpu:4096x2048:cloak1": 38.837728,
+      "scoped_parallel_cpu:2560x1440:cloak0": 18.281182,
+      "scoped_parallel_cpu:2560x1440:cloak1": 19.258747,
+      "pre11_gpu_plan:4096TMP": 1.354022,
+      "pre11_gpu_plan:16384TMP": 11.312927,
+      "retained_gpu_plan:4096TMP": 0.161218,
+      "retained_gpu_plan:16384TMP": 0.709842
+    },
+    "checks": {
+      "object_cloak_4plane_cold_warm": 32,
+      "object_canvas_existing": "PASS",
+      "object_gpu_plan_cold_warm": 28,
+      "object_gpu_plan_asan_ubsan": "PASS (ASAN_OPTIONS=detect_leaks=0)",
+      "stable_blank_identity": "EXPECT_STATIC_AREA_PLAN assertions PASS",
+      "gpu_hostplan_scope": "metadata only; no GPU execution in child tests; actual GPU verified by sibling agent"
+    },
+    "baseline_cpu_header_sha256": "c107e74a3dbe5e5ddda5bc6f3c84e958b041fb52ed3898d8512359b2b574a43c"
+  },
+  "atlas": {
+    "scope": "Production immutableatlas::build GPU source-residency planner, CPU upload/generated-write simulation; no physical GPU/frame/FPS or game/netplay measurement. Shared by main Vulkan Resolve and native-page ObjectStage.",
+    "baseline_commit": "e9e51d340a8a832bc5374af74c0dcd34a51ec5e3",
+    "before_header_sha256": "c7542e5ae7f36d58795e0b35fd15f5832fca00c108eaef89daf551be3de82578",
+    "after_header_sha256": "e690f39d07be2d3a23f1c274f2c4c68ab6891150433ae02d2b5d8ea888005261",
+    "test_sha256": "176c633b4f1b5fc41816780cf367c2b68057942fa5adceba7c3f55cea4d2ce35",
+    "normal_layout_oracle": "300 randomized epochs exactly match frozen allocator at ample capacity; generated revisions/control-block identity/duplicate flags retained",
+    "pressure_checks": {
+      "all_active_later_in_input_pinned_before_reclaim": true,
+      "active_offsets_retained": true,
+      "inactive_residents_retained_without_pressure": true,
+      "fragmentation_still_repackages_when_needed": true,
+      "generated_revision_checked": true,
+      "frames": 240,
+      "source_byte_checks": 52800
+    },
+    "sanitizers": "ASan/UBSan PASS; leak detection disabled due runtime environment",
+    "commands": {
+      "baseline_compile": "g++ -std=c++17 -O2 -DIMMUTABLE_ATLAS_HEADER=\"/tmp/ra2-immutable-atlas-pre12.h\" source/assist/tests/immutable_atlas_pressure.cpp -o /tmp/ra2-atlas-pressure-before",
+      "after_compile": "g++ -std=c++17 -O2 -DEXPECT_PRESSURE_RECLAIM source/assist/tests/immutable_atlas_pressure.cpp -o /tmp/ra2-atlas-pressure",
+      "normal_test": "g++ -std=c++17 -O2 source/assist/tests/immutable_atlas_plan.cpp -o /tmp/ra2-atlas-existing && /tmp/ra2-atlas-existing"
+    },
+    "runs": [
+      {
+        "round": 0,
+        "variant": "before",
+        "stdout": "{\"case\":\"full_live_owner_atlas\",\"resident_sources\":8192,\"active_unique\":4097,\"budget_bytes\":8388608,\"dirty_sources\":4097,\"uploaded_bytes\":4195328,\"planner_ms\":0.980085,\"all_source_bytes_equal\":true}\n{\"case\":\"randomized_pressure_stream\",\"frames\":240,\"source_checks\":52800,\"generated_revisions_and_aliases\":true,\"all_source_bytes_equal\":true}\n",
+        "results": [
+          {
+            "case": "full_live_owner_atlas",
+            "resident_sources": 8192,
+            "active_unique": 4097,
+            "budget_bytes": 8388608,
+            "dirty_sources": 4097,
+            "uploaded_bytes": 4195328,
+            "planner_ms": 0.980085,
+            "all_source_bytes_equal": true
+          },
+          {
+            "case": "randomized_pressure_stream",
+            "frames": 240,
+            "source_checks": 52800,
+            "generated_revisions_and_aliases": true,
+            "all_source_bytes_equal": true
+          }
+        ]
+      },
+      {
+        "round": 0,
+        "variant": "after",
+        "stdout": "{\"case\":\"full_live_owner_atlas\",\"resident_sources\":8192,\"active_unique\":4097,\"budget_bytes\":8388608,\"dirty_sources\":1,\"uploaded_bytes\":1024,\"planner_ms\":1.19921,\"all_source_bytes_equal\":true}\n{\"case\":\"randomized_pressure_stream\",\"frames\":240,\"source_checks\":52800,\"generated_revisions_and_aliases\":true,\"all_source_bytes_equal\":true}\n",
+        "results": [
+          {
+            "case": "full_live_owner_atlas",
+            "resident_sources": 8192,
+            "active_unique": 4097,
+            "budget_bytes": 8388608,
+            "dirty_sources": 1,
+            "uploaded_bytes": 1024,
+            "planner_ms": 1.19921,
+            "all_source_bytes_equal": true
+          },
+          {
+            "case": "randomized_pressure_stream",
+            "frames": 240,
+            "source_checks": 52800,
+            "generated_revisions_and_aliases": true,
+            "all_source_bytes_equal": true
+          }
+        ]
+      },
+      {
+        "round": 1,
+        "variant": "before",
+        "stdout": "{\"case\":\"full_live_owner_atlas\",\"resident_sources\":8192,\"active_unique\":4097,\"budget_bytes\":8388608,\"dirty_sources\":4097,\"uploaded_bytes\":4195328,\"planner_ms\":1.17208,\"all_source_bytes_equal\":true}\n{\"case\":\"randomized_pressure_stream\",\"frames\":240,\"source_checks\":52800,\"generated_revisions_and_aliases\":true,\"all_source_bytes_equal\":true}\n",
+        "results": [
+          {
+            "case": "full_live_owner_atlas",
+            "resident_sources": 8192,
+            "active_unique": 4097,
+            "budget_bytes": 8388608,
+            "dirty_sources": 4097,
+            "uploaded_bytes": 4195328,
+            "planner_ms": 1.17208,
+            "all_source_bytes_equal": true
+          },
+          {
+            "case": "randomized_pressure_stream",
+            "frames": 240,
+            "source_checks": 52800,
+            "generated_revisions_and_aliases": true,
+            "all_source_bytes_equal": true
+          }
+        ]
+      },
+      {
+        "round": 1,
+        "variant": "after",
+        "stdout": "{\"case\":\"full_live_owner_atlas\",\"resident_sources\":8192,\"active_unique\":4097,\"budget_bytes\":8388608,\"dirty_sources\":1,\"uploaded_bytes\":1024,\"planner_ms\":1.08545,\"all_source_bytes_equal\":true}\n{\"case\":\"randomized_pressure_stream\",\"frames\":240,\"source_checks\":52800,\"generated_revisions_and_aliases\":true,\"all_source_bytes_equal\":true}\n",
+        "results": [
+          {
+            "case": "full_live_owner_atlas",
+            "resident_sources": 8192,
+            "active_unique": 4097,
+            "budget_bytes": 8388608,
+            "dirty_sources": 1,
+            "uploaded_bytes": 1024,
+            "planner_ms": 1.08545,
+            "all_source_bytes_equal": true
+          },
+          {
+            "case": "randomized_pressure_stream",
+            "frames": 240,
+            "source_checks": 52800,
+            "generated_revisions_and_aliases": true,
+            "all_source_bytes_equal": true
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "variant": "before",
+        "stdout": "{\"case\":\"full_live_owner_atlas\",\"resident_sources\":8192,\"active_unique\":4097,\"budget_bytes\":8388608,\"dirty_sources\":4097,\"uploaded_bytes\":4195328,\"planner_ms\":1.01744,\"all_source_bytes_equal\":true}\n{\"case\":\"randomized_pressure_stream\",\"frames\":240,\"source_checks\":52800,\"generated_revisions_and_aliases\":true,\"all_source_bytes_equal\":true}\n",
+        "results": [
+          {
+            "case": "full_live_owner_atlas",
+            "resident_sources": 8192,
+            "active_unique": 4097,
+            "budget_bytes": 8388608,
+            "dirty_sources": 4097,
+            "uploaded_bytes": 4195328,
+            "planner_ms": 1.01744,
+            "all_source_bytes_equal": true
+          },
+          {
+            "case": "randomized_pressure_stream",
+            "frames": 240,
+            "source_checks": 52800,
+            "generated_revisions_and_aliases": true,
+            "all_source_bytes_equal": true
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "variant": "after",
+        "stdout": "{\"case\":\"full_live_owner_atlas\",\"resident_sources\":8192,\"active_unique\":4097,\"budget_bytes\":8388608,\"dirty_sources\":1,\"uploaded_bytes\":1024,\"planner_ms\":0.921309,\"all_source_bytes_equal\":true}\n{\"case\":\"randomized_pressure_stream\",\"frames\":240,\"source_checks\":52800,\"generated_revisions_and_aliases\":true,\"all_source_bytes_equal\":true}\n",
+        "results": [
+          {
+            "case": "full_live_owner_atlas",
+            "resident_sources": 8192,
+            "active_unique": 4097,
+            "budget_bytes": 8388608,
+            "dirty_sources": 1,
+            "uploaded_bytes": 1024,
+            "planner_ms": 0.921309,
+            "all_source_bytes_equal": true
+          },
+          {
+            "case": "randomized_pressure_stream",
+            "frames": 240,
+            "source_checks": 52800,
+            "generated_revisions_and_aliases": true,
+            "all_source_bytes_equal": true
+          }
+        ]
+      }
+    ]
+  },
+  "gpu_dependency_oracle": {
+    "random_cases": 300,
+    "status": "PASS",
+    "scope": "independent per-pixel read graph vs production page-span closure"
+  },
+  "actual_vulkan_status": "See compile-render-cost-fixes workflow; local backend unavailable, not counted as pass",
+  "game_tested": false,
+  "physical_gpu_tested": false,
+  "multiplayer_tested": false
+}
