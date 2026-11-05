@@ -49,6 +49,13 @@ static void revisions(){auto c=scene(512,384,0xff102030u);std::vector<uint32_t>f
 static void inPlace(){auto c=scene(384,384,0xff334455u);Image dot;dot.width=dot.height=1;dot.skipZ=true;
  for(int frame=0;frame<12;++frame){dot.pixels={0xff000000u|(random(frame+19)&0xffffffu)};c.blit(dot,float(120+frame),127,1,1,0,{},0);compare(c,31,25,7.5,7.5);}
 }
+static void dirtySentinels(){auto c=scene(512,384,0xff334455u);Image dot;dot.width=dot.height=1;dot.skipZ=true;dot.pixels={0xffffffff};
+ for(auto xy:{std::pair<int,int>{127,127},{128,128},{479,359}}){c.clean();c.blit(dot,float(xy.first),float(xy.second),1,1,0,{},0);std::vector<uint32_t>out(64*48,0x12345678u);assert(c.presentDirty(64,48,out,480,360));
+  const int l=int(std::floor(xy.first/7.5)),r=std::min(64,int(std::ceil((xy.first+1)/7.5))),t=int(std::floor(xy.second/7.5)),b=std::min(48,int(std::ceil((xy.second+1)/7.5)));
+  for(int y=0;y<48;++y)for(int x=0;x<64;++x){const bool dirty=x>=l&&x<r&&y>=t&&y<b;assert(out[size_t(y)*64+x]==(dirty?reference(c,x*7.5,y*7.5,(x+1)*7.5,(y+1)*7.5):0x12345678u));}++checks;
+  c.clean();auto unchanged=out;assert(c.presentDirty(64,48,out,480,360)&&out==unchanged);
+ }
+}
 static void failures(){
  for(long allocation=0;allocation<48;++allocation){auto c=scene(256,192,0xff112233u);std::vector<uint32_t>expected,actual(16*12);assert(c.present(16,12,expected));
   // Change geometry so every optional table is new. Out storage is already
@@ -57,4 +64,4 @@ static void failures(){
   for(int y=0;y<12;++y)for(int x=0;x<16;++x)assert(actual[size_t(y)*16+x]==reference(c,x*16.,y*16.,(x+1)*16.,(y+1)*16.));++checks;
  }
 }
-int main(){const auto before=NativeCanvas::areaCacheStats().bytes;fractions();revisions();inPlace();if(NativeCanvas::areaCacheStats().boxBuilds)failures();assert(NativeCanvas::areaCacheStats().bytes==before);std::printf("PASS exact box reduction: %u cases, %llu scalar pixel oracles; sparse/partial pages, half pixels, COW, dirty output, in-place revisions, two concurrent scales,%u injected optional allocation failures and complete cache-credit retirement\n",checks,static_cast<unsigned long long>(pixels),injected.load());}
+int main(){const auto before=NativeCanvas::areaCacheStats().bytes;fractions();revisions();inPlace();dirtySentinels();if(NativeCanvas::areaCacheStats().boxBuilds)failures();assert(NativeCanvas::areaCacheStats().bytes==before);std::printf("PASS exact box reduction: %u cases, %llu scalar pixel oracles; sparse/partial pages, half pixels, COW, dirty-only writes, in-place revisions, two concurrent scales,%u injected optional allocation failures and complete cache-credit retirement\n",checks,static_cast<unsigned long long>(pixels),injected.load());}

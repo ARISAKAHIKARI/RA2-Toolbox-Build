@@ -278,4 +278,4 @@
 
 - [混合场景重复地形与GPU阶段引用](2026-11-05-mixed-scene-render-optimizations-pre13.md)（pre.13；CPU两档300帧中位改善／High尾延迟变差；65阶段CSR；验证专用软件等待额度下原始／筛选GPU对照）
 
-- [CPU整图面积缩小和地形恢复](2026-11-05-cpu-area-reduction-pre14.md)（pre.14；两档300帧同机逐帧输出哈希一致；可选缩图表、地形列表复用与并行帧恢复；非游戏/物理GPU FPS）
+- [CPU整图面积缩小和地形恢复](2026-11-05-cpu-area-reduction-pre14.md)（pre.14；两档完整/增量各300帧同机逐帧输出哈希一致；可选缩图表、地形列表复用与并行帧恢复；非游戏/物理GPU FPS）

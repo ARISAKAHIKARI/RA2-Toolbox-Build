@@ -204,12 +204,16 @@ public:
  };
 public:
 private:
- bool presentBoxes(int width,int height,std::vector<uint32_t>&out,int stepX,int stepY)const{
+ bool presentBoxes(int width,int height,std::vector<uint32_t>&out,int stepX,int stepY,const std::vector<std::vector<std::pair<int,int>>>*regions=nullptr)const{
   try{
    const int columns=(width*stepX+PageSize*2-1)/(PageSize*2),rows=(height*stepY+PageSize*2-1)/(PageSize*2);
    std::vector<std::shared_ptr<const BoxReduction>>boxes(size_t(columns)*rows);
+   std::vector<uint8_t>needed;
+   if(regions){needed.resize(boxes.size());for(int y=0;y<height;++y)for(auto span:(*regions)[y])if(span.first<span.second){const int l=span.first*stepX,r=span.second*stepX,t=y*stepY,b=t+stepY;
+    for(int py=t/(PageSize*2);py<=(b-1)/(PageSize*2);++py)for(int px=l/(PageSize*2);px<=(r-1)/(PageSize*2);++px)needed[size_t(py)*columns+px]=1;
+   }}
    struct Work {int x,y;const Page*page;};std::vector<Work>work;work.reserve(pages_.size());
-   for(const auto&e:pages_){const int x=pageX(e.first),y=pageY(e.first);if(x<columns&&y<rows)work.push_back({x,y,e.second.get()});}
+   for(const auto&e:pages_){const int x=pageX(e.first),y=pageY(e.first);if(x<columns&&y<rows&&(!regions||needed[size_t(y)*columns+x]))work.push_back({x,y,e.second.get()});}
    std::atomic<bool>ready{true};
    parallelrows::rows(work.size(),work.size()*size_t(PageSize)*PageSize,[&](size_t first,size_t last){
     try{for(size_t n=first;n<last;++n){const auto&w=work[n];auto reduced=w.page->boxes(w.x,w.y,stepX,stepY);if(!reduced){ready=false;continue;}boxes[size_t(w.y)*columns+w.x]=std::move(reduced);}}
@@ -217,15 +221,16 @@ private:
    });
    if(!ready)return false;
    const uint64_t area=uint64_t(stepX)*stepY;
-   // Three integer channel divisions plus page gathers per output pixel.
-   parallelrows::rows(size_t(height),size_t(width)*height*3,[&](size_t first,size_t last){
-    for(int y=int(first);y<int(last);++y)for(int x=0;x<width;++x){const int l=x*stepX,t=y*stepY,r=l+stepX,b=t+stepY;uint64_t total[3]{};
+   auto write=[&](int x,int y){const int l=x*stepX,t=y*stepY,r=l+stepX,b=t+stepY;uint64_t total[3]{};
      for(int py=t/(PageSize*2);py<=(b-1)/(PageSize*2);++py)for(int px=l/(PageSize*2);px<=(r-1)/(PageSize*2);++px){const auto&p=boxes[size_t(py)*columns+px];
       if(p){const auto&sum=p->sum[size_t(y-p->firstY)*p->columns+x-p->firstX];for(int c=0;c<3;++c)total[c]+=sum[c];}
       else{const uint64_t coverage=uint64_t(std::min(r,(px+1)*PageSize*2)-std::max(l,px*PageSize*2))*(std::min(b,(py+1)*PageSize*2)-std::max(t,py*PageSize*2));for(int c=0;c<3;++c)total[c]+=coverage*((background_>>(16-c*8))&255);}
      }
      uint32_t color=0xff000000u;for(int c=0;c<3;++c)color|=uint32_t((total[c]+area/2)/area)<<(16-c*8);out[size_t(y)*width+x]=color;
-    }
+   };
+   // Three integer channel divisions plus page gathers per output pixel.
+   parallelrows::rows(size_t(height),size_t(width)*height*3,[&](size_t first,size_t last){
+    for(int y=int(first);y<int(last);++y){if(regions){for(auto span:(*regions)[y])for(int x=span.first;x<span.second;++x)write(x,y);}else for(int x=0;x<width;++x)write(x,y);}
    });return true;
   }catch(const std::bad_alloc&){return false;}
  }
@@ -461,6 +466,8 @@ public:
   std::vector<std::vector<std::pair<int,int>>> rows(height);double sx=spanX/width,sy=spanY/height;
   for(const auto&r:dirtyRects_){int x0=std::clamp(int(std::floor(r[0]/sx)),0,width),x1=std::clamp(int(std::ceil(r[2]/sx)),0,width);
    int y0=std::clamp(int(std::floor(r[1]/sy)),0,height),y1=std::clamp(int(std::ceil(r[3]/sy)),0,height);for(int y=y0;y<y1;++y)rows[y].emplace_back(x0,x1);}
+  for(auto&spans:rows){std::sort(spans.begin(),spans.end());size_t used=0;for(auto span:spans)if(span.first<span.second){if(used&&span.first<=spans[used-1].second)spans[used-1].second=std::max(spans[used-1].second,span.second);else spans[used++]=span;}spans.resize(used);}
+  if(sx>=2&&sy>=2&&std::floor(sx*2)==sx*2&&std::floor(sy*2)==sy*2&&presentBoxes(width,height,out,int(sx*2),int(sy*2),&rows))return true;
   parallelrows::rows(size_t(height),size_t(std::ceil(spanX))*size_t(std::ceil(spanY)),[&](size_t first,size_t end){Filter filter(*this);
   for(int y=int(first);y<int(end);++y){auto&spans=rows[y];std::sort(spans.begin(),spans.end());int last=0;for(auto span:spans){int from=std::max(last,span.first);
    if(exact)nativeRow(y,from,span.second,out.data()+size_t(y)*width);
