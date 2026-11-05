@@ -1,0 +1,183 @@
+{
+  "scope": "Read-only production audit plus scratch-only NativeCanvas Filter leaf prototypes. No product/header/benchmark fixture edits. Same deterministic visible high mixed world;20warmup+30measuredframes. Firstresolve evaluatescurrentchangedpages;secondresolve repeats identicalcanvas with no newprefixbuilds. No FPS claim.",
+  "results": [
+    {
+      "variant": "baseline",
+      "data": {
+        "tier": "high",
+        "frames": 30,
+        "first_resolve_ms": 25.241725,
+        "identical_hot_resolve_ms": 5.19944,
+        "first_prefix_builds_median": 918.0,
+        "second_prefix_builds_median": 0.0,
+        "changed_native_pages_median": 918.0,
+        "prefix_bytes_retained": 202887072,
+        "first_prefix_allocations_median": 918.0,
+        "first_prefix_reuses_median": 0.0,
+        "exact_pixels_equal": true,
+        "final_pixel_hash": "910877832901070529"
+      }
+    },
+    {
+      "variant": "reuseprefix",
+      "data": {
+        "tier": "high",
+        "frames": 30,
+        "first_resolve_ms": 23.3517635,
+        "identical_hot_resolve_ms": 5.1381175,
+        "first_prefix_builds_median": 918.0,
+        "second_prefix_builds_median": 0.0,
+        "changed_native_pages_median": 918.0,
+        "prefix_bytes_retained": 202887072,
+        "first_prefix_allocations_median": 0.0,
+        "first_prefix_reuses_median": 918.0,
+        "exact_pixels_equal": true,
+        "final_pixel_hash": "910877832901070529"
+      }
+    },
+    {
+      "variant": "all",
+      "data": {
+        "tier": "high",
+        "frames": 30,
+        "first_resolve_ms": 21.909551,
+        "identical_hot_resolve_ms": 3.968515,
+        "first_prefix_builds_median": 918.0,
+        "second_prefix_builds_median": 0.0,
+        "changed_native_pages_median": 918.0,
+        "prefix_bytes_retained": 202887072,
+        "first_prefix_allocations_median": 0.0,
+        "first_prefix_reuses_median": 918.0,
+        "exact_pixels_equal": true,
+        "final_pixel_hash": "910877832901070529"
+      }
+    },
+    {
+      "variant": "fused",
+      "data": {
+        "tier": "high",
+        "frames": 30,
+        "first_resolve_ms": 28.689253,
+        "identical_hot_resolve_ms": 4.659139,
+        "first_prefix_builds_median": 918.0,
+        "second_prefix_builds_median": 0.0,
+        "changed_native_pages_median": 918.0,
+        "prefix_bytes_retained": 202887072,
+        "first_prefix_allocations_median": 918.0,
+        "first_prefix_reuses_median": 0.0,
+        "exact_pixels_equal": true,
+        "final_pixel_hash": "910877832901070529"
+      }
+    },
+    {
+      "variant": "lookup",
+      "data": {
+        "tier": "high",
+        "frames": 30,
+        "first_resolve_ms": 32.131335,
+        "identical_hot_resolve_ms": 5.2483885,
+        "first_prefix_builds_median": 918.0,
+        "second_prefix_builds_median": 0.0,
+        "changed_native_pages_median": 918.0,
+        "prefix_bytes_retained": 202887072,
+        "first_prefix_allocations_median": 918.0,
+        "first_prefix_reuses_median": 0.0,
+        "exact_pixels_equal": true,
+        "final_pixel_hash": "910877832901070529"
+      }
+    },
+    {
+      "variant": "both",
+      "data": {
+        "tier": "high",
+        "frames": 30,
+        "first_resolve_ms": 26.0786715,
+        "identical_hot_resolve_ms": 3.732139,
+        "first_prefix_builds_median": 918.0,
+        "second_prefix_builds_median": 0.0,
+        "changed_native_pages_median": 918.0,
+        "prefix_bytes_retained": 202887072,
+        "first_prefix_allocations_median": 918.0,
+        "first_prefix_reuses_median": 0.0,
+        "exact_pixels_equal": true,
+        "final_pixel_hash": "910877832901070529"
+      }
+    }
+  ],
+  "all_variants_final_pixel_hash_equal": true,
+  "native_canvas_production_unchanged_sha256": "bfc87f408d4c63d1042f96fc2b32e2284a614b1eaa4055dda7a493ae051d3376",
+  "probe_source": "/workspace/scratch/1887e4107280/cpu_filter_probe_resolve_only.cpp",
+  "prototype_directory": "/workspace/scratch/1887e4107280/filter-leaf-prototypes",
+  "variants": {
+    "baseline": "Original Filter and allocating Page::prefix; instrumentation only.",
+    "reuseprefix": "Reuse unique stale AreaPrefix buffer; preserve shared immutable prefixes; pixel sums recomputed exactly.",
+    "fused": "One RGB integral coordinate evaluation per corner instead of per channel.",
+    "lookup": "Dense page-pointer lookup table per Filter instead of canvas.pages_.find in each pixel fragment.",
+    "both": "Fused integrals+dense lookup.",
+    "all": "Unique prefix buffer reuse+fused integrals+dense lookup."
+  },
+  "probe_source_sha256": "d8f11ba4ad2458e6617a060336e030d91c724fe7a8e3c60f9574dfa0221554de",
+  "quantities": {
+    "sample_frames_after_warmup": 30,
+    "native_pixels_scanned_for_prefixes_median": 15040512,
+    "changed_page_prefix_allocations_baseline": 918,
+    "changed_page_prefix_allocations_reuse_prototype": 0,
+    "changed_page_prefix_buffer_reuses_reuse_prototype": 918,
+    "prefix_array_bytes_allocated_and_zero_initialized_baseline_per_update": 183317256,
+    "retained_prefix_bytes": 202887072,
+    "prefix_budget_bytes": 536870912,
+    "output_pixels": 131072,
+    "prefix_builds_on_identical_repeat": 0
+  },
+  "conclusions": [
+    "Current high mixed resolve does one prefix rebuild per changed native page, with no repeated rebuilds for identical output. Active prefix cache is below budget.",
+    "Most first-resolve time is genuinely rebuilding current RGB sums across about15.04million changed native pixels; second identical resolve isolatesabout4–5ms of query/filter overhead.",
+    "Unique stale prefix buffer reuse removes918allocations but observed gain isabout1.9ms in one paired observation; not a20ms allocator bug.",
+    "Fused RGB coordinates/dense lookup have small or inconsistent first-resolve gains in these samples. Do not treat six sequential variant medians as a robust total-frame speedup.",
+    "No production code, shared workload header, product binary or active CI changed for these probes."
+  ],
+  "additional_source_only_finding": {
+    "files": [
+      "source/external_reader/source/object_canvas.h:191",
+      "source/external_reader/source/object_canvas.h:199",
+      "source/external_reader/source/camera_raster.h:71",
+      "source/external_reader/source/camera_raster.h:150"
+    ],
+    "finding": "No-base changed pages reset RGBA/float-Z/native-Z in the owner loop, then nativeBase() clears the two depth planes again. The high mixed workload has a source-confirmed redundant90,243,072depth-write bytes/update at918changedpages.",
+    "measured_speedup": null,
+    "status": "Source audit only; scratch initialization variants prepared but not needed for the completed Filter audit; no product patch proposed as verified."
+  },
+  "repro_command_template": "g++ -std=c++17 -O2 -pthread -I<repo>/source/external_reader/source -DMIXED_HEADER=\"<scratch>/filter-leaf-prototypes/<variant>/mixed_render_workload.h\" cpu_filter_probe_resolve_only.cpp <repo>/source/third_party/xbrz/xbrz.cpp -o probe; ./probe --high",
+  "prototype_source_sha256": {
+    "baseline": {
+      "native_canvas.h": "589354efb290464f44da2ee42eccfec388de3d7eb530831d1ec42cec21a6dcd1",
+      "object_canvas.h": "c890275d65f83ed9eaf19a4a6545c67037b25e58c642ff5798377e0b14ed54ba",
+      "mixed_render_workload.h": "923040c826a3f8d22a0dc3a8ff42f032181ee373fc9d2310c631aa9ea61377b1"
+    },
+    "reuseprefix": {
+      "native_canvas.h": "876803b2c4103f828ec9dbf3be1591f14756c974677b59a88bcb369e132637d7",
+      "object_canvas.h": "c890275d65f83ed9eaf19a4a6545c67037b25e58c642ff5798377e0b14ed54ba",
+      "mixed_render_workload.h": "fc54032f72e1b2913566c8128c3b11cf62220187db9f56e5f48a83b44eb37acc"
+    },
+    "all": {
+      "native_canvas.h": "c490c09c30c773bf410aec48804aa6b482b9035048eee5b16e34780b3debbcc9",
+      "object_canvas.h": "c890275d65f83ed9eaf19a4a6545c67037b25e58c642ff5798377e0b14ed54ba",
+      "mixed_render_workload.h": "215fd266b3a581e6c0c287fbd0d67110570c47675b9e0eb7fc815b06f54e2067"
+    },
+    "fused": {
+      "native_canvas.h": "7ded843561ca20a3f081fc72e346b3978363312acbcefc95412ad59fc5e90648",
+      "object_canvas.h": "c890275d65f83ed9eaf19a4a6545c67037b25e58c642ff5798377e0b14ed54ba",
+      "mixed_render_workload.h": "c702ec4ec373abca8d00592b53769fc11fbe72931a8c6ff380070b0ced6f2a44"
+    },
+    "lookup": {
+      "native_canvas.h": "9237aa6fbe43a3f6955ba2ec0e9fc13aff80ea66197566f1e4c21f097fad5964",
+      "object_canvas.h": "c890275d65f83ed9eaf19a4a6545c67037b25e58c642ff5798377e0b14ed54ba",
+      "mixed_render_workload.h": "8a25a0b7f03f54c5d40fb0fa824445e7ccb1fc48e3ee2735e10e495332dd0923"
+    },
+    "both": {
+      "native_canvas.h": "ad8618d5b8c1b492e2a61569aef7016832c357b98bd41e322423ac9bfc46cdf1",
+      "object_canvas.h": "c890275d65f83ed9eaf19a4a6545c67037b25e58c642ff5798377e0b14ed54ba",
+      "mixed_render_workload.h": "163696356d048c8eb8c1a0050637cd477f02808615572dfcd3340e32577997d0"
+    }
+  }
+}

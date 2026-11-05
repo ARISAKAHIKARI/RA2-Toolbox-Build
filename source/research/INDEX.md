@@ -273,3 +273,5 @@
 - [隐形全图重画、读取缓存淘汰及地形采样等待](2026-11-05-render-cost-fixes-pre11.md)（pre.11；CPU 局部依赖回放、epoch 旧页优先、compact traversal；受控对照，非实机 FPS）
 
 - [读取预算扩展、CPU全量并行与GPU重绘/图集突增](2026-11-05-render-cost-expansion-pre12.md)（pre.12；256MiB/1GiB、GPU位移页闭包/坐标索引、前缀/图集/地形LRU；受控对照与Vulkan CI）
+
+- [地形、SHP、VXL、动画与粒子混合场景持续渲染](2026-11-05-mixed-scene-render-stress.md)（固定生成素材；CPU 两档各300帧、五次全局失效；软件Vulkan视口／全图各120帧及三帧冷对照；Area子阶段计时未采集；非游戏FPS）
