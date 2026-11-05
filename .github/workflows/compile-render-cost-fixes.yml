@@ -25,7 +25,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y mesa-vulkan-drivers libvulkan1
           mkdir -p diagnostics
-          driver=$(rg --files /usr/share/vulkan/icd.d | rg '/lvp[^/]*\.json$' | head -n1)
+          driver=$(python3 -c 'from pathlib import Path; print(next(Path("/usr/share/vulkan/icd.d").glob("*lvp*.json")))')
           test -n "$driver"
           echo "VK_ICD_FILENAMES=$driver" >> "$GITHUB_ENV"
           cat "$driver" > diagnostics/vulkan-driver.json
