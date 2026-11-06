@@ -11,7 +11,7 @@
 * `Building::PlayAnim=451890` 將絕對座標動畫放進 `Building+55C` 的 21 槽與 `+5C8` 的 8 槽；`Anim+CC` 可以為零，`+118` 為建築動畫標誌。
 * `Anim::Draw=422CA0` 的原生選幀使用 `Animation.Value(+AC)+AnimType.Start(+2B4)`，不以 `TimeToDie(+179)` 作為獨立剔除條件。`PausedAnimFrame(+11C)` 不是替代繪製幀。
 * `424B0E/424B31` 的末尾通知可設定 `TimeToDie`；`UnInit=4255B0`／`ObjectUnInit=5F65F0` 後的 `Alive(+90)`、`DestroyNthAnim=451E40` 及 `PointerExpired=451B40` 清槽，才提供確定的失效依據。
-* 正式採樣保留仍屬於同一存活建築槽／相同 ID 的終止通知動畫，仍檢查 Alive、Invisible(+19D)、vtable 與槽身分。瞬時全域動畫維持原有終止剔除。允許負 relative Value 與非負 Start 合成合法幀，且拒絕任何讀取失敗。
+* 正式採樣保留仍屬於同一存活建築槽／相同 ID 的終止通知動畫，以 InLimbo(+81)、Invisible(+19D)、vtable 與槽身分確認可繪製性；同一存活建築槽允許 IsAlive(+90)=0 的已觀察靜止姿態。瞬時全域動畫仍要求 IsAlive 並維持原有終止剔除。允許負 relative Value 與非負 Start 合成合法幀，且拒絕任何讀取失敗。
 
 `assist/tests/building_animations.cpp` 受控驗證終止／暫停旗標下保留末幀 240 次觀測、死亡／清槽移除、負相對幀、錯讀及原有槽／身分／劇院檢查。私人舊擷取未包含使用者本次故障現場，因此這是已修正的原生語義差異，尚未證明它是實機消失的唯一原因；不以猜測幀或延遲垃圾保留掩蓋。
 
@@ -31,3 +31,13 @@
 * Assist ABI 升至 97，Shared 23,141,856 bytes，映射 `Local\\RA2Assist_v097_`；Host／Runtime／入口程式成套編譯與 PE 驗證。其餘協定不變。
 
 驗證入口：`single_player_fps.cpp` 檢查 10／30／40／45／50／60／144／240 的十分鐘整數期限、暫停／遲到／目標變更、模式及槽預算；`single_player_fps_windows.cpp` 在自有程序固定資料頁呼叫正式 callback，檢查寄存器／旗標／原版速度不變、單機／聯機／失聯／變更／關閉等待與資源清理；`tech_ui_breakpoint_windows.cpp` 另外驗證 tag 0 與 tag 5 的真實兩槽安裝／命中／退休。這些不代表實際 RA2 FPS、平台相容性或聯機驗證；遊戲本身算不動時不能保證達到目標。
+
+## 2026-11-06 配套交付收尾
+
+交付基線為 `789f9876b9c9e53e95deae0401dcde002985c226`；保留本支的局部重繪、共享工作執行緒、普通 SHP 星級與單機 FPS。另支 `ead323890be6d7c8321e81c8d31a358ee71fc4b1` 的[既有原生繪製准入研究](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/ead323890be6d7c8321e81c8d31a358ee71fc4b1/source/research/2026-11-05-building-animation-draw-eligibility.md)及 `building_animation_draw_native.py` 已確認 IsAlive 是 AI 推進條件，並非上述原生繪製鏈的拒絕條件。本次僅合併這一同題修正，不替換本支普通 SHP 星級或引入相機跟蹤改動。合併前已查 INDEX 及持久研究筆記 v141。
+
+正式 capture 對穩定建築槽保留 IsAlive=0/1、TimeToDie=0/1 的精確 Value+Start 姿態；InLimbo、Invisible 仍拒絕。InLimbo、TimeToDie、Invisible 必須前後實際讀取成功，全域動畫另要求前後 IsAlive 讀取成功且為真。父/動畫 ID、槽、類型與 OwnerObject 核對保持，清槽立即停止採集。本輪沒有執行私人遊戲映像或重跑另支原生 38 組；該原生證據為已存在的來源，不能當成本輪新增實機驗收。
+
+`building_animations.cpp` 增補四種 Alive/TimeToDie 組合各 240 次，共 960 次固定姿態採集；含全域 Alive=0、錯父 ID、移除槽、InLimbo、採集前後標誌讀取失敗及中途隱藏的拒絕控制。仍保留負相對 Value、Type.Start 與各氣候素材原有檢查。
+
+Windows FPS callback fixture 原先對未按 allocation granularity 對齊的 MEM_RESERVE 位址要求原值返回，阻塞後續編譯。收尾按系統保留粒度計算範圍，確認空閒及完整覆蓋，僅該測試 EXE 避開固定資料頁的映像基址；未改產品限速器。`BUILD_TARGET.json` 同步 Assist97，避免檔案內協定已升級而元資料仍記96。最終 Windows 配套編譯、受控回歸及 PE/依賴/版本驗證以交付提交的 Actions 結果為準；仍無真實遊戲畫面、物理 GPU 或多人驗證。

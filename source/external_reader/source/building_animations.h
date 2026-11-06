@@ -19,11 +19,16 @@ template<class Read>bool capture(Read read,uint32_t object,uint32_t parent,uint3
  GameView<Read> g(read);if(object<0x10000)return false;
  if(parent&&(parent<0x10000||g.template get<uint32_t>(parent)!=0x7E3EBC||g.template get<uint32_t>(parent+0x10)!=parentId||g.template get<int>(parent+0x6C)<=0))return false;
  uint32_t link=parent?slot(read,parent,object):0,attachedTo=g.template get<uint32_t>(object+0xCC);
- // TimeToDie is an update/end notification, not a Draw_It visibility gate.
- // A building can still hold this live animation in its slot at the final
- // frame. Keep sampling it until the slot/identity/liveness actually changes;
- // do not age out a paused or completed pose like a transient explosion.
- if((parent&&!link)||g.template get<uint32_t>(object)!=0x7E3354||(parent&&attachedTo&&attachedTo!=parent)||!g.template get<uint8_t>(object+0x90)||(!parent&&g.template get<uint8_t>(object+0x179))||g.template get<uint8_t>(object+0x19D))return false;
+ // IsAlive gates AI advancement; TimeToDie is an update/end notification.
+ // Neither suppresses native drawing of an exact pose still held by a valid
+ // building slot. Global effects retain their conservative lifetime guards.
+ // Visibility reads must succeed at both ends; never turn unreadable flags
+ // into a visible pose or retain an image after its slot/identity disappears.
+ auto drawable=[&](){uint8_t alive=0,limbo=0,dying=0,invisible=0;
+  return read(object+0x81,&limbo,1)&&read(object+0x179,&dying,1)&&read(object+0x19D,&invisible,1)&&
+   (parent||(read(object+0x90,&alive,1)&&alive))&&!limbo&&!invisible&&(parent||!dying);
+ };
+ if((parent&&!link)||g.template get<uint32_t>(object)!=0x7E3354||(parent&&attachedTo&&attachedTo!=parent)||!drawable())return false;
  State next;next.object=object;next.parent=parent;next.parentId=parentId;next.id=g.template get<uint32_t>(object+0x10);next.type=g.template get<uint32_t>(object+0xC8);next.owner=g.template get<uint32_t>(parent?parent+0x21C:object+0x180);
  if(!next.id||next.type<0x10000)return false;
  int location[3]{};if(!read(object+0x9C,location,sizeof location))return false;
@@ -47,6 +52,7 @@ template<class Read>bool capture(Read read,uint32_t object,uint32_t parent,uint3
  if(next.blend<0)return false;
  if(next.frame>=8192||std::abs(int64_t(next.zAdjust))>8192||std::abs(int64_t(next.sort))>32768||next.layer<0||next.layer>4)return false;
  if((parent&&(g.template get<uint32_t>(parent+0x10)!=parentId||g.template get<uint32_t>(link)!=object))||g.template get<uint32_t>(object+0x10)!=next.id||g.template get<uint32_t>(object+0xC8)!=next.type||g.template get<uint32_t>(object+0xCC)!=attachedTo)return false;
+ if(!drawable())return false;
  out=next;return true;
 }
 template<class Read>std::vector<State> attached(Read read,uint32_t parent,uint32_t parentId){

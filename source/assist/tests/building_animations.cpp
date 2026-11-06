@@ -12,12 +12,33 @@ int main(){
  put(a+0xAC,0);states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==0);
  put(a+0x11A,uint8_t(1));put(a+0x11C,3);put(a+0xAC,9);put(t+0x2B4,2);states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==11); // native Draw uses Value + Start even when paused
  put(a+0x19E,uint8_t(1));put(a+0xAC,0);put(t+0x2B4,0);states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==0); // powered-off / neutral pump
- // End notification does not remove a live final pose held in a building
- // slot. Repeated observations retain the native frame without advancing it.
+ // Inactive and end-notified poses still held in a stable building slot
+ // retain the exact native frame without advancing it. These are drawing
+ // conditions, not permission to retain a removed global effect or slot.
  put(a+0x179,uint8_t(1));put(a+0x11A,uint8_t(1));put(a+0xAC,11);put(t+0x2B4,0);
- for(int n=0;n<240;++n){states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==11);}
- put(a+0x90,uint8_t(0));assert(external::animations::attached(read,b,42).empty());put(a+0x90,uint8_t(1));
+ for(uint8_t alive:{0,1})for(uint8_t dying:{0,1}){put(a+0x90,alive);put(a+0x179,dying);
+  for(int n=0;n<240;++n){states=external::animations::attached(read,b,42);assert(states.size()==1&&states[0].frame==11);}
+ }
+ put(a+0x90,uint8_t(0));put(a+0x179,uint8_t(0));external::animations::State guarded;
+ assert(!external::animations::capture(read,a,0,0,guarded)); // global Alive=0 stays rejected
+ assert(external::animations::attached(read,b,41).empty());
  put(b+0x55C,0u);put(b+0x5C8,0u);assert(external::animations::attached(read,b,42).empty());put(b+0x55C,a);put(b+0x5C8,a);
+ put(a+0x81,uint8_t(1));assert(external::animations::attached(read,b,42).empty());put(a+0x81,uint8_t(0));
+ // Failed first/last flag reads and becoming hidden during capture must
+ // reject the relaxed inactive pose instead of publishing stale pixels.
+ for(uint32_t offset:{0x81u,0x179u,0x19Du})for(int failAt:{1,2}){int reads=0;
+  auto failed=[&](uint32_t p,void*out,size_t n){return !(p==a+offset&&n==1&&++reads==failAt)&&read(p,out,n);};
+  assert(!external::animations::capture(failed,a,b,42,guarded));assert(reads==failAt);
+ }
+ for(uint32_t offset:{0x81u,0x19Du}){int reads=0;
+  auto hidden=[&](uint32_t p,void*out,size_t n){if(p==a+offset&&n==1&&++reads==2)put(p,uint8_t(1));return read(p,out,n);};
+  assert(!external::animations::capture(hidden,a,b,42,guarded));put(a+offset,uint8_t(0));
+ }
+ put(a+0x90,uint8_t(1));
+ for(int failAt:{1,2}){int reads=0;
+  auto failed=[&](uint32_t p,void*out,size_t n){return !(p==a+0x90&&n==1&&++reads==failAt)&&read(p,out,n);};
+  assert(!external::animations::capture(failed,a,0,0,guarded));assert(reads==failAt);
+ }
  put(a+0x179,uint8_t(0));put(a+0x11A,uint8_t(0));
  // Native display indexes Value + Start, including a reverse boundary with
  // a negative relative Value. Failed reads must not become that valid value.
@@ -64,5 +85,5 @@ int main(){
  // No foreign theater may win simply because its archive is installed.
  names=external::assets::spriteNames("CAOILD_A","","SNO","A",false,true,false,true);
  assert(std::find(names.begin(),names.end(),"CTOILD_A.SHP")==names.end());
- std::cout<<"PASS attached animation slots, absolute/attached coordinates, native Value+Start and layer/YSort, hidden/dead/recycled guards, six-theater oil/yard resource selection and building Z-mask\n";
+ std::cout<<"PASS attached animation slots, 960 inactive/end-notified held-pose observations, paired visibility-read/limbo/global-life guards, absolute/attached coordinates, native Value+Start and layer/YSort, slot/recycled guards, six-theater oil/yard resource selection and building Z-mask\n";
 }
