@@ -22,6 +22,7 @@ static void pointerFinish(int result){
  if(b.rejected<0)b.rejected=0;MemoryBarrier();b.ack=b.request;notifyHost();
 }
 static bool pointerLocation(const pointerinput::Intent&i){
+ if(i.operation==pointerinput::AirWaypoint&&!nativeDependencyReady(0x578080))return false;
  if(nativeSidebarUIHit(i.x,i.y))return false;
  uint32_t tactical=get<uint32_t>(0x887324);if(tactical<0x10000)return false;
  if(i.width!=get<int>(0x8A00A4)||i.height!=get<int>(0x8A00A8)||
@@ -94,6 +95,9 @@ static void pointerTick(){
  nativeviewportprojection::Transform viewport{};
  if(!nativeviewportprojection::sample(sh,viewport)||viewport.generation!=sh->pointerViewportGeneration){pointerFinish(-7);return;}
  const auto&i=b.intent;DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
+ // Reject this feature before cancelling prior work or clearing selection.
+ if((i.operation==pointerinput::PlayerSelect&&(!nativeDependencyReady(0x6FBFA0)||(!(i.bindings&pointerinput::Shift)&&!nativeDependencyReady(0x48DC90))))||
+    (i.operation==pointerinput::AirWaypoint&&!nativeDependencyReady(0x578080))){b.accepted=0;pointerFinish(-12);return;}
  if(!pointerActive||pointerSeen!=request){pointerActive=true;pointerSeen=request;pointerFeedback=0;pointerAt=0;b.accepted=b.rejected=0;memset(pointerDone,0,sizeof pointerDone);
   const bool next=(i.bindings&pointerinput::BatchNext)!=0,start=(i.bindings&pointerinput::BatchStart)!=0;
   const bool continuation=next&&!start&&pointerBatchValid&&request==pointerBatchRequest+1&&pointerinput::sameCapture(i,pointerBatchCapture);

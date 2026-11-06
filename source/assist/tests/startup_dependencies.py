@@ -28,9 +28,9 @@ def main():
     bridge = (source / 'bridge.cpp').read_text()
     placement = (source / 'placement_bridge.h').read_text()
     extracts = {
-        'STARTUP_HELPERS': '\n'.join(block(bridge, marker) for marker in (
-            'static bool startupSignature(', 'static bool revealSignature(',
-            'static bool signatures(')),
+        'STARTUP_HELPERS': block(bridge, 'static bool startupSignature(') + '\n' +
+            bridge[bridge.index('static nativeentry::TimedResult nativeDependencyCache'):
+                   bridge.index('static void notifyHost(')],
         'OPTIONAL_COMMANDS': bridge[bridge.index('else if(c==ClearBeacons)'):
                                     bridge.index('else if(c==OpenTech)')],
         'STARTUP_GATE': '\n'.join(block(bridge, marker) for marker in (

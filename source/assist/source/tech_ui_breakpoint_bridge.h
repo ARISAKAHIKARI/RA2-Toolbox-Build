@@ -23,8 +23,15 @@ struct EnhancedIdentity{TypeIdentity type;uint32_t items=0;int index=-1,level=0;
 struct Policy{volatile LONG enabled=0;uint32_t house=0,houseID=0,scenario=0;int session=-1,frame=-1;TypeIdentity types[1024]{};volatile LONG enhanced=0,controlling=0,compareLevel=0,showing=0;EnhancedIdentity enhancement[techenhancement::Count]{};};
 static Policy policy;static techbp::Service service;
 static bool mapDesired=false,mapRedrawPending=false;static int mapFailure=0;static volatile LONG mapExceptions=0;static bool lastMapPresentation=false;
-static int failure=0,enhancementFailure=0,controlFailure=0;static bool desired=false,enhancementDesired=false,controlDesired=false,enhancementCompareRequested=false;
+static int failure=0,enhancementFailure=0,controlFailure=0;static bool desired=false,enhancementDesired=false,controlDesired=false,enhancementCompareRequested=false,enhancementCameoBlocked=false;
 static DWORD auditAt=0,retryAt=0,enhancementParameterScan=0;static uint32_t attempted=0,refusedGroups=0,resourceGroups=0;
+struct FailureRetry {
+ DWORD at=0;bool waiting=false;
+ void reset(){at=0;waiting=false;}
+ void defer(){at=GetTickCount();waiting=true;}
+ bool due()const{return !waiting||DWORD(GetTickCount()-at)>=500;}
+};
+static FailureRetry fullFailureRetry,controlFailureRetry;
 static volatile LONG fullExceptions=0,enhancementExceptions=0,controlExceptions=0;static unsigned probeDepth=0;static uint32_t probeToken=0;
 static constexpr uint32_t sites[techbp::SiteCount]={0x4F7870,mapvisibility::Address,0x4F7951,0x4F7B66,controlparams::Entry,singlefps::Entry};
 inline unsigned hash(uint32_t p){return ((p>>4)*2654435761u)&1023u;}
@@ -67,6 +74,14 @@ static bool groupOff(uint32_t group){
  if((service.lease.tags()&group)||service.lease.uncertain||service.pendingFor(group))return false;
  return (service.lease.tags()&(techbp::AllTags&~group))||!(resourceGroups&group)||!service.resources();
 }
+static bool retryFailure(FailureRetry&retry,uint32_t group){
+ // A transient read/context failure must not disable a requested feature for
+ // the rest of the match. Retry only after its old lease has really retired;
+ // healthy siblings may keep the shared handler and their slots. Never run
+ // this admission work in the hardware-exception callback.
+ if(!retry.due()||!healthy()||!groupOff(group))return false;
+ retry.defer();return true;
+}
 static void publish(){
  if(!sh)return;const uint32_t active=service.activeTags();
  sh->hardwareSlotBudget=service.slotBudget();
@@ -76,7 +91,7 @@ static void publish(){
  sh->mapVisibilityError=uint32_t(service.lastError);sh->mapVisibilityExceptions=uint32_t(mapExceptions);
  sh->techParameterStatus=failure?failure:desired?(ready(FullGroup)?techbp::Ready:(refusedGroups&FullGroup)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(FullGroup)?techbp::Off:service.state<0?service.state:techbp::Waiting;
  sh->techParameterError=uint32_t(service.lastError);sh->techParameterSlots=__builtin_popcount(active&FullGroup);sh->techParameterExceptions=uint32_t(fullExceptions);
- sh->techEnhanceParameterStatus=enhancementFailure?enhancementFailure:enhancementDesired?(enhancementReady()?techbp::Ready:(refusedGroups&12)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(12)?techbp::Off:service.state<0?service.state:techbp::Waiting;
+ sh->techEnhanceParameterStatus=enhancementFailure?enhancementFailure:enhancementDesired?(enhancementReady()?(enhancementCameoBlocked?techbp::Signature:techbp::Ready):(refusedGroups&12)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(12)?techbp::Off:service.state<0?service.state:techbp::Waiting;
  sh->techEnhanceParameterError=uint32_t(service.lastError);sh->techEnhanceParameterSlots=__builtin_popcount(active&12);sh->techEnhanceParameterExceptions=uint32_t(enhancementExceptions);
 }
 static bool callback(void*context,uint32_t tag){return GuardedTechUiParameter(context,tag)!=0;}
@@ -106,9 +121,9 @@ static bool configure(){
  if(!healthy()){
   InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);
   InterlockedExchange(&policy.showing,0);if(mapDesired)mapFailure=int(service.state);
-  if(controlDesired)controlFailure=int(service.state);
+  if(controlDesired){controlFailure=int(service.state);controlFailureRetry.defer();}
   singlefps::disable();if(singlefps::desired)singlefps::failure=int(service.state);
-  if(desired)failure=int(service.state);if(enhancementDesired)enhancementFailure=int(service.state);service.retire();publish();return false;
+  if(desired){failure=int(service.state);fullFailureRetry.defer();}if(enhancementDesired)enhancementFailure=int(service.state);service.retire();publish();return false;
  }
  const DWORD now=sh?sampleClock(sh):GetTickCount();
  if(!wanted){service.retire();attempted=0;retryAt=0;refusedGroups=0;}
@@ -191,13 +206,13 @@ static void mapVisibilityParametersTick(uint32_t house){
 }
 static bool techParametersRetired(){using namespace techparameters;return !(service.lease.mask&&((service.lease.tags()&FullGroup)||service.lease.uncertain))&&!service.pending()&&((service.lease.tags()&(techbp::AllTags&~FullGroup))||!service.resources());}
 static bool techEnhanceParametersRetired(){using namespace techparameters;return !(service.lease.mask&&((service.lease.tags()&12)||service.lease.uncertain))&&!service.pending()&&((service.lease.tags()&(techbp::AllTags&~12u))||!service.resources());}
-static bool restoreTechParameters(){using namespace techparameters;const bool changed=desired||(service.lease.tags()&FullGroup)||service.lease.uncertain;InterlockedExchange(&policy.enabled,0);desired=false;failure=0;if(changed)attempted=0;refusedGroups&=~FullGroup;configure();return techParametersRetired();}
-static bool restoreTechEnhanceParameters(){using namespace techparameters;const bool changed=enhancementDesired||(service.lease.tags()&12)||service.lease.uncertain;InterlockedExchange(&policy.enhanced,0);enhancementDesired=false;enhancementFailure=0;if(changed)attempted=0;refusedGroups&=~12u;configure();return techEnhanceParametersRetired();}
+static bool restoreTechParameters(){using namespace techparameters;const bool changed=desired||(service.lease.tags()&FullGroup)||service.lease.uncertain;InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();if(changed)attempted=0;refusedGroups&=~FullGroup;configure();return techParametersRetired();}
+static bool restoreTechEnhanceParameters(){using namespace techparameters;const bool changed=enhancementDesired||(service.lease.tags()&12)||service.lease.uncertain;InterlockedExchange(&policy.enhanced,0);enhancementDesired=false;enhancementFailure=0;enhancementCameoBlocked=false;if(changed)attempted=0;refusedGroups&=~12u;configure();return techEnhanceParametersRetired();}
 static void maintainTechParameters(){
  using namespace techparameters;service.poll();singlefps::maintain();
- if(!sh||sh->stop||fault){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
- else if(!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;}
- if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;}
+ if(!sh||sh->stop||fault){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;enhancementCameoBlocked=false;fullFailureRetry.reset();controlFailureRetry.reset();InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
+ else if(!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();}
+ if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();}
  if(!sh||sh->stop||fault||!sh->mapVisibility){InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;}
  configure();
  // An idle game still publishes an actual read-only resource snapshot before
@@ -206,9 +221,12 @@ static void maintainTechParameters(){
  if(sh&&!sh->stop&&!fault&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!singlefps::desired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
 }
 static bool requestTechParameters(uint32_t house){
- using namespace techparameters;maintainTechParameters();if(failure){publish();return false;}
- if(!nativeCompatible()){failure=techbp::Signature;InterlockedExchange(&policy.enabled,0);desired=false;configure();return false;}
- if(!restoreTechEnhancement()||!capture(house)){publish();return false;}desired=true;configure();return ready(FullGroup)&&!failure;
+ using namespace techparameters;maintainTechParameters();
+ if(!sh||sh->stop||fault||!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){publish();return false;}
+ if(failure&&!retryFailure(fullFailureRetry,FullGroup)){publish();return false;}
+ if(!nativeCompatible()){failure=techbp::Signature;fullFailureRetry.defer();InterlockedExchange(&policy.enabled,0);desired=false;configure();return false;}
+ if(!restoreTechEnhancement()||!capture(house)){publish();return false;}
+ failure=0;fullFailureRetry.reset();desired=true;configure();return ready(FullGroup)&&!failure;
 }
 static bool techParameterReservationAllowed(uint32_t type,uint32_t house){
  using namespace techparameters;
@@ -222,6 +240,9 @@ static int techEnhancementCatalogueLevel(uint32_t type,int level){
  for(const auto&r:techenhancement::Rules)if(table==r.vtable&&techenhancement::sameID(id,r.id)&&techenhancement::eligible(r,level))return 1;return level;
 }
 static bool techEnhancementProductionPending(uint32_t house){
+ // An unavailable native eligibility call cannot prove that old permission
+ // is no longer needed by the factory queue. Keep that local handoff pending.
+ if(!nativeDependencyReady(0x4F7870))return true;
  const unsigned offsets[]={0x53AC,0x53B0,0x53B4,0x53B8,0x53BC,0x53CC};
  auto dependent=[&](uint32_t type){return !type||(!(techparameters::desired&&techparameters::ready(techparameters::FullGroup)&&techparameters::fullType(type))&&call<int>(0x4F7870,house,(void*)(uintptr_t)type,false,true)<=0);};
  for(unsigned offset:offsets){uint32_t factory=0,product=0,items=0,owner=0;int count=0;if(!read(house+offset,&factory,4))return true;if(!factory)continue;
@@ -275,6 +296,11 @@ static void techEnhanceParametersTick(uint32_t house,DWORD now){
   }
  }
  configure();if(!enhancementReady())return;
+ // Missing sidebar helpers stop this presentation pass before any icon or
+ // strip write. Retain already-granted Exact permission for in-flight work;
+ // a presentation-only failure must not retire its hardware group.
+ enhancementCameoBlocked=!nativeDependenciesReady(0x4F7870,0x5F7900,0x6ABC60,0x6A6300);
+ if(enhancementCameoBlocked){publish();return;}
  if(compareRequested!=bool(policy.compareLevel)){
   if(techEnhancementProductionPending(house)){enhancementFailure=-7;publish();return;}
   InterlockedExchange(&policy.compareLevel,compareRequested?1:0);
@@ -292,16 +318,17 @@ static void techEnhanceParametersTick(uint32_t house,DWORD now){
 static bool controlParametersRetired(){return techparameters::groupOff(16);}
 static bool restoreControlParameters(){
  using namespace techparameters;const bool changed=controlDesired||(service.lease.tags()&16)||service.lease.uncertain;
- InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;
+ InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();
  if(changed)attempted=0;refusedGroups&=~16u;configure();return controlParametersRetired();
 }
 static int requestControlParameters(){
  using namespace techparameters;
  auto status=[](){return controlFailure?controlFailure-10:ready(16)?int(controlmode::Parameters):(refusedGroups&16)?-12:service.state<0?int(service.state)-10:0;};
- if(controlFailure){publish();return status();}
- if(!controlparams::compatible(read)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=techbp::Signature;configure();return status();}
- if(!captureWorld(lastHouse)){InterlockedExchange(&policy.controlling,0);controlDesired=false;configure();return 0;}
- controlDesired=true;configure();return status();
+ if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){restoreControlParameters();return 0;}
+ if(controlFailure&&!retryFailure(controlFailureRetry,16)){publish();return status();}
+ if(!controlparams::compatible(read)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=techbp::Signature;controlFailureRetry.defer();configure();return status();}
+ if(!captureWorld(lastHouse)){InterlockedExchange(&policy.controlling,0);controlDesired=false;configure();return controlFailure?status():0;}
+ controlFailure=0;controlFailureRetry.reset();controlDesired=true;configure();return status();
 }
 
 

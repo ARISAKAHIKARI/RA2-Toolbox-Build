@@ -9,6 +9,7 @@ static uint32_t normalVariantWeapon(uint32_t p,uint32_t type){
  return weapon>=0x10000?get<uint32_t>(weapon):1;
 }
 static int selectVariant(uint32_t house,bool global){
+ if(!nativeDependenciesReady(0x48DC90,0x6FBFA0)||(!global&&!nativeDependencyReady(0x6D2140)))return -12;
  struct Key{uint32_t type,weapon;};static Key keys[512];int keyCount=0;
  Vec selected=vec(0xA8ECB8,4096);for(int i=0;i<selected.count&&keyCount<512;++i){uint32_t p=item(selected,i);if(!p||!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k),weapon=t?normalVariantWeapon(p,t):1;if(!t||weapon==1)continue;
   bool seen=false;for(int j=0;j<keyCount;++j)if(keys[j].type==t&&keys[j].weapon==weapon)seen=true;if(!seen)keys[keyCount++]={t,weapon};
@@ -25,6 +26,7 @@ static int selectVariant(uint32_t house,bool global){
 // is visible in the tactical viewport. Do not test its output against a
 // (0,0)-origin rectangle: VisibleArea may have a nonzero origin.
 static int selectTypes(uint32_t house,const uint8_t* mask,bool global){
+ if(!nativeDependenciesReady(0x48DC90,0x6FBFA0)||(!global&&!nativeDependencyReady(0x6D2140)))return -12;
  static typekeys::TypeSet wanted;wanted.clear();int types=0;
  for(int i=0;i<MaxTypes;++i)if(mask[i]){
   if(i>=snap.typeCount||snap.types[i].kind==7||!typePointers[i])return -4;

@@ -1,0 +1,360 @@
+{
+  "schema": "ra2.runtime-dependency-recovery.validation.v1",
+  "target_version": "1.0.43-pre.6",
+  "generated_utc": "2026-11-06T20:05:44+00:00",
+  "source_commit": null,
+  "source_commit_binding": "The final build/package manifest must bind this evidence to the frozen source commit; this file does not hash itself or embed its own commit.",
+  "passed": true,
+  "current_counted_checks": 2530,
+  "current_passed_suites": 13,
+  "additional_formation_scenarios": 6,
+  "unquantified_suites": [
+    "formation",
+    "control_master_bridge"
+  ],
+  "groups": [
+    {
+      "name": "startup_dependencies",
+      "passed": true,
+      "checks": 224,
+      "evidence": "local-dependency-check/result.json",
+      "evidence_sha256": "ba64187a3853a832b7550f28ee9218e552e8f2b214fcdd91f1e66176c357c928",
+      "bound_inputs": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/startup_dependency_policy.h",
+        "source/assist/source/startup_signature_compat.h",
+        "source/assist/source/signatures.h",
+        "source/assist/source/native_entry_policy.h",
+        "source/assist/source/native_entry_runtime.h",
+        "source/shared/source/direct_patch_policy.h",
+        "source/assist/tests/startup_dependencies.cpp",
+        "source/assist/tests/startup_dependencies.py"
+      ]
+    },
+    {
+      "name": "native_entry_admission",
+      "passed": true,
+      "checks": 1125,
+      "evidence": "local-native-entry-check/result.json",
+      "evidence_sha256": "6d8a947e493facfba2722d605ddab75d3643495f9c86996d2e9ea6e8f316a710",
+      "bound_inputs": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/native_entry_policy.h",
+        "source/assist/source/native_entry_runtime.h",
+        "source/assist/source/startup_dependency_policy.h",
+        "source/assist/source/startup_signature_compat.h",
+        "source/assist/source/signatures.h",
+        "source/assist/tests/native_entry_runtime.cpp",
+        "source/assist/tests/native_entry_runtime.py",
+        "source/assist/tests/startup_dependencies.py"
+      ]
+    },
+    {
+      "name": "native_consumers",
+      "passed": true,
+      "checks": 118,
+      "evidence": "native-consumer-check/result.json",
+      "evidence_sha256": "b257930943f6da74604360d4d7feb6be2eeb8f353d74ad5aa1256f9110b1ff39",
+      "bound_inputs": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/superweapon_sidebar_bridge.h",
+        "source/assist/source/sidebar_policy.h",
+        "source/assist/source/native_entry_policy.h",
+        "source/assist/source/native_entry_runtime.h",
+        "source/assist/source/startup_dependency_policy.h",
+        "source/assist/source/startup_signature_compat.h",
+        "source/assist/source/signatures.h",
+        "source/assist/source/constructor_adapter.h",
+        "source/assist/source/command_intent.h",
+        "source/assist/source/vanilla_constructor_catalog.h",
+        "source/assist/source/entry_gate.h",
+        "source/assist/source/command_gateway.h",
+        "source/assist/source/unit_task_arbiter.h",
+        "source/assist/source/order_policy.h",
+        "source/assist/source/technology_mode_policy.h",
+        "source/assist/tests/native_dependency_consumers.cpp",
+        "source/assist/tests/native_entry_runtime.cpp",
+        "source/assist/tests/startup_dependencies.py",
+        "source/assist/tests/native_dependency_consumers.py"
+      ]
+    },
+    {
+      "name": "pointer_projection",
+      "passed": true,
+      "checks": 95,
+      "evidence": "pointer-local-dependency-check/result.json",
+      "evidence_sha256": "f218b391a9e52a8617f9c867a5546672cee4194b4237913a0e334144b48bd4f0",
+      "bound_inputs": [
+        "source/assist/source/pointer_bridge.h",
+        "source/assist/source/native_viewport_query.h",
+        "source/assist/source/protocol.h",
+        "source/shared/source/native_viewport_projection.h",
+        "source/assist/tests/pointer_location_projection.cpp",
+        "source/assist/tests/pointer_location_projection.py"
+      ]
+    },
+    {
+      "name": "tech_parameter_recovery",
+      "passed": true,
+      "checks": 208,
+      "evidence": "analysis/tech-parameter-recovery/result.json",
+      "evidence_sha256": "65e0ef6656c2915cff332ae044ea59fd8e54950de2c916b4ec4c03c6a2e549c3",
+      "bound_inputs": [
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_core.h",
+        "source/assist/tests/tech_parameter_recovery.cpp",
+        "source/assist/tests/tech_parameter_recovery.py"
+      ]
+    },
+    {
+      "name": "tech_ares_entry",
+      "passed": true,
+      "checks": 463,
+      "evidence": "analysis/tech-ares-entry-recovery/result.json",
+      "evidence_sha256": "198072de3382939ff8657c2b2592d21592acccc25e827ef74c881a1353f35ef1",
+      "bound_inputs": [
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_hot.h",
+        "source/assist/tests/tech_ares_entry_compat.cpp",
+        "source/assist/tests/tech_ares_entry_compat.py"
+      ]
+    },
+    {
+      "name": "tech_midgame",
+      "passed": true,
+      "checks": 91,
+      "evidence": "analysis/tech-ares-midgame-recovery/result.json",
+      "evidence_sha256": "3324a4d51b2708a3ec252882ab8e46fb83b4e1878d3131c5bb94189226021bd8",
+      "bound_inputs": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/protocol.h",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/sidebar_policy.h",
+        "source/assist/source/tech_enhancement.h",
+        "source/assist/source/tech_enhancement_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_enhancement_parameter_policy.h",
+        "source/assist/source/technology_mode_policy.h",
+        "source/assist/source/session_epoch.h",
+        "source/external_reader/source/catalogue_stamp.h",
+        "source/assist/tests/tech_enhancement_midgame.py",
+        "source/assist/tests/tech_enhancement_midgame.cpp"
+      ]
+    },
+    {
+      "name": "local_feature_transactions",
+      "passed": true,
+      "checks": 63,
+      "evidence": "analysis/pre6-local-features/result.json",
+      "evidence_sha256": "ee930a04df329e3d026b77818082dcfbd785453d906a71aba9731e3edf2f1328",
+      "bound_inputs": [
+        "source/assist/source/type_select_bridge.h",
+        "source/assist/source/type_hotkey.h",
+        "source/assist/source/magnetron_drop_bridge.h",
+        "source/assist/source/magnetron_drop.h",
+        "source/assist/source/player_test_bridge.h",
+        "source/assist/tests/local_feature_dependencies.cpp",
+        "source/assist/tests/local_feature_dependencies.py"
+      ]
+    },
+    {
+      "name": "host_bridge_retry",
+      "passed": true,
+      "checks": 64,
+      "evidence": "analysis/pre6-host-bridge-retry/result.json",
+      "evidence_sha256": "9a1426eca60408ecbe709a2d9cb0d88f6b1b8fbd35ce5b09268993003f4e0b0f",
+      "bound_inputs": [
+        "source/assist/source/main.cpp",
+        "source/assist/tests/host_bridge_retry.cpp",
+        "source/assist/tests/host_bridge_retry.py"
+      ],
+      "summary_run": "Same runner recompiled and re-executed to bind current test sources."
+    },
+    {
+      "name": "host_broker_retry",
+      "passed": true,
+      "checks": 30,
+      "evidence": "analysis/pre6-host-broker-retry/result.json",
+      "evidence_sha256": "0b636d18ac0a22a6eaddd4b22f8ba33bf3884c655d510bfb67d0c16f59f99054",
+      "bound_inputs": [
+        "source/shared/source/host_game_input.h",
+        "source/assist/tests/host_broker_retry.cpp",
+        "source/assist/tests/host_broker_retry.py"
+      ],
+      "summary_run": "Same runner recompiled and re-executed to bind current test sources."
+    },
+    {
+      "name": "mo_orders",
+      "passed": true,
+      "checks": 49,
+      "evidence": "analysis/pre6-validation/mo_orders.json",
+      "evidence_sha256": "765e8efe643065697b43a417dca4c6f6d253417e0046fbe0b5e39b88df9ab12c",
+      "bound_inputs": [
+        "source/assist/source/mo_orders_bridge.h",
+        "source/assist/tests/mo_orders_bridge_test.py",
+        "source/assist/tests/formation_quick_bridge_test.py",
+        "source/assist/source/formation.h",
+        "source/assist/source/formation_quick.h",
+        "source/assist/source/mo_gesture_bridge.h",
+        "source/assist/source/mo_orders.h"
+      ]
+    },
+    {
+      "name": "formation",
+      "passed": true,
+      "checks": null,
+      "evidence": "analysis/pre6-validation/formation.json",
+      "evidence_sha256": "90f6080079e8a485594ab5165ea1c8b7e386c259c072c9ec0feea0597096cf07",
+      "bound_inputs": [
+        "source/assist/source/formation_bridge.h",
+        "source/assist/tests/formation_quick_bridge_test.py",
+        "source/assist/source/formation.h",
+        "source/assist/source/formation_quick.h",
+        "source/assist/source/mo_gesture_bridge.h",
+        "source/assist/source/mo_orders.h"
+      ],
+      "additional_scenarios": 6,
+      "count_note": "The suite includes its existing cases plus 6 new scenarios; it does not report a total assertion count."
+    },
+    {
+      "name": "control_master_bridge",
+      "passed": true,
+      "checks": null,
+      "evidence": "analysis/control-master-bridge-recovery.json",
+      "evidence_sha256": "d6d1c682993d564555bde8afcd55bc63f9a30e286200ffaa08192608ad312bb8",
+      "bound_inputs": [
+        "source/assist/tests/control_master_bridge.cpp",
+        "source/assist/source/control_sites_bridge.h"
+      ],
+      "count_note": "Full existing suite plus new selection-dependency isolation/recovery cases passed; the fixture reports no numeric check total."
+    }
+  ],
+  "current_source_test_sha256": {
+    "source/assist/source/bridge.cpp": "81e0c690e4ff8fac20d5ad067eb6c10e9431d46f6a34331fb519b4e806ce863f",
+    "source/assist/source/command_gateway.h": "a0a5676e5bd28af90ca10e374c7dbc9d8a96098b2a6b446c42063f795bc76198",
+    "source/assist/source/command_intent.h": "71e07afdac107d8dc6a216712b25693d42db876dea40215cb89cf3f4ef0e54aa",
+    "source/assist/source/constructor_adapter.h": "a7adfb02011432ea41c4358d69d51526ccbcf36d9308ce205bb75ebb16016733",
+    "source/assist/source/control_sites_bridge.h": "3e5f85da1e1cf4b6c65cb17456da9ab3a2a72785e800ec33923c83ec0a13857d",
+    "source/assist/source/direct_modes_bridge.h": "37adb6acaf10ffc09080202663369f4828484bc8145f03ce863725b4139acce9",
+    "source/assist/source/entry_gate.h": "d2d1d5c167ba6c2b94898fa8a5aae9f7b39f9eb96b1e7655f78d6ce9d77680c8",
+    "source/assist/source/formation.h": "f5213574cd7228a142e56407ce44a17a25ee2865658603980f9a18ca4a4d2d3a",
+    "source/assist/source/formation_bridge.h": "e8610a58f0121b96207f096be5f5113dd8b40f0e3efaf9c93205b548b5a2c907",
+    "source/assist/source/formation_quick.h": "37db469f8e792d1678fa46f83fc52dcc20c6999dd025f1f7f511d945ec735a2b",
+    "source/assist/source/magnetron_drop.h": "7048bc03f616814558cdade94a00dd6e3105088741c209a6f331050ac8ffc9d8",
+    "source/assist/source/magnetron_drop_bridge.h": "6a5ab99baad2b48a45722e73144312e6fabde05ac3732b53268a76f63943d021",
+    "source/assist/source/main.cpp": "e5ff3bb312d54fd2d0278fd89613bc8b5d0d971c3253f24e2ef60321882fb5ae",
+    "source/assist/source/mo_gesture_bridge.h": "dae684bba83d4fd0fc11632beac721ee4f4186e57b9ea0f825e9add0e1f751d7",
+    "source/assist/source/mo_orders.h": "3ff6faf48461cb39f2c05a69dd0dd4e0c45beda52e79bf25cdec2df2248b6f4a",
+    "source/assist/source/mo_orders_bridge.h": "e6c9dbe5d105b02cc4c5758e2619d563c84fe9fa15831e4b42b2939a5321fbe3",
+    "source/assist/source/native_entry_policy.h": "2632aeeb4b3f7d60f9a9f56d82bccd13134641b46e5c04a8dc526536cb7a6cff",
+    "source/assist/source/native_entry_runtime.h": "6cff3051ff18569c1539672e72ab6d779523dd29f8487f553b9aa51c1847dbfd",
+    "source/assist/source/native_viewport_query.h": "4ce3ba0fc20eaa56a1dd8890f1faa429ded5c919adca65a1547a56697a44ede0",
+    "source/assist/source/order_policy.h": "d2405282e632e67c381c3026f03a7ccf3fd97426d012ed731429954073e47020",
+    "source/assist/source/placement_bridge.h": "5423ec49c561aa4ce24e25283e7c969c1e77805e921c6de4c498d58c51501911",
+    "source/assist/source/player_test_bridge.h": "9bdd69cc41887461aeccef4d5b604033ca6285888ab3d5d0678f165ab68637d0",
+    "source/assist/source/pointer_bridge.h": "a2ca6e1666f6b9114da99b9d8f6894b46a121ef0852ec81ee8985d0f576d6e7d",
+    "source/assist/source/protocol.h": "a4208dd1adbd5b7a4d0b80e9a2981e192ddeae79dac75abe9dac2425dced219e",
+    "source/assist/source/session_epoch.h": "1935c87ea55edd287c53b64472c5de8f617204a924c4ca8602fc247d0a6297d9",
+    "source/assist/source/sidebar.h": "244a350441dabbc7ff382f6e41b750f5e7db190762f0cccb1a8a3f5715f3754c",
+    "source/assist/source/sidebar_policy.h": "928e16cbbfd10e9ecf907ca360b1214a7b2eeff93c24a2dddf4fae5226769b36",
+    "source/assist/source/signatures.h": "054757060d10fe067ec81880a8f584c53d6e1537c1fcc2695b267b9e68ecdd93",
+    "source/assist/source/startup_dependency_policy.h": "a32f39a7138d9af79dcd7e5bb8f9b231baf6a73a3004fa40de79f90c04d4c438",
+    "source/assist/source/startup_signature_compat.h": "6ed6d6cface3ac74111e9a80cce51b4a940c7fea231ff72493551397774a94e6",
+    "source/assist/source/superweapon_sidebar_bridge.h": "cc1dd3519c7b6920f238899bc9a321369e57e8e307553e886dbb6cb5df8d2fed",
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/tech_enhancement_bridge.h": "b0fa93b6e0dfc22eea8801f67e21cec729b70bfc2c4045945378179604cd8488",
+    "source/assist/source/tech_enhancement_parameter_policy.h": "6f29e7c43039d98f54e80b0d0d4df7492e98659c5e702568ec09dbd73837407f",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "2888242d27420493c0dc907b43e2a67d1d4ebc89fd53b47995adeba66a67878f",
+    "source/assist/source/tech_ui_breakpoint_core.h": "79551cd63d7d6c2635ad0d05decd3e6e9cf0af3b5a864b8c9ebc703800233ad8",
+    "source/assist/source/tech_ui_breakpoint_hot.h": "d4240a941f60993162edb924183027d37aa793817b8c9f480558ac410719c73e",
+    "source/assist/source/technology_mode_policy.h": "33e92d7331d9458d621e368c457276969960d904454779036f91116c789499e8",
+    "source/assist/source/type_hotkey.h": "257a030cfc4b3223b6f50d3c05d139c15a0c652eeaf3b2a9285223af2f259d31",
+    "source/assist/source/type_select_bridge.h": "d6581d44c34144528441253804538d4589d46ad854e79161fdf7a107b39ef30e",
+    "source/assist/source/unit_task_arbiter.h": "86e4278cd05ba68d44f0ac9a8a292d16f5db00198e32ef865b10f85b556dd0a9",
+    "source/assist/source/vanilla_constructor_catalog.h": "78e77c217943beffa000fbfd7a749f0043fa617498a5a1c48f917a3b27276040",
+    "source/assist/tests/control_master_bridge.cpp": "dd9f11604053abf61153ad6ffd4e0b57c92038a003ed8b1dcd7b968576219463",
+    "source/assist/tests/formation_quick_bridge_test.py": "3987aaaae5cb3a1a04abff67f5b40287d222cff739ea61e9f77b4454904e2b54",
+    "source/assist/tests/host_bridge_retry.cpp": "167ccaf39beb40cd1c2b855c7386a83c0b7b349c0adf2930f04f2923a6469127",
+    "source/assist/tests/host_bridge_retry.py": "7dccc41023c853b8606484f3a7a6c35fc9744e15b65cdb8568462be99d6ccc52",
+    "source/assist/tests/host_broker_retry.cpp": "88f489fe014a18d456997f8341a78db2c31687ba0a158a50f4312a66e4428fbf",
+    "source/assist/tests/host_broker_retry.py": "66e126cec188708b7012c0e1e3e3467e5aedd7fce6979623a872606afd0f2da1",
+    "source/assist/tests/local_feature_dependencies.cpp": "f0f3fa6c5ae33c140c5ff399892c0e5a18f133685d2027c1a0e3a4356797fbd9",
+    "source/assist/tests/local_feature_dependencies.py": "4687090450d341659a2beb6e731fc1ff06f28e77998f2b768bc460c1c7579399",
+    "source/assist/tests/mo_orders_bridge_test.py": "325d166564da154a937f03293b51b8cf104318fc4621f3f246a6f20e3aa6994a",
+    "source/assist/tests/native_dependency_consumers.cpp": "91c603b867b753f816865cfff338a420cedda9057b8189be3f06c162f6d854d2",
+    "source/assist/tests/native_dependency_consumers.py": "d318cc06aa6e56a0544c1f2220ef0d751f3fe11af7d70fbe879387d55b54c8e7",
+    "source/assist/tests/native_entry_runtime.cpp": "f59e86df5cc12ce546830480c286fd81abce81bd42b8fdea0968bbb5738cb8ed",
+    "source/assist/tests/native_entry_runtime.py": "15d6bf5785961456db554ccc1e5101f1f6da00aba2b25250097505a9ed394321",
+    "source/assist/tests/pointer_location_projection.cpp": "0e639f71e0bba1a874f4a6c60b19f105e4584f26d8aadea82528baa06d4c72bc",
+    "source/assist/tests/pointer_location_projection.py": "aa73facb1f71bd5986eb2a3efd59895c8c8024cfd1e82d45ed8b695ea58c9500",
+    "source/assist/tests/startup_dependencies.cpp": "bfdf39b9fa1800c5fb4ed3450b17335f5659ef34167248979c7d7a6bb015b9e5",
+    "source/assist/tests/startup_dependencies.py": "2d7f531c44a5839a41c06ecf5329975e3b475f81441bc6f33b3a2d3d92f171ef",
+    "source/assist/tests/tech_ares_entry_compat.cpp": "f993f9a73b2c78e5263641f33f6ca35ef40ef8fe2566fc9694f1dea8e45a8a12",
+    "source/assist/tests/tech_ares_entry_compat.py": "5a146837df5f06dd4e96d270b800607cec2aa2decf036500c35246a351771102",
+    "source/assist/tests/tech_enhancement_midgame.cpp": "17bee59db5fc1865f83bb7db4c881ff18b6a36ff3dd9b950d370267381a48263",
+    "source/assist/tests/tech_enhancement_midgame.py": "44316c13dd6f5d008dceb9d33b832b301e79216a000552db3527b73f144a5f60",
+    "source/assist/tests/tech_parameter_recovery.cpp": "23685568ca495f4c18bf590a550ba1022032712e5a3ce1a9494cf4df00990a37",
+    "source/assist/tests/tech_parameter_recovery.py": "4a92f91a38c291705b8e18b5e11a16bdd506acd69133ab98ed0e5b4558218dbc",
+    "source/external_reader/source/catalogue_stamp.h": "2e366702bfabdf89b6e4e30f06a72e84971e414d0108f3b8f94bf82745aeb600",
+    "source/shared/source/direct_patch_policy.h": "0e28d97bd65e5b37e290af17a23d8c598be88de9fc1d8a30ee935e89227ef1c5",
+    "source/shared/source/host_game_input.h": "f16067dab470513007129666ccd8a3a37d61db7738fabd46cd5f6cefa3e9928b",
+    "source/shared/source/native_viewport_projection.h": "0c1b0ab1c6904d44ad6b240320601c93cad92be28ef61d1f72a492e8179ca4d6"
+  },
+  "all_recorded_current_source_test_hashes_match": true,
+  "negative_controls": [
+    {
+      "name": "tech_parameter_recovery",
+      "expected_failed_cases": 4,
+      "evidence": "analysis/tech-parameter-recovery/result.json",
+      "evidence_sha256": "65e0ef6656c2915cff332ae044ea59fd8e54950de2c916b4ec4c03c6a2e549c3",
+      "included_in_pass_total": false
+    },
+    {
+      "name": "host_bridge_retry",
+      "baseline_failed_checks": 32,
+      "baseline_checks": 64,
+      "evidence": "analysis/pre6-host-bridge-retry/result.json",
+      "evidence_sha256": "9a1426eca60408ecbe709a2d9cb0d88f6b1b8fbd35ce5b09268993003f4e0b0f",
+      "included_in_pass_total": false
+    },
+    {
+      "name": "host_broker_retry",
+      "baseline_failed_checks": 8,
+      "baseline_checks": 30,
+      "evidence": "analysis/pre6-host-broker-retry/result.json",
+      "evidence_sha256": "0b636d18ac0a22a6eaddd4b22f8ba33bf3884c655d510bfb67d0c16f59f99054",
+      "included_in_pass_total": false
+    },
+    {
+      "name": "pointer_ground_dependency",
+      "first_failed_check": 52,
+      "evidence": "pointer-local-dependency-before/baseline-result.json",
+      "evidence_sha256": "315f181ac029bc3d29bb4538e78d795cb3e509192d67e3fc5b289fe73b66d1fd",
+      "included_in_pass_total": false
+    }
+  ],
+  "inherited_unchanged_validation": {
+    "name": "hook_recovery_policy",
+    "previous_checks": 28,
+    "rerun_this_revision": false,
+    "included_in_current_check_total": false,
+    "evidence": "analysis/validation/hook-recovery-policy.json",
+    "evidence_sha256": "61591813b98d13b65cc5b7f9800f012ff48549825ab1e5e00b35009ce85f3eee",
+    "basis": "The five extracted production fragments, test runner and required tick ordering match d108ab8; only this predicate/dispatcher test scope is carried forward.",
+    "comparison_evidence": "analysis/pre6-validation/supplemental-runs.json",
+    "comparison_evidence_sha256": "66f6a7b8ec08c1099024842cadc65d7bf40816a559882d1c6bef711220a83e63"
+  },
+  "limitations": [
+    "Portable/synthetic memory, API, transport and hook-worker boundaries; no game process, Windows hook delivery, or multiplayer session was tested.",
+    "Runtime(10) contributes entry bytes and target addresses; accepted private target bodies in the admission fixture are synthetic.",
+    "The production player-switch path is shipping-disabled; its enabled branch is exercised only in the explicit synthetic fixture.",
+    "The 2530 count includes only numeric successful current checks. It excludes expected baseline failures, the uncounted formation/control assertions, and the inherited 28 checks.",
+    "Full Windows compilation, packaging and runtime/game acceptance are separate gates and are not claimed by this focused-validation summary."
+  ],
+  "game_process_tested": false,
+  "windows_hooks_tested": false,
+  "multiplayer_tested": false
+}

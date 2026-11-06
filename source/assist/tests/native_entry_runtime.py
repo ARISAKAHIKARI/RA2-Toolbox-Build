@@ -18,9 +18,9 @@ def main():
     source = here.parent / 'source'
     bridge = (source / 'bridge.cpp').read_text()
     extracts = {
-        'STARTUP_HELPERS': '\n'.join(block(bridge, marker) for marker in (
-            'static bool startupSignature(', 'static bool revealSignature(',
-            'static bool signatures(')),
+        'STARTUP_HELPERS': block(bridge, 'static bool startupSignature(') + '\n' +
+            bridge[bridge.index('static nativeentry::TimedResult nativeDependencyCache'):
+                   bridge.index('static void notifyHost(')],
         'STARTUP_GATE': '\n'.join(block(bridge, marker) for marker in (
             'if(!checked&&(!signatureRetryAt', 'if(!good){snap.commandStatus=3;')),
     }

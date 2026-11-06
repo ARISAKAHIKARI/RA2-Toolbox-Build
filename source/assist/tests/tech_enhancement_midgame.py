@@ -45,7 +45,8 @@ def main():
              "legacy_pending_master", "legacy_no_change", "legacy_unreadable_world", "exact_midgame_catalogue",
              "exact_pending_readiness", "exact_off_reenable", "exact_native_rule_rejected", "exact_factory_missing",
              "exact_filter_insignificant", "exact_filter_spawned", "exact_filter_no_owner", "exact_full_capacity",
-             "exact_failed_signature", "exact_ares_body_bypassed", "rules_to_exact_ares_busy_handoff", "exact_full_allowlist", "exact_busy_mode_handoff"]
+             "exact_failed_signature", "exact_dependency_canbuild", "exact_dependency_factory", "exact_dependency_tab", "exact_dependency_addcameo",
+             "exact_dependency_active_handoff", "production_dependency_canbuild", "exact_ares_body_bypassed", "rules_to_exact_ares_busy_handoff", "exact_full_allowlist", "exact_busy_mode_handoff"]
     report = {"schema": 1, "assertions_enabled": True, "game_tested": False, "multiplayer_tested": False,
               "windows_executed": False, "source_sha256": hashes, "before_commit": None if args.after_only else args.before_ref,
               "boundary": "Actual production activation, restoration, effective catalogue filtering, type selection, and cameo gate functions; native eligibility/factory/AddCameo, signatures, and DR readiness are modeled; memory is private synthetic mmap data. No native game instructions execute.",

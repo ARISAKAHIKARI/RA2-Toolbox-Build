@@ -38,9 +38,11 @@ static unsigned techImplementation=0;
 static uint32_t typePointers[MaxTypes]{};
 static uint8_t techAllowed[MaxTypes]{};
 static sessionepoch::Tracker sessionTracker;
-static int checks=0,additions=0,probes=0,factoryQueries=0,rechecks=0,levelWrites=0;
+static int checks=0,additions=0,probes=0,factoryQueries=0,tabQueries=0,rechecks=0,levelWrites=0;
 static bool hardwareReady=true,compatible=true,bodyBypassed=false,worldAvailable=true,factoryAvailable=true,ruleAllowed=true;
-static uint32_t unreadable=0;
+static uint32_t unreadable=0,blockedDependency=0;
+static bool nativeDependencyReady(uint32_t address){return address!=blockedDependency;}
+template<class...A>static bool nativeDependenciesReady(A...addresses){return (nativeDependencyReady(uint32_t(addresses))&&...);}
 static bool mapped(uint32_t p,size_t n){return (p>=0x700000&&uint64_t(p)+n<=0xB00000)||(p>=0x10000000&&uint64_t(p)+n<=0x10100000);}
 static bool read(uint32_t p,void*out,size_t n){if(!mapped(p,n)||(unreadable>=p&&uint64_t(unreadable)<uint64_t(p)+n))return false;std::memcpy(out,reinterpret_cast<void*>(uintptr_t(p)),n);return true;}
 template<class T>static T get(uint32_t p){T v{};read(p,&v,sizeof v);return v;}
@@ -55,6 +57,7 @@ static int kind(uint32_t){return 2;}
 static uint32_t typeOf(uint32_t p,int){return get<uint32_t>(p+0x20);}
 static bool nativeCanBuild(uint32_t type,bool limitOnly){return ruleAllowed&&(limitOnly||get<int>(type+0x634)>=0);}
 template<class R,class...A>static R call(uint32_t address,uint32_t self,A...args){
+ assert(address!=blockedDependency);
  auto a=std::make_tuple(args...);
  if constexpr(sizeof...(A)==4){assert(address==0x5F7900);++factoryQueries;assert(std::get<0>(a)&&!std::get<1>(a)&&!std::get<2>(a));return R(factoryAvailable?Factory:0);}
  else if constexpr(sizeof...(A)==3){assert(address==0x4F7870&&self==House);return R(nativeCanBuild(uint32_t(uintptr_t(std::get<0>(a))),std::get<1>(a)));}
@@ -64,13 +67,13 @@ template<class R,class...A>static R call(uint32_t address,uint32_t self,A...args
   put<int>(strip+88+count*52,index);put<int>(strip+92+count*52,k);put<int>(strip+84,count+1);++additions;return R(true);
  }else{assert(false);return R{};}
 }
-template<class R>static R callFast(uint32_t address,int k,int,int){assert(address==0x6ABC60);return R(k==40?2:k==16?3:0);}
+template<class R>static R callFast(uint32_t address,int k,int,int){assert(address==0x6ABC60&&address!=blockedDependency);++tabQueries;return R(k==40?2:k==16?3:0);}
 namespace techbp {static constexpr int Signature=-1,Thread=-5;}
 namespace techparameters {
 struct TypeIdentity {uint32_t pointer=0,id=0,table=0;};
 struct EnhancedIdentity {TypeIdentity type;uint32_t items=0;int index=-1,level=0;};
 struct Policy {volatile LONG enhanced=0,compareLevel=0;EnhancedIdentity enhancement[techenhancement::Count]{};} policy;
-static bool enhancementDesired=false,enhancementCompareRequested=false,desired=false;
+static bool enhancementDesired=false,enhancementCompareRequested=false,desired=false,enhancementCameoBlocked=false;
 static int enhancementFailure=0;
 static DWORD enhancementParameterScan=0;
 static constexpr uint32_t FullGroup=1;
@@ -84,11 +87,11 @@ static bool captureWorld(uint32_t house){return worldAvailable&&house==House;}
 static bool configure(){policy.enhanced=enhancementReady()?1:0;return hardwareReady;}
 }
 static bool techEnhanceParametersRetired(){return !techparameters::enhancementDesired;}
-static bool restoreTechEnhanceParameters(){techparameters::policy.enhanced=0;techparameters::enhancementDesired=false;return true;}
+static bool restoreTechEnhanceParameters(){techparameters::policy.enhanced=0;techparameters::enhancementDesired=false;techparameters::enhancementCameoBlocked=false;return true;}
 static bool techDataBlocksEnhancement(){return (sh->techEnhance&&sh->techEnhanceImplementation==1)||!techEnhanceParametersRetired();}
 static bool techDataPending(){return false;}
 static bool nativeTextTechRetired(){return true;}
-static int GuardedTechEnhancementProbe(unsigned house,unsigned type){assert(house==House);++probes;return techparameters::policy.enhanced&&ruleAllowed?1:0;}
+static int GuardedTechEnhancementProbe(unsigned house,unsigned type){assert(house==House&&blockedDependency!=0x4F7870);++probes;return techparameters::policy.enhanced&&ruleAllowed?1:0;}
 static void deferTechEnhancementParameters();
 static int typeSlot(uint32_t);
 static int canonicalKind(int);
@@ -162,6 +165,25 @@ int main(int argc,char**argv){assert(argc==2);setup();const std::string test=arg
   exact();check(probes==1&&factoryQueries==1&&!additions,"native strip capacity stays at seventy-five");
  }else if(test=="exact_failed_signature"){
   compatible=false;exact();check(!probes&&!additions&&!techparameters::policy.enhanced,"invalid signature never publishes effective engine permission");
+ }else if(test=="exact_dependency_canbuild"||test=="exact_dependency_factory"||test=="exact_dependency_tab"||test=="exact_dependency_addcameo"){
+  blockedDependency=test=="exact_dependency_canbuild"?0x4F7870:test=="exact_dependency_factory"?0x5F7900:test=="exact_dependency_tab"?0x6ABC60:0x6A6300;
+  put<int>(Tabs+2*3988+84,1);put<int>(Tabs+2*3988+88,1);put<int>(Tabs+2*3988+92,40);
+  const std::vector<uint8_t> strip(reinterpret_cast<uint8_t*>(uintptr_t(Tabs+2*3988)),reinterpret_cast<uint8_t*>(uintptr_t(Tabs+3*3988)));
+  exact();check(techparameters::enhancementCameoBlocked&&!probes&&!factoryQueries&&!tabQueries&&!additions,"missing helper blocks the whole presentation pass before native calls");
+  check(!std::memcmp(strip.data(),reinterpret_cast<void*>(uintptr_t(Tabs+2*3988)),strip.size()),"missing helper preserves every existing sidebar byte");
+  check(techparameters::policy.enhanced&&!techparameters::enhancementFailure&&!levelWrites,"presentation refusal retains verified Exact permission without rule writes");
+  blockedDependency=0;techEnhanceParametersTick(House,1800);
+  check(!techparameters::enhancementCameoBlocked&&additions==1&&get<int>(Tabs+2*3988+84)==2,"recovered helper retries locally and preserves the existing icon");
+ }else if(test=="exact_dependency_active_handoff"){
+  exact();put<uint32_t>(Product+0x20,Bus);blockedDependency=0x6A6300;techEnhanceParametersTick(House,1800);
+  check(techparameters::enhancementCameoBlocked&&techparameters::policy.enhanced&&!techparameters::enhancementFailure,"late sidebar failure preserves an in-flight Exact product");
+  blockedDependency=0x4F7870;options.techEnhanceImplementation=0;techEnhanceParametersTick(House,2400);
+  check(techparameters::enhancementFailure==-7&&techparameters::policy.enhanced,"unavailable CanBuild cannot prove the old permission safe to retire");
+  blockedDependency=0;put<uint32_t>(Product+0x20,Normal);techEnhanceParametersTick(House,3000);
+  check(!techparameters::policy.enhanced&&!techparameters::enhancementCameoBlocked,"confirmed idle handoff retires Exact and clears presentation failure");
+ }else if(test=="production_dependency_canbuild"){
+  blockedDependency=0x4F7870;check(techEnhancementProductionPending(House),"missing CanBuild keeps production retirement pending");
+  blockedDependency=0;check(!techEnhancementProductionPending(House),"recovered CanBuild can establish native production independence");
  }else if(test=="exact_ares_body_bypassed"){
   bodyBypassed=true;exact();
   check(techparameters::enhancementFailure==techenhanceparams::NativeBodyBypassed&&!probes&&!additions&&!techparameters::policy.enhanced,"Ares replacement reports only the unavailable Exact comparison path");

@@ -75,6 +75,8 @@ namespace pointerinput{enum{AirWaypoint=1};struct Intent{int width=0,height=0,ca
 static uint32_t pointerCell=0,pointerTarget=0,pointerTargetID=0;static int pointerGroundZ=0,locationQueries=0;
 static bool pointerLocation(const pointerinput::Intent&p){++locationQueries;int x=30+(p.x-100)/30,y=30+(p.y-100)/30;pointerCell=y*1000+x;pointerTarget=pointerTargetID=0;pointerGroundZ=0;return true;}
 static std::set<std::pair<int,int>> blocked;static int cellQueries=0,heightQueries=0;
+static bool groundCallable=true;
+static bool nativeDependencyReady(uint32_t address){assert(address==0x578080);return groundCallable;}
 static uint32_t readMapCell(int x,int y){++cellQueries;if(x<10||x>=61||y<10||y>=61||blocked.count({x,y}))return 0;return 0x300000+uint32_t((y-10)*51+x-10)*0x200;}
 template<class R,class...Args>static R call(uint32_t at,uint32_t self,Args...){assert(at==0x578080&&self==0x87F7E8);++heightQueries;return R(0);}
 static keygesture::Tracker runtimeKeys;
@@ -91,7 +93,7 @@ static void inputFeedback(uint32_t,int,bool){++feedbacks;}
 static constexpr uint32_t shapeKeys[6]={'Z','X','C','V','B','N'};
 static void setup(int button=2){
  std::fill(memory.begin(),memory.end(),0);actors.clear();selected.clear();blocked.clear();commands.clear();manualVersions.tokens.clear();held.fill(false);runtimeKeys={};
- shared={};clockValue=1000;snap={};snap.status=snap.commandStatus=1;snap.frame=100;cursor={100,100};fault=false;sh=&shared;
+ shared={};clockValue=1000;snap={};snap.status=snap.commandStatus=1;snap.frame=100;cursor={100,100};fault=false;groundCallable=true;sh=&shared;
  sh->formationPolicy.enabled=1;sh->formationPolicy.mouse=button;sh->formationPolicy.hold=VK_MENU;
  std::copy(std::begin(shapeKeys),std::end(shapeKeys),sh->formationPolicy.keys);
  put(0xA8E9A0,true);put(0xA83D4C,lastHouse);put(0xA8ED84,snap.frame);put(0xA8B238,snap.session);
@@ -162,7 +164,22 @@ int main(){
  // Rebinding the active policy cancels the pending click instead of sending
  // the old destinations with a newly chosen mouse/keyboard authorization.
  setup();message(WM_MBUTTONDOWN);sh->moGestures.buttons[3]=2;message(WM_MBUTTONUP);assert(!formationJobCount);
- std::cout<<"PASS production quick placement: quotas survive commit and remembered-formation translation; chord cancellation and click release destination\n";
+ // Losing a display-height dependency rejects new layout/commit before native
+ // reads or cancellation of existing commands. A known queued goal can drain.
+ setup();activate();int heightBefore=heightQueries;groundCallable=false;
+ formationLayout(30*256,30*256,100,100);assert(!formationView.active&&!formationView.count&&heightQueries==heightBefore&&commands.empty()&&!formationJobCount);
+ setup();message(WM_MBUTTONDOWN);heightBefore=heightQueries;groundCallable=false;
+ formationQuickLayout(30*256,30*256,100,100);assert(!formationQuick&&!formationView.active&&heightQueries==heightBefore&&!formationJobCount);
+ setup();message(WM_MBUTTONDOWN);heightBefore=heightQueries;formationMemory.count=9;groundCallable=false;const auto capturedTokens=manualVersions.tokens;
+ formationCommit();assert(formationMemory.count==9&&!formationJobCount&&commands.empty()&&manualVersions.tokens==capturedTokens&&heightQueries==heightBefore);
+ setup();message(WM_MBUTTONDOWN);message(WM_MBUTTONUP);heightBefore=heightQueries;groundCallable=false;
+ formationTick(lastHouse,snap.frame,clockValue);assert(commands.size()==25&&heightQueries==heightBefore);
+ commands.clear();formationFollow.cell=40040;formationFollow.frame=snap.frame;formationFollow.tick=clockValue;
+ ++snap.frame;put(0xA8ED84,snap.frame);clockValue+=30;shared.heartbeat=clockValue;
+ formationContinue(clockValue);assert(!formationFollow.cell&&formationMemory.count==25&&heightQueries==heightBefore&&commands.empty());
+ groundCallable=true;formationFollow.cell=40040;formationFollow.frame=snap.frame-1;formationFollow.tick=clockValue;
+ formationContinue(clockValue);formationTick(lastHouse,snap.frame,clockValue);assert(commands.size()==25&&heightQueries>heightBefore);
+ std::cout<<"PASS production quick placement: original quotas/continuation/cancellation plus 6 local dependency refusal, retained-goal and recovery scenarios\n";
 }
 '''
 def run(tmp, zig=None):

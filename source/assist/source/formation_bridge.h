@@ -80,6 +80,7 @@ static bool formationQuickCell(int x,int y,bool air){
  return air?readMapCell(x,y)!=0:formationCell(x,y);
 }
 static void formationQuickLayout(int x,int y,int px,int py){
+ if(!nativeDependencyReady(0x578080)){formationCancel();return;}
  formationQuickPending=false;
  bool air[formation::Maximum]{};for(int n=0;n<formationView.count;++n)air[n]=formationAerial(formationView.units[n]);
  formation::quick::layout(formationView.units,formationView.count,air,formationQuickPath,x/256,y/256,formationView.slots,formationQuickCell);
@@ -87,6 +88,7 @@ static void formationQuickLayout(int x,int y,int px,int py){
  formationDirected=false;formationLastX=x;formationLastY=y;formationPixelX=px;formationPixelY=py;formationLayoutTick=sampleClock(sh);formationPublish();
 }
 static void formationLayout(int x,int y,int px,int py){
+ if(!nativeDependencyReady(0x578080)){formationCancel();return;}
  formationLayoutTick=sampleClock(sh);
  const int count=formationView.count;if(count<=0)return;
  if(formationQuick){formationQuickLayout(x,y,px,py);return;}
@@ -107,6 +109,7 @@ static void formationLayout(int x,int y,int px,int py){
 }
 static void formationAtCursor(MSG*msg){POINT pt{};if(!GetCursorPos(&pt)||!ScreenToClient(msg->hwnd,&pt))return;MSG pointer=*msg;pointer.lParam=MAKELPARAM(short(pt.x),short(pt.y));int x,y,px,py;if(!formationPoint(&pointer,x,y,px,py))return;formationView.ax=x;formationView.ay=y;formationStartX=px;formationStartY=py;formationLayout(x,y,px,py);}
 static void formationCommit(bool remember=true,bool feedback=true){
+ if(!nativeDependencyReady(0x578080)){formationCancel();return;}
  formationFeedback=feedback;formationFollow={};if(remember){formationMemory={};formationMemory.ax=formationView.ax;formationMemory.ay=formationView.ay;formationMemory.facing=formationView.facing;formationMemory.directed=formationDirected;formationMemory.quick=formationQuick;}
  sh->formationAccepted=sh->formationRejected=0;
  for(int n=0;n<formationView.count;++n){auto u=formationView.units[n];auto goal=formationView.slots[n];
@@ -148,6 +151,7 @@ static void formationWatchNative(MSG*msg){
 }
 static void formationContinue(DWORD now){
  if(!formationMemory.count)return;
+ if(!nativeDependencyReady(0x578080)){formationFollow.cell=0;return;}
  if(!formationSameSelection()){formationForget();return;}
  if(!formationFollow.cell)return;
  // GETMESSAGE sees button-up before the game consumes it. Queue our per-unit

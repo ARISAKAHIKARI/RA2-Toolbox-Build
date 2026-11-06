@@ -35,6 +35,7 @@ constexpr unsigned IMAGE_DOS_SIGNATURE=0x5a4d,IMAGE_NT_SIGNATURE=0x4550,IMAGE_FI
 constexpr unsigned MEM_COMMIT=0x1000,MEM_IMAGE=0x1000000,MEM_PRIVATE=0x20000,PAGE_NOACCESS=1,PAGE_GUARD=0x100,PAGE_EXECUTE=0x10,PAGE_EXECUTE_READ=0x20,PAGE_EXECUTE_READWRITE=0x40,PAGE_EXECUTE_WRITECOPY=0x80;
 static void*GetModuleHandleW(const wchar_t*){return nullptr;}
 static size_t VirtualQuery(void*,MEMORY_BASIC_INFORMATION*,size_t){return 0;}
+static uint32_t clockMs=100;
 static uint32_t GetTickCount();
 #include "../source/native_entry_runtime.h"
 #include STARTUP_HELPERS
@@ -106,7 +107,7 @@ static unsigned riskSites[10]{};
 static void prepareRiskSites(){}
 static bool restoreRiskSite(unsigned){return true;}
 static bool installRiskSite(unsigned){return true;}
-static uint32_t GetTickCount(){return 100;}
+static uint32_t GetTickCount(){return clockMs;}
 static bool redrawRevealTest(){return false;}
 #include RENDER_REVEAL
 namespace pauseview {constexpr unsigned Feature=1;}
@@ -123,7 +124,8 @@ static void restoreHighScroll(){}
 #include SUSPENDED_OPTIONS
 
 static void seed(){
- memory.clear();reads.clear();storage={};snap={};checked=good=coreReached=false;signatureRetryAt=0;published=0;
+ memory.clear();reads.clear();storage={};snap={};checked=good=coreReached=false;signatureRetryAt=0;published=0;clockMs=100;
+ nativeAresCache={};for(auto&cache:nativeEntryCache)cache={};for(auto&cache:nativeDependencyCache)cache={};
  nativeCalls=crcBegins=crcEnds=lastNative=0;patchPreflights=patchAttempts=patchInstalls=patchRestores=0;codeHookRegistry={};riskRenderActive=riskRenderRedrawPending=false;
  for(const auto&s:Signatures)put(s.address,s.bytes,s.length);
  for(const auto&s:directpatch::Sites){put(s.address,s.before,s.size);put(s.address+s.size,s.context,sizeof s.context);}
@@ -133,15 +135,23 @@ static void unknown(uint32_t at){const uint8_t jump[]={0xe9,0x11,0x22,0x33,0x44}
 static void expectNoNative(){check(!nativeCalls&&!crcBegins&&!crcEnds);}
 static void dependencyChecks(){
  seed();check(startupdependency::dependency(0x431410)==startupdependency::Dependency::ClearBeacons);check(startupdependency::dependency(0x577D90)==startupdependency::Dependency::Reveal);
- unsigned count=0;for(const auto&s:Signatures)count+=startupdependency::requiredAtStartup(s.address);check(count==19);
- // Unknown optional instructions never reach the core validation callback.
- unknown(0x431410);unknown(0x577D90);reads.clear();check(signatures());check(reads.size()==19);
- for(auto at:reads)check(at!=0x431410&&at!=0x577D90);
- activation(100);check(coreReached&&good&&checked&&!published&&snap.status==1&&snap.commandStatus==0);
- for(const auto&s:Signatures)if(startupdependency::requiredAtStartup(s.address))for(unsigned inaccessible=0;inaccessible<2;++inaccessible){
-  seed();unknown(0x431410);unknown(0x577D90);if(inaccessible)memory.erase(s.address);else memory[s.address]^=1;
-  check(!signatures());activation(100);check(!coreReached&&!good&&!checked&&published==1&&snap.commandStatus==3);
+ check(startupdependency::dependency(0x6AA600)==startupdependency::Dependency::Unused);
+ unsigned count=0;for(const auto&s:Signatures)count+=startupdependency::requiredAtStartup(s.address);check(count==0);
+ // Every known API belongs to its consumer, including shared constructor and
+ // selection helpers. Their failure cannot prevent unrelated Runtime work.
+ for(const auto&s:Signatures)for(unsigned inaccessible=0;inaccessible<2;++inaccessible){
+  seed();if(inaccessible)memory.erase(s.address);else memory[s.address]^=1;const auto before=memory;
+  reads.clear();check(signatures()&&reads.empty());activation(100);
+  check(coreReached&&good&&checked&&!published&&snap.status==1&&snap.commandStatus==0);
+  check(!nativeDependencyReady(s.address,true));check(memory==before);
  }
+ // Classification and admission of an unreviewed/new address remain closed.
+ seed();const Signature future[]={{0x123450,1,{0x90}}};
+ check(startupdependency::requiredAtStartup(future[0].address));
+ check(!startupdependency::coreReady(future,[](const Signature&s){return startupSignature(s);}));
+ put<uint8_t>(future[0].address,0x90);check(!nativeDependencyReady(future[0].address));
+ seed();unknown(0x431410);unknown(0x577D90);reads.clear();check(signatures()&&reads.empty());
+ check(!nativeDependencyReady(0x431410)&&!nativeDependencyReady(0x577D90));
 }
 static void commandChecks(){
  seed();auto result=command(ClearBeacons);check(result.result==1&&result.count==1&&nativeCalls==1&&lastNative==0x431410&&!crcBegins);

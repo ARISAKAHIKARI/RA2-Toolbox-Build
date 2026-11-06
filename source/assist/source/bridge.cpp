@@ -226,6 +226,20 @@ static bool startupSignature(const Signature&s){
  unsigned char body[startupcompat::BeaconBytes];
  return read(target,body,sizeof body)&&startupcompat::beaconBody(body,sizeof body,module);
 }
+// Cold feature/command admission. Recheck failures as well as successes so
+// transient platform loading never latches a local feature off forever.
+static nativeentry::TimedResult nativeDependencyCache[sizeof(Signatures)/sizeof(Signatures[0])];
+static bool nativeDependencyReady(uint32_t address,bool refresh=false){
+ for(size_t i=0;i<sizeof(Signatures)/sizeof(Signatures[0]);++i)if(Signatures[i].address==address){
+  const DWORD now=GetTickCount();auto&cache=nativeDependencyCache[i];
+  if(!refresh&&cache.fresh(now))return cache.value;
+  return cache.set(now,startupSignature(Signatures[i]));
+ }
+ return false;
+}
+template<class... More>static bool nativeDependenciesReady(uint32_t first,More... rest){
+ return nativeDependencyReady(first)&&(...&&nativeDependencyReady(uint32_t(rest)));
+}
 static bool revealSignature(){return startupSignature(Signatures[9]);}
 static bool signatures(){return startupdependency::coreReady(Signatures,[](const Signature&s){return startupSignature(s);});}
 static void notifyHost(){
@@ -405,6 +419,13 @@ static bool submitConstructed(const intent::EventOrder& order,OrderAuthority aut
  // reach an engine call. The other YRpp constructors are exposed as ABI
  // descriptors for offline tests, not remotely callable game commands.
  if(constructors::admit(order)!=constructors::Verdict::Ready){snap.lastSubmitError=7;++snap.commandRejected;return false;}
+ // These four historical startup probes belong to the selected packet ABI.
+ // Other domains retain their own consumer guards; no unknown entry is
+ // admitted through nativeDependencyReady or this classification.
+ const uint32_t constructor=vanilla::address(order.domain);
+ if(startupdependency::eventConstructor(constructor)&&!nativeDependencyReady(constructor)){
+  snap.lastSubmitError=8;++snap.commandRejected;return false;
+ }
  Event packet{};
  const auto state=constructors::fill(packet,order,
   [](uint32_t address,uint32_t self,auto... args){call<void>(address,self,args...);});
@@ -513,7 +534,7 @@ static void releaseAutoOwner(uint32_t actor){
 }
 // Unified game-thread command gateway. All existing features submit normal
 // EventClass orders here; no event is executed directly on just one peer.
-// Constructors/ABI are verified against the supported game build at startup.
+// The selected native constructor is verified before filling its packet.
 // Original display-only action-line timer (25 simulation frames). Verified
 // against both supported EXEs: no unit mission/target writes and no event.
 // Let the original renderer draw later; never draw into game surfaces here.
@@ -700,23 +721,27 @@ static bool nativeProduceEvent(uint32_t house,const Type&t,bool nativeCameo=fals
 static bool repairEvent(uint32_t house,uint32_t id){return nativeObjectEvent(get<int>(house+0x30),0x15,id);}
 #include "feature_type_bridge.h"
 #include "autoload_bridge.h"
-static bool selection(uint32_t p){return call<bool>(0x6FBFA0,p);}
-static void unselect(){if(gameentry::active(gameentry::Client::Assist))((void(__cdecl*)())0x48DC90)();}
+static bool selection(uint32_t p){return nativeDependencyReady(0x6FBFA0)&&call<bool>(0x6FBFA0,p);}
+static void unselect(){if(gameentry::active(gameentry::Client::Assist)&&nativeDependencyReady(0x48DC90))((void(__cdecl*)())0x48DC90)();}
 static int selectFilter(uint32_t house,int action){
  static uint32_t chosen[4096];int n=0;Vec v=vec(action==EmptyTransports?0xA8EC78:0xA8ECB8);
  for(int i=0;i<v.count&&n<4096;++i){uint32_t p=item(v,i);if(!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k);if(!t)continue;
  bool harv=k==2&&(get<bool>(t+0xE0E)||get<bool>(t+0xE0F)),eng=k==1&&get<bool>(t+0xEC3);
  bool ok=action==CombatSelection?(!harv&&!eng&&get<bool>(t+0xDBC)):action==EmptyTransports?(get<int>(t+0x5E0)>0&&get<int>(p+0x114)==0):get<int>(p+0x6c)<get<int>(t+0xA0);
  if(ok)chosen[n++]=p;
- }if(!n)return 0;unselect();for(int i=0;i<n;++i)selection(chosen[i]);return n;
+ }if(!n)return 0;if(!nativeDependenciesReady(0x48DC90,0x6FBFA0))return -12;
+ unselect();int selected=0;for(int i=0;i<n;++i)if(selection(chosen[i]))++selected;return selected;
 }
 static int findIdle(uint32_t house,int mode){Vec v=vec(0xA8EC78);uint32_t next=0,first=0,nextid=0xffffffff,firstid=0xffffffff;int slot=mode-IdleHarvester;
  for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k);if(!t)continue;
  bool category=slot==0?(k==2&&(get<bool>(t+0xE0E)||get<bool>(t+0xE0F))):slot==1?(k==1&&get<bool>(t+0xEC3)):(get<int>(t+0x5E0)>0&&get<int>(p+0x114)==0);
  if(!category||!idleMission(get<int>(p+0xAC),get<int>(p+0xB4),get<uint32_t>(p+0x2B4)!=0,get<bool>(p+0x1C8)))continue;
  uint32_t id=get<uint32_t>(p+0x10);if(id<firstid){firstid=id;first=p;}if(id>lastIdle[slot]&&id<nextid){nextid=id;next=p;}
- }if(!next){next=first;nextid=firstid;}if(!next)return 0;lastIdle[slot]=nextid;unselect();selection(next);
- uint32_t tactical=get<uint32_t>(0x887324);if(tactical)call<void>(0x6D2420,tactical,(void*)(next+0x9C),0);return 1;
+ }if(!next){next=first;nextid=firstid;}if(!next)return 0;
+ uint32_t tactical=get<uint32_t>(0x887324);
+ if(!nativeDependenciesReady(0x48DC90,0x6FBFA0)||(tactical&&!nativeDependencyReady(0x6D2420)))return -12;
+ lastIdle[slot]=nextid;unselect();if(!selection(next))return 0;
+ if(tactical)call<void>(0x6D2420,tactical,(void*)(next+0x9C),0);return 1;
 }
 static void scanTypes(){catalogueDirty=true;
  uint32_t oldPointers[MaxTypes];uint8_t oldAllowed[MaxTypes];int oldCount=snap.typeCount;memcpy(oldPointers,typePointers,sizeof oldPointers);memcpy(oldAllowed,techAllowed,sizeof oldAllowed);memset(techAllowed,0,sizeof techAllowed);snap.typeCount=0;const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};const int kinds[]={3,16,40,7};
@@ -812,7 +837,9 @@ static void consumePlanning(int channel){sharedPlanningBudget.consume(channel);}
 #include "../../external_reader/source/idle_aircraft.h"
 static int selectIdleAircraft(uint32_t house,uint32_t id){
  uint32_t p=worldByID(id);auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};external::aircraft::Inspect<decltype(reader)> planes{reader};
- if(!p||!planes.idle(p,house)||!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x13C),p))return 0;unselect();if(!selection(p))return 0;
+ if(!p||!planes.idle(p,house)||!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x13C),p))return 0;
+ if(!nativeDependenciesReady(0x48DC90,0x6FBFA0))return -12;
+ unselect();if(!selection(p))return 0;
  return 1; // Selecting an idle aircraft must not move the tactical camera.
 }
 static void selectionCommand(uint32_t house,DWORD now){
@@ -876,6 +903,7 @@ static void repairCalculationTick(DWORD now){
 }
 
 static int superSelect(uint32_t house,int index){Vec v=vec(house+0x254,256);uint32_t p=item(v,index);if(!p||get<uint32_t>(p+0x2C)!=house||!get<bool>(p+0x6D))return -4;
+ if(!nativeDependencyReady(0x6CC360))return -12;
  if(!call<char>(0x6CC360,p))return -5;uint32_t t=get<uint32_t>(p+0x28);if(!t)return -4;
  if(get<int>(t+0xBC)==0){
   if(orderpolicy::superWeaponEvent(true,true,true,0)!=orderpolicy::Reject::None)return -4;
@@ -893,6 +921,9 @@ static int superSelect(uint32_t house,int index){Vec v=vec(house+0x254,256);uint
   recordReceipt(gateway::makeQueuedReceipt(missionObserver.nextSerial,swIntent,submittedAt,taskarbiter::Owner::SuperWeapon));
   return 1;
  }
+ // Admit the whole local cursor transaction before clearing any selection
+ // or targeting state. A missing cursor helper only rejects this command.
+ if(!nativeDependenciesReady(0x4A8BF0,0x4AC8C0,0x4AC660,0x48DC90))return -12;
  put<uint32_t>(0x88098C,0);put<uint32_t>(0x880990,0);put<int>(0x880994,-1);call<void>(0x4A8BF0,0x87F7E8,(void*)nullptr);call<void>(0x4AC8C0,0x87F7E8,0);call<void>(0x4AC660,0x87F7E8,0);
  put<unsigned char>(0x88099A,0);put<unsigned char>(0x88099B,0);put<unsigned char>(0x88099C,0);put<int>(0x8809A0,index);unselect();return 1;
 }
@@ -924,8 +955,8 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else if(selectedmode::index(c)>=0){n=selectedModeCommand(house,selectedmode::mission(selectedmode::index(c)));if(n<0){result=n;n=0;}}
  else if(c==CancelAdvanced){Vec v=vec(0xA8ECB8);for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(p&&own(p,house)){cancelAutomatic(p);++n;}}}
  else if(c==AutoBoard){result=autoLoad(house);n=snap.loadIssued;if(result==-30){loadAckRequest=req;loadAckPending=true;return;}}
- else if(c>=CombatSelection&&c<=DamagedSelection)n=selectFilter(house,c);
- else if(c>=IdleHarvester&&c<=IdleTransport)n=findIdle(house,c);
+ else if(c>=CombatSelection&&c<=DamagedSelection){n=selectFilter(house,c);if(n<0){result=n;n=0;}}
+ else if(c>=IdleHarvester&&c<=IdleTransport){n=findIdle(house,c);if(n<0){result=n;n=0;}}
  else if(c==ClearBeacons){if(!startupSignature(Signatures[8]))result=-12;else {call<void>(0x431410,0x89C3B0,get<int>(house+0x30));n=1;}}
  else if(c==RevealMap&&(!(sh->flags&ExperimentalReveal)||sh->renderReveal)){result=-21;}
  else if(c==RevealMap){
@@ -940,6 +971,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  }
  else if(c==OpenTech){
   if(arg&&!techmode::valid(sh->arg2))result=-4;
+  else if(arg&&!techNativeDependencies(sh->arg2)){snap.techError=-12;result=-12;}
   else if(arg&&sh->arg2!=techImplementation&&(techmode::data(sh->arg2)||techmode::parameters(sh->arg2)||techmode::data(techImplementation)||techmode::parameters(techImplementation))&&techTransitionProductionPending(house)){snap.techError=-43;result=-43;}
   else {techImplementation=arg?sh->arg2:0;snap.techOpen=arg?int(techImplementation)+1:0;memcpy(techAllowed,sh->techAllowed,sizeof techAllowed);snap.techError=0;
    if(techmode::data(techImplementation))for(auto&w:reservedSidebar)w={};
@@ -958,6 +990,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else if(c==ProduceReserved){
   uint32_t origin=worldByID(uint32_t(sh->arg2));
   if(!(sh->flags&ReserveConstruction)||arg<0||arg>=snap.typeCount||snap.types[arg].kind!=7||!origin||!own(origin,house)||kind(origin)!=3||get<bool>(origin+0x81)||!get<bool>(origin+0x90))result=-4;
+  else if(!nativeDependenciesReady(0x6ABC60,0x4F7870,0x5F7900))result=-12;
   else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t f=tab==0||tab==1?get<uint32_t>(house+(tab?0x53CC:0x53BC)):0;
    if(tab<0||tab>1||!hasCameo(7,t.index)||!typePointers[arg]||!reservationCanBuild(typePointers[arg],house))result=-9;
    else if(f>=0x10000&&(get<uint32_t>(f+0x58)||get<int>(f+0x50)>0))result=-9;
@@ -967,6 +1000,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  }
  else if(c==ProduceDeferred){
   if(!(sh->flags&ReserveConstruction)||arg<0||arg>=snap.typeCount||!typePointers[arg])result=-4;
+  else if(!nativeDependenciesReady(0x6ABC60,0x4F7870,0x5F7900))result=-12;
   else {const auto&t=snap.types[arg];int tab=typeTab(arg);uint32_t offset=t.kind==3?0x53AC:t.kind==16?0x53B0:t.kind==40?(t.naval?0x53B8:0x53B4):t.kind==7?(tab==1?0x53CC:0x53BC):0;
    uint32_t factory=offset?get<uint32_t>(house+offset):0;
    if(!offset||tab<0||tab>3||!hasCameo(t.kind,t.index)||!reservationCanBuild(typePointers[arg],house))result=-9;
@@ -985,6 +1019,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
   // the unpublished toolbox event-only route under a renamed mode.
   else if(techmode::data(techImplementation)||techmode::parameters(techImplementation))result=-4;
   else if(c==CancelTechProduction){auto&t=snap.types[arg];if(nativeProduceEvent(house,t,false,0x10))n=1;else result=-6;}
+  else if(!nativeDependenciesReady(0x4F7870,0x5F7900,0x6ABC60,0x6A6300))result=-12;
   else {const uint32_t type=typePointers[arg];uint32_t table=get<uint32_t>(type),method=table?get<uint32_t>(table+0x94):0;
    if(method<0x10000||call<int>(0x4F7870,house,(void*)(uintptr_t)type,true,true)<=0||!call<uint32_t>(method,type,techImplementation!=1,true,true,(void*)(uintptr_t)house))result=-9;
    else{auto&t=snap.types[arg];
@@ -1028,6 +1063,7 @@ static void repairTick(uint32_t house,DWORD now){
 }
 static void scanCrates(uint32_t tactical,int frame,DWORD now,uint32_t flags){
  snap.crateCount=0;if(!(flags&Crates)){cratesOn=false;crateCount=0;return;}
+ if(!nativeDependenciesReady(0x578080,0x6D2140)){cratesOn=false;crateCount=0;return;}
  if(!cratesOn||DWORD(now-crateTick)>=500){cratesOn=true;crateTick=now;crateCount=0;
   uint32_t cells=get<uint32_t>(0x87F7E8+316);int capacity=get<int>(0x87F7E8+320);
   if(cells>=0x10000&&capacity>0&&capacity<=512*512)for(int i=0;i<256;++i){uint32_t c=0x87F7E8+344+i*16;int x=get<short>(c+12),y=get<short>(c+14);
@@ -1043,13 +1079,15 @@ static void scanCrates(uint32_t tactical,int frame,DWORD now,uint32_t flags){
 static void scan(uint32_t house,int frame,DWORD now){
  snap.labels=0;snap.selected=0;snap.transports=snap.used=snap.capacity=0;
  uint32_t tactical=get<uint32_t>(0x887324),flags=sh->flags;
+ const bool capacityReady=(flags&Capacity)&&nativeDependencyReady(0x473460);
+ const bool projectionReady=tactical&&nativeDependencyReady(0x6D2140);
  bool global=(flags&(Iron|Psychic))||((flags&Capacity)&&(flags&AllTransports))||nativeCount;
  Vec v=vec(global?0xA8EC78:0xA8ECB8);
  snap.threatCount=0;uint32_t allies=get<uint32_t>(house+0x5788);
  for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(!p||!live(p))continue;int k=kind(p);if(k<0)continue;
  bool local=get<uint32_t>(p+0x21C)==house;
  if(!local){
-  if((flags&Psychic)&&tactical&&snap.threatCount<MaxThreats){uint32_t owner=get<uint32_t>(p+0x21C),target=get<uint32_t>(p+0x2B4);
+  if((flags&Psychic)&&projectionReady&&snap.threatCount<MaxThreats){uint32_t owner=get<uint32_t>(p+0x21C),target=get<uint32_t>(p+0x2B4);
    int ownerIndex=owner>=0x10000?get<int>(owner+0x30):-1;
    if(ownerIndex>=0&&ownerIndex<32&&!(allies&(1u<<ownerIndex))&&target>=0x10000&&kind(target)>=0&&own(target,house)){
     POINT a{},b{};if(call<bool>(0x6D2140,tactical,(const void*)(p+0x9C),&a)&&call<bool>(0x6D2140,tactical,(const void*)(target+0x9C),&b))snap.threats[snap.threatCount++]={get<uint32_t>(p+0x10),get<uint32_t>(target+0x10),a.x,a.y,b.x,b.y};
@@ -1057,10 +1095,10 @@ static void scan(uint32_t house,int frame,DWORD now){
   }
  }
  bool selected=local&&get<bool>(p+0x83);if(selected)++snap.selected;
- int iron=(flags&Iron)?remaining(get<int>(p+0x18C),get<int>(p+0x194),frame):0;uint32_t t=typeOf(p,k);int capacity=local&&t&&k!=3&&(flags&Capacity)?get<int>(t+0x5E0):0;bool capacityShow=capacity>0&&(selected||(flags&AllTransports));
+ int iron=(flags&Iron)?remaining(get<int>(p+0x18C),get<int>(p+0x194),frame):0;uint32_t t=typeOf(p,k);int capacity=local&&t&&k!=3&&capacityReady?get<int>(t+0x5E0):0;bool capacityShow=capacity>0&&(selected||(flags&AllTransports));
  int used=0;if(capacityShow){used=call<int>(0x473460,p+0x114);if(selected){++snap.transports;snap.used+=used;snap.capacity+=capacity;}}
  int advancedIndex=local&&nativeCount?orderIndex(p):-1;int advanced=local&&get<int>(p+0xAC)==6?2:advancedIndex>=0&&nativeOrders[advancedIndex].stopped;
- if((!capacityShow&&!iron&&!advanced)||!tactical||snap.labels>=MaxLabels)continue;
+ if((!capacityShow&&!iron&&!advanced)||!projectionReady||snap.labels>=MaxLabels)continue;
  POINT pt{};if(!call<bool>(0x6D2140,tactical,(const void*)(p+0x9C),&pt))continue;
  auto&l=snap.label[snap.labels++];l={get<uint32_t>(p+0x10),pt.x,pt.y,used,capacityShow?capacity:0,iron,get<int>(p+0x1C4)!=0,advanced};
  }
@@ -1076,7 +1114,7 @@ static bool scanSummary(uint32_t house,int frame,DWORD now,uint32_t flags){
    MemoryBarrier();sh->productionAck=sh->productionRequest;
   }return true;
  }
- snap.swCount=0;Vec sw=vec(house+0x254,256);for(int i=0;i<sw.count&&snap.swCount<MaxSW;++i){uint32_t p=item(sw,i);if(!p||get<uint32_t>(p+0x2C)!=house||!get<bool>(p+0x6D))continue;uint32_t t=get<uint32_t>(p+0x28);if(!t)continue;auto&d=snap.supers[snap.swCount++];memset(&d,0,sizeof d);memcpy(d.id,(void*)(t+0x24),23);name(t,d.name,40);d.index=i;d.ready=call<char>(0x6CC360,p);d.frames=remaining(get<int>(p+0x30),get<int>(p+0x38),frame);}
+ snap.swCount=0;Vec sw=vec(house+0x254,256);if(nativeDependencyReady(0x6CC360))for(int i=0;i<sw.count&&snap.swCount<MaxSW;++i){uint32_t p=item(sw,i);if(!p||get<uint32_t>(p+0x2C)!=house||!get<bool>(p+0x6D))continue;uint32_t t=get<uint32_t>(p+0x28);if(!t)continue;auto&d=snap.supers[snap.swCount++];memset(&d,0,sizeof d);memcpy(d.id,(void*)(t+0x24),23);name(t,d.name,40);d.index=i;d.ready=call<char>(0x6CC360,p);d.frames=remaining(get<int>(p+0x30),get<int>(p+0x38),frame);}
  scanProduction(house,frame,flags);
  return true;
 }
@@ -1228,9 +1266,9 @@ static void tick(){
  if(newMatch){if(houseChanged){cancelCooperativePlan(-3);reset(false);}match=sessionTracker.epoch;lastHouse=house;sh->computeApplied=sh->computeRequested&compute::All;scanTypes();slow=now-100;sceneFrame=-2147483647;sceneTick=0;}
  // Local playable state above is sufficient; do not wait for remote FrameInfo.
  snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;
- // A temporary loading/platform signature mismatch must not poison the
- // pinned Runtime for its entire lifetime. Core probes retain their native
- // call or instruction policy; optional commands check dependencies at use.
+ // Function entries are checked by their actual consumers. This startup
+ // boundary only retains fail-closed handling for unclassified future probes;
+ // world, protocol, authority and owned-hook cleanup gates remain independent.
  if(!checked&&(!signatureRetryAt||DWORD(now-signatureRetryAt)>=1000)){
   signatureRetryAt=now;good=signatures();checked=good;
  }

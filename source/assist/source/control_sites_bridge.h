@@ -30,6 +30,12 @@ static void controlSitesSuspend(){
 static void controlSitesTick(bool enabled){
  const uint32_t requested=sh&&controlmode::valid(sh->controlAll)?sh->controlAll:controlmode::Off;
  enabled=enabled&&playertest::Available&&requested!=controlmode::Off&&!controlHouseFlagsPending();
+ // Selection is a capability of this control mode, not a Runtime startup
+ // dependency. Retire only this mode if its native selection calls differ.
+ if(enabled&&!nativeDependenciesReady(0x48DC90,0x6FBFA0)){
+  riskControlActive=false;const bool parameters=restoreControlParameters(),code=restoreControlSites();
+  if(sh)sh->playerControlStatus=parameters&&code?-11:-16;return;
+ }
  // The no-code mode must never pass through either patch installer. A sibling
  // hardware lease may remain while this group is asynchronously retiring.
  if(controlmode::parameters(requested)){

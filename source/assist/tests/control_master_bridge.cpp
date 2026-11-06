@@ -17,6 +17,9 @@ static void bytes(uint32_t at,const void*in,size_t n){for(size_t i=0;i<n;++i)mem
 struct Shared{uint32_t controlAll=0;int playerControlStatus=0;};static Shared shared,*sh=&shared;
 namespace playertest{constexpr bool Available=true;}
 static bool riskControlActive=false,riskControlNativeJump=false,legacyPending=false,companions=true;
+static uint32_t missingDependency=0;static unsigned dependencyChecks=0;
+static bool nativeDependencyReady(uint32_t address){++dependencyChecks;assert(address==0x48DC90||address==0x6FBFA0);return address!=missingDependency;}
+template<class...A>static bool nativeDependenciesReady(A...addresses){return (nativeDependencyReady(uint32_t(addresses))&&...);}
 static uint32_t riskControlNativeTarget=0;
 static bool controlHouseFlagsPending(){return legacyPending;}
 static bool controlCompanionsRetired(){return companions;}
@@ -40,13 +43,13 @@ static bool installRiskSite(RiskSite&s){
  if(codeHookRegistry.active(s.address)){uint8_t b[16]{};if(read(s.address,b,s.size)&&!memcmp(b,s.after,s.size))return !codeHookRegistry.conflict(s.address);codeHookRegistry.markConflict(s.address);return false;}
  return gameentry::patch(gameentry::Client::Assist,s.address,s.before,s.after,s.size);
 }
-static bool hardwareOwned=false,hardwareCleanup=true;static int hardwareStatus=3;static unsigned hardwareRequests=0;
-static bool restoreControlParameters(){if(!hardwareCleanup)return false;hardwareOwned=false;return true;}
+static bool hardwareOwned=false,hardwareCleanup=true;static int hardwareStatus=3;static unsigned hardwareRequests=0,hardwareRestores=0;
+static bool restoreControlParameters(){++hardwareRestores;if(!hardwareCleanup)return false;hardwareOwned=false;return true;}
 static bool controlParametersRetired(){return !hardwareOwned;}static int requestControlParameters(){++hardwareRequests;hardwareOwned=hardwareStatus==3;return hardwareStatus;}
 #include "../source/control_sites_bridge.h"
 static const uint8_t nativeTail[]={0xB8,1,0,0,0,0xC3,0x8B,0x15,0x4C,0x3D,0xA8,0,0x33,0xC0,0x3B,0xCA,0x0F,0x94,0xC0,0xC3};
 static const uint8_t entries[][5]={{0xA1,0x38,0xB2,0xA8,0},{0xE9,0xFB,0x2A,0x67,0},{0xE9,0x8B,0x2C,0x67,0}};
-static void seed(int variant=1){memory.clear();codeHookRegistry=hookregistry::Registry<>{};shared={};writes.clear();controlSitesMode=0;riskControlActive=false;legacyPending=false;companions=true;failInstall=failRestore=0;afterWrite=false;hardwareOwned=false;hardwareCleanup=true;hardwareStatus=3;hardwareRequests=0;
+static void seed(int variant=1){memory.clear();codeHookRegistry=hookregistry::Registry<>{};shared={};writes.clear();controlSitesMode=0;riskControlActive=false;legacyPending=false;companions=true;failInstall=failRestore=0;afterWrite=false;hardwareOwned=false;hardwareCleanup=true;hardwareStatus=3;hardwareRequests=hardwareRestores=0;missingDependency=dependencyChecks=0;unselections=0;
  for(const auto&p:patchcontext::Probes)bytes(p.address,p.bytes,p.size);
  for(const auto&s:mastercontrol::Sites)bytes(s.address,s.before,5);
  bytes(0x50B6F0,entries[variant],5);const uint8_t native[]={0x85,0xC0,0x75,0x1D},forward[]={0xCC,0xCC,0xCC,0xCC};bytes(0x50B6F5,variant?forward:native,4);bytes(0x50B710,nativeTail,sizeof nativeTail);
@@ -91,5 +94,47 @@ int main(){
  hardwareCleanup=false;shared.controlAll=controlmode::Native;controlSitesTick(true);assert(shared.playerControlStatus==-2&&writes.empty()&&hardwareOwned);
  hardwareCleanup=true;controlSitesTick(true);assert(!hardwareOwned&&shared.playerControlStatus==1&&writes.size()==3);stopped();
  seed();shared.controlAll=controlmode::Parameters;hardwareStatus=-12;controlSitesTick(true);assert(writes.empty()&&shared.playerControlStatus==-12&&!riskControlActive);stopped();
- puts("PASS Master production bridge: 3 exact variants, ordered install/restore, Native transitions, suspension, preflight, companions, post-write errors, pending retry and foreign conflict preservation");
+ // Each unavailable selection call rejects all three control implementations
+ // before installation, native selection or a hardware admission request.
+ // -11 is the control UI's native-entry diagnostic; -12 remains slot shortage.
+ for(uint32_t missing:{0x48DC90u,0x6FBFA0u})for(uint32_t mode:{uint32_t(controlmode::Native),uint32_t(controlmode::Master),uint32_t(controlmode::Parameters)}){
+  seed();missingDependency=missing;shared.controlAll=mode;const auto original=memory;controlSitesTick(true);
+  assert(shared.playerControlStatus==-11&&writes.empty()&&memory==original&&!riskControlActive&&!hardwareOwned&&!hardwareRequests&&!unselections&&hardwareRestores==1);
+  assert(dependencyChecks>0&&!controlTransitionPending());
+  missingDependency=0;controlSitesTick(true);assert(shared.playerControlStatus==int(mode));
+  if(mode==controlmode::Parameters)assert(hardwareOwned&&hardwareRequests==1&&writes.empty());
+  else assert(codeHookRegistry.installed()==3&&riskControlActive==controlmode::native(mode));
+  stopped();assert(!controlSitesOwned()&&!hardwareOwned&&shared.playerControlStatus==0);
+ }
+ // Loss after activation retires existing byte ownership in the same safe
+ // order. A later good dependency retries the still-requested mode locally.
+ seed();enabled();missingDependency=0x48DC90;controlSitesTick(true);
+ assert(shared.playerControlStatus==-11&&!controlSitesOwned()&&writes.size()==6&&!unselections);
+ assert(writes[3].restore&&writes[3].at==0x50B6F0&&writes[4].at==0x637E40&&writes[5].at==0x6339BA);
+ missingDependency=0;controlSitesTick(true);assert(shared.playerControlStatus==2&&codeHookRegistry.installed()==3);stopped();
+ // A failed predicate restoration keeps the strict owner CALLs and reports
+ // cleanup pending, not successful incompatibility rejection or free slots.
+ seed();enabled();missingDependency=0x6FBFA0;failRestore=0x50B6F0;controlSitesTick(true);
+ assert(shared.playerControlStatus==-16&&codeHookRegistry.installed()==3&&controlTransitionPending()&&writes.size()==3);
+ for(const auto&s:mastercontrol::Sites)assert(at(s.address,s.after));
+ failRestore=0;controlSitesTick(true);assert(shared.playerControlStatus==-11&&!controlSitesOwned());
+ missingDependency=0;controlSitesTick(true);assert(shared.playerControlStatus==2);stopped();
+ // Post-write errors retain their failure diagnostic for this attempt, then
+ // verified retirement is acknowledged on the next tick without a latch.
+ seed();enabled();missingDependency=0x48DC90;failRestore=0x50B6F0;afterWrite=true;controlSitesTick(true);
+ assert(shared.playerControlStatus==-16&&!controlSitesOwned());controlSitesTick(true);
+ assert(shared.playerControlStatus==-11&&!controlTransitionPending());failRestore=0;missingDependency=0;controlSitesTick(true);assert(shared.playerControlStatus==2);stopped();
+ // Hardware retirement remains mandatory; missing UI calls never cancel its
+ // cleanup responsibility, nor can they block an explicit Off request.
+ seed();shared.controlAll=controlmode::Parameters;controlSitesTick(true);assert(hardwareOwned);
+ missingDependency=0x6FBFA0;hardwareCleanup=false;const unsigned requested=hardwareRequests;controlSitesTick(true);
+ assert(shared.playerControlStatus==-16&&hardwareOwned&&hardwareRequests==requested&&writes.empty());
+ shared.controlAll=controlmode::Off;const unsigned probes=dependencyChecks;controlSitesTick(false);
+ assert(shared.playerControlStatus==-2&&hardwareOwned&&dependencyChecks==probes);
+ hardwareCleanup=true;controlSitesTick(false);assert(shared.playerControlStatus==0&&!hardwareOwned&&dependencyChecks==probes);
+ // The dependency failure also cannot short-circuit ordinary byte restoration
+ // when a user disables an active Master mode.
+ seed();enabled();missingDependency=0x48DC90;const unsigned beforeOff=dependencyChecks;stopped();
+ assert(shared.playerControlStatus==0&&!controlSitesOwned()&&dependencyChecks==beforeOff&&writes.size()==6);
+ puts("PASS Master production bridge: 3 exact variants, ordered install/restore, Native transitions, suspension, preflight, companions, post-write errors, pending retry and foreign conflict preservation; selection dependency isolation in all 3 modes, distinct -11/-12 diagnostics, retained cleanup and recovery");
 }

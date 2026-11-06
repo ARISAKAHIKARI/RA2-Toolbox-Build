@@ -240,6 +240,9 @@ static bool validateMoSubmission(const intent::EventOrder&order){
 // The upstream draws its current-cell outline every render while throttling
 // target assignment independently. A sparse route node is never the cursor.
 static void moUpdateOutline(){
+ // Unknown ground height suppresses only this optional outline. Existing
+ // semantic orders and native paths do not depend on its display geometry.
+ if(!nativeDependencyReady(0x578080)){moPreview.nodeCount=0;if(moMode==int(moorders::Patrol))moPreview.count=0;moOutlineDirty=true;moOutlineAt=sampleClock(sh);return;}
  if(moMode==int(moorders::Patrol)){
   moorders::Point stroke[moorders::Nodes],route[moorders::Waypoints];int count=moStrokeCount;
   std::copy(moStroke,moStroke+count,stroke);moorders::sample(stroke,count,moCurrent,true);

@@ -246,7 +246,9 @@ inline void CALLBACK pulse(void*,BOOLEAN){
   if(!runtimebroker::client().alive(t.brokerGeneration)){
    InterlockedExchange(&t.control->enabled,0);
    if(t.brokerRetry&&int32_t(now-t.brokerRetry)<0)continue;t.brokerRetry=now+1000;
-   if(!runtimebroker::client().install(t.pid,t.thread,uint32_t(uintptr_t(t.window)),t.brokerToken,t.brokerGeneration)){t.lastPostError=GetLastError();continue;}
+   // A broker startup timeout may exceed one second. Keep a complete quiet
+   // interval after failure instead of spending the backoff while blocked.
+   if(!runtimebroker::client().install(t.pid,t.thread,uint32_t(uintptr_t(t.window)),t.brokerToken,t.brokerGeneration)){t.lastPostError=GetLastError();t.brokerRetry=GetTickCount()+1000;continue;}
    InterlockedExchange(&t.control->enabled,LONG(enabled));t.lastPostError=0;
   }
 #endif

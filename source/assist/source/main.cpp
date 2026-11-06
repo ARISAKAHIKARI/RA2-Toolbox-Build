@@ -273,6 +273,8 @@ static const wchar_t* startupProbeDependency(uint32_t address){
  switch(startupdependency::dependency(address)){
  case startupdependency::Dependency::ClearBeacons:return L"optional-ClearBeacons feature=清除信标";
  case startupdependency::Dependency::Reveal:return L"optional-Reveal feature=原生全图";
+ case startupdependency::Dependency::LocalNative:return L"local-native feature=原生功能局部依赖";
+ case startupdependency::Dependency::Unused:return L"unused-native feature=无直接调用的历史入口";
  default:return L"Core";
  }
 }
@@ -987,6 +989,12 @@ static bool bridgeFailed(const std::wstring&reason,DWORD error=0){
  if(bridgeFailure!=text){bridgeFailure=text;critical(L"command bridge failure: "+text+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));}
  setStatus(text);return false;
 }
+static bool bridgeConnectFailed(const std::wstring&reason,DWORD error=0){
+ // Loading, installation and cleanup may block. Start the quiet retry window
+ // after they finish, so a timeout cannot consume its own backoff.
+ bridgeRetryAt=GetTickCount()+(bridgeAttempts>=3?30000:2000);
+ return bridgeFailed(reason,error);
+}
 // A new Host cannot assume identity projection while a previous controller's
 // Runtime may still own R. Probe before the first read-only sample as well as
 // before creating a command mapping; an absent name alone cannot retire a
@@ -1022,9 +1030,11 @@ static bool ensureBridge(){
  if(shared)return true;
  // Runtime feature maintenance still checks local playable state and exact signatures.
  if(!game)return false;
- if(!gameinput::runtimeAvailable())return bridgeFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",GetLastError());DWORD now=GetTickCount();
+ DWORD now=GetTickCount();
  probeNativeViewportMapping();
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
+ if(!gameinput::runtimeAvailable()){DWORD error=GetLastError();++bridgeAttempts;return bridgeConnectFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",error);}
+ now=GetTickCount();
  gameinput::NativeWindowProbe native{};
  if(!gameinput::nativeWindow(pid,gameThread,&native)){
   // Readiness is not an installation failure. Retry promptly without using
@@ -1035,13 +1045,13 @@ static bool ensureBridge(){
     L" owner="+std::to_wstring(native.owner)+L" actualTid="+std::to_wstring(native.thread)+
     L" expectedPid="+std::to_wstring(pid)+L" expectedTid="+std::to_wstring(gameThread)+L" error="+std::to_wstring(native.error));
   }
-  bridgeRetryAt=now+250;return bridgeFailed(L"等待游戏主窗口就绪，功能将自动连接",native.error);
+  bridgeRetryAt=GetTickCount()+250;return bridgeFailed(L"等待游戏主窗口就绪，功能将自动连接",native.error);
  }
  ++bridgeAttempts;bridgeRetryAt=now+(bridgeAttempts>=3?30000:2000);
  critical(L"bridge-connect-attempt="+std::to_wstring(bridgeAttempts)+L" pid="+std::to_wstring(pid)+L" thread="+std::to_wstring(gameThread));
  wchar_t n[100];mappingName(n,pid);
  mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(Shared),n);
- DWORD mappingError=GetLastError();if(!mapping)return bridgeFailed(L"创建命令共享内存失败",mappingError);
+ DWORD mappingError=GetLastError();if(!mapping)return bridgeConnectFailed(L"创建命令共享内存失败",mappingError);
  if(mappingError==ERROR_ALREADY_EXISTS){
   Shared*prior=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));
   const DWORD viewError=prior?0:GetLastError();
@@ -1060,12 +1070,12 @@ static bool ensureBridge(){
    std::wstring reason=!valid?L"已有命令映射的大小/协议不匹配；请退出游戏和旧工具箱，再启动新版本。":
     (!ours&&!ownerDead?L"另一工具箱仍持有此游戏的命令连接；请先关闭旧工具箱。":L"旧命令桥尚未完成卸载；若持续等待，请退出游戏并重新启动。");
    if(prior)UnmapViewOfFile(prior);if(mapping)CloseHandle(mapping);mapping=nullptr;
-   return bridgeFailed(reason,viewError);
+   return bridgeConnectFailed(reason,viewError);
   }
   UnmapViewOfFile(prior);
  }
- shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared){DWORD error=GetLastError();releaseBridge();return bridgeFailed(L"映射命令共享内存失败",error);}
- uint32_t hostWindow=gameinput::windowToken(ui);if(!hostWindow){releaseBridge();return bridgeFailed(L"工具箱窗口句柄无法与 32 位运行组件互通",ERROR_INVALID_WINDOW_HANDLE);}
+ shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared){DWORD error=GetLastError();releaseBridge();return bridgeConnectFailed(L"映射命令共享内存失败",error);}
+ uint32_t hostWindow=gameinput::windowToken(ui);if(!hostWindow){releaseBridge();return bridgeConnectFailed(L"工具箱窗口句柄无法与 32 位运行组件互通",ERROR_INVALID_WINDOW_HANDLE);}
  memset(shared,0,sizeof *shared);shared->viewportHostCapabilities=nativeviewportprojection::HostHandshake;
  shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=hostWindow;shared->heartbeat=now;shared->flags=flags();shared->scanMs=8;shared->repairMs=repairMs;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
  shared->megaQueueMode=megaQueueMode;shared->objectQueueMode=objectQueueMode;shared->driverStatus=0;syncAdditional();syncTypeConfig();
@@ -1075,7 +1085,7 @@ static bool ensureBridge(){
   if(!gameinput::assistIdentity(module,Version,sizeof(Shared),MappingPrefix.text)){
    bridgeBlocked=true;releaseBridge();
    diag(L"Assist bridge protocol/structure mismatch");
-   return bridgeFailed(L"运行组件版本不匹配，请完整更新工具箱。");
+   return bridgeConnectFailed(L"运行组件版本不匹配，请完整更新工具箱。");
   }
  }
  hook=gameinput::install(gameentry::Client::Assist,gameThread,pid,game);
@@ -1083,9 +1093,9 @@ static bool ensureBridge(){
   const auto capacity=gameinput::capacity();
   critical(L"hook-install-failed stage="+stage+L" Win32="+std::to_wstring(error)+
    L" hostBits="+std::to_wstring(sizeof(void*)*8)+L" targets="+std::to_wstring(capacity.targets)+L"/8 subscriptions="+std::to_wstring(capacity.subscriptions)+L"/32");logLoadedGameModules();
-  if(stage==L"target-slots")return bridgeFailed(L"8 个游戏进程连接槽已占用；这不是功能数量限制，请查看旧连接清理日志",error);
-  if(stage==L"subscription-slots")return bridgeFailed(L"32 个功能订阅槽已占用，请查看旧订阅清理日志",error);
-  return bridgeFailed(L"无法建立游戏操作连接（"+stage+L"）",error);}
+  if(stage==L"target-slots")return bridgeConnectFailed(L"8 个游戏进程连接槽已占用；这不是功能数量限制，请查看旧连接清理日志",error);
+  if(stage==L"subscription-slots")return bridgeConnectFailed(L"32 个功能订阅槽已占用，请查看旧订阅清理日志",error);
+  return bridgeConnectFailed(L"无法建立游戏操作连接（"+stage+L"）",error);}
  bridgeFailure.clear();ack=notice=0;lastData=0;attachAt=now;wakeGame();
  wchar_t dllPath[32768]={},transportName[96];uint64_t moduleBase=0,hookRva=0;
 #ifdef _WIN64

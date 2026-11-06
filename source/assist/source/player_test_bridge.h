@@ -131,6 +131,8 @@ static void clearPlayerSidebar(){
 static void restorePlayerContext(){
  if(!playerContext.original)return;
  if(samePlayerWorld()){
+  // Restoring our verified House fields must remain possible if an optional
+  // selection API changes. unselect() checks its own callable dependency.
   const bool active=get<bool>(0xA8E9A0);if(active)unselect();
   for(int i=0;i<playerContext.count;++i)put<uint8_t>(playerContext.houses[i].p+0x1EC,playerContext.houses[i].current);
   put<uint32_t>(0xA83D4C,playerContext.original);playerSidebarPending=true;playerContextChanged=true;
@@ -146,6 +148,9 @@ static int switchPlayerContext(uint32_t target,uint32_t expectedID=0){
  if(!target){if(!playerContext.original)return -4;restorePlayerContext();return playerContextChanged?1:-7;}
  if(!sh||!sh->switchPlayerEnabled||!playableHouse(target)||get<uint32_t>(target+0x10)!=expectedID)return -4;
  if(target==get<uint32_t>(0xA83D4C))return 1;
+ // Switching is one transaction: do not clear selection/sidebar or create
+ // restoration ownership until all UI calls needed for the new player work.
+ if(!nativeDependenciesReady(0x48DC90,0x6ABC60,0x5F7900,0x4F7870,0x6A6300))return -12;
  if(!playerContext.original){Vec houses=vec(0xA80228,32);if(!houses.count||!playableHouse(lastHouse))return -4;
   auto&c=playerContext;c.original=lastHouse;c.applied=lastHouse;c.items=houses.items;c.count=houses.count;c.scenario=get<uint32_t>(0xA8B230);c.frame=get<int>(0xA8ED84);
   for(int i=0;i<c.count;++i){uint32_t p=item(houses,i);c.houses[i]={p,get<uint32_t>(p+0x10),get<uint32_t>(p+0x34),get<int>(p+0x30),get<uint8_t>(p+0x1EC)};}
@@ -157,7 +162,9 @@ static int switchPlayerContext(uint32_t target,uint32_t expectedID=0){
  return 1;
 }
 static void rebuildPlayerSidebar(uint32_t house){
- if(!playerSidebarPending)return;playerSidebarPending=false;
+ if(!playerSidebarPending)return;
+ if(!nativeDependenciesReady(0x6ABC60,0x5F7900,0x4F7870,0x6A6300))return;
+ playerSidebarPending=false;
  for(int i=0;i<snap.typeCount;++i){auto&t=snap.types[i];uint32_t type=typePointers[i];
   if(!type||!techFactory(type,house))continue;
   // Include the actual queue's current object even when its prerequisites vanished.

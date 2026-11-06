@@ -22,6 +22,10 @@ static uint8_t globals[0x500000]{},objects[0x100000]{};
 constexpr uint32_t Tactical=0x20010000,Cell=0x20020000,Target=0x20030000;
 static uint8_t queryCode[8]={0x8B,0x44,0x24,0x10,0x83,0xEC,0x18,0x8B};
 static bool lease=true,ownerOkay=false,mapCellPresent=true,radarHit=false;static int queryCount=0,floorCount=0,queryX=-1,queryY=-1;
+// Explicit native-dependency boundary. The shared cache/Ares policy is tested
+// by native_entry_runtime; this fixture verifies the pointer consumer's order.
+static bool groundReady=true;static unsigned dependencyChecks=0;
+static bool nativeDependencyReady(uint32_t address,bool=false){assert(address==0x578080);++dependencyChecks;return groundReady;}
 static bool nativeSidebarUIHit(int,int){return radarHit;}
 static uint32_t resolvedObject=0,failRead=0;static std::function<void()>queryMutation,floorMutation;static std::function<void(uint32_t)>readMutation;
 static uint32_t pointerCell=0,pointerTarget=0,pointerTargetID=0;static int pointerGroundZ=0;
@@ -54,7 +58,7 @@ static void publish(bool active,int left=168,int top=16,int width=632,int height
 }
 static pointerinput::Intent reset(bool active=true){
  memset(globals,0,sizeof globals);memset(objects,0,sizeof objects);*sh={};worldObjects.clear();lease=true;ownerOkay=false;mapCellPresent=true;queryCode[0]=0x8B;queryCount=floorCount=0;queryX=queryY=-1;queryMutation=floorMutation={};readMutation={};resolvedObject=failRead=0;nativeViewQueryDepth=0;nativeViewQueryBlocked=false;nativeViewQueryOwner=owner;
- pointerGroundZ=-999;pointerCell=123;pointerTarget=Target;pointerTargetID=99;radarHit=false;
+ pointerGroundZ=-999;pointerCell=123;pointerTarget=Target;pointerTargetID=99;radarHit=false;groundReady=true;dependencyChecks=0;
  put<uint32_t>(0x887324,Tactical);put<int>(Tactical+0xB0,-900);put<int>(Tactical+0xB4,400);put<int>(0x8A00A4,800);put<int>(0x8A00A8,600);put<uint32_t>(Target+0x10,77);worldObjects.add(Target,77);publish(active);
  pointerinput::Intent intent{};intent.width=800;intent.height=600;intent.cameraX=-900;intent.cameraY=400;intent.x=484;intent.y=300;intent.operation=pointerinput::Enhanced;return intent;
 }
@@ -76,6 +80,9 @@ int main(){sh=new Shared{};unsigned checks=0;auto check=[&](bool v){if(!v)std::f
  i=reset();queryMutation=[](){put<int>(0x8A00A8,601);};rejected(i);
  i=reset();queryMutation=[](){put<int>(0x886FA0+8,947);};rejected(i);
  i=reset();i.operation=pointerinput::AirWaypoint;check(pointerLocation(i));check(queryCount==1&&floorCount==1&&pointerGroundZ==96);
+ i=reset();i.operation=pointerinput::AirWaypoint;groundReady=false;rejected(i);check(queryCount==0&&floorCount==0&&dependencyChecks==1);
+ groundReady=true;check(pointerLocation(i));check(queryCount==1&&floorCount==1&&pointerGroundZ==96&&pointerCell==71070); // same request recovers
+ i=reset();groundReady=false;check(pointerLocation(i));check(queryCount==1&&floorCount==0&&dependencyChecks==0&&pointerGroundZ==39); // Enhanced does not use ground height
  i=reset();i.operation=pointerinput::AirWaypoint;floorMutation=[](){++sh->viewportGeneration;};rejected(i);check(floorCount==1);
  i=reset();i.operation=pointerinput::AirWaypoint;floorMutation=[](){put<int>(Tactical+0xB4,401);};rejected(i);check(floorCount==1);
  i=reset();i.operation=pointerinput::AirWaypoint;floorMutation=[](){put<int>(0x8A00A4,801);};rejected(i);
@@ -90,5 +97,5 @@ int main(){sh=new Shared{};unsigned checks=0;auto check=[&](bool v){if(!v)std::f
  i=reset();mapCellPresent=false;rejected(i);i=reset();resolvedObject=Target+0x1000;rejected(i);
  i=reset();resolvedObject=Target;check(pointerLocation(i)&&pointerTarget==Target&&pointerTargetID==77);
  i=reset();failRead=0x886FA0;rejected(i);check(queryCount==0);
- std::printf("{\"schema\":\"ra2.pointer-location-projection.v1\",\"checks\":%u,\"assertions_active\":true,\"passed\":true}\n",checks);delete sh;
+ std::printf("{\"schema\":\"ra2.pointer-location-projection.v1\",\"checks\":%u,\"assertions_active\":true,\"passed\":true,\"native_dependency_boundary\":\"synthetic\",\"game_process_tested\":false,\"windows_hooks_tested\":false}\n",checks);delete sh;
 }

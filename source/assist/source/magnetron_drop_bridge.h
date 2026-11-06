@@ -1,6 +1,7 @@
 
 #include "magnetron_drop.h"
 static bool rawMagnetronDrop(uint32_t source,uint32_t victim,uint32_t house){
+ if(!nativeDependencyReady(0x578080))return false;
  if(!source||!victim||!sh->magnetronDrop||!own(source,house)||!rawMagnetron(source,featuretypes::MagnetronDrop)||get<uint32_t>(source+0x2AC)!=victim||
     !worldObjects.contains(victim)||kind(victim)!=2||!live(victim)||get<uint32_t>(victim+0x2B0)!=source)return false;
  // This independent toggle explicitly applies to every owned active beam,

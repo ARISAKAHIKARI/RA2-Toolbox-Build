@@ -16,6 +16,10 @@ def source():
     text=text.replace('enum class Owner{Formation}', 'enum class Owner{Formation,Generic}')
     start=text.index('static bool nativeMission(');end=text.index('static void inputFeedback',start)
     text=text[:start]+r'''
+#include "../../shared/source/runtime_seh_scope.h"
+// Native SEH is a boundary double here; the production scope adapter and MO
+// submission/cleanup callbacks execute unchanged, without simulating faults.
+extern "C" void RuntimeScopedCall(void*context,void(*body)(void*),void(*cleanup)(void*)){body(context);cleanup(context);}
 enum class OrderAuthority{Local};
 static struct {int frame=-1;std::map<uint32_t,int>issued;void begin(uint32_t,int f){if(frame!=f){frame=f;issued.clear();}}bool canIssue(uint32_t id,uint32_t){return !issued.count(id);}void record(uint32_t id,uint32_t,taskarbiter::Owner){issued[id]=1;}}actorFrameArbiter;
 static struct {bool allowed=true;bool canIssue(uint32_t,int,uint32_t,uint32_t,uint32_t,taskarbiter::Owner){return allowed;}}actorLeaseArbiter;
@@ -68,6 +72,18 @@ int main(){
  // Both fuzzy and area attacks use the same existing native mission gateway.
  for(int mode:{1,2}){begin();held.fill(false);held[mode==1?17:16]=true;sh->moFeatures=mode;uint32_t target=0x180000;actors.push_back(target);put(target+0x10,900u);put(target+0x21C,lastHouse+0x1000u);put(target+0x6C,100);put(target+0x6C4,0x190000u);put(readMapCell(30,30)+0xE4,target);check(messageMo(WM_MBUTTONDOWN)&&moHolding);check(messageMo(WM_MBUTTONUP)&&moQueueCount==1);step();check(events.size()==1&&events[0].mission==1&&events[0].b==900&&sh->moOrderAccepted==1&&!moOrdersPending());}
  begin();held.fill(false);held[17]=true;sh->moFeatures=3;sh->moGestures.keys[1]=17;check(messageMo(WM_MBUTTONDOWN)&&!moHolding&&int32_t(sh->moOrderStatus)==-14&&events.empty());
+ // A lost height function affects only the optional outline of an already
+ // captured order. It must not manufacture a zero-height contour or discard
+ // the captured semantic route; its native event transaction still drains.
+ begin();check(messageMo(WM_MBUTTONDOWN));check(messageMo(WM_MBUTTONUP));
+ const int capturedRoute=moRouteCount;int beforeHeight=heightQueries;groundCallable=false;
+ moUpdateOutline();check(moPreview.nodeCount==0&&moPreview.count==0&&moOutlineDirty);
+ check(heightQueries==beforeHeight&&moRouteCount==capturedRoute&&moStage==1);
+ for(int n=0;n<4;++n)step();check(moStage==2&&events.size()==4);
+ groundCallable=true;moUpdateOutline();check(moPreview.nodeCount>=4&&!moOutlineDirty&&heightQueries>beforeHeight);
+ // Non-patrol assignment lines retain their existing world coordinates.
+ begin();moMode=int(moorders::Fuzzy);moPreview.count=7;moPreview.nodeCount=4;beforeHeight=heightQueries;groundCallable=false;
+ moUpdateOutline();check(moPreview.count==7&&moPreview.nodeCount==0&&heightQueries==beforeHeight&&moOutlineDirty);
  std::cout<<"PASS "<<checks<<" actual MO bridge staged patrol/cancellation/admission checks\n";
 }
 '''

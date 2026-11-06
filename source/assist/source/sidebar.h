@@ -33,10 +33,10 @@ static bool techGate(uint32_t type,uint32_t house){
 // build-limit path retains limits; factory ownership/power checks stay native.
 static bool techParameterReservationAllowed(uint32_t type,uint32_t house);
 static bool reservationCanBuild(uint32_t type,uint32_t house){
- return type&&call<int>(0x4F7870,house,(void*)(uintptr_t)type,techGate(type,house)||techParameterReservationAllowed(type,house),true)>0;
+ return type&&nativeDependencyReady(0x4F7870)&&call<int>(0x4F7870,house,(void*)(uintptr_t)type,techGate(type,house)||techParameterReservationAllowed(type,house),true)>0;
 }
 static int typeSlot(uint32_t type){for(int i=0;i<snap.typeCount;++i)if(typePointers[i]==type)return i;return -1;}
-static int typeTab(int i){auto&t=snap.types[i];return callFast<int>(0x6ABC60,t.kind,t.index,0);}
+static int typeTab(int i){if(i<0||i>=snap.typeCount||!nativeDependencyReady(0x6ABC60))return -1;auto&t=snap.types[i];return callFast<int>(0x6ABC60,t.kind,t.index,0);}
 static void sidebarRedraw(int tab){if(tab<0||tab>3)return;put<bool>(Tabs+tab*3988+60,true);put<bool>(Sidebar+0x53A6,true);put<bool>(Sidebar+0x53A7,true);}
 static int canonicalKind(int k){return sidebarpolicy::canonicalKind(k);}
 static bool hasCameo(int kind,int index){for(int tab=0;tab<4;++tab){uint32_t strip=Tabs+tab*3988;int count=get<int>(strip+84);if(count<0||count>75)continue;
@@ -44,6 +44,7 @@ static bool hasCameo(int kind,int index){for(int tab=0;tab<4;++tab){uint32_t str
 }
 static bool techSessionAllowed(){return decisions::canProduceInSession(eventdelivery::isMultiplayer(get<int>(0xA8B238)),sh&&(sh->flags&UnsafeTech));}
 static uint32_t techFactory(uint32_t type,uint32_t house){
+ if(!nativeDependencyReady(0x5F7900))return 0;
  // YRpp ObjectTypeClass::FindFactory(allowOccupied,requirePower,requireCanBuild,house).
  // A busy or unpowered factory still owns a cameo; the native click/production
  // code handles its operational state. Missing factories must remove cameos.
@@ -54,7 +55,7 @@ static bool techTransitionProductionPending(uint32_t house){
  // Restoring a patched sidebar can make the native prune pass cancel a
  // legacy product. Keep that mode until the player finishes/cancels it.
  const unsigned offsets[]={0x53AC,0x53B0,0x53B4,0x53B8,0x53BC,0x53CC};
- auto denied=[&](uint32_t type){return !type||typeSlot(type)<0||techLegacyEnhancementOwns(type)||(techImplementation==3&&techDataOwns(type))||call<int>(0x4F7870,house,(void*)(uintptr_t)type,false,true)<=0;};
+ auto denied=[&](uint32_t type){return !type||typeSlot(type)<0||techLegacyEnhancementOwns(type)||(techImplementation==3&&techDataOwns(type))||!nativeDependencyReady(0x4F7870)||call<int>(0x4F7870,house,(void*)(uintptr_t)type,false,true)<=0;};
  for(unsigned offset:offsets){uint32_t factory=0,owner=0,product=0,items=0;int count=0;
   if(!read(house+offset,&factory,4))return true;if(!factory)continue;
   if(factory<0x10000||!read(factory+0x6C,&owner,4)||owner!=house||!read(factory+0x58,&product,4)||
@@ -68,6 +69,7 @@ static bool techTransitionProductionPending(uint32_t house){
 static bool ensureTechCameo(int i,uint32_t house,const sidebarpolicy::CameoSet*known=nullptr){
  if(i<0||i>=snap.typeCount||!techAllowed[i]||!typePointers[i])return false;
  if(techImplementation==2)return hasCameo(snap.types[i].kind,snap.types[i].index);
+ if(!nativeDependencyReady(0x5F7900)||(techImplementation==3&&!nativeDependencyReady(0x4F7870)))return false;
  uint32_t factory=0;
  if(techImplementation==1||techImplementation==3||techmode::parameters(techImplementation)){
   // Classic keeps the original build-limit check. Data mode additionally
@@ -79,6 +81,7 @@ static bool ensureTechCameo(int i,uint32_t house,const sidebarpolicy::CameoSet*k
  }else factory=techFactory(typePointers[i],house);
  if(!factory)return false;
  auto&t=snap.types[i];if(known?known->contains(t.kind,t.index):hasCameo(t.kind,t.index))return true;
+ if(!nativeDependenciesReady(0x6ABC60,0x6A6300))return false;
  int tab=typeTab(i);if(tab<0||tab>3||get<int>(Tabs+tab*3988+84)>=75)return false;
  if(!call<bool>(0x6A6300,Sidebar,t.kind,t.index))return false;sidebarRedraw(tab);return hasCameo(t.kind,t.index);
 }
@@ -92,11 +95,18 @@ static void observeMasterCameos(){
  for(int tab=0;tab<4;++tab){int count=get<int>(Tabs+tab*3988+84);if(count>=0&&count<=75)techScanVisible+=count;}
  snap.techVisible=techScanVisible;snap.techUnavailable=0;
 }
+static bool techNativeDependencies(unsigned implementation){
+ // Master only owns its separately checked instruction sites. Other modes
+ // may rebuild cameos; admit their native helpers before changing modes/data.
+ return implementation==2||(nativeDependenciesReady(0x5F7900,0x6ABC60,0x6A6300)&&
+  (implementation!=3||nativeDependencyReady(0x4F7870)));
+}
 static void refreshTech(uint32_t house,DWORD now){techRefresh=now;
  // Keep the old implementation/allow-list while production prevents a safe
  // transition. Once it clears, the host may retry its still-requested mode.
  if(snap.techError!=-43||!techTransitionProductionPending(house))snap.techError=0;
  if(!(sh->flags&UnsafeTech)){restoreTech();return;}
+ if(!techNativeDependencies(techImplementation)){snap.techError=-12;techPending=true;return;}
  if(techmode::parameters(techImplementation)){
   if(!restoreTechData()){snap.techOpen=0;techPending=true;snap.techError=-44;return;}
   const bool restored=setTechSites(false);

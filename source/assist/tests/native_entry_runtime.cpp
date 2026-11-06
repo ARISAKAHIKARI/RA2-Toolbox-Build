@@ -60,7 +60,7 @@ static void addRegion(uint32_t base,uint32_t bytes,unsigned type,unsigned protec
 }
 static void body(uint32_t address){const uint8_t synthetic[]={0x9c,0x60,0x83,0xec,0x08,0x8b};put(address,synthetic,sizeof synthetic);}
 static void jump(uint32_t from,uint32_t target){uint8_t bytes[]={0xe9,0,0,0,0,0x90};uint32_t delta=target-from-5;std::memcpy(bytes+1,&delta,4);put(from,bytes,sizeof bytes);}
-static void clearCache(){nativeAresCache={};for(auto&cache:nativeEntryCache)cache={};}
+static void clearCache(){nativeAresCache={};for(auto&cache:nativeEntryCache)cache={};for(auto&cache:nativeDependencyCache)cache={};}
 static void seed(bool platform=true){
  memory.clear();regions.clear();clockMs=1000;aresModule=platform?AresBase:0;clearCache();
  checked=good=reached=false;signatureRetryAt=published=0;snap={};queries=readCalls=moduleQueries=0;
@@ -72,7 +72,11 @@ static void seed(bool platform=true){
  for(auto target:Targets){addRegion(target,4096,MEM_PRIVATE,PAGE_EXECUTE_READ);body(target);}
 }
 static void fieldEntries(){for(unsigned i=0;i<3;++i)put(Entries[i],Runtime10Bytes[i],8);}
-static bool oldExactCore(){return startupdependency::coreReady(Signatures,[](const Signature&s){uint8_t bytes[12]{};return read(s.address,bytes,s.length)&&!std::memcmp(bytes,s.bytes,s.length);});}
+static bool oldExactCore(){
+ // Freeze the pre.5 global classification, not the current local policy.
+ for(const auto&s:Signatures)if(s.address!=0x431410&&s.address!=0x577D90){uint8_t bytes[12]{};if(!read(s.address,bytes,s.length)||std::memcmp(bytes,s.bytes,s.length))return false;}
+ return true;
+}
 static void fieldAndGate(){
  seed(false);check(signatures());for(auto entry:Entries)check(nativeEntryCallable(entry));
  seed();fieldEntries();check(!oldExactCore());const auto before=memory;
@@ -80,10 +84,11 @@ static void fieldAndGate(){
  check(signatures());activation(clockMs);check(reached&&good&&checked&&snap.commandStatus==1&&!published);check(memory==before);
  // Optional entry differences continue to affect only their own consumers.
  jump(0x431410,Targets[0]);jump(0x577D90,Targets[1]);check(signatures());check(!startupSignature(Signatures[8])&&!revealSignature());
- seed(false);fieldEntries();activation(clockMs);check(!reached&&!good&&!checked&&snap.commandStatus==3&&published==1);
- aresModule=AresBase;clockMs+=1100;activation(clockMs);check(reached&&good&&checked&&snap.commandStatus==1);
- for(const auto&s:Signatures)if(startupdependency::requiredAtStartup(s.address)&&!nativeentry::known(s.address)){
-  seed();fieldEntries();memory[s.address]^=1;check(!signatures());
+ seed(false);fieldEntries();activation(clockMs);check(reached&&good&&checked&&snap.commandStatus==1&&!published);
+ for(auto entry:Entries)check(!nativeDependencyReady(entry));
+ aresModule=AresBase;clockMs+=1100;for(auto entry:Entries)check(nativeDependencyReady(entry));
+ for(const auto&s:Signatures)if(!nativeentry::known(s.address)){
+  seed();fieldEntries();memory[s.address]^=1;check(signatures()&&!nativeDependencyReady(s.address,true));
  }
 }
 static void rejectionChecks(){
@@ -100,7 +105,7 @@ static void rejectionChecks(){
   seed();fieldEntries();jump(Entries[i],Targets[i]+4093);body(Targets[i]+4093);check(!nativeEntryCallable(Entries[i],true));
   seed();fieldEntries();memory[Entries[i]]=0xcc;check(!nativeEntryCallable(Entries[i],true));
  }
- seed();fieldEntries();memory[AresBase]=0;check(!nativeAresAvailable(true)&&!signatures());
+ seed();fieldEntries();memory[AresBase]=0;check(!nativeAresAvailable(true)&&signatures()&&!nativeDependencyReady(Entries[2],true));
  seed();fieldEntries();auto nt=IMAGE_NT_HEADERS32{};nt.Signature=IMAGE_NT_SIGNATURE;nt.FileHeader.Machine=0x8664;nt.OptionalHeader.Magic=IMAGE_NT_OPTIONAL_HDR32_MAGIC;nt.OptionalHeader.SizeOfImage=0x400000;put(AresBase+0x100,nt);check(!nativeAresAvailable(true));
  seed();fieldEntries();regions[1].Type=MEM_PRIVATE;check(!nativeAresAvailable(true));
  seed();fieldEntries();regions[1].AllocationBase=(void*)(uintptr_t)(AresBase+4096);check(!nativeAresAvailable(true));
@@ -125,6 +130,11 @@ static void cacheChecks(){
  memory[Targets[0]]=0xcc;check(!nativeEntryCallable(Entries[0],true));
  body(Targets[0]);check(!nativeEntryCallable(Entries[0]));clockMs+=250;check(nativeEntryCallable(Entries[0]));
  aresModule=0;clockMs+=250;check(!nativeEntryCallable(Entries[0]));aresModule=AresBase;clockMs+=250;check(nativeEntryCallable(Entries[0]));
+ seed();check(nativeDependencyReady(0x473460));const unsigned localReads=readCalls;
+ for(unsigned i=0;i<512;++i)check(nativeDependencyReady(0x473460));check(readCalls==localReads);
+ memory[0x473460]^=1;clockMs+=250;check(!nativeDependencyReady(0x473460));
+ memory[0x473460]^=1;check(!nativeDependencyReady(0x473460));clockMs+=250;check(nativeDependencyReady(0x473460));
+ check(!nativeDependencyReady(0x123450));
  nativeentry::TimedResult timer;timer.set(0xfffffff0u,true);check(timer.fresh(0x10u));check(!timer.fresh(0x100u));
 }
-int main(){fieldAndGate();rejectionChecks();chainChecks();cacheChecks();std::printf("PASS: %u checks; Runtime(10) E9 entries reach the production startup gate, bounded native dispatch, rejection and cache recovery; synthetic Win32/stub bodies only\n",checks);}
+int main(){fieldAndGate();rejectionChecks();chainChecks();cacheChecks();std::printf("PASS: %u checks; Runtime(10) E9 entries retain local native admission, independent startup, bounded dispatch, rejection and cache recovery; synthetic Win32/stub bodies only\n",checks);}
