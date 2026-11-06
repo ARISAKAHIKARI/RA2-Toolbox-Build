@@ -63,8 +63,9 @@ inline bool patch(Client c,uint32_t at,const uint8_t*before,const uint8_t*after,
  Request r{};r.operation=Operation::Patch;r.client=c;r.module=moduleIdentity();r.address=at;r.length=n;r.token=uint32_t(InterlockedCompareExchange(&activeToken,0,0));
  for(unsigned i=0;i<n;++i){r.before[i]=before[i];r.after[i]=after[i];}return manage(r);
 }
-inline Request inspect(uint32_t at=0){
- Request r{};r.client=Client::Assist;r.module=moduleIdentity();r.address=at;manage(r);return r;
+inline Request inspect(uint32_t at=0,bool observe=false){
+ // Inspect-only opt-in: bindThread requests diagnostics, never a thread bind.
+ Request r{};r.client=Client::Assist;r.module=moduleIdentity();r.address=at;r.bindThread=observe;manage(r);return r;
 }
 inline void markConflict(uint32_t at){Request r{};r.operation=Operation::MarkConflict;
  r.client=Client::Assist;r.module=moduleIdentity();r.address=at;r.token=uint32_t(InterlockedCompareExchange(&activeToken,0,0));manage(r);}

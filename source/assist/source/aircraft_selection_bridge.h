@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 #pragma once
 #include <stdint.h>
 
@@ -5,9 +6,9 @@
 // It removes only this object from CurrentObjects and preserves its neighbours.
 // Keep the entire native call chain guarded; do not fall back to unselect-all.
 static bool aircraftSelectionCode(uint32_t address,unsigned length,uint32_t expected){
- uint8_t code[128]{};if(length>sizeof code||!read(address,code,length))return false;
- uint32_t hash=2166136261u;for(unsigned i=0;i<length;++i)hash=(hash^code[i])*16777619u;
- return hash==expected;
+ uint8_t code[128]{};const bool readable=length<=sizeof code&&read(address,code,length);
+ uint32_t hash=2166136261u;if(readable)for(unsigned i=0;i<length;++i)hash=(hash^code[i])*16777619u;
+ return debugentries::allow(debugentries::Kind::Call,address,readable,hash==expected);
 }
 static bool dispatchedAircraftSelectionReady(uint32_t p){
  if(!gameentry::active(gameentry::Client::Assist)||!p||!live(p)||get<uint32_t>(p+0x21C)!=lastHouse||!get<uint8_t>(p+0x83))return false;

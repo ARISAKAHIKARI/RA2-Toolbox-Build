@@ -1,5 +1,6 @@
 #pragma once
 #include "mo_orders.h"
+#include "../../shared/source/debug_entry_types.h"
 #include "player_test_policy.h"
 #include "formation.h"
 #include "air_path_policy.h"
@@ -25,7 +26,7 @@
 #include "dodge_compute.h"
 #include "native_placement_policy.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=99;
+constexpr uint32_t Magic=0x41533130, Version=100;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -254,6 +255,10 @@ struct Shared {
  volatile uint32_t singlePlayerFPSActive=0,singlePlayerFPSHits=0;
  volatile uint32_t minerDefenseEnabled=0,minerDefenseRangeCells=1; // Independent opt-in; N in [0,30].
  volatile uint32_t minerDefenseActive=0,minerDefenseAttacks=0,minerDefenseResumes=0; // Current jobs / submitted orders, not kills.
+ // Debug policies are requested by the Host; observations are Runtime-owned.
+ volatile long debugPolicySeq=0;debugentries::Config debugPolicy;
+ volatile long debugSnapshotSeq=0;debugentries::Snapshot debugSnapshot;
+ volatile uint32_t debugVisible=0; // Read-only probing demand; never enables a feature.
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

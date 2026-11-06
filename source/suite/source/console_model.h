@@ -18,6 +18,15 @@ constexpr std::size_t MaxMessageBytes = 262144;
 constexpr std::size_t MaxTextBytes = 65536;
 constexpr std::uint64_t MaxSafeInteger = 9007199254740991ULL;
 
+// Optional diagnostics for a signature toggle. Identity for actions remains
+// Control::id; siteId/address are display data, never native control handles.
+struct DebugEntry {
+    bool present = false;
+    std::uint32_t siteId = 0, address = 0;
+    std::string kind, purpose, features, state = "unknown", detail, hook = "unknown";
+    std::uint32_t ageMs = 0;
+    bool sampled = false;
+};
 struct Control {
     std::uint32_t id = 0;
     std::string type, label, text, group, hint, presentation;
@@ -25,6 +34,7 @@ struct Control {
     bool runtimeError = false, groupHeader = false, collapsible = false, collapsedDefault = false, immediate = false;
     int selected = -1, min = 0, max = 100, step = 1, row = 0, column = 0;
     std::vector<std::string> options;
+    DebugEntry debug;
 };
 struct Snapshot {
     unsigned module = 0;
@@ -337,8 +347,9 @@ public:
                 s.kind = parsed.kind = MessageKind::Navigate;
                 if (!integer("module", 0, 2, n)) return false;
                 s.module = static_cast<unsigned>(n);
-                if (!integer("category", 0, 4, n)) return false;
+                if (!integer("category", 0, 5, n)) return false;
                 s.category = static_cast<int>(n);
+                if (s.category == 5 && s.module != 2) return fail("Debug category requires tactical module");
                 n = 0; if (!integer("width", 320, 16384, n, false)) return false; s.width = static_cast<unsigned>(n);
                 n = 0; if (!integer("height", 200, 16384, n, false)) return false; s.height = static_cast<unsigned>(n);
             } else if (kind->text == "module") {
@@ -400,7 +411,17 @@ inline std::string encodeSnapshot(const Snapshot& s) {
             firstOption = false;
             out += detail::quote(option);
         }
-        out += "]}";
+        out += "]";
+        if (c.debug.present) {
+            const auto& d = c.debug;
+            out += ",\"debug\":{\"present\":true,\"siteId\":" + std::to_string(d.siteId) +
+                ",\"address\":" + std::to_string(d.address) + ",\"kind\":" + detail::quote(d.kind) +
+                ",\"purpose\":" + detail::quote(d.purpose) + ",\"features\":" + detail::quote(d.features) +
+                ",\"state\":" + detail::quote(d.state) + ",\"detail\":" + detail::quote(d.detail) +
+                ",\"hook\":" + detail::quote(d.hook) + ",\"ageMs\":" + std::to_string(d.ageMs) +
+                ",\"sampled\":" + detail::boolean(d.sampled) + "}";
+        }
+        out += "}";
     }
     out += "]}";
     return out;

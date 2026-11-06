@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "experimental_patch_policy.h"
+#include "debug_entry_policy.h"
 
 // Fixed ABI dependencies of the existing adapters, verified in both supplied
 // EXEs. Do not fingerprint the whole function: resource loaders and unrelated
@@ -99,34 +100,33 @@ static constexpr Probe Probes[]={
  {experimentalpatch::TechDraw,0x4F7870,8,{0x83,0xEC,0x3C,0x8A,0x44,0x24,0x44,0x53}},
  {experimentalpatch::TechPrune,0x4F7870,8,{0x83,0xEC,0x3C,0x8A,0x44,0x24,0x44,0x53}}
 };
-template<class Read> bool compatible(uint32_t site,Read read){
+template<class Read> bool compatibleImpl(uint32_t site,Read read,bool policy){
  if(!experimentalpatch::size(site))return false;
- if(nativesidebarpolicy::find(site))return nativesidebarpolicy::compatible(site,read);
- if(nativeviewportpolicy::find(site))return nativeviewportpolicy::compatible(site,read);
- if(auto s=directpatch::find(site))return directpatch::compatible(*s,read);
- if(site==experimentalpatch::ControlHouse){
-  // Native unpacked entry and the two supplied platform forwarders have the
-  // same verified leaf ABI. Do not accept an arbitrary pre-existing detour.
-  uint8_t tail[4]{};const uint8_t native[]={0x85,0xC0,0x75,0x1D},forwarded[]={0xCC,0xCC,0xCC,0xCC};
-  if(!read(site+5,tail,4)||(memcmp(tail,native,4)&&memcmp(tail,forwarded,4)))return false;
+ bool readable=true,matched=true,probed=false;
+ auto checkedRead=[&](uint32_t at,void*out,size_t n){probed=true;const bool ok=read(at,out,n);readable=readable&&ok;return ok;};
+ if(nativesidebarpolicy::find(site))matched=nativesidebarpolicy::compatible(site,checkedRead);
+ else if(nativeviewportpolicy::find(site))matched=nativeviewportpolicy::compatible(site,checkedRead);
+ else if(auto s=directpatch::find(site))matched=directpatch::compatible(*s,checkedRead);
+ else{
+  if(site==experimentalpatch::ControlHouse){
+   uint8_t tail[4]{};const uint8_t native[]={0x85,0xC0,0x75,0x1D},forwarded[]={0xCC,0xCC,0xCC,0xCC};
+   const bool ok=checkedRead(site+5,tail,4);matched=ok&&(!memcmp(tail,native,4)||!memcmp(tail,forwarded,4));
+  }
+  if(site==experimentalpatch::ScrollMap||site==experimentalpatch::CameraClamp){
+   uint8_t body[0xB9]{};const bool scroll=site==experimentalpatch::ScrollMap;
+   const unsigned size=scroll?0x46:0xB9;const bool ok=checkedRead(site+(scroll?8:5),body,size);
+   uint32_t hash=2166136261u;for(unsigned i=0;i<size;++i)hash=(hash^body[i])*16777619u;
+   matched=matched&&ok&&hash==(scroll?0x4C52FE69u:0xA41008F5u);
+  }
+  // Probe every required range even after a mismatch: skipping comparisons
+  // never grants access to a later unreadable range.
+  for(const auto&p:Probes)if(p.site==site){uint8_t actual[16]{};
+   const bool ok=checkedRead(p.address,actual,p.size);matched=(ok&&!memcmp(actual,p.bytes,p.size))&&matched;
+  }
  }
- if(site==experimentalpatch::ScrollMap){
-  uint8_t body[0x46]{};if(!read(site+8,body,sizeof body))return false;
-  uint32_t hash=2166136261u;for(uint8_t b:body)hash=(hash^b)*16777619u;
-  if(hash!=0x4C52FE69u)return false;
- }
- if(site==experimentalpatch::CameraClamp){
-  // This adapter replaces the whole clamp method, so require its entire
-  // remaining body (excluding our five entry bytes) to be the verified one.
-  uint8_t body[0xB9]{};if(!read(site+5,body,sizeof body))return false;
-  uint32_t hash=2166136261u;for(uint8_t b:body)hash=(hash^b)*16777619u;
-  if(hash!=0xA41008F5u)return false;
- }
- for(const auto&p:Probes)if(p.site==site){
-  uint8_t actual[16]{};
-  if(!read(p.address,actual,p.size)||memcmp(actual,p.bytes,p.size))return false;
- }
- return true;
+ if(!probed){uint8_t actual[16]{};checkedRead(site,actual,experimentalpatch::size(site));}
+ return policy?debugentries::allow(debugentries::Kind::Patch,site,readable,matched):readable&&matched;
 }
+template<class Read> bool compatibleStrict(uint32_t site,Read read){return compatibleImpl(site,read,false);}
+template<class Read> bool compatible(uint32_t site,Read read){return compatibleImpl(site,read,true);}
 }
-

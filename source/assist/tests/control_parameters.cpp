@@ -11,6 +11,7 @@
 #include "../source/control_mode_policy.h"
 #include "../source/tech_enhancement_parameter_policy.h"
 #include "../source/tech_ui_breakpoint_hot.h"
+#include "../../shared/source/debug_entry_policy.h"
 #include "../../shared/source/hardware_slot_budget.h"
 using namespace assist;
 static unsigned checks=0;
@@ -22,6 +23,7 @@ namespace controlparams_fixture {
 struct Context {uint32_t Eip=controlparams::Entry,Esp=0x40000,Eax=99,Ebx=98,Ecx=0x20000,Edx=97,Ebp=96,Esi=95,Edi=94,EFlags=0x202;};
 constexpr unsigned UnsafeTech=4096;
 static unsigned techImplementation=4;static bool compatible=true;static uint32_t stack[4]{};
+static uint32_t controlPolicyRevision=debugentries::policyRevision;
 namespace techmode{static bool parameters(unsigned mode){return mode==4;}}
 struct Shared {uint32_t controlAll=controlmode::Parameters,stop=0,flags=UnsafeTech;}storage,*sh=&storage;
 struct Policy {int controlling=1,enabled=1;uint32_t house=0x10000,houseID=10,scenario=0x60000;int session=3,frame=100;}policy;

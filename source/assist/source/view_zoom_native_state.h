@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 #pragma once
 #include "native_viewport_query.h"
 #include "../../shared/source/native_viewport_policy.h"
@@ -73,7 +74,7 @@ static void nativeViewMutationBegin(){
 }
 static void nativeViewMutationEnd(){nativeViewMutation=false;nativeViewQueryBlocked=true;}
 static bool nativeViewSignature(uint32_t at,unsigned n,uint32_t hash){
- uint8_t bytes[32]{};if(n>sizeof bytes||!read(at,bytes,n))return false;uint32_t h=2166136261u;for(unsigned i=0;i<n;++i)h=(h^bytes[i])*16777619u;return h==hash;
+ uint8_t bytes[32]{};const bool readable=n<=sizeof bytes&&read(at,bytes,n);uint32_t h=2166136261u;if(readable)for(unsigned i=0;i<n;++i)h=(h^bytes[i])*16777619u;return debugentries::allow(debugentries::Kind::Call,at,readable,h==hash);
 }
 static bool nativeViewWorld(){
  NativeSidebarRect window{};

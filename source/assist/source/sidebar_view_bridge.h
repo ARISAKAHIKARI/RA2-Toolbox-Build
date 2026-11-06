@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 #pragma once
 #include "../../shared/source/native_sidebar_policy.h"
 #include "native_viewport_surface.h"
@@ -388,7 +389,7 @@ static bool sidebarViewPairMatches(void*c,void*m){
 static bool sidebarViewRedrawCompatible(){
  struct Check{uint32_t at;unsigned n,hash;};
  static constexpr Check checks[]={{0x6D2790,12,0xCB533DD6u},{0x6D2B3F,3,0x6395A2F9u},{0x4F42F0,16,0xBDBC694Cu}};
- for(const auto&c:checks){uint8_t bytes[16]{};if(!read(c.at,bytes,c.n))return false;uint32_t hash=2166136261u;for(unsigned i=0;i<c.n;++i)hash=(hash^bytes[i])*16777619u;if(hash!=c.hash)return false;}
+ for(const auto&c:checks){uint8_t bytes[16]{};const bool readable=read(c.at,bytes,c.n);uint32_t hash=2166136261u;for(unsigned i=0;i<c.n;++i)hash=(hash^bytes[i])*16777619u;if(!debugentries::allow(debugentries::Kind::Call,c.at,readable,hash==c.hash))return false;}
  return true;
 }
 static void sidebarViewRefresh(bool changed=false){

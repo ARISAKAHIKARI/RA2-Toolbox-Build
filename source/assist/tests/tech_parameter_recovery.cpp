@@ -8,7 +8,7 @@ static DWORD clockNow=1000;
 static DWORD GetTickCount(){return clockNow;}
 static LONG InterlockedExchange(volatile LONG*p,LONG value){LONG old=*p;*p=value;return old;}
 static int checks=0,fullProbes=0,controlProbes=0,worldProbes=0,captureProbes=0,legacyProbes=0;
-static bool fullCompatible=true,controlCompatible=true,worldCurrent=true,legacyRetired=true;
+static bool fullCompatible=true,controlReferenceCompatible=true,worldCurrent=true,legacyRetired=true;
 static void check(bool condition,const char*message){++checks;if(!condition){std::fprintf(stderr,"FAIL %s\n",message);std::exit(1);}}
 struct Shared {uint32_t flags=1,controlAll=3;bool stop=false,mapVisibility=false;};
 static Shared shared;static Shared*sh=&shared;static bool fault=false;
@@ -19,7 +19,7 @@ template<class T>static T get(uint32_t){return T(1);}
 static bool read(uint32_t,void*,size_t){return true;}
 namespace techmode {static bool parameters(uint32_t mode){return mode==4;}}
 namespace controlmode {static constexpr int Parameters=3;static bool parameters(uint32_t mode){return mode==3;}}
-namespace controlparams {template<class Read>static bool compatible(Read){++controlProbes;return controlCompatible;}}
+namespace controlparams {template<class Read>static bool compatible(Read){++controlProbes;return controlReferenceCompatible;}}
 namespace mapvisibility {static constexpr uint32_t Tag=2;}
 namespace singlefps {
 static constexpr uint32_t Tag=32;static bool desired=false,enabled=false;static int failure=0;
@@ -64,6 +64,8 @@ static uint32_t enhancementTags(){return 4;}
 static bool callback(void*,uint32_t){return false;}
 static int publishes=0;static void publish(){++publishes;}
 static bool nativeCompatible(){++fullProbes;return fullCompatible;}
+static void syncDebugBreakpointPolicy(){} // Policy transition is exercised by debug_breakpoint_policy.
+static bool controlCompatible(){++controlProbes;return ::controlReferenceCompatible;}
 static bool captureWorld(uint32_t house){++worldProbes;return worldCurrent&&house==lastHouse;}
 static bool capture(uint32_t house){++captureProbes;return captureWorld(house);}
 }
@@ -72,7 +74,7 @@ static bool restoreTechEnhancement(){++legacyProbes;return legacyRetired;}
 
 static bool request(bool full){return full?requestTechParameters(lastHouse):requestControlParameters()==controlmode::Parameters;}
 static int&failureFor(bool full){return full?techparameters::failure:techparameters::controlFailure;}
-static bool&compatibleFor(bool full){return full?fullCompatible:controlCompatible;}
+static bool&compatibleFor(bool full){return full?fullCompatible:controlReferenceCompatible;}
 static int probesFor(bool full){return full?fullProbes:controlProbes;}
 static uint32_t tagFor(bool full){return full?1:16;}
 static void mode(bool full){sh->flags=full?UnsafeTech:0;sh->controlAll=full?0:controlmode::Parameters;}

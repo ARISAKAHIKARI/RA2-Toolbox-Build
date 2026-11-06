@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 // Native Sell input only: the original CanSell, constructor, OutList append,
 // transport and receiver still execute. Never call Building::Sell locally.
 static bool networkHousePreserveReady();
@@ -54,7 +55,7 @@ static int nativeSellCursorAction(unsigned op,uint32_t object,uint32_t suppliedO
     !actorLeaseArbiter.canIssue(match,frame,id,object,token,taskarbiter::Owner::Sell))return 0;
  const uint32_t table=get<uint32_t>(object),canSell=get<uint32_t>(table+0x98);
  static const uint8_t canSellHead[]={0x56,0x8B,0xF1,0xE8,0xF8,0x69,0x2C,0x00};
- if(canSell!=0x4494C0||memcmp((void*)0x4494C0,canSellHead,sizeof canSellHead)||
+ if(canSell!=0x4494C0||!debugentries::pattern(debugentries::Kind::Call,0x4494C0,canSellHead,sizeof canSellHead,read)||
     !call<bool>(canSell,object))return 0;
  // The native legality query is a call boundary: recheck both identities and
  // permission immediately before substituting the constructor's House index.
@@ -161,7 +162,7 @@ static void nativeSellCursorTick(){
  prepareNativeSellCursor();nativeSellCursorActive=false;bool ok=true;
  for(auto&s:nativeSellSites){uint8_t bytes[16]{};const bool active=codeHookRegistry.active(s.address);
   if(codeHookRegistry.conflict(s.address)||!patchcontext::compatible(s.address,[](uint32_t at,void*out,size_t n){return read(at,out,n);})||
-     !read(s.address,bytes,s.size)||memcmp(bytes,active?s.after:s.before,s.size))ok=false;
+     !read(s.address,bytes,s.size)||(active?memcmp(bytes,s.after,s.size):!hookregistry::admissibleOriginal(s.address,bytes,s.size)))ok=false;
  }
  // Install the House adapter first; publish active only after the complete pair.
  if(ok)ok=installRiskSite(nativeSellSites[1])&&installRiskSite(nativeSellSites[0]);

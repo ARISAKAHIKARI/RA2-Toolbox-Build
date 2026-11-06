@@ -7,6 +7,7 @@
 #include "../../shared/source/runtime_fp_scope.h"
 #include "frame_signal_runtime.h"
 #include "native_tooltip_runtime.h"
+#include "../../shared/source/debug_entry_policy.h"
 extern "C" void AssistRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimePost(int,WPARAM,LPARAM);
@@ -179,7 +180,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
      trace.observe(msg);
      // Bind once at the real thread-specific message boundary. Services then
      // run consecutively, each releasing its execution scope before the next.
-     const bool bound=gameentry::scoped(gameentry::Client::Assist,true,[]{});
+     const bool bound=gameentry::scoped(gameentry::Client::Assist,true,[]{debugentries::clockTick=GetTickCount();debugentries::installation(debugentries::Kind::System,WH_GETMESSAGE,debugentries::Hook::Installed);});
      if(bound){
       if(msg->message==WM_NULL&&msg->wParam==runtime::WakeTag){if(connect(DWORD(msg->lParam),trace))frameWakeWindow=msg->hwnd;}
       if(control&&ensureWatchdog()){
@@ -206,7 +207,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimePostHook(int code,W
  RuntimeFPScope fp;bool dispatchOwned=false;
  runtimeunwind::run([&]{
   if(code>=0&&control&&(control->enabled&runtime::Cursor)&&!InterlockedCompareExchange(&dispatching,1,0)){
-   dispatchOwned=true;CursorRuntimePost(code,wp,lp);
+   dispatchOwned=true;gameentry::scoped(gameentry::Client::Cursor,false,[]{debugentries::clockTick=GetTickCount();debugentries::installation(debugentries::Kind::System,WH_CALLWNDPROCRET,debugentries::Hook::Installed);});CursorRuntimePost(code,wp,lp);
   }
  },[&]{if(dispatchOwned)InterlockedExchange(&dispatching,0);fp.restore();});
  return CallNextHookEx(nullptr,code,wp,lp);

@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 // Player tests are explicit manual capabilities. Ordinary planners remain local.
 #include "player_test_policy.h"
 struct PlayerIdentity {uint32_t p,id,type;int index;uint8_t current;};
@@ -105,7 +106,7 @@ static int destructPlayerCommand(uint32_t house,uint32_t expectedID,uint32_t exp
  int valid=destructPlayerTarget(house,expectedID,expectedIndex);
  if(valid<0){destructSelectedArmed=false;if(valid==-42)snap.lastSubmitError=42;return valid;}
  static const uint8_t ctor[]={0x53,0x8B,0x5C,0x24,0x0C,0x8B,0xC3,0x56};
- if(memcmp((void*)0x4C66C0,ctor,sizeof ctor)){destructSelectedArmed=false;return -12;}
+ if(!debugentries::pattern(debugentries::Kind::Call,0x4C66C0,ctor,sizeof ctor,read)){destructSelectedArmed=false;return -12;}
  intent::EventOrder event{};event.domain=vanilla::Domain::NoOptions;
  event.eventKind=vanilla::EventType::Destruct;event.player=int(expectedIndex);
  // The receiver owns all effects. This path only appends the vanilla event;

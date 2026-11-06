@@ -122,6 +122,10 @@ void parser() {
     CHECK(navigate.message.shell.width == 1200 && navigate.message.shell.height == 700);
     CHECK(parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":0,\"category\":0}").ok);
     CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":0,\"category\":5}"));
+    CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":1,\"category\":5}"));
+    const auto debug = parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":2,\"category\":5}");
+    CHECK(debug.ok && debug.message.shell.category == 5 && debug.message.shell.module == 2);
+    CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":2,\"category\":6}"));
     CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":0,\"category\":0,\"width\":0}"));
     CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":0,\"category\":0,\"height\":16385}"));
     CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":0}"));
@@ -182,6 +186,33 @@ void serialization() {
     structured.ok = true; structured.error.clear(); structured.revision = 73;
     CHECK(encodeAck(structured) == encodeAck(a,true,{},73));
     CHECK(encodeAck(structured).find("\"revision\":73") != std::string::npos);
+}
+void debugSerialization() {
+    auto snapshot = fixture(2);
+    snapshot.page = "tactical/5";
+    auto& c = snapshot.controls[0];
+    c.id = 9021; c.type = "toggle"; c.checked = true;
+    CHECK(encodeSnapshot(snapshot).find("\"debug\"") == std::string::npos);
+    auto& d = c.debug;
+    CHECK(!d.present && !d.sampled && d.state == "unknown" && d.hook == "unknown");
+    d.present = true; d.siteId = 5; d.address = 0x004F7870;
+    d.kind = "call"; d.purpose = u8"查询\"建造\"许可"; d.features = u8"科技\n建造栏";
+    d.state = "ready"; d.detail = u8"入口跳转由 Ares 保留"; d.hook = "na"; d.ageMs = 27; d.sampled = true;
+    const auto encoded = encodeSnapshot(snapshot);
+    CHECK(encoded.find("\"id\":9021") != std::string::npos);
+    CHECK(encoded.find("\"debug\":{\"present\":true,\"siteId\":5,\"address\":5208176") != std::string::npos);
+    CHECK(encoded.find("\"kind\":\"call\"") != std::string::npos);
+    CHECK(encoded.find(u8"查询\\\"建造\\\"许可") != std::string::npos);
+    CHECK(encoded.find(u8"科技\\n建造栏") != std::string::npos);
+    CHECK(encoded.find("\"state\":\"ready\"") != std::string::npos);
+    CHECK(encoded.find(u8"入口跳转由 Ares 保留") != std::string::npos);
+    CHECK(encoded.find("\"hook\":\"na\",\"ageMs\":27,\"sampled\":true") != std::string::npos);
+    d.address = d.ageMs = 0xffffffffu; d.sampled = false;
+    const auto unobserved = encodeSnapshot(snapshot);
+    CHECK(unobserved.find("\"address\":4294967295") != std::string::npos);
+    CHECK(unobserved.find("\"ageMs\":4294967295,\"sampled\":false") != std::string::npos);
+    d.present = false;
+    CHECK(encodeSnapshot(snapshot).find("\"debug\"") == std::string::npos);
 }
 void immediateActions() {
     auto wire=action("press");wire.insert(wire.size()-1,",\"inputTime\":123456");
@@ -298,7 +329,7 @@ int main(int argc, char** argv) {
         std::cout << consolemodel::encodeSnapshot(fixture()) << '\n';
         return 0;
     }
-    parser(); serialization(); immediateActions(); mailbox(); snapshots();
+    parser(); serialization(); debugSerialization(); immediateActions(); mailbox(); snapshots();
     std::cout << "console_model: " << checks.load() << " checks passed\n";
     return 0;
 }

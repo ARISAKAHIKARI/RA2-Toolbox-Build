@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 // An explicit toolbox modal cursor, entirely outside native cursor state.
 // Only this mode's matched down/up pair is consumed. Sidebar and native tools
 // keep their messages; an unrelated native cursor cancels this mode first.
@@ -83,8 +84,8 @@ static bool nativePlacementPoint(HWND window,POINT point,nativeplacement::Reques
  // ClientToCoords returns Z=0. Resolve the same real ground height as normal
  // native cursor projection, rather than drawing the footprint on that plane.
  uint8_t bytes[12]{};uint32_t hash=2166136261u;
- if(!read(0x578080,bytes,sizeof bytes))return false;for(auto b:bytes)hash=(hash^b)*16777619u;
- if(hash!=0x8FFFDB45u)return false;
+ const bool readable=read(0x578080,bytes,sizeof bytes);for(auto b:bytes)hash=(hash^b)*16777619u;
+ if(!debugentries::allow(debugentries::Kind::Call,0x578080,readable,hash==0x8FFFDB45u))return false;
  struct Ground{int x,y,z;}ground{int(cell.x)*256+128,int(cell.y)*256+128,0};
  const int height=call<int>(0x578080,0x87F7E8,&ground);if(height < -1048576||height>1048576)return false;
  const double zScale=external::projectionZScale(readOnly);

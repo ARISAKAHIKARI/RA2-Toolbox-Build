@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.43-pre.6",
-  "version": "1.0.43-pre.6",
+  "name": "RA2 Toolbox 1.0.43-pre.7",
+  "version": "1.0.43-pre.7",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full package includes hash-pinned offline assets/profiles/preprocessing runtime/engine; Update preserves an existing complete installation.",
   "resources_legacy_reuse": true,
-  "build_protocol": 99,
-  "validation": "Validation scope: production-source native dependency isolation and bounded recovery tests, Ares entry and parameter-mode compatibility, consumer transaction refusal, host bridge/broker retry counterexamples; same-commit mixed-architecture compilation and PE/version/ABI checks. Completed results are recorded in release evidence. No real Windows game or multiplayer execution is claimed.",
+  "build_protocol": 100,
+  "validation": "Validation scope: per-entry signature policy, real admission/cache consumers, ownership-preserving patch diagnostics, hardware breakpoint state, persistent settings and Debug console contract; same-commit mixed-architecture compilation and PE/version/ABI checks. Completed results are recorded in release evidence. No real Windows game or multiplayer execution is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
@@ -21,7 +21,8 @@
     "Experimental.ManualReveal": "default0; migrates legacy RevealMap into manual permission only; Ctrl+Alt+O and button explicitly invoke original577D90; enabling alone never reveals",
     "SinglePlayer.FPS": "default0=native; integer10–240 simulation FPS; session0/5 only; shared hardware tag32; native speed option untouched",
     "FeatureTypes.SpiderDefense": "default HARV,CMIN; active only when SpiderDefenseCustom=1; independent own attacker type whitelist, never spider target IDs",
-    "FeatureTypes.SpiderDefenseCustom": "default0=native miner detection independent of OreTypes; 1=eligible own ground vehicles/infantry named in the list; empty custom list means no new defense jobs"
+    "FeatureTypes.SpiderDefenseCustom": "default0=native miner detection independent of OreTypes; 1=eligible own ground vehicles/infantry named in the list; empty custom list means no new defense jobs",
+    "DebugEntries.Skip_<kind+address>": "default0=strict; exact1 bypasses only this entry reference signature; stable kind/address key; Call/Patch/Breakpoint independent; system hooks without a machine-code signature show not applicable"
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,
@@ -41,8 +42,8 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.43-pre.6 follows d108ab8f976d37e512b183bda95ac2e80f250760. It removes the 21 known native function entries from unconditional Runtime startup admission, validates them at consumers, retries retired Full/control parameter failures, and starts bridge/broker retry intervals after blocking failure work. Ares native-entry compatibility and previous fixes are preserved. Prerelease; v1.0.42 remains stable latest.",
-  "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; collapsible per-feature groups, runtime error visibility and timestamped immediate actions",
+  "release_status": "1.0.43-pre.7 follows ae5bb316eb340491e450ab90bb919e3943b02c4f. It adds a Debug tab with per-entry purpose, affected features, observed installation/compatibility state and independently persisted signature policy. Signature changes invalidate cold admission caches; actual owned state, current bytes and cleanup journals remain authoritative. Prerelease; v1.0.42 remains stable latest.",
+  "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; Debug entry search, groups and state filters, per-entry signature toggle and observed-state freshness; existing action generation/revision acknowledgement preserved",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
   "player_control": "Implementation0 now Master basic instruction patches (high risk), implementation1 native detours; current-player switching and enemy-building Sell disabled",
@@ -740,5 +741,17 @@
     "game_tested": false,
     "multiplayer_tested": false,
     "note": "research/2026-11-07-runtime-dependency-isolation-and-recovery.md"
+  },
+  "debug_entries": {
+    "catalog_entries": 161,
+    "native_calls": 58,
+    "patch_sites": 95,
+    "installable_patch_sites": 82,
+    "retired_patch_sites": 13,
+    "hardware_breakpoints": 6,
+    "system_hooks": 2,
+    "policy": "Independent stable kind/address keys; strict by default; invalid keys ignored; explicit skip still preserves readable/executable entry and non-signature structural/ownership checks.",
+    "observation": "Actual patch readback only on explicit cold debug samples; confirmed hardware lease state; stale observations displayed as unconfirmed.",
+    "transport": "Assist100 / Shared23162400; same-version paired Host and Runtime required."
   }
 }

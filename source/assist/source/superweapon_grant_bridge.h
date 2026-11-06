@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 #pragma once
 // Explicit experimental local simulation action. This is not a network Grant
 // event: every peer would need matching state. Off stops calls; native permanent
@@ -18,9 +19,9 @@ static bool superweaponGrantSignatures(){
  struct Probe{uint32_t address,bytes,hash;};
  static constexpr Probe probes[]={{0x6E1C40,117,0x8B1ECC5B},{0x6CB560,12,0x5DC034C2},
   {0x6A6300,12,0xB32476A7},{0x6ABC60,12,0xC602F953},{0x6A60A0,12,0x049FEAAA}};
- for(const auto&p:probes){uint8_t bytes[117]{};if(!read(p.address,bytes,p.bytes))return false;
+ for(const auto&p:probes){uint8_t bytes[117]{};const bool readable=read(p.address,bytes,p.bytes);
   uint32_t hash=2166136261u;for(unsigned i=0;i<p.bytes;++i)hash=(hash^bytes[i])*16777619u;
-  if(hash!=p.hash)return false;
+  if(!debugentries::allow(debugentries::Kind::Call,p.address,readable,hash==p.hash))return false;
  }return true;
 }
 static bool superweaponGrantWantsInputSample(const MSG*msg){

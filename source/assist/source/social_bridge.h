@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 // Manual social commands run under the existing GameRuntime request lease.
 // Cheer constructs the original AllCheer event through submitConstructed.
 // Taunts are chat/network UI commands, NOT simulation EventClass packets.
@@ -10,7 +11,7 @@ static int socialCommand(uint32_t house,int command,int number,DWORD now){
   int interval=std::clamp(get<int>(rules+0x580),0,36000);
   if(frame>=previous&&int64_t(previous)+interval>=frame)return -22;
   static const uint8_t ctor[]={0x53,0x8B,0x5C,0x24,0x0C,0x8B,0xC3,0x56};
-  if(memcmp((void*)0x4C66C0,ctor,sizeof ctor))return -12;
+  if(!debugentries::pattern(debugentries::Kind::Call,0x4C66C0,ctor,sizeof ctor,read))return -12;
   intent::EventOrder event{};event.domain=vanilla::Domain::NoOptions;
   event.eventKind=vanilla::EventType::AllCheer;event.player=get<int>(house+0x30);
   if(!submitConstructed(event))return -6;
@@ -30,7 +31,7 @@ static int socialCommand(uint32_t house,int command,int number,DWORD now){
   uint32_t execute=get<uint32_t>(table+0x20);
   if(execute!=0x536350)return -12;
   static const uint8_t signature[]={0xA1,0x38,0xB2,0xA8,0,0x81,0xEC,0xD0,1,0,0};
-  if(memcmp((void*)(uintptr_t)execute,signature,sizeof signature))return -12;
+  if(!debugentries::pattern(debugentries::Kind::Call,0x536350,signature,sizeof signature,read))return -12;
   call<void>(execute,object,0u);return 1;
  }
  return -12;

@@ -50,7 +50,10 @@ def main():
         raise RuntimeError(ran.stdout + ran.stderr)
     result = json.loads(ran.stdout)
     result["subject_sha256"] = hashlib.sha256(subject.encode()).hexdigest()
-    result["source_sha256"] = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in (header, src / "tech_ui_breakpoint_hot.h", fixture, Path(__file__))}
+    shared = src.parents[1] / "shared/source"
+    paths = [header, src / "tech_ui_breakpoint_hot.h", src / "tech_ui_breakpoint_debug.h", src / "map_visibility_parameter_policy.h", fixture, Path(__file__)]
+    paths += [shared / name for name in ("debug_entry_types.h", "debug_entry_policy.h", "debug_entry_catalog.h")]
+    result["source_sha256"] = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
     (args.build_dir / "result.json").write_text(json.dumps(result, indent=2) + "\n")
     print(ran.stdout, end="")
 

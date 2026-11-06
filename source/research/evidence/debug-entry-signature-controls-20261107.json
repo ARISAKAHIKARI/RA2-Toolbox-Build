@@ -1,0 +1,183 @@
+{
+  "schema": "ra2.debug-entry-settings-and-breakpoints.validation.v1",
+  "scope": "Production settings, six DR signature policies, diagnostics, and local regressions; this is a subset of release validation.",
+  "success_checks": 3937,
+  "suite_count": 6,
+  "suites": [
+    {
+      "name": "settings",
+      "runner": "source/assist/tests/debug_entry_settings.py",
+      "passed": true,
+      "checks": 189,
+      "source_report_sha256": "1aee8f20f20be8157f9af632d598dc819ddcea5fe7ae28ef14f1eefde513c1fb",
+      "windows_executed": false,
+      "game_tested": false,
+      "subject_sha256": "cedcac3d531d6655ab172fa7e69264ef5231902f9d79f01bbbafaf3601c20bee"
+    },
+    {
+      "name": "breakpoint-policy",
+      "runner": "source/assist/tests/debug_breakpoint_policy.py",
+      "passed": true,
+      "checks": 234,
+      "source_report_sha256": "57331af28bebd7e0b26048aca5558cb3bc34fcb61e78735ed04e4a41a884ea93",
+      "windows_executed": false,
+      "game_tested": false,
+      "subject_sha256": "61d118a1c311393c03ed01bef902b5b56e5bf9ad8c4d15cde12aae82ba144cce"
+    },
+    {
+      "name": "ares-regression",
+      "runner": "source/assist/tests/tech_ares_entry_compat.py",
+      "passed": true,
+      "checks": 463,
+      "source_report_sha256": "99baa2cbc4fa21902b6a06c55de770a9b978bbc17a94179c3acc922913a0f972",
+      "windows_executed": false,
+      "game_tested": false,
+      "subject_sha256": "fd62b3d21e3e758e700721d5e56dba37b85c40eb4034881f44050663fc99ce98"
+    },
+    {
+      "name": "parameter-recovery",
+      "runner": "source/assist/tests/tech_parameter_recovery.py --after-only",
+      "passed": true,
+      "checks": 208,
+      "source_report_sha256": "8b7e89822bb772810085fb64f1324f1e1fdc0e14780d955eaed3ad67d7f24d5b",
+      "windows_executed": false,
+      "game_tested": false,
+      "cases": 29,
+      "after_subject_sha256": "80e8d0260c79fddd937ee26eae88fb9f2036cec1e34d36776b8bb4a3a8353515"
+    },
+    {
+      "name": "control-callback",
+      "runner": "source/assist/tests/control_parameters.py",
+      "passed": true,
+      "checks": 2752,
+      "source_report_sha256": "c65e58c364e264428628cf2f4e5265ea46ca749397ff37a744e5fccd6c6e396c",
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "name": "enhancement-midgame",
+      "runner": "source/assist/tests/tech_enhancement_midgame.py --after-only",
+      "passed": true,
+      "checks": 91,
+      "source_report_sha256": "aaec4d52320ee11fc837fe8bbf96f103e7ea004181fc3766a4cba22afc49696b",
+      "windows_executed": false,
+      "game_tested": false,
+      "cases": 27,
+      "after_subject_sha256": "b034672f4952d1924f55a1b84e8814d20f4d875e22a7da73d72fd4fa4c29bed6"
+    }
+  ],
+  "windows_target_object_compilation": {
+    "kind": "actual-windows-x86-object-compilation",
+    "checks": [
+      {
+        "file": "source/assist/source/bridge.cpp",
+        "returncode": 0,
+        "object": "bridge.cpp.o",
+        "object_bytes": 31941211,
+        "source_sha256": "1ae272cebcc171d0d80e38d4752001622429493d56d5de39ba808d04a1c33ded",
+        "log": "bridge.cpp.log"
+      },
+      {
+        "file": "source/assist/tests/map_visibility_windows.cpp",
+        "returncode": 0,
+        "object": "map_visibility_windows.cpp.o",
+        "object_bytes": 153682,
+        "source_sha256": "ca0a7f25418324fb109789d658524502e24388b1cad4c5cb9c8f4bcd2c04f8a4",
+        "log": "map_visibility_windows.cpp.log"
+      },
+      {
+        "file": "source/assist/tests/single_player_fps_windows.cpp",
+        "returncode": 0,
+        "object": "single_player_fps_windows.cpp.o",
+        "object_bytes": 101656,
+        "source_sha256": "cd4b673f2d89697efdf84fd1d758388d00be262b0ad0b4ec8404f57d4d7a48c7",
+        "log": "single_player_fps_windows.cpp.log"
+      }
+    ],
+    "passed": true,
+    "windows_executed": false,
+    "game_tested": false,
+    "toolchain": "Zig 0.13.0",
+    "notes": [
+      "Object compilation only; binaries were not executed.",
+      "Initial scratch map extraction included a later callback; corrected to the repository runner brace-balanced extraction, then compiled successfully.",
+      "Zig -fsyntax-only driver FileNotFound is not counted as a successful gate."
+    ],
+    "source_sha256": {
+      "source/assist/source/bridge.cpp": "1ae272cebcc171d0d80e38d4752001622429493d56d5de39ba808d04a1c33ded",
+      "source/assist/source/tech_ui_breakpoint_bridge.h": "bda4db3b09870f46296f2d3821d8d45e0abc3044c13b852c37941472733fd052",
+      "source/assist/source/tech_ui_breakpoint_debug.h": "69c0a0236280ba298fddeb4ae7ba5708ac1f10b67383b8f37cc581930fdb0c0b",
+      "source/assist/source/tech_ui_breakpoint_core.h": "79551cd63d7d6c2635ad0d05decd3e6e9cf0af3b5a864b8c9ebc703800233ad8",
+      "source/assist/source/tech_ui_breakpoint_hot.h": "d4240a941f60993162edb924183027d37aa793817b8c9f480558ac410719c73e",
+      "source/assist/source/single_player_fps_runtime.h": "3e4d867c0586b96bdb59eae730784d90607a9ea86a453411fd40d6ac16a8f39d",
+      "source/assist/tests/map_visibility_windows.cpp": "ca0a7f25418324fb109789d658524502e24388b1cad4c5cb9c8f4bcd2c04f8a4",
+      "source/assist/tests/single_player_fps_windows.cpp": "cd4b673f2d89697efdf84fd1d758388d00be262b0ad0b4ec8404f57d4d7a48c7",
+      "source/shared/source/debug_entry_types.h": "acb4aeca8ea08b6cb3d88c9a794976d1e07734634526c270c05e938fbf658a5c",
+      "source/shared/source/debug_entry_policy.h": "4efb61d43ce21a91d5328b1889fc6c82377da214a51e6f6b7325f6f727398f3f",
+      "source/shared/source/debug_entry_catalog.h": "3b6daafe31e7e1f2d9a51cfc774e5ef68774ba75b832bda11883a87465f3458a"
+    },
+    "subsequent_catalog_metadata_change": {
+      "file": "source/shared/source/debug_entry_catalog.h",
+      "compiled_sha256": "3b6daafe31e7e1f2d9a51cfc774e5ef68774ba75b832bda11883a87465f3458a",
+      "current_sha256": "8229a6879402f082eaf41b99b79040b44499e962a8991e79ba496ccc2ac4bd21",
+      "scope": "Only the 55D7BC human-facing name, purpose and feature text changed after these object compilations; addresses, kinds, Count and policies did not change.",
+      "final_same_commit_full_build": "Separate release gate; not claimed by these historical object compilations."
+    }
+  },
+  "source_sha256": {
+    "source/assist/source/additional_settings.h": "dc8dea5bc1ee8bee038e81f464b9c43fa3ef00d218ec0ca8e995bd6701b00abb",
+    "source/assist/source/bridge.cpp": "1ae272cebcc171d0d80e38d4752001622429493d56d5de39ba808d04a1c33ded",
+    "source/assist/source/control_parameter_policy.h": "b07de775114410f622c3917892aa249d6d94ac509da86cc09cb0bd7253b44ca9",
+    "source/assist/source/extra_settings_io.h": "bd1e20a407037faff5c598286d9a7fcb4a62e47ada7704eb9c6b1371ab691fe0",
+    "source/assist/source/map_visibility_parameter_policy.h": "6effa9515db7d51474d41cc4d94de15c0ada05f054b4e3eb9030067cf082f037",
+    "source/assist/source/protocol.h": "4586fc259882fac2d1eca65b6d046dac888fa2c645c9e0bff5534218315a5113",
+    "source/assist/source/session_epoch.h": "1935c87ea55edd287c53b64472c5de8f617204a924c4ca8602fc247d0a6297d9",
+    "source/assist/source/sidebar.h": "244a350441dabbc7ff382f6e41b750f5e7db190762f0cccb1a8a3f5715f3754c",
+    "source/assist/source/sidebar_policy.h": "928e16cbbfd10e9ecf907ca360b1214a7b2eeff93c24a2dddf4fae5226769b36",
+    "source/assist/source/single_player_fps.h": "d3e62a9bf72d2402470973df64d032b53986e41036f71528b116e377dc1b1a1c",
+    "source/assist/source/single_player_fps_runtime.h": "3e4d867c0586b96bdb59eae730784d90607a9ea86a453411fd40d6ac16a8f39d",
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/tech_enhancement_bridge.h": "b0fa93b6e0dfc22eea8801f67e21cec729b70bfc2c4045945378179604cd8488",
+    "source/assist/source/tech_enhancement_parameter_policy.h": "6f29e7c43039d98f54e80b0d0d4df7492e98659c5e702568ec09dbd73837407f",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "bda4db3b09870f46296f2d3821d8d45e0abc3044c13b852c37941472733fd052",
+    "source/assist/source/tech_ui_breakpoint_core.h": "79551cd63d7d6c2635ad0d05decd3e6e9cf0af3b5a864b8c9ebc703800233ad8",
+    "source/assist/source/tech_ui_breakpoint_debug.h": "69c0a0236280ba298fddeb4ae7ba5708ac1f10b67383b8f37cc581930fdb0c0b",
+    "source/assist/source/tech_ui_breakpoint_hot.h": "d4240a941f60993162edb924183027d37aa793817b8c9f480558ac410719c73e",
+    "source/assist/source/technology_mode_policy.h": "33e92d7331d9458d621e368c457276969960d904454779036f91116c789499e8",
+    "source/assist/tests/control_parameters.cpp": "01dd5b9dee950f6dd238cb463f48023b096f7d621df6852f95688f9cb7673cb5",
+    "source/assist/tests/control_parameters.py": "a783f058412bac059d669a4d8622235fc63bc51bb4c06de2407054dbe5ccbb0d",
+    "source/assist/tests/debug_breakpoint_policy.cpp": "4d2048904a40556c218d8f83552406c2c193d1f9733a4260a0712686249979e3",
+    "source/assist/tests/debug_breakpoint_policy.py": "f14be5295ee30cfc2d2d00feb7d4026edf078453f3a077120d2770aebf03e2b8",
+    "source/assist/tests/debug_entry_settings.cpp": "91e09b94fc0072a9fdbb428dc367e5c63be58f6f89abd3b42b797cd25c8f413b",
+    "source/assist/tests/debug_entry_settings.py": "4d4e79c0c38e7da443def945df582de4a2ab9116f3cfa60ec2f87c67e34ff20d",
+    "source/assist/tests/map_visibility_windows.cpp": "ca0a7f25418324fb109789d658524502e24388b1cad4c5cb9c8f4bcd2c04f8a4",
+    "source/assist/tests/single_player_fps_windows.cpp": "cd4b673f2d89697efdf84fd1d758388d00be262b0ad0b4ec8404f57d4d7a48c7",
+    "source/assist/tests/tech_ares_entry_compat.cpp": "ada638fcbc6d378d6f030aacda264bfcdcf779970b8b0f5e9bfb859fbb430d5b",
+    "source/assist/tests/tech_ares_entry_compat.py": "e25a0a0e6677dc351b13e7da4a36c2a916cd19bb72612d6e5d1febe9bcaf6e09",
+    "source/assist/tests/tech_enhancement_midgame.cpp": "17bee59db5fc1865f83bb7db4c881ff18b6a36ff3dd9b950d370267381a48263",
+    "source/assist/tests/tech_enhancement_midgame.py": "44316c13dd6f5d008dceb9d33b832b301e79216a000552db3527b73f144a5f60",
+    "source/assist/tests/tech_parameter_recovery.cpp": "b806177722ee01234558e263aea4aeb1f0b88bb2ebaadae8f9f425d9143a5c2f",
+    "source/assist/tests/tech_parameter_recovery.py": "4a92f91a38c291705b8e18b5e11a16bdd506acd69133ab98ed0e5b4558218dbc",
+    "source/external_reader/source/catalogue_stamp.h": "2e366702bfabdf89b6e4e30f06a72e84971e414d0108f3b8f94bf82745aeb600",
+    "source/shared/source/debug_entry_catalog.h": "8229a6879402f082eaf41b99b79040b44499e962a8991e79ba496ccc2ac4bd21",
+    "source/shared/source/debug_entry_policy.h": "4efb61d43ce21a91d5328b1889fc6c82377da214a51e6f6b7325f6f727398f3f",
+    "source/shared/source/debug_entry_types.h": "acb4aeca8ea08b6cb3d88c9a794976d1e07734634526c270c05e938fbf658a5c",
+    "source/shared/source/hardware_slot_budget.h": "997a06543ddf6c77de423740ec82863db69a4f9efff3be679b1e309368e6e8c8",
+    "source/shared/source/master_control_policy.h": "f7ad82442891ceea98aab7e06129c7cb503058b965929331e5c8a277d6394ee8",
+    "source/shared/source/patch_context.h": "d663ae2b5f3679abb5595a58a04ec47651ac497196b80a43d3f97311c20061d0"
+  },
+  "all_recorded_source_hashes_match": true,
+  "recorded_source_count": 40,
+  "actual_windows_execution": false,
+  "actual_game_execution": false,
+  "multiplayer_tested": false,
+  "limits": [
+    "Portable fixtures extract actual production functions; operating-system, private memory and native execution boundaries are explicit models.",
+    "Windows target object files prove compilation only; no fixture or game process was executed on Windows.",
+    "Existing recovery and midgame negative-baseline cases were not rerun in this pre7 gate and are not included in the success count.",
+    "The control callback count comes from the runner actual PASS output; no uncounted model or concurrent scenario totals are invented.",
+    "Full frozen-commit build, PE checks, packaging and delivery are separately bound by release manifests.",
+    "No raw user logs, private game modules or dumps are embedded."
+  ],
+  "metadata_refresh": "Reran settings, debug breakpoint, Ares and control callback suites against the final 55D7BC catalogue descriptions; recovery and midgame do not bind the catalogue and were retained."
+}

@@ -127,7 +127,7 @@ static DWORD WINAPI prepareSettings(void*){
   const int cursorDefault=int(GetPrivateProfileIntW(L"Startup",L"AutoStart",0,(root+L"\\settings.ini").c_str()));
   result.cursor=read(L"Video",L"CursorEnabled",read(L"Modules",L"Cursor",cursorDefault))!=0;
   result.monitor=read(L"Video",L"MonitorEnabled",read(L"Modules",L"Units",0))!=0;
-  result.category=std::clamp(read(L"UI",L"Category5",0),0,4);result.video=std::clamp(read(L"UI",L"VideoSection",0),0,1);
+  result.category=std::clamp(read(L"UI",L"Category5",0),0,5);result.video=std::clamp(read(L"UI",L"VideoSection",0),0,1);
  }
  {std::lock_guard<std::mutex> lock(bootMutex);bootSettings=result;}
  if(auto w=notificationWindow.load())PostMessageW(w,BootReady,0,0);return 0;

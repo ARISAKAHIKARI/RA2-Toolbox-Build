@@ -11,9 +11,12 @@
 #include <set>
 #include <vector>
 #include "../source/signatures.h"
+#include "../../shared/source/debug_entry_policy.h"
 #include "../source/startup_dependency_policy.h"
 #include "../source/startup_signature_compat.h"
 #include "../../shared/source/direct_patch_policy.h"
+#include "../source/hook_registry.h"
+namespace hookregistry=assist::hookregistry;
 using DWORD=uint32_t;
 
 static unsigned checks=0;
@@ -34,7 +37,10 @@ struct MEMORY_BASIC_INFORMATION {void*BaseAddress=nullptr,*AllocationBase=nullpt
 constexpr unsigned IMAGE_DOS_SIGNATURE=0x5a4d,IMAGE_NT_SIGNATURE=0x4550,IMAGE_FILE_MACHINE_I386=0x14c,IMAGE_NT_OPTIONAL_HDR32_MAGIC=0x10b;
 constexpr unsigned MEM_COMMIT=0x1000,MEM_IMAGE=0x1000000,MEM_PRIVATE=0x20000,PAGE_NOACCESS=1,PAGE_GUARD=0x100,PAGE_EXECUTE=0x10,PAGE_EXECUTE_READ=0x20,PAGE_EXECUTE_READWRITE=0x40,PAGE_EXECUTE_WRITECOPY=0x80;
 static void*GetModuleHandleW(const wchar_t*){return nullptr;}
-static size_t VirtualQuery(void*,MEMORY_BASIC_INFORMATION*,size_t){return 0;}
+static size_t VirtualQuery(void*p,MEMORY_BASIC_INFORMATION*out,size_t){
+ const uintptr_t at=uintptr_t(p);if(at<0x400000||at>=0xB94000)return 0;
+ *out={(void*)0x400000,(void*)0x400000,0x794000,MEM_COMMIT,MEM_IMAGE,PAGE_EXECUTE_READ};return sizeof(*out);
+}
 static uint32_t clockMs=100;
 static uint32_t GetTickCount();
 #include "../source/native_entry_runtime.h"

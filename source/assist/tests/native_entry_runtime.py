@@ -18,7 +18,8 @@ def main():
     source = here.parent / 'source'
     bridge = (source / 'bridge.cpp').read_text()
     extracts = {
-        'STARTUP_HELPERS': block(bridge, 'static bool startupSignature(') + '\n' +
+        'STARTUP_HELPERS': block(bridge, 'static bool startupSignatureStrict(') + '\n' +
+            block(bridge, 'static bool startupSignature(') + '\n' +
             bridge[bridge.index('static nativeentry::TimedResult nativeDependencyCache'):
                    bridge.index('static void notifyHost(')],
         'STARTUP_GATE': '\n'.join(block(bridge, marker) for marker in (
@@ -34,6 +35,8 @@ def main():
               'startup_signature_compat.h', 'signatures.h')]
     inputs += [here / 'native_entry_runtime.cpp', Path(__file__).resolve(),
                here / 'startup_dependencies.py']
+    inputs += [source.parents[1] / 'shared/source' / name for name in (
+        'debug_entry_types.h', 'debug_entry_catalog.h', 'debug_entry_policy.h')]
     sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
     hashes = {str(path): sha(path) for path in inputs}
     exe = out / 'native-entry-runtime'

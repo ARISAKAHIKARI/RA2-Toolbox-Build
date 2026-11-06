@@ -5,8 +5,10 @@
 #include "pointer_intent.h"
 #include "control_mode_policy.h"
 #include "building_event_settings.h"
+#include "../../shared/source/debug_entry_types.h"
 namespace assist {
 struct AdditionalSettings {
+ debugentries::Config debugPolicy; // Stable per-entry opt-ins; no entry skips by default.
  int singlePlayerFPS=0; // 0 native; independent of renderer refresh
  bool minerDefenseEnabled=false;int minerDefenseRangeCells=1; // Independent of automatic ore return.
  uint32_t overlayKey=0xC0; // ` / · on the standard keyboard; presentation only.

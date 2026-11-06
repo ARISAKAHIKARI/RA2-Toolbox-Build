@@ -14,6 +14,40 @@ static uint32_t boundThreadId=0;
 static volatile LONG busy,activeThread,activeModule,entries,reentrant,contended,wrongThread;
 static assist::hookregistry::Registry<> patches;
 static uint32_t patchModules[decltype(patches)::CapacityLimit];
+static int32_t patchErrors[decltype(patches)::CapacityLimit];
+static bool patchRead(uint32_t at,void*out,size_t n){
+ MEMORY_BASIC_INFORMATION info{};const void*p=(const void*)(uintptr_t)at;SIZE_T got=0;
+ return n&&VirtualQuery(p,&info,sizeof info)&&info.State==MEM_COMMIT&&
+  info.AllocationBase==GetModuleHandleW(nullptr)&&!(info.Protect&(PAGE_GUARD|PAGE_NOACCESS))&&
+  uintptr_t(p)+n>=uintptr_t(p)&&uintptr_t(p)+n<=uintptr_t(info.BaseAddress)+info.RegionSize&&
+  ReadProcessMemory(GetCurrentProcess(),p,out,n,&got)&&got==n;
+}
+static void observePatch(uint32_t at){
+ using namespace debugentries;const unsigned n=experimentalpatch::size(at);if(!n)return;
+ const int i=patches.find(at);const auto*slot=i<0?nullptr:&patches.slots[i];uint8_t actual[16]{};
+ if(!patchRead(at,actual,n)){installation(Kind::Patch,at,slot&&slot->active?Hook::Pending:Hook::Unavailable,Reason::Unreadable);return;}
+ if(slot&&slot->conflict){installation(Kind::Patch,at,Hook::Conflict,Reason::Foreign);return;}
+ if(slot&&slot->active){
+  // Ownership is a restoration obligation; only this readback proves bytes.
+  if(slot->size!=n||memcmp(actual,slot->patch,n))installation(Kind::Patch,at,Hook::Conflict,Reason::Foreign);
+  else installation(Kind::Patch,at,patchErrors[i]?Hook::Pending:Hook::Installed,
+    patchErrors[i]?Reason::OwnerPending:Reason::None,patchErrors[i]);
+  return;
+ }
+ auto*o=observation(Kind::Patch,at);
+ if(o&&(o->reason==Reason::Signature||o->reason==Reason::Structural||o->reason==Reason::Unsupported)){
+  installation(Kind::Patch,at,Hook::Unavailable,o->reason,o->error);return;
+ }
+ if(!assist::hookregistry::knownOriginal(at,actual,n)){
+  installation(Kind::Patch,at,Hook::Unavailable,assist::hookregistry::structuralOriginal(at,actual,n)?Reason::Signature:Reason::Structural);return;
+ }
+ installation(Kind::Patch,at,Hook::Inactive,Reason::NoRequest);
+}
+static Result patchDenied(uint32_t at,debugentries::Reason reason=debugentries::Reason::None,Result result=Result::PatchDenied){
+ using namespace debugentries;if(reason==Reason::None){auto*o=observation(Kind::Patch,at);reason=o?o->reason:Reason::Structural;
+  if(reason==Reason::None||reason==Reason::NoRequest||reason==Reason::AwaitRuntime)reason=Reason::Structural;}
+ installation(Kind::Patch,at,patches.active(at)?Hook::Pending:Hook::Unavailable,reason,int(result));return result;
+}
 extern "C" __declspec(dllexport) const uint32_t GameEntryManagerInfo[2]={Version,sizeof(Request)};
 static bool isBoundThreadDead(uint32_t boundTid){
  // Numeric thread IDs can be recycled. Only the retained object handle
@@ -37,33 +71,27 @@ static Result applyPatch(const Request&r){
  int slot=patches.find(r.address);
  if(slot>=0&&patchModules[slot]&&patchModules[slot]!=r.module)return Result::WrongOwner;
  const auto transition=patches.proposal(r.address,r.before,r.after,r.length);
- if(transition==assist::hookregistry::Transition::Deny)return Result::PatchDenied;
+ if(transition==assist::hookregistry::Transition::Deny)return patchDenied(r.address,patches.conflict(r.address)?debugentries::Reason::Foreign:debugentries::Reason::None);
  if(transition==assist::hookregistry::Transition::Install){
   if(!multiplayerpatch::mayInstall([](uint32_t at,void*out,size_t n){
    SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)at,out,n,&got)&&got==n;
-  }))return Result::PatchDenied;
+  }))return patchDenied(r.address,debugentries::Reason::Unsupported);
   // Entry bytes alone do not establish the adapter's stack/continuation ABI.
   // Restoration must remain possible after a dependency changes.
-  if(!patchcontext::compatible(r.address,[](uint32_t at,void*out,size_t n){
-   MEMORY_BASIC_INFORMATION info{};const void* p=(const void*)(uintptr_t)at;
-   if(!VirtualQuery(p,&info,sizeof info)||info.State!=MEM_COMMIT||
-      info.AllocationBase!=GetModuleHandleW(nullptr)||(info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||
-      uintptr_t(p)+n>uintptr_t(info.BaseAddress)+info.RegionSize)return false;
-   memcpy(out,p,n);return true;
-  }))return Result::PatchDenied;
+  if(!patchcontext::compatible(r.address,patchRead))return patchDenied(r.address);
   if(auto site=nativesidebarpolicy::find(r.address);site&&site->kind==nativesidebarpolicy::Kind::Bytes){
-   if(!nativesidebarpolicy::installed(r.address,r.after,r.length))return Result::PatchDenied;
+   if(!nativesidebarpolicy::installed(r.address,r.after,r.length))return patchDenied(r.address,debugentries::Reason::Structural);
   }else if(directpatch::find(r.address)){
-   if(!directpatch::installed(r.address,r.after,r.length))return Result::PatchDenied;
+   if(!directpatch::installed(r.address,r.after,r.length))return patchDenied(r.address,debugentries::Reason::Structural);
   }else if(mastercontrol::installed(r.address,r.after,r.length)){
    // Do not expose the unconditional predicate until BOTH strict owner calls
    // are owned by this module. Matching foreign bytes are not our ownership.
    if(r.address==experimentalpatch::ControlHouse)for(unsigned i=0;i<2;++i){
     const auto&s=mastercontrol::Sites[i];const int owner=patches.find(s.address);
     if(owner<0||!patches.active(s.address)||patches.conflict(s.address)||patchModules[owner]!=r.module||
-       memcmp(patches.slots[owner].patch,s.after,5))return Result::PatchDenied;
+       memcmp(patches.slots[owner].patch,s.after,5))return patchDenied(r.address,debugentries::Reason::OwnerPending);
     uint8_t actual[5]{};SIZE_T got=0;
-    if(!ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)s.address,actual,5,&got)||got!=5||memcmp(actual,s.after,5))return Result::PatchDenied;
+    if(!ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)s.address,actual,5,&got)||got!=5||memcmp(actual,s.after,5))return patchDenied(r.address,debugentries::Reason::OwnerPending);
    }
    // Only this exact three-site adaptation may target the verified game leaf.
    // Keep ordinary detours restricted to this Runtime module.
@@ -72,29 +100,30 @@ static Result applyPatch(const Request&r){
     if(!VirtualQuery(p,&info,sizeof info)||info.State!=MEM_COMMIT||info.AllocationBase!=GetModuleHandleW(nullptr)||
        (info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||uintptr_t(p)+n>uintptr_t(info.BaseAddress)+info.RegionSize)return false;
     memcpy(out,p,n);return true;
-   }))return Result::PatchDenied;
+   }))return patchDenied(r.address);
   }else{
   const uint32_t target=experimentalpatch::destination(r.address,r.after,r.length);MEMORY_BASIC_INFORMATION info{};
   if(!target||!VirtualQuery((void*)(uintptr_t)target,&info,sizeof info)||info.State!=MEM_COMMIT||
      info.AllocationBase!=self||info.Type!=MEM_IMAGE||(info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||
      (nativeviewportpolicy::dataOperand(r.address)&&uintptr_t(target)+sizeof(uint32_t)>uintptr_t(info.BaseAddress)+info.RegionSize)||
      (nativeviewportpolicy::dataOperand(r.address)?!(info.Protect&(PAGE_READONLY|PAGE_READWRITE|PAGE_WRITECOPY|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY)):
-       !(info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY))))return Result::PatchDenied;
+       !(info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY))))return patchDenied(r.address,debugentries::Reason::Structural);
   HMODULE pin=nullptr;if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,
-    reinterpret_cast<LPCWSTR>(target),&pin))return Result::SystemFailure;
+    reinterpret_cast<LPCWSTR>(target),&pin))return patchDenied(r.address,debugentries::Reason::OwnerPending,Result::SystemFailure);
   }
  }
  void* site=(void*)(uintptr_t)r.address;MEMORY_BASIC_INFORMATION info{};
  if(!VirtualQuery(site,&info,sizeof info)||info.State!=MEM_COMMIT||info.AllocationBase!=GetModuleHandleW(nullptr)||
-    uintptr_t(site)+r.length>uintptr_t(info.BaseAddress)+info.RegionSize)return Result::PatchDenied;
- if(memcmp(site,r.before,r.length)){patches.markConflict(r.address);return Result::PatchDenied;}
- DWORD prior=0;if(!VirtualProtect(site,r.length,PAGE_EXECUTE_READWRITE,&prior))return Result::SystemFailure;
+    (info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||uintptr_t(site)+r.length>uintptr_t(info.BaseAddress)+info.RegionSize)return patchDenied(r.address,debugentries::Reason::Unreadable);
+ if(memcmp(site,r.before,r.length)){patches.markConflict(r.address);return patchDenied(r.address,debugentries::Reason::Foreign);}
+ DWORD prior=0;if(!VirtualProtect(site,r.length,PAGE_EXECUTE_READWRITE,&prior))return patchDenied(r.address,debugentries::Reason::OwnerPending,Result::SystemFailure);
  memcpy(site,r.after,r.length);
  const bool flushed=FlushInstructionCache(GetCurrentProcess(),site,r.length)!=FALSE;
  DWORD ignored=0;const bool protectedAgain=VirtualProtect(site,r.length,prior,&ignored)!=FALSE;
  // Record actual bytes even on an OS error, so cleanup retains ownership.
  patches.commit(r.address,r.before,r.after,r.length,transition);
- slot=patches.find(r.address);if(slot>=0)patchModules[slot]=r.module;
+ slot=patches.find(r.address);if(slot>=0){patchModules[slot]=r.module;patchErrors[slot]=flushed&&protectedAgain?0:int32_t(Result::SystemFailure);}
+ observePatch(r.address);
  return flushed&&protectedAgain?Result::Ok:Result::SystemFailure;
 }
 extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
@@ -135,6 +164,12 @@ extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
  }else if(r->operation==Operation::Inspect){
   r->gameThread=policy.thread;r->activeModule=policy.module;r->installed=patches.installed();r->conflicts=patches.conflicts();
   r->active=patches.active(r->address);r->conflict=patches.conflict(r->address);
+  if(r->address){const int i=patches.find(r->address);
+   // Existing output fields expose the immutable journal without an ABI change.
+   // Callers still need the original owner token to perform a restoration.
+   if(i>=0){const auto&s=patches.slots[i];r->length=s.size;memcpy(r->before,s.original,s.size);memcpy(r->after,s.patch,s.size);}
+   if(r->bindThread)observePatch(r->address); // explicit cold diagnostic sample only
+  }
   r->entries=uint32_t(entries);r->reentrant=uint32_t(reentrant);r->contended=uint32_t(contended);r->wrongThread=uint32_t(wrongThread);result=Result::Ok;
  }else if(!policy.owns(tid,*r)){result=Result::WrongOwner;
  }else if(r->operation==Operation::Validate){result=Result::Ok;}
@@ -142,7 +177,7 @@ extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
  else if(r->operation==Operation::MarkConflict&&r->client==Client::Assist){
   int i=patches.find(r->address);
   if(i>=0&&patchModules[i]&&patchModules[i]!=r->module)result=Result::WrongOwner;
-  else{patches.markConflict(r->address);i=patches.find(r->address);if(i>=0)patchModules[i]=r->module;result=Result::Ok;}
+  else{patches.markConflict(r->address);i=patches.find(r->address);if(i>=0)patchModules[i]=r->module;observePatch(r->address);result=Result::Ok;}
  }
  if(!owned&&!retain)InterlockedExchange(&busy,0);
  return int32_t(result);

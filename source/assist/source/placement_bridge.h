@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 // Explicit experimental game-judgment opt-ins. Sole writer: GameEntryManager.
 #include "../../shared/source/experimental_patch_policy.h"
 #include "../../shared/source/patch_context.h"
@@ -395,14 +396,20 @@ static void prepareRiskSites(){static bool ready=false;if(ready)return;ready=tru
 static bool riskSiteCurrent(const RiskSite&s){uint8_t bytes[16]{};return read(s.address,bytes,s.size)&&!memcmp(bytes,s.after,s.size);}
 static bool restoreRiskSite(RiskSite&s){
  if(!codeHookRegistry.active(s.address))return true;
- return gameentry::patch(gameentry::Client::Assist,s.address,s.after,s.before,s.size);
+ const auto journal=gameentry::inspect(s.address);
+ if(!journal.active||journal.length!=s.size){debugentries::installation(debugentries::Kind::Patch,s.address,debugentries::Hook::Pending,debugentries::Reason::OwnerPending);return false;}
+ return gameentry::patch(gameentry::Client::Assist,s.address,journal.after,journal.before,journal.length);
 }
 static bool installRiskSite(RiskSite&s){
  // Recheck on ordinary feature maintenance, never on each drawn cell. If a
  // later platform patch changes an ABI dependency, release only our own site.
  if(!patchcontext::compatible(s.address,[](uint32_t at,void*out,size_t n){return read(at,out,n);})){restoreRiskSite(s);return false;}
  if(codeHookRegistry.active(s.address)){if(riskSiteCurrent(s))return !codeHookRegistry.conflict(s.address);codeHookRegistry.markConflict(s.address);return false;}
- return gameentry::patch(gameentry::Client::Assist,s.address,s.before,s.after,s.size);
+ uint8_t original[16]{};
+ if(!read(s.address,original,s.size)){debugentries::allow(debugentries::Kind::Patch,s.address,false,false);return false;}
+ if(!hookregistry::admissibleOriginal(s.address,original,s.size))return false;
+ // These bytes, not the reference signature, are the immutable restore value.
+ return gameentry::patch(gameentry::Client::Assist,s.address,original,s.after,s.size);
 }
 #include "master_tech_bridge.h"
 #include "direct_modes_bridge.h"
@@ -432,7 +439,7 @@ static bool setTechSites(bool enabled){
   // Restore the old pair before preflighting the complete new group.
   bool a=restoreRiskSite(riskSites[6]),b=restoreRiskSite(riskSites[7]);bool ok=a&&b;
   for(auto&s:masterTechSites){uint8_t bytes[16]{};bool active=codeHookRegistry.active(s.address);
-   if(!patchcontext::compatible(s.address,[](uint32_t p,void*out,size_t n){return read(p,out,n);})||codeHookRegistry.conflict(s.address)||!read(s.address,bytes,s.size)||memcmp(bytes,active?s.after:s.before,s.size))ok=false;
+   if(!patchcontext::compatible(s.address,[](uint32_t p,void*out,size_t n){return read(p,out,n);})||codeHookRegistry.conflict(s.address)||!read(s.address,bytes,s.size)||(active?memcmp(bytes,s.after,s.size):!hookregistry::admissibleOriginal(s.address,bytes,s.size)))ok=false;
   }
   if(ok)for(auto&s:masterTechSites)if(!installRiskSite(s)){ok=false;break;}
   if(ok){riskTechActive=true;return true;}
@@ -470,10 +477,10 @@ static void restorePlacement(){
 }
 static bool redrawRevealTest(){
  // Native redraw bookkeeping only, once per toggle/recovery; never reveal/register cells.
- static const uint8_t signature[]={0x83,0xEC,0x58,0x8B,0x0D,0x88,0xCE,0xB0,0};uint8_t actual[sizeof signature]{};
+ static const uint8_t signature[]={0x83,0xEC,0x58,0x8B,0x0D,0x88,0xCE,0xB0,0};
  const uint32_t tactical=get<uint32_t>(0x887324);
  struct Area {int x,y,w,h;};Area area{};
- if(tactical<0x10000||!riskRenderContextReady()||!read(0x6D2790,actual,sizeof actual)||memcmp(actual,signature,sizeof actual)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return false;
+ if(tactical<0x10000||!riskRenderContextReady()||!debugentries::pattern(debugentries::Kind::Call,0x6D2790,signature,sizeof signature,read)||!read(0x886FA0,&area,sizeof area)||area.w<=0||area.h<=0||area.w>16384||area.h>16384)return false;
  call<void>(0x6D2790,tactical,area,false);return true;
 }
 static bool directMapRevealReady(){
@@ -550,8 +557,8 @@ static void placementTick(){
  }
  if(airpathpolicy::native(get<int>(0xA8B238),(sh->flags&NativeAirWaypoints)!=0,sh->nativeAirNetwork)){
   const bool advance=airpathpolicy::arrival(get<int>(0xA8B238),true,sh->nativeAirNetwork);
-  static const uint8_t nextSignature[]={0x81,0xEC,0xE0,0,0,0,0x53,0x56,0x8B,0xF1};uint8_t actual[sizeof nextSignature]{};
-  bool supported=!advance||(read(0x6385C0,actual,sizeof actual)&&!memcmp(actual,nextSignature,sizeof actual));
+  static const uint8_t nextSignature[]={0x81,0xEC,0xE0,0,0,0,0x53,0x56,0x8B,0xF1};
+  bool supported=!advance||debugentries::pattern(debugentries::Kind::Call,0x6385C0,nextSignature,sizeof nextSignature,read);
   // Behavior first, frontend last. Partial installation rolls back as a group.
   riskAirActive=supported&&(advance?installRiskSite(riskSites[2]):restoreRiskSite(riskSites[2]))&&installRiskSite(riskSites[1]);
   if(!riskAirActive){restoreRiskSite(riskSites[1]);restoreRiskSite(riskSites[2]);}

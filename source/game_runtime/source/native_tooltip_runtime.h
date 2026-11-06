@@ -1,6 +1,7 @@
 #pragma once
 #include "../../shared/source/native_tooltip_client.h"
 #include "../../shared/source/runtime_fp_scope.h"
+#include "../../shared/source/debug_entry_policy.h"
 extern "C" bool CursorTooltipNeeded();
 extern "C" bool CursorTooltipOwnsHiddenMouse();
 extern "C" void CursorTooltipStatus(int);
@@ -31,10 +32,14 @@ static constexpr uint8_t LayoutPrefix[]={
 static bool layoutCompatible(){
  uint8_t actual[sizeof(LayoutPrefix)]{},tail[8]{};SIZE_T got=0;
  const uint8_t expectedTail[]={0x32,0xC0,0x83,0xC4,0x1C,0xC2,4,0};
- return ReadProcessMemory(GetCurrentProcess(),(const void*)LayoutOriginal,actual,sizeof actual,&got)&&got==sizeof actual&&
-  !memcmp(actual,LayoutPrefix,sizeof actual)&&
-  ReadProcessMemory(GetCurrentProcess(),(const void*)0x478DA6,tail,sizeof tail,&got)&&got==sizeof tail&&
-  !memcmp(tail,expectedTail,sizeof tail);
+ const bool headRead=ReadProcessMemory(GetCurrentProcess(),(const void*)LayoutOriginal,actual,sizeof actual,&got)&&got==sizeof actual;
+ const bool tailRead=ReadProcessMemory(GetCurrentProcess(),(const void*)0x478DA6,tail,sizeof tail,&got)&&got==sizeof tail;
+ if(!debugentries::allow(debugentries::Kind::Patch,LayoutSlot,headRead&&tailRead,
+    !memcmp(actual,LayoutPrefix,sizeof actual)&&!memcmp(tail,expectedTail,sizeof tail)))return false;
+ // visibleLayout replays these locals/receiver stores and returns through
+ // this exact native epilogue. A checkbox cannot relocate an unknown ABI.
+ if(!memcmp(actual,LayoutPrefix,7)&&!memcmp(tail,expectedTail,sizeof tail))return true;
+ debugentries::installation(debugentries::Kind::Patch,LayoutSlot,debugentries::Hook::Unavailable,debugentries::Reason::Structural);return false;
 }
 // Reproduce exactly the stack/local setup skipped with the negative-count
 // branch. ECX and the one callee-cleaned rectangle argument are unchanged;
@@ -56,10 +61,10 @@ static bool __fastcall layoutEntry(void*self,void*,void*rectangle){
 static bool compatible(){
  uint8_t actual[sizeof(NativeBody)]{},getter[4]{};SIZE_T got=0;
  const uint8_t expectedGetter[]={0x8B,0x41,0x0C,0xC3};
- return ReadProcessMemory(GetCurrentProcess(),(const void*)Original,actual,sizeof actual,&got)&&got==sizeof actual&&
-  !memcmp(actual,NativeBody,sizeof actual)&&
-  ReadProcessMemory(GetCurrentProcess(),(const void*)0x7B89F0,getter,sizeof getter,&got)&&got==sizeof getter&&
-  !memcmp(getter,expectedGetter,sizeof getter);
+ const bool bodyRead=ReadProcessMemory(GetCurrentProcess(),(const void*)Original,actual,sizeof actual,&got)&&got==sizeof actual;
+ const bool getterRead=ReadProcessMemory(GetCurrentProcess(),(const void*)0x7B89F0,getter,sizeof getter,&got)&&got==sizeof getter;
+ return debugentries::allow(debugentries::Kind::Patch,Slot,bodyRead&&getterRead,
+   !memcmp(actual,NativeBody,sizeof actual)&&!memcmp(getter,expectedGetter,sizeof getter));
 }
 static wchar_t* __fastcall entry(void*self,void*,unsigned id){
  auto text=((wchar_t*(__thiscall*)(void*,unsigned))Original)(self,id);
@@ -79,6 +84,24 @@ static wchar_t* __fastcall entry(void*self,void*,unsigned id){
 static bool maintain(bool allowInstall){
  const bool cursorWanted=CursorTooltipNeeded(),wanted=buildTimeWanted||cursorWanted;
  const uint32_t target=uint32_t(uintptr_t(&entry));
+ // A per-slot policy change retires through the old ownership journal before
+ // any new admission. Unrelated entry settings do not churn these callbacks.
+ static bool policySeen=false,textRequired=true,layoutRequired=true;
+ const bool nextText=debugentries::signatureRequired(debugentries::Kind::Patch,Slot);
+ const bool nextLayout=debugentries::signatureRequired(debugentries::Kind::Patch,LayoutSlot);
+ bool textPending=false,layoutPending=false;
+ if(policySeen&&textRequired!=nextText&&installed){
+  const auto journal=gameentry::inspect(Slot);
+  if(journal.active&&journal.length==4)gameentry::patch(gameentry::Client::Assist,Slot,journal.after,journal.before,4);
+  installed=gameentry::inspect(Slot).active!=0;textPending=installed;
+ }
+ if(policySeen&&layoutRequired!=nextLayout&&layoutInstalled){
+  const auto journal=gameentry::inspect(LayoutSlot);
+  if(journal.active&&journal.length==4)gameentry::patch(gameentry::Client::Assist,LayoutSlot,journal.after,journal.before,4);
+  layoutInstalled=gameentry::inspect(LayoutSlot).active!=0;layoutPending=layoutInstalled;
+ }
+ policySeen=true;if(!textPending)textRequired=nextText;if(!layoutPending)layoutRequired=nextLayout;
+ if(textPending||layoutPending){CursorTooltipStatus(cursorWanted?-1:0);return installed;}
  if(wanted&&!installed&&allowInstall&&compatible()){
   const bool ok=gameentry::patch(gameentry::Client::Assist,Slot,(const uint8_t*)&Original,(const uint8_t*)&target,4);
   // The writer records actual bytes even if flush/protection restoration

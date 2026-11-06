@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 #pragma once
 #include "crc_shadow_policy.h"
 #include "crc_shadow_restore.h"
@@ -126,7 +127,7 @@ static void crcMapShadowTick(){
  if(!crcMapInstalled){
   if(!match||!lastHouse||snap.status!=1||!get<bool>(0xA8E9A0)){crcMapState=2;crcMapPublish();return;}
   for(const auto&s:crcMapSites){uint8_t actual[7]{};if(codeHookRegistry.active(s.spec.address)||codeHookRegistry.conflict(s.spec.address)||
-   !read(s.spec.address,actual,s.spec.size)||memcmp(actual,s.spec.original,s.spec.size)){crcMapState=-2;crcMapPublish();return;}}
+   !read(s.spec.address,actual,s.spec.size)||!hookregistry::admissibleOriginal(s.spec.address,actual,s.spec.size)){crcMapState=-2;crcMapPublish();return;}}
   crcMapEpoch=match;crcMapScenario=get<uint32_t>(0xA8B230);crcMapItems=get<uint32_t>(0xA8022C);
   crcMapLocal=get<uint32_t>(0xA83D4C);crcMapLocalID=get<uint32_t>(crcMapLocal+0x10);crcMapMode=get<int>(0xA8B238);crcMapNativeReconstructed=false;
   crcMapModel.clear();crcMapModel.frame(match,get<int>(0xA8ED84));crcMapLastFrame=get<int>(0xA8ED84);crcMapFaulted=false;

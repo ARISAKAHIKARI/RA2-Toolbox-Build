@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 #pragma once
 #include "view_zoom.h"
 // Presentation-only adapter executed under the existing Assist dispatcher lease.
@@ -18,9 +19,9 @@ static viewzoom::Size zoomCurrent(){return {get<int>(0x8A00A4),get<int>(0x8A00A8
 static bool zoomNativeCompatible(){
  // Entire ChangeResolution body, including the existing platform trampolines.
  // See research/2026-10-23-experimental-view-zoom.md for sample provenance.
- uint8_t bytes[0x58A];if(!read(0x560BF0,bytes,sizeof bytes))return false;
+ uint8_t bytes[0x58A]{};const bool readable=read(0x560BF0,bytes,sizeof bytes);
  uint32_t h=2166136261u;for(auto b:bytes)h=(h^b)*16777619u;
- return h==0x858162CFu||h==0xC0FFC84Eu||h==0xB5377C6Fu;
+ return debugentries::allow(debugentries::Kind::Call,0x560BF0,readable,h==0x858162CFu||h==0xC0FFC84Eu||h==0xB5377C6Fu);
 }
 static bool zoomRenderer(ZoomEnable&enable,ZoomRect&rect){
  uint32_t dd=get<uint32_t>(0x8A0094),vt=0,entry=0;

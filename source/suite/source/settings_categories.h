@@ -1,7 +1,7 @@
 #pragma once
 namespace suite { namespace categories {
-enum Category {Video,Control,Automatic,Rules,Experimental,Count};
-inline const wchar_t*name(int category){constexpr const wchar_t*names[]={L"视频",L"控制",L"自动功能",L"游戏规则",L"实验性功能"};return category>=0&&category<Count?names[category]:L"设置";}
+enum Category {Video,Control,Automatic,Rules,Experimental,Debug,Count};
+inline const wchar_t*name(int category){constexpr const wchar_t*names[]={L"视频",L"控制",L"自动功能",L"游戏规则",L"实验性功能",L"调试"};return category>=0&&category<Count?names[category]:L"设置";}
 inline bool rule(int id){
  if(id==9250||id==9251||id==9252||id==807||id==865||id==9193||id==9194||id==9183)return true;
  if(id>=420&&id<=428)return true;

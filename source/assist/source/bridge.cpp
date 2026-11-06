@@ -15,6 +15,7 @@
 #include "../../shared/source/precise_clock.h"
 #include "../../shared/source/runtime_fault.h"
 #include "signatures.h"
+#include "../../shared/source/debug_entry_policy.h"
 #include "startup_signature_compat.h"
 #include "startup_dependency_policy.h"
 #include "autoload.h"
@@ -205,7 +206,7 @@ static void disconnect(){
 #include "native_entry_runtime.h"
 static_assert(Signatures[8].address==startupcompat::BeaconEntry,"ClearBeacons signature index");
 static_assert(Signatures[9].address==startupdependency::RevealEntry,"Map::Reveal signature index");
-static bool startupSignature(const Signature&s){
+static bool startupSignatureStrict(const Signature&s){
  unsigned char b[12];if(s.length>sizeof b||!read(s.address,b,s.length))return false;
  if(!memcmp(b,s.bytes,s.length))return true;
  // Ordinary native APIs may be owned by Ares. Follow its existing entry;
@@ -226,12 +227,24 @@ static bool startupSignature(const Signature&s){
  unsigned char body[startupcompat::BeaconBytes];
  return read(target,body,sizeof body)&&startupcompat::beaconBody(body,sizeof body,module);
 }
+// Ordinary calls have their own setting; DR consumers still use the strict
+// nativeEntryCallable() evidence and their separate Breakpoint identity.
+static bool startupSignature(const Signature&s){
+ uint8_t observed[12]{};
+ const bool readable=s.length<=sizeof observed&&nativeExecutableRange(s.address,s.length)&&read(s.address,observed,s.length);
+ if(!readable)return debugentries::allow(debugentries::Kind::Call,s.address,false,false);
+ if(!debugentries::signatureRequired(debugentries::Kind::Call,s.address))
+  return debugentries::allow(debugentries::Kind::Call,s.address,true,false);
+ const bool exact=!memcmp(observed,s.bytes,s.length),compatible=exact||startupSignatureStrict(s);
+ return debugentries::allow(debugentries::Kind::Call,s.address,true,compatible,exact?debugentries::Signature::Match:debugentries::Signature::Platform);
+}
 // Cold feature/command admission. Recheck failures as well as successes so
 // transient platform loading never latches a local feature off forever.
 static nativeentry::TimedResult nativeDependencyCache[sizeof(Signatures)/sizeof(Signatures[0])];
 static bool nativeDependencyReady(uint32_t address,bool refresh=false){
  for(size_t i=0;i<sizeof(Signatures)/sizeof(Signatures[0]);++i)if(Signatures[i].address==address){
-  const DWORD now=GetTickCount();auto&cache=nativeDependencyCache[i];
+  static uint32_t revision=0;if(revision!=debugentries::policyRevision){revision=debugentries::policyRevision;for(auto&value:nativeDependencyCache)value={};}
+ const DWORD now=GetTickCount();auto&cache=nativeDependencyCache[i];
   if(!refresh&&cache.fresh(now))return cache.value;
   return cache.set(now,startupSignature(Signatures[i]));
  }
@@ -247,7 +260,29 @@ static void notifyHost(){
  if(!InterlockedCompareExchange(&sh->hostNotifyPending,1,0)&&!PostMessageW((HWND)(uintptr_t)sh->hostWindow,DataMessage,sh->pid,0))InterlockedExchange(&sh->hostNotifyPending,0);
 }
 static uint32_t micros(LARGE_INTEGER from,LARGE_INTEGER to,LARGE_INTEGER frequency){return frequency.QuadPart>0?uint32_t((to.QuadPart-from.QuadPart)*1000000/frequency.QuadPart):0;}
+static void syncDebugPolicy(DWORD now){
+ debugentries::executableProbe=nativeExecutableRange;debugentries::clockTick=now;
+ if(!sh)return;
+ for(unsigned attempt=0;attempt<3;++attempt){
+  const LONG before=InterlockedCompareExchange(&sh->debugPolicySeq,0,0);if(before&1)continue;
+  debugentries::Config next;memcpy(&next,&sh->debugPolicy,sizeof next);MemoryBarrier();
+  if(before==InterlockedCompareExchange(&sh->debugPolicySeq,0,0)){debugentries::applyPolicy(next);break;}
+ }
+}
+static void publishDebugEntries(DWORD now){
+ static DWORD lastAt=0;static uint32_t revision=0;
+ if(lastAt&&DWORD(now-lastAt)<500&&revision==debugentries::policyRevision)return;
+ lastAt=now;revision=debugentries::policyRevision;debugentries::clockTick=now;
+ if(sh->debugVisible){
+  // Probes only read instructions. Opening Debug never installs an optional Hook.
+  for(const auto&s:Signatures)startupSignature(s);
+  for(const auto&e:debugentries::Entries)if(e.kind==debugentries::Kind::Patch)gameentry::inspect(e.address,true);
+ }
+ InterlockedIncrement(&sh->debugSnapshotSeq);
+ debugentries::snapshot(sh->debugSnapshot,now);MemoryBarrier();InterlockedIncrement(&sh->debugSnapshotSeq);
+}
 static void publishSnapshot(DWORD now){
+ publishDebugEntries(now);
  nativePlacementOffers(now);
  bool copyTypes=catalogueDirty||sh->seq==0||sh->data.match!=snap.match||sh->data.typeCount!=snap.typeCount;
  const auto entryState=gameentry::inspect();
@@ -1207,6 +1242,7 @@ static void tick(){
  // A deferred disconnect must never turn an invalid mapping into a usable
  // command connection on the next callback.
  if(!sh||sh->magic!=Magic||sh->version!=Version||sh->pid!=GetCurrentProcessId()){disconnect();return;}
+ syncDebugPolicy(GetTickCount()); // Before every cold feature/DR admission.
  if(!sh->superweaponGrant)superweaponGrantReset();
  maintainTechParameters();playerMaintenance();controlHouseFlagMaintenance();DWORD now=sampleClock(sh);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){
   stickyTick(true);

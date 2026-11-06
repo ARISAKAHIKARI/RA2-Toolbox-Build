@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 #pragma once
 #include "../../shared/source/native_viewport_projection.h"
 // Programmatic queries retain their existing Assist/Capture lease. A separate
@@ -9,9 +10,9 @@ static bool(*nativeViewQueryOwner)()=nullptr;
 extern "C" int __cdecl GuardedNativeViewQuery(void*,void*,void*,void*,void*,void*);
 static bool nativeViewQueryCompatible(){
  static constexpr uint8_t original[]={0x8B,0x44,0x24,0x10,0x83,0xEC,0x18,0x8B};uint8_t bytes[sizeof original]{};
- if(!read(0x692300,bytes,sizeof bytes))return false;
- if(!memcmp(bytes,original,sizeof bytes))return true;
- return nativeViewQueryOwner&&nativeViewQueryOwner();
+ const bool readable=read(0x692300,bytes,sizeof bytes);
+ const bool ours=readable&&nativeViewQueryOwner&&nativeViewQueryOwner();
+ return debugentries::allow(debugentries::Kind::Call,0x692300,readable,!memcmp(bytes,original,sizeof bytes)||ours,ours?debugentries::Signature::Platform:debugentries::Signature::Match);
 }
 static bool nativeViewTransform(nativeviewportprojection::Transform&out){
  if(nativeViewQueryBlocked||(sh&&(sh->stop||sh->viewZoomBusy))||!nativeviewportprojection::sample(sh,out))return false;

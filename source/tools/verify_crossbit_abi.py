@@ -21,6 +21,9 @@ from pe32_image import Image
 ROOT = Path(__file__).resolve().parent.parent
 DECLARATIONS = (
     ('assist/source/protocol.h', 'Shared', 'assist::Shared'),
+    ('shared/source/debug_entry_types.h', 'Config', 'debugentries::Config'),
+    ('shared/source/debug_entry_types.h', 'Observation', 'debugentries::Observation'),
+    ('shared/source/debug_entry_types.h', 'Snapshot', 'debugentries::Snapshot'),
     ('assist/source/protocol.h', 'Snapshot', 'assist::Snapshot'),
     ('assist/source/native_placement_policy.h', 'Offer', 'assist::nativeplacement::Offer'),
     ('assist/source/native_placement_policy.h', 'Request', 'assist::nativeplacement::Request'),
@@ -216,8 +219,8 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 99, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23154176,
+    baseline = {'assist::Version': 100, 'runtime::Version': 4, 'gameentry::Version': 3,
+                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162400,
                 'assist::Shared.aircraftAllocationPolicy': 23125936,
                 'assist::Shared.nativeCombatQueries': 23125940,
                 'assist::Shared.singlePlayerFPS': 23154136,
@@ -227,6 +230,13 @@ def main():
                 'assist::Shared.minerDefenseActive': 23154160,
                 'assist::Shared.minerDefenseAttacks': 23154164,
                 'assist::Shared.minerDefenseResumes': 23154168,
+                'assist::Shared.debugPolicySeq': 23154172,
+                'assist::Shared.debugPolicy': 23154176,
+                'assist::Shared.debugSnapshotSeq': 23155208,
+                'assist::Shared.debugSnapshot': 23155212,
+                'assist::Shared.debugVisible': 23162392,
+                'sizeof(debugentries::Config)': 1032, 'sizeof(debugentries::Observation)': 28,
+                'sizeof(debugentries::Snapshot)': 7180,
                 'sizeof(runtime::Control)': 176, 'sizeof(gameentry::Request)': 108,
                 'sizeof(runtimebroker::Packet)': 148,
                 'neuralframe::Version': 1, 'sizeof(neuralframe::Header)': 256}
@@ -251,7 +261,7 @@ def main():
     # Protocol99 adds an independent SpiderDefense type filter.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol99 Shared23154176, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol100 Shared23162400, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 

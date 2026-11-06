@@ -31,6 +31,10 @@
 #include <cstdio>
 #include <cstdint>
 #include "protocol.h"
+#include "../../shared/source/debug_entry_policy.h"
+#ifdef RA2_CONSOLE_WEBVIEW2
+#include "../../suite/source/console_model.h"
+#endif
 #include "reveal_permission.h"
 
 #include "../../shared/source/host_game_input.h"
@@ -220,6 +224,7 @@ static void serviceHotkeyBatch();
 static bool formationInputOwns(){return shared&&(shared->formationPreview.active||int32_t(shared->formationConsumedUntil-sampleClock(shared))>0);}
 static bool formationHotkey(WORD);
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
+static bool debugPageActive=false;static void updateDebugEntries(bool force=false);
 static std::unordered_map<std::string,cooperative::Quota> targetQuotas;static std::vector<std::string> quotaTypeIDs;
 static uint32_t cooperativeDelivered=0,cooperativeReceipt=0;
 static cooperative::Request cooperativePending{},cooperativeSourcePool{};
@@ -2123,7 +2128,7 @@ static void tick(){
 #if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
  if(consoleClosePrepared)return;
 #endif
- reapBridges();logBridgeHealth();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;static pipelineperf::Window timings(L"host-control",{L"total"});pipelineperf::Scope total(timings,0,critical);lastControl=now;pollOverlayVisibility();syncSettingDependencies();syncInformationRate();if(!displayFrameRequested()){minimap::hide();watchwindows::hide();watchhost::suspend();}else if(!secondaryDisplayAvailable()){minimap::hideSecondary();watchwindows::hideSecondary();}updateModeStatus(now);updatePlayerTestUI();if(registeredHotkeyMode!=desiredHotkeyMode())registerKeys();if(!enabled&&!secondaryDisplayRequested()){if(pid||shared)detach();clockState(false,informationFPS());return;}
+ reapBridges();logBridgeHealth();updateDebugEntries();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;static pipelineperf::Window timings(L"host-control",{L"total"});pipelineperf::Scope total(timings,0,critical);lastControl=now;pollOverlayVisibility();syncSettingDependencies();syncInformationRate();if(!displayFrameRequested()){minimap::hide();watchwindows::hide();watchhost::suspend();}else if(!secondaryDisplayAvailable()){minimap::hideSecondary();watchwindows::hideSecondary();}updateModeStatus(now);updatePlayerTestUI();if(registeredHotkeyMode!=desiredHotkeyMode())registerKeys();if(!enabled&&!secondaryDisplayRequested()){if(pid||shared)detach();clockState(false,informationFPS());return;}
  if(pid&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;
   if(!externalReader.alive()){detach();lastFind=now-2000;}
   else {DWORD nextThread=0;bool authoritative=false;
@@ -2170,7 +2175,7 @@ static void tick(){
  }
  if(serviceReadOnlyDisplays(now))return;
  sampleExternal(now);uint32_t configured=flags();
- bool needsBridge=runtimeFeatureDemand(configured,extra,techMode,buildTimeTooltipEnabled)||(shared&&shared->minerDefenseActive)||(externalData&&externalData->status==1)||commandQueue.size||hasSelection||externalSampler.flashCount;
+ bool needsBridge=debugPageActive||runtimeFeatureDemand(configured,extra,techMode,buildTimeTooltipEnabled)||(shared&&shared->minerDefenseActive)||(externalData&&externalData->status==1)||commandQueue.size||hasSelection||externalSampler.flashCount;
  if(needsBridge&&!shared)ensureBridge();
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){
@@ -2391,6 +2396,7 @@ static HWND pageControl(int page,const wchar_t*cls,const wchar_t*text,int x,int 
 static void bindSuper(){std::string id=selectedSuperID();if(id.empty()){notify(L"进入对局并获得超武后即可绑定。");return;}WORD key=(WORD)SendMessageW(swHotkey,HKM_GETHOTKEY,0,0);bool found=false;for(auto&b:swBindings)if(b.id==id){b.key=key;found=true;}if(!found)swBindings.push_back({id,key});bool persisted=save();registerKeys();fillSW();if(!persisted)notify(L"快捷键已生效，但自动保存失败，请检查 Assist.ini 写入权限。");}
 #include "type_bindings_ui.h"
 #include "extra_settings_io.h"
+#include "debug_entries_ui.h"
 #include "pointer_host.h"
 static void submitDestructSelectedOwner(){
  if(!extra.destructSelectedOwner){notify(L"请先自愿开启高危的“自毁选定单位的所属方”。");return;}
@@ -2450,7 +2456,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
 #endif
 #ifdef RA2_UNIFIED
  if(suite::layoutMessage(w,msg,lp))return 0;
- if(msg==suite::SelectCategory){int page=std::clamp(int(wp),0,int(suite::categories::Count)-1);if(activePage!=page)scrollY=scrollX=0;activePage=page;SetWindowTextW(GetDlgItem(w,989),suite::categories::name(page));layoutPanel();return 0;}
+ if(msg==suite::SelectCategory){int page=std::clamp(int(wp),0,int(suite::categories::Count)-1);if(activePage!=page)scrollY=scrollX=0;activePage=page;debugPageActive=page==suite::categories::Debug;if(shared)shared->debugVisible=debugPageActive?1u:0u;updateDebugEntries(true);SetWindowTextW(GetDlgItem(w,989),suite::categories::name(page));layoutPanel();return 0;}
  if(msg==suite::RefreshRateChanged){syncRefreshRate();return 0;}
  if(msg==suite::ApplyDisplaySetting){
   if(!ready||!suite::validDisplayEdit(int(wp),int(lp)))return 0;
@@ -2479,7 +2485,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  placedControl({-1,{505,80,120,28}},L"BUTTON",L"定位功能",991,BS_PUSHBUTTON|WS_TABSTOP);
 #include "tactical_controls.h"
  EnableWindow(GetDlgItem(w,420),TRUE);
- statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();applyPanelDpi(panelDpi);ready=true;syncSettingDependencies(true);fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
+ statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();createDebugEntryControls();applyPanelDpi(panelDpi);ready=true;updateDebugEntries(true);syncSettingDependencies(true);fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
  case WM_DISPLAYCHANGE:informationMonitor.invalidate();secondaryDisplayMonitor.invalidate();minimap::invalidateDisplays();watchwindows::invalidateDisplays();syncInformationRate(true);if(enabled||secondaryDisplayRequested())paint();return 0;
  case WM_SIZE:layoutPanel();return 0;
  case WM_DPICHANGED:{applyPanelDpi(HIWORD(wp));if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)&&!GetPropW(w,L"RA2.Suite.Managed")){auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);}return 0;}
@@ -2496,6 +2502,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_TIMER:if(wp==2){updateHoverHelp();return 0;}if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
  case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
+ if(debugEntryCommand(id,HIWORD(wp)))return 0;
  DependencyCommandRefresh dependencyRefresh;
  if(HIWORD(wp)==BN_CLICKED&&toggleSettingsFold(id))return 0;
  // Keep the disabled render entry closed to forwarded/synthetic notifications,

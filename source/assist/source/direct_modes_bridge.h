@@ -11,7 +11,7 @@ static bool directGroupEnable(directpatch::Group group){
  for(const auto&s:directpatch::Sites)if(s.group==group){
   uint8_t actual[6]{};const bool active=codeHookRegistry.active(s.address);
   if(codeHookRegistry.conflict(s.address)||!patchcontext::compatible(s.address,[](uint32_t a,void*p,size_t n){return read(a,p,n);})||
-     !read(s.address,actual,s.size)||memcmp(actual,active?s.after:s.before,s.size))ok=false;
+     !read(s.address,actual,s.size)||(active?memcmp(actual,s.after,s.size):!hookregistry::admissibleOriginal(s.address,actual,s.size)))ok=false;
  }
  if(ok)for(const auto&s:directpatch::Sites)if(s.group==group&&!codeHookRegistry.active(s.address))
   if(!gameentry::patch(gameentry::Client::Assist,s.address,s.before,s.after,s.size)){ok=false;break;}

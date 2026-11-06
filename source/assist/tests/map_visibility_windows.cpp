@@ -8,6 +8,7 @@
 #include <assert.h>
 #include "../source/tech_ui_breakpoint_core.h"
 #include "../source/map_visibility_parameter_policy.h"
+#include "../source/tech_ui_breakpoint_debug.h"
 #ifdef NDEBUG
 #error Hardware verification requires assertions.
 #endif
@@ -24,6 +25,8 @@ static volatile bool fault=false;
 namespace techparameters {
  static struct{volatile LONG showing=1;}policy;static volatile LONG mapExceptions=0;static volatile bool worldReady=true;
  static bool world(){return worldReady;}
+ static techbp::SignatureSnapshot<sizeof mapvisibility::Prefix> mapSignature;
+ static uint32_t mapPolicyRevision=debugentries::policyRevision;
 }
 #include MAP_CALLBACK_EXTRACT
 static bool mapCallback(void*raw,uint32_t tag){return tag==1&&mapVisibilityParameter(*static_cast<CONTEXT*>(raw));}
@@ -53,6 +56,7 @@ int main(){
  // Fixture continuation: EDI=-2; EBX=8; ret. Not a game dump or game patch.
  const uint8_t suffix[]={0xBF,0xFE,0xFF,0xFF,0xFF,0xBB,8,0,0,0,0xC3};memcpy(code+10,suffix,sizeof suffix);
  FlushInstructionCache(GetCurrentProcess(),code,21);uint8_t originalCode[21]{};memcpy(originalCode,code,21);
+ check(techbp::debugSignatureSnapshot(techparameters::mapSignature,mapvisibility::Address,mapvisibility::PrefixAddress,techbp::patternDigest(mapvisibility::Prefix),[](uint32_t at,void*out,size_t n){SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(uintptr_t(at)),out,n,&got)&&got==n;}));
  alignas(4) uint8_t cell[0x130]{};auto&bits=*reinterpret_cast<volatile uint32_t*>(cell+0x12C);
  const uint32_t values[]={0u,8u,16u,24u,128u,255u};
  for(uint32_t value:values){bits=value;check(CallMapGate(cell)==(value&24?-1:-2)&&bits==value);}

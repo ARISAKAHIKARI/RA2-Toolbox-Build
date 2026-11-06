@@ -1,15 +1,16 @@
+#include "../../shared/source/debug_entry_checks.h"
 // Runs on the game's message thread. Only the normal outgoing event queue
 // receives writes: no direct passenger insertion or mission mutation.
 static bool loadInterfaces(){
- static uint32_t checkedMatch;static DWORD checkedAt;static bool valid;
- DWORD now=sampleClock(sh);if(checkedMatch==match&&DWORD(now-checkedAt)<500)return valid;
- checkedMatch=match;checkedAt=now;valid=false;
+ static uint32_t checkedMatch,checkedPolicy;static DWORD checkedAt;static bool valid;
+ DWORD now=sampleClock(sh);if(checkedMatch==match&&checkedPolicy==debugentries::policyRevision&&DWORD(now-checkedAt)<500)return valid;
+ checkedMatch=match;checkedPolicy=debugentries::policyRevision;checkedAt=now;valid=false;
  static constexpr Signature required[]={
   {0x4C6860,8,{0x8B,0xC1,0x8B,0x4C,0x24,0x04,0x85,0xC9}}
   // MouseOverObject is a YRpp virtual call. Do not demand the unused vanilla
   // Infantry implementation at 0x51E3B0 remain unhooked by Ares/MO.
  };
- for(auto&s:required){unsigned char b[12];if(!read(s.address,b,s.length)||memcmp(b,s.bytes,s.length))return false;}
+ for(auto&s:required)if(!debugentries::pattern(debugentries::Kind::Call,s.address,s.bytes,s.length,read))return false;
  valid=true;return true;
 }
 static bool loadingObject(uint32_t p,uint32_t house,int expected){

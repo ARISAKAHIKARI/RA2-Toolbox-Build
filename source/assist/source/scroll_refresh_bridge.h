@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 #include "scroll_refresh.h"
 static scrollrefresh::Rate scrollRates[3];
 static scrollrefresh::Cadence scrollCadence;
@@ -47,7 +48,7 @@ static bool highScrollInterfaces(){
  // FlagRedraw(2) schedules a full scene rebuild; Render alone may reuse the
  // last composed surface. This extra work is explicitly opt-in, including LAN/Internet.
  static const uint8_t redraw[]={0xA1,0x24,0x73,0x88,0x00,0x85,0xC0,0x74,0x07,0xC6,0x80,0x7D,0x0D,0x00,0x00,0x01,0x8B,0x44,0x24,0x04,0x85,0xC0,0x74,0x13,0x83,0x79,0x0C,0x02,0x74,0x03,0x89,0x41,0x0C,0xB9,0xE8,0xF7,0x87,0x00,0xE8,0xA5,0x47,0x08,0x00,0xC2,0x04,0x00};
- if(sh->scrollRefreshMode==3&&memcmp((void*)0x4F42F0,redraw,sizeof redraw))return false;
+ if(sh->scrollRefreshMode==3&&!debugentries::pattern(debugentries::Kind::Call,0x4F42F0,redraw,sizeof redraw,read))return false;
  // Query/render interfaces from YRpp, checked against both supplied platforms.
  static const uint8_t render[]={0x83,0xEC,8,0xA1,0x1C,0x73,0x88,0,0x55};
  // Supplied LBW image redirects the displaced load through its startup code.
@@ -58,9 +59,10 @@ static bool highScrollInterfaces(){
  static const uint8_t setPosition[]={0x83,0xEC,8,0x56,0x57,0x8B,0x7C,0x24,0x14};
  static const uint8_t edge[]={0x83,0xEC,0x18,0x53,0x55,0x56,0x57,0x8B,0xF9};
  static const uint8_t drag[]={0xA0,0xA0,0xE9,0xA8,0,0x83,0xEC,0x14,0x84};
- return (!memcmp((void*)0x4F4480,render,sizeof render)||!memcmp((void*)0x4F4480,renderLBW,sizeof renderLBW))&&
-        !memcmp((void*)0x6D6000,setPosition,sizeof setPosition)&&
-        !memcmp((void*)0x692B60,edge,sizeof edge)&&!memcmp((void*)0x693440,drag,sizeof drag);
+ uint8_t actual[sizeof render]{};const bool readable=read(0x4F4480,actual,sizeof actual);
+ return debugentries::allow(debugentries::Kind::Call,0x4F4480,readable,!memcmp(actual,render,sizeof render)||!memcmp(actual,renderLBW,sizeof renderLBW))&&
+        debugentries::pattern(debugentries::Kind::Call,0x6D6000,setPosition,sizeof setPosition,read)&&
+        debugentries::pattern(debugentries::Kind::Call,0x692B60,edge,sizeof edge,read)&&debugentries::pattern(debugentries::Kind::Call,0x693440,drag,sizeof drag,read);
 }
 static bool zoomClientPoint(HWND,POINT&);
 static bool nativeViewNeedsTracking();

@@ -335,7 +335,7 @@ static RiskSite nativeViewSites[sizeof(nativeviewportpolicy::Sites)/sizeof(nativ
 static bool nativeViewClickQueryOwned(){
  if(!nativeViewHooks||!nativeViewActive||nativeViewHold||nativeViewMutation||nativeViewError)return false;
  const auto&s=nativeViewSites[7];return codeHookRegistry.active(s.address)&&!codeHookRegistry.conflict(s.address)&&riskSiteCurrent(s)&&
-  nativeviewportpolicy::compatible(s.address,[](uint32_t at,void*out,size_t n){return read(at,out,n);});
+  patchcontext::compatible(s.address,[](uint32_t at,void*out,size_t n){return read(at,out,n);});
 }
 static void nativeViewMakeSites(){
  static bool made=false;if(made)return;made=true;
@@ -367,8 +367,8 @@ static bool nativeViewInstall(){
  if(!nativeSidebarInstalled||!sidebarViewTrackingIntact()||!nativeViewIdle())return false;
  // Check the complete group before installing the first additional site.
  for(unsigned i=1;i<sizeof(nativeViewSites)/sizeof(nativeViewSites[0]);++i){const auto&s=nativeViewSites[i];uint8_t bytes[16]{};
-  if(codeHookRegistry.active(s.address)||codeHookRegistry.conflict(s.address)||!read(s.address,bytes,s.size)||memcmp(bytes,s.before,s.size)||
-     !nativeviewportpolicy::compatible(s.address,[](uint32_t at,void*out,size_t n){return read(at,out,n);}))return false;
+  if(codeHookRegistry.active(s.address)||codeHookRegistry.conflict(s.address)||!read(s.address,bytes,s.size)||!hookregistry::admissibleOriginal(s.address,bytes,s.size)||
+     !patchcontext::compatible(s.address,[](uint32_t at,void*out,size_t n){return read(at,out,n);}))return false;
  }
  for(unsigned i=1;i<sizeof(nativeViewSites)/sizeof(nativeViewSites[0]);++i)if(!installRiskSite(nativeViewSites[i])){nativeViewRemoveSites();return false;}
  nativeViewHooks=true;return nativeViewAllSites();

@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 // Explicit one-shot native Place. Reads factory/product state and appends the
 // ordinary event; never edits Type, factory, ownership or placement code.
 #include "native_placement_capture.h"
@@ -56,7 +57,7 @@ static void nativePlacementOffers(DWORD now){
   if(nativePlacementCapture(lastHouse,tab,now,offer)&&!nativePlacementCompletionOwns(offer))snap.placementOffers[snap.placementOfferCount++]=offer;
  }
 }
-static bool nativePlacementSignature(uint32_t at,const uint8_t*expected,size_t n){uint8_t bytes[16]{};return n<=sizeof bytes&&read(at,bytes,n)&&!memcmp(bytes,expected,n);}
+static bool nativePlacementSignature(uint32_t at,const uint8_t*expected,size_t n){return n<=16&&debugentries::pattern(debugentries::Kind::Call,at,expected,n,read);}
 static bool validateNativePlacement(const intent::EventOrder&o,const NativePlacementSubmission*submission){
  if(o.domain!=vanilla::Domain::Place)return !submission;
  if(!submission||!nativePlacementAvailable())return false;

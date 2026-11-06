@@ -10,7 +10,8 @@
 #include <cstring>
 #include <utility>
 #include <sys/mman.h>
-#include "tech_ui_breakpoint_hot.h"
+#include "tech_ui_breakpoint_debug.h"
+#include "map_visibility_parameter_policy.h"
 #include "technology_mode_policy.h"
 using namespace assist;
 using LONG=int32_t;
@@ -26,6 +27,7 @@ static bool read(uint32_t at,void*out,size_t n){if(!mapped(at,n)||(unreadable>=a
 static LONG InterlockedExchange(volatile LONG*p,LONG next){LONG old=*p;*p=next;return old;}
 static bool nativeEntryCallable(uint32_t at,bool refresh=false){assert(at==Entry);lastRefresh=refresh;++validations;if(mutateDuringValidation)*reinterpret_cast<uint8_t*>(uintptr_t(Entry+15))^=1;return callable;}
 static bool nativeAresAvailable(){return ares;}
+static bool nativeExecutableRange(uint32_t at,size_t n){return mapped(at,n);}
 namespace techparameters {
 struct Policy {volatile LONG enabled=1;uint32_t house=House;} policy;
 static bool world(){return worldValid;}

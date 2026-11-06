@@ -21,7 +21,43 @@
     }
     return true;
   }
-  const stateCategory = message => message.module === 2 ? Number(String(message.page || '').match(/(?:^|\/)([1-4])$/)?.[1] || message.category || 0) : 0;
+  const stateCategory = message => message.module === 2 ? Number(String(message.page || '').match(/(?:^|\/)([1-5])$/)?.[1] || message.category || 0) : 0;
+  const DEBUG_STATES = new Set(['ready','blocked','unknown','unused']);
+  const DEBUG_HOOKS = new Set(['na','inactive','installed','pending','conflict','unknown']);
+  const DEBUG_STALE_MS = 5000;
+  const uint32 = value => Number.isInteger(value) && value >= 0 && value <= 4294967295;
+  const debugText = value => typeof value === 'string' ? value : '';
+  function canonicalDebug(value) {
+    if (!value || value.present !== true) return null;
+    const valid = uint32(value.siteId) && uint32(value.address) && uint32(value.ageMs);
+    return Object.freeze({present:true,siteId:uint32(value.siteId)?value.siteId:0,address:uint32(value.address)?value.address:0,
+      kind:debugText(value.kind),purpose:debugText(value.purpose),features:debugText(value.features),
+      state:DEBUG_STATES.has(value.state)?value.state:'unknown',detail:debugText(value.detail),
+      hook:DEBUG_HOOKS.has(value.hook)?value.hook:'unknown',ageMs:uint32(value.ageMs)?value.ageMs:0,sampled:valid && value.sampled===true});
+  }
+  const debugAddress = value => `0x${(uint32(value)?value:0).toString(16).toUpperCase().padStart(8,'0')}`;
+  function debugStatus(control,receivedAt=Date.now(),now=Date.now(),current=true) {
+    const d=control.debug || {}, elapsed=Math.max(0,now-receivedAt), ageMs=(d.ageMs || 0)+elapsed;
+    const sampled=d.sampled===true, stale=sampled && ageMs>DEBUG_STALE_MS;
+    const state=d.state==='unused'?'unused':!current || !sampled || stale?'unknown':DEBUG_STATES.has(d.state)?d.state:'unknown';
+    const call=['call','native','native-call'].includes(d.kind) || d.hook==='na';
+    const label=state==='ready'?(call?'可调用':'已就绪'):state==='blocked'?'受阻':state==='unused'?'未使用':!current?'等待当前页状态':stale?'观测已过期':sampled?'状态待确认':'尚未观测';
+    const hook=d.hook==='na'?'na':!current || !sampled || stale?'unknown':DEBUG_HOOKS.has(d.hook)?d.hook:'unknown';
+    const hookLabel={na:'无需 Hook',inactive:'Hook 未启用',installed:'Hook 已安装',pending:'Hook 等待处理',conflict:'Hook 冲突',unknown:'Hook 尚未观测'}[hook];
+    return {state,label,hook,hookLabel,ageMs,sampled,stale,tone:state==='ready'?'ready':state==='blocked'?'blocked':'neutral'};
+  }
+  const debugKindLabel = kind => ({call:'原生调用',native:'原生调用','native-call':'原生调用',patch:'指令修改',breakpoint:'硬件断点',system:'Windows 消息入口'})[kind] || kind;
+  const debugToggleLabel = (control,pending=false) => control.debug?.kind==='system'?'无需签名校验':control.debug?.state==='unused'?'本版本未启用':pending?'等待应用':control.checked?'校验开启':'校验关闭';
+  function filterDebugControls(controls,{search='',group='',state='',receivedAt=Date.now(),now=Date.now(),current=true}={}) {
+    const query=search.trim().toLocaleLowerCase();
+    return controls.filter(control=>{
+      if (!control.visible || !control.debug?.present) return false;
+      const d=control.debug, status=debugStatus(control,receivedAt,now,current);
+      if (group && (control.group || '未分组')!==group) return false;
+      if (state==='unchecked' ? control.checked : state==='attention' ? !(status.state==='blocked' || status.hook==='conflict' || status.stale) : state && status.state!==state) return false;
+      return !query || [control.label,control.group,debugAddress(d.address),String(d.address),d.kind,d.purpose,d.features,d.detail,status.label,status.hookLabel].join(' ').toLocaleLowerCase().includes(query);
+    });
+  }
   function canonical(control) {
     if (!control || !safeInteger(control.id) || !control.id || control.id>4294967295) return null;
     const type = aliases[control.type] || control.type;
@@ -30,7 +66,7 @@
       selected: Number.isInteger(control.selected) ? control.selected : -1, checked: Boolean(control.checked), enabled: control.enabled !== false,
       visible: control.visible !== false, readonly: Boolean(control.readonly), runtimeError: Boolean(control.runtimeError), groupHeader: Boolean(control.groupHeader), collapsible: Boolean(control.collapsible), collapsedDefault: Boolean(control.collapsedDefault), immediate: Boolean(control.immediate), min: Number.isFinite(control.min) ? control.min : 0,
       max: Number.isFinite(control.max) ? control.max : 100, step: Number.isFinite(control.step) && control.step > 0 ? control.step : 1,
-      row: Number.isFinite(control.row) ? control.row : 0, column: Number.isFinite(control.column) ? control.column : 0, presentation: String(control.presentation || '') };
+      row: Number.isFinite(control.row) ? control.row : 0, column: Number.isFinite(control.column) ? control.column : 0, presentation: String(control.presentation || ''), debug: canonicalDebug(control.debug) };
     if (!TYPES.has(type)) { result.readonly = true; result.hint ||= '此设置目前仅供查看。'; }
     return Object.freeze(result);
   }
@@ -49,7 +85,7 @@
     emit(message) { this.send({ ...message, protocol: PROTOCOL }); }
     ready() { this.emit({ kind: 'ready' }); }
     navigate(module, category = 0) {
-      if (!Number.isInteger(module) || module < 0 || module > 2 || (module === 2 && (!Number.isInteger(category) || category < 1 || category > 4))) return false;
+      if (!Number.isInteger(module) || module < 0 || module > 2 || (module === 2 && (!Number.isInteger(category) || category < 1 || category > 5))) return false;
       this.current = { module, category: module === 2 ? category : 0 }; this.emit({ kind: 'navigate', ...this.current }); this.changed('navigate'); return true;
     }
     get state() { return this.pages.get(pageKey(this.current.module, this.current.category)) || null; }
@@ -67,7 +103,7 @@
       if (message.kind === 'state') {
         if (!safeInteger(message.module) || message.module > 2 || !safeInteger(message.generation) || !message.generation || !safeInteger(message.revision) || !Array.isArray(message.controls) || message.controls.length > 10000) return false;
         if (message.generation < (this.generation.get(message.module) || 0)) return false;
-        const category = stateCategory(message); if (message.module === 2 && (category < 1 || category > 4)) return false;
+        const category = stateCategory(message); if (message.module === 2 && (category < 1 || category > 5)) return false;
         const key = pageKey(message.module, category), previous = this.pages.get(key);
         if (previous && previous.generation === message.generation && previous.revision >= message.revision) return false;
         const controls = message.controls.map(canonical);
@@ -92,7 +128,7 @@
           for (const [key] of this.errors) if (key.startsWith(`${message.module}:`)) this.errors.delete(key);
           if(unconfirmed) this.notice='设置列表已更新，部分操作未能确认；请检查当前值后重试。';
         }
-        const state = Object.freeze({ ...message, page: key, controls: Object.freeze(controls), title: String(message.title || ''), status: String(message.status || '') });
+        const state = Object.freeze({ ...message, page: key, controls: Object.freeze(controls), title: String(message.title || ''), status: String(message.status || ''), receivedAt: Date.now() });
         this.pages.set(key, state); this.connected = true;
         for (const control of controls) {
           const key = controlKey(message.module, control.id), pending = this.pending.get(key);
@@ -200,12 +236,14 @@
       headers:controls.filter(control=>control.groupHeader && !['label','heading'].includes(control.type)),
       details:controls.filter(control=>!control.groupHeader)};
   }
-  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, groupPresentation, keyName, encodeHotkey, virtualKey, validText, placeAfter, MODES });
+  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, groupPresentation, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, DEBUG_STALE_MS, MODES });
   if (typeof document === 'undefined') return;
 
   const $ = id => document.getElementById(id);
-  const CATEGORIES = [ ['视频','DISPLAY & VIDEO','调整画面、光标与监控视图。','<rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path>'], ['控制','INPUT & CONTROL','设置操作方式、快捷键与单位命令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'], ['自动功能','AUTOMATION','按需开启战术辅助与自动处理。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'], ['游戏规则','GAME RULES','管理游戏规则与相关功能选项。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'], ['实验性功能','EXPERIMENTAL','查看实验性选项及当前可用状态。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'] ];
+  const CATEGORIES = [ ['视频','DISPLAY & VIDEO','调整画面、光标与监控视图。','<rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path>'], ['控制','INPUT & CONTROL','设置操作方式、快捷键与单位命令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'], ['自动功能','AUTOMATION','按需开启战术辅助与自动处理。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'], ['游戏规则','GAME RULES','管理游戏规则与相关功能选项。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'], ['实验性功能','EXPERIMENTAL','查看实验性选项及当前可用状态。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'], ['调试','RUNTIME DIAGNOSTICS','查看入口用途、实时状态与影响功能，逐项控制签名校验。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect><path d="M9 10h6m-6 4h4"></path>'] ];
   let selectedCategory = 0, videoModule = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, nextGroupId = 0, userNavigated = false, restoredNavigation = false;
+  let debugGroup = '', debugFilter = '', debugGroupSignature = '';
+  const debugRows = new Map();
   const groupNodes = new Map(), collapsed = new Set(), foldPreferencesSeen = new Set();
   const bridge = global.chrome?.webview;
   const store = new ConsoleStore(message => { if (bridge?.postMessage) bridge.postMessage(message); }, schedule);
@@ -225,7 +263,9 @@
   $('search').setAttribute('aria-keyshortcuts','Control+f');
   $('search').addEventListener('input', event => { search = event.target.value; schedule(); });
   $('search').addEventListener('keydown', event => { if (event.key === 'Escape' && !capture) { event.preventDefault(); $('search').value = search = ''; schedule(); } });
-  $('clearSearch').addEventListener('click', () => { $('search').value = search = ''; schedule(); $('search').focus(); });
+  $('clearSearch').addEventListener('click', () => { $('search').value = search = ''; if(selectedCategory===5){debugGroup=debugFilter='';$('debugGroup').value=$('debugFilter').value='';} schedule(); $('search').focus(); });
+  $('debugGroup').addEventListener('change',event=>{debugGroup=event.target.value;schedule();});
+  $('debugFilter').addEventListener('change',event=>{debugFilter=event.target.value;schedule();});
   $('moduleToggle').addEventListener('change', event => store.enable(videoModule, event.target.checked));
   $('foldAll').addEventListener('click', () => {
     const groups = [...groupNodes.values()].filter(group => group.hasDetails && !group.forced);
@@ -348,12 +388,55 @@
   document.addEventListener('pointerdown',event => { if (capture && event.target !== capture.row.input) stopCapture(); },true);
   document.addEventListener('focusin',event => { if (capture && event.target !== capture.row.input) stopCapture(); });
   global.addEventListener('blur',stopCapture);
+  function makeDebugRow() {
+    const element=document.createElement('div'),entry=document.createElement('div'),purposeCell=document.createElement('div'),stateCell=document.createElement('div'),toggleCell=document.createElement('div');
+    element.className='debug-row';element.setAttribute('role','row');
+    for(const cell of [entry,purposeCell,stateCell,toggleCell])cell.setAttribute('role','cell');
+    purposeCell.className='debug-purpose-cell';stateCell.className='debug-state-cell';toggleCell.className='debug-toggle-cell';
+    const label=document.createElement('strong'),address=document.createElement('code'),meta=document.createElement('p'),purpose=document.createElement('p'),features=document.createElement('p');
+    label.className='debug-entry-name';address.className='debug-address';meta.className='debug-entry-meta';purpose.className='debug-purpose';features.className='debug-features';
+    entry.append(label,address,meta);purposeCell.append(purpose,features);
+    const badges=document.createElement('div'),status=document.createElement('span'),hook=document.createElement('span'),detail=document.createElement('p'),age=document.createElement('p');
+    badges.className='debug-badges';status.className=hook.className='debug-badge';detail.className='debug-detail';age.className='debug-age';badges.append(status,hook);stateCell.append(badges,detail,age);
+    const caption=document.createElement('span'),toggle=document.createElement('label'),input=document.createElement('input'),track=document.createElement('span'),toggleState=document.createElement('p'),error=document.createElement('p');
+    caption.className='debug-toggle-caption';caption.textContent='校验签名';toggle.className='toggle';input.type='checkbox';input.setAttribute('role','switch');track.className='switch-track';track.setAttribute('aria-hidden','true');toggle.append(input,track);
+    toggleState.className='debug-toggle-state';error.className='debug-action-error';error.setAttribute('role','alert');toggleCell.append(caption,toggle,toggleState,error);element.append(entry,purposeCell,stateCell,toggleCell);
+    const row={element,label,address,meta,purpose,features,status,hook,detail,age,input,toggleState,error,control:null};
+    input.addEventListener('change',()=>{if(row.control)store.act(row.control.id,'toggle',input.checked);schedule();});
+    return row;
+  }
+  function renderDebug(state) {
+    const now=Date.now(),current=state.generation===store.generation.get(state.module),all=state.controls.filter(control=>control.visible && control.debug?.present);
+    const groups=[...new Set(all.map(control=>control.group || '未分组'))],signature=JSON.stringify(groups);
+    if(debugGroupSignature!==signature){debugGroupSignature=signature;$('debugGroup').replaceChildren(...['',...groups].map(name=>{const option=document.createElement('option');option.value=name;option.textContent=name || '全部分组';return option;}));if(!groups.includes(debugGroup))debugGroup='';$('debugGroup').value=debugGroup;}
+    const controls=filterDebugControls(all,{search,group:debugGroup,state:debugFilter,receivedAt:state.receivedAt,now,current}),visible=new Set(controls.map(control=>control.id));
+    for(const [id,row] of debugRows)if(!visible.has(id)){row.element.remove();debugRows.delete(id);}
+    let after=null;
+    for(const control of controls){
+      let row=debugRows.get(control.id);if(!row){row=makeDebugRow();debugRows.set(control.id,row);}row.control=control;row.element.dataset.controlId=String(control.id);row.element.dataset.siteId=String(control.debug.siteId);
+      const d=control.debug,status=debugStatus(control,state.receivedAt,now,current),pending=store.isPending(control.id),error=store.error(control.id);
+      row.label.textContent=control.label || `入口 ${d.siteId}`;row.address.textContent=debugAddress(d.address);
+      row.meta.textContent=[control.group || '未分组',debugKindLabel(d.kind)].filter(Boolean).join(' · ');
+      row.purpose.textContent=d.purpose || '用途待补充';row.features.textContent=d.features?`影响：${d.features}`:'影响功能待补充';
+      row.status.textContent=status.label;row.status.dataset.tone=status.tone;row.hook.textContent=status.hookLabel;row.hook.dataset.tone=status.hook==='conflict'?'conflict':status.hook==='pending'?'pending':'neutral';
+      row.detail.textContent=d.detail || (status.sampled?'':'等待游戏内观测');row.detail.hidden=!row.detail.textContent;
+      row.age.textContent=!current?'正在等待当前页面快照':!status.sampled?'尚无运行时观测':status.ageMs<1000?'刚刚观测':`距上次观测 ${Math.floor(status.ageMs/1000)} 秒`;
+      row.input.setAttribute('aria-label',`校验签名 · ${control.label || d.siteId} (${debugAddress(d.address)})`);row.input.disabled=store.closed || !current || !control.enabled || control.readonly || control.type!=='toggle';row.input.checked=Boolean(store.value(control,'toggle'));
+      row.toggleState.textContent=debugToggleLabel(control,pending);row.toggleState.dataset.off=String(d.kind!=='system' && d.state!=='unused' && !control.checked && !pending);row.error.textContent=error;row.error.hidden=!error;row.element.classList.toggle('has-action-error',Boolean(error));
+      placeAfter($('debugList'),row.element,after);after=row.element;
+    }
+    const blocked=all.filter(control=>debugStatus(control,state.receivedAt,now,current).state==='blocked').length,unknown=all.filter(control=>debugStatus(control,state.receivedAt,now,current).state==='unknown').length;
+    $('resultCount').textContent=`${controls.length} / ${all.length} 个入口 · ${blocked} 项受阻 · ${unknown} 项待观测`;
+    $('emptyState').hidden=controls.length>0;$('debugPanel').hidden=controls.length===0;$('foldAll').hidden=true;
+  }
   function render() {
     const category = CATEGORIES[selectedCategory], state = store.state, currentPage = pageKey(store.current.module,store.current.category);
-    if (renderedPage !== currentPage) { clearGroups(); renderedPage = currentPage; }
+    if (renderedPage !== currentPage) { clearGroups(); for(const row of debugRows.values())row.element.remove();debugRows.clear(); renderedPage = currentPage; }
     [...$('navigation').children].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
     $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '1.0.41-pre.9';
     $('videoTabs').hidden = selectedCategory !== 0; $('categoryNote').hidden = selectedCategory === 0;
+    const debugging=selectedCategory===5;$('settings').hidden=debugging;$('debugTools').hidden=!debugging;$('debugPanel').hidden=!debugging || !state;$('categoryNote').textContent=debugging?'逐入口观测与校验':'每项功能独立启用';$('search').placeholder=debugging?'搜索入口、地址或影响功能…':'搜索当前页面…';$('contentScroll').setAttribute('aria-label',debugging?'入口状态与签名校验':'功能设置');
+    $('emptyState').querySelector('h2').textContent=debugging?'没有匹配的入口':'没有匹配的设置';$('clearSearch').textContent=debugging?'清除搜索与筛选':'清除搜索';
     [...$('videoTabs').children].forEach(button => { const selected=Number(button.dataset.module) === videoModule;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;button.setAttribute('aria-controls','settings'); });
     const moduleState = store.shell.modules.find(module => module.module === videoModule); $('moduleToggleWrap').hidden = selectedCategory !== 0 || !moduleState; if (moduleState) { $('moduleToggle').checked = Boolean(moduleState.enabled); $('moduleToggle').disabled = store.closed || !moduleState.ready; $('moduleToggleLabel').textContent=moduleState.enabled?'模块已启用':'启用此模块'; }
     const serviceReady=store.connected && store.shell.servicesReady && store.shell.modules.some(module=>module.ready); $('connectionDot').classList.toggle('ready',serviceReady && !store.closed); $('connectionText').textContent = store.closed ? '正在退出' : serviceReady ? '控制台就绪' : store.connected ? '模块初始化中' : '正在连接';
@@ -364,16 +447,20 @@
     $('globalNotice').textContent = globalError; $('globalNotice').hidden = !globalError;
     $('statusText').textContent = store.closed ? '正在关闭模块并保存设置…' : globalError || state?.status || (store.connected ? '操作会自动保存，独立功能可按需启用。' : '界面已就绪，正在等待模块状态。');
     $('loadingState').hidden = Boolean(state); $('loadingText').textContent = !bridge ? '此页面需要由红警工具箱打开。' : '正在等待功能模块状态…';
-    if (!state) { $('resultCount').textContent = '正在载入设置'; $('emptyState').hidden = true; $('foldAll').hidden = true; return; }
+    if (!state) { $('resultCount').textContent = debugging?'正在载入入口目录':'正在载入设置'; $('emptyState').hidden = true; $('foldAll').hidden = true; return; }
+    if(debugging)renderDebug(state);else {
     const groups = groupControls(state.controls,search), count = [...groups.values()].reduce((sum,controls) => sum + controls.length,0);
     $('resultCount').textContent = search ? `找到 ${count} 项设置` : `${count} 项设置 · ${groups.size} 个分组`; $('emptyState').hidden = count > 0;
     for (const [name,group] of groupNodes) if (!groups.has(name)) { observer?.unobserve(group.section); releaseChunks(group); group.section.remove(); groupNodes.delete(name); }
     let after = null; for (const [name,controls] of groups) { let group = groupNodes.get(name); if (!group) { group = makeGroup(name); groupNodes.set(name,group); } group.controls = controls; placeAfter($('settings'),group.section,after); after = group.section; updateGroup(group); }
     updateFoldAction();
+    }
     if (store.errors.size) { const latest = [...store.errors.values()].at(-1); if (latest !== render.lastError) { render.lastError = latest; notify(latest); } }
     if (config.failed && config.error && config.error !== render.lastConfigError) { render.lastConfigError = config.error; notify(config.error); }
   }
-  bridge?.addEventListener('message',event => { let message = event.data; if (typeof message === 'string') { try { message = JSON.parse(message); } catch { return; } } if (!store.receive(message)) return; if (message.kind === 'shell' && message.servicesReady && !restoredNavigation) { restoredNavigation = true; if (!userNavigated) { const category = Number.isInteger(message.selectedCategory) ? Math.max(0,Math.min(4,message.selectedCategory)) : 0, module = message.videoSection === 1 ? 1 : 0; videoModule = module; navigate(category,module,true); } } });
+  bridge?.addEventListener('message',event => { let message = event.data; if (typeof message === 'string') { try { message = JSON.parse(message); } catch { return; } } if (!store.receive(message)) return; if (message.kind === 'shell' && message.servicesReady && !restoredNavigation) { restoredNavigation = true; if (!userNavigated) { const category = Number.isInteger(message.selectedCategory) ? Math.max(0,Math.min(5,message.selectedCategory)) : 0, module = message.videoSection === 1 ? 1 : 0; videoModule = module; navigate(category,module,true); } } });
   global.addEventListener('beforeunload',() => stopCapture());
+  // Relative sample age keeps advancing if the owner/game stops publishing.
+  global.setInterval(()=>{if(selectedCategory===5 && store.state)schedule();},1000);
   store.ready(); schedule();
 })(globalThis);

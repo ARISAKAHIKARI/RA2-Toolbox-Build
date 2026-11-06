@@ -1,4 +1,5 @@
 #include "tech_ui_breakpoint_core.h"
+#include "tech_ui_breakpoint_debug.h"
 #include "tech_enhancement_parameter_policy.h"
 #include "control_parameter_policy.h"
 #include "map_visibility_parameter_policy.h"
@@ -37,31 +38,71 @@ static constexpr uint32_t sites[techbp::SiteCount]={0x4F7870,mapvisibility::Addr
 inline unsigned hash(uint32_t p){return ((p>>4)*2654435761u)&1023u;}
 static techbp::SignatureSnapshot<20> nativeDraw;static techbp::SignatureSnapshot<15> nativePrune;static techbp::SignatureSnapshot<16> nativeEntry;
 static techbp::SignatureSnapshot<13> enhancementLimit;static techbp::SignatureSnapshot<16> enhancementCompare,enhancementEntry;
-static uint32_t nativeEntryDigest(const uint8_t(&bytes)[16]){uint32_t hash=2166136261u;for(uint8_t byte:bytes)hash=(hash^byte)*16777619u;return hash;}
-static bool captureNativeEntry(){
- // This breakpoint changes an existing CALL's bool argument before the
- // entry executes. Ares keeps that ABI and must receive the original call,
- // including its own build-limit/production checks. Do not replace its JMP.
- nativeEntry.valid=false;uint8_t before[16]{};
- if(!read(0x4F7870,before,sizeof before)||!nativeEntryCallable(0x4F7870,true))return false;
- // Re-read after the uncached chain check, then require the exact accepted
- // entry image on every hot hit. The two caller/argument sites stay exact.
- return nativeEntry.refresh(0x4F7870,nativeEntryDigest(before),read);
+static techbp::SignatureSnapshot<sizeof mapvisibility::Prefix> mapSignature;
+static uint32_t nativePolicyRevision=0,enhancementPolicyRevision=0,controlPolicyRevision=0,mapPolicyRevision=0;
+static bool nativeStructureRejected=false;
+static uint32_t nativeEntryDigest(const uint8_t(&bytes)[16]){return techbp::patternDigest(bytes);}
+static bool captureNativeEntry(techbp::ObservedPattern<16>&entry,bool&stable){
+ // Keep the Call policy separate: this strictly verifies the stock/Ares ABI.
+ // The DR override may replace only the reference decision, never an unreadable
+ // entry or a different image appearing between verification and capture.
+ stable=false;uint8_t before[16]{};
+ if(!read(0x4F7870,before,sizeof before))return false;
+ const bool matched=nativeEntryCallable(0x4F7870,true);
+ entry.load(0x4F7870,nativeEntryDigest(before),read);
+ stable=entry.readable&&!memcmp(before,entry.bytes,sizeof before)&&nativeExecutableRange(0x4F7870,sizeof before);
+ return matched;
 }
-static bool nativeCompatible(){return nativeDraw.refresh(0x6A97C3,0xD3C40F9Du,read)&&nativePrune.refresh(0x6AA777,0x26F9619Eu,read)&&captureNativeEntry();}
-static bool enhancementCompatible(){return enhancementLimit.refresh(0x4F794A,0x0FC7BB79u,read)&&enhancementCompare.refresh(0x4F7B5C,0x15DAD6B8u,read)&&enhancementEntry.refresh(0x4F7870,0x6995B50Eu,read);}
+static bool nativeCompatible(bool publishSnapshots=true){
+ techbp::ObservedPattern<20> draw;techbp::ObservedPattern<15> prune;techbp::ObservedPattern<16> entry;
+ draw.load(0x6A97C3,0xD3C40F9Du,read);prune.load(0x6AA777,0x26F9619Eu,read);
+ bool stable=false;const bool entryMatched=captureNativeEntry(entry,stable);
+ const bool readable=draw.readable&&prune.readable&&entry.readable;
+ bool admitted=debugentries::allow(debugentries::Kind::Breakpoint,0x4F7870,readable,draw.matched&&prune.matched&&entryMatched,
+  entryMatched&&entry.readable&&nativeEntryDigest(entry.bytes)!=0x6995B50Eu?debugentries::Signature::Platform:debugentries::Signature::Match);
+ nativeStructureRejected=readable&&!stable;
+ if(nativeStructureRejected){admitted=false;debugentries::installation(debugentries::Kind::Breakpoint,0x4F7870,debugentries::Hook::Unavailable,debugentries::Reason::Structural);}
+ if(publishSnapshots){draw.publish(nativeDraw,admitted);prune.publish(nativePrune,admitted);entry.publish(nativeEntry,admitted);nativePolicyRevision=admitted?debugentries::policyRevision:0;}
+ return admitted;
+}
+static bool enhancementCompatible(bool publishSnapshots=true){
+ techbp::ObservedPattern<13> limit;techbp::ObservedPattern<16> compare,entry;
+ limit.load(0x4F794A,0x0FC7BB79u,read);compare.load(0x4F7B5C,0x15DAD6B8u,read);entry.load(0x4F7870,0x6995B50Eu,read);
+ const bool limitOK=debugentries::allow(debugentries::Kind::Breakpoint,0x4F7951,limit.readable&&entry.readable,limit.matched&&entry.matched);
+ const bool compareOK=debugentries::allow(debugentries::Kind::Breakpoint,0x4F7B66,compare.readable&&entry.readable,compare.matched&&entry.matched);
+ const bool admitted=limitOK&&(!(sh&&sh->techEnhanceCompareLevel)||compareOK);
+ if(publishSnapshots){limit.publish(enhancementLimit,admitted);compare.publish(enhancementCompare,admitted&&compareOK);entry.publish(enhancementEntry,admitted);enhancementPolicyRevision=admitted?debugentries::policyRevision:0;}
+ return admitted;
+}
 static bool enhancementBodyBypassed(){
- // Ares replaces CanBuild and returns at 4F8361, so the vanilla internal
- // comparison breakpoints are never reached. Preserve the selected Exact
- // semantics: report this locally instead of silently writing Type rules.
+ // Reference overrides cannot make Ares execute skipped vanilla internals.
  uint8_t entry[16]{};return read(0x4F7870,entry,sizeof entry)&&nativeEntryDigest(entry)!=0x6995B50Eu&&
   nativeAresAvailable()&&nativeEntryCallable(0x4F7870);
 }
-// These local reads are confined to GuardedTechUiParameter's SEH scope. Other
-// callers keep the safe admission reader above. No validation is frame-cached.
-static bool nativeCompatibleHot(){return nativeDraw.matches(reinterpret_cast<const volatile uint8_t*>(0x6A97C3))&&nativePrune.matches(reinterpret_cast<const volatile uint8_t*>(0x6AA777))&&nativeEntry.matches(reinterpret_cast<const volatile uint8_t*>(0x4F7870));}
-static bool enhancementCompatibleHot(){return enhancementLimit.matches(reinterpret_cast<const volatile uint8_t*>(0x4F794A))&&enhancementCompare.matches(reinterpret_cast<const volatile uint8_t*>(0x4F7B5C))&&enhancementEntry.matches(reinterpret_cast<const volatile uint8_t*>(0x4F7870));}
-static bool mapCompatible(){uint8_t bytes[sizeof mapvisibility::Prefix]{};return read(mapvisibility::PrefixAddress,bytes,sizeof bytes)&&mapvisibility::compatible(bytes);}
+// Hot paths compare the complete admitted image on every hit. Configuration
+// changes are handled on the leased ordinary entry, never inside an exception.
+static bool nativeCompatibleHot(){return nativePolicyRevision==debugentries::policyRevision&&nativeDraw.matches(reinterpret_cast<const volatile uint8_t*>(0x6A97C3))&&nativePrune.matches(reinterpret_cast<const volatile uint8_t*>(0x6AA777))&&nativeEntry.matches(reinterpret_cast<const volatile uint8_t*>(0x4F7870));}
+static bool enhancementCompatibleHot(){return enhancementPolicyRevision==debugentries::policyRevision&&enhancementLimit.matches(reinterpret_cast<const volatile uint8_t*>(0x4F794A))&&(!policy.compareLevel||enhancementCompare.matches(reinterpret_cast<const volatile uint8_t*>(0x4F7B5C)))&&enhancementEntry.matches(reinterpret_cast<const volatile uint8_t*>(0x4F7870));}
+static bool mapCompatible(bool publishSnapshot=true){
+ const bool admitted=techbp::debugSignatureSnapshot(mapSignature,mapvisibility::Address,mapvisibility::PrefixAddress,techbp::patternDigest(mapvisibility::Prefix),read,publishSnapshot);
+ if(publishSnapshot)mapPolicyRevision=admitted?debugentries::policyRevision:0;return admitted;
+}
+static bool controlCompatible(bool publishRevision=true){
+ // Read every fixed dependency even when an early reference differs. A debug
+ // override must not turn a later inaccessible branch/caller into admission.
+ bool readable=true;uint8_t bytes[20]{};
+ for(const auto&site:mastercontrol::Sites){
+  if(!read(site.address,bytes,5))readable=false;
+  for(const auto&probe:patchcontext::Probes)if(probe.site==site.address&&!read(probe.address,bytes,probe.size))readable=false;
+ }
+ if(!read(0x50B6F5,bytes,4)||!read(0x50B710,bytes,20))readable=false;
+ bool matched=true;for(const auto&site:mastercontrol::Sites){uint8_t original[5]{};const bool ok=read(site.address,original,sizeof original);if(!ok)readable=false;if(!ok||!mastercontrol::original(site.address,original,sizeof original))matched=false;}
+ // Patch-context overrides belong to another kind at the same addresses.
+ // Use the raw reference predicate before this entry's independent DR allow.
+ const bool contextMatched=mastercontrol::compatibleStrict([&](uint32_t at,void*out,size_t n){const bool ok=read(at,out,n);if(!ok)readable=false;return ok;});matched=matched&&contextMatched;
+ const bool admitted=debugentries::allow(debugentries::Kind::Breakpoint,controlparams::Entry,readable,matched);
+ if(publishRevision)controlPolicyRevision=admitted?debugentries::policyRevision:0;return admitted;
+}
 static bool enhancedRequested(){return sh&&sh->techEnhance&&sh->techEnhanceImplementation==techenhanceparams::Exact&&!sh->stop&&!fault;}
 static bool healthy(){return service.state!=techbp::System&&service.state!=techbp::Foreign&&service.state!=techbp::Thread;}
 static bool ready(uint32_t group){return healthy()&&(service.activeTags()&group)==group;}
@@ -82,8 +123,58 @@ static bool retryFailure(FailureRetry&retry,uint32_t group){
  if(!retry.due()||!healthy()||!groupOff(group))return false;
  retry.defer();return true;
 }
+static void syncDebugBreakpointPolicy(){
+ static uint32_t observed=0;static bool required[techbp::SiteCount]={true,true,true,true,true,true};
+ const uint32_t revision=debugentries::policyRevision;if(observed==revision)return;observed=revision;
+ bool changed[techbp::SiteCount]{};uint32_t groups=0;
+ for(unsigned i=0;i<techbp::SiteCount;++i){const bool next=debugentries::signatureRequired(debugentries::Kind::Breakpoint,sites[i]);changed[i]=next!=required[i];required[i]=next;if(changed[i])groups|=1u<<i;}
+ if(changed[0]){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();nativePolicyRevision=0;nativeDraw.valid=nativePrune.valid=nativeEntry.valid=false;}
+ else if(nativePolicyRevision)nativePolicyRevision=revision;
+ if(changed[2]||changed[3]){InterlockedExchange(&policy.enhanced,0);enhancementDesired=false;enhancementFailure=0;enhancementPolicyRevision=0;enhancementLimit.valid=enhancementCompare.valid=enhancementEntry.valid=false;groups|=12u;}
+ else if(enhancementPolicyRevision)enhancementPolicyRevision=revision;
+ if(changed[4]){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();controlPolicyRevision=0;}
+ else if(controlPolicyRevision)controlPolicyRevision=revision;
+ if(changed[1]){if(policy.showing)mapRedrawPending=true;InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;mapPolicyRevision=0;mapSignature.valid=false;}
+ else if(mapPolicyRevision)mapPolicyRevision=revision;
+ if(changed[5]){singlefps::disable();singlefps::desired=false;singlefps::failure=0;singlefps::signatureRevision=0;singlefps::native.valid=false;}
+ else if(singlefps::signatureRevision)singlefps::signatureRevision=revision;
+ if(groups){attempted=0;refusedGroups&=~groups;}
+}
+static bool debugExactUnreachable=false;
+static void inspectDebugBreakpointSignatures(){
+ if(!sh||!sh->debugVisible||sh->stop||fault)return;
+ static DWORD at=0;static uint32_t revision=0;const DWORD now=GetTickCount();
+ if(revision==debugentries::policyRevision&&at&&DWORD(now-at)<500)return;
+ at=now;revision=debugentries::policyRevision;
+ // These probes only observe bytes; they never configure a DR, create a
+ // timer/VEH, publish a callback permission, or change an owned snapshot.
+ nativeCompatible(false);enhancementCompatible(false);mapCompatible(false);controlCompatible(false);singlefps::compatible(false);
+ debugExactUnreachable=enhancementBodyBypassed();
+}
+static void publishDebugBreakpointStates(){
+ if(!sh)return;using debugentries::Hook;using debugentries::Reason;using debugentries::Kind;
+ const uint32_t active=service.activeTags(),retained=service.lease.tags();
+ const bool requested[techbp::SiteCount]={bool((sh->flags&UnsafeTech)&&techmode::parameters(techImplementation)),bool(sh->mapVisibility),enhancedRequested(),enhancedRequested()&&bool(sh->techEnhanceCompareLevel),controlmode::parameters(sh->controlAll),sh->singlePlayerFPS>=10&&singlefps::valid(sh->singlePlayerFPS)};
+ const int failures[techbp::SiteCount]={failure,mapFailure,enhancementFailure,enhancementFailure,controlFailure,singlefps::failure};
+ for(unsigned i=0;i<techbp::SiteCount;++i){const uint32_t group=1u<<i;const bool pending=service.pendingFor(group)||service.lease.uncertain;
+  Hook hook=Hook::Inactive;Reason reason=Reason::NoRequest;int error=0;
+  if(pending){hook=Hook::Pending;reason=Reason::OwnerPending;error=int(service.lastError);}
+  else if((requested[i]||(retained&group))&&service.state==techbp::Foreign){hook=Hook::Conflict;reason=Reason::Foreign;error=int(service.lastError);}
+  else if((active&group)&&healthy()){hook=Hook::Installed;reason=requested[i]?Reason::None:Reason::OwnerPending;}
+  else if((retained&group)||(!requested[i]&&!groupOff(group))){hook=Hook::Pending;reason=Reason::OwnerPending;error=int(service.lastError);}
+  else if((i==2||i==3)&&(enhancementFailure==techenhanceparams::NativeBodyBypassed||(sh->debugVisible&&debugExactUnreachable))){hook=requested[i]?Hook::Unavailable:Hook::Inactive;reason=Reason::PathUnreachable;}
+  else if(requested[i]){
+   hook=Hook::Pending;reason=Reason::AwaitRuntime;
+   if(failures[i]==techbp::Signature){hook=Hook::Unavailable;const auto*o=debugentries::observation(Kind::Breakpoint,sites[i]);reason=o&&o->signature==debugentries::Signature::Unreadable?Reason::Unreadable:i==0&&nativeStructureRejected?Reason::Structural:Reason::Signature;}
+   else if((refusedGroups&group)||failures[i]==techbp::Slots){hook=Hook::Unavailable;reason=Reason::Structural;error=techbp::Slots;}
+   else if(failures[i]==-7){reason=Reason::OwnerPending;}
+   else if(failures[i]||service.state<0){hook=Hook::Unavailable;reason=Reason::Structural;error=failures[i]?failures[i]:int(service.state);}
+  }
+  debugentries::installation(Kind::Breakpoint,sites[i],hook,reason,error);
+ }
+}
 static void publish(){
- if(!sh)return;const uint32_t active=service.activeTags();
+ if(!sh)return;inspectDebugBreakpointSignatures();publishDebugBreakpointStates();const uint32_t active=service.activeTags();
  sh->hardwareSlotBudget=service.slotBudget();
  sh->singlePlayerFPSStatus=singlefps::failure?singlefps::failure:singlefps::desired?(ready(singlefps::Tag)&&sh->singlePlayerFPSActive?techbp::Ready:(refusedGroups&singlefps::Tag)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(singlefps::Tag)?techbp::Off:techbp::Waiting;
  const bool mapPresentation=policy.showing!=0;if(mapPresentation!=lastMapPresentation){mapRedrawPending=true;lastMapPresentation=mapPresentation;}
@@ -145,7 +236,7 @@ static bool mapVisibilityParameter(CONTEXT&context){
  techbp::countOwner(mapExceptions);
  if(!policy.showing||!sh||!sh->mapVisibility||sh->stop||fault||sh->renderReveal||(sh->flags&ExperimentalReveal)||!world())return false;
  // Local byte reads inside the existing SEH boundary avoid a syscall per tile.
- if(!mapvisibility::compatible(reinterpret_cast<const volatile uint8_t*>(uintptr_t(mapvisibility::PrefixAddress))))return false;
+ if(mapPolicyRevision!=debugentries::policyRevision||!mapSignature.matches(reinterpret_cast<const volatile uint8_t*>(uintptr_t(mapvisibility::PrefixAddress))))return false;
  context.EFlags=mapvisibility::visibleFlags(context.EFlags);return true;
 }
 extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
@@ -155,7 +246,7 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
  if(tag==1)return mapVisibilityParameter(context)?1:0;
  if(tag==4){
   techbp::countOwner(controlExceptions);
-  if(!policy.controlling||!sh||!controlmode::parameters(sh->controlAll)||sh->stop||fault||!controlparams::world(policy.house,policy.houseID,policy.scenario,policy.session,policy.frame,controlparams::guardedRead)||!controlparams::house(context.Ecx,controlparams::guardedRead)||context.Esp<0x10000)return 0;
+  if(controlPolicyRevision!=debugentries::policyRevision||!policy.controlling||!sh||!controlmode::parameters(sh->controlAll)||sh->stop||fault||!controlparams::world(policy.house,policy.houseID,policy.scenario,policy.session,policy.frame,controlparams::guardedRead)||!controlparams::house(context.Ecx,controlparams::guardedRead)||context.Esp<0x10000)return 0;
   uint32_t caller=0;if(!controlparams::guardedRead(context.Esp,&caller,4)||caller<0x10000)return 0;
   context.Eip=controlparams::destination(caller);return 1;
  }
@@ -209,7 +300,7 @@ static bool techEnhanceParametersRetired(){using namespace techparameters;return
 static bool restoreTechParameters(){using namespace techparameters;const bool changed=desired||(service.lease.tags()&FullGroup)||service.lease.uncertain;InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();if(changed)attempted=0;refusedGroups&=~FullGroup;configure();return techParametersRetired();}
 static bool restoreTechEnhanceParameters(){using namespace techparameters;const bool changed=enhancementDesired||(service.lease.tags()&12)||service.lease.uncertain;InterlockedExchange(&policy.enhanced,0);enhancementDesired=false;enhancementFailure=0;enhancementCameoBlocked=false;if(changed)attempted=0;refusedGroups&=~12u;configure();return techEnhanceParametersRetired();}
 static void maintainTechParameters(){
- using namespace techparameters;service.poll();singlefps::maintain();
+ using namespace techparameters;syncDebugBreakpointPolicy();service.poll();singlefps::maintain();
  if(!sh||sh->stop||fault){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;enhancementCameoBlocked=false;fullFailureRetry.reset();controlFailureRetry.reset();InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
  else if(!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();}
  if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();}
@@ -322,11 +413,11 @@ static bool restoreControlParameters(){
  if(changed)attempted=0;refusedGroups&=~16u;configure();return controlParametersRetired();
 }
 static int requestControlParameters(){
- using namespace techparameters;
+ using namespace techparameters;syncDebugBreakpointPolicy();
  auto status=[](){return controlFailure?controlFailure-10:ready(16)?int(controlmode::Parameters):(refusedGroups&16)?-12:service.state<0?int(service.state)-10:0;};
  if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){restoreControlParameters();return 0;}
  if(controlFailure&&!retryFailure(controlFailureRetry,16)){publish();return status();}
- if(!controlparams::compatible(read)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=techbp::Signature;controlFailureRetry.defer();configure();return status();}
+ if(!controlCompatible()){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=techbp::Signature;controlFailureRetry.defer();configure();return status();}
  if(!captureWorld(lastHouse)){InterlockedExchange(&policy.controlling,0);controlDesired=false;configure();return controlFailure?status():0;}
  controlFailure=0;controlFailureRetry.reset();controlDesired=true;configure();return status();
 }

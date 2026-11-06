@@ -1,4 +1,28 @@
 #include "../../shared/source/key_gesture.h"
+#include "../../shared/source/debug_entry_policy.h"
+static void debugEntrySettingKey(uint32_t id,wchar_t(&key)[14]){swprintf(key,14,L"Skip_%08X",unsigned(id));}
+static void loadDebugEntrySettings(){
+ extra.debugPolicy={};
+ for(const auto&entry:debugentries::Entries){
+  if(!(entry.flags&debugentries::Checkable))continue;
+  wchar_t key[14]{},setting[4]{};debugEntrySettingKey(entry.id,key);
+  // Integer profile reads accept prefixes such as "1junk". Only the complete
+  // explicit value 1 opts this stable identity out of reference-byte checks.
+  if(GetPrivateProfileStringW(L"DebugEntries",key,L"0",setting,4,path(L"Assist.ini").c_str())==1&&setting[0]==L'1')
+   debugentries::setSkip(extra.debugPolicy,entry.id,true);
+ }
+}
+static void saveDebugEntrySettings(){
+ for(const auto&entry:debugentries::Entries){if(!(entry.flags&debugentries::Checkable))continue;
+  wchar_t key[14]{};debugEntrySettingKey(entry.id,key);write(L"DebugEntries",key,debugentries::required(extra.debugPolicy,entry.id)?0:1);
+ }
+}
+static void syncDebugEntrySettings(){
+ if(!shared)return;
+ if(shared->debugPolicySeq&&!memcmp(&shared->debugPolicy,&extra.debugPolicy,sizeof extra.debugPolicy))return;
+ InterlockedIncrement(&shared->debugPolicySeq);shared->debugPolicy=extra.debugPolicy;
+ MemoryBarrier();InterlockedIncrement(&shared->debugPolicySeq);
+}
 static void loadAdditionalSettings(){
  {const int rate=value(L"SinglePlayer",L"FPS",0);extra.singlePlayerFPS=singlefps::valid(unsigned(rate))?rate:0;}
  extra.minerDefenseEnabled=value(L"MinerDefense",L"Enabled",0)!=0;
@@ -130,6 +154,7 @@ static void loadAdditionalSettings(){
  for(wchar_t*p=entries;*p;p+=wcslen(p)+1){std::wstring line=p;size_t e=line.find(L'=');if(e==std::wstring::npos)continue;std::string id;for(size_t j=0;j<e;++j)if(line[j]>32&&line[j]<127)id+=char(line[j]);if(!typecatalog::validId(id)||targetQuotas.size()>=512)continue;
   int a,b,c;if(swscanf(line.c_str()+e+1,L"%d,%d,%d",&a,&b,&c)!=3)continue;targetQuotas[id]=cooperative::bounded({a,b,c});
  }
+ loadDebugEntrySettings();
 }
 static bool saveAdditionalSettings(){
  write(L"SinglePlayer",L"FPS",extra.singlePlayerFPS);
@@ -221,6 +246,7 @@ static bool saveAdditionalSettings(){
  write(L"Experimental",L"PlayerCommandOptionsVersion",1);write(L"Experimental",L"EnemyBuildingSellOptInVersion",1);write(L"Experimental",L"ControlAll",playertest::Available&&extra.controlAll);write(L"Experimental",L"SwitchPlayerEnabled",0);
  write(L"Display",L"Frozen",extra.frozen);write(L"TypeSelection",L"VariantKey",extra.variantKey);
  write(L"AircraftQuota",L"First",extra.defaults.first);write(L"AircraftQuota",L"Second",extra.defaults.second);write(L"AircraftQuota",L"Maximum",extra.defaults.maximum);
+ saveDebugEntrySettings();
  std::wstring block;for(const auto&entry:targetQuotas){const auto&q=entry.second;block+=wide(entry.first.c_str())+L"="+std::to_wstring(q.first)+L","+std::to_wstring(q.second)+L","+std::to_wstring(q.maximum);block.push_back(0);}block.push_back(0);if(block.size()==1)block.push_back(0);
  return WritePrivateProfileSectionW(L"AircraftQuotaOverrides",block.c_str(),path(L"Assist.ini").c_str())!=FALSE;
 }
@@ -252,6 +278,7 @@ static void syncRefreshRate(){extra.scrollRefreshMode=0;if(!shared)return;
 }
 static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
+ syncDebugEntrySettings();
  shared->viewZoomPercent=extra.viewZoomEnabled?uint32_t(extra.viewZoomPercent):100;
  shared->smallMapClamp=extra.smallMapClamp;
  shared->singlePlayerFPS=uint32_t(extra.singlePlayerFPS);

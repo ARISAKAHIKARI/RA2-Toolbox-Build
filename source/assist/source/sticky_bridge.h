@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 // Explicit player-only Sticky. Network entry uses the original synchronized
 // mission event; the local ForceMission/NextMission exit is single-player only.
 struct StickyHold {uint32_t pointer,id,house,epoch;int queuedFrame=0;bool network=false,observed=false;};
@@ -5,8 +6,9 @@ static StickyHold stickyHolds[1024];
 static bool stickySession(){int s=get<int>(0xA8B238);return s==0||s==5;}
 static bool stickyABI(){
  const uint8_t force[]={0x8B,0x81,0xAC,0,0,0,0x83,0xEC,0x0C,0x83};
- const uint8_t next[]={0x8B,0x81,0xB4,0,0,0,0x83,0xEC,0x0C,0x83};uint8_t bytes[10];
- return read(0x5B2FD0,bytes,10)&&!memcmp(bytes,force,10)&&read(0x5B3570,bytes,10)&&!memcmp(bytes,next,10);
+ const uint8_t next[]={0x8B,0x81,0xB4,0,0,0,0x83,0xEC,0x0C,0x83};
+ return debugentries::pattern(debugentries::Kind::Call,0x5B2FD0,force,sizeof force,read)&&
+  debugentries::pattern(debugentries::Kind::Call,0x5B3570,next,sizeof next,read);
 }
 static int stickyIndex(uint32_t p){for(int i=0;i<stickyCount;++i)if(stickyHolds[i].pointer==p&&stickyHolds[i].id==get<uint32_t>(p+0x10)&&stickyHolds[i].epoch==match)return i;return -1;}
 static bool stickyOwns(uint32_t p){return stickyIndex(p)>=0;}

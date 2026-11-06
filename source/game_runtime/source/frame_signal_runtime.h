@@ -2,6 +2,7 @@
 #include "../../shared/source/frame_signal_protocol.h"
 #include "../../shared/source/game_entry_client.h"
 #include "../../shared/source/multiplayer_patch_gate.h"
+#include "../../shared/source/debug_entry_policy.h"
 namespace frameobserver {
 static HANDLE mapping=nullptr,event=nullptr;static framesignal::Channel*channel=nullptr;static DWORD owner=0;
 static bool installed=false,conflict=false;static uint8_t patchBytes[6]{};
@@ -39,6 +40,11 @@ static void releaseChannel(){if(channel)UnmapViewOfFile(channel);channel=nullptr
 static void maintain(DWORD requestedOwner){
  gameentry::scoped(gameentry::Client::Assist,false,[&]{
  const DWORD error=GetLastError();
+ static uint32_t checkedPolicy=0;
+ const bool changed=checkedPolicy!=debugentries::policyRevision;checkedPolicy=debugentries::policyRevision;
+ // A previous signature rejection is retryable after policy changes. This
+ // does not enable diagnostic mode or discard an installed/conflicted site.
+ if(changed&&channel&&!installed&&!conflict&&channel->state==framesignal::SignatureRejected)channel->state=framesignal::Waiting;
  // A live controller's temporary pause must not remove/reinstall the site.
  // Heartbeat freshness gates callback work and NEW installation separately.
  bool alive=channel&&requestedOwner&&owner==requestedOwner&&channel->enabled;

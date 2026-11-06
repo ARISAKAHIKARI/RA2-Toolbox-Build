@@ -23,7 +23,7 @@
 extern "C" int WINAPI CursorEntry(HINSTANCE,HINSTANCE,LPWSTR,int);
 extern "C" int WINAPI MonitorEntry(HINSTANCE,HINSTANCE,LPWSTR,int);
 extern "C" int WINAPI TacticalEntry(HINSTANCE,HINSTANCE,LPWSTR,int);
-static HWND frame,nav[5],videoNav[2],footer,heading,subtitle;
+static HWND frame,nav[suite::categories::Count],videoNav[2],footer,heading,subtitle;
 static HANDLE workers[3];static std::atomic<bool> active[3];static HFONT font;
 static unsigned consoleDpi=96;
 static std::wstring config;static int selected=0,videoSection=0,closePhase=0;static bool closeAsked=false;
@@ -33,7 +33,6 @@ static std::atomic<bool> statsShown{false},hardwarePointer{false};
 static std::atomic<unsigned> commonRefreshRate{0};
 static std::mutex displayMutex;static suite::DisplayState displayState;static bool displayReady=false;
 static RECT paneRect{};static bool layoutValid=false;static SIZE layoutSize{};static unsigned layoutDpi=0;static uint64_t paneOrder=0;
-static const wchar_t* names[]={L"视频",L"控制",L"自动功能",L"游戏规则",L"实验性功能"};
 namespace suite {
  HWND parent(){return frame;}
  bool enabled(int module){return active[module].load();}
@@ -77,22 +76,23 @@ static void layoutPanes(){
 static void layout(){
  RECT r{};GetClientRect(frame,&r);auto px=[](int n){return modernui::scale(n,consoleDpi);};
  if(layoutValid&&layoutSize.cx==r.right&&layoutSize.cy==r.bottom&&layoutDpi==consoleDpi){
-  for(int i=0;i<5;++i)modernui::select(nav[i],selected==i);for(int i=0;i<2;++i){ShowWindow(videoNav[i],selected==suite::categories::Video?SW_SHOWNA:SW_HIDE);modernui::select(videoNav[i],videoSection==i);}layoutPanes();InvalidateRect(frame,&paneRect,FALSE);return;
+  for(int i=0;i<suite::categories::Count;++i)modernui::select(nav[i],selected==i);for(int i=0;i<2;++i){ShowWindow(videoNav[i],selected==suite::categories::Video?SW_SHOWNA:SW_HIDE);modernui::select(videoNav[i],videoSection==i);}layoutPanes();InvalidateRect(frame,&paneRect,FALSE);return;
  }
  layoutValid=true;layoutSize={r.right,r.bottom};layoutDpi=consoleDpi;
  MoveWindow(heading,px(22),px(22),px(152),px(32),FALSE);MoveWindow(subtitle,px(24),px(59),px(145),px(24),FALSE);
- for(int i=0;i<5;++i){MoveWindow(nav[i],px(16),px(116+i*52),px(160),px(42),FALSE);modernui::select(nav[i],selected==i);}
+ for(int i=0;i<suite::categories::Count;++i){MoveWindow(nav[i],px(16),px(116+i*52),px(160),px(42),FALSE);modernui::select(nav[i],selected==i);}
  for(int i=0;i<2;++i){MoveWindow(videoNav[i],px(210+i*246),px(14),px(234),px(38),FALSE);ShowWindow(videoNav[i],selected==suite::categories::Video?SW_SHOWNA:SW_HIDE);modernui::select(videoNav[i],videoSection==i);}
  MoveWindow(footer,px(210),std::max(px(105),int(r.bottom)-px(29)),std::max(1,int(r.right)-px(230)),px(22),FALSE);
  layoutPanes();
  // Only the shell controls belong to this thread. Never invalidate a worker
  // settings subtree on every resize, and never synchronously paint it here.
  RedrawWindow(frame,nullptr,nullptr,RDW_INVALIDATE|RDW_NOCHILDREN);
- for(HWND c:{heading,subtitle,footer,nav[0],nav[1],nav[2],nav[3],nav[4],videoNav[0],videoNav[1]})InvalidateRect(c,nullptr,FALSE);
+ for(HWND c:nav)InvalidateRect(c,nullptr,FALSE);
+ for(HWND c:{heading,subtitle,footer,videoNav[0],videoNav[1]})InvalidateRect(c,nullptr,FALSE);
 }
 static void applyDpi(unsigned dpi){
  consoleDpi=modernui::panelDpi(dpi,false);HFONT next=modernui::makeFont(modernui::BodyPixels,consoleDpi);
- if(next){for(HWND c:{heading,subtitle,footer,nav[0],nav[1],nav[2],nav[3],nav[4],videoNav[0],videoNav[1]})if(c)SendMessageW(c,WM_SETFONT,(WPARAM)next,FALSE);auto old=font;font=next;if(old)DeleteObject(old);}
+ if(next){for(HWND c:nav)if(c)SendMessageW(c,WM_SETFONT,(WPARAM)next,FALSE);for(HWND c:{heading,subtitle,footer,videoNav[0],videoNav[1]})if(c)SendMessageW(c,WM_SETFONT,(WPARAM)next,FALSE);auto old=font;font=next;if(old)DeleteObject(old);}
  modernui::heading(heading,consoleDpi);
 }
 
@@ -108,13 +108,13 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
  case WM_CREATE:{frame=w;suite::frontend.shell(w);consoleDpi=modernui::windowDpi(w);auto ctl=[&](const wchar_t* cls,const wchar_t* text,DWORD style,int id){auto c=CreateWindowW(cls,text,WS_CHILD|WS_VISIBLE|style,0,0,1,1,w,(HMENU)(INT_PTR)id,instance,nullptr);SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);modernui::style(c);return c;};
   heading=ctl(L"STATIC",L"红警工具箱",0,0);modernui::heading(heading);
   subtitle=ctl(L"STATIC",L"v" RA2_RELEASE_VERSION_W,0,0);
-  for(int i=0;i<5;++i)nav[i]=ctl(L"BUTTON",names[i],BS_PUSHBUTTON|WS_TABSTOP,200+i);
+  for(int i=0;i<suite::categories::Count;++i)nav[i]=ctl(L"BUTTON",suite::categories::name(i),BS_PUSHBUTTON|WS_TABSTOP,200+i);
   videoNav[0]=ctl(L"BUTTON",L"光标与渲染",BS_PUSHBUTTON|WS_TABSTOP,210);videoNav[1]=ctl(L"BUTTON",L"监控视图",BS_PUSHBUTTON|WS_TABSTOP,211);
   footer=ctl(L"STATIC",L"每项功能独立启用 · 设置自动保存",0,0);SetTimer(w,1,100,nullptr);applyDpi(consoleDpi);layout();return 0;}
  case PaneReady:{int i=int(wp);if(i>=0&&i<3&&suite::frontend.window(unsigned(i))==(HWND)lp){layout();suite::frontend.post(unsigned(i),suite::ModuleEnable,active[i]);if(closePhase==2)suite::frontend.post(unsigned(i),WM_CLOSE,suite::CloseToken);}return 0;}
  case frontendpanes::DestroyedMessage:case frontendpanes::ActivityMessage:layoutPanes();InvalidateRect(w,&paneRect,FALSE);return 0;
  case EnabledChanged:save();return 0;
- case WM_COMMAND:if(HIWORD(wp)==BN_CLICKED){int id=LOWORD(wp);if(id>=200&&id<=204){selected=id-200;suite::frontend.endInteraction();++paneOrder;WritePrivateProfileStringW(L"UI",L"Category5",std::to_wstring(selected).c_str(),config.c_str());layout();return 0;}
+ case WM_COMMAND:if(HIWORD(wp)==BN_CLICKED){int id=LOWORD(wp);if(id>=200&&id<200+suite::categories::Count){selected=id-200;suite::frontend.endInteraction();++paneOrder;WritePrivateProfileStringW(L"UI",L"Category5",std::to_wstring(selected).c_str(),config.c_str());layout();return 0;}
   if(id==210||id==211){videoSection=id-210;++paneOrder;WritePrivateProfileStringW(L"UI",L"VideoSection",std::to_wstring(videoSection).c_str(),config.c_str());layout();return 0;}}break;
 
  case WM_DISPLAYCHANGE:for(unsigned i=0;i<3;++i)suite::frontend.post(i,WM_DISPLAYCHANGE,wp,lp);return 0;
@@ -149,7 +149,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR cmd,int show){
  active[0]=GetPrivateProfileIntW(L"Video",L"CursorEnabled",GetPrivateProfileIntW(L"Modules",L"Cursor",cursorDefault,config.c_str()),config.c_str())!=0;
  active[1]=GetPrivateProfileIntW(L"Video",L"MonitorEnabled",GetPrivateProfileIntW(L"Modules",L"Units",0,config.c_str()),config.c_str())!=0;
  active[2]=true; // Individual control/automation/rule settings are the gates.
- selected=std::clamp(int(GetPrivateProfileIntW(L"UI",L"Category5",0,config.c_str())),0,4);
+ selected=std::clamp(int(GetPrivateProfileIntW(L"UI",L"Category5",0,config.c_str())),0,int(suite::categories::Count)-1);
  videoSection=std::clamp(int(GetPrivateProfileIntW(L"UI",L"VideoSection",0,config.c_str())),0,1);
  INITCOMMONCONTROLSEX cc{sizeof cc,ICC_WIN95_CLASSES};InitCommonControlsEx(&cc);
  font=modernui::makeFont();

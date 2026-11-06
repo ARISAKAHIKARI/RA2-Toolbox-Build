@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 #pragma once
 // Included inside the existing game-thread lease, after read/put/call. A Place
 // receipt only means queued. Q/W caches retire on queue acceptance; native
@@ -52,8 +53,8 @@ static int nativePlacementCompletionIdle(){
  return !tools[0]&&!tools[1]&&!tools[2]&&!tools[3]&&!tools[4]&&super<0?1:-1;
 }
 static bool nativePlacementCompletionSignature(uint32_t at,uint32_t expected){
- uint8_t bytes[12]{};if(!read(at,bytes,sizeof bytes))return false;uint32_t hash=2166136261u;
- for(auto b:bytes)hash=(hash^b)*16777619u;return hash==expected;
+ uint8_t bytes[12]{};const bool readable=read(at,bytes,sizeof bytes);uint32_t hash=2166136261u;
+ for(auto b:bytes)hash=(hash^b)*16777619u;return debugentries::allow(debugentries::Kind::Call,at,readable,hash==expected);
 }
 struct NativePlacementCursorIdentity {uint32_t product=0,type=0;int owner=-1;};
 static_assert(sizeof(NativePlacementCursorIdentity)==12,"native placement cursor identity");
@@ -106,8 +107,8 @@ static bool nativePlacementCompletionQuick(const NativePlacementCompletion&p,boo
  for(unsigned pass=0;pass<2;++pass){
   uint32_t q=0,w=0;if(!read(0xB0FE5C,&q,4)||!read(0xB0FE60,&w,4))return false;
   if(q!=p.offer.product&&w!=p.offer.product)return true;
-  uint8_t code[45]{};if(!read(0x734270,code,sizeof code))return false;uint32_t hash=2166136261u;
-  for(auto b:code)hash=(hash^b)*16777619u;if(hash!=0x61003681u)return false;
+  uint8_t code[45]{};const bool readable=read(0x734270,code,sizeof code);uint32_t hash=2166136261u;
+  for(auto b:code)hash=(hash^b)*16777619u;if(!debugentries::allow(debugentries::Kind::Call,0x734270,readable,hash==0x61003681u))return false;
   int frame=-1;uint32_t q2=0,w2=0;
   if(nativePlacementCompletionWorld(p,frame)!=1||nativePlacementCompletionProduct(p,allowQueued)!=1||
      !read(0xB0FE5C,&q2,4)||!read(0xB0FE60,&w2,4)||q!=q2||w!=w2)return false;

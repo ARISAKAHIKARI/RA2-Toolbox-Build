@@ -6,6 +6,7 @@
 #include "../../shared/source/direct_patch_policy.h"
 #include "../../shared/source/native_sidebar_policy.h"
 #include "../../shared/source/native_viewport_policy.h"
+#include "../../shared/source/debug_entry_policy.h"
 // Game-thread-only ownership bookkeeping, NOT a stop-the-world x86 patcher.
 // A stale/foreign site is sticky: never overwrite it on retries or detach.
 namespace assist { namespace hookregistry {
@@ -147,6 +148,23 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  }
  return size==expected&&!memcmp(bytes,signature,size);
 }
+// The fixed adapters replay displaced instructions or call a fixed original
+// target. Context signatures are optional, but those execution shapes are not.
+// Data-operand templates do not replay the old immediate and may safely journal
+// a different operand while preserving the exact instruction encoding.
+inline bool structuralOriginal(uint32_t address,const uint8_t*bytes,unsigned n){
+ if(knownOriginal(address,bytes,n))return true;
+ const auto*s=nativeviewportpolicy::find(address);
+ return s&&bytes&&n==s->n&&s->kind==nativeviewportpolicy::Kind::DataOperand&&
+  !memcmp(bytes,s->before,s->imm)&&!memcmp(bytes+s->imm+4,s->before+s->imm+4,n-s->imm-4);
+}
+inline bool admissibleOriginal(uint32_t address,const uint8_t*bytes,unsigned n){
+ const bool readable=bytes&&n&&n<=16;
+ if(!debugentries::allow(debugentries::Kind::Patch,address,readable,readable&&knownOriginal(address,bytes,n)))return false;
+ if(structuralOriginal(address,bytes,n))return true;
+ debugentries::installation(debugentries::Kind::Patch,address,debugentries::Hook::Unavailable,debugentries::Reason::Structural);
+ return false;
+}
 struct Slot {
  uint32_t address=0;Owner owner=Owner::Unknown;uint8_t original[16]{},patch[16]{};
  uint8_t size=0;bool active=false,conflict=false;
@@ -174,12 +192,12 @@ template<unsigned Capacity=512> struct Registry {
   for(unsigned j=0;j<used;++j){const auto&s=slots[j];
    if(s.active&&s.address!=address&&uint64_t(address)<uint64_t(s.address)+s.size&&uint64_t(s.address)<uint64_t(address)+n)return Transition::Deny;
   }
-  int i=find(address);if(i<0)return used<Capacity&&knownOriginal(address,before,n)?Transition::Install:Transition::Deny;
+  int i=find(address);if(i<0)return used<Capacity&&admissibleOriginal(address,before,n)?Transition::Install:Transition::Deny;
   const Slot&s=slots[i];if(s.conflict||s.owner!=ownerAt(address)||s.size!=n)return Transition::Deny;
   if(s.active)return !memcmp(before,s.patch,n)&&!memcmp(after,s.original,n)?Transition::Restore:Transition::Deny;
   // A cleanly restored site may receive a fresh immutable trampoline.
   // The manager still requires the same owning module and live lease.
-  return !memcmp(before,s.original,n)?Transition::Install:Transition::Deny;
+  return !memcmp(before,s.original,n)&&admissibleOriginal(address,before,n)?Transition::Install:Transition::Deny;
  }
  void commit(uint32_t address,const uint8_t*before,const uint8_t*after,unsigned n,Transition t){
   if(t==Transition::Install){int i=find(address);

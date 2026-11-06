@@ -82,7 +82,7 @@ static void controlSitesTick(bool enabled){
  // Whole-group preflight prevents knowingly installing half a group. Both
  // owner calls are installed before the common predicate in either mode.
  if(ok)for(auto&s:controlSites){uint8_t current[5]{};const bool active=codeHookRegistry.active(s.address);
-  if(codeHookRegistry.conflict(s.address)||!patchcontext::compatible(s.address,read)||!read(s.address,current,5)||memcmp(current,active?s.after:s.before,5)){
+  if(codeHookRegistry.conflict(s.address)||!patchcontext::compatible(s.address,read)||!read(s.address,current,5)||(active?memcmp(current,s.after,5):!hookregistry::admissibleOriginal(s.address,current,5))){
    if(active)codeHookRegistry.markConflict(s.address);ok=false;break;
   }
  }

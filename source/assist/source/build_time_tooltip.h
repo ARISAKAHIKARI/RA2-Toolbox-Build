@@ -1,3 +1,4 @@
+#include "../../shared/source/debug_entry_checks.h"
 #pragma once
 #include "../../shared/source/runtime_fp_scope.h"
 #include "../../shared/source/native_tooltip_client.h"
@@ -19,10 +20,15 @@ static bool buildTimeTooltipCompatible(){
   {0x6F4803,9,{0xE8,0x28,0x86,0xE0,0xFF,0xD9,0x5C,0x24,0x0C}},
   {0x4C9FB0,7,{0x8B,0x49,0x58,0x33,0xD2,0x85,0xC9}}
  };
- for(const auto&p:probes){uint8_t bytes[12]{};if(!read(p.at,bytes,p.n)||memcmp(bytes,p.bytes,p.n))return false;}
+ for(const auto&p:probes)if(!debugentries::pattern(debugentries::Kind::Call,p.at,p.bytes,p.n,read))return false;
  return true;
 }
 static void buildTimeTooltipTick(){
+ static uint32_t checkedPolicy=0;
+ if(checkedPolicy!=debugentries::policyRevision){
+  if(buildTimeTooltipActive){restoreBuildTimeTooltip();if(buildTimeTooltipActive)return;}
+  checkedPolicy=debugentries::policyRevision;
+ }
  if(!sh||!sh->buildTimeTooltip||buildTimeTooltipFailedMatch!=match)buildTimeTooltipFailed=false;
  if(buildTimeTooltipFailed){restoreBuildTimeTooltip();if(sh)sh->buildTimeTooltipStatus=-3;return;}
  // Focus controls callback work, never ownership of the installed slot.

@@ -12,6 +12,7 @@
 #include <map>
 #include <vector>
 #include "../source/signatures.h"
+#include "../../shared/source/debug_entry_policy.h"
 #include "../source/startup_dependency_policy.h"
 #include "../source/startup_signature_compat.h"
 using DWORD=uint32_t;
@@ -137,4 +138,37 @@ static void cacheChecks(){
  check(!nativeDependencyReady(0x123450));
  nativeentry::TimedResult timer;timer.set(0xfffffff0u,true);check(timer.fresh(0x10u));check(!timer.fresh(0x100u));
 }
-int main(){fieldAndGate();rejectionChecks();chainChecks();cacheChecks();std::printf("PASS: %u checks; Runtime(10) E9 entries retain local native admission, independent startup, bounded dispatch, rejection and cache recovery; synthetic Win32/stub bodies only\n",checks);}
+static void debugPolicyChecks(){
+ using debugentries::Kind;
+ // Real startup/nativeDependencyReady production functions consume a per-kind
+ // switch immediately, including cached failures and re-enabled strict checks.
+ for(const auto&signature:Signatures){
+  seed(false);debugentries::applyPolicy(debugentries::Config{});
+  memory[signature.address]^=0x40;
+  check(!nativeDependencyReady(signature.address));
+  debugentries::Config config;const uint32_t key=debugentries::id(Kind::Call,signature.address);
+  check(debugentries::setSkip(config,key,true));check(debugentries::applyPolicy(config));
+  check(nativeDependencyReady(signature.address));
+  auto*observed=debugentries::observation(Kind::Call,signature.address);
+  check(observed&&observed->signature==debugentries::Signature::Skipped);
+  memory.erase(signature.address+2);clockMs+=250;
+  check(!nativeDependencyReady(signature.address));
+  put(signature.address,signature.bytes,signature.length);memory[signature.address]^=0x40;
+  check(debugentries::setSkip(config,key,false));check(debugentries::applyPolicy(config));
+  check(!nativeDependencyReady(signature.address));
+  put(signature.address,signature.bytes,signature.length);clockMs+=250;
+  check(nativeDependencyReady(signature.address));
+ }
+ seed(false);fieldEntries();debugentries::applyPolicy(debugentries::Config{});
+ check(!nativeDependencyReady(nativeentry::CanBuild));
+ debugentries::Config config;check(debugentries::setSkip(config,debugentries::id(Kind::Call,nativeentry::CanBuild),true));
+ check(debugentries::applyPolicy(config));check(nativeDependencyReady(nativeentry::CanBuild));
+ // Full technology DR never inherits the ordinary Call bypass.
+ check(debugentries::signatureRequired(Kind::Breakpoint,nativeentry::CanBuild));
+ check(!nativeEntryCallable(nativeentry::CanBuild,true));
+ check(!nativeDependencyReady(nativeentry::FindFactory));
+ regions[0].Protect=PAGE_READWRITE;clockMs+=250;check(!nativeDependencyReady(nativeentry::CanBuild));
+ regions[0].Protect=PAGE_EXECUTE_READ;clockMs+=250;check(nativeDependencyReady(nativeentry::CanBuild));
+ debugentries::applyPolicy(debugentries::Config{});
+}
+int main(){fieldAndGate();rejectionChecks();chainChecks();cacheChecks();debugPolicyChecks();std::printf("PASS: %u checks; production native admission, local signature toggles, immediate cache invalidation, DR/Call separation and unreadable/executable refusal; synthetic Win32/stub bodies only\n",checks);}
