@@ -1,0 +1,93 @@
+{
+  "baseline_commit": "513aeb4cf03238cce956bd35e0c9381c2a7cc484",
+  "version": "1.0.42-pre.1",
+  "game_tested": false,
+  "windows_game_visual_tested": false,
+  "multiplayer_tested": false,
+  "passed": true,
+  "tested_source_sha256": {
+    "external_reader/source/watch_focus.h": "a118a6a2dcd974629ccbc23431fd3a6f83d24b7aeb155e90c945698bc11f8183",
+    "external_reader/source/watch_slots.h": "f57ef73ed4441e51876ee3d32b3aa0b63b7bba4a64c8958d0e58a012b5dfd620",
+    "external_reader/source/watch_transition.h": "ee691f922694f9ae1d5e71e00556f05e1d0ce84fd8945ff5e1a1a802b7cde320",
+    "assist/source/watch_scene.h": "cec78b7432a61059dc1dbfbd772805f38d931ad39bfd5f697c9dd7a282ed9548",
+    "assist/source/watch_host.h": "cabae771ca1e09468d1b6718dfa0b9605d103b1c1b4af5d5a730347371c06a5f",
+    "assist/source/watch_windows.h": "d6c5bc3a2b45104d2729e5d66cddc07feda1ebc59ca3626faaeed375114d49c5",
+    "assist/source/watch_current_anchor.h": "f941c912349e925c386680cfc74ad4b09bda60d475bcd723b1639a3737d0e06a"
+  },
+  "scope": "Source-bound deployment/container logic and actual watch Renderer with controlled world publications.",
+  "validation": {
+    "passed": true,
+    "scope": "Source-bound MCV conversion, container-chain and fixed-live-camera regression.",
+    "source_hash_stable": true,
+    "source_sha256": {
+      "external_reader/source/watch_focus.h": "a118a6a2dcd974629ccbc23431fd3a6f83d24b7aeb155e90c945698bc11f8183",
+      "external_reader/source/watch_slots.h": "f57ef73ed4441e51876ee3d32b3aa0b63b7bba4a64c8958d0e58a012b5dfd620",
+      "assist/source/watch_scene.h": "cec78b7432a61059dc1dbfbd772805f38d931ad39bfd5f697c9dd7a282ed9548",
+      "assist/source/watch_host.h": "cabae771ca1e09468d1b6718dfa0b9605d103b1c1b4af5d5a730347371c06a5f",
+      "assist/source/watch_windows.h": "d6c5bc3a2b45104d2729e5d66cddc07feda1ebc59ca3626faaeed375114d49c5",
+      "external_reader/source/watch_transition.h": "ee691f922694f9ae1d5e71e00556f05e1d0ce84fd8945ff5e1a1a802b7cde320",
+      "assist/tests/watch_tracking.cpp": "a6233b3675b0fee0ff6551550f9b6b89abe0045b4b9dc27ad8841a1040ff6e4f",
+      "tools/test_watch_tracking.py": "c59168efdbf826e543d5d71e68adab86d4652a05f67b4f87c13bb8d9edc904fd",
+      "assist/tests/watch_tracking_renderer.cpp": "c94c294cd6c5486ec8ed82fbe8a617d78acb6ba3cfe04ec8cf0dfe6af71fae9a",
+      "assist/tests/watch_world_performance.cpp": "57006a99f52e9e3dde7825d379e01000a4c32ee9dba484a92a8dda98b4440a9f",
+      "assist/source/watch_current_anchor.h": "f941c912349e925c386680cfc74ad4b09bda60d475bcd723b1639a3737d0e06a"
+    },
+    "baseline_commit": "513aeb4cf03238cce956bd35e0c9381c2a7cc484",
+    "baseline_sha256": {
+      "external_reader/source/watch_focus.h": "fb6b0f0c3ab20524edbe3c6362eee96dd1b0acae5ab292086ac48ac7f149aa7a",
+      "external_reader/source/watch_slots.h": "56a2810e7506a5175fc03b9ed4a8b176df67b655839c97cc2547b8d2b7fc3351",
+      "assist/source/watch_scene.h": "00fb8cc5d34c51d6bfb7dae964390c2a9eca8646a964bc5f1f36ef799d15a082",
+      "assist/source/watch_host.h": "b6ea53149ec2450453b211b01ae83b5c8a7859e5ae347b288b3d02b4123e159d",
+      "assist/source/watch_windows.h": "2f36729a303948b410a0ccfe278d0e809f72776828b816b89cd5c30d94f8d554"
+    },
+    "results": [
+      {
+        "name": "watch_tracking",
+        "status": "PASS",
+        "executed": true,
+        "scope": "Production watch headers plus pinned actual old functions; controlled memory, not a running game.",
+        "stdout": "PASS actual old baseline loses the MCV pin; new exact native-cell deploy/undeploy birth follows new UIDs, then movement and original cohort succession.\nPASS 16 rejected births: pre-existing or moved-in (both directions)/ambiguous/wrong type-owner-XYZ/reused source pointer/stale-rewound frame/read failures/observer change/zero UID/cloak => fixed live location; cancel, enemy, death and unknown semantics preserved.\nPASS full infantry/vehicle passenger chains, unload, reciprocal tank bunker, cached >64th garrison+outer carrier, continuous host motion; cycles/depth/malformed membership/read failure/UID reuse rejected.\nPASS watch tracking: 111 active checks; controlled source-bound fixture, no live game.\n"
+      },
+      {
+        "name": "watch_tracking_renderer",
+        "status": "PASS",
+        "executed": true,
+        "scope": "Production watch headers plus pinned actual old functions; controlled memory, not a running game.",
+        "stdout": "fixed first hash=2938673694719636283 camera=605.00,1742.00 pixels=81920 fixed=1 target=0\nfixed publication=201 sourceTick=1001 hash=9823496509511848647 prepared=1 attempted=1 reused=0\nfixed publication=202 sourceTick=1002 hash=2120958059658178670 prepared=1 attempted=1 reused=0\nfixed publication=203 sourceTick=1003 hash=5126945917742173950 prepared=1 attempted=1 reused=0\nfixed publication=204 sourceTick=1004 hash=8387309856731474136 prepared=1 attempted=1 reused=0\nPASS actual fixed-coordinate Renderer: four fresh common-world publications change pixels at an unchanged camera, no dead-object dereference or frozen bitmap; close zero-work and reveal-policy bank separation preserved. No game/desktop visual test.\n"
+      }
+    ],
+    "game_tested": false,
+    "windows_visual_tested": false,
+    "multiplayer_tested": false
+  },
+  "native_missions": {
+    "executable_sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+    "table": "0x816CAC",
+    "names": {
+      "11": {
+        "pointer": "0x816e10",
+        "name": "Area Guard"
+      },
+      "15": {
+        "pointer": "0x816df0",
+        "name": "Hunt"
+      },
+      "16": {
+        "pointer": "0x816de8",
+        "name": "Unload"
+      },
+      "18": {
+        "pointer": "0x816dcc",
+        "name": "Construction"
+      },
+      "19": {
+        "pointer": "0x816dc4",
+        "name": "Selling"
+      }
+    }
+  },
+  "limits": [
+    "Successor identity is a conservative short-frame birth inference, not an engine backlink.",
+    "An unobserved instant MCV conversion retains a live point without binding a guessed new UID; a real owned MCV death can also leave this point until manually closed."
+  ]
+}

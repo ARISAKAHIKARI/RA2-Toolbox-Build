@@ -1,4 +1,6 @@
 #include "../../external_reader/source/local_ui_task.h"
+#include "../../external_reader/source/render_profile.h"
+#include <cstring>
 #include <atomic>
 #include <cassert>
 #include <chrono>
@@ -28,7 +30,7 @@ struct Memory {
  nativefeedback::Object building(){put(factory,0x7E3EBCu);put(factory+0x10,13u);put(factory+0x520,type);put(factory+0x21C,view.house);put(factory+0x6C,500);put(factory+0x74,uint8_t(1));put(factory+0x90,uint8_t(1));put(factory+0x83,uint8_t(1));put(factory+0x214,-1);put(factory+0x3D3,uint8_t(1));const int location[]{7680,6400,0};put(factory+0x9C,location);put(type+0xEF0,0);put(type+0xEB8,0x28);put(0x8192B8,2);put(0x819310,2);return {factory,13,type,view.house,{500,500,80,80},3};}
  void rally(){put(factory+0x218,cell);const int16_t xy[]{30,25};put(cell+0x24,xy);put(cell+0x11B,int8_t(2));put(cells+(25*512+30)*4,cell);const int bounds[]{32,64,0,0,32,64};put(mapbounds::Map+0xF4,bounds);put(mapbounds::Map+0x13C,cells);put(mapbounds::Map+0x140,512*512);}
 };
-struct Request {uint32_t pid=77,match=8;uint64_t generation=1;int width=640,height=600;struct{uint64_t token=3;}context;mainview::View view;};
+struct Request {uint32_t pid=77,match=8;uint64_t generation=1;int width=640,height=600;struct{uint64_t token=3;}context;mainview::View view;presentation::Profile profile;};
 struct Reader {
  static Memory*memory;static std::mutex mutex;static std::condition_variable cv;static bool block,entered;
  bool open(uint32_t){return true;}void close(){}void begin(){}
@@ -37,7 +39,22 @@ struct Reader {
 };
 Memory*Reader::memory=nullptr;std::mutex Reader::mutex;std::condition_variable Reader::cv;bool Reader::block=false,Reader::entered=false;
 template<class Predicate>void until(Predicate ready){auto end=std::chrono::steady_clock::now()+std::chrono::seconds(3);while(!ready()){assert(std::chrono::steady_clock::now()<end);std::this_thread::sleep_for(std::chrono::milliseconds(1));}}
-int main(){
+static void profilePublication(){
+ Memory memory;Reader::memory=&memory;Reader::block=false;std::atomic<uint32_t>now{1000};
+ localui::Task<Request,Reader>task([&]{return now.load();});Request request;request.view=memory.view;
+ task.submit(request,{});until([&]{return bool(task.visible(request,now));});const auto first=task.visible(request,now);assert(first);
+ auto changed=request;changed.profile.scale=2;assert(!task.visible(changed,now));
+ changed=request;changed.profile.gpu=true;assert(!task.visible(changed,now));
+ changed=request;changed.profile.material=true;assert(!task.visible(changed,now));assert(task.visible(request,now)==first);
+ // Same world, size and generation: only the completed immutable profile may
+ // make the new result visible. Its arrival never changes the retained front.
+ task.submit(changed,{});until([&]{return bool(task.visible(changed,now));});const auto second=task.visible(changed,now);
+ assert(second&&second!=first&&second->request.profile==changed.profile&&first->request.profile==request.profile);
+ assert(!task.visible(request,now));task.invalidate();assert(!task.get());task.shutdown();
+ std::cout<<"PASS actual local UI Task: scale/GPU/material changes reject stale profile, unchanged profile retains prior front, matching fresh profile publishes without generation change; no game or Windows visual claim\n";
+}
+int main(int argc,char**argv){
+ if(argc==2&&std::strcmp(argv[1],"--profile-only")==0){profilePublication();return 0;}
  Memory m;auto read=m.reader();localui::BitmapFont font;assert(font.begin(read));int width=0;assert(font.measure(read,u"A 主要",width)&&width==19);auto*g=font.glyph(read,'A');assert(g&&g->width==3&&g->ink==std::vector<uint8_t>({1,0,1,0,1,0,1,1,1}));
  auto decoded=font.decodes();assert(font.begin(read)&&font.measure(read,u"A 主要",width)&&font.decodes()==decoded&&m.lookupReads==1);auto*missing=font.glyph(read,0x9999);assert(missing&&missing->missing&&missing->ink[4]==1);auto*space=font.glyph(read,' ');assert(space&&!space->missing&&std::count(space->ink.begin(),space->ink.end(),1)==0);
  localui::Plan textPlan;localui::Painter paint(textPlan,640,600,640,600);assert(paint.text(font,read,u"A ",40,12,0xFFFF0000));nativefeedback::Canvas image;nativefeedback::Rect bounds;assert(nativefeedback::paintInteractions(textPlan.layers[0],{},image,bounds));assert(bounds.x==40&&bounds.y==12&&bounds.w==4&&bounds.h==4);assert(image.pixels[0]==0xFFFF0000&&image.pixels[1]==0&&image.pixels[15]==0xFF000000);

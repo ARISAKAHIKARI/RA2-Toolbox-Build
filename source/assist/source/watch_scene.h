@@ -57,10 +57,16 @@ public:
   sourceFrame_=bank->frame;
   motion_.observe(bank,clock());auto data=motion_.sampleLatest(clock(),profile_.motion,profile_.detail!=0);if(!data.terrain)return false;
   std::array<external::watch::Anchor,3> centers;
-  for(int i=0;i<3;++i){auto target=tracks[i]?tracks[i].target:i==0?automatic:external::watch::Target{};if(!target)continue;
-   auto prior=views[i].frame.center;if(tracks[i]&&tracks[i].located)prior={tracks[i].spatial,tracks[i].x,tracks[i].y,tracks[i].z,true,tracks[i].spatialKind,tracks[i].discoveryFrame,tracks[i].searched,tracks[i].discoveryCursor};
+  for(int i=0;i<3;++i){auto target=tracks[i]?tracks[i].target:i==0?automatic:external::watch::Target{};if(!target&&!tracks[i].fixed)continue;
+   auto prior=views[i].frame.center;if(tracks[i]&&tracks[i].located)prior={tracks[i].spatial,tracks[i].x,tracks[i].y,tracks[i].z,true,tracks[i].spatialKind,tracks[i].discoveryFrame,tracks[i].searched,tracks[i].discoveryCursor,tracks[i].garrison};
    bool readable=true;auto checked=[&](uint32_t p,void*out,size_t n){const bool ok=fresh(p,out,n);readable&=ok;return ok;};
-   centers[i]=external::watch::anchor(checked,target,prior);if(!readable)centers[i].located=false;
+   centers[i]=tracks[i].fixed?prior:external::watch::anchor(checked,target,prior);
+   if((!readable||!centers[i].located)&&(tracks[i].transition.armed||tracks[i].transition.fallbackEligible)&&prior.located){
+    // A freed/unreadable source is Unknown, not a death/succession permit.
+    // Keep that identity pending while drawing the CURRENT world at its last
+    // verified point; currentAnchors must not dereference the missing source.
+    centers[i]=prior;centers[i].target={};
+   }else if(!readable)centers[i].located=false;
   }
   if(!currentAnchors(data,centers,fresh,profile_.detail!=0))return false;
   sourceTick=bank->tick;data.tick=now;assets_.identity(process,epoch);
@@ -70,13 +76,13 @@ public:
   timings.sample=clock()-started;timings.sampled=true;
   gpuAttempted=gpuUsed=false;std::shared_ptr<const external::worldscene::Snapshot> world;std::unique_ptr<external::worldscene::InstanceOrder> ordered;bool prepared=false;
   for(int i=0;i<3;++i){auto&v=views[i];auto target=tracks[i]?tracks[i].target:i==0?automatic:external::watch::Target{};
-   if(!(target==v.frame.focus))v={};v.shown=bool(target);if(!target)continue;
+   if(!(target==v.frame.focus))v={};v.shown=bool(target)||bool(tracks[i]);if(!v.shown)continue;
    auto center=centers[i];if(!center.located)continue;
    auto next=v.frame;
    next.focus=target;next.center=center;next.bounds=data.terrain->geo.bounds;next.zScale=zscale;next.reveal=revealMap;
    double cx=(int64_t(center.x)-center.y)*30./256,cy=(int64_t(center.x)+center.y)*15./256-external::screenHeight(center.z,zscale)+external::camera::anchorY(center.kind);
    if(!next.bounds.clampCamera(cx,cy,Width,Height))continue;next.cameraX=cx;next.cameraY=cy;next.cameraReady=true;
-   next.passengers.clear();next.dangerous=false;external::passengers::contents(read_,target.pointer,next.passengers,next.dangerous);
+   next.passengers.clear();next.dangerous=false;if(target)external::passengers::contents(read_,target.pointer,next.passengers,next.dangerous);
    // Prepare the complete world once for all three cameras. Each camera
    // records the same pass sequence at its own current position; following a
    // fast target never translates pixels or invalidates native terrain pages.

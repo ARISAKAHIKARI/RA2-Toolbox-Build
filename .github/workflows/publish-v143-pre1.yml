@@ -1,0 +1,201 @@
+name: Build and publish RA2 Toolbox 1.0.43-pre.1
+on:
+  push:
+    branches: [codex/release-v1.0.43-pre1-20261106]
+    paths: [source/**, packages/v1.0.43-pre.1/**, .github/workflows/publish-v143-pre1.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v143-pre1
+  cancel-in-progress: false
+jobs:
+  renderer-correctness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - name: Check local damage, full framebuffer planes and shared workers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics
+          for name in single_player_fps building_animations rank_sprite_scaling object_canvas_damage native_local_ui; do
+            g++ -std=c++17 -O2 -UNDEBUG -pthread "source/assist/tests/$name.cpp" source/third_party/xbrz/xbrz.cpp -ldl -o "/tmp/$name"
+            fixture_args=()
+            if [ "$name" = native_local_ui ]; then fixture_args=(--profile-only); fi
+            "/tmp/$name" "${fixture_args[@]}" > "diagnostics/$name.log"
+            cat "diagnostics/$name.log"
+          done
+          g++ -std=c++17 -O2 -pthread source/assist/tests/parallel_rows_shared.cpp -o /tmp/shared-rows
+          /tmp/shared-rows > diagnostics/shared-rows.log
+          cat diagnostics/shared-rows.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-1.0.43-pre.1-linux-checks
+          retention-days: 14
+          path: diagnostics
+  windows-x64:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            source
+            .github
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force artifacts/console,diagnostics | Out-Null
+      - name: Validate single-player FPS callback and shared hardware service on Windows x86
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          for name in single_player_fps_windows tech_ui_breakpoint_windows; do
+            fixture_flags=()
+            if [ "$name" = single_player_fps_windows ]; then
+              fixture_flags=(-Wl,--image-base,0x10000000)
+            fi
+            "$ZIG" c++ -target x86-windows-gnu -fms-extensions -fasm-blocks -std=c++17 -O2 -UNDEBUG "${fixture_flags[@]}" "source/assist/tests/$name.cpp" -o "diagnostics/$name.exe" -lkernel32 -luser32
+            "diagnostics/$name.exe" > "diagnostics/$name.log"
+            cat "diagnostics/$name.log"
+          done
+      - name: Compile modern x64 host and paired x86 Runtime and broker
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/artifacts/console"
+          bash source/build-zig-x64.sh > diagnostics/console-build.log 2>&1 || { tail -100 diagnostics/console-build.log; exit 1; }
+          tail -50 diagnostics/console-build.log
+          python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+      - name: Validate local damage and retained fronts on Windows
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 source/assist/tests/object_canvas_damage.cpp source/third_party/xbrz/xbrz.cpp -o diagnostics/local-damage.exe -lkernel32 -luser32 -lgdi32
+          diagnostics/local-damage.exe > diagnostics/local-damage.log
+          cat diagnostics/local-damage.log
+          "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 source/assist/tests/parallel_rows_shared.cpp -o diagnostics/shared-rows.exe -lkernel32
+          diagnostics/shared-rows.exe > diagnostics/shared-rows.log
+          cat diagnostics/shared-rows.log
+      - name: Check terminal building slots and ordinary SHP rank output on Windows
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          for name in building_animations radar_output_scene rank_sprite_scaling native_local_ui; do
+            "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 "source/assist/tests/$name.cpp" source/third_party/xbrz/xbrz.cpp -o "diagnostics/$name.exe" -lkernel32 -luser32 -lgdi32 -lpsapi -lshell32 -lole32
+            fixture_args=()
+            if [ "$name" = native_local_ui ]; then fixture_args=(--profile-only); fi
+            "diagnostics/$name.exe" "${fixture_args[@]}" > "diagnostics/$name.log"
+            cat "diagnostics/$name.log"
+          done
+      - name: Check secondary-camera transitions against production and frozen baseline code
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          python source/tools/test_watch_tracking.py --zig "$env:ZIG_EXE" --baseline-source source/assist/tests/fixtures/watch_tracking_baseline --out diagnostics/watch-tracking
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+      - name: Record the same-commit paired build and completed controlled checks
+        shell: pwsh
+        run: |
+          $files=@()
+          foreach($name in 'RA2Toolbox.exe','GameRuntime.dll','GameRuntimeHost32.exe','WebView2Loader.dll'){
+            $path="artifacts/console/$name"
+            $files+=@{name=$name;bytes=(Get-Item $path).Length;sha256=(Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          @{version='1.0.43-pre.1';file_version='1.0.43.1';commit=$env:GITHUB_SHA;branch=$env:GITHUB_REF_NAME;host='x64';runtime='x86';broker='x86';console='WebView2';webview2_sdk='1.0.4314.35';assist_protocol=97;assist_shared_bytes=23141856;controlled_windows_checks=$true;game_tested=$false;multiplayer_tested=$false;files=$files} | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 artifacts/console/CONSOLE_COMPILE.json
+      - name: Upload the verified paired binaries and required loader notices
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.43-pre.1-x64-paired
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/console/RA2Toolbox.exe
+            artifacts/console/GameRuntime.dll
+            artifacts/console/GameRuntimeHost32.exe
+            artifacts/console/WebView2Loader.dll
+            artifacts/console/licenses/WebView2/LICENSE.txt
+            artifacts/console/licenses/WebView2/NOTICE.txt
+            artifacts/console/BUILD_SOURCE_MANIFEST.json
+            artifacts/console/BUILD_TARGET.json
+            artifacts/console/WINDOWS_BUILD_ARTIFACTS.json
+            artifacts/console/CONSOLE_COMPILE.json
+      - name: Preserve compiler and controlled-regression diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.43-pre.1-windows-checks
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            diagnostics/**/*.log
+            diagnostics/**/*.json
+  publish:
+    needs: [renderer-correctness, windows-x64]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            source
+            packages/v1.0.43-pre.1
+            payload/v0.6.2-buildfix4-full
+            release/v0.6.2-buildfix4
+            LICENSE-GPL
+            THIRD_PARTY_NOTICES.md
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.43-pre.1-x64-paired
+          path: paired-binaries
+      - name: Assemble and verify the Full and Update packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          python packages/v1.0.43-pre.1/package_release.py --binaries paired-binaries --out dist --commit "$GITHUB_SHA"
+          cd dist
+          sha256sum -c SHA256SUMS.txt
+      - name: Upload and verify a draft, then publish the prerelease while retaining 1.0.42 latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python packages/v1.0.43-pre.1/publish_release.py
+      - name: Preserve packages, release identity and digests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.43-pre.1-publication
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            dist
+            publication/*.json
+

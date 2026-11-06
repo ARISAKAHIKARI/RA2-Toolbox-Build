@@ -1,0 +1,43 @@
+{
+  "baseline_commit": "513aeb4cf03238cce956bd35e0c9381c2a7cc484",
+  "baseline_release": "v1.0.41",
+  "repository": "ARISAKAHIKARI/RA2-Toolbox-Build",
+  "purpose": "Exact frozen source negative controls; original bytes unchanged, not production headers.",
+  "files": [
+    {
+      "path": "external_reader/source/watch_focus.h",
+      "origin_repo_path": "source/external_reader/source/watch_focus.h",
+      "size": 6089,
+      "git_blob_sha": "c21d4e898c1ea67c85424de7cb3b14596bca9b46",
+      "sha256": "fb6b0f0c3ab20524edbe3c6362eee96dd1b0acae5ab292086ac48ac7f149aa7a"
+    },
+    {
+      "path": "external_reader/source/watch_slots.h",
+      "origin_repo_path": "source/external_reader/source/watch_slots.h",
+      "size": 5244,
+      "git_blob_sha": "6180d11e1d028aa249b2f8c29bb10dbd742f0239",
+      "sha256": "56a2810e7506a5175fc03b9ed4a8b176df67b655839c97cc2547b8d2b7fc3351"
+    },
+    {
+      "path": "assist/source/watch_scene.h",
+      "origin_repo_path": "source/assist/source/watch_scene.h",
+      "size": 9649,
+      "git_blob_sha": "919b629967061e2052c027708873feb85cde635d",
+      "sha256": "00fb8cc5d34c51d6bfb7dae964390c2a9eca8646a964bc5f1f36ef799d15a082"
+    },
+    {
+      "path": "assist/source/watch_host.h",
+      "origin_repo_path": "source/assist/source/watch_host.h",
+      "size": 11193,
+      "git_blob_sha": "5ec35718b9776585a0c78163ee2bef4b7ddf8ce4",
+      "sha256": "b6ea53149ec2450453b211b01ae83b5c8a7859e5ae347b288b3d02b4123e159d"
+    },
+    {
+      "path": "assist/source/watch_windows.h",
+      "origin_repo_path": "source/assist/source/watch_windows.h",
+      "size": 16762,
+      "git_blob_sha": "48666be390c6a16312d2536bb3c6587c978fc96f",
+      "sha256": "2f36729a303948b410a0ccfe278d0e809f72776828b816b89cd5c30d94f8d554"
+    }
+  ]
+}

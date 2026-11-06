@@ -41,7 +41,7 @@ static asyncwork::Latest<Request,Result> worker([](const Request&r)->std::shared
  // while assets decode, so validate the completed batch against uncached
  // bounds before publishing. Dropping the batch preserves the UI's slots.
  auto bounds=external::mapbounds::sample([](uint32_t p,void*out,size_t n){return renderReader.readFresh(p,out,n);});
- for(const auto&v:result->views)if(v.shown&&v.frame.focus&&(!bounds.valid()||v.frame.bounds!=bounds))return {};
+ for(const auto&v:result->views)if(v.shown&&(!bounds.valid()||v.frame.bounds!=bounds))return {};
  return result;
 });
 static void arrange(){bool visible[3]{};external::watch::Box boxes[3]{};shown=false;for(int i=0;i<3;++i)shown|=visible[i]=views[i].shown;external::watch::arrange(visible,snap.width,snap.height,boxes);for(int i=0;i<3;++i)views[i].box=boxes[i];}
