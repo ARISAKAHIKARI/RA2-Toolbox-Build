@@ -13,7 +13,7 @@ enum class Need : unsigned {
  Watch, WatchSecondary, Minimap, MinimapPrimary, MinimapSecondary, CustomMinimap,
  ShiftClick, AppendClicks, Ore, CustomMiners, CustomRefineries, Production,
  ManualRate, Capacity, Advanced, C4, Dodge, Construction, BuildAnywhere,
- Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, NativeControl, NetworkControlAllowed, EventPlacement, ToolTechnologyOrders, ExactTechnology, HardwareBudget, TypeListFirst
+ Aircraft, AircraftQuotas, QuotaTarget, QuotaOverride, Repair, Quality, Reconstruction, Unavailable, ManualReveal, NativeControl, NetworkControlAllowed, EventPlacement, ToolTechnologyOrders, ExactTechnology, HardwareBudget, MinerAutomation, TypeListFirst
 };
 constexpr Need typeListNeed(int feature){return Need(unsigned(Need::TypeListFirst)+unsigned(feature));}
 static_assert(unsigned(Need::TypeListFirst)+featuretypes::Count<=64,"dependency state covers every type filter");
@@ -53,6 +53,7 @@ inline const wchar_t* reason(Need need){
  case Need::ShiftClick:return L"需先开启 Shift 五连点";
  case Need::AppendClicks:return L"当前模式不追加点击";
  case Need::Ore:return L"需先开启矿车自动卸矿";
+ case Need::MinerAutomation:return L"需先开启矿车自动卸矿或矿车防蛛";
  case Need::CustomMiners:return L"需先指定矿车类型";
  case Need::CustomRefineries:return L"需先指定矿场类型";
  case Need::Production:return L"需先开启生产队列提醒";
@@ -105,8 +106,9 @@ inline Decision decision(int id,const State&s){
  case 9166:case 9167:case 9168:return require(s,{Need::MinimapSecondary});
  case 796:return require(s,{Need::ShiftClick});
  case 797:return require(s,{Need::ShiftClick,Need::AppendClicks});
- case 781:case 782:return require(s,{Need::Ore});
- case 783:return require(s,{Need::Ore,Need::CustomMiners});
+ case 781:return require(s,{Need::MinerAutomation});
+ case 782:return require(s,{Need::Ore});
+ case 783:return require(s,{Need::MinerAutomation,Need::CustomMiners});
  case 784:return require(s,{Need::Ore,Need::CustomRefineries});
  case 9070:case 9071:case 9072:case 9073:case 9074:case 9075:return require(s,{Need::Production});
  case 303:return require(s,{Need::Capacity});

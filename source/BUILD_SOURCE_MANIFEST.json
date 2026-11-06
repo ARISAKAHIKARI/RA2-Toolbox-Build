@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.43-pre.1",
-  "version": "1.0.43-pre.1",
+  "name": "RA2 Toolbox 1.0.43-pre.2",
+  "version": "1.0.43-pre.2",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full package includes hash-pinned offline assets/profiles/preprocessing runtime/engine; Update preserves an existing complete installation.",
   "resources_legacy_reuse": true,
-  "build_protocol": 97,
-  "validation": "Release gates cover Linux FPS/animation/rank/local-damage/shared-worker/local-UI regressions, Windows x86 FPS callback and shared hardware service, Windows retained-output/rank/local-UI regressions, source-bound secondary-camera tests, paired PE/version/ABI/dependency checks, and downloaded package SHA-256 verification. These controlled checks do not certify real-game visual/FPS, physical GPU performance or multiplayer behavior.",
+  "build_protocol": 98,
+  "validation": "Validation scope: focused miner-defense boundary, work restoration, manual-priority and settings regressions, plus same-commit mixed-architecture compilation and PE/version/ABI checks. Actual completed outcomes are recorded separately in the release manifest. Controlled checks do not certify real-game behavior, Windows visuals, physical GPU performance or multiplayer compatibility.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
@@ -39,7 +39,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.43-pre.1 integrates development source 20cfcb904e4c1bbf56b05202b903d72f5097a00f with secondary-camera corrections from published 1.0.42-pre.1 source e00b842e81676b41e85a2db4e8ad67cf60ca424b, preserving ordinary SHP rank composition. Publish as prerelease while retaining v1.0.42 as stable latest.",
+  "release_status": "1.0.43-pre.2 extends released source 91d295bb783fd23b349a973b8d5a02c0290676cd with independent miner anti-spider automation and work resumption; retains single-player FPS and rendering fixes from pre.1. Prerelease; v1.0.42 remains stable latest.",
   "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; collapsible per-feature groups, runtime error visibility and timestamped immediate actions",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -683,6 +683,25 @@
     "game_tested": false,
     "multiplayer_tested": false,
     "note": "research/2026-11-05-animation-rank-single-player-fps.md"
+  },
+  "miner_spider_defense": {
+    "base_commit": "91d295bb783fd23b349a973b8d5a02c0290676cd",
+    "assist_protocol": 98,
+    "shared_bytes": 23141880,
+    "shared_alignment": 8,
+    "abi_layout_evidence": "Zig 0.13.0 x86-windows-gnu and x86_64-windows-gnu compile-time layout agree; five appended uint32 fields plus four bytes of tail padding.",
+    "enabled_by_default": false,
+    "independent_of_auto_ore_return": true,
+    "extra_range_cells_default": 1,
+    "extra_range_cells_min": 0,
+    "extra_range_cells_max": 30,
+    "entry_distance": "weapon range + N cells",
+    "leave_distance": "weapon range + N + 1 cells",
+    "orders": "Existing native mission event gateway; manual orders have priority.",
+    "resume": "Previous mining/unloading/waiting intent; retain toolbox-managed queue intent, without promising original vanilla FIFO rank.",
+    "ui": "Automatic / miner automatic spider targeting",
+    "game_tested": false,
+    "multiplayer_tested": false
   }
 }
 

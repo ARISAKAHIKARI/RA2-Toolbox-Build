@@ -131,6 +131,11 @@ oreStatus=item(L"STATIC",L"等待对局",20,605,0,0,44);next(44);
 for(int i=0;i<2;++i){bool miner=i==0;toggle(781+i,miner?L"指定矿车类型":L"指定矿场类型",miner?oreTypes.customMiners:oreTypes.customRefineries);next();auto h=edit(783+i,miner?oreMiners:oreRefineries,20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);next();}
 note(L"类型 ID 用逗号分隔；未启用清单时自动识别，启用后仅使用所列类型。",44);
 activeFoldGroup=0;
+toggle(9496,L"矿车自动点杀蜘蛛",extra.minerDefenseEnabled);next();
+note(L"只接管正在工作的己方武装矿车，自动识别敌方地面寄生单位。矿车类型沿用上方展开设置的清单，不必开启自动卸矿。玩家手动命令优先。",60);
+number(9497,L"防蛛额外索敌距离 / 格",extra.minerDefenseRangeCells,L"0–30 · 默认 1");
+note(L"N 为额外距离：蜘蛛进入武器射程＋N 格时点杀；目标死亡或离开射程＋N＋1 格后恢复采矿、卸矿或等待卸矿。",60);
+item(L"STATIC",L"矿车防蛛：关闭",20,605,9498,0,44);next(44);
 label(L"自动装车分配方式",20,260);extraControls[LoadLogic]=combo(700);choices(extraControls[LoadLogic],{L"就近优先",L"兵种均衡"},extra.loadMode);next();
 extraControls[LoadRadius]=number(701,L"自动装车范围 / 格",extra.loadRadius,L"1–512");
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();

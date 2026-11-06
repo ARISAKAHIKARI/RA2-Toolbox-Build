@@ -1899,6 +1899,12 @@ static void updateModeStatus(DWORD now){
   text+=!extra.singlePlayerFPS?L"原版速度":s==-6?L"联机不生效":s==-1?L"原生限速入口不兼容":s==-2?L"没有空闲硬件断点":s<0?L"限速配置失败":s==1?L"目标 "+std::to_wstring(extra.singlePlayerFPS)+L" FPS":L"等待单机游戏就绪";
   SetWindowTextW(GetDlgItem(ui,9495),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9495),s<0&&s!=-6);
  }
+ {const bool live=shared&&!phase&&commandFresh(now);const uint32_t active=live?shared->minerDefenseActive:0;
+  std::wstring text=L"矿车防蛛：";
+  text+=!extra.minerDefenseEnabled?(active?L"正在恢复工作":L"关闭"):!live?L"等待对局与连接就绪":active?L"正在处理 "+std::to_wstring(active)+L" 辆矿车":L"监视中";
+  if(live&&(extra.minerDefenseEnabled||active))text+=L" · 已下达点杀 "+std::to_wstring(shared->minerDefenseAttacks)+L" 次 / 已下达恢复 "+std::to_wstring(shared->minerDefenseResumes)+L" 次";
+  SetWindowTextW(GetDlgItem(ui,9498),text.c_str());
+ }
  updatePlacementEventUI();
  std::wstring riskStatus=extra.placementImplementation==buildingmodes::PlacementEvent?
   std::wstring(L"原生事件放置：")+(!buildAnywhereMode?L"关闭":phase?L"等待游戏就绪":snap.placementStatus==2?L"已就绪；自动匹配当前建筑／防御栏，按配置键预览，左键放置":snap.placementStatus<0?L"旧补丁未能还原或版本不兼容，未启用":L"等待旧补丁还原并启用"):
@@ -2153,7 +2159,7 @@ static void tick(){
  }
  if(serviceReadOnlyDisplays(now))return;
  sampleExternal(now);uint32_t configured=flags();
- bool needsBridge=runtimeFeatureDemand(configured,extra,techMode,buildTimeTooltipEnabled)||(externalData&&externalData->status==1)||commandQueue.size||hasSelection||externalSampler.flashCount;
+ bool needsBridge=runtimeFeatureDemand(configured,extra,techMode,buildTimeTooltipEnabled)||(shared&&shared->minerDefenseActive)||(externalData&&externalData->status==1)||commandQueue.size||hasSelection||externalSampler.flashCount;
  if(needsBridge&&!shared)ensureBridge();
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){
@@ -2162,7 +2168,7 @@ static void tick(){
   // granted only after Runtime publishes a stable, compatible viewport.
   shared->viewportHostCapabilities=nativeviewhost::capabilityRequest(shared);
   gameinput::setFastTactical(hook,shared->dodgeEnabled||shared->dodgeActive||shared->scrollRefreshHz);
-  DWORD wakePeriod=shared->foreground?16:(shared->dodgeEnabled||shared->dodgeActive||shared->missileEnabled||shared->missileHeld||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
+  DWORD wakePeriod=shared->foreground?16:(shared->minerDefenseEnabled||shared->minerDefenseActive||shared->dodgeEnabled||shared->dodgeActive||shared->missileEnabled||shared->missileHeld||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   static renderpresentation::StatusCadence computeStatusCadence;

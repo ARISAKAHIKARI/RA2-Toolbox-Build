@@ -216,10 +216,17 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 96, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23141840,
+    baseline = {'assist::Version': 98, 'runtime::Version': 4, 'gameentry::Version': 3,
+                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23141880,
                 'assist::Shared.aircraftAllocationPolicy': 23113640,
                 'assist::Shared.nativeCombatQueries': 23113644,
+                'assist::Shared.singlePlayerFPS': 23141840,
+                'assist::Shared.singlePlayerFPSHits': 23141852,
+                'assist::Shared.minerDefenseEnabled': 23141856,
+                'assist::Shared.minerDefenseRangeCells': 23141860,
+                'assist::Shared.minerDefenseActive': 23141864,
+                'assist::Shared.minerDefenseAttacks': 23141868,
+                'assist::Shared.minerDefenseResumes': 23141872,
                 'sizeof(runtime::Control)': 176, 'sizeof(gameentry::Request)': 108,
                 'sizeof(runtimebroker::Packet)': 148,
                 'neuralframe::Version': 1, 'sizeof(neuralframe::Header)': 256}
@@ -240,9 +247,10 @@ def main():
         raise SystemExit('FAIL: Windows x86/x64 shared-memory layouts differ')
     # Protocol94 enlarges fixed task, cooperation and reservation capacities.
     # Protocol95 appends the experimental permanent-grant switch and status.
+    # Protocol97 adds single-player FPS; Protocol98 adds miner-defense control/status.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol96 Shared23141840, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol98 Shared23141880, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 

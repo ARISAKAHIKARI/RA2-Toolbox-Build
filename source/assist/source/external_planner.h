@@ -21,7 +21,7 @@ class Planner {
  };
  struct OreJob {
   uint32_t id,refinery,token,waitCell=0;int stage=ore::Waiting,sent=-100000,x=0,y=0,progressFrame=0,repaths=0,dockAttempts=0;
-  double initialCargo=0;bool dockingObserved=false,bypassUsed=false,priority=false;int readySince=-1;
+  double initialCargo=0;bool dockingObserved=false,bypassUsed=false,priority=false,suspended=false,resumePending=false;int readySince=-1;
  };
  struct OreTurn {
   uint32_t winner=0,displaced=0,winnerToken=0,displacedToken=0;int started=0,sent=-100000,attempts=0;
@@ -114,8 +114,11 @@ public:
    task.pursuit=order.pursuit;task.moveCell=order.destination;
    if(order.mission==2){task.progress.begin(task.observedX,task.observedY,frame);task.moveFailures=0;}
   }else for(size_t i=0;i<ore_.size();++i)if(ore_[i].id==order.unit&&ore_[i].token==order.token){
+   // An acknowledgement computed before defense began cannot advance its
+   // frozen queue entry. Runtime admission also rejects stale ore commands.
+   if(ore_[i].suspended)break;
    if(order.purpose==2){ore_.erase(ore_.begin()+i);break;}
-   auto&job=ore_[i];job.sent=frame;
+   auto&job=ore_[i];job.sent=frame;job.resumePending=false;
    if(order.purpose==OreYield){auto t=oreTurns_.find(job.refinery);if(t!=oreTurns_.end()&&t->second.displaced==job.id)t->second.releaseAccepted=true;job.stage=ore::Approaching;job.progressFrame=frame;break;}
    if(order.mission==7){if(job.stage!=ore::Docking)job.progressFrame=frame;job.stage=ore::Docking;job.waitCell=0;++job.dockAttempts;++issued;}else job.stage=ore::Approaching;break;
   }
@@ -178,7 +181,7 @@ public:
   magneticReservations_.clear();
   if(useCombat){
    for(int i=0;i<world.intentCount;++i){const auto&intent=world.intents[i];const Actor* a=actor(intent.id);if(!intent.id||intent.mode>MagnetronMove||intent.cell%1000<=0||intent.cell%1000>=512||intent.cell/1000<=0||intent.cell/1000>=512)continue;bool mag=intent.mode==MagnetronMove;
-    if(!(flags&(mag?MagnetronInput:AdvancedInput))||(mag&&!(magnetronModes&(intent.global?2u:1u)))||!a||!positionValid(*a)||!(a->flags&Own)||a->manualVersion!=intent.token||(a->flags&(Disabled|Transported|Limbo|OffMap|Manipulated))||(mag&&!magnetron(*a)))continue;
+    if(!(flags&(mag?MagnetronInput:AdvancedInput))||(mag&&!(magnetronModes&(intent.global?2u:1u)))||!a||!positionValid(*a)||!(a->flags&Own)||a->manualVersion!=intent.token||(a->flags&(Disabled|Transported|Limbo|OffMap|Manipulated|HarvesterDefending))||(mag&&!magnetron(*a)))continue;
     active.insert(intent.id);auto&task=advanced_[intent.id];
     if(task.token!=intent.token||task.cell!=intent.cell||task.mode!=intent.mode){task={};task.token=intent.token;task.cell=intent.cell;task.mode=intent.mode;task.progress.begin(a->x,a->y,world.frame);}
     if(intent.global)task.progress.hold=true;
@@ -274,12 +277,21 @@ public:
   if(!useOre)return combat;
   for(auto i=ore_.begin();i!=ore_.end();){const Actor*a=actor(i->id),*refinery=actor(i->refinery);
    // A disappearing/invalid miner is NOT evidence that it unloaded.
-   double cargo=a?load(*a):-1;
-   if(!truck(a)||cargo<=0||(a->flags&OrePaused)||a->manualVersion!=i->token||active.count(a->id)){
+   double cargo=a?load(*a):-1;bool defending=a&&(a->flags&HarvesterDefending);
+   if(!truck(a)||cargo<=0||a->manualVersion!=i->token||(!defending&&((a->flags&OrePaused)||active.count(a->id)))){
     if(a&&cargo<=0){auto status=effects::cargo(i->initialCargo,cargo,i->dockingObserved||(a->flags&Unloading));
      if(status==effects::Cargo::Delivered)++oreDelivered;
      else ++oreUnverified;}
     i=ore_.erase(i);continue;
+   }
+   // Keep this exact vector entry, refinery and waiting-cell reservation.
+   // Generated Attack/Move missions and elapsed defense time must not erase,
+   // reorder, time out or reacquire a miner under the same manual token.
+   if(defending){i->suspended=true;i->readySince=-1;++i;continue;}
+   if(i->suspended){
+    i->suspended=false;i->resumePending=true;i->stage=ore::Waiting;
+    i->x=a->x;i->y=a->y;i->progressFrame=world.frame;i->sent=-100000;
+    i->repaths=i->dockAttempts=0;i->readySince=-1;
    }
    if(a->flags&Unloading){i->dockingObserved=true;i->stage=ore::Docking;i->waitCell=0;}
    if(!refineryValid(refinery)||!compatible(*a,*refinery)){
@@ -289,13 +301,13 @@ public:
   }
   if(!(flags&AutoOreReturn)){
    oreTurns_.clear();
-   for(auto i=ore_.begin();i!=ore_.end();){if(i->stage==ore::Docking||i->stage==ore::Yielding||!i->refinery){i=ore_.erase(i);continue;}
+   for(auto i=ore_.begin();i!=ore_.end();){if(i->suspended){++queued;++i;continue;}if(i->stage==ore::Docking||i->stage==ore::Yielding||!i->refinery){i=ore_.erase(i);continue;}
     if(add(out,{i->id,i->token,0,i->refinery,7,0x34,2,i->refinery}))++i;else break;
    }return merge(combat,out);
   }
   oreIDs_.clear();for(const auto&job:ore_)oreIDs_.insert(job.id);
   std::vector<const Actor*> newTrucks;
-  for(const auto*a:trucks_)if(!(a->flags&OrePaused)&&!active.count(a->id)&&!oreIDs_.count(a->id)&&(returningRefinery(*a)||(load(*a)>0&&a->mission==12)||(full(*a)&&ore::automaticMission(a->mission))))newTrucks.push_back(a);
+  for(const auto*a:trucks_)if(!(a->flags&(OrePaused|HarvesterDefending))&&!active.count(a->id)&&!oreIDs_.count(a->id)&&(returningRefinery(*a)||(load(*a)>0&&a->mission==12)||(full(*a)&&ore::automaticMission(a->mission))))newTrucks.push_back(a);
   std::sort(newTrucks.begin(),newTrucks.end(),[](auto*a,auto*b){return a->id<b->id;});
   for(const auto*a:newTrucks){if(ore_.size()>=ore::MaxJobs)break;const Actor* refinery=returningRefinery(*a);if(!refinery)refinery=nearest(*a);if(!refinery)continue;
    OreJob job{a->id,refinery->id,a->manualVersion};job.x=a->x;job.y=a->y;job.progressFrame=world.frame;job.initialCargo=load(*a);job.dockingObserved=(a->flags&Unloading)!=0;
@@ -304,7 +316,7 @@ public:
   // A stalled native Enter must not reserve this dock forever. Yield only
   // our reservation; retain the game's existing task and never pull a truck
   // out of an observed radio handshake or active unloading.
-  for(auto&job:ore_){const Actor*a=actor(job.id),*r=actor(job.refinery);if(!a||!r)continue;
+  for(auto&job:ore_){const Actor*a=actor(job.id),*r=actor(job.refinery);if(job.suspended||!a||!r)continue;
    bool moved=std::abs(int64_t(a->x)-job.x)+std::abs(int64_t(a->y)-job.y)>=32;
    if(moved){job.x=a->x;job.y=a->y;job.progressFrame=world.frame;if(job.stage==ore::Yielding)job.stage=ore::Docking;}
    bool linked=false;for(uint32_t id:r->radioIDs)if(id==job.id)linked=true;
@@ -312,18 +324,19 @@ public:
    else if(job.stage==ore::Docking&&world.frame-job.sent>=ore::DockStallFrames&&world.frame-job.progressFrame>=ore::DockStallFrames){job.stage=ore::Yielding;job.waitCell=0;}
   }
   // Arrival is physical, never inferred from an accepted OutList event.
-  for(auto&job:ore_){const Actor*a=actor(job.id),*r=actor(job.refinery);
+  for(auto&job:ore_){if(job.suspended)continue;const Actor*a=actor(job.id),*r=actor(job.refinery);
    if(a&&r&&dockDistance(*a,*r)<=ore::NearDockCells){if(job.readySince<0)job.readySince=world.frame;}else job.readySince=-1;
   }
   // End a turn on completion, cancellation, refinery change or bounded failure.
   // A linked/unloading unit is still protected by native occupancy afterwards.
   for(auto it=oreTurns_.begin();it!=oreTurns_.end();){auto&t=it->second;auto*w=oreJob(t.winner),*d=oreJob(t.displaced);const Actor*a=actor(t.winner),*b=actor(t.displaced),*r=actor(it->first);
    bool invalid=!w||!d||w->refinery!=it->first||d->refinery!=it->first||!refineryValid(r)||!a||!b||w->token!=t.winnerToken||d->token!=t.displacedToken;
-   bool timeout=world.frame-t.started>=(t.released?ore::TurnTimeoutFrames:ore::YieldTimeoutFrames);
+   bool suspended=(w&&w->suspended)||(d&&d->suspended);
+   bool timeout=!suspended&&world.frame-t.started>=(t.released?ore::TurnTimeoutFrames:ore::YieldTimeoutFrames);
    bool cancel=!invalid&&((!t.released&&((b->flags&Unloading)||dockDistance(*b,*r)<=ore::FarDockCells||w->readySince<0))||w->stage==ore::Yielding);
-   if(invalid||timeout||cancel){
+   if(invalid||suspended||timeout||cancel){
     if(timeout)++oreTurnTimeouts;
-    if(d&&d->refinery==it->first&&t.releaseAccepted&&b&&r&&!(b->flags&Unloading)&&!linked(*r,d->id))d->stage=ore::Waiting;
+    if(d&&!d->suspended&&d->refinery==it->first&&t.releaseAccepted&&b&&r&&!(b->flags&Unloading)&&!linked(*r,d->id))d->stage=ore::Waiting;
     it=oreTurns_.erase(it);continue;
    }
    // Admission is not execution: wait for both the native Move to be observed
@@ -337,15 +350,15 @@ public:
    if(a&&r&&((a->flags&Unloading)||linked(*r,j.id)))return 0;
    if(j.stage==ore::Docking)return 1;return j.priority?2:3;
   };
-  for(const auto&job:ore_){if(job.stage==ore::Yielding)continue;auto h=heads.find(job.refinery);
+  for(const auto&job:ore_){if(job.suspended||job.stage==ore::Yielding)continue;auto h=heads.find(job.refinery);
    if(h==heads.end()||rank(job)<rank(*oreJob(h->second)))heads[job.refinery]=job.id;
   }
   // One bypass per load cycle. The displaced FIFO owner gets the next turn;
   // the winner is also non-preemptible. No repeated proximity-based swapping.
-  for(auto&headJob:ore_){uint32_t refineryID=headJob.refinery;if(heads[refineryID]!=headJob.id||oreTurns_.count(refineryID))continue;auto*d=&headJob;const Actor*b=actor(d->id),*r=actor(refineryID);
+  for(auto&headJob:ore_){if(headJob.suspended)continue;uint32_t refineryID=headJob.refinery;if(heads[refineryID]!=headJob.id||oreTurns_.count(refineryID))continue;auto*d=&headJob;const Actor*b=actor(d->id),*r=actor(refineryID);
    if(!b||!r||d->bypassUsed||(b->flags&Unloading)||dockDistance(*b,*r)<=ore::FarDockCells||occupied(*r,d->id))continue;
    OreJob*w=nullptr;
-   for(auto&j:ore_)if(j.refinery==refineryID&&j.id!=d->id&&j.readySince>=0&&j.stage!=ore::Yielding){const Actor*a=actor(j.id);
+   for(auto&j:ore_)if(!j.suspended&&j.refinery==refineryID&&j.id!=d->id&&j.readySince>=0&&j.stage!=ore::Yielding){const Actor*a=actor(j.id);
     if(a&&!(a->flags&Unloading)&&(!w||j.readySince<w->readySince))w=&j;
    }
    if(!w)continue;
@@ -355,12 +368,12 @@ public:
   }
   // Submit releases before regular waiting moves so a large queue cannot
   // consume the entire order budget. Retrying is bounded even on rejection.
-  for(auto&job:ore_){auto it=oreTurns_.find(job.refinery);if(it==oreTurns_.end()||it->second.displaced!=job.id)continue;auto&t=it->second;
+  for(auto&job:ore_){if(job.suspended)continue;auto it=oreTurns_.find(job.refinery);if(it==oreTurns_.end()||it->second.displaced!=job.id)continue;auto&t=it->second;
    if(t.released||t.attempts>=ore::MaxDockAttempts||world.frame-t.sent<ore::YieldRetryFrames)continue;
    const auto*c=sample(job,job.waitCell);if(!c||c->occupation||c->land==2||c->land==7){waitingCells_.erase(job.waitCell);job.waitCell=waitingCell(job);if(job.waitCell)waitingCells_.insert(job.waitCell);}
    if(job.waitCell&&add(out,{job.id,job.token,0,job.waitCell,2,11,OreYield,job.refinery})){++t.attempts;++oreYieldAttempts;t.sent=world.frame;}
   }
-  for(auto&job:ore_){const Actor* a=actor(job.id),*refinery=actor(job.refinery);if(!a||!refinery){++queued;continue;}
+  for(auto&job:ore_){const Actor* a=actor(job.id),*refinery=actor(job.refinery);if(job.suspended||!a||!refinery){++queued;continue;}
    auto turn=oreTurns_.find(job.refinery);
    if(turn!=oreTurns_.end()){
     const auto&t=turn->second;
@@ -370,7 +383,7 @@ public:
    bool first=turn!=oreTurns_.end()?turn->second.winner==job.id:heads[job.refinery]==job.id;
    bool busy=occupied(*refinery,job.id);
    if(job.stage==ore::Docking){++docking;
-    if(first&&a->destination!=job.refinery&&!(a->flags&Unloading)&&!busy&&job.dockAttempts<ore::MaxDockAttempts&&world.frame-job.sent>=90)add(out,{job.id,job.token,0,job.refinery,7,0x34,0,job.refinery});
+    if(first&&(job.resumePending||a->destination!=job.refinery)&&!(a->flags&Unloading)&&!busy&&job.dockAttempts<ore::MaxDockAttempts&&world.frame-job.sent>=90)add(out,{job.id,job.token,0,job.refinery,7,0x34,0,job.refinery});
     continue;
    }
    if(first&&!busy){if(add(out,{job.id,job.token,0,job.refinery,7,0x34,0,job.refinery}))++docking;else ++queued;continue;}

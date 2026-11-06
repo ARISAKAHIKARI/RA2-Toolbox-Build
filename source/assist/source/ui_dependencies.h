@@ -25,7 +25,7 @@ static settingsdeps::State currentSettingDependencies(){
  s.set(Need::Minimap,minimapEnabled||minimapSecondary);s.set(Need::MinimapPrimary,minimapEnabled);
  s.set(Need::MinimapSecondary,minimapSecondary);s.set(Need::CustomMinimap,minimapPosition==3);
  s.set(Need::ShiftClick,shiftClickEnabled);s.set(Need::AppendClicks,shiftClickMode!=2);
- s.set(Need::Ore,oreMode);s.set(Need::CustomMiners,oreTypes.customMiners);s.set(Need::CustomRefineries,oreTypes.customRefineries);
+ s.set(Need::Ore,oreMode);s.set(Need::MinerAutomation,oreMode||extra.minerDefenseEnabled);s.set(Need::CustomMiners,oreTypes.customMiners);s.set(Need::CustomRefineries,oreTypes.customRefineries);
  s.set(Need::Production,check[2]&&SendMessageW(check[2],BM_GETCHECK,0,0)==BST_CHECKED);
  s.set(Need::ManualRate,!infoAdaptive);s.set(Need::Capacity,check[0]&&SendMessageW(check[0],BM_GETCHECK,0,0)==BST_CHECKED);
  s.set(Need::Advanced,hookAdvanced);s.set(Need::C4,extra.c4Test);s.set(Need::Dodge,extra.dodgeEnabled);

@@ -26,10 +26,16 @@ int main(){
  secondary.set(Need::CustomMinimap,true);assert(decision(851,secondary).enabled());
  // Independent danger bubbles/global magnetron automation and action hotkeys
  // must remain configurable without an unrelated display or click-mode parent.
- for(int id:{898,899,9042,200,450,451,9062,780})assert(decision(id,State{}).enabled());
+ for(int id:{898,899,9042,200,450,451,9062,780,9496,9497})assert(decision(id,State{}).enabled());
  State filters;filters.set(Need::CustomMiners,true);
- assert(decision(783,filters).missing==Need::Ore);
- filters.set(Need::Ore,true);assert(decision(783,filters).enabled()&&!decision(784,filters).enabled());
+ assert(decision(783,filters).missing==Need::MinerAutomation);
+ // Miner defense can use the shared miner list with ore return disabled;
+ // refinery settings still belong only to the ore-return feature.
+ filters.set(Need::MinerAutomation,true);assert(decision(781,filters).enabled()&&decision(783,filters).enabled());
+ assert(!decision(782,filters).enabled()&&!decision(784,filters).enabled());
+ filters.set(Need::Ore,true);assert(decision(782,filters).enabled()&&!decision(784,filters).enabled());
+ filters.set(Need::CustomRefineries,true);assert(decision(784,filters).enabled());
+ filters.set(Need::MinerAutomation,false);assert(!decision(783,filters).enabled()&&decision(784,filters).enabled());
  filters.set(Need::LowDamage,true);assert(decision(9183,filters).enabled());
  filters.set(Need::LowDamage,false);assert(!decision(9183,filters).enabled());
  State quota;quota.set(Need::Aircraft,true);quota.set(Need::AircraftQuotas,true);
@@ -49,10 +55,17 @@ int main(){
   assert(decision(id-1,lists).enabled()); // the parent stays editable
  }
  assert(decision(9201+2*assist::featuretypes::BurstRefresh,State{}).enabled());
- // Every constrained field has a human-readable reason and can recover when
- // all its prerequisites are met; no duplicate IDs hide a control update.
- State all;all.available=~uint64_t(0);std::set<int> unique;
- for(int id:Controls){assert(unique.insert(id).second);assert(decision(id,all).enabled());auto missing=decision(id,State{});assert(!missing.enabled()&&*reason(missing.missing));}
+ // Each unavailable field has a human-readable reason. Product-disabled
+ // features stay unavailable even with all settings on; hardware switches
+ // are editable until their explicit slot budget says otherwise.
+ State all;all.available=~uint64_t(0);State unavailable;unavailable.hardwareBlocked=31;std::set<int> unique;
+ for(int id:Controls){
+  assert(unique.insert(id).second);const auto ready=decision(id,all);
+  assert(ready.enabled()||ready.missing==Need::Unavailable);
+  const auto missing=decision(id,unavailable);
+  if(id==9096)assert(missing.enabled()); // Selecting the implementation is always allowed.
+  else assert(!missing.enabled()&&*reason(missing.missing));
+ }
  assert(decision(-1,State{}).enabled());
  std::printf("PASS: settings dependencies (%zu controls), independent consumers and saved-child restoration\n",unique.size());
 }

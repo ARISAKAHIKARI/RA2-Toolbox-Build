@@ -63,6 +63,10 @@ static bool own(uint32_t p,uint32_t house){return p&&get<uint32_t>(p+0x21C)==hou
 static bool refreshOreConfig(){return true;}
 static uint32_t readMapCell(int x,int y){return x>0&&x<512&&y>0&&y<512&&!nullCells.count(uint32_t(y*1000+x))?cellPointer(x,y):0;}
 static bool stickyOwns(uint32_t){return held;}static bool burstOwns(uint32_t){return bursted;}static bool dodgeOwns(uint32_t){return dodging;}
+// This existing unload-only fixture has no active defense worker. The defense
+// fixture executes that production worker and its own restoration gateway.
+static bool minerDefenseOwns(uint32_t){return false;}
+static void minerDefenseRememberOre(const planner::Order&,uint32_t){}
 static bool rawMagnetronDrop(uint32_t,uint32_t,uint32_t){assert(false);return false;}
 static bool antiTheftBuilding(uint32_t){assert(false);return false;}static bool antiTheftThreat(uint32_t,uint32_t){assert(false);return false;}
 static bool rawMagnetron(uint32_t){assert(false);return false;}static bool featureObjectAllowed(int,uint32_t){assert(false);return false;}

@@ -8,7 +8,7 @@
 namespace assist {namespace taskarbiter {
 enum class Owner : uint8_t {
  Generic, AutoLoad, Ore, Unload, Cooperative, Combat, Magnetron,
- Repair, Sell, Production, SuperWeapon, MissileDefense, BurstRefresh, Dodge, Formation, MagnetronDrop
+ Repair, Sell, Production, SuperWeapon, MissileDefense, BurstRefresh, Dodge, Formation, MagnetronDrop, HarvesterDefense
 };
 // Synthetic actor identities for player-level events (Production / SuperWeapon)
 // so they can participate in unified gateway validation and same-frame arbitration.
@@ -48,7 +48,7 @@ inline int priority(Owner o){
  case Owner::MagnetronDrop:return 7; // explicit global hazard-release policy
  case Owner::Formation:case Owner::Generic:case Owner::SuperWeapon:case Owner::Production:return 6;
  case Owner::Dodge:case Owner::Unload:return 5;
- case Owner::Magnetron:return 4;
+ case Owner::Magnetron:case Owner::HarvesterDefense:return 4;
  case Owner::BurstRefresh:case Owner::Combat:case Owner::MissileDefense:return 4;
  case Owner::Cooperative:return 3;
  case Owner::AutoLoad:case Owner::Repair:return 2;

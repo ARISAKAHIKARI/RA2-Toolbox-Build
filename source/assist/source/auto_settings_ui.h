@@ -77,6 +77,7 @@ static bool autoSettingChanged(int id,int notification){
   extra.mapVisibility=on;changedSetting();syncAdditional();return true;
  }
  if(id==9490&&notification==BN_CLICKED){extra.superweaponGrant=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
+ if(id==9496&&notification==BN_CLICKED){extra.minerDefenseEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();wakeGame();return true;}
  if(id==9405&&notification==BN_CLICKED){extra.superweaponPanel=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==886&&select){extra.scrollRefreshMode=0;SendMessageW(GetDlgItem(ui,id),CB_SETCURSEL,0,0);changedSetting();syncAdditional();return true;}
  if(id==9096&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=buildingmodes::PlacementEvent){extra.placementImplementation=mode;resetPlacementEvent();changedSetting();syncAdditional();registerKeys();updatePlacementEventUI();}return true;}
@@ -177,6 +178,7 @@ static bool autoSettingChanged(int id,int notification){
  case 9166:numeric=&minimapSecondaryX;hi=10000;break;case 9167:numeric=&minimapSecondaryY;hi=10000;break;
  case 9168:numeric=&minimapSecondaryWidth;lo=160;hi=4096;break;
  case 9494:numeric=&extra.singlePlayerFPS;hi=240;break;
+ case 9497:numeric=&extra.minerDefenseRangeCells;hi=30;break;
  case 310:numeric=&fps;lo=5;hi=500;break;case 311:numeric=&topMargin;hi=4096;break;
  case 816:numeric=&labelScalePercent;lo=50;hi=250;break;
  case 817:numeric=&constructionScalePercent;lo=50;hi=250;break;
@@ -191,7 +193,7 @@ static bool autoSettingChanged(int id,int notification){
  case 471:numeric=&toastMs;lo=500;hi=60000;break;case 701:numeric=&extra.loadRadius;lo=1;hi=512;break;
  case 710:numeric=&extra.defaults.first;hi=512;break;case 711:numeric=&extra.defaults.second;hi=512;break;
  case 712:numeric=&extra.defaults.maximum;hi=512;break;}
- if(numeric&&edit){if(id==9494){BOOL ok=FALSE;unsigned rate=GetDlgItemInt(ui,id,&ok,FALSE);if(!ok||!singlefps::valid(rate)){setStatus(L"单机游戏 FPS：填 0 恢复原版，或填 10–240；例如 40、45、50。");return true;}if(rate&&!hardwareBudgetAvailable(slotbudget::FPS)){setStatus(hardwareBudgetReason(slotbudget::FPS));return true;}}if(number(lo,hi,*numeric)){if(id==310)syncInformationRate(true);if(id==444)typeTap.clear();changedSetting();if(id==887||id==9494){syncAdditional();if(id==9494)wakeGame();}}return true;}
+ if(numeric&&edit){if(id==9494){BOOL ok=FALSE;unsigned rate=GetDlgItemInt(ui,id,&ok,FALSE);if(!ok||!singlefps::valid(rate)){setStatus(L"单机游戏 FPS：填 0 恢复原版，或填 10–240；例如 40、45、50。");return true;}if(rate&&!hardwareBudgetAvailable(slotbudget::FPS)){setStatus(hardwareBudgetReason(slotbudget::FPS));return true;}}if(number(lo,hi,*numeric)){if(id==310)syncInformationRate(true);if(id==444)typeTap.clear();changedSetting();if(id==887||id==9494||id==9497){syncAdditional();if(id==9494||id==9497)wakeGame();}}return true;}
  if(id==714&&edit){if(!quotaID().empty())readTargetQuota();return true;}
  if((id==715&&notification==BN_CLICKED)||(id>=716&&id<=718&&edit)){
   auto type=quotaID();if(type.empty()){setStatus(L"请先选择类型或输入有效的对象 ID。");return true;}

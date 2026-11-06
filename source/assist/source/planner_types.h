@@ -2,7 +2,7 @@
 #include <stdint.h>
 namespace assist { namespace planner {
 constexpr int MaxActors=16384,MaxIntents=8192,MaxRefineries=512,MaxOrders=32,MaxWaitingCells=128,MaxCombatProbes=32768;
-enum ActorFlags { Own=1,Enemy=2,Selected=4,Disabled=8,Harvester=16,Unloading=32,Transported=64,Cloaked=128,Limbo=256,OffMap=512,Airborne=1024,Manipulated=2048,Organic=4096,Protected=8192,PsionicImmune=16384,PsychicImmune=32768,FixedWeapon=65536,StagedWeapon=131072,Controlled=262144,TemporalTarget=524288,TemporalImmune=1048576,ParasiteImmune=2097152,Infested=4194304,OutOfAmmo=8388608,BurstFiring=16777216,SustainedFire=33554432,OrePaused=67108864, PointDefense=134217728, Saboteur=268435456, DropHazard=536870912 };
+enum ActorFlags { Own=1,Enemy=2,Selected=4,Disabled=8,Harvester=16,Unloading=32,Transported=64,Cloaked=128,Limbo=256,OffMap=512,Airborne=1024,Manipulated=2048,Organic=4096,Protected=8192,PsionicImmune=16384,PsychicImmune=32768,FixedWeapon=65536,StagedWeapon=131072,Controlled=262144,TemporalTarget=524288,TemporalImmune=1048576,ParasiteImmune=2097152,Infested=4194304,OutOfAmmo=8388608,BurstFiring=16777216,SustainedFire=33554432,OrePaused=67108864, PointDefense=134217728, Saboteur=268435456, DropHazard=536870912, HarvesterDefending=0x40000000u, ParasiteThreat=0x80000000u };
 enum WeaponFlags { GroundWeapon=1,AirWeapon=2,MagneticWeapon=4,LocomotorWeapon=8,MindControlWeapon=16,PsychicWeapon=32,TemporalWeapon=64,ParasiteWeapon=128,HealingWeapon=256,EffectivenessKnown=512 };
 struct Weapon {int range,minimum;uint32_t flags,armorMask,selectMask;int slot;float effectiveness[11]{};};
 struct Actor {

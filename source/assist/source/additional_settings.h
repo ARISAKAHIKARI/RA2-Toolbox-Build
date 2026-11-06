@@ -8,6 +8,7 @@
 namespace assist {
 struct AdditionalSettings {
  int singlePlayerFPS=0; // 0 native; independent of renderer refresh
+ bool minerDefenseEnabled=false;int minerDefenseRangeCells=1; // Independent of automatic ore return.
  uint32_t overlayKey=0xC0; // ` / · on the standard keyboard; presentation only.
  uint32_t stickyKey='S'|(6<<8);
  uint32_t missionModeKeys[4]={0,0,0,'F'|(6<<8)}; // Own-ground: Ctrl+Alt+F; other modes unbound.
