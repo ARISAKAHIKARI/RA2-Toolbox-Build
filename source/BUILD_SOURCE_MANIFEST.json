@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.43-pre.4",
-  "version": "1.0.43-pre.4",
+  "name": "RA2 Toolbox 1.0.43-pre.5",
+  "version": "1.0.43-pre.5",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full package includes hash-pinned offline assets/profiles/preprocessing runtime/engine; Update preserves an existing complete installation.",
   "resources_legacy_reuse": true,
   "build_protocol": 99,
-  "validation": "Validation scope: focused spider-defense post-kill work restoration, rapid native completion and manual-priority regressions; technology-enhancement midgame native-refresh and exact-catalogue activation regressions; plus same-commit mixed-architecture compilation and PE/version/ABI checks. Actual completed outcomes are recorded separately in the release manifest. Controlled checks do not certify real-game behavior, Windows visuals, physical GPU performance or multiplayer compatibility.",
+  "validation": "Validation scope: Runtime(10) Ares native-entry startup regression, bounded executable detour traversal and invalid-target counterexamples; full-technology parameter entry and exact-enhancement isolation; same-commit mixed-architecture compilation and PE/version/ABI checks. Actual completed results are recorded in release evidence. No real-game or multiplayer execution is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",

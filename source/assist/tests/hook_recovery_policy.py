@@ -49,11 +49,12 @@ struct Registry{std::set<uint32_t> sites;bool active(uint32_t p)const{return sit
  unsigned installed()const{return unsigned(sites.size());}} codeHookRegistry;
 bool buildTimeTooltipActive=false,crcMapInstalled=false,networkSenderInstalled=false;
 bool enhancementRestoring=false,dataPending=false,mapRetired=true,techRetired=true;
-bool enhanceRetired=true,controlRetired=true,viewRetired=true,housePending=false;
+bool enhanceRetired=true,controlRetired=true,fpsRetired=true,viewRetired=true,housePending=false;
 struct Materials{bool active()const{return false;}}shroudMaterials;
 bool techDataPending(){return dataPending;}bool mapVisibilityParametersRetired(){return mapRetired;}
 bool techParametersRetired(){return techRetired;}bool techEnhanceParametersRetired(){return enhanceRetired;}
 bool controlParametersRetired(){return controlRetired;}bool nativeViewRetired(){return viewRetired;}
+bool singlePlayerFPSRetired(){return fpsRetired;}
 bool controlHouseFlagsPending(){return housePending;}
 constexpr unsigned Magic=123,Version=96;
 struct Shared{unsigned magic=Magic,version=Version,pid=77,stop=0,owner=18;LONG gameWakePending=0;};
@@ -101,7 +102,7 @@ int main(){
  for(bool*busy:{&crcMapInstalled,&networkSenderInstalled,&enhancementRestoring,&dataPending,&housePending}){
   *busy=true;check(!featureRestorationComplete());*busy=false;
  }
- for(bool*retired:{&mapRetired,&techRetired,&enhanceRetired,&controlRetired,&viewRetired}){
+ for(bool*retired:{&mapRetired,&techRetired,&enhanceRetired,&controlRetired,&fpsRetired,&viewRetired}){
   *retired=false;check(!featureRestorationComplete());*retired=true;
  }
  shared.stop=1;techRetired=false;disconnect();

@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Ares 原生入口与科技参数兼容 | [pre.5：普通函数调用、平台跳转和实际断点分离](2026-11-07-ares-native-entry-compatibility.md) | Runtime10 native-callable Ares 6AA600 5F7900 4F7870 Full parameters Exact-local-status |
 | 科技加强中途开启的建造栏刷新 | [原生重查与有效目录刷新](2026-11-07-tech-enhancement-midgame-refresh.md) | pre4 RecheckTechTree House1FC exact-catalogue request-edge active-Master queues-preserved |
 | 点死蜘蛛后矿车发呆 | [快速完成、残留字段与恢复确认](2026-11-07-spider-kill-work-resume.md) | pre4 Guard missed-Attack dead-target queued-not-complete manual-priority |
 | 点杀蜘蛛的参与单位独立配置 | [独立类型清单、地面单位恢复与手动优先](2026-11-06-spider-defender-types.md) | Assist99 SpiderDefense independent-types Infantry Unit Guard AreaGuard manual-hold |

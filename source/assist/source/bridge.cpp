@@ -202,11 +202,15 @@ static void disconnect(){
  // transport teardown release its legacy fault latch for a fresh connection.
  fault=false;
 }
+#include "native_entry_runtime.h"
 static_assert(Signatures[8].address==startupcompat::BeaconEntry,"ClearBeacons signature index");
 static_assert(Signatures[9].address==startupdependency::RevealEntry,"Map::Reveal signature index");
 static bool startupSignature(const Signature&s){
  unsigned char b[12];if(s.length>sizeof b||!read(s.address,b,s.length))return false;
  if(!memcmp(b,s.bytes,s.length))return true;
+ // Ordinary native APIs may be owned by Ares. Follow its existing entry;
+ // only actual instruction/DR consumers require the stock instruction body.
+ if(nativeentry::known(s.address))return nativeEntryCallable(s.address,true);
  if(s.address!=startupcompat::BeaconEntry)return false;
  const uint32_t module=uint32_t(uintptr_t(GetModuleHandleW(L"MRGA1.DLL")));uint32_t target=0;
  if(!startupcompat::beaconTarget(b,s.length,module,target))return false;
@@ -1225,8 +1229,8 @@ static void tick(){
  // Local playable state above is sufficient; do not wait for remote FrameInfo.
  snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;
  // A temporary loading/platform signature mismatch must not poison the
- // pinned Runtime for its entire lifetime. Still require every exact core
- // probe; optional native commands enforce their own dependencies at use.
+ // pinned Runtime for its entire lifetime. Core probes retain their native
+ // call or instruction policy; optional commands check dependencies at use.
  if(!checked&&(!signatureRetryAt||DWORD(now-signatureRetryAt)>=1000)){
   signatureRetryAt=now;good=signatures();checked=good;
  }

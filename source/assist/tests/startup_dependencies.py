@@ -41,7 +41,8 @@ def main():
     }
     paths = [source / name for name in (
         'bridge.cpp', 'placement_bridge.h', 'direct_modes_bridge.h',
-        'startup_dependency_policy.h', 'startup_signature_compat.h', 'signatures.h')]
+        'startup_dependency_policy.h', 'startup_signature_compat.h', 'signatures.h',
+        'native_entry_policy.h', 'native_entry_runtime.h')]
     paths += [source.parents[1] / 'shared/source/direct_patch_policy.h',
               here / 'startup_dependencies.cpp', Path(__file__).resolve()]
     sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()

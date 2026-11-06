@@ -32,9 +32,11 @@ struct IMAGE_DOS_HEADER {uint16_t e_magic=0;int32_t e_lfanew=0;};
 struct IMAGE_NT_HEADERS32 {uint32_t Signature=0;struct {uint16_t Machine=0;}FileHeader;struct {uint16_t Magic=0;uint32_t SizeOfImage=0;}OptionalHeader;};
 struct MEMORY_BASIC_INFORMATION {void*BaseAddress=nullptr,*AllocationBase=nullptr;size_t RegionSize=0;unsigned State=0,Type=0,Protect=0;};
 constexpr unsigned IMAGE_DOS_SIGNATURE=0x5a4d,IMAGE_NT_SIGNATURE=0x4550,IMAGE_FILE_MACHINE_I386=0x14c,IMAGE_NT_OPTIONAL_HDR32_MAGIC=0x10b;
-constexpr unsigned MEM_COMMIT=0x1000,MEM_IMAGE=0x1000000,PAGE_GUARD=0x100,PAGE_EXECUTE=0x10,PAGE_EXECUTE_READ=0x20,PAGE_EXECUTE_READWRITE=0x40,PAGE_EXECUTE_WRITECOPY=0x80;
+constexpr unsigned MEM_COMMIT=0x1000,MEM_IMAGE=0x1000000,MEM_PRIVATE=0x20000,PAGE_NOACCESS=1,PAGE_GUARD=0x100,PAGE_EXECUTE=0x10,PAGE_EXECUTE_READ=0x20,PAGE_EXECUTE_READWRITE=0x40,PAGE_EXECUTE_WRITECOPY=0x80;
 static void*GetModuleHandleW(const wchar_t*){return nullptr;}
 static size_t VirtualQuery(void*,MEMORY_BASIC_INFORMATION*,size_t){return 0;}
+static uint32_t GetTickCount();
+#include "../source/native_entry_runtime.h"
 #include STARTUP_HELPERS
 
 static unsigned nativeCalls=0,crcBegins=0,crcEnds=0;

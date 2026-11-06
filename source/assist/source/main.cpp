@@ -1877,7 +1877,7 @@ static void updateModeStatus(DWORD now){
  else if(shared->techEnhanceStatus==1)enhancement+=L"已启用（"+std::to_wstring(shared->techEnhanceCount)+L" 项）";
  else enhancement+=L"等待生效";
  SetWindowTextW(GetDlgItem(ui,9098),enhancement.c_str());
- {const int p=shared?shared->techEnhanceParameterStatus:0;const wchar_t*label=p==1?L"已安装":p==2?L"等待安装／恢复":p==-1?L"原生入口不兼容":p==-2?L"没有空闲硬件断点":p==-3?L"Windows 线程操作失败":p==-4?L"断点已被其他工具改变":p==-5?L"线程归属不匹配":p==-6?L"与当前科技模式不兼容":p==-7?L"当前生产未完成，等待安全切换":L"关闭";
+ {const int p=shared?shared->techEnhanceParameterStatus:0;const wchar_t*label=p==1?L"已安装":p==2?L"等待安装／恢复":p==-1?L"原生入口不兼容":p==-2?L"没有空闲硬件断点":p==-3?L"Windows 线程操作失败":p==-4?L"断点已被其他工具改变":p==-5?L"线程归属不匹配":p==-6?L"与当前科技模式不兼容":p==-7?L"当前生产未完成，等待安全切换":p==-8?L"Ares 已替换原生比较流程，请选择规则模式":L"关闭";
   std::wstring text=std::wstring(L"科技加强参数拦截：")+label;
   if(shared){text+=L" · 占用 "+std::to_wstring(shared->techEnhanceParameterSlots)+L" 槽 · 命中 "+std::to_wstring(shared->techEnhanceParameterExceptions)+L" 次";if(p<0)text+=L" · 错误 "+std::to_wstring(shared->techEnhanceParameterError);}
   SetWindowTextW(GetDlgItem(ui,9471),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9471),p<0);

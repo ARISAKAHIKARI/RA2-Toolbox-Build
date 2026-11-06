@@ -2,6 +2,7 @@
 #include <stdint.h>
 namespace assist { namespace techenhanceparams {
 inline constexpr unsigned Rules=0,Exact=1;
+inline constexpr int NativeBodyBypassed=-8;
 inline constexpr uint32_t breakpointTags(bool compareLevel){return compareLevel?12u:4u;}
 inline uint32_t compareFlags(uint32_t lhs,uint32_t rhs,uint32_t previous){
  const uint32_t result=lhs-rhs;uint32_t flags=0;

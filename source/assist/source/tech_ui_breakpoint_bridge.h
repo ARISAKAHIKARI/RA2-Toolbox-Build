@@ -30,8 +30,26 @@ static constexpr uint32_t sites[techbp::SiteCount]={0x4F7870,mapvisibility::Addr
 inline unsigned hash(uint32_t p){return ((p>>4)*2654435761u)&1023u;}
 static techbp::SignatureSnapshot<20> nativeDraw;static techbp::SignatureSnapshot<15> nativePrune;static techbp::SignatureSnapshot<16> nativeEntry;
 static techbp::SignatureSnapshot<13> enhancementLimit;static techbp::SignatureSnapshot<16> enhancementCompare,enhancementEntry;
-static bool nativeCompatible(){return nativeDraw.refresh(0x6A97C3,0xD3C40F9Du,read)&&nativePrune.refresh(0x6AA777,0x26F9619Eu,read)&&nativeEntry.refresh(0x4F7870,0x6995B50Eu,read);}
+static uint32_t nativeEntryDigest(const uint8_t(&bytes)[16]){uint32_t hash=2166136261u;for(uint8_t byte:bytes)hash=(hash^byte)*16777619u;return hash;}
+static bool captureNativeEntry(){
+ // This breakpoint changes an existing CALL's bool argument before the
+ // entry executes. Ares keeps that ABI and must receive the original call,
+ // including its own build-limit/production checks. Do not replace its JMP.
+ nativeEntry.valid=false;uint8_t before[16]{};
+ if(!read(0x4F7870,before,sizeof before)||!nativeEntryCallable(0x4F7870,true))return false;
+ // Re-read after the uncached chain check, then require the exact accepted
+ // entry image on every hot hit. The two caller/argument sites stay exact.
+ return nativeEntry.refresh(0x4F7870,nativeEntryDigest(before),read);
+}
+static bool nativeCompatible(){return nativeDraw.refresh(0x6A97C3,0xD3C40F9Du,read)&&nativePrune.refresh(0x6AA777,0x26F9619Eu,read)&&captureNativeEntry();}
 static bool enhancementCompatible(){return enhancementLimit.refresh(0x4F794A,0x0FC7BB79u,read)&&enhancementCompare.refresh(0x4F7B5C,0x15DAD6B8u,read)&&enhancementEntry.refresh(0x4F7870,0x6995B50Eu,read);}
+static bool enhancementBodyBypassed(){
+ // Ares replaces CanBuild and returns at 4F8361, so the vanilla internal
+ // comparison breakpoints are never reached. Preserve the selected Exact
+ // semantics: report this locally instead of silently writing Type rules.
+ uint8_t entry[16]{};return read(0x4F7870,entry,sizeof entry)&&nativeEntryDigest(entry)!=0x6995B50Eu&&
+  nativeAresAvailable()&&nativeEntryCallable(0x4F7870);
+}
 // These local reads are confined to GuardedTechUiParameter's SEH scope. Other
 // callers keep the safe admission reader above. No validation is frame-cached.
 static bool nativeCompatibleHot(){return nativeDraw.matches(reinterpret_cast<const volatile uint8_t*>(0x6A97C3))&&nativePrune.matches(reinterpret_cast<const volatile uint8_t*>(0x6AA777))&&nativeEntry.matches(reinterpret_cast<const volatile uint8_t*>(0x4F7870));}
@@ -236,6 +254,7 @@ static void techEnhanceParametersTick(uint32_t house,DWORD now){
  if(((snap.techOpen||techPending)&&!techmode::parameters(techImplementation))||techDataPending()||!nativeTextTechRetired()||!restoreTechEnhancement()){
   restoreTechEnhanceParameters();enhancementFailure=-6;publish();return;
  }
+ if(enhancementBodyBypassed()){restoreTechEnhanceParameters();enhancementFailure=techenhanceparams::NativeBodyBypassed;publish();return;}
  if(!enhancementCompatible()){restoreTechEnhanceParameters();enhancementFailure=techbp::Signature;publish();return;}
  const bool compareRequested=sh->techEnhanceCompareLevel!=0;
  // Preserve in-flight products before changing the effective comparison.

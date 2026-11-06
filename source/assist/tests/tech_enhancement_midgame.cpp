@@ -38,15 +38,15 @@ static unsigned techImplementation=0;
 static uint32_t typePointers[MaxTypes]{};
 static uint8_t techAllowed[MaxTypes]{};
 static sessionepoch::Tracker sessionTracker;
-static int checks=0,additions=0,probes=0,factoryQueries=0,rechecks=0;
-static bool hardwareReady=true,compatible=true,worldAvailable=true,factoryAvailable=true,ruleAllowed=true;
+static int checks=0,additions=0,probes=0,factoryQueries=0,rechecks=0,levelWrites=0;
+static bool hardwareReady=true,compatible=true,bodyBypassed=false,worldAvailable=true,factoryAvailable=true,ruleAllowed=true;
 static uint32_t unreadable=0;
 static bool mapped(uint32_t p,size_t n){return (p>=0x700000&&uint64_t(p)+n<=0xB00000)||(p>=0x10000000&&uint64_t(p)+n<=0x10100000);}
 static bool read(uint32_t p,void*out,size_t n){if(!mapped(p,n)||(unreadable>=p&&uint64_t(unreadable)<uint64_t(p)+n))return false;std::memcpy(out,reinterpret_cast<void*>(uintptr_t(p)),n);return true;}
 template<class T>static T get(uint32_t p){T v{};read(p,&v,sizeof v);return v;}
 template<class T>static void put(uint32_t p,T v){assert(mapped(p,sizeof v));if(p==House+0x1FC)++rechecks;std::memcpy(reinterpret_cast<void*>(uintptr_t(p)),&v,sizeof v);}
 static LONG InterlockedExchange(volatile LONG*p,LONG v){LONG old=*p;*p=v;return old;}
-static bool enhancementWrite(uint32_t p,const void*v,size_t n){assert((p==Bus+0x634||p==Normal+0x634)&&n==4);std::memcpy(reinterpret_cast<void*>(uintptr_t(p)),v,n);return true;}
+static bool enhancementWrite(uint32_t p,const void*v,size_t n){assert((p==Bus+0x634||p==Normal+0x634)&&n==4);++levelWrites;std::memcpy(reinterpret_cast<void*>(uintptr_t(p)),v,n);return true;}
 struct Vec {uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
 static Vec vec(uint32_t p,int){Vec v{};return read(p,&v,sizeof v)?v:Vec{};}
 static uint32_t item(Vec v,int n){return get<uint32_t>(v.items+n*4);}
@@ -78,6 +78,7 @@ static bool ready(uint32_t){return hardwareReady;}
 static bool fullType(uint32_t){return false;}
 static void publish(){}
 static bool enhancementCompatible(){return compatible;}
+static bool enhancementBodyBypassed(){return bodyBypassed;}
 static bool enhancementReady(){return hardwareReady&&enhancementDesired;}
 static bool captureWorld(uint32_t house){return worldAvailable&&house==House;}
 static bool configure(){policy.enhanced=enhancementReady()?1:0;return hardwareReady;}
@@ -161,6 +162,20 @@ int main(int argc,char**argv){assert(argc==2);setup();const std::string test=arg
   exact();check(probes==1&&factoryQueries==1&&!additions,"native strip capacity stays at seventy-five");
  }else if(test=="exact_failed_signature"){
   compatible=false;exact();check(!probes&&!additions&&!techparameters::policy.enhanced,"invalid signature never publishes effective engine permission");
+ }else if(test=="exact_ares_body_bypassed"){
+  bodyBypassed=true;exact();
+  check(techparameters::enhancementFailure==techenhanceparams::NativeBodyBypassed&&!probes&&!additions&&!techparameters::policy.enhanced,"Ares replacement reports only the unavailable Exact comparison path");
+  check(options.techEnhanceImplementation==1&&!levelWrites&&get<int>(Bus+0x634)==-1,"Exact refusal preserves the selected mode and never falls back to rule writes");
+  bodyBypassed=false;techEnhanceParametersTick(House,1800);
+  check(!techparameters::enhancementFailure&&techparameters::policy.enhanced&&additions==1,"a restored native body can retry locally without restarting the bridge");
+ }else if(test=="rules_to_exact_ares_busy_handoff"){
+  options.techEnhance=true;techEnhancementTick(1200);check(levelWrites==1&&get<int>(Bus+0x634)==1,"Rules owns the original hidden level before the mode switch");
+  put<uint32_t>(Product+0x20,Bus);options.techEnhanceImplementation=1;bodyBypassed=true;
+  techEnhancementTick(1400);techEnhanceParametersTick(House,1400);
+  check(techparameters::enhancementFailure==-7&&enhancedTypes[10].owned&&levelWrites==1&&get<int>(Bus+0x634)==1,"in-flight Rules product is preserved while the unavailable Exact mode waits");
+  put<uint32_t>(Product+0x20,Normal);techEnhancementTick(1800);techEnhanceParametersTick(House,1800);
+  check(!enhancedTypes[10].owned&&levelWrites==2&&get<int>(Bus+0x634)==-1,"completed handoff restores exactly the original rule value");
+  check(techparameters::enhancementFailure==techenhanceparams::NativeBodyBypassed&&!probes&&!additions,"Ares local status is published after production-safe Rules retirement");
  }else if(test=="exact_full_allowlist"){
   snap.techOpen=5;techImplementation=4;exact();check(techPending&&typeSlot(Bus)>=0,"exact catalogue edge requests the existing active full-tech refresh");
   check(techAllowed[typeSlot(Normal)]==1&&!techAllowed[typeSlot(Bus)],"full-tech whitelist remains explicit and preserves existing selection");

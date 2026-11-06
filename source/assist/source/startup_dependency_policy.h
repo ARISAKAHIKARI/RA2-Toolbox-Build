@@ -3,6 +3,9 @@
 
 // Optional native commands do not define the ABI of unrelated Runtime work.
 // Their signatures remain mandatory at the actual command/feature consumer.
+// Core readiness uses the supplied check: ordinary Ares-owned API entries
+// may be callable through platform dispatch without matching stock code.
+// This classification does not grant instruction patches or DR site access.
 namespace startupdependency {
 enum class Dependency { Core, ClearBeacons, Reveal };
 constexpr uint32_t BeaconEntry=0x431410,RevealEntry=0x577D90;
