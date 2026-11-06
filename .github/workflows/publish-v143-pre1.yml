@@ -60,20 +60,20 @@ jobs:
           if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
           Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
           New-Item -ItemType Directory -Force artifacts/console,diagnostics | Out-Null
-      - name: Validate single-player FPS callback and shared hardware service on Windows x86
+      - name: Validate the single-player FPS callback in an owned Windows x86 fixture
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          python source/tools/test_single_player_fps_windows.py --zig "$env:ZIG_EXE" --out diagnostics/single-player-fps --repeat 3
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+      - name: Validate the shared hardware service on Windows x86
         shell: bash
         run: |
           set -euo pipefail
           export ZIG="$(cygpath -u "$ZIG_EXE")"
-          for name in single_player_fps_windows tech_ui_breakpoint_windows; do
-            fixture_flags=()
-            if [ "$name" = single_player_fps_windows ]; then
-              fixture_flags=(-Wl,--image-base,0x10000000)
-            fi
-            "$ZIG" c++ -target x86-windows-gnu -fms-extensions -fasm-blocks -std=c++17 -O2 -UNDEBUG "${fixture_flags[@]}" "source/assist/tests/$name.cpp" -o "diagnostics/$name.exe" -lkernel32 -luser32
-            "diagnostics/$name.exe" > "diagnostics/$name.log"
-            cat "diagnostics/$name.log"
-          done
+          "$ZIG" c++ -target x86-windows-gnu -fms-extensions -fasm-blocks -std=c++17 -O2 -UNDEBUG source/assist/tests/tech_ui_breakpoint_windows.cpp -o diagnostics/tech_ui_breakpoint_windows.exe -lkernel32 -luser32
+          diagnostics/tech_ui_breakpoint_windows.exe > diagnostics/tech_ui_breakpoint_windows.log
+          cat diagnostics/tech_ui_breakpoint_windows.log
       - name: Compile modern x64 host and paired x86 Runtime and broker
         shell: bash
         run: |
