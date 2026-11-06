@@ -33,6 +33,8 @@ static bool minerDefenseRefineryIncomplete=false;
 static OreHarvestWorld minerDefenseWorld;
 static planner::ActorLookup minerDefenseActors;
 static planner::EnemyGrid minerDefenseEnemies;
+static ObjectIndex minerDefenseUnitRoster;
+static bool minerDefenseRosterAttempted=false,minerDefenseRosterComplete=false;
 static int minerDefenseFrame=-1,minerDefenseCursor=0;
 static uint32_t minerDefenseInput=0,minerDefenseActiveCursor=0;
 static long minerDefenseConfigRevision=-1;
@@ -97,6 +99,7 @@ static void minerDefenseReset(){
  minerDefenseLinkedRefinery.clear();minerDefenseRefineryCount=0;minerDefenseRefineryIncomplete=false;
  for(auto&hold:minerDefenseManual)hold={};minerDefenseSelector={};minerDefenseSelectorKnown=false;minerDefenseWasEnabled=false;
  minerDefenseActors.clear();minerDefenseEnemies.clear();if(sh)sh->minerDefenseActive=sh->minerDefenseAttacks=sh->minerDefenseResumes=0;
+ minerDefenseRosterAttempted=minerDefenseRosterComplete=false;
 }
 static int minerDefenseState(const MinerDefenseIdentity&j,uint32_t house,OreHarvestState&out){
  if(j.actorKind==2&&j.harvester){
@@ -293,31 +296,69 @@ static bool minerDefenseAttack(MinerDefenseJob&j,uint32_t target,uint32_t house,
  if(j.target&&target!=j.target)j.previousTargetPointer=predecessor;
  j.target=target;j.targetPointer=pointer;j.targetType=type;j.targetTypeID=typeID;j.restoreMission=-1;return true;
 }
-static const planner::Actor* minerDefenseChoose(const planner::Actor&source){
+static const planner::Actor* minerDefenseChoose(const planner::Actor&source,uint32_t retired=0){
  const planner::Actor*best=nullptr;int64_t score=INT64_MAX;int range=0;
  for(const auto&w:source.weapons)range=std::max(range,w.range);
  range+=std::clamp(int(sh->minerDefenseRangeCells),0,minerdefense::MaxExtraCells)*256;
  minerDefenseEnemies.nearby(source.x,source.y,range,[&](int n){const auto&t=planningWorld.actors[n];
-  if(!minerdefense::inRange(source,t,int(sh->minerDefenseRangeCells)))return;const int64_t d=minerdefense::distance(source,t);
+  if(t.id==retired||!minerdefense::inRange(source,t,int(sh->minerDefenseRangeCells)))return;const int64_t d=minerdefense::distance(source,t);
   if(d<score||(d==score&&(!best||t.id<best->id))){best=&t;score=d;}
  });return best;
 }
 static bool minerDefenseRestored(const MinerDefenseJob&j,const OreHarvestState&s,uint32_t house){
  if(j.guarding)return j.guardPositionDone&&j.restoreMission==j.originalMission&&s.mission==j.originalMission&&s.queued==-1;
- if(j.restoreMission==7)return (s.unloading&&oreHarvestRefinery(j.identity,house)==1)||
-  ((s.mission==7||s.queued==7)&&s.destination==j.identity.refineryPointer);
- if(j.restoreMission==10)return (s.mission==10||s.queued==10)&&s.destination==readMapCell(int(j.restoreDestination%1000),int(j.restoreDestination/1000));
+ // A queued mission is only pending delivery. Keep the saved work until the
+ // native mission actually starts, so a discarded queue can be retried.
+ if(j.restoreMission==7)return ((s.mission==7||s.mission==16)&&s.unloading&&oreHarvestRefinery(j.identity,house)==1)||
+  (s.mission==7&&s.destination==j.identity.refineryPointer);
+ if(j.restoreMission==10)return s.mission==10&&s.destination==readMapCell(int(j.restoreDestination%1000),int(j.restoreDestination/1000));
  if(j.restoreMission==5)return s.mission==5&&s.queued==-1;
  return false;
 }
 static void minerDefenseBeginRestore(MinerDefenseJob&j,int frame,DWORD now){
  if(j.restoring)return;j.restoring=true;j.retries=0;j.restoreStartedFrame=frame;j.restoreStartedAt=now;
 }
+// A destroyed Unit can already be freed before the next worker sample. Only
+// a complete native roster proves retirement; a missing worldByID entry can
+// also be a failed read. Cache one bounded scan for this worker invocation.
+static int minerDefenseVictimRetired(const MinerDefenseJob&j){
+ if(!minerDefenseRosterAttempted){
+  minerDefenseRosterAttempted=true;minerDefenseRosterComplete=false;
+  OreHarvestWorld before{},after{};Vec units{},again{};static uint32_t pointers[16384];
+  if(!oreHarvestContext(minerDefenseWorld.house,minerDefenseWorld.frame,before)||!oreHarvestSameWorld(before,minerDefenseWorld)||
+     !read(0x8B4108,&units,sizeof units)||units.count<0||units.count>16384||units.capacity<units.count||
+     (units.count&&(units.items<0x10000||!read(units.items,pointers,size_t(units.count)*4))))return 0;
+  minerDefenseUnitRoster.clear();
+  for(int n=0;n<units.count;++n){uint32_t vt=0,id=0;const uint32_t p=pointers[n];
+   if(!oreHarvestRead(p,vt)||vt!=0x7F5C70u||!oreHarvestRead(p+0x10,id)||!id||minerDefenseUnitRoster.byId(id))return 0;
+   minerDefenseUnitRoster.add(p,id);
+  }
+  if(!read(0x8B4108,&again,sizeof again)||again.vt!=units.vt||again.items!=units.items||again.count!=units.count||again.capacity!=units.capacity||
+     !oreHarvestContext(before.house,before.frame,after)||!oreHarvestSameWorld(before,after))return 0;
+  minerDefenseRosterComplete=true;
+ }
+ if(!minerDefenseRosterComplete||(j.identity.actorKind==2&&minerDefenseUnitRoster.byId(j.identity.id)!=j.identity.pointer))return 0;
+ return minerDefenseUnitRoster.byId(j.target)?-1:1;
+}
+// 1 proves captured death or retirement, 0 is uncertain, -1 is still present
+// without death evidence. Cloak, Limbo or off-map status alone is insufficient.
+static int minerDefenseVictimEnded(const MinerDefenseJob&j){
+ const auto retired=[&](int present){const int result=minerDefenseVictimRetired(j);return result==-1?present:result;};
+ uint32_t vt=0,id=0,type=0,typeID=0;int hp=0;uint8_t alive=1;
+ if(!oreHarvestRead(j.targetPointer,vt)||!oreHarvestRead(j.targetPointer+0x10,id)||
+    !oreHarvestRead(j.targetPointer+0x6C4,type))return retired(0);
+ if(vt!=0x7F5C70u||id!=j.target||type!=j.targetType)return retired(-1);
+ if(!oreHarvestRead(type+0x10,typeID))return retired(0);if(typeID!=j.targetTypeID)return retired(-1);
+ const bool hpKnown=oreHarvestRead(j.targetPointer+0x6C,hp),aliveKnown=oreHarvestRead(j.targetPointer+0x90,alive);
+ if((hpKnown&&hp<=0)||(aliveKnown&&!alive))return 1;
+ return retired(hpKnown&&aliveKnown?-1:0);
+}
 // Manual revision is the primary signal. If a native input was not observed,
 // admit only the captured work, our own Attack, and the exact restore tuple.
 // In particular a new Move/Stop/Attack must win even before the first Attack
 // becomes visible, and while a submitted restoration is still pending.
-static bool minerDefenseTransition(const MinerDefenseJob&j,const OreHarvestState&s,uint32_t target,uint32_t house){
+static bool minerDefenseTransition(const MinerDefenseJob&j,const OreHarvestState&s,uint32_t target,uint32_t house,bool*unknown=nullptr,bool*ended=nullptr){
+ if(unknown)*unknown=false;if(ended)*ended=false;
  // A recycled victim pointer is still the old native target reference; fresh
  // UID/type validation below forbids attacking its replacement accidentally.
  const bool ownTarget=target==j.targetPointer||(j.previousTargetPointer&&target==j.previousTargetPointer);
@@ -341,6 +382,15 @@ static bool minerDefenseTransition(const MinerDefenseJob&j,const OreHarvestState
  // target and the expected/cleared destination count as that continuation.
  if(s.mission==5&&noTarget&&(j.observedAttack||j.restoring)&&(s.queued==-1||restoreQueued)&&
     (!s.destination||((j.returningToWait||j.returningToGuard)&&restoreDestination)))return true;
+ // A fast kill may pass through Attack entirely between worker samples.
+ // Confirm the same victim died or retired before accepting Guard cleanup,
+ // including the old captured target/destination residue. New Move/Stop,
+ // other targets and unrelated destinations still belong to the player.
+ if(j.attacked&&(ownTarget||noTarget)&&
+    ((s.mission==5&&(s.queued==-1||s.queued==5||restoreQueued))||(s.mission==1&&s.queued==5))&&
+    (!s.destination||s.destination==j.originalDestination||restoreDestination)){
+  const int terminal=minerDefenseVictimEnded(j);if(!terminal&&unknown)*unknown=true;if(ended)*ended=terminal==1;return terminal==1;
+ }
  return false;
 }
 // Returns true only when this local job may release ownership. Queued events
@@ -412,6 +462,7 @@ static bool minerDefenseTick(uint32_t house,int frame,DWORD now){
  if(minerDefenseFrame==frame&&minerDefenseInput==inputSerial&&minerDefenseConfigRevision==featureConfigRevision)return false;
  minerDefenseFrame=frame;minerDefenseInput=inputSerial;minerDefenseConfigRevision=featureConfigRevision;
  if(!freshness::valid(planningWorld.match,match,planningWorld.tick,planningWorld.frame,now,frame,freshness::Tactical))return false;
+ minerDefenseRosterAttempted=false;
  minerDefenseActors.clear();minerDefenseEnemies.clear();
  for(int n=0;n<planningWorld.count;++n){const auto&a=planningWorld.actors[n];minerDefenseActors.add(a);if(minerdefense::threat(a))minerDefenseEnemies.add(n,a);}
  minerDefenseIndexRefineries();
@@ -435,9 +486,12 @@ static bool minerDefenseTick(uint32_t house,int frame,DWORD now){
   }
   uint32_t targetPointer=0;if(!oreHarvestRead(j.identity.pointer+0x2B4,targetPointer)){
    if(!j.uncertainAt)j.uncertainAt=now;if(DWORD(now-j.uncertainAt)>2000)minerDefenseDrop(id);continue;
+  }
+  const uint32_t currentTarget=rawObjectID(targetPointer);bool ended=false;
+  if(!minerDefenseTransition(j,state,targetPointer,house,&unknown,&ended)){
+   if(unknown){if(!j.uncertainAt)j.uncertainAt=now;if(DWORD(now-j.uncertainAt)>2000)minerDefenseDrop(id);}
+   else minerDefenseForget(id);continue;
   }j.uncertainAt=0;
-  const uint32_t currentTarget=rawObjectID(targetPointer);
-  if(!minerDefenseTransition(j,state,targetPointer,house)){minerDefenseForget(id);continue;}
   if(state.mission==1&&currentTarget==j.target){j.observedAttack=true;j.previousTargetPointer=0;}
   if(!sh->minerDefenseEnabled||!minerDefenseType(j.identity.type,j.identity.actorKind))minerDefenseBeginRestore(j,frame,now);
   // Both clocks must advance: a paused match is not a failed restoration.
@@ -445,14 +499,14 @@ static bool minerDefenseTick(uint32_t house,int frame,DWORD now){
   if(j.restoring&&frame-j.restoreStartedFrame>=600&&DWORD(now-j.restoreStartedAt)>=15000){minerDefenseDrop(id);continue;}
   if(!j.restoring){
    planner::Actor victim{};uint32_t p=0,t=0,tid=0;
-   const bool retain=minerDefenseVictim(j.target,house,victim,p,t,tid)&&p==j.targetPointer&&t==j.targetType&&tid==j.targetTypeID&&
+   const bool retain=!ended&&minerDefenseVictim(j.target,house,victim,p,t,tid)&&p==j.targetPointer&&t==j.targetType&&tid==j.targetTypeID&&
     minerdefense::inRange(source,victim,int(sh->minerDefenseRangeCells),true);
    if(retain){
     if((state.mission==1||state.queued==1)&&currentTarget==j.target)continue;
     if(frame-j.sentFrame<12||DWORD(now-j.sentAt)<350)continue;
     if(j.retries<3&&issued<6&&minerDefenseAttack(j,j.target,house,frame,now,true)){++j.retries;++issued;continue;}
     if(j.retries<3)continue;minerDefenseBeginRestore(j,frame,now);
-   }else if(const auto*next=minerDefenseChoose(source)){
+   }else if(const auto*next=minerDefenseChoose(source,ended?j.target:0)){
     if(issued<6&&minerDefenseAttack(j,next->id,house,frame,now,false)){j.retries=0;++issued;}continue;
    }else minerDefenseBeginRestore(j,frame,now);
   }

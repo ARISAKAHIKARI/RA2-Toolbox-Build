@@ -31,7 +31,7 @@ constexpr uint32_t House=0x20010000,Miner=0x20020000,MinerType=0x20030000,Refine
 constexpr uint32_t Overlay=0x20060000,Tiberium=0x20070000,OverlayItems=0x20080000,TiberiumItems=0x20081000,Links=0x20082000,Docks=0x20083000;
 constexpr uint32_t Scenario=0x20090000,EnemyHouse=0x20091000,EnemyCountry=0x20092000,Drone=0x200A0000,Drone2=0x200A1000,DroneType=0x200B0000;
 constexpr uint32_t Gun=0x200C0000,ParasiteGun=0x200C1000,Projectile=0x200C2000,Warhead=0x200C3000,ParasiteWarhead=0x200C4000,EliteGun=0x200C5000;
-constexpr uint32_t Cells=0x21000000,CellBase=0x30000000,Map=0x87F7E8;
+constexpr uint32_t Cells=0x21000000,CellBase=0x30000000,Map=0x87F7E8,NativeUnitItems=0x203F0000;
 constexpr uint32_t MinerID=11,RefineryID=21,DroneID=31,Drone2ID=32,ResourceCell=62056,WaitCell=62053;
 static Shared*sh;
 static Snapshot snap;
@@ -132,6 +132,12 @@ static void resource(int x,int y,int land=0,uint32_t occupation=0){cells[uint32_
 // Snapshot publication is a boundary. All combat/parasite properties below are
 // obtained from the production raw helpers; tests can keep this snapshot stale.
 static void sampleWorld(){
+ // Native roster membership is independent of liveness and read failures.
+ // A dead Unit stays listed until the fixture explicitly removes it; inspect
+ // backing bytes here so fault injection cannot manufacture native absence.
+ int unitCount=0;for(uint32_t p:actors){uint32_t vt=0;memcpy(&vt,memory(p,4),4);
+  if(vt==0x7F5C70u){assert(unitCount<16384);set<uint32_t>(NativeUnitItems+uint32_t(unitCount++)*4,p);}
+ }vectorAt(0x8B4108,NativeUnitItems,unitCount);
  planningWorld.match=match;planningWorld.frame=snap.frame;planningWorld.tick=clockNow;planningWorld.inputSerial=inputSerial;planningWorld.count=0;
  for(uint32_t p:actors){
   if(!live(p))continue;
@@ -174,7 +180,7 @@ static void reset(){
  int bounds[]={100,100,0,0,100,100};memcpy(memory(Map+0xF4,sizeof bounds),bounds,sizeof bounds);set<uint32_t>(0x87F924,Cells);set<int>(0x87F928,512*512);
  vectorAt(0xA83D80,OverlayItems,1);set<uint32_t>(OverlayItems,Overlay);set<uint8_t>(Overlay+0x2A9,1);set<int>(Overlay+0x294,0);
  vectorAt(0xB0F4E8,TiberiumItems,1);set<uint32_t>(TiberiumItems,Tiberium);set<uint32_t>(Tiberium+0xE0,Overlay);set<int>(Tiberium+0xE8,1);set<int>(Tiberium+0xB8,25);
- vectorAt(0x8B4108,0x20084000,1);set<uint32_t>(0x20084000,Miner);vectorAt(0xA8EB40,0x20085000,1);set<uint32_t>(0x20085000,Refinery);
+ vectorAt(0xA8EB40,0x20085000,1);set<uint32_t>(0x20085000,Refinery);
  for(int land=0;land<12;++land)for(int speed=0;speed<8;++speed)set<float>(0x89EA40+uint32_t(land*9+speed)*4,land==2?0.f:1.f);
  resource(56,62);resource(80,62);refreshOreConfig();sampleWorld();
 }
@@ -183,6 +189,7 @@ static bool step(int frames=1,DWORD elapsed=16,bool refresh=true){
  return minerDefenseTick(House,snap.frame,clockNow);
 }
 static void observeAttack(uint32_t target=Drone){set<int>(Miner+0xAC,1);set<int>(Miner+0xB4,-1);set<uint32_t>(Miner+0x2B4,target);set<uint32_t>(Miner+0x5A4,0);}
+static void observeGuard(uint32_t target=0,uint32_t destination=0,int queued=-1){set<int>(Miner+0xAC,5);set<int>(Miner+0xB4,queued);set<uint32_t>(Miner+0x2B4,target);set<uint32_t>(Miner+0x5A4,destination);}
 static void kill(uint32_t p=Drone){set<int>(p+0x6C,0);}
 static void observe(const intent::EventOrder&e){
  set<int>(Miner+0xAC,e.mission);set<int>(Miner+0xB4,-1);set<uint32_t>(Miner+0x2B4,e.b?worldByID(uint32_t(e.b)):0);
@@ -558,10 +565,15 @@ int main(int argc,char**argv){
   CHECK(minerDefenseJobs.size()==MinerDefenseCapacity&&sh->minerDefenseActive==MinerDefenseCapacity&&events.size()==before+1);
   step();CHECK(minerDefenseJobs.size()==MinerDefenseCapacity&&events.size()==before+1);
  });
- run("queued_exact_enter_restore_preserves_work_metadata",[]{
-  refineryWork();const planner::Order order{MinerID,0,0,RefineryID,7,0x34,planner::OreOrder,RefineryID};minerDefenseRememberOre(order,House);CHECK(minerDefenseWork.count(MinerID)==1);
+ run("post_kill_queued_enter_waits_for_actual_restore_observation",[]{
+  for(bool staleUnloading:{false,true}){reset();refineryWork(staleUnloading?16:12);const planner::Order order{MinerID,0,0,RefineryID,7,0x34,planner::OreOrder,RefineryID};minerDefenseRememberOre(order,House);CHECK(minerDefenseWork.count(MinerID)==1);
   attackStarted();observeAttack();step();kill();step();CHECK(events.size()==2&&events.back().mission==7);
-  set<int>(Miner+0xB4,7);set<uint32_t>(Miner+0x5A4,Refinery);step();CHECK(events.size()==2&&!minerDefensePending()&&minerDefenseWork.count(MinerID)==1);
+  set<int>(Miner+0xB4,7);set<uint32_t>(Miner+0x5A4,Refinery);step();CHECK(events.size()==2&&minerDefensePending()&&minerDefenseWork.count(MinerID)==1);
+  // Queued Enter has not become the current mission. If it disappears into
+  // Guard, keep the saved work and retry instead of declaring it restored.
+  observeGuard();step(12,350);CHECK(events.size()==3&&events.back().mission==7&&minerDefensePending());
+  observe(events.back());step();CHECK(!minerDefensePending()&&minerDefenseWork.count(MinerID)==1);
+  }
  });
  run("different_harvest_destination_during_restore_is_manual",[]{
   attackStarted();observeAttack();step();kill();step();CHECK(events.size()==2);set<int>(Miner+0xAC,10);set<uint32_t>(Miner+0x5A4,cellPointer(80,62));step(30,500);CHECK(events.size()==2&&!minerDefensePending());
@@ -592,6 +604,103 @@ int main(int argc,char**argv){
   // Guard5 with empty native target/destination is also the natural Attack
   // completion shape. Without a changed input token it cannot identify Stop.
   step(30,500);CHECK(events.size()==3&&minerDefensePending());harvestTuple(events.back());
+ });
+ run("post_kill_guard_before_any_attack_snapshot_resumes_mining",[]{
+  for(bool clearAlive:{false,true}){reset();attackStarted();CHECK(!minerDefenseJobs.at(MinerID).observedAttack);
+  // Attack and the kill complete between two sampler observations. The next
+  // visible source state is native idle Guard, not the fleeting Attack.
+  if(clearAlive)set<uint8_t>(Drone+0x90,0);else kill();observeGuard();
+  step(12,350);CHECK(events.size()==2&&sh->minerDefenseResumes==1&&minerDefensePending());harvestTuple(events.back());
+  CHECK(get<int>(Miner+0xAC)==5);step();CHECK(events.size()==2&&minerDefensePending());
+  observe(events.back());step();CHECK(get<int>(Miner+0xAC)==10&&!minerDefensePending());
+  }
+ });
+ run("post_kill_guard_with_dead_target_and_original_destination_resumes",[]{
+  for(int residue:{0,1,2}){reset();attackStarted();observeAttack();step();kill();
+   observeGuard(residue!=1?Drone:0,residue!=0?cellPointer(56,62):0);step(12,350);
+   CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
+   step();CHECK(events.size()==2&&minerDefensePending());observe(events.back());step();CHECK(!minerDefensePending()&&get<int>(Miner+0xAC)==10);
+  }
+ });
+ run("post_kill_attack_target_clears_before_guard_still_recovers",[]{
+  attackStarted();kill();observeAttack(0);step();CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
+  observe(events.back());step();CHECK(!minerDefensePending()&&get<int>(Miner+0xAC)==10);
+ });
+ run("post_kill_attack_with_queued_guard_recovers",[]{
+  for(bool targetCleared:{false,true}){reset();attackStarted();kill();observeAttack(targetCleared?0:Drone);set<int>(Miner+0xB4,5);
+   step(12,350);CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
+   step();CHECK(events.size()==2&&minerDefensePending());observe(events.back());step();CHECK(!minerDefensePending()&&get<int>(Miner+0xAC)==10);
+  }
+ });
+ run("post_kill_retired_victim_without_readable_corpse_restores",[]{
+  for(int mode:{0,1,2,3}){reset();attackStarted();CHECK(!minerDefenseJobs.at(MinerID).observedAttack);
+   if(mode==2){ // Reused memory contains a new non-parasite Unit, never our old target.
+    object(Drone,0x7F5C70,999,MinerType,EnemyHouse);position(Drone,55*256,62*256);
+   }else{
+    actors.erase(std::remove(actors.begin(),actors.end(),Drone),actors.end());
+    if(mode==0)memset(memory(Drone,0x800),0,0x800);
+    if(mode==1)failRead=Drone;
+    // mode 3 leaves stale live-looking bytes and an old worldObjects entry.
+    // Only the complete native roster establishes that the target is gone.
+   }
+   observeGuard();step(12,350);CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
+   CHECK(get<int>(Miner+0xAC)==5);step();CHECK(events.size()==2&&minerDefensePending());
+   failRead=0;observe(events.back());step();CHECK(!minerDefensePending()&&get<int>(Miner+0xAC)==10);
+   for(const auto&e:events)CHECK(e.mission!=1||e.b==DroneID);
+  }
+ });
+ run("post_kill_partial_roster_does_not_invent_retirement",[]{
+  for(int mode:{0,1}){reset();attackStarted();actors.erase(std::remove(actors.begin(),actors.end(),Drone),actors.end());memset(memory(Drone,0x800),0,0x800);
+   if(mode==0)failRead=NativeUnitItems;
+   else{object(Drone2,0x7F5C70,999,MinerType,EnemyHouse);position(Drone2,90*256,90*256);actors.push_back(Drone2);failRead=Drone2+0x10;}
+   observeGuard();step(12,350);CHECK(events.size()==1&&minerDefensePending());
+   step();CHECK(events.size()==1&&minerDefensePending());
+   // A later complete read can establish retirement and recover the work.
+   failRead=0;step();CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
+   observe(events.back());step();CHECK(!minerDefensePending()&&get<int>(Miner+0xAC)==10);
+  }
+ });
+ run("post_kill_skipped_attack_returns_native_return_and_unload_work",[]{
+  for(int mission:{12,16}){reset();refineryWork(mission);attackStarted();CHECK(!minerDefenseJobs.at(MinerID).observedAttack);
+   kill();set<uint8_t>(Miner+0x6D1,0);observeGuard(0,Refinery);step(12,350);
+   CHECK(events.size()==2&&events.back().mission==7&&events.back().c==RefineryID&&minerDefensePending());
+   step();CHECK(events.size()==2&&minerDefensePending());observe(events.back());step();CHECK(!minerDefensePending()&&get<int>(Miner+0xAC)==7);
+  }
+ });
+ run("post_kill_skipped_attack_preserves_managed_wait_recovery",[]{
+  rememberWait();attackStarted();CHECK(minerDefenseWork.count(MinerID)==1);kill();observeGuard(0,cellPointer(53,62));step(12,350);
+  CHECK(events.size()==2&&events.back().mission==2&&events.back().c==WaitCell&&minerDefensePending()&&minerDefenseWork.count(MinerID)==1);
+  step();CHECK(events.size()==2&&minerDefensePending());observe(events.back());position(Miner,53*256+128,62*256+128);step();
+  CHECK(!minerDefensePending()&&minerDefenseWork.count(MinerID)==1);for(const auto&e:events)CHECK(e.mission!=7);
+ });
+ run("post_kill_queued_harvest_waits_for_actual_restore_observation",[]{
+  attackStarted();observeAttack();step();kill();step();CHECK(events.size()==2);harvestTuple(events.back());
+  set<int>(Miner+0xB4,10);set<uint32_t>(Miner+0x5A4,cellPointer(56,62));step();CHECK(events.size()==2&&minerDefensePending());
+  observeGuard();step(12,350);CHECK(events.size()==3&&minerDefensePending());harvestTuple(events.back());
+  step();CHECK(events.size()==3&&minerDefensePending());observe(events.back());step();CHECK(!minerDefensePending()&&get<int>(Miner+0xAC)==10);
+ });
+ run("post_kill_explicit_manual_stop_move_attack_always_win",[]{
+  for(int mission:{0,1,2}){reset();attackStarted();kill();cancelOreJob(Miner);
+   if(mission==1){addDrone2();position(Drone2,90*256,90*256);observeAttack(Drone2);}
+   else{set<int>(Miner+0xAC,mission);set<int>(Miner+0xB4,-1);set<uint32_t>(Miner+0x2B4,0);set<uint32_t>(Miner+0x5A4,mission==2?cellPointer(90,90):0);}
+   step(12,350);CHECK(events.size()==1&&!minerDefensePending());
+   observeGuard();for(int n=0;n<4;++n)step(30,500);CHECK(events.size()==1&&!minerDefensePending());
+  }
+ });
+ run("post_kill_inference_requires_captured_target_and_known_destination",[]{
+  for(int mode:{0,1,2,3,4,5,6,7}){reset();attackStarted();observeGuard();
+   if(mode==0)failRead=Drone+0x6C; // A failed read is not a zero-HP observation.
+   if(mode==1){ // Pointer mismatch does not prove retirement while the old UID remains listed.
+    set<uint32_t>(Drone+0x10,999);object(Drone2,0x7F5C70,DroneID,DroneType,EnemyHouse);position(Drone2,90*256,90*256);actors.push_back(Drone2);
+   }
+   if(mode==2)set<int>(Drone+0x220,1); // Cloak invalidates targeting, not life.
+   if(mode==3)set<uint32_t>(Drone+0x21C,House); // Ownership change is not death.
+   if(mode==4){kill();set<uint32_t>(Miner+0x5A4,cellPointer(90,90));} // Unrelated native order residue.
+   if(mode==5)set<uint8_t>(Drone+0x81,1); // Limbo alone is not observed death.
+   if(mode==6)set<uint8_t>(Drone+0x74,0); // Neither is an off-map transition.
+   if(mode==7)set<uint32_t>(DroneType+0x10,999); // Replaced type identity.
+   step(12,350);CHECK(events.size()==1);failRead=0;for(int n=0;n<3;++n)step();CHECK(events.size()==1);
+  }
  });
  std::printf("{\"checks\":%u,\"passed_cases\":%u,\"failed_cases\":%u,\"assertions_active\":true,\"production_headers_executed\":true,\"failures\":[",checks,passed,failed);
  for(size_t n=0;n<failures.size();++n)std::printf("%s\"%s\"",n?",":"",failures[n].c_str());std::printf("],\"pass\":%s}\n",failed?"false":"true");delete sh;return failed?1:0;

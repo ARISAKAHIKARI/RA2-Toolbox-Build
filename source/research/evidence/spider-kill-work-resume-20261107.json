@@ -1,0 +1,87 @@
+{
+  "base_commit": "1d7f3020b12c8f25b8b83e161ddd1bafc6364cda",
+  "fixture_identical_before_after": true,
+  "fixture_sha256": "9a8627969679b7ee5ae479b35b5002a1e06576cfdb9ec920fd8bec9cf8dc8047",
+  "final_source_sha256": {
+    "assist/source/harvester_defense.h": "185e4b46e15bca7aa51bc4790d70674b5adb76f2ab32acc15bcb7192d58cf8dd",
+    "assist/source/harvester_defense_raw.h": "c890e9e25578dc0dc53b69f488f402608157516847e47b4ec5a5c1770dbab627",
+    "assist/source/harvester_defense_bridge.h": "18a5762bb6c526e3de87991aa9ec9212bc985ffefd6e1d33c771beb29f5fbb24",
+    "assist/source/ore_harvest_bridge.h": "6c3a5ece1566af1138398c499691d3ab9d2ac5c8a785f6cc878190d5737a305a",
+    "assist/source/ore_harvest_search.h": "a84805e129bbc190efd84f8baa70bd3ff9b1ff833ad51f482e3f69e9e488ab6e",
+    "assist/source/raw_combat.h": "7972727364e3a6d6cad7762fccb6cf030173000716827ba8ba45647b87c85552",
+    "assist/source/external_orders_bridge.h": "e507e9e57718aeba4c6a37a4b51a83462de50fe5e36d0bc9414e5491cc5f2f64",
+    "assist/source/native_orders_bridge.h": "974317d861bdecc55f1f842df5e68a98c92f9ed6d1c019f7846cf10f3e348553",
+    "assist/source/bridge.cpp": "0a52550b95573127d37a7a4583b6041b5d873bda9da34f3cf9e15ee0d6282b77",
+    "assist/source/protocol.h": "a4208dd1adbd5b7a4d0b80e9a2981e192ddeae79dac75abe9dac2425dced219e",
+    "assist/source/planner_types.h": "c4215d8d6328d492b548efa48d26aa2da4fef7a1d1328d57e9bd2e245071ffcc",
+    "assist/source/planner_index.h": "aff36ca9447a530b34dc77e48c3ee7bef3e7f8595c103e3d0e52fb9332353a63",
+    "assist/source/weapon_policy.h": "38cb967a4656087b9b7694544e520741c225ee6408c998fe9d99f0aeada19ceb",
+    "assist/source/object_index.h": "6c5d6f8a3760b50cab0fc5274d7517bd96feb539bf0bd92a1225918f1ece8f8c",
+    "assist/source/unit_task_arbiter.h": "86e4278cd05ba68d44f0ac9a8a292d16f5db00198e32ef865b10f85b556dd0a9",
+    "assist/source/command_intent.h": "71e07afdac107d8dc6a216712b25693d42db876dea40215cb89cf3f4ef0e54aa",
+    "assist/source/ore_type_config.h": "eef48140f2bcb1fdd134f55de73a6b78826430488dd657d9f8637fc6491634d2",
+    "assist/source/ore_queue.h": "9cee038574b9ca4cf06643644aed6b3ef12c1096fea2a3e1e762ac80cb07a293",
+    "assist/source/feature_type_config.h": "9fea2e80e73601e79fb73f388deff1e3f99f99558b5a3c0a609e34d55d897ad9",
+    "assist/source/feature_type_bridge.h": "9343cf81e5b1885fce449e20b14ae594452fa2da4ee6f0ee85ed35c0476aed69",
+    "assist/tests/harvester_defense_runtime.cpp": "9a8627969679b7ee5ae479b35b5002a1e06576cfdb9ec920fd8bec9cf8dc8047",
+    "assist/tests/harvester_defense_runtime.py": "690c3d977a75a520defe530be0043eac8f085fa54d96e99cbb26dbc478f1d145"
+  },
+  "changed_recorded_production_files": [
+    "assist/source/harvester_defense_bridge.h"
+  ],
+  "sources_still_match_final_run": true,
+  "execution_limits": {
+    "host": "Linux g++ synthetic-memory fixture",
+    "game_process_operated": false,
+    "native_game_execution": false,
+    "windows_game_or_multiplayer_proven": false,
+    "note": "The production runtime/ore/raw combat headers execute against synthetic memory. A recorded nativeMission event is only a request; tests independently observe the current mission before accepting recovery."
+  },
+  "date": "2026-11-07 (UTC+8)",
+  "focused_before": {
+    "sha256": "08da63184c88e0a9d5e0b303508dbdede84d005f2ec40eef64660750b3106ad0",
+    "result": {
+      "checks": 105,
+      "passed_cases": 3,
+      "failed_cases": 9,
+      "assertions_active": true,
+      "production_headers_executed": true,
+      "failures": [
+        "post_kill_queued_enter_waits_for_actual_restore_observation",
+        "post_kill_guard_before_any_attack_snapshot_resumes_mining",
+        "post_kill_guard_with_dead_target_and_original_destination_resumes",
+        "post_kill_attack_with_queued_guard_recovers",
+        "post_kill_retired_victim_without_readable_corpse_restores",
+        "post_kill_partial_roster_does_not_invent_retirement",
+        "post_kill_skipped_attack_returns_native_return_and_unload_work",
+        "post_kill_skipped_attack_preserves_managed_wait_recovery",
+        "post_kill_queued_harvest_waits_for_actual_restore_observation"
+      ],
+      "pass": false
+    }
+  },
+  "focused_after": {
+    "sha256": "12e6193aa910583aa4e4b509e9144c7d35076dba923cd1af5f3aed902833a5c6",
+    "result": {
+      "checks": 223,
+      "passed_cases": 12,
+      "failed_cases": 0,
+      "assertions_active": true,
+      "production_headers_executed": true,
+      "failures": [],
+      "pass": true
+    }
+  },
+  "full_suite": {
+    "sha256": "6c34f14b40951d7586fbd7e3f8e847b4e0d315dff532bcbf3750cdff652fea2c",
+    "result": {
+      "checks": 2943,
+      "passed_cases": 70,
+      "failed_cases": 0,
+      "assertions_active": true,
+      "production_headers_executed": true,
+      "failures": [],
+      "pass": true
+    }
+  }
+}

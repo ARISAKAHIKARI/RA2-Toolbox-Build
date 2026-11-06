@@ -218,7 +218,17 @@ static void deferTechEnhancementParameters(){
 }
 static void techEnhanceParametersTick(uint32_t house,DWORD now){
  using namespace techparameters;
- if(!enhancedRequested()){
+ const bool requested=enhancedRequested();static bool catalogueRequested=false;
+ if(requested!=catalogueRequested){
+  // The native catalogue stamp hashes actual rules, which exact mode never
+  // changes. Rebuild its effective-level filter on both request edges so a
+  // midgame activation can reach the existing guarded cameo path. Readiness
+  // and native CanBuild/FindFactory still gate every inserted icon below.
+  catalogueRequested=requested;enhancementChangedCatalogue=true;
+  catalogueDirty=true;catalogueReady=false;catalogueAt=0;scanTypes();
+  if(snap.techOpen)requestTechRefresh();
+ }
+ if(!requested){
   if(enhancementDesired&&sh&&sh->techEnhance&&techEnhancementProductionPending(house)){enhancementFailure=-7;publish();return;}
   restoreTechEnhanceParameters();return;
  }

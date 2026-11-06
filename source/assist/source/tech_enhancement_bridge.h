@@ -98,6 +98,11 @@ static void techEnhancementTick(DWORD now){
  sh->techEnhanceCount=count;sh->techEnhanceStatus=enhancementConflict?-2:1;
  if(changed){
   enhancementChangedCatalogue=true;catalogueDirty=true;catalogueReady=false;catalogueAt=0;scanTypes();
+  // A live TechLevel change does not itself rerun native construction options.
+  // Request the existing House pass once, preserving its real buildability
+  // checks and all factory queues. Active/pending Master keeps its explicit
+  // native-trigger-only policy; merely selecting it while off is not active.
+  if(techImplementation!=2||(!snap.techOpen&&!techPending))put<uint8_t>(house+0x1FC,1);
   if(snap.techOpen)requestTechRefresh();
  }
 }

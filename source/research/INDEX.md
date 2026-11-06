@@ -6,6 +6,8 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 科技加强中途开启的建造栏刷新 | [原生重查与有效目录刷新](2026-11-07-tech-enhancement-midgame-refresh.md) | pre4 RecheckTechTree House1FC exact-catalogue request-edge active-Master queues-preserved |
+| 点死蜘蛛后矿车发呆 | [快速完成、残留字段与恢复确认](2026-11-07-spider-kill-work-resume.md) | pre4 Guard missed-Attack dead-target queued-not-complete manual-priority |
 | 点杀蜘蛛的参与单位独立配置 | [独立类型清单、地面单位恢复与手动优先](2026-11-06-spider-defender-types.md) | Assist99 SpiderDefense independent-types Infantry Unit Guard AreaGuard manual-hold |
 | 矿车自动点杀蜘蛛、手动优先与工作恢复 | [独立开关、N／N+1 与排队意图保留](2026-11-06-miner-spider-defense.md) | Assist98 native-events manual-priority FIFO-intent synthetic-memory no-new-hooks no-live-game |
 | 建築末幀、星級縮放與單機 FPS | [普通 SHP 與精確單機限速](2026-11-05-animation-rank-single-player-fps.md) | TimeToDie slot Start+Value rank 55D7BC QPC Assist97 tag32 SP-only |

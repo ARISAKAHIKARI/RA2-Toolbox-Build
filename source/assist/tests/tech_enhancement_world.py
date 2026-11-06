@@ -50,6 +50,7 @@ struct Snapshot {int techOpen=0;} snap;
 static bool enhancementChangedCatalogue=false,catalogueDirty=false,catalogueReady=true;
 static DWORD catalogueAt=0;
 static unsigned scans=0,refreshes=0;
+static unsigned techImplementation=0;static bool techPending=false; // full-tech modes are inactive in this restoration fixture
 static bool techDataBlocksEnhancement(){return false;}
 static bool techLegacyEnhancementProductionPending(uint32_t){return false;} // independent native production modeled absent
 static void deferTechEnhancementParameters(){}
@@ -69,6 +70,7 @@ struct Memory {
 } memory;
 static bool read(uint32_t at,void*out,size_t n){return memory.read(at,out,n);}
 template<class T>static T get(uint32_t at){T v{};read(at,&v,sizeof v);return v;}
+template<class T>static void put(uint32_t at,T v){memory.set<T>(at,v);} // modeled native refresh flag write
 struct Vec {uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
 static Vec vec(uint32_t at,int){Vec v{};return read(at,&v,sizeof v)?v:Vec{};}
 static uint32_t item(Vec v,int i){return get<uint32_t>(v.items+i*4);}

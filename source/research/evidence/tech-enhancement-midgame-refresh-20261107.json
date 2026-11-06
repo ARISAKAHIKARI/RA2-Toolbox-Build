@@ -1,0 +1,227 @@
+{
+  "schema": 1,
+  "assertions_enabled": true,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "windows_executed": false,
+  "source_sha256": {
+    "source/assist/source/bridge.cpp": "0a52550b95573127d37a7a4583b6041b5d873bda9da34f3cf9e15ee0d6282b77",
+    "source/assist/source/protocol.h": "a4208dd1adbd5b7a4d0b80e9a2981e192ddeae79dac75abe9dac2425dced219e",
+    "source/assist/source/sidebar.h": "9872316071088ae832ef8ce04ca459196f41e625a9a653ff1a3b18b654de734c",
+    "source/assist/source/sidebar_policy.h": "928e16cbbfd10e9ecf907ca360b1214a7b2eeff93c24a2dddf4fae5226769b36",
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/tech_enhancement_bridge.h": "b0fa93b6e0dfc22eea8801f67e21cec729b70bfc2c4045945378179604cd8488",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "08a52e24576400e65a1d12d9cf549521b065b484a4c54883303cdc71bcdb5663",
+    "source/assist/source/tech_enhancement_parameter_policy.h": "348e1616099242de79e9f7b5d6d4d15594e6640d6744c8e34960785b5a7faba2",
+    "source/assist/source/technology_mode_policy.h": "33e92d7331d9458d621e368c457276969960d904454779036f91116c789499e8",
+    "source/assist/source/session_epoch.h": "1935c87ea55edd287c53b64472c5de8f617204a924c4ca8602fc247d0a6297d9",
+    "source/external_reader/source/catalogue_stamp.h": "2e366702bfabdf89b6e4e30f06a72e84971e414d0108f3b8f94bf82745aeb600",
+    "source/assist/tests/tech_enhancement_midgame.py": "428275742861313deb9f483a0e0b224e6e722b2a381babfd4bbf32ad770eace5",
+    "source/assist/tests/tech_enhancement_midgame.cpp": "74ca803d3b0e77e668e491fc69ce01660f919fa8f621f5ef1904f9b594d62397"
+  },
+  "before_commit": "1d7f3020b12c8f25b8b83e161ddd1bafc6364cda",
+  "boundary": "Actual production activation, restoration, effective catalogue filtering, type selection, and cameo gate functions; native eligibility/factory/AddCameo, signatures, and DR readiness are modeled; memory is private synthetic mmap data. No native game instructions execute.",
+  "before": [
+    {
+      "case": "legacy_midgame_refresh",
+      "status": "FAIL",
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "FAIL legacy activation requests native House tech-tree evaluation",
+      "expected_defect_reproduced": true
+    },
+    {
+      "case": "exact_midgame_catalogue",
+      "status": "FAIL",
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "FAIL exact activation invalidates the formerly filtered catalogue",
+      "expected_defect_reproduced": true
+    }
+  ],
+  "after": [
+    {
+      "case": "legacy_midgame_refresh",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_midgame_refresh\",\"status\":\"PASS\",\"checks\":5}",
+      "stderr": "",
+      "checks": 5
+    },
+    {
+      "case": "legacy_recheck_once",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_recheck_once\",\"status\":\"PASS\",\"checks\":4}",
+      "stderr": "",
+      "checks": 4
+    },
+    {
+      "case": "legacy_inactive_master",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_inactive_master\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "legacy_active_master",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_active_master\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_pending_master",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_pending_master\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_no_change",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_no_change\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "legacy_unreadable_world",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_unreadable_world\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_midgame_catalogue",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_midgame_catalogue\",\"status\":\"PASS\",\"checks\":7}",
+      "stderr": "",
+      "checks": 7
+    },
+    {
+      "case": "exact_pending_readiness",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_pending_readiness\",\"status\":\"PASS\",\"checks\":4}",
+      "stderr": "",
+      "checks": 4
+    },
+    {
+      "case": "exact_off_reenable",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_off_reenable\",\"status\":\"PASS\",\"checks\":4}",
+      "stderr": "",
+      "checks": 4
+    },
+    {
+      "case": "exact_native_rule_rejected",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_native_rule_rejected\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_factory_missing",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_factory_missing\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_filter_insignificant",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_filter_insignificant\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_filter_spawned",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_filter_spawned\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_filter_no_owner",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_filter_no_owner\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_full_capacity",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_full_capacity\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_failed_signature",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_failed_signature\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_full_allowlist",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_full_allowlist\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_busy_mode_handoff",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_busy_mode_handoff\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    }
+  ],
+  "before_subject_sha256": "4f96854a2e3c839292b73f4b3dedf3b4378153705693d3dc3878feacce73b3a9",
+  "after_subject_sha256": "b6804dccfaefabb4ff0f644e5a91c6803fff400b1cff16c33c0e3e34dea71827",
+  "checks": 55,
+  "cases": 19,
+  "source_unchanged": true,
+  "before_reproduced": true,
+  "required_checks_passed": true,
+  "legacy_world_restoration": {
+    "exit_code": 0,
+    "source": "source/assist/source/tech_enhancement_bridge.h",
+    "production_functions_extracted": true,
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "output": "production enhancement-world checks=34 failures=0; synthetic reads/writes; no game or multiplayer\n",
+    "compiler_adapter": "Existing generated C++ compiled and executed with Linux g++; no Windows execution",
+    "assertions_enabled": true,
+    "windows_executed": false,
+    "checks": 34,
+    "required_checks_passed": true,
+    "source_sha256": {
+      "source/assist/tests/tech_enhancement_world.py": "5e4c7f7fa4e0bc06f2af8b15af284bb1030bc473796666b6db2367c918dfe9a1",
+      "source/assist/source/tech_enhancement_bridge.h": "b0fa93b6e0dfc22eea8801f67e21cec729b70bfc2c4045945378179604cd8488",
+      "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+      "source/assist/source/session_epoch.h": "1935c87ea55edd287c53b64472c5de8f617204a924c4ca8602fc247d0a6297d9"
+    }
+  },
+  "date": "2026-11-07 (UTC+8)",
+  "report_sha256": {
+    "midgame": "64024eee7e460927e4fb3d220131c1b8f51685d4c8f49ed1be192cc70b8ccfff",
+    "world_restoration": "22b55d87947f188f467c56d0beae866df9bbc98b169098fcd54e5bc0a817c9db"
+  }
+}
