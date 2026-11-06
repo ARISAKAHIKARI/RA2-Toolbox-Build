@@ -1,8 +1,8 @@
 name: Build and publish RA2 Toolbox 1.0.43-pre.1
 on:
   push:
-    branches: [codex/release-v1.0.43-pre1-20261106]
-    paths: [source/**, packages/v1.0.43-pre.1/**, .github/workflows/publish-v143-pre1.yml]
+    branches: [main]
+    paths: [source/**, packages/v1.0.43-pre.1/**, .github/workflows/publish-v143-pre1.yml, .gitattributes]
   workflow_dispatch:
 permissions:
   contents: read
@@ -150,6 +150,7 @@ jobs:
             diagnostics/**/*.log
             diagnostics/**/*.json
   publish:
+    if: github.ref == 'refs/heads/main'
     needs: [renderer-correctness, windows-x64]
     runs-on: ubuntu-24.04
     timeout-minutes: 20

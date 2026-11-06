@@ -14,6 +14,8 @@ The development branch already contains the final building-slot Alive/TimeToDie 
 
 ## Required release gates
 
+Publication is bound to `main`. The push workflow builds the event's immutable commit, and the publisher requires that commit to remain the `main` head both before creating a draft and before publication. The version tag and both distribution packages must identify that same commit. Workflow dispatch on a different branch may run validation but cannot publish.
+
 The `publish-v143-pre1.yml` workflow must complete the Linux renderer/FPS checks and Windows FPS callback, shared hardware service, local damage, shared rows, building/rank, profile-publication, and actual secondary-camera Renderer checks before publishing. PE versions, architectures, exports, ABI, dependencies, paired source identity, package membership, ZIP integrity, and downloaded release-asset SHA-256 values are verified against the same release commit.
 
 These are build and controlled regression checks, not live-game visual, physical-GPU performance, or multiplayer acceptance. The release is a prerelease and preserves `v1.0.42` as the stable latest.

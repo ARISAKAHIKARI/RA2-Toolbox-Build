@@ -26,7 +26,7 @@ def tag_sha():
  return None
 
 require(REPO=='ARISAKAHIKARI/RA2-Toolbox-Build','Unexpected repository')
-require(os.environ['GITHUB_REF']=='refs/heads/codex/release-v1.0.43-pre1-20261106','Unexpected release branch')
+require(os.environ['GITHUB_REF']=='refs/heads/main','Publication must run from main')
 require(subprocess.check_output(['git','rev-parse','HEAD'],text=True,cwd=ROOT).strip()==COMMIT,'Checkout differs')
 require({p.name for p in DIST.iterdir()}==NAMES,'Unexpected distribution files')
 manifest=json.loads((DIST/'release-manifest.json').read_text())
@@ -39,6 +39,7 @@ stable=api(f'repos/{REPO}/releases/latest')
 require(stable['tag_name']=='v1.0.42' and not stable['draft'] and not stable['prerelease'],'Publish 1.0.42 stable first; refusing to change latest')
 record('stable-latest-before.json',{'id':stable['id'],'tag_name':stable['tag_name'],'target_commitish':stable['target_commitish']})
 prior_tag=tag_sha();require(prior_tag in (None,COMMIT),'Refusing to move an existing tag')
+require(api(f'repos/{REPO}/git/ref/heads/main')['object']['sha']==COMMIT,'main moved after this build; rebuild the new main commit')
 pages=json.loads(subprocess.check_output(['gh','api','--paginate',f'repos/{REPO}/releases?per_page=100','--slurp']))
 matches=[r for page in pages for r in page if r['tag_name']==TAG]
 require(len(matches)<=1,'Ambiguous release')
@@ -73,6 +74,7 @@ for asset in release['assets']:
 subprocess.run(['sha256sum','-c','SHA256SUMS.txt'],cwd=download,check=True)
 require(tag_sha() in (None,COMMIT),'Tag changed during publication')
 require(api(f'repos/{REPO}/releases/latest')['id']==stable['id'],'Stable latest changed during upload')
+require(api(f'repos/{REPO}/git/ref/heads/main')['object']['sha']==COMMIT,'main moved during publication; rebuild the new main commit')
 published=api(f'repos/{REPO}/releases/{release["id"]}','PATCH',{'draft':False,'prerelease':True,'make_latest':'false'})
 require(not published['draft'] and published['prerelease'] and published['tag_name']==TAG and published['target_commitish']==COMMIT,'Publication differs')
 require(tag_sha()==COMMIT,'Published tag differs')
