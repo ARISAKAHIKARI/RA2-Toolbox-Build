@@ -28,14 +28,17 @@ int main(){
  // must remain configurable without an unrelated display or click-mode parent.
  for(int id:{898,899,9042,200,450,451,9062,780,9496,9497})assert(decision(id,State{}).enabled());
  State filters;filters.set(Need::CustomMiners,true);
- assert(decision(783,filters).missing==Need::MinerAutomation);
- // Miner defense can use the shared miner list with ore return disabled;
- // refinery settings still belong only to the ore-return feature.
- filters.set(Need::MinerAutomation,true);assert(decision(781,filters).enabled()&&decision(783,filters).enabled());
- assert(!decision(782,filters).enabled()&&!decision(784,filters).enabled());
- filters.set(Need::Ore,true);assert(decision(782,filters).enabled()&&!decision(784,filters).enabled());
+ assert(decision(783,filters).missing==Need::Ore);
+ // Spider participants have their own independent list. Enabling its editor
+ // does not unlock ore-return's miner/refinery controls or require ore return.
+ const int spider=assist::featuretypes::SpiderDefense,spiderEditor=9201+2*spider;
+ assert(decision(spiderEditor-1,filters).enabled()&&!decision(spiderEditor,filters).enabled());
+ filters.set(typeListNeed(spider),true);assert(decision(spiderEditor,filters).enabled());
+ for(int id:{781,782,783,784})assert(!decision(id,filters).enabled());
+ filters.set(Need::Ore,true);assert(decision(781,filters).enabled()&&decision(783,filters).enabled());
+ assert(decision(782,filters).enabled()&&!decision(784,filters).enabled());
  filters.set(Need::CustomRefineries,true);assert(decision(784,filters).enabled());
- filters.set(Need::MinerAutomation,false);assert(!decision(783,filters).enabled()&&decision(784,filters).enabled());
+ filters.set(Need::Ore,false);assert(!decision(783,filters).enabled()&&!decision(784,filters).enabled()&&decision(spiderEditor,filters).enabled());
  filters.set(Need::LowDamage,true);assert(decision(9183,filters).enabled());
  filters.set(Need::LowDamage,false);assert(!decision(9183,filters).enabled());
  State quota;quota.set(Need::Aircraft,true);quota.set(Need::AircraftQuotas,true);

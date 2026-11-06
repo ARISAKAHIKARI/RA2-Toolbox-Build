@@ -131,11 +131,16 @@ oreStatus=item(L"STATIC",L"等待对局",20,605,0,0,44);next(44);
 for(int i=0;i<2;++i){bool miner=i==0;toggle(781+i,miner?L"指定矿车类型":L"指定矿场类型",miner?oreTypes.customMiners:oreTypes.customRefineries);next();auto h=edit(783+i,miner?oreMiners:oreRefineries,20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);next();}
 note(L"类型 ID 用逗号分隔；未启用清单时自动识别，启用后仅使用所列类型。",44);
 activeFoldGroup=0;
-toggle(9496,L"矿车自动点杀蜘蛛",extra.minerDefenseEnabled);next();
-note(L"只接管正在工作的己方武装矿车，自动识别敌方地面寄生单位。矿车类型沿用上方展开设置的清单，不必开启自动卸矿。玩家手动命令优先。",60);
+toggle(9496,L"自动点杀蜘蛛",extra.minerDefenseEnabled);next();
+note(L"默认由正在工作的己方武装矿车点杀敌方蜘蛛。可在下方单独指定参与单位，独立于自动卸矿的矿车清单。玩家手动命令优先。",60);
+{const int f=featuretypes::SpiderDefense;
+ toggle(9200+f*2,L"自定义点杀单位类型",featureTypes.filters[f].custom);next();
+ auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"参与点杀的己方单位类型 ID，以逗号分隔");next();
+}
+note(L"填写参与点杀的己方地面载具或步兵类型 ID（不是蜘蛛 ID），以逗号分隔。勾选后只处理清单；清单为空时不处理任何单位。未勾选时自动识别矿车。",76);
 number(9497,L"防蛛额外索敌距离 / 格",extra.minerDefenseRangeCells,L"0–30 · 默认 1");
-note(L"N 为额外距离：蜘蛛进入武器射程＋N 格时点杀；目标死亡或离开射程＋N＋1 格后恢复采矿、卸矿或等待卸矿。",60);
-item(L"STATIC",L"矿车防蛛：关闭",20,605,9498,0,44);next(44);
+note(L"蜘蛛进入武器射程＋N 格时点杀；目标死亡或离开射程＋N＋1 格后，矿车恢复采矿、卸矿或等待。其他单位只接管闲置警戒／区域警戒，结束后返回原位及原警戒状态。",76);
+item(L"STATIC",L"点杀蜘蛛：关闭",20,605,9498,0,44);next(44);
 label(L"自动装车分配方式",20,260);extraControls[LoadLogic]=combo(700);choices(extraControls[LoadLogic],{L"就近优先",L"兵种均衡"},extra.loadMode);next();
 extraControls[LoadRadius]=number(701,L"自动装车范围 / 格",extra.loadRadius,L"1–512");
 toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
@@ -165,7 +170,7 @@ section=5;rowY=0;item(L"STATIC",L"单位类型清单",20,455,905,0,30);button(96
 note(L"每个功能独立设置。关闭限制时按功能本身的条件处理；开启且清单为空时不处理任何类型。");
 activeFoldGroup=9610;
 for(int f=0;f<featuretypes::Count;++f){
- if(f==featuretypes::BurstRefresh)continue; // Retired slot stays in the shared ABI.
+ if(f==featuretypes::BurstRefresh||f==featuretypes::SpiderDefense)continue; // Retired slot; spider controls are beside the feature.
  label(featuretypes::name(f),20,350);toggle(9200+f*2,L"仅处理清单中的类型",featureTypes.filters[f].custom,380,245);next();
  auto h=edit(9201+f*2,featureTypeText[f],20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);SendMessageW(h,EM_SETCUEBANNER,TRUE,(LPARAM)L"单位类型 ID，以逗号分隔");next();
  note(L"此开关和清单只作用于上方命名的功能；不勾选时忽略预填 ID，按功能自身能力条件自动识别；勾选后再按清单缩小范围，留空则不处理任何类型。");

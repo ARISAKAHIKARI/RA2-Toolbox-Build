@@ -9,6 +9,7 @@
 #include <cstring>
 #include <functional>
 #include <map>
+#include <limits>
 #include <new>
 #include <set>
 #include <stdexcept>
@@ -80,11 +81,11 @@ template<class T>static T get(uint32_t at){T value{};if(!read(at,&value,sizeof v
 struct Vec {uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
 static Vec vec(uint32_t at,int limit=16384){Vec v{};if(!read(at,&v,sizeof v)||v.count<0||v.count>limit||v.count>v.capacity||(v.count&&v.items<0x10000))return {};return v;}
 static uint32_t item(Vec v,int i){return i>=0&&i<v.count?get<uint32_t>(v.items+uint32_t(i)*4):0;}
-static int kind(uint32_t p){uint32_t vt=get<uint32_t>(p);return vt==0x7F5C70?2:vt==0x7E3EBC?3:-1;}
-static uint32_t typeOf(uint32_t p,int k){return get<uint32_t>(p+(k==3?0x520:0x6C4));}
+static int kind(uint32_t p){uint32_t vt=get<uint32_t>(p);return vt==0x7F5C70?2:vt==0x7EB058?1:vt==0x7E3EBC?3:vt==0x7E22A4?0:-1;}
+static uint32_t typeOf(uint32_t p,int k){return k>=0?get<uint32_t>(p+(k==3?0x520:k==1?0x6C0:0x6C4)):0;}
 static bool live(uint32_t p){return p&&get<int>(p+0x6C)>0&&get<bool>(p+0x90);}
 static bool own(uint32_t p,uint32_t house){return live(p)&&get<uint32_t>(p+0x21C)==house&&get<bool>(p+0x74)&&!get<bool>(p+0x81);}
-static bool featureTypeAllowed(featuretypes::Feature,uint32_t){assert(false&&"unrelated magnetron path");return false;}
+#include "../source/feature_type_bridge.h"
 static bool stickyOwns(uint32_t){return held;}
 static bool formationOwns(uint32_t){return formed;}
 static bool burstOwns(uint32_t){return bursted;}
@@ -116,11 +117,15 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
 #include "../source/ore_harvest_bridge.h"
 static int admitPlannerOrder(const planner::Order&,uint32_t){assert(false&&"ore observer does not dispatch in this fixture");return -1;}
 #include "../source/harvester_defense_bridge.h"
+// The unrelated missile pause is a boundary; manual revisions, ore pausing,
+// defense cancellation and serial changes use the real host-input handler.
+static void pauseMissileForManual(uint32_t,uint32_t){}
+#include "miner_manual_extract.h"
 
 static void vectorAt(uint32_t at,uint32_t list,int count){Vec v{0,list,count,0,count,0};memcpy(memory(at,sizeof v),&v,sizeof v);}
 static void object(uint32_t p,uint32_t vt,uint32_t id,uint32_t type,uint32_t owner){
  set<uint32_t>(p,vt);set<uint32_t>(p+0x10,id);set<int>(p+0x6C,800);set<uint32_t>(p+0x21C,owner);
- set<uint8_t>(p+0x74,1);set<uint8_t>(p+0x90,1);set<uint32_t>(p+(vt==0x7E3EBC?0x520:0x6C4),type);set<int>(p+0xB4,-1);worldObjects.add(p,id);
+ set<uint8_t>(p+0x74,1);set<uint8_t>(p+0x90,1);set<uint32_t>(p+(vt==0x7E3EBC?0x520:vt==0x7EB058?0x6C0:0x6C4),type);set<int>(p+0xB4,-1);worldObjects.add(p,id);
 }
 static void position(uint32_t p,int x,int y,int z=0){set<int>(p+0x9C,x);set<int>(p+0xA0,y);set<int>(p+0xA4,z);}
 static void resource(int x,int y,int land=0,uint32_t occupation=0){cells[uint32_t(y*1000+x)]={0,land,occupation,0,0,0};}
@@ -147,7 +152,7 @@ static void sampleWorld(){
 }
 static void reset(){
  memset(globals,0,sizeof globals);memset(objects,0,sizeof objects);sh->~Shared();new(sh)Shared{};snap={};planningWorld.~World();new(&planningWorld)planner::World{};
- manualVersions.clear();worldObjects.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();oreHarvestReset();minerDefenseReset();oreConfig={};oreConfigRevision=-1;
+ manualVersions.clear();worldObjects.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();oreHarvestReset();minerDefenseReset();oreConfig={};oreConfigRevision=-1;resetFeatureTypes();
  events.clear();actors={Miner,Refinery,Drone};cells.clear();nullCells.clear();failRead=0;
  fault=held=formed=bursted=dodging=ordered=false;planningOkay=outgoingOkay=nativeOkay=true;reads=cellReads=consumed=releases=nativeCalls=0;
  match=7;lastHouse=House;inputSerial=0;clockNow=1000;sh->minerDefenseEnabled=1;sh->minerDefenseRangeCells=1;sh->flags=0;
@@ -189,6 +194,22 @@ static void rememberWait(){
  sh->flags|=AutoOreReturn;set<float>(Miner+0x33C,20);set<int>(Miner+0xAC,2);set<uint32_t>(Miner+0x5A4,cellPointer(53,62));
  const planner::Order order{MinerID,manualVersions.get(MinerID),0,WaitCell,2,11,planner::OreOrder,RefineryID};minerDefenseRememberOre(order,House);
 }
+static void defenderTypes(const wchar_t* ids,bool custom=true){
+ auto&filter=sh->featureConfig.filters[featuretypes::SpiderDefense];
+ assert(oreconfig::parse(std::wstring(ids),filter.ids,filter.count));filter.custom=custom;sh->featureConfigSeq+=2;
+}
+// Reuse the controlled actor address for an ordinary vehicle or infantry. Its
+// type has no miner flags/storage; Infantry's Unit-only fields are poisoned so
+// a misplaced miner read cannot accidentally pass on zero-initialized memory.
+static void passiveDefender(int k=2,int mission=5){
+ set<uint8_t>(MinerType+0xE0E,0);set<uint8_t>(MinerType+0xE0F,0);set<int>(MinerType+0x800,0);
+ const char*id=k==1?"E1":"MTNK";memset(memory(MinerType+0x24,24),0,24);memcpy(memory(MinerType+0x24,strlen(id)+1),id,strlen(id)+1);
+ object(Miner,k==1?0x7EB058:k==3?0x7E3EBC:k==0?0x7E22A4:0x7F5C70,MinerID,MinerType,House);
+ set<int>(Miner+0xAC,mission);set<int>(Miner+0xB4,-1);set<uint32_t>(Miner+0x5A4,0);set<uint32_t>(Miner+0x2B4,0);
+ set<float>(Miner+0x33C,k==1?std::numeric_limits<float>::quiet_NaN():0.f);
+ if(k==1){set<uint32_t>(Miner+0x6C4,0);set<uint8_t>(Miner+0x6D1,1);}
+ defenderTypes(k==1?L"e1":L"mTnk");
+}
 
 static unsigned checks=0,failed=0,passed=0;
 static const char*caseName="";
@@ -196,6 +217,8 @@ static void check(bool value,const char*expression,int line){++checks;if(!value)
 #define CHECK(...) check((__VA_ARGS__),#__VA_ARGS__,__LINE__)
 static void attackStarted(){step();CHECK(events.size()==1);CHECK(events.back().mission==1&&events.back().b==DroneID&&events.back().tagB==0x34);CHECK(sh->minerDefenseActive==1&&sh->minerDefenseAttacks==1&&sh->minerDefenseResumes==0);}
 static void harvestTuple(const intent::EventOrder&e,uint32_t cell=ResourceCell,uint32_t actor=MinerID){CHECK(e.mission==10&&e.a==int(actor)&&e.b==0&&e.tagB==0&&e.c==int(cell)&&e.tagC==11&&e.d==0&&e.nearestTag==0);}
+static void passiveMoveTuple(const intent::EventOrder&e){CHECK(e.mission==2&&e.a==MinerID&&e.b==0&&e.tagB==0&&e.c==62051&&e.tagC==11&&e.d==62051&&e.nearestTag==11);}
+static void passiveGuardTuple(const intent::EventOrder&e,int mission){CHECK(e.mission==mission&&e.a==MinerID&&e.b==0&&e.tagB==0&&e.c==0&&e.tagC==0&&e.d==0&&e.nearestTag==0);}
 int main(int argc,char**argv){
  sh=new Shared{};std::vector<std::string> failures;
  auto run=[&](const char*name,const std::function<void()>&body){if(argc>1&&std::string(name).find(argv[1])==std::string::npos)return;caseName=name;reset();try{body();++passed;}catch(const std::exception&){++failed;failures.emplace_back(name);}};
@@ -243,6 +266,127 @@ int main(int argc,char**argv){
   attackStarted();observeAttack();step();sh->minerDefenseEnabled=0;step();CHECK(events.size()==2&&sh->minerDefenseActive==1);harvestTuple(events.back());
   for(int n=0;n<5;++n)step();CHECK(sh->minerDefenseActive==1&&events.size()==2);observe(events.back());step();CHECK(sh->minerDefenseActive==0&&!minerDefensePending());
   for(int n=0;n<10;++n)step();CHECK(events.size()==2);
+ });
+ run("default_miners_ignore_independent_ore_type_selection",[]{
+  for(bool empty:{false,true}){reset();sh->oreConfig.customMiners=1;sh->oreConfig.minerCount=empty?0:1;
+   memcpy(sh->oreConfig.miners[0],"OTHER",6);sh->oreConfigSeq+=2;CHECK(refreshOreConfig()&&!oreMiner(MinerType));
+   attackStarted();CHECK(!(planningWorld.actors[0].flags&planner::Harvester));
+   observeAttack();kill();step();CHECK(events.size()==2);harvestTuple(events.back());observe(events.back());step();CHECK(!minerDefensePending());
+  }
+ });
+ run("native_miner_manual_cancel_ignores_ore_type_exclusion",[]{
+  for(bool observed:{false,true}){reset();sh->oreConfig.customMiners=1;sh->oreConfig.minerCount=1;memcpy(sh->oreConfig.miners[0],"OTHER",6);sh->oreConfigSeq+=2;
+   CHECK(refreshOreConfig()&&!oreMiner(MinerType));attackStarted();if(observed){observeAttack();step();}
+   cancelOreJob(Miner);CHECK(manualVersions.orePaused(MinerID)&&!minerDefensePending());
+   for(int n=0;n<5;++n)step(30,500);CHECK(events.size()==1);
+  }
+ });
+ run("custom_attacker_list_filters_source_not_parasite",[]{
+  for(const wchar_t*id:{L"hArV",L"OTHER",L"DRON",L""}){reset();defenderTypes(id);
+   if(std::wstring(id)==L"hArV"){attackStarted();CHECK(minerDefenseJobs.at(MinerID).mining);}
+   else{for(int n=0;n<3;++n)step();CHECK(events.empty()&&!minerDefensePending());}
+  }
+  reset();defenderTypes(L"OTHER",false);attackStarted();
+  reset();sh->featureConfig.filters[featuretypes::Dodge].custom=1;sh->featureConfigSeq+=2;attackStarted();
+ });
+ run("custom_ground_types_only_enroll_idle_guard_work",[]{
+  for(int k:{1,2})for(int mission:{0,1,2,7,10,12,16}){reset();passiveDefender(k,mission);step();CHECK(events.empty()&&!minerDefensePending());}
+  for(int k:{0,3}){reset();passiveDefender(k);step();CHECK(events.empty()&&!minerDefensePending());}
+  for(int k:{1,2}){reset();passiveDefender(k);set<int>(Miner+0xB4,2);step();CHECK(events.empty()&&!minerDefensePending());
+   reset();passiveDefender(k);set<uint32_t>(Miner+0x2B4,Drone);step();CHECK(events.empty()&&!minerDefensePending());
+   reset();passiveDefender(k);set<uint32_t>(Miner+0x5A4,cellPointer(80,62));step();CHECK(events.empty()&&!minerDefensePending());
+   reset();passiveDefender(k);set<uint32_t>(MinerType+0x898,0);step();CHECK(events.empty()&&!minerDefensePending());
+  }
+ });
+ run("custom_vehicle_and_infantry_return_to_original_guard",[]{
+  for(int k:{1,2})for(int mission:{5,11}){reset();passiveDefender(k,mission);attackStarted();
+   CHECK(!(planningWorld.actors[0].flags&planner::Harvester));CHECK(!minerDefenseJobs.at(MinerID).mining&&!minerDefenseJobs.at(MinerID).managedQueue);
+   observeAttack();step();position(Miner,57*256,62*256);kill();step();CHECK(events.size()==2&&minerDefensePending());passiveMoveTuple(events.back());
+   step();CHECK(events.size()==2&&minerDefensePending());observe(events.back());step();CHECK(events.size()==2&&minerDefensePending());
+   position(Miner,51*256+128,62*256+128);step(12,350);CHECK(events.size()==3&&minerDefensePending());passiveGuardTuple(events.back(),mission);
+   step();CHECK(events.size()==3&&minerDefensePending());observe(events.back());step();CHECK(!minerDefensePending()&&actorLeaseArbiter.find(MinerID)<0);
+   for(const auto&e:events)CHECK(e.mission!=7&&e.mission!=10);
+  }
+ });
+ run("custom_defender_at_origin_restores_passive_without_travel",[]{
+  for(int mission:{5,11}){reset();passiveDefender(2,mission);attackStarted();observeAttack();step();kill();step();
+   CHECK(events.size()==2&&minerDefensePending());
+   if(events.back().mission==2){passiveMoveTuple(events.back());observe(events.back());step(12,350);CHECK(events.size()==3&&minerDefensePending());}
+   passiveGuardTuple(events.back(),mission);
+   observe(events.back());step();CHECK(!minerDefensePending());
+  }
+ });
+ run("live_filter_removal_restores_mining_without_readmission",[]{
+  for(const wchar_t*id:{L"OTHER",L""}){reset();attackStarted();observeAttack();step();defenderTypes(id);step();
+   CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());observe(events.back());step();CHECK(!minerDefensePending());
+   for(int n=0;n<4;++n)step(30,500);CHECK(events.size()==2);
+  }
+ });
+ run("live_filter_removal_restores_passive_vehicle_and_infantry",[]{
+  for(int k:{1,2})for(bool toDefault:{false,true}){reset();passiveDefender(k,11);attackStarted();observeAttack();step();
+   position(Miner,57*256,62*256);defenderTypes(L"",!toDefault);step();CHECK(events.size()==2&&minerDefensePending());passiveMoveTuple(events.back());
+   observe(events.back());position(Miner,51*256+128,62*256+128);step(12,350);CHECK(events.size()==3);passiveGuardTuple(events.back(),11);
+   observe(events.back());step();CHECK(!minerDefensePending());for(int n=0;n<4;++n)step(30,500);CHECK(events.size()==3);
+  }
+ });
+ run("coherent_filter_reload_keeps_active_allowed_defender",[]{
+  passiveDefender();attackStarted();observeAttack();step();defenderTypes(L"OTHER,MTNK");
+  for(int n=0;n<4;++n)step(30,500);CHECK(events.size()==1&&minerDefensePending());
+ });
+ run("invalid_or_incomplete_filter_never_uses_stale_admission",[]{
+  for(int mode:{0,1,2}){reset();passiveDefender();CHECK(refreshFeatureTypes());
+   if(mode==0)++sh->featureConfigSeq;
+   if(mode==1){sh->featureConfig.filters[featuretypes::SpiderDefense].count=513;sh->featureConfigSeq+=2;}
+   if(mode==2){sh->featureConfig.filters[featuretypes::SpiderDefense].custom=2;sh->featureConfigSeq+=2;}
+   for(int n=0;n<4;++n)step();CHECK(events.empty()&&!minerDefensePending());
+  }
+ });
+ run("custom_passive_manual_token_blocks_old_episode_and_same_pass_readmission",[]{
+  for(bool attackObserved:{false,true}){reset();passiveDefender();attackStarted();
+   if(attackObserved){observeAttack();step();set<int>(Miner+0xAC,5);set<uint32_t>(Miner+0x2B4,0);set<uint32_t>(Miner+0x5A4,0);}
+   manualVersions.change(MinerID,0,false);step();CHECK(events.size()==1&&!minerDefensePending());
+   for(int n=0;n<4;++n)step(30,500);CHECK(events.size()==1);
+  }
+ });
+ run("manual_cancel_read_failure_keeps_captured_passive_hold",[]{
+  passiveDefender();attackStarted();
+  // The player's cancel arrives while the old Guard is still visible and a
+  // fresh type-ID read fails. Dropping the episode must retain its captured
+  // cancellation identity, so a recovered read cannot revive that stale work.
+  failRead=MinerType+0x10;cancelOreJob(Miner);failRead=0;
+  CHECK(manualVersions.get(MinerID)==1&&!minerDefensePending());
+  for(int n=0;n<5;++n)step(30,500);CHECK(events.size()==1&&!minerDefensePending());
+ });
+ run("manual_guard_hold_survives_live_id_slot_compaction",[]{
+  constexpr uint32_t deadID=MinerID+ManualVersions::Size;
+  CHECK(ObjectIndex::hash(deadID)==ObjectIndex::hash(MinerID));manualVersions.change(deadID,0,false);
+  passiveDefender();attackStarted();cancelOreJob(Miner);CHECK(!minerDefensePending());
+  const unsigned oldSlot=manualVersions.slot(MinerID);CHECK(oldSlot!=ObjectIndex::hash(MinerID));
+  CHECK(minerDefenseManual[oldSlot].id==MinerID);const uint32_t token=manualVersions.get(MinerID);
+  // The real indexWorld compaction boundary, with a dead colliding identity
+  // removed. The still-live actor moves to another slot with the same token.
+  static ManualVersions next;next.copyLive(manualVersions,[](uint32_t id){return worldByID(id)!=0;});
+  CHECK(next.slot(MinerID)!=oldSlot&&next.get(MinerID)==token);
+  minerDefenseReindexManual(next);manualVersions=next;
+  CHECK(minerDefenseManual[manualVersions.slot(MinerID)].id==MinerID);
+  for(int n=0;n<5;++n)step(30,500);CHECK(events.size()==1&&!minerDefensePending());
+ });
+ run("custom_passive_manual_native_transition_always_wins",[]{
+  for(int stage:{0,1,2})for(int mission:{0,1,2}){reset();passiveDefender(1,11);attackStarted();
+   if(stage){observeAttack();step();position(Miner,57*256,62*256);kill();step();CHECK(events.size()==2);}
+   if(stage==2){observe(events.back());position(Miner,51*256+128,62*256+128);step(12,350);CHECK(events.size()==3);}
+   const size_t before=events.size();set<int>(Miner+0xAC,mission);set<int>(Miner+0xB4,-1);
+   if(mission==1){addDrone2();position(Drone2,90*256,90*256);set<uint32_t>(Miner+0x2B4,Drone2);set<uint32_t>(Miner+0x5A4,0);}
+   else{set<uint32_t>(Miner+0x2B4,0);set<uint32_t>(Miner+0x5A4,mission==2?cellPointer(90,90):0);}
+   step(30,500);CHECK(events.size()==before&&!minerDefensePending());
+  }
+ });
+ run("custom_passive_identity_owner_and_health_invalidations",[]{
+  for(int k:{1,2})for(int mode:{0,1,2,3}){reset();passiveDefender(k);attackStarted();observeAttack();step();
+   if(mode==0)set<uint32_t>(Miner+0x10,99);if(mode==1)set<uint32_t>(MinerType+0x10,999);
+   if(mode==2)set<uint32_t>(Miner+0x21C,EnemyHouse);if(mode==3)set<int>(Miner+0x6C,0);
+   kill();step();CHECK(events.size()==1&&!minerDefensePending());
+  }
  });
  run("manual_token_precedes_synchronized_mission",[]{
   attackStarted();observeAttack();step();const auto serial=inputSerial;manualVersions.change(MinerID,Miner,true);CHECK(!minerDefenseOwns(MinerID));
@@ -322,11 +466,10 @@ int main(int argc,char**argv){
   }
  });
  run("disabled_and_ineligible_sources_never_enroll",[]{
-  for(int mode=0;mode<15;++mode){reset();
+  for(int mode=0;mode<14;++mode){reset();
    if(mode==0)set<uint8_t>(Miner+0x1C8,1);if(mode==1)set<uint32_t>(Miner+0x11C,Refinery);if(mode==2)set<uint8_t>(Miner+0x81,1);if(mode==3)set<uint8_t>(Miner+0x74,0);
    if(mode==4)set<uint8_t>(Miner+0x134,1);if(mode==5)set<uint32_t>(Miner+0x694,Drone);if(mode==6)set<uint32_t>(Miner+0x2B0,Drone);
    if(mode==7)set<int>(Miner+0xAC,2);if(mode==8)set<int>(Miner+0xB4,2);if(mode==9)held=true;if(mode==10)formed=true;if(mode==11)bursted=true;if(mode==12)dodging=true;if(mode==13)ordered=true;
-   if(mode==14){sh->oreConfig.customMiners=1;sh->oreConfig.minerCount=1;memcpy(sh->oreConfig.miners[0],"OTHER",6);sh->oreConfigSeq=2;}
    step();CHECK(events.empty()&&!minerDefensePending());
   }
  });

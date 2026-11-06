@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 点杀蜘蛛的参与单位独立配置 | [独立类型清单、地面单位恢复与手动优先](2026-11-06-spider-defender-types.md) | Assist99 SpiderDefense independent-types Infantry Unit Guard AreaGuard manual-hold |
 | 矿车自动点杀蜘蛛、手动优先与工作恢复 | [独立开关、N／N+1 与排队意图保留](2026-11-06-miner-spider-defense.md) | Assist98 native-events manual-priority FIFO-intent synthetic-memory no-new-hooks no-live-game |
 | 建築末幀、星級縮放與單機 FPS | [普通 SHP 與精確單機限速](2026-11-05-animation-rank-single-player-fps.md) | TimeToDie slot Start+Value rank 55D7BC QPC Assist97 tag32 SP-only |
 | Hook 清理漏掉 Cursor 佈局槽與故障退休 | [Runtime(9)、兩槽共享與27項隔離檢查](2026-11-05-hook-cleanup-shared-tooltip.md) | gate6 7F74C8 7F74D8 fault cleanup-only pinned reconnect SINGLE_STEP-unresolved |

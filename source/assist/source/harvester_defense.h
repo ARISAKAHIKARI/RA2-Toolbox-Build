@@ -5,10 +5,11 @@
 namespace assist { namespace minerdefense {
 constexpr int MaxExtraCells=30;
 inline bool position(const planner::Actor&a){return a.x>=0&&a.x<512*256&&a.y>=0&&a.y<512*256&&a.z>=-1048576&&a.z<=1048576;}
-inline bool miner(const planner::Actor&a){
- return a.id&&a.kind==2&&position(a)&&(a.flags&planner::Own)&&(a.flags&planner::Harvester)&&
+inline bool source(const planner::Actor&a){
+ return a.id&&(a.kind==1||a.kind==2)&&position(a)&&(a.flags&planner::Own)&&
   !(a.flags&(planner::Disabled|planner::Transported|planner::Limbo|planner::OffMap|planner::Airborne|planner::Manipulated|planner::Infested|planner::OrePaused));
 }
+inline bool miner(const planner::Actor&a){return source(a)&&a.kind==2&&(a.flags&planner::Harvester);}
 inline bool threat(const planner::Actor&a){
  return a.id&&a.kind==2&&position(a)&&(a.flags&planner::Enemy)&&(a.flags&planner::ParasiteThreat)&&
   !(a.flags&(planner::Transported|planner::Cloaked|planner::Limbo|planner::OffMap|planner::Airborne|planner::Protected|planner::Manipulated));
@@ -20,7 +21,7 @@ inline int64_t distance(const planner::Actor&a,const planner::Actor&b){
 // primary/secondary/elite weapon and armor eligibility. Native Attack owns any
 // approach or minimum-range reposition; automation never writes a fire timer.
 inline bool inRange(const planner::Actor&s,const planner::Actor&t,int extraCells,bool retaining=false){
- if(!miner(s)||!threat(t)||!planner::compatibleTarget(s,t,false))return false;
+ if(!source(s)||!threat(t)||!planner::compatibleTarget(s,t,false))return false;
  const auto&w=s.weapons[planner::weaponIndex(s,t)];
  const int64_t reach=int64_t(w.range)+(std::clamp(extraCells,0,MaxExtraCells)+(retaining?1:0))*256;
  return reach>0&&reach<65536&&distance(s,t)<=reach*reach;
@@ -28,4 +29,5 @@ inline bool inRange(const planner::Actor&s,const planner::Actor&t,int extraCells
 inline bool queuedWork(int mission,int queued){return queued==-1||queued==mission||queued==10||queued==12;}
 inline bool workingMission(int mission){return mission==10||mission==12||mission==16||mission==7;}
 inline bool passiveMission(int mission){return mission==5||mission==10||mission==12||mission==16||mission==7;}
+inline bool guardMission(int mission){return mission==5||mission==11;}
 }}

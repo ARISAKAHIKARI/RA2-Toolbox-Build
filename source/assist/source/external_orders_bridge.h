@@ -20,7 +20,7 @@ static planner::World planningWorld;static int planningFrame=-1;static uint32_t 
 static int pausedOreFrame=-1;
 static void oreHarvestReset();
 static void clearOreOrders(){oreHarvestReset();oreConfigRevision=-1;oreConfig={};manualVersions.clear();planningFrame=pausedOreFrame=-1;inputSerial=planningSerial=0;snap.oreQueued=snap.oreDocking=snap.oreIssued=snap.oreManual=0;}
-static void cancelOreJob(uint32_t pointer){if(worldObjects.contains(pointer)){int k=kind(pointer);uint32_t type=typeOf(pointer,k);bool miner=k==2&&type&&refreshOreConfig()&&oreMiner(type);uint32_t id=get<uint32_t>(pointer+0x10);
+static void cancelOreJob(uint32_t pointer){if(worldObjects.contains(pointer)){int k=kind(pointer);uint32_t type=typeOf(pointer,k);bool miner=k==2&&type&&(minerDefenseMiner(type)||(refreshOreConfig()&&oreMiner(type)));uint32_t id=get<uint32_t>(pointer+0x10);
   manualVersions.change(id,miner?pointer:0,miner);pauseMissileForManual(id,pointer);releaseAutoOwner(id);minerDefenseForget(id);++inputSerial;}}
 static void observePausedOre(uint32_t house,int frame){
  if(frame==pausedOreFrame)return;pausedOreFrame=frame;
@@ -67,20 +67,21 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  bool minerDefense=sh->minerDefenseEnabled||minerDefensePending();
  bool defense=(sh->flags&AntiTheft)!=0;bool drop=sh->magnetronDrop!=0;
  if(defense){defense=false;Vec buildings=vec(0xA8EB40);for(int i=0;i<buildings.count;++i){uint32_t p=item(buildings,i);if(p&&own(p,house)&&get<int>(p+0x6C)>0&&!get<bool>(p+0x81)&&antiTheftBuilding(p)){defense=true;break;}}}
- if((ore||minerDefense)&&!refreshOreConfig())return false;
+ if(ore&&!refreshOreConfig())return false;if(minerDefense&&!refreshFeatureTypes())return false;
  static long configSeen=-1;bool configChanged=configSeen!=oreConfigRevision;if(configChanged){planningFrame=-1;configSeen=oreConfigRevision;}
+ static long defenseConfigSeen=-1;if(minerDefense&&defenseConfigSeen!=featureConfigRevision){planningFrame=-1;defenseConfigSeen=featureConfigRevision;}
  if(!advanced&&!ore&&!minerDefense&&!defense&&!drop&&!sh->plannerTracking&&!sh->runtimeTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
  static uint32_t lastMode;uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0)|(drop?1u<<31:0)|(minerDefense?1u<<29:0);
  if(planningFrame==frame&&planningSerial==inputSerial&&lastMode==mode)return false;planningFrame=frame;planningSerial=inputSerial;if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);lastMode=mode;
  auto&w=planningWorld;w.match=match;w.tick=now;w.frame=frame;w.count=w.intentCount=w.refineryCount=w.combatCount=0;w.inputSerial=inputSerial;
- Vec all=vec(0xA8EC78);static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;
+ Vec all=vec(0xA8EC78);static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;static bool dockOre=false,dockDefense=false;
  // Dock compatibility is type metadata. Cache it instead of rescanning all
  // combat units just to discover the same refinery types on every frame.
  if(ore||minerDefense){Vec types=vec(0xA83CE0,4096);
-  if(configChanged||dockMatch!=match||dockItems!=types.items||dockCount!=types.count||frame-dockFrame>=60){
-   dockMatch=match;dockItems=types.items;dockCount=types.count;dockFrame=frame;refineryTypesCount=0;
-   for(int i=0;i<types.count&&refineryTypesCount<512;++i){uint32_t type=item(types,i);if(type<0x10000||!oreMiner(type))continue;
-    Vec docks=vec(type+0x3E8,256);for(int j=0;j<docks.count&&refineryTypesCount<512;++j){uint32_t dock=item(docks,j);bool known=false;for(int n=0;n<refineryTypesCount;++n)if(refineryTypes[n]==dock)known=true;if(dock&&!known&&oreTypeAllowed(dock,false))refineryTypes[refineryTypesCount++]=dock;}
+  if(configChanged||dockOre!=ore||dockDefense!=minerDefense||dockMatch!=match||dockItems!=types.items||dockCount!=types.count||frame-dockFrame>=60){
+   dockMatch=match;dockItems=types.items;dockCount=types.count;dockFrame=frame;dockOre=ore;dockDefense=minerDefense;refineryTypesCount=0;
+   for(int i=0;i<types.count&&refineryTypesCount<512;++i){uint32_t type=item(types,i);const bool nativeMiner=minerDefense&&minerDefenseMiner(type);if(type<0x10000||(!nativeMiner&&(!ore||!oreMiner(type))))continue;
+    Vec docks=vec(type+0x3E8,256);for(int j=0;j<docks.count&&refineryTypesCount<512;++j){uint32_t dock=item(docks,j);bool known=false;for(int n=0;n<refineryTypesCount;++n)if(refineryTypes[n]==dock)known=true;if(dock&&!known&&(nativeMiner||oreTypeAllowed(dock,false)))refineryTypes[refineryTypesCount++]=dock;}
    }
   }
  }
@@ -95,13 +96,15 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   uint32_t type=typeOf(p,k);if(!type)continue;
   bool tracked=advanced&&ownActor&&orderIndex(p)>=0;
   bool dropSource=drop&&ownActor&&rawMagnetron(p,featuretypes::MagnetronDrop);
-  bool harvester=(ore||minerDefense)&&ownActor&&k==2&&oreMiner(type);
+  bool harvester=ore&&ownActor&&k==2&&oreMiner(type);
+  bool defenseMiner=minerDefense&&ownActor&&k==2&&minerDefenseMiner(type);
+  bool spiderSource=minerDefense&&ownActor&&(minerDefenseType(type,k)||minerDefenseOwns(get<uint32_t>(p+0x10)));
   bool oreDock=false;if((ore||minerDefense)&&ownActor&&k==3)for(int j=0;j<refineryTypesCount;++j)if(refineryTypes[j]==type){oreDock=true;break;}
   bool turret=defense&&ownActor&&antiTheftBuilding(p);
   bool threat=defense&&!ownActor&&antiTheftThreat(p,house);
   bool spider=minerDefense&&!ownActor&&minerDefenseThreat(p,house,true);
   bool enemy=!ownActor&&(advanced||threat||spider)&&nativeEnemy(p,house);
-  if(!tracked&&!harvester&&!oreDock&&!enemy&&!turret&&!dropSource)continue;
+  if(!tracked&&!harvester&&!oreDock&&!enemy&&!turret&&!dropSource&&!spiderSource)continue;
   auto&a=w.actors[w.count++];memset(&a,0,sizeof a);a.combatFirst=-1;
   a.id=get<uint32_t>(p+0x10);a.type=type;a.kind=k;a.x=get<int>(p+0x9C);a.y=get<int>(p+0xA0);a.z=get<int>(p+0xA4);
   a.mission=get<int>(p+0xAC);a.queued=get<int>(p+0xB4);a.cost=get<int>(type+0x610);a.veterancy=get<float>(p+0x150);a.manualVersion=manualVersions.get(a.id);
@@ -113,20 +116,23 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   if(destination>=0x10000&&!a.destination){int x=get<short>(destination+0x24),y=get<short>(destination+0x26);if(readMapCell(x,y)==destination)a.destinationCell=uint32_t(y*1000+x);}
   if(turret)a.flags|=planner::PointDefense;if(threat)a.flags|=planner::Saboteur;
   if(spider)a.flags|=planner::ParasiteThreat;if(minerDefenseOwns(a.id))a.flags|=planner::HarvesterDefending;
-  if(advanced||defense||dropSource||spider||(minerDefense&&harvester))rawCombatInfo(p,type,k,a,tracked||turret||dropSource||(minerDefense&&harvester),true);
+  if(advanced||defense||dropSource||spider||spiderSource)rawCombatInfo(p,type,k,a,tracked||turret||dropSource||spiderSource,true);
   if(dropSource&&rawMagnetronDrop(p,get<uint32_t>(p+0x2AC),house))a.flags|=planner::DropHazard;
   if(harvester){a.flags|=planner::Harvester;a.storageLimit=get<int>(type+0x800);memcpy(a.storage,(void*)(p+0x33C),sizeof a.storage);
    if(manualVersions.observeOre(a.id,a.mission,a.queued))a.flags|=planner::OrePaused;
-   Vec docks=vec(type+0x3E8,256);for(int j=0;j<docks.count&&j<8;++j)a.dockTypes[j]=item(docks,j);
+   // Defense publishes native docks outside the ore whitelist for recovery.
+   // Keep automatic-unload compatibility restricted to its own filter.
+   Vec docks=vec(type+0x3E8,256);for(int j=0;j<docks.count&&j<8;++j){uint32_t dock=item(docks,j);if(dock&&oreTypeAllowed(dock,false))a.dockTypes[j]=dock;}
    if(get<bool>(p+0x6D1))a.flags|=planner::Unloading;
   }
+  if(defenseMiner&&!harvester&&manualVersions.observeOre(a.id,a.mission,a.queued))a.flags|=planner::OrePaused;
   if(oreDock&&!(a.flags&(planner::Limbo|planner::OffMap))){
    int count=get<int>(p+0xE8);uint32_t links=get<uint32_t>(p+0xE4);
    if(count>=0&&count<=256&&links>=0x10000)for(int j=0;j<count&&j<4;++j)a.radioIDs[j]=rawObjectID(get<uint32_t>(links+j*4));
    if(count<0||count>4||(count&&links<0x10000))a.radioIDs[3]=0xFFFFFFFFu;
    // Defense needs refinery identities and radio metadata even with automatic
    // unloading off. Only ore queue planning needs the sampled waiting rings.
-   if(!ore||w.refineryCount>=planner::MaxRefineries)continue;
+   if(!ore||!oreTypeAllowed(type,false)||w.refineryCount>=planner::MaxRefineries)continue;
    auto&refinery=w.refineries[w.refineryCount++];memset(&refinery,0,sizeof refinery);refinery.id=a.id;refinery.cellX=a.x/256;refinery.cellY=a.y/256;
    refinery.dockStyleA=get<bool>(type+0x16E4);refinery.dockStyleB=get<bool>(type+0x16E5);
    // Read the neighbourhood around both original refinery dock styles. No cell

@@ -1900,8 +1900,9 @@ static void updateModeStatus(DWORD now){
   SetWindowTextW(GetDlgItem(ui,9495),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9495),s<0&&s!=-6);
  }
  {const bool live=shared&&!phase&&commandFresh(now);const uint32_t active=live?shared->minerDefenseActive:0;
-  std::wstring text=L"矿车防蛛：";
-  text+=!extra.minerDefenseEnabled?(active?L"正在恢复工作":L"关闭"):!live?L"等待对局与连接就绪":active?L"正在处理 "+std::to_wstring(active)+L" 辆矿车":L"监视中";
+  const auto&participants=featureTypes.filters[featuretypes::SpiderDefense];
+  std::wstring text=L"点杀蜘蛛：";
+  text+=!extra.minerDefenseEnabled?(active?L"正在恢复工作":L"关闭"):active?L"正在处理 "+std::to_wstring(active)+L" 个单位":participants.custom&&!participants.count?L"清单为空，未选择参与单位":!live?L"等待对局与连接就绪":L"监视中";
   if(live&&(extra.minerDefenseEnabled||active))text+=L" · 已下达点杀 "+std::to_wstring(shared->minerDefenseAttacks)+L" 次 / 已下达恢复 "+std::to_wstring(shared->minerDefenseResumes)+L" 次";
   SetWindowTextW(GetDlgItem(ui,9498),text.c_str());
  }

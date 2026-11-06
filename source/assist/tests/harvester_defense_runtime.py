@@ -42,11 +42,14 @@ def main():
         "static bool rawOreCompatible("))
     extract += "\n" + function(native, "static bool nativeEnemy(") + "\n"
     (args.out / "miner_runtime_extract.h").write_text(extract, encoding="utf-8")
+    manual_extract = function(external, "static void cancelOreJob(") + "\n"
+    (args.out / "miner_manual_extract.h").write_text(manual_extract, encoding="utf-8")
     names = ["harvester_defense.h", "harvester_defense_raw.h", "harvester_defense_bridge.h",
              "ore_harvest_bridge.h", "ore_harvest_search.h", "raw_combat.h",
-             "external_orders_bridge.h", "native_orders_bridge.h", "protocol.h",
+             "external_orders_bridge.h", "native_orders_bridge.h", "bridge.cpp", "protocol.h",
              "planner_types.h", "planner_index.h", "weapon_policy.h", "object_index.h",
-             "unit_task_arbiter.h", "command_intent.h", "ore_type_config.h", "ore_queue.h"]
+             "unit_task_arbiter.h", "command_intent.h", "ore_type_config.h", "ore_queue.h",
+             "feature_type_config.h", "feature_type_bridge.h"]
     paths = [SRC / name for name in names] + [HERE / "harvester_defense_runtime.cpp", Path(__file__)]
     hashes = {str(path.relative_to(HERE.parents[1])): hashlib.sha256(path.read_bytes()).hexdigest()
               for path in paths}
@@ -64,6 +67,7 @@ def main():
     report = {"scope": __doc__, "host_execution": "Linux g++ synthetic-memory fixture",
               "game_process_operated": False, "windows_or_multiplayer_claim": False,
               "source_sha256": hashes, "production_extract_sha256": hashlib.sha256(extract.encode()).hexdigest(),
+              "production_manual_extract_sha256": hashlib.sha256(manual_extract.encode()).hexdigest(),
               "exit_code": run.returncode,
               "sources_stable_during_run": all(hashlib.sha256(path.read_bytes()).hexdigest() == hashes[str(path.relative_to(HERE.parents[1]))] for path in paths)}
     try:
