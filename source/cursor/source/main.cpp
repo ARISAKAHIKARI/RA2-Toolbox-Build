@@ -37,6 +37,11 @@
 #define GetPrivateProfileIntW asyncini::cachedReadInt
 #endif
 #include "scale.h"
+#include "cursor_coordinates_windows.h"
+#include <array>
+#ifdef RA2_UNIFIED
+#include "../../shared/source/automatic_log.h"
+#endif
 #include "features.h"
 #include "motion.h"
 #include "quality.h"
@@ -93,6 +98,8 @@ static void textIfChanged(HWND w,const std::wstring& text){if(!IsWindow(w))retur
 
 static std::wstring root,gameDir,cacheKey,mode=L"keep";
 static external::ReadSession cursorReader;static DWORD pid=0,threadId=0;static HWND game=nullptr,mainw,overlay,statusw;
+static cursorcoordinates::Domain overlayCoordinateDomain=cursorcoordinates::Domain::CallerLogical;
+static HANDLE overlayCoordinateContext=nullptr;
 static int cursorDialog(const wchar_t*text,const wchar_t*title,UINT flags){
 #ifdef RA2_UNIFIED
  return settingsdialog::message(mainw,true,text,title,flags);
@@ -240,6 +247,60 @@ static void motionPoll(){
 }
 static std::wstring widen(const char* x){int n=MultiByteToWideChar(CP_UTF8,0,x,-1,0,0);std::wstring s(n,0);MultiByteToWideChar(CP_UTF8,0,x,-1,&s[0],n);if(n)s.pop_back();return s;}
 static void log(const std::wstring& s){FILE* f=_wfopen((root+L"\\cursor.log").c_str(),L"a, ccs=UTF-8");if(f){SYSTEMTIME t;GetLocalTime(&t);fwprintf(f,L"%02u:%02u:%02u %ls\n",t.wHour,t.wMinute,t.wSecond,s.c_str());fclose(f);}}
+static void coordinateDiagnostic(const wchar_t* stage,const cursorcoordinates::CoordinateScope& coordinates,
+ const POINT& point,bool pointValid,const cursorcoordinates::Rect& client,int gw=0,int gh=0,
+ int rasterW=0,int rasterH=0,int hotX=0,int hotY=0,double sx=1,double sy=1,int monitorW=0,int monitorH=0,DWORD apiError=0){
+ const std::array<int64_t,29> key{{pid,int64_t(uintptr_t(game)),nativeGameRefresh,noCursorMode,int(coordinates.domain),
+  int64_t(intptr_t(coordinates.originalContext)),int64_t(intptr_t(coordinates.currentContext)),
+  client.left,client.top,client.right,client.bottom,gw,gh,monitorW,monitorH,rasterW,rasterH,hotX,hotY,
+  int64_t(std::lround(sx*1000000)),int64_t(std::lround(sy*1000000)),dpiMode,dpiOverride,scalePercent,autoScale,aspectFit,pointValid,apiError,int64_t(intptr_t(overlayCoordinateContext))}};
+ static std::array<int64_t,29> previous{};static bool initialized=false;static DWORD lastAt=0;static const wchar_t* previousStage=L"";
+ const DWORD now=GetTickCount();
+ // The moving pointer is deliberately absent from the key. Raw and physical
+ // APIs are sampled sequentially; their difference is not a DPI estimate.
+ if(initialized&&DWORD(now-lastAt)<1000)return;
+ if(initialized&&key==previous&&!wcscmp(previousStage,stage)&&DWORD(now-lastAt)<15000)return;
+ initialized=true;previous=key;previousStage=stage;lastAt=now;
+ auto pair=[](int x,int y){return std::to_wstring(x)+L","+std::to_wstring(y);};
+ MONITORINFO monitor{sizeof monitor};GetMonitorInfoW(MonitorFromWindow(game?game:mainw,MONITOR_DEFAULTTONEAREST),&monitor);
+ const auto destination=cursorcoordinates::spriteOrigin({point.x,point.y},hotX,hotY);
+ const std::wstring text=std::wstring(L"cursor-coordinates stage=")+stage+L" pid="+std::to_wstring(pid)+
+  L" mode="+(noCursorMode?L"blank":nativeGameRefresh&&mode==L"hide"?L"native":L"overlay")+
+  L" domain="+coordinates.route+L" priorContext="+std::to_wstring(intptr_t(coordinates.originalContext))+
+  L" activeContext="+std::to_wstring(intptr_t(coordinates.currentContext))+
+  L" positionAPI="+coordinates.cursorApi()+L" rawValid="+std::to_wstring(coordinates.rawValid)+
+  L" rawCaller="+pair(coordinates.rawCursor.x,coordinates.rawCursor.y)+L" pointValid="+std::to_wstring(pointValid)+
+  L" screenPoint="+pair(point.x,point.y)+L" client="+pair(client.left,client.top)+L","+pair(client.right,client.bottom)+
+  L" monitor="+pair(monitor.rcMonitor.left,monitor.rcMonitor.top)+L","+pair(monitor.rcMonitor.right,monitor.rcMonitor.bottom)+
+  L" game="+pair(gw,gh)+L" imageScale="+std::to_wstring(sx)+L","+std::to_wstring(sy)+
+  L" raster="+pair(rasterW,rasterH)+L" hotspot="+pair(hotX,hotY)+L" destination="+pair(destination.x,destination.y)+
+  L" dpiMode="+std::to_wstring(dpiMode)+L" dpiOverride="+std::to_wstring(dpiOverride)+
+  L" aspectFit="+std::to_wstring(aspectFit)+L" contextError="+std::to_wstring(coordinates.error)+L" apiError="+std::to_wstring(apiError)+L" samplesSequential=1";
+ log(text);
+#ifdef RA2_UNIFIED
+ autolog::write(text);
+#endif
+}
+static bool ensureCoordinateWindows(const cursorcoordinates::CoordinateScope& coordinates){
+ if(overlay&&hud&&coordinates.compatible(overlayCoordinateDomain,overlayCoordinateContext))return true;
+ // A transient failure to enter physical space must not demote established
+ // physical windows. Retry on the next frame without changing Hook ownership.
+ if(overlay&&overlayCoordinateDomain==cursorcoordinates::Domain::Physical&&coordinates.domain!=overlayCoordinateDomain){SetLastError(coordinates.error?coordinates.error:ERROR_INVALID_DATA);return false;}
+ static bool failed=false;static DWORD failedAt=0,failedError=0;
+ if(failed&&DWORD(GetTickCount()-failedAt)<1000){SetLastError(failedError);return false;}
+ const HINSTANCE instance=GetModuleHandleW(nullptr);
+ const DWORD style=WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW|WS_EX_TOPMOST;
+ HWND nextOverlay=CreateWindowExW(style,L"RA2CursorOverlay3",L"",WS_POPUP,0,0,1,1,nullptr,nullptr,instance,nullptr);
+ HWND nextHud=nextOverlay?CreateWindowExW(style,L"RA2CursorHUD9",L"",WS_POPUP,0,0,740,140,nullptr,nullptr,instance,nullptr):nullptr;
+ if(!nextOverlay||!nextHud){const DWORD error=GetLastError();if(nextOverlay)DestroyWindow(nextOverlay);if(nextHud)DestroyWindow(nextHud);failed=true;failedAt=GetTickCount();failedError=error;SetLastError(error);return false;}
+ SetLayeredWindowAttributes(nextHud,0,220,LWA_ALPHA);
+ const HWND oldOverlay=overlay,oldHud=hud;overlay=nextOverlay;hud=nextHud;
+ overlayCoordinateDomain=coordinates.domain;overlayCoordinateContext=coordinates.currentContext;
+ lastFrame=-2;lastPhase=size_t(-1);hudPaintAt=0;failed=false;
+ if(oldOverlay){overlaystack::forget(oldOverlay);DestroyWindow(oldOverlay);}
+ if(oldHud){overlaystack::forget(oldHud);DestroyWindow(oldHud);}
+ return true;
+}
 static void updatePrimaryAction(){
  if(!IsWindow(primaryAction))return;
  bool enabled=autoStart&&!autoPaused;
@@ -344,10 +405,10 @@ static bool clickForegroundMatches(){
 // The click region is calculated without reading any game memory. This must
 // work even when a protected launcher prevents the external cursor overlay
 // from resolving the current animation frame.
-static bool refreshClickRegion(){
- RECT r={};POINT origin={0,0};
+static bool refreshClickRegion(const cursorcoordinates::CoordinateScope& coordinates){
+ cursorcoordinates::Rect client;
  if(!running||!IsWindow(game)||!IsWindowVisible(game)||IsIconic(game)||
-    !GetClientRect(game,&r)||r.right<320||r.bottom<200||!ClientToScreen(game,&origin)||!clickForegroundMatches()){
+    !coordinates.client(game,client)||client.width()<320||client.height()<200||!clickForegroundMatches()){
   SetRectEmpty(&clickRegion);regionTime=0;return false;
  }
  int gw=gameWOverride?gameWOverride:clickGameWidth;
@@ -357,15 +418,16 @@ static bool refreshClickRegion(){
  // user-configured game dimensions always override this fallback.
  if(gw<320||gh<200){gw=1024;gh=768;}
  if(sidebarWidth<=0||sidebarWidth>=gw||sidebarTop>=gh){SetRectEmpty(&clickRegion);regionTime=0;return false;}
- const double sx=double(r.right)/gw,sy=double(r.bottom)/gh;
- double fx=sx,fy=sy,ox=0,oy=0;
- if(aspectFit){fx=fy=std::min(sx,sy);ox=(r.right-gw*fx)/2;oy=(r.bottom-gh*fy)/2;}
- RECT next={origin.x+(LONG)std::lround(ox+(gw-sidebarWidth)*fx),
-            origin.y+(LONG)std::lround(oy+sidebarTop*fy),
-            origin.x+(LONG)std::lround(ox+gw*fx),
-            origin.y+(LONG)std::lround(oy+gh*fy)};
+ cursorcoordinates::Viewport viewport;if(!viewport.set(client,gw,gh,aspectFit)){SetRectEmpty(&clickRegion);regionTime=0;return false;}
+ const auto projected=viewport.project({gw-sidebarWidth,sidebarTop,gw,gh});
+ RECT next={projected.left,projected.top,projected.right,projected.bottom};
  if(next.right<=next.left||next.bottom<=next.top){SetRectEmpty(&clickRegion);regionTime=0;return false;}
  clickRegion=next;regionTime=GetTickCount();return true;
+}
+static bool cursorMapPoint(POINT point,const cursorcoordinates::Rect& client,int gw,int gh){
+ cursorcoordinates::Viewport viewport;if(!viewport.set(client,gw,gh,aspectFit))return false;
+ const int right=gw>sidebarWidth?gw-sidebarWidth:gw;
+ return viewport.project({0,0,right,gh}).contains({point.x,point.y});
 }
 static const wchar_t* clickReasonText(LONG code){
  switch(code){
@@ -376,6 +438,7 @@ static const wchar_t* clickReasonText(LONG code){
  case 5:return L"鼠标不在推定的侧栏区域";
  case 6:return L"未按Shift或同时按了Ctrl/Alt";
  case 7:return L"鼠标移动/松开状态不满足补点";
+ case 9:return L"无法读取鼠标屏幕坐标";
  case 8:return L"SendInput调用失败或只发送部分事件";
  default:return L"未知原因";
  }
@@ -538,12 +601,12 @@ static void hookStop(DWORD timeout=1500){
  if(hook){gameinput::release(gameentry::Client::Cursor,hook);hook=0;}
  if(shared){UnmapViewOfFile(shared);shared=nullptr;}if(mapping){CloseHandle(mapping);mapping=nullptr;}
 }
-static bool clickAllowed(POINT p){
+static bool clickAllowed(POINT p,const cursorcoordinates::CoordinateScope& coordinates){
  auto deny=[](LONG r){clickDenyReason=r;clickNeedsLog=true;return false;};
  if(!running||!clickEnabled)return deny(1);
  if(clickMode==2||(clickMode==0&&(!aresKnown||nativeFive)))return deny(2);
  if(!clickForegroundMatches())return deny(3);
- if(!refreshClickRegion())return deny(4);
+ if(!refreshClickRegion(coordinates))return deny(4);
  if(!PtInRect(&clickRegion,p))return deny(5);
  if(!(GetAsyncKeyState(VK_SHIFT)&0x8000)||
     (GetAsyncKeyState(VK_CONTROL)&0x8000)||(GetAsyncKeyState(VK_MENU)&0x8000))return deny(6);
@@ -577,10 +640,12 @@ static void updateRefresh(bool force=false){
 static uint32_t inputNow(){LARGE_INTEGER q;if(freq.QuadPart>0&&QueryPerformanceCounter(&q))return uint32_t((q.QuadPart/freq.QuadPart)*1000+(q.QuadPart%freq.QuadPart)*1000/freq.QuadPart);return GetTickCount();}
 static void pollPhysicalClick(){
  static bool initialized=false,previous=false;bool down=(GetAsyncKeyState(VK_LBUTTON)&0x8000)!=0;
- POINT p{};GetCursorPos(&p);if(!initialized){initialized=true;previous=down;physicalLeftDown=down;return;}
+ cursorcoordinates::CoordinateScope coordinates(true);POINT p{};
+ if(!coordinates.cursor(p)){const DWORD error=GetLastError();initialized=true;previous=down;physicalLeftDown=down;burst.cancel();clickDenyReason=9;clickNeedsLog=true;coordinateDiagnostic(L"click-sample-failed",coordinates,p,false,{},0,0,0,0,0,0,1,1,0,0,error);return;}
+ if(!initialized){initialized=true;previous=down;physicalLeftDown=down;return;}
  physicalLeftDown=down;
- if(down!=previous){previous=down;if(down)burst.down(p.x,p.y,(GetAsyncKeyState(VK_SHIFT)&0x8000)&&clickAllowed(p));
-  else {bool armed=burst.armed;burst.up(p.x,p.y,armed&&clickAllowed(p),inputNow(),clickGap);}}
+ if(down!=previous){previous=down;if(down)burst.down(p.x,p.y,(GetAsyncKeyState(VK_SHIFT)&0x8000)&&clickAllowed(p,coordinates));
+  else {bool armed=burst.armed;burst.up(p.x,p.y,armed&&clickAllowed(p,coordinates),inputNow(),clickGap);}}
  if((GetAsyncKeyState(VK_RBUTTON)|GetAsyncKeyState(VK_MBUTTON)|GetAsyncKeyState(VK_XBUTTON1)|GetAsyncKeyState(VK_XBUTTON2))&0x8000)burst.cancel();
 }
 static void detectAres(){aresKnown=false;nativeFive=false;HANDLE sn=CreateToolhelp32Snapshot(TH32CS_SNAPMODULE|TH32CS_SNAPMODULE32,pid);if(sn==INVALID_HANDLE_VALUE){log(L"Shift5 auto: module detection unavailable, no extra clicks; select manual only if game has no native Shift5");return;}MODULEENTRY32W m={sizeof(m)};if(Module32FirstW(sn,&m)){aresKnown=true;do{std::wstring n=m.szModule;std::transform(n.begin(),n.end(),n.begin(),towlower);if(n.find(L"ares")!=std::wstring::npos)nativeFive=true;}while(Module32NextW(sn,&m));}CloseHandle(sn);log(nativeFive?L"Shift5 auto: Ares module found; use native production, no extra clicks":L"Shift5 auto: no Ares module found; four extra clicks enabled when checked");}
@@ -600,8 +665,9 @@ static void clickTick(){
   }
  }
  for(int attempt=0;attempt<4&&burst.left;attempt++){
-  POINT p;GetCursorPos(&p);
-  bool eligible=clickAllowed(p);
+  cursorcoordinates::CoordinateScope coordinates(true);POINT p{};
+  if(!coordinates.cursor(p)){const DWORD error=GetLastError();burst.cancel();clickDenyReason=9;clickNeedsLog=true;coordinateDiagnostic(L"queued-click-sample-failed",coordinates,p,false,{},0,0,0,0,0,0,1,1,0,0,error);return;}
+  bool eligible=clickAllowed(p,coordinates);
   if(!eligible||std::abs(p.x-burst.x)>4||std::abs(p.y-burst.y)>4||physicalLeftDown){
    if(eligible)clickDenyReason=7;
    clickNeedsLog=true;burst.cancel();return;
@@ -719,6 +785,7 @@ static void pollOriginalResource(){
  }catch(const std::exception& e){log(L"Original resource rejected: "+widen(e.what()));}
 }
 static void draw(){
+ cursorcoordinates::CoordinateScope coordinates(true);
 #ifdef RA2_UNIFIED
  suite::publishHardwareCursor(running&&!manualCursorPause&&nativeGameRefresh&&!noCursorMode&&mode==L"hide"&&shared&&shared->nativeEnabled&&!shared->menuSuspend);
 #endif
@@ -757,11 +824,18 @@ static void draw(){
   shared->gameWindow=(DWORD)(uintptr_t)game;
  }
  if(!IsWindow(game)||fg!=observedForeground||!IsWindowVisible(game)){observedForeground=fg;lastWindowCheck=GetTickCount();DWORD oldThread=threadId;HWND oldWindow=game;selectGameWindow();if(game!=oldWindow){lastFrame=-2;lastPhase=size_t(-1);wasInside=false;log(L"Render window changed; reacquired without activation");}if(shared&&oldThread!=threadId){stop();status(L"游戏窗口线程变化，等待自动重新连接 HideCursor。");return;}}
- POINT pos;GetCursorPos(&pos);RECT rc={};POINT org={0,0};
+ POINT pos{};cursorcoordinates::Rect client;
+ const bool pointValid=coordinates.cursor(pos);const DWORD pointError=pointValid?0:GetLastError();
+ const bool clientValid=coordinates.client(game,client);const DWORD coordinateError=clientValid?pointError:GetLastError();
  if(!IsWindow(game)||!IsWindowVisible(game)||IsIconic(game)||
-    !GetClientRect(game,&rc)||rc.right<=0||rc.bottom<=0||!ClientToScreen(game,&org)||
-    (!noCursorMode && (pos.x<org.x||pos.y<org.y||pos.x>=org.x+rc.right||pos.y>=org.y+rc.bottom))){
+    !pointValid||!clientValid||(!noCursorMode&&!client.contains({pos.x,pos.y}))){
+  if(!pointValid||!clientValid)coordinateDiagnostic(L"sample-failed",coordinates,pos,pointValid,client,0,0,0,0,0,0,1,1,0,0,coordinateError);
   leaveGame();visibilityDiagnostic(L"游戏客户区未显示或鼠标不在客户区",fp);return;
+ }
+ RECT rc{0,0,client.width(),client.height()};POINT org{client.left,client.top};
+ if(!(nativeGameRefresh&&mode==L"hide")&&!noCursorMode&&!ensureCoordinateWindows(coordinates)){
+  const DWORD error=GetLastError();coordinateDiagnostic(L"window-domain-unavailable",coordinates,pos,true,client,0,0,0,0,0,0,1,1,0,0,error);
+  leaveGame();visibilityDiagnostic(L"光标窗口坐标域暂不可用，等待自动恢复",fp);return;
  }
  // A different game-owned window may be foreground (e.g. launcher overlay),
  // but a different unrelated desktop app must never receive the cursor.
@@ -898,9 +972,9 @@ static void draw(){
  auto hint=commandcursor::read(pid,GetTickCount());
  // Preserve native menu/tools and sidebar/minimap cursors. Release is checked
  // at display cadence, even if the Tactical thread has not run again yet.
- bool mapPoint=pos.x>=org.x&&pos.y>=org.y&&pos.x<org.x+rc.right&&pos.y<org.y+rc.bottom;
  int mapGW=gameWOverride?gameWOverride:sampleGW>0?sampleGW:clickGameWidth>0?clickGameWidth:1024;
- if(mapGW>sidebarWidth&&int64_t(pos.x-org.x)*mapGW>=int64_t(rc.right)*(mapGW-sidebarWidth))mapPoint=false;
+ int mapGH=gameHOverride?gameHOverride:sampleGH>0?sampleGH:clickGameHeight>0?clickGameHeight:768;
+ const bool mapPoint=cursorMapPoint(pos,client,mapGW,mapGH);
  if(hint.mode!=commandcursor::None&&mapPoint&&!nativeMenuHold&&!(shared&&shared->menuSuspend)&&
     (commandcursor::ordinary(cursorID)||(hint.mode==commandcursor::Enter&&cursorID==25))&&gameinput::heldBinding(hint.binding))commandMode=hint.mode;
  if(commandMode!=shownCommand){shownCommand=commandMode;commandSince=GetTickCount();lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();}
@@ -982,8 +1056,10 @@ static void draw(){
  }
  int useGW=gameWOverride?gameWOverride:gw,useGH=gameHOverride?gameHOverride:gh;int useSW=screenWOverride?screenWOverride:mw,useSH=screenHOverride?screenHOverride:mh;double dp=dpiOverride?dpiOverride:dx*100.0/96;
  int displayW=mw>0?(int)std::lround(double(rc.right)*useSW/mw):rc.right,displayH=mh>0?(int)std::lround(double(rc.bottom)*useSH/mh):rc.bottom;
- refreshClickRegion();
+ refreshClickRegion(coordinates);
  Scale sc=cursorScale(autoScale,aspectFit,scalePercent,displayW,displayH,useGW,useGH);double wf=dpiMode==1?dp/100:dpiMode==2?100/dp:1;sc.x=std::max(.125,std::min(8.0,sc.x*wf));sc.y=std::max(.125,std::min(8.0,sc.y*wf));int dw=std::min(1024,scaledSize(w,sc.x)),dh=std::min(1024,scaledSize(h,sc.y));int shx=superhot::scaledAnchor(hx,visualCenter,false,w,dw,offsetX),shy=superhot::scaledAnchor(hy,visualCenter,true,h,dh,offsetY);
+ const auto cursorOrigin=cursorcoordinates::spriteOrigin({pos.x,pos.y},shx,shy);
+ coordinateDiagnostic(L"present",coordinates,pos,true,client,gw,gh,dw,dh,shx,shy,sc.x,sc.y,mw,mh);
  if(GetTickCount()-lastReadout>1000){
   lastReadout=GetTickCount();
   wchar_t info[260];
@@ -1003,7 +1079,7 @@ static void draw(){
   const auto& raster=rasterCache.get(source,dw,dh);memcpy(pixels,raster.data(),raster.size()*4);
   if(commandMode!=commandcursor::None)for(int y=0;y<dh;++y)for(int x=0;x<dw;++x)
    pixels[size_t(y)*dw+x]=commandcursor::recolor(pixels[size_t(y)*dw+x],commandMode,x*w/dw,y*h/dh,w,h);
-  POINT dst={pos.x-shx,pos.y-shy},src={0,0};SIZE sz={dw,dh};BLENDFUNCTION bf={AC_SRC_OVER,0,255,AC_SRC_ALPHA};
+  POINT dst={cursorOrigin.x,cursorOrigin.y},src={0,0};SIZE sz={dw,dh};BLENDFUNCTION bf={AC_SRC_OVER,0,255,AC_SRC_ALPHA};
   // Optional in-game native hardware cursor. The renderer below stays intact
   // for the regular overlay mode and the existing per-frame timeline.
   if(nativeGameRefresh&&mode==L"hide"&&shared){
@@ -1037,7 +1113,7 @@ static void draw(){
   if(nativeGameRefresh&&mode==L"hide"){
    ShowWindow(overlay,SW_HIDE);
    if(shared&&shared->nativeVisible)++hudUpdates;
-  }else if([&](){RECT shown{};int x=pos.x-shx,y=pos.y-shy;
+  }else if([&](){RECT shown{};int x=cursorOrigin.x,y=cursorOrigin.y;
     if(IsWindowVisible(overlay)&&GetWindowRect(overlay,&shown)&&shown.left==x&&shown.top==y)return true;
     return overlaystack::place(overlay,overlaystack::Layer::Cursor,x,y,0,0,SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE;
    }()){
@@ -1064,14 +1140,18 @@ static void draw(){
 
 }
 static void diagnosticHud(){
+ cursorcoordinates::CoordinateScope coordinates;
  DWORD now=GetTickCount();if(debugHudAt&&now-debugHudAt<250)return;debugHudAt=now;
- if(!hudEnabled||!hud||!IsWindow(game)||!IsWindowVisible(game)||IsIconic(game)){
+ if(!hudEnabled||!IsWindow(game)||!IsWindowVisible(game)||IsIconic(game)){
   if(hud&&IsWindowVisible(hud))ShowWindow(hud,SW_HIDE);return;
  }
  HWND fg=GetForegroundWindow();DWORD fp=0;GetWindowThreadProcessId(fg,&fp);
  if(!((fp==pid&&GetAncestor(fg,GA_ROOT)==GetAncestor(game,GA_ROOT))||platformHostMatches(fg,fp))){if(IsWindowVisible(hud))ShowWindow(hud,SW_HIDE);return;}
+ if(!ensureCoordinateWindows(coordinates)){if(hud)ShowWindow(hud,SW_HIDE);return;}
  ++debugHudBeat;
- RECT rc{};POINT org{};if(!GetClientRect(game,&rc)||!ClientToScreen(game,&org))return;
+ cursorcoordinates::Rect client;
+ if(!coordinates.compatible(overlayCoordinateDomain,overlayCoordinateContext)||!coordinates.client(game,client)){ShowWindow(hud,SW_HIDE);return;}
+ RECT rc{0,0,client.width(),client.height()};POINT org{client.left,client.top};
  LONG state=shared?shared->state:-9,err=shared?shared->error:0,nativeShown=shared?shared->nativeVisible:0;
  LONG seq=shared?shared->nativeSeq:0,ack=shared?shared->nativeAck:0;
  int frame=diagFrame,hx=diagHotX,hy=diagHotY,gw=clickGameWidth,gh=clickGameHeight;
@@ -1515,8 +1595,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  wc.lpfnWndProc=hudProc;wc.lpszClassName=L"RA2CursorHUD9";RegisterClassW(&wc);
  std::wstring title=L"高刷光标 v" RA2_RELEASE_VERSION_W;
  mainw=CreateWindowExW(0,L"RA2CursorControl3",title.c_str(),WS_OVERLAPPEDWINDOW|WS_VSCROLL|WS_HSCROLL|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,490,405,NULL,NULL,inst,NULL);
- overlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"RA2CursorOverlay3",L"",WS_POPUP,0,0,1,1,NULL,NULL,inst,NULL);
- hud=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"RA2CursorHUD9",L"",WS_POPUP,0,0,740,140,NULL,NULL,inst,NULL);SetLayeredWindowAttributes(hud,0,220,LWA_ALPHA);
+ {cursorcoordinates::CoordinateScope coordinates;if(!ensureCoordinateWindows(coordinates))log(L"Cursor presentation windows are not ready; retrying on the next active frame");}
  const wchar_t* labels[]={L"连接游戏",L"游戏目录",L"安装 SHA",L"恢复 SHA",L"启动",L"停止"};
  for(int i=0;i<6;i++){HWND bt=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,15+(i%3)*245,15+(i/3)*45,226,34,mainw,(HMENU)(INT_PTR)(i+1),inst,NULL);SendMessageW(bt,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);if(i==2)installBox=bt;if(i==3)restoreBox=bt;}
  statusw=CreateWindowW(L"STATIC",L"等待游戏",WS_CHILD|WS_VISIBLE,15,115,735,44,mainw,NULL,inst,NULL);SendMessageW(statusw,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);

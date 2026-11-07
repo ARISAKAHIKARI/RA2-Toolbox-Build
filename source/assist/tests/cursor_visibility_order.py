@@ -10,7 +10,14 @@ import unittest
 
 def block(source, signature):
     start = source.index(signature)
-    opening = source.index("{", start)
+    # Aggregate arguments such as contains({x,y}) are part of the condition,
+    # not the opening of its guarded body.
+    opening = source.index("(", start)
+    depth, end = 1, opening + 1
+    while depth:
+        depth += (source[end] == "(") - (source[end] == ")")
+        end += 1
+    opening = source.index("{", end)
     depth, end = 1, opening + 1
     while depth:
         depth += (source[end] == "{") - (source[end] == "}")
@@ -44,9 +51,17 @@ class CursorVisibilityOrder(unittest.TestCase):
 
     def test_hidden_minimized_invalid_or_outside_client_precedes_timeout(self):
         code = self.guard_precedes_watchdog("if(!IsWindow(game)||!IsWindowVisible(game)||IsIconic(game)||")
-        for check in ("!GetClientRect", "rc.right<=0", "rc.bottom<=0", "!ClientToScreen", "pos.x<org.x", "pos.y<org.y"):
+        for check in ("!pointValid", "!clientValid", "!noCursorMode&&!client.contains({pos.x,pos.y})"):
             self.assertIn(check, code)
         self.assertIn("leaveGame();", code)
+
+    def test_unavailable_coordinate_window_is_recoverable_before_timeout(self):
+        code = self.guard_precedes_watchdog(
+            'if(!(nativeGameRefresh&&mode==L"hide")&&!noCursorMode&&!ensureCoordinateWindows(coordinates)){'
+        )
+        self.assertIn("leaveGame();", code)
+        self.assertNotIn("autoPaused=", code)
+        self.assertNotIn("stop();", code)
 
     def test_foreground_sibling_window_precedes_timeout(self):
         self.assertIn("leaveGame();", self.guard_precedes_watchdog("if(fp==pid&&fg!=game&&"))
