@@ -1,0 +1,95 @@
+{
+  "schema": "ra2.pres-bus.native-sidebar-static.v1",
+  "created_at": "2026-11-07T08:07:36.124280+00:00",
+  "question": "Does native rules-mode sidebar enumeration reject PRES/BUS because Insignificant is set, and can a guarded AddCameo path persist?",
+  "supported_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "segments": [
+    {
+      "name": "BuildingClass::UpdateConstructionOptions",
+      "start": "0x4456d0",
+      "end_exclusive": "0x445840",
+      "size": 368,
+      "sha256": "507ab8b260cf5e44f965ee6b6a4f304f6a275afc1c516592d8a8f834b7f3577e",
+      "abi": "thiscall(Building*), no stack arguments",
+      "direct_memory_displacement_0x232": []
+    },
+    {
+      "name": "HouseClass::CanBuild",
+      "start": "0x4f7870",
+      "end_exclusive": "0x4f8364",
+      "size": 2804,
+      "sha256": "ec27a54b5799f47fc1ecbd7faad783f7d853bf5ed76551991e4055543fc1100c",
+      "abi": "thiscall(House*, Type*, bool limitOnly, bool includeProduction), ret 0x0c",
+      "direct_memory_displacement_0x232": []
+    },
+    {
+      "name": "ObjectTypeClass::FindFactory",
+      "start": "0x5f7900",
+      "end_exclusive": "0x5f7a8c",
+      "size": 396,
+      "sha256": "4b4e61acb95dcb915c3db846ab9ff15363968133ec312c6b94a874b05a7a98db",
+      "abi": "thiscall(Type*, bool allowOccupied, bool requirePower, bool requireCanBuild, House*), ret 0x10",
+      "direct_memory_displacement_0x232": []
+    },
+    {
+      "name": "StripClass::RecheckCameos",
+      "start": "0x6aa600",
+      "end_exclusive": "0x6aacaf",
+      "size": 1711,
+      "sha256": "3899df5a5fadcfde47954009c9433ed66363f824cbc6dde4ed4c91d410794410",
+      "abi": "thiscall(Strip*), no stack arguments",
+      "direct_memory_displacement_0x232": []
+    },
+    {
+      "name": "HouseClass AI RecheckTechTree block",
+      "start": "0x4f9265",
+      "end_exclusive": "0x4f9302",
+      "size": 157,
+      "sha256": "1eb3e5ed348248cfa6dcbbdeb4ea9b293a75bbf8784dc5c6ab45d38803e8d309",
+      "abi": "internal block, ESI=House*",
+      "direct_memory_displacement_0x232": []
+    }
+  ],
+  "facts": [
+    {
+      "address": "0x4456D0..0x44572F",
+      "fact": "Outer Building update requires Owner==CurrentPlayer, +0x81==0, +0x41B!=0 and +0x660!=0, then selects the type array by BuildingType+0xEB8."
+    },
+    {
+      "address": "0x445789..0x4457BB",
+      "fact": "UnitType loop calls CanBuild(CurrentPlayer,type,false,true) at 0x44579D; nonzero EAX reaches AddCameo(UnitType=40,index) at 0x4457AE. There is no per-type Insignificant read or additional guard in this loop."
+    },
+    {
+      "address": "0x4457CA..0x4457FC",
+      "fact": "InfantryType loop calls CanBuild(CurrentPlayer,type,false,true) at 0x4457DE; nonzero EAX reaches AddCameo(InfantryType=16,index) at 0x4457EF. There is no per-type Insignificant read or additional guard in this loop."
+    },
+    {
+      "address": "0x4F9265..0x4F92D2",
+      "fact": "House AI reads and clears House+0x1FC, enumerates House buildings at +0x6C/+0x78; active+0x90, positive Health+0x6C, current and queued Mission!=0x13, and owned-by-CurrentPlayer buildings reach virtual+0x4E0."
+    },
+    {
+      "address": "0x6AA75F..0x6AA788",
+      "fact": "Existing cameo is retained when type virtual+0x94 FindFactory(true,false,false,CurrentPlayer) returns a factory and CanBuild(factory.Owner,type,false,true) returns nonzero. It does not read Insignificant or require a cameo image at this decision."
+    },
+    {
+      "address": "0x5F7900..0x5F7A8B",
+      "fact": "FindFactory checks building state, factory kind, mission, conditional CanBuild(limitOnly=true), type/factory Owner masks, naval compatibility and available building preference. No direct Insignificant read occurs."
+    }
+  ],
+  "rejected_hypotheses": [
+    "The supported original Building::UpdateConstructionOptions enumerator directly excludes Insignificant infantry/units before or after CanBuild.",
+    "The supported original Strip::RecheckCameos directly prunes PRES/BUS solely because Insignificant is true."
+  ],
+  "implementation_implications": [
+    "Do not describe a rules-mode repair as bypassing an observed native Insignificant filter; none was found in these exact native paths.",
+    "A successful full native CanBuild plus FindFactory admission is consistent with the original cameo retention path, but a supplement path still needs platform-specific sidebar layout and native-call identity handling.",
+    "The original sidebar uses CanBuild != 0, whereas strict production admission often uses > 0. Preserve that distinction when interpreting negative build-limit states.",
+    "Instrument actual level ownership/world, CanBuild result, factory result and cameo presence to localize the user platform case before claiming root cause."
+  ],
+  "limitations": [
+    "Static disassembly of one supported disk image only; no user live platform process or Ares DLL bytes were inspected.",
+    "Direct memory operand inspection is not a proof about every transitive callee or every modded runtime path.",
+    "Ares may replace native sidebar storage and calls; fixed-inline cameo inventory is not validated for Ares by this evidence."
+  ],
+  "controlled_execution_evidence": "tech-enhancement-rules-native-20261107.json"
+}

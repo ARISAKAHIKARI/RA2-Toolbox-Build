@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 科技加强规则模式总统／校车未显示 | [原生枚举反证、Ares 动态图标与现场边界](2026-11-07-tech-enhancement-rules-native-followup.md) | PRES BUS native-CanBuild 8-cases Insignificant-not-native-filter rules-mode-unresolved |
 | 科技加强的总统／校车目录缺口 | [特殊类型标志、身份限定准入与原生边界](2026-11-07-tech-enhancement-special-catalogue.md) | pre14 PRES BUS Insignificant typeSlot owned-identity legacy-vs-exact native-sidebar-unverified |
 | 4K/2K 光标坐标域与取点失败恢复 | [pre.12：物理取点、DPI 作用域与正常点位保持](2026-11-07-cursor-coordinate-recovery.md) | GetPhysicalCursorPos PMv2 same-domain failed-sample no-position-ratio no-SetCursorPos |
 | gameares 漏识别与游戏连接恢复 | [pre.11：模糊描述、追加检测名单、身份复核与真实状态](2026-11-07-game-process-discovery-recovery.md) | FileDescription allowlist gameares PID-birth background-metadata one-way-reconnect hidden-status |

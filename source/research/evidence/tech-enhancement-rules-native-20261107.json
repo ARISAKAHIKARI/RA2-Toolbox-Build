@@ -1,0 +1,221 @@
+{
+  "status": "PASS",
+  "cases": 8,
+  "private_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "base_fixture_path": "source/tools/audit_tech_data_native.py",
+  "base_fixture_sha256": "00e2815370f98a7320c2abcb3764afe2e3a032d78c8a981171e99353b4118aec",
+  "script_sha256": "bca1263e78b4e39542370887ecc6161a75d80d6d2e18aecb3d4cee5421e00031",
+  "game_tested": false,
+  "windows_executed": false,
+  "native_ui_executed": false,
+  "boundary": "Read-only supported-PE checks with synthetic House/Type/Building data.\n\nThe existing predicate fixture supplies allocator and Building mission mocks.\nAddCameo and House post-refresh UI/update calls are explicit sinks here. The\nactual CanBuild, FindFactory and construction-option enumeration execute.\nNo user process, Windows program, private executable writes or native UI run.\n",
+  "synthetic_fields": "Real type vtables and factory kinds; abstract owner group 1 for matching Type/factory, no PRES prerequisite; BUS uses synthetic prerequisite index 0 with owned count 1. Not current platform rules.",
+  "actual_functions": [
+    "0x4F7870 CanBuild",
+    "0x5F7900 FindFactory",
+    "0x4456D0 Building::UpdateConstructionOptions",
+    "0x4F9265..0x4F9302 House RecheckTechTree slice"
+  ],
+  "rows": [
+    {
+      "type": "PRES",
+      "kind": 16,
+      "insignificant": 0,
+      "tech_level": -1,
+      "full_canbuild": 0,
+      "find_factory_present": true,
+      "direct_building_addcameo_calls": [],
+      "house_recheck_addcameo_calls": [],
+      "house_recheck_flag_cleared": true,
+      "type_bytes_unchanged": true,
+      "code_hash_unchanged": true,
+      "native_canbuild_calls": 3,
+      "explicit_mocks": [
+        "House post-refresh update sink 0x50af10",
+        "House post-refresh update sink 0x50b1d0",
+        "House post-refresh update sink 0x6a7d20"
+      ]
+    },
+    {
+      "type": "PRES",
+      "kind": 16,
+      "insignificant": 0,
+      "tech_level": 1,
+      "full_canbuild": 1,
+      "find_factory_present": true,
+      "direct_building_addcameo_calls": [
+        [
+          16,
+          0
+        ]
+      ],
+      "house_recheck_addcameo_calls": [
+        [
+          16,
+          0
+        ]
+      ],
+      "house_recheck_flag_cleared": true,
+      "type_bytes_unchanged": true,
+      "code_hash_unchanged": true,
+      "native_canbuild_calls": 3,
+      "explicit_mocks": [
+        "AddCameo sink",
+        "House post-refresh update sink 0x50af10",
+        "House post-refresh update sink 0x50b1d0",
+        "House post-refresh update sink 0x6a7d20"
+      ]
+    },
+    {
+      "type": "PRES",
+      "kind": 16,
+      "insignificant": 1,
+      "tech_level": -1,
+      "full_canbuild": 0,
+      "find_factory_present": true,
+      "direct_building_addcameo_calls": [],
+      "house_recheck_addcameo_calls": [],
+      "house_recheck_flag_cleared": true,
+      "type_bytes_unchanged": true,
+      "code_hash_unchanged": true,
+      "native_canbuild_calls": 3,
+      "explicit_mocks": [
+        "House post-refresh update sink 0x50af10",
+        "House post-refresh update sink 0x50b1d0",
+        "House post-refresh update sink 0x6a7d20"
+      ]
+    },
+    {
+      "type": "PRES",
+      "kind": 16,
+      "insignificant": 1,
+      "tech_level": 1,
+      "full_canbuild": 1,
+      "find_factory_present": true,
+      "direct_building_addcameo_calls": [
+        [
+          16,
+          0
+        ]
+      ],
+      "house_recheck_addcameo_calls": [
+        [
+          16,
+          0
+        ]
+      ],
+      "house_recheck_flag_cleared": true,
+      "type_bytes_unchanged": true,
+      "code_hash_unchanged": true,
+      "native_canbuild_calls": 3,
+      "explicit_mocks": [
+        "AddCameo sink",
+        "House post-refresh update sink 0x50af10",
+        "House post-refresh update sink 0x50b1d0",
+        "House post-refresh update sink 0x6a7d20"
+      ]
+    },
+    {
+      "type": "BUS",
+      "kind": 40,
+      "insignificant": 0,
+      "tech_level": -1,
+      "full_canbuild": 0,
+      "find_factory_present": true,
+      "direct_building_addcameo_calls": [],
+      "house_recheck_addcameo_calls": [],
+      "house_recheck_flag_cleared": true,
+      "type_bytes_unchanged": true,
+      "code_hash_unchanged": true,
+      "native_canbuild_calls": 3,
+      "explicit_mocks": [
+        "House post-refresh update sink 0x50af10",
+        "House post-refresh update sink 0x50b1d0",
+        "House post-refresh update sink 0x6a7d20"
+      ]
+    },
+    {
+      "type": "BUS",
+      "kind": 40,
+      "insignificant": 0,
+      "tech_level": 1,
+      "full_canbuild": 1,
+      "find_factory_present": true,
+      "direct_building_addcameo_calls": [
+        [
+          40,
+          0
+        ]
+      ],
+      "house_recheck_addcameo_calls": [
+        [
+          40,
+          0
+        ]
+      ],
+      "house_recheck_flag_cleared": true,
+      "type_bytes_unchanged": true,
+      "code_hash_unchanged": true,
+      "native_canbuild_calls": 3,
+      "explicit_mocks": [
+        "AddCameo sink",
+        "House post-refresh update sink 0x50af10",
+        "House post-refresh update sink 0x50b1d0",
+        "House post-refresh update sink 0x6a7d20",
+        "allocate",
+        "free"
+      ]
+    },
+    {
+      "type": "BUS",
+      "kind": 40,
+      "insignificant": 1,
+      "tech_level": -1,
+      "full_canbuild": 0,
+      "find_factory_present": true,
+      "direct_building_addcameo_calls": [],
+      "house_recheck_addcameo_calls": [],
+      "house_recheck_flag_cleared": true,
+      "type_bytes_unchanged": true,
+      "code_hash_unchanged": true,
+      "native_canbuild_calls": 3,
+      "explicit_mocks": [
+        "House post-refresh update sink 0x50af10",
+        "House post-refresh update sink 0x50b1d0",
+        "House post-refresh update sink 0x6a7d20"
+      ]
+    },
+    {
+      "type": "BUS",
+      "kind": 40,
+      "insignificant": 1,
+      "tech_level": 1,
+      "full_canbuild": 1,
+      "find_factory_present": true,
+      "direct_building_addcameo_calls": [
+        [
+          40,
+          0
+        ]
+      ],
+      "house_recheck_addcameo_calls": [
+        [
+          40,
+          0
+        ]
+      ],
+      "house_recheck_flag_cleared": true,
+      "type_bytes_unchanged": true,
+      "code_hash_unchanged": true,
+      "native_canbuild_calls": 3,
+      "explicit_mocks": [
+        "AddCameo sink",
+        "House post-refresh update sink 0x50af10",
+        "House post-refresh update sink 0x50b1d0",
+        "House post-refresh update sink 0x6a7d20",
+        "allocate",
+        "free"
+      ]
+    }
+  ]
+}
