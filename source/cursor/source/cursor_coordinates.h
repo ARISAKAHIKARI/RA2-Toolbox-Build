@@ -14,8 +14,9 @@ struct Rect {
  bool contains(Point point)const{return valid()&&point.x>=left&&point.y>=top&&point.x<right&&point.y<bottom;}
 };
 inline int pixel(double value){return int(std::clamp(std::round(value),double(std::numeric_limits<int>::min()),double(std::numeric_limits<int>::max())));}
-// A cursor position read in screen pixels already belongs to the output.
-// Image/DPI/viewport scaling changes its raster and anchor, never this position.
+// This point must already be in the final display coordinate space. Ordinary
+// OS points pass through unchanged; a game-canvas presentation maps first.
+// Image/DPI scaling changes its raster and anchor, never this final position.
 inline Point spriteOrigin(Point screen,int anchorX,int anchorY){return {pixel(double(screen.x)-anchorX),pixel(double(screen.y)-anchorY)};}
 struct Viewport {
  Rect client{};double sx=0,sy=0,offsetX=0,offsetY=0;

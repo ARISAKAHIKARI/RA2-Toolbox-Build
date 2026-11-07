@@ -9,6 +9,7 @@
 | 科技加强规则模式总统／校车未显示 | [原生枚举反证、Ares 动态图标与现场边界](2026-11-07-tech-enhancement-rules-native-followup.md) | PRES BUS native-CanBuild 8-cases Insignificant-not-native-filter rules-mode-unresolved |
 | 科技加强的总统／校车目录缺口 | [特殊类型标志、身份限定准入与原生边界](2026-11-07-tech-enhancement-special-catalogue.md) | pre14 PRES BUS Insignificant typeSlot owned-identity legacy-vs-exact native-sidebar-unverified |
 | 4K/2K 光标坐标域与取点失败恢复 | [pre.12：物理取点、DPI 作用域与正常点位保持](2026-11-07-cursor-coordinate-recovery.md) | GetPhysicalCursorPos PMv2 same-domain failed-sample no-position-ratio no-SetCursorPos |
+| 2K 左上输入画布拉满 4K 的光标位置 | [pre.15：呈现映射与原生光标退让](2026-11-07-cursor-fullscreen-presentation.md) | GetClipCursor canvas-to-monitor compatibility-inference effective-native overlay menu-blank no-SetCursorPos |
 | gameares 漏识别与游戏连接恢复 | [pre.11：模糊描述、追加检测名单、身份复核与真实状态](2026-11-07-game-process-discovery-recovery.md) | FileDescription allowlist gameares PID-birth background-metadata one-way-reconnect hidden-status |
 | 强制注入平台的只读 Hook 探测 | [pre.10：磁盘基准、代码差异、覆盖范围与解释边界](2026-11-07-platform-hook-detector.md) | disk-baseline no-clean-live-state PE relocations coverage candidate-chain writer-unknown 161-reference-intersections |
 | 自动维修归组与自动功能开关快捷键 | [pre.8：维修间隔、共享状态与异步取消](2026-11-07-automatic-controls-repair-frequency.md) | 13-toggles 10-new-keys RepairMs late-result cancellation manual-isolation hotkey-conflicts |

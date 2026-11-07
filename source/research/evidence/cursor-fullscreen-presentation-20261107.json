@@ -1,0 +1,241 @@
+{
+  "schema": "ra2.cursor-fullscreen-presentation.pre15.v1",
+  "baseline_commit": "00266f7d4cc11d330625ad38541ac7d06c5525cd",
+  "version": "1.0.43-pre.15",
+  "passed": true,
+  "pure_mapping": {
+    "timestamp": "2026-11-07T08:52:07.681973+00:00",
+    "kind": "pure-cpp-presentation-helper",
+    "build_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-pedantic",
+      "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_presentation.cpp",
+      "-o",
+      "/workspace/scratch/932746db9af9/cursor_pre15/cursor_presentation"
+    ],
+    "compiler_output": "",
+    "build_exit_code": 0,
+    "run_exit_code": 0,
+    "result": {
+      "scenarios": 26,
+      "checks": 51,
+      "failed": 0
+    },
+    "scope": "Pure coordinate helper only; no actual Windows/game/renderer execution",
+    "files": {
+      "source/cursor/source/cursor_presentation.h": "6e34fe4cec4cee3d47e7a9b300ed94da4e157e3ee9433378935d96f2f2efa57a",
+      "source/assist/tests/cursor_presentation.cpp": "5f255fbe05525348638515bda563acb41c338503b04fc7ed34f857bc205d8e6f"
+    }
+  },
+  "production_routes": {
+    "schema": "ra2.cursor-coordinates.pre15.v1",
+    "passed": true,
+    "source_sha256": {
+      "cursor/source/main.cpp": "ee578ed9fda8fed96acd0973671df8b1f0338efaac875a2b9615a1fb6a481c53",
+      "cursor/source/cursor_coordinates.h": "f61d14d27e34e39b001348dd082d8bae33fdc1899c18855df0d1abd4125c84df",
+      "cursor/source/cursor_coordinates_windows.h": "c87121a871aa6a99510f0cab8f96ea40c4ff170a76461caa4203dd0f25292890",
+      "cursor/source/scale.h": "ed84302f21146a505a69969bd00192dc71b62026a6261ac1870a3fcae49ad4e8",
+      "cursor/source/bridge.h": "58a82643c7d5530efd3d7fc1d5fcc118170ac6f9a8bcac5ae9c5d5dca09797f3",
+      "cursor/source/hide.cpp": "0ff37d38841f5a2204709a3855758287773de9006130329197265e6f1e2ff287",
+      "cursor/source/cursor_presentation.h": "6e34fe4cec4cee3d47e7a9b300ed94da4e157e3ee9433378935d96f2f2efa57a",
+      "cursor/source/cursor_presentation_route.h": "fbed75da09714f585360aee31cb8d0e6bd1e94c9b24833104a6dbef28e891d48",
+      "cursor/source/sequence.h": "f43944c5e17e7b752aac948547a4d7ed6f06327a88c44a36572c187454584f6f",
+      "assist/tests/cursor_coordinates.cpp": "6bdbd0b6a248656057c6583fe490356078ef184cbfffe895ec7517c11e08e53a",
+      "assist/tests/cursor_coordinates.py": "34f56bce6a772ed8098759dc730c6ae86d2e9ee07ada81b78e5ad29b01fd4bee",
+      "assist/tests/cursor_coordinates_winmock/windows.h": "d84ad61826703daad14abc0641a1032023c86780feec3ba6c3342d718edb3118"
+    },
+    "source_paths_relative_to": "source/",
+    "baseline_revision": "c092a70e",
+    "baseline_main_sha256": "fcfb0a95e9a5c01cca1a9ab625f9b883b4a39eb2d465e5d91f44e8fa6791ed6a",
+    "results": [
+      {
+        "name": "current",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "build": [
+          "g++",
+          "-std=c++17",
+          "-O0",
+          "-UNDEBUG",
+          "-DRA2_UNIFIED",
+          "-I/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates_winmock",
+          "-DCURSOR_ROUTES=\"/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/current-routes.inc\"",
+          "-DCURSOR_PRESENTATION",
+          "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates.cpp",
+          "-o",
+          "/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/current"
+        ],
+        "routes_sha256": "393382e2cf554815991129ad8f003a72d528e50b2d678f824b8c4894bfbda054",
+        "cases": 51,
+        "checks": 97,
+        "failures": 0,
+        "native_windows_executed": false,
+        "game_executed": false
+      },
+      {
+        "name": "current-no-context-api",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "build": [
+          "g++",
+          "-std=c++17",
+          "-O0",
+          "-UNDEBUG",
+          "-DRA2_UNIFIED",
+          "-I/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates_winmock",
+          "-DCURSOR_ROUTES=\"/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/current-routes.inc\"",
+          "-DCURSOR_PRESENTATION",
+          "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates.cpp",
+          "-o",
+          "/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/current"
+        ],
+        "routes_sha256": "393382e2cf554815991129ad8f003a72d528e50b2d678f824b8c4894bfbda054",
+        "cases": 1,
+        "checks": 2,
+        "failures": 0,
+        "native_windows_executed": false,
+        "game_executed": false
+      },
+      {
+        "name": "current-no-physical-api",
+        "expected_exit": 0,
+        "exit_code": 0,
+        "build": [
+          "g++",
+          "-std=c++17",
+          "-O0",
+          "-UNDEBUG",
+          "-DRA2_UNIFIED",
+          "-I/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates_winmock",
+          "-DCURSOR_ROUTES=\"/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/current-routes.inc\"",
+          "-DCURSOR_PRESENTATION",
+          "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates.cpp",
+          "-o",
+          "/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/current"
+        ],
+        "routes_sha256": "393382e2cf554815991129ad8f003a72d528e50b2d678f824b8c4894bfbda054",
+        "cases": 51,
+        "checks": 97,
+        "failures": 0,
+        "native_windows_executed": false,
+        "game_executed": false
+      },
+      {
+        "name": "baseline",
+        "expected_exit": 1,
+        "exit_code": 1,
+        "build": [
+          "g++",
+          "-std=c++17",
+          "-O0",
+          "-UNDEBUG",
+          "-DRA2_UNIFIED",
+          "-I/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates_winmock",
+          "-DCURSOR_ROUTES=\"/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/baseline-routes.inc\"",
+          "-DCURSOR_BASELINE",
+          "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates.cpp",
+          "-o",
+          "/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/baseline"
+        ],
+        "routes_sha256": "df964e842e0c43f4e0d219a2c391d8eaec0cf3a89f28afe13915443f1cd0dd97",
+        "cases": 6,
+        "checks": 11,
+        "failures": 7,
+        "native_windows_executed": false,
+        "game_executed": false
+      },
+      {
+        "name": "interim-owner-recovery-only",
+        "expected_exit": 1,
+        "exit_code": 1,
+        "build": [
+          "g++",
+          "-std=c++17",
+          "-O0",
+          "-UNDEBUG",
+          "-DRA2_UNIFIED",
+          "-I/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates_winmock",
+          "-DCURSOR_ROUTES=\"/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/interim-routes.inc\"",
+          "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates.cpp",
+          "-o",
+          "/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/interim"
+        ],
+        "routes_sha256": "384695e971659e3d4bb4f7b17a6c5280f76b17b884cea15d4b8111692f209dbd",
+        "cases": 5,
+        "checks": 9,
+        "failures": 7,
+        "native_windows_executed": false,
+        "game_executed": false
+      },
+      {
+        "name": "pre14-presentation-geometry-only",
+        "expected_exit": 1,
+        "exit_code": 1,
+        "build": [
+          "g++",
+          "-std=c++17",
+          "-O0",
+          "-UNDEBUG",
+          "-DRA2_UNIFIED",
+          "-I/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates_winmock",
+          "-DCURSOR_ROUTES=\"/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/pre14-routes.inc\"",
+          "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates.cpp",
+          "-o",
+          "/workspace/scratch/932746db9af9/cursor_pre15/integration/coordinates/pre14"
+        ],
+        "routes_sha256": "252e5e2d088f6adde1ae43024f58628f35b44895b1e4e899777faaace7bb4adf",
+        "cases": 7,
+        "checks": 8,
+        "failures": 4,
+        "native_windows_executed": false,
+        "game_executed": false
+      }
+    ],
+    "recovery_baseline_revision": "2c8367ae1b0f672da7caca82260d70c7d9dddadc",
+    "recovery_baseline_main_sha256": "330950e0cbe7d735e477d01278bf90996d68671b2e6208849589e422a237db35",
+    "presentation_baseline_revision": "00266f7",
+    "presentation_baseline_main_sha256": "2ce9ce8f97fe2612e135234590faa853f8c7ced38736484274930dab9b8d85ae",
+    "current_checks": 196,
+    "negative_control_failures": 18,
+    "scope": "Production coordinate/presentation helpers; extracted main input observations, delivery/menu updates, native packet and overlay submission branches, point/client guards, window recovery and diagnostics; extracted Runtime nativeRelease/nativeMenuRefresh/nativeRefresh and WM_SETCURSOR dispatch branches.",
+    "limitations": [
+      "Win32 APIs and submission sinks are controlled substitutes; no Windows DWM, native compositor, real game or platform was executed.",
+      "Old logical-caller failure means the old production route does not enforce the new physical-domain contract; it is not a claim that DWM always misplaces an old logical-context window.",
+      "GetClipCursor and renderer geometry are supplied evidence, not emulated wrapper behavior or automatic proof of input semantics.",
+      "Native image creation, HWND/dialog classification, callback/SEH entry and the Windows cursor compositor are boundary substitutes; the actual extracted ownership and dispatch code executes against them.",
+      "Hook stop/start are subscription boundary substitutes. Owner-side release and recovery are executed, but actual Runtime Hide restoration/acknowledgement is not simulated or claimed.",
+      "Dormant Cursor Shift5 is not re-enabled or claimed as an executed user input pipeline."
+    ]
+  },
+  "settings_handler": {
+    "command": [
+      "python3",
+      "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_settings_ui_test.py",
+      "/workspace/scratch/a67ed982d62d/ra2-toolbox/source"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 1.009323880993179,
+    "source_sha256": {
+      "source/assist/tests/cursor_settings_ui_test.py": "02a60aad53849a4c0eeabccf0f5e50e6aa4dbc9c6389ba7835d3f6e8cb3bcda2",
+      "source/cursor/source/live_settings_ui.h": "366541ffc3db1b74e7dfd5349103bc4c98ed6a2fe08cf35953c49a3ab11041af"
+    },
+    "scope": "Actual cursor applyScale settings handler with portable control and INI write boundaries",
+    "windows_executed": false
+  },
+  "review_findings_fixed": [
+    "Current route is resolved before requiring an external window or rearming Hide.",
+    "Mapped map/sidebar classification uses actual source dimensions and does not fit an already final viewport again.",
+    "Menu cursor increments are released before returning to blank mapped presentation.",
+    "Keep/SHA continues reading actual game dimensions without a bridge snapshot.",
+    "Blank cursor ownership is retired before returning to native HCURSOR."
+  ],
+  "limitations": [
+    "GetClipCursor automatic matching is a compatibility inference, not proof of the platform input transform.",
+    "Windows APIs and HCURSOR creation are controlled boundaries in these tests.",
+    "No Windows/DWM, private game executable, user platform or multiplayer session was executed."
+  ]
+}

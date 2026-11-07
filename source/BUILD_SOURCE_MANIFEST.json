@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.43-pre.13",
-  "version": "1.0.43-pre.14",
+  "name": "RA2 Toolbox 1.0.43-pre.15",
+  "version": "1.0.43-pre.15",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full package includes hash-pinned offline assets/profiles/preprocessing runtime/engine; Update preserves an existing complete installation.",
   "resources_legacy_reuse": true,
   "build_protocol": 100,
-  "validation": "Validation scope: source-extracted PRES/BUS Insignificant catalogue counterexamples and guarded activation/restore/cameo regressions, exact-commit mixed-architecture Windows-target build and actual PE/ABI verification. Native game calls in the focused fixture are models; no real Windows, user platform, game or multiplayer execution is claimed.",
+  "validation": "Production mapping helper: 26 scenarios / 51 checks passed. Production Host/Runtime paths with controlled Win32 boundaries: 196 checks passed across three API configurations. The pre.14 presentation negative control failed 4 of 8 checks as expected; settings handler checks passed. Product build and PE/ABI results are supplied separately in exact-commit build-provenance and release-manifest receipts. No actual Windows/DWM, user-platform, game or multiplayer execution.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
@@ -22,7 +22,8 @@
     "SinglePlayer.FPS": "default0=native; integer10–240 simulation FPS; session0/5 only; shared hardware tag32; native speed option untouched",
     "FeatureTypes.SpiderDefense": "default HARV,CMIN; active only when SpiderDefenseCustom=1; independent own attacker type whitelist, never spider target IDs",
     "FeatureTypes.SpiderDefenseCustom": "default0=native miner detection independent of OreTypes; 1=eligible own ground vehicles/infantry named in the list; empty custom list means no new defense jobs",
-    "DebugEntries.Skip_<kind+address>": "default0=strict; exact1 bypasses only this entry reference signature; stable kind/address key; Call/Patch/Breakpoint independent; system hooks without a machine-code signature show not applicable"
+    "DebugEntries.Skip_<kind+address>": "default0=strict; exact1 bypasses only this entry reference signature; stable kind/address key; Call/Patch/Breakpoint independent; system hooks without a machine-code signature show not applicable",
+    "Cursor.PositionMode": "default0=自动匹配游戏; 1=跟随系统鼠标; 2=游戏画布拉伸到全屏. Automatic mapping requires strict clip geometry and actual sampled game dimensions; explicit mapping supports automatic dimensions or paired manual game width/height. The position target is the current game monitor, independent of image scale percent and DPI size multipliers."
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,
@@ -42,7 +43,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.43-pre.14 follows 58f847d3d2616c1c1dce8a55e0b4cddacc027d8e. Fixes active enhancement whitelist targets being excluded from the toolbox catalogue by Insignificant. Exact mode then reaches its existing native eligibility/factory/cameo path; Rules mode retains native recheck. Identity, world, owned-value and rollback checks remain. No Insignificant/Owner/prerequisite edits or new production bypass.",
+  "release_status": "1.0.43-pre.15 adds explicit game-canvas-to-current-monitor cursor positioning and a narrowly gated automatic clip-geometry compatibility path. Source follows 00266f7d4cc11d330625ad38541ac7d06c5525cd (production baseline pre.14). Native display preference is preserved during mapped external presentation. Focused production-path checks passed; complete binaries are packaged only after the pinned-source build and static PE/ABI gate. No live-platform fix confirmation or Release publication is implied.",
   "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; Debug entry catalog plus independent read-only platform Hook scan tools, manual PID, optional same-build original EXE, progress/cancellation and local HTML/JSON reports; existing action generation/revision acknowledgement preserved.",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement. Active, identity-verified enhancement targets may enter the toolbox catalogue despite Insignificant; Spawned and zero-owner exclusions and native build/factory rules remain. Ares replacing the native CanBuild body still makes the internal Exact comparison unavailable.",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -808,5 +809,47 @@
     "error_feedback": "Expose error origin, actual code, file, section/key and operation without configuration values; distinguish internal queue/cache admission from native Win32 failure.",
     "retry": "Explicit retry during normal use and the close-save phase replays retained desired settings; only successful writes clear the failed status. Cleanup/shutdown refuses new retries.",
     "limits": "A controlled slow-writer burst reproduces the internal queue overflow; the user supplied no Windows error code, so actual user ACL/lock/disk conditions are not identified."
+  },
+  "TechnologyCataloguePre14": {
+    "version": "1.0.43-pre.14",
+    "release_status": "1.0.43-pre.14 follows 58f847d3d2616c1c1dce8a55e0b4cddacc027d8e. Fixes active enhancement whitelist targets being excluded from the toolbox catalogue by Insignificant. Exact mode then reaches its existing native eligibility/factory/cameo path; Rules mode retains native recheck. Identity, world, owned-value and rollback checks remain. No Insignificant/Owner/prerequisite edits or new production bypass.",
+    "validation": "Validation scope: source-extracted PRES/BUS Insignificant catalogue counterexamples and guarded activation/restore/cameo regressions, exact-commit mixed-architecture Windows-target build and actual PE/ABI verification. Native game calls in the focused fixture are models; no real Windows, user platform, game or multiplayer execution is claimed."
+  },
+  "CursorPositionPre15": {
+    "baseline_commit": "00266f7d4cc11d330625ad38541ac7d06c5525cd",
+    "reported_configuration": "The user reports an upper-left external cursor-image offset with a 4K desktop and a 2560x1440 game. This report does not by itself identify the platform's coordinate source or final presentation transform.",
+    "setting": "Cursor.PositionMode",
+    "position_modes": {
+      "0": "自动匹配游戏",
+      "1": "跟随系统鼠标",
+      "2": "游戏画布拉伸到全屏"
+    },
+    "default_position_mode": 0,
+    "automatic_mapping": "Requires the physical coordinate scope, a fullscreen client matching the current monitor, valid clip geometry matching actual sampled game dimensions and projected origin, and uniform enlargement. Configured or fallback game dimensions cannot establish automatic detection. The result is a compatibility inference, not proof of the renderer or platform input source.",
+    "explicit_mapping": "Maps the selected game canvas to the game window's current monitor using its current display rectangle. Game dimensions may be sampled automatically or supplied as a complete width/height pair, such as 2560x1440. No 4K panel size or desktop/game ratio is hardcoded.",
+    "position_and_image_size": "Position mapping is separate from image scale percent and Windows/DPI image-size multipliers. Hotspot offsets remain local image-anchor adjustments and are not a substitute for whole-canvas position mapping.",
+    "native_preference": "When mapped presentation is needed, a saved native cursor preference temporarily uses external presentation. The preference is retained; menu suspension or returning to an unmapped route restores the selected native behavior.",
+    "compatibility": {
+      "cursor_protocol": 155,
+      "runtime_transport_protocol": 4,
+      "new_runtime_abi_fields": false,
+      "moves_real_system_cursor": false,
+      "new_platform_hooks": false
+    },
+    "validation": {
+      "status": "focused checks passed; pinned build and static PE/ABI results are recorded by the separate delivery receipts",
+      "focused_checks_passed": true,
+      "pure_cpp_scenarios": 26,
+      "pure_cpp_checks": 51,
+      "controlled_route_checks": 196,
+      "settings_handler_passed": true,
+      "pre14_negative_checks": 8,
+      "pre14_expected_failures": 4,
+      "windows_executed": false,
+      "user_platform_reproduction": false,
+      "game_tested": false,
+      "multiplayer_tested": false
+    },
+    "production_baseline_commit": "572f46861c3c58a410e62ea8211862734ab5d277"
   }
 }

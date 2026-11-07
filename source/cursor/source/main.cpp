@@ -38,6 +38,8 @@
 #endif
 #include "scale.h"
 #include "cursor_coordinates_windows.h"
+#include "cursor_presentation.h"
+#include "cursor_presentation_route.h"
 #include <array>
 #ifdef RA2_UNIFIED
 #include "../../shared/source/automatic_log.h"
@@ -114,7 +116,7 @@ static bool hideConfirmed=false;static LONG lastRehideSeen=0;static gameinput::S
 static DWORD lastVisibilityLogAt=0;static std::wstring lastVisibilityReason;
 static DWORD gameParentPid=0;
 static HDC memdc;static HBITMAP dib,oldbm;static void* dibbits;static int dibw,dibh,lastFrame=-2;static DWORD lastColor=0;
-static HWND gameWBox,gameHBox,screenWBox,screenHBox,dpiBox,dpiModeBox,readout;static int gameWOverride=0,gameHOverride=0,screenWOverride=0,screenHOverride=0,dpiOverride=0,dpiMode=0;static DWORD lastReadout=0;
+static HWND gameWBox,gameHBox,screenWBox,screenHBox,dpiBox,dpiModeBox,positionModeBox,readout;static int gameWOverride=0,gameHOverride=0,screenWOverride=0,screenHOverride=0,dpiOverride=0,dpiMode=0,positionMode=0;static DWORD lastReadout=0;
 static HWND scaleBox,autoBox,fitBox,offsetXBox,offsetYBox;static int scalePercent=100,offsetX=0,offsetY=0;static bool autoScale=false,aspectFit=true;static int lastSystemVisible=-1;static DWORD lastCursorCheck=0;
 static AdaptiveTiming timing;static bool adaptive=true;static unsigned transitionMs=60;static HWND adaptiveBox,timingReadout;static DWORD lastTimingReadout=0;
 static Tween tween;static Burst burst;static bool smoothing=true,clickEnabled=true,nativeFive=false,aresKnown=false;static int smoothMs=60,clickMode=0,clickGap=0,sidebarWidth=160,sidebarTop=200;static HWND smoothBox,smoothMsBox,clickBox,clickModeBox,clickGapBox;static RECT clickRegion={};static DWORD regionTime=0;static size_t lastPhase=size_t(-1);
@@ -141,6 +143,8 @@ static size_t motionBytes=0;static DWORD playbackUiAt=0;
 static int previewStart=-1,previewCount=0;
 static HWND previewBox, modeBox, applyModeBox, installBox, restoreBox, nativeBox;
 static bool nativeGameRefresh=false,readRestricted=false,noCursorMode=false;
+static bool mappedCursorPresentation=false;
+static bool nativeCursorPresentation(){return nativeGameRefresh&&!mappedCursorPresentation;}
 static int diagFrame=-1,diagHotX=-1,diagHotY=-1;
 static cursorsnap::Latch bridgeFrame;
 static cursorstream::Detector lanboStream;
@@ -265,7 +269,7 @@ static void coordinateDiagnostic(const wchar_t* stage,const cursorcoordinates::C
  MONITORINFO monitor{sizeof monitor};GetMonitorInfoW(MonitorFromWindow(game?game:mainw,MONITOR_DEFAULTTONEAREST),&monitor);
  const auto destination=cursorcoordinates::spriteOrigin({point.x,point.y},hotX,hotY);
  const std::wstring text=std::wstring(L"cursor-coordinates stage=")+stage+L" pid="+std::to_wstring(pid)+
-  L" mode="+(noCursorMode?L"blank":nativeGameRefresh&&mode==L"hide"?L"native":L"overlay")+
+  L" mode="+(noCursorMode?L"blank":nativeCursorPresentation()&&mode==L"hide"?L"native":L"overlay")+
   L" domain="+coordinates.route+L" priorContext="+std::to_wstring(intptr_t(coordinates.originalContext))+
   L" activeContext="+std::to_wstring(intptr_t(coordinates.currentContext))+
   L" positionAPI="+coordinates.cursorApi()+L" rawValid="+std::to_wstring(coordinates.rawValid)+
@@ -300,6 +304,56 @@ static bool ensureCoordinateWindows(const cursorcoordinates::CoordinateScope& co
  if(oldOverlay){overlaystack::forget(oldOverlay);DestroyWindow(oldOverlay);}
  if(oldHud){overlaystack::forget(oldHud);DestroyWindow(oldHud);}
  return true;
+}
+static cursorpresentation::Input cursorPresentationInput(const cursorcoordinates::CoordinateScope& coordinates,
+ const POINT& point,const cursorcoordinates::Rect& client,int gw,int gh){
+ cursorpresentation::Input input{};
+ input.point={point.x,point.y};input.client=client;input.gameW=gw;input.gameH=gh;
+ input.physical=coordinates.domain==cursorcoordinates::Domain::Physical;
+ input.overrideW=gameWOverride;input.overrideH=gameHOverride;input.aspectFit=aspectFit;input.mode=positionMode;
+ // Query this frame: a released clip or a changed display must not reuse an
+ // old fullscreen transform after Alt-Tab, a menu or a resolution switch.
+ RECT clip{};input.clipValid=GetClipCursor(&clip)!=FALSE;
+ if(input.clipValid)input.clip={clip.left,clip.top,clip.right,clip.bottom};
+ MONITORINFO monitor{sizeof monitor};
+ if(GetMonitorInfoW(MonitorFromWindow(game,MONITOR_DEFAULTTONEAREST),&monitor))
+  input.monitor={monitor.rcMonitor.left,monitor.rcMonitor.top,monitor.rcMonitor.right,monitor.rcMonitor.bottom};
+ return input;
+}
+static void applyCursorPresentation(bool mapped){
+ if(mappedCursorPresentation!=mapped){
+  mappedCursorPresentation=mapped;lastFrame=-2;lastPhase=size_t(-1);nativeInvisibleAt=0;lastNativePublishAt=0;
+ }
+ if(!shared||mode!=L"hide")return;
+ const auto route=cursorpresentation::delivery(nativeGameRefresh,noCursorMode,mapped,mode==L"hide",manualCursorPause||shared->menuSuspend!=0);
+ if(shared->nativeEnabled!=LONG(route.native)||shared->nativeBlank!=LONG(route.blank)){
+  shared->nativeEnabled=route.native;shared->nativeBlank=route.blank;gameinput::wake(hook);
+ }
+#ifdef RA2_UNIFIED
+ suite::publishHardwareCursor(running&&route.native&&!manualCursorPause);
+#endif
+}
+static void presentationDiagnostic(const cursorpresentation::Input& input,const cursorpresentation::Result& output){
+ const std::array<int64_t,23> key{{pid,positionMode,input.physical,input.gameW,input.gameH,input.overrideW,input.overrideH,
+  input.client.left,input.client.top,input.client.right,input.client.bottom,
+  input.monitor.left,input.monitor.top,input.monitor.right,input.monitor.bottom,
+  input.clipValid,input.clip.left,input.clip.top,input.clip.right,input.clip.bottom,output.mapped,nativeGameRefresh,aspectFit}};
+ static std::array<int64_t,23> previous{};static DWORD lastAt=0;static bool initialized=false;
+ const DWORD now=GetTickCount();
+ if(initialized&&(DWORD(now-lastAt)<1000||(key==previous&&DWORD(now-lastAt)<15000)))return;
+ initialized=true;previous=key;lastAt=now;
+ auto point=[](cursorcoordinates::Point p){return std::to_wstring(p.x)+L","+std::to_wstring(p.y);};
+ auto rect=[&](cursorcoordinates::Rect r){return point({r.left,r.top})+L","+point({r.right,r.bottom});};
+ const std::wstring text=std::wstring(L"cursor-presentation route=")+output.route+L" setting="+std::to_wstring(positionMode)+
+  L" sampledGame="+std::to_wstring(input.gameW)+L","+std::to_wstring(input.gameH)+L" raw="+point(input.point)+
+  L" presented="+point(output.point)+L" clipValid="+std::to_wstring(input.clipValid)+L" clip="+rect(input.clip)+
+  L" client="+rect(input.client)+L" monitor="+rect(input.monitor)+L" source="+rect(output.input)+L" output="+rect(output.output)+
+  L" nativeRequested="+std::to_wstring(nativeGameRefresh)+L" nativeEffective="+std::to_wstring(nativeCursorPresentation())+
+  L" autoClipIsCompatibilityInference=1";
+ log(text);
+#ifdef RA2_UNIFIED
+ autolog::write(text);
+#endif
 }
 static void updatePrimaryAction(){
  if(!IsWindow(primaryAction))return;
@@ -424,8 +478,8 @@ static bool refreshClickRegion(const cursorcoordinates::CoordinateScope& coordin
  if(next.right<=next.left||next.bottom<=next.top){SetRectEmpty(&clickRegion);regionTime=0;return false;}
  clickRegion=next;regionTime=GetTickCount();return true;
 }
-static bool cursorMapPoint(POINT point,const cursorcoordinates::Rect& client,int gw,int gh){
- cursorcoordinates::Viewport viewport;if(!viewport.set(client,gw,gh,aspectFit))return false;
+static bool cursorMapPoint(POINT point,const cursorcoordinates::Rect& client,int gw,int gh,bool finalViewport=false){
+ cursorcoordinates::Viewport viewport;if(!viewport.set(client,gw,gh,finalViewport?false:aspectFit))return false;
  const int right=gw>sidebarWidth?gw-sidebarWidth:gw;
  return viewport.project({0,0,right,gh}).contains({point.x,point.y});
 }
@@ -563,6 +617,7 @@ static void enterNativeMenu(){
   if(shared){
    shared->menuSuspend=1;
    shared->nativeEnabled=0;
+   shared->nativeBlank=0;
    // Keep the paired game Hide held throughout the dialog; releasing it
    // here can expose a second game-drawn cursor behind the Windows pointer.
    gameinput::wake(hook);
@@ -575,11 +630,11 @@ static void exitNativeMenu(){
  nativeMenuHold=false;nativeMenuCandidateAt=0;lastFrame=-2;lastPhase=size_t(-1);
  if(shared){
   shared->menuSuspend=0;
-  shared->nativeEnabled=1;
-  // The original Hide remains paired: only resume native presentation.
+  applyCursorPresentation(mappedCursorPresentation);
+  // The original Hide remains paired; resume the effective display route.
   gameinput::wake(hook);
  }
- log(L"Game dialog closed; native display resumes while game Hide remains paired");
+ log(L"Game dialog closed; effective cursor display resumes while game Hide remains paired");
 }
 static void hookStart(bool hide=true){if(!selectGameWindow()||!gameinput::nativeWindow(pid,threadId))fail("Game main window is still initializing; waiting to connect");if(!gameinput::runtimeAvailable())fail("GameRuntime.dll or x86 hook broker missing/incompatible; replace the complete paired package");bridgeFrame.clear();lanboStream.reset();lastSampleProbeAt=0;nativeStartAt=GetTickCount();nativeInvisibleAt=0;hideConfirmed=false;lastRehideSeen=0;wchar_t name[80];mapName(name,pid);mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,NULL,PAGE_READWRITE,0,sizeof(Shared),name);if(!mapping)fail("Shared mapping failed");shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared)fail("Map view failed");memset(shared,0,sizeof(*shared));shared->magic=MAGIC;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->heartbeat=GetTickCount();
  shared->sampledFrame=-1;shared->sampledFirst=-1;
@@ -587,8 +642,9 @@ static void hookStart(bool hide=true){if(!selectGameWindow()||!gameinput::native
  shared->cursorCanvasW=asset.w;shared->cursorCanvasH=asset.h;shared->cursorFrameCount=LONG(asset.frames.size());
  shared->sampledCursorID=-1;shared->resourceRequest=1;resourceTries=1;resourceRetryAt=GetTickCount()+5000;
  shared->gameWindow=(DWORD)(uintptr_t)game;
- shared->nativeBlank=noCursorMode?1:0;
- shared->nativeEnabled=(nativeGameRefresh&&!noCursorMode&&mode==L"hide")?1:0;
+ const auto delivery=cursorpresentation::delivery(nativeGameRefresh,noCursorMode,mappedCursorPresentation,mode==L"hide",false);
+ shared->nativeBlank=delivery.blank;
+ shared->nativeEnabled=delivery.native;
  shared->sampleIntervalMs=LONG(cursorperf::sampleInterval(pollHz));shared->nativeSeq=0;shared->nativeAck=0;shared->nativeVisible=0;shared->command=hide?1:3;hook=gameinput::install(gameentry::Client::Cursor,threadId,pid,game);
  if(!hook)fail("Unified runtime subscription failed");gameinput::wake(hook);}
 static void hookStop(DWORD timeout=1500){
@@ -787,7 +843,7 @@ static void pollOriginalResource(){
 static void draw(){
  cursorcoordinates::CoordinateScope coordinates(true);
 #ifdef RA2_UNIFIED
- suite::publishHardwareCursor(running&&!manualCursorPause&&nativeGameRefresh&&!noCursorMode&&mode==L"hide"&&shared&&shared->nativeEnabled&&!shared->menuSuspend);
+ suite::publishHardwareCursor(running&&!manualCursorPause&&nativeCursorPresentation()&&!noCursorMode&&mode==L"hide"&&shared&&shared->nativeEnabled&&!shared->menuSuspend);
 #endif
  cursorReader.begin(); // task-local diagnostics; immediate reads never cache old frames
  pollOriginalResource();if(!running)return;if(shared){shared->heartbeat=GetTickCount();
@@ -815,12 +871,12 @@ static void draw(){
  HWND fg=GetForegroundWindow();DWORD fp=0;GetWindowThreadProcessId(fg,&fp);
  bool compatibleForeground=(fp==pid)||platformHostMatches(fg,fp);
  if(!compatibleForeground){observedForeground=fg;leaveGame();visibilityDiagnostic(L"前台不是游戏或已确认的平台宿主窗口",fp);return;}
- if(nativeGameRefresh&&!noCursorMode&&mode==L"hide"&&shared){
+ if((nativeGameRefresh||mappedCursorPresentation)&&!noCursorMode&&mode==L"hide"&&shared){
   if(gameMenuDialogActive()){enterNativeMenu();return;}
   exitNativeMenu();
   // A transient modal dialog may have set the bridge flag before the host
   // sees a visible dialog; do not remain stuck in the menu cursor state.
-  if(shared->menuSuspend==1&&!nativeMenuHold){shared->menuSuspend=0;shared->nativeEnabled=1;}
+  if(shared->menuSuspend==1&&!nativeMenuHold){shared->menuSuspend=0;applyCursorPresentation(mappedCursorPresentation);}
   shared->gameWindow=(DWORD)(uintptr_t)game;
  }
  if(!IsWindow(game)||fg!=observedForeground||!IsWindowVisible(game)){observedForeground=fg;lastWindowCheck=GetTickCount();DWORD oldThread=threadId;HWND oldWindow=game;selectGameWindow();if(game!=oldWindow){lastFrame=-2;lastPhase=size_t(-1);wasInside=false;log(L"Render window changed; reacquired without activation");}if(shared&&oldThread!=threadId){stop();status(L"游戏窗口线程变化，等待自动重新连接 HideCursor。");return;}}
@@ -833,15 +889,33 @@ static void draw(){
   leaveGame();visibilityDiagnostic(L"游戏客户区未显示或鼠标不在客户区",fp);return;
  }
  RECT rc{0,0,client.width(),client.height()};POINT org{client.left,client.top};
- if(!(nativeGameRefresh&&mode==L"hide")&&!noCursorMode&&!ensureCoordinateWindows(coordinates)){
-  const DWORD error=GetLastError();coordinateDiagnostic(L"window-domain-unavailable",coordinates,pos,true,client,0,0,0,0,0,0,1,1,0,0,error);
-  if(mode==L"hide")hookStop();
-  leaveGame();visibilityDiagnostic(L"光标窗口坐标域暂不可用，等待自动恢复",fp);return;
- }
+ // Resolve this frame's presentation before requiring an external window.
+ // A failed old mapped overlay must not block a return to native HCURSOR.
  // A different game-owned window may be foreground (e.g. launcher overlay),
  // but a different unrelated desktop app must never receive the cursor.
  if(fp==pid&&fg!=game&&GetAncestor(fg,GA_ROOT)!=GetAncestor(game,GA_ROOT)){
   leaveGame();visibilityDiagnostic(L"游戏前台窗口与渲染窗口不一致",fp);return;
+ }
+ // Resolve geometry before re-arming Hide. Cached dimensions here came only
+ // from actual game samples, never a configured/default 1024x768 canvas.
+ int gw=clickGameWidth,gh=clickGameHeight;bool sampledExtent=false;
+ if(shared&&shared->state==1){
+  const LONG seq=shared->sampleSeq;MemoryBarrier();
+  const int width=shared->sampledGameW,height=shared->sampledGameH;MemoryBarrier();
+  if(cursorseq::committed(uint32_t(seq))&&seq==shared->sampleSeq&&cursorpresentation::validCanvas(width,height)){gw=width;gh=height;sampledExtent=true;}
+ }
+ // keep/SHA modes may have no active bridge snapshot. Continue observing
+ // the real surface there so changing the game resolution refreshes mapping.
+ if(!sampledExtent){try{uint32_t surface=word(0x887308);Bytes wh=read(surface+4,8);const int width=(int)u32(wh,0),height=(int)u32(wh,4);if(cursorpresentation::validCanvas(width,height)){gw=width;gh=height;}}catch(...){}}
+ if(cursorpresentation::validCanvas(gw,gh)){clickGameWidth=gw;clickGameHeight=gh;}
+ const auto presentationInput=cursorPresentationInput(coordinates,pos,client,gw,gh);
+ const auto presentation=cursorpresentation::resolve(presentationInput);
+ applyCursorPresentation(presentation.mapped);
+ const POINT presentedPoint{presentation.point.x,presentation.point.y};
+ if(!(nativeCursorPresentation()&&mode==L"hide")&&!noCursorMode&&!ensureCoordinateWindows(coordinates)){
+  const DWORD error=GetLastError();coordinateDiagnostic(L"mapped-window-unavailable",coordinates,presentedPoint,true,presentation.output,gw,gh,0,0,0,0,1,1,0,0,error);
+  if(mode==L"hide")hookStop();
+  leaveGame();visibilityDiagnostic(L"光标窗口坐标域暂不可用，等待自动恢复",fp);return;
  }
  if(!wasInside){
   // Normally the subscription survived Alt-Tab; resume presentation in place.
@@ -849,16 +923,8 @@ static void draw(){
   // First attach / explicit pause recovery still needs a subscription.
   if(mode==L"hide"&&!manualCursorPause&&!hook){try{hookStart();}catch(const std::exception& e){hookStop();log(L"Hook re-arm failed: "+widen(e.what()));stop();return;}}
   hudEpoch=inputNow();nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();hudUpdates=hudCommits=hudMotion=hudChanges=0;hudLastFrame=-1;hudPaintAt=0;wasInside=true;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();refreshTries=3;refreshAt=GetTickCount();if(!nativeGameRefresh)overlaystack::place(overlay,overlaystack::Layer::Cursor,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);log(L"Game focus/client re-entered: redraw and cursor refresh, no simulated activation clicks");}
- // A hidden native cursor is expected while the game loses its foreground
- // or client area. Check only after those exits and the suspension resume,
- // which resets the timeout before the bridge receives its first new frame.
- if(nativeGameRefresh&&!noCursorMode&&mode==L"hide"&&shared&&!nativeMenuHold&&!shared->menuSuspend){
-  if(shared->nativeVisible)nativeInvisibleAt=0;
-  else if(!nativeInvisibleAt)nativeInvisibleAt=GetTickCount();
-  else if(uint32_t(GetTickCount()-nativeInvisibleAt)>2000){
-   autoPaused=true;stop();status(L"游戏线程光标未显示，已恢复原光标");return;
-  }
- }
+ // A new subscription or a resumed menuSuspend==2 needs the same route flags.
+ applyCursorPresentation(presentation.mapped);
  if(noCursorMode){
   ShowWindow(overlay,SW_HIDE);diagAnimation=L"无光标诊断：不发布鼠标图像";
   if(!manualCursorPause&&shared&&shared->state!=1&&uint32_t(GetTickCount()-nativeStartAt)>2000){
@@ -969,13 +1035,23 @@ static void draw(){
   }else visibilityDiagnostic(L"光标帧读取失败",fp);
   lastFrame=-2;tween.reset();activeMotion.reset();
   return;}
+ presentationDiagnostic(presentationInput,presentation);
+ // Use this frame's effective route. Switching to a mapped external cursor
+ // must not inherit a native HCURSOR visibility timeout from the old route.
+ if(nativeCursorPresentation()&&mode==L"hide"&&shared&&!nativeMenuHold&&!shared->menuSuspend){
+  if(shared->nativeVisible)nativeInvisibleAt=0;
+  else if(!nativeInvisibleAt)nativeInvisibleAt=GetTickCount();
+  else if(uint32_t(GetTickCount()-nativeInvisibleAt)>2000){
+   autoPaused=true;stop();status(L"游戏线程光标未显示，已恢复原光标");return;
+  }
+ }
  commandcursor::Mode commandMode=commandcursor::None;
  auto hint=commandcursor::read(pid,GetTickCount());
  // Preserve native menu/tools and sidebar/minimap cursors. Release is checked
  // at display cadence, even if the Tactical thread has not run again yet.
- int mapGW=gameWOverride?gameWOverride:sampleGW>0?sampleGW:clickGameWidth>0?clickGameWidth:1024;
- int mapGH=gameHOverride?gameHOverride:sampleGH>0?sampleGH:clickGameHeight>0?clickGameHeight:768;
- const bool mapPoint=cursorMapPoint(pos,client,mapGW,mapGH);
+ int mapGW=presentation.mapped?presentation.input.width():gameWOverride?gameWOverride:sampleGW>0?sampleGW:clickGameWidth>0?clickGameWidth:1024;
+ int mapGH=presentation.mapped?presentation.input.height():gameHOverride?gameHOverride:sampleGH>0?sampleGH:clickGameHeight>0?clickGameHeight:768;
+ const bool mapPoint=cursorMapPoint(presentedPoint,presentation.output,mapGW,mapGH,presentation.mapped);
  if(hint.mode!=commandcursor::None&&mapPoint&&!nativeMenuHold&&!(shared&&shared->menuSuspend)&&
     (commandcursor::ordinary(cursorID)||(hint.mode==commandcursor::Enter&&cursorID==25))&&gameinput::heldBinding(hint.binding))commandMode=hint.mode;
  if(commandMode!=shownCommand){shownCommand=commandMode;commandSince=GetTickCount();lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();}
@@ -1047,8 +1123,6 @@ static void draw(){
  }
 
  if(approx!=fallback){fallback=approx;log(L"Verified full-canvas hotspot active");}
- int gw=sampleGW,gh=sampleGH;if(gw<320||gh<200){try{uint32_t surface=word(0x887308);Bytes wh=read(surface+4,8);gw=(int)u32(wh,0);gh=(int)u32(wh,4);}catch(...){}}
- if(gw>=320&&gh>=200){clickGameWidth=gw;clickGameHeight=gh;}
  static HMONITOR geometryMonitor=nullptr;static DWORD geometryAt=0;static int mw=0,mh=0;static UINT dx=96,dy=96;
  HMONITOR mon=MonitorFromWindow(game,MONITOR_DEFAULTTONEAREST);
  if(mon!=geometryMonitor||GetTickCount()-geometryAt>=1000){
@@ -1056,15 +1130,16 @@ static void draw(){
   typedef HRESULT(WINAPI* DpiFn)(HMONITOR,int,UINT*,UINT*);static HMODULE shcore=LoadLibraryW(L"shcore.dll");static DpiFn getDpi=shcore?(DpiFn)GetProcAddress(shcore,"GetDpiForMonitor"):NULL;if(getDpi&&FAILED(getDpi(mon,0,&dx,&dy)))dx=dy=96;
  }
  int useGW=gameWOverride?gameWOverride:gw,useGH=gameHOverride?gameHOverride:gh;int useSW=screenWOverride?screenWOverride:mw,useSH=screenHOverride?screenHOverride:mh;double dp=dpiOverride?dpiOverride:dx*100.0/96;
- int displayW=mw>0?(int)std::lround(double(rc.right)*useSW/mw):rc.right,displayH=mh>0?(int)std::lround(double(rc.bottom)*useSH/mh):rc.bottom;
+ const int presentedW=presentation.output.width(),presentedH=presentation.output.height();
+ int displayW=mw>0?(int)std::lround(double(presentedW)*useSW/mw):presentedW,displayH=mh>0?(int)std::lround(double(presentedH)*useSH/mh):presentedH;
  refreshClickRegion(coordinates);
  Scale sc=cursorScale(autoScale,aspectFit,scalePercent,displayW,displayH,useGW,useGH);double wf=dpiMode==1?dp/100:dpiMode==2?100/dp:1;sc.x=std::max(.125,std::min(8.0,sc.x*wf));sc.y=std::max(.125,std::min(8.0,sc.y*wf));int dw=std::min(1024,scaledSize(w,sc.x)),dh=std::min(1024,scaledSize(h,sc.y));int shx=superhot::scaledAnchor(hx,visualCenter,false,w,dw,offsetX),shy=superhot::scaledAnchor(hy,visualCenter,true,h,dh,offsetY);
- const auto cursorOrigin=cursorcoordinates::spriteOrigin({pos.x,pos.y},shx,shy);
- coordinateDiagnostic(L"present",coordinates,pos,true,client,gw,gh,dw,dh,shx,shy,sc.x,sc.y,mw,mh);
+ const auto cursorOrigin=cursorcoordinates::spriteOrigin({presentedPoint.x,presentedPoint.y},shx,shy);
+ coordinateDiagnostic(presentation.mapped?L"present-canvas":L"present",coordinates,presentedPoint,true,presentation.output,gw,gh,dw,dh,shx,shy,sc.x,sc.y,mw,mh);
  if(GetTickCount()-lastReadout>1000){
   lastReadout=GetTickCount();
   wchar_t info[260];
-  swprintf(info,260,L"游戏 %d×%d  |  显示器 %d×%d  |  DPI %.0f%%  |  %uHz  |  输出 %d×%d",gw,gh,mw,mh,dx*100.0/96,detectedRefreshHz,dw,dh);
+  swprintf(info,260,L"游戏 %d×%d  |  显示器 %d×%d  |  DPI %.0f%%  |  %uHz  |  输出 %d×%d\n位置：%ls",gw,gh,mw,mh,dx*100.0/96,detectedRefreshHz,dw,dh,presentation.mapped?L"跟随游戏全屏拉伸（外置显示）":L"跟随系统鼠标");
   if(IsWindowVisible(readout))textIfChanged(readout,info);
  }
 
@@ -1083,7 +1158,7 @@ static void draw(){
   POINT dst={cursorOrigin.x,cursorOrigin.y},src={0,0};SIZE sz={dw,dh};BLENDFUNCTION bf={AC_SRC_OVER,0,255,AC_SRC_ALPHA};
   // Optional in-game native hardware cursor. The renderer below stays intact
   // for the regular overlay mode and the existing per-frame timeline.
-  if(nativeGameRefresh&&mode==L"hide"&&shared){
+  if(nativeCursorPresentation()&&mode==L"hide"&&shared){
    // Avoid creating >refresh-rate GDI cursor handles; if the game GUI thread
    // has not applied the previous frame, wait up to 40ms then retry.
    DWORD stamp=GetTickCount();
@@ -1111,7 +1186,7 @@ static void draw(){
  if(mode!=L"hide"&&nativeMenuCandidateAt&&lastSystemVisible==1&&uint32_t(cursorTime-nativeMenuCandidateAt)>=180&&
  uint32_t(cursorTime-lastObservedFrameAt)>=180)nativeMenuHold=true;
  if(!manualCursorPause&&!nativeMenuHold){
-  if(nativeGameRefresh&&mode==L"hide"){
+  if(nativeCursorPresentation()&&mode==L"hide"){
    ShowWindow(overlay,SW_HIDE);
    if(shared&&shared->nativeVisible)++hudUpdates;
   }else if([&](){RECT shown{};int x=cursorOrigin.x,y=cursorOrigin.y;
@@ -1164,7 +1239,7 @@ static void diagnosticHud(){
    if(ss==shared->sampleSeq){frame=sf;hx=sx;hy=sy;gw=sw;gh=sh;age=now-stamp;}
   }
  }
- const wchar_t* kind=noCursorMode?L"无光标":nativeGameRefresh&&mode==L"hide"?L"原生光标":L"外部图层";
+ const wchar_t* kind=noCursorMode?L"无光标":mappedCursorPresentation?L"全屏映射外置光标":nativeCursorPresentation()&&mode==L"hide"?L"原生光标":L"外部图层";
  const wchar_t* ares=!aresKnown?L"检测未知":nativeFive?L"已检测到":L"未检测到";
  const wchar_t* runText=running?(manualCursorPause?L"手动暂停":L"运行中"):
    (!autoStart?L"已关闭":autoPaused?L"已暂停自动连接":L"等待自动连接");
@@ -1319,7 +1394,7 @@ static void applyTargetRate(){
  saved=(WritePrivateProfileStringW(L"Display",L"PollHz",std::to_wstring(value).c_str(),ini().c_str())!=FALSE)&&saved;
  textIfChanged(quickInfo,L"刷新目标 "+std::to_wstring(pollHz)+(saved?L" FPS · 已保存":L" FPS · 设置文件写入失败"));
 }
-static bool liveControl(HWND h){return h==scaleBox||h==offsetXBox||h==offsetYBox||h==gameWBox||h==gameHBox||h==screenWBox||h==screenHBox||h==dpiBox||h==dpiModeBox||h==smoothBox||h==smoothMsBox||h==adaptiveBox||h==clickBox||h==clickModeBox||h==clickGapBox||h==autoBox||h==fitBox;}
+static bool liveControl(HWND h){return h==scaleBox||h==offsetXBox||h==offsetYBox||h==gameWBox||h==gameHBox||h==screenWBox||h==screenHBox||h==dpiBox||h==dpiModeBox||h==positionModeBox||h==smoothBox||h==smoothMsBox||h==adaptiveBox||h==clickBox||h==clickModeBox||h==clickGapBox||h==autoBox||h==fitBox;}
 #include "live_settings_ui.h"
 
 // Previews are rendered from local game resource cache in a separate process.
@@ -1616,8 +1691,12 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  autoBox=CreateWindowW(L"BUTTON",L"自动缩放",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,15,315,220,26,mainw,NULL,inst,NULL);fitBox=CreateWindowW(L"BUTTON",L"保持纵横比",WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,245,315,255,26,mainw,NULL,inst,NULL);
  SendMessageW(autoBox,BM_SETCHECK,autoScale?BST_CHECKED:BST_UNCHECKED,0);SendMessageW(fitBox,BM_SETCHECK,aspectFit?BST_CHECKED:BST_UNCHECKED,0);
  for(HWND q:{scaleBox,offsetXBox,offsetYBox,autoBox,fitBox})SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- label(L"",15,350,720);
  auto setting=[&](const wchar_t* key,int max){return std::max(0,std::min(max,(int)GetPrivateProfileIntW(L"Cursor",key,0,ini().c_str())));};gameWOverride=setting(L"GameWidth",16384);gameHOverride=setting(L"GameHeight",16384);screenWOverride=setting(L"ScreenWidth",16384);screenHOverride=setting(L"ScreenHeight",16384);dpiOverride=setting(L"WindowsScalePercent",500);if(dpiOverride&&dpiOverride<50)dpiOverride=50;dpiMode=setting(L"WindowsScaleMode",2);
+ positionMode=setting(L"PositionMode",2);
+ label(L"光标位置",15,350,110);positionModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,130,346,595,160,mainw,NULL,inst,NULL);
+ for(const wchar_t* text:{L"自动匹配游戏",L"跟随系统鼠标",L"游戏画布拉伸到全屏"})SendMessageW(positionModeBox,CB_ADDSTRING,0,(LPARAM)text);
+ SendMessageW(positionModeBox,CB_SETCURSEL,positionMode,0);SendMessageW(positionModeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+ modernui::tip(positionModeBox,L"游戏将左上角的低分辨率画布拉满屏，而光标偏在左上时，可选“游戏画布拉伸到全屏”。位置按游戏宽高映射到当前显示器；图像大小仍由缩放设置控制。自动模式只匹配全屏下游戏画布大小的鼠标限制范围。需要映射时使用外置显示，保留原来的显示方式选择。");
  auto edit=[&](int v,int x,int y,int width){HWND q=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",std::to_wstring(v).c_str(),WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,x,y,width,24,mainw,NULL,inst,NULL);SendMessageW(q,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);return q;};
  label(L"游戏宽/高",15,390,75);gameWBox=edit(gameWOverride,90,386,70);gameHBox=edit(gameHOverride,170,386,70);label(L"系统宽/高",265,390,80);screenWBox=edit(screenWOverride,350,386,70);screenHBox=edit(screenHOverride,430,386,70);label(L"Windows %",520,390,105);dpiBox=edit(dpiOverride,635,386,90);
  label(L"缩放计算",15,430,345);dpiModeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,365,426,360,140,mainw,NULL,inst,NULL);for(const wchar_t* text:{L"物理像素",L"系统缩放",L"抵消缩放"})SendMessageW(dpiModeBox,CB_ADDSTRING,0,(LPARAM)text);SendMessageW(dpiModeBox,CB_SETCURSEL,dpiMode,0);SendMessageW(dpiModeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
@@ -1656,6 +1735,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   if(child==modeBox)logical.h=110;
   if(child==scaleBox)logical.h=180;
   if(child==dpiModeBox||child==clickModeBox)logical.h=140;
+  if(child==positionModeBox)logical.h=160;
   if(child==statusw){logical={42,81,290,24};}
   else if(child!=nativeBox){logical.y+=advancedOffsetY;advancedControls.push_back(child);ShowWindow(child,SW_HIDE);}
   controlOrigins.push_back({child,logical});

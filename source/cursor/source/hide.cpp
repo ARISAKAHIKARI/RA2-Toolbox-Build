@@ -221,12 +221,17 @@ static HCURSOR nativeBuild(LONG* accepted){
 static void nativeRefresh(){
  if(!s)return;
  if(s->menuSuspend==2){nativeRelease();menuBalanceRelease();return;}
+ // Menu ownership precedes every game-only blank, including a transformed
+ // external cursor that temporarily replaces native HCURSOR presentation.
+ if(s->menuSuspend&&held&&s->state==1){nativeMenuRefresh();return;}
+ if(menuCursorSet)menuBalanceRelease();
  if(s->nativeBlank&&held&&s->state==1){
   if(!blankActive){nativeRelease();blankOld=GetCursor();blankActive=true;}
   SetCursor(NULL);s->nativeVisible=0;return;
  }
- if(s->menuSuspend&&held&&s->state==1){nativeMenuRefresh();return;}
- if(menuCursorSet)menuBalanceRelease();
+ // A route can leave blank presentation without ending the subscription.
+ // Restore its previous cursor before building/owning a native image again.
+ if(blankActive)nativeRelease();
  if(!s->nativeEnabled||!held||s->state!=1){nativeRelease();return;}
  LONG seq=s->nativeSeq;
  if(cursorseq::committed(uint32_t(seq))&&seq!=nativeLastSeq){
@@ -467,11 +472,11 @@ extern "C" void CursorRuntimePost(int code,WPARAM wp,LPARAM lp){
   gameentry::scoped(gameentry::Client::Cursor,false,[&]{
   const CWPRETSTRUCT* ev=(const CWPRETSTRUCT*)lp;
   if(ev->message==WM_SETCURSOR){
-   if(s->nativeBlank&&held&&s->state==1&&insideGameWindow(ev->hwnd)){
-    SetCursor(NULL);
-   }else if(isDialogMessage(ev->hwnd)&&(s->nativeEnabled||s->menuSuspend)){
+   if(isDialogMessage(ev->hwnd)&&(s->nativeEnabled||s->nativeBlank||s->menuSuspend)){
     // Let the real Windows dialog control its normal pointer.
     s->menuSuspend=1;nativeMenuRefresh();
+   }else if(s->nativeBlank&&!s->menuSuspend&&held&&s->state==1&&insideGameWindow(ev->hwnd)){
+    SetCursor(NULL);
    }else if(s->nativeEnabled&&!s->menuSuspend&&held&&s->state==1&&
             nativeCursor&&insideGameWindow(ev->hwnd)&&
             LOWORD(ev->lParam)==HTCLIENT){
