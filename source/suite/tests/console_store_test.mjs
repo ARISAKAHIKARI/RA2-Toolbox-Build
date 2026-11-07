@@ -299,6 +299,38 @@ test('searching one editor retains its feature and never merges missing row coor
   assert.equal(settingLines([canonical({id:6,type:'text'}),canonical({id:7,type:'text'})]).length,2);
 });
 
+test('configuration retry preserves failed settings and awaits the matching shell receipt',()=>{
+  const {store,messages}=setup([textControl]);
+  const config={failed:true,pending:0,busy:false,canRetry:true,retrySeq:0,errorCode:32,errorOrigin:'Windows',errorPath:'C:\\Tools\\Assist.ini',errorSection:'Modes',errorKey:'AutoRepair',error:'配置文件被占用（错误码 32）'};
+  store.receive({kind:'shell',protocol:1,closing:false,config});
+  store.beginEdit(1);store.draft(1,'保留未提交的编辑');
+  assert.equal(store.retryConfig(),true);
+  const request=messages.at(-1);assert.deepEqual({...request},{kind:'config-retry',seq:store.seq,protocol:1});
+  assert.equal(store.shell.config.failed,true);assert.equal(store.shell.config.errorCode,32);
+  assert.equal(store.shell.config.errorSection,'Modes');assert.equal(store.shell.config.errorKey,'AutoRepair');
+  assert.equal(store.drafts.get('0:1').value,'保留未提交的编辑');
+  assert.equal(store.retryConfig(),false,'one retry may await a receipt');
+  store.receive({kind:'shell',protocol:1,config:{...config,retrySeq:0}});
+  assert.equal(store.configRetryPending,request.seq,'unrelated shell updates cannot acknowledge the retry');
+  store.receive({kind:'shell',protocol:1,config:{...config,retrySeq:request.seq,pending:1,busy:true,canRetry:false}});
+  assert.equal(store.configRetryPending,0);assert.equal(store.shell.config.failed,true,'accepted is not saved');
+  assert.equal(store.retryConfig(),false,'the active writer owns the retry');
+  store.receive({kind:'shell',protocol:1,config:{...config,retrySeq:request.seq}});
+  assert.equal(store.retryConfig(),true,'a completed failed attempt may be retried');
+  store.receive({kind:'shell',protocol:1,config:{failed:false,pending:0,busy:false,canRetry:false,retrySeq:store.seq,error:''}});
+  assert.equal(store.configRetryPending,0);assert.equal(store.retryConfig(),false);
+  assert.equal(store.drafts.get('0:1').value,'保留未提交的编辑');
+});
+
+test('configuration retry remains available during close saving but respects cleanup refusal',()=>{
+  const {store,messages}=setup([]);assert.equal(store.retryConfig(),false);
+  store.receive({kind:'shell',protocol:1,closing:true,config:{failed:true,canRetry:true,retrySeq:0}});
+  assert.equal(store.closed,true);assert.equal(store.retryConfig(),true,'closing alone does not disable a permitted save retry');
+  store.receive({kind:'shell',protocol:1,closing:true,config:{failed:true,canRetry:false,retrySeq:store.seq}});
+  const count=messages.length;assert.equal(store.retryConfig(),false);assert.equal(messages.length,count);
+  assert.equal(store.shell.config.failed,true,'cleanup rejection must not acknowledge unsaved settings');
+});
+
 let failed=0;
 for (const {name,run} of tests) { try { run(); console.log(`PASS ${name}`); } catch(error) { failed++; console.error(`FAIL ${name}\n${error.stack}`); } }
 if (failed) process.exitCode=1; else console.log(`${tests.length} console model tests passed`);

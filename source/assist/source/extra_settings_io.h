@@ -230,7 +230,10 @@ static bool saveAdditionalSettings(){
  write(L"MissileDefense",L"TargetScope",extra.missileScope);write(L"MissileDefense",L"Allocation",extra.missileAllocation);write(L"Magnetron",L"Global",extra.magnetronGlobal);
  write(L"MissileDefense",L"Enabled",extra.missileDefense);write(L"MissileDefense",L"ScanHz",extra.missileScanHz);
  write(L"MissileDefense",L"SleepReserve",extra.missileReserve);write(L"Combat",L"FilterLowDamage",extra.lowDamageFilter);write(L"Combat",L"NativeFilterInMultiplayer",extra.lowDamageNetwork);
- write(L"Modes",L"AntiTheft",extra.antiTheft);write(L"Experimental",L"ManualReveal",extra.manualReveal);WritePrivateProfileStringW(L"Experimental",L"RevealMap",nullptr,path(L"Assist.ini").c_str());
+ write(L"Modes",L"AntiTheft",extra.antiTheft);write(L"Experimental",L"ManualReveal",extra.manualReveal);
+ // ManualReveal already takes precedence when loading. Retaining RevealMap
+ // preserves the fallback if the new write fails. Deleting it on every save
+ // also split the shared queue into non-coalescing runs.
  write(L"Experimental",L"RefreshStrategy",extra.scrollRefreshMode);
 #ifndef RA2_UNIFIED
  write(L"Experimental",L"ScrollRefreshHz",extra.scrollRefreshHz);

@@ -170,6 +170,41 @@ void cache_barrier_keeps_real_write_failure(){
  assert(!store.status().failed);assert(disk.get(L"Section",L"Value",L"file.ini")==L"new");
 }
 
+void failure_details_distinguish_native_and_admission(){
+ using namespace asyncini::core;
+ for(unsigned code:{32u,8u}){
+  std::atomic<bool>fail{true};Disk disk;
+  Store store([&](const Operation&o){if(fail.load())return Result{false,code};disk.apply(o);return Result{};});
+  assert(store.write(L"Display",L"FPS",L"144",L"Assist.ini"));eventually([&]{return store.idle();});
+  const auto failed=store.status();
+  assert(failed.failed&&failed.errorCode==code&&failed.errorOrigin==ErrorOrigin::Native);
+  assert(failed.errorKind==Kind::Set&&failed.errorSection==L"Display"&&failed.errorKey==L"FPS"&&failed.errorPath==L"Assist.ini");
+  fail=false;assert(store.retryFailed());eventually([&]{return store.idle();});
+  const auto recovered=store.status();assert(!recovered.failed&&recovered.errorOrigin==ErrorOrigin::None);
+  assert(recovered.errorCode==0&&recovered.errorSection.empty()&&recovered.errorKey.empty()&&recovered.errorPath.empty());
+  assert(disk.get(L"Display",L"FPS",L"Assist.ini")==L"144");
+ }
+ for(bool cacheLimit:{false,true}){
+  Gate gate;Disk disk;std::atomic<unsigned>calls{0};
+  Store store([&](const Operation&o){if(calls++==0)gate.wait();disk.apply(o);return Result{};},1,cacheLimit?2:8192);
+  assert(store.write(L"Display",L"InFlight",L"1",L"Assist.ini"));gate.await();
+  assert(store.write(L"Display",L"Queued",L"2",L"Assist.ini"));
+  assert(!store.write(L"Display",L"Rejected",L"3",L"Assist.ini"));
+  const auto failed=store.status();assert(failed.errorCode==8);
+  assert(failed.errorOrigin==(cacheLimit?ErrorOrigin::Cache:ErrorOrigin::Queue));
+  assert(failed.errorKind==Kind::Set&&failed.errorSection==L"Display"&&failed.errorKey==L"Rejected");
+  gate.release();eventually([&]{return store.idle();});assert(store.status().failed);
+  assert(store.retryFailed());eventually([&]{return store.idle();});
+  assert(!store.status().failed&&disk.get(L"Display",L"Rejected",L"Assist.ini")==L"3");
+ }
+ Store stopped([](const Operation&){return Result{};});stopped.beginShutdown();
+ assert(!stopped.write(L"Experimental",L"RevealMap",nullptr,L"Assist.ini"));
+ const auto status=stopped.status();
+ assert(status.errorCode==Stopped&&status.errorOrigin==ErrorOrigin::Shutdown);
+ assert(status.errorKind==Kind::DeleteKey&&status.errorSection==L"Experimental"&&status.errorKey==L"RevealMap");
+ std::cout<<"failure details: native 32/8, queue 8, cache 8, shutdown 995 and retry passed\n";
+}
+
 void decoding(){
  using namespace asyncini::core;
  assert(readValue(L"\"quoted\"")==L"quoted");assert(readValue(L"'single'")==L"single");
@@ -238,7 +273,7 @@ void native_win32_file_roundtrip(){
 }
 #endif
 int main(){
- coalescing_and_barriers();owned_values_and_bounded_admission();failure_and_ordered_retry();queue_full_retry_owns_new_intent_and_keeps_newer_success();multiple_producers_and_notifications();notification_edges_do_not_flood_ui();cache_barrier_keeps_real_write_failure();decoding();
+ coalescing_and_barriers();owned_values_and_bounded_admission();failure_and_ordered_retry();queue_full_retry_owns_new_intent_and_keeps_newer_success();multiple_producers_and_notifications();notification_edges_do_not_flood_ui();cache_barrier_keeps_real_write_failure();failure_details_distinguish_native_and_admission();decoding();
 #ifdef _WIN32
  native_win32_file_roundtrip();
 #endif

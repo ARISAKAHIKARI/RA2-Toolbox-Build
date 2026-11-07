@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.43-pre.11",
-  "version": "1.0.43-pre.12",
+  "name": "RA2 Toolbox 1.0.43-pre.13",
+  "version": "1.0.43-pre.13",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full package includes hash-pinned offline assets/profiles/preprocessing runtime/engine; Update preserves an existing complete installation.",
   "resources_legacy_reuse": true,
   "build_protocol": 100,
-  "validation": "Validation scope: production cursor coordinate/DPI-scope and pointer-failure controlled regressions, exact-commit mixed-architecture Windows-target build, and actual PE/ABI verification. No real Windows display, user platform, game or multiplayer execution is claimed.",
+  "validation": "Validation scope: actual asynchronous settings-store regressions and production save-trace counterexample, targeted console retry/error feedback checks, exact-commit mixed-architecture Windows-target build and actual PE/ABI verification. No real Windows file-permission, display, user platform, game or multiplayer execution is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
@@ -801,5 +801,12 @@
     "diagnostics": "Bounded coordinate/geometry and DPI-context diagnostic records make current display and game dimensions observable.",
     "compatibility": "Existing process detection allowlist and per-entry validation preserved; no new game addresses or wire ABI.",
     "presentation_failure_recovery": "If external coordinate-window presentation is unavailable, Hide mode uses the existing paired hookStop cleanup before deferring output; successful window recovery reaches the existing hookStart rearm. Native hardware/blank modes do not depend on external window creation."
+  },
+  "SettingsSavePre13": {
+    "baseline_commit": "76b28dc4bb3ca2fb2e1a8769fefe6ba548554e17",
+    "save_coalescing": "Keep the existing legacy Experimental.RevealMap key as a read fallback; do not enqueue its redundant deletion in every full settings save. ManualReveal retains the existing precedence.",
+    "error_feedback": "Expose error origin, actual code, file, section/key and operation without configuration values; distinguish internal queue/cache admission from native Win32 failure.",
+    "retry": "Explicit retry during normal use and the close-save phase replays retained desired settings; only successful writes clear the failed status. Cleanup/shutdown refuses new retries.",
+    "limits": "A controlled slow-writer burst reproduces the internal queue overflow; the user supplied no Windows error code, so actual user ACL/lock/disk conditions are not identified."
   }
 }

@@ -50,6 +50,8 @@ static bool displayReady=false;
 static consoleweb::Host browser;
 static std::wstring root,config,args;
 static std::string error,lastShell;
+static std::wstring configRetryNotice;
+static uint64_t configRetrySequence=0;
 static bool appReady=false,bootReady=false,servicesStarted=false,userNavigated=false,closeAsked=false,storeClosing=false;
 static int selectedCategory=0,videoSection=0,closePhase=0;
 static unsigned closePreparedMask=0,closeRequestedMask=0;
@@ -81,15 +83,69 @@ static void saveModuleState(){
  asyncini::write(L"Video",L"CursorEnabled",active[0]?L"1":L"0",config.c_str());
  asyncini::write(L"Video",L"MonitorEnabled",active[1]?L"1":L"0",config.c_str());
 }
+static const wchar_t* storageOrigin(asyncini::core::ErrorOrigin origin){
+ using asyncini::core::ErrorOrigin;
+ switch(origin){case ErrorOrigin::Native:return L"Windows";case ErrorOrigin::Queue:return L"保存队列";
+  case ErrorOrigin::Cache:return L"待保存缓存";case ErrorOrigin::Shutdown:return L"配置服务";default:return L"保存服务";}
+}
+static const wchar_t* storageOperation(asyncini::core::Kind kind){
+ using asyncini::core::Kind;
+ switch(kind){case Kind::Set:return L"写入设置";case Kind::DeleteKey:return L"删除设置";
+  case Kind::DeleteSection:return L"删除分组";case Kind::Flush:return L"刷新配置缓存";default:return L"保存配置";}
+}
+static std::wstring storageFailureReason(const asyncini::core::Status& state){
+ using asyncini::core::ErrorOrigin;
+ if(state.errorOrigin==ErrorOrigin::Queue)return L"保存队列暂时已满，请等待当前保存完成后重试。";
+ if(state.errorOrigin==ErrorOrigin::Cache)return L"待保存设置暂时过多，请等待当前保存完成后重试。";
+ if(state.errorOrigin==ErrorOrigin::Shutdown)return L"配置服务已停止接收新的保存请求。";
+ switch(state.errorCode){
+  case ERROR_ACCESS_DENIED:return L"系统拒绝写入，请检查该文件的只读属性或写入权限。";
+  case ERROR_SHARING_VIOLATION:case ERROR_LOCK_VIOLATION:return L"配置文件被占用，请结束占用后重试保存。";
+  case ERROR_DISK_FULL:case ERROR_HANDLE_DISK_FULL:return L"磁盘可用空间不足，请释放空间后重试。";
+  case ERROR_FILE_NOT_FOUND:case ERROR_PATH_NOT_FOUND:return L"配置路径不存在，请确认该文件夹仍然可用。";
+  case ERROR_INVALID_NAME:case ERROR_FILENAME_EXCED_RANGE:return L"配置路径无效或过长，请检查显示的路径。";
+  case ERROR_WRITE_PROTECT:return L"存储设备处于写保护状态，无法写入配置。";
+  case ERROR_NOT_ENOUGH_MEMORY:case ERROR_OUTOFMEMORY:return L"系统内存不足，暂时无法保存配置。";
+ }
+ wchar_t message[512]{};
+ const DWORD size=FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,nullptr,state.errorCode,0,message,512,nullptr);
+ if(size){std::wstring reason(message,size);while(!reason.empty()&&std::iswspace(reason.back()))reason.pop_back();if(!reason.empty())return reason;}
+ return L"保存请求未完成，请按显示的错误码和文件位置排查。";
+}
+static std::wstring storageFailureText(const asyncini::core::Status& state){
+ if(!state.failed)return {};
+ std::wstring message=L"设置尚未保存："+storageFailureReason(state)+L"\n"+storageOrigin(state.errorOrigin)+L" 错误码 "+std::to_wstring(state.errorCode);
+ if(!state.errorPath.empty())message+=L"\n文件："+state.errorPath;
+ message+=L"\n操作：";message+=storageOperation(state.errorKind);
+ if(!state.errorSection.empty())message+=L" ["+state.errorSection+L"]";
+ if(!state.errorKey.empty())message+=L" "+state.errorKey;
+ return message;
+}
 static void publishShell(){
  if(!appReady||!browser.ready())return;
  auto storage=asyncini::status();
+ if(!storage.failed)configRetryNotice.clear();
+ const bool canRetry=storage.failed&&storage.accepting&&!storage.pending&&!storage.busy&&closePhase<3;
+ auto storageError=storageFailureText(storage);if(storage.failed&&!configRetryNotice.empty())storageError+=L"\n"+configRetryNotice;
  std::string json="{\"kind\":\"shell\",\"protocol\":1,\"version\":"+quote(utf8(RA2_RELEASE_VERSION_W))+",\"servicesReady\":"+(servicesStarted?"true":"false")+
   ",\"selectedCategory\":"+std::to_string(selectedCategory)+",\"videoSection\":"+std::to_string(videoSection)+",\"closing\":"+(closePhase?"true":"false")+",\"error\":"+quote(error)+",\"modules\":[";
  for(unsigned i=0;i<3;++i){if(i)json+=',';json+="{\"module\":"+std::to_string(i)+",\"ready\":"+(suite::frontend.window(i)?"true":"false")+",\"enabled\":"+(active[i]?"true":"false")+"}";}
- json+="],\"config\":{\"pending\":"+std::to_string(storage.pending)+",\"busy\":"+(storage.busy?"true":"false")+",\"failed\":"+(storage.failed?"true":"false")+",\"error\":"+
-  quote(storage.failed?utf8((closePhase==2?L"设置保存失败。检查文件夹权限后，再次关闭窗口可重试或继续退出。 ":L"设置保存失败，请检查文件夹写入权限。 ")+storage.errorPath):std::string{})+"}}";
+ json+="],\"config\":{\"pending\":"+std::to_string(storage.pending)+",\"busy\":"+(storage.busy?"true":"false")+",\"failed\":"+(storage.failed?"true":"false")+
+  ",\"canRetry\":"+(canRetry?"true":"false")+",\"retrySeq\":"+std::to_string(configRetrySequence)+",\"errorCode\":"+std::to_string(storage.errorCode)+
+  ",\"errorOrigin\":"+quote(utf8(storageOrigin(storage.errorOrigin)))+",\"errorPath\":"+quote(utf8(storage.errorPath))+",\"errorSection\":"+quote(utf8(storage.errorSection))+
+  ",\"errorKey\":"+quote(utf8(storage.errorKey))+",\"errorOperation\":"+quote(utf8(storageOperation(storage.errorKind)))+",\"error\":"+quote(utf8(storageError))+"}}";
  if(json!=lastShell&&send(json))lastShell=std::move(json);
+}
+static void retrySettings(uint64_t sequence=0){
+ if(sequence&&sequence<=configRetrySequence){lastShell.clear();publishShell();return;}
+ if(sequence)configRetrySequence=sequence;
+ const auto storage=asyncini::status();configRetryNotice.clear();
+ if(closePhase>=3||!storage.accepting)configRetryNotice=L"正在退出，已停止接收保存重试。";
+ else if(storage.pending||storage.busy)configRetryNotice=L"当前保存仍在处理，请等待后重试。";
+ else if(storage.failed&&!asyncini::retryFailed())configRetryNotice=L"本次重试尚未排入保存队列，请稍后重试。";
+ // Acknowledging the request only releases the button. The store's failed
+ // state remains authoritative until the owned desired operations succeed.
+ lastShell.clear();publishShell();
 }
 static void publishModels(){
  if(!appReady||!browser.ready())return;
@@ -156,14 +212,14 @@ static void requestClose(bool checked=false){
   // The save phase has no destructive deadline. A second explicit close
   // remains available if a disk or a service is stuck before preparation.
   if(closePhase==2&&!closePromptActive){
-   const bool failed=asyncini::status().failed;
+   const auto storage=asyncini::status();const bool failed=storage.failed;
    if(failed||GetTickCount64()-closePreparingAt>=3000){
     closePromptActive=true;
-    const int answer=MessageBoxW(frame,failed?
-     L"设置保存失败，请检查文件夹写入权限。是否跳过保存并继续退出？\n选择“否”会重试保存。":
-     L"设置仍在保存或等待功能服务。跳过等待可能丢失尚未保存的修改。\n是否继续退出？",L"红警工具箱",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2);
+    const auto prompt=failed?storageFailureText(storage)+L"\n\n是否跳过保存并继续退出？\n选择“否”会重试保存。":
+     std::wstring(L"设置仍在保存或等待功能服务。跳过等待可能丢失尚未保存的修改。\n是否继续退出？");
+    const int answer=MessageBoxW(frame,prompt.c_str(),L"红警工具箱",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2);
     closePromptActive=false;
-    if(answer==IDYES)startCleanup();else if(failed)asyncini::retryFailed();
+    if(answer==IDYES)startCleanup();else if(failed)retrySettings();
    }
   }
   return;
@@ -208,6 +264,7 @@ static void onMessage(const std::string& json){
   }else if(!message.shell.seq)requestClose();
   return;
  }
+ if(message.kind==consolemodel::MessageKind::ConfigRetry){retrySettings(message.shell.seq);return;}
  if(closePhase)return;
  if(message.kind==consolemodel::MessageKind::Navigate){
   userNavigated=true;selectedCategory=message.shell.module==2?message.shell.category:0;

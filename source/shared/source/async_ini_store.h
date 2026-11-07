@@ -42,6 +42,9 @@ namespace asyncini {
 namespace core {
 constexpr unsigned InvalidArgument=87,QueueFull=8,Stopped=995,WriteFault=29;
 enum class Kind { Set,DeleteKey,DeleteSection,Flush,Native };
+// Internal queue admission errors are not Win32 file errors, even when their
+// numeric codes coincide (for example QueueFull and ERROR_NOT_ENOUGH_MEMORY).
+enum class ErrorOrigin { None,Native,Queue,Cache,Shutdown };
 struct Text {
  bool null=true;std::wstring value;
  Text()=default;explicit Text(const wchar_t* p):null(!p),value(p?p:L""){}
@@ -74,7 +77,8 @@ inline Result nativeResult(Kind kind,bool returnedSuccess,unsigned lastError){
 }
 struct Status {
  size_t pending=0;bool busy=false,failed=false,accepting=true,stopped=false;
- unsigned errorCode=0;std::wstring errorPath;
+ unsigned errorCode=0;std::wstring errorPath,errorSection,errorKey;
+ Kind errorKind=Kind::Native;ErrorOrigin errorOrigin=ErrorOrigin::None;
  // completedRevision is the processed low-water mark, including superseded
  // or failed operations. Successful writes additionally require !failed;
  // these counters do not claim power-loss or FlushFileBuffers durability.
@@ -103,7 +107,7 @@ inline Key keyOf(const Operation&o){return{folded(o.path.value,true),folded(o.se
 inline bool cacheable(const Operation&o){return !o.path.null&&!o.section.null&&(o.kind==Kind::Set||o.kind==Kind::DeleteKey||o.kind==Kind::DeleteSection);}
 inline Key sectionKey(Key k){k.key.clear();return k;}
 struct Cached {Operation op;bool failed=false,pending=true;};
-struct Failure {Operation op;unsigned code=0;};
+struct Failure {Operation op;unsigned code=0;ErrorOrigin origin=ErrorOrigin::None;};
 // One owned queue, one persistent writer. No disk I/O or waiting for the writer
 // occurs in enqueue(), lookup(), status(), requestFlush() or beginShutdown().
 class Store {
@@ -122,8 +126,8 @@ private:
  // The callback must only enqueue/post work; it must not call setNotify().
  struct Notice {
   bool working=false,failed=false,accepting=true,stopped=false;
-  unsigned code=0;std::wstring path;
-  bool operator==(const Notice&b)const{return working==b.working&&failed==b.failed&&accepting==b.accepting&&stopped==b.stopped&&code==b.code&&path==b.path;}
+  unsigned code=0;std::wstring path;ErrorOrigin origin=ErrorOrigin::None;
+  bool operator==(const Notice&b)const{return working==b.working&&failed==b.failed&&accepting==b.accepting&&stopped==b.stopped&&code==b.code&&path==b.path&&origin==b.origin;}
  };
  std::mutex notifyMutex_;Notify notify_;Notice lastNotice_;bool noticeValid_=false;
  static std::wstring failureKey(const Operation&o){
@@ -131,20 +135,20 @@ private:
  }
  void notify(){
   std::lock_guard<std::mutex> l(notifyMutex_);if(!notify_)return;
-  const auto s=status();Notice now{bool(s.pending||s.busy),s.failed,s.accepting,s.stopped,s.errorCode,s.errorPath};
+  const auto s=status();Notice now{bool(s.pending||s.busy),s.failed,s.accepting,s.stopped,s.errorCode,s.errorPath,s.errorOrigin};
   // A whole-config save may submit thousands of keys. The visible console
   // needs edges (saving/idle/error), not one posted message per INI key.
   if(noticeValid_&&now==lastNotice_)return;
   lastNotice_=std::move(now);noticeValid_=true;notify_();
  }
- void failLocked(const Operation&o,unsigned code){
+ void failLocked(const Operation&o,unsigned code,ErrorOrigin origin){
   auto id=failureKey(o);
   const auto prior=failures_.find(id);
   // A writer already in flight can fail after a newer submission has been
   // rejected. Preserve the newer desired operation, not that older result.
   if(prior!=failures_.end()&&prior->second.op.revision>o.revision)return;
   if(failures_.size()>=cacheCapacity_&&!failures_.count(id))failures_.erase(failures_.begin());
-  failures_[std::move(id)]={o,code?code:WriteFault};
+  failures_[std::move(id)]={o,code?code:WriteFault,origin};
  }
  bool canCacheLocked(const Operation&o)const{
   if(!cacheable(o))return true;
@@ -161,8 +165,8 @@ private:
   // Admission failures also own a revision. Otherwise completion of an older
   // in-flight write could clear or overwrite the newer rejected intent.
   o.revision=++submitted_;o.firstRevision=o.revision;
-  if(!accepting_){failLocked(o,Stopped);return false;}
-  if(!canCacheLocked(o)){failLocked(o,QueueFull);return false;}
+  if(!accepting_){failLocked(o,Stopped,ErrorOrigin::Shutdown);return false;}
+  if(!canCacheLocked(o)){failLocked(o,QueueFull,ErrorOrigin::Cache);return false;}
   auto replace=queue_.end();
   if(allowCoalesce&&o.kind==Kind::Set){
    const auto k=keyOf(o);
@@ -171,7 +175,7 @@ private:
   if(replace==queue_.end()&&queue_.size()>=capacity_){
    // Rejected is not acknowledged as queued, but the bounded desired-value
    // cache must still own it so an explicit retry can persist the setting.
-   cacheLocked(o);completeCacheLocked(o,false);failLocked(o,QueueFull);return false;
+   cacheLocked(o);completeCacheLocked(o,false);failLocked(o,QueueFull,ErrorOrigin::Queue);return false;
   }
   if(replace!=queue_.end())o.firstRevision=replace->firstRevision;
   cacheLocked(o);
@@ -221,7 +225,7 @@ private:
    }
    notify();const auto result=writer_(op);
    {std::lock_guard<std::mutex> l(mutex_);
-    if(result.ok)clearMatchingFailuresLocked(op);else failLocked(op,result.error);
+    if(result.ok)clearMatchingFailuresLocked(op);else failLocked(op,result.error,ErrorOrigin::Native);
     completeCacheLocked(op,result.ok);busy_=false;executing_={};
    }
    notify();
@@ -248,7 +252,11 @@ public:
   uint64_t first=submitted_+1;if(busy_)first=executing_.firstRevision;
   for(const auto&o:queue_)first=std::min(first,o.firstRevision);
   s.completedRevision=first-1;
-  for(const auto&e:failures_)if(!s.errorCode||e.second.op.revision>=s.errorRevision){s.errorCode=e.second.code;s.errorRevision=e.second.op.revision;s.errorPath=e.second.op.path.value;}
+  for(const auto&e:failures_)if(!s.errorCode||e.second.op.revision>=s.errorRevision){
+   s.errorCode=e.second.code;s.errorRevision=e.second.op.revision;s.errorPath=e.second.op.path.value;
+   s.errorKind=e.second.op.kind;s.errorOrigin=e.second.origin;
+   s.errorSection=e.second.op.section.value;s.errorKey=e.second.op.key.value;
+  }
   return s;
  }
  bool idle()const{const auto s=status();return !s.pending&&!s.busy;}

@@ -1,0 +1,187 @@
+{
+  "schema": "ra2.settings-save-recovery.release-evidence.v1",
+  "version": "1.0.43-pre.13",
+  "baseline_commit": "76b28dc4bb3ca2fb2e1a8769fefe6ba548554e17",
+  "required_checks_passed": true,
+  "tests": [
+    {
+      "name": "settings_save_recovery",
+      "passed": true,
+      "evidence": "analysis/pre13-save-regression/normalized-receipt.json",
+      "evidence_sha256": "401d9267fe4edd45346b93e6fcfe62588d1b5a9f6b06dca2332a8543f7d8d3e2",
+      "negative_controls": [
+        {
+          "revision": "76b28dc4bb3ca2fb2e1a8769fefe6ba548554e17",
+          "expected_exit": 1,
+          "actual_exit": 1,
+          "failure": "Queue admission error 8 after retained DeleteKey barriers split repeated saves."
+        }
+      ],
+      "real_windows_tested": false,
+      "windows_executed": false,
+      "game_tested": false,
+      "multiplayer_tested": false,
+      "runs": [
+        {
+          "saves": 25,
+          "literal_operations_per_save": 199,
+          "pending_before_release": 199,
+          "first_rejected_save": 0,
+          "rejected_operations": 0,
+          "error_code": 0,
+          "failed_after_drain": false,
+          "latest_intent_preserved": true,
+          "explicit_retry_succeeded": true,
+          "legacy_precedence_checks": 5,
+          "legacy_value_preserved": true,
+          "windows_executed": false,
+          "name": "current",
+          "exit_code": 0,
+          "source_sha256": {
+            "shared/source/async_ini_store.h": "d6e7b989f3e5a37f5632489cb4fa8d56a715d8980564d0231ce987d6cc918f41",
+            "assist/source/main.cpp": "60a194d16c3f6e124aa678f57dc33049b1b974b8c2212988546ee7d523538b16",
+            "assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8"
+          },
+          "trace_sha256": "9a5d340e052ed5fecfc5aa0701b7f93029860c263762dd11b5c21acd47d21413",
+          "delete_calls": 0
+        },
+        {
+          "saves": 25,
+          "literal_operations_per_save": 200,
+          "pending_before_release": 4096,
+          "first_rejected_save": 21,
+          "rejected_operations": 315,
+          "error_code": 8,
+          "failed_after_drain": true,
+          "latest_intent_preserved": true,
+          "explicit_retry_succeeded": true,
+          "legacy_precedence_checks": 5,
+          "legacy_value_preserved": false,
+          "windows_executed": false,
+          "name": "baseline",
+          "exit_code": 1,
+          "source_sha256": {
+            "shared/source/async_ini_store.h": "e67ca24e9c2afc2a03a6a5692845ac748eb6187425e20f6d56d2871797d208e1",
+            "assist/source/main.cpp": "60a194d16c3f6e124aa678f57dc33049b1b974b8c2212988546ee7d523538b16",
+            "assist/source/extra_settings_io.h": "1450745c9f9cea2dbef03b98a5a7ef3b72e94bbf0e5d983ecdd798c66ca5998c"
+          },
+          "trace_sha256": "1bbdb075210d215fc861036e3feca2a2360414b8a18342b902ad6617c75b331e",
+          "delete_calls": 1
+        }
+      ],
+      "scope": "Production Store with the source-ordered literal-key subset of both Assist save functions; controlled writer and values. Full save, Win32 profile I/O, file locks/ACL and the user machine were not executed."
+    },
+    {
+      "name": "settings_store",
+      "passed": true,
+      "evidence": "analysis/pre13-save-store/normalized-receipt.json",
+      "evidence_sha256": "a8caf2b151d280fc63f6d87dc8997bb35eaef560e55f4fa848439d81cef39c74",
+      "checks": {
+        "existing_portable_test_functions": 8,
+        "failure_source_cases": [
+          "native-sharing-violation-32",
+          "native-error-8",
+          "queue-admission-8",
+          "cache-admission-8",
+          "shutdown-995"
+        ]
+      },
+      "real_windows_tested": false,
+      "windows_executed": false,
+      "game_tested": false,
+      "multiplayer_tested": false,
+      "scope": "Actual production Store; controlled writer return/error results, held writer for bounded queue/cache admission and explicit retry. Existing eight portable test functions plus five failure-source cases. Native Windows file-roundtrip remains excluded on Linux."
+    },
+    {
+      "name": "settings_console",
+      "passed": true,
+      "evidence": "analysis/pre13-save-ui/normalized-receipt.json",
+      "evidence_sha256": "32c7d17bffadf92cc5660f0bb3204f44e4efeb40eeb48c77f3331ae5697edc20",
+      "windows_executed": false,
+      "game_tested": false,
+      "multiplayer_tested": false,
+      "runs": [
+        {
+          "name": "model-build",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-O1",
+            "-UNDEBUG",
+            "-pthread",
+            "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/suite/tests/console_model_test.cpp",
+            "-o",
+            "/workspace/scratch/a67ed982d62d/analysis/pre13-save-ui/console_model_test"
+          ],
+          "exit_code": 0,
+          "seconds": 3.968,
+          "log": "/workspace/scratch/a67ed982d62d/analysis/pre13-save-ui/model-build.log",
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "model",
+          "command": [
+            "/workspace/scratch/a67ed982d62d/analysis/pre13-save-ui/console_model_test"
+          ],
+          "exit_code": 0,
+          "seconds": 0.084,
+          "log": "/workspace/scratch/a67ed982d62d/analysis/pre13-save-ui/model.log",
+          "log_sha256": "4f76477ef5c9d0234ef9632f3abd1ff19b8f2fa3859b5fc63f8a88b6e0ba4dc8"
+        },
+        {
+          "name": "store",
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+            "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/suite/tests/console_store_test.mjs"
+          ],
+          "exit_code": 0,
+          "seconds": 0.227,
+          "log": "/workspace/scratch/a67ed982d62d/analysis/pre13-save-ui/store.log",
+          "log_sha256": "249f43df8e0cb7f502b8b5374d131b9c73d78471648779c08f63c12ead0a961b"
+        }
+      ],
+      "material_limits": [
+        "Typed-message parser and frontend ConsoleStore executed; no Windows filesystem, browser rendering or real game execution."
+      ],
+      "scope": "Production typed-message parser and frontend ConsoleStore executed on Linux; new retry protocol, request receipt, retained failed state, preserved drafts and close-stage retry availability. No browser or Windows execution."
+    }
+  ],
+  "source_sha256": {
+    "source/BUILD_SOURCE_MANIFEST.json": "d1560f8b4f8eff9244a337a421115b566ef345f9e4e91a32c1dcb50c99d5a6dc",
+    "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+    "source/assist/source/main.cpp": "60a194d16c3f6e124aa678f57dc33049b1b974b8c2212988546ee7d523538b16",
+    "source/research/2026-11-07-settings-save-recovery.md": "bbcd7aa15f673f28c3dd3b5582abc23304e4b62dca1a66eabc2641763d400536",
+    "source/research/INDEX.md": "8002f93f8e9345b08a039e133b5308aa1f46ffa351189cc730b7d8f2dc4d8ad2",
+    "source/shared/source/async_ini_store.h": "d6e7b989f3e5a37f5632489cb4fa8d56a715d8980564d0231ce987d6cc918f41",
+    "source/shared/source/release_version.h": "e6ef79168a96a9c1818b2fbd9bc144d4ceb42eacba4257d8ce06bca6a6d368ba",
+    "source/suite/frontend/app.css": "5560cd3e17130c7677f77fdcd09cbff0d56a6888f71b31ea659743fd900ff066",
+    "source/suite/frontend/app.js": "6aa000186834a29fb0a22eebd7820045ec401b3fd4f18d764445dbab3da218ae",
+    "source/suite/frontend/index.html": "c2164eb47e65b155228b6f9b7ab11ee7143d457bcc0696ec59d6e79fe99f13ca",
+    "source/suite/source/console_model.h": "164b66f7c61818b564cc847efe51ce84d7f0e32415d2799f855993fe17593b94",
+    "source/suite/source/modern_console_main.h": "4d2fddb8a9a82712a379029d5828f2818e1dc51884d4af1576add9acacd685de",
+    "source/suite/tests/assist_save_queue_test.py": "26ad4b35a293747042153e65793211444cde19ae0189109e3493bcfc35c35f55",
+    "source/suite/tests/async_ini_store_test.cpp": "6681188f0d1e0be0e42d10bea2ec525d21a431b627302fefa1a6c6ffad317c08",
+    "source/suite/tests/console_model_test.cpp": "83d172b04baca140886f24bd0e1dbd98d8cb15b7f39cca18c4fcfa01bfdc4ce2",
+    "source/suite/tests/console_store_test.mjs": "328aacf38934208bfc357c00a033cbf5bee3b0cfbc16a9cad6d08e22c142f0a6"
+  },
+  "assist_protocol": 100,
+  "assist_shared_bytes": 23162400,
+  "runtime_protocol": 4,
+  "runtime_control_bytes": 176,
+  "cursor_protocol": 155,
+  "game_entry_api": 3,
+  "game_entry_request_bytes": 108,
+  "real_windows_tested": false,
+  "windows_images_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "runtime_compatibility_proven": false,
+  "user_platform_reproduction": false,
+  "new_game_code_patches": false,
+  "final_same_commit_build": "Separate frozen-commit complete Windows-target build and actual PE/ABI verification.",
+  "scope": [
+    "Remove the repeated obsolete-key deletion that fragmented whole-save coalescing; preserve legacy input and ManualReveal precedence.",
+    "Keep actual error origin/code and failed operation details; expose explicit retry without clearing unsaved intent.",
+    "Controlled production store/trace and console checks are not Windows filesystem or user-machine reproduction."
+  ]
+}

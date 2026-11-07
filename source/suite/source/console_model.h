@@ -66,7 +66,7 @@ struct Ack {
     // denotes a legacy/rejection receipt without a state confirmation fence.
     std::uint64_t revision = 0;
 };
-enum class MessageKind { Ready, Navigate, Module, Close, Action };
+enum class MessageKind { Ready, Navigate, Module, Close, Action, ConfigRetry };
 struct ShellCommand {
     MessageKind kind = MessageKind::Ready;
     unsigned module = 0;
@@ -342,6 +342,9 @@ public:
                     s.unsubmitted = static_cast<unsigned>(n);
                 } else if (!allowed({"kind","protocol","seq"})) return false;
                 s.kind = parsed.kind = close ? MessageKind::Close : MessageKind::Ready;
+            } else if (kind->text == "config-retry") {
+                if (!allowed({"kind","protocol","seq"})) return false;
+                s.kind = parsed.kind = MessageKind::ConfigRetry;
             } else if (kind->text == "navigate") {
                 if (!allowed({"kind","protocol","module","category","seq","width","height"})) return false;
                 s.kind = parsed.kind = MessageKind::Navigate;
@@ -361,7 +364,7 @@ public:
                 if (!enabled || enabled->type != Field::Boolean) return fail("Module command requires enabled");
                 s.enabled = enabled->boolean;
             } else return fail("Unknown console message kind");
-            n = 0; if (!integer("seq", 1, MaxSafeInteger, n, false)) return false;
+            n = 0; if (!integer("seq", 1, MaxSafeInteger, n, parsed.kind == MessageKind::ConfigRetry)) return false;
             s.seq = static_cast<std::uint64_t>(n);
         }
         result = std::move(parsed);

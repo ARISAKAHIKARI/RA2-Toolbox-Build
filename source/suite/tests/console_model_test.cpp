@@ -116,6 +116,16 @@ void parser() {
     CHECK(parseMessage(action("press"), retained, &error));
     CHECK(error.empty());
 
+    const auto retry = parseMessage("{\"kind\":\"config-retry\",\"protocol\":1,\"seq\":21}");
+    CHECK(retry.ok && retry.message.kind == MessageKind::ConfigRetry && retry.message.shell.seq == 21);
+    CHECK(!parseMessage("{\"kind\":\"config-retry\",\"protocol\":1}"));
+    CHECK(!parseMessage("{\"kind\":\"config-retry\",\"protocol\":1,\"seq\":0}"));
+    CHECK(!parseMessage("{\"kind\":\"config-retry\",\"protocol\":1,\"seq\":true}"));
+    CHECK(!parseMessage("{\"kind\":\"config-retry\",\"protocol\":1,\"seq\":21,\"path\":\"C:\\\\Other.ini\"}"));
+    CHECK(!parseMessage("{\"kind\":\"config-retry\",\"protocol\":1,\"seq\":21,\"section\":\"Other\"}"));
+    CHECK(!parseMessage("{\"kind\":\"config-retry\",\"protocol\":1,\"seq\":21,\"module\":2}"));
+    CHECK(!parseMessage("{\"kind\":\"config-retry\",\"protocol\":1,\"seq\":21,\"value\":\"discard\"}"));
+
     const auto navigate = parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":2,\"category\":4,\"width\":1200,\"height\":700}");
     CHECK(navigate.ok && navigate.message.kind == MessageKind::Navigate);
     CHECK(navigate.message.shell.module == 2 && navigate.message.shell.category == 4);

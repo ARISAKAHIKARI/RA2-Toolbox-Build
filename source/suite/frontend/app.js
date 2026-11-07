@@ -79,7 +79,7 @@
   class ConsoleStore {
     constructor(send = () => {}, changed = () => {}, options = {}) {
       this.send = send; this.changed = changed; this.pages = new Map(); this.pending = new Map(); this.drafts = new Map(); this.errors = new Map(); this.generation = new Map();
-      this.current = { module: 0, category: 0 }; this.shell = { version: '1.0.41-pre.9', modules: [], closing: false }; this.seq = options.initialSeq ?? Date.now() * 1024; this.connected = false; this.closed = false; this.notice='';
+      this.current = { module: 0, category: 0 }; this.shell = { version: '1.0.41-pre.9', modules: [], closing: false }; this.seq = options.initialSeq ?? Date.now() * 1024; this.connected = false; this.closed = false; this.notice=''; this.configRetryPending=0;
       if (!safeInteger(this.seq) || this.seq > Number.MAX_SAFE_INTEGER - 1024) throw new RangeError('Invalid initial action sequence');
     }
     emit(message) { this.send({ ...message, protocol: PROTOCOL }); }
@@ -98,7 +98,9 @@
         return true;
       }
       if (message.kind === 'shell') {
-        this.connected = true; this.shell = { ...this.shell, ...message, modules: Array.isArray(message.modules) ? message.modules : this.shell.modules }; this.closed = Boolean(message.closing); this.changed('shell'); return true;
+        this.connected = true; this.shell = { ...this.shell, ...message, modules: Array.isArray(message.modules) ? message.modules : this.shell.modules }; this.closed = Boolean(message.closing);
+        if(!this.shell.config?.failed || (safeInteger(this.shell.config?.retrySeq) && this.shell.config.retrySeq>=this.configRetryPending)) this.configRetryPending=0;
+        this.changed('shell'); return true;
       }
       if (message.kind === 'state') {
         if (!safeInteger(message.module) || message.module > 2 || !safeInteger(message.generation) || !message.generation || !safeInteger(message.revision) || !Array.isArray(message.controls) || message.controls.length > 10000) return false;
@@ -188,6 +190,10 @@
     value(control, action) { const key = controlKey(this.current.module, control.id), draft = this.drafts.get(key), pending = this.pending.get(key); if (draft && (action === 'text' || action === 'range')) return draft.value; if (pending && pending.action === action) return pending.value; return actualValue(control, action); }
     error(id) { return this.errors.get(controlKey(this.current.module, id)) || ''; }
     isPending(id) { return this.pending.has(controlKey(this.current.module, id)); }
+    retryConfig() {
+      if(!this.connected || !this.shell.config?.failed || !this.shell.config.canRetry || this.configRetryPending || this.seq>=Number.MAX_SAFE_INTEGER) return false;
+      this.configRetryPending=++this.seq; this.emit({kind:'config-retry',seq:this.configRetryPending}); this.changed('config-retry'); return true;
+    }
     enable(module, enabled) { if (!Number.isInteger(module) || module < 0 || module > 1 || typeof enabled !== 'boolean') return false; this.emit({ kind: 'module', module, enabled }); return true; }
   }
   const SPECIAL_KEYS = { Backspace: 8, Tab: 9, Enter: 13, Shift: 16, Control: 17, Alt: 18, Pause: 19, CapsLock: 20, Escape: 27, Space: 32, PageUp: 33, PageDown: 34, End: 35, Home: 36, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, Insert: 45, Delete: 46, NumpadMultiply: 106, NumpadAdd: 107, NumpadSubtract: 109, NumpadDecimal: 110, NumpadDivide: 111, NumLock: 144, ScrollLock: 145, Semicolon: 186, Equal: 187, Comma: 188, Minus: 189, Period: 190, Slash: 191, Backquote: 192, BracketLeft: 219, Backslash: 220, BracketRight: 221, Quote: 222 };
@@ -268,6 +274,7 @@
   $('debugGroup').addEventListener('change',event=>{debugGroup=event.target.value;schedule();});
   $('debugFilter').addEventListener('change',event=>{debugFilter=event.target.value;schedule();});
   $('moduleToggle').addEventListener('change', event => store.enable(videoModule, event.target.checked));
+  $('retrySave').addEventListener('click', () => store.retryConfig());
   $('foldAll').addEventListener('click', () => {
     const groups = [...groupNodes.values()].filter(group => group.hasDetails && !group.forced);
     const shouldCollapse = groups.some(group => !group.body.hidden);
@@ -451,12 +458,16 @@
     const moduleState = store.shell.modules.find(module => module.module === videoModule); $('moduleToggleWrap').hidden = selectedCategory !== 0 || !moduleState; if (moduleState) { $('moduleToggle').checked = Boolean(moduleState.enabled); $('moduleToggle').disabled = store.closed || !moduleState.ready; $('moduleToggleLabel').textContent=moduleState.enabled?'模块已启用':'启用此模块'; }
     const serviceReady=store.connected && store.shell.servicesReady && store.shell.modules.some(module=>module.ready); $('connectionDot').classList.toggle('ready',serviceReady && !store.closed); $('connectionText').textContent = store.closed ? '正在退出' : serviceReady ? '控制台就绪' : store.connected ? '模块初始化中' : '正在连接';
     const config = store.shell.config || {};
+    $('retrySave').hidden=!config.failed; $('retrySave').disabled=!config.canRetry || Boolean(store.configRetryPending);
+    $('retrySave').textContent=store.configRetryPending?'正在请求…':config.pending || config.busy?'保存中…':'重试保存';
     $('saveState').textContent = config.failed ? '保存失败' : store.pending.size ? '正在应用设置…' : config.pending || config.busy ? '保存中…' : store.drafts.size ? '正在编辑' : store.shell.config ? '已保存' : '设置自动保存'; $('pendingCount').textContent = store.pending.size ? `${store.pending.size} 项等待确认` : '';
     $('saveState').dataset.state=config.failed?'error':store.pending.size||config.pending||config.busy?'busy':store.drafts.size?'editing':store.shell.config?'saved':'idle';
-    const globalError = String(store.shell.error || (config.failed ? config.error || '配置保存失败，请检查目录权限后重试。' : '') || store.notice);
+    const globalError = String(store.shell.error || (config.failed ? config.error || '配置尚未保存，请重试或查看保存错误详情。' : '') || store.notice);
     $('globalNotice').textContent = globalError; $('globalNotice').hidden = !globalError;
     $('statusText').textContent = store.closed ? '正在关闭模块并保存设置…' : globalError || state?.status || (store.connected ? '操作会自动保存，独立功能可按需启用。' : '界面已就绪，正在等待模块状态。');
     $('loadingState').hidden = Boolean(state); $('loadingText').textContent = !bridge ? '此页面需要由红警工具箱打开。' : '正在等待功能模块状态…';
+    if(!config.failed) render.lastConfigError='';
+    if (config.failed && config.error && config.error !== render.lastConfigError) { render.lastConfigError = config.error; notify(config.error); }
     if (!state) { $('resultCount').textContent = debugging?'正在载入入口目录':'正在载入设置'; $('emptyState').hidden = true; $('foldAll').hidden = true; return; }
     if(debugging)renderDebug(state);else {
     const {groups,count}=renderSettingsGroups(state.controls,search);
@@ -464,7 +475,7 @@
     updateFoldAction();
     }
     if (store.errors.size) { const latest = [...store.errors.values()].at(-1); if (latest !== render.lastError) { render.lastError = latest; notify(latest); } }
-    if (config.failed && config.error && config.error !== render.lastConfigError) { render.lastConfigError = config.error; notify(config.error); }
+
   }
   bridge?.addEventListener('message',event => { let message = event.data; if (typeof message === 'string') { try { message = JSON.parse(message); } catch { return; } } if (!store.receive(message)) return; if (message.kind === 'shell' && message.servicesReady && !restoredNavigation) { restoredNavigation = true; if (!userNavigated) { const category = Number.isInteger(message.selectedCategory) ? Math.max(0,Math.min(5,message.selectedCategory)) : 0, module = message.videoSection === 1 ? 1 : 0; videoModule = module; navigate(category,module,true); } } });
   global.addEventListener('beforeunload',() => stopCapture());

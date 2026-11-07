@@ -74,6 +74,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .save-state[data-state="saved"] { color: var(--accent); }
 .save-state[data-state="busy"] { color: #e2c48d; }
 .save-state[data-state="error"] { color: var(--error); }
+.save-retry { flex: 0 0 auto; white-space: nowrap; }
+.save-retry:disabled { color: var(--muted); cursor: default; }
 .quiet-pill { padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; background: #192429; font-size: 10px; color: #a2b8c1; }
 
 /* Page tools stay outside the scrolling settings region. */
