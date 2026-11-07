@@ -1,5 +1,6 @@
 #pragma once
 #include "native_platform_profile.h"
+#include "platform_hook_probe_ui.h"
 // Included by the Host after pageControl() and settings persistence. The
 // renderer uses ordinary adapter-issued control tokens, never raw addresses.
 static constexpr int DebugEntryControlBase=12000;
@@ -60,9 +61,15 @@ static const char*debugSignature(debugentries::Signature signature){
  case Signature::Unknown:return "尚未检查签名";}return "尚未检查签名";
 }
 static void createDebugEntryControls(){
- const int page=suite::categories::Debug;int y=uilayout::BodyTop+12;
+ const int page=suite::categories::Debug;int y=createPlatformHookProbeControls(page,uilayout::BodyTop+12);
  pageControl(page,L"STATIC",L"入口调试：用途、影响特性与实时安装状态",20,y,610,26,0);y+=34;
+#ifdef RA2_CONSOLE_WEBVIEW2
+ SetPropW(pageControls.back().hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));
+#endif
  pageControl(page,L"STATIC",L"每项独立保存。关闭校验不启用对应功能；调用、补丁、断点各自控制。",20,y,610,40,0);y+=48;
+#ifdef RA2_CONSOLE_WEBVIEW2
+ SetPropW(pageControls.back().hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));
+#endif
  for(uint32_t i=0;i<debugentries::Count;++i){const auto&e=debugentries::Entries[i];
   wchar_t address[32]{};swprintf(address,32,L" · 0x%08X",unsigned(e.address));
   const std::wstring label=debugWide(e.name)
@@ -91,6 +98,7 @@ static void createDebugEntryControls(){
  for(auto&c:pageControls)if(c.page==page)c.fullRect=c.rect;
 }
 static void updateDebugEntries(bool force){
+ updatePlatformHookProbeUI();
  if(!force&&!debugPageActive)return;
  static DWORD lastAt=0;const DWORD now=GetTickCount();if(!force&&lastAt&&DWORD(now-lastAt)<250)return;lastAt=now;
  if(!ui||!debugEntryChecks[0])return;
@@ -147,6 +155,7 @@ static void updateDebugEntries(bool force){
  }
 }
 static bool debugEntryCommand(int controlId,unsigned notification){
+ if(platformHookProbeCommand(controlId,notification))return true;
  if(controlId<DebugEntryControlBase||controlId>=DebugEntryControlBase+int(debugentries::Count))return false;
  if(notification!=BN_CLICKED||!ready||updatingControls)return true;
  const uint32_t i=uint32_t(controlId-DebugEntryControlBase);const auto&e=debugentries::Entries[i];

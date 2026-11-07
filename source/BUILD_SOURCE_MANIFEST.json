@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.43-pre.9",
-  "version": "1.0.43-pre.9",
+  "name": "RA2 Toolbox 1.0.43-pre.10",
+  "version": "1.0.43-pre.10",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full package includes hash-pinned offline assets/profiles/preprocessing runtime/engine; Update preserves an existing complete installation.",
   "resources_legacy_reuse": true,
   "build_protocol": 100,
-  "validation": "Validation scope: bounded owner-thread debug-register transactions and capability witness, poisoned broker retirement and actual host pulse recovery, independently verified ordinary Phobos call profiles, two CanBuild callsite dependencies, false-conflict prevention and renewed original journals; exact-commit mixed-architecture build and PE/ABI verification. Controlled evidence and cross compilation do not claim real Windows game or multiplayer execution.",
+  "validation": "Validation scope: read-only PE executable-section comparison, normal loader relocation/IAT exclusions, coverage and baseline gates, bounded transfer candidates, safe reports, asynchronous Debug-page controls; production-core controlled fixtures and exact-commit mixed-architecture cross-build with static PE/ABI verification. No real Windows game, platform, Ares/Phobos or multiplayer execution is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
@@ -42,8 +42,8 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.43-pre.9 follows 2051e5c7da24c0df27e9f7bc59978d8994525bdb. It addresses the two recorded low-level wait hazards, false owned-patch conflict latches, cleanly retired journal reacquisition, and bounded verified ordinary Phobos call profiles plus two CanBuild callsite dependencies. Per-entry signatures remain separate from structural, ownership, platform-handler and hardware-path contracts. Prerelease; v1.0.42 remains stable latest.",
-  "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; Debug entry search, groups and state filters, per-entry signature toggle and observed-state freshness; existing action generation/revision acknowledgement preserved",
+  "release_status": "1.0.43-pre.10 follows f39f1344e7b43ab67c67567a561f36e053d6795a. Adds an on-demand read-only platform Hook detector that compares disk images with loaded executable sections without requiring a pre-injection running capture. Reports observed differences, coverage limits, transfer candidates and reference catalog intersections. Existing hook recovery and per-entry policies are retained. Prerelease; v1.0.42 remains stable latest.",
+  "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; Debug entry catalog plus independent read-only platform Hook scan tools, manual PID, optional same-build original EXE, progress/cancellation and local HTML/JSON reports; existing action generation/revision acknowledgement preserved.",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
   "player_control": "Implementation0 now Master basic instruction patches (high risk), implementation1 native detours; current-player switching and enemy-building Sell disabled",
@@ -772,5 +772,19 @@
     "new_universal_adapter": false,
     "existing_ares_native_adapter_retained": true
   },
-  "hook_recovery": "Poisoned broker retirement retains exact process/mailbox identity until signaled exit; zero-time retirement probes and one-second completion-clock retry. Debug-register service capability is witnessed on the owner; game-thread suspension is not a recovery mechanism. Unknown platform writes remain isolated to their affected capability."
+  "hook_recovery": "Poisoned broker retirement retains exact process/mailbox identity until signaled exit; zero-time retirement probes and one-second completion-clock retry. Debug-register service capability is witnessed on the owner; game-thread suspension is not a recovery mechanism. Unknown platform writes remain isolated to their affected capability.",
+  "platform_hook_detector": {
+    "mode": "On-demand Host-side read-only process inspection; independent of GameRuntime injection.",
+    "baseline": "Process module disk file by default; optional same-build original main EXE. An uninjected running process is not required. Filename alone does not establish version or authenticity.",
+    "scope": "Loaded PE executable virtual section bytes; supported relocations normalized and supported loader-write ranges excluded with coverage accounting. Partial reads, unsupported normalization and baseline/layout mismatch remain explicit.",
+    "evidence": "Bounded changed-byte samples, limited transfer candidates/chains, destination module, nearby export or hook declaration and toolbox reference intersections. Destination ownership does not prove the writer or complete feature semantics.",
+    "reports": "Local JSON and searchable HTML; no automatic upload or private EXE/full-memory dump.",
+    "target_writes": false,
+    "target_threads_suspended": false,
+    "target_code_executed": false,
+    "requires_uninjected_running_process": false,
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "note": "research/2026-11-07-platform-hook-detector.md"
+  }
 }

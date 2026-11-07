@@ -2666,6 +2666,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  if(wp!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
  if(!bridgeClosePending){
+  shutdownPlatformHookProbe();
 #if !defined(RA2_UNIFIED) || !defined(RA2_CONSOLE_WEBVIEW2)
   boundedshutdown::begin();
 #endif
@@ -2684,7 +2685,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  setStatus(L"正在退出；恢复最多等待 2 秒，超时跳过。");
  SetWindowTextW(GetAncestor(w,GA_ROOT),L"红警工具箱 · 正在退出（恢复最多等待 2 秒）…");
  SetTimer(w,BridgeCloseTimer,100,nullptr);return 0;
- case WM_DESTROY:renderupgrade::shutdown();worldrender::worker.shutdown();sidebaroverlay::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);
+ case WM_DESTROY:shutdownPlatformHookProbe();renderupgrade::shutdown();worldrender::worker.shutdown();sidebaroverlay::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);
 #if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
  if(!consoleClosePrepared)
 #endif

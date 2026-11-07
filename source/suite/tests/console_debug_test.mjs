@@ -11,7 +11,7 @@ import {execFileSync} from 'node:child_process';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const context=vm.createContext({console,Date,Map,Set,Object,Number,String,Boolean,RangeError});
 vm.runInContext(fs.readFileSync(path.join(here,'../frontend/app.js'),'utf8'),context);
-const {ConsoleStore,canonical,canonicalDebug,debugAddress,debugStatus,debugKindLabel,debugToggleLabel,filterDebugControls}=context.RA2ConsoleCore;
+const {ConsoleStore,canonical,canonicalDebug,debugAddress,debugStatus,debugKindLabel,debugToggleLabel,filterDebugControls,debugToolControls}=context.RA2ConsoleCore;
 const tests=[];
 function test(name,run){tests.push({name,run});}
 function entry(id,patch={},debug={}){return {id,type:'toggle',label:'CanBuild',group:'原生调用',checked:true,enabled:true,visible:true,...patch,debug:{present:true,siteId:0,address:0x4f7870,kind:'call',purpose:'查询建造权限',features:'科技；建造栏',state:'ready',detail:'Ares 入口跳转可调用',hook:'na',ageMs:25,sampled:true,...debug}};}
@@ -32,6 +32,18 @@ test('typed optional metadata is immutable and ordinary controls remain ordinary
   assert.equal(canonical({id:10,type:'toggle'}).debug,null);assert.equal(canonicalDebug({present:false}),null);assert.equal(debugAddress(0x4f7870),'0x004F7870');
   assert.equal(debugKindLabel('system'),'Windows 消息入口');assert.equal(debugToggleLabel(canonical(entry(90,{}, {kind:'system'}))),'无需签名校验');
   assert.equal(debugToggleLabel(canonical(entry(91,{}, {state:'unused'}))),'本版本未启用');
+});
+test('read-only probe tools keep ordinary action tokens beside the debug catalogue',()=>{
+  const tools=[{id:9101,type:'text',label:'进程 PID（留空自动识别）',text:'',visible:true,enabled:true,group:'平台 Hook 探测'},
+    {id:9102,type:'button',label:'开始只读扫描',text:'开始只读扫描',visible:true,enabled:true,group:'平台 Hook 探测'},
+    {id:9103,type:'button',label:'取消扫描',visible:true,enabled:false,group:'平台 Hook 探测'},
+    {id:9104,type:'label',text:'隐藏旧说明',visible:false}];
+  const controls=normalize(entry(9001),...tools);
+  assert.deepEqual(Array.from(debugToolControls(controls),c=>c.id),[9101,9102,9103]);
+  assert.deepEqual(Array.from(filterDebugControls(controls,{receivedAt:1000,now:1000}),c=>c.id),[9001]);
+  const {store,messages}=setup([entry(9001),...tools]);
+  assert.equal(store.act(9102,'press'),true);assert.equal(messages.at(-1).id,9102);assert.equal(messages.at(-1).action,'press');
+  assert.equal(store.getControl(9001).checked,true);assert.equal(store.act(9103,'press'),false);
 });
 test('unconnected data is unknown even when a retained sample says ready or installed',()=>{
   const c=canonical(entry(9001,{}, {sampled:false,state:'ready',kind:'breakpoint',hook:'installed'}));
@@ -119,16 +131,40 @@ if(!failed && process.argv.includes('--browser')){
     await page.addInitScript(()=>{const listeners=[];window.__sent=[];window.chrome={webview:{postMessage(m){window.__sent.push(m);},addEventListener(type,fn){if(type==='message')listeners.push(fn);}}};window.__receive=m=>listeners.forEach(fn=>fn({data:m}));});
     await page.goto('file://'+html);await page.waitForFunction(()=>Boolean(window.RA2Console));
     const controls=[entry(9001),entry(9002,{label:'Sidebar.Draw',group:'侧栏'},{siteId:1,address:0x6a6300,kind:'patch',state:'blocked',hook:'inactive',purpose:'请求重绘侧栏',features:'科技建造栏刷新',detail:'入口字节与预期不一致'}),entry(9003,{label:'Tech.Full',group:'硬件断点'},{siteId:2,address:0x4f7870,kind:'breakpoint',hook:'inactive',purpose:'进入 CanBuild 前调整许可参数',detail:'已就绪；功能当前未启用'}),entry(9004,{label:'Control.Site',group:'硬件断点'},{siteId:3,address:0x4fc123,kind:'breakpoint',hook:'installed',purpose:'处理控制功能断点',features:'单位控制',detail:'本组已安装'}),entry(9005,{label:'Camera.Move',group:'镜头'},{siteId:4,address:0x68a001,sampled:false,state:'unknown',purpose:'移动镜头',features:'镜头定位',detail:'未连接游戏，尚无观测'}),entry(9006,{label:'Legacy.Entry',group:'历史入口'},{siteId:5,address:0x6aa600,state:'unused',sampled:false,purpose:'历史侧栏入口',features:'无直接消费者',detail:'当前功能未调用此入口'}),entry(9007,{label:'Rules.Patch',group:'规则',checked:false},{siteId:6,address:0x61a000,kind:'patch',state:'blocked',hook:'conflict',purpose:'应用规则参数',features:'单项游戏规则',detail:'已有其他修改；当前签名校验已关闭'}),entry(9008,{label:'Literal <entry>',group:'原生调用'},{siteId:7,address:0x44a000,purpose:'<img src=x onerror="window.__unsafe=true">',features:'用于验证元数据按纯文本显示'})];
+    const probe=[
+      {id:9100,type:'heading',label:'平台 Hook 探测',group:'平台 Hook 探测',visible:true,readonly:true},
+      {id:9101,type:'text',label:'进程 PID（留空自动识别）',text:'',group:'平台 Hook 探测',visible:true,enabled:true,row:20,column:20},
+      {id:9102,type:'button',label:'开始只读扫描',text:'开始只读扫描',group:'平台 Hook 探测',visible:true,enabled:true,immediate:true,row:40,column:20},
+      {id:9103,type:'button',label:'取消扫描',text:'取消扫描',group:'平台 Hook 探测',visible:true,enabled:false,immediate:true,row:40,column:200},
+      {id:9104,type:'button',label:'打开 HTML 报告',text:'打开 HTML 报告',group:'平台 Hook 探测',visible:true,enabled:false,row:40,column:330},
+      {id:9105,type:'label',label:'尚未扫描。',text:'尚未扫描。',group:'平台 Hook 探测',visible:true,readonly:true,row:70,column:20}];
+    controls.push(...probe);
     let revision=1;const snapshot=()=>({kind:'state',protocol:1,module:2,generation:7,revision:revision++,page:'tactical/5',title:'调试',status:'入口观测已刷新',controls});
     const receive=m=>page.evaluate(m=>window.__receive(m),m);
     await receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:5,version:'debug fixture',modules:[{module:2,ready:true,enabled:true}]});await receive(snapshot());
     await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===8);
     assert.equal(await page.locator('#pageTitle').textContent(),'调试');assert.equal(await page.locator('.nav-button').count(),6);
+    const scanButton=page.getByRole('button',{name:'开始只读扫描',exact:true}),cancelButton=page.getByRole('button',{name:'取消扫描',exact:true}),reportButton=page.getByRole('button',{name:'打开 HTML 报告',exact:true});
+    assert.equal(await scanButton.isVisible(),true);assert.equal(await cancelButton.isDisabled(),true);assert.equal(await reportButton.isDisabled(),true);
+    const pidInput=page.getByRole('textbox',{name:'进程 PID（留空自动识别）',exact:true});await pidInput.fill('3210');await pidInput.press('Enter');
+    const pidAction=await page.evaluate(()=>window.__sent.filter(m=>m.kind==='action').at(-1));assert.equal(pidAction.id,9101);assert.equal(pidAction.action,'text');assert.equal(pidAction.value,'3210');
+    await receive({kind:'ack',protocol:1,module:2,generation:7,id:9101,seq:pidAction.seq,ok:true,revision});probe[1].text='3210';await receive(snapshot());
+    await scanButton.click();const scanAction=await page.evaluate(()=>window.__sent.filter(m=>m.kind==='action').at(-1));assert.equal(scanAction.id,9102);assert.equal(scanAction.action,'press');
+    await receive({kind:'ack',protocol:1,module:2,generation:7,id:9102,seq:scanAction.seq,ok:true,revision});probe[1].enabled=probe[2].enabled=false;probe[3].enabled=true;probe[5].label=probe[5].text='正在只读扫描 · PID 3210\n模块进度：2 / 5 · 改写候选：9';await receive(snapshot());
+    await page.waitForFunction(()=>document.querySelector('#settings').textContent.includes('2 / 5'));
+    assert.equal(await scanButton.isDisabled(),true);assert.equal(await cancelButton.isEnabled(),true);
+    await cancelButton.click();const cancelAction=await page.evaluate(()=>window.__sent.filter(m=>m.kind==='action').at(-1));assert.equal(cancelAction.id,9103);assert.equal(cancelAction.action,'press');
+    await receive({kind:'ack',protocol:1,module:2,generation:7,id:9103,seq:cancelAction.seq,ok:true,revision});probe[1].enabled=probe[2].enabled=probe[4].enabled=true;probe[3].enabled=false;probe[5].label=probe[5].text='已取消 · PID 3210\n保留部分报告。';await receive(snapshot());
+    await page.waitForFunction(()=>document.querySelector('#settings').textContent.includes('保留部分报告'));
+    assert.equal(await reportButton.isEnabled(),true);await reportButton.click();const reportAction=await page.evaluate(()=>window.__sent.filter(m=>m.kind==='action').at(-1));assert.equal(reportAction.id,9104);assert.equal(reportAction.action,'press');
+    await receive({kind:'ack',protocol:1,module:2,generation:7,id:9104,seq:reportAction.seq,ok:true,revision});await receive(snapshot());
     assert.equal(await page.locator('.debug-row[data-control-id="9001"] .debug-badge').first().textContent(),'可调用');
     assert.equal(await page.locator('.debug-row[data-control-id="9003"] .debug-badge').first().textContent(),'已就绪');
     assert.equal(await page.locator('.debug-row[data-control-id="9005"] .debug-badge').first().textContent(),'尚未观测');
     assert.equal(await page.locator('#debugPanel img').count(),0);assert.equal(await page.evaluate(()=>Boolean(window.__unsafe)),false);
     await page.locator('#search').fill('4F7870');await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===2);
+    assert.equal(await scanButton.isVisible(),true,'probe controls remain available under entry search');
+    await page.locator('#search').fill('no-such-debug-entry');await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===0);assert.equal(await scanButton.isVisible(),true,'empty catalogue filters do not hide diagnostics');
     await page.locator('#search').fill('');await page.locator('#debugGroup').selectOption('硬件断点');await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===2);
     await page.locator('#debugGroup').selectOption('');await page.locator('#debugFilter').selectOption('unknown');await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===1);
     await page.locator('#debugFilter').selectOption('');await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===8);
@@ -147,6 +183,6 @@ if(!failed && process.argv.includes('--browser')){
     controls[0].debug.ageMs=0;await receive(snapshot());await page.waitForFunction(()=>document.querySelector('.debug-row[data-control-id="9001"] .debug-badge').textContent==='可调用');
     await page.getByRole('button',{name:'控制',exact:true}).click();assert.equal(await page.locator('#debugPanel').isHidden(),true);
     await page.getByRole('button',{name:'调试',exact:true}).click();await receive(snapshot());await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===8);
-    assert.deepEqual(errors,[]);console.log('PASS debug browser: live metadata, independent status, filtering, opaque toggle ACK, focus, expiry, navigation and 3 responsive sizes');
+    assert.deepEqual(errors,[]);console.log('PASS debug browser: ordinary probe PID/start/cancel/report commands, live metadata, independent status, filtering, opaque toggle ACK, focus, expiry, navigation and 3 responsive sizes');
   }finally{await browser.close();}
 }

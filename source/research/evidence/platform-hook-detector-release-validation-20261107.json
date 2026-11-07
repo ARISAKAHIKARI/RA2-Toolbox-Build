@@ -1,0 +1,236 @@
+{
+  "schema": "ra2.platform-hook-detector.release-evidence.v1",
+  "version": "1.0.43-pre.10",
+  "baseline_commit": "f39f1344e7b43ab67c67567a561f36e053d6795a",
+  "required_checks_passed": true,
+  "tests": [
+    {
+      "name": "pe_core",
+      "passed": true,
+      "evidence": "analysis/hook-probe-core/result.json",
+      "evidence_sha256": "dbf74f6c1d293c3cba3f3f9bfb4bbebc6c6d330b20295ef4e3fed60aee60d84f",
+      "runs": [
+        {
+          "name": "optimized",
+          "executable_sha256": "3c93fd3e67fd313167c8fa5e452cd536d3a9d83c22793f90490f3fdea2581c12",
+          "passed": true,
+          "scenarios": 14,
+          "checks": 2204
+        },
+        {
+          "name": "asan-ubsan",
+          "executable_sha256": "a1bdbbb5a5a0424728ab224f89bdaad28cf2c1d06184653575a58882939eb8ae",
+          "passed": true,
+          "scenarios": 14,
+          "checks": 2204
+        }
+      ]
+    },
+    {
+      "name": "read_only_collector",
+      "passed": true,
+      "evidence": "analysis/hook-probe-collector/normalized-result.json",
+      "evidence_sha256": "3636c21a80f1786f40135b7143aac004d7e5d748f05cb3d2db9ae9b0d7d47f22",
+      "scenarios": 24,
+      "windows_target_compile": {
+        "toolchain": "Zig 0.13.0",
+        "target": "x86_64-windows-gnu",
+        "command": "zig c++ -target x86_64-windows-gnu -std=c++17 -O1 -fms-extensions -DUNICODE -D_UNICODE -DWIN32_LEAN_AND_MEAN -DNOMINMAX -c windows_compile.cpp -o windows_compile.obj",
+        "status": "passed",
+        "artifact": "windows_compile.obj",
+        "artifact_sha256": "8bc43946a384763bfafe87e770a38d6d529963899066c58e216763f45be6f90d",
+        "artifact_bytes": 2604420,
+        "format": "/workspace/scratch/a67ed982d62d/analysis/hook-probe-collector/windows_compile.obj: Intel amd64 COFF object file, not stripped, 1079 sections, symbol offset=0x25a181, 2661 symbols, 1st section name \".text\"",
+        "exports_function": "verify_full_collector_api calls production hookprobe::run",
+        "read_api_symbols_present": [
+          "OpenProcess",
+          "ReadProcessMemory",
+          "VirtualQueryEx"
+        ],
+        "forbidden_process_api_symbols_absent": [
+          "WriteProcessMemory",
+          "VirtualAllocEx",
+          "VirtualProtectEx",
+          "CreateRemoteThread",
+          "SuspendThread",
+          "ResumeThread",
+          "DebugActiveProcess"
+        ]
+      },
+      "real_windows_tested": false,
+      "windows_executed": false,
+      "game_tested": false,
+      "multiplayer_tested": false,
+      "controlled_tests": {
+        "case_count": 24,
+        "production_algorithm": "hookprobe::collect(ProbeIo&,Options,Progress&)",
+        "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+        "command": "g++ -std=c++17 -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer source/assist/tests/platform_hook_probe_collector.cpp -o collector-tests; ASAN_OPTIONS=detect_leaks=0 ./collector-tests <output-dir>",
+        "status": "passed",
+        "asan": true,
+        "ubsan": true,
+        "leak_sanitizer": "disabled: container ptrace/proc restrictions caused LeakSanitizer fatal environment error",
+        "log": "collector-tests.log"
+      },
+      "serializer_verification": {
+        "command": "python3 source/assist/tests/platform_hook_probe_report.py collector-fixture-report.json collector-fixture-report.html",
+        "status": "passed",
+        "log": "report-parser-tests.log",
+        "json_bytes": 60786,
+        "html_bytes": 52017
+      },
+      "default_limits": {
+        "modules": 512,
+        "baseline_file_bytes_each": 67108864,
+        "baseline_read_request_bytes_total": 536870912,
+        "normalized_image_bytes_each": 268435456,
+        "executable_scan_bytes": 268435456,
+        "remote_read_request_bytes_total": 805306368,
+        "differences": 4096,
+        "chains": 256,
+        "hops_per_chain": 8,
+        "sample_bytes_per_range": 32,
+        "reference_labels_per_difference": 8,
+        "declarations_per_module": 8192,
+        "declarations_total": 16384,
+        "exports_per_module": 4096,
+        "exports_total": 32768,
+        "text_field_output_bytes_before_truncation_suffix": 2048,
+        "declaration_export_name_bytes_before_truncation_suffix": 128,
+        "single_report_file_max_bytes": 33554432,
+        "scan_phase_ms": 37000,
+        "overall_cooperative_deadline_ms": 45000
+      },
+      "material_limits": [
+        "Cooperative deadline cannot interrupt a blocked in-flight operating-system/filesystem call; detached UI worker must not be joined.",
+        "Only enumerated loaded executable sections receive broad comparison; IAT/EAT/vtables/data/VEH/hardware breakpoints/manual maps/kernel hooks are outside complete coverage.",
+        "Current disk module file is not authenticated pristine; optional clean main EXE must match PE structural identity.",
+        "Two reads plus module/file revalidation are not an atomic process snapshot.",
+        "Byte pattern candidates do not prove instruction boundaries, function meaning or writer. Own toolbox/mod/legitimate platform patches can appear.",
+        "Only short samples and metadata are exported; no complete module or process dump.",
+        "Symbols and Syringe declarations are baseline metadata, not installation proof; declaration length zero is preserved and does not imply zero real patch span."
+      ]
+    },
+    {
+      "name": "debug_ui",
+      "passed": true,
+      "evidence": "analysis/hook-probe-ui/receipt.json",
+      "evidence_sha256": "ef9388100d4c14667f7f345c7c08a6262672a2cc2877dc9af029c04de3c08bce",
+      "ui_fixture": {
+        "command": "python3 source/assist/tests/platform_hook_probe_ui.py --build-dir /workspace/scratch/a67ed982d62d/analysis/hook-probe-ui",
+        "passed": true,
+        "exit_code": 0,
+        "scenarios": 11,
+        "assertions": 98,
+        "production_ui_commands_executed": true,
+        "native_windows_executed": false,
+        "subject_sha256": "f808c5afb4fd061596e2a064e879a474b1a8891be6376f95aa1521d0ef2decaf"
+      },
+      "store_tests": [
+        {
+          "test": "console_debug_test.mjs",
+          "command": "node source/suite/tests/console_debug_test.mjs",
+          "passed": true,
+          "exit_code": 0,
+          "scenarios": 16
+        },
+        {
+          "test": "console_store_test.mjs",
+          "command": "node source/suite/tests/console_store_test.mjs",
+          "passed": true,
+          "exit_code": 0,
+          "scenarios": 30
+        }
+      ],
+      "browser": {
+        "attempted": true,
+        "passed": false,
+        "status": "unavailable",
+        "command": "node source/suite/tests/console_debug_test.mjs --browser",
+        "exit_code": 1,
+        "blocker": "Playwright browserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell",
+        "fallback_checks": "chromium, chromium-browser, google-chrome, google-chrome-stable, chrome, wine and wine64 absent; /opt/google/chrome, /opt/chromium and /root/.cache/ms-playwright absent.",
+        "dom_scenarios_added_but_not_executed": [
+          "PID edit text action",
+          "start/cancel/report ordinary control tokens",
+          "progress and partial report state",
+          "probe controls remain visible under empty catalogue filters",
+          "catalogue toggle ACK and focus retention",
+          "responsive overflow checks at three sizes"
+        ]
+      },
+      "non_gating_pre_existing_fixture_drift": {
+        "test": "source/suite/tests/web_console_contract_test.py",
+        "passed": false,
+        "scope": "Unmodified pre.9 protocol fixture, excluded from passed gate",
+        "exit": "SIGABRT in controlled harness",
+        "expected": "host.post(std::string(2*1024*1024+1,'x')) returns false",
+        "actual": "Production OutgoingLimit = 8 * 1024 * 1024; the 2097153-byte ASCII payload is accepted, failing the old 2 MiB fixture assertion.",
+        "files": {
+          "source/suite/source/web_console.cpp": {
+            "unchanged_from_head": true,
+            "sha256": "882b753a6a836bff7370db5376accf0caa496bbec6874315c67fecfecc25d992"
+          },
+          "source/suite/tests/web_console_contract_test.py": {
+            "unchanged_from_head": true,
+            "sha256": "7207e64b2f2c837a8e39b78c76a18726b8f6f25f491aa3c833941ecd82895e2f"
+          }
+        }
+      }
+    }
+  ],
+  "source_sha256": {
+    "source/BUILD_SOURCE_MANIFEST.json": "4a6ea072af7e71af6bd214c850b8203c0b024493bc9be474cc474ee9c43f6cac",
+    "source/assist/source/debug_entries_ui.h": "aaed5ec83ddef68495c422de4eceb0396c219f474efa61620d25df2713064e81",
+    "source/assist/source/main.cpp": "3d883df3c5a2cd2dd42ecce10b4e22b057fb0bb5b1ed4cfce287d813985fea15",
+    "source/assist/source/platform_hook_probe_ui.h": "1cfd36def27f4edafe4a189f2050fb761a121cb5843de2aabe8f222ff3c1f944",
+    "source/assist/tests/platform_hook_probe_collector.cpp": "3886901d4fd0b9956f61067fe6b75e9772a0894453fa29c642b43545cf968815",
+    "source/assist/tests/platform_hook_probe_core.cpp": "b56f2af8386bd871ec942548be2c030a4dd125a045c842816514de59e56a8a95",
+    "source/assist/tests/platform_hook_probe_core.py": "30d4c6aa188c7b2bc32d8f4fdd6c0540d15e91add03f764e1fccff3a94158b1a",
+    "source/assist/tests/platform_hook_probe_report.py": "ce5dcb5f54279d89985851fd5ca67e785e806e6fd67bdb4ada92323a6cc9b443",
+    "source/assist/tests/platform_hook_probe_ui.cpp": "af723997f542c4ac9716a64e617c5b3fadb6f5fbe10abd87604a5faae8637aa9",
+    "source/assist/tests/platform_hook_probe_ui.py": "447681b32eef40b1afdd86ef660ad748bd6c9796666658b69b997c0c5f65abb9",
+    "source/research/2026-11-07-platform-hook-detector.md": "1b64750a085d59621f34342d691b1d358a3968f0f16c312a81b33fd65e0087c4",
+    "source/research/INDEX.md": "b5ddeb5662892004a0d3d3a95920bcb23378435ffcbf41f149da1fa6ec3b9171",
+    "source/shared/source/platform_hook_probe_core.h": "1200fb254b65b92aa73119d1a4e5386c16eda9931f081f41a01f8738981bef1e",
+    "source/shared/source/platform_hook_probe_report.h": "e56a2235e42d5c7734e6e7c458ace48dc2b30dbe9130a49cfa6f4d3de59c06e2",
+    "source/shared/source/platform_hook_probe_windows.h": "09972b7905211e3f4c27e7f393d04a7b9e18cdace6e6e1fd97a3ab156d3edb26",
+    "source/shared/source/release_version.h": "8939a482f8984603d033e0c88c38c0be9e6e728b0af27334a1e96bde04843a22",
+    "source/suite/frontend/app.css": "f53b879181fcba79e0ceb802dd71b19f636b62081f8eeaa02f37b0cf2b01f77a",
+    "source/suite/frontend/app.js": "8e9d5cde1505f2b00c3dd3714a2247e1dc6e8365090735abe4a7607f1dc0e189",
+    "source/suite/tests/console_debug_test.mjs": "7729a625e969a0a7abf0e6371c5b7682c393566da49b06f4ce428e8a1f9a9b3d",
+    "source/suite/tests/console_store_test.mjs": "0c480cb98088a65835d0e75d965402aa57a3aa74b4c4e8cc454539c515b1ed00"
+  },
+  "assist_protocol": 100,
+  "assist_shared_bytes": 23162400,
+  "runtime_protocol": 4,
+  "runtime_control_bytes": 176,
+  "cursor_protocol": 155,
+  "game_entry_api": 3,
+  "game_entry_request_bytes": 108,
+  "debug_config_bytes": 1032,
+  "debug_observation_bytes": 28,
+  "debug_snapshot_bytes": 7180,
+  "catalog_entries": 161,
+  "read_only_target": true,
+  "needs_uninjected_running_process": false,
+  "automatic_patch_restoration": false,
+  "foreign_function_execution": false,
+  "writer_attribution_proven": false,
+  "platform_feature_semantics_proven": false,
+  "new_universal_injector_adapter": false,
+  "real_windows_tested": false,
+  "windows_images_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "browser_rendered": false,
+  "runtime_compatibility_proven": false,
+  "final_same_commit_build": "separate frozen-commit build provenance and actual PE/ABI gate",
+  "scope": [
+    "Read-only loaded-image executable-section comparison using disk PE images or a user-supplied same-build main EXE; no pre-injection running capture required.",
+    "Supported base relocations and loader-write exclusions; explicit incompatible, unreadable, unstable, cancelled, limited and unscanned coverage.",
+    "Bounded difference samples, byte-pattern transfer candidates, destination module/export/declaration hints and reference toolbox intersections; no writer or full-function attribution.",
+    "Safe JSON and searchable HTML reports; manual PID, independent discovery and asynchronous Debug-page start/cancel/open controls.",
+    "Existing pre.9 hook recovery, per-entry signature policies, automatic repair and shortcuts are retained; current user platform remains unexecuted."
+  ]
+}

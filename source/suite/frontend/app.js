@@ -194,6 +194,7 @@
   function virtualKey(event) { if (Number.isInteger(event.keyCode) && event.keyCode > 0 && event.keyCode <= 255 && event.keyCode !== 229) return event.keyCode; const code = event.code || ''; if (/^Key[A-Z]$/.test(code)) return code.charCodeAt(3); if (/^Digit[0-9]$/.test(code)) return code.charCodeAt(5); if (/^F(?:[1-9]|1[0-9]|2[0-4])$/.test(code)) return 111 + Number(code.slice(1)); if (/^Numpad[0-9]$/.test(code)) return 96 + Number(code.slice(6)); return SPECIAL_KEYS[code] || SPECIAL_KEYS[event.key] || (event.key?.length === 1 ? event.key.toUpperCase().charCodeAt(0) : 0); }
   function encodeHotkey(event, previous = 0) { if (event.metaKey) return null; const vk = virtualKey(event); if (!vk || vk > 255) return null; let mods = (event.shiftKey ? 0x100 : 0) | (event.ctrlKey ? 0x200 : 0) | (event.altKey ? 0x400 : 0); if (vk === 16) mods &= ~0x100; if (vk === 17) mods &= ~0x200; if (vk === 18) mods &= ~0x400; return (previous & 0xb000) | mods | vk; }
   function keyName(value) { const vk = value & 255; if (!vk) return '未绑定'; const names = { 1:'鼠标左键',2:'鼠标右键',4:'鼠标中键',5:'鼠标侧键 1',6:'鼠标侧键 2',8:'Backspace',9:'Tab',13:'Enter',16:'Shift',17:'Ctrl',18:'Alt',19:'Pause',20:'Caps Lock',27:'Esc',32:'Space',33:'Page Up',34:'Page Down',35:'End',36:'Home',37:'←',38:'↑',39:'→',40:'↓',45:'Insert',46:'Delete',144:'Num Lock',145:'Scroll Lock',186:';',187:'=',188:',',189:'-',190:'.',191:'/',192:'`',219:'[',220:'\\',221:']',222:"'" }; const prefix = []; if ((value & 0x200) && vk !== 17) prefix.push('Ctrl'); if ((value & 0x100) && vk !== 16) prefix.push('Shift'); if ((value & 0x400) && vk !== 18) prefix.push('Alt'); const name = names[vk] || (vk >= 112 && vk <= 135 ? `F${vk - 111}` : vk >= 96 && vk <= 105 ? `Num ${vk - 96}` : String.fromCharCode(vk)); return [...prefix, name].join(' + '); }
+  const debugToolControls = controls => controls.filter(control => control.visible && !control.debug?.present);
   function groupControls(controls, query = '') {
     const groups=new Map(),needle=query.trim().toLocaleLowerCase();let heading='常用设置';
     for(const control of controls) {
@@ -236,11 +237,11 @@
       headers:controls.filter(control=>control.groupHeader && !['label','heading'].includes(control.type)),
       details:controls.filter(control=>!control.groupHeader)};
   }
-  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, groupPresentation, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, DEBUG_STALE_MS, MODES });
+  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, groupPresentation, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
   if (typeof document === 'undefined') return;
 
   const $ = id => document.getElementById(id);
-  const CATEGORIES = [ ['视频','DISPLAY & VIDEO','调整画面、光标与监控视图。','<rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path>'], ['控制','INPUT & CONTROL','设置操作方式、快捷键与单位命令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'], ['自动功能','AUTOMATION','按需开启战术辅助与自动处理。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'], ['游戏规则','GAME RULES','管理游戏规则与相关功能选项。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'], ['实验性功能','EXPERIMENTAL','查看实验性选项及当前可用状态。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'], ['调试','RUNTIME DIAGNOSTICS','查看入口用途、实时状态与影响功能，逐项控制签名校验。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect><path d="M9 10h6m-6 4h4"></path>'] ];
+  const CATEGORIES = [ ['视频','DISPLAY & VIDEO','调整画面、光标与监控视图。','<rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path>'], ['控制','INPUT & CONTROL','设置操作方式、快捷键与单位命令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'], ['自动功能','AUTOMATION','按需开启战术辅助与自动处理。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'], ['游戏规则','GAME RULES','管理游戏规则与相关功能选项。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'], ['实验性功能','EXPERIMENTAL','查看实验性选项及当前可用状态。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'], ['调试','RUNTIME DIAGNOSTICS','只读探测平台改写，查看入口用途、实时状态与签名校验。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect><path d="M9 10h6m-6 4h4"></path>'] ];
   let selectedCategory = 0, videoModule = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, nextGroupId = 0, userNavigated = false, restoredNavigation = false;
   let debugGroup = '', debugFilter = '', debugGroupSignature = '';
   const debugRows = new Map();
@@ -405,7 +406,16 @@
     input.addEventListener('change',()=>{if(row.control)store.act(row.control.id,'toggle',input.checked);schedule();});
     return row;
   }
+  function renderSettingsGroups(controls,query='') {
+    const groups=groupControls(controls,query),count=[...groups.values()].reduce((sum,items)=>sum+items.length,0);
+    for(const [name,group]of groupNodes)if(!groups.has(name)){observer?.unobserve(group.section);releaseChunks(group);group.section.remove();groupNodes.delete(name);}
+    let after=null;for(const [name,items]of groups){let group=groupNodes.get(name);if(!group){group=makeGroup(name);groupNodes.set(name,group);}group.controls=items;placeAfter($('settings'),group.section,after);after=group.section;updateGroup(group);}
+    return {groups,count};
+  }
   function renderDebug(state) {
+    // Diagnostics actions are ordinary adapter-issued controls. Keep them
+    // reachable even when the catalogue search/filter has no matching entry.
+    const tools=debugToolControls(state.controls);renderSettingsGroups(tools);$('settings').hidden=!tools.length;
     const now=Date.now(),current=state.generation===store.generation.get(state.module),all=state.controls.filter(control=>control.visible && control.debug?.present);
     const groups=[...new Set(all.map(control=>control.group || '未分组'))],signature=JSON.stringify(groups);
     if(debugGroupSignature!==signature){debugGroupSignature=signature;$('debugGroup').replaceChildren(...['',...groups].map(name=>{const option=document.createElement('option');option.value=name;option.textContent=name || '全部分组';return option;}));if(!groups.includes(debugGroup))debugGroup='';$('debugGroup').value=debugGroup;}
@@ -435,7 +445,7 @@
     [...$('navigation').children].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
     $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '1.0.41-pre.9';
     $('videoTabs').hidden = selectedCategory !== 0; $('categoryNote').hidden = selectedCategory === 0;
-    const debugging=selectedCategory===5;$('settings').hidden=debugging;$('debugTools').hidden=!debugging;$('debugPanel').hidden=!debugging || !state;$('categoryNote').textContent=debugging?'逐入口观测与校验':'每项功能独立启用';$('search').placeholder=debugging?'搜索入口、地址或影响功能…':'搜索当前页面…';$('contentScroll').setAttribute('aria-label',debugging?'入口状态与签名校验':'功能设置');
+    const debugging=selectedCategory===5;$('settings').hidden=!state;$('debugTools').hidden=!debugging;$('debugPanel').hidden=!debugging || !state;$('categoryNote').textContent=debugging?'平台探测与入口状态':'每项功能独立启用';$('search').placeholder=debugging?'搜索入口、地址或影响功能…':'搜索当前页面…';$('contentScroll').setAttribute('aria-label',debugging?'平台 Hook 探测与入口调试':'功能设置');
     $('emptyState').querySelector('h2').textContent=debugging?'没有匹配的入口':'没有匹配的设置';$('clearSearch').textContent=debugging?'清除搜索与筛选':'清除搜索';
     [...$('videoTabs').children].forEach(button => { const selected=Number(button.dataset.module) === videoModule;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;button.setAttribute('aria-controls','settings'); });
     const moduleState = store.shell.modules.find(module => module.module === videoModule); $('moduleToggleWrap').hidden = selectedCategory !== 0 || !moduleState; if (moduleState) { $('moduleToggle').checked = Boolean(moduleState.enabled); $('moduleToggle').disabled = store.closed || !moduleState.ready; $('moduleToggleLabel').textContent=moduleState.enabled?'模块已启用':'启用此模块'; }
@@ -449,10 +459,8 @@
     $('loadingState').hidden = Boolean(state); $('loadingText').textContent = !bridge ? '此页面需要由红警工具箱打开。' : '正在等待功能模块状态…';
     if (!state) { $('resultCount').textContent = debugging?'正在载入入口目录':'正在载入设置'; $('emptyState').hidden = true; $('foldAll').hidden = true; return; }
     if(debugging)renderDebug(state);else {
-    const groups = groupControls(state.controls,search), count = [...groups.values()].reduce((sum,controls) => sum + controls.length,0);
+    const {groups,count}=renderSettingsGroups(state.controls,search);
     $('resultCount').textContent = search ? `找到 ${count} 项设置` : `${count} 项设置 · ${groups.size} 个分组`; $('emptyState').hidden = count > 0;
-    for (const [name,group] of groupNodes) if (!groups.has(name)) { observer?.unobserve(group.section); releaseChunks(group); group.section.remove(); groupNodes.delete(name); }
-    let after = null; for (const [name,controls] of groups) { let group = groupNodes.get(name); if (!group) { group = makeGroup(name); groupNodes.set(name,group); } group.controls = controls; placeAfter($('settings'),group.section,after); after = group.section; updateGroup(group); }
     updateFoldAction();
     }
     if (store.errors.size) { const latest = [...store.errors.values()].at(-1); if (latest !== render.lastError) { render.lastError = latest; notify(latest); } }

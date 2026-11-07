@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 强制注入平台的只读 Hook 探测 | [pre.10：磁盘基准、代码差异、覆盖范围与解释边界](2026-11-07-platform-hook-detector.md) | disk-baseline no-clean-live-state PE relocations coverage candidate-chain writer-unknown 161-reference-intersections |
 | 自动维修归组与自动功能开关快捷键 | [pre.8：维修间隔、共享状态与异步取消](2026-11-07-automatic-controls-repair-frequency.md) | 13-toggles 10-new-keys RepairMs late-result cancellation manual-isolation hotkey-conflicts |
 | Ares/Phobos 与其他注入的适配边界 | [固定上游、入口交集与分层适配](2026-11-07-injector-compatibility-adaptation.md) | 380-source-files 7-exact-15-dependency-intersections CanBuild+7 Interop-major SyringeEx no-new-universal-adapter |
 | 调试入口页与逐入口签名开关 | [pre.7：独立 Call/Patch/DR、真实状态与 owned 恢复](2026-11-07-debug-entry-signature-controls.md) | Assist100 stable-ID INI seqlock 161-entries six-DR policyRevision actual-snapshot owned-restore no-live-game |
