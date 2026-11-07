@@ -27,7 +27,9 @@
 
 ## 下载与更新
 
-当前正式版为 [1.0.41](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.41)。首次安装下载 Full 全量包，已有完整安装下载 Update 更新包；退出游戏和工具箱后成套更新，保留已有配置。
+当前正式版为 [1.0.43](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/releases/tag/v1.0.43)。首次安装下载 Full 全量包，已有完整安装下载 Update 更新包；退出游戏和工具箱后成套更新，保留已有配置。
+
+本版变化和验证范围见 [1.0.43 发布说明](packages/v1.0.43/RELEASE_NOTES.md)。低分辨率游戏画布拉伸全屏时，若光标图像偏在实际位置左上方，可在光标高级设置中将“光标位置”设为“游戏画布拉伸到全屏”。
 
 ## 设置
 

@@ -1,5 +1,10 @@
-RA2 Toolbox 1.0.30-pre.1 Prerelease / Windows 1.0.30.0 / Assist 55 / Runtime 4 / Manager 3
-Compiler: Zig 0.13.0 / Windows x86
-RA2Toolbox.exe SHA256: a1654430ea6bbb4a52b9a56d11e8c1659bf512e5b198fc3dee729df0e4a4bbb6
-GameRuntime.dll SHA256: 23a590c68c5dac77cfc04c19a4db623f98781fccf4fa7266b01e4dd173913296
-Controlled regressions PASS; no live Windows/netplay/projectile physics acceptance; LBW startup burst-reset code unavailable.
+RA2 Toolbox 1.0.43 / Windows file version 1.0.43.0
+Release tag: v1.0.43; stable release, designated Latest.
+Production baseline: c021ab112204b2e680eb8f1d1ccc91e5c6ebe7ce (1.0.43-pre.15).
+Compiler: Zig 0.13.0; x64 host with x86 GameRuntime and GameRuntimeHost32.
+WebView2 SDK: 1.0.4314.35; paired x64 WebView2Loader.dll.
+Protocols: Assist 100 / Cursor 155 / Runtime 4 / Entry Manager 3.
+Promotes unchanged production behavior with formal release version metadata.
+Exact source commit, completed build provenance, PE verification and archive hashes are recorded in the release attachments release-manifest.json and SHA256SUMS.txt.
+Controlled pre.15 source checks are inherited only after verifying unchanged source inputs; not reported as newly executed Windows tests.
+No live Windows/DWM, user-platform, actual game, physical GPU performance or multiplayer acceptance is claimed.
