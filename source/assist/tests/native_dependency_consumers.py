@@ -43,7 +43,7 @@ def main():
         definitions.append('-D' + name + '="' + target.as_posix() + '"')
     inputs = [source / name for name in (
         'bridge.cpp', 'sidebar.h', 'superweapon_sidebar_bridge.h', 'sidebar_policy.h',
-        'native_entry_policy.h', 'native_entry_runtime.h', 'startup_dependency_policy.h',
+        'native_entry_policy.h', 'native_entry_runtime.h', 'native_platform_profile.h', 'startup_dependency_policy.h',
         'startup_signature_compat.h', 'signatures.h', 'constructor_adapter.h',
         'command_intent.h', 'vanilla_constructor_catalog.h', 'entry_gate.h',
         'command_gateway.h', 'unit_task_arbiter.h', 'order_policy.h',

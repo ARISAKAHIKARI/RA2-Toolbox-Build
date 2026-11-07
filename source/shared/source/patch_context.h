@@ -9,6 +9,11 @@
 // EXEs. Do not fingerprint the whole function: resource loaders and unrelated
 // platform fixes may legitimately differ. Never include our own patch bytes.
 namespace patchcontext {
+// Only the two UI CALL-site adapters below delegate to this original native
+// function. Their stack/continuation probes still require the exact layout.
+// Runtime binds a strict, independently verified ordinary-call profile here;
+// the Call entry's user bypass must never grant a Patch or DR permission.
+inline bool(*verifiedCallDependency)(uint32_t)=nullptr;
 struct Probe {uint32_t site,address;uint8_t size,bytes[16];};
 static constexpr Probe Probes[]={
  // Entry resumes before the original stack allocation; the paused branch
@@ -102,7 +107,7 @@ static constexpr Probe Probes[]={
 };
 template<class Read> bool compatibleImpl(uint32_t site,Read read,bool policy){
  if(!experimentalpatch::size(site))return false;
- bool readable=true,matched=true,probed=false;
+ bool readable=true,matched=true,probed=false,platform=false;
  auto checkedRead=[&](uint32_t at,void*out,size_t n){probed=true;const bool ok=read(at,out,n);readable=readable&&ok;return ok;};
  if(nativesidebarpolicy::find(site))matched=nativesidebarpolicy::compatible(site,checkedRead);
  else if(nativeviewportpolicy::find(site))matched=nativeviewportpolicy::compatible(site,checkedRead);
@@ -121,11 +126,17 @@ template<class Read> bool compatibleImpl(uint32_t site,Read read,bool policy){
   // Probe every required range even after a mismatch: skipping comparisons
   // never grants access to a later unreadable range.
   for(const auto&p:Probes)if(p.site==site){uint8_t actual[16]{};
-   const bool ok=checkedRead(p.address,actual,p.size);matched=(ok&&!memcmp(actual,p.bytes,p.size))&&matched;
+   const bool ok=checkedRead(p.address,actual,p.size);bool same=ok&&!memcmp(actual,p.bytes,p.size);
+   if(ok&&!same&&policy&&p.address==0x4F7870&&p.size==8&&
+      (site==experimentalpatch::TechDraw||site==experimentalpatch::TechPrune)&&verifiedCallDependency){
+    same=verifiedCallDependency(p.address);platform=platform||same;
+   }
+   matched=same&&matched;
   }
  }
  if(!probed){uint8_t actual[16]{};checkedRead(site,actual,experimentalpatch::size(site));}
- return policy?debugentries::allow(debugentries::Kind::Patch,site,readable,matched):readable&&matched;
+ return policy?debugentries::allow(debugentries::Kind::Patch,site,readable,matched,
+  platform?debugentries::Signature::Platform:debugentries::Signature::Match):readable&&matched;
 }
 template<class Read> bool compatibleStrict(uint32_t site,Read read){return compatibleImpl(site,read,false);}
 template<class Read> bool compatible(uint32_t site,Read read){return compatibleImpl(site,read,true);}

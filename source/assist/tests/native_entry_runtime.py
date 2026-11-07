@@ -31,7 +31,7 @@ def main():
         target.write_text(content + '\n')
         definitions.append('-D' + name + '="' + target.as_posix() + '"')
     inputs = [source / name for name in ('bridge.cpp', 'native_entry_policy.h',
-              'native_entry_runtime.h', 'startup_dependency_policy.h',
+              'native_entry_runtime.h', 'native_platform_profile.h', 'startup_dependency_policy.h',
               'startup_signature_compat.h', 'signatures.h')]
     inputs += [here / 'native_entry_runtime.cpp', Path(__file__).resolve(),
                here / 'startup_dependencies.py']

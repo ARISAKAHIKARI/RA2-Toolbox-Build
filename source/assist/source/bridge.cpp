@@ -16,6 +16,7 @@
 #include "../../shared/source/runtime_fault.h"
 #include "signatures.h"
 #include "../../shared/source/debug_entry_policy.h"
+#include "../../shared/source/patch_context.h"
 #include "startup_signature_compat.h"
 #include "startup_dependency_policy.h"
 #include "autoload.h"
@@ -209,9 +210,9 @@ static_assert(Signatures[9].address==startupdependency::RevealEntry,"Map::Reveal
 static bool startupSignatureStrict(const Signature&s){
  unsigned char b[12];if(s.length>sizeof b||!read(s.address,b,s.length))return false;
  if(!memcmp(b,s.bytes,s.length))return true;
- // Ordinary native APIs may be owned by Ares. Follow its existing entry;
- // only actual instruction/DR consumers require the stock instruction body.
- if(nativeentry::known(s.address))return nativeEntryCallable(s.address,true);
+ // Keep the original native entry and its verified platform dispatch.
+ // Raw instruction/DR consumers do not inherit ordinary-call profiles.
+ if(nativeOrdinaryEntryKnown(s.address))return nativeOrdinaryEntryCallable(s.address,true);
  if(s.address!=startupcompat::BeaconEntry)return false;
  const uint32_t module=uint32_t(uintptr_t(GetModuleHandleW(L"MRGA1.DLL")));uint32_t target=0;
  if(!startupcompat::beaconTarget(b,s.length,module,target))return false;
@@ -227,16 +228,23 @@ static bool startupSignatureStrict(const Signature&s){
  unsigned char body[startupcompat::BeaconBytes];
  return read(target,body,sizeof body)&&startupcompat::beaconBody(body,sizeof body,module);
 }
+static bool nativeVerifiedCanBuildDependency(uint32_t address){
+ if(address!=nativeentry::CanBuild)return false;
+ for(const auto&signature:Signatures)if(signature.address==address)return startupSignatureStrict(signature);
+ return false;
+}
 // Ordinary calls have their own setting; DR consumers still use the strict
 // nativeEntryCallable() evidence and their separate Breakpoint identity.
 static bool startupSignature(const Signature&s){
  uint8_t observed[12]{};
  const bool readable=s.length<=sizeof observed&&nativeExecutableRange(s.address,s.length)&&read(s.address,observed,s.length);
- if(!readable)return debugentries::allow(debugentries::Kind::Call,s.address,false,false);
- if(!debugentries::signatureRequired(debugentries::Kind::Call,s.address))
-  return debugentries::allow(debugentries::Kind::Call,s.address,true,false);
+ if(!readable){const bool accepted=debugentries::allow(debugentries::Kind::Call,s.address,false,false);nativeOrdinaryReport(s.address,accepted,false);return accepted;}
+ if(!debugentries::signatureRequired(debugentries::Kind::Call,s.address)){
+  const bool accepted=debugentries::allow(debugentries::Kind::Call,s.address,true,false);nativeOrdinaryReport(s.address,accepted,false);return accepted;
+ }
  const bool exact=!memcmp(observed,s.bytes,s.length),compatible=exact||startupSignatureStrict(s);
- return debugentries::allow(debugentries::Kind::Call,s.address,true,compatible,exact?debugentries::Signature::Match:debugentries::Signature::Platform);
+ const bool accepted=debugentries::allow(debugentries::Kind::Call,s.address,true,compatible,exact?debugentries::Signature::Match:debugentries::Signature::Platform);
+ nativeOrdinaryReport(s.address,accepted,!exact);return accepted;
 }
 // Cold feature/command admission. Recheck failures as well as successes so
 // transient platform loading never latches a local feature off forever.
@@ -261,6 +269,7 @@ static void notifyHost(){
 }
 static uint32_t micros(LARGE_INTEGER from,LARGE_INTEGER to,LARGE_INTEGER frequency){return frequency.QuadPart>0?uint32_t((to.QuadPart-from.QuadPart)*1000000/frequency.QuadPart):0;}
 static void syncDebugPolicy(DWORD now){
+ patchcontext::verifiedCallDependency=nativeVerifiedCanBuildDependency;
  debugentries::executableProbe=nativeExecutableRange;debugentries::clockTick=now;
  if(!sh)return;
  for(unsigned attempt=0;attempt<3;++attempt){

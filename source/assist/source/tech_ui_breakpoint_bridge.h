@@ -168,6 +168,7 @@ static void publishDebugBreakpointStates(){
    if(failures[i]==techbp::Signature){hook=Hook::Unavailable;const auto*o=debugentries::observation(Kind::Breakpoint,sites[i]);reason=o&&o->signature==debugentries::Signature::Unreadable?Reason::Unreadable:i==0&&nativeStructureRejected?Reason::Structural:Reason::Signature;}
    else if((refusedGroups&group)||failures[i]==techbp::Slots){hook=Hook::Unavailable;reason=Reason::Structural;error=techbp::Slots;}
    else if(failures[i]==-7){reason=Reason::OwnerPending;}
+   else if((failures[i]==techbp::System||service.state==techbp::System)&&service.lastError==ERROR_NOT_SUPPORTED){hook=Hook::Unavailable;reason=Reason::Unsupported;error=ERROR_NOT_SUPPORTED;}
    else if(failures[i]||service.state<0){hook=Hook::Unavailable;reason=Reason::Structural;error=failures[i]?failures[i]:int(service.state);}
   }
   debugentries::installation(Kind::Breakpoint,sites[i],hook,reason,error);

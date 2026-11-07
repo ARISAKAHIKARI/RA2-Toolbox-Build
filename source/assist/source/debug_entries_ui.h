@@ -1,4 +1,5 @@
 #pragma once
+#include "native_platform_profile.h"
 // Included by the Host after pageControl() and settings persistence. The
 // renderer uses ordinary adapter-issued control tokens, never raw addresses.
 static constexpr int DebugEntryControlBase=12000;
@@ -22,10 +23,35 @@ static const char*debugHook(debugentries::Hook hook){
 static const char*debugReason(debugentries::Reason reason){
  using debugentries::Reason;switch(reason){
  case Reason::None:return "";case Reason::Signature:return "参考签名不匹配";case Reason::Unreadable:return "入口内存不可读或不可执行";
- case Reason::Foreign:return "入口存在外部修改，仍保留本工具的恢复记录";case Reason::NoRequest:return "相关功能未请求此入口";
+ case Reason::Foreign:return "入口归属不匹配或现场被其他写入修改";case Reason::NoRequest:return "相关功能未请求此入口";
  case Reason::OwnerPending:return "等待确认安装或清理本工具持有的入口";case Reason::Unsupported:return "当前实现不支持此入口";
  case Reason::Disabled:return "本版本没有启用此入口";case Reason::PathUnreachable:return "当前平台的执行路径不经过此入口";
  case Reason::Structural:return "入口指令结构或原目标不支持当前适配器";case Reason::AwaitRuntime:return "等待运行组件采样";
+ }return "";
+}
+static const char*debugPlatformFailure(int error){
+ using nativeplatform::Failure;
+ if(error>=-nativeplatform::ErrorBase||error<-nativeplatform::ErrorBase-int(Failure::Changed))return "";
+ switch(Failure(-error-nativeplatform::ErrorBase)){
+ case Failure::NotProfile:return "该调用没有已知平台适配";
+ case Failure::EntryUnreadable:return "无法读取平台入口";
+ case Failure::EntryLayout:return "平台入口未改写部分不符合已知布局";
+ case Failure::SiteJump:return "平台跳转位置或覆盖长度不符合适配";
+ case Failure::StubUnreadable:return "平台跳板不可读或不可执行";
+ case Failure::StubShape:return "加载器跳板或调用约定不符合已知结构";
+ case Failure::UnknownCallbackChain:return "同址额外回调链尚未适配";
+ case Failure::Replay:return "平台跳板搬移的原指令不匹配";
+ case Failure::Continuation:return "平台跳板续接位置不匹配";
+ case Failure::ModuleIdentity:return "平台回调不属于已加载映像";
+ case Failure::ModuleLayout:return "平台模块结构不符合适配";
+ case Failure::HookDeclaration:return "模块没有匹配的入口声明";
+ case Failure::Export:return "模块没有匹配的具名导出";
+ case Failure::Capabilities:return "加载器能力标记不满足适配";
+ case Failure::CallbackOwner:return "回调目标与声明模块或导出不一致";
+ case Failure::CallbackShape:return "平台回调本身存在尚未适配的改写";
+ case Failure::Companion:return "CanBuild 配套入口不能确认归属，暂缓调用";
+ case Failure::Changed:return "检查期间入口发生变化，等待重新检查";
+ case Failure::None:return "";
  }return "";
 }
 static const char*debugSignature(debugentries::Signature signature){
@@ -101,7 +127,9 @@ static void updateDebugEntries(bool force){
     if(fresh)state=blocked?"blocked":o.hook==debugentries::Hook::Installed||
      o.signature==debugentries::Signature::Match||o.signature==debugentries::Signature::Platform||
      (e.kind==debugentries::Kind::Call&&o.signature==debugentries::Signature::Skipped)?"ready":"unknown";
-    if(o.error)detail+="；错误码 "+std::to_string(o.error);
+    if(o.error){const char*platform=debugPlatformFailure(o.error);if(*platform)detail+=std::string("；")+platform;
+     if(e.kind==debugentries::Kind::Breakpoint&&o.error==ERROR_NOT_SUPPORTED)detail+="；硬件断点上下文或实际命中未通过确认";
+     detail+="；错误码 "+std::to_string(o.error);}
     if(!fresh){detail+="；采样已过期，当前状态待确认";if(hook!="na")hook="unknown";}
    }
    if(!applied){detail+="；新设置等待运行组件应用";state="unknown";}

@@ -28,7 +28,7 @@ def main():
     core = (source / "tech_ui_breakpoint_core.h").read_text()
     fps = (source / "single_player_fps_runtime.h").read_text()
     args.build_dir.mkdir(parents=True, exist_ok=True)
-    lease = "namespace assist { namespace techbp {\n" + core[core.index("inline constexpr unsigned SiteCount="):core.index("class Service {")] + "}}\n"
+    lease = "namespace assist { namespace techbp {\n" + core[core.index("inline constexpr unsigned SiteCount="):core.index("// These two instructions")] + "}}\n"
     (args.build_dir / "debug_breakpoint_lease.inc").write_text(lease)
     (args.build_dir / "debug_breakpoint_active.inc").write_text(block(core, "uint32_t activeTags()"))
     (args.build_dir / "debug_breakpoint_fps.inc").write_text(fps[fps.index("namespace assist { namespace singlefps {"):])

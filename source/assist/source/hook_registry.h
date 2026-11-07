@@ -195,15 +195,17 @@ template<unsigned Capacity=512> struct Registry {
   int i=find(address);if(i<0)return used<Capacity&&admissibleOriginal(address,before,n)?Transition::Install:Transition::Deny;
   const Slot&s=slots[i];if(s.conflict||s.owner!=ownerAt(address)||s.size!=n)return Transition::Deny;
   if(s.active)return !memcmp(before,s.patch,n)&&!memcmp(after,s.original,n)?Transition::Restore:Transition::Deny;
-  // A cleanly restored site may receive a fresh immutable trampoline.
-  // The manager still requires the same owning module and live lease.
-  return !memcmp(before,s.original,n)&&admissibleOriginal(address,before,n)?Transition::Install:Transition::Deny;
+  // After a confirmed restore there is no active byte ownership. A platform
+  // may legitimately change an admissible operand before our next install.
+  // Re-admit the ACTUAL new original; only an active/conflicted journal is
+  // immutable. The manager still requires the same module and live lease.
+  return admissibleOriginal(address,before,n)?Transition::Install:Transition::Deny;
  }
  void commit(uint32_t address,const uint8_t*before,const uint8_t*after,unsigned n,Transition t){
   if(t==Transition::Install){int i=find(address);
    if(i<0){i=int(used++);slots[i]={};slots[i].address=address;slots[i].owner=ownerAt(address);slots[i].size=uint8_t(n);
-    memcpy(slots[i].original,before,n);memcpy(slots[i].patch,after,n);}
-   memcpy(slots[i].patch,after,n);slots[i].active=true;
+   }
+   memcpy(slots[i].original,before,n);memcpy(slots[i].patch,after,n);slots[i].active=true;
   }else if(t==Transition::Restore){int i=find(address);if(i>=0)slots[i].active=false;}
  }
  // No reset: a foreign patch survives match changes and failed restores.

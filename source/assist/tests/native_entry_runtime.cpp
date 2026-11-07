@@ -37,7 +37,11 @@ static size_t VirtualQuery(void*p,MEMORY_BASIC_INFORMATION*out,size_t bytes){
 }
 static void*GetModuleHandleW(const wchar_t*name){++moduleQueries;return !std::wcscmp(name,L"Ares.dll")?(void*)(uintptr_t)aresModule:nullptr;}
 static uint32_t GetTickCount(){return clockMs;}
+#ifdef NATIVE_ENTRY_RUNTIME_HEADER
+#include NATIVE_ENTRY_RUNTIME_HEADER
+#else
 #include "../source/native_entry_runtime.h"
+#endif
 #include STARTUP_HELPERS
 static bool checked=false,good=false,reached=false;
 static DWORD signatureRetryAt=0;

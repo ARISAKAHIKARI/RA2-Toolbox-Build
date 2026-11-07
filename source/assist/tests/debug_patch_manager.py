@@ -1,7 +1,7 @@
 """Compile the actual GameEntryManager with controlled OS boundaries on Linux."""
-import argparse,hashlib,json,subprocess
+import argparse,hashlib,json,subprocess,shlex,shutil,re
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--out',required=True,type=Path);a=p.parse_args();out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
+p=argparse.ArgumentParser();p.add_argument('--out',required=True,type=Path);p.add_argument('--baseline');a=p.parse_args();out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
 r=Path(__file__).resolve().parents[3]
 shim=r'''#pragma once
 #include <cstdint>
@@ -34,10 +34,36 @@ def extract(name):
   end+=1
  return placement[start:end]
 (out/'risk_site.inc').write_text('\n'.join(extract(name) for name in ['riskSiteCurrent','restoreRiskSite','installRiskSite']))
-files=['source/shared/source/game_entry_manager.cpp','source/shared/source/game_entry_client.h','source/assist/source/placement_bridge.h','source/shared/source/patch_context.h','source/assist/source/hook_registry.h','source/assist/tests/debug_patch_manager.cpp','source/assist/tests/debug_patch_manager.py']
+placement=(r/'source/assist/source/control_sites_bridge.h').read_text()
+(out/'control_site.inc').write_text(extract('controlSiteReady'))
+files=['source/shared/source/game_entry_manager.cpp','source/shared/source/game_entry_client.h','source/assist/source/placement_bridge.h','source/assist/source/control_sites_bridge.h','source/shared/source/patch_context.h','source/assist/source/hook_registry.h','source/assist/tests/debug_patch_manager.cpp','source/assist/tests/debug_patch_manager.py']
 sha=lambda f:hashlib.sha256((r/f).read_bytes()).hexdigest();before={f:sha(f) for f in files};commands=[]
 for cmd in [['g++','-std=c++17','-O2','-UNDEBUG','-I',str(out),str(r/'source/assist/tests/debug_patch_manager.cpp'),'-o',str(out/'fixture')],[str(out/'fixture')]]:
  proc=subprocess.run(cmd,text=True,capture_output=True);commands.append(dict(command=cmd,exit_code=proc.returncode,stdout=proc.stdout,stderr=proc.stderr));print(proc.stdout,proc.stderr,flush=True)
  if proc.returncode:break
 result=dict(passed=all(x['exit_code']==0 for x in commands),source_sha256=before,source_hash_stable=before=={f:sha(f) for f in files},game_process_executed=False,commands=commands)
+match=re.search(r'PASS: (\d+) production manager',commands[-1]['stdout'])
+if match:result['checks']=int(match[1])
+if a.baseline and result['passed']:
+ # Keep the exact current fixture and all other production headers. Replace
+ # ONE entire production implementation with the committed pre-fix version,
+ # so the negative control has the real old bug, not a recreated model.
+ dep=subprocess.check_output(['g++','-std=c++17','-I',str(out),'-MM',str(r/'source/assist/tests/debug_patch_manager.cpp')],text=True)
+ dependencies=[]
+ for name in shlex.split(dep.replace('\\\n',' '))[1:]:
+  path=Path(name).resolve()
+  if path.is_relative_to(r):dependencies.append(path.relative_to(r))
+ controls=[]
+ for label,file in [('old_manager','source/shared/source/game_entry_manager.cpp'),('old_journal','source/assist/source/hook_registry.h')]:
+  target=out/label/'repo';target.mkdir(parents=True,exist_ok=True)
+  for rel in dependencies:
+   dst=target/rel;dst.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(r/rel,dst)
+  old=subprocess.check_output(['git','-C',str(r),'show',a.baseline+':'+file]);(target/file).write_bytes(old)
+  binary=out/label/'fixture';built=subprocess.run(['g++','-std=c++17','-O2','-UNDEBUG','-I',str(out),str(target/'source/assist/tests/debug_patch_manager.cpp'),'-o',str(binary)],text=True,capture_output=True)
+  assert built.returncode==0,built.stderr
+  oldrun=subprocess.run([str(binary)],text=True,capture_output=True)
+  detected=oldrun.returncode!=0 and 'manager check ' in oldrun.stderr
+  controls.append(dict(name=label,baseline=a.baseline,replaced=file,baseline_sha256=hashlib.sha256(old).hexdigest(),detected=detected,exit_code=oldrun.returncode,stderr=oldrun.stderr))
+  print(label,oldrun.stderr.strip(),flush=True)
+ result['negative_controls']=controls;result['passed']=result['passed'] and all(x['detected'] for x in controls)
 (out/'result.json').write_text(json.dumps(result,indent=2));raise SystemExit(not(result['passed'] and result['source_hash_stable']))

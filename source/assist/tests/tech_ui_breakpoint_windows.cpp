@@ -3,20 +3,21 @@
 #include <cstdio>
 #include <cassert>
 #include <cstring>
+// Inject only the synchronous private-call boundary; normal paths execute the
+// actual production INT3, VEH, witness and native CONTEXT continuation.
 static volatile LONG contextReads=0,failReadAt=0,skipSetOnce=0;
-static volatile LONG suspendDelayMs=0;
-static DWORD WINAPI fixtureSuspend(HANDLE thread){const LONG delay=InterlockedCompareExchange(&suspendDelayMs,0,0);if(delay)Sleep(DWORD(delay));return SuspendThread(thread);}
-static BOOL WINAPI fixtureGet(HANDLE thread,LPCONTEXT context){LONG n=InterlockedIncrement(&contextReads);if(failReadAt==n){SetLastError(ERROR_ACCESS_DENIED);return FALSE;}return GetThreadContext(thread,context);}
-static BOOL WINAPI fixtureSet(HANDLE thread,const CONTEXT*context){if(InterlockedExchange(&skipSetOnce,0))return TRUE;return SetThreadContext(thread,context);}
-#define GetThreadContext fixtureGet
-#define SetThreadContext fixtureSet
-#define SuspendThread fixtureSuspend
+#define RuntimeBreakpointCall fixtureBreakpointCall
 #define private public
 #include "../source/tech_ui_breakpoint_core.h"
 #undef private
-#undef SetThreadContext
-#undef GetThreadContext
-#undef SuspendThread
+#undef RuntimeBreakpointCall
+extern "C" int __cdecl RuntimeBreakpointCall(void*,void(__cdecl*)(void*),int(__cdecl*)(void*,void*));
+extern "C" int __cdecl fixtureBreakpointCall(void*raw,void(__cdecl*body)(void*),int(__cdecl*filter)(void*,void*)){
+ auto&s=*static_cast<assist::techbp::Service*>(raw);
+ if(s.request_.mode==assist::techbp::Service::ReadContext){const LONG n=InterlockedIncrement(&contextReads);if(failReadAt&&n>=failReadAt){SetLastError(ERROR_NOT_SUPPORTED);return 0;}}
+ if(s.request_.mode==assist::techbp::Service::WriteContext&&skipSetOnce>0){InterlockedDecrement(&skipSetOnce);s.request_.reply=s.request_.token;s.request_.valid=true;s.request_.observed=s.request_.before;s.request_.writeIssued=true;return 1;}
+ return RuntimeBreakpointCall(raw,body,filter);
+}
 #ifdef NDEBUG
 #error Hardware breakpoint verification requires -UNDEBUG.
 #endif
@@ -105,11 +106,11 @@ int main(){
  assert(service.enable(a,b,apply));wait(service);assert(service.occupied());contextReads=0;failReadAt=2;
  assert(!service.retire());wait(service);assert(service.state==assist::techbp::System&&service.occupied()&&service.resources());
  failReadAt=0;retire(service);after=debug();assert(after.Dr0==original.Dr0&&after.Dr1==original.Dr1&&after.Dr7==original.Dr7);
- // A successful API return whose readback still contains our breakpoint
- // cannot release the VEH either. A later exact restore completes cleanup.
- assert(service.enable(a,b,apply));wait(service);skipSetOnce=1;
+ // A supplied continuation whose readback still contains our breakpoint
+ // cannot release the VEH. Disable callbacks until an exact restore succeeds.
+ assert(service.enable(a,b,apply));wait(service);skipSetOnce=2;
  assert(!service.retire());wait(service);assert(service.state==assist::techbp::System&&service.occupied());
- assert(DrawCaller(&local,&allowed)==1);retire(service);assert(DrawCaller(&local,&allowed)==0);
+ assert(DrawCaller(&local,&allowed)==0);retire(service);assert(DrawCaller(&local,&allowed)==0);
  // Logical FPS tag 5 shares the same four physical slots and ownership.
  uint32_t sites[assist::techbp::SiteCount]{};sites[0]=a;sites[5]=b;
  assert(service.configure(sites,33,apply));wait(service);assert(service.state==assist::techbp::Ready&&service.activeTags()==33);

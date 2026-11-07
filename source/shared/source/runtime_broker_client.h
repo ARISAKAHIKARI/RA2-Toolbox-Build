@@ -10,27 +10,52 @@ namespace runtimebroker {
 class Client {
  std::recursive_mutex mutex_;HANDLE process_=nullptr,owner_=nullptr,mapping_=nullptr,request_=nullptr,response_=nullptr;
  Packet*packet_=nullptr;uint32_t generation_=0;bool poisoned_=false;
+ // Retain the exact CreateProcess handle and its mailbox until exit is proven.
+ // No PID lookup, mailbox reuse, or replacement helper is allowed while retiring.
+ static constexpr DWORD RetirementInterval=1000;
+ DWORD retirementAt_=0,retirementError_=ERROR_BUSY,retirementCause_=ERROR_PROCESS_ABORTED;
+ bool retirementAttempted_=false,retirementRunning_=false;
+ static DWORD waitError(DWORD wait,DWORD fallback){if(wait!=WAIT_FAILED)return fallback;const DWORD error=GetLastError();return error?error:ERROR_GEN_FAILURE;}
  void close(){
   if(packet_)UnmapViewOfFile(packet_);packet_=nullptr;
   for(HANDLE h:{process_,owner_,mapping_,request_,response_})if(h)CloseHandle(h);
   process_=owner_=mapping_=request_=response_=nullptr;poisoned_=false;
+  retirementAt_=0;retirementError_=ERROR_BUSY;retirementCause_=ERROR_PROCESS_ABORTED;
+  retirementAttempted_=retirementRunning_=false;
+ }
+ bool retire(){
+  // Reentrant close/ensure must not close a handle used by TerminateProcess.
+  if(retirementRunning_){SetLastError(ERROR_BUSY);return false;}
+  if(!process_){close();SetLastError(ERROR_SUCCESS);return true;}
+  DWORD wait=WaitForSingleObject(process_,0);
+  if(wait==WAIT_OBJECT_0){close();SetLastError(ERROR_SUCCESS);return true;}
+  if(wait!=WAIT_TIMEOUT){retirementError_=waitError(wait,ERROR_GEN_FAILURE);SetLastError(retirementError_);return false;}
+  const DWORD now=GetTickCount();
+  if(retirementAttempted_&&DWORD(now-retirementAt_)<RetirementInterval){SetLastError(retirementError_);return false;}
+  retirementRunning_=true;
+  const BOOL requested=TerminateProcess(process_,retirementCause_);
+  const DWORD error=requested?ERROR_SUCCESS:waitError(WAIT_FAILED,ERROR_GEN_FAILURE);
+  // Start the quiet interval after the system call completes, including failures.
+  retirementAt_=GetTickCount();retirementAttempted_=true;retirementRunning_=false;
+  wait=WaitForSingleObject(process_,0);
+  if(wait==WAIT_OBJECT_0){close();SetLastError(ERROR_SUCCESS);return true;}
+  retirementError_=wait==WAIT_TIMEOUT?(error?error:ERROR_BUSY):waitError(wait,ERROR_GEN_FAILURE);
+  SetLastError(retirementError_);return false;
  }
  bool abort(DWORD error){
-  poisoned_=true;
-  if(process_&&WaitForSingleObject(process_,0)==WAIT_TIMEOUT){
-   TerminateProcess(process_,error?error:ERROR_PROCESS_ABORTED);
-   if(WaitForSingleObject(process_,1000)!=WAIT_OBJECT_0){SetLastError(error);return false;}
-  }
-  close();SetLastError(error);return false;
+  if(!poisoned_){poisoned_=true;retirementCause_=error?error:ERROR_PROCESS_ABORTED;retirementError_=ERROR_BUSY;retirementAttempted_=false;}
+  retire();SetLastError(error);return false;
  }
  bool exchange(Operation operation,DWORD pid=0,DWORD thread=0,uint32_t window=0,uint32_t token=0){
-  if(!process_||poisoned_||WaitForSingleObject(process_,0)!=WAIT_TIMEOUT){SetLastError(ERROR_BROKEN_PIPE);return false;}
+  if(!process_||poisoned_){SetLastError(poisoned_?retirementError_:ERROR_BROKEN_PIPE);return false;}
+  const DWORD state=WaitForSingleObject(process_,0);
+  if(state!=WAIT_TIMEOUT){SetLastError(waitError(state,ERROR_BROKEN_PIPE));return false;}
   packet_->operation=operation;packet_->pid=pid;packet_->thread=thread;packet_->window=window;packet_->token=token;packet_->error=0;
   ResetEvent(response_);LONG sequence=InterlockedIncrement((volatile LONG*)&packet_->request);
   if(!SetEvent(request_))return abort(GetLastError());
   HANDLE waits[]={process_,response_};DWORD wait=WaitForMultipleObjects(2,waits,FALSE,2000);
   if(wait!=WAIT_OBJECT_0+1&&!(operation==Shutdown&&wait==WAIT_OBJECT_0&&InterlockedCompareExchange((volatile LONG*)&packet_->response,0,0)==sequence))
-   return abort(wait==WAIT_TIMEOUT?ERROR_TIMEOUT:ERROR_BROKEN_PIPE);
+   return abort(waitError(wait,wait==WAIT_TIMEOUT?ERROR_TIMEOUT:ERROR_BROKEN_PIPE));
   if(InterlockedCompareExchange((volatile LONG*)&packet_->response,0,0)!=sequence)return abort(ERROR_INVALID_DATA);
   if(packet_->error){SetLastError(packet_->error);return false;}return true;
  }
@@ -38,8 +63,13 @@ public:
  bool ensure(){
   std::lock_guard<std::recursive_mutex> lock(mutex_);
   if(process_){
-   if(WaitForSingleObject(process_,0)==WAIT_TIMEOUT){if(!poisoned_)return true;SetLastError(ERROR_BUSY);return false;}
-   close();
+   if(poisoned_){if(!retire())return false;}
+   else {
+    const DWORD wait=WaitForSingleObject(process_,0);
+    if(wait==WAIT_TIMEOUT)return true;
+    if(wait!=WAIT_OBJECT_0){SetLastError(waitError(wait,ERROR_GEN_FAILURE));return false;}
+    close();
+   }
   }
   wchar_t path[32768];DWORD n=GetModuleFileNameW(nullptr,path,32768);if(!n||n>=32768){SetLastError(ERROR_BAD_PATHNAME);return false;}
   while(n&&path[n-1]!=L'\\'&&path[n-1]!=L'/')--n;
@@ -67,7 +97,7 @@ public:
   process_=child.hProcess;CloseHandle(child.hThread);
   HANDLE waits[]={process_,response_};DWORD wait=WaitForMultipleObjects(2,waits,FALSE,3000);
   if(wait!=WAIT_OBJECT_0+1||InterlockedCompareExchange((volatile LONG*)&packet_->state,0,0)!=1){
-   error=packet_->error?packet_->error:wait==WAIT_TIMEOUT?ERROR_TIMEOUT:ERROR_BAD_EXE_FORMAT;return abort(error);
+   error=wait==WAIT_FAILED?waitError(wait,ERROR_GEN_FAILURE):packet_->error?packet_->error:wait==WAIT_TIMEOUT?ERROR_TIMEOUT:ERROR_BAD_EXE_FORMAT;return abort(error);
   }
   if(!++generation_)++generation_;return true;
  }
@@ -77,7 +107,12 @@ public:
   if(!packet_->token)return abort(ERROR_INVALID_DATA);token=packet_->token;generation=generation_;return true;
  }
  bool remove(DWORD pid,uint32_t token,uint32_t generation){
-  std::lock_guard<std::recursive_mutex> lock(mutex_);if(!alive(generation))return true;
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if(!process_||generation!=generation_)return true;
+  if(poisoned_)return retire();
+  const DWORD wait=WaitForSingleObject(process_,0);
+  if(wait==WAIT_OBJECT_0){close();return true;}
+  if(wait!=WAIT_TIMEOUT){SetLastError(waitError(wait,ERROR_GEN_FAILURE));return false;}
   return exchange(Remove,pid,0,0,token);
  }
  bool identity(uint32_t&version,uint32_t&bytes,const wchar_t*prefix){
@@ -91,13 +126,20 @@ public:
   bool valid=packet_->runtimeVersion==version&&packet_->runtimeBytes==bytes&&packet_->entryVersion==entryVersion&&packet_->entryBytes==entryBytes;
   if(!valid)SetLastError(ERROR_REVISION_MISMATCH);return valid;
  }
- uint32_t hookRva(){std::lock_guard<std::recursive_mutex> lock(mutex_);return packet_?packet_->hookRva:0;}
- uint32_t moduleBase(){std::lock_guard<std::recursive_mutex> lock(mutex_);return packet_?packet_->runtimeBase:0;}
+ uint32_t hookRva(){std::lock_guard<std::recursive_mutex> lock(mutex_);return !poisoned_&&packet_?packet_->hookRva:0;}
+ uint32_t moduleBase(){std::lock_guard<std::recursive_mutex> lock(mutex_);return !poisoned_&&packet_?packet_->runtimeBase:0;}
  DWORD processId(){std::lock_guard<std::recursive_mutex> lock(mutex_);return process_?GetProcessId(process_):0;}
  bool shutdown(){
   std::lock_guard<std::recursive_mutex> lock(mutex_);if(!process_)return true;
-  if(!poisoned_&&WaitForSingleObject(process_,0)==WAIT_TIMEOUT&&!exchange(Shutdown))return false;
-  if(process_&&WaitForSingleObject(process_,1000)!=WAIT_OBJECT_0)return abort(ERROR_TIMEOUT);
+  if(poisoned_)return retire();
+  DWORD wait=WaitForSingleObject(process_,0);
+  if(wait==WAIT_OBJECT_0){close();return true;}
+  if(wait!=WAIT_TIMEOUT){SetLastError(waitError(wait,ERROR_GEN_FAILURE));return false;}
+  if(!exchange(Shutdown))return false;
+  // Keep the normal one-time graceful shutdown wait. Once poisoned, every
+  // subsequent call uses retire()'s zero-wait probes and shared retry interval.
+  wait=WaitForSingleObject(process_,1000);
+  if(wait!=WAIT_OBJECT_0)return abort(waitError(wait,ERROR_TIMEOUT));
   close();return true;
  }
 };

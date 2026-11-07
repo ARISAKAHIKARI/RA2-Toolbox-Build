@@ -18,7 +18,7 @@ using DWORD=uint32_t;using LONG=int32_t;using HANDLE=void*;using LONGLONG=int64_
 struct LARGE_INTEGER {int64_t QuadPart=0;};
 struct CONTEXT {uint32_t Eip=0,Esi=0,EFlags=0;};
 static constexpr uint32_t UnsafeTech=4096,ExperimentalReveal=0x04000000;
-static constexpr int FALSE=0,TIMER_ALL_ACCESS=1,WAIT_OBJECT_0=0;
+static constexpr int FALSE=0,TIMER_ALL_ACCESS=1,WAIT_OBJECT_0=0,ERROR_NOT_SUPPORTED=50;
 static uint32_t now=1000,unreadable=0;static uint64_t qpc=1000;static int64_t timerDelay=0;
 static bool callable=true,ares=false,mutateDuringValidation=false,executable=true;
 static unsigned checks=0,nativeChecks=0,timersCreated=0;
@@ -158,6 +158,10 @@ static void statusAndTransitionChecks(){
  skip(Kind::Breakpoint,mapvisibility::Address,true);syncDebugBreakpointPolicy();check(desired&&policy.enabled&&service.activeTags()==1&&nativeCompatibleHot(),"unrelated DR override preserves a healthy Full group");
  skip(Kind::Breakpoint,0x4F7870,true);syncDebugBreakpointPolicy();check(!desired&&!policy.enabled&&service.lease.mask==owned.mask,"changed Full policy stops its permission without discarding its lease");
  check(service.lease.restore(registers)==techbp::Off&&!registers.control,"production cleanup restores the actual saved register ownership");service.confirmed=0;service.state=techbp::Off;service.retained=false;wire.flags=0;wire.controlAll=0;publishDebugBreakpointStates();check(observation(0x4F7870).hook==Hook::Inactive,"retired unrequested entry is inactive");
+ reset();check(nativeCompatible(),"valid native signature before unsupported DR capability");service.state=techbp::System;service.lastError=ERROR_NOT_SUPPORTED;failure=techbp::System;
+ publishDebugBreakpointStates();check(observation(0x4F7870).hook==Hook::Unavailable&&observation(0x4F7870).reason==Reason::Unsupported&&observation(0x4F7870).error==ERROR_NOT_SUPPORTED,"unconfirmed hardware capability is not mislabeled as machine-code structure mismatch");
+ failure=techbp::Signature;publishDebugBreakpointStates();check(observation(0x4F7870).reason==Reason::Signature,"the independent signature refusal remains higher priority than service capability failure");
+ failure=techbp::System;service.pendingJob=true;service.pendingGroups=1;publishDebugBreakpointStates();check(observation(0x4F7870).hook==Hook::Pending&&observation(0x4F7870).reason==Reason::OwnerPending,"pending owned cleanup keeps precedence over unsupported status");
 }
 int main(){
  for(auto range:{std::pair<uint32_t,uint32_t>{0x4F7000,0x2000},{0x6A9000,0x2000},{0x6D8000,0x2000},{0x50B000,0x2000},{0x633000,0x1000},{0x637000,0x2000},{0x55D000,0x1000},{0xA8B000,0x4000},{0x887000,0x1000}}){void*p=mmap(reinterpret_cast<void*>(uintptr_t(range.first)),range.second,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE,-1,0);check(p==reinterpret_cast<void*>(uintptr_t(range.first)),"private fixture region reserved");ranges.push_back(range);}

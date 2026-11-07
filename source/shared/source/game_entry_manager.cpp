@@ -115,7 +115,12 @@ static Result applyPatch(const Request&r){
  void* site=(void*)(uintptr_t)r.address;MEMORY_BASIC_INFORMATION info{};
  if(!VirtualQuery(site,&info,sizeof info)||info.State!=MEM_COMMIT||info.AllocationBase!=GetModuleHandleW(nullptr)||
     (info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||uintptr_t(site)+r.length>uintptr_t(info.BaseAddress)+info.RegionSize)return patchDenied(r.address,debugentries::Reason::Unreadable);
- if(memcmp(site,r.before,r.length)){patches.markConflict(r.address);return patchDenied(r.address,debugentries::Reason::Foreign);}
+ if(memcmp(site,r.before,r.length)){
+  // An install race before our first write creates no restoration debt.
+  // Keep it retryable; only an active owner can lose bytes to another writer.
+  if(patches.active(r.address))patches.markConflict(r.address);
+  return patchDenied(r.address,debugentries::Reason::Foreign);
+ }
  DWORD prior=0;if(!VirtualProtect(site,r.length,PAGE_EXECUTE_READWRITE,&prior))return patchDenied(r.address,debugentries::Reason::OwnerPending,Result::SystemFailure);
  memcpy(site,r.after,r.length);
  const bool flushed=FlushInstructionCache(GetCurrentProcess(),site,r.length)!=FALSE;
@@ -177,7 +182,22 @@ extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
  else if(r->operation==Operation::MarkConflict&&r->client==Client::Assist){
   int i=patches.find(r->address);
   if(i>=0&&patchModules[i]&&patchModules[i]!=r->module)result=Result::WrongOwner;
-  else{patches.markConflict(r->address);i=patches.find(r->address);if(i>=0)patchModules[i]=r->module;observePatch(r->address);result=Result::Ok;}
+  else if(i<0||!patches.slots[i].active){
+   // A missing/inactive record cannot establish that our bytes were replaced.
+   // Do not turn a caller's failed preflight into permanent false ownership.
+   observePatch(r->address);result=Result::PatchDenied;
+  }else{
+   const auto&s=patches.slots[i];uint8_t actual[16]{};
+   if(!s.size||s.size>sizeof actual||!patchRead(r->address,actual,s.size)){
+    debugentries::installation(debugentries::Kind::Patch,r->address,debugentries::Hook::Pending,debugentries::Reason::Unreadable);
+    result=Result::SystemFailure;
+   }else{
+    // Context, signature and transient read failures are not byte conflicts.
+    // The current owner's complete written span must actually differ.
+    if(memcmp(actual,s.patch,s.size))patches.markConflict(r->address);
+    observePatch(r->address);result=Result::Ok;
+   }
+  }
  }
  if(!owned&&!retain)InterlockedExchange(&busy,0);
  return int32_t(result);

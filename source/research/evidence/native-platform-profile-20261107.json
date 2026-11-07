@@ -1,0 +1,184 @@
+{
+  "schema": "ra2.native-platform-profile.release-evidence.v1",
+  "baseline_commit": "2051e5c7da24c0df27e9f7bc59978d8994525bdb",
+  "required_checks_passed": true,
+  "checks": 3186,
+  "tests": [
+    {
+      "suite": "validation",
+      "pass": true,
+      "checks": 1500,
+      "receipt_sha256": "b981aa182a7318ada45c9d42520a07c3224ea0bf3c7df87bccc0e66f5ead5c9e",
+      "stdout": "PASS: 1500 checks, 350 scenarios; production ordinary calls, PE/export/hook ownership, SyringeEx ABI/continuation, Phobos lifecycle, original call targets and raw DR separation; synthetic boundaries only\n",
+      "executable_sha256": "a1fdce921b893819b38f5e77631760d90c651a3273e8d674cd7bbd8b41d68134"
+    },
+    {
+      "suite": "existing-native",
+      "pass": true,
+      "checks": 1344,
+      "receipt_sha256": "57628a51847fad231cb226230fd283277f29aa8754bcc545806e74e370277f1f",
+      "stdout": "PASS: 1344 checks; production native admission, local signature toggles, immediate cache invalidation, DR/Call separation and unreadable/executable refusal; synthetic Win32/stub bodies only\n",
+      "executable_sha256": "fdcf7552457eacde81e4f22eb428cd1b4fac994040cdb9467d60efeb3dbe0645"
+    },
+    {
+      "suite": "existing-startup",
+      "pass": true,
+      "checks": 224,
+      "receipt_sha256": "a4e94647726ca99d5cca1afcfbe22a6c21996e01cb6d777fdf2f5d727ac2448f",
+      "stdout": "PASS: 224 production startup dependency, per-command signature, CRC ordering and owned/foreign legacy-map cleanup checks; synthetic APIs/memory only\n",
+      "executable_sha256": "fa2720ab2b8c022f3a6e9fc04f5db82d3c653963f983e5f6aa72085415731e56"
+    },
+    {
+      "suite": "existing-consumers",
+      "pass": true,
+      "checks": 118,
+      "receipt_sha256": "dffb91c562b88f7ae5e1d4bf1d2493b01cd0bd45ef7afe0d959cdc266dbdf8b7",
+      "stdout": "PASS: 118 extracted consumer checks; constructor pre-fill admission, atomic SW/selection rejection, independent overlays and sidebar; synthetic calls/memory only\n",
+      "executable_sha256": "4c64e2c171b76233a127c6130d4c379a28bb83c2a443ddc059d4fe6539ef24c6"
+    }
+  ],
+  "profile_scenarios": 350,
+  "old_negative_controls": [
+    {
+      "case": "CanBuild +7",
+      "expected_failure_observed": true,
+      "returncode": -6,
+      "successful_checks_counted": 0
+    },
+    {
+      "case": "UnselectAll entry",
+      "expected_failure_observed": true,
+      "returncode": -6,
+      "successful_checks_counted": 0
+    },
+    {
+      "case": "Select +3",
+      "expected_failure_observed": true,
+      "returncode": -6,
+      "successful_checks_counted": 0
+    }
+  ],
+  "source_sha256": {
+    "source/assist/source/bridge.cpp": "ea51fe2dbdf41523f3f6bf8b156df35294099ee83cfd4acee11aa304f60025e5",
+    "source/assist/source/command_gateway.h": "a0a5676e5bd28af90ca10e374c7dbc9d8a96098b2a6b446c42063f795bc76198",
+    "source/assist/source/command_intent.h": "71e07afdac107d8dc6a216712b25693d42db876dea40215cb89cf3f4ef0e54aa",
+    "source/assist/source/constructor_adapter.h": "a7adfb02011432ea41c4358d69d51526ccbcf36d9308ce205bb75ebb16016733",
+    "source/assist/source/direct_modes_bridge.h": "61281a6660920100c47aae80754706f9bd7bf854fd340d184248cbab8c330e8b",
+    "source/assist/source/entry_gate.h": "d2d1d5c167ba6c2b94898fa8a5aae9f7b39f9eb96b1e7655f78d6ce9d77680c8",
+    "source/assist/source/hook_registry.h": "5f117fe111efbcfdf5efcf440a45a860f92dc5152c993f91f725beb28d41021e",
+    "source/assist/source/native_entry_policy.h": "2632aeeb4b3f7d60f9a9f56d82bccd13134641b46e5c04a8dc526536cb7a6cff",
+    "source/assist/source/native_entry_runtime.h": "7bd40c556ffd57bd1cb46f405eced62bc661961096ec5391895107796b7b07ec",
+    "source/assist/source/native_platform_profile.h": "3d6dbb2bdba519e4898d568ac8dc8e515f2e827d70d710aa88524c2e2c5c5fc1",
+    "source/assist/source/order_policy.h": "d2405282e632e67c381c3026f03a7ccf3fd97426d012ed731429954073e47020",
+    "source/assist/source/placement_bridge.h": "26f20d5a712e856725e848715d88aa04ee9a27410cd7941382bc3fbe394f095b",
+    "source/assist/source/sidebar.h": "244a350441dabbc7ff382f6e41b750f5e7db190762f0cccb1a8a3f5715f3754c",
+    "source/assist/source/sidebar_policy.h": "928e16cbbfd10e9ecf907ca360b1214a7b2eeff93c24a2dddf4fae5226769b36",
+    "source/assist/source/signatures.h": "054757060d10fe067ec81880a8f584c53d6e1537c1fcc2695b267b9e68ecdd93",
+    "source/assist/source/startup_dependency_policy.h": "a32f39a7138d9af79dcd7e5bb8f9b231baf6a73a3004fa40de79f90c04d4c438",
+    "source/assist/source/startup_signature_compat.h": "6ed6d6cface3ac74111e9a80cce51b4a940c7fea231ff72493551397774a94e6",
+    "source/assist/source/superweapon_sidebar_bridge.h": "cc1dd3519c7b6920f238899bc9a321369e57e8e307553e886dbb6cb5df8d2fed",
+    "source/assist/source/technology_mode_policy.h": "33e92d7331d9458d621e368c457276969960d904454779036f91116c789499e8",
+    "source/assist/source/unit_task_arbiter.h": "86e4278cd05ba68d44f0ac9a8a292d16f5db00198e32ef865b10f85b556dd0a9",
+    "source/assist/source/vanilla_constructor_catalog.h": "78e77c217943beffa000fbfd7a749f0043fa617498a5a1c48f917a3b27276040",
+    "source/assist/tests/native_dependency_consumers.cpp": "91c603b867b753f816865cfff338a420cedda9057b8189be3f06c162f6d854d2",
+    "source/assist/tests/native_dependency_consumers.py": "78c7a3b9ba31d7d30f64b35a7b778ccc1891b6210c7503c1514334e246c11445",
+    "source/assist/tests/native_entry_runtime.cpp": "a37a58d65c3c511f6e5a457adbd8de9fcc2492663b510b1c5263e4bb5dd2679c",
+    "source/assist/tests/native_entry_runtime.py": "f600e2c9d489cf6366b0b70b1a3181b721b3da4badc734fff42127c15757aef7",
+    "source/assist/tests/native_platform_profile.cpp": "94714dbb1dd865eea34b7e631485c85abe8d3bf697ad39a9f56949000313c8e8",
+    "source/assist/tests/native_platform_profile.py": "5b78b1b9abc58af7b8b2611d55a73a64290d283bebfa6fae2133365d446e7fa3",
+    "source/assist/tests/startup_dependencies.cpp": "850d360296eea0cff73ee7a0174b48a83208aa0769fd7da94010e9113a2ef424",
+    "source/assist/tests/startup_dependencies.py": "561932483270a929b3fb551b6f7c1c121b7361ed6f3a1c5bc77973f76eb1b366",
+    "source/shared/source/debug_entry_catalog.h": "8229a6879402f082eaf41b99b79040b44499e962a8991e79ba496ccc2ac4bd21",
+    "source/shared/source/debug_entry_policy.h": "4efb61d43ce21a91d5328b1889fc6c82377da214a51e6f6b7325f6f727398f3f",
+    "source/shared/source/debug_entry_types.h": "acb4aeca8ea08b6cb3d88c9a794976d1e07734634526c270c05e938fbf658a5c",
+    "source/shared/source/direct_patch_policy.h": "0e28d97bd65e5b37e290af17a23d8c598be88de9fc1d8a30ee935e89227ef1c5"
+  },
+  "raw_DR_boundary": {
+    "baseline": "2051e5c7da24c0df27e9f7bc59978d8994525bdb",
+    "native_entry_policy_identical": true,
+    "native_entry_policy_sha256": "2632aeeb4b3f7d60f9a9f56d82bccd13134641b46e5c04a8dc526536cb7a6cff",
+    "raw_functions": {
+      "static bool nativeExecutableRange(": {
+        "identical": true,
+        "sha256": "6e6ec2ad5ae6b4fac7e6dd4fc5969f9ee91ae2e77da1263020852d36571355c9"
+      },
+      "static bool nativeAresAvailable(": {
+        "identical": true,
+        "sha256": "407ee4b5ff4b65d9e2cc4bece824cd0899f8e6ae695d5f3170e4524fa42bb624"
+      },
+      "static bool nativeEntryCallable(": {
+        "identical": true,
+        "sha256": "f757f0bd26f149ae0f0a4409270eaa7c1ae1ce15e4cc5aeab8df707b0fb20df8"
+      }
+    },
+    "bridge_CRLF_preserved": true
+  },
+  "official_wrapper_verification": {
+    "pass": true,
+    "source": {
+      "repository": "Phobos-developers/SyringeEx",
+      "commit": "7dbb780dfa7441f8d9b2ae89300540f1cf5f854e",
+      "path": "SyringeDebugger.cpp",
+      "sha": "61eca49cd15da098b978a0ca1b843c30f91d7206",
+      "display_url": "https://github.com/Phobos-developers/SyringeEx/blob/7dbb780dfa7441f8d9b2ae89300540f1cf5f854e/SyringeDebugger.cpp"
+    },
+    "git_blob_verified": true,
+    "wrapper_sha256": "a975ac39b79b5752f6fa48756e77d1b901485b2cd57ba17f8e144a7ad683ccb4",
+    "wrapper_bytes": 73,
+    "bindings": {
+      "production": {
+        "file": "source/assist/source/native_platform_profile.h",
+        "sha256": "3d6dbb2bdba519e4898d568ac8dc8e515f2e827d70d710aa88524c2e2c5c5fc1",
+        "wrapper_bytes": 73,
+        "byte_identical_to_pinned_upstream": true
+      },
+      "fixture": {
+        "file": "source/assist/tests/native_platform_profile.cpp",
+        "sha256": "94714dbb1dd865eea34b7e631485c85abe8d3bf697ad39a9f56949000313c8e8",
+        "wrapper_bytes": 73,
+        "byte_identical_to_pinned_upstream": true
+      }
+    },
+    "continuation": "site+5",
+    "write_span": "max(overridden, 5)",
+    "replay_span": "site.overridden",
+    "select_case": "6-byte original replay then site+5, whose sixth original-site byte is now NOP",
+    "companion_case": "3-byte ret12 replay, 5-byte E9 site write; replay RET exits before tail jump",
+    "known_profile_replay_has_no_relative_instructions": true,
+    "entire_callback_body_or_real_dll_verified": false
+  },
+  "windows_target_compile": {
+    "pass": true,
+    "target": "x86-windows-gnu",
+    "compiler": "Zig 0.13.0",
+    "object_sha256": "cfccc6bbb589fa44947345709da9b9b389f77d2a1480f23be0bdc718212593cb",
+    "object_bytes": 25669177,
+    "direct_profile_sources_unchanged": true,
+    "whole_frozen_build": false
+  },
+  "scope": {
+    "ordinary_call_entries": [
+      "0x004F7870",
+      "0x0048DC90",
+      "0x006FBFA0"
+    ],
+    "hook_sites": [
+      "0x004F7877",
+      "0x0048DC90",
+      "0x006FBFA3"
+    ],
+    "CanBuild_companion": "0x004F8361",
+    "keeps_original_native_call_target": true,
+    "Phobos_filename_used_as_admission": false,
+    "raw_DR_policy_changed": false,
+    "new_patch_installation_permission": false,
+    "new_protocol_layout": false,
+    "entire_callback_body_verified": false,
+    "actual_DLL_hash_verified": false,
+    "windows_game_executed": false,
+    "actual_Ares_or_Phobos_DLL_executed": false,
+    "multiplayer_executed": false
+  },
+  "evidence_kind": "production-extraction with synthetic Win32/PE/call boundaries; official primary-source structure comparison; Windows-target object compilation",
+  "final_same_commit_release_build": "separate root gate"
+}

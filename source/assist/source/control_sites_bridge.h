@@ -27,6 +27,15 @@ static void controlSitesSuspend(){
   const bool parameters=restoreControlParameters(),code=restoreControlSites();if(sh)sh->playerControlStatus=parameters&&code?0:-2;
  }
 }
+// Context failures disable this group without poisoning an intact owned site.
+// Only a successful read of different installed bytes proves a byte conflict.
+static bool controlSiteReady(const RiskSite&s){
+ uint8_t current[16]{};const bool active=codeHookRegistry.active(s.address);
+ if(!s.size||s.size>sizeof current||!read(s.address,current,s.size))return false;
+ if(active&&memcmp(current,s.after,s.size)){codeHookRegistry.markConflict(s.address);return false;}
+ if(codeHookRegistry.conflict(s.address)||!patchcontext::compatible(s.address,read))return false;
+ return active||hookregistry::admissibleOriginal(s.address,current,s.size);
+}
 static void controlSitesTick(bool enabled){
  const uint32_t requested=sh&&controlmode::valid(sh->controlAll)?sh->controlAll:controlmode::Off;
  enabled=enabled&&playertest::Available&&requested!=controlmode::Off&&!controlHouseFlagsPending();
@@ -81,11 +90,7 @@ static void controlSitesTick(bool enabled){
  if(ok&&controlmode::master(requested)&&!mastercontrol::compatible(read))ok=false;
  // Whole-group preflight prevents knowingly installing half a group. Both
  // owner calls are installed before the common predicate in either mode.
- if(ok)for(auto&s:controlSites){uint8_t current[5]{};const bool active=codeHookRegistry.active(s.address);
-  if(codeHookRegistry.conflict(s.address)||!patchcontext::compatible(s.address,read)||!read(s.address,current,5)||(active?memcmp(current,s.after,5):!hookregistry::admissibleOriginal(s.address,current,5))){
-   if(active)codeHookRegistry.markConflict(s.address);ok=false;break;
-  }
- }
+ if(ok)for(const auto&s:controlSites)if(!controlSiteReady(s)){ok=false;break;}
  if(ok)for(auto&s:controlSites)if(!installRiskSite(s)){ok=false;break;}
  if(!ok){restoreControlSites();sh->playerControlStatus=-2;return;}
  riskControlActive=controlmode::native(requested);sh->playerControlStatus=int(requested);
