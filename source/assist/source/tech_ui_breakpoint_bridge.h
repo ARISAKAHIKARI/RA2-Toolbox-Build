@@ -331,6 +331,25 @@ static int techEnhancementCatalogueLevel(uint32_t type,int level){
  uint32_t table=0;char id[24]{};if(!read(type,&table,4)||!read(type+0x24,id,sizeof id)||!memchr(id,0,sizeof id))return level;
  for(const auto&r:techenhancement::Rules)if(table==r.vtable&&techenhancement::sameID(id,r.id)&&techenhancement::eligible(r,level))return 1;return level;
 }
+static bool techEnhancementCatalogueIncludesInsignificant(uint32_t type,uint32_t array,int index,int level){
+ // PRES and BUS are deliberate enhancement targets even when their rules
+ // mark them Insignificant. Admit only the active, identity-checked target
+ // to our catalogue; never change that game flag or bypass native production.
+ if(!sh||!sh->techEnhance||sh->stop||fault||type<0x10000||index<0)return false;
+ uint32_t table=0;char id[24]{};
+ if(!read(type,&table,4)||!read(type+0x24,id,sizeof id)||!memchr(id,0,sizeof id))return false;
+ for(unsigned i=0;i<techenhancement::Count;++i){const auto&rule=techenhancement::Rules[i];
+  if(rule.array!=array||rule.vtable!=table||!techenhancement::sameID(rule.id,id))continue;
+  if(techparameters::enhancedRequested()&&techenhancement::eligible(rule,level)){
+   techenhancement::Record candidate{};candidate.pointer=type;candidate.index=index;
+   return read(array+4,&candidate.items,4)&&techenhancement::identity(rule,candidate,read);
+  }
+  const auto&record=enhancedTypes[i];
+  return level==1&&record.owned&&!record.conflict&&record.pointer==type&&record.index==index&&
+   enhancementWorld()==techenhancement::IdentityState::Current&&techenhancement::identity(rule,record,read);
+ }
+ return false;
+}
 static bool techEnhancementProductionPending(uint32_t house){
  // An unavailable native eligibility call cannot prove that old permission
  // is no longer needed by the factory queue. Keep that local handoff pending.

@@ -139,7 +139,7 @@ static void resetPointerInput();static void restoreClickHooks();static void rese
 static void clearNativeOrders(bool retireHooks=true);static void restoreCSHook();static void restoreTech();static void clearFlashes();static void resetProduction();
 static bool techLegacyEnhancementOwns(uint32_t),techLegacyEnhancementProductionPending(uint32_t);static void deferTechEnhancementParameters();
 static bool restoreTechEnhancement();static bool restoreTechParameters(),techParametersRetired();static void maintainTechParameters();
-static bool techDataPending();static int techEnhancementCatalogueLevel(uint32_t,int);
+static bool techDataPending();static int techEnhancementCatalogueLevel(uint32_t,int);static bool techEnhancementCatalogueIncludesInsignificant(uint32_t,uint32_t,int,int);
 static bool restoreControlParameters(),controlParametersRetired();static int requestControlParameters();
 static bool restoreTechEnhanceParameters(),techEnhanceParametersRetired();static void techEnhanceParametersTick(uint32_t,DWORD);
 static bool featureRestorationComplete();
@@ -789,7 +789,9 @@ static int findIdle(uint32_t house,int mode){Vec v=vec(0xA8EC78);uint32_t next=0
 }
 static void scanTypes(){catalogueDirty=true;
  uint32_t oldPointers[MaxTypes];uint8_t oldAllowed[MaxTypes];int oldCount=snap.typeCount;memcpy(oldPointers,typePointers,sizeof oldPointers);memcpy(oldAllowed,techAllowed,sizeof oldAllowed);memset(techAllowed,0,sizeof techAllowed);snap.typeCount=0;const uint32_t arrays[]={0xA8B218,0xA8E348,0xA83CE0,0xA83C68};const int kinds[]={3,16,40,7};
- for(int k=0;k<4;++k){Vec v=vec(arrays[k],4096);for(int i=0;i<v.count&&snap.typeCount<MaxTypes;++i){uint32_t t=item(v,i);if(!t||!validType(techEnhancementCatalogueLevel(t,get<int>(t+0x634)),get<bool>(t+0x232),get<bool>(t+0xD54),get<uint32_t>(t+0x6CC)))continue;
+ for(int k=0;k<4;++k){Vec v=vec(arrays[k],4096);for(int i=0;i<v.count&&snap.typeCount<MaxTypes;++i){uint32_t t=item(v,i);if(!t)continue;const int level=get<int>(t+0x634);
+ const bool insignificant=get<bool>(t+0x232)&&!techEnhancementCatalogueIncludesInsignificant(t,arrays[k],i,level);
+ if(!validType(techEnhancementCatalogueLevel(t,level),insignificant,get<bool>(t+0xD54),get<uint32_t>(t+0x6CC)))continue;
  for(int prior=0;prior<oldCount;++prior)if(oldPointers[prior]==t){techAllowed[snap.typeCount]=oldAllowed[prior];break;}
  typePointers[snap.typeCount]=t;auto&d=snap.types[snap.typeCount++];memset(&d,0,sizeof d);memcpy(d.id,(void*)(t+0x24),23);name(t,d.name,40);d.kind=kinds[k];d.index=i;d.naval=get<bool>(t+0xCCE);d.cost=get<int>(t+0x610);
  }}

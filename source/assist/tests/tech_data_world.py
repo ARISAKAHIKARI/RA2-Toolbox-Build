@@ -26,21 +26,26 @@ struct Tracker {uint32_t epoch=1;} sessionTracker;
 static uint32_t lastHouse=0x10000,typePointers[MaxTypes]{0x20000,0x22000};static unsigned techImplementation=3;
 static bool techAllowed[MaxTypes]{true,true},enhancementChangedCatalogue=false,catalogueDirty=false,catalogueReady=true;
 static uint32_t catalogueAt=0;static bool techEnhanceParametersRetired(){return true;} // independent HW component off in this rule-journal fixture
-static bool enhancementOwned=false,enhancementFail=false;static unsigned enhancementRestores=0;
+static bool enhancementOwned=false,enhancementSecondOwned=false,enhancementFail=false;static unsigned enhancementRestores=0;
 struct Memory {std::map<uint32_t,uint8_t> bytes;uint32_t unreadable=0,failWrite=0;bool failAfter=false;unsigned writes=0;
  template<class T>void seed(uint32_t at,T value){auto*p=(const uint8_t*)&value;for(unsigned i=0;i<sizeof value;++i)bytes[at+i]=p[i];}
  bool read(uint32_t at,void*out,size_t n){if(unreadable>=at&&unreadable<uint64_t(at)+n)return false;auto*p=(uint8_t*)out;for(unsigned i=0;i<n;++i){auto it=bytes.find(at+i);if(it==bytes.end())return false;p[i]=it->second;}return true;}
 } memory;
 static bool read(uint32_t a,void*p,size_t n){return memory.read(a,p,n);}
 static bool techDataWrite(uint32_t a,const void*p,size_t n){++memory.writes;if(a==memory.failWrite&&!memory.failAfter)return false;auto*b=(const uint8_t*)p;for(unsigned i=0;i<n;++i)memory.bytes[a+i]=b[i];return a!=memory.failWrite;}
-static bool restoreTechEnhancement(){++enhancementRestores;if(enhancementFail)return false;if(enhancementOwned){int original=-1;if(!techDataWrite(0x20634,&original,4))return false;enhancementOwned=false;catalogueDirty=true;}return true;}
+// Legacy restoration remains a bounded model; the rule-data bridge and its
+// per-field journal below are extracted production code.
+static bool restoreTechEnhancement(){++enhancementRestores;if(enhancementFail)return false;
+ for(unsigned i=0;i<2;++i){bool&owned=i?enhancementSecondOwned:enhancementOwned;if(owned){const int original=-1;if(!techDataWrite(typePointers[i]+0x634,&original,4))return false;owned=false;catalogueDirty=true;}}
+ return true;
+}
 GLOBALS
 FUNCTIONS
 static int level(int n=0){int value=0;read(typePointers[n]+0x634,&value,4);return value;}
 static void reset(){
  memory={};options={};snap={};snap.types[1].index=1;sessionTracker={};lastHouse=0x10000;techImplementation=3;
  techDataScenario=techDataHouse=techDataEpoch=0;techDataSession=techDataFrame=-1;techDataRestoring=false;for(auto&r:techDataRecords)r={};
- enhancementOwned=enhancementFail=false;enhancementRestores=0;enhancementChangedCatalogue=catalogueDirty=false;catalogueReady=true;catalogueAt=0;techAllowed[0]=techAllowed[1]=true;
+ enhancementOwned=enhancementSecondOwned=enhancementFail=false;enhancementRestores=0;enhancementChangedCatalogue=catalogueDirty=false;catalogueReady=true;catalogueAt=0;techAllowed[0]=techAllowed[1]=true;
  memory.seed<uint32_t>(0xA8B230,0x90000);memory.seed<int>(0xA8B238,3);memory.seed<int>(0xA8ED84,100);
  memory.seed<uint32_t>(0xA83CE4,0x30000);memory.seed<int>(0xA83CF0,2);
  for(int i=0;i<2;++i){uint32_t t=typePointers[i];memory.seed<uint32_t>(0x30000+i*4,t);memory.seed<uint32_t>(t,techdata::vtable(40));memory.seed<uint32_t>(t+0x10,10+i);char id[25]="TYPE";id[4]=char('0'+i);for(unsigned k=0;k<25;++k)memory.seed<uint8_t>(t+0x24+k,id[k]);
@@ -72,6 +77,40 @@ int main(){unsigned checks=0,failed=0;auto check=[&](bool ok,const char*s){++che
  reset();applyTechData(lastHouse);memory.failWrite=0x20634;memory.failAfter=true;techImplementation=0;
  check(techDataBlocksEnhancement()&&techDataPending()&&level()==8,"post-restore verification failure retains ownership");memory.failWrite=0;writes=memory.writes;
  check(!techDataBlocksEnhancement()&&!techDataPending()&&memory.writes==writes,"already restored retry is idempotent");
+ // Targeted mode-3 handoff: the previous catalogue explicitly selected PRES
+ // and BUS while legacy enhancement owned their level-1 writes. Model the
+ // later catalogue exclusion only; this fixture does not execute native UI,
+ // CanBuild, game production, or the catalogue scanner.
+ const unsigned beforeCivilianHandoff=checks;
+ reset();techImplementation=0;snap.types[0].kind=16;snap.types[0].index=0;snap.types[1].index=0;
+ memory.seed<uint32_t>(0xA8E348+4,0x32000);memory.seed<int>(0xA8E348+16,1);memory.seed<uint32_t>(0x32000,typePointers[0]);
+ memory.seed<int>(0xA83CE0+16,1);memory.seed<uint32_t>(0x30000,typePointers[1]);
+ const char*ids[]={"PRES","BUS"};uint32_t expectedOriginal[2][techdata::FieldCount]{};
+ for(unsigned i=0;i<2;++i){const uint32_t t=typePointers[i];memory.seed<uint32_t>(t,techdata::vtable(snap.types[i].kind));
+  char id[25]{};std::strcpy(id,ids[i]);for(unsigned n=0;n<sizeof id;++n)memory.seed<uint8_t>(t+0x24+n,id[n]);
+  memory.seed<int>(t+0x634,1);memory.seed<uint8_t>(t+0x232,1);
+  for(unsigned n=0;n<techdata::FieldCount;++n)read(t+techdata::Fields[n].offset,&expectedOriginal[i][n],techdata::Fields[n].size);
+  expectedOriginal[i][0]=uint32_t(-1);
+ }
+ enhancementOwned=enhancementSecondOwned=true;
+ check(snap.typeCount==2&&techAllowed[0]&&techAllowed[1]&&level()==1&&level(1)==1,"civilian old catalogue explicitly contains selected legacy-owned PRES and BUS");
+ techImplementation=3;check(techDataBlocksEnhancement()&&options.techEnhance,"mode 3 retains existing mutual exclusion and enhancement preference");
+ check(applyTechData(lastHouse)&&level()==0&&level(1)==0&&techDataOwns(typePointers[0])&&techDataOwns(typePointers[1]),"mode 3 can temporarily capture both previously catalogued civilian types");
+ check(!enhancementOwned&&!enhancementSecondOwned&&techDataRecords[0].original[0]==uint32_t(-1)&&techDataRecords[1].original[0]==uint32_t(-1),"civilian data journals capture minus-one after modeled legacy ownership restoration");
+ uint8_t insignificant[2]{};for(unsigned i=0;i<2;++i)read(typePointers[i]+0x232,&insignificant[i],1);
+ check(insignificant[0]==1&&insignificant[1]==1,"applying data fields preserves both civilian Insignificant bytes");
+ // The production catalogue test separately verifies this exclusion. Here
+ // supplying its empty result exercises the actual data-journal cleanup.
+ snap.typeCount=0;techAllowed[0]=techAllowed[1]=false;
+ check(applyTechData(lastHouse)&&level()==-1&&level(1)==-1&&!techDataPending()&&!techDataRestoring,"removal from the next catalogue restores both civilian levels without pending ownership");
+ bool restoredFields=true,retainedRecord=false;
+ for(unsigned i=0;i<2;++i){for(unsigned n=0;n<techdata::FieldCount;++n){uint32_t current=0;const auto&f=techdata::Fields[n];restoredFields=read(typePointers[i]+f.offset,&current,f.size)&&current==expectedOriginal[i][n]&&restoredFields;}
+  read(typePointers[i]+0x232,&insignificant[i],1);
+ }
+ for(const auto&r:techDataRecords)retainedRecord|=r.captured||r.owned||r.conflict;
+ check(restoredFields&&!retainedRecord&&!techDataOwns(typePointers[0])&&!techDataOwns(typePointers[1]),"all civilian data fields and journal records retire after catalogue removal");
+ check(insignificant[0]==1&&insignificant[1]==1&&options.techEnhance,"civilian Insignificant bytes and the saved enhancement preference remain unchanged");
+ std::printf("civilian mode-3 handoff checks=%u; modeled legacy restore/catalogue removal, no native sidebar or production\n",checks-beforeCivilianHandoff);
  std::printf("technology data-world production checks=%u failures=%u; synthetic reads/writes, no game/netplay\n",checks,failed);return failed?1:0;
 }
 '''.replace('using namespace assist;','#include "tech_data_policy.h"\nusing namespace assist;').replace('GLOBALS',globals).replace('FUNCTIONS',funcs)

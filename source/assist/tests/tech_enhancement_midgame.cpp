@@ -40,6 +40,12 @@ static uint8_t techAllowed[MaxTypes]{};
 static sessionepoch::Tracker sessionTracker;
 static int checks=0,additions=0,probes=0,factoryQueries=0,tabQueries=0,rechecks=0,levelWrites=0;
 static bool hardwareReady=true,compatible=true,bodyBypassed=false,worldAvailable=true,factoryAvailable=true,ruleAllowed=true;
+// Named-rule fixtures use synthetic owner groups, not game country bit indices.
+// The native predicate itself remains modeled; these gates must stay effective
+// after a civilian is admitted to the tool's catalogue.
+static constexpr uint32_t ModelAlliedOwners=1,ModelSovietOwners=2,ModelYuriOwners=4;
+static bool civilianRules=false,modelPrerequisiteOwned=true;
+static uint32_t modelFactoryOwners=ModelSovietOwners;
 static uint32_t unreadable=0,blockedDependency=0;
 static bool nativeDependencyReady(uint32_t address){return address!=blockedDependency;}
 template<class...A>static bool nativeDependenciesReady(A...addresses){return (nativeDependencyReady(uint32_t(addresses))&&...);}
@@ -55,11 +61,12 @@ static uint32_t item(Vec v,int n){return get<uint32_t>(v.items+n*4);}
 static void name(uint32_t p,uint16_t*out,int n){for(int i=0;i<n;++i){out[i]=get<uint8_t>(p+0x24+i);if(!out[i])break;}}
 static int kind(uint32_t){return 2;}
 static uint32_t typeOf(uint32_t p,int){return get<uint32_t>(p+0x20);}
-static bool nativeCanBuild(uint32_t type,bool limitOnly){return ruleAllowed&&(limitOnly||get<int>(type+0x634)>=0);}
+static bool nativeNonLevelRules(uint32_t type){return ruleAllowed&&(!civilianRules||get<int>(type+0x648)==0||modelPrerequisiteOwned);}
+static bool nativeCanBuild(uint32_t type,bool limitOnly){return ruleAllowed&&(limitOnly||(nativeNonLevelRules(type)&&get<int>(type+0x634)>=0));}
 template<class R,class...A>static R call(uint32_t address,uint32_t self,A...args){
  assert(address!=blockedDependency);
  auto a=std::make_tuple(args...);
- if constexpr(sizeof...(A)==4){assert(address==0x5F7900);++factoryQueries;assert(std::get<0>(a)&&!std::get<1>(a)&&!std::get<2>(a));return R(factoryAvailable?Factory:0);}
+ if constexpr(sizeof...(A)==4){assert(address==0x5F7900);++factoryQueries;assert(std::get<0>(a)&&!std::get<1>(a)&&!std::get<2>(a));return R(factoryAvailable&&(!civilianRules||(get<uint32_t>(self+0x6CC)&modelFactoryOwners))?Factory:0);}
  else if constexpr(sizeof...(A)==3){assert(address==0x4F7870&&self==House);return R(nativeCanBuild(uint32_t(uintptr_t(std::get<0>(a))),std::get<1>(a)));}
  else if constexpr(sizeof...(A)==2){
   assert(address==0x6A6300&&self==Sidebar);int k=int(std::get<0>(a)),index=int(std::get<1>(a));int tab=k==40?2:k==16?3:0;
@@ -91,7 +98,7 @@ static bool restoreTechEnhanceParameters(){techparameters::policy.enhanced=0;tec
 static bool techDataBlocksEnhancement(){return (sh->techEnhance&&sh->techEnhanceImplementation==1)||!techEnhanceParametersRetired();}
 static bool techDataPending(){return false;}
 static bool nativeTextTechRetired(){return true;}
-static int GuardedTechEnhancementProbe(unsigned house,unsigned type){assert(house==House&&blockedDependency!=0x4F7870);++probes;return techparameters::policy.enhanced&&ruleAllowed?1:0;}
+static int GuardedTechEnhancementProbe(unsigned house,unsigned type){assert(house==House&&blockedDependency!=0x4F7870);++probes;return techparameters::policy.enhanced&&nativeNonLevelRules(type)?1:0;}
 static void deferTechEnhancementParameters();
 static int typeSlot(uint32_t);
 static int canonicalKind(int);
@@ -114,6 +121,26 @@ static void setup(){
 static std::vector<uint8_t> productionBytes(){std::vector<uint8_t> v(0x80+0x40+4);std::memcpy(v.data(),reinterpret_cast<void*>(uintptr_t(Factory)),0x80);std::memcpy(v.data()+0x80,reinterpret_cast<void*>(uintptr_t(Product)),0x40);std::memcpy(v.data()+0xC0,reinterpret_cast<void*>(uintptr_t(Items+0x100)),4);return v;}
 static void exact(){options.techEnhance=true;options.techEnhanceImplementation=1;techEnhancementTick(1200);techEnhanceParametersTick(House,1200);}
 static void ordinaryCataloguePoll(){external::catalogue::Stamp stamp;assert(external::catalogue::capture(read,stamp));if(!catalogueReady||catalogueHash!=stamp.hash)scanTypes();catalogueHash=stamp.hash;catalogueReady=true;catalogueDirty=false;}
+static void civilian(bool president){
+ // Public original-rule candidates agree on these distinctions: PRES and BUS
+ // are Insignificant; PRES has all owners and no prerequisite, while BUS has
+ // Soviet/Yuri owners and NAWEAP. This is not a snapshot of the user's MOD.
+ civilianRules=true;put<uint8_t>(Bus+0x232,1);
+ put<uint32_t>(Bus+0x6CC,president?ModelAlliedOwners|ModelSovietOwners|ModelYuriOwners:ModelSovietOwners|ModelYuriOwners);
+ if(president){
+  put<uint32_t>(Bus,0x7EB610);std::memcpy(reinterpret_cast<void*>(uintptr_t(Bus+0x24)),"PRES",5);put<uint32_t>(0x7EB610+0x94,0x5F7900);
+  put<uint32_t>(Items,Normal);put<Vec>(0xA83CE0,{0,Items,1,0,1,1});
+  put<uint32_t>(Items+0x300,Bus);put<Vec>(0xA8E348,{0,Items+0x300,1,0,1,1});
+ }else{
+  // Index 0 represents the synthetic NAWEAP prerequisite, not its game index.
+  put<uint32_t>(Items+0x400,0);put<Vec>(Bus+0x638,{0,Items+0x400,1,0,1,1});
+ }
+}
+static std::vector<uint8_t> civilianRuleBytes(){
+ std::vector<uint8_t> bytes(0x2000);std::memcpy(bytes.data(),reinterpret_cast<void*>(uintptr_t(Bus)),bytes.size());
+ // Only the existing owned TechLevel write is allowed in legacy mode.
+ std::memset(bytes.data()+0x634,0,4);return bytes;
+}
 int main(int argc,char**argv){assert(argc==2);setup();const std::string test=argv[1];const auto queue=productionBytes();
  if(test=="legacy_midgame_refresh"){
   options.techEnhance=true;techEnhancementTick(1200);
@@ -153,13 +180,62 @@ int main(int argc,char**argv){assert(argc==2);setup();const std::string test=arg
   exact();check(typeSlot(Bus)>=0&&additions==1,"first midgame activation succeeds");
   options.techEnhance=false;techEnhanceParametersTick(House,1800);check(typeSlot(Bus)<0&&!techparameters::policy.enhanced,"off edge removes only effective catalogue permission");
   put<int>(Tabs+2*3988+84,0);options.techEnhance=true;techEnhanceParametersTick(House,2400);check(typeSlot(Bus)>=0&&additions==2,"later reenable repopulates a natively pruned cameo");
+ }else if(test=="legacy_civilian_bus"||test=="legacy_civilian_pres"){
+  const bool president=test=="legacy_civilian_pres";civilian(president);const auto rules=civilianRuleBytes();
+  options.techEnhance=true;techEnhancementTick(1200);
+  check(get<int>(Bus+0x634)==1&&options.techEnhanceStatus==1,"legacy civilian level and status are applied");
+  check(typeSlot(Bus)>=0,president?"legacy enhanced PRES with Insignificant enters the catalogue":"legacy enhanced BUS with Insignificant enters the catalogue");
+  check(rechecks==1&&!probes&&!factoryQueries&&!additions,"legacy civilian still requests native enumeration without direct cameo insertion");
+  check(civilianRuleBytes()==rules,"legacy civilian admission changes no other rule byte");
+  options.techEnhance=false;techEnhancementTick(1800);scanTypes();
+  check(get<int>(Bus+0x634)==-1&&typeSlot(Bus)<0,"legacy civilian off restores its level and removes catalogue admission");
+  check(civilianRuleBytes()==rules,"legacy civilian restoration leaves Insignificant Owner and prerequisite intact");
+ }else if(test=="exact_civilian_bus"||test=="exact_civilian_pres"){
+  const bool president=test=="exact_civilian_pres";civilian(president);const auto rules=civilianRuleBytes();exact();
+  check(techparameters::policy.enhanced&&techparameters::policy.enhancement[president?3:10].type.pointer==Bus,"exact policy captures the named civilian identity");
+  check(typeSlot(Bus)>=0,president?"exact enhanced PRES with Insignificant enters the catalogue":"exact enhanced BUS with Insignificant enters the catalogue");
+  check(probes==1&&factoryQueries==1&&additions==1,"admitted civilian still passes the native probe and factory before cameo insertion");
+  check(get<int>(Bus+0x634)==-1&&civilianRuleBytes()==rules,"exact civilian admission keeps every original rule byte");
+  options.techEnhance=false;techEnhanceParametersTick(House,1800);
+  check(typeSlot(Bus)<0&&!techparameters::policy.enhanced,"exact civilian off removes its temporary catalogue permission");
+  check(get<int>(Bus+0x634)==-1&&civilianRuleBytes()==rules,"exact civilian off retains every original rule byte");
+ }else if(test=="exact_civilian_inactive"||test=="exact_civilian_not_whitelisted"||test=="exact_civilian_wrong_vtable"||test=="exact_civilian_wrong_array"||test=="exact_civilian_unreadable"||test=="exact_civilian_ineligible_level"){
+  civilian(false);const bool inactive=test=="exact_civilian_inactive";
+  if(inactive||test=="exact_civilian_not_whitelisted"||test=="exact_civilian_ineligible_level")put<int>(Bus+0x634,1);
+  if(test=="exact_civilian_not_whitelisted")std::memcpy(reinterpret_cast<void*>(uintptr_t(Bus+0x24)),"TAXI",5);
+  if(test=="exact_civilian_wrong_vtable")put<uint32_t>(Bus,0x7EB610);
+  if(test=="exact_civilian_wrong_array"){
+   put<uint32_t>(Items,Normal);put<Vec>(0xA83CE0,{0,Items,1,0,1,1});
+   put<uint32_t>(Items+0x300,Bus);put<Vec>(0xA8E348,{0,Items+0x300,1,0,1,1});
+  }
+  if(test=="exact_civilian_unreadable")unreadable=Bus+0x24;
+  if(inactive)scanTypes();else exact();
+  check(typeSlot(Bus)<0&&!probes&&!factoryQueries&&!additions,"civilian exception requires active eligible whitelist identity and readable membership");
+  check(get<uint8_t>(Bus+0x232)==1,"refused civilian retains its Insignificant flag");
+ }else if(test=="legacy_civilian_unowned"||test=="legacy_civilian_conflict"||test=="legacy_civilian_wrong_index"||test=="legacy_civilian_world_changed"||test=="legacy_civilian_world_unreadable"||test=="legacy_civilian_stopped"||test=="legacy_civilian_fault"){
+  civilian(false);options.techEnhance=true;
+  if(test=="legacy_civilian_unowned")put<int>(Bus+0x634,1);else techEnhancementTick(1200);
+  if(test=="legacy_civilian_conflict")enhancedTypes[10].conflict=true;
+  if(test=="legacy_civilian_wrong_index")enhancedTypes[10].index=1;
+  if(test=="legacy_civilian_world_changed")put<uint32_t>(0xA8B230,0x10061000);
+  if(test=="legacy_civilian_world_unreadable")unreadable=0xA8B230;
+  if(test=="legacy_civilian_stopped")options.stop=true;
+  if(test=="legacy_civilian_fault")fault=true;
+  scanTypes();check(typeSlot(Bus)<0,"legacy civilian exception requires current conflict-free owned identity and an active request");
+  check(get<uint8_t>(Bus+0x232)==1,"legacy admission refusal never changes Insignificant");
+ }else if(test=="exact_civilian_missing_prerequisite"||test=="exact_civilian_factory_owner_mismatch"){
+  civilian(false);const auto rules=civilianRuleBytes();
+  if(test=="exact_civilian_missing_prerequisite")modelPrerequisiteOwned=false;else modelFactoryOwners=ModelAlliedOwners;
+  exact();check(typeSlot(Bus)>=0&&probes==1&&!additions,"civilian catalogue admission does not bypass prerequisite or factory owner gates");
+  check(factoryQueries==(modelPrerequisiteOwned?1:0),"prerequisite rejection precedes the factory query");
+  check(civilianRuleBytes()==rules&&get<int>(Bus+0x634)==-1,"rejected production retains the named civilian rules");
  }else if(test=="exact_native_rule_rejected"||test=="exact_factory_missing"){
+  civilian(false);
   ruleAllowed=test!="exact_native_rule_rejected";factoryAvailable=test!="exact_factory_missing";exact();
   check(typeSlot(Bus)>=0&&probes==1&&!additions,"catalogue repair never bypasses the existing native rule/factory gate");
- }else if(test=="exact_filter_insignificant"||test=="exact_filter_spawned"||test=="exact_filter_no_owner"){
-  if(test=="exact_filter_insignificant")put<uint8_t>(Bus+0x232,1);
-  else if(test=="exact_filter_spawned")put<uint8_t>(Bus+0xD54,1);else put<uint32_t>(Bus+0x6CC,0);
-  exact();check(typeSlot(Bus)<0&&!probes&&!additions,"effective level preserves insignificant/spawned/owner catalogue filters");
+ }else if(test=="exact_filter_spawned"||test=="exact_filter_no_owner"){
+  civilian(false);if(test=="exact_filter_spawned")put<uint8_t>(Bus+0xD54,1);else put<uint32_t>(Bus+0x6CC,0);
+  exact();check(typeSlot(Bus)<0&&!probes&&!additions,"civilian exception preserves spawned and owner catalogue filters");
  }else if(test=="exact_full_capacity"){
   put<int>(Tabs+2*3988+84,75);for(int i=0;i<75;++i){put<int>(Tabs+2*3988+88+i*52,i+100);put<int>(Tabs+2*3988+92+i*52,40);}
   exact();check(probes==1&&factoryQueries==1&&!additions,"native strip capacity stays at seventy-five");
