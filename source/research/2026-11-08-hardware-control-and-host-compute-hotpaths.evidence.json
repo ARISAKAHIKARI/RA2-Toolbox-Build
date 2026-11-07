@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "note": "2026-11-08-hardware-control-and-host-compute-hotpaths.md",
+  "baseline": {
+    "git_commit": "bf3fbe88faa96513649f2998aa0ab6e71935f4a8",
+    "product_version": "1.0.43",
+    "changed_existing_file_originals": [
+      {
+        "path": "source/assist/source/control_parameter_policy.h",
+        "git_blob": "9f5bcf6771f08b17b1dee2802e93b0237b2c2d83",
+        "sha256": "b07de775114410f622c3917892aa249d6d94ac509da86cc09cb0bd7253b44ca9"
+      },
+      {
+        "path": "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "git_blob": "071f443fd3b5922d00802e9cc7a028054f50d51e",
+        "sha256": "8595ee5786eb28622f53f7842a2d3eb9b3a7f525d41c24b777b7a32e4e3f4e66"
+      },
+      {
+        "path": "source/shared/source/debug_entry_policy.h",
+        "git_blob": "97a1729456d3161739fb71f787fac1210710ee15",
+        "sha256": "4efb61d43ce21a91d5328b1889fc6c82377da214a51e6f6b7325f6f727398f3f"
+      },
+      {
+        "path": "source/assist/tests/debug_entry_policy.cpp",
+        "git_blob": "09689b1f071a9e0640063b24ae989a02cbfe820b",
+        "sha256": "9fb06b921f53da4afa5850f31795b1d3322524a14effc87599c6a9ca6a304611"
+      },
+      {
+        "path": "source/assist/tests/debug_breakpoint_policy.cpp",
+        "git_blob": "4853413eb07af3b40df243e845bbd1c7553478ca",
+        "sha256": "330a3a4f4de25cafa704008f50f61377c88e315a21b0e933e4ce8c05d1bef3e4"
+      },
+      {
+        "path": "source/assist/tests/debug_breakpoint_policy.py",
+        "git_blob": "5b9654e4047d9c79d6ecb2ff91df1fcd40abadaa",
+        "sha256": "762808adf6a0bc748df9daa539caaacf9df5f561f7e2a9406b80c3dde82d0fb2"
+      },
+      {
+        "path": "source/assist/source/bridge.cpp",
+        "git_blob": "f6b180d43711856b9459ac1f683f175fe2aeee44",
+        "sha256": "3c4c724e3914206c9937f10d0112c85912f5b2ed0e62ca8122c8cdf89b7dfcf1"
+      },
+      {
+        "path": "source/assist/source/dodge_bridge.h",
+        "git_blob": "5bfbaaab495ede0dc2bc9811202ebe52b2dd1a88",
+        "sha256": "5179d33527cb9fffb95a143af57006908f430f7171ddf774f5be9ab7b631cd34"
+      },
+      {
+        "path": "source/assist/source/combat_probe_bridge.h",
+        "git_blob": "0df1c980a2762984c5354f3d61fbcad2f348bd69",
+        "sha256": "23580a2bb81cd5b10e54cdb177bc838b60e7849de4f5aaf448a6d8ad80644b37"
+      }
+    ]
+  },
+  "native_basis": {
+    "supported_sample_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "inherited_only": true,
+    "private_executable_or_dump_accessed": false,
+    "new_disassembly": false,
+    "new_game_addresses": false,
+    "shared_abi_changed": false,
+    "references": [
+      "2026-10-31-coherent-compute-frame-hotfix25.md",
+      "2026-11-04-control-hardware-parameters.md",
+      "2026-11-04-breakpoint-hotpath-performance.md"
+    ],
+    "persistent_notebook_review_version": 157
+  },
+  "evidence_scope": {
+    "source_review": true,
+    "production_functions_compiled_and_executed_in_controlled_linux_cpp17_fixtures": true,
+    "windows_or_game_memory_boundaries_modeled": true,
+    "windows_executed_in_this_work": false,
+    "live_game_tested": false,
+    "multiplayer_tested": false,
+    "game_fps_measured": false,
+    "real_rpm_syscall_timing_measured": false,
+    "product_build_or_package_validation_claimed": false,
+    "callback_2752_executed_this_work_not_inherited": true,
+    "no_additional_test_suite_run_during_documentation": true,
+    "receipt_source_hashes_match_current_files_at_documentation": true
+  },
+  "source_sha256": {
+    "source/assist/source/bridge.cpp": "c32550ec4b20100d2eebeda9fa52a5823e37d939b605fb20d06c3ce77e4e1d74",
+    "source/assist/source/combat_probe_bridge.h": "bf7da53e264b20cc404402f616167ae27bbb9f734a6bda469f76bdb2b6f8c62d",
+    "source/assist/source/control_parameter_policy.h": "7be54f6a6d2bfb087f690d5df8424e7ff0ca101ad978801eddb13bffcffb1bf5",
+    "source/assist/source/dodge_bridge.h": "79a128b054a511e274b34dcf9df87c4aad844ad5127a1b2d4a6fd50eb8e3872c",
+    "source/assist/source/map_visibility_parameter_policy.h": "6effa9515db7d51474d41cc4d94de15c0ada05f054b4e3eb9030067cf082f037",
+    "source/assist/source/single_player_fps.h": "d3e62a9bf72d2402470973df64d032b53986e41036f71528b116e377dc1b1a1c",
+    "source/assist/source/single_player_fps_runtime.h": "3e4d867c0586b96bdb59eae730784d90607a9ea86a453411fd40d6ac16a8f39d",
+    "source/assist/source/tech_enhancement_parameter_policy.h": "6f29e7c43039d98f54e80b0d0d4df7492e98659c5e702568ec09dbd73837407f",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "4a64ab2e973b8d2dc48e820d7b581dd1a4966fd0baa963d8b9bc4af16bb2ea54",
+    "source/assist/source/tech_ui_breakpoint_core.h": "7cf1a023843fd26e3fae356248fd7f0cfa10cefb67b2ea3a42011e278c255b0f",
+    "source/assist/source/tech_ui_breakpoint_debug.h": "69c0a0236280ba298fddeb4ae7ba5708ac1f10b67383b8f37cc581930fdb0c0b",
+    "source/assist/source/tech_ui_breakpoint_hot.h": "d4240a941f60993162edb924183027d37aa793817b8c9f480558ac410719c73e",
+    "source/assist/tests/combat_probe_sampling.py": "5726178ec717afae70217e50303fb46f76f47fa69f1f634f816ff8f12bfc95da",
+    "source/assist/tests/control_parameters.cpp": "01dd5b9dee950f6dd238cb463f48023b096f7d621df6852f95688f9cb7673cb5",
+    "source/assist/tests/control_parameters.py": "a783f058412bac059d669a4d8622235fc63bc51bb4c06de2407054dbe5ccbb0d",
+    "source/assist/tests/debug_breakpoint_policy.cpp": "1f61ceb564c03c2abff2bc34880e900ebbd63a932b48680fcb221d9b129d2908",
+    "source/assist/tests/debug_breakpoint_policy.py": "dabb6a9116d70ed806cb04ad8ed46186229d45de491f805ba4b7134a482b5898",
+    "source/assist/tests/debug_entry_policy.cpp": "f4269a7fa79a369f07db531ad3f2aeb99337c622e40f3952e208aee1d741c45d",
+    "source/assist/tests/runtime_sampling_hotpath.py": "ffc29c2c655970df4ef649b29c0fe646d1bdf20392b5e83565b90b05344e9b91",
+    "source/shared/source/debug_entry_catalog.h": "8229a6879402f082eaf41b99b79040b44499e962a8991e79ba496ccc2ac4bd21",
+    "source/shared/source/debug_entry_policy.h": "a20108bae99496714150ba465886b3158beb6613c6a6ddbdf901171d2cdc2c1c",
+    "source/shared/source/debug_entry_types.h": "acb4aeca8ea08b6cb3d88c9a794976d1e07734634526c270c05e938fbf658a5c",
+    "source/shared/source/hardware_slot_budget.h": "997a06543ddf6c77de423740ec82863db69a4f9efff3be679b1e309368e6e8c8",
+    "source/shared/source/master_control_policy.h": "f7ad82442891ceea98aab7e06129c7cb503058b965929331e5c8a277d6394ee8",
+    "source/shared/source/patch_context.h": "18de132500a2872b261d68afdd08fb05fc62b83f8d7fd0e6ba3b9728c6e5a17d"
+  },
+  "original_receipts": [
+    {
+      "name": "hardware_admission",
+      "original_workspace_path": "hw_control/validation/hardware-admission/result.json",
+      "sha256": "98a8ffe69ba7dc02a15c4c5c5d028907100174605870ec7ae841de2c43d9fbab",
+      "bytes": 3189,
+      "passed": true,
+      "checks": 2228
+    },
+    {
+      "name": "debug_catalogue",
+      "original_workspace_path": "hw_control/validation/debug-catalogue/result.json",
+      "sha256": "49827f0f4611eebd773cc0fbc42c055352f178bd968fc64ce7a47e647c479a17",
+      "bytes": 669,
+      "passed": true,
+      "checks": 5407
+    },
+    {
+      "name": "control_callback",
+      "original_workspace_path": "hw_control/validation/control-callback/result.json",
+      "sha256": "8ae68b34529b4df8799c49543876520e7762c2b47775eeb21e854ab6629d502a",
+      "bytes": 2116,
+      "passed": true,
+      "checks": 2752
+    },
+    {
+      "name": "host_compute",
+      "original_workspace_path": "hw_control/compute-audit/final-receipt.json",
+      "sha256": "a5e7fdae9150d5c04b8db0abcb39552e1b28e13202710afdbf4c0cc4cb65a29a",
+      "bytes": 4801,
+      "passed": true,
+      "tests": [
+        {
+          "command": "python source/assist/tests/runtime_sampling_hotpath.py",
+          "chunk_id": "d0b496",
+          "wall_time_seconds": 0.764323046,
+          "exit_code": 0,
+          "original_token_count": 72,
+          "output": "PASS 100 Host wakes: threat collections=1, maintenance=100, input publications=1\nPASS dodge result, Runtime, reverse, cleanup and suspension boundaries\nPASS Host subscription mode, demand, provenance and freshness\nPASS outstanding job, receipt, lease and cooperative maintenance cadence\n"
+        },
+        {
+          "command": "python source/assist/tests/combat_probe_sampling.py --baseline /workspace/scratch/932746db9af9/hw_control/base_snapshot/source/assist/source/combat_probe_bridge.h",
+          "chunk_id": "a93055",
+          "wall_time_seconds": 1.8693e-05,
+          "exit_code": 0,
+          "original_token_count": 109,
+          "output": "PASS 17 raw selector branches, stale metadata cache and recapture on every publication\nPASS 128 sources x 256 targets: Actor captures 32768+32768 -> 128+256; fresh Weapon reads 65536 -> 256; field reads 4288808 -> 350696\nPASS native experimental calls, zero/fault status and source-atomic coverage\nPASS raw/native/raw transition discards source and target samples after native call\nPASS standalone live admission probe remains uncached\n"
+        },
+        {
+          "command": "git -c core.whitespace=cr-at-eol diff --check -- source/assist/source/bridge.cpp source/assist/source/dodge_bridge.h source/assist/source/combat_probe_bridge.h",
+          "exit_code": 0
+        },
+        {
+          "command": "python source/assist/tests/runtime_sampling_hotpath.py --baseline /workspace/scratch/932746db9af9/hw_control/base_snapshot/source/assist/source/dodge_bridge.h",
+          "expected_exit_code": 1,
+          "observed_exit_code": 1,
+          "output": "FAIL Host same-frame wake repeated whole-world threat collection",
+          "scope": "Negative control run before final consumer-point race regressions; unchanged bf3fbe88 dodge failed first no-redundant-scan assertion."
+        }
+      ]
+    }
+  ],
+  "field_equivalence_record": {
+    "original_workspace_path": "hw_control/compute-audit/field-equivalence.txt",
+    "sha256": "507d0523431c330b721d0874ccc12bb44571f58ba25fa585e85568001c9510fa",
+    "bytes": 11664
+  },
+  "controlled_operation_counts": {
+    "control_admission": {
+      "boundary": "one successful production controlCompatible admission outside the VEH callback; modeled read boundary",
+      "baseline_read_calls": 24,
+      "current_read_calls": 3,
+      "baseline_requested_bytes": 235,
+      "current_requested_bytes": 107,
+      "ranges": [
+        {
+          "address": "0x50B6F0",
+          "bytes": 52
+        },
+        {
+          "address": "0x6339B0",
+          "bytes": 28
+        },
+        {
+          "address": "0x637E37",
+          "bytes": 27
+        }
+      ],
+      "per_exception_rpm_reduction_claimed": false,
+      "existing_successful_callback_local_reads_unchanged": {
+        "world": 10,
+        "target_house": 6,
+        "return_address": 1
+      }
+    },
+    "host_scatter_same_frame": {
+      "threat_collections": 1,
+      "identity_lease_maintenance": 100,
+      "input_publications": 1,
+      "wakes": 100,
+      "mode": 1,
+      "baseline_negative_control": "Old function failed the first no-new-frame/no-new-result threat-scan assertion; no completed 100-wake baseline timing claimed."
+    },
+    "raw_combat_128_sources_256_targets": {
+      "pairs": 32768,
+      "source_collections": {
+        "old": 32768,
+        "new": 128
+      },
+      "target_collections": {
+        "old": 32768,
+        "new": 256
+      },
+      "fresh_weapon_collections": {
+        "old": 65536,
+        "new": 256
+      },
+      "field_reads": {
+        "old": 4288808,
+        "new": 350696
+      },
+      "units": "raw reader/collector/get<T> operation counts, not RPM syscalls or elapsed game time"
+    }
+  },
+  "static_catalogue_work_counts": {
+    "method": "Reconstruct the production immutable ID hash table from the current catalogue; successful key lookups only, no wall-clock timing.",
+    "entries": 161,
+    "buckets": 512,
+    "table_bytes": 1024,
+    "control_key_linear_comparisons": 158,
+    "control_key_index_probes": 1,
+    "all_known_keys_once_linear_comparisons": 13041,
+    "all_known_keys_once_index_probes": 188,
+    "max_known_key_index_probes": 4
+  },
+  "hardware_validation_commands": [
+    {
+      "kind": "executed",
+      "command": "python3 source/assist/tests/debug_breakpoint_policy.py --build-dir /workspace/scratch/932746db9af9/hw_control/validation/hardware-admission --baseline-bridge /workspace/scratch/932746db9af9/hw_control/base_snapshot/source/assist/source/tech_ui_breakpoint_bridge.h",
+      "exit_code": 0,
+      "exit_code_evidence": "Executor completion confirmed by the executing agent; runner writes result only after checked successful process execution."
+    },
+    {
+      "kind": "equivalent_compile_reproduction",
+      "command": "g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/debug_entry_policy.cpp -o /workspace/scratch/932746db9af9/hw_control/validation/debug-catalogue/debug-entry-policy",
+      "note": "Actual compilation used these necessary parameters; the full original tool wrapper was not separately archived."
+    },
+    {
+      "kind": "executed",
+      "command": "/workspace/scratch/932746db9af9/hw_control/validation/debug-catalogue/debug-entry-policy",
+      "exit_code": 0,
+      "exit_code_evidence": "Executor completion confirmed by the executing agent; run.log and result stdout record PASS 5407."
+    },
+    {
+      "kind": "executed",
+      "command": "python3 source/assist/tests/control_parameters.py --out /workspace/scratch/932746db9af9/hw_control/validation/control-callback",
+      "exit_code": 0,
+      "exit_code_evidence": "Executor completion confirmed by the executing agent; runner writes result only after checked successful process execution."
+    }
+  ],
+  "independent_review": {
+    "read_only": true,
+    "repeated_test_execution": false,
+    "found_and_fixed": "Reverse consumer could observe mode=0 or re-enable during updateDodgeJobs after precollection was skipped. The final reverse branch calls the idempotent collect() before consuming threats; two focused cases added by compute author.",
+    "remaining_blocking_finding": null,
+    "reviewed_sources": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/dodge_bridge.h",
+      "source/assist/source/combat_probe_bridge.h"
+    ]
+  },
+  "semantic_boundaries": [
+    "Admission read consolidation does not change every-hit VEH world/House guards, caller routing, DR ownership, retirement or slot budget.",
+    "Patch and Breakpoint debug policies remain independent; signature bypass cannot bypass readability.",
+    "Immutable catalogue indexing caches row identities only, not policy or observed validity.",
+    "Unified logic-frame sampling frequency is unchanged; Host workers still receive game-thread samples.",
+    "Host no-consumer frame admission is narrowed, but main.cpp still requests frame notifications via computeApplied != All; front-loaded maintenance/world capture remain.",
+    "Host same-frame threat batching applies to Scatter mode 1; reverse mode 0 remains synchronous on the game thread.",
+    "Identity/token/lease maintenance and stable result consumer-point live observation remain active.",
+    "Combat fresh selector samples are reused only inside a continuous raw segment of one collectCombatProbes call, separate from published Actor metadata.",
+    "Native combat calls remain per pair and invalidate the batch before success, zero or fault results; standalone probes remain uncached.",
+    "Every publication resets target epochs and starts a new batch; pointer/type/kind changes invalidate entries.",
+    "Final compatibility still uses the original World actors and existing rawWeaponInfo(..., true) 30-frame metadata-cache semantics.",
+    "AntiTheft building pre-scan is retained: same-frame ownership/liveness/config changes are not all represented by inputSerial and the existing gate.",
+    "No verified lower-hit single DR site preserves all common-predicate caller semantics; no alternative address, slot rotation, coverage gap or automatic Patch fallback added.",
+    "Direct unified sampler calls to the control predicate were not found; native combat virtual-method indirect calls and hit rates remain unproven.",
+    "controlExceptions exists internally but is not exported to Shared/UI/logs; no new high-frequency diagnostics or ABI field added.",
+    "Operation-count reductions do not measure CPU exception dispatch cost, game FPS, live Windows behavior or multiplayer correctness."
+  ]
+}

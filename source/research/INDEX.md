@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 硬件控制与工具箱计算的重复工作 | [准入读合并、同帧 Scatter 门控与批内 fresh selector](2026-11-08-hardware-control-and-host-compute-hotpaths.md) | bf3fbe88 admission24to3 VEH-unchanged Host-demand reverse-sync raw-batch AntiTheft-retained operation-counts-not-FPS |
 | 科技加强规则模式总统／校车未显示 | [原生枚举反证、Ares 动态图标与现场边界](2026-11-07-tech-enhancement-rules-native-followup.md) | PRES BUS native-CanBuild 8-cases Insignificant-not-native-filter rules-mode-unresolved |
 | 科技加强的总统／校车目录缺口 | [特殊类型标志、身份限定准入与原生边界](2026-11-07-tech-enhancement-special-catalogue.md) | pre14 PRES BUS Insignificant typeSlot owned-identity legacy-vs-exact native-sidebar-unverified |
 | 4K/2K 光标坐标域与取点失败恢复 | [pre.12：物理取点、DPI 作用域与正常点位保持](2026-11-07-cursor-coordinate-recovery.md) | GetPhysicalCursorPos PMv2 same-domain failed-sample no-position-ratio no-SetCursorPos |

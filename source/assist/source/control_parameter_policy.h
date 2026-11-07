@@ -7,6 +7,27 @@ namespace assist { namespace controlparams {
 // the two strict owner-index callers. The original CALLs and native leaves run.
 inline constexpr uint32_t Entry=0x50B6F0, Allowed=0x50B710, Strict=0x50B716;
 inline constexpr uint32_t OwnerReturn=0x6339BF, PlanningReturn=0x637E45;
+// Cold admission has three contiguous fixed dependencies. Read each range
+// once, then run the existing reference predicates against this local image.
+// The ranges are exactly the union of the entry, both callers, context probes
+// and native leaves; no unchecked gap or later-frame successful read is used.
+struct AdmissionImage {
+ uint8_t entry[0x34]{},owner[0x1C]{},planning[0x1B]{};bool valid=false;
+ template<class Read> bool capture(Read read){
+  valid=false;
+  const bool a=read(Entry,entry,sizeof entry);
+  const bool b=read(0x6339B0,owner,sizeof owner);
+  const bool c=read(0x637E37,planning,sizeof planning);
+  valid=a&&b&&c;return valid;
+ }
+ template<size_t N> static bool range(uint32_t address,void*out,size_t size,uint32_t base,const uint8_t(&bytes)[N]){
+  if(address<base||size>N||uint64_t(address-base)+size>N)return false;
+  memcpy(out,bytes+(address-base),size);return true;
+ }
+ bool copy(uint32_t address,void*out,size_t size)const{
+  return valid&&(range(address,out,size,Entry,entry)||range(address,out,size,0x6339B0,owner)||range(address,out,size,0x637E37,planning));
+ }
+};
 // Only call this reader inside GuardedTechUiParameter's AV/in-page SEH scope.
 // Avoid a ReadProcessMemory syscall for every field on this hot predicate.
 inline bool guardedRead(uint32_t address,void*out,size_t size){

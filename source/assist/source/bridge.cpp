@@ -1245,6 +1245,17 @@ static bool controllerExited(DWORD now){
   if(!controllerProcess)return GetLastError()==ERROR_INVALID_PARAMETER;}
  return WaitForSingleObject(controllerProcess,0)==WAIT_OBJECT_0;
 }
+static bool hostFrameCaptureWanted(DWORD now){
+ // Calculation placement alone is not a sampling subscription. Jobs and
+ // enabled real-time features are handled by frameDue below; these are the
+ // remaining host consumers that can need a fresh frame before owning a job.
+ if((sh->flags&AutoRepair)&&!compute::inside(sh->computeApplied,compute::Repair))return true;
+ if((sh->flags&AutoOreReturn)&&!compute::inside(sh->computeApplied,compute::Ore))return true;
+ const auto&r=sh->cooperativeRequest;
+ if(compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)||
+    !cooperative::valid(r)||r.match!=match||!freshness::intentAlive(r.tick,now))return false;
+ return sh->cooperativeInputFrame.request.serial!=r.serial||sh->cooperativeFrameWanted==r.serial;
+}
 template<class Fn>static void withInputPublication(Shared*value,uint32_t session,DWORD now,int frame,bool advanced,Fn&&tailWork){
  bool complete=false;InterlockedIncrement(&value->computeFrameSeq);
  runtimeunwind::run([&]{tailWork();complete=true;},[&]{
@@ -1301,7 +1312,7 @@ static void tick(){
  bool selectionPending=sh->selectRequest!=sh->selectAck;bool planPending=sh->planRequest!=sh->planAck;bool cooperativePending=sh->cooperativePlan!=sh->cooperativeAck;bool cmd=sh->request!=sh->ack||selectionPending||planPending||cooperativePending||sh->pointer.request!=sh->pointer.ack;// A message wake observes the current simulation frame; pending work bypasses
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=worldSample.frame!=lastFrame&&
-   (sh->minerDefenseEnabled||minerDefensePending()||sh->superweaponGrant||sh->placementPreview.active||nativePlacementCompletionPending()||snap.techOpen||techPending||techDataPending()||sh->computeApplied!=compute::All||(sh->moFeatures&7u)||moOrdersPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||(sh->flags&(EjectAssist|AntiTheft))||oreHarvestNeedsWork()||
+   (sh->minerDefenseEnabled||minerDefensePending()||sh->superweaponGrant||sh->placementPreview.active||nativePlacementCompletionPending()||snap.techOpen||techPending||techDataPending()||hostFrameCaptureWanted(now)||(sh->moFeatures&7u)||moOrdersPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||loadLedger.count||repairAt<repairCount||repairAckPending||pendingRepairs.count||entryReservationCount||cooperativeEffectCount||missionObserver.pending()||actorLeaseArbiter.count||ownground::job.pending||(sh->flags&(EjectAssist|AntiTheft))||oreHarvestNeedsWork()||
     (sh->plannerTracking&&(sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn)))||
     sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
  bool resultsDue=(loadCalculationPending&&compute::newer(sh->loadComputed,loadTaskSeen))||(repairCalculationPending&&compute::newer(sh->repairComputed,repairTaskSeen))||((sh->missileEnabled||missileHoldCount)&&compute::newer(sh->missileComputed,missileApplied))||((sh->dodgeEnabled||dodgeCount)&&compute::newer(sh->dodgeComputed,dodgeApplied))||(unloadCount&&compute::newer(sh->unloadComputed,unloadApplied));

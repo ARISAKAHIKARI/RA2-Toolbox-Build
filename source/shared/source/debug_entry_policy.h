@@ -4,7 +4,29 @@
 #include "debug_entry_catalog.h"
 namespace debugentries {
 static_assert(Count<=Capacity,"debug entry catalogue exceeds transport capacity");
-inline int index(uint32_t key){for(uint32_t i=0;i<Count;++i)if(Entries[i].id==key)return int(i);return -1;}
+// Entry identities and their order are immutable. Build their lookup once at
+// compile time; policy and observations remain live and are never cached here.
+inline constexpr unsigned IndexBits=9;
+inline constexpr uint32_t IndexBuckets=1u<<IndexBits;
+static_assert(Count<IndexBuckets&&Count<=0xFFFFu,"debug entry index exceeds its fixed storage");
+inline constexpr uint32_t indexBucket(uint32_t key){return ((key^(key>>16))*2654435761u)>>(32-IndexBits);}
+struct CatalogueIndex {
+ uint16_t slots[IndexBuckets]{};
+ constexpr CatalogueIndex(){
+  for(uint32_t i=0;i<Count;++i){uint32_t slot=indexBucket(Entries[i].id);
+   while(slots[slot]&&Entries[slots[slot]-1].id!=Entries[i].id)slot=(slot+1)&(IndexBuckets-1);
+   if(!slots[slot])slots[slot]=uint16_t(i+1);
+  }
+ }
+};
+inline constexpr CatalogueIndex catalogueIndex;
+inline int index(uint32_t key){
+ uint32_t slot=indexBucket(key);
+ for(uint32_t probe=0;probe<IndexBuckets;++probe,slot=(slot+1)&(IndexBuckets-1)){
+  const uint16_t entry=catalogueIndex.slots[slot];if(!entry)return -1;
+  if(Entries[entry-1].id==key)return int(entry-1);
+ }return -1;
+}
 inline const Entry*find(uint32_t key){const int i=index(key);return i<0?nullptr:&Entries[i];}
 inline bool required(const Config&c,uint32_t key){
  const auto*e=find(key);if(!e||!(e->flags&Checkable))return true;

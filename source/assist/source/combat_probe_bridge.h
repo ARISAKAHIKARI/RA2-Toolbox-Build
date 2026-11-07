@@ -1,9 +1,42 @@
 // Raw observations are the default. Engine selectors/range calls require the
 // explicit experimental option; both planners consume the resulting values.
-static planner::CombatProbe probeCombatPair(uint32_t p,uint32_t q,const planner::Actor& actor,const planner::Actor& victim,int padding){
+struct CombatProbeTargetSample {
+ uint32_t pointer,type,epoch;int kind,armor,x,y,z;uint32_t flags;
+};
+struct CombatProbeBatch {
+ CombatProbeTargetSample*targets;uint32_t epoch=1,sourceEpoch=0,sourcePointer=0,sourceType=0;int sourceKind=-1;
+ planner::Actor source{};
+ void invalidate(){++epoch;sourceEpoch=0;}
+};
+static int sampledCombatWeaponQuery(CombatProbeBatch&batch,int targetIndex,uint32_t p,uint32_t q,uint32_t*weapon,int*selected,int*close,int*airborne){
+ const int k=kind(p),tk=kind(q);const uint32_t type=typeOf(p,k),targetType=typeOf(q,tk);
+ if(k<0||tk<0||!type||!targetType||get<bool>(p+0x1C8))return 0;
+ // The raw collector calls no game routine and writes no game fields between
+ // pairs. Reuse only this invocation's fresh selector samples. The published
+ // Actor weapons use a 30-frame metadata cache and cannot replace these reads.
+ if(batch.sourceEpoch!=batch.epoch||batch.sourcePointer!=p||batch.sourceType!=type||batch.sourceKind!=k){
+  batch.source={};rawCombatInfo(p,type,k,batch.source,true);
+  batch.source.x=get<int>(p+0x9C);batch.source.y=get<int>(p+0xA0);
+  batch.sourcePointer=p;batch.sourceType=type;batch.sourceKind=k;batch.sourceEpoch=batch.epoch;
+ }
+ auto&sample=batch.targets[targetIndex];
+ if(sample.epoch!=batch.epoch||sample.pointer!=q||sample.type!=targetType||sample.kind!=tk){
+  planner::Actor target{};rawCombatInfo(q,targetType,tk,target,false);
+  sample={q,targetType,batch.epoch,target.kind,target.armor,get<int>(q+0x9C),get<int>(q+0xA0),target.z,target.flags};
+ }
+ // weaponIndex/choose consume exactly kind, armor, XYZ and Airborne on the
+ // target side. Compatibility below still consumes the original world Actor.
+ planner::Actor target{};target.kind=sample.kind;target.armor=sample.armor;target.x=sample.x;target.y=sample.y;target.z=sample.z;target.flags=sample.flags;
+ const auto choice=combatquery::choose(batch.source,target);if(choice.index<0)return 0;
+ const auto ptr=rawWeapon(type,get<float>(p+0x150),choice.slot);if(ptr<0x10000)return 0;
+ *weapon=ptr;*selected=choice.slot;*close=choice.close;*airborne=(target.flags&planner::Airborne)!=0;return 1;
+}
+static planner::CombatProbe probeCombatPair(uint32_t p,uint32_t q,const planner::Actor& actor,const planner::Actor& victim,int padding,CombatProbeBatch*batch=nullptr,int targetIndex=-1){
  planner::CombatProbe result{};result.target=get<uint32_t>(q+0x10);
  uint32_t weapon=0;int slot=0,close=0,airborne=0;
- int status=combatWeaponQuery(p,q,&weapon,&slot,&close,&airborne);
+ int status;
+ if(batch&&targetIndex>=0&&!(sh&&sh->nativeCombatQueries))status=sampledCombatWeaponQuery(*batch,targetIndex,p,q,&weapon,&slot,&close,&airborne);
+ else {if(batch)batch->invalidate();status=combatWeaponQuery(p,q,&weapon,&slot,&close,&airborne);}
  if(status<0){result.flags=4;return result;}if(!status)return result;
  planner::Actor source=actor,target=victim;
  source.flags|=planner::FixedWeapon;source.weapons[0]=rawWeaponInfo(weapon,true);
@@ -23,6 +56,11 @@ static planner::CombatProbe probeCombatPair(uint32_t p,uint32_t q,const planner:
 static bool combatCandidate(const planner::Actor&a){return (a.flags&planner::Enemy)&&!(a.flags&(planner::Protected|planner::Cloaked|planner::Limbo|planner::OffMap|planner::Transported));}
 static void collectCombatProbes(planner::World&w){
  static uint32_t probeMatch=0;static int cursor=0;if(probeMatch!=w.match){probeMatch=w.match;cursor=0;}
+ // Scratch storage avoids a large game-thread stack allocation. Validity is
+ // reset for every publication; no object sample survives into a later batch.
+ static CombatProbeTargetSample targetSamples[planner::MaxActors];
+ for(int n=0;n<w.count;++n)targetSamples[n].epoch=0;
+ CombatProbeBatch batch{targetSamples};
  int enemies=0;for(int n=0;n<w.count;++n)enemies+=combatCandidate(w.actors[n]);
  int visited=0,queries=0,sources=0;
  // Finish a source atomically within this fresh world. At least one source
@@ -34,7 +72,7 @@ static void collectCombatProbes(planner::World&w){
   if(queries+enemies>planner::MaxCombatProbes||w.combatCount+enemies>planner::MaxCombatProbes)break;
   ++sources;const int first=w.combatCount;bool faulted=false;
   for(int n=0;n<w.count;++n){const auto&t=w.actors[n];if(!combatCandidate(t))continue;++queries;uint32_t q=worldByID(t.id);if(!q)continue;
-   auto probe=probeCombatPair(p,q,a,t,int(std::min(uint32_t(sh->advancedRangeCells),30u))*256);
+   auto probe=probeCombatPair(p,q,a,t,int(std::min(uint32_t(sh->advancedRangeCells),30u))*256,&batch,n);
    if(probe.flags&4){faulted=true;break;}
    if(probe.flags)w.combat[w.combatCount++]=probe;
   }

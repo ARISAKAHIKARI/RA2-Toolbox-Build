@@ -88,18 +88,15 @@ static bool mapCompatible(bool publishSnapshot=true){
  if(publishSnapshot)mapPolicyRevision=admitted?debugentries::policyRevision:0;return admitted;
 }
 static bool controlCompatible(bool publishRevision=true){
- // Read every fixed dependency even when an early reference differs. A debug
- // override must not turn a later inaccessible branch/caller into admission.
- bool readable=true;uint8_t bytes[20]{};
- for(const auto&site:mastercontrol::Sites){
-  if(!read(site.address,bytes,5))readable=false;
-  for(const auto&probe:patchcontext::Probes)if(probe.site==site.address&&!read(probe.address,bytes,probe.size))readable=false;
- }
- if(!read(0x50B6F5,bytes,4)||!read(0x50B710,bytes,20))readable=false;
- bool matched=true;for(const auto&site:mastercontrol::Sites){uint8_t original[5]{};const bool ok=read(site.address,original,sizeof original);if(!ok)readable=false;if(!ok||!mastercontrol::original(site.address,original,sizeof original))matched=false;}
+ // Capture every required byte before deciding reference admission, including
+ // when an early caller differs. Repeated predicates below reuse this image
+ // instead of issuing the same process-memory read up to three times.
+ controlparams::AdmissionImage image;const bool readable=image.capture(read);
+ auto observed=[&](uint32_t at,void*out,size_t n){return image.copy(at,out,n);};
+ bool matched=readable;for(const auto&site:mastercontrol::Sites){uint8_t original[5]{};const bool ok=observed(site.address,original,sizeof original);if(!ok||!mastercontrol::original(site.address,original,sizeof original))matched=false;}
  // Patch-context overrides belong to another kind at the same addresses.
  // Use the raw reference predicate before this entry's independent DR allow.
- const bool contextMatched=mastercontrol::compatibleStrict([&](uint32_t at,void*out,size_t n){const bool ok=read(at,out,n);if(!ok)readable=false;return ok;});matched=matched&&contextMatched;
+ const bool contextMatched=mastercontrol::compatibleStrict(observed);matched=matched&&contextMatched;
  const bool admitted=debugentries::allow(debugentries::Kind::Breakpoint,controlparams::Entry,readable,matched);
  if(publishRevision)controlPolicyRevision=admitted?debugentries::policyRevision:0;return admitted;
 }

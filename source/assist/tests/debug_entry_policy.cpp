@@ -3,19 +3,33 @@
 #endif
 #include <cassert>
 #include <cstdio>
+#include <map>
 #include <set>
 #include "../../shared/source/debug_entry_policy.h"
 using namespace debugentries;
 static unsigned checks=0;
 static void check(bool value){++checks;assert(value);}
 int main(){
- Config config;std::set<uint32_t> keys;
+ Config config;std::set<uint32_t> keys;std::map<uint32_t,int> expectedIndex;
+ for(uint32_t i=0;i<Count;++i)expectedIndex.emplace(Entries[i].id,int(i));
  for(const auto&e:Entries){
+  check(index(e.id)==expectedIndex.at(e.id));check(find(e.id)==&Entries[expectedIndex.at(e.id)]);
   check(keys.insert(e.id).second);check(e.id==id(e.kind,e.address));check(e.address<0x1000000);
   check(e.name&&*e.name&&e.group&&*e.group&&e.purpose&&*e.purpose&&e.features&&*e.features);
   check(required(config,e.id));
   if(e.flags&Checkable){check(setSkip(config,e.id,true));check(!required(config,e.id));}
   else check(!setSkip(config,e.id,true));
+ }
+ // Unknown identities may collide with a known bucket; neither collisions
+ // nor a different kind at the same address may alias a catalogue entry.
+ uint32_t randomKey=0x9E3779B9u;
+ for(unsigned i=0;i<2048;++i){
+  randomKey=randomKey*1664525u+1013904223u;const auto expected=expectedIndex.find(randomKey);
+  check(index(randomKey)==(expected==expectedIndex.end()?-1:expected->second));
+ }
+ for(const auto&e:Entries)for(uint32_t kind=0;kind<8;++kind){
+  const uint32_t key=(kind<<24)|e.address;const auto expected=expectedIndex.find(key);
+  check(index(key)==(expected==expectedIndex.end()?-1:expected->second));
  }
  check(config.count<=Capacity);check(applyPolicy(config));
  for(const auto&e:Entries){check(signatureRequired(e.kind,e.address)==!(e.flags&Checkable));

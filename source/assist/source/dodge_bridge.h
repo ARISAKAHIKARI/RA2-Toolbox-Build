@@ -132,13 +132,18 @@ static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int fra
 #include "reverse_dodge_bridge.h"
 static bool dodgeControlTick(uint32_t house,int frame,DWORD now){
  if(!sh->dodgeEnabled&&!dodgeCount){dodgePending=false;return false;}if(snap.chat||!simulationReady())return false;
- collectDodgeThreats();updateDodgeJobs(house,frame,now);
- if(sh->dodgeEnabled&&sh->dodgeMode==0){dodgePending=false;return reverseDodgeTick(house,frame,now);}
- reverseWasEnabled=false;
  const bool outside=!compute::inside(sh->computeApplied,compute::Dodge);
+ // Host calculation consumes one unified sample per logic frame. A repeated
+ // message in that frame must not rescan every projectile and vehicle unless
+ // a new result needs live verification. Identity/lease maintenance still runs.
+ bool threatsCollected=false;auto collect=[&]{if(!threatsCollected){collectDodgeThreats();threatsCollected=true;}};
+ if(!outside||externalInputFrame||(sh->dodgeEnabled&&sh->dodgeMode==0))collect();
+ updateDodgeJobs(house,frame,now);
+ if(sh->dodgeEnabled&&sh->dodgeMode==0){collect();dodgePending=false;return reverseDodgeTick(house,frame,now);}
+ reverseWasEnabled=false;
  if(outside&&compute::newer(sh->dodgeComputed,dodgeApplied)){
   const uint32_t completed=sh->dodgeComputed;long seq=sh->dodgeResultSeq;
-  if(!(seq&1)){MemoryBarrier();dodgeResult=sh->dodgeResult;MemoryBarrier();if(seq==sh->dodgeResultSeq&&completed==sh->dodgeComputed){dodgeApplied=completed;if(const auto*source=dodgeFrames.find(completed)){applyDodgeResult(dodgeResult,house,frame,now,source);if(const auto*c=dodgeFrames.cursors(completed)){dodgeCursor=(*c)[0];dodgeJobCursor=(*c)[1];}}}}
+  if(!(seq&1)){MemoryBarrier();dodgeResult=sh->dodgeResult;MemoryBarrier();if(seq==sh->dodgeResultSeq&&completed==sh->dodgeComputed){dodgeApplied=completed;if(const auto*source=dodgeFrames.find(completed)){collect();applyDodgeResult(dodgeResult,house,frame,now,source);if(const auto*c=dodgeFrames.cursors(completed)){dodgeCursor=(*c)[0];dodgeJobCursor=(*c)[1];}}}}
  }
  if(outside&&!externalInputFrame)return false;
  auto&i=dodgeInput;i={};i.match=match;i.tick=now;i.frame=frame;

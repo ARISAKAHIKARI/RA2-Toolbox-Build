@@ -22,12 +22,14 @@ static constexpr int FALSE=0,TIMER_ALL_ACCESS=1,WAIT_OBJECT_0=0,ERROR_NOT_SUPPOR
 static uint32_t now=1000,unreadable=0;static uint64_t qpc=1000;static int64_t timerDelay=0;
 static bool callable=true,ares=false,mutateDuringValidation=false,executable=true;
 static unsigned checks=0,nativeChecks=0,timersCreated=0;
+static unsigned readCalls=0,readBytes=0,controlReads=0,controlBytes=0,baselineControlReads=0,baselineControlBytes=0;
 static std::vector<std::pair<uint32_t,uint32_t>> ranges;
 static void check(bool ok,const char*what){++checks;if(!ok){std::fprintf(stderr,"FAIL %u %s\n",checks,what);std::exit(1);}}
 static DWORD GetTickCount(){return now;}
 static LONG InterlockedExchange(volatile LONG*p,LONG value){const LONG old=*p;*p=value;return old;}
 static void MemoryBarrier(){}
 static bool read(uint32_t at,void*out,size_t n){
+ ++readCalls;readBytes+=unsigned(n);
  if(unreadable>=at&&uint64_t(unreadable)<uint64_t(at)+n)return false;
  for(auto range:ranges)if(at>=range.first&&uint64_t(at)+n<=uint64_t(range.first)+range.second){std::memcpy(out,reinterpret_cast<void*>(uintptr_t(at)),n);return true;}
  return false;
@@ -134,6 +136,44 @@ static void mapAndControlChecks(){
  skip(Kind::Breakpoint,controlparams::Entry,false);check(!controlCompatible(),"Control DR returns to strict after override closes");
  reset();flip(0x50B6F9);check(!controlCompatible(),"changed control context is rejected without an override");skip(Kind::Patch,controlparams::Entry,true);check(!controlCompatible(),"Patch context override cannot leak into strict Control DR admission");skip(Kind::Breakpoint,controlparams::Entry,true);check(controlCompatible(),"only the independent Control DR choice may bypass its context reference");
 }
+static void controlAdmissionReads(){
+ using namespace techparameters;using debugentries::Kind;
+ auto verify=[&](bool expected){
+  readCalls=readBytes=0;const bool accepted=controlCompatible();
+  check(accepted==expected,"batched control admission preserves the reference/readability result");
+  check(readCalls==3&&readBytes==107,"control admission reads each required range exactly once");
+#ifdef CONTROL_ADMISSION_BASELINE
+  readCalls=readBytes=0;const bool previous=controlCompatibleBaseline();
+  check(previous==accepted,"fixed previous production admission agrees with current result");
+#endif
+ };
+ reset();readCalls=readBytes=0;check(controlCompatible(),"control performance baseline starts with valid references");
+ controlReads=readCalls;controlBytes=readBytes;check(controlReads==3&&controlBytes==107,"successful admission performs three bounded reads");
+#ifdef CONTROL_ADMISSION_BASELINE
+ readCalls=readBytes=0;check(controlCompatibleBaseline(),"previous production references remain valid");
+ baselineControlReads=readCalls;baselineControlBytes=readBytes;check(baselineControlReads==24,"fixed previous admission repeats twenty-four reads");
+#endif
+ const uint8_t entries[][9]={{0xA1,0x38,0xB2,0xA8,0,0x85,0xC0,0x75,0x1D},{0xE9,0xFB,0x2A,0x67,0,0xCC,0xCC,0xCC,0xCC},{0xE9,0x8B,0x2C,0x67,0,0xCC,0xCC,0xCC,0xCC}};
+ for(const auto&entry:entries){
+  reset();bytes(controlparams::Entry,entry);verify(true);
+  for(auto range:{std::pair<uint32_t,unsigned>{0x50B6F0,52},{0x6339B0,28},{0x637E37,27}})for(unsigned i=0;i<range.second;++i){
+   flip(range.first+i);verify(false);flip(range.first+i);
+  }
+  skip(Kind::Breakpoint,controlparams::Entry,true);flip(0x6339BA);
+  verify(true);
+  for(auto range:{std::pair<uint32_t,unsigned>{0x50B6F0,52},{0x6339B0,28},{0x637E37,27}})for(unsigned i=0;i<range.second;++i){
+   unreadable=range.first+i;verify(false);
+  }
+  unreadable=0;verify(true);flip(0x6339BA);
+  skip(Kind::Breakpoint,controlparams::Entry,false);verify(true);
+ }
+ reset();controlparams::AdmissionImage image;check(image.capture(read),"fixed control image captured");
+ uint8_t output[53];std::memset(output,0xA5,sizeof output);
+ check(!image.copy(0x50B6F0,output,sizeof output)&&output[0]==0xA5,"snapshot refuses a read extending beyond a verified range");
+ check(!image.copy(0x50B6EF,output,1)&&output[0]==0xA5,"snapshot refuses a read before its fixed range");
+ check(!image.copy(0xFFFFFFFFu,output,2)&&output[0]==0xA5,"snapshot refuses wrapping addresses");
+ unreadable=0x637E45;check(!image.capture(read)&&!image.copy(controlparams::Entry,output,5),"a failed recapture cannot reuse earlier readable bytes");
+}
 static void fpsChecks(){
  using debugentries::Kind;
  reset();wire.singlePlayerFPS=45;singlefps::maintain();check(singlefps::desired&&!singlefps::failure,"actual FPS maintenance admits the strict prefix");singlefps::enabled=true;CONTEXT context{singlefps::Entry,7,0x246};check(singlefps::parameter(context)&&context.Eip==singlefps::Resume&&context.Esi==7&&context.EFlags==0x246,"actual FPS callback preserves registers and changes only its defined destination");
@@ -165,6 +205,6 @@ static void statusAndTransitionChecks(){
 }
 int main(){
  for(auto range:{std::pair<uint32_t,uint32_t>{0x4F7000,0x2000},{0x6A9000,0x2000},{0x6D8000,0x2000},{0x50B000,0x2000},{0x633000,0x1000},{0x637000,0x2000},{0x55D000,0x1000},{0xA8B000,0x4000},{0x887000,0x1000}}){void*p=mmap(reinterpret_cast<void*>(uintptr_t(range.first)),range.second,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE,-1,0);check(p==reinterpret_cast<void*>(uintptr_t(range.first)),"private fixture region reserved");ranges.push_back(range);}
- fullChecks();exactChecks();mapAndControlChecks();fpsChecks();statusAndTransitionChecks();
- std::printf("{\"passed\":true,\"checks\":%u,\"production_functions_extracted\":true,\"kernel_and_memory_boundaries_modeled\":true,\"windows_executed\":false,\"game_tested\":false}\n",checks);
+ fullChecks();exactChecks();mapAndControlChecks();controlAdmissionReads();fpsChecks();statusAndTransitionChecks();
+ std::printf("{\"passed\":true,\"checks\":%u,\"control_admission_reads\":%u,\"control_admission_bytes\":%u,\"baseline_control_admission_reads\":%u,\"baseline_control_admission_bytes\":%u,\"production_functions_extracted\":true,\"kernel_and_memory_boundaries_modeled\":true,\"windows_executed\":false,\"game_tested\":false}\n",checks,controlReads,controlBytes,baselineControlReads,baselineControlBytes);
 }

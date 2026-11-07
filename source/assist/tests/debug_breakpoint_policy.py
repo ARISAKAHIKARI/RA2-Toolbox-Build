@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-dir", type=Path, required=True)
     parser.add_argument("--compiler", default="g++")
+    parser.add_argument("--baseline-bridge", type=Path, help="Fixed previous production bridge for admission equivalence and read-count comparison")
     args = parser.parse_args()
     tests = Path(__file__).resolve().parent
     source = tests.parent / "source"
@@ -40,9 +41,15 @@ def main():
                  "static bool enhancedRequested(", "static bool healthy(", "static bool ready(", "static bool groupOff(",
                  "static void syncDebugBreakpointPolicy(", "static void inspectDebugBreakpointSignatures(", "static void publishDebugBreakpointStates("]
     subject = "namespace techparameters {\n" + globals_ + declarations + "static bool debugExactUnreachable=false;\n" + "\n".join(block(bridge, f) for f in functions) + "\n}\n" + block(bridge, "static bool mapVisibilityParameter(")
+    baseline_text = args.baseline_bridge.read_text() if args.baseline_bridge else None
+    if baseline_text is not None:
+        baseline_admission = block(baseline_text, "static bool controlCompatible(").replace("static bool controlCompatible(", "static bool controlCompatibleBaseline(", 1)
+        subject += "\nnamespace techparameters {\n" + baseline_admission + "\n}\n"
     (args.build_dir / "debug_breakpoint_subject.inc").write_text(subject)
     exe = args.build_dir / "debug-breakpoint-policy"
     command = [args.compiler, "-std=c++17", "-O2", "-UNDEBUG", "-fno-exceptions", "-fno-rtti", "-I" + str(source), "-I" + str(args.build_dir), str(tests / "debug_breakpoint_policy.cpp"), "-o", str(exe)]
+    if baseline_text is not None:
+        command.insert(1, "-DCONTROL_ADMISSION_BASELINE")
     build = subprocess.run(command, capture_output=True, text=True)
     (args.build_dir / "compile.log").write_text(build.stdout + build.stderr)
     if build.returncode:
@@ -57,6 +64,8 @@ def main():
     paths = [source / name for name in names] + [tests / "debug_breakpoint_policy.cpp", Path(__file__)]
     paths += [source.parents[1] / "shared/source" / name for name in ("debug_entry_types.h", "debug_entry_policy.h", "debug_entry_catalog.h", "master_control_policy.h", "patch_context.h")]
     result["source_sha256"] = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
+    if baseline_text is not None:
+        result["baseline_bridge_sha256"] = hashlib.sha256(args.baseline_bridge.read_bytes()).hexdigest()
     (args.build_dir / "result.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result | {"source_sha256": "recorded"}))
 

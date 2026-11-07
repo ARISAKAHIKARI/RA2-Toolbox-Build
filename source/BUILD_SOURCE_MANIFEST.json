@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.43",
-  "version": "1.0.43",
+  "name": "RA2 Toolbox 1.0.44-pre.1",
+  "version": "1.0.44-pre.1",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full package includes hash-pinned offline assets/profiles/preprocessing runtime/engine; Update preserves an existing complete installation.",
   "resources_legacy_reuse": true,
   "build_protocol": 100,
-  "validation": "The pre.15 controlled source checks are inherited only after exact production-source identity is verified against c021ab112204b2e680eb8f1d1ccc91e5c6ebe7ce; they are not new Windows executions. The formal build separately records pinned source inputs, complete x64/x86 Windows-target compilation, static PE/ABI validation and archive hashes. No live Windows/DWM, user-platform, game, physical GPU or multiplayer acceptance is claimed.",
+  "validation": "This revision records only focused checks actually executed against its frozen production and test source bytes. Historical suites are not counted as new execution. Complete Windows-target compilation, static PE/ABI validation, paired component digests and archive verification are recorded separately in the frozen build receipts and release-manifest.json; this source manifest does not assert their completion. No live Windows/DWM, user-platform, game, physical GPU or multiplayer acceptance is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
@@ -43,7 +43,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.43 promotes the production code of c021ab112204b2e680eb8f1d1ccc91e5c6ebe7ce (pre.15) to a formal release. Only release metadata and packaging documentation change; exact-commit compilation and artifact checks are recorded in release-manifest.json. The designated publication is stable/Latest.",
+  "release_status": "1.0.44-pre.1 is a performance prerelease based on stable 1.0.43 at bf3fbe88faa96513649f2998aa0ab6e71935f4a8. It addresses repeated work in hardware enemy-control validation and same-frame Runtime collection when calculation is delegated to the toolbox. The configured unified sampling frequency is retained. The designated publication is prerelease/non-Latest; 1.0.43 remains the stable Latest.",
   "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; Debug entry catalog plus independent read-only platform Hook scan tools, manual PID, optional same-build original EXE, progress/cancellation and local HTML/JSON reports; existing action generation/revision acknowledgement preserved.",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement. Active, identity-verified enhancement targets may enter the toolbox catalogue despite Insignificant; Spawned and zero-owner exclusions and native build/factory rules remain. Ares replacing the native CanBuild body still makes the internal Exact comparison unavailable.",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -864,5 +864,27 @@
     "windows_executed": false,
     "game_tested": false,
     "multiplayer_tested": false
+  },
+  "PerformanceHotfix144Pre1": {
+    "base_commit": "bf3fbe88faa96513649f2998aa0ab6e71935f4a8",
+    "base_version": "1.0.43",
+    "version": "1.0.44-pre.1",
+    "file_version": "1.0.44.1",
+    "scope": [
+      "Consolidate control entry/caller byte reads during admission rechecks and index immutable debug-entry identities used in maintenance. The VEH callback and its immediate world/House guards are unchanged.",
+      "Avoid redundant same-frame threat scans in Host Scatter dodge; refresh at actual result/reverse consumption and preserve identity, lease and job maintenance.",
+      "Admit full per-frame work by enabled consumers and outstanding tasks instead of computation placement alone; frame notifications and pre-cadence maintenance remain.",
+      "Reuse fresh weapon-selector source/target data only inside one raw combat-probe collection batch. Reacquire after native queries and on each publication; retain per-pair identity guards and existing weapon-metadata cache semantics."
+    ],
+    "unified_sampling_frequency_changed": false,
+    "remaining_work": "Synchronous reverse dodge, AntiTheft building eligibility pre-scan and necessary frame notifications/maintenance retain their existing behavior.",
+    "game_thread_work": "Required state collection, native queries and final order execution remain on their existing game-side paths.",
+    "hardware_breakpoint_limit": "Every hardware execution-breakpoint hit still incurs exception delivery and handling; excessive hit frequency retains inherent cost. Reduced admission and maintenance work is not a claim of eliminating all stutter.",
+    "validation": "Only actually executed focused checks with frozen test/production source hashes belong to this revision. Build completion and artifact verification are recorded separately for the final frozen commit; this entry does not mark an unfinished build or unperformed real-game session as passed.",
+    "windows_executed": false,
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "prerelease": true,
+    "stable_latest_to_preserve": "v1.0.43"
   }
 }
