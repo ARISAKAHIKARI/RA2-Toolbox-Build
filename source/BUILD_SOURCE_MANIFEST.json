@@ -799,6 +799,7 @@
     "position": "Physical screen position is distinct from game logical resolution and image/hotspot size. No unconditional 4K/2K ratio and no SetCursorPos or platform Hook rewrites.",
     "failure": "Failed pointer sampling does not submit uninitialized/stale drawing coordinates. Defensive failure handling in the inactive legacy Cursor burst path does not re-enable that path.",
     "diagnostics": "Bounded coordinate/geometry and DPI-context diagnostic records make current display and game dimensions observable.",
-    "compatibility": "Existing process detection allowlist and per-entry validation preserved; no new game addresses or wire ABI."
+    "compatibility": "Existing process detection allowlist and per-entry validation preserved; no new game addresses or wire ABI.",
+    "presentation_failure_recovery": "If external coordinate-window presentation is unavailable, Hide mode uses the existing paired hookStop cleanup before deferring output; successful window recovery reaches the existing hookStart rearm. Native hardware/blank modes do not depend on external window creation."
   }
 }

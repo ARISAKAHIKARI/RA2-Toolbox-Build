@@ -25,6 +25,8 @@ def function(text, signature):
 
 def routes(text, baseline):
     body = []
+    body.append(function(text, "static void leaveGame(){").replace("static void leaveGame()", "static void ownerLeaveGame()", 1))
+    body.append("static void leaveGame(){++leaves;hideHeldWhenLeaving=pairedHide;ownerLeaveGame();}")
     if not baseline:
         for signature in ("static void coordinateDiagnostic(", "static bool ensureCoordinateWindows(", "static bool cursorMapPoint("):
             body.append(function(text, signature))
@@ -54,7 +56,7 @@ def routes(text, baseline):
     # The caller/frame/image sampling is outside this focused coordinate
     # fixture. The guards, destination statement and both submit expressions
     # below are extracted verbatim from the actual production source.
-    body.append(prefix + geometry +
+    body.append(prefix + geometry + function(text, " if(!wasInside){") +
                 "\nif((nativeGameRefresh&&mode==L\"hide\")||noCursorMode)return;\n" +
                 ("" if baseline else "const auto cursorOrigin=cursorcoordinates::spriteOrigin({pos.x,pos.y},shx,shy);\n") +
                 destination + "\n(void)" + update + ";\n(void)" + placement + ";\n}\n")
@@ -69,6 +71,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--baseline-ref", default="c092a70e")
+    parser.add_argument("--recovery-baseline-ref", default="2c8367ae1b0f672da7caca82260d70c7d9dddadc")
     parser.add_argument("--cxx", default="g++")
     args = parser.parse_args()
     source = Path(__file__).resolve().parents[2]
@@ -76,8 +79,9 @@ def main():
     args.out.mkdir(parents=True, exist_ok=True)
     current = (source / "cursor/source/main.cpp").read_text()
     baseline = subprocess.check_output(["git", "show", args.baseline_ref + ":source/cursor/source/main.cpp"], cwd=repo, text=True)
+    recovery_baseline = subprocess.check_output(["git", "show", args.recovery_baseline_ref + ":source/cursor/source/main.cpp"], cwd=repo, text=True)
     rows = []
-    for name, text, old in (("current", current, False), ("baseline", baseline, True)):
+    for name, text, old in (("current", current, False), ("baseline", baseline, True), ("interim", recovery_baseline, False)):
         subject = args.out / (name + "-routes.inc")
         subject.write_text(routes(text, old))
         binary = args.out / name
@@ -90,17 +94,21 @@ def main():
         (args.out / (name + "-build.log")).write_text(compiled.stdout + compiled.stderr)
         if compiled.returncode:
             raise SystemExit(compiled.stdout + compiled.stderr)
-        for option in (("",) if old else ("", "--no-context-api", "--no-physical-api")):
+        options = ("",) if old else (("--owner-recovery-only",) if name == "interim" else ("", "--no-context-api", "--no-physical-api"))
+        for option in options:
             label = name + (option.replace("--", "-") if option else "")
             run = subprocess.run([str(binary), *([option] if option else [])], text=True, capture_output=True, timeout=20)
             (args.out / (label + ".log")).write_text(run.stdout + run.stderr)
             record = json.loads(run.stdout.strip().splitlines()[-1])
-            expected = 1 if old else 0
-            if run.returncode != expected or (not old and record["failures"]):
+            expected = 1 if name != "current" else 0
+            if run.returncode != expected or (not expected and record["failures"]):
                 raise SystemExit(run.stdout + run.stderr)
             if old:
                 for claim in ("failed point never submits", "pillarbox left black bar", "pillarbox sidebar", "letterbox top bar", "letterbox bottom bar"):
                     assert "FAIL " + claim in run.stdout, "Missing actual old-route counterexample: " + claim
+            if name == "interim":
+                for claim in ("failed external window releases paired Hide before leaving", "unavailable physical domain releases paired Hide before leaving"):
+                    assert "FAIL " + claim in run.stdout, "Missing interim production recovery counterexample: " + claim
             rows.append({"name": label, "expected_exit": expected, "exit_code": run.returncode, "build": build,
                          "routes_sha256": digest(subject), **record})
     paths = [
@@ -114,13 +122,16 @@ def main():
         "source_sha256": {path: digest(source / path) for path in paths},
         "source_paths_relative_to": "source/", "baseline_revision": args.baseline_ref,
         "baseline_main_sha256": hashlib.sha256(baseline.encode()).hexdigest(), "results": rows,
+        "recovery_baseline_revision": args.recovery_baseline_ref,
+        "recovery_baseline_main_sha256": hashlib.sha256(recovery_baseline.encode()).hexdigest(),
         "current_checks": sum(row["checks"] for row in rows if row["expected_exit"] == 0),
         "negative_control_failures": sum(row["failures"] for row in rows if row["expected_exit"] == 1),
-        "scope": "Production Windows/pure coordinate helpers plus verbatim extracted main client/point guard, sidebar region, map-point classification, overlay-window lifecycle, diagnostics and destination/submit expressions.",
+        "scope": "Production Windows/pure coordinate helpers plus extracted main client/point guard, sidebar region, map-point classification, overlay-window lifecycle, diagnostics, leave/re-entry owner lifecycle and destination/submit expressions.",
         "limitations": [
             "Win32 APIs and submission sinks are controlled substitutes; no Windows DWM, native compositor, real game or platform was executed.",
             "Old logical-caller failure means the old production route does not enforce the new physical-domain contract; it is not a claim that DWM always misplaces an old logical-context window.",
             "Runtime/protocol and OS pointer position are unchanged. Native image creation is outside this coordinate fixture.",
+            "Hook stop/start are subscription boundary substitutes. Owner-side release and recovery are executed, but actual Runtime Hide restoration/acknowledgement is not simulated or claimed.",
             "Dormant Cursor Shift5 is not re-enabled or claimed as an executed user input pipeline.",
         ],
     }

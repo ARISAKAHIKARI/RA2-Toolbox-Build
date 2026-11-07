@@ -106,22 +106,25 @@ Microsoft 明确说明 PMv2 应用看到显示器的原始像素；`GetCursorPos
 
 覆盖层记录创建时的坐标域。逻辑回退恢复为物理域时重建覆盖层并强制提交新图像；已经创建的物理覆盖层不会在暂时切换失败时接收逻辑位置，下一帧可以重试。创建失败按 1 秒退避，保留错误码。诊断 HUD 可独立恢复，不成为原生 HCURSOR 的依赖。
 
+最终复核另发现并修正了交付前提交 `2c8367ae1b0f672da7caca82260d70c7d9dddadc` 的恢复缺口：外置窗口创建或坐标域持续不可用时，仅 `leaveGame()` 会保留已配对的原生 Hide；Runtime 的 `menuSuspend=2` 只退让 Windows 光标呈现，不恢复该 Hide，前台游戏可能持续没有可见指针。最终实现复用既有外置放置失败策略：该外置失败分支在 Hide 模式先调用 `hookStop()` 配对恢复，再退让图层；保持 running/自动连接状态。窗口恢复后，既有 `!wasInside && !hook` 路径重新 `hookStart()`。原生 HCURSOR 与无光标模式不进入这个外置窗口失败分支。没有新增恢复等待循环、Runtime ABI 或平台 Hook 写入。
+
 `cursorMapPoint()` 与 `refreshClickRegion()` 共用显式 aspect-fit 的 viewport。等比例设置未开启时保留拉伸模型；不从显示器与游戏分辨率比猜测平台 viewport。屏幕点只减去最终缩放热点，图像大小、DPI 模式与手动缩放不再参与屏幕位置的倍率。
 
 新增 `cursor-coordinates` 记录写入 `cursor.log` 与统一 Host 的 `logs/Runtime.log`，记录调用域、取点 API、原 caller 点、采用的点、客户区/显示器矩形、游戏尺寸、图像倍率、热点、目的位置和错误。两次取点是顺序采样，不能用它们的比值估计 DPI。变化记录最短间隔 1 秒，稳定状态 15 秒；移动点不进入变化键。
 
 | 实际执行项目 | 结果与范围 |
 | --- | --- |
-| `assist/tests/cursor_coordinates.py` 默认配置 | 30 场景、48 检查通过；实际 production helper 和 main 中抽取的 guard、viewport、窗口重建、诊断及提交表达式 |
+| `assist/tests/cursor_coordinates.py` 默认配置 | 35 场景、57 检查通过；实际 production helper 和 main 中抽取的 guard、viewport、窗口重建、诊断、离开/重入恢复及提交表达式 |
 | 缺少线程 DPI API | 1 场景、2 检查通过；整条链使用一致的 caller-logical 回退 |
-| 缺少物理取点 API | 30 场景、48 检查通过；已建立 PM 域后使用同域 `GetCursorPos` |
+| 缺少物理取点 API | 35 场景、57 检查通过；已建立 PM 域后使用同域 `GetCursorPos` |
 | pre.11 旧生产代码负对照 | 6 场景、11 检查中的 7 项按预期失败，退出码 1；包含取点失败、黑边/侧栏判定及新物理域合同差异；普通 PMv2 点不二次缩放的控制项保持通过 |
+| 交付前 `2c8367ae` 恢复负对照 | 5 场景、9 检查中的 7 项按预期失败；最终失败分支先释放配对 Hide，恢复后重新订阅；原生/保留原光标模式不误释放 |
 | `cursor_visibility_order.py` | 7 项源码顺序/恢复合同检查通过；不是 Win32 输出执行 |
 | `cursor_settings_ui_test.py` | 实际设置 handler 在 portable Win32 控件替身中通过 |
 
 主坐标原始收据：`analysis/pre12-cursor-coordinates/receipt.json`；规范收据：同目录 `normalized-receipt.json`。独立存量检查：`analysis/pre12-cursor-existing-independent/validation.json` 与 `receipt.json`。这些路径相对于本次工作区；聚合源码证据另存 `source/research/evidence/cursor-coordinate-recovery-release-validation-20261107.json`。
 
-测试在 Linux / g++ 中运行，Win32 API 与图像提交接收端是受控替身。默认/缺 API 的同类检查不合并成唯一场景数量。旧逻辑 caller 的失败表示没有实施新的显式物理域合同，**不表示 Windows DWM 一定会把同样在逻辑域创建的旧窗口画错**。旧代码未取第二个客户区角的失败同样属于新增几何合同的负对照，不证明旧公式在普通 PM 下必然错误。
+测试在 Linux / g++ 中运行，Win32 API 与图像提交接收端是受控替身。默认/缺 API 三轮共 116 项检查通过；同类检查不合并成唯一场景数量。恢复测试执行抽取的生产失败分支、leaveGame 和重入块；hookStop/hookStart 为订阅边界替身，不把它描述为实际 Runtime Hide 恢复验收。旧逻辑 caller 的失败表示没有实施新的显式物理域合同，**不表示 Windows DWM 一定会把同样在逻辑域创建的旧窗口画错**。旧代码未取第二个客户区角的失败同样属于新增几何合同的负对照，不证明旧公式在普通 PM 下必然错误。
 
 Cursor 启动/start/status 片段与 `c092a70e` 保持逐字一致；其需要 Windows 执行的旧 startup fixture 本轮没有运行，也不计为通过。原生 HCURSOR 图像创建、实际 Windows/DWM、用户平台、全屏切换视觉和游戏/多人运行未执行；没有把 dormant 旧 Cursor 补点路径重新启用。
 

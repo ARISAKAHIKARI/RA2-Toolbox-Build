@@ -8,22 +8,15 @@
       "name": "cursor_coordinates",
       "passed": true,
       "evidence": "analysis/pre12-cursor-coordinates/normalized-receipt.json",
-      "evidence_sha256": "7d6689e83ad424a4fd07cb3b79e2634ee0e8b8df2ce443fd9616c2c2d0d9cdb3",
+      "evidence_sha256": "e475d73e901ab5706c340db5f582577e7b991279b9fb6fd2ae648197f781d907",
       "checks": {
-        "main_profile": 48,
-        "missing_context_api": 2,
-        "missing_physical_cursor_api": 48
-      },
-      "scenarios": {
-        "main_profile": 30,
-        "missing_context_api": 1,
-        "missing_physical_cursor_api": 30
+        "current_across_three_runs": 116,
+        "default_scenarios": 35,
+        "default_checks": 57
       },
       "negative_controls": {
-        "baseline_revision": "c092a70e160f3eb223eab4f3fa1049b9baead463",
-        "expected_failures": 7,
-        "expected_exit": 1,
-        "scope": "Source extraction; failed-read and fitted-viewport negatives plus physical-domain contract counterexamples, not an observed Windows compositor failure."
+        "pre11_expected_failures": 7,
+        "interim_recovery_expected_failures": 7
       },
       "real_windows_tested": false,
       "windows_executed": false,
@@ -46,9 +39,9 @@
             "-o",
             "/workspace/scratch/a67ed982d62d/analysis/pre12-cursor-coordinates/current"
           ],
-          "routes_sha256": "cd4bf2b743d78b966defe1a0cda151877e89a15c9483c28107b0e07363a78d83",
-          "cases": 30,
-          "checks": 48,
+          "routes_sha256": "e54fd8c7c64586bb483f8023f3a1ee33307e855efc3cd58da7eee65fc2ef8962",
+          "cases": 35,
+          "checks": 57,
           "failures": 0,
           "native_windows_executed": false,
           "game_executed": false
@@ -69,7 +62,7 @@
             "-o",
             "/workspace/scratch/a67ed982d62d/analysis/pre12-cursor-coordinates/current"
           ],
-          "routes_sha256": "cd4bf2b743d78b966defe1a0cda151877e89a15c9483c28107b0e07363a78d83",
+          "routes_sha256": "e54fd8c7c64586bb483f8023f3a1ee33307e855efc3cd58da7eee65fc2ef8962",
           "cases": 1,
           "checks": 2,
           "failures": 0,
@@ -92,9 +85,9 @@
             "-o",
             "/workspace/scratch/a67ed982d62d/analysis/pre12-cursor-coordinates/current"
           ],
-          "routes_sha256": "cd4bf2b743d78b966defe1a0cda151877e89a15c9483c28107b0e07363a78d83",
-          "cases": 30,
-          "checks": 48,
+          "routes_sha256": "e54fd8c7c64586bb483f8023f3a1ee33307e855efc3cd58da7eee65fc2ef8962",
+          "cases": 35,
+          "checks": 57,
           "failures": 0,
           "native_windows_executed": false,
           "game_executed": false
@@ -116,9 +109,32 @@
             "-o",
             "/workspace/scratch/a67ed982d62d/analysis/pre12-cursor-coordinates/baseline"
           ],
-          "routes_sha256": "a42e543c9a7a67052f3c9394c951cc44d46d61a2d78629e71611a8fb425b057f",
+          "routes_sha256": "df964e842e0c43f4e0d219a2c391d8eaec0cf3a89f28afe13915443f1cd0dd97",
           "cases": 6,
           "checks": 11,
+          "failures": 7,
+          "native_windows_executed": false,
+          "game_executed": false
+        },
+        {
+          "name": "interim-owner-recovery-only",
+          "expected_exit": 1,
+          "exit_code": 1,
+          "build": [
+            "g++",
+            "-std=c++17",
+            "-O0",
+            "-UNDEBUG",
+            "-DRA2_UNIFIED",
+            "-I/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates_winmock",
+            "-DCURSOR_ROUTES=\"/workspace/scratch/a67ed982d62d/analysis/pre12-cursor-coordinates/interim-routes.inc\"",
+            "/workspace/scratch/a67ed982d62d/ra2-toolbox/source/assist/tests/cursor_coordinates.cpp",
+            "-o",
+            "/workspace/scratch/a67ed982d62d/analysis/pre12-cursor-coordinates/interim"
+          ],
+          "routes_sha256": "3d9b3998407a950830d4e2eac18fbf62dcfdced6feac00941a625754d1873d4e",
+          "cases": 5,
+          "checks": 9,
           "failures": 7,
           "native_windows_executed": false,
           "game_executed": false
@@ -128,15 +144,16 @@
         "Win32 APIs and submission sinks are controlled substitutes; no Windows DWM, native compositor, real game or platform was executed.",
         "Old logical-caller failure means the old production route does not enforce the new physical-domain contract; it is not a claim that DWM always misplaces an old logical-context window.",
         "Runtime/protocol and OS pointer position are unchanged. Native image creation is outside this coordinate fixture.",
+        "Hook stop/start are subscription boundary substitutes. Owner-side release and recovery are executed, but actual Runtime Hide restoration/acknowledgement is not simulated or claimed.",
         "Dormant Cursor Shift5 is not re-enabled or claimed as an executed user input pipeline."
       ],
-      "scope": "Production Windows/pure coordinate helpers plus verbatim extracted main client/point guard, sidebar region, map-point classification, overlay-window lifecycle, diagnostics and destination/submit expressions."
+      "scope": "Production Windows/pure coordinate helpers plus extracted main client/point guard, sidebar region, map-point classification, overlay-window lifecycle, diagnostics, leave/re-entry owner lifecycle and destination/submit expressions."
     },
     {
-      "name": "cursor_existing",
+      "name": "existing_cursor_regressions",
       "passed": true,
       "evidence": "analysis/pre12-cursor-existing-independent/receipt.json",
-      "evidence_sha256": "89e6bb30f88bdfa02de2ac6b3a638b441b22a34b71820301b1d20e0e5608ead4",
+      "evidence_sha256": "4ad94c6feff9990cbd8b2bf96376e439245a47b401fb3543b9f7c058ffc41174",
       "checks": {
         "visibility_source_order": 7,
         "settings_handler_fixture": "passed"
@@ -165,10 +182,10 @@
     }
   ],
   "source_sha256": {
-    "source/BUILD_SOURCE_MANIFEST.json": "17f608c7eaea55f3c5dfeaf8440119e4f6775eb807a6ac2407dc5b4a8f85a15d",
-    "source/assist/tests/cursor_coordinates.cpp": "dec63dd3e681992013eff4d6ecce2692375b9654e77d4bed07c2691c9d08321b",
-    "source/assist/tests/cursor_coordinates.py": "89e995d5f93310bdff36377c40512933a0aa1ce506b3c0c664b8de27ab8838f5",
-    "source/assist/tests/cursor_coordinates_winmock/windows.h": "af169016b817a0e6c9939f5cd1328a186e67bf1c5458f52f4346f804deb8d541",
+    "source/BUILD_SOURCE_MANIFEST.json": "44b484810e9c7ba35ecb644dd71e38dcaf965cb37910229a1d4e900404680c4f",
+    "source/assist/tests/cursor_coordinates.cpp": "9666ad4f974b765d7e0626f88c8c9fe91ab8923b554e9fbcfdcebae0ad059d90",
+    "source/assist/tests/cursor_coordinates.py": "c5d5e0771c4080d63cbb64819e25ff3d6df8fd579fd17cb679559ca4d9e31f35",
+    "source/assist/tests/cursor_coordinates_winmock/windows.h": "08260ea2c187057e76538cff739d34ee4e86046c8a4594b401d00683e3d8eabf",
     "source/assist/tests/cursor_settings_ui_test.py": "ad16e8e8bbedb87ee6808a455442bc0d1c2ed6fd12178a2d6a6d64698fbc91b7",
     "source/assist/tests/cursor_startup_activation.py": "e84b1208b43dc7c53dcc9bda92ba60320045596d630a691c3ccb00a68fdbb973",
     "source/assist/tests/cursor_visibility_order.py": "3dfc09eeb6d2bd8f06633908a1d03974a8bed1843ab6ae4f7cd140d8c52aa67a",
@@ -177,9 +194,9 @@
     "source/cursor/source/cursor_coordinates_windows.h": "c87121a871aa6a99510f0cab8f96ea40c4ff170a76461caa4203dd0f25292890",
     "source/cursor/source/hide.cpp": "d2c6e6e284ee02779af3f7dcc5459fb5487d8c420650548903b6a931a475a445",
     "source/cursor/source/live_settings_ui.h": "aa38e2dffd3af1e3d5f1cd21915e9cb12e325cc1076c90aa2a17b40dfd7c16ea",
-    "source/cursor/source/main.cpp": "330950e0cbe7d735e477d01278bf90996d68671b2e6208849589e422a237db35",
+    "source/cursor/source/main.cpp": "2ce9ce8f97fe2612e135234590faa853f8c7ced38736484274930dab9b8d85ae",
     "source/cursor/source/scale.h": "ed84302f21146a505a69969bd00192dc71b62026a6261ac1870a3fcae49ad4e8",
-    "source/research/2026-11-07-cursor-coordinate-recovery.md": "365d15908e3114a455dc63035a05f9f68a521339d0b3668b5eab23ac6cdb20ea",
+    "source/research/2026-11-07-cursor-coordinate-recovery.md": "ace9b604883e8f49a644f6a22130eee52524cad085e0b7e33721bd048cd17ce6",
     "source/research/INDEX.md": "f64064f5d4355d43a5398891d42f8ec15657f3e94e1d387c95b30757aa33ab23",
     "source/shared/source/release_version.h": "7cbdcaa7ca74c0775e9a10c001d6d33327625cd1c4c5744c60594f2a6eed5e35"
   },

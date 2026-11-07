@@ -25,6 +25,16 @@ static int lastFrame=-2;static size_t lastPhase=0;static DWORD hudPaintAt=0,regi
 static RECT clickRegion{};static std::wstring mode=L"hide";
 static Domain overlayCoordinateDomain=Domain::CallerLogical;static HANDLE overlayCoordinateContext=nullptr;
 static int shx=15,shy=12,dw=83,dh=65;static HDC memdc=nullptr;
+struct ResetProbe{void clear(){}void reset(){}void resetObservation(){}void cancel(){}};
+static ResetProbe bridgeFrame,lanboStream,fallbackTracker,tween,timing,activeMotion,burst;
+struct SharedProbe{LONG menuSuspend=0;};static SharedProbe runtimeState;static SharedProbe* shared=&runtimeState;
+static HANDLE hook=(HANDLE)9;
+static bool pairedHide=true,manualCursorPause=false,wasInside=true,usingHeldSample=false,nativeMenuHold=false;
+static DWORD nativeInvisibleAt=0,nativeMenuCandidateAt=0,refreshAt=0;
+static int previousObservedFrame=-1,refreshTries=0,hudLastFrame=-1;
+static unsigned hookStarts=0,hookStops=0,hudUpdates=0,hudCommits=0,hudMotion=0,hudChanges=0;
+static uint64_t hudEpoch=0;
+static bool hideHeldWhenLeaving=false;
 static bool pm(){return context==-3||context==-4;}
 static LONG logical(LONG value){return LONG(std::lround(value/(pm()?1:dpiFactor)));}
 HMODULE GetModuleHandleW(const wchar_t*){return (HMODULE)7;}
@@ -47,6 +57,7 @@ BOOL GetClientRect(HWND,RECT* out){if(!clientOK){lastError=6;return FALSE;}*out=
 BOOL ClientToScreen(HWND,POINT* point){if((point->x||point->y)&&!secondCornerOK){lastError=87;return FALSE;}point->x+=logical(physicalClient.left);point->y+=logical(physicalClient.top);return TRUE;}
 DWORD GetLastError(){return lastError;}void SetLastError(DWORD value){lastError=value;}DWORD GetTickCount(){return clockNow;}
 BOOL IsWindow(HWND w){return w!=nullptr;}BOOL IsWindowVisible(HWND w){return w==game||w==mainw||(windows.count(w)&&windows[w].visible);}BOOL IsIconic(HWND){return FALSE;}
+BOOL ShowWindow(HWND value,int){if(windows.count(value))windows[value].visible=false;return TRUE;}
 void SetRectEmpty(RECT* rect){*rect={};}
 HWND CreateWindowExW(DWORD,const wchar_t*,const wchar_t*,DWORD,int x,int y,int w,int h,HWND,HANDLE,HINSTANCE,void*){++creations;if(!createOK){lastError=8;return nullptr;}HWND value=(HWND)uintptr_t(100+creations);windows[value]={{x,y,x+w,y+h},context,false};return value;}
 BOOL DestroyWindow(HWND value){++destroyed;windows.erase(value);return TRUE;}BOOL SetLayeredWindowAttributes(HWND,DWORD,unsigned char,DWORD){return TRUE;}
@@ -60,7 +71,13 @@ static BOOL place(HWND value,Layer,int x,int y,int,int,UINT){++placements;placed
 namespace autolog {static void write(const std::wstring& text){automaticMessages.push_back(text);}}
 static void log(const std::wstring& text){messages.push_back(text);}
 static bool clickForegroundMatches(){return true;}
-static void leaveGame(){++leaves;}
+namespace gameinput {static void wake(HANDLE){}}
+static uint64_t inputNow(){return clockNow;}
+static std::wstring widen(const char* text){return std::wstring(text,text+std::strlen(text));}
+// These are subscription boundary substitutes, not Runtime execution.
+static void hookStop(){if(!shared&&!hook)return;++hookStops;pairedHide=false;shared=nullptr;hook=nullptr;}
+static void hookStart(){++hookStarts;pairedHide=true;runtimeState={};shared=&runtimeState;hook=(HANDLE)9;}
+static void stop(){running=false;}
 static void visibilityDiagnostic(const wchar_t*,DWORD){}
 #include CURSOR_ROUTES
 static unsigned checks=0,failures=0,cases=0;
@@ -72,10 +89,12 @@ static void reset(){
  overlayCoordinateDomain=Domain::CallerLogical;overlayCoordinateContext=nullptr;
  nativeGameRefresh=noCursorMode=false;mode=L"hide";aspectFit=true;gameWOverride=gameHOverride=0;
  clickGameWidth=2560;clickGameHeight=1440;sidebarWidth=160;sidebarTop=200;lastFrame=-2;
+ running=true;pairedHide=true;manualCursorPause=false;wasInside=true;runtimeState={};shared=&runtimeState;hook=(HANDLE)9;
+ hookStarts=hookStops=0;hideHeldWhenLeaving=false;
 }
 static void basicCases(){
  reset();++cases;productionDrawRoute();
- check(submissions==1&&submitted.x+shx==3000&&submitted.y+shy==1000,"compatibility override uses physical screen position");
+ check(submissions==1&&submitted.x+shx==3000&&submitted.y+shy==1000,"physical-domain contract is enforced under mocked logical caller");
 #ifndef CURSOR_BASELINE
  check(submittedContext==-4&&placedContext==-4&&context==-1,"reads and both submissions share PM context then restore caller");
 #endif
@@ -95,10 +114,36 @@ static void basicCases(){
  reset();++cases;context=-4;productionDrawRoute();
  check(submissions==1&&submitted.x+shx==3000,"normal PMv2 point is not multiplied by 1.5");
 }
+#ifndef CURSOR_BASELINE
+static void ownerRecoveryCases(){
+ reset();++cases;createOK=false;productionDrawRoute();
+ check(!pairedHide&&!hook&&!shared&&hookStops==1&&!hideHeldWhenLeaving&&!wasInside&&running,"failed external window releases paired Hide before leaving");
+ clockNow+=1000;productionDrawRoute();
+ check(hookStarts==0&&hookStops==1&&!submissions&&running,"persistent window failure never re-arms Hide or stops owner");
+ clockNow+=1000;createOK=true;productionDrawRoute();
+ check(pairedHide&&hookStarts==1&&submissions==1&&wasInside&&running,"window recovery re-arms Hide through existing re-entry branch");
+ productionDrawRoute();check(hookStarts==1,"healthy following frames keep the recovered subscription");
+ reset();++cases;productionDrawRoute();allowPM=false;submissions=placements=0;productionDrawRoute();
+ check(!pairedHide&&!hook&&!shared&&hookStops==1&&!hideHeldWhenLeaving&&!submissions&&running,"unavailable physical domain releases paired Hide before leaving");
+ allowPM=true;productionDrawRoute();
+ check(pairedHide&&hookStarts==1&&submissions==1&&wasInside&&running,"domain recovery re-arms Hide through existing re-entry branch");
+ reset();++cases;nativeGameRefresh=true;createOK=false;productionDrawRoute();
+ check(pairedHide&&hookStops==0&&leaves==0,"native route retains its own cursor when external creation fails");
+ reset();++cases;mode=L"keep";pairedHide=false;shared=nullptr;hook=nullptr;createOK=false;productionDrawRoute();
+ check(hookStops==0&&!pairedHide&&running,"keep-original mode never releases a Hide subscription it does not own");
+ reset();++cases;createOK=false;productionDrawRoute();manualCursorPause=true;clockNow+=1000;createOK=true;productionDrawRoute();
+ check(!pairedHide&&hookStarts==0&&running,"recovery preserves explicit manual pause");
+}
+#endif
 int main(int argc,char** argv){
  const std::string option=argc>1?argv[1]:"";
  if(option=="--no-context-api")exportsContext=false;
  if(option=="--no-physical-api")exportsPhysical=false;
+#ifndef CURSOR_BASELINE
+ if(option=="--owner-recovery-only"){
+  ownerRecoveryCases();
+ }else
+#endif
  if(option=="--no-context-api"){
   reset();++cases;productionDrawRoute();
   check(submissions==1&&submitted.x+shx==2000&&submittedContext==-1,"unavailable context APIs use one complete logical domain");
@@ -157,6 +202,7 @@ int main(int argc,char** argv){
    check(messages.size()==2,"stable diagnostic remains throttled for fifteen seconds");
    clockNow+=1000;coordinateDiagnostic(L"present",scope,physicalPoint,true,physicalClient,2560,1440,84,65,16,12,1.5,1.5,3840,2160);
    check(messages.size()==3,"stable diagnostic publishes after fifteen seconds");}
+  ownerRecoveryCases();
 #endif
  }
  std::cout<<"{\"cases\":"<<cases<<",\"checks\":"<<checks<<",\"failures\":"<<failures<<",\"native_windows_executed\":false,\"game_executed\":false}\n";

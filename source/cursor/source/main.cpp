@@ -835,6 +835,7 @@ static void draw(){
  RECT rc{0,0,client.width(),client.height()};POINT org{client.left,client.top};
  if(!(nativeGameRefresh&&mode==L"hide")&&!noCursorMode&&!ensureCoordinateWindows(coordinates)){
   const DWORD error=GetLastError();coordinateDiagnostic(L"window-domain-unavailable",coordinates,pos,true,client,0,0,0,0,0,0,1,1,0,0,error);
+  if(mode==L"hide")hookStop();
   leaveGame();visibilityDiagnostic(L"光标窗口坐标域暂不可用，等待自动恢复",fp);return;
  }
  // A different game-owned window may be foreground (e.g. launcher overlay),
