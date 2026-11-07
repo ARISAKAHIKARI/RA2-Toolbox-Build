@@ -7,15 +7,25 @@ static int selectedTypeIndex(){
 }
 static WORD typeBinding(const char* id){for(auto&b:typeBindings)if(b.id==id)return b.key;return 0;}
 static WORD comparableKey(WORD k){auto value=keygesture::normalize(k);return keygesture::mode(value)==keygesture::Mode::Hold?WORD(value&~keygesture::ModeMask):value;}
+static bool automaticKeyConflict(WORD key){
+ if(extra.allHotkeys||!LOBYTE(key))return false;const WORD normalized=comparableKey(key);
+ for(auto binding:extra.automaticKeys)if(comparableKey(WORD(binding))==normalized)return true;return false;
+}
 static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
  if(!LOBYTE(key))return false;
  if(LOBYTE(extra.destructSelectedOwnerKey)&&hotkeyroute::canonical(key)==hotkeyroute::canonical(WORD(extra.destructSelectedOwnerKey)))return true;
  if(extra.allHotkeys)return false;key=comparableKey(key);
  for(auto k:hotkeys)if(comparableKey(k)==key)return true;
+ if(automaticKeyConflict(key))return true;
  for(auto&b:swBindings)if(comparableKey(b.key)==key)return true;
  if(ignore.empty())for(auto&b:typeBindings)if(comparableKey(b.key)==key)return true;
  if(comparableKey(idleAircraftKey)==key)return true;
- if(extra.watchEnabled)for(auto binding:extra.watchKeys)if(comparableKey(WORD(binding))==key)return true;
+ // Keep this list aligned with registerKeys, including optional active routes.
+ if(extra.sidebarEnabled&&comparableKey(WORD(extra.sidebarKey))==key)return true;
+ if(extra.viewZoomEnabled)for(auto binding:extra.viewZoomKeys)if(comparableKey(WORD(binding))==key)return true;
+ if(comparableKey(WORD(extra.stickyKey))==key)return true;
+ for(auto binding:extra.missionModeKeys)if(comparableKey(WORD(binding))==key)return true;
+ if(extra.watchEnabled||extra.watchSecondary)for(auto binding:extra.watchKeys)if(comparableKey(WORD(binding))==key)return true;
  for(auto social:socialKeys)if(comparableKey(social)==key)return true;
  if(comparableKey(WORD(extra.variantKey))==key)return true;
  if(comparableKey(WORD(extra.placementEventKey))==key)return true;
@@ -25,6 +35,7 @@ static bool destructOwnerKeyConflict(WORD key){
  if(!LOBYTE(key))return false;
  const auto physical=hotkeyroute::canonical(key);auto same=[&](uint32_t chord){return LOBYTE(chord)&&hotkeyroute::canonical(WORD(chord))==physical;};
  for(auto chord:hotkeys)if(same(chord))return true;
+ for(auto chord:extra.automaticKeys)if(same(chord))return true;
  for(const auto&b:swBindings)if(same(b.key))return true;
  for(const auto&b:typeBindings)if(same(b.key))return true;
  for(auto chord:socialKeys)if(same(chord))return true;
@@ -40,7 +51,7 @@ static void syncTypeConfig(){
  if(!shared)return;
  if(memcmp(&shared->featureConfig,&featureTypes,sizeof featureTypes)){InterlockedIncrement(&shared->featureConfigSeq);MemoryBarrier();memcpy(&shared->featureConfig,&featureTypes,sizeof featureTypes);MemoryBarrier();InterlockedIncrement(&shared->featureConfigSeq);}
  if(memcmp(&shared->oreConfig,&oreTypes,sizeof oreTypes)){InterlockedIncrement(&shared->oreConfigSeq);MemoryBarrier();memcpy(&shared->oreConfig,&oreTypes,sizeof oreTypes);MemoryBarrier();InterlockedIncrement(&shared->oreConfigSeq);}
- shared->flags=flags();shared->advancedRangeCells=advancedRangeCells;shared->advancedKey=advancedKey;shared->magnetronKey=magnetronKey;shared->csHoldKey=csHoldKey;shared->pathTimeout=pathTimeout;shared->veteranPercent=veteranPercent;shared->elitePercent=elitePercent;uint8_t mask[MaxTypes]{};
+ shared->flags=flags();shared->repairMs=repairMs;shared->advancedRangeCells=advancedRangeCells;shared->advancedKey=advancedKey;shared->magnetronKey=magnetronKey;shared->csHoldKey=csHoldKey;shared->pathTimeout=pathTimeout;shared->veteranPercent=veteranPercent;shared->elitePercent=elitePercent;uint8_t mask[MaxTypes]{};
  static uint32_t syncedRevision,syncedMatch;static int syncedCount=-1;
  if(syncedRevision==settingsRevision&&syncedMatch==snap.match&&syncedCount==snap.typeCount&&shared->csMatch==snap.match)return;
  syncedRevision=settingsRevision;syncedMatch=snap.match;syncedCount=snap.typeCount;

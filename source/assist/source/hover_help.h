@@ -1,5 +1,6 @@
 // Instructions describe visible behavior; implementation diagnostics belong in logs.
 static std::wstring controlHelp(int id,const std::wstring& label){
+ if(const auto*entry=autofeatures::byKeyControl(id))return std::wstring(entry->name)+L"开关快捷键：与点击功能开关相同。留空不绑定；支持按下、松开或双按。只在游戏前台且未聊天时触发。";
  if(id>=200&&id<212)id-=100;
  if(id>=9000&&id<9000+compute::Count)return L"计算模式：工具箱计算便于分担游戏负载；游戏内计算可减少数据传递等待。修改后从下一局生效。";
  if(id>=729&&id<=738){const int feature[]={450,478,474,702,705,708,719,736,720,721};if(id!=736)id=feature[id-729];}
@@ -12,7 +13,7 @@ static std::wstring controlHelp(int id,const std::wstring& label){
  case 9314:case 9305:return L"xBRZ 需要独立开启，关闭时采用最近邻，不会因 4K 模式自动启动。xBRZ 可能增加 CPU/GPU 绘制开销，可单独比较实际新帧间隔。";
  case 895:case 885:return L"顺向移动使用原生通行查询选择落点，再发送原生移动事件；功能本身不修改游戏代码或虚表，尚未确认这些查询导致不同步。首次发现空袭弹体沿水平飞行方向移动约 2 格，受阻找相近落点；首次下令后 12 个游戏帧内的新弹不打断移动。可选原版 Scatter，发送原生散开事件。保留近距离躲碾压，受类型清单限制。";
  case 886:case 887:case 888:return L"当前版本仅开放光标高刷；拖屏、全部与强制高刷暂不可用。目标刷新率仍沿用光标页设置。";
- case 100:case 312:case 780:return L"自动维修：定期维修受损的己方建筑，快捷键用于开关。通常不可维修的建筑需要另行允许。";
+ case 100:case 312:case 780:return L"自动维修：按设置间隔检查受损的己方建筑并发出维修请求。间隔单位为毫秒，范围 500–30000，默认 2000；数值越小检查越频繁，不改变游戏内维修速度。修改后自动保存并生效；通常不可维修的建筑需要另行允许。";
  case 101:return L"选择当前可用的己方作战单位。";
  case 102:return L"选择没有乘员的己方运输载具。";
  case 103:return L"选择受损的己方单位。";

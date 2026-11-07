@@ -9,6 +9,10 @@ auto heading=[&](int page,int id,const wchar_t* title,const wchar_t* hint){secti
 auto toggle=[&](int id,const wchar_t* text,bool checked,int x=20,int width=605){auto h=item(L"BUTTON",text,x,width,id,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,checked?BST_CHECKED:BST_UNCHECKED,0);return h;};
 auto button=[&](int id,const wchar_t* text,int x=20,int width=605){return item(L"BUTTON",text,x,width,id,BS_PUSHBUTTON|WS_TABSTOP);};
 auto key=[&](int id,uint32_t binding,int x=345,int width=280,bool hold=false){auto h=item(HOTKEY_CLASSW,L"",x,width,id,WS_TABSTOP);if(hold){modernui::mouseOnly(h);modernui::holdKey(h);}SendMessageW(h,HKM_SETHOTKEY,binding,0);return h;};
+auto automaticToggle=[&](int id,const wchar_t*text,bool checked){
+ auto h=toggle(id,text,checked,20,306);const auto*entry=autofeatures::byControl(id);
+ if(entry&&entry->setting)key(entry->keyControl,extra.automaticKeys[entry->feature]);return h;
+};
 auto edit=[&](int id,const std::wstring& text,int x=290,int width=335,bool numeric=false){return item(L"EDIT",text.c_str(),x,width,id,(numeric?ES_NUMBER:ES_AUTOHSCROLL)|WS_TABSTOP);};
 auto combo=[&](int id,int x=290,int width=335,int drop=240){return item(L"COMBOBOX",L"",x,width,id,CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP,drop);};
 auto choices=[&](HWND h,std::initializer_list<const wchar_t*> names,int current){for(auto name:names)SendMessageW(h,CB_ADDSTRING,0,(LPARAM)name);SendMessageW(h,CB_SETCURSEL,current,0);};
@@ -18,9 +22,8 @@ auto holdPresetControl=[&](int preset,int custom,uint32_t binding){extraControls
 
 heading(0,900,L"键盘快捷操作",L"按一次快捷键执行或切换；选择单位后可直接装车、卸载或启用逃生。 ");
 label(L"操作 / 功能开关",20,306);label(L"快捷键",345,280);next();
-for(int i:{11,1,2,3,4,5,6,7,0}){
- HWND h=i==0?toggle(100,labels[0],value(L"Modes",L"AutoRepair",0)!=0,20,306):button(100+i,labels[i],20,306);
- if(i==0)repairCheck=h;keys[i]=key(200+i,hotkeys[i]);next();
+for(int i:{11,1,2,3,4,5,6,7}){
+ button(100+i,labels[i],20,306);keys[i]=key(200+i,hotkeys[i]);next();
 }
 hookChecks[1]=toggle(459,L"智能卸载",hookSmartUnload,20,270);unloadKeyEdit=key(451,unloadKey,305,180);button(453,L"立即卸载",500,125);next();
 label(L"喝彩与嘲讽快捷键",20,455);button(9604,L"展开设置",500,125);next();
@@ -54,7 +57,7 @@ label(L"高级移动攻击目标优先级",20,260);choices(combo(802),{L"单位�
 note(L"索敌范围为单位射程加额外距离；忽略伤害比例不超过 2% 的目标。",44);
 activeFoldGroup=0;
 magnetronCheck=toggle(477,L"磁电轮换攻击",magnetronMode,20,210);magnetronKeyEdit=key(478,magnetronKey,240,258,true);mouse(pointerinput::MouseMagnetron);next();
- toggle(9042,L"磁电全局无限吸",extra.magnetronGlobal);next();note(L"自动接管空闲磁电，沿用轮换和类型清单；手动移动或攻击优先。关闭后停止自动接续。");
+ automaticToggle(9042,L"磁电全局无限吸",extra.magnetronGlobal);next();note(L"自动接管空闲磁电，沿用轮换和类型清单；手动移动或攻击优先。关闭后停止自动接续。");
 extraControls[EnterEnabled]=toggle(702,L"高级进驻",extra.enter,20,210);holdPresetControl(EnterPreset,EnterCustom,extra.enterKey);mouse(pointerinput::MouseEnter);next();
 extraControls[AirEnabled]=toggle(705,L"飞机分配攻击",extra.air,20,455);button(9601,L"展开设置",500,125);next();
 activeFoldGroup=9601;
@@ -116,22 +119,25 @@ swList=combo(410,20,315,260);swHotkey=key(411,0,345,280);next();
 note(L"启用超级武器后，使用游戏内目标光标选择位置。",26);
 activeFoldGroup=0;
 
-heading(2,902,L"自动化与目标设置",L"调整自动任务的频率、范围及参与单位。操作说明会显示在底部状态栏。");
+heading(2,902,L"自动功能",L"每项功能可独立设置开关快捷键；新快捷键默认留空。参数修改后自动保存并生效。");
+label(L"功能开关",20,306);label(L"开关快捷键",345,280);next();
+repairCheck=toggle(100,labels[0],value(L"Modes",L"AutoRepair",0)!=0,20,306);keys[0]=key(200,hotkeys[0]);next();
+repairEdit=number(312,L"自动维修间隔 / 毫秒",repairMs,L"500–30000 · 默认 2000");
+note(L"检查受损建筑并发出维修请求的间隔；数值越小检查越频繁，不改变游戏内维修速度。",44);
 ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
-toggle(899,L"磁电全局自动摔落",extra.magnetronDrop);next();
+automaticToggle(899,L"磁电全局自动摔落",extra.magnetronDrop);next();
 note(L"独立检查全图己方磁电已吸起的载具，包括己方、盟友和敌方，手动强制攻击也生效。检测建筑、地面坦克、树木、矿柱、悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除下方空中单位和桥面。默认关闭，实际摔落效果仍需测试。",76);
-toggle(799,L"生产预定",extra.constructionQueue);next();
+automaticToggle(799,L"生产预定",extra.constructionQueue);next();
 note(L"建筑/防御各预定 5 项，步兵/载具各 30 项；可建造单位接连进入原生队列。",44);
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
-repairEdit=number(312,L"自动维修间隔 / 毫秒",repairMs,L"500–30000");
 toggle(780,L"允许维修通常不可维修的建筑",repairUnrepairable);next();
-oreCheck=toggle(470,L"矿车自动卸矿",oreMode,20,455);button(9605,L"展开设置",500,125);next();
+oreCheck=toggle(470,L"矿车自动卸矿",oreMode,20,245);key(9504,extra.automaticKeys[autofeatures::OreReturn],280,205);button(9605,L"展开设置",500,125);next();
 activeFoldGroup=9605;
 oreStatus=item(L"STATIC",L"等待对局",20,605,0,0,44);next(44);
 for(int i=0;i<2;++i){bool miner=i==0;toggle(781+i,miner?L"指定矿车类型":L"指定矿场类型",miner?oreTypes.customMiners:oreTypes.customRefineries);next();auto h=edit(783+i,miner?oreMiners:oreRefineries,20,605);SendMessageW(h,EM_SETLIMITTEXT,12287,0);next();}
 note(L"类型 ID 用逗号分隔；未启用清单时自动识别，启用后仅使用所列类型。",44);
 activeFoldGroup=0;
-toggle(9496,L"自动点杀蜘蛛",extra.minerDefenseEnabled);next();
+automaticToggle(9496,L"自动点杀蜘蛛",extra.minerDefenseEnabled);next();
 note(L"默认由正在工作的己方武装矿车点杀敌方蜘蛛。可在下方单独指定参与单位，独立于自动卸矿的矿车清单。玩家手动命令优先。",60);
 {const int f=featuretypes::SpiderDefense;
  toggle(9200+f*2,L"自定义点杀单位类型",featureTypes.filters[f].custom);next();
@@ -143,18 +149,19 @@ note(L"蜘蛛进入武器射程＋N 格时点杀；目标死亡或离开射程�
 item(L"STATIC",L"点杀蜘蛛：关闭",20,605,9498,0,44);next(44);
 label(L"自动装车分配方式",20,260);extraControls[LoadLogic]=combo(700);choices(extraControls[LoadLogic],{L"就近优先",L"兵种均衡"},extra.loadMode);next();
 extraControls[LoadRadius]=number(701,L"自动装车范围 / 格",extra.loadRadius,L"1–512");
-toggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
-toggle(885,L"自动躲弹",extra.dodgeEnabled,20,280);choices(combo(895,310,305,180),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
+automaticToggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
+automaticToggle(885,L"自动躲弹",extra.dodgeEnabled);next();
+label(L"躲弹方式",20,260);choices(combo(895),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
-toggle(880,L"防空火控",extra.missileDefense,20,455);button(9603,L"展开设置",500,125);next();
+toggle(880,L"防空火控",extra.missileDefense,20,245);key(9508,extra.automaticKeys[autofeatures::MissileDefense],280,205);button(9603,L"展开设置",500,125);next();
 activeFoldGroup=9603;
 label(L"目标范围",20,260);choices(combo(9040),{L"仅导弹类",L"所有敌方空中单位"},extra.missileScope);next();
 label(L"火力分配",20,260);choices(combo(9041),{L"智能分配（血量与伤害）",L"平均分配"},extra.missileAllocation);next();
-toggle(9181,L"提前休眠留枪",extra.missileReserve);next();
+automaticToggle(9181,L"提前休眠留枪",extra.missileReserve);next();
 number(881,L"火控检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
 note(L"智能分配以预计 120% 血量为覆盖线。提前休眠留枪：建筑、战车、步兵先 Sleep 等待已分配目标进入原生射程，冷却或多余火力继续等待；无候选时恢复 Guard。关闭留枪则沿用原版攻击接近。手动命令和队形优先。",60);
 activeFoldGroup=0;
-toggle(9182,L"过滤低伤害自动目标",extra.lowDamageFilter);next();
+automaticToggle(9182,L"过滤低伤害自动目标",extra.lowDamageFilter);next();
 toggle(9183,L"高危：修改原生索敌",extra.lowDamageNetwork);next();
 note(L"需先开启“自动功能”页的“过滤低伤害自动目标”。默认仅过滤工具箱自动命令，单机与联机均不修改原生索敌。另开高危选项会改写原生判断：单机影响己方，联机影响全部阵营，可能不同步。",60);
 item(L"STATIC",L"",20,605,9184);pageControls.back().feedbackHidden=true;next();

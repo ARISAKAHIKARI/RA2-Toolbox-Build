@@ -6,6 +6,8 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 自动维修归组与自动功能开关快捷键 | [pre.8：维修间隔、共享状态与异步取消](2026-11-07-automatic-controls-repair-frequency.md) | 13-toggles 10-new-keys RepairMs late-result cancellation manual-isolation hotkey-conflicts |
+| Ares/Phobos 与其他注入的适配边界 | [固定上游、入口交集与分层适配](2026-11-07-injector-compatibility-adaptation.md) | 380-source-files 7-exact-15-dependency-intersections CanBuild+7 Interop-major SyringeEx no-new-universal-adapter |
 | 调试入口页与逐入口签名开关 | [pre.7：独立 Call/Patch/DR、真实状态与 owned 恢复](2026-11-07-debug-entry-signature-controls.md) | Assist100 stable-ID INI seqlock 161-entries six-DR policyRevision actual-snapshot owned-restore no-live-game |
 | 原生入口依赖隔离与失败恢复 | [pre.6：21 项局部依赖、硬件失败重查与连接退避](2026-11-07-runtime-dependency-isolation-and-recovery.md) | LocalNative Unused Full-control500ms bridge2s30s broker1s completion-clock no-live-game |
 | Ares 原生入口与科技参数兼容 | [pre.5：普通函数调用、平台跳转和实际断点分离](2026-11-07-ares-native-entry-compatibility.md) | Runtime10 native-callable Ares 6AA600 5F7900 4F7870 Full parameters Exact-local-status |

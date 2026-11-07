@@ -1,0 +1,3006 @@
+{
+  "schema": "ra2.injector-compatibility-adaptation.research.v1",
+  "date_utc": "2026-11-07",
+  "question": "Ares / Phobos / other injector adaptation, scoped by Call/Patch/DR contract and ownership-preserving recovery",
+  "toolbox_baseline_commit": "59ba074331e3758e152587aff6ddbe04221d0090",
+  "supported_live_game_sha256": null,
+  "evidence_level": [
+    "official-primary-source-review",
+    "pinned-git-blob-integrity",
+    "static-source-declaration-and-dependency-range-analysis"
+  ],
+  "upstream": {
+    "phobos": {
+      "repository": "Phobos-developers/Phobos",
+      "commit": "ce864b03e56b15f4c59f78955aee87079e54ce76",
+      "tree": "aac6e6f39f3e9f9af5aa00f09ab1d0e77b768de6",
+      "selection": "all 380 text C/C++/header/rc files beneath src/; excludes .agents, docs and historical hook lists",
+      "all_380_source_git_blob_hashes_verified": true,
+      "total_source_bytes": 3167513
+    },
+    "auxiliary": [
+      {
+        "repository": "Ares-Developers/Ares",
+        "commit": "4f1d929920aca31924c6cd4d3dfa849daa65252a",
+        "path": "src/Ext/House/Hooks.cpp",
+        "sha": "2fc94c0b8f07fc6d0bb5b55f4f1ed50c2e91b736",
+        "display_url": "https://github.com/Ares-Developers/Ares/blob/4f1d929920aca31924c6cd4d3dfa849daa65252a/src/Ext/House/Hooks.cpp",
+        "git_blob_hash_verified": true
+      },
+      {
+        "repository": "Phobos-developers/SyringeEx",
+        "commit": "7dbb780dfa7441f8d9b2ae89300540f1cf5f854e",
+        "path": "SyringeDebugger.cpp",
+        "sha": "61eca49cd15da098b978a0ca1b843c30f91d7206",
+        "display_url": "https://github.com/Phobos-developers/SyringeEx/blob/7dbb780dfa7441f8d9b2ae89300540f1cf5f854e/SyringeDebugger.cpp",
+        "git_blob_hash_verified": true
+      }
+    ]
+  },
+  "official_documentation": [
+    {
+      "url": "https://phobos.readthedocs.io/en/latest/General-Info.html",
+      "scope": "current latest documentation, not all historical releases",
+      "facts": [
+        "Phobos is standalone and intended for use with Ares and CnCNet",
+        "current latest requires SyringeEx 0.1.0.2 or newer and capability flags"
+      ]
+    },
+    {
+      "url": "https://github.com/Phobos-developers/SyringeEx#feature-flags-api",
+      "facts": [
+        "ESPModification",
+        "ZFPreservation",
+        "ReladdrInstructionFixup"
+      ]
+    },
+    {
+      "url": "https://phobos.readthedocs.io/en/latest/Interoperability.html",
+      "facts": [
+        "versioned HRESULT API",
+        "major changes may break ABI",
+        "export existence or major>=1 alone is not an adapter policy",
+        "documented interfaces do not replace CanBuild/FindFactory/RecheckCameos"
+      ]
+    }
+  ],
+  "scan": {
+    "source_files": 380,
+    "parsed_records": 2195,
+    "macro_counts": {
+      "DEFINE_DYNAMIC_PATCH": 4,
+      "DEFINE_FUNCTION_JUMP": 130,
+      "DEFINE_HOOK": 1585,
+      "DEFINE_HOOK_AGAIN": 186,
+      "DEFINE_JUMP": 82,
+      "DEFINE_NAKED_HOOK": 1,
+      "DEFINE_PATCH": 52,
+      "Patch::Apply_CALL": 44,
+      "Patch::Apply_CALL6": 16,
+      "Patch::Apply_LJMP": 46,
+      "Patch::Apply_RAW": 47,
+      "Patch::Apply_VTABLE": 2
+    },
+    "address_classes": {
+      "fixed-address": 2077,
+      "Ares-module-relative": 118
+    },
+    "fixed_address_records": 2077,
+    "fixed_address_unique_sites": 2028,
+    "catalogue_rows": 161,
+    "exact_start_rows": 7,
+    "range_or_anchor_rows": 15,
+    "unknown_width_records": 0,
+    "unresolved_address_records": 0,
+    "module_relative_records": 118,
+    "source_blob_verification_passed": true,
+    "catalogue_range_query_passed": true,
+    "parser_is_not_cpp_preprocessor": true,
+    "loaded_dll_hook_table_parsed": false
+  },
+  "intersections": [
+    {
+      "toolbox": {
+        "kind": "Call",
+        "address": 5208176,
+        "address_hex": "0x004F7870",
+        "name": "可建造判定",
+        "flags": "Checkable",
+        "ranges": [
+          {
+            "address": 5208176,
+            "bytes": 8,
+            "basis": "startup signature"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 113,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L113",
+          "installed_runtime_verified": false,
+          "hook_name": "HouseClass_CanBuild_UpgradesInteraction_WithoutAres",
+          "declared_overwrite_bytes": 5,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 8,
+              "basis": "startup signature"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        },
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 121,
+          "macro": "Patch::Apply_RAW",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L121",
+          "installed_runtime_verified": false,
+          "runtime_call_conditional_on_reachability": true,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 8,
+              "basis": "startup signature"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Call",
+        "address": 4775056,
+        "address_hex": "0x0048DC90",
+        "name": "清空原生选择",
+        "flags": "Checkable",
+        "ranges": [
+          {
+            "address": 4775056,
+            "bytes": 8,
+            "basis": "startup signature"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/WarheadType/Hooks.cpp",
+          "line": 664,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/WarheadType/Hooks.cpp#L664",
+          "installed_runtime_verified": false,
+          "hook_name": "MapClass_UnselectAll_ClearLimboLaunchers",
+          "declared_overwrite_bytes": 5,
+          "write_bytes": 5,
+          "address": 4775056,
+          "address_hex": "0x0048DC90",
+          "exact_start": true,
+          "overlapping_ranges": [
+            {
+              "address": 4775056,
+              "bytes": 8,
+              "basis": "startup signature"
+            }
+          ],
+          "upstream_blob_sha1": "f24c4e7730f2fb684284137dd63be69880268ea0"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Call",
+        "address": 7323552,
+        "address_hex": "0x006FBFA0",
+        "name": "选中原生对象",
+        "flags": "Checkable",
+        "ranges": [
+          {
+            "address": 7323552,
+            "bytes": 8,
+            "basis": "startup signature"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/Techno/Hooks.cpp",
+          "line": 1780,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/Techno/Hooks.cpp#L1780",
+          "installed_runtime_verified": false,
+          "hook_name": "TechnoClass_Select_SkipLimboDelivery",
+          "declared_overwrite_bytes": 6,
+          "write_bytes": 6,
+          "address": 7323555,
+          "address_hex": "0x006FBFA3",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 7323552,
+              "bytes": 8,
+              "basis": "startup signature"
+            }
+          ],
+          "upstream_blob_sha1": "7295497e4f300f911e0546075928ebed7b3d1919"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Call",
+        "address": 6984470,
+        "address_hex": "0x006A9316",
+        "name": "建造提示类别约定",
+        "flags": "Checkable",
+        "ranges": [
+          {
+            "address": 6984470,
+            "bytes": 1,
+            "basis": "catalogue anchor only"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Misc/PhobosToolTip.cpp",
+          "line": 213,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Misc/PhobosToolTip.cpp#L213",
+          "installed_runtime_verified": false,
+          "hook_name": "SidebarClass_StripClass_HelpText",
+          "declared_overwrite_bytes": 6,
+          "write_bytes": 6,
+          "address": 6984470,
+          "address_hex": "0x006A9316",
+          "exact_start": true,
+          "overlapping_ranges": [
+            {
+              "address": 6984470,
+              "bytes": 1,
+              "basis": "catalogue anchor only"
+            }
+          ],
+          "upstream_blob_sha1": "eaed57198bc26a303aecdb063e2f02b20e57a09f"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Patch",
+        "address": 4689482,
+        "address_hex": "0x00478E4A",
+        "name": "提示框横向尺寸操作数",
+        "flags": "Checkable",
+        "writer_bytes": 6,
+        "ranges": [
+          {
+            "address": 4689482,
+            "bytes": 6,
+            "basis": "writer"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Misc/PhobosToolTip.cpp",
+          "line": 295,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Misc/PhobosToolTip.cpp#L295",
+          "installed_runtime_verified": false,
+          "hook_name": "CCToolTip_Draw2_SetSurface",
+          "declared_overwrite_bytes": 6,
+          "write_bytes": 6,
+          "address": 4689482,
+          "address_hex": "0x00478E4A",
+          "exact_start": true,
+          "overlapping_ranges": [
+            {
+              "address": 4689482,
+              "bytes": 6,
+              "basis": "writer"
+            }
+          ],
+          "upstream_blob_sha1": "eaed57198bc26a303aecdb063e2f02b20e57a09f"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Patch",
+        "address": 4899193,
+        "address_hex": "0x004AC179",
+        "name": "出售命令所属玩家",
+        "flags": "Checkable",
+        "writer_bytes": 9,
+        "ranges": [
+          {
+            "address": 4899193,
+            "bytes": 9,
+            "basis": "writer"
+          },
+          {
+            "address": 4899181,
+            "bytes": 12,
+            "basis": "Patch context"
+          },
+          {
+            "address": 4899202,
+            "bytes": 10,
+            "basis": "Patch context"
+          },
+          {
+            "address": 4899212,
+            "bytes": 10,
+            "basis": "Patch context"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/Event/Hooks.cpp",
+          "line": 61,
+          "macro": "DEFINE_HOOK_AGAIN",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/Event/Hooks.cpp#L61",
+          "installed_runtime_verified": false,
+          "hook_name": "EventClass_OutList_MakeRoom",
+          "declared_overwrite_bytes": 10,
+          "write_bytes": 10,
+          "address": 4899212,
+          "address_hex": "0x004AC18C",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 4899212,
+              "bytes": 10,
+              "basis": "Patch context"
+            }
+          ],
+          "upstream_blob_sha1": "135c102dbe009e50b6b75348e544d13aa5c2cea7"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Patch",
+        "address": 5624672,
+        "address_hex": "0x0055D360",
+        "name": "单机暂停入口",
+        "flags": "Checkable",
+        "writer_bytes": 5,
+        "ranges": [
+          {
+            "address": 5624672,
+            "bytes": 5,
+            "basis": "writer"
+          },
+          {
+            "address": 5624677,
+            "bytes": 12,
+            "basis": "Patch context"
+          },
+          {
+            "address": 5627599,
+            "bytes": 13,
+            "basis": "Patch context"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Commands/FrameByFrame.cpp",
+          "line": 74,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Commands/FrameByFrame.cpp#L74",
+          "installed_runtime_verified": false,
+          "hook_name": "MainLoop_FrameStep_Begin",
+          "declared_overwrite_bytes": 5,
+          "write_bytes": 5,
+          "address": 5624672,
+          "address_hex": "0x0055D360",
+          "exact_start": true,
+          "overlapping_ranges": [
+            {
+              "address": 5624672,
+              "bytes": 5,
+              "basis": "writer"
+            }
+          ],
+          "upstream_blob_sha1": "28da4cfa27f625f800b28469d51cf68dc088cbc9"
+        },
+        {
+          "path": "src/Commands/FrameByFrame.cpp",
+          "line": 89,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Commands/FrameByFrame.cpp#L89",
+          "installed_runtime_verified": false,
+          "hook_name": "MainLoop_FrameStep_End",
+          "declared_overwrite_bytes": 6,
+          "write_bytes": 6,
+          "address": 5627605,
+          "address_hex": "0x0055DED5",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5627599,
+              "bytes": 13,
+              "basis": "Patch context"
+            }
+          ],
+          "upstream_blob_sha1": "28da4cfa27f625f800b28469d51cf68dc088cbc9"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Patch",
+        "address": 6582005,
+        "address_hex": "0x00646EF5",
+        "name": "组合命令所属玩家",
+        "flags": "Checkable",
+        "writer_bytes": 10,
+        "ranges": [
+          {
+            "address": 6582005,
+            "bytes": 10,
+            "basis": "writer"
+          },
+          {
+            "address": 6581904,
+            "bytes": 16,
+            "basis": "Patch context"
+          },
+          {
+            "address": 6581995,
+            "bytes": 10,
+            "basis": "Patch context"
+          },
+          {
+            "address": 6582015,
+            "bytes": 16,
+            "basis": "Patch context"
+          },
+          {
+            "address": 6582104,
+            "bytes": 10,
+            "basis": "Patch context"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/Event/Hooks.cpp",
+          "line": 68,
+          "macro": "DEFINE_HOOK_AGAIN",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/Event/Hooks.cpp#L68",
+          "installed_runtime_verified": false,
+          "hook_name": "EventClass_OutList_MakeRoom",
+          "declared_overwrite_bytes": 10,
+          "write_bytes": 10,
+          "address": 6582005,
+          "address_hex": "0x00646EF5",
+          "exact_start": true,
+          "overlapping_ranges": [
+            {
+              "address": 6582005,
+              "bytes": 10,
+              "basis": "writer"
+            }
+          ],
+          "upstream_blob_sha1": "135c102dbe009e50b6b75348e544d13aa5c2cea7"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Patch",
+        "address": 6582226,
+        "address_hex": "0x00646FD2",
+        "name": "扩展组合命令所属玩家",
+        "flags": "Checkable",
+        "writer_bytes": 10,
+        "ranges": [
+          {
+            "address": 6582226,
+            "bytes": 10,
+            "basis": "writer"
+          },
+          {
+            "address": 6582128,
+            "bytes": 16,
+            "basis": "Patch context"
+          },
+          {
+            "address": 6582216,
+            "bytes": 10,
+            "basis": "Patch context"
+          },
+          {
+            "address": 6582236,
+            "bytes": 16,
+            "basis": "Patch context"
+          },
+          {
+            "address": 6582325,
+            "bytes": 10,
+            "basis": "Patch context"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/Event/Hooks.cpp",
+          "line": 69,
+          "macro": "DEFINE_HOOK_AGAIN",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/Event/Hooks.cpp#L69",
+          "installed_runtime_verified": false,
+          "hook_name": "EventClass_OutList_MakeRoom",
+          "declared_overwrite_bytes": 10,
+          "write_bytes": 10,
+          "address": 6582226,
+          "address_hex": "0x00646FD2",
+          "exact_start": true,
+          "overlapping_ranges": [
+            {
+              "address": 6582226,
+              "bytes": 10,
+              "basis": "writer"
+            }
+          ],
+          "upstream_blob_sha1": "135c102dbe009e50b6b75348e544d13aa5c2cea7"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Patch",
+        "address": 6985682,
+        "address_hex": "0x006A97D2",
+        "name": "科技图标绘制判定调用",
+        "flags": "Checkable",
+        "writer_bytes": 5,
+        "ranges": [
+          {
+            "address": 6985682,
+            "bytes": 5,
+            "basis": "writer"
+          },
+          {
+            "address": 6985667,
+            "bytes": 15,
+            "basis": "Patch context"
+          },
+          {
+            "address": 5208176,
+            "bytes": 8,
+            "basis": "Patch context"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 113,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L113",
+          "installed_runtime_verified": false,
+          "hook_name": "HouseClass_CanBuild_UpgradesInteraction_WithoutAres",
+          "declared_overwrite_bytes": 5,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 8,
+              "basis": "Patch context"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        },
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 121,
+          "macro": "Patch::Apply_RAW",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L121",
+          "installed_runtime_verified": false,
+          "runtime_call_conditional_on_reachability": true,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 8,
+              "basis": "Patch context"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Patch",
+        "address": 6989697,
+        "address_hex": "0x006AA781",
+        "name": "科技图标清理判定调用",
+        "flags": "Checkable",
+        "writer_bytes": 5,
+        "ranges": [
+          {
+            "address": 6989697,
+            "bytes": 5,
+            "basis": "writer"
+          },
+          {
+            "address": 6989687,
+            "bytes": 10,
+            "basis": "Patch context"
+          },
+          {
+            "address": 5208176,
+            "bytes": 8,
+            "basis": "Patch context"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 113,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L113",
+          "installed_runtime_verified": false,
+          "hook_name": "HouseClass_CanBuild_UpgradesInteraction_WithoutAres",
+          "declared_overwrite_bytes": 5,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 8,
+              "basis": "Patch context"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        },
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 121,
+          "macro": "Patch::Apply_RAW",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L121",
+          "installed_runtime_verified": false,
+          "runtime_call_conditional_on_reachability": true,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 8,
+              "basis": "Patch context"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Patch",
+        "address": 8268040,
+        "address_hex": "0x007E2908",
+        "name": "飞机航点虚函数",
+        "flags": "Checkable",
+        "writer_bytes": 4,
+        "ranges": [
+          {
+            "address": 8268040,
+            "bytes": 4,
+            "basis": "writer"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/Aircraft/Hooks.cpp",
+          "line": 483,
+          "macro": "DEFINE_FUNCTION_JUMP",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/Aircraft/Hooks.cpp#L483",
+          "installed_runtime_verified": false,
+          "write_bytes": 4,
+          "address": 8268040,
+          "address_hex": "0x007E2908",
+          "exact_start": true,
+          "overlapping_ranges": [
+            {
+              "address": 8268040,
+              "bytes": 4,
+              "basis": "writer"
+            }
+          ],
+          "upstream_blob_sha1": "e2b2528cec7630a97915865a1d2c6525f478b551"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Breakpoint",
+        "address": 5208176,
+        "address_hex": "0x004F7870",
+        "name": "科技完整参数断点",
+        "flags": "Checkable",
+        "ranges": [
+          {
+            "address": 5208176,
+            "bytes": 16,
+            "basis": "Full actual entry image"
+          },
+          {
+            "address": 6985667,
+            "bytes": 20,
+            "basis": "Full draw caller"
+          },
+          {
+            "address": 6989687,
+            "bytes": 15,
+            "basis": "Full prune caller"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 113,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L113",
+          "installed_runtime_verified": false,
+          "hook_name": "HouseClass_CanBuild_UpgradesInteraction_WithoutAres",
+          "declared_overwrite_bytes": 5,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 16,
+              "basis": "Full actual entry image"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        },
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 121,
+          "macro": "Patch::Apply_RAW",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L121",
+          "installed_runtime_verified": false,
+          "runtime_call_conditional_on_reachability": true,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 16,
+              "basis": "Full actual entry image"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Breakpoint",
+        "address": 5208401,
+        "address_hex": "0x004F7951",
+        "name": "科技精确上限断点",
+        "flags": "Checkable",
+        "ranges": [
+          {
+            "address": 5208394,
+            "bytes": 13,
+            "basis": "Exact limit"
+          },
+          {
+            "address": 5208176,
+            "bytes": 16,
+            "basis": "Exact CanBuild entry"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 113,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L113",
+          "installed_runtime_verified": false,
+          "hook_name": "HouseClass_CanBuild_UpgradesInteraction_WithoutAres",
+          "declared_overwrite_bytes": 5,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 16,
+              "basis": "Exact CanBuild entry"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        },
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 121,
+          "macro": "Patch::Apply_RAW",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L121",
+          "installed_runtime_verified": false,
+          "runtime_call_conditional_on_reachability": true,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 16,
+              "basis": "Exact CanBuild entry"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        }
+      ]
+    },
+    {
+      "toolbox": {
+        "kind": "Breakpoint",
+        "address": 5208934,
+        "address_hex": "0x004F7B66",
+        "name": "科技精确等级断点",
+        "flags": "Checkable",
+        "ranges": [
+          {
+            "address": 5208924,
+            "bytes": 16,
+            "basis": "Exact optional compare"
+          },
+          {
+            "address": 5208176,
+            "bytes": 16,
+            "basis": "Exact CanBuild entry"
+          }
+        ]
+      },
+      "phobos": [
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 113,
+          "macro": "DEFINE_HOOK",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L113",
+          "installed_runtime_verified": false,
+          "hook_name": "HouseClass_CanBuild_UpgradesInteraction_WithoutAres",
+          "declared_overwrite_bytes": 5,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 16,
+              "basis": "Exact CanBuild entry"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        },
+        {
+          "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+          "line": 121,
+          "macro": "Patch::Apply_RAW",
+          "preprocessor_conditions": [],
+          "url": "https://github.com/Phobos-developers/Phobos/blob/ce864b03e56b15f4c59f78955aee87079e54ce76/src/Ext/BuildingType/Hooks.Upgrade.cpp#L121",
+          "installed_runtime_verified": false,
+          "runtime_call_conditional_on_reachability": true,
+          "write_bytes": 5,
+          "address": 5208183,
+          "address_hex": "0x004F7877",
+          "exact_start": false,
+          "overlapping_ranges": [
+            {
+              "address": 5208176,
+              "bytes": 16,
+              "basis": "Exact CanBuild entry"
+            }
+          ],
+          "upstream_blob_sha1": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d"
+        }
+      ]
+    }
+  ],
+  "reviewed_cases": [
+    {
+      "case": "CanBuild +7 lifecycle",
+      "paths": [
+        "src/Ext/BuildingType/Hooks.Upgrade.cpp"
+      ],
+      "finding": "4F7877 overlaps the eighth expected entry byte; when reached the handler restores its own bytes and 4F8361. Ares returns to 4F8361 and skips vanilla interior. Neither DLL presence nor root-E9 inference proves a Phobos-only adapter."
+    },
+    {
+      "case": "Selection calls",
+      "paths": [
+        "src/Ext/WarheadType/Hooks.cpp",
+        "src/Ext/Techno/Hooks.cpp"
+      ],
+      "finding": "48DC90 root and 6FBFA0+3 require distinct cdecl/thiscall receiver, stack, returned-value and extension-filtering validation. Call the original function entry, not the middle hook."
+    },
+    {
+      "case": "Tooltip context and data operand",
+      "paths": [
+        "src/Misc/PhobosToolTip.cpp"
+      ],
+      "finding": "6A9316 changes registers/continuation; 478E4A E9 cannot be treated as a compatible data operand instruction."
+    },
+    {
+      "case": "Pause/frame-step",
+      "paths": [
+        "src/Commands/FrameByFrame.cpp"
+      ],
+      "finding": "55D360 writer and 55DED5 context intersect; require explicit pause/step ownership and lifecycle, not generic chaining."
+    },
+    {
+      "case": "Aircraft waypoint vtable",
+      "paths": [
+        "src/Ext/Aircraft/Hooks.cpp"
+      ],
+      "finding": "7E2908 replaces a four-byte target with a fastcall receiver-based boolean implementation; vanilla expected target is 41CB50. A future wrapper needs verified ABI and actual-pointer ownership/restore."
+    }
+  ],
+  "baseline_source_binding": {
+    "source/assist/source/native_entry_policy.h": {
+      "baseline_sha256": "2632aeeb4b3f7d60f9a9f56d82bccd13134641b46e5c04a8dc526536cb7a6cff",
+      "current_matches_baseline": true
+    },
+    "source/assist/source/native_entry_runtime.h": {
+      "baseline_sha256": "6cff3051ff18569c1539672e72ab6d779523dd29f8487f553b9aa51c1847dbfd",
+      "current_matches_baseline": true
+    },
+    "source/assist/source/signatures.h": {
+      "baseline_sha256": "054757060d10fe067ec81880a8f584c53d6e1537c1fcc2695b267b9e68ecdd93",
+      "current_matches_baseline": true
+    },
+    "source/assist/source/startup_dependency_policy.h": {
+      "baseline_sha256": "a32f39a7138d9af79dcd7e5bb8f9b231baf6a73a3004fa40de79f90c04d4c438",
+      "current_matches_baseline": true
+    },
+    "source/assist/source/bridge.cpp": {
+      "baseline_sha256": "1ae272cebcc171d0d80e38d4752001622429493d56d5de39ba808d04a1c33ded",
+      "current_matches_baseline": false
+    },
+    "source/assist/source/main.cpp": {
+      "baseline_sha256": "56a547b46d7f0cdab6f3cdb09a132275aa26a2f0f0ab10e930ce1f90d4eb53cc",
+      "current_matches_baseline": false
+    },
+    "source/assist/source/crc_shadow_bridge.h": {
+      "baseline_sha256": "53a06e66bcc79560627addf4cde3d12e9c565f13fa6e9dba2fae1093cafa8513",
+      "current_matches_baseline": true
+    },
+    "source/assist/source/hook_registry.h": {
+      "baseline_sha256": "e046f5982648ebdceb2aca8ef30da4eeb78423caa8ba6b556a2bcac913cc6da2",
+      "current_matches_baseline": true
+    },
+    "source/assist/source/build_time_tooltip.h": {
+      "baseline_sha256": "d2ba9cf672f6ee9051fa8c6eb017865aa4a5a9a84fbb6487b8ba11f0e05f5ab6",
+      "current_matches_baseline": true
+    },
+    "source/assist/source/tech_ui_breakpoint_bridge.h": {
+      "baseline_sha256": "bda4db3b09870f46296f2d3821d8d45e0abc3044c13b852c37941472733fd052",
+      "current_matches_baseline": true
+    },
+    "source/assist/source/tech_ui_breakpoint_guard.h": {
+      "baseline_sha256": "2cf4cb03f5471580a8277618f3937cf6dcd454a2c0f9ac12ccfad70d3db1da1c",
+      "current_matches_baseline": true
+    },
+    "source/assist/source/single_player_fps_runtime.h": {
+      "baseline_sha256": "3e4d867c0586b96bdb59eae730784d90607a9ea86a453411fd40d6ac16a8f39d",
+      "current_matches_baseline": true
+    },
+    "source/shared/source/debug_entry_catalog.h": {
+      "baseline_sha256": "8229a6879402f082eaf41b99b79040b44499e962a8991e79ba496ccc2ac4bd21",
+      "current_matches_baseline": true
+    },
+    "source/shared/source/debug_entry_types.h": {
+      "baseline_sha256": "acb4aeca8ea08b6cb3d88c9a794976d1e07734634526c270c05e938fbf658a5c",
+      "current_matches_baseline": true
+    },
+    "source/shared/source/debug_entry_policy.h": {
+      "baseline_sha256": "4efb61d43ce21a91d5328b1889fc6c82377da214a51e6f6b7325f6f727398f3f",
+      "current_matches_baseline": true
+    },
+    "source/shared/source/experimental_patch_policy.h": {
+      "baseline_sha256": "2f8e0b34901c9dd6cee46f59efc72aeb431d65b9b6134f7e848e71265c4e5526",
+      "current_matches_baseline": true
+    },
+    "source/shared/source/patch_context.h": {
+      "baseline_sha256": "d663ae2b5f3679abb5595a58a04ec47651ac497196b80a43d3f97311c20061d0",
+      "current_matches_baseline": true
+    },
+    "source/shared/source/native_viewport_policy.h": {
+      "baseline_sha256": "8052da79622f3dad0e9328e78b28149f99c3a7a20616b995be0705e4b90da5c7",
+      "current_matches_baseline": true
+    }
+  },
+  "upstream_source_blob_manifest": [
+    {
+      "path": "src/Blowfish/blowfish.cpp",
+      "sha": "711e4910fdd31516e4aacd77472a1eb028e4e1a0",
+      "bytes": 36084
+    },
+    {
+      "path": "src/Blowfish/blowfish.h",
+      "sha": "636e8d545de099b2fe664290d81869a331e97a70",
+      "bytes": 4342
+    },
+    {
+      "path": "src/Blowfish/Hooks.Blowfish.cpp",
+      "sha": "fe4abb2e559bdae9130c1453f0c42e8cdf532073",
+      "bytes": 1188
+    },
+    {
+      "path": "src/Commands/Commands.cpp",
+      "sha": "e63414e67e7dec24a7b39ea3ee092afac3cd7504",
+      "bytes": 3983
+    },
+    {
+      "path": "src/Commands/Commands.h",
+      "sha": "77206961db7f3be8b2ab69a598139721c960f120",
+      "bytes": 769
+    },
+    {
+      "path": "src/Commands/CycleSelection.cpp",
+      "sha": "72a3d4086e6c45352d529f6a8d6e29fb88fc78ed",
+      "bytes": 3133
+    },
+    {
+      "path": "src/Commands/CycleSelection.h",
+      "sha": "9fc574e0a9b96a05a174a367e9a7da23cec97cb2",
+      "bytes": 702
+    },
+    {
+      "path": "src/Commands/CycleTypeSelection.cpp",
+      "sha": "c20fa7c92a84a4276dddf9f0da878b39e1127bce",
+      "bytes": 9859
+    },
+    {
+      "path": "src/Commands/CycleTypeSelection.h",
+      "sha": "df3ebbb9aaf60c27997d3baed29a54ccc6d8b520",
+      "bytes": 1166
+    },
+    {
+      "path": "src/Commands/DamageDisplay.cpp",
+      "sha": "6bd1109e689c5021fadbab81ae615f57a77732ba",
+      "bytes": 761
+    },
+    {
+      "path": "src/Commands/DamageDisplay.h",
+      "sha": "a42204eeb8a06913cb9fb75813e77806ebae014b",
+      "bytes": 396
+    },
+    {
+      "path": "src/Commands/DeselectObject.cpp",
+      "sha": "6ae3359ee95c2c605d2d8b71c3b2cbb1095b3373",
+      "bytes": 790
+    },
+    {
+      "path": "src/Commands/DeselectObject.h",
+      "sha": "98d05d92eef9a462477b589a9c460da793215a6a",
+      "bytes": 447
+    },
+    {
+      "path": "src/Commands/DeselectObject5.cpp",
+      "sha": "cf6ca0384e765fc96bad79446ba02fb63b96bfd7",
+      "bytes": 898
+    },
+    {
+      "path": "src/Commands/DeselectObject5.h",
+      "sha": "636821f8e339b15b4a129dfafe5964ba5c243ea3",
+      "bytes": 448
+    },
+    {
+      "path": "src/Commands/Dummy.cpp",
+      "sha": "67a2c3a02157e30395cd7935ff62beaf8a027545",
+      "bytes": 558
+    },
+    {
+      "path": "src/Commands/Dummy.h",
+      "sha": "c0527e9c4501fc860f34b472db348849d11e2ed6",
+      "bytes": 408
+    },
+    {
+      "path": "src/Commands/FireTacticalSW.h",
+      "sha": "e4777a2dd2b8483994ca0d1261bd8c83b0e75923",
+      "bytes": 1878
+    },
+    {
+      "path": "src/Commands/FrameByFrame.cpp",
+      "sha": "28da4cfa27f625f800b28469d51cf68dc088cbc9",
+      "bytes": 2291
+    },
+    {
+      "path": "src/Commands/FrameByFrame.h",
+      "sha": "29c190b7acbb8c6a775b4dbf83b984ba4a724e94",
+      "bytes": 460
+    },
+    {
+      "path": "src/Commands/FrameStep.cpp",
+      "sha": "01f961933292db47836d0e7bee81703fe0b2de37",
+      "bytes": 23
+    },
+    {
+      "path": "src/Commands/FrameStep.h",
+      "sha": "5639afd62467f659d5648196a29b8dade1c6e5ac",
+      "bytes": 1692
+    },
+    {
+      "path": "src/Commands/NextIdleHarvester.cpp",
+      "sha": "b87b7a1719937f59b63cb75b573222e4c6891f60",
+      "bytes": 2051
+    },
+    {
+      "path": "src/Commands/NextIdleHarvester.h",
+      "sha": "c8bdfcfb8388d2214a63044d3a35f4db66955abf",
+      "bytes": 421
+    },
+    {
+      "path": "src/Commands/ObjectInfo.cpp",
+      "sha": "1db3589e1afbbe920db099970e65273529d96a4d",
+      "bytes": 8282
+    },
+    {
+      "path": "src/Commands/ObjectInfo.h",
+      "sha": "d82a685480ec2d77467ce1ff32b2c5b7d83baac2",
+      "bytes": 424
+    },
+    {
+      "path": "src/Commands/QuickSave.cpp",
+      "sha": "bf56bbe358e1fa939e0c07e2384c368210cccedf",
+      "bytes": 1374
+    },
+    {
+      "path": "src/Commands/QuickSave.h",
+      "sha": "b82ce359951f4984d558ea23730a8f788cb35661",
+      "bytes": 409
+    },
+    {
+      "path": "src/Commands/SaveVariablesToFile.cpp",
+      "sha": "46f77205cc4fcb0bd835f55df342f64adc993197",
+      "bytes": 973
+    },
+    {
+      "path": "src/Commands/SaveVariablesToFile.h",
+      "sha": "ef7b747c052ac4d30a3c112228a23ea99ebc1b6b",
+      "bytes": 402
+    },
+    {
+      "path": "src/Commands/SelectCaptured.cpp",
+      "sha": "238d335ad3129459c24acc4b62ea31e95c0b822e",
+      "bytes": 2481
+    },
+    {
+      "path": "src/Commands/SelectCaptured.h",
+      "sha": "b13571b0c9115db11b9e1d581976e4d4f31541f3",
+      "bytes": 439
+    },
+    {
+      "path": "src/Commands/ToggleDesignatorRange.cpp",
+      "sha": "7689c33a5b5990bc84ff90e8232021eeb8bc4011",
+      "bytes": 818
+    },
+    {
+      "path": "src/Commands/ToggleDesignatorRange.h",
+      "sha": "1f1f5eeb013a1577566f5b9f52e670e5b32546b2",
+      "bytes": 404
+    },
+    {
+      "path": "src/Commands/ToggleDigitalDisplay.cpp",
+      "sha": "1d6da264a8e7c1bc2f9a2c08ccd62a65efe0abf0",
+      "bytes": 796
+    },
+    {
+      "path": "src/Commands/ToggleDigitalDisplay.h",
+      "sha": "4146a0d6e92f99f31aefeb404bd6ec83affa176f",
+      "bytes": 403
+    },
+    {
+      "path": "src/Commands/ToggleMessageList.cpp",
+      "sha": "c167529b44b018ef7540a2c3b0710ac983ac9f8f",
+      "bytes": 773
+    },
+    {
+      "path": "src/Commands/ToggleMessageList.h",
+      "sha": "f1ddf24d6d454eb5ce7ecdbda317a2f4523c94c6",
+      "bytes": 400
+    },
+    {
+      "path": "src/Commands/ToggleSWSidebar.cpp",
+      "sha": "be41653f7d70d36ac19a9292616c0e6d1c516b2c",
+      "bytes": 837
+    },
+    {
+      "path": "src/Commands/ToggleSWSidebar.h",
+      "sha": "e12ac13364d22bb64e8439ce8c50b2c79d81b4be",
+      "bytes": 386
+    },
+    {
+      "path": "src/Ext/AbstractType/Body.h",
+      "sha": "0ed581cd02511dc4a8a3b3f76548f1b1ba0faaaf",
+      "bytes": 682
+    },
+    {
+      "path": "src/Ext/Aircraft/Body.cpp",
+      "sha": "5fa705ffeb4418c5dc119aeb5870f0ac01d55e56",
+      "bytes": 7927
+    },
+    {
+      "path": "src/Ext/Aircraft/Body.h",
+      "sha": "81bd607f9a26f85599cac19ef37dc42b8c1ef92d",
+      "bytes": 1889
+    },
+    {
+      "path": "src/Ext/Aircraft/Hooks.cpp",
+      "sha": "e2b2528cec7630a97915865a1d2c6525f478b551",
+      "bytes": 42452
+    },
+    {
+      "path": "src/Ext/AircraftType/Body.cpp",
+      "sha": "5651039994ece43eafa483e226d7c50afc40b626",
+      "bytes": 4498
+    },
+    {
+      "path": "src/Ext/AircraftType/Body.h",
+      "sha": "7b98c5f33b82d570bc980abcd449dfcbf25b6f9b",
+      "bytes": 2736
+    },
+    {
+      "path": "src/Ext/Anim/Body.cpp",
+      "sha": "325d517fab8c3736c227f3be9914bac63d309b2a",
+      "bytes": 17438
+    },
+    {
+      "path": "src/Ext/Anim/Body.h",
+      "sha": "1dc881ef6099fd60c6a158b14d3b55336779abc3",
+      "bytes": 3965
+    },
+    {
+      "path": "src/Ext/Anim/Hooks.AnimCreateUnit.cpp",
+      "sha": "946a2eadcc761dc4293134cc32720a6fdb05dc61",
+      "bytes": 2584
+    },
+    {
+      "path": "src/Ext/Anim/Hooks.cpp",
+      "sha": "74f4985da8ed88609999311f4e260b5189303f42",
+      "bytes": 21163
+    },
+    {
+      "path": "src/Ext/AnimType/Body.cpp",
+      "sha": "afc55e3043a12c2497ee0f9866d641276f6ed432",
+      "bytes": 9790
+    },
+    {
+      "path": "src/Ext/AnimType/Body.h",
+      "sha": "cc489a547e4d8623343a341b062a512410fecdc1",
+      "bytes": 5409
+    },
+    {
+      "path": "src/Ext/Beacon/Hooks.cpp",
+      "sha": "f69792e8e9cc405429ced822b50eb3d2442cf8b5",
+      "bytes": 235
+    },
+    {
+      "path": "src/Ext/Building/Body.cpp",
+      "sha": "a21acc3ca61091c226d62e9b6ebfbd7b1da33a91",
+      "bytes": 18929
+    },
+    {
+      "path": "src/Ext/Building/Body.h",
+      "sha": "c1fcdc3b85c17e283949987e24d8b594b78c3fb2",
+      "bytes": 4169
+    },
+    {
+      "path": "src/Ext/Building/Hooks.cpp",
+      "sha": "df0d9805b061da4072f3ad0417b725917a91804e",
+      "bytes": 43538
+    },
+    {
+      "path": "src/Ext/Building/Hooks.Grinding.cpp",
+      "sha": "a164c601be15d824087c361d71f8dcf5be801897",
+      "bytes": 6306
+    },
+    {
+      "path": "src/Ext/Building/Hooks.Production.cpp",
+      "sha": "9dfcb943e06298f4985da98dd946a350e5d29cc3",
+      "bytes": 6625
+    },
+    {
+      "path": "src/Ext/Building/Hooks.Refinery.cpp",
+      "sha": "a0149167fa7e51fedd018156cb23c459a502563b",
+      "bytes": 2537
+    },
+    {
+      "path": "src/Ext/Building/Hooks.Selling.cpp",
+      "sha": "012b6a69fdd8983db33e671770066750c469074a",
+      "bytes": 3779
+    },
+    {
+      "path": "src/Ext/Building/Hooks.Unload.cpp",
+      "sha": "ef722159ed9c550a851629f1eb6191f9a1ba0e5b",
+      "bytes": 3053
+    },
+    {
+      "path": "src/Ext/BuildingType/Body.cpp",
+      "sha": "4d271d2cb0c335ae193f60cb19d20e4863a3f62a",
+      "bytes": 37602
+    },
+    {
+      "path": "src/Ext/BuildingType/Body.h",
+      "sha": "e9c53ab2aa5b54a9b61ce0fd760c1b2f8b5e858f",
+      "bytes": 12092
+    },
+    {
+      "path": "src/Ext/BuildingType/Hooks.Academy.cpp",
+      "sha": "3232b6e99fb32234ade22149e6a45f630cbc0f0c",
+      "bytes": 4624
+    },
+    {
+      "path": "src/Ext/BuildingType/Hooks.cpp",
+      "sha": "7bf9bf5e81e12640559dd23d520b482cb48f4fe3",
+      "bytes": 15929
+    },
+    {
+      "path": "src/Ext/BuildingType/Hooks.Placing.cpp",
+      "sha": "525870e780d94809d6404c6726157b723a3ec794",
+      "bytes": 39285
+    },
+    {
+      "path": "src/Ext/BuildingType/Hooks.Upgrade.cpp",
+      "sha": "1ef3eac1f121e01c72c06a074ed8b040cd9b640d",
+      "bytes": 6815
+    },
+    {
+      "path": "src/Ext/Bullet/Body.cpp",
+      "sha": "d24daba029c1b188f37a2c5cc8e7aa4524caa9ee",
+      "bytes": 19306
+    },
+    {
+      "path": "src/Ext/Bullet/Body.h",
+      "sha": "22bf744cace3af88c64726b044de47cce854cdd7",
+      "bytes": 4183
+    },
+    {
+      "path": "src/Ext/Bullet/Hooks.cpp",
+      "sha": "7abfd488d77a60c8debc6b9b14c8658eb2939f76",
+      "bytes": 19652
+    },
+    {
+      "path": "src/Ext/Bullet/Hooks.DetonateLogics.cpp",
+      "sha": "54fa357fce3abb0d6b1018cbadf15609a452b02c",
+      "bytes": 30971
+    },
+    {
+      "path": "src/Ext/Bullet/Hooks.Obstacles.cpp",
+      "sha": "eeaa5e8fea8e91165f55f11737076e85c9bc606e",
+      "bytes": 10232
+    },
+    {
+      "path": "src/Ext/Bullet/Trajectories/BombardTrajectory.cpp",
+      "sha": "87fc0927978d519bee3da7f0750097e76be33d89",
+      "bytes": 21091
+    },
+    {
+      "path": "src/Ext/Bullet/Trajectories/BombardTrajectory.h",
+      "sha": "3ba5da97b2af6fedba7b838f0831be40861c27a8",
+      "bytes": 4278
+    },
+    {
+      "path": "src/Ext/Bullet/Trajectories/ParabolaTrajectory.cpp",
+      "sha": "4149c75406015c9ac8109a993066370656fdf9d8",
+      "bytes": 45096
+    },
+    {
+      "path": "src/Ext/Bullet/Trajectories/ParabolaTrajectory.h",
+      "sha": "af731e17dab44d7c93cc67815504a83296f505aa",
+      "bytes": 5273
+    },
+    {
+      "path": "src/Ext/Bullet/Trajectories/PhobosTrajectory.cpp",
+      "sha": "70305091f41943ee05976e7cce1c5563333b5600",
+      "bytes": 16498
+    },
+    {
+      "path": "src/Ext/Bullet/Trajectories/PhobosTrajectory.h",
+      "sha": "db3c39a802d2527391f9e4642f713512faf8d6c3",
+      "bytes": 8679
+    },
+    {
+      "path": "src/Ext/Bullet/Trajectories/SampleTrajectory.cpp",
+      "sha": "fd7c9ac2a88f47e190fa60d18d3b4de70649caf3",
+      "bytes": 4819
+    },
+    {
+      "path": "src/Ext/Bullet/Trajectories/SampleTrajectory.h",
+      "sha": "defb426c4619ab9685baa15823d28e09ca5d579d",
+      "bytes": 1825
+    },
+    {
+      "path": "src/Ext/Bullet/Trajectories/StraightTrajectory.cpp",
+      "sha": "9732ce035f036a04d20ccf716f4d5cf0a54f47c6",
+      "bytes": 36280
+    },
+    {
+      "path": "src/Ext/Bullet/Trajectories/StraightTrajectory.h",
+      "sha": "e1a25d41217eb3b34fdd43f825f7cf2c81f46deb",
+      "bytes": 5595
+    },
+    {
+      "path": "src/Ext/BulletType/Body.cpp",
+      "sha": "25bc51c4f136d548d8ebe732aeaa8d475c6b4122",
+      "bytes": 9631
+    },
+    {
+      "path": "src/Ext/BulletType/Body.h",
+      "sha": "c916f9da903be997eeec04630a86be9a8a339fbf",
+      "bytes": 5888
+    },
+    {
+      "path": "src/Ext/CaptureManager/Body.cpp",
+      "sha": "351ffacfb00c483f17beeafad99e85acef5237c3",
+      "bytes": 7091
+    },
+    {
+      "path": "src/Ext/CaptureManager/Body.h",
+      "sha": "483e43e96b751dedd6369a833fda44f683a946e5",
+      "bytes": 869
+    },
+    {
+      "path": "src/Ext/CaptureManager/Hooks.cpp",
+      "sha": "eb1a6d85e63b42c5cc1d0887a66e698ce078322d",
+      "bytes": 5941
+    },
+    {
+      "path": "src/Ext/Cell/Body.cpp",
+      "sha": "6f418fb8fd2a963afabe037daa2364f29dee2aaa",
+      "bytes": 6591
+    },
+    {
+      "path": "src/Ext/Cell/Body.h",
+      "sha": "03055ff1a172910f302de44648466d9850d1e879",
+      "bytes": 2423
+    },
+    {
+      "path": "src/Ext/Cell/Hooks.cpp",
+      "sha": "161a5463ee05b2ab9003366c2fc48ff7a1753567",
+      "bytes": 267
+    },
+    {
+      "path": "src/Ext/EBolt/Body.cpp",
+      "sha": "e4450f2ca4c48123883bdef7322b60953a61bdb4",
+      "bytes": 2173
+    },
+    {
+      "path": "src/Ext/EBolt/Body.h",
+      "sha": "5af7c3302c99ed996453489fd9c036074c34dcf6",
+      "bytes": 1357
+    },
+    {
+      "path": "src/Ext/EBolt/Hooks.cpp",
+      "sha": "cd2c174cc072acb9c9906282b1b86eea7ed3974f",
+      "bytes": 5564
+    },
+    {
+      "path": "src/Ext/Event/Body.cpp",
+      "sha": "d3667222c8254e2949341cec7454b419a478198a",
+      "bytes": 4425
+    },
+    {
+      "path": "src/Ext/Event/Body.h",
+      "sha": "90936d4f085c3a4d403e11fc1e839be1ef4709f0",
+      "bytes": 1087
+    },
+    {
+      "path": "src/Ext/Event/Hooks.cpp",
+      "sha": "135c102dbe009e50b6b75348e544d13aa5c2cea7",
+      "bytes": 4830
+    },
+    {
+      "path": "src/Ext/Foot/Body.cpp",
+      "sha": "47e3b37858b7a66f72f06f0941de91f98ad8b0e4",
+      "bytes": 32513
+    },
+    {
+      "path": "src/Ext/Foot/Body.h",
+      "sha": "23e2aa430e5c4d0c428eee971e93760f37a2c678",
+      "bytes": 3404
+    },
+    {
+      "path": "src/Ext/Foot/Hooks.DisallowMoving.cpp",
+      "sha": "bd61fc2a4e172475dfca9b5e07a2ec6194469b7b",
+      "bytes": 7601
+    },
+    {
+      "path": "src/Ext/House/Body.cpp",
+      "sha": "69eca7a8740569a713d84a638599a8e94cc8f1fc",
+      "bytes": 33355
+    },
+    {
+      "path": "src/Ext/House/Body.h",
+      "sha": "07297f0e4d91f3b56b3d662216a70b4ccc2528cf",
+      "bytes": 7329
+    },
+    {
+      "path": "src/Ext/House/Hooks.AINavalProduction.cpp",
+      "sha": "838a31270e0eaa4f46b830d4c2af7343936f5510",
+      "bytes": 5021
+    },
+    {
+      "path": "src/Ext/House/Hooks.cpp",
+      "sha": "aac87397eff6b66903abb9c97074af80eb24ca1e",
+      "bytes": 26070
+    },
+    {
+      "path": "src/Ext/House/Hooks.ForceEnemy.cpp",
+      "sha": "3930e6b159159fe11ba3a64f0e8b916c5e8ff370",
+      "bytes": 830
+    },
+    {
+      "path": "src/Ext/House/Hooks.UnitFromFactory.cpp",
+      "sha": "96fa8fb87bb3364f7de743aa68704dbd30362093",
+      "bytes": 850
+    },
+    {
+      "path": "src/Ext/HouseType/Body.cpp",
+      "sha": "822cd5baa4f1f84665d08b4b483bdae619760489",
+      "bytes": 2386
+    },
+    {
+      "path": "src/Ext/HouseType/Body.h",
+      "sha": "c2e62fd86f6ba87d3acb37496eee68a0e95b20f3",
+      "bytes": 1985
+    },
+    {
+      "path": "src/Ext/HouseType/Hooks.cpp",
+      "sha": "7b6204a51f957c2d4c2dff3f6b2813ed11d929cd",
+      "bytes": 1225
+    },
+    {
+      "path": "src/Ext/Infantry/Body.cpp",
+      "sha": "412809963d353471ba45a7618de26655db72f7d7",
+      "bytes": 2025
+    },
+    {
+      "path": "src/Ext/Infantry/Body.h",
+      "sha": "8cde0c87b28db6f1de7259ec39d70f711ca41e05",
+      "bytes": 1560
+    },
+    {
+      "path": "src/Ext/Infantry/Hooks.cpp",
+      "sha": "c33ebed8ac70216094843d07a21c0d681dc677bc",
+      "bytes": 11525
+    },
+    {
+      "path": "src/Ext/Infantry/Hooks.Firing.cpp",
+      "sha": "456940b0f6f932b94d3e8bb2898382cfc31d138b",
+      "bytes": 5641
+    },
+    {
+      "path": "src/Ext/InfantryType/Body.cpp",
+      "sha": "384c54d9991a473f58ad9d407ee3e95d98928246",
+      "bytes": 4678
+    },
+    {
+      "path": "src/Ext/InfantryType/Body.h",
+      "sha": "2d32ec812077707047da5a9165aa8e2315a22f9a",
+      "bytes": 2709
+    },
+    {
+      "path": "src/Ext/Mission/Body.h",
+      "sha": "12e2464dfc4931e449f1188ba086ba998d6368db",
+      "bytes": 609
+    },
+    {
+      "path": "src/Ext/Object/Body.h",
+      "sha": "568162b0a9c1634a5f84970fa439fdd25d5df01f",
+      "bytes": 757
+    },
+    {
+      "path": "src/Ext/ObjectType/Body.h",
+      "sha": "aa12ddd0b4f3e44e5260843a757e4aa4e6cd6699",
+      "bytes": 666
+    },
+    {
+      "path": "src/Ext/OverlayType/Body.cpp",
+      "sha": "3819095a186b40b6393716ab10b7d0e841a443b9",
+      "bytes": 2425
+    },
+    {
+      "path": "src/Ext/OverlayType/Body.h",
+      "sha": "4343d5d2f7d176fca8f7578d9147b5b463a3e3fa",
+      "bytes": 1713
+    },
+    {
+      "path": "src/Ext/OverlayType/Hooks.cpp",
+      "sha": "70795a198a9004a19891d032e8ab1d439bdf88d2",
+      "bytes": 1419
+    },
+    {
+      "path": "src/Ext/ParticleSystemType/Body.cpp",
+      "sha": "7209009af73ff064bd961668d4ce7c7564f70ef6",
+      "bytes": 1878
+    },
+    {
+      "path": "src/Ext/ParticleSystemType/Body.h",
+      "sha": "ecfd4d198fdf8b5942073596648eabae1e48df9a",
+      "bytes": 1685
+    },
+    {
+      "path": "src/Ext/ParticleType/Body.cpp",
+      "sha": "64ca100b5d784a5e941cbac09c298ac3b09cdf77",
+      "bytes": 2298
+    },
+    {
+      "path": "src/Ext/ParticleType/Body.h",
+      "sha": "229fb52df0c8a3f12c83eb382ca8b1dfe73f93fb",
+      "bytes": 1642
+    },
+    {
+      "path": "src/Ext/ParticleType/Hooks.cpp",
+      "sha": "03dae4d44160da310e9896f1e586ebc98f3cfefd",
+      "bytes": 635
+    },
+    {
+      "path": "src/Ext/Radio/Body.h",
+      "sha": "25c800294d15c48d3e766dee680615025998500c",
+      "bytes": 586
+    },
+    {
+      "path": "src/Ext/RadSite/Body.cpp",
+      "sha": "aa4b42cf1f16b8aea3ebad02d9405ebd1b88ffe2",
+      "bytes": 7472
+    },
+    {
+      "path": "src/Ext/RadSite/Body.h",
+      "sha": "afd170bfe9d926f3d47362a0f994896b74d9b6ef",
+      "bytes": 2114
+    },
+    {
+      "path": "src/Ext/RadSite/Hooks.cpp",
+      "sha": "c2e2c45dc9192f12bb2c2d97f144833ad64f0302",
+      "bytes": 12802
+    },
+    {
+      "path": "src/Ext/Rules/Body.cpp",
+      "sha": "968b9c4ca4153e2e33c59b0a0f93511e5ae63358",
+      "bytes": 72647
+    },
+    {
+      "path": "src/Ext/Rules/Body.h",
+      "sha": "3cbeba8c4c1198484f8d794b3f67655f56122db0",
+      "bytes": 38594
+    },
+    {
+      "path": "src/Ext/Rules/Hooks.Image.cpp",
+      "sha": "e78a55b1764f810ddce78529faebfb4640a83440",
+      "bytes": 2740
+    },
+    {
+      "path": "src/Ext/Scenario/Body.cpp",
+      "sha": "7b15964afef7cbcb1c57a9bffc962f4979d85e5f",
+      "bytes": 8158
+    },
+    {
+      "path": "src/Ext/Scenario/Body.h",
+      "sha": "d425240840ff9eca43cb8d1d6726d597ed3a9a17",
+      "bytes": 3308
+    },
+    {
+      "path": "src/Ext/Scenario/Hooks.cpp",
+      "sha": "5d1c862f072e13830b97bbe806f3f9b1c3d762e1",
+      "bytes": 3403
+    },
+    {
+      "path": "src/Ext/Scenario/Hooks.Variables.cpp",
+      "sha": "505928f7e9714dd52f57dc7371aa22f3af343894",
+      "bytes": 4568
+    },
+    {
+      "path": "src/Ext/Scenario/Hooks.Waypoints.cpp",
+      "sha": "b1f2f72dff346445d5cd75a027eba84861877de5",
+      "bytes": 5808
+    },
+    {
+      "path": "src/Ext/Script/Body.cpp",
+      "sha": "b4a9232143ed12e40a9711cef7b7345d29b78962",
+      "bytes": 46997
+    },
+    {
+      "path": "src/Ext/Script/Body.h",
+      "sha": "f1ce86058781cd6856799cad22f6d24d2c8fb6c0",
+      "bytes": 10121
+    },
+    {
+      "path": "src/Ext/Script/Hooks.cpp",
+      "sha": "0636cab7b4478b95c34f1b085aed189849352d1a",
+      "bytes": 7140
+    },
+    {
+      "path": "src/Ext/Script/Mission.Attack.cpp",
+      "sha": "0873a112459a4db838b82606f8976ec5d2dad3c8",
+      "bytes": 37088
+    },
+    {
+      "path": "src/Ext/Script/Mission.Move.cpp",
+      "sha": "766ab4d3b181c51718a126f1313b2cc452c457b8",
+      "bytes": 15759
+    },
+    {
+      "path": "src/Ext/Side/Body.cpp",
+      "sha": "428944a35ca422a06a60f8008949b1bcfd2519e6",
+      "bytes": 6067
+    },
+    {
+      "path": "src/Ext/Side/Body.h",
+      "sha": "7c69ee4220d55584c29a9af718750586c0db9d0c",
+      "bytes": 4064
+    },
+    {
+      "path": "src/Ext/Side/Hooks.cpp",
+      "sha": "1e2fe547a35271352478cf11f19f35c31d4ae7b3",
+      "bytes": 636
+    },
+    {
+      "path": "src/Ext/Side/Hooks.SidebarGDIPositions.cpp",
+      "sha": "64af401fee6dad1181ac44d391e05438213d5556",
+      "bytes": 1817
+    },
+    {
+      "path": "src/Ext/Sidebar/Body.cpp",
+      "sha": "532b640d1d7b1f35c4ef9c1c303a160ac9f7deb5",
+      "bytes": 5061
+    },
+    {
+      "path": "src/Ext/Sidebar/Body.h",
+      "sha": "96b7d590457388ef03b5d9ca00da1d4188fc7ffb",
+      "bytes": 997
+    },
+    {
+      "path": "src/Ext/Sidebar/Hooks.cpp",
+      "sha": "0000934544b56e12f5ac633be98e9c35d6318bcf",
+      "bytes": 3883
+    },
+    {
+      "path": "src/Ext/Sidebar/SWSidebar/SWButtonClass.cpp",
+      "sha": "afb8cf31f9015a1ae159e1697650e19bc57fe043",
+      "bytes": 7988
+    },
+    {
+      "path": "src/Ext/Sidebar/SWSidebar/SWButtonClass.h",
+      "sha": "5703f9f464bdb3dab9f50427eee4ed5334118603",
+      "bytes": 586
+    },
+    {
+      "path": "src/Ext/Sidebar/SWSidebar/SWColumnClass.cpp",
+      "sha": "17de09daec667239aaa50a163a74f3f56d2226b1",
+      "bytes": 5686
+    },
+    {
+      "path": "src/Ext/Sidebar/SWSidebar/SWColumnClass.h",
+      "sha": "5ca8dd36b40cf9da4f8bd39eae87745b81be110c",
+      "bytes": 710
+    },
+    {
+      "path": "src/Ext/Sidebar/SWSidebar/SWSidebarClass.cpp",
+      "sha": "0245cec68d1256e5e2703e9798a24db43608ea7f",
+      "bytes": 9646
+    },
+    {
+      "path": "src/Ext/Sidebar/SWSidebar/SWSidebarClass.h",
+      "sha": "82b78fe7970b897d64463b920319c74ca9793b6e",
+      "bytes": 636
+    },
+    {
+      "path": "src/Ext/Sidebar/SWSidebar/ToggleSWButtonClass.cpp",
+      "sha": "85a69bd85ebd01ee42e4032c7b07743afb4e9c89",
+      "bytes": 3437
+    },
+    {
+      "path": "src/Ext/Sidebar/SWSidebar/ToggleSWButtonClass.h",
+      "sha": "ad6775933c704d12a2aca4545ff0de7a2d645a30",
+      "bytes": 553
+    },
+    {
+      "path": "src/Ext/Surface/Body.cpp",
+      "sha": "af69e14b9c7ac4a783f568b09d77c0817188b3de",
+      "bytes": 5315
+    },
+    {
+      "path": "src/Ext/Surface/Body.h",
+      "sha": "0a25e8364558842a7d63fe044ca628861c7e9f49",
+      "bytes": 145
+    },
+    {
+      "path": "src/Ext/SWType/Body.cpp",
+      "sha": "c5f8550ee2efd516e02e0f3d2df508a7df191d5b",
+      "bytes": 14347
+    },
+    {
+      "path": "src/Ext/SWType/Body.h",
+      "sha": "05cd4011fa79cf887c5c1b7530ad26f7f5a0436c",
+      "bytes": 9567
+    },
+    {
+      "path": "src/Ext/SWType/FireSuperWeapon.cpp",
+      "sha": "174dd4601501cfa847f47081d3c3a99c40d201e9",
+      "bytes": 15266
+    },
+    {
+      "path": "src/Ext/SWType/Hooks.cpp",
+      "sha": "9f9b6795fd5de0ef95ac8966febbd3e972cec1ad",
+      "bytes": 7979
+    },
+    {
+      "path": "src/Ext/SWType/NewSWType/NewSWType.cpp",
+      "sha": "0747aa4c115a5a431045d4aafcf63569e747527c",
+      "bytes": 1134
+    },
+    {
+      "path": "src/Ext/SWType/NewSWType/NewSWType.h",
+      "sha": "c4368c7d8b563a08ebee7694a653b79643efa8ef",
+      "bytes": 915
+    },
+    {
+      "path": "src/Ext/SWType/SWHelpers.cpp",
+      "sha": "f6b8fddbee82b49c25a636ff02b66be2f742e907",
+      "bytes": 10599
+    },
+    {
+      "path": "src/Ext/TAction/Body.cpp",
+      "sha": "076221910a3b75529b0db875bd5a10e04eb4922b",
+      "bytes": 25130
+    },
+    {
+      "path": "src/Ext/TAction/Body.h",
+      "sha": "c054bd67b0d17a53cf0e952bb2f2ad66b9385c16",
+      "bytes": 3082
+    },
+    {
+      "path": "src/Ext/TAction/Hooks.cpp",
+      "sha": "def807dc7ebc5ffd07577e106d3d55ff79851be4",
+      "bytes": 3647
+    },
+    {
+      "path": "src/Ext/Team/Body.cpp",
+      "sha": "1d8be2bc29fce4f888c864752e06f56efe6ddefb",
+      "bytes": 1606
+    },
+    {
+      "path": "src/Ext/Team/Body.h",
+      "sha": "5d6b9916b5150dc69ee47afeeddf90152a2447e2",
+      "bytes": 2138
+    },
+    {
+      "path": "src/Ext/Team/Hooks.cpp",
+      "sha": "323c1878cb8590cedd832566424e5ab4342c51ff",
+      "bytes": 4523
+    },
+    {
+      "path": "src/Ext/TeamType/Body.cpp",
+      "sha": "fcec2ad18f250e8bfcd6b4a84d6011b6f19860e5",
+      "bytes": 1572
+    },
+    {
+      "path": "src/Ext/TeamType/Body.h",
+      "sha": "9e4809ef7433b50d6f488269fd996758809a7880",
+      "bytes": 1532
+    },
+    {
+      "path": "src/Ext/TeamType/Hooks.cpp",
+      "sha": "2b8cfed58d7f19941bb1c48be566794ef17072f5",
+      "bytes": 291
+    },
+    {
+      "path": "src/Ext/Techno/Body.cpp",
+      "sha": "487b9d63682215230466a222ec13262b347bef21",
+      "bytes": 40982
+    },
+    {
+      "path": "src/Ext/Techno/Body.h",
+      "sha": "0f3f7ae1f0e8faacb7d4c48d2654fd2693d5858c",
+      "bytes": 14388
+    },
+    {
+      "path": "src/Ext/Techno/Body.Internal.cpp",
+      "sha": "5424fa6b02435892d534d9021b63bff0b26d8ec8",
+      "bytes": 9195
+    },
+    {
+      "path": "src/Ext/Techno/Body.Update.cpp",
+      "sha": "4952526b6886fd2f0119b9ff06e3b1169ff453ee",
+      "bytes": 42143
+    },
+    {
+      "path": "src/Ext/Techno/Body.Visuals.cpp",
+      "sha": "6f7bc3f2190b591ceeeb375709e81529491dd5e7",
+      "bytes": 27251
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.Airstrike.cpp",
+      "sha": "5dc93df7490077886e509704d6f9b7e19d35dfb5",
+      "bytes": 8981
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.Cloak.cpp",
+      "sha": "3eeea01995a90f457f828af7506304e6380c1ae7",
+      "bytes": 6152
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.cpp",
+      "sha": "7295497e4f300f911e0546075928ebed7b3d1919",
+      "bytes": 74624
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.Firing.cpp",
+      "sha": "01802dcd6915e665231f5786651a5ff3eb8477f5",
+      "bytes": 41560
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.Misc.cpp",
+      "sha": "5d9dc58d74fe0bacde08f0fc83fd9efbcf04e8f3",
+      "bytes": 34162
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.Pips.cpp",
+      "sha": "8e49679deff98fba0cc8ebcea3bd389a6501c3fa",
+      "bytes": 11761
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.ReceiveDamage.cpp",
+      "sha": "774292a282d8df7dcd5cd88d072a6cba932610e4",
+      "bytes": 20076
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.TargetEvaluation.cpp",
+      "sha": "ee259270f32ec658eb46565450e03a96f00f83eb",
+      "bytes": 13836
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.Targeting.cpp",
+      "sha": "8cd3e8a387df85870f851e0c7bf4a9a79fe998da",
+      "bytes": 4442
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.Tint.cpp",
+      "sha": "87dfead41a0c7982a0204d808d965015b4d42c2b",
+      "bytes": 9960
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.Transport.cpp",
+      "sha": "2745ea596b92ae750b75088fd9295527bc8d6251",
+      "bytes": 30972
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.WeaponEffects.cpp",
+      "sha": "b044a6f16ca4ba970a957a744be284c7984ec3f3",
+      "bytes": 9341
+    },
+    {
+      "path": "src/Ext/Techno/Hooks.WeaponRange.cpp",
+      "sha": "a24ef8725bd5578554d01aae20895ca176cc144b",
+      "bytes": 9180
+    },
+    {
+      "path": "src/Ext/Techno/WeaponHelpers.cpp",
+      "sha": "dcf4e7f75b3b7ddad2cc1a32ce6b1b06e7f31f83",
+      "bytes": 16481
+    },
+    {
+      "path": "src/Ext/TechnoType/Body.cpp",
+      "sha": "3ab3a90aeb0fe1c156d51d88db9a2d2959455627",
+      "bytes": 73367
+    },
+    {
+      "path": "src/Ext/TechnoType/Body.h",
+      "sha": "c23db119c9c378b43a96863afc3b7fdc978101fa",
+      "bytes": 31155
+    },
+    {
+      "path": "src/Ext/TechnoType/Hooks.cpp",
+      "sha": "27930b3daa3805184f4692225d4f88f341dbdcc5",
+      "bytes": 4882
+    },
+    {
+      "path": "src/Ext/TechnoType/Hooks.MatrixOp.cpp",
+      "sha": "ad8cdd8dca9e49bcd243b3155ff0aa51c7cd0eb9",
+      "bytes": 39909
+    },
+    {
+      "path": "src/Ext/TechnoType/Hooks.MultiWeapon.cpp",
+      "sha": "c9abb799545432834e25ccc861ab9e847e019749",
+      "bytes": 5861
+    },
+    {
+      "path": "src/Ext/TechnoType/Hooks.Teleport.cpp",
+      "sha": "5bc5c7d0167072c4da0ec04effe1201b863fccdc",
+      "bytes": 5656
+    },
+    {
+      "path": "src/Ext/TerrainType/Body.cpp",
+      "sha": "0c84947230eaccc807411d1d34127ec9442ec5ec",
+      "bytes": 4762
+    },
+    {
+      "path": "src/Ext/TerrainType/Body.h",
+      "sha": "f011df357adcf5d6801ce22e0b66351be06b8047",
+      "bytes": 2790
+    },
+    {
+      "path": "src/Ext/TerrainType/Hooks.cpp",
+      "sha": "3d5567cf84f7ffeb76278025a28ff714cd6e5a3b",
+      "bytes": 9805
+    },
+    {
+      "path": "src/Ext/TerrainType/Hooks.Passable.cpp",
+      "sha": "541ce32ab4c6215b068a19409441ad06f2d2a305",
+      "bytes": 5112
+    },
+    {
+      "path": "src/Ext/TEvent/Body.cpp",
+      "sha": "3f528073b58a3f0ec589b53496f2703b6daf5842",
+      "bytes": 12551
+    },
+    {
+      "path": "src/Ext/TEvent/Body.h",
+      "sha": "b54f1755c7c4f2c5b3bd9b442508d4e2d874b904",
+      "bytes": 3895
+    },
+    {
+      "path": "src/Ext/TEvent/Hooks.cpp",
+      "sha": "750bd592e029c1461c60b6cd4e3604aa29155af4",
+      "bytes": 2232
+    },
+    {
+      "path": "src/Ext/Tiberium/Body.cpp",
+      "sha": "8c3b2efa102305094f193388f1cd5fc1ee4d1245",
+      "bytes": 1864
+    },
+    {
+      "path": "src/Ext/Tiberium/Body.h",
+      "sha": "dd40cb76d6d6616aa654dd9411ecad3448f379ab",
+      "bytes": 1551
+    },
+    {
+      "path": "src/Ext/Tiberium/Hooks.cpp",
+      "sha": "437aa106467d2e994aa79ab932762dab75445707",
+      "bytes": 13161
+    },
+    {
+      "path": "src/Ext/Trigger/Hooks.cpp",
+      "sha": "6f2b260baa8c53be5438782cf8a152109acd94af",
+      "bytes": 3479
+    },
+    {
+      "path": "src/Ext/Unit/Body.cpp",
+      "sha": "a9e0535e94d7e98c9c0ec826fcf7fce491dca844",
+      "bytes": 13479
+    },
+    {
+      "path": "src/Ext/Unit/Body.h",
+      "sha": "a57cbd49f4d0b02ad95be676119522192539869e",
+      "bytes": 2592
+    },
+    {
+      "path": "src/Ext/Unit/Hooks.Crushing.cpp",
+      "sha": "975a7217bb6bd6f3210f992b3207825805df46ea",
+      "bytes": 3420
+    },
+    {
+      "path": "src/Ext/Unit/Hooks.DeployFire.cpp",
+      "sha": "7e9bd4c1b8a3e1df70731365053a44cf4f232fbb",
+      "bytes": 1715
+    },
+    {
+      "path": "src/Ext/Unit/Hooks.DeploysInto.cpp",
+      "sha": "9ee33c831dae32c7b7d671229e94543d4d3d5a99",
+      "bytes": 5371
+    },
+    {
+      "path": "src/Ext/Unit/Hooks.DrawIt.cpp",
+      "sha": "548671d89174d72c90278673fe536d1389bdba93",
+      "bytes": 2809
+    },
+    {
+      "path": "src/Ext/Unit/Hooks.Firing.cpp",
+      "sha": "5da47cd16b20f1e9056d41f135e3bc258ada3fb1",
+      "bytes": 4250
+    },
+    {
+      "path": "src/Ext/Unit/Hooks.Harvester.cpp",
+      "sha": "bf812106840a43d9e336e37733e18c1e5b53c9d7",
+      "bytes": 8533
+    },
+    {
+      "path": "src/Ext/Unit/Hooks.Jumpjet.cpp",
+      "sha": "aa630b8bf6963d59760870e8e15508b236724d1c",
+      "bytes": 16970
+    },
+    {
+      "path": "src/Ext/Unit/Hooks.SimpleDeployer.cpp",
+      "sha": "e454716347a7c747828cb6c8edc62e2417ed3475",
+      "bytes": 10139
+    },
+    {
+      "path": "src/Ext/Unit/Hooks.Sinking.cpp",
+      "sha": "5d90eb7cbb6703a66ee91e5b93844d59b87d293d",
+      "bytes": 1490
+    },
+    {
+      "path": "src/Ext/Unit/Hooks.Unload.cpp",
+      "sha": "1cab2644b91ac91066bd0fe8f53b88b67279526f",
+      "bytes": 2287
+    },
+    {
+      "path": "src/Ext/UnitType/Body.cpp",
+      "sha": "d9bc6a48322a7bedcbc769d1acc03f4cc1a14538",
+      "bytes": 10246
+    },
+    {
+      "path": "src/Ext/UnitType/Body.h",
+      "sha": "2302d206e4b2b3168ce27ac213ac1c65928995cb",
+      "bytes": 5442
+    },
+    {
+      "path": "src/Ext/VoxelAnim/Body.cpp",
+      "sha": "aa30687687745201c0cfc0dabbfa8bb38fa56696",
+      "bytes": 1830
+    },
+    {
+      "path": "src/Ext/VoxelAnim/Body.h",
+      "sha": "110fdcf5b6ec1ff74a79df94576ad76110c09ffd",
+      "bytes": 1616
+    },
+    {
+      "path": "src/Ext/VoxelAnim/Hooks.cpp",
+      "sha": "44777aae491a26598259b8c2bf40ffa6c542c7fd",
+      "bytes": 1879
+    },
+    {
+      "path": "src/Ext/VoxelAnimType/Body.cpp",
+      "sha": "792e5df808757352d86a438347a26fdf575a3fc3",
+      "bytes": 2473
+    },
+    {
+      "path": "src/Ext/VoxelAnimType/Body.h",
+      "sha": "113fc1133b2c25c5b75a537f0407ca3c4b2b7190",
+      "bytes": 2068
+    },
+    {
+      "path": "src/Ext/WarheadType/Body.cpp",
+      "sha": "2ef6b57ac7a78dbf9e33645228bdd022d192920d",
+      "bytes": 41270
+    },
+    {
+      "path": "src/Ext/WarheadType/Body.h",
+      "sha": "0266304467ba4f345460b3660f2f6b69fa139eff",
+      "bytes": 22844
+    },
+    {
+      "path": "src/Ext/WarheadType/Detonate.cpp",
+      "sha": "6195797c693d3a7a946120d9b4e8bc813fcbc8b6",
+      "bytes": 33222
+    },
+    {
+      "path": "src/Ext/WarheadType/Hooks.cpp",
+      "sha": "f24c4e7730f2fb684284137dd63be69880268ea0",
+      "bytes": 18616
+    },
+    {
+      "path": "src/Ext/WeaponType/Body.cpp",
+      "sha": "ceed73e113cc89c26bc85f3442d6eaade9fe5243",
+      "bytes": 23191
+    },
+    {
+      "path": "src/Ext/WeaponType/Body.h",
+      "sha": "11b4ec30929b11abe416feedfb7cc0cd78b0a6eb",
+      "bytes": 10676
+    },
+    {
+      "path": "src/Ext/WeaponType/Hooks.Bomb.cpp",
+      "sha": "85d0afcbb6fcb33bdf213603f98764a654f9c880",
+      "bytes": 1777
+    },
+    {
+      "path": "src/Ext/WeaponType/Hooks.cpp",
+      "sha": "0906c4e6eeef0ddb95478068c87f07431d0b1a70",
+      "bytes": 704
+    },
+    {
+      "path": "src/Ext/WeaponType/Hooks.DiskLaserRadius.cpp",
+      "sha": "845316c278b37063c673858b67d444a50342aba9",
+      "bytes": 1490
+    },
+    {
+      "path": "src/Interop/AttachEffect.cpp",
+      "sha": "d4ab4d61610f3374480f95c215f3cb9fb011b444",
+      "bytes": 2845
+    },
+    {
+      "path": "src/Interop/AttachEffect.h",
+      "sha": "524a50cf3134c839f52150d99080a7ef988f297f",
+      "bytes": 2022
+    },
+    {
+      "path": "src/Interop/BulletExt.cpp",
+      "sha": "c445be22bb4e4963ebdc2a9bd1856a9615fa47ad",
+      "bytes": 298
+    },
+    {
+      "path": "src/Interop/BulletExt.h",
+      "sha": "66449c3d4c6d972d205f4d478d0f6e6408e50503",
+      "bytes": 161
+    },
+    {
+      "path": "src/Interop/EventExt.cpp",
+      "sha": "631767ca3ab5074d940129c422b1229e630247a4",
+      "bytes": 176
+    },
+    {
+      "path": "src/Interop/EventExt.h",
+      "sha": "a4dd9506b28ac62338161a1959485d7d34119bb5",
+      "bytes": 136
+    },
+    {
+      "path": "src/Interop/ScenarioExt.cpp",
+      "sha": "249a9a24c8c827fb89991d8e6dc7b0b9839d123d",
+      "bytes": 1136
+    },
+    {
+      "path": "src/Interop/ScenarioExt.h",
+      "sha": "dd680a1ba9f70ae87141cba9ed051584c73fd2c1",
+      "bytes": 1933
+    },
+    {
+      "path": "src/Interop/TechnoExt.cpp",
+      "sha": "8881d0312ff95624782db6817b03b95e8472188c",
+      "bytes": 908
+    },
+    {
+      "path": "src/Interop/TechnoExt.h",
+      "sha": "e163828197864e2dde289b58138cc28eedfab261",
+      "bytes": 1637
+    },
+    {
+      "path": "src/Interop/Version.cpp",
+      "sha": "45d4729eb592607902061d2f9d2ea7744b09fbbb",
+      "bytes": 855
+    },
+    {
+      "path": "src/Interop/Version.h",
+      "sha": "7c93c6ad7e067b3fd8a0111b3143bde777120570",
+      "bytes": 1717
+    },
+    {
+      "path": "src/Locomotion/TestLocomotionClass.cpp",
+      "sha": "91aa29901de2bd2d9a6f2de98d6a75e80c9834ec",
+      "bytes": 4936
+    },
+    {
+      "path": "src/Locomotion/TestLocomotionClass.h",
+      "sha": "df71aeabc1d589b044f84d596b1e440fd8bb2655",
+      "bytes": 9221
+    },
+    {
+      "path": "src/Misc/BlittersFix.cpp",
+      "sha": "1c6877bd1823cb358ec9c885440ed7df7b0c2c33",
+      "bytes": 3585
+    },
+    {
+      "path": "src/Misc/BlittersFix.h",
+      "sha": "98dd6c3185b571a29d5b4819c7493666dc09168a",
+      "bytes": 67
+    },
+    {
+      "path": "src/Misc/ExceptionHandler.cpp",
+      "sha": "a5ac475b5f43a692220d937c4e3f35927a807896",
+      "bytes": 15701
+    },
+    {
+      "path": "src/Misc/ExceptionHandler.Dialog.cpp",
+      "sha": "3cdea5f80d18948c3dffce5e7bd7039f24fa4b2d",
+      "bytes": 6893
+    },
+    {
+      "path": "src/Misc/ExceptionHandler.h",
+      "sha": "9225609b4c1d1a83571b35a7987073a1d776541c",
+      "bytes": 2845
+    },
+    {
+      "path": "src/Misc/ExceptionHandler.rc",
+      "sha": "40427a3d81d2f31ba3bcb52ff34c248d7318f821",
+      "bytes": 1540
+    },
+    {
+      "path": "src/Misc/ExceptionHandler.Report.cpp",
+      "sha": "df3711da2d20ffcd33f9e2c186b49cfc2c76a53b",
+      "bytes": 29995
+    },
+    {
+      "path": "src/Misc/ExceptionHandler.Resource.h",
+      "sha": "75aef556b68ee3d549e7002e48ee9e9cfcd2de32",
+      "bytes": 298
+    },
+    {
+      "path": "src/Misc/FlyingStrings.cpp",
+      "sha": "59fcf6e36bd1f1ffae4d329ea1f5215896859e4d",
+      "bytes": 2523
+    },
+    {
+      "path": "src/Misc/FlyingStrings.h",
+      "sha": "88956f9a24da8efdf0457e1d1bb4616c5440aeb2",
+      "bytes": 811
+    },
+    {
+      "path": "src/Misc/Hooks.AlphaImage.cpp",
+      "sha": "2fc2430656fac99361536e7d58af39ea28289854",
+      "bytes": 4588
+    },
+    {
+      "path": "src/Misc/Hooks.Ares.cpp",
+      "sha": "3afe9bd171e51ec1344aaab4f51298b8788df0a4",
+      "bytes": 23316
+    },
+    {
+      "path": "src/Misc/Hooks.BriefingText.cpp",
+      "sha": "6dcd1ecc738a7aa02ce2c55221d9807470512c2c",
+      "bytes": 6646
+    },
+    {
+      "path": "src/Misc/Hooks.BugFixes.cpp",
+      "sha": "9d17963af7a1e732924ed83dbf75e72067e0cc43",
+      "bytes": 115552
+    },
+    {
+      "path": "src/Misc/Hooks.Crates.cpp",
+      "sha": "1f3a68b17c3b65fbffffa02cf1a4f0bf05339d79",
+      "bytes": 3463
+    },
+    {
+      "path": "src/Misc/Hooks.CSF.cpp",
+      "sha": "d4bcdb276137fcdfdb205115ba521638b8660c77",
+      "bytes": 3876
+    },
+    {
+      "path": "src/Misc/Hooks.Gamespeed.cpp",
+      "sha": "9a64c6afc8aa6a065770a9bf41facf67ca01c1dd",
+      "bytes": 2274
+    },
+    {
+      "path": "src/Misc/Hooks.INIInheritance.cpp",
+      "sha": "db173bbcbc57c7a613732582caf9e43f05201c82",
+      "bytes": 8421
+    },
+    {
+      "path": "src/Misc/Hooks.LaserDraw.cpp",
+      "sha": "9cdfbb89a068134f529ab7a97a3447e6ff862ab4",
+      "bytes": 11467
+    },
+    {
+      "path": "src/Misc/Hooks.LightEffects.cpp",
+      "sha": "52f4c660a324a013369db2bf6ce30c23abaed005",
+      "bytes": 3024
+    },
+    {
+      "path": "src/Misc/Hooks.MessageList.cpp",
+      "sha": "49766eb477f5eb1bd12de0a4302b94751e8e87fd",
+      "bytes": 623
+    },
+    {
+      "path": "src/Misc/Hooks.Overlay.cpp",
+      "sha": "1a0659fcee61a3e9b0d5dc6a9ab0b32d1d699190",
+      "bytes": 5091
+    },
+    {
+      "path": "src/Misc/Hooks.PCX.cpp",
+      "sha": "e9c5b7b934b3e3a5129d4958e864574e8c0bdce7",
+      "bytes": 2967
+    },
+    {
+      "path": "src/Misc/Hooks.Timers.cpp",
+      "sha": "68e5f9028d112d6c14a5356803140b6f73304b1d",
+      "bytes": 2348
+    },
+    {
+      "path": "src/Misc/Hooks.UI.cpp",
+      "sha": "f5f1c410e474f7c6e95b6142d9bc5ae4e6719374",
+      "bytes": 21151
+    },
+    {
+      "path": "src/Misc/Hooks.VeinholeMonster.cpp",
+      "sha": "a26fd820bf5846a4a9404c936df3d92bfb8478a9",
+      "bytes": 7426
+    },
+    {
+      "path": "src/Misc/MessageColumn.cpp",
+      "sha": "bbc2c8700565710282b4847ce8b37fa41d77f497",
+      "bytes": 29876
+    },
+    {
+      "path": "src/Misc/MessageColumn.h",
+      "sha": "593c9ede5b581aac92884a75e81aba79266f6827",
+      "bytes": 5317
+    },
+    {
+      "path": "src/Misc/PhobosToolTip.cpp",
+      "sha": "eaed57198bc26a303aecdb063e2f02b20e57a09f",
+      "bytes": 13813
+    },
+    {
+      "path": "src/Misc/PhobosToolTip.h",
+      "sha": "73407eec3df6783824c9c66fcf1df4d6350c8307",
+      "bytes": 727
+    },
+    {
+      "path": "src/Misc/RetryDialog.cpp",
+      "sha": "187f3622889b7659dd21b9f2a70802bf08dd9c61",
+      "bytes": 2065
+    },
+    {
+      "path": "src/Misc/Selection.cpp",
+      "sha": "c2cb266d97dfbe426750bd4c7cb4f23b0a795ad1",
+      "bytes": 7387
+    },
+    {
+      "path": "src/Misc/SyncLogging.cpp",
+      "sha": "330d4f7acfd4615254a297a3afdc0478713f35f1",
+      "bytes": 19656
+    },
+    {
+      "path": "src/Misc/SyncLogging.h",
+      "sha": "b2e954cb622e9ece48c85d646235d41b3aec2084",
+      "bytes": 6068
+    },
+    {
+      "path": "src/Misc/TextInput.cpp",
+      "sha": "250be9ad0f633b0ae2f21b706e0a9fb949a39dba",
+      "bytes": 1250
+    },
+    {
+      "path": "src/New/Entity/Ares/RadarJammerClass.cpp",
+      "sha": "1a40d9a52050c51becf9e0074543227352012d53",
+      "bytes": 1920
+    },
+    {
+      "path": "src/New/Entity/Ares/RadarJammerClass.h",
+      "sha": "12b73449c45648cd91602808a4f2c43369a1fe5a",
+      "bytes": 662
+    },
+    {
+      "path": "src/New/Entity/AttachEffectClass.cpp",
+      "sha": "a2af2d9c0e6c0b4232a451c458237de43a6c581f",
+      "bytes": 41122
+    },
+    {
+      "path": "src/New/Entity/AttachEffectClass.h",
+      "sha": "c9472fad11d3f86b1f83d42ec436bd6852eff8dc",
+      "bytes": 5946
+    },
+    {
+      "path": "src/New/Entity/BannerClass.cpp",
+      "sha": "8261fb0b2af192e78b2816b40c9bbb1c67b60dea",
+      "bytes": 6567
+    },
+    {
+      "path": "src/New/Entity/BannerClass.h",
+      "sha": "3d588cb7e9a46f69bb7cd26f8233accf15769ba4",
+      "bytes": 899
+    },
+    {
+      "path": "src/New/Entity/LaserTrailClass.cpp",
+      "sha": "7746f5fe6a7ed4a9e201cfd2c7b544b0a03207de",
+      "bytes": 3526
+    },
+    {
+      "path": "src/New/Entity/LaserTrailClass.h",
+      "sha": "58a31fd767480a3cd4b6a252ddcc24988dbd3fbf",
+      "bytes": 1039
+    },
+    {
+      "path": "src/New/Entity/ShieldClass.cpp",
+      "sha": "96cd622c68f2ac8bbd6d430726faa801479839a1",
+      "bytes": 37130
+    },
+    {
+      "path": "src/New/Entity/ShieldClass.h",
+      "sha": "2f256e4d3bd886d0b8b3948e7db46b7b0359fd69",
+      "bytes": 5105
+    },
+    {
+      "path": "src/New/Type/Affiliated/CreateUnitTypeClass.cpp",
+      "sha": "49ef868ab87065382746d47904bfeecf997e4031",
+      "bytes": 2059
+    },
+    {
+      "path": "src/New/Type/Affiliated/CreateUnitTypeClass.h",
+      "sha": "3dbe467e4ededf22a4f320d44e1cf4d8e78c4567",
+      "bytes": 1035
+    },
+    {
+      "path": "src/New/Type/Affiliated/DroppodTypeClass.cpp",
+      "sha": "c7b26a03f0b0cdddb537f86e919c667e94804e7a",
+      "bytes": 7661
+    },
+    {
+      "path": "src/New/Type/Affiliated/DroppodTypeClass.h",
+      "sha": "044a43c69f0838c85b90592ced2e035ce3945f1b",
+      "bytes": 799
+    },
+    {
+      "path": "src/New/Type/Affiliated/InterceptorTypeClass.cpp",
+      "sha": "8fe95b9ae14ac8592661987fd5f94e33d7d2299c",
+      "bytes": 2111
+    },
+    {
+      "path": "src/New/Type/Affiliated/InterceptorTypeClass.h",
+      "sha": "0b6c8eabbda72d2c7f49fb5545150ac2ae4b128e",
+      "bytes": 902
+    },
+    {
+      "path": "src/New/Type/Affiliated/PassengerDeletionTypeClass.cpp",
+      "sha": "1a18bb92cbd30619eac008d96a6e1d9cdafc775b",
+      "bytes": 2815
+    },
+    {
+      "path": "src/New/Type/Affiliated/PassengerDeletionTypeClass.h",
+      "sha": "4c9cae0924fd8b5709b924562b5405a7c012f655",
+      "bytes": 1175
+    },
+    {
+      "path": "src/New/Type/Affiliated/TiberiumEaterTypeClass.cpp",
+      "sha": "9f9d0aa45634f9fc54ac59a9139d1d062bfda775",
+      "bytes": 2256
+    },
+    {
+      "path": "src/New/Type/Affiliated/TiberiumEaterTypeClass.h",
+      "sha": "f5c92c52cfc02a6cb078a9dd2710fdbbfbb8c37d",
+      "bytes": 863
+    },
+    {
+      "path": "src/New/Type/Affiliated/TintTypeClass.cpp",
+      "sha": "71032dfe56673bd34c35875320afa27e0f20841e",
+      "bytes": 966
+    },
+    {
+      "path": "src/New/Type/Affiliated/TintTypeClass.h",
+      "sha": "3dadb50f6a021ac17074f68cd5378678de57864d",
+      "bytes": 649
+    },
+    {
+      "path": "src/New/Type/Affiliated/TypeConvertGroup.cpp",
+      "sha": "306dd235087aa68aa3fcf46c3394ae220b51b99d",
+      "bytes": 4203
+    },
+    {
+      "path": "src/New/Type/Affiliated/TypeConvertGroup.h",
+      "sha": "cc8178ef0836240880c5375a1c2c35342305c2a6",
+      "bytes": 1194
+    },
+    {
+      "path": "src/New/Type/AttachEffectTypeClass.cpp",
+      "sha": "7ff6216907183544f36f6c90cafbb2590ef7d85b",
+      "bytes": 24746
+    },
+    {
+      "path": "src/New/Type/AttachEffectTypeClass.h",
+      "sha": "582f72ba36b7befba72abe7a665324185df22d64",
+      "bytes": 12345
+    },
+    {
+      "path": "src/New/Type/BannerTypeClass.cpp",
+      "sha": "e806c3859ed2945a1ae70df459f0675fa596c484",
+      "bytes": 1611
+    },
+    {
+      "path": "src/New/Type/BannerTypeClass.h",
+      "sha": "0a1b15825938f9e9820c77700d34927a67e2aee6",
+      "bytes": 1299
+    },
+    {
+      "path": "src/New/Type/DigitalDisplayTypeClass.cpp",
+      "sha": "e8057e252a674dda02aa21747ba569ac98b8ecf1",
+      "bytes": 9259
+    },
+    {
+      "path": "src/New/Type/DigitalDisplayTypeClass.h",
+      "sha": "6b544682b360bbfeddb4aa5190e4ff85912e1c6d",
+      "bytes": 2380
+    },
+    {
+      "path": "src/New/Type/EVATypeClass.h",
+      "sha": "655bdbdd69a1ec657469c583fa11bf1d4581af6d",
+      "bytes": 1000
+    },
+    {
+      "path": "src/New/Type/InsigniaTypeClass.cpp",
+      "sha": "d50202204261d0a91e96194dae842b17cda5d17c",
+      "bytes": 1122
+    },
+    {
+      "path": "src/New/Type/InsigniaTypeClass.h",
+      "sha": "55d220567d652439fd1c57836c705a53da9bb225",
+      "bytes": 884
+    },
+    {
+      "path": "src/New/Type/LaserTrailTypeClass.cpp",
+      "sha": "34b114ed376e3aa8b78e4ef0bac2f189cc466bb8",
+      "bytes": 2449
+    },
+    {
+      "path": "src/New/Type/LaserTrailTypeClass.h",
+      "sha": "bc0c4241e509cbecf7b37f409768bd102d481351",
+      "bytes": 1593
+    },
+    {
+      "path": "src/New/Type/RadTypeClass.cpp",
+      "sha": "e3dca1bce65c4e82befea5b903980f4eb7752d35",
+      "bytes": 2401
+    },
+    {
+      "path": "src/New/Type/RadTypeClass.h",
+      "sha": "7fb533684947538cf5ec14a9c8f8d2a225337e05",
+      "bytes": 3228
+    },
+    {
+      "path": "src/New/Type/SelectBoxTypeClass.cpp",
+      "sha": "b2cf969bbf9b2c037f6399e55d3528a6fa8b6c0c",
+      "bytes": 2065
+    },
+    {
+      "path": "src/New/Type/SelectBoxTypeClass.h",
+      "sha": "78042cac688d9aa1c29f2f4ffecdfc41287436a6",
+      "bytes": 1446
+    },
+    {
+      "path": "src/New/Type/ShieldTypeClass.cpp",
+      "sha": "b8ada74c8f9744b5cfa6feb6794793574344fb9d",
+      "bytes": 5964
+    },
+    {
+      "path": "src/New/Type/ShieldTypeClass.h",
+      "sha": "24b41351dcc56de27449b1ba53b7ce53d3ff8ff8",
+      "bytes": 4574
+    },
+    {
+      "path": "src/Phobos.COM.cpp",
+      "sha": "b31c953dfdca55c288466e445b72508c88e713eb",
+      "bytes": 420
+    },
+    {
+      "path": "src/Phobos.COM.h",
+      "sha": "ef98e297feb960fa10a1e4a3cd0efdf014cd12f3",
+      "bytes": 761
+    },
+    {
+      "path": "src/Phobos.cpp",
+      "sha": "2b912789be524a51cb8c43d9bb08c5911bdece26",
+      "bytes": 14744
+    },
+    {
+      "path": "src/Phobos.CRT.cpp",
+      "sha": "f60eec3a7929360dbeb67951e8033dde7e6883f7",
+      "bytes": 333
+    },
+    {
+      "path": "src/Phobos.CRT.h",
+      "sha": "4053d06ddad891f8024f31eddad79a33b673c08d",
+      "bytes": 725
+    },
+    {
+      "path": "src/Phobos.Ext.cpp",
+      "sha": "cc313b025efeafadd50659097185e3f6a895bab0",
+      "bytes": 13347
+    },
+    {
+      "path": "src/Phobos.h",
+      "sha": "d9e8ca7133289f12b7ccdbeb7acbd1836aaf577f",
+      "bytes": 4614
+    },
+    {
+      "path": "src/Phobos.INI.cpp",
+      "sha": "9ae3a89eead758e27a9ee7485284446f2b3e2f96",
+      "bytes": 18372
+    },
+    {
+      "path": "src/Phobos.Save.cpp",
+      "sha": "1fda4943ed2f51b7c3e3d44f6d1f6b75a5ddac82",
+      "bytes": 6612
+    },
+    {
+      "path": "src/Phobos.version.h",
+      "sha": "9953e9e978a41a532e8a9b2ccb9604992ebaff2b",
+      "bytes": 5353
+    },
+    {
+      "path": "src/Utilities/Anchor.cpp",
+      "sha": "860e721f6a9fd7a89b821424698e02cbba1b9761",
+      "bytes": 2152
+    },
+    {
+      "path": "src/Utilities/Anchor.h",
+      "sha": "6bd2fc93088372528281ab51c0d0ba7f624742b0",
+      "bytes": 1134
+    },
+    {
+      "path": "src/Utilities/AresAddressInit.cpp",
+      "sha": "39fe99c0e6bbc58187e1f48ea6fe2997b792e17e",
+      "bytes": 4946
+    },
+    {
+      "path": "src/Utilities/AresFunctions.h",
+      "sha": "d8e777e567144b5cc7676aaaedc5d2d0b6cfd333",
+      "bytes": 2259
+    },
+    {
+      "path": "src/Utilities/AresHelper.cpp",
+      "sha": "1fea50b68e050f3af762e7ef0739955e9237ff1a",
+      "bytes": 4570
+    },
+    {
+      "path": "src/Utilities/AresHelper.h",
+      "sha": "52e45a2d2f0aac177356d5bed88eccc321700999",
+      "bytes": 675
+    },
+    {
+      "path": "src/Utilities/Constructs.cpp",
+      "sha": "bb0e7a7889ad5aa0398b6d0fda9069148e7629f6",
+      "bytes": 6850
+    },
+    {
+      "path": "src/Utilities/Constructs.h",
+      "sha": "01991fecfda73681badd160c5e91cd190c0c5dd1",
+      "bytes": 11799
+    },
+    {
+      "path": "src/Utilities/Container.h",
+      "sha": "251f3bbfda9f8a96351125bd05769cb83aa69ddc",
+      "bytes": 24119
+    },
+    {
+      "path": "src/Utilities/Coroutine.h",
+      "sha": "4b4f74910b21ca532b313629c428fea45df88424",
+      "bytes": 1636
+    },
+    {
+      "path": "src/Utilities/Debug.cpp",
+      "sha": "6721d453b9cbe850fbe8b97e80d31203d8e8677d",
+      "bytes": 6326
+    },
+    {
+      "path": "src/Utilities/Debug.h",
+      "sha": "e6591ed934a48433c04f8b7c37ba63fb2f52e348",
+      "bytes": 2470
+    },
+    {
+      "path": "src/Utilities/Detach.cpp",
+      "sha": "90bf4e8e23a542a00514e1d29ade762065481ebf",
+      "bytes": 7453
+    },
+    {
+      "path": "src/Utilities/Detach.h",
+      "sha": "eecec33ae032d006c9b10be45b66dfe87e59d1f1",
+      "bytes": 1657
+    },
+    {
+      "path": "src/Utilities/Enum.h",
+      "sha": "0bdd389655c039514e0c4320dedcaba551e62d3a",
+      "bytes": 8584
+    },
+    {
+      "path": "src/Utilities/Enumerable.h",
+      "sha": "781dbc59f824b0f00115671c62b4495e85f2e046",
+      "bytes": 2572
+    },
+    {
+      "path": "src/Utilities/EnumFunctions.cpp",
+      "sha": "8d6453169cfaebfcbc0a6152339a1bda5edd959f",
+      "bytes": 4696
+    },
+    {
+      "path": "src/Utilities/EnumFunctions.h",
+      "sha": "20abfcc1597d2d1d149461f770673baf229d3c15",
+      "bytes": 894
+    },
+    {
+      "path": "src/Utilities/GeneralUtils.cpp",
+      "sha": "7e7d79ba0d9beea31a3f30a4eb44e12105170186",
+      "bytes": 9086
+    },
+    {
+      "path": "src/Utilities/GeneralUtils.h",
+      "sha": "b86a4ec21be693b19e580f479a4c4870a26ea211",
+      "bytes": 3800
+    },
+    {
+      "path": "src/Utilities/Helpers.Alex.h",
+      "sha": "6b148276afcfb7239c58165846d0a14ba51c9b04",
+      "bytes": 16234
+    },
+    {
+      "path": "src/Utilities/INIParser.h",
+      "sha": "6aab95086cabd5430af61af84e1549aefb31b596",
+      "bytes": 5312
+    },
+    {
+      "path": "src/Utilities/Interpolation.h",
+      "sha": "b9afe9288223aadd070d63458656d656cb1912ef",
+      "bytes": 1878
+    },
+    {
+      "path": "src/Utilities/Iterator.h",
+      "sha": "afc4625455e82fe56e66c3ed9c1e9f2a095dd90e",
+      "bytes": 4315
+    },
+    {
+      "path": "src/Utilities/Macro.h",
+      "sha": "f0ae904a1959990eb03fd481a33cad6024adc6a8",
+      "bytes": 5984
+    },
+    {
+      "path": "src/Utilities/Parser.h",
+      "sha": "cd8cfa17f9efb0ce85b1ee0702e142a3ed3c9f0e",
+      "bytes": 10474
+    },
+    {
+      "path": "src/Utilities/Patch.cpp",
+      "sha": "2beb755f6c14470373b85b21ad3a92ea2c68831a",
+      "bytes": 1814
+    },
+    {
+      "path": "src/Utilities/Patch.h",
+      "sha": "76743a58b6b7e8ac60c9ae6e9db4a462c5e9e43e",
+      "bytes": 1933
+    },
+    {
+      "path": "src/Utilities/Savegame.h",
+      "sha": "1738ccb434a72e544354ed457d2e708f55043a21",
+      "bytes": 1472
+    },
+    {
+      "path": "src/Utilities/SavegameDef.h",
+      "sha": "cfd3ec6c5a6203dfc2f53151dd8985614f5c9b8c",
+      "bytes": 13425
+    },
+    {
+      "path": "src/Utilities/SequenceRates.h",
+      "sha": "bf93844288200833e4a1f841db88fc25d8a2fd13",
+      "bytes": 2284
+    },
+    {
+      "path": "src/Utilities/ShapeTextPrinter.cpp",
+      "sha": "86dd8bb1c20574ac2fd0628892493f40628734dd",
+      "bytes": 1050
+    },
+    {
+      "path": "src/Utilities/ShapeTextPrinter.h",
+      "sha": "31c06692027693608c14e12b8650cd678a29a331",
+      "bytes": 1001
+    },
+    {
+      "path": "src/Utilities/SpawnerHelper.cpp",
+      "sha": "09db194f6650b8a85294ff5949bafcc790ffc19c",
+      "bytes": 148
+    },
+    {
+      "path": "src/Utilities/SpawnerHelper.h",
+      "sha": "7c0f04584ad0bd7222531137f0f8084abbd4921c",
+      "bytes": 846
+    },
+    {
+      "path": "src/Utilities/Stream.cpp",
+      "sha": "12f4f33cd179cf0acf06363887af817d58883ba1",
+      "bytes": 2971
+    },
+    {
+      "path": "src/Utilities/Stream.h",
+      "sha": "50fe542016759036b2e2ed5b75bd89df3045a7f8",
+      "bytes": 5767
+    },
+    {
+      "path": "src/Utilities/Swizzle.h",
+      "sha": "2c857ba77ce7e5697267d14f55a6bbcfa3822b27",
+      "bytes": 1114
+    },
+    {
+      "path": "src/Utilities/Template.h",
+      "sha": "643ba46e630c312cfa3753c359ee1bd32d7770c3",
+      "bytes": 16190
+    },
+    {
+      "path": "src/Utilities/TemplateDef.h",
+      "sha": "8f7c4bd3b64942a61957a06342f7d45156962e32",
+      "bytes": 69076
+    },
+    {
+      "path": "src/version.rc",
+      "sha": "3669055ce94d867391e5cf8e4d81fe6d80e15c75",
+      "bytes": 1138
+    }
+  ],
+  "reproduction_artifact_sha256": {
+    "scan_phobos_overlap.py": "c037ac2869085e0b7db904f6cfe70d7ecf6eccc8594eef01ed8138de15a2e8bd",
+    "phobos-source-snapshot.json": "c8d1972de3ed0bd4f8240e555d324b8911357817ef928bfc3377c7f99e2a0387",
+    "auxiliary-source-snapshot.json": "ac30b0b147df696418a9afd3bc38facdc88d98e1a2a65684a86c3d860684b2ab",
+    "phobos-patch-inventory.json": "984686c72acb5a54003274d7584c31052a9fec289cd01cdedb7cfe063b944041",
+    "phobos-overlap.json": "e747a4e173bc48b83f7cf8b74f913376491d691891a2995d459bd93e3891cf50"
+  },
+  "limits": [
+    "Source scan of one pinned develop commit, not a released/loaded binary hook count or live compatibility proof.",
+    "Conditional declarations and runtime writes are retained without evaluating INI settings, preprocessor flags or call reachability.",
+    "Ares-module-relative writes are listed separately, not compared as gamemd addresses.",
+    "Only numeric game-address expressions are range-compared; unresolved expressions and widths are explicit.",
+    "Declared size zero still means at least a 5-byte E9 site write for the reviewed SyringeEx emitter. Handler return/skip ranges require semantic review.",
+    "All 161 anchors, actual active Patch writer/context ranges, 21 startup signatures and six listed DR dependency ranges are compared.",
+    "Other Call consumer body/context ranges and arbitrary non-Patch data writes are not exhaustively modeled.",
+    "No actual Windows loader, DLL, game process, hook, or multiplayer execution occurred.",
+    "Declaration counts include restores, version branches and declarations which may not be compiled or reached.",
+    "Source counts are not executable test assertion totals.",
+    "Module identity and Interop/profile recommendations are proposals, not implemented support."
+  ],
+  "outcome": {
+    "production_compatibility_adapter_changed": false,
+    "phobos_name_added_to_three_ares_entry_allowance": false,
+    "broad_signature_bypass_added": false,
+    "generic_trampoline_chasing_added": false,
+    "windows_game_executed": false,
+    "actual_ares_or_phobos_dll_executed": false,
+    "multiplayer_executed": false,
+    "runtime_compatibility_proven": false
+  }
+}

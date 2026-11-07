@@ -23,6 +23,20 @@ static void syncSecondaryLayoutControls(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ // These older editors intentionally allow their own shared-key patterns
+ // (notably the three watch slots). Only reserve new automatic bindings here.
+ if(edit){
+  uint32_t* existing=nullptr;
+  if(id==9095)existing=&extra.stickyKey;
+  else if(id>=9171&&id<=9177&&(id&1))existing=&extra.missionModeKeys[(id-9171)/2];
+  else if(id>=9450&&id<=9452)existing=&extra.viewZoomKeys[id-9450];
+  else if(id==9453)existing=&extra.sidebarKey;
+  else if(id==9454||id==9455)existing=&extra.pauseKeys[id-9454];
+  else if(id>=9062&&id<=9064)existing=&extra.watchKeys[id-9062];
+  if(existing){HWND widget=GetDlgItem(ui,id);const WORD next=WORD(SendMessageW(widget,HKM_GETHOTKEY,0,0));
+   if(automaticKeyConflict(next)){ControlUpdate guard;SendMessageW(widget,HKM_SETHOTKEY,*existing,0);notify(L"此快捷键已用于自动功能开关；已保留原按键。");return true;}
+  }
+ }
  if(id==9253&&notification==BN_CLICKED){
   extra.destructSelectedOwner=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
   registerKeys();changedSetting();updatePlayerTestUI(true);
@@ -236,7 +250,14 @@ static bool autoSettingChanged(int id,int notification){
   extra.mouseButtons[slot]=key==5?6:key;changedSetting();return true;
  }
  if(!edit)return false;
- WORD* target=nullptr;HWND widget=GetDlgItem(ui,id);
+ HWND widget=GetDlgItem(ui,id);
+ if(const auto*entry=autofeatures::byKeyControl(id);entry&&entry->setting){
+  auto&target=extra.automaticKeys[entry->feature];const WORD next=WORD(SendMessageW(widget,HKM_GETHOTKEY,0,0));const uint32_t old=target;target=0;
+  const bool conflict=keyConflict(next,"",false);target=old;
+  if(conflict){ControlUpdate guard;SendMessageW(widget,HKM_SETHOTKEY,old,0);notify(L"快捷键冲突；已保留原按键，请换一个组合。");return true;}
+  target=next;typeTap.clear();registerKeys();changedSetting();return true;
+ }
+ WORD* target=nullptr;
  if(id>=870&&id<=878)target=&socialKeys[id-870];
  else if(id>=200&&id<212)target=&hotkeys[id-200];
  else switch(id){case 853:target=&idleAircraftKey;break;case 447:target=&csKey;break;case 450:target=&advancedKey;break;case 451:target=&unloadKey;break;

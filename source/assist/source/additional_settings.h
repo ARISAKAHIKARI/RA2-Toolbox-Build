@@ -1,5 +1,6 @@
 #pragma once
 #include "player_test_policy.h"
+#include "automatic_features.h"
 #include "mo_orders.h"
 #include "cooperative_types.h"
 #include "pointer_intent.h"
@@ -8,6 +9,7 @@
 #include "../../shared/source/debug_entry_types.h"
 namespace assist {
 struct AdditionalSettings {
+ uint32_t automaticKeys[autofeatures::Count]{}; // New automatic switches start unbound; legacy keys stay in their original settings.
  debugentries::Config debugPolicy; // Stable per-entry opt-ins; no entry skips by default.
  int singlePlayerFPS=0; // 0 native; independent of renderer refresh
  bool minerDefenseEnabled=false;int minerDefenseRangeCells=1; // Independent of automatic ore return.

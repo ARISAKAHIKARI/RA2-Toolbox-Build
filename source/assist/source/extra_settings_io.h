@@ -24,6 +24,7 @@ static void syncDebugEntrySettings(){
  MemoryBarrier();InterlockedIncrement(&shared->debugPolicySeq);
 }
 static void loadAdditionalSettings(){
+ autofeatures::loadKeys(extra.automaticKeys,[](const wchar_t*section,const wchar_t*name,int fallback){return value(section,name,fallback);});
  {const int rate=value(L"SinglePlayer",L"FPS",0);extra.singlePlayerFPS=singlefps::valid(unsigned(rate))?rate:0;}
  extra.minerDefenseEnabled=value(L"MinerDefense",L"Enabled",0)!=0;
  extra.minerDefenseRangeCells=std::clamp(value(L"MinerDefense",L"ExtraRangeCells",1),0,30);
@@ -157,6 +158,7 @@ static void loadAdditionalSettings(){
  loadDebugEntrySettings();
 }
 static bool saveAdditionalSettings(){
+ autofeatures::saveKeys(extra.automaticKeys,[](const wchar_t*section,const wchar_t*name,uint32_t key){write(section,name,int(key));});
  write(L"SinglePlayer",L"FPS",extra.singlePlayerFPS);
  write(L"MinerDefense",L"Enabled",extra.minerDefenseEnabled);write(L"MinerDefense",L"ExtraRangeCells",extra.minerDefenseRangeCells);
  write(L"Display",L"SuperweaponDetached",superweaponOptions.detached);write(L"Display",L"SuperweaponCollapsed",superweaponOptions.collapsed);write(L"Display",L"SuperweaponX",superweaponOptions.x);write(L"Display",L"SuperweaponY",superweaponOptions.y);write(L"Display",L"SuperweaponScale",superweaponOptions.scale);write(L"Display",L"SuperweaponRows",superweaponOptions.rows);

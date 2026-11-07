@@ -904,6 +904,15 @@ static DWORD clampedRepairInterval(uint32_t ms){
  return ms<500?500:ms>30000?30000:ms;
 }
 static compute::FrameHistory<compute::RepairInput> repairFrames;static compute::RepairResult repairResultCopy;
+static void cancelAutomaticRepairWork(){
+ // A manual Repair request owns its pending calculation and candidate list.
+ // Keep queued toggle receipts: disabling automation cannot retract an event
+ // already handed to the engine, nor make its next scan toggle it twice.
+ if(repairAckPending||(!repairCalculationPending&&repairAt>=repairCount))return;
+ repairCalculationPending=false;repairCalculationStarted=0;
+ repairCount=repairAt=repairDone=0;repairFrames.clear();
+ repairTaskSeen=sh->repairComputed;
+}
 static int collectRepairs(uint32_t house,DWORD now,bool refresh=false){
  if(repairCalculationPending&&!refresh)return -6;
  bool internal=compute::inside(sh->computeApplied,compute::Repair);
@@ -975,6 +984,9 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else if((enhancementChangedCatalogue||sh->requestTypeHash)&&typeIndexedCommand(c,arg)&&sh->requestTypeHash!=typeListHash(snap.types,snap.typeCount)){result=-7;}
  else if(get<bool>(0xA8BC60+25)){result=-8;}
  else if(c==Repair){
+  // The manual command runs before repairTick. Retire an automatic task that
+  // was disabled in this same message before admitting the manual request.
+  if(!(sh->flags&AutoRepair))cancelAutomaticRepairWork();
   n=collectRepairs(house,now);if(n<0&&n!=-30){result=n;n=0;}
   if(n>0||n==-30){repairAckRequest=req;repairAckPending=true;repairAckStarted=now;sh->result=1;sh->count=0;return;}
  }
@@ -1066,6 +1078,9 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  sh->result=result;sh->count=n;pendingAck=req;pendingAckReady=true;
 }
 static void repairTick(uint32_t house,DWORD now){
+ const bool automatic=(sh->flags&AutoRepair)!=0;
+ // Cancel before polling: a late host result must not resurrect disabled work.
+ if(!automatic)cancelAutomaticRepairWork();
  repairCalculationTick(now);
  pendingRepairs.observe([&](uint32_t id,uint32_t pointer){
   uint32_t p=worldByID(id);bool valid=p==pointer&&p&&kind(p)==3&&own(p,house);
@@ -1073,9 +1088,9 @@ static void repairTick(uint32_t house,DWORD now){
   uint32_t t=typeOf(p,3);int maximum=t?get<int>(t+0xA0):0;
   return repairdelivery::Observation{true,get<bool>(p+0x6E8),maximum>0&&get<int>(p+0x6C)>=maximum};
  });
- bool automatic=(sh->flags&AutoRepair)!=0;DWORD interval=clampedRepairInterval(sh->repairMs);
+ const DWORD interval=clampedRepairInterval(sh->repairMs);
  if(!repairCalculationPending&&!repairAckPending&&automatic&&(!autoWas||(DWORD(now-lastAuto)>=interval&&repairAt>=repairCount))){collectRepairs(house,now);lastAuto=now;}
- if(!repairAckPending&&!automatic&&autoWas)repairCount=repairAt=0;autoWas=automatic;snap.autoRepair=automatic;
+ autoWas=automatic;snap.autoRepair=automatic;
  static int budgetFrame=-1,budget;static uint32_t budgetMatch;
  int frame=get<int>(0xA8ED84);if(budgetFrame!=frame||budgetMatch!=match){budgetFrame=frame;budgetMatch=match;budget=recurringBudget(EventLane::Repair);}
  if(repairAt<repairCount&&budget>0){

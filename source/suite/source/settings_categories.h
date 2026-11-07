@@ -13,7 +13,7 @@ inline int row(int section,const int*ids,unsigned count){
  for(unsigned i=0;i<count;++i)if(rule(ids[i]))return Rules;
  for(unsigned i=0;i<count;++i){int id=ids[i];if(id==9185||id==9186||id==9253||id==9254||(id>=9090&&id<=9093)||id==9403||id==9404||id==9406||id==9407||(id>=9462&&id<=9464)||(id>=9450&&id<=9455))return Experimental;
   if(id==9405)return Video;}
- for(unsigned i=0;i<count;++i)if(ids[i]==455||ids[i]==456||ids[i]==899)return Automatic;
+ for(unsigned i=0;i<count;++i)if(ids[i]==100||ids[i]==200||ids[i]==312||ids[i]==455||ids[i]==456||ids[i]==899||(ids[i]>=9502&&ids[i]<=9511))return Automatic;
  if(section==3)return Video;
  if(section==2||section==5)return Automatic;
  for(unsigned i=0;i<count;++i){int id=ids[i];if(id==9042||id==446||id==447||(id>=9000&&id<9015)||id==832||id==833)return Automatic;

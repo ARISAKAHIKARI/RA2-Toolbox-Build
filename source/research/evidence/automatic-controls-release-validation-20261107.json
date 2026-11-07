@@ -1,0 +1,117 @@
+{
+  "version": "1.0.43-pre.8",
+  "baseline_commit": "59ba074331e3758e152587aff6ddbe04221d0090",
+  "required_checks_passed": true,
+  "assist_protocol": 100,
+  "assist_shared_bytes": 23162400,
+  "automatic_toggle_entries": 13,
+  "new_optional_bindings": 10,
+  "repair_interval_ms": {
+    "default": 2000,
+    "min": 500,
+    "max": 30000
+  },
+  "source_sha256": {
+    "source/assist/tests/automatic_controls_test.py": "c732be0b95a8357c9dde445175907c3c713f6fa8e9a327c7a95841d6ab27f70f",
+    "source/assist/tests/auto_settings_ui_test.py": "76e24c67ad20919eec6e54b4fa701af33afdf88c64ed2d542fb586873bbbbcd2",
+    "source/assist/tests/hotkey_host_test.py": "f0b4dadbf4480ebb2f94c172dd9011dc5d6679bec2b66a895ca93d8be0a6ec15",
+    "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+    "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+    "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+    "source/assist/source/main.cpp": "7cd722f41693f54200d92bf4cba3aaa5591b9980b440ee5463991f5a18a3f902",
+    "source/assist/source/tactical_controls.h": "77bebc821071ec7811e4311bcd36f1bed26530c4e5a9c2553f039fe07f86f0f5",
+    "source/assist/source/auto_settings_ui.h": "de47e611d75f6a19a5b657e43d8bde4f507ac524d3ca9c972f3dd50add97cf4b",
+    "source/assist/source/type_bindings_ui.h": "90f29ad1d4d0d1c20ec22271ed24de29f16b027c970e0c79e13855166ba7e9ec",
+    "source/assist/source/hotkey_host.h": "5650d38558132a364500360848e45afd55953d3691c4b8cd581d13f01b34ad6c",
+    "source/assist/source/hotkey_routes.h": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce",
+    "source/assist/source/extra_settings_io.h": "1450745c9f9cea2dbef03b98a5a7ef3b72e94bbf0e5d983ecdd798c66ca5998c",
+    "source/assist/source/settings_dependencies.h": "b9671635669d63170a297d65cd02e37978be783822c30a80399f22ab9c5794f1",
+    "source/assist/source/hover_help.h": "d79b4611f56f9c74b8200f9fffd30812cf6e84874e63d5419f0b3917fde4360a",
+    "source/suite/source/settings_categories.h": "782d273871e498e2017a31a4505093c4b46d31d79a967213644ea7f6513a18e6",
+    "source/shared/source/key_gesture.h": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8",
+    "source/shared/source/feature_availability.h": "f60feff8e03ea34db478dc2a388b1ea4f0a89880bf724573003045dd3669151a",
+    "source/assist/source/bridge.cpp": "7734723bb142d7dcd8ab6fb2af72c81ac11d8082909b3ebe0166e992e8689fd9",
+    "source/assist/source/repair_delivery.h": "86be5a055b6789a6570bee6f6d1455b2731c96e1a4706c11c713f4e4e4dc4ea8",
+    "source/assist/source/compute_tasks.h": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c",
+    "source/assist/source/compute_frame.h": "01f38950c5fdf33ffdf17eafc73be413f180dc7352baa4fccedf897b402c341f",
+    "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+    "source/assist/source/plan_freshness.h": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c",
+    "source/assist/source/tactical_decisions.h": "dd6dc31d55fb7d20d962570e05182557c69729e0cdd2d61f56af351c4b4977cb",
+    "source/assist/tests/auto_repair_runtime.cpp": "42d087dc5db18a110dcb2ad1aaf491a167594377b102e1f9a483f9fe2aa10c10",
+    "source/assist/tests/auto_repair_runtime.py": "7f36bd44c68f56d7ba5796b475958b9dfb882838dde79a4a402b28a324e11d25",
+    "source/assist/tests/repair_delivery.cpp": "d03cd47341d73e20816def6239601e7ead0f287faa479146725405b7c72ae307"
+  },
+  "tests": [
+    {
+      "name": "automatic_controls",
+      "passed": true,
+      "evidence": "analysis/pre8-automatic-controls/result.json",
+      "evidence_sha256": "39826cd11df7a0fa467b1d0a7785d1b2e5cc13d02f729873a748faf2a65026ad",
+      "checks": 795,
+      "results": {
+        "ui_native": {
+          "passed": true,
+          "checks": 348,
+          "log": "/workspace/scratch/a67ed982d62d/analysis/pre8-automatic-controls/automatic-ui-native.log"
+        },
+        "ui_unified": {
+          "passed": true,
+          "checks": 348,
+          "log": "/workspace/scratch/a67ed982d62d/analysis/pre8-automatic-controls/automatic-ui-unified.log"
+        },
+        "dispatcher": {
+          "passed": true,
+          "checks": 68,
+          "log": "/workspace/scratch/a67ed982d62d/analysis/pre8-automatic-controls/automatic-dispatcher.log"
+        },
+        "categories": {
+          "passed": true,
+          "checks": 17,
+          "log": "/workspace/scratch/a67ed982d62d/analysis/pre8-automatic-controls/automatic-categories.log"
+        },
+        "layout_source_contract": {
+          "passed": true,
+          "checks": 14,
+          "notes": "Creation/adjacency/legacy-command and parameter exclusion source checks; no browser render."
+        }
+      },
+      "negative_reproduction": {
+        "baseline_function_sha256": "7c1032dab53a2fbae66040ac8c50378df9de3abcab1179fbe4c4482c06a44275",
+        "expected_failure_observed": true,
+        "exit_code": -6,
+        "log": "/workspace/scratch/a67ed982d62d/analysis/pre8-automatic-controls/before-conflict-ui.log",
+        "passed_checks": 0,
+        "reason": "Earlier production conflict list accepted an automatic toggle binding already assigned to StickyGuard."
+      }
+    },
+    {
+      "name": "repair_runtime",
+      "passed": true,
+      "evidence": "analysis/auto-repair-runtime/result.json",
+      "evidence_sha256": "f6b494ff426d06f50850de18a053ea134db6783eda91d63a08907fac80b616fc",
+      "checks": 93,
+      "scenarios": 24,
+      "negative_controls": {
+        "cases": 3,
+        "checks": 4,
+        "failed": 3
+      }
+    },
+    {
+      "name": "repair_delivery",
+      "passed": true,
+      "evidence": "analysis/auto-repair-runtime/repair-delivery-result.json",
+      "evidence_sha256": "f7ea4d279e08884cf8c9b5a16f575462be9dc40c61522216d680c5c6de5958aa"
+    }
+  ],
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "windows_images_executed": false,
+  "browser_rendered": false,
+  "limits": [
+    "Portable Win32/control/memory boundary substitutes do not execute a Windows game.",
+    "Negative controls are expected failures and not counted as passed checks.",
+    "The old broad UI/hotkey fixture test bodies were not executed.",
+    "Injector overlap review is a pinned-source analysis, not a new universal Ares/Phobos adapter."
+  ]
+}

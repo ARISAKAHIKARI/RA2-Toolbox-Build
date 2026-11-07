@@ -574,6 +574,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  for(int i=0;i<12;++i)if((i!=8||extra.manualReveal)&&LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
  for(size_t i=0;i<swBindings.size()&&i<64;++i){auto&b=swBindings[i];if((b.id=="IronCurtainSpecial"&&b.key==hotkeys[9])||(b.id=="ChronoSphereSpecial"&&b.key==hotkeys[10]))continue;if(LOBYTE(b.key)&&!registerKey(int(1020+i),b.key))++failures;}
  for(size_t i=0;i<typeBindings.size()&&i<512;++i){auto&b=typeBindings[i];if(typekeys::firstForKey(typeBindings,unsigned(i))&&!registerKey(int(1100+i),b.key))++failures;}
+ for(const auto&entry:autofeatures::Entries)if(entry.setting){const WORD key=WORD(extra.automaticKeys[entry.feature]);if(LOBYTE(key)&&!registerKey(entry.action,key))++failures;}
  if(LOBYTE(ejectKey)&&!registerKey(1696,ejectKey))++failures;
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
  if(featureavailability::AutoCS&&hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
@@ -2406,6 +2407,8 @@ static void submitDestructSelectedOwner(){
  if(shared&&shared->request!=before&&shared->command==DestructPlayer)
   setConsoleFeedback(GetDlgItem(ui,9186),L"等待自毁请求入队回执：当前选定单位的所属方");
 }
+static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp);
+#include "automatic_hotkeys_host.h"
 #include "hotkey_host.h"
 #include "auto_settings_ui.h"
 #include "ui_dependencies.h"
