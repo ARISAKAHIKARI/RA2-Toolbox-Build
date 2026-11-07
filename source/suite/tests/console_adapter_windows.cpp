@@ -12,10 +12,11 @@
 
 namespace {
 using consoleadapter::Host;
-constexpr UINT MutateChoice=WM_APP+180,TryShow=WM_APP+181,ReplaceEdit=WM_APP+182,SetMetadata=WM_APP+183,VerifyPrepared=WM_APP+184;
+constexpr UINT MutateChoice=WM_APP+180,TryShow=WM_APP+181,ReplaceEdit=WM_APP+182,SetMetadata=WM_APP+183,VerifyPrepared=WM_APP+184,SetStatus=WM_APP+185;
 struct Fixture {
  Host host;HANDLE ready=CreateEventW(nullptr,TRUE,FALSE,nullptr),mutated=CreateEventW(nullptr,FALSE,FALSE,nullptr),nestedEntered=CreateEventW(nullptr,TRUE,FALSE,nullptr),nestedRelease=CreateEventW(nullptr,TRUE,FALSE,nullptr),prepareAck=CreateEventW(nullptr,TRUE,FALSE,nullptr),verifyAck=CreateEventW(nullptr,TRUE,FALSE,nullptr);
- HWND pane=nullptr,toggle=nullptr,edit=nullptr,choice=nullptr,list=nullptr,hotkey=nullptr,slider=nullptr,readonlyEdit=nullptr,tabs=nullptr,noIdEdit=nullptr,editableCombo=nullptr;
+ HWND pane=nullptr,toggle=nullptr,edit=nullptr,choice=nullptr,list=nullptr,hotkey=nullptr,slider=nullptr,readonlyEdit=nullptr,tabs=nullptr,noIdEdit=nullptr,editableCombo=nullptr,status=nullptr;
+ std::wstring statusText=L"正在寻找游戏…";
  std::atomic<DWORD> thread{0},actionThread{0};std::atomic<unsigned> toggles{0},edits{0},selections{0},activations{0},keys{0},scrolls{0},tabChanges{0},anonymousEdits{0},comboEdits{0},immediatePresses{0};
  std::atomic<int> checked{0},key{0},position{0};std::atomic<bool> hidden{false},dialogRecognized{false},nested{false},reentered{false};
  std::atomic<bool> closingScenario{false},prepareAfterActive{false},preparedUnchanged{false},prepareArgs{false};std::atomic<DWORD> prepareThread{0};std::atomic<unsigned> prepareCount{0};
@@ -30,6 +31,8 @@ LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b){
  auto& f=*fixture;
  if(m==WM_CREATE){
   auto ctl=[&](const wchar_t* cls,const wchar_t* text,DWORD style,int x,int y,int width,int id){return CreateWindowExW(0,cls,text,WS_CHILD|WS_VISIBLE|style,x,y,width,26,w,reinterpret_cast<HMENU>(INT_PTR(id)),GetModuleHandleW(nullptr),nullptr);};
+  f.status=ctl(L"STATIC",L"原生悬浮说明",0,10,-52,260,113);
+  SetPropW(f.status,L"RA2.Console.Status",reinterpret_cast<HANDLE>(1));SetPropW(f.status,L"RA2.Console.StatusText",reinterpret_cast<HANDLE>(&f.statusText));ShowWindow(f.status,SW_HIDE);
   modernui::heading(ctl(L"STATIC",L"默认分组",0,10,-26,260,0));
   f.toggle=ctl(L"BUTTON",L"开关",BS_AUTOCHECKBOX,10,10,180,100);modernui::style(f.toggle);
   ctl(L"STATIC",L"名称",0,10,50,80,0);f.edit=ctl(L"EDIT",L"初始",ES_AUTOHSCROLL,110,50,160,101);
@@ -66,6 +69,7 @@ LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b){
  if(m==MutateChoice){SendMessageW(f.choice,CB_SETITEMDATA,1,333);SetEvent(f.mutated);return 0;}
  if(m==ReplaceEdit){DestroyWindow(f.edit);f.edit=CreateWindowW(L"EDIT",L"替换",WS_CHILD|WS_VISIBLE,110,50,160,26,w,reinterpret_cast<HMENU>(INT_PTR(101)),GetModuleHandleW(nullptr),nullptr);SetEvent(f.mutated);return 0;}
  if(m==SetMetadata){SetPropW(f.toggle,L"RA2.Console.Group",const_cast<wchar_t*>(L"固定语义组"));SetPropW(f.toggle,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(101)));SetPropW(f.toggle,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(21)));SetPropW(f.edit,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));f.host.dirty(0);SetEvent(f.mutated);return 0;}
+ if(m==SetStatus){if(a==0)f.statusText=L"只读连接失败 (Win32=5)";else if(a==1){SetWindowTextW(f.status,L"新的悬浮说明");f.statusText=L"已连接只读 PID 1234";}else if(a==2)f.statusText.clear();else if(a==3){RemovePropW(f.status,L"RA2.Console.StatusText");SetWindowTextW(f.status,L"已暂停。");}SetEvent(f.mutated);return 0;}
  if(m==TryShow){ShowWindow(w,SW_SHOW);f.hidden=!IsWindowVisible(w);HWND dialog=CreateWindowW(L"STATIC",L"Native dialog",WS_POPUP,0,0,50,50,w,nullptr,GetModuleHandleW(nullptr),nullptr);f.dialogRecognized=f.host.contains(dialog);DestroyWindow(dialog);SetEvent(f.mutated);return 0;}
  if(m==consoleadapter::PrepareCloseMessage){wchar_t text[128]{};GetWindowTextW(f.noIdEdit,text,128);f.preparedText=text;f.preparedChecked=int(SendMessageW(f.toggle,BM_GETCHECK,0,0));f.preparedToggles=f.toggles;f.preparedEdits=f.anonymousEdits;f.prepareThread=GetCurrentThreadId();++f.prepareCount;f.prepareArgs=a==0xcafe&&b==0xbeef;f.prepareAfterActive=!f.nested&&f.preparedText==L"当前操作的最终值";SetEvent(f.prepareAck);return 0;}
  if(m==VerifyPrepared){wchar_t text[128]{};GetWindowTextW(f.noIdEdit,text,128);f.preparedUnchanged=f.preparedText==text&&f.preparedChecked==SendMessageW(f.toggle,BM_GETCHECK,0,0)&&f.preparedToggles==f.toggles&&f.preparedEdits==f.anonymousEdits;SetEvent(f.verifyAck);return 0;}
@@ -142,6 +146,15 @@ int main(){
  HANDLE thread=CreateThread(nullptr,0,worker,nullptr,0,nullptr);check(thread!=nullptr,"worker created");check(WaitForSingleObject(f.ready,4000)==WAIT_OBJECT_0,"worker ready");check(f.hidden,"pane starts hidden");check(!f.host.adopt(1,f.pane,paneProc),"wrong-thread adoption rejected");
  auto snapshot=awaitSnapshot(f,[](const consolemodel::Snapshot& s){return s.controls.size()>=9;});
  if(snapshot){
+  check(snapshot->status=="正在寻找游戏…","hidden status source reaches snapshot");
+  check(!find(*snapshot,"label","原生悬浮说明"),"status source is not a setting row");
+  auto beforeStatus=snapshot;
+  for(unsigned change=0;change<4;++change){
+   static const char* expected[]={"只读连接失败 (Win32=5)","已连接只读 PID 1234","","已暂停。"};
+   PostMessageW(f.pane,SetStatus,change,0);check(WaitForSingleObject(f.mutated,4000)==WAIT_OBJECT_0,"owner changes status source");
+   auto updated=awaitSnapshot(f,[&](const consolemodel::Snapshot& s){return s.status==expected[change]&&s.revision>beforeStatus->revision;});
+   if(updated){check(updated->generation==beforeStatus->generation,"status changes preserve settings generation");check(updated->controls.size()==beforeStatus->controls.size(),"status is separate from settings controls");beforeStatus=updated;}
+  }
   auto toggle=find(*snapshot,"toggle");auto edit=find(*snapshot,"text","名称");auto choice=find(*snapshot,"choice","选择");auto hotkey=find(*snapshot,"hotkey","快捷键");auto slider=find(*snapshot,"range");auto list=find(*snapshot,"choice");auto readonlyEdit=find(*snapshot,"text","只读");auto anonymous=find(*snapshot,"text","无数字ID");auto editable=find(*snapshot,"choice","可输入");const consolemodel::Control* tabs=nullptr;
   for(const auto& control:snapshot->controls)if(control.presentation=="list")list=&control;
   for(const auto& control:snapshot->controls)if(control.type=="choice"&&control.options.size()==2&&control.options[0]=="第一页")tabs=&control;

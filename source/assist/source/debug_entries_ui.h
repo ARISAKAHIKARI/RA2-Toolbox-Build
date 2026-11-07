@@ -1,6 +1,7 @@
 #pragma once
 #include "native_platform_profile.h"
 #include "platform_hook_probe_ui.h"
+#include "game_process_selection_ui.h"
 // Included by the Host after pageControl() and settings persistence. The
 // renderer uses ordinary adapter-issued control tokens, never raw addresses.
 static constexpr int DebugEntryControlBase=12000;
@@ -61,7 +62,7 @@ static const char*debugSignature(debugentries::Signature signature){
  case Signature::Unknown:return "尚未检查签名";}return "尚未检查签名";
 }
 static void createDebugEntryControls(){
- const int page=suite::categories::Debug;int y=createPlatformHookProbeControls(page,uilayout::BodyTop+12);
+ const int page=suite::categories::Debug;int y=createGameProcessSelectionControls(page,uilayout::BodyTop+12);y=createPlatformHookProbeControls(page,y);
  pageControl(page,L"STATIC",L"入口调试：用途、影响特性与实时安装状态",20,y,610,26,0);y+=34;
 #ifdef RA2_CONSOLE_WEBVIEW2
  SetPropW(pageControls.back().hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));
@@ -98,7 +99,7 @@ static void createDebugEntryControls(){
  for(auto&c:pageControls)if(c.page==page)c.fullRect=c.rect;
 }
 static void updateDebugEntries(bool force){
- updatePlatformHookProbeUI();
+ updateGameProcessSelectionUI();updatePlatformHookProbeUI();
  if(!force&&!debugPageActive)return;
  static DWORD lastAt=0;const DWORD now=GetTickCount();if(!force&&lastAt&&DWORD(now-lastAt)<250)return;lastAt=now;
  if(!ui||!debugEntryChecks[0])return;
@@ -155,6 +156,7 @@ static void updateDebugEntries(bool force){
  }
 }
 static bool debugEntryCommand(int controlId,unsigned notification){
+ if(gameProcessSelectionCommand(controlId,notification))return true;
  if(platformHookProbeCommand(controlId,notification))return true;
  if(controlId<DebugEntryControlBase||controlId>=DebugEntryControlBase+int(debugentries::Count))return false;
  if(notification!=BN_CLICKED||!ready||updatingControls)return true;

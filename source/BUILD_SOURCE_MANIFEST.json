@@ -1,12 +1,12 @@
 {
-  "name": "RA2 Toolbox 1.0.43-pre.10",
-  "version": "1.0.43-pre.10",
+  "name": "RA2 Toolbox 1.0.43-pre.11",
+  "version": "1.0.43-pre.11",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full package includes hash-pinned offline assets/profiles/preprocessing runtime/engine; Update preserves an existing complete installation.",
   "resources_legacy_reuse": true,
   "build_protocol": 100,
-  "validation": "Validation scope: read-only PE executable-section comparison, normal loader relocation/IAT exclusions, coverage and baseline gates, bounded transfer candidates, safe reports, asynchronous Debug-page controls; production-core controlled fixtures and exact-commit mixed-architecture cross-build with static PE/ABI verification. No real Windows game, platform, Ares/Phobos or multiplayer execution is claimed.",
+  "validation": "Validation scope: actual production process discovery and cached FileDescription/keyword/allowlist recognition; persisted policy and PID creation-time selection; Host retry/diagnostics, three-module target lifecycle, hidden status and Debug selection UI controlled fixtures; exact-commit mixed-architecture cross-build and PE/ABI verification. No actual Windows/game/platform/multiplayer execution is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
@@ -42,7 +42,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.43-pre.10 follows f39f1344e7b43ab67c67567a561f36e053d6795a. Adds an on-demand read-only platform Hook detector that compares disk images with loaded executable sections without requiring a pre-injection running capture. Reports observed differences, coverage limits, transfer candidates and reference catalog intersections. Existing hook recovery and per-entry policies are retained. Prerelease; v1.0.42 remains stable latest.",
+  "release_status": "1.0.43-pre.11 follows 9c0a876f32183bcbc3cd56ff105449051286fcb6. Fixes omitted gameares/Ares aliases, adds fuzzy description keywords and an additive remembered-program detection list, shares discovery with the read-only Hook probe, exposes real connection status, and replaces the ambiguous pause/connect action with a one-way connection check. Explicit current PID choice is creation-bound; saved rules never exclusively lock future games. Existing per-entry validation, runtime behavior and Hook probe analysis remain.",
   "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; Debug entry catalog plus independent read-only platform Hook scan tools, manual PID, optional same-build original EXE, progress/cancellation and local HTML/JSON reports; existing action generation/revision acknowledgement preserved.",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement; native factories/events unchanged; no live purchase/netplay certification",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -786,5 +786,12 @@
     "game_tested": false,
     "multiplayer_tested": false,
     "note": "research/2026-11-07-platform-hook-detector.md"
+  },
+  "ProcessDiscoveryPre11": {
+    "keywords": "GameProcess.Keywords defaults to Yuri Revenge; case-insensitive AND substring tokens; empty automatic keywords never admit every process",
+    "remembered_programs": "GameProcess.ProgramCount/ProgramN: bounded additive full-path or exact-name allowlist; persists across launches; original recognition alternatives remain",
+    "current_selection": "PID+creation is session-only; revalidated before selection and after reader open; no PID persisted",
+    "metadata": "read-only version resources on bounded background worker for automatic scans; identity-bound positive/negative cache; UI enumeration is independent",
+    "connection": "real status published to console; retry never toggles off an enabled host or replays pending commands; ordinary rule edits preserve healthy sessions"
   }
 }

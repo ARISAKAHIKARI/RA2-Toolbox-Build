@@ -2,6 +2,7 @@
 #include <commdlg.h>
 #include <new>
 #include "../../shared/source/platform_hook_probe_windows.h"
+#include "../../external_reader/source/process_discovery.h"
 
 // Host-only, explicitly requested read-only diagnostics. Workers own their
 // options, progress and result; they never touch HWNDs, Host IPC or settings.
@@ -39,9 +40,7 @@ static bool platformHookProbeParsePid(const wchar_t* text,uint32_t& value){
  return !*text||value!=0;
 }
 static bool platformHookProbeGameName(const wchar_t* name){
- for(const wchar_t* known:{L"gamemd.exe",L"gamemd-spawn.exe",L"gamemd-ares.exe",L"gamemdAres.exe",L"gamemd.dat",L"gamemd-spawn.dat"})
-  if(!_wcsicmp(name,known))return true;
- return false;
+ return external::discovery::isGameName(name);
 }
 static DWORD WINAPI platformHookProbeWorker(void* parameter){
  std::unique_ptr<std::shared_ptr<PlatformHookProbeJob>> owner(static_cast<std::shared_ptr<PlatformHookProbeJob>*>(parameter));
@@ -49,20 +48,15 @@ static DWORD WINAPI platformHookProbeWorker(void* parameter){
  try{
   auto options=job->options;
   if(!options.pid&&!job->progress.cancel.load(std::memory_order_relaxed)){
-   // Process-name discovery is also performed off the UI thread. It needs no
-   // successful Runtime injection, visible game HWND or shared Host handle.
-   HANDLE snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
-   uint32_t found=0;unsigned matches=0;
-   if(snapshot!=INVALID_HANDLE_VALUE){
-    PROCESSENTRY32W entry{};entry.dwSize=sizeof entry;
-    if(Process32FirstW(snapshot,&entry))do{
-     if(job->progress.cancel.load(std::memory_order_relaxed))break;
-     if(entry.th32ProcessID!=GetCurrentProcessId()&&platformHookProbeGameName(entry.szExeFile)){found=entry.th32ProcessID;++matches;}
-    }while(Process32NextW(snapshot,&entry));
-    CloseHandle(snapshot);
+   // This worker may fill descriptions synchronously; automatic Host ticks
+   // only consume that shared cache and enqueue misses. Use the same discovery
+   // policy as all three modules rather than a second executable-name list.
+   external::targetselection::enumerateProcesses();
+   if(!job->progress.cancel.load(std::memory_order_relaxed)){
+    const auto found=external::discovery::scan();
+    if(found.best.pid&&(found.processCount==1||found.explicitSelection))options.pid=found.best.pid;
+    else job->result.summary=found.processCount>1?L"发现多个游戏进程，请填写要扫描的 PID。":L"未找到游戏进程，请先启动游戏或填写 PID。";
    }
-   if(matches==1)options.pid=found;
-   else job->result.summary=matches>1?L"发现多个游戏进程，请填写要扫描的 PID。":L"未找到游戏进程，请先启动游戏或填写 PID。";
   }
   job->resolvedPid.store(options.pid,std::memory_order_relaxed);
   if(options.pid)job->result=hookprobe::run(options,job->progress);
@@ -176,7 +170,7 @@ static int createPlatformHookProbeControls(int page,int y){
  add(L"STATIC",L"只读检查正在运行的游戏，无需移除平台 Hook。",20,y,610,26,0);y+=34;
  add(L"STATIC",L"进程 PID（留空自动识别）",20,y,250,26,0);
  hookProbePidEdit=add(L"EDIT",L"",280,y,200,28,HookProbePid,WS_TABSTOP|ES_AUTOHSCROLL,
-  L"留空优先使用当前游戏进程；未连接时独立查找 gamemd、gamemd-spawn、gamemd-ares / gamemdAres。也可填写任务管理器中的 PID。无需成功注入运行组件。");
+  L"留空优先使用当前游戏进程；未连接时使用共用的描述关键词、检测名单与游戏名称规则。也可填写任务管理器中的 PID。无需成功注入运行组件。");
  SendMessageW(hookProbePidEdit,EM_SETLIMITTEXT,10,0);y+=38;
  hookProbeBaselineText=add(L"STATIC",L"基准：已加载模块对应的磁盘文件",20,y,610,42,0,0,
   L"没有未注入平台的运行状态也能扫描。磁盘映像是代码基准；可另选同一构建的原始 EXE。报告会说明基准匹配情况和覆盖限制。");y+=50;

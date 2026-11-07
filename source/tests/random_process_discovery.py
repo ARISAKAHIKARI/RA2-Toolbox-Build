@@ -5,6 +5,7 @@ No user game binary is read or copied. Only the public discovery fingerprint
 fields are present in the sparse fixture; it cannot run as a PE program.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import struct
@@ -15,6 +16,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cxx", default="g++")
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--baseline-ref", help="Git revision whose production discovery must reject the newly supported aliases")
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -44,15 +46,54 @@ def main():
     result = subprocess.run([str(binary), str(fixture)],
                             capture_output=True, text=True)
     (out / "test.log").write_text(result.stdout + result.stderr)
+    result.check_returncode()
+    checks = json.loads(result.stdout.strip().splitlines()[-1])
+    baseline = None
+    if args.baseline_ref:
+        old = subprocess.check_output(
+            ["git", "show", args.baseline_ref + ":source/external_reader/source/process_discovery.h"],
+            cwd=root.parent, text=True)
+        original_sha256 = hashlib.sha256(old.encode()).hexdigest()
+        # Keep the old production body unchanged; only resolve its relative
+        # dependency includes from this isolated temporary output directory.
+        for relative in ("../../shared/source/message_query.h", "process_image_identity.h"):
+            absolute = (root / "external_reader/source" / relative).resolve().as_posix()
+            old = old.replace('"' + relative + '"', '"' + absolute + '"')
+        subject = out / "baseline-process-discovery.h"
+        subject.write_text(old)
+        old_binary = out / "baseline-alias-discovery"
+        old_build = [args.cxx, "-std=c++17", "-O2", "-UNDEBUG", "-pthread",
+                     "-I" + str(root / "tests/winmock"),
+                     "-DDISCOVERY_NAME_REGRESSION_ONLY",
+                     '-DDISCOVERY_HEADER="' + subject.as_posix() + '"',
+                     str(root / "tests/random_process_discovery.cpp"), "-o", str(old_binary)]
+        subprocess.run(old_build, check=True)
+        old_run = subprocess.run([str(old_binary), str(fixture)], capture_output=True, text=True)
+        (out / "baseline.log").write_text(old_run.stdout + old_run.stderr)
+        assert old_run.returncode == 1, "Old production discovery must reproduce the missing-alias failure"
+        assert "gameares.exe" in old_run.stdout, "The actual reported gameares.exe name must fail in the old source"
+        assert "alias_failures=5" in old_run.stdout, "Every missing alias must fail through actual old production discovery"
+        baseline = {"ref": args.baseline_ref, "production_source_sha256": original_sha256,
+                    "exit_code": old_run.returncode, "build": old_build,
+                    "expected_rejected_cases": 5,
+                    "output": (old_run.stdout + old_run.stderr).strip()}
     (out / "result.json").write_text(json.dumps({
         "status": "passed" if result.returncode == 0 else "failed",
         "evidence": "controlled Win32 mocks",
         "image": "synthetic non-executable discovery fingerprint",
         "build": build, "output": (result.stdout + result.stderr).strip(),
         "real_game_tested": False,
+        "baseline": baseline,
+        "checks": checks,
+        "source_sha256": {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+                          for path in (
+                              root / "external_reader/source/process_discovery.h",
+                              root / "external_reader/source/game_process_names.h",
+                              root / "external_reader/source/process_file_description.h",
+                              root / "external_reader/source/process_target_selection.h",
+                              root / "tests/random_process_discovery.cpp")},
     }, ensure_ascii=False, indent=2) + "\n")
     print(result.stdout, end="")
-    result.check_returncode()
 
 
 if __name__ == "__main__":

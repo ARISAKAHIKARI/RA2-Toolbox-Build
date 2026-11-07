@@ -36,6 +36,7 @@ def main():
     paths = [ui, Path(__file__), Path(__file__).with_suffix(".cpp"),
              source / "assist/source/debug_entries_ui.h", source / "assist/source/main.cpp",
              source / "suite/frontend/app.js", source / "suite/frontend/app.css"]
+    paths.append(source / "external_reader/source/game_process_names.h")
     result["source_sha256"] = {str(p.relative_to(source)): hashlib.sha256(p.read_bytes()).hexdigest()
                                for p in paths}
     result["subject_sha256"] = hashlib.sha256(subject.encode()).hexdigest()

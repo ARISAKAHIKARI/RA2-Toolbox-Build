@@ -1,0 +1,323 @@
+{
+  "schema": "ra2.game-process-recovery.release-evidence.v1",
+  "version": "1.0.43-pre.11",
+  "baseline_commit": "9c0a876f32183bcbc3cd56ff105449051286fcb6",
+  "required_checks_passed": true,
+  "tests": [
+    {
+      "name": "process_discovery",
+      "passed": true,
+      "evidence": "analysis/pre11-process-discovery/receipt.json",
+      "evidence_sha256": "51c8bf8c1e856b51f7bb07f818858e8d75c77700181b6a21b295c07798060c28",
+      "checks": {
+        "production_discovery": 141,
+        "probe_ui": 102
+      },
+      "scenarios": {
+        "discovery_case_groups": 18,
+        "probe_ui": 11
+      },
+      "negative_controls": {
+        "old_aliases_expected_rejections": 5,
+        "unexpected_failures": 0
+      },
+      "real_windows_tested": false,
+      "windows_executed": false,
+      "game_tested": false,
+      "controlled_tests": [
+        {
+          "name": "production-discovery",
+          "passed": true,
+          "cases": 18,
+          "case_groups": [
+            "known_gameares_and_ares_aliases",
+            "strict_fingerprint_boundary",
+            "renamed_processes",
+            "fingerprint_cache_pid_reuse",
+            "background_nested_child_windows",
+            "windowless_discovery",
+            "preferred_pid_and_ambiguity",
+            "permission_denial",
+            "file_description_multilanguage",
+            "case_insensitive_and_keywords",
+            "bounded_asynchronous_description_worker",
+            "same_birth_description_refresh",
+            "additive_remembered_programs",
+            "current_birth_bound_preference",
+            "old_lease_after_allowlist_removal",
+            "stale_and_recycled_selection",
+            "failed_settings_write",
+            "bounded_allowlist_persistence_reload"
+          ],
+          "checks": 141,
+          "known_alias_cases": 5,
+          "queue_fixture_processes": 600,
+          "remembered_program_capacity": 64,
+          "raw_receipt": "main/result.json",
+          "raw_log": "main/test.log",
+          "command": "python3 source/tests/random_process_discovery.py --cxx g++ --out analysis/pre11-process-discovery/main --baseline-ref 9c0a876"
+        },
+        {
+          "name": "old-production-alias-negative-control",
+          "passed": true,
+          "cases": 5,
+          "expected_failures": 5,
+          "unexpected_failures": 0,
+          "source_revision": "9c0a876",
+          "source_sha256": "9a287ea8de8d7c8d8c1997515cd8f6841ade8d6a8fea90d284fe3fa33db00372",
+          "expected_exit_code": 1,
+          "actual_exit_code": 1,
+          "raw_log": "main/baseline.log",
+          "meaning": "All five new aliases run through old production discovery and are rejected, including the reported gameares.exe. These expected rejections are the negative-control success."
+        },
+        {
+          "name": "probe-ui-dependency",
+          "passed": true,
+          "cases": 11,
+          "checks": 102,
+          "raw_receipt": "probe-ui/result.json",
+          "raw_log": "probe-ui/run.log",
+          "command": "python3 source/assist/tests/platform_hook_probe_ui.py --build-dir /workspace/scratch/a67ed982d62d/discovery-pre11/probe-ui --compiler g++"
+        },
+        {
+          "name": "shared-reader-and-discovery-boundaries",
+          "passed": true,
+          "cases": 2,
+          "checks": null,
+          "check_count_note": "Original fixture reports aggregate workload rather than assertion count.",
+          "metrics": {
+            "threads": 2,
+            "batches": 4000,
+            "reads": 256000,
+            "mocked_read_process_memory_calls": 4000
+          },
+          "raw_log": "reader-boundaries.log",
+          "command": "python3 source/tests/winmock_check.py",
+          "log_capture": "Captured from successful tool command output."
+        },
+        {
+          "name": "existing-process-relaunch-and-window-identity",
+          "passed": true,
+          "cases": 1,
+          "checks": null,
+          "check_count_note": "Original fixture does not publish its assertion count.",
+          "build": "g++ -std=c++17 -O2 -pthread -Isource/tests/winmock source/tests/process_relaunch.cpp -o /workspace/scratch/a67ed982d62d/discovery-pre11/process-relaunch",
+          "run": "/workspace/scratch/a67ed982d62d/discovery-pre11/process-relaunch",
+          "raw_log": "process-relaunch.log",
+          "log_capture": "Captured from successful tool command output."
+        },
+        {
+          "name": "existing-image-identity-cache-lock",
+          "passed": true,
+          "cases": 1,
+          "checks": null,
+          "check_count_note": "Original fixture does not publish its assertion count.",
+          "build": "g++ -std=c++17 -O2 -pthread -Isource/tests/winmock source/tests/process_identity_lock.cpp -o /workspace/scratch/a67ed982d62d/discovery-pre11/process-identity-lock",
+          "run": "/workspace/scratch/a67ed982d62d/discovery-pre11/process-identity-lock",
+          "raw_log": "cache-lock.log",
+          "log_capture": "Captured from successful tool command output."
+        }
+      ],
+      "material_limits": [
+        "Controlled Linux Win32 mocks only; native Windows version-resource APIs, real game processes and platform injection were not executed.",
+        "No claim of real game visual, gameplay or multiplayer validation.",
+        "The existing strict fingerprint fallback retains its existing synchronous disk-file checks; this change prevents the new full-process description scan from adding synchronous version-file reads to owner ticks.",
+        "Windows Host translation-unit/build validation is owned by the parent and other agents, not claimed by this receipt."
+      ]
+    },
+    {
+      "name": "host_connection",
+      "passed": true,
+      "evidence": "analysis/pre11-host-recovery/current/result.json",
+      "evidence_sha256": "bb14849f7dcd613ec0ba3a3d4f41a02a8d09ec265cc1443497a50a0dd3bbb0bc",
+      "checks": 30,
+      "negative_controls": true,
+      "real_windows_tested": false,
+      "game_tested": false
+    },
+    {
+      "name": "target_lifecycle",
+      "passed": true,
+      "evidence": "analysis/pre11-target-lifecycle/receipt.json",
+      "evidence_sha256": "020176e019f44beecff6f6134d41b7045000e5f91bbb994e85e73b5aa74ff9aa",
+      "checks": 37,
+      "windows_target_compile": {
+        "target": "x86_64-windows-gnu",
+        "compiler": "Zig 0.13.0",
+        "defines": [
+          "RA2_UNIFIED",
+          "RA2_CONSOLE_WEBVIEW2"
+        ],
+        "optimization": "O1",
+        "host_linked": false,
+        "windows_executed": false,
+        "modules": {
+          "cursor": {
+            "exit_code": 0,
+            "object_sha256": "ce3c434e1722fc6869d1ae35d76eca619254c1d05236514c27d141f757d06606",
+            "object_bytes": 5498856
+          },
+          "monitor": {
+            "exit_code": 0,
+            "object_sha256": "0f8d46950076346aec25053b3e65768b8fd55b405d9b44017fcb6342c7c0cc3a",
+            "object_bytes": 7285588
+          }
+        }
+      },
+      "real_windows_tested": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "name": "console_status",
+      "passed": true,
+      "evidence": "analysis/pre11-console-status/receipt.json",
+      "evidence_sha256": "48aa62dc0bd14326e1e83e0d295e23b25a5ba349bdbe87efd695d76fe923a5e0",
+      "checks": 18,
+      "windows_target_compile": {
+        "target": "x86_64-windows-gnu",
+        "compiler": "Zig 0.13.0",
+        "compile_exit_code": 0,
+        "exe_sha256": "68ebdbe2959c93812963c902b472430cd857fd0ffb63b0f430acc774ea31e102",
+        "executed": false,
+        "note": "Cross compilation only. No Windows UI or game run."
+      },
+      "real_windows_tested": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "name": "selection_ui",
+      "passed": true,
+      "evidence": "analysis/pre11-process-ui/receipt.json",
+      "evidence_sha256": "04d9c51293c85a89155842a08842abb807ce7daf189802812707c9663e05ed4f",
+      "checks": 125,
+      "scenarios": 11
+    },
+    {
+      "name": "bridge_guard",
+      "passed": true,
+      "evidence": "analysis/pre11-host-recovery/bridge-guard/receipt.json",
+      "evidence_sha256": "84b96be1e0e0492916936b2af8004dc86a12f9d591fe9703fdc04de1be54986c",
+      "checks": 64,
+      "real_windows_tested": false,
+      "game_tested": false
+    },
+    {
+      "name": "secondary_display",
+      "passed": true,
+      "evidence": "analysis/pre11-host-recovery/secondary-display-receipt.json",
+      "evidence_sha256": "366213efc668a8bbda9a58fb8d8f7a4b5b92117cd35e9a772e919a2f0482ba58",
+      "real_windows_tested": false,
+      "game_tested": false
+    },
+    {
+      "name": "frontend_store",
+      "passed": true,
+      "evidence": "analysis/pre11-host-recovery/frontend-store-receipt.json",
+      "evidence_sha256": "2cc1d0914c5401be80ebb5c217d5d3ce20b9175a76af4db6c018550247999fe5",
+      "browser_rendered": false,
+      "controlled_tests": [
+        {
+          "command": "node source/suite/tests/console_debug_test.mjs",
+          "exit_code": 0,
+          "scenarios": 16
+        },
+        {
+          "command": "node source/suite/tests/console_store_test.mjs",
+          "exit_code": 0,
+          "scenarios": 30
+        }
+      ]
+    }
+  ],
+  "source_sha256": {
+    "source/BUILD_SOURCE_MANIFEST.json": "9f5033c1264535e09418f792f4cc21f8cef42561e21c0659384a40a839be36db",
+    "source/assist/source/debug_entries_ui.h": "34ab6f2efe7644aadd0ec4d2a279c68cbd2cbb21c87f701fba99e7688ff1bb17",
+    "source/assist/source/game_process_selection_ui.h": "5fc81b0829d17ae7f62754658979207c065adfbf3a30ee0a466de6d632255b65",
+    "source/assist/source/hotkey_routes.h": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce",
+    "source/assist/source/main.cpp": "60a194d16c3f6e124aa678f57dc33049b1b974b8c2212988546ee7d523538b16",
+    "source/assist/source/platform_hook_probe_ui.h": "8e0119998425c3d5327c0a6028c74459ed7825a2498b0fa5d9408368934ecf51",
+    "source/assist/tests/game_process_selection_ui.cpp": "32d01247d7dbc70b16e0e19331b7449e4dfa8499d717953e90280a8813dbcfea",
+    "source/assist/tests/game_process_selection_ui.py": "d7cc0754d641d63d70c85e6f2a4c13d118fd836e50ddb9f025fca9be3047572c",
+    "source/assist/tests/host_bridge_retry.cpp": "167ccaf39beb40cd1c2b855c7386a83c0b7b349c0adf2930f04f2923a6469127",
+    "source/assist/tests/host_bridge_retry.py": "7dccc41023c853b8606484f3a7a6c35fc9744e15b65cdb8568462be99d6ccc52",
+    "source/assist/tests/host_connection_recovery.cpp": "d93b3ce6030254099dcb62e51bc3b55b29f13a06f924f1f440c90b899e5b7e50",
+    "source/assist/tests/host_connection_recovery.py": "622ffbb1af8722b0c8b7594b493345d75b0206dbec387732685f752dedc3a6f4",
+    "source/assist/tests/platform_hook_probe_ui.cpp": "f2ead04b8223a0a1e20fbfa42395febe214d70b767505cc65ea3f6db9e4e847c",
+    "source/assist/tests/platform_hook_probe_ui.py": "14a6d6512c886b8f2ec162a1450a153c1e692a17231b24b5b0cc85c6e10542c9",
+    "source/assist/tests/secondary_display_host_test.py": "d290523bd8ae934e07ca83db3e6b5b276c0b7a94bbc11afde8df614d72dc6bf7",
+    "source/cursor/source/main.cpp": "fcfb0a95e9a5c01cca1a9ab625f9b883b4a39eb2d465e5d91f44e8fa6791ed6a",
+    "source/external_reader/source/game_image_identity.h": "70aa5a374b1744610064171eb06028f07d94d5072add04a8810d521a5f81901d",
+    "source/external_reader/source/game_process_names.h": "b9d15fe95ed6d57fa705dd3a456c7620bd76ec0ef7c81930153ad30094866fe5",
+    "source/external_reader/source/process_discovery.h": "854961a167d8def6d9484d67eef46bcca33a18193837c2b2fc2c57d7e56e8e50",
+    "source/external_reader/source/process_file_description.h": "d9181a96c5ed829e35e5d9791d84abf05a103d0e7bc6d8c445b331f35181e6c5",
+    "source/external_reader/source/process_image_identity.h": "94c489a4226bd70fe17088afcb07701a283c38441173d34b1f2fb60cffbaedef",
+    "source/external_reader/source/process_target_selection.h": "512bcf16a65c65ad0b10d9a2bfdb18231a0c2f0a07a61fd637af36bfaf2f725d",
+    "source/research/2026-11-07-game-process-discovery-recovery.md": "7e527b1599a653a68f1c5da8a5818a0e41ade4a3d8ac80917348746a2a6e32d8",
+    "source/research/INDEX.md": "4fd16c94af7e1a443047ca1979c8f8f2e37d6d72864698830c2cbe0639af93e3",
+    "source/shared/source/release_version.h": "20949fb053ef39bfcebf8443d6427af1709427d71ebca69bdea279155c1ae963",
+    "source/suite/frontend/app.js": "8e9d5cde1505f2b00c3dd3714a2247e1dc6e8365090735abe4a7607f1dc0e189",
+    "source/suite/source/console_adapter.h": "0d8bef3f07f3639827e1282b23aa73fe35e37e83e6dc33050759f23ee693319d",
+    "source/suite/source/console_model.h": "2b1cf91600dd064a50387a9644f7bc0b95c33e5c189dc9ec0d9432641340402f",
+    "source/suite/tests/console_adapter_windows.cpp": "86098c7857425547a6717070047676ce010215d3f98450379fca86ad329ff657",
+    "source/suite/tests/console_debug_test.mjs": "7729a625e969a0a7abf0e6371c5b7682c393566da49b06f4ce428e8a1f9a9b3d",
+    "source/suite/tests/console_status_regression.py": "30353243a9babd8a34b0fab7a82ab6d5f2aec969c5b5a527d4e28d6546555b01",
+    "source/suite/tests/console_store_test.mjs": "0c480cb98088a65835d0e75d965402aa57a3aa74b4c4e8cc454539c515b1ed00",
+    "source/suite/tests/target_lifecycle_regression.py": "a584b450386abc09402626804e6b1e0f1ab2e1ad6120b9100988b3649aefc20d",
+    "source/tests/process_identity_lock.cpp": "436550e8538ff65cadf6547d0d8eaf254728d246b8fc1fec99d38a3ef2064297",
+    "source/tests/process_relaunch.cpp": "306cec3f4bce148a4389444772594a4aef3aaea5b9f7fd456f7fc3c953052dc7",
+    "source/tests/random_process_discovery.cpp": "0f9b4b09c952fad096bd781ee3097bde402c83a7f2ce9685f8e71de20de0ab65",
+    "source/tests/random_process_discovery.py": "7d6320af867915765a6018c501869f173a5555f1aa0fb650344b53902bd530ce",
+    "source/tests/winmock/windows.h": "44fc1239f939a94c7e43b9ad39f787312399a3e460fe3df9a265e161ff1f91ed",
+    "source/tests/winmock_check.cpp": "a4f72574a3fddc1b0960d23f2697d2148b3f806716dd901aa2fa06851f32915f",
+    "source/tests/winmock_check.py": "5a22cc5ba31a86c7b870d6ada1b5de6efa5060f8bdc403f30cdd45808bba0a23",
+    "source/unit_monitor/source/main.cpp": "267cff1fae6b9d3179345f4032f6a1efc14a7287715f011e10a339c223442bb0"
+  },
+  "assist_protocol": 100,
+  "assist_shared_bytes": 23162400,
+  "runtime_protocol": 4,
+  "runtime_control_bytes": 176,
+  "cursor_protocol": 155,
+  "game_entry_api": 3,
+  "game_entry_request_bytes": 108,
+  "debug_config_bytes": 1032,
+  "debug_observation_bytes": 28,
+  "debug_snapshot_bytes": 7180,
+  "catalog_entries": 161,
+  "read_only_target": true,
+  "needs_uninjected_running_process": false,
+  "automatic_patch_restoration": false,
+  "foreign_function_execution": false,
+  "writer_attribution_proven": false,
+  "platform_feature_semantics_proven": false,
+  "new_universal_injector_adapter": false,
+  "real_windows_tested": false,
+  "windows_images_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "browser_rendered": false,
+  "runtime_compatibility_proven": false,
+  "final_same_commit_build": "separate frozen-commit build provenance and actual PE/ABI gate",
+  "allowlist_is_additive": true,
+  "pid_persisted": false,
+  "target_identity_rechecked_after_open": true,
+  "automatic_description_io_on_owner_thread": false,
+  "old_runtime_entry_validation_retained": true,
+  "user_log_sha256": "c8c7b6730b81d8cc17d9324fe98b690437b8c710f20744f73f770e046f4a6011",
+  "user_reported_process_name": "gameares.exe",
+  "scope": [
+    "Shared known-name, FileDescription keyword, additive program allowlist and historical fingerprint discovery; birth/path-bound cached background metadata.",
+    "Persistent keyword/allowlist policy and session-only explicit PID+creation selection; no exclusive remembered target and no saved PID.",
+    "Three-module normal retirement/rebinding, reader-open identity recheck, one-way Host retry and automatic discovery/error diagnostics.",
+    "Real hidden status publication and Debug process search/remember/remove controls with bounded worker and throttled owner updates.",
+    "Existing Runtime signatures, owner/retirement guards and platform Hook report behavior retained; no actual Windows game execution."
+  ],
+  "non_gating_early_compile_attempt": {
+    "receipt": "analysis/pre11-host-compile/receipt.json",
+    "sha256": "ff0c6635dc231bafd1f159684177f977374da2b588763d8f326af893f3638e5f",
+    "passed": false,
+    "timed_out_seconds": 180,
+    "scope": "Early O0 object attempt did not finish; not counted as a passed compile. Final frozen whole-product build is the required compilation gate."
+  }
+}

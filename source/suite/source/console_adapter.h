@@ -52,6 +52,13 @@ inline std::wstring text(HWND w) {
  int n=std::clamp(GetWindowTextLengthW(w),0,32767);std::vector<wchar_t> value(size_t(n)+1);
  GetWindowTextW(w,value.data(),n+1);return value.data();
 }
+inline bool status(HWND w,std::string& value) {
+ if(!GetPropW(w,L"RA2.Console.Status"))return false;
+ // Read on the owning thread, including hidden compatibility labels. An
+ // optional stable string object keeps native hover help out of real status.
+ const auto* source=reinterpret_cast<const std::wstring*>(GetPropW(w,L"RA2.Console.StatusText"));
+ value=utf8(source?*source:text(w));return true;
+}
 inline std::wstring className(HWND w) {wchar_t value[128]{};GetClassNameW(w,value,128);return value;}
 inline bool sameClass(const std::wstring& a,const wchar_t* b){return _wcsicmp(a.c_str(),b)==0;}
 inline bool visibleStyle(HWND w,HWND pane) {
@@ -171,8 +178,10 @@ class Host {
  void capture(Port& p,const Navigation& nav,uint64_t now) {
   if(p.capturing||p.owner!=GetCurrentThreadId())return;p.capturing=true;p.lastCapture=p.lastPeriodic=now;p.dirty=false;
   EnumChildWindows(p.window.load(),enumerate,reinterpret_cast<LPARAM>(&p));
-  std::vector<NativeControl> controls;controls.reserve(p.entries.size());
-  for(auto& pair:p.entries){if(!IsWindow(pair.first)||!detail::visibleStyle(pair.first,p.window.load())||GetPropW(pair.first,L"RA2.Console.Skip"))continue;auto& entry=pair.second;auto previousType=entry.type;auto c=read(p,entry);
+  std::vector<NativeControl> controls;controls.reserve(p.entries.size());std::string status;
+  for(auto& pair:p.entries){if(!IsWindow(pair.first))continue;
+   if(detail::status(pair.first,status))continue;
+   if(!detail::visibleStyle(pair.first,p.window.load())||GetPropW(pair.first,L"RA2.Console.Skip"))continue;auto& entry=pair.second;auto previousType=entry.type;auto c=read(p,entry);
    // Only a replaced control/choice changes token. Other fields retain their
    // page generation and pending drafts when a dynamic catalogue refreshes.
    if(entry.published&&(previousType!=c.control.type||(c.control.type=="choice"&&entry.optionIdentity!=c.optionIdentity))){entry.token=nextToken_.fetch_add(1);c.control.id=entry.token;}
@@ -188,7 +197,7 @@ class Host {
    for(const auto& label:controls)if((label.control.type=="label"||label.control.type=="button"||label.control.type=="toggle")&&!label.control.text.empty()&&label.rect.right<=item.rect.left+6){long dy=std::abs(label.rect.top-item.rect.top);if(dy>24)continue;long candidate=dy*1000+item.rect.left-label.rect.right;if(candidate<score){score=candidate;best=&label;}}
    if(best){c.label=best->control.text;if(best->control.type=="label")usedLabels.push_back(best->control.id);}else if(c.label.empty())c.label="设置 "+std::to_string(GetDlgCtrlID(item.window));
   }
-  consolemodel::Snapshot snapshot;snapshot.module=p.module;snapshot.page=nav.page;snapshot.title=p.module==0?"视频":p.module==1?"监控视图":nav.category==1?"控制":nav.category==2?"自动功能":nav.category==3?"游戏规则":nav.category==4?"实验性功能":nav.category==5?"调试":"设置";
+  consolemodel::Snapshot snapshot;snapshot.module=p.module;snapshot.page=nav.page;snapshot.status=std::move(status);snapshot.title=p.module==0?"视频":p.module==1?"监控视图":nav.category==1?"控制":nav.category==2?"自动功能":nav.category==3?"游戏规则":nav.category==4?"实验性功能":nav.category==5?"调试":"设置";
   for(auto& item:controls){auto& c=item.control;
    if(c.type=="label"&&std::find(usedLabels.begin(),usedLabels.end(),c.id)!=usedLabels.end())continue;
    snapshot.controls.push_back(std::move(c));

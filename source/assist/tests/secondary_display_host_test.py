@@ -38,7 +38,7 @@ using DWORD=uint32_t;using WORD=uint16_t;using HWND=void*;using WPARAM=uintptr_t
 constexpr int MOD_SHIFT=4,MOD_CONTROL=2,MOD_ALT=1,HOTKEYF_SHIFT=1,HOTKEYF_CONTROL=2,HOTKEYF_ALT=4,SW_HIDE=0;
 static bool enabled=true,minimapSecondary=false,focused=true,monitorPresent=false,readerOpen=true;
 static HWND game=(void*)1,ui=(void*)2,overlay=(void*)3;
-static struct {bool watchSecondary=false,experimentalReveal=false;uint32_t watchKeys[3]={0x657,0x657,0x657};}extra;
+static struct {bool watchSecondary=false,experimentalReveal=false,renderReveal=false;uint32_t watchKeys[3]={0x657,0x657,0x657};}extra;
 static struct Snapshot {int renderStatus=1,status=1,readStatus=1;bool chat=false;uint32_t match=99;char types[1]{};int typeCount=0;}snap,raw;
 static const Snapshot*externalData=&raw;
 static DWORD now=1000;static DWORD GetTickCount(){return now;}
@@ -57,7 +57,7 @@ static uint32_t pid=42;static DWORD lastData=0;static Snapshot incoming;
 static bool IsWindow(HWND w){return w!=nullptr;}
 static uint64_t typeListHash(const char*,int){return 123;}
 static void diag(const std::wstring&){}static void wakeGame(){}
-constexpr int RevealMap=1,SelectType=2;
+constexpr int RevealMap=1,SelectType=2,PlaceCompletedBuilding=3,DestructPlayer=4,AttackOwnGround=5;
 static uint32_t pendingSelectionObject=0;static uint8_t pendingSelectionTypes[8]{};static Intent pendingSelection;static bool hasSelection=false;
 static unsigned bridgeAttempts=0,selectionServices=0,notifications=0;
 static bool ensureBridge(){++bridgeAttempts;return false;}
@@ -71,14 +71,15 @@ static void sampleExternal(DWORD){++samples;assert(readerOpen);}
 static void clockState(bool active,int rate){++clockCalls;clockActive=active;clockRate=rate;}
 static int informationFPS(){return 144;}
 static void releaseBridge(){++releases;shared=false;}
-static void detach(){++detaches;shared=false;readerOpen=false;snap.renderStatus=0;}
+static void detach(const wchar_t* = L"fixture"){++detaches;shared=false;readerOpen=false;snap.renderStatus=0;}
 static void registerKeys(){++registered;}
 static void setStatus(const std::wstring&){}
-static void resetConstruction(){}static void resetAirPath(){}static void clearPassengerDisplay(){}
+static void resetConstruction(){}static void resetAirPath(){}static void resetPlacementEvent(){}static void clearPassengerDisplay(){}static void hideSidebarOverlay(){}
 static void hideAircraftButton(){}static void hideConstruction(){}
 static void hideWorldOverlay(){++primaryHidden;}
 static void ShowWindow(HWND,int){++primaryHidden;}
 static struct Recovery{void suspend(){}}overlayRecovery;
+namespace overlayvisibility {static bool visible(){return true;}}
 namespace worldrender {static void invalidate(){}}
 namespace minimap {static void hidePrimary(){++primaryHidden;}static void hide(){++allHidden;}}
 namespace watchwindows {static void hidePrimary(){++primaryHidden;}static void hide(){++allHidden;}}

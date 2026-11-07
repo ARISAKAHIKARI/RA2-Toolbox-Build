@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include "../../external_reader/source/game_process_names.h"
 
 #define WINAPI
 using DWORD=uint32_t;using BOOL=int;using HANDLE=void*;using HMODULE=void*;using INT_PTR=intptr_t;
@@ -84,6 +85,16 @@ static Result run(const Options& options,Progress& progress){
  if(report){result.htmlPath=options.outputDirectory+L"\\report.html";result.jsonPath=options.outputDirectory+L"\\report.json";}return result;
 }
 }
+namespace external { namespace targetselection {static void enumerateProcesses(){}}
+namespace discovery {
+struct ProbeCandidate {DWORD pid=0;};
+struct ProbeScan {ProbeCandidate best;DWORD processCount=0;bool explicitSelection=false;};
+static ProbeScan scan(){
+ ProbeScan result;if(snapshotFailure)return result;
+ for(const auto& process:processes)if(process.first!=GetCurrentProcessId()&&isGameName(process.second.c_str())){++result.processCount;result.best.pid=process.first;}
+ return result;
+}
+} }
 #include "platform-hook-probe-ui-subject.inc"
 
 static unsigned checks=0,scenarios=0;
@@ -107,6 +118,7 @@ int main(){
  check(!platformHookProbeCommand(11000,BN_CLICKED),"unrelated commands remain unrelated");
  for(const auto& control:pageControls)if(control.hwnd!=ui)check(control.hwnd->properties.count(L"RA2.Console.Group")&&control.hwnd->properties.count(L"RA2.Console.Row"),"ordinary console controls retain group and row metadata");
  check(platformHookProbeGameName(L"gameMDAres.EXE")&&platformHookProbeGameName(L"gamemd-spawn.exe"),"known forced-platform executable names");
+ check(platformHookProbeGameName(L"GAMEARES.EXE")&&platformHookProbeGameName(L"gameares.dat"),"probe shares actual gameares aliases with automatic discovery");
 
  ++scenarios;uint32_t parsed=0;
  check(platformHookProbeParsePid(L"",parsed)&&parsed==0,"blank chooses current/discovered process");
@@ -153,6 +165,8 @@ int main(){
 
  reset();++scenarios;processes={{801,L"GAMEMDARES.EXE"},{802,L"other.exe"}};press(HookProbeStart);check(hookProbeJob->options.pid==0,"unattached start defers discovery to worker");
  finish(0);updatePlatformHookProbeUI();check(hookprobe::calls.size()==1&&hookprobe::calls[0].pid==801,"independent discovery works without injected Runtime or window");
+ reset();processes={{803,L"gameares.exe"},{804,L"other.exe"}};press(HookProbeStart);finish(0);updatePlatformHookProbeUI();
+ check(hookprobe::calls.size()==1&&hookprobe::calls[0].pid==803,"shared discovery admits the reported gameares executable");
  reset();processes={{811,L"gamemd-spawn.exe"},{812,L"gamemd-ares.exe"}};press(HookProbeStart);finish(0);updatePlatformHookProbeUI();
  check(hookprobe::calls.empty()&&contains(hookProbeStatus,L"多个游戏进程"),"ambiguous discovery asks for PID rather than guessing");
  reset();press(HookProbeStart);finish(0);updatePlatformHookProbeUI();check(hookprobe::calls.empty()&&contains(hookProbeStatus,L"未找到游戏进程"),"discovery absence is visible and does not scan arbitrary process");

@@ -1,5 +1,6 @@
 #include "../../external_reader/source/shared_reader.h"
 #include "../../external_reader/source/process_discovery.h"
+#include "../../external_reader/source/process_target_selection.h"
 #include "../../shared/source/modern_ui.h"
 #include "../../shared/source/ui_message_queue.h"
 #include "../../shared/source/settings_dialog.h"
@@ -388,9 +389,19 @@ static void visibilityDiagnostic(const wchar_t* reason,DWORD foregroundPid=0){
 }
 
 static void loadCache(){bridgeFrame.clear();lanboStream.reset();fallbackTracker.reset();fallbackDefs.clear();timing.clear();activeMotion.reset();previewStart=-1;previewCount=0;loaded=false;try{original=file(cacheKey+L"\\original.sha");asset=decode(original);Bytes pal=file(cacheKey+L"\\palette.bgra");if(pal.size()!=sizeof(palette))return;memcpy(palette,pal.data(),sizeof(palette));loaded=true;lastFrame=-2;if(displayLoaded)rebuildDisplay();}catch(...){}}
-static void attach(bool quiet=false){bridgeFrame.clear();lanboStream.reset();if(running)fail("Stop the preview before attaching again");auto scan=external::discovery::scan();if(scan.snapshotError&&!scan.processCount)fail("Process enumeration failed");if(scan.processCount!=1||!scan.best.pid)fail("Keep exactly one compatible Yuri game running, then Attach (random process names are supported)");cursorReader.close();pid=scan.best.pid;clickGameWidth=clickGameHeight=0;gameParentPid=parentProcess(pid);// Query-only fallback preserves Runtime cursor snapshots when VM_READ is denied.
+static bool selectedReaderMatches(const external::targetselection::Policy& choice,const external::ReadSession& reader){
+ const auto connection=reader.connectionIdentity();
+ if(!choice.selectedPid||!choice.selectedCreation||!connection||connection->pid!=choice.selectedPid||!connection->alive())return false;
+ FILETIME created{},exited{},kernel{},user{};
+ return GetProcessTimes(connection->handle,&created,&exited,&kernel,&user)&&
+  ((uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime)==choice.selectedCreation;
+}
+static void attach(bool quiet=false){bridgeFrame.clear();lanboStream.reset();if(running)fail("Stop the preview before attaching again");auto scan=external::discovery::scan();if(scan.snapshotError&&!scan.processCount)fail("Process enumeration failed");if((scan.processCount!=1&&!scan.explicitSelection)||!scan.best.pid)fail("Keep exactly one compatible Yuri game running or select a current process explicitly");cursorReader.close();pid=scan.best.pid;clickGameWidth=clickGameHeight=0;gameParentPid=parentProcess(pid);// Query-only fallback preserves Runtime cursor snapshots when VM_READ is denied.
  if(!cursorReader.open(pid,mode==L"hide"||nativeGameRefresh||noCursorMode))
   throw std::runtime_error("OpenProcess failed; Win32="+std::to_string(cursorReader.lastOpenError));
+ if(scan.explicitSelection&&!selectedReaderMatches(external::targetselection::current(),cursorReader)){
+  cursorReader.close();pid=threadId=gameParentPid=0;game=nullptr;fail("选定游戏进程已退出或发生变化，请重新选择");
+ }
  readRestricted=!cursorReader.canRead();
  wchar_t path[32768];DWORD len=32768;if(!cursorReader.imagePath(path,&len))fail("Cannot locate game");std::wstring exe(path);setDir(exe.substr(0,exe.find_last_of(L"\\")));game=0;if(!selectGameWindow())fail("Game window not ready (including fullscreen); waiting for a visible render window");
  DWORD peTimeStamp=0;
@@ -651,7 +662,23 @@ static void applyHideMode(){
  else status(L"已选择不隐藏：不修改游戏文件，原始光标和外部光标可能同时出现。");
  if(shouldResume){try{start();}catch(const std::exception& e){autoPaused=true;status(L"切换后未能启动："+widen(e.what()));}}
 }
-static void autoTick(){DWORD now=GetTickCount();if(uint32_t(now-lastAutoCheck)<1000)return;lastAutoCheck=now;if(autoPaused&&cursorReader.valid()&&!live())autoPaused=false;if(!autoStart||autoPaused||running||!playbackReady)return;try{attach(true);start();}catch(const std::exception& e){status(L"自动等待："+widen(e.what()));}}
+static void syncTargetSelection(){
+ static uint64_t observedRevision=0,observedCreation=0;static DWORD observedPid=0;
+ if(external::targetselection::revision()==observedRevision)return;
+ const auto choice=external::targetselection::current();observedRevision=choice.revision;
+ const bool changed=choice.selectedPid!=observedPid||choice.selectedCreation!=observedCreation;
+ observedPid=choice.selectedPid;observedCreation=choice.selectedCreation;
+ // Detection-list edits and returning to automatic discovery preserve a live
+ // connection. Only a newly selected, still-live process requests a switch.
+ if(!changed||!choice.selectedPid||!external::targetselection::preferredAlive(choice)||selectedReaderMatches(choice,cursorReader))return;
+ // Keep the old reader/PID until the paired HideCursor restoration finishes.
+ if(running||shared||hook||mapping)stop();
+ cursorReader.close();pid=threadId=gameParentPid=0;game=nullptr;readRestricted=false;
+ clickGameWidth=clickGameHeight=0;lastWindowCheck=0;lastAutoCheck=0;
+ if(autoStart)autoPaused=false;
+ status(L"当前游戏进程已切换，等待重新连接…");
+}
+static void autoTick(){syncTargetSelection();DWORD now=GetTickCount();if(uint32_t(now-lastAutoCheck)<1000)return;lastAutoCheck=now;if(autoPaused&&cursorReader.valid()&&!live())autoPaused=false;if(!autoStart||autoPaused||running||!playbackReady)return;try{attach(true);start();}catch(const std::exception& e){status(L"自动等待："+widen(e.what()));}}
 static void leaveGame(){
  bridgeFrame.clear();lanboStream.reset();usingHeldSample=false;
  // Leaving the client changes presentation, not the subscription lifetime.

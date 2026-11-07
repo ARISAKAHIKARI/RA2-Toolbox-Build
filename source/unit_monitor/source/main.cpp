@@ -28,6 +28,7 @@
 #include "../../external_reader/source/display_state.h"
 #include "../../external_reader/source/shared_reader.h"
 #include "../../external_reader/source/process_discovery.h"
+#include "../../external_reader/source/process_target_selection.h"
 #ifdef RA2_UNIFIED
 #include "suite_host.h"
 #endif
@@ -169,6 +170,13 @@ static void detach(){
  ++samplingGeneration;samplingWorker.invalidate();appliedSample.reset();samplingWorker.submit({samplingGeneration,0});reader.close();resetPrimaryRender();
  game=nullptr;pid=0;threadId=0;lastGood=0;oldMatch=0;page=0;gameActive=false;tabs.reset();fade.hide();renderDirty=secondaryDirty=true;paintedAlpha=-1;surface.clear();snap=std::make_shared<const um::Snapshot>();hidePrimaryStats();
 }
+static bool selectedReaderMatches(const external::targetselection::Policy& choice,const external::ReadSession& reader){
+ const auto connection=reader.connectionIdentity();
+ if(!choice.selectedPid||!choice.selectedCreation||!connection||connection->pid!=choice.selectedPid||!connection->alive())return false;
+ FILETIME created{},exited{},kernel{},user{};
+ return GetProcessTimes(connection->handle,&created,&exited,&kernel,&user)&&
+  ((uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime)==choice.selectedCreation;
+}
 static bool attach(){
  auto scan=external::discovery::scan();
  if(!scan.best.pid){
@@ -181,6 +189,9 @@ static bool attach(){
  if(!reader.open(c.pid)){
   setStatus(L"发现 PID "+std::to_wstring(c.pid)+L"，但读取权限不足，Win32="+std::to_wstring(reader.lastOpenError));
   return false;
+ }
+ if(scan.explicitSelection&&!selectedReaderMatches(external::targetselection::current(),reader)){
+  reader.close();setStatus(L"选定游戏进程已退出或发生变化，请重新选择");return false;
  }
  pid=c.pid;threadId=c.thread;game=external::discovery::resolveYrppWindow(reader,pid,c.window,&threadId);
  wchar_t image[32768]{};DWORD imageSize=32768;reader.imagePath(image,&imageSize);iconCache.open(std::filesystem::path(image),std::filesystem::path(root)/L"cache"/L"icons");
@@ -405,6 +416,18 @@ static void demoData(){
  if((GetTickCount()-demoStart)/1000%20>=12){snap->players[1]=snap->players[2];snap->playerCount=2;}
  ::snap=std::move(snap);
 }
+static void syncTargetSelection(DWORD now){
+ static uint64_t observedRevision=0,observedCreation=0;static DWORD observedPid=0;
+ if(external::targetselection::revision()==observedRevision)return;
+ const auto choice=external::targetselection::current();observedRevision=choice.revision;
+ const bool changed=choice.selectedPid!=observedPid||choice.selectedCreation!=observedCreation;
+ observedPid=choice.selectedPid;observedCreation=choice.selectedCreation;
+ if(!changed||!choice.selectedPid||!external::targetselection::preferredAlive(choice)||selectedReaderMatches(choice,reader))return;
+ // Normal detach rejects old sampling/render results before the new PID can
+ // be consumed. Detection-list edits never enter this lifecycle transition.
+ finishSecondaryDrag();detach();lastSearch=now-1500;lastData=now-250;
+ setStatus(L"当前游戏进程已切换，等待重新连接…");
+}
 static void consumeSample(DWORD now){
  if(demo||!pid||(!enabled&&!secondaryEnabled))return;
  auto result=samplingWorker.get();
@@ -429,7 +452,7 @@ static void tick(bool displayFrame=false){
 #if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
  if(consoleClosePrepared)return;
 #endif
- DWORD now=GetTickCount();consumeSample(now);
+ DWORD now=GetTickCount();syncTargetSelection(now);consumeSample(now);
 #ifdef RA2_UNIFIED
  static uint32_t visibilityRevision=0;const uint32_t nextVisibility=overlayvisibility::revision.load();
  if(nextVisibility!=visibilityRevision){visibilityRevision=nextVisibility;hidden=false;manualVisible=false;renderDirty=secondaryDirty=true;paintedAlpha=-1;if(!overlayvisibility::visible()){resetPrimaryRender();resetSecondary();}}

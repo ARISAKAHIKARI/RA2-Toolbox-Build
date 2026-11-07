@@ -13,7 +13,8 @@ static bool pageMode=false,partialRead=false;
 static thread_local unsigned char pageValue=0xCD;
 static std::atomic<unsigned> rpmCalls{0};
 extern "C" {
-HANDLE OpenProcess(DWORD mask,BOOL,DWORD){
+HANDLE OpenProcess(DWORD mask,BOOL,DWORD pid){
+ if(pid!=42&&pid!=43)return nullptr;
  if(mask&PROCESS_VM_READ){++readHandles;maskRead=mask;return reinterpret_cast<HANDLE>(0x20);}
  if(mask&PROCESS_QUERY_INFORMATION){maskQuery=mask;return queryDenied?nullptr:reinterpret_cast<HANDLE>(0x30);}
  return reinterpret_cast<HANDLE>(0x40);

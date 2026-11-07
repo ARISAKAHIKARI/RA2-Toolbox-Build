@@ -248,6 +248,8 @@ static void setConsoleRuntimeError(HWND control,bool failed){
  (void)control;(void)failed;
 #endif
 }
+static uint64_t attachAttempts=0;
+static bool secondaryDisplayRequested();
 static void setStatus(const std::wstring&s){if(statusText!=s){statusText=s;if(hoverHelp.empty())SetWindowTextW(statusLabel,s.c_str());}}
 static void notify(const std::wstring&s){toast=s;toastUntil=GetTickCount()+DWORD(toastMs);setStatus(s);}
 static void diag(const std::wstring &s){
@@ -364,7 +366,7 @@ static void logLoadedGameModules(){
 }
 static void logBridgeHealth(bool force=false){
  static DWORD loggedAt=0,previousPid=0;static LONG previousStage=0;static DWORD previousError=0,previousFault=0;static int previousStatus=0;
- static bool previousData=false,previousSubscribed=false;static uint32_t previousMatch=0;
+ static bool previousData=false,previousSubscribed=false,previousHostEnabled=false;static uint32_t previousMatch=0;
  static int previousCS=0;static uint32_t previousQueued=0,previousRejected=0;
  const DWORD now=GetTickCount();const auto h=gameinput::health(hook);
  static DWORD roundStarted=0;
@@ -401,19 +403,20 @@ static void logBridgeHealth(bool force=false){
  // Input conversions can bypass the host request mailbox. Observe their existing
  // published counters too; log on the host at most twice/sec during sustained input.
  const bool ordersChanged=incoming.csConverted!=previousCS||incoming.queueSent!=previousQueued||incoming.commandRejected!=previousRejected;
- if(!force&&pid==previousPid&&stage==previousStage&&error==previousError&&data==previousData&&
+ if(!force&&enabled==previousHostEnabled&&pid==previousPid&&stage==previousStage&&error==previousError&&data==previousData&&
     h.subscribed==previousSubscribed&&h.faultSerial==previousFault&&incoming.status==previousStatus&&incoming.match==previousMatch&&DWORD(now-loggedAt)<(ordersChanged?500u:roundStarted&&DWORD(now-roundStarted)<10000?1000u:5000u))return;
- loggedAt=now;previousPid=pid;previousStage=stage;previousError=error;previousData=data;
+ loggedAt=now;previousHostEnabled=enabled;previousPid=pid;previousStage=stage;previousError=error;previousData=data;
  previousSubscribed=h.subscribed;previousMatch=incoming.match;previousFault=h.faultSerial;previousStatus=incoming.status;
  previousCS=incoming.csConverted;previousQueued=incoming.queueSent;previousRejected=incoming.commandRejected;
  // This runs on the host UI thread. Runtime only writes fixed-size IPC fields.
  autolog::write(std::wstring(L"bridge-health pid=")+std::to_wstring(pid)+L" expectedTid="+std::to_wstring(gameThread)+
   L" hwnd="+std::to_wstring(uintptr_t(game))+(gameWindowFromYrpp?L" windowSource=YRpp-0xB73550":L" windowSource=validated-fallback-or-none")+L" subscription="+std::to_wstring(hook)+
-  L" stage="+(hasDiagnostic?runtimeStage(stage):L"diagnostic-busy-or-unavailable")+L" diagnosticValid="+std::to_wstring(h.diagnosticValid)+L" diagnosticCached="+std::to_wstring(h.diagnosticCached)+
+  L" hostEnabled="+std::to_wstring(enabled)+L" secondaryRequested="+std::to_wstring(secondaryDisplayRequested())+L" attachAttempts="+std::to_wstring(attachAttempts)+
+  L" stage="+(hasDiagnostic?runtimeStage(stage):!pid?L"no-target":!hook?L"not-subscribed":L"diagnostic-busy-or-unavailable")+L" diagnosticValid="+std::to_wstring(h.diagnosticValid)+L" diagnosticCached="+std::to_wstring(h.diagnosticCached)+
   L" callbackCount="+std::to_wstring(h.callbacks)+L" callbackTid="+std::to_wstring(h.callbackThread)+
   L" callbackAgeMs="+(h.callbacks?std::to_wstring(int32_t(now-h.callbackTick)<0?0u:DWORD(now-h.callbackTick)):L"unknown")+
   L" runtimeBase="+std::to_wstring(h.runtimeBase)+L" hookRva="+std::to_wstring(h.hookRva)+
-  L" dispatches="+std::to_wstring(h.dispatches)+L" enabled="+std::to_wstring(h.enabled)+
+  L" dispatches="+std::to_wstring(h.dispatches)+L" runtimeEnabled="+std::to_wstring(h.enabled)+
   L" ready="+std::to_wstring(h.ready)+L" wakePending="+std::to_wstring(h.wakePending)+
   L" postError="+std::to_wstring(h.postError)+L" runtimeError="+std::to_wstring(h.error)+
   L" faultSerial="+std::to_wstring(h.faultSerial)+L" exceptionCode="+hex32(h.faultCode)+
@@ -971,10 +974,10 @@ static void releaseBridge(){
  else{if(hook)gameinput::release(gameentry::Client::Assist,hook);if(shared)UnmapViewOfFile(shared);if(mapping)CloseHandle(mapping);}
  hook=0;shared=nullptr;mapping=nullptr;module=nullptr;lastData=attachAt=lastPulse=0;incoming={};snapshotSeq=~0u;lastReceiptWrite=lastReceiptMatch=0;reapBridges();
 }
-static void detach(){renderupgrade::stop();clearPassengerDisplay();watchwindows::hide();minimap::clear();hideAircraftButton();resetConstruction();resetAirPath();resetPlacementEvent();hotkeyPending.clear();pointerMatches.clear();
+static void detach(const wchar_t*reason=L"unspecified"){renderupgrade::stop();clearPassengerDisplay();watchwindows::hide();minimap::clear();hideAircraftButton();resetConstruction();resetAirPath();resetPlacementEvent();hotkeyPending.clear();pointerMatches.clear();
  resetPlanning();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;
  DWORD exitCode=0;bool exitKnown=gameProcess&&GetExitCodeProcess(gameProcess,&exitCode);
- critical(L"detach pid="+std::to_wstring(pid)+L" processExitCode="+(exitKnown?hex32(exitCode):L"unavailable")+
+ critical(L"detach pid="+std::to_wstring(pid)+L" reason="+reason+L" hostEnabled="+std::to_wstring(enabled)+L" processExitCode="+(exitKnown?hex32(exitCode):L"unavailable")+
   L" stillActive="+std::to_wstring(exitKnown&&exitCode==STILL_ACTIVE));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
  releaseBridge();externalData=nullptr;externalSampler.reset();externalReader.close();externalAt=0;
  bridgeAttempts=0;bridgeBlocked=false;bridgeRetryAt=0;bridgeFailure.clear();
@@ -1120,20 +1123,49 @@ static bool ensureBridge(){
   L" assistMap="+n+L" assistVersion="+std::to_wstring(Version)+L" assistBytes="+std::to_wstring(sizeof(Shared)));
  logBridgeHealth(true);return true;
 }
+// Record discovery failures in the automatic log, even without a Runtime lease.
+static void logDiscovery(const external::discovery::Scan&scan,DWORD openError,DWORD elapsed){
+ const std::wstring summary=L"candidates="+std::to_wstring(scan.processCount)+L" windows="+std::to_wstring(scan.windowCount)+
+  L" selectedPid="+std::to_wstring(scan.best.pid)+L" selectedTid="+std::to_wstring(scan.best.thread)+
+  L" enumerated="+std::to_wstring(scan.enumeratedProcesses)+L" knownNames="+std::to_wstring(scan.nameCandidates)+
+  L" descriptions="+std::to_wstring(scan.descriptionMatches)+L" descriptionChecks="+std::to_wstring(scan.descriptionCandidates)+
+  L" descriptionPending="+std::to_wstring(scan.descriptionPending)+
+  L" remembered="+std::to_wstring(scan.rememberedMatches)+L" explicitSelection="+std::to_wstring(scan.explicitSelection)+
+  L" fingerprints="+std::to_wstring(scan.fingerprintMatches)+L" fingerprintChecks="+std::to_wstring(scan.fingerprintCandidates)+
+  L" fingerprintMismatches="+std::to_wstring(scan.fingerprintMismatches)+
+  L" descriptionErrors="+std::to_wstring(scan.descriptionErrors)+L" lastDescriptionError="+std::to_wstring(scan.lastDescriptionError)+
+  L" queryErrors="+std::to_wstring(scan.queryErrors)+L" lastQueryError="+std::to_wstring(scan.lastQueryError)+
+  L" snapshotError="+std::to_wstring(scan.snapshotError)+L" openError="+std::to_wstring(openError);
+ static std::wstring previous;static DWORD loggedAt=0;const DWORD now=GetTickCount();
+ if(summary==previous&&DWORD(now-loggedAt)<15000)return;
+ previous=summary;loggedAt=now;
+ critical(L"game-discovery attempt="+std::to_wstring(attachAttempts)+L" hostEnabled="+std::to_wstring(enabled)+
+  L" scanMs="+std::to_wstring(elapsed)+L" "+summary);
+}
 static bool attach(){
- auto scan=external::discovery::scan();
+ ++attachAttempts;const DWORD scanStarted=GetTickCount();const auto scan=external::discovery::scan();const DWORD scanMs=GetTickCount()-scanStarted;
  if(!scan.best.pid){
+  logDiscovery(scan,0,scanMs);
   if(scan.snapshotError)setStatus(L"进程快照失败，Win32="+std::to_wstring(scan.snapshotError));
-  else if(!scan.processCount)setStatus(L"未发现兼容游戏进程（支持随机进程名）");
+  else if(!scan.processCount)setStatus(L"未发现游戏进程；请到“调试 → 游戏进程连接”搜索，或把程序加入检测名单。");
   else setStatus(L"找到多个游戏进程但没有匹配窗口，无法安全选择只读 PID");
   return false;
  }
  const auto&c=scan.best;
  if(!externalReader.open(c.pid)){
-  DWORD code=externalReader.lastOpenError;
+  DWORD code=externalReader.lastOpenError;logDiscovery(scan,code,scanMs);
   setStatus(L"找到游戏进程，但只读连接失败 (Win32="+std::to_wstring(code)+L")");
   diag(L"external OpenProcess failed pid="+std::to_wstring(c.pid)+L" error="+std::to_wstring(code));return false;
  }
+ if(scan.explicitSelection){
+  const auto selected=external::targetselection::current();const auto opened=externalReader.connectionIdentity();
+  FILETIME created{},exited{},kernel{},user{};
+  const bool valid=opened&&c.pid==selected.selectedPid&&externalReader.alive()&&
+   GetProcessTimes(opened->handle,&created,&exited,&kernel,&user)&&
+   ((uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime)==selected.selectedCreation;
+  if(!valid){externalReader.close();logDiscovery(scan,ERROR_NOT_FOUND,scanMs);setStatus(L"所选进程已退出或发生变化，请刷新进程列表后重新选择。");return false;}
+ }
+ logDiscovery(scan,0,scanMs);
  pid=c.pid;gameThread=c.thread;game=external::discovery::resolveYrppWindow(externalReader,pid,c.window,&gameThread,&gameWindowFromYrpp);
  {const auto process=externalReader.connectionIdentity();FILETIME created{},exited{},kernel{},user{};
   const uint64_t creation=process&&GetProcessTimes(process->handle,&created,&exited,&kernel,&user)?(uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime:0;
@@ -2108,9 +2140,37 @@ static void serviceReadOnlyWatchKeys(){
  hotkeyroute::Group selected;
  while(hotkeyRegistry.expired(GetTickCount(),match,selected))dispatchReadOnlyWatchKeys(selected);
 }
+// A connection check must never turn the feature host off or replay a request.
+static void requestGameReconnect(){
+ const bool wasEnabled=enabled;const DWORD now=GetTickCount();enabled=true;
+ lastFind=now-2000;lastProcessCheck=now-250;
+ if(!shared){bridgeBlocked=false;bridgeAttempts=0;bridgeRetryAt=0;bridgeFailure.clear();}
+ if(!wasEnabled||registeredHotkeyMode!=desiredHotkeyMode())registerKeys();
+#ifdef RA2_UNIFIED
+ suite::reportEnabled(2,true);
+#endif
+ critical(L"connection-retry requested hostEnabled=1 pid="+std::to_wstring(pid)+L" subscription="+std::to_wstring(hook)+L" existingMapping="+std::to_wstring(shared!=nullptr));
+ if(shared&&incoming.status==-2)setStatus(L"游戏操作异常，指令功能仍暂停；连接检查不会重发未确认的指令。");
+ else if(shared&&incoming.status==-1)setStatus(L"当前游戏版本不兼容；已保留连接和错误信息。");
+ else setStatus(shared?L"已请求检查游戏连接。":L"正在检查游戏连接…");
+}
+// Allowlist/search edits never disrupt a healthy session. A new explicit live
+// PID selection is a separate action and goes through the existing retirement.
+static void serviceGameTargetPreference(){
+ static uint64_t seenRevision=0,selectedCreation=0;static DWORD selectedPid=0;
+ const uint64_t revision=external::targetselection::revision();if(revision==seenRevision)return;
+ const auto policy=external::targetselection::current();seenRevision=policy.revision;
+ if(policy.selectedPid==selectedPid&&policy.selectedCreation==selectedCreation)return;
+ selectedPid=policy.selectedPid;selectedCreation=policy.selectedCreation;
+ if(!selectedPid||!external::targetselection::preferredAlive(policy))return;
+ if(pid!=selectedPid||!externalReader.alive()){
+  if(pid||shared)detach(L"user-selected-process");
+ }
+ requestGameReconnect();
+}
 // Stop command work while preserving the shared read-only session and pins.
 static void pauseAssistControls(){
- if(!secondaryDisplayRequested()){detach();clockState(false,informationFPS());registerKeys();setStatus(L"已暂停。");return;}
+ if(!secondaryDisplayRequested()){detach(L"host-paused");clockState(false,informationFPS());registerKeys();setStatus(L"已暂停。");return;}
  commandQueue.clear();sentAt=0;inFlightMatch=0;inFlightRetries=0;hotkeyPending.clear();pointerMatches.clear();
  resetConstruction();resetAirPath();resetPlacementEvent();releaseBridge();
  worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();hideConstruction();
@@ -2129,9 +2189,9 @@ static void tick(){
 #if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
  if(consoleClosePrepared)return;
 #endif
- reapBridges();logBridgeHealth();updateDebugEntries();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;static pipelineperf::Window timings(L"host-control",{L"total"});pipelineperf::Scope total(timings,0,critical);lastControl=now;pollOverlayVisibility();syncSettingDependencies();syncInformationRate();if(!displayFrameRequested()){minimap::hide();watchwindows::hide();watchhost::suspend();}else if(!secondaryDisplayAvailable()){minimap::hideSecondary();watchwindows::hideSecondary();}updateModeStatus(now);updatePlayerTestUI();if(registeredHotkeyMode!=desiredHotkeyMode())registerKeys();if(!enabled&&!secondaryDisplayRequested()){if(pid||shared)detach();clockState(false,informationFPS());return;}
+ serviceGameTargetPreference();reapBridges();logBridgeHealth();updateDebugEntries();DWORD now=GetTickCount();static DWORD lastControl;if(lastControl&&DWORD(now-lastControl)<8)return;static pipelineperf::Window timings(L"host-control",{L"total"});pipelineperf::Scope total(timings,0,critical);lastControl=now;pollOverlayVisibility();syncSettingDependencies();syncInformationRate();if(!displayFrameRequested()){minimap::hide();watchwindows::hide();watchhost::suspend();}else if(!secondaryDisplayAvailable()){minimap::hideSecondary();watchwindows::hideSecondary();}updateModeStatus(now);updatePlayerTestUI();if(registeredHotkeyMode!=desiredHotkeyMode())registerKeys();if(!enabled&&!secondaryDisplayRequested()){if(pid||shared)detach(L"host-disabled");clockState(false,informationFPS());return;}
  if(pid&&DWORD(now-lastProcessCheck)>=250){lastProcessCheck=now;
-  if(!externalReader.alive()){detach();lastFind=now-2000;}
+  if(!externalReader.alive()){detach(L"target-exited");lastFind=now-2000;}
   else {DWORD nextThread=0;bool authoritative=false;
    HWND next=external::discovery::resolveYrppWindow(externalReader,pid,boundGameAlive()?game:nullptr,&nextThread,&authoritative);
    if(next&&(next!=game||nextThread!=gameThread)){
@@ -2149,7 +2209,7 @@ static void tick(){
   if(pid&&externalReader.valid()){
    // Read-only attachment is independent of the window/WH_GETMESSAGE bridge.
    // Never send commands while HWND/thread ID are unavailable.
-   if(!externalReader.alive()){detach();lastFind=now-2000;}
+   if(!externalReader.alive()){detach(L"target-exited");lastFind=now-2000;}
    else {
     sampleExternal(now);
     if(DWORD(now-lastFind)>=2000){lastFind=now;
@@ -2476,7 +2536,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   proc(w,WM_COMMAND,MAKEWPARAM(spec.id,notification),(LPARAM)control);publishSuiteDisplay();return 0;
  }
 
- if(msg==suite::ModuleEnable){enabled=bool(wp);if(!enabled)pauseAssistControls();else{lastFind=0;registerKeys();setStatus(L"正在重新连接…");}suite::reportEnabled(2,enabled);return 0;}
+ if(msg==suite::ModuleEnable){critical(L"host-module-enable value="+std::to_wstring(bool(wp)));if(wp)requestGameReconnect();else{enabled=false;pauseAssistControls();suite::reportEnabled(2,false);}return 0;}
 #endif
  if(msg==modernui::DpiMessage){applyPanelDpi(unsigned(wp));return 0;}
  switch(msg){case WM_CREATE:{ui=w;panelDpi=modernui::windowDpi(w);
@@ -2488,7 +2548,11 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  placedControl({-1,{505,80,120,28}},L"BUTTON",L"定位功能",991,BS_PUSHBUTTON|WS_TABSTOP);
 #include "tactical_controls.h"
  EnableWindow(GetDlgItem(w,420),TRUE);
- statusLabel=control(L"STATIC",L"正在寻找游戏…",20,1370,605,44,430);control(L"BUTTON",L"暂停 / 连接",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();createDebugEntryControls();applyPanelDpi(panelDpi);ready=true;updateDebugEntries(true);syncSettingDependencies(true);fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
+ statusText=L"正在寻找游戏…";statusLabel=control(L"STATIC",statusText.c_str(),20,1370,605,44,430);
+#ifdef RA2_CONSOLE_WEBVIEW2
+ SetPropW(statusLabel,L"RA2.Console.Status",reinterpret_cast<HANDLE>(1));SetPropW(statusLabel,L"RA2.Console.StatusText",reinterpret_cast<HANDLE>(&statusText));
+#endif
+ control(L"BUTTON",L"重新连接游戏",20,1420,200,28,431,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"使用说明",235,1420,185,28,432,BS_PUSHBUTTON|WS_TABSTOP);control(L"BUTTON",L"退出",435,1420,190,28,433,BS_PUSHBUTTON|WS_TABSTOP);EnableWindow(unloadKeyEdit,TRUE);EnableWindow(GetDlgItem(w,453),TRUE);EnableWindow(hookChecks[1],TRUE);SetWindowTextW(hookChecks[1],L"智能卸载");finalizeTacticalLayout();createDebugEntryControls();applyPanelDpi(panelDpi);ready=true;updateDebugEntries(true);syncSettingDependencies(true);fillTech(true);fillTypeBindings(true);SetTimer(w,1,250,nullptr);SetTimer(w,2,80,nullptr);registerKeys();return 0;}
  case WM_DISPLAYCHANGE:informationMonitor.invalidate();secondaryDisplayMonitor.invalidate();minimap::invalidateDisplays();watchwindows::invalidateDisplays();syncInformationRate(true);if(enabled||secondaryDisplayRequested())paint();return 0;
  case WM_SIZE:layoutPanel();return 0;
  case WM_DPICHANGED:{applyPanelDpi(HIWORD(wp));if(!(GetWindowLongPtrW(w,GWL_STYLE)&WS_CHILD)&&!GetPropW(w,L"RA2.Suite.Managed")){auto r=(RECT*)lp;SetWindowPos(w,nullptr,r->left,r->top,r->right-r->left,r->bottom-r->top,SWP_NOZORDER|SWP_NOACTIVATE);}return 0;}
@@ -2653,11 +2717,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
   notify(extra.placementImplementation==buildingmodes::PlacementEvent?(buildAnywhereMode?L"原生事件放置已开启：自动匹配当前建筑／防御栏；按配置键预览，左键放置、右键或 Esc 取消。":L"原生事件放置已关闭。"):
    buildAnywhereMode?L"高危：扩展建筑放置范围已开启，可能影响联机同步。":L"扩展建筑放置范围已关闭，等待游戏恢复默认限制。");
   save();}
- else if(id==431){enabled=!enabled;if(!enabled)pauseAssistControls();else{lastFind=0;registerKeys();setStatus(L"正在重新连接…");}
-#ifdef RA2_UNIFIED
- suite::reportEnabled(2,enabled);
-#endif
- }
+ else if(id==431){requestGameReconnect();}
  else if(id==432)ShellExecuteW(w,L"open",path(L"README.txt").c_str(),nullptr,root.c_str(),SW_SHOWNORMAL);else if(id==433)PostMessageW(w,WM_CLOSE,0,0);return 0;}
  case WM_CTLCOLORSTATIC:case WM_CTLCOLORBTN:{HDC dc=(HDC)wp;SetBkMode(dc,OPAQUE);int id=GetDlgCtrlID((HWND)lp);SetTextColor(dc,id>=900&&id<=905?modernui::Accent:id==989?modernui::Text:modernui::Muted);SetBkColor(dc,modernui::Background);return (LRESULT)bgBrush;}
  case WM_CTLCOLOREDIT:case WM_CTLCOLORLISTBOX:{HDC dc=(HDC)wp;SetTextColor(dc,modernui::Text);SetBkColor(dc,modernui::Field);return (LRESULT)editBrush;}
@@ -2666,7 +2726,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  if(wp!=suite::CloseToken){suite::requestClose();return 0;}
 #endif
  if(!bridgeClosePending){
-  shutdownPlatformHookProbe();
+  shutdownPlatformHookProbe();shutdownGameProcessSelectionUI();
 #if !defined(RA2_UNIFIED) || !defined(RA2_CONSOLE_WEBVIEW2)
   boundedshutdown::begin();
 #endif
@@ -2677,7 +2737,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
    flushAutoSettings();
   stopClock();KillTimer(w,1);KillTimer(w,2);
   for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();
-  detach();
+  detach(L"host-close");
  }
  if(retiredBridges.empty()){DestroyWindow(w);return 0;}
  // Leave a blocked game-side gate mapped; the independent process deadline
@@ -2685,12 +2745,12 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  setStatus(L"正在退出；恢复最多等待 2 秒，超时跳过。");
  SetWindowTextW(GetAncestor(w,GA_ROOT),L"红警工具箱 · 正在退出（恢复最多等待 2 秒）…");
  SetTimer(w,BridgeCloseTimer,100,nullptr);return 0;
- case WM_DESTROY:shutdownPlatformHookProbe();renderupgrade::shutdown();worldrender::worker.shutdown();sidebaroverlay::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);
+ case WM_DESTROY:shutdownPlatformHookProbe();shutdownGameProcessSelectionUI();renderupgrade::shutdown();worldrender::worker.shutdown();sidebaroverlay::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);
 #if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
  if(!consoleClosePrepared)
 #endif
   save();
- stopClock();KillTimer(w,1);KillTimer(w,2);detach();for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
+ stopClock();KillTimer(w,1);KillTimer(w,2);detach(L"host-destroy");for(int id:registeredKeyIDs)UnregisterHotKey(w,id);registeredKeyIDs.clear();PostQuitMessage(0);return 0;}return DefWindowProcW(w,msg,wp,lp);}
 int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Assist_v013_Host");if(GetLastError()==ERROR_ALREADY_EXISTS){MessageBoxW(nullptr,L"战术助手已在运行。",L"尤里战术助手",MB_OK);return 0;}
  wchar_t p[2048];GetModuleFileNameW(nullptr,p,2048);root=p;root.resize(root.find_last_of(L"\\/"));autolog::initialize(root);autolog::write(L"host-start criticalLog=automatic rotation=2MiB+2 backups; verbose Debug.Diagnostics is independent");loadAdditionalSettings();
  megaQueueMode=value(L"Orders",L"MegaMissionBackend",0)==1?1u:0u;

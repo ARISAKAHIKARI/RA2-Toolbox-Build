@@ -7,7 +7,9 @@
 #include <string>
 #include <unordered_set>
 #include "../../shared/source/message_query.h"
+#include "game_process_names.h"
 #include "process_image_identity.h"
+#include "process_target_selection.h"
 
 // Discover candidate game processes before looking for a window. No handle
 // injection, no privilege adjustment, no writing of game memory.
@@ -19,16 +21,12 @@ constexpr uint32_t YrppGameHwndAddress = assist::messagequery::YrppGameHwndAddr;
 template<class Reader> auto windowRead(Reader&r,uint32_t a,void*p,size_t n,int)->decltype(r.readFresh(a,p,n)){return r.readFresh(a,p,n);}
 template<class Reader> bool windowRead(Reader&r,uint32_t a,void*p,size_t n,long){return r.read(a,p,n);}
 
-inline bool isGameName(const wchar_t* text){
- if(!text)return false;
- std::wstring name(text);
- for(auto& c:name)c=static_cast<wchar_t>(towlower(c));
- return name==L"gamemd.exe"||name==L"gamemd-spawn.exe"||
-        name==L"gamemd-ares.exe"||name==L"gamemd.dat"||
-        name==L"gamemd-spawn.dat";
-}
 struct Candidate {HWND window=nullptr;DWORD pid=0,thread=0;long long score=-1;};
 struct Scan {Candidate best{};DWORD processCount=0,windowCount=0;DWORD snapshotError=0;
+ DWORD enumeratedProcesses=0,nameCandidates=0,descriptionCandidates=0,descriptionMatches=0;
+ DWORD descriptionErrors=0,lastDescriptionError=0,descriptionPending=0,rememberedMatches=0;
+ DWORD fingerprintCandidates=0,fingerprintMatches=0,fingerprintMismatches=0,queryErrors=0,lastQueryError=0;
+ bool explicitSelection=false;
  // A single known process can be sampled without a visible game HWND.
  // Multiple windowless processes remain ambiguous; never guess a PID.
  bool uniqueWindowless=false;
@@ -80,22 +78,42 @@ inline HWND resolveYrppWindow(ProcessReader& reader,DWORD pid,HWND fallback=null
  if(outThread)*outThread=0;
  return nullptr;
 }
-// Known names preserve existing discovery. Renamed window owners must match
-// the supplied game image; a random title/name alone never admits a process.
-struct FallbackContext { std::unordered_set<DWORD>* ids;std::unordered_set<DWORD> checked; };
+// Description keywords, remembered programs and known names are discovery
+// alternatives. None authorizes a Runtime patch or replaces layout validation.
+struct FallbackContext {
+ Scan* scan;std::unordered_set<DWORD>* ids;targetselection::Policy policy;
+ std::unordered_set<DWORD> checked,described;
+ DWORD trustedPid=0;
+};
+inline void considerProcess(const targetselection::ProcessInfo& info,FallbackContext& ctx){
+ if(!ctx.described.insert(info.pid).second)return;
+ ++ctx.scan->descriptionCandidates;
+ if(info.descriptionPending)++ctx.scan->descriptionPending;
+ if(info.identityError){++ctx.scan->queryErrors;ctx.scan->lastQueryError=info.identityError;}
+ if(info.descriptionError){++ctx.scan->descriptionErrors;ctx.scan->lastDescriptionError=info.descriptionError;}
+ const bool description=targetselection::matchesKeywords(info.description,ctx.policy.keywords);
+ const bool name=isGameName(info.name.c_str())||targetselection::matchesKeywords(info.name,ctx.policy.keywords);
+ const bool remembered=targetselection::remembered(info,ctx.policy);
+ if(description)++ctx.scan->descriptionMatches;
+ if(name)++ctx.scan->nameCandidates;
+ if(remembered)++ctx.scan->rememberedMatches;
+ if(description||name||remembered)ctx.ids->insert(info.pid);
+ // An already bound caller supplies its own process/birth lifetime guard.
+ // Re-resolving that lease's window must survive later allowlist edits.
+ if(info.pid==ctx.trustedPid&&!info.identityError)ctx.ids->insert(info.pid);
+}
+inline void considerFingerprint(DWORD pid,FallbackContext& ctx){
+ if(ctx.ids->count(pid)||!ctx.checked.insert(pid).second)return;
+ ++ctx.scan->fingerprintCandidates;
+ if(imageidentity::processMatches(pid)){++ctx.scan->fingerprintMatches;ctx.ids->insert(pid);}
+ else ++ctx.scan->fingerprintMismatches;
+}
 inline BOOL CALLBACK checkFallbackWindow(HWND w,LPARAM value){
  auto* ctx=reinterpret_cast<FallbackContext*>(value);
  DWORD pid=0;GetWindowThreadProcessId(w,&pid);
- if(!pid||ctx->ids->count(pid)||pid==GetCurrentProcessId()||!ctx->checked.insert(pid).second)return TRUE;
- HANDLE h=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,pid);
- if(!h)return TRUE;
- wchar_t path[2048]{};DWORD n=2048;
- if(QueryFullProcessImageNameW(h,0,path,&n)){
-  const wchar_t* file=path;
-  for(const wchar_t*p=path;*p;++p)if(*p==L'\\'||*p==L'/')file=p+1;
-  if(isGameName(file)||imageidentity::processMatches(pid))ctx->ids->insert(pid);
- }
- CloseHandle(h);return TRUE;
+ if(!pid||ctx->ids->count(pid)||pid==GetCurrentProcessId())return TRUE;
+ if(!ctx->described.count(pid))considerProcess(targetselection::inspectCachedProcess(pid),*ctx);
+ considerFingerprint(pid,*ctx);return TRUE;
 }
 struct TreeContext {FallbackContext* fallback;WindowContext* windows;};
 inline BOOL CALLBACK checkTreeWindow(HWND w,LPARAM value){
@@ -113,37 +131,40 @@ inline BOOL CALLBACK checkTopLevelWindow(HWND w,LPARAM value){
 }
 inline Scan scan(DWORD preferredPid=0){
  Scan result{};
- HANDLE snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
- if(snapshot==INVALID_HANDLE_VALUE)result.snapshotError=GetLastError();
- PROCESSENTRY32W entry{};entry.dwSize=sizeof entry;
+ if(preferredPid==GetCurrentProcessId())return result;
  std::unordered_set<DWORD> ids;
- FallbackContext fallback{&ids,{}};
- if(snapshot!=INVALID_HANDLE_VALUE&&Process32FirstW(snapshot,&entry))do{
-  if(entry.th32ProcessID==GetCurrentProcessId())continue;
-  if(isGameName(entry.szExeFile))ids.insert(entry.th32ProcessID);
-  else if(imageidentity::randomName(entry.szExeFile)){
-   fallback.checked.insert(entry.th32ProcessID);
-   if(imageidentity::processMatches(entry.th32ProcessID))ids.insert(entry.th32ProcessID);
-  }
- }while(Process32NextW(snapshot,&entry));
- else if(snapshot!=INVALID_HANDLE_VALUE)result.snapshotError=GetLastError();
- if(snapshot!=INVALID_HANDLE_VALUE)CloseHandle(snapshot);
+ FallbackContext fallback{&result,&ids,targetselection::current(),{}, {},preferredPid};
+ const auto processes=targetselection::enumerateCandidates(&result.snapshotError);
+ result.enumeratedProcesses=static_cast<DWORD>(processes.size());
+ for(const auto& process:processes){
+  considerProcess(process,fallback);
+  if(imageidentity::randomName(process.name.c_str()))considerFingerprint(process.pid,fallback);
+ }
+ // An explicit argument belongs to an already bound reader/retired lease and
+ // always takes precedence over a newer UI selection. Session preference is
+ // birth-bound and never persisted as a PID or an exclusive target.
+ if(preferredPid&&!fallback.described.count(preferredPid))considerProcess(targetselection::inspectCachedProcess(preferredPid),fallback);
+ if(!preferredPid&&fallback.policy.selectedPid&&!fallback.described.count(fallback.policy.selectedPid))
+  considerProcess(targetselection::inspectCachedProcess(fallback.policy.selectedPid),fallback);
+ const DWORD selected=!preferredPid&&ids.count(fallback.policy.selectedPid)&&targetselection::preferredAlive(fallback.policy)?fallback.policy.selectedPid:0;
+ const DWORD effectivePreferred=preferredPid?preferredPid:selected;
  // Inspect all top-level trees, even when a fixed-name instance exists.
  // Identity checking is once per PID, not once per system/control child HWND;
  // the existing creation/path cache also bounds repeated file reads.
- WindowContext ctx{&result,&ids,preferredPid};
+ WindowContext ctx{&result,&ids,effectivePreferred};
  TreeContext tree{&fallback,&ctx};
  EnumWindows(checkTopLevelWindow,reinterpret_cast<LPARAM>(&tree));
  result.processCount=static_cast<DWORD>(ids.size());
  if(!ids.empty()){
   if(!result.best.window){
    DWORD candidate=0;
-   if(preferredPid && ids.count(preferredPid))candidate=preferredPid;
-   else if(!preferredPid&&ids.size()==1)candidate=*ids.begin();
+   if(effectivePreferred && ids.count(effectivePreferred))candidate=effectivePreferred;
+   else if(!effectivePreferred&&ids.size()==1)candidate=*ids.begin();
    if(candidate){result.best.pid=candidate;result.best.thread=0;
     result.uniqueWindowless=ids.size()==1;}
   }
  }
+ result.explicitSelection=selected&&result.best.pid==selected;
  return result;
 }
 } }

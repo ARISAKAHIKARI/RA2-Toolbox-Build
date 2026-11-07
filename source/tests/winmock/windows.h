@@ -1,7 +1,8 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
-using DWORD=uint32_t; using LONG=int32_t; using BOOL=int; using HANDLE=void*;using HWND=void*;using LPARAM=long;using SIZE_T=size_t;using WCHAR=wchar_t;using LPCVOID=const void*;
+#include <cwchar>
+using DWORD=uint32_t; using LONG=int32_t; using BOOL=int; using HANDLE=void*;using HMODULE=void*;using HWND=void*;using LPARAM=long;using SIZE_T=size_t;using WCHAR=wchar_t;using LPCVOID=const void*;
 struct RECT {long left,top,right,bottom;};
 struct MEMORY_BASIC_INFORMATION { void* BaseAddress;void* AllocationBase;DWORD AllocationProtect;SIZE_T RegionSize;DWORD State;DWORD Protect;DWORD Type;};
 #define FALSE 0
@@ -16,6 +17,25 @@ struct MEMORY_BASIC_INFORMATION { void* BaseAddress;void* AllocationBase;DWORD A
 #define ERROR_INVALID_HANDLE 6
 #define ERROR_PARTIAL_COPY 299
 #define ERROR_ACCESS_DENIED 5
+#define ERROR_INVALID_DATA 13
+#define ERROR_GEN_FAILURE 31
+#define ERROR_NO_MORE_FILES 18
+#define ERROR_PROC_NOT_FOUND 127
+#define ERROR_MOD_NOT_FOUND 126
+#define ERROR_BAD_LENGTH 24
+#define ERROR_WRITE_FAULT 29
+#define ERROR_NOT_FOUND 1168
+#define ERROR_TOO_MANY_NAMES 68
+#define ERROR_NOT_ENOUGH_MEMORY 8
+#define ERROR_RESOURCE_DATA_NOT_FOUND 1812
+#define ERROR_RESOURCE_TYPE_NOT_FOUND 1813
+#define ERROR_RESOURCE_NAME_NOT_FOUND 1814
+#define ERROR_RESOURCE_LANG_NOT_FOUND 1815
+#define SYNCHRONIZE 0x100000
+#define WAIT_TIMEOUT 258
+#define WAIT_OBJECT_0 0
+#define LOAD_LIBRARY_SEARCH_SYSTEM32 0x800
+#define WINAPI
 #define GW_OWNER 4
 #define GWL_EXSTYLE (-20)
 #define WS_EX_TOOLWINDOW 0x00000080L
@@ -42,4 +62,23 @@ inline BOOL GetProcessTimes(HANDLE,FILETIME*,FILETIME*,FILETIME*,FILETIME*){retu
 inline DWORD GetTickCount(){return 1;}
 inline HWND GetForegroundWindow(){return nullptr;}
 inline BOOL EnumChildWindows(HWND,BOOL(*)(HWND,LPARAM),LPARAM){return TRUE;}
+#endif
+#ifdef WINMOCK_VERSION_FILES
+extern "C" {HMODULE LoadLibraryExW(const wchar_t*,HANDLE,DWORD);void* GetProcAddress(HMODULE,const char*);}
+#else
+inline HMODULE LoadLibraryExW(const wchar_t*,HANDLE,DWORD){return nullptr;}
+inline void* GetProcAddress(HMODULE,const char*){return nullptr;}
+#endif
+#ifdef WINMOCK_TARGET_PROFILE
+extern "C" {DWORD GetModuleFileNameW(HMODULE,wchar_t*,DWORD);DWORD GetPrivateProfileStringW(const wchar_t*,const wchar_t*,const wchar_t*,wchar_t*,DWORD,const wchar_t*);BOOL WritePrivateProfileSectionW(const wchar_t*,const wchar_t*,const wchar_t*);}
+#else
+inline DWORD GetModuleFileNameW(HMODULE,wchar_t*out,DWORD count){const wchar_t* text=L"C:\\Fixture\\RA2Toolbox.exe";if(count<=std::wcslen(text))return 0;std::wcscpy(out,text);return DWORD(std::wcslen(text));}
+inline DWORD GetPrivateProfileStringW(const wchar_t*,const wchar_t*,const wchar_t* fallback,wchar_t*out,DWORD count,const wchar_t*){std::wcsncpy(out,fallback,count);out[count-1]=0;return DWORD(std::wcslen(out));}
+inline BOOL WritePrivateProfileSectionW(const wchar_t*,const wchar_t*,const wchar_t*){return TRUE;}
+#endif
+#ifdef WINMOCK_DESCRIPTION_WORKERS
+extern "C" {HANDLE CreateThread(void*,size_t,DWORD(*)(void*),void*,DWORD,DWORD*);DWORD WaitForSingleObject(HANDLE,DWORD);}
+#else
+inline HANDLE CreateThread(void*,size_t,DWORD(*)(void*),void*,DWORD,DWORD*){return nullptr;}
+inline DWORD WaitForSingleObject(HANDLE,DWORD){return WAIT_TIMEOUT;}
 #endif
