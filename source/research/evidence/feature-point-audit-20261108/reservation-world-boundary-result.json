@@ -1,0 +1,118 @@
+{
+  "scope": "Unmodified production send, serviceCommandQueue, readSnapshot body, Queue/identity/hash helpers and Book cancel; synthetic publication between queue consume and inner readSnapshot; no game process or native Produce call.",
+  "source_sha256": {
+    "main.cpp": "dec08343c8dc3287aa7f789192064bdb9db0dbbbf2818bffad033880c2704654",
+    "protocol.h": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c",
+    "command_delivery.h": "2515fdb0e73210348e4765099858d1e4da5a236a7c659062abd8a29c4182435a",
+    "control_link.h": "0b8f69213d66f48205c4bfd4aad38d096363ceda1eb5a58374293918959f7f88",
+    "additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+    "construction_host.h": "7f340af9bfbe0cfb093f481b6caa7c4deff60e0c03f9f1a650db378900f8b6ed",
+    "construction_policy.h": "2f3a0f8e88cd669face590b91038c6bafe25953382060582ca1d8d0aafc27ad8"
+  },
+  "extracted_blocks": {
+    "identity.inc": "e4e63f93a1899169927d7aeb21cf8cbe9e1106da2ba43b0f8337586cd85cc43c",
+    "snapshot.inc": "6ea812adb6e5d88753c9b7c7eba23e0dfc8324cd3fd19940c5c27d14b498895b",
+    "send.inc": "0aa7feaf2e3ef1adbe38d85c608705bbf916d67221744cfc2cffbd435712812b",
+    "service.inc": "6f7757474b29b138625df16c393171eff31edbeb779725eb22f526c38db25029",
+    "cancel.inc": "9fd2305c4dd01aa17b2868388b12112d2f24fd385094fe342222c5f9143886b6"
+  },
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-UNDEBUG",
+    "-I",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source",
+    "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/probe.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/probe"
+  ],
+  "compile_exit": 0,
+  "compile_stderr": "",
+  "game_process_executed": false,
+  "windows_runtime_executed": false,
+  "production_changed": false,
+  "run_exit": 0,
+  "stdout": "{\"cases\":[{\"command\":\"ProduceDeferred\",\"mode\":\"new_match_ready\",\"original_match\":7,\"observed_match\":8,\"published_request\":1,\"request_match\":8,\"queued_before_book_cancel\":0,\"queued_match\":0,\"request_after_book_cancel\":1,\"construction_rejection_count\":0},{\"command\":\"ProduceDeferred\",\"mode\":\"new_match_busy\",\"original_match\":7,\"observed_match\":8,\"published_request\":0,\"request_match\":0,\"queued_before_book_cancel\":1,\"queued_match\":8,\"request_after_book_cancel\":0,\"construction_rejection_count\":0},{\"command\":\"ProduceDeferred\",\"mode\":\"changed_catalogue\",\"original_match\":7,\"observed_match\":8,\"published_request\":0,\"request_match\":0,\"queued_before_book_cancel\":0,\"queued_match\":0,\"request_after_book_cancel\":0,\"construction_rejection_count\":1},{\"command\":\"ProduceReserved\",\"mode\":\"new_match_ready\",\"original_match\":7,\"observed_match\":8,\"published_request\":1,\"request_match\":8,\"queued_before_book_cancel\":0,\"queued_match\":0,\"request_after_book_cancel\":1,\"construction_rejection_count\":0},{\"command\":\"ProduceReserved\",\"mode\":\"new_match_busy\",\"original_match\":7,\"observed_match\":8,\"published_request\":0,\"request_match\":0,\"queued_before_book_cancel\":1,\"queued_match\":8,\"request_after_book_cancel\":0,\"construction_rejection_count\":0},{\"command\":\"ProduceReserved\",\"mode\":\"changed_catalogue\",\"original_match\":7,\"observed_match\":8,\"published_request\":0,\"request_match\":0,\"queued_before_book_cancel\":0,\"queued_match\":0,\"request_after_book_cancel\":0,\"construction_rejection_count\":1}],\"checks\":48,\"passed\":true,\"native_event_executed\":false}\n",
+  "stderr": "",
+  "result": {
+    "cases": [
+      {
+        "command": "ProduceDeferred",
+        "mode": "new_match_ready",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 1,
+        "request_match": 8,
+        "queued_before_book_cancel": 0,
+        "queued_match": 0,
+        "request_after_book_cancel": 1,
+        "construction_rejection_count": 0
+      },
+      {
+        "command": "ProduceDeferred",
+        "mode": "new_match_busy",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 0,
+        "request_match": 0,
+        "queued_before_book_cancel": 1,
+        "queued_match": 8,
+        "request_after_book_cancel": 0,
+        "construction_rejection_count": 0
+      },
+      {
+        "command": "ProduceDeferred",
+        "mode": "changed_catalogue",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 0,
+        "request_match": 0,
+        "queued_before_book_cancel": 0,
+        "queued_match": 0,
+        "request_after_book_cancel": 0,
+        "construction_rejection_count": 1
+      },
+      {
+        "command": "ProduceReserved",
+        "mode": "new_match_ready",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 1,
+        "request_match": 8,
+        "queued_before_book_cancel": 0,
+        "queued_match": 0,
+        "request_after_book_cancel": 1,
+        "construction_rejection_count": 0
+      },
+      {
+        "command": "ProduceReserved",
+        "mode": "new_match_busy",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 0,
+        "request_match": 0,
+        "queued_before_book_cancel": 1,
+        "queued_match": 8,
+        "request_after_book_cancel": 0,
+        "construction_rejection_count": 0
+      },
+      {
+        "command": "ProduceReserved",
+        "mode": "changed_catalogue",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 0,
+        "request_match": 0,
+        "queued_before_book_cancel": 0,
+        "queued_match": 0,
+        "request_after_book_cancel": 0,
+        "construction_rejection_count": 1
+      }
+    ],
+    "checks": 48,
+    "passed": true,
+    "native_event_executed": false
+  },
+  "source_hash_stable": true
+}

@@ -1,0 +1,312 @@
+{
+  "task": "read-only supplement for audit_render_points",
+  "source_commit": "491bbc72ec67ac70454e9d9a0ef69287eb1ba28f",
+  "created_utc": "2026-11-08T11:06:03.228225+00:00",
+  "requested_ids": [
+    "backend.xbrz",
+    "backend.feedback",
+    "backend.local_ui",
+    "display.BuildTimeTooltip"
+  ],
+  "source_changed": false,
+  "total_render_matrix_changed": false,
+  "validation_policy": "本轮仅补充当前源码审查，不重复运行既有测试。历史测试与本轮独立tooltip fixture失败分别标记，不声称Windows/GPU/游戏通过。",
+  "inventory_corrections": [
+    "xBRZ后端实际支持2/3/4×；当前产品effectiveScale固定最近邻，不启用xBRZ。",
+    "local_ui模式改为当前五类图层；建造提示框和软件光标另有所有者。",
+    "feedback host不包含全部world surface特效算法；范围/波纹/闪光须沿用世界效果行审查。"
+  ],
+  "features": [
+    {
+      "id": "backend.xbrz",
+      "feature": "保留的 xBRZ 缩放后端",
+      "kind": "background_pipeline",
+      "modes": [
+        "当前产品 effectiveRenderScale()=1：最近邻，无 xBRZ 重建",
+        "保留后端 CPU xBRZ 2/3/4×",
+        "保留后端 Vulkan xBRZ 2/3/4×",
+        "分数倍率解析到实际尺寸",
+        "GPU 不可用/失败后的 CPU 回放"
+      ],
+      "entry_points": [
+        "source/assist/source/main.cpp::effectiveRenderScale / publish presentation Profile",
+        "source/assist/source/render_upgrade_host.h::Request / worker / renderer.render",
+        "source/external_reader/source/native_canvas.h::gpuRegion / presentRegion",
+        "source/external_reader/source/xbrz_adapter.h::scale / RegionCache / Cache"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/render_upgrade_host.h",
+        "source/assist/source/render_presentation.h",
+        "source/external_reader/source/render_profile.h",
+        "source/external_reader/source/xbrz_adapter.h",
+        "source/external_reader/source/gpu_xbrz.h",
+        "source/external_reader/source/vulkan_xbrz_backend.h",
+        "source/external_reader/source/vulkan_scene.h",
+        "source/external_reader/source/native_canvas.h",
+        "source/external_reader/source/render_memory_budget.h"
+      ],
+      "findings": [
+        "当前有效缩放固定为最近邻，旧 RenderXbrz/RenderScale 偏好不改变该有效值；不能将后端存在记成用户当前可启用的 xBRZ。库存的 1x–6x 应改为有效原生/最近邻路径及后端 2/3/4×，adapter 与 GPU 都拒绝 >4。",
+        "CPU 转换 PARGB→straight ARGB→未修改上游 argbUnbuffered→PARGB；尺寸、倍率、像素积使用64位验证，单个中间结果上限16M像素。分数比例在整数重建后解析，整数比例直接拷贝行；SSE2运行时准入保留标量回退。",
+        "SHP Cache 比较尺寸/倍率/hash及完整原始颜色向量，hash碰撞不复用异色图；RegionCache以固定256像素源网格和3像素halo缓存，先消费命中再接收缺失，有16M到24M中间像素预算。NativeCanvas修改时分离缓存并按区域失效。",
+        "GPU Stage 校验 job、输出范围不重叠、最多4096 jobs；当前原始图集120MiB，要求shaderFloat64与buffer/push constant limits。preprocess→scale→消费者之间有显式barrier；只有整帧fence成功后commit发布缓存身份。",
+        "FrameResolve 首次 raw xBRZ 进行2/3/4×有限golden自检；错误或不支持转回CPU。缓存以weak shared owner+地址+尺寸区分复用；适配层按线程保留backend，避免失效设备在off/on时反复创建。"
+      ],
+      "evidence": [
+        "source/assist/source/main.cpp:effectiveRenderScale 固定 return 1",
+        "source/external_reader/source/xbrz_adapter.h:scale/factor/RegionCache::sampleRegion/gpuRegion/Cache::get",
+        "source/external_reader/source/native_canvas.h:presentRegion modes1/2/3; repaint cache invalidation",
+        "source/external_reader/source/vulkan_xbrz_backend.h:Stage::initialize/prepare/record/commit/close",
+        "source/external_reader/source/vulkan_scene.h:verifyXbrz/renderFrameImpl/cleanupFailure",
+        "既有测试参考（本轮未运行）：assist/tests/xbrz_scaling.cpp、xbrz_bilinear.cpp、gpu_xbrz.cpp、gpu_xbrz_model_test.py；研究 gpu-xbrz.json 是对应历史提交的软件 Vulkan 证据，不是本轮硬件执行。"
+      ],
+      "validation_gaps": [
+        "本轮只静态审查封装/准入/缓存/提交与回退；未重新证明全部GLSL规则、上游算法或全输入CPU/GPU像素一致。",
+        "当前用户入口不启用xBRZ，不能报启用后的实机行为通过；没有真实Windows/GPU驱动、画质、FPS或设备丢失实测。",
+        "GPU超时隔离可保留未确认完成的资源，不能把停止显示等同立即释放全部GPU内存；每个缓存预算也不是全进程统一内存限额。"
+      ],
+      "lifecycle_review": [
+        "换PID/match：render worker关闭旧Reader、reset renderer/worldPipeline；generation变化使旧结果失效。",
+        "关闭/暂停：主渲染invalidate workers并移除显示组，GPU backend故意跨toggle保留；线程退出时析构。",
+        "Stage::close 在inFlight尚未完成或已abandoned时不销毁潜在仍使用的设备资源；失败不发布pending缓存。"
+      ],
+      "review_risks": [],
+      "audit_status": "source_reviewed",
+      "validation_status": "source_only_no_tests_rerun"
+    },
+    {
+      "id": "backend.feedback",
+      "feature": "主视图原生交互反馈重绘",
+      "kind": "background_pipeline",
+      "modes": [
+        "拖动选择框",
+        "选中对象边角与血条",
+        "普通攻击/移动命令线",
+        "原生放置格和必要效果的精细透出",
+        "原生软件光标镜像",
+        "局部图层合成及失败撤回"
+      ],
+      "entry_points": [
+        "source/assist/source/render_upgrade_host.h::update → feedback::update",
+        "source/assist/source/render_feedback_host.h::update / hide / shutdown",
+        "source/external_reader/source/feedback_selection.h / feedback_orders.h / feedback_cursor.h"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/render_upgrade_host.h",
+        "source/assist/source/render_feedback_host.h",
+        "source/assist/source/render_presentation.h",
+        "source/external_reader/source/native_feedback.h",
+        "source/external_reader/source/feedback_selection.h",
+        "source/external_reader/source/feedback_orders.h",
+        "source/external_reader/source/feedback_cursor.h",
+        "source/external_reader/source/feedback_scene.h",
+        "source/shared/source/latest_worker.h"
+      ],
+      "findings": [
+        "原库存把范围圈、波纹/闪光混入该host；当前feedback::update实际负责选择/普通命令/放置透出/光标，并接入独立local UI层。范围/波纹/闪光是world surface/effects的职责，交由既有RenderParticles/RenderLasers及世界渲染审查，不把此处枚举冒充全部特效重画。",
+        "绑定scene的sourceFrame，fresh前后采样验证scenario/House/frame/projection；selection向量最多8192项、去重、对象ID/owner/state二次复核，几何取已呈现sprite边界而不重复解码。Canvas最多32M像素、line先裁切再有界栅格化。",
+        "命令线只读取当前原生timer/选择/target/destination及native色表，包含队列末端；不构造Event或修改选择。Cell端点使用level/bridge的功能性投影，不宣称所有坡面/炮口像素一致。",
+        "FoundationStencil读取实时建筑/复制放置数据，按SHP非透明span保留原生合法性颜色；不猜Cell放置是否合法。普通120项/复制50项边界、sentinel、地图cell身份、帧前后state和run数量均校验。",
+        "NativeFailureGuard记住旧透出区域的风险；相机/帧不匹配即清除cutouts。主host失败后最多保留带自身相机的worldOnly结果，去掉旧反馈和原生洞，失败不会刷新保留deadline。",
+        "光标只在系统和独立Cursor窗口都未显示、当前refCount>=0时复制被覆盖部分；鼠标状态和色表两次核验，最多2048次/1MiB读取，缓存按frameHeader和PARGB身份核验，失败不隐藏原生光标。整个feedback路径不安装游戏Hook、不调用游戏逻辑或吞鼠标消息。"
+      ],
+      "evidence": [
+        "source/assist/source/render_feedback_host.h:FrameScope/NativeFailureGuard/update/hide",
+        "source/external_reader/source/feedback_selection.h:selected/selectionPrimitives/cursorRect",
+        "source/external_reader/source/feedback_orders.h:actionLines/FoundationStencil::capture",
+        "source/external_reader/source/feedback_cursor.h:CursorCache::capture",
+        "source/assist/source/render_upgrade_host.h:feedbackReady/worldOnly/replaceGroupAt",
+        "既有测试参考（本轮未运行）：assist/tests/render_feedback_host.cpp、native_feedback.cpp、native_feedback_scene.cpp、native_feedback_windows.cpp；tools/validate_native_feedback.py。"
+      ],
+      "validation_gaps": [
+        "没有实际Windows合成/缩放/DPI/鼠标切换/连续滚屏画面验证；源码边界不证明无闪烁或逐像素原生一致。",
+        "范围圈、波纹/闪光的完整算法不在本补查的feedback host范围；需合并已有世界效果行而非遗漏或重复计为通过。",
+        "只读结构验证遇到MOD自定义字段/资源可能撤回反馈；未做全部MOD布局兼容验证。"
+      ],
+      "lifecycle_review": [
+        "切PID/match清cursor与foundation缓存；context/camera变化清selection像素和cutouts。",
+        "hide立即invalidate local UI worker并移除整个原子组，清旧primitive/stroke/cursor/stencil/cutout；shutdown随后join local UI worker。",
+        "主渲染stop/suspend丢弃组lease并invalidate采样/渲染generation；过期或错世界结果不会重新发布旧交互层。"
+      ],
+      "review_risks": [],
+      "audit_status": "source_reviewed",
+      "validation_status": "source_only_no_tests_rerun"
+    },
+    {
+      "id": "backend.local_ui",
+      "feature": "原生值驱动的独立本地 UI 层",
+      "kind": "background_pipeline",
+      "modes": [
+        "消息/编辑文本",
+        "任务/超武/停电计时",
+        "主要工厂/电力状态/军衔/组号/维修/pips",
+        "集结与规划线",
+        "规划高亮"
+      ],
+      "entry_points": [
+        "source/assist/source/render_feedback_host.h::localUI.submit / visible",
+        "source/external_reader/source/local_ui_task.h::Task::run / visible",
+        "source/external_reader/source/local_ui_renderer.h::Engine::capture"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/render_feedback_host.h",
+        "source/assist/source/render_upgrade_host.h",
+        "source/external_reader/source/local_ui_task.h",
+        "source/external_reader/source/local_ui_renderer.h",
+        "source/external_reader/source/native_local_ui.h",
+        "source/external_reader/source/native_ui_font.h",
+        "source/external_reader/source/feedback_selection.h",
+        "source/external_reader/source/feedback_orders.h",
+        "source/shared/source/latest_worker.h"
+      ],
+      "findings": [
+        "修正库存模式：local_ui当前是五组独立图层，并非建造侧栏或native tooltip实现；软件光标由feedback cursor负责，BuildTimeTooltip由Runtime共享槽负责。",
+        "Task拥有私有ReadSession/Engine和Latest单运行+可替换pending快照；字体发现、CSF查表、布局、栅格化在worker运行。只提交必要的可呈现对象身份，源world token与fresh UI读取分开。",
+        "Task拒绝不完整producer、world读不稳定、viewport前后变化或>150ms结果；visible还核验source serial/frame、profile、PID/match/generation、尺寸和context token。每层primitive相同复用共享像素，避免跨角落大透明纹理。",
+        "Engine对六类producer独立事务采集，任何producer失败令complete=false，Task不发布半套结果；总primitive上限262144、对象8192。物理屏幕消息/计时与逻辑世界对象分别投影。",
+        "BitmapFont读取游戏当前FNT，验证字段/lookup范围、前后字体identity并缓存真实glyph；空格/缺字有明确处理，glyph预算64MiB及16384项。CSF有界读取及表身份核验，长文本上限4096 UTF-16单位；不捆绑字体。",
+        "当前代码已经有战役暂停且全满SW计时隐藏、power/drain文字、军衔/组号/维修/pips、规划线与高亮；不能直接复用早期Hotfix14的“未实现”描述。所有绘制产物为自己的PARGB primitives，无原生framebuffer或宽矩形透出，也不推进原生timer/RNG。"
+      ],
+      "evidence": [
+        "source/external_reader/source/local_ui_task.h:Task::run/submit/visible/invalidate/shutdown",
+        "source/external_reader/source/local_ui_renderer.h:Engine::labels/timers/buildings/statuses/pips/paths/capture; LayerCount=5",
+        "source/external_reader/source/native_ui_font.h:BitmapFont::begin/stable/glyph/Strings::lookup",
+        "source/shared/source/latest_worker.h:epoch invalidation / shutdown join",
+        "既有测试参考（本轮未运行）：assist/tests/native_local_ui.cpp、local_ui_native.py、render_feedback_host.cpp；研究2026-10-30-independent-local-ui-hotfix14.md仅作为历史来源与限制对照。"
+      ],
+      "validation_gaps": [
+        "未实机验证中文/缺字、第三方聊天UI、特殊排版、缩放、所有SHP/pips和规划路径的像素一致性。",
+        "本补查核对Engine调用与发布边界，未重做native_planning、UnitUIStencil、ground目标解析等已独立维护算法的全体原生反汇编。",
+        "Latest invalidate使旧任务结果不能发布，但不会抢占正在进行的读取/绘制；shutdown需要等待worker结束，未测真实关窗延迟。"
+      ],
+      "lifecycle_review": [
+        "换PID/match由worker关闭旧reader、reset Engine字体/字符串/SHP/pips缓存，并清旧primitive/images。",
+        "同局profile/generation/view/context变化靠visible的完整identity门控拒绝旧结果；过期150ms不再显示。",
+        "feedback.hide触发worker epoch失效，删除所有local UI层；shutdown停止新提交、清pending/latest并join，未跨UI线程直接reset worker的reader/cache。"
+      ],
+      "review_risks": [],
+      "audit_status": "source_reviewed",
+      "validation_status": "source_only_no_tests_rerun"
+    },
+    {
+      "id": "display.BuildTimeTooltip",
+      "feature": "原生建造栏提示框显示建造时间",
+      "kind": "current_user_feature",
+      "modes": [
+        "关闭/开启",
+        "建筑/防御栏目",
+        "总时长/剩余时间/就绪/暂停/资金不足",
+        "单机/联机名义速率与自定义单机FPS",
+        "与Cursor共享文字槽并独立释放"
+      ],
+      "entry_points": [
+        "source/suite/source/display_settings.h::BuildTimeTooltip → control9327",
+        "source/suite/source/video_settings_ui.h / unit_monitor display forwarding → Assist WM_COMMAND",
+        "source/assist/source/extra_settings_io.h::syncAdditional buildTimeTooltip",
+        "source/assist/source/build_time_tooltip.h::buildTimeTooltipTick",
+        "source/game_runtime/source/native_tooltip_runtime.h::entry → GuardedBuildTimeTooltip → AssistBuildTimeTooltip"
+      ],
+      "paths_reviewed": [
+        "source/suite/source/display_settings.h",
+        "source/suite/source/video_settings_ui.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/extra_settings_io.h",
+        "source/assist/source/runtime_feature_demand.h",
+        "source/assist/source/build_time_tooltip.h",
+        "source/assist/source/build_time_rate.h",
+        "source/assist/source/single_player_fps_runtime.h",
+        "source/assist/source/guard.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/game_runtime/source/native_tooltip_runtime.h",
+        "source/shared/source/native_tooltip_client.h"
+      ],
+      "findings": [
+        "设置经共享spec的0/1范围及9327 handler，写Shared后wakeGame；该开关独立构成Runtime需求。加载偏好要求explicitPatchPreferences，默认关闭。",
+        "安装核验TimeToBuild及相关调用/数据访问的五处特征；policy revision变化先退休旧claim。文字slot7F74D8由Runtime共管；原生文本先执行，只有有效文字且buildTimeWanted才追加，保留原66-wchar缓冲区，不原地扩展。",
+        "回调限前台、heartbeat<=500ms、当前House/match、building/defense tab0/1、有效cameo/type。仅在栈上造已验证ABI的scratch receiver读取Type/Owner后调用TimeToBuild；不注册或tick游戏对象。SEH边界保留原始文本、释放Capture、恢复LastError和FP状态，单局失败锁存直到关闭或换match。",
+        "原生54格rate限定1..255，总时长54*rate+1；剩余用当前step期限与stored rate，不把电力变化误作重置当前step。就绪/暂停/资金状态分支独立。秒数分母来自已支持session的速度上限；真正生效的自定义单机FPS优先；未知速率显示帧数。",
+        "从原文最多读取180个UTF-16单位，过长或不可读返回原文；输出静态256单位并始终NUL终止，结尾复核House/frame/cameo类型。",
+        "存在一个已确认源码边界：count==75直接返回原文；同仓库sidebar hasCameo/inventory/scan明确接受count<=75，添加仅在添加前count>=75拒绝。因此满容量栏目不会附加时间，建议列低优先级边界问题；尚未通过实际游戏或生产callback夹具复现。"
+      ],
+      "evidence": [
+        "source/assist/source/main.cpp:9327 / ApplyDisplaySetting; extra_settings_io.h:297; runtimeFeatureDemand",
+        "source/assist/source/build_time_tooltip.h:buildTimeTooltipCompatible/Tick/AssistBuildTimeTooltip/restoreBuildTimeTooltip",
+        "source/game_runtime/source/native_tooltip_runtime.h:NativeTooltipBuildTime/maintain/entry/layoutEntry",
+        "source/assist/source/bridge.cpp:suspendedOptions/reset/AssistFault/featureRestorationComplete",
+        "source/assist/source/sidebar.h:hasCameo/techCameoInventory count<=75 对照 build_time_tooltip.h count>=75",
+        "既有参考（本轮未重复运行）：assist/tests/build_time_rate.cpp；research/evidence/build-time-speed-ceiling.json；hook-recovery-policy生产函数夹具历史证据。",
+        "本次既有独立 cursor_tooltip_windows.cpp 构建尝试链接失败 _RuntimeScopedCall，详见 audit-followup/tooltip-fixture-build-attempt.json；它没有执行，不计Windows通过。"
+      ],
+      "validation_gaps": [
+        "没有真实Windows native tooltip/布局、联机或MOD TimeToBuild兼容测试；部分签名识别不能证明第三方重写只读取scratch receiver已填写字段。",
+        "满75项的功能影响来自明确静态分支与本仓库容量规则，不是本轮实机观察；未改源码，建议后续最小边界夹具后决定改为count>75。",
+        "独立Win32 tooltip fixture链接失败不能混作生产集成构建失败，也不能计作已通过；统一集成构建由root单独记录。"
+      ],
+      "lifecycle_review": [
+        "关闭时仅释放buildTimeWanted claim；Cursor仍需提示框时文字和layout槽可以保留，这是正确共享所有权。",
+        "失焦只停止callback工作，保留选中槽；显式关闭在suspendedOptions仍可立即退休，不依赖回到正常游戏命令路径。",
+        "停止、换局reset、AssistFault均调用restore；恢复失败保留active并报-2，清理判断排除已释放Assist claim的Cursor专有layout槽，避免再次引入共享槽清理死锁。",
+        "策略变化先用旧所有权日志恢复；槽写入后flush/protection恢复失败仍保留journal，foreign slot不覆盖。"
+      ],
+      "review_risks": [
+        {
+          "id": "R-TOOLTIP-075",
+          "severity": "low",
+          "status": "source_boundary_confirmed_runtime_unverified",
+          "source": "source/assist/source/build_time_tooltip.h:63",
+          "issue": "满75项侧栏被提前排除，时间附加缺失",
+          "evidence_basis": "静态分支+同仓库侧栏容量边界；未执行新测试",
+          "source_changed": false
+        }
+      ],
+      "audit_status": "source_reviewed_with_boundary_finding",
+      "validation_status": "source_only_no_tests_rerun"
+    }
+  ],
+  "source_sha256": {
+    "source/assist/source/bridge.cpp": "efc1cd5d34d550a8d700bc26cdb612c8e2c4498817ec775e6ea4010d0ec743cd",
+    "source/assist/source/build_time_rate.h": "755835e4e53fb189900651c1b588739009f5617a9d9027aa323546949722acc7",
+    "source/assist/source/build_time_tooltip.h": "d2ba9cf672f6ee9051fa8c6eb017865aa4a5a9a84fbb6487b8ba11f0e05f5ab6",
+    "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+    "source/assist/source/guard.cpp": "eeac4d1b37c4ae9a4b8d4a5e3dc3469a6518bb451ce5275b281f5dd4e5af2b9a",
+    "source/assist/source/main.cpp": "dec08343c8dc3287aa7f789192064bdb9db0dbbbf2818bffad033880c2704654",
+    "source/assist/source/render_feedback_host.h": "8c83770955288e41b12d535c2fe43225031fde9460b0fe89fc28dff7a2240566",
+    "source/assist/source/render_presentation.h": "c40b7c7e82e830c30adea755db0dc28f9f2e145ad120bc2c0b4cecb584ec364a",
+    "source/assist/source/render_upgrade_host.h": "87380c024279e6b7ecd8c06650a7f21b4c7ee6738d2acc784ed863ac74e89534",
+    "source/assist/source/runtime_feature_demand.h": "f07e599773d3e33bad81e7ba68ab405aef7725e604a1763c3783a459ece08bf9",
+    "source/assist/source/single_player_fps_runtime.h": "3e4d867c0586b96bdb59eae730784d90607a9ea86a453411fd40d6ac16a8f39d",
+    "source/assist/source/tactical_controls.h": "77bebc821071ec7811e4311bcd36f1bed26530c4e5a9c2553f039fe07f86f0f5",
+    "source/external_reader/source/feedback_cursor.h": "961eac0289abc7bc0cd70ba3e2fe0233611eb2ee312f9a76ca3dff84777d5fe6",
+    "source/external_reader/source/feedback_orders.h": "9e584d2286cff9f7735eff8c705df4c11f08e534db4ef492e36e1474d5165f6f",
+    "source/external_reader/source/feedback_scene.h": "a262f870df80aa38d36677497c7b27d2b7174b6aaa2c98ca59424f2911ac68cd",
+    "source/external_reader/source/feedback_selection.h": "6ce5bf8230b72a61a9711c177a2ad0cba3003bf76caef615d3b0c9c9595b0ce8",
+    "source/external_reader/source/gpu_xbrz.h": "a7ca5c282d234fbcc408ca55d65890fd2f457b65cf5f0e367f6353afcd87db47",
+    "source/external_reader/source/local_ui_renderer.h": "b798a810199e3f86ffba279fc5c6077789190906c9037df886a868aec36d3eb0",
+    "source/external_reader/source/local_ui_task.h": "896fc2b23f7c905c78b65361cac38a79027bd791edb8740ce9dcdb9481ab38c3",
+    "source/external_reader/source/native_canvas.h": "1f01eeb7fbc19d67e2ad85e815346a97b950223cb997bb78d85690378ee8d4d0",
+    "source/external_reader/source/native_feedback.h": "be96aa6c0968935446e99b7bc2f7ad689e3b11bcecbcf1d2212e4242ff179138",
+    "source/external_reader/source/native_local_ui.h": "bf333f943949c70fa6557add72c8388de2a8fd36aa1399c862512ca3805a1235",
+    "source/external_reader/source/native_ui_font.h": "1aed9dfd081138b60c63e28621ebb5c590f44cdb2ca4bcab9cee465e573b8361",
+    "source/external_reader/source/render_memory_budget.h": "2a817b23799bb40b90d08cbeba308f5941ab456386e3d1d2083f3819b752fc55",
+    "source/external_reader/source/render_profile.h": "2c747d95c994b1fb8a2dc4a2504c7c8799865eff5a81e9cbc2f21e142ae52c26",
+    "source/external_reader/source/vulkan_scene.h": "5562f033b4a706730fca5ea0051176bbeb7f4c7c43b6e39e522746ba126351ef",
+    "source/external_reader/source/vulkan_xbrz_backend.h": "2f25e2aa43dff249873cc65285d111b73d1f21ac54c715fcfb56c6c7c01498c2",
+    "source/external_reader/source/xbrz_adapter.h": "5d9f9b3d41434faac8059131aeacc7fd7572136f247caa01eebad08193f7a498",
+    "source/game_runtime/source/native_tooltip_runtime.h": "340466055b8fbdcad51d89be4e2d0c9d386327186baaf470b75baba8c86ce261",
+    "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81",
+    "source/shared/source/native_tooltip_client.h": "353edd80cf5655a17df095f838a579d3c68c7c4bf2b3d7972cec81278042da28",
+    "source/suite/source/display_settings.h": "a26736afe50c92049789f77340695d5ffbd56f5b0f3fb8d37de3a2b1d2673772",
+    "source/suite/source/video_settings_ui.h": "a4518bbd8ac31e70c46809015e598eaf7d91ce460bf0f71c7e53547cd0c78b7f"
+  },
+  "research_consulted": [
+    "source/research/INDEX.md",
+    "source/research/2026-11-05-hook-cleanup-shared-tooltip.md",
+    "source/research/2026-10-30-independent-local-ui-hotfix14.md",
+    "source/research/2026-10-28-xbrz-integration.md",
+    "source/research/2026-10-29-gpu-xbrz.md",
+    "source/research/2026-11-01-build-time-speed-ceiling.md",
+    "read-only SQLite notes: 2026-10-29-gpu-xbrz; 2026-10-31-build-time-and-render-hotfix27; local UI/native feedback matches; no writeback/new engine probing"
+  ]
+}

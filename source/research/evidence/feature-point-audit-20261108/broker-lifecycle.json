@@ -1,0 +1,53 @@
+{
+  "schema": "ra2.broker-lifecycle-lock-audit.v1",
+  "pass": true,
+  "result": {
+    "checks": 8,
+    "failures": 0,
+    "healthy_pulses": 100,
+    "healthy_positive_waits": 0,
+    "recovery_virtual_ms": 4980,
+    "host_mutex_busy_probes": 2,
+    "host_mutex_free_probes": 0,
+    "startup_timeout_virtual_ms": 3000,
+    "quiet_interval_pulses": 249,
+    "quiet_interval_positive_waits": 0
+  },
+  "build_command": [
+    "c++",
+    "-std=c++17",
+    "-O0",
+    "-pthread",
+    "-D_WIN64",
+    "-I/workspace/scratch/40121bc881b8/audit-followup/broker-lifecycle/include",
+    "-I/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests",
+    "-I/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source",
+    "-DBROKER_CLIENT=\"/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source/runtime_broker_client.h\"",
+    "-DBROKER_HOST=\"/workspace/scratch/40121bc881b8/audit-followup/broker-lifecycle/production-host.inc\"",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/runtime_broker_lifecycle_audit.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/audit-followup/broker-lifecycle/broker-lifecycle-audit"
+  ],
+  "build_exit_code": 0,
+  "run_exit_code": 0,
+  "source_sha256": {
+    "source/shared/source/runtime_broker_client.h": "ace2e91919f4bbc257bb393268cc3686883f28f71b6cfb41b7af25fcd24d4af2",
+    "source/shared/source/host_game_input.h": "f16067dab470513007129666ccd8a3a37d61db7738fabd46cd5f6cefa3e9928b",
+    "source/shared/source/runtime_broker_protocol.h": "535290536bc6b3eabbadd4ba08d294ef1ff2657a27b0773ebbaa5fe685869b6f",
+    "source/assist/tests/runtime_broker_retirement.cpp": "bdea23ddef98a357fb19fd82a6038252d651b71883ce9d86c8fa979c134cde76",
+    "source/assist/tests/runtime_broker_retirement_fixture.h": "4b00d955b65c10cdb31d18940213cef0a10f30809395e78725f4fdd5500750f1",
+    "source/assist/tests/runtime_broker_lifecycle_audit.cpp": "8180add53f2b0012f2253e6253fa96a7de36eae295b89c2c9f95f7410b59937c",
+    "source/assist/tests/runtime_broker_lifecycle_audit.py": "30fa8c96d19cfdd2b9e4a2d08c2038683ffad88d2d85c202b9058baeb67cfdb1"
+  },
+  "generated_production_routes_sha256": "cad4cd29b4c654ec0ae2e14733c0719ed86ce13f5ae7a293a5f422b230c9709f",
+  "executable_sha256": "096fdd8c787d9c1ff63f87480ee76fa5acfe6484a247377ff6b01190ae7e4904",
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "production_changed": false,
+  "limits": [
+    "Win32 process/IPC waits use deterministic virtual time; 4980ms is supplied test latency, not a real elapsed-time or FPS measurement.",
+    "A second actual C++ thread probes the production host mutex at each wait boundary.",
+    "This diagnoses lifecycle serialization; it does not prove ordinary healthy game pulses stall or deadlock."
+  ]
+}

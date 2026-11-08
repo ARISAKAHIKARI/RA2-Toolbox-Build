@@ -1,0 +1,1150 @@
+{
+  "baseline": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+  "scope": "控制台、保存、进程选择、输入/Host/Broker共享基础设施",
+  "counting": "这是共享功能/机制清单，可能与各产品模块条目的支撑路径重叠，不能与其他矩阵相加宣称独立产品功能总数。",
+  "features": [
+    {
+      "id": "host.bootstrap",
+      "feature": "首次启动建立默认配置",
+      "modes": [
+        "新目录",
+        "已有配置",
+        "写入失败"
+      ],
+      "entry_points": [
+        "source/shared/source/initial_profiles.h::initialize",
+        "source/suite/source/modern_console_main.h::prepareSettings/startServices"
+      ],
+      "paths_reviewed": [
+        "CREATE_NEW 保留既有用户配置；完整写入后 flush；失败删除本次未写完的新文件；后台初始化结果到达后启动服务"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.single_instance",
+      "feature": "单实例与再次打开窗口",
+      "modes": [
+        "首次启动",
+        "重复启动"
+      ],
+      "entry_points": [
+        "source/suite/source/modern_console_main.h::wWinMain"
+      ],
+      "paths_reviewed": [
+        "命名互斥实例；已存在时恢复既有窗口；启动失败清理句柄"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.module_enable",
+      "feature": "光标与单位监视模块开关",
+      "modes": [
+        "关闭",
+        "开启",
+        "启动中",
+        "服务意外退出"
+      ],
+      "entry_points": [
+        "source/suite/source/modern_console_main.h::onMessage/runModule/PaneReady/BackendStopped"
+      ],
+      "paths_reviewed": [
+        "模块索引边界；启停请求发到对应 owner 线程；实际运行状态与保存状态发布；退出过程中拒绝新操作"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.navigation",
+      "feature": "设置分类与子页面切换",
+      "modes": [
+        "六类设置",
+        "视频子页",
+        "会话刷新"
+      ],
+      "entry_points": [
+        "source/suite/source/modern_console_main.h::selectPage/onMessage",
+        "source/suite/source/console_adapter.h::navigate",
+        "source/suite/frontend/app.js"
+      ],
+      "paths_reviewed": [
+        "分类边界校验；待处理命令遵守 FIFO；页面 generation 变化使旧控件动作失效"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.bool_input",
+      "feature": "复选框操作",
+      "modes": [
+        "开启",
+        "关闭",
+        "不可用"
+      ],
+      "entry_points": [
+        "source/suite/source/console_model.h::parseMessage",
+        "source/suite/source/console_adapter.h::apply",
+        "source/suite/frontend/app.js"
+      ],
+      "paths_reviewed": [
+        "typed action 校验；确认控件存在、种类、可见及启用状态后在 owner 线程调用；ack 关联序列"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.number_input",
+      "feature": "数字设置编辑",
+      "modes": [
+        "整数",
+        "滑条",
+        "范围边界",
+        "未提交草稿"
+      ],
+      "entry_points": [
+        "source/suite/source/console_model.h",
+        "source/suite/source/console_adapter.h",
+        "source/suite/frontend/app.js"
+      ],
+      "paths_reviewed": [
+        "有界数字解析与安全整数；按原生控件边界执行；草稿保留到 ack/revision 确认，接受后端钳位结果"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.text_input",
+      "feature": "文本设置编辑",
+      "modes": [
+        "普通文本",
+        "长度上限",
+        "未提交草稿"
+      ],
+      "entry_points": [
+        "source/suite/source/console_model.h",
+        "source/suite/source/console_adapter.h",
+        "source/suite/frontend/app.js"
+      ],
+      "paths_reviewed": [
+        "严格 UTF-8 与 NUL/大小限制；不允许重复 JSON 键；只写有效可编辑控件；旧 generation 不应用"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.choice_input",
+      "feature": "列表与下拉项选择",
+      "modes": [
+        "单选列表",
+        "组合框",
+        "选项变化"
+      ],
+      "entry_points": [
+        "source/suite/source/console_model.h",
+        "source/suite/source/console_adapter.h",
+        "source/suite/frontend/app.js"
+      ],
+      "paths_reviewed": [
+        "索引按当前选项验证；控件或选项身份变化更新 token；旧选择请求拒绝而非套用新索引"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.hotkey_capture",
+      "feature": "快捷键编辑与捕获",
+      "modes": [
+        "按下",
+        "松开",
+        "按住",
+        "双击",
+        "清除"
+      ],
+      "entry_points": [
+        "source/suite/frontend/app.js",
+        "source/suite/source/console_adapter.h",
+        "source/shared/source/key_gesture.h"
+      ],
+      "paths_reviewed": [
+        "控件值为有界编码；输入时捕获修饰键与动作模式；后端校验按键与手势格式；运行时另检验当前上下文"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.immediate_action",
+      "feature": "立即执行按钮与新鲜度",
+      "modes": [
+        "立即动作",
+        "延迟到达",
+        "过期动作"
+      ],
+      "entry_points": [
+        "source/suite/source/console_model.h::immediateFresh",
+        "source/suite/source/console_adapter.h::apply"
+      ],
+      "paths_reviewed": [
+        "单调时间与 UTC 来源年龄均限150ms；owner 线程执行前重新校验；过期请求负确认"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.search_groups",
+      "feature": "当前设置搜索与分组折叠",
+      "modes": [
+        "筛选",
+        "折叠/展开",
+        "含错误分组"
+      ],
+      "entry_points": [
+        "source/suite/frontend/app.js"
+      ],
+      "paths_reviewed": [
+        "逻辑控件行分组；搜索只处理当前快照；含运行/确认错误的分组展开；重绘保留焦点与未提交草稿"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.virtualized_controls",
+      "feature": "长设置页渲染",
+      "modes": [
+        "普通分组",
+        "长列表延迟呈现"
+      ],
+      "entry_points": [
+        "source/suite/frontend/app.js"
+      ],
+      "paths_reviewed": [
+        "大组分片与 IntersectionObserver；保留编辑态，未显示控件不伪造后端操作"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.diagnostic_view",
+      "feature": "控制台诊断筛选与过期状态",
+      "modes": [
+        "筛选",
+        "文本检索",
+        "数据过期"
+      ],
+      "entry_points": [
+        "source/suite/frontend/app.js",
+        "source/suite/source/console_model.h",
+        "source/suite/source/console_adapter.h"
+      ],
+      "paths_reviewed": [
+        "诊断按来源快照呈现；超过5秒标记来源过期；错误状态不被待确认草稿覆盖"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.action_queue",
+      "feature": "前后端命令排队与确认",
+      "modes": [
+        "正常",
+        "队列满",
+        "页面更换",
+        "owner 销毁"
+      ],
+      "entry_points": [
+        "source/suite/source/console_adapter.h",
+        "source/suite/source/console_model.h",
+        "source/suite/source/modern_console_main.h::publishModels"
+      ],
+      "paths_reviewed": [
+        "每端口256条、全局512个确认预留；每次最多16动作、32确认；销毁时明确否定剩余动作；不静默覆盖命令"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.snapshots",
+      "feature": "设置快照一致性",
+      "modes": [
+        "增量更新",
+        "快速切页",
+        "浏览器重建"
+      ],
+      "entry_points": [
+        "source/suite/source/console_model.h::LatestSnapshotSlot",
+        "source/suite/source/console_adapter.h",
+        "source/suite/frontend/app.js",
+        "source/suite/source/modern_console_main.h"
+      ],
+      "paths_reviewed": [
+        "generation/revision 单调；最新快照可替换，动作不可替换；ack/token 绑定实际页面与控件；session 更新使旧请求失效"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.webview_document",
+      "feature": "内嵌控制台消息边界",
+      "modes": [
+        "初次加载",
+        "重建",
+        "异常导航"
+      ],
+      "entry_points": [
+        "source/suite/source/web_console.cpp"
+      ],
+      "paths_reviewed": [
+        "只接受已批准内嵌文档 navigation ID 与 URI；外部导航、子框架、下载、弹窗及权限被拒；完成导航前消息受限排队"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.webview_failure",
+      "feature": "控制台加载失败恢复",
+      "modes": [
+        "缺少运行库",
+        "加载失败",
+        "重试"
+      ],
+      "entry_points": [
+        "source/suite/source/web_console.cpp",
+        "source/suite/source/modern_console_main.h::onError/createBrowser"
+      ],
+      "paths_reviewed": [
+        "UI 显示具体错误与重试入口；关闭旧 browser/callback 后创建新实例；弱生命周期状态阻止关闭后回调访问"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.ini_single",
+      "feature": "普通设置保存",
+      "modes": [
+        "新增/覆盖键",
+        "删除键",
+        "删除节",
+        "flush"
+      ],
+      "entry_points": [
+        "source/shared/source/async_ini_store.h"
+      ],
+      "paths_reviewed": [
+        "复制入队参数；单写线程；同键折叠受 section/global barrier 约束；缓存呈现期望状态；失败保留重试状态"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.ini_section",
+      "feature": "整节设置保存",
+      "modes": [
+        "完整替换",
+        "随后单键修改",
+        "同节连续替换"
+      ],
+      "entry_points": [
+        "source/shared/source/async_ini_store.h",
+        "source/assist/source/main.cpp::writeSection/save"
+      ],
+      "paths_reviewed": [
+        "拥有 MULTI_SZ 数据生命周期；整节替换和后续单键按顺序合成；与异步 store 错误/关闭流程贯通；pre.5 修复代码复核"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.ini_failures",
+      "feature": "保存失败提示与重试",
+      "modes": [
+        "本地 OS 失败",
+        "队列/缓存拒绝",
+        "重试",
+        "退出中"
+      ],
+      "entry_points": [
+        "source/shared/source/async_ini_store.h",
+        "source/suite/source/modern_console_main.h::storageFailureText/retrySettings"
+      ],
+      "paths_reviewed": [
+        "错误包含路径、节、键、来源和 Win32 码；忙时不重复入队；retry seq 去重；清除失败以真实保存成功为准"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.close_drafts",
+      "feature": "关闭前处理未提交设置",
+      "modes": [
+        "无草稿",
+        "有草稿",
+        "前端无响应",
+        "再次关闭"
+      ],
+      "entry_points": [
+        "source/suite/source/modern_console_main.h::requestClose/onMessage",
+        "source/suite/frontend/app.js"
+      ],
+      "paths_reviewed": [
+        "先查询前端草稿并绑定 close sequence；用户确认后准备 owner 保存；确认取消后维持服务；前端超时不自动丢草稿"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.close_saves",
+      "feature": "关闭前完成保存",
+      "modes": [
+        "正常保存",
+        "保存失败",
+        "队列繁忙",
+        "用户再次关闭"
+      ],
+      "entry_points": [
+        "source/suite/source/modern_console_main.h::beginShutdown/prepareCloseSaves/startCleanup",
+        "source/shared/source/async_ini_store.h"
+      ],
+      "paths_reviewed": [
+        "三个 owner 完成准备且 store idle、无失败才进入清理；保存阶段无强制退出截止；只经明确用户决定才跳过失败保存"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.close_cleanup",
+      "feature": "关闭时清理模块和后台工作",
+      "modes": [
+        "正常完成",
+        "owner 卡住",
+        "消息循环异常退出"
+      ],
+      "entry_points": [
+        "source/suite/source/modern_console_main.h",
+        "source/shared/source/bounded_shutdown.h"
+      ],
+      "paths_reviewed": [
+        "2秒 watchdog 仅在用户已同意关闭且进入清理后启用；仅终止工具箱进程；保留 backend 线程与资源所有权直到停止"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.process_discovery",
+      "feature": "自动发现游戏进程",
+      "modes": [
+        "已知文件名",
+        "描述关键字",
+        "记住的程序"
+      ],
+      "entry_points": [
+        "source/external_reader/source/process_discovery.h",
+        "source/external_reader/source/process_target_selection.h"
+      ],
+      "paths_reviewed": [
+        "只读进程路径/描述匹配；窗口与线程/进程交叉验证；创建时间防 PID 复用；描述缓存与异步磁盘查询有容量/TTL/serial 边界"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.process_search",
+      "feature": "搜索与刷新候选进程",
+      "modes": [
+        "筛选",
+        "刷新",
+        "目标退出",
+        "枚举失败"
+      ],
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h::refresh/collect"
+      ],
+      "paths_reviewed": [
+        "枚举后台任务带 generation；结果回 owner 后替换；刷新保留 PID+creation 身份而非列表索引；失败插入不造成索引错位"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.process_keywords",
+      "feature": "修改自动识别关键字",
+      "modes": [
+        "保存成功",
+        "保存失败"
+      ],
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h",
+        "source/external_reader/source/process_target_selection.h::publish"
+      ],
+      "paths_reviewed": [
+        "完整节数据后执行保存，成功才发布新 policy；失败保留旧策略并在进程设置页报告错误"
+      ],
+      "findings": [
+        "该独立入口故意同步保存并持 policy mutex；不能列为异步保存覆盖项。实际磁盘延迟未测量。"
+      ],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.process_remember",
+      "feature": "记住或移除程序规则",
+      "modes": [
+        "添加运行程序",
+        "添加路径",
+        "移除",
+        "重复规则"
+      ],
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h",
+        "source/external_reader/source/process_target_selection.h"
+      ],
+      "paths_reviewed": [
+        "规则总量与路径格式有界；描述缓存不持锁做磁盘访问；保存失败不替换策略；删除按当前规则字符串重新解析"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.process_manual",
+      "feature": "手动指定或清除连接目标",
+      "modes": [
+        "指定进程",
+        "清除指定",
+        "目标重启"
+      ],
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h",
+        "source/external_reader/source/process_target_selection.h::preferredAlive"
+      ],
+      "paths_reviewed": [
+        "选择绑定 PID+creation，不持久化 PID；旧进程退出后不自动追随复用 PID；指定仅影响优先目标，不阻断其他合法枚举"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.process_status",
+      "feature": "连接状态与操作可用性提示",
+      "modes": [
+        "未连接",
+        "只读",
+        "等待 Runtime",
+        "可发送命令"
+      ],
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h"
+      ],
+      "paths_reviewed": [
+        "定时刷新，区分只读发现与实际 Runtime 准备；无有效身份不把列表选择视为已连接"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.input_binding",
+      "feature": "运行期按键手势匹配",
+      "modes": [
+        "按下",
+        "松开",
+        "按住",
+        "双击按住"
+      ],
+      "entry_points": [
+        "source/shared/source/key_gesture.h",
+        "source/shared/source/host_game_input.h::keySnapshot/heldBinding"
+      ],
+      "paths_reviewed": [
+        "输入按当前 physical 状态/serial 取样；双击时间有界；修饰键释放与上下文丢失清除资格；共享样本不消费原生输入"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.pointer_capture",
+      "feature": "鼠标快捷操作采样",
+      "modes": [
+        "中键",
+        "侧键",
+        "左键",
+        "右键"
+      ],
+      "entry_points": [
+        "source/shared/source/host_game_input.h::pollPointer/takePointer/setPointerContext"
+      ],
+      "paths_reviewed": [
+        "采样产生时记录 match、视口 generation、位置、尺寸、keys 与取消 serial；上下文150ms过期；队列128满时明确计数"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.pointer_cancel",
+      "feature": "视口和手动输入取消",
+      "modes": [
+        "右键拖动",
+        "切前台",
+        "最小化",
+        "比赛/视口切换"
+      ],
+      "entry_points": [
+        "source/shared/source/host_game_input.h::pollPointer/disarmPointer"
+      ],
+      "paths_reviewed": [
+        "右键按下先取消旧捕获，只有非拖动松开才发跟随动作；失焦/最小化/换上下文清空队列；不吞掉游戏原生按键"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.click_delivery",
+      "feature": "合成点击安全配对",
+      "modes": [
+        "完整点击",
+        "只发送按下",
+        "窗口改变"
+      ],
+      "entry_points": [
+        "source/shared/source/host_game_input.h::clickPair"
+      ],
+      "paths_reviewed": [
+        "发送前确认当前前台与目标身份；SendInput 部分成功时补配松开；反馈结果不当作游戏已执行证明"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.shared_wake",
+      "feature": "共享 Runtime 唤醒",
+      "modes": [
+        "Cursor",
+        "Tactical",
+        "共同订阅",
+        "PostMessage 失败"
+      ],
+      "entry_points": [
+        "source/shared/source/host_game_input.h::post/pulse"
+      ],
+      "paths_reviewed": [
+        "一对 GETMESSAGE/POST hook 由同一 manager 管理；ready 位合并；wakePending250ms可重新唤醒；窗口PID/thread不匹配拒绝发送"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.target_lease",
+      "feature": "目标身份与订阅释放",
+      "modes": [
+        "多订阅",
+        "窗口重建",
+        "进程退出",
+        "卸载失败"
+      ],
+      "entry_points": [
+        "source/shared/source/host_game_input.h::install/clear/reapTargets"
+      ],
+      "paths_reviewed": [
+        "保留真实 process HANDLE 证明退出；HWND 变化不等于进程退出；只有确认卸载或 broker 移除后释放旧资源；容量32目标/256订阅"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.broker_startup",
+      "feature": "x64 Host 启动 x86 Broker",
+      "modes": [
+        "首次启动",
+        "响应慢",
+        "超时"
+      ],
+      "entry_points": [
+        "source/shared/source/runtime_broker_client.h::ensure/exchange",
+        "source/shared/source/host_game_input.h::runtimeAvailable/install"
+      ],
+      "paths_reviewed": [
+        "真实生产 Client 对启动 wait 设置3000ms、exchange2000ms；身份/version/size验证保留；延迟处理同步持Client锁"
+      ],
+      "findings": [
+        "BROKER-LOCK-01：启动/恢复正等待会占用共享 Host 锁；已确认，生产代码尚未修复"
+      ],
+      "evidence": [
+        "source/assist/tests/runtime_broker_lifecycle_audit.py",
+        "source/assist/tests/runtime_broker_lifecycle_audit.cpp",
+        "audit-followup/broker-lifecycle/receipt.json：8 checks / 0 failures；虚拟等待，真实 C++ mutex 竞争检查"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.broker_recovery",
+      "feature": "Broker 丢失后的重连",
+      "modes": [
+        "健康",
+        "Broker 退出",
+        "延迟恢复",
+        "恢复失败"
+      ],
+      "entry_points": [
+        "source/shared/source/runtime_broker_client.h",
+        "source/shared/source/host_game_input.h::pulse"
+      ],
+      "paths_reviewed": [
+        "抽取并执行真实 clear/reapTargets/pulse；100次健康 pulse无正等待；恢复在3000/2000ms等待边界的真实 mutex 都无法被另一线程取得；成功后恢复双订阅"
+      ],
+      "findings": [
+        "BROKER-LOCK-01：受控注入2990+1990ms应答延迟，虚拟累计4980ms；不是实机帧卡顿测量"
+      ],
+      "evidence": [
+        "source/assist/tests/runtime_broker_lifecycle_audit.py",
+        "source/assist/tests/runtime_broker_lifecycle_audit.cpp",
+        "audit-followup/broker-lifecycle/receipt.json：8 checks / 0 failures；虚拟等待，真实 C++ mutex 竞争检查"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.broker_backoff",
+      "feature": "Broker 失败退避和资源退休",
+      "modes": [
+        "超时",
+        "安静期",
+        "重复回收"
+      ],
+      "entry_points": [
+        "source/shared/source/runtime_broker_client.h::poison/retire/ensure",
+        "source/shared/source/host_game_input.h::pulse"
+      ],
+      "paths_reviewed": [
+        "保留精确旧进程/mailbox直到可证明退出；重试时间从失败完成计算；受控超时后249次4ms pulse未再产生正等待"
+      ],
+      "findings": [
+        "尚未把恢复操作移出共享 Host 锁"
+      ],
+      "evidence": [
+        "source/assist/tests/runtime_broker_lifecycle_audit.py",
+        "source/assist/tests/runtime_broker_lifecycle_audit.cpp",
+        "audit-followup/broker-lifecycle/receipt.json：8 checks / 0 failures；虚拟等待，真实 C++ mutex 竞争检查"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.health_snapshot",
+      "feature": "Runtime 诊断状态一致性",
+      "modes": [
+        "稳定快照",
+        "并发更新",
+        "暂时读不到"
+      ],
+      "entry_points": [
+        "source/shared/source/host_game_input.h::health"
+      ],
+      "paths_reviewed": [
+        "native/diagnostic各自 seqlock 最多4次；读不到标记 cached/invalid，保留最后已验证诊断；不把混合字段当新快照"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.overlay_shared_key",
+      "feature": "多个覆盖层共用显示快捷键",
+      "modes": [
+        "单模块",
+        "两个模块",
+        "前台变化",
+        "owner 交接"
+      ],
+      "entry_points": [
+        "source/shared/source/overlay_visibility.h"
+      ],
+      "paths_reviewed": [
+        "原子显示 revision；按键采样owner租约；交接需要重新松开避免同一物理按下切换两次；只控制呈现"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.replaceable_work",
+      "feature": "最新结果型后台工作",
+      "modes": [
+        "新请求替换待执行",
+        "执行中失效",
+        "停止"
+      ],
+      "entry_points": [
+        "source/shared/source/latest_worker.h"
+      ],
+      "paths_reviewed": [
+        "仅一个 pending 输入；计算在锁外；epoch使过期输出失效；被替换输入与结果在锁外销毁"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.recurring_work",
+      "feature": "定期后台工作",
+      "modes": [
+        "更新输入",
+        "租约到期",
+        "停止/重建"
+      ],
+      "entry_points": [
+        "source/shared/source/recurring_worker.h"
+      ],
+      "paths_reviewed": [
+        "独立时钟和有界5..1000间隔；租约到期停止；停止/替换资源在锁外；调用方仍需以请求身份过滤在途旧结果"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.ui_fairness",
+      "feature": "界面消息与后台消息公平处理",
+      "modes": [
+        "输入",
+        "绘制",
+        "定时器",
+        "普通消息"
+      ],
+      "entry_points": [
+        "source/shared/source/ui_message_queue.h"
+      ],
+      "paths_reviewed": [
+        "高优先消息每轮最多4项然后处理普通队列；避免无限高优先消息令业务队列长期饥饿"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    },
+    {
+      "id": "host.critical_log",
+      "feature": "关键错误日志",
+      "modes": [
+        "路径可写",
+        "日志轮换",
+        "主路径失败"
+      ],
+      "entry_points": [
+        "source/shared/source/automatic_log.h"
+      ],
+      "paths_reviewed": [
+        "只在 Host 路径启用；单行4096与2MiB轮换边界；失败使用用户目录；保存恢复 LastError；写入同步且不作为 Runtime 高频日志"
+      ],
+      "findings": [],
+      "evidence": [
+        "本轮生产源码审查；未把既有测试文件视为已执行"
+      ],
+      "validation_gaps": [
+        "未在真实 Windows / 游戏中运行；源码审查不证明所有输入或功能组合均通过"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "shared_infrastructure"
+    }
+  ],
+  "counts": {
+    "total": 44,
+    "source_reviewed": 44,
+    "new_controlled_evidence_rows": 3,
+    "all_real_game_validated": false
+  },
+  "findings": [
+    {
+      "id": "BROKER-LOCK-01",
+      "status": "confirmed_not_fixed",
+      "scope": "startup and reconnect lifecycle only",
+      "evidence": "broker-lifecycle/receipt.json",
+      "interpretation": "bounded positive waits while Host mutex is held; no healthy pulse wait shown"
+    },
+    {
+      "id": "MANUAL-PROCESS-SAVE",
+      "status": "source_observation_not_a_confirmed_defect",
+      "scope": "manual process-selection policy save",
+      "interpretation": "synchronous write is intentional success-before-publication behavior; not covered by generic async INI replacement"
+    }
+  ]
+}

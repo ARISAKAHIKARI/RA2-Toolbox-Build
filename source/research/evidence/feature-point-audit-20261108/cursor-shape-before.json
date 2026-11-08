@@ -1,0 +1,23 @@
+{
+  "compile": {
+    "command": [
+      "g++",
+      "-std=c++17",
+      "-O1",
+      "-g",
+      "-fsanitize=undefined",
+      "-fno-sanitize-recover=all",
+      "/workspace/scratch/40121bc881b8/audit-followup/cursor_shape_overflow_probe.cpp",
+      "-o",
+      "/workspace/scratch/40121bc881b8/audit-followup/cursor-shape-before"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "run": {
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/cursor/source/stream_inference.h:42:29: runtime error: signed integer overflow: 5905580032 * 5905580032 cannot be represented in type 'long long int'\n"
+  }
+}

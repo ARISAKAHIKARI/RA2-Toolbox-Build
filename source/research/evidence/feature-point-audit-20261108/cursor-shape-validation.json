@@ -1,0 +1,40 @@
+{
+  "baseline": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+  "files": {
+    "source/cursor/source/stream_inference.h": {
+      "after_sha256": "e4808df66c912c0b286516f21ee87137a901097f2ae9e16a717778e9765cfd86",
+      "before_sha256": "68812e5c33cb659f7ebc347f34458b6126620959015ca1554376b0fbfa0a7eaa"
+    },
+    "source/cursor/source/main.cpp": {
+      "after_sha256": "99cab5242e6f768a8d12c9a43c8cdfd2b1aac6fc6f33e9e71d8854489162e3ea",
+      "before_sha256": "ee578ed9fda8fed96acd0973671df8b1f0338efaac875a2b9615a1fb6a481c53"
+    },
+    "source/assist/tests/cursor_stream_inference.cpp": {
+      "after_sha256": "10718bba8f391e2352686f717658999f2073719057f6c33541b668ee301e8cfb",
+      "before_sha256": null
+    }
+  },
+  "windows_object_compile": {
+    "command": [
+      "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+      "c++",
+      "-target",
+      "x86_64-windows-gnu",
+      "-std=c++17",
+      "-O1",
+      "-DRA2_UNIFIED",
+      "-DRA2_CONSOLE_WEBVIEW2",
+      "-DwWinMain=CursorEntry",
+      "-Isource/suite/source",
+      "-c",
+      "source/cursor/source/main.cpp",
+      "-o",
+      "/workspace/scratch/40121bc881b8/audit-followup/cursor-main-x64.o"
+    ],
+    "exit_code": 0,
+    "compile_only": true,
+    "log": "/workspace/scratch/40121bc881b8/audit-followup/cursor-main-x64-compile.log",
+    "object_sha256": "171c8d9556cc98ec95f02fdef45e23e55878dca458f25a7ee742e6402cae62d0"
+  },
+  "proof_scope": "Portable production shape gate executed with ASan+UBSan (LSan disabled due executor); real CursorEntry x64 translation unit cross-compiled only. No actual Windows/game execution."
+}

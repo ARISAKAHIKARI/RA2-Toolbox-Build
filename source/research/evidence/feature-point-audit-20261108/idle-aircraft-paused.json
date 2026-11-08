@@ -1,0 +1,47 @@
+{
+  "scope": "Production updateAircraftButton full visibility condition extracted verbatim; real TacticalSampler fixture and refreshCamera; synthetic foreground/enable state; no Win32 drawing",
+  "production_file": "source/assist/source/aircraft_indicator.h",
+  "production_sha256": "bbccc2ee5e096263f9dd952acab49e7f47c96044223045dbd39db166e8f0f338",
+  "extracted_condition": "!extra.idleAircraft||!enabled||!externalData||snap.renderStatus!=1||!foregroundGame()||snap.chat||\n    !externalSampler.idleAircraftTick||uint32_t(sampleRenderClock(nullptr)-externalSampler.idleAircraftTick)>500||snap.width<=0||snap.height<=0",
+  "command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-UNDEBUG",
+    "/workspace/scratch/40121bc881b8/audit-followup/idle-aircraft-paused-gate/probe.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/audit-followup/idle-aircraft-paused-gate/probe"
+  ],
+  "compile_exit": 0,
+  "game_tested": false,
+  "run_exit": 0,
+  "stdout": "{\"samples\":[{\"render_tick\":1000,\"sample_frame\":100,\"idle_sample_tick\":1000,\"button_hidden\":0},{\"render_tick\":1500,\"sample_frame\":100,\"idle_sample_tick\":1000,\"button_hidden\":0},{\"render_tick\":1501,\"sample_frame\":100,\"idle_sample_tick\":1000,\"button_hidden\":1},{\"render_tick\":2000,\"sample_frame\":100,\"idle_sample_tick\":1000,\"button_hidden\":1}]}\n",
+  "result": {
+    "samples": [
+      {
+        "render_tick": 1000,
+        "sample_frame": 100,
+        "idle_sample_tick": 1000,
+        "button_hidden": 0
+      },
+      {
+        "render_tick": 1500,
+        "sample_frame": 100,
+        "idle_sample_tick": 1000,
+        "button_hidden": 0
+      },
+      {
+        "render_tick": 1501,
+        "sample_frame": 100,
+        "idle_sample_tick": 1000,
+        "button_hidden": 1
+      },
+      {
+        "render_tick": 2000,
+        "sample_frame": 100,
+        "idle_sample_tick": 1000,
+        "button_hidden": 1
+      }
+    ]
+  }
+}

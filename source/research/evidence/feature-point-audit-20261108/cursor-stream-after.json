@@ -1,0 +1,33 @@
+{
+  "compile": {
+    "command": [
+      "g++",
+      "-std=c++17",
+      "-O1",
+      "-g",
+      "-fsanitize=address,undefined",
+      "-fno-sanitize-recover=all",
+      "source/assist/tests/cursor_stream_inference.cpp",
+      "-o",
+      "/workspace/scratch/40121bc881b8/audit-followup/cursor-stream-after"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "scope": "actual production stream_inference.h executed; not Win32/Game visual verification",
+  "initial_run": {
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "==14==Can't open /proc/13/task for reading.\n==13==LeakSanitizer has encountered a fatal error.\n==13==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1\n==13==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)\n"
+  },
+  "run": {
+    "environment": {
+      "ASAN_OPTIONS": "detect_leaks=0"
+    },
+    "returncode": 0,
+    "stdout": "cursor stream: 55/128/256/512 shape gates valid; 10000 same-frame evaluations -> 1 scan; new pair/reset/rejected pair covered\n",
+    "stderr": ""
+  },
+  "validation_gap": "LeakSanitizer cannot enumerate processes in this executor; AddressSanitizer and UBSan run with leak scan disabled."
+}

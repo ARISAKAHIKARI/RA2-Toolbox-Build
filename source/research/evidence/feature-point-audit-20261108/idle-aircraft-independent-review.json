@@ -1,0 +1,294 @@
+{
+  "review_id": "RENDER-F4-independent",
+  "reviewer": "/root/audit_tactical_points",
+  "updated_at_utc": "2026-11-08T11:12:07.248575+00:00",
+  "reviewed_head": "491bbc72ec67ac70454e9d9a0ef69287eb1ba28f",
+  "production_changed": false,
+  "production_recompiled": false,
+  "status": "confirmed_open_deferred_by_root",
+  "root_decision": "根负责人已决定本轮保留明确未修复；491bbc7 集成交叉编译/PE 已由根负责人报告成功，生产继续冻结。本核对不代替该编译报告。",
+  "answer": {
+    "finding_confirmed": true,
+    "safe_in_principle_to_keep_display_without_authorizing_click": true,
+    "current_frameCurrent_can_be_called_directly_on_idle_fields": false,
+    "reason": "仅展示可使用确认帧租期，但必须绑定飞机计数自己已成功提交的采样身份。当前飞机字段没有独立 frame/match，且采样节流与回滚不同于 enemies/statuses；包装成当前 Snapshot.frame 会误认来源。",
+    "command_freshness_must_remain_separate": true,
+    "unchanged_command_gate_provides_rejection": "只扩展展示时，原 idleAircraftTick 的 > 500 ms 拒绝、commandFresh < 1500 ms、暂存请求时效和 Runtime 的 match/1500 ms/当前飞机检查仍然成立。不得通过改写 raw idleAircraftTick 或 bridge lastData 来保留按钮。"
+  },
+  "existing_controlled_evidence": {
+    "file": "/workspace/scratch/40121bc881b8/audit-followup/idle-aircraft-paused-gate/result.json",
+    "production_hash_matches_reviewed_file": true,
+    "scope": "Production updateAircraftButton full visibility condition extracted verbatim; real TacticalSampler fixture and refreshCamera; synthetic foreground/enable state; no Win32 drawing",
+    "samples": [
+      {
+        "render_tick": 1000,
+        "sample_frame": 100,
+        "idle_sample_tick": 1000,
+        "button_hidden": 0
+      },
+      {
+        "render_tick": 1500,
+        "sample_frame": 100,
+        "idle_sample_tick": 1000,
+        "button_hidden": 0
+      },
+      {
+        "render_tick": 1501,
+        "sample_frame": 100,
+        "idle_sample_tick": 1000,
+        "button_hidden": 1
+      },
+      {
+        "render_tick": 2000,
+        "sample_frame": 100,
+        "idle_sample_tick": 1000,
+        "button_hidden": 1
+      }
+    ],
+    "compile_exit": 0,
+    "run_exit": 0,
+    "game_tested": false,
+    "independent_execution_this_review": false,
+    "interpretation": "既有夹具已在真实 TacticalSampler + refreshCamera + 原样提取按钮门槛上确认 500 ms 边界。本次只读复核代码与哈希，没有额外执行该夹具。"
+  },
+  "source_evidence": [
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/aircraft_indicator.h",
+      "symbol": "updateAircraftButton",
+      "line": 37,
+      "conclusion": "展示完整条件包含 idleAircraftTick 非零及 unsigned(now - idleAircraftTick) <= 500；同一已确认逻辑帧没有豁免。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "sampleExternal",
+      "line": 1282,
+      "conclusion": "同 sealed frame/serial 且 sameUI 时只 refreshCamera，复用 sampler state，并把 externalSourceConfirmed 设为 true；不重采飞机计数。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/external_reader/source/tactical_sampler.h",
+      "symbol": "refreshCamera/rebaseCamera",
+      "line": 193,
+      "conclusion": "相机刷新只移动显示坐标，不更新 idleAircraftTick；不能给旧飞机来源续命。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/external_reader/source/tactical_sampler.h",
+      "symbol": "sample: productionAt_ branch",
+      "line": 284,
+      "conclusion": "飞机统计与生产信息同处 100 ms 分支，该分支还位于 scene 快速返回之后。不能假定每次 state_.frame 更新都重新计算飞机。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/external_reader/source/tactical_sampler.h",
+      "symbol": "sample: state identity",
+      "line": 233,
+      "conclusion": "Snapshot 的 frame/match 在飞机重采条件前更新；idleAircraftCount/Tick 没有自己的 frame/match 字段。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/external_reader/source/tactical_sampler.h",
+      "symbol": "sample: idle aircraft collection",
+      "line": 307,
+      "conclusion": "飞机列表最多 8192；重采后排序 IDs 并将 idleAircraftTick 设为该次传入的原始采样 tick。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/external_reader/source/tactical_sampler.h",
+      "symbol": "commitSample/invalidateSample",
+      "line": 190,
+      "conclusion": "提交仅保存 publishedEnemies_ / publishedStatuses_；invalidateSample 恢复 Snapshot/enemies/statuses，没有恢复 idleAircraftTick、idleAircraftCount、aircraftTotal 或 idleAircraftIDs。此为已核对的源码事实，不宣称动态复现了失败回滚问题。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "sampleExternal: failed candidate",
+      "line": 1286,
+      "conclusion": "采样失败会进入上述 invalidateSample；externalSourceConfirmed 在本轮前先清 false，失败不会由该路径重新设 true。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/display_sample_lease.h",
+      "symbol": "displaylease::frameCurrent",
+      "line": 8,
+      "conclusion": "要求样本自身 match/tick/count；允许 age < 250 或 confirmed 且样本 frame 与当前 frame 相等。飞机现在既缺独立样本戳，也采用 <= 500 边界，不能直接照搬。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/aircraft_indicator.h",
+      "symbol": "aircraftButtonProc: WM_LBUTTONUP",
+      "line": 27,
+      "conclusion": "按钮点击只调用 selectNextIdleAircraft；没有因为窗口可见直接发 Runtime 游戏命令。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/idle_aircraft_selection.h",
+      "symbol": "selectNextIdleAircraft",
+      "line": 3,
+      "conclusion": "独立检查 enabled、foregroundGame、commandFresh、renderStatus、chat、externalData、飞机样本 <= 500 ms、非空且最多 8192；之后轮选并 sendSelection(-4)。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "commandFresh",
+      "line": 670,
+      "conclusion": "要求 commandChannelReady，且 GetTickCount 与真实 bridge lastData 差值 < 1500；不依赖 externalSourceConfirmed。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "serviceSelection",
+      "line": 822,
+      "conclusion": "暂存命令仍核对 pid/match/创建时间 <= 1500，当前 focus、commandFresh、chat 及选择请求 ACK。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/bridge.cpp",
+      "symbol": "selectionCommand",
+      "line": 894,
+      "conclusion": "Runtime 再验 selectMatch 与 selectTick 的 1500 ms 时效及聊天；随后 selectIdleAircraft 重新找当前对象并检验其当前 idle/自有/存活/可选择状态。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/bridge.cpp",
+      "symbol": "selectIdleAircraft",
+      "line": 887,
+      "conclusion": "最终重新查当前世界 ID，执行原生可选择检查后才取消旧选并选中；不移动镜头。"
+    }
+  ],
+  "additional_source_constraints": [
+    {
+      "id": "throttled_count_identity",
+      "finding": "state().frame 可能已进入下一逻辑帧，但飞机计数仍是 100 ms 节流前的值；同 scene 快速返回也不重算飞机。",
+      "impact": "用 state().frame 或 externalData->frame 构造飞机样本 frame 会把较旧计数重新标成当前帧，不能作为确认延长期的证明。",
+      "validation": "source_traced_only"
+    },
+    {
+      "id": "uncommitted_fields",
+      "finding": "invalidateSample(&externalPublished) 恢复主 Snapshot 和两类 marker，未回滚飞机计数/ID/tick。",
+      "impact": "若失败候选已经更新飞机字段，不能把恢复后的旧 Snapshot 身份与候选飞机字段拼起来通过展示确认；新的展示发布需要独立提交/回滚。",
+      "validation": "source_traced_only_not_a_game_reproduction"
+    },
+    {
+      "id": "different_age_policy",
+      "finding": "frameCurrent 当前普通租期为 age < 250，而按钮既有条件是 age <= 500。",
+      "impact": "直接替换会改变正常读取失败或未确认期间 250..500 ms 的可见性；应保持既有 500 ms 边界，或显式记录另一个产品行为变更。",
+      "validation": "source_traced_only"
+    }
+  ],
+  "minimal_safe_fix_boundary": {
+    "implementation_this_round": "none; deferred, no production edit",
+    "scope": "Host 展示采样、发布与飞机按钮绘制；不改协议、Runtime 选择命令或选择意图的时效。",
+    "required_parts": [
+      "为飞机展示计数增加独立的轻量样本记录（至少 match、frame、tick、idle count、total、有效性）。stamp 在实际飞机重采处写入，不能在 paint、camera refresh 或每次更新主 Snapshot 时补写。",
+      "在 worldScope.complete 成功之后提交这份展示记录；失败候选不覆盖已发布的展示计数。reset/discard/换连接/换局清掉记录。WM_PAINT、异步 AircraftPaint 和可见性判断必须读取同一份已提交记录，而不是用已提交 stamp 加未提交 raw counters。",
+      "保留既有 <= 500 ms 普通租期；只有 externalSourceConfirmed 且样本自身 match/frame 等于当前已确认来源，才允许延长纯展示。计数限定 0 <= idle <= total <= 8192，空结果 0/0 是合法新值；非空旧值不得覆盖新空值。",
+      "处理暂停落在 100 ms 计数节流间隙的情况：若飞机记录仍属于前一帧，不能改 stamp 冒充当前帧。应在同 sealed frame 已稳定足够时间后，最多对该 serial 补取一次当前帧的展示计数，并检查 WorldFrameScope 完整性再提交；缺页则等待新的可用 serial/受限重试。也可保守隐藏，但这不算完整修复 F4。",
+      "整个显示保留过程不写 idleAircraftTick、bridge lastData、selectTick 或 command token，不调用 sendSelection，也不对过期点击重新排队。新增加的展示补采应与现有命令候选列表隔离。"
+    ],
+    "helper_options": [
+      {
+        "option": "dedicated_idle_aircraft_display_helper",
+        "preferred": true,
+        "detail": "用拥有独立来源戳的计数记录实现与 frameCurrent 相同的 confirmed+same-frame 分支，并保留 age <= 500。避免改变现有 enemy/status 的 250 ms 策略。"
+      },
+      {
+        "option": "reuse_parameterized_frameCurrent",
+        "preferred": false,
+        "detail": "只有先补齐独立已提交帧戳后才可复用；可添加默认 250 的显示租期参数，飞机传入 501 以保持 unsigned age < 501 等价于 <= 500。其余调用保持默认，并独立检查 total 与 count 关系。仅改 helper 无法解决原始计数发布及节流间隙。"
+      }
+    ],
+    "reject_shortcuts": [
+      "删除 500 ms 判断，只依赖 externalData 或 externalSourceConfirmed。",
+      "每次 refreshCamera/同帧确认把 idleAircraftTick 改成当前墙钟。",
+      "把 externalSampler.state().frame 临时塞进飞机样本以满足 frameCurrent。",
+      "让展示确认替代 commandFresh 或放宽 selectNextIdleAircraft 的过期门槛。",
+      "只修 updateAircraftButton，却让 WM_PAINT 继续读取可能属于失败候选的 raw counters。",
+      "把飞机列表扫描移到每次高频渲染调用，以消除 100 ms 间隙。"
+    ]
+  },
+  "proposed_validation_scenarios": [
+    {
+      "id": "paused_boundary",
+      "setup": "同 match/frame 的已提交飞机记录，采样 tick=1000，render ticks=1499/1500/1501/2000/6000。",
+      "expected": "未确认时保持原 <= 500 边界；确认同帧时 1501 之后仍可展示，源 tick 不变。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "display_visible_click_expired",
+      "setup": "按钮因确认同帧在 1501/6000 仍可见，raw idleAircraftTick=1000，命令桥假设仍 fresh。调用原样 selectNextIdleAircraft。",
+      "expected": "不发送、不排队、不推进轮选游标；证明显示延长期没有绕过 > 500 ms 的点击拒绝。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "bridge_expired",
+      "setup": "飞机列表仍在 500 ms 内，但 bridge lastData 已过期、断开或 commandStatus 失效。",
+      "expected": "可见性按显示策略处理；点击仍被 commandFresh/commandChannelReady 拒绝。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "runtime_revalidation",
+      "setup": "选择请求延迟到 > 1500 ms、match 变化、当前 ID 对应对象已非自有/非空闲/已退休。",
+      "expected": "Runtime 拒绝或 count=0，且不因为显示继续保留而取消玩家原选择。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "frame_and_epoch_change",
+      "setup": "飞机样本已超 500 ms；改变 current frame 或 match，保持 confirmed=true。另测 PID/连接 generation 变化和 frame 回退。",
+      "expected": "不能延长期；连接/换局清已发布记录，不跨世界复用计数。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "pause_inside_throttle_gap",
+      "setup": "frame 100/tick 1000 重采飞机；frame 101/tick 1050 时飞机状态变化但 100 ms 分支未运行，然后暂停。",
+      "expected": "记录仍标 frame 100；仅当真正从 frame 101 sealed 数据完成展示补采后才可用 frame 101 延长期，不能只改戳；无补采则必须保守隐藏并承认未完整修复。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "failed_candidate_rollback",
+      "setup": "保留已提交样本 A，候选 B 已更新飞机计数后模拟 WorldFrameScope incomplete，再执行 invalidateSample。",
+      "expected": "展示只保留/隐藏 A，不能把 B 的数值配 A 的戳；恢复成功后原子发布 B。点击源时间不得因失败而被展示层续期。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "confirmation_loss",
+      "setup": "先长期确认同帧展示，再让 source confirmation=false 或完整性失败。",
+      "expected": "不续原 tick，超过原 500 ms 后立即不展示；下次确证同一正确帧可恢复。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "visibility_gates",
+      "setup": "分别关闭 extra.idleAircraft/enabled，失焦、聊天、renderStatus!=1、externalData为空、宽高无效。",
+      "expected": "即使已确认同帧也隐藏，WM_LBUTTONUP 仍受独立命令门槛。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "empty_and_bounds",
+      "setup": "先有飞机，再成功发布 0/0；测试负数、idle>total、超过 8192、零 tick。",
+      "expected": "成功空值更新为 0/0，不保留旧非空数字；非法值不显示；无空闲时点击不发送。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "tick_wrap",
+      "setup": "tick=0xFFFFFFF0，跨 uint32 回绕后检查 500/501 ms 的边界。",
+      "expected": "保持无符号差值策略，展示和点击边界各自成立。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "bounded_reuse_work",
+      "setup": "同一 sealed serial 反复高频 paint/sample，补采成功或缺页失败，再提供新 serial。",
+      "expected": "不在每次画面刷新扫描飞机数组；失败不在同一不可变 serial 无限重试；新串号可有限恢复。",
+      "status": "proposed_not_run"
+    },
+    {
+      "id": "paint_uses_committed_counts",
+      "setup": "异步画图待完成时引入失败候选、空结果及换局。",
+      "expected": "请求、位图匹配和按钮判断来自同一已提交计数；失败候选不能混入新画面，空结果覆盖旧值。",
+      "status": "proposed_not_run"
+    }
+  ],
+  "validation_limits": [
+    "这是只读独立源码核对及对既有受控结果的复核。没有执行新的夹具，没有修改或编译生产代码。",
+    "100 ms 节流和 invalidateSample 未回滚飞机字段是源码可确认事实；其组合导致错误重标来源是对候选修法的静态反例，未宣称实机新缺陷复现。",
+    "未验证真实 Windows 窗口可见性、点击投递、暂停 UI、线程时序或联机行为。",
+    "F4 仍明确未修复；后续只做 helper 替换而不处理来源发布及节流间隙，不足以关闭此条。"
+  ],
+  "source_sha256": {
+    "source/assist/source/aircraft_indicator.h": "bbccc2ee5e096263f9dd952acab49e7f47c96044223045dbd39db166e8f0f338",
+    "source/assist/source/display_sample_lease.h": "ab9d7035595cb45da27bfa5bef3d4a0dc89581339f4899b4d8a97c03f22b01cd",
+    "source/assist/source/idle_aircraft_selection.h": "c4d2c741a9010f0159616a5f761a3fde035d7d90437f0e87998cec84b9d2d0d8",
+    "source/assist/source/main.cpp": "dec08343c8dc3287aa7f789192064bdb9db0dbbbf2818bffad033880c2704654",
+    "source/assist/source/bridge.cpp": "efc1cd5d34d550a8d700bc26cdb612c8e2c4498817ec775e6ea4010d0ec743cd",
+    "source/external_reader/source/tactical_sampler.h": "c2fcb3571488433ca2a518e40a9868c67e4e70227e83cc03d8cf86e71b32390c",
+    "source/external_reader/source/process_reader.h": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1",
+    "source/external_reader/source/idle_aircraft.h": "00c7154875f815a0c0e1a53677de1eccda108946f526887d7d0c6c2ac9658b78",
+    "source/assist/source/control_link.h": "0b8f69213d66f48205c4bfd4aad38d096363ceda1eb5a58374293918959f7f88"
+  }
+}
