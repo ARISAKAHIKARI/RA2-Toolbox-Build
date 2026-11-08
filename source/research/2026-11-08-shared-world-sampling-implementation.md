@@ -81,6 +81,15 @@ Runtime/Host 的大 Page buffer 也改为从零开始、受限且 nothrow 的连
 `-fno-exceptions` 下执行拒绝增长测试，避免新增的大页 vector 在 Runtime 中因 bad_alloc
 直接 terminate。其他有界小容器没有被宣称已经完成整个进程的 OOM 防护。
 
+最终完整 DLL 的严格 PE 导出检查抓到了分配器链接边界：Zig 0.13 的 libc++ nothrow-new
+库入口仍带 try/catch，调用方 `-fno-exceptions` 不足以阻止其引入 25 个额外 unwind 导出。
+改用 `std::malloc/free`，并静态断言 `Page` 对齐不超过 `std::max_align_t`；placement new
+和注入分配器失败测试保留。同工具链小 DLL 对照从 25 个额外导出降至 0，生产核心回归
+重跑通过。另外三处局部静态工作数组的默认初始化会调用 libc++abi guard，再次引入相同
+unwind 库；真实类型对照证明仅增加 `{}` 值初始化即可消去 guard，保留作用域、存储期与
+初始字段值。`std::sort` 的独立对照没有引入该依赖，排序和线程安全初始化配置未被改动。
+完整组件仍需通过原来不放宽的导出集合门禁，最终记录在 build provenance。
+
 ## 三、战术计算的读取、原生查询与执行分开
 
 `SampleReadScope` 只允许封口读取；其内的 `put/call/callFast` 拒绝游戏写入和原生调用并

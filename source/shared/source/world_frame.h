@@ -1,7 +1,9 @@
 #pragma once
 #include <array>
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <new>
@@ -30,14 +32,15 @@ struct Page {
 };
 static_assert(sizeof(Key)==64&&sizeof(Page)==5128,"world sample wire layout");
 static_assert(std::is_trivially_copyable<Page>::value&&std::is_trivially_destructible<Page>::value&&std::is_nothrow_copy_constructible<Page>::value,"raw page storage lifetime");
+static_assert(alignof(Page)<=alignof(std::max_align_t),"C heap supports page alignment");
 // Allocation is deliberately independent of exceptions: the injected Runtime
-// is built with -fno-exceptions. Hooks use the same byte/alignment contract as
-// operator new/delete and may reject growth without discarding prior storage.
+// is built with -fno-exceptions. Hooks provide Page-aligned raw storage with a
+// matching release and may reject growth without discarding prior storage.
 struct PageAllocator {
  using Allocate=void*(*)(size_t,void*)noexcept;
  using Release=void(*)(void*,void*)noexcept;
- static void*allocateDefault(size_t bytes,void*)noexcept{return ::operator new(bytes,std::nothrow);}
- static void releaseDefault(void*p,void*)noexcept{::operator delete(p);}
+ static void*allocateDefault(size_t bytes,void*)noexcept{return std::malloc(bytes);}
+ static void releaseDefault(void*p,void*)noexcept{std::free(p);}
  Allocate allocate=allocateDefault;Release release=releaseDefault;void*context=nullptr;
 };
 class PageBuffer {

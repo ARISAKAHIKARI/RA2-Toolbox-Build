@@ -19,12 +19,12 @@
     "source/assist/source/construction_host.h": "7f340af9bfbe0cfb093f481b6caa7c4deff60e0c03f9f1a650db378900f8b6ed",
     "source/assist/source/cooperative_bridge.h": "d579af32a468c625258611e10fd2a1a05ee91b71ec5b3c953a68649b11e6376e",
     "source/assist/source/dodge_bridge.h": "d251be34caad0f481a7ca39279e724a704202894be43c19bf80435ae74052dc9",
-    "source/assist/source/external_orders_bridge.h": "236c60d203c34cfda4e053f0061084cb8de5a3d314c4660a7b575f8be63fbf6d",
+    "source/assist/source/external_orders_bridge.h": "a7d776c790ff8f3d28d18f56a97d56a6f4b5061b90f2d3351f6dc03e4aae8d7b",
     "source/assist/source/formation_host.h": "3810dd02dcccb59002cc4d13d8bd700c85c9bc732362c49dca5c10ae18ec3354",
     "source/assist/source/harvester_defense_bridge.h": "aea323bedb0452a56569b45c47e45317a15120e2c4d032a56db807d715933d76",
     "source/assist/source/main.cpp": "0000654ac95a49d364977931fa7b6edb995d9c7af069e2cd14f86627f73958d0",
     "source/assist/source/minimap_overlay.h": "3fe7371e9e5f5b80b39a5da75021ee7703bfa02a8864a2a7ec0a71f6e6a2f7bd",
-    "source/assist/source/missile_bridge.h": "dad081d13ed72575a24558230177afe05d366045fb23f973b247634135808310",
+    "source/assist/source/missile_bridge.h": "db4821bcb135ab9f13f51d66bede55f4ea64aeb98232a47f13e74e1bda984f2e",
     "source/assist/source/native_orders_bridge.h": "c5135aaa13fccb003283e4abbe7c67516f4d0e4d823bd369092afbf8cb4ec756",
     "source/assist/source/ore_harvest_bridge.h": "86fa79e17f63e2cccc8022a64ffc1870aead79d8bb3c95f0dd5d64b975824450",
     "source/assist/source/protocol.h": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c",
@@ -92,7 +92,7 @@
     "source/external_reader/source/world_ui_read.h": "bef04f5fdf86d3ecd74ac4ce412cddf8ebd9f15a3afae45f0a682bcd539c7d3f",
     "source/shared/source/hardware_performance.h": "65e0db646cc5c98bbda57fdb501362776f479eff58295da0ae1cde11cd398c58",
     "source/shared/source/release_version.h": "91fc58642da6b407c1c88ae3d1006f58f67a136b4031f88764afda4e429d9bb1",
-    "source/shared/source/world_frame.h": "eff3b0a8e2fb05b7d86b0c9dca83bd7f19c712297140a547a0c54263d023f264",
+    "source/shared/source/world_frame.h": "054c5879835da23b503b9f1d353fc21935193a3d5df440ee2b664e5b2da0d9ee",
     "source/shared/source/world_frame_capture.h": "3141e63d3723fc6226187f0156ad3191b31c7e6b569b3019cbb7f03ce38ecbef",
     "source/shared/source/world_frame_transport.h": "5742aa73b36a06a2f532fb42e61a4a37bd3b611749464c9b0a7df5a857ee38bf",
     "source/tools/build_hook_diagnostics.py": "528ce814a507fd14e33b9f44476c97d2aeb1e2b857dd9b5d6632360035d9f229",
@@ -108,22 +108,22 @@
       {
         "name": "world-frame-core",
         "exit_code": 0,
-        "receipt_sha256": "5f0659acaff1062e280269355e8c3c8c67f1007954b33dbb821f6b427ed9276a"
+        "receipt_sha256": "0011a86e44e4fe6bf519b4d74a124f0d50c1cc8b00f76373bceaa1177d39e8d9"
       },
       {
         "name": "external-label-sampler",
         "exit_code": 0,
-        "receipt_sha256": "5f0659acaff1062e280269355e8c3c8c67f1007954b33dbb821f6b427ed9276a"
+        "receipt_sha256": "0011a86e44e4fe6bf519b4d74a124f0d50c1cc8b00f76373bceaa1177d39e8d9"
       },
       {
         "name": "hardware-performance-counters",
         "exit_code": 0,
-        "receipt_sha256": "5f0659acaff1062e280269355e8c3c8c67f1007954b33dbb821f6b427ed9276a"
+        "receipt_sha256": "0011a86e44e4fe6bf519b4d74a124f0d50c1cc8b00f76373bceaa1177d39e8d9"
       },
       {
         "name": "auto-repair-runtime",
         "exit_code": 0,
-        "receipt_sha256": "5ffa577f081003db1aac49a694667e2dc465d9850e60622b39586e285d04b3a9"
+        "receipt_sha256": "f14e7be0f32fee7f98eef9e15334f41e267b78ce9d52ca6a960d3d0ef10ae07e"
       },
       {
         "name": "hardware-owner",
@@ -138,107 +138,107 @@
       {
         "name": "tactical_frame_sampling",
         "exit_code": 0,
-        "receipt_sha256": "9f7c698253e4485aa64aa23747cd0420d23b31be6aa223fc5b1d3babfa2e6e42"
+        "receipt_sha256": "cf63d03e5406a19c48c7da37e0df049fb6f9a8e4f64bfca0ff428aadc23b8bed"
       },
       {
         "name": "host_tactical_frame_sampling",
         "exit_code": 0,
-        "receipt_sha256": "9f7c698253e4485aa64aa23747cd0420d23b31be6aa223fc5b1d3babfa2e6e42"
+        "receipt_sha256": "cf63d03e5406a19c48c7da37e0df049fb6f9a8e4f64bfca0ff428aadc23b8bed"
       },
       {
         "name": "air_waypoint_host",
         "exit_code": 0,
-        "receipt_sha256": "9f7c698253e4485aa64aa23747cd0420d23b31be6aa223fc5b1d3babfa2e6e42"
+        "receipt_sha256": "cf63d03e5406a19c48c7da37e0df049fb6f9a8e4f64bfca0ff428aadc23b8bed"
       },
       {
         "name": "construction_host",
         "exit_code": 0,
-        "receipt_sha256": "9f7c698253e4485aa64aa23747cd0420d23b31be6aa223fc5b1d3babfa2e6e42"
+        "receipt_sha256": "cf63d03e5406a19c48c7da37e0df049fb6f9a8e4f64bfca0ff428aadc23b8bed"
       },
       {
         "name": "combat_probe_sampling",
         "exit_code": 0,
-        "receipt_sha256": "9f7c698253e4485aa64aa23747cd0420d23b31be6aa223fc5b1d3babfa2e6e42"
+        "receipt_sha256": "cf63d03e5406a19c48c7da37e0df049fb6f9a8e4f64bfca0ff428aadc23b8bed"
       },
       {
         "name": "command_cursor_host",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "shared_scene_sampling",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "world_ui_sampling",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "render_feedback_host",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "render_presentation",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "scene_bank_publication",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "native_local_ui--profile-only",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "radar_sampler_compact",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "formation_host",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "native_order_feedback",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "scene_lighting",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "minimap_overview",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "watch-renderer-windows-object",
         "exit_code": 0,
-        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+        "receipt_sha256": "bdfd264ef185725892c65447a432caf763df4d9b37270522acac5ccf0c21a070"
       },
       {
         "name": "harvester-defense-runtime",
         "exit_code": 0,
-        "receipt_sha256": "2fba49efe0f2ad62922478ddb541f571e810e691a5638debc7e4108133aa78a9"
+        "receipt_sha256": "18b1e594c95ea19724e1317f2d0a7202f9083fa9c03fe7877f155c15d1558659"
       },
       {
         "name": "ore-harvest-handoff",
         "exit_code": 0,
-        "receipt_sha256": "2eaeaf43d757c6b2286cb441a34b73c58b374df008c8034d5da5989987c335f4"
+        "receipt_sha256": "eedc11e8e610b2ed096a6207b174ae08eec073073cf1be6e5634aad100fda074"
       },
       {
         "name": "ore-windows-x86-x64-build-only",
         "exit_code": 0,
-        "receipt_sha256": "991826c82f5a20acd5970fb61311be8b4c18ab18566dd6aff82abd26a7535088"
+        "receipt_sha256": "3780ca5eb5e48dc9a85d88354afc5f81fdaa2087c9575307175b5f9fcc14d188"
       },
       {
         "name": "windows-x86-x64-abi",
@@ -257,6 +257,14 @@
     "portable_render_suites": 12,
     "abi_layout_entries": 895,
     "full_windows_binary_build": "Recorded separately after immutable source commit in delivered build-provenance.json"
+  },
+  "link_boundary_regression": {
+    "nothrow_allocator_before_extra_unwind": 25,
+    "nothrow_allocator_after_extra_unwind": 0,
+    "local_static_guard_before_extra_unwind": 25,
+    "value_initialized_arrays_after_extra_unwind": 0,
+    "complete_runtime_candidate_static_pe_exit": 0,
+    "verifier_allowlist_unchanged": true
   },
   "assist_protocol": 101,
   "assist_shared_bytes": 23162528,

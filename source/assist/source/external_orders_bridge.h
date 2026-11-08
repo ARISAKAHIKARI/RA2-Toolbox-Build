@@ -70,7 +70,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  uint32_t nextMode=0;
  static uint32_t lastMode;
  {SampleReadScope frameRead;if(!frameRead)return false;
- static WeaponCacheEntry cacheBefore[1024];memcpy(cacheBefore,weaponCache,sizeof weaponCache);
+ static WeaponCacheEntry cacheBefore[1024]{};memcpy(cacheBefore,weaponCache,sizeof weaponCache);
  bool advanced=(sh->flags&(AdvancedInput|MagnetronInput))&&nativeCount>0;
  bool ore=((sh->flags|sh->plannerTracking|sh->runtimeTracking)&AutoOreReturn)!=0;
  bool minerDefense=sh->minerDefenseEnabled||minerDefensePending();

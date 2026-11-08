@@ -183,7 +183,7 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
  auto&i=missileCapture;missilecompute::reset(i);i.match=match;i.tick=now;i.frame=frame;i.mode=sh->missileAllocation|(sh->missileReserve?missilecompute::ReserveSleep:0);
  const bool native=sh->nativeCombatQueries!=0,deferredAir=native&&sh->missileScope!=0;
  struct Candidate {missilecompute::Target target;int after;};
- static Candidate candidates[16384];int candidateCount=0,allCount=0,visited=0;
+ static Candidate candidates[16384]{};int candidateCount=0,allCount=0,visited=0;
  {
   SampleReadScope frameRead;if(!frameRead)return false;
   Vec all{};if(!sampleRoster(0xA8EC78,all))return false;allCount=all.count;
@@ -201,7 +201,7 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
   i.targets[i.targetCount++]=t;if(i.targetCount==missilecompute::MaxTargets)acceptedThrough=candidate.after;
  }
  nextTargetCursor=allCount?(missileTargetCursor+acceptedThrough)%allCount:0;
- static MissileMotion motionBefore[256];static WeaponCacheEntry cacheBefore[1024];
+ static MissileMotion motionBefore[256];static WeaponCacheEntry cacheBefore[1024]{};
  memcpy(motionBefore,missileMotion,sizeof missileMotion);memcpy(cacheBefore,weaponCache,sizeof weaponCache);
  const int motionCursorBefore=missileMotionCursor;
  auto failed=[&]{memcpy(missileMotion,motionBefore,sizeof missileMotion);missileMotionCursor=motionCursorBefore;memcpy(weaponCache,cacheBefore,sizeof weaponCache);return false;};
