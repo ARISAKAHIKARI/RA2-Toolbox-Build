@@ -148,6 +148,7 @@ static bool nativeCursorPresentation(){return nativeGameRefresh&&!mappedCursorPr
 static int diagFrame=-1,diagHotX=-1,diagHotY=-1;
 static cursorsnap::Latch bridgeFrame;
 static cursorstream::Detector lanboStream;
+static cursorstream::PairShapeGate streamShapeGate;
 static bool sampleHotspotEstimated=false;
 static DWORD lastSampleProbeAt=0;
 static bool usingHeldSample=false;
@@ -505,7 +506,7 @@ static void visibilityDiagnostic(const wchar_t* reason,DWORD foregroundPid=0){
  log(detail);status(detail);
 }
 
-static void loadCache(){bridgeFrame.clear();lanboStream.reset();fallbackTracker.reset();fallbackDefs.clear();timing.clear();activeMotion.reset();previewStart=-1;previewCount=0;loaded=false;try{original=file(cacheKey+L"\\original.sha");asset=decode(original);Bytes pal=file(cacheKey+L"\\palette.bgra");if(pal.size()!=sizeof(palette))return;memcpy(palette,pal.data(),sizeof(palette));loaded=true;lastFrame=-2;if(displayLoaded)rebuildDisplay();}catch(...){}}
+static void loadCache(){bridgeFrame.clear();lanboStream.reset();streamShapeGate.reset();fallbackTracker.reset();fallbackDefs.clear();timing.clear();activeMotion.reset();previewStart=-1;previewCount=0;loaded=false;try{original=file(cacheKey+L"\\original.sha");asset=decode(original);Bytes pal=file(cacheKey+L"\\palette.bgra");if(pal.size()!=sizeof(palette))return;memcpy(palette,pal.data(),sizeof(palette));loaded=true;lastFrame=-2;if(displayLoaded)rebuildDisplay();}catch(...){}}
 static bool selectedReaderMatches(const external::targetselection::Policy& choice,const external::ReadSession& reader){
  const auto connection=reader.connectionIdentity();
  if(!choice.selectedPid||!choice.selectedCreation||!connection||connection->pid!=choice.selectedPid||!connection->alive())return false;
@@ -832,7 +833,7 @@ static void pollOriginalResource(){
    // No game file is changed by automatic source discovery.
    if(manuallyBlankSHA())save(cacheKey+L"\\legacy-transparent.sha",file(gameDir+L"\\mouse.sha"));
    save(cacheKey+L"\\original.sha",canonical);save(cacheKey+L"\\palette.bgra",colors);
-   original=std::move(canonical);asset=std::move(captured);memcpy(palette,colors.data(),1024);palette[0]=0;loaded=true;
+   streamShapeGate.reset();original=std::move(canonical);asset=std::move(captured);memcpy(palette,colors.data(),1024);palette[0]=0;loaded=true;
    bridgeFrame.clear();fallbackTracker.reset();rebuildDisplay();
    if(!exists(gameDir+L"\\mouse.sha.cursor-preview-state"))save(cacheKey+L"\\transparent.sha",encode(asset,true));
   }
@@ -1070,15 +1071,18 @@ static void draw(){
  if(commandMode==commandcursor::None&&mode==L"hide"&&shared&&shared->state==1){
   lanboStream.observe(frame,GetTickCount());
   if(animKey<0&&lanboStream.predicts(frame,asset.frames.size())){
-   const auto& aa=asset.frames[frame];const auto& bb=asset.frames[frame+1];
-   // Compare full-canvas support masks, because SHA frames are cropped.
-   static std::vector<unsigned char> maskA,maskB;
-   maskA.assign(size_t(asset.w)*asset.h,0);maskB.assign(maskA.size(),0);
-   for(int y=0;y<aa.h;y++)for(int x=0;x<aa.w;x++)
-    maskA[size_t(y+aa.y)*asset.w+x+aa.x]=(aa.pixels[y*aa.w+x]!=0);
-   for(int y=0;y<bb.h;y++)for(int x=0;x<bb.w;x++)
-    maskB[size_t(y+bb.y)*asset.w+x+bb.x]=(bb.pixels[y*bb.w+x]!=0);
-   if(cursorstream::plausible(maskA.data(),maskB.data(),asset.w,asset.h,asset.w,asset.w)){
+   const bool shapeMatches=streamShapeGate.get(frame,[&]{
+    const auto& aa=asset.frames[frame];const auto& bb=asset.frames[frame+1];
+    // Compare full-canvas support masks, because SHA frames are cropped.
+    static std::vector<unsigned char> maskA,maskB;
+    maskA.assign(size_t(asset.w)*asset.h,0);maskB.assign(maskA.size(),0);
+    for(int y=0;y<aa.h;y++)for(int x=0;x<aa.w;x++)
+     maskA[size_t(y+aa.y)*asset.w+x+aa.x]=(aa.pixels[y*aa.w+x]!=0);
+    for(int y=0;y<bb.h;y++)for(int x=0;x<bb.w;x++)
+     maskB[size_t(y+bb.y)*asset.w+x+bb.x]=(bb.pixels[y*bb.w+x]!=0);
+    return cursorstream::plausible(maskA.data(),maskB.data(),asset.w,asset.h,asset.w,asset.w);
+   });
+   if(shapeMatches){
     animKey=160;animStart=frame;animCount=2;recognition=4;inferredRange=true;
    }
   }

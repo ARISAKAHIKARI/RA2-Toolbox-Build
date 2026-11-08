@@ -957,7 +957,12 @@ static void repairCalculationTick(DWORD now){
     if(input&&r.count>=0&&r.count<=8192&&r.match==input->match&&r.tick==input->tick&&r.frame==input->frame&&
        freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&!get<bool>(0xA8BC60+25)){
      repairCalculationPending=false;repairCount=repairAt=repairDone=0;
-     for(int i=0;i<r.count;++i){bool known=false;for(int j=0;j<input->count;++j)if(input->items[j].id==r.ids[i]){known=true;break;}if(known)repairIDs[repairCount++]=r.ids[i];}return;
+     // Validate membership once against the retained request. Keep Host order
+     // and duplicates here; repairEvent owns pending-toggle deduplication.
+     static uint32_t knownIDs[8192];
+     for(int j=0;j<input->count;++j)knownIDs[j]=input->items[j].id;
+     std::sort(knownIDs,knownIDs+input->count);
+     for(int i=0;i<r.count;++i)if(std::binary_search(knownIDs,knownIDs+input->count,r.ids[i]))repairIDs[repairCount++]=r.ids[i];return;
     }
    }
   }

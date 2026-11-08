@@ -100,13 +100,15 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
      get<uint32_t>(r.p+0x10)!=r.id||manualVersions.get(r.id)!=r.token)
    r=recentPassengers[--recentPassengerCount];else ++n;
  }
+ static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> history;history.clear();
+ for(int n=0;n<recentPassengerCount;++n)history.add(recentPassengers[n].p,n);
  Vec inf=vec(0xA83DE8);
  for(int n=0;n<inf.count;++n){uint32_t p=item(inf,n);if(!p)continue;uint32_t carrier=get<uint32_t>(p+0x11C);
   if(!carrier||!worldObjects.contains(carrier)||!own(carrier,house)||kind(carrier)!=2||!get<bool>(carrier+0x83)||
      !featureObjectAllowed(featuretypes::UnloadTransport,carrier)||get<uint32_t>(p+0x21C)!=house||
      !featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
-  int at=0;for(;at<recentPassengerCount;++at)if(recentPassengers[at].p==p)break;
-  if(at==recentPassengerCount){if(at==nativeorders::MaxPassengers)continue;++recentPassengerCount;}
+  int at=history.find(p);
+  if(at<0){if(recentPassengerCount==nativeorders::MaxPassengers)continue;at=recentPassengerCount++;history.add(p,at);}
   recentPassengers[at]={p,get<uint32_t>(p+0x10),carrier,get<uint32_t>(carrier+0x10),typeOf(carrier,2),manualVersions.get(get<uint32_t>(p+0x10)),now,frame};
  }
 }

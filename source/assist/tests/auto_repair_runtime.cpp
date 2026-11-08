@@ -207,5 +207,24 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
  run("manual_refresh_survives_auto_off",false,[]{
   setup(false,false);currentFrame=1;manualRepair(70,1000);tick(1008,2,true);expect(notifications==2&&repairAckPending,"manual can refresh source even with automation off");auto fresh=calculate();deliver(fresh);tick(1016,3);expect(sent.size()==1&&pendingAck==70,"refreshed manual work completed");
  });
+ run("retained_request_membership_full_capacity",false,[]{
+  setup(false,false,0);currentFrame=1;manualRepair(80,1000);
+  static compute::RepairInput input;input=sh->repairInput;input.count=8192;
+  for(int j=0;j<input.count;++j)input.items[j].id=uint32_t(j*2); // includes zero; membership must preserve old semantics
+  repairFrames.clear();repairFrames.retain(sh->repairTask,input);
+  WorkerResult result{sh->repairTask,{}};result.value.match=input.match;result.value.tick=input.tick;result.value.frame=input.frame;result.value.count=8192;
+  std::vector<uint32_t> expected;
+  for(int i=0;i<result.value.count;++i){uint32_t id=uint32_t((8191-i)*2);if(i%11==0)id+=1;if(i%37==0)id=2;
+   result.value.ids[i]=id;if(!(id&1))expected.push_back(id);
+  }
+  deliver(result);repairCalculationTick(1008);
+  expect(!repairCalculationPending&&repairCount==int(expected.size()),"full-capacity results filter unknown IDs");
+  expect(std::equal(expected.begin(),expected.end(),repairIDs),"membership preserves result order, duplicates, zero and edge IDs");
+  expect(sent.empty(),"membership acceptance does not itself issue game events");
+ });
+ run("retained_request_empty_membership",false,[]{
+  setup(false,false,0);currentFrame=1;manualRepair(81,1000);auto result=calculate();result.value.count=3;result.value.ids[0]=0;result.value.ids[1]=100;result.value.ids[2]=UINT32_MAX;
+  deliver(result);repairCalculationTick(1008);expect(!repairCalculationPending&&repairCount==0,"empty captured request accepts no forged candidates");
+ });
  std::printf("SUMMARY\t%u\t%u\t%u\n",cases,checks,failed);return failed?1:0;
 }

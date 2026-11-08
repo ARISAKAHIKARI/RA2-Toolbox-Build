@@ -62,6 +62,7 @@
 #include "../../external_reader/source/render_profile.h"
 #include "clock_ms.h"
 #include "label_motion.h"
+#include "display_sample_lease.h"
 #include "crate_names.h"
 #include "type_hotkey.h"
 #include "hotkey_routes.h"
@@ -1186,7 +1187,7 @@ static EnemyRasterKey enemyRasterKey(const external::enemies::Marker&m){return {
 static uint32_t statusOptions(){return (extra.parasiteMarker?external::status::Parasite:0)|(extra.crateBuffMarkers?external::status::CrateBuffs:0);}
 static void updateStatusDisplay(const Snapshot&source){
  const auto&f=externalSampler.unitStatuses();
- if(!statusOptions()||snap.renderStatus!=1||(!external::status::fresh(f,source.match,sampleRenderClock(nullptr))&&!(externalSourceConfirmed&&f.match==source.match&&f.frame==source.frame))){statusMotion.clear();return;}
+ if(!statusOptions()||snap.renderStatus!=1||!displaylease::frameCurrent(f,source.match,source.frame,sampleRenderClock(nullptr),externalSourceConfirmed,external::status::Maximum)){statusMotion.clear();return;}
  statusSample.labels=f.count;statusSample.match=f.match;statusSample.sampledTick=f.tick;statusSample.frame=f.frame;
  statusSample.cameraX=source.cameraX;statusSample.cameraY=source.cameraY;
  for(int i=0;i<f.count;++i){const auto&m=f.items[i];statusSample.label[i]={m.id,m.x,m.y};}
@@ -1194,7 +1195,7 @@ static void updateStatusDisplay(const Snapshot&source){
 }
 static void updateEnemyDisplay(const Snapshot&source){
  const auto&f=externalSampler.enemyMarkers();
- if(!extra.enemyMarkers||snap.renderStatus!=1||(!external::enemies::fresh(f,source.match,sampleRenderClock(nullptr))&&!(externalSourceConfirmed&&f.match==source.match&&f.frame==source.frame))){clearEnemyDisplay();return;}
+ if(!extra.enemyMarkers||snap.renderStatus!=1||!displaylease::frameCurrent(f,source.match,source.frame,sampleRenderClock(nullptr),externalSourceConfirmed,external::enemies::Maximum)){clearEnemyDisplay();return;}
  if(enemyRasterMatch!=f.match){clearEnemyDisplay();enemyRasterMatch=f.match;}
  enemySample.labels=f.count;enemySample.match=f.match;enemySample.sampledTick=f.tick;enemySample.frame=f.frame;
  enemySample.cameraX=source.cameraX;enemySample.cameraY=source.cameraY;
@@ -1650,10 +1651,10 @@ static void paint(){
  DWORD now=sampleClock(shared);int labelCount=motion.render(renderNow,labelViews);
  for(int i=0;i<labelCount;++i)nativeviewhost::localPoint(viewportTransform,labelViews[i].x,labelViews[i].y);
  const auto&statusFrame=externalSampler.unitStatuses();
- int statusCount=statusOptions()&&externalData&&external::status::fresh(statusFrame,externalData->match,renderNow)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
+ int statusCount=statusOptions()&&externalData&&displaylease::frameCurrent(statusFrame,externalData->match,externalData->frame,renderNow,externalSourceConfirmed,external::status::Maximum)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
  const auto&rawEnemyFrame=externalSampler.enemyMarkers();
  for(int i=0;i<statusCount;++i)nativeviewhost::localPoint(viewportTransform,statusViews[i].x,statusViews[i].y);
- int rawEnemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(rawEnemyFrame,externalData->match,renderNow)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
+ int rawEnemyCount=extra.enemyMarkers&&externalData&&displaylease::frameCurrent(rawEnemyFrame,externalData->match,externalData->frame,renderNow,externalSourceConfirmed,external::enemies::Maximum)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups,clusteredEnemies,clusteredEnemyViews):0;
  std::copy(clusteredEnemyViews,clusteredEnemyViews+enemyCount,enemyViews);
  for(int i=0;i<enemyCount;++i)nativeviewhost::localPoint(viewportTransform,enemyViews[i].x,enemyViews[i].y);

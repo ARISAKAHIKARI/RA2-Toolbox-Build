@@ -49,6 +49,9 @@ inline DWORD terminateDelay=0,terminateError=ERROR_ACCESS_DENIED,startupDelay=0,
 inline bool shutdownNeverExits=false;
 inline Reply startup=Reply::Ack,reply=Reply::Ack;
 inline std::function<void()>onTerminate;
+// Optional audit observation at the Win32 wait boundary. It does not replace
+// the production caller, mutex, or broker state machine.
+inline std::function<void(DWORD)>onMultipleWait;
 inline HANDLE activeBroker=nullptr;
 inline uintptr_t id(HANDLE h){return reinterpret_cast<uintptr_t>(h);}
 inline HANDLE make(Kind kind,DWORD pid=0){HANDLE h=reinterpret_cast<HANDLE>(uintptr_t(nextHandle++));auto&o=objects[id(h)];o.kind=kind;o.pid=pid;return h;}
@@ -57,7 +60,7 @@ inline bool due(DWORD target){return int32_t(now-target)>=0;}
 inline runtimebroker::Packet*packet(HANDLE process){auto&m=object(object(process).inherited[1]);return m.packet.get();}
 inline bool allOpen(HANDLE process){for(HANDLE h:object(process).inherited)if(object(h).closed)return false;return !object(process).closed;}
 inline void describe(runtimebroker::Packet&p){p.state=1;p.runtimeVersion=4;p.runtimeBytes=176;p.entryVersion=5;p.entryBytes=64;p.assistVersion=100;p.assistBytes=23162400;p.runtimeBase=0x65000000;p.hookRva=0x1234;const wchar_t*prefix=L"Fixture.";for(unsigned i=0;i<9;++i)p.mappingPrefix[i]=uint16_t(prefix[i]);}
-inline void reset(){objects.clear();singleWaits.clear();multipleWaits.clear();terminations.clear();exchanges.clear();brokers.clear();closed.clear();inheritance.clear();now=1000;error=0;hostPID=700;nextPID=9000;nextHandle=0x100;creates=overlappingCreates=liveBrokerCloses=wrongTerminates=ownerMismatches=unmaps=0;terminateOK=exitOnTerminate=eventOK=true;exitDespiteFailure=false;terminateDelay=startupDelay=exchangeDelay=shutdownDelay=0;terminateError=ERROR_ACCESS_DENIED;shutdownNeverExits=false;startup=reply=Reply::Ack;onTerminate={};activeBroker=nullptr;}
+inline void reset(){objects.clear();singleWaits.clear();multipleWaits.clear();terminations.clear();exchanges.clear();brokers.clear();closed.clear();inheritance.clear();now=1000;error=0;hostPID=700;nextPID=9000;nextHandle=0x100;creates=overlappingCreates=liveBrokerCloses=wrongTerminates=ownerMismatches=unmaps=0;terminateOK=exitOnTerminate=eventOK=true;exitDespiteFailure=false;terminateDelay=startupDelay=exchangeDelay=shutdownDelay=0;terminateError=ERROR_ACCESS_DENIED;shutdownNeverExits=false;startup=reply=Reply::Ack;onTerminate={};onMultipleWait={};activeBroker=nullptr;}
 }
 inline DWORD GetTickCount(){return brokerfixture::now;}inline DWORD GetLastError(){return brokerfixture::error;}inline void SetLastError(DWORD e){brokerfixture::error=e;}
 inline HANDLE GetCurrentProcess(){return reinterpret_cast<HANDLE>(uintptr_t(0xfffffff1));}inline DWORD GetCurrentProcessId(){return brokerfixture::hostPID;}
@@ -91,7 +94,7 @@ inline BOOL CreateProcessW(const wchar_t*path,wchar_t*,void*,void*,BOOL,DWORD,vo
  auto*extended=reinterpret_cast<STARTUPINFOEXW*>(startup);HANDLE h=make(Kind::Broker,nextPID++);auto&o=object(h);o.inherited=extended->lpAttributeList->inherited;
  if(GetProcessId(o.inherited[0])!=hostPID||packet(h)->owner!=hostPID)++ownerMismatches;
  out->hProcess=h;out->hThread=make(Kind::Thread);out->dwProcessId=o.pid;out->dwThreadId=o.pid+1;activeBroker=h;brokers.push_back(h);inheritance.push_back(o.inherited);++creates;return TRUE;}
-inline DWORD WaitForMultipleObjects(DWORD,const HANDLE*handles,BOOL,DWORD milliseconds){using namespace brokerfixture;multipleWaits.push_back(milliseconds);auto&o=object(handles[0]);auto*p=packet(handles[0]);bool starting=milliseconds==3000;Reply mode=starting?startup:reply;now+=starting?startupDelay:exchangeDelay;
+inline DWORD WaitForMultipleObjects(DWORD,const HANDLE*handles,BOOL,DWORD milliseconds){using namespace brokerfixture;multipleWaits.push_back(milliseconds);if(onMultipleWait)onMultipleWait(milliseconds);auto&o=object(handles[0]);auto*p=packet(handles[0]);bool starting=milliseconds==3000;Reply mode=starting?startup:reply;now+=starting?startupDelay:exchangeDelay;
  if(mode==Reply::Timeout){now+=milliseconds;return WAIT_TIMEOUT;}if(mode==Reply::Failed){SetLastError(ERROR_ACCESS_DENIED);return WAIT_FAILED;}if(mode==Reply::Exited){o.exited=true;return WAIT_OBJECT_0;}
  if(starting){describe(*p);if(mode==Reply::RemoteError){p->state=-1;p->error=ERROR_REVISION_MISMATCH;}return WAIT_OBJECT_0+1;}
  p->response=mode==Reply::BadSequence?p->request-1:p->request;p->error=mode==Reply::RemoteError?ERROR_ACCESS_DENIED:ERROR_SUCCESS;

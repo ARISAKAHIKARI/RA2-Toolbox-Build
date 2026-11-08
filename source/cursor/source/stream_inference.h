@@ -37,8 +37,25 @@ inline bool plausible(const unsigned char* a,const unsigned char* b,
   if(b[y*strideB+x]){++nb;bx+=x;by+=y;}
  }
  if(na<3||nb<3||na>nb*3||nb>na*3)return false;
- const long long dx=ax*nb-bx*na,dy=ay*nb-by*na;
- const long long limit=static_cast<long long>(std::max(w,h)/6+1)*na*nb;
+ // Supported SHA canvases reach 512x512. The integer centroid products
+ // still fit int64, but their squares already overflow on a full 128x128
+ // canvas. Convert before squaring so the conservative distance gate is
+ // defined for every canvas accepted by decode().
+ const long double dx=static_cast<long double>(ax)*nb-static_cast<long double>(bx)*na;
+ const long double dy=static_cast<long double>(ay)*nb-static_cast<long double>(by)*na;
+ const long double limit=static_cast<long double>(std::max(w,h)/6+1)*na*nb;
  return dx*dx+dy*dy <= limit*limit;
 }
+// Shape support is immutable while one original SHA resource is loaded.
+// Presentation refreshes can repeat the same source frame many times. Keep
+// that pair's decision; the owner must reset before replacing the resource.
+class PairShapeGate {
+ int frame_=-1;bool valid_=false,value_=false;
+public:
+ void reset(){frame_=-1;valid_=false;value_=false;}
+ template<class Evaluate>bool get(int frame,Evaluate evaluate){
+  if(!valid_||frame_!=frame){const bool value=evaluate();frame_=frame;value_=value;valid_=true;}
+  return value_;
+ }
+};
 } // namespace cursorstream
