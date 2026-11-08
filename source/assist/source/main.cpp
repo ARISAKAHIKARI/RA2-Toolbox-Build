@@ -58,6 +58,7 @@
 #include "../../shared/source/secondary_display.h"
 #include "type_catalog.h"
 #include "planner_task.h"
+#include "planner_world_pool.h"
 #include "value_task.h"
 #include "../../suite/source/settings_categories.h"
 #include "../../external_reader/source/render_profile.h"
@@ -689,7 +690,7 @@ static std::wstring hardwareBudgetStatus(){
  std::wstring text=L"硬件断点：预设 "+std::to_wstring(planned)+L" / 4 槽";
  if(planned>4)text+=L"（超出预算，请关闭一项）";
  if(slotbudget::known(budget))text+=L" · 实际本工具 "+std::to_wstring(slotbudget::owned(budget))+L" · 其他占用 "+std::to_wstring(slotbudget::foreign(budget))+L" · 空闲 "+std::to_wstring(slotbudget::free(budget));
- else text+=L" · 可预先设置，连接后复核实际占用";
+ else text+=L" · 实际占用未测定，启用时复核";
  return text;
 }
 
@@ -944,7 +945,7 @@ static void servicePlanner(){
  const auto parameters=plannerParameters();if(!parameters.flags&&!parameters.drop&&!parameters.observeDrop&&!plannerState.tracking&&plannerReceipts.empty())return;
  const long batch=shared->computeFrameSeq;if(batch&1)return;
  const long seq=shared->worldSeq;if((seq&1)||seq==worldRevision||snap.chat)return;
- auto input=std::make_shared<planner::World>();auto&w=*input;MemoryBarrier();
+ static planner::WorldPool inputWorlds;auto input=inputWorlds.acquire();if(!input)return;auto&w=*input;MemoryBarrier();
  w.match=shared->world.match;w.tick=shared->world.tick;w.frame=shared->world.frame;w.count=shared->world.count;w.intentCount=shared->world.intentCount;w.refineryCount=shared->world.refineryCount;w.inputSerial=shared->world.inputSerial;w.combatCount=shared->world.combatCount;
  if(!planner::validWorldCounts(w.count,w.intentCount,w.refineryCount)||w.combatCount<0||w.combatCount>planner::MaxCombatProbes)return;
  memcpy(w.combat,shared->world.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));memcpy(w.actors,shared->world.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(w.intents,shared->world.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(w.refineries,shared->world.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));MemoryBarrier();

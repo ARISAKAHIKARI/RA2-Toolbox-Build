@@ -33,12 +33,14 @@ struct Memory {
  bool read(uint32_t p,void*out,size_t n){
   if(beforeRead)beforeRead(p,n);
   bool ok=uint64_t(p)+n<=bytes.size();
-  if(n==worldframe::PageSize&&!(p&4095u)&&partialPages.count(p))ok=false;
+  // A page-wide fault also rejects a speculative multi-page read containing
+  // that page. Smaller requested ranges may still be readable on fallback.
+  for(uint32_t page:partialPages)if(p<=page&&uint64_t(p)+n>=uint64_t(page)+worldframe::PageSize)ok=false;
   for(const auto&span:denied)if(uint64_t(p)<uint64_t(span.first)+span.second&&uint64_t(span.first)<uint64_t(p)+n)ok=false;
   calls.push_back({p,n,ok});
   if(!ok){std::memset(out,0xEF,n);return false;}
   std::memcpy(out,bytes.data()+p,n);
-  if(n==worldframe::PageSize&&!(p&4095u))++successfulPages[p];
+  if(!(p&4095u)&&!(n&4095u))for(size_t i=0;i<n;i+=worldframe::PageSize)++successfulPages[p+uint32_t(i)];
   return true;
  }
  size_t requests(uint32_t address,size_t n)const{size_t count=0;for(const auto&c:calls)if(c.address==address&&c.bytes==n)++count;return count;}
@@ -353,7 +355,7 @@ void runtime(){
  // pages cannot certify their own frame/world/House binding.
  auto rejectChange=[&](uint32_t changedAddress,uint32_t value){
   retireWorldFrame();setup(memory);before=worldlife::capture(read);snap.frame=before.frame;bool changed=false;
-  memory.beforeRead=[&](uint32_t p,size_t n){if(!changed&&p==Scenario&&n==4096){changed=true;memory.put(changedAddress,value);}};
+  memory.beforeRead=[&](uint32_t p,size_t n){if(!changed&&p<=Scenario&&uint64_t(p)+n>=uint64_t(Scenario)+4096){changed=true;memory.put(changedAddress,value);}};
   CHECK(!captureWorldFrame(read,before,House,clock,worldframe::Base));CHECK(changed&&!worldFrameReady);const auto after=memory.calls.size();CHECK(!captureWorldFrame(read,before,House,clock,worldframe::Base));CHECK(memory.calls.size()==after);memory.beforeRead={};
  };
  rejectChange(0xA8ED84,51);rejectChange(0xA8B230,Scenario+0x10000);rejectChange(0x87F924,Cells+0x10000);rejectChange(0xA83D4C,House+0x10000);

@@ -1,0 +1,83 @@
+{
+  "pass": true,
+  "scope": "Measure exact servicePlanner capture before/after bounded World reuse.\n\nPortable CPU/allocation fixture with explicit UI and worker seams, not Windows,\ngame execution, or gameplay FPS. The real planner Task verifies retained ownership.\n",
+  "baseline_commit": "88812eda0d23d065d61d6f742315b7d0581fd1a8",
+  "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "results": {
+    "before": {
+      "metrics": {
+        "baseline": true,
+        "world_bytes": 6336544,
+        "benchmark_iterations_per_batch": 500,
+        "benchmark_batches": 5,
+        "large_world_allocations": 2500,
+        "large_world_allocation_bytes": 15841400000,
+        "median_batch_ns": 315615156,
+        "min_batch_ns": 304504823,
+        "max_batch_ns": 328593145,
+        "final_active_digest": "46c3ff083aaec700"
+      },
+      "generated_sha256": "83903856bd296891485c4625c43cc22587ed20a0f5592f869ddc701bbd53d128",
+      "executable_sha256": "957ff38be8c6048daf1c45522f695f179e9c4495d020c408286684814c868e9c",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-DPLANNER_POOL_BASELINE=1",
+        "-I",
+        "/workspace/scratch/40121bc881b8/perf-146/features/final/planner-world-pool/before",
+        "-I",
+        "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source",
+        "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/planner_world_pool.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/perf-146/features/final/planner-world-pool/before/planner-world-pool"
+      ]
+    },
+    "after": {
+      "metrics": {
+        "baseline": false,
+        "world_bytes": 6336544,
+        "benchmark_iterations_per_batch": 500,
+        "benchmark_batches": 5,
+        "large_world_allocations": 0,
+        "large_world_allocation_bytes": 0,
+        "median_batch_ns": 131175,
+        "min_batch_ns": 125577,
+        "max_batch_ns": 165105,
+        "final_active_digest": "46c3ff083aaec700"
+      },
+      "generated_sha256": "dff01b12390751f3f053dbccf41206cb85ddce70f3171977a8d37398b088a2f8",
+      "executable_sha256": "f0d364fdf64f80e212227811fe46e07ee70dd9957287c7e7af04e8f06a06a38f",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-DPLANNER_POOL_BASELINE=0",
+        "-I",
+        "/workspace/scratch/40121bc881b8/perf-146/features/final/planner-world-pool/after",
+        "-I",
+        "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source",
+        "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/planner_world_pool.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/perf-146/features/final/planner-world-pool/after/planner-world-pool"
+      ]
+    }
+  },
+  "windows_executed": false,
+  "game_process_tested": false,
+  "fps_measured": false,
+  "source_sha256": {
+    "source/assist/source/main.cpp": "61a1563473f2a51d8e990f80d212c94f22a74355ff2a4db15a4dc0823768fb9f",
+    "source/assist/source/planner_world_pool.h": "9c23a442468e6290bbcc4b2ea4406e8573152db1880e6ebc64f348c83e6d46ba",
+    "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+    "source/assist/source/planner_types.h": "c4215d8d6328d492b548efa48d26aa2da4fef7a1d1328d57e9bd2e245071ffcc",
+    "source/assist/source/external_planner.h": "63392e6f449e74d6164643a1984eb9cac3b6e8ffa28e13ae96f8b57f96ebb4ad",
+    "source/assist/source/plan_freshness.h": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c",
+    "source/assist/tests/planner_world_pool.cpp": "6d62f8ff9604ba20a2191e029500b78ccb1adc792b03e8cd8108f7eafbc336f3",
+    "source/assist/tests/planner_world_pool.py": "7e7951b76a95072374ff989ef44b5940f4ec083ac0220e5207ac9d95f080d7c1",
+    "source/assist/tests/tactical_frame_sampling.py": "1f26a092b8cb31d234b8e971d4dcb576b950649ec093a4db57dc467a1357d0dd"
+  },
+  "median_elapsed_ratio_after_over_before": 0.000415616923035217
+}

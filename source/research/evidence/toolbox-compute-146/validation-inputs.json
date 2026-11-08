@@ -1,0 +1,392 @@
+{
+  "version": "1.0.46-pre.1",
+  "required_checks_passed": true,
+  "checks_reexecuted": true,
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "focused_checks": {
+    "idle_breakpoint_inspection": {
+      "passed": true,
+      "evidence": [
+        {
+          "path": "source/research/evidence/toolbox-compute-146/idle-inspection.json",
+          "sha256": "1bf1007a565b5e2604c832c7e0e8d7c2d5fc03c9849d6c68128e6e9885cc0ac6",
+          "passed": true
+        },
+        {
+          "path": "source/research/evidence/toolbox-compute-146/control-publication.json",
+          "sha256": "fb343aac1694d0f8b6e8eb13831aad9c09e20936a2f474848b617994b407b885",
+          "passed": true
+        }
+      ]
+    },
+    "planner_publication": {
+      "passed": true,
+      "evidence": [
+        {
+          "path": "source/research/evidence/toolbox-compute-146/planner-publication.json",
+          "sha256": "acdad914146c4766fe945427d4e8154619e8656dadce79b59e61c4af846753cb",
+          "passed": true
+        },
+        {
+          "path": "source/research/evidence/toolbox-compute-146/planner-world-pool.json",
+          "sha256": "303f007f5d6d86d1b594da42bb6155dbed114e80f2c374a1bab9bbdf0f884afe",
+          "passed": true
+        },
+        {
+          "path": "source/research/evidence/toolbox-compute-146/planner-tactical.json",
+          "sha256": "8547f0f307cf4768ad20e3f9b13bd875534c54c0c7436be7d2a1fa358abf214b",
+          "passed": true
+        },
+        {
+          "path": "source/research/evidence/toolbox-compute-146/planner-source-freeze.json",
+          "sha256": "7894578aa817fa88a49d948532609eed7ef96a4d99d2988276a0746c6c1a768d",
+          "passed": true
+        }
+      ]
+    },
+    "world_sampling": {
+      "passed": true,
+      "evidence": [
+        {
+          "path": "source/research/evidence/toolbox-compute-146/sampling-correctness.json",
+          "sha256": "226eadd98d01e68da479196353a2577643648601b512990dc47f69f8ba7ca3b9",
+          "passed": true
+        },
+        {
+          "path": "source/research/evidence/toolbox-compute-146/sampling-benchmark.json",
+          "sha256": "c6da571a6985bea6f3ad6ae99f9c4ffd75d396ca1c524f8b79370375cc9225ff",
+          "passed": true
+        }
+      ]
+    },
+    "runtime_memory": {
+      "passed": true,
+      "evidence": [
+        {
+          "path": "source/research/evidence/toolbox-compute-146/runtime-memory.json",
+          "sha256": "fc143bbc4b8a67f12327293d7907b0ed657e29ce6414e0cd5d354813f174b7ac",
+          "passed": true
+        }
+      ]
+    },
+    "performance_package": {
+      "passed": true,
+      "evidence": [
+        {
+          "path": "source/research/evidence/toolbox-compute-146/package-policy.json",
+          "sha256": "7a4608538c93addd507e52a61fcc5e955a14f5b65fb83af4fc69de70982d3a5c",
+          "passed": true
+        }
+      ]
+    }
+  },
+  "source_bindings": [
+    {
+      "path": "packages/v1.0.46-pre.1/package_release.py",
+      "sha256": "79ab26dbd4016371dbbca0b44f52c02c09c465150a20b1485e505ec4fc4b3acc"
+    },
+    {
+      "path": "packages/v1.0.46-pre.1/test_performance_package.py",
+      "sha256": "bbb9603c75fc46f30558b864ebba920fd68950812bcfa67b0e03f753577e4b77"
+    },
+    {
+      "path": "source/assist/source/autoload_bridge.h",
+      "sha256": "616ecb1933770883a9126022d66c510f1fe61864e8d695492c3eabeb0b41ebb8"
+    },
+    {
+      "path": "source/assist/source/bridge.cpp",
+      "sha256": "a1924341718da07eff0ae127ea39fc5653fe3c1c490197f47075d6877e98e0d3"
+    },
+    {
+      "path": "source/assist/source/combat_probe_bridge.h",
+      "sha256": "3618fdb3ac85f209dddf563c0f21c1f35194d50f37ac4771711f9b4fa3b5356e"
+    },
+    {
+      "path": "source/assist/source/control_mode_policy.h",
+      "sha256": "c5309b7c84ead21979f6c91b3dcb7296603d7f2ce5183f49f01e2f1fb3332885"
+    },
+    {
+      "path": "source/assist/source/control_parameter_policy.h",
+      "sha256": "ae8a00011610aadc06dc40b0c20c5fb25b2f123446e8748dc98bed0f2ec05d6a"
+    },
+    {
+      "path": "source/assist/source/cooperative_bridge.h",
+      "sha256": "d579af32a468c625258611e10fd2a1a05ee91b71ec5b3c953a68649b11e6376e"
+    },
+    {
+      "path": "source/assist/source/dodge_bridge.h",
+      "sha256": "d251be34caad0f481a7ca39279e724a704202894be43c19bf80435ae74052dc9"
+    },
+    {
+      "path": "source/assist/source/event_delivery.h",
+      "sha256": "620c4e23fdfe3c2561bab8199c6c38239b45a5092501b3f4a880bee0f948d929"
+    },
+    {
+      "path": "source/assist/source/exception_policy.h",
+      "sha256": "43162e417c1429b720d2bd2a5cfff24d8b8b991e5fd0d017b2e1cee8af44d991"
+    },
+    {
+      "path": "source/assist/source/external_orders_bridge.h",
+      "sha256": "b9047df1e7c528f9830d4126a10b1d60472b5298dfbf9a6cfb31dd35d49caf02"
+    },
+    {
+      "path": "source/assist/source/external_planner.h",
+      "sha256": "63392e6f449e74d6164643a1984eb9cac3b6e8ffa28e13ae96f8b57f96ebb4ad"
+    },
+    {
+      "path": "source/assist/source/harvester_defense_bridge.h",
+      "sha256": "aea323bedb0452a56569b45c47e45317a15120e2c4d032a56db807d715933d76"
+    },
+    {
+      "path": "source/assist/source/harvester_defense_raw.h",
+      "sha256": "c890e9e25578dc0dc53b69f488f402608157516847e47b4ec5a5c1770dbab627"
+    },
+    {
+      "path": "source/assist/source/main.cpp",
+      "sha256": "61a1563473f2a51d8e990f80d212c94f22a74355ff2a4db15a4dc0823768fb9f"
+    },
+    {
+      "path": "source/assist/source/map_visibility_parameter_policy.h",
+      "sha256": "6effa9515db7d51474d41cc4d94de15c0ada05f054b4e3eb9030067cf082f037"
+    },
+    {
+      "path": "source/assist/source/missile_bridge.h",
+      "sha256": "db4821bcb135ab9f13f51d66bede55f4ea64aeb98232a47f13e74e1bda984f2e"
+    },
+    {
+      "path": "source/assist/source/native_orders_bridge.h",
+      "sha256": "594a27690b5a9de6953e74839a50fc8eaa5b4a427627b0badbe18266751a4d3f"
+    },
+    {
+      "path": "source/assist/source/ore_harvest_bridge.h",
+      "sha256": "86fa79e17f63e2cccc8022a64ffc1870aead79d8bb3c95f0dd5d64b975824450"
+    },
+    {
+      "path": "source/assist/source/plan_freshness.h",
+      "sha256": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c"
+    },
+    {
+      "path": "source/assist/source/planner_task.h",
+      "sha256": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364"
+    },
+    {
+      "path": "source/assist/source/planner_types.h",
+      "sha256": "c4215d8d6328d492b548efa48d26aa2da4fef7a1d1328d57e9bd2e245071ffcc"
+    },
+    {
+      "path": "source/assist/source/planner_world_copy.h",
+      "sha256": "095ecda916a0e512805ea31b96853117bd9d06c5f89bbf55e93f3ad04fac2a83"
+    },
+    {
+      "path": "source/assist/source/planner_world_pool.h",
+      "sha256": "9c23a442468e6290bbcc4b2ea4406e8573152db1880e6ebc64f348c83e6d46ba"
+    },
+    {
+      "path": "source/assist/source/raw_combat.h",
+      "sha256": "7972727364e3a6d6cad7762fccb6cf030173000716827ba8ba45647b87c85552"
+    },
+    {
+      "path": "source/assist/source/reverse_dodge_bridge.h",
+      "sha256": "1428c86d0b01d6287b2380b40916e30c469d74d49642cb8d049d2feadd06916f"
+    },
+    {
+      "path": "source/assist/source/single_player_fps.h",
+      "sha256": "d3e62a9bf72d2402470973df64d032b53986e41036f71528b116e377dc1b1a1c"
+    },
+    {
+      "path": "source/assist/source/tactical_frame_read.h",
+      "sha256": "38a51d8e02f58f3809d6b6c1f3842c1857586321e72a7c674ee1c8f0ed796efb"
+    },
+    {
+      "path": "source/assist/source/tech_enhancement.h",
+      "sha256": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c"
+    },
+    {
+      "path": "source/assist/source/tech_enhancement_parameter_policy.h",
+      "sha256": "248b871027fa46377f058467f8152b5564a049b2bdb52f0cdfda15d9abbc0490"
+    },
+    {
+      "path": "source/assist/source/tech_parameter_lookup.h",
+      "sha256": "14fd3aa6ef6b4557804d44fd6743ac4b5bc1e92f7a23f7fc434c0ffe9a735a43"
+    },
+    {
+      "path": "source/assist/source/tech_ui_breakpoint_bridge.h",
+      "sha256": "9e59626811021756059c36958f9daac9d15604e611fd8275cc0db0e91654c43b"
+    },
+    {
+      "path": "source/assist/source/tech_ui_breakpoint_core.h",
+      "sha256": "dc75c050fadcee5f2d4e44dd1957ed4ffcd405fc8d19091122f5587a936672aa"
+    },
+    {
+      "path": "source/assist/source/tech_ui_breakpoint_guard.h",
+      "sha256": "3a7514d12d5b7b81b1bbfd16c6043b84ffabc2c3bf6de842a5c7d25e9f937fe7"
+    },
+    {
+      "path": "source/assist/source/tech_ui_breakpoint_hot.h",
+      "sha256": "d4240a941f60993162edb924183027d37aa793817b8c9f480558ac410719c73e"
+    },
+    {
+      "path": "source/assist/source/technology_mode_policy.h",
+      "sha256": "33e92d7331d9458d621e368c457276969960d904454779036f91116c789499e8"
+    },
+    {
+      "path": "source/assist/source/unload_compute_bridge.h",
+      "sha256": "d26fc80a6c451242e43b9d2b992598dea7f2e6c9d0681daa5a1dd148c96ab6bc"
+    },
+    {
+      "path": "source/assist/source/world_frame_runtime.h",
+      "sha256": "c9d04f2944a8517494fe52e6c20e73b1fc35fe68600b0dc4ff2c3e9b200ce5c1"
+    },
+    {
+      "path": "source/assist/tests/breakpoint_owner_rendezvous.cpp",
+      "sha256": "a7988f6328f4f1c3aeeff0b6d907e204124cb320565f37597e038221e5efc76d"
+    },
+    {
+      "path": "source/assist/tests/control_publication.cpp",
+      "sha256": "7f526fbee5e3ed7c16c86cc132cf6a0e09987da014e51cdcb7b12a40b20c9233"
+    },
+    {
+      "path": "source/assist/tests/control_publication.py",
+      "sha256": "45d8a9e92e815a2ed105348b26981fd6adb2a9d99debc26304f912defabeff93"
+    },
+    {
+      "path": "source/assist/tests/fixtures/tactical_frame/autoload_before.h",
+      "sha256": "14a6a86113a0065abc3ad863c3c5ce41bc0b2328d84a9cd0817fe29ed76ab5cc"
+    },
+    {
+      "path": "source/assist/tests/idle_breakpoint_inspection.cpp",
+      "sha256": "4d5d298eea5b79cd2e567b82a9cfe9b17ae56622d63aedf3fa32d97680b6b1a8"
+    },
+    {
+      "path": "source/assist/tests/idle_breakpoint_inspection.py",
+      "sha256": "5a4bb00c6769a7937acee5f15f1f78f7a15a49f4784a170469b19076f8411d75"
+    },
+    {
+      "path": "source/assist/tests/planner_publication_performance.cpp",
+      "sha256": "be72b0e86e4b2b18d1528495975f0f62ba45433d37551b4f6cfa29a0a7aec5e9"
+    },
+    {
+      "path": "source/assist/tests/planner_publication_performance.py",
+      "sha256": "c85934c701098e60fafcc4da21af75b08498823b66b6bca3c8b724dbc0c22d91"
+    },
+    {
+      "path": "source/assist/tests/planner_world_pool.cpp",
+      "sha256": "6d62f8ff9604ba20a2191e029500b78ccb1adc792b03e8cd8108f7eafbc336f3"
+    },
+    {
+      "path": "source/assist/tests/planner_world_pool.py",
+      "sha256": "7e7951b76a95072374ff989ef44b5940f4ec083ac0220e5207ac9d95f080d7c1"
+    },
+    {
+      "path": "source/assist/tests/runtime_memory.cpp",
+      "sha256": "0f92e499ac2a82a1ed89f6a3782885f497c1407252bb8b0efbb9deac55b5a788"
+    },
+    {
+      "path": "source/assist/tests/runtime_memory.py",
+      "sha256": "5fbd2cd79c1b4f982cbeef939867842631058900eb0ad6b733931a921af8b3d6"
+    },
+    {
+      "path": "source/assist/tests/tactical_frame_sampling.cpp",
+      "sha256": "2f00e122e8203020e84f7080501562a83d4e460f4f3204ff91b304edef371bc0"
+    },
+    {
+      "path": "source/assist/tests/tactical_frame_sampling.py",
+      "sha256": "1f26a092b8cb31d234b8e971d4dcb576b950649ec093a4db57dc467a1357d0dd"
+    },
+    {
+      "path": "source/assist/tests/world_frame_capture_performance.cpp",
+      "sha256": "7efc1ea0d3d70c38b3701177d8d556664cec459d622a6aa1cc37c531eeb40db1"
+    },
+    {
+      "path": "source/assist/tests/world_frame_capture_performance.py",
+      "sha256": "41a6021f751ced8a5ff542ce25d6833f66e6106903c8dc2863ca37a3af6a3651"
+    },
+    {
+      "path": "source/assist/tests/world_frame_core.cpp",
+      "sha256": "030748bb15b734b04009cf429ddb71a57f2a7761bc4b52d25a5d88445e367049"
+    },
+    {
+      "path": "source/assist/tests/world_frame_core_test.py",
+      "sha256": "2ee49da359b7d77f4c8decc816c28e19065975a8c680caac093fe28dba63f13d"
+    },
+    {
+      "path": "source/engine/dis_render.py",
+      "sha256": "eb953f31b8453a3ae1cd79c363840f0706116a9a8ca8ecd3cb1e41fb99930fc9"
+    },
+    {
+      "path": "source/engine/player-template.html",
+      "sha256": "da85d9fc8d3d25b96e7023d754c47d9832687ff344dbba8adcb350df56b46daa"
+    },
+    {
+      "path": "source/engine/precompute.py",
+      "sha256": "5981f87f669f2748c2cbf44deb13f300aec5276a163ffa36b1c965320a1954c7"
+    },
+    {
+      "path": "source/engine/prepare_runtime.ps1",
+      "sha256": "507886249889153d21c55e428b962e3d7127c89c5be3c3a699871e50ee7b2022"
+    },
+    {
+      "path": "source/engine/prepare_runtime.py",
+      "sha256": "50ef433c37a49940965ce6d53382e47f1b07043d0064a91e3bdf3547a717c912"
+    },
+    {
+      "path": "source/engine/preview_builder.py",
+      "sha256": "93b0b79da2ad4a8b1429cefe7dcf5f86c6a46c059bc500a76a132f5cf5270661"
+    },
+    {
+      "path": "source/engine/runtime-dependencies.json",
+      "sha256": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+    },
+    {
+      "path": "source/shared/source/debug_entry_catalog.h",
+      "sha256": "8229a6879402f082eaf41b99b79040b44499e962a8991e79ba496ccc2ac4bd21"
+    },
+    {
+      "path": "source/shared/source/debug_entry_policy.h",
+      "sha256": "a20108bae99496714150ba465886b3158beb6613c6a6ddbdf901171d2cdc2c1c"
+    },
+    {
+      "path": "source/shared/source/debug_entry_types.h",
+      "sha256": "acb4aeca8ea08b6cb3d88c9a794976d1e07734634526c270c05e938fbf658a5c"
+    },
+    {
+      "path": "source/shared/source/hardware_slot_budget.h",
+      "sha256": "997a06543ddf6c77de423740ec82863db69a4f9efff3be679b1e309368e6e8c8"
+    },
+    {
+      "path": "source/shared/source/master_control_policy.h",
+      "sha256": "f7ad82442891ceea98aab7e06129c7cb503058b965929331e5c8a277d6394ee8"
+    },
+    {
+      "path": "source/shared/source/patch_context.h",
+      "sha256": "18de132500a2872b261d68afdd08fb05fc62b83f8d7fd0e6ba3b9728c6e5a17d"
+    },
+    {
+      "path": "source/shared/source/runtime_memory.h",
+      "sha256": "f69a91a02291af9712d429a931e1403a474965cf96b0f506ffbc4c9e16ca0958"
+    },
+    {
+      "path": "source/shared/source/runtime_seh_scope.h",
+      "sha256": "a9b404935e2b0b9fac4c594d4c27e31b08c0141c5f0d7e25e63557991cb271f7"
+    },
+    {
+      "path": "source/shared/source/world_frame.h",
+      "sha256": "054c5879835da23b503b9f1d353fc21935193a3d5df440ee2b664e5b2da0d9ee"
+    },
+    {
+      "path": "source/shared/source/world_frame_capture.h",
+      "sha256": "54e646ebfe75d8614f07b0b0fb65dfb3fcaa476bb1a05d6f2eb1c55d85315b41"
+    },
+    {
+      "path": "source/shared/source/world_frame_transport.h",
+      "sha256": "e9ec387d4ffc82417e368a1305051df6436f3c674ea6516049d2288942897009"
+    }
+  ],
+  "limits": [
+    "Current-source portable execution and Windows target code generation only; no Windows or game FPS acceptance.",
+    "No sampling-frequency or read-coverage reduction. Adjacent-page batching was rejected and is not shipped.",
+    "Sampling wall times vary with host scheduling; all contended and paired runs are retained, including a slower Combat8192 replay. Allocation/read/output counts are the primary reproducible result."
+  ]
+}

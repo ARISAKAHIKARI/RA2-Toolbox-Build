@@ -1,6 +1,6 @@
 {
-  "name": "RA2 Toolbox 1.0.45",
-  "version": "1.0.45",
+  "name": "RA2 Toolbox 1.0.46-pre.1",
+  "version": "1.0.46-pre.1",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full includes pinned offline assets/profiles and native paired programs; optional Python/NumPy/SciPy/OpenCV preprocessing dependencies are downloaded only when needed and missing. Update preserves installed dependencies, settings and resources.",
@@ -948,5 +948,25 @@
     "windows_executed": false,
     "game_tested": false,
     "multiplayer_tested": false
+  },
+  "ToolboxComputePerformance146Pre1": {
+    "version": "1.0.46-pre.1",
+    "file_version": "1.0.46.1",
+    "assist_protocol": 101,
+    "scope": [
+      "Remove idle owner-thread hardware-budget inspection when all hardware features and explicit Debug diagnostics are off; retain activation, active audits and cleanup.",
+      "Retain only counted planner payload entries, skip rollback copies on no-work repeats, and reuse unowned Host World buffers without modifying snapshots held by workers.",
+      "Reuse game-thread capture membership and worklists while preserving the original per-page reads, failure fallback, independent post-capture identity checks and sealed payload protocol.",
+      "Use bounded scalar small copies and x86 string instructions for Runtime bulk memory primitives under the actual no-builtin build."
+    ],
+    "sampling_frequency_reduced": false,
+    "prerelease": true,
+    "make_latest": false,
+    "stable_latest_to_preserve": "v1.0.45",
+    "validation": "Focused before/after checks bind actual production sources; measured operation counts and synthetic host timings do not establish Windows syscalls or game FPS. The frozen build and package receipts are separate.",
+    "windows_executed": false,
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "batched_read_experiment_shipped": false
   }
 }

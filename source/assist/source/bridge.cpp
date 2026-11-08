@@ -41,14 +41,9 @@
 #include "unit_task_arbiter.h"
 #include "../../external_reader/source/display_state.h"
 #include "../../shared/source/message_query.h"
-extern "C" void* __cdecl memset(void*p,int c,size_t n){
- volatile unsigned char*d=(volatile unsigned char*)p;uint32_t word=uint32_t((unsigned char)c)*0x01010101u;
- while(n>=4){*(volatile uint32_t*)d=word;d+=4;n-=4;}while(n--)*d++=(unsigned char)c;return p;
-}
-extern "C" void* __cdecl memcpy(void*p,const void*q,size_t n){
- volatile unsigned char*d=(volatile unsigned char*)p;const volatile unsigned char*s=(const volatile unsigned char*)q;
- while(n>=4){*(volatile uint32_t*)d=*(const volatile uint32_t*)s;d+=4;s+=4;n-=4;}while(n--)*d++=*s++;return p;
-}
+#include "../../shared/source/runtime_memory.h"
+extern "C" void* __cdecl memset(void*p,int c,size_t n){return assist::runtimememory::fill(p,c,n);}
+extern "C" void* __cdecl memcpy(void*p,const void*q,size_t n){return assist::runtimememory::copy(p,q,n);}
 extern "C" int __cdecl memcmp(const void*p,const void*q,size_t n){auto a=(const unsigned char*)p,b=(const unsigned char*)q;while(n--){if(*a!=*b)return *a-*b;++a;++b;}return 0;}
 #include "input_patch.h" // Registry is needed by publishSnapshot(), defined below.
 using namespace assist;

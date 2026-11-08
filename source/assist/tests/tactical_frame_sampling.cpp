@@ -279,4 +279,6 @@ static void testDefenseIndex(){
  --planningWorld.frame;check(!minerDefenseIndexRefineries()&&minerDefenseLinkedRefinery.at(20)==30,"defense mixed prior planning world with a new frame");
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
+#ifndef TACTICAL_FRAME_NO_MAIN
 int main(){sh=new Shared{};testCooperative();testLoad();testDodge();testReverse();testMissile();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+#endif

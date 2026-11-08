@@ -69,6 +69,7 @@ def production():
     missile = source["missile_bridge.h"]
     add(missile[:missile.index("static void pruneMissileSends(")])
     add(function(missile, "static bool collectMissileInput("))
+    add('#include "planner_world_copy.h"')
     add("static planner::World planningWorld,planningCapture;static int planningFrame=-1;static uint32_t planningSerial,inputSerial;")
     add(function(orders, "static bool publishPlanningWorld("))
     add(function(source["bridge.cpp"], "static int collectRepairs("))
@@ -105,7 +106,7 @@ def main():
     (out / "run.log").write_text(run.stdout + run.stderr)
     print(run.stdout + run.stderr, end="")
     run.check_returncode()
-    paths = [SRC / n for n in names] + [SRC / "tactical_frame_read.h", SRC / "raw_combat.h",
+    paths = [SRC / n for n in names] + [SRC / "planner_world_copy.h", SRC / "tactical_frame_read.h", SRC / "raw_combat.h",
             SRC / "combat_probe_bridge.h", SRC / "ore_harvest_bridge.h", SHARED / "world_frame.h",
             HERE / "tactical_frame_sampling.cpp", Path(__file__).resolve(),
             HERE / "fixtures/tactical_frame/autoload_before.h"]

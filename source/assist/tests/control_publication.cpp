@@ -76,7 +76,7 @@ static void disable(){enabled=false;}static void maintain(){}
 }}
 namespace subject {
 struct Context{uint32_t Eip=assist::controlparams::Entry,Esp=Stack,Eax=99,Ebx=98,Ecx=Target,Edx=97,Ebp=96,Esi=95,Edi=94,EFlags=0x202;};
-struct Shared{uint32_t controlAll=controlmode::Parameters,stop=0,flags=4096,mapVisibility=0;}storage,*sh=&storage;
+struct Shared{uint32_t controlAll=controlmode::Parameters,stop=0,flags=4096,mapVisibility=0,debugVisible=0;}storage,*sh=&storage;
 static constexpr unsigned UnsafeTech=4096;
 static unsigned techImplementation=techmode::Parameters;static bool fault=false;static uint32_t lastHouse=House;
 static DWORD sampleClock(Shared*){return GetTickCount();}

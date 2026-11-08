@@ -1,4 +1,5 @@
 #include "tactical_frame_read.h"
+#include "planner_world_copy.h"
 // YRpp BuildingTypeClass::ClickRepairable is +0x157A (next: CanBeOccupied +0x157B).
 // Config only controls eligibility; never changes game type fields or Dock lists.
 static oreconfig::Config oreConfig{};static long oreConfigRevision=-1;
@@ -70,7 +71,6 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  uint32_t nextMode=0;
  static uint32_t lastMode;
  {SampleReadScope frameRead;if(!frameRead)return false;
- static WeaponCacheEntry cacheBefore[1024]{};memcpy(cacheBefore,weaponCache,sizeof weaponCache);
  bool advanced=(sh->flags&(AdvancedInput|MagnetronInput))&&nativeCount>0;
  bool ore=((sh->flags|sh->plannerTracking|sh->runtimeTracking)&AutoOreReturn)!=0;
  bool minerDefense=sh->minerDefenseEnabled||minerDefensePending();
@@ -81,7 +81,11 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  static long defenseConfigSeen=-1;if(minerDefense&&defenseConfigSeen!=featureConfigRevision){planningFrame=-1;defenseConfigSeen=featureConfigRevision;}
  if(!advanced&&!ore&&!minerDefense&&!defense&&!drop&&!sh->plannerTracking&&!sh->runtimeTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
  uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0)|(drop?1u<<31:0)|(minerDefense?1u<<29:0);
- if(planningFrame==frame&&planningSerial==inputSerial&&lastMode==mode)return false;if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);nextMode=mode;
+ if(planningFrame==frame&&planningSerial==inputSerial&&lastMode==mode)return false;
+ // No metadata mutation precedes this point. Idle and repeated same-frame
+ // observations must not copy the entire rollback cache before returning.
+ static WeaponCacheEntry cacheBefore[1024]{};memcpy(cacheBefore,weaponCache,sizeof weaponCache);
+ if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);nextMode=mode;
  w.match=match;w.tick=now;w.frame=frame;w.count=w.intentCount=w.refineryCount=w.combatCount=0;w.inputSerial=inputSerial;
  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;static bool dockOre=false,dockDefense=false;
  // Dock compatibility is type metadata. Cache it instead of rescanning all
@@ -168,7 +172,8 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  // Permission observation is advanced only by observePausedOre/input hooks
  // with live missions. A new input can share this frame with older raw bytes.
  for(int n=0;n<w.count;++n)if(oreParticipant[n]&&manualVersions.orePaused(w.actors[n].id))w.actors[n].flags|=planner::OrePaused;
- planningWorld=w;planningFrame=frame;planningSerial=w.inputSerial;lastMode=nextMode;
+ if(!planner::copyActiveWorld(planningWorld,w))return false;
+ planningFrame=frame;planningSerial=w.inputSerial;lastMode=nextMode;
  InterlockedIncrement(&sh->worldSeq);sh->world.match=w.match;sh->world.tick=w.tick;sh->world.frame=w.frame;sh->world.count=w.count;sh->world.intentCount=w.intentCount;sh->world.refineryCount=w.refineryCount;sh->world.inputSerial=w.inputSerial;
  memcpy(sh->world.actors,w.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(sh->world.intents,w.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(sh->world.refineries,w.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));
  sh->world.combatCount=w.combatCount;memcpy(sh->world.combat,w.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));
