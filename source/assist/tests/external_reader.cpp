@@ -1,11 +1,17 @@
 #include "../../external_reader/source/cooperative_reader.h"
 #include "../../external_reader/source/tactical_sampler.h"
+#include "../../shared/source/world_frame.h"
 #include <cassert>
 #include <vector>
 #include <cstring>
 #include <iostream>
 struct Memory{std::vector<unsigned char> bytes=std::vector<unsigned char>(0xC00000);uint32_t reads=0,worldScans=0;template<class T>void put(uint32_t p,T x){memcpy(bytes.data()+p,&x,sizeof x);}void vec(uint32_t p,uint32_t a,std::initializer_list<uint32_t> items){put(p+4,a);put<int>(p+8,items.size());put<int>(p+16,items.size());for(auto x:items){put(a,x);a+=4;}}bool read(uint32_t a,void*out,size_t n){++reads;if(a==0xA8EC78+4)++worldScans;if(a<0x10000||uint64_t(a)+n>bytes.size())return false;memcpy(out,bytes.data()+a,n);return true;}};
 struct Read{Memory*m;bool operator()(uint32_t a,void*out,size_t n)const{return m->read(a,out,n);}};
+struct SealedRead {
+ Memory*memory;worldframe::Snapshot*source;bool*complete;
+ bool operator()(uint32_t at,void*out,size_t n)const{bool ok=source->read(at,out,n);if(!ok)*complete=false;return ok;}
+ bool live(uint32_t at,void*out,size_t n)const{return memory->read(at,out,n);}
+};
 int main(){using namespace assist;Memory m;Read read{&m};constexpr uint32_t house=0x400000,tactical=0x450000,type=0x300000,unit=0x200000,temporal=0x500000;
  m.put<uint8_t>(0xA8E9A0,1);m.put<uint8_t>(0xA8E378,1);m.put<int>(0xA8ED84,100);m.put(0xA83D4C,house);m.put(0x887324,tactical);m.put<int>(0x8A00A4,1920);m.put<int>(0x8A00A8,1080);m.put<int>(tactical+0xB0,-320);m.put<int>(tactical+0xB4,800);m.put<double>(0xB0CD48,.0866025403784);m.vec(0xA80228,0x110000,{house});m.vec(0xA8EC78,0x110100,{unit});m.vec(0xA8B218,0x110200,{type});m.vec(0xA8ECB8,0x110300,{unit});
  m.put<int>(type+0x634,1);m.put<uint32_t>(type+0x6CC,1);m.put<int>(type+0x5E0,5);m.put(unit,uint32_t(0x7F5C70));m.put<uint32_t>(unit+0x10,1);m.put(unit+0x6C4,type);m.put(unit+0x21C,house);m.put<int>(unit+0x6C,100);for(int off:{0x74,0x90,0x83})m.put<uint8_t>(unit+off,1);m.put<int>(unit+0x9C,10240);m.put<int>(unit+0xA0,10240);m.put<int>(unit+0x18C,50);m.put<int>(unit+0x194,150);m.put<uint8_t>(house+22265,80);m.put<uint8_t>(house+22266,180);m.put<uint8_t>(house+22267,240);
@@ -56,5 +62,23 @@ int main(){using namespace assist;Memory m;Read read{&m};constexpr uint32_t hous
  std::cout<<"PASS: delayed type-vector growth, metadata completion and empty-to-ready recovery in one process/epoch\n";
  int x,y;external::Projection projection;projection.width=1920;projection.height=1080;assert(!external::project(projection,INT32_MIN,0,0,x,y));
  std::cout<<"PASS: actual-layout external snapshot, owner colors, iron/frozen timers with cycle guard, unchanged-frame cache, camera shift and invalid coordinates\n";
+ // Production TacticalSampler with a real sealed read set. World movement
+ // remains fixed within the logic frame; selection and camera are live UI.
+ m.put<int>(unit+0x6C,100);m.put<uint8_t>(unit+0x83,1);m.vec(0xA8ECB8,0x110300,{unit});
+ worldframe::Snapshot raw;worldframe::Key key{};key.match=99;key.frame=102;key.serial=1;key.tick=6000;
+ auto acquire=[&](bool omitActor){raw.reset(key);for(uint32_t p=0x10000;p<m.bytes.size();p+=4096)if(!omitActor||p!=(unit&~4095u))assert(raw.prefetch(read,p,4096));assert(raw.seal());};
+ acquire(false);bool complete=true;external::TacticalSampler<SealedRead> sealed({&m,&raw,&complete});sealed.worldEpoch(key.match);
+ auto captured=sealed.sample(key.tick,Capacity|Iron|Frozen);assert(complete&&captured.labels==1&&captured.match==99);sealed.commitSample();
+ m.put<int>(unit+0x9C,10240+512);m.put<uint8_t>(unit+0x83,0);m.vec(0xA8ECB8,0x110300,{});
+ auto changedUI=sealed.sample(key.tick,Capacity|Iron|Frozen);assert(complete&&changedUI.labels==1&&changedUI.label[0].x==captured.label[0].x&&changedUI.selected==0);
+ m.put<int>(tactical+0xB0,-200);sealed.refreshCamera(9000);assert(sealed.state().sampledTick==key.tick&&sealed.state().label[0].x==changedUI.label[0].x-100);
+ auto stable=sealed.state();sealed.commitSample();
+ // Rejecting an incomplete next frame preserves the stable publication even
+ // on the subsequent camera-only fast path (no partial sampler state leaks).
+ ++key.serial;++key.frame;key.tick=6016;m.put<int>(0xA8ED84,key.frame);acquire(true);complete=true;
+ sealed.sample(key.tick,Capacity|Iron|Frozen);assert(!complete);sealed.invalidateSample(&stable);
+ m.put<int>(tactical+0xB0,-180);sealed.refreshCamera(9100);assert(sealed.state().frame==stable.frame&&sealed.state().sampledTick==stable.sampledTick&&sealed.state().label[0].id==stable.label[0].id&&sealed.state().label[0].x==stable.label[0].x-20);
+ acquire(false);complete=true;auto recovered=sealed.sample(key.tick,Capacity|Iron|Frozen);assert(complete&&recovered.frame==key.frame&&recovered.label[0].x!=stable.label[0].x);sealed.commitSample();
+ std::cout<<"PASS: sealed world, independent paused selection/camera, original acquisition tick, transactional failure/camera retry and next-frame recovery\n";
 }
 

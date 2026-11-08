@@ -1,0 +1,232 @@
+{
+  "passed": true,
+  "scope": "Run extracted production repair scheduling and cancellation in synthetic memory.",
+  "source_sha256": {
+    "source/assist/source/bridge.cpp": "efc1cd5d34d550a8d700bc26cdb612c8e2c4498817ec775e6ea4010d0ec743cd",
+    "source/assist/source/repair_delivery.h": "86be5a055b6789a6570bee6f6d1455b2731c96e1a4706c11c713f4e4e4dc4ea8",
+    "source/assist/source/compute_tasks.h": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c",
+    "source/assist/source/compute_frame.h": "01f38950c5fdf33ffdf17eafc73be413f180dc7352baa4fccedf897b402c341f",
+    "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+    "source/assist/source/plan_freshness.h": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c",
+    "source/assist/source/tactical_decisions.h": "dd6dc31d55fb7d20d962570e05182557c69729e0cdd2d61f56af351c4b4977cb",
+    "source/assist/source/world_frame_runtime.h": "d7caddd99be74101f3f4acb443e51f8c5a3f1b38548788d9d84c523cb9fd46f4",
+    "source/assist/source/tactical_frame_read.h": "38a51d8e02f58f3809d6b6c1f3842c1857586321e72a7c674ee1c8f0ed796efb",
+    "source/shared/source/world_frame.h": "054c5879835da23b503b9f1d353fc21935193a3d5df440ee2b664e5b2da0d9ee",
+    "source/assist/tests/auto_repair_runtime.cpp": "cd9d3e452cb986ff9f6e71972744267abb62bb1cb247df7c8f3be8c8648b660c",
+    "source/assist/tests/auto_repair_runtime.py": "54c4514392c1fb8730bb9e071d61c1ff0de497760bda652a12d9ed4445f88464"
+  },
+  "source_hash_stable": true,
+  "game_process_executed": false,
+  "windows_runtime_executed": false,
+  "before": null,
+  "after": {
+    "passed": true,
+    "source_sha256": "efc1cd5d34d550a8d700bc26cdb612c8e2c4498817ec775e6ea4010d0ec743cd",
+    "negative_control": false,
+    "summary": {
+      "cases": 28,
+      "checks": 101,
+      "failed": 0
+    },
+    "cases": [
+      {
+        "name": "missing_sample_preserves_immediate_retry",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "missing_page_preserves_due_retry",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "late_automatic_result_after_off",
+        "passed": true,
+        "checks": 5,
+        "failure": null
+      },
+      {
+        "name": "off_then_manual_in_same_dispatch",
+        "passed": true,
+        "checks": 5,
+        "failure": null
+      },
+      {
+        "name": "off_on_rejects_old_generation",
+        "passed": true,
+        "checks": 4,
+        "failure": null
+      },
+      {
+        "name": "off_before_result_poll_same_tick",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "off_keeps_manual_async_work",
+        "passed": true,
+        "checks": 3,
+        "failure": null
+      },
+      {
+        "name": "manual_internal_supersedes_unsent_auto_batch",
+        "passed": true,
+        "checks": 4,
+        "failure": null
+      },
+      {
+        "name": "off_discards_unsubmitted_batch",
+        "passed": true,
+        "checks": 3,
+        "failure": null
+      },
+      {
+        "name": "queue_full_off_stops_retry",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "default_interval_and_no_frame_scan",
+        "passed": true,
+        "checks": 4,
+        "failure": null
+      },
+      {
+        "name": "live_interval_shortening_and_lengthening",
+        "passed": true,
+        "checks": 6,
+        "failure": null
+      },
+      {
+        "name": "interval_clamp_extremes",
+        "passed": true,
+        "checks": 24,
+        "failure": null
+      },
+      {
+        "name": "clock_wrap_interval",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "enable_after_off_scans_immediately",
+        "passed": true,
+        "checks": 1,
+        "failure": null
+      },
+      {
+        "name": "queued_toggle_dedup_survives_off_on",
+        "passed": true,
+        "checks": 5,
+        "failure": null
+      },
+      {
+        "name": "manual_native_repair_untouched",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "same_frame_submission_budget",
+        "passed": true,
+        "checks": 3,
+        "failure": null
+      },
+      {
+        "name": "duplicate_host_ids_submit_once",
+        "passed": true,
+        "checks": 1,
+        "failure": null
+      },
+      {
+        "name": "manual_timeout_retained_while_off",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "automatic_timeout_respects_scan_interval",
+        "passed": true,
+        "checks": 3,
+        "failure": null
+      },
+      {
+        "name": "manual_timeout_clock_wrap",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "new_world_resets_timer_and_receipts",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "old_world_result_rejected",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "task_serial_wrap_rejects_cancelled_work",
+        "passed": true,
+        "checks": 4,
+        "failure": null
+      },
+      {
+        "name": "manual_refresh_survives_auto_off",
+        "passed": true,
+        "checks": 2,
+        "failure": null
+      },
+      {
+        "name": "retained_request_membership_full_capacity",
+        "passed": true,
+        "checks": 3,
+        "failure": null
+      },
+      {
+        "name": "retained_request_empty_membership",
+        "passed": true,
+        "checks": 1,
+        "failure": null
+      }
+    ],
+    "commands": [
+      {
+        "command": [
+          "g++",
+          "-std=c++17",
+          "-O2",
+          "-UNDEBUG",
+          "-DSAMPLE_SCOPE=\"/workspace/scratch/40121bc881b8/audit-followup/tactical-repair-runtime/after/sample_scope.inc\"",
+          "-DREPAIR_EVENT=\"/workspace/scratch/40121bc881b8/audit-followup/tactical-repair-runtime/after/repair_event.inc\"",
+          "-DREPAIR_CALCULATION=\"/workspace/scratch/40121bc881b8/audit-followup/tactical-repair-runtime/after/repair_calculation.inc\"",
+          "-DREPAIR_TICK=\"/workspace/scratch/40121bc881b8/audit-followup/tactical-repair-runtime/after/repair_tick.inc\"",
+          "-DREPAIR_MANUAL=\"/workspace/scratch/40121bc881b8/audit-followup/tactical-repair-runtime/after/repair_manual.inc\"",
+          "-DREPAIR_RESET=\"/workspace/scratch/40121bc881b8/audit-followup/tactical-repair-runtime/after/repair_reset.inc\"",
+          "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/auto_repair_runtime.cpp",
+          "-o",
+          "/workspace/scratch/40121bc881b8/audit-followup/tactical-repair-runtime/after/fixture"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "/workspace/scratch/40121bc881b8/audit-followup/tactical-repair-runtime/after/fixture"
+        ],
+        "exit_code": 0,
+        "stdout": "CASE\tmissing_sample_preserves_immediate_retry\tPASS\t2\nCASE\tmissing_page_preserves_due_retry\tPASS\t2\nCASE\tlate_automatic_result_after_off\tPASS\t5\nCASE\toff_then_manual_in_same_dispatch\tPASS\t5\nCASE\toff_on_rejects_old_generation\tPASS\t4\nCASE\toff_before_result_poll_same_tick\tPASS\t2\nCASE\toff_keeps_manual_async_work\tPASS\t3\nCASE\tmanual_internal_supersedes_unsent_auto_batch\tPASS\t4\nCASE\toff_discards_unsubmitted_batch\tPASS\t3\nCASE\tqueue_full_off_stops_retry\tPASS\t2\nCASE\tdefault_interval_and_no_frame_scan\tPASS\t4\nCASE\tlive_interval_shortening_and_lengthening\tPASS\t6\nCASE\tinterval_clamp_extremes\tPASS\t24\nCASE\tclock_wrap_interval\tPASS\t2\nCASE\tenable_after_off_scans_immediately\tPASS\t1\nCASE\tqueued_toggle_dedup_survives_off_on\tPASS\t5\nCASE\tmanual_native_repair_untouched\tPASS\t2\nCASE\tsame_frame_submission_budget\tPASS\t3\nCASE\tduplicate_host_ids_submit_once\tPASS\t1\nCASE\tmanual_timeout_retained_while_off\tPASS\t2\nCASE\tautomatic_timeout_respects_scan_interval\tPASS\t3\nCASE\tmanual_timeout_clock_wrap\tPASS\t2\nCASE\tnew_world_resets_timer_and_receipts\tPASS\t2\nCASE\told_world_result_rejected\tPASS\t2\nCASE\ttask_serial_wrap_rejects_cancelled_work\tPASS\t4\nCASE\tmanual_refresh_survives_auto_off\tPASS\t2\nCASE\tretained_request_membership_full_capacity\tPASS\t3\nCASE\tretained_request_empty_membership\tPASS\t1\nSUMMARY\t28\t101\t0\n",
+        "stderr": ""
+      }
+    ]
+  }
+}

@@ -117,13 +117,13 @@ class FoundationStencil {
  }
 public:
  void clear(){shape_=0;cache_.clear();}
- template<class Read>bool capture(Read read,const mainview::View&view,int width,int height,std::vector<Rect>&out){
+ template<class Read,class UI>bool capture(Read read,UI ui,const mainview::View&view,int width,int height,std::vector<Rect>&out){
   out.clear();std::array<uint8_t,0x38>state{},again{};
-  if(!read(Map+0x1174,state.data(),state.size()))return false;
+  if(!ui(Map+0x1174,state.data(),state.size()))return false;
   uint32_t building=u32(state.data()+0x30),type=u32(state.data()+0x34),copyBuilding=u32(state.data()+0x1C),copyType=u32(state.data()+0x20);
   if(!building&&!type&&!copyBuilding&&!copyType)return true;
   uint32_t shape=0,cells=0;int count=0;
-  if(!read(0x8A03FC,&shape,4)||!range(shape,8)||!read(Map+0x13C,&cells,4)||!read(Map+0x140,&count,4)||count<1||count>512*512||!range(cells,size_t(count)*4))return false;
+  if(!ui(0x8A03FC,&shape,4)||!range(shape,8)||!read(Map+0x13C,&cells,4)||!read(Map+0x140,&count,4)||count<1||count>512*512||!range(cells,size_t(count)*4))return false;
   const auto bounds=mapbounds::sample(read);if(!bounds.valid())return false;
   const double sx=double(width)/view.width,sy=double(height)/view.height;
   if(!std::isfinite(sx)||!std::isfinite(sy)||sx<=0||sy<=0||sx>16||sy>16)return false;
@@ -137,16 +137,16 @@ public:
    int cy=int16_t(u16(state.data()+center+2))+int16_t(u16(state.data()+offset+2));
    const int limit=copy?50:120;bool ended=false;
    for(int i=0;i<=limit;++i){
-    int16_t cell[2]{};if(!read(pointer+uint32_t(i)*4,cell,sizeof cell))return false;
+    int16_t cell[2]{};if(!ui(pointer+uint32_t(i)*4,cell,sizeof cell))return false;
     if(cell[0]==0x7fff&&cell[1]==0x7fff){ended=true;break;}if(i==limit||cell[0]<-32||cell[0]>32||cell[1]<-32||cell[1]>32)return false;
     int x=cx+cell[0],y=cy+cell[1];if(!bounds.legal(x,y))continue;size_t index=size_t(y)*512+x;if(index>=size_t(count))continue;
     uint32_t p=0;int16_t identity[2]{};int8_t level=0;uint8_t slope=0,flags=0;
     if(!read(cells+uint32_t(index)*4,&p,4)||!range(p,0x12D)||!read(p+0x24,identity,4)||identity[0]!=x||identity[1]!=y||
-     !read(p+0x11B,&level,1)||!read(p+0x11C,&slope,1)||slope>20||!read(p+0x12C,&flags,1))return false;
+     !read(p+0x11B,&level,1)||!read(p+0x11C,&slope,1)||slope>20||!ui(p+0x12C,&flags,1))return false;
     if(!(flags&(copy?0x04:0x02)))continue;
     const int px=(x-y)*30-view.cameraX,py=(x+y-int(level))*15-view.cameraY-1;
     for(unsigned frame:std::array<unsigned,2>{{copy?1u:0u,unsigned(2+slope)}}){
-     const Mask*image=nullptr;if(!mask(read,shape,frame,image))return false;
+     const Mask*image=nullptr;if(!mask(ui,shape,frame,image))return false;
      for(auto run:image->runs){
       int l=int(std::floor((px+image->x+run.x)*sx)),r=int(std::ceil((px+image->x+run.x+run.w)*sx));
       int t=int(std::floor((py+image->y+run.y)*sy)),b=int(std::ceil((py+image->y+run.y+1)*sy));
@@ -157,11 +157,12 @@ public:
    }
    return ended;
   };
-  if(!foundation(false)||!foundation(true)||!read(Map+0x1174,again.data(),again.size())||again!=state)return false;
-  uint32_t shapeAfter=0;if(!read(0x8A03FC,&shapeAfter,4)||shapeAfter!=shape)return false;
+  if(!foundation(false)||!foundation(true)||!ui(Map+0x1174,again.data(),again.size())||again!=state)return false;
+  uint32_t shapeAfter=0;if(!ui(0x8A03FC,&shapeAfter,4)||shapeAfter!=shape)return false;
   std::sort(pending.begin(),pending.end(),[](const Rect&a,const Rect&b){return a.y!=b.y?a.y<b.y:a.x<b.x;});
   for(auto r:pending){if(!out.empty()&&out.back().y==r.y&&r.x<=out.back().x+out.back().w)out.back().w=std::max(out.back().x+out.back().w,r.x+r.w)-out.back().x;else out.push_back(r);}
   return out.size()<=16384;
  }
+ template<class Read>bool capture(Read read,const mainview::View&view,int width,int height,std::vector<Rect>&out){return capture(read,read,view,width,height,out);}
 };
 }}

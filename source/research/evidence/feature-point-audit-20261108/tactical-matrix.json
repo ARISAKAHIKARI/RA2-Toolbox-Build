@@ -1,0 +1,2806 @@
+[
+  {
+    "id": "repair.manual",
+    "feature": "手动批量维修",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "自动周期500–30000毫秒",
+      "RepairBuilding类型清单"
+    ],
+    "entry_points": [
+      "command(Repair)",
+      "collectRepairs",
+      "repairCalculationTick",
+      "repairTick"
+    ],
+    "paths_reviewed": [
+      "手动 Repair 先退休已关闭自动任务，独立保留请求和完成确认；正在自动计算时不会混用旧结果。",
+      "Host 结果须匹配 Runtime 保留的 task/match/tick/frame，稳定 seqlock、数量和时效；保留输入 count 仅由 collectRepairs 从0递增至8192生成。Runtime 分支使用同一个 shouldRepair。",
+      "维修事件发送前再次检查当前对象；Pending 以 UID 与指针去重；失败、迟到结果、换局和自动关闭的路径均追踪。结果成员匹配用固定数组排序/二分，保留 Host 返回顺序及重复项。"
+    ],
+    "findings": [
+      "TAC-PERF-02：确认 Host 批量维修结果嵌套成员匹配为二次复杂度；已做固定缓冲排序/二分最小修复。"
+    ],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/repair_delivery.h",
+      "source/assist/source/compute_tasks.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "本轮真实生产函数提取验证：28个场景、101条检查通过；覆盖8192项、未知/重复/零ID、空输入、关闭后迟到结果和换局。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "Repair"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "repair.auto",
+    "feature": "自动维修",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "自动周期500–30000毫秒",
+      "RepairBuilding类型清单"
+    ],
+    "entry_points": [
+      "command(Repair)",
+      "collectRepairs",
+      "repairCalculationTick",
+      "repairTick"
+    ],
+    "paths_reviewed": [
+      "自动维修按限定周期采样；关闭时取消尚未提交自动工作，已提交维修开关的 pending 证据继续保留，避免重复切换。",
+      "Host 结果须匹配 Runtime 保留的 task/match/tick/frame，稳定 seqlock、数量和时效；保留输入 count 仅由 collectRepairs 从0递增至8192生成。Runtime 分支使用同一个 shouldRepair。",
+      "维修事件发送前再次检查当前对象；Pending 以 UID 与指针去重；失败、迟到结果、换局和自动关闭的路径均追踪。结果成员匹配用固定数组排序/二分，保留 Host 返回顺序及重复项。"
+    ],
+    "findings": [
+      "TAC-PERF-02：确认 Host 批量维修结果嵌套成员匹配为二次复杂度；已做固定缓冲排序/二分最小修复。"
+    ],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/repair_delivery.h",
+      "source/assist/source/compute_tasks.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "本轮真实生产函数提取验证：28个场景、101条检查通过；覆盖8192项、未知/重复/零ID、空输入、关闭后迟到结果和换局。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "repair.unrepairable",
+    "feature": "允许维修通常不可维修建筑",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "自动周期500–30000毫秒",
+      "RepairBuilding类型清单"
+    ],
+    "entry_points": [
+      "command(Repair)",
+      "collectRepairs",
+      "repairCalculationTick",
+      "repairTick"
+    ],
+    "paths_reviewed": [
+      "仅放宽候选建筑 ClickRepairable 条件；仍检查所属方、建筑类型清单、生命值和是否已维修/已有待观察维修。",
+      "Host 结果须匹配 Runtime 保留的 task/match/tick/frame，稳定 seqlock、数量和时效；保留输入 count 仅由 collectRepairs 从0递增至8192生成。Runtime 分支使用同一个 shouldRepair。",
+      "维修事件发送前再次检查当前对象；Pending 以 UID 与指针去重；失败、迟到结果、换局和自动关闭的路径均追踪。结果成员匹配用固定数组排序/二分，保留 Host 返回顺序及重复项。"
+    ],
+    "findings": [
+      "TAC-PERF-02：确认 Host 批量维修结果嵌套成员匹配为二次复杂度；已做固定缓冲排序/二分最小修复。"
+    ],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/repair_delivery.h",
+      "source/assist/source/compute_tasks.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "本轮真实生产函数提取验证：28个场景、101条检查通过；覆盖8192项、未知/重复/零ID、空输入、关闭后迟到结果和换局。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "select.combat",
+    "feature": "选择作战单位",
+    "modes": [
+      "筛选当前选中单位"
+    ],
+    "entry_points": [
+      "CombatSelection",
+      "selectFilter"
+    ],
+    "paths_reviewed": [
+      "过滤当前选中名单；只保留自有可用作战单位，排除矿车、工程师和不符合原生战斗条件的类型。",
+      "动作即时扫描，不维护每帧自动任务；依赖入口有效且存在候选才清空现有选择，读取失败/无候选不伪报选中。",
+      "命令邮箱检查匹配对局、时效与聊天状态；对象所有权、种类与可选条件在调用前检查。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/main.cpp"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "CombatSelection"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "select.empty_transport",
+    "feature": "选择空载运输载具",
+    "modes": [
+      "从全局对象名单选择自有空载运输载具"
+    ],
+    "entry_points": [
+      "EmptyTransports",
+      "selectFilter"
+    ],
+    "paths_reviewed": [
+      "扫描全局对象名单，选择自有容量大于0且当前乘员数为0的运输载具。",
+      "动作即时扫描，不维护每帧自动任务；依赖入口有效且存在候选才清空现有选择，读取失败/无候选不伪报选中。",
+      "命令邮箱检查匹配对局、时效与聊天状态；对象所有权、种类与可选条件在调用前检查。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/main.cpp"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "EmptyTransports"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "select.damaged",
+    "feature": "选择受损单位",
+    "modes": [
+      "筛选当前选中单位"
+    ],
+    "entry_points": [
+      "DamagedSelection",
+      "selectFilter"
+    ],
+    "paths_reviewed": [
+      "过滤当前选中名单；只保留自有、当前生命值低于类型最大值的单位。",
+      "动作即时扫描，不维护每帧自动任务；依赖入口有效且存在候选才清空现有选择，读取失败/无候选不伪报选中。",
+      "命令邮箱检查匹配对局、时效与聊天状态；对象所有权、种类与可选条件在调用前检查。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/main.cpp"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "DamagedSelection"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "select.idle_miner",
+    "feature": "轮选空闲矿车",
+    "modes": [
+      "一次性快捷操作"
+    ],
+    "entry_points": [
+      "IdleHarvester",
+      "findIdle"
+    ],
+    "paths_reviewed": [
+      "按当前类型能力与原生空闲任务条件轮选自有矿车；以上次UID为游标，末尾回到最小UID。",
+      "动作即时扫描，不维护每帧自动任务；依赖入口有效且存在候选才清空现有选择，读取失败/无候选不伪报选中。",
+      "命令邮箱检查匹配对局、时效与聊天状态；对象所有权、种类与可选条件在调用前检查。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/main.cpp"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "IdleHarvester"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "select.idle_engineer",
+    "feature": "轮选空闲工程师",
+    "modes": [
+      "一次性快捷操作"
+    ],
+    "entry_points": [
+      "IdleEngineer",
+      "findIdle"
+    ],
+    "paths_reviewed": [
+      "按 Engineer 类型能力和任务/排队/目的地空闲条件轮选自有工程师。",
+      "动作即时扫描，不维护每帧自动任务；依赖入口有效且存在候选才清空现有选择，读取失败/无候选不伪报选中。",
+      "命令邮箱检查匹配对局、时效与聊天状态；对象所有权、种类与可选条件在调用前检查。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/main.cpp"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "IdleEngineer"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "select.idle_transport",
+    "feature": "定位空闲运输载具",
+    "modes": [
+      "一次性快捷操作"
+    ],
+    "entry_points": [
+      "IdleTransport",
+      "findIdle"
+    ],
+    "paths_reviewed": [
+      "筛选空闲且无乘员的自有运输载具，轮选后调用现有选择/镜头定位路径。",
+      "动作即时扫描，不维护每帧自动任务；依赖入口有效且存在候选才清空现有选择，读取失败/无候选不伪报选中。",
+      "命令邮箱检查匹配对局、时效与聊天状态；对象所有权、种类与可选条件在调用前检查。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/main.cpp"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "IdleTransport"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "select.idle_aircraft",
+    "feature": "轮选空闲飞机",
+    "modes": [
+      "一次性快捷操作"
+    ],
+    "entry_points": [
+      "selectionCommand(-4)",
+      "selectIdleAircraft"
+    ],
+    "paths_reviewed": [
+      "独立选择邮箱入口，轮选当前自有空闲飞机；原生选择条件检查，当前实现不移动镜头。",
+      "动作即时扫描，不维护每帧自动任务；依赖入口有效且存在候选才清空现有选择，读取失败/无候选不伪报选中。",
+      "命令邮箱检查匹配对局、时效与聊天状态；对象所有权、种类与可选条件在调用前检查。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/main.cpp"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "select.type",
+    "feature": "组合选兵：同类型单按屏幕／双按全图",
+    "modes": [
+      "单按屏幕",
+      "双按全图",
+      "组合类型掩码",
+      "双按间隔20–5000毫秒"
+    ],
+    "entry_points": [
+      "selectionCommand",
+      "selectTypes",
+      "selectType"
+    ],
+    "paths_reviewed": [
+      "多类型快捷键构成位图；类型索引、当前目录和移动单位种类检查；单按限制屏幕范围，双按允许全图。",
+      "候选仍必须为自有、活跃且原生可选；原生坐标投影决定屏幕内范围。选择动作只在显式请求时扫描。",
+      "类型目录/对局身份和邮箱时效变化时拒绝；快捷键冲突、双击时限的通用Host入口由根审查。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/type_select_bridge.h",
+      "source/assist/source/hotkey_host.h",
+      "source/assist/source/type_hotkey.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "SelectType"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "select.variant",
+    "feature": "按当前武器选择同类单位",
+    "modes": [
+      "屏幕范围",
+      "全图范围",
+      "当前武器变体"
+    ],
+    "entry_points": [
+      "selectionCommand",
+      "selectVariant"
+    ],
+    "paths_reviewed": [
+      "从当前选择捕获类型与当前普通武器键，再扫描自有可选候选；不同武器/形态不会只按表面类型误合并。",
+      "武器槽使用兼容访问器并限制槽索引；匹配集合有容量上限，屏幕/全图规则与组合选兵相同。",
+      "此为显式一次性扫描；目录变化、读取失败、无候选/原生依赖缺失均有拒绝或无动作路径。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/type_select_bridge.h",
+      "source/assist/source/hotkey_host.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "SelectVariant"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "beacons.clear",
+    "feature": "清除信标",
+    "modes": [
+      "显式一次性操作"
+    ],
+    "entry_points": [
+      "command(ClearBeacons)"
+    ],
+    "paths_reviewed": [
+      "ClearBeacons 通过统一命令时效/对局/聊天门槛；验证专用原生入口签名后传当前所属方编号。",
+      "一次性调用原版清理信标；无持续扫描、没有自动重发或跨局保留任务。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "ClearBeacons"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "load.nearest",
+    "feature": "自动装车：就近分配",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "范围1–512格",
+      "乘员/载具独立类型清单"
+    ],
+    "entry_points": [
+      "command(AutoBoard)",
+      "autoLoad",
+      "loadingCalculationTick",
+      "submitLoading",
+      "autoLoadTick"
+    ],
+    "paths_reviewed": [
+      "就近分配按每位乘员到载具的距离排序，游标单向推进，保留容量与合法性约束。",
+      "捕获最多4096选中身份，计算输入最多1024乘员/256载具；刷新沿用同一 cohort，ptr/UID/manual token、owner、类型过滤、乘员链和容量都验证。",
+      "Host 保留输入及结果序号/时效检查；Runtime 调同一个纯分配器；派发前再次 canEnter、容量与原生动作查询，失败不创建已提交记录。",
+      "每帧跟踪有工作预算、900帧过期、移动/入驻观察、手动接管取消，重试退避封顶；换局清空计算与预留记录。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/autoload_bridge.h",
+      "source/assist/source/autoload.h",
+      "source/assist/source/compute_tasks.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "AutoBoard"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "load.balanced",
+    "feature": "自动装车：兵种均衡",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "范围1–512格",
+      "乘员/载具独立类型清单"
+    ],
+    "entry_points": [
+      "command(AutoBoard)",
+      "autoLoad",
+      "loadingCalculationTick",
+      "submitLoading",
+      "autoLoadTick"
+    ],
+    "paths_reviewed": [
+      "均衡分配按兵种分组选择载具，结合距离、占用槽和剩余容量；不是忽略体积的平均分数。",
+      "捕获最多4096选中身份，计算输入最多1024乘员/256载具；刷新沿用同一 cohort，ptr/UID/manual token、owner、类型过滤、乘员链和容量都验证。",
+      "Host 保留输入及结果序号/时效检查；Runtime 调同一个纯分配器；派发前再次 canEnter、容量与原生动作查询，失败不创建已提交记录。",
+      "每帧跟踪有工作预算、900帧过期、移动/入驻观察、手动接管取消，重试退避封顶；换局清空计算与预留记录。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/autoload_bridge.h",
+      "source/assist/source/autoload.h",
+      "source/assist/source/compute_tasks.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "AutoBoard"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "unload.command",
+    "feature": "智能卸载：所选载具卸载与原生先执行竞态",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "独立乘员/载具类型清单",
+      "显式卸载"
+    ],
+    "entry_points": [
+      "observeUnloadRoster",
+      "smartUnload",
+      "watchEjections",
+      "smartUnloadTick",
+      "serviceUnloadCalculation",
+      "applyUnloadDecision"
+    ],
+    "paths_reviewed": [
+      "所选载具捕获当前乘员，并利用最多1500毫秒/90帧的历史桥接原生D已先执行的竞态；空载/已卸载任务不会重复Deploy。",
+      "乘员与载具都记录ptr/UID/type/manual token；历史年龄、帧回退、所有权/身份变化会淘汰；关闭/取消后保留必要Guard释放，不伪造落地效果。",
+      "Host 结果匹配保留输入/工作代号/时效；Runtime 共用 decide；最终目标与原生动作在发送前重新核验。",
+      "每帧64项轮转/8事件预算；Enter/Stop等手动任务让位，后续跟踪有超时、停滞和封顶重试；换局重置。"
+    ],
+    "findings": [
+      "TAC-PERF-01：逐tick历史成员线性搜索已换成容量8192的索引；每次原有淘汰/交换完成后重建，保持同帧观察频率。"
+    ],
+    "evidence": [
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/unload_policy.h",
+      "source/assist/source/unload_compute_bridge.h",
+      "source/assist/source/unload_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "历史观察生产函数新旧对照5场景/83条通过；此验证不覆盖实际落地、部署、潜入、占领或攻击效果。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "SmartUnload"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "unload.deploy",
+    "feature": "智能卸载：部署兵落地部署与重试",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "独立乘员/载具类型清单",
+      "显式卸载"
+    ],
+    "entry_points": [
+      "observeUnloadRoster",
+      "smartUnload",
+      "watchEjections",
+      "smartUnloadTick",
+      "serviceUnloadCalculation",
+      "applyUnloadDecision"
+    ],
+    "paths_reviewed": [
+      "部署兵需落地/稳定帧和当前原生动画序列满足条件；观察到部署中断后才重试，不把未观察到事件当完成。",
+      "乘员与载具都记录ptr/UID/type/manual token；历史年龄、帧回退、所有权/身份变化会淘汰；关闭/取消后保留必要Guard释放，不伪造落地效果。",
+      "Host 结果匹配保留输入/工作代号/时效；Runtime 共用 decide；最终目标与原生动作在发送前重新核验。",
+      "每帧64项轮转/8事件预算；Enter/Stop等手动任务让位，后续跟踪有超时、停滞和封顶重试；换局重置。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/unload_policy.h",
+      "source/assist/source/unload_compute_bridge.h",
+      "source/assist/source/unload_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "历史观察生产函数新旧对照5场景/83条通过；此验证不覆盖实际落地、部署、潜入、占领或攻击效果。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "unload.engineer",
+    "feature": "智能卸载：工程师后续任务",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "独立乘员/载具类型清单",
+      "显式卸载"
+    ],
+    "entry_points": [
+      "observeUnloadRoster",
+      "smartUnload",
+      "watchEjections",
+      "smartUnloadTick",
+      "serviceUnloadCalculation",
+      "applyUnloadDecision"
+    ],
+    "paths_reviewed": [
+      "工程师落地后按当前能力、所属方、建筑损伤/可进驻查询找后续目标；目标身份或动作失效时拒绝。",
+      "乘员与载具都记录ptr/UID/type/manual token；历史年龄、帧回退、所有权/身份变化会淘汰；关闭/取消后保留必要Guard释放，不伪造落地效果。",
+      "Host 结果匹配保留输入/工作代号/时效；Runtime 共用 decide；最终目标与原生动作在发送前重新核验。",
+      "每帧64项轮转/8事件预算；Enter/Stop等手动任务让位，后续跟踪有超时、停滞和封顶重试；换局重置。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/unload_policy.h",
+      "source/assist/source/unload_compute_bridge.h",
+      "source/assist/source/unload_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "历史观察生产函数新旧对照5场景/83条通过；此验证不覆盖实际落地、部署、潜入、占领或攻击效果。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "unload.spy",
+    "feature": "智能卸载：间谍后续任务",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "独立乘员/载具类型清单",
+      "显式卸载"
+    ],
+    "entry_points": [
+      "observeUnloadRoster",
+      "smartUnload",
+      "watchEjections",
+      "smartUnloadTick",
+      "serviceUnloadCalculation",
+      "applyUnloadDecision"
+    ],
+    "paths_reviewed": [
+      "间谍按潜入能力和可接受目标搜索；每次提交仍核对目标UID/指针、原生动作和当前任务。",
+      "乘员与载具都记录ptr/UID/type/manual token；历史年龄、帧回退、所有权/身份变化会淘汰；关闭/取消后保留必要Guard释放，不伪造落地效果。",
+      "Host 结果匹配保留输入/工作代号/时效；Runtime 共用 decide；最终目标与原生动作在发送前重新核验。",
+      "每帧64项轮转/8事件预算；Enter/Stop等手动任务让位，后续跟踪有超时、停滞和封顶重试；换局重置。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/unload_policy.h",
+      "source/assist/source/unload_compute_bridge.h",
+      "source/assist/source/unload_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "历史观察生产函数新旧对照5场景/83条通过；此验证不覆盖实际落地、部署、潜入、占领或攻击效果。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "unload.attack",
+    "feature": "智能卸载：普通乘员后续攻击",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "独立乘员/载具类型清单",
+      "显式卸载"
+    ],
+    "entry_points": [
+      "observeUnloadRoster",
+      "smartUnload",
+      "watchEjections",
+      "smartUnloadTick",
+      "serviceUnloadCalculation",
+      "applyUnloadDecision"
+    ],
+    "paths_reviewed": [
+      "普通乘员仅在恢复稳定后对当前合法敌方目标提交攻击；不覆盖原生正常离开运输车的Move。",
+      "乘员与载具都记录ptr/UID/type/manual token；历史年龄、帧回退、所有权/身份变化会淘汰；关闭/取消后保留必要Guard释放，不伪造落地效果。",
+      "Host 结果匹配保留输入/工作代号/时效；Runtime 共用 decide；最终目标与原生动作在发送前重新核验。",
+      "每帧64项轮转/8事件预算；Enter/Stop等手动任务让位，后续跟踪有超时、停滞和封顶重试；换局重置。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/unload_policy.h",
+      "source/assist/source/unload_compute_bridge.h",
+      "source/assist/source/unload_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "历史观察生产函数新旧对照5场景/83条通过；此验证不覆盖实际落地、部署、潜入、占领或攻击效果。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "escape.auto",
+    "feature": "载员自动逃生与落地接续",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "独立乘员/载具类型清单",
+      "自动载员逃生"
+    ],
+    "entry_points": [
+      "observeUnloadRoster",
+      "smartUnload",
+      "watchEjections",
+      "smartUnloadTick",
+      "serviceUnloadCalculation",
+      "applyUnloadDecision"
+    ],
+    "paths_reviewed": [
+      "自动逃生只观察自有、选中且允许类型的载具乘员；载具死亡后的幸存者工作与仍在载具中的观察状态分别处理。",
+      "乘员与载具都记录ptr/UID/type/manual token；历史年龄、帧回退、所有权/身份变化会淘汰；关闭/取消后保留必要Guard释放，不伪造落地效果。",
+      "Host 结果匹配保留输入/工作代号/时效；Runtime 共用 decide；最终目标与原生动作在发送前重新核验。",
+      "每帧64项轮转/8事件预算；Enter/Stop等手动任务让位，后续跟踪有超时、停滞和封顶重试；换局重置。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/unload_policy.h",
+      "source/assist/source/unload_compute_bridge.h",
+      "source/assist/source/unload_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "历史观察生产函数新旧对照5场景/83条通过；此验证不覆盖实际落地、部署、潜入、占领或攻击效果。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "attack.advanced",
+    "feature": "高级移动攻击与持续索敌",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "价值/弹头效果优先",
+      "检测1–60Hz",
+      "额外索敌0–30格"
+    ],
+    "entry_points": [
+      "nativeOutgoing",
+      "nativeOrdersTick",
+      "runtimePlanningTick",
+      "externalOrdersTick",
+      "admitPlannerOrder"
+    ],
+    "paths_reviewed": [
+      "高级移动攻击在价值优先/弹头效果优先中择敌；先实际射程/最小射程处理，再决定Attack或继续Move；不盲目先发AttackMove。",
+      "Host和Runtime共用值输入Planner和最终admitPlannerOrder；来源match/tick/frame、手动版本、当前UID/type、对象所属方、目标适用性和工作预算核对。",
+      "活动作战按轮转128项限制；路径进展/等待攻击观察有帧上限；手动命令使旧版本失效，全局纳入另有90帧暂停表/溢出暂停。",
+      "关全局只取消global工作，显式磁电仍可继续；摔落开关独立，关闭或换局清理对应计划；派发失败不记作实际命中。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/external_planner.h",
+      "source/assist/source/runtime_planner_bridge.h",
+      "source/assist/source/external_orders_bridge.h",
+      "source/assist/source/advanced_decision.h",
+      "source/assist/source/magnetron_cycle.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "magnetron.rotate",
+    "feature": "磁电轮换攻击",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "独立类型清单"
+    ],
+    "entry_points": [
+      "nativeOutgoing",
+      "nativeOrdersTick",
+      "runtimePlanningTick",
+      "externalOrdersTick",
+      "admitPlannerOrder"
+    ],
+    "paths_reviewed": [
+      "显式磁电移动意图轮换目标；观察抓取、重新装填和同目标待生效窗口，避免同一目标被多台重复占用。",
+      "Host和Runtime共用值输入Planner和最终admitPlannerOrder；来源match/tick/frame、手动版本、当前UID/type、对象所属方、目标适用性和工作预算核对。",
+      "活动作战按轮转128项限制；路径进展/等待攻击观察有帧上限；手动命令使旧版本失效，全局纳入另有90帧暂停表/溢出暂停。",
+      "关全局只取消global工作，显式磁电仍可继续；摔落开关独立，关闭或换局清理对应计划；派发失败不记作实际命中。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/external_planner.h",
+      "source/assist/source/runtime_planner_bridge.h",
+      "source/assist/source/external_orders_bridge.h",
+      "source/assist/source/advanced_decision.h",
+      "source/assist/source/magnetron_cycle.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "magnetron.global",
+    "feature": "磁电全局无限吸",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "独立类型清单"
+    ],
+    "entry_points": [
+      "nativeOutgoing",
+      "nativeOrdersTick",
+      "runtimePlanningTick",
+      "externalOrdersTick",
+      "admitPlannerOrder"
+    ],
+    "paths_reviewed": [
+      "全局磁电只纳入空闲、自有、无目的地/攻击/抓取且未被其他任务占用的单位；显式意图与全局开关分开。",
+      "Host和Runtime共用值输入Planner和最终admitPlannerOrder；来源match/tick/frame、手动版本、当前UID/type、对象所属方、目标适用性和工作预算核对。",
+      "活动作战按轮转128项限制；路径进展/等待攻击观察有帧上限；手动命令使旧版本失效，全局纳入另有90帧暂停表/溢出暂停。",
+      "关全局只取消global工作，显式磁电仍可继续；摔落开关独立，关闭或换局清理对应计划；派发失败不记作实际命中。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/external_planner.h",
+      "source/assist/source/runtime_planner_bridge.h",
+      "source/assist/source/external_orders_bridge.h",
+      "source/assist/source/advanced_decision.h",
+      "source/assist/source/magnetron_cycle.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "magnetron.drop",
+    "feature": "磁电全局自动摔落",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "独立类型清单"
+    ],
+    "entry_points": [
+      "nativeOutgoing",
+      "nativeOrdersTick",
+      "runtimePlanningTick",
+      "externalOrdersTick",
+      "admitPlannerOrder"
+    ],
+    "paths_reviewed": [
+      "独立自动摔落可作用于自有磁电当前已确认抓取对象（包含手动强攻友军）；当前落点危险条件再次核验后发送原生Idle释放。",
+      "Host和Runtime共用值输入Planner和最终admitPlannerOrder；来源match/tick/frame、手动版本、当前UID/type、对象所属方、目标适用性和工作预算核对。",
+      "活动作战按轮转128项限制；路径进展/等待攻击观察有帧上限；手动命令使旧版本失效，全局纳入另有90帧暂停表/溢出暂停。",
+      "关全局只取消global工作，显式磁电仍可继续；摔落开关独立，关闭或换局清理对应计划；派发失败不记作实际命中。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/external_planner.h",
+      "source/assist/source/runtime_planner_bridge.h",
+      "source/assist/source/external_orders_bridge.h",
+      "source/assist/source/advanced_decision.h",
+      "source/assist/source/magnetron_cycle.h",
+      "source/assist/source/magnetron_drop_bridge.h",
+      "source/assist/source/magnetron_drop.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "enter.advanced",
+    "feature": "高级进驻分配",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "cooperative::Enter"
+    ],
+    "entry_points": [
+      "pointerTick",
+      "cooperativeInput",
+      "newCooperative",
+      "cooperativeTick",
+      "runtimeCooperativeTick",
+      "admitCooperative"
+    ],
+    "paths_reviewed": [
+      "高级进驻复用原生可进入动作；按兼容边、容量、体积和已有radio预留分配，不把已预留座位二次消耗。",
+      "输入固定请求serial/match/点击目标/同帧来源cohort；同一分配器运行在Host或Runtime；既有成功指令的快照伤害/名额保留，重算仅覆盖未处理部分。",
+      "接收端核对序号、数量、模式开关、TTL和Tactical/Cooperative时效；最终发送前校验源与目标ptr/UID/token/type、原生动作/武器/容量，预算不足保留游标。",
+      "手动改令、换局、失效目标、设置模式变化会使旧工作失效；入驻/射击观察记录和180帧过期不当作伤害结算。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/cooperative_bridge.h",
+      "source/assist/source/cooperative_plan.h",
+      "source/assist/source/cooperative_frame.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "伤害估计不保证命中；原生虚函数、具体载具/驻军变体和事件接收端未实机运行。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "air.quota_first",
+    "feature": "飞机分配：数量配额模式1",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "cooperative::AirFirst",
+      "配额0–512；0最大值表示不限",
+      "目标类型配额覆盖"
+    ],
+    "entry_points": [
+      "pointerTick",
+      "cooperativeInput",
+      "newCooperative",
+      "cooperativeTick",
+      "runtimeCooperativeTick",
+      "admitCooperative"
+    ],
+    "paths_reviewed": [
+      "数量模式1按first优先配额、maximum上限及兼容目标分配，目标类型覆盖配置与默认值合并。",
+      "输入固定请求serial/match/点击目标/同帧来源cohort；同一分配器运行在Host或Runtime；既有成功指令的快照伤害/名额保留，重算仅覆盖未处理部分。",
+      "接收端核对序号、数量、模式开关、TTL和Tactical/Cooperative时效；最终发送前校验源与目标ptr/UID/token/type、原生动作/武器/容量，预算不足保留游标。",
+      "手动改令、换局、失效目标、设置模式变化会使旧工作失效；入驻/射击观察记录和180帧过期不当作伤害结算。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/cooperative_bridge.h",
+      "source/assist/source/cooperative_plan.h",
+      "source/assist/source/cooperative_frame.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "伤害估计不保证命中；原生虚函数、具体载具/驻军变体和事件接收端未实机运行。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "air.quota_second",
+    "feature": "飞机分配：数量配额模式2",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "cooperative::AirSecond",
+      "配额0–512；0最大值表示不限",
+      "目标类型配额覆盖"
+    ],
+    "entry_points": [
+      "pointerTick",
+      "cooperativeInput",
+      "newCooperative",
+      "cooperativeTick",
+      "runtimeCooperativeTick",
+      "admitCooperative"
+    ],
+    "paths_reviewed": [
+      "数量模式2使用second优先配额，与模式1共享maximum和相同容量/目标排序规则。",
+      "输入固定请求serial/match/点击目标/同帧来源cohort；同一分配器运行在Host或Runtime；既有成功指令的快照伤害/名额保留，重算仅覆盖未处理部分。",
+      "接收端核对序号、数量、模式开关、TTL和Tactical/Cooperative时效；最终发送前校验源与目标ptr/UID/token/type、原生动作/武器/容量，预算不足保留游标。",
+      "手动改令、换局、失效目标、设置模式变化会使旧工作失效；入驻/射击观察记录和180帧过期不当作伤害结算。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/cooperative_bridge.h",
+      "source/assist/source/cooperative_plan.h",
+      "source/assist/source/cooperative_frame.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "伤害估计不保证命中；原生虚函数、具体载具/驻军变体和事件接收端未实机运行。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "air.coverage",
+    "feature": "飞机分配：5格战车预计伤害120%",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "cooperative::AirDamage"
+    ],
+    "entry_points": [
+      "pointerTick",
+      "cooperativeInput",
+      "newCooperative",
+      "cooperativeTick",
+      "runtimeCooperativeTick",
+      "admitCooperative"
+    ],
+    "paths_reviewed": [
+      "点选中心5格闭圆内敌方地面战车按预计伤害分配；先补未达120%的合法目标，无其他未覆盖合法目标才追加。",
+      "输入固定请求serial/match/点击目标/同帧来源cohort；同一分配器运行在Host或Runtime；既有成功指令的快照伤害/名额保留，重算仅覆盖未处理部分。",
+      "接收端核对序号、数量、模式开关、TTL和Tactical/Cooperative时效；最终发送前校验源与目标ptr/UID/token/type、原生动作/武器/容量，预算不足保留游标。",
+      "手动改令、换局、失效目标、设置模式变化会使旧工作失效；入驻/射击观察记录和180帧过期不当作伤害结算。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/cooperative_bridge.h",
+      "source/assist/source/cooperative_plan.h",
+      "source/assist/source/cooperative_frame.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "伤害估计不保证命中；原生虚函数、具体载具/驻军变体和事件接收端未实机运行。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "air.single",
+    "feature": "飞机分配：单目标120%与成功派出后取消选中",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "cooperative::AirSingle"
+    ],
+    "entry_points": [
+      "pointerTick",
+      "cooperativeInput",
+      "newCooperative",
+      "cooperativeTick",
+      "runtimeCooperativeTick",
+      "admitCooperative"
+    ],
+    "paths_reviewed": [
+      "只对点选目标累计预计伤害，到120%停止派出；仅已成功提交的飞机取消选中，未派出飞机保持原任务与选择。",
+      "输入固定请求serial/match/点击目标/同帧来源cohort；同一分配器运行在Host或Runtime；既有成功指令的快照伤害/名额保留，重算仅覆盖未处理部分。",
+      "接收端核对序号、数量、模式开关、TTL和Tactical/Cooperative时效；最终发送前校验源与目标ptr/UID/token/type、原生动作/武器/容量，预算不足保留游标。",
+      "单目标拒绝Shift；左/右原点击必须确实已被增强入口抑制才允许子集派出。对象效果观察只证明入驻/开始射击，不证明造成预计伤害。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/cooperative_bridge.h",
+      "source/assist/source/cooperative_plan.h",
+      "source/assist/source/cooperative_frame.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "伤害估计不保证命中；原生虚函数、具体载具/驻军变体和事件接收端未实机运行。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "disk.primary",
+    "feature": "飞碟主武器攻击",
+    "modes": [
+      "显式一次性增强操作",
+      "原生事件/任务取消"
+    ],
+    "entry_points": [
+      "pointerTick",
+      "cooperativeInput"
+    ],
+    "paths_reviewed": [
+      "飞碟主武器增强入口校验DiskPrimary开关、自有且类型匹配的飞碟；目标位置转换为cell tag11的原生攻击指令，并非改写武器数据。",
+      "统一pointer入口绑定当前选择ptr/UID，核对对局、house、视口generation、150毫秒新请求/1500毫秒续批、聊天/前台以及原生规划状态；最终发出时再核验对象身份。",
+      "操作按队列预算续处理；成功才确认接收，未提交重试受总TTL约束，重置清理批次。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/cooperative_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "sell.drained",
+    "feature": "出售被吸取目标",
+    "modes": [
+      "显式一次性增强操作",
+      "原生事件/任务取消"
+    ],
+    "entry_points": [
+      "pointerTick",
+      "sellAllowed"
+    ],
+    "paths_reviewed": [
+      "只允许被吸取的自有建筑（或满足载具变卖条件的载具）；必须Control输入、开关与对应增强鼠标绑定；发送原生Sell事件。",
+      "统一pointer入口绑定当前选择ptr/UID，核对对局、house、视口generation、150毫秒新请求/1500毫秒续批、聊天/前台以及原生规划状态；最终发出时再核验对象身份。",
+      "操作按队列预算续处理；成功才确认接收，未提交重试受总TTL约束，重置清理批次。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/cooperative_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "sell.vehicle",
+    "feature": "出售战车",
+    "modes": [
+      "显式一次性增强操作",
+      "原生事件/任务取消"
+    ],
+    "entry_points": [
+      "pointerTick",
+      "sellAllowed",
+      "vehicleSellCell"
+    ],
+    "paths_reviewed": [
+      "自有载具须符合类型清单、SellVehicles和所在格建筑条件；格内容链最多256项，循环/非法对象失败关闭。",
+      "统一pointer入口绑定当前选择ptr/UID，核对对局、house、视口generation、150毫秒新请求/1500毫秒续批、聊天/前台以及原生规划状态；最终发出时再核验对象身份。",
+      "操作按队列预算续处理；成功才确认接收，未提交重试受总TTL约束，重置清理批次。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/cooperative_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "sell.enemy",
+    "feature": "出售敌方建筑（旧配置/风险入口）",
+    "modes": [
+      "显式一次性增强操作",
+      "原生事件/任务取消"
+    ],
+    "entry_points": [
+      "pointerTick",
+      "sellAllowed",
+      "enemyBuildingSellAllowed"
+    ],
+    "paths_reviewed": [
+      "对手建筑需独立SellEnemy开关、当前有效敌方建筑及可操控非中立/非观察者所属方；事件标明SellPlayerTest授权，联机所属方策略交由公共网关。",
+      "统一pointer入口绑定当前选择ptr/UID，核对对局、house、视口generation、150毫秒新请求/1500毫秒续批、聊天/前台以及原生规划状态；最终发出时再核验对象身份。",
+      "操作按队列预算续处理；成功才确认接收，未提交重试受总TTL约束，重置清理批次。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/cooperative_bridge.h",
+      "source/assist/source/player_test_bridge.h",
+      "source/assist/source/player_test_policy.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "跨所属方接收与原生变卖光标补丁实现由风险入口代理审查；此处只审手动业务发出条件。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "attack.direct",
+    "feature": "直接攻击移动",
+    "modes": [
+      "显式一次性增强操作",
+      "原生事件/任务取消"
+    ],
+    "entry_points": [
+      "pointerTick"
+    ],
+    "paths_reviewed": [
+      "独立鼠标入口 AttackMove：点击对象提交原生对象Attack，点击地面提交原生AttackMove（mission29）；只下一次命令，不建立高级持续索敌任务。普通原生左击的FollowNative观察路径不追加重复命令。",
+      "统一pointer入口绑定当前选择ptr/UID，核对对局、house、视口generation、150毫秒新请求/1500毫秒续批、聊天/前台以及原生规划状态；最终发出时再核验对象身份。",
+      "操作按队列预算续处理；成功才确认接收，未提交重试受总TTL约束，重置清理批次。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "cs.hold",
+    "feature": "手动按住CS移动攻击",
+    "modes": [
+      "显式一次性增强操作",
+      "原生事件/任务取消"
+    ],
+    "entry_points": [
+      "pointerTick",
+      "csAllowedFor",
+      "featuregate::cs"
+    ],
+    "paths_reviewed": [
+      "手动CS只在CustomCS与显式按住绑定同时满足且单位武装时启用；地面命令为原生AttackMove（mission29），不依赖已禁用AutoCS。",
+      "统一pointer入口绑定当前选择ptr/UID，核对对局、house、视口generation、150毫秒新请求/1500毫秒续批、聊天/前台以及原生规划状态；最终发出时再核验对象身份。",
+      "操作按队列预算续处理；成功才确认接收，未提交重试受总TTL约束，重置清理批次。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/auto_cs_bridge.h",
+      "source/assist/source/disabled_feature_policy.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "tasks.cancel",
+    "feature": "停止所选单位自动任务",
+    "modes": [
+      "显式一次性增强操作",
+      "原生事件/任务取消"
+    ],
+    "entry_points": [
+      "command(CancelAdvanced)",
+      "cancelAutomatic",
+      "cancelOreJob"
+    ],
+    "paths_reviewed": [
+      "停止所选自动任务逐个处理自有选择；cancelOreJob递增手动版本、暂停矿车/防空并释放租约，清理装车/进攻/躲弹；卸载Sleep保留待Guard释放记录。",
+      "统一命令3500毫秒/对局/聊天门槛；通过手动版本使队形等旧工作在后续最终校验失效。",
+      "此按钮取消当前任务，不关闭全局自动开关；原生已接受的命令不能由删除本地记录撤回。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/native_orders_bridge.h",
+      "source/assist/source/external_orders_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "CancelAdvanced"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "mo.fuzzy",
+    "feature": "模糊下令分组攻击",
+    "modes": [
+      "Fuzzy",
+      "按键/鼠标独立绑定",
+      "预览与释放提交"
+    ],
+    "entry_points": [
+      "moOrdersMessage",
+      "moCommit",
+      "moOrdersTick",
+      "validateMoSubmission"
+    ],
+    "paths_reviewed": [
+      "模糊攻击限定敌方、原生可攻击目标；小队数2–16，按可用兼容边均衡分组；预览64源/96目标，最终最多1024。",
+      "捕获精确选择集合、源ptr/UID/token和match/house；目标数量、节点及动作能力设上限；摄像/前台/原生规划/聊天上下文持续验证。",
+      "预览/计算有节流，派发按64项工作和共享事件预算；已送游标不重发，目标/容量和原生动作在最后门槛再次检查。",
+      "Esc/释放错误绑定/手动命令/对局切换停止未提交部分；工作总寿命受30秒/1800帧限制。原生已接受节点无法用本地取消撤回。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/mo_orders_bridge.h",
+      "source/assist/source/mo_orders.h",
+      "source/assist/source/mo_orders_host.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "mo.region",
+    "feature": "区域目标分配",
+    "modes": [
+      "Area",
+      "按键/鼠标独立绑定",
+      "预览与释放提交"
+    ],
+    "entry_points": [
+      "moOrdersMessage",
+      "moCommit",
+      "moOrdersTick",
+      "validateMoSubmission"
+    ],
+    "paths_reviewed": [
+      "区域命令按行动能力分派；中立可驻军建筑/自有吸收器专门预分配，再按配额和最近目标；容量包含已接受待进入项。",
+      "捕获精确选择集合、源ptr/UID/token和match/house；目标数量、节点及动作能力设上限；摄像/前台/原生规划/聊天上下文持续验证。",
+      "预览/计算有节流，派发按64项工作和共享事件预算；已送游标不重发，目标/容量和原生动作在最后门槛再次检查。",
+      "Esc/释放错误绑定/手动命令/对局切换停止未提交部分；工作总寿命受30秒/1800帧限制。原生已接受节点无法用本地取消撤回。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/mo_orders_bridge.h",
+      "source/assist/source/mo_orders.h",
+      "source/assist/source/mo_orders_host.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "mo.patrol",
+    "feature": "自定义巡逻圈与原生计划提交",
+    "modes": [
+      "Patrol",
+      "按键/鼠标独立绑定",
+      "预览与释放提交"
+    ],
+    "entry_points": [
+      "moOrdersMessage",
+      "moCommit",
+      "moOrdersTick",
+      "validateMoSubmission"
+    ],
+    "paths_reviewed": [
+      "点按、小范围与开/闭合拖动轨迹生成最多32路点；只在原生计划图可独占时追加节点、等待图可见、闭合后再提交。",
+      "捕获精确选择集合、源ptr/UID/token和match/house；目标数量、节点及动作能力设上限；摄像/前台/原生规划/聊天上下文持续验证。",
+      "预览/计算有节流，派发按64项工作和共享事件预算；已送游标不重发，目标/容量和原生动作在最后门槛再次检查。",
+      "Esc/释放错误绑定/手动命令/对局切换停止未提交部分；工作总寿命受30秒/1800帧限制。原生已接受节点无法用本地取消撤回。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/mo_orders_bridge.h",
+      "source/assist/source/mo_orders.h",
+      "source/assist/source/mo_orders_host.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "formation.line",
+    "feature": "队形：矩形横队",
+    "modes": [
+      "Runtime执行",
+      "原生同步Move",
+      "独立形状键/按住与双按激活"
+    ],
+    "entry_points": [
+      "formationMessage",
+      "formationLayout",
+      "formationQuickLayout",
+      "formationCommit",
+      "formationContinue",
+      "formationTick"
+    ],
+    "paths_reviewed": [
+      "矩形横队默认按行列填充，间距为1格；拖动逐渐增加列数，最大伸展成为单横列，再按当前位置做最近位置匹配。",
+      "最多1024单位；选择身份、match/house/manual token和上下文都检查；形状共享键轮换、OS连发抑制、按住/双按进入及Esc退出预览已追踪。",
+      "只有活动预览重算，约16毫秒门槛；障碍内容链有上限，普通格冲突搜索半径4，快速路径半径5，点聚集半径40。",
+      "任务每tick32项工作，native move成功后才记录阶段；1800帧/已发15秒限时，手动版本/身份失效取消，关闭/换局清空。Esc本身退出预览，不撤回已提交原生命令。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/formation_bridge.h",
+      "source/assist/source/formation.h",
+      "source/assist/source/formation_engine.h",
+      "source/assist/source/formation_quick.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "最近位置匹配为有界二次计算；高单位数实时预览耗时未实机测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "formation.spread",
+    "feature": "队形：分散横队",
+    "modes": [
+      "Runtime执行",
+      "原生同步Move",
+      "独立形状键/按住与双按激活"
+    ],
+    "entry_points": [
+      "formationMessage",
+      "formationLayout",
+      "formationQuickLayout",
+      "formationCommit",
+      "formationContinue",
+      "formationTick"
+    ],
+    "paths_reviewed": [
+      "分散横队沿用矩形行列布局，间距为2格（相邻目标间留1格），拖动渐变为横列；保持所选单位各自唯一目标。",
+      "最多1024单位；选择身份、match/house/manual token和上下文都检查；形状共享键轮换、OS连发抑制、按住/双按进入及Esc退出预览已追踪。",
+      "只有活动预览重算，约16毫秒门槛；障碍内容链有上限，普通格冲突搜索半径4，快速路径半径5，点聚集半径40。",
+      "任务每tick32项工作，native move成功后才记录阶段；1800帧/已发15秒限时，手动版本/身份失效取消，关闭/换局清空。Esc本身退出预览，不撤回已提交原生命令。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/formation_bridge.h",
+      "source/assist/source/formation.h",
+      "source/assist/source/formation_engine.h",
+      "source/assist/source/formation_quick.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "最近位置匹配为有界二次计算；高单位数实时预览耗时未实机测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "formation.circle",
+    "feature": "队形：圆形聚集",
+    "modes": [
+      "Runtime执行",
+      "原生同步Move",
+      "独立形状键/按住与双按激活"
+    ],
+    "entry_points": [
+      "formationMessage",
+      "formationLayout",
+      "formationQuickLayout",
+      "formationCommit",
+      "formationContinue",
+      "formationTick"
+    ],
+    "paths_reviewed": [
+      "圆形聚集包含中心点，外圈按每圈6r个位置形成同心环；拖动从填充圆形连续变为横队，重复落点做附近合法格搜索。",
+      "最多1024单位；选择身份、match/house/manual token和上下文都检查；形状共享键轮换、OS连发抑制、按住/双按进入及Esc退出预览已追踪。",
+      "只有活动预览重算，约16毫秒门槛；障碍内容链有上限，普通格冲突搜索半径4，快速路径半径5，点聚集半径40。",
+      "任务每tick32项工作，native move成功后才记录阶段；1800帧/已发15秒限时，手动版本/身份失效取消，关闭/换局清空。Esc本身退出预览，不撤回已提交原生命令。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/formation_bridge.h",
+      "source/assist/source/formation.h",
+      "source/assist/source/formation_engine.h",
+      "source/assist/source/formation_quick.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "最近位置匹配为有界二次计算；高单位数实时预览耗时未实机测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "formation.fan",
+    "feature": "队形：60度扇形",
+    "modes": [
+      "Runtime执行",
+      "原生同步Move",
+      "独立形状键/按住与双按激活"
+    ],
+    "entry_points": [
+      "formationMessage",
+      "formationLayout",
+      "formationQuickLayout",
+      "formationCommit",
+      "formationContinue",
+      "formationTick"
+    ],
+    "paths_reviewed": [
+      "60度扇形按环形扇区排布，弧宽约为纵深3倍；拖动逐渐变为横队，遵守同一格边界及占用条件。",
+      "最多1024单位；选择身份、match/house/manual token和上下文都检查；形状共享键轮换、OS连发抑制、按住/双按进入及Esc退出预览已追踪。",
+      "只有活动预览重算，约16毫秒门槛；障碍内容链有上限，普通格冲突搜索半径4，快速路径半径5，点聚集半径40。",
+      "任务每tick32项工作，native move成功后才记录阶段；1800帧/已发15秒限时，手动版本/身份失效取消，关闭/换局清空。Esc本身退出预览，不撤回已提交原生命令。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/formation_bridge.h",
+      "source/assist/source/formation.h",
+      "source/assist/source/formation_engine.h",
+      "source/assist/source/formation_quick.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "最近位置匹配为有界二次计算；高单位数实时预览耗时未实机测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "formation.square",
+    "feature": "队形：正方形聚集",
+    "modes": [
+      "Runtime执行",
+      "原生同步Move",
+      "独立形状键/按住与双按激活"
+    ],
+    "entry_points": [
+      "formationMessage",
+      "formationLayout",
+      "formationQuickLayout",
+      "formationCommit",
+      "formationContinue",
+      "formationTick"
+    ],
+    "paths_reviewed": [
+      "正方形聚集按接近正方形的行列填充，间距1格；拖动增加列数并调整方向，原生寻路负责最终可达性。",
+      "最多1024单位；选择身份、match/house/manual token和上下文都检查；形状共享键轮换、OS连发抑制、按住/双按进入及Esc退出预览已追踪。",
+      "只有活动预览重算，约16毫秒门槛；障碍内容链有上限，普通格冲突搜索半径4，快速路径半径5，点聚集半径40。",
+      "任务每tick32项工作，native move成功后才记录阶段；1800帧/已发15秒限时，手动版本/身份失效取消，关闭/换局清空。Esc本身退出预览，不撤回已提交原生命令。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/formation_bridge.h",
+      "source/assist/source/formation.h",
+      "source/assist/source/formation_engine.h",
+      "source/assist/source/formation_quick.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "最近位置匹配为有界二次计算；高单位数实时预览耗时未实机测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "formation.hollow",
+    "feature": "队形：空心框聚集",
+    "modes": [
+      "Runtime执行",
+      "原生同步Move",
+      "独立形状键/按住与双按激活"
+    ],
+    "entry_points": [
+      "formationMessage",
+      "formationLayout",
+      "formationQuickLayout",
+      "formationCommit",
+      "formationContinue",
+      "formationTick"
+    ],
+    "paths_reviewed": [
+      "空心框聚集从外向内填充框层并保留中心空缺，静止时占用面积与中空面积约3比1；最大拖动变为单层框沿，格冲突和非法格通过同一校验修正。",
+      "最多1024单位；选择身份、match/house/manual token和上下文都检查；形状共享键轮换、OS连发抑制、按住/双按进入及Esc退出预览已追踪。",
+      "只有活动预览重算，约16毫秒门槛；障碍内容链有上限，普通格冲突搜索半径4，快速路径半径5，点聚集半径40。",
+      "任务每tick32项工作，native move成功后才记录阶段；1800帧/已发15秒限时，手动版本/身份失效取消，关闭/换局清空。Esc本身退出预览，不撤回已提交原生命令。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/formation_bridge.h",
+      "source/assist/source/formation.h",
+      "source/assist/source/formation_engine.h",
+      "source/assist/source/formation_quick.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "最近位置匹配为有界二次计算；高单位数实时预览耗时未实机测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "formation.continue",
+    "feature": "成员不变时后续移动保持队形",
+    "modes": [
+      "Runtime执行",
+      "原生同步Move",
+      "继续保持选中队形"
+    ],
+    "entry_points": [
+      "formationMessage",
+      "formationLayout",
+      "formationQuickLayout",
+      "formationCommit",
+      "formationContinue",
+      "formationTick"
+    ],
+    "paths_reviewed": [
+      "只对完全相同的选择集合续保持已记忆相对位移；普通原生左击先行，下帧读取该点击/版本再提交平移队形，避免额外语音。",
+      "最多1024单位；选择身份、match/house/manual token和上下文都检查；形状共享键轮换、OS连发抑制、按住/双按进入及Esc退出预览已追踪。",
+      "只有活动预览重算，约16毫秒门槛；障碍内容链有上限，普通格冲突搜索半径4，快速路径半径5，点聚集半径40。",
+      "任务每tick32项工作，native move成功后才记录阶段；1800帧/已发15秒限时，手动版本/身份失效取消，关闭/换局清空。Esc本身退出预览，不撤回已提交原生命令。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/formation_bridge.h",
+      "source/assist/source/formation.h",
+      "source/assist/source/formation_engine.h",
+      "source/assist/source/formation_quick.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "最近位置匹配为有界二次计算；高单位数实时预览耗时未实机测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "formation.quick_point",
+    "feature": "快速布阵点按聚集",
+    "modes": [
+      "Runtime执行",
+      "原生同步Move",
+      "快速布阵独立手势"
+    ],
+    "entry_points": [
+      "formationMessage",
+      "formationLayout",
+      "formationQuickLayout",
+      "formationCommit",
+      "formationContinue",
+      "formationTick"
+    ],
+    "paths_reviewed": [
+      "快速点按聚集采用近点螺旋合法格；步兵每格最多3，载具/飞机按各自容量分组。",
+      "最多1024单位；选择身份、match/house/manual token和上下文都检查；形状共享键轮换、OS连发抑制、按住/双按进入及Esc退出预览已追踪。",
+      "只有活动预览重算，约16毫秒门槛；障碍内容链有上限，普通格冲突搜索半径4，快速路径半径5，点聚集半径40。",
+      "任务每tick32项工作，native move成功后才记录阶段；1800帧/已发15秒限时，手动版本/身份失效取消，关闭/换局清空。Esc本身退出预览，不撤回已提交原生命令。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/formation_bridge.h",
+      "source/assist/source/formation.h",
+      "source/assist/source/formation_engine.h",
+      "source/assist/source/formation_quick.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "最近位置匹配为有界二次计算；高单位数实时预览耗时未实机测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "formation.quick_curve",
+    "feature": "快速布阵轨迹排布（直线／曲线）",
+    "modes": [
+      "Runtime执行",
+      "原生同步Move",
+      "快速布阵独立手势"
+    ],
+    "entry_points": [
+      "formationMessage",
+      "formationLayout",
+      "formationQuickLayout",
+      "formationCommit",
+      "formationContinue",
+      "formationTick"
+    ],
+    "paths_reviewed": [
+      "快速拖动以最多256采样节点沿分段直线/曲线铺开；地面与空中分组并做各自格合法性及同类最近匹配。",
+      "最多1024单位；选择身份、match/house/manual token和上下文都检查；形状共享键轮换、OS连发抑制、按住/双按进入及Esc退出预览已追踪。",
+      "只有活动预览重算，约16毫秒门槛；障碍内容链有上限，普通格冲突搜索半径4，快速路径半径5，点聚集半径40。",
+      "任务每tick32项工作，native move成功后才记录阶段；1800帧/已发15秒限时，手动版本/身份失效取消，关闭/换局清空。Esc本身退出预览，不撤回已提交原生命令。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/formation_bridge.h",
+      "source/assist/source/formation.h",
+      "source/assist/source/formation_engine.h",
+      "source/assist/source/formation_quick.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "最近位置匹配为有界二次计算；高单位数实时预览耗时未实机测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "guard.sticky",
+    "feature": "坚守位置/黏住警戒",
+    "modes": [
+      "单机本地原生状态入口",
+      "联机同步mission6观察"
+    ],
+    "entry_points": [
+      "command(StickyGuard)",
+      "stickyCommand",
+      "stickyTick",
+      "releaseSticky"
+    ],
+    "paths_reviewed": [
+      "按ptr/UID/house/epoch保留坚守状态；只接受当前自有合法地面单位。",
+      "单机使用原生Idle/ForceMission6配对，重复快捷键可释放；联机使用正常同步mission6并观察，900帧后释放本地观察。",
+      "手动命令、对象退休、所属方/对局变化清理记录；原生依赖失败不报告成功。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/sticky_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "联机同快捷键再次按下不会提供单机式本地toggle-off，这是当前实现边界。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "StickyGuard"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "mission.sleep",
+    "feature": "不攻击模式",
+    "modes": [
+      "单机/联机原生同步事件"
+    ],
+    "entry_points": [
+      "command(SetSleep)",
+      "selectedModeCommand"
+    ],
+    "paths_reviewed": [
+      "此入口仅提交原生mission 0，接收方行为由游戏承担。",
+      "选中名单源必须是当前世界中的自有活跃步兵/载具；排除禁用、已入载具/吸收器，以及已有sticky/当前或排队mission6的对象。",
+      "使用共享事件预算，先取消冲突自动工作再构造原生事件；依赖、会话、聊天门槛失败直接拒绝，无每帧重发任务。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/selected_mode_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "SetSleep"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "mission.guard",
+    "feature": "驻守模式",
+    "modes": [
+      "单机/联机原生同步事件"
+    ],
+    "entry_points": [
+      "command(SetGuard)",
+      "selectedModeCommand"
+    ],
+    "paths_reviewed": [
+      "此入口仅提交原生mission 5，接收方行为由游戏承担。",
+      "选中名单源必须是当前世界中的自有活跃步兵/载具；排除禁用、已入载具/吸收器，以及已有sticky/当前或排队mission6的对象。",
+      "使用共享事件预算，先取消冲突自动工作再构造原生事件；依赖、会话、聊天门槛失败直接拒绝，无每帧重发任务。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/selected_mode_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "SetGuard"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "mission.harmless",
+    "feature": "无害模式",
+    "modes": [
+      "单机/联机原生同步事件"
+    ],
+    "entry_points": [
+      "command(SetHarmless)",
+      "selectedModeCommand"
+    ],
+    "paths_reviewed": [
+      "此入口仅提交原生mission 23，接收方行为由游戏承担。",
+      "选中名单源必须是当前世界中的自有活跃步兵/载具；排除禁用、已入载具/吸收器，以及已有sticky/当前或排队mission6的对象。",
+      "使用共享事件预算，先取消冲突自动工作再构造原生事件；依赖、会话、聊天门槛失败直接拒绝，无每帧重发任务。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/selected_mode_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "SetHarmless"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "mission.own_ground",
+    "feature": "攻击脚下",
+    "modes": [
+      "原生对象/格攻击",
+      "单机/联机事件"
+    ],
+    "entry_points": [
+      "command(AttackOwnGround)",
+      "attackOwnGroundCommand",
+      "ownGroundTick"
+    ],
+    "paths_reviewed": [
+      "捕获所选武器与脚下格；零射程且非AreaFire情形用自身对象tag0x34，其他使用cell tag11。",
+      "请求时效150毫秒；最多8192源，之后工作3500毫秒封顶；每个源再次检查ptr/UID/token和当前合法武器/格，排除sticky。",
+      "队列背压保留未送游标；仅成功派发才推进，不重复反馈；新请求/换局取消旧批次。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/attack_ground_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "AttackOwnGround"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "ore.return",
+    "feature": "矿车自动卸矿与恢复采矿",
+    "modes": [
+      "返矿分配Host/Runtime",
+      "卸矿后恢复采矿Runtime观察",
+      "矿场/矿车默认识别或类型清单"
+    ],
+    "entry_points": [
+      "observePausedOre",
+      "runtimePlanningTick",
+      "externalOrdersTick",
+      "oreHarvestObserve",
+      "oreHarvestTick",
+      "admitPlannerOrder"
+    ],
+    "paths_reviewed": [
+      "返矿 Planner 保留每个矿车的UID/token、矿场、FIFO与等待格，维护Docking/Waiting/Approaching/Yielding；只有真实卸矿/货量证据才记送达。",
+      "矿场丢失重新择合法矿场，原生radio和卸矿保护占用；近车有限一次让位，必须观察旧车Move和radio释放后再发新Enter，防止饥饿/抢占循环。",
+      "矿车防蛛接管时暂停原返矿条目而不丢弃队列；手动版本/矿车暂停使工作失效。关闭返矿会让已有队列退出，新局全部重置。",
+      "卸矿后恢复采矿在Runtime独立观察；空矿、退出原生链接且无手动排队才进入有界最近矿搜索，每帧共享2048格，单项256；读取不全回滚搜索检查点，最终再验格、矿场和manual token。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/external_planner.h",
+      "source/assist/source/external_orders_bridge.h",
+      "source/assist/source/ore_harvest_bridge.h",
+      "source/assist/source/ore_harvest_search.h",
+      "source/assist/source/ore_queue.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "矿场原生radio握手、真实寻路/矿资源变化未实机验证；多矿场队列最坏负载未测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "ore.custom_types",
+    "feature": "矿车/矿场独立类型清单",
+    "modes": [
+      "默认识别",
+      "矿车清单",
+      "矿场清单",
+      "Host/Runtime共享配置"
+    ],
+    "entry_points": [
+      "refreshOreConfig",
+      "oreTypeAllowed",
+      "oreMiner",
+      "oreHarvestInventory"
+    ],
+    "paths_reviewed": [
+      "矿车与矿场分别启用自定义清单；关闭清单按默认能力识别，启用空清单不接管任何对应类型。",
+      "ID限定长度23、英文数字下划线/连字符，大小写归一并去重，512容量；稳定seqlock+valid检查后替换缓存。",
+      "库存身份缓存包含当前类型/UID和清单revision；名单地址未变仍按30帧或500毫秒重验，避免地址复用漏掉新矿车。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/ore_type_config.h",
+      "source/assist/source/external_orders_bridge.h",
+      "source/assist/source/ore_harvest_bridge.h",
+      "source/assist/source/auto_settings_ui.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "miner.spider",
+    "feature": "自动点杀蜘蛛与恢复原任务",
+    "modes": [
+      "Runtime游戏线程",
+      "默认矿车",
+      "自定义地面单位",
+      "额外索敌0–30格；退出多1格"
+    ],
+    "entry_points": [
+      "minerDefenseTick",
+      "minerDefenseCapture",
+      "minerDefenseAttack",
+      "minerDefenseTransition",
+      "minerDefenseResume",
+      "minerDefenseForget"
+    ],
+    "paths_reviewed": [
+      "默认只处理实际矿车；自定义允许地面战车/步兵，但普通单位仅接管空闲Guard/AreaGuard，不能伪装成Harvester进入返矿队列。",
+      "保存源ptr/UID/type/typeUID/token、原任务和矿场/等待格；目标保存ptr/UID/type/typeUID，缺失快照不能冒充蜘蛛已死，必要时完整原生名单确认退休。",
+      "手动输入保留hold并跟随ManualVersions重哈希；只显式重启本功能/改选择器才重新武装；未观察到旧Attack前到达的新Move/Stop同样优先。",
+      "每tick最多128候选/6事件，活动工作轮转，地图搜索总2048格；原返矿队列暂停不删除，结束恢复原矿格/卸矿/等待或普通单位原位原警戒。",
+      "关闭/类型改变进入恢复；成功送出的同类恢复最多3次，两次至少12帧且350毫秒；恢复总限600帧且15秒；不完整读取最多等待2秒后释放。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/harvester_defense_bridge.h",
+      "source/assist/source/harvester_defense.h",
+      "source/assist/source/harvester_defense_raw.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "defense.antitheft",
+    "feature": "防御建筑优先攻击渗透单位",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "默认/自定义防御类型"
+    ],
+    "entry_points": [
+      "antiTheftBuilding",
+      "antiTheftThreat",
+      "Planner::step",
+      "admitPlannerOrder"
+    ],
+    "paths_reviewed": [
+      "默认防御为NALASR/GAPILL/YAGGUN，支持类型清单；威胁按敌方步兵Ivan/Infiltrate/C4/Engineer原生能力识别。",
+      "共享空间敌人索引，128检查/6命令上限与轮转；350毫秒抑制重复，已有优先目标继续保留。",
+      "Host/Runtime结果都经最终admit校验开关、所属方、UID/manual token、类型、敌方和武器兼容/射程；设置关闭或换局不继续采样。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/anti_theft_bridge.h",
+      "source/assist/source/external_planner.h",
+      "source/assist/source/external_orders_bridge.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "dodge.forward",
+    "feature": "自动躲弹：顺向移动两格",
+    "modes": [
+      "Runtime执行（不经过Host算法往返）",
+      "顺向两格",
+      "逼近碾压仍使用同步Scatter"
+    ],
+    "entry_points": [
+      "dodgeControlTick",
+      "reverseDodgeTick",
+      "collectReverseTargets",
+      "reverseDodgeActor"
+    ],
+    "paths_reviewed": [
+      "顺向模式使用弹体速度或发射/目标坐标方向，选择沿途附近可通行格并发原生Move；原生散开只用于独立逼近碾压威胁。",
+      "弹体ptr/UID/alive在采样后再次校验；全量候选先完整采样，再开始8帧发送机会；读取失败不消耗该机会。",
+      "单个已接受躲避合并短窗口新弹体而不延长窗口；512工作/32射击历史上限，手动token和更高优先任务取消；队列不足重试受窗口限。",
+      "mode0始终在Runtime运行真实通行查询/提交；不会因为UI选择Host计算就搬运这些原生查询。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/dodge_bridge.h",
+      "source/assist/source/reverse_dodge_bridge.h",
+      "source/assist/source/reverse_dodge.h",
+      "source/assist/source/dodge_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "弹体多且以格为目标时有有界名单扫描；最坏真实负载未测量。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "dodge.scatter",
+    "feature": "自动躲弹：原版Scatter",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "原生同步Scatter"
+    ],
+    "entry_points": [
+      "dodgeControlTick",
+      "collectDodgeInput",
+      "applyDodgeResult",
+      "updateDodgeJobs"
+    ],
+    "paths_reviewed": [
+      "威胁包含敌机相关弹体及指向该单位的逼近碾压；只对合法可移动自有地面单位提交原生Scatter事件0x07。",
+      "Host保留原始输入和游标，结果匹配身份/工作serial/时效后重新在当前状态计算决定；Runtime直接调用相同decide。",
+      "每批128源，持续工作优先且候选轮转；正在转向/移动/待命令的Scatter不重复；观察活动后静止2帧释放，无观察300帧过期。",
+      "手动token/身份/类型改变立即取消，关闭后不新增而完成必要状态观察；换局重置；绝不在单个peer直接调用本地Scatter随机。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/dodge_bridge.h",
+      "source/assist/source/dodge_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "missile.targets",
+    "feature": "防空火控目标：仅导弹类/全部敌方空中单位",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "目标范围两种",
+      "智能/平均分配",
+      "提前Sleep开关"
+    ],
+    "entry_points": [
+      "missileControlTick",
+      "collectMissileInput",
+      "missilecompute::calculate",
+      "applyMissileResult",
+      "releaseMissileHolds"
+    ],
+    "paths_reviewed": [
+      "范围0只选导弹类飞机类型，范围1扩展所有当前敌方空中单位；不能被选中的保护/运输/地面目标排除。",
+      "最多256源/256目标，扫描1–60Hz；管理中源与新源分别轮转。精确原生查询在采样scope外做，回读同一密封样本；失败回滚运动缓存。",
+      "Host结果保留输入元信息和配置fingerprint；最终核验ptr/UID/manual token、当前开关/目标/武器及射程。手动移动、队形、sticky、高级移动、躲弹等不被抢占。",
+      "只把新rearm起点作为射击观察，估计射击预留12帧/生命值改变即清；提前接近有4格/60帧约束和30帧释放宽限，切换设置清旧结果，换局重置。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/missile_bridge.h",
+      "source/assist/source/missile_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "纯分配算法在256×256上限为有界三重选择；本轮未做游戏负载性能实测。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "missile.smart",
+    "feature": "防空火控智能分配",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "目标范围两种",
+      "智能/平均分配",
+      "提前Sleep开关"
+    ],
+    "entry_points": [
+      "missileControlTick",
+      "collectMissileInput",
+      "missilecompute::calculate",
+      "applyMissileResult",
+      "releaseMissileHolds"
+    ],
+    "paths_reviewed": [
+      "智能分配综合预计伤害、120%覆盖、正在威胁友军、就绪时间、兼容边和距离；待生效Attack/休眠占用相应射手。",
+      "最多256源/256目标，扫描1–60Hz；管理中源与新源分别轮转。精确原生查询在采样scope外做，回读同一密封样本；失败回滚运动缓存。",
+      "Host结果保留输入元信息和配置fingerprint；最终核验ptr/UID/manual token、当前开关/目标/武器及射程。手动移动、队形、sticky、高级移动、躲弹等不被抢占。",
+      "只把新rearm起点作为射击观察，估计射击预留12帧/生命值改变即清；提前接近有4格/60帧约束和30帧释放宽限，切换设置清旧结果，换局重置。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/missile_bridge.h",
+      "source/assist/source/missile_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "纯分配算法在256×256上限为有界三重选择；本轮未做游戏负载性能实测。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "missile.balanced",
+    "feature": "防空火控平均分配",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "目标范围两种",
+      "智能/平均分配",
+      "提前Sleep开关"
+    ],
+    "entry_points": [
+      "missileControlTick",
+      "collectMissileInput",
+      "missilecompute::calculate",
+      "applyMissileResult",
+      "releaseMissileHolds"
+    ],
+    "paths_reviewed": [
+      "平均分配使用目标已分配数量排序，仍遵守可攻击边、就绪窗口和当前目标/威胁优先规则。",
+      "最多256源/256目标，扫描1–60Hz；管理中源与新源分别轮转。精确原生查询在采样scope外做，回读同一密封样本；失败回滚运动缓存。",
+      "Host结果保留输入元信息和配置fingerprint；最终核验ptr/UID/manual token、当前开关/目标/武器及射程。手动移动、队形、sticky、高级移动、躲弹等不被抢占。",
+      "只把新rearm起点作为射击观察，估计射击预留12帧/生命值改变即清；提前接近有4格/60帧约束和30帧释放宽限，切换设置清旧结果，换局重置。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/missile_bridge.h",
+      "source/assist/source/missile_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "纯分配算法在256×256上限为有界三重选择；本轮未做游戏负载性能实测。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "missile.reserve",
+    "feature": "提前休眠留枪与退出恢复Guard",
+    "modes": [
+      "Host计算",
+      "Runtime计算",
+      "目标范围两种",
+      "智能/平均分配",
+      "提前Sleep开关"
+    ],
+    "entry_points": [
+      "missileControlTick",
+      "collectMissileInput",
+      "missilecompute::calculate",
+      "applyMissileResult",
+      "releaseMissileHolds"
+    ],
+    "paths_reviewed": [
+      "提前留枪对建筑/战车/步兵使用无目标Sleep保留枪口，进入射程/就绪后Attack；无候选或明确关闭时发送Guard，关闭允许中断未结束burst。",
+      "最多256源/256目标，扫描1–60Hz；管理中源与新源分别轮转。精确原生查询在采样scope外做，回读同一密封样本；失败回滚运动缓存。",
+      "Host结果保留输入元信息和配置fingerprint；最终核验ptr/UID/manual token、当前开关/目标/武器及射程。手动移动、队形、sticky、高级移动、躲弹等不被抢占。",
+      "只把新rearm起点作为射击观察，估计射击预留12帧/生命值改变即清；提前接近有4格/60帧约束和30帧释放宽限，切换设置清旧结果，换局重置。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/missile_bridge.h",
+      "source/assist/source/missile_compute.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "纯分配算法在256×256上限为有界三重选择；本轮未做游戏负载性能实测。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "damage.filter",
+    "feature": "过滤工具箱低伤害自动目标",
+    "modes": [
+      "工具箱候选过滤",
+      "Host/Runtime共用候选"
+    ],
+    "entry_points": [
+      "missileEdgeFacts",
+      "applyMissileResult",
+      "missileControlTick"
+    ],
+    "paths_reviewed": [
+      "过滤开关直接作用于防空自动候选，弹头效果需大于2%；武器伤害/护甲索引/非伤害武器本身也过滤。",
+      "高级移动攻击自身已有2%效果筛选；没有把此开关误称为全局所有原生命令过滤器。",
+      "防空配置fingerprint包含该开关，切换后旧Host结果无效；不开高危项时不安装原生索敌补丁。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/missile_bridge.h",
+      "source/assist/source/combat_probe_bridge.h",
+      "source/assist/source/advanced_decision.h",
+      "source/assist/source/tactical_controls.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "原生战斗查询ABI及补丁恢复由风险入口代理独立审查。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "damage.native",
+    "feature": "高危修改原生低伤害索敌",
+    "modes": [
+      "单机",
+      "联机所有阵营",
+      "默认关闭",
+      "两开关同时开启才安装（SP也要求原生开关）",
+      "SP仅当前玩家所属单位",
+      "MP所有阵营",
+      "仅工具过滤不安装原生补丁",
+      "关闭/暂停/换局/控制器退出/故障"
+    ],
+    "entry_points": [
+      "placementTick (native low-damage toggle boundary)",
+      "tactical_controls.h: toggle 9182/9183",
+      "extra_settings_io.h: FilterLowDamage/NativeFilterInMultiplayer, syncAdditional",
+      "placementTick -> installRiskSite(riskSites[9]) -> riskLowDamageEntry"
+    ],
+    "paths_reviewed": [
+      "已追踪双开关门槛：lowDamageFilter且lowDamageNetwork才请求安装；关闭任一项恢复原位置，状态保留冲突错误。",
+      "已核对公开行为区别：单机只自有作用，联机作用所有阵营；此条为风险实现代理的交叉索引。",
+      "source/assist/source/placement_bridge.h",
+      "source/assist/source/hook_registry.h",
+      "source/shared/source/patch_context.h",
+      "source/shared/source/experimental_patch_policy.h",
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/guard.cpp",
+      "source/assist/source/tactical_controls.h",
+      "source/assist/source/extra_settings_io.h"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/placement_bridge.h",
+      "source/assist/source/tactical_controls.h",
+      "source/assist/source/extra_settings_io.h",
+      "delegated-coverage-crosscheck.json：本轮已补完该底层实现源码审查，非仅诊断步骤映射。"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "本代理未重审补丁指令、hook所有权/完整恢复与联机同步；由风险入口代理覆盖。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566",
+    "original_review_status": "boundary_reviewed_delegated",
+    "implementation_review_supplement": "delegated-coverage-crosscheck.json#implementation.damage.native",
+    "implementation_checks": [
+      "原位置 0x6F7D44 长6字节，原指令 fcomp dword ptr[0x7F4E38]；要求原字节 D8 1D 38 4E 7F 00，另核对函数入口、Warhead/armor加载、后续x87状态消费者和阈值常量四组上下文。",
+      "裸入口保留EFLAGS/EAX；关闭、非作用对象回放原float32比较；开启作用对象使用double 0.02，仍只弹出一次x87值并跳回0x6F7D4A。没有每次回调采样、对象枚举、堆分配或Capture往返。",
+      "SP读取EDI对象Owner并与House::CurrentPlayer比较；MP安装完成后置allHouses，不为远端阵营保留不同比较阈值。只改自动索敌候选比较，不改Warhead伤害数据或显式攻击动作。",
+      "安装先校验上下文与原字节，已拥有站点必须仍与工具后字节一致；冲突保留失败状态。恢复取gameentry的实际before/after journal，不能用参考签名覆盖外部补丁。",
+      "placementTick先清active，再根据安装/恢复结果发布active/status；恢复失败为-2。暂停路径禁用active，显式关掉任一开关时尝试恢复；reset/stop/fault先禁用active再恢复，未完成所有权退休时disconnect不解除映射。"
+    ]
+  },
+  {
+    "id": "airpath.compat",
+    "feature": "飞机兼容路径点接续",
+    "modes": [
+      "单机/联机普通同步事件",
+      "兼容路线"
+    ],
+    "entry_points": [
+      "airway::capture",
+      "airway::service",
+      "pointerTick(AirWaypoint)",
+      "command(AirPathMove)"
+    ],
+    "paths_reviewed": [
+      "两种兼容配置都走普通同步Move事件；原生路径键/自定义路径键影响捕获入口，不能绕过当前mode的最终许可。",
+      "最多512飞机、每架64点，16项采样/最多4条发送；保留ptr/UID/token/match。选择点击不取消路线，明确手动命令/攻击/停止取消。",
+      "实时身份读取不全保留待重试，退休删除；阶段1确认15秒上限，未到点30秒且5秒无进展停止重发；跨越检测须先观察原生Move。",
+      "Runtime命令入口再次验证当前兼容模式、自有飞机、manual token、存活载具状态和cell；切到补丁模式会拒绝迟到兼容请求。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/air_path_policy.h",
+      "source/assist/source/air_path_host.h",
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/bridge.cpp"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "AirPathMove"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "airpath.native_events",
+    "feature": "飞机原生事件兼容",
+    "modes": [
+      "单机/联机普通同步事件",
+      "原生键触发的事件兼容"
+    ],
+    "entry_points": [
+      "airway::capture",
+      "airway::service",
+      "pointerTick(AirWaypoint)",
+      "command(AirPathMove)"
+    ],
+    "paths_reviewed": [
+      "两种兼容配置都走普通同步Move事件；原生路径键/自定义路径键影响捕获入口，不能绕过当前mode的最终许可。",
+      "最多512飞机、每架64点，16项采样/最多4条发送；保留ptr/UID/token/match。选择点击不取消路线，明确手动命令/攻击/停止取消。",
+      "实时身份读取不全保留待重试，退休删除；阶段1确认15秒上限，未到点30秒且5秒无进展停止重发；跨越检测须先观察原生Move。",
+      "Runtime命令入口再次验证当前兼容模式、自有飞机、manual token、存活载具状态和cell；切到补丁模式会拒绝迟到兼容请求。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/air_path_policy.h",
+      "source/assist/source/air_path_host.h",
+      "source/assist/source/pointer_bridge.h",
+      "source/assist/source/bridge.cpp"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "AirPathMove"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "airpath.patch_ui",
+    "feature": "飞机原生下单补丁",
+    "modes": [
+      "单机实验",
+      "联机实验",
+      "UI路径点模式3 / nativeAirNetwork=1",
+      "SP会话0/5",
+      "MP会话3/4（实验）",
+      "自定义路径键转兼容路径",
+      "关闭/失焦或暂停/换局/控制器退出/故障"
+    ],
+    "entry_points": [
+      "airpathpolicy::native",
+      "airpathpolicy::arrival",
+      "airpathpolicy::events",
+      "tactical_controls.h: combo 803",
+      "extra_settings_io.h: WaypointMode/WaypointHoldKey -> additionalFlags",
+      "airpathpolicy::native/arrival/events",
+      "placementTick -> riskAirTypeEntry -> GuardedRiskAction -> AssistRiskAction"
+    ],
+    "paths_reviewed": [
+      "只安装原生下单/UI实验入口，不安装arrival补丁。",
+      "业务入口核对当前networkMode=1/2，兼容Move路线因此关闭；自定义路径键配置使用兼容路径而非隐式原生补丁。",
+      "单机和联机会话均可选择实验模式，策略注释明确未通过netplay认证。",
+      "source/assist/source/placement_bridge.h",
+      "source/assist/source/hook_registry.h",
+      "source/shared/source/patch_context.h",
+      "source/shared/source/experimental_patch_policy.h",
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/guard.cpp",
+      "source/assist/source/air_path_policy.h",
+      "source/assist/source/air_path_host.h",
+      "source/assist/source/tactical_controls.h",
+      "source/assist/source/extra_settings_io.h"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/air_path_policy.h",
+      "source/assist/source/tactical_controls.h",
+      "source/assist/source/air_path_host.h",
+      "source/assist/source/bridge.cpp",
+      "delegated-coverage-crosscheck.json：本轮已补完该底层实现源码审查，非仅诊断步骤映射。"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "实际patch安装/旧字节验证/恢复/到达回调属于风险入口代理；本代理只审模式分流与兼容业务边界。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566",
+    "original_review_status": "boundary_reviewed_delegated",
+    "implementation_review_supplement": "delegated-coverage-crosscheck.json#implementation.airpath.patch_ui",
+    "implementation_checks": [
+      "只有支持会话、NativeAirWaypoints请求且nativeAirNetwork=1/2才进入native组；自定义路径键时Host不置NativeAirWaypoints，兼容事件路径继续工作。",
+      "AirType站点0x7E2908是4字节虚表槽，要求旧值0x41CB50。回调保留GPR/EFLAGS/x87/SSE，传ECX给GuardedRiskAction，返回EAX；门槛失败返回0。",
+      "GuardedRiskAction获得Assist Capture租约、SEH保护、finally释放并恢复LastError；AssistRiskAction用riskReady验证已绑定世界/场景、单元数组、当前House、帧水位和Host心跳，避免新世界/控制器失效时运行增强行为。",
+      "先安装或撤销arrival行为，再安装AirType前端；只有整个所需组成功才置riskAirActive。中途失败尝试恢复两处，status明确错误；重入维护不重写外部所有者字节。",
+      "UI模式必须撤销arrival站点，仅打开AircraftType::CanUseWaypoint入口；不调用TryNextPlanningTokenNode，不承诺到达后继续飞行。",
+      "显式关闭时active先归零再恢复本工具journal字节。暂停可保留选中站点所有权，回调仍受riskReady控制；reset/stop/fault调用restorePlacement，恢复失败阻止disconnect提前解映射。"
+    ]
+  },
+  {
+    "id": "airpath.patch_full",
+    "feature": "飞机完整原生补丁",
+    "modes": [
+      "单机实验",
+      "联机实验",
+      "UI路径点模式4 / nativeAirNetwork=2",
+      "SP会话0/5",
+      "MP会话3/4（实验）",
+      "自定义路径键转兼容路径",
+      "关闭/失焦或暂停/换局/控制器退出/故障"
+    ],
+    "entry_points": [
+      "airpathpolicy::native",
+      "airpathpolicy::arrival",
+      "airpathpolicy::events",
+      "tactical_controls.h: combo 803",
+      "extra_settings_io.h: WaypointMode/WaypointHoldKey -> additionalFlags",
+      "airpathpolicy::native/arrival/events",
+      "placementTick -> riskAirTypeEntry + riskAirArrivalEntry -> GuardedRiskAction -> AssistRiskAction"
+    ],
+    "paths_reviewed": [
+      "同时选择原生下单/UI及arrival实验入口。",
+      "业务入口核对当前networkMode=1/2，兼容Move路线因此关闭；自定义路径键配置使用兼容路径而非隐式原生补丁。",
+      "单机和联机会话均可选择实验模式，策略注释明确未通过netplay认证。",
+      "source/assist/source/placement_bridge.h",
+      "source/assist/source/hook_registry.h",
+      "source/shared/source/patch_context.h",
+      "source/shared/source/experimental_patch_policy.h",
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/guard.cpp",
+      "source/assist/source/air_path_policy.h",
+      "source/assist/source/air_path_host.h",
+      "source/assist/source/tactical_controls.h",
+      "source/assist/source/extra_settings_io.h"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/air_path_policy.h",
+      "source/assist/source/tactical_controls.h",
+      "source/assist/source/air_path_host.h",
+      "source/assist/source/bridge.cpp",
+      "delegated-coverage-crosscheck.json：本轮已补完该底层实现源码审查，非仅诊断步骤映射。"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。",
+      "实际patch安装/旧字节验证/恢复/到达回调属于风险入口代理；本代理只审模式分流与兼容业务边界。"
+    ],
+    "review_status": "source_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566",
+    "original_review_status": "boundary_reviewed_delegated",
+    "implementation_review_supplement": "delegated-coverage-crosscheck.json#implementation.airpath.patch_full",
+    "implementation_checks": [
+      "只有支持会话、NativeAirWaypoints请求且nativeAirNetwork=1/2才进入native组；自定义路径键时Host不置NativeAirWaypoints，兼容事件路径继续工作。",
+      "AirType站点0x7E2908是4字节虚表槽，要求旧值0x41CB50。回调保留GPR/EFLAGS/x87/SSE，传ECX给GuardedRiskAction，返回EAX；门槛失败返回0。",
+      "GuardedRiskAction获得Assist Capture租约、SEH保护、finally释放并恢复LastError；AssistRiskAction用riskReady验证已绑定世界/场景、单元数组、当前House、帧水位和Host心跳，避免新世界/控制器失效时运行增强行为。",
+      "先安装或撤销arrival行为，再安装AirType前端；只有整个所需组成功才置riskAirActive。中途失败尝试恢复两处，status明确错误；重入维护不重写外部所有者字节。",
+      "完整模式额外验证0x6385C0前10字节，并安装0x416AB6的10字节arrival补丁与0x416AC0上下文。仅自有Aircraft且相关状态字段允许时调用TryNextPlanningTokenNode。成功跳过原置状态3，失败回放[ESI+0xBC]=3；两路均恢复GPR/EFLAGS/x87/SSE并回到0x416AC0。",
+      "显式关闭时active先归零再恢复本工具journal字节。暂停可保留选中站点所有权，回调仍受riskReady控制；reset/stop/fault调用restorePlacement，恢复失败阻止disconnect提前解映射。"
+    ]
+  },
+  {
+    "id": "queue.reservation",
+    "feature": "生产预定：建筑/防御与单位队列",
+    "modes": [
+      "ProduceReserved",
+      "ProduceDeferred",
+      "建筑/防御双通道",
+      "单位多工厂通道",
+      "建筑/防御两个FIFO，32项",
+      "步兵/载具两个展示FIFO，128项；步兵/陆军/海军/飞机四个工厂预算通道",
+      "可见堆叠5项",
+      "普通/未来前置/科技白名单候选",
+      "面板/原生侧栏点选、右键取消、Shift+右键清空、原生Tab快捷键",
+      "ProduceReserved/ProduceDeferred",
+      "暂停/失焦/关显示/关功能/换局/换进程/连接失败"
+    ],
+    "entry_points": [
+      "construction::Book",
+      "command(ProduceReserved)",
+      "command(ProduceDeferred)",
+      "tactical_controls.h: toggle 799 -> extra.constructionQueue/ReserveConstruction",
+      "buildreserve::service/reserveChoice/removeItem/result/reset/destroy",
+      "main.cpp: publishReservationPolicy/takeReservationClick/queueCommand/serviceCommandQueue/send/result",
+      "reservationMessage -> InputClick -> buildreserve::consumeNativeClick",
+      "bridge.cpp: command(ProduceReserved/ProduceDeferred) -> nativeProduceEvent"
+    ],
+    "paths_reviewed": [
+      "Runtime明确区分建筑预定和单位延后生产；候选目录、类型、开关、源建筑UID和所属方、原生cameo/工厂/可建条件检查。",
+      "建筑必须等待现有产品/队列空，单位可继续加入原生工厂队列；动作成功才建立侧栏观察。",
+      "已核对Book的32预定容量、只显示5项，单位原生30队列/本地128预定配置；不把显示容量当最大功能容量。",
+      "source/assist/source/construction_host.h",
+      "source/assist/source/construction_policy.h",
+      "source/assist/source/construction_catalog.h",
+      "source/assist/source/construction_input.h",
+      "source/assist/source/construction_message_bridge.h",
+      "source/assist/source/construction_sidebar_bridge.h",
+      "source/assist/source/construction_buffer.h",
+      "source/assist/source/native_cameos.h",
+      "source/assist/source/native_badge_display.h",
+      "source/assist/source/command_delivery.h",
+      "source/assist/source/main.cpp",
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/tactical_controls.h",
+      "source/assist/source/extra_settings_io.h"
+    ],
+    "findings": [
+      "DC-RESERVATION-001：Host刷新Snapshot跨局后将旧ProduceReserved/Deferred重标为新局；6场景/48检查受控确认，生产未修，Runtime原生生产未执行。"
+    ],
+    "evidence": [
+      "source/assist/source/construction_policy.h",
+      "source/assist/source/construction_host.h",
+      "source/assist/source/bridge.cpp",
+      "delegated-coverage-crosscheck.json：本轮已补完该底层实现源码审查，非仅诊断步骤映射。",
+      "reservation-world-boundary-review.json",
+      "reservation-world-boundary-result.json"
+    ],
+    "validation_gaps": [
+      "本轮实际执行Host跨世界窗口6场景/48项检查；未执行Runtime原生生产、Windows或真实游戏。Reserved旧父UID仍可能在Runtime拒绝，未证明实机跨局生产。",
+      "未重跑construction_host_test、construction_batch_runtime、reservation_sidebar_runtime、construction_paint等既有夹具。",
+      "未执行真实Windows生产、资金不足/手动取消/换局/暂停恢复/MP事件接受测试。",
+      "Host跨局边界已有6场景/48检查；Runtime原生Produce、实际游戏时序与发生频率未验证，Reserved旧UID可能拒绝最终生产。"
+    ],
+    "review_status": "source_reviewed_open_finding",
+    "protocol_commands": [
+      "ProduceReserved",
+      "ProduceDeferred"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566",
+    "original_review_status": "boundary_reviewed_delegated",
+    "implementation_review_supplement": "delegated-coverage-crosscheck.json#implementation.queue.reservation.host",
+    "implementation_checks": [
+      "Host book保存match/house/source UID/token/stage；reserveChoice校验开关、前台、命令/显示新鲜度、当前tab、生产父对象UID、live House与候选。stage非0时拒绝继续添加，防止与在途请求混写。",
+      "future catalogue仅预测：读取国家ParentCountry/Owner/required/forbidden、科技级别、三类stolen-tech、原生prerequisite/generic group/override；只沿两个建筑FIFO可达前沿扩展前置，最多64轮，不把互相阻塞项计成已具备。Runtime仍重验原生cameo/CanBuild/factory和调用签名。",
+      "单位四工厂预算读取owner/QueuedObjects.Count/product并重查工厂指针。occupied=count+(product?1:0)，ACK后未见占用的pending影子计入30上限；同逻辑帧至多发一次对应通道请求。替换工厂保守保留pending，match/house变化清零。",
+      "stage0等待可提交；建筑父产品需UID/owner一致，并已在地图且当前工厂无产品，afterPlacement要求进入下一逻辑帧；取消/丢失父对象给250ms过渡后取消链。无父对象的建筑也等空工厂并跨帧，单位等native cameo和预算。",
+      "queueCommand记录PID/match/类型目录hash/非零递增token，队列128条、12秒有效期，重复同token不刷新时间。匹配到期/换PID/换match/目录变化/连接拒绝时向book返回失败；未ACK请求只唤醒不重发。",
+      "result只接收相同id/token且stage1。成功单位消耗FIFO头并增加pending；成功建筑进入stage2观察产品，匹配新UID及头部类型才consume。stage2五秒没有看到生产即停止跟踪，避免重复下单；stage1十五秒超时取消。",
+      "status -9等待原生前置/工厂，1秒后重试；-6/-7/-3最多前三次尝试之间隔250ms。其他失败取消链。前置不可达500ms后取消。超时检查在usable时执行，暂停不延长已有墙钟sent/retry时间戳。",
+      "取消仅移除尚未发送的同token请求。已进入共享请求/原生事件的头不可撤回；清空只保留已锁定头部，取消尾部，等待原生确认后用户在原生侧栏处理。不会伪造native cancel。",
+      "原生侧栏输入有150ms policy和心跳、match/House/parentUID、帧水位、显示状态、单槽backpressure、DOWN/UP配对及1500ms按压上限；Host消费前先关policy，300ms内再验证。暂停当前产品点击留给原生resume。额外面板只在已显示像素与当前命中输入身份一致时接收操作。",
+      "关覆盖层只隐藏输入/绘制，FIFO服务仍继续；失焦/聊天/暂停只挂起提交，保留book。关功能reset清book/未发请求/预算/授权。换局或House更换服务时cancel，换PID/reset/detach/暂停整个Assist同样清理；destroy等待paint worker退出再销毁GDI/window。",
+      "Runtime预定请求重新校验flag、kind/index、类型目录、对局请求、native依赖、cameo/CanBuild/工厂；Reserved额外校验原父建筑UID、owner和在地图状态；Deferred无父UID，允许单位加入现有工厂队列，建筑必须空。成功ACK仅说明原生Produce事件已入队，不保证引擎最终接受生产。",
+      "send内层readSnapshot跨局后可将旧ProduceReserved/Deferred发布或重新排队到新match；独立生产函数夹具6场景/48检查已确认Host行为，未执行Runtime原生生产。"
+    ]
+  },
+  {
+    "id": "social.cheer",
+    "feature": "喝彩",
+    "modes": [
+      "原生喝彩"
+    ],
+    "entry_points": [
+      "command(Cheer/Taunt)",
+      "socialCommand"
+    ],
+    "paths_reviewed": [
+      "喝彩使用原生AllCheer构造器与当前Rules间隔（限定0–36000帧），仅成功入队后更新本地原生快捷键冷却。",
+      "原生modal/聊天/对局/当前玩家和入口lease限制已核对；失败不自动重发。",
+      "喝彩是同步事件，嘲讽调用原生聊天/UI命令，不自行捏造simulation EventClass包。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/social_bridge.h",
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/hotkey_host.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "Cheer"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "social.taunt",
+    "feature": "嘲讽1–8",
+    "modes": [
+      "联机嘲讽1–8"
+    ],
+    "entry_points": [
+      "command(Cheer/Taunt)",
+      "socialCommand"
+    ],
+    "paths_reviewed": [
+      "嘲讽1–8只在会话3/4且原版接收设置允许时执行，5秒冷却；在最多4096已注册Command对象中查匹配编号、虚表和Execute签名。",
+      "原生modal/聊天/对局/当前玩家和入口lease限制已核对；失败不自动重发。",
+      "喝彩是同步事件，嘲讽调用原生聊天/UI命令，不自行捏造simulation EventClass包。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/social_bridge.h",
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/hotkey_host.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "source_reviewed",
+    "protocol_commands": [
+      "Taunt"
+    ],
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "retired.autocs",
+    "feature": "自动移动攻击CS（暂不可用）",
+    "modes": [
+      "禁用兼容入口"
+    ],
+    "entry_points": [
+      "featuregate::flags",
+      "featuregate::cs",
+      "csAllowedFor"
+    ],
+    "paths_reviewed": [
+      "产品常量AutoCS=false；Runtime flag composition移除AutoCS，旧共享内存位不会使自动路径启用。",
+      "手动CustomCS独立保留；自动类型列表仍为兼容UI/存储，不能当作已可用自动功能。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/disabled_feature_policy.h",
+      "source/assist/source/auto_cs_bridge.h",
+      "source/shared/source/feature_availability.h",
+      "source/assist/source/tactical_controls.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "disabled_gate_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "retired.c4",
+    "feature": "步兵强制进入建筑（暂不可用）",
+    "modes": [
+      "禁用兼容入口"
+    ],
+    "entry_points": [
+      "featuregate::pointer",
+      "pointerTick",
+      "pointerEntryOrder"
+    ],
+    "paths_reviewed": [
+      "产品常量InfantryForcedEntry=false；Host同步c4Test强制false。",
+      "Runtime在坐标查询/取消旧任务前拒绝旧C4Test邮箱，pointerEntryOrder还有独立最终常量拒绝。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/disabled_feature_policy.h",
+      "source/assist/source/pointer_bridge.h",
+      "source/shared/source/feature_availability.h",
+      "source/assist/source/extra_settings_io.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "disabled_gate_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  },
+  {
+    "id": "retired.burst",
+    "feature": "强制刷弹（退休兼容槽）",
+    "modes": [
+      "退休兼容槽"
+    ],
+    "entry_points": [
+      "syncAdditional retired flags",
+      "burstControlTick (no live call site)"
+    ],
+    "paths_reviewed": [
+      "Host同步把burstEnabled/burstHoldEnabled/burstHeld都置0；UI跳过BurstRefresh类型/计算控制项。",
+      "历史函数仍编译在源中，但当前Runtime dispatcher未调用burstControlTick；compute enum位仅保留兼容槽。"
+    ],
+    "findings": [],
+    "evidence": [
+      "source/assist/source/extra_settings_io.h",
+      "source/assist/source/burst_bridge.h",
+      "source/assist/source/bridge.cpp",
+      "source/assist/source/tactical_controls.h",
+      "source/assist/source/compute_policy.h"
+    ],
+    "validation_gaps": [
+      "仅完成源码路径审查；除明确列出的两组生产函数受控验证外，未运行该项；未验证 Windows 实机、真实游戏效果或联机同步。"
+    ],
+    "review_status": "disabled_gate_reviewed",
+    "audit_base": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+    "actual_game_validation": false,
+    "reviewed_fix_revision": "38c6a71f840615986c6d37e1038034183c466566"
+  }
+]

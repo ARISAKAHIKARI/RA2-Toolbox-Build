@@ -91,7 +91,8 @@ static const wchar_t* storageOrigin(asyncini::core::ErrorOrigin origin){
 static const wchar_t* storageOperation(asyncini::core::Kind kind){
  using asyncini::core::Kind;
  switch(kind){case Kind::Set:return L"写入设置";case Kind::DeleteKey:return L"删除设置";
-  case Kind::DeleteSection:return L"删除分组";case Kind::Flush:return L"刷新配置缓存";default:return L"保存配置";}
+  case Kind::DeleteSection:return L"删除分组";case Kind::ReplaceSection:return L"替换分组";
+  case Kind::Flush:return L"刷新配置缓存";default:return L"保存配置";}
 }
 static std::wstring storageFailureReason(const asyncini::core::Status& state){
  using asyncini::core::ErrorOrigin;

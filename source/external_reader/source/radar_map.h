@@ -17,6 +17,7 @@
 #include "tether_draw_order.h"
 #include "native_display_order.h"
 #include "../../shared/source/gpu_surface.h"
+#include "../../shared/source/world_frame.h"
 #include "radar_shroud_selector.h"
 #include <memory>
 #include <array>
@@ -124,9 +125,17 @@ struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;std::shared_ptr<
 struct ShroudFrames {int8_t shroud=127,fog=127;
  bool operator==(const ShroudFrames&o)const{return shroud==o.shroud&&fog==o.fog;}
 };
-struct Terrain {Geometry geo;std::vector<uint32_t> colors,baseColors;std::vector<CellArt> art;std::vector<ShroudFrames> shade;bool reveal=false;};
+struct Terrain {Geometry geo;std::vector<uint32_t> colors,baseColors;std::vector<CellArt> art;std::vector<ShroudFrames> shade;bool reveal=false;
+ // A common world bank retains every legal physical Cell. Geometry is the
+ // presentation domain; it must not decide which world facts get captured.
+ bool wholeWorld=false;
+};
 struct EffectSnapshot {std::vector<nativefeedback::Bolt> bolts;bool boltsValid=false;std::shared_ptr<const worldfx::Snapshot>world;};
-struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;std::shared_ptr<const sceneextras::Snapshot> extras;std::shared_ptr<const EffectSnapshot> effects;uint8_t effectMask=3;double observedMs=0;};
+struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;std::shared_ptr<const sceneextras::Snapshot> extras;std::shared_ptr<const EffectSnapshot> effects;uint8_t effectMask=3;double observedMs=0;
+ // Retain the actual immutable raw publication, not only its frame number.
+ // A later renderer pins this token for lighting/visibility/material queries.
+ worldframe::Token sourceFrame;
+};
 inline bool supportsEffects(const Frame&frame,bool particles,bool lasers){return (!particles||(frame.effectMask&1))&&(!lasers||(frame.effectMask&2));}
 inline uint32_t terrainColor(int land,int level,bool fog){
  static constexpr uint32_t colors[]={0x66794b,0x85836c,0x285e86,0x70756d,0x999684,0xb7a843,0xb4a47c,0x77734d,0xb4cbd0,0x77766b,0x55584f,0x58703d};
@@ -135,7 +144,7 @@ inline uint32_t terrainColor(int land,int level,bool fog){
 }
 template<class Read> class Sampler {
  ActiveProjection projection_;
- bool particles_=true,lasers_=true;Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
+ bool particles_=true,lasers_=true,wholeWorld_=false;Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
  std::vector<uint32_t> tileTypes_,overlayTypes_,smudgeTypes_,prefetchCells_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
  struct MaskBits {uint8_t state=0,shroud=0,fog=0;}; // state: unknown, verified, unavailable
  std::vector<MaskBits> maskBits_;std::array<int8_t,256> frameLookup_{};bool pendingIncomplete_=false;
@@ -167,6 +176,8 @@ template<class Read> class Sampler {
 public:
  explicit Sampler(Read r):read_(r),view_(r){}
  void effects(bool particles,bool lasers){particles_=particles;lasers_=lasers;}
+ void wholeWorld(bool enabled){if(enabled!=wholeWorld_){wholeWorld_=enabled;reset();}}
+ void discardIncomplete(){discardPending();}
  void reset(bool keepProjection=false){if(!keepProjection)projection_.reset();geo_={};discardPending();terrain_.reset();lastFrame_=-1;++revision_;}
  bool radarProjectionCompatible(const Frame&frame,bool tacticalOverview=false){Geometry projected;return frame.terrain&&
   (tacticalOverview?tacticalOverviewProjection(frame.terrain->geo,projected):projection_.resolve(read_,frame.terrain->geo,projected))&&projected.same(frame.terrain->geo);}
@@ -175,12 +186,12 @@ public:
  Frame terrainFrame(uint32_t now)const{Frame out;out.terrain=terrain_;out.tick=now;out.frame=lastFrame_;return out;}
  void useTerrain(const Frame&frame){
   if(!frame.terrain)return;
-  if(!geo_.same(frame.terrain->geo)||reveal_!=uint32_t(frame.terrain->reveal))reset();
-  terrain_=frame.terrain;geo_=terrain_->geo;reveal_=terrain_->reveal;lastFrame_=frame.frame;
+  if(!geo_.same(frame.terrain->geo)||reveal_!=uint32_t(frame.terrain->reveal)||wholeWorld_!=frame.terrain->wholeWorld)reset();
+  terrain_=frame.terrain;geo_=terrain_->geo;reveal_=terrain_->reveal;wholeWorld_=terrain_->wholeWorld;lastFrame_=frame.frame;
  }
  void seedTerrain(const Frame&frame){
   if(terrain_||!frame.terrain||frame.terrain->art.empty())return;
-  reset();terrain_=frame.terrain;geo_=terrain_->geo;reveal_=terrain_->reveal;lastFrame_=frame.frame;++revision_;
+  reset();terrain_=frame.terrain;geo_=terrain_->geo;reveal_=terrain_->reveal;wholeWorld_=terrain_->wholeWorld;lastFrame_=frame.frame;++revision_;
  }
  bool step(uint32_t reveal,int budget=4096,bool real=false,bool compactTraversal=false,bool activeRadarProjection=false,bool tacticalOverview=false){
   // These are preview pixels, not the game's half-opacity shroud blitter.
@@ -198,7 +209,7 @@ public:
   if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset(activeRadarProjection);geo_=g;reveal_=reveal;}lastFrame_=frame;
   if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)||(!reveal&&!shroudselector::readLookup(read_,frameLookup_))){discardPending();return false;}
    if(!reveal)maskBits_.resize(512*512);
-   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){
+   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->wholeWorld=wholeWorld_;pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){
     // An unreadable catalogue is not an empty one. Otherwise live cells lose
     // their materials in a supposedly complete published terrain bank.
     if(!view_.vecChecked(0xA8ED28,tileTypes_,65536)||!view_.vecChecked(0xA83D80,overlayTypes_)||!view_.vecChecked(0xA8EC18,smudgeTypes_,4096)){discardPending();return false;}
@@ -216,7 +227,7 @@ public:
    end=cursor_;size_t admitted=0;
    while(end<pointers_.size()){
     const int x=int(end%512),y=int(end/512);
-    if(pointers_[end]&&g.legal(x,y)&&(g.flatVisible(x,y)||(real&&g.terrainSourceCandidate(x,y)))){
+    if(pointers_[end]&&g.legal(x,y)&&(wholeWorld_||g.flatVisible(x,y)||(real&&g.terrainSourceCandidate(x,y)))){
      if(admitted==limit)break;++admitted;
     }++end;
    }
@@ -226,12 +237,12 @@ public:
   // cells are required; failed batches retain the ordinary checked fallback.
   prefetchCells_.clear();prefetchCells_.reserve(std::min(end-cursor_,limit));
   for(size_t index=cursor_;index<end;++index){int x=int(index%512),y=int(index/512);
-   if(pointers_[index]>=0x10000&&g.legal(x,y)&&(g.flatVisible(x,y)||(real&&g.terrainSourceCandidate(x,y))))prefetchCells_.push_back(pointers_[index]);
+   if(pointers_[index]>=0x10000&&g.legal(x,y)&&(wholeWorld_||g.flatVisible(x,y)||(real&&g.terrainSourceCandidate(x,y))))prefetchCells_.push_back(pointers_[index]);
   }
   prefetch(read_,prefetchCells_,0x148,0);
   // Retain the native RGB/diagram/actor admission separately from terrain
   // sources: an excluded cell's TMP can still intersect the current crop.
-  for(;cursor_<end;++cursor_){int x=int(cursor_%512),y=int(cursor_/512);bool flat=g.flatVisible(x,y);
+  for(;cursor_<end;++cursor_){int x=int(cursor_%512),y=int(cursor_/512);bool flat=wholeWorld_||g.flatVisible(x,y);
    if(!g.legal(x,y)||(!flat&&(!real||!g.terrainSourceCandidate(x,y))))continue;uint32_t p=pointers_[cursor_];
    if(!p)continue;if(p<0x10000){pendingIncomplete_=true;continue;}
    std::array<uint8_t,0x148> cell{};if(!read_(p,cell.data(),cell.size())){pendingIncomplete_=true;continue;}
@@ -240,7 +251,7 @@ public:
    if(!reveal)maskBits_[cursor_]={1,cell[0x12C],cell[0x140]};
    int level=int8_t(cell[0x11B]);if(real&&flat)pending_->baseColors[cursor_]=terrainColor(land,level,false);
    bool admitted=flat&&(!reveal||g.bounds.usable(x,y,level,cell[0x11C]!=0));
-   bool terrainSource=real&&g.terrainSourceVisible(x,y,level);
+   bool terrainSource=real&&(wholeWorld_||g.terrainSourceVisible(x,y,level));
    if(!admitted&&!terrainSource&&(!real||!g.shroudSourceVisible(x,y)))continue;
    int8_t shroud=reveal?-1:maskFrame(x,y,false),fog=reveal?-1:maskFrame(x,y,true);
    if(shroud<-2||shroud>46||fog<-2||fog>46){pendingIncomplete_=true;continue;}
@@ -273,6 +284,34 @@ public:
  }
  Frame snapshot(uint32_t now,int observedFrame=-1)const{
   GameView<Read> live(read_);Frame out;out.effectMask=uint8_t(particles_)|(uint8_t(lasers_)<<1);out.terrain=terrain_;out.tick=now;out.frame=observedFrame>=0?observedFrame:lastFrame_;if(!terrain_)return out;
+  // Terrain construction is bounded and can span several publications.
+  // Full-world membership must use THIS raw sample's visibility, never an
+  // older terrain bank's colors or the native Radar rectangle. This lookup is
+  // shared by all marker families in the single visual decode.
+  std::vector<MaskBits> currentMask(wholeWorld_&&!terrain_->reveal?512*512:0);
+  std::array<int8_t,256> currentLookup{};bool lookupReady=false,lookupTried=false;
+  auto currentBits=[&](int x,int y,shroudselector::Bits&bits){
+   if(!geo_.legal(x,y))return false;const size_t index=size_t(y)*512+x;if(index>=currentMask.size()||index>=size_t(geo_.count))return false;
+   auto&known=currentMask[index];if(!known.state){known.state=2;uint32_t cell=0;std::array<uint8_t,0x11D>fields{};
+    if(read_(geo_.cells+uint32_t(index)*4,&cell,4)&&cell>=0x10000&&read_(cell+0x24,fields.data(),fields.size())){
+     int16_t xy[2]{};std::memcpy(xy,fields.data(),4);if(xy[0]==x&&xy[1]==y)known={1,fields[0x108],fields[0x11C]};
+    }
+   }
+   if(known.state!=1)return false;bits={known.shroud,known.fog};return true;
+  };
+  auto visibleCell=[&](int x,int y){
+   if(!geo_.legal(x,y))return false;const size_t index=size_t(y)*512+x;
+   if(!wholeWorld_)return index<terrain_->colors.size()&&bool(terrain_->colors[index]);
+   if(index>=size_t(geo_.count))return false;
+   if(terrain_->reveal){uint32_t cell=0;int16_t xy[2]{};
+    // IsWithinUsableArea is a gameplay restriction, not a renderer crop.
+    // Tall/edge art can remain visible outside it in another camera.
+    return read_(geo_.cells+uint32_t(index)*4,&cell,4)&&cell>=0x10000&&read_(cell+0x24,xy,4)&&xy[0]==x&&xy[1]==y;
+   }
+   if(!lookupTried){lookupTried=true;lookupReady=shroudselector::readLookup(read_,currentLookup);}
+   if(!lookupReady)return false;const int frame=shroudselector::frame(x,y,false,currentLookup,currentBits);
+   return frame>=-1&&frame<=46;
+  };
   std::vector<uint32_t> bodies;out.markerScanValid=view_.vecChecked(0xA8EC78,bodies);
   if(!out.markerScanValid)return out;
   if(!terrain_->art.empty()){
@@ -291,13 +330,13 @@ public:
    if(kind==3&&!terrain_->reveal&&out.extras&&out.extras->frozenValid&&get<uint8_t>(p+0x6E7))continue;
    auto drawState=nativedraw::capture(read_,p,view_.type(p,kind),kind,geo_.house,out.frame);if(!drawState.visible)continue;
    int x=get<int>(p+0x9C,-1),y=get<int>(p+0xA0,-1);if(x<0||y<0||x>=512*256||y>=512*256)continue;int cx=x/256,cy=y/256;
-   if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;uint32_t owner=get<uint32_t>(p+0x21C);uint8_t rgb[3]{};if(owner<0x10000||!read_(owner+22265,rgb,3))continue;
-   Marker m;geo_.project(double(x)/256,double(y)/256,m.u,m.v);if(m.u<0||m.u>=1||m.v<0||m.v>=1)continue;
+   if(!visibleCell(cx,cy))continue;uint32_t owner=get<uint32_t>(p+0x21C);uint8_t rgb[3]{};if(owner<0x10000||!read_(owner+22265,rgb,3))continue;
+   Marker m;geo_.project(double(x)/256,double(y)/256,m.u,m.v);if(!wholeWorld_&&(m.u<0||m.u>=1||m.v<0||m.v>=1))continue;
    m.color=uint32_t(rgb[0])<<16|uint32_t(rgb[1])<<8|rgb[2];m.building=kind==3;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=view_.type(p,kind);m.owner=owner;m.x=x;m.y=y;m.z=get<int>(p+0xA4);m.kind=kind;m.onBridge=get<uint8_t>(p+0x8C)!=0;m.pose=visual::pose(live,p,m.type,kind,out.frame);
    m.material=drawState.material;m.waterline=drawState.waterline;m.disguised=drawState.disguised;
    // Native 70A990 uses raw Veterancy and hides the insignia of an enemy
    // disguise. A failed optional read is unknown, never a fabricated rank.
-   m.rank=captureRank(read_,p,owner,geo_.house);
+   m.rank=captureRank(optionalread::View<Read>{read_},p,owner,geo_.house);
    if(drawState.disguised){m.type=drawState.type;m.owner=drawState.owner;m.kind=drawState.kind;m.pose={};if(m.kind<3){m.pose=visual::pose(live,p,m.type,kind,out.frame);if(m.kind!=kind){m.pose.frame=visual::previewFrame(live,m.type,m.kind,int(m.pose.body)-8);m.pose.variant=-1;m.pose.turretFrame=-1;}}}
    m.layer=std::clamp(get<int>(p+0x94,2),0,4);if(kind==3)m.sort=(get<uint8_t>(m.type+0x16C5)?32:0)-(get<uint8_t>(m.type+0x16B7)?16:0);out.markers.push_back(m);
   }
@@ -307,31 +346,31 @@ public:
    world=std::make_shared<worldfx::Snapshot>(worldfx::capture(read_,particles_,lasers_));
    auto effects=std::make_shared<EffectSnapshot>();effects->boltsValid=!lasers_||nativefeedback::bolts(read_,effects->bolts);effects->world=world;out.effects=std::move(effects);
    const auto bodies=out.markers;for(const auto&body:bodies)if(body.kind==3)for(const auto&a:animations::attached(read_,body.object,body.id)){
-    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.parent=a.parent;m.parentId=a.parentId;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.pose.variant=a.blend;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;m.onBridge=get<uint8_t>(a.parent+0x8C)!=0;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.parent=a.parent;m.parentId=a.parentId;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.pose.variant=a.blend;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;m.onBridge=get<uint8_t>(a.parent+0x8C)!=0;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(wholeWorld_||(m.u>=0&&m.u<1&&m.v>=0&&m.v<1))out.markers.push_back(m);
    }
    std::set<uint32_t> seen;for(const auto&m:out.markers)if(m.kind==5)seen.insert(m.object);
-   if(particles_)for(const auto&a:animations::all(read_)){if(!seen.insert(a.object).second||!terrain_->colors[(a.y/256)*512+a.x/256])continue;
-    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.pose.variant=a.blend;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+   if(particles_)for(const auto&a:animations::all(read_)){if(!seen.insert(a.object).second||!visibleCell(a.x/256,a.y/256))continue;
+    Marker m;m.object=a.object;m.id=a.id;m.type=a.type;m.owner=a.owner;m.x=a.x;m.y=a.y;m.z=a.z;m.kind=5;m.pose.frame=a.frame;m.pose.variant=a.blend;m.drawZ=a.zAdjust;m.sort=a.sort;m.layer=a.layer;m.normalLight=a.normalLight;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(wholeWorld_||(m.u>=0&&m.u<1&&m.v>=0&&m.v<1))out.markers.push_back(m);
    }
    for(auto p:view_.vec(0xA8E988)){if(get<uint32_t>(p)!=0x7F522C||get<uint8_t>(p+0xCD)||get<int>(p+0x6C)<=0)continue;
     Marker m;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=get<uint32_t>(p+0xC8);m.x=get<int>(p+0x9C,-1);m.y=get<int>(p+0xA0,-1);m.z=get<int>(p+0xA4);m.kind=4;
     m.pose.frame=get<uint8_t>(m.type+0x2B3)?get<int>(p+0xAC):int(get<int>(p+0x6C)<2);
-    if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256||!terrain_->colors[(m.y/256)*512+m.x/256])continue;
-    geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+    if(m.x<0||m.y<0||m.x>=512*256||m.y>=512*256||!visibleCell(m.x/256,m.y/256))continue;
+    geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(wholeWorld_||(m.u>=0&&m.u<1&&m.v>=0&&m.v<1))out.markers.push_back(m);
    }
   }
   if(!terrain_->art.empty()){
    if(particles_)for(const auto&s:particles::all(read_)){
-    int cx=s.x/256,cy=s.y/256;if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;
+    int cx=s.x/256,cy=s.y/256;if(!visibleCell(cx,cy))continue;
     if(s.point){if(world)world->points.push_back({{s.x,s.y,s.z},s.color});continue;}
     Marker m;m.object=s.object;m.id=s.id;m.type=s.type;m.x=s.x;m.y=s.y;m.z=s.z;m.kind=particles::Kind;m.pose.frame=s.frame;m.pose.variant=s.blend;m.layer=s.layer;
-    geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+    geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(wholeWorld_||(m.u>=0&&m.u<1&&m.v>=0&&m.v<1))out.markers.push_back(m);
    }
-   if(particles_)for(const auto&s:voxelanims::all(read_)){int cx=s.x/256,cy=s.y/256;if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;Marker m;m.object=s.object;m.id=s.id;m.type=s.type;m.owner=s.owner;m.x=s.x;m.y=s.y;m.z=s.z;m.kind=voxelanims::Kind;m.pose=s.pose;m.drawZ=-13;m.sort=0;m.layer=s.layer;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);out.markers.push_back(m);}
+   if(particles_)for(const auto&s:voxelanims::all(read_)){int cx=s.x/256,cy=s.y/256;if(!visibleCell(cx,cy))continue;Marker m;m.object=s.object;m.id=s.id;m.type=s.type;m.owner=s.owner;m.x=s.x;m.y=s.y;m.z=s.z;m.kind=voxelanims::Kind;m.pose=s.pose;m.drawZ=-13;m.sort=0;m.layer=s.layer;geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);out.markers.push_back(m);}
    for(const auto&s:projectiles::all(read_)){
-    int cx=s.x/256,cy=s.y/256;if(!geo_.legal(cx,cy)||!terrain_->colors[cy*512+cx])continue;
+    int cx=s.x/256,cy=s.y/256;if(!visibleCell(cx,cy))continue;
     Marker m;m.object=s.object;m.id=s.id;m.type=s.type;m.owner=s.owner;m.x=s.x;m.y=s.y;m.z=s.z;m.kind=projectiles::Kind;m.pose=s.pose;m.drawZ=s.drawZ;m.sort=s.sort;m.layer=s.layer;m.onBridge=s.onBridge;
-    geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(m.u>=0&&m.u<1&&m.v>=0&&m.v<1)out.markers.push_back(m);
+    geo_.project(double(m.x)/256,double(m.y)/256,m.u,m.v);if(wholeWorld_||(m.u>=0&&m.u<1&&m.v>=0&&m.v<1))out.markers.push_back(m);
    }
   }
   nativedisplay::capture(read_,out.markers,out.frame);

@@ -28,8 +28,9 @@ struct AdmissionImage {
   return valid&&(range(address,out,size,Entry,entry)||range(address,out,size,0x6339B0,owner)||range(address,out,size,0x637E37,planning));
  }
 };
-// Only call this reader inside GuardedTechUiParameter's AV/in-page SEH scope.
-// Avoid a ReadProcessMemory syscall for every field on this hot predicate.
+// Only call this reader inside GuardedTechUiParameter or
+// GuardedControlWorldEligible's local AV/in-page SEH scope. Both paths avoid
+// a ReadProcessMemory syscall for each individual game-memory field.
 inline bool guardedRead(uint32_t address,void*out,size_t size){
  if(address<0x10000||uint64_t(address)+size>=0x80000000ull)return false;
  if(size==4){*static_cast<uint32_t*>(out)=*reinterpret_cast<const volatile uint32_t*>(uintptr_t(address));return true;}

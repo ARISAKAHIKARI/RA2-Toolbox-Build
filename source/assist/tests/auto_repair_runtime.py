@@ -11,7 +11,7 @@ def block(text,marker):
 def main():
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path,required=True);p.add_argument('--before',type=Path);a=p.parse_args()
  r=Path(__file__).resolve().parents[3];here=Path(__file__).resolve().parent;out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
- paths=[r/'source/assist/source'/name for name in ['bridge.cpp','repair_delivery.h','compute_tasks.h','compute_frame.h','compute_policy.h','plan_freshness.h','tactical_decisions.h']]+[here/'auto_repair_runtime.cpp',Path(__file__).resolve()]
+ paths=[r/'source/assist/source'/name for name in ['bridge.cpp','repair_delivery.h','compute_tasks.h','compute_frame.h','compute_policy.h','plan_freshness.h','tactical_decisions.h','world_frame_runtime.h','tactical_frame_read.h']]+[r/'source/shared/source/world_frame.h',here/'auto_repair_runtime.cpp',Path(__file__).resolve()]
  digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();hashes={str(p.relative_to(r)):digest(p) for p in paths}
  def run(source,dest,before=False):
   dest.mkdir(parents=True,exist_ok=True);text=source.read_text();reset=block(text,'static void reset(bool retireHooks=true)')
@@ -19,12 +19,14 @@ def main():
   resetStart=reset.index('repairCount=repairAt=repairDone=0;');resetEnd=reset.index('for(auto&v:lastIdle)',resetStart)
   autoStart=reset.index('autoWas=false;');autoEnd=reset.index('if(retireHooks)',autoStart)
   sections={
+   'SAMPLE_SCOPE':(r/'source/assist/source/world_frame_runtime.h').read_text().split('static void requestWorldRange(',1)[1].split('static void retireWorldFrame(',1)[0],
    'REPAIR_EVENT':block(text,'static bool repairEvent('),
    'REPAIR_CALCULATION':text[text.index('static DWORD clampedRepairInterval('):text.index('static int superSelect(')],
    'REPAIR_TICK':block(text,'static void repairTick('),
    'REPAIR_MANUAL':manual,
    'REPAIR_RESET':reset[resetStart:resetEnd]+reset[autoStart:autoEnd]+'pendingRepairs.clear();',
   }
+  sections['SAMPLE_SCOPE']='static void requestWorldRange('+sections['SAMPLE_SCOPE']
   defines=[]
   for name,value in sections.items():
    target=dest/(name.lower()+'.inc');target.write_text(value+'\n');defines.append('-D'+name+'="'+str(target)+'"')

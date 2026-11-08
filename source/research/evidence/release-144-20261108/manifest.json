@@ -1,0 +1,229 @@
+{
+  "schema": "ra2.release144.evidence-archive.v1",
+  "generated_at_utc": "2026-11-08T11:58:53.314033+00:00",
+  "baseline_local_commit": "d7c0850ec662de7d29dce50b0391162f065b4a5a",
+  "baseline_github_commit": "4d0123c3ddb2f363d6aa87da718c2a55d24be30e",
+  "baseline_complete_git_tree": "cf7ef578a8d3dd13b62cb1933f774132937429b5",
+  "notes": [
+    "Receipts are copied unchanged from actual executions, including explicit virtual OS boundaries.",
+    "Absolute execution paths record original provenance; repository tests are in source/assist/tests and source/suite/tests.",
+    "No Windows/game execution, private game binary, dump or transient fixture executable is included."
+  ],
+  "files": [
+    {
+      "path": "assets/asset-choice-routes.log",
+      "bytes": 145,
+      "sha256": "90d99918cccda9ee20f8011ecf944d4c3b0c1ee6d7366f0d3d3ce8f232230acc"
+    },
+    {
+      "path": "assets/asset_choice_routes.cpp",
+      "bytes": 3800,
+      "sha256": "4f21e1ffad92e0142d14082637aa2904e7427941a8bf0b82130f0725484a238b"
+    },
+    {
+      "path": "assets/auto-settings-ui-baseline.log",
+      "bytes": 13011,
+      "sha256": "634e226f06f79a1bf7fb5d3406c27064b56ac0f8bb2e590bc844d041916ce32e"
+    },
+    {
+      "path": "assets/console-adapter-windows-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "assets/console-model.log",
+      "bytes": 35,
+      "sha256": "bb40874e063703e17977f54c0ab806f37fe3454e7f6cdb1f967f22011b9622ee"
+    },
+    {
+      "path": "assets/console-store.log",
+      "bytes": 2754,
+      "sha256": "1b18085b32a76592551df2ce4361b4a35971d74437ed9300c3bf2b404f219ffe"
+    },
+    {
+      "path": "assets/cursor-broker-startup.log",
+      "bytes": 135,
+      "sha256": "9ee5952594f7b23e5da043af2d7b09203a52b93068360849bb1f5825d44a9627"
+    },
+    {
+      "path": "assets/cursor-settings-ui.log",
+      "bytes": 221,
+      "sha256": "7c3b2fec8639e503ed5e34fabf62ab60fde50fc985e3c146ec792f1c8ae31fdc"
+    },
+    {
+      "path": "assets/cursor_broker_startup.cpp",
+      "bytes": 7964,
+      "sha256": "a78de1d2f16df4013676d10e19dd0ebeb5aba4c2b2f40f16a736db205adc04c3"
+    },
+    {
+      "path": "assets/diff-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "assets/disabled-choice-helper.log",
+      "bytes": 97,
+      "sha256": "f9686d3b6198a95cb775e86e6a8bcaa1f70746f641f6a423bd07d3bfb4c956b0"
+    },
+    {
+      "path": "assets/disabled_choice_helper.cpp",
+      "bytes": 5254,
+      "sha256": "0b2bc5010509672dabf7b040d698c03d289b1f937f6f703526ddea6ed922ea9d"
+    },
+    {
+      "path": "assets/portable-win32/commctrl.h",
+      "bytes": 13,
+      "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+    },
+    {
+      "path": "assets/portable-win32/windows.h",
+      "bytes": 13,
+      "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+    },
+    {
+      "path": "assets/summary.json",
+      "bytes": 13088,
+      "sha256": "f58e99e2def7d9679ac81a5b0c18e13d13b38dc77876355bb3541469d0b472ba"
+    },
+    {
+      "path": "broker/host-retry/current-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "broker/host-retry/current.log",
+      "bytes": 207,
+      "sha256": "97bf873ae39520a34762c65ce1ec6c2d7c57ed42ac710a97f0b087d9cce90859"
+    },
+    {
+      "path": "broker/host-retry/result.json",
+      "bytes": 1134,
+      "sha256": "c6767731ca95fde48e404c5cebb3ff6160e470e447c9274ea17ffcdb92f427e7"
+    },
+    {
+      "path": "broker/lifecycle/baseline-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "broker/lifecycle/baseline-run.log",
+      "bytes": 115,
+      "sha256": "41ef1f5af681bb7b1a43bc6407a03f171c8ae18317f39233fab7f390c8435e8d"
+    },
+    {
+      "path": "broker/lifecycle/current-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "broker/lifecycle/current-run.log",
+      "bytes": 114,
+      "sha256": "354b80c07ea4baf0c09550f2cee61692fb964df41da349723da6839e5bd0db9e"
+    },
+    {
+      "path": "broker/lifecycle/receipt.json",
+      "bytes": 5203,
+      "sha256": "ccfb8811d7e6e98bcd6a0b624748aeaa1996a24d05c17daba135f0753c683a58"
+    },
+    {
+      "path": "broker/retirement/current-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "broker/retirement/current.log",
+      "bytes": 107,
+      "sha256": "e5fbec631bcbf3e6c82f8ded584b559c2a2f7793c2c7424e919c53fe9624949c"
+    },
+    {
+      "path": "broker/retirement/result.json",
+      "bytes": 2939,
+      "sha256": "3821c5367494d75323aad0c9b5621b24192acfe8357de0cece6b0a0105ac5cd5"
+    },
+    {
+      "path": "broker/summary.json",
+      "bytes": 5230,
+      "sha256": "900cdb3aaab7a6f64f9f6a5101d550369cbf6607441376454f9d4e259e4240b9"
+    },
+    {
+      "path": "broker/windows-fixture-build.json",
+      "bytes": 715,
+      "sha256": "d71146e8469ef647195c22c03df748d9fe1d0522e4abd9e72e87247c5ef311a6"
+    },
+    {
+      "path": "broker-independent-review.json",
+      "bytes": 929,
+      "sha256": "d4f554ec608464bca900a15a66080b3f8061318669eaa97955b7dad1fe3702b3"
+    },
+    {
+      "path": "construction/bridge-pending-final/baseline.log",
+      "bytes": 3691,
+      "sha256": "b2e5743e31ed6e4552a8be1e7029413afece407847eaea538f0f5bc62b6068b0"
+    },
+    {
+      "path": "construction/bridge-pending-final/current.log",
+      "bytes": 160,
+      "sha256": "5b86164a8b0c08cc392c8ced408fd07e0b579738d8f14305a9fb9263fe90d647"
+    },
+    {
+      "path": "construction/bridge-pending-final/result.json",
+      "bytes": 2096,
+      "sha256": "f3d75e6814cdea92da2d8a6c7d529bb831c86c2cf0fb0fa25cbc45f770c3a263"
+    },
+    {
+      "path": "construction/delivery-after-install-pending/result.json",
+      "bytes": 16042,
+      "sha256": "d983433ee2923a25f03d285d8563a259d40ed33d379b18ce46459af134befc3f"
+    },
+    {
+      "path": "construction/delivery-after-install-pending.log",
+      "bytes": 8311,
+      "sha256": "ec6d1c9ba318f53698067b76c512701465b176195d2ddba98cd241321790972d"
+    },
+    {
+      "path": "construction/delivery-before/result.json",
+      "bytes": 16096,
+      "sha256": "9de0b7c1c25f16757b4712ccb0929dcbff6f80338ffd1e9f6a57cb34c87fe3ec"
+    },
+    {
+      "path": "construction/delivery-before.log",
+      "bytes": 8317,
+      "sha256": "258f7e96ff276c6b36dfde89e34d14178d025c1c087f0e4a5896d4d9573eae9a"
+    },
+    {
+      "path": "construction/host-test.log",
+      "bytes": 1255,
+      "sha256": "fe8e71c8c17673bc42e816c156864ae85eb81e15f79541bfd402cbee8edc0eac"
+    },
+    {
+      "path": "construction/layout-after/result.json",
+      "bytes": 1966,
+      "sha256": "a64ac6834ef107382f1096ca8905aa1126fc64cecbe3ef89dc29bba574bf9af1"
+    },
+    {
+      "path": "construction/layout-after.log",
+      "bytes": 1966,
+      "sha256": "a64ac6834ef107382f1096ca8905aa1126fc64cecbe3ef89dc29bba574bf9af1"
+    },
+    {
+      "path": "construction/layout-before/result.json",
+      "bytes": 1989,
+      "sha256": "cb180120819f9b02e7103d401278131959a7aa8555f8f17c67d313c76bfb2f85"
+    },
+    {
+      "path": "construction/layout-before.log",
+      "bytes": 1989,
+      "sha256": "cb180120819f9b02e7103d401278131959a7aa8555f8f17c67d313c76bfb2f85"
+    },
+    {
+      "path": "construction/paint-stationary-click-test.log",
+      "bytes": 464,
+      "sha256": "a62f8968665ecbcd068e5eca1fef9c6df11d212de259474681ad5b4ebba32ae4"
+    },
+    {
+      "path": "construction/summary.json",
+      "bytes": 11898,
+      "sha256": "a7fa49b8a882ac4c9ab8fd3eb83bbecbee0c3304324d1c0814388e66ef82b039"
+    }
+  ]
+}

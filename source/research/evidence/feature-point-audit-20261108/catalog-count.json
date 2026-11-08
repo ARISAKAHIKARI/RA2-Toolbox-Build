@@ -1,0 +1,16 @@
+{
+  "returncode": 0,
+  "stdout": "allowlisted=82 covered=48 dormant=3 cursor=1 experimental=30 missing=0 steps=21\n",
+  "stderr": "",
+  "kind": "production catalogue function enumeration, no game execution",
+  "source_commit": "38c6a71f840615986c6d37e1038034183c466566",
+  "source_sha256": {
+    "source/hook_diagnostics/source/catalog.h": "0acdf7f912afed0e4bffc42c9acf104fa4bcf74b690d61af73db9725b660a20d",
+    "source/hook_diagnostics/source/main.cpp": "b539411cde0641c4dc18fb1434830a01e0155a5d63c7eece9767f644689ed946",
+    "source/assist/source/protocol.h": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c",
+    "source/shared/source/experimental_patch_policy.h": "2f8e0b34901c9dd6cee46f59efc72aeb431d65b9b6134f7e848e71265c4e5526"
+  },
+  "game_tested": false,
+  "windows_tested": false,
+  "multiplayer_tested": false
+}

@@ -1,0 +1,260 @@
+{
+  "schema": "ra2.feature-point-audit.v1",
+  "created_utc": "2026-11-08T11:23:16.016481+00:00",
+  "baseline_commit": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+  "local_validated_source_commit": "491bbc72ec67ac70454e9d9a0ef69287eb1ba28f",
+  "remote_equivalent_source_commit": "d9d7056c6e0faeef60507f8c2c7f7c847dc8af26",
+  "same_source_tree": true,
+  "coverage": {
+    "tactical": {
+      "label": "战术、自动化与快捷键",
+      "review_records": 76,
+      "status_counts": {
+        "source_reviewed": 72,
+        "source_reviewed_open_finding": 1,
+        "disabled_gate_reviewed": 3
+      }
+    },
+    "render": {
+      "label": "显示、光标、监视与渲染",
+      "review_records": 152,
+      "status_counts": {
+        "source_reviewed": 146,
+        "fixed_controlled_verified": 4,
+        "source_reviewed_open_finding": 2
+      }
+    },
+    "hardware": {
+      "label": "科技、硬件入口、地图、超武与诊断",
+      "review_records": 82,
+      "status_counts": {
+        "source_reviewed": 79,
+        "disabled_verified_source": 1,
+        "fixed_controlled_verified": 1,
+        "source_fixed": 1
+      }
+    },
+    "host": {
+      "label": "Host、控制台、配置与共享机制",
+      "review_records": 44,
+      "status_counts": {
+        "source_reviewed": 44
+      }
+    }
+  },
+  "counting": "Review records overlap and include infrastructure, retained configurations and disabled paths; not a unique feature count or runtime pass count.",
+  "all_inventory_source_paths_reviewed": true,
+  "all_features_runtime_tested": false,
+  "all_findings_fixed": false,
+  "game_tested": false,
+  "windows_executed": false,
+  "multiplayer_tested": false,
+  "new_package_distributed": false,
+  "files": [
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/broker-lifecycle.json",
+      "bytes": 2801,
+      "sha256": "2dbaf734aa049739eb8a30b21aa67cd01a5966d0d3d93bd57a1b1bb6fe39baf6"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/build-provenance.json",
+      "bytes": 903459,
+      "sha256": "664ccd9ddce131145916583270fbc7a0995f83d8c903502994c238ffab9acbdb"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/build-summary.json",
+      "bytes": 1896,
+      "sha256": "e9f761a3852cdfcc36eb258b8743714a850b4df88df29c04a6b1bf10b4c96126"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/catalog-count.json",
+      "bytes": 841,
+      "sha256": "863f40f28e3abaa80186a0f00503ec1a8763e5b12807ea49ce7121b09b3f918f"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/cursor-shape-before.json",
+      "bytes": 682,
+      "sha256": "b5122316e6295fefb2af88231d8778974952b620f1fcb34b2caf29c9c3878c48"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/cursor-shape-validation.json",
+      "bytes": 1632,
+      "sha256": "cf57a596bfdb35fd926c5f6190039b8fb96b394d2b84793d41ac55dae7bdd962"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/cursor-stream-after.json",
+      "bytes": 1228,
+      "sha256": "09e527069102f80a9456406ddca8f465b229fd321ff91c5d19966eb8beffeadd"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/delegated-coverage-crosscheck.json",
+      "bytes": 28023,
+      "sha256": "b36d9bddc9f7d75ef48940cb134b4bfab09a584524823669f714e1a04849ed32"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/frame-maintain-after.json",
+      "bytes": 3788,
+      "sha256": "3eb6c64be2282da3544f91b8a1e9be26849298c0c322c533cde03c65a1d428d8"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/frame-maintain-before.json",
+      "bytes": 3786,
+      "sha256": "68e7f070f57021a7e8b1f03f583070acf98ad6d8fb35f5adaa94409008d620cd"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/hardware-findings.md",
+      "bytes": 11578,
+      "sha256": "60c6df914bba8dea9659052b38371ddf26d2af246a7ac04b8ae1e2d455b3f136"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/hardware-matrix.json",
+      "bytes": 104159,
+      "sha256": "4d5000813e669bfc23be099319ae1111b92259f98302d647f8f1093a18272aea"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/host-findings.md",
+      "bytes": 1539,
+      "sha256": "d232a614e7b9bfd52493ba77a3f60231c1791faf611570a6a179e0483d52bd29"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/host-matrix.json",
+      "bytes": 40214,
+      "sha256": "3ebf098f3ad8b070185580227ef00e8d2dfddd710b12a157e563ee62a5d01d98"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/idle-aircraft-independent-review.json",
+      "bytes": 18287,
+      "sha256": "c53fc937394ec6343a000fbb7f8475fd7a1d06d357467dab0c6ee8607e193461"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/idle-aircraft-paused.json",
+      "bytes": 1925,
+      "sha256": "d6754ba402954058d84ad17562bc6b048b49da3abd8b894995ba7bbf4b6b2fa0"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/idle-aircraft-probe.cpp",
+      "bytes": 1282,
+      "sha256": "b1405d0815b72b1a01cf21fe41f3d5308ef9aaa1de4427927ff773ceadf77490"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/overlay-after.json",
+      "bytes": 3238,
+      "sha256": "948166ba5c304b001b722152299904076387fb0d9162411f85844947c448d63a"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/overlay-before.json",
+      "bytes": 3093,
+      "sha256": "dac279fc431971c14c678bfaf86fe1cf0d92d99f1f4be6c5cb88c0fa6a75640c"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/pe-verification.log",
+      "bytes": 461,
+      "sha256": "ef62178d6f07fc8ca1f937c9da762762acd574915d04c7abd657a1f418214fab"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/render-findings.md",
+      "bytes": 15316,
+      "sha256": "f3539e725312a7f1b72667d58f0e5de203dfaf31d06d2b3c927b150e5891b2ee"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/render-hardware-supplement.json",
+      "bytes": 25237,
+      "sha256": "2c160ed4dd2f16e2294bc8ebcd8c012273c6958ff8b243c3e2649ac65b41efb4"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/render-matrix.json",
+      "bytes": 317026,
+      "sha256": "fe3468feb68e8946b0739575b804f33faecf79e6842eb8a532143d7b8dea12f8"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/render-root-options-supplement.json",
+      "bytes": 4305,
+      "sha256": "d9fb2693e46f92a7d9af1459fe2aa2362fed4272ce9f46fb9212d96aced92828"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/render-root-supplement.json",
+      "bytes": 20196,
+      "sha256": "9d9d458cafba203161532d41de71bbb7ebd8904873115b459df21682999a1b13"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/repair-result.json",
+      "bytes": 8578,
+      "sha256": "a36f9ca8b58a9216c50f664471ec82a18d98a6809330c7d7e2af019a2f540931"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/reservation-probe/cancel.inc",
+      "bytes": 257,
+      "sha256": "dc1513b99282cc38775f389b64dd8b382017c9d223aa512ec891253999cdeca7"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/reservation-probe/identity.inc",
+      "bytes": 405,
+      "sha256": "4311cd53096a8ed97a08a0afe69b676d26d9c530fbe7dd4e3409bc55b8ef87b6"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/reservation-probe/probe.cpp",
+      "bytes": 6954,
+      "sha256": "0aa829e0410c2f05773ce89d2169a6f26c19269ca256538581f582ebcd841483"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/reservation-probe/probe.py",
+      "bytes": 9644,
+      "sha256": "f0a4b7c45ec57a5e8418ebd050c5377e067954f87412bc139dd518aa820d139c"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/reservation-probe/send.inc",
+      "bytes": 7393,
+      "sha256": "df9b3b84ffa60c60d3eda7ad612c84d004ae3c6efde54699982beb337d34fcb2"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/reservation-probe/service.inc",
+      "bytes": 2027,
+      "sha256": "2e854fbf0f36afcd98b30b0870ab81bc8683032c42040a2c61914fc1e7b3f64b"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/reservation-probe/snapshot.inc",
+      "bytes": 4547,
+      "sha256": "62285bcd8ed5b5ec75f58847176d2b20ca751a50081f0efd23dabd9c1b885d11"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/reservation-world-boundary-result.json",
+      "bytes": 5891,
+      "sha256": "003fe5e880c4a490906a2bfc56d8aa276e43f6eb19d299d76ba7c065b5c10486"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/reservation-world-boundary-review.json",
+      "bytes": 18566,
+      "sha256": "dfe36410601cd359f7b2ba332801c7fc96ab82e6fc41af657bdac8870a8ca58f"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/tactical-findings.md",
+      "bytes": 22699,
+      "sha256": "cba91b3f48a5bb0fedd1ad377a48ea499743eee2c74c5362f5fc538929b37114"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/tactical-matrix.json",
+      "bytes": 135724,
+      "sha256": "56e82610cd0ad6526ab6ca0adce9539d633c8da96530637a0402dd0436b5891d"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/tooltip-fixture-build-attempt.json",
+      "bytes": 336,
+      "sha256": "0b5c6655c6356740b1a5f57f433c80f994dc6073afbee05f5a5884fd9ef6bdac"
+    },
+    {
+      "path": "source/research/evidence/feature-point-audit-20261108/unload-roster-result.json",
+      "bytes": 1851,
+      "sha256": "8044a7570fdf1aa58ef23004c4aa99f726b4b16220510d373e4404da81cc306a"
+    },
+    {
+      "path": "source/research/2026-11-08-feature-point-audit.md",
+      "bytes": 14408,
+      "sha256": "103263f8d5ac452cf52a70fa50033f9eb13e74b0370615364eb49151af6dd9d4"
+    },
+    {
+      "path": "source/research/2026-11-08-feature-point-audit-checklist.md",
+      "bytes": 47062,
+      "sha256": "c8fc505324c4752d9eba8b63de500f0ce047bac2298934b040e35c104c44889a"
+    }
+  ]
+}

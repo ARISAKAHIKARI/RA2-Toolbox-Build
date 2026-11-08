@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "source_hashes": {
+    "source/assist/source/native_orders_bridge.h": "594a27690b5a9de6953e74839a50fc8eaa5b4a427627b0badbe18266751a4d3f",
+    "source/assist/source/unload_policy.h": "b699168531498e797f13045fd1932c31439df61ed16bc93c92644205caddc568",
+    "source/assist/tests/unload_roster_runtime.cpp": "60d5d005e55cd3f7ffa6047916e690a263cf719326ed79b53797f9aeb98e0521",
+    "source/assist/tests/unload_roster_runtime.py": "df2d578c7059a093e1ab0343f4f68f582a487476eb53117c7ad87bc3bcc2e1af"
+  },
+  "source_hash_stable": true,
+  "baseline_sha256": "c5135aaa13fccb003283e4abbe7c67516f4d0e4d823bd369092afbf8cb4ec756",
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-DROSTER_BEFORE=\"/workspace/scratch/40121bc881b8/audit-followup/tactical-roster-runtime/before.inc\"",
+        "-DROSTER_CURRENT=\"/workspace/scratch/40121bc881b8/audit-followup/tactical-roster-runtime/current.inc\"",
+        "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/unload_roster_runtime.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/audit-followup/tactical-roster-runtime/fixture"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/40121bc881b8/audit-followup/tactical-roster-runtime/fixture"
+      ],
+      "exit_code": 0,
+      "stdout": "PASS\tsame_frame_selection_native_first_and_duplicate_roster\nPASS\texpiry_swap_deletion_identity_and_manual_token\nPASS\tdisable_chat_and_type_owner_guards\nPASS\tcapacity_preserves_oldest_order_and_rebuilt_swapped_indices\nPASS\tlookup_collision_capacity_clear\nBENCHMARK_MS\t230.863\t7.404\t8192\t7\nSUMMARY\t5\t83\n",
+      "stderr": ""
+    }
+  ],
+  "game_process_executed": false,
+  "windows_runtime_executed": false
+}

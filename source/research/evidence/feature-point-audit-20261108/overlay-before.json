@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "expected_fixed": false,
+  "result": {
+    "checks": 18,
+    "failures": 0,
+    "fixed": false,
+    "paused_status_after_250ms": 0,
+    "paused_enemies_after_250ms": 0
+  },
+  "source_sha256": {
+    "/workspace/scratch/40121bc881b8/audit-followup/overlay-paused-gates/main-baseline.cpp": "d846c08efcbd64aef9c6bd894050c824617effb779e6bb26ddd4fa93d27e3f57",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/display_sample_lease.h": "ab9d7035595cb45da27bfa5bef3d4a0dc89581339f4899b4d8a97c03f22b01cd",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/overlay_frame_freshness.cpp": "6fbe9002cf5f10c0e057a8dec6b1323a33502ef9ae61af7309926ff061ccbb54",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/enemy_markers.cpp": "02700cbc69df44b81e5f3bc246004e4567ed9ecab611fa94d6a32fa38d398bf6",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/external_reader/source/tactical_sampler.h": "c2fcb3571488433ca2a518e40a9868c67e4e70227e83cc03d8cf86e71b32390c",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/label_motion.h": "a1c11d506dad1118f7584913798fb19046209058fc7f73129c396dae11671e85",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/external_reader/source/unit_status.h": "ed6b3c0c54726930343816b1ab59dfa574a67346c5c65a37c894c8b94b8e9504",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/external_reader/source/enemy_markers.h": "c3db2d9e1965d5a07035f2b51e3687be6983afd647878644799849910b6e7e1e"
+  },
+  "source_hash_stable": true,
+  "extracted_paint_statements": [
+    "int statusCount=statusOptions()&&externalData&&external::status::fresh(statusFrame,externalData->match,renderNow)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;",
+    "int rawEnemyCount=extra.enemyMarkers&&externalData&&external::enemies::fresh(rawEnemyFrame,externalData->match,renderNow)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;"
+  ],
+  "build_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-UNDEBUG",
+    "-DENEMY_FIXTURE=\"/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/enemy_markers.cpp\"",
+    "-DDISPLAY_POLICY=\"/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/display_sample_lease.h\"",
+    "-DPAINT_GATES=\"/workspace/scratch/40121bc881b8/audit-followup/overlay-paused-gates/baseline-regression/paint-gates.inc\"",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/overlay_frame_freshness.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/audit-followup/overlay-paused-gates/baseline-regression/fixture"
+  ],
+  "run_command": [
+    "/workspace/scratch/40121bc881b8/audit-followup/overlay-paused-gates/baseline-regression/fixture"
+  ],
+  "build_exit_code": 0,
+  "run_exit_code": 0,
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Verbatim production paint count statements, real TacticalSampler/Motion, controlled memory; no Windows/GDI display test"
+}

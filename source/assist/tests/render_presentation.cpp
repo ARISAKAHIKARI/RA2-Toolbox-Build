@@ -1,6 +1,7 @@
 #include "../source/render_presentation.h"
 #include "../../shared/source/latest_worker.h"
 #include "../../shared/source/overlay_group.h"
+#include "../../shared/source/world_frame.h"
 #include <cassert>
 #include <atomic>
 #include <chrono>
@@ -14,6 +15,10 @@ struct Request {
  bool fail=false;int sequence=0;bool gpu=false,neural=false;
 };
 struct Frame {Request request;std::shared_ptr<const std::vector<uint32_t>> image;uint32_t sampledTick=0,completedTick=0;};
+struct SealedFrame:Frame {
+ struct World {struct State {worldframe::Token sourceFrame;}state;};
+ std::shared_ptr<const World>world;int logicFrame=-1;
+};
 template<class F>void eventually(F fn){const auto end=std::chrono::steady_clock::now()+std::chrono::seconds(3);while(!fn()){assert(std::chrono::steady_clock::now()<end);std::this_thread::yield();}}
 int main(){
  using namespace renderpresentation;
@@ -36,6 +41,14 @@ int main(){
  changed=request;changed.gpu=true;assert(!usable(frame,changed,1450));
  changed=request;changed.neural=true;assert(!usable(frame,changed,1450));
  changed=request;changed.width++;assert(!usable(frame,changed,1450));
+ // A pause reprojects one real source without renewing its acquisition tick.
+ // Only a matching source identity/frame and a fresh completion permit this.
+ SealedFrame paused;static_cast<Frame&>(paused)=frame;paused.logicFrame=request.view.frame;paused.completedTick=5100;
+ auto source=std::make_shared<worldframe::Snapshot>();source->key.pid=request.pid;source->key.match=request.match;source->key.frame=request.view.frame;source->key.tick=frame.sampledTick;assert(source->seal());
+ auto world=std::make_shared<SealedFrame::World>();world->state.sourceFrame=source;paused.world=world;
+ assert(usable(paused,request,5101)&&paused.sampledTick==1000&&source->key.tick==1000);
+ changed=request;++changed.view.frame;assert(!usable(paused,changed,5101));
+ assert(!usable(paused,request,6600));paused.world.reset();assert(!usable(paused,request,5101));
  assert(sampleAdvance(100,100,100)&&sampleAdvance(100,101,103));
  assert(!sampleAdvance(100,100,103)&&!sampleAdvance(100,99,100)&&!sampleAdvance(100,101,100));
  ViewLease lease;assert(!lease.retain(101,77,8,4,3,1000));

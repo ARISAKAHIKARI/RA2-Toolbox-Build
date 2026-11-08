@@ -12,8 +12,12 @@ inline constexpr unsigned SiteCount=6;
 inline constexpr uint32_t AllTags=(1u<<SiteCount)-1;
 enum Status {Off=0,Ready=1,Waiting=2,Signature=-1,Slots=-2,System=-3,Foreign=-4,Thread=-5};
 struct Registers {uint32_t address[4]{},control=0,status=0;};
-inline uint32_t slotMask(unsigned n){return (3u<<(n*2))|(15u<<(16+n*4));}
-inline uint32_t enabled(unsigned n){return 1u<<(n*2);}
+// Physical slots are always 0..3. Keep their fixed DR7 fields out of the
+// per-hit variable-shift path; the current register values are still checked.
+inline constexpr uint32_t SlotMasks[4]={0x000F0003u,0x00F0000Cu,0x0F000030u,0xF00000C0u};
+inline constexpr uint32_t SlotEnabled[4]={1u,4u,16u,64u};
+inline uint32_t slotMask(unsigned n){return SlotMasks[n];}
+inline uint32_t enabled(unsigned n){return SlotEnabled[n];}
 struct Lease {
  uint32_t sites[SiteCount]{},before[4]{};uint8_t tag[4]{},alternative[4]{};uint32_t mask=0,uncertain=0;
  unsigned actualTag(const Registers&r,unsigned n)const{
@@ -106,9 +110,29 @@ private:
    p->ExceptionRecord->ExceptionCode==EXCEPTION_BREAKPOINT&&
    uint32_t(uintptr_t(p->ExceptionRecord->ExceptionAddress))==trapAddress();
  }
- LONG dispatch(EXCEPTION_POINTERS*p){
+ struct DispatchRoute {
+  enum Kind {Ignore,PrivateTrap,Witness,Feature} kind=Ignore;
+  Hit hit{};
+ };
+ DispatchRoute classify(const EXCEPTION_POINTERS*p)const{
+  // This phase only reads the supplied CONTEXT and our owner-thread lease.
+  // Foreign/native exceptions need neither a cleanup frame nor a depth write.
+  // No game-memory read, callback, CONTEXT edit or statistic belongs here.
+  const auto&c=*p->ContextRecord;
+  if(p->ExceptionRecord->ExceptionCode==EXCEPTION_BREAKPOINT)
+   return privateTrap(p)?DispatchRoute{DispatchRoute::PrivateTrap,{}}:DispatchRoute{};
+  if(p->ExceptionRecord->ExceptionCode!=EXCEPTION_SINGLE_STEP||!contextPresent(c))return {};
+  const Registers r=registers(c);
+  if(witnessLease_.mask){
+   const Hit hit=ownedHit(witnessLease_,r,c.Eip,SiteCount);
+   if(hit.slots)return {DispatchRoute::Witness,hit};
+  }
+  const Hit hit=ownedHit(lease,r,c.Eip,SiteCount);
+  return hit.slots?DispatchRoute{DispatchRoute::Feature,hit}:DispatchRoute{};
+ }
+ LONG dispatch(EXCEPTION_POINTERS*p,const DispatchRoute&route){
   auto&c=*p->ContextRecord;
-  if(privateTrap(p)){
+  if(route.kind==DispatchRoute::PrivateTrap){
    // CONTEXT_CONTROL is needed to skip our exact, one-byte INT3. No native
    // game EIP is redirected, and an unexpected context goes to the local SEH.
    if((c.ContextFlags&CONTEXT_CONTROL)!=CONTEXT_CONTROL||(c.Eip!=trapAddress()&&c.Eip!=trapAddress()+1))return EXCEPTION_CONTINUE_SEARCH;
@@ -122,21 +146,29 @@ private:
    }
    return EXCEPTION_CONTINUE_EXECUTION;
   }
-  if(p->ExceptionRecord->ExceptionCode!=EXCEPTION_SINGLE_STEP||!contextPresent(c))return EXCEPTION_CONTINUE_SEARCH;
-  const Registers r=registers(c);const Hit witness=ownedHit(witnessLease_,r,c.Eip,SiteCount);
-  if(witness.slots){c.Dr6&=~witness.slots;c.EFlags|=0x10000u;witnessSeen_=1;return EXCEPTION_CONTINUE_EXECUTION;}
-  const Hit hit=ownedHit(lease,r,c.Eip,SiteCount);if(!hit.slots)return EXCEPTION_CONTINUE_SEARCH;
+  const Hit hit=route.hit;
+  if(route.kind==DispatchRoute::Witness){c.Dr6&=~hit.slots;c.EFlags|=0x10000u;witnessSeen_=1;return EXCEPTION_CONTINUE_EXECUTION;}
+  if(route.kind!=DispatchRoute::Feature)return EXCEPTION_CONTINUE_SEARCH;
   // An uncertain owned slot still needs a receiver. Its feature callback is
   // disabled until an independent post-continuation read confirmed the lease.
   c.Dr6&=~hit.slots;c.EFlags|=0x10000u;countOwner(exceptions);
   if(handlerDepth_==1&&confirmed&&(state==Ready||state==Slots||state==Signature)&&callback&&callback(&c,hit.tag))countOwner(changed);
   return EXCEPTION_CONTINUE_EXECUTION;
  }
+ struct DispatchInvocation {
+  Service*service;EXCEPTION_POINTERS*pointers;const DispatchRoute*route;
+  LONG result=EXCEPTION_CONTINUE_SEARCH;
+  static void __cdecl invoke(void*raw){auto&call=*static_cast<DispatchInvocation*>(raw);call.result=call.service->dispatch(call.pointers,*call.route);}
+  static void __cdecl finish(void*raw){--static_cast<DispatchInvocation*>(raw)->service->handlerDepth_;}
+ };
  static LONG CALLBACK vectored(EXCEPTION_POINTERS*p){
   Service*s=instance();if(!s||!p||!p->ExceptionRecord||!p->ContextRecord||GetCurrentThreadId()!=s->owner_)return EXCEPTION_CONTINUE_SEARCH;
-  LONG result=EXCEPTION_CONTINUE_SEARCH;++s->handlerDepth_;
-  runtimeunwind::run([&]{result=s->dispatch(p);},[&]{--s->handlerDepth_;});
-  return result;
+  const DispatchRoute route=s->classify(p);if(route.kind==DispatchRoute::Ignore)return EXCEPTION_CONTINUE_SEARCH;
+  // Keep the same SEH finally, but pass the dispatch data directly instead of
+  // chasing Invocation -> capturing lambda -> referenced local on every hit.
+  DispatchInvocation call{s,p,&route};++s->handlerDepth_;
+  RuntimeScopedCall(&call,DispatchInvocation::invoke,DispatchInvocation::finish);
+  return call.result;
  }
  int localTrapFilter(EXCEPTION_POINTERS*p){return privateTrap(p)?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH;}
  static void __cdecl trapBody(void*){ownerRendezvousTrap();}
@@ -272,6 +304,7 @@ private:
 public:
  void poll(){MemoryBarrier();}
  bool pending(){return InterlockedCompareExchange(&job_,0,0)!=0;}
+ uint32_t pendingGroups(){return (pending()?operationGroups_:0u)|(witnessLease_.mask?AllTags:0u);}
  bool occupied()const{return lease.mask||witnessLease_.mask;}
  bool pendingFor(uint32_t group){return (pending()&&(operationGroups_&group))||(witnessLease_.mask&&group);}
  uint32_t activeTags()const{return confirmed?lease.tags():0;}

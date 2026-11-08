@@ -6,7 +6,7 @@
 #include "../../external_reader/source/camera_assets.h"
 #include "../../external_reader/source/radar_scene.h"
 #include "../../external_reader/source/radar_publication.h"
-#include "../../external_reader/source/scene_bank.h"
+#include "../../external_reader/source/shared_scene.h"
 #include "../../external_reader/source/scene_poses.h"
 #include "../../external_reader/source/render_profile.h"
 #include "../../external_reader/source/feedback_scene.h"
@@ -23,34 +23,31 @@
 #include <chrono>
 namespace minimap {
 struct Request {DWORD pid=0;uint32_t match=0;int rate=60;uint32_t reveal=0;int mode=0,width=320,height=160;bool gpu=false;external::presentation::Selection selection;};
-// Separate task cache, shared central read-only connection. Terrain traversal
-// never blocks the UI or the game thread. Publish complete immutable frames.
+// View-local drawing consumes the common immutable world. The shared scene
+// provider owns all terrain/actor capture, including when the main view is off.
 class Worker {
  std::mutex mutex;std::condition_variable cv;std::thread thread;bool stop=false,paused=false;Request request{};uint64_t generation=0;
  std::shared_ptr<const external::radar::Frame> latest;
  void run(){
-  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::sceneextras::Layers radarLayers;external::materialmotion::Timeline motion;external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&reader});uint64_t active=~uint64_t(0);int previousFrame=-1;unsigned previousRevision=0;Request activeRequest{};
+  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::sceneextras::Layers radarLayers;external::materialmotion::Timeline motion;uint64_t active=~uint64_t(0);int previousFrame=-1;uint32_t previousSerial=0;Request activeRequest{};
   DWORD diagnosticAt=0;pipelineperf::Window timings(L"minimap-worker",{L"total",L"sample",L"snapshot",L"diagram",L"render",L"publish"});
   for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||(!paused&&request.pid);});if(stop)return;r=request;token=generation;}
    const auto iterationStarted=std::chrono::steady_clock::now();
    pipelineperf::Scope total(timings,0,critical);
-   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();sampler.reset();renderer.reset();diagram.reset();radarLayers.reset();motion.reset();}else {if(r.mode!=activeRequest.mode)sampler.reset();if(r.gpu!=activeRequest.gpu||r.selection.revision!=activeRequest.selection.revision)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousRevision=0;}
+   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();renderer.reset();diagram.reset();radarLayers.reset();motion.reset();}else {if(r.mode!=activeRequest.mode)renderer.reset();if(r.gpu!=activeRequest.gpu||r.selection.revision!=activeRequest.selection.revision)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousSerial=0;}
    external::xbrzadapter::gpuPresentation(r.gpu); // this worker owns its GPU state; native assets stay CPU-prepared
    std::shared_ptr<const external::radar::Frame> next,retired;
    if(reader.open(r.pid)){reader.begin();
+    external::radar::FrameScope worldScope(reader,r.match);
+    if(worldScope){
     pipelineperf::Scope sample(timings,1);
-    auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
-    auto shared=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount(),true);
-    if(shared&&(!external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount())||!external::radar::supportsEffects(*shared,r.selection.profile.particles,r.selection.profile.lasers)))shared.reset();
-    // This panel covers the full Tactical camera extent, including the top
-    // strip omitted by native Radar. Keep its adjusted bank private; shared
-    // world banks retain their native source projection.
-    if(shared&&!sampler.radarProjectionCompatible(*shared,true))shared.reset();
-    sampler.effects(r.selection.profile.particles,r.selection.profile.lasers);bool ok=shared||sampler.step(r.reveal,4096,r.mode==1,true,false,true);
+    auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readLive(p,out,n);};
+    auto shared=external::radar::sharedScene(reader,r.pid,r.match,r.reveal,GetTickCount(),external::radar::SceneConsumer::Minimap,r.mode==1,r.selection.profile.particles,r.selection.profile.lasers);
+    const bool ok=shared&&external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount());
     const auto sampleReads=reader.reads,samplePages=reader.prefetchedPages;
-    reader.begin();int frame=reader.get<int>(0xA8ED84,-1);sample.finish();
-    if(ok&&(r.mode==1||frame!=previousFrame||sampler.revision()!=previousRevision)){
-     pipelineperf::Scope snapshot(timings,2);auto data=shared?*shared:sampler.snapshot(GetTickCount(),frame);if(!shared){data.observedMs=external::materialmotion::now();external::radar::preparePoses(data,external::SharedReadView{&reader});}assets.identity(r.pid,r.match);snapshot.finish();
+    const int frame=shared?shared->frame:-1;const uint32_t serial=reader.worldFrameSerial();sample.finish();
+    if(ok&&(r.mode==1||frame!=previousFrame||serial!=previousSerial)){
+     pipelineperf::Scope snapshot(timings,2);auto data=*shared;assets.identity(r.pid,r.match);snapshot.finish();
      bool reusedDiagram=false;
      if(r.mode==1){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&external::radar::reusableRealScene(*latest,data,r.width,r.height)){data.map=latest->map;data.scene=latest->scene;reusedDiagram=true;}}
      if(!reusedDiagram){pipelineperf::Scope diagramTime(timings,3);radarLayers.begin();data.map=external::sceneextras::decorateRadar(diagram.render(data.terrain,r.width,r.height),data,external::SharedReadView{&reader},assets,radarLayers);}
@@ -60,14 +57,13 @@ class Worker {
      // until this world's markers are fresh instead of publishing a frame in
      // which every unit vanishes for one paint.
      if(same&&data.markerScanValid&&external::radar::recentMarkers(data,sampled,GetTickCount())){
-      if(!shared&&r.mode==1&&!data.terrain->geo.projectionAdjusted)external::radar::sceneBank().publish(r.pid,r.match,true,std::make_shared<const external::radar::Frame>(data));
       // Publish terrain immediately; retain the last completed scene while the
       // next one loads. Initial MIX scans must not keep the whole window hidden.
       bool initial=false;{std::lock_guard<std::mutex> lock(mutex);if(token==generation){if(r.mode==1&&latest&&external::radar::reusableRealScene(*latest,data,r.width,r.height))data.scene=latest->scene;initial=r.mode==1&&(!latest||!latest->scene);}}
       // Only initial loading needs a provisional diagram. An existing complete
       // scene stays published while rendering, without copying the whole actor
       // snapshot twice or destroying the retired snapshot under the UI lock.
-      if(initial){std::shared_ptr<const external::radar::Frame> provisional=std::make_shared<external::radar::Frame>(data);{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.swap(provisional);}}
+      if(initial&&reader.worldFrameComplete()){std::shared_ptr<const external::radar::Frame> provisional=std::make_shared<external::radar::Frame>(data);{std::lock_guard<std::mutex> lock(mutex);if(token==generation)latest.swap(provisional);}}
       if(r.mode==1){
        const auto&profile=r.selection.profile;external::presentation::apply(profile,assets,data.terrain->geo.rawWidth*30,data.terrain->geo.rawHeight*15,r.width,r.height);assets.identity(r.pid,r.match);renderer.features(profile);renderer.directPresentation(true);
        motion.observe(data,external::materialmotion::now());auto animated=motion.sampleLatest(external::materialmotion::now(),profile.motion,profile.detail!=0);animated.tick=GetTickCount();
@@ -88,18 +84,19 @@ class Worker {
        }
        if(scene&&!scene->gpu&&!scene->boltsRendered&&profile.lasers&&data.effects&&data.effects->boltsValid){const std::vector<uint8_t>*mask=nullptr;if(renderer.feedbackVisibility(mask)){
         const auto&geo=data.terrain->geo;external::nativefeedback::WorldView projection{-geo.offsetX*30,geo.offsetY*15,geo.rawWidth*30,geo.rawHeight*15,data.frame};
-        auto decorated=std::make_shared<external::radar::Scene>(*scene);auto status=external::nativefeedback::effects(data.effects->bolts,*decorated,projection,mask,external::projectionZScale(fresh));if(status.complete)scene=std::move(decorated);
+        auto decorated=std::make_shared<external::radar::Scene>(*scene);auto status=external::nativefeedback::effects(data.effects->bolts,*decorated,projection,mask,external::projectionZScale(external::SharedReadView{&reader}));if(status.complete)scene=std::move(decorated);
        }}
        if(scene)data.scene=std::move(scene);
       }
-      next=std::make_shared<external::radar::Frame>(std::move(data));
+      if(reader.worldFrameComplete())next=std::make_shared<external::radar::Frame>(std::move(data));
      }else if(!same&&sampled.readable){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&!external::radar::sameWorld(*latest,sampled))retired=std::move(latest);}
-     previousFrame=frame;previousRevision=sampler.revision();
+     previousFrame=frame;previousSerial=serial;
     }
-    if(!ok){auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};auto observed=external::radar::publicationContext(fresh);
+    if(!ok){auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readLive(p,out,n);};auto observed=external::radar::publicationContext(fresh);
      if(observed.readable){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&!external::radar::sameWorld(*latest,observed))retired=std::move(latest);}}
+    }
    }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)retired=std::move(latest);}
-   auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};auto completed=external::radar::publicationContext(fresh);
+   auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readLive(p,out,n);};auto completed=external::radar::publicationContext(fresh);
    {pipelineperf::Scope publish(timings,5);std::lock_guard<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed))latest.swap(next);else if(completed.readable&&latest&&!external::radar::sameWorld(*latest,completed))retired=std::move(latest);}}
    next.reset();retired.reset();total.finish();
    {std::unique_lock<std::mutex> lock(mutex);cv.wait_until(lock,iterationStarted+std::chrono::microseconds(monitorrefresh::periodMicros(r.rate)),[&]{return stop||paused||generation!=token||request.rate!=r.rate;});if(stop)return;}

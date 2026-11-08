@@ -30,7 +30,7 @@ if args.baseline:
     legacy = function(old, "static planner::CombatProbe probeCombatPair(") + "\n" + function(old, "static void collectCombatProbes(")
     legacy = legacy.replace("probeCombatPair", "legacyProbeCombatPair").replace("collectCombatProbes", "legacyCollectCombatProbes")
 else:
-    legacy = function(probe, "static void collectCombatProbes(").replace("collectCombatProbes", "legacyCollectCombatProbes").replace(",&batch,n)", ")")
+    legacy = function(probe, "static void collectCombatProbes(").replace("collectCombatProbes", "legacyCollectCombatProbes").replace(",&batch,n,rawOnly)", ")").replace(",&batch,n)", ")")
 raw = (root / "raw_combat.h").read_text()
 raw = raw.replace("static planner::Weapon rawWeaponFresh(uint32_t weapon){", "static planner::Weapon rawWeaponFresh(uint32_t weapon){++freshWeapons;")
 raw = raw.replace("planner::Actor& a,bool weapons,bool cached=false){", "planner::Actor& a,bool weapons,bool cached=false){if(weapons)++sourceSamples;else ++targetSamples;")
@@ -175,6 +175,9 @@ int main(){
   check(old.native==now.native&&now.source==0&&now.target==0,"native queries must remain immediate per pair, including fault/ineligible branches");
  }
  std::puts("PASS native experimental calls, zero/fault status and source-atomic coverage");
+ build(*input,3,4,0);sh->nativeCombatQueries=1;*batched=*input;zeroCounts();collectCombatProbes(*batched,true);
+ check(nativeCalls==0&&sourceSamples==3&&targetSamples==4,"explicit pure capture must never enter a native selector");
+ std::puts("PASS explicit raw collector stays pure while native configuration is enabled");
  for(int targetChange=0;targetChange<2;++targetChange){
   build(*input,3,4,0);toggleNativeTarget=get<uint32_t>(targets[targetChange?3:1]+0x10);
   if(targetChange)mutationTarget=targets[0];else{mutationType=typeOf(sources[0],kind(sources[0]));mutationWeapon=weapon(1800,true,true);}

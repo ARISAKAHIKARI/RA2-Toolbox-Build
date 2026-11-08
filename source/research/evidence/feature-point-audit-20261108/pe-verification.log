@@ -1,0 +1,5 @@
+PASS: 3 current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version 1.0.44.5
+PASS: pinned x64 WebView2 loader, license notices and host integration; no WebView2 dependency in the x86 game components
+PASS: no unbundled third-party or compiler-runtime DLL dependencies
+PASS: actual EXE RT_MANIFEST/1 enables x64 Common Controls 6 for subclass helper imports
+NOTE: static validation does not execute the Windows loader or the game

@@ -1,4 +1,6 @@
 #pragma once
+#include "optional_read.h"
+#include "../../shared/source/world_frame.h"
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -6,6 +8,16 @@
 #include <unordered_map>
 #include "native_surface.h"
 namespace external { namespace lighting {
+// Only world-reading adapters opt in. A ResourceRead may expose the same
+// underlying reader while its operator() deliberately reads live resource
+// bytes, so the presence of a reader pointer alone proves no immutable epoch.
+template<class Read>auto sealedReader(const Read&read,int)->decltype(Read::SealedWorldReads,read.reader->worldFrameToken(),read.reader->worldFrameComplete(),bool{}){return Read::SealedWorldReads;}
+template<class Read>bool sealedReader(const Read&,long){return false;}
+template<class Read>auto sealedSource(const Read&read,int)->decltype(Read::SealedWorldReads,read.reader->worldFrameToken(),read.reader->worldFrameComplete(),worldframe::Token{}){
+ if(!Read::SealedWorldReads||!read.reader||!read.reader->worldFrameComplete())return {};
+ auto source=read.reader->worldFrameToken();return source&&source->sealed()&&!source->overflow()?source:worldframe::Token{};
+}
+template<class Read>worldframe::Token sealedSource(const Read&,long){return {};}
 // Raw palettes contain expanded RGB, not a rendered lighting ramp. Read the
 // current ambient and LightConvert tint separately; never call the renderer.
 // Native offsets/units and special-light transitions: research pre.12.
@@ -19,19 +31,23 @@ struct State {
 };
 template<class Read>void converterMetadata(Read read,uint32_t convert,State&out){
  int rows=0;uint32_t vt=0;std::array<int,6>format{},after{};out.table.reset();
- if(read(0x8A0DD0,format.data(),sizeof format)&&read(0x8A0DD0,after.data(),sizeof after)&&format==after)out.rgb555=format==std::array<int,6>{{10,3,0,3,5,3}};
+ if(optionalread::bytes(read,0x8A0DD0,format.data(),sizeof format)&&optionalread::bytes(read,0x8A0DD0,after.data(),sizeof after)&&format==after)out.rgb555=format==std::array<int,6>{{10,3,0,3,5,3}};
  if(convert<0x10000||convert>0xfffffe90u||!read(convert+0x16C,&rows,4)||rows<1||rows>256||!read(convert,&vt,4)||(vt!=0x7E5358&&vt!=0x7ED0A4))return;
  out.paletteRows=unsigned(rows);out.scalar=vt==0x7E5358;
  // FullColorData contains the evaluated native palette rows. Capture one
- // immutable table per converter and committed game frame, retaining pointer
- // identity when its content is unchanged. No neutral-row reconstruction.
- struct Entry{int frame=-1,rows=0;uint32_t data=0;std::shared_ptr<const std::vector<uint32_t>>table;};static thread_local std::unordered_map<uint32_t,Entry>cache;static thread_local uint32_t scenario=0;
+ // immutable table per converter and sealed publication, retaining pointer
+ // identity when its content is unchanged. A new publication can replace
+ // bytes without advancing the engine frame or changing any address.
+ struct Entry{int frame=-1,rows=0;uint32_t data=0;std::shared_ptr<const std::vector<uint32_t>>table;std::weak_ptr<const worldframe::Snapshot>source;};static thread_local std::unordered_map<uint32_t,Entry>cache;static thread_local uint32_t scenario=0;
  uint32_t map=0,data=0;int frame=-1,bpp=0;read(0xA8B230,&map,4);read(0xA8ED84,&frame,4);if(scenario!=map||cache.size()>1024){cache.clear();scenario=map;}
  if(!read(convert+4,&bpp,4)||bpp!=2||!read(convert+0x170,&data,4)||data<0x10000||uint64_t(data)+uint64_t(rows)*512>0x100000000ull)return;
- auto&entry=cache[convert];if(frame>=0&&entry.frame==frame&&entry.rows==rows&&entry.data==data&&entry.table){out.table=entry.table;return;}
+ const auto source=sealedSource(read,0);auto&entry=cache[convert];
+ const bool sameEpoch=source?entry.source.lock()==source:!sealedReader(read,0)&&frame>=0&&entry.frame==frame;
+ if(sameEpoch&&entry.rows==rows&&entry.data==data&&entry.table){out.table=entry.table;return;}
  std::vector<uint16_t>words(size_t(rows)*256);int rowsAfter=0;uint32_t dataAfter=0;if(!read(data,words.data(),words.size()*2)||!read(convert+0x170,&dataAfter,4)||dataAfter!=data||!read(convert+0x16C,&rowsAfter,4)||rowsAfter!=rows)return;
  bool same=entry.table&&entry.table->size()==words.size();if(same)for(size_t n=0;n<words.size();++n)if((*entry.table)[n]!=words[n]){same=false;break;}
- if(!same)entry.table=std::make_shared<const std::vector<uint32_t>>(words.begin(),words.end());entry.frame=frame;entry.rows=rows;entry.data=data;out.table=entry.table;
+ if(!same)entry.table=std::make_shared<const std::vector<uint32_t>>(words.begin(),words.end());entry.frame=frame;entry.rows=rows;entry.data=data;
+ entry.source=source&&sealedSource(read,0)==source?source:worldframe::Token{};out.table=entry.table;
 }
 
 inline nativesurface::Palette palette(const State&s,bool object){nativesurface::Palette p;p.rows=s.paletteRows;p.brightness=s.intensity<0?s.ambient*10:s.intensity;

@@ -27,7 +27,11 @@ static uint32_t controlPolicyRevision=debugentries::policyRevision;
 namespace techmode{static bool parameters(unsigned mode){return mode==4;}}
 struct Shared {uint32_t controlAll=controlmode::Parameters,stop=0,flags=UnsafeTech;}storage,*sh=&storage;
 struct Policy {int controlling=1,enabled=1;uint32_t house=0x10000,houseID=10,scenario=0x60000;int session=3,frame=100;}policy;
-static bool fault=false;static bool fullType(uint32_t p){return p==0x60000;}static bool nativeCompatibleHot(){return compatible;}
+struct TypeIdentity {uint32_t pointer,id,table;};
+static const TypeIdentity fullCandidate{0x60000,60,0x7F6218};
+static bool fault=false;static const TypeIdentity*fullIdentity(uint32_t p){return p==fullCandidate.pointer?&fullCandidate:nullptr;}
+template<class T>static T get(uint32_t p){T value{};read(p,&value,sizeof value);return value;}
+static bool nativeCompatibleHot(){return compatible;}
 static void InterlockedExchange(int*p,int value){*p=value;}
 static int controlExceptions=0;static void InterlockedIncrement(int*p){++*p;}
 namespace controlparams {
@@ -52,6 +56,7 @@ static void seed(){
  put<uint32_t>(0xA8022C,0x50000);put<int>(0xA80238,2);put<uint32_t>(0x50000,0x10000);put<uint32_t>(0x50004,0x20000);
  for(unsigned i=0;i<2;++i){uint32_t p=0x10000+i*0x10000;put<uint32_t>(p,0x7E0000);put<uint32_t>(p+0x10,10+i);put<int>(p+0x30,i);put<uint8_t>(p+0x1F5,0);put<uint8_t>(p+0x1F6,0);put<uint8_t>(p+0x1F8,0);put<uint8_t>(p+0x1EC,1);put<uint8_t>(p+0x1ED,0);put<uint32_t>(p+0x21C,0x12340000+i);}
  put<uint32_t>(0xA83D4C,0x10000);put<uint32_t>(0xA8B230,0x60000);put<int>(0xA8B238,3);put<int>(0xA8ED84,101);put<uint8_t>(0xA8E9A0,1);put<uint32_t>(0xAC1198,0);put<uint32_t>(0x40000,0x650005);
+ put<uint32_t>(fullCandidate.pointer,fullCandidate.table);put<uint32_t>(fullCandidate.pointer+0x10,fullCandidate.id);
 }
 int main(){
  using namespace controlparams_fixture;
@@ -70,7 +75,11 @@ int main(){
  }
  for(unsigned kind=0;kind<15;++kind){seed();Context c,before;
   switch(kind){case 0:policy.controlling=0;break;case 1:storage.controlAll=controlmode::Master;break;case 2:storage.stop=1;break;case 3:fault=true;break;case 4:put<uint32_t>(0xA83D4C,0x20000);break;case 5:put<uint32_t>(0x10010,42);break;case 6:put<uint32_t>(0xA8B230,0x61000);break;case 7:put<int>(0xA8B238,4);break;case 8:put<int>(0xA8ED84,99);break;case 9:put<uint8_t>(0xA8E9A0,0);break;case 10:put<uint8_t>(0x101F5,1);break;case 11:put<uint32_t>(0xAC1198,0x10000);break;case 12:put<int>(0x20030,4);break;case 13:memory.erase(0x40000);break;case 14:put<uint32_t>(0x40000,0);break;}
-  const auto data=memory;check(dispatch(c,4)==0);check(!std::memcmp(&c,&before,sizeof c));check(memory==data);
+  // Published world eligibility is refreshed by maintenance. These mutations
+  // alone no longer change this callback, and target House validation was
+  // deliberately removed from the direct native-leaf contract.
+  const bool publishedMutation=kind>=4&&kind<=12;
+  const auto data=memory;check(dispatch(c,4)==int(publishedMutation));if(publishedMutation)before.Eip=assist::controlparams::Allowed;check(!std::memcmp(&c,&before,sizeof c));check(memory==data);
  }
  for(unsigned caller=0;caller<2;++caller){seed();Context c;c.Ecx=policy.house;const Context before=c;stack[0]=caller?0x6AA786:0x6A97D7;stack[1]=0x60000;stack[2]=0;stack[3]=caller;const auto data=memory;
   check(fullDispatch(c)==1);check(stack[0]==(caller?0x6AA786u:0x6A97D7u)&&stack[1]==0x60000&&stack[2]==1&&stack[3]==caller);check(!memcmp(&c,&before,sizeof c));check(data==memory);
@@ -88,6 +97,6 @@ int main(){
   memory[0x6339BA]^=1;check(!assist::controlparams::compatible(read));memory[0x6339BA]^=1;
   for(unsigned i=0;i<5;++i)memory[0x50B6F0+i]=mastercontrol::Sites[2].after[i];check(!assist::controlparams::compatible(read));
  }
- std::printf("PASS: %u production control callback, strict caller, original byte, no-data-write and fail-closed checks\n",checks);
+ std::printf("PASS: %u production control callback, direct-leaf timing, strict caller, original byte, no-data-write and immediate-gate checks\n",checks);
 }
 

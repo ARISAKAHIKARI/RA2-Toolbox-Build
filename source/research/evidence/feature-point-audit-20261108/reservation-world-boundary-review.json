@@ -1,0 +1,354 @@
+{
+  "finding_id": "DC-RESERVATION-001",
+  "reviewer": "/root/audit_tactical_points",
+  "collaborating_reviewer": "/root/audit_hardware_points",
+  "updated_at_utc": "2026-11-08T11:20:05.983831+00:00",
+  "reviewed_head": "491bbc72ec67ac70454e9d9a0ef69287eb1ba28f",
+  "affected_feature_ids": [
+    "queue.reservation",
+    "implementation.queue.reservation.host"
+  ],
+  "status": "confirmed_host_cross_match_publication_controlled_open_unfixed",
+  "previous_status": "source_candidate_pending_independent_review",
+  "production_changed": false,
+  "production_recompiled": false,
+  "conclusion": "Host跨局重标/发布缺陷已由真实生产函数的受控调度确认。同类型目录条件下，construction Host取消与Runtime现有准入条件不能反证这一步。真实native生产未执行，ProduceReserved的旧UID门槛另有可能阻止最终生产。",
+  "proved": [
+    "Queue中的ProduceDeferred/ProduceReserved原始match=7；serviceCommandQueue已按7校验并consume。",
+    "在send内部readSnapshot开始前，夹具发布一份完整的新match=8快照；执行的是实际readSnapshot sequence校验、incoming/snap和lastData更新正文。",
+    "新局ready且目录相同，两种旧意图均被写入shared->request，requestMatch=8、requestToken仍为旧token 51；未触发constructionResult拒绝。",
+    "立即执行实际buildreserve::cancel以后Book清空，但已发布request仍为1、requestMatch仍为8，证明随后取消旧Book不能收回已发布请求。",
+    "新局busy时，两种意图均以match=8重新入队；之后实际Book取消能删掉这条尚未发布的Item。此分支只证明错误重标入队，不声称一定会进一步执行。",
+    "如果新快照的类型目录也变化，两种意图都被现有hash门槛拒绝，产生constructionResult(-13)，作为有效负对照。"
+  ],
+  "not_proved": [
+    "未执行实际Runtime command/原生nativeProduceEvent；未证明游戏已生产出单位或建筑。",
+    "未在Windows或真实游戏复现两个进程的时间窗口，也没有测量实际发生频率。",
+    "ProduceReserved旧parent UID在新局经常可能失效；是否新局会复用该UID并满足当前House/building条件，未做逆向或实机验证。",
+    "未扩展到其他Command种类，未为当前根因泛化额外缺陷数量。"
+  ],
+  "runtime_assessment": {
+    "ProduceDeferred": "源码最终条件均使用当前局目录、House及工厂状态；arg2=0，未使用requestToken重建旧Book身份。在同目录且当前局具备生产条件时，没有可识别原match=7的剩余门槛。此为源码可达性分析，不等同原生事件已动态执行。",
+    "ProduceReserved": "Host错误发布同样已确认；Runtime还要找到旧arg2 UID对应的当前自有在地图建筑，可能因此拒绝。需要保留这一差异，不能将Deferred的无父对象路径直接套给Reserved。",
+    "type_hash": "catalogue equality only, not world identity",
+    "reservation_token": "Host receipt correlation only; these Runtime branches do not validate an original world-bound reservation token",
+    "native_authority": "nativeProduceEvent接收当前House/Type，不接收旧Book.match；当前局权限检查无法恢复被Host丢弃的原意图身份。"
+  },
+  "rejected_counterarguments": [
+    {
+      "argument": "外层pulse先readSnapshot，所以内层不会换局。",
+      "result": "不成立。Host单线程不能阻止Runtime在两个读之间发布新快照；受控调度把发布点放在consume之后、内层readSnapshot之前，实际读取正文随即接收了新局。"
+    },
+    {
+      "argument": "sequence锁保证不会跨局。",
+      "result": "不成立。它保证单份快照一致，恰好能一致地读到新局；没有绑定旧队列意图。"
+    },
+    {
+      "argument": "类型hash相同就说明意图仍合法。",
+      "result": "不成立。hash不包含match/House/连接，跨局同目录能通过；改变目录的负对照才会拒绝。"
+    },
+    {
+      "argument": "construction service会cancel旧match Book。",
+      "result": "对尚在队列中的Item有效；对已publish的shared request无效，实际cancel函数受控执行后request没有变化。"
+    },
+    {
+      "argument": "Runtime还有requestMatch检查。",
+      "result": "不成立于已重标的请求；Host已经写入新局match，Runtime看不到旧Item.match。"
+    },
+    {
+      "argument": "Reserved parent UID一定能阻止两个命令。",
+      "result": "不能推广。Deferred根本没有parent UID。Reserved可被这道门槛拒绝，因此其真实生产影响需保留条件。"
+    }
+  ],
+  "controlled_validation": {
+    "result_file": "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/result.json",
+    "scenario_count": 6,
+    "checks": 48,
+    "passed": true,
+    "cases": [
+      {
+        "command": "ProduceDeferred",
+        "mode": "new_match_ready",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 1,
+        "request_match": 8,
+        "queued_before_book_cancel": 0,
+        "queued_match": 0,
+        "request_after_book_cancel": 1,
+        "construction_rejection_count": 0
+      },
+      {
+        "command": "ProduceDeferred",
+        "mode": "new_match_busy",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 0,
+        "request_match": 0,
+        "queued_before_book_cancel": 1,
+        "queued_match": 8,
+        "request_after_book_cancel": 0,
+        "construction_rejection_count": 0
+      },
+      {
+        "command": "ProduceDeferred",
+        "mode": "changed_catalogue",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 0,
+        "request_match": 0,
+        "queued_before_book_cancel": 0,
+        "queued_match": 0,
+        "request_after_book_cancel": 0,
+        "construction_rejection_count": 1
+      },
+      {
+        "command": "ProduceReserved",
+        "mode": "new_match_ready",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 1,
+        "request_match": 8,
+        "queued_before_book_cancel": 0,
+        "queued_match": 0,
+        "request_after_book_cancel": 1,
+        "construction_rejection_count": 0
+      },
+      {
+        "command": "ProduceReserved",
+        "mode": "new_match_busy",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 0,
+        "request_match": 0,
+        "queued_before_book_cancel": 1,
+        "queued_match": 8,
+        "request_after_book_cancel": 0,
+        "construction_rejection_count": 0
+      },
+      {
+        "command": "ProduceReserved",
+        "mode": "changed_catalogue",
+        "original_match": 7,
+        "observed_match": 8,
+        "published_request": 0,
+        "request_match": 0,
+        "queued_before_book_cancel": 0,
+        "queued_match": 0,
+        "request_after_book_cancel": 0,
+        "construction_rejection_count": 1
+      }
+    ],
+    "production_source_hashes_stable": true,
+    "functions_extracted_without_body_changes": [
+      "serviceCommandQueue",
+      "send",
+      "queueCommand",
+      "userCommand",
+      "readSnapshot",
+      "commandLink",
+      "commandMatch",
+      "commandChannelReady",
+      "commandFresh",
+      "buildreserve::cancel"
+    ],
+    "actual_headers": [
+      "protocol.h: Type/typeListHash/Shared/Snapshot",
+      "command_delivery.h: Queue/Item/bridgeReady",
+      "control_link.h: identity/ready",
+      "construction_policy.h: Book"
+    ],
+    "synthetic_seams": [
+      "固定Host时钟、有效窗口及前台",
+      "在内层readSnapshot前发布完整的新shared->data/seq",
+      "日志与无关UI函数无副作用替身",
+      "无external display Snapshot，因此mergeExternal按真实空数据情形不做操作",
+      "未使用的RevealMap permission替身",
+      "没有native事件或真实游戏内存"
+    ],
+    "actual_runtime_or_game_process": false,
+    "scope": "CPU受控验证证明Host层发布/重排队的错误世界身份；它不是完整Windows端到端或实机生产验证。"
+  },
+  "minimal_fix_direction_not_implemented": [
+    "将队列Item原始PID/match及必要连接身份保留至最终send准入；至少把ProduceReserved/ProduceDeferred纳入readSnapshot之后的inputPID/inputMatch/inputConnection变化拒绝。",
+    "身份变化时以原token向constructionResult发送硬取消结果，不得用新的commandMatch重排队，也不得发布旧参数的新局request。",
+    "确认后仍用原意图身份写requestMatch；若Runtime在最后检查后再换局，应由现有Runtime requestMatch不等而拒绝。",
+    "不把类型hash、当前工厂/parent UID或随后Book取消当成epoch检查的替代。",
+    "本轮保持生产冻结，尚未实现或验证修复。"
+  ],
+  "source_evidence": [
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "serviceCommandQueue",
+      "line": 1910,
+      "conclusion": "expire/peek及类型hash比较使用当前缓存commandMatch；consume之后只把command/arg/arg2/retries/token传给send，未传Item.match/pid。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "send: input identity capture",
+      "line": 747,
+      "conclusion": "已捕获原输入PID/match/connection，但其后身份变化拒绝仅应用于AttackOwnGround和DestructPlayer。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "send: inner snapshot refresh",
+      "line": 778,
+      "conclusion": "队列取出后仍会再次读取Runtime快照，可以接收到新的match。单线程Host不排除另一个进程在两次读取之间发布新快照。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "send: catalogue guard",
+      "line": 787,
+      "conclusion": "这道门槛检查类型目录；同目录的新局不会被拒绝。目录变化负对照已验证会constructionResult(-13)。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "send: restage",
+      "line": 798,
+      "conclusion": "新快照显示busy/not-ready时，旧参数和token以新的commandMatch重新加入队列。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "send: publish",
+      "line": 813,
+      "conclusion": "新快照已就绪时，旧意图写入新match，并发布新的request；原Item.match已不可恢复。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "readSnapshot",
+      "line": 1386,
+      "conclusion": "sequence检查保证读取一份一致快照，随后更新incoming/snap/lastData；没有锁住发送意图的旧epoch。普通match改变不会在此撤回已弹出的Item。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "symbol": "readSnapshot: negative status",
+      "line": 1429,
+      "conclusion": "此处只在负status时取消队列内的预定；新局status=1的反例不经过此分支。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/protocol.h",
+      "symbol": "typeListHash",
+      "line": 68,
+      "conclusion": "hash只混合count及每项id/kind/index；不包含match、House、连接代次或旧预定身份，因此不是世界身份凭证。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/command_delivery.h",
+      "symbol": "Queue::expire/peek",
+      "line": 38,
+      "conclusion": "队列在取出前确实拒绝已知旧局Item，但验证结果没有伴随Item保留到send最终提交处。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/construction_host.h",
+      "symbol": "service: match/house cancellation",
+      "line": 376,
+      "conclusion": "Book层会按当前match/house取消旧预定；此检查不在send/readSnapshot之后、request发布之前执行。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/construction_host.h",
+      "symbol": "cancel",
+      "line": 66,
+      "conclusion": "取消只按token删commandQueue中的尚未发送Item并清Book；不清已发布shared request或撤回已构造原生事件。受控测试实际执行此函数，已发布request保持不变。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/construction_host.h",
+      "symbol": "service: ProduceDeferred",
+      "line": 402,
+      "conclusion": "延后生产以旧Book.match排队，arg2=0，没有源建筑UID。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/construction_host.h",
+      "symbol": "service: ProduceReserved",
+      "line": 421,
+      "conclusion": "建筑链预定携带源建筑UID b.id，属于额外对象准入条件，但原Book.match在send参数中仍丢失。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/construction_host.h",
+      "symbol": "result",
+      "line": 75,
+      "conclusion": "token用于Host回执与Book的关联；回执发生在请求派发之后。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/bridge.cpp",
+      "symbol": "command: world/catalogue gate",
+      "line": 1006,
+      "conclusion": "Runtime检查Host发来的requestMatch、3500 ms和类型hash；被Host重标成新局后，这些字段可全部满足当前局。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/bridge.cpp",
+      "symbol": "command(ProduceDeferred)",
+      "line": 1072,
+      "conclusion": "检查ReserveConstruction、目录、type pointer、当前cameo/canBuild/factory和依赖；不检查原Book.match/House或requestToken所属旧局，且没有parent UID。"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/bridge.cpp",
+      "symbol": "command(ProduceReserved)",
+      "line": 1061,
+      "conclusion": "另检查arg2对应当前世界源建筑、当前House、kind/on-map等；旧UID找不到或不匹配可阻止生产，但不能反证Host已经发生跨局发布。是否跨局UID复用可让最终分支通过，本轮未验证。"
+    }
+  ],
+  "archive_manifest": [
+    {
+      "file": "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/probe.py",
+      "relative_name": "probe.py",
+      "sha256": "f0a4b7c45ec57a5e8418ebd050c5377e067954f87412bc139dd518aa820d139c",
+      "purpose": "提取实际函数、生成夹具并编译/运行的原始驱动（记录本次工作树路径）"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/probe.cpp",
+      "relative_name": "probe.cpp",
+      "sha256": "0aa829e0410c2f05773ce89d2169a6f26c19269ca256538581f582ebcd841483",
+      "purpose": "实际执行的Linux受控夹具，可配合inc文件在其他checkout重编"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/identity.inc",
+      "relative_name": "identity.inc",
+      "sha256": "4311cd53096a8ed97a08a0afe69b676d26d9c530fbe7dd4e3409bc55b8ef87b6",
+      "purpose": "原样commandLink/commandMatch/commandChannelReady/commandFresh"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/snapshot.inc",
+      "relative_name": "snapshot.inc",
+      "sha256": "62285bcd8ed5b5ec75f58847176d2b20ca751a50081f0efd23dabd9c1b885d11",
+      "purpose": "原样readSnapshot正文；夹具只用预处理宏重命名以放入受控发布调度点"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/send.inc",
+      "relative_name": "send.inc",
+      "sha256": "df9b3b84ffa60c60d3eda7ad612c84d004ae3c6efde54699982beb337d34fcb2",
+      "purpose": "原样userCommand/queueCommand/send"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/service.inc",
+      "relative_name": "service.inc",
+      "sha256": "2e854fbf0f36afcd98b30b0870ab81bc8683032c42040a2c61914fc1e7b3f64b",
+      "purpose": "原样serviceCommandQueue"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/cancel.inc",
+      "relative_name": "cancel.inc",
+      "sha256": "dc1513b99282cc38775f389b64dd8b382017c9d223aa512ec891253999cdeca7",
+      "purpose": "原样buildreserve::cancel"
+    },
+    {
+      "file": "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary/result.json",
+      "relative_name": "result.json",
+      "sha256": "003fe5e880c4a490906a2bfc56d8aa276e43f6eb19d299d76ba7c065b5c10486",
+      "purpose": "编译/执行结果、6场景48检查、生产文件hash和提取片段hash"
+    }
+  ],
+  "archive_review_file": "/workspace/scratch/40121bc881b8/audit-followup/reservation-world-boundary-review.json",
+  "reproduction_from_archived_cpp": [
+    "将probe.cpp及五个.inc文件放在同一证据目录；取出结果所列生产版本/headers。",
+    "g++ -std=c++17 -O2 -UNDEBUG -I <repo>/source/assist/source <evidence>/probe.cpp -o <scratch>/reservation_probe",
+    "<scratch>/reservation_probe",
+    "原probe.py同时保留了本次函数提取驱动和原工作树位置；跨路径复现可用上述C++命令，或显式调整其repo定位，不需要改生产文件。"
+  ],
+  "review_source_sha256": {
+    "main.cpp": "dec08343c8dc3287aa7f789192064bdb9db0dbbbf2818bffad033880c2704654",
+    "command_delivery.h": "2515fdb0e73210348e4765099858d1e4da5a236a7c659062abd8a29c4182435a",
+    "protocol.h": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c",
+    "control_link.h": "0b8f69213d66f48205c4bfd4aad38d096363ceda1eb5a58374293918959f7f88",
+    "construction_host.h": "7f340af9bfbe0cfb093f481b6caa7c4deff60e0c03f9f1a650db378900f8b6ed",
+    "bridge.cpp": "efc1cd5d34d550a8d700bc26cdb612c8e2c4498817ec775e6ea4010d0ec743cd"
+  }
+}

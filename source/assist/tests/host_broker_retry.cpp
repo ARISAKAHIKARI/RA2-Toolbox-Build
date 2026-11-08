@@ -9,6 +9,7 @@ using DWORD=uint32_t;
 using LONG=int32_t;
 using BOOLEAN=unsigned char;
 using HWND=void*;
+constexpr DWORD ERROR_IO_PENDING=997;
 #define CALLBACK
 struct LARGE_INTEGER {int64_t QuadPart=0;};
 static DWORD clockNow=1000,lastError=0;
@@ -34,7 +35,7 @@ struct Client {
  uint32_t healthyGeneration=9,nextToken=77,nextGeneration=10;
  unsigned installs=0;
  bool alive(uint32_t generation){return generation==healthyGeneration;}
- bool install(DWORD,DWORD,uint32_t,uint32_t&token,uint32_t&generation){
+ bool install(DWORD,DWORD,uint32_t,uint32_t&token,uint32_t&generation,uint64_t=0){
   ++installs;clockNow+=delay;lastError=error;
   if(!installOK)return false;
   token=nextToken;generation=nextGeneration;healthyGeneration=nextGeneration;return true;
@@ -45,7 +46,7 @@ static Client&client(){static Client value;return value;}
 namespace gameinput {
 struct Target {
  DWORD pid=0,thread=0;HWND window=nullptr;runtime::Control*control=nullptr;
- uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0,lastPostError=0;
+ uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0,lastPostError=0;uint64_t brokerIntent=0;bool brokerPending=false;
  bool frameSampling=false,diagnosticFrame=false,fastTactical=false;
  struct Pointer {bool enabled=false,focused=false;}pointer;
  uint64_t cursorAt=0,tacticalAt=0;
@@ -84,7 +85,7 @@ static void pulse(){gameinput::pulse(nullptr,0);}
 int main(){
  reset();auto&t=bind(0,5);pulse();
  check(runtimebroker::client().installs==1,"dead broker gets one initial recovery attempt");
- check(clockNow==4000,"fixture exposes three-second synchronous startup wait");
+ check(clockNow==4000,"substitute exposes a slow system-call completion for backoff accounting");
  check(t.brokerRetry==clockNow+1000,"broker retry starts after failed installation completes");
  check(t.brokerToken==50&&t.brokerGeneration==5,"failed install retains old token and generation");
  check(t.control->enabled==0&&t.lastPostError==126,"failed recovery stays disabled and reports Win32 error");
@@ -119,7 +120,7 @@ int main(){
  check(gameinput::host().pulseBusy==0&&gameinput::timerUpdates==1,"normal pulse cleanup and timer update remain intact");
  reset();auto&dead=bind(0,5);auto&other=bind(1,9,runtime::Cursor);pulse();
  check(dead.control->enabled==0&&other.control->enabled==2,"failed target cannot disable another healthy target");
- check(other.control->ready==2&&gameinput::posts==1,"another target is still serviced after bounded failed wait");
+ check(other.control->ready==2&&gameinput::posts==1,"another target is still serviced after failed substitute completion");
  const DWORD multiFailedAt=clockNow;clockNow=multiFailedAt+4;pulse();
  check(runtimebroker::client().installs==1,"another target does not erase failed-target retry backoff");
 
@@ -137,6 +138,6 @@ int main(){
  clockNow=wrapFailedAt+1000;pulse();
  check(runtimebroker::client().installs==2,"wrapped deadline admits exactly one next attempt");
 
- std::printf("{\"checks\":%u,\"failures\":%u,\"passed\":%s,\"scope\":\"complete production pulse with deterministic host/Win32/broker substitutes; one bounded synchronous wait remains; no Windows/game validation\"}\n",checks,failures,failures?"false":"true");
+ std::printf("{\"checks\":%u,\"failures\":%u,\"passed\":%s,\"scope\":\"complete production pulse with deterministic host/Win32/broker substitutes; substitute delay checks completion-based retry only; no Windows/game validation\"}\n",checks,failures,failures?"false":"true");
  return failures?1:0;
 }

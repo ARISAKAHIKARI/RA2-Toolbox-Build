@@ -1,0 +1,9 @@
+{
+  "succeeded": false,
+  "stage": "link",
+  "stderr": "lld-link: error: undefined symbol: _RuntimeScopedCall",
+  "scope": "ad hoc existing cursor_tooltip_windows.cpp cross-build; missing runtime SEH scope link in standalone command",
+  "windows_executed": false,
+  "game_tested": false,
+  "production_files_changed_for_retry": false
+}

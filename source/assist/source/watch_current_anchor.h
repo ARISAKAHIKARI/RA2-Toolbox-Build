@@ -4,6 +4,22 @@
 #include "../../external_reader/source/native_draw_state.h"
 #include "../../external_reader/source/material_motion.h"
 namespace watchscene {
+// Shared-frame presentation never patches a source with newer coordinates.
+// The body (possibly presentation-interpolated) and its camera use the same
+// marker. Identity/succession guards still run independently before this pure
+// projection; a verified last point has an empty target and remains fixed.
+inline bool sampledAnchors(const external::radar::Frame&frame,std::array<external::watch::Anchor,3>&anchors){
+ if(!frame.terrain||!frame.markerScanValid)return false;
+ for(auto&anchor:anchors){
+  if(!anchor.located||!anchor.target)continue;
+  const auto found=std::find_if(frame.markers.begin(),frame.markers.end(),[&](const auto&m){return m.object==anchor.target.pointer&&m.id==anchor.target.id;});
+  if(found==frame.markers.end()){anchor.located=false;continue;}
+  const auto&m=*found;
+  if(m.kind<0||m.kind>4||m.x<0||m.y<0||m.z<0||!frame.terrain->geo.legal(m.x/256,m.y/256)){anchor.located=false;continue;}
+  anchor.x=m.x;anchor.y=m.y;anchor.z=m.z;anchor.kind=m.kind;
+ }
+ return true;
+}
 // Update only this watch presentation's private Frame. The shared source bank
 // keeps its original timestamp and observations. A fresh camera must not look
 // at an older copy of its own target, shadow or carrier.

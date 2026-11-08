@@ -3,18 +3,22 @@
 #include "formation_quick.h"
 #include "../../shared/source/latest_worker.h"
 #include "formation_engine.h"
+#include "../../external_reader/source/shared_scene.h"
 #include "../../external_reader/source/render_profile.h"
 namespace formationhost {
 using Assets=external::cameraassets::Context<external::ReadSession>;
 using Engine=formationengine::Renderer<external::ReadSession,Assets>;
 struct Request {uint32_t pid,match,tick;external::Projection projection;formation::Preview preview;external::presentation::Selection selection;nativeviewhost::Transform transform;};
-struct Frame {uint32_t pid,match,tick;external::Projection projection;formation::Preview preview;std::vector<Engine::Visual> visuals;int missing=0;external::presentation::Selection selection;std::shared_ptr<const external::voxel::Image>composite;nativeviewhost::Transform transform;};
+struct Frame {uint32_t pid,match,tick;worldframe::Token sourceFrame;external::Projection projection;formation::Preview preview;std::vector<Engine::Visual> visuals;int missing=0;external::presentation::Selection selection;std::shared_ptr<const external::voxel::Image>composite;nativeviewhost::Transform transform;};
 static external::ReadSession reader;static Assets assets(reader);static Engine engine(reader,assets);
 static asyncwork::Latest<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  if(engine.process!=r.pid||engine.epoch!=r.match){engine.reset();reader.close();engine.process=r.pid;engine.epoch=r.match;}
- if(!reader.open(r.pid))return {};reader.begin();auto projection=r.projection;projection.zScale=external::projectionZScale(external::SharedReadView{&reader});
+ if(!reader.open(r.pid))return {};reader.begin();
+ external::radar::FrameScope scope(reader,r.match,{},worldframe::Base);if(!scope)return {};const auto source=reader.worldFrameToken();
+ auto current=[&]{uint32_t house=0,scenario=0;int frame=-1;return source&&reader.readLive(0xA83D4C,&house,4)&&house==source->key.house&&reader.readLive(0xA8B230,&scenario,4)&&scenario==source->key.scenario&&reader.readLive(0xA8ED84,&frame,4)&&frame>=source->key.frame&&(frame==source->key.frame||uint32_t(GetTickCount()-source->key.tick)<=150);};
+ if(!current())return {};auto projection=r.projection;projection.zScale=external::projectionZScale(external::SharedReadView{&reader});
  static external::presentation::Profile applied;static bool have=false;if(!have||applied!=r.selection.profile){engine.reset();applied=r.selection.profile;have=true;}external::xbrzadapter::gpuPresentation(r.selection.profile.gpu);external::presentation::apply(r.selection.profile,assets,projection.width,projection.height,projection.width,projection.height);assets.beginPresentation();
- engine.update(r.preview,projection);auto out=std::make_shared<Frame>();out->pid=r.pid;out->match=r.match;out->tick=r.tick;out->projection=projection;out->preview=r.preview;out->visuals=engine.visuals;out->missing=engine.missing;out->selection=r.selection;out->transform=r.transform;out->composite=engine.compose(r.selection.profile.precision!=0,unsigned(r.selection.profile.scale));return out;
+ engine.update(r.preview,projection);auto out=std::make_shared<Frame>();out->pid=r.pid;out->match=r.match;out->sourceFrame=source;out->tick=r.tick;out->projection=projection;out->preview=r.preview;out->visuals=engine.visuals;out->missing=engine.missing;out->selection=r.selection;out->transform=r.transform;out->composite=engine.compose(r.selection.profile.precision!=0,unsigned(r.selection.profile.scale));if(!reader.worldFrameComplete()||!current())return {};return out;
 });
 static std::shared_ptr<const Frame> frame;
 static bool visible(){return shared&&shared->formationPreview.active&&extra.formationEnabled&&!snap.chat;}

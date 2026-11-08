@@ -1,0 +1,22 @@
+{
+  "scope": "Independent read-only review of Client plus Host install/clear/reap/pulse/release combinations",
+  "passed": true,
+  "source_sha256": {
+    "source/shared/source/runtime_broker_client.h": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1",
+    "source/shared/source/host_game_input.h": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887"
+  },
+  "fixed_findings": [
+    "An old Target retained by asynchronous Remove cannot be reused when the OS reuses its PID.",
+    "Rapid release/reinstall cannot revive the old token while its Remove request still owns the mailbox."
+  ],
+  "reviewed_paths": [
+    "single mailbox ownership",
+    "cancel then late ACK then exact-token Remove",
+    "pending HWND/thread transition",
+    "retained process retirement",
+    "failure backoff",
+    "no-enabled-publication before install ACK"
+  ],
+  "windows_executed": false,
+  "game_tested": false
+}

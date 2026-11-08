@@ -1,0 +1,65 @@
+{
+  "schema": "ra2.release-1.0.44.broker-fix.v1",
+  "status": "source-frozen-controlled-regressions-passed",
+  "source_files": {
+    "source/shared/source/runtime_broker_client.h": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1",
+    "source/shared/source/host_game_input.h": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887",
+    "source/assist/tests/host_broker_retry.cpp": "de2f532a6f7f96ca4db149e5b4f400234113fb21d60156a0321dde1df4daac4f",
+    "source/assist/tests/runtime_broker_retirement.cpp": "f1de97a255d5c1ac76219b67a1199f8ff1ceb1ad14733fac9db5a1b2b8e11be2",
+    "source/assist/tests/runtime_broker_retirement.py": "d375b8f2f8d56041873c6cbc89390783096536deb755459dcd8e1c23def07bd2",
+    "source/assist/tests/runtime_broker_retirement_fixture.h": "1d6a3ab9d5e1adb270a2ceaf0f5985f3bc613873c08f9b06cfeac955e130481b",
+    "source/assist/tests/runtime_broker_lifecycle_audit.cpp": "d7f31b842edfb968f4b1e31f1eed4b7752cac6d93ffb1ac97dce51781ec1be16",
+    "source/assist/tests/runtime_broker_lifecycle_audit.py": "336d048186eb0eb3d0b48e4a037082d7cb34259855519ffadf9f5a68d85f685a",
+    "source/assist/tests/runtime_broker_windows.cpp": "3d0326b7028df2a1a517e249d60ec6bd2b042533aeb83ca7f03e56190aa89802"
+  },
+  "production_changes": [
+    "Startup, request ACK and graceful shutdown retain their original deadlines but use only zero-time Win32 waits; existing timer/caller retries advance the lifecycle.",
+    "Each in-flight mailbox request retains operation, PID, thread, HWND, host Target intent, helper generation, sequence and original deadline. Competing targets can observe readiness but cannot overwrite or steal the owner result.",
+    "Cancelled or retargeted installs drain the original ACK and exact returned token Remove before resource release or a replacement request.",
+    "Host install can retain a valid pending subscription with Control.enabled=0 and an active 4ms timer; ACK success enables only current subscribers. Genuine failure preserves disabled state and starts a one-second completion-based retry.",
+    "Unused Targets that are still removing/retiring refuse new admission with ERROR_IO_PENDING. Quick off/on and PID reuse allocate fresh process handles and intents only after cleanup is confirmed.",
+    "Original exact-handle retirement, one-second termination retry throttle, private mailbox ownership and generation invalidation are preserved. Install/Remove remote failures retire uncertain hook state before freeing mappings.",
+    "No new worker thread or asynchronous pointer to Host/Target owner was introduced. The exact inheritable host-process handle remains the helper owner."
+  ],
+  "checks": {
+    "retirement": {
+      "passed": 177,
+      "result": "/workspace/scratch/40121bc881b8/release-1.0.44/broker/retirement/result.json"
+    },
+    "lifecycle": {
+      "passed": 110,
+      "result": "/workspace/scratch/40121bc881b8/release-1.0.44/broker/lifecycle/receipt.json"
+    },
+    "host_retry": {
+      "passed": 30,
+      "result": "/workspace/scratch/40121bc881b8/release-1.0.44/broker/host-retry/result.json"
+    },
+    "total_controlled_checks": 317,
+    "diff_check": "passed"
+  },
+  "before_after": {
+    "baseline_recovery_call_virtual_ms": 4980,
+    "current_recovery_call_virtual_ms": 0,
+    "baseline_positive_wait_mutex_busy_probes": 2,
+    "current_positive_wait_mutex_busy_probes": 0,
+    "current_healthy_pulses": 200,
+    "description": "Identical supplied startup delay 2990ms and Install ACK delay 1990ms. Old production routes block one recovery pulse; new routes return pending and finish on subsequent calls."
+  },
+  "api_contract": {
+    "pending": "false + ERROR_IO_PENDING; immediately read GetLastError().",
+    "host_install": "A nonzero subscription can still be connecting; keep its feature mapping and let Host pulse complete. A zero + ERROR_IO_PENDING has admitted no new lease and can release the current caller mapping before a short retry.",
+    "deadline_policy": "Consume an already-ready matching ACK before considering timeout. Timeout applies when the response is still unavailable at/after the original deadline. Cancelled and changed intents never publish the previous ACK.",
+    "callers": "Assist/Cursor and hook_diagnostics pending adapters are owned by the parent/other agents. The optional Windows fixture has bounded 4ms polling outside Host locks."
+  },
+  "windows_fixture": {
+    "cross_compile": "passed",
+    "build_receipt": "/workspace/scratch/40121bc881b8/release-1.0.44/broker/windows-fixture-build.json",
+    "windows_executed": false
+  },
+  "limits": [
+    "Win32 process, event, mapping and hook-result boundaries are deterministic substitutes in the controlled tests; no actual Windows/game/multiplayer run was made by this agent.",
+    "Virtual 4980ms -> 0ms proves removal of explicit timeout waits from one pulse; it is not a measured wall-time or FPS improvement.",
+    "CreateProcess, mapping/handle APIs and TerminateProcess are still synchronous OS APIs. No absolute upper bound on their wall time is claimed.",
+    "Confirmed process exit is still required to close retained broker/mailbox ownership and admit a replacement. Kernel-level completion is not forced or assumed."
+  ]
+}

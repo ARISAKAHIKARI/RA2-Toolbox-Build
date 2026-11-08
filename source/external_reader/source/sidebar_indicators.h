@@ -14,13 +14,14 @@ template<class Read>bool moving(GameView<Read>&g,uint32_t object){
  // Drive4AFB80: next cell, then remaining destination vs current location.
  return !std::equal(empty.begin(),empty.end(),destination.begin())||(!std::equal(empty.begin(),empty.end(),destination.begin()+3)&&(destination[3]!=position[0]||destination[4]!=position[1]));
 }
-template<class Read>bool capture(Read read,uint32_t house,int frame,Sample&out){
+template<class Read>bool capture(Read read,uint32_t house,int frame,Sample&out,bool harvesters=true){
  GameView g(read);Sample next;next.frame=frame;uint32_t player=0;int before=-1;if(!read(0xA83D4C,&player,4)||player!=house||!read(0xA8ED84,&before,4)||before!=frame)return false;
  std::vector<uint32_t>objects,again;if(!g.vecChecked(0xA8EC78,objects))return false;std::set<uint32_t>present;std::vector<std::pair<uint32_t,uint32_t>>miners;
  for(auto p:objects){int kind=g.kind(p);if(kind<0)continue;uint32_t owner=0,type=0;int health=0;uint8_t alive=0,onMap=0,limbo=0;
   if(!read(p+0x21C,&owner,4)||!read(p+0x6C,&health,4)||!read(p+0x90,&alive,1)||!read(p+0x74,&onMap,1)||!read(p+0x81,&limbo,1))return false;
   if(owner!=house||health<=0||!alive)continue;type=g.type(p,kind);if(type<0x10000)return false;
   if(kind==3&&onMap&&!limbo){present.insert(type);next.buildings=true;}
+  if(!harvesters)continue;
   uint8_t harvester=0;uint32_t slave=0;if(kind==2&&!read(type+0xE0E,&harvester,1))return false;if(!read(p+0x2D8,&slave,4))return false;
   if(!harvester&&!slave)continue;
   // IsOnMap stays set for the lifetime of placed native objects; passengers

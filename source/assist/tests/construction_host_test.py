@@ -3,7 +3,9 @@ Geometry uses the same Layout as paint/hit-testing. Not a live game test.
 """
 from pathlib import Path
 import subprocess,tempfile,os
+from tactical_frame_sampling import function
 root=Path(__file__).resolve().parents[2]
+scope=function((root/'external_reader/source/process_reader.h').read_text(), 'class WorldFrameScope')+';'
 source=(root/'assist/source/construction_host.h').read_text()
 source='\n'.join(line for line in source.splitlines() if not line.startswith('#include'))
 a=source.index('static external::ReadSession paintReader;');b=source.index('static void service()',a)
@@ -15,10 +17,12 @@ prefix=r'''
 #include "native_badge_display.h"
 #include "../../shared/source/overlay_visibility.h"
 #include "command_delivery.h"
+#include "fixtures/tactical_frame/sealed_host_reader.h"
 #include <cassert>
 #include <iostream>
 #include <string>
 #include <filesystem>
+#include <set>
 using namespace assist;
 using DWORD=uint32_t;using HWND=void*;using HFONT=void*;using LRESULT=long;
 struct RECT{long left=0,top=0,right=0,bottom=0;};struct POINT{long x=0,y=0;};
@@ -37,10 +41,18 @@ static struct{bool constructionQueue=true;}extra;
 static struct{int typeCount=3,chat=0,renderStatus=1,width=2560,height=1440;struct{int kind=7,index=0,naval=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
 static bool techAllowed(const decltype(snap.types[0])&){return techWhitelist;}
 static delivery::Queue commandQueue;
-struct Reader{std::vector<uint8_t>bytes=std::vector<uint8_t>(0x1000000);uint32_t fail=0;
- bool readFresh(uint32_t p,void*out,size_t n){if(p<0x10000||p+n>bytes.size()||(fail&&p<=fail&&p+n>fail))return false;memcpy(out,bytes.data()+p,n);return true;}
+struct Reader:fixtureframe::SealedHostReader<Reader>{std::vector<uint8_t>bytes=std::vector<uint8_t>(0x1000000);std::set<uint32_t>pages;uint32_t fail=0;
+ bool readLive(uint32_t p,void*out,size_t n){if(p<0x10000||p+n>bytes.size()||(fail&&p<=fail&&p+n>fail))return false;memcpy(out,bytes.data()+p,n);return true;}
  bool imagePath(wchar_t*,DWORD*){return false;}
- template<class T>void put(uint32_t p,T v){memcpy(bytes.data()+p,&v,sizeof v);}
+ template<class T>void put(uint32_t p,T v){memcpy(bytes.data()+p,&v,sizeof v);for(uint32_t page=p&~4095u;page<uint64_t(p)+sizeof v;page+=4096)pages.insert(page);}
+ void capture(uint32_t epoch){
+  int frame=-1;uint32_t owner=0;if(!readLive(0xA8ED84,&frame,4)||frame<0){available.reset();return;}
+  if(available&&available->key.match==epoch&&available->key.frame==frame)return;
+  auto next=std::make_shared<worldframe::Snapshot>();worldframe::Key key{};key.match=epoch;key.frame=frame;next->reset(key);
+  auto read=[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);};for(uint32_t page:pages)next->prefetch(read,page,4096);
+  if(readLive(0xA83D4C,&owner,4)&&owner>=0x10000)next->prefetch(read,owner,0x5800);
+  assert(next->seal());available=std::move(next);
+ }
 }externalReader;
 namespace assist { namespace construction {struct PanelBuffer{void clear(){}};}}
 namespace um{struct IconCache{void open(const wchar_t*,const std::filesystem::path&){}};inline IconCache& sharedIconCache(){static IconCache c;return c;}}
@@ -61,21 +73,22 @@ static struct {void shutdown(){}}paintWorker;
 prefix+=r'''
 namespace nativekeyhost{static nativekeys::Bindings bindings;static uint8_t keys[256]{};static const nativekeys::Bindings&current(){return bindings;}static void down(uint8_t(&out)[256]){memcpy(out,keys,256);}}
 '''
+prefix+='namespace external {using ProcessReader=::Reader;'+scope+'}\n'
 suffix=r'''
 static constexpr uint32_t H=0x500000,C=0x510000,R=0x520000,T=0x600000,P=0x700000,F=0x710000;
 static void w(uint32_t p,int v){externalReader.put(p,v);}static void byte(uint32_t p,uint8_t v){externalReader.put(p,v);}
 static void list(uint32_t p,std::initializer_list<int> v){static uint32_t items=0x900000;w(p+4,items);w(p+8,v.size());w(p+16,v.size());for(int i:v){w(items,i);items+=4;}items+=32;}
 static void setup(){
- techMode=false;techWhitelist=true;buildreserve::reset();commandQueue.clear();soundRequests=0;externalReader.bytes.assign(0x1000000,0);externalReader.fail=0;extra.constructionQueue=true;focused=fresh=enabled=queueAccept=true;++match;++now;
+ techMode=false;techWhitelist=true;buildreserve::reset();commandQueue.clear();soundRequests=0;externalReader.bytes.assign(0x1000000,0);externalReader.pages.clear();externalReader.available.reset();externalReader.fail=0;extra.constructionQueue=true;focused=fresh=enabled=queueAccept=true;++match;++now;
  w(0xA8ED84,10);w(0xA83D4C,H);w(H+0x34,C);w(C+0xB4,0);w(C+0xB8,0);w(H+0x1D4,10);w(0x8871E0,R);
  list(0xA83C68,{T,T+0x2000,T+0x4000});list(R+0x358,{0});for(int g=1;g<6;++g)list(R+0x358+g*28,{});
  for(int i=0;i<3;++i){auto t=T+i*0x2000;snap.types[i].index=i;w(t+0x634,1);w(t+0x6CC,1);w(t+0xDA0,-1);w(t+0xDA4,-1);w(t+0xDF8,i);list(t+0x638,i==1?std::initializer_list<int>{-1}:i==2?std::initializer_list<int>{1}:std::initializer_list<int>{});list(t+0x654,{});}
  w(P+0x10,100);w(P+0x21C,H);w(P+0x6C,100);byte(P+0x74,1);byte(P+0x81,1);w(P+0x520,T);w(H+0x53BC,F);w(F+0x6C,H);w(F+0x58,P);
  w(0x87F7E8+0x539C,0);w(0x8A00A4,2560);w(0x8A00A8,1440);w(0x87F7E8+0x1544+84,1);w(0x87F7E8+0x1544+88,0);w(0x87F7E8+0x1544+92,7);
- now+=300;buildreserve::service();
+ now+=300;externalReader.capture(match);buildreserve::service();
 }
 static int choice(int index){for(int i=0;i<int(buildreserve::choices.size());++i)if(buildreserve::choices[i].index==index)return i;return -1;}
-static void tick(int ms=110,bool advance=true){now+=ms;if(advance)w(0xA8ED84,buildreserve::get<int>(0xA8ED84)+1);buildreserve::service();}
+static void tick(int ms=110,bool advance=true){now+=ms;if(advance)w(0xA8ED84,buildreserve::get<int>(0xA8ED84)+1);externalReader.capture(match);buildreserve::service();}
 static void place(){byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,3);for(int i=0;i<3;++i){w(0x87F7E8+0x1544+88+i*52,i);w(0x87F7E8+0x1544+92+i*52,7);}tick();assert(commandQueue.size==0);tick();}
 int main(){
  using namespace buildreserve;
@@ -98,12 +111,12 @@ int main(){
  for(int i=0;i<12;++i){result(-9,0,100,token);commandQueue.clear();tick(1100);assert(books[0].items==std::vector<int>({1})&&geometryReady&&choice(1)>=0);}
  setup();reserve(choice(1));externalReader.fail=P+0x74;for(int i=0;i<10;++i)tick();assert(books[0].items==std::vector<int>({1})&&commandQueue.size==0);externalReader.fail=0;
  setup();focused=false;reserve(choice(1));assert(books[0].items.empty());focused=true;queueAccept=false;reserve(choice(1));place();assert(!books[0].stage&&commandQueue.size==0);
- setup();externalReader.fail=T+0x2000+0x638+16;refreshChoices();assert(choice(1)<0&&choice(0)<0);externalReader.fail=0;
+ setup();externalReader.fail=T+0x2000+0x638+16;refreshChoices();assert(choice(1)>=0&&choice(0)<0);externalReader.fail=0; // incomplete frame retains the last complete choices
  // Native -1 sentinels, spawned country parent and stolen tech offsets.
  setup();w(T+0x2000+0xDA4,1);refreshChoices();assert(choice(1)<0);w(T+0x2000+0xDA4,-1);w(C+0xB8,4);refreshChoices();assert(choice(1)>=0);
  byte(T+0x2000+0xD9B,1);refreshChoices();assert(choice(1)<0);byte(H+0x2BC,1);refreshChoices();assert(choice(1)>=0);
  memcpy(externalReader.bytes.data()+C+0x98,"Americans",10);memcpy(externalReader.bytes.data()+C+0x24,"Americans",10);list(0xA83C98,{C});refreshChoices();assert(choice(1)>=0);
- construction::Layout l;for(int pct:{50,75,100,125,150,200,250})for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));l.content(5,50);assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.y(construction::StackTop+i*construction::StackStep+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.y(l.headerHeight()+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.y(l.headerHeight()+4),0,50)==-1);}
+ construction::Layout l;for(int pct:{50,75,100,125,150,200,250})for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));l.content(5,50);assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.pointY(construction::StackTop+i*construction::StackStep+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.pointY(l.headerHeight()+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.pointY(l.headerHeight()+4),0,50)==-1);}
 
  // Regression: every reservation category, not only unavailable future types.
  for(int tab=0;tab<2;++tab)for(bool future:{false,true}){
@@ -164,15 +177,15 @@ int main(){
   assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));l.content(q,candidates);
   assert(l.top()+l.height()<=sizes[3]&&l.left()+l.width()<=sizes[2]);
   assert(l.rows<=6&&l.rows<=(candidates+1)/2&&((l.rows==0)==(candidates==0)));
-  assert(l.height()==l.y(l.headerHeight()+l.rows*66));assert(l.headerHeight()==l.stackBottom()+construction::SectionGap);assert(l.choiceAt(l.x(36),l.y(l.headerHeight()-5),0,candidates)==-1);
-  for(int i=0;i<q;++i)assert(l.queueAt(l.x(10),l.y(24+i*24+9),q)==i);
-  for(int i=0;i<std::min(candidates,l.rows*2);++i)assert(l.choiceAt(l.x(i%2*72+36),l.y(l.headerHeight()+i/2*66+33),0,candidates)==i);
+  assert(l.height()==l.pointY(l.headerHeight()+l.rows*66));assert(l.headerHeight()==l.stackBottom()+construction::SectionGap);assert(l.choiceAt(l.x(36),l.pointY(l.headerHeight()-5),0,candidates)==-1);
+  for(int i=0;i<q;++i)assert(l.queueAt(l.x(10),l.pointY(24+i*24+9),q)==i);
+  for(int i=0;i<std::min(candidates,l.rows*2);++i)assert(l.choiceAt(l.x(i%2*72+36),l.pointY(l.headerHeight()+i/2*66+33),0,candidates)==i);
   assert(l.choiceAt(l.x(36),l.height(),0,candidates)==-1);
  }
  setup();reserve(choice(1));int addedSound=soundRequests;removeTop();assert(soundRequests==addedSound+1);removeTop();assert(soundRequests==addedSound+1);
  reserve(choice(1));reserve(choice(1));addedSound=soundRequests;removeTop(true);assert(soundRequests==addedSound+1); // clear once, not once per item
  reserve(choice(1));place();commandQueue.clear();addedSound=soundRequests;removeItem(0,0);assert(soundRequests==addedSound); // submitted head cannot be removed
- setup();assert(panelAlpha==construction::PanelOpacity&&layout.rows==1&&layout.queueCount==0&&layout.height()==layout.y(132));
+ setup();assert(panelAlpha==construction::PanelOpacity&&layout.rows==1&&layout.queueCount==0&&layout.height()==layout.pointY(132));
  int shortHeight=layout.height();reserve(choice(1));assert(soundRequests==1&&layout.queueCount==1&&layout.height()>shortHeight);
  reserveChoice({0,0,0,T,false},true);assert(soundRequests==1); // original sidebar owns its sound
  focused=false;reserve(choice(1));assert(soundRequests==1);focused=true;
@@ -275,8 +288,10 @@ int main(){
  std::cout<<"PASS: actual host service FIFO32/128/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions\n";
 }
 '''
+suffix=suffix.replace('refreshChoices();','fixtureRefreshChoices();')
+shim='\nstatic void fixtureRefreshChoices(){int frame=buildreserve::get<int>(0xA8ED84);externalReader.put(0xA8ED84,frame+1);externalReader.capture(match);buildreserve::refreshChoices();}\n'
 with tempfile.TemporaryDirectory() as tmp:
-    cpp=Path(tmp)/'host.cpp';exe=Path(tmp)/'host';cpp.write_text(prefix+source+suffix)
-    subprocess.run(['g++','-std=c++17','-O1','-g','-fsanitize=address,undefined','-I'+str(root/'assist/source'),str(cpp),'-o',str(exe)],check=True)
+    cpp=Path(tmp)/'host.cpp';exe=Path(tmp)/'host';cpp.write_text(prefix+source+shim+suffix)
+    subprocess.run(['g++','-std=c++17','-O1','-g','-fsanitize=address,undefined','-I'+str(root/'assist/source'),'-I'+str(root/'assist/tests'),str(cpp),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True,env=dict(os.environ,ASAN_OPTIONS="detect_leaks=0"))
 

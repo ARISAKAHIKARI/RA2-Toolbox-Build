@@ -12,7 +12,7 @@ extern "C" {unsigned fixtureCode=0;int fixtureResult=-1;}
 static volatile unsigned*noAccess=nullptr;
 static unsigned captureDepth=0,begins=0,ends=0,reports=0,lastBoundary=0,lastCode=0,globalDisables=0,localFailures=0;
 static bool actualAccess=false,faultEnabled=true;
-static unsigned routeCalls[6]={};
+static unsigned routeCalls[7]={};
 static void fault(){if(!faultEnabled)return;if(actualAccess)*noAccess=5;else RaiseException(fixtureCode,0,0,nullptr);}
 extern "C" unsigned BeginAssistCapture(){++begins;SetLastError(0x1111);return ++captureDepth;}
 extern "C" void EndAssistCapture(unsigned token){assert(token==captureDepth&&captureDepth);--captureDepth;++ends;SetLastError(0x2222);}
@@ -26,6 +26,7 @@ extern "C" void AssistSidebarViewFailed(){++localFailures;}
 extern "C" int AssistTechUiParameter(void*p,unsigned tag){assert(p==(void*)8&&tag==9);++routeCalls[4];fault();return 11;}
 extern "C" void CaptureCursorResource(){++routeCalls[5];fault();}
 extern "C" void CursorResourceFault(){++localFailures;}
+extern "C" int AssistControlWorldEligible(){++routeCalls[6];fault();return 1;}
 // Unused entrypoint callbacks required to link the complete product guard.
 // None is invoked by these routing tests; there is no engine/game fixture.
 extern "C" int AssistNetworkSend(unsigned,unsigned,int,int,int){assert(false);return 0;}
@@ -76,15 +77,15 @@ int main(){
  const auto nextCall=[&](unsigned route){
   const auto beforeCalls=routeCalls[route],beforeReports=reports,beforeFailures=localFailures;
   faultEnabled=false;SetLastError(0x6789);assert(FixtureOuter(route)==0);faultEnabled=true;
-  assert(routeCalls[route]==beforeCalls+1&&fixtureResult==(route==0?0:route==1?8:route==2?9:route==3?10:route==4?11:12));
+  assert(routeCalls[route]==beforeCalls+1&&fixtureResult==(route==0?0:route==1?8:route==2?9:route==3?10:route==4?11:route==6?1:12));
   assert(reports==beforeReports&&localFailures==beforeFailures&&globalDisables==0&&captureDepth==0&&begins==ends);
-  if(route==2||route==3)assert(GetLastError()==0x6789);++reentries;
+  if(route==2||route==3||route==4||route==6)assert(GetLastError()==0x6789);++reentries;
  };
- for(unsigned route=0;route<6;++route){
+ for(unsigned route=0;route<7;++route){
   for(unsigned code:{0x80000003u,0x80000004u,0x40010005u,0x40010008u,0x80000026u,0xe06d7363u,0xe0424242u}){
    fixtureCode=code;actualAccess=false;const auto beforeReports=reports,beforeFailures=localFailures;
    SetLastError(0x789a);assert(FixtureOuter(route)==1);assert(reports==beforeReports&&localFailures==beforeFailures&&globalDisables==0&&captureDepth==0&&begins==ends);
-   if(route==2||route==3)assert(GetLastError()==0x789a);++checks;nextCall(route);
+   if(route==2||route==3||route==4||route==6)assert(GetLastError()==0x789a);++checks;nextCall(route);
   }
  }
  // The exact global boundaries report a genuine native memory fault, then
@@ -105,6 +106,15 @@ int main(){
  fixtureCode=EXCEPTION_ACCESS_VIOLATION;actualAccess=true;
  {const auto beforeReports=reports,beforeFailures=localFailures;
   assert(FixtureOuter(4)==0&&fixtureResult==0&&reports==beforeReports&&localFailures==beforeFailures&&globalDisables==0);++checks;nextCall(4);}
+ // Cold control eligibility uses the same production no-report boundary.
+ // Actual AV and a raised in-page code both return false, preserve LastError,
+ // and do not latch a feature/global fault. Other codes forwarded above.
+ for(unsigned code:{0xc0000005u,0xc0000006u}){
+  fixtureCode=code;actualAccess=code==0xc0000005u;
+  const auto beforeReports=reports,beforeFailures=localFailures;
+  SetLastError(0xabcd);assert(FixtureOuter(6)==0&&fixtureResult==0);
+  assert(reports==beforeReports&&localFailures==beforeFailures&&globalDisables==0&&GetLastError()==0xabcd);++checks;nextCall(6);
+ }
  // Cursor resource capture has a defined local access-failure fallback.
  // It must not intercept debug/control exceptions (tested above).
  fixtureCode=EXCEPTION_ACCESS_VIOLATION;actualAccess=true;

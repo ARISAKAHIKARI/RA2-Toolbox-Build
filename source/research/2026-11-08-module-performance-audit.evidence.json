@@ -1,0 +1,417 @@
+{
+  "schema": "ra2.module-audit-evidence.v1",
+  "version": "1.0.44-pre.5",
+  "baseline_commit": "a4450ee784ad7844cacf848f1319c55e10aa8c23",
+  "evidence_level": "Portable production-code fixtures, controlled native/Win32 boundaries, Windows x64 compile/link only, and independent source review.",
+  "production_source_sha256": {
+    "source/assist/source/reverse_dodge_bridge.h": "1428c86d0b01d6287b2380b40916e30c469d74d49642cb8d049d2feadd06916f",
+    "source/assist/source/dodge_bridge.h": "d251be34caad0f481a7ca39279e724a704202894be43c19bf80435ae74052dc9",
+    "source/assist/source/reverse_dodge.h": "bfba33db695041b59d5282b11592ded3f4a9e002d34ac5ced574b986095dd3f1",
+    "source/assist/source/dodge_compute.h": "1f37cce7426c49268f8a9ed8a400b0941c4bfecd3379e8312e2253ccd9ff76b5",
+    "source/shared/source/world_frame.h": "054c5879835da23b503b9f1d353fc21935193a3d5df440ee2b664e5b2da0d9ee",
+    "source/shared/source/world_frame_capture.h": "3141e63d3723fc6226187f0156ad3191b31c7e6b569b3019cbb7f03ce38ecbef",
+    "source/shared/source/world_frame_transport.h": "e9ec387d4ffc82417e368a1305051df6436f3c674ea6516049d2288942897009",
+    "source/assist/source/world_frame_runtime.h": "d7caddd99be74101f3f4acb443e51f8c5a3f1b38548788d9d84c523cb9fd46f4",
+    "source/assist/source/world_lifecycle.h": "c3bee1691c0538aff299e75d3b197661ef1d3b4484a29961b11e37ecd512e7c3",
+    "source/external_reader/source/process_reader.h": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1",
+    "source/external_reader/source/process_connection.h": "b1ca28c51de85e83f1bbc98b0df0252a0667e0f7485790da854a79fb0591913e",
+    "source/external_reader/source/read_page_budget.h": "5efbf3e5a3922fa16d0e73e0e32ae3507d16b283bf3a524fa5c0a48c1a5addbb",
+    "source/external_reader/source/radar_scene.h": "5594ba7ca7b2608130a64286c35f3cf71cc7486f58b1e0ae77a854877e40b87a",
+    "source/external_reader/source/scene_lighting.h": "d558f86a92b69667cf5cfbdbace7e7e920a2e9be74a3efd01d7413a2306745d0",
+    "source/external_reader/source/shared_reader.h": "c506270e566d1d3144877e677f0915e8908059b19d86580a6522a85fdf6b93aa",
+    "source/external_reader/source/camera_assets.h": "eb76b674a271d1bf67b27f7aa653ee622049b88e697db69b2026d5f58b461c5f",
+    "source/assist/source/watch_read_view.h": "f75d443531135ed4384ee9fd29ac1ba8761f85ac1e0e6abd94852a8a757e2fd5",
+    "source/third_party/xbrz/xbrz.cpp": "882346f5f6703f286c55d4089af7a8f63140fe13a133318e4be64891689bee0c",
+    "source/shared/source/async_ini_store.h": "83eae8fae4b162c45c0f402ba8340fca457dbaf0452fc42d5c77a483270705a4",
+    "source/assist/source/main.cpp": "d846c08efcbd64aef9c6bd894050c824617effb779e6bb26ddd4fa93d27e3f57"
+  },
+  "test_source_sha256": {
+    "source/assist/tests/reverse_dodge_hotpath.cpp": "10be05638663043054f16b61e5dd11d065252c8736fde2881a3f461033e80e28",
+    "source/assist/tests/reverse_dodge_hotpath.py": "6521240e218e2a4b2979bc51e0a28f5846e38289cd1b54499f8c2c351a41afbf",
+    "source/assist/tests/world_frame_core.cpp": "3e7059d7172ab9abbfe6c3ff57c59f40d4ccf9f995348e7e052d414fa26666e1",
+    "source/assist/tests/world_frame_subscriptions.cpp": "6132a597a1cef89a92fde97d6afc6583825a51f21b8f6223f210acb2c9eb7ccb",
+    "source/assist/tests/world_frame_subscriptions.py": "35d3aa5aba3c4f66f8c5e32fa4397ee71555f8d2badfb39be23dca0949bcc328",
+    "source/tests/winmock/windows.h": "44fc1239f939a94c7e43b9ad39f787312399a3e460fe3df9a265e161ff1f91ed",
+    "source/assist/tests/world_frame_core_test.py": "2ee49da359b7d77f4c8decc816c28e19065975a8c680caac093fe28dba63f13d",
+    "source/assist/tests/terrain_sealed_presentation.cpp": "de75c5a91bd94b82c177cbd2cf1eff5946453616593ad8f1def2f410ed58e9ad",
+    "source/assist/tests/scene_lighting.cpp": "2a7f24766cccaa5ca7a76ac296220318593e9880deb585df0523b5b778cfdd21",
+    "source/suite/tests/assist_section_save_test.py": "b2505a3c1535bf210081af096aad80bedbd56a0b874c48ad44b966f1d096727b",
+    "source/suite/tests/async_ini_store_test.cpp": "53b420efe6f0463adea01503150cab57e8b547fd90cc52fb94ce78dc793a046f"
+  },
+  "focused_checks": [
+    {
+      "name": "reverse-dodge-handled-projectile-hotpath",
+      "receipt": "/workspace/scratch/47fa6d10b49d/audit-round5/reverse-hotpath/final/result.json",
+      "receipt_sha256": "e277308459e030815ce88952b3dc603b1360c2a4aaf1367c5600a7bfc2fab931",
+      "execution_mode": "portable-functional-controlled-native-boundaries",
+      "compile_only": false
+    },
+    {
+      "name": "finite-world-frame-subscriptions",
+      "receipt": "/workspace/scratch/47fa6d10b49d/audit-round5/subscriptions/after-final/result.json",
+      "receipt_sha256": "a1d358aa9669ac0c07d6632fc668d83c98b411ce49f852497f7106d2336cf3c1",
+      "execution_mode": "portable-functional-with-win32-boundary-mocks",
+      "compile_only": false
+    },
+    {
+      "name": "world-frame-complete-core-regression",
+      "receipt": "/workspace/scratch/47fa6d10b49d/audit-round5/subscriptions/core-regression-receipt.json",
+      "receipt_sha256": "3875240974852e07f36eea36adad21a90f421198ec5b33be0350e486d5dbeeca",
+      "execution_mode": "portable-functional-with-win32-boundary-mocks",
+      "compile_only": false
+    },
+    {
+      "name": "sealed-terrain-and-palette-publication",
+      "receipt": "/workspace/scratch/47fa6d10b49d/audit-round5/render-result.json",
+      "receipt_sha256": "205525b3ab58ad3d1de6c3af93aff062c2975012033713eeb321014a99dee74e",
+      "execution_mode": "portable-functional-synthetic-assets-and-sealed-memory",
+      "compile_only": false
+    },
+    {
+      "name": "existing-scene-lighting-regression",
+      "receipt": "/workspace/scratch/47fa6d10b49d/audit-round5/render-result.json",
+      "receipt_sha256": "205525b3ab58ad3d1de6c3af93aff062c2975012033713eeb321014a99dee74e",
+      "execution_mode": "portable-functional",
+      "compile_only": false
+    },
+    {
+      "name": "complete-section-save-failure-and-retry",
+      "receipt": "/workspace/scratch/47fa6d10b49d/audit-round5/section-after/receipt.json",
+      "receipt_sha256": "e29ad38f33075b902237350b4c516f4034505326737a4f9dbac05c0ac64e3416",
+      "execution_mode": "portable-functional-controlled-native-boundaries",
+      "compile_only": false
+    },
+    {
+      "name": "async-ini-store-portable",
+      "receipt": "/workspace/scratch/47fa6d10b49d/audit-round5/store-validation/portable-receipt.json",
+      "receipt_sha256": "f8b57ea9363643ffc5fb0d0261a0142b0c754e88741939680f8b736523847888",
+      "execution_mode": "portable-functional",
+      "compile_only": false
+    },
+    {
+      "name": "async-ini-store-windows-x64",
+      "receipt": "/workspace/scratch/47fa6d10b49d/audit-round5/store-validation/windows-x64-receipt.json",
+      "receipt_sha256": "b77665e856c27a51e95121328f85d5f5f6f2c8c7ae029528ade20ecc6356ac7a",
+      "execution_mode": "windows-x64-compile-link-only",
+      "compile_only": true
+    }
+  ],
+  "verification_evidence": {
+    "reverse_dodge": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/reverse-hotpath/final/result.json",
+      "sha256": "e277308459e030815ce88952b3dc603b1360c2a4aaf1367c5600a7bfc2fab931",
+      "bytes": 3957
+    },
+    "subscriptions": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/subscriptions/after-final/result.json",
+      "sha256": "a1d358aa9669ac0c07d6632fc668d83c98b411ce49f852497f7106d2336cf3c1",
+      "bytes": 3298
+    },
+    "terrain_palette": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/render-result.json",
+      "sha256": "205525b3ab58ad3d1de6c3af93aff062c2975012033713eeb321014a99dee74e",
+      "bytes": 23631
+    },
+    "settings_sections": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/section-after/receipt.json",
+      "sha256": "e29ad38f33075b902237350b4c516f4034505326737a4f9dbac05c0ac64e3416",
+      "bytes": 1739
+    },
+    "readonly_reviews": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/review/read-only-reviews.json",
+      "sha256": "d674b950f9aa26240aa7ada6aff1979e2feaa92fec075583e1cf93db10a5a731",
+      "bytes": 1874
+    },
+    "async_store_core": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/store-validation/portable-receipt.json",
+      "sha256": "f8b57ea9363643ffc5fb0d0261a0142b0c754e88741939680f8b736523847888",
+      "bytes": 2862
+    },
+    "async_store_windows": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/store-validation/windows-x64-receipt.json",
+      "sha256": "b77665e856c27a51e95121328f85d5f5f6f2c8c7ae029528ade20ecc6356ac7a",
+      "bytes": 2443
+    }
+  },
+  "validation_input_sha256": "a6a3d40b298baf8230a4a37c0db71e8a05921b27b8f4dd2c0ddfdd4614178f33",
+  "supporting_reports": {
+    "host-findings.md": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/host-findings.md",
+      "sha256": "d049d5bacb588e4439b3ebef199653d4b2fe387935fdc9753c1be5fa8f3ad73a",
+      "bytes": 12498
+    },
+    "runtime-findings.md": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/runtime-findings.md",
+      "sha256": "59df73c71c2062cc83e80c4933aca5160068f8b67fd77d04772a57f0588cddb5",
+      "bytes": 11491
+    },
+    "subscriptions-findings.md": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/subscriptions-findings.md",
+      "sha256": "192a5fbfb7b8634732c743afa1a7033f39c53929a6928eff353c343b41fccf79",
+      "bytes": 3971
+    },
+    "small-modules-findings.md": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/small-modules-findings.md",
+      "sha256": "068072d1970e77d11f73f89ecbd5776f9dbb2e5dee987596202a3fc61a414672",
+      "bytes": 7358
+    },
+    "render-findings.md": {
+      "path": "/workspace/scratch/47fa6d10b49d/audit-round5/render-findings.md",
+      "sha256": "0a916d9a968b6f74e31226c816e6e4b815d69f4e15bdaf68f875941988c5a23a",
+      "bytes": 10468
+    }
+  },
+  "results": {
+    "reverse_dodge_before": {
+      "pass": true,
+      "checks": 257,
+      "cases": 18,
+      "semantic_digest": 2955511093,
+      "first_roster_visits": 32768,
+      "repeated_roster_visits": 3244032,
+      "first_reads": 66818,
+      "repeated_reads": 6576966,
+      "stress_actor_attempts": 64,
+      "continuation_passes": 100
+    },
+    "reverse_dodge_after": {
+      "pass": true,
+      "checks": 257,
+      "cases": 18,
+      "semantic_digest": 2955511093,
+      "first_roster_visits": 32768,
+      "repeated_roster_visits": 0,
+      "first_reads": 66818,
+      "repeated_reads": 198,
+      "stress_actor_attempts": 64,
+      "continuation_passes": 100
+    },
+    "subscriptions_before": {
+      "new_contract_passed": false,
+      "active_expired_pages": 256,
+      "active_extra_capture_reads": 256,
+      "base_capture_reads": 28,
+      "timed_out_pages": 256,
+      "inactive_payload_allocations": 1,
+      "inactive_publication": true,
+      "resumed_old_pages": 256,
+      "fresh_renewal_pages": 2,
+      "redundant_demand_publications": 50,
+      "reopened_old_pages": 1,
+      "wrap_expired_pages": 1,
+      "paused_runtime_resumed": true,
+      "resume_live_reads": 0,
+      "repeated_same_frame_exports": 0,
+      "checks": 368,
+      "windows_executed": false,
+      "game_executed": false
+    },
+    "subscriptions_after": {
+      "new_contract_passed": true,
+      "active_expired_pages": 0,
+      "active_extra_capture_reads": 0,
+      "base_capture_reads": 28,
+      "timed_out_pages": 0,
+      "inactive_payload_allocations": 0,
+      "inactive_publication": false,
+      "resumed_old_pages": 0,
+      "fresh_renewal_pages": 2,
+      "redundant_demand_publications": 0,
+      "reopened_old_pages": 0,
+      "wrap_expired_pages": 0,
+      "paused_runtime_resumed": true,
+      "resume_live_reads": 0,
+      "repeated_same_frame_exports": 0,
+      "checks": 368,
+      "windows_executed": false,
+      "game_executed": false
+    },
+    "world_core_regression": {
+      "portable_core_checks": 74634,
+      "portable_win32_boundary_checks": 75357
+    },
+    "terrain_palette": {
+      "stable_same_token_whole_map": {
+        "before": {
+          "cells": 10000,
+          "repetitions": 8,
+          "terrain_light_cells_per_draw": 10000,
+          "terrain_geometry_checks_per_draw": 0,
+          "read_interface_calls_per_draw": 40022,
+          "terrain_mean_ms": 3.05218,
+          "complete_output_fnv64": "1e04c69969630335",
+          "palette": {
+            "expected_hex": "07e0",
+            "actual_hex": "ffff",
+            "world_frame_complete": true
+          }
+        },
+        "after": {
+          "cells": 10000,
+          "repetitions": 8,
+          "terrain_light_cells_per_draw": 0,
+          "terrain_geometry_checks_per_draw": 0,
+          "read_interface_calls_per_draw": 10,
+          "terrain_mean_ms": 0.009003,
+          "complete_output_fnv64": "1e04c69969630335",
+          "palette": {
+            "expected_hex": "07e0",
+            "actual_hex": "07e0",
+            "world_frame_complete": true
+          }
+        },
+        "stable_counts_match_expected": true,
+        "read_metric_is_interface_calls_not_ReadProcessMemory": true,
+        "within_each_run_all_8_pixel_vectors_equal_initial_exactly": true,
+        "cross_version_complete_output_fnv64_equal": true,
+        "cross_version_rgba_buffers_serialized_and_byte_compared": false
+      },
+      "palette_new_serial_same_game_frame": {
+        "engine_frame": 1,
+        "serial_before": 1,
+        "serial_after": 2,
+        "same_scenario_converter_and_row_addresses": true,
+        "new_row_value_hex": "07e0",
+        "baseline_returned_hex": "ffff",
+        "after_returned_hex": "07e0",
+        "baseline_world_frame_complete": true,
+        "after_world_frame_complete": true
+      },
+      "after_only_executed_assertions": [
+        {
+          "case": "new_serial_palette_pixels",
+          "assertion": "completed output differs from original pixels after palette row content changes; reader complete"
+        },
+        {
+          "case": "missing_palette_row",
+          "assertion": "new sealed token missing row bytes yields no table and incomplete reader; two render attempts continue to evaluate terrain and remain incomplete"
+        },
+        {
+          "case": "missing_row_recovery",
+          "assertion": "new complete token recovers; following stable draw has zero terrain-light evaluations"
+        },
+        {
+          "case": "match_change",
+          "assertion": "match 1 to 2, serial reset to 1, same engine frame resumes terrain work and settles complete"
+        },
+        {
+          "case": "terrain_owner_and_height_change_together",
+          "assertion": "new Terrain shared owner and one cell level 2 resume terrain work and settle complete; owner and height were not isolated into separate cases"
+        },
+        {
+          "case": "asset_resource_revision",
+          "assertion": "Assets epoch increment resumes terrain work and settles complete"
+        },
+        {
+          "case": "terrain_palette",
+          "assertion": "paletteEpoch increment resumes terrain work and settles complete"
+        },
+        {
+          "case": "precision",
+          "assertion": "highColorPrecision false to true resumes terrain work and settles"
+        },
+        {
+          "case": "prepared_world_same_crop",
+          "assertion": "after normal incremental warmup, eight same-token 600x300 crop preparations yield zero light and geometry evaluations, with preparedWorld present and reader complete"
+        },
+        {
+          "case": "camera_crop_change",
+          "assertion": "crop x shifted by 128 resumes geometry checks"
+        },
+        {
+          "case": "generic_live_callback_with_frame_token",
+          "assertion": "unmarked LiveRead callback still performs 10000 terrain-light evaluations, and next same-frame live cell intensity change performs terrain work; this is not concrete SharedReadView without a bound Token"
+        }
+      ],
+      "scene_lighting_regression": {
+        "exit_code": 0,
+        "pass_lines": [
+          "PASS ambient, normal/tinted converter, map changes, bounded reads, owner/custom vs terrain RGB, animation source/NormalLight, opaque final pixels and live lighting updates",
+          "PASS ore-mine global converter/object brightness, neutral plain-converter tint, native zero intensity and independent ISO tree lighting",
+          "PASS independent signed ExtraUnitLight/ExtraInfantryLight/ExtraAircraftLight, voxel/SHP Unit dispatch, final pixel brightness, failed/racing rules fallback and unrelated-class isolation"
+        ],
+        "scope": "ambient/normal/tinted converter; map changes; bounded reads; owner/custom versus terrain; animation/NormalLight; opaque final pixels; ore converter/intensity; signed per-class extra light; failed/racing reads and unrelated-class isolation",
+        "before_regression_rerun": false
+      }
+    },
+    "settings_sections": {
+      "before": {
+        "section_api_calls": 1,
+        "section_api_calls_on_owner": 1,
+        "admitted": false,
+        "failed_intent_visible": false,
+        "close_gate_open_after_failure": true,
+        "explicit_retry_admitted": true,
+        "complete_section_persisted_after_retry": false,
+        "error_cleared_after_retry": true,
+        "windows_executed": false,
+        "label": "baseline",
+        "section_alias_enabled": false,
+        "source_sha256": {
+          "shared/source/async_ini_store.h": "d6e7b989f3e5a37f5632489cb4fa8d56a715d8980564d0231ce987d6cc918f41",
+          "assist/source/main.cpp": "0000654ac95a49d364977931fa7b6edb995d9c7af069e2cd14f86627f73958d0"
+        }
+      },
+      "after": {
+        "section_api_calls": 2,
+        "section_api_calls_on_owner": 0,
+        "admitted": true,
+        "failed_intent_visible": true,
+        "close_gate_open_after_failure": false,
+        "explicit_retry_admitted": true,
+        "complete_section_persisted_after_retry": true,
+        "error_cleared_after_retry": true,
+        "windows_executed": false,
+        "label": "current",
+        "section_alias_enabled": true,
+        "source_sha256": {
+          "shared/source/async_ini_store.h": "83eae8fae4b162c45c0f402ba8340fca457dbaf0452fc42d5c77a483270705a4",
+          "assist/source/main.cpp": "d846c08efcbd64aef9c6bd894050c824617effb779e6bb26ddd4fa93d27e3f57"
+        }
+      }
+    }
+  },
+  "limitations": [
+    "No Windows process, hardware breakpoint, game, GPU/visual/FPS or multiplayer execution in this collection.",
+    "Seven focused groups execute portable production code/fixtures; the Windows x64 Store group is compile/link only. Win32 boundary mocks are Linux executions.",
+    "Reverse-dodge fixtures control synthetic memory and the final native actor boundary; nativeMission was source-reviewed, not executed in a game.",
+    "Renderer before mode stops after the initial stable-image checks and palette defect. Recovery/invalidation assertions run only after; cross-process images are compared by FNV64, not serialized RGBA byte comparison.",
+    "Renderer read counts are interface calls, not ReadProcessMemory counts or FPS. Exact reveal and unbound concrete SharedReadView cases are source-reviewed, not executed by the renderer fixture.",
+    "Section-save failure is controlled. Full Win32 close flow, actual file locks/ACL and Windows native I/O are not executed.",
+    "Core regression and full Store runs have explicit post-execution frozen-source attestations. Store log files are transcripts of observed tool output, not contemporaneous redirected raw logs. No execution is invented or rerun by aggregation.",
+    "The ordinary 199-key receipt binds an older Store header and is excluded from final verification; earlier development/baseline-check and historical render timing logs are not focused final checks.",
+    "Independent read-only reviews are supporting evidence and are not counted as additional executed tests."
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "fps_measured": false,
+  "research": {
+    "question": "Audit feature modules and function points for material performance and correctness defects.",
+    "supported_exe_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+    "new_private_exe_or_dump_access": false,
+    "new_game_addresses_or_abi": false,
+    "note_path": "source/research/2026-11-08-module-performance-audit.md",
+    "note_sha256": "0a3aabe769c4dc648edf43c540ca233530ecf4e6404de62cf488fd2c05977945",
+    "confirmed_categories": [
+      "handled reverse-dodge projectile rescanning",
+      "stale world-page membership and timed-out publication",
+      "repeat terrain validation for identical sealed Token",
+      "palette cache missing raw publication identity",
+      "whole-section persistence bypassing async error/retry/close ownership"
+    ],
+    "unquantified_source_candidates": [
+      "smart-unload roster history scans",
+      "repair result/input nested membership checks",
+      "broker lifecycle lock-held waits",
+      "no-channel frame diagnostic state reads and discovery polling"
+    ],
+    "rejected_shortcuts": [
+      "skip all work for an entire game frame",
+      "live fallback for missing sealed data",
+      "treat a game frame number as raw publication identity",
+      "count historical or source-only cases as final executed tests"
+    ],
+    "final_build_identity": "Bound after this source freeze by final build-provenance.json, focused-validation.json and release-manifest.json."
+  }
+}

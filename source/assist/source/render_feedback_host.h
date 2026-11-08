@@ -34,6 +34,8 @@ static bool externalCursor(){
 }
 template<class F>static auto independentLasers(const F&f,int)->decltype(f.effects.independentLasers,bool()){return f.effects.independentLasers;}
 template<class F>static bool independentLasers(const F&,long){return false;}
+template<class F>static auto sourceFrame(const F&f,int)->decltype(f.world->state.sourceFrame){return f.world?f.world->state.sourceFrame:worldframe::Token{};}
+template<class F>static worldframe::Token sourceFrame(const F&,long){return {};}
 static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int left,int top,std::vector<overlaycompositor::Surface>&layers){
  struct NativeFailureGuard {
   bool hadCutouts=false,complete=false;
@@ -49,33 +51,42 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
   selectionPixels.reset();oldPrimitives.clear();oldStrokes.clear();nativeCutouts.reset();
  }
  selectionContext=r.context;
- auto read=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};
+ const auto source=sourceFrame(*scene,0);
+ if constexpr(external::radar::HasWorldFrame<std::decay_t<decltype(externalReader)>>::value)if(!source)return false;
+ external::radar::FrameScope worldScope(externalReader,r.match,source,worldframe::Base|worldframe::Passengers);if(!worldScope)return false;
+ auto fresh=[](uint32_t p,void*out,size_t n){return external::radar::liveRead(externalReader,p,out,n);};
+ external::worldui::WorldRead<std::decay_t<decltype(externalReader)>> world{&externalReader};
  external::mainview::View before;
- if(!nativeviewhost::sample(shared,read,before)){unsafeView=unsafeWorld=true;return false;}
+ if(!nativeviewhost::sample(shared,fresh,before)){unsafeView=unsafeWorld=true;return false;}
  if(!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame){unsafeView=unsafeWorld=true;return false;}
+ if(source&&(source->key.scenario!=before.scenario||source->key.house!=before.house||before.frame<source->key.frame||
+    (before.frame!=source->key.frame&&uint32_t(GetTickCount()-source->key.tick)>150))){unsafeView=unsafeWorld=true;return false;}
+ external::worldui::Read read(world,fresh);if(!read.begin(scene->objects))return false;
+ auto sampledView=r.view;if(source)sampledView.frame=source->key.frame;
  nf::Band band;std::vector<nf::Selected> selected;
- const bool bandOK=nf::band(read,r.view.tactical,band);
+ const bool bandOK=nf::band(fresh,r.view.tactical,band);
  const bool selectionOK=nf::selected(read,scene->objects,selected);
  std::vector<nf::Stroke> strokes;std::vector<nf::Rect> cutouts;
- const bool ordersOK=nf::actionLines(read,r.view,r.width,r.height,strokes);
+ const bool ordersOK=nf::actionLines(read,sampledView,r.width,r.height,strokes);
  const bool nativeAligned=external::mainview::sameViewport(before,r.view);
- const bool placementOK=!nativeAligned||foundationStencil.capture(read,r.view,r.width,r.height,cutouts);
- const bool effectsOK=!nativeAligned||((!r.profile.lasers||independentLasers(*scene,0)||external::nativeeffects::beams(read,r.view,r.width,r.height,cutouts))&&
+ const bool placementOK=!nativeAligned||foundationStencil.capture(world,fresh,sampledView,r.width,r.height,cutouts);
+ const bool nativeEffectsAligned=nativeAligned&&(!source||source->key.frame==before.frame);
+ const bool effectsOK=!nativeEffectsAligned||((!r.profile.lasers||independentLasers(*scene,0)||external::nativeeffects::beams(world,sampledView,r.width,r.height,cutouts))&&
   external::nativeeffects::mergeCutouts(cutouts,r.width,r.height));
  const double sx=double(r.width)/r.view.width,sy=double(r.height)/r.view.height;
  external::mainview::View after;
- if(!nativeviewhost::sample(shared,read,after)){unsafeView=unsafeWorld=true;return false;}
+ if(!nativeviewhost::sample(shared,fresh,after)){unsafeView=unsafeWorld=true;return false;}
  if(!renderpresentation::sameProjection(before,after)||after.frame<before.frame){unsafeView=unsafeWorld=true;return false;}
  // A failed native-effect mask must never retain an older transparent hole:
  // it could expose an unrelated pixel after the beam/animation has moved.
  if(!effectsOK){nativeCutouts.reset();return false;}
- if(!bandOK||!selectionOK||!ordersOK||!placementOK)return false;
+ if(!bandOK||!selectionOK||!ordersOK||!placementOK||!read.stable()||!external::radar::completeFrame(externalReader))return false;
  // World feedback is projected for r.view; the band and cursor already use
  // screen coordinates. Camera motion alone does not tear either one. Native
  // placement/effect holes are different: the game pixels underneath must still be
  // at the exact camera for which those holes were captured. Omit those
  // holes during movement while keeping the independently rendered world.
- if(!cutouts.empty()&&(!external::mainview::sameViewport(before,r.view)||!external::mainview::sameViewport(before,after))){cutouts.clear();nativeCutouts.reset();}
+ if(!cutouts.empty()&&(!external::mainview::sameViewport(before,r.view)||!external::mainview::sameViewport(before,after)||(source&&source->key.frame!=after.frame))){cutouts.clear();nativeCutouts.reset();}
  if(cutouts.empty())nativeCutouts.reset();
  else{
   bool same=nativeCutouts&&nativeCutouts->size()==cutouts.size();
@@ -91,20 +102,20 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
   }
  }
  if(selectionPixels)layers.push_back({SelectionLayer,200,r.context,{left+selectionBounds.x,top+selectionBounds.y,selectionBounds.w,selectionBounds.h},true,255,selectionPixels});
- localUI.submit(r,scene->objects);
- if(auto ui=localUI.visible(r,GetTickCount())){constexpr uint64_t ids[]={MessageLayer,TimerLayer,StatusLayer,RallyLayer,PlanningHighlightLayer};constexpr int ranks[]={220,221,210,180,205};static_assert(sizeof(ids)/sizeof(ids[0])==external::localui::LayerCount,"local UI layer mapping");for(size_t i=0;i<ui->images.size();++i){const auto&image=ui->images[i];if(image.pixels)layers.push_back({ids[i],ranks[i],r.context,{left+image.bounds.x,top+image.bounds.y,image.bounds.w,image.bounds.h},true,255,image.pixels});}}
+ localUI.submit(r,scene->objects,source);
+ if(auto ui=localUI.visible(r,GetTickCount(),source)){constexpr uint64_t ids[]={MessageLayer,TimerLayer,StatusLayer,RallyLayer,PlanningHighlightLayer};constexpr int ranks[]={220,221,210,180,205};static_assert(sizeof(ids)/sizeof(ids[0])==external::localui::LayerCount,"local UI layer mapping");for(size_t i=0;i<ui->images.size();++i){const auto&image=ui->images[i];if(image.pixels)layers.push_back({ids[i],ranks[i],r.context,{left+image.bounds.x,top+image.bounds.y,image.bounds.w,image.bounds.h},true,255,image.pixels});}}
  // Mirror only the covered portion of the original software cursor.
  CURSORINFO ci{};ci.cbSize=sizeof ci;POINT pos{};
  if(!GetCursorInfo(&ci)||!GetCursorPos(&pos)||!ScreenToClient(game,&pos)){layers.clear();return false;}
  bool sysCursor=(ci.flags&CURSOR_SHOWING)!=0;
  bool external=externalCursor();
  if(sysCursor||external||pos.x<left||pos.y<top||pos.x>=left+r.width||pos.y>=top+r.height)return accept(true);
- nf::Mouse current;if(!nf::mouse(read,current))return false;
+ nf::Mouse current;if(!nf::mouse(fresh,current))return false;
  if(current.refCount<0)return accept(true);
  size_t cursorBytes=0,cursorCalls=0;
  auto cursorRead=[&](uint32_t p,void*out,size_t n){
   if(++cursorCalls>2048||n>1024*1024-cursorBytes)return false;
-  cursorBytes+=n;return read(p,out,n);
+  cursorBytes+=n;return fresh(p,out,n);
  };
  nf::CursorFrame cursor;
  if(!cursorCache.capture(cursorRead,[&](const nf::Mouse&m,const std::array<uint32_t,256>&pal,nf::CursorImage&out){

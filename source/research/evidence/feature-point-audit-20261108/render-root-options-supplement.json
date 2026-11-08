@@ -1,0 +1,69 @@
+{
+  "source_commit": "491bbc72ec67ac70454e9d9a0ef69287eb1ba28f",
+  "source_changed": false,
+  "features": [
+    {
+      "id": "display.RenderPhysical",
+      "audit_status": "source_reviewed",
+      "kind": "retained_configuration",
+      "modes": [
+        "关闭/开启偏好",
+        "仅在 RenderUpgrade 已开时允许 UI 修改",
+        "物理几何符合/窗口化/显示模式切换/DPI不一致/失效"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp::WM_COMMAND / effectiveRenderScale",
+        "source/assist/source/extra_settings_io.h",
+        "source/suite/source/video_settings_ui.h::enabled",
+        "source/assist/source/render_upgrade_host.h::update",
+        "source/shared/source/physical_window.h::inspect",
+        "source/shared/source/physical_presentation.h::classify / renderPath"
+      ],
+      "findings": [
+        "当前原生恢复模式 effectiveRenderScale 固定1；renderPath局部计算没有参与输出尺寸或采样算法分支。实际输出仍按已验证游戏视口映射到客户区，不应把该保留开关报成已实现的独立4K重建效果。"
+      ],
+      "evidence": [
+        "物理探测只读 MonitorFromWindow/GetMonitorInfo/EnumDisplaySettings，不改变DPI、显示模式、游戏窗口或页面。",
+        "窗口/客户区/源尺寸/原点变化即重探测，否则最多每250ms；classify限制客户区到8192且<=16M像素，窗口覆盖、显示模式与DPI、等比例1..2倍率分开判断。",
+        "物理资格不作为既有覆盖层可见门。配置变更在读数据缺口时清组租约；失败图像仍受既有世界/视角/完成年龄门约束。",
+        "本轮只做源码审查，无新增运行实验。"
+      ],
+      "validation_gaps": [
+        "未运行真实Windows多显示器、DPI、独占/无边框切换；没有4K画质或延迟实测。"
+      ]
+    },
+    {
+      "id": "display.RenderHighRefresh",
+      "audit_status": "source_reviewed",
+      "kind": "current_user_feature",
+      "modes": [
+        "关闭：最新观测位置",
+        "开启：最新两帧驱动的有界显示位置前推",
+        "同帧重复/长暂停/换世界/不连续对象/瞬移回退"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp::publish presentation Profile / WM_COMMAND",
+        "source/assist/source/extra_settings_io.h",
+        "source/suite/source/video_settings_ui.h",
+        "source/assist/source/render_upgrade_host.h::samplingWorker / worker",
+        "source/external_reader/source/render_profile.h",
+        "source/external_reader/source/material_motion.h::Timeline::observe / sampleLatest / identity",
+        "source/external_reader/source/world_scene_pipeline.h::Pipeline::draw / reset"
+      ],
+      "findings": [
+        "实际 sampleLatest 对位置做有界前推，不是等待完整旧帧间隔的插值；不应仅引用头部注释称完全不预测。它只影响展示，未提交游戏命令或推进原生动画/时钟。"
+      ],
+      "evidence": [
+        "profile.motion来自renderHighRefresh，profile revision变化使generation/采样/渲染结果与组租约失效；PID/match/worker generation变化reset两条Timeline与world pipeline。",
+        "observe接受完整terrain/markerScan/frame和有限时间，同frame只刷新当前成员不重置观测时钟；新frame连续性要求同几何/reveal、时间正向且<=250ms。",
+        "sampleLatest关闭时phase0返回最新观测。开启时horizon<=一观测间隔且<=25ms，age越过max(2*间隔,50ms)退回最新原位。对象pointer/UID/type/owner/kind/parent/layer/bridge/pose身份不同不延用；建筑/特定kind、突变、越界位置均不前推。",
+        "移动阈值按实际frame差缩放；raw facing只对小转向做展示微分，SHP pose/frame不推进。world Pipeline按当前成员移除已消失对象，不复活历史端点。",
+        "本轮源码审查；没有把既有material motion测试列成新执行。"
+      ],
+      "validation_gaps": [
+        "未运行Windows/GPU、实机移动画面或显示节奏；理论目标Hz不等于游戏或显示FPS。",
+        "当前RenderUpgrade入口受禁用策略限制，保留模式不能等同全部渲染升级当前可开启。"
+      ]
+    }
+  ]
+}

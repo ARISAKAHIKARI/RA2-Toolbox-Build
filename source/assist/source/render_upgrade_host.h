@@ -13,7 +13,7 @@
 #include "../../external_reader/source/native_unit_ui_stencil.h"
 #include "../../external_reader/source/local_ui_task.h"
 #include "../../external_reader/source/material_motion.h"
-#include "../../external_reader/source/scene_bank.h"
+#include "../../external_reader/source/shared_scene.h"
 #include "../../external_reader/source/scene_poses.h"
 #include <chrono>
 #include "render_presentation.h"
@@ -53,9 +53,6 @@ struct Observation {
 
 };
 static external::ReadSession sampleReader;
-static external::radar::Sampler<external::SharedReadView> sampler(external::SharedReadView{&sampleReader});
-static external::ReadSession terrainReader;
-static external::radar::Sampler<external::SharedReadView> terrainSampler(external::SharedReadView{&terrainReader});
 static external::materialmotion::Timeline preparationMotion;static uint32_t process=0,epoch=0;static bool active=false;static uint64_t imageToken=0;
 static constexpr UINT ReadyMessage=WM_APP+20;
 static std::atomic<bool> readyPending{false};
@@ -72,60 +69,31 @@ static std::wstring lastStatusText;
 static void statusText(const std::wstring&text){
  if(lastStatusText==text)return;lastStatusText=text;SetWindowTextW(GetDlgItem(ui,9303),text.c_str());
 }
-static asyncwork::Recurring<Request,external::radar::Frame> terrainWorker([](const Request&r)->std::shared_ptr<const external::radar::Frame>{
- static uint64_t seenGeneration=0;static uint32_t seenPid=0,seenMatch=0,seenReveal=~0u;
- if(seenGeneration!=r.generation||seenPid!=r.pid||seenMatch!=r.match||seenReveal!=r.reveal){
-  terrainReader.close();terrainSampler.reset();seenGeneration=r.generation;seenPid=r.pid;seenMatch=r.match;seenReveal=r.reveal;
- }
- if(!terrainReader.open(r.pid))return {};
- if(!terrainSampler.hasTerrain())if(auto bank=external::radar::sceneBank().get(r.pid,r.match,r.reveal,GetTickCount()))terrainSampler.seedTerrain(*bank);
- // Count admitted Cells, not empty slots in the fixed 512x512 grid.
- // The ordinary traversal otherwise needs 32 scheduled jobs on every map.
- if(!terrainSampler.step(r.reveal,8192,true,true))return {};
- auto data=terrainSampler.terrainFrame(GetTickCount());if(!data.terrain)return {};
- auto fresh=[](uint32_t p,void*out,size_t n){return terrainReader.readFresh(p,out,n);};
- if(!external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return {};
- return std::make_shared<const external::radar::Frame>(std::move(data));
-});
 static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request&r)->std::shared_ptr<const Observation>{
  static pipelineperf::Window timings(L"world-observation",{L"attempt",L"duplicate",L"capture"});pipelineperf::Scope attempt(timings,0,critical);
  static std::shared_ptr<const Observation> last;
  static uint64_t sampleGeneration=0;static uint32_t sampleProcess=0,sampleMatch=0,sampleReveal=~0u;
- const double started=presentationNow();
  if(sampleGeneration!=r.generation||sampleProcess!=r.pid||sampleMatch!=r.match||sampleReveal!=r.reveal){
-  sampleReader.close();sampler.reset();last.reset();sampleGeneration=r.generation;
-  sampleProcess=r.pid;sampleMatch=r.match;sampleReveal=r.reveal;
+  sampleReader.close();last.reset();sampleGeneration=r.generation;sampleProcess=r.pid;sampleMatch=r.match;sampleReveal=r.reveal;
  }
- if(!sampleReader.open(r.pid))return {};
- // The recurring worker reads native frame numbers; interpolation and pose
- // sampling do not need to replace the game's frame-commit instruction.
+ if(!sampleReader.open(r.pid))return {};sampleReader.begin();
+ external::radar::FrameScope scope(sampleReader,r.match);if(!scope)return {};
+ const auto token=sampleReader.worldFrameToken();
+ if(last&&last->current->sourceFrame&&token&&last->current->sourceFrame->key.serial==token->key.serial&&
+    last->current->sourceFrame->key.sameFrame(token->key)&&renderpresentation::sameProjection(last->view,r.view)){timings.add(1,0);return {};}
  const double captureStarted=presentationNow();
- auto fresh=[](uint32_t p,void*out,size_t n){return sampleReader.readFresh(p,out,n);};
- if(last&&renderobservation::duplicate(fresh,last->current->frame,last->observedMs,captureStarted)){timings.add(1,0);return {};}
- pipelineperf::Scope capture(timings,2);
+ auto live=[](uint32_t p,void*out,size_t n){return sampleReader.readLive(p,out,n);};
  external::mainview::View before;
- if(!external::mainview::sample(fresh,before,r.view.transform)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame)return {};
- if(last&&last->current->frame==before.frame&&captureStarted-last->observedMs<50.)return {};
- // The fast actor path NEVER traverses terrain. The third worker publishes
- // immutable whole-map banks while this reader samples positions and poses.
- auto terrain=terrainWorker.get();if(!terrain)return {};
- sampler.useTerrain(*terrain);const auto actorView=before;const double actorsStarted=presentationNow();
- sampler.effects(r.profile.particles,r.profile.lasers);auto raw=sampler.snapshot(GetTickCount(),actorView.frame);
- if(!raw.terrain||!raw.markerScanValid||!external::radar::sameWorld(raw,external::radar::publicationContext(fresh)))return {};
- external::SharedReadView cached{&sampleReader};external::GameView game(cached);
- external::radar::preparePoses(raw,cached);
- external::mainview::View captured;
- if(!external::mainview::sample(fresh,captured,r.view.transform)||!renderpresentation::sameProjection(before,captured)||
-    captured.frame<raw.frame||presentationNow()-actorsStarted>50.||
-    !external::radar::sameWorld(raw,external::radar::publicationContext(fresh)))return {};
- auto out=std::make_shared<Observation>();out->request=r;out->view=captured;out->frameSignalState=0;
- raw.observedMs=captureStarted;
- out->tick=GetTickCount();out->observedMs=presentationNow();out->readMs=out->observedMs-captureStarted;
+ if(!external::mainview::sample(live,before,r.view.transform)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame)return {};
+ auto bank=external::radar::sharedScene(sampleReader,r.pid,r.match,r.reveal,GetTickCount(),external::radar::SceneConsumer::Main,true,r.profile.particles,r.profile.lasers);
+ if(!bank||!external::radar::recentMarkers(*bank,external::radar::publicationContext(live),GetTickCount()))return {};
+ if(last&&last->current==bank&&renderpresentation::sameProjection(last->view,before)){timings.add(1,0);return {};}
+ pipelineperf::Scope capture(timings,2);
+ auto out=std::make_shared<Observation>();out->request=r;out->view=before;out->frameSignalState=0;
+ out->tick=bank->tick;out->observedMs=bank->observedMs;out->readMs=presentationNow()-captureStarted;
  out->intervalMs=last?out->observedMs-last->observedMs:0;
  out->readCalls=sampleReader.reads;out->pageHits=sampleReader.pageHits;out->prefetchedPages=sampleReader.prefetchedPages;
- out->current=std::make_shared<const external::radar::Frame>(std::move(raw));
- external::radar::sceneBank().publish(r.pid,r.match,true,out->current);
- out->stateObservedMs=out->observedMs;
+ out->current=std::move(bank);out->stateObservedMs=out->observedMs;
  if(last&&out->current->frame>=last->current->frame&&out->current->terrain->geo.same(last->current->terrain->geo)){
   if(out->current->frame>last->current->frame)out->stateIntervalMs=out->observedMs-last->stateObservedMs;
   else{out->stateObservedMs=last->stateObservedMs;out->stateIntervalMs=last->stateIntervalMs;}
@@ -144,8 +112,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  if(workerGeneration!=r.generation){workerGeneration=r.generation;hasFrameCompleteTime=false;preparationMotion.reset();worldPipeline.reset();}
  if(!reader.open(r.pid)){progress=-1;return unavailable();}
  reader.begin(); // Explicit fresh page epoch for every presentation request.
- assets.identity(r.pid,r.match);
- auto fresh=[](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);};
+ auto fresh=[](uint32_t p,void*out,size_t n){return reader.readLive(p,out,n);};
  external::mainview::View before;
  if(!external::mainview::sample(fresh,before,r.view.transform)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame){progress=-1;return unavailable();}
  // Requests can wait behind a CPU render. Sample the current camera rather
@@ -157,8 +124,9 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  if(!observed||observed->request.generation!=r.generation||observed->request.pid!=r.pid||
     observed->request.match!=r.match||observed->request.reveal!=r.reveal||
     !renderpresentation::sameProjection(observed->view,before)||
-    presentationNow()-observed->observedMs>100.||
     !external::radar::recentMarkers(*observed->current,external::radar::publicationContext(fresh),GetTickCount()))return unavailable();
+ external::radar::FrameScope worldScope(reader,r.match,observed->current->sourceFrame);if(!worldScope)return unavailable();
+ assets.identity(r.pid,r.match);
  const double sampledMs=presentationNow();
  // Sampling, world drawing and presentation have independent clocks. Reuse
  // the latest immutable state freely; the native logic frame is an identity/
@@ -178,10 +146,9 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  assets.presentationColorPrecision(r.colorPrecision!=0);
  assets.presentationPalette(r.paletteRange==1?external::pixelupgrade::PaletteRange::FullRGB:external::pixelupgrade::PaletteRange::OriginalDAC);
  const uint64_t assetRevision=assets.revision();
- // Scene reuse is intentionally limited to geometry/decoded art. Even an
- // unchanged pose can receive new cell light, converter tint, palette bytes,
- // animation brightness or effects within this same simulation frame.
- // Always run the live-light composition pass; no opaque-frame shortcut.
+ // Lighting, visibility and materials are decoded from the same immutable
+ // publication as these poses. Display-rate camera changes only reproject it;
+ // new world facts arrive with the next Runtime publication.
 
  // Every draw uses CURRENT observed membership and visibility. Removed or
  // hidden actors are never resurrected from a prior interpolation endpoint.
@@ -193,7 +160,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  renderer.guideEnabled(false,r.generation);renderer.directPresentation(false);renderer.prepareWorld(true);
  pipelineperf::Scope prepare(timings,1);
  auto scene=renderer.render(data,r.width,r.height,external::SharedReadView{&reader},assets,{crop.x,crop.y,crop.width,crop.height,true},unsigned(r.pixelScaleMode),r.detail!=0,true,r.colorPrecision!=0,true,r.decodeBudgetMs);prepare.finish();
- if(!scene)return unavailable();
+ if(!scene||!reader.worldFrameComplete())return unavailable();
  const double sceneDoneMs=presentationNow();
  auto out=std::make_shared<Frame>();out->world=renderer.preparedWorld();if(!out->world)return unavailable();out->request=sampledRequest;out->paddingX=out->paddingY=0;out->assetRevision=assetRevision;out->logicFrame=data.frame;out->observationMs=observed->intervalMs;out->stateIntervalMs=observed->stateIntervalMs;out->frameSignalState=observed->frameSignalState;out->signalDelayMs=observed->signalDelayMs;
  out->gpuAttempted=external::xbrzadapter::gpuAttempted();out->gpuUsed=external::xbrzadapter::gpuUsed();
@@ -217,7 +184,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  // between separate preparation and presentation workers.
  const double compositionStarted=presentationNow();
  pipelineperf::Scope compose(timings,2);auto image=worldPipeline.draw(out->world,after,r.width,r.height,external::SharedReadView{&reader},nullptr,GetTickCount());compose.finish();
- if(!image)return unavailable();
+ if(!image||!reader.worldFrameComplete())return unavailable();
  external::mainview::View committed;
  if(!external::mainview::sample(fresh,committed,r.view.transform)||!renderpresentation::sameProjection(after,committed)||committed.frame<after.frame||
     !external::radar::sameWorld(data,external::radar::publicationContext(fresh)))return unavailable();
@@ -235,10 +202,10 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  lastFrameCompleteMs=completedMs;hasFrameCompleteTime=true;progress=2;timings.add(3,out->renderMs);return out;
 },notifyReady);
 #include "render_feedback_host.h"
-static void suspendScene(){groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
+static void suspendScene(){groupLease.reset();if(active){active=false;++generation;worker.invalidate();samplingWorker.invalidate();}feedback::hide();imageToken=0;overlaycompositor::host().hide(overlaycompositor::RenderUpgrade);}
 static void suspend(){viewLease.reset();suspendScene();sidebarhud::stop();}
 static void stop(){suspend();overlaycompositor::host().suspend();}
-static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();terrainWorker.shutdown();feedback::shutdown();sidebarhud::shutdown();overlaycompositor::host().shutdown();}
+static void shutdown(){stop();worker.shutdown();samplingWorker.shutdown();feedback::shutdown();sidebarhud::shutdown();overlaycompositor::host().shutdown();}
 static bool syncRadarExclusion(const RECT&client){
  int width=0,height=0;const int status=shared?shared->sidebarStatus:0;const uint32_t mode=shared?shared->sidebarMode:0;
  if(status==3&&(!externalReader.readFresh(0x8A00A4,&width,4)||!externalReader.readFresh(0x8A00A8,&height,4)))return false;
@@ -256,7 +223,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  static const bool diagnostics=[](){overlaycompositor::host().setDiagnosticsSink(critical);return true;}();(void)diagnostics;
  if(!overlayvisibility::visible()){stop();return;}
  const auto selected=external::presentation::settings().get();static uint64_t profileRevision=~uint64_t(0);
- if(profileRevision!=selected.revision){profileRevision=selected.revision;++generation;worker.invalidate();samplingWorker.invalidate();terrainWorker.invalidate();groupLease.reset();}
+ if(profileRevision!=selected.revision){profileRevision=selected.revision;++generation;worker.invalidate();samplingWorker.invalidate();groupLease.reset();}
 
  // The whole tool remains system-DPI aware. A physical-pixel option must
  // explicitly validate monitor geometry instead of assuming a 4K monitor
@@ -375,7 +342,6 @@ static void update(POINT origin,const RECT&client,const external::display::State
  }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroupAt(publishContext,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer,feedback::PlanningHighlightLayer},std::move(layers));
  if(displaying&&presentedFrame&&presentedFrame->completedAtMs!=handedOffFrameMs){handedOffFrameMs=presentedFrame->completedAtMs;completionToHandoffMs=std::max(0.,presentationNow()-handedOffFrameMs);}
- terrainWorker.submit(liveRequest,std::min(60,informationFPS()));
  samplingWorker.submit(liveRequest,renderpresentation::ObservationRate);
  worker.submit(liveRequest,informationFPS());
 

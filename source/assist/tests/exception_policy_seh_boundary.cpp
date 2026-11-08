@@ -9,6 +9,7 @@ extern "C" int GuardedAssistFilter(void*);
 extern "C" int GuardedRiskAction(unsigned,unsigned,unsigned);
 extern "C" int GuardedSidebarViewAction(unsigned,unsigned);
 extern "C" int GuardedTechUiParameter(void*,unsigned);
+extern "C" int GuardedControlWorldEligible();
 extern "C" void GuardedCursorResource();
 extern "C" unsigned FixtureOuter(unsigned route){
  unsigned caught=0;fixtureResult=-1;
@@ -18,6 +19,7 @@ extern "C" unsigned FixtureOuter(unsigned route){
   else if(route==2)fixtureResult=GuardedRiskAction(3,4,5);
   else if(route==3)fixtureResult=GuardedSidebarViewAction(6,7);
   else if(route==4)fixtureResult=GuardedTechUiParameter((void*)8,9);
+  else if(route==6)fixtureResult=GuardedControlWorldEligible();
   else {GuardedCursorResource();fixtureResult=12;}
  }__except(_exception_code()==fixtureCode?1:0){caught=1;}
  return caught;

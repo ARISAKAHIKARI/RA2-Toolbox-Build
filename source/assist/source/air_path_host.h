@@ -54,23 +54,56 @@ static bool crossed(const Job&j,int gx,int gy){
  const double x=j.previousX+t*dx-gx,y=j.previousY+t*dy-gy;
  return x*x+y*y<=256.0*256.0;
 }
+enum class AircraftState { Unknown,Retired,Current };
+static AircraftState currentAircraft(const Job&j,bool*selected=nullptr){
+ if(j.match!=commandMatch())return AircraftState::Retired;
+ uint32_t id=0,after=0,kind=0,owner=0,currentOwner=0;int hp=0;uint8_t retired=0,selection=0;
+ auto read=[](uint32_t at,void*out,size_t size){return externalReader.readLive(at,out,size);};
+ if(!read(j.pointer+0x10,&id,4)||!read(j.pointer,&kind,4)||!read(j.pointer+0x21C,&owner,4)||
+    !read(0xA83D4C,&currentOwner,4)||!read(j.pointer+0x6C,&hp,4)||!read(j.pointer+0x6CA,&retired,1))return AircraftState::Unknown;
+ if(id!=j.id||kind!=0x7E22A4||currentOwner<0x10000||owner!=currentOwner||hp<=0||retired)return AircraftState::Retired;
+ if(selected&&!read(j.pointer+0x83,&selection,1))return AircraftState::Unknown;
+ if(!read(j.pointer+0x10,&after,4))return AircraftState::Unknown;if(after!=j.id)return AircraftState::Retired;
+ if(selected)*selected=selection!=0;
+ return AircraftState::Current;
+}
 static void service(){
  DWORD now=GetTickCount();if(!held())ended=false;
  if(!active()||!enabled){if(!jobs.empty())reset();return;}
  if(!shared||!commandFresh(now)||snap.chat)return;
- uint32_t owner=get<uint32_t>(0xA83D4C);int handled=0,sent=0;
- while(!jobs.empty()&&handled++<16){if(cursor>=jobs.size())cursor=0;auto&j=jobs[cursor++];uint32_t p=j.pointer;
-  if(j.match!=commandMatch()||get<uint32_t>(p+0x10)!=j.id||get<uint32_t>(p)!=0x7E22A4||get<uint32_t>(p+0x21C)!=owner||get<int>(p+0x6C)<=0||get<uint8_t>(p+0x6CA)){uint32_t id=j.id;cancel(id);continue;}
-  j.x=get<int>(p+0x9C);j.y=get<int>(p+0xA0);j.z=get<int>(p+0xA4);j.selected=get<uint8_t>(p+0x83)!=0;
-  int mission=get<int>(p+0xAC,-1);
+ if(jobs.empty())return;
+ struct Observation {uint32_t id,pointer,token;int x,y,z,mission,dx,dy;uint32_t destination;};
+ std::vector<Observation> observations;size_t nextCursor=cursor;
+ {
+  externalReader.setWorldDemand(worldframe::Base|worldframe::Combat);
+  external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
+  for(size_t n=0;n<std::min<size_t>(jobs.size(),16);++n){if(nextCursor>=jobs.size())nextCursor=0;const auto&j=jobs[nextCursor++];const uint32_t p=j.pointer;
+   // A route accepted after this frame was sealed may refer to a new object
+   // occupying the same address. Historical facts cannot retire that route.
+   if(get<uint32_t>(p+0x10)!=j.id||get<uint32_t>(p)!=0x7E22A4)continue;
+   Observation v{j.id,p,j.token,get<int>(p+0x9C),get<int>(p+0xA0),get<int>(p+0xA4),get<int>(p+0xAC,-1),0,0,get<uint32_t>(p+0x5A4)};
+   if(v.mission==2&&v.destination>=0x10000){v.dx=get<int16_t>(v.destination+0x24);v.dy=get<int16_t>(v.destination+0x26);}
+   observations.push_back(v);
+  }
+  if(!source.complete())return;
+ }
+ cursor=nextCursor;int sent=0;
+ // Preserve the route worker's bounded continuation: arrival may pop a point
+ // and submit the next one in this service call, reusing the same raw facts.
+ for(size_t handled=0;handled<16&&!jobs.empty()&&!observations.empty();++handled){const auto&sample=observations[handled%observations.size()];auto found=std::find_if(jobs.begin(),jobs.end(),[&](const Job&j){return j.id==sample.id&&j.pointer==sample.pointer&&j.token==sample.token;});if(found==jobs.end())continue;auto&j=*found;
+  // The route observation comes from one sealed world. Retirement and final
+  // command identity checks below deliberately remain current live reads.
+  bool selected=false;const auto state=currentAircraft(j,&selected);if(state==AircraftState::Unknown)continue;
+  if(state==AircraftState::Retired){uint32_t id=j.id;cancel(id);continue;}
+  j.x=sample.x;j.y=sample.y;j.z=sample.z;j.selected=selected;
+  int mission=sample.mission;
   // Native automatic acquisition/return-to-base is not a player's cancel.
   // Explicit right-click/attack/stop is handled by manual() and token checks.
   if(j.points.empty()){uint32_t id=j.id;cancel(id);continue;}
   if(held())continue;
   const auto goal=j.points.front();const int gx=int(goal.cell%1000)*256+128,gy=int(goal.cell/1000)*256+128;
   int64_t dx=int64_t(j.x)-gx,dy=int64_t(j.y)-gy,distance=dx*dx+dy*dy;
-  uint32_t destination=get<uint32_t>(p+0x5A4);bool going=mission==2&&destination>=0x10000&&
-   get<int16_t>(destination+0x24)==int(goal.cell%1000)&&get<int16_t>(destination+0x26)==int(goal.cell/1000);
+  bool going=mission==2&&sample.destination>=0x10000&&sample.dx==int(goal.cell%1000)&&sample.dy==int(goal.cell/1000);
   if(j.stage==2){
    j.observedMove|=going;
    if(distance<=256*256||(j.observedMove&&crossed(j,gx,gy))){j.points.pop_front();j.stage=0;j.attempts=0;j.firstIssued=j.progress=0;j.observedMove=false;j.previousValid=false;j.nearest=INT64_MAX;++paintRevision;continue;}
@@ -82,7 +115,11 @@ static void service(){
   }
   j.previousX=j.x;j.previousY=j.y;j.previousValid=true;
   if(j.stage==1&&uint32_t(now-j.sent)>15000){uint32_t id=j.id;cancel(id);continue;}
-  if(j.stage==0&&sent<4&&int32_t(now-j.sent)>=0&&queueCommand(AirPathMove,int(j.id),int(goal.cell),j.match,0,0,j.token)){j.stage=1;j.sent=now;if(!j.firstIssued)j.firstIssued=now;++j.attempts;++sent;}
+  if(j.stage==0&&sent<4&&int32_t(now-j.sent)>=0){
+   const auto finalState=currentAircraft(j);if(finalState==AircraftState::Unknown)continue;
+   if(finalState==AircraftState::Retired){uint32_t id=j.id;cancel(id);continue;}
+   if(commandFresh(GetTickCount())&&!snap.chat&&queueCommand(AirPathMove,int(j.id),int(goal.cell),j.match,0,0,j.token)){j.stage=1;j.sent=now;if(!j.firstIssued)j.firstIssued=now;++j.attempts;++sent;}
+  }
  }
 }
 static std::vector<Line> lines(){std::vector<Line> out;if(!active())return out;nativeviewhost::Transform transform;if(!nativeviewhost::sampleTransform(shared,transform))return out;external::Projection projection{snap.cameraX,snap.cameraY,transform.active?transform.logical.w:snap.width,transform.active?transform.logical.h:snap.height};

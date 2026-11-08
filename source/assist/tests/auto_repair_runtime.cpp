@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <array>
+#include <algorithm>
+#include "../../shared/source/world_frame.h"
 #include "../source/compute_tasks.h"
 #include "../source/compute_frame.h"
 #include "../source/compute_policy.h"
@@ -21,7 +24,7 @@ struct Shared {
  int32_t repairResultSeq=0;compute::RepairInput repairInput;compute::RepairResult repairResult;int result=0,count=0;
 };
 static Shared shared,*sh=&shared;
-struct Snapshot{uint32_t autoRepair=0,repairTotal=0;};static Snapshot snap;
+struct Snapshot{uint32_t autoRepair=0,repairTotal=0;int frame=0;};static Snapshot snap;
 struct Building{uint32_t pointer,type,id,house;int hp=50,maximum=100;bool repairing=false,repairable=true,allowed=true,alive=true;};
 static std::vector<Building> buildings;
 static uint32_t match=1,lastHouse=0x200000;
@@ -33,30 +36,52 @@ static bool pendingAckReady,repairAckPending;static uint32_t pendingAck,repairAc
 static bool repairCalculationPending;static DWORD repairCalculationStarted;static uint32_t repairTaskSeen;
 static bool autoWas;static DWORD lastAuto;
 static repairdelivery::Pending<> pendingRepairs;
-struct Vec{int count;};
-static Vec vec(uint32_t at){if(at!=0xA8EB40)throw std::runtime_error("unexpected vector");++buildingScans;return {int(buildings.size())};}
-static uint32_t item(Vec,int i){return buildings[size_t(i)].pointer;}
+static worldframe::Snapshot worldFrame;
+static bool worldFrameReady=false,sampleReadComplete=true,sampleAvailable=true;
+static unsigned sampleReadDepth=0;static uint32_t missingSamplePage=0;
+static std::array<uint64_t,8192> runtimeDemandBits{};static std::vector<uint32_t> runtimeWorldDemands;
+#include SAMPLE_SCOPE
+struct Vec{uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
+static bool read(uint32_t at,void*out,size_t n){if(at==0xA8EB40)++buildingScans;if(!sampleReadDepth)throw std::runtime_error("collector read escaped scope");return readWorldSample(at,out,n);}
+#include "../source/tactical_frame_read.h"
+template<class T>static T get(uint32_t at);
+static Vec vec(uint32_t at){Vec out{};read(at,&out,sizeof out);return out;}
+static uint32_t item(Vec v,int i){return get<uint32_t>(v.items+uint32_t(i)*4);}
 static Building* byPointer(uint32_t p){for(auto&b:buildings)if(b.pointer==p)return &b;return nullptr;}
 static uint32_t worldByID(uint32_t id){for(const auto&b:buildings)if(b.alive&&b.id==id)return b.pointer;return 0;}
-static bool own(uint32_t p,uint32_t house){auto*b=byPointer(p);return b&&b->alive&&b->house==house;}
-static int kind(uint32_t p){auto*b=byPointer(p);return b&&b->alive?3:-1;}
-static uint32_t typeOf(uint32_t p,int){auto*b=byPointer(p);return b?b->type:0;}
+static bool own(uint32_t p,uint32_t house){if(sampleReadDepth)return get<bool>(p+0x74)&&get<uint32_t>(p+0x21C)==house;auto*b=byPointer(p);return b&&b->alive&&b->house==house;}
+static int kind(uint32_t p){if(sampleReadDepth)return get<bool>(p+0x74)?3:-1;auto*b=byPointer(p);return b&&b->alive?3:-1;}
+static uint32_t typeOf(uint32_t p,int){if(sampleReadDepth)return get<uint32_t>(p+0x520);auto*b=byPointer(p);return b?b->type:0;}
 static bool featureTypeAllowed(int,uint32_t t){for(const auto&b:buildings)if(b.type==t)return b.allowed;return false;}
 template<class T>static T get(uint32_t at){
+ if(sampleReadDepth){T out{};readWorldSample(at,&out,sizeof out);return out;}
  if(at==0xA8ED84)return T(currentFrame);if(at==0xA8BC60+25)return T(chat);if(at==lastHouse+0x30)return T(0);
  for(const auto&b:buildings){if(at==b.pointer+0x10)return T(b.id);if(at==b.pointer+0x6C)return T(b.hp);if(at==b.pointer+0x6E8)return T(b.repairing);if(at==b.type+0xA0)return T(b.maximum);if(at==b.type+0x157A)return T(b.repairable);}
  throw std::runtime_error("unexpected read");
 }
+static void prepareSample(){
+ snap.frame=currentFrame;if(worldFrameReady&&worldFrame.key.match==match&&worldFrame.key.frame==currentFrame)return;
+ worldFrameReady=false;if(!sampleAvailable)return;
+ static std::vector<uint8_t> bytes(0xC00000);std::fill(bytes.begin(),bytes.end(),0);
+ auto set=[&](uint32_t at,const auto&value){std::memcpy(bytes.data()+at,&value,sizeof value);};
+ Vec list{0,0x100000,int(buildings.size()),0,int(buildings.size()),0};set(0xA8EB40,list);set(0xA8ED84,currentFrame);
+ for(size_t i=0;i<buildings.size();++i){const auto&b=buildings[i];set(list.items+uint32_t(i)*4,b.pointer);set(b.pointer+0x10,b.id);set(b.pointer+0x6C,b.hp);set(b.pointer+0x74,b.alive);set(b.pointer+0x21C,b.house);set(b.pointer+0x520,b.type);set(b.pointer+0x6E8,b.repairing);set(b.type+0xA0,b.maximum);set(b.type+0x157A,b.repairable);}
+ worldframe::Key key{};key.match=match;key.frame=currentFrame;key.house=lastHouse;worldFrame.reset(key);
+ auto acquire=[&](uint32_t at,void*out,size_t n){if(missingSamplePage&&at<missingSamplePage+4096&&uint64_t(at)+n>missingSamplePage)return false;std::memcpy(out,bytes.data()+at,n);return true;};
+ worldFrame.prefetch(acquire,0xA8EB40,sizeof list);worldFrame.prefetch(acquire,list.items,buildings.size()*4);
+ for(const auto&b:buildings){worldFrame.prefetch(acquire,b.pointer,0x800);worldFrame.prefetch(acquire,b.type,0x1600);}
+ worldFrameReady=worldFrame.seal();
+}
 static void MemoryBarrier(){}
-static void notifyHost(){++notifications;}
+static void notifyHost(){if(sampleReadDepth)throw std::runtime_error("publication inside sample scope");++notifications;}
 static void indexWorld(int){++indexCalls;}
 enum class EventLane{Repair};static int recurringBudget(EventLane){return perFrameBudget;}
-static bool nativeObjectEvent(int player,int event,uint32_t id){if(player!=0||event!=0x15)throw std::runtime_error("wrong event");++queueAttempts;if(!queueAvailable)return false;sent.push_back({id,currentFrame});return true;}
+static bool nativeObjectEvent(int player,int event,uint32_t id){if(sampleReadDepth)throw std::runtime_error("native event inside sample scope");if(player!=0||event!=0x15)throw std::runtime_error("wrong event");++queueAttempts;if(!queueAvailable)return false;sent.push_back({id,currentFrame});return true;}
 #include REPAIR_EVENT
 #include REPAIR_CALCULATION
 #include REPAIR_TICK
 // Exactly the manual Repair branch and terminal publication from command().
-static void manualRepair(uint32_t req,DWORD now){uint32_t house=lastHouse;int result=1,n=0;
+static void manualRepair(uint32_t req,DWORD now){prepareSample();uint32_t house=lastHouse;int result=1,n=0;
 #include REPAIR_MANUAL
  sh->result=result;sh->count=n;pendingAck=req;pendingAckReady=true;
 }
@@ -70,13 +95,20 @@ static void setup(bool automatic=true,bool internal=true,unsigned count=1){
  ++match;lastHouse=0x200000;currentFrame=0;chat=externalInputFrame=false;queueAvailable=true;perFrameBudget=64;buildingScans=notifications=queueAttempts=indexCalls=0;sent.clear();buildings.clear();
  for(unsigned i=0;i<count;++i)buildings.push_back({0x300000+i*0x10000,0x800000+i*0x10000,100+i,lastHouse});
  repairCount=repairAt=repairDone=0;repairAckRequest=repairAckStarted=pendingAck=0;repairAckPending=pendingAckReady=false;repairCalculationPending=false;repairCalculationStarted=repairTaskSeen=0;autoWas=false;lastAuto=0;pendingRepairs.clear();repairFrames.clear();
+ worldFrameReady=false;sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=0;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
 }
-static void tick(DWORD now,int frame,bool input=false){currentFrame=frame;externalInputFrame=input;repairTick(lastHouse,now);}
+static void tick(DWORD now,int frame,bool input=false){currentFrame=frame;externalInputFrame=input;prepareSample();repairTick(lastHouse,now);}
 struct WorkerResult{uint32_t task;compute::RepairResult value;};
 static WorkerResult calculate(){return {sh->repairTask,compute::repair(sh->repairInput)};}
 static void deliver(const WorkerResult&r){++sh->repairResultSeq;sh->repairResult=r.value;sh->repairComputed=r.task;++sh->repairResultSeq;}
 template<class F>static void run(const char*name,bool regression,F fn){if(regressionOnly&&!regression)return;const unsigned before=checks;++cases;try{fn();std::printf("CASE\t%s\tPASS\t%u\n",name,checks-before);}catch(const std::exception&e){++failed;std::printf("CASE\t%s\tFAIL\t%u\t%s\n",name,checks-before,e.what());}}
 int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--regression-only";
+ run("missing_sample_preserves_immediate_retry",false,[]{
+  setup();sampleAvailable=false;tick(1000,1);expect(!autoWas&&lastAuto==0&&sent.empty(),"missing frame must not consume automatic interval");sampleAvailable=true;tick(1016,2);expect(sent.size()==1&&lastAuto==1016&&autoWas,"next complete frame retries without two-second delay");
+ });
+ run("missing_page_preserves_due_retry",false,[]{
+  setup(true,true,0);tick(1000,1);buildings.push_back({0x300000,0x800000,100,lastHouse});missingSamplePage=0x300000;tick(3000,2);expect(!autoWas&&lastAuto==1000&&sent.empty(),"incomplete collector must not advance timer or publish empty candidates");missingSamplePage=0;tick(3016,3);expect(sent.size()==1&&lastAuto==3016,"page recovery retries on next admitted frame");
+ });
  run("late_automatic_result_after_off",true,[]{
   setup(true,false);tick(1000,1);auto old=calculate();expect(repairCalculationPending,"automatic calculation started");
   sh->flags=0;tick(1008,2);deliver(old);tick(1016,3);
@@ -174,6 +206,25 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
  });
  run("manual_refresh_survives_auto_off",false,[]{
   setup(false,false);currentFrame=1;manualRepair(70,1000);tick(1008,2,true);expect(notifications==2&&repairAckPending,"manual can refresh source even with automation off");auto fresh=calculate();deliver(fresh);tick(1016,3);expect(sent.size()==1&&pendingAck==70,"refreshed manual work completed");
+ });
+ run("retained_request_membership_full_capacity",false,[]{
+  setup(false,false,0);currentFrame=1;manualRepair(80,1000);
+  static compute::RepairInput input;input=sh->repairInput;input.count=8192;
+  for(int j=0;j<input.count;++j)input.items[j].id=uint32_t(j*2); // includes zero; membership must preserve old semantics
+  repairFrames.clear();repairFrames.retain(sh->repairTask,input);
+  WorkerResult result{sh->repairTask,{}};result.value.match=input.match;result.value.tick=input.tick;result.value.frame=input.frame;result.value.count=8192;
+  std::vector<uint32_t> expected;
+  for(int i=0;i<result.value.count;++i){uint32_t id=uint32_t((8191-i)*2);if(i%11==0)id+=1;if(i%37==0)id=2;
+   result.value.ids[i]=id;if(!(id&1))expected.push_back(id);
+  }
+  deliver(result);repairCalculationTick(1008);
+  expect(!repairCalculationPending&&repairCount==int(expected.size()),"full-capacity results filter unknown IDs");
+  expect(std::equal(expected.begin(),expected.end(),repairIDs),"membership preserves result order, duplicates, zero and edge IDs");
+  expect(sent.empty(),"membership acceptance does not itself issue game events");
+ });
+ run("retained_request_empty_membership",false,[]{
+  setup(false,false,0);currentFrame=1;manualRepair(81,1000);auto result=calculate();result.value.count=3;result.value.ids[0]=0;result.value.ids[1]=100;result.value.ids[2]=UINT32_MAX;
+  deliver(result);repairCalculationTick(1008);expect(!repairCalculationPending&&repairCount==0,"empty captured request accepts no forged candidates");
  });
  std::printf("SUMMARY\t%u\t%u\t%u\n",cases,checks,failed);return failed?1:0;
 }

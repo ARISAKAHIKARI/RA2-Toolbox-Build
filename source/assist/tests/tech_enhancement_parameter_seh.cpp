@@ -13,6 +13,9 @@ extern "C" void EndTechEnhancementProbe(unsigned token){assert(token==depth&&dep
 extern "C" int __stdcall AssistTechEnhancementProbeCall(unsigned house,unsigned type){assert(house==7);++calls;SetLastError(0xB003);
  if(type==2){*noAccess=1;assert(false);}if(type==3){assert(depth==1);assert(GuardedTechEnhancementProbe(7,2)==0&&depth==1&&GetLastError()==0xB003);}return int(type+10);}
 extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){if(tag==2)*static_cast<volatile unsigned*>(raw)=42;return int(tag+1);}
+// Linked with the whole production guard header; exercised by the dedicated
+// exception-policy fixture, not this enhancement callback model.
+extern "C" int __cdecl AssistControlWorldEligible(){return 1;}
 int main(){SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);noAccess=static_cast<volatile unsigned*>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_NOACCESS));assert(noAccess);
  SetLastError(0x1234);assert(GuardedTechEnhancementProbe(7,1)==11&&GetLastError()==0x1234&&!depth&&begins==1&&ends==1&&calls==1);
  SetLastError(0x2345);assert(GuardedTechEnhancementProbe(7,2)==0&&GetLastError()==0x2345&&!depth&&begins==2&&ends==2&&calls==2);

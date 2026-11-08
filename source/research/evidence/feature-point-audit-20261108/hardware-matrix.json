@@ -1,0 +1,2548 @@
+{
+  "scope": "hardware/technology/control/map/native placement/SW/CRC/FPS/frame runtime/Hook diagnostics",
+  "baseline": "c3154fa343a5be42da3453c0b3d228dea653d3ac",
+  "inventory_source": "current UI/modes/dispatcher/catalog; excludes stale build_feature_list.py count",
+  "status": "该子任务82项逐点源码审查完成；帧维护修复受控验证；诊断日志问题已源码修复；未声称实机/联机逐功能通过",
+  "features": [
+    {
+      "id": "technology-mode-0",
+      "feature": "科技解锁：受控",
+      "modes": [
+        "0",
+        "开启/关闭/切换/重连"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 420",
+        "source/assist/source/tactical_controls.h control 896"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/sidebar.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/technology_mode_policy.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp"
+      ],
+      "findings": [
+        "受控模式只替换两个侧栏资格调用点；允许项仍经过原生 build-limit 路径，未取消生产工厂检查。",
+        "每秒全目录更新，原生侧栏重建后的缺项按游戏帧补齐；缺工厂失败有250ms重试上限。",
+        "开启、模式切换、关闭均经签名/注册表所有权；依赖生产未完成时拒绝破坏性转换。"
+      ],
+      "evidence": [
+        "tactical_controls.h:420/896 → main.cpp:OpenTech sender → bridge.cpp:OpenTech dispatcher",
+        "sidebar.h:refreshTech, maintainTechCameos, techTransitionProductionPending",
+        "placement_bridge.h:setTechSites, restoreTechSites"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-mode-1",
+      "feature": "科技解锁：经典兼容",
+      "modes": [
+        "1",
+        "开启/关闭/切换/重连"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 420",
+        "source/assist/source/tactical_controls.h control 896"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/sidebar.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/technology_mode_policy.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp"
+      ],
+      "findings": [
+        "经典兼容沿用两个资格调用点，保留独立 factory 检查分支及原生容量/重复项处理。",
+        "切换到规则数据/参数模式前检查六种工厂当前产品和队列，未知读取按仍占用处理；不会自动发送 Abandon。"
+      ],
+      "evidence": [
+        "tactical_controls.h:420/896 → main.cpp:OpenTech sender → bridge.cpp:OpenTech dispatcher",
+        "sidebar.h:refreshTech, maintainTechCameos, techTransitionProductionPending",
+        "placement_bridge.h:setTechSites, restoreTechSites"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-mode-2",
+      "feature": "科技解锁：直接",
+      "modes": [
+        "2",
+        "开启/关闭/切换/重连"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 420",
+        "source/assist/source/tactical_controls.h control 896"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/sidebar.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/technology_mode_policy.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp",
+        "source/assist/source/master_tech_bridge.h"
+      ],
+      "findings": [
+        "直接模式使用五个 Master 侧栏判断补丁，Native Produce/DemandProduction 仍是独立路径。",
+        "五处逐组预检，写入失败回滚；关闭和转模式以已拥有字节恢复，不覆盖外部修改。"
+      ],
+      "evidence": [
+        "tactical_controls.h:420/896 → main.cpp:OpenTech sender → bridge.cpp:OpenTech dispatcher",
+        "sidebar.h:refreshTech, maintainTechCameos, techTransitionProductionPending",
+        "placement_bridge.h:setTechSites, restoreTechSites"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-mode-3",
+      "feature": "科技解锁：原生侧栏规则数据",
+      "modes": [
+        "3",
+        "开启/关闭/切换/重连"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 420",
+        "source/assist/source/tactical_controls.h control 896"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/sidebar.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/technology_mode_policy.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp",
+        "source/assist/source/tech_data_bridge.h",
+        "source/assist/source/tech_data_policy.h"
+      ],
+      "findings": [
+        "规则数据模式维护九个被改字段的逐类型所有权日志，包含类型表/UID/ID/索引身份与世界水位。",
+        "先预检再写、写后读回，撤销只恢复仍等于自己写入值的字段；外部冲突保留待清理，不写旧世界指针。",
+        "与科技加强的规则数据写入协调；此模式禁用工具生产命令，原生侧栏保留。"
+      ],
+      "evidence": [
+        "tactical_controls.h:420/896 → main.cpp:OpenTech sender → bridge.cpp:OpenTech dispatcher",
+        "sidebar.h:refreshTech, maintainTechCameos, techTransitionProductionPending",
+        "placement_bridge.h:setTechSites, restoreTechSites"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-mode-4",
+      "feature": "科技解锁：原生侧栏参数拦截",
+      "modes": [
+        "4",
+        "开启/关闭/切换/重连"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 420",
+        "source/assist/source/tactical_controls.h control 896"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/sidebar.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/technology_mode_policy.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp",
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_core.h"
+      ],
+      "findings": [
+        "参数模式使用硬件 CanBuild 拦截，只接受已知侧栏调用者与当前 House/允许目录，设置 limitOnly，保留其余 native 参数。",
+        "精确原生入口签名与 override 后结构 ABI 均检查；硬件槽不足/未知字节不会覆写外部断点。",
+        "进入前必须恢复 legacy code sites；工具生产命令在主机和 runtime 双层禁用。"
+      ],
+      "evidence": [
+        "tactical_controls.h:420/896 → main.cpp:OpenTech sender → bridge.cpp:OpenTech dispatcher",
+        "sidebar.h:refreshTech, maintainTechCameos, techTransitionProductionPending",
+        "placement_bridge.h:setTechSites, restoreTechSites"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-search",
+      "feature": "权限条目搜索",
+      "modes": [
+        "受控/经典兼容/直接/数据/参数模式适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 421"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/tactical_controls.h"
+      ],
+      "findings": [
+        "421 的 EN_CHANGE 只刷新筛选列表；搜索文本不会自动生成游戏写命令。"
+      ],
+      "evidence": [
+        "main.cpp:control421 → filter/edit list refresh"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-permission-selected",
+      "feature": "切换所选科技许可",
+      "modes": [
+        "受控/经典兼容/直接/数据/参数模式适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 422",
+        "source/assist/source/tactical_controls.h control 424"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "选中已有目录 ID 或经 ASCII object-ID 校验的文本后切换白名单例外；忙状态拒绝变更；开启时发送完整允许集。",
+        "runtime OpenTech 对模式、目录哈希、会话/请求新鲜度和可用入口再校验；在途生产阻止危险模式转换。"
+      ],
+      "evidence": [
+        "main.cpp:424..428, chooseTechProfile, sendOpenTech",
+        "bridge.cpp:OpenTech → copyTechAllowed/requestTechRefresh"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-permission-all",
+      "feature": "全部科技许可",
+      "modes": [
+        "受控/经典兼容/直接/数据/参数模式适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 425"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "425 设置自定义配置的默认允许=true并清空例外，再保存和发送当前完整允许集。",
+        "runtime OpenTech 对模式、目录哈希、会话/请求新鲜度和可用入口再校验；在途生产阻止危险模式转换。"
+      ],
+      "evidence": [
+        "main.cpp:424..428, chooseTechProfile, sendOpenTech",
+        "bridge.cpp:OpenTech → copyTechAllowed/requestTechRefresh"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-permission-clear",
+      "feature": "清空科技许可",
+      "modes": [
+        "受控/经典兼容/直接/数据/参数模式适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 426"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "426 设置自定义配置默认允许=false并清空例外；该操作不等价于关闭原生科技功能，仍由当前模式执行撤销/刷新。",
+        "runtime OpenTech 对模式、目录哈希、会话/请求新鲜度和可用入口再校验；在途生产阻止危险模式转换。"
+      ],
+      "evidence": [
+        "main.cpp:424..428, chooseTechProfile, sendOpenTech",
+        "bridge.cpp:OpenTech → copyTechAllowed/requestTechRefresh"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-permission-preset",
+      "feature": "兼容科技预设",
+      "modes": [
+        "受控/经典兼容/直接/数据/参数模式适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 427"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "427 选择 Ra2Tool 兼容预设 profile0；经过当前目录和完整许可发送路径。",
+        "runtime OpenTech 对模式、目录哈希、会话/请求新鲜度和可用入口再校验；在途生产阻止危险模式转换。"
+      ],
+      "evidence": [
+        "main.cpp:424..428, chooseTechProfile, sendOpenTech",
+        "bridge.cpp:OpenTech → copyTechAllowed/requestTechRefresh"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-permission-view",
+      "feature": "选择 Assist.ini [tech] 自定义许可",
+      "modes": [
+        "受控/经典兼容/直接/数据/参数模式适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 428"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "428 实际选择 Assist.ini [tech] 自定义许可 profile1，并非只读“查看列表”；已修正本清单标签。",
+        "runtime OpenTech 对模式、目录哈希、会话/请求新鲜度和可用入口再校验；在途生产阻止危险模式转换。"
+      ],
+      "evidence": [
+        "main.cpp:424..428, chooseTechProfile, sendOpenTech",
+        "bridge.cpp:OpenTech → copyTechAllowed/requestTechRefresh"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-produce",
+      "feature": "生产所选科技",
+      "modes": [
+        "受控/经典兼容/直接/数据/参数模式适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 423"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/sidebar.h"
+      ],
+      "findings": [
+        "423或列表双击经允许集、liveTypeIndex和toolOrders判定；规则数据/参数模式由Host和Runtime拒绝工具生产。",
+        "旧三种模式验证CanBuild limit、FindFactory（经典模式allowOccupied=false）和AddCameo依赖，再通过nativeProduceEvent；成功只记入队。"
+      ],
+      "evidence": [
+        "main.cpp:423/LBN_DBLCLK → send(Produce)",
+        "bridge.cpp:Produce dispatcher; sidebar.h:ensureTechCameo/techFactory"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-cancel-production",
+      "feature": "取消所选生产",
+      "modes": [
+        "受控/经典兼容/直接/数据/参数模式适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 814"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/sidebar.h"
+      ],
+      "findings": [
+        "814将当前缓存类型重新匹配本局索引，Runtime要求UnsafeTech/techOpen/allowlist/活指针。",
+        "规则数据/参数模式拒绝该命令；旧模式提交原生Abandon事件0x10，不在本地手工退钱或改工厂。"
+      ],
+      "evidence": [
+        "main.cpp:814 → send(CancelTechProduction)",
+        "bridge.cpp:Produce|CancelTechProduction branch → nativeProduceEvent"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-production-status",
+      "feature": "生产状态查看",
+      "modes": [
+        "受控/经典兼容/直接/数据/参数模式适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 815"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/sidebar.h"
+      ],
+      "findings": [
+        "815只读六种工厂owner/product/step并将0..54进度clamp到百分比；读取失败显示不可用。",
+        "硬件参数状态区分等待安装/恢复、签名、槽不足、线程归属与外部修改；没有把请求开启当作已经生效。"
+      ],
+      "evidence": [
+        "main.cpp:progress update around815",
+        "sidebar.h:scanProduction/resetProduction"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-enhance-0",
+      "feature": "科技加强：规则数据",
+      "modes": [
+        "0",
+        "开/关/世界切换/恢复"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9097",
+        "source/assist/source/tactical_controls.h control 9470"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tech_enhancement_bridge.h",
+        "source/assist/source/tech_data_bridge.h"
+      ],
+      "findings": [
+        "规则数据加强以类型身份和原值日志恢复，世界不可知时保留日志，确证换世界后遗忘旧指针。",
+        "数据写入和科技解锁规则数据相互协调；切换精确模式前等待依赖的在途生产。"
+      ],
+      "evidence": [
+        "tactical_controls.h:9097/9470/9472 → refreshTechEnhancement / requestTechParameters",
+        "tech_ui_breakpoint_bridge.h:Full/Enhance/Compare dispatch and signature admission"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-enhance-1",
+      "feature": "科技加强：精确科技等级（参数断点）",
+      "modes": [
+        "1",
+        "开/关/世界切换/恢复"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9097",
+        "source/assist/source/tactical_controls.h control 9470"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_hot.h"
+      ],
+      "findings": [
+        "精确等级模式只截取已签名的规则判断入口；类型指针、vtable、UID、目录索引、等级以及 caller/token 均验证。",
+        "500ms受控目录刷新；热回调只走有界本地身份查询。"
+      ],
+      "evidence": [
+        "tactical_controls.h:9097/9470/9472 → refreshTechEnhancement / requestTechParameters",
+        "tech_ui_breakpoint_bridge.h:Full/Enhance/Compare dispatch and signature admission"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "technology-enhance-compare",
+      "feature": "精确科技等级：比较玩家科技等级",
+      "modes": [
+        "关/开（另占1槽）"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9472"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_core.h"
+      ],
+      "findings": [
+        "比较玩家等级单独占一个逻辑硬件入口；未选时不请求该槽。",
+        "和精确等级共享类型身份/签名版本；撤销失败或槽不足维持明确错误，不继续用未验证上下文。"
+      ],
+      "evidence": [
+        "tactical_controls.h:9097/9470/9472 → refreshTechEnhancement / requestTechParameters",
+        "tech_ui_breakpoint_bridge.h:Full/Enhance/Compare dispatch and signature admission"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "hardware-slots",
+      "feature": "硬件断点4槽预算、所有权和异常派发",
+      "modes": [
+        "外部槽/不足/签名拒绝/部分失败/恢复"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9473"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tech_ui_breakpoint_core.h",
+        "source/assist/source/tech_ui_breakpoint_hot.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h"
+      ],
+      "findings": [
+        "六个逻辑入口共享四个 DR 槽；只使用空槽，读取/写回核对租约；Foreign/GD 状态拒绝占用。",
+        "VEH 先核对 DR6/DR7/EIP 和所属线程再分类；混合/外部异常不消费，不运行功能回调。",
+        "owner-thread INT3 rendezvous 与 witness 验证，无 SuspendThread；深度作用域防重入，失败日志保留可能持有的 lease。",
+        "退役须所有已拥有硬件入口/witness 完成撤销及 VEH/句柄释放；无需求时500ms预算检查仍存在，不宣称零调用。"
+      ],
+      "evidence": [
+        "Service::configure/vectored/retire; Lease::matches/configure; ownedHit",
+        "Existing focused fixtures: breakpoint_owner_rendezvous.py, hardware_owned_dispatch.py (本轮未重跑)"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "internal_invariant"
+    },
+    {
+      "id": "placement-mode-0",
+      "feature": "建筑放置：受控",
+      "modes": [
+        "0",
+        "开启/关闭/切换"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 476",
+        "source/assist/source/tactical_controls.h control 9096"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h"
+      ],
+      "findings": [
+        "受控模式安装 canBuildHere 钩子，仅在当前本地 House 建筑且 riskReady 时允许；禁用或模式变更恢复自有站点。"
+      ],
+      "evidence": [
+        "tactical_controls.h:476/9096 → request/refreshPlacementSites",
+        "nativePlacementRetired; nativePlacementCommand; validateNativePlacement"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "placement-mode-1",
+      "feature": "建筑放置：直接",
+      "modes": [
+        "1",
+        "开启/关闭/切换"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 476",
+        "source/assist/source/tactical_controls.h control 9096"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h"
+      ],
+      "findings": [
+        "直接模式使用两处静态补丁组；逐组完整签名预检、写后所有权及失败回滚，外部变化不强制覆盖。"
+      ],
+      "evidence": [
+        "tactical_controls.h:476/9096 → request/refreshPlacementSites",
+        "nativePlacementRetired; nativePlacementCommand; validateNativePlacement"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "placement-mode-2",
+      "feature": "建筑放置：原生事件",
+      "modes": [
+        "2",
+        "开启/关闭/切换"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 476",
+        "source/assist/source/tactical_controls.h control 9096"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h"
+      ],
+      "findings": [
+        "原生事件模式先确认两个 legacy 站点恢复；本模式不写游戏代码，通过原生 Place 事件提交。",
+        "Offer、预览与事件入口分别验证完成产品与当前 House/世界/栏目身份。"
+      ],
+      "evidence": [
+        "tactical_controls.h:476/9096 → request/refreshPlacementSites",
+        "nativePlacementRetired; nativePlacementCommand; validateNativePlacement"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "native-placement-product",
+      "feature": "匹配当前栏目已完成建筑",
+      "modes": [
+        "建筑/防御栏目",
+        "原生事件模式"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9251"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h"
+      ],
+      "findings": [
+        "只提供当前建筑/防御栏目已经完成的最多两个产品；快照记录 factory/product/type/House UID、原生索引、世界与帧。",
+        "实际操作重新验证完成度及所有身份，指针复用不沿用旧快照。"
+      ],
+      "evidence": [
+        "captureNativePlacementOffer / nativePlacementCommand"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "native-placement-preview-key",
+      "feature": "切换自动放置预览",
+      "modes": [
+        "建筑/防御栏目",
+        "原生事件模式"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9252",
+        "Ctrl+Alt+G"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h"
+      ],
+      "findings": [
+        "Ctrl+Alt+G/可配置热键切换预览；原生工具占用、非前台、无完成产品、世界/视角代数不符时拒绝。",
+        "预览没有提交事件；每次鼠标操作重新验证位置和原生坐标转换。"
+      ],
+      "evidence": [
+        "nativePlacementPreviewToggle / nativePlacementPreviewTick"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "native-placement-place-click",
+      "feature": "预览后左键放置",
+      "modes": [
+        "建筑/防御栏目",
+        "原生事件模式"
+      ],
+      "entry_points": [
+        "WM_LBUTTONDOWN"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h"
+      ],
+      "findings": [
+        "仅消费自己持有的左键 down/up 对；新的 down 会清掉漏收 up，避免吞掉后续正常原生点击。",
+        "事件构造前与 append 前双重核验，成功仅代表 queued；完成回执最多8条、10秒，以同一产品已在地图上才退休光标。",
+        "清理 Q/W 快取只针对一致产品，调用原生清理 helper 有界两次。"
+      ],
+      "evidence": [
+        "nativePlacementPreviewMessage / submitConstructed / nativePlacementCompletionTick"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "native-placement-cancel",
+      "feature": "取消预览",
+      "modes": [
+        "建筑/防御栏目",
+        "原生事件模式"
+      ],
+      "entry_points": [
+        "右键",
+        "Esc",
+        "再次快捷键",
+        "换栏目/产品/原生工具"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h"
+      ],
+      "findings": [
+        "右键/Esc/重复预览键、栏目或产品变更、原生工具占用均撤销预览；边栏点击撤销后交还原生。",
+        "关闭、换世界、临时不可读分别保持清理边界，不用旧指针写回新世界。"
+      ],
+      "evidence": [
+        "cancelNativePlacementPreview / nativePlacementPreviewMessage"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "control-mode-0",
+      "feature": "控制全部：硬件参数",
+      "modes": [
+        "0",
+        "开/关/跨玩家/重连"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 860",
+        "source/assist/source/tactical_controls.h control 9250"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_parameter_policy.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h"
+      ],
+      "findings": [
+        "硬件模式首先恢复三处 legacy code sites，并核验 companion/Houseflag 已退役才请求 DR 槽。",
+        "热回调只接受已知 caller 与维护阶段发布的身份/签名，不每命中扫描全世界。"
+      ],
+      "evidence": [
+        "tactical_controls.h:860/9250 → controlmode wire selection → refreshControlSites",
+        "restorePlayerControlSites / requestControlParameters"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "control-mode-1",
+      "feature": "控制全部：原生Hook",
+      "modes": [
+        "1",
+        "开/关/跨玩家/重连"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 860",
+        "source/assist/source/tactical_controls.h control 9250"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_parameter_policy.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h"
+      ],
+      "findings": [
+        "原生模式使用三处入口且保留原生分支；队列代理与命令所属方只允许此模式。",
+        "失焦保持选中模式，暂挂执行；关闭/换模式逐站点恢复。"
+      ],
+      "evidence": [
+        "tactical_controls.h:860/9250 → controlmode wire selection → refreshControlSites",
+        "restorePlayerControlSites / requestControlParameters"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "control-mode-2",
+      "feature": "控制全部：Master三处补丁",
+      "modes": [
+        "2",
+        "开/关/跨玩家/重连"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 860",
+        "source/assist/source/tactical_controls.h control 9250"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_parameter_policy.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h"
+      ],
+      "findings": [
+        "Master 模式共享三处 sites，须先恢复无条件的 common predicate 后才撤回 owner queries，避免留下无条件控制。",
+        "部分写入/回滚失败仍保留实际 ownership 状态。"
+      ],
+      "evidence": [
+        "tactical_controls.h:860/9250 → controlmode wire selection → refreshControlSites",
+        "restorePlayerControlSites / requestControlParameters"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "control-command-owner",
+      "feature": "命令采用单位所属方",
+      "modes": [
+        "控制关闭/原生/硬件/Master适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9193"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/control_command_owner_bridge.h",
+        "source/assist/source/control_object_owner_bridge.h",
+        "source/assist/source/control_mode_policy.h"
+      ],
+      "findings": [
+        "仅原生控制模式支持；前台、非聊天、当前House UID与match检查，联机外方事件要求network group完整就绪。",
+        "Mega/object命令均从source actor解析所属方；foreign actorless planning commit拒绝，普通本方原生event kinds不收窄。",
+        "Object分支只允许明确actor event whitelist，source NetID tag必须0x34，队列<128；拒绝在构造前退到原生false epilogue。",
+        "四个入口的完整组签名、owned bytes及模式转换检查；关闭和失配恢复，接受计数不代表已执行。"
+      ],
+      "evidence": [
+        "controlCommandOwnerReady/controlCommandOwnerAction/controlCommandOwnerTick",
+        "controlObjectOwnerAction/controlObjectOwnerTick at0x6FFE2B"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "control-network-house",
+      "feature": "保留网络事件所属方",
+      "modes": [
+        "控制关闭/原生/硬件/Master适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9187"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/network_sender_bridge.h",
+        "source/assist/source/network_sender_policy.h",
+        "source/assist/source/control_mode_policy.h"
+      ],
+      "findings": [
+        "七处签名组外层安全门先安装，叶子全部拥有并复核后才发布可用；只允许支持的0/1/2协议及网络模式。",
+        "同House连续前缀封包；分别限制压缩/非压缩分支，保留原生时间戳/CRC/count/原始payload，关闭只清本地encoder metadata。",
+        "Off/故障/换世界撤销前先处理旧世界尚未发送的foreign OutList，保留队列顺序及时间槽；不可证实的新世界不沿用旧身份编辑。",
+        "packing期间进入draining；故障在同epoch锁存，确认旧站点/缓存/队列全部退休后新局可重新启用。"
+      ],
+      "evidence": [
+        "AssistNetworkSend / networkSenderFrameGroup / networkSenderCompressedGroup",
+        "networkSenderCancelForeign / restoreNetworkSender / networkSenderTick"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "control-native-sell",
+      "feature": "原生出售光标",
+      "modes": [
+        "控制关闭/原生/硬件/Master适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9189"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/native_sell_cursor_bridge.h",
+        "source/assist/source/network_sender_bridge.h",
+        "source/assist/source/placement_bridge.h"
+      ],
+      "findings": [
+        "两处Hook先安装House适配再启用cursor；失配、聊天/非ready、关闭均撤回，联机必须sender group完整。",
+        "候选记录object/House UID、manual token、match/session/frame/tick；构造前消费一次，最长90帧/1500ms。",
+        "仍调用原生CanSell，并在调用后重新验证身份与许可；只替换Event构造参数，原生队列与receiver继续执行。"
+      ],
+      "evidence": [
+        "nativeSellCursorAction(op9/op10)",
+        "nativeSellCursorTick/restoreNativeSellCursor; queueAvailable and actor lease checks"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "control-destruct",
+      "feature": "自毁所选单位所属方",
+      "modes": [
+        "控制关闭/原生/硬件/Master适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9253",
+        "source/assist/source/tactical_controls.h control 9185",
+        "source/assist/source/tactical_controls.h control 9254"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/hotkey_host.h",
+        "source/assist/source/destruct_owner_input.h",
+        "source/assist/source/player_test_bridge.h",
+        "source/assist/source/player_test_policy.h"
+      ],
+      "findings": [
+        "显式开关+按钮或独立物理快捷键；旧WM_HOTKEY>150ms、延迟手势或冲突组合不提交，自毁不进入普通积压队列。",
+        "Runtime从当前选区采集最多4096个活、在图、被选、统一所属方对象，前后核验vector/scene/frame/House UID；append前再次采集同一快照。",
+        "只允许新鲜的一次DestructPlayer请求，过期/非独立authority拒绝；外方联机须完整sender保留组；调用native构造并排队，不本地直接销毁。"
+      ],
+      "evidence": [
+        "submitDestructSelectedOwner / dispatchHotkeyGroup / handleHotkey",
+        "captureDestructSelection / sameDestructSelection / destructPlayerTarget / authorizePlayerOrder / destructPlayerCommand"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "control-switch-disabled",
+      "feature": "切换当前控制玩家（暂不可用）",
+      "modes": [
+        "控制关闭/原生/硬件/Master适用性"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 861",
+        "source/assist/source/tactical_controls.h control 862",
+        "source/assist/source/tactical_controls.h control 863",
+        "source/assist/source/tactical_controls.h control 864"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/player_test_policy.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/tactical_controls.h"
+      ],
+      "findings": [
+        "SwitchAvailable=false；UI禁用861..864，Runtime对SwitchPlayer和RestorePlayer（含旧shared请求）明确返回-4。",
+        "本行记录产品不可用性，不计为可用控制模式或已实测功能。"
+      ],
+      "evidence": [
+        "playertest::SwitchAvailable=false",
+        "bridge.cpp:SwitchPlayer||RestorePlayer → result=-4;n=0"
+      ],
+      "validation_gaps": [
+        "不可用入口的拒绝路径已核对；未测试已禁用的旧玩家上下文替换实现。"
+      ],
+      "review_status": "disabled_verified_source",
+      "kind": "user_feature"
+    },
+    {
+      "id": "map-mode-1",
+      "feature": "黑幕绘制：半透明绘制",
+      "modes": [
+        "1",
+        "关闭/局切换/失败恢复"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 808"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "半透明 shroud 绘制模式由 native 初始化之后的显示入口改变遮罩材质；不授予雷达、选择或 simulation 可见性。",
+        "旧配置5/6废弃映射到off，7/8归一到半透明/透明；硬件显示与绘制/Reveal模式在UI和runtime互斥。"
+      ],
+      "evidence": [
+        "tactical_controls.h:808 → shroudpolicy → refreshShroudSites/refreshDirectMapSites/RevealMap"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "map-mode-2",
+      "feature": "黑幕绘制：透明绘制",
+      "modes": [
+        "2",
+        "关闭/局切换/失败恢复"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 808"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "透明绘制与半透明是不同渲染分支；两种模式的入口/恢复均组预检，关闭在上下文可写时触发一次重绘。",
+        "旧配置5/6废弃映射到off，7/8归一到半透明/透明；硬件显示与绘制/Reveal模式在UI和runtime互斥。"
+      ],
+      "evidence": [
+        "tactical_controls.h:808 → shroudpolicy → refreshShroudSites/refreshDirectMapSites/RevealMap"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "map-mode-3",
+      "feature": "黑幕绘制：原生自动揭示",
+      "modes": [
+        "3",
+        "关闭/局切换/失败恢复"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 808"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "自动揭示走与手动 RevealMap 同一原生函数及 ExperimentalReveal许可；每次在有界地图/可执行入口验证后操作。",
+        "旧配置5/6废弃映射到off，7/8归一到半透明/透明；硬件显示与绘制/Reveal模式在UI和runtime互斥。"
+      ],
+      "evidence": [
+        "tactical_controls.h:808 → shroudpolicy → refreshShroudSites/refreshDirectMapSites/RevealMap"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "map-mode-4",
+      "feature": "黑幕绘制：直接全图",
+      "modes": [
+        "4",
+        "关闭/局切换/失败恢复"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 808"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "直接全图维护五处站点组，原生 MapReveal 入口也列为依赖；所有权和写后失败回滚参与关闭清理。",
+        "旧配置5/6废弃映射到off，7/8归一到半透明/透明；硬件显示与绘制/Reveal模式在UI和runtime互斥。"
+      ],
+      "evidence": [
+        "tactical_controls.h:808 → shroudpolicy → refreshShroudSites/refreshDirectMapSites/RevealMap"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "map-manual",
+      "feature": "手动地图揭示许可和执行",
+      "modes": [
+        "允许/禁止/快捷键/排队"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9199",
+        "RevealMap"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/crc_shadow_bridge.h",
+        "source/assist/source/tactical_controls.h"
+      ],
+      "findings": [
+        "手动入口显式许可检查；Map cell array数量>0且<=512²，签名通过才调用577D90。",
+        "CRC影子由 crcMapToolBegin/End包围该次原生揭示，不能声称恢复探索过的cells。"
+      ],
+      "evidence": [
+        "RevealMap dispatcher → crcMapToolBegin → 0x577D90 → crcMapToolEnd"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "map-hardware",
+      "feature": "硬件黑幕显示",
+      "modes": [
+        "开/关/与其他揭示模式互斥"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9492"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/main.cpp"
+      ],
+      "findings": [
+        "硬件黑幕仅修改指定显示判断的flags；与已有渲染/ExperimentalReveal互斥。",
+        "当前世界、native签名、租约与owned exception判定全部通过才改寄存器；关闭进入硬件退役。"
+      ],
+      "evidence": [
+        "9492 toggle → requestShroudParameters → Map tag owned hit"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "crc-shadow",
+      "feature": "CRC原始MapIsClear影子",
+      "modes": [
+        "开/关/晚启用/直接全图/局切换/恢复"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9196"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/crc_shadow_bridge.h",
+        "source/assist/source/crc_shadow_policy.h",
+        "source/assist/source/crc_shadow_restore.h"
+      ],
+      "findings": [
+        "八个原生读写点只影子化 MapIsClear，不是通用CRC屏蔽。",
+        "每轮记录scenario/House列表/本地UID/session/最大frame；unknown writes、未追踪揭示、直接全图、扩展游戏或旧世界都阻止不可靠影子。",
+        "回调只在live byte==本次display值且命中已知入口时替换；原生自然写更新original，默认保留实际BL。",
+        "关闭先恢复自己拥有的数据字节，再撤钩；暂不可读保留日志，确证旧世界丢弃，冲突不覆盖。"
+      ],
+      "evidence": [
+        "crcMapToolBegin/End, crcMapShadowTick, restoreCrcMapShadow",
+        "CRC shadow natural write and restore policies"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "sw-per-frame",
+      "feature": "逐观察帧永久授予所有已注册超武",
+      "modes": [
+        "开/关/重复帧/充能保留/已授予保留"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9490"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/superweapon_grant_bridge.h"
+      ],
+      "findings": [
+        "明确启用后，每个观测到的游戏帧最多执行一轮；世界/House UID/scenario与帧倒退重置去重。",
+        "每帧核验五个原生入口，最多256项；重新验证vector/index/UID/owner后使用原生GrantPermanentSW。",
+        "先记录frame再调用，失败不会同帧反复触发；关闭停止授予，不撤销已经获得的超武。"
+      ],
+      "evidence": [
+        "9490 → grantAllSuperweaponsTick / grantSuperweapon; native 0x6E1C40"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "sw-panel",
+      "feature": "独立超武面板开启与状态",
+      "modes": [
+        "开/关/刷新/目标选择/取消"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9405",
+        "superweapon panel messages"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/superweapon_sidebar_host.h",
+        "source/assist/source/superweapon_sidebar_model.h",
+        "source/assist/source/main.cpp"
+      ],
+      "findings": [
+        "独立非激活面板100ms采样，当前House向量最多256项；前后复核vector/pointers/type/owner/present以及最多2帧变化。",
+        "每次sample失败立即禁输入，>=250ms隐藏；切进程/match/viewport transform清状态；禁用/失焦/图标化隐藏，销毁清buffer/icons/entries/capture。",
+        "一次加载一个图标，失败1s重试；palette变更清缓存，行数/缩放与物理视口坐标有界。"
+      ],
+      "evidence": [
+        "serviceSuperweaponPanel → Panel::update/sample/loadOneIcon/hide/destroy"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "sw-move-fold",
+      "feature": "超武面板拖动折叠",
+      "modes": [
+        "开/关/刷新/目标选择/取消"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9405",
+        "superweapon panel messages"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/superweapon_sidebar_host.h",
+        "source/assist/source/superweapon_sidebar_model.h",
+        "source/assist/source/main.cpp"
+      ],
+      "findings": [
+        "标题拖动持有capture，释放后保存clamped客户区位置；折叠/停靠只改面板配置。",
+        "WM_CAPTURECHANGED与CANCELMODE清按键/拖动状态；hide同样释放capture，避免失焦后误激活。",
+        "滚轮按两列整行移动并clamp；resize/transform变化重新计算。"
+      ],
+      "evidence": [
+        "Panel::proc WM_LBUTTONDOWN/MOUSEMOVE/LBUTTONUP/CAPTURECHANGED/CANCELMODE/MOUSEWHEEL",
+        "Panel::geometry/changed/hide"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "sw-target",
+      "feature": "面板超武激活、目标光标与取消",
+      "modes": [
+        "开/关/刷新/目标选择/取消"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9405",
+        "superweapon panel messages"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/superweapon_sidebar_host.h",
+        "source/assist/source/superweapon_sidebar_model.h",
+        "source/assist/source/superweapon_sidebar_bridge.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp"
+      ],
+      "findings": [
+        "点击须down/up同一index且instance/type/House一致，再从live memory检查可选择；Runtime再核验queued instance/type与原生IsReady。",
+        "targeted超武先完整检查全部cursor helper，再清selection/设置原生target cursor；无目标型通过原生0x12事件提交，有帧仲裁和queued receipt。",
+        "右键仅取消当前原生超武光标，不清不相关建筑光标，不修改充能状态。"
+      ],
+      "evidence": [
+        "Panel::proc/selectable → send SelectSuper with instance/type",
+        "bridge.cpp:SelectSuper/superSelect; cancelSuperSidebarSelection"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "single-player-fps",
+      "feature": "自定义单机FPS",
+      "modes": [
+        "0原版",
+        "10–240",
+        "非法值",
+        "联机拒绝"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9494"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/single_player_fps_runtime.h",
+        "source/assist/source/single_player_fps.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h"
+      ],
+      "findings": [
+        "数值0关闭或10..240，只允许session0/5；一处硬件断点，36字节签名以及当前世界新鲜度参与准入。",
+        "QPC有理数余量形成deadline；落后重置，不catch-up。等待以<=4ms片段核验关闭/Host死亡/世界变化，失败上限20ms。",
+        "Owned hit保留寄存器/flags，仅写native timer duration和resume EIP；退役DR后释放timer资源。"
+      ],
+      "evidence": [
+        "9494 → FPS tag 0x55D7BC → fps runtime clock/wait/retire"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "pause-toggle",
+      "feature": "单机暂停/恢复",
+      "modes": [
+        "关/开",
+        "F5",
+        "失焦/联机/退出恢复"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9403",
+        "source/assist/source/tactical_controls.h control 9454"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/pause_view_bridge.h",
+        "source/assist/source/pause_view_policy.h",
+        "source/assist/source/pause_view_guard.h",
+        "source/assist/source/hotkey_routes.h"
+      ],
+      "findings": [
+        "只允许单机session0/5，native loop gate不另开命令调度器；Runtime消息入口继续处理工具请求。",
+        "失焦、菜单、heartbeat失效立即解除暂停并取消pending step，但不把选中功能误当需退役；关闭通过owned patch恢复。",
+        "native Windows pump不跨Capture租约；每个短draw/input调用单独guard，fault退出暂停并发布-3。"
+      ],
+      "evidence": [
+        "pauseViewKeyService / State::toggle/once/observe/hold",
+        "AssistPauseViewMainGate / GuardedPauseViewNative / pauseViewTick/restorePauseView"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "pause-step",
+      "feature": "暂停后前进一帧",
+      "modes": [
+        "F6",
+        "单步排队/取消"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9455"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/pause_view_bridge.h",
+        "source/assist/source/pause_view_policy.h",
+        "source/assist/source/pause_view_guard.h",
+        "source/assist/source/hotkey_routes.h"
+      ],
+      "findings": [
+        "仅paused且无step时once记录当前帧，hold允许原生loop执行，frame前进后重新保持暂停。",
+        "超过1帧标overshot=-4，换scene/epoch/帧倒退清状态；不谎报“严格单帧成功”。",
+        "快捷键复用Press/Release/Double规则，前台/非聊天过滤；消费自己的key-up，配置/epoch变化清旧手势。"
+      ],
+      "evidence": [
+        "pauseViewKeyService / State::toggle/once/observe/hold",
+        "AssistPauseViewMainGate / GuardedPauseViewNative / pauseViewTick/restorePauseView"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "native-mega",
+      "feature": "原生任务成功通知入口",
+      "modes": [
+        "开/关",
+        "调用成功/失败",
+        "签名拒绝"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9191"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/native_mega_gateway_bridge.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/guard.cpp"
+      ],
+      "findings": [
+        "入口只位于QueueMegaMission成功OutList append之后；比较native local EventClass与刚写入slot的111字节完全相同，验证actor/tag/owner/frame。",
+        "仅更新工具取消版本、lease、receipt和只读mission observer；cancelNative(false)不会ForceMission，不重复发事件，不阻挡原生成功。",
+        "保存GPR/flags/x87/SSE，重放原生成功epilogue含AL=1和ADD flags；关闭/兼容失败以owned site恢复。",
+        "覆盖不包括planning direct DoList、QueueMegaMissionF或receiver QueueMission。"
+      ],
+      "evidence": [
+        "nativeMegaGatewayAction/op11/nativeMegaGatewayEntry",
+        "nativeMegaGatewayTick/restoreNativeMegaGateway"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "native-combat",
+      "feature": "精确原生战斗查询",
+      "modes": [
+        "开/关",
+        "ABI/签名/访问失败"
+      ],
+      "entry_points": [
+        "source/assist/source/tactical_controls.h control 9198"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/combat_query_bridge.h",
+        "source/assist/source/combat_query_policy.h",
+        "source/assist/source/raw_combat.h",
+        "source/assist/source/guard.cpp",
+        "source/assist/source/combat_probe_bridge.h"
+      ],
+      "findings": [
+        "默认raw路径为有界武器/装甲/距离近似，检查slot/range/minimum/坐标溢出；不冒充引擎完全一致的选择。",
+        "显式原生模式走虚表SelectWeapon/GetWeapon/IsCloseEnough/IsAirborne，building专用powered gate；访问异常由SEH拒绝当前batch。",
+        "SEH不证明平台/MOD虚函数没有副作用；源码本身明确为实验兼容路径，此处保留验证缺口。"
+      ],
+      "evidence": [
+        "objectAirQuery/combatWeaponQuery → GuardedCombatWeapon/GuardedObjectAir",
+        "combatquery::choose / combat_probe_bridge query consumers"
+      ],
+      "validation_gaps": [
+        "完成raw/native两分支静态审查；未验证第三方MOD虚函数副作用/行为兼容。",
+        "未在实机战斗中逐武器、悬浮/空中对象和平台扩展执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "frame-maintain",
+      "feature": "帧通知诊断维护热路径",
+      "modes": [
+        "普通消息无诊断",
+        "延后开启",
+        "关闭",
+        "换控制器",
+        "死亡",
+        "恢复失败",
+        "策略变更"
+      ],
+      "entry_points": [
+        "GameRuntimeHook PM_REMOVE",
+        "watchdogProc"
+      ],
+      "paths_reviewed": [
+        "source/game_runtime/source/frame_signal_runtime.h",
+        "source/assist/tests/frame_observer_maintenance.py"
+      ],
+      "findings": [
+        "确认缺陷 H-FRAME-001：未请求帧诊断时每条消息仍读取游戏状态并探测mapping。已最小修复，readiness读取移到真正安装分支；无通道探测按owner节流100ms。",
+        "清理仍先于节流：取消选择、owner消失或变化均立即尝试恢复；恢复失败保留旧owner和channel，不采纳新owner。",
+        "已有通道延后打开ExplicitDiagnostic无需重建通道；installed且仍选中时不因heartbeat过期破坏已有hook；tick回绕与故障后retry通过。"
+      ],
+      "evidence": [
+        "frame-maintain-before/result.json",
+        "frame-maintain-after/result.json",
+        "实际生产maintain受控提取，100000调用：RPM600000→0，mapping probes100000→10；作用域调用次数不变"
+      ],
+      "validation_gaps": [
+        "本测试控制Win32 IPC/时钟/RPM/patch边界，不执行真实x86 detour、游戏帧、多人OOS或FPS测量。",
+        "集成Win32交叉编译由主代理统一执行。"
+      ],
+      "review_status": "fixed_controlled_verified",
+      "kind": "internal_invariant"
+    },
+    {
+      "id": "diagnostic-step-ReadOnly",
+      "feature": "Hook诊断步骤：ReadOnly",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h ReadOnly"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "不加载runtime；只检查游戏身份/运行条件作为无Hook基线。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::ReadOnly",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-RuntimeOnly",
+      "feature": "Hook诊断步骤：RuntimeOnly",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h RuntimeOnly"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "加载Runtime但不启用可选功能，以注册表0和baseline字节核验。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::RuntimeOnly",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-FrameSignal",
+      "feature": "Hook诊断步骤：FrameSignal",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h FrameSignal"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "只该步骤显式开启frame sampling；结束移除ExplicitDiagnostic并验证frame入口恢复。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::FrameSignal",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-Tooltip",
+      "feature": "Hook诊断步骤：Tooltip",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h Tooltip"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "配置tooltip功能并只允许对应registry条目，非目标字节必须保持baseline。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::Tooltip",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-Mega",
+      "feature": "Hook诊断步骤：Mega",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h Mega"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "配置原生成功通知入口，实际回调ABI与功能安全边界由native-mega单独登记。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::Mega",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-Placement",
+      "feature": "Hook诊断步骤：Placement",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h Placement"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "配置受控放置入口，对应patch组数量和ownership精确核验。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::Placement",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-Camera",
+      "feature": "Hook诊断步骤：Camera",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h Camera"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "仅camera组参与该步，camera功能审查由渲染子任务登记。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::Camera",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-LowDamage",
+      "feature": "Hook诊断步骤：LowDamage",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h LowDamage"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "只配置低伤害组，不自动执行用户战斗操作。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::LowDamage",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-AirType",
+      "feature": "Hook诊断步骤：AirType",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h AirType"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "配置空中type分支，按共享依赖闭包计算排除。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::AirType",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-AirFull",
+      "feature": "Hook诊断步骤：AirFull",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h AirFull"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "配置完整air组，不能在已排除共享站点后标成独立通过。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::AirFull",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-Control",
+      "feature": "Hook诊断步骤：Control",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h Control"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "配置原生Control三处组，恢复必须等三处字节及registry清空。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::Control",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-ShroudClear",
+      "feature": "Hook诊断步骤：ShroudClear",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h ShroudClear"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "配置透明显示，和half分支分开观察/问询；不自动宣称simulation可见性。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::ShroudClear",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-ShroudHalf",
+      "feature": "Hook诊断步骤：ShroudHalf",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h ShroudHalf"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "配置半透明显示；UI观察结果只记录本次环境。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::ShroudHalf",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-TechPair",
+      "feature": "Hook诊断步骤：TechPair",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h TechPair"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "OpenTech带当前hash/match，选择双点受控模式；忙请求等待ack后核验。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::TechPair",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-TechMaster",
+      "feature": "Hook诊断步骤：TechMaster",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h TechMaster"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "独立配置五点Master模式；结束需要五处全恢复后才可继续。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::TechMaster",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-DirectPlacement",
+      "feature": "Hook诊断步骤：DirectPlacement",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h DirectPlacement"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "直接两点放置组，具体直接patch bytes作为验证目标。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::DirectPlacement",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-Network",
+      "feature": "Hook诊断步骤：Network",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h Network"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "只启用network sender组，无法从无流量观察推断所有网络封包通过。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::Network",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-CommandOwner",
+      "feature": "Hook诊断步骤：CommandOwner",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h CommandOwner"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "连同其必要network/control依赖配置和排除，共享站点不能孤立忽略。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::CommandOwner",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-Sell",
+      "feature": "Hook诊断步骤：Sell",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h Sell"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "原生出售cursor/owner组及网络依赖按目录精确校验，不调用本地Sell来伪造结果。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::Sell",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-Crc",
+      "feature": "Hook诊断步骤：Crc",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h Crc"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "只arm CRC shadow，不自动执行RevealMap；“通过”不代表揭示后联机CRC一致。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::Crc",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-step-DirectMap",
+      "feature": "Hook诊断步骤：DirectMap",
+      "modes": [
+        "单项",
+        "从此继续",
+        "正常/异常/跳过",
+        "恢复"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/catalog.h DirectMap"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "findings": [
+        "直接全图独立实验组；排除依赖与非目标bytes核验同样生效。",
+        "每步安装→观察→用户结果→恢复；验证目标组owned bytes及精确registry计数，恢复前不能进入下一组。"
+      ],
+      "evidence": [
+        "catalog Step::DirectMap",
+        "main.cpp:configure/verifyStep/tick/restoreNext; Sequence::advance"
+      ],
+      "validation_gaps": [
+        "完成该步骤的调度、签名、观察、恢复路径静态审查；未执行本步真实游戏/多人实验。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-exclude",
+      "feature": "Hook诊断：排除可疑组及共享依赖",
+      "modes": [
+        "操作有效/无效阶段",
+        "错误处理"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/main.cpp",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h"
+      ],
+      "findings": [
+        "排除某组按共享依赖闭包一起排除；两个基线不可排除，防止半组实验。"
+      ],
+      "evidence": [
+        "Selection::exclude / buildPlan"
+      ],
+      "validation_gaps": [
+        "对应路径已静态审查；未在实际Win32 UI/游戏运行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-skip",
+      "feature": "Hook诊断：跳过当前组并恢复",
+      "modes": [
+        "操作有效/无效阶段",
+        "错误处理"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/main.cpp",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h"
+      ],
+      "findings": [
+        "跳过明确记录为skipped不是passed；先恢复，必要时过滤后续共享依赖组；错误只保存下一轮选择。"
+      ],
+      "evidence": [
+        "skipCurrent / restoreNext"
+      ],
+      "validation_gaps": [
+        "对应路径已静态审查；未在实际Win32 UI/游戏运行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-stop",
+      "feature": "Hook诊断：结束诊断并恢复",
+      "modes": [
+        "操作有效/无效阶段",
+        "错误处理"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/main.cpp",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h"
+      ],
+      "findings": [
+        "OOS/用户停止均先清配置和stop请求，只有stop2+baselinebytes或确证进程死亡才释放；15s失败保留窗口/阻塞状态。"
+      ],
+      "evidence": [
+        "stop / cleanup / stopAndRestore"
+      ],
+      "validation_gaps": [
+        "对应路径已静态审查；未在实际Win32 UI/游戏运行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-continue",
+      "feature": "Hook诊断：已恢复后继续下一组",
+      "modes": [
+        "操作有效/无效阶段",
+        "错误处理"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/main.cpp",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h"
+      ],
+      "findings": [
+        "继续受恢复状态保护；全站点baseline、registry0、fresh snapshot且命令不pending才准许下一步。"
+      ],
+      "evidence": [
+        "Restoring → restoreVerified → advance"
+      ],
+      "validation_gaps": [
+        "对应路径已静态审查；未在实际Win32 UI/游戏运行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-focus",
+      "feature": "Hook诊断：失焦暂停观察与焦点恢复确认",
+      "modes": [
+        "操作有效/无效阶段",
+        "错误处理"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/main.cpp",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h"
+      ],
+      "findings": [
+        "失焦冻结观察clock；恢复焦点需要更长5s稳定核对，普通核对1s；前后台不把暂停当成功。"
+      ],
+      "evidence": [
+        "ObservationClock / foreground handling / verifyStep"
+      ],
+      "validation_gaps": [
+        "对应路径已静态审查；未在实际Win32 UI/游戏运行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-oos",
+      "feature": "Hook诊断：OOS/断线停止",
+      "modes": [
+        "操作有效/无效阶段",
+        "错误处理"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/main.cpp",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h"
+      ],
+      "findings": [
+        "每timer周期在询问前检查OOS/断线、world/frame变化、读失败；OOS停止后不能继续。"
+      ],
+      "evidence": [
+        "tick / worldChanged / reportQuestion / Sequence::stop"
+      ],
+      "validation_gaps": [
+        "对应路径已静态审查；未在实际Win32 UI/游戏运行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-persist",
+      "feature": "Hook诊断：排除组持久化",
+      "modes": [
+        "操作有效/无效阶段",
+        "错误处理"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/main.cpp",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h"
+      ],
+      "findings": [
+        "按稳定StepKind保存排除项；optional baselines和single/following形成明确计划。"
+      ],
+      "evidence": [
+        "selection load/save / buildPlan"
+      ],
+      "validation_gaps": [
+        "对应路径已静态审查；未在实际Win32 UI/游戏运行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "diagnostic-report",
+      "feature": "Hook诊断：诊断观察记录",
+      "modes": [
+        "操作有效/无效阶段",
+        "错误处理"
+      ],
+      "entry_points": [
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/main.cpp",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h"
+      ],
+      "findings": [
+        "保存native模块摘要、站点bytes、步骤状态、人工观察与退出结果；不把没有事件发生的观察等同联机安全认证。",
+        "H-DIAG-002 已由主代理源码修复：协议标题改用 assist::Version/runtime::Version；四类目录数由 std::count_if 和现有分类函数计算；删除硬编码 denied 数量。原来14/30及Assist89/101不一致的证据保留。"
+      ],
+      "evidence": [
+        "log modules/sites / append result / sequence state",
+        "catalog-count.cpp：编译直接调用生产allSites/covered/dormant/cursorOnly/experimentalOnly，结果82/48/3/1/30，uncovered0，steps21",
+        "main.cpp:177 log header versus protocol.h:Version=101",
+        "补查当前 hook_diagnostics/main.cpp:177..178，已使用动态协议与四类目录计数；本轮仅静态复核该修复。"
+      ],
+      "validation_gaps": [
+        "尚未执行真实 Win32 日志生成或联机诊断；catalog-count-result.json保留修复前目录分类计数证据，不能称修复后UI执行通过。"
+      ],
+      "review_status": "source_fixed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "sw-iron-hotkey",
+      "feature": "铁幕独立快捷键",
+      "modes": [
+        "SelectIron → IronCurtainSpecial",
+        "前台/非聊天/当前对局/过期拒绝"
+      ],
+      "entry_points": [
+        "actions[9] / executeHotkey1009"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/hotkey_host.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "该独立命令经命令新鲜度/世界/前台/聊天统一入口；namedSuper有界遍历当前House超武，按固定ID匹配。",
+        "找到后仍经过superSelect原生ready和完整cursor依赖检查；未找到返回-4，不选择其他类型。"
+      ],
+      "evidence": [
+        "actions[9] / executeHotkey1009",
+        "namedSuper → SelectIron → IronCurtainSpecial → superSelect"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "sw-chrono-hotkey",
+      "feature": "超时空独立快捷键",
+      "modes": [
+        "SelectChrono → ChronoSphereSpecial",
+        "前台/非聊天/当前对局/过期拒绝"
+      ],
+      "entry_points": [
+        "actions[10] / executeHotkey1010"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/hotkey_host.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "该独立命令经命令新鲜度/世界/前台/聊天统一入口；namedSuper有界遍历当前House超武，按固定ID匹配。",
+        "找到后仍经过superSelect原生ready和完整cursor依赖检查；未找到返回-4，不选择其他类型。"
+      ],
+      "evidence": [
+        "actions[10] / executeHotkey1010",
+        "namedSuper → SelectChrono → ChronoSphereSpecial → superSelect"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    },
+    {
+      "id": "sw-custom-hotkey",
+      "feature": "按超武类型ID绑定快捷键",
+      "modes": [
+        "SelectSuper via current snapshot ID→native index",
+        "前台/非聊天/当前对局/过期拒绝"
+      ],
+      "entry_points": [
+        "410/411/412 bindSuper; executeHotkey1020+binding"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/hotkey_host.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "findings": [
+        "绑定以类型ID保存；执行时从当前snapshot匹配类型，再由同一superSelect验证本局owner/present/readiness。",
+        "找不到本局类型不提交；通用快捷键的前台/聊天/连接fresh/队列规则仍生效。"
+      ],
+      "evidence": [
+        "bindSuper/swBindings → executeHotkey → SelectSuper → superSelect"
+      ],
+      "validation_gaps": [
+        "本轮完成所列路径静态审查；未在实际 Windows 游戏、第三方扩展及多人联机中逐模式执行。"
+      ],
+      "review_status": "source_reviewed",
+      "kind": "user_feature"
+    }
+  ],
+  "coverage_note": "最初79项补充铁幕/超时空/自定义超武快捷键3条，共82行。其中2行为内部不变量，1行为不可用功能拒绝路径；不作为全产品功能总量。每行单独列源码路径与验证缺口，source_reviewed不是功能实机通过。",
+  "summary": {
+    "disabled_verified_source": 1,
+    "fixed_controlled_verified": 1,
+    "source_fixed": 1,
+    "source_reviewed": 79
+  },
+  "fix_commit": "38c6a71f840615986c6d37e1038034183c466566",
+  "additional_source_fixes": [
+    {
+      "id": "H-DIAG-002",
+      "status": "source_fixed",
+      "reviewed_head": "491bbc72ec67ac70454e9d9a0ef69287eb1ba28f",
+      "author": "root",
+      "runtime_validation": "not executed"
+    }
+  ]
+}

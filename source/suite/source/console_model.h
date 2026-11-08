@@ -35,6 +35,8 @@ struct Control {
     int selected = -1, min = 0, max = 100, step = 1, row = 0, column = 0;
     std::vector<std::string> options;
     DebugEntry debug;
+    // Optional per-option availability. Omitted entries retain legacy enabled behavior.
+    std::vector<bool> optionEnabled;
 };
 struct Snapshot {
     unsigned module = 0;
@@ -415,6 +417,14 @@ inline std::string encodeSnapshot(const Snapshot& s) {
             out += detail::quote(option);
         }
         out += "]";
+        if (!c.optionEnabled.empty()) {
+            out += ",\"optionEnabled\":[";
+            for (std::size_t i = 0; i < c.optionEnabled.size(); ++i) {
+                if (i) out.push_back(',');
+                out += detail::boolean(c.optionEnabled[i]);
+            }
+            out += "]";
+        }
         if (c.debug.present) {
             const auto& d = c.debug;
             out += ",\"debug\":{\"present\":true,\"siteId\":" + std::to_string(d.siteId) +

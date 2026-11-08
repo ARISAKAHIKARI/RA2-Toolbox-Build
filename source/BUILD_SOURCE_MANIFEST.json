@@ -1,11 +1,11 @@
 {
-  "name": "RA2 Toolbox 1.0.44-pre.1",
-  "version": "1.0.44-pre.1",
+  "name": "RA2 Toolbox 1.0.44",
+  "version": "1.0.44",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full package includes hash-pinned offline assets/profiles/preprocessing runtime/engine; Update preserves an existing complete installation.",
   "resources_legacy_reuse": true,
-  "build_protocol": 100,
+  "build_protocol": 101,
   "validation": "This revision records only focused checks actually executed against its frozen production and test source bytes. Historical suites are not counted as new execution. Complete Windows-target compilation, static PE/ABI validation, paired component digests and archive verification are recorded separately in the frozen build receipts and release-manifest.json; this source manifest does not assert their completion. No live Windows/DWM, user-platform, game, physical GPU or multiplayer acceptance is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
@@ -13,7 +13,7 @@
     "Experimental.SuperweaponPermanentGrant": "default0; native permanent grant each observed game frame; normal charge; no automatic multiplayer broadcast",
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
     "Orders.ObjectEventBackend": "0=constructor; 1=ClickedEvent MP; SP uses constructor/DoList centrally",
-    "Display.ShroudStrategy": "UI0=off,1/2=HIGH RISK original half/clear draw hooks,3=HIGH RISK automatic reveal,4=HIGH RISK direct map; unusable material5/6 retired tooff; stored7/8 aliases1/2",
+    "Display.ShroudStrategy": "UI0=off,1/2=HIGH RISK original half/clear draw hooks,3=HIGH RISK automatic reveal,4=HIGH RISK direct map; material5/6 are visible disabled choices and resolve to off; stored7/8 aliases1/2",
     "Display.BuildTimeTooltip": "default0 after one-time migration; independent native sidebar time tooltip; no high-risk prefix",
     "Experimental.CrcMapIsClearShadow": "default0; HIGH RISK MapIsClear-only original-value input at native CRC; MP automatic/native reveal only; enable before first tool reveal in a new match; not a full reveal or platform compatibility guarantee",
     "Experimental.NativeMegaGateway": "default0 after one-time migration; explicit HIGH RISK successful native command observer",
@@ -27,7 +27,7 @@
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,
-  "package_type": "Windows x64 prerelease Full and Update packages with same-commit paired x86 Runtime/broker and pinned WebView2 loader; no development sources in user packages.",
+  "package_type": "Windows x64 stable Full and Update packages with paired same-commit x86 Runtime/broker and pinned WebView2 loader; no development sources in user package.",
   "runtime_transport_protocol": 4,
   "game_code_patching": "Prefer native events, polling and external rendering; gameplay code changes, simulation mutations and original-value CRC mirror retain explicit HIGH RISK labels. Read-only native queries, build-time display and HideCursor are not classified as HIGH RISK. Cursor tooltip repair owns validated data/vtable slots without rewriting .text; this is not a multiplayer certification.",
   "input_entry": "Windows WH_GETMESSAGE/WH_CALLWNDPROCRET; ordinary sessions use frame-counter polling, native frame notification only explicitly selected diagnostic test",
@@ -43,7 +43,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.44-pre.1 is a performance prerelease based on stable 1.0.43 at bf3fbe88faa96513649f2998aa0ab6e71935f4a8. It addresses repeated work in hardware enemy-control validation and same-frame Runtime collection when calculation is delegated to the toolbox. The configured unified sampling frequency is retained. The designated publication is prerelease/non-Latest; 1.0.43 remains the stable Latest.",
+  "release_status": "1.0.44 is the stable release following the shared-world performance series and feature-point source audit. It includes the requested nonblocking Broker lifecycle, fixed construction-reservation boundary and world-intent guards, plus disabled cursor/map asset replacement choices. Focused execution, exact-commit Windows-target compilation, actual PE checks and package hashes are recorded separately; no live Windows, game, physical GPU or multiplayer acceptance is asserted here.",
   "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; Debug entry catalog plus independent read-only platform Hook scan tools, manual PID, optional same-build original EXE, progress/cancellation and local HTML/JSON reports; existing action generation/revision acknowledgement preserved.",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement. Active, identity-verified enhancement targets may enter the toolbox catalogue despite Insignificant; Spawned and zero-owner exclusions and native build/factory rules remain. Ares replacing the native CanBuild body still makes the internal Exact comparison unavailable.",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -886,5 +886,51 @@
     "multiplayer_tested": false,
     "prerelease": true,
     "stable_latest_to_preserve": "v1.0.43"
+  },
+  "SharedWorldPerformance144Pre2": {
+    "base_commit": "c03e4ffcba13c6ceb435b758989d7c95093ca772",
+    "production_base": "cee2af5621c78d5f565463cf611ff591ed1ecbc3",
+    "version": "1.0.44-pre.2",
+    "file_version": "1.0.44.2",
+    "assist_protocol": 101,
+    "world_payload_version": 1,
+    "world_transport_version": 2,
+    "scope": [
+      "A Runtime-owned capture reads each successful overlapping byte once, seals the per-observed-logic-frame result, and publishes it to Host consumers. Missing coverage records next-frame demand and never falls back to a second live world read.",
+      "Tactical collectors stage complete inputs before publishing; native legality queries and final identity/manual-token/order guards retain explicit live phases.",
+      "Main renderer, minimap and watch cameras use one scene provider over the same immutable raw payload, complete Tactical bounds and independent live UI/view state.",
+      "Host labels, sidebar, formation, command cursor, route observations, construction preview and local UI reuse sealed world data while small UI input and final admission remain live.",
+      "World transport has a small control mapping and two payload buffers that grow geometrically only as required. Process connection and Runtime incarnation identities prevent stale reuse.",
+      "Hardware exception ownership is classified before Runtime scope entry; ordinary maintenance publishes existing counters once per second. No additional per-hit timing, allocation, log or logic-frame read is introduced."
+    ],
+    "limits": [
+      "Existing message-driven admission is retained; one acquisition per observed admitted logic frame does not prove every simulation frame was observed.",
+      "The fixed Windows cost of each hardware execution-breakpoint exception remains. Counts are observable, not a claim that all stutter is eliminated.",
+      "Windows cross-process pressure, real GPU output, actual game FPS and multiplayer require live validation."
+    ],
+    "sampling_frequency_reduced": false,
+    "prerelease": true,
+    "stable_latest_to_preserve": "v1.0.43",
+    "windows_executed": false,
+    "game_tested": false,
+    "multiplayer_tested": false
+  },
+  "StableRelease144": {
+    "version": "1.0.44",
+    "file_version": "1.0.44.0",
+    "prerelease": false,
+    "make_latest": true,
+    "assist_protocol": 101,
+    "scope": [
+      "Advance Broker startup, acknowledgements and retirement without positive-duration waits under Host control locks; retain identity, deadline, backoff and mailbox ownership.",
+      "Keep the construction-candidate/queue boundary fixed; added reservations extend upward, with drawing and hit testing sharing the anchor.",
+      "Bind consumed reservation intents to their original PID, match and catalogue through submission and busy requeue.",
+      "Gray the cursor SHA replacement and retired map SHP replacement choices in native and modern console controls; reject stale disabled actions.",
+      "Include the preceding feature-point audit fixes and shared-world performance series; prior evidence remains separately attributed."
+    ],
+    "validation": "Focused current-source checks and a pinned fresh mixed-architecture build are recorded in separate release receipts. This metadata does not claim a check has passed before it has run.",
+    "windows_executed": false,
+    "game_tested": false,
+    "multiplayer_tested": false
   }
 }

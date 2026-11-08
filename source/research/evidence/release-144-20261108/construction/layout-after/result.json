@@ -1,0 +1,46 @@
+{
+  "scope": "Check shipped reservation layout, painter rectangles and window placement.\n\nThe point under a stationary mouse must keep resolving to the same candidate\nwhile the queue grows/shrinks or the tab changes. Win32 window I/O is a double;\nthis is a geometry regression, not a live-game screenshot or DPI runtime test.\n",
+  "source_sha256": {
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/construction_policy.h": "78b888d6138b0b0f1825a8ba73058647119ca51c333dbf68b55da2b69da6b1ac",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/construction_host.h": "4672538f176f05ed0d6c92bcfb6f7e91f21dc1b35388ae3510efdd1aa5584e35"
+  },
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O1",
+    "-g",
+    "-fsanitize=address,undefined",
+    "-UNDEBUG",
+    "-DEXPECT_REGRESSION=0",
+    "/workspace/scratch/40121bc881b8/release-1.0.44/construction/layout-after/layout.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/release-1.0.44/construction/layout-after/layout"
+  ],
+  "compile_exit": 0,
+  "compile_stderr": "",
+  "expect_regression": false,
+  "run_exit": 0,
+  "stdout": "{\"transforms\":117,\"states\":240552,\"checks\":4938305,\"boundary_drift_states\":0,\"stationary_click_changes\":0,\"queue_growth_moved_window_down\":0,\"queue_dependent_row_changes\":0,\"max_boundary_drift_pixels\":0,\"default_boundary_by_queue_0_to_5\":[266,266,266,266,266,266],\"passed\":1,\"windows_runtime_executed\":false}\n",
+  "stderr": "",
+  "result": {
+    "transforms": 117,
+    "states": 240552,
+    "checks": 4938305,
+    "boundary_drift_states": 0,
+    "stationary_click_changes": 0,
+    "queue_growth_moved_window_down": 0,
+    "queue_dependent_row_changes": 0,
+    "max_boundary_drift_pixels": 0,
+    "default_boundary_by_queue_0_to_5": [
+      266,
+      266,
+      266,
+      266,
+      266,
+      266
+    ],
+    "passed": 1,
+    "windows_runtime_executed": false
+  },
+  "source_hash_stable": true
+}

@@ -1,3 +1,4 @@
+#include "tactical_frame_read.h"
 // Included by native_orders_bridge.h, under the sole Runtime dispatcher.
 static unloadcompute::Input unloadLocalInput,unloadExternalInput;
 static unloadcompute::Result unloadResultCopy;
@@ -5,13 +6,13 @@ static compute::FrameHistory<unloadcompute::Input> unloadFrames;static uint32_t 
 static bool unloadCalculationPending;
 static uint32_t unloadCalculationSerial;
 static void resetUnloadCalculation(){unloadCalculationPending=false;unloadFrames.clear();unloadApplied=sh?sh->unloadComputed:0;unloadExternalInput.count=0;}
-static unloadcompute::View unloadView(const UnloadPassenger&r,int frame){
+static unloadcompute::View unloadView(const UnloadPassenger&r,int frame,bool query=true){
  unloadcompute::View v{};const uint32_t p=r.p,t=typeOf(p,1);
  v.frame=frame;v.mode=r.mode;v.landedFrame=r.landedFrame;
  v.mission=get<int>(p+0xAC);v.queued=get<int>(p+0xB4);v.sequence=get<int>(p+0x6C4);
  v.x=get<int>(p+0x9C);v.y=get<int>(p+0xA0);
  v.deployer=get<bool>(t+0xEC8);v.engineer=get<bool>(t+0xEC3);v.spy=get<bool>(t+0xEBE);v.c4=get<bool>(t+0xEC2);
- if(v.deployer)v.ready=call<bool>(get<uint32_t>(get<uint32_t>(p)+0x314),p);
+ if(v.deployer&&query)v.ready=call<bool>(get<uint32_t>(get<uint32_t>(p)+0x314),p);
  return v;
 }
 static bool unloadSourceCurrent(const UnloadPassenger&r,const unloadcompute::Source&s,uint32_t house,int frame){
@@ -46,27 +47,64 @@ static uint8_t unloadTargetAction(uint32_t p,uint32_t t,const unloadcompute::Vie
  planner::Actor target{};rawCombatInfo(q,targetType,k,target,false);
  return planner::compatibleTarget(source,target,false)?2:0;
 }
-static void collectUnloadSource(unloadcompute::Input&input,const UnloadPassenger&r,uint32_t house,int frame){
- const int index=input.count++;auto&s=input.sources[index];s={};
- s.job=r.job;s.id=r.id;s.pointer=r.p;s.type=typeOf(r.p,1);s.token=manualVersions.get(r.id);
- s.state=static_cast<const unloadcompute::State&>(r);s.view=unloadView(r,frame);
- memset(input.actions[index],0,sizeof(input.actions[index]));
- if(s.view.deployer||frame<r.sentFrame)return;
- if(!input.targetCount){Vec all=vec(0xA8EC78);
-  for(int j=0;j<all.count&&input.targetCount<unloadcompute::MaxTargets;++j){uint32_t q=item(all,j);
-   if(!q||!live(q)||get<uint32_t>(q+0x21C)==house)continue;
-   input.targets[input.targetCount++]={get<uint32_t>(q+0x10),q,get<int>(q+0x9C),get<int>(q+0xA0)};
-  }
+static unloadcompute::Target unloadSampleTargets[unloadcompute::MaxTargets];
+static int unloadSampleTargetCount,unloadSampleTargetFrame=-1;static uint32_t unloadSampleTargetMatch,unloadSampleTargetHouse;
+static bool collectUnloadTargets(uint32_t house,int frame){
+ if(unloadSampleTargetFrame==frame&&unloadSampleTargetMatch==match&&unloadSampleTargetHouse==house)return true;
+ SampleReadScope frameRead;if(!frameRead)return false;
+ static unloadcompute::Target next[unloadcompute::MaxTargets];int count=0;
+ Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
+ for(int n=0;n<all.count&&count<unloadcompute::MaxTargets;++n){uint32_t p=item(all,n);
+  if(!p||!live(p)||get<uint32_t>(p+0x21C)==house)continue;
+  next[count++]={get<uint32_t>(p+0x10),p,get<int>(p+0x9C),get<int>(p+0xA0)};
  }
- planner::Actor source{};rawCombatInfo(r.p,s.type,1,source,true);
- for(int j=0;j<input.targetCount;++j){bool failed=false;
-  input.actions[index][j]=unloadTargetAction(r.p,s.type,s.view,input.targets[j].pointer,house,source,failed);
-  if(failed){s.view.queryFailed=1;break;}
- }
+ if(!frameRead.complete())return false;
+ memcpy(unloadSampleTargets,next,size_t(count)*sizeof(next[0]));unloadSampleTargetCount=count;
+ unloadSampleTargetMatch=match;unloadSampleTargetHouse=house;unloadSampleTargetFrame=frame;return true;
 }
+static bool collectUnloadSource(unloadcompute::Input&input,const UnloadPassenger&r,uint32_t house,int frame){
+ if(input.count<0||input.count>=unloadcompute::MaxSources)return false;
+ unloadcompute::Source next{};static uint8_t actions[unloadcompute::MaxTargets],queries[unloadcompute::MaxTargets];
+ memset(actions,0,sizeof actions);memset(queries,0,sizeof queries);bool targets=false;
+ {
+  SampleReadScope frameRead;if(!frameRead)return false;
+  if(get<uint32_t>(r.p+0x10)!=r.id||kind(r.p)!=1)return false;
+  next.job=r.job;next.id=r.id;next.pointer=r.p;next.type=typeOf(r.p,1);next.token=manualVersions.get(r.id);
+  next.state=static_cast<const unloadcompute::State&>(r);next.view=unloadView(r,frame,false);
+  if(!next.view.deployer&&frame>=r.sentFrame){
+   if(!collectUnloadTargets(house,frame))return false;targets=true;
+   planner::Actor source{};rawCombatInfo(r.p,next.type,1,source,true);
+   for(int n=0;n<unloadSampleTargetCount;++n){const uint32_t p=unloadSampleTargets[n].pointer;const auto&v=next.view;
+    if(!p||!live(p)||get<uint32_t>(p+0x11C)||get<int>(p+0x220))continue;
+    queries[n]=(v.engineer||v.spy||v.c4)&&kind(p)==3&&unloadBuildingCandidate(p,house,v.engineer!=0);
+    if(v.engineer||v.spy||!nativeEnemy(p,house))continue;
+    const int k=kind(p);const uint32_t type=typeOf(p,k);if(!type)continue;
+    planner::Actor target{};rawCombatInfo(p,type,k,target,false);if(planner::compatibleTarget(source,target,false))actions[n]=2;
+   }
+  }
+  if(!frameRead.complete())return false;
+ }
+ // Only native queries live here. In particular, neither the deployer virtual
+ // call nor GuardedEnterAction may execute under the sealed read adapter.
+ if(worldByID(next.id)!=next.pointer||manualVersions.get(next.id)!=next.token||kind(next.pointer)!=1||typeOf(next.pointer,1)!=next.type)return false;
+ if(next.view.deployer)next.view.ready=call<bool>(get<uint32_t>(get<uint32_t>(r.p)+0x314),r.p);
+ if(targets)for(int n=0;n<unloadSampleTargetCount;++n)if(queries[n]){const auto&target=unloadSampleTargets[n];
+  if(worldByID(target.id)!=target.pointer){actions[n]=0;continue;}
+  unsigned action=0;uint32_t query=get<uint32_t>(get<uint32_t>(r.p)+0x74);FaultPhase phase(runtimefault::LoadLegality,r.p,target.pointer);
+  if(query<0x10000||!GuardedEnterAction(query,r.p,target.pointer,&action)){next.view.queryFailed=1;break;}
+  const int mission=nativeorders::specialMission(next.view.engineer!=0,next.view.spy!=0,next.view.c4!=0,int(action));
+  if(mission>=0)actions[n]=uint8_t((mission+1)|64);
+ }
+ const int index=input.count++;input.sources[index]=next;memcpy(input.actions[index],actions,sizeof actions);
+ if(targets){input.targetCount=unloadSampleTargetCount;memcpy(input.targets,unloadSampleTargets,size_t(input.targetCount)*sizeof(input.targets[0]));}
+ return true;
+}
+
 static bool applyUnloadDecision(UnloadPassenger&r,const unloadcompute::Input&input,int index,const unloadcompute::Decision&decision,uint32_t house,int frame,int&budget,bool external){
  const auto&s=input.sources[index];
- if(external&&!unloadSourceCurrent(r,s,house,frame))return false;
+ // Both compute locations now consume capture-time facts; current admission
+ // must check the source even when the pure planner ran inside Runtime.
+ if(!unloadSourceCurrent(r,s,house,frame))return false;
  auto&state=static_cast<unloadcompute::State&>(r);state=decision.observed;
  if(decision.done)return true;
  if(decision.mission<0||budget<=0||outgoingRoom()<=0)return false;

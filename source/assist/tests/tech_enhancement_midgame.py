@@ -40,6 +40,7 @@ def main():
              "source/assist/source/sidebar.h", "source/assist/source/sidebar_policy.h",
              "source/assist/source/tech_enhancement.h", "source/assist/source/tech_enhancement_bridge.h",
              "source/assist/source/tech_ui_breakpoint_bridge.h", "source/assist/source/tech_enhancement_parameter_policy.h",
+             "source/assist/source/tech_parameter_lookup.h",
              "source/assist/source/technology_mode_policy.h", "source/assist/source/session_epoch.h",
              "source/external_reader/source/catalogue_stamp.h",
              "source/assist/tests/tech_enhancement_midgame.py", "source/assist/tests/tech_enhancement_midgame.cpp"]
@@ -56,7 +57,8 @@ def main():
              "exact_civilian_missing_prerequisite", "exact_civilian_factory_owner_mismatch",
              "exact_filter_spawned", "exact_filter_no_owner", "exact_full_capacity",
              "exact_failed_signature", "exact_dependency_canbuild", "exact_dependency_factory", "exact_dependency_tab", "exact_dependency_addcameo",
-             "exact_dependency_active_handoff", "production_dependency_canbuild", "exact_ares_body_bypassed", "rules_to_exact_ares_busy_handoff", "exact_full_allowlist", "exact_busy_mode_handoff"]
+             "exact_dependency_active_handoff", "production_dependency_canbuild", "exact_ares_body_bypassed", "rules_to_exact_ares_busy_handoff", "exact_full_allowlist", "exact_busy_mode_handoff",
+             "exact_index_published", "exact_index_rebuild_removed", "exact_index_unready_recapture", "exact_index_empty_capture", "exact_index_capture_failure"]
     report = {"schema": 2, "assertions_enabled": True, "game_tested": False, "multiplayer_tested": False,
               "windows_executed": False, "source_sha256": hashes, "before_commit": None if args.after_only or args.skip_refresh_before else args.before_ref,
               "refresh_before_skipped": bool(args.after_only or args.skip_refresh_before),

@@ -1,5 +1,6 @@
 #pragma once
 #include "voxel_preview.h"
+#include "resource_read.h"
 #include <map>
 #include <tuple>
 namespace external { namespace liveshape {
@@ -32,14 +33,15 @@ public:
  void begin(){palettes_.clear();}
  template<class Read>std::shared_ptr<const voxel::Image> get(Read read,uint32_t shape,int frame,uint32_t paletteSlot){
   if(frame<0||frame>=8192||!voxel::range(shape,16))return {};Palette colors;if(!palette(read,paletteSlot,colors))return {};
-  std::array<uint8_t,8>head{};if(!read(shape,head.data(),head.size()))return {};
-  if(voxel::u16(head.data())==0xffff){if(!read(shape+12,&shape,4)||!voxel::range(shape,8)||!read(shape,head.data(),head.size()))return {};}
+  auto resource=resourceread::view(read);
+  std::array<uint8_t,8>head{};if(!resource(shape,head.data(),head.size()))return {};
+  if(voxel::u16(head.data())==0xffff){if(!resource(shape+12,&shape,4)||!voxel::range(shape,8)||!resource(shape,head.data(),head.size()))return {};}
   if(voxel::u16(head.data())||frame>=voxel::u16(head.data()+6)||!voxel::range(shape,8+size_t(frame+1)*24))return {};
-  std::array<uint8_t,24>fh{};if(!read(shape+8+frame*24,fh.data(),fh.size()))return {};
+  std::array<uint8_t,24>fh{};if(!resource(shape+8+frame*24,fh.data(),fh.size()))return {};
   const auto key=std::make_tuple(paletteSlot,shape,frame);auto found=images_.find(key);
   if(found!=images_.end()&&found->second.shape==head&&found->second.frame==fh&&found->second.palette.converter==colors.converter&&found->second.palette.row==colors.row&&found->second.palette.colors==colors.colors)return found->second.image;
-  voxel::Image image;if(!voxel::sprite(read,shape,colors.colors,image,frame,nullptr,255)||image.width>512||image.height>512)return {};
-  std::array<uint8_t,24>after{};std::array<uint8_t,8>afterHead{};if(!read(shape+8+frame*24,after.data(),after.size())||after!=fh||!read(shape,afterHead.data(),afterHead.size())||afterHead!=head)return {};
+  voxel::Image image;if(!voxel::sprite(resource,shape,colors.colors,image,frame,nullptr,255)||image.width>512||image.height>512)return {};
+  std::array<uint8_t,24>after{};std::array<uint8_t,8>afterHead{};if(!resource(shape+8+frame*24,after.data(),after.size())||after!=fh||!resource(shape,afterHead.data(),afterHead.size())||afterHead!=head)return {};
   image.writeDepth=false;image.objectPalette=false;
   if(found!=images_.end()){bytes_-=bytes(*found->second.image);images_.erase(found);}
   const size_t cost=bytes(image);if(images_.size()>=256||bytes_+cost>32*1024*1024){images_.clear();bytes_=0;}

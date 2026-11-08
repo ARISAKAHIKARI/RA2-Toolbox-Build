@@ -1,0 +1,336 @@
+{
+  "scope": "14 display points source trace by root",
+  "features": [
+    {
+      "id": "display.EnemyMarkers",
+      "audit_status": "fixed_controlled_verified",
+      "paths_reviewed": [
+        "UI785立即改变flags/UIKey；sampleExternal以match/pid/connection/token及selection/options隔离；同sealed token只平移相机",
+        "TacticalSampler过滤本方/盟友/中立/已装载/无效单位，名称缓存1024、markers最多2048、分组绘制",
+        "暂停时update接受confirmed同frame但paint仅250msTTL：已用真实sampler/Motion及原文paint语句复现；关闭清空motion/cache",
+        "当前修复用displaylease::frameCurrent共用入口，检查match/tick/count边界；失去确认或进入新frame后继续服从250ms旧样本期限"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/external_reader/source/tactical_sampler.h::enemyOwners/addEnemy/publishEnemies",
+        "source/external_reader/source/enemy_markers.h::fresh",
+        "source/assist/source/main.cpp::updateEnemyDisplay/drawEnemyMarker",
+        "source/assist/source/display_sample_lease.h::frameCurrent",
+        "source/assist/tests/overlay_frame_freshness.cpp",
+        "source/assist/tests/overlay_frame_freshness.py",
+        "overlay-paused-gates/baseline-regression/result.json：18 checks，负对照250ms后为0/0",
+        "overlay-paused-gates/production-after/result.json：18 checks，修复后保留1/4，换局/换帧/失效/关闭/count边界/tick回绕通过"
+      ],
+      "findings": [
+        "RENDER-F3：暂停帧有效敌军/蜘蛛/箱子buff标记在250ms后被绘制门槛误隐藏；已统一更新与绘制的frameCurrent判定，保留原采样tick并要求确认同match/frame"
+      ],
+      "validation_gaps": [
+        "受控内存上执行真实TacticalSampler/Motion与从main原文提取的绘制计数语句；没有执行真实Windows/GDI/游戏画面。完整491bbc7集成交叉编译仍在进行。"
+      ]
+    },
+    {
+      "id": "display.Iron",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI301→flags Iron；只读铁幕时间并随逻辑帧计算剩余；Motion只对同ID/同world递减连续值平滑",
+        "drawLabel缓存含centis/color/used/capacity/frozen状态，关开flag触发UIKey变化重采样；换局清空"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/external_reader/source/tactical_sampler.h::sample",
+        "source/assist/source/label_motion.h::Motion",
+        "source/assist/source/main.cpp::drawLabel"
+      ],
+      "findings": [],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    },
+    {
+      "id": "display.Capacity",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI300→flags Capacity；仅本方非建筑cap>0且<=1024，默认所选载具",
+        "乘员链最多256并检测循环、合法kind/type/Size；汇总仅选中；订阅Passengers demand；关开/选中集合变化触发重采样"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/external_reader/source/tactical_sampler.h::passengers/sample",
+        "source/assist/source/main.cpp::flags/sampleExternal/drawLabel"
+      ],
+      "findings": [],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    },
+    {
+      "id": "display.AllTransports",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI303受Capacity依赖约束；只扩展容量标签候选到所有本方运输单位",
+        "全部载具不扩大总计到未选中；关闭重新生成labels"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/assist/source/settings_dependencies.h::decision",
+        "source/external_reader/source/tactical_sampler.h::sample"
+      ],
+      "findings": [],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    },
+    {
+      "id": "display.Frozen",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI723→additionalFlags Frozen；只读Temporal链的owner/target与remaining、step；最大52项、循环检查、int64累计",
+        "不调用有写副作用的GetWarpPerStep；Motion/label raster含frozen字段，关闭flags重采样"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/external_reader/source/tactical_sampler.h::frozen/sample",
+        "source/assist/source/extra_settings_io.h::additionalFlags",
+        "source/assist/source/label_motion.h",
+        "source/assist/source/main.cpp::drawLabel"
+      ],
+      "findings": [],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    },
+    {
+      "id": "display.Parasite",
+      "audit_status": "fixed_controlled_verified",
+      "paths_reviewed": [
+        "UI892/893→statusOptions→TacticalSampler::readStatus；Foot字段不读建筑；排除载员，验证对象/类型/生命/owner并限制2048条",
+        "寄生图标验证Parasite双向owner/victim关系；箱子buff检查独立倍率finite且1..1024，不混用等级；drawUnitStatus与statusbadges边界一致",
+        "退出/关闭清空motion；暂停同frame250ms过期问题与敌军标记相同",
+        "当前修复用displaylease::frameCurrent共用入口，检查match/tick/count边界；失去确认或进入新frame后继续服从250ms旧样本期限"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/external_reader/source/unit_status.h::inspect/fresh",
+        "source/external_reader/source/tactical_sampler.h::readStatus/publishStatuses",
+        "source/assist/source/status_draw.h::drawUnitStatus",
+        "source/assist/source/display_sample_lease.h::frameCurrent",
+        "source/assist/tests/overlay_frame_freshness.cpp",
+        "source/assist/tests/overlay_frame_freshness.py",
+        "overlay-paused-gates/baseline-regression/result.json：18 checks，负对照250ms后为0/0",
+        "overlay-paused-gates/production-after/result.json：18 checks，修复后保留1/4，换局/换帧/失效/关闭/count边界/tick回绕通过"
+      ],
+      "findings": [
+        "RENDER-F3：暂停帧有效敌军/蜘蛛/箱子buff标记在250ms后被绘制门槛误隐藏；已统一更新与绘制的frameCurrent判定，保留原采样tick并要求确认同match/frame"
+      ],
+      "validation_gaps": [
+        "受控内存上执行真实TacticalSampler/Motion与从main原文提取的绘制计数语句；没有执行真实Windows/GDI/游戏画面。完整491bbc7集成交叉编译仍在进行。"
+      ]
+    },
+    {
+      "id": "display.CrateBuffs",
+      "audit_status": "fixed_controlled_verified",
+      "paths_reviewed": [
+        "UI892/893→statusOptions→TacticalSampler::readStatus；Foot字段不读建筑；排除载员，验证对象/类型/生命/owner并限制2048条",
+        "寄生图标验证Parasite双向owner/victim关系；箱子buff检查独立倍率finite且1..1024，不混用等级；drawUnitStatus与statusbadges边界一致",
+        "退出/关闭清空motion；暂停同frame250ms过期问题与敌军标记相同",
+        "当前修复用displaylease::frameCurrent共用入口，检查match/tick/count边界；失去确认或进入新frame后继续服从250ms旧样本期限"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/external_reader/source/unit_status.h::inspect/fresh",
+        "source/external_reader/source/tactical_sampler.h::readStatus/publishStatuses",
+        "source/assist/source/status_draw.h::drawUnitStatus",
+        "source/assist/source/display_sample_lease.h::frameCurrent",
+        "source/assist/tests/overlay_frame_freshness.cpp",
+        "source/assist/tests/overlay_frame_freshness.py",
+        "overlay-paused-gates/baseline-regression/result.json：18 checks，负对照250ms后为0/0",
+        "overlay-paused-gates/production-after/result.json：18 checks，修复后保留1/4，换局/换帧/失效/关闭/count边界/tick回绕通过"
+      ],
+      "findings": [
+        "RENDER-F3：暂停帧有效敌军/蜘蛛/箱子buff标记在250ms后被绘制门槛误隐藏；已统一更新与绘制的frameCurrent判定，保留原采样tick并要求确认同match/frame"
+      ],
+      "validation_gaps": [
+        "受控内存上执行真实TacticalSampler/Motion与从main原文提取的绘制计数语句；没有执行真实Windows/GDI/游戏画面。完整491bbc7集成交叉编译仍在进行。"
+      ]
+    },
+    {
+      "id": "display.LabelScale",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI816数值50..250，变更递增paintRevision并保存；drawLabel图像与include脏矩形都用viewport::factor",
+        "状态小图标有独立大小，不错误跟随标签倍数；像素空间/物理缩放由统一viewport::Scale负责"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/assist/source/main.cpp::drawLabel/paint",
+        "source/shared/source/viewport_scale.h"
+      ],
+      "findings": [],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    },
+    {
+      "id": "display.InfoFPS",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI310手动5..500，Adaptive开启时禁用；informationFPS统一供display clock和外部采样period",
+        "背景/无副屏降到250ms；显示采样不改变命令时钟；syncInformationRate更新UI与paintRevision"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/assist/source/main.cpp::informationFPS/sampleExternal/syncInformationRate",
+        "source/assist/source/frame_clock.h",
+        "source/assist/source/settings_dependencies.h"
+      ],
+      "findings": [],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    },
+    {
+      "id": "display.InfoAdaptive",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI9160切换强制更新，game HWND优先、toolbox为fallback，选择最大窗口交叠/最近monitor",
+        "monitor或window变化即时重查，频率不变也每1000ms重查；0/1或API失败回退60，限制5..500；WM_DISPLAYCHANGE失效缓存"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/shared/source/monitor_refresh.h::Tracker",
+        "source/assist/source/main.cpp::syncInformationRate/WM_DISPLAYCHANGE"
+      ],
+      "findings": [],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    },
+    {
+      "id": "display.ShroudStrategy",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI808仅0..4，经shroudpolicy映射saved strategy；和硬件黑幕显示互斥，冲突恢复UI旧值",
+        "切换丢弃旧RevealMap排队并重置autoRevealMatch/Done/Retry；自动揭示与仅绘制分别下发；关掉手动许可移除待执行命令",
+        "实际各patch模式及恢复由hardware matrix map-mode-1..4覆盖"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged",
+        "hardware-feature-matrix.json::map-mode-1..4"
+      ],
+      "findings": [],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    },
+    {
+      "id": "display.PassengerBubbles",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI897/898独立设置；inspect仅悬停/选择目标，persistent仅危险乘员；两者关闭、聊天、模块关闭立即清空",
+        "扫描敌方载具并验证Transporter/乘员链，最多256乘员、256气泡；按type分组；无效链标记incomplete，真正空载移除",
+        "displaylease以pid/match/house/viewport/camera/options为key，失败只保留原样本120ms且不续租；换视口清空；输出尺寸和行数裁剪",
+        "读取路径仍是paint外层WorldFrameScope结束后的ReadSession::read；它按显示调用扫描且可回退实时RPM，不能声称所有显示消费者已统一sealed采样"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/assist/source/passenger_draw.h::passengerView/clearPassengerDisplay",
+        "source/external_reader/source/passenger_bubbles.h::sampleChecked/contents",
+        "source/assist/source/display_sample_lease.h",
+        "source/external_reader/source/process_reader.h::read/readFresh"
+      ],
+      "findings": [
+        "审查范围澄清：乘员气泡仍有独立实时扫描；实际高频/大军团成本未量化，不列为已证实帧率缺陷"
+      ],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    },
+    {
+      "id": "display.DangerPassengers",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI897/898独立设置；inspect仅悬停/选择目标，persistent仅危险乘员；两者关闭、聊天、模块关闭立即清空",
+        "扫描敌方载具并验证Transporter/乘员链，最多256乘员、256气泡；按type分组；无效链标记incomplete，真正空载移除",
+        "displaylease以pid/match/house/viewport/camera/options为key，失败只保留原样本120ms且不续租；换视口清空；输出尺寸和行数裁剪",
+        "读取路径仍是paint外层WorldFrameScope结束后的ReadSession::read；它按显示调用扫描且可回退实时RPM，不能声称所有显示消费者已统一sealed采样"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/assist/source/passenger_draw.h::passengerView/clearPassengerDisplay",
+        "source/external_reader/source/passenger_bubbles.h::sampleChecked/contents",
+        "source/assist/source/display_sample_lease.h",
+        "source/external_reader/source/process_reader.h::read/readFresh"
+      ],
+      "findings": [
+        "审查范围澄清：乘员气泡仍有独立实时扫描；实际高频/大军团成本未量化，不列为已证实帧率缺陷"
+      ],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    },
+    {
+      "id": "display.OverlayToggleKey",
+      "audit_status": "source_reviewed",
+      "paths_reviewed": [
+        "UI9420→shared overlayVisibility；默认0xC0，可清除，绑定变更/焦点重入须先松开",
+        "Host只允许游戏前台、未聊天、display visible且无Win键；Assist/Monitor共享100ms采样owner租约避免重复切换",
+        "隐藏分支停止各呈现提交并清空气泡；不改命令或Hook所有权"
+      ],
+      "evidence": [
+        "source/suite/source/display_settings.h::displaySpecs/validDisplayEdit",
+        "source/assist/source/main.cpp::ApplyDisplaySetting/publishSuiteDisplay/paint",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged/changedSetting",
+        "source/assist/source/extra_settings_io.h::load/save",
+        "source/shared/source/overlay_visibility.h::Key/Dispatcher",
+        "source/assist/source/main.cpp::pollOverlayVisibility/paint",
+        "host-feature-matrix.json::host.overlay_shared_key"
+      ],
+      "findings": [],
+      "validation_gaps": [
+        "本轮源码追踪；除另列暂停标记受控复现外未执行本项新测试；真实Windows/游戏视觉与多屏验证未完成"
+      ]
+    }
+  ],
+  "code_commit": "491bbc72ec67ac70454e9d9a0ef69287eb1ba28f"
+}

@@ -17,7 +17,7 @@ using HMODULE=void*;
 using HWND=void*;
 constexpr DWORD PAGE_READWRITE=4,FILE_MAP_ALL_ACCESS=31,SYNCHRONIZE=0x100000;
 constexpr DWORD WAIT_OBJECT_0=0,WAIT_TIMEOUT=258,ERROR_ALREADY_EXISTS=183;
-constexpr DWORD ERROR_INVALID_PARAMETER=87,ERROR_INVALID_WINDOW_HANDLE=1400;
+constexpr DWORD ERROR_INVALID_PARAMETER=87,ERROR_INVALID_WINDOW_HANDLE=1400,ERROR_IO_PENDING=997;
 constexpr bool FALSE=false;
 static HANDLE const INVALID_HANDLE_VALUE=reinterpret_cast<HANDLE>(~uintptr_t(0));
 
@@ -26,7 +26,7 @@ struct Scenario {
  bool identityOK=true,installOK=true,existing=false,ownerAlive=true;
  DWORD runtimeMs=0,nativeMs=0,createMs=0,mapMs=0,identityMs=0,installMs=0,releaseMs=0;
  DWORD error=126;
- unsigned runtimeCalls=0,nativeCalls=0,createCalls=0,mapCalls=0,installCalls=0;
+ unsigned runtimeCalls=0,identityCalls=0,nativeCalls=0,createCalls=0,mapCalls=0,installCalls=0;
  unsigned releases=0,probes=0,wakes=0,additional=0,typeConfig=0;
 } fixture;
 static DWORD clockNow=1000,lastError=0;
@@ -67,7 +67,7 @@ static bool runtimeAvailable(){++fixture.runtimeCalls;clockNow+=fixture.runtimeM
 static HWND nativeWindow(DWORD,DWORD,NativeWindowProbe*p){++fixture.nativeCalls;clockNow+=fixture.nativeMs;p->error=fixture.error;return fixture.nativeOK?game:nullptr;}
 static HMODULE runtimeModule(){return reinterpret_cast<HMODULE>(0x300);}
 static uint32_t windowToken(HWND){return fixture.windowOK?0x200:0;}
-static bool assistIdentity(HMODULE,uint32_t,uint32_t,const wchar_t*){clockNow+=fixture.identityMs;return fixture.identityOK;}
+static bool assistIdentity(HMODULE,uint32_t,uint32_t,const wchar_t*){++fixture.identityCalls;clockNow+=fixture.identityMs;lastError=fixture.error;return fixture.identityOK;}
 static Subscription install(gameentry::Client,DWORD,DWORD,HWND){++fixture.installCalls;clockNow+=fixture.installMs;lastError=fixture.error;return fixture.installOK?7:0;}
 static const wchar_t*installationStage(){return L"x86-hook-broker";}
 static Capacity capacity(){return {};}
@@ -124,6 +124,51 @@ int main(){
  reset();bridgeRetryAt=1100;check(!ensureBridge()&&!fixture.runtimeCalls,"future retry must not enter runtimeAvailable");
  clockNow=1100;check(ensureBridge()&&fixture.runtimeCalls==1,"attempt at exact deadline succeeds");
 
+ // A live helper startup is a bounded connecting state, not a failed
+ // installation. Repeated probes retain the connection until identity ACK.
+ for(int previousFailures:{0,2}){
+  reset();bridgeAttempts=previousFailures;bridgeFailure=L"prior failure";
+  fixture.runtimeOK=false;fixture.error=ERROR_IO_PENDING;
+  for(int attempt=0;attempt<5;++attempt){
+   check(!ensureBridge(),"broker transport pending returns without waiting");
+   check(bridgeAttempts==previousFailures&&!bridgeBlocked,"broker transport pending does not consume failure budget");
+   check(bridgeRetryAt==clockNow+75,"broker transport pending retries after 75ms");
+   check(bridgeFailure.empty()&&status.find(L"连接")!=std::wstring::npos,"broker pending displays connecting status");
+   check(!fixture.nativeCalls&&!fixture.createCalls&&!fixture.releases,"broker pending cannot allocate or release command mapping");
+   const auto before=fixture.runtimeCalls;clockNow=bridgeRetryAt-1;
+   check(!ensureBridge()&&fixture.runtimeCalls==before,"pending wait gates another startup probe");
+   clockNow=bridgeRetryAt;
+  }
+  fixture.runtimeOK=true;fixture.identityOK=false;
+  for(int attempt=0;attempt<3;++attempt){
+   check(!ensureBridge(),"broker identity pending returns without waiting");
+   check(bridgeAttempts==previousFailures&&!bridgeBlocked,"broker identity pending does not block or consume failures");
+   check(bridgeRetryAt==clockNow+75,"broker identity pending retries after 75ms");
+   check(!fixture.nativeCalls&&!fixture.createCalls&&!fixture.releases,"identity pending cannot create and tear down mapping");
+   clockNow=bridgeRetryAt;
+  }
+  fixture.identityOK=true;fixture.error=0;
+  check(ensureBridge()&&shared&&hook&&bridgeAttempts==previousFailures+1,"pending broker connects on its first completed attempt");
+  check(fixture.createCalls==1&&fixture.mapCalls==1&&fixture.installCalls==1&&!fixture.releases,"pending to ready allocates and installs once");
+ }
+
+ // A retired Target may still own an asynchronous Remove. install returns
+ // no lease until its exact old process/intent has been released.
+ for(int previousFailures:{0,2}){
+  reset();bridgeAttempts=previousFailures;fixture.installOK=false;fixture.error=ERROR_IO_PENDING;
+  for(int attempt=0;attempt<2;++attempt){
+   check(!ensureBridge(),"retiring target pending returns without a subscription");
+   check(!shared&&!hook&&!mapping&&fixture.releases==unsigned(attempt+1),"pending install releases only its unleased mapping");
+   check(bridgeAttempts==previousFailures&&!bridgeBlocked,"pending install does not consume failure budget or block");
+   check(bridgeRetryAt==clockNow+75&&bridgeFailure.empty(),"pending install schedules a short connecting retry");
+   const auto before=fixture.runtimeCalls;clockNow=bridgeRetryAt-1;
+   check(!ensureBridge()&&fixture.runtimeCalls==before,"pending install retry is gated until its deadline");
+   clockNow=bridgeRetryAt;
+  }
+  fixture.installOK=true;fixture.error=0;
+  check(ensureBridge()&&shared&&hook&&bridgeAttempts==previousFailures+1,"retirement completion permits one normal installation");
+ }
+
  reset();fixture.runtimeOK=false;fixture.runtimeMs=3000;
  failedAfterWork("runtime startup failure returns without mapping");
  check(!fixture.nativeCalls&&!fixture.createCalls,"failed transport cannot reach native window or mapping");
@@ -163,7 +208,7 @@ int main(){
  check(status.find(L"x86-hook-broker")!=std::wstring::npos,"installation stage is retained in failure status");
 
  reset();fixture.identityOK=false;fixture.identityMs=2100;fixture.releaseMs=400;
- check(!ensureBridge()&&bridgeBlocked&&!shared,"protocol mismatch still blocks and releases mapping");
+ check(!ensureBridge()&&bridgeBlocked&&!shared&&!fixture.createCalls&&!fixture.releases,"protocol mismatch blocks before allocating mapping");
  check(bridgeRetryAt==clockNow+2000,"protocol rejection records completed failure time");
  calls=fixture.runtimeCalls;clockNow+=30000;
  check(!ensureBridge()&&fixture.runtimeCalls==calls,"protocol block is not bypassed at retry deadline");

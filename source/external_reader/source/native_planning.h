@@ -13,8 +13,9 @@ struct Node {uint32_t pointer=0,owner=0;Point point{};std::vector<uint32_t>membe
 struct Actor {uint32_t pointer=0,owner=0;bool hasCurrent=false,hasMega=false,hasConnection=false,markerOnly=false;Segment current{},mega{},connection{};Point marker{};int currentBadge=0,badge=0;};
 struct Graph {std::vector<Node>nodes;std::vector<Actor>actors;std::map<uint32_t,std::array<uint8_t,3>>colors;std::set<uint32_t>white;uint32_t hover=0,highlight=0;bool active=false;};
 
-// A frame owns its complete read set. Re-read through the uncached reader
-// before publishing: a recycled node/event or a changed vector must not draw.
+// World facts and live input each own a read transaction. The input check
+// re-reads native UI bytes before publication; sealed actor facts never need
+// a second native world acquisition. Recycled nodes/events are rejected.
 template<class Read>class Snapshot {
  Read read_;std::map<std::pair<uint32_t,size_t>,std::vector<uint8_t>>blocks_;size_t bytes_=0;bool good_=true;
 public:
@@ -31,31 +32,32 @@ struct Path {uint32_t actor=0,owner=0;std::vector<uint32_t>nodes;int pending=-1,
 struct Order {uint32_t actor=0;Point point{};int badge=0;bool resolved=false;};
 struct RawNode {uint32_t pointer=0;std::vector<Order>orders;};
 
-template<class Read>bool capture(Read fresh,uint32_t house,Graph&out){
- out={};Snapshot<Read>snapshot(fresh);auto read=[&](uint32_t at,void*p,size_t n){return snapshot.read(at,p,n);};GameView game(read);
- uint8_t active=0;if(!read(0xAC4CF4,&active,1)||active>1)return false;if(!active)return snapshot.stable();
+template<class Read,class UI>bool capture(Read world,UI local,uint32_t house,Graph&out){
+ out={};Snapshot<Read>snapshot(world);Snapshot<UI>input(local);auto read=[&](uint32_t at,void*p,size_t n){return snapshot.read(at,p,n);};auto ui=[&](uint32_t at,void*p,size_t n){return input.read(at,p,n);};GameView game(read);GameView controls(ui);
+ uint8_t active=0;if(!ui(0xAC4CF4,&active,1)||active>1)return false;if(!active)return input.stable();
  Graph graph;graph.active=true;
- if(!read(0xAC4CCC,&graph.hover,4)||!read(0xAC4BF0,&graph.highlight,4))return false;
+ if(!ui(0xAC4CCC,&graph.hover,4)||!ui(0xAC4BF0,&graph.highlight,4))return false;
  std::vector<uint32_t>nodePointers,tokens;
- if(!game.vecChecked(0xAC4B30,nodePointers,8192)||!game.vecChecked(0xAC4C78,tokens,8192))return false;
+ if(!controls.vecChecked(0xAC4B30,nodePointers,8192)||!controls.vecChecked(0xAC4C78,tokens,8192))return false;
  std::set<uint32_t>uniqueNodes(nodePointers.begin(),nodePointers.end()),uniqueTokens(tokens.begin(),tokens.end());
  if(uniqueNodes.size()!=nodePointers.size()||uniqueTokens.size()!=tokens.size())return false;
  std::map<uint32_t,Path>paths;std::vector<uint32_t>actorOrder;size_t occurrences=0;
  for(uint32_t token:tokens){
   if(!nativefeedback::range(token,0x9C))return false;Path path;
-  if(!read(token,&path.actor,4)||!nativefeedback::range(path.actor,0x518)||game.kind(path.actor)<0||game.template get<uint32_t>(path.actor+0x514)!=token)return false;
+  if(!ui(token,&path.actor,4)||!nativefeedback::range(path.actor,0x518)||game.kind(path.actor)<0||controls.template get<uint32_t>(path.actor+0x514)!=token)return false;
+  const uint32_t identity=game.template get<uint32_t>(path.actor+0x10);if(!identity||controls.template get<uint32_t>(path.actor+0x10)!=identity)return false;
   path.owner=game.template get<uint32_t>(path.actor+0x21C);if(!game.allied(path.owner,house))continue;
-  if(!game.vecChecked(token+4,path.nodes,8192))return false;if(path.nodes.empty())continue;
+  if(!controls.vecChecked(token+4,path.nodes,8192))return false;if(path.nodes.empty())continue;
   occurrences+=path.nodes.size();if(occurrences>65536)return false;
-  int state[3]{};uint8_t changed=0;if(!read(token+0x8C,state,sizeof state)||!read(token+0x98,&changed,1)||changed>1)return false;
+  int state[3]{};uint8_t changed=0;if(!ui(token+0x8C,state,sizeof state)||!ui(token+0x98,&changed,1)||changed>1)return false;
   path.pending=state[0];path.loop=state[2];path.loopChanged=changed;
   if(path.pending < -1||path.pending>int(path.nodes.size())||path.loop < -1||path.loop>=int(path.nodes.size()))return false;
   for(auto node:path.nodes)if(!uniqueNodes.count(node))return false;
-  path.selected=game.template get<uint8_t>(path.actor+0x83)!=0;
+  path.selected=controls.template get<uint8_t>(path.actor+0x83)!=0;
   if(!graph.colors.count(path.owner)){std::array<uint8_t,3>rgb{};if(!nativefeedback::range(path.owner,0x56FC)||!read(path.owner+0x56F9,rgb.data(),rgb.size()))return false;graph.colors[path.owner]=rgb;}
   actorOrder.push_back(path.actor);if(!paths.emplace(path.actor,std::move(path)).second)return false;
  }
- // Resolve object NetIDs from the complete live registry, independent of
+ // Resolve object NetIDs from the complete sealed registry, independent of
  // view culling. A distant unit can own a path that crosses this viewport.
  std::map<uint32_t,uint32_t>byID;bool indexed=false;
  auto pointerPoint=[&](uint32_t pointer,Point&point,bool bridge)->bool{
@@ -72,11 +74,11 @@ template<class Read>bool capture(Read fresh,uint32_t house,Graph&out){
  std::map<uint32_t,RawNode>raw;size_t memberships=0;
  for(uint32_t pointer:nodePointers){
   RawNode node;node.pointer=pointer;std::vector<uint32_t>members;
-  if(!game.vecChecked(pointer,members,8192))return false;memberships+=members.size();if(memberships>65536)return false;
-  for(uint32_t member:members){uint32_t binding[2]{};if(!nativefeedback::range(member,8)||!read(member,binding,sizeof binding))return false;
+  if(!controls.vecChecked(pointer,members,8192))return false;memberships+=members.size();if(memberships>65536)return false;
+  for(uint32_t member:members){uint32_t binding[2]{};if(!nativefeedback::range(member,8)||!ui(member,binding,sizeof binding))return false;
    Order order;order.actor=binding[0];auto path=paths.find(order.actor);if(path==paths.end())continue;
    if(std::find(path->second.nodes.begin(),path->second.nodes.end(),pointer)==path->second.nodes.end())return false;
-   std::array<uint8_t,30>event{};if(!nativefeedback::range(binding[1],event.size())||!read(binding[1],event.data(),event.size())||event[0]!=4||event[11]!=0x34||nativefeedback::u32(event.data()+7)!=game.template get<uint32_t>(order.actor+0x10))return false;
+   std::array<uint8_t,30>event{};if(!nativefeedback::range(binding[1],event.size())||!ui(binding[1],event.data(),event.size())||event[0]!=4||event[11]!=0x34||nativefeedback::u32(event.data()+7)!=game.template get<uint32_t>(order.actor+0x10))return false;
    order.badge=event[12]==11?433:event[12]==29?434:0;
    // Event63B050: TarCom, NavComAux, NavCom. Choose by tag first:
    // a stale non-null target must not silently fall through to a new endpoint.
@@ -117,6 +119,7 @@ template<class Read>bool capture(Read fresh,uint32_t house,Graph&out){
   actor.hasConnection=!actor.markerOnly&&(!acquired||!actor.hasCurrent);
   actor.connection={point,first->point,path.owner,path.pending==0};graph.actors.push_back(actor);
  }
- if(!snapshot.stable())return false;out=std::move(graph);return true;
+ if(!snapshot.stable()||!input.stable())return false;out=std::move(graph);return true;
 }
+template<class Read>bool capture(Read read,uint32_t house,Graph&out){return capture(read,read,house,out);}
 }}

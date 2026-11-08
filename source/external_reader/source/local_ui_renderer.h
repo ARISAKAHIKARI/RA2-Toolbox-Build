@@ -15,7 +15,7 @@ namespace external {namespace localui {
 // Main-view UI rendered from values and real font coverage. No framebuffer,
 // passthrough rectangle or cutout is accepted or produced by this module.
 constexpr size_t LayerCount=5;
-struct Plan {std::array<std::vector<nativefeedback::Primitive>,LayerCount>layers;unsigned messages=0,timers=0,primary=0,rallies=0;uint64_t glyphDecodes=0;};
+struct Plan {std::array<std::vector<nativefeedback::Primitive>,LayerCount>layers;unsigned messages=0,timers=0,primary=0,rallies=0;uint64_t glyphDecodes=0;bool complete=true;};
 inline int remaining(int start,int duration,int frame){return int(std::clamp<int64_t>(start==-1?duration:int64_t(duration)-frame+start,0,INT32_MAX));}
 inline std::u16string number(int value,int digits=0){auto n=std::to_string(value);if(int(n.size())<digits)n=std::string(digits-n.size(),'0')+n;return {n.begin(),n.end()};}
 inline std::u16string clockText(int frames){int s=frames/15,h=s/3600,m=s/60%60;return h?number(h)+u":"+number(m,2)+u":"+number(s%60,2):number(m,2)+u":"+number(s%60,2);}
@@ -84,13 +84,13 @@ class Engine {
    if(kind==3){repairvisuals::Sprite repair;if(repairvisuals::sample(read,o.pointer,o.id,repair)){auto q=project({repair.x,repair.y,repair.z});if(!icon(read,p,repair.shape,repair.frame,q[0],q[1],0x87F6C8))return false;}}
   }return true;
  }
- template<class Read>bool paths(Read fresh,const mainview::View&v,Painter&p,uint32_t tick){
-  planning::Graph graph;if(!planning::capture(fresh,v.house,graph))return false;if(!graph.active)return true;p.lane(3);
+ template<class Read,class UI>bool paths(Read fresh,UI ui,const mainview::View&v,Painter&p,uint32_t tick){
+  planning::Graph graph;if(!planning::capture(fresh,ui,v.house,graph))return false;if(!graph.active)return true;p.lane(3);
   double scale=projectionZScale(fresh);auto project=[&](nativefeedback::Point3 q){return std::array<int,2>{{int((int64_t(q.x)-q.y)*30/256)-v.cameraX,int((int64_t(q.x)+q.y)*15/256)-screenHeight(q.z,scale)-v.cameraY}};};
   auto color=[&](uint32_t owner,bool bright){const auto&rgb=graph.colors.at(owner);uint32_t value=0;for(int n=0;n<3;++n){int c=rgb[n],target=bright?255:0;c+=(target-c)*(bright?100:80)/256;value|=uint32_t(c)<<(16-8*n);}return rgb565(value);};
   auto outer=[&](uint32_t actor){return graph.white.count(actor)?0xFFFFFFFFu:0xFF000000u;};
   auto markerColor=[&](const planning::Node&node){uint32_t dark=color(node.owner,false);for(const auto&line:node.incoming)if(!line.loop&&color(line.owner,line.bright)==dark)return dark;return color(node.owner,node.bright);};
-  uint32_t mouse=0,shape=0;fresh(nativefeedback::MousePointer,&mouse,4);if(nativefeedback::range(mouse,8))fresh(mouse+4,&shape,4);
+  uint32_t mouse=0,shape=0;ui(nativefeedback::MousePointer,&mouse,4);if(nativefeedback::range(mouse,8))ui(mouse+4,&shape,4);
   auto badge=[&](int frame,std::array<int,2>from,std::array<int,2>to,uint32_t ink,uint32_t background,bool edge){
    if(!frame||std::hypot(double(to[0])-from[0],double(to[1])-from[1])<37)return;
    int x=(from[0]+to[0])/2,y=(from[1]+to[1])/2;
@@ -153,21 +153,21 @@ public:
  template<class Read,class Fresh>bool capture(Read read,Fresh fresh,const mainview::View&view,const std::vector<nativefeedback::Object>&objects,int width,int height,Plan&out,uint32_t tick=0){
   out={};shapes_.begin();if(!view.valid()||width<1||height<1||width>8192||height>8192||uint64_t(width)*height>32*1024*1024||objects.size()>8192)return false;
   // Each independent producer publishes a complete layer transaction. A bad
-  // timer/font/passenger read discards that producer, not every other UI layer.
-  // The outer task still rejects a camera/frame/identity race for the whole UI.
+  // timer/font/passenger read discards that producer. The task keeps its
+  // last complete output until all active producers are ready again.
   const auto physicalView=mainview::physicalView(view);
   size_t total=0;auto capture=[&](auto producer,bool physical=false){Plan next;Painter painter(next,physical?physicalView.width:view.width,physical?physicalView.height:view.height,width,height);bool fontUsed=false;
-   if(!producer(painter,next,fontUsed)||!painter.good()||(fontUsed&&!font_.stable(read)))return;
-   size_t count=0;for(const auto&layer:next.layers)count+=layer.size();if(total+count>262144)return;total+=count;
+   if(!producer(painter,next,fontUsed)||!painter.good()||(fontUsed&&!font_.stable(read))){out.complete=false;return;}
+   size_t count=0;for(const auto&layer:next.layers)count+=layer.size();if(total+count>262144){out.complete=false;return;}total+=count;
    for(size_t n=0;n<out.layers.size();++n)out.layers[n].insert(out.layers[n].end(),next.layers[n].begin(),next.layers[n].end());
    out.messages+=next.messages;out.timers+=next.timers;out.primary+=next.primary;out.rallies+=next.rallies;
   };
-  capture([&](Painter&p,Plan&next,bool&font){p.lane(0);return labels(read,physicalView,p,next,font);},true);
+  capture([&](Painter&p,Plan&next,bool&font){p.lane(0);return labels(fresh,physicalView,p,next,font);},true);
   capture([&](Painter&p,Plan&next,bool&font){p.lane(1);return timers(read,physicalView,p,next,font);},true);
   capture([&](Painter&p,Plan&next,bool&font){return buildings(read,view,objects,p,next,font);});
   capture([&](Painter&p,Plan&,bool&font){return statuses(read,view,objects,p,font);});
   capture([&](Painter&p,Plan&,bool&){return pips(read,view,objects,p);});
-  capture([&](Painter&p,Plan&,bool&){return paths(fresh,view,p,tick);});
+  capture([&](Painter&p,Plan&,bool&){return paths(read,fresh,view,p,tick);});
   // Range outlines/rays are owned by the main world surface (GPU or CPU).
   out.glyphDecodes=font_.decodes();return true;
  }

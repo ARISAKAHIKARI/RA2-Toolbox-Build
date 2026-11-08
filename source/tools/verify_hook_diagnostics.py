@@ -45,7 +45,7 @@ def main():
  assert exported(runtime,'GameRuntimeInfo',8)==struct.pack('<II',4,176)
  prefix='Local\\RA2Assist_v100_\0'.encode('utf-16le')
  assert exported(host,'AssistHostMappingPrefix',len(prefix))==exported(runtime,'AssistMappingPrefix',len(prefix))==prefix
- report=dict(verified=records,host_architecture='x64',runtime_architecture='x86',assist_protocol=100,runtime_protocol=4,cursor_protocol=cursor_protocol,game_tested=False,multiplayer_tested=False)
+ report=dict(verified=records,host_architecture='x64',runtime_architecture='x86',assist_protocol=101,runtime_protocol=4,cursor_protocol=cursor_protocol,game_tested=False,multiplayer_tested=False)
  (root/'HOOK_TEST_VERIFIED.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
  print('PASS standalone x64 test host + x86 Runtime/broker; PE/import/manifest/Assist99/Runtime4/Cursor155 verified')
 if __name__=='__main__':main()

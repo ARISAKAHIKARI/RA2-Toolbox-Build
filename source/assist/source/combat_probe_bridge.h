@@ -31,11 +31,11 @@ static int sampledCombatWeaponQuery(CombatProbeBatch&batch,int targetIndex,uint3
  const auto ptr=rawWeapon(type,get<float>(p+0x150),choice.slot);if(ptr<0x10000)return 0;
  *weapon=ptr;*selected=choice.slot;*close=choice.close;*airborne=(target.flags&planner::Airborne)!=0;return 1;
 }
-static planner::CombatProbe probeCombatPair(uint32_t p,uint32_t q,const planner::Actor& actor,const planner::Actor& victim,int padding,CombatProbeBatch*batch=nullptr,int targetIndex=-1){
+static planner::CombatProbe probeCombatPair(uint32_t p,uint32_t q,const planner::Actor& actor,const planner::Actor& victim,int padding,CombatProbeBatch*batch=nullptr,int targetIndex=-1,bool rawOnly=false){
  planner::CombatProbe result{};result.target=get<uint32_t>(q+0x10);
  uint32_t weapon=0;int slot=0,close=0,airborne=0;
  int status;
- if(batch&&targetIndex>=0&&!(sh&&sh->nativeCombatQueries))status=sampledCombatWeaponQuery(*batch,targetIndex,p,q,&weapon,&slot,&close,&airborne);
+ if(batch&&targetIndex>=0&&(rawOnly||!(sh&&sh->nativeCombatQueries)))status=sampledCombatWeaponQuery(*batch,targetIndex,p,q,&weapon,&slot,&close,&airborne);
  else {if(batch)batch->invalidate();status=combatWeaponQuery(p,q,&weapon,&slot,&close,&airborne);}
  if(status<0){result.flags=4;return result;}if(!status)return result;
  planner::Actor source=actor,target=victim;
@@ -54,7 +54,7 @@ static planner::CombatProbe probeCombatPair(uint32_t p,uint32_t q,const planner:
  return result;
 }
 static bool combatCandidate(const planner::Actor&a){return (a.flags&planner::Enemy)&&!(a.flags&(planner::Protected|planner::Cloaked|planner::Limbo|planner::OffMap|planner::Transported));}
-static void collectCombatProbes(planner::World&w){
+static void collectCombatProbes(planner::World&w,bool rawOnly=false){
  static uint32_t probeMatch=0;static int cursor=0;if(probeMatch!=w.match){probeMatch=w.match;cursor=0;}
  // Scratch storage avoids a large game-thread stack allocation. Validity is
  // reset for every publication; no object sample survives into a later batch.
@@ -72,7 +72,7 @@ static void collectCombatProbes(planner::World&w){
   if(queries+enemies>planner::MaxCombatProbes||w.combatCount+enemies>planner::MaxCombatProbes)break;
   ++sources;const int first=w.combatCount;bool faulted=false;
   for(int n=0;n<w.count;++n){const auto&t=w.actors[n];if(!combatCandidate(t))continue;++queries;uint32_t q=worldByID(t.id);if(!q)continue;
-   auto probe=probeCombatPair(p,q,a,t,int(std::min(uint32_t(sh->advancedRangeCells),30u))*256,&batch,n);
+   auto probe=probeCombatPair(p,q,a,t,int(std::min(uint32_t(sh->advancedRangeCells),30u))*256,&batch,n,rawOnly);
    if(probe.flags&4){faulted=true;break;}
    if(probe.flags)w.combat[w.combatCount++]=probe;
   }

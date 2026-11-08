@@ -11,6 +11,16 @@ extern "C" int __cdecl GuardedTechUiParameter(void*context,unsigned tag){
  __finally {SetLastError(saved);}return result;
 }
 
+// Eligibility maintenance uses the same local reader and narrow fault policy
+// as the hot callback. An unreadable world revokes only this publication.
+extern "C" int __cdecl AssistControlWorldEligible();
+extern "C" int __cdecl GuardedControlWorldEligible(){
+ const unsigned long saved=GetLastError();int result=0;
+ __try {__try {result=AssistControlWorldEligible();}
+  __except(assistguard::noReportAccess(_exception_info())){result=0;}}
+ __finally {SetLastError(saved);}return result;
+}
+
 extern "C" int __stdcall AssistTechEnhancementProbeCall(unsigned,unsigned);
 extern "C" unsigned BeginTechEnhancementProbe();extern "C" void EndTechEnhancementProbe(unsigned);
 extern "C" int __cdecl GuardedTechEnhancementProbe(unsigned house,unsigned type){

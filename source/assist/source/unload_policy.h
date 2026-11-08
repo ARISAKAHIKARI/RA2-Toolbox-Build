@@ -1,5 +1,28 @@
 #pragma once
+#include <cstdint>
 namespace assist { namespace unloadpolicy {
+// Per-observation pointer lookup. Clear only occupied slots so a small selected
+// roster does not zero a large table every admitted tick. The history itself
+// retains its order and expiry/manual-token rules.
+template<unsigned Capacity=8192> struct RosterLookup {
+ static_assert(Capacity&&!(Capacity&(Capacity-1))&&Capacity<=16384,"bounded power-of-two roster required");
+ static constexpr unsigned Slots=Capacity*2;
+ struct Entry {uint32_t pointer=0;int index=0;};
+ Entry entries[Slots]{};uint16_t occupied[Capacity]{};unsigned count=0;
+ void clear(){for(unsigned n=0;n<count;++n)entries[occupied[n]]={};count=0;}
+ unsigned slot(uint32_t pointer)const{
+  uint32_t key=pointer;key^=key>>16;key*=0x7FEB352Du;key^=key>>15;key*=0x846CA68Bu;key^=key>>16;
+  unsigned at=key&(Slots-1);
+  for(unsigned n=0;n<Slots;++n,at=(at+1)&(Slots-1))if(!entries[at].pointer||entries[at].pointer==pointer)return at;
+  return Slots;
+ }
+ int find(uint32_t pointer)const{if(!pointer)return -1;unsigned at=slot(pointer);return at<Slots&&entries[at].pointer?entries[at].index:-1;}
+ bool add(uint32_t pointer,int index){
+  if(!pointer)return false;unsigned at=slot(pointer);if(at==Slots)return false;
+  if(!entries[at].pointer){if(count==Capacity)return false;occupied[count++]=uint16_t(at);}
+  entries[at]={pointer,index};return true;
+ }
+};
 // An ejected passenger may briefly inherit an engine Move/Attack mission.
 // For automatic ejection only, allow a short grace after landing, but never
 // override explicit user Stop (13) or Enter (7).

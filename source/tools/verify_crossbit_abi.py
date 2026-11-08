@@ -33,6 +33,10 @@ DECLARATIONS = (
     ('unit_monitor/source/core.h', 'Snapshot', 'um::Snapshot'),
     ('shared/source/runtime_protocol.h', 'Control', 'runtime::Control'),
     ('shared/source/frame_signal_protocol.h', 'Channel', 'framesignal::Channel'),
+    ('shared/source/world_frame_transport.h', 'DataRef', 'worldframe::DataRef'),
+    ('shared/source/world_frame_transport.h', 'Slot', 'worldframe::Slot'),
+    ('shared/source/world_frame_transport.h', 'Channel', 'worldframe::Channel'),
+    ('shared/source/world_frame_transport.h', 'DataHeader', 'worldframe::DataHeader'),
     ('assist/source/cooperative_frame.h', 'FrameInput', 'assist::cooperative::FrameInput'),
     ('shared/source/runtime_broker_protocol.h', 'Packet', 'runtimebroker::Packet'),
     ('shared/source/game_entry_api.h', 'Request', 'gameentry::Request'),
@@ -60,6 +64,8 @@ PAYLOADS = (
     'assist::loading::Infantry', 'assist::loading::Vehicle',
     'assist::loading::Composition', 'um::Type', 'um::Player', 'um::Cell',
     'neuralframe::Layout', 'assist::cooperative::Unit', 'assist::cooperative::Target',
+    'assist::hardwareperf::Counters', 'assist::hardwareperf::Snapshot',
+    'worldframe::Key', 'worldframe::Page', 'worldframe::Counters',
 )
 
 
@@ -112,7 +118,7 @@ def fixture():
     if any(len(name.encode()) >= 64 for name, _ in entries):
         raise ValueError('Layout label exceeds fixed record size')
     headers = '\n'.join('#include "' + str(ROOT / relative) + '"'
-                        for relative in dict.fromkeys(row[0] for row in DECLARATIONS))
+                        for relative in dict.fromkeys([row[0] for row in DECLARATIONS] + ['shared/source/world_frame.h']))
     types = set(PAYLOADS) | {row[2] for row in DECLARATIONS}
     assertions = '\n'.join(f'static_assert(std::is_standard_layout<{cpp}>::value && std::is_trivially_copyable<{cpp}>::value,"wire type must remain value-only: {cpp}");' for cpp in sorted(types))
     records = '\n'.join(' {' + json.dumps(name) + ',uint32_t(' + value + ')},'
@@ -219,8 +225,8 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 100, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162400,
+    baseline = {'assist::Version': 101, 'runtime::Version': 4, 'gameentry::Version': 3,
+                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162528,
                 'assist::Shared.aircraftAllocationPolicy': 23125936,
                 'assist::Shared.nativeCombatQueries': 23125940,
                 'assist::Shared.singlePlayerFPS': 23154136,
@@ -235,6 +241,14 @@ def main():
                 'assist::Shared.debugSnapshotSeq': 23155208,
                 'assist::Shared.debugSnapshot': 23155212,
                 'assist::Shared.debugVisible': 23162392,
+                'assist::Shared.hardwarePerfSeq': 23162396,
+                'assist::Shared.hardwarePerf': 23162400,
+                'assist::Shared.worldSampleSeq': 23162496,
+                'assist::Shared.worldSampleSerial': 23162500,
+                'assist::Shared.worldSampleFrame': 23162524,
+                'sizeof(assist::hardwareperf::Snapshot)': 96,
+                'sizeof(worldframe::Key)': 64, 'sizeof(worldframe::Page)': 5128,
+                'sizeof(worldframe::DataHeader)': 64, 'sizeof(worldframe::DataRef)': 8,
                 'sizeof(debugentries::Config)': 1032, 'sizeof(debugentries::Observation)': 28,
                 'sizeof(debugentries::Snapshot)': 7180,
                 'sizeof(runtime::Control)': 176, 'sizeof(gameentry::Request)': 108,
@@ -261,7 +275,7 @@ def main():
     # Protocol99 adds an independent SpiderDefense type filter.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol100 Shared23162400, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol101 Shared23162528, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 

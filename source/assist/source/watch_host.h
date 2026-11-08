@@ -40,7 +40,7 @@ static asyncwork::Latest<Request,Result> worker([](const Request&r)->std::shared
  // Normal sampling shares a page cache. A trigger can replace VisibleRect
  // while assets decode, so validate the completed batch against uncached
  // bounds before publishing. Dropping the batch preserves the UI's slots.
- auto bounds=external::mapbounds::sample([](uint32_t p,void*out,size_t n){return renderReader.readFresh(p,out,n);});
+ auto bounds=external::mapbounds::sample([](uint32_t p,void*out,size_t n){return renderReader.readLive(p,out,n);});
  for(const auto&v:result->views)if(v.shown&&(!bounds.valid()||v.frame.bounds!=bounds))return {};
  return result;
 });

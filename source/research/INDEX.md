@@ -6,6 +6,12 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 逐功能点补充审查 | [功能/模式清单、七处修正、未闭合问题与真实验证边界](2026-11-08-feature-point-audit.md) | per-feature repair unload cursor-shape frame-diagnostic paused-overlay broker-lock retained-modes |
+| 模块性能与正确性审查 | [五类缺陷修复、功能覆盖与未决热点](2026-11-08-module-performance-audit.md) | reverse-dodge stale-subscriptions sealed-terrain palette-token async-section-save pre5 |
+| 控制全部直接放行 | [原生 true/strict 叶、维护资格发布与固定槽掩码](2026-11-08-control-direct-permission-hotpath.md) | pre4 direct-yes control17to1 maintenance-publication not-per-hit-world strict-owner same-DR explicit-behavior-change |
+| 硬件异常热路径第三轮 | [科技候选预计算、固定比较结果与本方上下文精简](2026-11-08-hardware-precomputed-tech-and-owned-dispatch.md) | pre3 candidate-index Full early-reject Enhancement64 constant-flags static-reader same-live-guards flat-dispatch no-hit-count-reduction |
+| 原始世界样本与消费者实际接入 | [capture/seal、动态跨进程 payload、战术与视图阶段拆分](2026-11-08-shared-world-sampling-implementation.md) | Assist101 pre2 raw-overlap single-producer demand sealed no-live-fallback dynamic-mapping nothrow pause UI-generation source-bound-tests |
+| 硬件异常热路径第二轮 | [外部异常快速分流、维护复用与真实命中窗口](2026-11-08-hardware-dispatch-and-rate-observation.md) | owned-foreign classify-before-scope same-context maintenance-view telemetry1s no-per-hit-clock inherent-VEH-cost |
 | 每逻辑帧一份原始世界样本 | [现存重复入口、共享读集与统一采样待实现契约](2026-11-08-unified-world-sampling-contract.md) | cee2af56 pre1-epoch-only FrameReadSet capture-seal projection LiveRead SceneBank-overview minimap no-new-implementation |
 | 硬件控制与工具箱计算的重复工作 | [准入读合并、同帧 Scatter 门控与批内 fresh selector](2026-11-08-hardware-control-and-host-compute-hotpaths.md) | bf3fbe88 admission24to3 VEH-unchanged Host-demand reverse-sync raw-batch AntiTheft-retained operation-counts-not-FPS |
 | 科技加强规则模式总统／校车未显示 | [原生枚举反证、Ares 动态图标与现场边界](2026-11-07-tech-enhancement-rules-native-followup.md) | PRES BUS native-CanBuild 8-cases Insignificant-not-native-filter rules-mode-unresolved |
@@ -302,3 +308,5 @@
 - [CPU页内重绘、缩图缓存与多视图线程共享](2026-11-05-cpu-local-damage-and-row-team.md)（1.0.42-pre.1；最终CPU两档300帧、双视图／增量像素对照；392四平面检查；纠正GPU直出启用状态，非游戏FPS）
 
 - [设置保存误报权限、重复旧键删除与运行中重试](2026-11-07-settings-save-recovery.md)（1.0.43-pre.13；实际 Store/生产保存轨迹反例，真实错误来源与失败意图保留；非用户 Windows 文件系统实测）
+
+- [1.0.44：Broker 非阻塞生命周期、建造预定固定锚点/世界意图与 SHA/SHP 禁用](2026-11-08-release-144-broker-reservation-assets.md)（Host/UI 修复与受控前后对照；实机未验收）

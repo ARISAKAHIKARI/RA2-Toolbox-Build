@@ -3,6 +3,17 @@
 #include <commctrl.h>
 namespace disabledchoices {
 inline constexpr wchar_t Property[]=L"RA2AvailableChoiceMask";
+inline constexpr wchar_t SelectionProperty[]=L"RA2AvailableChoiceSelection";
+inline void remember(HWND combo){
+ const int row=int(SendMessageW(combo,CB_GETCURSEL,0,0));
+ SetPropW(combo,SelectionProperty,reinterpret_cast<HANDLE>(INT_PTR(row+1)));
+}
+inline LRESULT CALLBACK choice(HWND w,UINT m,WPARAM a,LPARAM b,UINT_PTR,DWORD_PTR){
+ const auto result=DefSubclassProc(w,m,a,b);
+ if((m==CB_SETCURSEL&&result!=CB_ERR)||m==CB_RESETCONTENT)remember(w);
+ if(m==WM_NCDESTROY){RemovePropW(w,Property);RemovePropW(w,SelectionProperty);RemoveWindowSubclass(w,choice,0x1382);}
+ return result;
+}
 inline LRESULT CALLBACK parent(HWND w,UINT m,WPARAM a,LPARAM b,UINT_PTR,DWORD_PTR){
  if(m==WM_DRAWITEM){auto d=reinterpret_cast<DRAWITEMSTRUCT*>(b);
   uintptr_t mask=d?reinterpret_cast<uintptr_t>(GetPropW(d->hwndItem,Property)):0;
@@ -18,13 +29,19 @@ inline LRESULT CALLBACK parent(HWND w,UINT m,WPARAM a,LPARAM b,UINT_PTR,DWORD_PT
  }
  if(m==WM_COMMAND&&HIWORD(a)==CBN_SELCHANGE){HWND c=(HWND)b;uintptr_t mask=reinterpret_cast<uintptr_t>(GetPropW(c,Property));
   int row=int(SendMessageW(c,CB_GETCURSEL,0,0));
-  if(mask&&(row<0||row>=32||!((mask>>row)&1))){for(int i=0;i<32;++i)if((mask>>i)&1){SendMessageW(c,CB_SETCURSEL,i,0);break;}return 0;}
+  if(mask&&(row<0||row>=32||!((mask>>row)&1))){
+   // A disabled click must preserve the previous value, including a legacy
+   // disabled selection loaded at startup. Never silently select mode zero.
+   const int previous=int(reinterpret_cast<INT_PTR>(GetPropW(c,SelectionProperty)))-1;
+   SendMessageW(c,CB_SETCURSEL,previous,0);return 0;
+  }
+  if(mask){const auto result=DefSubclassProc(w,m,a,b);remember(c);return result;}
  }
  if(m==WM_NCDESTROY)RemoveWindowSubclass(w,parent,0x1381);
  return DefSubclassProc(w,m,a,b);
 }
 inline void set(HWND combo,uintptr_t allowedMask){
- SetPropW(combo,Property,(HANDLE)allowedMask);SetWindowSubclass(GetParent(combo),parent,0x1381,0);
+ SetPropW(combo,Property,(HANDLE)allowedMask);remember(combo);SetWindowSubclass(combo,choice,0x1382,0);SetWindowSubclass(GetParent(combo),parent,0x1381,0);
  HDC dc=GetDC(combo);auto old=SelectObject(dc,(HFONT)SendMessageW(combo,WM_GETFONT,0,0));TEXTMETRICW tm{};GetTextMetricsW(dc,&tm);SelectObject(dc,old);ReleaseDC(combo,dc);
  SendMessageW(combo,CB_SETITEMHEIGHT,0,tm.tmHeight+6);SendMessageW(combo,CB_SETITEMHEIGHT,WPARAM(-1),tm.tmHeight+6);
  InvalidateRect(combo,nullptr,TRUE);
