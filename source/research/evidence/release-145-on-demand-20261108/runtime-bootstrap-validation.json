@@ -1,0 +1,208 @@
+{
+  "check_id": "runtime_bootstrap",
+  "required_checks_passed": true,
+  "tested_utc": "2026-11-08T12:55:15.970000+00:00",
+  "production_sources": [
+    {
+      "path": "source/engine/prepare_runtime.ps1",
+      "bytes": 23292,
+      "sha256": "507886249889153d21c55e428b962e3d7127c89c5be3c3a699871e50ee7b2022"
+    },
+    {
+      "path": "source/engine/prepare_runtime.py",
+      "bytes": 29084,
+      "sha256": "50ef433c37a49940965ce6d53382e47f1b07043d0064a91e3bdf3547a717c912"
+    },
+    {
+      "path": "source/engine/runtime-dependencies.json",
+      "bytes": 3623,
+      "sha256": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+    }
+  ],
+  "test_sources": [
+    {
+      "path": "source/tools/test_runtime_download.py",
+      "bytes": 19605,
+      "sha256": "8962642809c4609bf9a87f7954ec4427108e669d71850b186e65a36b87046654"
+    },
+    {
+      "path": "source/tools/test_runtime_bootstrap.ps1",
+      "bytes": 10967,
+      "sha256": "af5fad823c8099439eb4ce83d52d2859ef439c5f1c66173ca8c788f82ba27654"
+    }
+  ],
+  "python_worker": {
+    "tests": 26,
+    "passed": 26,
+    "skipped": 0,
+    "real_official_wheels_extracted": 3,
+    "every_official_member_compared": true,
+    "windows_binaries_executed": false,
+    "scenarios": [
+      "HTTPS source policy",
+      "SHA256/size/truncation/oversize",
+      "verified cache/no-network reuse",
+      "failed transfer retry",
+      "download cancellation",
+      "ZIP traversal/device/collision/link rejection",
+      "wheel metadata and licenses",
+      "legacy reuse and partial managed repair",
+      "failed probe/no publication",
+      "cancel and atomic-index failure rollback",
+      "malformed index repair",
+      "incomplete stages ignored",
+      "managed-before-legacy imports",
+      "UTF16 Chinese progress",
+      "unique per-task cancellation",
+      "profile lock ownership",
+      "bounded descendant-held probe output",
+      "actual child cancellation"
+    ]
+  },
+  "powershell_worker": {
+    "checks": 73,
+    "powershell_version": "7.4.6",
+    "host_platform": "Unix",
+    "production_functions_executed": true,
+    "actual_official_python_zip_extracted": true,
+    "actual_official_https_download_verified": true,
+    "interpreter_probe_transaction_checks": "controlled stub; no Windows binary execution",
+    "windows_powershell_51_executed": false,
+    "windows_python_executed": false
+  },
+  "official_archives_verified": [
+    {
+      "id": "numpy",
+      "filename": "numpy-2.2.6-cp312-cp312-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/36/fa/8c9210162ca1b88529ab76b41ba02d433fd54fecaf6feb70ef9f124683f1/numpy-2.2.6-cp312-cp312-win_amd64.whl",
+      "final_url": "https://files.pythonhosted.org/packages/36/fa/8c9210162ca1b88529ab76b41ba02d433fd54fecaf6feb70ef9f124683f1/numpy-2.2.6-cp312-cp312-win_amd64.whl",
+      "bytes": 12614190,
+      "sha256": "c1f9540be57940698ed329904db803cf7a402f3fc200bfe599334c9bd84a40b2",
+      "members": 986,
+      "uncompressed_bytes": 42479138,
+      "top_level": [
+        "numpy",
+        "numpy-2.2.6-cp312-cp312-win_amd64.whl",
+        "numpy-2.2.6.dist-info",
+        "numpy.libs"
+      ],
+      "data_scheme_members": [],
+      "license_members": [
+        "numpy/ma/LICENSE",
+        "numpy/random/LICENSE.md",
+        "numpy/_core/include/numpy/random/LICENSE.txt",
+        "numpy-2.2.6.dist-info/LICENSE.txt"
+      ]
+    },
+    {
+      "id": "opencv",
+      "filename": "opencv_python_headless-4.11.0.86-cp37-abi3-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/86/8a/69176a64335aed183529207ba8bc3d329c2999d852b4f3818027203f50e6/opencv_python_headless-4.11.0.86-cp37-abi3-win_amd64.whl",
+      "final_url": "https://files.pythonhosted.org/packages/86/8a/69176a64335aed183529207ba8bc3d329c2999d852b4f3818027203f50e6/opencv_python_headless-4.11.0.86-cp37-abi3-win_amd64.whl",
+      "bytes": 39402386,
+      "sha256": "6c304df9caa7a6a5710b91709dd4786bf20a74d57672b3c31f7033cc638174ca",
+      "members": 86,
+      "uncompressed_bytes": 113258514,
+      "top_level": [
+        "cv2",
+        "opencv_python_headless-4.11.0.86.dist-info"
+      ],
+      "data_scheme_members": [],
+      "license_members": [
+        "cv2/LICENSE-3RD-PARTY.txt",
+        "cv2/LICENSE.txt",
+        "cv2/data/haarcascade_license_plate_rus_16stages.xml",
+        "opencv_python_headless-4.11.0.86.dist-info/LICENSE-3RD-PARTY.txt",
+        "opencv_python_headless-4.11.0.86.dist-info/LICENSE.txt"
+      ]
+    },
+    {
+      "id": "python",
+      "filename": "python-3.12.10-embed-amd64.zip",
+      "url": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip",
+      "final_url": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip",
+      "bytes": 11133606,
+      "sha256": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3",
+      "members": 35,
+      "uncompressed_bytes": 22501299,
+      "top_level": [
+        "LICENSE.txt",
+        "_asyncio.pyd",
+        "_bz2.pyd",
+        "_ctypes.pyd",
+        "_decimal.pyd",
+        "_elementtree.pyd",
+        "_hashlib.pyd",
+        "_lzma.pyd",
+        "_msi.pyd",
+        "_multiprocessing.pyd",
+        "_overlapped.pyd",
+        "_queue.pyd",
+        "_socket.pyd",
+        "_sqlite3.pyd",
+        "_ssl.pyd",
+        "_uuid.pyd",
+        "_wmi.pyd",
+        "_zoneinfo.pyd",
+        "libcrypto-3.dll",
+        "libffi-8.dll",
+        "libssl-3.dll",
+        "pyexpat.pyd",
+        "python.cat",
+        "python.exe",
+        "python3.dll",
+        "python312._pth",
+        "python312.dll",
+        "python312.zip",
+        "pythonw.exe",
+        "select.pyd",
+        "sqlite3.dll",
+        "unicodedata.pyd",
+        "vcruntime140.dll",
+        "vcruntime140_1.dll",
+        "winsound.pyd"
+      ],
+      "data_scheme_members": [],
+      "license_members": [
+        "LICENSE.txt"
+      ]
+    },
+    {
+      "id": "scipy",
+      "filename": "scipy-1.15.3-cp312-cp312-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/e6/eb/3bf6ea8ab7f1503dca3a10df2e4b9c3f6b3316df07f6c0ded94b281c7101/scipy-1.15.3-cp312-cp312-win_amd64.whl",
+      "final_url": "https://files.pythonhosted.org/packages/e6/eb/3bf6ea8ab7f1503dca3a10df2e4b9c3f6b3316df07f6c0ded94b281c7101/scipy-1.15.3-cp312-cp312-win_amd64.whl",
+      "bytes": 40966184,
+      "sha256": "52092bc0472cfd17df49ff17e70624345efece4e1a12b23783a1ac59a1b728ed",
+      "members": 1650,
+      "uncompressed_bytes": 120774661,
+      "top_level": [
+        "scipy",
+        "scipy-1.15.3-cp312-cp312-win_amd64.whl",
+        "scipy-1.15.3.dist-info",
+        "scipy.libs"
+      ],
+      "data_scheme_members": [],
+      "license_members": [
+        "scipy/fft/_pocketfft/LICENSE.md",
+        "scipy/sparse/linalg/_eigen/arpack/COPYING",
+        "scipy/spatial/qhull_src/COPYING.txt",
+        "scipy/_lib/_uarray/LICENSE",
+        "scipy-1.15.3.dist-info/LICENSE.txt"
+      ]
+    }
+  ],
+  "limits": [
+    "PowerShell production functions executed under official PowerShell 7.4.6 on Linux, not Windows PowerShell 5.1.",
+    "Windows CPython/scientific binary imports were not executed; transaction tests use explicit probe seams.",
+    "No real game, GPU or multiplayer execution.",
+    "PS inherited-output boundedness regression independently executed by cursor_download_ui agent."
+  ],
+  "evidence_files": {
+    "python-worker-tests.log": "3da7045aa17e4710a58a762e59ea8df2e8514138ac357624f8a740b8354578ec",
+    "powershell-worker-tests.log": "167cb9c6eff3cc77063d0f1c5368d1e7867b6ea47ab8b63d5df25408ee3c3e74",
+    "powershell-worker-result.json": "167cb9c6eff3cc77063d0f1c5368d1e7867b6ea47ab8b63d5df25408ee3c3e74",
+    "official-archive-verification.json": "3ab7a117758ef38a1d65a44e504920ef9020c89733619695c6606a17f9d4dbfd",
+    "upstream-metadata.json": "249de8a9da9dc3b2850b2a819d9444df322c347abb5c3dcf111ff8a61b2a99be"
+  }
+}

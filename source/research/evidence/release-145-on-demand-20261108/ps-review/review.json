@@ -1,0 +1,40 @@
+{
+  "schema": "ra2.prepare-runtime-independent-review.v1",
+  "reviewed_utc": "2026-11-08T12:58:36.534481+00:00",
+  "verdict": "No outstanding blocker in the reviewed PowerShell bootstrap and Cursor contract scope.",
+  "source_sha256": "507886249889153d21c55e428b962e3d7127c89c5be3c3a699871e50ee7b2022",
+  "source_utf8_bom": true,
+  "cursor_main_sha256": "6ebac1870a61d3c5eb85de4de8fbe993a27cf2645decb41ee7c3c2d746753741",
+  "review_scope": [
+    "Cursor -Profile/-Status/-Cancel contract and unique per-task paths under profile/.preprocess.",
+    "PowerShell 5.1 source syntax/API compatibility, UTF-8 BOM source and UTF-16LE BOM status.",
+    "Cancellation checkpoints and status publication; bounded network/probe/output drain.",
+    "Legacy and partial interpreter selection, staged publication, cancellation cleanup and lock lifecycle."
+  ],
+  "resolved_findings": [
+    {
+      "finding": "A descendant retaining redirected output could outlive the direct child and block unconditional output drain.",
+      "resolution": "Removed unconditional WaitForExit and bounded output drain; actual extracted function regression returned within its probe budget.",
+      "regression_receipt": "output-drain-regression.json",
+      "tested_function_unchanged_in_final": true
+    },
+    {
+      "finding": "ExternalAttributes is unavailable on pre-4.7.2 .NET Framework and direct access under StrictMode could reject valid archives.",
+      "resolution": "Guard property existence; pinned archive hash, exact flat whitelist and manual regular-file creation remain mandatory."
+    }
+  ],
+  "additional_final_fix_reviewed": "File.Replace null backup uses NullString.Value; Microsoft lists NullString as a Windows PowerShell 5.1 accelerator and API.",
+  "powershell51_api_sources": [
+    "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_type_accelerators?view=powershell-5.1",
+    "https://learn.microsoft.com/en-us/dotnet/api/system.management.automation.language.nullstring?view=powershellsdk-1.1.0",
+    "https://learn.microsoft.com/en-us/dotnet/api/system.io.compression.ziparchiveentry.externalattributes?view=netframework-4.8.1"
+  ],
+  "execution_policy": "Launcher uses only process-local -ExecutionPolicy Bypass for its fixed packaged script. No Set-ExecutionPolicy or registry/user/machine policy change; enforced Group Policy remains authoritative.",
+  "cursor_route_receipt": "../cursor-ui-final/receipt.json",
+  "cursor_windows_target_compile_receipt": "../cursor-ui-final/windows-target-build.json",
+  "limits": [
+    "Independent actual PowerShell regression used Linux PowerShell 7.4.6, not native Windows PowerShell 5.1.",
+    "Source/API compatibility review is not an actual Windows UI, Windows Python PE or game execution result.",
+    "Downloader agent owns the separate 73-check PowerShell function suite; its results are not counted as independent executions here."
+  ]
+}

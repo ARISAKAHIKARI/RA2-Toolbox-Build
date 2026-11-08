@@ -1,0 +1,10 @@
+{
+  "powershell": "7.4.6",
+  "parse_errors": 0,
+  "functions": 15,
+  "probe_timeout_seconds": 1,
+  "elapsed_seconds": 1.1886698,
+  "returned_successfully": false,
+  "error": "Python 运行环境输出未正常关闭。",
+  "result": null
+}

@@ -1,0 +1,11 @@
+{
+  "checks": 73,
+  "powershell_version": "7.4.6",
+  "host_platform": "Unix",
+  "production_functions_executed": true,
+  "actual_official_python_zip_extracted": true,
+  "actual_official_https_download_verified": true,
+  "interpreter_probe_transaction_checks": "controlled stub; no Windows binary execution",
+  "windows_powershell_51_executed": false,
+  "windows_python_executed": false
+}

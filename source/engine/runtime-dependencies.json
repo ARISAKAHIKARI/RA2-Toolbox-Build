@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "platform": "windows-x86_64",
+  "purpose": "cursor-preprocessing-only",
+  "python": {
+    "version": "3.12.10",
+    "abi": "cp312",
+    "filename": "python-3.12.10-embed-amd64.zip",
+    "url": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip",
+    "bytes": 11133606,
+    "sha256": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3",
+    "unpacked_bytes": 22501299,
+    "files": [
+      "LICENSE.txt",
+      "_asyncio.pyd",
+      "_bz2.pyd",
+      "_ctypes.pyd",
+      "_decimal.pyd",
+      "_elementtree.pyd",
+      "_hashlib.pyd",
+      "_lzma.pyd",
+      "_msi.pyd",
+      "_multiprocessing.pyd",
+      "_overlapped.pyd",
+      "_queue.pyd",
+      "_socket.pyd",
+      "_sqlite3.pyd",
+      "_ssl.pyd",
+      "_uuid.pyd",
+      "_wmi.pyd",
+      "_zoneinfo.pyd",
+      "libcrypto-3.dll",
+      "libffi-8.dll",
+      "libssl-3.dll",
+      "pyexpat.pyd",
+      "python.cat",
+      "python.exe",
+      "python3.dll",
+      "python312._pth",
+      "python312.dll",
+      "python312.zip",
+      "pythonw.exe",
+      "select.pyd",
+      "sqlite3.dll",
+      "unicodedata.pyd",
+      "vcruntime140.dll",
+      "vcruntime140_1.dll",
+      "winsound.pyd"
+    ],
+    "release_page": "https://www.python.org/downloads/release/python-31210/",
+    "hash_source": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip.sigstore"
+  },
+  "packages": [
+    {
+      "id": "numpy",
+      "version": "2.2.6",
+      "module": "numpy",
+      "module_version": "2.2.6",
+      "filename": "numpy-2.2.6-cp312-cp312-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/36/fa/8c9210162ca1b88529ab76b41ba02d433fd54fecaf6feb70ef9f124683f1/numpy-2.2.6-cp312-cp312-win_amd64.whl",
+      "bytes": 12614190,
+      "sha256": "c1f9540be57940698ed329904db803cf7a402f3fc200bfe599334c9bd84a40b2",
+      "unpacked_bytes": 42479138,
+      "members": 986,
+      "top_level": [
+        "numpy",
+        "numpy-2.2.6-cp312-cp312-win_amd64.whl",
+        "numpy-2.2.6.dist-info",
+        "numpy.libs"
+      ],
+      "metadata_source": "https://pypi.org/pypi/numpy/2.2.6/json"
+    },
+    {
+      "id": "scipy",
+      "version": "1.15.3",
+      "module": "scipy",
+      "module_version": "1.15.3",
+      "filename": "scipy-1.15.3-cp312-cp312-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/e6/eb/3bf6ea8ab7f1503dca3a10df2e4b9c3f6b3316df07f6c0ded94b281c7101/scipy-1.15.3-cp312-cp312-win_amd64.whl",
+      "bytes": 40966184,
+      "sha256": "52092bc0472cfd17df49ff17e70624345efece4e1a12b23783a1ac59a1b728ed",
+      "unpacked_bytes": 120774661,
+      "members": 1650,
+      "top_level": [
+        "scipy",
+        "scipy-1.15.3-cp312-cp312-win_amd64.whl",
+        "scipy-1.15.3.dist-info",
+        "scipy.libs"
+      ],
+      "metadata_source": "https://pypi.org/pypi/scipy/1.15.3/json"
+    },
+    {
+      "id": "opencv-python-headless",
+      "version": "4.11.0.86",
+      "module": "cv2",
+      "module_version": "4.11.0",
+      "filename": "opencv_python_headless-4.11.0.86-cp37-abi3-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/86/8a/69176a64335aed183529207ba8bc3d329c2999d852b4f3818027203f50e6/opencv_python_headless-4.11.0.86-cp37-abi3-win_amd64.whl",
+      "bytes": 39402386,
+      "sha256": "6c304df9caa7a6a5710b91709dd4786bf20a74d57672b3c31f7033cc638174ca",
+      "unpacked_bytes": 113258514,
+      "members": 86,
+      "top_level": [
+        "cv2",
+        "opencv_python_headless-4.11.0.86.dist-info"
+      ],
+      "metadata_source": "https://pypi.org/pypi/opencv-python-headless/4.11.0.86/json"
+    }
+  ]
+}

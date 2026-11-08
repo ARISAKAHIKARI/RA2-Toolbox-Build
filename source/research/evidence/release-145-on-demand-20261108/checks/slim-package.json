@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "suite": "slim_package",
+  "passed": true,
+  "tests_run": 7,
+  "tests": [
+    "test_both_packages_require_the_complete_matching_engine",
+    "test_dependency_manifest_pins_public_https_size_hash_and_versions",
+    "test_rejects_missing_prepared_resources_or_native_programs",
+    "test_rejects_runtime_download_cache_settings_and_development_files",
+    "test_rejects_unsafe_paths_and_case_collisions",
+    "test_removes_entire_optional_runtime_and_keeps_prepared_resources",
+    "test_zip_roundtrip_and_update_overlay_preserve_existing_runtime_and_settings"
+  ],
+  "base": {
+    "name": "RA2Toolbox-1.0.44-x64-Full.zip",
+    "sha256": "ef2c558c5f7f34719705ce9111e2d394da789a1434daa6ab922675d6cb2ee2aa",
+    "archive_bytes": 147235862,
+    "members": 2994,
+    "retained_existing_members": 442,
+    "removed_runtime_members": 2552,
+    "same_bytes_zip_estimate_without_runtime": 43013421,
+    "estimate_excludes_new_binary_and_bootstrap_differences": true
+  },
+  "test_payloads": "small synthetic bytes; complete member set from SHA256-verified published base",
+  "final_release_zip_validation": "performed separately by package_release.py after frozen build",
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "source_bindings": [
+    {
+      "path": "packages/v1.0.45/test_slim_package.py",
+      "sha256": "ab2eff0cda126a61fcaa36f4387765b4d2ca2f9321fdd17c741673c978804d4d"
+    },
+    {
+      "path": "packages/v1.0.45/package_release.py",
+      "sha256": "cbc0d5189c551372f66c3cb1b24b40901c963bb1e684ffd7a15ef4b2e4924196"
+    }
+  ]
+}
