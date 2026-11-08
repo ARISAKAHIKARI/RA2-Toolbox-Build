@@ -1,3 +1,4 @@
+#include "tactical_frame_read.h"
 // YRpp BuildingTypeClass::ClickRepairable is +0x157A (next: CanBeOccupied +0x157B).
 // Config only controls eligibility; never changes game type fields or Dock lists.
 static oreconfig::Config oreConfig{};static long oreConfigRevision=-1;
@@ -16,7 +17,7 @@ static bool oreMiner(uint32_t type){return type&&oreTypeAllowed(type,true)&&
 // Runtime samples raw fields and original read-only weapon/range decisions.
 // The same pure planner ranks those facts in the configured EXE or Runtime location.
 #include "combat_probe_bridge.h"
-static planner::World planningWorld;static int planningFrame=-1;static uint32_t planningSerial,inputSerial;
+static planner::World planningWorld,planningCapture;static int planningFrame=-1;static uint32_t planningSerial,inputSerial;
 static int pausedOreFrame=-1;
 static void oreHarvestReset();
 static void clearOreOrders(){oreHarvestReset();oreConfigRevision=-1;oreConfig={};manualVersions.clear();planningFrame=pausedOreFrame=-1;inputSerial=planningSerial=0;snap.oreQueued=snap.oreDocking=snap.oreIssued=snap.oreManual=0;}
@@ -62,6 +63,14 @@ static void observeNativeOreIntent(uint32_t p,uint32_t target,uint32_t cell,uint
  else{manualVersions.expectOreMission(id,target?1:2);manualVersions.observeOre(id,get<int>(p+0xAC),get<int>(p+0xB4));}
 }
 static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
+ auto&w=planningCapture;
+ struct DropCandidate {uint32_t pointer,victim;int actor;};
+ static DropCandidate dropCandidates[planner::MaxActors];int dropCount=0;
+ bool queryCombat=false;static bool oreParticipant[planner::MaxActors];
+ uint32_t nextMode=0;
+ static uint32_t lastMode;
+ {SampleReadScope frameRead;if(!frameRead)return false;
+ static WeaponCacheEntry cacheBefore[1024];memcpy(cacheBefore,weaponCache,sizeof weaponCache);
  bool advanced=(sh->flags&(AdvancedInput|MagnetronInput))&&nativeCount>0;
  bool ore=((sh->flags|sh->plannerTracking|sh->runtimeTracking)&AutoOreReturn)!=0;
  bool minerDefense=sh->minerDefenseEnabled||minerDefensePending();
@@ -71,10 +80,10 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  static long configSeen=-1;bool configChanged=configSeen!=oreConfigRevision;if(configChanged){planningFrame=-1;configSeen=oreConfigRevision;}
  static long defenseConfigSeen=-1;if(minerDefense&&defenseConfigSeen!=featureConfigRevision){planningFrame=-1;defenseConfigSeen=featureConfigRevision;}
  if(!advanced&&!ore&&!minerDefense&&!defense&&!drop&&!sh->plannerTracking&&!sh->runtimeTracking&&!planningWorld.count&&!planningWorld.intentCount)return false;
- static uint32_t lastMode;uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0)|(drop?1u<<31:0)|(minerDefense?1u<<29:0);
- if(planningFrame==frame&&planningSerial==inputSerial&&lastMode==mode)return false;planningFrame=frame;planningSerial=inputSerial;if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);lastMode=mode;
- auto&w=planningWorld;w.match=match;w.tick=now;w.frame=frame;w.count=w.intentCount=w.refineryCount=w.combatCount=0;w.inputSerial=inputSerial;
- Vec all=vec(0xA8EC78);static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;static bool dockOre=false,dockDefense=false;
+ uint32_t mode=(advanced?(sh->flags&(AdvancedInput|MagnetronInput)):0)|(ore?AutoOreReturn:0)|(defense?AntiTheft:0)|(drop?1u<<31:0)|(minerDefense?1u<<29:0);
+ if(planningFrame==frame&&planningSerial==inputSerial&&lastMode==mode)return false;if(lastMode!=mode)memset(weaponCache,0,sizeof weaponCache);nextMode=mode;
+ w.match=match;w.tick=now;w.frame=frame;w.count=w.intentCount=w.refineryCount=w.combatCount=0;w.inputSerial=inputSerial;
+ Vec all{};if(!sampleRoster(0xA8EC78,all))return false;static uint32_t refineryTypes[512],dockMatch,dockItems;static int refineryTypesCount,dockFrame=-100000,dockCount=-1;static bool dockOre=false,dockDefense=false;
  // Dock compatibility is type metadata. Cache it instead of rescanning all
  // combat units just to discover the same refinery types on every frame.
  if(ore||minerDefense){Vec types=vec(0xA83CE0,4096);
@@ -105,7 +114,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   bool spider=minerDefense&&!ownActor&&minerDefenseThreat(p,house,true);
   bool enemy=!ownActor&&(advanced||threat||spider)&&nativeEnemy(p,house);
   if(!tracked&&!harvester&&!oreDock&&!enemy&&!turret&&!dropSource&&!spiderSource)continue;
-  auto&a=w.actors[w.count++];memset(&a,0,sizeof a);a.combatFirst=-1;
+  auto&a=w.actors[w.count++];memset(&a,0,sizeof a);a.combatFirst=-1;oreParticipant[w.count-1]=harvester||defenseMiner;
   a.id=get<uint32_t>(p+0x10);a.type=type;a.kind=k;a.x=get<int>(p+0x9C);a.y=get<int>(p+0xA0);a.z=get<int>(p+0xA4);
   a.mission=get<int>(p+0xAC);a.queued=get<int>(p+0xB4);a.cost=get<int>(type+0x610);a.veterancy=get<float>(p+0x150);a.manualVersion=manualVersions.get(a.id);
   if(ownActor)a.flags|=planner::Own;else if(enemy)a.flags|=planner::Enemy;
@@ -117,15 +126,14 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   if(turret)a.flags|=planner::PointDefense;if(threat)a.flags|=planner::Saboteur;
   if(spider)a.flags|=planner::ParasiteThreat;if(minerDefenseOwns(a.id))a.flags|=planner::HarvesterDefending;
   if(advanced||defense||dropSource||spider||spiderSource)rawCombatInfo(p,type,k,a,tracked||turret||dropSource||spiderSource,true);
-  if(dropSource&&rawMagnetronDrop(p,get<uint32_t>(p+0x2AC),house))a.flags|=planner::DropHazard;
-  if(harvester){a.flags|=planner::Harvester;a.storageLimit=get<int>(type+0x800);memcpy(a.storage,(void*)(p+0x33C),sizeof a.storage);
-   if(manualVersions.observeOre(a.id,a.mission,a.queued))a.flags|=planner::OrePaused;
+  // Native height/cliff/air queries run after the pure conversion scope.
+  if(dropSource)dropCandidates[dropCount++]={p,get<uint32_t>(p+0x2AC),w.count-1};
+  if(harvester){a.flags|=planner::Harvester;a.storageLimit=get<int>(type+0x800);read(p+0x33C,a.storage,sizeof a.storage);
    // Defense publishes native docks outside the ore whitelist for recovery.
    // Keep automatic-unload compatibility restricted to its own filter.
    Vec docks=vec(type+0x3E8,256);for(int j=0;j<docks.count&&j<8;++j){uint32_t dock=item(docks,j);if(dock&&oreTypeAllowed(dock,false))a.dockTypes[j]=dock;}
    if(get<bool>(p+0x6D1))a.flags|=planner::Unloading;
   }
-  if(defenseMiner&&!harvester&&manualVersions.observeOre(a.id,a.mission,a.queued))a.flags|=planner::OrePaused;
   if(oreDock&&!(a.flags&(planner::Limbo|planner::OffMap))){
    int count=get<int>(p+0xE8);uint32_t links=get<uint32_t>(p+0xE4);
    if(count>=0&&count<=256&&links>=0x10000)for(int j=0;j<count&&j<4;++j)a.radioIDs[j]=rawObjectID(get<uint32_t>(links+j*4));
@@ -145,7 +153,22 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   }
  }
  for(int i=0;i<nativeCount&&w.intentCount<planner::MaxIntents;++i){const auto&o=nativeOrders[i];w.intents[w.intentCount++]={o.id,o.cell,o.token,o.mode,uint32_t(o.global)};}
- if(advanced)collectCombatProbes(w);
+ queryCombat=advanced&&sh->nativeCombatQueries;
+ if(advanced&&!queryCombat)collectCombatProbes(w,true);
+ if(!frameRead.complete()){
+  // An incomplete observation must neither replace a valid input nor poison
+  // the existing metadata caches with values returned by failed reads.
+  memcpy(weaponCache,cacheBefore,sizeof weaponCache);dockFrame=-100000;dockCount=-1;return false;
+ }
+ } // sealed facts only; native queries and publication follow outside scope
+ for(int n=0;n<dropCount;++n){const auto&candidate=dropCandidates[n];auto&a=w.actors[candidate.actor];
+  if(worldByID(a.id)==candidate.pointer&&rawMagnetronDrop(candidate.pointer,candidate.victim,house))a.flags|=planner::DropHazard;
+ }
+ if(queryCombat)collectCombatProbes(w);
+ // Permission observation is advanced only by observePausedOre/input hooks
+ // with live missions. A new input can share this frame with older raw bytes.
+ for(int n=0;n<w.count;++n)if(oreParticipant[n]&&manualVersions.orePaused(w.actors[n].id))w.actors[n].flags|=planner::OrePaused;
+ planningWorld=w;planningFrame=frame;planningSerial=w.inputSerial;lastMode=nextMode;
  InterlockedIncrement(&sh->worldSeq);sh->world.match=w.match;sh->world.tick=w.tick;sh->world.frame=w.frame;sh->world.count=w.count;sh->world.intentCount=w.intentCount;sh->world.refineryCount=w.refineryCount;sh->world.inputSerial=w.inputSerial;
  memcpy(sh->world.actors,w.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(sh->world.intents,w.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(sh->world.refineries,w.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));
  sh->world.combatCount=w.combatCount;memcpy(sh->world.combat,w.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));

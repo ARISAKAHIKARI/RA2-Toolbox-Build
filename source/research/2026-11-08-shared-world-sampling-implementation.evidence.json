@@ -1,0 +1,277 @@
+{
+  "schema": "ra2.shared-world-sampling-evidence.v1",
+  "baseline_commit": "c03e4ffcba13c6ceb435b758989d7c95093ca772",
+  "production_baseline_commit": "cee2af5621c78d5f565463cf611ff591ed1ecbc3",
+  "notebook_version_read": 159,
+  "inherited_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "inherited_visual_executable_sha256": [
+    "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+    "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6"
+  ],
+  "source_sha256": {
+    "source/BUILD_SOURCE_MANIFEST.json": "f1adb7bf8491d51a5d312874494138c5e251680681662f3983ab7a939cdf89fa",
+    "source/README-1.0.44-pre.2.txt": "2588fe1213d27c9fc5fd736212b1148bc9dbe75014732351641db1bc1ce65b01",
+    "source/assist/source/air_path_host.h": "8bd0168087d769e7e4a447a5557fedcc311ce01f19a5f2793e4d305a9b78da65",
+    "source/assist/source/autoload_bridge.h": "616ecb1933770883a9126022d66c510f1fe61864e8d695492c3eabeb0b41ebb8",
+    "source/assist/source/bridge.cpp": "642efcd36422e98bf013b4578249d9f166b55bdc1e9a35a3bb7b53f145e11309",
+    "source/assist/source/combat_probe_bridge.h": "3618fdb3ac85f209dddf563c0f21c1f35194d50f37ac4771711f9b4fa3b5356e",
+    "source/assist/source/command_cursor_host.h": "e1b6a0c0d46f4602e7a96f7d6b1c768a5c67e42d6bde4e2eedede3158f5e9ce2",
+    "source/assist/source/construction_host.h": "7f340af9bfbe0cfb093f481b6caa7c4deff60e0c03f9f1a650db378900f8b6ed",
+    "source/assist/source/cooperative_bridge.h": "d579af32a468c625258611e10fd2a1a05ee91b71ec5b3c953a68649b11e6376e",
+    "source/assist/source/dodge_bridge.h": "d251be34caad0f481a7ca39279e724a704202894be43c19bf80435ae74052dc9",
+    "source/assist/source/external_orders_bridge.h": "236c60d203c34cfda4e053f0061084cb8de5a3d314c4660a7b575f8be63fbf6d",
+    "source/assist/source/formation_host.h": "3810dd02dcccb59002cc4d13d8bd700c85c9bc732362c49dca5c10ae18ec3354",
+    "source/assist/source/harvester_defense_bridge.h": "aea323bedb0452a56569b45c47e45317a15120e2c4d032a56db807d715933d76",
+    "source/assist/source/main.cpp": "0000654ac95a49d364977931fa7b6edb995d9c7af069e2cd14f86627f73958d0",
+    "source/assist/source/minimap_overlay.h": "3fe7371e9e5f5b80b39a5da75021ee7703bfa02a8864a2a7ec0a71f6e6a2f7bd",
+    "source/assist/source/missile_bridge.h": "dad081d13ed72575a24558230177afe05d366045fb23f973b247634135808310",
+    "source/assist/source/native_orders_bridge.h": "c5135aaa13fccb003283e4abbe7c67516f4d0e4d823bd369092afbf8cb4ec756",
+    "source/assist/source/ore_harvest_bridge.h": "86fa79e17f63e2cccc8022a64ffc1870aead79d8bb3c95f0dd5d64b975824450",
+    "source/assist/source/protocol.h": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c",
+    "source/assist/source/render_feedback_host.h": "8c83770955288e41b12d535c2fe43225031fde9460b0fe89fc28dff7a2240566",
+    "source/assist/source/render_presentation.h": "c40b7c7e82e830c30adea755db0dc28f9f2e145ad120bc2c0b4cecb584ec364a",
+    "source/assist/source/render_upgrade_host.h": "87380c024279e6b7ecd8c06650a7f21b4c7ee6738d2acc784ed863ac74e89534",
+    "source/assist/source/reverse_dodge_bridge.h": "06bc361f0ec973b4e573240026646f6bb1c958fc3385585fd97c67bb0c3c8f70",
+    "source/assist/source/sidebar_indicator_host.h": "9422584065749ac12281834683251cd173b5873e3ce47aa353b060e2453ee0ef",
+    "source/assist/source/tactical_frame_read.h": "38a51d8e02f58f3809d6b6c1f3842c1857586321e72a7c674ee1c8f0ed796efb",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "dba52b1d55ab0ce9b333ca1f16a901077adcc59d1a6f9aaac4cd781bec97e82a",
+    "source/assist/source/tech_ui_breakpoint_core.h": "22566f0031a357dc4eac4e1f2c8f6eabb12cae97a011ec4f11a890de25263fe2",
+    "source/assist/source/unload_compute_bridge.h": "d26fc80a6c451242e43b9d2b992598dea7f2e6c9d0681daa5a1dd148c96ab6bc",
+    "source/assist/source/watch_current_anchor.h": "ef4be3fe7a8f8c19d9837038d64e7a7c495f63521846397ed1976d072622112a",
+    "source/assist/source/watch_host.h": "415df1f75d638f34715755c3f79a3560ab19f8c0f382f6739f6a704f88bdd16e",
+    "source/assist/source/watch_read_view.h": "d29bb830b54acca7e8e3ae1c15a55f3d7afcb33f33ed6a86b3f93ec7ffd051a2",
+    "source/assist/source/watch_scene.h": "f89c564c6ffe5505343180f6d0ffb4598d130b6e815b4540d0ad05bd26b03cb4",
+    "source/assist/source/world_frame_runtime.h": "5ff03f76aa86afd3b33926e176703e1a1ded5b29b6d6ce5e9b674a3f6c1b386e",
+    "source/assist/tests/air_waypoint_host_test.py": "96ed5256ca1ac6b39be494d120e2a0136f05d853b63f1a6fdf403cb32837dcb0",
+    "source/assist/tests/auto_repair_runtime.cpp": "6d900856627e2887e2f6cb956794083faad4fbf7e50e1a0540feaa9653d53ead",
+    "source/assist/tests/auto_repair_runtime.py": "54c4514392c1fb8730bb9e071d61c1ff0de497760bda652a12d9ed4445f88464",
+    "source/assist/tests/breakpoint_owner_rendezvous.cpp": "c41854cd74a2d4fc921ed74bc9aaf0908b5059be2e62418d7f15535cb1b726f7",
+    "source/assist/tests/combat_probe_sampling.py": "1034dd376eb22c5b9dc37d4003b6b0e404df5b8da1a0abcf6ce2f474668ad262",
+    "source/assist/tests/command_cursor_host.cpp": "11ebf6013a2637c4335738b45c59eae4ed39d5ccb5861af6e1781706c0460823",
+    "source/assist/tests/construction_host_test.py": "d063295bca80402a99b324ed552e5ce0886613635a8173bfaa8c0aeeb74dd49d",
+    "source/assist/tests/external_reader.cpp": "a3ef22058d49e57c89b60675abd5a2626cc52548feff7984c9c71bc638ce5bdf",
+    "source/assist/tests/fixtures/tactical_frame/autoload_before.h": "14a6a86113a0065abc3ad863c3c5ce41bc0b2328d84a9cd0817fe29ed76ab5cc",
+    "source/assist/tests/fixtures/tactical_frame/runtime_sample_fixture.h": "721e058ba776aa06d82230d4d7a6bf18c9495de295d16a4ba278914a5c163b33",
+    "source/assist/tests/fixtures/tactical_frame/sealed_host_reader.h": "2c110a6cd6146764908de0b221af8bca414ecbc0cd87a56e5ea1542c1f97bf18",
+    "source/assist/tests/hardware_performance.cpp": "e54afb67ceaad177ac19469e9ee672d9bd8fec003555f5022492886121934701",
+    "source/assist/tests/harvester_defense_runtime.cpp": "7ce3963178cc1978f68879f0238d0744c1230bd346ee30462d7eeeb1e19bbbd0",
+    "source/assist/tests/harvester_defense_runtime.py": "f45ddcfc0f77f926ba9960d63b67a6d88c8423f3b6c4f58c6f0ae8e405f3f0d3",
+    "source/assist/tests/host_tactical_frame_sampling.cpp": "0756947de9cc2a1e1158c218061e668c767df636e59571fd21f2a39ba5c2b04e",
+    "source/assist/tests/host_tactical_frame_sampling.py": "b40dce405396493147d494dabd55372b074cd012835edfe12758336d3ae5f29f",
+    "source/assist/tests/ore_harvest_handoff.cpp": "6a8cec9a4c076063034bfb960e6e44d04364617f6320b04e0edee2bff71eb039",
+    "source/assist/tests/ore_harvest_handoff.py": "a584107374987a268e85e29024a6cb6c069b19b10982b98f93a9dd960666a8c6",
+    "source/assist/tests/render_feedback_host.cpp": "00485ee007ed246cb0d71a35976d7dae8e61aebedbf124743eb5db56b6344018",
+    "source/assist/tests/render_presentation.cpp": "fbf92b09d8f0a887c512b8e1443ad117a9960aad5a31cc78f4927710eab2dc67",
+    "source/assist/tests/runtime_sample_fixture.py": "43b8ed44d563b59c93bee855e35d599b334f3a0802595924b815a52b3a45bca5",
+    "source/assist/tests/shared_scene_sampling.cpp": "c6375b7e460aa684d6f2374093c90e89cdb938a8335528f8b25d1f9c82a66cfa",
+    "source/assist/tests/tactical_frame_sampling.cpp": "0057a0f13f5eb652cf7ef74647c4dd02756076032aa7edd60adfdbaddf5751b1",
+    "source/assist/tests/tactical_frame_sampling.py": "a3ee1e5d19f7cbadf044ab0d7b95426e675293227214da0f3be5a98bbf852d89",
+    "source/assist/tests/world_frame_core.cpp": "3e7059d7172ab9abbfe6c3ff57c59f40d4ccf9f995348e7e052d414fa26666e1",
+    "source/assist/tests/world_frame_core_test.py": "2ee49da359b7d77f4c8decc816c28e19065975a8c680caac093fe28dba63f13d",
+    "source/assist/tests/world_ui_sampling.cpp": "a04cd125eb465b3b37e5b6530cc580828404eadd66f2dba88e850d8e7dae1d3f",
+    "source/build-zig-x64.sh": "b547128f8a982700c59d5a927d25ddf2d37303048e83445887602ca00d823eb9",
+    "source/external_reader/source/camera_assets.h": "eb64219403debe26d0630fb92d250e00fa502f483fa6cc16c65d37aeaee1a46a",
+    "source/external_reader/source/feedback_orders.h": "9e584d2286cff9f7735eff8c705df4c11f08e534db4ef492e36e1474d5165f6f",
+    "source/external_reader/source/live_shape_cache.h": "6130dac90c3eabf144eb3ffd47de560db67684ddf1543a5eb9b44f5fd2c0584f",
+    "source/external_reader/source/local_ui_renderer.h": "b798a810199e3f86ffba279fc5c6077789190906c9037df886a868aec36d3eb0",
+    "source/external_reader/source/local_ui_task.h": "896fc2b23f7c905c78b65361cac38a79027bd791edb8740ce9dcdb9481ab38c3",
+    "source/external_reader/source/native_draw_state.h": "a9023d68a3f56173ab2fc9e818e355e6e6a7a764c889eca5120cb93f8813a809",
+    "source/external_reader/source/native_planning.h": "58955f192130ec6fa8fc42a8656f1233552fa6e1e9e935d8c31a342fc0c15a4e",
+    "source/external_reader/source/native_ui_font.h": "1aed9dfd081138b60c63e28621ebb5c590f44cdb2ca4bcab9cee465e573b8361",
+    "source/external_reader/source/optional_read.h": "ac559277ea95a8d48e2c57f7a376df6ae060b005784f06158518fdb688075f6d",
+    "source/external_reader/source/process_reader.h": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1",
+    "source/external_reader/source/radar_map.h": "4a805f8ee55537e29152b751e14392011a6155f76d73930a94fb6e70534a8349",
+    "source/external_reader/source/radar_publication.h": "15d569b6a3f0f9dbac8d77d8857a1a45f5bf3108e4470e271922217114ac45f1",
+    "source/external_reader/source/resource_read.h": "82821b08fd83f4e8210655601ea097d9d1ed21f0c9bb439f9172071eb36ae1e6",
+    "source/external_reader/source/scene_bank.h": "c0d84e6f81407cc6d01bacfd353f862013243976269d7a514ec521ffb7ec6893",
+    "source/external_reader/source/scene_lighting.h": "616b3910f51812a240c1d35babfadd7c00deb88f77b11b2376aafebca528b7ff",
+    "source/external_reader/source/shared_reader.h": "657c8dbe1416a7d09ca2a5e8b817bdf79e90f83d83f4cddf94d6672275fdf249",
+    "source/external_reader/source/shared_scene.h": "87e8e426bc52e13e9ac5d5cfda39d70bb17b968b453731d56da9d353dfaadbd3",
+    "source/external_reader/source/sidebar_indicators.h": "b23bf1f445d2c5468c9731445ca986dbfce917432a515fe5be7c6c42bf4bb428",
+    "source/external_reader/source/tactical_sampler.h": "c2fcb3571488433ca2a518e40a9868c67e4e70227e83cc03d8cf86e71b32390c",
+    "source/external_reader/source/world_ui_read.h": "bef04f5fdf86d3ecd74ac4ce412cddf8ebd9f15a3afae45f0a682bcd539c7d3f",
+    "source/shared/source/hardware_performance.h": "65e0db646cc5c98bbda57fdb501362776f479eff58295da0ae1cde11cd398c58",
+    "source/shared/source/release_version.h": "91fc58642da6b407c1c88ae3d1006f58f67a136b4031f88764afda4e429d9bb1",
+    "source/shared/source/world_frame.h": "eff3b0a8e2fb05b7d86b0c9dca83bd7f19c712297140a547a0c54263d023f264",
+    "source/shared/source/world_frame_capture.h": "3141e63d3723fc6226187f0156ad3191b31c7e6b569b3019cbb7f03ce38ecbef",
+    "source/shared/source/world_frame_transport.h": "5742aa73b36a06a2f532fb42e61a4a37bd3b611749464c9b0a7df5a857ee38bf",
+    "source/tools/build_hook_diagnostics.py": "528ce814a507fd14e33b9f44476c97d2aeb1e2b857dd9b5d6632360035d9f229",
+    "source/tools/package_performance_update.py": "02dd8018d805200d0421293c627f5669d158951ceac5f1947794f9a7f2ca317f",
+    "source/tools/verify_crossbit_abi.py": "7ee580c20c2a8011f694528cf214f62261c7dd2556b5843f8f2db6cb168f4566",
+    "source/tools/verify_hook_diagnostics.py": "863cc251db034b97775c62f8d78e9f771d8a6eee7a78715d396bc4ede16fe9f6",
+    "source/tools/verify_windows_outputs.py": "67a189b24a192eb2e786721408c2d2d866e96d913cf03ee00a7ce1d066fe38c6"
+  },
+  "validation": {
+    "required_checks_passed": true,
+    "suites": 28,
+    "checks": [
+      {
+        "name": "world-frame-core",
+        "exit_code": 0,
+        "receipt_sha256": "5f0659acaff1062e280269355e8c3c8c67f1007954b33dbb821f6b427ed9276a"
+      },
+      {
+        "name": "external-label-sampler",
+        "exit_code": 0,
+        "receipt_sha256": "5f0659acaff1062e280269355e8c3c8c67f1007954b33dbb821f6b427ed9276a"
+      },
+      {
+        "name": "hardware-performance-counters",
+        "exit_code": 0,
+        "receipt_sha256": "5f0659acaff1062e280269355e8c3c8c67f1007954b33dbb821f6b427ed9276a"
+      },
+      {
+        "name": "auto-repair-runtime",
+        "exit_code": 0,
+        "receipt_sha256": "5ffa577f081003db1aac49a694667e2dc465d9850e60622b39586e285d04b3a9"
+      },
+      {
+        "name": "hardware-owner",
+        "exit_code": 0,
+        "receipt_sha256": "e00bd0e181100e63c4f67272480890f4622ad6f6274825804bf628f2b33bab90"
+      },
+      {
+        "name": "hardware-control",
+        "exit_code": 0,
+        "receipt_sha256": "e00bd0e181100e63c4f67272480890f4622ad6f6274825804bf628f2b33bab90"
+      },
+      {
+        "name": "tactical_frame_sampling",
+        "exit_code": 0,
+        "receipt_sha256": "9f7c698253e4485aa64aa23747cd0420d23b31be6aa223fc5b1d3babfa2e6e42"
+      },
+      {
+        "name": "host_tactical_frame_sampling",
+        "exit_code": 0,
+        "receipt_sha256": "9f7c698253e4485aa64aa23747cd0420d23b31be6aa223fc5b1d3babfa2e6e42"
+      },
+      {
+        "name": "air_waypoint_host",
+        "exit_code": 0,
+        "receipt_sha256": "9f7c698253e4485aa64aa23747cd0420d23b31be6aa223fc5b1d3babfa2e6e42"
+      },
+      {
+        "name": "construction_host",
+        "exit_code": 0,
+        "receipt_sha256": "9f7c698253e4485aa64aa23747cd0420d23b31be6aa223fc5b1d3babfa2e6e42"
+      },
+      {
+        "name": "combat_probe_sampling",
+        "exit_code": 0,
+        "receipt_sha256": "9f7c698253e4485aa64aa23747cd0420d23b31be6aa223fc5b1d3babfa2e6e42"
+      },
+      {
+        "name": "command_cursor_host",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "shared_scene_sampling",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "world_ui_sampling",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "render_feedback_host",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "render_presentation",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "scene_bank_publication",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "native_local_ui--profile-only",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "radar_sampler_compact",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "formation_host",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "native_order_feedback",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "scene_lighting",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "minimap_overview",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "watch-renderer-windows-object",
+        "exit_code": 0,
+        "receipt_sha256": "3c359589342246604c06b71c2bebb55575abd024e0b19d561ca00ea836e92bef"
+      },
+      {
+        "name": "harvester-defense-runtime",
+        "exit_code": 0,
+        "receipt_sha256": "2fba49efe0f2ad62922478ddb541f571e810e691a5638debc7e4108133aa78a9"
+      },
+      {
+        "name": "ore-harvest-handoff",
+        "exit_code": 0,
+        "receipt_sha256": "2eaeaf43d757c6b2286cb441a34b73c58b374df008c8034d5da5989987c335f4"
+      },
+      {
+        "name": "ore-windows-x86-x64-build-only",
+        "exit_code": 0,
+        "receipt_sha256": "991826c82f5a20acd5970fb61311be8b4c18ab18566dd6aff82abd26a7535088"
+      },
+      {
+        "name": "windows-x86-x64-abi",
+        "exit_code": 0,
+        "receipt_sha256": "77616bdb512678815470c1e717d8e4aaa1dc59cdb4163f5f412b38772512402a"
+      }
+    ],
+    "core_checks": 75357,
+    "repair_cases": 26,
+    "repair_checks": 97,
+    "host_tactical_checks": 500,
+    "hardware_owner_scenarios": 31,
+    "hardware_owner_checks": 1461,
+    "hardware_control_checks": 2752,
+    "hardware_telemetry_checks": 2027,
+    "portable_render_suites": 12,
+    "abi_layout_entries": 895,
+    "full_windows_binary_build": "Recorded separately after immutable source commit in delivered build-provenance.json"
+  },
+  "assist_protocol": 101,
+  "assist_shared_bytes": 23162528,
+  "world_transport_version": 2,
+  "world_control_bytes": 65900,
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "fps_measured": false,
+  "limits": [
+    "No Windows runtime, real game or GPU/FPS claim. Windows target check is compile-only.",
+    "Historical full native_local_ui.cpp stops at line 66, which expects Engine.capture=false for one failed producer although HEAD Engine already used partial producer transactions. --profile-only is the existing test exercised here; world_ui_sampling exercises the actual Task complete-result retention and sealed-world/UI split.",
+    "unit_monitor remains a separate authorized independent reader; parent owns its audit. sidebar_overlay.h contains composition only, no world collection.",
+    "Actual owned hardware-exception delivery cost remains; no FPS, Windows VEH latency or hit-frequency reduction measured.",
+    "The dispatcher captures at most once per admitted observed logic frame; it does not prove every simulation frame is observed.",
+    "Synthetic allocator and Win32 mapping byte counts are not Windows committed-memory or working-set measurements."
+  ]
+}

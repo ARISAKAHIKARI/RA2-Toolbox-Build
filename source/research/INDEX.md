@@ -6,6 +6,8 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 原始世界样本与消费者实际接入 | [capture/seal、动态跨进程 payload、战术与视图阶段拆分](2026-11-08-shared-world-sampling-implementation.md) | Assist101 pre2 raw-overlap single-producer demand sealed no-live-fallback dynamic-mapping nothrow pause UI-generation source-bound-tests |
+| 硬件异常热路径第二轮 | [外部异常快速分流、维护复用与真实命中窗口](2026-11-08-hardware-dispatch-and-rate-observation.md) | owned-foreign classify-before-scope same-context maintenance-view telemetry1s no-per-hit-clock inherent-VEH-cost |
 | 每逻辑帧一份原始世界样本 | [现存重复入口、共享读集与统一采样待实现契约](2026-11-08-unified-world-sampling-contract.md) | cee2af56 pre1-epoch-only FrameReadSet capture-seal projection LiveRead SceneBank-overview minimap no-new-implementation |
 | 硬件控制与工具箱计算的重复工作 | [准入读合并、同帧 Scatter 门控与批内 fresh selector](2026-11-08-hardware-control-and-host-compute-hotpaths.md) | bf3fbe88 admission24to3 VEH-unchanged Host-demand reverse-sync raw-batch AntiTheft-retained operation-counts-not-FPS |
 | 科技加强规则模式总统／校车未显示 | [原生枚举反证、Ares 动态图标与现场边界](2026-11-07-tech-enhancement-rules-native-followup.md) | PRES BUS native-CanBuild 8-cases Insignificant-not-native-filter rules-mode-unresolved |

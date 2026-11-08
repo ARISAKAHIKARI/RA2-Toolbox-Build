@@ -3,6 +3,7 @@
 #include "tech_enhancement_parameter_policy.h"
 #include "control_parameter_policy.h"
 #include "map_visibility_parameter_policy.h"
+#include "../../shared/source/hardware_performance.h"
 extern "C" int __cdecl GuardedTechUiParameter(void*,unsigned);
 extern "C" int __cdecl GuardedTechEnhancementProbe(unsigned,unsigned);
 extern "C" unsigned BeginTechEnhancementProbe();extern "C" void EndTechEnhancementProbe(unsigned);
@@ -34,6 +35,8 @@ struct FailureRetry {
 };
 static FailureRetry fullFailureRetry,controlFailureRetry;
 static volatile LONG fullExceptions=0,enhancementExceptions=0,controlExceptions=0;static unsigned probeDepth=0;static uint32_t probeToken=0;
+static uint32_t controlAdmissionChecks=0,worldCaptures=0;
+static hardwareperf::Window performanceWindow;
 static constexpr uint32_t sites[techbp::SiteCount]={0x4F7870,mapvisibility::Address,0x4F7951,0x4F7B66,controlparams::Entry,singlefps::Entry};
 inline unsigned hash(uint32_t p){return ((p>>4)*2654435761u)&1023u;}
 static techbp::SignatureSnapshot<20> nativeDraw;static techbp::SignatureSnapshot<15> nativePrune;static techbp::SignatureSnapshot<16> nativeEntry;
@@ -88,6 +91,7 @@ static bool mapCompatible(bool publishSnapshot=true){
  if(publishSnapshot)mapPolicyRevision=admitted?debugentries::policyRevision:0;return admitted;
 }
 static bool controlCompatible(bool publishRevision=true){
+ ++controlAdmissionChecks;
  // Capture every required byte before deciding reference admission, including
  // when an early caller differs. Repeated predicates below reuse this image
  // instead of issuing the same process-memory read up to three times.
@@ -151,14 +155,19 @@ static void inspectDebugBreakpointSignatures(){
 static void publishDebugBreakpointStates(){
  if(!sh)return;using debugentries::Hook;using debugentries::Reason;using debugentries::Kind;
  const uint32_t active=service.activeTags(),retained=service.lease.tags();
+ // This entire publication runs on the owner without engine calls or a DR
+ // transaction. Read the pending/ownership view once, not once per UI row.
+ const uint32_t pendingGroups=service.pendingGroups();const bool uncertain=service.lease.uncertain!=0,resources=service.resources();
+ auto off=[&](uint32_t group){return !(retained&group)&&!uncertain&&!(pendingGroups&group)&&
+  ((retained&(techbp::AllTags&~group))||!(resourceGroups&group)||!resources);};
  const bool requested[techbp::SiteCount]={bool((sh->flags&UnsafeTech)&&techmode::parameters(techImplementation)),bool(sh->mapVisibility),enhancedRequested(),enhancedRequested()&&bool(sh->techEnhanceCompareLevel),controlmode::parameters(sh->controlAll),sh->singlePlayerFPS>=10&&singlefps::valid(sh->singlePlayerFPS)};
  const int failures[techbp::SiteCount]={failure,mapFailure,enhancementFailure,enhancementFailure,controlFailure,singlefps::failure};
- for(unsigned i=0;i<techbp::SiteCount;++i){const uint32_t group=1u<<i;const bool pending=service.pendingFor(group)||service.lease.uncertain;
+ for(unsigned i=0;i<techbp::SiteCount;++i){const uint32_t group=1u<<i;const bool pending=(pendingGroups&group)||uncertain;
   Hook hook=Hook::Inactive;Reason reason=Reason::NoRequest;int error=0;
   if(pending){hook=Hook::Pending;reason=Reason::OwnerPending;error=int(service.lastError);}
   else if((requested[i]||(retained&group))&&service.state==techbp::Foreign){hook=Hook::Conflict;reason=Reason::Foreign;error=int(service.lastError);}
   else if((active&group)&&healthy()){hook=Hook::Installed;reason=requested[i]?Reason::None:Reason::OwnerPending;}
-  else if((retained&group)||(!requested[i]&&!groupOff(group))){hook=Hook::Pending;reason=Reason::OwnerPending;error=int(service.lastError);}
+  else if((retained&group)||(!requested[i]&&!off(group))){hook=Hook::Pending;reason=Reason::OwnerPending;error=int(service.lastError);}
   else if((i==2||i==3)&&(enhancementFailure==techenhanceparams::NativeBodyBypassed||(sh->debugVisible&&debugExactUnreachable))){hook=requested[i]?Hook::Unavailable:Hook::Inactive;reason=Reason::PathUnreachable;}
   else if(requested[i]){
    hook=Hook::Pending;reason=Reason::AwaitRuntime;
@@ -171,8 +180,18 @@ static void publishDebugBreakpointStates(){
   debugentries::installation(Kind::Breakpoint,sites[i],hook,reason,error);
  }
 }
+static void publishHardwarePerformance(){
+ if(!sh)return;
+ // All hot values already existed. No clock, allocation, log or additional
+ // frame read is added to the exception callback for this diagnostic.
+ const hardwareperf::Counters totals{uint32_t(service.exceptions),uint32_t(service.changed),uint32_t(controlExceptions),
+  uint32_t(fullExceptions),uint32_t(enhancementExceptions),uint32_t(mapExceptions),controlAdmissionChecks,worldCaptures};
+ hardwareperf::Snapshot next;
+ if(!performanceWindow.observe(GetTickCount(),match,policy.frame,totals,next))return;
+ InterlockedIncrement(&sh->hardwarePerfSeq);sh->hardwarePerf=next;MemoryBarrier();InterlockedIncrement(&sh->hardwarePerfSeq);
+}
 static void publish(){
- if(!sh)return;inspectDebugBreakpointSignatures();publishDebugBreakpointStates();const uint32_t active=service.activeTags();
+ if(!sh)return;inspectDebugBreakpointSignatures();publishDebugBreakpointStates();publishHardwarePerformance();const uint32_t active=service.activeTags();
  sh->hardwareSlotBudget=service.slotBudget();
  sh->singlePlayerFPSStatus=singlefps::failure?singlefps::failure:singlefps::desired?(ready(singlefps::Tag)&&sh->singlePlayerFPSActive?techbp::Ready:(refusedGroups&singlefps::Tag)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(singlefps::Tag)?techbp::Off:techbp::Waiting;
  const bool mapPresentation=policy.showing!=0;if(mapPresentation!=lastMapPresentation){mapRedrawPending=true;lastMapPresentation=mapPresentation;}
@@ -185,6 +204,7 @@ static void publish(){
 }
 static bool callback(void*context,uint32_t tag){return GuardedTechUiParameter(context,tag)!=0;}
 static bool captureWorld(uint32_t house){
+ ++worldCaptures;
  if(!sh||sh->stop||fault||house!=lastHouse||!house||get<uint32_t>(0xA83D4C)!=house)return false;
  uint32_t scenario=0,id=0;int frame=-1,session=-1;
  if(!read(0xA8B230,&scenario,4)||!scenario||!read(0xA8ED84,&frame,4)||frame<0||!read(0xA8B238,&session,4)||!eventdelivery::mayQueue(session)||!read(house+0x10,&id,4)||!id)return false;

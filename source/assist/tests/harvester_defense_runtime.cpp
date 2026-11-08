@@ -31,7 +31,7 @@ constexpr uint32_t House=0x20010000,Miner=0x20020000,MinerType=0x20030000,Refine
 constexpr uint32_t Overlay=0x20060000,Tiberium=0x20070000,OverlayItems=0x20080000,TiberiumItems=0x20081000,Links=0x20082000,Docks=0x20083000;
 constexpr uint32_t Scenario=0x20090000,EnemyHouse=0x20091000,EnemyCountry=0x20092000,Drone=0x200A0000,Drone2=0x200A1000,DroneType=0x200B0000;
 constexpr uint32_t Gun=0x200C0000,ParasiteGun=0x200C1000,Projectile=0x200C2000,Warhead=0x200C3000,ParasiteWarhead=0x200C4000,EliteGun=0x200C5000;
-constexpr uint32_t Cells=0x21000000,CellBase=0x30000000,Map=0x87F7E8,NativeUnitItems=0x203F0000;
+constexpr uint32_t Cells=0x21000000,CellBase=0x30000000,Map=0x87F7E8,NativeUnitItems=0x203F0000,NativeTechnoItems=0x203E0000;
 constexpr uint32_t MinerID=11,RefineryID=21,DroneID=31,Drone2ID=32,ResourceCell=62056,WaitCell=62053;
 static Shared*sh;
 static Snapshot snap;
@@ -61,20 +61,12 @@ static void*memory(uint32_t at,size_t n){
 }
 template<class T>static void set(uint32_t at,T value){void*p=memory(at,sizeof value);assert(p);memcpy(p,&value,sizeof value);}
 static uint32_t cellPointer(int x,int y){return CellBase+uint32_t(y*512+x)*0x200;}
-static bool read(uint32_t at,void*out,size_t n){
+#include "fixtures/tactical_frame/runtime_sample_fixture.h"
+static bool readFixtureLive(uint32_t at,void*out,size_t n){
+ assert(!sampleReadDepth);
  ++reads;
  if(failRead&&at<=failRead&&uint64_t(at)+n>failRead){if(n)memset(out,0xCC,n-1);return false;}
- if(at>=Cells&&uint64_t(at)+n<=uint64_t(Cells)+512*512*4){
-  assert(n==4&&(at%4)==0);uint32_t index=(at-Cells)/4,id=(index/512)*1000+index%512;
-  uint32_t p=nullCells.count(id)?0:CellBase+index*0x200;memcpy(out,&p,4);return true;
- }
- if(at>=CellBase&&uint64_t(at)+n<=uint64_t(CellBase)+512*512*0x200ull){
-  ++cellReads;uint32_t index=(at-CellBase)/0x200,offset=(at-CellBase)%0x200;assert(offset+n<=0x200);uint8_t data[0x200]{};
-  int16_t xy[2]={int16_t(index%512),int16_t(index/512)};memcpy(data+0x24,xy,4);
-  Cell c{};auto found=cells.find(uint32_t(xy[1]*1000+xy[0]));if(found!=cells.end())c=found->second;
-  memcpy(data+0x44,&c.overlay,4);memcpy(data+0xEC,&c.land,4);data[0x11B]=uint8_t(c.level);data[0x11C]=c.slope;data[0x11E]=c.amount;
-  memcpy(data+0x124,&c.occupation,4);memcpy(out,data+offset,n);return true;
- }
+ if(fixtureReadMap(at,out,n)>0)return true;
  void*p=memory(at,n);if(!p)return false;memcpy(out,p,n);return true;
 }
 template<class T>static T get(uint32_t at){T value{};if(!read(at,&value,sizeof value))return {};return value;}
@@ -103,7 +95,7 @@ static void releaseAutoOwner(uint32_t id){++releases;actorLeaseArbiter.manual(id
 // separate observation helper must explicitly make a queued order visible.
 static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target,uint32_t destination,int tag,
  uint32_t nearest,int nearestTag,taskarbiter::Owner owner,uint32_t*receipt){
- ++nativeCalls;assert(owner==taskarbiter::Owner::HarvesterDefense&&house==House);
+ ++nativeCalls;assert(!sampleReadDepth&&owner==taskarbiter::Owner::HarvesterDefense&&house==House);
  const uint32_t p=worldByID(id);const int frame=get<int>(0xA8ED84);const uint32_t revision=manualVersions.get(id);
  actorFrameArbiter.begin(match,frame);
  if(!nativeOkay||!outgoingOkay||!own(p,house)||!actorFrameArbiter.canIssue(id,revision)||
@@ -138,10 +130,12 @@ static void sampleWorld(){
  int unitCount=0;for(uint32_t p:actors){uint32_t vt=0;memcpy(&vt,memory(p,4),4);
   if(vt==0x7F5C70u){assert(unitCount<16384);set<uint32_t>(NativeUnitItems+uint32_t(unitCount++)*4,p);}
  }vectorAt(0x8B4108,NativeUnitItems,unitCount);
- planningWorld.match=match;planningWorld.frame=snap.frame;planningWorld.tick=clockNow;planningWorld.inputSerial=inputSerial;planningWorld.count=0;
+ for(size_t n=0;n<actors.size();++n)set<uint32_t>(NativeTechnoItems+uint32_t(n)*4,actors[n]);vectorAt(0xA8EC78,NativeTechnoItems,int(actors.size()));
+ fixtureCaptureWorld(clockNow);SampleReadScope frameRead;if(!frameRead)return;
+ static planner::World candidate;candidate.match=match;candidate.frame=snap.frame;candidate.tick=clockNow;candidate.inputSerial=inputSerial;candidate.count=0;
  for(uint32_t p:actors){
   if(!live(p))continue;
-  auto&a=planningWorld.actors[planningWorld.count++];a={};a.id=get<uint32_t>(p+0x10);a.kind=kind(p);a.type=typeOf(p,a.kind);
+  auto&a=candidate.actors[candidate.count++];a={};a.id=get<uint32_t>(p+0x10);a.kind=kind(p);a.type=typeOf(p,a.kind);
   a.flags=get<uint32_t>(p+0x21C)==House?planner::Own:planner::Enemy;
   if(a.kind==2&&oreMiner(a.type))a.flags|=planner::Harvester;
   if(get<bool>(p+0x1C8))a.flags|=planner::Disabled;
@@ -155,11 +149,12 @@ static void sampleWorld(){
   a.manualVersion=manualVersions.get(a.id);a.x=get<int>(p+0x9C);a.y=get<int>(p+0xA0);a.mission=get<int>(p+0xAC);a.queued=get<int>(p+0xB4);
   a.destination=rawObjectID(get<uint32_t>(p+0x5A4));rawCombatInfo(p,a.type,a.kind,a,(a.flags&planner::Own)!=0,false);
  }
+ if(frameRead.complete())planningWorld=candidate;
 }
 static void reset(){
  memset(globals,0,sizeof globals);memset(objects,0,sizeof objects);sh->~Shared();new(sh)Shared{};snap={};planningWorld.~World();new(&planningWorld)planner::World{};
  manualVersions.clear();worldObjects.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();oreHarvestReset();minerDefenseReset();oreConfig={};oreConfigRevision=-1;resetFeatureTypes();
- events.clear();actors={Miner,Refinery,Drone};cells.clear();nullCells.clear();failRead=0;
+ events.clear();actors={Miner,Refinery,Drone};cells.clear();nullCells.clear();failRead=0;fixtureResetWorld();
  fault=held=formed=bursted=dodging=ordered=false;planningOkay=outgoingOkay=nativeOkay=true;reads=cellReads=consumed=releases=nativeCalls=0;
  match=7;lastHouse=House;inputSerial=0;clockNow=1000;sh->minerDefenseEnabled=1;sh->minerDefenseRangeCells=1;sh->flags=0;
  snap.status=snap.commandStatus=1;snap.session=3;snap.match=7;snap.frame=300;
@@ -185,7 +180,7 @@ static void reset(){
  resource(56,62);resource(80,62);refreshOreConfig();sampleWorld();
 }
 static bool step(int frames=1,DWORD elapsed=16,bool refresh=true){
- snap.frame+=frames;clockNow+=elapsed;set<int>(0xA8ED84,snap.frame);if(refresh)sampleWorld();
+ snap.frame+=frames;clockNow+=elapsed;set<int>(0xA8ED84,snap.frame);if(refresh)sampleWorld();else fixtureCaptureWorld(clockNow);
  return minerDefenseTick(House,snap.frame,clockNow);
 }
 static void observeAttack(uint32_t target=Drone){set<int>(Miner+0xAC,1);set<int>(Miner+0xB4,-1);set<uint32_t>(Miner+0x2B4,target);set<uint32_t>(Miner+0x5A4,0);}
@@ -553,7 +548,7 @@ int main(int argc,char**argv){
   for(unsigned n=0;n<MinerDefenseCapacity+5;++n){const uint32_t p=0x20100000+n*0x800,id=1000+n;
    memcpy(memory(p,0x800),memory(Miner,0x800),0x800);set<uint32_t>(p+0x10,id);worldObjects.add(p,id);actors.push_back(p);
   }
-  sampleWorld();minerDefenseIndexRefineries();CHECK(oreHarvestContext(House,snap.frame,minerDefenseWorld));
+  ++snap.frame;set<int>(0xA8ED84,snap.frame);sampleWorld();minerDefenseIndexRefineries();CHECK(oreHarvestContext(House,snap.frame,minerDefenseWorld));
   // Seed valid in-flight work by the production capture/attack functions.
   // Only this setup bypasses the worker's six-send budget; the actual boundary
   // check below enters minerDefenseTick with 1023 jobs and six new candidates.

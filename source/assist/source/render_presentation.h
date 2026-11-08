@@ -42,9 +42,23 @@ template<class Request>bool compatible(const Request&a,const Request&b){
   a.pixelScaleMode==b.pixelScaleMode&&gpuFlag(a,0)==gpuFlag(b,0)&&neuralFlag(a,0)==neuralFlag(b,0)&&a.width==b.width&&a.height==b.height&&
   external::mainview::sameViewport(a.view,b.view)&&b.view.frame>=a.view.frame;
 }
+// A sealed world can remain current while the game is paused. Keep its
+// original acquisition tick; require a freshly completed draw and an exact
+// live/requested logic frame instead of manufacturing a new sample timestamp.
+template<class Frame,class Request>auto currentSealedWorld(const Frame&frame,const Request&request,int)
+ ->decltype(bool(frame.world->state.sourceFrame),bool(frame.logicFrame==request.view.frame),bool()){
+ return frame.world&&frame.world->state.sourceFrame&&frame.logicFrame==request.view.frame&&
+  frame.world->state.sourceFrame->key.frame==request.view.frame&&frame.world->state.sourceFrame->key.pid==request.pid&&
+  frame.world->state.sourceFrame->key.match==request.match;
+}
+template<class Frame,class Request>bool currentSealedWorld(const Frame&,const Request&,long){return false;}
+template<class Frame,class Request>bool currentSample(const Frame&frame,const Request&request,uint32_t now){
+ return recent(now,frame.sampledTick,SampleMaxAge)||currentSealedWorld(frame,request,0);
+}
+
 template<class Frame,class Request>bool usable(const Frame&frame,const Request&request,uint32_t now){
  return frame.image&&compatible(frame.request,request)&&
-  recent(now,frame.sampledTick,SampleMaxAge)&&recent(now,frame.completedTick,CompletionMaxAge);
+  currentSample(frame,request,now)&&recent(now,frame.completedTick,CompletionMaxAge);
 }
 template<class Request>bool sameWorldRequest(Request a,const Request&b){
  a.view.cameraX=b.view.cameraX;a.view.cameraY=b.view.cameraY;return compatible(a,b);
@@ -53,7 +67,7 @@ template<class Request>bool sameWorldRequest(Request a,const Request&b){
 // may be reused for another camera; completed image pixels are never shifted.
 template<class Frame,class Request>bool completeUsable(const Frame&frame,const Request&request,uint32_t now){
  return frame.image&&sameWorldRequest(frame.request,request)&&
-  recent(now,frame.sampledTick,SampleMaxAge)&&recent(now,frame.completedTick,CompletionMaxAge)&&
+  currentSample(frame,request,now)&&recent(now,frame.completedTick,CompletionMaxAge)&&
   frame.image->width==request.width&&frame.image->height==request.height;
 }
 inline std::vector<overlaycomposition::Surface> worldOnly(std::vector<overlaycomposition::Surface>layers,uint64_t id){
@@ -74,7 +88,7 @@ public:
  // The caller retains this context and removes all native cutouts/feedback.
  bool retainWorld(const Request&request,uint32_t now)const{
   return frame_&&sameWorldRequest(request_,request)&&
-   recent(now,frame_->sampledTick,SampleMaxAge)&&recent(now,frame_->completedTick,CompletionMaxAge);
+   currentSample(*frame_,request,now)&&recent(now,frame_->completedTick,CompletionMaxAge);
  }
  const overlaycomposition::Context&context()const{return request_.context;}
  const std::vector<overlaycomposition::Surface>&layers()const{return layers_;}

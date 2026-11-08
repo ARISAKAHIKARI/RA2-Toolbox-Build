@@ -95,12 +95,17 @@ template<class C>static bool loadForecast(C&catalogue){
  }return true;
 }
 static void collectChoices(){
- choices.clear();if(activeTab<0||activeTab>3)return;
+ if(activeTab<0||activeTab>3){choices.clear();return;}
+ externalReader.setWorldDemand(worldframe::Base);
+ external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
+ auto previous=std::move(choices);choices.clear();
  auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
+ auto uiRead=[](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);};
  bool previewReady=loadForecast(catalogue);auto&b=books[activeTab];
- uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=get<int>(strip+84,-1),cameos[75*13]{};
- bool nativeReady=count>=0&&count<=75&&(!count||read(strip+88,cameos,size_t(count)*52))&&get<int>(strip+84,-1)==count;
- auto nativeHere=[&](int kind,int index){if(!nativeReady)return false;for(int i=0;i<count;++i)if(cameos[i*13]==index&&cameos[i*13+1]==kind)return true;return false;};
+ uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=-1,after=-1,cameos[75*13]{};
+ bool nativeReady=uiRead(strip+84,&count,4)&&count>=0&&count<=75&&(!count||uiRead(strip+88,cameos,size_t(count)*52))&&uiRead(strip+84,&after,4)&&after==count;
+ if(!nativeReady){choices=std::move(previous);return;}
+ auto nativeHere=[&](int kind,int index){for(int i=0;i<count;++i)if(cameos[i*13]==index&&cameos[i*13+1]==kind)return true;return false;};
  for(int slot=0;slot<snap.typeCount;++slot){const auto&t=snap.types[slot];
   if((activeTab<2&&t.kind!=7)||(activeTab==2&&t.kind!=16)||(activeTab==3&&t.kind!=3&&t.kind!=40))continue;
   int index=encode(t.kind,t.index);uint32_t type=typePointer(index);if(type<0x10000)continue;
@@ -110,6 +115,7 @@ static void collectChoices(){
   bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,technologyRequested(index))&&!catalogue.possible(type,t.kind,t.naval!=0,false,technologyRequested(index));
   if(queued||(!native&&future)||(native&&(tab>=2||(current[tab]&&get<int>(factory(tab)+0x24)==54))))choices.push_back({slot,index,tab,type,!native});
  }
+ if(!source.complete())choices=std::move(previous);
 }
 static void resizePanel(){
  if(!window||!geometryReady||!paintReady)return;POINT origin{};RECT previous{};
@@ -193,7 +199,7 @@ static std::vector<construction::NativeBadge> nativeBadges(){
 }
 static external::ReadSession paintReader;static external::cameraassets::Context<external::ReadSession> paintAssets(paintReader);
 static bool loadPanelAsset(const char*n,std::vector<uint8_t>&b){return paintAssets.cameo(n,b);}
-struct PaintRequest {uint32_t pid,match,tick,house;int activeTab,scroll,hoverChoice,hoverQueue,width,height;construction::Layout layout;construction::Book book;std::vector<Choice> choices;std::map<int,assist::Type> types;std::map<int,uint32_t> pointers;LOGFONTW font{};std::vector<uint8_t> visual,input;};
+struct PaintRequest {uint32_t pid,match,tick,house;int activeTab,scroll,hoverChoice,hoverQueue,width,height;construction::Layout layout;construction::Book book;std::vector<Choice> choices;std::map<int,assist::Type> types;std::map<int,uint32_t> pointers;LOGFONTW font{};std::vector<uint8_t> visual,input;worldframe::Token sourceFrame;};
 struct Painted {PaintRequest request;std::vector<uint32_t> pixels;bool incomplete=false;};
 struct PanelPainter {
  const PaintRequest&request;construction::Layout layout;external::ReadSession&externalReader;external::cameraassets::Context<external::ReadSession>&assets;bool&incomplete;
@@ -201,9 +207,9 @@ RECT rect(int x,int y,int r,int bottom){return {layout.x(x),layout.y(y),layout.x
 void paintIcon(HDC dc,int index,int x,int y,bool gray){
  auto found=request.types.find(index);if(found==request.types.end())return;const auto&t=found->second;
  uint32_t ptr=request.pointers.at(index);
- um::Type type{};type.category=t.kind==7?3:t.kind==16?1:t.kind==40?2:0;memcpy(type.id,t.id,24);type.id[23]=0;if(ptr>=0x10000)externalReader.readFresh(ptr+1750,type.cameo,24);type.cameo[24]=0;type.ptr=ptr;assets.resolveCameo(type);
+ um::Type type{};type.category=t.kind==7?3:t.kind==16?1:t.kind==40?2:0;memcpy(type.id,t.id,24);type.id[23]=0;if(ptr>=0x10000)externalReader.readLive(ptr+1750,type.cameo,24);type.cameo[24]=0;type.ptr=ptr;assets.resolveCameo(type);
  static thread_local um::Snapshot palette{};palette.paletteReady=0;bool ready=icons.restore(type,palette);
- if(!ready&&ptr>=0x10000){static thread_local uint8_t buffer[32+256*1024];auto read=[&](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);};auto resolve=[](uint32_t){return 0u;};if(um::readCameo(read,resolve,type,buffer,sizeof buffer,loadPanelAsset)&&um::readCameoPalette(read,palette,loadPanelAsset)){ready=true;icons.remember(type,palette);}}
+ if(!ready&&ptr>=0x10000){static thread_local uint8_t buffer[32+256*1024];auto read=[&](uint32_t at,void*out,size_t size){return externalReader.readLive(at,out,size);};auto resolve=[](uint32_t){return 0u;};if(um::readCameo(read,resolve,type,buffer,sizeof buffer,loadPanelAsset)&&um::readCameoPalette(read,palette,loadPanelAsset)){ready=true;icons.remember(type,palette);}}
  RECT icon=rect(x,y,x+60,y+48);
  if(ready){uint32_t pixels[60*48];for(int i=0;i<60*48;++i){uint32_t color=palette.palette[type.icon[i]];if(gray){unsigned value=(((color>>16)&255)*3+((color>>8)&255)*6+(color&255))/10;color=(value<<16)|(value<<8)|value;}pixels[i]=color&0xFFFFFF;}
   BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=60;info.bmiHeader.biHeight=-48;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
@@ -219,6 +225,8 @@ void panelBox(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius=4){
 };
 static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest&request)->std::shared_ptr<const Painted>{
  if(!paintReader.open(request.pid))return {};paintReader.begin();paintAssets.identity(request.pid,request.match);
+ if(!request.sourceFrame)return {};paintReader.setWorldDemand(worldframe::Base);
+ external::WorldFrameScope source(paintReader,request.match,request.sourceFrame);if(!source)return {};
  int width=request.width,height=request.height;if(width<1||height<1||uint64_t(width)*height>4*1024*1024)return {};
  auto out=std::make_shared<Painted>();out->request=request;out->pixels.resize(size_t(width)*height);
  BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=width;info.bmiHeader.biHeight=-height;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
@@ -264,7 +272,7 @@ static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest
    if((activeTab>=2||occurrences>construction::VisibleCapacity)&&occurrences)numbers=L"×"+std::to_wstring(occurrences);
    if(!numbers.empty()){RECT badge=painter.rect(x,y+30,x+60,y+48);HBRUSH tag=CreateSolidBrush(RGB(29,89,99));FillRect(dc,&badge,tag);DeleteObject(tag);SetTextColor(dc,RGB(208,247,240));DrawTextW(dc,numbers.c_str(),-1,&badge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
   }SelectObject(dc,previous);const bool ready=GdiFlush()!=FALSE;
- if(ready)memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);return ready?out:std::shared_ptr<const Painted>{};
+ if(ready)memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);return ready&&source.complete()?out:std::shared_ptr<const Painted>{};
 });
 // A complete frame and its matching geometry are promoted together. Pending
 // worker results never clear the visible HWND, and no active hit test can use
@@ -295,7 +303,9 @@ static PaintRequest capturePaint(){
 }
 static void requestPaint(){
  if(!geometryReady||!window||activeTab<0||activeTab>3||!constructionDisplayFresh())return;
- auto request=std::make_shared<PaintRequest>(capturePaint());
+ std::shared_ptr<PaintRequest> request;
+ {externalReader.setWorldDemand(worldframe::Base);external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
+  request=std::make_shared<PaintRequest>(capturePaint());request->sourceFrame=externalReader.worldFrameToken();if(!source.complete())return;}
  if((paintedFrame&&!samePaintWorld(paintedFrame->request))||(requestedPaint&&!samePaintWorld(*requestedPaint))){resetPaint();ShowWindow(window,SW_HIDE);}
  if(requestedPaint&&samePaintWorld(*requestedPaint)&&requestedPaint->visual==request->visual){
   // Failed/missing icons retry without making the ordinary stable panel a

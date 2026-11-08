@@ -12,6 +12,7 @@
 #include <new>
 #include "process_connection.h"
 #include "read_page_budget.h"
+#include "../../shared/source/world_frame_transport.h"
 namespace external {
 // Read-only handle. No allocation, injection, protection or write API for the game.
 struct ReaderDiagnostics {
@@ -28,6 +29,18 @@ struct ReaderDiagnostics {
 // sessions; only the immutable connection is shared, never cache/diagnostics.
 class ProcessReader : public ReaderDiagnostics {
  std::shared_ptr<const ProcessConnection> connection_;
+ std::shared_ptr<worldframe::Client> worldClient_;worldframe::Token worldFrame_;
+ uint32_t worldDemand_=worldframe::Base;
+ std::array<uint64_t,8192> worldDemandBits_{};std::vector<uint32_t> worldDemands_;bool worldComplete_=true;
+ bool frameRead(uint32_t address,void*out,size_t size,bool optional=false){
+  if(!out||!worldframe::range(address,size)){++errors;if(!optional)worldComplete_=false;return false;}
+  for(uint32_t page=address&~4095u;uint64_t(page)<uint64_t(address)+size;page+=4096){
+   const uint32_t index=page>>12;const uint64_t mask=uint64_t(1)<<(index&63);
+   if(!(worldDemandBits_[index>>6]&mask)){worldDemandBits_[index>>6]|=mask;worldDemands_.push_back(page);}
+  }
+  if(worldFrame_->read(address,out,size)){++pageHits;return true;}
+  ++errors;if(!optional||!worldFrame_->observed(address,size))worldComplete_=false;return false;
+ }
  using PageOrder=std::list<uint32_t>;
  struct Page {std::array<unsigned char,4096> bytes;uint64_t epoch=0;PageOrder::iterator order;};
  HANDLE query_{};std::unordered_map<uint32_t,Page> pages_;PageOrder pageOrder_;
@@ -101,13 +114,34 @@ public:
   if(!connection_&&allowQueryOnly)connection_=acquireConnection(pid,false,lastOpenError);
   return valid();
  }
- void close(){if(query_)CloseHandle(query_);query_=nullptr;connection_.reset();clearPages();begin();}
+ void close(){endWorldFrame();worldClient_.reset();if(query_)CloseHandle(query_);query_=nullptr;connection_.reset();clearPages();begin();}
  bool valid()const{return bool(connection_);}
  bool alive()const{return connection_&&connection_->alive();}
  bool canRead()const{return connection_&&connection_->readable;}
  DWORD pid()const{return connection_?connection_->pid:0;}
  uint64_t generation()const{return connection_?connection_->generation:0;}
  std::shared_ptr<const ProcessConnection> connectionIdentity()const{return connection_;}
+ bool beginWorldFrame(uint32_t match,worldframe::Token frame={}){
+  endWorldFrame();if(!canRead())return false;
+  if(!worldClient_)worldClient_=worldframe::acquireClient(pid(),generation());
+  worldClient_->subscribe(uintptr_t(this),worldDemand_);
+  if(!frame)frame=worldClient_->acquire(match);else if(!worldClient_->accepts(frame))return false;
+  if(!frame||!frame->sealed()||frame->key.pid!=pid()||frame->key.owner!=GetCurrentProcessId()||(match&&frame->key.match!=match))return false;
+  worldFrame_=std::move(frame);worldComplete_=true;return true;
+ }
+ void endWorldFrame(){
+  if(worldClient_&&!worldDemands_.empty())worldClient_->request(worldDemands_);
+  for(uint32_t page:worldDemands_){const uint32_t index=page>>12;worldDemandBits_[index>>6]=0;}
+  worldDemands_.clear();worldFrame_.reset();worldComplete_=true;
+ }
+ bool worldFrameActive()const{return bool(worldFrame_);}
+ void setWorldDemand(uint32_t demand){worldDemand_=demand|worldframe::Base;}
+ uint32_t worldDemand()const{return worldDemand_;}
+ void markWorldIncomplete(){worldComplete_=false;}
+ bool worldFrameComplete()const{return worldFrame_&&worldComplete_;}
+ uint32_t worldFrameSerial()const{return worldFrame_?worldFrame_->key.serial:0;}
+ int worldLogicFrame()const{return worldFrame_?worldFrame_->key.frame:-1;}
+ worldframe::Token worldFrameToken()const{return worldFrame_;}
  bool imagePath(wchar_t*out,DWORD*size)const{return connection_&&QueryFullProcessImageNameW(connection_->handle,0,out,size);}
  // Keep address-to-storage bindings between observations, never their old
  // values. The first access in a new epoch refills the page from the game.
@@ -118,6 +152,7 @@ public:
  // Adjacent actor pages enter this epoch in one bounded RPM call. A failed
  // speculative span poisons no page: normal per-page/field fallback remains.
  void prefetch(const std::vector<uint32_t>&addresses,size_t span){
+  if(worldFrame_)return; // Producer already owns the physical read set.
   if(!canRead()||!span||span>4096)return;auto&wanted=prefetchPages_;wanted.clear();
   const size_t count=std::min<size_t>(addresses.size(),65536);wanted.reserve(count*2);
   for(size_t index=0;index<count;++index){uint32_t p=addresses[index];if(p<0x10000||uint64_t(p)+span>0x80000000ull)continue;
@@ -141,6 +176,7 @@ public:
   }
  }
  bool read(uint32_t address,void*out,size_t size){
+  if(worldFrame_)return frameRead(address,out,size);
   if(!canRead()||!out||address<0x10000||!size||size>4*1024*1024||uint64_t(address)+size>0x80000000ull){
    ++errors;lastReadError=!valid()?ERROR_INVALID_HANDLE:!canRead()?ERROR_ACCESS_DENIED:ERROR_INVALID_PARAMETER;
    lastFailedAddress=address;lastFailedSize=size;lastBytesRead=0;lastRegionQueried=false;return false;
@@ -164,6 +200,13 @@ public:
  // Immediate dynamic fields bypass page caching. Preserve the cursor's existing
  // 32 MiB resource limit, without increasing the normal cached read limit.
  bool readFresh(uint32_t address,void*out,size_t size){
+  if(worldFrame_)return frameRead(address,out,size);
+  return readLive(address,out,size);
+ }
+ bool readOptional(uint32_t address,void*out,size_t size){return worldFrame_?frameRead(address,out,size,true):read(address,out,size);}
+ // Explicit non-sample domain: current permission/UI guards and immutable
+ // resource decoders. World consumers never use this as a missing-page fallback.
+ bool readLive(uint32_t address,void*out,size_t size){
   if(!canRead()||!out||address<0x10000||!size||size>32*1024*1024||uint64_t(address)+size>0x80000000ull){
    ++errors;lastReadError=!valid()?ERROR_INVALID_HANDLE:!canRead()?ERROR_ACCESS_DENIED:ERROR_INVALID_PARAMETER;
    lastFailedAddress=address;lastFailedSize=size;lastBytesRead=0;lastRegionQueried=false;return false;
@@ -187,6 +230,19 @@ public:
   return ok;
  }
  template<class T>T get(uint32_t address,T fallback={}){T v{};return read(address,&v,sizeof v)?v:fallback;}
+};
+class WorldFrameScope {
+ ProcessReader&reader_;worldframe::Token previous_;bool previousComplete_=true,bound_=false;
+public:
+ WorldFrameScope(ProcessReader&reader,uint32_t match,worldframe::Token token={}):reader_(reader),previous_(reader.worldFrameToken()),previousComplete_(!previous_||reader.worldFrameComplete()),bound_(reader.beginWorldFrame(match,std::move(token))){}
+ ~WorldFrameScope(){
+  const bool sameSource=previous_&&reader_.worldFrameToken()==previous_;
+  const bool restoreComplete=previousComplete_&&(!sameSource||reader_.worldFrameComplete());
+  reader_.endWorldFrame();if(previous_){const uint32_t match=previous_->key.match;reader_.beginWorldFrame(match,std::move(previous_));if(!restoreComplete)reader_.markWorldIncomplete();}
+ }
+ explicit operator bool()const{return bound_;}
+ bool complete()const{return bound_&&reader_.worldFrameComplete();}
+ WorldFrameScope(const WorldFrameScope&)=delete;WorldFrameScope&operator=(const WorldFrameScope&)=delete;
 };
 struct ReadView {ProcessReader*reader;bool operator()(uint32_t p,void*out,size_t n)const{return reader->read(p,out,n);}};
 struct NoResolve {uint32_t operator()(uint32_t)const{return 0;}};

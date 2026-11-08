@@ -1,5 +1,6 @@
 #pragma once
 #include "native_feedback.h"
+#include "resource_read.h"
 #include <array>
 #include <map>
 #include <string>
@@ -22,14 +23,14 @@ public:
  int lineHeight()const{return identity_.line;}
  int rows()const{return int(identity_.fields[2]);}
  uint64_t captures()const{return captures_;}uint64_t decodes()const{return decodes_;}
- template<class Read>bool begin(Read read){Identity next;if(!identity(read,next)){reset();return false;}
+ template<class Read>bool begin(Read source){auto read=resourceread::view(source);Identity next;if(!identity(read,next)){reset();return false;}
   if(!lookup_.empty()&&next==identity_)return true;
   std::vector<uint16_t>table(65536);Identity after;
   if(!read(next.fields[6],table.data(),table.size()*2)||!identity(read,after)||!(after==next)){reset();return false;}
   identity_=next;lookup_=std::move(table);glyphs_.clear();bytes_=0;++captures_;return true;
  }
- template<class Read>bool stable(Read read)const{Identity now;return !lookup_.empty()&&identity(read,now)&&now==identity_;}
- template<class Read>const Glyph*glyph(Read read,uint16_t ch){
+ template<class Read>bool stable(Read source)const{auto read=resourceread::view(source);Identity now;return !lookup_.empty()&&identity(read,now)&&now==identity_;}
+ template<class Read>const Glyph*glyph(Read source,uint16_t ch){auto read=resourceread::view(source);
   auto found=glyphs_.find(ch);if(found!=glyphs_.end())return &found->second;if(lookup_.empty())return nullptr;
   bool missing=lookup_[ch]==0;uint32_t slot=lookup_[missing?0xB0:ch];Glyph g;g.rows=rows();g.missing=missing;
   // Space advances by its authored width but never contributes ink, even
@@ -45,7 +46,7 @@ public:
  }
  template<class Read>bool measure(Read read,const std::u16string&text,int&width){int64_t value=0;for(auto ch:text){if(ch=='\r'||ch=='\n')continue;if(ch=='\t'){value=(value+64)/64*64;continue;}auto*g=glyph(read,ch);if(!g)return false;value+=g->width+1;if(value>1048576)return false;}width=int(value);return true;}
 };
-template<class Read>bool string(Read read,uint32_t pointer,std::u16string&out){
+template<class Read>bool string(Read source,uint32_t pointer,std::u16string&out){auto read=resourceread::view(source);
  out.clear();if(!nativefeedback::range(pointer,8192))return false;
  for(unsigned at=0;at<4096;at+=16){std::array<uint16_t,16>chars{};if(read(pointer+at*2,chars.data(),sizeof chars)){for(auto c:chars){if(!c)return true;out.push_back(char16_t(c));}}else for(unsigned i=0;i<16;++i){uint16_t c=0;if(!read(pointer+(at+i)*2,&c,2))return false;if(!c)return true;out.push_back(char16_t(c));}}
  out.clear();return false;
@@ -54,7 +55,7 @@ class Strings {
  std::array<uint32_t,4>identity_{};std::map<std::string,int>indices_;
 public:
  void reset(){identity_={};indices_.clear();}
- template<class Read>bool lookup(Read read,const char*name,std::u16string&out){
+ template<class Read>bool lookup(Read source,const char*name,std::u16string&out){auto read=resourceread::view(source);
   std::array<uint32_t,4>head{},after{};if(!read(0xB1CF6C,head.data(),sizeof head)||!head[0]||head[0]>131072||!head[1]||head[1]>262144||!nativefeedback::range(head[2],size_t(head[0])*40)||!nativefeedback::range(head[3],size_t(head[1])*4))return false;
   if(head!=identity_){std::vector<uint8_t>labels(size_t(head[0])*40);if(!read(head[2],labels.data(),labels.size())||!read(0xB1CF6C,after.data(),sizeof after)||head!=after)return false;
    std::map<std::string,int>index;for(size_t i=0;i<head[0];++i){const auto*p=labels.data()+40*i;size_t n=0;while(n<32&&p[n])++n;if(n==32)continue;int values=int32_t(nativefeedback::u32(p+32)),first=int32_t(nativefeedback::u32(p+36));if(values<=0||first<0||uint64_t(first)>=head[1])continue;std::string key(reinterpret_cast<const char*>(p),n);for(auto&c:key)if(c>='a'&&c<='z')c-=32;index[key]=first;}

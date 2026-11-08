@@ -1,10 +1,11 @@
 // Enter is shown only for a compatible hovered destination with free capacity.
 // It uses the same key resolver, feature switches and type filters as clicks.
+#include "../../external_reader/source/shared_scene.h"
 static void serviceCommandCursorHint(){
  using namespace commandcursor;
  if(!enabled||!shared||!commandFresh(GetTickCount())||!foregroundGame()||incoming.chat){clear();return;}
  if(formationInputOwns()||runtimeMiddleOwnsNow()){clear();return;}
- auto freshRead=[](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);};
+ auto freshRead=[](uint32_t at,void*p,size_t n){return external::radar::liveRead(externalReader,at,p,n);};
  if(!external::display::inspect(freshRead).visible()){clear();return;}
  uint8_t keys[256]{};gameinput::keySnapshot(hook,keys);
  const uint32_t featureFlags=flags();uint32_t allowed=0;
@@ -30,21 +31,32 @@ static void serviceCommandCursorHint(){
  scanAt=now;scanPid=pid;scanMatch=commandMatch();scanKeys=held;scanRevision=settingsRevision;
  if((previewReader.pid()!=pid||previewReader.generation()!=externalReader.generation())&&!previewReader.open(pid)){clear();return;}
  previewReader.begin();
+ const uint32_t demand=worldframe::Base|((allowed&(pointerinput::Advanced|pointerinput::CS|pointerinput::Magnetron))?worldframe::Combat:0)|((allowed&pointerinput::Enter)?worldframe::Passengers:0);
+ external::radar::FrameScope worldScope(previewReader,commandMatch(),{},demand);if(!worldScope)return;
  auto read=[&](uint32_t at,void*p,size_t n){return previewReader.read(at,p,n);};
+ auto input=[&](uint32_t at,void*p,size_t n){return external::radar::liveRead(previewReader,at,p,n);};
  external::GameView<decltype(read)> view(read);
+ external::GameView<decltype(input)> uiView(input);
  uint32_t house=view.template get<uint32_t>(0xA83D4C);int frame=view.template get<int>(0xA8ED84,-1);
  // Native placement and native UI modes always retain their own cursor.
  uint8_t tools[5]{};
- if(house<0x10000||frame<0||!read(0x87F7E8+0x11B0,tools,sizeof tools)||tools[0]||tools[1]||tools[2]||tools[3]||tools[4]){clear();return;}
+ if(house<0x10000||frame<0)return;
+ if(!input(0x87F7E8+0x11B0,tools,sizeof tools)||tools[0]||tools[1]||tools[2]||tools[3]||tools[4]){clear();return;}
  uint32_t eligible=0,enterTarget=0;
  if(allowed&pointerinput::Enter)for(uint32_t q:view.vec(0xA8EC78)){
-  if(!view.live(q)||!view.template get<uint8_t>(q+0x431))continue;
+  if(!view.live(q))continue;
   uint32_t qt=view.type(q,view.kind(q));char id[24]{};
   if(!qt||!read(qt+0x24,id,23)||!featuretypes::allowed(featureTypes,featuretypes::EnterTarget,id))continue;
-  auto capacity=view.capacity(q);if(capacity.maximum>capacity.used){enterTarget=q;break;}
+  auto capacity=view.capacity(q);if(capacity.maximum<=capacity.used)continue;
+  // Hover is an input fact. Only actual capacity candidates need this small
+  // live flag/identity check; no world object is reacquired for the hint.
+  uint8_t hovered=0;uint32_t identity=0;if(!input(q+0x431,&hovered,1))return;
+  if(hovered&&input(q+0x10,&identity,4)&&identity==view.template get<uint32_t>(q+0x10)){enterTarget=q;break;}
  }
 
- for(uint32_t p:view.vec(0xA8ECB8,pointerinput::MaxSources)){
+ std::vector<uint32_t>selected,selectedAfter;if(!uiView.vecChecked(0xA8ECB8,selected,pointerinput::MaxSources))return;
+ for(uint32_t p:selected){
+  uint32_t liveID=0;if(!input(p+0x10,&liveID,4))return;if(!liveID||liveID!=view.template get<uint32_t>(p+0x10))continue;
   if(!view.live(p)||view.template get<uint32_t>(p+0x21C)!=house||view.template get<uint8_t>(p+0x1C8)||view.template get<uint32_t>(p+0x11C))continue;
   int k=view.kind(p);uint32_t t=view.type(p,k);char id[24]{};
   if(!t||!read(t+0x24,id,23))continue;
@@ -74,6 +86,14 @@ static void serviceCommandCursorHint(){
  else if(resolved&pointerinput::CS){mode=CS;binding=csHoldKey;}
  else if(resolved&pointerinput::Enter){mode=Enter;binding=extra.enterKey;}
  else if(resolved&pointerinput::Control){mode=Disk;binding=extra.diskKey;}
- if(view.template get<uint32_t>(0xA83D4C)!=house||view.template get<int>(0xA8ED84,-1)<frame){clear();return;}
+ uint32_t liveHouse=0;int liveFrame=-1;
+ if(!external::radar::completeFrame(previewReader)||!input(0xA83D4C,&liveHouse,4)||!input(0xA8ED84,&liveFrame,4)||
+    !uiView.vecChecked(0xA8ECB8,selectedAfter,pointerinput::MaxSources)||selected!=selectedAfter)return;
+ if(liveHouse!=house||liveFrame<frame){clear();return;}
+ if(auto source=external::radar::sourceFrame(previewReader)){
+  uint32_t scenario=0,cells=0;if(!input(0xA8B230,&scenario,4)||!input(0x87F7E8+0x13C,&cells,4))return;
+  if(scenario!=source->key.scenario||cells!=source->key.cells){clear();return;}
+  if(liveFrame!=frame&&uint32_t(GetTickCount()-source->key.tick)>150)return;
+ }
  publish({pid,commandMatch(),GetTickCount(),binding,mode});
 }

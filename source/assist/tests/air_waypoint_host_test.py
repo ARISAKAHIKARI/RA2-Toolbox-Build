@@ -3,11 +3,15 @@ This checks hold/release, ordered continuation and cancellation, not game physic
 """
 from pathlib import Path
 import subprocess, tempfile
+from tactical_frame_sampling import function
 r = Path(__file__).resolve().parents[2]
+scope=function((r/'external_reader/source/process_reader.h').read_text(), 'class WorldFrameScope')+';'
+air=(r/'assist/source/air_path_host.h').read_text().replace('#include "native_viewport_host.h"','')
 program = r'''
 #include "protocol.h"
 #include "additional_settings.h"
 #include "air_path_policy.h"
+#include "fixtures/tactical_frame/sealed_host_reader.h"
 #include <map>
 #include <vector>
 #include <string>
@@ -15,6 +19,7 @@ program = r'''
 #include <algorithm>
 #include <cstring>
 using namespace assist;using DWORD=uint32_t;
+static void fixtureService();
 constexpr int VK_CONTROL=17;
 static DWORD clockNow=1000;static DWORD GetTickCount(){return clockNow;}
 static bool held[256]{};static short GetAsyncKeyState(int key){return held[key]?short(0x8000):0;}
@@ -30,7 +35,15 @@ static bool queueCommand(int c,int arg,int arg2,uint32_t match,int,DWORD,uint32_
 }
 static std::map<uint32_t,uint8_t> memory;
 template<class T>static void put(uint32_t at,T value){auto*p=reinterpret_cast<uint8_t*>(&value);for(size_t n=0;n<sizeof value;++n)memory[at+n]=p[n];}
-static struct{bool readFresh(uint32_t at,void*out,size_t n){for(size_t j=0;j<n;++j){auto i=memory.find(at+j);if(i==memory.end())return false;static_cast<uint8_t*>(out)[j]=i->second;}return true;}}externalReader;
+struct Reader:fixtureframe::SealedHostReader<Reader>{
+ bool readLive(uint32_t at,void*out,size_t n){for(size_t j=0;j<n;++j){auto i=memory.find(at+j);if(i==memory.end())return false;static_cast<uint8_t*>(out)[j]=i->second;}return true;}
+ void capture(uint32_t epoch,int frame){
+  auto next=std::make_shared<worldframe::Snapshot>();worldframe::Key key{};key.match=epoch;key.frame=frame;next->reset(key);
+  auto read=[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);};
+  for(auto at=memory.begin();at!=memory.end();){uint32_t start=at->first;size_t count=0;while(at!=memory.end()&&at->first==start+count){++at;++count;}next->prefetch(read,start,count);}
+  assert(next->seal());available=std::move(next);
+ }
+}externalReader;
 namespace nativekeys{constexpr int Planning=0;}
 namespace nativekeyhost{
 struct Binding{bool held(int,const uint8_t*keys)const{return keys['Z']!=0;}};
@@ -39,12 +52,14 @@ static void down(uint8_t*keys){for(int i=0;i<256;++i)keys[i]=::held[i];}
 }
 namespace gameinput{struct PointerPress{int operation=0;uint8_t keys[256]{};};}
 namespace external{struct Projection{int x,y,w,h;};static void project(Projection,int x,int y,int,int&sx,int&sy){sx=x;sy=y;}}
-''' + (r/'assist/source/air_path_host.h').read_text() + r'''
+namespace nativeviewhost{struct Transform{bool active=false;struct{int w=0,h=0;}logical;};template<class T>static bool sampleTransform(T*,Transform&){return true;}static bool localPoint(Transform,int&,int&){return true;}}
+''' + 'namespace external {using ProcessReader=::Reader;'+scope+'}\n' + air + r'''
 constexpr uint32_t air=0x40000,house=0x10000;
 static void position(uint32_t cell){put<int>(air+0x9c,int(cell%1000)*256+128);put<int>(air+0xa0,int(cell/1000)*256+128);put<int>(air+0xa4,512);}
 static pointerinput::Intent input;static pointerinput::Mailbox box;
 static void initialize(int mode){
  airway::reset();memory.clear();commandQueue.size=0;epoch=8;snap.session=mode;extra.nativeAirWaypoints=true;extra.airWaypoints=false;extra.nativeAirNetwork=0;extra.airPathKey=0;
+ for(unsigned n=0;n<0x800;++n)memory[air+n]=0;
  held['Z']=true;enabled=fresh=true;lastNotice.clear();input={};box={};
  put<uint32_t>(0xa83d4c,house);put<uint32_t>(air,0x7e22a4);put<uint32_t>(air+0x10,40);put<uint32_t>(air+0x21c,house);
  put<int>(air+0x6c,100);put<uint8_t>(air+0x6ca,0);put<uint8_t>(air+0x83,1);put<int>(air+0xac,5);put<uint32_t>(air+0x2b4,0);position(10010);
@@ -89,7 +104,8 @@ int main(){for(int mode:{3,4}){
  for(int n=0;n<40&&!airway::jobs.empty();++n){airway::service();if(commandQueue.size){commandQueue.discard(0);airway::result(1,1,40,13);}clockNow+=1000;}
  assert(airway::jobs.empty());
 }
- initialize(5);assert(airway::native()&&!airway::active());capture(30020,1);assert(airway::jobs.empty());
+ initialize(5);assert(!airway::native()&&airway::active());capture(30020,1);assert(airway::jobs.size()==1); // existing mode 0 is compatibility in SP too
+ initialize(5);extra.nativeAirNetwork=1;assert(airway::native()&&!airway::active());capture(30020,1);assert(airway::jobs.empty());
  for(int mode:{3,4})for(unsigned experiment:{1u,2u}){
   initialize(mode);extra.nativeAirNetwork=experiment;
   assert(airway::native()&&!airway::active());capture(30020,1);held['Z']=false;airway::service();
@@ -104,9 +120,13 @@ int main(){for(int mode:{3,4}){
  }
 }
 '''
+# Each legacy service step represents a new simulated logic frame. The separate
+# host_tactical_frame_sampling fixture covers repeated same-frame observations.
+program=program.replace('airway::service();','fixtureService();')
+program+='\nstatic void fixtureService(){externalReader.capture(epoch,++snap.frame);airway::service();}\n'
 with tempfile.TemporaryDirectory() as d:
  p = Path(d)/'air.cpp'; exe = Path(d)/'air'; p.write_text(program)
- subprocess.run(['g++', '-std=c++17', '-O2', '-I', str(r/'assist/source'), str(p), '-o', str(exe)], check=True)
+ subprocess.run(['g++', '-std=c++17', '-O2', '-I', str(r/'assist/source'), '-I', str(r/'assist/tests'), str(p), '-o', str(exe)], check=True)
  subprocess.run([str(exe)], check=True)
-print('PASS: shipped host records ordered points, waits for Z release and observed arrival, preserves newest token, reports rejection, cancels attack/stop/new-match, retains SP native mode')
+print('PASS: shipped host records ordered points, continues within 16 steps, waits for Z release and observed arrival, preserves newest token, reports rejection, cancels attack/stop/new-match, keeps SP compatibility/native modes')
 

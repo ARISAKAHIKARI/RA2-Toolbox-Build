@@ -32,6 +32,7 @@ static Handler handler=nullptr;static DWORD errorCode=5,ticks=100;
 static bool failWait=false,failClose=false,failDuplicate=false,failAdd=false,failRemove=false,failPin=false;
 static unsigned waitInfinite=0,duplicateCalls=0,closeCalls=0,trapCalls=0,witnessCalls=0,witnessHits=0;
 static unsigned writes=0,callbacks=0,checks=0,scenarios=0;
+static unsigned scopeCalls=0,foreignBypassCases=0;
 static unsigned productionSuspends=0,productionResumes=0,productionWorkers=0;
 static std::vector<Handle*> handles;
 static std::vector<const char*> names;
@@ -53,7 +54,7 @@ LONG InterlockedExchange(volatile LONG*p,LONG v){LONG old=*p;*p=v;return old;}
 LONG InterlockedCompareExchange(volatile LONG*p,LONG v,LONG expected){LONG old=*p;if(old==expected)*p=v;return old;}
 void MemoryBarrier(){}
 struct BoundaryException {EXCEPTION_RECORD record;CONTEXT context;};
-extern "C" void RuntimeScopedCall(void*context,void(*body)(void*),void(*cleanup)(void*)){try{body(context);}catch(...){cleanup(context);throw;}cleanup(context);}
+extern "C" void RuntimeScopedCall(void*context,void(*body)(void*),void(*cleanup)(void*)){++scopeCalls;try{body(context);}catch(...){cleanup(context);throw;}cleanup(context);}
 extern "C" int RuntimeBreakpointCall(void*context,void(*body)(void*),int(*filter)(void*,void*)){try{body(context);return 1;}catch(BoundaryException&ex){EXCEPTION_POINTERS p{&ex.record,&ex.context};if(filter(context,&p)==EXCEPTION_EXECUTE_HANDLER)return 0;throw;}}
 #define private public
 #include "production_core.h"
@@ -128,6 +129,27 @@ int main(){
  {Case c("callback rejects every nested configuration and suppresses nested callback");CHECK(c.enable());unsigned start=trapCalls,cb=callbacks;callbackAction=[&](CONTEXT&,uint32_t){CHECK(!c.service.configure(sites,1,callback));CHECK(!c.service.enable(sites[0],sites[1],callback));CHECK(!c.service.audit()&&!c.service.inspect()&&!c.service.retire());hit(sites[1]);};hit(sites[0]);CHECK(callbacks==cb+1&&trapCalls==start&&!c.service.handlerDepth_&&c.service.activeTags()==3);callbackAction={};}
  {Case c("exception propagation clears handler depth and transaction job");CHECK(c.enable(1));callbackAction=[](CONTEXT&,uint32_t){throw std::runtime_error("callback");};bool caught=false;try{hit(sites[0]);}catch(const std::runtime_error&){caught=true;}CHECK(caught&&!c.service.handlerDepth_&&!c.service.pending());callbackAction={};faults[trapCalls+1]=ForeignException;caught=false;try{c.service.audit();}catch(const BoundaryException&){caught=true;}CHECK(caught&&!c.service.pending()&&!c.service.handlerDepth_&&!c.service.request_.token&&c.service.state==System);faults.clear();}
  {Case c("mixed and non-owned hardware exceptions are unchanged");CHECK(c.enable(1));CONTEXT context=c.owner.context;context.Eip=sites[0];context.Dr6=1|(1u<<14);CONTEXT before=context;EXCEPTION_RECORD record{EXCEPTION_SINGLE_STEP,reinterpret_cast<void*>(uintptr_t(sites[0]))};EXCEPTION_POINTERS p{&record,&context};CHECK(Service::vectored(&p)==EXCEPTION_CONTINUE_SEARCH&&!std::memcmp(&context,&before,sizeof context));context.Dr6=8;before=context;CHECK(Service::vectored(&p)==EXCEPTION_CONTINUE_SEARCH&&!std::memcmp(&context,&before,sizeof context));}
+ {Case c("foreign exceptions bypass owner bookkeeping and SEH scope");CHECK(c.enable(1));
+  auto foreign=[&](DWORD code,unsigned variation){
+   CONTEXT context=c.owner.context;context.Eip=sites[0];context.Dr6=1;
+   if(variation==1)context.ContextFlags&=~0x10u;
+   else if(variation==2)context.Eip+=1;
+   else if(variation==3)context.Dr0+=4;
+   else if(variation==4)context.Dr7=2;
+   else if(variation==5)context.Dr7|=1u<<16;
+   else if(variation==6)context.Dr6=0;
+   else if(variation>=7)context.Dr6|=variation==7?2u:variation==8?4u:variation==9?8u:1u<<(variation+3);
+   const CONTEXT before=context;EXCEPTION_RECORD record{code,reinterpret_cast<void*>(uintptr_t(context.Eip))};EXCEPTION_POINTERS p{&record,&context};
+   const unsigned scopes=scopeCalls,cb=callbacks;const LONG hits=c.service.exceptions,changed=c.service.changed,depth=c.service.handlerDepth_;
+   CHECK(Service::vectored(&p)==EXCEPTION_CONTINUE_SEARCH);CHECK(!std::memcmp(&context,&before,sizeof context));
+   CHECK(scopeCalls==scopes&&callbacks==cb&&c.service.exceptions==hits&&c.service.changed==changed&&c.service.handlerDepth_==depth);++foreignBypassCases;
+  };
+  foreign(0xc0000005u,0);foreign(0xc0000006u,0);foreign(EXCEPTION_BREAKPOINT,0);
+  for(unsigned v=1;v<=12;++v)foreign(EXCEPTION_SINGLE_STEP,v);
+  // A local guarded AV raised inside a feature callback is foreign to the
+  // DR service too. It must not construct another scope or perturb depth.
+  callbackAction=[&](CONTEXT&,uint32_t){foreign(0xc0000005u,0);};hit(sites[0]);callbackAction={};
+ }
  {Case c("live wrong-thread calls preserve healthy owner");CHECK(c.enable(1));KernelThread other{202};current=&other;unsigned start=trapCalls;CHECK(!c.service.audit()&&!c.service.configure(sites,1,callback)&&!c.service.retire());CHECK(c.service.state==Ready&&c.service.activeTags()==1&&trapCalls==start);current=&c.owner;}
  for(DWORD id:{101u,202u}){Case c("dead owner rebinds real kernel object even for same ID and same wanted");CHECK(c.enable(1));HANDLE old=c.service.thread_;unsigned w=witnessHits;c.owner.dead=true;KernelThread next{id};current=&next;CHECK(c.enable(1));CHECK(c.service.thread_!=old&&old->closed&&c.service.owner()==id&&c.service.thread_->thread==&next);CHECK(c.service.state==Ready&&witnessHits==w+1&&next.context.Dr0==sites[0]);CHECK(!c.service.retire());CHECK(c.service.retire());}
  {Case c("WAIT_FAILED preserves identity and lease instead of declaring exit");CHECK(c.enable(1));HANDLE old=c.service.thread_;auto mask=c.service.lease.mask;failWait=true;CHECK(!c.enable(1));CHECK(c.service.state==System&&c.service.thread_==old&&c.service.lease.mask==mask&&!old->closed);CHECK(!c.service.retire());failWait=false;CHECK(c.enable(1)&&c.service.state==Ready);}
@@ -140,5 +162,5 @@ int main(){
  {Case c("audit resolves uncertain lease before confirming");CHECK(c.enable(1));auto&l=c.service.lease;l.sites[1]=sites[1];l.alternative[0]=1;l.uncertain=1;c.owner.context.Dr0=sites[1];CHECK(c.service.audit());CHECK(c.service.state==Ready&&!l.uncertain&&l.tag[0]==1&&c.service.activeTags()==2);}
  CHECK(waitInfinite==0&&productionSuspends==0&&productionResumes==0&&productionWorkers==0);
  for(auto*h:handles){CHECK(h->closed);delete h;}
- std::printf("{\"pass\":true,\"scenarios\":%u,\"checks\":%u,\"trap_calls\":%u,\"witness_hits\":%u,\"infinite_waits\":%u,\"production_suspend_calls\":%u,\"production_resume_calls\":%u,\"production_worker_calls\":%u,\"windows_executed\":false,\"game_executed\":false}\n",scenarios,checks,trapCalls,witnessHits,waitInfinite,productionSuspends,productionResumes,productionWorkers);
+ std::printf("{\"pass\":true,\"scenarios\":%u,\"checks\":%u,\"trap_calls\":%u,\"witness_hits\":%u,\"foreign_bypass_cases\":%u,\"infinite_waits\":%u,\"production_suspend_calls\":%u,\"production_resume_calls\":%u,\"production_worker_calls\":%u,\"windows_executed\":false,\"game_executed\":false}\n",scenarios,checks,trapCalls,witnessHits,foreignBypassCases,waitInfinite,productionSuspends,productionResumes,productionWorkers);
 }

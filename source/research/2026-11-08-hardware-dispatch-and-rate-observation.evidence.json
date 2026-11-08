@@ -1,0 +1,54 @@
+{
+  "baseline_commit": "c03e4ffcba13c6ceb435b758989d7c95093ca772",
+  "production_baseline_commit": "cee2af5621c78d5f565463cf611ff591ed1ecbc3",
+  "notebook_version_read": 159,
+  "inherited_supported_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "source_sha256": {
+    "source/shared/source/hardware_performance.h": "65e0db646cc5c98bbda57fdb501362776f479eff58295da0ae1cde11cd398c58",
+    "source/assist/source/tech_ui_breakpoint_core.h": "22566f0031a357dc4eac4e1f2c8f6eabb12cae97a011ec4f11a890de25263fe2",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "dba52b1d55ab0ce9b333ca1f16a901077adcc59d1a6f9aaac4cd781bec97e82a",
+    "source/assist/tests/hardware_performance.cpp": "e54afb67ceaad177ac19469e9ee672d9bd8fec003555f5022492886121934701",
+    "source/assist/tests/breakpoint_owner_rendezvous.cpp": "c41854cd74a2d4fc921ed74bc9aaf0908b5059be2e62418d7f15535cb1b726f7"
+  },
+  "validation": {
+    "owner": {
+      "pass": true,
+      "scenarios": 31,
+      "checks": 1461,
+      "trap_calls": 433,
+      "witness_hits": 31,
+      "foreign_bypass_cases": 16,
+      "infinite_waits": 0,
+      "production_suspend_calls": 0,
+      "production_resume_calls": 0,
+      "production_worker_calls": 0,
+      "windows_executed": false,
+      "game_executed": false
+    },
+    "control": "PASS: 2752 production control callback, strict caller, original byte, no-data-write and fail-closed checks",
+    "telemetry": {
+      "pass": true,
+      "checks": 2027,
+      "snapshot_bytes": 96,
+      "counter_bytes": 32,
+      "minimum_window_ms": 1000,
+      "windows_executed": false,
+      "game_executed": false,
+      "timing_measured": false
+    },
+    "baseline_negative": {
+      "expected_failure": true,
+      "core_sha256": "7cf1a023843fd26e3fae356248fd7f0cfa10cefb67b2ea3a42011e278c255b0f",
+      "message": "FAIL line 145: scopeCalls==scopes&&callbacks==cb&&c.service.exceptions==hits&&c.service.changed==changed&&c.service.handlerDepth_==depth (scenario foreign exceptions bypass owner bookkeeping and SEH scope)"
+    }
+  },
+  "receipts": {
+    "hardware-validation/hardware-performance-result.json": "e00bd0e181100e63c4f67272480890f4622ad6f6274825804bf628f2b33bab90"
+  },
+  "windows_executed": false,
+  "game_executed": false,
+  "multiplayer_executed": false,
+  "windows_veh_timing_measured": false,
+  "fps_measured": false,
+  "coverage_limit": "Owned hardware hits retain CPU/Windows exception cost; no reduced hit frequency or new interception site is claimed."
+}

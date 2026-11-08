@@ -136,26 +136,31 @@ static bool minerDefenseRefinery(OreHarvestJob&j,uint32_t refinery,uint32_t hous
 // Collect radio links once per world snapshot. Harvest miners with partial
 // cargo need this to distinguish mining from a native linked return. Never
 // scan Building::Array separately for every miner or assume a miner-side link.
-static void minerDefenseIndexRefineries(){
- minerDefenseLinkedRefinery.clear();minerDefenseRefineryCount=0;
- minerDefenseRefineryIncomplete=planningWorld.count>=planner::MaxActors;int linksBudget=4096;
+static bool minerDefenseIndexRefineries(){
+ if(planningWorld.match!=match||planningWorld.frame!=snap.frame){minerDefenseRefineryIncomplete=true;return false;}
+ SampleReadScope frameRead;if(!frameRead){minerDefenseRefineryIncomplete=true;return false;}
+ std::unordered_map<uint32_t,uint32_t> nextLinks;static uint32_t nextRefineries[planner::MaxRefineries];int count=0;
+ bool incomplete=planningWorld.count>=planner::MaxActors;int linksBudget=4096;
  for(int n=0;n<planningWorld.count;++n){const auto&a=planningWorld.actors[n];
   if(a.kind!=3||!(a.flags&planner::Own)||(a.flags&(planner::Limbo|planner::OffMap)))continue;
-  if(minerDefenseRefineryCount>=planner::MaxRefineries){minerDefenseRefineryIncomplete=true;continue;}
-  const uint32_t p=worldByID(a.id);if(!p||typeOf(p,3)!=a.type){minerDefenseRefineryIncomplete=true;continue;}
-  minerDefenseRefineries[minerDefenseRefineryCount++]=a.id;
-  uint32_t links=0;int count=0;
-  if(!oreHarvestRead(p+0xE4,links)||!oreHarvestRead(p+0xE8,count)||count<0||count>256||(count&&links<0x10000)){
-   minerDefenseRefineryIncomplete=true;continue;
+  if(count>=planner::MaxRefineries){incomplete=true;continue;}
+  const uint32_t p=worldByID(a.id);if(!p||typeOf(p,3)!=a.type){incomplete=true;continue;}
+  nextRefineries[count++]=a.id;
+  uint32_t links=0;int radioCount=0;
+  if(!oreHarvestRead(p+0xE4,links)||!oreHarvestRead(p+0xE8,radioCount)||radioCount<0||radioCount>256||(radioCount&&links<0x10000)){
+   incomplete=true;continue;
   }
-  for(int k=0;k<count;++k){
-   if(!linksBudget){minerDefenseRefineryIncomplete=true;break;}--linksBudget;
-   uint32_t miner=0;if(!oreHarvestRead(links+uint32_t(k)*4,miner)){minerDefenseRefineryIncomplete=true;continue;}
+  for(int k=0;k<radioCount;++k){
+   if(!linksBudget){incomplete=true;break;}--linksBudget;
+   uint32_t miner=0;if(!oreHarvestRead(links+uint32_t(k)*4,miner)){incomplete=true;continue;}
    const uint32_t id=rawObjectID(miner);if(!id||kind(miner)!=2||!minerDefenseDock(miner,p))continue;
-   auto old=minerDefenseLinkedRefinery.find(id);
-   if(old==minerDefenseLinkedRefinery.end()||a.id<old->second)minerDefenseLinkedRefinery[id]=a.id;
+   auto old=nextLinks.find(id);
+   if(old==nextLinks.end()||a.id<old->second)nextLinks[id]=a.id;
   }
  }
+ if(!frameRead.complete()){minerDefenseRefineryIncomplete=true;return false;}
+ minerDefenseLinkedRefinery.swap(nextLinks);memcpy(minerDefenseRefineries,nextRefineries,size_t(count)*sizeof(nextRefineries[0]));
+ minerDefenseRefineryCount=count;minerDefenseRefineryIncomplete=incomplete;return true;
 }
 static bool minerDefenseFindRefinery(OreHarvestJob&j,uint32_t house,bool nearest){
  if(!nearest){auto linked=minerDefenseLinkedRefinery.find(j.id);if(linked==minerDefenseLinkedRefinery.end())return false;
@@ -517,12 +522,15 @@ static bool minerDefenseTick(uint32_t house,int frame,DWORD now){
  }
  // Round-robin configured actors plus a shared enemy grid. Never turn a
  // generic combat unit into an ore-planner Harvester just to select it here.
- if(sh->minerDefenseEnabled&&!snap.chat&&minerDefenseJobs.size()<MinerDefenseCapacity){int visited=0,checked=0;
+ if(sh->minerDefenseEnabled&&!snap.chat&&planningWorld.match==match&&planningWorld.frame==frame&&minerDefenseJobs.size()<MinerDefenseCapacity){int visited=0,checked=0;
   for(;visited<planningWorld.count&&checked<128&&issued<6&&minerDefenseJobs.size()<MinerDefenseCapacity;++visited){const int n=(minerDefenseCursor+visited)%planningWorld.count;auto&a=planningWorld.actors[n];
-   if(!(a.flags&planner::Own)||!minerDefenseType(a.type,a.kind)||minerDefenseJobs.count(a.id)||!manualVersions.trackable(a.id))continue;
+   if(!(a.flags&planner::Own)||minerDefenseJobs.count(a.id)||!manualVersions.trackable(a.id))continue;
    auto candidateSource=a;
-   if(a.kind==2&&minerDefenseMiner(a.type))candidateSource.flags|=planner::Harvester;
-   else candidateSource.flags&=~(planner::Harvester|planner::OrePaused);
+   {SampleReadScope frameRead;if(!frameRead)continue;
+    const bool configured=minerDefenseType(a.type,a.kind),harvester=a.kind==2&&minerDefenseMiner(a.type);
+    if(!frameRead.complete()||!configured)continue;
+    if(harvester)candidateSource.flags|=planner::Harvester;else candidateSource.flags&=~(planner::Harvester|planner::OrePaused);
+   }
    if(!minerdefense::source(candidateSource))continue;++checked;
    const unsigned manualSlot=manualVersions.slot(a.id);
    if(manualSlot<ManualVersions::Size&&minerDefenseManual[manualSlot].id==a.id){

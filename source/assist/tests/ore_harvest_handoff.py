@@ -5,6 +5,7 @@ no game process, mouse input, native pathfinder or networking is operated.
 """
 import argparse,hashlib,json,subprocess,struct
 from pathlib import Path
+from runtime_sample_fixture import write_scope
 HERE=Path(__file__).resolve().parent
 SRC=HERE.parent/'source'
 
@@ -54,22 +55,27 @@ def native_paths(path):
     return {'game_sha256':hashlib.sha256(raw).hexdigest(),'game_hash_stable':True,'resource_entry':'0x485020','resource_cases':values,'no_overlay_and_nonresource_return_zero':True,'harvest_action':6,'native_switch_arm':hex(target),'native_clicked_mission':{'mission':10,'target':None,'destination':'clicked cell','nearest':None},'native_stack_cleanup_valid':True,'game_process_operated':False,'redraw_or_pathfinder_called':False}
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--zig',type=Path,required=True);p.add_argument('--game',type=Path);p.add_argument('--out',type=Path,required=True);p.add_argument('--observer-header',type=Path,help='optional frozen baseline header for an isolated counterexample');a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--zig',type=Path,help='cross-compile both Windows architectures; omit to run the portable native fixture');p.add_argument('--cxx',default='g++');p.add_argument('--build-only',action='store_true',help='compile without claiming execution of the generated binaries');p.add_argument('--game',type=Path);p.add_argument('--out',type=Path,required=True);p.add_argument('--observer-header',type=Path,help='optional frozen baseline header for an isolated counterexample');a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
+    scope=write_scope(a.out)
     source=(SRC/'external_orders_bridge.h').read_text(encoding='utf-8')
     (a.out/'ore_eligibility_extract.h').write_text('\n'.join(function(source,n)for n in ('static bool oreTypeAllowed(','static bool oreMiner(','static bool rawOreCompatible(','static bool rawDockBusy(','static bool rawDockLinked('))+'\n',encoding='utf-8')
     (a.out/'ore_admission_extract.h').write_text('\n'.join(function(source,n)for n in ('static bool externalOrderValid(','static int admitPlannerOrder('))+'\n',encoding='utf-8')
-    report={'scope':__doc__,'architectures':{}}
-    for arch in ('x86','x86_64'):
-        exe=a.out/(arch+'.exe');cmd=[str(a.zig.resolve()),'c++','-std=c++17','-O2','-UNDEBUG','-target',arch+'-windows-gnu','-I'+str(a.out.resolve()),'-I'+str(SRC.resolve()),str(HERE/'ore_harvest_handoff.cpp'),'-o',str(exe)]
+    report={'scope':__doc__,'architectures':{},'production_scope_extract_sha256':hashlib.sha256(scope.encode()).hexdigest(),'game_process_operated':False,'windows_executed':False}
+    for arch in (('x86','x86_64') if a.zig else ('native',)):
+        exe=a.out/(arch+('.exe' if a.zig else ''));compiler=[str(a.zig.resolve()),'c++','-target',arch+'-windows-gnu'] if a.zig else [a.cxx]
+        cmd=compiler+['-std=c++17','-O2','-UNDEBUG','-I'+str(a.out.resolve()),'-I'+str(SRC.resolve()),str(HERE/'ore_harvest_handoff.cpp'),'-o',str(exe)]
         if a.observer_header:cmd.append('-DORE_HARVEST_OBSERVER_HEADER='+json.dumps(str(a.observer_header.resolve()).replace('\\','/')))
         build=subprocess.run(cmd,capture_output=True,text=True);(a.out/(arch+'-build.log')).write_text(build.stdout+build.stderr,encoding='utf-8');print(build.stdout+build.stderr,end='');build.check_returncode()
-        run=subprocess.run([str(exe)],capture_output=True,text=True,timeout=30);(a.out/(arch+'.log')).write_text(run.stdout+run.stderr,encoding='utf-8');print(run.stdout+run.stderr,end='')
+        if a.build_only:
+            report['architectures'][arch]={'compiled':True,'executed':False,'executable_sha256':hashlib.sha256(exe.read_bytes()).hexdigest()};continue
+        run=subprocess.run([str(exe)],capture_output=True,text=True,timeout=60);(a.out/(arch+'.log')).write_text(run.stdout+run.stderr,encoding='utf-8');print(run.stdout+run.stderr,end='')
         if run.returncode:
             report['architectures'][arch]={'pass':False,'exit_code':run.returncode,'log':run.stdout+run.stderr}
             report['observer_header_sha256']=hashlib.sha256((a.observer_header or SRC/'ore_harvest_bridge.h').read_bytes()).hexdigest();(a.out/'result.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8');run.check_returncode()
-        report['architectures'][arch]=json.loads(run.stdout)
+        report['architectures'][arch]=json.loads(run.stdout);report['architectures'][arch]['executed']=True;report['architectures'][arch]['exit_code']=run.returncode
+        report['windows_executed']=bool(a.zig)
     if a.game:report['native_paths']=native_paths(a.game)
-    names=[SRC/'ore_harvest_bridge.h',SRC/'ore_harvest_search.h',SRC/'external_orders_bridge.h',SRC/'planner_types.h',SRC/'ore_queue.h',SRC/'bridge.cpp',HERE/'ore_harvest_handoff.cpp',Path(__file__).resolve()]
+    names=[SRC/'ore_harvest_bridge.h',SRC/'ore_harvest_search.h',SRC/'external_orders_bridge.h',SRC/'planner_types.h',SRC/'ore_queue.h',SRC/'bridge.cpp',SRC/'world_frame_runtime.h',HERE/'ore_harvest_handoff.cpp',HERE/'runtime_sample_fixture.py',HERE/'fixtures/tactical_frame/runtime_sample_fixture.h',SRC.parents[1]/'shared/source/world_frame.h',SRC.parents[1]/'shared/source/world_frame_capture.h',Path(__file__).resolve()]
     report['source_sha256']={str(n.relative_to(HERE.parents[1])).replace('\\','/'):hashlib.sha256(n.read_bytes()).hexdigest()for n in names}
     (a.out/'result.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8');print(json.dumps(report,indent=2))
 

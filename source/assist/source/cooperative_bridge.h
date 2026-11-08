@@ -6,6 +6,21 @@
 #include "aircraft_selection_bridge.h"
 struct LocalRawRead {bool operator()(uint32_t a,void*out,size_t n)const{if(a<0x10000||uint64_t(a)+n>=0x80000000ull)return false;memcpy(out,(const void*)(uintptr_t)a,n);return true;}};
 static external::GameView<LocalRawRead> clickView(LocalRawRead{});
+// UI click capture keeps its independent live input generation. Tactical
+// conversion consumes only the manager's already sealed world sample.
+struct CooperativeFrameRead {bool operator()(uint32_t a,void*out,size_t n)const{return read(a,out,n);}};
+static bool collectCooperativeInput(const cooperative::Request&r,const compute::QuotaConfig& quotas,cooperative::Input&out){
+ SampleReadScope frameRead;if(!frameRead)return false;
+ auto input=external::cooperativeInput(CooperativeFrameRead{},r,[&](uint32_t type){
+  char id[24]{};if(!read(type+0x24,id,23))return quotas.defaults;
+  for(int i=0;i<quotas.count;++i)if(sameid(id,quotas.entries[i].id))return quotas.entries[i].quota;return quotas.defaults;
+ });
+ const auto feature=r.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
+ for(size_t i=0;i<input.units.size();++i)for(size_t j=0;j<input.targets.size();++j)
+  if(!featureTypeAllowed(feature,input.units[i].type)||(r.mode==cooperative::Enter&&!featureTypeAllowed(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
+ if(!frameRead.complete())return false;
+ out=std::move(input);return true;
+}
 static uint32_t clickSerial,cooperativePlanSeen;static int cooperativeAt;
 static uint32_t singleDamageSerial=0,singleDamageMatch=0;static double singleDamageCommitted=0;
 struct EnterReservation {uint32_t id,target,type,token;int frame,slots;};
@@ -207,9 +222,7 @@ static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
   bool hasRemaining=cooperative::damageMode(request.mode)?cooperative::retrySourcePool(remaining,runtimeCoopRequest,runtimeCoopProcessed):runtimeCoopOrders.empty()||cooperative::retryRemaining(remaining,runtimeCoopOrders.data(),int(runtimeCoopOrders.size()),int(runtimeCoopAt));
   if(!hasRemaining){runtimeCoopPending=false;sh->runtimeCoopDone=request.serial;return;}
   static compute::QuotaConfig quotas;long seq=sh->quotaConfigSeq;if(seq&1)return;MemoryBarrier();memcpy(&quotas,&sh->quotaConfig,sizeof quotas);MemoryBarrier();if(seq!=sh->quotaConfigSeq||quotas.count<0||quotas.count>512)return;
-  auto input=external::cooperativeInput(LocalRawRead{},remaining,[&](uint32_t type){const char*id=(const char*)(uintptr_t)(type+0x24);for(int i=0;i<quotas.count;++i)if(sameid(id,quotas.entries[i].id))return quotas.entries[i].quota;return quotas.defaults;});
-  auto feature=request.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
-  for(size_t i=0;i<input.units.size();++i)for(size_t j=0;j<input.targets.size();++j)if(!featureTypeAllowed(feature,input.units[i].type)||(request.mode==cooperative::Enter&&!featureTypeAllowed(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
+  cooperative::Input input;if(!collectCooperativeInput(remaining,quotas,input))return;
   cooperative::reserveAccepted(input,runtimeCoopAccepted);
   runtimeCoopOrders=cooperative::allocate(input);runtimeCoopAt=0;runtimeCoopTick=now;runtimeCoopFrame=frame;
  }
@@ -230,9 +243,7 @@ static void captureCooperativeFrame(uint32_t house,int frame,DWORD now){
  if(!cooperative::valid(r)||r.match!=match||!freshness::intentAlive(r.tick,now)||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
  if((!externalInputFrame&&out.request.serial==r.serial)||(out.request.serial==r.serial&&sh->cooperativeFrameWanted!=r.serial))return;
  static compute::QuotaConfig quotas;long seq=sh->quotaConfigSeq;if(seq&1)return;MemoryBarrier();memcpy(&quotas,&sh->quotaConfig,sizeof quotas);MemoryBarrier();if(seq!=sh->quotaConfigSeq||quotas.count<0||quotas.count>512)return;
- auto input=external::cooperativeInput(LocalRawRead{},r,[&](uint32_t type){const char*id=(const char*)(uintptr_t)(type+0x24);for(int i=0;i<quotas.count;++i)if(sameid(id,quotas.entries[i].id))return quotas.entries[i].quota;return quotas.defaults;});
- auto feature=r.mode==cooperative::Enter?featuretypes::EnterSource:featuretypes::Aircraft;
- for(size_t i=0;i<input.units.size();++i)for(size_t j=0;j<input.targets.size();++j)if(!featureTypeAllowed(feature,input.units[i].type)||(r.mode==cooperative::Enter&&!featureTypeAllowed(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
+ cooperative::Input input;if(!collectCooperativeInput(r,quotas,input))return;
  cooperative::pack(out,input,r,now,frame);
 }
 static void cooperativeTick(uint32_t house,int frame,DWORD now){

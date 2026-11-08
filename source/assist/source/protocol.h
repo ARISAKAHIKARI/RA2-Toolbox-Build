@@ -25,8 +25,9 @@
 #include "burst_compute.h"
 #include "dodge_compute.h"
 #include "native_placement_policy.h"
+#include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=100;
+constexpr uint32_t Magic=0x41533130, Version=101;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -259,6 +260,10 @@ struct Shared {
  volatile long debugPolicySeq=0;debugentries::Config debugPolicy;
  volatile long debugSnapshotSeq=0;debugentries::Snapshot debugSnapshot;
  volatile uint32_t debugVisible=0; // Read-only probing demand; never enables a feature.
+ volatile long hardwarePerfSeq=0;hardwareperf::Snapshot hardwarePerf{};
+ volatile long worldSampleSeq=0;
+ volatile uint32_t worldSampleSerial=0,worldSamplePages=0,worldSampleReads=0,worldSampleBytes=0,worldSampleRosters=0,worldSampleFailures=0;
+ volatile int32_t worldSampleFrame=-1;
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

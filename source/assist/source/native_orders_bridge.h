@@ -215,9 +215,10 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    if(!t||(!r.stage&&!unloadpolicy::initialMayContinue(currentMission,r.mode,frame-r.landedFrame,unloadExit(r,currentMission,frame),ejectDeployer)))done=true;
    else if(compute::inside(sh->computeApplied,r.mode==0?compute::Unload:compute::Escape)){
     auto&input=unloadLocalInput;input.count=0;input.targetCount=0;input.match=match;input.tick=sampleClock(sh);input.frame=frame;
-    collectUnloadSource(input,r,house,frame);
-    auto decision=unloadcompute::decide(input.sources[0],input.targets,input.actions[0],input.targetCount);
-    done=applyUnloadDecision(r,input,0,decision,house,frame,budget,false);
+    if(collectUnloadSource(input,r,house,frame)){
+     auto decision=unloadcompute::decide(input.sources[0],input.targets,input.actions[0],input.targetCount);
+     done=applyUnloadDecision(r,input,0,decision,house,frame,budget,false);
+    }
    }else if(externalInputFrame&&unloadExternalInput.count<unloadcompute::MaxSources){
     collectUnloadSource(unloadExternalInput,r,house,frame);
    }

@@ -8,12 +8,14 @@ class SceneBank {
  std::shared_ptr<const Frame> frame_;
 public:
  void publish(uint32_t pid,uint32_t match,bool world,std::shared_ptr<const Frame>frame){
-  if(!frame||!frame->terrain||frame->terrain->art.empty()||!frame->markerScanValid)return;
+  if(!frame||!frame->terrain||(world&&frame->terrain->art.empty())||!frame->markerScanValid)return;
   // Releasing the last source can free whole-map art and marker vectors.
   // Keep that work outside the publication lock used by every view.
   std::shared_ptr<const Frame> retired;
   std::lock_guard<std::mutex>lock(mutex_);
   if(frame_&&pid_==pid&&match_==match){
+   if(frame->sourceFrame&&frame_->sourceFrame&&frame->sourceFrame->key.sameWorld(frame_->sourceFrame->key)&&
+      int32_t(frame->sourceFrame->key.serial-frame_->sourceFrame->key.serial)<0)return;
    // Independent view workers finish at different times. Completion order
    // cannot turn an earlier observation into the latest world source. Use
    // the shared monotonic sample clock, with wrap-safe tick fallback for
@@ -28,10 +30,13 @@ public:
   }
   pid_=pid;match_=match;world_=world;retired=std::move(frame_);frame_=std::move(frame);
  }
- std::shared_ptr<const Frame> get(uint32_t pid,uint32_t match,uint32_t reveal,uint32_t now,bool worldOnly=false){
+ std::shared_ptr<const Frame> get(uint32_t pid,uint32_t match,uint32_t reveal,uint32_t now,bool worldOnly=false,worldframe::Token source={}){
   std::lock_guard<std::mutex>lock(mutex_);
+  // Pausing freezes the world publication, not its presentation clock. A
+  // caller pinned to those exact bytes can keep drawing without recapture.
+  const bool exact=source&&frame_&&frame_->sourceFrame&&source->key.sameFrame(frame_->sourceFrame->key)&&source->key.serial==frame_->sourceFrame->key.serial;
   return frame_&&pid_==pid&&match_==match&&frame_->terrain->reveal==bool(reveal)&&
-   uint32_t(now-frame_->tick)<=500&&(!worldOnly||world_)?frame_:nullptr;
+   (exact||uint32_t(now-frame_->tick)<=500)&&(!worldOnly||world_)?frame_:nullptr;
  }
 };
 inline SceneBank&sceneBank(){static SceneBank bank;return bank;}

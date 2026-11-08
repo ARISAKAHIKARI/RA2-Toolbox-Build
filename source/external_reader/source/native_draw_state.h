@@ -4,6 +4,7 @@
 #include "render_material.h"
 #include "projection.h"
 #include "native_foot_depth.h"
+#include "optional_read.h"
 namespace external { namespace nativedraw {
 // GPL-3.0 adaptation of Vera20K draw_state.rs. Values are read from the
 // engine-owned Techno, never advanced or written by a presentation viewport.
@@ -12,8 +13,8 @@ struct State {bool visible=true,disguised=false;uint32_t type=0,owner=0;int kind
 // when the live branch resolves to the documented cloak patch instructions.
 // An unrelated detour is not evidence that a different visibility rule exists.
 template<class Read>bool cncCloakPolicy(Read read,uint32_t site){
- std::array<uint8_t,5>branch{};if(!read(site,branch.data(),branch.size())||branch[0]!=0xE9)return false;int32_t delta=0;std::memcpy(&delta,branch.data()+1,4);int64_t target=int64_t(site)+5+delta;if(target<0x10000||target>0x7FFFFFF0)return false;
- const std::array<uint8_t,12>expected{{0x8B,0x15,0x4C,0x3D,0xA8,0,0x39,0x15,0x98,0x11,0xAC,0}};std::array<uint8_t,12>code{};return read(uint32_t(target),code.data(),code.size())&&code==expected;
+ std::array<uint8_t,5>branch{};if(!optionalread::bytes(read,site,branch.data(),branch.size())||branch[0]!=0xE9)return false;int32_t delta=0;std::memcpy(&delta,branch.data()+1,4);int64_t target=int64_t(site)+5+delta;if(target<0x10000||target>0x7FFFFFF0)return false;
+ const std::array<uint8_t,12>expected{{0x8B,0x15,0x4C,0x3D,0xA8,0,0x39,0x15,0x98,0x11,0xAC,0}};std::array<uint8_t,12>code{};return optionalread::bytes(read,uint32_t(target),code.data(),code.size())&&code==expected;
 }
 template<class Read>bool alive(const GameView<Read>&g,uint32_t p,int kind){
  return kind>=0&&g.template get<uint8_t>(p+0x74)&&!g.template get<uint8_t>(p+0x81)&&g.template get<uint8_t>(p+0x90)&&
@@ -60,7 +61,7 @@ template<class Read>State capture(Read read,uint32_t p,uint32_t type,int kind,ui
  out.material.displace=character==4&&(voxel||(kind==3&&g.template get<uint8_t>(type+0x16C5)));
  if(out.material.displace){float raw=g.template get<float>(p+0x24C);int32_t chopped=std::isfinite(raw)&&double(raw)>=-2147483648.&&double(raw)<2147483648.?int32_t(raw):int32_t(0x80000000u);
   out.material.cloakWords=int32_t(g.template get<uint32_t>(p+0x10)+uint32_t(chopped))%400;}
- std::array<int,6>format{};if(read(0x8A0DD0,format.data(),sizeof format))out.material.rgb555=format==std::array<int,6>{{10,3,0,3,5,3}};
+ std::array<int,6>format{};if(optionalread::bytes(read,0x8A0DD0,format.data(),sizeof format))out.material.rgb555=format==std::array<int,6>{{10,3,0,3,5,3}};
  if(kind==2)out.waterline=g.template get<int16_t>(p+0x3CA);
  return out;
 }

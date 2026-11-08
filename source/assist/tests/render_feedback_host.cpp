@@ -39,6 +39,8 @@ struct Reader {
  template<class T>void put(uint32_t p,const T&v){std::memcpy(bytes.data()+p,&v,sizeof v);}
 }externalReader;
 namespace external {using ReadSession=Reader;}
+static int shared=0;
+namespace nativeviewhost {template<class Read>bool sample(int,Read read,external::mainview::View&view){return external::mainview::sample(read,view);}}
 namespace renderupgrade {
 struct Request {external::presentation::Profile profile;
  uint64_t generation=1;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=77,match=8,tick=1000,reveal=0;int paletteRange=1,pixelScaleMode=3;int width=640,height=600;
@@ -106,11 +108,12 @@ int main(){
  assert(!group.retain(scrolling,lastGood+31));
  auto otherWorld=scrolling;otherWorld.view.scenario++;assert(!group.retain(otherWorld,lastGood+1));
  auto otherConfig=scrolling;otherConfig.generation++;assert(!group.retain(otherConfig,lastGood+1));
- for(int n=1;n<=6;++n){clockNow=lastGood+uint32_t(n)*15;externalReader.failSelection=n%3==0;externalReader.failMouse=n%3==1;externalReader.failView=n%3==2;
+ for(int n=1;n<=6;++n){clockNow=lastGood+uint32_t(n)*15;externalReader.failSelection=n%2==0;externalReader.failMouse=n%2==1;externalReader.failView=false;
   assert(publish(request));assert(layers.back().pixels==frame->image); // never a full native frame on transient feedback reads
  }
  clockNow=lastGood+120;assert(!publish(request)); // failures never renew lastGood
  externalReader.failSelection=externalReader.failMouse=externalReader.failView=false;assert(publish(request));
+ externalReader.failView=true;++clockNow;assert(!publish(request)&&feedback::unsafeWorld);externalReader.failView=false;assert(publish(request));
  externalReader.failMouse=true;auto changed=request;changed.detail=0;++clockNow;assert(!publish(changed));
  externalReader.failMouse=false;assert(publish(request));
  externalReader.put(request.view.tactical+0xB0,request.view.cameraX+1);++clockNow;assert(publish(request)&&!feedback::unsafeView);

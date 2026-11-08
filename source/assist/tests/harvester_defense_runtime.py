@@ -11,6 +11,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+from runtime_sample_fixture import write_scope
 
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parent / "source"
@@ -33,6 +34,7 @@ def main():
     parser.add_argument("--group", help="Run only cases whose name contains this text")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
+    scope = write_scope(args.out)
     external = (SRC / "external_orders_bridge.h").read_text(encoding="utf-8")
     native = (SRC / "native_orders_bridge.h").read_text(encoding="utf-8")
     extract = "\n".join(function(external, needle) for needle in (
@@ -49,8 +51,10 @@ def main():
              "external_orders_bridge.h", "native_orders_bridge.h", "bridge.cpp", "protocol.h",
              "planner_types.h", "planner_index.h", "weapon_policy.h", "object_index.h",
              "unit_task_arbiter.h", "command_intent.h", "ore_type_config.h", "ore_queue.h",
-             "feature_type_config.h", "feature_type_bridge.h"]
-    paths = [SRC / name for name in names] + [HERE / "harvester_defense_runtime.cpp", Path(__file__)]
+             "feature_type_config.h", "feature_type_bridge.h", "world_frame_runtime.h"]
+    paths = [SRC / name for name in names] + [HERE / "harvester_defense_runtime.cpp", Path(__file__),
+             HERE / "runtime_sample_fixture.py", HERE / "fixtures/tactical_frame/runtime_sample_fixture.h",
+             SRC.parents[1] / "shared/source/world_frame.h", SRC.parents[1] / "shared/source/world_frame_capture.h"]
     hashes = {str(path.relative_to(HERE.parents[1])): hashlib.sha256(path.read_bytes()).hexdigest()
               for path in paths}
     exe = args.out / "harvester_defense_runtime"
@@ -61,13 +65,14 @@ def main():
     print(build.stdout + build.stderr, end="")
     build.check_returncode()
     run_cmd = [str(exe)] + ([args.group] if args.group else [])
-    run = subprocess.run(run_cmd, capture_output=True, text=True, timeout=30)
+    run = subprocess.run(run_cmd, capture_output=True, text=True, timeout=60)
     (args.out / "runtime.log").write_text(run.stdout + run.stderr, encoding="utf-8")
     print(run.stdout + run.stderr, end="")
     report = {"scope": __doc__, "host_execution": "Linux g++ synthetic-memory fixture",
               "game_process_operated": False, "windows_or_multiplayer_claim": False,
               "source_sha256": hashes, "production_extract_sha256": hashlib.sha256(extract.encode()).hexdigest(),
               "production_manual_extract_sha256": hashlib.sha256(manual_extract.encode()).hexdigest(),
+              "production_scope_extract_sha256": hashlib.sha256(scope.encode()).hexdigest(),
               "exit_code": run.returncode,
               "sources_stable_during_run": all(hashlib.sha256(path.read_bytes()).hexdigest() == hashes[str(path.relative_to(HERE.parents[1]))] for path in paths)}
     try:

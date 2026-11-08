@@ -1,4 +1,5 @@
 #pragma once
+#include "optional_read.h"
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -19,7 +20,7 @@ struct State {
 };
 template<class Read>void converterMetadata(Read read,uint32_t convert,State&out){
  int rows=0;uint32_t vt=0;std::array<int,6>format{},after{};out.table.reset();
- if(read(0x8A0DD0,format.data(),sizeof format)&&read(0x8A0DD0,after.data(),sizeof after)&&format==after)out.rgb555=format==std::array<int,6>{{10,3,0,3,5,3}};
+ if(optionalread::bytes(read,0x8A0DD0,format.data(),sizeof format)&&optionalread::bytes(read,0x8A0DD0,after.data(),sizeof after)&&format==after)out.rgb555=format==std::array<int,6>{{10,3,0,3,5,3}};
  if(convert<0x10000||convert>0xfffffe90u||!read(convert+0x16C,&rows,4)||rows<1||rows>256||!read(convert,&vt,4)||(vt!=0x7E5358&&vt!=0x7ED0A4))return;
  out.paletteRows=unsigned(rows);out.scalar=vt==0x7E5358;
  // FullColorData contains the evaluated native palette rows. Capture one
