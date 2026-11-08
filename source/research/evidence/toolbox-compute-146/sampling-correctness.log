@@ -1,0 +1,17 @@
+COMPARE demand-1: result=1 pages=91 old_reads=91 new_reads=91 old_bytes=372736 new_bytes=372736
+COMPARE demand-2: result=1 pages=96 old_reads=96 new_reads=96 old_bytes=393216 new_bytes=393216
+COMPARE demand-4: result=1 pages=92 old_reads=92 new_reads=92 old_bytes=376832 new_bytes=376832
+COMPARE demand-8: result=1 pages=96 old_reads=96 new_reads=96 old_bytes=393216 new_bytes=393216
+COMPARE demand-16: result=1 pages=94 old_reads=94 new_reads=94 old_bytes=385024 new_bytes=385024
+COMPARE demand-32: result=1 pages=101 old_reads=101 new_reads=101 old_bytes=413696 new_bytes=413696
+COMPARE demand-63: result=1 pages=108 old_reads=108 new_reads=108 old_bytes=442368 new_bytes=442368
+COMPARE contiguous-request-pages: result=1 pages=156 old_reads=156 new_reads=156 old_bytes=638976 new_bytes=638976
+COMPARE duplicate-unsorted-requests: result=1 pages=156 old_reads=156 new_reads=156 old_bytes=638976 new_bytes=638976
+COMPARE actor-page-unreadable-outside-prefix: result=1 pages=108 old_reads=109 new_reads=109 old_bytes=444416 new_bytes=444416
+COMPARE sparse-type-page: result=1 pages=108 old_reads=110 new_reads=110 old_bytes=450304 new_bytes=450304
+COMPARE preobserved-partial-page: result=1 pages=107 old_reads=110 new_reads=110 old_bytes=440320 new_bytes=440320
+COMPARE unreadable-request-page: result=1 pages=112 old_reads=113 new_reads=113 old_bytes=462848 new_bytes=462848
+COMPARE invalid-required-roster: result=0 pages=19 old_reads=19 new_reads=19 old_bytes=77824 new_bytes=77824
+COMPARE temporal-chain-52-bound: result=1 pages=111 old_reads=111 new_reads=111 old_bytes=454656 new_bytes=454656
+COMPARE temporal-cycle: result=1 pages=108 old_reads=108 new_reads=108 old_bytes=442368 new_bytes=442368
+PASS capture performance correctness: 16 baseline/current scenarios, 6040 checks; identical page-key bytes/valid/failed maps, no successful overlap, capacity, freshness, allocation recovery

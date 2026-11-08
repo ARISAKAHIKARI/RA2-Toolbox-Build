@@ -1,0 +1,763 @@
+{
+  "schema": "ra2.runtime-memory.v1",
+  "passed": true,
+  "baseline_ref": "88812eda0d23d065d61d6f742315b7d0581fd1a8",
+  "scope": "Verify exact Runtime memory wrappers: native byte semantics, target codegen and paired benchmark.",
+  "source_sha256": {
+    "source/shared/source/runtime_memory.h": "f69a91a02291af9712d429a931e1403a474965cf96b0f506ffbc4c9e16ca0958",
+    "source/assist/tests/runtime_memory.cpp": "0f92e499ac2a82a1ed89f6a3782885f497c1407252bb8b0efbb9deac55b5a788",
+    "source/assist/tests/runtime_memory.py": "5fbd2cd79c1b4f982cbeef939867842631058900eb0ad6b733931a921af8b3d6"
+  },
+  "bridge_sha256_at_start": "b2be18e23aa56eeccd68fd48af55a4554628c1d0db8776d1018902747014115e",
+  "baseline_wrapper_sha256": "11f2cd0b709dccbe3e1caa297979ef1191bc8d376a26085e0c6de5ebecdade3c",
+  "production_wrapper_sha256": "5401815959631991378502784c4a1fffb7ce4f73f6b84ff1c7a0f7027735d8e1",
+  "generated_translation_units_sha256": {
+    "baseline": "6bc5620fd5decee0ef1e06ea26db4d5a542f484ac8ed173984ed106679843643",
+    "subject": "1228309c709c37402244da15aedcbd94da0bd18d0599cf06ed70145ce46fa80f",
+    "production": "164ee3c0f857747656cace117460a7cc01ff17b8e071c0c7807824af98a4e3b5"
+  },
+  "commands": [
+    [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "-fno-builtin",
+      "-fno-stack-protector",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-fsanitize=address,undefined",
+      "-fno-sanitize-recover=all",
+      "-fno-omit-frame-pointer",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/subject.cpp",
+      "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/runtime_memory.cpp",
+      "-o",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/runtime-memory-semantics"
+    ],
+    [
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/runtime-memory-semantics"
+    ],
+    [
+      "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+      "c++",
+      "-target",
+      "x86-windows-gnu",
+      "-std=c++17",
+      "-O2",
+      "-fno-builtin",
+      "-fno-stack-protector",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-fms-extensions",
+      "-fasm-blocks",
+      "-c",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/production.cpp",
+      "-o",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/x86-windows-gnu.o"
+    ],
+    [
+      "objdump",
+      "-dr",
+      "-Mintel",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/x86-windows-gnu.o"
+    ],
+    [
+      "nm",
+      "-u",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/x86-windows-gnu.o"
+    ],
+    [
+      "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+      "c++",
+      "-target",
+      "x86_64-windows-gnu",
+      "-std=c++17",
+      "-O2",
+      "-fno-builtin",
+      "-fno-stack-protector",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-fms-extensions",
+      "-fasm-blocks",
+      "-c",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/production.cpp",
+      "-o",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/x86_64-windows-gnu.o"
+    ],
+    [
+      "objdump",
+      "-dr",
+      "-Mintel",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/x86_64-windows-gnu.o"
+    ],
+    [
+      "nm",
+      "-u",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/x86_64-windows-gnu.o"
+    ],
+    [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "-fno-builtin",
+      "-fno-stack-protector",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-DRUNTIME_MEMORY_BENCHMARK",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/baseline.cpp",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/subject.cpp",
+      "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/runtime_memory.cpp",
+      "-o",
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/runtime-memory-benchmark"
+    ],
+    [
+      "/workspace/scratch/40121bc881b8/performance-146/memory/verified/runtime-memory-benchmark"
+    ]
+  ],
+  "sanitizer_environment": {
+    "ASAN_OPTIONS": "detect_leaks=0"
+  },
+  "semantics": {
+    "passed": true,
+    "checks": 41156,
+    "copy_cases": 11520,
+    "fill_cases": 6480,
+    "guard_page_cases": 2432,
+    "source_alignment_residues": 16,
+    "destination_alignment_residues": 16,
+    "windows_executed": false,
+    "game_executed": false
+  },
+  "target_codegen": [
+    {
+      "target": "x86-windows-gnu",
+      "object_sha256": "529feaa0e85f10f6a044a510be5cfdf2c06a4e1295e9eadf2b42a8a8d458e692",
+      "undefined_symbols": [],
+      "calls": 0,
+      "simd_registers": 0,
+      "bulk_rep_copy": true,
+      "bulk_rep_fill": true
+    },
+    {
+      "target": "x86_64-windows-gnu",
+      "object_sha256": "a9a70168322c4da235a5d3e52efa38498409ecf044db75a71bace028eabf26db",
+      "undefined_symbols": [],
+      "calls": 0,
+      "simd_registers": 0,
+      "bulk_rep_copy": true,
+      "bulk_rep_fill": true
+    }
+  ],
+  "benchmark": [
+    {
+      "size_bytes": 1,
+      "operation": "copy",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 3.268546,
+      "after_median_ns": 3.017547,
+      "before_ns": [
+        2.92857,
+        4.457957,
+        3.341665,
+        2.466316,
+        3.268546,
+        3.43516,
+        2.578827
+      ],
+      "after_ns": [
+        3.224341,
+        3.017547,
+        2.790916,
+        3.342029,
+        2.784835,
+        3.162784,
+        2.946724
+      ]
+    },
+    {
+      "size_bytes": 1,
+      "operation": "fill",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 3.034824,
+      "after_median_ns": 4.735651,
+      "before_ns": [
+        2.867784,
+        2.826787,
+        2.678814,
+        3.034824,
+        3.663026,
+        3.425735,
+        3.096955
+      ],
+      "after_ns": [
+        7.182109,
+        3.961501,
+        5.044781,
+        4.735651,
+        4.686695,
+        4.785749,
+        3.393674
+      ]
+    },
+    {
+      "size_bytes": 4,
+      "operation": "copy",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 2.640977,
+      "after_median_ns": 3.531711,
+      "before_ns": [
+        2.940018,
+        2.066507,
+        2.140676,
+        2.640977,
+        2.70183,
+        2.016056,
+        2.9014
+      ],
+      "after_ns": [
+        2.917997,
+        3.401047,
+        5.109158,
+        4.011512,
+        3.531711,
+        3.693791,
+        3.021754
+      ]
+    },
+    {
+      "size_bytes": 4,
+      "operation": "fill",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 3.648808,
+      "after_median_ns": 4.076999,
+      "before_ns": [
+        4.257629,
+        2.841606,
+        3.414587,
+        4.889626,
+        3.648808,
+        4.249314,
+        3.185464
+      ],
+      "after_ns": [
+        4.076999,
+        3.979859,
+        4.917045,
+        5.831591,
+        4.852156,
+        3.643334,
+        3.721424
+      ]
+    },
+    {
+      "size_bytes": 8,
+      "operation": "copy",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 3.433035,
+      "after_median_ns": 3.439769,
+      "before_ns": [
+        3.433035,
+        3.717339,
+        3.48508,
+        3.999141,
+        2.99087,
+        3.105262,
+        2.588292
+      ],
+      "after_ns": [
+        3.278598,
+        3.427455,
+        5.100856,
+        6.217986,
+        3.439769,
+        3.676735,
+        2.863154
+      ]
+    },
+    {
+      "size_bytes": 8,
+      "operation": "fill",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 4.165376,
+      "after_median_ns": 5.771016,
+      "before_ns": [
+        4.141748,
+        3.758327,
+        4.165376,
+        4.504406,
+        3.81078,
+        4.213816,
+        7.594916
+      ],
+      "after_ns": [
+        7.332723,
+        5.771016,
+        4.130936,
+        4.14011,
+        3.619665,
+        6.26598,
+        7.182307
+      ]
+    },
+    {
+      "size_bytes": 16,
+      "operation": "copy",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 5.23648,
+      "after_median_ns": 6.907936,
+      "before_ns": [
+        9.851709,
+        6.292614,
+        4.966222,
+        5.598154,
+        4.716828,
+        4.323205,
+        5.23648
+      ],
+      "after_ns": [
+        8.661359,
+        6.672193,
+        5.519802,
+        7.801049,
+        7.216814,
+        6.907936,
+        6.738117
+      ]
+    },
+    {
+      "size_bytes": 16,
+      "operation": "fill",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 4.294866,
+      "after_median_ns": 5.912373,
+      "before_ns": [
+        4.479523,
+        4.009926,
+        4.47321,
+        4.016588,
+        3.281519,
+        4.294866,
+        6.669609
+      ],
+      "after_ns": [
+        5.912373,
+        9.228974,
+        5.899074,
+        4.889912,
+        4.644445,
+        6.246453,
+        9.280406
+      ]
+    },
+    {
+      "size_bytes": 17,
+      "operation": "copy",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 3.797831,
+      "after_median_ns": 5.687263,
+      "before_ns": [
+        3.565785,
+        3.797831,
+        3.948019,
+        3.501651,
+        3.723424,
+        6.370461,
+        6.069997
+      ],
+      "after_ns": [
+        5.369695,
+        6.343467,
+        5.746391,
+        5.014329,
+        5.7848,
+        5.114097,
+        5.687263
+      ]
+    },
+    {
+      "size_bytes": 17,
+      "operation": "fill",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 3.176618,
+      "after_median_ns": 5.275993,
+      "before_ns": [
+        3.202123,
+        3.085439,
+        3.150461,
+        3.499319,
+        3.084831,
+        3.674451,
+        3.176618
+      ],
+      "after_ns": [
+        5.550635,
+        5.69991,
+        4.920081,
+        5.600214,
+        4.425667,
+        4.96147,
+        5.275993
+      ]
+    },
+    {
+      "size_bytes": 32,
+      "operation": "copy",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 7.491908,
+      "after_median_ns": 6.376784,
+      "before_ns": [
+        7.759806,
+        10.167647,
+        6.529141,
+        9.332863,
+        7.165249,
+        7.491908,
+        6.511896
+      ],
+      "after_ns": [
+        6.230392,
+        9.160364,
+        6.376784,
+        7.164718,
+        6.29458,
+        7.182061,
+        5.74905
+      ]
+    },
+    {
+      "size_bytes": 32,
+      "operation": "fill",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 4.788073,
+      "after_median_ns": 8.34573,
+      "before_ns": [
+        4.329617,
+        4.762489,
+        7.58267,
+        4.351636,
+        4.788073,
+        5.20783,
+        4.960045
+      ],
+      "after_ns": [
+        7.988807,
+        8.296028,
+        9.184706,
+        9.701846,
+        8.34573,
+        9.99321,
+        7.964964
+      ]
+    },
+    {
+      "size_bytes": 64,
+      "operation": "copy",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 8.661973,
+      "after_median_ns": 9.108425,
+      "before_ns": [
+        7.951281,
+        8.816538,
+        8.419183,
+        8.365381,
+        8.796046,
+        8.661973,
+        10.617598
+      ],
+      "after_ns": [
+        8.25019,
+        8.190194,
+        9.55483,
+        9.246866,
+        8.72447,
+        9.108425,
+        9.517056
+      ]
+    },
+    {
+      "size_bytes": 64,
+      "operation": "fill",
+      "iterations_per_round": 1000000,
+      "before_median_ns": 6.404729,
+      "after_median_ns": 10.224779,
+      "before_ns": [
+        6.609651,
+        5.960528,
+        6.164596,
+        7.209123,
+        6.404729,
+        6.151767,
+        8.252957
+      ],
+      "after_ns": [
+        11.253863,
+        11.006644,
+        10.224779,
+        10.177172,
+        8.453249,
+        8.739854,
+        11.69177
+      ]
+    },
+    {
+      "size_bytes": 128,
+      "operation": "copy",
+      "iterations_per_round": 524288,
+      "before_median_ns": 15.839727,
+      "after_median_ns": 7.050463,
+      "before_ns": [
+        16.466351,
+        16.281851,
+        16.593945,
+        15.820774,
+        15.839727,
+        15.305643,
+        15.249308
+      ],
+      "after_ns": [
+        7.404663,
+        6.209383,
+        7.201014,
+        6.330198,
+        7.050463,
+        6.267382,
+        7.733587
+      ]
+    },
+    {
+      "size_bytes": 128,
+      "operation": "fill",
+      "iterations_per_round": 524288,
+      "before_median_ns": 9.326408,
+      "after_median_ns": 14.537481,
+      "before_ns": [
+        8.711237,
+        15.212641,
+        13.941015,
+        8.447222,
+        9.326408,
+        10.370056,
+        8.298964
+      ],
+      "after_ns": [
+        16.667967,
+        14.537481,
+        14.924976,
+        13.016171,
+        13.838516,
+        15.049267,
+        13.046459
+      ]
+    },
+    {
+      "size_bytes": 256,
+      "operation": "copy",
+      "iterations_per_round": 262144,
+      "before_median_ns": 28.186028,
+      "after_median_ns": 15.577415,
+      "before_ns": [
+        24.85775,
+        31.100475,
+        25.67342,
+        26.452511,
+        28.186028,
+        35.026089,
+        31.741673
+      ],
+      "after_ns": [
+        12.669125,
+        12.240143,
+        15.577415,
+        18.466427,
+        14.858017,
+        18.528706,
+        17.637897
+      ]
+    },
+    {
+      "size_bytes": 256,
+      "operation": "fill",
+      "iterations_per_round": 262144,
+      "before_median_ns": 16.496021,
+      "after_median_ns": 14.36916,
+      "before_ns": [
+        15.186348,
+        14.503918,
+        19.564022,
+        14.723415,
+        18.94936,
+        16.496021,
+        20.061821
+      ],
+      "after_ns": [
+        13.739601,
+        12.602325,
+        14.759109,
+        14.104027,
+        16.585247,
+        16.148735,
+        14.36916
+      ]
+    },
+    {
+      "size_bytes": 4096,
+      "operation": "copy",
+      "iterations_per_round": 16384,
+      "before_median_ns": 456.193848,
+      "after_median_ns": 60.784912,
+      "before_ns": [
+        467.207458,
+        407.09552,
+        419.239197,
+        456.193848,
+        442.284119,
+        522.522827,
+        499.241882
+      ],
+      "after_ns": [
+        65.449402,
+        72.546936,
+        60.784912,
+        57.23291,
+        49.217163,
+        67.022156,
+        57.836609
+      ]
+    },
+    {
+      "size_bytes": 4096,
+      "operation": "fill",
+      "iterations_per_round": 16384,
+      "before_median_ns": 201.96344,
+      "after_median_ns": 27.104614,
+      "before_ns": [
+        201.293335,
+        201.96344,
+        175.32135,
+        215.085999,
+        233.292603,
+        212.443237,
+        184.283081
+      ],
+      "after_ns": [
+        25.490479,
+        25.490784,
+        29.796082,
+        27.104614,
+        25.490967,
+        33.183777,
+        39.993347
+      ]
+    },
+    {
+      "size_bytes": 6340000,
+      "operation": "copy",
+      "iterations_per_round": 10,
+      "before_median_ns": 759913.7,
+      "after_median_ns": 515088.5,
+      "before_ns": [
+        759913.7,
+        709239.6,
+        674334.5,
+        764101.8,
+        775079.1,
+        777013.8,
+        635293.7
+      ],
+      "after_ns": [
+        420591.1,
+        602962.5,
+        582107.2,
+        562406.9,
+        493250.2,
+        492119.2,
+        515088.5
+      ]
+    },
+    {
+      "size_bytes": 6340000,
+      "operation": "fill",
+      "iterations_per_round": 10,
+      "before_median_ns": 423581.2,
+      "after_median_ns": 273778.5,
+      "before_ns": [
+        538290.2,
+        394485.0,
+        365234.5,
+        423581.2,
+        378640.1,
+        448568.2,
+        1298853.3
+      ],
+      "after_ns": [
+        373309.8,
+        265430.2,
+        273778.5,
+        431769.3,
+        229656.7,
+        223094.3,
+        751431.9
+      ]
+    },
+    {
+      "size_bytes": 21004288,
+      "operation": "copy",
+      "iterations_per_round": 8,
+      "before_median_ns": 4497716.375,
+      "after_median_ns": 3404778.75,
+      "before_ns": [
+        4880829.125,
+        4163503.125,
+        4308639.5,
+        4497716.375,
+        4687777.0,
+        3907697.625,
+        5674743.5
+      ],
+      "after_ns": [
+        3264838.125,
+        3528025.375,
+        3385621.75,
+        3404778.75,
+        3585785.875,
+        2787259.625,
+        9631884.375
+      ]
+    },
+    {
+      "size_bytes": 21004288,
+      "operation": "fill",
+      "iterations_per_round": 8,
+      "before_median_ns": 2869517.25,
+      "after_median_ns": 1164504.875,
+      "before_ns": [
+        2662762.0,
+        3200269.5,
+        3395394.875,
+        2872771.875,
+        2869517.25,
+        2320030.5,
+        2499049.375
+      ],
+      "after_ns": [
+        791757.75,
+        2299344.5,
+        896638.375,
+        1164504.875,
+        3585044.875,
+        4713631.875,
+        1092870.75
+      ]
+    }
+  ],
+  "windows_executed": false,
+  "game_executed": false,
+  "limits": [
+    "Native x86_64 Linux executes exact wrappers with symbol-only renaming under ASan/UBSan and inaccessible guard pages.",
+    "LeakSanitizer is disabled because the managed runner does not permit its /proc task inspection.",
+    "Windows x86 and x64 target objects are compiled and disassembled; this is not Windows execution.",
+    "Benchmark uses the released scalar wrapper bodies and current wrapper bodies in separate translation units, alternating order across seven rounds.",
+    "Linux host timings may vary with concurrent workload, CPU and memory state; no Windows latency or game FPS claim.",
+    "The byte fallback on non-GNU/non-x86 compilers is not executed here. Overlap is outside the memcpy contract."
+  ],
+  "source_unchanged": true
+}

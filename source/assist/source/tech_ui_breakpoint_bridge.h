@@ -351,10 +351,14 @@ static void maintainTechParameters(){
  if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();}
  if(!sh||sh->stop||fault||!sh->mapVisibility){InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;}
  refreshControlEligibility();configure();
- // An idle game still publishes an actual read-only resource snapshot before
- // the first activation. Stop/fault never starts another inspection worker.
+ // Idle slot inspection enters an actual owner-thread INT3 rendezvous and
+ // briefly owns a VEH/handle even with every hardware feature disabled.
+ // Only explicit diagnostics request that work. The Host already represents
+ // an absent/expired budget as an unconfirmed four-slot plan; feature
+ // admission and active audits still inspect the real registers themselves.
+ // Stop/fault and pending restoration never start another idle inspection.
  static DWORD inspected=0;const DWORD now=GetTickCount();
- if(sh&&!sh->stop&&!fault&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!singlefps::desired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
+ if(sh&&sh->debugVisible&&!sh->stop&&!fault&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!singlefps::desired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
 }
 static bool requestTechParameters(uint32_t house){
  using namespace techparameters;maintainTechParameters();

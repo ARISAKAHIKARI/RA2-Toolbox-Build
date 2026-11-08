@@ -1,0 +1,70 @@
+{
+  "schema": "ra2.cursor-ondemand-source.v1",
+  "pass": true,
+  "result": {
+    "checks": 102,
+    "failures": 0,
+    "scenarios": 22,
+    "hot_materialize_calls": 100,
+    "hot_filesystem_calls": 0
+  },
+  "build_command": [
+    "c++",
+    "-std=c++17",
+    "-O1",
+    "-g",
+    "-fsanitize=undefined",
+    "-fno-sanitize-recover=all",
+    "-I/workspace/scratch/40121bc881b8/release-1.0.46/checks/cursor-source/include",
+    "-DSOURCE_PRODUCTION=\"/workspace/scratch/40121bc881b8/release-1.0.46/checks/cursor-source/production-source.inc\"",
+    "/workspace/scratch/40121bc881b8/ra2-stable-146/source/assist/tests/cursor_ondemand_source.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/release-1.0.46/checks/cursor-source/cursor-ondemand-source"
+  ],
+  "build_exit_code": 0,
+  "run_exit_code": 0,
+  "source_sha256": {
+    "source/cursor/source/main.cpp": "6b785086a10b7dc77e9d9caaff610e69318a0e7a8efdc31a1926a55d9e51503e",
+    "source/assist/tests/cursor_ondemand_source.cpp": "6860cfc8d24a4725a6306ec64059c14d1afc1a39bc7b333d1b48b5ef659b44d8",
+    "source/assist/tests/cursor_ondemand_source.py": "55e90875c644306316399c57d09a90ce3fa8cb5ffbf2350db6aabf9d3b1cd243",
+    "source/assist/tests/runtime_broker_retirement.py": "d375b8f2f8d56041873c6cbc89390783096536deb755459dcd8e1c23def07bd2",
+    "source/cursor/source/core.h": "3e9ec567676a7d2749902159c470a17c124ed0ff8f46e6d933913ef48961debf",
+    "source/cursor/source/ondemand.h": "e86e6f571af085def49d3a70d59fa5d5b060d8fea8f6c688386abf861487d008",
+    "source/cursor/source/bridge.h": "58a82643c7d5530efd3d7fc1d5fcc118170ac6f9a8bcac5ae9c5d5dca09797f3",
+    "source/cursor/source/playback.h": "72f783ee5e3fd83ea09848ae8b54007a15086a1c09a69e0d1618010640cae320",
+    "source/cursor/source/motion.h": "ca4c66fe02959d6f65ea6c4e3eeb732efc8c2a3b424ed2f8df630543d5243531",
+    "source/cursor/source/rotation.h": "122786565d16c8d563cdb454f3dffd9da25558bc68fa33a48af21c416655f791",
+    "source/cursor/source/super_hotspot.h": "cb56295d8a4a2cd30b08d8b9ec85c0d7e254d4e88eb08e9a86033a8d0adde352",
+    "source/cursor/source/snapshot_latch.h": "35617a15cf83688f939561ce7ac0aa99b3c49579cce8e21830e8617b38be8421",
+    "source/cursor/source/sequence.h": "f43944c5e17e7b752aac948547a4d7ed6f06327a88c44a36572c187454584f6f"
+  },
+  "production_routes_sha256": "3d433c4003da1e4a8be4f8c577789ed42e777fcd9303bf19206e2a3da8760eb4",
+  "production_functions": [
+    "static motion::Image frameCanvas(int n){",
+    "static void rebuildDisplay(){",
+    "static unsigned pairKey(int a,int b){",
+    "static void readPreparedPairs(){",
+    "static void syncDefaultDisplay(){",
+    "static void resetPrepared(bool stopCurrent){",
+    "static void pollOriginalResource(){",
+    "static void materializeWorkProfile(){"
+  ],
+  "adaptations": {
+    "std::filesystem::create_directories(std::filesystem::path(workProfile));": "fixtureCreateDirectories(workProfile);",
+    "std::ifstream f(std::filesystem::path(workProfile)/L\"pairs.txt\");": "auto f=fixturePreparedPairStream();"
+  },
+  "windows_executed": false,
+  "game_tested": false,
+  "network_downloads_executed": false,
+  "scope": [
+    "The actual pollOriginalResource/syncDefaultDisplay/resetPrepared/readPreparedPairs/materializeWorkProfile functions execute; only two filesystem expressions are redirected.",
+    "Real core.h SHA encode/decode, ondemand.h content identity, actual frameCanvas/rebuildDisplay, palette premultiplication and playback frame packing execute unchanged.",
+    "450/517 visible source adoption, palette-only identity changes, identical-byte reuse, custom theme preservation, invalid/transparent/uncommitted/torn resource rejection are exercised.",
+    "All three immutable inputs are compared byte-for-byte; engine-derived pairs rewrites survive another epoch, and 100 hot-epoch materializations make zero filesystem calls."
+  ],
+  "limits": [
+    "Shared resource delivery uses the actual Shared layout with controlled bytes/sequence; MemoryBarrier injects a deterministic sequence change, not a live cross-process race.",
+    "File reads/writes, directory creation, MoveFileExW/DeleteFileW, timing and hook wake/stop/cancel boundaries are deterministic substitutes; disk permissions, crash durability and Windows visibility are not proven.",
+    "This fixture does not run a game, PowerShell, Python interpolation or asynchronous playback completion; those have separate focused checks."
+  ]
+}

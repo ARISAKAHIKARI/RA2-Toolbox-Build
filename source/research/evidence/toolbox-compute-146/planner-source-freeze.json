@@ -1,0 +1,22 @@
+{
+  "pass": true,
+  "production_unchanged_during_run": true,
+  "batching_present": false,
+  "world_frame_h_matches_145": true,
+  "production_sha256": {
+    "source/assist/source/external_orders_bridge.h": "b9047df1e7c528f9830d4126a10b1d60472b5298dfbf9a6cfb31dd35d49caf02",
+    "source/assist/source/planner_world_copy.h": "095ecda916a0e512805ea31b96853117bd9d06c5f89bbf55e93f3ad04fac2a83",
+    "source/assist/source/main.cpp": "61a1563473f2a51d8e990f80d212c94f22a74355ff2a4db15a4dc0823768fb9f",
+    "source/assist/source/planner_world_pool.h": "9c23a442468e6290bbcc4b2ea4406e8573152db1880e6ebc64f348c83e6d46ba",
+    "source/assist/source/bridge.cpp": "a1924341718da07eff0ae127ea39fc5653fe3c1c490197f47075d6877e98e0d3",
+    "source/assist/source/world_frame_runtime.h": "c9d04f2944a8517494fe52e6c20e73b1fc35fe68600b0dc4ff2c3e9b200ce5c1",
+    "source/shared/source/world_frame.h": "054c5879835da23b503b9f1d353fc21935193a3d5df440ee2b664e5b2da0d9ee",
+    "source/shared/source/world_frame_capture.h": "54e646ebfe75d8614f07b0b0fb65dfb3fcaa476bb1a05d6f2eb1c55d85315b41"
+  },
+  "receipt_paths": [
+    "/workspace/scratch/40121bc881b8/perf-146/features/final-no-batch/planner-publication/result.json",
+    "/workspace/scratch/40121bc881b8/perf-146/features/final-no-batch/tactical-frame/result.json"
+  ],
+  "reused_pool_receipt": "/workspace/scratch/40121bc881b8/perf-146/features/final/planner-world-pool/result.json",
+  "pool_receipt_inputs_unchanged": true
+}

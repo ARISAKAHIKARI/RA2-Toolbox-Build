@@ -1,0 +1,67 @@
+{
+  "schema": "ra2.cursor-ondemand-playback.v1",
+  "passed": true,
+  "result": {
+    "cases": 8,
+    "checks": 64,
+    "failures": 0
+  },
+  "source_bindings": [
+    {
+      "path": "source/cursor/source/main.cpp",
+      "sha256": "6b785086a10b7dc77e9d9caaff610e69318a0e7a8efdc31a1926a55d9e51503e"
+    },
+    {
+      "path": "source/cursor/source/playback.h",
+      "sha256": "72f783ee5e3fd83ea09848ae8b54007a15086a1c09a69e0d1618010640cae320"
+    },
+    {
+      "path": "source/cursor/source/motion.h",
+      "sha256": "ca4c66fe02959d6f65ea6c4e3eeb732efc8c2a3b424ed2f8df630543d5243531"
+    },
+    {
+      "path": "source/cursor/source/rotation.h",
+      "sha256": "122786565d16c8d563cdb454f3dffd9da25558bc68fa33a48af21c416655f791"
+    },
+    {
+      "path": "source/assist/tests/cursor_ondemand_playback.cpp",
+      "sha256": "7ff77c8db31834a718a645bea912e8b9e512776a697a0f928cec6b9b673bc735"
+    },
+    {
+      "path": "source/assist/tests/cursor_ondemand_playback.py",
+      "sha256": "7605568ea0239ae39e8112e4f28ad4d4b0b7efdb18a72164df6f8485cfc3412d"
+    },
+    {
+      "path": "source/assist/tests/runtime_broker_retirement.py",
+      "sha256": "d375b8f2f8d56041873c6cbc89390783096536deb755459dcd8e1c23def07bd2"
+    }
+  ],
+  "production_route_sha256": "e15ec49bfd7f92c9e2dc708fbd6910a6539e5a75fec17eed84ad9febf06da8f3",
+  "build_command": [
+    "c++",
+    "-std=c++17",
+    "-O1",
+    "-g",
+    "-fsanitize=undefined",
+    "-fno-sanitize-recover=all",
+    "-DPLAYBACK_PRODUCTION=\"/workspace/scratch/40121bc881b8/performance-146-round2/cursor-playback/production-playback.inc\"",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/cursor_ondemand_playback.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/performance-146-round2/cursor-playback/cursor-ondemand-playback"
+  ],
+  "build_exit_code": 0,
+  "run_exit_code": 0,
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "scope": [
+    "PlaybackBank and acceptPlaybackBank are extracted verbatim from production main.cpp; playback.h and its frame/timeline/raster implementations are included unchanged.",
+    "Full replacement, empty full replacement, incremental addition/replacement, capacity rejection and exact-cap admission execute with real bank ownership and pixel data.",
+    "Frame destruction and reconstruction at the same legal storage address deterministically reproduce stale raster pixels before invalidation and fresh pixels after actual acceptance.",
+    "Replacement clears active ownership and restores lastFrame/lastPhase submission sentinels; additions and rejected changes preserve valid cached pixels and active animations."
+  ],
+  "limits": [
+    "Capacity cases alter the real Timeline resident-byte charge instead of allocating 512 MiB; bank arithmetic and ownership execute unchanged.",
+    "The Windows UI, frame submission, asynchronous scheduling, disk decoder and real-game rendering are not executed by this focused fixture."
+  ]
+}

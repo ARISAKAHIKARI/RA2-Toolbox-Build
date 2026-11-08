@@ -1,0 +1,232 @@
+{
+  "passed": true,
+  "baseline_commit": "e6a157fe4b51e330915eaaa58f8192f5cdbce168",
+  "source_bindings": [
+    {
+      "path": "source/shared/source/world_frame.h",
+      "sha256": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f"
+    },
+    {
+      "path": "source/shared/source/world_frame_transport.h",
+      "sha256": "e9ec387d4ffc82417e368a1305051df6436f3c674ea6516049d2288942897009"
+    },
+    {
+      "path": "source/external_reader/source/process_reader.h",
+      "sha256": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1"
+    },
+    {
+      "path": "source/assist/source/world_frame_runtime.h",
+      "sha256": "c9d04f2944a8517494fe52e6c20e73b1fc35fe68600b0dc4ff2c3e9b200ce5c1"
+    },
+    {
+      "path": "source/assist/tests/world_frame_import_copy.cpp",
+      "sha256": "317f699c86555b5a3a17faafeaa7bbad1566949889f23061441fcb0cb145a2b0"
+    },
+    {
+      "path": "source/assist/tests/world_frame_import_copy.py",
+      "sha256": "3daf3fe4591f89e4a5397582a99beef8eda56c6c0a07dff087bfda35510d011f"
+    },
+    {
+      "path": "source/assist/tests/world_frame_core.cpp",
+      "sha256": "030748bb15b734b04009cf429ddb71a57f2a7761bc4b52d25a5d88445e367049"
+    },
+    {
+      "path": "source/assist/tests/world_frame_core_test.py",
+      "sha256": "2ee49da359b7d77f4c8decc816c28e19065975a8c680caac093fe28dba63f13d"
+    }
+  ],
+  "baseline_counts": [
+    {
+      "pages": 28,
+      "payload_bytes": 143584,
+      "cpp_allocations_per_new_publication": 1,
+      "cpp_allocation_bytes": 131240,
+      "page_allocations_per_new_publication": 1,
+      "page_allocation_bytes": 164096,
+      "same_frame_100_acquires_allocations": 0,
+      "same_frame_100_publishes_mapping_changes": 0,
+      "thread_cpu_us_per_import": 44.777,
+      "payload_fnv64": "eda81e7f1a88db03",
+      "iterations": 16
+    },
+    {
+      "pages": 512,
+      "payload_bytes": 2625536,
+      "cpp_allocations_per_new_publication": 1,
+      "cpp_allocation_bytes": 131240,
+      "page_allocations_per_new_publication": 1,
+      "page_allocation_bytes": 2625536,
+      "same_frame_100_acquires_allocations": 0,
+      "same_frame_100_publishes_mapping_changes": 0,
+      "thread_cpu_us_per_import": 574.829,
+      "payload_fnv64": "5e7a7b2804ef5483",
+      "iterations": 16
+    },
+    {
+      "pages": 4096,
+      "payload_bytes": 21004288,
+      "cpp_allocations_per_new_publication": 1,
+      "cpp_allocation_bytes": 131240,
+      "page_allocations_per_new_publication": 1,
+      "page_allocation_bytes": 21004288,
+      "same_frame_100_acquires_allocations": 0,
+      "same_frame_100_publishes_mapping_changes": 0,
+      "thread_cpu_us_per_import": 8892.361,
+      "payload_fnv64": "8a4315c0e71ad383",
+      "iterations": 16
+    },
+    {
+      "pages": 8192,
+      "payload_bytes": 42008576,
+      "cpp_allocations_per_new_publication": 1,
+      "cpp_allocation_bytes": 131240,
+      "page_allocations_per_new_publication": 1,
+      "page_allocation_bytes": 42008576,
+      "same_frame_100_acquires_allocations": 0,
+      "same_frame_100_publishes_mapping_changes": 0,
+      "thread_cpu_us_per_import": 84283.52,
+      "payload_fnv64": "4871a0e73a021b83",
+      "iterations": 16
+    }
+  ],
+  "current_counts": [
+    {
+      "pages": 28,
+      "payload_bytes": 143584,
+      "cpp_allocations_per_new_publication": 1,
+      "cpp_allocation_bytes": 131240,
+      "page_allocations_per_new_publication": 1,
+      "page_allocation_bytes": 164096,
+      "same_frame_100_acquires_allocations": 0,
+      "same_frame_100_publishes_mapping_changes": 0,
+      "thread_cpu_us_per_import": 86.113,
+      "payload_fnv64": "eda81e7f1a88db03",
+      "iterations": 16
+    },
+    {
+      "pages": 512,
+      "payload_bytes": 2625536,
+      "cpp_allocations_per_new_publication": 1,
+      "cpp_allocation_bytes": 131240,
+      "page_allocations_per_new_publication": 1,
+      "page_allocation_bytes": 2625536,
+      "same_frame_100_acquires_allocations": 0,
+      "same_frame_100_publishes_mapping_changes": 0,
+      "thread_cpu_us_per_import": 1227.275,
+      "payload_fnv64": "5e7a7b2804ef5483",
+      "iterations": 16
+    },
+    {
+      "pages": 4096,
+      "payload_bytes": 21004288,
+      "cpp_allocations_per_new_publication": 1,
+      "cpp_allocation_bytes": 131240,
+      "page_allocations_per_new_publication": 1,
+      "page_allocation_bytes": 21004288,
+      "same_frame_100_acquires_allocations": 0,
+      "same_frame_100_publishes_mapping_changes": 0,
+      "thread_cpu_us_per_import": 9750.696,
+      "payload_fnv64": "8a4315c0e71ad383",
+      "iterations": 16
+    },
+    {
+      "pages": 8192,
+      "payload_bytes": 42008576,
+      "cpp_allocations_per_new_publication": 1,
+      "cpp_allocation_bytes": 131240,
+      "page_allocations_per_new_publication": 1,
+      "page_allocation_bytes": 42008576,
+      "same_frame_100_acquires_allocations": 0,
+      "same_frame_100_publishes_mapping_changes": 0,
+      "thread_cpu_us_per_import": 50620.106,
+      "payload_fnv64": "4871a0e73a021b83",
+      "iterations": 16
+    }
+  ],
+  "eliminated_initialization_bytes_per_import": [
+    {
+      "pages": 28,
+      "before": 143584,
+      "after": 0
+    },
+    {
+      "pages": 512,
+      "before": 2625536,
+      "after": 0
+    },
+    {
+      "pages": 4096,
+      "before": 21004288,
+      "after": 0
+    },
+    {
+      "pages": 8192,
+      "before": 42008576,
+      "after": 0
+    }
+  ],
+  "correctness_receipt": "correctness/receipt.json",
+  "core_checks": [
+    74634,
+    75357
+  ],
+  "codegen": {
+    "baseline": {
+      "command": [
+        "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "-DWORLD_FRAME_HEADER=\"/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/baseline-production-world-frame.h\"",
+        "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/import-codegen.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/baseline-import.ll"
+      ],
+      "ir_sha256": "9ff06af56a44c50c649e8120d7b435ed0d860cc9cc90298b22b5b47de7803be2",
+      "whole_page_zero_sites": 1,
+      "whole_page_copy_sites": 3
+    },
+    "current": {
+      "command": [
+        "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "-DWORLD_FRAME_HEADER=\"/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source/world_frame.h\"",
+        "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/import-codegen.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/current-import.ll"
+      ],
+      "ir_sha256": "ab176ce740e466ff5a86c83c666fdde0b0dab72a08c6bbd43ff2c2c414f28dc9",
+      "whole_page_zero_sites": 0,
+      "whole_page_copy_sites": 3
+    }
+  },
+  "production_files_changed": [
+    "source/shared/source/world_frame.h"
+  ],
+  "new_tests": [
+    "source/assist/tests/world_frame_import_copy.cpp",
+    "source/assist/tests/world_frame_import_copy.py"
+  ],
+  "deferred_candidates": [
+    "Client Snapshot buffer pooling requires nonblocking allocation fallback for saturated pinned owners; no fixed3-slot defer.",
+    "Client::request deadline-based prune skipping; separate read-only subscription-receipt.json, no transport code change."
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "limits": [
+    "Actual Client/Server/Snapshot compiled with mocked Win32 mappings; allocation counts are measured, no native Windows shared-memory execution.",
+    "Codegen uses Zig0.13 target x86_64-windows-gnu -O2, production Snapshot::import wrapper. Original Page{} zero5128 remains in emitted baseline; copy construction removes it, required copies retained.",
+    "Import timing is CLOCK_THREAD_CPUTIME_ID in separate synthetic runs; baseline unpinned and subject CPU8, allocator/first-touch/cache differences remain. Small cases regress in recorded times; do not claim uniform CPU speedup or FPS.",
+    "Reader timing/frequency, allocation count, request membership, failed/valid bytes, pinned-token lifecycle and existing same-frame dedupe remain unchanged."
+  ]
+}

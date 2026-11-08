@@ -27,21 +27,39 @@ def main():
     body = main_cpp.read_text(encoding='utf-8')
     routes = out / 'production-preparation.inc'
     functions = (
-        'static std::wstring prepareArgument(',
-        'static std::wstring preparePowerShell(',
-        'static bool cancelPrepare(',
-        'static void closePrepare(',
-        'static std::wstring prepareTaskDirectory(',
+        'static void readPreparedPairs(){',
+        'static std::wstring prepareArgument(const std::wstring& value){',
+        'static std::wstring preparePowerShell(){',
+        'static bool cancelPrepare(){',
+        'static void closePrepare(){',
+        'static void materializeWorkProfile(){',
+        'static std::wstring prepareTaskDirectory(){',
+        'static void launchPrepare(cursorondemand::Mode mode,',
+        'static void serviceAutomaticPrepare(){',
         'static void beginPrepare(){',
         'static void pollPrepare(){',
+        'static void previewCurrent(){',
     )
-    routes.write_text('\n\n'.join(function(body, name) for name in functions) + '\n', encoding='utf-8')
-    inputs = [main_cpp, fixture, Path(__file__), here / 'runtime_broker_retirement.py']
+    extracted = '\n\n'.join(function(body, name) for name in functions) + '\n'
+    filesystem_call = 'std::filesystem::create_directories(std::filesystem::path(workProfile));'
+    assert extracted.count(filesystem_call) == 1
+    extracted = extracted.replace(filesystem_call, 'fixtureCreateDirectories(workProfile);', 1)
+    stream_call = 'std::ifstream f(std::filesystem::path(workProfile)/L"pairs.txt");'
+    assert extracted.count(stream_call) == 1
+    extracted = extracted.replace(stream_call, 'auto f=fixturePreparedPairStream();', 1)
+    routes.write_text(extracted, encoding='utf-8')
+    inputs = [main_cpp, source / 'cursor/source/ondemand.h', fixture, Path(__file__), here / 'runtime_broker_retirement.py']
     hashes = {str(path.relative_to(source.parent)): digest(path) for path in inputs}
-    # Actual entry routes must remain explicit user actions. Existing startup
-    # and playback paths must not grow dependency-download work.
+    (out / 'inputs.json').write_text(json.dumps({
+        'source_sha256': hashes, 'production_routes_sha256': digest(routes),
+        'executed_functions': functions,
+        'filesystem_adaptations': [filesystem_call, stream_call],
+    }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    # Startup may poll the guarded automatic queue but cannot eagerly launch
+    # preprocessing. Actual animation demand and explicit actions own work.
     startup = function(body, 'int WINAPI wWinMain(')
     assert 'beginPrepare(' not in startup
+    assert 'launchPrepare(' not in startup
     assert 'beginPrepare();' in function(body, 'static void importStyle(){')
     assert 'case 131:beginPrepare();' in function(body, 'static LRESULT CALLBACK wndproc(')
     assert 'closePrepare();' in function(body, 'static LRESULT CALLBACK wndproc(')
@@ -60,7 +78,7 @@ def main():
     if any(digest(path) != hashes[str(path.relative_to(source.parent))] for path in inputs):
         raise SystemExit('Test inputs changed while checking')
     receipt = {
-        'schema': 'ra2.cursor-dependency-prepare-ui.v1',
+        'schema': 'ra2.cursor-dependency-prepare-ui.v2',
         'pass': result['failures'] == 0,
         'result': result,
         'build_command': command,
@@ -72,10 +90,13 @@ def main():
         'network_downloads_executed': False,
         'game_tested': False,
         'scope': [
-            'Actual production begin/poll/cancel/close and command-line builder execute against controlled Win32 process, file, INI and label boundaries.',
+            'Actual production materialize/launch/serviceAutomatic/begin/poll/cancel/close/preview and command-line builders execute against controlled Win32 process, file, INI and label boundaries; ondemand.h is included unchanged.',
+            'Directory creation and the generated-pairs ifstream are deterministic filesystem boundaries; the complete materialization comparison, temporary write/MoveFileExW publication and generated-pairs parser execute.',
             'Missing-runtime launch, literal arguments, phase progress, failures, retries, cancellation, profile switch and zero-timeout waits are exercised.',
             'Every retry and quick close/reopen uses a unique task directory; old cancellation flags and status/error files are retained, and filename collisions never overwrite prior tasks.',
-            'Source entry checks ensure startup does not download; import/preprocess are the entry actions.',
+            'Source entry checks prevent eager startup launches; empty/blocked/unconfirmed animation demand and explicit preview/full-preparation routes execute separately.',
+            'Automatic batches contain at most four observed pairs; failures/cancellation remain blocked, and successful same-source work only schedules playback loading without stopping the hook.',
+            'Source/epoch changes reject late success/failure effects; previews open only after an explicit action, and malformed generated pair indexes cannot partially replace a valid index.',
         ],
         'limits': [
             'PowerShell execution, HTTP downloads, dependency installation and native Windows UI are not executed by this fixture.',

@@ -1,0 +1,133 @@
+{
+  "passed": true,
+  "build_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-fno-exceptions",
+    "-fno-builtin",
+    "-DREUSE_CAPTURE_SCRATCH",
+    "-DCAPTURE_HEADER=\"/workspace/scratch/40121bc881b8/toolbox-perf-146/sampling/benchmark/no-batch/world_frame_capture.h\"",
+    "-DCRT_HEADER=\"/workspace/scratch/40121bc881b8/toolbox-perf-146/sampling/benchmark/new-crt.h\"",
+    "/workspace/scratch/40121bc881b8/toolbox-perf-146/sampling/capture_benchmark.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/toolbox-perf-146/sampling/benchmark/subject-no-batch-new-crt"
+  ],
+  "baseline_receipt": "receipt.json",
+  "results": [
+    {
+      "case": "base-128",
+      "actors": 128,
+      "demand": 1,
+      "requested_extra_pages": 0,
+      "pages": 258,
+      "read_calls_per_frame": 258,
+      "read_bytes_per_frame": 1056768,
+      "rosters": 3,
+      "heap_allocations_per_frame": 0,
+      "heap_allocation_bytes_per_frame": 0,
+      "heap_frees_per_frame": 0,
+      "mean_us": 157.704,
+      "median_us": 112.463,
+      "p95_us": 367.995,
+      "iterations": 24,
+      "payload_fnv64": "9c2300e8b2359a45"
+    },
+    {
+      "case": "base-2048",
+      "actors": 2048,
+      "demand": 1,
+      "requested_extra_pages": 0,
+      "pages": 1219,
+      "read_calls_per_frame": 1219,
+      "read_bytes_per_frame": 4993024,
+      "rosters": 3,
+      "heap_allocations_per_frame": 0,
+      "heap_allocation_bytes_per_frame": 0,
+      "heap_frees_per_frame": 0,
+      "mean_us": 1175.59,
+      "median_us": 1103.798,
+      "p95_us": 1752.205,
+      "iterations": 24,
+      "payload_fnv64": "cfc30927e1043ec8"
+    },
+    {
+      "case": "combat-2048",
+      "actors": 2048,
+      "demand": 2,
+      "requested_extra_pages": 0,
+      "pages": 1351,
+      "read_calls_per_frame": 1351,
+      "read_bytes_per_frame": 5533696,
+      "rosters": 3,
+      "heap_allocations_per_frame": 0,
+      "heap_allocation_bytes_per_frame": 0,
+      "heap_frees_per_frame": 0,
+      "mean_us": 1222.71,
+      "median_us": 1109.07,
+      "p95_us": 2110.651,
+      "iterations": 24,
+      "payload_fnv64": "243f573de84d6518"
+    },
+    {
+      "case": "all-2048-map4096",
+      "actors": 2048,
+      "demand": 63,
+      "requested_extra_pages": 4096,
+      "pages": 5520,
+      "read_calls_per_frame": 5520,
+      "read_bytes_per_frame": 22609920,
+      "rosters": 92,
+      "heap_allocations_per_frame": 0,
+      "heap_allocation_bytes_per_frame": 0,
+      "heap_frees_per_frame": 0,
+      "mean_us": 6996.592,
+      "median_us": 6926.268,
+      "p95_us": 7963.922,
+      "iterations": 24,
+      "payload_fnv64": "87035fd71500223d"
+    },
+    {
+      "case": "combat-8192",
+      "actors": 8192,
+      "demand": 2,
+      "requested_extra_pages": 0,
+      "pages": 4429,
+      "read_calls_per_frame": 4429,
+      "read_bytes_per_frame": 18141184,
+      "rosters": 3,
+      "heap_allocations_per_frame": 0,
+      "heap_allocation_bytes_per_frame": 0,
+      "heap_frees_per_frame": 0,
+      "mean_us": 6971.78,
+      "median_us": 7016.133,
+      "p95_us": 7908.21,
+      "iterations": 24,
+      "payload_fnv64": "918a543ca530b6c1"
+    }
+  ],
+  "cpu_affinity": [
+    8
+  ],
+  "source_bindings": [
+    {
+      "path": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source/world_frame_capture.h",
+      "sha256": "ff08019950895fdaaf3191f276094718c0aacd388f26602004b8502aa20c8a88"
+    },
+    {
+      "path": "/workspace/scratch/40121bc881b8/toolbox-perf-146/sampling/benchmark/no-batch/world_frame_capture.h",
+      "sha256": "7c2dbc701050b254363fe8c375110966b1e37e3e0ab77c81c7a1c71aeddd36ec"
+    }
+  ],
+  "adaptations": [
+    "block uses original Snapshot::prefetch",
+    "actor page read-ahead worklist/sort/read removed",
+    "per-request PageSize loop restored"
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "limits": [
+    "Uses same 5 worlds, 24 measured frames, actual new CRT wrappers and -fno-builtin from parent benchmark; no Windows RPM or game FPS.",
+    "Only generated external capture header changes; production repo remains unchanged."
+  ]
+}

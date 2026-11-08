@@ -1,0 +1,12 @@
+{
+  "baseline_public_commit": "3ecef6517d4826cf3db608c5b2da201ff9da5bfd",
+  "baseline_local_commit": "e5e9abd69cdf2963f7bef3dd8fbc3e12c4537a63",
+  "functional_source_changes": false,
+  "only_changed_source_paths": [
+    "source/BUILD_SOURCE_MANIFEST.json",
+    "source/shared/source/release_version.h"
+  ],
+  "game_tested": false,
+  "windows_executed": false,
+  "checks_reexecuted": true
+}

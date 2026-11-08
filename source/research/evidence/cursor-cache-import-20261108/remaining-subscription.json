@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "production_changed": false,
+  "command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-pthread",
+    "-I/workspace/scratch/40121bc881b8/performance-146-round2/sampling",
+    "-DTRANSPORT_HEADER=\"/workspace/scratch/40121bc881b8/performance-146-round2/sampling/subscription-probe/world_frame_transport.h\"",
+    "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/subscription_counts.cpp",
+    "-Wl,--wrap=malloc",
+    "-Wl,--wrap=free",
+    "-o",
+    "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/subscription-counts"
+  ],
+  "results": [
+    {
+      "pages": 128,
+      "request_calls": 500,
+      "virtual_ms": 1000,
+      "full_prune_entry_visits": 64000,
+      "membership_republications": 0,
+      "expired_after_251ms": true
+    },
+    {
+      "pages": 4096,
+      "request_calls": 500,
+      "virtual_ms": 1000,
+      "full_prune_entry_visits": 2048000,
+      "membership_republications": 0,
+      "expired_after_251ms": true
+    },
+    {
+      "pages": 8192,
+      "request_calls": 500,
+      "virtual_ms": 1000,
+      "full_prune_entry_visits": 4096000,
+      "membership_republications": 0,
+      "expired_after_251ms": true
+    }
+  ],
+  "production_sha256": "e9ec387d4ffc82417e368a1305051df6436f3c674ea6516049d2288942897009",
+  "instrumentation": "External copy only: one uint64 counter and comma-expression increment for each original pruneRequests loop predicate. No branch, TTL, scheduling or membership changes.",
+  "windows_executed": false,
+  "game_tested": false
+}

@@ -1,0 +1,28 @@
+{
+  "pass": true,
+  "result": {
+    "checks": 674,
+    "failures": 0,
+    "scope": "actual bounded queue, request JSON and source identity; no Windows or game execution"
+  },
+  "source_sha256": {
+    "source/cursor/source/ondemand.h": "e86e6f571af085def49d3a70d59fa5d5b060d8fea8f6c688386abf861487d008",
+    "source/assist/tests/cursor_ondemand.cpp": "9acf474cc79a46162b81e3bcdcdc70ed808aaa59a692c3bd5241c25cd367e809"
+  },
+  "build_command": [
+    "c++",
+    "-std=c++17",
+    "-O1",
+    "-g",
+    "-fsanitize=undefined",
+    "-fno-sanitize-recover=all",
+    "source/assist/tests/cursor_ondemand.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/performance-146-round2/cursor-queue/fixture"
+  ],
+  "run_command": [
+    "/workspace/scratch/40121bc881b8/performance-146-round2/cursor-queue/fixture"
+  ],
+  "windows_executed": false,
+  "game_tested": false
+}

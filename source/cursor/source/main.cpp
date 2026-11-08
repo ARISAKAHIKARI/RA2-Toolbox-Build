@@ -17,6 +17,7 @@
 #include <shellapi.h>
 #include <commdlg.h>
 #include "precomputed.h"
+#include "ondemand.h"
 #include <shlobj.h>
 #include <mmsystem.h>
 #include <string>
@@ -87,14 +88,24 @@ static bool mainWindowReady=false;
 static HWND targetBox=nullptr;
 static HWND settingsHint=nullptr,detailLabel=nullptr,styleBox=nullptr,prepareButton=nullptr,prepareInfo=nullptr;
 static HANDLE prepareProcess=nullptr;static std::wstring prepareStatus,prepareCancel,preparedProfile;
-static bool prepareCancelling=false;
+static bool prepareCancelling=false,prepareAutomatic=false,previewQueued=false;
+static unsigned preparedEpoch=0;
+static cursorondemand::Mode preparedMode=cursorondemand::Mode::All;
+static cursorondemand::Queue prepareQueue;
+static std::vector<unsigned> preparedPairs;
 static bool applyingSettings=false;
 static Asset displayAsset;static DWORD displayPalette[256];static bool displayLoaded=false;
 static std::wstring profilePath,profileId;
+static std::wstring workProfile;
+static Bytes displaySourceColors,workOriginal,workColors,workGroups;
+static std::wstring materializedProfile;
 static std::vector<std::wstring> profileIds,profileNames;
 static std::set<unsigned> allowedPairs;
 static void pollPrepare();static void chooseStyle();static void importStyle();static void beginPrepare();
-static void readPairs();static void refreshStyleList();static void resetPrepared();
+static void readPairs();static void refreshStyleList();static void resetPrepared(bool stopCurrent=true);
+static bool cancelPrepare();static void syncDefaultDisplay();
+static void launchPrepare(cursorondemand::Mode,const std::vector<unsigned>&,bool);
+static void serviceAutomaticPrepare();
 static void rebuildDisplay();
 static bool superCenter=true;static HWND superCenterBox;static superhot::Centers superCenters;
 static void textIfChanged(HWND w,const std::wstring& text){if(!IsWindow(w))return;int n=GetWindowTextLengthW(w);std::wstring old(size_t(n)+1,L'\0');GetWindowTextW(w,&old[0],n+1);old.resize(n);if(old!=text)SetWindowTextW(w,text.c_str());}
@@ -125,8 +136,8 @@ static int clickGameWidth=0,clickGameHeight=0;static DWORD clickLoggedAt=0;stati
 static bool physicalLeftDown=false;static bool autoStart=true,autoPaused=false,focusRefresh=true,wasInside=false;static HWND autoStartBox,observedForeground;static DWORD lastAutoCheck=0,lastWindowCheck=0;static int refreshTries=0;static DWORD refreshAt=0;
 static bool hookStartupPending=false;static DWORD hookStartupAttemptAt=0;
 static LARGE_INTEGER freq;static bool fallback=false;static int modeId=0;static std::wstring lastStatus;
-// All timeline decoding completes before game connection. Playback owns a
-// fixed resident bank, so no cache eviction, disk reads or decode jobs run in a match.
+// Drawing only reads a resident bank. Missing observed edges are queued for
+// a separate, low-priority process; disk loading/decoding stays in its worker.
 static std::map<unsigned,std::shared_ptr<playback::Timeline>> motionCache;
 static std::vector<motion::Image> displayCanvases;
 static std::vector<playback::Frame> displayFrames;
@@ -134,12 +145,14 @@ static playback::RasterCache rasterCache;
 static std::shared_ptr<playback::Timeline> activeMotion;
 struct PlaybackBank {
  std::map<unsigned,std::shared_ptr<playback::Timeline>> timelines;
- unsigned missing=0;size_t bytes=0;
+ unsigned missing=0;size_t bytes=0;bool replace=true;
 };
 static std::future<PlaybackBank> playbackJob;
 static std::shared_ptr<std::atomic<bool>> playbackCancel;
 static std::shared_ptr<std::atomic<unsigned>> playbackProgress;
 static bool playbackReady=false,playbackPending=false;
+static bool playbackFullPending=true;
+static std::set<unsigned> playbackPendingPairs;
 static unsigned motionEpoch=0,playbackEpoch=0,playbackTotal=0;
 static size_t motionBytes=0;static DWORD playbackUiAt=0;
 static int previewStart=-1,previewCount=0;
@@ -155,6 +168,7 @@ static bool sampleHotspotEstimated=false;
 static DWORD lastSampleProbeAt=0;
 static bool usingHeldSample=false;
 static DWORD lastHostReadLogAt=0;static DWORD resourceRetryAt=0;static unsigned resourceTries=0;
+static bool gameResourceConfirmed=false;
 
 static std::wstring diagAnimation=L"尚未采样";
 static DWORD debugHudAt=0;
@@ -208,25 +222,38 @@ static void rebuildDisplay(){
  superCenters=superhot::prepare(displayCanvases,w,h);
 }
 static unsigned pairKey(int a,int b){return (unsigned(a)<<16)|unsigned(b);}
+static void acceptPlaybackBank(PlaybackBank&&bank){
+ bool replaced=bank.replace;
+ if(bank.replace){motionCache=std::move(bank.timelines);motionBytes=bank.bytes;}
+ else for(auto&entry:bank.timelines){auto found=motionCache.find(entry.first);const size_t old=found==motionCache.end()?0:found->second->bytes();
+  if(motionBytes-old+entry.second->bytes()<=512u*1024*1024){
+   replaced|=found!=motionCache.end();motionBytes=motionBytes-old+entry.second->bytes();motionCache[entry.first]=std::move(entry.second);}}
+ // Raster keys and the last submitted image use Frame addresses. A replaced
+ // timeline may release those addresses for reuse by a later decoding batch.
+ if(replaced){rasterCache.clear();activeMotion.reset();lastFrame=-2;lastPhase=size_t(-1);}
+}
 static void motionPoll(){
  if(playbackJob.valid()&&playbackJob.wait_for(std::chrono::seconds(0))==std::future_status::ready){
   try{auto bank=playbackJob.get();if(playbackEpoch==motionEpoch){
-   motionCache=std::move(bank.timelines);motionBytes=bank.bytes;playbackReady=true;
-   textIfChanged(prepareInfo,L"播放缓存就绪 · "+std::to_wstring(motionCache.size())+L" 段 · "+std::to_wstring(motionBytes/(1024*1024))+L" MB"+(bank.missing?L" · 缺少 "+std::to_wstring(bank.missing)+L" 段，使用原帧":L""));
+   acceptPlaybackBank(std::move(bank));
+   playbackReady=true;
+   if(!prepareProcess)textIfChanged(prepareInfo,L"播放缓存就绪 · "+std::to_wstring(motionCache.size())+L" 段 · "+std::to_wstring(motionBytes/(1024*1024))+L" MB"+(bank.missing?L" · 未缓存的动画在使用时后台生成":L""));
   }}catch(...){if(playbackEpoch==motionEpoch){playbackReady=true;textIfChanged(prepareInfo,L"播放缓存不可用，继续显示已验证原帧");}}
  }
  if(playbackPending&&!playbackJob.valid()&&displayLoaded){
-  playbackPending=false;playbackEpoch=motionEpoch;playbackTotal=unsigned(allowedPairs.size());
-  auto frames=displayCanvases;auto pairs=allowedPairs;
-  auto path=std::filesystem::path(profilePath)/L"timelines";
+  playbackPending=false;playbackEpoch=motionEpoch;const bool replace=playbackFullPending;
+  auto frames=displayCanvases;auto pairs=replace?allowedPairs:playbackPendingPairs;
+  playbackFullPending=false;playbackPendingPairs.clear();playbackTotal=unsigned(pairs.size());
+  auto path=std::filesystem::path(workProfile)/L"timelines";
+  auto legacy=std::filesystem::path(profilePath)/L"timelines";
   auto base=std::filesystem::path(root)/L"assets"/L"timelines";
   int w=displayAsset.w,h=displayAsset.h;
   playbackCancel=std::make_shared<std::atomic<bool>>(false);
   playbackProgress=std::make_shared<std::atomic<unsigned>>(0);
   auto cancel=playbackCancel;auto progress=playbackProgress;
-  playbackJob=std::async(std::launch::async,[frames=std::move(frames),pairs=std::move(pairs),w,h,path,base,cancel,progress]()mutable{
+  playbackJob=std::async(std::launch::async,[frames=std::move(frames),pairs=std::move(pairs),w,h,path,legacy,base,cancel,progress,replace]()mutable{
    SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);
-   PlaybackBank bank;
+   PlaybackBank bank;bank.replace=replace;
    for(unsigned key:pairs){
     if(cancel->load())break;
     unsigned a=key>>16,b=key&65535;
@@ -236,6 +263,7 @@ static void motionPoll(){
      // 129 display slots: <=1.57ms spacing even for a 200ms animation.
      // Decode and validate every stored sample; retain exact precomputed images.
      if(precomputed::load(path/name,decoded,frames[a],frames[b],w,h,129)||
+        (legacy!=path&&precomputed::load(legacy/name,decoded,frames[a],frames[b],w,h,129))||
         (base!=path&&precomputed::load(base/name,decoded,frames[a],frames[b],w,h,129))){
       auto timeline=std::make_shared<playback::Timeline>(playback::Timeline::pack(decoded));
       if(bank.bytes+timeline->bytes()<=512u*1024*1024){bank.bytes+=timeline->bytes();bank.timelines[key]=std::move(timeline);}
@@ -248,7 +276,7 @@ static void motionPoll(){
   });
  }
  if(!playbackReady&&playbackProgress&&GetTickCount()-playbackUiAt>=250){
-  playbackUiAt=GetTickCount();std::wstring progress=L"准备播放缓存 "+std::to_wstring(playbackProgress->load())+L" / "+std::to_wstring(playbackTotal)+L"，完成后自动连接";
+  playbackUiAt=GetTickCount();std::wstring progress=L"后台加载播放缓存 "+std::to_wstring(playbackProgress->load())+L" / "+std::to_wstring(playbackTotal)+L"，期间使用原帧";
   textIfChanged(statusw,progress);textIfChanged(prepareInfo,progress);
  }
 }
@@ -508,7 +536,7 @@ static void visibilityDiagnostic(const wchar_t* reason,DWORD foregroundPid=0){
  log(detail);status(detail);
 }
 
-static void loadCache(){bridgeFrame.clear();lanboStream.reset();streamShapeGate.reset();fallbackTracker.reset();fallbackDefs.clear();timing.clear();activeMotion.reset();previewStart=-1;previewCount=0;loaded=false;try{original=file(cacheKey+L"\\original.sha");asset=decode(original);Bytes pal=file(cacheKey+L"\\palette.bgra");if(pal.size()!=sizeof(palette))return;memcpy(palette,pal.data(),sizeof(palette));loaded=true;lastFrame=-2;if(displayLoaded)rebuildDisplay();}catch(...){}}
+static void loadCache(){bridgeFrame.clear();lanboStream.reset();streamShapeGate.reset();fallbackTracker.reset();fallbackDefs.clear();timing.clear();activeMotion.reset();previewStart=-1;previewCount=0;loaded=false;gameResourceConfirmed=false;try{original=file(cacheKey+L"\\original.sha");asset=decode(original);Bytes pal=file(cacheKey+L"\\palette.bgra");if(pal.size()!=sizeof(palette))return;memcpy(palette,pal.data(),sizeof(palette));palette[0]=0;loaded=true;lastFrame=-2;if(displayLoaded){syncDefaultDisplay();resetPrepared(false);}}catch(...){}}
 static bool selectedReaderMatches(const external::targetselection::Policy& choice,const external::ReadSession& reader){
  const auto connection=reader.connectionIdentity();
  if(!choice.selectedPid||!choice.selectedCreation||!connection||connection->pid!=choice.selectedPid||!connection->alive())return false;
@@ -655,7 +683,7 @@ static bool hookStart(bool hide=true){
  shared->sampledFrame=-1;shared->sampledFirst=-1;
  shared->sampledHotX=-1;shared->sampledHotY=-1;
  shared->cursorCanvasW=asset.w;shared->cursorCanvasH=asset.h;shared->cursorFrameCount=LONG(asset.frames.size());
- shared->sampledCursorID=-1;shared->resourceRequest=1;resourceTries=1;resourceRetryAt=GetTickCount()+5000;
+ shared->sampledCursorID=-1;shared->resourceRequest=1;resourceTries=1;resourceRetryAt=GetTickCount()+5000;gameResourceConfirmed=false;
  shared->gameWindow=(DWORD)(uintptr_t)game;
  const auto delivery=cursorpresentation::delivery(nativeGameRefresh,noCursorMode,mappedCursorPresentation,mode==L"hide",false);
  shared->nativeBlank=delivery.blank;
@@ -780,7 +808,7 @@ static void start(){if(!playbackReady){status(L"准备播放缓存，完成后�
  // v1.2.7: arm native HideCursor IMMEDIATELY as requested. The bridge
  // conditionally re-hides if game ShowCursor changes its internal ref count.
  if(mode==L"hide"){try{if(!hookStart())return;}catch(...){hookStop();throw;}}
- else if(asset.frames.size()<517){try{if(!hookStart(false))return;}catch(const std::exception& e){hookStop();log(L"YR resource probe unavailable: "+widen(e.what()));}}
+ else {try{if(!hookStart(false))return;}catch(const std::exception& e){hookStop();log(L"YR resource probe unavailable: "+widen(e.what()));}}
  hookStartupPending=false;nativeStartAt=GetTickCount();lastNativePublishAt=0;nativeInvisibleAt=0;hideConfirmed=false;detectAres();burst.cancel();tween.reset();timing.resetObservation();activeMotion.reset();running=true;lastFrame=-2;lastPhase=size_t(-1);status(L"已连接游戏");}
 static void browseGame(){
  BROWSEINFOW bi={};bi.hwndOwner=mainw;bi.lpszTitle=L"选择包含 gamemd.exe、gamemd-spawn.exe 或 gamemd-ares.exe 的游戏文件夹";bi.ulFlags=BIF_RETURNONLYFSDIRS|BIF_NEWDIALOGSTYLE;
@@ -851,17 +879,18 @@ static void pollOriginalResource(){
   Asset captured=decode(bytes);if(captured.w!=55||captured.h!=43||captured.frames.size()<450)fail("Unsupported original YR cursor layout");
   bool visible=false;for(const auto& f:captured.frames)for(auto pixel:f.pixels)if(pixel){visible=true;break;}
   if(!visible)fail("Original cursor resource is entirely transparent");
-  Bytes canonical=encode(captured,false);
-  if(canonical!=original){
+  Bytes canonical=encode(captured,false);std::fill(colors.begin(),colors.begin()+4,uint8_t(0));
+  if(canonical!=original||std::memcmp(colors.data(),palette,1024)){
    // Remember an exact manual blank before extending its source to 517 frames.
    // No game file is changed by automatic source discovery.
    if(manuallyBlankSHA())save(cacheKey+L"\\legacy-transparent.sha",file(gameDir+L"\\mouse.sha"));
    save(cacheKey+L"\\original.sha",canonical);save(cacheKey+L"\\palette.bgra",colors);
    streamShapeGate.reset();original=std::move(canonical);asset=std::move(captured);memcpy(palette,colors.data(),1024);palette[0]=0;loaded=true;
-   bridgeFrame.clear();fallbackTracker.reset();rebuildDisplay();
+   bridgeFrame.clear();fallbackTracker.reset();syncDefaultDisplay();resetPrepared(false);
    if(!exists(gameDir+L"\\mouse.sha.cursor-preview-state"))save(cacheKey+L"\\transparent.sha",encode(asset,true));
   }
   shared->cursorFrameCount=LONG(asset.frames.size());shared->cursorCanvasW=asset.w;shared->cursorCanvasH=asset.h;
+  gameResourceConfirmed=true;
   log(L"原始光标资源已缓存 · "+std::to_wstring(asset.frames.size())+L" 帧");
  }catch(const std::exception& e){log(L"Original resource rejected: "+widen(e.what()));}
 }
@@ -1133,6 +1162,8 @@ static void draw(){
  }
  if(predictedNext>=0&&!allowedPairs.count(pairKey(frame,predictedNext)))predictedNext=-1;
  if(smoothing&&predictedNext>=0&&!activeMotion){auto it=motionCache.find(pairKey(frame,predictedNext));if(it!=motionCache.end())activeMotion=it->second;}
+ if(smoothing&&predictedNext>=0&&!activeMotion&&(!profileId.empty()||gameResourceConfirmed))
+  prepareQueue.request(pairKey(frame,predictedNext),displayAsset.frames.size());
  uint32_t animationElapsedMs=animationNow-timing.changedAt;
  bool stalled=animationElapsedMs>transitionMs*2u;
  size_t phaseIndex=size_t(-1);
@@ -1428,9 +1459,12 @@ static bool liveControl(HWND h){return h==scaleBox||h==offsetXBox||h==offsetYBox
 // Previews are rendered from local game resource cache in a separate process.
 // It never injects/reads the game; user can scrub/compare 1000Hz samples offline.
 static void previewCurrent(){
- std::wstring page=profilePath+L"\\preview.html";
- if(!exists(page))fail("先完成此光标包的预处理，再打开动画预览");
- ShellExecuteW(mainw,L"open",page.c_str(),NULL,NULL,SW_SHOWNORMAL);
+ if(!displayLoaded||workProfile.empty())fail("光标原图和色盘尚未就绪，请先选择图案或连接游戏");
+ const std::wstring page=workProfile+L"\\preview.html";
+ if(exists(page)){ShellExecuteW(mainw,L"open",page.c_str(),NULL,NULL,SW_SHOWNORMAL);return;}
+ previewQueued=true;prepareQueue.reset();
+ textIfChanged(prepareInfo,L"正在准备本地图案预览，完成后自动打开；游戏可继续使用");
+ if(!prepareProcess)serviceAutomaticPrepare();
 }
 // Only the main action changes enablement. When enabled the existing autoTick
 // resolves the game in the background; clicking must not block on attach/Hook.
@@ -1481,10 +1515,37 @@ static void readPairs(){
  std::ifstream f(p);if(!f)f.open(std::filesystem::path(root)/L"assets"/L"pairs.txt");
  int a,b;while(f>>a>>b)if(a>=0&&b>=0&&a<450&&b<450&&a!=b)allowedPairs.insert(pairKey(a,b));
 }
-static void resetPrepared(){
- if(running)stop();
+static void readPreparedPairs(){
+ // pairs.txt is derived from groups.json by the worker, never part of the
+ // immutable source identity. A completed cache may add supported 517-frame
+ // groups; a missing generated index retains the installed fallback index.
+ std::ifstream f(std::filesystem::path(workProfile)/L"pairs.txt");if(!f)return;
+ std::set<unsigned> pairs;int a,b;
+ for(;;){f>>std::ws;if(f.eof())break;
+  if(!(f>>a>>b)||a<0||b<0||size_t(a)>=displayAsset.frames.size()||size_t(b)>=displayAsset.frames.size()||a==b)return;
+  pairs.insert(pairKey(a,b));if(pairs.size()>cursorondemand::MaxPairs)return;}
+ if(f.bad())return;
+ allowedPairs=std::move(pairs);
+}
+static void syncDefaultDisplay(){
+ if(!profileId.empty()||!loaded)return;
+ displayAsset=asset;displaySourceColors.resize(sizeof(palette));std::memcpy(displaySourceColors.data(),palette,sizeof(palette));
+ std::fill(displaySourceColors.begin(),displaySourceColors.begin()+4,uint8_t(0));
+ std::memcpy(displayPalette,displaySourceColors.data(),sizeof(displayPalette));
+ for(auto&c:displayPalette)c=motion::premultiplyRGB(c&0xffffff,int(c>>24));
+ displayLoaded=true;
+}
+static void resetPrepared(bool stopCurrent){
+ if(stopCurrent&&running)stop();
+ if(prepareProcess&&prepareAutomatic)cancelPrepare();
  ++motionEpoch;if(playbackCancel)playbackCancel->store(true);
- playbackReady=false;playbackPending=true;rasterCache.clear();motionCache.clear();motionBytes=0;activeMotion.reset();lastPhase=size_t(-1);lastFrame=-2;
+ prepareQueue.reset();previewQueued=false;
+ workOriginal=encode(displayAsset,false);workColors=displaySourceColors;
+ const auto groups=profilePath+L"\\groups.json";
+ workGroups=file(exists(groups)?groups:root+L"\\assets\\groups.json");
+ workProfile=root+L"\\cache\\cursor-dis-v1\\"+cursorondemand::sourceKey(workOriginal,workColors,workGroups);materializedProfile.clear();
+ readPreparedPairs();
+ playbackReady=displayLoaded;playbackPending=playbackFullPending=true;playbackPendingPairs.clear();rasterCache.clear();motionCache.clear();motionBytes=0;activeMotion.reset();lastPhase=size_t(-1);lastFrame=-2;
  rebuildDisplay();
 }
 static void refreshStyleList(){
@@ -1507,7 +1568,7 @@ static void chooseStyle(){
  if(candidate.w!=55||candidate.h!=43||candidate.frames.size()<450||colors.size()!=1024)fail("Style must use the compatible 450+ frame / 55x43 layout and a 1024-byte BGRA palette");
  DWORD cp[256];memcpy(cp,colors.data(),1024);cp[0]=0;
  for(auto& c:cp){int a=(c>>24)&255;c=motion::premultiplyRGB(c&0xffffff,a);}
- displayAsset=std::move(candidate);memcpy(displayPalette,cp,1024);displayLoaded=true;profileId=id;profilePath=folder;
+ displayAsset=std::move(candidate);displaySourceColors=colors;std::fill(displaySourceColors.begin(),displaySourceColors.begin()+4,uint8_t(0));memcpy(displayPalette,cp,1024);displayLoaded=true;profileId=id;profilePath=folder;syncDefaultDisplay();
  WritePrivateProfileStringW(L"Cursor",L"Profile",id.c_str(),ini().c_str());readPairs();resetPrepared();
  textIfChanged(settingsHint,L"图案已切换并自动保存");
  textIfChanged(prepareInfo,prepareProcess?L"预处理仍在后台进行；切换图案不影响原任务":L"");
@@ -1567,10 +1628,29 @@ static bool cancelPrepare(){
 }
 static void closePrepare(){
  if(!prepareProcess)return;
- cancelPrepare();CloseHandle(prepareProcess);prepareProcess=nullptr;prepareCancelling=false;
+ prepareQueue.block();previewQueued=false;cancelPrepare();CloseHandle(prepareProcess);prepareProcess=nullptr;prepareCancelling=false;
+}
+static void materializeWorkProfile(){
+ if(workProfile.empty()||workOriginal.empty()||workColors.size()!=1024||workGroups.empty())
+  fail("光标原图、色盘或动画分组尚未就绪");
+ if(materializedProfile==workProfile)return;
+ std::filesystem::create_directories(std::filesystem::path(workProfile));
+ auto input=[&](const wchar_t*name,const Bytes&bytes){
+  const std::wstring target=workProfile+L"\\"+name;
+  if(exists(target)){if(file(target)!=bytes)fail("光标缓存身份不匹配，请保留现有文件并更换缓存目录后重试");return;}
+  static unsigned serial=0;
+  const std::wstring temporary=target+L".source-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64())+L"-"+std::to_wstring(++serial);
+  save(temporary,bytes);
+  if(!MoveFileExW(temporary.c_str(),target.c_str(),MOVEFILE_WRITE_THROUGH)){
+   DeleteFileW(temporary.c_str());
+   if(!exists(target)||file(target)!=bytes)fail("无法保存光标计算输入，请检查缓存目录权限后重试");
+  }
+ };
+ input(L"original.sha",workOriginal);input(L"palette.bgra",workColors);
+ input(L"groups.json",workGroups);materializedProfile=workProfile;
 }
 static std::wstring prepareTaskDirectory(){
- const std::wstring parent=profilePath+L"\\.preprocess";
+ const std::wstring parent=workProfile+L"\\.preprocess";
  if(!CreateDirectoryW(parent.c_str(),NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)
   fail("无法创建预处理任务目录，请检查光标包目录的写入权限");
  static unsigned sequence=0;
@@ -1584,15 +1664,24 @@ static std::wstring prepareTaskDirectory(){
 }
 static void beginPrepare(){
  if(prepareProcess){
+  prepareQueue.block();previewQueued=false;
   textIfChanged(prepareInfo,cancelPrepare()?L"正在取消准备或预处理，已完成内容会保留":L"取消失败：无法写入光标包目录，请检查目录权限后重试");return;
  }
+ prepareQueue.reset();previewQueued=false;materializedProfile.clear();
+ launchPrepare(cursorondemand::Mode::All,{},false);
+}
+static void launchPrepare(cursorondemand::Mode mode,const std::vector<unsigned>&pairs,bool automatic){
+ if(prepareProcess)return;
+ materializeWorkProfile();
  const std::wstring program=preparePowerShell(),script=root+L"\\engine\\prepare_runtime.ps1";
  if(!exists(script)||!exists(root+L"\\engine\\precompute.py"))fail("预处理组件缺失，请重新解压完整包或完整覆盖更新包");
  // A closing tool may still have a child observing its cancellation flag.
  // Every attempt owns a new directory; never clear or reuse an older task's
  // progress/cancel files, including after a quick close and reopen.
  const std::wstring task=prepareTaskDirectory();
- preparedProfile=profilePath;prepareStatus=task+L"\\progress.ini";prepareCancel=task+L"\\cancel.flag";
+ preparedProfile=workProfile;prepareStatus=task+L"\\progress.ini";prepareCancel=task+L"\\cancel.flag";
+ const std::string request=cursorondemand::requestJson(mode,pairs);
+ save(task+L"\\request.json",Bytes(request.begin(),request.end()));
  // Only this app-owned subprocess uses the embedding execution-policy mode.
  // User/machine settings are untouched; enforced Group Policy still applies.
  const std::wstring command=prepareArgument(program)+L" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "+prepareArgument(script)+
@@ -1601,12 +1690,23 @@ static void beginPrepare(){
  std::vector<wchar_t> args(command.begin(),command.end());args.push_back(0);STARTUPINFOW si{};si.cb=sizeof(si);PROCESS_INFORMATION pi{};
  if(!CreateProcessW(program.c_str(),args.data(),NULL,NULL,FALSE,CREATE_NO_WINDOW,NULL,root.c_str(),&si,&pi))
   fail("无法启动依赖准备，请检查 Windows PowerShell、目录权限和系统策略后重试");
- CloseHandle(pi.hThread);prepareProcess=pi.hProcess;prepareCancelling=false;
+ CloseHandle(pi.hThread);prepareProcess=pi.hProcess;prepareCancelling=false;prepareAutomatic=automatic;preparedMode=mode;preparedEpoch=motionEpoch;preparedPairs=pairs;
  SetPriorityClass(prepareProcess,BELOW_NORMAL_PRIORITY_CLASS);textIfChanged(prepareButton,L"取消准备");
  textIfChanged(prepareInfo,L"正在检查预处理依赖，缺失时从公网下载；游戏与界面可继续使用…");
 }
+static void serviceAutomaticPrepare(){
+ if(prepareProcess||!displayLoaded||workProfile.empty())return;
+ try{
+  if(previewQueued){previewQueued=false;launchPrepare(cursorondemand::Mode::Preview,{},false);return;}
+  if(!running||!smoothing||playbackPending||playbackJob.valid()||prepareQueue.empty()||prepareQueue.blocked()||
+     (profileId.empty()&&!gameResourceConfirmed))return;
+  prepareQueue.discardReady([](unsigned pair){return motionCache.count(pair)!=0;});
+  const auto pairs=prepareQueue.take();if(!pairs.empty())launchPrepare(cursorondemand::Mode::Pairs,pairs,true);
+ }catch(const std::exception&e){prepareQueue.block();previewQueued=false;log(L"按需光标缓存准备失败："+widen(e.what()));
+  textIfChanged(prepareButton,L"重试预处理");textIfChanged(prepareInfo,L"暂时使用原帧："+widen(e.what())+L"；可点击重试预处理");}
+}
 static void pollPrepare(){
- if(!prepareProcess)return;static DWORD last=0;DWORD now=GetTickCount();if(uint32_t(now-last)<400)return;last=now;
+ if(!prepareProcess){serviceAutomaticPrepare();return;}static DWORD last=0;DWORD now=GetTickCount();if(uint32_t(now-last)<400)return;last=now;
  // Never wait for downloads, dependency checks or preprocessing on the UI thread.
  const DWORD wait=WaitForSingleObject(prepareProcess,0);DWORD code=1;
  if(wait==WAIT_OBJECT_0&&!GetExitCodeProcess(prepareProcess,&code))code=1;
@@ -1630,9 +1730,16 @@ static void pollPrepare(){
  }
  CloseHandle(prepareProcess);prepareProcess=nullptr;prepareCancelling=false;textIfChanged(prepareButton,L"预处理补帧");
  const bool success=wait==WAIT_OBJECT_0&&code==0&&!wcscmp(state,L"done");
- if(success){if(profilePath==preparedProfile){readPairs();resetPrepared();}textIfChanged(prepareInfo,L"预处理完成 · "+std::to_wstring(total)+L" 段已可直接播放");}
- else if(wait==WAIT_OBJECT_0&&!wcscmp(state,L"cancelled"))textIfChanged(prepareInfo,L"已取消；已完成内容保留，可再次点击预处理");
+ const bool current=workProfile==preparedProfile&&preparedEpoch==motionEpoch;
+ if(success){
+  if(current){readPreparedPairs();playbackPending=true;if(preparedMode==cursorondemand::Mode::Pairs)playbackPendingPairs.insert(preparedPairs.begin(),preparedPairs.end());
+   else{prepareQueue.reset();playbackFullPending=true;}
+   if(preparedMode==cursorondemand::Mode::Preview){const auto page=workProfile+L"\\preview.html";if(exists(page))ShellExecuteW(mainw,L"open",page.c_str(),NULL,NULL,SW_SHOWNORMAL);}}
+  textIfChanged(prepareInfo,L"预处理完成 · "+std::to_wstring(total)+L" 段已缓存，正在后台加载");
+ }
+ else if(wait==WAIT_OBJECT_0&&!wcscmp(state,L"cancelled")){if(current)prepareQueue.block();textIfChanged(prepareInfo,L"已取消；已完成内容保留，可再次点击预处理");}
  else{
+  if(current){prepareQueue.block();previewQueued=false;materializedProfile.clear();}
   textIfChanged(prepareButton,L"重试预处理");
   if(!wcscmp(errorKind,L"dependency")||dependency)
    textIfChanged(prepareInfo,std::wstring(L"依赖准备失败：")+(*message?message:L"请检查网络和目录权限")+L"；可点击重试预处理");

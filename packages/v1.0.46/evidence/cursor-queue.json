@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "build_command": [
+    "c++",
+    "-std=c++17",
+    "-O1",
+    "-g",
+    "-fsanitize=undefined",
+    "-fno-sanitize-recover=all",
+    "/workspace/scratch/40121bc881b8/ra2-stable-146/source/assist/tests/cursor_ondemand.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/release-1.0.46/checks/cursor-queue/fixture"
+  ],
+  "run_command": [
+    "/workspace/scratch/40121bc881b8/release-1.0.46/checks/cursor-queue/fixture"
+  ],
+  "output": "{\"checks\":674,\"failures\":0,\"scope\":\"actual bounded queue, request JSON and source identity; no Windows or game execution\"}\n",
+  "windows_executed": false,
+  "game_tested": false,
+  "source_bindings": [
+    {
+      "path": "source/assist/tests/cursor_ondemand.cpp",
+      "sha256": "9acf474cc79a46162b81e3bcdcdc70ed808aaa59a692c3bd5241c25cd367e809"
+    },
+    {
+      "path": "source/cursor/source/ondemand.h",
+      "sha256": "e86e6f571af085def49d3a70d59fa5d5b060d8fea8f6c688386abf861487d008"
+    }
+  ]
+}

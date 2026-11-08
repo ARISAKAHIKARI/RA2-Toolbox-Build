@@ -3,6 +3,7 @@ import argparse,json,struct,os,sys,traceback,time
 from pathlib import Path
 import numpy as np
 import dis_render as engine
+from preview_builder import valid_pack,atomic_text,checkpoint,pack_digest
 
 def decode(path):
  b=Path(path).read_bytes()
@@ -62,9 +63,7 @@ def bgra(im):
  return ((a<<24)|(rgb[:,:,0]<<16)|(rgb[:,:,1]<<8)|rgb[:,:,2]).astype('<u4').reshape(-1)
 
 def digest(a,b,w=55,h=43):
- v=1469598103934665603
- for q in struct.pack('<II',w,h)+a.tobytes()+b.tobytes():v=((v^q)*1099511628211)&0xffffffffffffffff
- return v
+ return pack_digest(a,b,w,h)
 def var(v):
  o=bytearray()
  while v>=128:o.append((v&127)|128);v>>=7
@@ -100,27 +99,61 @@ def validate_groups(groups,frame_count=450):
   pairs.update((i,i+1) for i in range(start,start+count-1))
   if loop and count>1:pairs.add((start+count-1,start))
  return sorted(pairs)
+def request_pairs(path,canonical,frame_count):
+ """A task selects work; the profile's canonical transition table stays whole."""
+ path=Path(path)
+ if not path.exists():return canonical,True
+ raw=path.read_bytes()
+ if len(raw)>65536:raise ValueError('Precompute request is too large')
+ def unique(items):
+  out={}
+  for key,value in items:
+   if key in out:raise ValueError('Duplicate request field')
+   out[key]=value
+  return out
+ value=json.loads(raw.decode('utf-8-sig'),object_pairs_hook=unique)
+ if type(value) is not dict or set(value)-{'schema','mode','pairs'}:raise ValueError('Invalid precompute request fields')
+ if type(value.get('schema')) is not int or value['schema']!=1:raise ValueError('Unsupported precompute request schema')
+ mode=value.get('mode')
+ if type(mode) is not str or mode not in ('pairs','all','preview'):raise ValueError('Invalid precompute request mode')
+ if mode!='pairs':
+  if 'pairs' in value:raise ValueError('Pairs are only valid in pairs mode')
+  return canonical,mode=='preview'
+ pairs=value.get('pairs')
+ if type(pairs) is not list or not 1<=len(pairs)<=512:raise ValueError('Request needs 1 to 512 pairs')
+ out=[];seen=set()
+ for pair in pairs:
+  if type(pair) is not list or len(pair)!=2 or any(type(i) is not int for i in pair):raise ValueError('Pair indices must be integers')
+  a,b=pair
+  if not 0<=a<frame_count or not 0<=b<frame_count or a==b:raise ValueError('Pair outside source frames or identical indices')
+  if (a,b) not in seen:seen.add((a,b));out.append((a,b))
+ return out,False
 def progress(path,done,total,state,message=''):
  text=f'[Progress]\nDone={done}\nTotal={total}\nState={state}\nMessage={message.replace(chr(10)," ")}\n'
  p=Path(path);p.parent.mkdir(parents=True,exist_ok=True);t=p.with_suffix('.tmp');t.write_text(text,encoding='utf-8');os.replace(t,p)
 def run(args):
- profile=Path(args.profile);frames=decode(profile/'original.sha');pal=palette(profile/'palette.bgra');groups=json.loads((profile/'groups.json').read_text(encoding='utf-8-sig'));pairs=validate_groups(groups,len(frames))
- engine.configure(frames,pal);total=len(pairs)
+ profile=Path(args.profile);frames=decode(profile/'original.sha');pal=palette(profile/'palette.bgra');groups=json.loads((profile/'groups.json').read_text(encoding='utf-8-sig'));canonical=validate_groups(groups,len(frames))
+ pairs,preview=request_pairs(Path(args.status).with_name('request.json'),canonical,len(frames));total=len(pairs);configured=False
+ if args.cancel and Path(args.cancel).exists():progress(args.status,0,total,'cancelled');return
+ atomic_text(profile/'pairs.txt',''.join(f'{a} {b}\n' for a,b in canonical),encoding='ascii')
  for j,(a,b) in enumerate(pairs):
   if args.cancel and Path(args.cancel).exists():progress(args.status,j,total,'cancelled');return
   progress(args.status,j,total,'running')
-  first=bgra(pal[frames[a]]);last=bgra(pal[frames[b]]);data=None if np.array_equal(first,last) else engine.setup(a,b)
+  first=bgra(pal[frames[a]]);last=bgra(pal[frames[b]]);target=profile/'timelines'/f'{a}-{b}.dis'
+  if valid_pack(target,first,last,args.cancel):continue
+  identical=np.array_equal(first,last);data=None
+  if not identical:
+   if not configured:engine.configure(frames,pal);configured=True
+   data=engine.setup(a,b)
   def images():
-   if np.array_equal(first,last):
-    for _ in range(1001):yield first
-   else:
-    for k in range(1001):
-     if k%100==0 and args.cancel and Path(args.cancel).exists():raise InterruptedError('Cancelled')
-     yield bgra(engine.render(data,k/1000))
-  write_pack(profile/'timelines'/f'{a}-{b}.dis',images(),first,last)
- from preview_builder import build
- build(profile,frames,pal,groups,args.cancel)
- (profile/'pairs.txt').write_text(''.join(f'{a} {b}\n' for a,b in pairs),encoding='ascii')
+   for k in range(1001):
+    if k%100==0:checkpoint(args.cancel)
+    yield first if identical else bgra(engine.render(data,k/1000))
+  write_pack(target,images(),first,last)
+ if preview:
+  from preview_builder import build
+  build(profile,frames,pal,groups,args.cancel)
+ checkpoint(args.cancel)
  progress(args.status,total,total,'done')
 if __name__=='__main__':
  parser=argparse.ArgumentParser();parser.add_argument('--profile',required=True);parser.add_argument('--status',required=True);parser.add_argument('--cancel');args=parser.parse_args()

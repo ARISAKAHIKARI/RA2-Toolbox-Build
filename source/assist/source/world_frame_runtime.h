@@ -6,6 +6,7 @@ static worldframe::Snapshot worldFrame;
 static worldframe::Server worldFrameServer;
 static uint32_t worldFrameSerial=0;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
 static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
+static worldframe::CaptureScratch worldFrameCaptureScratch{};static std::vector<uint32_t>worldFrameCaptureRequests;
 static bool worldFrameReady=false;static worldframe::Key lastCaptureAttempt{};static bool haveCaptureAttempt=false;
 static uint64_t worldProducerGeneration=0;
 static void requestWorldRange(uint32_t at,size_t n){
@@ -28,7 +29,7 @@ public:
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
-static void retireWorldFrame(){worldFrameReady=false;haveCaptureAttempt=false;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}
+static void retireWorldFrame(){worldFrameReady=false;haveCaptureAttempt=false;worldFrameServer.retire();runtimeWorldDemands.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand){
  worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,before.scenario,before.cells,house,uint32_t(before.count),before.frame,before.session};
  if(!worldProducerGeneration){LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);worldProducerGeneration=uint64_t(stamp.QuadPart);if(!worldProducerGeneration)worldProducerGeneration=1;}
@@ -43,10 +44,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(worldFrameReady)worldFrameServer.publish(worldFrame);return worldFrameReady;
  }
  lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
- std::vector<uint32_t>requests=worldFrameServer.requests();requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
+ auto&requests=worldFrameCaptureRequests;const auto&hostRequests=worldFrameServer.requests();requests.assign(hostRequests.begin(),hostRequests.end());requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
  std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);key.serial=++worldFrameSerial;key.demand=worldFrameServer.demandRevision();worldFrame.reset(key);
- worldframe::CaptureGraph<Live>capture(worldFrame,live);bool complete=capture.capture(demand,requests);
+ worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);bool complete=capture.capture(demand,requests);
  // These checks deliberately bypass the read set. Cached self-comparison is
  // not evidence that the frame/world/House survived the acquisition boundary.
  const auto after=worldlife::capture(live);uint32_t afterHouse=0;
