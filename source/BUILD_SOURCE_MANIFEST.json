@@ -27,7 +27,7 @@
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,
-  "package_type": "Windows x64 prerelease lightweight Full and Update, same-build x86 Runtime/broker, pinned WebView2 loader; generated cursor DIS/preview and optional Python scientific runtime excluded.",
+  "package_type": "Windows x64 stable lightweight Full and Update, same-build x86 Runtime/broker, pinned WebView2 loader; generated cursor DIS/preview and optional Python scientific runtime excluded.",
   "runtime_transport_protocol": 4,
   "game_code_patching": "Prefer native events, polling and external rendering; gameplay code changes, simulation mutations and original-value CRC mirror retain explicit HIGH RISK labels. Read-only native queries, build-time display and HideCursor are not classified as HIGH RISK. Cursor tooltip repair owns validated data/vtable slots without rewriting .text; this is not a multiplayer certification.",
   "input_entry": "Windows WH_GETMESSAGE/WH_CALLWNDPROCRET; ordinary sessions use frame-counter polling, native frame notification only explicitly selected diagnostic test",
@@ -1010,6 +1010,44 @@
     "prerelease": false,
     "make_latest": true,
     "scope": "Stable release of the on-demand cursor cache and shared-sampling performance baseline. Further optimizations remain on a separate branch.",
-    "validation": "Focused release checks, full Windows-target rebuild and exact package verification are recorded in the release receipts; native Windows/game/multiplayer acceptance remains unperformed."
+    "validation": "Focused release checks, full Windows-target rebuild and exact package verification are recorded in the release receipts; native Windows/game/multiplayer acceptance remains unperformed.",
+    "historical_initial_publication": true,
+    "superseded_by_same_version_revision": "2026-11-08-depth-tooltip-performance"
+  },
+  "release_revision": "2026-11-08-depth-tooltip-performance",
+  "RevisedRelease146": {
+    "version": "1.0.46",
+    "file_version": "1.0.46.3",
+    "prerelease": false,
+    "make_latest": true,
+    "initial_public_commit": "6853f6825def318ce3b61c737de07c9603144be7",
+    "user_requested_same_release": true,
+    "scope": [
+      "Keep the public 1.0.46 label while distinguishing the revised Windows files with version 1.0.46.3.",
+      "Reuse exclusively owned ValueTask input buffers with allocation fallback; copy only validated counted input ranges and preserve mutable load composition rows, default edge values, source history and result gates.",
+      "Reuse complete AntiTheft presence decisions only for the exact world source, own House and stable feature configuration; retain complete world projection and final command checks.",
+      "Skip subscription table pruning until the earliest possible expiry while preserving the original 2ms eligibility, 250ms lifetime, wraparound, heartbeat and wire state.",
+      "Require checked building foundation and Z metadata before actor caching; commit BUILDNGZ mask state only after a complete successful actor capture, preserving legal custom and wide-building behavior.",
+      "Show native sidebar build/remaining time for Building, Unit, Infantry and Aircraft with their verified receiver layouts and read-only native query; recheck the visible cameo, type and current factory product before returning text."
+    ],
+    "focused_checks": [
+      "value_task_inputs",
+      "anti_theft_cache",
+      "subscription_deadlines",
+      "building_metadata",
+      "production_time",
+      "lightweight_package"
+    ],
+    "assist_protocol": 101,
+    "sampling_frequency_reduced": false,
+    "windows_executed": false,
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "validation": "Only executed checks bound to the final source bytes count as current evidence. Native x86 query emulation is distinct from full Windows/game execution. Complete fresh Windows-target build, static PE, exact Git tree and replacement release assets are verified separately.",
+    "remaining_work": [
+      "Missile allocator candidate revisit cost",
+      "Pinned Client snapshot ownership/page allocation",
+      "Real Windows game performance and visual acceptance"
+    ]
   }
 }

@@ -1,0 +1,20 @@
+{
+  "version": "1.0.46 revision",
+  "production_frozen": true,
+  "passed": true,
+  "production_sha256": {
+    "source/assist/source/build_time_tooltip.h": "0a94e42176b7e2cd996e8cb4d883e39e37c253085a16c50b6967821892d0e6c9",
+    "source/assist/source/build_time_types.h": "30d979ddc9cebb9a68094771a96d316b348eca5f40240c5e4af5cace82c78dcd"
+  },
+  "artifacts": {
+    "report.md": "ec222bd9b7976b18048e1f518253760c5638d939e3e851f4fe364a21fb927419",
+    "upstream-sources.json": "f47957730c842bacb177de9d593e127a7574a35627814d66c09f061f4184d5bf",
+    "final/receipt.json": "7dd84048f113f608cf632f81176aa304bfbb15a70eca4d1444fd4eda16885ce8",
+    "final/native-result.json": "30b445de87ec8b6de095f0371f37429f07ef24155dc1ed6fe959666d5f328e85",
+    "ubsan/receipt.json": "f0d3fc30f1dd2dc522c5095667a3ec3fee0ce0910175191ec7bd3b3711fc8826",
+    "ubsan/native-result.json": "30b445de87ec8b6de095f0371f37429f07ef24155dc1ed6fe959666d5f328e85",
+    "debug-consumers/result.json": "ceca8ab87d96244dfe59c0c62812cfcdf065ea9467246980f4f8ca867dd08d3c"
+  },
+  "no_raw_private_bytes_in_receipts": true,
+  "source_hashes_current": true
+}

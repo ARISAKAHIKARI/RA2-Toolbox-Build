@@ -244,7 +244,7 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
   for(int n=0;n<i.count;++n)for(int t=0;t<i.targetCount;++t){const auto&q=queries[n][t];if(q.status>0)i.edges[n][t]=missileEdgeFacts(i.sources[n].pointer,i.targets[t].pointer,q.weapon,q.close,q.airborne);}
   if(!frameRead.complete())return failed();
  }
- missileInput=i;return true;
+ compute::copyInput(missileInput,i);return true;
 }
 static bool missileControlTick(uint32_t house,int frame,DWORD now){
  pruneMissileSends(now);
@@ -266,6 +266,6 @@ static bool missileControlTick(uint32_t house,int frame,DWORD now){
  if(!outside){missileSourceCursor=nextSourceCursor;missileTargetCursor=nextTargetCursor;missileManagedCursor=nextManagedCursor;}
  const auto&i=missileInput;sh->missileSources=i.count;sh->missileTargets=i.targetCount;if(!i.count)return true;
  if(!outside)applyMissileResult(missilecompute::calculate(i),house,frame,now);
- else {InterlockedIncrement(&sh->missileInputSeq);MemoryBarrier();memcpy(&sh->missileInput,&i,sizeof i);missileSerial=compute::nextTask(sh->missileTask);missileFrames.retain(missileSerial,i,{nextSourceCursor,nextTargetCursor,nextManagedCursor});sh->missileTask=missileSerial;MemoryBarrier();InterlockedIncrement(&sh->missileInputSeq);missilePending=true;notifyHost();}
+ else {InterlockedIncrement(&sh->missileInputSeq);MemoryBarrier();compute::copyInput(sh->missileInput,i);missileSerial=compute::nextTask(sh->missileTask);missileFrames.retain(missileSerial,i,{nextSourceCursor,nextTargetCursor,nextManagedCursor});sh->missileTask=missileSerial;MemoryBarrier();InterlockedIncrement(&sh->missileInputSeq);missilePending=true;notifyHost();}
  return true;
 }

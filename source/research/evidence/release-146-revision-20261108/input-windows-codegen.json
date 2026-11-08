@@ -1,0 +1,205 @@
+{
+  "passed": true,
+  "toolchain": "Zig 0.13.0",
+  "targets": [
+    {
+      "target": "x86-windows-gnu",
+      "assembly_sha256": "752a19aec27a5cb0bb79dc1daa3f901637df871d78de570726199fe1d96cf1bc",
+      "build_exit_code": 0,
+      "chkstk_sites": 0,
+      "functions": [
+        {
+          "symbol": "_copyUnload",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 0,
+          "memset_sites": 0
+        },
+        {
+          "symbol": "_copyMissile",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 0,
+          "memset_sites": 0
+        },
+        {
+          "symbol": "_copyLoad",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 0,
+          "memset_sites": 0
+        },
+        {
+          "symbol": "_newMissile",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 0,
+          "memset_sites": 1
+        },
+        {
+          "symbol": "_newUnload",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 0,
+          "memset_sites": 10
+        },
+        {
+          "symbol": "_newLoad",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 0,
+          "memset_sites": 18
+        },
+        {
+          "symbol": "__ZN6assist7compute9InputCopyINS_13unloadcompute5InputEE4copyERS3_RKS3_",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 5,
+          "memset_sites": 0
+        },
+        {
+          "symbol": "__ZN6assist7compute9InputCopyINS_14missilecompute5InputEE4copyERS3_RKS3_",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 5,
+          "memset_sites": 0
+        },
+        {
+          "symbol": "__ZN6assist7compute9InputCopyINS0_9LoadInputEE4copyERS2_RKS2_",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 8,
+          "memset_sites": 0
+        }
+      ],
+      "command": [
+        "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+        "c++",
+        "-target",
+        "x86-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-fno-builtin",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-fstack-usage",
+        "-S",
+        "-masm=intel",
+        "/workspace/scratch/40121bc881b8/performance-147/input/windows/probe.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-147/input/windows/x86.s"
+      ]
+    },
+    {
+      "target": "x86_64-windows-gnu",
+      "assembly_sha256": "c9d22cfdd8a2c427410f7f4f2034354b4034daf144c2b2a086ca7ad1de46b595",
+      "build_exit_code": 0,
+      "chkstk_sites": 0,
+      "functions": [
+        {
+          "symbol": "copyUnload",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 0,
+          "memset_sites": 0
+        },
+        {
+          "symbol": "copyMissile",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 0,
+          "memset_sites": 0
+        },
+        {
+          "symbol": "copyLoad",
+          "largest_explicit_stack_subtraction_bytes": 0,
+          "memcpy_sites": 0,
+          "memset_sites": 0
+        },
+        {
+          "symbol": "newMissile",
+          "largest_explicit_stack_subtraction_bytes": 32,
+          "memcpy_sites": 0,
+          "memset_sites": 1
+        },
+        {
+          "symbol": "newUnload",
+          "largest_explicit_stack_subtraction_bytes": 32,
+          "memcpy_sites": 0,
+          "memset_sites": 10
+        },
+        {
+          "symbol": "newLoad",
+          "largest_explicit_stack_subtraction_bytes": 32,
+          "memcpy_sites": 0,
+          "memset_sites": 10
+        },
+        {
+          "symbol": "_ZN6assist7compute9InputCopyINS_13unloadcompute5InputEE4copyERS3_RKS3_",
+          "largest_explicit_stack_subtraction_bytes": 40,
+          "memcpy_sites": 5,
+          "memset_sites": 0
+        },
+        {
+          "symbol": "_ZN6assist7compute9InputCopyINS_14missilecompute5InputEE4copyERS3_RKS3_",
+          "largest_explicit_stack_subtraction_bytes": 40,
+          "memcpy_sites": 5,
+          "memset_sites": 0
+        },
+        {
+          "symbol": "_ZN6assist7compute9InputCopyINS0_9LoadInputEE4copyERS2_RKS2_",
+          "largest_explicit_stack_subtraction_bytes": 32,
+          "memcpy_sites": 8,
+          "memset_sites": 0
+        }
+      ],
+      "command": [
+        "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-fno-builtin",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-fstack-usage",
+        "-S",
+        "-masm=intel",
+        "/workspace/scratch/40121bc881b8/performance-147/input/windows/probe.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-147/input/windows/x86_64.s"
+      ]
+    }
+  ],
+  "source_bindings": [
+    {
+      "path": "source/assist/source/compute_input_copy.h",
+      "sha256": "71dfa9f605c10b3ccf058b1372370950b0b5e4a1672542cfe3fe3d4e888ca7b7"
+    },
+    {
+      "path": "source/assist/source/value_task.h",
+      "sha256": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204"
+    }
+  ],
+  "heap_input_sizes": {
+    "unload": 4485140,
+    "missile": 1066008,
+    "load": 843816
+  },
+  "probe_sha256": "0461de4cec1f466c98f7cf66d44e559b735f766a1b065b07862e59e3a21a9e7b",
+  "lease_x64_object": {
+    "sha256": "9eae8090bbb7e8ff2351e7c66504ac59c7a24df95c5ce326b22da4f8f064c9d2",
+    "probe_sha256": "852b415fe6e93370216492aa940311fa42a4fd6e87d7d3ba027c2449fe8c5d50",
+    "build_exit_code": 0,
+    "command": [
+      "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+      "c++",
+      "-target",
+      "x86_64-windows-gnu",
+      "-std=c++17",
+      "-O2",
+      "-fno-builtin",
+      "-c",
+      "/workspace/scratch/40121bc881b8/performance-147/input/windows/lease.cpp",
+      "-o",
+      "/workspace/scratch/40121bc881b8/performance-147/input/windows/lease-x64.obj"
+    ]
+  },
+  "windows_executed": false,
+  "game_tested": false,
+  "limits": [
+    "Assembly stack-subtraction figures exclude saved registers, argument pushes and callees; they are not total thread-stack measurements.",
+    "Input-sized constants are heap-allocation/initialization lengths, not stack reservations. Initial construction retains normal default initialization.",
+    "This is Windows-target compilation, not a full product link or native Windows execution."
+  ]
+}

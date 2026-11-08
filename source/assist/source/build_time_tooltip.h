@@ -3,6 +3,7 @@
 #include "../../shared/source/runtime_fp_scope.h"
 #include "../../shared/source/native_tooltip_client.h"
 #include "build_time_rate.h"
+#include "build_time_types.h"
 // Local presentation, through the existing entry manager. The original
 // CCToolTip callback runs first; Process724AD0 measures/copies our text into
 // the same native box. Never extend Sidebar's 66-wchar static buffer in place.
@@ -51,23 +52,24 @@ static void restoreBuildTimeTooltip(){
 // No gameplay object is constructed, registered, charged or ticked. Only the
 // verified native TimeToBuild reads this scratch receiver's Type and Owner.
 extern "C" unsigned AssistBuildTimeTooltip(unsigned id,unsigned original){
- if(!sh||sh->stop||!sh->buildTimeTooltip||!sh->foreground||fault||buildTimeTooltipFailed||!buildTimeTooltipActive||
+ if(!original||!sh||sh->stop||!sh->buildTimeTooltip||!sh->foreground||fault||buildTimeTooltipFailed||!buildTimeTooltipActive||
     DWORD(sampleClock(sh)-sh->heartbeat)>500||!get<bool>(0xA8E9A0)||id<1000||id>=1120)return original;
  const uint32_t house=get<uint32_t>(0xA83D4C);const int frame=get<int>(0xA8ED84);
  if(house<0x10000||house!=lastHouse||snap.match!=match)return original;
  const int tab=get<int>(0x87F7E8+0x539C);
- if(tab<0||tab>1)return original; // buildings/defenses only
+ if(tab<0||tab>3)return original;
  const uint32_t strip=0x87F7E8+0x1544+uint32_t(tab)*3988;
  const int row=get<int>(strip+0x44),count=get<int>(strip+0x54);
  const int64_t index=int64_t(row)*2+int(id-1000);
- if(count<1||count>=75||index<0||index>=count)return original;
+ if(row<0||count<1||count>75||index<0||index>=count)return original;
  const uint32_t cameo=strip+88+uint32_t(index)*52;
- if(get<int>(cameo+4)!=7)return original;
- const int typeIndex=get<int>(cameo);Vec types=vec(0xA83C68,4096);
+ const int cameoKind=get<int>(cameo+4);const auto*info=buildtime::typeInfo(cameoKind);if(!info)return original;
+ const int typeIndex=get<int>(cameo);Vec types=vec(info->array,4096);
  const uint32_t type=item(types,typeIndex);if(type<0x10000)return original;
- alignas(16) uint8_t receiver[0x6C8]{};
- *reinterpret_cast<uint32_t*>(receiver)=0x7E3EBC;
- *reinterpret_cast<uint32_t*>(receiver+0x520)=type;
+ if(!buildtime::receiverCompatible(*info,type,read))return original;
+ alignas(16) uint8_t receiver[buildtime::ReceiverBytes]{};
+ *reinterpret_cast<uint32_t*>(receiver)=info->vtable;
+ *reinterpret_cast<uint32_t*>(receiver+info->typeOffset)=type;
  *reinterpret_cast<uint32_t*>(receiver+0x21C)=house;
  const int raw=call<int>(0x6F47A0,uint32_t(uintptr_t(receiver)));
  int rate=raw/54;if(rate<1)rate=1;if(rate>255)rate=255;
@@ -90,9 +92,11 @@ extern "C" unsigned AssistBuildTimeTooltip(unsigned id,unsigned original){
  auto duration=[&](unsigned frames){if(fps){const unsigned centis=unsigned((uint64_t(frames)*100+fps/2)/fps);number(centis/100);append(L".");number(centis%100/10);number(centis%10);append(L" 秒");}else{number(frames);append(L" 帧");}};
  append(L"\n建造：");duration(unsigned(total));
  const uint32_t factory=get<uint32_t>(cameo+0xC);
+ uint32_t product=0;bool productBound=false;
  if(factory>=0x10000&&get<uint32_t>(factory+0x6C)==house){
   const uint32_t object=get<uint32_t>(factory+0x58);
-  if(object>=0x10000&&kind(object)==3&&get<uint32_t>(object+0x520)==type){
+  if(object>=0x10000&&kind(object)==info->objectKind&&get<uint32_t>(object+info->typeOffset)==type&&get<uint32_t>(object+0x21C)==house){
+   product=object;productBound=true;
    const int stage=get<int>(factory+0x24);if(stage>=0&&stage<=54){
     if(stage==54)append(L"\n已就绪");
     else if(get<uint8_t>(factory+0x70))append(L"\n已暂停");
@@ -107,5 +111,14 @@ extern "C" unsigned AssistBuildTimeTooltip(unsigned id,unsigned original){
    }
   }
  }
- return get<uint32_t>(0xA83D4C)==house&&get<int>(0xA8ED84)==frame&&get<int>(cameo)==typeIndex?unsigned(uintptr_t(text)):original;
+ // The original text belongs to this exact visible cameo. Page, scroll or
+ // product changes during a callback must not attach the old kind's timing.
+ const bool same=get<uint32_t>(0xA83D4C)==house&&house==lastHouse&&snap.match==match&&get<int>(0xA8ED84)==frame&&
+  get<int>(0x87F7E8+0x539C)==tab&&get<int>(strip+0x44)==row&&get<int>(strip+0x54)==count&&
+  get<int>(cameo)==typeIndex&&get<int>(cameo+4)==cameoKind&&item(vec(info->array,4096),typeIndex)==type&&
+  get<uint32_t>(type)==info->typeVtable&&get<uint32_t>(cameo+0xC)==factory;
+ if(!same)return original;
+ const bool sameProduct=!productBound||(get<uint32_t>(factory+0x6C)==house&&get<uint32_t>(factory+0x58)==product&&
+  kind(product)==info->objectKind&&get<uint32_t>(product+info->typeOffset)==type&&get<uint32_t>(product+0x21C)==house);
+ return sameProduct?unsigned(uintptr_t(text)):original;
 }

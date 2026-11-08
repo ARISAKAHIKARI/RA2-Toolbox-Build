@@ -889,7 +889,7 @@ template<class Input,class Output>static void serviceValueTask(compute::ValueTas
  const long batch=shared->computeFrameSeq;if(batch&1)return;
  const long seq=inputSequence?*inputSequence:0;if(seq&1)return;MemoryBarrier();
  if(worker.needs(planningGeneration,task,seq)&&worker.ready(GetTickCount(),cadence)){
-  auto input=std::make_shared<Input>();memcpy(input.get(),&source,sizeof(Input));MemoryBarrier();
+  auto input=worker.acquire();compute::copyInput(*input,source);MemoryBarrier();
   if(batch!=shared->computeFrameSeq||task!=request||(inputSequence&&seq!=*inputSequence)||input->match!=uint32_t(snap.match)||input->frame!=shared->computeFrame||input->match!=shared->computeFrameMatch)return;
   worker.submit(planningGeneration,task,seq,std::move(input));worker.started(GetTickCount());
  }

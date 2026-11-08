@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "autoload_bridge.h": "068f34763606cd4c4bab54a16004a6b2a3f654933bf9ca8e64318fff3db2cc48",
+    "superweapon_grant_bridge.h": "7a7e01fd9b208ee6ac35570e30257dc79690c5c116e9e7ba9440d91e50ccde39",
+    "sticky_bridge.h": "e2b6443bf14f39fdd869b1425536b3d426c9b865fbe6dc6098ea0a79c126464f",
+    "native_placement_bridge.h": "85dce6aba9d284cfdc952e4b577dd9b1f0c489135484c4a8ba3c867a09adbac9",
+    "native_placement_completion_bridge.h": "51a2d4d424299c879dd6e0fed0848adcd5af955f59fb84597a21c4f22b674b23",
+    "view_zoom_native_state.h": "27548bef43927597c0bd2bec8e13a3822e0d59bd8a57019483734b55733dfcfc",
+    "sidebar_view_bridge.h": "ddd0e2a6252c86e31b3b79a18bd9c5b3c2f8db907688330649c031cd576924a7",
+    "view_zoom_legacy_bridge.h": "9db52f5b382225a27d8ab827b3ebc2edab60bba5767d814a8637229a25b54179",
+    "build_time_tooltip.h": "0a94e42176b7e2cd996e8cb4d883e39e37c253085a16c50b6967821892d0e6c9",
+    "aircraft_selection_bridge.h": "353d54a2c3c1f378b97a89904a38aae7e9aded86b0415778b238fc347be76f93",
+    "native_viewport_query.h": "f2b0f4e32f9df44de3e93f696b738be21c590e83442f3cd13aa89a41d0a04668",
+    "scroll_refresh_bridge.h": "8a87c67527529f83d1d3c87c10ba4881fcd980c1f65d957e16c8b96437c466ab"
+  },
+  "source_hash_stable": true,
+  "game_process_executed": false,
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "/workspace/scratch/40121bc881b8/performance-147/production-time/debug-consumers/fixture.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-147/production-time/debug-consumers/fixture"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/40121bc881b8/performance-147/production-time/debug-consumers/fixture"
+      ],
+      "exit_code": 0,
+      "stdout": "PASS: 355 extracted secondary native-consumer checks across 11 groups; no engine calls\n",
+      "stderr": ""
+    }
+  ]
+}

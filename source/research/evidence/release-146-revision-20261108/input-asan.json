@@ -1,0 +1,104 @@
+{
+  "passed": true,
+  "build_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-pthread",
+    "-UNDEBUG",
+    "-U_FORTIFY_SOURCE",
+    "-D_FORTIFY_SOURCE=0",
+    "-fno-builtin-memcpy",
+    "-Wl,--wrap=memcpy",
+    "-fsanitize=address,undefined",
+    "-fno-sanitize-recover=all",
+    "-DBASELINE_VALUE_TASK=\"/workspace/scratch/40121bc881b8/performance-147/input/controlled/baseline-value-task.h\"",
+    "-DBASELINE_FRAME_HISTORY=\"/workspace/scratch/40121bc881b8/performance-147/input/controlled/baseline-compute-frame.h\"",
+    "-DCURRENT_SERVICE=\"/workspace/scratch/40121bc881b8/performance-147/input/controlled/current-service.h\"",
+    "-DBASELINE_SERVICE=\"/workspace/scratch/40121bc881b8/performance-147/input/controlled/baseline-service.h\"",
+    "-DCURRENT_UNLOAD_PUBLISH=\"/workspace/scratch/40121bc881b8/performance-147/input/controlled/current-unload-publish.h\"",
+    "-DBASELINE_UNLOAD_PUBLISH=\"/workspace/scratch/40121bc881b8/performance-147/input/controlled/baseline-unload-publish.h\"",
+    "/workspace/scratch/40121bc881b8/ra2-optimize-147/source/assist/tests/value_task_input.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/performance-147/input/controlled/value-task-input-asan"
+  ],
+  "run_exit_code": 0,
+  "source_bindings": [
+    {
+      "path": "source/assist/source/main.cpp",
+      "sha256": "33a91b190c9af895adb5814ac12f028c75f5d0e14ddd8c9b644f1f43326d5765"
+    },
+    {
+      "path": "source/assist/source/value_task.h",
+      "sha256": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204"
+    },
+    {
+      "path": "source/assist/source/compute_input_copy.h",
+      "sha256": "71dfa9f605c10b3ccf058b1372370950b0b5e4a1672542cfe3fe3d4e888ca7b7"
+    },
+    {
+      "path": "source/assist/source/compute_frame.h",
+      "sha256": "a88d6f9e3a79dad611a338ee0a60ac426bf40b96a627694534e482f125c54b55"
+    },
+    {
+      "path": "source/assist/source/compute_tasks.h",
+      "sha256": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c"
+    },
+    {
+      "path": "source/assist/source/autoload.h",
+      "sha256": "faf93595bb49d14802e2fe5d129e35a750c9f5f174db1c8fe4a16d27830103d6"
+    },
+    {
+      "path": "source/assist/source/autoload_bridge.h",
+      "sha256": "068f34763606cd4c4bab54a16004a6b2a3f654933bf9ca8e64318fff3db2cc48"
+    },
+    {
+      "path": "source/assist/source/missile_compute.h",
+      "sha256": "4ec27f1eeeb1b79bb0804c65581211e5385adc9c4762b1fcc9225fc327386166"
+    },
+    {
+      "path": "source/assist/source/missile_bridge.h",
+      "sha256": "43ac2784421a0fa9440eb2f9a7ef103e8ba8c9886a07a9aa0fd31c8a42dcff39"
+    },
+    {
+      "path": "source/assist/source/unload_compute.h",
+      "sha256": "9320d8940db3a948d51533a4931457cd676a01c07b64fed085395d11b7d19711"
+    },
+    {
+      "path": "source/assist/source/unload_compute_bridge.h",
+      "sha256": "620aba997d4a09ee85e3cf30fa9a89ef85947762c12ed7d4eb248f4cbc12ab61"
+    },
+    {
+      "path": "source/assist/source/protocol.h",
+      "sha256": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c"
+    },
+    {
+      "path": "source/assist/source/plan_freshness.h",
+      "sha256": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c"
+    },
+    {
+      "path": "source/shared/source/latest_worker.h",
+      "sha256": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81"
+    },
+    {
+      "path": "source/assist/tests/value_task_input.cpp",
+      "sha256": "24864aabbb691b9ed9d248b6570272af43c40a3635b3d35c7c965b69d811a556"
+    },
+    {
+      "path": "source/assist/tests/value_task_input.py",
+      "sha256": "c56dfb64b962e641ea2fe73cd384027b75f18c2765a5f51746ad1b2ffe0115ec"
+    },
+    {
+      "path": "source/assist/tests/runtime_broker_retirement.py",
+      "sha256": "d375b8f2f8d56041873c6cbc89390783096536deb755459dcd8e1c23def07bd2"
+    }
+  ],
+  "sanitizers": [
+    "address",
+    "undefined"
+  ],
+  "leak_detection": false,
+  "windows_executed": false,
+  "game_tested": false,
+  "scope": "Same actual transfer/ownership scenarios under ASan+UBSan; timings are not used for the performance comparison."
+}

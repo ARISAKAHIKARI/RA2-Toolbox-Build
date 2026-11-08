@@ -1,0 +1,22 @@
+{
+  "command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-I/workspace/scratch/40121bc881b8/performance-147/building-depth/existing-baseline",
+    "-I/workspace/scratch/40121bc881b8/ra2-optimize-147",
+    "-I/workspace/scratch/40121bc881b8/ra2-optimize-147/source/external_reader/source",
+    "/workspace/scratch/40121bc881b8/performance-147/building-depth/existing-baseline/existing.cpp",
+    "/workspace/scratch/40121bc881b8/ra2-optimize-147/source/third_party/xbrz/xbrz.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/performance-147/building-depth/existing-baseline/test"
+  ],
+  "exit_code": -6,
+  "sha256": {
+    "/workspace/scratch/40121bc881b8/performance-147/building-depth/existing-baseline/existing.cpp": "6d33007c84af9041ffb34c542837939c63f20f27e1fb60acf967eed12fcfca64",
+    "/workspace/scratch/40121bc881b8/performance-147/building-depth/existing-baseline/camera_assets.h": "eb76b674a271d1bf67b27f7aa653ee622049b88e697db69b2026d5f58b461c5f",
+    "/workspace/scratch/40121bc881b8/ra2-optimize-147/source/assist/tests/game_assets_host_test.py": "4965c42fa325878bd803f0c6b8697bdfe9066f5066588017c5832ac2a2b72a4e"
+  },
+  "stdout": "",
+  "stderr": "test: /workspace/scratch/40121bc881b8/performance-147/building-depth/existing-baseline/existing.cpp:139: int main(int, char**): Assertion `dark.color[n]==entry[2]&&bright.color[n]==entry[2]' failed.\n"
+}

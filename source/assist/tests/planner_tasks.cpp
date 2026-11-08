@@ -27,9 +27,9 @@ int main(){
  // on the caller without waiting for it, and old bridge results cannot escape.
  struct Input{int value;};struct Output{int value=0;};std::mutex mutex;std::condition_variable cv;bool entered=false,release=false;
  compute::ValueTask<Input,Output> worker([&](Input&i){if(i.value==1){std::unique_lock<std::mutex> lock(mutex);entered=true;cv.notify_one();cv.wait(lock,[&]{return release;});}return Output{i.value};});
- worker.submit(1,1,2,std::make_shared<Input>(Input{1}));
+ auto first=worker.acquire();first->value=1;worker.submit(1,1,2,std::move(first));
  {std::unique_lock<std::mutex> lock(mutex);assert(cv.wait_for(lock,std::chrono::seconds(5),[&]{return entered;}));}
- assert(!worker.get());worker.invalidate();worker.submit(2,2,4,std::make_shared<Input>(Input{2}));assert(!worker.get());
+ assert(!worker.get());worker.invalidate();auto next=worker.acquire();next->value=2;worker.submit(2,2,4,std::move(next));assert(!worker.get());
  {std::lock_guard<std::mutex> lock(mutex);release=true;cv.notify_one();}
  const auto limit=std::chrono::steady_clock::now()+std::chrono::seconds(5);std::shared_ptr<const decltype(worker)::Result> result;
  while(!(result=worker.get())&&std::chrono::steady_clock::now()<limit)std::this_thread::yield();

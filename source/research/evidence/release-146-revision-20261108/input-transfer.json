@@ -1,0 +1,111 @@
+{
+  "schema": "ra2.input-transfer-optimization.v1",
+  "passed": true,
+  "baseline_commit": "e5e9abd69cdf2963f7bef3dd8fbc3e12c4537a63",
+  "production_files_changed": [
+    "source/assist/source/compute_input_copy.h",
+    "source/assist/source/value_task.h",
+    "source/assist/source/compute_frame.h",
+    "source/assist/source/main.cpp",
+    "source/assist/source/missile_bridge.h",
+    "source/assist/source/autoload_bridge.h",
+    "source/assist/source/unload_compute_bridge.h"
+  ],
+  "test_files_changed": [
+    "source/assist/tests/value_task_input.cpp",
+    "source/assist/tests/value_task_input.py",
+    "source/assist/tests/planner_tasks.cpp"
+  ],
+  "source_bindings": [
+    {
+      "path": "source/assist/source/compute_input_copy.h",
+      "sha256": "71dfa9f605c10b3ccf058b1372370950b0b5e4a1672542cfe3fe3d4e888ca7b7"
+    },
+    {
+      "path": "source/assist/source/value_task.h",
+      "sha256": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204"
+    },
+    {
+      "path": "source/assist/source/compute_frame.h",
+      "sha256": "a88d6f9e3a79dad611a338ee0a60ac426bf40b96a627694534e482f125c54b55"
+    },
+    {
+      "path": "source/assist/source/main.cpp",
+      "sha256": "33a91b190c9af895adb5814ac12f028c75f5d0e14ddd8c9b644f1f43326d5765"
+    },
+    {
+      "path": "source/assist/source/missile_bridge.h",
+      "sha256": "43ac2784421a0fa9440eb2f9a7ef103e8ba8c9886a07a9aa0fd31c8a42dcff39"
+    },
+    {
+      "path": "source/assist/source/autoload_bridge.h",
+      "sha256": "068f34763606cd4c4bab54a16004a6b2a3f654933bf9ca8e64318fff3db2cc48"
+    },
+    {
+      "path": "source/assist/source/unload_compute_bridge.h",
+      "sha256": "620aba997d4a09ee85e3cf30fa9a89ef85947762c12ed7d4eb248f4cbc12ab61"
+    },
+    {
+      "path": "source/assist/tests/value_task_input.cpp",
+      "sha256": "24864aabbb691b9ed9d248b6570272af43c40a3635b3d35c7c965b69d811a556"
+    },
+    {
+      "path": "source/assist/tests/value_task_input.py",
+      "sha256": "c56dfb64b962e641ea2fe73cd384027b75f18c2765a5f51746ad1b2ffe0115ec"
+    },
+    {
+      "path": "source/assist/tests/planner_tasks.cpp",
+      "sha256": "375d1a4e1ccf35a2290d6f09a348b60c68ccfacc6d4d838eef9bc6b0be9eec96"
+    }
+  ],
+  "checks": {
+    "kind": "SUMMARY",
+    "scenarios": 67,
+    "checks": 4406,
+    "failures": 0
+  },
+  "receipts": [
+    {
+      "path": "/workspace/scratch/40121bc881b8/performance-147/input/controlled/receipt.json",
+      "sha256": "e70b25aa263d831dd4df5a6daefdbd9a8d78075575f2acaa15a5c8183707ebe7"
+    },
+    {
+      "path": "/workspace/scratch/40121bc881b8/performance-147/input/controlled/asan-receipt.json",
+      "sha256": "03909a666fe64c96b098a0dd518deb4c80b06fe5acae2d20b1e649cef4cbf0ca"
+    },
+    {
+      "path": "/workspace/scratch/40121bc881b8/performance-147/input/windows/receipt.json",
+      "sha256": "a4c7e60e4c424198ffc311329f30412c0142fdfcb848d7ebc9f7233076407303"
+    }
+  ],
+  "existing_planner_regression": {
+    "passed": true,
+    "frames": 240,
+    "binary_sha256": "b43c641ebdd677b4c74ad8edcd0db8392f130a006c20aa5835125ab89016eaf2",
+    "source_sha256": "375d1a4e1ccf35a2290d6f09a348b60c68ccfacc6d4d838eef9bc6b0be9eec96",
+    "command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "-pthread",
+      "-UNDEBUG",
+      "source/assist/tests/planner_tasks.cpp",
+      "-o",
+      "/workspace/scratch/40121bc881b8/performance-147/input/planner_tasks"
+    ],
+    "stdout": "PASS 240 stateful planner frames and receipts match synchronous decisions; blocked computation leaves caller responsive, invalidated bridge result rejected"
+  },
+  "tactical_frame_regression_receipt": "/workspace/scratch/40121bc881b8/performance-147/anti-theft/tactical-frame/result.json",
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "limitations": [
+    "At most three idle buffers are retained per ValueTask; pinned/in-flight leases are never reused and exhausted pools allocate fallback storage.",
+    "Only the three large counted input types use prefix/matrix copying. Other Input types retain their complete copy, with the same reusable ownership mechanism.",
+    "Small Request allocations and worker Result allocations remain. Initial Input default initialization and sixteen full-sized history allocations remain.",
+    "Host allocation sizes in the Linux fixture are not Windows Request structure-size claims.",
+    "The shared structures, capacities, algorithms, cadence and result freshness/seqlock gates are unchanged."
+  ],
+  "target_release": "1.0.46",
+  "release_status": "Pending root integration/build/verification; internal performance-147 evidence path is retained."
+}

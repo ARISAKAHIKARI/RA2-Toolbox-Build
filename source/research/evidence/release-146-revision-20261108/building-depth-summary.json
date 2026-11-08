@@ -1,0 +1,56 @@
+{
+  "version": "1.0.46 revision",
+  "functional_baseline": "e5e9abd69cdf2963f7bef3dd8fbc3e12c4537a63",
+  "worktree_head_at_receipt": "d42592f3c2c6711dad99c38cdc2a3fd1c72d8940",
+  "production_files": [
+    "source/external_reader/source/camera_assets.h"
+  ],
+  "test_files": [
+    "source/assist/tests/building_depth_capture.cpp",
+    "source/assist/tests/building_depth_capture.py",
+    "source/assist/tests/game_assets_host_test.py"
+  ],
+  "owned_sha256": {
+    "source/external_reader/source/camera_assets.h": "e6027e96a2a5e4de4403c9e0c270ca512a9156b115e9d05ff57bff0f3fa61e92",
+    "source/assist/tests/building_depth_capture.cpp": "8429282f6612d6d9c89f57c599312882875822e1453ccee17e7cb99d15a42ccd",
+    "source/assist/tests/building_depth_capture.py": "0314809309cd85c575eff2e541ac71861bff06dc5053b256271672de8bbddeef",
+    "source/assist/tests/game_assets_host_test.py": "4965c42fa325878bd803f0c6b8697bdfe9066f5066588017c5832ac2a2b72a4e"
+  },
+  "source_bound_files": 195,
+  "source_hash_drift": [],
+  "subject": {
+    "receipt": "final-frozen/receipt.json",
+    "checks": 209,
+    "failures": 0,
+    "recovery_scenes": 36,
+    "recovery_pixel_mismatches": 0,
+    "healthy_fnv64": "cf6be4c502df7ecf"
+  },
+  "baseline": {
+    "receipt": "baseline-final/receipt.json",
+    "checks": 209,
+    "failures": 61,
+    "recovery_scenes": 36,
+    "recovery_pixel_mismatches": 26984,
+    "healthy_fnv64": "cf6be4c502df7ecf"
+  },
+  "native_composition": {
+    "visible_building_pixels": 6006,
+    "occluded_building_pixels": 138,
+    "cpu_gpu_packet_metadata_equal": true,
+    "gpu_executed": false,
+    "gpu_attempt_result": "Vulkan instance unavailable"
+  },
+  "existing_suite": {
+    "current_log": "existing-assets.log",
+    "baseline_receipt": "existing-baseline/receipt.json",
+    "status": "same pre-existing assertion fails before building tests",
+    "assertion": "dark.color[n]==entry[2]&&bright.color[n]==entry[2]",
+    "baseline_exit_code": -6
+  },
+  "notes": [
+    "No native Windows/game execution or FPS claim.",
+    "No new binary reverse engineering. Existing Notebook165 and pinned Vera contracts only.",
+    "Native depth formula, Display order, terrain/shader math and sampling cadence unchanged."
+  ]
+}

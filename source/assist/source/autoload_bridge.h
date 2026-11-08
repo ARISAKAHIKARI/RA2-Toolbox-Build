@@ -101,7 +101,7 @@ static void loadingCalculationTick(uint32_t house,DWORD now){
    }
   }
  }
- if(externalInputFrame&&!get<bool>(0xA8BC60+25)){loadCaptureCohort=sh->loadInput;int result=autoLoad(house,&loadCaptureCohort);if(result!=-30&&result!=-6)finish(result);}
+ if(externalInputFrame&&!get<bool>(0xA8BC60+25)){compute::copyInput(loadCaptureCohort,sh->loadInput);int result=autoLoad(house,&loadCaptureCohort);if(result!=-30&&result!=-6)finish(result);}
 }
 // Capture the user's selection as a separate input generation. Repeated world
 // captures keep this exact cohort and its manual tokens even if selection moves.
@@ -209,7 +209,7 @@ static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
   if(loadQueryFailed)return -15;
  }
  if(!compute::inside(sh->computeApplied,compute::Load)){
-  memcpy(&sh->loadInput,&in,sizeof in);loadCalculationPending=true;
+  compute::copyInput(sh->loadInput,in);loadCalculationPending=true;
   const uint32_t serial=compute::nextTask(sh->loadTask);loadFrames.retain(serial,in);MemoryBarrier();sh->loadTask=serial;notifyHost();return -30;
  }
  static int assignment[MaxInfantry];static Workspace workspace;
