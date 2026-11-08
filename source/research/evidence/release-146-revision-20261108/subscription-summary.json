@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "baseline_commit": "e5e9abd69cdf2963f7bef3dd8fbc3e12c4537a63",
+  "owned_files": {
+    "source/shared/source/world_frame_transport.h": "180517fd86ad3d6b30ed6c4424d6d9eeb8b71402a1e8221a825c2319a12d39b3",
+    "source/assist/tests/world_frame_deadlines.cpp": "786ac50c46ba8c100299ac9e90a68ed1d672a55b91e452f2e4bf1b22df14bc67",
+    "source/assist/tests/world_frame_deadlines.py": "427969c1de96e74ab7e2af283e6dae8db52c0661a9ae562da3cde2d35b21329a"
+  },
+  "deadline_receipt_sha256": "99b496be9788e531243871259988c336362e447b1402ee7431804d81dc77b552",
+  "existing_subscriptions_receipt_sha256": "246301bc999de2fba0a7c45ac6dcef0afb66157d5a5ed8db258b9035fcb430a3",
+  "core_log_sha256": "f960d48b7c4d0d74a6d7ee1e5316c68b151397b16e5d04c6adf1f8628be332c7",
+  "production_patch_sha256": "238836858d0e8c8863b1c3b28ee7ff7fe656a1a7ad88b02754ae370a6c731a06",
+  "exact_trace_bytes_equal": true,
+  "trace_bytes": 869348,
+  "trace_sha256": "aaafaedcb4f84a986386eb4b07239491c01c0ba41d3655c094cb367df56ed566",
+  "core_checks": [
+    74634,
+    75357
+  ],
+  "existing_subscription_checks": 368,
+  "windows_executed": false,
+  "game_tested": false
+}

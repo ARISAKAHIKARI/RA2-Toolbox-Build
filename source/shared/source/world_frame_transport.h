@@ -105,11 +105,22 @@ class Client {
  uint64_t generation_=0;
  struct Lease {std::array<uint32_t,6>ticks{};uint32_t used=0;};std::unordered_map<uintptr_t,Lease>leases_;
  std::unordered_map<uint32_t,uint32_t> wanted_;uint32_t publishedAt_=0,prunedAt_=0;
+ uint32_t expiryCheckedAt_=0,expiryAfter_=0;
  bool wantedDirty_=false,havePublished_=false,havePruned_=false;
  void pruneRequests(uint32_t now){
   if(havePruned_&&uint32_t(now-prunedAt_)<2)return;
-  for(auto it=wanted_.begin();it!=wanted_.end();)if(uint32_t(now-it->second)>250){it=wanted_.erase(it);wantedDirty_=true;}else ++it;
+  // Keep the existing 2 ms eligibility/heartbeat clock even when no entry
+  // can expire. Only the full-table walk is skipped, not request processing.
   prunedAt_=now;havePruned_=true;
+  if(uint32_t(now-expiryCheckedAt_)<expiryAfter_)return;
+  uint32_t next=251;
+  for(auto it=wanted_.begin();it!=wanted_.end();){const uint32_t age=uint32_t(now-it->second);
+   if(age>250){it=wanted_.erase(it);wantedDirty_=true;}
+   else{const uint32_t remaining=251-age;if(remaining<next)next=remaining;++it;}
+  }
+  // Renewals only delay expiry. New entries receive 251 ms, so neither can
+  // invalidate this lower bound. Unsigned elapsed time also handles wrap.
+  expiryCheckedAt_=now;expiryAfter_=next;
  }
  void publishRequests(uint32_t now){
   if(!wantedDirty_||(havePublished_&&uint32_t(now-publishedAt_)<2))return;
@@ -147,7 +158,7 @@ class Client {
   // the last local reader closed. Its predecessor's demands are not its own.
   InterlockedIncrement(&channel_->demandSeq);channel_->demandCount=0;++channel_->demandRevision;
   MemoryBarrier();InterlockedIncrement(&channel_->demandSeq);channel_->demandMask=0;
-  wantedDirty_=!wanted_.empty();havePublished_=havePruned_=false;return true;
+  wantedDirty_=!wanted_.empty();havePublished_=havePruned_=false;expiryAfter_=0;return true;
  }
  void clearCopy(){latest_.reset();copiedSerial_=0;copiedSlot_=-1;copiedData_={};for(auto&view:data_)view.close();}
  void close(){clearCopy();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;}

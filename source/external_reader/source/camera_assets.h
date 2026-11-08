@@ -483,19 +483,35 @@ bool captureProjectile(uint32_t p,uint32_t type,uint32_t id,ActorArt&out){
 }
 bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const external::visual::Pose*expected=nullptr,int displayKind=-1,uint32_t displayOwner=0){
  failure.clear();if(word(p+0x10)!=id){failure="actor-identity";return false;}ActorArt next;external::GameView game(read);const int actualKind=game.kind(p);const uint32_t actualType=game.type(p,actualKind),actualOwner=word(p+0x21C);if(actualKind<0||(displayKind<0&&actualType!=type))return false;next.kind=displayKind<0?actualKind:displayKind;next.type=type;uint32_t owner=displayKind<0?actualOwner:displayOwner;next.object=p;next.id=id;next.owner=owner;
+ bool commitBuildingMask=false;uint64_t nextMaskRevision=0;
  metadata();next.shadow=!rulesINI.yes(text(type+0x24,24),"NOSHADOW");next.flat=artYes(type,"FLAT");
  if(next.kind==3){
   auto foundation=external::assets::name(artValue(type,"FOUNDATION"));int fw=1,fh=1;
   if(foundation=="CUSTOM"){fw=integer(artValue(type,"FOUNDATION.X"),1);fh=integer(artValue(type,"FOUNDATION.Y"),1);}else if(sscanf(foundation.c_str(),"%dX%d",&fw,&fh)!=2)fw=fh=1;
-  external::animations::foundation(read,type,fw,fh);next.fw=std::clamp(fw,1,32);next.fh=std::clamp(fh,1,32);auto move=artValue(type,"ZSHAPEPOINTMOVE");sscanf(move.c_str(),"%d,%d",&next.moveX,&next.moveY);
-  read(type+0x1530,&next.moveX,4);read(type+0x1534,&next.moveY,4);
+  // A missing sealed page is not a 1x1 foundation or an INI override. These
+  // values survive in the actor/raster caches, so require their complete
+  // native binding before publishing art. Custom/extended enums still use
+  // the verified INI dimensions instead of indexing the native 21-entry table.
+  int foundationIndex=-1;if(!read(type+0xEF0,&foundationIndex,4)){failure="building-foundation-index";return false;}
+  if(foundationIndex>=0&&foundationIndex<21){int nativeW=0,nativeH=0;
+   if(!read(0x8192B8+foundationIndex*4,&nativeW,4)||!read(0x819310+foundationIndex*4,&nativeH,4)||nativeW<1||nativeW>32||nativeH<1||nativeH>32){failure="building-foundation-dimensions";return false;}
+   fw=nativeW;fh=nativeH;
+  }
+  next.fw=std::clamp(fw,1,32);next.fh=std::clamp(fh,1,32);
+  if(!read(type+0x1530,&next.moveX,4)||!read(type+0x1534,&next.moveY,4)){failure="building-z-shape-move";return false;}
   next.moveX=std::clamp(next.moveX,-4096,4096);next.moveY=std::clamp(next.moveY,-4096,4096);next.zAdjust=integer(artValue(type,"NORMALZADJUST"));
-  int liveAdjust=0;if(read(type+0x1520,&liveAdjust,4)&&std::abs(int64_t(liveAdjust))<=8192)next.zAdjust=liveAdjust;
-  if(maskRevision!=files.revision()){maskRevision=files.revision();buildingMask.reset();std::vector<uint8_t>b;std::array<uint32_t,256>dummy{};dummy.fill(0xffffffff);
-   auto mask=std::make_shared<external::voxel::Image>();
-   buildingMaskBiased=external::voxel::sprite(resourceRead,word(0x89DDBC),dummy,*mask,0,nullptr,255);
-   if(buildingMaskBiased||((files.load("BUILDNGZ.SHA",b)||files.load("BUILDNGZ.SHP",b))&&external::assets::shp(std::move(b),0,dummy,*mask)))buildingMask=std::move(mask);}
-  if(next.fw<8){next.depthMask=buildingMask;next.depthMaskBiased=buildingMaskBiased;} // native 43D787 skips the cone for width >= 8
+  int liveAdjust=0;if(!read(type+0x1520,&liveAdjust,4)){failure="building-z-adjust";return false;}if(std::abs(int64_t(liveAdjust))<=8192)next.zAdjust=liveAdjust;
+  if(next.fw<8&&!next.flat){ // native 43D787 skips the cone for width >= 8
+   nextMaskRevision=files.revision();
+   if(maskRevision==nextMaskRevision){next.depthMask=buildingMask;next.depthMaskBiased=buildingMaskBiased;}
+   else{uint32_t pointer=0;if(!read(0x89DDBC,&pointer,4)){failure="building-z-shape-pointer";return false;}
+    std::vector<uint8_t>b;std::array<uint32_t,256>dummy{};dummy.fill(0xffffffff);auto mask=std::make_shared<external::voxel::Image>();
+    const bool biased=external::voxel::sprite(resourceRead,pointer,dummy,*mask,0,nullptr,255);
+    bool loaded=false,decoded=false;if(!biased){loaded=files.load("BUILDNGZ.SHA",b)||files.load("BUILDNGZ.SHP",b);if(loaded)decoded=external::assets::shp(std::move(b),0,dummy,*mask);}
+    if(!biased&&!decoded&&(pointer||loaded)){failure="building-z-shape-resource";return false;}
+    if(biased||decoded)next.depthMask=std::move(mask);next.depthMaskBiased=biased;commitBuildingMask=true;
+   }
+  }
  }
 
  auto stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);
@@ -540,7 +556,11 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const extern
    }
   }
  }
- if(word(p+0x10)!=id||word(p+0x21C)!=actualOwner||game.type(p,actualKind)!=actualType)return false;bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);out=std::move(next);return true;
+ if(word(p+0x10)!=id||word(p+0x21C)!=actualOwner||game.type(p,actualKind)!=actualType)return false;bool paletteChanged=false;if(!refreshActorPalette(next,paletteChanged))return false;if(next.voxel)next.geometryIdentity=std::make_shared<const uint8_t>(0);
+ // Do not let a failed actor transaction turn an unavailable mask into a
+ // revision-wide absence, including failures after the resource was decoded.
+ if(commitBuildingMask){buildingMask=next.depthMask;buildingMaskBiased=next.depthMaskBiased;maskRevision=nextMaskRevision;}
+ out=std::move(next);return true;
 }
 template<class Capture>bool paletteActorCapture(const ActorArt&art,Capture capture){
  // These already-known object/type bindings are revalidated by capture. The

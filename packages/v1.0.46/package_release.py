@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the verified 1.0.46 build without generated cursor caches.
+"""Package the verified 1.0.46 revised build without generated cursor caches.
 
 Native programs and original cursor resources remain usable without a Python
 download. Missing interpolation/preview caches are prepared on demand by the
@@ -37,10 +37,22 @@ PROFILE_INPUTS = frozenset({'original.sha', 'palette.bgra', 'groups.json', 'pair
 REQUIRED = ({'assets/original.sha', 'assets/palette.bgra', 'assets/groups.json',
              'assets/pairs.txt'} | ENGINE |
             {f'profiles/{profile}/{name}' for profile in PROFILES for name in PROFILE_INPUTS})
-FOCUSED_CHECKS = frozenset({'world_import', 'cursor_ondemand', 'cursor_precompute_cache', 'lightweight_package'})
+FOCUSED_CHECKS = frozenset({'value_task_inputs', 'anti_theft_cache', 'subscription_deadlines',
+                            'building_metadata', 'production_time', 'lightweight_package'})
 REQUIRED_BINDINGS = {
-    'source/shared/source/world_frame.h', 'source/cursor/source/main.cpp',
-    'source/cursor/source/ondemand.h',
+    'source/shared/source/world_frame_transport.h',
+    'source/assist/source/value_task.h',
+    'source/assist/source/compute_input_copy.h',
+    'source/assist/source/compute_frame.h',
+    'source/assist/source/main.cpp',
+    'source/assist/source/autoload_bridge.h',
+    'source/assist/source/missile_bridge.h',
+    'source/assist/source/unload_compute_bridge.h',
+    'source/assist/source/anti_theft_sample_bridge.h',
+    'source/assist/source/external_orders_bridge.h',
+    'source/assist/source/build_time_tooltip.h',
+    'source/assist/source/build_time_types.h',
+    'source/external_reader/source/camera_assets.h',
     'packages/v1.0.46/package_release.py',
     'packages/v1.0.46/test_lightweight_package.py',
 } | {'source/' + name for name in ENGINE}
@@ -261,7 +273,7 @@ def main():
     require(len(public_commit) == 40 and all(c in '0123456789abcdef' for c in public_commit),
             'Missing published source commit')
     file_version, version = read_release_version()
-    require(version == '1.0.46' and file_version == '1.0.46.0', 'Wrong stable release version')
+    require(version == '1.0.46' and file_version == '1.0.46.3', 'Wrong revised stable release version')
     provenance_bytes = args.provenance.read_bytes()
     provenance = json.loads(provenance_bytes)
     require(provenance['commit'] == args.expected_commit and provenance['build_returncode'] == 0
@@ -404,7 +416,7 @@ def main():
               'source_files_verified': len(provenance['source_inputs']),
               'controlled_windows_checks': False, 'current_release_binaries_executed_on_windows': False,
               'full_game_tested': False, 'multiplayer_tested': False,
-              'prerelease': False, 'make_latest': True, 'supersedes_latest': 'v1.0.45',
+              'prerelease': False, 'make_latest': True, 'revises_same_release': 'v1.0.46',
               'validation': validation, 'validation_evidence_sha256': sha(validation_bytes),
               'actual_pe_verified': actual,
               'resources': {'source_release': 'v1.0.45', 'source_commit': BASE_COMMIT,

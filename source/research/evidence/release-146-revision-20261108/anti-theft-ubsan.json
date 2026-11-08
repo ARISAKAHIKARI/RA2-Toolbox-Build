@@ -1,0 +1,207 @@
+{
+  "schema": "ra2.anti-theft-sealed-presence-cache.v1",
+  "pass": true,
+  "baseline_commit": "e5e9abd69cdf2963f7bef3dd8fbc3e12c4537a63",
+  "source_sha256": {
+    "source/assist/source/external_orders_bridge.h": "14b829c97cae9709960724b58669d79b64cc17d5c5eb8f97b04f6ebf985f4fa1",
+    "source/assist/source/anti_theft_sample_bridge.h": "33a5890d76a10ca9733c6456b904315f4b66186affd1f6b0bf914fb3bec610dc",
+    "source/assist/source/anti_theft_bridge.h": "06c91fb2abaaa97bf68b7776cd328029782eb852c64a1979ec199ce897abd8d4",
+    "source/assist/source/feature_type_bridge.h": "9343cf81e5b1885fce449e20b14ae594452fa2da4ee6f0ee85ed35c0476aed69",
+    "source/assist/source/feature_type_config.h": "9fea2e80e73601e79fb73f388deff1e3f99f99558b5a3c0a609e34d55d897ad9",
+    "source/assist/source/world_frame_runtime.h": "c9d04f2944a8517494fe52e6c20e73b1fc35fe68600b0dc4ff2c3e9b200ce5c1",
+    "source/assist/source/tactical_frame_read.h": "38a51d8e02f58f3809d6b6c1f3842c1857586321e72a7c674ee1c8f0ed796efb",
+    "source/assist/source/raw_combat.h": "7972727364e3a6d6cad7762fccb6cf030173000716827ba8ba45647b87c85552",
+    "source/assist/source/combat_query_bridge.h": "81ba017c971db2c73d617a17c495870ddef1a871a467db32b3773920d01f660c",
+    "source/assist/source/combat_probe_bridge.h": "3618fdb3ac85f209dddf563c0f21c1f35194d50f37ac4771711f9b4fa3b5356e",
+    "source/assist/source/planner_world_copy.h": "095ecda916a0e512805ea31b96853117bd9d06c5f89bbf55e93f3ad04fac2a83",
+    "source/assist/source/harvester_defense_raw.h": "c890e9e25578dc0dc53b69f488f402608157516847e47b4ec5a5c1770dbab627",
+    "source/assist/source/protocol.h": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c",
+    "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+    "source/assist/tests/tactical_frame_sampling.cpp": "2f00e122e8203020e84f7080501562a83d4e460f4f3204ff91b304edef371bc0",
+    "source/assist/tests/tactical_frame_sampling.py": "b4ae25afd230724ea55571c16d32e05a8843680c90185192cebe1553dd5ad6a2",
+    "source/assist/tests/anti_theft_sample_cache.cpp": "856a67b7c3b10a29e9cbbd328f55fceaf0c7aae718ee690f3cad8fbbfee31b00",
+    "source/assist/tests/anti_theft_sample_cache.py": "a5904d8314c34817c0285735ff8c1a5fa92ab71cae1b5359642bc91fb753a63f"
+  },
+  "results": {
+    "baseline": {
+      "build_command": [
+        "g++",
+        "-std=c++17",
+        "-g",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "-O2",
+        "-UNDEBUG",
+        "-I",
+        "/workspace/scratch/40121bc881b8/performance-147/anti-theft/ubsan/baseline",
+        "-I",
+        "/workspace/scratch/40121bc881b8/performance-147/anti-theft/ubsan",
+        "-I",
+        "/workspace/scratch/40121bc881b8/ra2-optimize-147/source/assist/source",
+        "-I",
+        "/workspace/scratch/40121bc881b8/ra2-optimize-147/source/assist/tests",
+        "-DANTI_THEFT_BASELINE=1",
+        "/workspace/scratch/40121bc881b8/performance-147/anti-theft/ubsan/baseline/fixture.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-147/anti-theft/ubsan/baseline/check"
+      ],
+      "build_exit_code": 0,
+      "run_exit_code": 0,
+      "benchmarks": [
+        {
+          "buildings": 0,
+          "positive": false,
+          "calls": 100,
+          "candidate_checks": 0,
+          "sealed_reads": 100,
+          "live_reads": 0,
+          "median_ns_per_20": 656,
+          "min_ns_per_20": 513,
+          "max_ns_per_20": 814,
+          "active_world_digest": "315446a086a23133"
+        },
+        {
+          "buildings": 256,
+          "positive": false,
+          "calls": 100,
+          "candidate_checks": 25600,
+          "sealed_reads": 281700,
+          "live_reads": 0,
+          "median_ns_per_20": 1220116,
+          "min_ns_per_20": 1026223,
+          "max_ns_per_20": 1502921,
+          "active_world_digest": "315446a086a23133"
+        },
+        {
+          "buildings": 1024,
+          "positive": false,
+          "calls": 100,
+          "candidate_checks": 102400,
+          "sealed_reads": 1126500,
+          "live_reads": 0,
+          "median_ns_per_20": 6090586,
+          "min_ns_per_20": 5445525,
+          "max_ns_per_20": 11057196,
+          "active_world_digest": "315446a086a23133"
+        },
+        {
+          "buildings": 1024,
+          "positive": true,
+          "calls": 100,
+          "candidate_checks": 102400,
+          "sealed_reads": 1126500,
+          "live_reads": 0,
+          "median_ns_per_20": 7306505,
+          "min_ns_per_20": 4349643,
+          "max_ns_per_20": 10852924,
+          "active_world_digest": "fa84469f5bcd31eb"
+        }
+      ],
+      "result": {
+        "checks": 424,
+        "scenarios": 4,
+        "failures": 0
+      },
+      "production_routes_sha256": "a998772f387d32e4e20bb360897ca06ca98185a2b7b944f718709415d24b411f",
+      "fixture_sha256": "34093e72b4ed35b54dfbe55989196e2861cca8ba5858e396aad96f2093d90a31",
+      "executable_sha256": "f153f34ad3790185c8c31d756ced1baf29b7e7457233c2b724f1561a87a7929e"
+    },
+    "current": {
+      "build_command": [
+        "g++",
+        "-std=c++17",
+        "-g",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "-O2",
+        "-UNDEBUG",
+        "-I",
+        "/workspace/scratch/40121bc881b8/performance-147/anti-theft/ubsan/current",
+        "-I",
+        "/workspace/scratch/40121bc881b8/performance-147/anti-theft/ubsan",
+        "-I",
+        "/workspace/scratch/40121bc881b8/ra2-optimize-147/source/assist/source",
+        "-I",
+        "/workspace/scratch/40121bc881b8/ra2-optimize-147/source/assist/tests",
+        "-DANTI_THEFT_BASELINE=0",
+        "/workspace/scratch/40121bc881b8/performance-147/anti-theft/ubsan/current/fixture.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-147/anti-theft/ubsan/current/check"
+      ],
+      "build_exit_code": 0,
+      "run_exit_code": 0,
+      "benchmarks": [
+        {
+          "buildings": 0,
+          "positive": false,
+          "calls": 100,
+          "candidate_checks": 0,
+          "sealed_reads": 0,
+          "live_reads": 0,
+          "median_ns_per_20": 855,
+          "min_ns_per_20": 807,
+          "max_ns_per_20": 1577,
+          "active_world_digest": "315446a086a23133"
+        },
+        {
+          "buildings": 256,
+          "positive": false,
+          "calls": 100,
+          "candidate_checks": 0,
+          "sealed_reads": 0,
+          "live_reads": 0,
+          "median_ns_per_20": 815,
+          "min_ns_per_20": 802,
+          "max_ns_per_20": 222326,
+          "active_world_digest": "315446a086a23133"
+        },
+        {
+          "buildings": 1024,
+          "positive": false,
+          "calls": 100,
+          "candidate_checks": 0,
+          "sealed_reads": 0,
+          "live_reads": 0,
+          "median_ns_per_20": 797,
+          "min_ns_per_20": 784,
+          "max_ns_per_20": 1545,
+          "active_world_digest": "315446a086a23133"
+        },
+        {
+          "buildings": 1024,
+          "positive": true,
+          "calls": 100,
+          "candidate_checks": 0,
+          "sealed_reads": 0,
+          "live_reads": 0,
+          "median_ns_per_20": 824,
+          "min_ns_per_20": 810,
+          "max_ns_per_20": 2353,
+          "active_world_digest": "fa84469f5bcd31eb"
+        }
+      ],
+      "result": {
+        "checks": 606,
+        "scenarios": 41,
+        "failures": 0
+      },
+      "production_routes_sha256": "cde7328209ad900de2df96c5bbd398bd382e0d88b5cd55000e1ccba28ce8391e",
+      "fixture_sha256": "34093e72b4ed35b54dfbe55989196e2861cca8ba5858e396aad96f2093d90a31",
+      "executable_sha256": "fb17405f230fdc46125430d7d2dbcb477597b1230d576e40270b2aaf1013962f"
+    }
+  },
+  "active_world_digests_equal": true,
+  "undefined_behavior_sanitizer": true,
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "scope": [
+    "Actual production publishPlanningWorld/AntiTheft predicates/feature refresh and raw scope execute with synthetic memory and explicit native seams; the prior tactical fixture supplies the boundaries.",
+    "Full Key fields, own-house argument, stable feature config, incomplete/malformed/empty roster, prefix-positive proof, incomplete later projection, new-token dependency renewal and scoped same-frame invalidation execute.",
+    "Only operation counters and read-change injection wrap the real sealed read; no live fallback is supplied."
+  ],
+  "limits": [
+    "Elapsed time measures portable C++ fixture CPU work, not Windows ReadProcessMemory, game FPS or a native integration run.",
+    "The baseline is the exact fixed-commit publisher; shared helper headers are current unchanged semantics for this focused AntiTheft route."
+  ]
+}

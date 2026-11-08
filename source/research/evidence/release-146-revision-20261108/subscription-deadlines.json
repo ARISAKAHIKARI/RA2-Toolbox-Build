@@ -1,0 +1,198 @@
+{
+  "passed": true,
+  "baseline_commit": "e5e9abd69cdf2963f7bef3dd8fbc3e12c4537a63",
+  "baseline_transport_sha256": "e9ec387d4ffc82417e368a1305051df6436f3c674ea6516049d2288942897009",
+  "source_bindings": [
+    {
+      "path": "source/assist/tests/world_frame_deadlines.cpp",
+      "sha256": "786ac50c46ba8c100299ac9e90a68ed1d672a55b91e452f2e4bf1b22df14bc67"
+    },
+    {
+      "path": "source/assist/tests/world_frame_core.cpp",
+      "sha256": "030748bb15b734b04009cf429ddb71a57f2a7761bc4b52d25a5d88445e367049"
+    },
+    {
+      "path": "source/assist/source/world_frame_runtime.h",
+      "sha256": "c9d04f2944a8517494fe52e6c20e73b1fc35fe68600b0dc4ff2c3e9b200ce5c1"
+    },
+    {
+      "path": "source/shared/source/world_frame_transport.h",
+      "sha256": "180517fd86ad3d6b30ed6c4424d6d9eeb8b71402a1e8221a825c2319a12d39b3"
+    },
+    {
+      "path": "source/shared/source/world_frame.h",
+      "sha256": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f"
+    },
+    {
+      "path": "source/shared/source/world_frame_capture.h",
+      "sha256": "54e646ebfe75d8614f07b0b0fb65dfb3fcaa476bb1a05d6f2eb1c55d85315b41"
+    },
+    {
+      "path": "source/assist/source/world_lifecycle.h",
+      "sha256": "c3bee1691c0538aff299e75d3b197661ef1d3b4484a29961b11e37ecd512e7c3"
+    },
+    {
+      "path": "source/external_reader/source/process_reader.h",
+      "sha256": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1"
+    },
+    {
+      "path": "source/external_reader/source/read_page_budget.h",
+      "sha256": "5efbf3e5a3922fa16d0e73e0e32ae3507d16b283bf3a524fa5c0a48c1a5addbb"
+    },
+    {
+      "path": "source/external_reader/source/process_connection.h",
+      "sha256": "b1ca28c51de85e83f1bbc98b0df0252a0667e0f7485790da854a79fb0591913e"
+    },
+    {
+      "path": "source/tests/winmock/windows.h",
+      "sha256": "44fc1239f939a94c7e43b9ad39f787312399a3e460fe3df9a265e161ff1f91ed"
+    },
+    {
+      "path": "source/assist/tests/world_frame_core_test.py",
+      "sha256": "2ee49da359b7d77f4c8decc816c28e19065975a8c680caac093fe28dba63f13d"
+    },
+    {
+      "path": "source/assist/tests/world_frame_deadlines.py",
+      "sha256": "427969c1de96e74ab7e2af283e6dae8db52c0661a9ae562da3cde2d35b21329a"
+    }
+  ],
+  "source_unchanged": true,
+  "results": {
+    "baseline": {
+      "exit_code": 0,
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "-DWORLD_FRAME_SCAN_PROBE",
+        "-I/workspace/scratch/40121bc881b8/performance-147/subscriptions/deadlines",
+        "/workspace/scratch/40121bc881b8/performance-147/subscriptions/deadlines/baseline/source/assist/tests/world_frame_deadlines.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-147/subscriptions/deadlines/baseline/deadlines"
+      ],
+      "probe_header_sha256": "68c588daf5d5f240f086fe526c0352cf599c9d95447a789069e45a4fbf52bc0d",
+      "metrics": [
+        {
+          "case": "steady",
+          "pages": 128,
+          "calls": 500,
+          "virtual_ms": 1000,
+          "entry_visits": 64000,
+          "full_sweeps": 500,
+          "unchanged_membership_publications": 0
+        },
+        {
+          "case": "steady",
+          "pages": 4096,
+          "calls": 500,
+          "virtual_ms": 1000,
+          "entry_visits": 2048000,
+          "full_sweeps": 500,
+          "unchanged_membership_publications": 0
+        },
+        {
+          "case": "steady",
+          "pages": 8192,
+          "calls": 500,
+          "virtual_ms": 1000,
+          "entry_visits": 4096000,
+          "full_sweeps": 500,
+          "unchanged_membership_publications": 0
+        },
+        {
+          "case": "staggered_expiry",
+          "calls": 400,
+          "virtual_ms": 800,
+          "entry_visits": 42525,
+          "full_sweeps": 400,
+          "final_pages": 126
+        },
+        {
+          "passed": true,
+          "scenarios": 19,
+          "events": 8150,
+          "checks": 879589,
+          "windows_executed": false,
+          "game_tested": false
+        }
+      ],
+      "trace_sha256": "aaafaedcb4f84a986386eb4b07239491c01c0ba41d3655c094cb367df56ed566"
+    },
+    "current": {
+      "exit_code": 0,
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "-DWORLD_FRAME_SCAN_PROBE",
+        "-I/workspace/scratch/40121bc881b8/performance-147/subscriptions/deadlines",
+        "-DEXPECT_DEADLINE",
+        "/workspace/scratch/40121bc881b8/performance-147/subscriptions/deadlines/current/source/assist/tests/world_frame_deadlines.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-147/subscriptions/deadlines/current/deadlines"
+      ],
+      "probe_header_sha256": "d69ccc20ecea5c891b26cc6381cfbdf385a7a53d879d65803372c73c5425cf66",
+      "metrics": [
+        {
+          "case": "steady",
+          "pages": 128,
+          "calls": 500,
+          "virtual_ms": 1000,
+          "entry_visits": 384,
+          "full_sweeps": 3,
+          "unchanged_membership_publications": 0
+        },
+        {
+          "case": "steady",
+          "pages": 4096,
+          "calls": 500,
+          "virtual_ms": 1000,
+          "entry_visits": 12288,
+          "full_sweeps": 3,
+          "unchanged_membership_publications": 0
+        },
+        {
+          "case": "steady",
+          "pages": 8192,
+          "calls": 500,
+          "virtual_ms": 1000,
+          "entry_visits": 24576,
+          "full_sweeps": 3,
+          "unchanged_membership_publications": 0
+        },
+        {
+          "case": "staggered_expiry",
+          "calls": 400,
+          "virtual_ms": 800,
+          "entry_visits": 34650,
+          "full_sweeps": 275,
+          "final_pages": 126
+        },
+        {
+          "passed": true,
+          "scenarios": 19,
+          "events": 8150,
+          "checks": 879589,
+          "windows_executed": false,
+          "game_tested": false
+        }
+      ],
+      "trace_sha256": "aaafaedcb4f84a986386eb4b07239491c01c0ba41d3655c094cb367df56ed566"
+    }
+  },
+  "exact_trace_bytes_equal": true,
+  "trace_bytes": 869348,
+  "windows_executed": false,
+  "game_tested": false,
+  "limits": [
+    "Actual Client/Server and existing OS fixture; probe copies add only sweep/entry counters at the original loop.",
+    "Per-operation wire state and complete page lists are compared byte-for-byte; unchanged lists use lossless repeat markers.",
+    "Thread test uses real C++ threads and Client mutex; no native Windows memory mappings or game FPS measured."
+  ]
+}

@@ -1,0 +1,1471 @@
+{
+  "version": "1.0.46 revision",
+  "passed": true,
+  "executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "kinds": [
+    {
+      "name": "building",
+      "cameo": 7,
+      "kind": 3,
+      "abstract": 6,
+      "array": 11025512,
+      "vt": 8273596,
+      "tvt": 8275312,
+      "offset": 1312,
+      "getter": 4562656,
+      "what": 4562624,
+      "twhat": 4611472,
+      "size": 1824,
+      "country": 320,
+      "factory": 21380
+    },
+    {
+      "name": "unit",
+      "cameo": 40,
+      "kind": 2,
+      "abstract": 1,
+      "array": 11025632,
+      "vt": 8346736,
+      "tvt": 8348184,
+      "offset": 1732,
+      "getter": 7607440,
+      "what": 7630368,
+      "twhat": 7635312,
+      "size": 2280,
+      "country": 312,
+      "factory": 21376
+    },
+    {
+      "name": "infantry",
+      "cameo": 16,
+      "kind": 1,
+      "abstract": 15,
+      "array": 11068232,
+      "vt": 8302680,
+      "tvt": 8304144,
+      "offset": 1728,
+      "getter": 5372656,
+      "what": 5387072,
+      "twhat": 5393728,
+      "size": 1776,
+      "country": 308,
+      "factory": 21372
+    },
+    {
+      "name": "aircraft",
+      "cameo": 3,
+      "kind": 0,
+      "abstract": 2,
+      "array": 11055640,
+      "vt": 8266404,
+      "tvt": 8267880,
+      "offset": 1732,
+      "getter": 4309504,
+      "what": 4309376,
+      "twhat": 4313008,
+      "size": 1752,
+      "country": 316,
+      "factory": 21368
+    }
+  ],
+  "cases": [
+    {
+      "name": "building_base",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 170,
+      "writes_outside_scratch_stack": 0,
+      "setup": {}
+    },
+    {
+      "name": "building_country",
+      "raw": 1125,
+      "rate": 20,
+      "frames": 1081,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 170,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "country_mult": 1.25
+      }
+    },
+    {
+      "name": "building_type",
+      "raw": 675,
+      "rate": 12,
+      "frames": 649,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 170,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "type_mult": 0.75
+      }
+    },
+    {
+      "name": "building_low_power",
+      "raw": 1440,
+      "rate": 26,
+      "frames": 1405,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 181,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 50
+      }
+    },
+    {
+      "name": "building_low_power_maximum",
+      "raw": 1124,
+      "rate": 20,
+      "frames": 1081,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 183,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 90
+      }
+    },
+    {
+      "name": "building_zero_power",
+      "raw": 1800,
+      "rate": 33,
+      "frames": 1783,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 182,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0
+      }
+    },
+    {
+      "name": "building_zero_policy_fallback",
+      "raw": 90000,
+      "rate": 255,
+      "frames": 13771,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 186,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0,
+        "penalty": 1.0,
+        "power_min": 0.0,
+        "power_max": 0.0
+      }
+    },
+    {
+      "name": "building_no_consumption",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 170,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0,
+        "drain": 0
+      }
+    },
+    {
+      "name": "building_multiple",
+      "raw": 576,
+      "rate": 10,
+      "frames": 541,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 180,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "factories": 3
+      }
+    },
+    {
+      "name": "building_multiple_disabled",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 167,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "factories": 3,
+        "multiple": 0.0
+      }
+    },
+    {
+      "name": "building_mixed_truncation",
+      "raw": 266,
+      "rate": 4,
+      "frames": 217,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 191,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "cost": 999,
+        "speed": 0.7,
+        "country_mult": 1.25,
+        "type_mult": 0.33333,
+        "power": 50,
+        "factories": 3
+      }
+    },
+    {
+      "name": "unit_base",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 175,
+      "writes_outside_scratch_stack": 0,
+      "setup": {}
+    },
+    {
+      "name": "unit_country",
+      "raw": 1125,
+      "rate": 20,
+      "frames": 1081,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 175,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "country_mult": 1.25
+      }
+    },
+    {
+      "name": "unit_type",
+      "raw": 675,
+      "rate": 12,
+      "frames": 649,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 175,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "type_mult": 0.75
+      }
+    },
+    {
+      "name": "unit_low_power",
+      "raw": 1440,
+      "rate": 26,
+      "frames": 1405,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 186,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 50
+      }
+    },
+    {
+      "name": "unit_low_power_maximum",
+      "raw": 1124,
+      "rate": 20,
+      "frames": 1081,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 188,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 90
+      }
+    },
+    {
+      "name": "unit_zero_power",
+      "raw": 1800,
+      "rate": 33,
+      "frames": 1783,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 187,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0
+      }
+    },
+    {
+      "name": "unit_zero_policy_fallback",
+      "raw": 90000,
+      "rate": 255,
+      "frames": 13771,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 191,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0,
+        "penalty": 1.0,
+        "power_min": 0.0,
+        "power_max": 0.0
+      }
+    },
+    {
+      "name": "unit_no_consumption",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 175,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0,
+        "drain": 0
+      }
+    },
+    {
+      "name": "unit_multiple",
+      "raw": 576,
+      "rate": 10,
+      "frames": 541,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 185,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "factories": 3
+      }
+    },
+    {
+      "name": "unit_multiple_disabled",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 172,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "factories": 3,
+        "multiple": 0.0
+      }
+    },
+    {
+      "name": "unit_mixed_truncation",
+      "raw": 266,
+      "rate": 4,
+      "frames": 217,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5380",
+      "native_instructions": 196,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "cost": 999,
+        "speed": 0.7,
+        "country_mult": 1.25,
+        "type_mult": 0.33333,
+        "power": 50,
+        "factories": 3
+      }
+    },
+    {
+      "name": "infantry_base",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 165,
+      "writes_outside_scratch_stack": 0,
+      "setup": {}
+    },
+    {
+      "name": "infantry_country",
+      "raw": 1125,
+      "rate": 20,
+      "frames": 1081,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 165,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "country_mult": 1.25
+      }
+    },
+    {
+      "name": "infantry_type",
+      "raw": 675,
+      "rate": 12,
+      "frames": 649,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 165,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "type_mult": 0.75
+      }
+    },
+    {
+      "name": "infantry_low_power",
+      "raw": 1440,
+      "rate": 26,
+      "frames": 1405,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 176,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 50
+      }
+    },
+    {
+      "name": "infantry_low_power_maximum",
+      "raw": 1124,
+      "rate": 20,
+      "frames": 1081,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 178,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 90
+      }
+    },
+    {
+      "name": "infantry_zero_power",
+      "raw": 1800,
+      "rate": 33,
+      "frames": 1783,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 177,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0
+      }
+    },
+    {
+      "name": "infantry_zero_policy_fallback",
+      "raw": 90000,
+      "rate": 255,
+      "frames": 13771,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 181,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0,
+        "penalty": 1.0,
+        "power_min": 0.0,
+        "power_max": 0.0
+      }
+    },
+    {
+      "name": "infantry_no_consumption",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 165,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0,
+        "drain": 0
+      }
+    },
+    {
+      "name": "infantry_multiple",
+      "raw": 576,
+      "rate": 10,
+      "frames": 541,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 175,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "factories": 3
+      }
+    },
+    {
+      "name": "infantry_multiple_disabled",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 162,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "factories": 3,
+        "multiple": 0.0
+      }
+    },
+    {
+      "name": "infantry_mixed_truncation",
+      "raw": 266,
+      "rate": 4,
+      "frames": 217,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1728,
+          4
+        ]
+      ],
+      "country_offset": "0x134",
+      "factory_offset": "0x537c",
+      "native_instructions": 186,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "cost": 999,
+        "speed": 0.7,
+        "country_mult": 1.25,
+        "type_mult": 0.33333,
+        "power": 50,
+        "factories": 3
+      }
+    },
+    {
+      "name": "aircraft_base",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 165,
+      "writes_outside_scratch_stack": 0,
+      "setup": {}
+    },
+    {
+      "name": "aircraft_country",
+      "raw": 1125,
+      "rate": 20,
+      "frames": 1081,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 165,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "country_mult": 1.25
+      }
+    },
+    {
+      "name": "aircraft_type",
+      "raw": 675,
+      "rate": 12,
+      "frames": 649,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 165,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "type_mult": 0.75
+      }
+    },
+    {
+      "name": "aircraft_low_power",
+      "raw": 1440,
+      "rate": 26,
+      "frames": 1405,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 176,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 50
+      }
+    },
+    {
+      "name": "aircraft_low_power_maximum",
+      "raw": 1124,
+      "rate": 20,
+      "frames": 1081,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 178,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 90
+      }
+    },
+    {
+      "name": "aircraft_zero_power",
+      "raw": 1800,
+      "rate": 33,
+      "frames": 1783,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 177,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0
+      }
+    },
+    {
+      "name": "aircraft_zero_policy_fallback",
+      "raw": 90000,
+      "rate": 255,
+      "frames": 13771,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 181,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0,
+        "penalty": 1.0,
+        "power_min": 0.0,
+        "power_max": 0.0
+      }
+    },
+    {
+      "name": "aircraft_no_consumption",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 165,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "power": 0,
+        "drain": 0
+      }
+    },
+    {
+      "name": "aircraft_multiple",
+      "raw": 576,
+      "rate": 10,
+      "frames": 541,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 175,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "factories": 3
+      }
+    },
+    {
+      "name": "aircraft_multiple_disabled",
+      "raw": 900,
+      "rate": 16,
+      "frames": 865,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 162,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "factories": 3,
+        "multiple": 0.0
+      }
+    },
+    {
+      "name": "aircraft_mixed_truncation",
+      "raw": 266,
+      "rate": 4,
+      "frames": 217,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x13c",
+      "factory_offset": "0x5378",
+      "native_instructions": 186,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "cost": 999,
+        "speed": 0.7,
+        "country_mult": 1.25,
+        "type_mult": 0.33333,
+        "power": 50,
+        "factories": 3
+      }
+    },
+    {
+      "name": "building_defense",
+      "raw": 1125,
+      "rate": 20,
+      "frames": 1081,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x144",
+      "factory_offset": "0x5384",
+      "native_instructions": 170,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "buildcat": 5,
+        "country_mult": 1.25
+      }
+    },
+    {
+      "name": "building_wall",
+      "raw": 450,
+      "rate": 8,
+      "frames": 433,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1312,
+          4
+        ]
+      ],
+      "country_offset": "0x140",
+      "factory_offset": "0x5384",
+      "native_instructions": 173,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "wall": 1
+      }
+    },
+    {
+      "name": "unit_naval",
+      "raw": 460,
+      "rate": 8,
+      "frames": 433,
+      "receiver_reads": [
+        [
+          0,
+          4
+        ],
+        [
+          540,
+          4
+        ],
+        [
+          1732,
+          4
+        ]
+      ],
+      "country_offset": "0x138",
+      "factory_offset": "0x5388",
+      "native_instructions": 185,
+      "writes_outside_scratch_stack": 0,
+      "setup": {
+        "naval": 1,
+        "factories": 4
+      }
+    }
+  ],
+  "code": [
+    {
+      "address": "0x6f47a0",
+      "size": 438,
+      "fnv1a": "0x96813134",
+      "sha256": "f4cd946dd50111a656fc47445e7fd6aea0ccf5a3d74e4c447103a749c02710dc"
+    },
+    {
+      "address": "0x6f3270",
+      "size": 8,
+      "fnv1a": "0xfbab2816",
+      "sha256": "b7655f4aae69b7187b779cdc966f345e6a878c6ce4f756b676a079015b791f42"
+    },
+    {
+      "address": "0x711ee0",
+      "size": 28,
+      "fnv1a": "0x3effbce2",
+      "sha256": "186439be0901c1d0629d6e5c78b395a49efc7db5122453df29efea7fe47918a5"
+    },
+    {
+      "address": "0x459ee0",
+      "size": 7,
+      "fnv1a": "0x48452133",
+      "sha256": "e14f94839512c1779785a7c447f5ebab5bc4995dddc9c24e2bc5b22aab8db3d0"
+    },
+    {
+      "address": "0x459ec0",
+      "size": 6,
+      "fnv1a": "0x205cee56",
+      "sha256": "23334c82ef0133c65cc0394d318a2637276496cb9b99f6dd580d0ee4f6c9e7b5"
+    },
+    {
+      "address": "0x465d90",
+      "size": 6,
+      "fnv1a": "0xdbb5a9b9",
+      "sha256": "7500687ab6484f894dd29beddc484e671de6539e4faf19ef80805cfd49e55624"
+    },
+    {
+      "address": "0x741490",
+      "size": 7,
+      "fnv1a": "0x37e015e0",
+      "sha256": "8b3b8079858d27e0a2380dbf780c211a99983f17c0b4c448ea6f3209d7858320"
+    },
+    {
+      "address": "0x746e20",
+      "size": 6,
+      "fnv1a": "0xffa3ae7f",
+      "sha256": "2db31f4e09597946e56e859813bfdad7046d457c32332c3a882654d1e3ffdf67"
+    },
+    {
+      "address": "0x748170",
+      "size": 6,
+      "fnv1a": "0xce6bcd14",
+      "sha256": "2ae904b3a6bc4ca2b742b13a6b4372b0110f2731cdf29edd795459ef1845e802"
+    },
+    {
+      "address": "0x51faf0",
+      "size": 7,
+      "fnv1a": "0x9ea4ef5c",
+      "sha256": "30e5afe858862025db06208f38448c7852bdefff3baedf98f065ed26d901ea19"
+    },
+    {
+      "address": "0x523340",
+      "size": 6,
+      "fnv1a": "0x10f17ad1",
+      "sha256": "3ad3b8de377ca39afd03c964973bac1c1cc34b6b19c61339fa64498eda6bffac"
+    },
+    {
+      "address": "0x524d40",
+      "size": 6,
+      "fnv1a": "0x2ebea5cc",
+      "sha256": "75f533bd3e59de2588c8f1901e45a3eea6688bc16b7ecaf3dcaf4d49cf4f3d49"
+    },
+    {
+      "address": "0x41c200",
+      "size": 7,
+      "fnv1a": "0x37e015e0",
+      "sha256": "8b3b8079858d27e0a2380dbf780c211a99983f17c0b4c448ea6f3209d7858320"
+    },
+    {
+      "address": "0x41c180",
+      "size": 6,
+      "fnv1a": "0xbafc69e2",
+      "sha256": "7140f35dee6220b79b12aecc27acf5105bf3b77d1588e89fce345de7c16c72b7"
+    },
+    {
+      "address": "0x41cfb0",
+      "size": 6,
+      "fnv1a": "0x76552545",
+      "sha256": "7adb2a5467d3718ab3b55c6851599af573d4fbeadcd90dd961cfd69d4f94cc9f"
+    }
+  ],
+  "receiver_size": 1736,
+  "service_seams": [],
+  "boundary": "Complete original x86 TimeToBuild and every called service run in Unicorn against synthetic House/Rules/Type state. Native virtual Size and sidebar type resolver also executed. No game process, Windows tooltip, actual production cadence, or multiplayer run. The +1 in display frames retains the existing ready-display convention and does not prove an extra simulation frame in every call order. Native Strip.Help rejects count >=75 before text; Assist accepts capacity75 only when original text is available. Private executable/code bytes are not copied into this receipt."
+}

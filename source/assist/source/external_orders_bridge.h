@@ -1,5 +1,6 @@
 #include "tactical_frame_read.h"
 #include "planner_world_copy.h"
+#include "anti_theft_sample_bridge.h"
 // YRpp BuildingTypeClass::ClickRepairable is +0x157A (next: CanBeOccupied +0x157B).
 // Config only controls eligibility; never changes game type fields or Dock lists.
 static oreconfig::Config oreConfig{};static long oreConfigRevision=-1;
@@ -74,8 +75,13 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  bool advanced=(sh->flags&(AdvancedInput|MagnetronInput))&&nativeCount>0;
  bool ore=((sh->flags|sh->plannerTracking|sh->runtimeTracking)&AutoOreReturn)!=0;
  bool minerDefense=sh->minerDefenseEnabled||minerDefensePending();
- bool defense=(sh->flags&AntiTheft)!=0;bool drop=sh->magnetronDrop!=0;
- if(defense){defense=false;Vec buildings=vec(0xA8EB40);for(int i=0;i<buildings.count;++i){uint32_t p=item(buildings,i);if(p&&own(p,house)&&get<int>(p+0x6C)>0&&!get<bool>(p+0x81)&&antiTheftBuilding(p)){defense=true;break;}}}
+ const bool defenseRequested=(sh->flags&AntiTheft)!=0;bool defense=defenseRequested,drop=sh->magnetronDrop!=0;
+ worldframe::Key defenseSource{};long defenseRevision=-1;
+ if(defenseRequested){bool changed=false;if(!collectAntiTheftPresence(house,defense,changed,defenseRevision))return false;defenseSource=worldFrame.key;
+  // A changed participant filter/source may retain the same enabled mode.
+  // Negative-to-negative observations do not bypass other features' frame gate.
+  if(changed&&(defense||(lastMode&AntiTheft)))planningFrame=-1;
+ }
  if(ore&&!refreshOreConfig())return false;if(minerDefense&&!refreshFeatureTypes())return false;
  static long configSeen=-1;bool configChanged=configSeen!=oreConfigRevision;if(configChanged){planningFrame=-1;configSeen=oreConfigRevision;}
  static long defenseConfigSeen=-1;if(minerDefense&&defenseConfigSeen!=featureConfigRevision){planningFrame=-1;defenseConfigSeen=featureConfigRevision;}
@@ -159,7 +165,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
  for(int i=0;i<nativeCount&&w.intentCount<planner::MaxIntents;++i){const auto&o=nativeOrders[i];w.intents[w.intentCount++]={o.id,o.cell,o.token,o.mode,uint32_t(o.global)};}
  queryCombat=advanced&&sh->nativeCombatQueries;
  if(advanced&&!queryCombat)collectCombatProbes(w,true);
- if(!frameRead.complete()){
+ if(!frameRead.complete()||(defenseRequested&&!antiTheftSourceCurrent(defenseSource,defenseRevision))){
   // An incomplete observation must neither replace a valid input nor poison
   // the existing metadata caches with values returned by failed reads.
   memcpy(weaponCache,cacheBefore,sizeof weaponCache);dockFrame=-100000;dockCount=-1;return false;

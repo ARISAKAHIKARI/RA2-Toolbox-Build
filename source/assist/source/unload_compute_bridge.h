@@ -147,7 +147,7 @@ static void serviceUnloadCalculation(uint32_t house,int frame,int&budget){
 static void publishUnloadCalculation(){
  if(!externalInputFrame||!unloadExternalInput.count)return;
  InterlockedIncrement(&sh->unloadInputSeq);MemoryBarrier();
- memcpy(&sh->unloadInput,&unloadExternalInput,sizeof(unloadExternalInput));
+ compute::copyInput(sh->unloadInput,unloadExternalInput);
  unloadCalculationSerial=compute::nextTask(sh->unloadTask);unloadFrames.retain(unloadCalculationSerial,unloadExternalInput);sh->unloadTask=unloadCalculationSerial;
  MemoryBarrier();InterlockedIncrement(&sh->unloadInputSeq);unloadCalculationPending=true;notifyHost();
 }

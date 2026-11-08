@@ -65,6 +65,8 @@ static std::vector<uint8_t> mix(const std::map<std::string,std::vector<uint8_t>>
  for(auto&[n,b]:files){word(out,slot,external::assets::hash(n));word(out,slot+4,at);word(out,slot+8,b.size());memcpy(out.data()+head+at,b.data(),b.size());slot+=12;at+=b.size();}return out;
 }
 int main(int argc,char**argv){
+ // Foundation enum zero is the valid native 1x1 entry, not an all-zero table.
+ word(memory,0x8192B8,1);word(memory,0x819310,1);
  std::vector<uint8_t> shp(8+24*24+24*18);half(shp,2,4);half(shp,4,3);half(shp,6,24);
  for(int f=0;f<24;++f){int at=8+f*24,data=8+24*24+f*18;half(shp,at+4,4);half(shp,at+6,3);word(shp,at+8,2);word(shp,at+20,data);for(int row=0;row<3;++row){half(shp,data+row*6,6);std::fill(shp.begin()+data+row*6+2,shp.begin()+data+row*6+6,3+f);}}
  std::vector<uint8_t> pal(768,32),tmp(20+52+1800,3);word(tmp,0,1);word(tmp,4,1);word(tmp,8,60);word(tmp,12,30);word(tmp,16,20);std::fill(tmp.begin()+20,tmp.begin()+72,0);word(tmp,32,952);

@@ -6,6 +6,9 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 1.0.46 修订的建筑遮挡与恢复 | [基础尺寸缺页、BUILDNGZ 事务与真实场景缓存恢复](2026-11-08-release-146-building-depth-cache.md) | foundation sealed-missing-page 1x1 poison maskRevision commit-after-identity 36-recoveries native-Z-preserved |
+| 1.0.46 修订的四类原生生产时间 | [类型布局、原指令查询、工厂剩余和侧栏一致性](2026-11-08-release-146-production-time.md) | Building Unit Infantry Aircraft native-TimeToBuild scratch-prefix UTF16 final-cameo 47-native-cases no-game |
+| 1.0.46 修订的计算输入与重复工作 | [独占输入池、有效范围、同样本资格缓存和订阅时限](2026-11-08-release-146-input-and-cache-performance.md) | ValueTask owned-lease prefix-copy FrameHistory AntiTheft full-token earliest-expiry 500Hz no-FPS-claim |
 | 插帧按需缓存、轻量 Full 与第二轮性能检查 | [当前游戏原图、内容身份、后台队列、缓存寿命和导入去重](2026-11-08-cursor-cache-and-import-performance.md) | pre146-2 no-bundled-DIS preview-on-demand palette-key epoch bounded-pairs raster-lifetime import-copy remaining-hotspots no-FPS-claim |
 | 关闭硬件断点、全部工具箱计算的游戏侧开销 | [有效规划复制、Host 缓冲复用、共享采样与空闲诊断](2026-11-08-toolbox-compute-performance.md) | pre146 no-HW Host-compute active-prefix immutable-pool capture-scratch same-page-reads idle-INT3 runtime-memory no-FPS-claim |
 | 1.0.45 完整包精简与依赖按需获取 | [固定官方来源、后台准备、任务隔离和发布验证](2026-11-08-release-145-on-demand-dependencies.md) | optional-python numpy scipy opencv pinned-download immutable-components cancel profile-lock lightweight-full |

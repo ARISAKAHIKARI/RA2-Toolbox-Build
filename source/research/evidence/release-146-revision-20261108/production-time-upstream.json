@@ -1,0 +1,80 @@
+{
+  "version": "1.0.46 revision",
+  "sources": [
+    {
+      "path": "UnitTypeClass.h",
+      "sha": "a48b36b18fa5d076fe8b9fba5ce0d5b167346c77",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/UnitTypeClass.h"
+    },
+    {
+      "path": "InfantryClass.h",
+      "sha": "3153eca2ab2a673dbdb65929039b6b482e37d861",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/InfantryClass.h"
+    },
+    {
+      "path": "InfantryTypeClass.h",
+      "sha": "a95bb38a9037b459f2a0c4ecf668a9045d0200b0",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/InfantryTypeClass.h"
+    },
+    {
+      "path": "AircraftClass.h",
+      "sha": "0f8a3f1c46a591dd56ba2c608a010ca5432794ba",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/AircraftClass.h"
+    },
+    {
+      "path": "AircraftTypeClass.h",
+      "sha": "02332d3de771f9debf6200b2723d651ac2de6772",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/AircraftTypeClass.h"
+    },
+    {
+      "path": "BuildingClass.h",
+      "sha": "6e28fed8b6d3b2f63e61a8d68fdbae22288c1a31",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/BuildingClass.h"
+    },
+    {
+      "path": "TechnoClass.h",
+      "sha": "8af9d48463819a5879c2b0a0e205a98644551c47",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/TechnoClass.h"
+    },
+    {
+      "path": "FootClass.h",
+      "sha": "e2e590756515a69d1cd6b0f6d91bbc98f79b4aa5",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/FootClass.h"
+    },
+    {
+      "path": "AbstractClass.h",
+      "sha": "a61b53d8d5875daa5f868243317ed7fe0ebd0729",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/AbstractClass.h"
+    },
+    {
+      "path": "SidebarClass.h",
+      "sha": "b5b787da5db599156d121d6b9a41dcde4a81b997",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/SidebarClass.h"
+    },
+    {
+      "path": "FactoryClass.h",
+      "sha": "872a5f47194778a5244f4b17e6cb93b732f0bcb9",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/FactoryClass.h"
+    },
+    {
+      "path": "UnitClass.h",
+      "sha": "2d69ce9a230a4516cf6942598f462e5f4c3a68f7",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/UnitClass.h"
+    },
+    {
+      "path": "PhobosToolTip.cpp",
+      "sha": "eaed57198bc26a303aecdb063e2f02b20e57a09f",
+      "url": "https://github.com/Phobos-developers/Phobos/blob/f06797ec39f2b60b9fa5b6da69288c36d189b712/src/Misc/PhobosToolTip.cpp"
+    },
+    {
+      "path": "GeneralDefinitions.h",
+      "sha": "29b4868d8d8ca6040ca7fe67e074c7e00800dc0e",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/GeneralDefinitions.h"
+    },
+    {
+      "path": "BuildingTypeClass.h",
+      "sha": "74545e1cbf7a547ab83bfb14adcbcd08b771877a",
+      "url": "https://github.com/CnCNet/YRpp/blob/d9795546950fcc75a94325ffc83b44d16ec34ce2/BuildingTypeClass.h"
+    }
+  ]
+}

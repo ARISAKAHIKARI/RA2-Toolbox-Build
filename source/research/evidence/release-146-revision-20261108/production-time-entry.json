@@ -1,0 +1,72 @@
+{
+  "version": "1.0.46 revision",
+  "passed": true,
+  "source_sha256": {
+    "source/assist/source/build_time_tooltip.h": "0a94e42176b7e2cd996e8cb4d883e39e37c253085a16c50b6967821892d0e6c9",
+    "source/assist/source/build_time_types.h": "30d979ddc9cebb9a68094771a96d316b348eca5f40240c5e4af5cace82c78dcd",
+    "source/assist/source/build_time_rate.h": "755835e4e53fb189900651c1b588739009f5617a9d9027aa323546949722acc7",
+    "source/assist/source/bridge.cpp": "a1924341718da07eff0ae127ea39fc5653fe3c1c490197f47075d6877e98e0d3",
+    "source/assist/source/guard.cpp": "eeac4d1b37c4ae9a4b8d4a5e3dc3469a6518bb451ce5275b281f5dd4e5af2b9a",
+    "source/game_runtime/source/native_tooltip_runtime.h": "340466055b8fbdcad51d89be4e2d0c9d386327186baaf470b75baba8c86ce261",
+    "source/shared/source/runtime_fp_scope.h": "a85a7e2fe80a8ec888f127b938ab6f48ed689333fb2f6a46f3e74bdb0c0b1099",
+    "source/shared/source/debug_entry_checks.h": "ce004ab89efe45709115a40c8abac0898235fa9216094fec21e992b1fc8c835a",
+    "source/shared/source/debug_entry_policy.h": "a20108bae99496714150ba465886b3158beb6613c6a6ddbdf901171d2cdc2c1c",
+    "source/shared/source/debug_entry_catalog.h": "8229a6879402f082eaf41b99b79040b44499e962a8991e79ba496ccc2ac4bd21",
+    "source/assist/tests/build_time_tooltip.cpp": "151d92cd61782ea6034f61fd95d17d7906b560c0eb9ec27c1a4648d91aa44058",
+    "source/assist/tests/build_time_tooltip.py": "280dbe75e372b73fc4fbfa57f10b1e6f655f059cfcfcfbf7c28e8a6f73d2be61",
+    "source/assist/tests/build_time_native.py": "37f3a0c83dbd01c88aa97441e73fe79365ea961b28d385220bd3932dc4bb3a62"
+  },
+  "source_hash_stable": true,
+  "executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "native_case_count": 47,
+  "native_service_seams": [],
+  "entry": {
+    "passed": true,
+    "checks": 13334,
+    "scenarios": 207,
+    "native_call_seam_invocations": 159,
+    "utf16_wchar_bytes": 2
+  },
+  "sanitizer": null,
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "-fshort-wchar",
+        "-no-pie",
+        "-I",
+        "/workspace/scratch/40121bc881b8/performance-147/production-time/final",
+        "/workspace/scratch/40121bc881b8/ra2-optimize-147/source/assist/tests/build_time_tooltip.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-147/production-time/final/build-time-tooltip"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/40121bc881b8/performance-147/production-time/final/build-time-tooltip",
+        "/workspace/scratch/40121bc881b8/performance-147/production-time/private/gamemd-spawn(3).exe"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"passed\":true,\"checks\":13334,\"scenarios\":207,\"native_call_seam_invocations\":159,\"utf16_wchar_bytes\":2}\n",
+      "stderr": ""
+    }
+  ],
+  "entry_service_seams": [
+    "synthetic process-memory image loaded from the private PE, with synthetic sidebar/House/Type/factory state",
+    "Win32 runtime ownership and clock",
+    "native thiscall receives and validates the real production scratch receiver; return values come from the complete original-instruction executions in native-result.json",
+    "unused MSVC-only FP include omitted from Linux translation; native_tooltip_runtime + guard + FP owner source-bound and unchanged, not executed here"
+  ],
+  "boundaries": [
+    "No Windows/game/visual tooltip or multiplayer run.",
+    "The retained +1 is the existing ready-display convention, not a proof of an extra native frame in every call order.",
+    "Count 75 is accepted by Assist when original text exists; native Strip.Help rejects >=75 and the shared hook still retains null.",
+    "Unknown receiver/Type vtables, methods and changed native TimeToBuild bodies return original text; no compatibility override is introduced."
+  ]
+}

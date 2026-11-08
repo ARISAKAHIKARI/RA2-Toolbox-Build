@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "suite": "lightweight_package",
+  "passed": true,
+  "tests_run": 11,
+  "tests": [
+    "test_actual_source_directory_selects_only_the_seven_shipping_files",
+    "test_both_packages_require_the_complete_matching_engine",
+    "test_dependency_manifest_pins_public_https_size_hash_and_versions",
+    "test_keeps_slim_base_and_original_cursor_inputs",
+    "test_rejects_generated_resources_under_every_allowed_root",
+    "test_rejects_missing_original_inputs_or_native_programs",
+    "test_rejects_runtime_download_cache_settings_and_development_files",
+    "test_rejects_unsafe_paths_and_case_collisions",
+    "test_removes_every_generated_timeline_and_preview_from_full_and_update",
+    "test_source_enumeration_rejects_unknown_runtime_files_and_missing_engine",
+    "test_zip_roundtrip_and_overlays_preserve_existing_runtime_caches_and_settings"
+  ],
+  "base": {
+    "name": "RA2Toolbox-1.0.45-x64-Full.zip",
+    "sha256": "5ec5c6b92f064148787b53ef69c923b2a6ef85f0e9dd0ac50e0a3cb9230167cf",
+    "archive_bytes": 43035144,
+    "members": 445,
+    "retained_existing_members": 53,
+    "removed_runtime_members": 0,
+    "removed_generated_members": 392,
+    "removed_generated_compressed_payload_bytes": 38569113,
+    "same_bytes_zip_estimate_without_generated": 4414591,
+    "estimate_excludes_new_binary_and_bootstrap_differences": true
+  },
+  "test_payloads": "small synthetic bytes; complete member set from SHA256-verified published base",
+  "actual_source_engine_inventory": {
+    "directory": "source/engine",
+    "shipping": [
+      "engine/dis_render.py",
+      "engine/player-template.html",
+      "engine/precompute.py",
+      "engine/prepare_runtime.ps1",
+      "engine/prepare_runtime.py",
+      "engine/preview_builder.py",
+      "engine/runtime-dependencies.json"
+    ],
+    "nonshipping_test_files": [
+      "engine/test_precompute_cache.py"
+    ],
+    "python_cache_bundled": false
+  },
+  "final_release_zip_validation": "performed separately by package_release.py after frozen build",
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "source_bindings": [
+    {
+      "path": "packages/v1.0.46/test_lightweight_package.py",
+      "sha256": "17f62014066c5f1368fde50a7526e2e14e89e8a75ca8245a2143beaef4c551fe"
+    },
+    {
+      "path": "packages/v1.0.46/package_release.py",
+      "sha256": "503907f9aed1217c0fccd9a0312a9e3cef5c267798119009115f555a78d57799"
+    }
+  ]
+}

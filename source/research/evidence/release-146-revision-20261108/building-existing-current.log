@@ -1,0 +1,11 @@
+/workspace/scratch/40121bc881b8/ra2-optimize-147/source/third_party/xbrz/xbrz.cpp: In function ‘void {anonymous}::blendPixel(const Kernel_3x3&, uint32_t*, int, unsigned char, const xbrz::ScalerCfg&)’:
+/workspace/scratch/40121bc881b8/ra2-optimize-147/source/third_party/xbrz/xbrz.cpp:419:38: warning: parameter declaration before lambda trailing return type only optional with ‘-std=c++2b’ or ‘-std=gnu++2b’ [-Wc++23-extensions]
+  419 |         const bool doLineBlend = [&] -> bool
+      |                                      ^~
+test: /tmp/tmp2y79dkll/test.cpp:115: int main(int, char**): Assertion `dark.color[n]==entry[2]&&bright.color[n]==entry[2]' failed.
+Traceback (most recent call last):
+  File "/workspace/scratch/40121bc881b8/ra2-optimize-147/source/assist/tests/game_assets_host_test.py", line 604, in <module>
+    subprocess.run([str(exe),*sys.argv[1:]],check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/tmp/tmp2y79dkll/test']' died with <Signals.SIGABRT: 6>.

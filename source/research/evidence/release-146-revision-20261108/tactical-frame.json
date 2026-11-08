@@ -1,0 +1,46 @@
+{
+  "pass": true,
+  "scope": "Exercise production tactical collectors over a real sealed raw Snapshot.\n\nThe source functions and SampleReadScope are extracted without changing their\nbodies. Synthetic process memory and native/event seams are explicit. These are\nCPU regressions, not Windows gameplay, frame-rate or multiplayer measurements.\n",
+  "flags": [
+    "-std=c++17",
+    "-O2",
+    "-UNDEBUG",
+    "-I",
+    "/workspace/scratch/40121bc881b8/performance-147/anti-theft/tactical-frame",
+    "-I",
+    "/workspace/scratch/40121bc881b8/ra2-optimize-147/source/assist/source"
+  ],
+  "output": "PASS cooperative sealed fields, quota bytes and missing-frame retention\nPASS 32 load assignment variants, shared roster, native matrix boundary and frozen-cohort retry\nPASS dodge shared Bullet/Techno input, live reuse guard and failed/empty roster distinction\nPASS reverse-dodge object/Cell candidates, pure crusher facts and failed-input retention\nPASS missile raw/fresh selector facts, missing retention, manual generations and native query boundaries\nPASS unload raw facts/native legality split, source-current guard and failed-source retention\nPASS planning staging publication, missing-frame retention and native enrichment boundaries\nPASS repair internal/Host outputs, pending-toggle facts and failed refresh retention\nPASS ore Unit/Building observation, failed transaction/search retry and live admission guard\nPASS harvester-defense shared refinery/radio index, missing retention and frame identity\nPASS all tactical sampling production-path checks (synthetic CPU fixture)\n",
+  "windows_executed": false,
+  "game_process_tested": false,
+  "multiplayer_tested": false,
+  "extracted_sha256": {
+    "tactical_frame_production.h": "6d260927d315e5ee8b948dfd0834202cc78faedd754218e2bda22c9f67b83126",
+    "sample_scope_production.h": "5995309ad13cbb372741be68dfc9547dcf7fd9749ed176dca52e7ec0fcaea27a"
+  },
+  "source_sha256": {
+    "assist/source/cooperative_bridge.h": "d579af32a468c625258611e10fd2a1a05ee91b71ec5b3c953a68649b11e6376e",
+    "assist/source/external_orders_bridge.h": "14b829c97cae9709960724b58669d79b64cc17d5c5eb8f97b04f6ebf985f4fa1",
+    "assist/source/dodge_bridge.h": "d251be34caad0f481a7ca39279e724a704202894be43c19bf80435ae74052dc9",
+    "assist/source/reverse_dodge_bridge.h": "1428c86d0b01d6287b2380b40916e30c469d74d49642cb8d049d2feadd06916f",
+    "assist/source/missile_bridge.h": "43ac2784421a0fa9440eb2f9a7ef103e8ba8c9886a07a9aa0fd31c8a42dcff39",
+    "assist/source/autoload_bridge.h": "068f34763606cd4c4bab54a16004a6b2a3f654933bf9ca8e64318fff3db2cc48",
+    "assist/source/unload_compute_bridge.h": "620aba997d4a09ee85e3cf30fa9a89ef85947762c12ed7d4eb248f4cbc12ab61",
+    "assist/source/native_orders_bridge.h": "594a27690b5a9de6953e74839a50fc8eaa5b4a427627b0badbe18266751a4d3f",
+    "assist/source/world_frame_runtime.h": "c9d04f2944a8517494fe52e6c20e73b1fc35fe68600b0dc4ff2c3e9b200ce5c1",
+    "assist/source/bridge.cpp": "a1924341718da07eff0ae127ea39fc5653fe3c1c490197f47075d6877e98e0d3",
+    "assist/source/harvester_defense_bridge.h": "aea323bedb0452a56569b45c47e45317a15120e2c4d032a56db807d715933d76",
+    "assist/source/harvester_defense_raw.h": "c890e9e25578dc0dc53b69f488f402608157516847e47b4ec5a5c1770dbab627",
+    "assist/source/planner_world_copy.h": "095ecda916a0e512805ea31b96853117bd9d06c5f89bbf55e93f3ad04fac2a83",
+    "assist/source/anti_theft_sample_bridge.h": "33a5890d76a10ca9733c6456b904315f4b66186affd1f6b0bf914fb3bec610dc",
+    "assist/source/tactical_frame_read.h": "38a51d8e02f58f3809d6b6c1f3842c1857586321e72a7c674ee1c8f0ed796efb",
+    "assist/source/raw_combat.h": "7972727364e3a6d6cad7762fccb6cf030173000716827ba8ba45647b87c85552",
+    "assist/source/combat_probe_bridge.h": "3618fdb3ac85f209dddf563c0f21c1f35194d50f37ac4771711f9b4fa3b5356e",
+    "assist/source/ore_harvest_bridge.h": "86fa79e17f63e2cccc8022a64ffc1870aead79d8bb3c95f0dd5d64b975824450",
+    "shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+    "assist/tests/tactical_frame_sampling.cpp": "2f00e122e8203020e84f7080501562a83d4e460f4f3204ff91b304edef371bc0",
+    "assist/tests/tactical_frame_sampling.py": "b4ae25afd230724ea55571c16d32e05a8843680c90185192cebe1553dd5ad6a2",
+    "assist/tests/fixtures/tactical_frame/autoload_before.h": "14a6a86113a0065abc3ad863c3c5ce41bc0b2328d84a9cd0817fe29ed76ab5cc"
+  },
+  "executable_sha256": "1984ddcf5f6d145048c505597d08dde0fd575d721c0db840995838a81af21447"
+}

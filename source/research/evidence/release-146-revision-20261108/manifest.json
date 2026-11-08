@@ -1,0 +1,114 @@
+{
+  "release": "1.0.46",
+  "file_version": "1.0.46.3",
+  "baseline_commit": "e5e9abd69cdf2963f7bef3dd8fbc3e12c4537a63",
+  "evidence": [
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/anti-theft-cache.json",
+      "bytes": 8551,
+      "sha256": "2cbdb63fb8c19b1d82fb66e486849a62add1c6b200033458caaced59017171c3"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/anti-theft-ubsan.json",
+      "bytes": 8722,
+      "sha256": "9d3128b452acc3b5e25c761ced0f6228d07f320294857d618112acdad03e860e"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/building-depth-baseline.json",
+      "bytes": 38211,
+      "sha256": "2d72a87b18d66b3c11baef3ca1e8274035de6108fd3460d68ca8e5eb518d02bb"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/building-depth-current.json",
+      "bytes": 34783,
+      "sha256": "ff7572cd3a5a14868dd4f7a5463061b1b2b1cc788caca53226d8f457aa653702"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/building-depth-summary.json",
+      "bytes": 2215,
+      "sha256": "5ca5577a1ee9d46363c843e6cd44db5bd669fa955ee0f77118bec92b5a7e4c81"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/building-existing-baseline.json",
+      "bytes": 1370,
+      "sha256": "216e6bc830bfa285159d52b86d2fd3362b1c923f7a8df4dff0e991eb05e458ed"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/building-existing-current.log",
+      "bytes": 1158,
+      "sha256": "ca6ae189921011c00391c84f84ef4c08ccaa9687c0d600ebd1eea46cefd8f346"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/input-asan.json",
+      "bytes": 4096,
+      "sha256": "03909a666fe64c96b098a0dd518deb4c80b06fe5acae2d20b1e649cef4cbf0ca"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/input-controlled.json",
+      "bytes": 15142,
+      "sha256": "e70b25aa263d831dd4df5a6daefdbd9a8d78075575f2acaa15a5c8183707ebe7"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/input-transfer.json",
+      "bytes": 4631,
+      "sha256": "e5fc6020f573aab4603a0b98e2c57d6e019e3560953e9eebab1420ddf5be1b84"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/input-windows-codegen.json",
+      "bytes": 6567,
+      "sha256": "a4c7e60e4c424198ffc311329f30412c0142fdfcb848d7ebc9f7233076407303"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/lightweight-package.json",
+      "bytes": 2444,
+      "sha256": "8a600efaddcc957e97838da80010b5213996776f4fe77e0572c53a0bc98bd645"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/production-time-debug-consumers.json",
+      "bytes": 2000,
+      "sha256": "ceca8ab87d96244dfe59c0c62812cfcdf065ea9467246980f4f8ca867dd08d3c"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/production-time-entry.json",
+      "bytes": 3900,
+      "sha256": "7dd84048f113f608cf632f81176aa304bfbb15a70eca4d1444fd4eda16885ce8"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/production-time-native.json",
+      "bytes": 27883,
+      "sha256": "30b445de87ec8b6de095f0371f37429f07ef24155dc1ed6fe959666d5f328e85"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/production-time-summary.json",
+      "bytes": 1114,
+      "sha256": "187b64c968fe56e05cdc3bb77e5151789f315610de19d93a74aa0e655d35c874"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/production-time-ubsan.json",
+      "bytes": 4013,
+      "sha256": "f0d3fc30f1dd2dc522c5095667a3ec3fee0ce0910175191ec7bd3b3711fc8826"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/production-time-upstream.json",
+      "bytes": 3255,
+      "sha256": "f47957730c842bacb177de9d593e127a7574a35627814d66c09f061f4184d5bf"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/subscription-deadlines.json",
+      "bytes": 6647,
+      "sha256": "99b496be9788e531243871259988c336362e447b1402ee7431804d81dc77b552"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/subscription-summary.json",
+      "bytes": 1147,
+      "sha256": "52398e12794519ce8e6529ea13e2aa8658355c17c66bde11f8e4a691cf575598"
+    },
+    {
+      "path": "source/research/evidence/release-146-revision-20261108/tactical-frame.json",
+      "bytes": 4480,
+      "sha256": "b2a2a5e7d5b24763a933d792e574a23e7021985eccd427bc7bb2732b3c6d3dc4"
+    }
+  ],
+  "raw_private_executable_or_dump_included": false,
+  "windows_game_or_multiplayer_executed": false
+}

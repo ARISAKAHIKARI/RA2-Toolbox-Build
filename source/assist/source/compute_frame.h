@@ -3,6 +3,7 @@
 #include <memory>
 #include <array>
 #include <type_traits>
+#include "compute_input_copy.h"
 namespace assist { namespace compute {
 // Bounded provenance for already-running work. This is not a calculation
 // queue: the host has one running job and replaces its pending input.
@@ -11,7 +12,7 @@ template<class Input,unsigned N=16>class FrameHistory {
  std::array<std::unique_ptr<Entry>,N> slots_;
 public:
  void clear(){for(auto&p:slots_)p.reset();}
- void retain(uint32_t serial,const Input&input,std::array<int,3> cursors={}){static_assert(std::is_trivially_copyable<Input>::value,"Frame input must be a value");auto&p=slots_[serial%N];if(!p)p=std::make_unique<Entry>();p->serial=serial;p->value=input;p->cursors=cursors;}
+ void retain(uint32_t serial,const Input&input,std::array<int,3> cursors={}){static_assert(std::is_trivially_copyable<Input>::value,"Frame input must be a value");auto&p=slots_[serial%N];if(!p)p=std::make_unique<Entry>();p->serial=serial;copyInput(p->value,input);p->cursors=cursors;}
  const std::array<int,3>*cursors(uint32_t serial)const{const auto&p=slots_[serial%N];return serial&&p&&p->serial==serial?&p->cursors:nullptr;}
  const Input*find(uint32_t serial)const{const auto&p=slots_[serial%N];return serial&&p&&p->serial==serial?&p->value:nullptr;}
 };
