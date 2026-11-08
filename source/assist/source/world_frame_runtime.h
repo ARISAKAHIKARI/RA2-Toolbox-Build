@@ -35,7 +35,13 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  key.generationLow=uint32_t(worldProducerGeneration);key.generationHigh=uint32_t(worldProducerGeneration>>32);
  key.connectionLow=uint32_t(worldFrameServer.connection());key.connectionHigh=uint32_t(worldFrameServer.connection()>>32);
  worldFrameServer.observe(key);
- if(haveCaptureAttempt&&lastCaptureAttempt.sameFrame(key))return worldFrameReady;
+ if(haveCaptureAttempt&&lastCaptureAttempt.sameFrame(key)){
+  // A consumer can resume while the game is paused, after its old transport
+  // was retired or local automatic work advanced without a live Host reader.
+  // Re-export the existing immutable sample; publish() deduplicates its exact
+  // descriptor. Never recapture or invent a newer observation/acquisition tick.
+  if(worldFrameReady)worldFrameServer.publish(worldFrame);return worldFrameReady;
+ }
  lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
  std::vector<uint32_t>requests=worldFrameServer.requests();requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
  std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());

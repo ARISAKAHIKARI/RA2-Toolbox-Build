@@ -129,6 +129,7 @@ template<class Assets>class SceneRenderer {
  std::map<ImageKey,SpriteCached> sprites_;
  std::map<ObjectKey,ImageKey> displayed_;size_t actorCursor_=0,transientCursor_=0;repairvisuals::Assets repairAssets_;
  std::shared_ptr<const Terrain> building_,complete_,blocked_;bool dynamicFailure_=false,materialsReady_=false;
+ std::weak_ptr<const worldframe::Snapshot> verifiedTerrainSource_;SceneRegion verifiedTerrainRegion_{};
  struct Paint {lighting::State light;uint64_t signature=0;};
  std::vector<Paint> evaluatedPaint_;std::vector<uint32_t> evaluatedStamp_;uint32_t evaluationEpoch_=0;
  asyncwork::FramePool<Scene> outputPool_;
@@ -173,7 +174,7 @@ template<class Assets>class SceneRenderer {
    if(!x.sourceColor&&n<a.colors.size()&&a.colors[n]!=b.colors[n])return false;
   }return true;
  }
- void clearBackground(){nativePageMasks_.reset();gpuFrameReuse_.reset();nativePresentation_={};objectCanvas_.clear();++motionTerrainRevision_;building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();mask_={};gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();liveMaskValid_=false;cells_.clear();baseCells_.clear();cellReadPlan_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
+ void clearBackground(){verifiedTerrainSource_.reset();nativePageMasks_.reset();gpuFrameReuse_.reset();nativePresentation_={};objectCanvas_.clear();++motionTerrainRevision_;building_.reset();complete_.reset();blocked_.reset();dynamicFailure_=false;pending_={};background_={};baseScene_.reset();maskedBaseScene_.reset();gpuBaseTiles_.reset();cpuBaseFallback_={};maskSource_.reset();mask_={};gpuMaskPlan_.reset();cpuMaskPlan_.reset();maskPixels_.reset();liveMaskValid_=false;cells_.clear();baseCells_.clear();cellReadPlan_.clear();prepared_.clear();painted_.clear();cursor_=baseCursor_=0;probing_=probeChanged_=pendingIncomplete_=backgroundIncomplete_=false;backgroundRetry_=0;}
 
 public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages):nativeBudget_(pages==camera::NativeCanvas::MaximumPages?camera::NativeCanvas::sharedBudget():std::make_shared<camera::NativeCanvas::Budget>()){if(pages!=camera::NativeCanvas::MaximumPages)nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
@@ -245,6 +246,19 @@ public:
   if(!paletteReady&&terrainPaletteReady_){stageStats_.failure=RenderFailure::TerrainPalette;return {};}
   if(paletteReady){if(terrainPaletteReady_&&terrainPalette_!=liveTerrainPalette){tiles_.clear();clearBackground();}terrainPalette_=liveTerrainPalette;terrainPaletteReady_=true;}
   phaseReads(stageStats_.setupReads);
+  // Presentation can run faster than raw world capture. Rechecking the exact
+  // same sealed bytes cannot discover new Cell lighting. Retain only a fully
+  // verified crop of a completed background; a new token (including a new
+  // serial at the same engine frame), source/crop change or missing read goes
+  // through the ordinary validation below. Palette/resource/geometry changes
+  // above still invalidate the background before this decision.
+  const auto terrainSource=lighting::sealedSource(read,0);
+  const auto&verifiedRegion=verifiedTerrainRegion_;
+  const bool sameVerifiedRegion=region.active==verifiedRegion.active&&region.x==verifiedRegion.x&&region.y==verifiedRegion.y&&region.width==verifiedRegion.width&&region.height==verifiedRegion.height;
+  const bool reuseTerrain=terrainSource&&terrainSource==frame.sourceFrame&&verifiedTerrainSource_.lock()==terrainSource&&
+   !building_&&!backgroundIncomplete_&&complete_==frame.terrain&&backgroundLight_==scene&&sameVerifiedRegion;
+  if(!reuseTerrain){
+  verifiedTerrainSource_.reset();
   // A pending bank cannot combine lighting from two different global states.
   if(building_&&buildingLight_!=scene){building_.reset();pending_={};prepared_.clear();cursor_=baseCursor_=0;}
 
@@ -377,6 +391,10 @@ public:
   if(committed&&region.active&&!verifyVisible(true))return {};
   // An incomplete bank may only reuse a synchronously validated crop.
   if(!complete_||(building_&&!visibleVerified))return {};
+  if(visibleVerified&&!building_&&!backgroundIncomplete_&&complete_==frame.terrain&&terrainSource&&terrainSource==frame.sourceFrame&&lighting::sealedSource(read,0)==terrainSource){
+   verifiedTerrainSource_=terrainSource;verifiedTerrainRegion_=region;
+  }
+  }
   phaseReads(stageStats_.terrainScanReads);
   // Scale the CURRENT lit terrain as one continuous native RGB backing.
   // Filtering individual transparent TMP diamonds introduces artificial

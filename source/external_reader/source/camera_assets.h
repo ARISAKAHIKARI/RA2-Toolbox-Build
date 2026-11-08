@@ -52,7 +52,7 @@ template<class Reader>class Context {
  using SharedTileKey=std::tuple<uint32_t,uint32_t,uint32_t,uint32_t,unsigned,uint64_t,std::array<uint32_t,256>>;
  inline static nativeimages::BasicBank<SharedTileKey> sharedTiles_{rendermemory::SharedTiles};
 public:
- struct Read {Reader*reader;bool operator()(uint32_t p,void*out,size_t n)const{return reader->readFresh(p,out,n);}
+ struct Read {static constexpr bool SealedWorldReads=true;Reader*reader;bool operator()(uint32_t p,void*out,size_t n)const{return reader->readFresh(p,out,n);}
   template<class R>static auto nullable(R&r,uint32_t p,void*out,size_t n,int)->decltype(r.readOptional(p,out,n)){return r.readOptional(p,out,n);}
   template<class R>static bool nullable(R&r,uint32_t p,void*out,size_t n,long){return r.readFresh(p,out,n);}
   bool optional(uint32_t p,void*out,size_t n)const{return nullable(*reader,p,out,n,0);}

@@ -38,7 +38,7 @@ def main():
     git = lambda *command: subprocess.check_output(['git', '-C', str(repo), *command])
     require(git('rev-parse', 'HEAD').decode().strip() == args.expected_commit, 'Wrong checkout')
     file_version, version = read_release_version()
-    require((version, file_version) == ('1.0.44-pre.4', '1.0.44.4'), 'Wrong version')
+    require((version, file_version) == ('1.0.44-pre.5', '1.0.44.5'), 'Wrong version')
     provenance_bytes = args.provenance.read_bytes()
     provenance = json.loads(provenance_bytes)
     require(provenance['commit'] == args.expected_commit and provenance['build_returncode'] == 0

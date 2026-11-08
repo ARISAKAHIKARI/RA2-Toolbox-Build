@@ -90,6 +90,7 @@ static swsidebar::Panel superweaponPanel;static swsidebar::Options superweaponOp
 #ifdef RA2_CONSOLE_WEBVIEW2
 #include "../../shared/source/async_ini_store.h"
 #define WritePrivateProfileStringW asyncini::write
+#define WritePrivateProfileSectionW asyncini::writeSection
 #define GetPrivateProfileStringW asyncini::cachedReadString
 #define GetPrivateProfileIntW asyncini::cachedReadInt
 #endif

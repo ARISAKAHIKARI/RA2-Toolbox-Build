@@ -6,6 +6,11 @@
 #undef WritePrivateProfileStringW
 #define ASYNCINI_RESTORE_WRITE 1
 #endif
+#ifdef WritePrivateProfileSectionW
+#pragma push_macro("WritePrivateProfileSectionW")
+#undef WritePrivateProfileSectionW
+#define ASYNCINI_RESTORE_SECTION 1
+#endif
 #ifdef GetPrivateProfileStringW
 #pragma push_macro("GetPrivateProfileStringW")
 #undef GetPrivateProfileStringW
@@ -41,7 +46,7 @@
 namespace asyncini {
 namespace core {
 constexpr unsigned InvalidArgument=87,QueueFull=8,Stopped=995,WriteFault=29;
-enum class Kind { Set,DeleteKey,DeleteSection,Flush,Native };
+enum class Kind { Set,DeleteKey,DeleteSection,Flush,Native,ReplaceSection };
 // Internal queue admission errors are not Win32 file errors, even when their
 // numeric codes coincide (for example QueueFull and ERROR_NOT_ENOUGH_MEMORY).
 enum class ErrorOrigin { None,Native,Queue,Cache,Shutdown };
@@ -60,6 +65,16 @@ struct Operation {
   else if(s&&k&&!v)kind=Kind::DeleteKey;
   else if(s&&k&&v)kind=Kind::Set;
  }
+ static Operation sectionWrite(const wchar_t*s,const wchar_t*block,const wchar_t*p){
+  Operation o;o.section=Text(s);o.path=Text(p);o.kind=Kind::ReplaceSection;
+  // MULTI_SZ is an owned buffer, not a single NUL-terminated value. Preserve
+  // every entry and the terminal empty string until the writer consumes it.
+  o.value.null=!block;
+  if(block){const wchar_t*end=block;while(*end)end+=std::char_traits<wchar_t>::length(end)+1;o.value.value.assign(block,end+1);}
+  if(!s&&!block&&!p)o.kind=Kind::Flush;
+  return o;
+ }
+ bool replacesSection()const{return kind==Kind::DeleteSection||kind==Kind::ReplaceSection;}
  bool barrier()const{return kind!=Kind::Set;}
 };
 struct Result {bool ok=true;unsigned error=0;};
@@ -104,8 +119,19 @@ struct Key {
  bool operator==(const Key&b)const{return path==b.path&&section==b.section&&key==b.key;}
 };
 inline Key keyOf(const Operation&o){return{folded(o.path.value,true),folded(o.section.value),folded(o.key.value)};}
-inline bool cacheable(const Operation&o){return !o.path.null&&!o.section.null&&(o.kind==Kind::Set||o.kind==Kind::DeleteKey||o.kind==Kind::DeleteSection);}
+inline bool cacheable(const Operation&o){return !o.path.null&&!o.section.null&&(o.kind==Kind::Set||o.kind==Kind::DeleteKey||o.replacesSection());}
 inline Key sectionKey(Key k){k.key.clear();return k;}
+inline Lookup sectionLookup(const Operation&o,const std::wstring&key){
+ if(o.kind==Kind::ReplaceSection&&!o.value.null){
+  const auto&block=o.value.value;
+  for(size_t pos=0;pos<block.size()&&block[pos];){
+   const auto end=block.find(L'\0',pos),equal=block.find(L'=',pos);
+   if(equal<end&&folded(block.substr(pos,equal-pos))==key)return{true,true,block.substr(equal+1,end-equal-1)};
+   if(end==std::wstring::npos)break;pos=end+1;
+  }
+ }
+ return{true,false,{}};
+}
 struct Cached {Operation op;bool failed=false,pending=true;};
 struct Failure {Operation op;unsigned code=0;ErrorOrigin origin=ErrorOrigin::None;};
 // One owned queue, one persistent writer. No disk I/O or waiting for the writer
@@ -150,15 +176,27 @@ private:
   if(failures_.size()>=cacheCapacity_&&!failures_.count(id))failures_.erase(failures_.begin());
   failures_[std::move(id)]={o,code?code:WriteFault,origin};
  }
+ const Operation* sectionIntentLocked(const Key&k,bool failedOnly=false)const{
+  const Operation*intent=nullptr;const auto cached=sections_.find(sectionKey(k));
+  if(cached!=sections_.end()&&(!failedOnly||cached->second.failed))intent=&cached->second.op;
+  // A cache-capacity rejection still owns its complete section in failures_.
+  // Later successful keys must compensate it during retry just as they would
+  // a failed native write; otherwise the retry could erase those newer keys.
+  for(const auto&e:failures_){const auto&o=e.second.op;
+   if(!o.replacesSection()||!cacheable(o)||(intent&&intent->revision>=o.revision))continue;
+   const auto key=keyOf(o);if(key.path==k.path&&key.section==k.section)intent=&o;
+  }
+  return intent;
+ }
  bool canCacheLocked(const Operation&o)const{
   if(!cacheable(o))return true;
-  const auto k=keyOf(o);const auto&map=o.kind==Kind::DeleteSection?sections_:values_;
-  return map.count(o.kind==Kind::DeleteSection?sectionKey(k):k)||values_.size()+sections_.size()<cacheCapacity_;
+  const auto k=keyOf(o);const auto&map=o.replacesSection()?sections_:values_;
+  return map.count(o.replacesSection()?sectionKey(k):k)||values_.size()+sections_.size()<cacheCapacity_;
  }
  void cacheLocked(const Operation&o){
   if(!cacheable(o))return;
   const auto k=keyOf(o);
-  if(o.kind==Kind::DeleteSection)sections_[sectionKey(k)]={o,false,true};
+  if(o.replacesSection())sections_[sectionKey(k)]={o,false,true};
   else values_[k]={o,false,true};
  }
  bool appendLocked(Operation o,bool allowCoalesce=true){
@@ -168,9 +206,22 @@ private:
   if(!accepting_){failLocked(o,Stopped,ErrorOrigin::Shutdown);return false;}
   if(!canCacheLocked(o)){failLocked(o,QueueFull,ErrorOrigin::Cache);return false;}
   auto replace=queue_.end();
-  if(allowCoalesce&&o.kind==Kind::Set){
+  if(allowCoalesce&&(o.kind==Kind::Set||o.kind==Kind::ReplaceSection)){
    const auto k=keyOf(o);
-   for(auto it=queue_.end();it!=queue_.begin();){--it;if(it->barrier())break;if(keyOf(*it)==k){replace=it;break;}}
+   for(auto it=queue_.end();it!=queue_.begin();){
+    --it;const auto prior=keyOf(*it);const bool sameSection=prior.path==k.path&&prior.section==k.section;
+    // A complete section is an ordering boundary only for that section.
+    // Making every section save a global barrier would prevent unrelated
+    // settings from coalescing and overflow the queue during repeated saves.
+    if(it->kind==Kind::ReplaceSection){
+     if(!sameSection)continue;
+     if(o.kind==Kind::ReplaceSection)replace=it;
+     break;
+    }
+    if(it->barrier())break;
+    if(o.kind==Kind::ReplaceSection){if(sameSection)break;}
+    else if(prior==k){replace=it;break;}
+   }
   }
   if(replace==queue_.end()&&queue_.size()>=capacity_){
    // Rejected is not acknowledged as queued, but the bounded desired-value
@@ -190,15 +241,15 @@ private:
    const bool samePath=k.path==p.path&&o.path.null==prior.path.null;
    const bool sameKey=samePath&&k.section==p.section&&k.key==p.key&&
        (o.kind==Kind::Set||o.kind==Kind::DeleteKey)&&(prior.kind==Kind::Set||prior.kind==Kind::DeleteKey);
-   const bool deletedSection=samePath&&k.section==p.section&&o.kind==Kind::DeleteSection&&prior.kind!=Kind::Flush;
+   const bool replacedSection=samePath&&k.section==p.section&&o.replacesSection()&&prior.kind!=Kind::Flush;
    const bool sameBarrier=failureKey(o)==it->first;
-   if((sameKey||deletedSection||sameBarrier)&&prior.revision<=o.revision)it=failures_.erase(it);else ++it;
+   if((sameKey||replacedSection||sameBarrier)&&prior.revision<=o.revision)it=failures_.erase(it);else ++it;
   }
  }
  void completeCacheLocked(const Operation&o,bool ok){
   if(!cacheable(o))return;
   auto k=keyOf(o);
-  if(o.kind==Kind::DeleteSection){
+  if(o.replacesSection()){
    auto it=sections_.find(sectionKey(k));
    if(it!=sections_.end()&&it->second.op.revision==o.revision){
     if(ok)sections_.erase(it);else{it->second.pending=false;it->second.failed=true;}
@@ -211,8 +262,8 @@ private:
    }
   }else{
    auto it=values_.find(k);if(it==values_.end()||it->second.op.revision!=o.revision)return;
-   const auto section=sections_.find(sectionKey(k));
-   const bool compensate=section!=sections_.end()&&section->second.failed&&section->second.op.revision<o.revision;
+   const auto section=sectionIntentLocked(k,true);
+   const bool compensate=section&&section->revision<o.revision;
    if(ok&&!compensate)values_.erase(it);else{it->second.pending=false;it->second.failed=!ok;}
   }
  }
@@ -240,6 +291,7 @@ public:
  ~Store(){beginShutdown();setNotify({});if(worker_.joinable())worker_.join();}
  bool enqueue(Operation o){bool ok;{std::lock_guard<std::mutex>l(mutex_);ok=appendLocked(std::move(o));}notify();return ok;}
  bool write(const wchar_t*s,const wchar_t*k,const wchar_t*v,const wchar_t*p){return enqueue(Operation(s,k,v,p));}
+ bool writeSection(const wchar_t*s,const wchar_t*block,const wchar_t*p){return enqueue(Operation::sectionWrite(s,block,p));}
  // Queue an ordered profile-cache refresh after preceding API calls. This
  // preserves the legacy NULL-argument behavior, not a file-buffer guarantee.
  bool requestFlush(const wchar_t*path=nullptr){return write(nullptr,nullptr,nullptr,path);}
@@ -267,8 +319,8 @@ public:
  Lookup lookup(const wchar_t*s,const wchar_t*k,const wchar_t*p)const{
   if(!s||!k||!p)return{};
   Operation query(s,k,L"",p);const auto key=keyOf(query);
-  std::lock_guard<std::mutex>l(mutex_);const auto v=values_.find(key),section=sections_.find(sectionKey(key));
-  if(section!=sections_.end()&&(v==values_.end()||section->second.op.revision>=v->second.op.revision))return{true,false,{}};
+  std::lock_guard<std::mutex>l(mutex_);const auto v=values_.find(key);const auto section=sectionIntentLocked(key);
+  if(section&&(v==values_.end()||section->revision>=v->second.op.revision))return sectionLookup(*section,key.key);
   if(v==values_.end())return{};
   return{true,v->second.op.kind==Kind::Set,v->second.op.value.value};
  }
@@ -278,8 +330,8 @@ public:
   {std::lock_guard<std::mutex>l(mutex_);failures_.clear();}notify();
  }
  // Replay the current owned desired state in revision order. This includes
- // post-delete compensating keys, so retrying a failed section deletion never
- // erases a newer successful setting. Unknown INI entries are never rewritten.
+ // post-section compensating keys, so retrying a failed section replacement or
+ // deletion never erases a newer successful setting. Other sections are intact.
  bool retryFailed(const wchar_t*path=nullptr){
   bool ok=true;
   {std::lock_guard<std::mutex>l(mutex_);
@@ -292,12 +344,12 @@ public:
     const auto&o=e.second.op;if(!match(o))continue;
     if(!cacheable(o)){replay.push_back(o);continue;}
     const auto k=keyOf(o);const auto value=values_.find(k),section=sections_.find(sectionKey(k));
-    const bool owned=(o.kind==Kind::DeleteSection?section!=sections_.end():value!=values_.end())||
+    const bool owned=(o.replacesSection()?section!=sections_.end():value!=values_.end())||
       (section!=sections_.end()&&section->second.op.revision>=o.revision);
     // Cache-capacity admission may retain the failure without a value slot.
     // A later successful same-key operation removes this failure; otherwise
-    // a missing Set/DeleteKey remains safe to replay in revision order.
-    if(!owned&&(o.kind==Kind::Set||o.kind==Kind::DeleteKey))replay.push_back(o);
+    // a missing key or complete section remains safe to replay in revision order.
+    if(!owned)replay.push_back(o);
    }
    std::stable_sort(replay.begin(),replay.end(),[](const Operation&a,const Operation&b){return a.revision<b.revision;});
    if(replay.size()>capacity_-std::min(capacity_,queue_.size()))return false;
@@ -323,16 +375,23 @@ inline uint32_t readInteger(const std::wstring& input,uint32_t fallback){
 // Captured while the public aliases are undefined; calling the writer can
 // never recurse through a host translation unit's API interception macros.
 inline const auto nativeWrite=&::WritePrivateProfileStringW;
+inline const auto nativeWriteSection=&::WritePrivateProfileSectionW;
 inline const auto nativeRead=&::GetPrivateProfileStringW;
 inline const auto nativeInt=&::GetPrivateProfileIntW;
 inline core::Store& store(){
  static auto* instance=new core::Store([](const core::Operation&o){
-  SetLastError(ERROR_SUCCESS);const auto returned=nativeWrite(o.section.pointer(),o.key.pointer(),o.value.pointer(),o.path.pointer())!=FALSE;
+  SetLastError(ERROR_SUCCESS);const auto returned=(o.kind==core::Kind::ReplaceSection?
+   nativeWriteSection(o.section.pointer(),o.value.pointer(),o.path.pointer()):
+   nativeWrite(o.section.pointer(),o.key.pointer(),o.value.pointer(),o.path.pointer()))!=FALSE;
   const auto code=returned?ERROR_SUCCESS:GetLastError();return core::nativeResult(o.kind,returned,unsigned(code));
  });return *instance;
 }
 inline BOOL write(LPCWSTR section,LPCWSTR key,LPCWSTR value,LPCWSTR path){
  if(store().write(section,key,value,path))return TRUE;
+ SetLastError(store().status().errorCode);return FALSE;
+}
+inline BOOL writeSection(LPCWSTR section,LPCWSTR block,LPCWSTR path){
+ if(store().writeSection(section,block,path))return TRUE;
  SetLastError(store().status().errorCode);return FALSE;
 }
 inline core::Status status(){return store().status();}
@@ -359,6 +418,10 @@ inline UINT cachedReadInt(LPCWSTR section,LPCWSTR key,INT fallback,LPCWSTR path)
 #ifdef ASYNCINI_RESTORE_WRITE
 #pragma pop_macro("WritePrivateProfileStringW")
 #undef ASYNCINI_RESTORE_WRITE
+#endif
+#ifdef ASYNCINI_RESTORE_SECTION
+#pragma pop_macro("WritePrivateProfileSectionW")
+#undef ASYNCINI_RESTORE_SECTION
 #endif
 #ifdef ASYNCINI_RESTORE_READ
 #pragma pop_macro("GetPrivateProfileStringW")

@@ -3,13 +3,22 @@
 // Never call Scatter, SetDestination, or alter a projectile on this peer.
 struct ReverseShot {uint32_t id=0,pointer=0;int frame=0;bool handled=false;};
 static ReverseShot reverseShots[16384];static uint32_t reverseMatch=0;static bool reverseWasEnabled=false;
-static ReverseShot* reverseShot(uint32_t p,int frame){
- uint32_t id=get<uint32_t>(p+0x10);if(!id)return nullptr;
+static ReverseShot* reverseShotSlot(uint32_t p,uint32_t id,int frame){
+ if(!id)return nullptr;
  unsigned slot=(id*2654435761u) & 16383u;
  for(unsigned n=0;n<16384;++n){auto&s=reverseShots[(slot+n)&16383u];
-  if(s.id==id&&s.pointer==p)return &s;
-  if(!s.id||frame-s.frame>900){s={id,p,frame,false};return &s;}
+  if((s.id==id&&s.pointer==p)||!s.id||frame-s.frame>900)return &s;
  }return nullptr;
+}
+static ReverseShot* reverseShot(uint32_t p,int frame){
+ const uint32_t id=get<uint32_t>(p+0x10);auto*s=reverseShotSlot(p,id,frame);
+ if(s&&(s->id!=id||s->pointer!=p))*s={id,p,frame,false};return s;
+}
+static bool reverseShotHandled(const DodgeThreatRef&ref,int frame){
+ // Read-only rejection from the sealed projectile identity. Never create a
+ // record or start its retry deadline before candidate collection completes.
+ const auto*s=reverseShotSlot(ref.pointer,ref.id,frame);
+ return s&&s->id==ref.id&&s->pointer==ref.pointer&&s->handled;
 }
 static bool reverseVector(uint32_t q,reversedodge::Point&delta){
  // BulletClass Velocity E8/F0; SourceCoords 134/138, TargetCoords 140/144.
@@ -75,7 +84,7 @@ static bool collectReverseDodgeInput(uint32_t house,int frame,DWORD now){
 static bool reverseDodgeTick(uint32_t house,int frame,DWORD now){
  if(reverseMatch!=match||!reverseWasEnabled){memset(reverseShots,0,sizeof reverseShots);reverseMatch=match;}
  reverseWasEnabled=true;
- for(int n=0;n<dodgeThreatCount;++n){const auto&ref=dodgeThreatRefs[n];if(!ref.projectile)continue;
+ for(int n=0;n<dodgeThreatCount;++n){const auto&ref=dodgeThreatRefs[n];if(!ref.projectile||reverseShotHandled(ref,frame))continue;
   reversedodge::Point delta{};if(!collectReverseTargets(ref,house,delta))continue;
   // The sample chose candidates; native path legality and submission retain
   // live identity/target checks after the scope. No roster is reacquired here.

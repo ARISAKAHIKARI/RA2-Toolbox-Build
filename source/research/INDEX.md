@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 模块性能与正确性审查 | [五类缺陷修复、功能覆盖与未决热点](2026-11-08-module-performance-audit.md) | reverse-dodge stale-subscriptions sealed-terrain palette-token async-section-save pre5 |
 | 控制全部直接放行 | [原生 true/strict 叶、维护资格发布与固定槽掩码](2026-11-08-control-direct-permission-hotpath.md) | pre4 direct-yes control17to1 maintenance-publication not-per-hit-world strict-owner same-DR explicit-behavior-change |
 | 硬件异常热路径第三轮 | [科技候选预计算、固定比较结果与本方上下文精简](2026-11-08-hardware-precomputed-tech-and-owned-dispatch.md) | pre3 candidate-index Full early-reject Enhancement64 constant-flags static-reader same-live-guards flat-dispatch no-hit-count-reduction |
 | 原始世界样本与消费者实际接入 | [capture/seal、动态跨进程 payload、战术与视图阶段拆分](2026-11-08-shared-world-sampling-implementation.md) | Assist101 pre2 raw-overlap single-producer demand sealed no-live-fallback dynamic-mapping nothrow pause UI-generation source-bound-tests |

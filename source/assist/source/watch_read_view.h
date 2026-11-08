@@ -7,6 +7,7 @@ namespace watchscene {
 // std::function erased prefetch(), making watch terrain take one remote page
 // read at a time even though the common Sampler already batches those pages.
 template<class Reader>struct ReadView {
+ static constexpr bool SealedWorldReads=true;
  Reader*reader;
  bool operator()(uint32_t p,void*out,size_t n)const{return reader->read(p,out,n);}
  template<class R>static auto nullable(R&r,uint32_t p,void*out,size_t n,int)->decltype(r.readOptional(p,out,n)){return r.readOptional(p,out,n);}

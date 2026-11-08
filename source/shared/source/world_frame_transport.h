@@ -104,7 +104,32 @@ class Client {
  std::array<DataView,2>data_;DataRef copiedData_{};LONG copiedSlot_=-1;
  uint64_t generation_=0;
  struct Lease {std::array<uint32_t,6>ticks{};uint32_t used=0;};std::unordered_map<uintptr_t,Lease>leases_;
- std::unordered_map<uint32_t,uint32_t> wanted_;uint32_t publishedAt_=0;
+ std::unordered_map<uint32_t,uint32_t> wanted_;uint32_t publishedAt_=0,prunedAt_=0;
+ bool wantedDirty_=false,havePublished_=false,havePruned_=false;
+ void pruneRequests(uint32_t now){
+  if(havePruned_&&uint32_t(now-prunedAt_)<2)return;
+  for(auto it=wanted_.begin();it!=wanted_.end();)if(uint32_t(now-it->second)>250){it=wanted_.erase(it);wantedDirty_=true;}else ++it;
+  prunedAt_=now;havePruned_=true;
+ }
+ void publishRequests(uint32_t now){
+  if(!wantedDirty_||(havePublished_&&uint32_t(now-publishedAt_)<2))return;
+  InterlockedIncrement(&channel_->demandSeq);uint32_t count=0;
+  for(const auto&entry:wanted_)channel_->demands[count++]=entry.first;
+  channel_->demandCount=count;++channel_->demandRevision;MemoryBarrier();InterlockedIncrement(&channel_->demandSeq);
+  publishedAt_=now;havePublished_=true;wantedDirty_=false;
+ }
+ void refreshDemand(uint32_t now){
+  uint32_t combined=0;for(auto it=leases_.begin();it!=leases_.end();){uint32_t mask=0;for(unsigned bit=0;bit<6;++bit)if((it->second.used&(1u<<bit))&&uint32_t(now-it->second.ticks[bit])<=250)mask|=1u<<bit;
+   if(!mask)it=leases_.erase(it);else{combined|=mask;++it;}}
+  channel_->demandMask=combined;
+ }
+ void heartbeat(uint32_t now){
+  channel_->heartbeat=now;refreshDemand(now);
+  // Polling/another remaining reader does not renew an old visual page set.
+  // Idle sweeps are bounded; successful request() calls renew individual pages.
+  if(wantedDirty_||!havePruned_||uint32_t(now-prunedAt_)>250)pruneRequests(now);
+  publishRequests(now);
+ }
  bool open(){
   if(channel_)return valid(channel_,pid_,owner_)&&connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32));wchar_t path[100];name(path,pid_,owner_);
   mapping_=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,DWORD(sizeof(Channel)),path);
@@ -117,7 +142,12 @@ class Client {
    channel_->connectionLow=uint32_t(generation_);channel_->connectionHigh=uint32_t(generation_>>32);
    channel_->demandCount=0;channel_->demandRevision=0;channel_->demandMask=0;
    MemoryBarrier();InterlockedIncrement(&channel_->connectionSeq);
-  }return true;
+  }
+  // A fresh Client may reopen a control mapping still owned by Server after
+  // the last local reader closed. Its predecessor's demands are not its own.
+  InterlockedIncrement(&channel_->demandSeq);channel_->demandCount=0;++channel_->demandRevision;
+  MemoryBarrier();InterlockedIncrement(&channel_->demandSeq);channel_->demandMask=0;
+  wantedDirty_=!wanted_.empty();havePublished_=havePruned_=false;return true;
  }
  void clearCopy(){latest_.reset();copiedSerial_=0;copiedSlot_=-1;copiedData_={};for(auto&view:data_)view.close();}
  void close(){clearCopy();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;}
@@ -126,7 +156,7 @@ public:
  ~Client(){close();}Client(const Client&)=delete;Client&operator=(const Client&)=delete;
  Token acquire(uint32_t match){
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return {};
-  const uint32_t now=GetTickCount();channel_->heartbeat=now;
+  const uint32_t now=GetTickCount();heartbeat(now);
   for(int retry=0;retry<2;++retry){
    const LONG active=channel_->active;if(active<0||active>1){clearCopy();return {};}
    auto&s=channel_->slots[active];const LONG seq=s.seq;if(seq&1)continue;MemoryBarrier();const Key key=s.key;const uint32_t count=s.count;const DataRef ref=s.data;const Counters stats=s.counters;
@@ -156,25 +186,23 @@ public:
    token->key.frame<=observed.frame&&(uint32_t(now-token->key.tick)<=500||token->key.frame==observed.frame);
  }
  void subscribe(uintptr_t reader,uint32_t demand){
-  std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();channel_->heartbeat=now;
+  std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();
   auto&lease=leases_[reader];lease.used|=demand|Base;for(unsigned bit=0;bit<6;++bit)if((demand|Base)&(1u<<bit))lease.ticks[bit]=now;
-  uint32_t combined=0;for(auto it=leases_.begin();it!=leases_.end();){uint32_t mask=0;for(unsigned bit=0;bit<6;++bit)if((it->second.used&(1u<<bit))&&uint32_t(now-it->second.ticks[bit])<=250)mask|=1u<<bit;
-   if(!mask)it=leases_.erase(it);else{combined|=mask;++it;}}
-  channel_->demandMask=combined;
+  heartbeat(now);
  }
  void request(const std::vector<uint32_t>&pages){
-  std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();channel_->heartbeat=now;
+  std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();channel_->heartbeat=now;refreshDemand(now);
   // Missing or newly used ranges become a demand for the NEXT capture. A
   // consumer must not quietly supplement the sealed frame through RPM.
+  // Retire expired keys before admitting replacements at the capacity limit.
+  pruneRequests(now);
   for(uint32_t p:pages)if(!(p&4095u)&&range(p,PageSize)){
    auto found=wanted_.find(p);if(found!=wanted_.end())found->second=now;
-   else if(wanted_.size()<MaxPages)wanted_.emplace(p,now);
+   else if(wanted_.size()<MaxPages){wanted_.emplace(p,now);wantedDirty_=true;}
   }
-  if(publishedAt_&&uint32_t(now-publishedAt_)<2)return;
-  for(auto it=wanted_.begin();it!=wanted_.end();)if(uint32_t(now-it->second)>250)it=wanted_.erase(it);else ++it;
-  InterlockedIncrement(&channel_->demandSeq);uint32_t count=0;
-  for(const auto&entry:wanted_)channel_->demands[count++]=entry.first;
-  channel_->demandCount=count;++channel_->demandRevision;MemoryBarrier();InterlockedIncrement(&channel_->demandSeq);publishedAt_=now;
+  // Unchanged membership only renews local leases; do not copy the entire
+  // list or make Server allocate another vector on every high-rate read pass.
+  publishRequests(now);
  }
 };
 inline std::shared_ptr<Client>acquireClient(uint32_t pid,uint64_t generation){
@@ -187,6 +215,13 @@ class Server {
  std::array<DataView,2>data_;
  std::vector<uint32_t>requests_;uint32_t requestRevision_=0;
  uint64_t connection_=0;
+ bool clientAlive(uint32_t now)const{return channel_&&connectionMatches(channel_,uint32_t(connection_),uint32_t(connection_>>32))&&uint32_t(now-channel_->heartbeat)<=1000;}
+ bool needed(uint32_t now){
+  if(clientAlive(now))return true;
+  requests_.clear();requestRevision_=0;
+  if(channel_&&connectionMatches(channel_,uint32_t(connection_),uint32_t(connection_>>32))&&channel_->active>=0)retire();
+  return false;
+ }
  void close(){for(auto&view:data_)view.close();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;owner_=0;connection_=0;requests_.clear();requestRevision_=0;}
  void failed(PublishError error){if(channel_){channel_->publishError=uint32_t(error);channel_->publishSystemError=(error==PublishError::CreateMapping||error==PublishError::MapView)?GetLastError():0;++channel_->publishFailures;}}
 public:
@@ -203,10 +238,10 @@ public:
   if(!channel_)return false;
   const LONG seq=channel_->connectionSeq;if(seq&1)return false;MemoryBarrier();const uint64_t connection=uint64_t(channel_->connectionHigh)<<32|channel_->connectionLow;MemoryBarrier();if(seq!=channel_->connectionSeq)return false;
   if(connection!=connection_){retire();connection_=connection;requests_.clear();requestRevision_=0;}
-  return uint32_t(now-channel_->heartbeat)<=1000;
+  return needed(now);
  }
  const std::vector<uint32_t>&requests(){
-  if(!channel_)return requests_;
+  if(!needed(GetTickCount()))return requests_;
   const LONG seq=channel_->demandSeq;if(seq&1)return requests_;MemoryBarrier();
   const uint32_t count=channel_->demandCount,revision=channel_->demandRevision;
   if(revision==requestRevision_||count>MaxPages)return requests_;
@@ -216,13 +251,20 @@ public:
   requests_=std::move(next);requestRevision_=revision;return requests_;
  }
  uint32_t demandRevision()const{return requestRevision_;}
- uint32_t demandMask()const{return channel_?uint32_t(channel_->demandMask):0;}
+ uint32_t demandMask()const{return clientAlive(GetTickCount())?uint32_t(channel_->demandMask):0;}
  uint64_t connection()const{return connection_;}
- void observe(const Key&key){if(!channel_)return;InterlockedIncrement(&channel_->observationSeq);channel_->observed=key;channel_->observedTick=GetTickCount();MemoryBarrier();InterlockedIncrement(&channel_->observationSeq);}
+ void observe(const Key&key){if(!needed(GetTickCount()))return;InterlockedIncrement(&channel_->observationSeq);channel_->observed=key;channel_->observedTick=GetTickCount();MemoryBarrier();InterlockedIncrement(&channel_->observationSeq);}
  void publish(const Snapshot&frame){
-  if(!channel_)return;
+  if(!needed(GetTickCount()))return;
   if(!frame.sealed()||frame.overflow()||frame.pages.size()>MaxPages){failed(PublishError::Capacity);return;}
   if(frame.key.pid!=GetCurrentProcessId()||frame.key.owner!=owner_||!connectionMatches(channel_,frame.key.connectionLow,frame.key.connectionHigh)){failed(PublishError::Identity);return;}
+  // Same-frame wakeups may need to recover an expired transport, but an
+  // already exported immutable sample must never be recopied on each wake.
+  const LONG active=channel_->active;
+  if(active>=0&&active<2){const auto&current=channel_->slots[active];
+   if(!(current.seq&1)&&current.count==frame.pages.size()&&!std::memcmp(&current.key,&frame.key,sizeof(Key))&&
+      (current.count?data_[active].matches(frame.key,uint32_t(active),current.data):(!current.data.capacity&&!current.data.allocation)))return;
+  }
   const LONG slot=channel_->active==0?1:0;auto&out=channel_->slots[slot];
   const uint32_t count=uint32_t(frame.pages.size());DataView next;bool replace=false;
   if(count){

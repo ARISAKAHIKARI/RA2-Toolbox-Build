@@ -28,7 +28,14 @@ struct Disk {
   std::lock_guard<std::mutex>l(mutex);calls.push_back(o);const auto k=asyncini::core::keyOf(o);
   if(o.kind==Kind::Set)values[k]=o.value.value;
   if(o.kind==Kind::DeleteKey)values.erase(k);
-  if(o.kind==Kind::DeleteSection)for(auto it=values.begin();it!=values.end();){if(it->first.path==k.path&&it->first.section==k.section)it=values.erase(it);else ++it;}
+  if(o.replacesSection())for(auto it=values.begin();it!=values.end();){if(it->first.path==k.path&&it->first.section==k.section)it=values.erase(it);else ++it;}
+  if(o.kind==Kind::ReplaceSection&&!o.value.null){
+   const auto&block=o.value.value;for(size_t pos=0;pos<block.size()&&block[pos];){
+    const auto end=block.find(L'\0',pos),equal=block.find(L'=',pos);
+    assert(end!=std::wstring::npos&&equal<end);
+    values[{k.path,k.section,asyncini::core::folded(block.substr(pos,equal-pos))}]=block.substr(equal+1,end-equal-1);pos=end+1;
+   }
+  }
  }
  std::wstring get(const wchar_t*s,const wchar_t*k,const wchar_t*p){std::lock_guard<std::mutex>l(mutex);auto it=values.find(asyncini::core::keyOf(Operation(s,k,L"",p)));return it==values.end()?L"<missing>":it->second;}
 };
@@ -205,6 +212,98 @@ void failure_details_distinguish_native_and_admission(){
  std::cout<<"failure details: native 32/8, queue 8, cache 8, shutdown 995 and retry passed\n";
 }
 
+void section_ownership_coalescing_and_order(){
+ Gate gate;Disk disk;std::atomic<unsigned>calls{0};
+ disk.apply(Operation(L"Section",L"Stale",L"remove",L"file.ini"));
+ disk.apply(Operation(L"Other",L"Unknown",L"preserve",L"file.ini"));
+ Store store([&](const Operation&o){if(calls++==0)gate.wait();disk.apply(o);return Result{};});
+ assert(store.write(L"Gate",L"Hold",L"1",L"file.ini"));gate.await();
+ wchar_t first[]=L"First=1\0Last=2\0Empty=\0Equals=a=b\0";
+ assert(store.writeSection(L"SECTION",first,L"FILE.INI"));first[0]=L'X';
+ assert(store.lookup(L"Section",L"first",L"file.ini").value==L"1");
+ assert(store.lookup(L"Section",L"LAST",L"file.ini").value==L"2");
+ const auto empty=store.lookup(L"Section",L"Empty",L"file.ini");assert(empty.known&&empty.present&&empty.value.empty());
+ assert(store.lookup(L"Section",L"Equals",L"file.ini").value==L"a=b");
+ const auto missing=store.lookup(L"Section",L"Stale",L"file.ini");assert(missing.known&&!missing.present);
+ assert(store.write(L"Other",L"Value",L"1",L"file.ini"));
+ assert(store.writeSection(L"Section",L"First=3\0Last=4\0",L"file.ini"));
+ assert(store.status().pending==2); // One section and one independent key.
+ assert(store.write(L"Section",L"Last",L"5",L"file.ini"));
+ assert(store.writeSection(L"Section",L"First=6\0Last=7\0",L"file.ini"));
+ assert(store.write(L"Section",L"Last",L"8",L"file.ini"));
+ assert(store.requestFlush(L"file.ini"));
+ assert(store.writeSection(L"Section",L"First=9\0Last=10\0",L"file.ini"));
+ assert(store.writeSection(L"EmptySection",L"\0",L"file.ini"));
+ assert(store.lookup(L"EmptySection",L"Any",L"file.ini").known);
+ gate.release();eventually([&]{return store.idle();});assert(!store.status().failed);
+ assert(disk.get(L"Section",L"First",L"file.ini")==L"9");
+ assert(disk.get(L"Section",L"Last",L"file.ini")==L"10");
+ assert(disk.get(L"Section",L"Stale",L"file.ini")==L"<missing>");
+ assert(disk.get(L"Other",L"Unknown",L"file.ini")==L"preserve");
+ std::vector<std::wstring>sequence;
+ for(const auto&o:disk.calls){
+  if(o.kind==Kind::ReplaceSection&&asyncini::core::keyOf(o).section==L"section")sequence.push_back(asyncini::core::sectionLookup(o,L"last").value);
+  if(o.kind==Kind::Set&&asyncini::core::keyOf(o).section==L"section"&&asyncini::core::keyOf(o).key==L"last")sequence.push_back(o.value.value);
+ }
+ assert((sequence==std::vector<std::wstring>{L"4",L"5",L"7",L"8",L"10"}));
+ assert(!store.lookup(L"Section",L"First",L"file.ini").known);
+}
+
+void section_failure_retry_preserves_newer_key(){
+ Disk disk;disk.apply(Operation(L"Section",L"Stale",L"old",L"file.ini"));
+ std::atomic<bool>fail{true};Store store([&](const Operation&o){
+  if(o.kind==Kind::ReplaceSection&&fail.load())return Result{false,32};
+  disk.apply(o);return Result{};
+ });
+ assert(store.writeSection(L"Section",L"First=1\0Last=2\0",L"file.ini"));eventually([&]{return store.idle();});
+ const auto failed=store.status();assert(failed.failed&&failed.errorKind==Kind::ReplaceSection&&failed.errorCode==32);
+ assert(failed.errorSection==L"Section"&&failed.errorKey.empty());
+ assert(store.lookup(L"Section",L"Last",L"file.ini").value==L"2");
+ assert(store.write(L"Section",L"Last",L"newer",L"file.ini"));eventually([&]{return store.idle();});
+ assert(store.status().failed);assert(store.lookup(L"Section",L"Last",L"file.ini").value==L"newer");
+ fail=false;assert(store.retryFailed());eventually([&]{return store.idle();});assert(!store.status().failed);
+ assert(disk.get(L"Section",L"First",L"file.ini")==L"1");
+ assert(disk.get(L"Section",L"Last",L"file.ini")==L"newer");
+ assert(disk.get(L"Section",L"Stale",L"file.ini")==L"<missing>");
+}
+
+void rejected_sections_remain_retryable(){
+ for(bool cacheLimit:{false,true}){
+  Gate gate;Disk disk;std::atomic<unsigned>calls{0};
+  Store store([&](const Operation&o){if(calls++==0)gate.wait();disk.apply(o);return Result{};},2,cacheLimit?3:8192);
+  assert(store.write(L"Gate",L"Hold",L"1",L"file.ini"));gate.await();
+  assert(store.write(L"Other",L"Queued",L"2",L"file.ini"));
+  assert(store.write(L"Other",L"QueuedAgain",L"3",L"file.ini"));
+  assert(!store.writeSection(L"Section",L"One=1\0Two=2\0",L"file.ini"));
+  const auto status=store.status();assert(status.failed&&status.errorKind==Kind::ReplaceSection);
+  assert(status.errorOrigin==(cacheLimit?asyncini::core::ErrorOrigin::Cache:asyncini::core::ErrorOrigin::Queue));
+  assert(store.lookup(L"Section",L"Two",L"file.ini").value==L"2");
+  gate.release();eventually([&]{return store.idle();});
+  assert(store.write(L"Section",L"Two",L"newer",L"file.ini"));eventually([&]{return store.idle();});
+  assert(store.retryFailed());eventually([&]{return store.idle();});
+  assert(!store.status().failed&&disk.get(L"Section",L"One",L"file.ini")==L"1"&&disk.get(L"Section",L"Two",L"file.ini")==L"newer");
+ }
+}
+
+void repeated_saves_with_sections_stay_bounded(){
+ Gate gate;Disk disk;std::atomic<unsigned>calls{0};
+ Store store([&](const Operation&o){if(calls++==0)gate.wait();disk.apply(o);return Result{};});
+ assert(store.write(L"Gate",L"Hold",L"1",L"Assist.ini"));gate.await();
+ for(unsigned save=1;save<=25;++save){
+  const auto value=std::to_wstring(save);
+  for(unsigned key=0;key<200;++key)assert(store.write(L"Settings",std::to_wstring(key).c_str(),value.c_str(),L"Assist.ini"));
+  for(const auto section:{L"TypeHotkeys",L"AutoCSUnits",L"AircraftQuotaOverrides"}){
+   const std::wstring block=L"One="+value+L'\0'+L"Two="+value+L'\0';
+   assert(store.writeSection(section,block.c_str(),L"Assist.ini"));
+  }
+ }
+ assert(store.status().pending==203&&!store.status().failed);
+ gate.release();eventually([&]{return store.idle();});assert(!store.status().failed);
+ for(unsigned key=0;key<200;++key)assert(disk.get(L"Settings",std::to_wstring(key).c_str(),L"Assist.ini")==L"25");
+ for(const auto section:{L"TypeHotkeys",L"AutoCSUnits",L"AircraftQuotaOverrides"})assert(disk.get(section,L"Two",L"Assist.ini")==L"25");
+ std::cout<<"section saves: 25 x (200 keys + 3 complete sections) coalesced to 203 pending operations\n";
+}
+
 void decoding(){
  using namespace asyncini::core;
  assert(readValue(L"\"quoted\"")==L"quoted");assert(readValue(L"'single'")==L"single");
@@ -259,6 +358,16 @@ void native_win32_file_roundtrip(){
  asyncini::nativeRead(L"Section",L"Value",L"",value,128,file);assert(std::wstring(value)==L"quoted");
  assert(asyncini::nativeInt(L"Section",L"Number",99,file)==asyncini::cachedReadInt(L"Section",L"Number",99,file));
 
+ assert(asyncini::writeSection(L"Section",L"First=首项\0Last=末项\0Empty=\0",file));
+ eventually([]{return asyncini::idle();});assert(!asyncini::status().failed);
+ asyncini::nativeRead(L"Section",L"First",L"",value,128,file);assert(std::wstring(value)==L"首项");
+ asyncini::nativeRead(L"Section",L"Last",L"",value,128,file);assert(std::wstring(value)==L"末项");
+ asyncini::nativeRead(L"Section",L"Number",L"missing",value,128,file);assert(std::wstring(value)==L"missing");
+ asyncini::nativeRead(L"Other",L"Unknown",L"",value,128,file);assert(std::wstring(value)==L"保留");
+ const auto replaced=raw_file_text(file,true);
+ assert(replaced.find(L"First=首项")!=std::wstring::npos&&replaced.find(L"Last=末项")!=std::wstring::npos);
+ assert(replaced.find(L"Number=")==std::wstring::npos);
+
  const std::wstring directory=std::wstring(file)+L"-directory",badPath=directory+L"\\settings.ini";
  assert(asyncini::write(L"Section",L"Retry",L"saved",badPath.c_str()));eventually([]{return asyncini::idle();});
  assert(asyncini::status().failed&&asyncini::status().errorPath==badPath);
@@ -274,6 +383,7 @@ void native_win32_file_roundtrip(){
 #endif
 int main(){
  coalescing_and_barriers();owned_values_and_bounded_admission();failure_and_ordered_retry();queue_full_retry_owns_new_intent_and_keeps_newer_success();multiple_producers_and_notifications();notification_edges_do_not_flood_ui();cache_barrier_keeps_real_write_failure();failure_details_distinguish_native_and_admission();decoding();
+ section_ownership_coalescing_and_order();section_failure_retry_preserves_newer_key();rejected_sections_remain_retryable();repeated_saves_with_sections_stay_bounded();
 #ifdef _WIN32
  native_win32_file_roundtrip();
 #endif
