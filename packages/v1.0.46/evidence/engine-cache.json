@@ -1,0 +1,22 @@
+{
+  "pass": true,
+  "tests_run": 7,
+  "failures": 0,
+  "errors": 0,
+  "scope": "Real portable DIS engine/cache tests; not Windows or game execution.",
+  "windows_executed": false,
+  "game_executed": false,
+  "real_opencv_engine_executed": true,
+  "dependencies": {
+    "numpy": "2.3.5",
+    "opencv": "4.10.0",
+    "scipy": "1.17.0"
+  },
+  "quality_reference_sha256": "947afc7dc878db92a9d3e0a81858e6d7a2b69f58cb8b02353f9d68490eee9f0b",
+  "source_sha256": {
+    "test_precompute_cache.py": "2b754af68e04e62f14ace39832cd8c585127f5285c69bb78823379e8cfd091b4",
+    "precompute.py": "aa347f080f06c95c6fb880caa57b4c5d205e67fd29e4b16b0b3e9be135c07fad",
+    "preview_builder.py": "a4de364d3f2e7909802931954d2c330bd160529ad988c68032cd479a3e90edca",
+    "dis_render.py": "eb953f31b8453a3ae1cd79c363840f0706116a9a8ca8ecd3cb1e41fb99930fc9"
+  }
+}
