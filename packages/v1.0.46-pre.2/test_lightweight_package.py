@@ -112,6 +112,38 @@ class SlimPackagePolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             PACKAGE.assemble_payload(self.resources, self.current, unexpected)
 
+    def test_actual_source_directory_selects_only_the_seven_shipping_files(self):
+        directory = ROOT / 'source/engine'
+        self.assertEqual(PACKAGE.NONSHIPPING_ENGINE_TESTS, {'engine/test_precompute_cache.py'})
+        self.assertTrue((directory / 'test_precompute_cache.py').is_file())
+        actual = PACKAGE.source_engine_members(directory)
+        self.assertEqual(actual, PACKAGE.ENGINE)
+        self.assertEqual(len(actual), 7)
+        self.assertFalse(actual & PACKAGE.NONSHIPPING_ENGINE_TESTS)
+
+    def test_source_enumeration_rejects_unknown_runtime_files_and_missing_engine(self):
+        with tempfile.TemporaryDirectory(prefix='ra2-engine-inventory-') as temp:
+            directory = Path(temp)
+            for name in PACKAGE.ENGINE | PACKAGE.NONSHIPPING_ENGINE_TESTS:
+                (directory / Path(name).name).write_bytes(b'not executed by enumeration')
+            cache = directory / '__pycache__'
+            cache.mkdir()
+            (cache / 'precompute.cpython-312.pyc').write_bytes(b'nonshipping Python cache')
+            self.assertEqual(PACKAGE.source_engine_members(directory), PACKAGE.ENGINE)
+            for name in ('test_unreviewed.py', 'test_precompute_cache.PY',
+                         'unexpected.ps1', 'unexpected.html', 'unexpected.json'):
+                path = directory / name
+                path.write_bytes(b'unknown runtime-format file')
+                with self.subTest(unexpected=name), self.assertRaises(ValueError):
+                    PACKAGE.source_engine_members(directory)
+                path.unlink()
+            for name in PACKAGE.ENGINE:
+                path = directory / Path(name).name
+                path.unlink()
+                with self.subTest(missing=name), self.assertRaises(ValueError):
+                    PACKAGE.source_engine_members(directory)
+                path.write_bytes(b'restored runtime file')
+
     def test_rejects_runtime_download_cache_settings_and_development_files(self):
         full, update = PACKAGE.assemble_payload(self.resources, self.current, self.engine)
         invalid = ['runtime/python.exe', 'RUNTIME/python.exe', '.runtime-cache/python.zip',
@@ -228,6 +260,11 @@ def main():
     report = {'schema_version': 1, 'suite': 'lightweight_package', 'passed': result.wasSuccessful(),
               'tests_run': result.testsRun, 'tests': names, 'base': BASE_SUMMARY,
               'test_payloads': 'small synthetic bytes; complete member set from SHA256-verified published base',
+              'actual_source_engine_inventory': {
+                  'directory': 'source/engine',
+                  'shipping': sorted(PACKAGE.source_engine_members(ROOT / 'source/engine')),
+                  'nonshipping_test_files': sorted(PACKAGE.NONSHIPPING_ENGINE_TESTS),
+                  'python_cache_bundled': False},
               'final_release_zip_validation': 'performed separately by package_release.py after frozen build',
               'windows_executed': False, 'game_tested': False, 'multiplayer_tested': False,
               'source_bindings': [{'path': path.relative_to(ROOT).as_posix(), 'sha256': digest(path)}

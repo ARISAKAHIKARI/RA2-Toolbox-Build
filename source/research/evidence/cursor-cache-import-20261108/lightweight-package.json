@@ -2,8 +2,9 @@
   "schema_version": 1,
   "suite": "lightweight_package",
   "passed": true,
-  "tests_run": 9,
+  "tests_run": 11,
   "tests": [
+    "test_actual_source_directory_selects_only_the_seven_shipping_files",
     "test_both_packages_require_the_complete_matching_engine",
     "test_dependency_manifest_pins_public_https_size_hash_and_versions",
     "test_keeps_slim_base_and_original_cursor_inputs",
@@ -12,6 +13,7 @@
     "test_rejects_runtime_download_cache_settings_and_development_files",
     "test_rejects_unsafe_paths_and_case_collisions",
     "test_removes_every_generated_timeline_and_preview_from_full_and_update",
+    "test_source_enumeration_rejects_unknown_runtime_files_and_missing_engine",
     "test_zip_roundtrip_and_overlays_preserve_existing_runtime_caches_and_settings"
   ],
   "base": {
@@ -27,6 +29,22 @@
     "estimate_excludes_new_binary_and_bootstrap_differences": true
   },
   "test_payloads": "small synthetic bytes; complete member set from SHA256-verified published base",
+  "actual_source_engine_inventory": {
+    "directory": "source/engine",
+    "shipping": [
+      "engine/dis_render.py",
+      "engine/player-template.html",
+      "engine/precompute.py",
+      "engine/prepare_runtime.ps1",
+      "engine/prepare_runtime.py",
+      "engine/preview_builder.py",
+      "engine/runtime-dependencies.json"
+    ],
+    "nonshipping_test_files": [
+      "engine/test_precompute_cache.py"
+    ],
+    "python_cache_bundled": false
+  },
   "final_release_zip_validation": "performed separately by package_release.py after frozen build",
   "windows_executed": false,
   "game_tested": false,
@@ -34,11 +52,11 @@
   "source_bindings": [
     {
       "path": "packages/v1.0.46-pre.2/test_lightweight_package.py",
-      "sha256": "0123b4f8ac8f386955e34e0857c6acd354b8d0990689514b6bbf8d2c80f22031"
+      "sha256": "9a332f0109c6f7d3fd50d5feb2b146b2d8c5e9268673cad7a9f22e6ed7556e74"
     },
     {
       "path": "packages/v1.0.46-pre.2/package_release.py",
-      "sha256": "ee46d9c44acb96a3f1bb4b815e32563d0a32ec3050c00bda3920715fb5baba54"
+      "sha256": "44991b4ca49fbc5f3299abc50a555b1f80d2282d0ae0dbef6a3c9d8444636a1d"
     }
   ]
 }

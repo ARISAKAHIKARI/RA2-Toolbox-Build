@@ -31,6 +31,7 @@ BASE_ENGINE = frozenset({'engine/dis_render.py', 'engine/player-template.html',
 BOOTSTRAP_ENGINE = frozenset({'engine/prepare_runtime.ps1', 'engine/prepare_runtime.py',
                           'engine/runtime-dependencies.json'})
 ENGINE = BASE_ENGINE | BOOTSTRAP_ENGINE
+NONSHIPPING_ENGINE_TESTS = frozenset({'engine/test_precompute_cache.py'})
 PROFILES = frozenset({'bibata-amber', 'bibata-ice', 'capitaine'})
 PROFILE_INPUTS = frozenset({'original.sha', 'palette.bgra', 'groups.json', 'pairs.txt', 'profile.ini'})
 REQUIRED = ({'assets/original.sha', 'assets/palette.bgra', 'assets/groups.json',
@@ -160,6 +161,15 @@ def assemble_payload(resources, current, engine):
     verify_product_members(update, full=False)
     verify_product_members(full, full=True)
     return full, update
+
+
+def source_engine_members(directory):
+    """Check the real source directory against the explicit shipping plan."""
+    actual = {'engine/' + path.name for path in directory.iterdir()
+              if path.is_file() and path.suffix.lower() in {'.py', '.html', '.ps1', '.json'}}
+    shipping = actual - NONSHIPPING_ENGINE_TESTS
+    require(shipping == ENGINE, 'Unexpected source engine file; update the explicit shipping plan')
+    return shipping
 
 
 def write_zip(path, contents, *, full):
@@ -369,9 +379,7 @@ def main():
     current['licenses/xbrz-License.txt'] = tracked(source / 'third_party/xbrz/License.txt')
     current['README.txt'] = tracked(args.readme.resolve())
     current['Start.cmd'] = b'@echo off\r\nsetlocal\r\ncd /d "%~dp0"\r\nstart "" "%~dp0RA2Toolbox.exe"\r\n'
-    actual_engine = {'engine/' + path.name for path in (source / 'engine').iterdir()
-                     if path.is_file() and path.suffix.lower() in {'.py', '.html', '.ps1', '.json'}}
-    require(actual_engine == ENGINE, 'Unexpected source engine file; update the explicit shipping plan')
+    source_engine_members(source / 'engine')
     engine = {name: tracked(source / name) for name in sorted(ENGINE)}
     # The on-demand workflow intentionally changes engine behavior. Bind every
     # shipped byte to the current frozen source and current validation above;

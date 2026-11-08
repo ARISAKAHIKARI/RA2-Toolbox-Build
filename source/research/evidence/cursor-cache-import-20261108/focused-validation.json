@@ -65,21 +65,21 @@
       "receipts": [
         {
           "path": "source/research/evidence/cursor-cache-import-20261108/lightweight-package.json",
-          "sha256": "9051213a13d4d41c1290d49bb393ba4c7328d4806c83b57387bb18c7cb2e1553"
+          "sha256": "e8e8539d33c4eed5e42a002af6709245ce071669fa5169f62608e8d70414981c"
         }
       ],
-      "tests_run": 9,
+      "tests_run": 11,
       "scope": "Strict package policy, actual pinned base audit, representative current binary fixture and overlay preservation; final new ZIP verification is separate."
     }
   },
   "source_bindings": [
     {
       "path": "packages/v1.0.46-pre.2/package_release.py",
-      "sha256": "ee46d9c44acb96a3f1bb4b815e32563d0a32ec3050c00bda3920715fb5baba54"
+      "sha256": "44991b4ca49fbc5f3299abc50a555b1f80d2282d0ae0dbef6a3c9d8444636a1d"
     },
     {
       "path": "packages/v1.0.46-pre.2/test_lightweight_package.py",
-      "sha256": "0123b4f8ac8f386955e34e0857c6acd354b8d0990689514b6bbf8d2c80f22031"
+      "sha256": "9a332f0109c6f7d3fd50d5feb2b146b2d8c5e9268673cad7a9f22e6ed7556e74"
     },
     {
       "path": "source/assist/source/anti_theft_bridge.h",
