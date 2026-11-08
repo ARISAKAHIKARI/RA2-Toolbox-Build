@@ -392,7 +392,7 @@
     "new_private_exe_or_dump_access": false,
     "new_game_addresses_or_abi": false,
     "note_path": "source/research/2026-11-08-module-performance-audit.md",
-    "note_sha256": "9fdd264ee35f666a1ba7b8789e533c51f3b8b94194bd48d136aa9250bfb91328",
+    "note_sha256": "0a3aabe769c4dc648edf43c540ca233530ecf4e6404de62cf488fd2c05977945",
     "confirmed_categories": [
       "handled reverse-dodge projectile rescanning",
       "stale world-page membership and timed-out publication",

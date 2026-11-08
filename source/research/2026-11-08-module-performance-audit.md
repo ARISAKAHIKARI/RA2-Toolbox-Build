@@ -56,11 +56,11 @@
 
 **影响：** Host 只代理单键 `WritePrivateProfileStringW`，整节 `WritePrivateProfileSectionW` 仍在 owner 线程同步写。TypeHotkeys、AutoCSUnits、AircraftQuotaOverrides 每次保存都会整节写，TypeCatalogue 在目录更新时写。整节失败而普通键成功时，统一 Store 看不到失败，重试没有完整节内容可重放，关闭门控可能继续通过，导致设置丢失；同步磁盘调用也会阻塞 owner 线程。
 
-**修复：** 新增内有完整 MULTI_SZ 的 ReplaceSection 操作，由同一异步 writer 调用原生节 API，纳入 desired-state cache、失败提示、pending、重试和关闭门控。失败节重试保留后续成功单键的补偿，涵盖 cache capacity 拒绝。仅对同一节维持排序屏障，无关节允许合并，以免恢复旧的队列溢出问题。一个 Host alias 覆盖上述四条入口。
+**修复：** 新增内有完整 MULTI_SZ 的 ReplaceSection 操作，由同一异步 writer 调用原生节 API，纳入 desired-state cache、失败提示、pending、重试和关闭门控。失败节重试保留后续成功单键的补偿，涵盖 cache capacity 拒绝。新增 ReplaceSection 仅对同一节维持排序屏障，无关节允许合并；既有 Delete/Flush 全局屏障继续保留，以免恢复旧的队列溢出问题。一个 Host alias 覆盖上述四条入口。
 
-**实际对照：** 从 Assist 提取真实 `writeSection()` 和 dispatch alias，与真实 Store 连接，原生边界仅注入首次写失败。owner 线程整节 API 调用 1→0；失败从不可见变为可见；失败后的关闭存储谓词从可通过变为不可通过；显式重试从无法保存变为成功。
+**实际对照：** 从 Assist 提取真实 `writeSection()`，读取源码 alias 定义后按其选择 portable 派发，与生产 Store 连接。原生写入使用可控替身，首次返回失败；替身在 owner 线程的整节调用 1→0。失败从不可见变为可见；失败后的关闭存储谓词从可通过变为不可通过；显式重试从无法保存变为成功。
 
-完整 portable Store 回归覆盖 MULTI_SZ 所有权、Unicode/空值/含等号值、旧键删除、同节顺序、失败及容量拒绝后的补偿。25 次保存 ×（200 普通键+3 整节）合并为 203 个 pending 操作。Windows x64 fixture 已编译链接，未在 Windows 上执行。未测真实磁盘延迟，未驱动完整 Win32 WM_CLOSE 序列，也未把多节保存声称为单个事务或断电持久性保证。
+完整 portable Store 回归覆盖 MULTI_SZ 所有权、空值/含等号值、旧键删除、同节顺序、失败及容量拒绝后的补偿。25 次保存 ×（200 普通键+3 整节）合并为 203 个 pending 操作。含原生 Unicode 文件读写的 Windows x64 fixture 已编译链接，未在 Windows 上执行。未测真实磁盘延迟，未驱动完整 Win32 WM_CLOSE 序列，也未把多节保存声称为单个事务或断电持久性保证。
 
 ## 功能覆盖清单
 
