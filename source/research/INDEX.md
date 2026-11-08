@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 每逻辑帧一份原始世界样本 | [现存重复入口、共享读集与统一采样待实现契约](2026-11-08-unified-world-sampling-contract.md) | cee2af56 pre1-epoch-only FrameReadSet capture-seal projection LiveRead SceneBank-overview minimap no-new-implementation |
 | 硬件控制与工具箱计算的重复工作 | [准入读合并、同帧 Scatter 门控与批内 fresh selector](2026-11-08-hardware-control-and-host-compute-hotpaths.md) | bf3fbe88 admission24to3 VEH-unchanged Host-demand reverse-sync raw-batch AntiTheft-retained operation-counts-not-FPS |
 | 科技加强规则模式总统／校车未显示 | [原生枚举反证、Ares 动态图标与现场边界](2026-11-07-tech-enhancement-rules-native-followup.md) | PRES BUS native-CanBuild 8-cases Insignificant-not-native-filter rules-mode-unresolved |
 | 科技加强的总统／校车目录缺口 | [特殊类型标志、身份限定准入与原生边界](2026-11-07-tech-enhancement-special-catalogue.md) | pre14 PRES BUS Insignificant typeSlot owned-identity legacy-vs-exact native-sidebar-unverified |

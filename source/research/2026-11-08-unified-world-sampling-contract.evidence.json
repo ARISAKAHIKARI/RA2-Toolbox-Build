@@ -1,0 +1,211 @@
+{
+  "schema": "ra2-toolbox.research-source-contract.v1",
+  "date": "2026-11-08",
+  "status": "source-audited architectural contract; implementation pending",
+  "baseline": {
+    "repository": "ARISAKAHIKARI/RA2-Toolbox-Build",
+    "commit": "cee2af5621c78d5f565463cf611ff591ed1ecbc3",
+    "product_version": "1.0.44-pre.1",
+    "assist_protocol_version": 100,
+    "version_header": "source/shared/source/release_version.h",
+    "version_header_sha256": "feb93bce7b46302626a753723254f8933ca51538d87fe9af099541db2fb0797c"
+  },
+  "document": {
+    "path": "source/research/2026-11-08-unified-world-sampling-contract.md",
+    "sha256": "e183a2e285f294caf02c245e7597357381576809ae5f260c478deb717bcfd861"
+  },
+  "evidence_scope": {
+    "source_review": true,
+    "notebook_v158_queried_read_only": true,
+    "production_or_test_sources_changed": false,
+    "new_implementation": false,
+    "new_tests_executed": false,
+    "compilation_or_package_validation_performed": false,
+    "windows_execution": false,
+    "game_execution": false,
+    "gpu_execution": false,
+    "multiplayer_execution": false,
+    "rpm_or_fps_measurement": false,
+    "new_addresses_abi_or_private_exe_access": false,
+    "version_release_or_notebook_write_performed_by_this_documentation_step": false
+  },
+  "audit_inputs": [
+    {
+      "path": "shared_frame/render-audit/visual-sampling-audit.md",
+      "sha256": "688d9bfaaf69f534ce941dee0823ae4c70d050a18cde683de7755f0ce7c25c1d",
+      "receipt_path": "shared_frame/render-audit/visual-sampling-audit.evidence.json",
+      "receipt_sha256": "7d1f21659c602f2e3e2d29ad0df53362bd2166860349995766973bc8d35424b2",
+      "summary": "SceneBank is a process-local latest filtered/projection-bound Frame, not a capture owner. Main actor/terrain, minimap, watch, tactical, sidebar and ancillary UI paths retain independent reads. Native and Tactical-overview projection incompatibility is intentional; render stages also read dynamic world state before pixel reuse."
+    },
+    {
+      "path": "shared_frame/tactical-audit/TACTICAL_SHARED_FRAME_AUDIT.md",
+      "sha256": "dfa76b26430c42b34ee30dd52dfc49b9733374495424cae8999801ebd34bf23f",
+      "receipt_path": "shared_frame/tactical-audit/audit-evidence.json",
+      "receipt_sha256": "ced9d12c1a85dedbd61289532c5fb3a8160330c8964cafa27cc3662ba7d3def9",
+      "summary": "computeFrame epoch and indexWorld do not share actual fields. Feature collectors repeat member/field reads; pure capture must be separated from native queries/events. A sealed overlapping-interval raw read set plus original member tables preserves decoder-specific semantics and prohibits consumer live fallback."
+    }
+  ],
+  "notebook_input": {
+    "name": "RA2-Reverse-Engineering-Notes.sqlite",
+    "version": "v158",
+    "sha256_at_visual_audit": "23abd4a76659d7f762743413a8338fd8accf83b7c8d9f83e840627893eeb3def",
+    "access": "read-only; same persistent notebook, no new database"
+  },
+  "inherited_sample_sha256": [
+    {
+      "sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+      "basis": [
+        "2026-11-08-hardware-control-and-host-compute-hotpaths.md",
+        "2026-11-02-trigger-radar-active-projection.md"
+      ],
+      "newly_accessed": false
+    },
+    {
+      "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "basis": [
+        "2026-10-30-shared-scenes-local-ui-hotfix13.md"
+      ],
+      "newly_accessed": false
+    },
+    {
+      "sha256": "7b8a068535d6af06845edf95ae829b113d00c02909330e16f197426cd7db94b6",
+      "basis": [
+        "2026-11-04-minimap-camera-overview.md"
+      ],
+      "newly_accessed": false
+    }
+  ],
+  "address_basis": {
+    "source": "existing fixed source and linked research; no new native discovery",
+    "member_tables": {
+      "Techno": "0xA8EC78",
+      "Building": "0xA8EB40",
+      "Bullet": "0xA8ED40",
+      "Unit": "0x8B4108",
+      "Selected": "0xA8ECB8"
+    },
+    "field_and_abi_policy": "Existing raw_combat/GameView/visual decoder offsets and semantics are inherited. This note does not assert new ABI compatibility or change protocol 100."
+  },
+  "target_contract": [
+    "Unique owner and actual shared raw payload per logic frame; demand is union of enabled consumers, inflight tasks and display views.",
+    "Static assets and resource metadata use explicit change/generation caching; dynamic world facts use logic-frame acquisition; small UI/view/input facts use an independent fast path.",
+    "Original native member tables preserve order, completeness and failures; overlapping raw byte ranges deduplicate across collectors.",
+    "Pure capture performs no native queries, events or game writes; independent live frame/world guards validate acquisition before seal.",
+    "Sealed FrameRead has no ProcessReader or live fallback; uncovered new world demand waits for a subsequent logic frame.",
+    "Native queries and execution use explicit LiveRead; identity, permission, manual token, lease, roster proof and immediate retirement requirements remain.",
+    "Geometry-independent world/cells feed native Radar, Tactical overview, main and watch projection without recovering omitted objects from filtered legacy Frames.",
+    "RawCombat and GameView combat decoder semantics remain separate; fresh selector and existing 30-frame derived metadata cache are not conflated.",
+    "Cross-process Host/Runtime sharing requires versioned payload/coverage/lifetime, not only identical frame stamps.",
+    "Source operation counts, physical reads, capture frequency, drawing rate and game FPS are different metrics."
+  ],
+  "unresolved": [
+    "provider thread and strict every-logic-frame coverage",
+    "IPC capacity and publication lifetime",
+    "complete visual extension coverage and budgets",
+    "paused-world versus UI generation behavior",
+    "MOD native-query side effects",
+    "controlled source-bound implementation tests and Windows/game/GPU/multiplayer validation"
+  ],
+  "key_source_files": [
+    {
+      "path": "source/assist/source/bridge.cpp",
+      "git_blob": "ab4b12e7d9a6e7fafeab5df396e2bafd02fe3885",
+      "sha256": "c32550ec4b20100d2eebeda9fa52a5823e37d939b605fb20d06c3ce77e4e1d74"
+    },
+    {
+      "path": "source/assist/source/protocol.h",
+      "git_blob": "61fbd346fe327bed13479633cb4d308116f68d70",
+      "sha256": "4586fc259882fac2d1eca65b6d046dac888fa2c645c9e0bff5534218315a5113"
+    },
+    {
+      "path": "source/assist/source/external_orders_bridge.h",
+      "git_blob": "634bb484b9f311506c612d444240de92ec12a651",
+      "sha256": "e507e9e57718aeba4c6a37a4b51a83462de50fe5e36d0bc9414e5491cc5f2f64"
+    },
+    {
+      "path": "source/assist/source/dodge_bridge.h",
+      "git_blob": "9573912a2ce23617b51e6904c8b73b0e349e63c4",
+      "sha256": "79a128b054a511e274b34dcf9df87c4aad844ad5127a1b2d4a6fd50eb8e3872c"
+    },
+    {
+      "path": "source/assist/source/missile_bridge.h",
+      "git_blob": "fde9e973a7db7d0433b6401227cf085423c192d6",
+      "sha256": "75da56229291cdb31f233ea545af6054d7be71c270a7e3c1abf8eb497549bb82"
+    },
+    {
+      "path": "source/assist/source/raw_combat.h",
+      "git_blob": "63269605f39139c867dc417af3b14966833aa632",
+      "sha256": "7972727364e3a6d6cad7762fccb6cf030173000716827ba8ba45647b87c85552"
+    },
+    {
+      "path": "source/assist/source/ore_harvest_bridge.h",
+      "git_blob": "a5d66691b157d23d7be46b8d4e1eb1c53b45bddc",
+      "sha256": "6c3a5ece1566af1138398c499691d3ab9d2ac5c8a785f6cc878190d5737a305a"
+    },
+    {
+      "path": "source/external_reader/source/cooperative_reader.h",
+      "git_blob": "cecc5778a6235c0608a5f807ab15165115865287",
+      "sha256": "e116a2b9145c403d055728594fb05915a514efac796568ebff3dd7d42dbe8fb7"
+    },
+    {
+      "path": "source/external_reader/source/game_view.h",
+      "git_blob": "9ab2b9e8b1a83a3852739ad4ba803afcb8091b55",
+      "sha256": "1cb66241d90ea90ed29b516651a7ba8313a672364ee542e6a051dd2aa6123063"
+    },
+    {
+      "path": "source/external_reader/source/shared_reader.h",
+      "git_blob": "0b4c3e53171c240cd6a4a4dea36672374984f832",
+      "sha256": "cfd90780918178eb64ab6f496225b94a3ee3909626580131bf0e6a1b57b2252f"
+    },
+    {
+      "path": "source/external_reader/source/process_reader.h",
+      "git_blob": "024cba21d73bbd4406a87c227b6c4dfb65392161",
+      "sha256": "9f6dbbc69799c3c5dc9e9b002aa03367d459b9fc091a366170ad1c404edf9d8c"
+    },
+    {
+      "path": "source/external_reader/source/tactical_sampler.h",
+      "git_blob": "b28a72a3b2a2d218b59569ea937c993c4361873c",
+      "sha256": "4be24d4ce48c5e4d4bee1333b59c1ad639412fe5562a6ae0887b71c8b1de7b71"
+    },
+    {
+      "path": "source/external_reader/source/scene_bank.h",
+      "git_blob": "bbdf6a89ef73c4205ccf620f04d8433f66adc8d6",
+      "sha256": "d325cc1c4a1dca61e3c02aa5d9e3c528cee204f97a87ed89e83279370faf400a"
+    },
+    {
+      "path": "source/external_reader/source/radar_map.h",
+      "git_blob": "f2ea2d2bd1ef55c6da5d2d20284a984bc0e9b62c",
+      "sha256": "d1371623faebb3ce415b2d51fe2e6955ea503ec805df6fc5bbb3011b3a7c8e93"
+    },
+    {
+      "path": "source/external_reader/source/radar_scene.h",
+      "git_blob": "44d8c898f52fb3e480ee314294af5464f2880c03",
+      "sha256": "ba3fd212a5a1a6df4dfb07d9c4bd1bd0dba05fa45237ff0baff4b33996c5f5b2"
+    },
+    {
+      "path": "source/external_reader/source/world_scene_pipeline.h",
+      "git_blob": "ee605bd2eab229f4336c3cd20614aecffb21c1ba",
+      "sha256": "56b55686556b7fef84e0a3463cf6997dfdcf1be1e74237fc69923cce88793f8b"
+    },
+    {
+      "path": "source/assist/source/render_upgrade_host.h",
+      "git_blob": "d8ab27a7f897451d061e3bc97d6c5709cf64ca0b",
+      "sha256": "42525539fde5ca328316e5e0365dd4018043128cff5420d0de74646667e993de"
+    },
+    {
+      "path": "source/assist/source/minimap_overlay.h",
+      "git_blob": "f2c38ecd0d6775fc887ba2f9e445f8b52d59f815",
+      "sha256": "a042ec765150077478f7e35c22c379d5e4f3b7c411727a51f88d6ed6fd508704"
+    },
+    {
+      "path": "source/assist/source/watch_scene.h",
+      "git_blob": "c56a0f2a4d9f33c8359d7049a1fec0ce85c081f7",
+      "sha256": "cec78b7432a61059dc1dbfbd772805f38d931ad39bfd5f697c9dd7a282ed9548"
+    },
+    {
+      "path": "source/external_reader/source/sidebar_indicators.h",
+      "git_blob": "4ab44a8a0515738046b6a123f1efdc75be9c6f3e",
+      "sha256": "ee3fdf9a88d48b8c34f5f48cbc5b9a297b05170693ecbe67a5b54fc1a87ac0d1"
+    }
+  ]
+}
