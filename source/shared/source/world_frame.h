@@ -67,6 +67,13 @@ public:
   if(size_>=MaxPages||!reserve(size_+1))return false;
   ::new(static_cast<void*>(data_+size_))Page{};++size_;return true;
  }
+ // Import already owns a complete initialized wire page. Construct its copy
+ // directly instead of zeroing the payload only to overwrite every byte.
+ // Capture still uses append() so its unread/failed bytes start initialized.
+ bool append(const Page&source)noexcept{
+  if(size_>=MaxPages||!reserve(size_+1))return false;
+  ::new(static_cast<void*>(data_+size_))Page(source);++size_;return true;
+ }
 };
 inline bool range(uint32_t address,size_t n){return address>=0x10000&&n&&n<=32u*1024u*1024u&&uint64_t(address)+n<=0x80000000ull;}
 inline uint32_t bucket(uint32_t page){return ((page>>12)*2654435761u)&(IndexSize-1);}
@@ -154,7 +161,9 @@ public:
   if(!pages.reserve(count))return capacityFailure();
   for(size_t i=0;i<count;++i){const auto&p=input[i];
    if((p.address&(PageSize-1))||!range(p.address,PageSize)||p.full>1||find(p.address)){reset(source);return false;}
-   auto*entry=add(p.address);if(!entry)return false;*entry=p;
+   if(!pages.append(p))return capacityFailure();
+   uint32_t slot=bucket(p.address);while(index_[slot])slot=(slot+1)&(IndexSize-1);
+   index_[slot]=uint32_t(pages.size());
   }counters=stats;return seal();
  }
 };

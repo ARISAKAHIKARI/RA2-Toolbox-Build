@@ -1,0 +1,13 @@
+{
+  "source_sha256": {
+    "source/cursor/source/main.cpp": "738e5806cf619cdc5595905debdec806a3a7f796a959d69e82a0b347987d6834",
+    "source/cursor/source/ondemand.h": "e86e6f571af085def49d3a70d59fa5d5b060d8fea8f6c688386abf861487d008",
+    "source/assist/tests/cursor_dependency_prepare.cpp": "2ab0b65a34b5eca5552d2809ae43e207f28b327b0f105e0c7a555c78339850a0",
+    "source/assist/tests/cursor_dependency_prepare.py": "9e9cd31302f5755dcb61ccda3fd1d52739f78553e9bfde64fbc733a2c26fc53c",
+    "source/assist/tests/runtime_broker_retirement.py": "d375b8f2f8d56041873c6cbc89390783096536deb755459dcd8e1c23def07bd2"
+  },
+  "production_routes_sha256": "e34d7f53b57a82b2b938a32caa982aed362e519e7d6ba2acd92a2b289e2f427f",
+  "failure_input": "0 1\\n999999999999999999999",
+  "reason": "Integer overflow consumes input through EOF; failbit+eofbit was mistaken for clean EOF and replaces the previous complete index with the partial prefix. Second oversized assertion is cascading from the first mutation.",
+  "native_windows": false
+}

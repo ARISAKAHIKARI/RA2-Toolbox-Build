@@ -1,9 +1,9 @@
 {
-  "name": "RA2 Toolbox 1.0.46-pre.1",
-  "version": "1.0.46-pre.1",
+  "name": "RA2 Toolbox 1.0.46-pre.2",
+  "version": "1.0.46-pre.2",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
-  "resources": "Full includes pinned offline assets/profiles and native paired programs; optional Python/NumPy/SciPy/OpenCV preprocessing dependencies are downloaded only when needed and missing. Update preserves installed dependencies, settings and resources.",
+  "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
   "resources_legacy_reuse": true,
   "build_protocol": 101,
   "validation": "This revision records only focused checks actually executed against its frozen production and test source bytes. Historical suites are not counted as new execution. Complete Windows-target compilation, static PE/ABI validation, paired component digests and archive verification are recorded separately in the frozen build receipts and release-manifest.json; this source manifest does not assert their completion. No live Windows/DWM, user-platform, game, physical GPU or multiplayer acceptance is claimed.",
@@ -27,7 +27,7 @@
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,
-  "package_type": "Windows x64 stable lightweight Full and Update packages, same-build x86 Runtime/broker and pinned WebView2 loader; Python scientific runtime excluded, official pinned on-demand bootstrap included.",
+  "package_type": "Windows x64 prerelease lightweight Full and Update, same-build x86 Runtime/broker, pinned WebView2 loader; generated cursor DIS/preview and optional Python scientific runtime excluded.",
   "runtime_transport_protocol": 4,
   "game_code_patching": "Prefer native events, polling and external rendering; gameplay code changes, simulation mutations and original-value CRC mirror retain explicit HIGH RISK labels. Read-only native queries, build-time display and HideCursor are not classified as HIGH RISK. Cursor tooltip repair owns validated data/vtable slots without rewriting .text; this is not a multiplayer certification.",
   "input_entry": "Windows WH_GETMESSAGE/WH_CALLWNDPROCRET; ordinary sessions use frame-counter polling, native frame notification only explicitly selected diagnostic test",
@@ -43,7 +43,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "1.0.45 retains the 1.0.44 Broker, reservation and disabled-asset fixes and changes optional cursor-preprocessing dependencies to on-demand public downloads. Focused execution, exact-commit Windows-target compilation, actual PE checks and archive hashes are recorded separately; no native Windows, game, physical GPU or multiplayer acceptance is asserted here.",
+  "release_status": "1.0.46-pre.2 adds game-source-bound on-demand cursor interpolation, removes generated interpolation/preview assets from both packages, and removes redundant page initialization during Host snapshot import. Prior Broker, fixed reservation boundary, disabled SHA/SHP and pre.1 performance fixes remain. Stable Latest remains v1.0.45; frozen build/package receipts record actual validation without asserting native Windows/game acceptance.",
   "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; Debug entry catalog plus independent read-only platform Hook scan tools, manual PID, optional same-build original EXE, progress/cancellation and local HTML/JSON reports; existing action generation/revision acknowledgement preserved.",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement. Active, identity-verified enhancement targets may enter the toolbox catalogue despite Insignificant; Spawned and zero-owner exclusions and native build/factory rules remain. Ares replacing the native CanBuild body still makes the internal Exact comparison unavailable.",
   "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
@@ -968,5 +968,38 @@
     "game_tested": false,
     "multiplayer_tested": false,
     "batched_read_experiment_shipped": false
+  },
+  "CursorCacheAndImport146Pre2": {
+    "version": "1.0.46-pre.2",
+    "file_version": "1.0.46.2",
+    "assist_protocol": 101,
+    "scope": [
+      "Default cursor generation waits for validated current-game original SHA and palette. Custom styles retain their own source; immutable cache identity includes canonical SHA, palette and groups, with exact-byte staging checks.",
+      "Only missing observed animation pairs enter a bounded queue; background tasks process at most four pairs. Existing DIS files are validated completely and reused; ordinary tasks do not render preview HTML.",
+      "Explicit all/preview operations retain cancellation and dependency bootstrap. Unique task ownership and source epochs reject stale completions; failures and cancellations stop automatic retry until an explicit request or new source.",
+      "Playback asynchronously loads new pairs into a resident bank without reconnecting the game. Replacing timelines clears raster addresses and forces the next frame submission.",
+      "Host Snapshot::import copy-constructs initialized pages directly, removing redundant 5128-byte initialization per page while preserving live capture initialization, demand, ownership and sampling frequency.",
+      "Both packages exclude all generated cursor caches and previews. Full retains raw/style resources and seven exact current engine files; overlay updates preserve existing user cache/runtime/configuration."
+    ],
+    "focused_checks": [
+      "world_import",
+      "cursor_ondemand",
+      "cursor_precompute_cache",
+      "lightweight_package"
+    ],
+    "sampling_frequency_reduced": false,
+    "windows_executed": false,
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "prerelease": true,
+    "make_latest": false,
+    "stable_latest_to_preserve": "v1.0.45",
+    "validation": "Only executed fixtures with final production/test hashes count as this release evidence. Cross-build, PE validation, package membership and remote source bindings are separate frozen receipts. Operation counts and LLVM code generation are not a claim about game FPS.",
+    "remaining_work": [
+      "Whole ValueTask/Runtime input copies",
+      "AntiTheft repeated eligibility scans on identical raw samples",
+      "Missile allocator candidate revisit cost",
+      "Pinned Client snapshot ownership and demand-pruning optimization"
+    ]
   }
 }

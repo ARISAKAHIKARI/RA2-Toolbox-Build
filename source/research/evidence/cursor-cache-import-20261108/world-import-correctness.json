@@ -1,0 +1,82 @@
+{
+  "passed": true,
+  "baseline_commit": "e6a157fe4b51e330915eaaa58f8192f5cdbce168",
+  "baseline_header_sha256": "054c5879835da23b503b9f1d353fc21935193a3d5df440ee2b664e5b2da0d9ee",
+  "build_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-fno-exceptions",
+    "-fsanitize=undefined",
+    "-fno-sanitize-recover=all",
+    "-DBASELINE_WORLD_FRAME_HEADER=\"/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/baseline-world-frame.h\"",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/world_frame_import_copy.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/import-copy"
+  ],
+  "run_exit_code": 0,
+  "windows_x64_codegen": {
+    "baseline": {
+      "command": [
+        "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "-DWORLD_FRAME_HEADER=\"/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/baseline-production-world-frame.h\"",
+        "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/import-codegen.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/baseline-import.ll"
+      ],
+      "ir_sha256": "9ff06af56a44c50c649e8120d7b435ed0d860cc9cc90298b22b5b47de7803be2",
+      "whole_page_zero_sites": 1,
+      "whole_page_copy_sites": 3
+    },
+    "current": {
+      "command": [
+        "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "-DWORLD_FRAME_HEADER=\"/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source/world_frame.h\"",
+        "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/import-codegen.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/performance-146-round2/sampling/correctness/current-import.ll"
+      ],
+      "ir_sha256": "ab176ce740e466ff5a86c83c666fdde0b0dab72a08c6bbd43ff2c2c414f28dc9",
+      "whole_page_zero_sites": 0,
+      "whole_page_copy_sites": 3
+    }
+  },
+  "source_bindings": [
+    {
+      "path": "source/shared/source/world_frame.h",
+      "sha256": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f"
+    },
+    {
+      "path": "source/shared/source/world_frame_transport.h",
+      "sha256": "e9ec387d4ffc82417e368a1305051df6436f3c674ea6516049d2288942897009"
+    },
+    {
+      "path": "source/assist/tests/world_frame_import_copy.cpp",
+      "sha256": "317f699c86555b5a3a17faafeaa7bbad1566949889f23061441fcb0cb145a2b0"
+    },
+    {
+      "path": "source/assist/tests/world_frame_import_copy.py",
+      "sha256": "3daf3fe4591f89e4a5397582a99beef8eda56c6c0a07dff087bfda35510d011f"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "limits": [
+    "Actual import functions with synthetic wire pages; baseline changes namespace only.",
+    "No native Windows shared-memory race execution or game FPS measurement."
+  ]
+}

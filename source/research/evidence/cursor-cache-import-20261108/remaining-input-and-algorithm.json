@@ -1,0 +1,166 @@
+{
+  "baseline": "e6a157fe4b51e330915eaaa58f8192f5cdbce168",
+  "pass": true,
+  "scope": "Exact production serviceValueTask (UI/worker scheduling seams) and actual missile calculate; portable CPU only, no Windows/game/FPS. Counted calculate differs only by one loop counter; byte-equal result checked.",
+  "command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-UNDEBUG",
+    "-fno-builtin-memcpy",
+    "-Wl,--wrap=memcpy",
+    "-I",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source",
+    "-I",
+    "/workspace/scratch/40121bc881b8/performance-146-round2/features",
+    "/workspace/scratch/40121bc881b8/performance-146-round2/features/measure_inputs.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/performance-146-round2/features/measure-inputs"
+  ],
+  "records": [
+    {
+      "kind": "HOST",
+      "type": "unload",
+      "input_bytes": 4485140,
+      "calls": 500,
+      "world_sized_allocations": 500,
+      "allocation_bytes": 2242580000,
+      "memcpy_bytes": 2242570000,
+      "median_ns_per_100": 37957990,
+      "min_ns_per_100": 35787734,
+      "max_ns_per_100": 51445133
+    },
+    {
+      "kind": "HOST",
+      "type": "missile",
+      "input_bytes": 1066008,
+      "calls": 500,
+      "world_sized_allocations": 500,
+      "allocation_bytes": 533012000,
+      "memcpy_bytes": 533004000,
+      "median_ns_per_100": 27911340,
+      "min_ns_per_100": 14116628,
+      "max_ns_per_100": 73156916
+    },
+    {
+      "kind": "HOST",
+      "type": "load",
+      "input_bytes": 843816,
+      "calls": 500,
+      "world_sized_allocations": 500,
+      "allocation_bytes": 421916000,
+      "memcpy_bytes": 421908000,
+      "median_ns_per_100": 8731671,
+      "min_ns_per_100": 5617484,
+      "max_ns_per_100": 12386407
+    },
+    {
+      "kind": "HOST",
+      "type": "repair",
+      "input_bytes": 131088,
+      "calls": 500,
+      "world_sized_allocations": 500,
+      "allocation_bytes": 65552000,
+      "memcpy_bytes": 65544000,
+      "median_ns_per_100": 311973,
+      "min_ns_per_100": 284775,
+      "max_ns_per_100": 386793
+    },
+    {
+      "kind": "HOST",
+      "type": "dodge",
+      "input_bytes": 71696,
+      "calls": 500,
+      "world_sized_allocations": 500,
+      "allocation_bytes": 35856000,
+      "memcpy_bytes": 35848000,
+      "median_ns_per_100": 157021,
+      "min_ns_per_100": 156810,
+      "max_ns_per_100": 369959
+    },
+    {
+      "kind": "PAYLOAD",
+      "unload_one_source_one_target_bytes": 149,
+      "missile_one_source_one_target_bytes": 108,
+      "unload_frame_history_16_inputs_bytes": 71762240,
+      "missile_frame_history_16_inputs_bytes": 17056128
+    },
+    {
+      "kind": "MISSILE",
+      "sources": 16,
+      "targets": 8,
+      "mode": 0,
+      "orders": 16,
+      "selection_pair_visits": 1088,
+      "iterations_per_batch": 100,
+      "median_batch_ns": 425504,
+      "min_batch_ns": 394447,
+      "max_batch_ns": 807091
+    },
+    {
+      "kind": "MISSILE",
+      "sources": 32,
+      "targets": 32,
+      "mode": 0,
+      "orders": 32,
+      "selection_pair_visits": 16896,
+      "iterations_per_batch": 100,
+      "median_batch_ns": 9606578,
+      "min_batch_ns": 6394386,
+      "max_batch_ns": 10818063
+    },
+    {
+      "kind": "MISSILE",
+      "sources": 128,
+      "targets": 128,
+      "mode": 0,
+      "orders": 128,
+      "selection_pair_visits": 1056768,
+      "iterations_per_batch": 20,
+      "median_batch_ns": 125827483,
+      "min_batch_ns": 101010579,
+      "max_batch_ns": 257586594
+    },
+    {
+      "kind": "MISSILE",
+      "sources": 256,
+      "targets": 256,
+      "mode": 0,
+      "orders": 256,
+      "selection_pair_visits": 8421376,
+      "iterations_per_batch": 5,
+      "median_batch_ns": 495238336,
+      "min_batch_ns": 299859929,
+      "max_batch_ns": 541754925
+    },
+    {
+      "kind": "MISSILE",
+      "sources": 256,
+      "targets": 256,
+      "mode": 1,
+      "orders": 256,
+      "selection_pair_visits": 8421376,
+      "iterations_per_batch": 5,
+      "median_batch_ns": 179679220,
+      "min_batch_ns": 141969966,
+      "max_batch_ns": 294407992
+    }
+  ],
+  "source_sha256": {
+    "source/assist/source/main.cpp": "61a1563473f2a51d8e990f80d212c94f22a74355ff2a4db15a4dc0823768fb9f",
+    "source/assist/source/value_task.h": "5920cc2e3c42cb88457d1f806b3d7f01e3c1e86e048f4215d0e87b2743f17e04",
+    "source/assist/source/compute_frame.h": "01f38950c5fdf33ffdf17eafc73be413f180dc7352baa4fccedf897b402c341f",
+    "source/assist/source/compute_tasks.h": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c",
+    "source/assist/source/unload_compute.h": "9320d8940db3a948d51533a4931457cd676a01c07b64fed085395d11b7d19711",
+    "source/assist/source/unload_compute_bridge.h": "d26fc80a6c451242e43b9d2b992598dea7f2e6c9d0681daa5a1dd148c96ab6bc",
+    "source/assist/source/missile_compute.h": "4ec27f1eeeb1b79bb0804c65581211e5385adc9c4762b1fcc9225fc327386166",
+    "source/assist/source/missile_bridge.h": "db4821bcb135ab9f13f51d66bede55f4ea64aeb98232a47f13e74e1bda984f2e"
+  },
+  "service_function_sha256": "de2a08cbdb46ea8de3462da8dae6b4d22494410ae6c9ad605ab31a9eef8964c3",
+  "calculate_function_sha256": "5f06e3ef9762ac1f646a89ce1bfd96f8106d0f52bce1049bfd59e4953d9bbdde",
+  "harness_sha256": {
+    "measure_inputs.cpp": "bda0604de4780be4995c7e05ea77fae272093900e2a59d0b3dd0ee4dad3ec378",
+    "run_measurements.py": "fd0173299ef99236c0822fc34787d82363fa29a8c246e90431bce75119142c9e"
+  },
+  "executable_sha256": "0b16f8906411646ec043c6e0768065db34cdd34ffdf051e45fe0de384ec43c85"
+}

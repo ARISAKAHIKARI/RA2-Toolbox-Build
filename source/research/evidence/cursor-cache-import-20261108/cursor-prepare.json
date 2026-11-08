@@ -1,0 +1,49 @@
+{
+  "schema": "ra2.cursor-dependency-prepare-ui.v2",
+  "pass": true,
+  "result": {
+    "scenarios": 67,
+    "checks": 386,
+    "failures": 0
+  },
+  "build_command": [
+    "c++",
+    "-std=c++17",
+    "-O1",
+    "-g",
+    "-fsanitize=undefined",
+    "-fno-sanitize-recover=all",
+    "-D_WIN64",
+    "-DPREPARATION_PRODUCTION=\"/workspace/scratch/40121bc881b8/performance-146-round2/cursor-prepare/production-preparation.inc\"",
+    "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/cursor_dependency_prepare.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/performance-146-round2/cursor-prepare/cursor-dependency-prepare"
+  ],
+  "build_exit_code": 0,
+  "run_exit_code": 0,
+  "source_sha256": {
+    "source/cursor/source/main.cpp": "6b785086a10b7dc77e9d9caaff610e69318a0e7a8efdc31a1926a55d9e51503e",
+    "source/cursor/source/ondemand.h": "e86e6f571af085def49d3a70d59fa5d5b060d8fea8f6c688386abf861487d008",
+    "source/assist/tests/cursor_dependency_prepare.cpp": "fd5a7ed0d1dce41e9f389657724202e30f8c2eea2bcbdcc739b32c745d0d5015",
+    "source/assist/tests/cursor_dependency_prepare.py": "b3c79d6c53573f8677fad8a14f565b87c48d1318ea0ce3a6f3190011f784a52f",
+    "source/assist/tests/runtime_broker_retirement.py": "d375b8f2f8d56041873c6cbc89390783096536deb755459dcd8e1c23def07bd2"
+  },
+  "production_routes_sha256": "de5d8069c389acfea0da30961ad56335abc941b32f71bb58c3cba01d96d97015",
+  "windows_executed": false,
+  "network_downloads_executed": false,
+  "game_tested": false,
+  "scope": [
+    "Actual production materialize/launch/serviceAutomatic/begin/poll/cancel/close/preview and command-line builders execute against controlled Win32 process, file, INI and label boundaries; ondemand.h is included unchanged.",
+    "Directory creation and the generated-pairs ifstream are deterministic filesystem boundaries; the complete materialization comparison, temporary write/MoveFileExW publication and generated-pairs parser execute.",
+    "Missing-runtime launch, literal arguments, phase progress, failures, retries, cancellation, profile switch and zero-timeout waits are exercised.",
+    "Every retry and quick close/reopen uses a unique task directory; old cancellation flags and status/error files are retained, and filename collisions never overwrite prior tasks.",
+    "Source entry checks prevent eager startup launches; empty/blocked/unconfirmed animation demand and explicit preview/full-preparation routes execute separately.",
+    "Automatic batches contain at most four observed pairs; failures/cancellation remain blocked, and successful same-source work only schedules playback loading without stopping the hook.",
+    "Source/epoch changes reject late success/failure effects; previews open only after an explicit action, and malformed generated pair indexes cannot partially replace a valid index."
+  ],
+  "limits": [
+    "PowerShell execution, HTTP downloads, dependency installation and native Windows UI are not executed by this fixture.",
+    "The quote consumer checks Microsoft command-line rules in a portable fixture; it is not a Windows shell execution.",
+    "ExecutionPolicy Bypass applies only to the app-owned PowerShell process; no system/user policy is modified, and Group Policy remains authoritative."
+  ]
+}
