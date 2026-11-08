@@ -7,13 +7,13 @@
 #include BROKER_CLIENT
 
 namespace preciseclock{static uint64_t micros(){return uint64_t(brokerfixture::now)*1000;}}
-namespace runtime{constexpr uint32_t Tactical=1,Cursor=2;struct Control{volatile LONG enabled=0;DWORD heartbeat=0;uint32_t ready=0;};}
+namespace runtime{constexpr uint32_t Tactical=1,Cursor=2;struct Control{volatile LONG enabled=0;DWORD heartbeat=0;uint32_t ready=0;uint32_t magic=0,version=0,pid=0,owner=0;volatile LONG wakePending=0;};}
 namespace framesignal{constexpr uint32_t Compute=1,ExplicitDiagnostic=2,Native=1;struct Stamp{uint32_t state=0,serial=0;int64_t frequency=0,qpc=0;};struct Client{bool open(DWORD,uint32_t){return false;}void heartbeat(){}bool current(Stamp&){return false;}};}
 namespace gameinput{
 struct Target{DWORD pid=0,thread=0;HWND window=nullptr;runtime::Control*control=nullptr;HANDLE mapping=nullptr,process=nullptr;HHOOK post=nullptr,message=nullptr;
- uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0,lastPostError=0;bool frameSampling=false,diagnosticFrame=false,fastTactical=false;
+ uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0,lastPostError=0;uint64_t brokerIntent=0;bool brokerPending=false;bool frameSampling=false,diagnosticFrame=false,fastTactical=false;
  struct Pointer{bool enabled=false,focused=false;}pointer;uint64_t cursorAt=0,tacticalAt=0;std::shared_ptr<framesignal::Client>frameSignal;};
-struct Lease{uint64_t id=0;uint32_t client=0;unsigned target=0;};struct Host{std::recursive_mutex mutex;Target targets[32]{};Lease leases[256]{};volatile LONG pulseBusy=0;};
+struct Lease{uint64_t id=0;uint32_t client=0;unsigned target=0;};struct Host{std::recursive_mutex mutex;Target targets[32]{};Lease leases[256]{};volatile LONG pulseBusy=0;uint64_t next=0;HANDLE timer=nullptr;const wchar_t*installStage=L"fixture";};
 static Host&host(){static Host h;return h;}static unsigned posts=0,polls=0,timerUpdates=0;
 static uint32_t mask(uint32_t client){return client;}static bool releaseHook(HHOOK&hook){hook=nullptr;return true;}
 static void pollPointer(Target&,DWORD){++polls;}static void post(Target&t,uint32_t bits){++posts;t.control->ready|=bits;}static void updateTimer(){++timerUpdates;}
@@ -22,7 +22,8 @@ static void pollPointer(Target&,DWORD){++polls;}static void post(Target&t,uint32
 static unsigned checks=0,failures=0,clientChecks=0,pulseChecks=0;
 static void check(bool ok,const char*text){++checks;if(!ok){++failures;std::printf("FAIL: %s\n",text);}}
 static void finish(runtimebroker::Client&c){for(HANDLE h:brokerfixture::brokers)brokerfixture::object(h).exited=true;brokerfixture::reply=brokerfixture::Reply::Ack;for(HANDLE h:brokerfixture::brokers)brokerfixture::object(h).waitFailed=false;c.shutdown();}
-static bool install(runtimebroker::Client&c,uint32_t&token,uint32_t&generation,DWORD pid=42){return c.install(pid,pid+1,pid+2,token,generation);}
+static bool install(runtimebroker::Client&c,uint32_t&token,uint32_t&generation,DWORD pid=42){bool result=c.install(pid,pid+1,pid+2,token,generation);
+ if(!result&&GetLastError()==ERROR_IO_PENDING&&brokerfixture::reply==brokerfixture::Reply::Timeout){brokerfixture::now+=2000;result=c.install(pid,pid+1,pid+2,token,generation);}return result;}
 static void assertIdentity(HANDLE old){using namespace brokerfixture;check(!wrongTerminates,"only the retained child broker HANDLE is terminated");check(!ownerMismatches,"owner HANDLE and packet retain the real host identity");check(!overlappingCreates,"no replacement broker exists before confirmed old exit");check(!liveBrokerCloses,"no live or unknown broker process HANDLE is closed");if(old)for(const auto&t:terminations)check(object(t.handle).kind==Kind::Broker,"each termination targets a created helper, never a game/owner");}
 static void clientCases(){using namespace brokerfixture;
  {
@@ -60,15 +61,15 @@ static void clientCases(){using namespace brokerfixture;
   check(!c.shutdown()&&!c.shutdown(),"repeated poisoned shutdown reports pending cleanup");check(terminations.size()==1&&exchanges.size()==written,"repeated shutdown shares retirement throttle and never exchanges old mailbox");now=completed+1000;terminateOK=exitOnTerminate=true;check(c.shutdown(),"later shutdown retry completes retirement");check(c.shutdown(),"completed shutdown is idempotent");check(creates==1,"shutdown never spawns a replacement");check(install(c,token,generation),"new explicit install can start after completed shutdown");assertIdentity(old);finish(c);
  }
  {
-  reset();runtimebroker::Client c;uint32_t token=0,generation=0;install(c,token,generation);HANDLE old=activeBroker;shutdownDelay=500;const DWORD began=now;check(c.shutdown(),"healthy shutdown preserves one bounded graceful wait");check(now-began==500&&terminations.empty(),"graceful helper exit avoids forced retirement");check(c.shutdown(),"healthy close can be repeated safely");assertIdentity(old);
+  reset();runtimebroker::Client c;uint32_t token=0,generation=0;install(c,token,generation);HANDLE old=activeBroker;shutdownDelay=500;const DWORD began=now;check(!c.shutdown()&&GetLastError()==ERROR_IO_PENDING&&now==began,"healthy shutdown polls without a graceful wait");now+=500;check(c.shutdown()&&terminations.empty(),"graceful helper exit avoids forced retirement");check(c.shutdown(),"healthy close can be repeated safely");assertIdentity(old);
  }
  {
   reset();runtimebroker::Client c;uint32_t token=0,generation=0;install(c,token,generation);HANDLE old=activeBroker;shutdownNeverExits=true;terminateOK=false;exitOnTerminate=false;
-  check(!c.shutdown(),"graceful shutdown timeout enters retirement");const auto waits=singleWaits.size(),written=exchanges.size();for(unsigned i=0;i<20;++i){now+=4;c.shutdown();}
+  check(!c.shutdown()&&GetLastError()==ERROR_IO_PENDING,"graceful shutdown starts without waiting");now+=1000;check(!c.shutdown()&&GetLastError()==ERROR_TIMEOUT,"graceful shutdown deadline enters retirement");const auto waits=singleWaits.size(),written=exchanges.size();for(unsigned i=0;i<20;++i){now+=4;c.shutdown();}
   bool zero=true;for(size_t i=waits;i<singleWaits.size();++i)zero&=singleWaits[i].milliseconds==0;check(zero,"repeated failed shutdown does not repeat a one-second wait");check(exchanges.size()==written&&terminations.size()==1,"shutdown retries cannot resend poisoned mailbox or flood termination");object(old).exited=true;check(c.shutdown(),"natural exit completes previously timed-out shutdown");assertIdentity(old);
  }
  {
-  reset();runtimebroker::Client c;startup=Reply::Timeout;terminateOK=false;exitOnTerminate=false;check(!c.ensure(),"startup timeout retains failed helper for retirement");HANDLE old=activeBroker;check(allOpen(old)&&creates==1,"failed startup retains exact process and inherited ownership");check(!c.ensure()&&terminations.size()==1,"abort and ensure in the same cycle do not repeat termination");startup=Reply::Ack;now+=1000;terminateOK=exitOnTerminate=true;check(c.ensure(),"startup failure is recoverable by throttled retirement");assertIdentity(old);finish(c);
+  reset();runtimebroker::Client c;startup=Reply::Timeout;terminateOK=false;exitOnTerminate=false;check(!c.ensure()&&GetLastError()==ERROR_IO_PENDING,"startup begins without waiting");now+=3000;check(!c.ensure()&&GetLastError()==ERROR_TIMEOUT,"startup deadline retains failed helper for retirement");HANDLE old=activeBroker;check(allOpen(old)&&creates==1,"failed startup retains exact process and inherited ownership");check(!c.ensure()&&terminations.size()==1,"abort and ensure in the same cycle do not repeat termination");startup=Reply::Ack;now+=1000;terminateOK=exitOnTerminate=true;check(c.ensure(),"startup failure is recoverable by throttled retirement");assertIdentity(old);finish(c);
  }
  {
   reset();runtimebroker::Client c;uint32_t token=0,generation=0;install(c,token,generation);HANDLE old=activeBroker;HANDLE unrelated=make(Kind::Game,GetProcessId(old));reply=Reply::Timeout;terminateOK=false;exitOnTerminate=false;install(c,token,generation);reply=Reply::Ack;now+=1000;terminateOK=exitOnTerminate=true;

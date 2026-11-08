@@ -12,7 +12,7 @@
 
 namespace {
 using consoleadapter::Host;
-constexpr UINT MutateChoice=WM_APP+180,TryShow=WM_APP+181,ReplaceEdit=WM_APP+182,SetMetadata=WM_APP+183,VerifyPrepared=WM_APP+184,SetStatus=WM_APP+185;
+constexpr UINT MutateChoice=WM_APP+180,TryShow=WM_APP+181,ReplaceEdit=WM_APP+182,SetMetadata=WM_APP+183,VerifyPrepared=WM_APP+184,SetStatus=WM_APP+185,SetChoiceMask=WM_APP+186,CheckDisabledChoices=WM_APP+187;
 struct Fixture {
  Host host;HANDLE ready=CreateEventW(nullptr,TRUE,FALSE,nullptr),mutated=CreateEventW(nullptr,FALSE,FALSE,nullptr),nestedEntered=CreateEventW(nullptr,TRUE,FALSE,nullptr),nestedRelease=CreateEventW(nullptr,TRUE,FALSE,nullptr),prepareAck=CreateEventW(nullptr,TRUE,FALSE,nullptr),verifyAck=CreateEventW(nullptr,TRUE,FALSE,nullptr);
  HWND pane=nullptr,toggle=nullptr,edit=nullptr,choice=nullptr,list=nullptr,hotkey=nullptr,slider=nullptr,readonlyEdit=nullptr,tabs=nullptr,noIdEdit=nullptr,editableCombo=nullptr,status=nullptr;
@@ -21,6 +21,7 @@ struct Fixture {
  std::atomic<int> checked{0},key{0},position{0};std::atomic<bool> hidden{false},dialogRecognized{false},nested{false},reentered{false};
  std::atomic<bool> closingScenario{false},prepareAfterActive{false},preparedUnchanged{false},prepareArgs{false};std::atomic<DWORD> prepareThread{0};std::atomic<unsigned> prepareCount{0};
  int preparedChecked=0;std::wstring preparedText;unsigned preparedToggles=0,preparedEdits=0;
+ std::atomic<bool> disabledChoicesChecked{false};
  consolemodel::Ack lastAck;
  ~Fixture(){CloseHandle(ready);CloseHandle(mutated);CloseHandle(nestedEntered);CloseHandle(nestedRelease);CloseHandle(prepareAck);CloseHandle(verifyAck);}
 };
@@ -70,6 +71,20 @@ LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b){
  if(m==ReplaceEdit){DestroyWindow(f.edit);f.edit=CreateWindowW(L"EDIT",L"替换",WS_CHILD|WS_VISIBLE,110,50,160,26,w,reinterpret_cast<HMENU>(INT_PTR(101)),GetModuleHandleW(nullptr),nullptr);SetEvent(f.mutated);return 0;}
  if(m==SetMetadata){SetPropW(f.toggle,L"RA2.Console.Group",const_cast<wchar_t*>(L"固定语义组"));SetPropW(f.toggle,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(101)));SetPropW(f.toggle,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(21)));SetPropW(f.edit,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));f.host.dirty(0);SetEvent(f.mutated);return 0;}
  if(m==SetStatus){if(a==0)f.statusText=L"只读连接失败 (Win32=5)";else if(a==1){SetWindowTextW(f.status,L"新的悬浮说明");f.statusText=L"已连接只读 PID 1234";}else if(a==2)f.statusText.clear();else if(a==3){RemovePropW(f.status,L"RA2.Console.StatusText");SetWindowTextW(f.status,L"已暂停。");}SetEvent(f.mutated);return 0;}
+ if(m==SetChoiceMask){SetPropW(f.choice,disabledchoices::Property,reinterpret_cast<HANDLE>(a));SendMessageW(f.choice,CB_SETCURSEL,0,0);f.host.dirty(0);SetEvent(f.mutated);return 0;}
+ if(m==CheckDisabledChoices){
+  HWND c=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS,0,0,120,120,w,reinterpret_cast<HMENU>(INT_PTR(114)),GetModuleHandleW(nullptr),nullptr);
+  bool okay=c!=nullptr;
+  if(c){for(const wchar_t*name:{L"保留",L"隐藏",L"停用",L"诊断"})SendMessageW(c,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(name));SendMessageW(c,CB_SETCURSEL,1,0);disabledchoices::set(c,0x0b);
+   auto notify=[&]{SendMessageW(w,WM_COMMAND,MAKEWPARAM(114,CBN_SELCHANGE),reinterpret_cast<LPARAM>(c));};
+   SendMessageW(c,CB_SETCURSEL,99,0);notify();okay=okay&&SendMessageW(c,CB_GETCURSEL,0,0)==1;
+   SendMessageW(c,CB_SETCURSEL,3,0);notify();SendMessageW(c,CB_SETCURSEL,99,0);notify();okay=okay&&SendMessageW(c,CB_GETCURSEL,0,0)==3;
+   SendMessageW(c,CB_SETCURSEL,0,0);SendMessageW(c,CB_SETCURSEL,99,0);notify();okay=okay&&SendMessageW(c,CB_GETCURSEL,0,0)==0;
+   SendMessageW(c,CB_SETCURSEL,2,0);disabledchoices::set(c,0x0b);SendMessageW(c,CB_SETCURSEL,99,0);notify();okay=okay&&SendMessageW(c,CB_GETCURSEL,0,0)==2;
+   DestroyWindow(c);
+  }
+  f.disabledChoicesChecked=okay;SetEvent(f.mutated);return 0;
+ }
  if(m==TryShow){ShowWindow(w,SW_SHOW);f.hidden=!IsWindowVisible(w);HWND dialog=CreateWindowW(L"STATIC",L"Native dialog",WS_POPUP,0,0,50,50,w,nullptr,GetModuleHandleW(nullptr),nullptr);f.dialogRecognized=f.host.contains(dialog);DestroyWindow(dialog);SetEvent(f.mutated);return 0;}
  if(m==consoleadapter::PrepareCloseMessage){wchar_t text[128]{};GetWindowTextW(f.noIdEdit,text,128);f.preparedText=text;f.preparedChecked=int(SendMessageW(f.toggle,BM_GETCHECK,0,0));f.preparedToggles=f.toggles;f.preparedEdits=f.anonymousEdits;f.prepareThread=GetCurrentThreadId();++f.prepareCount;f.prepareArgs=a==0xcafe&&b==0xbeef;f.prepareAfterActive=!f.nested&&f.preparedText==L"当前操作的最终值";SetEvent(f.prepareAck);return 0;}
  if(m==VerifyPrepared){wchar_t text[128]{};GetWindowTextW(f.noIdEdit,text,128);f.preparedUnchanged=f.preparedText==text&&f.preparedChecked==SendMessageW(f.toggle,BM_GETCHECK,0,0)&&f.preparedToggles==f.toggles&&f.preparedEdits==f.anonymousEdits;SetEvent(f.verifyAck);return 0;}
@@ -94,6 +109,16 @@ std::shared_ptr<const consolemodel::Snapshot> awaitSnapshot(Fixture& f,const std
 bool action(Fixture& f,const consolemodel::Snapshot& snapshot,uint32_t id,const char* verb,uint64_t seq,int value=0,const std::string& text={},bool checked=false,bool expected=true){
  consolemodel::Action a;a.module=snapshot.module;a.generation=snapshot.generation;a.id=id;a.seq=seq;a.action=verb;a.value=value;a.text=text;a.checked=checked;
  bool admitted=f.host.post(a);if(!admitted){check(!expected,"invalid action rejected at admission");return false;}consolemodel::Ack receipt;bool got=false;pumpUntil([&]{while(f.host.takeAck(receipt))if(receipt.seq==seq){got=true;return true;}return false;});check(got,"action receipt");if(got){f.lastAck=receipt;check(receipt.ok==expected,"action result");check(receipt.ok?receipt.revision>0:receipt.revision==0,"success receipt promises a future authoritative revision");}return got&&receipt.ok;
+}
+void disabledChoiceRegression(Fixture& f){
+ f.host.navigate(0,-1,"video/disabled-choices");auto snapshot=awaitSnapshot(f,[](const consolemodel::Snapshot&s){return s.page=="video/disabled-choices";});if(!snapshot)return;
+ const auto*choice=find(*snapshot,"choice","选择");check(choice!=nullptr,"choice available for current-mask regression");if(!choice)return;
+ const unsigned before=f.selections;
+ PostMessageW(f.pane,SetChoiceMask,1,0);check(WaitForSingleObject(f.mutated,4000)==WAIT_OBJECT_0,"owner disables second option");
+ action(f,*snapshot,choice->id,"select",1,1,{},false,false);check(f.selections==before,"old snapshot cannot bypass the current native option mask");
+ auto disabled=awaitSnapshot(f,[](const consolemodel::Snapshot&s){auto*c=find(s,"choice","选择");return c&&c->optionEnabled.size()==2&&c->optionEnabled[0]&&!c->optionEnabled[1];});
+ if(disabled){PostMessageW(f.pane,SetChoiceMask,3,0);check(WaitForSingleObject(f.mutated,4000)==WAIT_OBJECT_0,"owner reenables second option");action(f,*disabled,choice->id,"select",2,1);check(f.selections==before+1,"live mask also permits newly enabled selection");}
+ PostMessageW(f.pane,CheckDisabledChoices,0,0);check(WaitForSingleObject(f.mutated,4000)==WAIT_OBJECT_0,"owner runs native disabled-choice fixture");check(f.disabledChoicesChecked,"CB_SETCURSEL and CBN_SELCHANGE preserve previous and legacy selections");
 }
 void immediateRegression(Fixture& f){
  f.host.navigate(0,-1,"video/immediate");auto snapshot=awaitSnapshot(f,[](const consolemodel::Snapshot&s){return s.page=="video/immediate";});if(!snapshot)return;
@@ -190,6 +215,7 @@ int main(){
  }
  PostMessageW(f.pane,TryShow,0,0);WaitForSingleObject(f.mutated,4000);check(f.hidden,"backend pane cannot become visible");check(f.dialogRecognized,"backend-owned native modal belongs to console focus");
  f.host.navigate(1,-1,"monitor");check(!f.host.latestSnapshot(),"navigation never reuses previous module snapshot");
+ disabledChoiceRegression(f);
  immediateRegression(f);
  closePreparationRegression(f);
  PostMessageW(f.pane,WM_CLOSE,0,0);check(WaitForSingleObject(thread,4000)==WAIT_OBJECT_0,"owner exits");CloseHandle(thread);DestroyWindow(shell);

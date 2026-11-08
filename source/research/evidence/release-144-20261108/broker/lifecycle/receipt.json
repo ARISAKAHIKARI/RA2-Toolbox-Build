@@ -1,0 +1,92 @@
+{
+  "schema": "ra2.broker-lifecycle-lock-audit.v2",
+  "pass": true,
+  "results": {
+    "baseline": {
+      "pass": true,
+      "result": {
+        "checks": 4,
+        "failures": 0,
+        "recovery_call_virtual_ms": 4980,
+        "positive_wait_mutex_busy_probes": 2,
+        "healthy_pulses": 100
+      },
+      "build_command": [
+        "c++",
+        "-std=c++17",
+        "-O0",
+        "-pthread",
+        "-D_WIN64",
+        "-I/workspace/scratch/40121bc881b8/release-1.0.44/broker/lifecycle/include",
+        "-I/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests",
+        "-I/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source",
+        "-DBROKER_CLIENT=\"/workspace/scratch/40121bc881b8/release-1.0.44/broker/runtime_broker_client.before.h\"",
+        "-DBROKER_HOST=\"/workspace/scratch/40121bc881b8/release-1.0.44/broker/lifecycle/baseline-host.inc\"",
+        "-DBROKER_ATTACH=\"/workspace/scratch/40121bc881b8/release-1.0.44/broker/lifecycle/baseline-attach.inc\"",
+        "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/runtime_broker_lifecycle_audit.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/release-1.0.44/broker/lifecycle/baseline-broker-lifecycle",
+        "-DBROKER_BASELINE"
+      ],
+      "build_exit_code": 0,
+      "run_exit_code": 0,
+      "client_sha256": "ace2e91919f4bbc257bb393268cc3686883f28f71b6cfb41b7af25fcd24d4af2",
+      "host_sha256": "f16067dab470513007129666ccd8a3a37d61db7738fabd46cd5f6cefa3e9928b",
+      "production_routes_sha256": "cad4cd29b4c654ec0ae2e14733c0719ed86ce13f5ae7a293a5f422b230c9709f",
+      "production_attach_sha256": "0593a58d7c91c887d03d79915967b705b7b5bb3d48117eb1cb59097ebdb895ab",
+      "executable_sha256": "e2b25790ee24f6c3a2695706c3045bad84b2d79de9973ca12008c8b2012c4c52"
+    },
+    "current": {
+      "pass": true,
+      "result": {
+        "checks": 110,
+        "failures": 0,
+        "recovery_call_virtual_ms": 0,
+        "positive_wait_mutex_busy_probes": 0,
+        "healthy_pulses": 200
+      },
+      "build_command": [
+        "c++",
+        "-std=c++17",
+        "-O0",
+        "-pthread",
+        "-D_WIN64",
+        "-I/workspace/scratch/40121bc881b8/release-1.0.44/broker/lifecycle/include",
+        "-I/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests",
+        "-I/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source",
+        "-DBROKER_CLIENT=\"/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source/runtime_broker_client.h\"",
+        "-DBROKER_HOST=\"/workspace/scratch/40121bc881b8/release-1.0.44/broker/lifecycle/current-host.inc\"",
+        "-DBROKER_ATTACH=\"/workspace/scratch/40121bc881b8/release-1.0.44/broker/lifecycle/current-attach.inc\"",
+        "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/runtime_broker_lifecycle_audit.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/release-1.0.44/broker/lifecycle/current-broker-lifecycle"
+      ],
+      "build_exit_code": 0,
+      "run_exit_code": 0,
+      "client_sha256": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1",
+      "host_sha256": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887",
+      "production_routes_sha256": "920bdcae5362a67e55df9af4ce233d355ea2da24ee84f6ab3ed455dcf6aadd57",
+      "production_attach_sha256": "c7ba6b6193d82772df3a8e7547f44361fb60381bca6c36645a4cdb35a9d46d35",
+      "executable_sha256": "ac9d2ec9d0d633b662e6554ad8b5efc413302f91a82a09cf093c5294e623efff"
+    }
+  },
+  "source_sha256": {
+    "source/shared/source/runtime_broker_client.h": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1",
+    "source/shared/source/host_game_input.h": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887",
+    "source/shared/source/runtime_broker_protocol.h": "535290536bc6b3eabbadd4ba08d294ef1ff2657a27b0773ebbaa5fe685869b6f",
+    "source/assist/tests/runtime_broker_retirement.cpp": "f1de97a255d5c1ac76219b67a1199f8ff1ceb1ad14733fac9db5a1b2b8e11be2",
+    "source/assist/tests/runtime_broker_retirement_fixture.h": "1d6a3ab9d5e1adb270a2ceaf0f5985f3bc613873c08f9b06cfeac955e130481b",
+    "source/assist/tests/runtime_broker_lifecycle_audit.cpp": "d7f31b842edfb968f4b1e31f1eed4b7752cac6d93ffb1ac97dce51781ec1be16",
+    "source/assist/tests/runtime_broker_lifecycle_audit.py": "336d048186eb0eb3d0b48e4a037082d7cb34259855519ffadf9f5a68d85f685a"
+  },
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "production_changed": true,
+  "limits": [
+    "Complete production Client and extracted production Host install/release/rebind/clear/reap/pulse execute against controlled Win32 IPC/process boundaries.",
+    "The 2990ms startup and 1990ms ACK latencies are supplied virtual time, not real elapsed time or FPS. A second actual C++ thread probes the real Host mutex.",
+    "Zero-wait polling removes explicit timeout waits. CreateProcess, handle/mapping APIs and TerminateProcess remain synchronous OS calls; no absolute wall-time upper bound is claimed.",
+    "Helper hook installation and Windows/game execution are not exercised in this controlled test."
+  ]
+}

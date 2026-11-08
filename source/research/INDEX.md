@@ -308,3 +308,5 @@
 - [CPU页内重绘、缩图缓存与多视图线程共享](2026-11-05-cpu-local-damage-and-row-team.md)（1.0.42-pre.1；最终CPU两档300帧、双视图／增量像素对照；392四平面检查；纠正GPU直出启用状态，非游戏FPS）
 
 - [设置保存误报权限、重复旧键删除与运行中重试](2026-11-07-settings-save-recovery.md)（1.0.43-pre.13；实际 Store/生产保存轨迹反例，真实错误来源与失败意图保留；非用户 Windows 文件系统实测）
+
+- [1.0.44：Broker 非阻塞生命周期、建造预定固定锚点/世界意图与 SHA/SHP 禁用](2026-11-08-release-144-broker-reservation-assets.md)（Host/UI 修复与受控前后对照；实机未验收）

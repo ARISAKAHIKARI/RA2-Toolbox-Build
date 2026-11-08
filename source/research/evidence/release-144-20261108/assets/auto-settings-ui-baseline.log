@@ -1,0 +1,83 @@
+/tmp/tmphcn2j7pg/auto.cpp: In function ‘void loadMouse()’:
+/tmp/tmphcn2j7pg/auto.cpp:99:15: error: ‘featureavailability’ has not been declared
+   99 |  extra.c4Test=featureavailability::InfantryForcedEntry&&value(L"Experimental",L"InfantryC4",0)!=0;
+      |               ^~~~~~~~~~~~~~~~~~~
+/tmp/tmphcn2j7pg/auto.cpp: In function ‘void loadFeatureTypes()’:
+/tmp/tmphcn2j7pg/auto.cpp:150:72: error: ‘singlefps’ has not been declared
+  150 |  {const int rate=value(L"SinglePlayer",L"FPS",0);extra.singlePlayerFPS=singlefps::valid(unsigned(rate))?rate:0;}
+      |                                                                        ^~~~~~~~~
+/tmp/tmphcn2j7pg/auto.cpp:153:2: error: ‘superweaponOptions’ was not declared in this scope
+  153 |  superweaponOptions.detached=value(L"Display",L"SuperweaponDetached",0)!=0;superweaponOptions.collapsed=value(L"Display",L"SuperweaponCollapsed",0)!=0;
+      |  ^~~~~~~~~~~~~~~~~~
+/tmp/tmphcn2j7pg/auto.cpp:159:2: error: ‘buildTimeTooltipEnabled’ was not declared in this scope
+  159 |  buildTimeTooltipEnabled=explicitPatchPreferences&&value(L"Display",L"BuildTimeTooltip",0)!=0;harvesterCounterEnabled=value(L"Display",L"HarvesterCounter",0)!=0;powerDeltaEnabled=value(L"Display",L"PowerDelta",0)!=0;
+      |  ^~~~~~~~~~~~~~~~~~~~~~~
+/tmp/tmphcn2j7pg/auto.cpp:159:95: error: ‘harvesterCounterEnabled’ was not declared in this scope
+  159 |  buildTimeTooltipEnabled=explicitPatchPreferences&&value(L"Display",L"BuildTimeTooltip",0)!=0;harvesterCounterEnabled=value(L"Display",L"HarvesterCounter",0)!=0;powerDeltaEnabled=value(L"Display",L"PowerDelta",0)!=0;
+      |                                                                                               ^~~~~~~~~~~~~~~~~~~~~~~
+/tmp/tmphcn2j7pg/auto.cpp:159:162: error: ‘powerDeltaEnabled’ was not declared in this scope
+  159 |  buildTimeTooltipEnabled=explicitPatchPreferences&&value(L"Display",L"BuildTimeTooltip",0)!=0;harvesterCounterEnabled=value(L"Display",L"HarvesterCounter",0)!=0;powerDeltaEnabled=value(L"Display",L"PowerDelta",0)!=0;
+      |                                                                                                                                                                  ^~~~~~~~~~~~~~~~~
+/tmp/tmphcn2j7pg/auto.cpp:163:2: error: ‘renderHighRefresh’ was not declared in this scope; did you mean ‘renderMaterialRefresh’?
+  163 |  renderHighRefresh=value(L"Display",L"RenderHighRefresh",1)!=0;
+      |  ^~~~~~~~~~~~~~~~~
+      |  renderMaterialRefresh
+/tmp/tmphcn2j7pg/auto.cpp: In function ‘void saveFeatureTypes()’:
+/tmp/tmphcn2j7pg/auto.cpp:241:42: error: ‘superweaponOptions’ was not declared in this scope
+  241 |  write(L"Display",L"SuperweaponDetached",superweaponOptions.detached);write(L"Display",L"SuperweaponCollapsed",superweaponOptions.collapsed);write(L"Display",L"SuperweaponX",superweaponOptions.x);write(L"Display",L"SuperweaponY",superweaponOptions.y);write(L"Display",L"SuperweaponScale",superweaponOptions.scale);write(L"Display",L"SuperweaponRows",superweaponOptions.rows);
+      |                                          ^~~~~~~~~~~~~~~~~~
+/tmp/tmphcn2j7pg/auto.cpp:281:39: error: ‘buildTimeTooltipEnabled’ was not declared in this scope
+  281 |  write(L"Display",L"BuildTimeTooltip",buildTimeTooltipEnabled);write(L"Display",L"HarvesterCounter",harvesterCounterEnabled);write(L"Display",L"PowerDelta",powerDeltaEnabled);
+      |                                       ^~~~~~~~~~~~~~~~~~~~~~~
+/tmp/tmphcn2j7pg/auto.cpp:281:101: error: ‘harvesterCounterEnabled’ was not declared in this scope
+  281 |  write(L"Display",L"BuildTimeTooltip",buildTimeTooltipEnabled);write(L"Display",L"HarvesterCounter",harvesterCounterEnabled);write(L"Display",L"PowerDelta",powerDeltaEnabled);
+      |                                                                                                     ^~~~~~~~~~~~~~~~~~~~~~~
+/tmp/tmphcn2j7pg/auto.cpp:281:157: error: ‘powerDeltaEnabled’ was not declared in this scope
+  281 |  write(L"Display",L"BuildTimeTooltip",buildTimeTooltipEnabled);write(L"Display",L"HarvesterCounter",harvesterCounterEnabled);write(L"Display",L"PowerDelta",powerDeltaEnabled);
+      |                                                                                                                                                             ^~~~~~~~~~~~~~~~~
+/tmp/tmphcn2j7pg/auto.cpp:289:40: error: ‘renderHighRefresh’ was not declared in this scope; did you mean ‘renderMaterialRefresh’?
+  289 |  write(L"Display",L"RenderHighRefresh",renderHighRefresh);
+      |                                        ^~~~~~~~~~~~~~~~~
+      |                                        renderMaterialRefresh
+In file included from /tmp/tmphcn2j7pg/auto.cpp:312:
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h: In function ‘bool autoSettingChanged(int, int)’:
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:37:7: error: ‘automaticKeyConflict’ was not declared in this scope
+   37 |    if(automaticKeyConflict(next)){ControlUpdate guard;SendMessageW(widget,HKM_SETHOTKEY,*existing,0);notify(L"此快捷键已用于自动功能开关；已保留原按键。");return true;}
+      |       ^~~~~~~~~~~~~~~~~~~~
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:43:35: error: ‘setConsoleFeedback’ was not declared in this scope
+   43 |   if(!extra.destructSelectedOwner)setConsoleFeedback(GetDlgItem(ui,9186),L"");return true;
+      |                                   ^~~~~~~~~~~~~~~~~~
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:47:23: error: ‘destructOwnerKeyConflict’ was not declared in this scope
+   47 |   const bool conflict=destructOwnerKeyConflict(next);
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~~
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:94:162: error: ‘wakeGame’ was not declared in this scope
+   94 |  if(id==9496&&notification==BN_CLICKED){extra.minerDefenseEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();wakeGame();return true;}
+      |                                                                                                                                                                  ^~~~~~~~
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:97:170: error: ‘resetPlacementEvent’ was not declared in this scope
+   97 |  if(id==9096&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=buildingmodes::PlacementEvent){extra.placementImplementation=mode;resetPlacementEvent();changedSetting();syncAdditional();registerKeys();updatePlacementEventUI();}return true;}
+      |                                                                                                                                                                          ^~~~~~~~~~~~~~~~~~~
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:97:241: error: ‘updatePlacementEventUI’ was not declared in this scope; did you mean ‘updatePlayerTestUI’?
+   97 |  if(id==9096&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(mode>=0&&mode<=buildingmodes::PlacementEvent){extra.placementImplementation=mode;resetPlacementEvent();changedSetting();syncAdditional();registerKeys();updatePlacementEventUI();}return true;}
+      |                                                                                                                                                                                                                                                 ^~~~~~~~~~~~~~~~~~~~~~
+      |                                                                                                                                                                                                                                                 updatePlayerTestUI
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:98:23: error: ‘selectPlacementEvent’ was not declared in this scope
+   98 |  if(id==9251&&select){selectPlacementEvent();return true;}
+      |                       ^~~~~~~~~~~~~~~~~~~~
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:210:101: error: ‘singlefps’ has not been declared
+  210 |  if(numeric&&edit){if(id==9494){BOOL ok=FALSE;unsigned rate=GetDlgItemInt(ui,id,&ok,FALSE);if(!ok||!singlefps::valid(rate)){setStatus(L"单机游戏 FPS：填 0 恢复原版，或填 10–240；例如 40、45、50。");return true;}if(rate&&!hardwareBudgetAvailable(slotbudget::FPS)){setStatus(hardwareBudgetReason(slotbudget::FPS));return true;}}if(number(lo,hi,*numeric)){if(id==310)syncInformationRate(true);if(id==444)typeTap.clear();changedSetting();if(id==887||id==9494||id==9497){syncAdditional();if(id==9494||id==9497)wakeGame();}}return true;}
+      |                                                                                                     ^~~~~~~~~
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:210:222: error: ‘hardwareBudgetAvailable’ was not declared in this scope
+  210 |  if(numeric&&edit){if(id==9494){BOOL ok=FALSE;unsigned rate=GetDlgItemInt(ui,id,&ok,FALSE);if(!ok||!singlefps::valid(rate)){setStatus(L"单机游戏 FPS：填 0 恢复原版，或填 10–240；例如 40、45、50。");return true;}if(rate&&!hardwareBudgetAvailable(slotbudget::FPS)){setStatus(hardwareBudgetReason(slotbudget::FPS));return true;}}if(number(lo,hi,*numeric)){if(id==310)syncInformationRate(true);if(id==444)typeTap.clear();changedSetting();if(id==887||id==9494||id==9497){syncAdditional();if(id==9494||id==9497)wakeGame();}}return true;}
+      |                                                                                                                                                                                                                              ^~~~~~~~~~~~~~~~~~~~~~~
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:210:274: error: ‘hardwareBudgetReason’ was not declared in this scope
+  210 |  if(numeric&&edit){if(id==9494){BOOL ok=FALSE;unsigned rate=GetDlgItemInt(ui,id,&ok,FALSE);if(!ok||!singlefps::valid(rate)){setStatus(L"单机游戏 FPS：填 0 恢复原版，或填 10–240；例如 40、45、50。");return true;}if(rate&&!hardwareBudgetAvailable(slotbudget::FPS)){setStatus(hardwareBudgetReason(slotbudget::FPS));return true;}}if(number(lo,hi,*numeric)){if(id==310)syncInformationRate(true);if(id==444)typeTap.clear();changedSetting();if(id==887||id==9494||id==9497){syncAdditional();if(id==9494||id==9497)wakeGame();}}return true;}
+      |                                                                                                                                                                                                                                                                                  ^~~~~~~~~~~~~~~~~~~~
+/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source/auto_settings_ui.h:210:506: error: ‘wakeGame’ was not declared in this scope
+  210 |  if(numeric&&edit){if(id==9494){BOOL ok=FALSE;unsigned rate=GetDlgItemInt(ui,id,&ok,FALSE);if(!ok||!singlefps::valid(rate)){setStatus(L"单机游戏 FPS：填 0 恢复原版，或填 10–240；例如 40、45、50。");return true;}if(rate&&!hardwareBudgetAvailable(slotbudget::FPS)){setStatus(hardwareBudgetReason(slotbudget::FPS));return true;}}if(number(lo,hi,*numeric)){if(id==310)syncInformationRate(true);if(id==444)typeTap.clear();changedSetting();if(id==887||id==9494||id==9497){syncAdditional();if(id==9494||id==9497)wakeGame();}}return true;}
+      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ^~~~~~~~
+Traceback (most recent call last):
+  File "/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/tests/auto_settings_ui_test.py", line 381, in <module>
+    subprocess.run(['g++','-std=c++17','-O0',*defines,'-I'+str(root/'assist/source'),str(cpp),'-o',str(binary)],check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['g++', '-std=c++17', '-O0', '-I/tmp/ra2-baseline-asset-check-ugii6vfj/source/assist/source', '/tmp/tmphcn2j7pg/auto.cpp', '-o', '/tmp/tmphcn2j7pg/auto']' returned non-zero exit status 1.

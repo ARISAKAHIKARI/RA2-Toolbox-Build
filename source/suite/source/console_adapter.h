@@ -22,6 +22,7 @@
 #include <limits>
 #include "console_model.h"
 #include "../../shared/source/modern_ui.h"
+#include "../../shared/source/disabled_choices.h"
 
 namespace consoleadapter {
 constexpr UINT ChangedMessage = WM_APP + 120;
@@ -165,7 +166,9 @@ class Host {
   else if(detail::sameClass(cls,L"COMBOBOX")||detail::sameClass(cls,L"LISTBOX")||detail::sameClass(cls,WC_TABCONTROLW)||detail::sameClass(cls,WC_LISTVIEWW)){
    const bool combo=detail::sameClass(cls,L"COMBOBOX"),list=detail::sameClass(cls,L"LISTBOX"),tabs=detail::sameClass(cls,WC_TABCONTROLW);
    c.type="choice";c.readonly=!combo||(style&3)==CBS_DROPDOWNLIST;c.presentation=list?"list":!c.readonly?"editable":"";
-   c.options=detail::options(w,cls,&out.optionIdentity);c.selected=combo?int(SendMessageW(w,CB_GETCURSEL,0,0)):list?int(SendMessageW(w,LB_GETCURSEL,0,0)):tabs?TabCtrl_GetCurSel(w):ListView_GetNextItem(w,-1,LVNI_SELECTED);
+   c.options=detail::options(w,cls,&out.optionIdentity);
+   if(auto mask=reinterpret_cast<uintptr_t>(GetPropW(w,disabledchoices::Property)))for(size_t i=0;i<c.options.size();++i)c.optionEnabled.push_back(i<32&&((mask>>i)&1));
+   c.selected=combo?int(SendMessageW(w,CB_GETCURSEL,0,0)):list?int(SendMessageW(w,LB_GETCURSEL,0,0)):tabs?TabCtrl_GetCurSel(w):ListView_GetNextItem(w,-1,LVNI_SELECTED);
    if(list&&(style&(LBS_MULTIPLESEL|LBS_EXTENDEDSEL))){c.enabled=false;c.hint+=" 原生多选列表需要集合适配器，当前不可修改。";}
   }
   else if(detail::sameClass(cls,TRACKBAR_CLASSW)){c.type="range";c.min=int(SendMessageW(w,TBM_GETRANGEMIN,0,0));c.max=int(SendMessageW(w,TBM_GETRANGEMAX,0,0));c.step=std::max(1,int(SendMessageW(w,TBM_GETLINESIZE,0,0)));c.selected=int(SendMessageW(w,TBM_GETPOS,0,0));}
@@ -239,6 +242,7 @@ class Host {
    }
    else if(c.type=="choice"&&(verb=="select"||verb=="activate")){
     if(action.value<0||size_t(action.value)>=c.options.size())return "选择索引已经失效";
+    if(size_t(action.value)<c.optionEnabled.size()&&!c.optionEnabled[action.value])return "此选项当前不可用";
     if(detail::sameClass(entry->cls,L"COMBOBOX")){if(verb=="activate")return "此字段不支持双击操作";SendMessageW(w,CB_SETCURSEL,action.value,0);notification=CBN_SELCHANGE;}
     else if(detail::sameClass(entry->cls,L"LISTBOX")){SendMessageW(w,LB_SETCURSEL,action.value,0);notification=verb=="activate"?LBN_DBLCLK:LBN_SELCHANGE;}
     else if(detail::sameClass(entry->cls,WC_TABCONTROLW)){if(verb=="activate")return "此字段不支持双击操作";TabCtrl_SetCurSel(w,action.value);NMHDR notice{w,UINT_PTR(nativeId),TCN_SELCHANGE};p.applying=false;p.direct(p.window.load(),WM_NOTIFY,nativeId,reinterpret_cast<LPARAM>(&notice));p.applying=true;notifyCommand=false;}

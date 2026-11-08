@@ -4,15 +4,18 @@ clear the visible surface or expose hit regions for a different tab/scroll/queue
 """
 from pathlib import Path
 import os,subprocess,tempfile
+from tactical_frame_sampling import function
 root=Path(__file__).resolve().parents[2]
 host=Path(os.environ.get('CONSTRUCTION_HOST',root/'assist/source/construction_host.h')).read_text()
 position=host[host.index('static void resizePanel()'):host.index('static bool usable();')]
 types=host[host.index('struct PaintRequest {'):host.index('struct PanelPainter {')]
 modern='static std::shared_ptr<const Painted> paintedFrame;' in host
 helpers=host[host.index('static std::shared_ptr<const Painted> paintedFrame;' if modern else 'static LRESULT CALLBACK proc('):host.index('static void service()')]
+scope=function((root/'external_reader/source/process_reader.h').read_text(), 'class WorldFrameScope')+';'
 prefix=r'''
 
 #include "construction_policy.h"
+#include "fixtures/tactical_frame/sealed_host_reader.h"
 #include <cassert>
 #include <string>
 #include <iostream>
@@ -83,7 +86,8 @@ static construction::Book books[4];struct Choice{int slot,index,tab;uint32_t typ
 namespace assist{struct Type{char id[24]{};uint16_t name[40]{};int kind=7,index=0,naval=0,cost=0;};}
 static struct{int typeCount=8;assist::Type types[8];}snap;
 static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}static void refreshChoices(){}
-static bool usable(){return true;}static void removeTop(bool){}static void removeItem(int,int,bool){}static void reserve(int){}
+static int lastReservation=-1;static unsigned reservationCalls=0;
+static bool usable(){return true;}static void removeTop(bool){}static void removeItem(int,int,bool){}static void reserve(int index){lastReservation=index;++reservationCalls;}
 
 static uint32_t pid=1,house=0x500000,match=7,now=1000;static bool eligible=true;
 static DWORD GetTickCount(){return now;}static uint32_t commandMatch(){return match;}
@@ -97,6 +101,11 @@ static UINT SetDIBitsToDevice(HDC to,int,int,int w,int h,int,int,UINT,UINT,const
  assert(to!=&screen);if(fail==4)return 0;assert(to->bitmap->w==w&&to->bitmap->h==h);std::memcpy(to->bitmap->pixels.data(),data,size_t(w)*h*4);return UINT(h);
 }
 '''
+prefix+=r'''
+struct Reader:fixtureframe::SealedHostReader<Reader>{bool readLive(uint32_t,void*,size_t){assert(false);return false;}}externalReader;
+static void publishFrame(){auto next=std::make_shared<worldframe::Snapshot>();worldframe::Key key{};key.pid=pid;key.match=match;key.frame=int(now);next->reset(key);assert(next->seal());externalReader.available=std::move(next);}
+'''
+prefix+='namespace external {using ProcessReader=::Reader;'+scope+'}\n'
 worker=r'''
 struct FakeWorker{unsigned submitted=0,invalidated=0;std::shared_ptr<const Painted> result;std::shared_ptr<PaintRequest> pending;
  void submit(PaintRequest r){++submitted;pending=std::make_shared<PaintRequest>(std::move(r));}
@@ -140,6 +149,23 @@ int main(){
  resetPaint();assert(!paintReady&&!panelInputReady()&&paintWorker.invalidated&&dcLive==0&&bitmapLive==0);paint();
  requestPaint();complete();++match;pumpPaint();assert(!paintReady);--match;pumpPaint();assert(paintReady);
  ++match;requestPaint();assert(!paintReady&&!panelObject.visible);complete();pumpPaint();assert(paintReady&&panelInputReady());resetPaint();
+
+ // A stationary screen point keeps selecting the first choice after every
+ // complete queue promotion. Pending pixels never admit the new input map.
+ activeTab=selectedTab=scroll=0;POINT fixed{};bool firstQueue=true;
+ for(int count:{0,1,2,3,4,5,32,128,4,1,0}){
+  books[0].items.assign(count,0);layout.content(count,int(choices.size()));requestPaint();
+  assert(!panelInputReady());unsigned calls=reservationCalls;
+  proc(window,WM_LBUTTONUP,0,0);assert(reservationCalls==calls);
+  complete();pumpPaint();assert(panelInputReady());
+  POINT center{window->bounds.left+layout.x(36),window->bounds.top+layout.pointY(layout.headerHeight()+33)};
+  if(firstQueue){fixed=center;firstQueue=false;}else assert(center.x==fixed.x&&center.y==fixed.y);
+  const int x=fixed.x-window->bounds.left,y=fixed.y-window->bounds.top;
+  proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(x)|(uint32_t(y)<<16)));
+  assert(reservationCalls==calls+1&&lastReservation==0);
+ }
+ resetPaint();
+ std::cout<<"PASS stationary screen click across actual queue frame promotion 0..128..0; pending frames reject input\n";
  std::cout<<"PASS production reservation async lifecycle:1000 idle updates no reraster/reposition; firstshowaftercomplete; tab/scroll/queue/geometry promoted with pixels; no background-only frames; input map guarded\n";
  std::cout<<"PASS transactional DC/bitmap/selection/upload/flush failure, bounded missing-icon and BitBlt retries, hover-only interaction, world invalidation and cleanup\n";
 }
@@ -150,7 +176,8 @@ if not modern:
     suffix=r'''
 int main(){Object visible{1};screen.bitmap=&visible;layout.set(2560,1440,3840,2160);layout.content(0,0);resizePanel();proc(window,WM_PAINT,0,0);}
 '''
+suffix=suffix.replace('requestPaint();','publishFrame();requestPaint();')
 with tempfile.TemporaryDirectory() as tmp:
     cpp=Path(tmp)/'paint.cpp';exe=Path(tmp)/'paint';cpp.write_text(prefix+position+types+worker+helpers+suffix)
-    subprocess.run(['g++','-std=c++17','-O1','-g','-fsanitize=address,undefined','-I'+str(root/'assist/source'),str(cpp),'-o',str(exe)],check=True)
+    subprocess.run(['g++','-std=c++17','-O1','-g','-fsanitize=address,undefined','-I'+str(root/'assist/source'),'-I'+str(root/'assist/tests'),str(cpp),'-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True,env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0'))

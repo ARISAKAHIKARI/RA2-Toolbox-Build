@@ -110,6 +110,18 @@ test('all canonical setting types retain their action semantics', () => {
   assert.equal(store.act(1,'toggle',1),false); assert.equal(store.act(5,'text',123),false);
   assert.equal(messages.length,8);
 });
+test('disabled choice entries stay visible and cannot send select or activate actions', () => {
+  const choice={id:1,type:'choice',label:'资源替换',selected:0,options:['保留','已停用'],optionEnabled:[true,false],readonly:true,presentation:'list'};
+  const {store,messages,state}=setup([choice]);
+  assert.deepEqual(Array.from(store.getControl(1).options),['保留','已停用']);
+  assert.equal(store.act(1,'select',1),false); assert.equal(store.act(1,'activate',1),false);
+  assert.equal(messages.length,0); assert.equal(store.act(1,'select',0),true);
+  store.receive(state({revision:2,controls:[{...choice,optionEnabled:[false,true]}]}));
+  assert.equal(store.act(1,'select',0),false); assert.equal(store.act(1,'select',1),true);
+  const legacy=setup([{...choice,optionEnabled:undefined}]);
+  assert.equal(legacy.store.act(1,'select',1),true,'omitted mask retains existing choice behavior');
+});
+
 test('disabled, invisible and closing controls cannot send actions', () => {
   const {store,messages} = setup([{...textControl,enabled:false},{...textControl,id:2,visible:false}]);
   assert.equal(store.act(1,'text','A'),false); assert.equal(store.act(2,'text','A'),false);

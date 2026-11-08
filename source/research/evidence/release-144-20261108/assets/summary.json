@@ -1,0 +1,249 @@
+{
+  "schema": "ra2.release-1.0.44.asset-options-review.v1",
+  "repository": "/workspace/scratch/40121bc881b8/ra2-audit-followup",
+  "source_frozen": true,
+  "native_windows_execution": false,
+  "game_process_accessed": false,
+  "browser_execution": false,
+  "outcome": {
+    "cursor": "Original-cursor option index 2 (透明 SHA) and button ID 3 (安装 SHA) disabled in native and console UI; install() is inert; applyHideMode rejects index 2 before changes. ID 4 恢复 SHA remains an explicit manual action. SHA style import ID 130 remains enabled.",
+    "saved_sha_mode": "An existing Startup Mode=sha remains a display preference for already present resources; it does not install, replace or automatically restore game resource files. Ordinary settings/cache/log activity is not claimed to be disabled.",
+    "map": "ID 808 retains original indices 0..4. Disabled rows 5 and 6 show 已停用：半透明素材（SHP） and 已停用：透明素材（SHP）. Saved legacy material values still map to off, and invalid selection returns to the current real strategy without save/sync/reveal.",
+    "console": "Native RA2AvailableChoiceMask becomes optional optionEnabled in model JSON and HTML option.disabled. Store rejects disabled actions. Owner-thread apply reads current HWND mask through read(p,*entry) before dispatch, even for an old snapshot.",
+    "broker_cursor": "runtimeAvailable false/IO_PENDING and install zero/IO_PENDING retain intent and retry after 75ms. The latter releases only the new unsubmitted Cursor map/view; no hookStop/restore wait. Explicit disable, stop and target reattachment cancel pending. Existing enablement semantics preserved."
+  },
+  "passed_checks": [
+    {
+      "name": "console_model",
+      "status": "pass",
+      "commands": [
+        [
+          "g++",
+          "-std=c++17",
+          "-O2",
+          "-UNDEBUG",
+          "-pthread",
+          "source/suite/tests/console_model_test.cpp",
+          "-o",
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/console_model_test"
+        ],
+        [
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/console_model_test"
+        ]
+      ],
+      "log": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/console-model.log",
+      "result": "console_model: 35964 checks passed",
+      "scope": "Portable production model parser/serialization including optional optionEnabled."
+    },
+    {
+      "name": "console_store",
+      "status": "pass",
+      "commands": [
+        [
+          "node",
+          "source/suite/tests/console_store_test.mjs"
+        ]
+      ],
+      "log": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/console-store.log",
+      "result": "33 console model tests passed",
+      "scope": "33 store/model tests, including disabled select/activate rejection, live availability update and omitted-mask compatibility; browser not run."
+    },
+    {
+      "name": "cursor_settings_ui",
+      "status": "pass",
+      "commands": [
+        [
+          "python3",
+          "source/assist/tests/cursor_settings_ui_test.py"
+        ]
+      ],
+      "log": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/cursor-settings-ui.log",
+      "result": "PASS: cursor settings: independent toggles, atomic dimension pairs, valid-field persistence, all three Cursor.PositionMode values, selector clamping and disk retry; cursor does not overwrite tactical Shift5 configuration",
+      "scope": "Existing portable cursor settings handlers; ordinary cursor settings remain functional."
+    },
+    {
+      "name": "asset_choice_routes",
+      "status": "pass",
+      "commands": [
+        [
+          "g++",
+          "-std=c++17",
+          "-O2",
+          "-UNDEBUG",
+          "-I/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source",
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/asset_choice_routes.cpp",
+          "-o",
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/asset_choice_routes"
+        ],
+        [
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/asset_choice_routes"
+        ]
+      ],
+      "log": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/asset-choice-routes.log",
+      "result": "asset choice production routes: 216 checks passed; disabled SHP rows preserve state and game actions, 0..4 retained, legacy SHA install is inert",
+      "scope": "216 checks execute extracted production map-strategy branches and inert SHA install handler; tests all invalid material rows against current modes 0..4 and preserves existing valid choices."
+    },
+    {
+      "name": "disabled_choices_helper",
+      "status": "pass",
+      "commands": [
+        [
+          "g++",
+          "-std=c++17",
+          "-O2",
+          "-UNDEBUG",
+          "-I/workspace/scratch/40121bc881b8/release-1.0.44/assets/portable-win32",
+          "-I/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source",
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/disabled_choice_helper.cpp",
+          "-o",
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/disabled_choice_helper"
+        ],
+        [
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/disabled_choice_helper"
+        ]
+      ],
+      "log": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/disabled-choice-helper.log",
+      "result": "production disabled_choices helper: 16 checks passed (portable Win32 seam; not a Windows UI run)",
+      "scope": "16 checks execute the actual production header with a portable Win32 message/property seam: native CBN changes, programmatic CB_SETCURSEL, CB_ERR restoration, legacy disabled selection, gray rendering, and cleanup. Not native Windows UI execution."
+    },
+    {
+      "name": "cursor_broker_startup",
+      "status": "pass",
+      "commands": [
+        [
+          "g++",
+          "-std=c++17",
+          "-O2",
+          "-UNDEBUG",
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/cursor_broker_startup.cpp",
+          "-o",
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/cursor_broker_startup"
+        ],
+        [
+          "/workspace/scratch/40121bc881b8/release-1.0.44/assets/cursor_broker_startup"
+        ]
+      ],
+      "log": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/cursor-broker-startup.log",
+      "result": "Cursor broker startup production admission/tick: 24 checks passed; pending retries at 75 ms, reader retained, genuine errors preserved",
+      "scope": "24 checks execute extracted production startup admission, install-result branch, autoTick and actual toggle/checkbox handlers. Covers 75ms retry, retaining reader, both pending paths, no game ACK wait before subscription, genuine failures, explicit disable cancellation and no revival. Stop/target switch cancellation also reviewed statically."
+    },
+    {
+      "name": "diff_whitespace",
+      "status": "pass",
+      "commands": [
+        [
+          "git",
+          "-c",
+          "core.whitespace=cr-at-eol",
+          "diff",
+          "--check"
+        ]
+      ],
+      "log": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/diff-check.log",
+      "result": "",
+      "scope": "Source whitespace verification; CRLF preserved where used."
+    }
+  ],
+  "compile_only": [
+    {
+      "name": "console_adapter_windows",
+      "status": "cross_compile_pass",
+      "target": "x86_64-windows-gnu",
+      "command": [
+        "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+        "c++",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c++17",
+        "-O1",
+        "-UNDEBUG",
+        "source/suite/tests/console_adapter_windows.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/release-1.0.44/assets/console_adapter_windows.exe",
+        "-lkernel32",
+        "-luser32",
+        "-lgdi32",
+        "-lcomctl32"
+      ],
+      "build_log": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/console-adapter-windows-build.log",
+      "native_execution": false,
+      "fixture_coverage": "Actual Win32 fixture now covers current native mask changes rejecting/allowing old-snapshot actions, plus CB_SETCURSEL/CBN_SELCHANGE restoration and legacy selection."
+    }
+  ],
+  "known_baseline_failures": [
+    {
+      "name": "auto_settings_ui_test.py",
+      "status": "baseline_compile_failure",
+      "baseline_commit": "d7c0850ec662de7d29dce50b0391162f065b4a5a",
+      "command": [
+        "python3",
+        "<temporary baseline archive>/source/assist/tests/auto_settings_ui_test.py",
+        "<temporary baseline archive>/source"
+      ],
+      "baseline_materialization": "git archive of HEAD baseline .h files (625) and the original test script, extracted to a temporary directory; no modified working-tree production headers used.",
+      "exit_code": 1,
+      "log": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/auto-settings-ui-baseline.log",
+      "reason": "Old portable fixture lacks newer declarations/stubs such as featureavailability, singlefps, superweaponOptions and hardwareBudgetAvailable; this occurs on the unchanged baseline. Did not expand scope to repair that obsolete fixture.",
+      "error_excerpt": [
+        "/tmp/tmphcn2j7pg/auto.cpp: In function ‘void loadMouse()’:",
+        "/tmp/tmphcn2j7pg/auto.cpp:99:15: error: ‘featureavailability’ has not been declared",
+        "   99 |  extra.c4Test=featureavailability::InfantryForcedEntry&&value(L\"Experimental\",L\"InfantryC4\",0)!=0;",
+        "      |               ^~~~~~~~~~~~~~~~~~~",
+        "/tmp/tmphcn2j7pg/auto.cpp: In function ‘void loadFeatureTypes()’:",
+        "/tmp/tmphcn2j7pg/auto.cpp:150:72: error: ‘singlefps’ has not been declared",
+        "  150 |  {const int rate=value(L\"SinglePlayer\",L\"FPS\",0);extra.singlePlayerFPS=singlefps::valid(unsigned(rate))?rate:0;}",
+        "      |                                                                        ^~~~~~~~~"
+      ]
+    }
+  ],
+  "not_executed": [
+    "Native Windows console_adapter fixture runtime",
+    "Actual game SHA/SHP, cursor hook, rendering or broker process acceptance",
+    "Browser/WebView visual acceptance"
+  ],
+  "source_sha256": {
+    "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+    "source/assist/source/tactical_controls.h": "e555122f51a2718134b1eacb8c791a8e050ba44b419ee650c223136a9f786e5c",
+    "source/assist/source/shroud_policy.h": "6c7be85dbc0546d06a811142b88deef89d5d21500c83dda391f41f615d929b9d",
+    "source/cursor/source/main.cpp": "14d382044a165e81cc2c071c546d537ef98ea65ae375a93ec2b2f03786756c3a",
+    "source/shared/source/disabled_choices.h": "845cc17e16a8ababb2b1088b7a6c0ba52a036edb782380c8fe3874b1fbcce318",
+    "source/suite/source/console_model.h": "9c33d1b2a636f85079b6db8e432dae0c7d9e8e445be54831762ebd6a69b75751",
+    "source/suite/source/console_adapter.h": "3ca5d404f797f0521ed0bf6cb783b9310ae3cec46067383a34e22d70175b4ffb",
+    "source/suite/frontend/app.js": "dac7adf510367f6a36d9b76f08c65eb54eed7d078b8bdcca744964d316812b9b",
+    "source/suite/tests/console_model_test.cpp": "a880237fb1c9abee22ddf0f0f969ca82cda887baf525fccaeeabbe5eb696c36e",
+    "source/suite/tests/console_store_test.mjs": "03cd204ecde17c2ccddc6904a0dcd461e45ddb049a8894f982c0a60b8fc77cd1",
+    "source/suite/tests/console_adapter_windows.cpp": "fb3a1c6ce9f6c274207c266fa5829d2730849378ca6b1c920a0aa502f45c2374",
+    "source/assist/tests/cursor_settings_ui_test.py": "02a60aad53849a4c0eeabccf0f5e50e6aa4dbc9c6389ba7835d3f6e8cb3bcda2"
+  },
+  "fixture_sources": [
+    {
+      "path": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/asset_choice_routes.cpp",
+      "sha256": "4f21e1ffad92e0142d14082637aa2904e7427941a8bf0b82130f0725484a238b"
+    },
+    {
+      "path": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/disabled_choice_helper.cpp",
+      "sha256": "0b2bc5010509672dabf7b040d698c03d289b1f937f6f703526ddea6ed922ea9d"
+    },
+    {
+      "path": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/portable-win32/windows.h",
+      "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+    },
+    {
+      "path": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/portable-win32/commctrl.h",
+      "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+    },
+    {
+      "path": "/workspace/scratch/40121bc881b8/release-1.0.44/assets/cursor_broker_startup.cpp",
+      "sha256": "a78de1d2f16df4013676d10e19dd0ebeb5aba4c2b2f40f16a736db205adc04c3"
+    }
+  ],
+  "coordinated_change": {
+    "owner": "fix_construction",
+    "file": "source/assist/source/main.cpp",
+    "change": "Global include of ../../shared/source/disabled_choices.h, after modern_ui.h; do not treat the rest of that file as owned by this subtask."
+  },
+  "notes": [
+    "Local generated fixture files and logs are evidence. Exclude transient test executables from the user distribution.",
+    "Full integrated compilation and release publication are owned by the parent task."
+  ]
+}

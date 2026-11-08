@@ -1,0 +1,3 @@
+PASS stationary screen click across actual queue frame promotion 0..128..0; pending frames reject input
+PASS production reservation async lifecycle:1000 idle updates no reraster/reposition; firstshowaftercomplete; tab/scroll/queue/geometry promoted with pixels; no background-only frames; input map guarded
+PASS transactional DC/bitmap/selection/upload/flush failure, bounded missing-icon and BitBlt retries, hover-only interaction, world invalidation and cleanup

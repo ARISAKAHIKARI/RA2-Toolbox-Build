@@ -62,10 +62,8 @@ def main():
             assert run.returncode == 0 and report["failures"] == 0, run.stdout + run.stderr
         else:
             assert run.returncode == 1 and report["failures"] > 0, "Old source did not reproduce the defect"
-            for expected in ("blocked bridge must not enter runtimeAvailable",
-                             "future retry must not enter runtimeAvailable",
-                             "failure backoff starts after all blocking work"):
-                assert "FAIL: " + expected in run.stdout, "Missing old-source counterexample: " + expected
+            assert "FAIL: broker transport pending does not consume failure budget" in run.stdout
+            assert "FAIL: broker identity pending does not block or consume failures" in run.stdout
         assert digest(path) == before, "Production source changed during the test"
         results[name] = {"source": str(path.resolve()), "source_sha256": before,
                          "routes_sha256": digest(routes), "exit_code": run.returncode,

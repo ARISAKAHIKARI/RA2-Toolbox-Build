@@ -116,7 +116,7 @@ int main(){
  setup();w(T+0x2000+0xDA4,1);refreshChoices();assert(choice(1)<0);w(T+0x2000+0xDA4,-1);w(C+0xB8,4);refreshChoices();assert(choice(1)>=0);
  byte(T+0x2000+0xD9B,1);refreshChoices();assert(choice(1)<0);byte(H+0x2BC,1);refreshChoices();assert(choice(1)>=0);
  memcpy(externalReader.bytes.data()+C+0x98,"Americans",10);memcpy(externalReader.bytes.data()+C+0x24,"Americans",10);list(0xA83C98,{C});refreshChoices();assert(choice(1)>=0);
- construction::Layout l;for(int pct:{50,75,100,125,150,200,250})for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));l.content(5,50);assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.y(construction::StackTop+i*construction::StackStep+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.y(l.headerHeight()+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.y(l.headerHeight()+4),0,50)==-1);}
+ construction::Layout l;for(int pct:{50,75,100,125,150,200,250})for(auto sizes:std::vector<std::vector<int>>{{2560,1440,3840,2160},{2560,1440,2560,1440},{1920,1080,3840,2160},{1280,720,1920,1080},{1920,1080,2560,1440},{640,480,640,480}}){assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));l.content(5,50);assert(l.left()+l.width()<=sizes[2]);assert(l.top()+l.height()<=sizes[3]);for(int i=0;i<5;++i)assert(l.queueAt(l.x(10),l.pointY(construction::StackTop+i*construction::StackStep+9))==i);for(int i=0;i<l.rows*2;++i)assert(l.choiceAt(l.x((i%2)*72+36),l.pointY(l.headerHeight()+(i/2)*66+33),0,50)==i);assert(l.choiceAt(l.width(),l.pointY(l.headerHeight()+4),0,50)==-1);}
 
  // Regression: every reservation category, not only unavailable future types.
  for(int tab=0;tab<2;++tab)for(bool future:{false,true}){
@@ -177,15 +177,15 @@ int main(){
   assert(l.set(sizes[0],sizes[1],sizes[2],sizes[3],pct));l.content(q,candidates);
   assert(l.top()+l.height()<=sizes[3]&&l.left()+l.width()<=sizes[2]);
   assert(l.rows<=6&&l.rows<=(candidates+1)/2&&((l.rows==0)==(candidates==0)));
-  assert(l.height()==l.y(l.headerHeight()+l.rows*66));assert(l.headerHeight()==l.stackBottom()+construction::SectionGap);assert(l.choiceAt(l.x(36),l.y(l.headerHeight()-5),0,candidates)==-1);
-  for(int i=0;i<q;++i)assert(l.queueAt(l.x(10),l.y(24+i*24+9),q)==i);
-  for(int i=0;i<std::min(candidates,l.rows*2);++i)assert(l.choiceAt(l.x(i%2*72+36),l.y(l.headerHeight()+i/2*66+33),0,candidates)==i);
+  assert(l.height()==l.pointY(l.headerHeight()+l.rows*66));assert(l.headerHeight()==l.stackBottom()+construction::SectionGap);assert(l.choiceAt(l.x(36),l.pointY(l.headerHeight()-5),0,candidates)==-1);
+  for(int i=0;i<q;++i)assert(l.queueAt(l.x(10),l.pointY(24+i*24+9),q)==i);
+  for(int i=0;i<std::min(candidates,l.rows*2);++i)assert(l.choiceAt(l.x(i%2*72+36),l.pointY(l.headerHeight()+i/2*66+33),0,candidates)==i);
   assert(l.choiceAt(l.x(36),l.height(),0,candidates)==-1);
  }
  setup();reserve(choice(1));int addedSound=soundRequests;removeTop();assert(soundRequests==addedSound+1);removeTop();assert(soundRequests==addedSound+1);
  reserve(choice(1));reserve(choice(1));addedSound=soundRequests;removeTop(true);assert(soundRequests==addedSound+1); // clear once, not once per item
  reserve(choice(1));place();commandQueue.clear();addedSound=soundRequests;removeItem(0,0);assert(soundRequests==addedSound); // submitted head cannot be removed
- setup();assert(panelAlpha==construction::PanelOpacity&&layout.rows==1&&layout.queueCount==0&&layout.height()==layout.y(132));
+ setup();assert(panelAlpha==construction::PanelOpacity&&layout.rows==1&&layout.queueCount==0&&layout.height()==layout.pointY(132));
  int shortHeight=layout.height();reserve(choice(1));assert(soundRequests==1&&layout.queueCount==1&&layout.height()>shortHeight);
  reserveChoice({0,0,0,T,false},true);assert(soundRequests==1); // original sidebar owns its sound
  focused=false;reserve(choice(1));assert(soundRequests==1);focused=true;

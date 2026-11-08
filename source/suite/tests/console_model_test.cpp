@@ -177,6 +177,9 @@ void serialization() {
     CHECK(text.find("line\\nquote\\\"slash\\\\") != std::string::npos);
     CHECK(text.find("\"enabled\":true,\"visible\":true,\"readonly\":false,\"checked\":false") != std::string::npos);
     CHECK(text.find("\"options\":[") != std::string::npos);
+    CHECK(text.find("\"optionEnabled\"") == std::string::npos);
+    auto limited = fixture(); limited.controls[0].optionEnabled = {true, false};
+    CHECK(encodeSnapshot(limited).find("\"optionEnabled\":[true,false]") != std::string::npos);
     CHECK(text.find("\"presentation\":\"list\"") != std::string::npos);
     CHECK(detail::quote(std::string(1, '\0')) == "\"\\u0000\"");
     CHECK(detail::quote(std::string("\xc0\xaf", 2)) == std::string("\"") + u8"��" + "\"");

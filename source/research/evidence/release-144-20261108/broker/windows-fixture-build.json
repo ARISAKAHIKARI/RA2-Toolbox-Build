@@ -1,0 +1,23 @@
+{
+  "schema": "ra2.broker-windows-fixture-cross-compile.v1",
+  "pass": true,
+  "command": [
+    "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+    "c++",
+    "-target",
+    "x86_64-windows-gnu",
+    "-std=c++17",
+    "-O1",
+    "-municode",
+    "source/assist/tests/runtime_broker_windows.cpp",
+    "-luser32",
+    "-lkernel32",
+    "-o",
+    "/workspace/scratch/40121bc881b8/release-1.0.44/broker/runtime-broker-test.exe"
+  ],
+  "exit_code": 0,
+  "source_sha256": "3d0326b7028df2a1a517e249d60ec6bd2b042533aeb83ca7f03e56190aa89802",
+  "executable_sha256": "8aff4fcc96d8fb526489d2641c6ee5e1b838f3bda4f1232b8fe16532dc81004e",
+  "executable_bytes": 325632,
+  "windows_executed": false
+}

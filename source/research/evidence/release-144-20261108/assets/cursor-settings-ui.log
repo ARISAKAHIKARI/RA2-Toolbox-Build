@@ -1,0 +1,1 @@
+PASS: cursor settings: independent toggles, atomic dimension pairs, valid-field persistence, all three Cursor.PositionMode values, selector clamping and disk retry; cursor does not overwrite tactical Shift5 configuration

@@ -80,12 +80,12 @@ bool bundleMatches(){return !_wcsicmp(digest(folder+L"\\GameRuntime.dll").c_str(
 void recordSites(const wchar_t*tag){for(uint32_t a:sites){std::array<uint8_t,16>b{};unsigned n=experimentalpatch::size(a);if(!read(a,b.data(),n)){log(std::wstring(tag)+L" "+hex(a)+L" read-failed="+std::to_wstring(GetLastError()));continue;}uint32_t target=experimentalpatch::destination(a,b.data(),n);if(!target&&n>=5&&(b[0]==0xE9||b[0]==0xE8)){uint32_t rel;memcpy(&rel,b.data()+1,4);target=a+5+rel;}log(std::wstring(tag)+L" "+hex(a)+L" bytes="+bytes(b.data(),n)+L" known-original="+std::to_wstring(assist::hookregistry::knownOriginal(a,b.data(),n))+(target?L" destination="+hex(target)+L" "+owner(target):L""));}}
 bool freshSnapshot(){if(!shared)return false;for(int n=0;n<3;++n){LONG before=shared->seq;if(before&1)continue;MemoryBarrier();memcpy(&snapshot,&shared->data,sizeof snapshot);MemoryBarrier();if(before==shared->seq)return DWORD(GetTickCount()-snapshot.sampledTick)<2000;}return false;}
 void clearOptions(){if(diagnostic)diagnostic->camera=0;if(!shared)return;shared->flags=0;shared->controlAll=0;shared->networkHousePreserve=0;shared->controlCommandOwner=0;shared->nativeSellCursor=0;shared->nativeMegaGateway=0;shared->nativeCombatQueries=0;shared->buildTimeTooltip=0;shared->renderReveal=0;shared->crcMapShadow=0;shared->lowDamageFilter=shared->lowDamageNetwork=0;shared->nativeAirNetwork=0;shared->techEnhance=0;shared->placementImplementation=0;gameinput::setFrameSampling(subscription,false);MemoryBarrier();gameinput::wake(subscription);}
-bool attach(){if(subscription)return true;if(!gameinput::runtimeAvailable()){show(L"缺少配套 GameRuntime.dll / GameRuntimeHost32.exe，或版本不符。");return false;}
+bool attach(){if(subscription)return true;if(!gameinput::runtimeAvailable()){show(GetLastError()==ERROR_IO_PENDING?L"正在连接配套 Runtime，等待 Broker 就绪。":L"缺少配套 GameRuntime.dll / GameRuntimeHost32.exe，或版本不符。");return false;}
  if(!diagnostic){wchar_t name[96];hookdiagnostic::name(name,pid,GetCurrentProcessId());diagnosticMapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(hookdiagnostic::Channel),name);if(diagnosticMapping)diagnostic=(hookdiagnostic::Channel*)MapViewOfFile(diagnosticMapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(hookdiagnostic::Channel));if(!diagnostic){if(diagnosticMapping)CloseHandle(diagnosticMapping);diagnosticMapping=nullptr;show(L"无法创建测试相机控制通道。");return false;}diagnostic->magic=hookdiagnostic::Magic;diagnostic->version=hookdiagnostic::Version;diagnostic->pid=pid;diagnostic->owner=GetCurrentProcessId();diagnostic->camera=0;diagnostic->heartbeat=GetTickCount();}
  wchar_t name[100];assist::mappingName(name,pid);mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(assist::Shared),name);DWORD error=GetLastError();if(!mapping||error==ERROR_ALREADY_EXISTS){if(mapping)CloseHandle(mapping);mapping=nullptr;show(L"该游戏已有工具箱映射，请完整重启游戏和旧工具箱。");return false;}
  shared=(assist::Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(assist::Shared));if(!shared){CloseHandle(mapping);mapping=nullptr;return false;}
  memset(shared,0,sizeof *shared);shared->magic=assist::Magic;shared->version=assist::Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=gameinput::windowToken(window);shared->heartbeat=GetTickCount();shared->clockTick=GetTickCount();shared->scanMs=16;shared->externalDisplay=1;shared->viewZoomPercent=100;shared->computeRequested=shared->computeApplied=assist::compute::All;
- if(!gameinput::assistIdentity(gameinput::runtimeModule(),assist::Version,sizeof(assist::Shared),assist::MappingPrefix.text)){UnmapViewOfFile(shared);shared=nullptr;CloseHandle(mapping);mapping=nullptr;show(L"Runtime 协议不匹配。");return false;}
+ if(!gameinput::assistIdentity(gameinput::runtimeModule(),assist::Version,sizeof(assist::Shared),assist::MappingPrefix.text)){const DWORD identityError=GetLastError();UnmapViewOfFile(shared);shared=nullptr;CloseHandle(mapping);mapping=nullptr;show(identityError==ERROR_IO_PENDING?L"正在等待 Runtime 身份信息。":L"Runtime 协议不匹配。");return false;}
  subscription=gameinput::install(gameentry::Client::Assist,threadId,pid,gameWindow);if(!subscription){log(L"ATTACH_FAILED "+std::wstring(gameinput::installationStage())+L" error="+std::to_wstring(GetLastError()));UnmapViewOfFile(shared);shared=nullptr;CloseHandle(mapping);mapping=nullptr;return false;}log(L"ATTACHED production Runtime; every optional feature is OFF");clearOptions();return true;}
 const hooktest::Step&step(){return hooktest::steps()[schedule[sequence.index]];}
 void configure(){if(configured||!shared)return;clearOptions();switch(step().kind){
@@ -234,7 +234,17 @@ LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
 }
 int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,LPWSTR command,int showCommand){
  smoke=command&&wcsstr(command,L"--ui-smoke");wchar_t path[32768];GetModuleFileNameW(nullptr,path,32768);folder=path;folder.resize(folder.find_last_of(L"\\/"));
- if(command&&wcsstr(command,L"--broker-smoke"))return bundleMatches()&&gameinput::runtimeAvailable()&&gameinput::assistIdentity(nullptr,assist::Version,sizeof(assist::Shared),assist::MappingPrefix.text)?0:5;
+ if(command&&wcsstr(command,L"--broker-smoke")){
+  if(!bundleMatches())return 5;
+  const DWORD started=GetTickCount();
+  // This command-line probe owns its bounded wait; Client/Host never sleep
+  // while holding the shared input locks. The normal UI uses its timer.
+  for(;;){
+   if(gameinput::runtimeAvailable()&&gameinput::assistIdentity(nullptr,assist::Version,sizeof(assist::Shared),assist::MappingPrefix.text))return 0;
+   if(GetLastError()!=ERROR_IO_PENDING||DWORD(GetTickCount()-started)>=4000)return 5;
+   Sleep(5);
+  }
+ }
  WNDCLASSW c{};c.lpfnWndProc=proc;c.hInstance=instance;c.lpszClassName=L"RA2HookDiagnosticWindow";c.hCursor=LoadCursorW(nullptr,IDC_ARROW);c.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);if(!RegisterClassW(&c))return 2;
  HWND w=CreateWindowExW(0,c.lpszClassName,L"RA2 Hook 逐组测试 — 可提前确认，可手动略过",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,CW_USEDEFAULT,CW_USEDEFAULT,1170,640,nullptr,nullptr,instance,nullptr);if(!w)return 3;
  if(smoke){

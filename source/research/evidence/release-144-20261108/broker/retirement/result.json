@@ -1,0 +1,50 @@
+{
+  "schema": "ra2.runtime-broker-retirement.v1",
+  "passed": true,
+  "current_passed_checks": 177,
+  "results": {
+    "current": {
+      "source": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source/runtime_broker_client.h",
+      "source_sha256": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1",
+      "exit_code": 0,
+      "checks": 177,
+      "failures": 0,
+      "passed_checks": 177,
+      "client_checks": 145,
+      "host_pulse_checks": 32,
+      "actual_pulses_in_quiet_window": 250,
+      "log": "/workspace/scratch/40121bc881b8/release-1.0.44/broker/retirement/current.log",
+      "build_command": [
+        "c++",
+        "-std=c++17",
+        "-O0",
+        "-D_WIN64",
+        "-I/workspace/scratch/40121bc881b8/release-1.0.44/broker/retirement/include",
+        "-I/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests",
+        "-I/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source",
+        "-DBROKER_CLIENT=\"/workspace/scratch/40121bc881b8/ra2-audit-followup/source/shared/source/runtime_broker_client.h\"",
+        "-DBROKER_HOST=\"/workspace/scratch/40121bc881b8/release-1.0.44/broker/retirement/production-host.inc\"",
+        "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/runtime_broker_retirement.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/release-1.0.44/broker/retirement/current"
+      ]
+    }
+  },
+  "host_routes_sha256": "920bdcae5362a67e55df9af4ce233d355ea2da24ee84f6ab3ed455dcf6aadd57",
+  "source_sha256": {
+    "source/shared/source/runtime_broker_client.h": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1",
+    "source/shared/source/host_game_input.h": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887",
+    "source/shared/source/runtime_broker_protocol.h": "535290536bc6b3eabbadd4ba08d294ef1ff2657a27b0773ebbaa5fe685869b6f",
+    "source/assist/tests/runtime_broker_retirement.cpp": "f1de97a255d5c1ac76219b67a1199f8ff1ceb1ad14733fac9db5a1b2b8e11be2",
+    "source/assist/tests/runtime_broker_retirement_fixture.h": "1d6a3ab9d5e1adb270a2ceaf0f5985f3bc613873c08f9b06cfeac955e130481b",
+    "source/assist/tests/runtime_broker_retirement.py": "d375b8f2f8d56041873c6cbc89390783096536deb755459dcd8e1c23def07bd2"
+  },
+  "real_windows_tested": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "limits": [
+    "Win32 process/handle/IPC calls are deterministic substitutes; the complete production Client and actual host clear/reap/pulse functions execute.",
+    "Termination can remain incomplete in the OS. The client retains identity and blocks replacement without positive-time retirement waits; it does not claim to force kernel-level completion.",
+    "Startup, exchange, shutdown and retirement probe with zero waits. Original timeout intervals are deadlines advanced by later calls; this fixture advances virtual time explicitly."
+  ]
+}

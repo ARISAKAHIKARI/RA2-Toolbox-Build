@@ -1,0 +1,242 @@
+{
+  "schema": "ra2.release.construction-fixes.v1",
+  "generated_at_utc": "2026-11-08T11:55:05.896182+00:00",
+  "passed": true,
+  "baseline_commit": "d7c0850ec662de7d29dce50b0391162f065b4a5a",
+  "baseline_sources": {
+    "main-before.cpp": "dec08343c8dc3287aa7f789192064bdb9db0dbbbf2818bffad033880c2704654",
+    "construction_policy-before.h": "2f3a0f8e88cd669face590b91038c6bafe25953382060582ca1d8d0aafc27ad8",
+    "construction_host-before.h": "7f340af9bfbe0cfb093f481b6caa7c4deff60e0c03f9f1a650db378900f8b6ed"
+  },
+  "fixes": {
+    "fixed_reservation_boundary": "The boundary is derived only from game/client viewport and requested scale, independent of queue length, candidate count and tab. Queue height expands upward. Renderer rectangle coordinates, direct strokes and hit tests share pointY, with rounding relative to the fixed boundary. Size-dependent values retain y as a scaled length.",
+    "world_identity": "serviceCommandQueue passes the consumed Item into send. Original PID/match/type-list hash remain immutable across readSnapshot; changed PID/match/connection or expired intent returns reservation -13 before requeue/publication. Busy requeue preserves original created time. Same-match ready/busy controls remain functional.",
+    "broker_pending": "runtimeAvailable and assistIdentity ERROR_IO_PENDING show connecting and retry after 75ms without incrementing failure attempts or blocking. Identity check precedes mapping allocation so pending does not repeatedly create/release a mapping. If install returns no subscription plus ERROR_IO_PENDING while an old Target retires, release only this unleased Assist mapping, restore the prior attempt count and retry after 75ms; no permanent block or failure backoff."
+  },
+  "verified_sources_sha256": {
+    "source/assist/source/main.cpp": "5f0853b68d8f2d170d49c09fd8d13f1b783eb97ca1cff796f5c4c5e793352827",
+    "source/assist/source/construction_host.h": "4672538f176f05ed0d6c92bcfb6f7e91f21dc1b35388ae3510efdd1aa5584e35",
+    "source/assist/source/construction_policy.h": "78b888d6138b0b0f1825a8ba73058647119ca51c333dbf68b55da2b69da6b1ac",
+    "source/assist/tests/construction_host_test.py": "8679b140fe8911f55a529640e12e5d6ee8dad097b0244575e382c669925b2f0b",
+    "source/assist/tests/construction_paint_test.py": "6cb9964cf290d140a3f52d4e76a20158551a3bbd0c11c06c636f6d744b7821ef",
+    "source/assist/tests/construction_delivery_test.py": "8fcaf173ef9da111d192292a9af662eaaf080cbfd28377105e519bb6cf89eb3e",
+    "source/assist/tests/construction_layout_test.py": "491b0b7f0f954b1e647b55bdc0743110f6621f12b927d0b93cb8bdbb9596f388",
+    "source/assist/tests/host_bridge_retry.cpp": "21a96ebeaa8bef74cad8c2d3edeed9875b802d146018b3b5c836108dd8e4f36c",
+    "source/assist/tests/host_bridge_retry.py": "0cfe9cb5b3b872d13b50f285d4bf9b4f31bbf66c009dac3e485e152b6f601749"
+  },
+  "main_cpp_crlf_preserved": true,
+  "commands": [
+    "python3 source/assist/tests/construction_host_test.py",
+    "python3 source/assist/tests/construction_paint_test.py",
+    "python3 source/assist/tests/construction_layout_test.py --policy-source /workspace/scratch/40121bc881b8/release-1.0.44/construction/construction_policy-before.h --host-source /workspace/scratch/40121bc881b8/release-1.0.44/construction/construction_host-before.h --expect-regression --output /workspace/scratch/40121bc881b8/release-1.0.44/construction/layout-before",
+    "python3 source/assist/tests/construction_layout_test.py --output /workspace/scratch/40121bc881b8/release-1.0.44/construction/layout-after",
+    "python3 source/assist/tests/construction_delivery_test.py --main-source /workspace/scratch/40121bc881b8/release-1.0.44/construction/main-before.cpp --expect-regression --output /workspace/scratch/40121bc881b8/release-1.0.44/construction/delivery-before",
+    "python3 source/assist/tests/construction_delivery_test.py --output /workspace/scratch/40121bc881b8/release-1.0.44/construction/delivery-after-install-pending",
+    "python3 source/assist/tests/host_bridge_retry.py --out /workspace/scratch/40121bc881b8/release-1.0.44/construction/bridge-pending-final --baseline-main /workspace/scratch/40121bc881b8/release-1.0.44/construction/main-before.cpp"
+  ],
+  "runs": {
+    "layout-before": {
+      "receipt": "layout-before/result.json",
+      "receipt_sha256": "cb180120819f9b02e7103d401278131959a7aa8555f8f17c67d313c76bfb2f85",
+      "log": "layout-before.log",
+      "compile_exit": 0,
+      "run_exit": 0,
+      "expected_regression": true,
+      "result": {
+        "transforms": 117,
+        "states": 240552,
+        "checks": 4732417,
+        "boundary_drift_states": 227952,
+        "stationary_click_changes": 858081,
+        "queue_growth_moved_window_down": 3,
+        "queue_dependent_row_changes": 11341,
+        "max_boundary_drift_pixels": 560,
+        "default_boundary_by_queue_0_to_5": [
+          266,
+          282,
+          306,
+          330,
+          354,
+          378
+        ],
+        "passed": 1,
+        "windows_runtime_executed": false
+      },
+      "source_hash_stable": true,
+      "sanitizers": [
+        "address",
+        "undefined"
+      ]
+    },
+    "layout-after": {
+      "receipt": "layout-after/result.json",
+      "receipt_sha256": "a64ac6834ef107382f1096ca8905aa1126fc64cecbe3ef89dc29bba574bf9af1",
+      "log": "layout-after.log",
+      "compile_exit": 0,
+      "run_exit": 0,
+      "expected_regression": false,
+      "result": {
+        "transforms": 117,
+        "states": 240552,
+        "checks": 4938305,
+        "boundary_drift_states": 0,
+        "stationary_click_changes": 0,
+        "queue_growth_moved_window_down": 0,
+        "queue_dependent_row_changes": 0,
+        "max_boundary_drift_pixels": 0,
+        "default_boundary_by_queue_0_to_5": [
+          266,
+          266,
+          266,
+          266,
+          266,
+          266
+        ],
+        "passed": 1,
+        "windows_runtime_executed": false
+      },
+      "source_hash_stable": true,
+      "sanitizers": [
+        "address",
+        "undefined"
+      ]
+    },
+    "delivery-before": {
+      "receipt": "delivery-before/result.json",
+      "receipt_sha256": "9de0b7c1c25f16757b4712ccb0929dcbff6f80338ffd1e9f6a57cb34c87fe3ec",
+      "log": "delivery-before.log",
+      "compile_exit": 0,
+      "run_exit": 0,
+      "expected_regression": true,
+      "result": {
+        "checks": 148,
+        "safe_rejections": 4,
+        "unsafe_dispatch_or_requeue": 10,
+        "same_match_controls": 4,
+        "passed": true,
+        "native_event_executed": false,
+        "scenarios": 18,
+        "scenario_names": [
+          "new_match_ready",
+          "new_match_busy",
+          "new_match_changed_catalogue",
+          "same_match_ready",
+          "same_match_busy",
+          "same_match_changed_catalogue",
+          "same_match_pid_changed",
+          "same_match_connection_changed",
+          "same_match_expired_during_snapshot"
+        ],
+        "commands_exercised": [
+          "ProduceDeferred",
+          "ProduceReserved"
+        ],
+        "original_six_scenario_audit_subset": {
+          "scenarios": 6,
+          "published_or_requeued_old_intent": 4,
+          "rejected": 2
+        }
+      },
+      "source_hash_stable": true,
+      "sanitizers": [
+        "address",
+        "undefined"
+      ]
+    },
+    "construction-host": {
+      "log": "host-test.log",
+      "exit_code": 0,
+      "log_sha256": "fe8e71c8c17673bc42e816c156864ae85eb81e15f79541bfd402cbee8edc0eac",
+      "result": "PASS: actual Host service/FIFO32/128/cancel/ACK/native input; 2016 content-scale-viewport combinations; read-only command suspension and world gates",
+      "sanitizers": [
+        "address",
+        "undefined"
+      ]
+    },
+    "construction-paint": {
+      "log": "paint-stationary-click-test.log",
+      "exit_code": 0,
+      "log_sha256": "a62f8968665ecbcd068e5eca1fef9c6df11d212de259474681ad5b4ebba32ae4",
+      "result": "PASS: actual capture/promotion/resize/proc with controlled worker and Win32/GDI I/O; 1000 idle updates; stationary screen click for queue counts 0,1,2,3,4,5,32,128,4,1,0; pending frame input closed; failure/retry/world cleanup",
+      "sanitizers": [
+        "address",
+        "undefined"
+      ]
+    },
+    "delivery-after-install-pending": {
+      "receipt": "delivery-after-install-pending/result.json",
+      "receipt_sha256": "d983433ee2923a25f03d285d8563a259d40ed33d379b18ce46459af134befc3f",
+      "log": "delivery-after-install-pending.log",
+      "compile_exit": 0,
+      "run_exit": 0,
+      "expected_regression": false,
+      "result": {
+        "checks": 146,
+        "safe_rejections": 14,
+        "unsafe_dispatch_or_requeue": 0,
+        "same_match_controls": 4,
+        "passed": true,
+        "native_event_executed": false,
+        "scenarios": 18,
+        "scenario_names": [
+          "new_match_ready",
+          "new_match_busy",
+          "new_match_changed_catalogue",
+          "same_match_ready",
+          "same_match_busy",
+          "same_match_changed_catalogue",
+          "same_match_pid_changed",
+          "same_match_connection_changed",
+          "same_match_expired_during_snapshot"
+        ],
+        "commands_exercised": [
+          "ProduceDeferred",
+          "ProduceReserved"
+        ],
+        "original_six_scenario_audit_subset": {
+          "scenarios": 6,
+          "published_or_requeued_old_intent": 0,
+          "rejected": 6
+        }
+      },
+      "source_hash_stable": true,
+      "sanitizers": [
+        "address",
+        "undefined"
+      ]
+    },
+    "bridge-pending-final": {
+      "receipt": "bridge-pending-final/result.json",
+      "receipt_sha256": "f3d75e6814cdea92da2d8a6c7d529bb831c86c2cf0fb0fa25cbc45f770c3a263",
+      "before_log": "bridge-pending-final/baseline.log",
+      "after_log": "bridge-pending-final/current.log",
+      "result": {
+        "baseline": {
+          "checks": 174,
+          "failures": 63,
+          "passed": false,
+          "source_sha256": "dec08343c8dc3287aa7f789192064bdb9db0dbbbf2818bffad033880c2704654"
+        },
+        "current": {
+          "checks": 174,
+          "failures": 0,
+          "passed": true,
+          "source_sha256": "5f0853b68d8f2d170d49c09fd8d13f1b783eb97ca1cff796f5c4c5e793352827"
+        }
+      }
+    }
+  },
+  "archival_note": "Earlier delivery-after, delivery-after-final and bridge-pending receipts are preserved unchanged. The final reruns are delivery-after-install-pending/result.json and bridge-pending-final/result.json; both bind the final full main.cpp hash after install-pending handling. summary-before-install-pending.json preserves the prior summary.",
+  "limits": [
+    "Win32 window I/O, transport and snapshot publication timing are controlled fixtures; these checks do not demonstrate live Windows rendering, physical DPI changes or native multiplayer behavior.",
+    "Host Book cancellation cannot recall an already published native Produce request. The world-identity fix prevents the stale reservation from being published or relabeled in the first place. The before control retains the already-published request after actual Host cancel.",
+    "Queue capacity remains 32 for structures and 128 for units; at most the existing 5 stack entries are visible. Native unit production still respects its existing 30-item window."
+  ],
+  "windows_runtime_executed": false,
+  "game_process_executed": false,
+  "native_event_executed": false,
+  "line_ending_aware_diff_check": {
+    "command": "git -c core.whitespace=cr-at-eol diff --check -- source/assist/source/main.cpp source/assist/source/construction_host.h source/assist/source/construction_policy.h source/assist/tests/construction_host_test.py source/assist/tests/construction_paint_test.py source/assist/tests/construction_delivery_test.py source/assist/tests/construction_layout_test.py source/assist/tests/host_bridge_retry.cpp source/assist/tests/host_bridge_retry.py",
+    "exit_code": 0
+  }
+}

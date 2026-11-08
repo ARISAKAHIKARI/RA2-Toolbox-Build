@@ -186,8 +186,12 @@ activeFoldGroup=0;
 
 heading(3,903,L"战场信息",L"调整游戏内信息显示、缩放与位置；有效设置立即生效。");
 
-label(L"黑幕绘制方式",20,260);choices(combo(808),{L"关闭",L"高危：半透明绘制",L"高危：透明绘制",L"高危：原生揭示",L"高危：直接全图"},shroudpolicy::uiIndex(extra.mapStrategy));next();
-note(L"透明与半透明恢复原有绘制补丁实现，均标为高危。素材方案已移除；旧素材设置按关闭处理，不会自动改开补丁。");
+label(L"黑幕绘制方式",20,260);
+{auto h=item(L"COMBOBOX",L"",290,335,808,CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL|WS_TABSTOP,240);
+ choices(h,{L"关闭",L"高危：半透明绘制",L"高危：透明绘制",L"高危：原生揭示",L"高危：直接全图",L"已停用：半透明素材（SHP）",L"已停用：透明素材（SHP）"},shroudpolicy::uiIndex(extra.mapStrategy));
+ disabledchoices::set(h,0x1f);}
+next();
+note(L"透明与半透明绘制均为高危。SHP 素材替换已停用并置灰；旧素材设置按关闭处理，不会自动改开其他模式。");
 item(L"STATIC",L"地图显示：关闭",20,605,809);next();
 toggle(9199,L"高危：允许手动地图揭示",extra.manualReveal);next();
 button(108,L"高危：立即揭示地图",20,306);keys[8]=key(208,hotkeys[8]);next();

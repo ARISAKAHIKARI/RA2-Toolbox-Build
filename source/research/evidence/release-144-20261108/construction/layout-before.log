@@ -1,0 +1,46 @@
+{
+  "scope": "Check shipped reservation layout, painter rectangles and window placement.\n\nThe point under a stationary mouse must keep resolving to the same candidate\nwhile the queue grows/shrinks or the tab changes. Win32 window I/O is a double;\nthis is a geometry regression, not a live-game screenshot or DPI runtime test.\n",
+  "source_sha256": {
+    "/workspace/scratch/40121bc881b8/release-1.0.44/construction/construction_policy-before.h": "2f3a0f8e88cd669face590b91038c6bafe25953382060582ca1d8d0aafc27ad8",
+    "/workspace/scratch/40121bc881b8/release-1.0.44/construction/construction_host-before.h": "7f340af9bfbe0cfb093f481b6caa7c4deff60e0c03f9f1a650db378900f8b6ed"
+  },
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O1",
+    "-g",
+    "-fsanitize=address,undefined",
+    "-UNDEBUG",
+    "-DEXPECT_REGRESSION=1",
+    "/workspace/scratch/40121bc881b8/release-1.0.44/construction/layout-before/layout.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/release-1.0.44/construction/layout-before/layout"
+  ],
+  "compile_exit": 0,
+  "compile_stderr": "",
+  "expect_regression": true,
+  "run_exit": 0,
+  "stdout": "{\"transforms\":117,\"states\":240552,\"checks\":4732417,\"boundary_drift_states\":227952,\"stationary_click_changes\":858081,\"queue_growth_moved_window_down\":3,\"queue_dependent_row_changes\":11341,\"max_boundary_drift_pixels\":560,\"default_boundary_by_queue_0_to_5\":[266,282,306,330,354,378],\"passed\":1,\"windows_runtime_executed\":false}\n",
+  "stderr": "",
+  "result": {
+    "transforms": 117,
+    "states": 240552,
+    "checks": 4732417,
+    "boundary_drift_states": 227952,
+    "stationary_click_changes": 858081,
+    "queue_growth_moved_window_down": 3,
+    "queue_dependent_row_changes": 11341,
+    "max_boundary_drift_pixels": 560,
+    "default_boundary_by_queue_0_to_5": [
+      266,
+      282,
+      306,
+      330,
+      354,
+      378
+    ],
+    "passed": 1,
+    "windows_runtime_executed": false
+  },
+  "source_hash_stable": true
+}

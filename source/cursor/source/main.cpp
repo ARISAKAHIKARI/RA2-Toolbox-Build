@@ -122,6 +122,7 @@ static AdaptiveTiming timing;static bool adaptive=true;static unsigned transitio
 static Tween tween;static Burst burst;static bool smoothing=true,clickEnabled=true,nativeFive=false,aresKnown=false;static int smoothMs=60,clickMode=0,clickGap=0,sidebarWidth=160,sidebarTop=200;static HWND smoothBox,smoothMsBox,clickBox,clickModeBox,clickGapBox;static RECT clickRegion={};static DWORD regionTime=0;static size_t lastPhase=size_t(-1);
 static int clickGameWidth=0,clickGameHeight=0;static DWORD clickLoggedAt=0;static LONG clickDenyReason=0;static bool clickNeedsLog=false;static unsigned clickSendOk=0,clickSendFail=0;
 static bool physicalLeftDown=false;static bool autoStart=true,autoPaused=false,focusRefresh=true,wasInside=false;static HWND autoStartBox,observedForeground;static DWORD lastAutoCheck=0,lastWindowCheck=0;static int refreshTries=0;static DWORD refreshAt=0;
+static bool hookStartupPending=false;static DWORD hookStartupAttemptAt=0;
 static LARGE_INTEGER freq;static bool fallback=false;static int modeId=0;static std::wstring lastStatus;
 // All timeline decoding completes before game connection. Playback owns a
 // fixed resident bank, so no cache eviction, disk reads or decode jobs run in a match.
@@ -514,7 +515,7 @@ static bool selectedReaderMatches(const external::targetselection::Policy& choic
  return GetProcessTimes(connection->handle,&created,&exited,&kernel,&user)&&
   ((uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime)==choice.selectedCreation;
 }
-static void attach(bool quiet=false){bridgeFrame.clear();lanboStream.reset();if(running)fail("Stop the preview before attaching again");auto scan=external::discovery::scan();if(scan.snapshotError&&!scan.processCount)fail("Process enumeration failed");if((scan.processCount!=1&&!scan.explicitSelection)||!scan.best.pid)fail("Keep exactly one compatible Yuri game running or select a current process explicitly");cursorReader.close();pid=scan.best.pid;clickGameWidth=clickGameHeight=0;gameParentPid=parentProcess(pid);// Query-only fallback preserves Runtime cursor snapshots when VM_READ is denied.
+static void attach(bool quiet=false){bridgeFrame.clear();lanboStream.reset();if(running)fail("Stop the preview before attaching again");hookStartupPending=false;auto scan=external::discovery::scan();if(scan.snapshotError&&!scan.processCount)fail("Process enumeration failed");if((scan.processCount!=1&&!scan.explicitSelection)||!scan.best.pid)fail("Keep exactly one compatible Yuri game running or select a current process explicitly");cursorReader.close();pid=scan.best.pid;clickGameWidth=clickGameHeight=0;gameParentPid=parentProcess(pid);// Query-only fallback preserves Runtime cursor snapshots when VM_READ is denied.
  if(!cursorReader.open(pid,mode==L"hide"||nativeGameRefresh||noCursorMode))
   throw std::runtime_error("OpenProcess failed; Win32="+std::to_string(cursorReader.lastOpenError));
  if(scan.explicitSelection&&!selectedReaderMatches(external::targetselection::current(),cursorReader)){
@@ -555,7 +556,7 @@ static void capture(){if(running)fail("Stop preview before capturing");if(!live(
  for(int i=0;i<n;i++){size_t x=8+i*24;uint32_t off=u32(all,x+20);unsigned w=u16(all,x+4),h=u16(all,x+6),fmt=u32(all,x+8)&255;if(w>512||h>512)fail("Invalid frame bounds");if(!off||!w||!h)continue;uint64_t end=off;if(fmt<=1)end+=w*h;else if(fmt==3){for(unsigned y=0;y<h;y++){unsigned len=u16(read(img+(uint32_t)end,2),0);if(len<2||len>2048)fail("RLE bound");end+=len;}}else fail("Cursor format 2 not supported");if(end>32*1024*1024)fail("Image too large");limit=std::max(limit,(size_t)end);}
  Asset a=decode(read(img,limit));for(auto& f:a.frames)for(auto c:f.pixels)if(c)any=true;if(!any)fail("All frames are transparent. Restore originals and restart first");
  uint32_t cv=word(0x87f6c8);if(word(cv+4)!=2)fail("Only 16-bit game palette is supported");uint32_t pp=word(cv+0x174);Bytes colors=read(pp,512),shifts=read(0x8a0dd0,24);int rl=u32(shifts,0),rr=u32(shifts,4),bl=u32(shifts,8),br=u32(shifts,12),gl=u32(shifts,16),gr=u32(shifts,20);if(!((rl==11&&rr==3&&gl==5&&gr==2&&bl==0&&br==3)||(rl==10&&rr==3&&gl==5&&gr==3&&bl==0&&br==3)))fail("Unknown 16-bit palette shifts");DWORD pal[256];for(int i=0;i<256;i++){unsigned v=u16(colors,i*2);unsigned r=((v>>rl)<<rr)&255,g=((v>>gl)<<gr)&255,b=((v>>bl)<<br)&255;pal[i]=i?0xff000000|(r<<16)|(g<<8)|b:0;}
- if(mouse()!=p||word(p+4)!=initialImage)fail("Cursor changed during capture; try again");Bytes canonical=encode(a,false);save(cacheKey+L"\\original.sha",canonical);Bytes palbytes(sizeof(pal));memcpy(palbytes.data(),pal,sizeof(pal));save(cacheKey+L"\\palette.bgra",palbytes);loadCache();status(L"原图已采集。透明版：退出游戏后点“安装透明 SHA”；其他版可直接启动。");}
+ if(mouse()!=p||word(p+4)!=initialImage)fail("Cursor changed during capture; try again");Bytes canonical=encode(a,false);save(cacheKey+L"\\original.sha",canonical);Bytes palbytes(sizeof(pal));memcpy(palbytes.data(),pal,sizeof(pal));save(cacheKey+L"\\palette.bgra",palbytes);loadCache();status(L"原图已采集，可直接启动；透明 SHA 替换已停用。");}
 // A manually copied transparent SHA has no restore marker. Accept it only if
 // its bytes exactly match the blank image generated from our original cache.
 // Never create a marker/backup for a manual install, and never auto-restore it.
@@ -569,7 +570,9 @@ static bool manuallyBlankSHA(){
  }catch(...){return false;}
 }
 static bool anyGame(){auto scan=external::discovery::scan();return scan.processCount||scan.snapshotError;}
-static void install(){if(gameDir.empty()||!loaded)fail("Select the game folder first; bundled assets must be readable");if(anyGame())fail("Exit all Yuri game processes before installing");std::wstring dst=gameDir+L"\\mouse.sha",mark=dst+L".cursor-preview-state",bak=dst+L".cursor-preview-backup";if(exists(mark)||exists(bak))fail("Existing preview state/backup found. Restore first; never overwrite backups");if(manuallyBlankSHA()){status(L"检测到手动放入的透明 SHA，已可直接选择替换 SHA 模式；没有本程序的自动恢复备份。");return;}Bytes blank=encode(asset,true);save(cacheKey+L"\\transparent.sha",blank);bool had=exists(dst);if(had&&!CopyFileW(dst.c_str(),bak.c_str(),TRUE))fail("Backup failed");Bytes m={uint8_t(had?1:0)};try{save(mark,m);save(dst,blank);}catch(...){if(had)CopyFileW(bak.c_str(),dst.c_str(),FALSE);else DeleteFileW(dst.c_str());throw;}installOwned=true;status(L"透明 SHA 已安装。重开游戏，连接，再启动外部光标。不要叠加旧 HWCursor。");}
+// Keep the command handler inert as well as the disabled UI: queued legacy
+// actions must not replace game resources. Explicit restore remains available.
+static void install(){status(L"透明 SHA 替换已停用，未更改游戏文件。");}
 static void restoreFile(){if(gameDir.empty())fail("Attach once to identify the game directory");if(anyGame())fail("Exit all Yuri game processes before restoring SHA");std::wstring dst=gameDir+L"\\mouse.sha",mark=dst+L".cursor-preview-state",bak=dst+L".cursor-preview-backup";if(!exists(mark)){
   if(manuallyBlankSHA()){
    if(cursorDialog(L"检测到此前手动放入的透明 mouse.sha。\n将用本程序内置的已验证的缓存原图恢复；同时保留当前透明文件的唯一备份。确定？",L"恢复手动透明 SHA",MB_YESNO|MB_ICONQUESTION)!=IDYES)return;
@@ -637,7 +640,17 @@ static void exitNativeMenu(){
  }
  log(L"Game dialog closed; effective cursor display resumes while game Hide remains paired");
 }
-static void hookStart(bool hide=true){if(!selectGameWindow()||!gameinput::nativeWindow(pid,threadId))fail("Game main window is still initializing; waiting to connect");if(!gameinput::runtimeAvailable())fail("GameRuntime.dll or x86 hook broker missing/incompatible; replace the complete paired package");bridgeFrame.clear();lanboStream.reset();lastSampleProbeAt=0;nativeStartAt=GetTickCount();nativeInvisibleAt=0;hideConfirmed=false;lastRehideSeen=0;wchar_t name[80];mapName(name,pid);mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,NULL,PAGE_READWRITE,0,sizeof(Shared),name);if(!mapping)fail("Shared mapping failed");shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared)fail("Map view failed");memset(shared,0,sizeof(*shared));shared->magic=MAGIC;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->heartbeat=GetTickCount();
+// A pending broker has no subscription to clean up; retain intent and retry.
+static bool hookStart(bool hide=true){
+ const DWORD now=GetTickCount();if(hookStartupPending&&uint32_t(now-hookStartupAttemptAt)<75)return false;
+ hookStartupPending=false;hookStartupAttemptAt=now;
+ if(!selectGameWindow()||!gameinput::nativeWindow(pid,threadId))fail("Game main window is still initializing; waiting to connect");
+ if(!gameinput::runtimeAvailable()){
+  const DWORD error=GetLastError();
+  if(error==ERROR_IO_PENDING){hookStartupPending=true;status(L"正在连接光标运行组件…");return false;}
+  fail("GameRuntime.dll or x86 hook broker missing/incompatible; replace the complete paired package");
+ }
+ bridgeFrame.clear();lanboStream.reset();lastSampleProbeAt=0;nativeStartAt=GetTickCount();nativeInvisibleAt=0;hideConfirmed=false;lastRehideSeen=0;wchar_t name[80];mapName(name,pid);mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,NULL,PAGE_READWRITE,0,sizeof(Shared),name);if(!mapping)fail("Shared mapping failed");shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared)fail("Map view failed");memset(shared,0,sizeof(*shared));shared->magic=MAGIC;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->heartbeat=GetTickCount();
  shared->sampledFrame=-1;shared->sampledFirst=-1;
  shared->sampledHotX=-1;shared->sampledHotY=-1;
  shared->cursorCanvasW=asset.w;shared->cursorCanvasH=asset.h;shared->cursorFrameCount=LONG(asset.frames.size());
@@ -647,9 +660,20 @@ static void hookStart(bool hide=true){if(!selectGameWindow()||!gameinput::native
  shared->nativeBlank=delivery.blank;
  shared->nativeEnabled=delivery.native;
  shared->sampleIntervalMs=LONG(cursorperf::sampleInterval(pollHz));shared->nativeSeq=0;shared->nativeAck=0;shared->nativeVisible=0;shared->command=hide?1:3;hook=gameinput::install(gameentry::Client::Cursor,threadId,pid,game);
- if(!hook)fail("Unified runtime subscription failed");gameinput::wake(hook);}
+ if(!hook){
+  const DWORD error=GetLastError();
+  if(error==ERROR_IO_PENDING){
+   // Host has not admitted a lease. Release only this unsubmitted mapping;
+   // there is no game subscription whose restore acknowledgement to await.
+   if(shared){UnmapViewOfFile(shared);shared=nullptr;}
+   if(mapping){CloseHandle(mapping);mapping=nullptr;}
+   hookStartupPending=true;status(L"正在等待上一条光标连接退出…");return false;
+  }
+  fail("Unified runtime subscription failed");
+ }
+ gameinput::wake(hook);return true;}
 static void hookStop(DWORD timeout=1500){
- bridgeFrame.clear();if(!shared&&!hook&&!mapping)return;
+ hookStartupPending=false;bridgeFrame.clear();if(!shared&&!hook&&!mapping)return;
  if(shared&&live()){
   shared->heartbeat=GetTickCount();InterlockedExchange(&shared->command,2);DWORD start=GetTickCount();
   while(GetTickCount()-start<timeout&&(shared->command||shared->state!=0)){gameinput::wake(hook);Sleep(10);}
@@ -754,9 +778,9 @@ static void start(){if(!playbackReady){status(L"准备播放缓存，完成后�
  if(manualBlank)log(L"检测到手动安装的透明 SHA（无恢复标记）；不会自动替你备份或恢复，请保留原版文件。");
  // v1.2.7: arm native HideCursor IMMEDIATELY as requested. The bridge
  // conditionally re-hides if game ShowCursor changes its internal ref count.
- if(mode==L"hide"){try{hookStart();}catch(...){hookStop();throw;}}
- else if(asset.frames.size()<517){try{hookStart(false);}catch(const std::exception& e){hookStop();log(L"YR resource probe unavailable: "+widen(e.what()));}}
- nativeStartAt=GetTickCount();lastNativePublishAt=0;nativeInvisibleAt=0;hideConfirmed=false;detectAres();burst.cancel();tween.reset();timing.resetObservation();activeMotion.reset();running=true;lastFrame=-2;lastPhase=size_t(-1);status(L"已连接游戏");}
+ if(mode==L"hide"){try{if(!hookStart())return;}catch(...){hookStop();throw;}}
+ else if(asset.frames.size()<517){try{if(!hookStart(false))return;}catch(const std::exception& e){hookStop();log(L"YR resource probe unavailable: "+widen(e.what()));}}
+ hookStartupPending=false;nativeStartAt=GetTickCount();lastNativePublishAt=0;nativeInvisibleAt=0;hideConfirmed=false;detectAres();burst.cancel();tween.reset();timing.resetObservation();activeMotion.reset();running=true;lastFrame=-2;lastPhase=size_t(-1);status(L"已连接游戏");}
 static void browseGame(){
  BROWSEINFOW bi={};bi.hwndOwner=mainw;bi.lpszTitle=L"选择包含 gamemd.exe、gamemd-spawn.exe 或 gamemd-ares.exe 的游戏文件夹";bi.ulFlags=BIF_RETURNONLYFSDIRS|BIF_NEWDIALOGSTYLE;
  PIDLIST_ABSOLUTE pidl=SHBrowseForFolderW(&bi);if(!pidl)return;
@@ -769,10 +793,10 @@ static void browseGame(){
 }
 static void applyHideMode(){
  int choice=(int)SendMessageW(modeBox,CB_GETCURSEL,0,0);if(choice<0||choice>3)fail("Select an original cursor display mode");
- std::wstring selected=(choice==1||choice==3)?L"hide":choice==2?L"sha":L"keep";
+ if(choice==2)fail("Transparent SHA replacement is disabled");
+ std::wstring selected=(choice==1||choice==3)?L"hide":L"keep";
  bool blank=choice==3;
  if(selected==mode&&blank==noCursorMode)return;
- if(selected==L"sha"&&anyGame()&&!exists(gameDir+L"\\mouse.sha.cursor-preview-state")&&!manuallyBlankSHA())fail("Exit the game first, then install the transparent SHA; restart the game before choosing this mode");
  bool shouldResume=running;
  if(running)stop();
  if(selected!=L"hide"&&nativeGameRefresh){nativeGameRefresh=false;SendMessageW(nativeBox,CB_SETCURSEL,0,0);WritePrivateProfileStringW(L"Display",L"GameThreadRefresh",L"0",ini().c_str());}
@@ -780,7 +804,6 @@ static void applyHideMode(){
  mode=selected;WritePrivateProfileStringW(L"Startup",L"Mode",mode.c_str(),ini().c_str());
  WritePrivateProfileStringW(L"Compatibility",L"CursorNoCodeWriteDefaultsVersion",L"1",ini().c_str());
  if(noCursorMode)status(L"已选择无光标诊断模式；Ctrl+Alt+F11 停止并恢复，F10 切换覆盖层。");
- else if(mode==L"sha")status(L"已选择替换 SHA：请退出游戏后点击“安装透明 SHA”，再重新启动游戏。安装前会备份现有文件。");
  else if(mode==L"hide")status(L"已选择隐藏原光标；使用原生 HideCursor，并保留单位名称和建造价格提示。");
  else status(L"已选择不隐藏：不修改游戏文件，原始光标和外部光标可能同时出现。");
  if(shouldResume){try{start();}catch(const std::exception& e){autoPaused=true;status(L"切换后未能启动："+widen(e.what()));}}
@@ -795,13 +818,13 @@ static void syncTargetSelection(){
  // connection. Only a newly selected, still-live process requests a switch.
  if(!changed||!choice.selectedPid||!external::targetselection::preferredAlive(choice)||selectedReaderMatches(choice,cursorReader))return;
  // Keep the old reader/PID until the paired HideCursor restoration finishes.
- if(running||shared||hook||mapping)stop();
+ if(running||hookStartupPending||shared||hook||mapping)stop();
  cursorReader.close();pid=threadId=gameParentPid=0;game=nullptr;readRestricted=false;
  clickGameWidth=clickGameHeight=0;lastWindowCheck=0;lastAutoCheck=0;
  if(autoStart)autoPaused=false;
  status(L"当前游戏进程已切换，等待重新连接…");
 }
-static void autoTick(){syncTargetSelection();DWORD now=GetTickCount();if(uint32_t(now-lastAutoCheck)<1000)return;lastAutoCheck=now;if(autoPaused&&cursorReader.valid()&&!live())autoPaused=false;if(!autoStart||autoPaused||running||!playbackReady)return;try{attach(true);start();}catch(const std::exception& e){status(L"自动等待："+widen(e.what()));}}
+static void autoTick(){syncTargetSelection();DWORD now=GetTickCount();if(uint32_t(now-lastAutoCheck)<(hookStartupPending?75u:1000u))return;lastAutoCheck=now;if(autoPaused&&cursorReader.valid()&&!live())autoPaused=false;if(!autoStart||autoPaused||running||!playbackReady)return;try{if(!hookStartupPending||!live()||!IsWindow(game))attach(true);start();}catch(const std::exception& e){hookStartupPending=false;status(L"自动等待："+widen(e.what()));}}
 static void leaveGame(){
  bridgeFrame.clear();lanboStream.reset();usingHeldSample=false;
  // Leaving the client changes presentation, not the subscription lifetime.
@@ -922,7 +945,7 @@ static void draw(){
   // Normally the subscription survived Alt-Tab; resume presentation in place.
   if(shared&&shared->menuSuspend==2){shared->menuSuspend=0;nativeInvisibleAt=0;gameinput::wake(hook);}
   // First attach / explicit pause recovery still needs a subscription.
-  if(mode==L"hide"&&!manualCursorPause&&!hook){try{hookStart();}catch(const std::exception& e){hookStop();log(L"Hook re-arm failed: "+widen(e.what()));stop();return;}}
+  if(mode==L"hide"&&!manualCursorPause&&!hook){try{if(!hookStart())return;}catch(const std::exception& e){hookStop();log(L"Hook re-arm failed: "+widen(e.what()));stop();return;}}
   hudEpoch=inputNow();nativeMenuHold=false;nativeMenuCandidateAt=0;previousObservedFrame=-1;fallbackTracker.reset();hudUpdates=hudCommits=hudMotion=hudChanges=0;hudLastFrame=-1;hudPaintAt=0;wasInside=true;lastFrame=-2;lastPhase=size_t(-1);tween.reset();timing.resetObservation();activeMotion.reset();refreshTries=3;refreshAt=GetTickCount();if(!nativeGameRefresh)overlaystack::place(overlay,overlaystack::Layer::Cursor,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);log(L"Game focus/client re-entered: redraw and cursor refresh, no simulated activation clicks");}
  // A new subscription or a resumed menuSuspend==2 needs the same route flags.
  applyCursorPresentation(presentation.mapped);
@@ -1413,7 +1436,7 @@ static void previewCurrent(){
 static void togglePrimary(){
  if(autoStart&&!autoPaused){
   autoStart=false;autoPaused=true;
-  if(running)stop();
+  if(running||hookStartupPending)stop();
   status(L"已关闭外部光标与自动检测。原游戏光标是否显示由当前隐藏模式决定。");
  }else{
   autoStart=true;autoPaused=false;lastAutoCheck=0;
@@ -1626,7 +1649,7 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
   updateRefresh(true);updatePrimaryAction();
   break;
  }
- case 9:hudEnabled=SendMessageW(hudBox,BM_GETCHECK,0,0)==BST_CHECKED;WritePrivateProfileStringW(L"Display",L"HUD",hudEnabled?L"1":L"0",ini().c_str());if(!hudEnabled)ShowWindow(hud,SW_HIDE);hudPaintAt=0;break;case 8:autoStart=SendMessageW(autoStartBox,BM_GETCHECK,0,0)==BST_CHECKED;autoPaused=!autoStart;if(!autoStart&&running)stop();WritePrivateProfileStringW(L"Startup",L"AutoStart",autoStart?L"1":L"0",ini().c_str());updatePrimaryAction();break;}}catch(const std::exception& e){error(e);}return 0;
+ case 9:hudEnabled=SendMessageW(hudBox,BM_GETCHECK,0,0)==BST_CHECKED;WritePrivateProfileStringW(L"Display",L"HUD",hudEnabled?L"1":L"0",ini().c_str());if(!hudEnabled)ShowWindow(hud,SW_HIDE);hudPaintAt=0;break;case 8:autoStart=SendMessageW(autoStartBox,BM_GETCHECK,0,0)==BST_CHECKED;autoPaused=!autoStart;if(!autoStart&&(running||hookStartupPending))stop();WritePrivateProfileStringW(L"Startup",L"AutoStart",autoStart?L"1":L"0",ini().c_str());updatePrimaryAction();break;}}catch(const std::exception& e){error(e);}return 0;
  case WM_HOTKEY:if(a==4){manualCursorPause=!manualCursorPause;if(manualCursorPause){ShowWindow(overlay,SW_HIDE);if(mode==L"hide")hookStop();}hudPaintAt=0;if(!manualCursorPause)wasInside=false;log(manualCursorPause?L"External pointer paused with F9":L"External pointer resumed with F9");return 0;}if(a==3){hudEnabled=!hudEnabled;SendMessageW(hudBox,BM_SETCHECK,hudEnabled?BST_CHECKED:BST_UNCHECKED,0);WritePrivateProfileStringW(L"Display",L"HUD",hudEnabled?L"1":L"0",ini().c_str());if(!hudEnabled)ShowWindow(hud,SW_HIDE);hudPaintAt=0;return 0;}if(a==2){SendMessageW(w,WM_CLOSE,0,0);return 0;}try{togglePrimary();}catch(const std::exception& e){error(e);}return 0;
  case WM_DPICHANGED:{
   // Use the OS-recommended outer rect and refresh every child and font.
@@ -1677,12 +1700,13 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  mainw=CreateWindowExW(0,L"RA2CursorControl3",title.c_str(),WS_OVERLAPPEDWINDOW|WS_VSCROLL|WS_HSCROLL|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,490,405,NULL,NULL,inst,NULL);
  {cursorcoordinates::CoordinateScope coordinates;if(!ensureCoordinateWindows(coordinates))log(L"Cursor presentation windows are not ready; retrying on the next active frame");}
  const wchar_t* labels[]={L"连接游戏",L"游戏目录",L"安装 SHA",L"恢复 SHA",L"启动",L"停止"};
- for(int i=0;i<6;i++){HWND bt=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,15+(i%3)*245,15+(i/3)*45,226,34,mainw,(HMENU)(INT_PTR)(i+1),inst,NULL);SendMessageW(bt,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);if(i==2)installBox=bt;if(i==3)restoreBox=bt;}
+ for(int i=0;i<6;i++){HWND bt=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,15+(i%3)*245,15+(i/3)*45,226,34,mainw,(HMENU)(INT_PTR)(i+1),inst,NULL);SendMessageW(bt,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);if(i==2){installBox=bt;EnableWindow(bt,FALSE);modernui::tip(bt,L"透明 SHA 替换已停用。已有透明文件可使用“恢复 SHA”手动恢复。");}if(i==3)restoreBox=bt;}
  statusw=CreateWindowW(L"STATIC",L"等待游戏",WS_CHILD|WS_VISIBLE,15,115,735,44,mainw,NULL,inst,NULL);SendMessageW(statusw,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
  HWND labelMode=CreateWindowW(L"STATIC",L"原光标",WS_CHILD|WS_VISIBLE,15,172,90,22,mainw,NULL,inst,NULL);SendMessageW(labelMode,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
- modeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,105,168,380,110,mainw,NULL,inst,NULL);
+ modeBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS,105,168,380,110,mainw,NULL,inst,NULL);
  for(const wchar_t* text:{L"保留原光标",L"隐藏原光标",L"透明 SHA",L"高危：无光标诊断"})SendMessageW(modeBox,CB_ADDSTRING,0,(LPARAM)text);
  SendMessageW(modeBox,CB_SETCURSEL,noCursorMode?3:mode==L"hide"?1:mode==L"sha"?2:0,0);SendMessageW(modeBox,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+ disabledchoices::set(modeBox,0x0b);modernui::tip(modeBox,L"透明 SHA 替换已停用；现有游戏文件不会自动修改。");
 
 
  HWND note=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE,15,212,735,58,mainw,NULL,inst,NULL);SendMessageW(note,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);

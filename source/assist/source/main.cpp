@@ -1,5 +1,6 @@
 #include "../../shared/source/feature_availability.h"
 #include "../../shared/source/modern_ui.h"
+#include "../../shared/source/disabled_choices.h"
 #include "../../shared/source/ui_message_queue.h"
 #include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/overlay_compositor.h"
@@ -727,7 +728,7 @@ static void logCommandWait(){
 }
 static bool userCommand(int c){return c!=OpenTech;}
 static DWORD discoverGamePid(); // Same window filter used by attach(), without installing a second Hook.
-static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWORD delayMs=0,uint32_t token=0,uint64_t typeHash=0){
+static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWORD delayMs=0,uint32_t token=0,uint64_t typeHash=0,const delivery::Item*retained=nullptr){
  if(c==PlaceCompletedBuilding)return false; // A frozen placement is never deferred.
  if(c==DestructPlayer)return false; // Current selection is valid only at this input edge.
  if(c==AttackOwnGround)return false; // Never resolve a delayed input against a later selection.
@@ -735,11 +736,12 @@ static bool queueCommand(int c,int arg,int arg2,uint32_t match,int retries=0,DWO
  if(c==RevealMap&&(!extra.experimentalReveal||extra.renderReveal))return false;
  DWORD now=GetTickCount();
  if(!game||!pid||!IsWindow(game)||(shared&&lastData&&incoming.status<0))return false;
- bool queued=commandQueue.add({c,arg,arg2,pid,match,now,retries,now+delayMs,token,typeHash?typeHash:typeListHash(snap.types,snap.typeCount)});
+ delivery::Item intent{c,arg,arg2,pid,match,retained?retained->created:now,retries,now+delayMs,token,typeHash?typeHash:typeListHash(snap.types,snap.typeCount)};
+ bool queued=commandQueue.add(intent);
  if(queued){diag(L"staged command="+std::to_wstring(c)+L" pid="+std::to_wstring(pid)+L" match="+std::to_wstring(match)+L" backlog="+std::to_wstring(commandQueue.size));wakeGame();}
  return queued;
 }
-static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=false,uint32_t requestToken=0){
+static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=false,uint32_t requestToken=0,const delivery::Item*queuedIntent=nullptr){
  if(command==PlaceCompletedBuilding){notify(L"建筑放置须使用原生事件放置快捷键重新提交。");return;}
  if((command==Produce||command==CancelTechProduction)&&!buildingmodes::toolOrders(techImplementation,snap.techOpen)){notify(L"原生面板模式请使用游戏建造栏生产或取消。");return;}
  if(!enabled){notify(L"战术控制已暂停，请先启用后再发送指令。");return;}
@@ -757,7 +759,15 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
     shared->selectRequest!=shared->selectAck||shared->pointer.request!=shared->pointer.ack||shared->viewZoomBusy)){
   notify(L"自毁请求未提交：请先开启功能，并等待当前对局及命令连接就绪后重新执行。");return;
  }
- const uint64_t intentTypes=typeListHash(snap.types,snap.typeCount);
+ // A consumed reservation keeps its original world and catalogue identity.
+ // readSnapshot/ensureBridge below may observe another match or mapping.
+ const bool reservation=command==ProduceReserved||command==ProduceDeferred;
+ const uint32_t intentPID=queuedIntent?queuedIntent->pid:inputPID;
+ const uint32_t intentMatch=queuedIntent?queuedIntent->match:inputMatch;
+ const uint64_t intentTypes=queuedIntent?queuedIntent->typeHash:typeListHash(snap.types,snap.typeCount);
+ if(reservation&&(!intentPID||!intentMatch||!inputConnection||pid!=intentPID||commandMatch()!=intentMatch)){
+  constructionResult(-13,0,uint32_t(arg2),requestToken);return;
+ }
  if(command==OpenTech)arg2=techImplementation;
  if(command==RevealMap&&(!extra.experimentalReveal||(!fromQueue&&!extra.manualReveal))){notify(L"请先开启允许手动地图揭示。");return;}
  if(command==RevealMap&&extra.renderReveal){notify(L"请先将黑幕绘制方式设为关闭；当前绘制补丁与原生揭示不能同时执行。");return;}
@@ -776,6 +786,9 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  }
  if(snap.status<0){notify(L"游戏操作暂不可用，本次指令未执行。");return;}
  readSnapshot();now=GetTickCount();
+ if(reservation&&(pid!=intentPID||commandMatch()!=intentMatch||shared!=inputConnection||(queuedIntent&&uint32_t(now-queuedIntent->created)>delivery::MaxAgeMs))){
+  constructionResult(-13,0,uint32_t(arg2),requestToken);return;
+ }
  if(command==AttackOwnGround&&(pid!=inputPID||!inputMatch||commandMatch()!=inputMatch||shared!=inputConnection||DWORD(now-inputAt)>150)){
   notify(L"攻击脚下未提交：输入已过期或对局已改变，请重新执行。");return;
  }
@@ -795,7 +808,7 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
  if(!connected||(!fromQueue&&commandQueue.size&&userCommand(command))){
   if(command==AttackOwnGround){notify(L"攻击脚下未提交：连接正忙，请重新执行。");return;}
   if(command==DestructPlayer){notify(L"自毁请求未提交：游戏状态已改变，请重新选择所属方后点击。");return;}
-  if(userCommand(command)&&queueCommand(command,arg,arg2,commandMatch(),retries,0,requestToken)){
+  if(userCommand(command)&&queueCommand(command,arg,arg2,reservation?intentMatch:commandMatch(),retries,0,requestToken,reservation?intentTypes:0,reservation?queuedIntent:nullptr)){
    logCommandWait();notify(L"指令已排队，尚未提交。"+commandWaitReason());return;
   }
   if(userCommand(command)&&commandQueue.size>=delivery::Capacity){notify(L"待处理命令已满，本次未加入，请稍后再试。");return;}
@@ -807,10 +820,10 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
   for(int i=0;i<MaxTypes;++i){shared->techAllowed[i]=i<snap.typeCount&&techAllowed(snap.types[i]);requested+=shared->techAllowed[i]!=0;}
   diag(L"Tech request implementation="+std::to_wstring(techImplementation)+L" profile="+std::to_wstring(techProfile)+L" selected="+std::to_wstring(requested)+L" match="+std::to_wstring(snap.match));
  }
- inFlightMatch=commandMatch();inFlightRetries=retries;sentAt=now;
- shared->requestTypeHash=typeListHash(snap.types,snap.typeCount);
+ inFlightMatch=reservation?intentMatch:commandMatch();inFlightRetries=retries;sentAt=now;
+ shared->requestTypeHash=reservation?intentTypes:typeListHash(snap.types,snap.typeCount);
  shared->requestToken=requestToken;shared->command=command;shared->arg=arg;shared->arg2=arg2;
- shared->requestTick=now;shared->requestMatch=commandMatch();
+ shared->requestTick=now;shared->requestMatch=reservation?intentMatch:commandMatch();
  MemoryBarrier();
  if(command==RevealMap)revealpermission::beforeRequest(shared->flags,extra.experimentalReveal,[&]{InterlockedIncrement((volatile LONG*)&shared->request);});
  else InterlockedIncrement((volatile LONG*)&shared->request);
@@ -1045,7 +1058,20 @@ static bool ensureBridge(){
  DWORD now=GetTickCount();
  probeNativeViewportMapping();
  if(!game||bridgeBlocked||(bridgeRetryAt&&int32_t(now-bridgeRetryAt)<0))return false;
- if(!gameinput::runtimeAvailable()){DWORD error=GetLastError();++bridgeAttempts;return bridgeConnectFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",error);}
+ if(!gameinput::runtimeAvailable()){
+  const DWORD error=GetLastError();
+  if(error==ERROR_IO_PENDING){bridgeRetryAt=GetTickCount()+75;bridgeFailure.clear();setStatus(L"正在连接游戏运行组件，请稍候。");return false;}
+  ++bridgeAttempts;return bridgeConnectFailed(L"运行组件缺失或版本不匹配，请完整更新工具箱",error);
+ }
+ // Validate before allocating a command mapping or counting an install
+ // attempt. A broker which is still starting retains its process and mailbox.
+ const HMODULE candidateModule=gameinput::runtimeModule();
+ if(!gameinput::assistIdentity(candidateModule,Version,sizeof(Shared),MappingPrefix.text)){
+  const DWORD error=GetLastError();
+  if(error==ERROR_IO_PENDING){bridgeRetryAt=GetTickCount()+75;bridgeFailure.clear();setStatus(L"正在连接游戏运行组件，请稍候。");return false;}
+  ++bridgeAttempts;bridgeBlocked=true;diag(L"Assist bridge protocol/structure mismatch");
+  return bridgeConnectFailed(L"运行组件版本不匹配，请完整更新工具箱。",error);
+ }
  now=GetTickCount();
  gameinput::NativeWindowProbe native{};
  if(!gameinput::nativeWindow(pid,gameThread,&native)){
@@ -1092,16 +1118,15 @@ static bool ensureBridge(){
  shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=hostWindow;shared->heartbeat=now;shared->flags=flags();shared->scanMs=8;shared->repairMs=repairMs;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
  shared->megaQueueMode=megaQueueMode;shared->objectQueueMode=objectQueueMode;shared->driverStatus=0;syncAdditional();syncTypeConfig();
  shared->clockTick=now;shared->clockStart=0;shared->clockFrequency=0;
- module=gameinput::runtimeModule();
- {
-  if(!gameinput::assistIdentity(module,Version,sizeof(Shared),MappingPrefix.text)){
-   bridgeBlocked=true;releaseBridge();
-   diag(L"Assist bridge protocol/structure mismatch");
-   return bridgeConnectFailed(L"运行组件版本不匹配，请完整更新工具箱。");
-  }
- }
+ module=candidateModule;
  hook=gameinput::install(gameentry::Client::Assist,gameThread,pid,game);
  if(!hook){DWORD error=GetLastError();std::wstring stage=gameinput::installationStage();releaseBridge();
+  if(error==ERROR_IO_PENDING){
+   // No subscription was acquired. Keep retiring the old Target without
+   // charging its asynchronous cleanup to the installation failure budget.
+   if(bridgeAttempts>0)--bridgeAttempts;
+   bridgeRetryAt=GetTickCount()+75;bridgeFailure.clear();setStatus(L"正在连接游戏运行组件，请稍候。");return false;
+  }
   const auto capacity=gameinput::capacity();
   critical(L"hook-install-failed stage="+stage+L" Win32="+std::to_wstring(error)+
    L" hostBits="+std::to_wstring(sizeof(void*)*8)+L" targets="+std::to_wstring(capacity.targets)+L"/8 subscriptions="+std::to_wstring(capacity.subscriptions)+L"/32");logLoadedGameModules();
@@ -1929,7 +1954,7 @@ static void serviceCommandQueue(DWORD now){
    if(queued.command==ProduceReserved||queued.command==ProduceDeferred)constructionResult(-13,0,uint32_t(queued.arg2),queued.token);
    else notify(L"单位清单已改变，旧的待处理指令已取消。");
   }
-  else send(queued.command,queued.arg,queued.arg2,queued.retries,true,queued.token);
+  else send(queued.command,queued.arg,queued.arg2,queued.retries,true,queued.token,&queued);
  }
  static DWORD waitLoggedAt=0;
  if(commandQueue.size&&DWORD(now-waitLoggedAt)>=2000){waitLoggedAt=now;logCommandWait();}

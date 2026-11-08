@@ -1,0 +1,48 @@
+{
+  "schema": "ra2.host-bridge-retry.v1",
+  "passed": true,
+  "real_windows_tested": false,
+  "game_tested": false,
+  "results": {
+    "baseline": {
+      "source": "/workspace/scratch/40121bc881b8/release-1.0.44/construction/main-before.cpp",
+      "source_sha256": "dec08343c8dc3287aa7f789192064bdb9db0dbbbf2818bffad033880c2704654",
+      "routes_sha256": "e4f3563ca9c3836536d1730662f6e99ec75ebd5f105cef9ec2fd0fc602904ce5",
+      "exit_code": 1,
+      "build_command": [
+        "c++",
+        "-std=c++17",
+        "-O2",
+        "-D_WIN64",
+        "-DHOST_BRIDGE_ROUTES=\"/workspace/scratch/40121bc881b8/release-1.0.44/construction/bridge-pending-final/baseline-production.inc\"",
+        "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/host_bridge_retry.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/release-1.0.44/construction/bridge-pending-final/baseline"
+      ],
+      "checks": 174,
+      "failures": 63,
+      "passed": false,
+      "scope": "complete production ensureBridge with deterministic Win32/transport substitutes; no Windows/game validation"
+    },
+    "current": {
+      "source": "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/source/main.cpp",
+      "source_sha256": "5f0853b68d8f2d170d49c09fd8d13f1b783eb97ca1cff796f5c4c5e793352827",
+      "routes_sha256": "55bb79319850618af80c9b21b32dcb883c28038c41e669dc44452263739dd0ac",
+      "exit_code": 0,
+      "build_command": [
+        "c++",
+        "-std=c++17",
+        "-O2",
+        "-D_WIN64",
+        "-DHOST_BRIDGE_ROUTES=\"/workspace/scratch/40121bc881b8/release-1.0.44/construction/bridge-pending-final/current-production.inc\"",
+        "/workspace/scratch/40121bc881b8/ra2-audit-followup/source/assist/tests/host_bridge_retry.cpp",
+        "-o",
+        "/workspace/scratch/40121bc881b8/release-1.0.44/construction/bridge-pending-final/current"
+      ],
+      "checks": 174,
+      "failures": 0,
+      "passed": true,
+      "scope": "complete production ensureBridge with deterministic Win32/transport substitutes; no Windows/game validation"
+    }
+  }
+}

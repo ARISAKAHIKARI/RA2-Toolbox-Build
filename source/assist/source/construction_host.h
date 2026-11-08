@@ -203,7 +203,7 @@ struct PaintRequest {uint32_t pid,match,tick,house;int activeTab,scroll,hoverCho
 struct Painted {PaintRequest request;std::vector<uint32_t> pixels;bool incomplete=false;};
 struct PanelPainter {
  const PaintRequest&request;construction::Layout layout;external::ReadSession&externalReader;external::cameraassets::Context<external::ReadSession>&assets;bool&incomplete;
-RECT rect(int x,int y,int r,int bottom){return {layout.x(x),layout.y(y),layout.x(r),layout.y(bottom)};}
+RECT rect(int x,int y,int r,int bottom){return {layout.x(x),layout.pointY(y),layout.x(r),layout.pointY(bottom)};}
 void paintIcon(HDC dc,int index,int x,int y,bool gray){
  auto found=request.types.find(index);if(found==request.types.end())return;const auto&t=found->second;
  uint32_t ptr=request.pointers.at(index);
@@ -255,8 +255,8 @@ static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest
   if(b.items.empty()){
    painter.panelBox(dc,painter.rect(5,26,139,54),RGB(20,32,44),RGB(43,62,80));
    HPEN plus=CreatePen(PS_SOLID,std::max(1,layout.x(1)),RGB(104,133,153));auto old=SelectObject(dc,plus);
-   MoveToEx(dc,layout.x(67),layout.y(40),nullptr);LineTo(dc,layout.x(77),layout.y(40));
-   MoveToEx(dc,layout.x(72),layout.y(35),nullptr);LineTo(dc,layout.x(72),layout.y(45));SelectObject(dc,old);DeleteObject(plus);
+   MoveToEx(dc,layout.x(67),layout.pointY(40),nullptr);LineTo(dc,layout.x(77),layout.pointY(40));
+   MoveToEx(dc,layout.x(72),layout.pointY(35),nullptr);LineTo(dc,layout.x(72),layout.pointY(45));SelectObject(dc,old);DeleteObject(plus);
   }
   if(!b.items.empty()){
    int row=std::min(int(b.items.size()),construction::VisibleCapacity)-1,y=construction::StackTop+row*construction::StackStep;
@@ -345,7 +345,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(msg==WM_MOUSELEAVE){hoverChoice=hoverQueue=-1;requestPaint();return 0;}
  if(msg==WM_MOUSEWHEEL){if(!geometryReady||!panelInputReady())return 0;int delta=short(HIWORD(wp)),maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll+(delta<0?2:-2),0,maximum);requestPaint();return 0;}
  if(msg==WM_LBUTTONUP||msg==WM_RBUTTONUP){if(!geometryReady||!panelInputReady()||!usable())return 0;int x=short(LOWORD(lp)),y=short(HIWORD(lp));
-  if(msg==WM_LBUTTONUP&&y>=0&&y<layout.y(24)&&x>=0&&x<layout.width()){
+  if(msg==WM_LBUTTONUP&&y>=0&&y<layout.pointY(24)&&x>=0&&x<layout.width()){
    selectedTab=std::min(3,int(int64_t(x)*4/layout.width()));activeTab=selectedTab;scroll=0;refreshChoices();requestPaint();return 0;}
   if(msg==WM_RBUTTONUP){if(activeTab<0||activeTab>3)return 0;bool all=(wp&MK_SHIFT)!=0;int slot=layout.queueAt(x,y,int(books[activeTab].items.size()));if(slot>=0)removeTop(all);else{int n=layout.choiceAt(x,y,scroll,int(choices.size()));if(n>=0){auto&items=books[activeTab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==choices[n].index){removeItem(activeTab,i,all);break;}}}}
   else reserve(layout.choiceAt(x,y,scroll,int(choices.size())));return 0;

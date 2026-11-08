@@ -1,0 +1,64 @@
+FAIL: broker transport pending does not consume failure budget
+FAIL: broker transport pending retries after 75ms
+FAIL: broker pending displays connecting status
+FAIL: broker transport pending does not consume failure budget
+FAIL: broker transport pending retries after 75ms
+FAIL: broker pending displays connecting status
+FAIL: broker transport pending does not consume failure budget
+FAIL: broker transport pending retries after 75ms
+FAIL: broker pending displays connecting status
+FAIL: broker transport pending does not consume failure budget
+FAIL: broker transport pending retries after 75ms
+FAIL: broker pending displays connecting status
+FAIL: broker transport pending does not consume failure budget
+FAIL: broker transport pending retries after 75ms
+FAIL: broker pending displays connecting status
+FAIL: broker identity pending does not block or consume failures
+FAIL: broker identity pending retries after 75ms
+FAIL: identity pending cannot create and tear down mapping
+FAIL: broker identity pending does not block or consume failures
+FAIL: broker identity pending retries after 75ms
+FAIL: identity pending cannot create and tear down mapping
+FAIL: broker identity pending does not block or consume failures
+FAIL: broker identity pending retries after 75ms
+FAIL: identity pending cannot create and tear down mapping
+FAIL: pending broker connects on its first completed attempt
+FAIL: pending to ready allocates and installs once
+FAIL: broker transport pending does not consume failure budget
+FAIL: broker transport pending retries after 75ms
+FAIL: broker pending displays connecting status
+FAIL: broker transport pending does not consume failure budget
+FAIL: broker transport pending retries after 75ms
+FAIL: broker pending displays connecting status
+FAIL: broker transport pending does not consume failure budget
+FAIL: broker transport pending retries after 75ms
+FAIL: broker pending displays connecting status
+FAIL: broker transport pending does not consume failure budget
+FAIL: broker transport pending retries after 75ms
+FAIL: broker pending displays connecting status
+FAIL: broker transport pending does not consume failure budget
+FAIL: broker transport pending retries after 75ms
+FAIL: broker pending displays connecting status
+FAIL: broker identity pending does not block or consume failures
+FAIL: broker identity pending retries after 75ms
+FAIL: identity pending cannot create and tear down mapping
+FAIL: broker identity pending does not block or consume failures
+FAIL: broker identity pending retries after 75ms
+FAIL: identity pending cannot create and tear down mapping
+FAIL: broker identity pending does not block or consume failures
+FAIL: broker identity pending retries after 75ms
+FAIL: identity pending cannot create and tear down mapping
+FAIL: pending broker connects on its first completed attempt
+FAIL: pending to ready allocates and installs once
+FAIL: pending install does not consume failure budget or block
+FAIL: pending install schedules a short connecting retry
+FAIL: pending install does not consume failure budget or block
+FAIL: pending install schedules a short connecting retry
+FAIL: retirement completion permits one normal installation
+FAIL: pending install does not consume failure budget or block
+FAIL: pending install schedules a short connecting retry
+FAIL: pending install does not consume failure budget or block
+FAIL: pending install schedules a short connecting retry
+FAIL: retirement completion permits one normal installation
+FAIL: protocol mismatch blocks before allocating mapping
+{"checks":174,"failures":63,"passed":false,"scope":"complete production ensureBridge with deterministic Win32/transport substitutes; no Windows/game validation"}
