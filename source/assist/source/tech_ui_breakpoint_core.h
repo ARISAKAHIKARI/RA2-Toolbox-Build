@@ -151,12 +151,20 @@ private:
   if(handlerDepth_==1&&confirmed&&(state==Ready||state==Slots||state==Signature)&&callback&&callback(&c,hit.tag))countOwner(changed);
   return EXCEPTION_CONTINUE_EXECUTION;
  }
+ struct DispatchInvocation {
+  Service*service;EXCEPTION_POINTERS*pointers;const DispatchRoute*route;
+  LONG result=EXCEPTION_CONTINUE_SEARCH;
+  static void __cdecl invoke(void*raw){auto&call=*static_cast<DispatchInvocation*>(raw);call.result=call.service->dispatch(call.pointers,*call.route);}
+  static void __cdecl finish(void*raw){--static_cast<DispatchInvocation*>(raw)->service->handlerDepth_;}
+ };
  static LONG CALLBACK vectored(EXCEPTION_POINTERS*p){
   Service*s=instance();if(!s||!p||!p->ExceptionRecord||!p->ContextRecord||GetCurrentThreadId()!=s->owner_)return EXCEPTION_CONTINUE_SEARCH;
   const DispatchRoute route=s->classify(p);if(route.kind==DispatchRoute::Ignore)return EXCEPTION_CONTINUE_SEARCH;
-  LONG result=EXCEPTION_CONTINUE_SEARCH;++s->handlerDepth_;
-  runtimeunwind::run([&]{result=s->dispatch(p,route);},[&]{--s->handlerDepth_;});
-  return result;
+  // Keep the same SEH finally, but pass the dispatch data directly instead of
+  // chasing Invocation -> capturing lambda -> referenced local on every hit.
+  DispatchInvocation call{s,p,&route};++s->handlerDepth_;
+  RuntimeScopedCall(&call,DispatchInvocation::invoke,DispatchInvocation::finish);
+  return call.result;
  }
  int localTrapFilter(EXCEPTION_POINTERS*p){return privateTrap(p)?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH;}
  static void __cdecl trapBody(void*){ownerRendezvousTrap();}

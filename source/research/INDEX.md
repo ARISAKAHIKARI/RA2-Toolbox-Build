@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 硬件异常热路径第三轮 | [科技候选预计算、固定比较结果与本方上下文精简](2026-11-08-hardware-precomputed-tech-and-owned-dispatch.md) | pre3 candidate-index Full early-reject Enhancement64 constant-flags static-reader same-live-guards flat-dispatch no-hit-count-reduction |
 | 原始世界样本与消费者实际接入 | [capture/seal、动态跨进程 payload、战术与视图阶段拆分](2026-11-08-shared-world-sampling-implementation.md) | Assist101 pre2 raw-overlap single-producer demand sealed no-live-fallback dynamic-mapping nothrow pause UI-generation source-bound-tests |
 | 硬件异常热路径第二轮 | [外部异常快速分流、维护复用与真实命中窗口](2026-11-08-hardware-dispatch-and-rate-observation.md) | owned-foreign classify-before-scope same-context maintenance-view telemetry1s no-per-hit-clock inherent-VEH-cost |
 | 每逻辑帧一份原始世界样本 | [现存重复入口、共享读集与统一采样待实现契约](2026-11-08-unified-world-sampling-contract.md) | cee2af56 pre1-epoch-only FrameReadSet capture-seal projection LiveRead SceneBank-overview minimap no-new-implementation |

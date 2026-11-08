@@ -17,6 +17,7 @@
 #include <sys/mman.h>
 #include "tech_enhancement.h"
 #include "tech_enhancement_parameter_policy.h"
+#include "tech_parameter_lookup.h"
 #include "technology_mode_policy.h"
 #include "sidebar_policy.h"
 #include "session_epoch.h"
@@ -54,6 +55,7 @@ static bool read(uint32_t p,void*out,size_t n){if(!mapped(p,n)||(unreadable>=p&&
 template<class T>static T get(uint32_t p){T v{};read(p,&v,sizeof v);return v;}
 template<class T>static void put(uint32_t p,T v){assert(mapped(p,sizeof v));if(p==House+0x1FC)++rechecks;std::memcpy(reinterpret_cast<void*>(uintptr_t(p)),&v,sizeof v);}
 static LONG InterlockedExchange(volatile LONG*p,LONG v){LONG old=*p;*p=v;return old;}
+static void MemoryBarrier(){}
 static bool enhancementWrite(uint32_t p,const void*v,size_t n){assert((p==Bus+0x634||p==Normal+0x634)&&n==4);++levelWrites;std::memcpy(reinterpret_cast<void*>(uintptr_t(p)),v,n);return true;}
 struct Vec {uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
 static Vec vec(uint32_t p,int){Vec v{};return read(p,&v,sizeof v)?v:Vec{};}
@@ -79,7 +81,7 @@ namespace techbp {static constexpr int Signature=-1,Thread=-5;}
 namespace techparameters {
 struct TypeIdentity {uint32_t pointer=0,id=0,table=0;};
 struct EnhancedIdentity {TypeIdentity type;uint32_t items=0;int index=-1,level=0;};
-struct Policy {volatile LONG enhanced=0,compareLevel=0;EnhancedIdentity enhancement[techenhancement::Count]{};} policy;
+struct Policy {volatile LONG enhanced=0,compareLevel=0;EnhancedIdentity enhancement[techenhancement::Count]{};techlookup::PointerIndex<64> enhancementIndex;} policy;
 static bool enhancementDesired=false,enhancementCompareRequested=false,desired=false,enhancementCameoBlocked=false;
 static int enhancementFailure=0;
 static DWORD enhancementParameterScan=0;
@@ -120,6 +122,7 @@ static void setup(){
 }
 static std::vector<uint8_t> productionBytes(){std::vector<uint8_t> v(0x80+0x40+4);std::memcpy(v.data(),reinterpret_cast<void*>(uintptr_t(Factory)),0x80);std::memcpy(v.data()+0x80,reinterpret_cast<void*>(uintptr_t(Product)),0x40);std::memcpy(v.data()+0xC0,reinterpret_cast<void*>(uintptr_t(Items+0x100)),4);return v;}
 static void exact(){options.techEnhance=true;options.techEnhanceImplementation=1;techEnhancementTick(1200);techEnhanceParametersTick(House,1200);}
+static unsigned enhancementCandidate(uint32_t pointer){using namespace techparameters;return policy.enhancementIndex.find(policy.enhancement,pointer,[](const EnhancedIdentity&t){return t.type.pointer;});}
 static void ordinaryCataloguePoll(){external::catalogue::Stamp stamp;assert(external::catalogue::capture(read,stamp));if(!catalogueReady||catalogueHash!=stamp.hash)scanTypes();catalogueHash=stamp.hash;catalogueReady=true;catalogueDirty=false;}
 static void civilian(bool president){
  // Public original-rule candidates agree on these distinctions: PRES and BUS
@@ -277,6 +280,26 @@ int main(int argc,char**argv){assert(argc==2);setup();const std::string test=arg
  }else if(test=="exact_full_allowlist"){
   snap.techOpen=5;techImplementation=4;exact();check(techPending&&typeSlot(Bus)>=0,"exact catalogue edge requests the existing active full-tech refresh");
   check(techAllowed[typeSlot(Normal)]==1&&!techAllowed[typeSlot(Bus)],"full-tech whitelist remains explicit and preserves existing selection");
+ }else if(test=="exact_index_published"){
+  exact();check(techparameters::policy.enhanced&&techparameters::policy.enhancementIndex.ready(),"ordinary capture publishes a complete candidate index");
+  check(enhancementCandidate(Bus)==10&&enhancementCandidate(Normal)==techenhancement::Count,"only the captured named rule is indexed");
+ }else if(test=="exact_index_rebuild_removed"){
+  exact();check(enhancementCandidate(Bus)==10,"original candidate was published");
+  std::memcpy(reinterpret_cast<void*>(uintptr_t(Bus+0x24)),"TAXI",5);techEnhanceParametersTick(House,1800);
+  check(techparameters::policy.enhancementIndex.ready()&&enhancementCandidate(Bus)==techenhancement::Count,"fresh empty capture cannot retain the formerly named candidate");
+ }else if(test=="exact_index_unready_recapture"){
+  exact();techparameters::policy.enhancementIndex.reset();put<uint32_t>(Bus+0x10,12345);techEnhanceParametersTick(House,1300);
+  check(techparameters::enhancementParameterScan==1300&&techparameters::policy.enhanced,"unpublished index forces capture before the 500ms interval");
+  check(enhancementCandidate(Bus)==10&&techparameters::policy.enhancement[10].type.id==12345,"forced recapture publishes the current UID");
+ }else if(test=="exact_index_empty_capture"){
+  unreadable=Bus+0x24;exact();
+  check(techparameters::policy.enhancementIndex.ready()&&enhancementCandidate(Bus)==techenhancement::Count,"failed identity reads produce an empty candidate index");
+  check(!probes&&!additions,"empty capture grants no native probe or cameo work");
+ }else if(test=="exact_index_capture_failure"){
+  exact();worldAvailable=false;techEnhanceParametersTick(House,1300);
+  check(!techparameters::policy.enhanced,"failed world capture revokes permission before any stale index could be used");
+  worldAvailable=true;put<uint32_t>(Bus+0x10,12345);techEnhanceParametersTick(House,1400);
+  check(techparameters::enhancementParameterScan==1400&&enhancementCandidate(Bus)==10&&techparameters::policy.enhancement[10].type.id==12345,"recovery rebuilds current identities before republishing permission");
  }else if(test=="exact_busy_mode_handoff"){
   exact();put<uint32_t>(Product+0x20,Bus);options.techEnhanceImplementation=0;techEnhanceParametersTick(House,1800);
   check(techparameters::enhancementFailure==-7&&techparameters::policy.enhanced,"dependent in-flight product keeps exact permission during a requested mode switch");

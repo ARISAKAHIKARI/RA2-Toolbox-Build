@@ -1,6 +1,7 @@
 #include "tech_ui_breakpoint_core.h"
 #include "tech_ui_breakpoint_debug.h"
 #include "tech_enhancement_parameter_policy.h"
+#include "tech_parameter_lookup.h"
 #include "control_parameter_policy.h"
 #include "map_visibility_parameter_policy.h"
 #include "../../shared/source/hardware_performance.h"
@@ -22,7 +23,7 @@ namespace techparameters {
 inline constexpr uint32_t FullGroup=1u;
 struct TypeIdentity{uint32_t pointer=0,id=0,table=0;};
 struct EnhancedIdentity{TypeIdentity type;uint32_t items=0;int index=-1,level=0;};
-struct Policy{volatile LONG enabled=0;uint32_t house=0,houseID=0,scenario=0;int session=-1,frame=-1;TypeIdentity types[1024]{};volatile LONG enhanced=0,controlling=0,compareLevel=0,showing=0;EnhancedIdentity enhancement[techenhancement::Count]{};};
+struct Policy{volatile LONG enabled=0;uint32_t house=0,houseID=0,scenario=0;int session=-1,frame=-1;TypeIdentity types[1024]{};volatile LONG enhanced=0,controlling=0,compareLevel=0,showing=0;EnhancedIdentity enhancement[techenhancement::Count]{};techlookup::PointerIndex<64> enhancementIndex;};
 static Policy policy;static techbp::Service service;
 static bool mapDesired=false,mapRedrawPending=false;static int mapFailure=0;static volatile LONG mapExceptions=0;static bool lastMapPresentation=false;
 static int failure=0,enhancementFailure=0,controlFailure=0;static bool desired=false,enhancementDesired=false,controlDesired=false,enhancementCompareRequested=false,enhancementCameoBlocked=false;
@@ -109,7 +110,8 @@ static bool healthy(){return service.state!=techbp::System&&service.state!=techb
 static bool ready(uint32_t group){return healthy()&&(service.activeTags()&group)==group;}
 static uint32_t enhancementTags(){return techenhanceparams::breakpointTags(enhancementCompareRequested);}
 static bool enhancementReady(){return ready(enhancementTags())&&(service.activeTags()&12u)==enhancementTags();}
-static bool fullType(uint32_t pointer){unsigned n=hash(pointer);for(unsigned probe=0;probe<1024;++probe,n=(n+1)&1023u){const auto&t=policy.types[n];if(!t.pointer)return false;if(t.pointer==pointer)return get<uint32_t>(pointer)==t.table&&get<uint32_t>(pointer+0x10)==t.id;}return false;}
+static const TypeIdentity* fullIdentity(uint32_t pointer){return techlookup::findIdentity(policy.types,pointer);}
+static bool fullType(uint32_t pointer){const auto*t=fullIdentity(pointer);return t&&get<uint32_t>(pointer)==t->table&&get<uint32_t>(pointer+0x10)==t->id;}
 // Diagnostics follow the feature owning outstanding cleanup. A healthy
 // sibling may keep the shared handler alive after this group has retired.
 static bool groupOff(uint32_t group){
@@ -208,7 +210,7 @@ static bool captureWorld(uint32_t house){
  if(!sh||sh->stop||fault||house!=lastHouse||!house||get<uint32_t>(0xA83D4C)!=house)return false;
  uint32_t scenario=0,id=0;int frame=-1,session=-1;
  if(!read(0xA8B230,&scenario,4)||!scenario||!read(0xA8ED84,&frame,4)||frame<0||!read(0xA8B238,&session,4)||!eventdelivery::mayQueue(session)||!read(house+0x10,&id,4)||!id)return false;
- if(policy.house!=house||policy.houseID!=id||policy.scenario!=scenario||policy.session!=session||frame<policy.frame){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
+ if(policy.house!=house||policy.houseID!=id||policy.scenario!=scenario||policy.session!=session||frame<policy.frame){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);policy.enhancementIndex.reset();}
  policy.house=house;policy.houseID=id;policy.scenario=scenario;policy.frame=frame;policy.session=session;return true;
 }
 static bool capture(uint32_t house){
@@ -264,8 +266,12 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
  if(tag==1)return mapVisibilityParameter(context)?1:0;
  if(tag==4){
   techbp::countOwner(controlExceptions);
-  if(controlPolicyRevision!=debugentries::policyRevision||!policy.controlling||!sh||!controlmode::parameters(sh->controlAll)||sh->stop||fault||!controlparams::world(policy.house,policy.houseID,policy.scenario,policy.session,policy.frame,controlparams::guardedRead)||!controlparams::house(context.Ecx,controlparams::guardedRead)||context.Esp<0x10000)return 0;
-  uint32_t caller=0;if(!controlparams::guardedRead(context.Esp,&caller,4)||caller<0x10000)return 0;
+  // Preserve the reader's concrete type. A function-pointer template argument
+  // leaves ten indirect calls in the Win32 world guard even at -O2. This still
+  // reads every current field, in the same order, inside the same SEH scope.
+  const auto readCurrent=[](uint32_t address,void*out,size_t size){return controlparams::guardedRead(address,out,size);};
+  if(controlPolicyRevision!=debugentries::policyRevision||!policy.controlling||!sh||!controlmode::parameters(sh->controlAll)||sh->stop||fault||!controlparams::world(policy.house,policy.houseID,policy.scenario,policy.session,policy.frame,readCurrent)||!controlparams::house(context.Ecx,readCurrent)||context.Esp<0x10000)return 0;
+  uint32_t caller=0;if(!readCurrent(context.Esp,&caller,4)||caller<0x10000)return 0;
   context.Eip=controlparams::destination(caller);return 1;
  }
  if(tag<2)techbp::countOwner(fullExceptions);else techbp::countOwner(enhancementExceptions);
@@ -275,24 +281,28 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
   if(context.Esp<0x10000)return 0;auto*args=reinterpret_cast<uint32_t*>(uintptr_t(context.Esp));
   const uint32_t caller=args[0],pointer=args[1];const bool draw=caller==0x6A97D7,prune=caller==0x6AA786;
   if((!draw&&!prune)||pointer<0x10000||args[2]||args[3]!=(draw?0u:1u))return 0;
-  if(!policy.enabled||!sh||!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)||context.Ecx!=policy.house||!world())return 0;
-  if(!fullType(pointer))return 0;
+  if(!policy.enabled||!sh||sh->stop||fault||!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)||context.Ecx!=policy.house)return 0;
+  // Reject uncaptured types using local data before reading the live world.
+  // A candidate still needs every current identity and signature guard.
+  const auto*t=fullIdentity(pointer);if(!t)return 0;
+  if(!world()||get<uint32_t>(pointer)!=t->table||get<uint32_t>(pointer+0x10)!=t->id)return 0;
   if(!nativeCompatibleHot()){InterlockedExchange(&policy.enabled,0);return 0;}
   args[2]=1;return 1;
  }
- if(!policy.enhanced||!sh||!sh->techEnhance||(tag==3&&!policy.compareLevel))return 0;
+ if(!policy.enhanced||!sh||sh->stop||fault||!sh->techEnhance||(tag==3&&!policy.compareLevel))return 0;
  const uint32_t stack=context.Esp,returnAddress=get<uint32_t>(stack+0x4C),pointer=get<uint32_t>(stack+0x50);
  if(context.Ebp!=policy.house||get<uint32_t>(stack+0x10)!=policy.house||get<uint32_t>(stack+0x54)||
   (tag==2?context.Edi:context.Ecx)!=pointer||pointer<0x10000)return 0;
  const uint32_t include=get<uint32_t>(stack+0x58);const bool caller=(returnAddress==0x6A97D7&&include==0)||(returnAddress==0x6AA786&&include==1)||
   (probeDepth&&returnAddress==techEnhanceProbeReturn&&include==1&&probeToken&&uint32_t(InterlockedCompareExchange(&gameentry::activeToken,0,0))==probeToken);
  if(!caller)return 0;
+ const unsigned i=policy.enhancementIndex.find(policy.enhancement,pointer,[](const EnhancedIdentity&t){return t.type.pointer;});
+ if(i>=techenhancement::Count)return 0;
+ const auto&t=policy.enhancement[i];
  if(!world()||!enhancementCompatibleHot())return 0;
- for(unsigned i=0;i<techenhancement::Count;++i){const auto&t=policy.enhancement[i];if(t.type.pointer!=pointer)continue;
-  if(get<uint32_t>(pointer)!=t.type.table||get<uint32_t>(pointer+0x10)!=t.type.id||get<int>(pointer+0x634)!=t.level||
-     get<uint32_t>(techenhancement::Rules[i].array+4)!=t.items||t.index<0||t.index>=get<int>(techenhancement::Rules[i].array+16)||get<uint32_t>(t.items+uint32_t(t.index)*4)!=pointer)return 0;
-  context.EFlags=techenhanceparams::compareFlags(1,tag==2?UINT32_MAX:context.Ebx,context.EFlags);return 1;
- }return 0;
+ if(get<uint32_t>(pointer)!=t.type.table||get<uint32_t>(pointer+0x10)!=t.type.id||get<int>(pointer+0x634)!=t.level||
+    get<uint32_t>(techenhancement::Rules[i].array+4)!=t.items||t.index<0||t.index>=get<int>(techenhancement::Rules[i].array+16)||get<uint32_t>(t.items+uint32_t(t.index)*4)!=pointer)return 0;
+ context.EFlags=tag==2?techenhanceparams::limitFlags(context.EFlags):techenhanceparams::compareFlags(1,context.Ebx,context.EFlags);return 1;
 }
 extern "C" unsigned BeginTechEnhancementProbe(){using namespace techparameters;if(!gameentry::active(gameentry::Client::Assist)||!policy.enhanced||!enhancementReady()||probeDepth>=16)return 0;static constexpr uint8_t stub[]={0x8B,0x4C,0x24,4,0x8B,0x44,0x24,8,0x6A,1,0x6A,0,0x50,0xB8,0x70,0x78,0x4F,0,0xFF,0xD0,0xC2,8,0};
  const auto*start=reinterpret_cast<const uint8_t*>(&AssistTechEnhancementProbeCall);if(memcmp(start,stub,sizeof stub))return 0;
@@ -413,8 +423,8 @@ static void techEnhanceParametersTick(uint32_t house,DWORD now){
  enhancementCompareRequested=compareRequested;
  if(!captureWorld(house)){InterlockedExchange(&policy.enhanced,0);enhancementFailure=techbp::Thread;publish();return;}
  enhancementFailure=0;enhancementDesired=true;
- if(!enhancementParameterScan||DWORD(now-enhancementParameterScan)>=500||!policy.enhanced){
-  enhancementParameterScan=now;InterlockedExchange(&policy.enhanced,0);for(auto&t:policy.enhancement)t={};
+ if(!enhancementParameterScan||DWORD(now-enhancementParameterScan)>=500||!policy.enhanced||!policy.enhancementIndex.ready()){
+  enhancementParameterScan=now;InterlockedExchange(&policy.enhanced,0);policy.enhancementIndex.reset();for(auto&t:policy.enhancement)t={};
   for(unsigned i=0;i<techenhancement::Count;++i){const auto&r=techenhancement::Rules[i];Vec types=vec(r.array,4096);
    for(int index=0;index<types.count;++index){const uint32_t pointer=item(types,index);if(!pointer||techEnhancementCatalogueLevel(pointer,get<int>(pointer+0x634))!=1)continue;
     char id[24]{};if(get<uint32_t>(pointer)!=r.vtable||!read(pointer+0x24,id,sizeof id)||!memchr(id,0,sizeof id)||!techenhancement::sameID(id,r.id)||!techenhancement::eligible(r,get<int>(pointer+0x634)))continue;
@@ -422,6 +432,7 @@ static void techEnhanceParametersTick(uint32_t house,DWORD now){
     policy.enhancement[i]={{pointer,uid,r.vtable},types.items,index,get<int>(pointer+0x634)};break;
    }
   }
+  policy.enhancementIndex.rebuild(policy.enhancement,[](const EnhancedIdentity&t){return t.type.pointer;});MemoryBarrier();
  }
  configure();if(!enhancementReady())return;
  // Missing sidebar helpers stop this presentation pass before any icon or

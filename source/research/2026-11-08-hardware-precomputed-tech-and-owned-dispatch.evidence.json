@@ -1,0 +1,171 @@
+{
+  "schema": "ra2.hardware-precompute-evidence.v1",
+  "baseline_commit": "cc3f0117c233284cec1963a11c26d637d55817fe",
+  "supported_executable_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "evidence_level": "production-source differentials; controlled full-Service dispatch; actual Win32 O2 object inspection; independent read-only review",
+  "production_source_sha256": {
+    "source/assist/source/tech_ui_breakpoint_core.h": "97cac301e934a29fd826bfe01088055a9c90c38f4ca031d111d3149d50cc4239",
+    "source/assist/source/tech_ui_breakpoint_hot.h": "d4240a941f60993162edb924183027d37aa793817b8c9f480558ac410719c73e",
+    "source/assist/source/tech_ui_breakpoint_rendezvous_guard.h": "df03cb34bb15838e8874b5c9f037f35615d4d755a5fdf89820ee953391e8c943",
+    "source/shared/source/runtime_seh_scope.h": "a9b404935e2b0b9fac4c594d4c27e31b08c0141c5f0d7e25e63557991cb271f7",
+    "source/shared/source/hardware_slot_budget.h": "997a06543ddf6c77de423740ec82863db69a4f9efff3be679b1e309368e6e8c8",
+    "source/assist/source/guard.cpp": "eeac4d1b37c4ae9a4b8d4a5e3dc3469a6518bb451ce5275b281f5dd4e5af2b9a",
+    "source/assist/source/exception_policy.h": "43162e417c1429b720d2bd2a5cfff24d8b8b991e5fd0d017b2e1cee8af44d991",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "a3bb56025924b3f9e8432ab9799d7a92302c48bf5ca36442ee4b19aa2d17d295",
+    "source/assist/source/tech_parameter_lookup.h": "14fd3aa6ef6b4557804d44fd6743ac4b5bc1e92f7a23f7fc434c0ffe9a735a43",
+    "source/assist/source/tech_enhancement_parameter_policy.h": "248b871027fa46377f058467f8152b5564a049b2bdb52f0cdfda15d9abbc0490",
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/technology_mode_policy.h": "33e92d7331d9458d621e368c457276969960d904454779036f91116c789499e8",
+    "source/assist/source/control_parameter_policy.h": "7be54f6a6d2bfb087f690d5df8424e7ff0ca101ad978801eddb13bffcffb1bf5",
+    "source/shared/source/debug_entry_types.h": "acb4aeca8ea08b6cb3d88c9a794976d1e07734634526c270c05e938fbf658a5c",
+    "source/shared/source/debug_entry_policy.h": "a20108bae99496714150ba465886b3158beb6613c6a6ddbdf901171d2cdc2c1c",
+    "source/shared/source/debug_entry_catalog.h": "8229a6879402f082eaf41b99b79040b44499e962a8991e79ba496ccc2ac4bd21",
+    "source/shared/source/master_control_policy.h": "f7ad82442891ceea98aab7e06129c7cb503058b965929331e5c8a277d6394ee8",
+    "source/shared/source/patch_context.h": "18de132500a2872b261d68afdd08fb05fc62b83f8d7fd0e6ba3b9728c6e5a17d",
+    "source/assist/source/bridge.cpp": "642efcd36422e98bf013b4578249d9f166b55bdc1e9a35a3bb7b53f145e11309",
+    "source/assist/source/protocol.h": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c",
+    "source/assist/source/sidebar.h": "244a350441dabbc7ff382f6e41b750f5e7db190762f0cccb1a8a3f5715f3754c",
+    "source/assist/source/sidebar_policy.h": "928e16cbbfd10e9ecf907ca360b1214a7b2eeff93c24a2dddf4fae5226769b36",
+    "source/assist/source/tech_enhancement_bridge.h": "b0fa93b6e0dfc22eea8801f67e21cec729b70bfc2c4045945378179604cd8488",
+    "source/assist/source/session_epoch.h": "1935c87ea55edd287c53b64472c5de8f617204a924c4ca8602fc247d0a6297d9",
+    "source/external_reader/source/catalogue_stamp.h": "2e366702bfabdf89b6e4e30f06a72e84971e414d0108f3b8f94bf82745aeb600",
+    "source/assist/source/control_mode_policy.h": "c5309b7c84ead21979f6c91b3dcb7296603d7f2ce5183f49f01e2f1fb3332885",
+    "source/assist/source/tech_ui_breakpoint_guard.h": "2cf4cb03f5471580a8277618f3937cf6dcd454a2c0f9ac12ccfad70d3db1da1c"
+  },
+  "test_source_sha256": {
+    "source/assist/tests/breakpoint_owner_rendezvous.cpp": "20aeaed671d25f625690f323b2a2feda6a1b6a43fb3418daf4a3589fd178a7a1",
+    "source/assist/tests/breakpoint_owner_rendezvous.py": "0a9f83c4210f19f1f3c7fcdd85c64d996facb0b7b8019bd7e5af395192477211",
+    "source/assist/tests/hardware_owned_dispatch.py": "b0f31af9165ffe0f5017765875297b22619e432f1274dd3a8d710f1319eca5d1",
+    "source/assist/tests/breakpoint_windows_build.py": "15b3f209820632ee321b5e942e1b3907b7be6770842a449208a4f8848f552c06",
+    "source/assist/tests/tech_parameter_lookup.cpp": "c41ba9eb4820d34f84029495d76e896518a16ecd038ddf0b456fb84c5b261ba3",
+    "source/assist/tests/tech_parameter_lookup.py": "a2e32454ce12940937b55dd45c9225839cd5a24bf3c6b9f92c3e8b46a3fd04c0",
+    "source/assist/tests/control_parameters.cpp": "b4c44ffba8c177b97970d0be33439c59e08913bdf401aac860b4eeddad988e8c",
+    "source/assist/tests/control_parameters.py": "a783f058412bac059d669a4d8622235fc63bc51bb4c06de2407054dbe5ccbb0d",
+    "source/assist/tests/tech_enhancement_midgame.py": "79155c0e79eab50d0edc3a8da1ddf35c2ff8649631a4b299ed68a8bbe6aa5764",
+    "source/assist/tests/tech_enhancement_midgame.cpp": "36dc183da11742b09013f90ff190c9e531220990f45c7a159157a080d9175bd1",
+    "source/assist/tests/hardware_control_reader.cpp": "79de332bb323544efeacd763c5d8b12d197b52e617707fc6127b53de82a398a6",
+    "source/assist/tests/hardware_control_reader.py": "afea749ea7bd5b03c0ac4711cae5439de1d21d1c6a4a5f0ae0c9846c4cd86297",
+    "source/tools/audit_hardware_dispatch_codegen.py": "4583a2b95eeb9eb5f51434a7409622529a268feda7509854f7c4f3bfeecb7ed5"
+  },
+  "focused_checks": [
+    {
+      "name": "owned-service-dispatch",
+      "receipt": "/workspace/scratch/47fa6d10b49d/hardware-round3/owned-dispatch/comparison/comparison.json",
+      "receipt_sha256": "bb7fc5ccb6b13be3db59534e842ab428d67922a01c18b42530650b2d93316c91"
+    },
+    {
+      "name": "precomputed-tech-candidates-and-flags",
+      "receipt": "/workspace/scratch/47fa6d10b49d/tech-precompute-validation/result.json",
+      "receipt_sha256": "5aa4192a32b16e6e4b71e8e17a552006ecf891e919bceb06757854c8fbb211d8"
+    },
+    {
+      "name": "control-and-full-callback",
+      "receipt": "/workspace/scratch/47fa6d10b49d/tech-precompute-validation/control/result.json",
+      "receipt_sha256": "ac207882653c8a02fab3e003fbd7dea1d8fcb71dd657325c87a31c6b3bdb373f"
+    },
+    {
+      "name": "midgame-capture-and-mode-handoff",
+      "receipt": "/workspace/scratch/47fa6d10b49d/tech-precompute-validation/midgame/result.json",
+      "receipt_sha256": "a61f2b074dfa7fab31c962c56fe7ef3b33fc295d60570fea9501bec0d96af09f"
+    },
+    {
+      "name": "control-reader-live-order",
+      "receipt": "/workspace/scratch/47fa6d10b49d/hardware-round3/control-reader-final/result.json",
+      "receipt_sha256": "fb3355b0c674f88a3d2b7b89071b89f23c340a9568a376d7f1b86b0458b2001e"
+    },
+    {
+      "name": "complete-runtime-win32-code-generation",
+      "receipt": "/workspace/scratch/47fa6d10b49d/hardware-round3/machine-code/final/result.json",
+      "receipt_sha256": "8cde85d040324bc6b32954b2d68a6f0e4ac83800d7ec8d474728b8085d2c8341"
+    }
+  ],
+  "verification_evidence": {
+    "owned_dispatch_comparison": {
+      "path": "/workspace/scratch/47fa6d10b49d/hardware-round3/owned-dispatch/comparison/comparison.json",
+      "sha256": "bb7fc5ccb6b13be3db59534e842ab428d67922a01c18b42530650b2d93316c91"
+    },
+    "pre2_machine_code_crosscheck": {
+      "path": "/workspace/scratch/47fa6d10b49d/hardware-round3/owned-dispatch/production-baseline-crosscheck.json",
+      "sha256": "10328c2d5d96886f686b7b5aa9086c5bac3051c3398262fa0d635be33df7e31f"
+    },
+    "control_reader_final": {
+      "path": "/workspace/scratch/47fa6d10b49d/hardware-round3/control-reader-final/result.json",
+      "sha256": "fb3355b0c674f88a3d2b7b89071b89f23c340a9568a376d7f1b86b0458b2001e"
+    },
+    "tech_precompute_final": {
+      "path": "/workspace/scratch/47fa6d10b49d/tech-precompute-validation/result.json",
+      "sha256": "5aa4192a32b16e6e4b71e8e17a552006ecf891e919bceb06757854c8fbb211d8"
+    },
+    "final_machine_code": {
+      "path": "/workspace/scratch/47fa6d10b49d/hardware-round3/machine-code/final/result.json",
+      "sha256": "8cde85d040324bc6b32954b2d68a6f0e4ac83800d7ec8d474728b8085d2c8341"
+    },
+    "readonly_review": {
+      "path": "/workspace/scratch/47fa6d10b49d/hardware-round3/review/read-only-review.json",
+      "sha256": "fd0fb8379a24b2860a9b6a2fc71a06ccf09bfa8f81ab95ffb59b62e5b46cb85e"
+    }
+  },
+  "validation_input_sha256": "c2420311bcf0749169044ded2f1e632c1fb3d1e380762f3d742e86e671a13a65",
+  "results": {
+    "tech": {
+      "pass": true,
+      "checks": 132826,
+      "callback_cases": 322,
+      "flags_differential_cases": 131136,
+      "absent_full_world_reads": 0,
+      "absent_enhancement_world_reads": 0,
+      "absent_enhancement_signature_calls": 0,
+      "subject_sha256": "90c32e0079f1a1a5057ae2006fe81ddac4abc80be2c552d1c6c031c5258811f9",
+      "flags_oracle_sha256": "df1ed6106121a08b9d6c593a941d5b5372ccfce0d75726db1a5022c4910b8415"
+    },
+    "midgame": {
+      "cases": 50,
+      "checks": 179
+    },
+    "control_reader": {
+      "pass": true,
+      "differential_cases": 115,
+      "successful_reads_per_hit": 17,
+      "identical_read_order": true,
+      "windows_veh_measured": false,
+      "game_process_tested": false
+    },
+    "service": {
+      "pass": true,
+      "scenarios": 43,
+      "checks": 1995,
+      "trap_calls": 589,
+      "witness_hits": 43,
+      "foreign_bypass_cases": 16,
+      "infinite_waits": 0,
+      "production_suspend_calls": 0,
+      "production_resume_calls": 0,
+      "production_worker_calls": 0,
+      "windows_executed": false,
+      "game_executed": false
+    },
+    "service_native_median_ns": {
+      "before": 22.33487,
+      "after": 18.652738666666668
+    },
+    "control_world_indirect_calls": [
+      10,
+      0
+    ],
+    "control_world_static_instructions": [
+      158,
+      58
+    ]
+  },
+  "limitations": [
+    "No Windows runtime, real hardware #DB/VEH latency, game, GPU/FPS or multiplayer execution in this round.",
+    "Candidate precomputation and quicker rejection do not reduce actual hardware exception hit counts.",
+    "The 17 successful control callback reads and their order remain current; 10-to-0 refers to indirect reader calls in the world helper, not memory reads.",
+    "The Service native timing replaces Win32/SEH delivery and final feature callbacks with controlled boundaries; its distributions overlap and cannot establish game or Windows speedup.",
+    "The 21-rule cold capture scan remains unchanged; no new breakpoint sites or word-wide code-signature reads were introduced.",
+    "These six focused checks cover this change, not a claim that every repository test passed."
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false
+}
