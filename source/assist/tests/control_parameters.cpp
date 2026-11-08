@@ -75,7 +75,11 @@ int main(){
  }
  for(unsigned kind=0;kind<15;++kind){seed();Context c,before;
   switch(kind){case 0:policy.controlling=0;break;case 1:storage.controlAll=controlmode::Master;break;case 2:storage.stop=1;break;case 3:fault=true;break;case 4:put<uint32_t>(0xA83D4C,0x20000);break;case 5:put<uint32_t>(0x10010,42);break;case 6:put<uint32_t>(0xA8B230,0x61000);break;case 7:put<int>(0xA8B238,4);break;case 8:put<int>(0xA8ED84,99);break;case 9:put<uint8_t>(0xA8E9A0,0);break;case 10:put<uint8_t>(0x101F5,1);break;case 11:put<uint32_t>(0xAC1198,0x10000);break;case 12:put<int>(0x20030,4);break;case 13:memory.erase(0x40000);break;case 14:put<uint32_t>(0x40000,0);break;}
-  const auto data=memory;check(dispatch(c,4)==0);check(!std::memcmp(&c,&before,sizeof c));check(memory==data);
+  // Published world eligibility is refreshed by maintenance. These mutations
+  // alone no longer change this callback, and target House validation was
+  // deliberately removed from the direct native-leaf contract.
+  const bool publishedMutation=kind>=4&&kind<=12;
+  const auto data=memory;check(dispatch(c,4)==int(publishedMutation));if(publishedMutation)before.Eip=assist::controlparams::Allowed;check(!std::memcmp(&c,&before,sizeof c));check(memory==data);
  }
  for(unsigned caller=0;caller<2;++caller){seed();Context c;c.Ecx=policy.house;const Context before=c;stack[0]=caller?0x6AA786:0x6A97D7;stack[1]=0x60000;stack[2]=0;stack[3]=caller;const auto data=memory;
   check(fullDispatch(c)==1);check(stack[0]==(caller?0x6AA786u:0x6A97D7u)&&stack[1]==0x60000&&stack[2]==1&&stack[3]==caller);check(!memcmp(&c,&before,sizeof c));check(data==memory);
@@ -93,6 +97,6 @@ int main(){
   memory[0x6339BA]^=1;check(!assist::controlparams::compatible(read));memory[0x6339BA]^=1;
   for(unsigned i=0;i<5;++i)memory[0x50B6F0+i]=mastercontrol::Sites[2].after[i];check(!assist::controlparams::compatible(read));
  }
- std::printf("PASS: %u production control callback, strict caller, original byte, no-data-write and fail-closed checks\n",checks);
+ std::printf("PASS: %u production control callback, direct-leaf timing, strict caller, original byte, no-data-write and immediate-gate checks\n",checks);
 }
 

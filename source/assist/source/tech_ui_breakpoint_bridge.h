@@ -6,6 +6,7 @@
 #include "map_visibility_parameter_policy.h"
 #include "../../shared/source/hardware_performance.h"
 extern "C" int __cdecl GuardedTechUiParameter(void*,unsigned);
+extern "C" int __cdecl GuardedControlWorldEligible();
 extern "C" int __cdecl GuardedTechEnhancementProbe(unsigned,unsigned);
 extern "C" unsigned BeginTechEnhancementProbe();extern "C" void EndTechEnhancementProbe(unsigned);
 extern "C" unsigned techEnhanceProbeReturn=0;
@@ -27,6 +28,10 @@ struct Policy{volatile LONG enabled=0;uint32_t house=0,houseID=0,scenario=0;int 
 static Policy policy;static techbp::Service service;
 static bool mapDesired=false,mapRedrawPending=false;static int mapFailure=0;static volatile LONG mapExceptions=0;static bool lastMapPresentation=false;
 static int failure=0,enhancementFailure=0,controlFailure=0;static bool desired=false,enhancementDesired=false,controlDesired=false,enhancementCompareRequested=false,enhancementCameoBlocked=false;
+// Published eligibility is refreshed on the ordinary owner-thread maintenance
+// boundary. It is independent of the installed DR lease and never authorizes
+// a different mode, stop/fault, or a changed entry policy in the hot callback.
+static bool controlEligible=false;
 static DWORD auditAt=0,retryAt=0,enhancementParameterScan=0;static uint32_t attempted=0,refusedGroups=0,resourceGroups=0;
 struct FailureRetry {
  DWORD at=0;bool waiting=false;
@@ -135,7 +140,7 @@ static void syncDebugBreakpointPolicy(){
  else if(nativePolicyRevision)nativePolicyRevision=revision;
  if(changed[2]||changed[3]){InterlockedExchange(&policy.enhanced,0);enhancementDesired=false;enhancementFailure=0;enhancementPolicyRevision=0;enhancementLimit.valid=enhancementCompare.valid=enhancementEntry.valid=false;groups|=12u;}
  else if(enhancementPolicyRevision)enhancementPolicyRevision=revision;
- if(changed[4]){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();controlPolicyRevision=0;}
+ if(changed[4]){controlEligible=false;InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();controlPolicyRevision=0;}
  else if(controlPolicyRevision)controlPolicyRevision=revision;
  if(changed[1]){if(policy.showing)mapRedrawPending=true;InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;mapPolicyRevision=0;mapSignature.valid=false;}
  else if(mapPolicyRevision)mapPolicyRevision=revision;
@@ -210,7 +215,7 @@ static bool captureWorld(uint32_t house){
  if(!sh||sh->stop||fault||house!=lastHouse||!house||get<uint32_t>(0xA83D4C)!=house)return false;
  uint32_t scenario=0,id=0;int frame=-1,session=-1;
  if(!read(0xA8B230,&scenario,4)||!scenario||!read(0xA8ED84,&frame,4)||frame<0||!read(0xA8B238,&session,4)||!eventdelivery::mayQueue(session)||!read(house+0x10,&id,4)||!id)return false;
- if(policy.house!=house||policy.houseID!=id||policy.scenario!=scenario||policy.session!=session||frame<policy.frame){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);policy.enhancementIndex.reset();}
+ if(policy.house!=house||policy.houseID!=id||policy.scenario!=scenario||policy.session!=session||frame<policy.frame){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);controlEligible=false;InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);policy.enhancementIndex.reset();}
  policy.house=house;policy.houseID=id;policy.scenario=scenario;policy.frame=frame;policy.session=session;return true;
 }
 static bool capture(uint32_t house){
@@ -225,11 +230,19 @@ static bool world(){
  return sh&&!sh->stop&&!fault&&get<uint32_t>(0xA83D4C)==policy.house&&get<uint32_t>(policy.house+0x10)==policy.houseID&&get<uint32_t>(0xA8B230)==policy.scenario&&
   get<int>(0xA8B238)==policy.session&&get<int>(0xA8ED84)>=policy.frame&&get<bool>(0xA8E9A0)&&policy.house!=get<uint32_t>(0xAC1198)&&!get<bool>(policy.house+0x1F5)&&!get<bool>(policy.house+0x1F6)&&!get<bool>(policy.house+0x1F8);
 }
+static bool refreshControlEligibility(){
+ // Revoke before touching game memory. Even an unrelated propagated unwind
+ // must not leave the previous publication usable by a sibling configure().
+ controlEligible=false;InterlockedExchange(&policy.controlling,0);
+ if(!controlDesired||controlFailure||!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)||controlPolicyRevision!=debugentries::policyRevision)return false;
+ controlEligible=GuardedControlWorldEligible()!=0;return controlEligible;
+}
 static bool configure(){
  const uint32_t wanted=(desired&&!failure?FullGroup:0u)|(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7)?enhancementTags():0u)|(controlDesired&&!controlFailure?16u:0u)|(mapDesired&&!mapFailure?mapvisibility::Tag:0u)|(singlefps::desired&&!singlefps::failure?singlefps::Tag:0u);service.poll();if(!service.resources())resourceGroups=0;
  if(!service.pending()){refusedGroups&=~service.activeTags();if(service.state==techbp::Slots)refusedGroups|=attempted&~service.activeTags();}
  if(service.pending()){publish();return false;}
  if(!healthy()){
+  controlEligible=false;
   InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);
   InterlockedExchange(&policy.showing,0);if(mapDesired)mapFailure=int(service.state);
   if(controlDesired){controlFailure=int(service.state);controlFailureRetry.defer();}
@@ -244,11 +257,16 @@ static bool configure(){
  // Slot exhaustion leaves the verified existing subset untouched.
  if(desired&&!failure)InterlockedExchange(&policy.enabled,ready(FullGroup)?1:0);
  if(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7))InterlockedExchange(&policy.enhanced,ready(4)?1:0);
- if(controlDesired&&!controlFailure)InterlockedExchange(&policy.controlling,ready(16)?1:0);
+ InterlockedExchange(&policy.controlling,controlDesired&&!controlFailure&&controlEligible&&ready(16)?1:0);
  if(mapDesired&&!mapFailure)InterlockedExchange(&policy.showing,ready(mapvisibility::Tag)?1:0);
  if(singlefps::desired&&!singlefps::failure)singlefps::enabled=ready(singlefps::Tag);else singlefps::disable();
  publish();return service.activeTags()==wanted;
 }
+}
+extern "C" int __cdecl AssistControlWorldEligible(){
+ using namespace techparameters;
+ const auto readCurrent=[](uint32_t address,void*out,size_t size){return controlparams::guardedRead(address,out,size);};
+ return controlparams::world(policy.house,policy.houseID,policy.scenario,policy.session,policy.frame,readCurrent)?1:0;
 }
 static bool mapVisibilityParameter(CONTEXT&context){
  using namespace techparameters;
@@ -266,12 +284,11 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
  if(tag==1)return mapVisibilityParameter(context)?1:0;
  if(tag==4){
   techbp::countOwner(controlExceptions);
-  // Preserve the reader's concrete type. A function-pointer template argument
-  // leaves ten indirect calls in the Win32 world guard even at -O2. This still
-  // reads every current field, in the same order, inside the same SEH scope.
-  const auto readCurrent=[](uint32_t address,void*out,size_t size){return controlparams::guardedRead(address,out,size);};
-  if(controlPolicyRevision!=debugentries::policyRevision||!policy.controlling||!sh||!controlmode::parameters(sh->controlAll)||sh->stop||fault||!controlparams::world(policy.house,policy.houseID,policy.scenario,policy.session,policy.frame,readCurrent)||!controlparams::house(context.Ecx,readCurrent)||context.Esp<0x10000)return 0;
-  uint32_t caller=0;if(!readCurrent(context.Esp,&caller,4)||caller<0x10000)return 0;
+  // Ordinary callers enter the original true leaf. The two owner queries
+  // still enter its strict pointer comparison; neither leaf dereferences ECX.
+  // World eligibility is a maintenance publication, not a per-hit snapshot.
+  if(controlPolicyRevision!=debugentries::policyRevision||!policy.controlling||!sh||!controlmode::parameters(sh->controlAll)||sh->stop||fault||context.Esp<0x10000)return 0;
+  uint32_t caller=0;if(!controlparams::guardedRead(context.Esp,&caller,4)||caller<0x10000)return 0;
   context.Eip=controlparams::destination(caller);return 1;
  }
  if(tag<2)techbp::countOwner(fullExceptions);else techbp::countOwner(enhancementExceptions);
@@ -333,7 +350,7 @@ static void maintainTechParameters(){
  else if(!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();}
  if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();}
  if(!sh||sh->stop||fault||!sh->mapVisibility){InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;}
- configure();
+ refreshControlEligibility();configure();
  // An idle game still publishes an actual read-only resource snapshot before
  // the first activation. Stop/fault never starts another inspection worker.
  static DWORD inspected=0;const DWORD now=GetTickCount();
@@ -457,17 +474,18 @@ static void techEnhanceParametersTick(uint32_t house,DWORD now){
 static bool controlParametersRetired(){return techparameters::groupOff(16);}
 static bool restoreControlParameters(){
  using namespace techparameters;const bool changed=controlDesired||(service.lease.tags()&16)||service.lease.uncertain;
- InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();
+ controlEligible=false;InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();
  if(changed)attempted=0;refusedGroups&=~16u;configure();return controlParametersRetired();
 }
 static int requestControlParameters(){
  using namespace techparameters;syncDebugBreakpointPolicy();
  auto status=[](){return controlFailure?controlFailure-10:ready(16)?int(controlmode::Parameters):(refusedGroups&16)?-12:service.state<0?int(service.state)-10:0;};
  if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){restoreControlParameters();return 0;}
+ controlEligible=false;InterlockedExchange(&policy.controlling,0);
  if(controlFailure&&!retryFailure(controlFailureRetry,16)){publish();return status();}
- if(!controlCompatible()){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=techbp::Signature;controlFailureRetry.defer();configure();return status();}
- if(!captureWorld(lastHouse)){InterlockedExchange(&policy.controlling,0);controlDesired=false;configure();return controlFailure?status():0;}
- controlFailure=0;controlFailureRetry.reset();controlDesired=true;configure();return status();
+ if(!controlCompatible()){controlEligible=false;InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=techbp::Signature;controlFailureRetry.defer();configure();return status();}
+ if(!captureWorld(lastHouse)){controlEligible=false;InterlockedExchange(&policy.controlling,0);controlDesired=false;configure();return controlFailure?status():0;}
+ controlFailure=0;controlFailureRetry.reset();controlDesired=true;refreshControlEligibility();configure();return status();
 }
 
 

@@ -12,8 +12,12 @@ inline constexpr unsigned SiteCount=6;
 inline constexpr uint32_t AllTags=(1u<<SiteCount)-1;
 enum Status {Off=0,Ready=1,Waiting=2,Signature=-1,Slots=-2,System=-3,Foreign=-4,Thread=-5};
 struct Registers {uint32_t address[4]{},control=0,status=0;};
-inline uint32_t slotMask(unsigned n){return (3u<<(n*2))|(15u<<(16+n*4));}
-inline uint32_t enabled(unsigned n){return 1u<<(n*2);}
+// Physical slots are always 0..3. Keep their fixed DR7 fields out of the
+// per-hit variable-shift path; the current register values are still checked.
+inline constexpr uint32_t SlotMasks[4]={0x000F0003u,0x00F0000Cu,0x0F000030u,0xF00000C0u};
+inline constexpr uint32_t SlotEnabled[4]={1u,4u,16u,64u};
+inline uint32_t slotMask(unsigned n){return SlotMasks[n];}
+inline uint32_t enabled(unsigned n){return SlotEnabled[n];}
 struct Lease {
  uint32_t sites[SiteCount]{},before[4]{};uint8_t tag[4]{},alternative[4]{};uint32_t mask=0,uncertain=0;
  unsigned actualTag(const Registers&r,unsigned n)const{

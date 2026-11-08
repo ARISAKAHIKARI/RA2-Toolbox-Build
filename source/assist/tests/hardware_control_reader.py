@@ -1,4 +1,4 @@
-"""Compare the real old/current control branch, including its ordered live reads."""
+"""Verify the real pre.3/current control branches and their intentional direct-Yes semantic change."""
 import argparse
 import hashlib
 import json
@@ -20,7 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--cxx', default='g++')
-    parser.add_argument('--baseline-ref', default='cc3f0117c233284cec1963a11c26d637d55817fe')
+    parser.add_argument('--baseline-ref', default='b9e7111391f9ffcbf20d3a1baf785498a8792155')
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
     repo = here.parents[2]
@@ -47,7 +47,7 @@ def main():
     (out / 'run.log').write_text(run.stdout + run.stderr)
     result = json.loads(run.stdout)
     assert result['pass'] and hashes == {str(p): digest(p) for p in paths}
-    report = dict(pass_=True, baseline_ref=args.baseline_ref, command=command, source_sha256=hashes,
+    report = dict(pass_=True, scope=__doc__, baseline_ref=args.baseline_ref, command=command, source_sha256=hashes,
                   baseline_branch_sha256=digest(old), current_branch_sha256=digest(new), result=result)
     (out / 'result.json').write_text(json.dumps(report, indent=2) + '\n')
     print(run.stdout, end='')

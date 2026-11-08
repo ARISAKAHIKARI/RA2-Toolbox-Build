@@ -33,7 +33,7 @@ static Handler handler=nullptr;static DWORD errorCode=5,ticks=100;
 static bool failWait=false,failClose=false,failDuplicate=false,failAdd=false,failRemove=false,failPin=false;
 static unsigned waitInfinite=0,duplicateCalls=0,closeCalls=0,trapCalls=0,witnessCalls=0,witnessHits=0;
 static unsigned writes=0,callbacks=0,checks=0,scenarios=0;
-static unsigned scopeCalls=0,scopeCleanups=0,foreignBypassCases=0;
+static unsigned scopeCalls=0,scopeCleanups=0,foreignBypassCases=0,slotMatrixDeliveries=0;
 static unsigned clockCalls=0,atomicCalls=0,threadIdCalls=0;
 static unsigned productionSuspends=0,productionResumes=0,productionWorkers=0;
 static std::vector<Handle*> handles;
@@ -115,6 +115,62 @@ struct Case {
  ~Case(){clearFaults();current=service.thread_?service.thread_->thread:&owner;for(unsigned i=0;i<8&&service.resources();++i)service.retire();CHECK(!service.resources()&&!handler&&!Service::instance());active=nullptr;current=&initial;}
  bool enable(uint32_t wanted=3){return service.configure(sites,wanted,callback);}
 };
+static void setDebugAddress(CONTEXT&context,unsigned slot,uint32_t address){
+ switch(slot){case 0:context.Dr0=address;break;case 1:context.Dr1=address;break;case 2:context.Dr2=address;break;case 3:context.Dr3=address;break;default:CHECK(false);}
+}
+// Exercise the real receiver over every physical slot. The expected decision
+// follows the architectural local-execute encoding, without using slotMask()
+// or enabled() to manufacture the incoming CONTEXT or the acceptance oracle.
+static void slotMatrix(){
+ for(unsigned slot=0;slot<4;++slot){
+  Case c("physical-slot DR7, mixed DR6, uncertain ownership and TF/RF matrix");
+  const uint32_t bit=1u<<slot,field=(3u<<(slot*2))|(15u<<(16+slot*4));
+  for(unsigned foreign=0;foreign<4;++foreign)if(foreign!=slot){
+   setDebugAddress(c.owner.context,foreign,0x710000u+foreign*0x100u);
+   c.owner.context.Dr7|=(foreign&1u?2u:1u)<<(foreign*2);
+  }
+  const CONTEXT foreignBefore=c.owner.context;
+  CHECK(c.enable(16)&&c.service.state==Ready&&c.service.lease.mask==bit);
+  const CONTEXT installed=c.owner.context;const Lease lease=c.service.lease;
+  auto verify=[&](CONTEXT context,bool owned,bool invoked,unsigned tag){
+   ++slotMatrixDeliveries;
+   CONTEXT expected=context;if(owned){expected.Dr6&=~bit;expected.EFlags|=0x10000u;}
+   const unsigned scopes=scopeCalls,cleanups=scopeCleanups,cb=callbacks,clocks=clockCalls,atomics=atomicCalls,traps=trapCalls,tids=threadIdCalls;
+   const LONG depth=c.service.handlerDepth_,exceptions=c.service.exceptions,changed=c.service.changed;
+   callbackAction=[&](CONTEXT&,uint32_t actual){CHECK(actual==tag&&c.service.handlerDepth_==depth+1);};
+   EXCEPTION_RECORD record{EXCEPTION_SINGLE_STEP,reinterpret_cast<void*>(uintptr_t(context.Eip))};EXCEPTION_POINTERS p{&record,&context};
+   CHECK(Service::vectored(&p)==(owned?EXCEPTION_CONTINUE_EXECUTION:EXCEPTION_CONTINUE_SEARCH));
+   CHECK(!std::memcmp(&context,&expected,sizeof context));
+   CHECK(scopeCalls==scopes+unsigned(owned)&&scopeCleanups==cleanups+unsigned(owned)&&callbacks==cb+unsigned(invoked));
+   CHECK(c.service.handlerDepth_==depth&&c.service.exceptions==exceptions+owned&&c.service.changed==changed+invoked);
+   CHECK(clockCalls==clocks&&atomicCalls==atomics&&trapCalls==traps&&threadIdCalls==tids+1);
+   callbackAction={};
+  };
+  for(unsigned enables=0;enables<4;++enables)for(unsigned rwlen=0;rwlen<16;++rwlen)for(unsigned flags=0;flags<4;++flags){
+   CONTEXT context=installed;context.Eip=sites[4];context.Dr6=bit|0xffff0ff0u;
+   context.Dr7=(context.Dr7&~field)|(enables<<(slot*2))|(rwlen<<(16+slot*4));
+   context.EFlags=0x40202u|((flags&1u)?0x100u:0u)|((flags&2u)?0x10000u:0u);
+   const bool owned=enables==1&&rwlen==0;verify(context,owned,owned,4);
+  }
+  for(unsigned pending=0;pending<16;++pending)for(unsigned causes=0;causes<8;++causes){
+   CONTEXT context=installed;context.Eip=sites[4];context.EFlags=0x50302u;context.Dr6=0xffff0ff0u|pending|(causes<<13);
+   const bool owned=pending==bit&&causes==0;verify(context,owned,owned,4);
+  }
+  CONTEXT context=installed;context.Eip=sites[4];context.Dr6=bit;
+  setDebugAddress(context,slot,sites[4]+1);verify(context,false,false,4);
+  context=installed;context.Dr6=bit;context.Eip=sites[4]+1;verify(context,false,false,4);
+  context.Eip=sites[4];context.ContextFlags&=~0x10u;verify(context,false,false,4);
+  c.service.lease.uncertain=bit;c.service.lease.alternative[slot]=0;c.service.lease.sites[0]=sites[0];c.service.confirmed=0;
+  context=installed;context.Dr6=bit;context.Eip=sites[4];verify(context,true,false,4);
+  setDebugAddress(context,slot,sites[0]);context.Eip=sites[0];verify(context,true,false,0);
+  setDebugAddress(context,slot,sites[5]);context.Eip=sites[5];verify(context,false,false,5);
+  setDebugAddress(context,slot,sites[0]);context.Eip=sites[4];verify(context,false,false,0);
+  c.service.lease.uncertain=0;context.Eip=sites[0];verify(context,false,false,0);
+  c.service.lease=lease;c.service.confirmed=1;
+  CHECK(!c.service.retire()&&!c.service.occupied());
+  CHECK(Service::same(Service::registers(c.owner.context),Service::registers(foreignBefore)));
+ }
+}
 // Time the complete production Service entry/dispatch/cleanup, retaining an
 // out-of-line boundary as in the real binary. The Win32/SEH boundary and final
 // feature callback are controlled; these are not Windows DR/VEH timings.
@@ -200,7 +256,8 @@ int main(int argc,char**argv){
   CHECK(clockCalls==clocks&&atomicCalls==atomics&&trapCalls==traps&&threadIdCalls==tids+1);
   c.service.handlerDepth_=0;c.service.confirmed=1;c.service.state=Ready;c.service.callback=callback;
  }
+ slotMatrix();
  CHECK(waitInfinite==0&&productionSuspends==0&&productionResumes==0&&productionWorkers==0);
  for(auto*h:handles){CHECK(h->closed);delete h;}
- std::printf("{\"pass\":true,\"scenarios\":%u,\"checks\":%u,\"trap_calls\":%u,\"witness_hits\":%u,\"foreign_bypass_cases\":%u,\"infinite_waits\":%u,\"production_suspend_calls\":%u,\"production_resume_calls\":%u,\"production_worker_calls\":%u,\"windows_executed\":false,\"game_executed\":false}\n",scenarios,checks,trapCalls,witnessHits,foreignBypassCases,waitInfinite,productionSuspends,productionResumes,productionWorkers);
+ std::printf("{\"pass\":true,\"scenarios\":%u,\"checks\":%u,\"trap_calls\":%u,\"witness_hits\":%u,\"foreign_bypass_cases\":%u,\"slot_matrix_deliveries\":%u,\"infinite_waits\":%u,\"production_suspend_calls\":%u,\"production_resume_calls\":%u,\"production_worker_calls\":%u,\"windows_executed\":false,\"game_executed\":false}\n",scenarios,checks,trapCalls,witnessHits,foreignBypassCases,slotMatrixDeliveries,waitInfinite,productionSuspends,productionResumes,productionWorkers);
 }

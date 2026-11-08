@@ -51,26 +51,34 @@ static void seed(){
  for(unsigned i=0;i<2;++i){const uint32_t p=0x10000+i*0x10000;put<uint32_t>(p,0x7E0000);put<uint32_t>(p+0x10,10+i);put<int>(p+0x30,int(i));put<uint8_t>(p+0x1F5,0);put<uint8_t>(p+0x1F6,0);put<uint8_t>(p+0x1F8,0);}
  put<uint32_t>(0xA83D4C,0x10000);put<uint32_t>(0xA8B230,0x60000);put<int>(0xA8B238,3);put<int>(0xA8ED84,101);put<uint8_t>(0xA8E9A0,1);put<uint32_t>(0xAC1198,0);put<uint32_t>(0x40000,0x650005);
 }
-static unsigned cases=0;
-static void compare(Context initial={},int expected=-1){
+static unsigned cases=0,changedCases=0;
+static void compare(Context initial={},int oldExpected=1,int newExpected=1){
  const auto unchanged=memory;Context before=initial,after=initial;
  trace.clear();controlExceptions=0;const int oldResult=baseline(before,4);const Trace oldTrace=trace;const int oldCount=controlExceptions;
  assert(memory==unchanged);
  trace.clear();controlExceptions=0;const int newResult=candidate(after,4);
- assert(newResult==oldResult&&trace==oldTrace&&controlExceptions==oldCount&&controlExceptions==1);
- assert(!std::memcmp(&before,&after,sizeof before)&&memory==unchanged);
- if(expected>=0)assert(newResult==expected);
- if(!newResult)assert(!std::memcmp(&after,&initial,sizeof after));
- ++cases;
+ assert(oldResult==oldExpected&&newResult==newExpected&&controlExceptions==oldCount&&controlExceptions==1);
+ auto oldContext=initial,newContext=initial;uint32_t caller=0;
+ if(oldResult||newResult){for(unsigned i=0;i<4;++i)caller|=uint32_t(memory.at(initial.Esp+i))<<(i*8);}
+ if(oldResult)oldContext.Eip=controlparams::destination(caller);
+ if(newResult)newContext.Eip=controlparams::destination(caller);
+ assert(!std::memcmp(&before,&oldContext,sizeof before)&&!std::memcmp(&after,&newContext,sizeof after)&&memory==unchanged);
+ if(newResult)assert((trace==Trace{{initial.Esp,4}}));
+ if(oldResult)assert(oldTrace.size()==17);
+ changedCases+=oldResult!=newResult;++cases;
 }
 int main(){
  const Trace complete={{0xA83D4C,4},{0x10010,4},{0xA8B230,4},{0xA8B238,4},{0xA8ED84,4},{0xA8E9A0,1},{0xAC1198,4},{0x101F5,1},{0x101F6,1},{0x101F8,1},{0xA8022C,4},{0xA80238,4},{0x20030,4},{0x50004,4},{0x20000,4},{0x20010,4},{0x40000,4}};
  for(uint32_t caller:{0x650005u,assist::controlparams::OwnerReturn,assist::controlparams::PlanningReturn}){
-  seed();put<uint32_t>(0x40000,caller);compare({},1);assert(trace==complete);
-  Context c;c.Ecx=policy.house;compare(c,1);
+  seed();put<uint32_t>(0x40000,caller);compare();assert((trace==Trace{{0x40000,4}}));
+  Context c;c.Ecx=policy.house;compare(c);
+  for(uint32_t target:{0u,0xffffu,0x30000u,0x7fffffffu,0xffffffffu}){c.Ecx=target;compare(c,0,1);}
  }
- for(unsigned n=1;n<=complete.size();++n){seed();failRead=n;compare({},0);assert(trace.size()==n);}
- for(auto field:complete)for(size_t byte=0;byte<field.second;++byte){seed();memory.erase(field.first+uint32_t(byte));compare({},0);}
+ // Injecting an ordinal read failure has different meanings now: current
+ // callback only has ordinal 1, the saved return address. The old 17-read
+ // oracle remains pinned to pre.3 and is not claimed equivalent.
+ for(unsigned n=1;n<=complete.size();++n){seed();failRead=n;compare({},0,n==1?0:1);}
+ for(auto field:complete)for(size_t byte=0;byte<field.second;++byte){seed();memory.erase(field.first+uint32_t(byte));compare({},0,field.first==0x40000?0:1);}
  for(unsigned kind=0;kind<30;++kind){seed();Context c;
   switch(kind){
    case 0:policy.controlling=0;break;case 1:storage.controlAll=controlmode::Master;break;case 2:storage.stop=1;break;case 3:fault=true;break;
@@ -82,12 +90,14 @@ int main(){
    case 19:put<uint32_t>(0x50004,0x30000);break;case 20:put<uint32_t>(0x20000,0);break;case 21:put<uint32_t>(0x20010,0);break;
    case 22:put<uint32_t>(0x40000,0);break;case 23:c.Esp=0xffff;break;case 24:c.Esp=0x7ffffffc;break;
    case 25:c.Ecx=0xffff;break;case 26:policy.house=0;break;case 27:policy.scenario=0;break;case 28:++controlPolicyRevision;break;case 29:sh=nullptr;break;
-  }compare(c,0);
+  }
+  const bool immediate=kind<=3||kind==22||kind==23||kind==24||kind==28||kind==29;
+  compare(c,0,immediate?0:1);
  }
- // A success never authorizes a later hit: mutate one guard in the same
- // observed frame and require the next invocation to reject immediately.
- seed();compare({},1);put<uint32_t>(0x10010,42);compare({},0);
- seed();compare({},1);put<uint8_t>(0x101F6,1);compare({},0);
- seed();compare({},1);storage.stop=1;compare({},0);
- std::printf("{\"pass\":true,\"differential_cases\":%u,\"successful_reads_per_hit\":17,\"identical_read_order\":true,\"windows_veh_measured\":false,\"game_process_tested\":false}\n",cases);
+ // World changes are intentionally observed at the next maintenance
+ // publication. Immediate shared gates still reject the very next hit.
+ seed();compare();put<uint32_t>(0x10010,42);compare({},0,1);
+ seed();compare();put<uint8_t>(0x101F6,1);compare({},0,1);
+ seed();compare();storage.stop=1;compare({},0,0);
+ std::printf("{\"pass\":true,\"branch_cases\":%u,\"intentionally_changed_outcomes\":%u,\"baseline_successful_reads_per_hit\":17,\"current_successful_reads_per_hit\":1,\"semantics_changed\":true,\"per_hit_equivalence_claimed\":false,\"hardware_exception_count_reduced\":false,\"windows_veh_measured\":false,\"game_process_tested\":false}\n",cases,changedCases);
 }
