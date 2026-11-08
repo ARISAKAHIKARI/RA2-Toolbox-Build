@@ -1,0 +1,31 @@
+{
+  "source_sha256": "8fecab09b1358e0b81a7c4acaf33a75033fad6605380bef2baa82d37f2f475b6",
+  "utf8_bom": true,
+  "command": [
+    "/workspace/scratch/40121bc881b8/release-1.0.45/devtools/powershell-7.4.6/pwsh",
+    "-NoLogo",
+    "-NoProfile",
+    "-NonInteractive",
+    "-File",
+    "/workspace/scratch/40121bc881b8/dependency-145/ps-review/output-drain-repro.ps1",
+    "-SourcePath",
+    "/workspace/scratch/40121bc881b8/dependency-145/ps-review/prepare_runtime.observed.ps1",
+    "-PythonPath",
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "-Work",
+    "/workspace/scratch/40121bc881b8/dependency-145/ps-review"
+  ],
+  "exit_code": 0,
+  "windows_executed": false,
+  "network_executed": false,
+  "observed": {
+    "powershell": "7.4.6",
+    "parse_errors": 0,
+    "functions": 15,
+    "probe_timeout_seconds": 1,
+    "elapsed_seconds": 1.1886698,
+    "returned_successfully": false,
+    "error": "Python 运行环境输出未正常关闭。",
+    "result": null
+  }
+}

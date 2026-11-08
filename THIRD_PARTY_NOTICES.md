@@ -31,6 +31,17 @@ Ares 原始声明要求的鸣谢：
 > This product includes software developed by the Ares Contributors.
 
 
+## 按需获取的光标预处理依赖
+
+从 1.0.45 起，默认 Full／Update 不捆绑 Python 科学计算环境。仅在光标预处理需要且本地缺失时，从 Python 官方网站及 PyPI 官方文件服务获取固定版本；下载地址、版本、文件大小和 SHA256 见 `source/engine/runtime-dependencies.json`。下载的发行包保留其许可、版权及第三方声明，不安装到系统 Python，也不修改系统 PATH。
+
+| 项目 | 用途 | 许可材料 |
+| --- | --- | --- |
+| [Python](https://www.python.org/) | 独立的光标预处理解释器 | 官方 Windows embeddable 包内的许可文件 |
+| [NumPy](https://numpy.org/) | 图像数组和数值计算 | 官方 wheel 内的 `.dist-info` 许可和第三方库声明 |
+| [SciPy](https://scipy.org/) | 距离变换、空间检索及补帧计算 | 官方 wheel 内的 `.dist-info` 许可和第三方库声明 |
+| [OpenCV Python headless](https://pypi.org/project/opencv-python-headless/) | 光流、缩放和离线预览图像编码 | 官方 wheel 内的 OpenCV 及随附组件许可声明 |
+
 ## 构建与研究工具
 
 - [Zig](https://ziglang.org/)：固定使用 0.13.0 编译 Windows x86 程序，使用其随附的 C／C++ 工具链。

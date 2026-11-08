@@ -1,0 +1,31 @@
+test_cancel_after_extraction_keeps_previous_index_unchanged (__main__.WorkerTests.test_cancel_after_extraction_keeps_previous_index_unchanged) ... ok
+test_cancel_before_cached_read_preserves_valid_cache (__main__.WorkerTests.test_cancel_before_cached_read_preserves_valid_cache) ... ok
+test_cancel_during_download_never_promotes_partial (__main__.WorkerTests.test_cancel_during_download_never_promotes_partial) ... ok
+test_corrupted_cache_is_replaced_without_executing_it (__main__.WorkerTests.test_corrupted_cache_is_replaced_without_executing_it) ... ok
+test_download_rejects_truncation_hash_oversize_redirect_status_and_length (__main__.WorkerTests.test_download_rejects_truncation_hash_oversize_redirect_status_and_length) ... ok
+test_download_verified_then_cache_hit_never_contacts_network (__main__.WorkerTests.test_download_verified_then_cache_hit_never_contacts_network) ... ok
+test_failed_import_never_publishes_ready_component (__main__.WorkerTests.test_failed_import_never_publishes_ready_component) ... ok
+test_index_write_failure_rolls_back_unpublished_new_directory (__main__.WorkerTests.test_index_write_failure_rolls_back_unpublished_new_directory) ... ok
+test_install_publish_reuse_and_damaged_component_repair (__main__.WorkerTests.test_install_publish_reuse_and_damaged_component_repair) ... ok
+test_interrupted_transfer_retries_cleanly (__main__.WorkerTests.test_interrupted_transfer_retries_cleanly) ... ok
+test_legacy_healthy_component_uses_no_network (__main__.WorkerTests.test_legacy_healthy_component_uses_no_network) ... ok
+test_malformed_per_component_index_is_repairable (__main__.WorkerTests.test_malformed_per_component_index_is_repairable) ... ok
+test_managed_repairs_precede_legacy_for_every_selection_order (__main__.WorkerTests.test_managed_repairs_precede_legacy_for_every_selection_order) ... ok
+test_manifest_exact_known_versions_and_official_hosts (__main__.WorkerTests.test_manifest_exact_known_versions_and_official_hosts) ... ok
+test_probe_cancellation_ends_its_child_promptly (__main__.WorkerTests.test_probe_cancellation_ends_its_child_promptly) ... ok
+test_probe_direct_child_exit_does_not_wait_for_inherited_output_handle (__main__.WorkerTests.test_probe_direct_child_exit_does_not_wait_for_inherited_output_handle) ... ok
+test_profile_lock_is_exclusive_and_released_after_failure (__main__.WorkerTests.test_profile_lock_is_exclusive_and_released_after_failure) ... ok
+test_real_official_windows_wheels_extract_without_executing (__main__.WorkerTests.test_real_official_windows_wheels_extract_without_executing) ... ok
+test_status_is_utf16_and_error_kind_is_preserved (__main__.WorkerTests.test_status_is_utf16_and_error_kind_is_preserved) ... ok
+test_task_paths_are_unique_and_old_cancel_survives_new_task (__main__.WorkerTests.test_task_paths_are_unique_and_old_cancel_survives_new_task) ... ok
+test_unindexed_incomplete_stage_is_never_used (__main__.WorkerTests.test_unindexed_incomplete_stage_is_never_used) ... ok
+test_waiting_task_cancellation_does_not_release_owner_lock (__main__.WorkerTests.test_waiting_task_cancellation_does_not_release_owner_lock) ... ok
+test_wrong_wheel_metadata_and_size_are_rejected (__main__.WorkerTests.test_wrong_wheel_metadata_and_size_are_rejected) ... ok
+test_zip_extract_preserves_metadata_and_license (__main__.WorkerTests.test_zip_extract_preserves_metadata_and_license) ... ok
+test_zip_rejects_case_collision_symlink_and_file_directory_conflict (__main__.WorkerTests.test_zip_rejects_case_collision_symlink_and_file_directory_conflict) ... ok
+test_zip_rejects_windows_path_traversal_aliases_and_devices_before_writing (__main__.WorkerTests.test_zip_rejects_windows_path_traversal_aliases_and_devices_before_writing) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 8.501s
+
+OK

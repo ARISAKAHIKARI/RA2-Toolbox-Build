@@ -1,0 +1,24 @@
+{
+  "target": "x86_64-windows-gnu",
+  "command": [
+    "/workspace/scratch/932746db9af9/shared_frame/build-prep/zig013/ziglang/zig",
+    "c++",
+    "-target",
+    "x86_64-windows-gnu",
+    "-std=c++17",
+    "-O0",
+    "-DRA2_UNIFIED",
+    "-DRA2_GPU_FAULT_GUARD",
+    "-DRA2_CONSOLE_WEBVIEW2",
+    "-DwWinMain=CursorEntry",
+    "-Isuite/source",
+    "-c",
+    "cursor/source/main.cpp",
+    "-o",
+    "/workspace/scratch/40121bc881b8/dependency-145/cursor-ui-final/cursor-prepare-x64.o"
+  ],
+  "exit_code": 0,
+  "seconds": 17.366,
+  "windows_executed": false,
+  "source_main_sha256": "6ebac1870a61d3c5eb85de4de8fbe993a27cf2645decb41ee7c3c2d746753741"
+}

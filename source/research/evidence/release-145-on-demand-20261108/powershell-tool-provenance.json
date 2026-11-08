@@ -1,0 +1,9 @@
+{
+  "version": "7.4.6",
+  "platform": "Linux",
+  "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.6/powershell-7.4.6-linux-x64.tar.gz",
+  "hashes_url": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.6/hashes.sha256",
+  "bytes": 71645796,
+  "sha256": "6f6015203c47806c5cc444c19d8ed019695e610fbd948154264bf9ca8e157561",
+  "purpose": "Parse and exercise portable bootstrap helpers only; not Windows acceptance."
+}

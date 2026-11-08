@@ -1,0 +1,212 @@
+{
+  "schema": "ra2.on-demand-dependencies-evidence.v1",
+  "version": "1.0.45",
+  "created_utc": "2026-11-08T12:59:43.170195+00:00",
+  "source_bindings": [
+    {
+      "path": "source/engine/dis_render.py",
+      "bytes": 2222,
+      "sha256": "eb953f31b8453a3ae1cd79c363840f0706116a9a8ca8ecd3cb1e41fb99930fc9"
+    },
+    {
+      "path": "source/engine/player-template.html",
+      "bytes": 10054,
+      "sha256": "da85d9fc8d3d25b96e7023d754c47d9832687ff344dbba8adcb350df56b46daa"
+    },
+    {
+      "path": "source/engine/precompute.py",
+      "bytes": 6389,
+      "sha256": "5981f87f669f2748c2cbf44deb13f300aec5276a163ffa36b1c965320a1954c7"
+    },
+    {
+      "path": "source/engine/prepare_runtime.ps1",
+      "bytes": 23292,
+      "sha256": "507886249889153d21c55e428b962e3d7127c89c5be3c3a699871e50ee7b2022"
+    },
+    {
+      "path": "source/engine/prepare_runtime.py",
+      "bytes": 29084,
+      "sha256": "50ef433c37a49940965ce6d53382e47f1b07043d0064a91e3bdf3547a717c912"
+    },
+    {
+      "path": "source/engine/preview_builder.py",
+      "bytes": 2349,
+      "sha256": "93b0b79da2ad4a8b1429cefe7dcf5f86c6a46c059bc500a76a132f5cf5270661"
+    },
+    {
+      "path": "source/engine/runtime-dependencies.json",
+      "bytes": 3623,
+      "sha256": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+    },
+    {
+      "path": "source/cursor/source/main.cpp",
+      "bytes": 155298,
+      "sha256": "6ebac1870a61d3c5eb85de4de8fbe993a27cf2645decb41ee7c3c2d746753741"
+    },
+    {
+      "path": "source/assist/tests/cursor_dependency_prepare.cpp",
+      "bytes": 18089,
+      "sha256": "d13066f7648a9e9895a5c511a1d28c9c106db934b761224fd3a04570b7a64bf0"
+    },
+    {
+      "path": "source/assist/tests/cursor_dependency_prepare.py",
+      "bytes": 4694,
+      "sha256": "532c9bcdc41807a305c1e928cb4bed44f12c20657d2b7d66973964d0741e41a7"
+    },
+    {
+      "path": "source/assist/tests/runtime_broker_retirement.py",
+      "bytes": 4530,
+      "sha256": "d375b8f2f8d56041873c6cbc89390783096536deb755459dcd8e1c23def07bd2"
+    },
+    {
+      "path": "source/tools/test_runtime_download.py",
+      "bytes": 19605,
+      "sha256": "8962642809c4609bf9a87f7954ec4427108e669d71850b186e65a36b87046654"
+    },
+    {
+      "path": "source/tools/test_runtime_bootstrap.ps1",
+      "bytes": 10967,
+      "sha256": "af5fad823c8099439eb4ce83d52d2859ef439c5f1c66173ca8c788f82ba27654"
+    },
+    {
+      "path": "packages/v1.0.45/package_release.py",
+      "bytes": 24119,
+      "sha256": "cbc0d5189c551372f66c3cb1b24b40901c963bb1e684ffd7a15ef4b2e4924196"
+    },
+    {
+      "path": "packages/v1.0.45/test_slim_package.py",
+      "bytes": 11423,
+      "sha256": "ab2eff0cda126a61fcaa36f4387765b4d2ca2f9321fdd17c741673c978804d4d"
+    }
+  ],
+  "files": [
+    {
+      "path": "checks/independent-runtime-python-review.json",
+      "bytes": 6795,
+      "sha256": "2f679572c7929bd77eed9ed42a8df1839dc35d762807f45f6fdc620b9e2c8a0e"
+    },
+    {
+      "path": "checks/slim-package.json",
+      "bytes": 1600,
+      "sha256": "84337e35099cd9364eb7f9aebd2b57d8e4887d69ba8c4176955d7c05610fbb8c"
+    },
+    {
+      "path": "cursor-ui-final/build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cursor-ui-final/receipt.json",
+      "bytes": 2402,
+      "sha256": "f8ef3125eef9196c2066c243b9371fccc10f77f15d118502e50afab32f7b6ea2"
+    },
+    {
+      "path": "cursor-ui-final/run.log",
+      "bytes": 43,
+      "sha256": "570d0bc6d538dd895d8e99e2aa8e30338079b0d6e6fd22b72c1aa7296165493a"
+    },
+    {
+      "path": "cursor-ui-final/windows-target-build.json",
+      "bytes": 652,
+      "sha256": "4f7a84d62b508277595bcf726c58667594f0986eae8ec505c606a403944ead2a"
+    },
+    {
+      "path": "cursor-ui-final/windows-target-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "official-archive-verification.json",
+      "bytes": 4254,
+      "sha256": "3ab7a117758ef38a1d65a44e504920ef9020c89733619695c6606a17f9d4dbfd"
+    },
+    {
+      "path": "powershell-tool-provenance.json",
+      "bytes": 452,
+      "sha256": "2c19545b642844427567dc78bf2fbff5382cfffb95d1554ae2a5900a92ee46fc"
+    },
+    {
+      "path": "powershell-worker-result.json",
+      "bytes": 388,
+      "sha256": "167cb9c6eff3cc77063d0f1c5368d1e7867b6ea47ab8b63d5df25408ee3c3e74"
+    },
+    {
+      "path": "powershell-worker-tests.log",
+      "bytes": 388,
+      "sha256": "167cb9c6eff3cc77063d0f1c5368d1e7867b6ea47ab8b63d5df25408ee3c3e74"
+    },
+    {
+      "path": "ps-review/output-drain-regression.json",
+      "bytes": 1008,
+      "sha256": "1d5ae67ad8372bb46534c63ec5185ecca4bfe094692f79574620c06d6ce3f4c5"
+    },
+    {
+      "path": "ps-review/output-drain-regression.log",
+      "bytes": 240,
+      "sha256": "5c161e60417f4ca0f9f3ca9fdadddd31bd9085e40161df1ecfe47087c0d1619e"
+    },
+    {
+      "path": "ps-review/output-drain-repro.ps1",
+      "bytes": 1326,
+      "sha256": "0c42bfb1e512ada05625017b9ec25a3766edad65759f3c15e384ef2090b8bae1"
+    },
+    {
+      "path": "ps-review/prepare_runtime.observed.ps1",
+      "bytes": 22806,
+      "sha256": "8fecab09b1358e0b81a7c4acaf33a75033fad6605380bef2baa82d37f2f475b6"
+    },
+    {
+      "path": "ps-review/review.json",
+      "bytes": 2927,
+      "sha256": "a9c0fdf6b72d3bf86926ae77eae0907ddde0e1dc9ea3546df8259f9f160a3627"
+    },
+    {
+      "path": "python-worker-tests.log",
+      "bytes": 3809,
+      "sha256": "3da7045aa17e4710a58a762e59ea8df2e8514138ac357624f8a740b8354578ec"
+    },
+    {
+      "path": "runtime-bootstrap-validation.json",
+      "bytes": 7858,
+      "sha256": "9f706e82b3ebb631e978f7ef0750a12ff55b9779014eb71c44e101859db8a7e0"
+    },
+    {
+      "path": "upstream-metadata.json",
+      "bytes": 1552,
+      "sha256": "249de8a9da9dc3b2850b2a819d9444df322c347abb5c3dcf111ff8a61b2a99be"
+    }
+  ],
+  "checks": {
+    "runtime_bootstrap": {
+      "passed": true,
+      "python_tests": 26,
+      "powershell_checks": 73,
+      "receipt": "runtime-bootstrap-validation.json"
+    },
+    "cursor_download_ui": {
+      "passed": true,
+      "scenarios": 34,
+      "checks": 106,
+      "receipt": "cursor-ui-final/receipt.json"
+    },
+    "slim_package": {
+      "passed": true,
+      "tests": 7,
+      "receipt": "checks/slim-package.json"
+    }
+  },
+  "independent_reviews": [
+    "ps-review/review.json",
+    "checks/independent-runtime-python-review.json"
+  ],
+  "windows_executed": false,
+  "windows_powershell_51_executed": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "limits": [
+    "Linux controlled execution and Windows target cross compilation are not native Windows or game acceptance.",
+    "PowerShell interpreter-probe transaction cases use explicit controlled stubs; official Windows archives were downloaded, hashed and extracted without executing their Windows binaries.",
+    "The independent inherited-output regression retains the exact earlier script snapshot; its tested function is unchanged in the reviewed final source.",
+    "Final frozen full build and exact release ZIP verification are separate release-stage receipts; no historical feature checks are counted as rerun."
+  ]
+}

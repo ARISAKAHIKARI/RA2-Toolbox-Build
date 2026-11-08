@@ -87,6 +87,7 @@ static bool mainWindowReady=false;
 static HWND targetBox=nullptr;
 static HWND settingsHint=nullptr,detailLabel=nullptr,styleBox=nullptr,prepareButton=nullptr,prepareInfo=nullptr;
 static HANDLE prepareProcess=nullptr;static std::wstring prepareStatus,prepareCancel,preparedProfile;
+static bool prepareCancelling=false;
 static bool applyingSettings=false;
 static Asset displayAsset;static DWORD displayPalette[256];static bool displayLoaded=false;
 static std::wstring profilePath,profileId;
@@ -1533,27 +1534,113 @@ static void importStyle(){
  WritePrivateProfileStringW(L"Profile",L"Name",std::filesystem::path(selected).stem().c_str(),(folder+L"\\profile.ini").c_str());
  WritePrivateProfileStringW(L"Cursor",L"Profile",id.c_str(),ini().c_str());refreshStyleList();chooseStyle();beginPrepare();
 }
+// CreateProcess passes these as literal arguments; no command shell evaluates
+// profile names containing spaces, apostrophes, &, % or PowerShell syntax.
+static std::wstring prepareArgument(const std::wstring& value){
+ std::wstring result=L"\"";size_t slashes=0;
+ for(wchar_t c:value){
+  if(c==L'\\'){++slashes;continue;}
+  result.append(slashes*(c==L'\"'?2:1)+(c==L'\"'?1:0),L'\\');slashes=0;result+=c;
+ }
+ result.append(slashes*2,L'\\');result+=L'\"';return result;
+}
+static std::wstring preparePowerShell(){
+ wchar_t system[32768]{};UINT count=GetSystemDirectoryW(system,32768);
+ if(!count||count>=32768)fail("无法定位 Windows PowerShell，请检查 Windows 系统组件");
+ std::wstring base(system,count);
+#ifndef _WIN64
+ BOOL wow64=FALSE;
+ if(IsWow64Process(GetCurrentProcess(),&wow64)&&wow64){
+  count=GetWindowsDirectoryW(system,32768);
+  if(!count||count>=32768)fail("无法定位 64 位 Windows PowerShell");
+  base=std::wstring(system,count)+L"\\Sysnative";
+ }
+#endif
+ const auto program=base+L"\\WindowsPowerShell\\v1.0\\powershell.exe";
+ if(!exists(program))fail("缺少 Windows PowerShell，无法准备可选的光标预处理依赖");
+ return program;
+}
+static bool cancelPrepare(){
+ HANDLE h=CreateFileW(prepareCancel.c_str(),GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);
+ if(h==INVALID_HANDLE_VALUE)return false;
+ CloseHandle(h);prepareCancelling=true;return true;
+}
+static void closePrepare(){
+ if(!prepareProcess)return;
+ cancelPrepare();CloseHandle(prepareProcess);prepareProcess=nullptr;prepareCancelling=false;
+}
+static std::wstring prepareTaskDirectory(){
+ const std::wstring parent=profilePath+L"\\.preprocess";
+ if(!CreateDirectoryW(parent.c_str(),NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)
+  fail("无法创建预处理任务目录，请检查光标包目录的写入权限");
+ static unsigned sequence=0;
+ for(unsigned attempt=0;attempt<16;++attempt){
+  const std::wstring task=parent+L"\\"+std::to_wstring(GetCurrentProcessId())+L"-"+
+   std::to_wstring(GetTickCount64())+L"-"+std::to_wstring(++sequence);
+  if(CreateDirectoryW(task.c_str(),NULL))return task;
+  if(GetLastError()!=ERROR_ALREADY_EXISTS)break;
+ }
+ fail("无法创建独立预处理任务目录，请检查目录权限后重试");return L"";
+}
 static void beginPrepare(){
- if(prepareProcess){HANDLE h=CreateFileW(prepareCancel.c_str(),GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);if(h!=INVALID_HANDLE_VALUE)CloseHandle(h);textIfChanged(prepareInfo,L"正在取消，已完成的分段仍会保留");return;}
- const std::wstring python=root+L"\\runtime\\python.exe",script=root+L"\\engine\\precompute.py";
- if(!exists(python)||!exists(script))fail("预处理运行环境缺失，请完整解压含 runtime 的版本");
- preparedProfile=profilePath;prepareStatus=profilePath+L"\\progress.ini";prepareCancel=profilePath+L"\\cancel.flag";DeleteFileW(prepareCancel.c_str());DeleteFileW(prepareStatus.c_str());
- std::wstring command=L"\""+python+L"\" \""+script+L"\" --profile \""+profilePath+L"\" --status \""+prepareStatus+L"\" --cancel \""+prepareCancel+L"\"";
+ if(prepareProcess){
+  textIfChanged(prepareInfo,cancelPrepare()?L"正在取消准备或预处理，已完成内容会保留":L"取消失败：无法写入光标包目录，请检查目录权限后重试");return;
+ }
+ const std::wstring program=preparePowerShell(),script=root+L"\\engine\\prepare_runtime.ps1";
+ if(!exists(script)||!exists(root+L"\\engine\\precompute.py"))fail("预处理组件缺失，请重新解压完整包或完整覆盖更新包");
+ // A closing tool may still have a child observing its cancellation flag.
+ // Every attempt owns a new directory; never clear or reuse an older task's
+ // progress/cancel files, including after a quick close and reopen.
+ const std::wstring task=prepareTaskDirectory();
+ preparedProfile=profilePath;prepareStatus=task+L"\\progress.ini";prepareCancel=task+L"\\cancel.flag";
+ // Only this app-owned subprocess uses the embedding execution-policy mode.
+ // User/machine settings are untouched; enforced Group Policy still applies.
+ const std::wstring command=prepareArgument(program)+L" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "+prepareArgument(script)+
+  L" -Profile "+prepareArgument(preparedProfile)+L" -Status "+prepareArgument(prepareStatus)+L" -Cancel "+prepareArgument(prepareCancel);
+ if(command.size()>=32767)fail("工具箱或光标包目录路径过长，请移到较短的目录后重试");
  std::vector<wchar_t> args(command.begin(),command.end());args.push_back(0);STARTUPINFOW si{};si.cb=sizeof(si);PROCESS_INFORMATION pi{};
- if(!CreateProcessW(python.c_str(),args.data(),NULL,NULL,FALSE,CREATE_NO_WINDOW,NULL,root.c_str(),&si,&pi))fail("无法启动内置预处理引擎（需64位 Windows 10/11）");
- CloseHandle(pi.hThread);prepareProcess=pi.hProcess;SetPriorityClass(prepareProcess,BELOW_NORMAL_PRIORITY_CLASS);textIfChanged(prepareButton,L"取消预处理");textIfChanged(prepareInfo,L"正在本机预处理，游戏光标与界面可继续使用…");
+ if(!CreateProcessW(program.c_str(),args.data(),NULL,NULL,FALSE,CREATE_NO_WINDOW,NULL,root.c_str(),&si,&pi))
+  fail("无法启动依赖准备，请检查 Windows PowerShell、目录权限和系统策略后重试");
+ CloseHandle(pi.hThread);prepareProcess=pi.hProcess;prepareCancelling=false;
+ SetPriorityClass(prepareProcess,BELOW_NORMAL_PRIORITY_CLASS);textIfChanged(prepareButton,L"取消准备");
+ textIfChanged(prepareInfo,L"正在检查预处理依赖，缺失时从公网下载；游戏与界面可继续使用…");
 }
 static void pollPrepare(){
  if(!prepareProcess)return;static DWORD last=0;DWORD now=GetTickCount();if(uint32_t(now-last)<400)return;last=now;
- DWORD code=STILL_ACTIVE;if(!GetExitCodeProcess(prepareProcess,&code))code=1;
- unsigned done=GetPrivateProfileIntW(L"Progress",L"Done",0,prepareStatus.c_str()),total=GetPrivateProfileIntW(L"Progress",L"Total",0,prepareStatus.c_str());
- if(code==STILL_ACTIVE){if(total)textIfChanged(prepareInfo,L"预处理 "+std::to_wstring(done)+L" / "+std::to_wstring(total)+L" 段 · 每段 1000 等分");return;}
- wchar_t state[40]={};GetPrivateProfileStringW(L"Progress",L"State",L"error",state,40,prepareStatus.c_str());
- CloseHandle(prepareProcess);prepareProcess=nullptr;textIfChanged(prepareButton,L"预处理补帧");
- bool success=code==0&&!wcscmp(state,L"done");
+ // Never wait for downloads, dependency checks or preprocessing on the UI thread.
+ const DWORD wait=WaitForSingleObject(prepareProcess,0);DWORD code=1;
+ if(wait==WAIT_OBJECT_0&&!GetExitCodeProcess(prepareProcess,&code))code=1;
+ wchar_t state[40]={},message[384]={},errorKind[40]={};
+ GetPrivateProfileStringW(L"Progress",L"State",L"",state,40,prepareStatus.c_str());
+ GetPrivateProfileStringW(L"Progress",L"Message",L"",message,384,prepareStatus.c_str());
+ GetPrivateProfileStringW(L"Progress",L"ErrorKind",L"",errorKind,40,prepareStatus.c_str());
+ const unsigned done=GetPrivateProfileIntW(L"Progress",L"Done",0,prepareStatus.c_str()),total=GetPrivateProfileIntW(L"Progress",L"Total",0,prepareStatus.c_str());
+ const bool dependency=!wcscmp(state,L"dependency_check")||!wcscmp(state,L"dependency_wait")||!wcscmp(state,L"downloading")||!wcscmp(state,L"installing");
+ if(wait==WAIT_TIMEOUT){
+  if(prepareCancelling){textIfChanged(prepareInfo,L"正在取消准备或预处理，已完成内容会保留");return;}
+  if(dependency){
+   const wchar_t* fallback=!wcscmp(state,L"downloading")?L"正在下载缺失的预处理依赖…":!wcscmp(state,L"installing")?L"正在校验并安装预处理依赖…":!wcscmp(state,L"dependency_wait")?L"正在等待另一个依赖准备任务…":L"正在检查本机预处理依赖…";
+   textIfChanged(prepareButton,L"取消准备");textIfChanged(prepareInfo,*message?message:fallback);
+  }else if(!wcscmp(state,L"running")||!wcscmp(state,L"done")){
+   textIfChanged(prepareButton,L"取消预处理");
+   if(total)textIfChanged(prepareInfo,L"预处理 "+std::to_wstring(done)+L" / "+std::to_wstring(total)+L" 段 · 每段 1000 等分");
+   else textIfChanged(prepareInfo,*message?message:L"正在本机预处理，游戏与界面可继续使用…");
+  }else if(*message)textIfChanged(prepareInfo,message);
+  return;
+ }
+ CloseHandle(prepareProcess);prepareProcess=nullptr;prepareCancelling=false;textIfChanged(prepareButton,L"预处理补帧");
+ const bool success=wait==WAIT_OBJECT_0&&code==0&&!wcscmp(state,L"done");
  if(success){if(profilePath==preparedProfile){readPairs();resetPrepared();}textIfChanged(prepareInfo,L"预处理完成 · "+std::to_wstring(total)+L" 段已可直接播放");}
- else if(!wcscmp(state,L"cancelled"))textIfChanged(prepareInfo,L"已取消预处理，保留已完成分段");
- else{ textIfChanged(prepareInfo,L"预处理失败：检查 SHA、色盘与动画分组；错误详情见光标包内 progress.ini.error.txt");log(L"Preprocessing failed: "+prepareStatus);}
+ else if(wait==WAIT_OBJECT_0&&!wcscmp(state,L"cancelled"))textIfChanged(prepareInfo,L"已取消；已完成内容保留，可再次点击预处理");
+ else{
+  textIfChanged(prepareButton,L"重试预处理");
+  if(!wcscmp(errorKind,L"dependency")||dependency)
+   textIfChanged(prepareInfo,std::wstring(L"依赖准备失败：")+(*message?message:L"请检查网络和目录权限")+L"；可点击重试预处理");
+  else if(!*state)
+   textIfChanged(prepareInfo,L"依赖准备未启动或已中断；检查 Windows PowerShell、系统策略和目录权限后重试");
+  else textIfChanged(prepareInfo,L"预处理失败：详情见光标包 .preprocess 内的任务日志，可点击重试");
+  log(L"Preprocessing failed (exit="+std::to_wstring(code)+L"): "+prepareStatus);
+ }
 }
 
 static bool cursorCloseAllowed(){
@@ -1681,7 +1768,7 @@ case WM_GETMINMAXINFO:{auto p=(MINMAXINFO*)b;p->ptMinTrackSize={uidpi::scale(adv
 #endif
  {KillTimer(w,152);if(uiReady)applyTargetRate();KillTimer(w,150);if(uiReady&&!applyingSettings){applyingSettings=true;applyScale();applyingSettings=false;}}
  stop();DestroyWindow(w);return 0;
- case WM_DESTROY:if(playbackCancel)playbackCancel->store(true);if(prepareProcess){HANDLE cancel=CreateFileW(prepareCancel.c_str(),GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);if(cancel!=INVALID_HANDLE_VALUE)CloseHandle(cancel);CloseHandle(prepareProcess);prepareProcess=nullptr;}if(uiFont){DeleteObject(uiFont);uiFont=NULL;}if(titleFont){DeleteObject(titleFont);titleFont=NULL;}if(actionFont){DeleteObject(actionFont);actionFont=NULL;}if(panelBrush){DeleteObject(panelBrush);panelBrush=NULL;}if(headerBrush){DeleteObject(headerBrush);headerBrush=NULL;}if(statusBrush){DeleteObject(statusBrush);statusBrush=NULL;}PostQuitMessage(0);return 0;}return DefWindowProcW(w,m,a,b);}
+ case WM_DESTROY:if(playbackCancel)playbackCancel->store(true);closePrepare();if(uiFont){DeleteObject(uiFont);uiFont=NULL;}if(titleFont){DeleteObject(titleFont);titleFont=NULL;}if(actionFont){DeleteObject(actionFont);actionFont=NULL;}if(panelBrush){DeleteObject(panelBrush);panelBrush=NULL;}if(headerBrush){DeleteObject(headerBrush);headerBrush=NULL;}if(statusBrush){DeleteObject(statusBrush);statusBrush=NULL;}PostQuitMessage(0);return 0;}return DefWindowProcW(w,m,a,b);}
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  const bool blankPreset=wcsstr(cmd,L"--no-cursor")!=nullptr;
  const bool lanboPreset=wcsstr(cmd,L"--lanbo")!=nullptr||blankPreset;
@@ -1783,6 +1870,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  styleBox=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST,20,254,320,240,mainw,NULL,inst,NULL);extra(styleBox,{20,254,320,240});
  HWND import=CreateWindowW(L"BUTTON",L"导入 SHA",WS_CHILD|BS_PUSHBUTTON,350,254,108,30,mainw,(HMENU)130,inst,NULL);extra(import,{350,254,108,30});
  prepareButton=CreateWindowW(L"BUTTON",L"预处理补帧",WS_CHILD|BS_PUSHBUTTON,468,254,128,30,mainw,(HMENU)131,inst,NULL);extra(prepareButton,{468,254,128,30});
+ modernui::tip(prepareButton,L"仅在预处理需要时检查并下载缺失的依赖；已有依赖直接复用。准备和计算均在后台进行，可取消，失败后可重试。");
  HWND groupEdit=CreateWindowW(L"BUTTON",L"动画分组",WS_CHILD|BS_PUSHBUTTON,606,254,128,30,mainw,(HMENU)132,inst,NULL);extra(groupEdit,{606,254,128,30});
  prepareInfo=CreateWindowW(L"STATIC",L"",WS_CHILD,20,290,710,22,mainw,NULL,inst,NULL);extra(prepareInfo,{20,290,710,22});
  superCenter=GetPrivateProfileIntW(L"Cursor",L"SuperWeaponVisualCenter",0,ini().c_str())!=0;

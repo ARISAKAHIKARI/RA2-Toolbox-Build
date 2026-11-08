@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 1.0.45 完整包精简与依赖按需获取 | [固定官方来源、后台准备、任务隔离和发布验证](2026-11-08-release-145-on-demand-dependencies.md) | optional-python numpy scipy opencv pinned-download immutable-components cancel profile-lock lightweight-full |
 | 逐功能点补充审查 | [功能/模式清单、七处修正、未闭合问题与真实验证边界](2026-11-08-feature-point-audit.md) | per-feature repair unload cursor-shape frame-diagnostic paused-overlay broker-lock retained-modes |
 | 模块性能与正确性审查 | [五类缺陷修复、功能覆盖与未决热点](2026-11-08-module-performance-audit.md) | reverse-dodge stale-subscriptions sealed-terrain palette-token async-section-save pre5 |
 | 控制全部直接放行 | [原生 true/strict 叶、维护资格发布与固定槽掩码](2026-11-08-control-direct-permission-hotpath.md) | pre4 direct-yes control17to1 maintenance-publication not-per-hit-world strict-owner same-DR explicit-behavior-change |

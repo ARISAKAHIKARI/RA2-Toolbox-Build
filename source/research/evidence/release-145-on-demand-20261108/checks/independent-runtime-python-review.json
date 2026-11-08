@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "reviewer": "slim_packaging",
+  "reviewed_utc": "2026-11-08T12:52:00.928513+00:00",
+  "result": "No remaining release blocker identified in the scoped Python/package review",
+  "scope": [
+    "Python component selection and managed/legacy search order",
+    "official archive digest, layout and extraction bounds",
+    "component staging, immutable publication and atomic index",
+    "cancellation, task identity and profile/install lock ownership",
+    "post-review bounded probe-output cleanup delta"
+  ],
+  "source_bindings": [
+    {
+      "path": "source/engine/prepare_runtime.py",
+      "sha256": "50ef433c37a49940965ce6d53382e47f1b07043d0064a91e3bdf3547a717c912"
+    },
+    {
+      "path": "source/engine/runtime-dependencies.json",
+      "sha256": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+    }
+  ],
+  "findings": [
+    {
+      "id": "malformed-component-index-value",
+      "status": "resolved",
+      "found_by_this_reviewer": true,
+      "problem": "Valid JSON component entries of non-object type previously raised AttributeError on every retry.",
+      "resolution": "Non-dict entries now return missing, allowing normal legacy fallback or repair.",
+      "verification": "Five actual production-function cases passed."
+    },
+    {
+      "id": "shared-task-progress-and-cancel-paths",
+      "status": "resolved",
+      "found_by_this_reviewer": false,
+      "problem": "Fast close/reopen and separate toolbox instances could otherwise clear another task cancel flag or share status/output ownership.",
+      "resolution": "Unique task directories; path validation rejects shared/mixed status/cancel files. Profile InstallLock spans dependency preparation and actual precompute child exit.",
+      "verification": "Four actual path-validation cases passed; profile-lock scope and cleanup were reviewed in source."
+    },
+    {
+      "id": "probe-inherited-output-pipe",
+      "status": "resolved_in_source",
+      "found_by_this_reviewer": false,
+      "problem": "Unbounded final communicate could wait for EOF held by a descendant after the direct child exited.",
+      "resolution": "Temporary-file capture, bounded direct-child wait/kill cleanup, maximum64KiB output read; no communicate path remains.",
+      "verification": "Read-only delta review of the final run_probe implementation; actual descendant reproducer is owned by runtime_downloader and is not counted here."
+    }
+  ],
+  "narrow_checks": {
+    "passed": true,
+    "count": 9,
+    "cases": [
+      {
+        "case": "malformed-index-null",
+        "passed": true,
+        "result": "treated as missing, eligible for repair"
+      },
+      {
+        "case": "malformed-index-empty-list",
+        "passed": true,
+        "result": "treated as missing, eligible for repair"
+      },
+      {
+        "case": "malformed-index-nonempty-list",
+        "passed": true,
+        "result": "treated as missing, eligible for repair"
+      },
+      {
+        "case": "malformed-index-string",
+        "passed": true,
+        "result": "treated as missing, eligible for repair"
+      },
+      {
+        "case": "malformed-index-integer",
+        "passed": true,
+        "result": "treated as missing, eligible for repair"
+      },
+      {
+        "case": "unique-task-a",
+        "passed": true,
+        "result": "accepted"
+      },
+      {
+        "case": "unique-task-b",
+        "passed": true,
+        "result": "accepted"
+      },
+      {
+        "case": "shared-profile-files",
+        "passed": true,
+        "result": "rejected"
+      },
+      {
+        "case": "mixed-task-files",
+        "passed": true,
+        "result": "rejected"
+      }
+    ],
+    "environment": "Linux standard-library execution in temporary directories"
+  },
+  "official_archive_review": {
+    "performed_earlier_in_this_review": true,
+    "archive_directory": "/workspace/scratch/40121bc881b8/release-1.0.45/dependency-evidence/downloads",
+    "manifest_unchanged_since_archive_review": true,
+    "observations": [
+      {
+        "filename": "python-3.12.10-embed-amd64.zip",
+        "bytes": 11133606,
+        "sha256": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3",
+        "members": 35,
+        "unpacked_bytes": 22501299,
+        "whole_archive_sha256_matched": true,
+        "size_member_count_unpacked_size_roots_matched": true,
+        "symlinks_found": false
+      },
+      {
+        "filename": "numpy-2.2.6-cp312-cp312-win_amd64.whl",
+        "bytes": 12614190,
+        "sha256": "c1f9540be57940698ed329904db803cf7a402f3fc200bfe599334c9bd84a40b2",
+        "members": 986,
+        "unpacked_bytes": 42479138,
+        "whole_archive_sha256_matched": true,
+        "size_member_count_unpacked_size_roots_matched": true,
+        "symlinks_found": false
+      },
+      {
+        "filename": "scipy-1.15.3-cp312-cp312-win_amd64.whl",
+        "bytes": 40966184,
+        "sha256": "52092bc0472cfd17df49ff17e70624345efece4e1a12b23783a1ac59a1b728ed",
+        "members": 1650,
+        "unpacked_bytes": 120774661,
+        "whole_archive_sha256_matched": true,
+        "size_member_count_unpacked_size_roots_matched": true,
+        "symlinks_found": false
+      },
+      {
+        "filename": "opencv_python_headless-4.11.0.86-cp37-abi3-win_amd64.whl",
+        "bytes": 39402386,
+        "sha256": "6c304df9caa7a6a5710b91709dd4786bf20a74d57672b3c31f7033cc638174ca",
+        "members": 86,
+        "unpacked_bytes": 113258514,
+        "whole_archive_sha256_matched": true,
+        "size_member_count_unpacked_size_roots_matched": true,
+        "symlinks_found": false
+      }
+    ]
+  },
+  "reviewed_invariants": [
+    "Repaired managed component paths precede the reused legacy site-packages directory.",
+    "Scientific packages load only in disposable probe/precompute children, keeping installer DLL handles free for stage publication.",
+    "A complete component is hash checked, fully extracted and probed before immutable-directory rename and atomic index update.",
+    "Failure before index publication removes the new staging/final directory; legacy and previously published components stay intact.",
+    "Download cache is verified before reuse; incomplete downloads and unpacked data cannot be marked ready.",
+    "Independent tasks serialize package installation; same-profile work keeps its lock until the actual precompute child exits."
+  ],
+  "limits": {
+    "windows_executed": false,
+    "windows_dll_imports_executed": false,
+    "powershell_review_included": false,
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "live_network_download_performed_by_this_reviewer": false,
+    "actual_inherited_stdout_reproducer_included": false,
+    "final_release_zip_verification_included": false
+  },
+  "source_or_package_files_modified": false
+}
