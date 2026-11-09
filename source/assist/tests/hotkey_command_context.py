@@ -114,6 +114,9 @@ static void critical(const std::wstring&){}
 struct HotkeyDiagnostics{uint32_t messages=0,sampled=0,actions=0,blocked=0,fallbacks=0,lastError=0;};
 static HotkeyDiagnostics hotkeyDiagnostics;
 static void logHotkeyInput(const wchar_t*,int=0,uint16_t=0,DWORD=0){}
+static void logHotkeyBindings(){}
+static void traceHotkeyService(bool,bool,bool,bool){}
+static void traceHotkeyKeys(const uint8_t*){}
 static bool RegisterHotKey(HWND,int id,UINT,unsigned){if(!osInstallOkay)return false;osRegistered.push_back(id);return true;}
 static bool UnregisterHotKey(HWND,int id){osRegistered.erase(std::remove(osRegistered.begin(),osRegistered.end(),id),osRegistered.end());return true;}
 static DWORD GetLastError(){return 1409;}

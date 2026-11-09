@@ -1,10 +1,12 @@
-# 1.0.47-pre.4 交付准备
+# 1.0.47-pre.5 交付准备
 
-本目录准备本地可审查的 Full / Update 包。脚本不修改源码、不执行 Windows 程序、不安装依赖、不推送源码，也不创建 GitHub Release。人类版本为 `1.0.47-pre.4`，PE 文件版本为 `1.0.47.4`；Assist 协议为 102，Cursor 155、Runtime 4 保持不变。Shared 从基线的 23,162,528 字节增加到 23,162,544 字节；只接受这次已审核的尾部扩展（目录 hash、火控满表状态及对齐），不允许把任意布局变化视为兼容。
+本目录准备本地可审查的 Full / Update 包。脚本不修改源码、不执行 Windows 程序、不安装依赖、不推送源码，也不创建 GitHub Release。人类版本为 `1.0.47-pre.5`，PE 文件版本为 `1.0.47.5`；Assist 协议为 102，Cursor 155、Runtime 4 保持不变。Shared 从基线的 23,162,528 字节增加到 23,162,544 字节；只接受这次已审核的尾部扩展（目录 hash、火控满表状态及对齐），不允许把任意布局变化视为兼容。
 
-下列构建、最终打包命令需要本轮冻结提交及真实回执就绪后再执行。保留原十个固定检查和 engine 变更时必需的 dependency 检查，保留此前十六个逐功能实际运行检查，本次再加两个快捷键链路回归，当前合计二十九组。所有门槛必须绑定本轮实际执行与冻结源码，不得沿用上一版通过摘要，也不得把脚本的合成门控测试当作生产验证。这里的组数不是功能点数，也不是测试断言数。
+下列构建、最终打包命令需要本轮冻结提交及真实回执就绪后再执行。保留此前二十九组检查（含 engine 变更时必需的 dependency），本次新增输入诊断、输入占用、两组 Host 输入集成验证和冷启动验证，当前合计三十四组。所有门槛必须绑定本轮实际执行与冻结源码，不得沿用上一版通过摘要，也不得把脚本的合成门控测试当作生产验证。这里的组数不是功能点数，也不是测试断言数。
 
 缺陷前后对照保留 `1.0.47-pre.2` 的固定提交 `46420180d9137932ca98fd2e6c131bde4f2a6294`；它是回归比较来源，不改变下述 1.0.46.4 产品/资源基线。
+
+pre.4 的现场快捷键失效尚未解决。pre.5 补齐已配置按键、实际前台身份、注册、服务提前返回和投递阶段的输入日志，并修复受控复现的零值/过期编队占用期限、跨对局预览占用及世界样本生产者冷启动依赖。默认 OwnGround 绑定本身仍产生 Runtime 需求，因此冷启动缺陷有明确配置边界；用户“先用 35 识别再覆盖”的新反馈与该缺陷的因果关系尚未证实。上述受控检查不能写成现场恢复或真实 Windows 输入已验收。
 
 ## 固定资源基线
 
@@ -17,7 +19,7 @@
 
 Full 保持 53 个成员；原始素材、三套主题、八个许可证和七个 engine 文件共 47 个资源以此为基线。唯一允许替换的资源是明确审核的 `engine/prepare_runtime.py`；其余资源必须原字节保留。Update 包含三程序、loader、README、Start.cmd、七个 engine 和八个许可证，共 21 个成员。Update 不附带原始素材，适用于已有完整安装。两包共同成员必须完全相同。
 
-七个 engine 都必须与本轮冻结源码及构建回执逐字节一致。相对 1.0.46.4 基线保留了 `prepare_runtime.py` 的单文件依赖验证优化，因此回执必须显式列出这个变更并提供 `dependency_probes`，与二十八组固定检查合计二十九组；脚本仍可识别没有 engine 变更的二十八组分支。本轮不捆绑 Python 包、生成插帧、预览、缓存、源码、开发记录或个人设置。光标混合画布修复因自动审核阻断仍未交付，未纳入本版。
+七个 engine 都必须与本轮冻结源码及构建回执逐字节一致。相对 1.0.46.4 基线保留了 `prepare_runtime.py` 的单文件依赖验证优化，因此回执必须显式列出这个变更并提供 `dependency_probes`，与三十三组固定检查合计三十四组；脚本仍可识别没有 engine 变更的三十三组分支。本轮不捆绑 Python 包、生成插帧、预览、缓存、源码、开发记录或个人设置。光标混合画布修复因自动审核阻断仍未交付，未纳入本版。
 
 依赖优化仅在 NumPy、SciPy、OpenCV 三项 managed 缓存记录全部有效且顺序匹配时，把原有三个验证子进程合并为一个。原 `PROBE_CODE` 字节不变，每项版本、来源及功能断言都继续执行；每项重新建立搜索路径，已加载依赖可在该批次内复用。独立总完成标记避免前一项成功掩盖后项零码早退。缺项、批验证失败或批子进程启动错误回到原逐项检查与修复路径；取消继续传播。下载、安装、PowerShell 和取消主体未改，Python 候选检查、引导和实际预处理进程也没有被消除。
 
@@ -25,11 +27,11 @@ Full 保持 53 个成员；原始素材、三套主题、八个许可证和七�
 
 ## 最小门控检查
 
-可在冻结、构建前执行以下轻量策略测试。它只读取真实基线并运行合成正负回执，不构建产品、不执行二十九组本轮生产验证。
+可在冻结、构建前执行以下轻量策略测试。它只读取真实基线并运行合成正负回执，不构建产品、不执行三十四组本轮生产验证。
 
 ```bash
 RA2_REPO=/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix
-RA2_EVIDENCE=/workspace/scratch/c1b87d8550cd/hotkey147pre4/delivery
+RA2_EVIDENCE=/workspace/scratch/c1b87d8550cd/hotkey147pre5/delivery
 RA2_BASE=/workspace/scratch/5a310fe852f8/ui146-delivery-final
 python3 -B "$RA2_REPO/packages/v1.0.47/test_package_release.py" \
   --base-full "$RA2_BASE/RA2Toolbox-1.0.46-x64-Full.zip" \
@@ -37,7 +39,7 @@ python3 -B "$RA2_REPO/packages/v1.0.47/test_package_release.py" \
   --report "$RA2_EVIDENCE/package-gates.json"
 ```
 
-门控覆盖：真实资源与 engine 保留、基线篡改、旧提交/旧版本/错误树、未执行或缺组回执、缺失与变更源码指纹、缺失/变更/空/仅编译日志、失败体素场景、禁入成员、构建产物字节不一致，以及 engine 变更缺少依赖检查或超出审核范围。前一轮四组、此前十六组和本次两组额外检查精确计数与场景结果、伪 `passed` 包装、重复运行拼接、缺失场景和失败输出。逐功能与快捷键新增组的 JSON 结果拒绝重复字段、错误类型和额外字段。本轮还检查巡逻缓冲 ASan 编译/运行参数，以及 Shared 必须为已审核的 16 字节增量。门控报告会明确 `synthetic_receipt_fixtures:true` 与 `product_build_performed:false`。
+门控覆盖：真实资源与 engine 保留、基线篡改、旧提交/旧版本/错误树、未执行或缺组回执、缺失与变更源码指纹、缺失/变更/空/仅编译日志、失败体素场景、禁入成员、构建产物字节不一致，以及 engine 变更缺少依赖检查或超出审核范围。前一轮四组、此前十六组、保留的两组快捷键和本次五组输入与启动专项额外检查精确计数与场景结果、伪 `passed` 包装、重复运行拼接、缺失场景和失败输出。逐功能与快捷键新增组的 JSON 结果拒绝重复字段、错误类型和额外字段。本轮还检查巡逻缓冲 ASan 编译/运行参数，以及 Shared 必须为已审核的 16 字节增量。门控报告会明确 `synthetic_receipt_fixtures:true` 与 `product_build_performed:false`。
 
 ## 冻结构建
 
@@ -67,8 +69,8 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
   "schema": "ra2.optimization-validation.v1",
   "commit": "本轮冻结提交",
   "source_tree_sha": "该提交的source树SHA",
-  "version": "1.0.47-pre.4",
-  "file_version": "1.0.47.4",
+  "version": "1.0.47-pre.5",
+  "file_version": "1.0.47.5",
   "engine_changes": ["engine/prepare_runtime.py"],
   "required_checks_passed": true,
   "windows_executed": false,
@@ -90,7 +92,7 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 }
 ```
 
-本轮 `checks` 必须恰好包含下述十个既有组名、后述十六个逐功能组名、本次两个快捷键回归组名和 `dependency_probes`，共二十九组。各组至少包含下表指纹，可以增加真实依赖。所有路径都相对于仓库，所有哈希都必须与构建回执及冻结 Git blob 的实际字节一致。`log_path` 可以绝对指定，或相对于 validation.json；日志不进入产品 ZIP。
+本轮 `checks` 必须恰好包含下述十个既有组名、后述十六个逐功能组名、保留的两个快捷键回归组名、本次五个输入与启动专项组名和 `dependency_probes`，共三十四组。各组至少包含下表指纹，可以增加真实依赖。所有路径都相对于仓库，所有哈希都必须与构建回执及冻结 Git blob 的实际字节一致。`log_path` 可以绝对指定，或相对于 validation.json；日志不进入产品 ZIP。
 
 | 组名 | 必需测试（均在 `source/assist/tests/`） | 必需生产文件 |
 | --- | --- | --- |
@@ -168,9 +170,9 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 
 已执行的本轮测试可以在冻结后封装回执，只要测试时记录的所有测试与生产指纹仍与冻结提交一致；不能把过去版本的测试摘要重命名为本轮验证。回执表达可审查的来源关系，不提供密码学意义上的执行见证。
 
-## 本次快捷键回归门槛
+## 保留的快捷键回归门槛
 
-新增 `hotkey_command_context` 与 `hotkey_message_recovery` 两组，原二十七组继续保留。两组必须有本轮实际命令、零退出码、未改动的原始结果日志与测试/生产源码指纹。当前版本通过之外，还要保留同一受控场景在冻结 pre.3 源码 `93f02787d42b61ff5c30e450317f99ba00673149` 上的负面对照。基线源码随测试保存为固定字节 fixture，运行时校验 SHA256，不依赖远端拥有这个本地提交对象：旧版必须先编译成功，再运行并触发断言失败，不能将缺源码、提取失败或编译失败当作复现证据。
+保留 `hotkey_command_context` 与 `hotkey_message_recovery` 两组，之前二十七组继续保留。两组必须有本轮实际命令、零退出码、未改动的原始结果日志与测试/生产源码指纹。当前版本通过之外，还要保留同一受控场景在冻结 pre.3 源码 `93f02787d42b61ff5c30e450317f99ba00673149` 上的负面对照。基线源码随测试保存为固定字节 fixture，运行时校验 SHA256，不依赖远端拥有这个本地提交对象：旧版必须先编译成功，再运行并触发断言失败，不能将缺源码、提取失败或编译失败当作复现证据。
 
 `hotkey_command_context` 检查生产 Host 快捷键功能的命令上下文与投递，Win32 状态和命令接收端由受控替身提供。`hotkey_message_recovery` 检查真实快捷键 Registry 对消息边沿、异步按键状态和时间戳的处理。测试不代表真实 Windows 键盘钩子、游戏内指令执行或多人联机已验收。
 
@@ -181,7 +183,27 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 
 两组结果拒绝重复 JSON 字段、错误类型、额外的通过包装、未请求或未复现的旧版对照、混合源码摘要，以及缺少真实当前执行的报告。两组场景可随新反例增加；Host 保留最低 22 个场景、67 项检查覆盖，门槛同时核对实际摘要一致及精确测试源码，不把某个旧场景数冒充当前运行。
 
-执行计划与执行回执分开。独立工作目录中的 `run_checks.py` 按 `pre4-check-run-spec.json` 真正运行每组命令，使用全新的输出目录，并在运行前后记录测试和生产源码 SHA256。`planning_source_sha256` 仅用于安排检查，不得作为已执行证据。全部实际运行成功后，`finish_validation.py` 才能把回执绑定最终冻结提交；它不会补写 PASS、改写已执行源码指纹或替代产品构建。
+## pre.5 输入定位与冷启动门槛
+
+以下五组在此前二十九组之外强制新增。它们同样要求本轮实际命令、整数零退出码、未改动的运行日志及测试/生产来源摘要；不能用策略单元测试的合成回执或编译日志替代实际运行。
+
+| 组名 | 原始运行契约 | 最低来源绑定 |
+| --- | --- | --- |
+| `hotkey_input_diagnostic` | 单条完整 `PASS hotkey input diagnostics: 14 scenarios, 83 checks; pure observation, no Win32/game execution` | `source/assist/tests/hotkey_input_diagnostic.cpp`；生产 `hotkey_input_diagnostic.h`、`main.cpp`、`hotkey_host.h` |
+| `input_ownership` | 单条完整 `PASS input_ownership: 61 checks; epoch, zero sentinel, 200ms leases, and normalized wrap boundary` | `source/assist/tests/input_ownership.cpp`；生产 `input_ownership.h`、`main.cpp`、`formation_bridge.h` |
+| `formation_input_ownership` | 原始 driver JSON：至少 13 个场景、78 项检查；当前编译和运行均为 0、零失败；旧占用表达式对照编译为 0、运行为 1，恰好五个指定场景失败 | driver、`hotkey_command_context.py`；生产 `main.cpp`、`hotkey_host.h`、`input_ownership.h`、`formation_bridge.h`、`hotkey_routes.h`、`control_link.h`、`protocol.h` 及共享 `key_gesture.h`，共 10 项，并核对编译器解析出的生产头文件摘要 |
+| `hotkey_live_observation` | 单次二进制 `run.log`：每个场景一条唯一的 `PASS hotkey_live_observation::...`，末行是同名 suite 的真实布尔 `passed:true`、至少 10 个场景和 40 项检查，以及精确的受控边界 scope；PASS 行数必须等于场景数 | driver、`hotkey_command_context.py`；生产 `main.cpp`、`hotkey_host.h`、诊断头、占用头、`hotkey_routes.h`、`control_link.h`、`protocol.h`、`additional_settings.h`、`type_hotkey.h`、`automatic_features.h`、`activation_diagnostic.h` 及共享 `key_gesture.h`，共 14 项 |
+| `hotkey_cold_start` | 原始 driver `result.json`：至少 11 个场景、77 项检查；当前编译/运行均为 0、零失败；固定 pre.4 调用点对照编译为 0、运行为 1，`manual_only`、`manual_restart`、`delayed_connection` 三个场景各六项断言失败，其余场景通过 | driver、固定 `fixtures/hotkey_pre1474/bridge_callsite.cpp`、研究中的 `bootstrap/cold_bootstrap.py` 边界支架；生产 `main.cpp`、`runtime_feature_demand.h`、`control_link.h`、`hotkey_routes.h`、`type_hotkey.h`、`hook_policy.h`、`destruct_owner_input.h`、`placement_event_input.h`、`protocol.h`、`additional_settings.h`、`automatic_features.h` 及共享 `key_gesture.h`，共 15 项 |
+
+上表中未展开前缀的生产文件均位于 `source/assist/source/`，共享头位于 `source/shared/source/`，测试 driver 位于 `source/assist/tests/`。冷启动边界支架的完整路径是 `source/research/evidence/pre147-hotkey-origin/bootstrap/cold_bootstrap.py`。各组精确必需集合由 `INPUT_HEADER_BINDINGS` 与 `INPUT_INTEGRATION_BINDINGS` 定义。
+
+两个纯头测试验证观测状态机和占用规则；绑定 Host/Runtime 集成文件表示源码来源关系，不能把纯头执行称为完整应用执行。`formation_input_ownership` 编译实际 Host 入口和 Registry，仅替换 Win32/命令边界；负面对照只替换旧的占用表达式，其他代码仍为当前版本，不能称为历史二进制执行。它的 `log_path` 指向原始报告，`supporting_logs` 必须绑定 `<报告文件 stem>-artifacts/current/run.log` 和 `baseline-expression/run.log`；原始 stdout/stderr、逐场景结果、摘要、失败集合和 SHA256 必须相互一致。五个旧表达式反例是 `unset_high_uptime_poll`、`old_match_active_preview_poll`、`old_match_lease_poll`、`unset_high_uptime_wm`、`ancient_deadline_poll`。
+
+`hotkey_live_observation` 执行实际诊断 helpers、注册、service 和 dispatch 函数，Win32/input/command 边界受控。其 `log_path` 必须是实际二进制 `run.log`，同目录 `result.json` 必须作为 `supporting_logs` 唯一成员绑定执行时的大小和 SHA256。详细报告的五个摘要字段必须与最后一条原始 stdout 逐字段一致；14 个来源摘要、真实编译命令、整数零编译/运行退出码、`windows_executed:false` 和 `game_tested:false` 均须存在。检查可增加场景，不能通过重复 PASS 行或重复运行拼接伪造覆盖。
+
+`hotkey_cold_start` 的 `log_path` 为实际 `result.json`，`supporting_logs` 必须绑定同目录 `current/run.log` 与 `baseline/run.log`。固定旧调用点 SHA256 为 `5cf66cfe242d5d65bf9ea2f468c1a07a0526d9a7de90964e1132e9a9f4a526c2`。两份日志分别与报告的 stdout/stderr 和摘要逐项核对；拒绝缺失负面对照、编译错误冒充断言失败、错误类型、混合源码或变更日志。完整采样、merge、注册函数来自当前生产代码，旧对照仅换回三条 tick 语句；不执行 Windows、真实游戏或旧版本产品。
+
+执行计划与执行回执分开。独立工作目录中的 `run_checks.py` 按 `pre5-check-run-spec.json` 真正运行每组命令，使用全新的输出目录，并在运行前后记录测试和生产源码 SHA256。`planning_source_sha256` 仅用于安排检查，不得作为已执行证据。全部实际运行成功后，`finish_validation.py` 才能把回执绑定最终冻结提交；它不会补写 PASS、改写已执行源码指纹或替代产品构建。
 
 ## 本地打包
 
@@ -202,8 +224,8 @@ python3 -B "$RA2_REPO/packages/v1.0.47/package_release.py" \
 
 成功仅输出四个文件：
 
-- `RA2Toolbox-1.0.47-pre.4-x64-Full.zip`
-- `RA2Toolbox-1.0.47-pre.4-x64-Update.zip`
+- `RA2Toolbox-1.0.47-pre.5-x64-Full.zip`
+- `RA2Toolbox-1.0.47-pre.5-x64-Update.zip`
 - `release-manifest.json`
 - `SHA256SUMS.txt`
 

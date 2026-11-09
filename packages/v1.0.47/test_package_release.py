@@ -85,6 +85,12 @@ FEATURE_LOGS = {
     'icon_cache_reopen': (
         'PASS failed scope -> same-path reconnect -> cache persistence/restore; '
         'healthy reconnect keeps generation\n'),
+    'hotkey_input_diagnostic': (
+        'PASS hotkey input diagnostics: 14 scenarios, 83 checks; '
+        'pure observation, no Win32/game execution\n'),
+    'input_ownership': (
+        'PASS input_ownership: 61 checks; epoch, zero sentinel, 200ms leases, '
+        'and normalized wrap boundary\n'),
     'superweapon_result_feedback': '{"checks":13,"failures":0,"passed":true}\n',
     'pause_key_pairing': '{"checks":22,"failures":0,"passed":true}\n',
     'native_mouse_pairing': '{"checks":36,"failures":0,"passed":true}\n',
@@ -166,6 +172,113 @@ for _name, _report in HOTKEY_REPORT_FIXTURES.items():
     FEATURE_LOGS[_name] = json.dumps(_report, separators=(',', ':')) + '\n'
 
 
+# All values here are synthetic policy fixtures, never executed product results.
+LIVE_REPORT_FIXTURE = {
+    'suite': 'hotkey_live_observation', 'passed': True, 'scenarios': 10, 'checks': 40,
+    'scope': PACKAGE.LIVE_OBSERVATION_SCOPE,
+    'sources': {path: PACKAGE.sha(('synthetic input: ' + path).encode())
+                for path in set().union(*PACKAGE.INPUT_INTEGRATION_BINDINGS['hotkey_live_observation'])},
+    'compile_command': ['synthetic-policy-compiler', '-UNDEBUG'],
+    'compile_exit_code': 0, 'run_exit_code': 0, 'windows_executed': False, 'game_tested': False,
+}
+FEATURE_LOGS['hotkey_live_observation'] = (
+    ''.join(f'PASS hotkey_live_observation::synthetic policy case {i}\n' for i in range(10))
+    + json.dumps({key: LIVE_REPORT_FIXTURE[key] for key in ('suite', 'passed', 'scenarios', 'checks', 'scope')},
+                 separators=(',', ':')) + '\n')
+
+
+def formation_policy_fixture():
+    """Model the report contract solely to exercise package acceptance/rejection."""
+    scenarios = [
+        ('low_uptime_poll', 1), ('unset_high_uptime_poll', 1),
+        ('old_match_active_preview_poll', 1), ('old_match_lease_poll', 1),
+        ('unset_high_uptime_wm', 1), ('current_active_preview_poll', 0),
+        ('current_commit_lease_poll', 0), ('current_expired_lease_poll', 1),
+        ('current_wrap_lease_poll', 0), ('current_normalized_zero_lease_poll', 0),
+        ('normalized_zero_lease_expired_poll', 1), ('ancient_deadline_poll', 1),
+        ('current_active_preview_wm', 0),
+    ]
+    report = {'passed': True, 'scope': PACKAGE.FORMATION_SCOPE,
+              'source_sha256': {path: PACKAGE.sha(('synthetic input: ' + path).encode())
+                               for path in set().union(*PACKAGE.INPUT_INTEGRATION_BINDINGS['formation_input_ownership'])},
+              'baseline_kind': PACKAGE.FORMATION_BASELINE_KIND,
+              'baseline_expression': PACKAGE.FORMATION_BASELINE_EXPRESSION,
+              'case_count': 13, 'check_count': 78,
+              'expected_baseline_failures': sorted(PACKAGE.FORMATION_BASELINE_FAILURES)}
+    headers = {'source/assist/source/input_ownership.h', 'source/assist/source/hotkey_routes.h',
+               'source/assist/source/control_link.h', 'source/assist/source/protocol.h',
+               'source/shared/source/key_gesture.h'}
+    for branch, dirname in (('current', 'current'), ('baseline', 'baseline-expression')):
+        cases = []
+        for name, expected in scenarios:
+            failed = branch == 'baseline' and name in PACKAGE.FORMATION_BASELINE_FAILURES
+            sent = 0 if failed else expected
+            message = int(name.endswith('_wm'))
+            cases.append({'scenario': name, 'expected_send': expected, 'sent': sent,
+                          'owned': int(not sent), 'mode': 2, 'messages': message,
+                          'sampled': int(not message and bool(sent)), 'actions': int(message or bool(sent)),
+                          'blocked': 0, 'passed': not failed})
+        summary = {'passed': branch == 'current', 'scenarios': 13, 'checks': 78,
+                   'failures': 0 if branch == 'current' else 5}
+        stdout = ''.join(json.dumps(record, separators=(',', ':')) + '\n' for record in cases + [summary])
+        stderr = ''.join('FAIL ' + case['scenario'] + '\n' for case in cases if not case['passed'])
+        report[branch] = {
+            'compile_command': ['synthetic-policy-compiler', '-UNDEBUG'], 'compile_exit': 0,
+            'run_exit': 0 if branch == 'current' else 1, 'cases': cases, 'summary': summary,
+            'stdout': stdout, 'stderr': stderr,
+            'directory': '/synthetic-package-policy/formation_input_ownership-artifacts/' + dirname,
+            'generated_cpp_sha256': PACKAGE.sha(('synthetic policy C++ ' + branch).encode()),
+            'run_log_sha256': PACKAGE.sha((stdout + stderr).encode()),
+            'production_header_sha256': {
+                '/synthetic-package-policy/' + path: PACKAGE.sha(('synthetic input: ' + path).encode())
+                for path in headers},
+        }
+    return report
+
+
+FEATURE_LOGS['formation_input_ownership'] = json.dumps(formation_policy_fixture(), separators=(',', ':')) + '\n'
+
+
+def cold_start_policy_fixture():
+    """Synthetic cold-start report; no C++ or historical binary is executed here."""
+    names = ['manual_only', 'default_own_ground', 'legacy_advanced_settings', 'auto_repair',
+             'already_connected', 'manual_restart', 'missing_reader', 'query_only_reader',
+             'disabled_host', 'delayed_connection', 'delayed_world_publication']
+    report = {'suite': 'hotkey_cold_start', 'passed': True, 'scope': PACKAGE.COLD_START_SCOPE,
+              'scenarios': 11, 'checks': 77, 'baseline_callsite_sha256': PACKAGE.COLD_START_BASELINE_SHA,
+              'negative_control_reproduced': True, 'windows_executed': False, 'game_tested': False,
+              'sources': {path: PACKAGE.sha(('synthetic input: ' + path).encode())
+                          for path in set().union(*PACKAGE.INPUT_INTEGRATION_BINDINGS['hotkey_cold_start'])}}
+    for branch in ('current', 'baseline'):
+        cases, lines = [], []
+        for name in names:
+            failed = branch == 'baseline' and name in PACKAGE.COLD_START_FAILURES
+            ready = name not in {'missing_reader', 'query_only_reader', 'disabled_host'} and not failed
+            case = {'case': name, 'passed': not failed, 'failures': 6 if failed else 0,
+                    'feature_demand': int(name in {'default_own_ground', 'legacy_advanced_settings', 'auto_repair'}),
+                    'bridge_attempts': 3 if ready and name == 'delayed_connection' else int(ready),
+                    'world_scope_failures': int(failed), 'sampler_calls': int(ready),
+                    'mode': 2 if ready else 0, 'autoboard_registered': int(ready)}
+            cases.append(case)
+            if failed:
+                lines += [f'CHECK_FAILED synthetic policy guard {i}' for i in range(6)]
+            lines.append(json.dumps(case, separators=(',', ':')))
+        summary = {'suite': 'hotkey_cold_start', 'passed': branch == 'current',
+                   'scenarios': 11, 'checks': 77, 'failures': 0 if branch == 'current' else 18}
+        lines.append(json.dumps(summary, separators=(',', ':')))
+        stdout = '\n'.join(lines) + '\n'
+        report[branch] = {'summary': summary, 'cases': cases,
+                          'compile_command': ['synthetic-policy-compiler', '-UNDEBUG', '-DRA2_UNIFIED=1'],
+                          'compile_exit_code': 0, 'exit_code': 0 if branch == 'current' else 1,
+                          'stdout': stdout, 'stderr': '', 'run_log_sha256': PACKAGE.sha(stdout.encode()),
+                          'callsite_sha256': PACKAGE.COLD_START_BASELINE_SHA if branch == 'baseline'
+                              else PACKAGE.sha(b'synthetic policy current callsite')}
+    return report
+
+
+FEATURE_LOGS['hotkey_cold_start'] = json.dumps(cold_start_policy_fixture(), separators=(',', ':')) + '\n'
+
+
 class PackageGates(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='ra2-147-package-gates-')
@@ -210,6 +323,37 @@ class PackageGates(unittest.TestCase):
                     data = raw_path.read_bytes()
                     supporting[str(raw_path)] = {'bytes': len(data), 'sha256': PACKAGE.sha(data)}
                 checks[-1]['supporting_logs'] = supporting
+            if name == 'hotkey_live_observation':
+                report_path = path.parent / 'result.json'
+                report_path.write_text(json.dumps(LIVE_REPORT_FIXTURE) + '\n')
+                raw = report_path.read_bytes()
+                checks[-1]['supporting_logs'] = {
+                    str(report_path): {'bytes': len(raw), 'sha256': PACKAGE.sha(raw)}}
+            if name == 'formation_input_ownership':
+                report = json.loads(logs[name])
+                supporting = {}
+                for branch, dirname in (('current', 'current'), ('baseline', 'baseline-expression')):
+                    directory = path.parent / (path.stem + '-artifacts') / dirname
+                    directory.mkdir(parents=True)
+                    report[branch]['directory'] = str(directory)
+                    raw_path = directory / 'run.log'
+                    raw = (report[branch]['stdout'] + report[branch]['stderr']).encode()
+                    raw_path.write_bytes(raw)
+                    supporting[str(raw_path)] = {'bytes': len(raw), 'sha256': PACKAGE.sha(raw)}
+                path.write_text(json.dumps(report, separators=(',', ':')) + '\n')
+                checks[-1]['log_sha256'] = PACKAGE.sha(path.read_bytes())
+                checks[-1]['supporting_logs'] = supporting
+            if name == 'hotkey_cold_start':
+                report = json.loads(logs[name])
+                supporting = {}
+                for branch in ('current', 'baseline'):
+                    directory = path.parent / branch
+                    directory.mkdir()
+                    raw_path = directory / 'run.log'
+                    raw = (report[branch]['stdout'] + report[branch]['stderr']).encode()
+                    raw_path.write_bytes(raw)
+                    supporting[str(raw_path)] = {'bytes': len(raw), 'sha256': PACKAGE.sha(raw)}
+                checks[-1]['supporting_logs'] = supporting
         self.receipt = {'schema': 'ra2.optimization-validation.v1', 'commit': self.commit,
                         'source_tree_sha': self.tree, 'version': PACKAGE.VERSION,
                         'file_version': PACKAGE.FILE_VERSION, 'required_checks_passed': True,
@@ -227,8 +371,9 @@ class PackageGates(unittest.TestCase):
                   'catalogue_recovery', 'planner_batch_delivery', 'scene_extra_recovery'}
         self.assertEqual(set(PACKAGE.CHECK_BINDINGS), legacy | set(FEATURE_LOGS))
         self.assertEqual(set(PACKAGE.FEATURE_CHECKS), set(FEATURE_LOGS))
-        self.assertEqual(len(self.verify()), len(legacy) + len(FEATURE_LOGS) + 4)
-        self.assertEqual((PACKAGE.VERSION, PACKAGE.FILE_VERSION), ('1.0.47-pre.4', '1.0.47.4'))
+        self.assertEqual(len(self.verify()), len(legacy) + len(FEATURE_LOGS) + 9)
+        self.assertEqual(len(PACKAGE.CHECK_BINDINGS), 33)
+        self.assertEqual((PACKAGE.VERSION, PACKAGE.FILE_VERSION), ('1.0.47-pre.5', '1.0.47.5'))
 
     def test_shared_transition_accepts_only_reviewed_protocol_102_tail(self):
         self.assertEqual(PACKAGE.ASSIST_PROTOCOL, 102)
@@ -341,6 +486,7 @@ class PackageGates(unittest.TestCase):
         for name, good in (FUNCTIONAL_LOGS | FEATURE_LOGS).items():
             row = next(row for row in self.receipt['checks'] if row['name'] == name)
             path = self.directory / row['log_path']
+            original = path.read_bytes()
             for bad in ('{"passed":true}\n', 'compiled successfully\n', good + good,
                         good + 'FAIL synthetic negative control\n',
                         json.dumps({'passed': True, 'expected_failure': True, 'stdout': good}),
@@ -349,8 +495,8 @@ class PackageGates(unittest.TestCase):
                 row['log_sha256'] = PACKAGE.sha(path.read_bytes())
                 with self.subTest(name=name, bad=bad[:50]), self.assertRaisesRegex(ValueError, 'lacks the current check result'):
                     self.verify()
-            path.write_text(good, encoding='utf-8')
-            row['log_sha256'] = PACKAGE.sha(path.read_bytes())
+            path.write_bytes(original)
+            row['log_sha256'] = PACKAGE.sha(original)
 
     def test_new_group_result_counts_and_both_pixel_recoveries_are_mandatory(self):
         changes = {
@@ -402,6 +548,23 @@ class PackageGates(unittest.TestCase):
             'secondary_drag_bounds': [('7 boundary cases', '6 boundary cases'), ('900 range cases', '899 range cases')],
             'secondary_render_retry': [('8 submission', '7 submission')],
             'icon_cache_reopen': [('healthy reconnect keeps generation', 'healthy reconnect loses generation')],
+            'hotkey_input_diagnostic': [('14 scenarios', '13 scenarios'), ('83 checks', '82 checks'),
+                                        ('no Win32/game execution', 'Windows/game execution')],
+            'input_ownership': [('61 checks', '60 checks'), ('zero sentinel', 'no sentinel')],
+            'hotkey_live_observation': [('"scenarios":10', '"scenarios":9'),
+                                        ('"checks":40', '"checks":39'), ('"passed":true', '"passed":1'),
+                                        ('no Windows/game execution', 'Windows/game execution')],
+            'formation_input_ownership': [('"case_count":13', '"case_count":12'),
+                                          ('"check_count":78', '"check_count":77'),
+                                          ('"compile_exit":0', '"compile_exit":1'),
+                                          ('"run_exit":1', '"run_exit":0'),
+                                          ('explicit former owner expression only', 'historical product execution')],
+            'hotkey_cold_start': [('"scenarios":11', '"scenarios":10'),
+                                  ('"checks":77', '"checks":76'),
+                                  ('"negative_control_reproduced":true', '"negative_control_reproduced":false'),
+                                  ('"compile_exit_code":0', '"compile_exit_code":1'),
+                                  ('"exit_code":1', '"exit_code":0'),
+                                  (PACKAGE.COLD_START_BASELINE_SHA, '0' * 64)],
             'superweapon_result_feedback': [('"checks":13', '"checks":12'), ('"failures":0', '"failures":1'),
                                              ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],
             'pause_key_pairing': [('"checks":22', '"checks":21'), ('"failures":0', '"failures":1'),
@@ -480,6 +643,143 @@ class PackageGates(unittest.TestCase):
                 target = target[part]
             target[path[-1]] = value
             self.assertFalse(PACKAGE.success_log('hotkey_message_recovery', json.dumps(changed)))
+
+    def test_input_integration_reports_reject_untyped_or_unexecuted_results(self):
+        live = FEATURE_LOGS['hotkey_live_observation']
+        for bad in (live.replace('"passed":true', '"passed":false,"passed":true'),
+                    live.replace('"checks":40', '"checks":true'),
+                    live.replace('"passed":true', '"passed":true,"extra":1'),
+                    live.replace('synthetic policy case 1\n', 'synthetic policy case 0\n'),
+                    live.replace('PASS hotkey_live_observation::', 'PASS other_suite::', 1)):
+            with self.subTest(kind='live', bad=bad[:70]):
+                self.assertFalse(PACKAGE.success_log('hotkey_live_observation', bad))
+        formation = formation_policy_fixture()
+        for path, value in ((('passed',), 1), (('case_count',), True), (('check_count',), True),
+                            (('current', 'compile_exit'), False), (('baseline', 'compile_exit'), 1),
+                            (('baseline', 'run_exit'), True), (('baseline', 'run_exit'), 0),
+                            (('current', 'summary', 'passed'), 1),
+                            (('baseline', 'summary', 'failures'), 4),
+                            (('current', 'cases', 0, 'passed'), 1)):
+            changed = copy.deepcopy(formation)
+            target = changed
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = value
+            with self.subTest(kind='formation', path=path):
+                self.assertFalse(PACKAGE.success_log('formation_input_ownership', json.dumps(changed)))
+
+    def test_live_input_report_and_stdout_are_bound_and_coverage_can_grow(self):
+        row = next(row for row in self.receipt['checks'] if row['name'] == 'hotkey_live_observation')
+        raw_path = self.directory / row['log_path']
+        report_path = self.directory / 'result.json'
+        report = json.loads(report_path.read_text())
+        original = copy.deepcopy(report)
+
+        def save_report(value):
+            report_path.write_text(json.dumps(value))
+            data = report_path.read_bytes()
+            row['supporting_logs'][str(report_path)] = {'bytes': len(data), 'sha256': PACKAGE.sha(data)}
+
+        for field, value in (('checks', 41), ('compile_exit_code', False), ('run_exit_code', 1),
+                              ('windows_executed', True), ('game_tested', True)):
+            save_report(original | {field: value})
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'differs from actual run'):
+                self.verify()
+        report['sources'][next(iter(report['sources']))] = '0' * 64
+        save_report(report)
+        with self.assertRaisesRegex(ValueError, 'report source differs'):
+            self.verify()
+        save_report(original)
+        report_path.write_text(report_path.read_text() + '\n')
+        with self.assertRaisesRegex(ValueError, 'report changed after run'):
+            self.verify()
+        grown = original | {'checks': 41, 'scenarios': 11}
+        save_report(grown)
+        lines = raw_path.read_text().splitlines()
+        lines.insert(-1, 'PASS hotkey_live_observation::additional synthetic policy case')
+        lines[-1] = json.dumps({key: grown[key] for key in ('suite', 'passed', 'scenarios', 'checks', 'scope')})
+        raw_path.write_text('\n'.join(lines) + '\n')
+        row['log_sha256'] = PACKAGE.sha(raw_path.read_bytes())
+        self.verify()
+        row['supporting_logs'] = {}
+        with self.assertRaisesRegex(ValueError, 'Missing live input diagnostic report binding'):
+            self.verify()
+
+    def test_formation_report_sources_compiler_inputs_and_raw_runs_are_bound(self):
+        row = next(row for row in self.receipt['checks'] if row['name'] == 'formation_input_ownership')
+        report_path = self.directory / row['log_path']
+        original = json.loads(report_path.read_text())
+
+        def save_report(value):
+            report_path.write_text(json.dumps(value))
+            row['log_sha256'] = PACKAGE.sha(report_path.read_bytes())
+
+        changed = copy.deepcopy(original)
+        changed['source_sha256'][next(iter(changed['source_sha256']))] = '0' * 64
+        save_report(changed)
+        with self.assertRaisesRegex(ValueError, 'report source differs'):
+            self.verify()
+        changed = copy.deepcopy(original)
+        header = next(iter(changed['current']['production_header_sha256']))
+        for branch in ('current', 'baseline'):
+            changed[branch]['production_header_sha256'][header] = '0' * 64
+        save_report(changed)
+        with self.assertRaisesRegex(ValueError, 'Formation compiler input differs'):
+            self.verify()
+        save_report(original)
+        for raw_name in list(row['supporting_logs']):
+            path = Path(raw_name)
+            raw = path.read_bytes()
+            path.write_bytes(raw + b'changed after execution\n')
+            with self.subTest(path=raw_name), self.assertRaisesRegex(ValueError, 'execution log differs'):
+                self.verify()
+            path.write_bytes(raw)
+        row['supporting_logs'].pop(next(iter(row['supporting_logs'])))
+        with self.assertRaisesRegex(ValueError, 'Missing current/negative formation input execution logs'):
+            self.verify()
+
+    def test_cold_start_requires_compiled_control_and_typed_case_failures(self):
+        original = cold_start_policy_fixture()
+        for path, value in ((('passed',), 1), (('scenarios',), True), (('checks',), True),
+                            (('negative_control_reproduced',), 1), (('windows_executed',), True),
+                            (('current', 'compile_exit_code'), False), (('baseline', 'compile_exit_code'), 1),
+                            (('baseline', 'exit_code'), True), (('current', 'summary', 'passed'), 1),
+                            (('baseline', 'summary', 'failures'), 17),
+                            (('baseline', 'cases', 0, 'passed'), True),
+                            (('current', 'cases', 0, 'feature_demand'), False)):
+            changed = copy.deepcopy(original)
+            target = changed
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = value
+            with self.subTest(path=path):
+                self.assertFalse(PACKAGE.success_log('hotkey_cold_start', json.dumps(changed)))
+        text = json.dumps(original)
+        self.assertFalse(PACKAGE.success_log('hotkey_cold_start',
+            text.replace('"passed": true', '"passed": false, "passed": true', 1)))
+
+    def test_cold_start_report_sources_and_both_raw_executions_are_bound(self):
+        row = next(row for row in self.receipt['checks'] if row['name'] == 'hotkey_cold_start')
+        report_path = self.directory / row['log_path']
+        original = report_path.read_bytes()
+        changed = json.loads(original)
+        changed['sources'][next(iter(changed['sources']))] = '0' * 64
+        report_path.write_text(json.dumps(changed))
+        row['log_sha256'] = PACKAGE.sha(report_path.read_bytes())
+        with self.assertRaisesRegex(ValueError, 'report source differs'):
+            self.verify()
+        report_path.write_bytes(original)
+        row['log_sha256'] = PACKAGE.sha(original)
+        for raw_name in list(row['supporting_logs']):
+            raw_path = Path(raw_name)
+            raw = raw_path.read_bytes()
+            raw_path.write_bytes(raw + b'changed after execution\n')
+            with self.subTest(path=raw_name), self.assertRaisesRegex(ValueError, 'Cold-start execution log differs'):
+                self.verify()
+            raw_path.write_bytes(raw)
+        row['supporting_logs'].pop(next(iter(row['supporting_logs'])))
+        with self.assertRaisesRegex(ValueError, 'Missing current/negative cold-start execution logs'):
+            self.verify()
 
     def test_hotkey_raw_report_hashes_must_match_the_executed_source(self):
         for name in PACKAGE.HOTKEY_CHECKS:
@@ -566,7 +866,7 @@ class PackageGates(unittest.TestCase):
                                   'production_source_hashes': {p: self.inputs[p]['sha256'] for p in production}})
         self.assertEqual(len(PACKAGE.validate_evidence(receipt, self.directory / 'validation.json',
                          self.commit, self.tree, self.inputs, self.sources.__getitem__, changed)),
-                         len(PACKAGE.CHECK_BINDINGS) + 5)
+                         len(PACKAGE.CHECK_BINDINGS) + 10)
         engine['engine/precompute.py'] += b'\n# unreviewed fixture change\n'
         with self.assertRaisesRegex(ValueError, 'outside the reviewed plan'):
             PACKAGE.engine_change_plan(resources, engine)

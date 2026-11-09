@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the frozen 1.0.47-pre.4 build; never build or publish.
+"""Package the frozen 1.0.47-pre.5 build; never build or publish.
 
 Use the verified 1.0.46.4 originals, themes, licenses and seven-file engine.
 Only prepare_runtime.py may change, with a current dependency check.
@@ -30,7 +30,7 @@ POLICY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(POLICY)
 require, sha, encoded = POLICY.require, POLICY.sha, POLICY.encoded
 
-VERSION, FILE_VERSION = '1.0.47-pre.4', '1.0.47.4'
+VERSION, FILE_VERSION = '1.0.47-pre.5', '1.0.47.5'
 ASSIST_PROTOCOL = 102
 BASE_SHARED_BYTES, SHARED_BYTES = 23162528, 23162544
 BASE_NAME = 'RA2Toolbox-1.0.46-x64-Full.zip'
@@ -175,7 +175,74 @@ HOTKEY_BINDINGS = {
         {'source/assist/source/hotkey_routes.h', 'source/shared/source/key_gesture.h'}),
 }
 HOTKEY_CHECKS = frozenset(HOTKEY_BINDINGS)
+INPUT_HEADER_BINDINGS = {
+    'hotkey_input_diagnostic': (
+        {'source/assist/tests/hotkey_input_diagnostic.cpp'},
+        {'source/assist/source/hotkey_input_diagnostic.h', 'source/assist/source/main.cpp',
+         'source/assist/source/hotkey_host.h'}),
+    'input_ownership': (
+        {'source/assist/tests/input_ownership.cpp'},
+        {'source/assist/source/input_ownership.h', 'source/assist/source/main.cpp',
+         'source/assist/source/formation_bridge.h'}),
+}
+INPUT_INTEGRATION_BINDINGS = {
+    'formation_input_ownership': (
+        {'source/assist/tests/formation_input_ownership.py',
+         'source/assist/tests/hotkey_command_context.py'},
+        {'source/assist/source/main.cpp', 'source/assist/source/hotkey_host.h',
+         'source/assist/source/input_ownership.h', 'source/assist/source/formation_bridge.h',
+         'source/assist/source/hotkey_routes.h', 'source/assist/source/control_link.h',
+         'source/assist/source/protocol.h', 'source/shared/source/key_gesture.h'}),
+    'hotkey_live_observation': (
+        {'source/assist/tests/hotkey_live_observation.py',
+         'source/assist/tests/hotkey_command_context.py'},
+        {'source/assist/source/main.cpp', 'source/assist/source/hotkey_host.h',
+         'source/assist/source/hotkey_input_diagnostic.h', 'source/assist/source/input_ownership.h',
+         'source/assist/source/hotkey_routes.h', 'source/assist/source/control_link.h',
+         'source/assist/source/protocol.h', 'source/shared/source/key_gesture.h',
+         'source/assist/source/additional_settings.h', 'source/assist/source/type_hotkey.h',
+         'source/assist/source/automatic_features.h', 'source/assist/source/activation_diagnostic.h'}),
+    'hotkey_cold_start': (
+        {'source/assist/tests/hotkey_cold_start.py',
+         'source/assist/tests/fixtures/hotkey_pre1474/bridge_callsite.cpp',
+         'source/research/evidence/pre147-hotkey-origin/bootstrap/cold_bootstrap.py'},
+        {'source/assist/source/main.cpp', 'source/assist/source/runtime_feature_demand.h',
+         'source/assist/source/control_link.h', 'source/assist/source/hotkey_routes.h',
+         'source/assist/source/type_hotkey.h', 'source/assist/source/hook_policy.h',
+         'source/assist/source/destruct_owner_input.h', 'source/assist/source/placement_event_input.h',
+         'source/assist/source/protocol.h', 'source/assist/source/additional_settings.h',
+         'source/assist/source/automatic_features.h', 'source/shared/source/key_gesture.h'}),
+}
+INPUT_INTEGRATION_CHECKS = frozenset(INPUT_INTEGRATION_BINDINGS)
+LIVE_OBSERVATION_SCOPE = ('production Host diagnostic and hotkey functions with controlled '
+                          'Win32/input/command boundaries; no Windows/game execution')
+FORMATION_BASELINE_KIND = ('explicit former owner expression only; current Host and headers '
+                           'otherwise identical')
+FORMATION_BASELINE_EXPRESSION = ('static bool formationInputOwns(){return shared&&'
+    '(shared->formationPreview.active||int32_t(shared->formationConsumedUntil-sampleClock(shared))>0);}')
+FORMATION_SCOPE = '''Actual Host input routes with controlled key/command boundaries.
+
+The current formationInputOwns, registration, Registry, dispatch and sampler
+functions are compiled from production. The negative control replaces only
+formationInputOwns with its explicit former expression; it is not a rebuilt
+historical product or a Windows/game execution. It demonstrates two ownership
+defects, without identifying either as the cause of the user's recorded input
+failure. Host GetAsyncKeyState and WM_HOTKEY delivery remain controlled seams.
+'''
+FORMATION_BASELINE_FAILURES = frozenset({
+    'unset_high_uptime_poll', 'old_match_active_preview_poll', 'old_match_lease_poll',
+    'unset_high_uptime_wm', 'ancient_deadline_poll',
+})
+COLD_START_SCOPE = ('complete production Host sample/merge/registration functions and tick demand '
+                    'statements with controlled Win32/RPM/IPC; no Windows/game execution')
+COLD_START_BASELINE_SHA = '5cf66cfe242d5d65bf9ea2f468c1a07a0526d9a7de90964e1132e9a9f4a526c2'
+COLD_START_FAILURES = frozenset({'manual_only', 'manual_restart', 'delayed_connection'})
+COLD_START_CASES = frozenset({'manual_only', 'default_own_ground', 'legacy_advanced_settings',
+    'auto_repair', 'already_connected', 'manual_restart', 'missing_reader', 'query_only_reader',
+    'disabled_host', 'delayed_connection', 'delayed_world_publication'})
 FEATURE_BINDINGS.update(HOTKEY_BINDINGS)
+FEATURE_BINDINGS.update(INPUT_HEADER_BINDINGS)
+FEATURE_BINDINGS.update(INPUT_INTEGRATION_BINDINGS)
 CHECK_BINDINGS.update(FEATURE_BINDINGS)
 FEATURE_CHECKS = frozenset(FEATURE_BINDINGS)
 DEPENDENCY_BINDINGS = (
@@ -315,6 +382,12 @@ def feature_success_log(name, text):
         'icon_cache_reopen': [
             'PASS failed scope -> same-path reconnect -> cache persistence/restore; '
             'healthy reconnect keeps generation'],
+        'hotkey_input_diagnostic': [
+            'PASS hotkey input diagnostics: 14 scenarios, 83 checks; '
+            'pure observation, no Win32/game execution'],
+        'input_ownership': [
+            'PASS input_ownership: 61 checks; epoch, zero sentinel, 200ms leases, '
+            'and normalized wrap boundary'],
         'passenger_frame_sampling': [
             'first passenger paint: bubbles=1 live_RPM=0',
             'PASS 1000 paints of one logic frame: zero live RPM, immutable contents/position',
@@ -376,6 +449,209 @@ def unique_json(text):
             result[key] = value
         return result
     return json.loads(text, object_pairs_hook=unique_object)
+
+
+def source_report_valid(sources, required):
+    return (isinstance(sources, dict) and set(sources) == required
+            and all(isinstance(value, str) and re.fullmatch(r'[0-9a-f]{64}', value)
+                    for value in sources.values()))
+
+
+def live_observation_success_log(text):
+    """One real run: unique case lines followed by a typed scoped summary."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return False
+    try:
+        result = unique_json(lines[-1])
+    except (ValueError, TypeError):
+        return False
+    return (isinstance(result, dict)
+            and set(result) == {'suite', 'passed', 'scenarios', 'checks', 'scope'}
+            and result.get('suite') == 'hotkey_live_observation' and result.get('passed') is True
+            and result.get('scope') == LIVE_OBSERVATION_SCOPE
+            and type(result.get('scenarios')) is int and result['scenarios'] >= 10
+            and type(result.get('checks')) is int and result['checks'] >= 40
+            and result['checks'] >= result['scenarios']
+            and len(lines) == result['scenarios'] + 1 and len(set(lines[:-1])) == result['scenarios']
+            and all(re.fullmatch(r'PASS hotkey_live_observation::[^\r\n]+', line)
+                    for line in lines[:-1]))
+
+
+def formation_ownership_success_log(text):
+    """Require actual current and former-expression executions, not history claims."""
+    try:
+        result = unique_json(text)
+    except (ValueError, TypeError):
+        return False
+    if (not isinstance(result, dict)
+            or set(result) != {'passed', 'scope', 'source_sha256', 'baseline_kind',
+                               'baseline_expression', 'case_count', 'check_count',
+                               'expected_baseline_failures', 'current', 'baseline'}
+            or result.get('passed') is not True or result.get('scope') != FORMATION_SCOPE
+            or result.get('baseline_kind') != FORMATION_BASELINE_KIND
+            or result.get('baseline_expression') != FORMATION_BASELINE_EXPRESSION
+            or result.get('expected_baseline_failures') != sorted(FORMATION_BASELINE_FAILURES)
+            or type(result.get('case_count')) is not int or result['case_count'] < 13
+            or type(result.get('check_count')) is not int or result['check_count'] < 78
+            or result['check_count'] < result['case_count']
+            or not source_report_valid(result.get('source_sha256'),
+                                       set().union(*INPUT_INTEGRATION_BINDINGS['formation_input_ownership']))):
+        return False
+    for branch, expected_pass, code, failures in (('current', True, 0, 0), ('baseline', False, 1, 5)):
+        row = result.get(branch)
+        if (not isinstance(row, dict)
+                or set(row) != {'compile_command', 'compile_exit', 'run_exit', 'cases', 'summary',
+                                'stdout', 'stderr', 'directory', 'generated_cpp_sha256',
+                                'run_log_sha256', 'production_header_sha256'}
+                or type(row.get('compile_exit')) is not int or row['compile_exit'] != 0
+                or type(row.get('run_exit')) is not int or row['run_exit'] != code
+                or not isinstance(row.get('compile_command'), list) or not row['compile_command']
+                or not all(isinstance(value, str) and value for value in row['compile_command'])
+                or '-UNDEBUG' not in row['compile_command']
+                or not isinstance(row.get('directory'), str) or not row['directory']
+                or not isinstance(row.get('stdout'), str) or not isinstance(row.get('stderr'), str)
+                or any(not isinstance(row.get(key), str)
+                       or re.fullmatch(r'[0-9a-f]{64}', row[key]) is None
+                       for key in ('generated_cpp_sha256', 'run_log_sha256'))
+                or row['run_log_sha256'] != sha((row['stdout'] + row['stderr']).encode('utf-8'))):
+            return False
+        headers = row.get('production_header_sha256')
+        if (not isinstance(headers, dict) or not headers
+                or any(not isinstance(path, str) or not Path(path).is_absolute() or '/source/' not in path
+                       or not isinstance(digest, str) or re.fullmatch(r'[0-9a-f]{64}', digest) is None
+                       for path, digest in headers.items())):
+            return False
+        expected_summary = {'passed': expected_pass, 'scenarios': result['case_count'],
+                            'checks': result['check_count'], 'failures': failures}
+        if json.dumps(row.get('summary'), sort_keys=True) != json.dumps(expected_summary, sort_keys=True):
+            return False
+        cases = row.get('cases')
+        if not isinstance(cases, list) or len(cases) != result['case_count']:
+            return False
+        names, failed = set(), []
+        for case in cases:
+            fields = {'scenario', 'expected_send', 'sent', 'owned', 'mode', 'messages',
+                      'sampled', 'actions', 'blocked', 'passed'}
+            if (not isinstance(case, dict) or set(case) != fields
+                    or not isinstance(case.get('scenario'), str) or not case['scenario']
+                    or case['scenario'] in names or type(case.get('passed')) is not bool
+                    or any(type(case.get(key)) is not int or case[key] not in (0, 1)
+                           for key in fields - {'scenario', 'mode', 'passed'})
+                    or type(case.get('mode')) is not int or case['mode'] != 2
+                    or case['blocked'] != 0
+                    or case['passed'] != (case['sent'] == case['expected_send'])):
+                return False
+            names.add(case['scenario'])
+            if not case['passed']:
+                failed.append(case['scenario'])
+        if (len(failed) != failures
+                or (branch == 'baseline' and set(failed) != FORMATION_BASELINE_FAILURES)
+                or row['stderr'] != ''.join('FAIL ' + name + '\n' for name in failed)):
+            return False
+        try:
+            records = [unique_json(line) for line in row['stdout'].splitlines()]
+        except (ValueError, TypeError):
+            return False
+        if (json.dumps(records, sort_keys=True) != json.dumps(cases + [expected_summary], sort_keys=True)):
+            return False
+    current_cases, baseline_cases = result['current']['cases'], result['baseline']['cases']
+    return ([(row['scenario'], row['expected_send']) for row in current_cases]
+            == [(row['scenario'], row['expected_send']) for row in baseline_cases]
+            and result['current']['production_header_sha256'] == result['baseline']['production_header_sha256'])
+
+
+def cold_start_success_log(text):
+    """Check real current results and a compiled frozen-callsite negative control."""
+    try:
+        result = unique_json(text)
+    except (ValueError, TypeError):
+        return False
+    if (not isinstance(result, dict)
+            or set(result) != {'suite', 'passed', 'scope', 'scenarios', 'checks',
+                               'baseline_callsite_sha256', 'negative_control_reproduced', 'sources',
+                               'current', 'baseline', 'windows_executed', 'game_tested'}
+            or result.get('suite') != 'hotkey_cold_start' or result.get('passed') is not True
+            or result.get('scope') != COLD_START_SCOPE
+            or result.get('baseline_callsite_sha256') != COLD_START_BASELINE_SHA
+            or result.get('negative_control_reproduced') is not True
+            or result.get('windows_executed') is not False or result.get('game_tested') is not False
+            or type(result.get('scenarios')) is not int or result['scenarios'] < 11
+            or type(result.get('checks')) is not int or result['checks'] < 77
+            or result['checks'] < result['scenarios']
+            or not source_report_valid(result.get('sources'),
+                                       set().union(*INPUT_INTEGRATION_BINDINGS['hotkey_cold_start']))):
+        return False
+    for branch, passed, code, failures in (('current', True, 0, 0), ('baseline', False, 1, 18)):
+        row = result.get(branch)
+        if (not isinstance(row, dict)
+                or set(row) != {'summary', 'cases', 'compile_command', 'compile_exit_code', 'exit_code',
+                                'stdout', 'stderr', 'run_log_sha256', 'callsite_sha256'}
+                or type(row.get('compile_exit_code')) is not int or row['compile_exit_code'] != 0
+                or type(row.get('exit_code')) is not int or row['exit_code'] != code
+                or not isinstance(row.get('compile_command'), list) or not row['compile_command']
+                or not all(isinstance(value, str) and value for value in row['compile_command'])
+                or not {'-UNDEBUG', '-DRA2_UNIFIED=1'} <= set(row['compile_command'])
+                or not isinstance(row.get('stdout'), str) or row.get('stderr') != ''
+                or any(not isinstance(row.get(key), str)
+                       or re.fullmatch(r'[0-9a-f]{64}', row[key]) is None
+                       for key in ('run_log_sha256', 'callsite_sha256'))
+                or row['run_log_sha256'] != sha(row['stdout'].encode('utf-8'))
+                or (branch == 'baseline' and row['callsite_sha256'] != COLD_START_BASELINE_SHA)
+                or (branch == 'current' and row['callsite_sha256'] == COLD_START_BASELINE_SHA)):
+            return False
+        expected = {'suite': 'hotkey_cold_start', 'passed': passed, 'scenarios': result['scenarios'],
+                    'checks': result['checks'], 'failures': failures}
+        if json.dumps(row.get('summary'), sort_keys=True) != json.dumps(expected, sort_keys=True):
+            return False
+        cases = row.get('cases')
+        if not isinstance(cases, list) or len(cases) != result['scenarios']:
+            return False
+        names, failed, total_failures = set(), set(), 0
+        for case in cases:
+            fields = {'case', 'passed', 'failures', 'feature_demand', 'bridge_attempts',
+                      'world_scope_failures', 'sampler_calls', 'mode', 'autoboard_registered'}
+            if (not isinstance(case, dict) or set(case) != fields
+                    or not isinstance(case.get('case'), str) or not case['case'] or case['case'] in names
+                    or type(case.get('passed')) is not bool
+                    or any(type(case.get(key)) is not int or case[key] < 0
+                           for key in fields - {'case', 'passed'})
+                    or case['feature_demand'] not in (0, 1) or case['autoboard_registered'] not in (0, 1)
+                    or case['mode'] not in (0, 2) or case['passed'] != (case['failures'] == 0)):
+                return False
+            names.add(case['case'])
+            total_failures += case['failures']
+            if not case['passed']:
+                failed.add(case['case'])
+                if case['failures'] != 6:
+                    return False
+        if (not COLD_START_CASES <= names or total_failures != failures
+                or failed != (COLD_START_FAILURES if branch == 'baseline' else set())):
+            return False
+        records, pending, failure_lines = [], [], 0
+        try:
+            for line in row['stdout'].splitlines():
+                if line.startswith('CHECK_FAILED '):
+                    pending.append(line)
+                    failure_lines += 1
+                    continue
+                record = unique_json(line)
+                if not isinstance(record, dict):
+                    return False
+                if 'case' in record:
+                    if len(pending) != record.get('failures'):
+                        return False
+                    pending.clear()
+                elif pending:
+                    return False
+                records.append(record)
+        except (ValueError, TypeError):
+            return False
+        if (pending or failure_lines != failures
+                or json.dumps(records, sort_keys=True) != json.dumps(cases + [expected], sort_keys=True)):
+            return False
+    return ([row['case'] for row in result['current']['cases']]
+            == [row['case'] for row in result['baseline']['cases']])
 
 
 def hotkey_success_log(name, text):
@@ -471,6 +747,12 @@ def hotkey_success_log(name, text):
 
 def success_log(name, text):
     """Recognize existing test output; never append or synthesize a PASS marker."""
+    if name == 'hotkey_live_observation':
+        return live_observation_success_log(text)
+    if name == 'formation_input_ownership':
+        return formation_ownership_success_log(text)
+    if name == 'hotkey_cold_start':
+        return cold_start_success_log(text)
     if name in HOTKEY_CHECKS:
         return hotkey_success_log(name, text)
     if name in FUNCTIONAL_CHECKS:
@@ -581,6 +863,82 @@ def validate_evidence(validation, receipt_path, commit, source_tree, source_inpu
                         'Validated input is outside the completed build source: ' + path)
                 require(digest == source_inputs[path]['sha256'] == sha(tracked(path)),
                         'Tested source differs from compiled source: ' + path)
+        if name in INPUT_INTEGRATION_CHECKS:
+            if name == 'hotkey_live_observation':
+                result_path = report_path.parent / 'result.json'
+                supporting = check.get('supporting_logs')
+                require(isinstance(supporting, dict) and set(supporting) == {str(result_path)},
+                        'Missing live input diagnostic report binding')
+                raw = result_path.read_bytes()
+                require(supporting[str(result_path)] == {'bytes': len(raw), 'sha256': sha(raw)},
+                        'Live input diagnostic report changed after run')
+                report = unique_json(raw)
+                summary = unique_json(data.decode('utf-8').strip().splitlines()[-1])
+                require(isinstance(report, dict)
+                        and set(report) == set(summary) | {'sources', 'compile_command',
+                            'compile_exit_code', 'run_exit_code', 'windows_executed', 'game_tested'}
+                        and json.dumps({key: report[key] for key in summary}, sort_keys=True)
+                            == json.dumps(summary, sort_keys=True)
+                        and source_report_valid(report.get('sources'),
+                            set().union(*INPUT_INTEGRATION_BINDINGS[name]))
+                        and isinstance(report.get('compile_command'), list) and report['compile_command']
+                        and all(isinstance(value, str) and value for value in report['compile_command'])
+                        and '-UNDEBUG' in report['compile_command']
+                        and type(report.get('compile_exit_code')) is int and report['compile_exit_code'] == 0
+                        and type(report.get('run_exit_code')) is int and report['run_exit_code'] == 0
+                        and report.get('windows_executed') is False and report.get('game_tested') is False,
+                        'Live input diagnostic report differs from actual run or overclaims execution')
+                embedded = report['sources']
+                logs[str(result_path)] = supporting[str(result_path)]
+            elif name == 'formation_input_ownership':
+                report = unique_json(data)
+                embedded = report['source_sha256']
+                expected_paths = {}
+                for branch, dirname in (('current', 'current'), ('baseline', 'baseline-expression')):
+                    row = report[branch]
+                    directory = report_path.parent / (report_path.stem + '-artifacts') / dirname
+                    require(Path(row['directory']).resolve() == directory,
+                            'Formation input artifact directory differs from report')
+                    raw_path = directory / 'run.log'
+                    expected_paths[str(raw_path)] = (row['stdout'] + row['stderr']).encode('utf-8')
+                    header_paths = set()
+                    for absolute, digest in row['production_header_sha256'].items():
+                        relative = 'source/' + absolute.split('/source/', 1)[1]
+                        require(POLICY.safe(relative).parts[0] == 'source' and relative in source_inputs,
+                                'Formation compiler input is outside the completed build source: ' + absolute)
+                        require(digest == source_inputs[relative]['sha256'] == sha(tracked(relative)),
+                                'Formation compiler input differs from frozen source: ' + relative)
+                        header_paths.add(relative)
+                    require({'source/assist/source/input_ownership.h', 'source/assist/source/hotkey_routes.h',
+                             'source/assist/source/control_link.h', 'source/assist/source/protocol.h',
+                             'source/shared/source/key_gesture.h'} <= header_paths,
+                            'Formation compiler dependency report lacks production headers')
+                supporting = check.get('supporting_logs')
+                require(isinstance(supporting, dict) and set(supporting) == set(expected_paths),
+                        'Missing current/negative formation input execution logs')
+                for path, expected in expected_paths.items():
+                    raw = Path(path).read_bytes()
+                    require(raw == expected and supporting[path] == {'bytes': len(raw), 'sha256': sha(raw)},
+                            'Formation input execution log differs from report or changed after run: ' + path)
+                    logs[path] = supporting[path]
+            else:
+                report = unique_json(data)
+                embedded = report['sources']
+                expected_paths = {
+                    str(report_path.parent / branch / 'run.log'):
+                    (report[branch]['stdout'] + report[branch]['stderr']).encode('utf-8')
+                    for branch in ('current', 'baseline')}
+                supporting = check.get('supporting_logs')
+                require(isinstance(supporting, dict) and set(supporting) == set(expected_paths),
+                        'Missing current/negative cold-start execution logs')
+                for path, expected in expected_paths.items():
+                    raw = Path(path).read_bytes()
+                    require(raw == expected and supporting[path] == {'bytes': len(raw), 'sha256': sha(raw)},
+                            'Cold-start execution log differs from report or changed after run: ' + path)
+                    logs[path] = supporting[path]
+            for path, digest in embedded.items():
+                require(path in source_inputs and digest == source_inputs[path]['sha256'] == sha(tracked(path)),
+                        'Input integration report source differs from compiled source: ' + path)
         if name in HOTKEY_CHECKS:
             report = json.loads(data)
             embedded = report['sources' if name == 'hotkey_command_context' else 'source_hashes']

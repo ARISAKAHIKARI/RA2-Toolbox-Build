@@ -58,13 +58,22 @@ static void executeHotkey(WPARAM wp,bool fanout){
 static void serviceHotkeyBatch(){
  const bool context=commandHotkeyContext();
  const bool connected=shared&&commandFresh(GetTickCount());
+ const bool formationOwned=formationInputOwns();
+ const bool middleOwned=!formationOwned&&runtimeMiddleOwnsNow();
+ traceHotkeyService(context,connected,formationOwned,middleOwned);
  // The OS-hotkey fallback shares the native tracker's context cancellation.
  // No first tap may survive a hidden preview, focus loss, chat or a pause.
  if(!context||!connected||!shared->formationPreview.active)formationTap.clear();
- if(formationInputOwns()||runtimeMiddleOwnsNow()||!context){typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount());return;}
+ if(formationOwned||middleOwned||!context){
+  // Observe configured chords while a game gesture owns input, without
+  // admitting them to the command Registry. Never read chat/background text.
+  if(context&&connected){uint8_t keys[256]{};for(unsigned i=0;i<256;++i)keys[i]=(GetAsyncKeyState(i)&0x8000)!=0;traceHotkeyKeys(keys);}
+  typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount());return;
+ }
  hotkeyPending.expire(GetTickCount(),commandMatch());
  if(!connected){formationTap.clear();typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount());return;}
  uint8_t keys[256]{};for(unsigned i=0;i<256;++i)keys[i]=(GetAsyncKeyState(i)&0x8000)!=0;
+ traceHotkeyKeys(keys);
  const DWORD sampledAt=GetTickCount();const bool freshSample=hotkeyRegistry.sampleFresh(sampledAt);
  hotkeyRegistry.sample(keys,sampledAt,commandMatch(),[freshSample](hotkeyroute::Group out){++hotkeyDiagnostics.sampled;if(!extra.allHotkeys)hotkeyroute::firstPerGesture(out);dispatchHotkeyGroup(std::move(out),freshSample);});
  hotkeyroute::Group delayed;while(hotkeyRegistry.expired(GetTickCount(),commandMatch(),delayed)){if(!extra.allHotkeys)hotkeyroute::firstPerGesture(delayed);
@@ -79,7 +88,7 @@ static void serviceHotkeyBatch(){
 static void handleHotkey(WPARAM id,LPARAM event){
  ++hotkeyDiagnostics.messages;logHotkeyInput(L"message",int(id),0,DWORD(GetMessageTime()));
  if(!commandHotkeyContext()){++hotkeyDiagnostics.blocked;logHotkeyInput(L"context-blocked",int(id));typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount());return;}
- const auto*g=hotkeyRegistry.find(int(id));if(!g)return;
+ const auto*g=hotkeyRegistry.find(int(id));if(!g){++hotkeyDiagnostics.blocked;logHotkeyInput(L"unregistered-id-blocked",int(id));return;}
  // External display readiness is not a connected command session. In particular,
  // match=0 is not queue exhaustion. Never buffer actions across a reconnect.
  if(!shared||!commandMatch()||!commandFresh(GetTickCount())){
@@ -89,9 +98,9 @@ static void handleHotkey(WPARAM id,LPARAM event){
  }
  if(runtimeMiddleOwnsNow()){++hotkeyDiagnostics.blocked;logHotkeyInput(L"input-owner-blocked",int(id));typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount());return;}
  WORD key=MAKEWORD(HIWORD(event),((LOWORD(event)&MOD_SHIFT)?HOTKEYF_SHIFT:0)|((LOWORD(event)&MOD_CONTROL)?HOTKEYF_CONTROL:0)|((LOWORD(event)&MOD_ALT)?HOTKEYF_ALT:0));
- if(hotkeyroute::canonical(key)!=g->key)return; // queued notification from an old binding
- if(formationHotkey(key)){hotkeyPending.clear();return;}
- hotkeyroute::Group selected;if(!hotkeyRegistry.message(int(id),DWORD(GetMessageTime()),GetTickCount(),commandMatch(),selected))return;
+ if(hotkeyroute::canonical(key)!=g->key){++hotkeyDiagnostics.blocked;logHotkeyInput(L"binding-mismatch-blocked",int(id),key);return;} // queued notification from an old binding
+ if(formationHotkey(key)){logHotkeyInput(L"formation-handled",int(id),key);hotkeyPending.clear();return;}
+ hotkeyroute::Group selected;if(!hotkeyRegistry.message(int(id),DWORD(GetMessageTime()),GetTickCount(),commandMatch(),selected)){logHotkeyInput(L"registry-no-action",int(id),key,DWORD(GetMessageTime()));return;}
  if(!extra.allHotkeys)hotkeyroute::firstPerGesture(selected);
  // WM_HOTKEY can itself wait in the Windows queue. An old place edge must
  // not resolve the current cursor after a long blocked UI callback.

@@ -6,6 +6,8 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| v1.0.35 先运行再覆盖后的识别差异 | [配置继承、首帧冷启动修正与已连接现场反证](2026-11-09-v135-warm-start.md) | ff5a76 v135 INI-preservation Advanced-default OwnGround-exception no-persistent-PID readable-session-demand cold-start 11-77 unresolved-live-input |
+| 1.0.47-pre.4 快捷键仍失效的实机记录 | [完整会话、六条命令热键状态与输入未观测边界](2026-11-09-hotkey-pre4-live-failure.md) | pre147-4 live-failure mode2-groups9 zero-input-counters foreground-unobserved Win32-1409 silent-sampler-exit unresolved |
 | 主动快捷键近期回归的版本源头 | [1.0.43 对照、共享采样冷启动循环与时钟反例](2026-11-09-hotkey-regression-origin.md) | 944586 pre144-2 unchanged-hotkeys needsBridge bootstrap-loop producer-tick display-clock confirmed no-unique-live-cause |
 | 1.0.47-pre.4 主动快捷键恢复 | [命令与展示解耦、普通键后备及消息去重](2026-11-09-pre147-hotkey-recovery.md) | AutoBoard request5 displayRenderStatus commandHotkeyContext RegisterHotKey polling WM_HOTKEY event-time cancel-fence no-replay |
 | 1.0.47-pre.3 逐功能复审 | [当前入口、功能修复、统一乘员样本与验证边界](2026-11-09-pre147-feature-audit.md) | pre147-3 feature-matrix selection-catalogue manual-priority mouse-key-pairing patrol16 passenger-immutable Assist102 |

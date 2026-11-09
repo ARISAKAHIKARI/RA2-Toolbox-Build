@@ -68,6 +68,8 @@
 #include "crate_names.h"
 #include "type_hotkey.h"
 #include "hotkey_routes.h"
+#include "hotkey_input_diagnostic.h"
+#include "input_ownership.h"
 #include "pointer_batch.h"
 #include "ui_layout.h"
 #include "additional_settings.h"
@@ -226,12 +228,16 @@ static long worldRevision=-1;static uint32_t plannerAck;static int submittedPlan
 static typekeys::Tap typeTap,variantTap,formationTap;
 static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
 static int registeredHotkeyMode=0;
-struct HotkeyDiagnostics {uint32_t messages=0,sampled=0,actions=0,blocked=0,fallbacks=0;DWORD lastError=0;};
+struct HotkeyDiagnostics {uint32_t messages=0,sampled=0,actions=0,blocked=0,fallbacks=0,queued=0,dialogHandled=0,traceDropped=0;DWORD lastError=0;};
 static HotkeyDiagnostics hotkeyDiagnostics;
+static hotkeydiagnostic::Monitor hotkeyInputMonitor;
+static uint32_t hotkeyBindingRevision=0;
+static std::wstring hotkeyDiagnosticState();
 static pointerinput::PendingMatches pointerMatches;
 static std::wstring infantryEntryResult;static uint32_t infantryEntryResultMatch=0;
 static void serviceHotkeyBatch();
-static bool formationInputOwns(){return shared&&(shared->formationPreview.active||int32_t(shared->formationConsumedUntil-sampleClock(shared))>0);}
+static uint32_t commandMatch();
+static bool formationInputOwns(){return shared&&inputownership::ownsFormation(shared->formationPreview.active,shared->formationPreview.match,commandMatch(),shared->formationConsumedUntil,sampleClock(shared));}
 static bool formationHotkey(WORD);
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
 static bool debugPageActive=false;static void updateDebugEntries(bool force=false);
@@ -445,7 +451,7 @@ static void logBridgeHealth(bool force=false){
   L" hotkeyGroups="+std::to_wstring(hotkeyRegistry.groups.size())+L" hotkeyPending="+std::to_wstring(hotkeyPending.count)+
   L" hotkeyMessages="+std::to_wstring(hotkeyDiagnostics.messages)+L" hotkeySampled="+std::to_wstring(hotkeyDiagnostics.sampled)+
   L" hotkeyActions="+std::to_wstring(hotkeyDiagnostics.actions)+L" hotkeyBlocked="+std::to_wstring(hotkeyDiagnostics.blocked)+
-  L" hotkeyFallbacks="+std::to_wstring(hotkeyDiagnostics.fallbacks)+L" hotkeyLastError="+std::to_wstring(hotkeyDiagnostics.lastError)+
+  L" hotkeyFallbacks="+std::to_wstring(hotkeyDiagnostics.fallbacks)+L" hotkeyLastError="+std::to_wstring(hotkeyDiagnostics.lastError)+hotkeyDiagnosticState()+
   L" request="+std::to_wstring(shared?shared->request:0)+L" ack="+std::to_wstring(shared?shared->ack:0)+
   L" controlFrame="+std::to_wstring(incoming.frame)+L" techOpen="+std::to_wstring(incoming.techOpen)+
   L" techVisible="+std::to_wstring(incoming.techVisible)+L" techUnavailable="+std::to_wstring(incoming.techUnavailable)+
@@ -596,10 +602,19 @@ static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.
   return true; // Keep the binding: the foreground sampler observes its edge.
  }
  registeredKeyIDs.push_back(slot);return true;});}
-static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();typeTap.clear();variantTap.clear();formationTap.clear();hotkeyDiagnostics.fallbacks=0;hotkeyDiagnostics.lastError=0;registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;if(!keysRegistered)return;int failures=0;
+// Snapshot only configured bindings, never typed text. Repeated foreground
+// registration with the same table is identified by its logged mode/revision.
+static void logHotkeyBindings(){
+ std::wstring table=L" mode="+std::to_wstring(registeredHotkeyMode)+L" autoLoadKey="+std::to_wstring(hotkeys[11])+L" groups="+std::to_wstring(hotkeyRegistry.groups.size());
+ for(const auto&g:hotkeyRegistry.groups){table+=L" [id="+std::to_wstring(g.id)+L" physical="+std::to_wstring(g.key)+L" actions=";
+  for(size_t n=0;n<g.actions.size();++n){if(n)table+=L",";table+=std::to_wstring(g.actions[n])+L":"+std::to_wstring(g.bindings[n]);}table+=L"]";}
+ static std::wstring previous;if(table==previous)return;previous=table;++hotkeyBindingRevision;
+ critical(L"hotkey-bindings revision="+std::to_wstring(hotkeyBindingRevision)+table);
+}
+static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();typeTap.clear();variantTap.clear();formationTap.clear();hotkeyDiagnostics.fallbacks=0;hotkeyDiagnostics.lastError=0;registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;if(!keysRegistered){logHotkeyBindings();return;}int failures=0;
  if(registeredHotkeyMode==1){
   for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
-  synchronizeHotkeyKeys();if(failures)notify(L"副屏跟踪快捷键注册失败，请更换组合。");return;
+  synchronizeHotkeyKeys();logHotkeyBindings();if(failures)notify(L"副屏跟踪快捷键注册失败，请更换组合。");return;
  }
  for(int i=0;i<12;++i)if((i!=8||extra.manualReveal)&&LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
  for(size_t i=0;i<swBindings.size()&&i<64;++i){auto&b=swBindings[i];if((b.id=="IronCurtainSpecial"&&b.key==hotkeys[9])||(b.id=="ChronoSphereSpecial"&&b.key==hotkeys[10]))continue;if(LOBYTE(b.key)&&!registerKey(int(1020+i),b.key))++failures;}
@@ -622,7 +637,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
   if(destructOwnerKeyConflict(WORD(extra.destructSelectedOwnerKey))||!destructownerhost::exclusive(hotkeyRegistry,extra.destructSelectedOwnerKey)||
      !registerKey(destructownerhost::Hotkey,WORD(extra.destructSelectedOwnerKey)))++failures;
  }
- synchronizeHotkeyKeys();if(failures)notify(L"有 "+std::to_wstring(failures)+L" 个快捷键冲突或注册失败，请更换组合，修改后自动生效。");
+ synchronizeHotkeyKeys();logHotkeyBindings();if(failures)notify(L"有 "+std::to_wstring(failures)+L" 个快捷键冲突或注册失败，请更换组合，修改后自动生效。");
 }
 static std::wstring serializeIDs(const std::set<std::string>& ids){
  std::wstring result;for(const auto& id:ids){if(!result.empty())result+=L",";result+=wide(id.c_str());}return result;
@@ -692,20 +707,68 @@ static uint32_t displayMatch(){return externalData&&externalData->status==1?exte
 static bool uninitializedBridgeTimedOut(){return shared&&!commandMatch()&&attachAt&&DWORD(GetTickCount()-attachAt)>8000&&(!lastData||DWORD(GetTickCount()-lastData)>8000)&&shared->request==shared->ack;}
 static bool commandChannelReady(){return controllink::ready(commandLink());}
 static bool commandFresh(DWORD now){return commandChannelReady()&&DWORD(now-lastData)<1500;}
+// These observations explain admission without granting input or changing focus.
+static std::wstring hotkeyDiagnosticState(){
+ const DWORD now=GetTickCount();const HWND foreground=GetForegroundWindow();DWORD foregroundPid=0,windowPid=0;
+ const DWORD foregroundTid=foreground?GetWindowThreadProcessId(foreground,&foregroundPid):0;
+ const bool windowValid=game&&IsWindow(game);const DWORD windowTid=windowValid?GetWindowThreadProcessId(game,&windowPid):0;
+ return std::wstring(L" hotkeyGate=")+hotkeydiagnostic::name(hotkeyInputMonitor.gate)+
+  L" hotkeyServiceCalls="+std::to_wstring(hotkeyInputMonitor.calls)+L" hotkeyPollReads="+std::to_wstring(hotkeyInputMonitor.reads)+
+  L" hotkeyServiceBlocked="+std::to_wstring(hotkeyInputMonitor.blocked)+
+  L" hotkeyFormationBlocked="+std::to_wstring(hotkeyInputMonitor.perGate[size_t(hotkeydiagnostic::Gate::FormationOwned)])+
+  L" hotkeyMiddleBlocked="+std::to_wstring(hotkeyInputMonitor.perGate[size_t(hotkeydiagnostic::Gate::MiddleOwned)])+
+  L" hotkeyPhysicalPresses="+std::to_wstring(hotkeyInputMonitor.configuredPresses)+L" hotkeyHeldOnSync="+std::to_wstring(hotkeyInputMonitor.heldOnSync)+
+  L" hotkeyChordMatches="+std::to_wstring(hotkeyInputMonitor.chordMatches)+L" hotkeyModifierMismatches="+std::to_wstring(hotkeyInputMonitor.mismatches)+
+  L" hotkeyQueued="+std::to_wstring(hotkeyDiagnostics.queued)+L" hotkeyDialogHandled="+std::to_wstring(hotkeyDiagnostics.dialogHandled)+
+  L" hotkeyTraceDropped="+std::to_wstring(hotkeyDiagnostics.traceDropped)+L" hotkeyBindingRevision="+std::to_wstring(hotkeyBindingRevision)+
+  L" autoLoadKey="+std::to_wstring(hotkeys[11])+L" hostTick="+std::to_wstring(now)+
+  L" foreground="+std::to_wstring(foregroundGame())+L" foregroundHwnd="+std::to_wstring(uintptr_t(foreground))+
+  L" foregroundPid="+std::to_wstring(foregroundPid)+L" foregroundTid="+std::to_wstring(foregroundTid)+
+  L" gameWindowHwnd="+std::to_wstring(uintptr_t(game))+L" gameWindowValid="+std::to_wstring(windowValid)+L" gameWindowIconic="+std::to_wstring(windowValid&&IsIconic(game))+
+  L" gameWindowPid="+std::to_wstring(windowPid)+L" gameWindowTid="+std::to_wstring(windowTid)+
+  L" formationActive="+std::to_wstring(shared?shared->formationPreview.active:0)+L" formationMatch="+std::to_wstring(shared?shared->formationPreview.match:0)+
+  L" formationConsumedUntil="+std::to_wstring(shared?shared->formationConsumedUntil:0)+
+  L" middleActive="+std::to_wstring(shared?shared->moOrdersPreview.active:0)+L" middleMatch="+std::to_wstring(shared?shared->moOrdersPreview.match:0);
+}
+static bool hotkeyTraceAllowed(){
+ static DWORD started=0;static uint32_t count=0;const DWORD now=GetTickCount();
+ if(DWORD(now-started)>=1000){started=now;count=0;}if(count>=64){++hotkeyDiagnostics.traceDropped;return false;}++count;return true;
+}
+static void traceHotkeyService(bool context,bool connected,bool formationOwned,bool middleOwned){
+ using Gate=hotkeydiagnostic::Gate;
+ const Gate gate=!context?(!enabled?Gate::Disabled:!game||!IsWindow(game)?Gate::NoGame:incoming.chat?Gate::Chat:!commandChannelReady()?Gate::ConnectionNotReady:Gate::NotForeground):
+  !connected?Gate::Stale:formationOwned?Gate::FormationOwned:middleOwned?Gate::MiddleOwned:Gate::Ready;
+ if(hotkeyInputMonitor.begin(gate,pid,commandMatch(),hotkeyBindingRevision,GetTickCount())&&hotkeyTraceAllowed())
+  critical(L"hotkey-service pid="+std::to_wstring(pid)+L" mode="+std::to_wstring(registeredHotkeyMode)+hotkeyDiagnosticState());
+}
+static void traceHotkeyKeys(const uint8_t*keys){
+ hotkeyInputMonitor.observe(keys,hotkeyRegistry.groups,[](hotkeydiagnostic::Event event){
+  if(!hotkeyTraceAllowed())return;
+  critical(std::wstring(L"hotkey-physical kind=")+(event.kind==hotkeydiagnostic::Kind::Press?L"press":L"held-on-sync")+
+   L" id="+std::to_wstring(event.id)+L" key="+std::to_wstring(event.key)+L" actualModifiers="+std::to_wstring(event.actualModifiers)+
+   L" modifiersMatch="+std::to_wstring(event.modifiersMatch)+L" gate="+hotkeydiagnostic::name(hotkeyInputMonitor.gate)+
+   L" pid="+std::to_wstring(pid)+L" match="+std::to_wstring(commandMatch()));
+ });
+}
 // Log configured action edges only, never raw keyboard sampling or per-frame
-// diagnostics. This separates missing input from readiness and command failure.
+// diagnostics. Automatic edge records plus bounded service observations separate
+// missing input from admission and command failure; chat/background text is not sampled.
 static void logHotkeyInput(const wchar_t* stage,int id=0,uint16_t key=0,DWORD messageTick=0){
- const bool rejected=std::wstring(stage).find(L"blocked")!=std::wstring::npos;
- if(!rejected&&!diagEnabled)return;
+ if(!hotkeyTraceAllowed())return;
  const DWORD now=GetTickCount();
+ const auto* group=hotkeyRegistry.find(id);
  const std::wstring line=std::wstring(L"hotkey-input stage=")+stage+L" id="+std::to_wstring(id)+L" key="+std::to_wstring(key)+
   L" pid="+std::to_wstring(pid)+L" match="+std::to_wstring(commandMatch())+
   L" enabled="+std::to_wstring(enabled)+L" foreground="+std::to_wstring(foregroundGame())+
   L" commandReady="+std::to_wstring(commandChannelReady())+L" fresh="+std::to_wstring(commandFresh(now))+
   L" commandStatus="+std::to_wstring(incoming.commandStatus)+L" chat="+std::to_wstring(incoming.chat)+
   L" displayRenderStatus="+std::to_wstring(snap.renderStatus)+L" messageAgeMs="+std::to_wstring(messageTick?DWORD(now-messageTick):0)+
-  L" pending="+std::to_wstring(hotkeyPending.count)+L" backlog="+std::to_wstring(commandQueue.size);
- if(rejected)critical(line);else diag(line);
+  L" pending="+std::to_wstring(hotkeyPending.count)+L" backlog="+std::to_wstring(commandQueue.size)+
+  L" registrySynchronized="+std::to_wstring(hotkeyRegistry.synchronized)+L" bindingFound="+std::to_wstring(group!=nullptr)+
+  L" registryWaiting="+std::to_wstring(group&&group->waiting)+L" registrySuppressed="+std::to_wstring(group&&group->suppressed)+
+  L" registryDown="+std::to_wstring(group&&group->down)+L" registryFence="+std::to_wstring(group&&group->fenceTimed?group->fenceTick:0)+
+  L" registryEdge="+std::to_wstring(group&&group->edgeTimed?group->edgeTick:0);
+ critical(line);
 }
 static uint32_t currentHardwareBudget(){return shared&&commandFresh(GetTickCount())?shared->hardwareSlotBudget:0;}
 static uint32_t requestedHardwareTags(){
@@ -2375,8 +2438,11 @@ static void tick(){
   return;
  }
  if(serviceReadOnlyDisplays(now))return;
+ // The shared-world consumer needs Runtime to publish its first frame.
+ // A readable enabled session is demand by itself; waiting for externalData
+ // here creates a cold-start cycle hidden by old enabled-hook settings.
  sampleExternal(now);uint32_t configured=flags();
- bool needsBridge=debugPageActive||runtimeFeatureDemand(configured,extra,techMode,buildTimeTooltipEnabled)||(shared&&shared->minerDefenseActive)||(externalData&&externalData->status==1)||commandQueue.size||hasSelection||externalSampler.flashCount;
+ bool needsBridge=(enabled&&externalReader.canRead())||debugPageActive||runtimeFeatureDemand(configured,extra,techMode,buildTimeTooltipEnabled)||(shared&&shared->minerDefenseActive)||(externalData&&externalData->status==1)||commandQueue.size||hasSelection||externalSampler.flashCount;
  if(needsBridge&&!shared)ensureBridge();
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){
@@ -2975,7 +3041,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
 #else
  ShowWindow(ui,show);
 #endif
- syncInformationRate(true);startClock();uimessages::Queue messages;MSG m;while(messages.get(m)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}
+ syncInformationRate(true);startClock();uimessages::Queue messages;MSG m;while(messages.get(m)>0){const bool hotkeyMessage=m.message==WM_HOTKEY;if(hotkeyMessage){++hotkeyDiagnostics.queued;logHotkeyInput(L"queue",int(m.wParam),0,DWORD(m.time));}const bool dialogHandled=IsDialogMessageW(ui,&m)!=FALSE;if(hotkeyMessage&&dialogHandled)++hotkeyDiagnostics.dialogHandled;if(!dialogHandled){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}
 
 
 
