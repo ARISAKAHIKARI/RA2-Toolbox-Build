@@ -1,0 +1,82 @@
+{
+  "status": "fixed_and_frozen",
+  "utc": "2026-11-09T04:43:54.932363+00:00",
+  "issue": "OreYield candidates truncated by final combat/ore merge consumed attempt budget despite never being returned for delivery.",
+  "baseline_observation": {
+    "capacity": 32,
+    "turns": 20,
+    "combat_candidates": 32,
+    "returned_yields": 16,
+    "attempts_counted": 20,
+    "next_frame_yields": 0,
+    "new_test_exit": 1,
+    "failing_checks": 9
+  },
+  "fixed_observation": {
+    "returned_yields": 16,
+    "attempts_counted": 16,
+    "next_frame_yields": 4,
+    "attempts_after_next_frame": 20,
+    "new_test_exit": 0,
+    "checks_passed": 80
+  },
+  "fix": "Commit attempt count and retry timestamp only when OreYield enters the final bounded output; retain retry accounting for emitted accepted, rejected, and expired orders.",
+  "affected_files": [
+    "source/assist/source/external_planner.h",
+    "source/assist/tests/planner_batch_delivery.cpp"
+  ],
+  "checks": {
+    "new_regression": "80 checks passed",
+    "ore_priority": "28 scenarios passed",
+    "planner_tasks": "240 frames and blocked worker invalidation passed",
+    "external_planner": "existing scenarios passed",
+    "ubsan": "new regression passed without sanitizer diagnostics"
+  },
+  "scope_limit": "Pure C++ Planner/Task/value-worker tests on Linux. No native OutList, live game, Windows UI, GPU, network lockstep, or real-world performance claim. No engine/address/ABI changes. No sampling-frequency or bridge/main.cpp changes.",
+  "read_only_review": "LatestWorker and ValueTask epoch invalidation and pending replacement reviewed; no additional reproducible defect claimed.",
+  "extra_commands": [
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "source/assist/source/external_planner.h",
+        "source/assist/tests/planner_batch_delivery.cpp"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "diff_check.log"
+    }
+  ],
+  "source_and_test_sha256": {
+    "source/assist/source/external_planner.h": "f2b7a9d041846759de8216892775e021f6471cf81ce1998440c3464d6002f3d3",
+    "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+    "source/assist/source/value_task.h": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204",
+    "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81",
+    "source/assist/tests/planner_batch_delivery.cpp": "bc71d5c617815a29f795c7f2b805b31759a8b252d34641524c699f95819b4bc6",
+    "source/assist/tests/ore_priority.cpp": "ee3b29b16918a8bc49929085bedfca0a5cb7220f5a146be5a9f21ab853ecdd3c",
+    "source/assist/tests/planner_tasks.cpp": "375d1a4e1ccf35a2290d6f09a348b60c68ccfacc6d4d838eef9bc6b0be9eec96",
+    "source/assist/tests/external_planner.cpp": "65f1843498b7217be098fbddb583c1514d4d284025d0cc180bcbae01e6c732be"
+  },
+  "evidence_sha256": {
+    "baseline_compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "baseline_receipt.json": "bc8e626cd65e208936690411d40eceaa00f704875e0c36acdd77af21b3aea344",
+    "baseline_run.log": "ef4c55f9251155c5a6f9fb36e879acbc6a160ea76f798aaf6818208a4ce7e036",
+    "diff_check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "external_planner.before.h": "63392e6f449e74d6164643a1984eb9cac3b6e8ffa28e13ae96f8b57f96ebb4ad",
+    "external_planner.patch": "3820f5f4521e4fd1b631d732d98b7ebe6d671ee3157370b30bbaa5e650dac66e",
+    "external_planner_compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "external_planner_run.log": "6021b802c515db07ee39d8e65f08fb8457863d9fd84a45cb906132b3beb9ad65",
+    "fixed_batch_compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fixed_batch_run.log": "58179b1fb8d81c0186b59a20d758012dfebe0d4ecc8aea769b7e34d56626486e",
+    "fixed_receipt.json": "5bff64670c97232c03eebdfe862479f621330987eeb511af6a465a3e2f52bd07",
+    "ore_priority_compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ore_priority_run.log": "fa63c3fed0faad2c24e38361bed01bf5b5a0b7866014b1a08776884edf9068be",
+    "planner_batch_delivery.cpp": "bc71d5c617815a29f795c7f2b805b31759a8b252d34641524c699f95819b4bc6",
+    "planner_tasks_compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "planner_tasks_run.log": "079c6554d7acb74a1b61ce99276abdaffa5b6c29f7c607a96969dfb11f4ae409",
+    "ubsan_batch_compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ubsan_batch_run.log": "58179b1fb8d81c0186b59a20d758012dfebe0d4ecc8aea769b7e34d56626486e"
+  }
+}

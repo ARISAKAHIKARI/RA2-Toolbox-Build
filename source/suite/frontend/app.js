@@ -96,7 +96,7 @@
       if (!message || typeof message !== 'object' || message.protocol !== PROTOCOL) return false;
       if(message.kind==='close-check') {
         if(!safeInteger(message.seq) || !message.seq) return false;
-        this.emit({kind:'close',seq:message.seq,unsubmitted:Math.min(10000,this.drafts.size+this.pending.size)});
+        this.emit({kind:'close',seq:message.seq,unsubmitted:this.unsubmittedCount()});
         return true;
       }
       if (message.kind === 'shell') {
@@ -138,7 +138,10 @@
           const key = controlKey(message.module, control.id), pending = this.pending.get(key);
           if (pending && pending.generation === message.generation && message.revision > pending.revision) {
             pending.observedRevision=message.revision;
-            if(pending.acknowledged && pending.requiredRevision>0 ? message.revision>=pending.requiredRevision : !['press','activate'].includes(pending.action) && (pending.acknowledged || actualValue(control,pending.action)===pending.value)) this.pending.delete(key);
+            // A matching value may come from an unrelated earlier capture.
+            // Only this request's receipt can certify that it ran; native ACK
+            // batching can deliver that receipt after the corresponding state.
+            if(pending.acknowledged && (pending.requiredRevision>0 ? message.revision>=pending.requiredRevision : !['press','activate'].includes(pending.action))) this.pending.delete(key);
           }
         }
         this.changed('state'); return true;
@@ -156,6 +159,21 @@
         this.changed(message.ok ? 'ack' : 'error'); return true;
       }
       return false;
+    }
+    unsubmittedCount() {
+      let count=Math.min(10000,this.pending.size);const indexes=new Map();
+      // Focus owns a draft so live updates cannot overwrite an editor. An
+      // unchanged draft is not an unsaved edit; unknown/retired pages remain
+      // conservative. Index each referenced page once for the close check.
+      for(const [key,draft]of this.drafts) {
+        if(count>=10000)break;
+        if(!indexes.has(draft.page)) {
+          const page=this.pages.get(draft.page);indexes.set(draft.page,page && page.generation===this.generation.get(page.module)?new Map(page.controls.map(control=>[controlKey(page.module,control.id),control])):null);
+        }
+        const control=indexes.get(draft.page)?.get(key);
+        if(!control || !['text','number','choice','range'].includes(control.type) || actualValue(control,control.type==='range'?'range':'text')!==draft.value)count++;
+      }
+      return count;
     }
     beginEdit(id) { const control = this.getControl(id); if (!control) return; const key = controlKey(this.current.module, id); if (!this.drafts.has(key)) this.drafts.set(key, { value: control.text, editing: true,page:this.state.page }); else this.drafts.get(key).editing = true; this.changed('draft'); }
     draft(id, value) { const key = controlKey(this.current.module, id); this.drafts.set(key, { value, editing: true,page:this.state?.page }); }

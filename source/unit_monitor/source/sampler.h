@@ -36,22 +36,31 @@ template<class Read,class Resolve> class Sampler {
  int find(uint32_t p){return typeIndex_.find(p);}
  bool loadIcon(Type&t){return readCameo(read,resolve,t,iconBuffer,sizeof iconBuffer,files);}
  void palette(){state.paletteReady=0;readCameoPalette(read,state,files);}
- void types(bool buildings,bool newRound) {
+ bool types(bool buildings) {
   // Artwork survives a match. Rebuilding Type pointers must not start a new
   // disk scan or abandon the previous match's pending icon writes.
   uint32_t arrays[]={0xA8E348,0xA83CE0,0xA8B218,0xA83C68};
+  auto unavailable=[&](uint32_t at){probe_={external::layout::Stage::UnreadableTypeCatalogue,at,0};return false;};
+  auto required=[&](uint32_t at,void*out,size_t n){return bytes(at,out,n)||unavailable(at);};
   state.typeCount=0;state.truncated=0;iconCursor=0;
   for(int c=0;c<(buildings?4:3);c++){
-   auto v=vec(arrays[c]);for(size_t ix=0;ix<v.size();ix++){
-    uint32_t p=v[ix];char cameo[25]={};if(!bytes(p+1750,cameo,24))continue;
-    Type pending{};pending.ptr=p;pending.category=c;pending.index=int(ix);bytes(p+36,pending.id,23);pending.id[23]=0;memcpy(pending.cameo,cameo,sizeof cameo);if(resolveCameo)resolveCameo(pending,state.match);
+   uint32_t items=0;int capacity=0,count=0;const uint32_t at=arrays[c];
+   if(!required(at+4,&items,4)||!required(at+8,&capacity,4)||!required(at+16,&count,4))return false;
+   if(count<0||count>4096||capacity<count||capacity>65536||(count&&items<0x10000))return unavailable(at);
+   PtrList v;v.n=count;if(count&&!required(items,v.data(),size_t(count)*4))return false;
+   for(size_t ix=0;ix<v.size();ix++){
+    uint32_t p=v[ix];if(p<0x10000)return unavailable(items+uint32_t(ix)*4);
+    char cameo[25]={};Type pending{};int level=0;uint32_t owners=0;uint8_t insignificant=0,spawned=0;
+    if(!required(p+1750,cameo,24)||!required(p+36,pending.id,23)||!required(p+1588,&level,4)||
+       !required(p+1740,&owners,4)||!required(p+562,&insignificant,1)||!required(p+3412,&spawned,1))return false;
+    pending.ptr=p;pending.category=c;pending.index=int(ix);pending.id[23]=0;memcpy(pending.cameo,cameo,sizeof cameo);if(resolveCameo)resolveCameo(pending,state.match);
     bool has=pending.cameo[0]&&!sameAscii(pending.cameo,"none")&&!sameAscii(pending.cameo,"<none>");
-    if(!buildable(get<int>(p+1588,-1),get<uint32_t>(p+1740),get<uint8_t>(p+562)!=0,get<uint8_t>(p+3412)!=0,has))continue;
+    if(!buildable(level,owners,insignificant!=0,spawned!=0,has))continue;
     if(state.typeCount==MaxTypes){state.truncated++;continue;}
     state.types[state.typeCount++]=pending;
    }
   }
-  typeIndex_.rebuild(state);
+  typeIndex_.rebuild(state);return true;
  }
  void owned(Player& player,uint32_t house){
   // CountOwnedNow: real ownership (including passengers/garrison), not
@@ -88,7 +97,10 @@ public:
    if(external::catalogue::capture(read,stamp)){reload=reload||!catalogueReady||catalogueHash!=stamp.hash;catalogueHash=stamp.hash;catalogueReady=true;}
    else catalogueReady=false;
   }
-  if(reload){types(buildings,newRound);prevBuildings=buildings;}
+  // A successful metadata stamp does not certify the later table reads.
+  // Reject a partial rebuild and retire its stamp so unchanged metadata can
+  // recover on the next sample instead of preserving a missing/wrong type.
+  if(reload){if(!types(buildings))return invalidate(tick);prevBuildings=buildings;}
   palette();
   // All lobby nodes, not just the single local Observer pointer: multiplayer supports multiple spectators.
   PtrList spectators;

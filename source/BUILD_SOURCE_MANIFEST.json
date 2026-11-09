@@ -1,6 +1,6 @@
 {
-  "name": "RA2 Toolbox 1.0.47-pre.1",
-  "version": "1.0.47-pre.1",
+  "name": "RA2 Toolbox 1.0.47-pre.2",
+  "version": "1.0.47-pre.2",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
@@ -1112,5 +1112,54 @@
       "Native Windows, real-game performance/visual and multiplayer acceptance remain unperformed.",
       "Warm dependency batching retains every module check; other helper/interpolation process startup costs remain."
     ]
+  },
+  "FunctionalRecovery147Pre2": {
+    "baseline_file_version": "1.0.46.4",
+    "baseline_source_commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a",
+    "baseline_tree_sha": "74117a0d765d4ae69a38fbebd7a177444c7e2b71",
+    "previous_version": "1.0.47-pre.1",
+    "previous_local_commit": "b928999f5da90f6f9de0d18151b04b498217464c",
+    "previous_remote_commit": "f874c422c4596df9c34025ff43ce96a6110b7116",
+    "version": "1.0.47-pre.2",
+    "file_version": "1.0.47.2",
+    "prerelease": true,
+    "make_latest": false,
+    "scope": [
+      "Retain pending console operations until their matching acknowledgement; an unrelated matching state snapshot cannot hide a later rejection.",
+      "Count actually changed drafts on close, while preserving pending operations and unknown or retired page drafts; focus alone is not an unsaved change.",
+      "Invalidate an incomplete unit type catalogue and retry on the next complete sample instead of permanently caching partial metadata under a valid stamp.",
+      "Charge ore yield attempts only when the order enters the final bounded planner batch, preserving retry timing and receipt policy for returned orders. Bound same-refinery yield candidates before waiting-cell selection so duplicate Actor inputs retain the original three-attempt ceiling.",
+      "Reject incomplete saved building/animation image metadata and nonzero unreadable depth masks before caching images; recover using the same image cache on healthy input."
+    ],
+    "focused_checks": [
+      "console_receipt_order",
+      "catalogue_recovery",
+      "planner_batch_delivery",
+      "scene_extra_recovery"
+    ],
+    "previous_release_gates_required_again": [
+      "missile_allocator",
+      "snapshot_reuse",
+      "tech_capture",
+      "voxel_recovery",
+      "idle_aircraft_display",
+      "terrain_reuse",
+      "dependency_probes"
+    ],
+    "assist_protocol": 101,
+    "cursor_protocol": 155,
+    "runtime_protocol": 4,
+    "sampling_frequency_reduced": false,
+    "windows_executed": false,
+    "game_tested": false,
+    "gpu_tested": false,
+    "multiplayer_tested": false,
+    "validation": "Four new focused suites execute actual production paths with frozen pre.1 negative controls and current source/test SHA256 bindings. The seven existing release gates are required to execute again. Completed full builds, exact source synchronization and archive checks are recorded separately in frozen delivery receipts; this manifest alone does not assert their completion. No new game address, field or ABI finding is introduced.",
+    "remaining_work": [
+      "The mixed-canvas cursor pixel-bound repair remains blocked by automatic approval review with a possible cybersecurity risk message; this turn does not retry that action.",
+      "Native Windows/WebView2, real-game visual and performance, physical GPU and multiplayer acceptance remain unperformed.",
+      "Historical standalone enemy_markers and hotkey_host fixture limitations remain separately documented in the pre.1 audit note; they are not counted as passing release gates."
+    ],
+    "focused_assertions": 362
   }
 }

@@ -1,0 +1,100 @@
+{
+  "check": {
+    "name": "terrain_reuse",
+    "command": [
+      "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_storage_pool"
+    ],
+    "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+    "environment": {
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "executed_this_revision": true,
+    "source_inputs_unchanged": true,
+    "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_storage_pool.run.log",
+    "log_sha256": "e9b2d7ba43c29997378565c9aef16827b998edfee225d27d04c26f936616139f",
+    "package_success_marker": true,
+    "test_source_hashes": {
+      "source/assist/tests/terrain_storage_pool.cpp": "7b621df3f779e4bea59661cbd86aef8429081e18a16a9df13a9c6c9313fe25da",
+      "source/assist/tests/shared_scene_sampling.cpp": "c6375b7e460aa684d6f2374093c90e89cdb938a8335528f8b25d1f9c82a66cfa"
+    },
+    "production_source_hashes": {
+      "source/external_reader/source/radar_map.h": "34bfd768bb72dfbaf3750f57c91cb6bddefa85fe9a247f191595b9b11445df90",
+      "source/external_reader/source/shared_scene.h": "87e8e426bc52e13e9ac5d5cfda39d70bb17b968b453731d56da9d353dfaadbd3",
+      "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659",
+      "source/external_reader/source/world_scene_pipeline.h": "56b55686556b7fef84e0a3463cf6997dfdcf1be1e74237fc69923cce88793f8b",
+      "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+      "source/assist/source/minimap_overlay.h": "3fe7371e9e5f5b80b39a5da75021ee7703bfa02a8864a2a7ec0a71f6e6a2f7bd",
+      "source/assist/source/watch_scene.h": "f89c564c6ffe5505343180f6d0ffb4598d130b6e815b4540d0ad05bd26b03cb4"
+    },
+    "execution_receipt_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_reuse.execution.json",
+    "scope": "Current portable fixture execution. No Windows/game/physical GPU/multiplayer execution claim. Integration caller hashes are bindings, not full Host execution.",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "-pthread",
+      "-I",
+      "source/external_reader/source",
+      "source/assist/tests/terrain_storage_pool.cpp",
+      "-o",
+      "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_storage_pool"
+    ],
+    "compile_exit_code": 0,
+    "binary_sha256": "e8696609185852ff7eeac70e49213948dc7d48d8d41842eac8d631968a8f7146"
+  },
+  "commands": [
+    {
+      "stage": "compile",
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "-I",
+        "source/external_reader/source",
+        "source/assist/tests/terrain_storage_pool.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_storage_pool"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "started_utc": "2026-11-09T04:49:51.283401+00:00",
+      "finished_utc": "2026-11-09T04:50:01.108186+00:00",
+      "elapsed_seconds": 9.824791585999264,
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_reuse.compile.log",
+      "log_sha256": "3bb71b26e582b4c4b1798f75ee578ec7689a6e4170ea557aa44161af1b59c8bc"
+    },
+    {
+      "stage": "run",
+      "argv": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_storage_pool"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "started_utc": "2026-11-09T04:50:01.108269+00:00",
+      "finished_utc": "2026-11-09T04:50:01.645402+00:00",
+      "elapsed_seconds": 0.5371472940005333,
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_storage_pool.run.log",
+      "log_sha256": "e9b2d7ba43c29997378565c9aef16827b998edfee225d27d04c26f936616139f"
+    }
+  ],
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "input_sha256_before": {
+    "source/assist/tests/terrain_storage_pool.cpp": "7b621df3f779e4bea59661cbd86aef8429081e18a16a9df13a9c6c9313fe25da",
+    "source/assist/tests/shared_scene_sampling.cpp": "c6375b7e460aa684d6f2374093c90e89cdb938a8335528f8b25d1f9c82a66cfa",
+    "source/external_reader/source/radar_map.h": "34bfd768bb72dfbaf3750f57c91cb6bddefa85fe9a247f191595b9b11445df90",
+    "source/external_reader/source/shared_scene.h": "87e8e426bc52e13e9ac5d5cfda39d70bb17b968b453731d56da9d353dfaadbd3",
+    "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659",
+    "source/external_reader/source/world_scene_pipeline.h": "56b55686556b7fef84e0a3463cf6997dfdcf1be1e74237fc69923cce88793f8b",
+    "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+    "source/assist/source/minimap_overlay.h": "3fe7371e9e5f5b80b39a5da75021ee7703bfa02a8864a2a7ec0a71f6e6a2f7bd",
+    "source/assist/source/watch_scene.h": "f89c564c6ffe5505343180f6d0ffb4598d130b6e815b4540d0ad05bd26b03cb4"
+  }
+}

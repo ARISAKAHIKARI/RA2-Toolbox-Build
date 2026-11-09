@@ -1,0 +1,19 @@
+{
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-pthread",
+    "source/unit_monitor/tests/catalogue_recovery.cpp",
+    "-o",
+    "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/catalogue_before"
+  ],
+  "run_command": [
+    "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/catalogue_before"
+  ],
+  "exit_code": 1,
+  "production_sha256": "e616aa1ee7e961c416b586a2801656c502b208a905c1c0d38418066e50de3e9b",
+  "test_sha256": "10f8cf82b536f930dad5c547b1bd24bc39741ff6473d75f5f4040d3f408d3092",
+  "stdout_sha256": "b6f2948216649aec8fe253e9d0cff934f3a2e86670b1ee2918b2187fb22c81a7",
+  "stderr_sha256": "b23e5914e5182c54ad71486ef5c4721d140ec9cc87245bedbfe778b487bb8a82"
+}

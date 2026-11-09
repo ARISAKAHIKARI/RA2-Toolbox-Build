@@ -1,8 +1,8 @@
-# 1.0.47-pre.1 交付准备
+# 1.0.47-pre.2 交付准备
 
-本目录准备本地可审查的 Full / Update 包。脚本不修改源码、不执行 Windows 程序、不安装依赖、不推送源码，也不创建 GitHub Release。人类版本为 `1.0.47-pre.1`，PE 文件版本为 `1.0.47.1`；协议保持 Assist 101、Cursor 155、Runtime 4。
+本目录准备本地可审查的 Full / Update 包。脚本不修改源码、不执行 Windows 程序、不安装依赖、不推送源码，也不创建 GitHub Release。人类版本为 `1.0.47-pre.2`，PE 文件版本为 `1.0.47.2`；协议保持 Assist 101、Cursor 155、Runtime 4。
 
-当前仅准备脚本和门控；下列构建、最终打包命令需要本轮冻结提交及真实回执就绪后再执行。不得把脚本的合成门控测试当作七组本轮验证。
+下列构建、最终打包命令需要本轮冻结提交及真实回执就绪后再执行。原七组门禁必须本轮重新执行，再加控制台应答、单位目录恢复、规划投递和场景附加图层恢复四组，共十一组。不得沿用上一版通过摘要，也不得把脚本的合成门控测试当作十一组本轮验证。
 
 ## 固定资源基线
 
@@ -15,7 +15,7 @@
 
 Full 保持 53 个成员；原始素材、三套主题、八个许可证和七个 engine 文件共 47 个资源以此为基线。唯一允许替换的资源是明确审核的 `engine/prepare_runtime.py`；其余资源必须原字节保留。Update 包含三程序、loader、README、Start.cmd、七个 engine 和八个许可证，共 21 个成员。Update 不附带原始素材，适用于已有完整安装。两包共同成员必须完全相同。
 
-七个 engine 都必须与本轮冻结源码及构建回执逐字节一致。本轮已纳入 `prepare_runtime.py` 的单文件依赖验证优化，因此回执必须显式列出这个变更并提供第七组 `dependency_probes`；脚本仍可识别没有 engine 变更的六组核心验证分支。本轮不捆绑 Python 包、生成插帧、预览、缓存、源码、开发记录或个人设置。光标混合画布修复因自动审核阻断仍未交付，未纳入本版。
+七个 engine 都必须与本轮冻结源码及构建回执逐字节一致。相对 1.0.46.4 基线保留了 `prepare_runtime.py` 的单文件依赖验证优化，因此回执必须显式列出这个变更并提供 `dependency_probes`，与十组固定检查合计十一组；脚本仍可识别没有 engine 变更的十组分支。本轮不捆绑 Python 包、生成插帧、预览、缓存、源码、开发记录或个人设置。光标混合画布修复因自动审核阻断仍未交付，未纳入本版。
 
 依赖优化仅在 NumPy、SciPy、OpenCV 三项 managed 缓存记录全部有效且顺序匹配时，把原有三个验证子进程合并为一个。原 `PROBE_CODE` 字节不变，每项版本、来源及功能断言都继续执行；每项重新建立搜索路径，已加载依赖可在该批次内复用。独立总完成标记避免前一项成功掩盖后项零码早退。缺项、批验证失败或批子进程启动错误回到原逐项检查与修复路径；取消继续传播。下载、安装、PowerShell 和取消主体未改，Python 候选检查、引导和实际预处理进程也没有被消除。
 
@@ -23,11 +23,11 @@ Full 保持 53 个成员；原始素材、三套主题、八个许可证和七�
 
 ## 最小门控检查
 
-可在冻结、构建前执行以下轻量策略测试。它只读取真实基线并运行合成负向回执，不构建产品、不执行七组本轮验证。
+可在冻结、构建前执行以下轻量策略测试。它只读取真实基线并运行合成正负回执，不构建产品、不执行十一组本轮验证。
 
 ```bash
 RA2_REPO=/workspace/scratch/40121bc881b8/ra2-ui-146
-RA2_EVIDENCE=/workspace/scratch/5a310fe852f8/opt147/delivery
+RA2_EVIDENCE=/workspace/scratch/5a310fe852f8/functional147pre2/delivery
 RA2_BASE=/workspace/scratch/5a310fe852f8/ui146-delivery-final
 python3 -B "$RA2_REPO/packages/v1.0.47/test_package_release.py" \
   --base-full "$RA2_BASE/RA2Toolbox-1.0.46-x64-Full.zip" \
@@ -35,7 +35,7 @@ python3 -B "$RA2_REPO/packages/v1.0.47/test_package_release.py" \
   --report "$RA2_EVIDENCE/package-gates.json"
 ```
 
-门控覆盖：真实资源与 engine 保留、基线篡改、旧提交/旧版本/错误树、未执行或缺组回执、缺失与变更源码指纹、变更/空/仅编译日志、失败体素场景、禁入成员、构建产物字节不一致，以及 engine 变更缺少第七组证据或超出审核范围。门控报告会明确 `synthetic_receipt_fixtures:true` 与 `product_build_performed:false`。
+门控覆盖：真实资源与 engine 保留、基线篡改、旧提交/旧版本/错误树、未执行或缺组回执、缺失与变更源码指纹、缺失/变更/空/仅编译日志、失败体素场景、禁入成员、构建产物字节不一致，以及 engine 变更缺少依赖检查或超出审核范围。四个新组额外检查精确计数、两组场景恢复像素差异、伪 `passed` 包装、重复运行拼接与失败输出。门控报告会明确 `synthetic_receipt_fixtures:true` 与 `product_build_performed:false`。
 
 ## 冻结构建
 
@@ -65,8 +65,8 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
   "schema": "ra2.optimization-validation.v1",
   "commit": "本轮冻结提交",
   "source_tree_sha": "该提交的source树SHA",
-  "version": "1.0.47-pre.1",
-  "file_version": "1.0.47.1",
+  "version": "1.0.47-pre.2",
+  "file_version": "1.0.47.2",
   "engine_changes": ["engine/prepare_runtime.py"],
   "required_checks_passed": true,
   "windows_executed": false,
@@ -88,7 +88,7 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 }
 ```
 
-本轮 `checks` 必须恰好包含六个核心组名和 `dependency_probes`，共七组。各组至少包含下表指纹，可以增加真实依赖。所有路径都相对于仓库，所有哈希都必须与构建回执及冻结 Git blob 的实际字节一致。`log_path` 可以绝对指定，或相对于 validation.json；日志不进入产品 ZIP。
+本轮 `checks` 必须恰好包含下述十个固定组名和 `dependency_probes`，共十一组。各组至少包含下表指纹，可以增加真实依赖。所有路径都相对于仓库，所有哈希都必须与构建回执及冻结 Git blob 的实际字节一致。`log_path` 可以绝对指定，或相对于 validation.json；日志不进入产品 ZIP。
 
 | 组名 | 必需测试（均在 `source/assist/tests/`） | 必需生产文件 |
 | --- | --- | --- |
@@ -102,6 +102,19 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 条件组 `dependency_probes` 要求测试指纹 `source/tools/test_dependency_probes.py`，生产指纹 `source/engine/prepare_runtime.py` 与 `source/engine/runtime-dependencies.json`。该组可以引用原始独立 JSON 回执；结果须包含 `passed:true`、正整数 `tests_run`、整数 `failures:0` 和 `errors:0`。不要将它写回其他组的命令原始输出。
 
 日志检查识别已有真实输出：分配器至少 8,063 个等价场景及同一工作区复用；快照的 `seqlock_interleavings` 通过与正检查数；科技采集的 `summary` 通过与正检查数；体素正场景数、零像素差异、正检查数、零失败；飞机及地形的实际 PASS 行。体素不固定旧检查数，预期失败的旧版对照不能冒充当前通过。
+
+新增四组使用实际运行原始日志；不要将包含 `stdout` 的包装收据或人工通过摘要放进这些组的 `log_path`。实际编译、运行 argv 和退出码可从原独立收据提取，原始日志字节和 SHA256 必须保留。
+
+| 组名 | 必需测试指纹 | 必需生产指纹 |
+| --- | --- | --- |
+| `console_receipt_order` | `source/suite/tests/console_receipt_order_test.mjs` | `source/suite/frontend/app.js` |
+| `catalogue_recovery` | `source/unit_monitor/tests/` 下的 `catalogue_recovery.cpp`、`round_transition.cpp` | `source/unit_monitor/source/sampler.h`、`source/external_reader/source/layout_probe.h` |
+| `planner_batch_delivery` | `source/assist/tests/planner_batch_delivery.cpp` | `source/assist/source/` 下的 `external_planner.h`、`planner_task.h`、`value_task.h`，以及 `source/shared/source/latest_worker.h` |
+| `scene_extra_recovery` | `source/assist/tests/` 下的 `scene_extra_recovery.cpp`、`scene_extra_recovery.py`、`game_assets_host_test.py` | `source/external_reader/source/` 下的 `scene_extra_layers.h`、`camera_assets.h`、`camera_raster.h`、`radar_scene.h`、`radar_decoration.h`、`world_scene_pipeline.h` |
+
+控制台日志必须包含 24 个不同的通过案例，以及同名 suite 的 `checks:24`、整数 `failures:0`、`passed:true` 终结记录。单位目录日志必须为单条整数结果：`checks:93`、`failures:0`、`scenarios:21`、`recovered_catalogues:20`。规划投递必须包含最终批次、重复对象、应答重试及任务状态记录，并以 `PASS: 136 checks, 0 failures` 对应摘要结束；重复对象混合批次必须有下一帧补回 4 项的记录，重复对象重试全过程必须保持最多 3 次，旧 80 项日志不能通过。场景日志要求 `checks=109 failures=0`，`layer_recoveries=9 pixel_mismatches=0`、`scene_recoveries=12 pixel_mismatches=0`，并且每个对应恢复案例也须零像素差异。任一失败、缺少结果、重复运行拼接或只有 `passed:true` 均不能通过。
+
+这些专项执行了真实 ConsoleStore、Sampler、Planner/Task、场景缓存与 CPU 绘制代码；DOM/WebView2、进程内存和文件输入边界采用宿主替身。控制台测试不代表原生窗口验收，规划测试不代表真实游戏指令投递，CPU 像素恢复不代表物理 GPU 运行。前述平台限制仍适用。
 
 已执行的本轮测试可以在冻结后封装回执，只要测试时记录的所有测试与生产指纹仍与冻结提交一致；不能把过去版本的测试摘要重命名为本轮验证。回执表达可审查的来源关系，不提供密码学意义上的执行见证。
 
@@ -124,8 +137,8 @@ python3 -B "$RA2_REPO/packages/v1.0.47/package_release.py" \
 
 成功仅输出四个文件：
 
-- `RA2Toolbox-1.0.47-pre.1-x64-Full.zip`
-- `RA2Toolbox-1.0.47-pre.1-x64-Update.zip`
+- `RA2Toolbox-1.0.47-pre.2-x64-Full.zip`
+- `RA2Toolbox-1.0.47-pre.2-x64-Update.zip`
 - `release-manifest.json`
 - `SHA256SUMS.txt`
 

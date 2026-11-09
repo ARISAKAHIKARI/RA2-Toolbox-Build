@@ -1,0 +1,10 @@
+{"case":"real_palette_cache_same_address_new_publication","passed":true}
+{"case":"weak_identity_and_pool_lifetime","passed":true}
+{"case":"steady_client","pages":28,"new_publications":20,"snapshot_allocations":0,"page_allocations":0,"control_block_allocations":20,"control_block_bytes":800,"same_frame_acquires":2000,"same_frame_allocations":0,"retained_token_unchanged":true}
+{"case":"steady_client","pages":512,"new_publications":20,"snapshot_allocations":0,"page_allocations":0,"control_block_allocations":20,"control_block_bytes":800,"same_frame_acquires":2000,"same_frame_allocations":0,"retained_token_unchanged":true}
+{"case":"steady_client","pages":4096,"new_publications":20,"snapshot_allocations":0,"page_allocations":0,"control_block_allocations":20,"control_block_bytes":800,"same_frame_acquires":2000,"same_frame_allocations":0,"retained_token_unchanged":true}
+{"case":"nine_pinned_publications_and_retirement","passed":true}
+{"case":"growth_duplicate_page_and_control_block_failure_recovery","passed":true}
+{"case":"concurrent_acquire_last_release","publications":1200,"passed":true}
+PASS mapping interleavings: double publication during open rejects mixed bytes; retire during open keeps mapped handle alive and rejects retired token
+{"case":"seqlock_interleavings","passed":true,"checks":6988}

@@ -1,0 +1,169 @@
+{
+  "baseline_commit": "b928999f5da90f6f9de0d18151b04b498217464c",
+  "finding": "saved building and animation images can retain fallback metadata after a failed read; cache commit must require complete metadata",
+  "changed_files": [
+    "source/external_reader/source/scene_extra_layers.h",
+    "source/assist/tests/scene_extra_recovery.cpp",
+    "source/assist/tests/scene_extra_recovery.py"
+  ],
+  "sha256": {
+    "/workspace/scratch/40121bc881b8/ra2-ui-146/source/external_reader/source/scene_extra_layers.h": "06228a805780f79684162a046032dd3344fdf741245fd0344de22861e851965b",
+    "/workspace/scratch/40121bc881b8/ra2-ui-146/source/assist/tests/scene_extra_recovery.cpp": "4b0d2fc7b113608c215497f4e342ab5bf56f6cc11202fa2767fc5aa3a1281931",
+    "/workspace/scratch/40121bc881b8/ra2-ui-146/source/assist/tests/scene_extra_recovery.py": "55b939dde88a8eefbb00257a19d02950cb10d1691a4af4fbcda96d6e31a266bc"
+  },
+  "verification": {
+    "baseline": {
+      "run_exit_code": 1,
+      "checks": [
+        "layer_recoveries=9 pixel_mismatches=4032",
+        "scene_recoveries=12 pixel_mismatches=7652",
+        "healthy_digest=b87ea9343f6207a3 checks=109 failures=45"
+      ],
+      "commands": [
+        {
+          "stage": "compile",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-O0",
+            "-pthread",
+            "-I/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2/headers",
+            "-I/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2",
+            "-I/workspace/scratch/40121bc881b8/ra2-ui-146",
+            "-I/workspace/scratch/40121bc881b8/ra2-ui-146/source/external_reader/source",
+            "-MMD",
+            "-MF",
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2/production.d",
+            "-c",
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2/production_fixture.cpp",
+            "-o",
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2/production.o"
+          ],
+          "exit_code": 0
+        },
+        {
+          "stage": "link",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-O0",
+            "-pthread",
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2/production.o",
+            "/workspace/scratch/40121bc881b8/ra2-ui-146/source/third_party/xbrz/xbrz.cpp",
+            "-ldl",
+            "-o",
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2/fixture"
+          ],
+          "exit_code": 0
+        },
+        {
+          "stage": "run",
+          "command": [
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2/fixture"
+          ],
+          "exit_code": 1
+        }
+      ],
+      "receipt": "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2/receipt.json",
+      "run_log": "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2/run.log"
+    },
+    "fixed": {
+      "run_exit_code": 0,
+      "checks": [
+        "layer_recoveries=9 pixel_mismatches=0",
+        "scene_recoveries=12 pixel_mismatches=0",
+        "healthy_digest=b87ea9343f6207a3 checks=109 failures=0"
+      ],
+      "commands": [
+        {
+          "stage": "compile",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-O0",
+            "-pthread",
+            "-I/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2/headers",
+            "-I/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2",
+            "-I/workspace/scratch/40121bc881b8/ra2-ui-146",
+            "-I/workspace/scratch/40121bc881b8/ra2-ui-146/source/external_reader/source",
+            "-MMD",
+            "-MF",
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2/production.d",
+            "-c",
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2/production_fixture.cpp",
+            "-o",
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2/production.o"
+          ],
+          "exit_code": 0
+        },
+        {
+          "stage": "link",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-O0",
+            "-pthread",
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2/production.o",
+            "/workspace/scratch/40121bc881b8/ra2-ui-146/source/third_party/xbrz/xbrz.cpp",
+            "-ldl",
+            "-o",
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2/fixture"
+          ],
+          "exit_code": 0
+        },
+        {
+          "stage": "run",
+          "command": [
+            "/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2/fixture"
+          ],
+          "exit_code": 0
+        }
+      ],
+      "receipt": "/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2/receipt.json",
+      "run_log": "/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2/run.log"
+    }
+  },
+  "runner_commands": [
+    {
+      "command": [
+        "python3",
+        "source/assist/tests/scene_extra_recovery.py",
+        "--output",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "python3",
+        "source/assist/tests/scene_extra_recovery.py",
+        "--output",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2",
+        "--baseline-header",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline_scene_extra_layers.h",
+        "--expect-failure"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "diff_check": {
+    "command": [
+      "git",
+      "diff",
+      "--check",
+      "--",
+      "source/external_reader/source/scene_extra_layers.h",
+      "source/assist/tests/scene_extra_recovery.cpp",
+      "source/assist/tests/scene_extra_recovery.py"
+    ],
+    "exit_code": 0,
+    "log": "/workspace/scratch/5a310fe852f8/functional147pre2/render/diff-check.log"
+  },
+  "boundaries": [
+    "Only synthetic Win32/files/process boundaries; production Context, SHP decoding, Layers, SceneRenderer and CPU Surface execute.",
+    "No Windows/game/GPU/multiplayer proof, no new game addresses/ABI/reverse engineering.",
+    "No main, cursor, sampling-frequency, suite, release-version, package, INDEX or Notebook edits.",
+    "Original failing prototype and both harness compile-attempt logs are preserved separately; authoritative results are fixed2 and baseline2."
+  ],
+  "frozen": true
+}

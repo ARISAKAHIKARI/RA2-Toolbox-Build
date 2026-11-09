@@ -1,0 +1,25 @@
+{
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-pthread",
+    "source/unit_monitor/tests/catalogue_recovery.cpp",
+    "-o",
+    "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/catalogue_after"
+  ],
+  "run_command": [
+    "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/catalogue_after"
+  ],
+  "exit_code": 0,
+  "production_source_hashes": {
+    "source/unit_monitor/source/sampler.h": "024afa933113f07f31b02a3aff91e4a587d34c15a6a83c1419ea5e3fab235664",
+    "source/external_reader/source/layout_probe.h": "cf682e591d80868fac944652a1d9cddca445f5d85ab878b2e88209279b0b27f0"
+  },
+  "test_source_hashes": {
+    "source/unit_monitor/tests/catalogue_recovery.cpp": "10f8cf82b536f930dad5c547b1bd24bc39741ff6473d75f5f4040d3f408d3092",
+    "source/unit_monitor/tests/round_transition.cpp": "e97e5d1712d56ebc21c80e3e8303c35c87f7a79ab31f48d5a0e6b0738ce3c038"
+  },
+  "stdout_sha256": "7033345aabed840bce11ac41a67c17dcd5f478c211dfc6d134118bbc9233fa1c",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

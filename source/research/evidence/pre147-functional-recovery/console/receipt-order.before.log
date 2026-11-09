@@ -1,0 +1,187 @@
+FAIL a round-trip setting waits for its own receipt when the original value reappears
+AssertionError [ERR_ASSERTION]: a matching state is not evidence that the latest request ran
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:35:10
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL a snapshot sent after a bounded ACK batch cannot swallow the later rejection
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:48:10
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL toggle state before success ACK settles immediately once its revision is certified
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:63:12
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL text state before success ACK settles immediately once its revision is certified
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:63:12
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL choice state before success ACK settles immediately once its revision is certified
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:63:12
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL range state before success ACK settles immediately once its revision is certified
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:63:12
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL hotkey state before success ACK settles immediately once its revision is certified
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:63:12
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL an early matching value cannot bypass a later normalized revision
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:73:10
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+PASS ACK before state still waits for the required native revision
+FAIL older receipts cannot settle a later request after a matching intermediate state
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:95:10
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL a late rejection preserves a newer local draft and reports the failed request
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:103:10
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+PASS a delayed success for the former edit cannot clear a new pending edit
+FAIL old-generation receipts still cannot affect a replacement page action
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+false !== true
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:123:10
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+PASS button and list activation retain the receipt and revision requirements
+PASS legacy successful receipts without revision still converge on observed values
+FAIL focusing an unchanged text editor does not report an unsaved change
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:157:12
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL focusing an unchanged number editor does not report an unsaved change
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:157:12
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL focusing an unchanged editable choice editor does not report an unsaved change
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:157:12
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL focusing an unchanged range editor does not report an unsaved change
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:157:12
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL a changed draft remains protected and undoing the edit removes the false close warning
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:169:10
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL a draft already equal to the current native value needs no separate write
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:176:10
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+PASS retired-page drafts remain protected even if their cached old value is identical
+FAIL an unacknowledged operation still prevents a clean close after its value appears
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:198:10
+    at file:///workspace/scratch/40121bc881b8/ra2-ui-146/source/suite/tests/console_receipt_order_test.mjs:210:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+PASS unknown draft ownership is retained and close counts stay bounded
+{"suite":"console_receipt_order","checks":24,"failures":18,"passed":false}

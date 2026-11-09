@@ -1,0 +1,140 @@
+{
+  "utc": "2026-11-09T04:43:16.364751+00:00",
+  "head": "b928999f5da90f6f9de0d18151b04b498217464c",
+  "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "sha256": {
+    "source/assist/source/external_planner.h": "f2b7a9d041846759de8216892775e021f6471cf81ce1998440c3464d6002f3d3",
+    "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+    "source/assist/source/value_task.h": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204",
+    "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81",
+    "source/assist/tests/planner_batch_delivery.cpp": "bc71d5c617815a29f795c7f2b805b31759a8b252d34641524c699f95819b4bc6",
+    "source/assist/tests/ore_priority.cpp": "ee3b29b16918a8bc49929085bedfca0a5cb7220f5a146be5a9f21ab853ecdd3c",
+    "source/assist/tests/planner_tasks.cpp": "375d1a4e1ccf35a2290d6f09a348b60c68ccfacc6d4d838eef9bc6b0be9eec96",
+    "source/assist/tests/external_planner.cpp": "65f1843498b7217be098fbddb583c1514d4d284025d0cc180bcbae01e6c732be"
+  },
+  "commands": [
+    {
+      "name": "fixed_batch_compile",
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-pthread",
+        "-O2",
+        "source/assist/tests/planner_batch_delivery.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/fixed_batch"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "fixed_batch_compile.log"
+    },
+    {
+      "name": "fixed_batch_run",
+      "argv": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/fixed_batch"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "fixed_batch_run.log"
+    },
+    {
+      "name": "ore_priority_compile",
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-pthread",
+        "-O2",
+        "source/assist/tests/ore_priority.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/ore_priority"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "ore_priority_compile.log"
+    },
+    {
+      "name": "ore_priority_run",
+      "argv": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/ore_priority"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "ore_priority_run.log"
+    },
+    {
+      "name": "planner_tasks_compile",
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-pthread",
+        "-O2",
+        "source/assist/tests/planner_tasks.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/planner_tasks"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "planner_tasks_compile.log"
+    },
+    {
+      "name": "planner_tasks_run",
+      "argv": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/planner_tasks"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "planner_tasks_run.log"
+    },
+    {
+      "name": "external_planner_compile",
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-pthread",
+        "-O2",
+        "source/assist/tests/external_planner.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/external_planner"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "external_planner_compile.log"
+    },
+    {
+      "name": "external_planner_run",
+      "argv": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/external_planner"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "external_planner_run.log"
+    },
+    {
+      "name": "ubsan_batch_compile",
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-pthread",
+        "-O1",
+        "-g",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "source/assist/tests/planner_batch_delivery.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/ubsan_batch"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "ubsan_batch_compile.log"
+    },
+    {
+      "name": "ubsan_batch_run",
+      "argv": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/ubsan_batch"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "ubsan_batch_run.log"
+    }
+  ]
+}

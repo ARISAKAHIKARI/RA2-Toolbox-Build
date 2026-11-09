@@ -1,0 +1,67 @@
+{
+  "check": {
+    "name": "tech_capture",
+    "command": [
+      "python",
+      "source/assist/tests/tech_enhancement_capture.py",
+      "--baseline",
+      "5a0f36704e80cc715215318660e31786c4c26cbc",
+      "--out",
+      "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture"
+    ],
+    "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+    "environment": {
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "executed_this_revision": true,
+    "source_inputs_unchanged": true,
+    "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture/receipt.json",
+    "log_sha256": "ac6e006a9f068525effb904975a05ff22cc4a2fb72b01f2dbf64b22afe5f2cab",
+    "package_success_marker": true,
+    "test_source_hashes": {
+      "source/assist/tests/tech_enhancement_capture.cpp": "550db4fb9351cc7fdf68393ba08127838b68177395354b2b158c3e0beda887f0",
+      "source/assist/tests/tech_enhancement_capture.py": "a0d2336204b92d1f915598d5eaac8dce78c97312647f445c825bbe29536ad1bf"
+    },
+    "production_source_hashes": {
+      "source/assist/source/tech_ui_breakpoint_bridge.h": "16669d5c032fbb66e9d21a974dea127d3b24b8f4ed7ee20bc2eac8aabf4c2d41",
+      "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+      "source/assist/source/tech_parameter_lookup.h": "14fd3aa6ef6b4557804d44fd6743ac4b5bc1e92f7a23f7fc434c0ffe9a735a43",
+      "source/assist/source/bridge.cpp": "a1924341718da07eff0ae127ea39fc5653fe3c1c490197f47075d6877e98e0d3"
+    },
+    "execution_receipt_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture.execution.json",
+    "scope": "Current portable fixture execution. No Windows/game/physical GPU/multiplayer execution claim. Integration caller hashes are bindings, not full Host execution."
+  },
+  "commands": [
+    {
+      "stage": "run",
+      "argv": [
+        "python",
+        "source/assist/tests/tech_enhancement_capture.py",
+        "--baseline",
+        "5a0f36704e80cc715215318660e31786c4c26cbc",
+        "--out",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "started_utc": "2026-11-09T04:49:36.406586+00:00",
+      "finished_utc": "2026-11-09T04:49:38.097058+00:00",
+      "elapsed_seconds": 1.6904747959997621,
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture.command.log",
+      "log_sha256": "e25b4a711bb5166bd91cae615eb99709908339436b33ab36fcfdcb59a9c0e4e0"
+    }
+  ],
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "input_sha256_before": {
+    "source/assist/tests/tech_enhancement_capture.cpp": "550db4fb9351cc7fdf68393ba08127838b68177395354b2b158c3e0beda887f0",
+    "source/assist/tests/tech_enhancement_capture.py": "a0d2336204b92d1f915598d5eaac8dce78c97312647f445c825bbe29536ad1bf",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "16669d5c032fbb66e9d21a974dea127d3b24b8f4ed7ee20bc2eac8aabf4c2d41",
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/tech_parameter_lookup.h": "14fd3aa6ef6b4557804d44fd6743ac4b5bc1e92f7a23f7fc434c0ffe9a735a43",
+    "source/assist/source/bridge.cpp": "a1924341718da07eff0ae127ea39fc5653fe3c1c490197f47075d6877e98e0d3"
+  }
+}

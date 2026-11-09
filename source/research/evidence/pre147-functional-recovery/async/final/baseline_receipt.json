@@ -1,0 +1,39 @@
+{
+  "baseline_kind": "current preliminary pre.2 delayed-final-merge accounting before duplicate candidate fix",
+  "commands": [
+    {
+      "phase": "compile",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "source/assist/tests/planner_batch_delivery.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/baseline_batch"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "started_utc": "2026-11-09T04:53:19.118835+00:00",
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/baseline_compile.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "phase": "run",
+      "command": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/baseline_batch"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "started_utc": "2026-11-09T04:53:22.708797+00:00",
+      "exit_code": 1,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/baseline_run.log",
+      "log_sha256": "fbcf466a57d276def2d8de02a1388dc8e1f2ee94473d651ed723960ee1cdf1eb"
+    }
+  ],
+  "source_sha256": {
+    "source/assist/source/external_planner.h": "f2b7a9d041846759de8216892775e021f6471cf81ce1998440c3464d6002f3d3",
+    "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+    "source/assist/tests/planner_batch_delivery.cpp": "ca32e7f7222a05af7578c9315116a2da0ca0752bc1edf38c12c7ac2a2a994939"
+  },
+  "expected_failure": true
+}

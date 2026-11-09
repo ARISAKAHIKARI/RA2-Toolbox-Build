@@ -1,0 +1,29 @@
+{
+  "schema": "ra2.packaging-gate-execution.v1",
+  "scope": "packaging_policy_and_evidence_parser_only",
+  "command": [
+    "python3",
+    "-B",
+    "packages/v1.0.47/test_package_release.py",
+    "--base-full",
+    "/workspace/scratch/5a310fe852f8/ui146-delivery-final/RA2Toolbox-1.0.46-x64-Full.zip",
+    "--base-manifest",
+    "/workspace/scratch/5a310fe852f8/ui146-delivery-final/release-manifest.json",
+    "--report",
+    "/workspace/scratch/5a310fe852f8/functional147pre2/packaging/package-gates.json"
+  ],
+  "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+  "started_utc": "2026-11-09T04:57:00.036099+00:00",
+  "finished_utc": "2026-11-09T04:57:01.231192+00:00",
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/packaging/package-gates.log",
+  "log_sha256": "e75791816843588a387bbf4dfd4d558c880eb72619abe7f909c3cf2e82d40965",
+  "product_build_performed": false,
+  "product_suites_rerun": false,
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "result_report_path": "/workspace/scratch/5a310fe852f8/functional147pre2/packaging/package-gates.json",
+  "result_report_sha256": "c9cbc1f010849dcfa18078b4b603df5d13a2f16d1b6c6b8a393af3b19c80e635"
+}

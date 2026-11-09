@@ -1,0 +1,93 @@
+{
+  "passed": true,
+  "command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-pthread",
+    "-I/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/world_reuse_final",
+    "/workspace/scratch/40121bc881b8/ra2-ui-146/source/assist/tests/world_frame_reuse.cpp",
+    "-Wl,--wrap=malloc",
+    "-o",
+    "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/world_reuse_final/world-frame-reuse",
+    "-fsanitize=address,undefined",
+    "-fno-sanitize-recover=all"
+  ],
+  "returncode": 0,
+  "asan_options": "detect_leaks=0",
+  "rows": [
+    {
+      "case": "real_palette_cache_same_address_new_publication",
+      "passed": true
+    },
+    {
+      "case": "weak_identity_and_pool_lifetime",
+      "passed": true
+    },
+    {
+      "case": "steady_client",
+      "pages": 28,
+      "new_publications": 20,
+      "snapshot_allocations": 0,
+      "page_allocations": 0,
+      "control_block_allocations": 20,
+      "control_block_bytes": 800,
+      "same_frame_acquires": 2000,
+      "same_frame_allocations": 0,
+      "retained_token_unchanged": true
+    },
+    {
+      "case": "steady_client",
+      "pages": 512,
+      "new_publications": 20,
+      "snapshot_allocations": 0,
+      "page_allocations": 0,
+      "control_block_allocations": 20,
+      "control_block_bytes": 800,
+      "same_frame_acquires": 2000,
+      "same_frame_allocations": 0,
+      "retained_token_unchanged": true
+    },
+    {
+      "case": "steady_client",
+      "pages": 4096,
+      "new_publications": 20,
+      "snapshot_allocations": 0,
+      "page_allocations": 0,
+      "control_block_allocations": 20,
+      "control_block_bytes": 800,
+      "same_frame_acquires": 2000,
+      "same_frame_allocations": 0,
+      "retained_token_unchanged": true
+    },
+    {
+      "case": "nine_pinned_publications_and_retirement",
+      "passed": true
+    },
+    {
+      "case": "growth_duplicate_page_and_control_block_failure_recovery",
+      "passed": true
+    },
+    {
+      "case": "concurrent_acquire_last_release",
+      "publications": 1200,
+      "passed": true
+    },
+    {
+      "case": "seqlock_interleavings",
+      "passed": true,
+      "checks": 6988
+    }
+  ],
+  "source_sha256": {
+    "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+    "source/shared/source/world_frame_pool.h": "58a99f8f9d926bbff9298d68006ff3ad45d648ca6c86751f75cbaf81660a91ab",
+    "source/shared/source/world_frame_transport.h": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9",
+    "source/assist/tests/world_frame_core.cpp": "71ef592d6442a3c9ea35e8e4688e355968393251d19e320a9c5b7f176da2472c",
+    "source/assist/tests/world_frame_reuse.cpp": "0cd7277e95c12e764113803543605935eb0cd760462784ae5ff3067c4232dcc0",
+    "source/assist/tests/world_frame_reuse.py": "2c5a77541b4fd1326fa5c8801d41f816e64fbe7e1632e8c81d9501ad17e18838"
+  },
+  "windows_executed": false,
+  "game_executed": false,
+  "boundary": "Real production pool, transport and snapshots; existing Win32 mapping model. Counts are not timings or game FPS."
+}

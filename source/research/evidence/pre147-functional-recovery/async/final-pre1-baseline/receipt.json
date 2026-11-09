@@ -1,0 +1,272 @@
+{
+  "baseline_revision": "b928999f5da90f6f9de0d18151b04b498217464c",
+  "baseline_kind": "Final unchanged regression test bytes with original pre.1 external_planner.h; all other actual project dependencies copied byte-for-byte from the frozen current working tree.",
+  "current_source_and_final_receipt_unchanged": true,
+  "test_sha256": "ca32e7f7222a05af7578c9315116a2da0ca0752bc1edf38c12c7ac2a2a994939",
+  "test_fixture_sha256": "ca32e7f7222a05af7578c9315116a2da0ca0752bc1edf38c12c7ac2a2a994939",
+  "baseline_external_planner_sha256": "63392e6f449e74d6164643a1984eb9cac3b6e8ffa28e13ae96f8b57f96ebb4ad",
+  "current_external_planner_sha256": "a3d21360f652cc0b5a86e581ec2c0f52466945b8f146a4023bcaf5fea1e32c4d",
+  "current_final_delivery_checks_sha256": "b379a407ee6992404a3b54a5f8c6eb9c803d13a7a86acaf84be7d28f6f6497e6",
+  "input_hashes": {
+    "source/assist/tests/planner_batch_delivery.cpp": {
+      "current_sha256": "ca32e7f7222a05af7578c9315116a2da0ca0752bc1edf38c12c7ac2a2a994939",
+      "fixture_sha256": "ca32e7f7222a05af7578c9315116a2da0ca0752bc1edf38c12c7ac2a2a994939"
+    },
+    "source/assist/source/planner_task.h": {
+      "current_sha256": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+      "fixture_sha256": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364"
+    },
+    "source/assist/source/external_planner.h": {
+      "current_sha256": "a3d21360f652cc0b5a86e581ec2c0f52466945b8f146a4023bcaf5fea1e32c4d",
+      "fixture_sha256": "63392e6f449e74d6164643a1984eb9cac3b6e8ffa28e13ae96f8b57f96ebb4ad"
+    },
+    "source/assist/source/protocol.h": {
+      "current_sha256": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c",
+      "fixture_sha256": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c"
+    },
+    "source/assist/source/mo_orders.h": {
+      "current_sha256": "3ff6faf48461cb39f2c05a69dd0dd4e0c45beda52e79bf25cdec2df2248b6f4a",
+      "fixture_sha256": "3ff6faf48461cb39f2c05a69dd0dd4e0c45beda52e79bf25cdec2df2248b6f4a"
+    },
+    "source/shared/source/key_gesture.h": {
+      "current_sha256": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8",
+      "fixture_sha256": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8"
+    },
+    "source/shared/source/debug_entry_types.h": {
+      "current_sha256": "acb4aeca8ea08b6cb3d88c9a794976d1e07734634526c270c05e938fbf658a5c",
+      "fixture_sha256": "acb4aeca8ea08b6cb3d88c9a794976d1e07734634526c270c05e938fbf658a5c"
+    },
+    "source/assist/source/player_test_policy.h": {
+      "current_sha256": "2d106829eca4e42a9d25804bc4bb4333eede3f020bbf69ab2d7e1417f32ed39b",
+      "fixture_sha256": "2d106829eca4e42a9d25804bc4bb4333eede3f020bbf69ab2d7e1417f32ed39b"
+    },
+    "source/assist/source/formation.h": {
+      "current_sha256": "f5213574cd7228a142e56407ce44a17a25ee2865658603980f9a18ca4a4d2d3a",
+      "fixture_sha256": "f5213574cd7228a142e56407ce44a17a25ee2865658603980f9a18ca4a4d2d3a"
+    },
+    "source/assist/source/air_path_policy.h": {
+      "current_sha256": "19672ab3f39a5a2e6134c133bbacc379c8461f7804fa20f8a3865c582053759e",
+      "fixture_sha256": "19672ab3f39a5a2e6134c133bbacc379c8461f7804fa20f8a3865c582053759e"
+    },
+    "source/shared/source/hardware_slot_budget.h": {
+      "current_sha256": "997a06543ddf6c77de423740ec82863db69a4f9efff3be679b1e309368e6e8c8",
+      "fixture_sha256": "997a06543ddf6c77de423740ec82863db69a4f9efff3be679b1e309368e6e8c8"
+    },
+    "source/assist/source/planner_types.h": {
+      "current_sha256": "c4215d8d6328d492b548efa48d26aa2da4fef7a1d1328d57e9bd2e245071ffcc",
+      "fixture_sha256": "c4215d8d6328d492b548efa48d26aa2da4fef7a1d1328d57e9bd2e245071ffcc"
+    },
+    "source/assist/source/ore_type_config.h": {
+      "current_sha256": "eef48140f2bcb1fdd134f55de73a6b78826430488dd657d9f8637fc6491634d2",
+      "fixture_sha256": "eef48140f2bcb1fdd134f55de73a6b78826430488dd657d9f8637fc6491634d2"
+    },
+    "source/assist/source/feature_type_config.h": {
+      "current_sha256": "9fea2e80e73601e79fb73f388deff1e3f99f99558b5a3c0a609e34d55d897ad9",
+      "fixture_sha256": "9fea2e80e73601e79fb73f388deff1e3f99f99558b5a3c0a609e34d55d897ad9"
+    },
+    "source/assist/source/plan_freshness.h": {
+      "current_sha256": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c",
+      "fixture_sha256": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c"
+    },
+    "source/assist/source/command_gateway.h": {
+      "current_sha256": "a0a5676e5bd28af90ca10e374c7dbc9d8a96098b2a6b446c42063f795bc76198",
+      "fixture_sha256": "a0a5676e5bd28af90ca10e374c7dbc9d8a96098b2a6b446c42063f795bc76198"
+    },
+    "source/assist/source/unit_task_arbiter.h": {
+      "current_sha256": "86e4278cd05ba68d44f0ac9a8a292d16f5db00198e32ef865b10f85b556dd0a9",
+      "fixture_sha256": "86e4278cd05ba68d44f0ac9a8a292d16f5db00198e32ef865b10f85b556dd0a9"
+    },
+    "source/assist/source/mega_queue_backend.h": {
+      "current_sha256": "02b36f3c661c06fd0279271272f91608b661e2ac16cbb6146cf0e350ec640f1f",
+      "fixture_sha256": "02b36f3c661c06fd0279271272f91608b661e2ac16cbb6146cf0e350ec640f1f"
+    },
+    "source/assist/source/cooperative_types.h": {
+      "current_sha256": "be64cdf584a8eb643ddbe442439350c4b620d75964c26b1a1d0c55f664d62755",
+      "fixture_sha256": "be64cdf584a8eb643ddbe442439350c4b620d75964c26b1a1d0c55f664d62755"
+    },
+    "source/assist/source/pointer_intent.h": {
+      "current_sha256": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1",
+      "fixture_sha256": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1"
+    },
+    "source/assist/source/construction_input.h": {
+      "current_sha256": "0084b88c5c2713594ff005e61e175c817d4dcf70a57d09aa19a5c18a67a0393b",
+      "fixture_sha256": "0084b88c5c2713594ff005e61e175c817d4dcf70a57d09aa19a5c18a67a0393b"
+    },
+    "source/assist/source/construction_policy.h": {
+      "current_sha256": "78b888d6138b0b0f1825a8ba73058647119ca51c333dbf68b55da2b69da6b1ac",
+      "fixture_sha256": "78b888d6138b0b0f1825a8ba73058647119ca51c333dbf68b55da2b69da6b1ac"
+    },
+    "source/shared/source/viewport_scale.h": {
+      "current_sha256": "40645cde0ef9e9f5a0cd39d9686efde112a173e616b2833126ca3fe5cddf7fad",
+      "fixture_sha256": "40645cde0ef9e9f5a0cd39d9686efde112a173e616b2833126ca3fe5cddf7fad"
+    },
+    "source/assist/source/compute_policy.h": {
+      "current_sha256": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+      "fixture_sha256": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796"
+    },
+    "source/assist/source/compute_tasks.h": {
+      "current_sha256": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c",
+      "fixture_sha256": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c"
+    },
+    "source/assist/source/autoload.h": {
+      "current_sha256": "faf93595bb49d14802e2fe5d129e35a750c9f5f174db1c8fe4a16d27830103d6",
+      "fixture_sha256": "faf93595bb49d14802e2fe5d129e35a750c9f5f174db1c8fe4a16d27830103d6"
+    },
+    "source/assist/source/tactical_decisions.h": {
+      "current_sha256": "dd6dc31d55fb7d20d962570e05182557c69729e0cdd2d61f56af351c4b4977cb",
+      "fixture_sha256": "dd6dc31d55fb7d20d962570e05182557c69729e0cdd2d61f56af351c4b4977cb"
+    },
+    "source/assist/source/command_intent.h": {
+      "current_sha256": "71e07afdac107d8dc6a216712b25693d42db876dea40215cb89cf3f4ef0e54aa",
+      "fixture_sha256": "71e07afdac107d8dc6a216712b25693d42db876dea40215cb89cf3f4ef0e54aa"
+    },
+    "source/assist/source/vanilla_constructor_catalog.h": {
+      "current_sha256": "78e77c217943beffa000fbfd7a749f0043fa617498a5a1c48f917a3b27276040",
+      "fixture_sha256": "78e77c217943beffa000fbfd7a749f0043fa617498a5a1c48f917a3b27276040"
+    },
+    "source/assist/source/compute_frame.h": {
+      "current_sha256": "a88d6f9e3a79dad611a338ee0a60ac426bf40b96a627694534e482f125c54b55",
+      "fixture_sha256": "a88d6f9e3a79dad611a338ee0a60ac426bf40b96a627694534e482f125c54b55"
+    },
+    "source/assist/source/compute_input_copy.h": {
+      "current_sha256": "71dfa9f605c10b3ccf058b1372370950b0b5e4a1672542cfe3fe3d4e888ca7b7",
+      "fixture_sha256": "71dfa9f605c10b3ccf058b1372370950b0b5e4a1672542cfe3fe3d4e888ca7b7"
+    },
+    "source/assist/source/missile_compute.h": {
+      "current_sha256": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+      "fixture_sha256": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499"
+    },
+    "source/assist/source/unload_compute.h": {
+      "current_sha256": "9320d8940db3a948d51533a4931457cd676a01c07b64fed085395d11b7d19711",
+      "fixture_sha256": "9320d8940db3a948d51533a4931457cd676a01c07b64fed085395d11b7d19711"
+    },
+    "source/assist/source/unload_policy.h": {
+      "current_sha256": "b699168531498e797f13045fd1932c31439df61ed16bc93c92644205caddc568",
+      "fixture_sha256": "b699168531498e797f13045fd1932c31439df61ed16bc93c92644205caddc568"
+    },
+    "source/assist/source/cooperative_frame.h": {
+      "current_sha256": "58862cd08044f0249629be08983815195bd7258a57ad7557794a1be8b4d14cc8",
+      "fixture_sha256": "58862cd08044f0249629be08983815195bd7258a57ad7557794a1be8b4d14cc8"
+    },
+    "source/assist/source/cooperative_plan.h": {
+      "current_sha256": "5b4db18682aa32504c68cc66fe34ae95554d570c2f85e493e070afc48a52d8dd",
+      "fixture_sha256": "5b4db18682aa32504c68cc66fe34ae95554d570c2f85e493e070afc48a52d8dd"
+    },
+    "source/assist/source/burst_compute.h": {
+      "current_sha256": "d881c4431df1b121210029b1a79c9e46e26fbac45ae60928a13d32ea539ee83b",
+      "fixture_sha256": "d881c4431df1b121210029b1a79c9e46e26fbac45ae60928a13d32ea539ee83b"
+    },
+    "source/assist/source/dodge_compute.h": {
+      "current_sha256": "1f37cce7426c49268f8a9ed8a400b0941c4bfecd3379e8312e2253ccd9ff76b5",
+      "fixture_sha256": "1f37cce7426c49268f8a9ed8a400b0941c4bfecd3379e8312e2253ccd9ff76b5"
+    },
+    "source/assist/source/native_placement_policy.h": {
+      "current_sha256": "838ef085195ad63de7caf8e8d2f964aeded1c7210789fb1d7bfa65ccdb00aa46",
+      "fixture_sha256": "838ef085195ad63de7caf8e8d2f964aeded1c7210789fb1d7bfa65ccdb00aa46"
+    },
+    "source/shared/source/hardware_performance.h": {
+      "current_sha256": "65e0db646cc5c98bbda57fdb501362776f479eff58295da0ae1cde11cd398c58",
+      "fixture_sha256": "65e0db646cc5c98bbda57fdb501362776f479eff58295da0ae1cde11cd398c58"
+    },
+    "source/assist/source/native_orders.h": {
+      "current_sha256": "6eadffda0a4d347cdcf0656406f4b0ecd2e7264b531523a9da785d18f3d12d8f",
+      "fixture_sha256": "6eadffda0a4d347cdcf0656406f4b0ecd2e7264b531523a9da785d18f3d12d8f"
+    },
+    "source/assist/source/ore_queue.h": {
+      "current_sha256": "9cee038574b9ca4cf06643644aed6b3ef12c1096fea2a3e1e762ac80cb07a293",
+      "fixture_sha256": "9cee038574b9ca4cf06643644aed6b3ef12c1096fea2a3e1e762ac80cb07a293"
+    },
+    "source/assist/source/business_effects.h": {
+      "current_sha256": "a7ee8258b4b23fc4f104bc8eb7472352969632c83206b38f95de8696a7c86215",
+      "fixture_sha256": "a7ee8258b4b23fc4f104bc8eb7472352969632c83206b38f95de8696a7c86215"
+    },
+    "source/assist/source/planner_index.h": {
+      "current_sha256": "aff36ca9447a530b34dc77e48c3ee7bef3e7f8595c103e3d0e52fb9332353a63",
+      "fixture_sha256": "aff36ca9447a530b34dc77e48c3ee7bef3e7f8595c103e3d0e52fb9332353a63"
+    },
+    "source/assist/source/weapon_policy.h": {
+      "current_sha256": "38cb967a4656087b9b7694544e520741c225ee6408c998fe9d99f0aeada19ceb",
+      "fixture_sha256": "38cb967a4656087b9b7694544e520741c225ee6408c998fe9d99f0aeada19ceb"
+    },
+    "source/assist/source/magnetron_cycle.h": {
+      "current_sha256": "7866dc78df953b7a61a1f3184e72a2e3d269e7b79837b97283ffa629832b28f5",
+      "fixture_sha256": "7866dc78df953b7a61a1f3184e72a2e3d269e7b79837b97283ffa629832b28f5"
+    },
+    "source/assist/source/advanced_decision.h": {
+      "current_sha256": "30014b95bf18f57f27f5c55f353f0651e5c97acb6c41998f3a3fd9cef2c4df55",
+      "fixture_sha256": "30014b95bf18f57f27f5c55f353f0651e5c97acb6c41998f3a3fd9cef2c4df55"
+    }
+  },
+  "commands": [
+    {
+      "stage": "dependency_scan",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-pthread",
+        "-MM",
+        "source/assist/tests/planner_batch_delivery.cpp"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "started_utc": "2026-11-09T04:57:31.217973+00:00",
+      "finished_utc": "2026-11-09T04:57:31.274479+00:00",
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final-pre1-baseline/dependency_scan.log",
+      "log_sha256": "33eeaccd811c7dfca11d12da9feaa2649720c91800b301454de7e202733e7f56"
+    },
+    {
+      "stage": "read_frozen_header",
+      "command": [
+        "git",
+        "show",
+        "b928999f5da90f6f9de0d18151b04b498217464c:source/assist/source/external_planner.h"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "started_utc": "2026-11-09T04:57:31.284208+00:00",
+      "finished_utc": "2026-11-09T04:57:31.287475+00:00",
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final-pre1-baseline/read_frozen_header.log",
+      "log_sha256": "63392e6f449e74d6164643a1984eb9cac3b6e8ffa28e13ae96f8b57f96ebb4ad"
+    },
+    {
+      "stage": "compile",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/final-pre1-baseline/fixture/source/assist/tests/planner_batch_delivery.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/final-pre1-baseline/planner_batch_delivery.pre1"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "started_utc": "2026-11-09T04:57:31.287872+00:00",
+      "finished_utc": "2026-11-09T04:57:34.518816+00:00",
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final-pre1-baseline/compile.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "run",
+      "command": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/final-pre1-baseline/planner_batch_delivery.pre1"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "started_utc": "2026-11-09T04:57:34.518889+00:00",
+      "finished_utc": "2026-11-09T04:57:34.536658+00:00",
+      "exit_code": 1,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final-pre1-baseline/run.log",
+      "log_sha256": "0890228d95ffb8e5d26a794538708682e438d2873964ebb139add44722addae5"
+    }
+  ],
+  "compile_exit_code": 0,
+  "run_exit_code": 1,
+  "executed_checks": 112,
+  "failing_checks": 12,
+  "expected_failure": true,
+  "expected_failure_confirmed": true,
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false
+}

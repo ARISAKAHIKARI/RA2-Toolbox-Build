@@ -1,0 +1,58 @@
+{
+  "scope": "Read-only integration review of catalogue recovery, final planner accounting, console ACK/close changes; no production edits or new engine ABI/address work.",
+  "reviewed_input_sha256": {
+    "source/unit_monitor/source/sampler.h": "024afa933113f07f31b02a3aff91e4a587d34c15a6a83c1419ea5e3fab235664",
+    "source/external_reader/source/layout_probe.h": "cf682e591d80868fac944652a1d9cddca445f5d85ab878b2e88209279b0b27f0",
+    "source/unit_monitor/tests/catalogue_recovery.cpp": "10f8cf82b536f930dad5c547b1bd24bc39741ff6473d75f5f4040d3f408d3092",
+    "source/assist/source/external_planner.h": "f2b7a9d041846759de8216892775e021f6471cf81ce1998440c3464d6002f3d3",
+    "source/assist/tests/planner_batch_delivery.cpp": "bc71d5c617815a29f795c7f2b805b31759a8b252d34641524c699f95819b4bc6",
+    "source/suite/frontend/app.js": "c18c53e2d9a5860c019588a9bc8403a5e45a49049ce9d6347ad1bc16fbfd1cad",
+    "source/suite/tests/console_receipt_order_test.mjs": "5c19ea621b9131f56eef0feacfeb71f097239841c5296064cd20f6f66d89b5ff"
+  },
+  "findings": [
+    {
+      "severity": "blocking regression",
+      "component": "source/assist/source/external_planner.h",
+      "condition": "An accepted World contains a duplicate far harvester Actor with the same unit/token, and the refinery exposes at least two free waiting cells.",
+      "reason": "New trucks become duplicate OreJob entries. Before this patch, the first OreYield updates turn.sent and throttles a second candidate; moving the update to merge removes that suppression.",
+      "baseline": "validWorld=1; frame 500/530/560 each emits 1; total=3, attempts=3.",
+      "changed": "validWorld=1; frame 500/530 each emits 2 for the same unit/token, destinations 40020/40021; total=4, attempts=4 > MaxDockAttempts=3.",
+      "evidence": [
+        "planner_duplicates.cpp",
+        "planner-duplicates-run.log",
+        "planner-duplicates-receipt.json",
+        "planner-duplicates-baseline-run.log",
+        "planner-duplicates-baseline-receipt.json",
+        "planner-duplicates-fixed-compile.log",
+        "planner-duplicates-fixed-run.log",
+        "planner-duplicates-fixed-receipt.json"
+      ],
+      "status": "Resolved by async owner. Independently recompiled public Planner counterexample: one yield in each frame 500/530/560; total 3 and attempts 3. Source/test inputs unchanged during compile and run.",
+      "resolution": "At candidate creation, bounded any_of over <=32 orders checks existing OreYield for the same refinery before choosing or reserving another waiting cell. First candidate order is preserved; final-merge-only accounting remains. Regular ore loop already excludes both displaced and unreleased winner, preventing a second regular-order path."
+    },
+    {
+      "severity": "passed",
+      "component": "source/unit_monitor/source/sampler.h + source/external_reader/source/layout_probe.h",
+      "reason": "Failed rebuild invalidates Snapshot, TypeIndex and successful stamp state; prevBuildings commits only on success. Required vector count/capacity bounds fit PtrList. Empty vectors and known filtering remain valid. Appended diagnostic preserves prior enum ordinals.",
+      "extra_evidence": [
+        "catalogue_modes.cpp",
+        "catalogue-modes2-run.log",
+        "catalogue-modes2-receipt.json"
+      ],
+      "coverage": "Public Sampler: building visibility toggle; failed toggle and next-sample recovery; diagnostic; match preservation; irrelevant hidden building metadata failure; explicitly forced oversized-count rebuild failure and recovery.",
+      "limits": "Periodic failed catalogue stamp retaining a prior good table is pre-existing policy and outside the successful-stamp/failed-rebuild correction. The initial scratch bounds scenario did not trigger a rebuild; final scenario explicitly does."
+    },
+    {
+      "severity": "passed",
+      "component": "source/suite/frontend/app.js pending ACK and close-check",
+      "reason": "State only settles acknowledged request; ACK additionally matches module/id/seq/generation and uses certified revision. This matches native publisher draining 32 ACKs before a state. Native accepted actions force a new capture and require p.revision+1. Close counts compare draft against current same-generation page and preserve unknown or retired draft ownership. Range comparison follows existing numeric actualValue; text comparison follows existing commit semantics.",
+      "review_method": "Read source diff, new receipt-order tests, native console_adapter acknowledgement/capture and modern_console_main publication ordering. Did not rerun already-passed frontend suite."
+    }
+  ],
+  "production_files_modified": [],
+  "extra_test_files_written_only_in_scratch": true,
+  "final_planner_sha256": "a3d21360f652cc0b5a86e581ec2c0f52466945b8f146a4023bcaf5fea1e32c4d",
+  "final_planner_test_sha256": "ca32e7f7222a05af7578c9315116a2da0ca0752bc1edf38c12c7ac2a2a994939",
+  "remaining_blockers": [],
+  "review_complete": true
+}

@@ -1,0 +1,18 @@
+batch turns=20 combat=0 duplicate_far=0 first_yields=20 next_yields=0 attempts=20
+batch turns=20 combat=32 duplicate_far=0 first_yields=16 next_yields=4 attempts=20
+batch turns=40 combat=0 duplicate_far=0 first_yields=32 next_yields=8 attempts=40
+batch turns=32 combat=32 duplicate_far=0 first_yields=16 next_yields=16 attempts=32
+batch turns=20 combat=32 duplicate_far=1 first_yields=16 next_yields=4 attempts=20
+duplicate_turn frame=500 yields=1 attempts=1
+duplicate_turn frame=501 yields=0 attempts=1
+duplicate_turn frame=529 yields=0 attempts=1
+duplicate_turn frame=530 yields=1 attempts=2
+duplicate_turn frame=559 yields=0 attempts=2
+duplicate_turn frame=560 yields=1 attempts=3
+duplicate_turn frame=589 yields=0 attempts=3
+duplicate_turn frame=590 yields=0 attempts=3
+receipt kind=0 emitted=3 attempts=3
+receipt kind=1 emitted=3 attempts=3
+receipt kind=2 emitted=3 attempts=3
+task first_yields=16 next_yields=4 reset_yields=16
+PASS: 136 checks, 0 failures; bounded final-batch delivery and retry lifecycle

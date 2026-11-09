@@ -1,0 +1,52 @@
+{
+  "status": "fixed_and_frozen_after_independent_duplicate_actor_review",
+  "supersedes": "../report.json describes the preliminary delayed-accounting patch; use this final receipt and its hashes for release. Prior negative evidence is preserved unchanged.",
+  "delivery_checks_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/delivery_checks.json",
+  "delivery_checks_sha256": "b379a407ee6992404a3b54a5f8c6eb9c803d13a7a86acaf84be7d28f6f6497e6",
+  "issues_resolved": [
+    "Omitted OreYield candidates do not consume retries before entering the bounded final output.",
+    "Duplicate Actors cannot queue a second OreYield for the same refinery/turn before final merge; first destination and three-attempt budget are preserved."
+  ],
+  "negative_before_dedup": {
+    "compile_exit_code": 0,
+    "run_exit_code": 1,
+    "checks": 148,
+    "failures": 23,
+    "duplicate_frames": {
+      "500": {
+        "yields": 2,
+        "attempts": 2
+      },
+      "530": {
+        "yields": 2,
+        "attempts": 4
+      }
+    }
+  },
+  "final": {
+    "checks": 136,
+    "failures": 0,
+    "ubsan_exit_code": 0,
+    "ore_priority_exit_code": 0,
+    "planner_tasks_exit_code": 0,
+    "external_planner_exit_code": 0,
+    "diff_check_exit_code": 0,
+    "ordinary_and_duplicate_20_turn_32_combat": {
+      "first_yields": 16,
+      "next_frame_yields": 4,
+      "attempts": 20
+    },
+    "duplicate_turn_total_attempts": 3
+  },
+  "source_and_test_sha256": {
+    "source/assist/source/external_planner.h": "a3d21360f652cc0b5a86e581ec2c0f52466945b8f146a4023bcaf5fea1e32c4d",
+    "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+    "source/assist/source/value_task.h": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204",
+    "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81",
+    "source/assist/tests/planner_batch_delivery.cpp": "ca32e7f7222a05af7578c9315116a2da0ca0752bc1edf38c12c7ac2a2a994939",
+    "source/assist/tests/ore_priority.cpp": "ee3b29b16918a8bc49929085bedfca0a5cb7220f5a146be5a9f21ab853ecdd3c",
+    "source/assist/tests/planner_tasks.cpp": "375d1a4e1ccf35a2290d6f09a348b60c68ccfacc6d4d838eef9bc6b0be9eec96",
+    "source/assist/tests/external_planner.cpp": "65f1843498b7217be098fbddb583c1514d4d284025d0cc180bcbae01e6c732be"
+  },
+  "scope": "Pure actual Planner/Task/value worker production code on Linux fixtures. No Windows native delivery, game, physical GPU or multiplayer execution. Duplicate handling is limited to OreYield candidates per refinery; general jobs and other orders unchanged."
+}

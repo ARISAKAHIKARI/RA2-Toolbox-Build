@@ -1,0 +1,18 @@
+batch turns=20 combat=0 first_yields=20 next_yields=0 attempts=20
+FAIL: only returned yield orders consume attempts
+FAIL: omitted yield orders are eligible in the next frame
+FAIL: attempt statistics match both returned batches
+batch turns=20 combat=32 first_yields=16 next_yields=0 attempts=20
+batch turns=40 combat=0 first_yields=32 next_yields=8 attempts=40
+FAIL: only returned yield orders consume attempts
+FAIL: omitted yield orders are eligible in the next frame
+FAIL: attempt statistics match both returned batches
+batch turns=32 combat=32 first_yields=16 next_yields=0 attempts=32
+receipt kind=0 emitted=3 attempts=3
+receipt kind=1 emitted=3 attempts=3
+receipt kind=2 emitted=3 attempts=3
+FAIL: task statistics count only deliverable yields
+FAIL: stateful task recovers omitted yields on the next snapshot
+FAIL: generation change clears old retry state
+task first_yields=16 next_yields=0 reset_yields=16
+FAIL: 60 checks, 9 failures; bounded final-batch delivery and retry lifecycle

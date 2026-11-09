@@ -1,0 +1,69 @@
+{
+  "check": {
+    "name": "voxel_recovery",
+    "command": [
+      "python",
+      "source/assist/tests/voxel_part_capture.py",
+      "--output",
+      "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/voxel"
+    ],
+    "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+    "environment": {
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "executed_this_revision": true,
+    "source_inputs_unchanged": true,
+    "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/voxel/run.log",
+    "log_sha256": "ddb93eda608133ca6ba67845327e6f591d53f53c1007f3d28057c8c731657a74",
+    "package_success_marker": true,
+    "test_source_hashes": {
+      "source/assist/tests/voxel_part_capture.py": "d94318751948a6edfe230aed83acbdb286586ac7448f88242acd27dce43d98f6",
+      "source/assist/tests/voxel_part_capture.cpp": "904c141dd2944a5ca287041f6c221e37393098404b7191061bdd07f471ba6b36",
+      "source/assist/tests/game_assets_host_test.py": "4965c42fa325878bd803f0c6b8697bdfe9066f5066588017c5832ac2a2b72a4e"
+    },
+    "production_source_hashes": {
+      "source/external_reader/source/camera_assets.h": "b33669cbf6bb0430c773e5cd93f37a71403766e04bef557fff955b16bca3c0bd",
+      "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659",
+      "source/external_reader/source/voxel_preview.h": "9564cbf1ae05cb7653dbf67d6b5e6676ec09e869c301c9fa1981e945c8566c86",
+      "source/assist/source/minimap_overlay.h": "3fe7371e9e5f5b80b39a5da75021ee7703bfa02a8864a2a7ec0a71f6e6a2f7bd",
+      "source/assist/source/watch_scene.h": "f89c564c6ffe5505343180f6d0ffb4598d130b6e815b4540d0ad05bd26b03cb4",
+      "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e"
+    },
+    "execution_receipt_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/voxel_recovery.execution.json",
+    "scope": "Current portable fixture execution. No Windows/game/physical GPU/multiplayer execution claim. Integration caller hashes are bindings, not full Host execution."
+  },
+  "commands": [
+    {
+      "stage": "run",
+      "argv": [
+        "python",
+        "source/assist/tests/voxel_part_capture.py",
+        "--output",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/voxel"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "started_utc": "2026-11-09T04:49:38.099935+00:00",
+      "finished_utc": "2026-11-09T04:50:16.329517+00:00",
+      "elapsed_seconds": 38.22958438900059,
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/voxel_recovery.command.log",
+      "log_sha256": "ddb93eda608133ca6ba67845327e6f591d53f53c1007f3d28057c8c731657a74"
+    }
+  ],
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "input_sha256_before": {
+    "source/assist/tests/voxel_part_capture.py": "d94318751948a6edfe230aed83acbdb286586ac7448f88242acd27dce43d98f6",
+    "source/assist/tests/voxel_part_capture.cpp": "904c141dd2944a5ca287041f6c221e37393098404b7191061bdd07f471ba6b36",
+    "source/assist/tests/game_assets_host_test.py": "4965c42fa325878bd803f0c6b8697bdfe9066f5066588017c5832ac2a2b72a4e",
+    "source/external_reader/source/camera_assets.h": "b33669cbf6bb0430c773e5cd93f37a71403766e04bef557fff955b16bca3c0bd",
+    "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659",
+    "source/external_reader/source/voxel_preview.h": "9564cbf1ae05cb7653dbf67d6b5e6676ec09e869c301c9fa1981e945c8566c86",
+    "source/assist/source/minimap_overlay.h": "3fe7371e9e5f5b80b39a5da75021ee7703bfa02a8864a2a7ec0a71f6e6a2f7bd",
+    "source/assist/source/watch_scene.h": "f89c564c6ffe5505343180f6d0ffb4598d130b6e815b4540d0ad05bd26b03cb4",
+    "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e"
+  }
+}

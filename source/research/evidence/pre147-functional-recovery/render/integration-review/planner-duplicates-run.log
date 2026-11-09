@@ -1,0 +1,5 @@
+validWorld=1
+frame=500 yields=2 attempts=2 unit=1 token=7 destination=40020 unit=1 token=7 destination=40021
+frame=530 yields=2 attempts=4 unit=1 token=7 destination=40020 unit=1 token=7 destination=40021
+frame=560 yields=0 attempts=4
+total_yields=4 retry_limit=3

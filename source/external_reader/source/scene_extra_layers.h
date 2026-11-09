@@ -22,7 +22,8 @@ class Layers {
  std::map<std::tuple<uint32_t,uint32_t,bool>,int>frameCounts_;
  template<class Assets>int frames(Assets&assets,uint32_t type,uint32_t shape,bool overlay=false){auto key=std::make_tuple(type,shape,overlay);auto i=frameCounts_.find(key);if(i!=frameCounts_.end())return i->second;return frameCounts_[key]=assets.resourceFrames(type,shape,overlay);}
  template<class Read,class Assets>std::shared_ptr<const voxel::Image> sprite(Read read,Assets&assets,uint32_t type,uint32_t shape,int frame,uint32_t owner,Mode mode,int flags=0,uint32_t converter=0){
-  if(shape<0x10000||frame<0||frame>=8192)return {};GameView g(read);std::array<uint32_t,256>pal{};
+  if(shape<0x10000||frame<0||frame>=8192)return {};bool complete=true;
+  auto checked=[&](uint32_t p,void*out,size_t n){bool ok=read(p,out,n);if(!ok)complete=false;return ok;};GameView g(checked);std::array<uint32_t,256>pal{};
   const bool overlay=mode==Overlay||mode==OverlayShadow;
   PaletteKey paletteKey{type,owner,int(mode),converter};auto cachedPalette=palettes_.find(paletteKey);bool colors=false;
   if(cachedPalette!=palettes_.end()){pal=cachedPalette->second;colors=true;}
@@ -31,7 +32,7 @@ class Layers {
   else if(mode==BeaconShape)colors=assets.debrisPalette(owner,pal);
   else if(mode==Rubble||mode==RubbleShadow||mode==Smudge||(mode>=FrozenBody&&mode<=Bib&&g.template get<uint8_t>(type+0x1702)))colors=assets.palette(true,pal);
   else{auto file=assets::shapeName(read,shape);if(overlay&&file.empty()){auto names=assets.spriteNames(type,shape,true);if(!names.empty())file=names.front();}colors=assets.spritePalette(type,file,overlay,owner,pal);}
-  if(!colors&&mode==Smudge)colors=assets.palette(true,pal);if(colors)palettes_[paletteKey]=pal;}if(!colors)return {};
+  if(!colors&&mode==Smudge)colors=assets.palette(true,pal);if(colors&&complete)palettes_[paletteKey]=pal;}if(!colors||!complete)return {};
   Key key{type,shape,frame,owner,mode,flags};auto found=images_.find(key);if(found!=images_.end()&&found->second.palette==pal)return found->second.image;
   voxel::Image image;if(!assets.resourceSprite(type,shape,pal,frame,image,mode==Bib||(mode==Rubble&&shape==g.template get<uint32_t>(type+0x14F4)),overlay))return {};
   image.nativeDepth.enabled=mode!=BeaconShape;image.nativeDepth.gradient=nativesurface::Gradient::Vertical;
@@ -42,14 +43,18 @@ class Layers {
   else if(mode==Rubble||mode==Bib)image.flat=true;
   else if(mode==Animation){image.flat=g.template get<uint8_t>(type+0x369);image.writeDepth=false;}
   else if(mode==FrozenBody){image.flat=flags!=0;image.depthBias=flags?0:-float(g.template get<int>(type+0x1520));
-   if(!flags){std::array<uint32_t,256>white{};white.fill(0xffffffffu);voxel::Image mask;int fw=1,fh=1;animations::foundation(read,type,fw,fh);
-    if(fw<8&&voxel::sprite(read,g.template get<uint32_t>(0x89DDBC),white,mask,0,nullptr,255))camera::buildingDepth(image,mask,fw,fh,g.template get<int>(type+0x1530),g.template get<int>(type+0x1534),true);}}
+   if(!flags){std::array<uint32_t,256>white{};white.fill(0xffffffffu);voxel::Image mask;int fw=1,fh=1;animations::foundation(checked,type,fw,fh);if(!complete)return {};
+    if(fw<8){uint32_t pointer=g.template get<uint32_t>(0x89DDBC);if(!complete)return {};
+     if(pointer){if(!voxel::sprite(checked,pointer,white,mask,0,nullptr,255))return {};camera::buildingDepth(image,mask,fw,fh,g.template get<int>(type+0x1530),g.template get<int>(type+0x1534),true);}}}}
   if(mode==Bib||mode==Smudge||mode==FrozenShadow||mode==OverlayShadow||mode==RubbleShadow||(mode==FrozenBody&&flags))image.nativeDepth.gradient=nativesurface::Gradient::Flat;
   if(mode==Animation)image.nativeDepth.gradient=image.flat?nativesurface::Gradient::Flat:nativesurface::Gradient::Vertical;
   if(mode==FrozenBody)image.nativeDepth.adjust=int(-image.depthBias);
   if(mode==Rubble){image.nativeDepth.gradient=(flags&1)?nativesurface::Gradient::Flat:nativesurface::Gradient::Vertical;image.nativeDepth.adjust=(flags&2)?-15:0;}
   if((mode==Overlay||mode==Rubble)&&(flags&0xF00)){if(!assets.overlayDepthShape(image,unsigned(flags>>8)&15,(flags&16)!=0))return {};}
   if(mode==Overlay&&(flags&16)){image.flat=true;image.nativeDepth.gradient=nativesurface::Gradient::Flat;image.nativeDepth.adjust=0;}
+  // Failed metadata must not become immutable art: rejecting the current
+  // scene alone cannot undo a poisoned entry on the next healthy sample.
+  if(!complete)return {};
   if(found!=images_.end()){bytes_-=camera::pixels(*found->second.image)*13;images_.erase(found);}
   size_t cost=camera::pixels(image)*13;if(cost>64*1024*1024)return {};if(images_.size()>=4096||bytes_+cost>64*1024*1024){images_.clear();bytes_=0;}
   auto result=std::make_shared<const voxel::Image>(std::move(image));images_[key]={pal,result};bytes_+=cost;return result;

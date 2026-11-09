@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Package the frozen 1.0.47-pre.1 optimization build; never build or publish.
+"""Package the frozen 1.0.47-pre.2 build; never build or publish.
 
 Use the verified 1.0.46.4 originals, themes, licenses and seven-file engine.
-Only prepare_runtime.py may change, with a seventh current dependency check.
+Only prepare_runtime.py may change, with a current dependency check.
 Bind all current outputs and executed checks to one frozen source tree.
 No optional Python runtime or generated cursor cache ships.
 """
@@ -30,7 +30,7 @@ POLICY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(POLICY)
 require, sha, encoded = POLICY.require, POLICY.sha, POLICY.encoded
 
-VERSION, FILE_VERSION = '1.0.47-pre.1', '1.0.47.1'
+VERSION, FILE_VERSION = '1.0.47-pre.2', '1.0.47.2'
 BASE_NAME = 'RA2Toolbox-1.0.46-x64-Full.zip'
 BASE_BYTES = 4428436
 BASE_SHA = 'd8d5d871e0358579b49c1a2dedbfca48c601ea22119bf897e18593ae7233533c'
@@ -63,7 +63,27 @@ CHECK_BINDINGS = {
     'terrain_reuse': (
         {'source/assist/tests/terrain_storage_pool.cpp'},
         {'source/external_reader/source/radar_map.h'}),
+    'console_receipt_order': (
+        {'source/suite/tests/console_receipt_order_test.mjs'},
+        {'source/suite/frontend/app.js'}),
+    'catalogue_recovery': (
+        {'source/unit_monitor/tests/catalogue_recovery.cpp',
+         'source/unit_monitor/tests/round_transition.cpp'},
+        {'source/unit_monitor/source/sampler.h', 'source/external_reader/source/layout_probe.h'}),
+    'planner_batch_delivery': (
+        {'source/assist/tests/planner_batch_delivery.cpp'},
+        {'source/assist/source/external_planner.h', 'source/assist/source/planner_task.h',
+         'source/assist/source/value_task.h', 'source/shared/source/latest_worker.h'}),
+    'scene_extra_recovery': (
+        {'source/assist/tests/scene_extra_recovery.cpp',
+         'source/assist/tests/scene_extra_recovery.py', 'source/assist/tests/game_assets_host_test.py'},
+        {'source/external_reader/source/scene_extra_layers.h',
+         'source/external_reader/source/camera_assets.h', 'source/external_reader/source/camera_raster.h',
+         'source/external_reader/source/radar_scene.h', 'source/external_reader/source/radar_decoration.h',
+         'source/external_reader/source/world_scene_pipeline.h'}),
 }
+FUNCTIONAL_CHECKS = frozenset({'console_receipt_order', 'catalogue_recovery',
+                             'planner_batch_delivery', 'scene_extra_recovery'})
 DEPENDENCY_BINDINGS = (
     {'source/tools/test_dependency_probes.py'},
     {'source/engine/prepare_runtime.py', 'source/engine/runtime-dependencies.json'},
@@ -109,8 +129,65 @@ def pinned_base(archive_path, manifest_path):
     return resources, record, manifest
 
 
+def functional_success_log(name, text):
+    """Check the four pre.2 raw run logs, not a surrounding claimed result.
+
+    Each frozen test has one terminal summary and an exact current check count.
+    Reject concatenated runs, failure output, and receipt wrappers containing an
+    unrelated passed flag. The caller separately binds exit code and all bytes.
+    """
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines or any(re.match(r'FAIL\b', line) for line in lines):
+        return False
+    if name in {'console_receipt_order', 'catalogue_recovery'}:
+        try:
+            result = json.loads(lines[-1])
+        except (json.JSONDecodeError, TypeError):
+            return False
+        if not isinstance(result, dict):
+            return False
+        if name == 'console_receipt_order':
+            return (len(lines) == 25 and len(set(lines[:-1])) == 24
+                    and all(line.startswith('PASS ') for line in lines[:-1])
+                    and set(result) == {'suite', 'checks', 'failures', 'passed'}
+                    and result.get('suite') == name and result.get('passed') is True
+                    and type(result.get('checks')) is int and result['checks'] == 24
+                    and type(result.get('failures')) is int and result['failures'] == 0)
+        expected = {'checks': 93, 'failures': 0, 'scenarios': 21, 'recovered_catalogues': 20}
+        return (len(lines) == 1 and set(result) == set(expected)
+                and all(type(result[key]) is int and result[key] == value
+                        for key, value in expected.items()))
+    if name == 'planner_batch_delivery':
+        duplicate_turns = ((500, 1, 1), (501, 0, 1), (529, 0, 1), (530, 1, 2),
+                           (559, 0, 2), (560, 1, 3), (589, 0, 3), (590, 0, 3))
+        return (len(lines) == 18 and lines[-1] ==
+                'PASS: 136 checks, 0 failures; bounded final-batch delivery and retry lifecycle'
+                and all(re.fullmatch(r'batch turns=\d+ combat=\d+ duplicate_far=0 first_yields=\d+ '
+                                     r'next_yields=\d+ attempts=\d+', line) for line in lines[:4])
+                and lines[4] == 'batch turns=20 combat=32 duplicate_far=1 first_yields=16 next_yields=4 attempts=20'
+                and all(line == f'duplicate_turn frame={frame} yields={yields} attempts={attempts}'
+                        for line, (frame, yields, attempts) in zip(lines[5:13], duplicate_turns))
+                and all(re.fullmatch(r'receipt kind=' + str(kind) + r' emitted=3 attempts=3', line)
+                        for kind, line in enumerate(lines[13:16]))
+                and lines[16] == 'task first_yields=16 next_yields=4 reset_yields=16')
+    if name == 'scene_extra_recovery':
+        return (len(lines) == 25 and len(set(lines[:9])) == 9 and len(set(lines[10:22])) == 12
+                and all(re.fullmatch(r'[\w-]+ failure_ready=0 fault_hits=[1-9]\d* '
+                                     r'recovery_ready=1 pixel_mismatches=0', line) for line in lines[:9])
+                and lines[9] == 'layer_recoveries=9 pixel_mismatches=0'
+                and all(re.fullmatch(r'scene_[\w-]+ variant=[01] failure_scene=0 '
+                                     r'recovery_scene=1 pixel_mismatches=0', line) for line in lines[10:22])
+                and lines[22] == 'scene_recoveries=12 pixel_mismatches=0'
+                and re.fullmatch(r'healthy_digest=[0-9a-f]{16} checks=109 failures=0', lines[23]) is not None
+                and lines[24] == 'PASS transactional frozen body/animation palette and depth caches, '
+                                  'same-cache recovery, legal absent/wide/flat paths and actual SceneRenderer output')
+    return False
+
+
 def success_log(name, text):
     """Recognize existing test output; never append or synthesize a PASS marker."""
+    if name in FUNCTIONAL_CHECKS:
+        return functional_success_log(name, text)
     objects, texts = [], [text]
 
     def visit(value):

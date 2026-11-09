@@ -1,0 +1,18 @@
+test_bad_index_and_marker_use_original_individual_path (__main__.BatchProbeTests.test_bad_index_and_marker_use_original_individual_path) ... ok
+test_batch_spawn_error_falls_back_but_cancellation_propagates (__main__.BatchProbeTests.test_batch_spawn_error_falls_back_but_cancellation_propagates) ... ok
+test_cancel_checkpoint_prevents_batch (__main__.BatchProbeTests.test_cancel_checkpoint_prevents_batch) ... ok
+test_each_module_version_and_origin_are_still_checked (__main__.BatchProbeTests.test_each_module_version_and_origin_are_still_checked) ... ok
+test_early_zero_exit_cannot_reuse_an_earlier_success_marker (__main__.BatchProbeTests.test_early_zero_exit_cannot_reuse_an_earlier_success_marker) ... ok
+test_every_original_functional_guard_rejects_failure (__main__.BatchProbeTests.test_every_original_functional_guard_rejects_failure) ... ok
+test_failed_batch_rechecks_every_component_individually (__main__.BatchProbeTests.test_failed_batch_rechecks_every_component_individually) ... ok
+test_failed_batch_retains_individual_failure_repair_order (__main__.BatchProbeTests.test_failed_batch_retains_individual_failure_repair_order) ... ok
+test_injected_single_probe_never_starts_implicit_batch (__main__.BatchProbeTests.test_injected_single_probe_never_starts_implicit_batch) ... ok
+test_missing_marker_skips_batch_and_reaches_unchanged_repair (__main__.BatchProbeTests.test_missing_marker_skips_batch_and_reaches_unchanged_repair) ... ok
+test_original_probe_assertions_unchanged (__main__.BatchProbeTests.test_original_probe_assertions_unchanged) ... ok
+test_partial_manifest_preserves_injected_probe_compatibility (__main__.BatchProbeTests.test_partial_manifest_preserves_injected_probe_compatibility) ... ok
+test_warm_eight_batches_keep_twenty_four_module_checks (__main__.BatchProbeTests.test_warm_eight_batches_keep_twenty_four_module_checks) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.378s
+
+OK

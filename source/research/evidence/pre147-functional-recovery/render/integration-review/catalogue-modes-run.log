@@ -1,0 +1,1 @@
+catalogue_modes: /workspace/scratch/5a310fe852f8/functional147pre2/render/integration-review/catalogue_modes.cpp:19: int main(): Assertion `oversized.status==0&&oversized.typeCount==0' failed.

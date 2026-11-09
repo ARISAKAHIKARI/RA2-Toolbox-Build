@@ -1,0 +1,14 @@
+{
+  "command": [
+    "git",
+    "diff",
+    "--check",
+    "--",
+    "source/assist/source/external_planner.h",
+    "source/assist/tests/planner_batch_delivery.cpp"
+  ],
+  "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/diff_check.log",
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

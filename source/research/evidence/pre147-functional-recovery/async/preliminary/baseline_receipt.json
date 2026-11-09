@@ -1,0 +1,32 @@
+{
+  "utc": "2026-11-09T04:42:04.750885+00:00",
+  "head": "b928999f5da90f6f9de0d18151b04b498217464c",
+  "source_sha256": "63392e6f449e74d6164643a1984eb9cac3b6e8ffa28e13ae96f8b57f96ebb4ad",
+  "test_sha256": "bc71d5c617815a29f795c7f2b805b31759a8b252d34641524c699f95819b4bc6",
+  "commands": [
+    {
+      "name": "baseline_compile",
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "source/assist/tests/planner_batch_delivery.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/planner_batch_delivery.before"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "log": "baseline_compile.log"
+    },
+    {
+      "name": "baseline_run",
+      "argv": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/planner_batch_delivery.before"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 1,
+      "log": "baseline_run.log"
+    }
+  ]
+}

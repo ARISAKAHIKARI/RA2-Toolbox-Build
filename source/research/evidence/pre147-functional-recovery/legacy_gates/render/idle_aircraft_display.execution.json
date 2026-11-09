@@ -1,0 +1,98 @@
+{
+  "check": {
+    "name": "idle_aircraft_display",
+    "command": [
+      "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display"
+    ],
+    "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+    "environment": {
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "executed_this_revision": true,
+    "source_inputs_unchanged": true,
+    "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display.run.log",
+    "log_sha256": "bac486eae790070708d02c17912d28e7c076af78deb2696d1fc22fa56317ca1e",
+    "package_success_marker": true,
+    "test_source_hashes": {
+      "source/assist/tests/idle_aircraft_display.cpp": "1e16f480a865153f4c827dc3e5809e39a0013b13f95de3216ab88066aa227b14",
+      "source/assist/tests/enemy_markers.cpp": "02700cbc69df44b81e5f3bc246004e4567ed9ecab611fa94d6a32fa38d398bf6"
+    },
+    "production_source_hashes": {
+      "source/external_reader/source/tactical_sampler.h": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab",
+      "source/external_reader/source/idle_aircraft.h": "8f136a5ca6f8066bfc1017caf3fd1d47578e4ddca3c40ab8be3d7873b80df7cf",
+      "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+      "source/assist/source/aircraft_indicator.h": "3b81510daf5734a3a2db8bb5647d35f6b37eb9d34e25ebf6e80f020f66026dda",
+      "source/assist/source/idle_aircraft_selection.h": "c4d2c741a9010f0159616a5f761a3fde035d7d90437f0e87998cec84b9d2d0d8",
+      "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e"
+    },
+    "execution_receipt_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display.execution.json",
+    "scope": "Current portable fixture execution. No Windows/game/physical GPU/multiplayer execution claim. Integration caller hashes are bindings, not full Host execution.",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "-pthread",
+      "-I",
+      "source/external_reader/source",
+      "source/assist/tests/idle_aircraft_display.cpp",
+      "-o",
+      "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display"
+    ],
+    "compile_exit_code": 0,
+    "binary_sha256": "e11b600baf52f2948cafa7a8f1c661ca467a133791afc3247b92171babb29536"
+  },
+  "commands": [
+    {
+      "stage": "compile",
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "-I",
+        "source/external_reader/source",
+        "source/assist/tests/idle_aircraft_display.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "started_utc": "2026-11-09T04:49:45.530941+00:00",
+      "finished_utc": "2026-11-09T04:49:51.187737+00:00",
+      "elapsed_seconds": 5.656803890999072,
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display.compile.log",
+      "log_sha256": "5a8723d5dc7b469904e226ec6bc4ebdcc1284b3e95ee6855c60ffad260f47bad"
+    },
+    {
+      "stage": "run",
+      "argv": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "started_utc": "2026-11-09T04:49:51.187824+00:00",
+      "finished_utc": "2026-11-09T04:49:51.282147+00:00",
+      "elapsed_seconds": 0.09433366899975226,
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display.run.log",
+      "log_sha256": "bac486eae790070708d02c17912d28e7c076af78deb2696d1fc22fa56317ca1e"
+    }
+  ],
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "input_sha256_before": {
+    "source/assist/tests/idle_aircraft_display.cpp": "1e16f480a865153f4c827dc3e5809e39a0013b13f95de3216ab88066aa227b14",
+    "source/assist/tests/enemy_markers.cpp": "02700cbc69df44b81e5f3bc246004e4567ed9ecab611fa94d6a32fa38d398bf6",
+    "source/external_reader/source/tactical_sampler.h": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab",
+    "source/external_reader/source/idle_aircraft.h": "8f136a5ca6f8066bfc1017caf3fd1d47578e4ddca3c40ab8be3d7873b80df7cf",
+    "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+    "source/assist/source/aircraft_indicator.h": "3b81510daf5734a3a2db8bb5647d35f6b37eb9d34e25ebf6e80f020f66026dda",
+    "source/assist/source/idle_aircraft_selection.h": "c4d2c741a9010f0159616a5f761a3fde035d7d90437f0e87998cec84b9d2d0d8",
+    "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e"
+  }
+}

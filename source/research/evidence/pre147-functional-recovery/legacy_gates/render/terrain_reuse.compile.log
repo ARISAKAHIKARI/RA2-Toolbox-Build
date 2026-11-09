@@ -1,0 +1,5 @@
+In file included from source/assist/tests/terrain_storage_pool.cpp:3:
+source/assist/tests/shared_scene_sampling.cpp: In function ‘int existingSharedSceneTests()’:
+source/assist/tests/shared_scene_sampling.cpp:135:1: warning: control reaches end of non-void function [-Wreturn-type]
+  135 | }
+      | ^

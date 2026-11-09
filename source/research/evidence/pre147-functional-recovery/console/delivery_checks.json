@@ -1,0 +1,100 @@
+{
+  "baseline_commit": "b928999f5da90f6f9de0d18151b04b498217464c",
+  "baseline_version": "1.0.47-pre.1",
+  "baseline_production_sha256": "55c4d6cde1522740be349888a3b10cb5e8f9561de532201ec10616061205a4b7",
+  "node_version": "v24.22.1",
+  "checks": [
+    {
+      "command": [
+        "node",
+        "source/suite/tests/console_receipt_order_test.mjs"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/console/receipt-order.current.log",
+      "log_sha256": "4f153fc259a520d615517ca4fd3b59a6972d632f925bb391d8c756c8623bead2",
+      "name": "console_receipt_order",
+      "executed_this_revision": true,
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "production_source_hashes": {
+        "source/suite/frontend/app.js": "c18c53e2d9a5860c019588a9bc8403a5e45a49049ce9d6347ad1bc16fbfd1cad"
+      },
+      "test_source_hashes": {
+        "source/suite/tests/console_receipt_order_test.mjs": "5c19ea621b9131f56eef0feacfeb71f097239841c5296064cd20f6f66d89b5ff",
+        "source/suite/tests/console_store_test.mjs": "462e98438916e1c6474c84c9d7406b0b039c88da8a9eadc22dcc1fa8dfd700da"
+      },
+      "scope": "Actual ConsoleStore from the production frontend runs in a Node VM without DOM or a WebView2/native owner. Message order matches legal bounded-ACK publisher scheduling; no browser or Windows execution claimed."
+    }
+  ],
+  "additional_successful_executions": [
+    {
+      "command": [
+        "node",
+        "source/suite/tests/console_store_test.mjs"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/console/console-store.current.log",
+      "log_sha256": "4b1e053c4d14056cd03041b76c044f0d1ea8a253316bb7a4bf03ee1773b558f4",
+      "test_source_hashes": {
+        "source/suite/tests/console_receipt_order_test.mjs": "5c19ea621b9131f56eef0feacfeb71f097239841c5296064cd20f6f66d89b5ff",
+        "source/suite/tests/console_store_test.mjs": "462e98438916e1c6474c84c9d7406b0b039c88da8a9eadc22dcc1fa8dfd700da"
+      },
+      "production_source_hashes": {
+        "source/suite/frontend/app.js": "c18c53e2d9a5860c019588a9bc8403a5e45a49049ce9d6347ad1bc16fbfd1cad"
+      }
+    }
+  ],
+  "baseline_negative_control": {
+    "command": [
+      "node",
+      "source/suite/tests/console_receipt_order_test.mjs",
+      "--app",
+      "/workspace/scratch/5a310fe852f8/functional147pre2/console/baseline-app.js"
+    ],
+    "exit_code": 1,
+    "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/console/receipt-order.before.log",
+    "log_sha256": "aac40a329d341cb2820d3e9c39a8dbc639f5004a6b7923f73ab4c97b8559c8d7",
+    "checks": 24,
+    "failures": 18,
+    "expected_failure": true
+  },
+  "current_result": {
+    "checks": 24,
+    "failures": 0,
+    "passed": true
+  },
+  "reviewed_integration_source_hashes": {
+    "source/suite/source/console_adapter.h": "33d5a74466aa7a5e153350087317efdd1254d40e3a0583620fbd07bfe92c9012",
+    "source/suite/source/modern_console_main.h": "97aa4fc087b433ec5ede96dbc2b4dde9381aad3422f66bb8a45ecf51d0166570"
+  },
+  "bugs": [
+    {
+      "id": "receipt-premature-value-confirmation",
+      "condition": "A matching snapshot can arrive before the operation receipt, including rapid round-trip edits and a bounded native ACK batch.",
+      "before": "The pending record was deleted solely because its value matched the state. A later failure or a stricter success revision was ignored.",
+      "after": "Pending state can be resolved by a snapshot only after the exact request has a successful ACK; existing sequence/generation and required revision gates remain."
+    },
+    {
+      "id": "unchanged-focus-close-warning",
+      "condition": "Focusing a text editor owns a draft even if no value was changed; close-check counted every draft as unsubmitted.",
+      "before": "Closing could warn about abandoned edits after focusing an unchanged field.",
+      "after": "Close inquiry counts only differing drafts on current certified pages; pending requests, unknown ownership and retired pages stay protected. No draft mutation, implicit submission or native close policy change. Each referenced page is indexed once."
+    }
+  ],
+  "production_files_changed": [
+    "source/suite/frontend/app.js"
+  ],
+  "test_files_changed": [
+    "source/suite/tests/console_receipt_order_test.mjs",
+    "source/suite/tests/console_store_test.mjs"
+  ],
+  "unchanged_audited_file": "source/shared/source/async_ini_store.h",
+  "diff_check_passed": true,
+  "windows_executed": false,
+  "browser_executed": false,
+  "game_tested": false,
+  "notes": [
+    "The existing large-state test now includes the explicit successful ACK required by the production protocol. It still checks that an unrelated editing draft is retained.",
+    "These are two functional state-flow fixes; the 24 cases are not 24 distinct bugs.",
+    "No version, build, packaging, Notebook, INDEX, cursor, shared INI store or native adapter changes were made by this task."
+  ]
+}
