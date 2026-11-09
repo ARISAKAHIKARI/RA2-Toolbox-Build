@@ -109,10 +109,11 @@ static int destructPlayerCommand(uint32_t house,uint32_t expectedID,uint32_t exp
  if(!debugentries::pattern(debugentries::Kind::Call,0x4C66C0,ctor,sizeof ctor,read)){destructSelectedArmed=false;return -12;}
  intent::EventOrder event{};event.domain=vanilla::Domain::NoOptions;
  event.eventKind=vanilla::EventType::Destruct;event.player=int(expectedIndex);
- // The receiver owns all effects. This path only appends the vanilla event;
- // a successful return means queued, not that the House was destroyed.
- const bool queued=submitConstructed(event,OrderAuthority::DestructPlayerTest);destructSelectedArmed=false;
- return queued?1:snap.lastSubmitError==42?-42:snap.lastSubmitError==7?-7:-6;
+ // Human Houses retain native queued delivery. Singleplayer AI Houses have
+ // no native DoList dispatch, so the gateway responds to this one packet.
+ bool responded=false;
+ const bool accepted=submitConstructed(event,OrderAuthority::DestructPlayerTest,nullptr,&responded);destructSelectedArmed=false;
+ return accepted?(responded?2:1):snap.lastSubmitError==42?-42:snap.lastSubmitError==7?-7:snap.lastSubmitError==12?-12:-6;
 }
 static bool samePlayerWorld(){
  // Readiness can drop temporarily in menus; it is not a world identity.

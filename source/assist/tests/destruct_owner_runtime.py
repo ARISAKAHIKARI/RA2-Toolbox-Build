@@ -83,9 +83,46 @@ ready();s=issue(house,100,0);record('legacy explicit House pointer mode remains 
 ready();s=issue(enemy,101,1);record('legacy explicit foreign House pointer retains SP House index',s,1,1)
 ready();s=issue(0,1,0);record('arg0 rejects unexpected arg2',s,-7)
 ready();s=issue(0,0,1);record('arg0 rejects unexpected House token',s,-7)
+# Native DoList skips AI Houses. The SP backend must reach the real receiver
+# exactly once, without changing CurrentPlayer, Owner or human-player flags.
+responded=[]
+u.hook_add(UC_HOOK_CODE,lambda uc,at,size,_:responded.append(at),begin=0x4c6cb0,end=0x4c6cb0)
+for mode in (0,5):
+ for explicit in (False,True):
+  b(enemy+0x1ed,0);b(enemy+0x1f6,0)
+  s=ready(mode,selected=[enemyUnit]);queued=s.data.queuedEvents;responded.clear()
+  original_player=r(0xa83d4c);original_owner=r(enemyUnit+0x21c)
+  s=issue(enemy,101,1) if explicit else issue()
+  assert s.result==2 and s.count==1 and responded==[0x4c6cb0],(mode,explicit,s.result,responded)
+  assert queues()=={'single':0,'multi':0} and s.data.queuedEvents==queued
+  assert u.mem_read(enemy+0x1f6,1)==b'\x01' and r(enemy+0x298)==r(0xa8ed84) and r(enemy+0x2a0)==0
+  assert not u.mem_read(house+0x1f6,1)[0] and not u.mem_read(enemy+0x1ed,1)[0]
+  assert r(0xa83d4c)==original_player and r(enemyUnit+0x21c)==original_owner
+  hook();assert responded==[0x4c6cb0] # Ack does not repeat immediate response.
+  rows.append({'case':f'SP AI original response once session {mode} explicit {explicit}',
+               'result':2,'native_response_calls':1,'queue':queues()})
+  b(enemy+0x1f6,0)
+for fault in ('receiver signature','selection changed','changed to MP','read only'):
+ b(enemy+0x1ed,0);ready(5,selected=[enemyUnit]);responded.clear()
+ original=bytes(u.mem_read(0x4c6cb0,13))
+ if fault=='receiver signature':u.mem_write(0x4c6cb0,b'\x90')
+ elif fault=='selection changed':ns['timer_side_effect']=lambda:vector(0xa8ecb8,[unit])
+ elif fault=='changed to MP':ns['timer_side_effect']=lambda:w(0xa8b238,3)
+ else:ns['timer_side_effect']=lambda:w(SH+Shared.readOnly.offset,1)
+ s=issue();ns['timer_side_effect']=None;u.mem_write(0x4c6cb0,original)
+ assert C.c_int32(s.result).value<0 and not responded and queues()=={'single':0,'multi':0}
+ assert not u.mem_read(enemy+0x1f6,1)[0]
+ if fault=='receiver signature':assert C.c_int32(s.result).value==-12
+ rows.append({'case':'SP AI rejects '+fault,'result':C.c_int32(s.result).value,'native_response_calls':0})
+ s.readOnly=0;publish(s)
+b(enemy+0x1ed,1)
+foreign_ready();b(enemy+0x1ed,0);responded.clear();s=issue()
+assert C.c_int32(s.result).value==-4 and not responded and queues()=={'single':0,'multi':0}
+rows.append({'case':'MP AI never uses SP immediate response','result':-4,'native_response_calls':0})
+b(enemy+0x1ed,1)
 assert hashlib.sha256(args.game.read_bytes()).hexdigest()==game_sha
 assert hashlib.sha256(args.dll.read_bytes()).hexdigest()==dll_sha and hashlib.sha256(args.dll.with_suffix('.pdb').read_bytes()).hexdigest()==pdb_sha,'DLL/PDB changed during the fixture'
 assert hashlib.sha256(shared_fixture.read_bytes()).hexdigest()==shared_sha,'Shared ABI fixture changed during execution'
-report={'scope':'Compiled GameRuntimeHook -> command -> original 0x4C66C0 EventClass ctor -> SP DoList/MP OutList inside Unicorn. Synthetic world; Win32 IO and clock callback are fixture sinks. No game process, platform or multiplayer acceptance.',
+report={'scope':'Compiled GameRuntimeHook -> command -> original 0x4C66C0 ctor -> SP DoList/MP OutList or SP AI original 0x4C6CB0 response. Synthetic world; Win32 IO and clock callback are fixture sinks. No game process, complete House AI destruction, platform or multiplayer acceptance.',
  'game_sha256':game_sha,'dll_sha256':dll_sha,'pdb_sha256':pdb_sha,'fixture_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'shared_fixture_sha256':shared_sha,'strict_selection_result':not args.allow_old_selection_result,'passed':True,'cases':rows}
 args.out.parent.mkdir(parents=True,exist_ok=True);args.out.write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))

@@ -1993,7 +1993,8 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  if(c==OpenTech&&r==-44){notify(L"科技规则数据尚未完成应用或恢复，请查看状态；原值恢复完成前不会切换实现。");return;}
  if(c==DestructPlayer){
   std::wstring message;
-  if(r>0&&n==1)message=L"自毁请求已入队："+destructPendingTarget+L"；实际执行以游戏为准。";
+  if(r==2&&n==1)message=L"已触发单机 AI 所属方的原生自毁："+destructPendingTarget+L"；销毁与结算由游戏继续处理。";
+  else if(r>0&&n==1)message=L"自毁请求已入队："+destructPendingTarget+L"；实际执行以游戏为准。";
   else if(r==-42)message=std::wstring(L"自毁请求未入队：")+DestructForeignNotice;
   else if(r==-7)message=L"自毁请求未入队：请选择同一所属方的存活单位；空选、混合所属方或选取身份改变时不执行。";
   else if(r==-4)message=L"自毁请求未入队：对局已改变，请重新选择后执行。";

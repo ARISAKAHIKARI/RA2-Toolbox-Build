@@ -39,13 +39,16 @@ static bool networkSenderOwnSites(){
  }return true;
 }
 static bool networkSenderContext();
-static bool networkHousePreserveReady(){
+static bool networkSenderDeliveryReady(){
  return networkSenderEnabled&&networkSenderInstalled&&!networkSenderFaulted&&sh&&!sh->stop&&!fault&&
-  sh->networkHousePreserve&&controlmode::sender(sh->controlAll)&&!controlTransitionPending()&&match&&snap.match==match&&snap.status==1&&snap.commandStatus==1&&
+  sh->networkHousePreserve&&controlmode::sender(sh->controlAll)&&!controlTransitionPending()&&match&&snap.match==match&&snap.status==1&&
+  (snap.commandStatus==activation::Ready||snap.commandStatus==activation::DisplayHidden)&&
+  readonly::commands(sh)&&!readOnlyState.active&&
   DWORD(sampleClock(sh)-sh->heartbeat)<3000&&get<bool>(0xA8E9A0)&&
   snap.session==get<int>(0xA8B238)&&eventdelivery::isMultiplayer(snap.session)&&
   networksender::protocol(get<int>(0xA8B24C))&&networkSenderWorld()&&networkSenderOwnSites();
 }
+static bool networkHousePreserveReady(){return snap.commandStatus==activation::Ready&&networkSenderDeliveryReady();}
 static void networkSenderPublish(){if(sh)sh->networkHouseStatus=networkSenderState;}
 static bool networkSenderClearCache(){
  if(!networkSenderCacheDirty)return true;
@@ -98,7 +101,8 @@ static __declspec(naked) int __fastcall networkSenderOriginal(unsigned,unsigned,
  ret
 }}
 extern "C" int __cdecl AssistNetworkSend(unsigned transport,unsigned buffer,int capacity,int delay,int serial){
- const bool requested=networkHousePreserveReady()&&networkSenderContext();
+ // Display/input readiness controls new admission, not delivery of accepted events.
+ const bool requested=networkSenderDeliveryReady()&&networkSenderContext();
  if(!requested){
   networkSenderEnabled=false;
   // A changed world is never edited using the preceding world's identity.
