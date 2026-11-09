@@ -1,0 +1,62 @@
+{
+  "reviewer": "hotkey_common_path",
+  "scope": "Read-only independent source and saved-output review. No production edit, no release, no native Windows/game validation.",
+  "inputs": {
+    "history": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/hotkey-history-findings.json",
+      "sha256": "5ba69a5bdb1626dabfac199ee9707729bc23f525a5599526320173ad527c27bb"
+    },
+    "cold_bootstrap_fixture": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/cold_bootstrap.py",
+      "sha256": "442cf3eafabb738d924b56af5c30e8bd320fadfa7cae133397da741b713db332"
+    },
+    "cold_bootstrap_result": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/result.json",
+      "sha256": "e7b36e09a611f5479d21464783d884fe7df60cda62bb2654e61c93a6deb4b5ae"
+    },
+    "v1464_reader": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/v1464/process_reader.h",
+      "sha256": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1"
+    },
+    "v1464_sampler": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/v1464/tactical_sampler.h",
+      "sha256": "c2fcb3571488433ca2a518e40a9868c67e4e70227e83cc03d8cf86e71b32390c"
+    },
+    "v1464_main": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/v1464/main.cpp",
+      "sha256": "cb446fd28028f9b73379d4963dbd491e6aa2a5bc8d83166c45672fef99adc3df"
+    }
+  },
+  "cold_bootstrap_review": {
+    "blocking_findings": [],
+    "verified": [
+      "Complete sampleExternal source text independently compared using its following schedulerDiagnostic boundary, without reusing the fixture function parser.",
+      "The three real tick statements sampleExternal/configured, needsBridge, and ensureBridge are exact source text; registration is executed first.",
+      "Generated C++, extracted callsite and raw run-log hashes match the result report.",
+      "All raw JSON run records match the outer result; total 20 scenarios and 164 checks.",
+      "Source main.cpp for v1.0.43 and v1.0.46.4 matches separately downloaded history snapshots."
+    ],
+    "configuration": [
+      "Enabled host; foreground game; readable and otherwise compatible external process; no prior bridge or world-frame producer.",
+      "OwnGround shortcut explicitly cleared and all persistent Runtime feature requests disabled, including tooltip.",
+      "Basic AutoBoard shortcut Ctrl+Alt+L remains configured."
+    ],
+    "outcome": "v1.0.43 connects and registers AutoBoard; v1.0.44-pre.2 and reviewed later versions loop before sampler/bridge creation. Default OwnGround, explicit AutoRepair, and already-connected controls all recover in every tested version.",
+    "limitations": [
+      "Win32, successful raw sampler results and IPC availability are controlled boundaries; this is not each historic product rebuilt or a native game run.",
+      "Supporting headers are current; runtime_feature_demand.h and additional_settings.h were separately verified byte-identical to v1.0.43. Registry details are downstream of the failing mode-zero gate and do not determine this branch.",
+      "The user log already has a healthy connected bridge and nonzero feature demand, so it does not establish that this cold-start cycle occurred in that recorded session.",
+      "Direct UI send(AutoBoard) has its own ensureBridge call; this reproduction concerns the unregistered-key entry path."
+    ]
+  },
+  "world_scope_review": {
+    "result": "No once-failed permanent-latch defect identified in reviewed ProcessReader/WorldFrameScope/invalidateSample control flow.",
+    "evidence": [
+      "beginWorldFrame first ends the previous scope, subscribes demand, and attempts acquisition on every call.",
+      "endWorldFrame submits accumulated requested pages and resets binding/completeness.",
+      "Incomplete candidate causes invalidateSample to clear sampler caches and restore last committed state; RAII still ends the scope.",
+      "The saved log contains repeated display samples counters, which are incremented after complete succeeds; a continuously incomplete scope cannot explain those observations."
+    ],
+    "secondary_issue": "The new same-frame/same-UI fast path refreshes only camera and can retain stale visibility/layout/viewport-readiness state while the exact token remains fixed. It does not alone explain a minutes-long session with advancing control frames."
+  }
+}

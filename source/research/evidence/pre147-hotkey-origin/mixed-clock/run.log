@@ -1,0 +1,11 @@
+{"case":"old_host_clock_same_time","unsigned_age":0,"read_status":1,"render_status":1,"desired_hotkey_mode":2}
+{"case":"new_producer_ahead_8ms_unconfirmed","unsigned_age":4294967288,"read_status":0,"render_status":0,"desired_hotkey_mode":0}
+{"case":"new_producer_ahead_8ms_confirmed","unsigned_age":4294967288,"read_status":1,"render_status":1,"desired_hotkey_mode":2}
+{"case":"new_producer_ahead_1ms_unconfirmed","unsigned_age":4294967295,"read_status":0,"render_status":0,"desired_hotkey_mode":0}
+{"case":"new_clock_catches_up","unsigned_age":0,"read_status":1,"render_status":1,"desired_hotkey_mode":2}
+{"case":"new_fresh_past_sample","unsigned_age":16,"read_status":1,"render_status":1,"desired_hotkey_mode":2}
+{"case":"new_true_expiry_2000ms","unsigned_age":2000,"read_status":0,"render_status":0,"desired_hotkey_mode":0}
+{"case":"new_independently_confirmed_old_frame","unsigned_age":2000,"read_status":1,"render_status":1,"desired_hotkey_mode":2}
+{"case":"new_confirmed_invalid_display_sample","unsigned_age":8,"read_status":0,"render_status":0,"desired_hotkey_mode":0}
+{"case":"new_confirmed_hidden_display","unsigned_age":8,"read_status":1,"render_status":0,"desired_hotkey_mode":0}
+{"case":"new_uint32_wrap_fresh","unsigned_age":32,"read_status":1,"render_status":1,"desired_hotkey_mode":2}

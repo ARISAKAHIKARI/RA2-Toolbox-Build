@@ -1,0 +1,143 @@
+@@ -171,6 +171,7 @@ static external::ReadSession externalReader;
+ static external::TacticalSampler<external::SharedReadView> externalSampler(external::SharedReadView{&externalReader});
+ static DWORD externalAt,bridgeRetryAt;static int bridgeAttempts;static bool bridgeBlocked;
+ static const Snapshot* externalData;
++static Snapshot externalPublished;static worldframe::Token externalWorldSource;static bool externalSourceConfirmed=false;
+ static bool ensureBridge();static void mergeExternal();
+ static bool updatingControls=false;
+ struct ControlUpdate {bool previous=updatingControls;ControlUpdate(){updatingControls=true;}~ControlUpdate(){updatingControls=previous;}};
+@@ -979,7 +980,7 @@ static void detach(const wchar_t*reason=L"unspecified"){renderupgrade::stop();cl
+  DWORD exitCode=0;bool exitKnown=gameProcess&&GetExitCodeProcess(gameProcess,&exitCode);
+  critical(L"detach pid="+std::to_wstring(pid)+L" reason="+reason+L" hostEnabled="+std::to_wstring(enabled)+L" processExitCode="+(exitKnown?hex32(exitCode):L"unavailable")+
+   L" stillActive="+std::to_wstring(exitKnown&&exitCode==STILL_ACTIVE));commandQueue.clear();inFlightMatch=0;inFlightRetries=0;sentAt=0;lastStallLog=0;typeTap.clear();
+- releaseBridge();externalData=nullptr;externalSampler.reset();externalReader.close();externalAt=0;
++ releaseBridge();externalData=nullptr;externalWorldSource.reset();externalSourceConfirmed=false;externalPublished={};externalSampler.reset();externalReader.close();externalAt=0;
+  bridgeAttempts=0;bridgeBlocked=false;bridgeRetryAt=0;bridgeFailure.clear();
+  if(gameProcess)CloseHandle(gameProcess);gameProcess=nullptr;lastProcessCheck=0;game=nullptr;pid=0;gameThread=0;snap={};overlayRecovery.suspend();motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();hideWorldOverlay();hideSidebarOverlay();
+ }
+@@ -1184,15 +1185,15 @@ static EnemyRasterKey enemyRasterKey(const external::enemies::Marker&m){return {
+ static uint32_t statusOptions(){return (extra.parasiteMarker?external::status::Parasite:0)|(extra.crateBuffMarkers?external::status::CrateBuffs:0);}
+ static void updateStatusDisplay(const Snapshot&source){
+  const auto&f=externalSampler.unitStatuses();
+- if(!statusOptions()||snap.renderStatus!=1||!external::status::fresh(f,source.match,sampleRenderClock(nullptr))){statusMotion.clear();return;}
++ if(!statusOptions()||snap.renderStatus!=1||(!external::status::fresh(f,source.match,sampleRenderClock(nullptr))&&!(externalSourceConfirmed&&f.match==source.match&&f.frame==source.frame))){statusMotion.clear();return;}
+  statusSample.labels=f.count;statusSample.match=f.match;statusSample.sampledTick=f.tick;statusSample.frame=f.frame;
+  statusSample.cameraX=source.cameraX;statusSample.cameraY=source.cameraY;
+  for(int i=0;i<f.count;++i){const auto&m=f.items[i];statusSample.label[i]={m.id,m.x,m.y};}
+  statusMotion.update(statusSample,f.frame);
+ }
+ static void updateEnemyDisplay(const Snapshot&source){
+  const auto&f=externalSampler.enemyMarkers();
+- if(!extra.enemyMarkers||snap.renderStatus!=1||!external::enemies::fresh(f,source.match,sampleRenderClock(nullptr))){clearEnemyDisplay();return;}
++ if(!extra.enemyMarkers||snap.renderStatus!=1||(!external::enemies::fresh(f,source.match,sampleRenderClock(nullptr))&&!(externalSourceConfirmed&&f.match==source.match&&f.frame==source.frame))){clearEnemyDisplay();return;}
+  if(enemyRasterMatch!=f.match){clearEnemyDisplay();enemyRasterMatch=f.match;}
+  enemySample.labels=f.count;enemySample.match=f.match;enemySample.sampledTick=f.tick;enemySample.frame=f.frame;
+  enemySample.cameraX=source.cameraX;enemySample.cameraY=source.cameraY;
+@@ -1202,16 +1203,23 @@ static void updateEnemyDisplay(const Snapshot&source){
+  // Count-specific text is shared across equal groups; bound historical counts.
+  if(enemyRasters.size()>4096)enemyRasters.clear();
+ }
++static void discardExternalWorld(){
++ externalData=nullptr;externalPublished={};externalWorldSource.reset();externalSourceConfirmed=false;externalSampler.reset();
++ snap.readStatus=snap.renderStatus=0;snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.threatCount=snap.crateCount=0;
++ motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();clearPassengerDisplay();
++}
+ static void mergeExternal(){
+- if(!externalData)return;const auto&d=*externalData;const DWORD displayNow=sampleRenderClock(nullptr);
++ if(!externalData)return;
++ if(commandMatch()&&externalPublished.match!=commandMatch()){discardExternalWorld();return;}
++ const auto&d=*externalData;const DWORD displayNow=sampleRenderClock(nullptr);
+  bool control=commandMatch()!=0; // preserve authoritative command identity/catalogue even when display data is delayed
+  // External snapshots are display data, never authoritative for a live
+  // command bridge. An incompatible EXE layout must not disable a healthy DLL.
+- snap.readStatus=d.status==1&&d.sampledTick&&DWORD(displayNow-d.sampledTick)>=2000?0:d.status;
++ snap.readStatus=d.status==1&&d.sampledTick&&DWORD(displayNow-d.sampledTick)>=2000&&!externalSourceConfirmed?0:d.status;
+  snap.bridgeStatus=shared&&lastData&&DWORD(GetTickCount()-lastData)<1500?incoming.status:0;
+  snap.commandStatus=commandChannelReady()?1:0;
+  const bool externalValid=d.status==1&&d.sampledTick&&
+-                           DWORD(displayNow-d.sampledTick)<2000;
++                           (DWORD(displayNow-d.sampledTick)<2000||externalSourceConfirmed);
+  snap.renderStatus=externalValid&&d.renderStatus==1?1:0;
+  snap.status=gateway::chooseVisibleStatus({snap.readStatus,snap.bridgeStatus,snap.commandStatus,snap.renderStatus});
+  if(!externalValid){motion.clear();statusMotion.clear();labelRasters.clear();clearEnemyDisplay();return;}
+@@ -1249,7 +1257,33 @@ static void sampleExternal(DWORD now){
+  if(!externalAt||DWORD(displayNow-externalAt)>=period){
+   const DWORD gap=externalAt?DWORD(displayNow-externalAt):0;
+   LARGE_INTEGER sampleStart{},sampleEnd{},sampleFrequency{};QueryPerformanceCounter(&sampleStart);
+-  externalAt=displayNow;externalReader.begin();externalSampler.stopped(plannerState.stopped);externalData=&externalSampler.sample(displayNow,flags(),extra.enemyMarkers,statusOptions());
++  externalAt=displayNow;externalReader.begin();externalSourceConfirmed=false;
++  if(externalWorldSource&&((commandMatch()&&externalWorldSource->key.match!=commandMatch())||externalWorldSource->key.pid!=externalReader.pid()||
++    ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)!=externalReader.generation()))discardExternalWorld();
++  externalReader.setWorldDemand(worldframe::Base|((flags()&(Capacity|AllTransports))?worldframe::Passengers:0));
++  external::WorldFrameScope worldScope(externalReader,commandMatch());
++  if(!worldScope){
++   if(externalWorldSource){external::WorldFrameScope retained(externalReader,commandMatch(),externalWorldSource);if(!retained)discardExternalWorld();}
++   if(shared)wakeGame();return;
++  }
++  const auto source=externalReader.worldFrameToken();
++  if(externalWorldSource&&(!externalWorldSource->key.sameWorld(source->key)||source->key.frame<externalWorldSource->key.frame))discardExternalWorld();
++  struct UIKey {uint32_t selected=0,flags=0,status=0,viewport=0;bool enemies=false;};static UIKey previousUI;
++  UIKey ui{2166136261u,flags(),statusOptions(),viewportTransform.generation,extra.enemyMarkers};
++  struct Selected {uint32_t vt,items;int capacity;uint32_t flags;int count,step;}selected{};
++  std::array<uint32_t,4096>selectedItems{};
++  if(externalReader.readLive(0xA8ECB8,&selected,sizeof selected)&&selected.count>=0&&selected.count<=4096&&selected.capacity>=selected.count&&(!selected.count||externalReader.readLive(selected.items,selectedItems.data(),size_t(selected.count)*4))){
++   for(int i=0;i<selected.count;++i)ui.selected=(ui.selected^selectedItems[i])*16777619u;
++  }else ui.selected=0;
++  const bool sameUI=ui.selected==previousUI.selected&&ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies;
++  externalSampler.worldEpoch(source->key.match);
++  if(externalWorldSource&&externalWorldSource->key.sameFrame(source->key)&&externalWorldSource->key.serial==source->key.serial&&sameUI){
++   externalSampler.refreshCamera(displayNow);externalPublished=externalSampler.state();externalPublished.sampledTick=source->key.tick;externalData=&externalPublished;externalSourceConfirmed=true;mergeExternal();return;
++  }
++  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions());
++  if(!worldScope.complete()){externalSampler.invalidateSample(&externalPublished);return;}
++  externalSampler.commitSample();
++  externalPublished=candidate;externalData=&externalPublished;externalWorldSource=source;externalSourceConfirmed=true;previousUI=ui;
+   if(externalData->status==1)attackRecorder.sample([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);},
+    [](const std::string&s){critical(std::wstring(s.begin(),s.end()));},now,externalReader.generation(),externalData->match,
+    "flags="+std::to_string(flags())+" global="+std::to_string(extra.magnetronGlobal)+" drop="+std::to_string(extra.magnetronDrop)+
+@@ -1299,7 +1333,7 @@ static void sampleExternal(DWORD now){
+    }
+   }
+  }
+- else if((enabled&&foregroundGame())||secondaryDisplayAvailable()){externalReader.begin();externalSampler.refreshCamera(displayNow);}
++ else if((enabled&&foregroundGame())||secondaryDisplayAvailable()){externalReader.begin();externalSampler.refreshCamera(displayNow);if(externalData){externalPublished=externalSampler.state();externalData=&externalPublished;}}
+  mergeExternal();
+ }
+ static void schedulerDiagnostic(){
+@@ -1312,6 +1346,24 @@ static void schedulerDiagnostic(){
+       L" entry="+std::to_wstring(shared->driverTarget)+
+       L" gameFrameCallbacks="+std::to_wstring(shared->driverTicks));
+ }
++static void performanceDiagnostic(){
++ if(!shared||!diagEnabled)return;
++ static DWORD loggedAt=0;const DWORD now=GetTickCount();if(DWORD(now-loggedAt)<1000)return;loggedAt=now;
++ hardwareperf::Snapshot hardware{};bool hardwareReady=false;
++ for(unsigned i=0;i<2;++i){const long seq=shared->hardwarePerfSeq;if(seq&1)continue;MemoryBarrier();hardware=shared->hardwarePerf;MemoryBarrier();if(seq==shared->hardwarePerfSeq){hardwareReady=hardware.version==hardwareperf::Version&&hardware.serial;break;}}
++ if(hardwareReady&&hardware.intervalMs){
++  const uint64_t hitsPerSecond=uint64_t(hardware.delta.exceptions)*1000/hardware.intervalMs;
++  diag(L"hardware-performance intervalMs="+std::to_wstring(hardware.intervalMs)+L" ownedExceptions="+std::to_wstring(hardware.delta.exceptions)+
++   L" ownedExceptionsPerSecond="+std::to_wstring(hitsPerSecond)+L" controlCallbacks="+std::to_wstring(hardware.delta.control)+L" changed="+std::to_wstring(hardware.delta.changed)+
++   L" admissionChecks="+std::to_wstring(hardware.delta.admissionChecks)+L" guardWorldCaptures="+std::to_wstring(hardware.delta.worldCaptures)+
++   L" observedLogicFrames="+std::to_wstring(hardware.observedLogicFrames)+L" firstFrame="+std::to_wstring(hardware.firstLogicFrame)+L" lastFrame="+std::to_wstring(hardware.lastLogicFrame));
++ }
++ for(unsigned i=0;i<2;++i){const long seq=shared->worldSampleSeq;if(seq&1)continue;MemoryBarrier();
++  const uint32_t serial=shared->worldSampleSerial,pages=shared->worldSamplePages,reads=shared->worldSampleReads,bytes=shared->worldSampleBytes,rosters=shared->worldSampleRosters,failures=shared->worldSampleFailures;const int frame=shared->worldSampleFrame;
++  MemoryBarrier();if(seq!=shared->worldSampleSeq)continue;if(serial)diag(L"world-sampling serial="+std::to_wstring(serial)+L" frame="+std::to_wstring(frame)+
++   L" pages="+std::to_wstring(pages)+L" liveReads="+std::to_wstring(reads)+L" liveBytes="+std::to_wstring(bytes)+L" inventories="+std::to_wstring(rosters)+L" failedCaptures="+std::to_wstring(failures));break;
++ }
++}
+ static void logCommandReceipts(const Snapshot& s){
+  if(!diagEnabled)return;
+  if(s.match!=lastReceiptMatch){lastReceiptMatch=s.match;
+@@ -2247,9 +2299,9 @@ static void tick(){
+   gameinput::setFastTactical(hook,shared->dodgeEnabled||shared->dodgeActive||shared->scrollRefreshHz);
+   DWORD wakePeriod=shared->foreground?16:(shared->minerDefenseEnabled||shared->minerDefenseActive||shared->dodgeEnabled||shared->dodgeActive||shared->missileEnabled||shared->missileHeld||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
+   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
+-  readSnapshot();schedulerDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
++  readSnapshot();schedulerDiagnostic();performanceDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
+   static renderpresentation::StatusCadence computeStatusCadence;
+-  gameinput::setFrameSampling(hook,enabled&&(shared->superweaponGrant||shared->computeApplied!=compute::All));
++  gameinput::setFrameSampling(hook,enabled&&(shared->superweaponGrant||shared->externalDisplay||shared->computeApplied!=compute::All));
+   const uint64_t computeStatusKey=uint64_t(shared->computeApplied)|(uint64_t(computeRequested)<<32)|(uint64_t(showDetails)<<63);
+   if(ready&&GetDlgItem(ui,833)&&computeStatusCadence.due(computeStatusKey,now)){
+   std::wstring text=L"当前生效：";for(int i=0;i<compute::Count;++i){if(i)text+=i%2?L" · ":L"\r\n";text+=compute::label(i);text+=compute::inside(shared->computeApplied,compute::Feature(i))?L"：游戏内":L"：工具箱";}

@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 主动快捷键近期回归的版本源头 | [1.0.43 对照、共享采样冷启动循环与时钟反例](2026-11-09-hotkey-regression-origin.md) | 944586 pre144-2 unchanged-hotkeys needsBridge bootstrap-loop producer-tick display-clock confirmed no-unique-live-cause |
 | 1.0.47-pre.4 主动快捷键恢复 | [命令与展示解耦、普通键后备及消息去重](2026-11-09-pre147-hotkey-recovery.md) | AutoBoard request5 displayRenderStatus commandHotkeyContext RegisterHotKey polling WM_HOTKEY event-time cancel-fence no-replay |
 | 1.0.47-pre.3 逐功能复审 | [当前入口、功能修复、统一乘员样本与验证边界](2026-11-09-pre147-feature-audit.md) | pre147-3 feature-matrix selection-catalogue manual-priority mouse-key-pairing patrol16 passenger-immutable Assist102 |
 | 1.0.47-pre.2 功能失败恢复 | [控制台回执、未改草稿、单位目录、让行批次和保存建筑缓存](2026-11-09-pre147-functional-recovery.md) | pre147-2 ACK-before-confirm unchanged-draft catalogue-short-read final-batch-budget frozen-image-transaction negative-controls |

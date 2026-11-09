@@ -1,0 +1,5 @@
+{"scenario":"manual_only","ticks":12,"feature_demand":0,"bridge_attempts":0,"world_scope_attempts":12,"world_scope_failures":12,"sampler_calls":0,"external_published":0,"command_ready":0,"mode":0,"autoboard_registered":0}
+{"scenario":"default_own_ground","ticks":12,"feature_demand":1,"bridge_attempts":1,"world_scope_attempts":12,"world_scope_failures":1,"sampler_calls":11,"external_published":1,"command_ready":1,"mode":2,"autoboard_registered":1}
+{"scenario":"auto_repair_demand","ticks":12,"feature_demand":1,"bridge_attempts":1,"world_scope_attempts":12,"world_scope_failures":1,"sampler_calls":11,"external_published":1,"command_ready":1,"mode":2,"autoboard_registered":1}
+{"scenario":"already_connected","ticks":12,"feature_demand":0,"bridge_attempts":1,"world_scope_attempts":12,"world_scope_failures":0,"sampler_calls":12,"external_published":1,"command_ready":1,"mode":2,"autoboard_registered":1}
+{"passed":true,"checks":33,"scenarios":4}

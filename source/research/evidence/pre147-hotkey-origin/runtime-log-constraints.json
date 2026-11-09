@@ -1,0 +1,16 @@
+{
+  "source_log_sha256": "6beda7933c9e99260679d2065dac9b88ce766b6c08f0ab7a85f70762b386f1b6",
+  "raw_log_committed": false,
+  "health_records_live_pid": 258,
+  "command_status_all_ready": true,
+  "request_ack_all_5": true,
+  "fresh_true_count": 255,
+  "native_click_hooks_all_active": true,
+  "display_records": 63,
+  "display_samples_median": 291,
+  "limitations": [
+    "The old health renderStatus field is incoming.renderRevealStatus, not snap.renderStatus.",
+    "Display counters establish complete-path execution, not nonzero display status.",
+    "Neither key arrival nor registration/configuration/command-chat state was logged."
+  ]
+}

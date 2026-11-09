@@ -1,0 +1,32 @@
+[
+  {
+    "version": "v1.0.43",
+    "commit": "bf3fbe88faa96513649f2998aa0ab6e71935f4a8",
+    "sha256": "60a194d16c3f6e124aa678f57dc33049b1b974b8c2212988546ee7d523538b16",
+    "regressed": false
+  },
+  {
+    "version": "v1.0.44-pre.2",
+    "commit": "944586abf9cd331d2aaf9fe24af744a593bd31d3",
+    "sha256": "0000654ac95a49d364977931fa7b6edb995d9c7af069e2cd14f86627f73958d0",
+    "regressed": true
+  },
+  {
+    "version": "v1.0.46.4",
+    "commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a",
+    "sha256": "cb446fd28028f9b73379d4963dbd491e6aa2a5bc8d83166c45672fef99adc3df",
+    "regressed": true
+  },
+  {
+    "version": "v1.0.47-pre.3",
+    "commit": "93f02787d42b61ff5c30e450317f99ba00673149",
+    "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+    "regressed": true
+  },
+  {
+    "version": "v1.0.47-pre.4",
+    "commit": "3cd2f472b24921a3fcbca48a85e09e8a08d6f569",
+    "sha256": "53c0dae3ece505449535dc481e9a37af7fa4cf7b057abd04a22b580210367f30",
+    "regressed": true
+  }
+]

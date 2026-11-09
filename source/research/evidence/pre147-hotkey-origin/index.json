@@ -1,0 +1,186 @@
+{
+  "schema": "ra2.hotkey-regression-origin-evidence.v1",
+  "product_source_unchanged": true,
+  "product_source_commit": "7e9ce38d898d536690f95ca8a5b6dec932908843",
+  "first_dependency_change": "944586abf9cd331d2aaf9fe24af744a593bd31d3",
+  "bootstrap": {
+    "scenarios": 20,
+    "checks": 164,
+    "windows_executed": false,
+    "unique_live_cause_proven": false
+  },
+  "mixed_clock": {
+    "scenarios": 11,
+    "checks": 33,
+    "clock_skew_measured": false,
+    "unique_live_cause_proven": false
+  },
+  "artifacts": {
+    "944586-main.patch": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/944586-main.patch",
+      "bytes": 14093,
+      "sha256": "798b7535127028ad4742af1e4b034d63f9f5bf376cc75d42e5076bad9f5b3da8"
+    },
+    "bootstrap/FINDING.md": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/FINDING.md",
+      "bytes": 6564,
+      "sha256": "e9536762c62dc0ab9a60371f28d96e9db901ac9662d25781bea5b9eee5b1af85"
+    },
+    "bootstrap/cold_bootstrap.py": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/cold_bootstrap.py",
+      "bytes": 17114,
+      "sha256": "442cf3eafabb738d924b56af5c30e8bd320fadfa7cae133397da741b713db332"
+    },
+    "bootstrap/historical_sources.json": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/historical_sources.json",
+      "bytes": 3161,
+      "sha256": "b75d7fe8afb2aedfd75b53aba28d25e0139a237de28c5d6ed8c7974acd583e64"
+    },
+    "bootstrap/result.json": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/result.json",
+      "bytes": 67313,
+      "sha256": "e7b36e09a611f5479d21464783d884fe7df60cda62bb2654e61c93a6deb4b5ae"
+    },
+    "bootstrap/v1.0.43/callsite.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.43/callsite.cpp",
+      "bytes": 424,
+      "sha256": "5d74b0086e782333575472c1351b3303cd69a2442ccefffd1f441e4a44718f2e"
+    },
+    "bootstrap/v1.0.43/compile.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.43/compile.log",
+      "bytes": 5505,
+      "sha256": "2e8b50584037e9a93725f26075fccb0fd644eb01f66fa92e2f5d3926998bdae2"
+    },
+    "bootstrap/v1.0.43/production.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.43/production.cpp",
+      "bytes": 23168,
+      "sha256": "d5230c59f3cbee2c2ebed041d5f6da4c4d2d7508a5acb04e5bc66158cf07ca14"
+    },
+    "bootstrap/v1.0.43/run.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.43/run.log",
+      "bytes": 946,
+      "sha256": "7458c823a5fa76306e22b5cbf9b252746fda608a5edb6fcdcb29afd890fd5e31"
+    },
+    "bootstrap/v1.0.44-pre.2/callsite.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.44-pre.2/callsite.cpp",
+      "bytes": 424,
+      "sha256": "5d74b0086e782333575472c1351b3303cd69a2442ccefffd1f441e4a44718f2e"
+    },
+    "bootstrap/v1.0.44-pre.2/compile.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.44-pre.2/compile.log",
+      "bytes": 5511,
+      "sha256": "209da17e67bc1709369bc85d4a0e3e422e1c4c8440817264a8428f315508fe9a"
+    },
+    "bootstrap/v1.0.44-pre.2/production.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.44-pre.2/production.cpp",
+      "bytes": 26306,
+      "sha256": "a8ad8d3fd9f1871c90e2d0636fa9b808fa215349a4a563d65cba734c21cdb48b"
+    },
+    "bootstrap/v1.0.44-pre.2/run.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.44-pre.2/run.log",
+      "bytes": 950,
+      "sha256": "f8550d0f26c3701a8e49b1cee8869cf6551729d3c771a3b6b9d94986a0fc42f5"
+    },
+    "bootstrap/v1.0.46.4/callsite.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.46.4/callsite.cpp",
+      "bytes": 424,
+      "sha256": "5d74b0086e782333575472c1351b3303cd69a2442ccefffd1f441e4a44718f2e"
+    },
+    "bootstrap/v1.0.46.4/compile.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.46.4/compile.log",
+      "bytes": 5507,
+      "sha256": "b7b51121a92e46ed51416dbe91d261a4bca7e2ca63705e9301e581eb0237e32d"
+    },
+    "bootstrap/v1.0.46.4/production.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.46.4/production.cpp",
+      "bytes": 26306,
+      "sha256": "a8ad8d3fd9f1871c90e2d0636fa9b808fa215349a4a563d65cba734c21cdb48b"
+    },
+    "bootstrap/v1.0.46.4/run.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.46.4/run.log",
+      "bytes": 950,
+      "sha256": "f8550d0f26c3701a8e49b1cee8869cf6551729d3c771a3b6b9d94986a0fc42f5"
+    },
+    "bootstrap/v1.0.47-pre.3/callsite.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.47-pre.3/callsite.cpp",
+      "bytes": 424,
+      "sha256": "5d74b0086e782333575472c1351b3303cd69a2442ccefffd1f441e4a44718f2e"
+    },
+    "bootstrap/v1.0.47-pre.3/compile.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.47-pre.3/compile.log",
+      "bytes": 5511,
+      "sha256": "423cb863eb21927b55e7863e8302828bb5dc5e36c67038863bf7de728d73a173"
+    },
+    "bootstrap/v1.0.47-pre.3/production.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.47-pre.3/production.cpp",
+      "bytes": 27034,
+      "sha256": "4bf87b51b349d952061b40899a4aab654cb6bdbf8d559d03cfd0c45bec2e90cb"
+    },
+    "bootstrap/v1.0.47-pre.3/run.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.47-pre.3/run.log",
+      "bytes": 950,
+      "sha256": "f8550d0f26c3701a8e49b1cee8869cf6551729d3c771a3b6b9d94986a0fc42f5"
+    },
+    "bootstrap/v1.0.47-pre.4/callsite.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.47-pre.4/callsite.cpp",
+      "bytes": 424,
+      "sha256": "5d74b0086e782333575472c1351b3303cd69a2442ccefffd1f441e4a44718f2e"
+    },
+    "bootstrap/v1.0.47-pre.4/compile.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.47-pre.4/compile.log",
+      "bytes": 5511,
+      "sha256": "952d5228540fa7853fd541bed6a1d8bc067fd3d5af8d928293d123dd74e74b85"
+    },
+    "bootstrap/v1.0.47-pre.4/production.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.47-pre.4/production.cpp",
+      "bytes": 27539,
+      "sha256": "415a74c8afd66967c764a8db949b9e862c4cef521e61d1ff1b331b5915944b05"
+    },
+    "bootstrap/v1.0.47-pre.4/run.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.47-pre.4/run.log",
+      "bytes": 950,
+      "sha256": "f8550d0f26c3701a8e49b1cee8869cf6551729d3c771a3b6b9d94986a0fc42f5"
+    },
+    "bootstrap/versions.json": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/versions.json",
+      "bytes": 1009,
+      "sha256": "c1e725aa8e22dcb1d50743c191272835e0b2007595443aab6fbbf95551b2b2ab"
+    },
+    "independent-review.json": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/independent-review.json",
+      "bytes": 4502,
+      "sha256": "51dd8e05b265adbd6538c75332f8b74062a543be46134f15e16ffe95b8d5236c"
+    },
+    "mixed-clock/compile.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/mixed-clock-evidence/compile.log",
+      "bytes": 524,
+      "sha256": "3f04a460febc83b40dce2d133e05b0c780e339eab78e18c68b0c554480f1aeea"
+    },
+    "mixed-clock/mixed_clock_probe.py": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/mixed_clock_probe.py",
+      "bytes": 7764,
+      "sha256": "cc91b92dee7617cb70bf588ab5d241429c121b85b2150d0aadc63704f56b0f58"
+    },
+    "mixed-clock/probe.cpp": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/mixed-clock-evidence/probe.cpp",
+      "bytes": 6621,
+      "sha256": "f7766010992b6eee5a90aadbf9c9467b574ad8e58387f5565a548e2e87148bb2"
+    },
+    "mixed-clock/result.json": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/mixed-clock-evidence/result.json",
+      "bytes": 8563,
+      "sha256": "c0fb48b325f8e903ce24828d5088b15f3b286015a20a72561416ef599aa298b9"
+    },
+    "mixed-clock/run.log": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/mixed-clock-evidence/run.log",
+      "bytes": 1301,
+      "sha256": "c9b99512d6291e6ed170982723a76e55c4ab12495fca720bcf1916fd78b3822d"
+    },
+    "registry-history.json": {
+      "original_path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/hotkey-history-findings.json",
+      "bytes": 12039,
+      "sha256": "5ba69a5bdb1626dabfac199ee9707729bc23f525a5599526320173ad527c27bb"
+    }
+  },
+  "historical_source_policy": "Full original source files remain identified by exact Git commits/blobs and receipt SHA256 values; original reports retain execution-time paths. Generated C++ and raw logs are captured exactly. Drivers are archived as executed, not presented as path-independent installers."
+}
