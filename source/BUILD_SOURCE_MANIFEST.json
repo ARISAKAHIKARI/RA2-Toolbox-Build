@@ -1,6 +1,6 @@
 {
-  "name": "RA2 Toolbox 1.0.47-pre.8",
-  "version": "1.0.47-pre.8",
+  "name": "RA2 Toolbox 1.0.47-pre.9",
+  "version": "1.0.47-pre.9",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
@@ -1358,5 +1358,19 @@
       "Assist103 / Cursor155 / Runtime4 / 23162552-byte Shared"
     ],
     "verification": "Current portable comparisons and source-bound regressions; build, ABI and archive receipts accompany delivery. No real Windows/game/physical GPU/multiplayer acceptance asserted."
+  },
+  "ClockEvents147Pre9": {
+    "version": "1.0.47-pre.9",
+    "base_remote_commit": "5752595b916542e620b725ad2949f143b99ffa63",
+    "changes": [
+      "Main observation wakes on new immutable publication; duplicate same-frame exports do not signal",
+      "50ms no-publication maintenance and 4ms polling fallback without notification support",
+      "Configuration changes, invalidation, shutdown and retry backoff retain independent deadlines",
+      "Detached Assist clock parks; 250ms UI discovery remains",
+      "Empty input manager maintains 1000ms periodic timer with immediate attach resume",
+      "Overlay housekeeping uses 16ms; publication and high-refresh deadlines remain independent"
+    ],
+    "verification": "39 source-bound regression groups plus publication/scheduler/clock failure fixtures. Controlled threads and Win32 boundaries do not establish real Windows/game/GPU timing. Final paired Windows-target build and archive receipts are separate.",
+    "research_note": "research/2026-11-09-pre147-clock-events.md"
   }
 }

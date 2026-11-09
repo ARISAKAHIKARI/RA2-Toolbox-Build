@@ -59,5 +59,5 @@ int main(){
  // immediately eligible, while a deferred frame retains the exact deadline.
  assert(cadence.deadline(time+milliseconds(50),500)==time+milliseconds(50));
  overlaypublication::Submission gpu;gpu.observe(7);gpu.completed(100,true);gpu.failed();assert(gpu.needs(101,false,true,false)&&!gpu.changed(7));gpu.completed(108,false);assert(gpu.repair(1100));gpu.completed(1108,true);assert(!gpu.needs(1109,false,true,false));
- std::puts("PASS actual CPU publication: identical frames perform zero compose/copy/upload; 1s repair reuses DIB; dirty metadata consumed; failed upload/resize retry; hide/resume; incremental layer removal; observed revision avoids pending spin; <=8ms poll and exact 500Hz deadline; GPU pending does not renew success.");
+ std::puts("PASS actual CPU publication: identical frames perform zero compose/copy/upload; 1s repair reuses DIB; dirty metadata consumed; failed upload/resize retry; hide/resume; incremental layer removal; observed revision avoids pending spin; <=16ms poll and exact 500Hz deadline; GPU pending does not renew success.");
 }
