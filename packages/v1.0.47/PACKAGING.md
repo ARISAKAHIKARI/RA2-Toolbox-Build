@@ -1,4 +1,10 @@
-# 1.0.47-pre.6 功能入口修复的冻结构建与打包
+# 1.0.47-pre.10 功能逻辑修复的冻结构建与打包
+
+本轮继承下文39组门控，另外执行15组便携功能回归、60项选中命令检查、17项目标/队形检查和72个矿车场景（2957项断言）。交付附加检查须核对实际当前源码摘要，不得将旧回执改版本后复用。三项历史扩展测试的容量预期更新为当前常量；初次失败日志保留。
+
+六项变化及剩余边界见 `source/research/2026-11-09-pre147-feature-logic.md`。没有新增游戏地址、原生调用约定、Hook或协议字段。旧pre.9时钟和pre.7 GPU优化沿用；本轮不宣称新增GPU吞吐提升。Full README仅含使用信息，复现、源码和失败日志放入独立verification包。
+
+下述门控契约和例子沿用pre.6建立的发布流程；实际版本使用1.0.47-pre.10 / 1.0.47.10。
 
 本轮优先审查设置、快捷键、生产者启动、采样准入、暂停与恢复。产品和资源基线保持1.0.46.4；不得从其他历史安装包拼装本版程序。新增五组入口检查与既有三十四组共同执行，当前为三十九组；组数不是独立功能数，也不是已完成实机验收的数量。
 
@@ -69,8 +75,8 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
   "schema": "ra2.optimization-validation.v1",
   "commit": "本轮冻结提交",
   "source_tree_sha": "该提交的source树SHA",
-  "version": "1.0.47-pre.6",
-  "file_version": "1.0.47.6",
+  "version": "1.0.47-pre.10",
+  "file_version": "1.0.47.10",
   "engine_changes": ["engine/prepare_runtime.py"],
   "required_checks_passed": true,
   "windows_executed": false,

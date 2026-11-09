@@ -182,7 +182,13 @@ public:
    int visited=0,checked=0,sent=0;
    for(;visited<world.count&&checked<128&&sent<6;++visited){int n=(defenseCursor_+visited)%world.count;const auto&a=world.actors[n];
     if(!(a.flags&PointDefense)||!(a.flags&Own)||!positionValid(a)||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;++checked;
-    const Actor* current=actor(a.target);if(current&&(current->flags&Enemy)&&(current->flags&Saboteur))continue;
+    const Actor* current=actor(a.target);
+    // A stale or unreachable target pointer is not an effective defense.
+    // Keep a valid shot; otherwise let a nearer, eligible infiltrator replace it.
+    if(current&&positionValid(*current)&&(current->flags&Enemy)&&(current->flags&Saboteur)){
+     const int64_t dx=int64_t(a.x)-current->x,dy=int64_t(a.y)-current->y;
+     if(canTarget(a,*current,dx*dx+dy*dy,false))continue;
+    }
     auto pending=defenseSent_.find(a.id);if(pending!=defenseSent_.end()&&uint32_t(world.tick-pending->second)<350)continue;
     // Raw rosters can contain duplicate actors. Candidate deduplication must
     // not depend on starting the delivery cooldown before final selection.

@@ -22,8 +22,8 @@ int main(int argc,char**argv){std::string mode=argc>1?argv[1]:"all";
   for(int i=0;i<ns;++i)w.units.push_back({{uint32_t(i+1),uint32_t(rng())},1,int(rng()%2049)-1024,int(rng()%2049)-1024,int(rng()%132)-2});
   for(int j=0;j<nt;++j)w.targets.push_back({uint32_t(1000+j),2,int(rng()%2049)-1024,0,int(rng()%260)-2,run%2?INT_MAX:0,{int(rng()%20)-2,int(rng()%20)-2,int(rng()%20)-2}});
   for(int i=0;i<ns*nt;++i)w.compatible.push_back(rng()%2);check(w);
- }auto w=base();w.units.resize(513);w.compatible.resize(513);assert(allocate(w).empty());w=base();w.compatible.clear();assert(allocate(w).empty());
+ }auto w=base();w.units.resize(MaxSources+1);w.compatible.resize(MaxSources+1);assert(allocate(w).empty());w=base();w.compatible.clear();assert(allocate(w).empty());
  w=base();w.units[0].x=INT_MIN;w.units[1].y=INT_MAX;assert(allocate(w).empty());
- w={};for(int i=0;i<512;++i){w.units.push_back({{uint32_t(i+1),1},1,i,0,128});w.targets.push_back({uint32_t(1000+i),2,i,0,128,INT_MAX,{}});}w.compatible.assign(512*512,1);assert(allocate(w).size()==512);check(w);
- puts("PASS 10000 seeded allocation cases plus 512x512 boundary: capacity, identity, compatibility, quotas, determinism and limits");}
+ w={};for(int i=0;i<MaxSources;++i){w.units.push_back({{uint32_t(i+1),1},1,i,0,128});w.targets.push_back({uint32_t(1000+i),2,i,0,128,INT_MAX,{}});}w.compatible.assign(size_t(MaxSources)*MaxTargets,1);assert(allocate(w).size()==MaxSources);check(w);
+ puts("PASS 10000 seeded allocation cases plus current source/target capacity boundary: capacity, identity, compatibility, quotas, determinism and limits");}
 }

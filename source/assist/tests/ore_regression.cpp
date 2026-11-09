@@ -57,7 +57,7 @@ int main(){
  auto&e=w.actors[base+16];e.id=400;e.kind=2;e.flags=Enemy;e.x=e.y=50100;e.cost=200;
  int oreOrders=0,attacks=0;
  for(int f=1;f<=8;++f){w.frame=f;v=p.step(w,AutoOreReturn|AdvancedInput,200,300,90);
-  if(f==1){assert(v.size()==24);for(int j=0;j<12;++j)assert(v[j].purpose==(j%2?1:0));}
+  if(f==1){assert(v.size()==std::min(size_t(MaxOrders),size_t(40)));for(int j=0;j<12;++j)assert(v[j].purpose==(j%2?1:0));}
   for(int j=0;j<int(v.size())&&j<12;++j){auto&o=v[j];p.accepted(o,f);if(o.purpose==0){++oreOrders;auto&a=w.actors[o.unit-1];a.x=int(o.destination%1000)*256+128;a.y=int(o.destination/1000)*256+128;}else ++attacks;}
  }
  assert(oreOrders==24&&attacks==16);

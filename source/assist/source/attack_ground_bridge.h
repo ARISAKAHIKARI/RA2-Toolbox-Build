@@ -1,9 +1,9 @@
-// One explicit selected-unit order, using the existing game-thread event lane.
+// Shared selected-ground-unit batch for own-ground and passive mode commands.
 // All storage is static: do not value-initialize this large batch on the stack.
 namespace ownground {
 constexpr int Capacity=8192;
 struct Source{uint32_t pointer=0,id=0,token=0,cell=0;bool self=false;};
-struct Job{Source sources[Capacity]{};int count=0,next=0,sent=0;uint32_t request=0,epoch=0,started=0;int frame=-1;bool pending=false,voiced=false;};
+struct Job{Source sources[Capacity]{};int count=0,next=0,sent=0;uint32_t request=0,epoch=0,started=0;int frame=-1,mission=1;bool pending=false,voiced=false;};
 static Job job;
 static void finish(int result){
  if(job.pending&&sh&&sh->request==job.request){sh->result=result;sh->count=job.sent;pendingAck=job.request;pendingAckReady=true;}
@@ -30,7 +30,7 @@ static void ownGroundTick(uint32_t house,int frame,DWORD now){
   // Only accepted explicit input supersedes automation. Remaining members
   // retain their original manual token while waiting for the shared budget.
   cancelNative(s.pointer,false);
-  if(!nativeMission(house,s.id,1,s.self?s.id:s.cell,0,0,0,0,taskarbiter::Owner::Generic,nullptr,s.self?0x34:11)){
+  if(!nativeMission(house,s.id,j.mission,j.mission==1?(s.self?s.id:s.cell):0,0,0,0,0,taskarbiter::Owner::Generic,nullptr,j.mission==1&&!s.self?11:0x34)){
    ownground::finish(-6);return;
   }
   ++j.next;++j.sent;
@@ -41,7 +41,7 @@ static void ownGroundTick(uint32_t house,int frame,DWORD now){
 }
 static void attackOwnGroundCommand(uint32_t house,DWORD now,uint32_t request){
  auto&j=ownground::job;
- j.count=j.next=j.sent=0;j.request=request;j.epoch=match;j.started=now;j.frame=-1;j.pending=true;j.voiced=false;
+ j.count=j.next=j.sent=0;j.mission=1;j.request=request;j.epoch=match;j.started=now;j.frame=-1;j.pending=true;j.voiced=false;
  if(!eventdelivery::mayQueue(get<int>(0xA8B238))){ownground::finish(-40);return;}
  if(!simulationReady()||get<bool>(0xA8BC60+25)){ownground::finish(-11);return;}
  Vec selected=vec(0xA8ECB8);int sticky=0;

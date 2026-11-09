@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 1.0.47-pre.10 功能内部逻辑 | [命令尾部续发、有效目标、队形和矿车恢复](2026-11-09-pre147-feature-logic.md) | 80-feature-boundaries selected-mode-tail anti-theft-valid-target valid-slot quick-placement-cache miner-resource-recheck unknown-read no-new-native-ABI |
 | 1.0.47-pre.9 整体时钟优化 | [发布事件采样、空闲休眠与独立高刷](2026-11-09-pre147-clock-events.md) | publication-event 250Hz-fallback 50ms-maintenance idle-park reconnect timer-failure no-FPS-claim |
 | v1.0.35 先运行再覆盖后的识别差异 | [配置继承、首帧冷启动修正与已连接现场反证](2026-11-09-v135-warm-start.md) | ff5a76 v135 INI-preservation Advanced-default OwnGround-exception no-persistent-PID readable-session-demand cold-start 11-77 unresolved-live-input |
 | 1.0.47-pre.4 快捷键仍失效的实机记录 | [完整会话、六条命令热键状态与输入未观测边界](2026-11-09-hotkey-pre4-live-failure.md) | pre147-4 live-failure mode2-groups9 zero-input-counters foreground-unobserved Win32-1409 silent-sampler-exit unresolved |

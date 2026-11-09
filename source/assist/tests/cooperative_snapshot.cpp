@@ -17,7 +17,7 @@ int main(int argc,char**){
  for(unsigned n=0;n<1000;++n){uint32_t p=0x100000+n*0x800;object(p,0x7E3EBC,bt,1000+n);put(pointers+(n+1)*4,p);}
  put(0xA8EC78+4,pointers);put(0xA8EC78+8,1001);put(0xA8EC78+16,1001);
  cooperative::Request request{};request.serial=request.match=1;request.target=1999;request.type=bt;request.mode=cooperative::Enter;request.count=1;request.sources[0]={7,0};request.cameraX=-320;request.cameraY=2700;request.viewWidth=640;request.viewHeight=480;
- auto input=external::cooperativeInput(read,request,[](uint32_t){return cooperative::Quota{};});assert(input.units.size()==1&&input.targets.size()==512&&input.targets[0].id==1999);
+ auto input=external::cooperativeInput(read,request,[](uint32_t){return cooperative::Quota{};});assert(input.units.size()==1&&input.targets.size()==std::min(size_t(1000),size_t(cooperative::MaxTargets))&&input.targets[0].id==1999);
  for(size_t n=1;n<input.targets.size();++n)assert(input.targets[n].id==999+n);
  unsigned maximum=0,total=0;for(auto c:coordinates){maximum=std::max(maximum,c.second);total+=c.second;}
  std::cout<<"1000 candidates: x-coordinate reads="<<total<<", maximum per candidate="<<maximum<<"; clicked-first and ID tie order preserved\n";

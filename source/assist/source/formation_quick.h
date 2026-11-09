@@ -1,5 +1,6 @@
 #pragma once
 #include "formation.h"
+#include <unordered_map>
 
 namespace assist { namespace formation { namespace quick {
 // The existing six configurable shapes retain their wire layout. This value
@@ -16,16 +17,19 @@ struct Path {
   if(!tail&&std::max(std::abs(p.x-last.x),std::abs(p.y-last.y))<2)return;
   if(count<NodeLimit)nodes[count++]=p;else nodes[NodeLimit-1]=p;
  }
- Point at(double fraction)const{
+ void measure(double*lengths)const{
+  lengths[0]=0;for(int n=1;n<count;++n)lengths[n]=lengths[n-1]+std::hypot(nodes[n].x-nodes[n-1].x,nodes[n].y-nodes[n-1].y);
+ }
+ Point at(double fraction,const double*lengths)const{
   if(!count)return {};if(count==1)return nodes[0];
-  double lengths[NodeLimit]{},total=0;
-  for(int n=1;n<count;++n){total+=std::hypot(nodes[n].x-nodes[n-1].x,nodes[n].y-nodes[n-1].y);lengths[n]=total;}
+  const double total=lengths[count-1];
   if(total<.001)return nodes[0];
   double target=std::clamp(fraction,0.,1.)*total;int n=1;
   while(n<count-1&&lengths[n]<target)++n;
   double distance=lengths[n]-lengths[n-1],t=distance>.001?(target-lengths[n-1])/distance:0;
   return {nodes[n-1].x+(nodes[n].x-nodes[n-1].x)*t,nodes[n-1].y+(nodes[n].y-nodes[n-1].y)*t};
  }
+ Point at(double fraction)const{double lengths[NodeLimit]{};measure(lengths);return at(fraction,lengths);}
 };
 inline int category(const Unit&u,bool air){return air?2:u.kind==1?1:0;}
 inline int quota(int category){return category==1?3:1;}
@@ -40,12 +44,26 @@ template<class Valid>inline void layout(const Unit*units,int count,const bool*ai
  count=std::clamp(count,0,Maximum);for(int n=0;n<count;++n)out[n]={};
  int groupCount[2]{},groupAt[2]{};for(int n=0;n<count;++n)++groupCount[air[n]?1:0];
  const bool line=path.count>1;
+ double lengths[NodeLimit]{};if(line)path.measure(lengths);
+ // Per-solve cache: a cell is queried once per air/ground layer. Occupancy
+ // counts retain the independent infantry/vehicle/air quotas without scanning
+ // every previously placed unit for every spiral candidate. Never reuse this
+ // cache across previews; terrain/occupancy may have changed by then.
+ struct Cell {uint8_t known=0,passable=0,used[3]{},exhausted=0;};
+ std::unordered_map<uint64_t,Cell> cells;cells.reserve(size_t(count)*4);
  for(int n=0;n<count;++n){
   const int group=air[n]?1:0;
-  auto point=line?path.at((groupAt[group]+.5)/groupCount[group]):Point{double(x),double(y)};++groupAt[group];
+  auto point=line?path.at((groupAt[group]+.5)/groupCount[group],lengths):Point{double(x),double(y)};++groupAt[group];
   int cx=int(std::lround(point.x)),cy=int(std::lround(point.y));
   const int limit=line?5:40;
-  auto take=[&](int dx,int dy){int tx=cx+dx,ty=cy+dy;if(!valid(tx,ty,air[n])||!room(units,air,out,n,n,tx,ty))return false;out[n]={tx*256+128,ty*256+128,0,1};return true;};
+  const uint64_t center=(uint64_t(uint32_t(cx))<<32)|uint32_t(cy);
+  const uint8_t exhausted=uint8_t(1u<<category(units[n],air[n]));
+  if(cells[center].exhausted&exhausted)continue;
+  auto take=[&](int dx,int dy){int tx=cx+dx,ty=cy+dy;
+   auto&cell=cells[(uint64_t(uint32_t(tx))<<32)|uint32_t(ty)];const uint8_t layer=uint8_t(1u<<group);
+   if(!(cell.known&layer)){cell.known|=layer;if(valid(tx,ty,air[n]))cell.passable|=layer;}
+   const int c=category(units[n],air[n]);if(!(cell.passable&layer)||cell.used[c]>=quota(c))return false;
+   ++cell.used[c];out[n]={tx*256+128,ty*256+128,0,1};return true;};
   if(take(0,0))continue;
   bool done=false;
   for(int r=1;r<=limit&&!done;++r){
@@ -54,6 +72,9 @@ template<class Valid>inline void layout(const Unit*units,int count,const bool*ai
    for(int dx=r-1;dx>=-r&&!done;--dx)done=take(dx,r);
    for(int dy=r-1;dy>-r&&!done;--dy)done=take(-r,dy);
   }
+  // Capacity only decreases within this solve. Once this class has no slot
+  // around an anchor, identical later members cannot discover a new one.
+  if(!done)cells[center].exhausted|=exhausted;
  }
  // Reduce crossings within the same occupancy class. Never swap an air or
  // infantry slot into another class and invalidate the placement quotas.

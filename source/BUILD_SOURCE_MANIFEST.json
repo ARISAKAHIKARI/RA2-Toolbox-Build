@@ -1,6 +1,6 @@
 {
-  "name": "RA2 Toolbox 1.0.47-pre.9",
-  "version": "1.0.47-pre.9",
+  "name": "RA2 Toolbox 1.0.47-pre.10",
+  "version": "1.0.47-pre.10",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
@@ -1372,5 +1372,21 @@
     ],
     "verification": "39 source-bound regression groups plus publication/scheduler/clock failure fixtures. Controlled threads and Win32 boundaries do not establish real Windows/game/GPU timing. Final paired Windows-target build and archive receipts are separate.",
     "research_note": "research/2026-11-09-pre147-clock-events.md"
+  },
+  "FeatureLogic147Pre10": {
+    "version": "1.0.47-pre.10",
+    "file_version": "1.0.47.10",
+    "base_remote_commit": "08aefd921ebe9b2960094dea0e41023ea9d963a4",
+    "changes": [
+      "Retain selected Sleep/Guard/Harmless command tails across event-budget exhaustion in the existing once-per-frame, identity-bound batch.",
+      "Replace stale or ineligible current anti-infiltrator targets while retaining valid current shots.",
+      "Exclude invalid formation slots from stable nearest assignment.",
+      "Cache quick-placement cell legality and occupancy per solve, premeasure path lengths and stop repeating exhausted-anchor searches.",
+      "Restart miner resource search if a completed winner empties before delivery.",
+      "Wait on unknown miner resource reads rather than treating them as absence or sending Guard."
+    ],
+    "protocol": "Assist103 / Cursor155 / Runtime4 / Shared23162552 unchanged",
+    "verification": "Current 39 regression groups, 15 extended portable fixtures, 60 selected-command checks, 17 feature-policy checks and 72 miner cases (2957 checks). Exact logs/source digests, negative controls, paired Windows-target build and package checks are bound by delivery receipts. No real Windows/game/GPU/multiplayer acceptance.",
+    "research_note": "research/2026-11-09-pre147-feature-logic.md"
   }
 }

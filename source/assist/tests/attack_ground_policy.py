@@ -3,7 +3,7 @@ Native event delivery, full game execution and multiplayer behavior are not test
 """
 import argparse,json,os,shlex,shutil,subprocess,tempfile
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--output',type=Path);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--output',type=Path);p.add_argument('--baseline',type=Path);a=p.parse_args()
 root=Path(__file__).resolve().parents[1]
 def extract(text,signature):
  start=text.index(signature);opening=text.index('{',start);depth=1;end=opening+1
@@ -30,7 +30,7 @@ uint32_t match=1,pendingAck=0;bool pendingAckReady=false,fault=false,ready=true,
 int budget=24,voices=0,forcedCount=-1,failed=false,cancelled=0;
 std::unordered_map<uint32_t,uint32_t>memory,kinds,types,ids,tokens;
 std::vector<uint32_t>selection;
-struct Event{uint32_t id,target;int tag;};std::vector<Event>events;
+struct Event{uint32_t id,target;int tag,mission;};std::vector<Event>events;
 template<class T>T get(uint32_t at){uint32_t v=memory[at];T out{};std::memcpy(&out,&v,sizeof(T));return out;}
 void w(uint32_t at,uint32_t value){memory[at]=value;}
 struct Objects{bool contains(uint32_t p){return ids.count(p)!=0;}}worldObjects;
@@ -48,12 +48,14 @@ bool simulationReady(){return ready;}bool outgoingRoom(){return budget>0;}
 void cancelNative(uint32_t,bool){++cancelled;}void inputFeedback(uint32_t,int,bool){++voices;}
 namespace eventdelivery{bool mayQueue(int){return session;}}
 namespace taskarbiter{enum class Owner{Generic};}
-bool nativeMission(uint32_t,uint32_t id,int mission,uint32_t target,uint32_t dest,int destTag,uint32_t nearest,int nearestTag,taskarbiter::Owner,uint32_t*,int tag){
- assert(mission==1&&!dest&&!destTag&&!nearest&&!nearestTag&&(tag==11||tag==0x34));
- if(failed)return false;assert(budget>0);--budget;events.push_back({id,target,tag});return true;
+bool nativeMission(uint32_t,uint32_t id,int mission,uint32_t target,uint32_t dest,int destTag,uint32_t nearest=0,int nearestTag=0,taskarbiter::Owner=taskarbiter::Owner::Generic,uint32_t* =nullptr,int tag=0x34){
+ assert((mission==1||mission==0||mission==5||mission==23)&&!dest&&!destTag&&!nearest&&!nearestTag&&(tag==11||tag==0x34));
+ if(failed)return false;assert(budget>0);--budget;events.push_back({id,target,tag,mission});return true;
 }
 '''
-code+='#include '+json.dumps((root/'source/attack_ground_bridge.h').as_posix())+'\n'
+code+='uint32_t sampleClock(Shared*){return 100;}\n'
+for name in ('attack_ground_bridge.h','selected_mode_bridge.h'):
+ code+=(a.baseline/name).read_text()+'\n' if a.baseline else '#include '+json.dumps((root/'source'/name).as_posix())+'\n'
 code+='#include '+json.dumps((root.parents[0]/'suite/source/settings_categories.h').as_posix())+'\n'
 code+=r'''
 namespace hotkeyroute{struct Group{std::vector<int>actions,bindings;};}
@@ -107,6 +109,23 @@ int main(){unsigned checks=0;auto check=[&](bool x){++checks;if(!x){std::fprintf
  key={{1727,1001},{1727,1001}};ownGroundHotkey(key,true);check(keySends==1&&notifications==2&&key.actions==std::vector<int>{1001});
  key={{1001},{1001}};ownGroundHotkey(key,true);check(keySends==1&&key.actions.size()==1);
  int ids[]={9176,9177};check(suite::categories::row(4,ids,2)==suite::categories::Control);
+ for(int mission:{0,5,23}){
+  fresh();for(int n=0;n<60;++n)actor(n);check(selectedModeCommand(0x90000,mission)==-30);
+  check(events.size()==24&&ownground::job.pending&&!pendingAckReady);
+  selection.clear();actor(500);tokens[1050]=1;w(0x1000000+49*4096+0x6c,0);
+  budget=24;ownGroundTick(0x90000,10,101);check(events.size()==24);
+  ownGroundTick(0x90000,11,116);check(events.size()==48&&ownground::job.pending);
+  budget=24;ownGroundTick(0x90000,12,132);
+  check(events.size()==58&&!ownground::job.pending&&shared.count==58&&voices==1);
+  bool correct=true;for(auto e:events)correct&=e.mission==mission&&!e.target&&e.id!=1500&&e.id!=1050&&e.id!=1049;check(correct);
+  fresh();actor(0);budget=0;check(selectedModeCommand(0x90000,mission)==-30&&events.empty());
+  budget=24;ownGroundTick(0x90000,11,116);check(events.size()==1&&shared.count==1);
+  fresh();actor(0);budget=0;selectedModeCommand(0x90000,mission);shared.request=2;
+  budget=24;ownGroundTick(0x90000,11,116);check(events.empty()&&!ownground::job.pending&&!pendingAckReady);
+  fresh();actor(0);budget=0;selectedModeCommand(0x90000,mission);
+  budget=24;ownGroundTick(0x90000,11,3601);check(events.empty()&&shared.result==-7);
+  fresh();actor(0);attackOwnGroundCommand(0x90000,100,1);check(events.size()==1&&events[0].mission==1);
+ }
  std::printf("PASS %u production own-ground batching/input checks\n",checks);
 }
 '''
