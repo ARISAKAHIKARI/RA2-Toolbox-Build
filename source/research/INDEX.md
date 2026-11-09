@@ -324,3 +324,5 @@
 - [设置保存误报权限、重复旧键删除与运行中重试](2026-11-07-settings-save-recovery.md)（1.0.43-pre.13；实际 Store/生产保存轨迹反例，真实错误来源与失败意图保留；非用户 Windows 文件系统实测）
 
 - [1.0.44：Broker 非阻塞生命周期、建造预定固定锚点/世界意图与 SHA/SHP 禁用](2026-11-08-release-144-broker-reservation-assets.md)（Host/UI 修复与受控前后对照；实机未验收）
+
+- [pre.7 后台异常恢复与GPU阶段区域](2026-11-09-pre147-worker-recovery-gpu-regions.md)：Latest/Recurring异常隔离及退避、视口阶段区域派发，保留串行位移和首/末全局工作；软件Vulkan逐像素验证边界。

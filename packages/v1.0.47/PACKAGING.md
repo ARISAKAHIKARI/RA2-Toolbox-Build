@@ -246,3 +246,7 @@ python3 -B "$RA2_REPO/packages/v1.0.47/package_release.py" \
 - `SHA256SUMS.txt`
 
 ZIP 完成 CRC、成员和逐项摘要回读后，脚本再次核对源码、HEAD、产物、日志与回执未变化，再一次性移出临时目录。manifest 固定 `prerelease:true`、`make_latest:false`；不宣称真实 Windows、游戏、物理 GPU 或多人联机已验收。`README.txt` 是随包用户说明草稿，包含上述验收边界及未交付事项。
+
+## pre.7 GPU 与后台任务恢复
+
+版本为 1.0.47-pre.7 / 1.0.47.7。保留以上39组实际执行门槛，并另附本轮 worker_failure_recovery、GPU phase-region 的原始执行日志和源码绑定。Vulkan 软件设备结果不代表物理GPU速度。

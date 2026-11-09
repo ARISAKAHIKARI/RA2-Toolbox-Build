@@ -1,6 +1,6 @@
 {
-  "name": "RA2 Toolbox 1.0.47-pre.6",
-  "version": "1.0.47-pre.6",
+  "name": "RA2 Toolbox 1.0.47-pre.7",
+  "version": "1.0.47-pre.7",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",

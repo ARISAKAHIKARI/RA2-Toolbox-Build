@@ -4,6 +4,7 @@
 #include "gpu_scene_sources.h"
 #include "gpu_scene_bins.h"
 #include "gpu_phase_csr.h"
+#include "gpu_scene_dispatch.h"
 #include "vulkan_present.h"
 #include "gpu_motion.h"
 #include "vulkan_scene_spirv.h"
@@ -42,6 +43,7 @@ class FrameResolve : public Resolve {
  VkPipeline scenePipeline_=VK_NULL_HANDLE,scene64Pipeline_=VK_NULL_HANDLE,effectsPipeline_=VK_NULL_HANDLE;
  bool sceneReady_=false,xbrzChecked_=false,xbrzChecking_=false,xbrzRejected_=false;
  unsigned faultStage_=0;
+ uint64_t sceneInvocations_=0,fullSceneInvocations_=0;
  void recordFault(const char*reason){
 #ifdef _WIN32
   wchar_t path[MAX_PATH]{};DWORD n=GetModuleFileNameW(nullptr,path,MAX_PATH);if(!n||n>=MAX_PATH-40)return;while(n&&path[n-1]!=L'\\'&&path[n-1]!=L'/')--n;const wchar_t name[]=L"RA2Toolbox-gpu-fault.log";std::copy(std::begin(name),std::end(name),path+n);HANDLE file=CreateFileW(path,FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);if(file==INVALID_HANDLE_VALUE)return;DWORD written=0;WriteFile(file,reason,DWORD(std::strlen(reason)),&written,nullptr);WriteFile(file,"\r\n",2,&written,nullptr);CloseHandle(file);
@@ -111,6 +113,8 @@ public:
  std::shared_ptr<const gpumotion::Guides> guides()const{return guides_;}
  uint64_t guideAllocationFailures()const{return guideAllocationFailures_;}
  const scenebins::Cost&sceneBinCost()const{return bins_.cost;}
+ uint64_t sceneInvocations()const{return sceneInvocations_;}
+ uint64_t fullSceneInvocations()const{return fullSceneInvocations_;}
  bool renderFrame(const FrameJob&frame,std::vector<uint32_t>&out,std::vector<uint8_t>*maskOut=nullptr,std::shared_ptr<const gpupresent::Frame>*gpuOut=nullptr){
   guides_.reset();if(gpuOut)gpuOut->reset();if(abandoned_)return false;
   struct Context {FrameResolve*self;const FrameJob*frame;std::vector<uint32_t>*out;std::vector<uint8_t>*mask;std::shared_ptr<const gpupresent::Frame>*gpu;}context{this,&frame,&out,maskOut,gpuOut};
@@ -121,6 +125,7 @@ public:
 private:
  bool renderFrameImpl(const FrameJob&frame,std::vector<uint32_t>&out,std::vector<uint8_t>*maskOut,std::shared_ptr<const gpupresent::Frame>*gpuOut=nullptr){
   faultStage_=1;
+  sceneInvocations_=fullSceneInvocations_=0;
   const auto started=std::chrono::steady_clock::now();diagnostics_.uploads=diagnostics_.uploadedBytes=diagnostics_.dispatches=diagnostics_.readbacks=diagnostics_.xbrzBuilds=diagnostics_.voxelRasters=0;diagnostics_.prepareMilliseconds=diagnostics_.waitMilliseconds=diagnostics_.readbackMilliseconds=0;
   const int w=frame.width,h=frame.height;const uint64_t pixels=uint64_t(std::max(0,w))*std::max(0,h);
   if(disabled_)return false;
@@ -240,7 +245,25 @@ private:
   if(!voxelJobs.empty())voxels_.record(command_);
   if(!baseDispatches.empty()){vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,pipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,pipelineLayout_,0,1,&descriptors_,0,nullptr);for(const auto&d:baseDispatches){vkCmdPushConstants_(command_,pipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(Params),&d.params);vkCmdDispatch_(command_,(d.params.width+7)/8,(d.params.height+7)/8,1);}VkMemoryBarrier resolve{VK_STRUCTURE_TYPE_MEMORY_BARRIER};resolve.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT;resolve.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&resolve,0,nullptr,0,nullptr);}
   vkCmdBindPipeline_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,needs64?scene64Pipeline_:scenePipeline_);vkCmdBindDescriptorSets_(command_,VK_PIPELINE_BIND_POINT_COMPUTE,scenePipelineLayout_,0,1,&sceneDescriptors_,0,nullptr);
-  size_t sceneDispatches=0;auto dispatchScene=[&](uint32_t first,uint32_t last,bool serial,bool final){const auto binding=sceneDispatches<phaseBins.size()?phaseBins[sceneDispatches]:originalBins;params.binsOffset=binding.binsOffset;params.refsOffset=binding.refsOffset;params.firstDraw=first;params.lastDraw=last;params.phase=(sceneDispatches?0u:1u)|(serial?2u:0u)|(final?4u:0u);vkCmdPushConstants_(command_,scenePipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(params),&params);vkCmdDispatch_(command_,serial?1:(w+7)/8,serial?1:(h+7)/8,1);++sceneDispatches;VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);};
+  size_t sceneDispatches=0,scenePhases=0;
+  const bool globalFinal=collectGuides||(!frame.nativeScene&&(frame.maskPlan||frame.fogAlpha));
+  auto dispatchScene=[&](uint32_t first,uint32_t last,bool serial,bool final){
+   const bool initial=scenePhases==0;
+   const auto binding=scenePhases<phaseBins.size()?phaseBins[scenePhases]:originalBins;
+   ++scenePhases;
+   const auto region=scenedispatch::region(bounds,first,last,w,h,initial,serial,final&&globalFinal,
+       {frame.clipLeft,frame.clipTop,frame.clipRight,frame.clipBottom});
+   fullSceneInvocations_+=serial?64:uint64_t((w+7)/8)*((h+7)/8)*64;
+   sceneInvocations_+=region.invocations();
+   if(!region.groupsX||!region.groupsY)return;
+   params.binsOffset=binding.binsOffset;params.refsOffset=binding.refsOffset;
+   params.firstDraw=first;params.lastDraw=last;params.format=region.origin();
+   params.phase=(initial?1u:0u)|(serial?2u:0u)|(final?4u:0u);
+   vkCmdPushConstants_(command_,scenePipelineLayout_,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(params),&params);
+   vkCmdDispatch_(command_,region.groupsX,region.groupsY,1);++sceneDispatches;
+   VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;
+   vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&ready,0,nullptr,0,nullptr);
+  };
   uint32_t first=0;for(uint32_t n=0;n<frame.draws.size();++n)if(scenesources::active(bounds[n])&&frame.draws[n].displace){if(n>first||!sceneDispatches)dispatchScene(first,n,false,false);dispatchScene(n,n+1,true,false);first=n+1;}dispatchScene(first,uint32_t(frame.draws.size()),false,true);
   for(auto d:effectDispatches){d.params[7]=uint32_t(pixels*3);d.params[12]=params.zaOffset;d.params[13]=frame.nativeScene;
    VkMemoryBarrier ready{VK_STRUCTURE_TYPE_MEMORY_BARRIER};ready.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT|VK_ACCESS_SHADER_READ_BIT;ready.dstAccessMask=d.snapshot?VK_ACCESS_TRANSFER_READ_BIT|VK_ACCESS_TRANSFER_WRITE_BIT:VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT;
@@ -250,7 +273,9 @@ private:
   }
   VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};after.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT;after.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&after,0,nullptr,0,nullptr);if(direct)direct_.record(command_,output_.buffer);else{VkBufferCopy copy{0,0,totalOutputBytes};vkCmdCopyBuffer_(command_,output_.buffer,readback_.buffer,1,&copy);}if(maskBytes){VkMemoryBarrier maskCopy{VK_STRUCTURE_TYPE_MEMORY_BARRIER};maskCopy.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;maskCopy.dstAccessMask=VK_ACCESS_TRANSFER_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&maskCopy,0,nullptr,0,nullptr);VkBufferCopy mask{VkDeviceSize(materialPlan.offsets[fog])*4,totalOutputBytes,maskBytes};vkCmdCopyBuffer_(command_,materials_.buffer,readback_.buffer,1,&mask);}VkMemoryBarrier host{VK_STRUCTURE_TYPE_MEMORY_BARRIER};host.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;host.dstAccessMask=VK_ACCESS_HOST_READ_BIT;vkCmdPipelineBarrier_(command_,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,1,&host,0,nullptr,0,nullptr);
   faultStage_=6;if(vkEndCommandBuffer_(command_)!=VK_SUCCESS)return fatal("GPU scene completion failed");VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};submit.commandBufferCount=1;submit.pCommandBuffers=&command_;if(direct)direct_.submission(submit);if(vkQueueSubmit_(queue_,1,&submit,fence_)!=VK_SUCCESS)return fatal("GPU scene submission failed");inFlight_=true;faultStage_=7;
-  const uint64_t waitBudget=AllowSoftware&&diagnostics_.softwareDevice?10000000000ull:100000000ull;const auto waitStarted=std::chrono::steady_clock::now();diagnostics_.prepareMilliseconds=std::chrono::duration<double,std::milli>(waitStarted-started).count();const auto waited=vkWaitForFences_(device_,1,&fence_,VK_TRUE,waitBudget);diagnostics_.waitMilliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-waitStarted).count();if(waited!=VK_SUCCESS){quarantined().store(true,std::memory_order_relaxed);return fatal("GPU scene timed out/lost; CPU fallback");}inFlight_=false;
+  // Explicit software-only validation uses the same 60s ceiling as AreaResolve.
+  // Physical devices keep the established 100ms timeout and quarantine policy.
+  const uint64_t waitBudget=AllowSoftware&&diagnostics_.softwareDevice?60000000000ull:100000000ull;const auto waitStarted=std::chrono::steady_clock::now();diagnostics_.prepareMilliseconds=std::chrono::duration<double,std::milli>(waitStarted-started).count();const auto waited=vkWaitForFences_(device_,1,&fence_,VK_TRUE,waitBudget);diagnostics_.waitMilliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-waitStarted).count();if(waited!=VK_SUCCESS){quarantined().store(true,std::memory_order_relaxed);return fatal("GPU scene timed out/lost; CPU fallback");}inFlight_=false;
   const auto copyStarted=std::chrono::steady_clock::now();
   if(direct){out.clear();*gpuOut=direct_.completed();}
   else{

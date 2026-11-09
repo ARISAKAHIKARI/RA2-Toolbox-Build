@@ -4,6 +4,7 @@
 #define main mixed_renderer_driver_main
 #include "gpu_mixed_render_stress.cpp"
 #undef main
+#include "gpu_software_wait.h"
 
 namespace {
 namespace csr=external::phasecsr;
@@ -45,7 +46,7 @@ void exactWords(const std::vector<uint32_t>&a,const std::vector<uint32_t>&b,cons
  for(size_t n=0;n<a.size();++n)if(a[n]!=b[n])throw std::runtime_error(std::string(path)+" original/filtered RGBA differs at frame "+std::to_string(frame)+" word "+std::to_string(n));
 }
 void viewportQuality(mixedstress::Workload&w){
- vulkancompute::FrameResolve original,filtered;ViewPlan recorder;std::vector<uint32_t>a,b;
+ validationgpu::SlowSoftware<vulkancompute::FrameResolve> original,filtered;ViewPlan recorder;std::vector<uint32_t>a,b;
  for(unsigned frame:{20u,60u,130u}){
   w.update(frame);recorder.build(w,1280,720,frame);const auto&plan=recorder.record.frame();
   csr::testDisable(true);if(!original.renderFrame(plan,a))throw std::runtime_error("original viewport GPU failed: "+original.diagnostics().reason);
@@ -57,7 +58,7 @@ void viewportQuality(mixedstress::Workload&w){
  }
 }
 void areaQuality(mixedstress::Workload&w){
- vulkancompute::AreaResolve original,filtered;camera::ObjectCanvas recorder;gpuarea::Plan p;std::vector<uint32_t>a,b;
+ validationgpu::SlowSoftware<vulkancompute::AreaResolve> original,filtered;camera::ObjectCanvas recorder;gpuarea::Plan p;std::vector<uint32_t>a,b;
  for(unsigned frame:{20u,60u,130u}){
   w.update(frame);require(recorder.planGPU(w.base,w.draws,512,256,w.width,w.height,p),"area quality recording failed");p.effects=w.effects(512,256,frame);
   csr::testDisable(true);if(!original.render(p,a))throw std::runtime_error("original area GPU failed: "+original.diagnostics().reason);
@@ -72,7 +73,7 @@ void encodedViewportQuality(){
  vulkancompute::FrameJob p;p.width=192;p.height=96;p.basePixels=std::make_shared<const std::vector<uint32_t>>(size_t(p.width)*p.height,0xff264052);
  for(uint32_t n=0;n<80;++n){vulkancompute::DrawJob d;d.source.width=d.source.height=24;d.source.pixels=std::make_shared<const std::vector<uint32_t>>(24*24,0xff000000u|(n*171723u&0xffffffu));d.left=32;d.top=20;d.skipZ=true;d.writeDepth=false;d.translucency=n%3;d.displace=n==25||n==55;d.cloakWords=d.displace?3:0;d.nativePitch=p.width;p.draws.push_back(d);}
  std::vector<uint32_t>packed(80);for(uint32_t n=0;n<80;++n)packed[n]=n;vulkancompute::encodeReadOnlyRuns(p.draws,packed,{0,80});require(std::any_of(packed.begin(),packed.end(),[](uint32_t x){return x>>16;}),"encoded fixture must contain read-only runs");
- vulkancompute::FrameResolve original,filtered;std::vector<uint32_t>a,b;
+ validationgpu::SlowSoftware<vulkancompute::FrameResolve> original,filtered;std::vector<uint32_t>a,b;
  csr::testDisable(true);if(!original.renderFrame(p,a))throw std::runtime_error("original encoded viewport failed: "+original.diagnostics().reason);
  csr::testDisable(false);if(!filtered.renderFrame(p,b))throw std::runtime_error("filtered encoded viewport failed: "+filtered.diagnostics().reason);
  require(csr::testState().selectedAppends==1,"encoded viewport did not select filtered CSR");exactWords(a,b,"encoded viewport",0);

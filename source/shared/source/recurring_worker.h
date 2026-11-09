@@ -8,6 +8,7 @@
 #include <mutex>
 #include <thread>
 #include "deadline_wake.h"
+#include "worker_failure.h"
 namespace asyncwork {
 // One immutable latest configuration, one running job, and its own clock.
 // UI submissions update configuration/lease; they do not schedule each frame.
@@ -19,6 +20,7 @@ template<class Input,class Output>class Recurring {
  std::function<std::shared_ptr<const Output>(const Input&)> work_;
  std::function<void()> completed_;
  Clock::time_point due_{},expires_{};int rate_=60;uint64_t epoch_=0;bool stop_=false;
+ Clock::time_point retryAfter_{};WorkerFailureState failures_;
  void run(){for(;;){std::shared_ptr<const Input> input;uint64_t epoch;
   {
    std::unique_lock<std::mutex>lock(mutex_);
@@ -27,16 +29,27 @@ template<class Input,class Output>class Recurring {
     if(!input_){cv_.wait(lock,[&]{return stop_||input_;});continue;}
     auto now=Clock::now();
     if(now>=expires_){auto input=std::move(input_);auto output=std::move(latest_);lock.unlock();input.reset();output.reset();lock.lock();continue;}
-    if(now<due_){cv_.wait_until(lock,std::min(due_,expires_));continue;}
+    const auto ready=std::max(due_,retryAfter_);
+    if(now<ready){cv_.wait_until(lock,std::min(ready,expires_));continue;}
     input=input_;epoch=epoch_;
     due_=now+std::chrono::nanoseconds(1000000000ll/rate_);break;
    }
   }
-  auto result=work_(*input);bool published=false;
+  std::shared_ptr<const Output> result;
+  try { result=work_(*input); }
+  catch(...) {
+   failures_.workFailed();
+   std::lock_guard<std::mutex>lock(mutex_);
+   // A persistent decode/allocation failure must not spin at the 1000 Hz
+   // observation rate. An invalidated old job cannot delay the new world.
+   if(epoch==epoch_)retryAfter_=Clock::now()+std::chrono::milliseconds(100);
+   continue;
+  }
+  bool published=false;
   {std::lock_guard<std::mutex>lock(mutex_);
    if(!stop_&&epoch==epoch_&&input_&&Clock::now()<expires_&&result){latest_.swap(result);published=true;}
   }
-  if(published&&completed_)completed_();
+  if(published&&completed_)try { completed_(); }catch(...) { failures_.notificationFailed(); }
  }}
 public:
  explicit Recurring(std::function<std::shared_ptr<const Output>(const Input&)> work,std::function<void()> completed={}):work_(std::move(work)),completed_(std::move(completed)){}
@@ -48,7 +61,8 @@ public:
   if(!thread_.joinable())thread_=std::thread([this]{run();});cv_.notify_one();
  }
  std::shared_ptr<const Output> get(){std::lock_guard<std::mutex>lock(mutex_);return latest_;}
- void invalidate(){std::shared_ptr<const Input> input;std::shared_ptr<const Output> output;{std::lock_guard<std::mutex>lock(mutex_);++epoch_;input=std::move(input_);output=std::move(latest_);cv_.notify_one();}}
+ WorkerFailures failures()const noexcept{return failures_.get();}
+ void invalidate(){std::shared_ptr<const Input> input;std::shared_ptr<const Output> output;{std::lock_guard<std::mutex>lock(mutex_);++epoch_;retryAfter_={};input=std::move(input_);output=std::move(latest_);cv_.notify_one();}}
  void shutdown(){
   std::shared_ptr<const Input> input;std::shared_ptr<const Output> output;
   {std::lock_guard<std::mutex>lock(mutex_);stop_=true;++epoch_;input=std::move(input_);output=std::move(latest_);cv_.notify_one();}

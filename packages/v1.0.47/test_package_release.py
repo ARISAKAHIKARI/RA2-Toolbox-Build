@@ -399,7 +399,7 @@ class PackageGates(unittest.TestCase):
         self.assertEqual(set(PACKAGE.FEATURE_CHECKS), set(FEATURE_LOGS) | set(PACKAGE.ENTRY_BINDINGS))
         self.assertEqual(set(self.verify()), self.expected_log_paths(self.receipt))
         self.assertEqual(len(PACKAGE.CHECK_BINDINGS), 38)
-        self.assertEqual((PACKAGE.VERSION, PACKAGE.FILE_VERSION), ('1.0.47-pre.6', '1.0.47.6'))
+        self.assertEqual((PACKAGE.VERSION, PACKAGE.FILE_VERSION), ('1.0.47-pre.7', '1.0.47.7'))
 
     def test_shared_transition_accepts_only_reviewed_protocol_103_tail(self):
         self.assertEqual(PACKAGE.ASSIST_PROTOCOL, 103)
