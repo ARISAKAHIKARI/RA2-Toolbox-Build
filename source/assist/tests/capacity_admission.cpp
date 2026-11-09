@@ -10,6 +10,7 @@
 #include "../source/unload_policy.h"
 #include "../source/unload_admission.h"
 #include "../source/variant_keys.h"
+#include "../source/type_hotkey.h"
 using namespace assist;using DWORD=uint32_t;
 constexpr uint32_t SmartUnloadOrders=1;
 struct Shared{uint32_t flags=SmartUnloadOrders;}shared,*sh=&shared;
