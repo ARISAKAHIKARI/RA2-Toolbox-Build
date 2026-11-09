@@ -41,6 +41,7 @@ struct MEMORY_BASIC_INFORMATION { void* BaseAddress;void* AllocationBase;DWORD A
 #define WS_EX_TOOLWINDOW 0x00000080L
 extern "C" { HANDLE OpenProcess(DWORD,BOOL,DWORD); BOOL CloseHandle(HANDLE); DWORD GetLastError(); BOOL GetExitCodeProcess(HANDLE,DWORD*); BOOL ReadProcessMemory(HANDLE,LPCVOID,void*,SIZE_T,SIZE_T*); SIZE_T VirtualQueryEx(HANDLE,LPCVOID,MEMORY_BASIC_INFORMATION*,SIZE_T);DWORD GetCurrentProcessId();BOOL EnumWindows(BOOL(*)(HWND,LPARAM),LPARAM); BOOL GetClientRect(HWND,RECT*); DWORD GetWindowThreadProcessId(HWND,DWORD*); BOOL IsWindowVisible(HWND); BOOL IsIconic(HWND); LONG GetWindowLongW(HWND,int); HWND GetWindow(HWND,unsigned);}
 extern "C" BOOL QueryFullProcessImageNameW(HANDLE,DWORD,wchar_t*,DWORD*);
+extern "C" {HANDLE CreateEventW(void*,BOOL,BOOL,const wchar_t*);HANDLE OpenEventW(DWORD,BOOL,const wchar_t*);BOOL SetEvent(HANDLE);}
 #define CALLBACK
 #define ERROR_SUCCESS 0
 struct LARGE_INTEGER {int64_t QuadPart;};

@@ -38,6 +38,7 @@ HANDLE OpenThread(DWORD,bool,DWORD);DWORD WaitForSingleObject(HANDLE,DWORD);bool
 HANDLE CreateFileMappingW(HANDLE,void*,DWORD,DWORD,DWORD,const wchar_t*);void* MapViewOfFile(HANDLE,DWORD,DWORD,DWORD,size_t);bool UnmapViewOfFile(void*);
 HANDLE CreateEventW(void*,bool,bool,const wchar_t*);
 HANDLE OpenFileMappingW(DWORD,bool,const wchar_t*);
+HANDLE OpenEventW(DWORD,bool,const wchar_t*);bool SetEvent(HANDLE);
 inline LONG InterlockedIncrement(volatile LONG*p){return __sync_add_and_fetch(p,1);}
 bool CreateTimerQueueTimer(HANDLE*,HANDLE,void(*)(void*,BOOLEAN),void*,DWORD,DWORD,DWORD);
 inline LONG InterlockedExchange(volatile LONG*p,LONG v){return __atomic_exchange_n(p,v,__ATOMIC_SEQ_CST);}
@@ -60,7 +61,7 @@ static DWORD unhookError=ERROR_ACCESS_DENIED;
 static std::unordered_set<uintptr_t> exitedProcesses;static bool waitFailed=false,denyProcessWait=false;
 static uint64_t preciseOverride=0;static int timerBalance=0,timerPeriod=4;
 bool QueryPerformanceCounter(LARGE_INTEGER*p){p->QuadPart=preciseOverride?preciseOverride:uint64_t(clockMs)*1000;return true;}bool QueryPerformanceFrequency(LARGE_INTEGER*p){p->QuadPart=1000000;return true;}
-unsigned timeBeginPeriod(unsigned p){assert(p==1);++timerBalance;return 0;}unsigned timeEndPeriod(unsigned p){assert(p==1);--timerBalance;return 0;}bool ChangeTimerQueueTimer(HANDLE,HANDLE,DWORD due,DWORD period){assert(due==period);timerPeriod=period;return true;}
+unsigned timeBeginPeriod(unsigned p){assert(p==1);++timerBalance;return 0;}unsigned timeEndPeriod(unsigned p){assert(p==1);--timerBalance;return 0;}bool ChangeTimerQueueTimer(HANDLE,HANDLE,DWORD due,DWORD period){assert(due==period);timerPeriod=due;return true;}
 static POINT cursorPoint{100,100};static bool keyDown[256]{};static uint32_t nativeHwnd=42;static bool readable=true;
 HANDLE OpenProcess(DWORD access,bool,DWORD pid){if(denyProcessWait&&access==SYNCHRONIZE){error=ERROR_ACCESS_DENIED;return nullptr;}return (HANDLE)(uintptr_t)pid;}
 bool GetExitCodeProcess(HANDLE,DWORD*p){*p=STILL_ACTIVE;return true;}
@@ -262,12 +263,12 @@ int main(){
  // All real subscription/cleanup scenarios above have finished.
  for(auto& target:host().targets)if(target.pid)clear(target);
  for(auto& lease:host().leases)lease={};updateTimer();
- assert(host().timerPeriod==250&&timerPeriod==250&&timerBalance==0);
- const int idlePosts=posts;for(unsigned i=0;i<100;++i){clockMs+=250;pulse(nullptr,0);}assert(posts==idlePosts);
+ assert(host().timerPeriod==1000&&timerPeriod==1000&&timerBalance==0);
+ const int idlePosts=posts;for(unsigned i=0;i<100;++i){clockMs+=1000;pulse(nullptr,0);}assert(posts==idlePosts);
  nativeHwnd=42;windowThread=12;fg=42;oldDead=false;waitFailed=false;failUnhook=false;exitedProcesses.clear();
  auto resumed=install(Client::Assist,12,42,(HWND)42);assert(resumed&&host().timerPeriod==4&&timerPeriod==4);
- assert(release(Client::Assist,resumed));assert(timerPeriod==250&&timerBalance==0);
- std::puts("PASS idle host cadence 4ms -> 250ms, no-target callbacks post nothing, attach restores 4ms before returning");
+ assert(release(Client::Assist,resumed));assert(timerPeriod==1000&&timerBalance==0);
+ std::puts("PASS idle host cadence 4ms -> 1000ms, no-target callbacks post nothing, attach restores 4ms before returning");
 }
 '''
 other='''#include "host_game_input.h"

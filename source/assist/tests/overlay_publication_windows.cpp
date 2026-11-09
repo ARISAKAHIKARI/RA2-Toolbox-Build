@@ -51,7 +51,7 @@ int main(){
  assert(f.update(1030,5,resized,{wideLayer,hud}));assert(f.dib.pixels[9]==0xffffffffu);const auto dirtyBefore=f.copied;
  assert(f.update(1031,6,resized,{wideLayer}));assert(f.dib.pixels[9]==0xff112233u&&f.copied-dirtyBefore==1);
  using Clock=std::chrono::steady_clock;const auto time=Clock::time_point{};using namespace std::chrono;
- assert(overlaypublication::pollDelay(time,time+milliseconds(200),true)==milliseconds(8));
+ assert(overlaypublication::pollDelay(time,time+milliseconds(200),true)==milliseconds(16));
  assert(overlaypublication::pollDelay(time,time+milliseconds(2),true)==milliseconds(2));
  assert(overlaypublication::pollDelay(time,time-milliseconds(1),true)==Clock::duration::zero());
  overlaypresentrate::Cadence cadence;cadence.submitted(time);assert(cadence.deadline(time,500)==time+milliseconds(2));

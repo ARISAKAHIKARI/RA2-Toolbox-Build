@@ -11,7 +11,7 @@ namespace renderpresentation {
 // withdraw an otherwise valid front image after 100 ms. Neither retries nor UI
 // polls renew these timestamps; menu/focus/world/config invalidation is immediate.
 constexpr uint32_t SampleMaxAge=2500,CompletionMaxAge=1500,ViewReadGrace=120;
-constexpr int ObservationRate=1000;
+constexpr int ObservationFallbackRate=250;
 inline bool sameProjection(external::mainview::View a,const external::mainview::View&b){
  a.cameraX=b.cameraX;a.cameraY=b.cameraY;return external::mainview::sameViewport(a,b);
 }

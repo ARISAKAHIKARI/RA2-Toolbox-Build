@@ -43,6 +43,10 @@ inline void name(wchar_t*out,uint32_t pid,uint32_t owner){
  const wchar_t*prefix=L"Local\\RA2WorldFrame_v002_";size_t i=0;while(*prefix)out[i++]=*prefix++;
  appendNumber(out,i,pid);out[i++]=L'_';appendNumber(out,i,owner);out[i]=0;
 }
+inline void notificationName(wchar_t*out,uint32_t pid,uint32_t owner,uint64_t connection){
+ const wchar_t*prefix=L"Local\\RA2WorldReady_v001";size_t i=0;while(*prefix)out[i++]=*prefix++;
+ for(uint32_t n:{pid,owner,uint32_t(connection),uint32_t(connection>>32)}){out[i++]=L'_';appendNumber(out,i,n);}out[i]=0;
+}
 inline void dataName(wchar_t*out,const Key&key,uint32_t slot,uint32_t allocation){
  const wchar_t*prefix=L"Local\\RA2WorldData_v002";size_t i=0;while(*prefix)out[i++]=*prefix++;
  for(uint32_t n:{key.pid,key.owner,key.generationLow,key.generationHigh,key.connectionLow,key.connectionHigh,slot,allocation}){out[i++]=L'_';appendNumber(out,i,n);}out[i]=0;
@@ -101,6 +105,7 @@ public:
 // already producing later frames. Neither process waits for a reader lease.
 class Client {
  std::mutex mutex_;HANDLE mapping_=nullptr;Channel*channel_=nullptr;
+ std::shared_ptr<void> notification_;
  uint32_t pid_=0,owner_=0;Token latest_;uint32_t copiedSerial_=0;
  // Pool only dead publications' storage, never their shared/weak identity.
  // Full pools allocate normally; no wait for a reader or dropped publication.
@@ -170,10 +175,21 @@ class Client {
   wantedDirty_=!wanted_.empty();havePublished_=havePruned_=false;expiryAfter_=0;demandDirty_=true;demandAfter_=0;return true;
  }
  void clearCopy(){latest_.reset();if(copies_)copies_->clear();copies_.reset();copiedSerial_=0;copiedSlot_=-1;copiedData_={};for(auto&view:data_)view.close();}
- void close(){clearCopy();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;}
+ void close(){clearCopy();notification_.reset();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;}
 public:
  explicit Client(uint32_t pid,uint64_t generation):pid_(pid),owner_(GetCurrentProcessId()),generation_(generation){}
  ~Client(){close();}Client(const Client&)=delete;Client&operator=(const Client&)=delete;
+ // Only the main observation worker waits on this auto-reset event. All
+ // consumers still share immutable tokens and validate their own identities.
+ // Server creates the event: old runtimes/creation failure keep the bounded
+ // polling fallback instead of silently dropping to the maintenance rate.
+ std::shared_ptr<void> publicationSignal(){
+  std::lock_guard<std::mutex>lock(mutex_);
+  if(!valid(channel_,pid_,owner_)||!connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32)))return {};
+  if(!notification_){wchar_t path[100];notificationName(path,pid_,owner_,generation_);
+   if(HANDLE event=OpenEventW(SYNCHRONIZE,FALSE,path))notification_=std::shared_ptr<void>(event,[](void*h){CloseHandle(h);});}
+  return notification_;
+ }
  // Cheap duplicate observation: no mapping/import, subscription scan or
  // heartbeat renewal. The caller must periodically take the ordinary path.
  // Read both publication and observation seqlocks: a retired/replaced world
@@ -249,6 +265,7 @@ inline std::shared_ptr<Client>acquireClient(uint32_t pid,uint64_t generation){
 
 class Server {
  HANDLE mapping_=nullptr;Channel*channel_=nullptr;uint32_t owner_=0,openAt_=0;
+ HANDLE notification_=nullptr;uint32_t notificationAttempt_=0;bool notificationTried_=false;
  std::array<DataView,2>data_;
  std::vector<uint32_t>requests_;uint32_t requestRevision_=0;
  uint64_t connection_=0;
@@ -259,7 +276,9 @@ class Server {
   if(channel_&&connectionMatches(channel_,uint32_t(connection_),uint32_t(connection_>>32))&&channel_->active>=0)retire();
   return false;
  }
- void close(){for(auto&view:data_)view.close();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;owner_=0;connection_=0;requests_.clear();requestRevision_=0;}
+ void closeNotification(){if(notification_)CloseHandle(notification_);notification_=nullptr;notificationTried_=false;}
+ void signal(){if(notification_)SetEvent(notification_);}
+ void close(){closeNotification();for(auto&view:data_)view.close();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;owner_=0;connection_=0;requests_.clear();requestRevision_=0;}
  void failed(PublishError error){if(channel_){channel_->publishError=uint32_t(error);channel_->publishSystemError=(error==PublishError::CreateMapping||error==PublishError::MapView)?GetLastError():0;++channel_->publishFailures;}}
 public:
  ~Server(){disconnect();}
@@ -274,7 +293,11 @@ public:
   }
   if(!channel_)return false;
   const LONG seq=channel_->connectionSeq;if(seq&1)return false;MemoryBarrier();const uint64_t connection=uint64_t(channel_->connectionHigh)<<32|channel_->connectionLow;MemoryBarrier();if(seq!=channel_->connectionSeq)return false;
-  if(connection!=connection_){retire();connection_=connection;requests_.clear();requestRevision_=0;}
+  if(connection!=connection_){retire();closeNotification();connection_=connection;requests_.clear();requestRevision_=0;}
+  if(!notification_&&(!notificationTried_||uint32_t(now-notificationAttempt_)>=1000)){
+   notificationTried_=true;notificationAttempt_=now;wchar_t path[100];notificationName(path,GetCurrentProcessId(),owner_,connection_);
+   notification_=CreateEventW(nullptr,FALSE,FALSE,path);
+  }
   return needed(now);
  }
  const std::vector<uint32_t>&requests(){
@@ -315,9 +338,9 @@ public:
   out.key=frame.key;out.counters=frame.counters;out.count=count;out.data=count?data_[slot].ref():DataRef{};
   MemoryBarrier();InterlockedIncrement(&out.seq);
   if(!connectionMatches(channel_,frame.key.connectionLow,frame.key.connectionHigh)){failed(PublishError::Identity);return;}
-  channel_->publishError=uint32_t(PublishError::None);channel_->publishSystemError=0;InterlockedExchange(&channel_->active,slot);
+  channel_->publishError=uint32_t(PublishError::None);channel_->publishSystemError=0;InterlockedExchange(&channel_->active,slot);signal();
  }
- void retire(){if(channel_){InterlockedExchange(&channel_->active,-1);InterlockedIncrement(&channel_->observationSeq);channel_->observedTick=0;MemoryBarrier();InterlockedIncrement(&channel_->observationSeq);}for(auto&view:data_)view.close();}
+ void retire(){if(channel_){const LONG active=InterlockedExchange(&channel_->active,-1);InterlockedIncrement(&channel_->observationSeq);channel_->observedTick=0;MemoryBarrier();InterlockedIncrement(&channel_->observationSeq);if(active>=0)signal();}for(auto&view:data_)view.close();}
  void disconnect(){retire();close();openAt_=0;}
 };
 }

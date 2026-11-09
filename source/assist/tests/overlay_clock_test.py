@@ -40,7 +40,7 @@ std::printf("PASS configure: unchanged renewals=2000 notices=%u; activation/cont
  source=out/(label+'-configure.cpp');source.write_text(fixture);execute(label+'-configure',flags+[str(source),'-o',str(out/(label+'-configure'))])
  # Keep the real old frame-clock function as a fault-injection counterexample.
  clock=out/(label+'-clock.h');clock.write_text((repo/paths[3]).read_text() if label=='current' else subprocess.check_output(['git','show',a.baseline+':'+paths[3]],cwd=repo,text=True))
- execute(label+'-runtime',flags+['-I'+str(repo/'source/assist/source'),'-DFRAME_CLOCK_HEADER="'+str(clock)+'"',str(repo/'source/assist/tests/overlay_clock_runtime.cpp'),'-o',str(out/(label+'-runtime'))],0 if label=='current' else -6)
+ execute(label+'-runtime',flags+(['-DEXPECT_IDLE_CLOCK'] if label=='current' else [])+['-I'+str(repo/'source/assist/source'),'-DFRAME_CLOCK_HEADER="'+str(clock)+'"',str(repo/'source/assist/tests/overlay_clock_runtime.cpp'),'-o',str(out/(label+'-runtime'))],0 if label=='current' else -6)
 execute('wait',flags+[str(repo/'source/assist/tests/overlay_clock_wait.cpp'),'-o',str(out/'wait')])
 assert all(hashlib.sha256((repo/n).read_bytes()).hexdigest()==sha for n,sha in before.items())
 (out/'receipt.json').write_text(json.dumps(dict(passed=True,source_inputs=before,source_unchanged=True,baseline=a.baseline,results=results,windows_executed=False,game_tested=False,scope='Verbatim production configure() and frameClock; controlled Win32 calls. Real std::threads for DeadlineWake, portable fallback only; Windows high-resolution timing not measured.'),indent=2)+'\n')

@@ -4,7 +4,9 @@
 #include <cstring>
 #include <chrono>
 namespace overlaypublication {
-constexpr uint32_t PollMilliseconds=8,RepairMilliseconds=1000;
+// Revisions/new pixels wake immediately, and upload deadlines retain their
+// own high-refresh cadence. Only focus/position/TTL housekeeping polls here.
+constexpr uint32_t PollMilliseconds=16,RepairMilliseconds=1000;
 inline std::chrono::steady_clock::duration pollDelay(std::chrono::steady_clock::time_point now,std::chrono::steady_clock::time_point uploadAt,bool scheduled){
  auto delay=std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::milliseconds(PollMilliseconds));
  return scheduled?std::min(delay,std::max(std::chrono::steady_clock::duration::zero(),uploadAt-now)):delay;

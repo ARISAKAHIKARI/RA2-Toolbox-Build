@@ -225,8 +225,9 @@ inline void updateTimer(){
  auto&h=host();bool fast=false,active=false;
  for(auto&t:h.targets)if(t.pid){active=true;if(t.fastTactical&&t.pointer.enabled&&t.pointer.focused)fast=true;}
  // Retained failed-unhook/broker cleanup targets keep the active cadence.
- // Only an empty manager goes idle; attach resumes before its first post.
- const DWORD period=active?(fast?1:4):250;
+ // Only an empty manager keeps a 1 s housekeeping cadence; attach resumes
+ // before its first post. Keep the queue timer periodic so it is rearmable.
+ const DWORD period=active?(fast?1:4):1000;
  if(!h.timer||(fast==h.preciseTimer&&period==h.timerPeriod))return;
  const bool acquired=fast&&!h.preciseTimer;
  if(acquired&&timeBeginPeriod(1)!=TIMERR_NOERROR)return;

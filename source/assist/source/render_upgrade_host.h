@@ -101,7 +101,9 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
   else{out->stateObservedMs=last->stateObservedMs;out->stateIntervalMs=last->stateIntervalMs;}
  }
  last=out;return out;
-});
+},{},[]{return asyncwork::SignalWait{sampleReader.worldPublicationSignal(),std::chrono::milliseconds(50)};},
+ [](const Request&a,const Request&b){return a.generation!=b.generation||a.pid!=b.pid||a.match!=b.match||a.reveal!=b.reveal||
+  !renderpresentation::sameProjection(a.view,b.view);});
 static external::worldscene::Pipeline worldPipeline;
 static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shared_ptr<const Frame>{
  static pipelineperf::Window timings(L"world-render",{L"attempt",L"prepare",L"compose",L"completed"});pipelineperf::Scope attempt(timings,0,critical);
@@ -345,7 +347,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  overlaycompositor::host().replaceGroupAt(publishContext,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer,feedback::PlanningHighlightLayer},std::move(layers));
  if(displaying&&presentedFrame&&presentedFrame->completedAtMs!=handedOffFrameMs){handedOffFrameMs=presentedFrame->completedAtMs;completionToHandoffMs=std::max(0.,presentationNow()-handedOffFrameMs);}
  auto sharedRequest=std::make_shared<const Request>(liveRequest);
- samplingWorker.submitShared(sharedRequest,renderpresentation::ObservationRate);
+ samplingWorker.submitShared(sharedRequest,renderpresentation::ObservationFallbackRate);
  worker.submitShared(std::move(sharedRequest),informationFPS());
 
  const uint32_t now=GetTickCount();
