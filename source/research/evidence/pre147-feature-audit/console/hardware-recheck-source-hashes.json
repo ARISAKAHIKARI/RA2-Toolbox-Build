@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-11-09T07:10:28.525423+00:00",
+  "captured_at": "2026-11-09T07:24:16.781132+00:00",
   "meaning": "Audit capture only; active shared files may be edited by root before final freeze.",
   "files": {
     "source/assist/source/bridge.cpp": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1",
@@ -69,6 +69,9 @@
     "source/hook_diagnostics/source/selection.h": "ad0967555f16bfb4db08df9f77753347bc64601472308ae29fae9c478bf0cfc6",
     "source/hook_diagnostics/source/sequence.h": "c1c39487689fd27950f3bff2b74d47fae7f0470ffe2009c5dd7e80cf74baeb13",
     "source/shared/source/frame_signal_policy.h": "e338f39f6c461d793efb94a444e25d028346f351281afd7162663d1cb47b93ba",
-    "source/shared/source/key_gesture.h": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8"
+    "source/shared/source/key_gesture.h": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8",
+    "source/tools/build_hook_diagnostics.py": "34cb8b4f9ac505e7cf2b4655cb25dad949ce36a117c82780af97a2b9138e800b",
+    "source/tools/verify_hook_diagnostics.py": "de54aaa1f3422c8a037b1abe5be5aa8e7fb1c7cffacf19e53851c61ff4f8d114",
+    "source/tools/verify_windows_outputs.py": "49831c9723b672cbafe7db7174d1d36db3971503f0bb3cd3b8eb81ca8b711646"
   }
 }

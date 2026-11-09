@@ -1226,7 +1226,9 @@
     "inherited_build_metadata_corrections": [
       "source/BUILD_SOURCE_MANIFEST.json",
       "source/build-zig-x64.sh",
-      "source/tools/verify_windows_outputs.py"
+      "source/tools/verify_windows_outputs.py",
+      "source/tools/build_hook_diagnostics.py",
+      "source/tools/verify_hook_diagnostics.py"
     ],
     "assist_protocol": 102,
     "assist_shared_bytes": 23162544,
@@ -1255,6 +1257,7 @@
       "Deduplicate polling and queued messages, with cancellation and epoch fences.",
       "Keep the 150 ms input bound for immediate selection/cursor actions across sampling gaps.",
       "Add bounded input counters and rejection/command receipts; detailed routine stages remain debug-only."
-    ]
+    ],
+    "preserved_audit_source_tree": "e2dc13b345ce84e0064fa1d1bc7ac506ce0e759f"
   }
 }

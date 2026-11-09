@@ -3,7 +3,7 @@
   "product_baseline": "1.0.46.4",
   "version": "1.0.47-pre.3",
   "comparison_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
-  "copied_at": "2026-11-09T07:15:42.070035+00:00",
+  "copied_at": "2026-11-09T07:25:13.332207+00:00",
   "matrices": [
     "tactical/tactical-feature-matrix.json",
     "display/display-feature-matrix.json",
@@ -57,13 +57,13 @@
     },
     {
       "path": "console/console-final-artifact-hashes.json",
-      "bytes": 588,
-      "sha256": "1920773b06fb0e3ac9f65f660d31dd2e31d4ffec7057c50c07ab3f5021f49db0"
+      "bytes": 933,
+      "sha256": "28c169acf5bf4fa3a1057cb145757041748fc57fb78a1756cc7d40dca4acb59c"
     },
     {
       "path": "console/console-final-handoff.json",
-      "bytes": 18841,
-      "sha256": "677470e8392ca3ac826d765dcbfd44c3cafba76b785d7efb179b890682ab941c"
+      "bytes": 22654,
+      "sha256": "c92e63e76b4321e1d6070a06c50fa43ec19a050956869b300d67e66feda3f204"
     },
     {
       "path": "console/console-matrix.json",
@@ -141,6 +141,41 @@
       "sha256": "4b1e053c4d14056cd03041b76c044f0d1ea8a253316bb7a4bf03ee1773b558f4"
     },
     {
+      "path": "console/diagnostic-tools/before/build_hook_diagnostics.py",
+      "bytes": 4088,
+      "sha256": "528ce814a507fd14e33b9f44476c97d2aeb1e2b857dd9b5d6632360035d9f229"
+    },
+    {
+      "path": "console/diagnostic-tools/before/verify_hook_diagnostics.py",
+      "bytes": 3775,
+      "sha256": "863cc251db034b97775c62f8d78e9f771d8a6eee7a78715d396bc4ede16fe9f6"
+    },
+    {
+      "path": "console/diagnostic-tools/diagnostic_identity_test.py",
+      "bytes": 9576,
+      "sha256": "f8235a4d27cfaa10192741ce9b278c21396060f64c8ff554c86390fc0ee6e1a2"
+    },
+    {
+      "path": "console/diagnostic-tools/identity-test-receipt.json",
+      "bytes": 4899,
+      "sha256": "0dc8bf02362751e16962e017b0bc583f75178e50dc20cd75401edef585bb3bd0"
+    },
+    {
+      "path": "console/diagnostic-tools/identity-test.log",
+      "bytes": 1402,
+      "sha256": "28bf3309937b32ab7ccbc5e77d93a1c4103b0c867a70bf0e3d397dcdd9ec956e"
+    },
+    {
+      "path": "console/diagnostic-tools/syntax-receipt.json",
+      "bytes": 762,
+      "sha256": "38363f1d9c66850a6f74222b5f41df291614a3fe9feba67c56a2a3b653747956"
+    },
+    {
+      "path": "console/diagnostic-tools/syntax.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
       "path": "console/frontend-after-test-runs.json",
       "bytes": 1186,
       "sha256": "77c80e5f5cc447ecd3a7ef789056f915455d448b4d371e00860f053c0fd05d16"
@@ -152,13 +187,13 @@
     },
     {
       "path": "console/hardware-recheck-source-hashes.json",
-      "bytes": 8255,
-      "sha256": "362f7b61dd7914ac3da5132b1cfca7cb049f2730a85cb88b88b1ffbc8cff0a35"
+      "bytes": 8598,
+      "sha256": "7fe810496b4ac25aeb4b3b9a2cc54939bbd1f8ca31ce9b528f740df127902a4c"
     },
     {
       "path": "console/hardware-recheck.json",
-      "bytes": 171503,
-      "sha256": "cb2b8aaa2f3a2c19add6bd421f1c2912ffe5537c4c67d4d0b74b1e04553fa646"
+      "bytes": 173515,
+      "sha256": "d9f8d41e7ab03f337b945eabd5518e88ff4d45e25b6f343f4ddeaf32d7a78f0d"
     },
     {
       "path": "console/hotkey-names.before.log",
@@ -786,14 +821,19 @@
       "sha256": "ae18828b18bf684533a596528921f5f7cd5fbc3a2839fe3b7850ac583427747b"
     },
     {
+      "path": "root/build-metadata-validation.json",
+      "bytes": 1367,
+      "sha256": "3a0e21ca72a5351aff1f82a4cd13d2469ebcf8971670972584695b11daa81a05"
+    },
+    {
       "path": "root/crossbit-abi.json",
       "bytes": 84124,
       "sha256": "5860ab88c12b74bddfd4404fa5c83499d527fe71d052c2c389cfc011d1efea9a"
     },
     {
       "path": "root/host-runtime-feature-matrix.json",
-      "bytes": 52089,
-      "sha256": "3da65b7654bc36ecb382ffeb691bb59e95c69fa311453849b0a4de15e376051f"
+      "bytes": 52595,
+      "sha256": "5608c214e4a35a576237dbc6f976932d1643bbc7378d9799b5623152398b5438"
     },
     {
       "path": "root/selection_catalogue_before.receipt.json",
@@ -1440,5 +1480,6 @@
       "bytes": 92,
       "sha256": "ddb93eda608133ca6ba67845327e6f591d53f53c1007f3d28057c8c731657a74"
     }
-  ]
+  ],
+  "metadata_correction": "Initial local build was stopped with exit130 before acceptance. Current source metadata and standalone diagnostic tools now bind strict current ABI constants; see root/build-metadata-validation.json and console/diagnostic-tools. No product bytes from the interrupted build are delivered."
 }

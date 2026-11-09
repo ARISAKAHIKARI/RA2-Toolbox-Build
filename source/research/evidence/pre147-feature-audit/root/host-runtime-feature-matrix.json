@@ -1,6 +1,6 @@
 {
   "schema": "ra2-root-host-runtime-feature-review-v1",
-  "reviewed_utc": "2026-11-09T07:15:41.637709+00:00",
+  "reviewed_utc": "2026-11-09T07:23:52.794148+00:00",
   "product_baseline": "1.0.46.4",
   "release_series": "1.0.47",
   "source_baseline_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
@@ -1369,7 +1369,15 @@
         },
         {
           "file": "source/tools/verify_windows_outputs.py",
-          "sha256": "0ce72921599f3122e3c9a581ce8ff6d8ad0042d6a7a6faa6faf6609169f19c58"
+          "sha256": "49831c9723b672cbafe7db7174d1d36db3971503f0bb3cd3b8eb81ca8b711646"
+        },
+        {
+          "file": "source/build-zig-x64.sh",
+          "sha256": "63f1bded80f207555aa2f1b659cd66e6cddf2d1b29800faf82e0704949d8cf49"
+        },
+        {
+          "file": "source/BUILD_SOURCE_MANIFEST.json",
+          "sha256": "148d9766265382c7d3a65a33c2eb80207a608da9f2f5e65b6650424c5246009d"
         }
       ],
       "entry_points": [
@@ -1378,12 +1386,13 @@
       "paths_reviewed": [
         "真正 x86 和 x64 Windows 目标分别编译并读取对象布局。",
         "897 条布局无差异；新增 selectTypeHash/overflow offset 与显式基准一致。",
-        "PE parser negative checks 通过。"
+        "PE parser negative checks 通过；实际 BUILD_TARGET 片段、source manifest 和 release header 的当前版本/协议一致。"
       ],
-      "conclusion": "Assist102，Shared23162544；没有执行 Windows 映像。",
+      "conclusion": "Assist102，Shared23162544；当前构建元数据使用同一严格常量，没有执行 Windows 映像。",
       "findings": [],
       "evidence": [
-        "root/crossbit-abi.json"
+        "root/crossbit-abi.json",
+        "root/build-metadata-validation.json"
       ],
       "verification": {
         "source_review": true,

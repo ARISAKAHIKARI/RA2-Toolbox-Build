@@ -1,6 +1,6 @@
 {
   "scope": "Independent current-source technology/control/placement/map/SW/FPS/frame/diagnostic recheck",
-  "generated_at": "2026-11-09T07:10:28.525423+00:00",
+  "generated_at": "2026-11-09T07:24:16.781132+00:00",
   "baseline": "46420180d9137932ca98fd2e6c131bde4f2a6294",
   "product_baseline": "1.0.46.4",
   "future_release_family": "1.0.47",
@@ -3635,21 +3635,34 @@
         "source/hook_diagnostics/source/sequence.h",
         "source/hook_diagnostics/source/observation_gate.h",
         "source/hook_diagnostics/source/main.cpp",
+        "source/tools/build_hook_diagnostics.py",
+        "source/tools/verify_hook_diagnostics.py",
+        "source/tools/verify_windows_outputs.py",
         "source/hook_diagnostics/README.md"
       ],
       "concrete_paths_reviewed": [
-        "open log → dynamic assist::Version/runtime::Version and catalog classification → module hash/site bytes/results → flush"
+        "open log → dynamic assist::Version/runtime::Version and catalog classification → module hash/site bytes/results → flush",
+        "build_hook_diagnostics.py BUILD_TARGET → imported product protocol/Shared/mapping constants",
+        "verify_hook_diagnostics.py verify_protocol_identity → exact host/Runtime exports, namespace, Entry and Runtime ABI → report"
       ],
       "findings": [
         "当前 main.cpp 已使用动态协议与目录分类统计；本次 Assist 102，不沿用旧 89/101。README 当前指引改为按本次报告身份/分类计数，历史日期记录明确标作历史。",
-        "日志含模块路径/摘要、站点基线/安装/恢复、人工实际观察与停止结果；未触发功能不能当作完整事件或联机认证。日志落盘异常尚无本轮复现，不冒充新缺陷。"
+        "日志含模块路径/摘要、站点基线/安装/恢复、人工实际观察与停止结果；未触发功能不能当作完整事件或联机认证。日志落盘异常尚无本轮复现，不冒充新缺陷。",
+        "最终一致性复核确认两辅助工具仍混用 Assist101 报告、Assist100/旧Shared/旧mapping验收和Assist99成功文案；会拒绝合法当前配对，并接受双方一致的旧配对。",
+        "已统一引用 verify_windows_outputs 的严格现行常量，协议/Shared/mapping、Entry/Runtime版本及结构必须各自精确匹配，不仅比较两端相等。构建与验证报告同步使用现行身份。",
+        "实际生产 identity gate 和实际 builder metadata 表达式经29项受控检查通过，含双方一致旧协议、单边协议/结构、缺NUL/缺导出等拒绝。此处为受控导出字节，不是实际PE构建或Windows执行。"
       ],
-      "review_status": "source_fixed",
-      "verification_level": "current_source_trace",
+      "review_status": "fixed_controlled_verified",
+      "verification_level": "current_source_trace+production_export_identity_controlled_fixture",
       "confirmed_issue_ids": [
-        "H-DIAG-DOC-1"
+        "H-DIAG-DOC-1",
+        "H-DIAG-ABI-1"
       ],
-      "evidence": [],
+      "evidence": [
+        "diagnostic-tools/identity-test-receipt.json",
+        "diagnostic-tools/identity-test.log",
+        "diagnostic-tools/syntax-receipt.json"
+      ],
       "validation_gaps": [
         "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
       ]
@@ -3790,9 +3803,9 @@
   ],
   "summary": {
     "source_reviewed": 75,
-    "source_fixed": 3,
+    "source_fixed": 2,
     "disabled_verified_source": 1,
-    "fixed_controlled_verified": 3
+    "fixed_controlled_verified": 4
   },
   "confirmed_findings": [
     {
@@ -3826,6 +3839,18 @@
       "status": "source_fixed",
       "owner": "console",
       "validation": "README uses dynamic report identity/counts; historical evidence labelled historical"
+    },
+    {
+      "id": "H-DIAG-ABI-1",
+      "status": "fixed_controlled_verified",
+      "owner": "root discovery/constants; console diagnostic tool fixes",
+      "before": "Captured old verifier rejects legal current pair and accepts mutually consistent obsolete pair; builder records Assist101",
+      "after": "29 production identity/metadata checks pass; syntax checks exit0",
+      "evidence": [
+        "diagnostic-tools/identity-test-receipt.json",
+        "diagnostic-tools/syntax-receipt.json"
+      ],
+      "boundary": "PE binaries not compiled/parsed by this controlled fixture; Windows/game not executed. Root will build and verify actual diagnostic artifacts separately."
     }
   ],
   "related_input_finding": {

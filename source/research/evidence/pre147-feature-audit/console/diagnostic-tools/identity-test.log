@@ -1,0 +1,30 @@
+PASS both diagnostic tools bind every identity field to the current product verifier
+PASS current C++ protocol matches ASSIST_PROTOCOL
+PASS current C++ protocol matches ENTRY_PROTOCOL
+PASS current C++ protocol matches RUNTIME_PROTOCOL
+PASS builder target metadata uses imported names and current values
+PASS builder does not claim game or multiplayer execution
+PASS exact current host and Runtime identity is accepted and reported
+PASS reject old host protocol
+PASS reject old Runtime Assist protocol
+PASS reject host Shared size mismatch
+PASS reject Runtime Shared size mismatch
+PASS reject old host mapping
+PASS reject old Runtime mapping
+PASS reject host mapping missing NUL
+PASS reject Runtime mapping missing NUL
+PASS reject host protocol export missing
+PASS reject Runtime protocol export missing
+PASS reject host mapping export missing
+PASS reject Runtime mapping export missing
+PASS reject entry API version mismatch
+PASS reject entry request size mismatch
+PASS reject Runtime transport version mismatch
+PASS reject Runtime transport size mismatch
+PASS reject entry identity export missing
+PASS reject Runtime transport export missing
+PASS reject short host identity export
+PASS reject short Runtime identity export
+PASS reject mutually consistent obsolete host and Runtime pair
+PASS reject mutually consistent current version with obsolete Shared size
+{"checks":29,"failures":0,"passed":true}

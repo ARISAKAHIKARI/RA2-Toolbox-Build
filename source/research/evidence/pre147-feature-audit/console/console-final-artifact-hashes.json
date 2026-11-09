@@ -1,8 +1,11 @@
 {
   "console-matrix.json": "06747be69a51966df5073295bbaa3a8d40156c9f5ad142d0f1e0c02b761f3aae",
-  "hardware-recheck.json": "cb2b8aaa2f3a2c19add6bd421f1c2912ffe5537c4c67d4d0b74b1e04553fa646",
-  "hardware-recheck-source-hashes.json": "362f7b61dd7914ac3da5132b1cfca7cb049f2730a85cb88b88b1ffbc8cff0a35",
-  "console-final-handoff.json": "677470e8392ca3ac826d765dcbfd44c3cafba76b785d7efb179b890682ab941c",
+  "hardware-recheck.json": "d9f8d41e7ab03f337b945eabd5518e88ff4d45e25b6f343f4ddeaf32d7a78f0d",
+  "hardware-recheck-source-hashes.json": "7fe810496b4ac25aeb4b3b9a2cc54939bbd1f8ca31ce9b528f740df127902a4c",
+  "console-final-handoff.json": "c92e63e76b4321e1d6070a06c50fa43ec19a050956869b300d67e66feda3f204",
   "write-matrix.py": "268f91a93e91fa27c8752cdd7682ce1ffee7e6775cc84f7954b49150d7c3a857",
-  "write-hardware-recheck.py": "2d9ca59fc3e377c3e11d91320d4f30559a15e7fc7c1829986444a578f1a7e566"
+  "write-hardware-recheck.py": "c95c2861090ea6efb01a6218688d74750da4f8bfd2f142b690ce6d411165471b",
+  "diagnostic-tools/identity-test-receipt.json": "0dc8bf02362751e16962e017b0bc583f75178e50dc20cd75401edef585bb3bd0",
+  "diagnostic-tools/syntax-receipt.json": "38363f1d9c66850a6f74222b5f41df291614a3fe9feba67c56a2a3b653747956",
+  "diagnostic-tools/diagnostic_identity_test.py": "f8235a4d27cfaa10192741ce9b278c21396060f64c8ff554c86390fc0ee6e1a2"
 }

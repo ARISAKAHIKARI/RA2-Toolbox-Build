@@ -1,6 +1,6 @@
 {
   "scope": "console final handoff plus independent hardware second review",
-  "frozen_at": "2026-11-09T07:10:28.911318+00:00",
+  "frozen_at": "2026-11-09T07:24:17.174527+00:00",
   "product_baseline": "1.0.46.4",
   "release_series": "1.0.47",
   "remote_base": "46420180d9137932ca98fd2e6c131bde4f2a6294",
@@ -13,12 +13,15 @@
     "source/suite/tests/console_hotkey_presentation_test.mjs": "18f3a644f21c76650e98d58481fb14622625ab9e50e13488c46021749e1553cc",
     "source/assist/tests/superweapon_result_feedback.py": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83",
     "source/assist/tests/pause_key_pairing.py": "83c68c66d901616bbdd5252f5b509eba9497cbf34d01df696c99370c13ab53e1",
-    "source/assist/tests/native_mouse_pairing.py": "064f3713519d3e344c826df9bf10839f6e1f84976eff303699b0515092a9294e"
+    "source/assist/tests/native_mouse_pairing.py": "064f3713519d3e344c826df9bf10839f6e1f84976eff303699b0515092a9294e",
+    "source/tools/build_hook_diagnostics.py": "34cb8b4f9ac505e7cf2b4655cb25dad949ce36a117c82780af97a2b9138e800b",
+    "source/tools/verify_hook_diagnostics.py": "de54aaa1f3422c8a037b1abe5be5aa8e7fb1c7cffacf19e53851c61ff4f8d114"
   },
   "root_owned_production_changes": [
     "source/assist/source/bridge.cpp::superSelect no-target returns2",
     "source/assist/source/main.cpp::result r2 queued feedback",
-    "source/assist/source/tactical_controls.h::hardware budget help and428 INI apply label"
+    "source/assist/source/tactical_controls.h::hardware budget help and428 INI apply label",
+    "source/tools/verify_windows_outputs.py::strict shared Assist/Entry/Runtime ABI constants"
   ],
   "matrices": {
     "console": {
@@ -36,9 +39,9 @@
       "records": 82,
       "status_counts": {
         "source_reviewed": 75,
-        "source_fixed": 3,
+        "source_fixed": 2,
         "disabled_verified_source": 1,
-        "fixed_controlled_verified": 3
+        "fixed_controlled_verified": 4
       }
     },
     "counting": "Rows include modes, mechanisms, disabled boundaries and separate diagnostics. Do not sum rows as enabled feature count or game pass count."
@@ -48,7 +51,8 @@
     "C-KEYNAME-1",
     "H-SW-FEEDBACK-1",
     "H-PAUSE-KEYPAIR-1",
-    "H-MOUSE-PAIR-1"
+    "H-MOUSE-PAIR-1",
+    "H-DIAG-ABI-1"
   ],
   "new_documentation_corrections": [
     "H-HARDWARE-HELP-1",
@@ -365,6 +369,47 @@
       "test_sha256": "8988aceab93b0b36117d7e9869bcd5f248a6a28f2c547bd96062ae15f9a32bf0",
       "binary_sha256": "dc00295641b7b9ca918a63c297605b615ce1d6c7eb69ba645fe09fdb91e1616f",
       "matches_current_sources": true
+    },
+    {
+      "receipt": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/identity-test-receipt.json",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/identity-test.log",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/diagnostic_identity_test.py"
+      ],
+      "source_sha256": {
+        "source/tools/build_hook_diagnostics.py": "34cb8b4f9ac505e7cf2b4655cb25dad949ce36a117c82780af97a2b9138e800b",
+        "source/tools/verify_hook_diagnostics.py": "de54aaa1f3422c8a037b1abe5be5aa8e7fb1c7cffacf19e53851c61ff4f8d114",
+        "source/tools/verify_windows_outputs.py": "49831c9723b672cbafe7db7174d1d36db3971503f0bb3cd3b8eb81ca8b711646",
+        "source/assist/source/protocol.h": "4e8f8b72aee03f7175cb0bcc4766af3cf8360463f04e93656d7bd4b92985e331",
+        "source/shared/source/game_entry_api.h": "a113072ab7abe73d1667b311c5b90d99e2571aa70cff665a8a90645fdabc243b",
+        "source/shared/source/runtime_protocol.h": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b"
+      },
+      "result": {
+        "checks": 29,
+        "failures": 0,
+        "passed": true
+      },
+      "exit_code": null
+    },
+    {
+      "receipt": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/syntax-receipt.json",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/syntax.log",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "-m",
+        "py_compile",
+        "source/tools/build_hook_diagnostics.py",
+        "source/tools/verify_hook_diagnostics.py",
+        "source/tools/verify_windows_outputs.py"
+      ],
+      "source_sha256": {
+        "source/tools/build_hook_diagnostics.py": "34cb8b4f9ac505e7cf2b4655cb25dad949ce36a117c82780af97a2b9138e800b",
+        "source/tools/verify_hook_diagnostics.py": "de54aaa1f3422c8a037b1abe5be5aa8e7fb1c7cffacf19e53851c61ff4f8d114",
+        "source/tools/verify_windows_outputs.py": "49831c9723b672cbafe7db7174d1d36db3971503f0bb3cd3b8eb81ca8b711646"
+      },
+      "result": null,
+      "exit_code": 0
     }
   ],
   "remaining": [
@@ -403,5 +448,21 @@
   ],
   "seams": "Portable fixtures compile real production functions/routes; native memory/platform input, established connection and unrelated inactive features are explicit controlled seams.",
   "not_committed": true,
-  "production_frozen": true
+  "production_frozen": true,
+  "diagnostic_tools_followup": {
+    "finding": "H-DIAG-ABI-1: builder/validator retained inconsistent old protocol, Shared size, namespace and success label",
+    "changed_tools": [
+      "source/tools/build_hook_diagnostics.py",
+      "source/tools/verify_hook_diagnostics.py"
+    ],
+    "shared_constant_source": "source/tools/verify_windows_outputs.py",
+    "identity_test": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/identity-test-receipt.json",
+    "syntax_test": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/syntax-receipt.json",
+    "baseline": "Old identity block rejects valid current pair and accepts mutually consistent old pair; old BUILD_TARGET records Assist101.",
+    "final": "29 checks, 0 failures; 3-file py_compile exit0; strict current Assist102/Shared23162544/mappingv102, Entry3/108, Runtime4/176.",
+    "scope": "Controlled export-table bytes and actual builder metadata expression only. No actual PE parsing or linking in these checks. Root will build diagnostic helper from matching main build and verify real PE separately.",
+    "windows_tested": false,
+    "game_tested": false,
+    "actual_pe_tested": false
+  }
 }

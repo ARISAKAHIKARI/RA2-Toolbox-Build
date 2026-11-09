@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "scope": "Execute the actual BUILD_TARGET Python fragment, check Bash syntax and current manifest/header/strict-verifier constants; no compilation or Windows execution claimed here.",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "-B",
+    "-",
+    "/tmp/tmplthnecdq/BUILD_TARGET.json",
+    "webview2"
+  ],
+  "exit_code": 0,
+  "stderr": "",
+  "target": {
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86",
+    "assist_protocol": 102,
+    "cursor_protocol": 155,
+    "runtime_protocol": 4,
+    "console_ui": "webview2",
+    "game_tested": false,
+    "webview2_sdk": "1.0.4314.35",
+    "webview2_loader": "WebView2Loader.dll",
+    "webview2_runtime": "Microsoft Edge WebView2 Evergreen Runtime"
+  },
+  "manifest_version": "1.0.47-pre.3",
+  "file_version": "1.0.47.3",
+  "source_sha256": {
+    "source/build-zig-x64.sh": "63f1bded80f207555aa2f1b659cd66e6cddf2d1b29800faf82e0704949d8cf49",
+    "source/BUILD_SOURCE_MANIFEST.json": "148d9766265382c7d3a65a33c2eb80207a608da9f2f5e65b6650424c5246009d",
+    "source/shared/source/release_version.h": "768443b7f5ae98233bfc793b61f02c7816baac164a811aaaf7e6286f2439b062",
+    "source/tools/verify_windows_outputs.py": "49831c9723b672cbafe7db7174d1d36db3971503f0bb3cd3b8eb81ca8b711646"
+  },
+  "created_at": "2026-11-09T07:20:49.860022+00:00"
+}
