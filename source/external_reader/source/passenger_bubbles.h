@@ -31,28 +31,28 @@ template<class Read> bool contents(Read read,uint32_t carrier,std::vector<Group>
  return n==count&&!q;
 }
 struct Sample {std::vector<Bubble> bubbles;bool complete=true;};
-template<class Read> Sample sampleChecked(Read source,uint32_t house,const Projection&proj,bool inspect,bool persistent){
+template<class Read> Sample sampleChecked(Read source,uint32_t house,const Projection&proj,bool inspect,bool persistent,bool showOwn=false,bool always=false){
  Sample result;auto&out=result.bubbles;if(!inspect&&!persistent)return result;
  auto read=[&](uint32_t at,void*p,size_t n){bool ok=source(at,p,n);if(!ok)result.complete=false;return ok;};
  GameView<decltype(read)> game(read);
  std::vector<uint32_t> objects;if(!game.vecChecked(0xA8EC78,objects)){result.complete=false;return result;}
- for(uint32_t p:objects){int kind=game.kind(p);if((kind!=0&&kind!=2)||!game.enemy(p,house)||game.template get<uint32_t>(p+0x11C)||game.template get<int>(p+0x220)!=0)continue;
+ for(uint32_t p:objects){int kind=game.kind(p);if((kind!=0&&kind!=2)||!(game.enemy(p,house)||(showOwn&&house>=0x10000&&game.template get<uint32_t>(p+0x21C)==house&&game.live(p)))||game.template get<uint32_t>(p+0x11C)||game.template get<int>(p+0x220)!=0)continue;
   // Native hover flag, also set without controlling or selecting the enemy.
   bool focus=game.template get<uint8_t>(p+0x431)||game.template get<uint8_t>(p+0x83);
-  if(!(inspect&&focus)&&!persistent)continue;Bubble b;
+  if(!(inspect&&(focus||always))&&!persistent)continue;Bubble b;
   if(!contents(read,p,b.groups,b.dangerous)){
    // A verified empty carrier is a real disappearance. A positive/bad count
    // with an inconsistent linked list is an incomplete external observation.
    if(game.template get<int>(p+0x114,-1)!=0||game.template get<uint32_t>(p+0x118))result.complete=false;continue;
   }
-  if(!(inspect&&focus)&&!(persistent&&b.dangerous))continue;
+  if(!(inspect&&(focus||always))&&!(persistent&&b.dangerous))continue;
   if(!project(proj,game.template get<int>(p+0x9C),game.template get<int>(p+0xA0),game.template get<int>(p+0xA4),b.x,b.y)||b.x<0||b.x>=proj.width||b.y<0||b.y>=proj.height)continue;
   uint32_t owner=game.template get<uint32_t>(p+0x21C);uint8_t rgb[3]{255,100,100};read(owner+22265,rgb,3);
   b.id=game.template get<uint32_t>(p+0x10);b.color=0xff000000u|(uint32_t(rgb[0])<<16)|(uint32_t(rgb[1])<<8)|rgb[2];
   out.push_back(std::move(b));if(out.size()>=256)break;
  }return result;
 }
-template<class Read> std::vector<Bubble> sample(Read read,uint32_t house,const Projection&proj,bool inspect,bool persistent){
- return sampleChecked(read,house,proj,inspect,persistent).bubbles;
+template<class Read> std::vector<Bubble> sample(Read read,uint32_t house,const Projection&proj,bool inspect,bool persistent,bool showOwn=false,bool always=false){
+ return sampleChecked(read,house,proj,inspect,persistent,showOwn,always).bubbles;
 }
 }}

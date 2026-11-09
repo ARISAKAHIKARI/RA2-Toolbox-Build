@@ -65,6 +65,10 @@ inline constexpr VideoEntry videoEntries[]={
  {TextHints,VideoGroup::Monitor,L"战术文字提示",L"",VideoSection::Information,true},
  {IdleAircraft,VideoGroup::Monitor,L"空闲飞机指示器",L"",VideoSection::Information,true},
  {SuperweaponPanel,VideoGroup::Monitor,L"独立超级武器面板",L"",VideoSection::Information,true},
+ {PassengerBubbles,VideoGroup::Monitor,L"载具载员气泡",L"",VideoSection::Information,true},
+ {PassengerOwn,VideoGroup::Monitor,L"载员气泡包含己方",L"",VideoSection::Information},
+ {PassengerAlways,VideoGroup::Monitor,L"载员气泡常驻显示",L"",VideoSection::Information},
+ {DangerPassengers,VideoGroup::Monitor,L"危险载员常驻提示",L"",VideoSection::Information,true},
  {DetailedStatus,VideoGroup::Monitor,L"显示运行耗时",L"",VideoSection::Information},
  {TextMargin,VideoGroup::Monitor,L"文字提示上边距 / 像素",L"",VideoSection::Information},
  {ToastDuration,VideoGroup::Monitor,L"战术提示时长 / 毫秒",L"",VideoSection::Information}
@@ -82,6 +86,8 @@ class VideoSettings {
  }
  static bool ready(DisplayOption option,const DisplayState&s){
   auto on=[&](DisplayOption o){return s.values[o]!=0;};
+  if(option==PassengerOwn)return on(PassengerBubbles)||on(DangerPassengers);
+  if(option==PassengerAlways)return on(PassengerBubbles);
   if(option==RenderUpgrade)return false; // Entry only; retain the saved value and all child settings.
   // Camera motion still consumes this preference while the main renderer is off.
   if(option==RenderHighRefresh)return true;

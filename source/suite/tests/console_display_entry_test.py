@@ -214,6 +214,22 @@ int main(){
  render.command(MAKEWPARAM(12000+suite::RenderHighRefresh,BN_CLICKED));
  check(posted.size()==1&&posted[0].option==suite::RenderHighRefresh&&posted[0].value==0,"motion switch reaches shared setting owner");posted.clear();
  sharedDisplay.values[suite::RenderHighRefresh]=0;render.sync(true);check(controls[motion].value==0,"camera motion authoritative off reflected");
+
+ if(std::getenv("RA2_PASSENGER_MODES_TEST")){
+  ++scenarios;
+  for(int id:{897,898,9498,9499}){const int option=optionFor(id);check(option>=0,"passenger option has unique owner spec");if(option>=0)check(visible[12000+option]!=0,"passenger option visible on video page");}
+  const int inspect=optionFor(897),danger=optionFor(898),own=optionFor(9498),always=optionFor(9499);
+  if(inspect>=0&&danger>=0&&own>=0&&always>=0){
+   sharedDisplay.values[inspect]=1;sharedDisplay.values[danger]=0;video.sync(true);
+   check(IsWindowEnabled(visible[12000+own])&&IsWindowEnabled(visible[12000+always]),"inspect enables own and permanent choices");
+   sharedDisplay.values[inspect]=0;sharedDisplay.values[danger]=1;video.sync(true);
+   check(IsWindowEnabled(visible[12000+own])&&!IsWindowEnabled(visible[12000+always]),"danger-only allows own without enabling general permanence");
+   controls[visible[12000+own]].value=1;posted.clear();video.command(MAKEWPARAM(12000+own,BN_CLICKED));
+   check(posted.size()==1&&posted[0].option==own&&posted[0].value==1,"own edit routed to original owner");posted.clear();
+   sharedDisplay.values[danger]=0;video.sync(true);
+   check(!IsWindowEnabled(visible[12000+own])&&!IsWindowEnabled(visible[12000+always]),"disabled parents retain but disable passenger choices");
+  }
+ }
  check(saves>0||failed>0,"roundtrip save actually exercised");
  std::printf("{\"passed\":%s,\"scenarios\":%u,\"checks\":%u,\"failed\":%u}\n",failed?"false":"true",scenarios,checks,failed);return failed?1:0;
 }

@@ -20,7 +20,7 @@ static Snapshot snap{};
 static Snapshot*externalData=&snap;
 static uint32_t pid=fixture::GamePid,match=7,serial=0,optionFlags=0;
 static bool enabled=true;
-static struct {bool passengerBubbles=true,dangerPassengers=false;}extra;
+static struct {bool passengerBubbles=true,dangerPassengers=false,passengerOwn=false,passengerAlways=false;}extra;
 static uint32_t flags(){return optionFlags;}
 namespace nativeviewhost {
 struct Transform {bool active=false;uint32_t generation=1;struct {int w=0,h=0;}logical;};
@@ -111,5 +111,25 @@ int main(){
  fixture::clock=6000;observed();CHECK(passengerSample(6000,token).size()==1&&token->key.tick==acquired);zeroLiveReads();
  fixture::clock=7001;CHECK(passengerSample(7001,token).empty());zeroLiveReads();
  std::puts("PASS paused frame independent confirmation and confirmation expiry");
+
+ if(std::getenv("RA2_PASSENGER_MODES_TEST")){
+  const auto before=fixture::checks;fixture::clock=8000;extra.passengerBubbles=true;extra.dangerPassengers=false;extra.passengerOwn=false;extra.passengerAlways=false;
+  memory.put(Carrier+0x21C,fixture::House);memory.put(Carrier+0x431,uint8_t(1));publish();CHECK(passengerSample(8000,token).empty());zeroLiveReads();
+  extra.passengerOwn=true;CHECK(passengerSample(8001,token).size()==1);zeroLiveReads();
+  memory.put(Carrier+0x431,uint8_t(0));fixture::clock=8020;publish();CHECK(passengerSample(8020,token).empty());
+  extra.passengerAlways=true;CHECK(passengerSample(8021,token).size()==1);zeroLiveReads();
+  extra.passengerAlways=false;CHECK(passengerSample(8022,token).empty());extra.passengerAlways=true;extra.passengerOwn=false;CHECK(passengerSample(8023,token).empty());
+  memory.put(Carrier+0x21C,Enemy);memory.put(fixture::Weapon+0x144,uint8_t(0));fixture::clock=8040;publish();auto ordinary=passengerSample(8040,token);CHECK(ordinary.size()==1&&!ordinary[0].danger);zeroLiveReads();
+  extra.passengerBubbles=false;extra.dangerPassengers=true;CHECK(passengerSample(8041,token).empty());
+  memory.put(fixture::Weapon+0x144,uint8_t(1));fixture::clock=8060;publish();CHECK(passengerSample(8060,token).size()==1);zeroLiveReads();
+  memory.put(Carrier+0x21C,fixture::House);extra.passengerOwn=true;fixture::clock=8080;publish();CHECK(passengerSample(8080,token).size()==1);
+  extra.passengerOwn=false;CHECK(passengerSample(8081,token).empty());
+  extra.passengerBubbles=true;extra.dangerPassengers=false;extra.passengerOwn=true;fixture::clock=8100;publish();CHECK(passengerSample(8100,token).size()==1);
+  extra.passengerOwn=false;fixture::clock=8120;publish(Passenger&~4095u);CHECK(passengerSample(8120,token).empty());zeroLiveReads();
+  extra.passengerOwn=true;memory.put(Carrier+0x6C,0);fixture::clock=8140;publish();CHECK(passengerSample(8140,token).empty());
+  memory.put(Carrier+0x6C,100);memory.put(Carrier+0x114,0);memory.put(Carrier+0x118,0u);fixture::clock=8160;publish();CHECK(passengerSample(8160,token).empty());zeroLiveReads();
+  extra.passengerBubbles=false;extra.dangerPassengers=false;configureDemand();CHECK(externalReader.worldDemand()==worldframe::Base);CHECK(passengerSample(8161,token).empty());zeroLiveReads();
+  std::printf("PASS passenger modes: %zu checks; own/hover/always/danger/options/empty/dead/lease; zero live RPM\n",fixture::checks-before);
+ }
  std::printf("passenger frame sampling: %zu checks passed\n",fixture::checks);
 }

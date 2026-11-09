@@ -3,9 +3,9 @@
 #include "display_sample_lease.h"
 static passengers::Motion passengerMotion;
 struct PassengerDisplayKey {
- uint32_t pid=0,match=0,house=0;int width=0,height=0,cameraX=0,cameraY=0;bool inspect=false,persistent=false;
+ uint32_t pid=0,match=0,house=0;int width=0,height=0,cameraX=0,cameraY=0;bool inspect=false,persistent=false,showOwn=false,always=false;
  uint64_t projection=0;
- bool operator==(const PassengerDisplayKey&o)const{return pid==o.pid&&match==o.match&&house==o.house&&width==o.width&&height==o.height&&cameraX==o.cameraX&&cameraY==o.cameraY&&inspect==o.inspect&&persistent==o.persistent&&projection==o.projection;}
+ bool operator==(const PassengerDisplayKey&o)const{return pid==o.pid&&match==o.match&&house==o.house&&width==o.width&&height==o.height&&cameraX==o.cameraX&&cameraY==o.cameraY&&inspect==o.inspect&&persistent==o.persistent&&showOwn==o.showOwn&&always==o.always&&projection==o.projection;}
 };
 static displaylease::Sample<PassengerDisplayKey,std::vector<external::passengers::Bubble>> passengerSamples;
 static void clearPassengerDisplay(){passengerMotion.clear();passengerSamples.clear();}
@@ -27,8 +27,8 @@ static std::vector<PassengerVisual> passengerView(uint32_t renderNow,const nativ
  projection.zScale=externalReader.get<double>(0xB0CD48,0.0866025403784);
  auto read=[](uint32_t at,void*p,size_t n){return externalReader.read(at,p,n);};
  uint32_t house=0;bool houseReady=read(0xA83D4C,&house,4)&&house>=0x10000&&house==source->key.house;
- PassengerDisplayKey key{pid,externalData->match,house,projection.width,projection.height,projection.cameraX,projection.cameraY,extra.passengerBubbles,extra.dangerPassengers,nativeviewhost::key(transform)};
- auto sampled=external::passengers::sampleChecked(read,house,projection,extra.passengerBubbles,extra.dangerPassengers);
+ PassengerDisplayKey key{pid,externalData->match,house,projection.width,projection.height,projection.cameraX,projection.cameraY,extra.passengerBubbles,extra.dangerPassengers,extra.passengerOwn,extra.passengerAlways,nativeviewhost::key(transform)};
+ auto sampled=external::passengers::sampleChecked(read,house,projection,extra.passengerBubbles,extra.dangerPassengers,extra.passengerOwn,extra.passengerAlways);
  const auto*held=passengerSamples.observe(key,houseReady&&sampled.complete&&worldScope.complete(),std::move(sampled.bubbles),renderNow);
  if(!held){passengerMotion.clear();return out;}const auto&bubbles=*held;
  const auto* anchors=passengerMotion.update(bubbles,externalData->match,externalData->frame,externalData->sampledTick,renderNow,projection.cameraX,projection.cameraY);
