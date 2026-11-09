@@ -56,6 +56,7 @@ PREAMBLE = r'''
 #include "protocol.h"
 #include "additional_settings.h"
 #include "control_link.h"
+#include "read_only_lifecycle.h"
 #include "hotkey_routes.h"
 #include "type_hotkey.h"
 #include "view_zoom.h"
@@ -317,10 +318,10 @@ def program(main: str, hotkeys: str) -> str:
     ):
         functions.append(function(main, name, optional=name == "commandHotkeyContext"))
     for name in (
-        "ownGroundHotkey", "dispatchHotkeyGroup", "executeHotkey",
+        "ownGroundHotkey", "dispatchHotkeyGroup", "localHotkeyAction", "executeHotkey",
         "serviceHotkeyBatch", "handleHotkey",
     ):
-        functions.append(function(hotkeys, name))
+        functions.append(function(hotkeys, name, optional=name == "localHotkeyAction"))
     actions = re.search(r"static const int actions\[\]\s*=\s*\{[^}]*\};", main)
     if not actions:
         raise ValueError("Production action table missing")
@@ -356,6 +357,7 @@ def run(args, out: Path) -> dict:
     bound_paths = (
         main_path, hotkey_path, "source/assist/source/hotkey_routes.h",
         "source/assist/source/control_link.h", "source/assist/source/protocol.h",
+        "source/assist/source/read_only_lifecycle.h",
         "source/shared/source/key_gesture.h", "source/assist/source/additional_settings.h",
         "source/assist/source/type_hotkey.h", "source/assist/source/automatic_features.h",
         "source/assist/source/activation_diagnostic.h", "source/assist/tests/hotkey_command_context.py",

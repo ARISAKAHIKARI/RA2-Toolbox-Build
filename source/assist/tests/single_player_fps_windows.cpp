@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstring>
 #include <cstdio>
+#include "../source/read_only_lifecycle.h"
 #ifdef NDEBUG
 #error This fixture must execute every assertion; compile with -UNDEBUG.
 #endif
@@ -12,8 +13,9 @@
 // Its runner fixes only this fixture PE at 0x400000, following the existing
 // sidebar_view_guard_seh fixture. Every target must belong to this actual array.
 static volatile uint8_t fixtureArena[0x800000];
-struct FixtureShared {volatile uint32_t stop=0,heartbeat=0,singlePlayerFPS=0,singlePlayerFPSActive=0,singlePlayerFPSHits=0;};
+struct FixtureShared {volatile uint32_t stop=0,heartbeat=0,singlePlayerFPS=0,singlePlayerFPSActive=0,singlePlayerFPSHits=0;volatile uint32_t readOnly=0,readOnlyRequest=0,readOnlyAck=0;};
 static FixtureShared state;static FixtureShared*sh=&state;static bool fault=false;
+static assist::readonly::RuntimeState readOnlyState;
 static DWORD sampleClock(FixtureShared*){return GetTickCount();}
 template<class T>static T get(uint32_t address){return *reinterpret_cast<T*>(address);}
 static bool read(uint32_t p,void*out,size_t n){SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(p),out,n,&got)&&got==n;}

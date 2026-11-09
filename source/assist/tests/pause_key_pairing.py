@@ -26,6 +26,7 @@ PREAMBLE = r'''
 #include "hotkey_routes.h"
 #include "pause_view_policy.h"
 #include "pointer_intent.h"
+#include "read_only_lifecycle.h"
 using namespace assist;
 #define __cdecl
 using DWORD=uint32_t;using WPARAM=uintptr_t;using LPARAM=intptr_t;
@@ -46,10 +47,12 @@ static std::map<uint32_t,uint32_t> memory;
 template<class T>static T get(uint32_t at){return T(memory[at]);}
 static bool read(uint32_t,void*out,size_t bytes){std::memset(out,0,bytes);return true;}
 struct Shared {bool stop=false,foreground=true;uint32_t moFeatures=16,heartbeat=100;
+ uint32_t readOnly=0,readOnlyRequest=0,readOnlyAck=0;
  uint32_t pauseViewKeys[2]{0x74,0x75};int pauseViewStatus=0;uint32_t pointerPolicySeq=0,flags=0;
  pointerinput::NativePolicy pointerPolicy{};pointerinput::Mailbox pointer{};
  pointerinput::SuppressedClick suppressedClick{};};
 static Shared storage;static Shared*sh=&storage;
+static readonly::RuntimeState readOnlyState;
 static uint32_t sampleClock(Shared*){return clockNow;}
 namespace experimentalpatch{constexpr uint32_t PauseLoop=0x55D360;}
 struct RiskSite{uint32_t address;unsigned size;uint8_t before[16],after[16];};
@@ -104,6 +107,7 @@ static unsigned checks=0,failures=0;
 static void check(bool value,const char*name){++checks;if(!value){++failures;std::cerr<<"FAIL "<<name<<"\n";}}
 static void reset(){
  storage={};sh=&storage;memory.clear();std::memset(physicalKeys,0,sizeof physicalKeys);
+ readOnlyState={};
  runtimeKeys.clear();pauseViewState={};pauseViewHotkeys.clear();pauseViewKeyEpoch=0;
  std::memset(pauseViewKeySuppressed,0,sizeof pauseViewKeySuppressed);
  pauseViewInstalled=pauseViewNativeFailed=false;clockNow=100;match=1;fault=false;
@@ -153,6 +157,33 @@ int main(){
  check(deliver(WM_SYSKEYDOWN,0x74)==WM_SYSKEYDOWN&&deliver(WM_SYSKEYUP,0x74)==WM_SYSKEYUP,"new system-key pair drops lost-release ownership");
  reset();loseRelease();sh->foreground=true;pauseViewTick();
  check(deliver(WM_KEYDOWN,0x74)==WM_NULL&&deliver(WM_KEYUP,0x74)==WM_NULL,"unchanged active binding reclaims the fresh pair");
+ for(int gate=0;gate<3;++gate){
+  reset();if(gate==0)sh->readOnly=1;if(gate==1)sh->readOnlyRequest=1;if(gate==2)readOnlyState.active=true;
+  check(deliver(WM_KEYDOWN,0x74)==WM_KEYDOWN&&deliver(WM_KEYUP,0x74)==WM_KEYUP,
+        "read-only flag, pending retirement or active retirement keeps pause key pair native");
+  check(!pauseViewState.paused&&!runtimeKeys.held[0x74],"read-only input gate does not mutate pause or record held input");
+ }
+ for(int gate=0;gate<3;++gate){
+  reset();check(deliver(WM_KEYDOWN,0x74)==WM_NULL,"owned pause down before read-only transition");
+  const bool paused=pauseViewState.paused;
+  if(gate==0)sh->readOnly=1;if(gate==1)sh->readOnlyRequest=1;if(gate==2)readOnlyState.active=true;
+  deliver(WM_MOUSEMOVE);
+  check(deliver(WM_KEYUP,0x74)==WM_NULL&&!pauseViewKeySuppressed[0x74],
+        "read-only transition balances original pause release after an unrelated message");
+  check(deliver(WM_KEYDOWN,0x74)==WM_KEYDOWN&&deliver(WM_KEYUP,0x74)==WM_KEYUP,
+        "a fresh pause-key pair during read-only remains native");
+  check(pauseViewState.paused==paused&&!runtimeKeys.held[0x74],
+        "retiring owned release neither toggles pause nor samples keys");
+  reset();deliver(WM_KEYDOWN,0x74);
+  if(gate==0)sh->readOnly=1;if(gate==1)sh->readOnlyRequest=1;if(gate==2)readOnlyState.active=true;
+  physicalKeys[0x74]=0;
+  check(deliver(WM_KEYDOWN,0x74)==WM_KEYDOWN&&deliver(WM_KEYUP,0x74)==WM_KEYUP,
+        "a new read-only key down retires an older release lost outside the input route");
+ }
+ reset();deliver(WM_SYSKEYDOWN,0x74);sh->readOnly=1;
+ check(deliver(WM_SYSKEYUP,0x74)==WM_NULL,"read-only system-key release balances its owned down");
+ check(deliver(WM_SYSKEYDOWN,0x74)==WM_SYSKEYDOWN&&deliver(WM_SYSKEYUP,0x74)==WM_SYSKEYUP,
+       "fresh read-only system-key pair remains native");
  std::cout<<"{\"checks\":"<<checks<<",\"failures\":"<<failures<<",\"passed\":"<<(failures?"false":"true")<<"}\n";
  return failures?1:0;
 }
@@ -173,6 +204,7 @@ def main():
         "tracker": args.source_root / "source/shared/source/key_gesture.h",
         "policy": args.source_root / "source/assist/source/pause_view_policy.h",
         "pointer": args.source_root / "source/assist/source/pointer_intent.h",
+        "readonly": args.source_root / "source/assist/source/read_only_lifecycle.h",
         "test": Path(__file__).resolve(),
         "extractor": Path(__file__).with_name("superweapon_result_feedback.py"),
     }
@@ -204,7 +236,8 @@ def main():
     for key, relative in (("registry", "assist/source/hotkey_routes.h"),
                           ("tracker", "shared/source/key_gesture.h"),
                           ("policy", "assist/source/pause_view_policy.h"),
-                          ("pointer", "assist/source/pointer_intent.h")):
+                          ("pointer", "assist/source/pointer_intent.h"),
+                          ("readonly", "assist/source/read_only_lifecycle.h")):
         target = frozen / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(captured[key])

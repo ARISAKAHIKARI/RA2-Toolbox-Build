@@ -1,0 +1,571 @@
+{
+  "entries": [
+    {
+      "option": "RefreshMode",
+      "owner_id": 886,
+      "type": "Choice",
+      "minimum": 0,
+      "maximum": 0,
+      "visible_mirror": "cursor.refreshModeBox"
+    },
+    {
+      "option": "EnemyMarkers",
+      "owner_id": 785,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "Iron",
+      "owner_id": 301,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "Capacity",
+      "owner_id": 300,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "AllTransports",
+      "owner_id": 303,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "Frozen",
+      "owner_id": 723,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "Parasite",
+      "owner_id": 892,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "CrateBuffs",
+      "owner_id": 893,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "LabelScale",
+      "owner_id": 816,
+      "type": "Number",
+      "minimum": 50,
+      "maximum": 250,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "InfoFPS",
+      "owner_id": 310,
+      "type": "Number",
+      "minimum": 5,
+      "maximum": 500,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "ShroudStrategy",
+      "owner_id": 808,
+      "type": "Choice",
+      "minimum": 0,
+      "maximum": 4,
+      "visible_mirror": "tactical Rules original entry"
+    },
+    {
+      "option": "PassengerBubbles",
+      "owner_id": 897,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "DangerPassengers",
+      "owner_id": 898,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "InfoAdaptive",
+      "owner_id": 9160,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "unitSettingControls"
+    },
+    {
+      "option": "RenderUpgrade",
+      "owner_id": 9300,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "RenderProcessing",
+      "owner_id": 9313,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "retained render setting"
+    },
+    {
+      "option": "RenderPhysical",
+      "owner_id": 9306,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "RenderUnified",
+      "owner_id": 9301,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "RenderPalette",
+      "owner_id": 9304,
+      "type": "Choice",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "retained render setting"
+    },
+    {
+      "option": "RenderPrecision",
+      "owner_id": 9309,
+      "type": "Choice",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "retained render setting"
+    },
+    {
+      "option": "RenderMaterial",
+      "owner_id": 9307,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "retained render setting"
+    },
+    {
+      "option": "RenderDetail",
+      "owner_id": 9308,
+      "type": "Choice",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "retained render setting"
+    },
+    {
+      "option": "RenderXbrz",
+      "owner_id": 9314,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "retained render setting"
+    },
+    {
+      "option": "RenderScale",
+      "owner_id": 9305,
+      "type": "Choice",
+      "minimum": 0,
+      "maximum": 3,
+      "visible_mirror": "retained render setting"
+    },
+    {
+      "option": "RenderGPU",
+      "owner_id": 9310,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "RenderParticles",
+      "owner_id": 9320,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "RenderLasers",
+      "owner_id": 9321,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "RenderVoxelLighting",
+      "owner_id": 9322,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "RenderSpriteLighting",
+      "owner_id": 9323,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "WatchPrimary",
+      "owner_id": 9060,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "WatchSecondary",
+      "owner_id": 9163,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "WatchX",
+      "owner_id": 9164,
+      "type": "Number",
+      "minimum": 0,
+      "maximum": 10000,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "WatchY",
+      "owner_id": 9165,
+      "type": "Number",
+      "minimum": 0,
+      "maximum": 10000,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "WatchDanger",
+      "owner_id": 9061,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "WatchKey1",
+      "owner_id": 9062,
+      "type": "Hotkey",
+      "minimum": 0,
+      "maximum": 65535,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "WatchKey2",
+      "owner_id": 9063,
+      "type": "Hotkey",
+      "minimum": 0,
+      "maximum": 65535,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "WatchKey3",
+      "owner_id": 9064,
+      "type": "Hotkey",
+      "minimum": 0,
+      "maximum": 65535,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapPrimary",
+      "owner_id": 830,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapSecondary",
+      "owner_id": 9162,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapMode",
+      "owner_id": 9065,
+      "type": "Choice",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapScale",
+      "owner_id": 831,
+      "type": "Number",
+      "minimum": 5,
+      "maximum": 200,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapPosition",
+      "owner_id": 850,
+      "type": "Choice",
+      "minimum": 0,
+      "maximum": 3,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapX",
+      "owner_id": 851,
+      "type": "Number",
+      "minimum": 0,
+      "maximum": 32768,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapY",
+      "owner_id": 852,
+      "type": "Number",
+      "minimum": 0,
+      "maximum": 32768,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapAlignX",
+      "owner_id": 9100,
+      "type": "Choice",
+      "minimum": 0,
+      "maximum": 2,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapAlignY",
+      "owner_id": 9101,
+      "type": "Choice",
+      "minimum": 0,
+      "maximum": 2,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapSecondaryX",
+      "owner_id": 9166,
+      "type": "Number",
+      "minimum": 0,
+      "maximum": 10000,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapSecondaryY",
+      "owner_id": 9167,
+      "type": "Number",
+      "minimum": 0,
+      "maximum": 10000,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "MapSecondaryWidth",
+      "owner_id": 9168,
+      "type": "Number",
+      "minimum": 160,
+      "maximum": 4096,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "ProductionHints",
+      "owner_id": 302,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "PsychicHints",
+      "owner_id": 304,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "CrateHints",
+      "owner_id": 305,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "TextHints",
+      "owner_id": 306,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "IdleAircraft",
+      "owner_id": 798,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "ReminderBuilding",
+      "owner_id": 9070,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "ReminderDefense",
+      "owner_id": 9071,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "ReminderInfantry",
+      "owner_id": 9072,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "ReminderVehicle",
+      "owner_id": 9073,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "ReminderShip",
+      "owner_id": 9074,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "ReminderAircraft",
+      "owner_id": 9075,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "TextMargin",
+      "owner_id": 311,
+      "type": "Number",
+      "minimum": 0,
+      "maximum": 4096,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "ToastDuration",
+      "owner_id": 471,
+      "type": "Number",
+      "minimum": 500,
+      "maximum": 60000,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "RenderHighRefresh",
+      "owner_id": 9324,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "HarvesterCounter",
+      "owner_id": 9325,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "PowerDelta",
+      "owner_id": 9326,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "BuildTimeTooltip",
+      "owner_id": 9327,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "OverlayToggleKey",
+      "owner_id": 9420,
+      "type": "Hotkey",
+      "minimum": 0,
+      "maximum": 65535,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "SinglePlayerFPS",
+      "owner_id": 9494,
+      "type": "Number",
+      "minimum": 0,
+      "maximum": 240,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "SuperweaponPanel",
+      "owner_id": 9405,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    },
+    {
+      "option": "DetailedStatus",
+      "owner_id": 481,
+      "type": "Check",
+      "minimum": 0,
+      "maximum": 1,
+      "visible_mirror": "videoEntries"
+    }
+  ],
+  "missing": [],
+  "notes": [
+    "RenderUpgrade itself remains deliberately disabled.",
+    "RenderHighRefresh keeps its visible entry and now has independent readiness at mirror and owner.",
+    "RenderMaterial9307 has no current native visible control and is a retained field only.",
+    "Six other unavailable quality settings remain hidden because effectiveRender* recovery functions return fixed values."
+  ]
+}

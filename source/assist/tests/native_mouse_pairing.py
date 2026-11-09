@@ -63,6 +63,7 @@ static unsigned vk(unsigned physical){return physical==6?VK_LBUTTON:VK_RBUTTON;}
 static uint32_t bit(unsigned physical){return physical==6?1u:2u;}
 static void reset(unsigned physical=6){
  storage={};sh=&storage;sh->moFeatures=0;memory.clear();std::memset(physicalKeys,0,sizeof physicalKeys);
+ readOnlyState={};
  runtimeKeys.clear();pauseViewState={};pauseViewHotkeys.clear();pauseViewKeyEpoch=0;
  std::memset(pauseViewKeySuppressed,0,sizeof pauseViewKeySuppressed);
  pauseViewInstalled=pauseViewNativeFailed=false;clockNow=100;match=1;fault=false;
@@ -135,6 +136,29 @@ int main(){
  reset();deliver(WM_LBUTTONDOWN);deliver(WM_LBUTTONUP);
  check(deliver(WM_LBUTTONDBLCLK)==WM_LBUTTONDBLCLK&&deliver(WM_LBUTTONUP)==WM_LBUTTONUP,
        "non-cooperative native double-click keeps both physical edges");
+ for(int gate=0;gate<3;++gate){
+  reset();if(gate==0)sh->readOnly=1;if(gate==1)sh->readOnlyRequest=1;if(gate==2)readOnlyState.active=true;
+  check(ordinaryPair(6),"read-only flag, pending retirement or active retirement keeps enhanced mouse pair native");
+  check(!blockedButtons&&!runtimeKeys.held[VK_LBUTTON],"read-only input does not claim mouse ownership or record held input");
+ }
+ for(unsigned physical:{6u,4u})for(int gate=0;gate<3;++gate){
+  reset(physical);check(deliver(down(physical))==WM_NULL,"owned mouse down before read-only transition");
+  if(gate==0)sh->readOnly=1;if(gate==1)sh->readOnlyRequest=1;if(gate==2)readOnlyState.active=true;
+  deliver(WM_MOUSEMOVE);
+  check(deliver(up(physical))==WM_NULL&&!blockedButtons,
+        "read-only transition balances original mouse release after an unrelated message");
+  check(ordinaryPair(physical),"a fresh mouse pair during read-only remains native");
+  reset(physical);deliver(down(physical));
+  if(gate==0)sh->readOnly=1;if(gate==1)sh->readOnlyRequest=1;if(gate==2)readOnlyState.active=true;
+  physicalKeys[vk(physical)]=0;
+  check(ordinaryPair(physical),"a new read-only mouse down retires an older release lost outside the input route");
+ }
+ reset();deliver(WM_LBUTTONDOWN);sh->readOnly=1;
+ check(ordinaryPair(4),"a read-only right pair remains native beside existing left ownership");
+ check(deliver(WM_LBUTTONUP)==WM_NULL&&!blockedButtons,"original left release still balances after the read-only right pair");
+ reset();deliver(WM_LBUTTONDOWN);sh->readOnly=1;physicalKeys[VK_LBUTTON]=0;
+ check(deliver(WM_LBUTTONDBLCLK)==WM_LBUTTONDBLCLK&&deliver(WM_LBUTTONUP)==WM_LBUTTONUP,
+       "fresh read-only double-click retires lost ownership and keeps both edges native");
  std::cout<<"{\"checks\":"<<checks<<",\"failures\":"<<failures<<",\"passed\":"<<(failures?"false":"true")<<"}\n";
  return failures?1:0;
 }
@@ -156,6 +180,7 @@ def main():
         'tracker': args.source_root / 'source/shared/source/key_gesture.h',
         'policy': args.source_root / 'source/assist/source/pause_view_policy.h',
         'pointer': args.source_root / 'source/assist/source/pointer_intent.h',
+        'readonly': args.source_root / 'source/assist/source/read_only_lifecycle.h',
         'test': Path(__file__).resolve(),
         'fixture_helper': Path(__file__).with_name('pause_key_pairing.py'),
         'extractor': Path(__file__).with_name('superweapon_result_feedback.py'),
@@ -184,7 +209,8 @@ def main():
     for key, relative in (('registry', 'assist/source/hotkey_routes.h'),
                           ('tracker', 'shared/source/key_gesture.h'),
                           ('policy', 'assist/source/pause_view_policy.h'),
-                          ('pointer', 'assist/source/pointer_intent.h')):
+                          ('pointer', 'assist/source/pointer_intent.h'),
+                          ('readonly', 'assist/source/read_only_lifecycle.h')):
         target = frozen / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(captured[key])

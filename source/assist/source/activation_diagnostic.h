@@ -4,13 +4,14 @@ namespace assist { namespace activation {
 // Readiness remains exactly 1. Extra values explain a denied entry without
 // granting work, retiring ownership or changing the shared-memory layout.
 enum Gate:int { Idle=0, Ready=1, Signature=3, WorldUnknown=5, CleanupPending=6,
- AuthorityUnknown=7, ViewOnly=8, Paused=9, DisplayHidden=10, HouseChanged=11 };
+ AuthorityUnknown=7, ViewOnly=8, Paused=9, DisplayHidden=10, HouseChanged=11, HostReadOnly=12 };
 inline const wchar_t* name(int gate){switch(gate){
  case Idle:return L"initial-or-no-world";case Ready:return L"ready";
  case Signature:return L"signature-mismatch";case WorldUnknown:return L"world-unreadable-or-transitional";
  case CleanupPending:return L"owned-feature-restoration-pending";case AuthorityUnknown:return L"house-roster-unreadable";
  case ViewOnly:return L"observer-defeated-or-no-command-house";case Paused:return L"game-not-running";
  case DisplayHidden:return L"tactical-hidden-or-dialog";case HouseChanged:return L"player-context-changed";
+ case HostReadOnly:return L"host-read-only-world-producer";
  default:return L"legacy-or-unknown";
 }}
 inline const wchar_t* message(int gate){switch(gate){
@@ -22,6 +23,7 @@ inline const wchar_t* message(int gate){switch(gate){
  case Paused:return L"游戏当前处于暂停或过场状态，恢复后会继续应用设置。";
  case DisplayHidden:return L"游戏战场未显示或菜单尚未关闭，恢复后会继续应用设置。";
  case HouseChanged:return L"操控方刚刚改变，正在重新核对当前玩家。";
+ case HostReadOnly:return L"战术控制已暂停，共享采样仅供副屏显示；命令和自动任务保持关闭。";
  default:return nullptr;
 }}
 struct LogCadence {

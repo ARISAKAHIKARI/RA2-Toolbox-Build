@@ -1,0 +1,1160 @@
+{
+  "schema": 1,
+  "baseline_commit": "18af5094f1cbd955ebaac9fbe3c85a0682ef7ce9",
+  "observed_utc": "2026-11-09T09:45:58.799202+00:00",
+  "scope": "console/settings/module activation paths; does not evaluate in-game algorithms",
+  "rows": [
+    {
+      "key": "shell_modules",
+      "feature": "光标/统计模块总开关",
+      "controls": [
+        0,
+        1
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "app.ConsoleStore.enable → modern_console_main::onMessage(Module) → ModuleEnable → cursor.togglePrimary / monitor enabled",
+      "persistence": "Suite.ini [Video] CursorEnabled/MonitorEnabled; startup reads legacy Modules only as fallback",
+      "host_activation": "cursor reportEnabled(0); monitor buttonLabel/reportEnabled(1); updates active[] shell",
+      "gate": "servicesStarted, ready HWND; Assist remains independently enabled by design",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "startup_navigation",
+      "feature": "启动和切页恢复",
+      "controls": [
+        "Category5",
+        "VideoSection"
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "ConsoleStore.ready/navigate → selectPage → Host.navigate → owner SelectCategory",
+      "persistence": "Suite.ini [UI] Category5,VideoSection; userNavigated protects early user navigation",
+      "host_activation": "owner generation changes after queued actions drain; same stable control token keeps values",
+      "gate": "UI snapshots only current navigation; old generation cannot submit",
+      "result": "executed-portable",
+      "evidence": [
+        "console-store.log",
+        "console-receipts.log"
+      ]
+    },
+    {
+      "key": "frontend_edits",
+      "feature": "控制台字段、回执、草稿和自动保存状态",
+      "controls": [
+        "toggle",
+        "choice",
+        "text",
+        "number",
+        "hotkey",
+        "button",
+        "range"
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "ConsoleStore.act → consolemodel.Action → Host.post/apply direct owner proc",
+      "persistence": "state authoritative; app pending does not write INI directly",
+      "host_activation": "typed native notification BN_CLICKED/CBN_SELCHANGE/EN_CHANGE",
+      "gate": "token generation/sequence/type/visible/enabled/choice identity; immediate freshness",
+      "result": "executed-portable",
+      "evidence": [
+        "console-store.log",
+        "console-receipts.log"
+      ]
+    },
+    {
+      "key": "assist_autosave",
+      "feature": "Assist 设置立即应用与延迟落盘",
+      "controls": [
+        3901
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autoSettingChanged → changedSetting / save",
+      "persistence": "changedSetting arms 300ms AutoSaveTimer; PrepareClose saves pending model once",
+      "host_activation": "settingsRevision/paintRevision; syncTypeConfig immediate; syncAdditional on relevant fields",
+      "gate": "ready && !updatingControls; disabled dependencies reject and restore value",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "basic_commands",
+      "feature": "装车、选兵、空载运输、信标等按钮与普通键",
+      "controls": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210,
+        211
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "tactical_controls creates 100+i / 200+i; main proc → send(actions[id-100]); key edit → hotkeys[id-200], registerKeys",
+      "persistence": "Assist.ini [Hotkeys] iniKeys[]; main defaults/load/save same 12 slots",
+      "host_activation": "AutoLoad index11 → AutoBoard; command keys register action1000+i",
+      "gate": "manual Reveal index8 requires ManualReveal; shared execution gates audited by input agent",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "social",
+      "feature": "喝彩与八种嘲讽",
+      "controls": [
+        870,
+        871,
+        872,
+        873,
+        874,
+        875,
+        876,
+        877,
+        878
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autoSettingChanged socialKeys[id-870] → registerKeys",
+      "persistence": "[Hotkeys] Cheer,Taunt1..8",
+      "host_activation": "registerKeys action1710+i",
+      "gate": "key conflict validation; chat/menu handled by dispatcher",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "special_selection",
+      "feature": "空闲飞机、按当前武器同类选兵",
+      "controls": [
+        853,
+        724
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "idleAircraftKey/extra.variantKey → registerKeys",
+      "persistence": "[Hotkeys] IdleAircraft; [TypeSelection] VariantKey",
+      "host_activation": "actions1701/1700",
+      "gate": "binding conflict checks",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "type_bindings",
+      "feature": "组合选兵、离线单位ID、解除绑定",
+      "controls": [
+        440,
+        441,
+        443,
+        449,
+        467,
+        444
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "selectedTypeIndex → bindType; AddID → savedTypes.ensure → catalogue; edit441 verifies selected type/key conflict",
+      "persistence": "[TypeHotkeys] complete section replace; type catalogue separate; DoublePressMs",
+      "host_activation": "registerKeys(typeBindings), same binding groups by typekeys",
+      "gate": "type list selection retained by stable ID; callback fields use ControlUpdate",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "superweapon_target",
+      "feature": "超级武器目标键与各超武绑定",
+      "controls": [
+        109,
+        110,
+        209,
+        210,
+        410,
+        411
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "actions SelectIron/SelectChrono; selectedSuperID → bindSuper",
+      "persistence": "[Hotkeys] IronCurtain/ChronoSphere; [SuperHotkeys] type id",
+      "host_activation": "registerKeys base actions and 1020+i; duplicates of base bindings suppressed",
+      "gate": "live SW selection required; no arbitrary target fabricated",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "advanced_attack",
+      "feature": "高级移动攻击、按住键及参数",
+      "controls": [
+        458,
+        450,
+        787,
+        818,
+        802,
+        729
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "main hookAdvanced; autoSettingChanged advancedKey/range/scan/priority",
+      "persistence": "[Hooks] Advanced; [NativeOrders] AdvancedHoldKey/TargetRangeExtraCells/TargetScanHz/TargetPriority; [Mouse] per-feature",
+      "host_activation": "flags hookpolicy.resolve + syncTypeConfig/shared inputs",
+      "gate": "parent Advanced gates numeric fields; held binding edits do not enable feature",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "smart_unload",
+      "feature": "智能卸载与立即卸载",
+      "controls": [
+        459,
+        451,
+        453
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "main hookSmartUnload / send(SmartUnload); binding edit unloadKey",
+      "persistence": "[Hooks] SmartUnload; [NativeOrders] UnloadKey",
+      "host_activation": "register action1698 only when enabled; button453 directly sends",
+      "gate": "existing command context gates",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "magnetron_mouse",
+      "feature": "磁电轮换攻击",
+      "controls": [
+        477,
+        478,
+        730
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "main magnetronMode / auto key → changed/save",
+      "persistence": "[Modes] MagnetronMove; [NativeOrders] MagnetronHoldKey; [Mouse] MagnetronButton",
+      "host_activation": "flags MagnetronInput|NativeOrders; pointer config",
+      "gate": "explicit toggle; held key alone does not enable",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "cooperative",
+      "feature": "高级进驻与飞机分配",
+      "controls": [
+        702,
+        703,
+        704,
+        705,
+        706,
+        707,
+        708,
+        709,
+        9195,
+        732,
+        733,
+        734
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "boolean handlers read ExtraControl slots; custom/preset updates only changed binding",
+      "persistence": "[Cooperative] AdvancedEnter/AircraftSpread/EnterHoldKey/AirHoldKey1/2/AircraftAllocationPolicy",
+      "host_activation": "additionalFlags AdvancedEnter/AircraftSpread; syncAdditional copies parameters",
+      "gate": "air gesture uniqueness unless allHotkeys; quota UI gated by mode",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "aircraft_quotas",
+      "feature": "飞机配额、按类型覆盖",
+      "controls": [
+        710,
+        711,
+        712,
+        713,
+        714,
+        715,
+        716,
+        717,
+        718,
+        751
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "typed valid range → defaults / targetQuotas; selector stable game type ID",
+      "persistence": "[AircraftQuota] First/Second/Maximum; [AircraftQuotaOverrides] whole section",
+      "host_activation": "syncAdditional copies quotas when publishing",
+      "gate": "Aircraft && AircraftQuotas; independent target validity/override requirements",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "special_mouse",
+      "feature": "飞碟、变卖载具/吸取目标/敌方建筑",
+      "controls": [
+        719,
+        720,
+        721,
+        722,
+        725,
+        726,
+        727,
+        728,
+        789,
+        735,
+        737,
+        738
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "explicit toggles → extra; sell key dual editor kept in sync under ControlUpdate",
+      "persistence": "[SpecialClick] DiskPrimary/SellDrained/SellVehicles/SellEnemyBuildings/keys; [Mouse] per feature",
+      "host_activation": "additionalFlags; syncAdditional; own native cursor9189 separate",
+      "gate": "SellAvailable and explicit enemy-building opt-in migration; no silent enable on binding",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "pointer_buttons",
+      "feature": "十类增强鼠标入口",
+      "controls": [
+        729,
+        730,
+        731,
+        732,
+        733,
+        734,
+        735,
+        736,
+        737,
+        738,
+        788
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "combo selection5→physical6; per-feature slot id-729; overrideNative explicit",
+      "persistence": "[Mouse] per-feature names, OverrideNative; legacy category fallback only when new key missing",
+      "host_activation": "extra.mouseButtons and overrideNative copied by syncAdditional",
+      "gate": "disabled0 honored; physical5 reserved invalid; no universal category overwrite",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "formation",
+      "feature": "队形、快速占位与六种形状",
+      "controls": [
+        9050,
+        9051,
+        9052,
+        9053,
+        9054,
+        9055,
+        9056,
+        9057,
+        9058,
+        9446,
+        9447
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autoSettingChanged index mapping 9057/8→4/5; enabled separate; mouse2/1 mapping",
+      "persistence": "[Formation] Enabled/HoldKey/MouseButton/shape keys; [Mouse] FormationQuick",
+      "host_activation": "syncAdditional and Host formation poll",
+      "gate": "explicit Formation enable; only shape bindings updated",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "mo_orders",
+      "feature": "模糊下令、区域分配、巡逻",
+      "controls": [
+        9400,
+        9401,
+        9402,
+        9440,
+        9441,
+        9442,
+        9443,
+        9444,
+        9445,
+        9480,
+        9481,
+        9482,
+        9483,
+        9484,
+        9485,
+        9486
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "MO feature bits0..2; gesture array slot; bounded options",
+      "persistence": "[MOControls] Features/Range/Squad/.../AutoCommit; [Mouse] gesture fields",
+      "host_activation": "syncAdditional; pointerMatches.clear on meaningful changes",
+      "gate": "keyboard-only gesture controls; explicit feature bits",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "air_path",
+      "feature": "飞机路径点和跟随按键",
+      "controls": [
+        803,
+        894
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "mode0..4 → airWaypoints/nativeAirWaypoints/nativeAirNetwork; key edit resets prior path",
+      "persistence": "[Aircraft] WaypointMode/WaypointHoldKey; legacy values compatible",
+      "host_activation": "additionalFlags chooses AirWaypoints/NativeAirWaypoints; syncAdditional",
+      "gate": "mode choice explicit; old path buffers cleared",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "shift_click",
+      "feature": "Shift 五连点",
+      "controls": [
+        795,
+        796,
+        797
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autoSettingChanged updates enabled/mode/gap",
+      "persistence": "[Click] Enabled/Mode/IntervalMs",
+      "host_activation": "Host click service reads explicit settings",
+      "gate": "mode/interval dependency retains child values",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "auto_load_config",
+      "feature": "自动装车分配方式、范围",
+      "controls": [
+        700,
+        701
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autoSettingChanged loadMode and loadRadius; control111 is actual execution entry",
+      "persistence": "[AutoLoad] Logic/RangeCells",
+      "host_activation": "syncAdditional copies extra.loadMode/loadRadius",
+      "gate": "valid range1..512; not an automatic enable toggle",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "ore_types",
+      "feature": "矿车自动卸矿类型条件",
+      "controls": [
+        781,
+        782,
+        783,
+        784
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "custom toggles and parsed IDs → oreTypes; ControlUpdate protects readbacks",
+      "persistence": "[OreTypes] CustomMiners/CustomRefineries/Miners/Refineries",
+      "host_activation": "syncTypeConfig publishes coherent oreConfig",
+      "gate": "parent Ore and each custom flag required for edit",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "feature_type_filters",
+      "feature": "20类可用功能的类型清单",
+      "controls": [
+        "9200+2*f",
+        "9201+2*f"
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "toggle custom flag or validate comma IDs per feature; SpiderDefense placed beside feature; BurstRefresh retired slot skipped",
+      "persistence": "[FeatureTypes] key/Custom preserve text",
+      "host_activation": "syncTypeConfig publishes featureConfig seqlock",
+      "gate": "custom off ignores prefilled IDs; custom on empty deliberately processes no types",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "manual_map",
+      "feature": "地图绘制与手动揭示",
+      "controls": [
+        808,
+        9199,
+        108,
+        208
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autoSettingChanged shroud strategy/manualReveal, discard obsolete reveal request; manual button send RevealMap",
+      "persistence": "[Display] ShroudStrategy; [Experimental] ManualReveal; [Hotkeys] RevealMap",
+      "host_activation": "additionalFlags + registerKeys only for allowed manual reveal",
+      "gate": "hardware map mutually exclusive; SHP options disabled; preserved settings do not silently opt in",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "technology",
+      "feature": "自定义科技、实现和许可清单",
+      "controls": [
+        420,
+        896,
+        421,
+        422,
+        423,
+        424,
+        425,
+        426,
+        427,
+        428,
+        814
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "main techMode/profile/implementation/exceptions; production/cancel choose live type index",
+      "persistence": "[Tech] profile,implementation,exceptions per profile; old custom format",
+      "host_activation": "flags UnsafeTech; send(OpenTech); explicit Produce/CancelTechProduction",
+      "gate": "slot budget/dependencies; native panel modes block toolbox production commands",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "placement",
+      "feature": "建筑放置三种实现及原生预览",
+      "controls": [
+        476,
+        9096,
+        9251,
+        9252
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "buildAnywhereMode / placementImplementation; resetPlacementEvent then registerKeys",
+      "persistence": "[Experimental] BuildAnywhere/PlacementImplementation; [Hotkeys] PlaceCompletedBuilding",
+      "host_activation": "flags BuildAnywhere; event placement action; completed product selection",
+      "gate": "implementation switch allowed while off; preview selection/key require EventPlacement",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "tech_enhance",
+      "feature": "科技加强与精确比较",
+      "controls": [
+        9097,
+        9470,
+        9472
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "extra.techEnhance/implementation/compare → syncAdditional",
+      "persistence": "[Experimental] TechEnhance/TechEnhanceImplementation/TechEnhanceCompareLevel",
+      "host_activation": "shared dedicated fields; explicit option requests",
+      "gate": "hardware budget; exact comparison requires exact parent",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "cross_player",
+      "feature": "跨玩家控制及命令所属方",
+      "controls": [
+        860,
+        9250,
+        9193
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "controlAll/implementation/commandOwner → controlRequest helpers",
+      "persistence": "[Experimental] ControlAll/ControlImplementation/ControlCommandOwner",
+      "host_activation": "syncAdditional resolves request; clears pointer snapshots",
+      "gate": "hardware slot budget and NativeControl dependency; preserved child flags may be inactive",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "network_house",
+      "feature": "保留事件所属方和原生出售光标",
+      "controls": [
+        9187,
+        9189
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "extra.networkHousePreserve/nativeSellCursor → syncAdditional",
+      "persistence": "[Experimental] NetworkHousePreserve/NativeSellCursor",
+      "host_activation": "networkHouseRequested keeps hard/legacy implementations suppressed",
+      "gate": "NetworkControlAllowed; explicit own toggle",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "destruction",
+      "feature": "选定单位所属方自毁",
+      "controls": [
+        9253,
+        9254,
+        9185
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "extra.destructSelectedOwner; exclusive key conflict; button calls submitDestructSelectedOwner",
+      "persistence": "[Experimental] DestructSelectedOwner; [Hotkeys] DestructSelectedOwner",
+      "host_activation": "registerKeys; immediate owner button; changes update availability",
+      "gate": "explicit enable; exclusive action; original immediate freshness and game protections retained",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "experimental_view",
+      "feature": "视角缩放/侧栏/小图边界",
+      "controls": [
+        9090,
+        9091,
+        9092,
+        9450,
+        9451,
+        9452,
+        9462,
+        9404,
+        9453,
+        9463
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "extra enable/mode/keys → registerKeys/syncAdditional",
+      "persistence": "[ViewZoom]; [Experimental] SidebarEnabled/SidebarMode/SmallMapClamp; [Hotkeys] view/sidebar",
+      "host_activation": "Host routes only register requested feature; runtime fields published",
+      "gate": "explicit individual switches; saved key editing does not enable",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "pause",
+      "feature": "单机暂停与逐帧",
+      "controls": [
+        9403,
+        9454,
+        9455
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "MO Features bit16; pauseKeys0/1 → registerKeys/syncAdditional",
+      "persistence": "[MOControls] Features; [Hotkeys] PauseToggle/PauseStep",
+      "host_activation": "native input path consumes pause keys",
+      "gate": "single-player/runtime guard; foreground exit recovers state",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "experimental_runtime",
+      "feature": "硬件黑幕/持续超武授予/CRC/原生观察查询",
+      "controls": [
+        9492,
+        9490,
+        9196,
+        9191,
+        9198
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "explicit boolean → changedSetting/syncAdditional",
+      "persistence": "[Experimental] HardwareMapVisibility/SuperweaponPermanentGrant/CrcMapIsClearShadow/NativeMegaGateway/NativeCombatQueries",
+      "host_activation": "dedicated runtime request fields",
+      "gate": "hardware budget; reveal mutual exclusion; no automatic opt-in",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "compute_modes",
+      "feature": "按功能计算位置及兼容后端",
+      "controls": [
+        "9000+i",
+        761,
+        762
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "computeRequested bit update; MegaMissionBackend/ObjectEventBackend explicit choice",
+      "persistence": "[Compute] each feature; [Orders] MegaMissionBackend/ObjectEventBackend",
+      "host_activation": "syncAdditional computeRequested; applies next match / backend after restart",
+      "gate": "BurstRefresh hidden; UI tells next-match or restart semantics",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "sticky_selected",
+      "feature": "Sticky及四种选中单位命令",
+      "controls": [
+        9094,
+        9095,
+        9170,
+        9171,
+        9172,
+        9173,
+        9174,
+        9175,
+        9176,
+        9177
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "buttons send commandFor(index), key edit missionModeKeys[index]",
+      "persistence": "[Hotkeys] StickyGuard / selectedmode setting names",
+      "host_activation": "registerKeys1723/1724+i; button9176 marked immediate",
+      "gate": "chat/freshness/input protections handled by dispatcher; no enable flag invented",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "monitor_local",
+      "feature": "统计视图本地开关/缩放/边距/副屏",
+      "controls": [
+        100,
+        101,
+        102,
+        103,
+        104,
+        108,
+        110,
+        118,
+        120,
+        121,
+        122
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "unit_monitor proc → local state, save, tick; module toggle independent of secondary",
+      "persistence": "UnitMonitor.ini local preferences; suite remembers primary module enable",
+      "host_activation": "sampling generation/reset; primary and secondary flags independent",
+      "gate": "bounds50..250 scale; position0..10000; unrelated module off does not overwrite secondary",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "cursor_local",
+      "feature": "光标显示方式/刷新率/样式/几何/动画",
+      "controls": [
+        101,
+        12,
+        153,
+        130,
+        131,
+        132,
+        154,
+        "HWND-based edits"
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "cursor wndproc routes control HWND; live edits debounce150; target rate152; applyScale validates each field independently",
+      "persistence": "settings.ini Cursor/Animation/Display/Startup",
+      "host_activation": "refresh update / reset observation; togglePrimary changes autoStart and autoPaused only",
+      "gate": "invalid numeric field retains prior value without blocking unrelated switches",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "display_bus",
+      "feature": "现有共享视频控件及主/副屏设置",
+      "controls": [
+        "displaySpecs[]",
+        "videoEntries[]",
+        "unitSettingControls[]"
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "VideoSettings or unitSettingCommand → requestDisplaySetting → Assist ApplyDisplaySetting → native owner",
+      "persistence": "single Assist.ini authority; mirrored controls never save independent INI",
+      "host_activation": "publishSuiteDisplay → shared coherent DisplayState → owner pane sync",
+      "gate": "type bounds and appropriate dependencies; disabled child retains saved values",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "superweapon_panel",
+      "feature": "独立超级武器面板",
+      "controls": [
+        9405
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "new appended SuperweaponPanel display option → existing autoSettingChanged9405",
+      "persistence": "[Display] SuperweaponPanel default0 unchanged",
+      "host_activation": "serviceSuperweaponPanel uses extra.superweaponPanel; existing options retained",
+      "gate": "independent of disabled RenderUpgrade",
+      "result": "fixed-executed-portable",
+      "evidence": [
+        "display-entry-before/result.json",
+        "display-entry-after/result.json"
+      ]
+    },
+    {
+      "key": "runtime_details",
+      "feature": "运行耗时显示",
+      "controls": [
+        481
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "new appended DetailedStatus display option → existing proc481",
+      "persistence": "[Display] DetailedStatus default0 unchanged",
+      "host_activation": "showDetails gates timing text in computation/status UI",
+      "gate": "independent of disabled RenderUpgrade",
+      "result": "fixed-executed-portable",
+      "evidence": [
+        "display-entry-before/result.json",
+        "display-entry-after/result.json"
+      ]
+    },
+    {
+      "key": "retired_features",
+      "feature": "明确停用与保留配置",
+      "controls": [
+        9300,
+        9302,
+        9313,
+        9304,
+        9305,
+        9307,
+        9308,
+        9309,
+        9314,
+        446,
+        447,
+        445,
+        810,
+        811,
+        812,
+        9180,
+        861,
+        760
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "existing disabled entry/availability decisions retained",
+      "persistence": "saved render fields preserved; AutoCS/C4 load suppressed; old scheduler0",
+      "host_activation": "effectiveRender* recovery constants; featureavailability constants",
+      "gate": "not classified as current available entry gaps; no re-enable changes",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "debug_controls",
+      "feature": "入口校验、平台探测与进程选择",
+      "controls": [
+        "DebugEntryControlBase+i",
+        "process selection/probe commands"
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "debugEntryCommand → dedicated commands; checkable policy updates syncAdditional/changedSetting/wake",
+      "persistence": "[DebugEntries] Skip_stableID; target preference/probe ownership in dedicated files",
+      "host_activation": "explicit signature toggle does not turn feature on",
+      "gate": "partial review: detailed process-selection/probe workflows delegated/not simulated",
+      "result": "partial-static",
+      "evidence": []
+    },
+    {
+      "key": "automatic_Repair",
+      "feature": "自动维修",
+      "controls": [
+        100,
+        200
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "legacy dedicated INI binding",
+      "host_activation": "registerKeys action1000; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_Eject",
+      "feature": "载员自动逃生",
+      "controls": [
+        455,
+        456
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "legacy dedicated INI binding",
+      "host_activation": "registerKeys action1696; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_MagnetronDrop",
+      "feature": "磁电全局自动摔落",
+      "controls": [
+        899,
+        9502
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "[AutomaticHotkeys] MagnetronDrop",
+      "host_activation": "registerKeys action1802; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_ConstructionQueue",
+      "feature": "生产预定",
+      "controls": [
+        799,
+        9503
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "[AutomaticHotkeys] ConstructionQueue",
+      "host_activation": "registerKeys action1803; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_OreReturn",
+      "feature": "矿车自动卸矿",
+      "controls": [
+        470,
+        9504
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "[AutomaticHotkeys] OreReturn",
+      "host_activation": "registerKeys action1804; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_MinerDefense",
+      "feature": "自动点杀蜘蛛",
+      "controls": [
+        9496,
+        9505
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "[AutomaticHotkeys] MinerDefense",
+      "host_activation": "registerKeys action1805; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_AntiTheft",
+      "feature": "防御建筑优先攻击渗透单位",
+      "controls": [
+        804,
+        9506
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "[AutomaticHotkeys] AntiTheft",
+      "host_activation": "registerKeys action1806; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_Dodge",
+      "feature": "自动躲弹",
+      "controls": [
+        885,
+        9507
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "[AutomaticHotkeys] Dodge",
+      "host_activation": "registerKeys action1807; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_MissileDefense",
+      "feature": "防空火控",
+      "controls": [
+        880,
+        9508
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "[AutomaticHotkeys] MissileDefense",
+      "host_activation": "registerKeys action1808; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_MissileReserve",
+      "feature": "提前休眠留枪",
+      "controls": [
+        9181,
+        9509
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "[AutomaticHotkeys] MissileReserve",
+      "host_activation": "registerKeys action1809; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_LowDamageFilter",
+      "feature": "过滤低伤害自动目标",
+      "controls": [
+        9182,
+        9510
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "[AutomaticHotkeys] LowDamageFilter",
+      "host_activation": "registerKeys action1810; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_MagnetronGlobal",
+      "feature": "磁电全局无限吸",
+      "controls": [
+        9042,
+        9511
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "[AutomaticHotkeys] MagnetronGlobal",
+      "host_activation": "registerKeys action1811; explicit checkbox controls feature",
+      "gate": "ready/enabled control; dependency rejection uses same owner as console",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "automatic_AutoCS",
+      "feature": "自动移动攻击（CS）",
+      "controls": [
+        446,
+        447
+      ],
+      "visible_entry": "suite console → adapter token → original HWND owner",
+      "owner": "autofeatures catalogue → automaticHotkey → same direct proc as checkbox",
+      "persistence": "legacy dedicated INI binding",
+      "host_activation": "registerKeys action1699; explicit checkbox controls feature",
+      "gate": "AutoCS explicitly unavailable",
+      "result": "intentional-unavailable",
+      "evidence": []
+    },
+    {
+      "key": "cs_hold",
+      "feature": "按键移动攻击（CS）",
+      "controls": [
+        473,
+        474,
+        731
+      ],
+      "visible_entry": "tactical control category",
+      "owner": "main proc473/csHoldEnabled; autoSettingChanged474/csHoldKey; MouseCS slot2",
+      "persistence": "[AutoCS] HoldEnabled/HoldKey; [Mouse] CSButton",
+      "host_activation": "flags CustomCS and pointer binding; independent of retired automatic AutoCS",
+      "gate": "explicit hold enable; held key edit does not enable",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "direct_attack",
+      "feature": "直接攻击移动鼠标入口",
+      "controls": [
+        736
+      ],
+      "visible_entry": "tactical keyboard/mouse category",
+      "owner": "autoSettingChanged729+MouseAttack; slot7",
+      "persistence": "[Mouse] AttackMoveButton",
+      "host_activation": "pointer resolveMouse operation AttackMove",
+      "gate": "configured physical button0 disables; no separate automatic toggle",
+      "result": "static-reviewed",
+      "evidence": []
+    },
+    {
+      "key": "camera_motion",
+      "feature": "高刷移动补帧可独立配置",
+      "controls": [
+        9324
+      ],
+      "visible_entry": "Video → cursor/render VideoSettings",
+      "owner": "VideoSettings ready(RenderHighRefresh) and settingsdeps decision9324 now independent",
+      "persistence": "[Display] RenderHighRefresh unchanged default1",
+      "host_activation": "publishSuiteDisplay profile.motion remains consumed by watch_scene::sampleLatest",
+      "gate": "only erroneous RenderUpgrade parent removed; RenderUpgrade/physical/quality gates unchanged",
+      "result": "fixed-executed-portable",
+      "evidence": [
+        "motion-before/result.json",
+        "display-entry-after/result.json",
+        "settings-dependencies-result.json"
+      ]
+    }
+  ],
+  "counts": {
+    "families": 58,
+    "display_specs": 70,
+    "display_mirror_missing": 0
+  },
+  "fresh_execution_reports": [
+    "frontend-executions.json",
+    "display-entry-before/result.json",
+    "motion-before/result.json",
+    "display-entry-pre5-final/result.json",
+    "display-entry-after/result.json",
+    "settings-dependencies-result.json",
+    "final-console-gate/result.json"
+  ],
+  "gaps": [
+    "No real Windows/WebView2 UI or HWND message delivery executed; portable stubs only.",
+    "No game, overlay visual output or multiplayer validation.",
+    "Most Assist field mappings are static full-path review, not individual executable cases.",
+    "Automatic/native hotkey service and feature consumers are assigned to sibling/root audits.",
+    "Process-selection and platform-probe UI detailed handlers not exhaustively replayed.",
+    "Closing flush failure/queue exhaustion not reinjected this round; existing route was read, no historical execution reused."
+  ],
+  "sources": {
+    "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+    "source/suite/source/console_adapter.h": "33d5a74466aa7a5e153350087317efdd1254d40e3a0583620fbd07bfe92c9012",
+    "source/suite/source/console_model.h": "35c131f0d2f17b3c1407a6a0188765cb8cda151ad49c688395bb0578a098cd20",
+    "source/suite/source/modern_console_main.h": "97aa4fc087b433ec5ede96dbc2b4dde9381aad3422f66bb8a45ecf51d0166570",
+    "source/suite/source/display_settings.h": "6a86597715c23691c3cf017582c4208b37ee48c23e4f7cf35412e4eedd4559d2",
+    "source/suite/source/video_settings_ui.h": "4a2cde6caae269752723c756d436dbd8f118b32f2627280c0c54a48ccbbb3d45",
+    "source/suite/source/settings_categories.h": "782d273871e498e2017a31a4505093c4b46d31d79a967213644ea7f6513a18e6",
+    "source/shared/source/initial_profiles.h": "142c4964e1c78235fe6fba2847c7978f7f3e0dbad1148dbd15c943d2c7c26643",
+    "source/assist/source/tactical_controls.h": "db202382bd1f06e3b2b828f987451be934e9edf6d040dd3f6f54adc6918a0e13",
+    "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+    "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+    "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+    "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+    "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+    "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+    "source/assist/source/type_bindings_ui.h": "90f29ad1d4d0d1c20ec22271ed24de29f16b027c970e0c79e13855166ba7e9ec",
+    "source/assist/source/settings_dependencies.h": "e9d183dc0691c9ca9805a8c48faaac64bf0bb4d76375309c3f69d05ae6a59547",
+    "source/assist/source/ui_dependencies.h": "0311038a11a85d90b9944873fad288c41c53332aeb898ae5751b57d30a3449c3",
+    "source/assist/source/debug_entries_ui.h": "34ab6f2efe7644aadd0ec4d2a279c68cbd2cbb21c87f701fba99e7688ff1bb17",
+    "source/cursor/source/main.cpp": "88847fea360c76666b7f5eefd9b7bac32b464f449980f0797f146ceaf5a1a266",
+    "source/cursor/source/live_settings_ui.h": "366541ffc3db1b74e7dfd5349103bc4c98ed6a2fe08cf35953c49a3ab11041af",
+    "source/cursor/source/refresh_settings_ui.h": "a27d9d63f3a98f749e01a1cf83a6fa1138943e9f58cb314eb729a7c09ee0df73",
+    "source/unit_monitor/source/main.cpp": "c8651e8e734e1b86e38056040acef64d0f51e1f786b927198c3ab3ae07d23fc3",
+    "source/unit_monitor/source/display_settings_ui.h": "11f89f3990315bb34a50349932060ef2919ae2dd0032084aba7911cf94a6fc7b",
+    "source/suite/tests/console_display_entry_test.py": "2ea3c4a6ee9ae0e09b68f68ac03070b74dfdc8214510891007b0299e6db64b1d",
+    "source/assist/tests/settings_dependencies.cpp": "6b1d94611781df4ec0cbe745d912a4c22ce872e034d3033a70e4476247ddbee5",
+    "source/assist/source/watch_scene.h": "f89c564c6ffe5505343180f6d0ffb4598d130b6e815b4540d0ad05bd26b03cb4",
+    "source/assist/source/pointer_intent.h": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1",
+    "source/suite/tests/fixtures/entry_pre1475/display_settings.h": "a26736afe50c92049789f77340695d5ffbd56f5b0f3fb8d37de3a2b1d2673772",
+    "source/suite/tests/fixtures/entry_pre1475/settings_dependencies.h": "b9671635669d63170a297d65cd02e37978be783822c30a80399f22ab9c5794f1",
+    "source/suite/tests/fixtures/entry_pre1475/video_settings_ui.h": "1e584429f6ab18a3e22cd69931e707bf17edc5ffb3cf3bc6f989a9b667cfc240"
+  },
+  "findings": [
+    {
+      "id": "CE-01",
+      "severity": "entry-unreachable",
+      "status": "fixed",
+      "entry": 9405,
+      "condition": "RA2_UNIFIED normal console; fresh SuperweaponPanel=0",
+      "minimal_path": "tactical_controls creates9405 → categories::Video → finalizeTacticalLayout page=-3 → no display spec or suite mirror → cannot enable",
+      "change": "append SuperweaponPanel display option/spec; add Monitor video entry",
+      "proof": "old headers compile/run fail missing spec; new actual create/post/forward/owner/persist/reload pass"
+    },
+    {
+      "id": "CE-02",
+      "severity": "entry-unreachable",
+      "status": "fixed",
+      "entry": 481,
+      "condition": "RA2_UNIFIED normal console; DetailedStatus=0",
+      "minimal_path": "section3 control481 → categories::Video → page=-3 → no suite mirror",
+      "change": "append DetailedStatus option/spec; add Monitor entry",
+      "proof": "same production roundtrip test as CE-01"
+    },
+    {
+      "id": "CE-03",
+      "severity": "wrong-parent-gate",
+      "status": "fixed",
+      "entry": 9324,
+      "condition": "RenderUpgrade=0 with active Watch consumer",
+      "minimal_path": "VideoSettings::ready and settingsdeps::decision demand RenderUpgrade although profile.motion is independently published/consumed",
+      "change": "only9324 independent in both front mirror readiness and Assist owner dependency",
+      "proof": "current-entry/old-dependency negative control compiles/runs, fails3 assertions; fixed9scenarios47checks pass",
+      "limit": "consumer usage established by current source; no Windows frame rendering executed"
+    }
+  ],
+  "notes": [
+    "Final self-contained gate: console_display_entry_test.py --negative-control --out DIR; exact pre.5 fixture hashes verified before executable negative control.",
+    "Low-priority existing feedback mismatch: send() no-window branch with candidate PID but unknown match rejects non-RevealMap actions and says no connectable window; queue protection intentionally unchanged."
+  ]
+}

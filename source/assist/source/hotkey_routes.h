@@ -13,8 +13,20 @@ struct Group {int id=0;uint16_t key=0;std::vector<int> actions;std::vector<uint1
 };
 struct Registry {
  std::vector<Group> groups;bool synchronized=false;uint32_t lastSampleTick=0;bool sampleTimed=false;
+ // Context admission outlives gesture cancellation while another game input
+ // owns the pointer. Formation WM handoff must reject an earlier focus/match
+ // epoch without treating every preview-owned sample as a new context fence.
+ uint32_t contextMatch=0,contextFence=0;bool contextActive=false;
+ void observeContext(bool active,uint32_t match,uint32_t now){
+  if(!active||!match){contextActive=false;contextFence=now;return;}
+  if(!contextActive||contextMatch!=match)contextFence=now;
+  contextActive=true;contextMatch=match;
+ }
+ bool contextMessageFresh(uint32_t eventTick,uint32_t now,uint32_t match,uint32_t maximumAge)const{
+  return contextActive&&contextMatch==match&&later(eventTick,contextFence)&&uint32_t(now-eventTick)<=maximumAge;
+ }
  bool sampleFresh(uint32_t now)const{return sampleTimed&&uint32_t(now-lastSampleTick)<=150;}
- void clear(){groups.clear();synchronized=false;sampleTimed=false;}
+ void clear(){groups.clear();synchronized=false;sampleTimed=false;contextActive=false;}
  template<class Register> bool add(int id,uint16_t key,bool all,Register install){
   uint16_t physical=canonical(key);key=keygesture::normalize(key);if(!(key&255))return true;
   if(keygesture::effective(key)==keygesture::Mode::Hold)return false;
@@ -46,7 +58,7 @@ struct Registry {
   for(auto&g:groups)if(g.id==id){
    if(g.match!=match){
     g.waiting=g.down=g.second=g.singleReleased=g.canDouble=g.suppressed=g.firstReleaseValid=false;
-    g.match=match;g.edgeTimed=g.pollPending=g.pollReleased=g.upTimed=false;g.fenceTick=now;g.fenceTimed=true;synchronized=false;sampleTimed=false;return false;
+    g.match=match;g.edgeTimed=g.pollPending=g.pollReleased=g.upTimed=false;g.fenceTick=now;g.fenceTimed=true;synchronized=false;sampleTimed=false;contextActive=false;return false;
    }
    if(g.suppressed||(g.fenceTimed&&!later(eventTick,g.fenceTick)))return false;
    if(g.edgeTimed&&!later(eventTick,g.edgeTick)){
@@ -69,15 +81,15 @@ struct Registry {
   return false;
  }
  bool expired(uint32_t now,uint32_t match,Group&out){for(auto&g:groups)if(g.waiting){if(g.match!=match){g.waiting=g.down=false;continue;}if(uint32_t(now-g.at)>keygesture::Window){g.waiting=false;single(g,out);if(!out.actions.empty())return true;}}return false;}
- void cancel(){for(auto&g:groups){g.waiting=g.down=g.second=g.singleReleased=g.canDouble=g.suppressed=g.firstReleaseValid=false;g.edgeTimed=g.fenceTimed=g.upTimed=g.pollPending=g.pollReleased=false;}synchronized=false;sampleTimed=false;}
- void cancel(uint32_t now){cancel();for(auto&g:groups){g.fenceTick=now;g.fenceTimed=true;}}
+ void cancel(){for(auto&g:groups){g.waiting=g.down=g.second=g.singleReleased=g.canDouble=g.suppressed=g.firstReleaseValid=false;g.edgeTimed=g.fenceTimed=g.upTimed=g.pollPending=g.pollReleased=false;}synchronized=false;sampleTimed=false;contextActive=false;}
+ void cancel(uint32_t now,bool preserveContext=false){const bool active=contextActive;cancel();contextActive=preserveContext&&active;for(auto&g:groups){g.fenceTick=now;g.fenceTimed=true;}}
  template<class Keys> void synchronize(const Keys&keys,uint32_t match){cancel();synchronized=true;for(auto&g:groups){g.match=match;g.suppressed=keys[g.key&255]!=0;}}
- template<class Keys> void synchronize(const Keys&keys,uint32_t match,uint32_t now){synchronize(keys,match);lastSampleTick=now;sampleTimed=true;for(auto&g:groups){g.fenceTick=now;g.fenceTimed=true;}}
+ template<class Keys> void synchronize(const Keys&keys,uint32_t match,uint32_t now){synchronize(keys,match);lastSampleTick=now;sampleTimed=true;observeContext(true,match,now);for(auto&g:groups){g.fenceTick=now;g.fenceTimed=true;}}
  // Every command key has a physical-edge fallback. OS notifications retain
  // short presses between samples; message() and this sampler share one edge
  // watermark, so neither notification order can produce duplicate commands.
  template<class Keys,class Emit> void sample(const Keys&keys,uint32_t now,uint32_t match,Emit emit,bool allowPolledPress=true){
-  lastSampleTick=now;sampleTimed=true;
+  lastSampleTick=now;sampleTimed=true;observeContext(true,match,now);
   if(!synchronized){synchronized=true;for(auto&g:groups)if(!g.down){g.match=match;g.suppressed=keys[g.key&255]!=0;g.fenceTick=now;g.fenceTimed=true;}}
   for(auto&g:groups){unsigned vk=g.key&255;bool down=keys[vk]!=0;
    // Command bindings encode Ctrl/Alt/Shift only. Polling must not turn a
@@ -118,6 +130,15 @@ struct Pending {
  bool add(const Group&g,uint32_t tick,uint32_t match){
   expire(tick,match);if(!match||g.actions.size()>Capacity-count)return false;
   for(int id:g.actions)items[(head+count++)%Capacity]={id,tick,match};return true;
+ }
+ // Local Host actions can pass an unrelated busy game mailbox. Remove only
+ // the selected item; deferred commands keep their original order and age.
+ template<class Ready> bool popReady(uint32_t now,uint32_t match,Action&out,Ready ready){
+  expire(now,match);
+  for(unsigned i=0;i<count;++i){const auto item=items[(head+i)%Capacity];if(!ready(item.id))continue;
+   out=item;for(unsigned j=i+1;j<count;++j)items[(head+j-1)%Capacity]=items[(head+j)%Capacity];
+   --count;if(!count)head=0;return true;
+  }return false;
  }
  bool pop(uint32_t now,uint32_t match,Action&out){
   while(count){out=items[head];head=(head+1)%Capacity;--count;if(out.match==match&&uint32_t(now-out.tick)<=2500)return true;}return false;

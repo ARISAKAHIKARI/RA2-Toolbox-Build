@@ -61,7 +61,7 @@ template<class Read>static bool followTracks(Read read,int slot=-1){
 static void reset(){suspended=false;worker.invalidate();applied.reset();++controls;for(auto&t:tracks)t={};for(auto&v:views)v={};autoSuppressed=false;shown=false;lifetime.reset();lifetimeSample=0;lifetimeReady=false;}
 static void suspend(){if(suspended)return;suspended=true;worker.invalidate();applied.reset();++controls;for(auto&v:views)v.shown=false;shown=false;}
 static bool synchronizeWorld(){
- const bool valid=externalData&&externalData->status==1&&externalData->sampledTick&&uint32_t(sampleRenderClock(nullptr)-externalData->sampledTick)<2000;
+ const bool valid=externalData&&externalData->status==1&&externalData->sampledTick&&uint32_t(GetTickCount()-externalData->sampledTick)<2000;
  const uint32_t sampled=externalData?externalData->sampledTick:0,match=valid?externalData->match:0;
  if(process==pid&&sampled==lifetimeSample&&(!match||match==epoch))return lifetimeReady&&valid;
  auto next=lifetime;auto decision=next.observe(pid,match,assist::worldlife::capture([](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);}));

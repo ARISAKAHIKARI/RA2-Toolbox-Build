@@ -1,0 +1,45 @@
+{
+  "schema": "ra2.feature-entry-review-index.v1",
+  "scope": "Source entrance review matrices captured before the unified frozen execution. Each original distinguishes source inspection from controlled execution. Matrices overlap and their counts must not be summed as independent feature counts. Final current-source executions and negative controls are archived separately in the release verification package.",
+  "version": "1.0.47-pre.6",
+  "files": [
+    {
+      "archive_path": "input-entry-matrix.json",
+      "original_path": "/workspace/scratch/c1b87d8550cd/entry-audit-pre6/input/entry-matrix.json",
+      "sha256": "ad2a161d196f2b021c2ec27d4594a9c4dc2106b58bc736f3724b99fc0fa51b91",
+      "bytes": 18866
+    },
+    {
+      "archive_path": "input-entry-matrix.md",
+      "original_path": "/workspace/scratch/c1b87d8550cd/entry-audit-pre6/input/entry-matrix.md",
+      "sha256": "f8072124174ff1cec0a3c6aebdebad8d48a479182b5fc003df4beff5f46a491e",
+      "bytes": 13135
+    },
+    {
+      "archive_path": "console-entry-matrix.json",
+      "original_path": "/workspace/scratch/c1b87d8550cd/entry-audit-pre6/console/console-entry-matrix.json",
+      "sha256": "9079c22d1476aea3cc7bd4ff2cf7a3fc58b763179583e326df27b618575ef5bb",
+      "bytes": 47033
+    },
+    {
+      "archive_path": "display-entry-matrix.json",
+      "original_path": "/workspace/scratch/c1b87d8550cd/entry-audit-pre6/console/display-entry-matrix.json",
+      "sha256": "9247d54000a7b36419a594d1f2b1885a96fb4b134b0873c96587a5bcfdaf3c32",
+      "bytes": 12656
+    },
+    {
+      "archive_path": "lifecycle-entry-matrix.json",
+      "original_path": "/workspace/scratch/c1b87d8550cd/entry-audit-pre6/lifecycle/entry-matrix.json",
+      "sha256": "419809e1864f1711c6f7bcfb6b097b86033bfbab0a5b31d9ff2281e9996f832d",
+      "bytes": 11544
+    },
+    {
+      "archive_path": "automatic-entry-matrix.json",
+      "original_path": "/workspace/scratch/c1b87d8550cd/entry-audit-pre6/root/entry-matrix.json",
+      "sha256": "7ecfaaab81e1e2f92bf8be44e50dd0eb3c0aa4dda14384f94258f6b97b54f4c0",
+      "bytes": 28331
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false
+}

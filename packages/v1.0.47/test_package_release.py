@@ -20,6 +20,9 @@ HERE = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location('optimization_package', HERE / 'package_release.py')
 PACKAGE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PACKAGE)
+ENTRY_FIXTURE_SPEC = importlib.util.spec_from_file_location('entry_policy_fixtures', HERE / 'entry_policy_fixtures.py')
+ENTRY_FIXTURES = importlib.util.module_from_spec(ENTRY_FIXTURE_SPEC)
+ENTRY_FIXTURE_SPEC.loader.exec_module(ENTRY_FIXTURES)
 ROOT = HERE.parents[1]
 BASE_FULL = BASE_MANIFEST = None
 FUNCTIONAL_LOGS = {
@@ -92,8 +95,8 @@ FEATURE_LOGS = {
         'PASS input_ownership: 61 checks; epoch, zero sentinel, 200ms leases, '
         'and normalized wrap boundary\n'),
     'superweapon_result_feedback': '{"checks":13,"failures":0,"passed":true}\n',
-    'pause_key_pairing': '{"checks":22,"failures":0,"passed":true}\n',
-    'native_mouse_pairing': '{"checks":36,"failures":0,"passed":true}\n',
+    'pause_key_pairing': '{"checks":45,"failures":0,"passed":true}\n',
+    'native_mouse_pairing': '{"checks":69,"failures":0,"passed":true}\n',
     'passenger_frame_sampling': (
         'first passenger paint: bubbles=1 live_RPM=0\n'
         'PASS 1000 paints of one logic frame: zero live RPM, immutable contents/position\n'
@@ -287,6 +290,9 @@ class PackageGates(unittest.TestCase):
         self.commit, self.tree = 'a' * 40, 'b' * 40
         paths = set().union(*(tests | production for tests, production in PACKAGE.CHECK_BINDINGS.values()))
         self.sources = {name: ('synthetic input: ' + name).encode() for name in paths}
+        for name in paths:
+            if any(prefix in name for prefix in ('fixtures/entry_pre1475/', 'fixtures/read_only_pre1475/', 'fixtures/read_only_pre_cooperative/', 'fixtures/read_only_pre_pairing/')):
+                self.sources[name] = (ROOT / name).read_bytes()
         self.inputs = {name: {'sha256': PACKAGE.sha(data)} for name, data in self.sources.items()}
         logs = {
             'missile_allocator': '{"equivalent_scenarios":8063,"same_workspace_reused":true}\n',
@@ -296,15 +302,27 @@ class PackageGates(unittest.TestCase):
             'idle_aircraft_display': 'PASS paused same-source aircraft display; synthetic gate fixture\n',
             'terrain_reuse': 'PASS actual terrain storage: synthetic gate fixture\n',
         } | FUNCTIONAL_LOGS | FEATURE_LOGS
+        entry_reports = {name: ENTRY_FIXTURES.make(PACKAGE, name, self.sources) for name in PACKAGE.ENTRY_BINDINGS}
+        logs.update({name: value[0] for name, value in entry_reports.items()})
         checks = []
         for name, (tests, production) in PACKAGE.CHECK_BINDINGS.items():
-            path = self.directory / (name + '.log')
+            path = self.directory / name / 'result.json' if name in PACKAGE.ENTRY_BINDINGS else self.directory / (name + '.log')
+            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(logs[name], encoding='utf-8')
             checks.append({'name': name, 'command': ['synthetic-gate-fixture', name],
                            'exit_code': 0, 'executed_this_revision': True,
-                           'log_path': path.name, 'log_sha256': PACKAGE.sha(path.read_bytes()),
+                           'log_path': str(path.relative_to(self.directory)), 'log_sha256': PACKAGE.sha(path.read_bytes()),
                            'test_source_hashes': {p: self.inputs[p]['sha256'] for p in tests},
                            'production_source_hashes': {p: self.inputs[p]['sha256'] for p in production}})
+            if name in PACKAGE.ENTRY_BINDINGS:
+                supporting = {}
+                for relative, raw in entry_reports[name][1].items():
+                    raw_path = path.parent / relative
+                    raw_path.parent.mkdir(parents=True, exist_ok=True)
+                    raw_path.write_bytes(raw)
+                    supporting[str(raw_path)] = {'bytes':len(raw), 'sha256':PACKAGE.sha(raw)}
+                if supporting:
+                    checks[-1]['supporting_logs'] = supporting
             if name == 'patrol_small_buffer':
                 checks[-1].update(command=['synthetic-gate-fixture', '--small-buffer'],
                                   compile_command=['synthetic-compiler', '-fsanitize=address',
@@ -365,23 +383,32 @@ class PackageGates(unittest.TestCase):
         return PACKAGE.validate_evidence(receipt or self.receipt, self.directory / 'validation.json',
                                          self.commit, self.tree, self.inputs, self.sources.__getitem__)
 
+    def expected_log_paths(self, receipt):
+        paths = set()
+        for row in receipt['checks']:
+            path = Path(row['log_path'])
+            paths.add(str((path if path.is_absolute() else self.directory / path).resolve()))
+            paths.update(row.get('supporting_logs', {}))
+        return paths
+
     def test_current_receipt_requires_all_legacy_and_feature_bindings(self):
         legacy = {'missile_allocator', 'snapshot_reuse', 'tech_capture', 'voxel_recovery',
                   'idle_aircraft_display', 'terrain_reuse', 'console_receipt_order',
                   'catalogue_recovery', 'planner_batch_delivery', 'scene_extra_recovery'}
-        self.assertEqual(set(PACKAGE.CHECK_BINDINGS), legacy | set(FEATURE_LOGS))
-        self.assertEqual(set(PACKAGE.FEATURE_CHECKS), set(FEATURE_LOGS))
-        self.assertEqual(len(self.verify()), len(legacy) + len(FEATURE_LOGS) + 9)
-        self.assertEqual(len(PACKAGE.CHECK_BINDINGS), 33)
-        self.assertEqual((PACKAGE.VERSION, PACKAGE.FILE_VERSION), ('1.0.47-pre.5', '1.0.47.5'))
+        self.assertEqual(set(PACKAGE.CHECK_BINDINGS), legacy | set(FEATURE_LOGS) | set(PACKAGE.ENTRY_BINDINGS))
+        self.assertEqual(set(PACKAGE.FEATURE_CHECKS), set(FEATURE_LOGS) | set(PACKAGE.ENTRY_BINDINGS))
+        self.assertEqual(set(self.verify()), self.expected_log_paths(self.receipt))
+        self.assertEqual(len(PACKAGE.CHECK_BINDINGS), 38)
+        self.assertEqual((PACKAGE.VERSION, PACKAGE.FILE_VERSION), ('1.0.47-pre.6', '1.0.47.6'))
 
-    def test_shared_transition_accepts_only_reviewed_protocol_102_tail(self):
-        self.assertEqual(PACKAGE.ASSIST_PROTOCOL, 102)
-        PACKAGE.verify_shared_transition(23162528, 23162544)
-        for base, current in ((23162528, 23162528), (23162528, 23162540),
-                              (23162544, 23162544), (23162520, 23162544),
-                              ('23162528', 23162544), (23162528, '23162544'),
-                              (True, 23162544), (23162528, True)):
+    def test_shared_transition_accepts_only_reviewed_protocol_103_tail(self):
+        self.assertEqual(PACKAGE.ASSIST_PROTOCOL, 103)
+        PACKAGE.verify_shared_transition(23162528, 23162552)
+        for base, current in ((23162528, 23162528), (23162528, 23162544),
+                              (23162528, 23162548), (23162528, 23162560),
+                              (23162544, 23162552), (23162520, 23162552),
+                              ('23162528', 23162552), (23162528, '23162552'),
+                              (True, 23162552), (23162528, True)):
             with self.subTest(base=base, current=current), self.assertRaisesRegex(ValueError, 'Shared layout differs'):
                 PACKAGE.verify_shared_transition(base, current)
 
@@ -567,9 +594,9 @@ class PackageGates(unittest.TestCase):
                                   (PACKAGE.COLD_START_BASELINE_SHA, '0' * 64)],
             'superweapon_result_feedback': [('"checks":13', '"checks":12'), ('"failures":0', '"failures":1'),
                                              ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],
-            'pause_key_pairing': [('"checks":22', '"checks":21'), ('"failures":0', '"failures":1'),
+            'pause_key_pairing': [('"checks":45', '"checks":44'), ('"failures":0', '"failures":1'),
                                   ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],
-            'native_mouse_pairing': [('"checks":36', '"checks":35'), ('"failures":0', '"failures":1'),
+            'native_mouse_pairing': [('"checks":69', '"checks":68'), ('"failures":0', '"failures":1'),
                                      ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],
             'passenger_frame_sampling': [('2158 checks', '2157 checks'), ('live_RPM=0', 'live_RPM=14'),
                                          ('120ms lease never renewed', '120ms lease renewed')],
@@ -864,9 +891,9 @@ class PackageGates(unittest.TestCase):
                                   'log_path': log.name, 'log_sha256': PACKAGE.sha(log.read_bytes()),
                                   'test_source_hashes': {p: self.inputs[p]['sha256'] for p in tests},
                                   'production_source_hashes': {p: self.inputs[p]['sha256'] for p in production}})
-        self.assertEqual(len(PACKAGE.validate_evidence(receipt, self.directory / 'validation.json',
+        self.assertEqual(set(PACKAGE.validate_evidence(receipt, self.directory / 'validation.json',
                          self.commit, self.tree, self.inputs, self.sources.__getitem__, changed)),
-                         len(PACKAGE.CHECK_BINDINGS) + 10)
+                         self.expected_log_paths(receipt))
         engine['engine/precompute.py'] += b'\n# unreviewed fixture change\n'
         with self.assertRaisesRegex(ValueError, 'outside the reviewed plan'):
             PACKAGE.engine_change_plan(resources, engine)

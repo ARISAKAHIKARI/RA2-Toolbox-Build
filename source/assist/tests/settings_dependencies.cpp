@@ -18,7 +18,7 @@ int main(){
  // a primary scene/window would incorrectly disable working configurations.
  State secondary;secondary.set(Need::Watch,true);secondary.set(Need::WatchSecondary,true);
  secondary.set(Need::Minimap,true);secondary.set(Need::MinimapSecondary,true);
- assert(decision(9310,secondary).enabled()&&decision(9162,secondary).enabled()&&decision(9163,secondary).enabled());
+ assert(decision(9310,secondary).enabled()&&decision(9324,secondary).enabled()&&decision(9162,secondary).enabled()&&decision(9163,secondary).enabled());
  for(int id:{9061,9164,9165,9065,9166,9167,9168})assert(decision(id,secondary).enabled());
  for(int id:{831,850,851,852,9100,9101})assert(!decision(id,secondary).enabled());
  secondary.set(Need::MinimapPrimary,true);assert(decision(831,secondary).enabled()&&decision(850,secondary).enabled());
@@ -66,7 +66,9 @@ int main(){
   assert(unique.insert(id).second);const auto ready=decision(id,all);
   assert(ready.enabled()||ready.missing==Need::Unavailable);
   const auto missing=decision(id,unavailable);
-  if(id==9096)assert(missing.enabled()); // Selecting the implementation is always allowed.
+  // Implementation selection and shared camera motion remain available while
+  // the unavailable main renderer and all other feature parents are off.
+  if(id==9096||id==9324)assert(missing.enabled());
   else assert(!missing.enabled()&&*reason(missing.missing));
  }
  assert(decision(-1,State{}).enabled());

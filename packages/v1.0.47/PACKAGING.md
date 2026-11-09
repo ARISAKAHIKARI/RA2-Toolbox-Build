@@ -1,12 +1,12 @@
-# 1.0.47-pre.5 交付准备
+# 1.0.47-pre.6 功能入口修复的冻结构建与打包
 
-本目录准备本地可审查的 Full / Update 包。脚本不修改源码、不执行 Windows 程序、不安装依赖、不推送源码，也不创建 GitHub Release。人类版本为 `1.0.47-pre.5`，PE 文件版本为 `1.0.47.5`；Assist 协议为 102，Cursor 155、Runtime 4 保持不变。Shared 从基线的 23,162,528 字节增加到 23,162,544 字节；只接受这次已审核的尾部扩展（目录 hash、火控满表状态及对齐），不允许把任意布局变化视为兼容。
+本轮优先审查设置、快捷键、生产者启动、采样准入、暂停与恢复。产品和资源基线保持1.0.46.4；不得从其他历史安装包拼装本版程序。新增五组入口检查与既有三十四组共同执行，当前为三十九组；组数不是独立功能数，也不是已完成实机验收的数量。
 
-下列构建、最终打包命令需要本轮冻结提交及真实回执就绪后再执行。保留此前二十九组检查（含 engine 变更时必需的 dependency），本次新增输入诊断、输入占用、两组 Host 输入集成验证和冷启动验证，当前合计三十四组。所有门槛必须绑定本轮实际执行与冻结源码，不得沿用上一版通过摘要，也不得把脚本的合成门控测试当作生产验证。这里的组数不是功能点数，也不是测试断言数。
+新的五组为 console_display_entry、hotkey_entry_recovery、display_entry_clock、read_only_lifecycle、read_only_lifecycle_integration。命令等待与本地动作分离、编队上下文水位、可见设置、同源样本时间和只读退休协议分别留有当前源码执行结果。设置和时钟的旧版负对照必须先成功编译再出现指定断言失败。只读冷起、快速关开、延期清理、暂停中换局及旧请求取消需有真实受控回归证据。
 
-缺陷前后对照保留 `1.0.47-pre.2` 的固定提交 `46420180d9137932ca98fd2e6c131bde4f2a6294`；它是回归比较来源，不改变下述 1.0.46.4 产品/资源基线。
+Assist103在末尾增加readOnly/readOnlyRequest/readOnlyAck：偏移23,162,540/23,162,544/23,162,548，Shared大小23,162,552。x86/x64实际编译测量一致后才更新锁定值；原字段不移位，旧协议继续拒绝混用。Cursor155、Runtime4、EntryManager3保持不变。
 
-pre.4 的现场快捷键失效尚未解决。pre.5 补齐已配置按键、实际前台身份、注册、服务提前返回和投递阶段的输入日志，并修复受控复现的零值/过期编队占用期限、跨对局预览占用及世界样本生产者冷启动依赖。默认 OwnGround 绑定本身仍产生 Runtime 需求，因此冷启动缺陷有明确配置边界；用户“先用 35 识别再覆盖”的新反馈与该缺陷的因果关系尚未证实。上述受控检查不能写成现场恢复或真实 Windows 输入已验收。
+现场pre.4会话的唯一故障条件仍未确认。当前源码反例和修复不能写成用户机器已经恢复，也不能代替真实Windows消息投递、游戏执行、GPU显示或联机验收。历史pre.5输入定位和冷启动检查在下文单独保留其契约。
 
 ## 固定资源基线
 
@@ -19,7 +19,7 @@ pre.4 的现场快捷键失效尚未解决。pre.5 补齐已配置按键、实�
 
 Full 保持 53 个成员；原始素材、三套主题、八个许可证和七个 engine 文件共 47 个资源以此为基线。唯一允许替换的资源是明确审核的 `engine/prepare_runtime.py`；其余资源必须原字节保留。Update 包含三程序、loader、README、Start.cmd、七个 engine 和八个许可证，共 21 个成员。Update 不附带原始素材，适用于已有完整安装。两包共同成员必须完全相同。
 
-七个 engine 都必须与本轮冻结源码及构建回执逐字节一致。相对 1.0.46.4 基线保留了 `prepare_runtime.py` 的单文件依赖验证优化，因此回执必须显式列出这个变更并提供 `dependency_probes`，与三十三组固定检查合计三十四组；脚本仍可识别没有 engine 变更的三十三组分支。本轮不捆绑 Python 包、生成插帧、预览、缓存、源码、开发记录或个人设置。光标混合画布修复因自动审核阻断仍未交付，未纳入本版。
+七个 engine 都必须与本轮冻结源码及构建回执逐字节一致。相对 1.0.46.4 基线保留了 `prepare_runtime.py` 的单文件依赖验证优化，因此回执必须显式列出这个变更并提供 `dependency_probes`，与三十八组固定检查合计三十九组；脚本仍可识别没有 engine 变更的三十八组分支。本轮不捆绑 Python 包、生成插帧、预览、缓存、源码、开发记录或个人设置。光标混合画布修复因自动审核阻断仍未交付，未纳入本版。
 
 依赖优化仅在 NumPy、SciPy、OpenCV 三项 managed 缓存记录全部有效且顺序匹配时，把原有三个验证子进程合并为一个。原 `PROBE_CODE` 字节不变，每项版本、来源及功能断言都继续执行；每项重新建立搜索路径，已加载依赖可在该批次内复用。独立总完成标记避免前一项成功掩盖后项零码早退。缺项、批验证失败或批子进程启动错误回到原逐项检查与修复路径；取消继续传播。下载、安装、PowerShell 和取消主体未改，Python 候选检查、引导和实际预处理进程也没有被消除。
 
@@ -27,11 +27,11 @@ Full 保持 53 个成员；原始素材、三套主题、八个许可证和七�
 
 ## 最小门控检查
 
-可在冻结、构建前执行以下轻量策略测试。它只读取真实基线并运行合成正负回执，不构建产品、不执行三十四组本轮生产验证。
+可在冻结、构建前执行以下轻量策略测试。它只读取真实基线并运行合成正负回执，不构建产品、不执行三十九组本轮生产验证。
 
 ```bash
 RA2_REPO=/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix
-RA2_EVIDENCE=/workspace/scratch/c1b87d8550cd/hotkey147pre5/delivery
+RA2_EVIDENCE=/workspace/scratch/c1b87d8550cd/entry-audit-pre6/release/delivery
 RA2_BASE=/workspace/scratch/5a310fe852f8/ui146-delivery-final
 python3 -B "$RA2_REPO/packages/v1.0.47/test_package_release.py" \
   --base-full "$RA2_BASE/RA2Toolbox-1.0.46-x64-Full.zip" \
@@ -39,11 +39,11 @@ python3 -B "$RA2_REPO/packages/v1.0.47/test_package_release.py" \
   --report "$RA2_EVIDENCE/package-gates.json"
 ```
 
-门控覆盖：真实资源与 engine 保留、基线篡改、旧提交/旧版本/错误树、未执行或缺组回执、缺失与变更源码指纹、缺失/变更/空/仅编译日志、失败体素场景、禁入成员、构建产物字节不一致，以及 engine 变更缺少依赖检查或超出审核范围。前一轮四组、此前十六组、保留的两组快捷键和本次五组输入与启动专项额外检查精确计数与场景结果、伪 `passed` 包装、重复运行拼接、缺失场景和失败输出。逐功能与快捷键新增组的 JSON 结果拒绝重复字段、错误类型和额外字段。本轮还检查巡逻缓冲 ASan 编译/运行参数，以及 Shared 必须为已审核的 16 字节增量。门控报告会明确 `synthetic_receipt_fixtures:true` 与 `product_build_performed:false`。
+门控覆盖：真实资源与 engine 保留、基线篡改、旧提交/旧版本/错误树、未执行或缺组回执、缺失与变更源码指纹、缺失/变更/空/仅编译日志、失败体素场景、禁入成员、构建产物字节不一致，以及 engine 变更缺少依赖检查或超出审核范围。前一轮四组、此前十六组、保留的两组快捷键和本次五组输入与启动专项额外检查精确计数与场景结果、伪 `passed` 包装、重复运行拼接、缺失场景和失败输出。逐功能与快捷键新增组的 JSON 结果拒绝重复字段、错误类型和额外字段。本轮还检查巡逻缓冲 ASan 编译/运行参数，以及 Shared 必须相对1.0.46.4为已审核的24字节尾部增量。门控报告会明确 `synthetic_receipt_fixtures:true` 与 `product_build_performed:false`。
 
 ## 冻结构建
 
-先完成本轮源码、版本信息、`BUILD_SOURCE_MANIFEST.json` 与本目录四个文件的审查和冻结。记录完整 40 位提交 SHA，之后所有步骤使用同一个值。未提交代码、遗漏源码输入或 HEAD 变化都会阻止交付。
+先完成本轮源码、版本信息、`BUILD_SOURCE_MANIFEST.json` 与本目录打包程序、策略测试及文档的审查和冻结。记录完整 40 位提交 SHA，之后所有步骤使用同一个值。未提交代码、遗漏源码输入或 HEAD 变化都会阻止交付。
 
 沿用 `packages/v1.0.43/build_release.py`；不复制或修改旧构建器。工具链要求 Zig 0.13.0、已准备的 WebView2 SDK 1.0.4314.35。下面三个工具路径由实际已配置环境提供，不下载依赖。
 
@@ -69,8 +69,8 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
   "schema": "ra2.optimization-validation.v1",
   "commit": "本轮冻结提交",
   "source_tree_sha": "该提交的source树SHA",
-  "version": "1.0.47-pre.5",
-  "file_version": "1.0.47.5",
+  "version": "1.0.47-pre.6",
+  "file_version": "1.0.47.6",
   "engine_changes": ["engine/prepare_runtime.py"],
   "required_checks_passed": true,
   "windows_executed": false,
@@ -139,8 +139,8 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 | `secondary_render_retry` | 精确摘要：8 个提交和恢复案例 |
 | `icon_cache_reopen` | 失败作用域→同路径重连→缓存保存/恢复成功；健康重连保持 generation 的精确摘要 |
 | `superweapon_result_feedback` | 单条整数 checks 13、failures 0、passed true |
-| `pause_key_pairing` | 单条整数 checks 22、failures 0、passed true |
-| `native_mouse_pairing` | 单条整数 checks 36、failures 0、passed true |
+| `pause_key_pairing` | 单条整数 checks 45、failures 0、passed true，含只读切换和真实退休门 |
+| `native_mouse_pairing` | 单条整数 checks 69、failures 0、passed true，含只读切换和松键配对 |
 | `passenger_frame_sampling` | 2158 项；首次绘制 live_RPM=0、1000 次重复绘制无实时读取、失败/时效/暂停/确认/需求路由结果全部存在 |
 
 `patrol_capacity` 与 `patrol_small_buffer` 是同一源码的两个独立实际执行，分别保留原始日志，不拼接结果。后者还必须记录 `compile_command`（含 `-fsanitize=address` 与 `-fno-omit-frame-pointer`，不得关闭 sanitizer）、整数 `compile_exit_code:0`，以及带 `--small-buffer` 的运行 argv。环境允许 `ASAN_OPTIONS=detect_leaks=0`，用于执行器不支持 LeakSanitizer 的场景；AddressSanitizer 仍须启用。不能将未启用 AddressSanitizer 的构建产生的同名 PASS 当作 ASan 验证。
@@ -203,7 +203,23 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 
 `hotkey_cold_start` 的 `log_path` 为实际 `result.json`，`supporting_logs` 必须绑定同目录 `current/run.log` 与 `baseline/run.log`。固定旧调用点 SHA256 为 `5cf66cfe242d5d65bf9ea2f468c1a07a0526d9a7de90964e1132e9a9f4a526c2`。两份日志分别与报告的 stdout/stderr 和摘要逐项核对；拒绝缺失负面对照、编译错误冒充断言失败、错误类型、混合源码或变更日志。完整采样、merge、注册函数来自当前生产代码，旧对照仅换回三条 tick 语句；不执行 Windows、真实游戏或旧版本产品。
 
-执行计划与执行回执分开。独立工作目录中的 `run_checks.py` 按 `pre5-check-run-spec.json` 真正运行每组命令，使用全新的输出目录，并在运行前后记录测试和生产源码 SHA256。`planning_source_sha256` 仅用于安排检查，不得作为已执行证据。全部实际运行成功后，`finish_validation.py` 才能把回执绑定最终冻结提交；它不会补写 PASS、改写已执行源码指纹或替代产品构建。
+执行计划与执行回执分开。独立工作目录中的 `run_checks.py` 按 `pre6-check-run-spec.json` 真正运行每组命令，使用全新的输出目录，并在运行前后记录测试和生产源码 SHA256。`planning_source_sha256` 仅用于安排检查，不得作为已执行证据。全部实际运行成功后，`finish_validation.py` 才能把回执绑定最终冻结提交；它不会补写 PASS、改写已执行源码指纹或替代产品构建。
+
+## pre.6 入口回归门槛
+
+`entry_evidence.py` 定义五组当前源码绑定和原始日志契约；`entry_policy_fixtures.py` 只生成打包策略测试用的合成回执，严禁把它当作功能执行证据。
+
+| 组名 | 生产执行范围与关键边界 |
+| --- | --- |
+| `console_display_entry` | 当前VideoSettings、实际owner与INI语句，当前至少9场景47检查；固定pre.5三头成功编译后恰有5项失败；同时执行101控件设置依赖回归 |
+| `hotkey_entry_recovery` | 实际Host、Registry、Pending、中键/编队转交和自动开关入口，至少33场景77检查；FIFO、单次fanout、失焦/聊天/暂停/换局、旧WM与回绕 |
+| `display_entry_clock` | 实际mergeExternal、watch生命周期、飞机选择；14场景54检查全过，固定pre.5同范围29项失败；显示确认不延长输入TTL |
+| `read_only_lifecycle` | 真实只读请求/退休确认状态机与邮箱取消；快速关开、延期清理、请求回绕和晚到提交 |
+| `read_only_lifecycle_integration` | 实际Host与Runtime入口片段及原生边界替身；副屏冷起、暂停/恢复、失效恢复、新局及旧协同意图不得重放 |
+
+新组必须记录执行期生产与测试SHA256、编译/运行退出码、原始逐场景结果和必要的对照日志；原始日志与内嵌摘要逐项核对，随后绑定冻结源码。多个代理审查表存在重叠，不能把所有行数相加成“已测试功能数”。
+
+原暂停键和增强鼠标专项随真实只读门增加三种关闭状态的配对验证，当前分别为28和42检查；保留原有普通按键行为检查，不用恒真替身绕开只读门。
 
 ## 本地打包
 
@@ -224,8 +240,8 @@ python3 -B "$RA2_REPO/packages/v1.0.47/package_release.py" \
 
 成功仅输出四个文件：
 
-- `RA2Toolbox-1.0.47-pre.5-x64-Full.zip`
-- `RA2Toolbox-1.0.47-pre.5-x64-Update.zip`
+- `RA2Toolbox-1.0.47-pre.6-x64-Full.zip`
+- `RA2Toolbox-1.0.47-pre.6-x64-Update.zip`
 - `release-manifest.json`
 - `SHA256SUMS.txt`
 

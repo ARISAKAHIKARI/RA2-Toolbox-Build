@@ -346,10 +346,10 @@ static bool restoreTechParameters(){using namespace techparameters;const bool ch
 static bool restoreTechEnhanceParameters(){using namespace techparameters;const bool changed=enhancementDesired||(service.lease.tags()&12)||service.lease.uncertain;InterlockedExchange(&policy.enhanced,0);enhancementDesired=false;enhancementFailure=0;enhancementCameoBlocked=false;if(changed)attempted=0;refusedGroups&=~12u;configure();return techEnhanceParametersRetired();}
 static void maintainTechParameters(){
  using namespace techparameters;syncDebugBreakpointPolicy();service.poll();singlefps::maintain();
- if(!sh||sh->stop||fault){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;enhancementCameoBlocked=false;fullFailureRetry.reset();controlFailureRetry.reset();InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
+ if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;enhancementCameoBlocked=false;fullFailureRetry.reset();controlFailureRetry.reset();InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
  else if(!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();}
- if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();}
- if(!sh||sh->stop||fault||!sh->mapVisibility){InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;}
+ if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();}
+ if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||!sh->mapVisibility){InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;}
  refreshControlEligibility();configure();
  // Idle slot inspection enters an actual owner-thread INT3 rendezvous and
  // briefly owns a VEH/handle even with every hardware feature disabled.
@@ -358,7 +358,7 @@ static void maintainTechParameters(){
  // admission and active audits still inspect the real registers themselves.
  // Stop/fault and pending restoration never start another idle inspection.
  static DWORD inspected=0;const DWORD now=GetTickCount();
- if(sh&&sh->debugVisible&&!sh->stop&&!fault&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!singlefps::desired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
+ if(sh&&sh->debugVisible&&!sh->stop&&!fault&&readonly::commands(sh)&&!readOnlyState.active&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!singlefps::desired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
 }
 static bool requestTechParameters(uint32_t house){
  using namespace techparameters;maintainTechParameters();

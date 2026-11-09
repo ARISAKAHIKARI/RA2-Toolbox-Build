@@ -27,6 +27,11 @@ static bool dispatchHotkeyGroup(hotkeyroute::Group group,bool inputEdge=true){
  });
  return group.actions.empty()||hotkeyPending.add(group,GetTickCount(),commandMatch());
 }
+// These actions update Host settings or read-only views. They do not use the
+// command/selection mailboxes, so an unrelated in-flight order cannot own them.
+static bool localHotkeyAction(int id){
+ return autofeatures::byAction(id)||(id>=1720&&id<=1722)||(id>=1730&&id<=1732)||id==1734;
+}
 static void executeHotkey(WPARAM wp,bool fanout){
  logHotkeyInput(L"execute",int(wp));
  if(wp==1724+selectedmode::OwnGround){notify(L"攻击脚下按键已失效，请重新按键。");return;}
@@ -60,6 +65,7 @@ static void serviceHotkeyBatch(){
  const bool connected=shared&&commandFresh(GetTickCount());
  const bool formationOwned=formationInputOwns();
  const bool middleOwned=!formationOwned&&runtimeMiddleOwnsNow();
+ hotkeyRegistry.observeContext(context&&connected,commandMatch(),GetTickCount());
  traceHotkeyService(context,connected,formationOwned,middleOwned);
  // The OS-hotkey fallback shares the native tracker's context cancellation.
  // No first tap may survive a hidden preview, focus loss, chat or a pause.
@@ -68,7 +74,7 @@ static void serviceHotkeyBatch(){
   // Observe configured chords while a game gesture owns input, without
   // admitting them to the command Registry. Never read chat/background text.
   if(context&&connected){uint8_t keys[256]{};for(unsigned i=0;i<256;++i)keys[i]=(GetAsyncKeyState(i)&0x8000)!=0;traceHotkeyKeys(keys);}
-  typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount());return;
+  typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount(),context&&connected);return;
  }
  hotkeyPending.expire(GetTickCount(),commandMatch());
  if(!connected){formationTap.clear();typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount());return;}
@@ -80,8 +86,10 @@ static void serviceHotkeyBatch(){
   destructownerhost::immediate(delayed,[]{notify(L"自毁按键与延迟手势冲突，请配置独立按键后重试。");});
   placementeventhost::immediate(delayed,[]{notify(L"放置按键与延迟手势冲突，请配置独立按键后重试。");});dispatchHotkeyGroup(std::move(delayed),false);}
  for(unsigned n=0;n<hotkeyroute::Pending::Capacity;++n){
-  if(hasSelection||commandQueue.size||shared->request!=shared->ack||shared->selectRequest!=shared->selectAck)return;
-  hotkeyroute::Action action;if(!hotkeyPending.pop(GetTickCount(),commandMatch(),action))return;
+  const DWORD now=GetTickCount();
+  if(!commandHotkeyContext()||!shared||!commandFresh(now)){hotkeyPending.clear();hotkeyRegistry.cancel(now);return;}
+  const bool commandReady=!hasSelection&&!commandQueue.size&&shared->request==shared->ack&&shared->selectRequest==shared->selectAck;
+  hotkeyroute::Action action;if(!hotkeyPending.popReady(now,commandMatch(),action,[&](int id){return commandReady||localHotkeyAction(id);}))return;
   executeHotkey(action.id,extra.allHotkeys);
  }
 }
@@ -96,10 +104,16 @@ static void handleHotkey(WPARAM id,LPARAM event){
   hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount());static uint32_t notifiedAt=0;uint32_t now=GetTickCount();
   if(!notifiedAt||uint32_t(now-notifiedAt)>=2500){notifiedAt=now;notify(L"快捷键暂不可用：游戏命令连接尚未就绪，恢复后请重新按键。");}return;
  }
- if(runtimeMiddleOwnsNow()){++hotkeyDiagnostics.blocked;logHotkeyInput(L"input-owner-blocked",int(id));typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount());return;}
  WORD key=MAKEWORD(HIWORD(event),((LOWORD(event)&MOD_SHIFT)?HOTKEYF_SHIFT:0)|((LOWORD(event)&MOD_CONTROL)?HOTKEYF_CONTROL:0)|((LOWORD(event)&MOD_ALT)?HOTKEYF_ALT:0));
  if(hotkeyroute::canonical(key)!=g->key){++hotkeyDiagnostics.blocked;logHotkeyInput(L"binding-mismatch-blocked",int(id),key);return;} // queued notification from an old binding
- if(formationHotkey(key)){logHotkeyInput(L"formation-handled",int(id),key);hotkeyPending.clear();return;}
+ // A registered command may share a native formation shape chord. Give the
+ // current preview that fresh input before rejecting ordinary commands owned
+ // by the preview; an old-match preview must never take over a new command.
+ if(shared->formationPreview.active&&shared->formationPreview.match==commandMatch()&&
+    hotkeyRegistry.contextMessageFresh(DWORD(GetMessageTime()),GetTickCount(),commandMatch(),150)&&formationHotkey(key)){
+  logHotkeyInput(L"formation-handled",int(id),key);hotkeyPending.clear();return;
+ }
+ if(formationInputOwns()||runtimeMiddleOwnsNow()){++hotkeyDiagnostics.blocked;logHotkeyInput(L"input-owner-blocked",int(id));typeTap.clear();variantTap.clear();hotkeyPending.clear();hotkeyRegistry.cancel(GetTickCount(),true);return;}
  hotkeyroute::Group selected;if(!hotkeyRegistry.message(int(id),DWORD(GetMessageTime()),GetTickCount(),commandMatch(),selected)){logHotkeyInput(L"registry-no-action",int(id),key,DWORD(GetMessageTime()));return;}
  if(!extra.allHotkeys)hotkeyroute::firstPerGesture(selected);
  // WM_HOTKEY can itself wait in the Windows queue. An old place edge must

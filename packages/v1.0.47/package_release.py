@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the frozen 1.0.47-pre.5 build; never build or publish.
+"""Package the frozen 1.0.47-pre.6 build; never build or publish.
 
 Use the verified 1.0.46.4 originals, themes, licenses and seven-file engine.
 Only prepare_runtime.py may change, with a current dependency check.
@@ -29,10 +29,14 @@ SPEC = importlib.util.spec_from_file_location('ra2_146_product_policy',
 POLICY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(POLICY)
 require, sha, encoded = POLICY.require, POLICY.sha, POLICY.encoded
+ENTRY_SPEC = importlib.util.spec_from_file_location('ra2_147_entry_evidence', HERE / 'entry_evidence.py')
+ENTRY = importlib.util.module_from_spec(ENTRY_SPEC)
+ENTRY_SPEC.loader.exec_module(ENTRY)
+ENTRY_BINDINGS = ENTRY.BINDINGS
 
-VERSION, FILE_VERSION = '1.0.47-pre.5', '1.0.47.5'
-ASSIST_PROTOCOL = 102
-BASE_SHARED_BYTES, SHARED_BYTES = 23162528, 23162544
+VERSION, FILE_VERSION = '1.0.47-pre.6', '1.0.47.6'
+ASSIST_PROTOCOL = 103
+BASE_SHARED_BYTES, SHARED_BYTES = 23162528, 23162552
 BASE_NAME = 'RA2Toolbox-1.0.46-x64-Full.zip'
 BASE_BYTES = 4428436
 BASE_SHA = 'd8d5d871e0358579b49c1a2dedbfca48c601ea22119bf897e18593ae7233533c'
@@ -135,14 +139,14 @@ FEATURE_BINDINGS = {
          'source/assist/source/superweapon_sidebar_bridge.h'}),
     'pause_key_pairing': (
         {'source/assist/tests/pause_key_pairing.py', 'source/assist/tests/superweapon_result_feedback.py'},
-        {'source/assist/source/pause_view_bridge.h', 'source/assist/source/native_message_policy.h',
+        {'source/assist/source/pause_view_bridge.h', 'source/assist/source/native_message_policy.h', 'source/assist/source/read_only_lifecycle.h',
          'source/game_runtime/source/runtime.cpp', 'source/assist/source/hotkey_routes.h',
          'source/shared/source/key_gesture.h', 'source/assist/source/pause_view_policy.h',
          'source/assist/source/pointer_intent.h'}),
     'native_mouse_pairing': (
         {'source/assist/tests/native_mouse_pairing.py', 'source/assist/tests/pause_key_pairing.py',
          'source/assist/tests/superweapon_result_feedback.py'},
-        {'source/assist/source/native_message_policy.h', 'source/assist/source/pointer_host.h',
+        {'source/assist/source/native_message_policy.h', 'source/assist/source/read_only_lifecycle.h', 'source/assist/source/pointer_host.h',
          'source/game_runtime/source/runtime.cpp', 'source/assist/source/pause_view_bridge.h',
          'source/assist/source/hotkey_routes.h', 'source/shared/source/key_gesture.h',
          'source/assist/source/pause_view_policy.h', 'source/assist/source/pointer_intent.h'}),
@@ -243,6 +247,7 @@ COLD_START_CASES = frozenset({'manual_only', 'default_own_ground', 'legacy_advan
 FEATURE_BINDINGS.update(HOTKEY_BINDINGS)
 FEATURE_BINDINGS.update(INPUT_HEADER_BINDINGS)
 FEATURE_BINDINGS.update(INPUT_INTEGRATION_BINDINGS)
+FEATURE_BINDINGS.update(ENTRY_BINDINGS)
 CHECK_BINDINGS.update(FEATURE_BINDINGS)
 FEATURE_CHECKS = frozenset(FEATURE_BINDINGS)
 DEPENDENCY_BINDINGS = (
@@ -252,6 +257,8 @@ DEPENDENCY_BINDINGS = (
 PACKAGE_INPUTS = (
     'packages/v1.0.43/build_release.py', 'packages/v1.0.46/package_release.py',
     'packages/v1.0.47/package_release.py', 'packages/v1.0.47/test_package_release.py',
+    'packages/v1.0.47/entry_evidence.py', 'packages/v1.0.47/entry_policy_fixtures.py',
+    'packages/v1.0.47/test_entry_evidence.py',
     'packages/v1.0.47/README.txt', 'packages/v1.0.47/PACKAGING.md',
 )
 
@@ -431,7 +438,7 @@ def feature_success_log(name, text):
                 and result.get('suite') == name and result.get('level') == level
                 and type(result.get('checks')) is int and result['checks'] == count
                 and type(result.get('failures')) is int and result['failures'] == 0)
-    counts = {'superweapon_result_feedback': 13, 'pause_key_pairing': 22, 'native_mouse_pairing': 36}
+    counts = {'superweapon_result_feedback': 13, 'pause_key_pairing': 45, 'native_mouse_pairing': 69}
     if name in counts:
         return (len(lines) == 1 and set(result) == {'checks', 'failures', 'passed'}
                 and type(result.get('checks')) is int and result['checks'] == counts[name]
@@ -747,6 +754,8 @@ def hotkey_success_log(name, text):
 
 def success_log(name, text):
     """Recognize existing test output; never append or synthesize a PASS marker."""
+    if name in ENTRY_BINDINGS:
+        return ENTRY.success(name, text)
     if name == 'hotkey_live_observation':
         return live_observation_success_log(text)
     if name == 'formation_input_ownership':
@@ -863,6 +872,8 @@ def validate_evidence(validation, receipt_path, commit, source_tree, source_inpu
                         'Validated input is outside the completed build source: ' + path)
                 require(digest == source_inputs[path]['sha256'] == sha(tracked(path)),
                         'Tested source differs from compiled source: ' + path)
+        if name in ENTRY_BINDINGS:
+            logs.update(ENTRY.validate(name, unique_json(data), report_path, check, source_inputs, tracked))
         if name in INPUT_INTEGRATION_CHECKS:
             if name == 'hotkey_live_observation':
                 result_path = report_path.parent / 'result.json'
@@ -978,7 +989,7 @@ def engine_change_plan(resources, engine):
 def verify_shared_transition(base_bytes, current_bytes):
     require(type(base_bytes) is int and type(current_bytes) is int
             and (base_bytes, current_bytes) == (BASE_SHARED_BYTES, SHARED_BYTES),
-            'Shared layout differs from reviewed Assist 102 tail extension')
+            'Shared layout differs from reviewed Assist 103 tail extension')
 
 
 def assemble(resources, current, engine):

@@ -55,6 +55,7 @@ extern "C" __declspec(dllexport) const MappingPrefixValue AssistMappingPrefix{};
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static worldlife::Tracker hookWorld;static bool commandDormant=false,worldCleanupPending=false;
+static readonly::RuntimeState readOnlyState;static uint32_t commandComputeEpoch=0;
 static runtimefault::Context faultContext;
 extern "C" void AssistReportException(unsigned boundary,unsigned code,unsigned address,unsigned operation,unsigned access){
  RuntimeReportException(boundary,code,address,operation,access,sh&&sh->request!=sh->ack?sh->command:0,
@@ -185,8 +186,8 @@ static void indexWorld(int frame){Vec all=vec(0xA8EC78);if(indexedFrame==frame&&
 }
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
-static void reset(bool retireHooks=true){retireWorldFrame();minerDefenseReset();restoreSinglePlayerFPS();resetOwnGround();superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();nativePlacementReset();if(retireHooks)nativePlacementCompletionReset();restorePauseView();resetMoOrders();if(retireHooks){restoreSidebarView();resetHookReadiness();restoreCrcMapShadow();restoreBuildTimeTooltip();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);restoreViewZoom();}stickyCount=0;runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
- snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;if(retireHooks)restoreClickHooks();resetCooperativeState();resetFormation();resetMissileControl();resetBurstControl();resetDodgeControl();if(retireHooks&&sh)sh->clickHookStatus=0;clearOreOrders();if(retireHooks)restorePlacement();indexedFrame=indexedCount=-1;outgoingFrame=-1;clearNativeOrders(retireHooks);snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.unloadIssued=0;if(retireHooks){snap.nativeHookStatus=0;snap.techOpen=0;restoreTech();restoreCSHook();}clearFlashes();resetProduction();if(retireHooks)snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;repairCalculationPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;if(retireHooks){snap.techVisible=snap.techUnavailable=0;snap.techError=techDataPending()?-44:0;}snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;if(retireHooks)snap.csHookStatus=0;snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;if(retireHooks)memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
+static void reset(bool retireHooks=true,bool preserveMissile=false){retireWorldFrame();minerDefenseReset();restoreSinglePlayerFPS();resetOwnGround();superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();nativePlacementReset();if(retireHooks)nativePlacementCompletionReset();restorePauseView();resetMoOrders();if(retireHooks){restoreSidebarView();resetHookReadiness();restoreCrcMapShadow();restoreBuildTimeTooltip();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);restoreViewZoom();}stickyCount=0;runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
+ snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;if(retireHooks)restoreClickHooks();resetCooperativeState();resetFormation();if(!preserveMissile)resetMissileControl();resetBurstControl();resetDodgeControl();if(retireHooks&&sh)sh->clickHookStatus=0;clearOreOrders();if(retireHooks)restorePlacement();indexedFrame=indexedCount=-1;outgoingFrame=-1;clearNativeOrders(retireHooks);snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.unloadIssued=0;if(retireHooks){snap.nativeHookStatus=0;snap.techOpen=0;restoreTech();restoreCSHook();}clearFlashes();resetProduction();if(retireHooks)snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;repairCalculationPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;if(retireHooks){snap.techVisible=snap.techUnavailable=0;snap.techError=techDataPending()?-44:0;}snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;if(retireHooks)snap.csHookStatus=0;snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;if(retireHooks)memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
 static void mapName(wchar_t*out,DWORD p){mappingName(out,p);}
 static HANDLE controllerProcess;static DWORD controllerPID,controllerCheckAt;
 static void disconnect(){
@@ -197,7 +198,7 @@ static void disconnect(){
  // through. Do not acknowledge stop/unmap IPC while any feature still owns one.
  if(!featureRestorationComplete())return;
  if(sh&&sh->magic==Magic&&sh->version==Version&&sh->pid==GetCurrentProcessId()&&sh->stop){MemoryBarrier();sh->stop=2;}
- InterlockedExchange(&hostWorkPending,0);if(controllerProcess)CloseHandle(controllerProcess);controllerProcess=nullptr;controllerPID=controllerCheckAt=0;restoreFrameDriver();InterlockedExchange(&messageGameThread,0);sessionTracker.update(false,0,-1,-1);hookWorld.reset();commandDormant=worldCleanupPending=false;if(sh)UnmapViewOfFile(sh);sh=nullptr;if(mapping)CloseHandle(mapping);mapping=nullptr;lastHouse=pendingAck=0;pendingAckReady=false;
+ InterlockedExchange(&hostWorkPending,0);if(controllerProcess)CloseHandle(controllerProcess);controllerProcess=nullptr;controllerPID=controllerCheckAt=0;restoreFrameDriver();InterlockedExchange(&messageGameThread,0);sessionTracker.update(false,0,-1,-1);hookWorld.reset();commandDormant=worldCleanupPending=false;readOnlyState={};commandComputeEpoch=0;if(sh)UnmapViewOfFile(sh);sh=nullptr;if(mapping)CloseHandle(mapping);mapping=nullptr;lastHouse=pendingAck=0;pendingAckReady=false;
  // The pinned DLL outlives a Host connection. Only completed retirement and
  // transport teardown release its legacy fault latch for a fresh connection.
  fault=false;
@@ -291,7 +292,7 @@ static void publishDebugEntries(DWORD now){
 static void publishSnapshot(DWORD now){
  sh->missileManualOverflow=missileManualOverflowed()?1u:0u;
  publishDebugEntries(now);
- nativePlacementOffers(now);
+ if(readonly::commands(sh)&&!readOnlyState.active)nativePlacementOffers(now);else snap.placementOfferCount=0;
  bool copyTypes=catalogueDirty||sh->seq==0||sh->data.match!=snap.match||sh->data.typeCount!=snap.typeCount;
  const auto entryState=gameentry::inspect();
  snap.hookConflicts=int(entryState.conflicts);snap.hookInstalled=int(entryState.installed);
@@ -359,8 +360,8 @@ static bool gameSendTiming(uint32_t& result){
  return true;
 }
 static bool simulationReady(bool allowNewerFrame=false){
- if(!gameentry::active(gameentry::Client::Assist)||!sh||(sh->stop&&!missileCleanup)||fault||
-    snap.status!=1||snap.commandStatus!=1||!match||!lastHouse||
+ if(!gameentry::active(gameentry::Client::Assist)||!sh||((sh->stop||!readonly::commands(sh)||readOnlyState.active)&&!missileCleanup)||fault||
+    snap.status!=1||(snap.commandStatus!=1&&!missileCleanup)||!match||!lastHouse||
     (DWORD(sampleClock(sh)-sh->heartbeat)>=3000&&!missileCleanup)||!get<bool>(0xA8E9A0))return false;
  const uint32_t house=get<uint32_t>(0xA83D4C);const int frame=get<int>(0xA8ED84),session=get<int>(0xA8B238);
  if(house!=lastHouse||house==get<uint32_t>(0xAC1198)||get<bool>(house+0x1F5)||
@@ -598,7 +599,7 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  if(!id||!house||(house!=lastHouse&&!foreign)||!eventdelivery::mayQueue(get<int>(0xA8B238))||!loadInterfaces())return false;
  const uint8_t resolvedTargetTag=targetTag>=0?uint8_t(targetTag):(target?0x34:0);
  const uint32_t submittedAt=sampleClock(sh);
- const gateway::Context ctx{match,submittedAt,sh&&(!sh->stop||missileCleanup)&&!fault&&snap.status==1,
+ const gateway::Context ctx{match,submittedAt,sh&&((!sh->stop&&readonly::commands(sh)&&!readOnlyState.active)||missileCleanup)&&!fault&&snap.status==1,
                             get<bool>(0xA8BC60+25)};
  const gateway::Intent intent{match,submittedAt,id,target,manualVersions.get(id)};
  if(gateway::validate(ctx,intent,3500)!=gateway::Failure::None){++snap.commandRejected;return false;}
@@ -662,7 +663,7 @@ static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,Ord
   uint32_t(houseIndex)==localIndex||(authority==OrderAuthority::SellPlayerTest&&eventType==0x16&&enemyBuildingSellAllowed(object)),uint32_t(houseIndex)==ownerIndex,mp);
  if(reject!=orderpolicy::Reject::None||(eventType==0x07&&kind(object)!=1&&kind(object)!=2)){++snap.commandRejected;return false;}
  const uint32_t submittedAt=sampleClock(sh);
- const gateway::Context ctx{match,submittedAt,sh&&(!sh->stop||missileCleanup)&&!fault&&snap.status==1,
+ const gateway::Context ctx{match,submittedAt,sh&&((!sh->stop&&readonly::commands(sh)&&!readOnlyState.active)||missileCleanup)&&!fault&&snap.status==1,
                             get<bool>(0xA8BC60+25)};
  const uint32_t rev=manualVersions.get(objectId);
  const gateway::Intent objIntent{match,submittedAt,objectId,0,rev};
@@ -750,7 +751,7 @@ static bool nativeProduceEvent(uint32_t house,const Type&t,bool nativeCameo=fals
  if(orderpolicy::productionEvent(planned,mp,unsafeAllowed,nativeCameo)!=orderpolicy::Reject::None){++snap.commandRejected;return false;}
  const uint32_t submittedAt=sampleClock(sh);
  const uint32_t synthActor=taskarbiter::syntheticProductionActor(t.kind,t.index);
- const gateway::Context ctx{match,submittedAt,sh&&(!sh->stop||missileCleanup)&&!fault&&snap.status==1,get<bool>(0xA8BC60+25)};
+ const gateway::Context ctx{match,submittedAt,sh&&((!sh->stop&&readonly::commands(sh)&&!readOnlyState.active)||missileCleanup)&&!fault&&snap.status==1,get<bool>(0xA8BC60+25)};
  const gateway::Intent prodIntent{match,submittedAt,synthActor,uint32_t(t.index),0};
  if(gateway::validate(ctx,prodIntent,3500)!=gateway::Failure::None){++snap.commandRejected;return false;}
  const int frame=get<int>(0xA8ED84);
@@ -974,7 +975,7 @@ static int superSelect(uint32_t house,int index){Vec v=vec(house+0x254,256);uint
   if(orderpolicy::superWeaponEvent(true,true,true,0)!=orderpolicy::Reject::None)return -4;
   const uint32_t submittedAt=sampleClock(sh);
   const uint32_t synthActor=taskarbiter::syntheticSuperWeaponActor(index);
-  const gateway::Context ctx{match,submittedAt,sh&&(!sh->stop||missileCleanup)&&!fault&&snap.status==1,get<bool>(0xA8BC60+25)};
+  const gateway::Context ctx{match,submittedAt,sh&&((!sh->stop&&readonly::commands(sh)&&!readOnlyState.active)||missileCleanup)&&!fault&&snap.status==1,get<bool>(0xA8BC60+25)};
   const gateway::Intent swIntent{match,submittedAt,synthActor,uint32_t(get<int>(t+0x98)),0};
   if(gateway::validate(ctx,swIntent,3500)!=gateway::Failure::None){++snap.commandRejected;return -6;}
   const int frame=get<int>(0xA8ED84);
@@ -1283,6 +1284,63 @@ template<class Fn>static void withInputPublication(Shared*value,uint32_t session
   MemoryBarrier();InterlockedIncrement(&value->computeFrameSeq);notifyHost();
  });
 }
+static void cancelReadOnlyMailboxes(){
+ if(!sh)return;
+ // A delayed internal ACK must not overwrite the terminal pause receipt.
+ pendingAckReady=false;pendingAck=sh->request;repairAckPending=false;
+ readonly::cancelMailboxes(*sh,[]{MemoryBarrier();});
+}
+static bool retireForReadOnly(){
+ // First disarm every ordinary feature. Keep only identities required to
+ // release a hold already owned by us, never a candidate or computed task.
+ const bool held=missileHoldCount&&lastHouse&&get<uint32_t>(0xA83D4C)==lastHouse&&get<bool>(0xA8E9A0);
+ const int previousOutgoingFrame=outgoingFrame,previousOutgoingBudget=outgoingBudget;
+ reset(true,held);maintainTechParameters();
+ if(held){
+  outgoingFrame=previousOutgoingFrame;outgoingBudget=previousOutgoingBudget;
+  missileFrames.clear();missileApplied=sh?sh->missileComputed:0;missilePending=missileScanned=false;missileFrame=-1;
+  missileSourceCursor=missileTargetCursor=missileManagedCursor=0;
+  const int frame=get<int>(0xA8ED84);snap.frame=frame;indexWorld(frame);missileCleanup=true;
+  const bool released=releaseMissileHolds(lastHouse,frame,sampleClock(sh));missileCleanup=false;
+  if(!released)return false;
+  resetMissileControl();
+ }
+ restorePlayerContext();return featureRestorationComplete();
+}
+static void applyCommandComputeEpoch(){
+ if(commandComputeEpoch==match)return;
+ sh->computeApplied=sh->computeRequested&compute::All;commandComputeEpoch=match;
+}
+static bool serviceReadOnlyRuntime(DWORD now){
+ const bool wasReadOnly=readOnlyState.active;
+ const auto admission=readOnlyState.service(*sh,cancelReadOnlyMailboxes,retireForReadOnly,[]{MemoryBarrier();});
+ if(admission==readonly::Admission::Commands){
+  if(wasReadOnly){commandDormant=worldCleanupPending=false;lastFrame=-1;slow=now-100;sceneFrame=-2147483647;sceneTick=0;}
+  return false;
+ }
+ runtimeKeys.clear();snap.commandStatus=admission==readonly::Admission::Retiring?activation::CleanupPending:activation::HostReadOnly;
+ snap.bridgeStatus=1;snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;
+ snap.readStatus=snap.renderStatus=0;snap.placementOfferCount=0;
+ if(admission==readonly::Admission::Retiring){retireWorldFrame();publishSnapshot(now);return true;}
+ const bool wanted=worldFrameServer.wanted(sh->owner,GetTickCount());
+ const auto world=worldlife::capture(readLiveWorld);const auto change=hookWorld.observe(world);
+ if(change==worldlife::Change::Unknown){retireWorldFrame();snap.status=hookWorld.bound?1:0;publishSnapshot(now);return true;}
+ if(change==worldlife::Change::Absent){retireWorldFrame();sessionTracker.update(false,0,-1,-1);lastHouse=0;lastFrame=-1;snap.status=0;snap.match=0;publishSnapshot(now);return true;}
+ if(change==worldlife::Change::Start||change==worldlife::Change::Replaced||change==worldlife::Change::Rewind){
+  retireWorldFrame();sessionTracker.update(false,0,-1,-1);
+ }
+ uint32_t house=0;if(worldlife::authority(readLiveWorld,house)==worldlife::Authority::Unknown){retireWorldFrame();snap.status=1;publishSnapshot(now);return true;}
+ const auto transition=sessionTracker.update(true,house,world.session,world.frame);
+ if(transition!=sessionepoch::Transition::None)retireWorldFrame();
+ match=sessionTracker.epoch;lastHouse=house;lastFrame=world.frame;
+ snap.status=1;snap.match=match;snap.frame=world.frame;snap.session=world.session;
+ uint8_t chat=1;snap.chat=!readLiveWorld(0xA8BC79,&chat,1)||chat!=0;
+ // The normal immutable producer remains the only world sampler. No command
+ // maintenance, native view update or suspendedSnapshot(render) runs here.
+ if(wanted)captureWorldFrame(readLiveWorld,world,house,now,worldFrameServer.demandMask());
+ else retireWorldFrame();
+ publishSnapshot(now);return true;
+}
 static void tick(){
  sampleReadDepth=0;sampleReadComplete=true; // A platform unwind must never leak the sample domain.
  // A detached legacy fault may still own asynchronous retirement. Finish it
@@ -1293,8 +1351,8 @@ static void tick(){
  // command connection on the next callback.
  if(!sh||sh->magic!=Magic||sh->version!=Version||sh->pid!=GetCurrentProcessId()){disconnect();return;}
  syncDebugPolicy(GetTickCount()); // Before every cold feature/DR admission.
- if(!sh->superweaponGrant)superweaponGrantReset();
- maintainTechParameters();playerMaintenance();controlHouseFlagMaintenance();DWORD now=sampleClock(sh);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){
+ DWORD now=sampleClock(sh);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){
+  maintainTechParameters();
   stickyTick(true);
   // Release our automatic attack/hold orders before acknowledging detach. No game
   // field is changed locally, including when the controlling EXE has exited.
@@ -1311,7 +1369,10 @@ static void tick(){
  }
  // The failed connection remains latched until explicit stop or a dead Host.
  // Retry retirement and publish failure without reopening ordinary work.
- if(fault){reset();snap.status=snap.bridgeStatus=-2;snap.commandStatus=0;snap.labels=0;publishSnapshot(now);return;}
+ if(fault){reset();maintainTechParameters();snap.status=snap.bridgeStatus=-2;snap.commandStatus=0;snap.labels=0;publishSnapshot(now);return;}
+ if(serviceReadOnlyRuntime(now))return;
+ if(!sh->superweaponGrant)superweaponGrantReset();
+ maintainTechParameters();playerMaintenance();controlHouseFlagMaintenance();
  if((snap.techOpen||techPending||techDataPending())&&!(sh->flags&UnsafeTech))restoreTech();
  if(techDataRestoring&&techImplementation!=3)restoreTechData();
  const bool sharedWorldWanted=worldFrameServer.wanted(sh->owner,GetTickCount());
@@ -1350,7 +1411,10 @@ static void tick(){
  auto matchTransition=sessionTracker.update(true,house,sessionMode,frame);
  const bool houseChanged=!replaced&&matchTransition==sessionepoch::Transition::HouseChanged;
  bool newMatch=replaced||matchTransition!=sessionepoch::Transition::None;
- if(newMatch){if(houseChanged){cancelCooperativePlan(-3);reset(false);}match=sessionTracker.epoch;lastHouse=house;sh->computeApplied=sh->computeRequested&compute::All;scanTypes();slow=now-100;sceneFrame=-2147483647;sceneTick=0;}
+ if(newMatch){if(houseChanged){cancelCooperativePlan(-3);reset(false);}match=sessionTracker.epoch;lastHouse=house;scanTypes();slow=now-100;sceneFrame=-2147483647;sceneTick=0;}
+ // A read-only world can predate the first command entry of this epoch.
+ // Same-match pause/resume must retain its already latched placement.
+ applyCommandComputeEpoch();
  // Local playable state above is sufficient; do not wait for remote FrameInfo.
  snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;
  // Function entries are checked by their actual consumers. This startup

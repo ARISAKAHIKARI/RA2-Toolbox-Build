@@ -1,0 +1,425 @@
+{
+  "schema": "ra2.feature-entry-root-review.v1",
+  "previous_remote_commit": "6183f0762fffd114f374848d8534214d98abd70f",
+  "product_baseline_file_version": "1.0.46.4",
+  "scope": "Current entry paths and recovery, not internal gameplay quality/performance or native acceptance. Existing inventory used only for omissions; no old passing result relabelled.",
+  "records": [
+    {
+      "id": "automatic.repair",
+      "label": "自动维修",
+      "configuration": "repairCheck / Modes.AutoRepair",
+      "publication": "flags AutoRepair",
+      "consumer": "repairTick / repairCalculationTick",
+      "entry_review": "首次开启和autoWas控制首次检查；关闭先取消自动候选，显式维修独立。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.eject",
+      "label": "载员自动逃生",
+      "configuration": "hookEject / ejectMode",
+      "publication": "hookpolicy EjectAssist + NativeOrders",
+      "consumer": "nativeOrdersTick / smartUnloadTick",
+      "entry_review": "共享输入Hook能力与独立已观察载员逃生分别准入；局部Hook失败不应取消无关执行。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+        "source/assist/source/hook_policy.h": "77a81035c8846b8f649f942c4225c8ba72c962a5e9e16bdacd7f42a8db5960ea",
+        "source/assist/source/native_orders_bridge.h": "594a27690b5a9de6953e74839a50fc8eaa5b4a427627b0badbe18266751a4d3f"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.magnetron_drop",
+      "label": "磁电全局自动摔落",
+      "configuration": "extra.magnetronDrop",
+      "publication": "syncAdditional magnetronDrop",
+      "consumer": "publishPlanningWorld / runtimePlanningTick / Host planner",
+      "entry_review": "开关产生Runtime需求；Host/Runtime分流按独立MagnetronDrop计算位，源时间与epoch不改。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+        "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+        "source/assist/source/external_planner.h": "2a3e8399e55e35bc650794abb1caf2d4d208d83df43153686c8a553a8286f04d"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.construction",
+      "label": "生产预定",
+      "configuration": "extra.constructionQueue",
+      "publication": "additionalFlags ReserveConstruction",
+      "consumer": "reservationMessage / buildreserve::service / reservedSidebarTick",
+      "entry_review": "现有设置依赖及鼠标来源权限仍生效；只读模式不能把旧reserveInput重放。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+        "source/assist/source/construction_message_bridge.h": "849bff9914dabc3efcea4b603a6103d4f5f9cff75748b156941469807d0f236f",
+        "source/assist/source/construction_host.h": "4672538f176f05ed0d6c92bcfb6f7e91f21dc1b35388ae3510efdd1aa5584e35"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.ore",
+      "label": "矿车自动卸矿",
+      "configuration": "oreMode",
+      "publication": "flags AutoOreReturn",
+      "consumer": "planning world / oreHarvestTick / runtimePlanningTick",
+      "entry_review": "启用产生采样/Runtime需求；未到期无工作属于调度条件，不能当入口缺失。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+        "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+        "source/assist/source/external_planner.h": "2a3e8399e55e35bc650794abb1caf2d4d208d83df43153686c8a553a8286f04d"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.miner_defense",
+      "label": "自动点杀蜘蛛",
+      "configuration": "extra.minerDefenseEnabled",
+      "publication": "syncAdditional minerDefenseEnabled/range",
+      "consumer": "minerDefenseTick",
+      "entry_review": "独立类型清单不依赖卸矿；已拥有退场任务仍需处理，关闭不重新产生候选。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.antitheft",
+      "label": "防御建筑优先攻击渗透单位",
+      "configuration": "extra.antiTheft",
+      "publication": "additionalFlags AntiTheft",
+      "consumer": "Host/Runtime planner Defense",
+      "entry_review": "有效开关进入规划需求；上一版最终批次入队再记冷却的修复保留。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+        "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+        "source/assist/source/external_planner.h": "2a3e8399e55e35bc650794abb1caf2d4d208d83df43153686c8a553a8286f04d"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.dodge",
+      "label": "自动躲弹",
+      "configuration": "extra.dodgeEnabled / dodgeMode",
+      "publication": "syncAdditional dodgeEnabled/dodgeMode",
+      "consumer": "dodgeControlTick",
+      "entry_review": "Forward保留Runtime路径；位置开关针对Scatter。关闭/恢复沿既有owned任务退场。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+        "source/assist/source/dodge_bridge.h": "d251be34caad0f481a7ca39279e724a704202894be43c19bf80435ae74052dc9",
+        "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.missile",
+      "label": "防空火控",
+      "configuration": "extra.missileDefense",
+      "publication": "syncAdditional missileEnabled",
+      "consumer": "missileControlTick",
+      "entry_review": "独立需求和Host/Runtime分流可达；已有hold在只读退场中单独完成释放，不允许新自动分配。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+        "source/assist/source/missile_bridge.h": "10e5909ba978b416e3809fb255c6762d675b473ef92d8e4228aa54817b7bfe70",
+        "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.missile_reserve",
+      "label": "提前休眠留枪",
+      "configuration": "extra.missileReserve",
+      "publication": "missileDefense && missileReserve",
+      "consumer": "missile allocator/delivery policy",
+      "entry_review": "这是依赖防空火控的策略项，单独勾选不启动独立worker；暂停后旧hold清理在生命周期专项。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+        "source/assist/source/missile_bridge.h": "10e5909ba978b416e3809fb255c6762d675b473ef92d8e4228aa54817b7bfe70",
+        "source/assist/source/missile_compute.h": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.low_damage",
+      "label": "过滤低伤害自动目标",
+      "configuration": "extra.lowDamageFilter / lowDamageNetwork",
+      "publication": "syncAdditional lowDamageFilter / effective lowDamageNetwork",
+      "consumer": "native target/filter policy",
+      "entry_review": "基础项是消费者的筛选策略；网络/原生选项由各自条件请求。没有消费者时无任务不算失效。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.magnetron_global",
+      "label": "磁电全局无限吸",
+      "configuration": "extra.magnetronGlobal",
+      "publication": "flags MagnetronInput/NativeOrders + syncAdditional",
+      "consumer": "nativeOrdersTick / planning world",
+      "entry_review": "与单点磁电模式独立；全局候选和计算位置保持已有明确分流。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "hotkey_entry_recovery: common local-action admission only"
+      ],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+        "source/assist/source/native_orders_bridge.h": "594a27690b5a9de6953e74839a50fc8eaa5b4a427627b0badbe18266751a4d3f",
+        "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "automatic.autocs_disabled",
+      "label": "已停用自动移动攻击",
+      "configuration": "hookAutoCS",
+      "publication": "featureavailability::AutoCS",
+      "consumer": "disabled UI / hook policy",
+      "entry_review": "既有显式不可用，保留历史配置并继续禁用；不把它当新丢入口或为修复而开放。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [],
+      "sources": {
+        "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+        "source/assist/source/automatic_hotkeys_host.h": "1be703fd9e37be5088627a529816db30faee19e399729139515a486ba3a8fa28",
+        "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+        "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+        "source/assist/source/hook_policy.h": "77a81035c8846b8f649f942c4225c8ba72c962a5e9e16bdacd7f42a8db5960ea",
+        "source/shared/source/feature_availability.h": "f60feff8e03ea34db478dc2a388b1ea4f0a89880bf724573003045dd3669151a"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "compute_location",
+      "label": "计算位置与异步入口",
+      "configuration": "computeRequested",
+      "publication": "syncAdditional / applyCommandComputeEpoch",
+      "consumer": "serviceValueTask / servicePlanner / Runtime computed results",
+      "entry_review": "15槽中14个当前可见，已移除Burst不开放；只读先建立epoch后恢复主控制需要首次应用记录。相同epoch暂停恢复不提前应用标明下一局生效的设置。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "read_only_lifecycle_integration: cold read-only/resume/new epoch"
+      ],
+      "sources": {
+        "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "load_capture_wait",
+      "label": "自动装入口与首次乘员需求",
+      "configuration": "AutoBoard command",
+      "publication": "command request / loadCalculationPending",
+      "consumer": "loadingCalculationTick / autoLoadTick",
+      "entry_review": "本轮检查到初次Base样本可能尚无Passengers，但collectLoadFacts失败保留captureWaiting/pending，下帧需求补齐后重试；目前没有证明这是永久失效点。保留为已排除静态候选，未宣称实机装载成功。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [],
+      "sources": {
+        "source/assist/source/autoload_bridge.h": "068f34763606cd4c4bab54a16004a6b2a3f654933bf9ca8e64318fff3db2cc48",
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/bridge.cpp": "f6cba92a96c7e2177b6fac9f28015ef841d550c674b38c71921a895aed5baf3e",
+        "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    },
+    {
+      "id": "display_clock",
+      "label": "显示/跟踪/空闲飞机采样准入",
+      "configuration": "existing display options",
+      "publication": "GetTickCount producer and admission",
+      "consumer": "mergeExternal / watch synchronizeWorld / idle selection",
+      "entry_review": "修复QPC/GetTickCount混用和零时间戳readiness。显示confirmed不延长输入TTL；动画/信息采样频率保持。",
+      "status": "current_source_entry_review",
+      "controlled_execution": [
+        "display_entry_clock: 14 scenarios / 54 checks, pre5 29 failures"
+      ],
+      "sources": {
+        "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+        "source/assist/source/watch_host.h": "18d1b593314b629e097a1e20dcba9ba88b3706afc05befa649718a4b5846a5cc",
+        "source/assist/source/idle_aircraft_selection.h": "37ca31801d70cd32a16e408945e7c114d3122d27c5640708e7ac2a4c1784c988",
+        "source/assist/source/aircraft_indicator.h": "cdaf893b18c52693f530f9d6326edde21bd87671030098c65368e56d6e6c300e",
+        "source/assist/source/clock_ms.h": "b64c94a586587d0651b44e901d452f01d05f8b59a78c38565339848274e3e3fa",
+        "source/assist/source/display_sample_lease.h": "ab9d7035595cb45da27bfa5bef3d4a0dc89581339f4899b4d8a97c03f22b01cd"
+      },
+      "internal_algorithm_reassessed": false,
+      "windows_executed": false,
+      "game_tested": false
+    }
+  ],
+  "record_count": 16,
+  "counting": "Rows overlap console/input/lifecycle families. Record counts are not independent usable-feature or native-test counts.",
+  "non_blocking_findings": [
+    "Watch Request.tick/renderNow vs GetTickCount queue-duration subtraction can distort diagnostics; no admission consumer found. Deferred, no behavior change.",
+    "No authenticated command match can produce a misleading no-game-window notification even with a discovered candidate PID. Existing rejection remains correct; wording deferred."
+  ],
+  "engine_abi_findings": [],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false
+}

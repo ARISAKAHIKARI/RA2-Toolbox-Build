@@ -36,7 +36,7 @@ static LRESULT CALLBACK aircraftButtonProc(HWND window,UINT message,WPARAM wp,LP
 }
 static void updateAircraftButton(POINT origin,const RECT&client){
  if(!extra.idleAircraft||!enabled||!externalData||snap.renderStatus!=1||!foregroundGame()||snap.chat||
-    !externalSampler.idleAircraftDisplay().current(externalData->match,externalData->frame,externalWorldSource?externalWorldSource->key.serial:0,sampleRenderClock(nullptr),externalSourceConfirmed&&bool(externalWorldSource))||snap.width<=0||snap.height<=0){hideAircraftButton();return;}
+    !externalSampler.idleAircraftDisplay().current(externalData->match,externalData->frame,externalWorldSource?externalWorldSource->key.serial:0,GetTickCount(),externalSourceConfirmed&&bool(externalWorldSource))||snap.width<=0||snap.height<=0){hideAircraftButton();return;}
  if(!aircraftButton){WNDCLASSW cls{};cls.lpfnWndProc=aircraftButtonProc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2IdleAircraft103";cls.hCursor=LoadCursorW(nullptr,IDC_HAND);RegisterClassW(&cls);
   aircraftButton=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,cls.lpszClassName,L"空闲飞机 / 总飞机",WS_POPUP,0,0,104,28,nullptr,nullptr,cls.hInstance,nullptr);
  }
