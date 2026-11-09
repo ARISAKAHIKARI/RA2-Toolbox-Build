@@ -1345,7 +1345,11 @@
       "Demand-mask expiry caching without changing independent feature leases",
       "Adjacent unobserved dependency pages coalesced into at most 64KiB reads with per-page fallback",
       "Shared immutable render request and same-rate renewal without waking the existing deadline",
-      "Empty host input manager uses 250ms timer; active and failed-cleanup targets retain 4ms or focused tactical 1ms cadence"
+      "Empty host input manager uses 250ms timer; active and failed-cleanup targets retain 4ms or focused tactical 1ms cadence",
+      "Empty/disabled compositor parks; unchanged configure heartbeat does not notify; rate and expired heartbeat changes notify",
+      "Overlay presentation uses interruptible high-resolution DeadlineWake",
+      "Assist clock creation/arming failure falls back to interruptible event timeout instead of exiting",
+      "Cursor precision lease is scoped to active cursor/click work and released on shutdown preparation"
     ],
     "preserved": [
       "1000Hz observation target independent from presentation frequency",

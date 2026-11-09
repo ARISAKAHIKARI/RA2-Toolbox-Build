@@ -8,7 +8,6 @@ static constexpr UINT InputMessage=WM_APP+4;static volatile LONG inputPending,in
 static DWORD WINAPI frameClock(void*){
  HANDLE timer=CreateWaitableTimerExW(nullptr,nullptr,0x2,TIMER_ALL_ACCESS);
  if(!timer)timer=CreateWaitableTimerW(nullptr,FALSE,nullptr);
- if(!timer)return 0;
  HANDLE waits[3]={clockStop,clockChanged,timer};
  LARGE_INTEGER start{},frequency{},counter{};QueryPerformanceCounter(&start);QueryPerformanceFrequency(&frequency);
  pacing::Clock deadlines;uint64_t inputDue=0;
@@ -27,10 +26,13 @@ static DWORD WINAPI frameClock(void*){
    step.wait=std::min(step.wait,inputDue>now?inputDue-now:1ull);
   }else inputDue=now;
   LARGE_INTEGER due;due.QuadPart=-LONGLONG(step.wait);
-  if(!SetWaitableTimer(timer,&due,0,nullptr,nullptr,FALSE))break;
-  DWORD result=WaitForMultipleObjects(3,waits,FALSE,INFINITE);if(result==WAIT_OBJECT_0||result==WAIT_FAILED)break;
+  // Timer creation/arming can fail without losing the control, input and
+  // paint clocks. The same stop/change events interrupt the timed fallback.
+  const bool armed=timer&&SetWaitableTimer(timer,&due,0,nullptr,nullptr,FALSE);
+  const DWORD timeout=armed?INFINITE:DWORD(std::max<uint64_t>(1,(step.wait+9999)/10000));
+  DWORD result=WaitForMultipleObjects(armed?3:2,waits,FALSE,timeout);if(result==WAIT_OBJECT_0||result==WAIT_FAILED)break;
  }
- CancelWaitableTimer(timer);CloseHandle(timer);return 0;
+ if(timer){CancelWaitableTimer(timer);CloseHandle(timer);}return 0;
 }
 static void clockState(bool active,int rate){
  bool changed=InterlockedExchange(&clockActive,active)!=active;

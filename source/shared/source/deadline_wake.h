@@ -30,6 +30,9 @@ public:
 #endif
  }
  template<class Predicate>void wait(std::unique_lock<std::mutex>&lock,Predicate predicate){cv_.wait(lock,predicate);}
+ template<class Predicate>bool wait_until(std::unique_lock<std::mutex>&lock,std::chrono::steady_clock::time_point deadline,Predicate predicate){
+  while(!predicate()){if(std::chrono::steady_clock::now()>=deadline)return false;wait_until(lock,deadline);}return true;
+ }
  void wait_until(std::unique_lock<std::mutex>&lock,std::chrono::steady_clock::time_point deadline){
 #ifdef _WIN32
   if(timer_&&changed_){
