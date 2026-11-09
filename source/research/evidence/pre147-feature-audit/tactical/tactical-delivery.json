@@ -1,0 +1,63 @@
+{
+  "timestamp_utc": "2026-11-09T06:58:46.377211+00:00",
+  "base_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "files": {
+    "source/assist/source/external_planner.h": "2a3e8399e55e35bc650794abb1caf2d4d208d83df43153686c8a553a8286f04d",
+    "source/assist/source/missile_bridge.h": "10e5909ba978b416e3809fb255c6762d675b473ef92d8e4228aa54817b7bfe70",
+    "source/assist/source/mo_orders.h": "a7f38b1e0c4aeff688d6ee238bc74ca1fe7ddee3a71d5d2ea7af03c1a02fe7b3",
+    "source/assist/tests/planner_defense_delivery.cpp": "b57101673ef6536715116f76886bce38f1bb202d318e5dbddb3941f6298e5bf7",
+    "source/assist/tests/missile_manual_lifecycle.py": "954f07adae311791ea1d0a4a1014fe390b61bf9312be3f85b3cb23253d29a11e",
+    "source/assist/tests/missile_manual_capacity.py": "26e5b147545a26421059444579699d76306aacf48497fad39843d0664bf61469",
+    "source/assist/tests/mo_patrol_capacity.cpp": "a9e5a82e43796bc011fa4cbd6f628eab129402eb7b5647801375b00224e34924"
+  },
+  "matrix": {
+    "path": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/tactical-feature-matrix.json",
+    "sha256": "b2a98abe9c3dcc738bc437f654dec677c8e9e3ea89fd9ff6a8d8392b71f840f2"
+  },
+  "evidence": [
+    "defense-before.json",
+    "defense-after.json",
+    "ore-regression-after-run.log",
+    "missile-before/result.json",
+    "missile-lifecycle-final/result.json",
+    "missile-capacity-before/result.json",
+    "missile-capacity-after/result.json",
+    "patrol-before-final/result.json",
+    "patrol-after/result.json"
+  ],
+  "summary": [
+    {
+      "id": "TAC-DEFENSE-001",
+      "title": "防御候选最终批次裁掉后仍被冷却",
+      "before": "21 checks / 3 failed",
+      "after": "21 passed; adjacent OreYield136 passed",
+      "files": [
+        "source/assist/source/external_planner.h"
+      ]
+    },
+    {
+      "id": "TAC-MISSILE-LIFECYCLE-002",
+      "title": "手动记录生命周期/满表静默漏保护/同token旧Guard覆盖",
+      "before": "历史回收旧14项5失败；容量同23项15失败",
+      "after": "最终历史回收16 passed; 容量/真实交付/Host完成23 passed",
+      "files": [
+        "source/assist/source/missile_bridge.h"
+      ]
+    },
+    {
+      "id": "TAC-PATROL-CAPACITY-006",
+      "title": "长巡逻32生成与16图校验冲突",
+      "before": "同31项12失败，16缓冲ASan stack overflow",
+      "after": "31 passed + ASan buffer1 passed + existing graph28 passed",
+      "files": [
+        "source/assist/source/mo_orders.h"
+      ]
+    }
+  ],
+  "limitations": [
+    "All execution Linux controlled production functions/types with modeled boundaries.",
+    "No Windows process/game/FPS/MP/physical projectile acceptance.",
+    "Patrol test retains ASan; LeakSanitizer disabled due executor proc/ptrace restriction; first failed diagnostic retained.",
+    "Source refs for shared parent-owned files represent matrix creation time, not a final release freeze."
+  ]
+}

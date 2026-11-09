@@ -1,0 +1,27 @@
+{
+  "source_sha256": {
+    "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+    "source/shared/source/world_frame_transport.h": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9",
+    "source/shared/source/world_frame_capture.h": "54e646ebfe75d8614f07b0b0fb65dfb3fcaa476bb1a05d6f2eb1c55d85315b41",
+    "source/shared/source/world_frame_pool.h": "58a99f8f9d926bbff9298d68006ff3ad45d648ca6c86751f75cbaf81660a91ab",
+    "source/external_reader/source/process_reader.h": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1",
+    "source/assist/tests/world_frame_core.cpp": "71ef592d6442a3c9ea35e8e4688e355968393251d19e320a9c5b7f176da2472c",
+    "source/assist/tests/world_frame_core_test.py": "2ee49da359b7d77f4c8decc816c28e19065975a8c680caac093fe28dba63f13d"
+  },
+  "source_inputs_unchanged": true,
+  "runs": [
+    {
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/world_frame_core_test.py"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/root/supplemental/world_frame_core/0.log",
+      "log_sha256": "f960d48b7c4d0d74a6d7ee1e5316c68b151397b16e5d04c6adf1f8628be332c7"
+    }
+  ],
+  "passed": true,
+  "windows_executed": false,
+  "game_tested": false
+}

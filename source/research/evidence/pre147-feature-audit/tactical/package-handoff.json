@@ -1,0 +1,27 @@
+{
+  "version": "1.0.47-pre.3",
+  "file_version": "1.0.47.3",
+  "assist_protocol": 102,
+  "base_shared_bytes": 23162528,
+  "shared_bytes": 23162544,
+  "product_baseline": "1.0.46.4",
+  "comparison_baseline_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "fixed_groups": 26,
+  "with_dependency": 27,
+  "packaging_files_sha256": {
+    "packages/v1.0.47/package_release.py": "12aba137ec285dda18b2a9a4b026c292c626492299ce1d06f350056baa162778",
+    "packages/v1.0.47/test_package_release.py": "c9ed72959b007c62f8dfce8b9e72b57f5f28c2e1cfb2f496e16f650f1e103036",
+    "packages/v1.0.47/README.txt": "17bb64f9a5d3ef78f5f3db605093ec0168ea1c1ab5079daa30b064747cab8cf2",
+    "packages/v1.0.47/PACKAGING.md": "243c77a85cc62072cf91e038c627587e84d460b27ab000a0dfe69bab69ae0ca8"
+  },
+  "policy_test_methods": 19,
+  "policy_failures": 0,
+  "policy_errors": 0,
+  "policy_execution": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/package-gates-final/execution.json",
+  "actual_27_log_recognition": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/package-gates-final/production-log-recognition.json",
+  "run_spec": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/pre3-check-run-spec.json",
+  "run_spec_sha256": "2769ebf331e540ced3ed9da1bc727fb6bcbf9c455e3474766c20ae69e8ee037b",
+  "frozen_for_parent": true,
+  "no_production_sources_or_original_logs_modified": true,
+  "no_commit_or_build_performed": true
+}

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "node",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/composition-probe.mjs",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console-baseline.html"
+  ],
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "exit": 1,
+  "log": "composition.baseline.log",
+  "app_sha256": "c18c53e2d9a5860c019588a9bc8403a5e45a49049ce9d6347ad1bc16fbfd1cad",
+  "fixture_sha256": "b1b7c2292e9749df652dcc614ae0402d84b52dc59905511841962f8feabff9ef",
+  "test_sha256": "410c45d55ab47dd2df6a00e23a5068cada52d036665255996d9b119c11aa93dc"
+}

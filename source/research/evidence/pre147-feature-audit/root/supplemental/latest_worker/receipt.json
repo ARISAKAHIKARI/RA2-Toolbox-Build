@@ -1,0 +1,34 @@
+{
+  "source_sha256": {
+    "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81",
+    "source/assist/tests/latest_worker.cpp": "2b5862ab94fc9c1a92302a5800fb5b22d732570dff97733c0efd91d98e66b7b9"
+  },
+  "source_inputs_unchanged": true,
+  "runs": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "source/assist/tests/latest_worker.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/supplemental/latest_worker/fixture"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/root/supplemental/latest_worker/0.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/supplemental/latest_worker/fixture"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/root/supplemental/latest_worker/1.log",
+      "log_sha256": "f3a6a9999425af6c42a6c069e65c44c1442da30dd5272eb78550bc45ceba5d75"
+    }
+  ],
+  "passed": true,
+  "windows_executed": false,
+  "game_tested": false
+}

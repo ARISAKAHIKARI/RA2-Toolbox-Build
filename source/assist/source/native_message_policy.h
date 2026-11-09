@@ -40,6 +40,10 @@ extern "C" int AssistFilterMessage(void* raw){
   if(sh){auto record=blockedOrigins[slot];record.tick=sampleClock(sh);sh->suppressedClick=record;}
   msg->message=WM_NULL;msg->wParam=msg->lParam=0;return 1;
  }
+ // A fresh DOWN (including DBLCLK) starts a new physical pair. Its previous
+ // UP may have gone to another window; do not let that stale ownership eat
+ // this pair's release if the current DOWN must stay native.
+ blockedButtons&=~bit;
  if(!sh||fault||sh->stop||!nativeReady()||!sh->foreground||DWORD(sampleClock(sh)-sh->heartbeat)>150)return 0;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);if(foreground!=GetCurrentProcessId())return 0;
  auto seq=sh->pointerPolicySeq;if(seq&1)return 0;pointerinput::NativePolicy policy;MemoryBarrier();memcpy(&policy,&sh->pointerPolicy,sizeof policy);MemoryBarrier();

@@ -1,0 +1,58 @@
+{
+  "name": "scene_extra_recovery",
+  "started_utc": "2026-11-09T07:10:42.916651+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "python3",
+    "-B",
+    "source/assist/tests/scene_extra_recovery.py",
+    "--output",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery/run.log",
+  "test_source_hashes": {
+    "source/assist/tests/game_assets_host_test.py": "4965c42fa325878bd803f0c6b8697bdfe9066f5066588017c5832ac2a2b72a4e",
+    "source/assist/tests/scene_extra_recovery.cpp": "4b0d2fc7b113608c215497f4e342ab5bf56f6cc11202fa2767fc5aa3a1281931",
+    "source/assist/tests/scene_extra_recovery.py": "55b939dde88a8eefbb00257a19d02950cb10d1691a4af4fbcda96d6e31a266bc"
+  },
+  "production_source_hashes": {
+    "source/external_reader/source/camera_assets.h": "b33669cbf6bb0430c773e5cd93f37a71403766e04bef557fff955b16bca3c0bd",
+    "source/external_reader/source/camera_raster.h": "c3bc498d9df00868387f6b477025f558236dc2f8ff1a16a9c94ee59eb8af11d5",
+    "source/external_reader/source/radar_decoration.h": "382d4e342fba4ad41593235b561de312504bb25aa7f771cfba035df0ce005447",
+    "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659",
+    "source/external_reader/source/scene_extra_layers.h": "06228a805780f79684162a046032dd3344fdf741245fd0344de22861e851965b",
+    "source/external_reader/source/world_scene_pipeline.h": "56b55686556b7fef84e0a3463cf6997dfdcf1be1e74237fc69923cce88793f8b"
+  },
+  "steps": [
+    {
+      "stage": "driver",
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/scene_extra_recovery.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery/driver.log",
+      "log_sha256": "a975bfa0019c0bf128de7031a520a58e8b4d65fa3cad655ab0075b067158041a"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery/run.log",
+  "log_sha256": "a975bfa0019c0bf128de7031a520a58e8b4d65fa3cad655ab0075b067158041a",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "completed_utc": "2026-11-09T07:11:11.434970+00:00",
+  "elapsed_seconds": 28.518,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery/execution.json"
+}

@@ -1,0 +1,37 @@
+{
+  "verification_level": "controlled_execution",
+  "source": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile_bridge_before_capacity.h",
+  "source_sha256": "1675f0846512975a02cce4ebf161bcb12851aadbd65cb8b62de20bcc831566cb",
+  "test_sha256": "26e5b147545a26421059444579699d76306aacf48497fad39843d0664bf61469",
+  "generated_sha256": "f459bf687d44d20306ec2e8d19d1b02cebd5b0d58c32f1b4444653e5e0dbfeee",
+  "extract_sha256": "5526bf6fb47f77291c1609a7232ca1f301c014fae5d8999a4a1cca8d6946d938",
+  "commands": [
+    {
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-I",
+        "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-capacity-before/missile_manual_capacity.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-capacity-before/missile_manual_capacity"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-capacity-before/build.log",
+      "log_sha256": "348472c7073111296833d171ace7ca206a85b3393f08c65c235836779965927b"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-capacity-before/missile_manual_capacity"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 1,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-capacity-before/run.log",
+      "log_sha256": "cb2623c8c7d3eaf6a11d29f3bba3e566164d1c5caf2b5cb12930ac15072a1c39"
+    }
+  ]
+}

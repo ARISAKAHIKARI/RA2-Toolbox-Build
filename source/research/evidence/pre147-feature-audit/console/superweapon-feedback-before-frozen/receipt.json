@@ -1,0 +1,51 @@
+{
+  "test": "actual superSelect / namedSuper / cancelSuperSidebarSelection / full result() feedback",
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-before-frozen/fixture.cpp",
+    "-o",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-before-frozen/fixture"
+  ],
+  "compile_returncode": 0,
+  "run_command": [
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-before-frozen/fixture"
+  ],
+  "run_returncode": 1,
+  "source_sha256": {
+    "bridge": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/bridge.cpp",
+      "sha256": "c122b39a30a2d53e9964f0e5dbfcea0f30e0f859cd8a76b8179ca570880488b1"
+    },
+    "host": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/main.cpp",
+      "sha256": "0ae4658a9775e742af6def596e63eb4c5c286995becbc60d1fed1a40ef4d425f"
+    },
+    "cancel": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/superweapon_sidebar_bridge.h",
+      "sha256": "cc1dd3519c7b6920f238899bc9a321369e57e8e307553e886dbb6cb5df8d2fed"
+    },
+    "test": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/superweapon_result_feedback.py",
+      "sha256": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83"
+    }
+  },
+  "function_sha256": [
+    "42bdeaa0bd47bb0446ed15e78ecb39b50236e5deb03cc1b05f346da20b7f1563",
+    "3795bbda0e0cdde581dc8a80eb9a62c7880aae707f47684012efa85e2802272a",
+    "18c12a8fbfe6e9e78d2aa5169b89e7f706c210b9f894d13c421cfe35648bbfa2",
+    "1dca873dbed68bb0ba63d2bb5f7a77cd463f8ec7b3e6470ef8b46883ac768714"
+  ],
+  "scope": "Linux compiled production-function fixture; native queries, memory, queue admission, UI and mailbox handoff are explicit seams",
+  "windows_executed": false,
+  "game_executed": false,
+  "network_executed": false,
+  "result": {
+    "checks": 13,
+    "failures": 2,
+    "passed": false
+  }
+}

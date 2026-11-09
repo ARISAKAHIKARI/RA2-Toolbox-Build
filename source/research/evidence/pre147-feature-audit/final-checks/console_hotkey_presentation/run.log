@@ -1,0 +1,9 @@
+PASS NumpadMultiply displays its captured key instead of a letter
+PASS NumpadAdd displays its captured key instead of a letter
+PASS NumpadComma displays its captured key instead of a letter
+PASS NumpadSubtract displays its captured key instead of a letter
+PASS NumpadDecimal displays its captured key instead of a letter
+PASS NumpadDivide displays its captured key instead of a letter
+PASS an unmapped accepted virtual key has a visible unambiguous fallback
+PASS ordinary letters digits function keys and numpad digits retain their names
+{"suite":"console_hotkey_presentation","checks":8,"failures":0,"level":"actual production encodeHotkey and keyName"}

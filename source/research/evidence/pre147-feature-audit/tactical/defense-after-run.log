@@ -1,0 +1,6 @@
+omitted first_defense=0 next_defense=1
+returned drops=15 miners=20 duplicate=0 first=1 early=0 due=1
+returned drops=0 miners=0 duplicate=0 first=1 early=0 due=1
+returned drops=0 miners=20 duplicate=1 first=1 early=0 due=1
+host_task first=0 next=1
+PASS: 21 checks, 0 failures; real Planner final-batch defense lifecycle

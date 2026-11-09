@@ -1,0 +1,59 @@
+{
+  "name": "missile_manual_capacity",
+  "started_utc": "2026-11-09T07:10:45.631157+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "python3",
+    "-B",
+    "source/assist/tests/missile_manual_capacity.py",
+    "--output",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/run.log",
+  "test_source_hashes": {
+    "source/assist/tests/missile_manual_capacity.py": "26e5b147545a26421059444579699d76306aacf48497fad39843d0664bf61469"
+  },
+  "production_source_hashes": {
+    "source/assist/source/compute_frame.h": "a88d6f9e3a79dad611a338ee0a60ac426bf40b96a627694534e482f125c54b55",
+    "source/assist/source/compute_input_copy.h": "71dfa9f605c10b3ccf058b1372370950b0b5e4a1672542cfe3fe3d4e888ca7b7",
+    "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+    "source/assist/source/missile_bridge.h": "10e5909ba978b416e3809fb255c6762d675b473ef92d8e4228aa54817b7bfe70",
+    "source/assist/source/missile_compute.h": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+    "source/assist/source/object_index.h": "6c5d6f8a3760b50cab0fc5274d7517bd96feb539bf0bd92a1225918f1ece8f8c",
+    "source/assist/source/plan_freshness.h": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c",
+    "source/assist/source/planner_types.h": "c4215d8d6328d492b548efa48d26aa2da4fef7a1d1328d57e9bd2e245071ffcc",
+    "source/assist/source/unit_task_arbiter.h": "86e4278cd05ba68d44f0ac9a8a292d16f5db00198e32ef865b10f85b556dd0a9"
+  },
+  "steps": [
+    {
+      "stage": "driver",
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/missile_manual_capacity.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/driver.log",
+      "log_sha256": "79ea730b5c9d716df5ff496276055a775186e9d18bf04a4c90ac5b692c509503"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/run.log",
+  "log_sha256": "c6fc94c47e56c6d4aed9aed9f51f6cd68fe82be64a782d309168f9bbbf967f9c",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "completed_utc": "2026-11-09T07:10:48.151730+00:00",
+  "elapsed_seconds": 2.521,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/execution.json"
+}

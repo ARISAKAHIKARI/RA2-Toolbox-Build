@@ -1,0 +1,8 @@
+width=2 count=4 bind=1
+width=4 count=8 bind=1
+width=8 count=16 bind=1
+width=10 count=16 bind=1
+width=20 count=16 bind=1
+width=40 count=16 bind=1
+width=80 count=16 bind=1
+PASS: 31 checks, 0 failures; real patrol to route, synthetic graph only

@@ -1,0 +1,24 @@
+{
+  "schema": "ra2.packaging-gates.v1",
+  "scope": "packaging_policy_only",
+  "synthetic_receipt_fixtures": true,
+  "product_build_performed": false,
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "tests_run": 19,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "base_archive_sha256": "d8d5d871e0358579b49c1a2dedbfca48c601ea22119bf897e18593ae7233533c",
+  "base_manifest_sha256": "1d30a70514dcba77b26a330db130150850fe24c6fd962c513212542db10dc26b",
+  "gate_inputs": {
+    "packages/v1.0.43/build_release.py": "0d742d2e8b74306888113a07341cd1b45088045992b4e8d384bb80d2049da612",
+    "packages/v1.0.46/package_release.py": "503907f9aed1217c0fccd9a0312a9e3cef5c267798119009115f555a78d57799",
+    "packages/v1.0.47/package_release.py": "12aba137ec285dda18b2a9a4b026c292c626492299ce1d06f350056baa162778",
+    "packages/v1.0.47/test_package_release.py": "c9ed72959b007c62f8dfce8b9e72b57f5f28c2e1cfb2f496e16f650f1e103036",
+    "packages/v1.0.47/README.txt": "17bb64f9a5d3ef78f5f3db605093ec0168ea1c1ab5079daa30b064747cab8cf2",
+    "packages/v1.0.47/PACKAGING.md": "243c77a85cc62072cf91e038c627587e84d460b27ab000a0dfe69bab69ae0ca8"
+  }
+}

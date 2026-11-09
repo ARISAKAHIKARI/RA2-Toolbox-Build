@@ -218,7 +218,7 @@ static void drawIcon(Graphics& g,const um::Type& t,const um::Snapshot& s,float x
  else {Pen p(color(col),1.5f);g.DrawRectangle(&p,x+2,y+2,w-4,h-4);std::wstring id;for(char c:t.id){if(!c)break;id+=wchar_t((unsigned char)c);}text(g,id.substr(0,8),x+4,y+h/3,10,Color::White);}
  Pen border(color(col),1.5f);g.DrawRectangle(&border,x,y,w,h);
 }
-struct RenderRequest {int width,height,gameWidth,gameHeight,leftMargin,topMargin,scalePercent,page;bool showOthers,buildings,demo;uint32_t pid,match,tick;std::shared_ptr<const um::Snapshot> snap;};
+struct RenderRequest {int width,height,gameWidth,gameHeight,leftMargin,topMargin,scalePercent,page;bool showOthers,buildings,demo;uint32_t pid,match,tick;std::shared_ptr<const um::Snapshot> snap;uint64_t serial=0;};
 struct RenderFrame {RenderRequest request;int width,height;std::vector<uint32_t> pixels;};
 static std::shared_ptr<const RenderFrame> renderPixels(const RenderRequest&r){
  auto snap=r.snap;int width=r.width,height=r.height,gameWidth=r.gameWidth,gameHeight=r.gameHeight,leftMargin=r.leftMargin,topMargin=r.topMargin,scalePercent=r.scalePercent,page=r.page;bool showOthers=r.showOthers,buildings=r.buildings,demo=r.demo;
@@ -291,7 +291,7 @@ static void resetPrimaryRender(){renderWorker.invalidate();renderedFrame.reset()
 static asyncwork::Latest<RenderRequest,RenderFrame> secondaryRenderWorker(renderPixels);
 static std::shared_ptr<const RenderFrame> secondaryRenderedFrame;
 static POINT secondaryOrigin{LONG_MIN,LONG_MIN};static int secondaryWidth=0,secondaryHeight=0;
-static bool secondaryUploaded=false;static DWORD secondaryLastSubmit=0;
+static bool secondaryUploaded=false;static DWORD secondaryLastSubmit=0;static uint64_t secondarySubmitSerial=0;
 static POINT secondaryPosition(const RECT&work,int width,int height,int x,int y){
  int roomX=std::max(0,int(work.right-work.left)-width),roomY=std::max(0,int(work.bottom-work.top)-height);
  return {LONG(int64_t(work.left)+int64_t(roomX)*std::clamp(x,0,10000)/10000),
@@ -311,10 +311,12 @@ static SecondaryDragSettings secondaryDragSettings(const SecondaryDrag&drag,POIN
  SecondaryDragSettings result{drag.x,drag.y};
  int workWidth=int(drag.work.right-drag.work.left),workHeight=int(drag.work.bottom-drag.work.top);
  if(workWidth<=0||workHeight<=0)return result;
+ // A monitor change can precede the next panel resize. Pin an oversized
+ // old surface to the work-area origin until the new layout is ready.
  int targetX=int(std::clamp(int64_t(drag.origin.x)+cursor.x-drag.cursor.x,
-                             int64_t(drag.work.left),int64_t(drag.work.right-drag.width)));
+                             int64_t(drag.work.left),std::max(int64_t(drag.work.left),int64_t(drag.work.right)-drag.width)));
  int targetY=int(std::clamp(int64_t(drag.origin.y)+cursor.y-drag.cursor.y,
-                             int64_t(drag.work.top),int64_t(drag.work.bottom-drag.height)));
+                             int64_t(drag.work.top),std::max(int64_t(drag.work.top),int64_t(drag.work.bottom)-drag.height)));
  result.x=secondaryTravelUnit(targetX,drag.work.left,workWidth-drag.width);
  result.y=secondaryTravelUnit(targetY,drag.work.top,workHeight-drag.height);
  return result;
@@ -329,7 +331,7 @@ static void paintSecondaryDragGrip(UnitSurface&surface){
 }
 static void resetSecondary(){
  secondaryRecovery.suspend();secondaryRenderWorker.invalidate();secondaryRenderedFrame.reset();secondarySurface.clear();
- secondaryActive=false;secondaryDirty=true;secondaryUploaded=false;secondaryLastSubmit=0;secondaryWidth=secondaryHeight=0;secondaryOrigin={LONG_MIN,LONG_MIN};
+ secondaryActive=false;secondaryDirty=true;secondaryUploaded=false;secondaryLastSubmit=0;secondarySubmitSerial=0;secondaryWidth=secondaryHeight=0;secondaryOrigin={LONG_MIN,LONG_MIN};
  if(secondaryOverlay)ShowWindow(secondaryOverlay,SW_HIDE);
 }
 static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame){
@@ -345,8 +347,12 @@ static bool updateSecondary(DWORD now,bool battlefield,bool displayFrame){
   resetSecondary();secondaryWidth=width;secondaryHeight=height;
  }
  secondaryActive=true;if(!displayFrame)return true;
- if(secondaryDirty||(!secondaryRenderedFrame&&DWORD(now-secondaryLastSubmit)>=250)){
-  secondaryRenderWorker.submit({width,height,width,height,leftMargin,topMargin,scalePercent,page,showOthers,buildings,demo,pid,oldMatch,now,snap});secondaryDirty=false;secondaryLastSubmit=now;
+ // A rejected replacement still owes a draw even when an older front exists.
+ // Retry that submission at the existing failure cadence; an accepted,
+ // unchanged image continues to skip rasterization. Identity is independent
+ // of the millisecond clock: two distinct requests can share a tick.
+ if(secondaryDirty||((!secondaryRenderedFrame||secondaryRenderedFrame->request.serial!=secondarySubmitSerial)&&DWORD(now-secondaryLastSubmit)>=250)){
+  secondaryRenderWorker.submit({width,height,width,height,leftMargin,topMargin,scalePercent,page,showOthers,buildings,demo,pid,oldMatch,now,snap,++secondarySubmitSerial});secondaryDirty=false;secondaryLastSubmit=now;
  }
  auto completed=secondaryRenderWorker.get();if(completed&&completed!=secondaryRenderedFrame){const auto&r=completed->request;
   if(r.pid==pid&&r.match==oldMatch&&r.width==width&&r.height==height&&r.page==page&&r.scalePercent==scalePercent&&r.leftMargin==leftMargin&&r.topMargin==topMargin&&r.showOthers==showOthers&&r.buildings==buildings&&r.demo==demo&&DWORD(now-r.tick)<1000&&secondarySurface.ensure(completed->width,completed->height)){

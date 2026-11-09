@@ -1,0 +1,5 @@
+In file included from source/assist/tests/idle_aircraft_display.cpp:4:
+source/assist/tests/enemy_markers.cpp: In function ‘int existingEnemyTests()’:
+source/assist/tests/enemy_markers.cpp:140:1: warning: control reaches end of non-void function [-Wreturn-type]
+  140 | }
+      | ^

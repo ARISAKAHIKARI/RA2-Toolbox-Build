@@ -1,0 +1,51 @@
+{
+  "test": "actual superSelect / namedSuper / cancelSuperSidebarSelection / full result() feedback",
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-after-final/fixture.cpp",
+    "-o",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-after-final/fixture"
+  ],
+  "compile_returncode": 0,
+  "run_command": [
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-after-final/fixture"
+  ],
+  "run_returncode": 0,
+  "source_sha256": {
+    "bridge": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/bridge.cpp",
+      "sha256": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1"
+    },
+    "host": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/main.cpp",
+      "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+    },
+    "cancel": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/superweapon_sidebar_bridge.h",
+      "sha256": "cc1dd3519c7b6920f238899bc9a321369e57e8e307553e886dbb6cb5df8d2fed"
+    },
+    "test": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/superweapon_result_feedback.py",
+      "sha256": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83"
+    }
+  },
+  "function_sha256": [
+    "ba15d914021b969042f2c6d9e7b211cef8cdc4aaf0156ba648039790be5fd46e",
+    "3795bbda0e0cdde581dc8a80eb9a62c7880aae707f47684012efa85e2802272a",
+    "18c12a8fbfe6e9e78d2aa5169b89e7f706c210b9f894d13c421cfe35648bbfa2",
+    "2763f31c0fbdc871fac3a79dc74d31df4de5891e028d4f6768b7e9b056017488"
+  ],
+  "scope": "Linux compiled production-function fixture; native queries, memory, queue admission, UI and mailbox handoff are explicit seams",
+  "windows_executed": false,
+  "game_executed": false,
+  "network_executed": false,
+  "result": {
+    "checks": 13,
+    "failures": 0,
+    "passed": true
+  }
+}

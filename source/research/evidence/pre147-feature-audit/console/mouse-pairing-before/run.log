@@ -1,0 +1,8 @@
+{"checks":36,"failures":7,"passed":false}
+FAIL outside release then disable preserves new native left pair
+FAIL outside release then disable preserves new native right pair
+FAIL outside release then mouse rebinding preserves new native pair
+FAIL new native click rejected by busy mailbox retains its release
+FAIL new native click with unsupported empty selection retains its release
+FAIL new native click while native context unavailable retains its release
+FAIL new native click before Host input readiness retains its release

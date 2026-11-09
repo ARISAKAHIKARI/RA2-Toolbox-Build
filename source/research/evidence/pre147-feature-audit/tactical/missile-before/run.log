@@ -1,0 +1,7 @@
+FAIL: dead historical roster entries cannot drop a later manual command
+FAIL: complete next-frame absence reclaims dead records
+dead_history count=1024 new_owned=0
+FAIL: completed idle tasks outside the next candidate scan release capacity
+FAIL: idle completion keeps only the fresh manual task
+FAIL: one proven dead task makes one slot for a new command
+FAIL: 14 checks, 5 failures; extracted production manual-ownership helpers

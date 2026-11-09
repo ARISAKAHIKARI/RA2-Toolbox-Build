@@ -1,0 +1,63 @@
+{
+  "pass": true,
+  "scope": "Run the shipped passenger display over the real ProcessReader/frame transport.\n\nOnly Win32 I/O, viewport geometry and the UTF-16/wchar display conversion are\ncontrolled. The sampling/lease body, collector, motion, immutable pages and IPC\nreader execute production logic.\nThis counts live RPM calls; it is not a game, GPU, Windows UI or FPS benchmark.\n",
+  "runs": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O1",
+        "-UNDEBUG",
+        "-D_GLIBCXX_ASSERTIONS",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "-pthread",
+        "-I",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/passenger_current",
+        "-I",
+        "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source",
+        "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/passenger_frame_sampling.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/passenger_current/passenger-frame-sampling"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/passenger_current/passenger-frame-sampling"
+      ],
+      "exit_code": 0,
+      "stdout": "first passenger paint: bubbles=1 live_RPM=0\nPASS 1000 paints of one logic frame: zero live RPM, immutable contents/position\nPASS missing/failed passenger page: no live fallback, 120ms lease never renewed, next complete frame recovers\nPASS no token/unconfirmed/wrong PID/match/frame/tick/retired publication/disabled/chat: closed without RPM\nPASS inspect disappearance/danger-only/shared demand routing: no rate reduction or alternate live scanner\nPASS paused frame independent confirmation and confirmation expiry\npassenger frame sampling: 2158 checks passed\n",
+      "stderr": ""
+    }
+  ],
+  "source_sha256": {
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/passenger_draw.h": "123eba0051124e5fef8884bb77ba9b8860d1866084b4b8a8a2ca30ee763916b5",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/passenger_motion.h": "c15bb3ba5f03cccc8e4a6f8b31ff680dba521bac2d70dc1f33c7ec3396e0e6df",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/display_sample_lease.h": "ab9d7035595cb45da27bfa5bef3d4a0dc89581339f4899b4d8a97c03f22b01cd",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/label_motion.h": "a1c11d506dad1118f7584913798fb19046209058fc7f73129c396dae11671e85",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/external_reader/source/passenger_bubbles.h": "23e8c3466eeaee760f123f304dafdbe6718cc0294a430ab08ff0b02b33f05aa7",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/external_reader/source/game_view.h": "1cb66241d90ea90ed29b516651a7ba8313a672364ee542e6a051dd2aa6123063",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/external_reader/source/process_reader.h": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/shared/source/world_frame_capture.h": "54e646ebfe75d8614f07b0b0fb65dfb3fcaa476bb1a05d6f2eb1c55d85315b41",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/shared/source/world_frame_transport.h": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/world_frame_core.cpp": "71ef592d6442a3c9ea35e8e4688e355968393251d19e320a9c5b7f176da2472c",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/world_frame_core_test.py": "2ee49da359b7d77f4c8decc816c28e19065975a8c680caac093fe28dba63f13d",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/passenger_frame_sampling.cpp": "fb790fb5f3ed0c6c8fadca22803b710a9e6abaad283088f8598baf39f4a1c497",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/passenger_frame_sampling.py": "ae534cd354e2c29d2b9a75e59fffdd8d159b888360d961044acc04dd657bb211"
+  },
+  "extracted_sha256": {
+    "windows.h": "8e41f6346faa7b5eb29c6d39c44548069ad9fc7ed665b2369a6b7cf8b4780a1e",
+    "host_platform.h": "e83da63568e730be896ace8bd3d4b9dffa6489ec62eb0b0c48d226eb3d82f1d0",
+    "passenger_production.h": "b47beec70322da16dfdad73a48b6c4be7a7974319756d94fb62ae75dc1f61bb1",
+    "passenger_demand.h": "5bc303566ffa4cc6b0b880d58b42d536f2dc83764cef7e78065f3827248815cf"
+  },
+  "windows_executed": false,
+  "actual_game": false,
+  "hardware_gpu": false,
+  "multiplayer": false
+}

@@ -1,0 +1,84 @@
+{
+  "name": "idle_aircraft_display",
+  "started_utc": "2026-11-09T07:10:32.179114+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/fixture"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/run.log",
+  "test_source_hashes": {
+    "source/assist/tests/idle_aircraft_display.cpp": "1e16f480a865153f4c827dc3e5809e39a0013b13f95de3216ab88066aa227b14"
+  },
+  "production_source_hashes": {
+    "source/assist/source/aircraft_indicator.h": "3b81510daf5734a3a2db8bb5647d35f6b37eb9d34e25ebf6e80f020f66026dda",
+    "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+    "source/external_reader/source/idle_aircraft.h": "8f136a5ca6f8066bfc1017caf3fd1d47578e4ddca3c40ab8be3d7873b80df7cf",
+    "source/external_reader/source/tactical_sampler.h": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab"
+  },
+  "steps": [
+    {
+      "stage": "compile",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O2",
+        "-pthread",
+        "-I",
+        "source/external_reader/source",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/production.d",
+        "source/assist/tests/idle_aircraft_display.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/fixture"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/compile.log",
+      "log_sha256": "5a8723d5dc7b469904e226ec6bc4ebdcc1284b3e95ee6855c60ffad260f47bad"
+    },
+    {
+      "stage": "run",
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/fixture"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/run.log",
+      "log_sha256": "bac486eae790070708d02c17912d28e7c076af78deb2696d1fc22fa56317ca1e"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-UNDEBUG",
+    "-O2",
+    "-pthread",
+    "-I",
+    "source/external_reader/source",
+    "-MMD",
+    "-MF",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/production.d",
+    "source/assist/tests/idle_aircraft_display.cpp",
+    "-o",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/fixture"
+  ],
+  "compile_exit_code": 0,
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/run.log",
+  "log_sha256": "bac486eae790070708d02c17912d28e7c076af78deb2696d1fc22fa56317ca1e",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "binary_sha256": "e11b600baf52f2948cafa7a8f1c661ca467a133791afc3247b92171babb29536",
+  "completed_utc": "2026-11-09T07:10:35.825989+00:00",
+  "elapsed_seconds": 3.647,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/execution.json"
+}

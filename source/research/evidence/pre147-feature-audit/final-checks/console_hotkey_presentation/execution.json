@@ -1,0 +1,45 @@
+{
+  "name": "console_hotkey_presentation",
+  "started_utc": "2026-11-09T07:10:50.426118+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "node",
+    "source/suite/tests/console_hotkey_presentation_test.mjs"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_hotkey_presentation/run.log",
+  "test_source_hashes": {
+    "source/suite/tests/console_hotkey_presentation_test.mjs": "18f3a644f21c76650e98d58481fb14622625ab9e50e13488c46021749e1553cc"
+  },
+  "production_source_hashes": {
+    "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd"
+  },
+  "steps": [
+    {
+      "stage": "run",
+      "command": [
+        "node",
+        "source/suite/tests/console_hotkey_presentation_test.mjs"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_hotkey_presentation/run.log",
+      "log_sha256": "b027683b4b438750d8269b2744c4de783b9fe0efd41826b50f633578f3afbfb2"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_hotkey_presentation/run.log",
+  "log_sha256": "b027683b4b438750d8269b2744c4de783b9fe0efd41826b50f633578f3afbfb2",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "completed_utc": "2026-11-09T07:10:50.540848+00:00",
+  "elapsed_seconds": 0.115,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_hotkey_presentation/execution.json"
+}

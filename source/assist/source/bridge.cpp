@@ -100,7 +100,7 @@ static bool pendingAckReady,repairAckPending;
 static uint32_t repairAckRequest;static DWORD repairAckStarted;
 static bool releaseSticky(uint32_t);static bool stickyOwns(uint32_t);static void stickyTick(bool);static int stickyCount;
 static int formationJobCount;static void resetFormation();static bool formationOwns(uint32_t);
-static void pauseMissileForManual(uint32_t,uint32_t);
+static void pauseMissileForManual(uint32_t,uint32_t);static bool missileManualOverflowed();
 static int missileHoldCount;static bool missileCleanup;static void resetMissileControl();static bool releaseMissileHolds(uint32_t,int,DWORD);
 static int dodgeCount;static void resetDodgeControl();static bool dodgeOwns(uint32_t id);static void cancelDodge(uint32_t id);
 static int burstCount;static void resetBurstControl();static bool burstOwns(uint32_t id);static void cancelBurst(uint32_t id);
@@ -289,6 +289,7 @@ static void publishDebugEntries(DWORD now){
  debugentries::snapshot(sh->debugSnapshot,now);MemoryBarrier();InterlockedIncrement(&sh->debugSnapshotSeq);
 }
 static void publishSnapshot(DWORD now){
+ sh->missileManualOverflow=missileManualOverflowed()?1u:0u;
  publishDebugEntries(now);
  nativePlacementOffers(now);
  bool copyTypes=catalogueDirty||sh->seq==0||sh->data.match!=snap.match||sh->data.typeCount!=snap.typeCount;
@@ -890,6 +891,7 @@ static void selectionCommand(uint32_t house,DWORD now){
  uint32_t request=sh->selectRequest;if(request==sh->selectAck)return;MemoryBarrier();
  int result=0,count=0;
  if(sh->selectMatch!=match||DWORD(now-sh->selectTick)>1500)result=-7;
+ else if((sh->selectIndex>=0||sh->selectIndex==-3)&&sh->selectTypeHash!=typeListHash(snap.types,snap.typeCount))result=-7;
  else if(get<bool>(0xA8BC60+25))result=-8;
  else {count=sh->selectIndex==-4?selectIdleAircraft(house,sh->selectObjectID):sh->selectIndex==-2?selectVariant(house,sh->selectGlobal!=0):sh->selectIndex==-3?selectTypes(house,sh->selectTypes,sh->selectGlobal!=0):selectType(house,sh->selectIndex,sh->selectGlobal!=0);if(count<0){result=count;count=0;}else result=1;}
  sh->selectResult=result;sh->selectCount=count;MemoryBarrier();sh->selectAck=request;
@@ -982,7 +984,7 @@ static int superSelect(uint32_t house,int index){Vec v=vec(house+0x254,256);uint
    get<int>(house+0x30),0x12,get<int>(t+0x98),vanilla::Cell{0,0})))return -6;
   actorFrameArbiter.record(synthActor,0,taskarbiter::Owner::SuperWeapon);
   recordReceipt(gateway::makeQueuedReceipt(missionObserver.nextSerial,swIntent,submittedAt,taskarbiter::Owner::SuperWeapon));
-  return 1;
+  return 2; // Immediate event accepted; no targeting cursor remains.
  }
  // Admit the whole local cursor transaction before clearing any selection
  // or targeting state. A missing cursor helper only rejects this command.

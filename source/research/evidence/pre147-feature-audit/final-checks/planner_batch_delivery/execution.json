@@ -1,0 +1,80 @@
+{
+  "name": "planner_batch_delivery",
+  "started_utc": "2026-11-09T07:10:39.504076+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/fixture"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/run.log",
+  "test_source_hashes": {
+    "source/assist/tests/planner_batch_delivery.cpp": "ca32e7f7222a05af7578c9315116a2da0ca0752bc1edf38c12c7ac2a2a994939"
+  },
+  "production_source_hashes": {
+    "source/assist/source/external_planner.h": "2a3e8399e55e35bc650794abb1caf2d4d208d83df43153686c8a553a8286f04d",
+    "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+    "source/assist/source/value_task.h": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204",
+    "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81"
+  },
+  "steps": [
+    {
+      "stage": "compile",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O2",
+        "-pthread",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/production.d",
+        "source/assist/tests/planner_batch_delivery.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/fixture"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/compile.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "run",
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/fixture"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/run.log",
+      "log_sha256": "8777c17f553ae3adc2a40f2e07b7dddae0b64cd895269ae0b7c7160fb25c1986"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-UNDEBUG",
+    "-O2",
+    "-pthread",
+    "-MMD",
+    "-MF",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/production.d",
+    "source/assist/tests/planner_batch_delivery.cpp",
+    "-o",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/fixture"
+  ],
+  "compile_exit_code": 0,
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/run.log",
+  "log_sha256": "8777c17f553ae3adc2a40f2e07b7dddae0b64cd895269ae0b7c7160fb25c1986",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "binary_sha256": "112421afaf2aef411b5d8d8221fd129cc081587366bb5eef972ccbe0426b94ba",
+  "completed_utc": "2026-11-09T07:10:42.915269+00:00",
+  "elapsed_seconds": 3.411,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/execution.json"
+}

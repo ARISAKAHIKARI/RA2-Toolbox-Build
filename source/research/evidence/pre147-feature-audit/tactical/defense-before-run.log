@@ -1,0 +1,9 @@
+FAIL: never-delivered defense is eligible on the next frame
+FAIL: recovered defense preserves actor, target and manual token
+omitted first_defense=0 next_defense=0
+returned drops=15 miners=20 duplicate=0 first=1 early=0 due=1
+returned drops=0 miners=0 duplicate=0 first=1 early=0 due=1
+returned drops=0 miners=20 duplicate=1 first=1 early=0 due=1
+FAIL: host worker retries an omitted defense without phantom cooldown
+host_task first=0 next=0
+FAIL: 21 checks, 3 failures; real Planner final-batch defense lifecycle

@@ -1,0 +1,9 @@
+/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-before/missile_manual_lifecycle.cpp:29:17: warning: ‘uint32_t worldByID(uint32_t)’ defined but not used [-Wunused-function]
+   29 | static uint32_t worldByID(uint32_t id){for(uint32_t p:roster)if(get<uint32_t>(p+0x10)==id)return p;return 0;}
+      |                 ^~~~~~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-before/missile_manual_lifecycle.cpp:28:17: warning: ‘uint32_t item(const Vec&, int)’ defined but not used [-Wunused-function]
+   28 | static uint32_t item(const Vec&,int i){return roster[size_t(i)];}
+      |                 ^~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-before/missile_manual_lifecycle.cpp:27:13: warning: ‘bool sampleRoster(uint32_t, Vec&, int)’ defined but not used [-Wunused-function]
+   27 | static bool sampleRoster(uint32_t,Vec&v,int=16384){if(!rosterReadable){sampleComplete=false;return false;}v.count=int(roster.size());return true;}
+      |             ^~~~~~~~~~~~

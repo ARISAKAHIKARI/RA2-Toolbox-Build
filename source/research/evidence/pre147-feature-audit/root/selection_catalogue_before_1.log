@@ -1,0 +1,8 @@
+21 checks, 7 failures
+FAIL Host rejects pending selection after catalogue reorder
+FAIL Runtime rejects published index after reorder and acknowledges
+FAIL Runtime rejects stale union mask
+FAIL publication preserves original input age
+FAIL connection refresh cannot retag original catalogue
+FAIL unknown match cannot acquire later selection identity
+FAIL missing catalogue identity is rejected

@@ -1,0 +1,28 @@
+{
+  "schema": "ra2.host-broker-retry.v1",
+  "passed": true,
+  "real_windows_tested": false,
+  "game_tested": false,
+  "results": {
+    "current": {
+      "source": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/shared/source/host_game_input.h",
+      "source_sha256": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887",
+      "routes_sha256": "e3655b5b7aa3578806c9a8cab4641560ab30700f972d3f5eb5f488445b5e59ea",
+      "exit_code": 0,
+      "build_command": [
+        "c++",
+        "-std=c++17",
+        "-O2",
+        "-D_WIN64",
+        "-DHOST_BROKER_PULSE=\"/workspace/scratch/33b3ee07b26a/feature147pre3/root/broker_retry/current-pulse.inc\"",
+        "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/host_broker_retry.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/broker_retry/current"
+      ],
+      "checks": 30,
+      "failures": 0,
+      "passed": true,
+      "scope": "complete production pulse with deterministic host/Win32/broker substitutes; substitute delay checks completion-based retry only; no Windows/game validation"
+    }
+  }
+}

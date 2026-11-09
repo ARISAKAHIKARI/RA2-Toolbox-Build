@@ -1,0 +1,3918 @@
+{
+  "scope": "Independent current-source technology/control/placement/map/SW/FPS/frame/diagnostic recheck",
+  "generated_at": "2026-11-09T07:10:28.525423+00:00",
+  "baseline": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "product_baseline": "1.0.46.4",
+  "future_release_family": "1.0.47",
+  "reviewed_protocol": 102,
+  "inventory_source": "Old matrix identities only; every finding/path above rewritten from current source, current UI and notebook v166",
+  "status": "82 records traced; controlled fixtures only where specifically listed; no Windows/game/network acceptance",
+  "coverage_note": "82 records include modes, independent diagnostic steps/operations, support invariants and a disabled entry; not 82 distinct enabled product features and not 82 runtime passes.",
+  "features": [
+    {
+      "id": "technology-mode-0",
+      "label": "科技解锁：受控",
+      "feature": "科技解锁：受控",
+      "control_ids": [
+        420,
+        896
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "0 controlled",
+        "on/off/change/reconnect"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "tactical_controls.h 420/896 → main.cpp mode/change and sendOpenTech → bridge.cpp OpenTech"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/technology_mode_policy.h"
+      ],
+      "concrete_paths_reviewed": [
+        "tactical_controls.h 420/896 → main.cpp mode/change and sendOpenTech → bridge.cpp OpenTech",
+        "technology_mode_policy.h → placement_bridge.h setTechSites/restoreTechSites → sidebar.h refreshTech/maintainTechCameos",
+        "mode transition → techTransitionProductionPending (six factories, active products and bounded queues) → restore old owned implementation → install new implementation"
+      ],
+      "findings": [
+        "两个侧栏资格调用点；保留原生 build-limit 和实际 factory 判定。",
+        "全目录刷新每秒一次；同一观察帧不重复补缺，原生侧栏重建后再补图标，缺工厂重试有 250ms 间隔。",
+        "读不清在途生产时拒绝危险切换；不自动 Abandon。类型目录/请求身份在 Host 和 Runtime 重新校验，当前协议为 102；只接受仍拥有的补丁/数据恢复。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-mode-1",
+      "label": "科技解锁：经典兼容",
+      "feature": "科技解锁：经典兼容",
+      "control_ids": [
+        420,
+        896
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "1 classic",
+        "on/off/change/reconnect"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "tactical_controls.h 420/896 → main.cpp mode/change and sendOpenTech → bridge.cpp OpenTech"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/technology_mode_policy.h"
+      ],
+      "concrete_paths_reviewed": [
+        "tactical_controls.h 420/896 → main.cpp mode/change and sendOpenTech → bridge.cpp OpenTech",
+        "technology_mode_policy.h → placement_bridge.h setTechSites/restoreTechSites → sidebar.h refreshTech/maintainTechCameos",
+        "mode transition → techTransitionProductionPending (six factories, active products and bounded queues) → restore old owned implementation → install new implementation"
+      ],
+      "findings": [
+        "与受控共用两个入口，但走独立经典 factory 检查；仍受原生侧栏容量和重复图标约束。",
+        "读不清在途生产时拒绝危险切换；不自动 Abandon。类型目录/请求身份在 Host 和 Runtime 重新校验，当前协议为 102；只接受仍拥有的补丁/数据恢复。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-mode-2",
+      "label": "科技解锁：直接",
+      "feature": "科技解锁：直接",
+      "control_ids": [
+        420,
+        896
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "2 Master",
+        "on/off/change/reconnect"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "tactical_controls.h 420/896 → main.cpp mode/change and sendOpenTech → bridge.cpp OpenTech"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/technology_mode_policy.h",
+        "source/assist/source/master_tech_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "tactical_controls.h 420/896 → main.cpp mode/change and sendOpenTech → bridge.cpp OpenTech",
+        "technology_mode_policy.h → placement_bridge.h setTechSites/restoreTechSites → sidebar.h refreshTech/maintainTechCameos",
+        "mode transition → techTransitionProductionPending (six factories, active products and bounded queues) → restore old owned implementation → install new implementation"
+      ],
+      "findings": [
+        "五处 Master 侧栏判断成组预检/安装/回滚；本模式观察现有图标，不自行调用 AddCameo 或 HouseRecheck。",
+        "techAllowed 在直接模式直接允许，因此保存的许可例外不限制本模式；工具生产仍走独立的原生事件路径。",
+        "读不清在途生产时拒绝危险切换；不自动 Abandon。类型目录/请求身份在 Host 和 Runtime 重新校验，当前协议为 102；只接受仍拥有的补丁/数据恢复。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-mode-3",
+      "label": "科技解锁：原生侧栏规则数据",
+      "feature": "科技解锁：原生侧栏规则数据",
+      "control_ids": [
+        420,
+        896
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "3 rule data",
+        "on/off/change/reconnect"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "tactical_controls.h 420/896 → main.cpp mode/change and sendOpenTech → bridge.cpp OpenTech"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/technology_mode_policy.h",
+        "source/assist/source/tech_data_policy.h",
+        "source/assist/source/tech_data_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "tactical_controls.h 420/896 → main.cpp mode/change and sendOpenTech → bridge.cpp OpenTech",
+        "technology_mode_policy.h → placement_bridge.h setTechSites/restoreTechSites → sidebar.h refreshTech/maintainTechCameos",
+        "mode transition → techTransitionProductionPending (six factories, active products and bounded queues) → restore old owned implementation → install new implementation"
+      ],
+      "findings": [
+        "九字段逐类型所有权记录；世界、类型数组/索引、UID、vtable 与 ID 校验后预检、写入及读回。记录先覆盖可能部分成功的写入，关闭仅恢复仍等于本工具值的字段。",
+        "旧世界记录退休；短暂不可读保留清理责任。与规则数据科技加强协调，外部更改不盲目覆盖。",
+        "Host 和 Runtime 均禁止此模式工具 Produce/Cancel；用户使用游戏原生侧栏。",
+        "读不清在途生产时拒绝危险切换；不自动 Abandon。类型目录/请求身份在 Host 和 Runtime 重新校验，当前协议为 102；只接受仍拥有的补丁/数据恢复。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-mode-4",
+      "label": "科技解锁：原生侧栏参数拦截",
+      "feature": "科技解锁：原生侧栏参数拦截",
+      "control_ids": [
+        420,
+        896
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "4 hardware CanBuild parameter",
+        "on/off/change/reconnect"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "tactical_controls.h 420/896 → main.cpp mode/change and sendOpenTech → bridge.cpp OpenTech"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/technology_mode_policy.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_core.h"
+      ],
+      "concrete_paths_reviewed": [
+        "tactical_controls.h 420/896 → main.cpp mode/change and sendOpenTech → bridge.cpp OpenTech",
+        "technology_mode_policy.h → placement_bridge.h setTechSites/restoreTechSites → sidebar.h refreshTech/maintainTechCameos",
+        "mode transition → techTransitionProductionPending (six factories, active products and bounded queues) → restore old owned implementation → install new implementation"
+      ],
+      "findings": [
+        "硬件 tag 0，仅已知原生 UI CanBuild 调用点、当前 House 和许可目录可将 limitOnly false 改 true，其他栈参数保留。",
+        "候选命中仍校验世界、类型身份、UID、vtable 和精确入口签名；进入前退休旧代码补丁，实际槽位不足拒绝，不降级为代码写入。",
+        "工具生产和取消在 Host/Runtime 双层禁止；参数路径保留原生侧栏行为。",
+        "读不清在途生产时拒绝危险切换；不自动 Abandon。类型目录/请求身份在 Host 和 Runtime 重新校验，当前协议为 102；只接受仍拥有的补丁/数据恢复。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-search",
+      "label": "权限条目搜索",
+      "feature": "权限条目搜索",
+      "control_ids": [
+        421,
+        422
+      ],
+      "config_keys": [],
+      "modes": [
+        "local filter; every implementation"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "421 EN_CHANGE → fillTech → current cached catalogue lowercase filter and stable selected ID"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "421 EN_CHANGE → fillTech → current cached catalogue lowercase filter and stable selected ID"
+      ],
+      "findings": [
+        "搜索只刷新列表，保留可匹配类型 ID 的选择；不会因输入搜索文字发送游戏变更。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-permission-selected",
+      "label": "切换所选科技许可",
+      "feature": "切换所选科技许可",
+      "control_ids": [
+        422,
+        424
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "toggle selected exception"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "main.cpp WM_COMMAND 424..428 → chooseTechProfile/update exceptions → save/fillTech → sendOpenTech if enabled"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "main.cpp WM_COMMAND 424..428 → chooseTechProfile/update exceptions → save/fillTech → sendOpenTech if enabled",
+        "bridge.cpp OpenTech → current catalogue/hash and implementation checks → copyTechAllowed/requestTechRefresh"
+      ],
+      "findings": [
+        "既有类型或通过 ASCII object-ID 校验的输入可以切换例外；拒绝空/非法 ID，不把搜索文本直接当任意内存写参数。",
+        "操作遇在途设置请求先拒绝；开启时发送完整许可集。直接模式不使用许可过滤，数据/参数模式不开放工具生产。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-permission-all",
+      "label": "全部科技许可",
+      "feature": "全部科技许可",
+      "control_ids": [
+        425
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "custom profile 2; default allow true"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "main.cpp WM_COMMAND 424..428 → chooseTechProfile/update exceptions → save/fillTech → sendOpenTech if enabled"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "main.cpp WM_COMMAND 424..428 → chooseTechProfile/update exceptions → save/fillTech → sendOpenTech if enabled",
+        "bridge.cpp OpenTech → current catalogue/hash and implementation checks → copyTechAllowed/requestTechRefresh"
+      ],
+      "findings": [
+        "选择自定义 profile 2，默认允许设 true 并清空例外，保存后按当前模式应用。",
+        "操作遇在途设置请求先拒绝；开启时发送完整许可集。直接模式不使用许可过滤，数据/参数模式不开放工具生产。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-permission-clear",
+      "label": "清空科技许可",
+      "feature": "清空科技许可",
+      "control_ids": [
+        426
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "custom profile 2; default allow false"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "main.cpp WM_COMMAND 424..428 → chooseTechProfile/update exceptions → save/fillTech → sendOpenTech if enabled"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "main.cpp WM_COMMAND 424..428 → chooseTechProfile/update exceptions → save/fillTech → sendOpenTech if enabled",
+        "bridge.cpp OpenTech → current catalogue/hash and implementation checks → copyTechAllowed/requestTechRefresh"
+      ],
+      "findings": [
+        "选择自定义 profile 2，默认允许设 false 并清空例外；这不是关闭科技开关，当前实现仍负责刷新/退休。",
+        "操作遇在途设置请求先拒绝；开启时发送完整许可集。直接模式不使用许可过滤，数据/参数模式不开放工具生产。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-permission-preset",
+      "label": "兼容科技预设",
+      "feature": "兼容科技预设",
+      "control_ids": [
+        427
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "profile 0"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "main.cpp WM_COMMAND 424..428 → chooseTechProfile/update exceptions → save/fillTech → sendOpenTech if enabled"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "main.cpp WM_COMMAND 424..428 → chooseTechProfile/update exceptions → save/fillTech → sendOpenTech if enabled",
+        "bridge.cpp OpenTech → current catalogue/hash and implementation checks → copyTechAllowed/requestTechRefresh"
+      ],
+      "findings": [
+        "切到兼容预设 profile 0，经本局真实目录解析完整许可集；保存每个 profile 的例外。",
+        "操作遇在途设置请求先拒绝；开启时发送完整许可集。直接模式不使用许可过滤，数据/参数模式不开放工具生产。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-permission-view",
+      "label": "使用 INI 许可清单",
+      "feature": "使用 INI 许可清单",
+      "control_ids": [
+        428
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "profile 1; applies INI list"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "main.cpp WM_COMMAND 424..428 → chooseTechProfile/update exceptions → save/fillTech → sendOpenTech if enabled"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "main.cpp WM_COMMAND 424..428 → chooseTechProfile/update exceptions → save/fillTech → sendOpenTech if enabled",
+        "bridge.cpp OpenTech → current catalogue/hash and implementation checks → copyTechAllowed/requestTechRefresh"
+      ],
+      "findings": [
+        "确认旧按钮“查看许可清单”实际调用 chooseTechProfile(1)、保存并可能立即 OpenTech；不是只读查看。当前按钮已由主代理改成“使用 INI 许可清单”，与行为一致。",
+        "操作遇在途设置请求先拒绝；开启时发送完整许可集。直接模式不使用许可过滤，数据/参数模式不开放工具生产。"
+      ],
+      "review_status": "source_fixed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [
+        "H-TECHPROFILE-LABEL-1"
+      ],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-produce",
+      "label": "生产所选科技",
+      "feature": "生产所选科技",
+      "control_ids": [
+        422,
+        423
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "tool event in modes 0/1/2; rejected in 3/4"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "423 or 422 LBN_DBLCLK → liveTypeIndex/techAllowed/toolOrders → send Produce"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "423 or 422 LBN_DBLCLK → liveTypeIndex/techAllowed/toolOrders → send Produce",
+        "bridge.cpp Produce → current type catalogue/hash → CanBuild/FindFactory/dependency → nativeProduceEvent"
+      ],
+      "findings": [
+        "工具目录索引重匹配当前类型；只在允许实现中提交原生生产事件。经典 factory 判定另有 allowOccupied 约束。",
+        "接受只表示原生事件入队；当前工厂/资源/队列和后续执行仍由游戏决定，不本地强造。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-cancel-production",
+      "label": "取消所选生产",
+      "feature": "取消所选生产",
+      "control_ids": [
+        814
+      ],
+      "config_keys": [
+        "Experimental.NativeTechProduction",
+        "Tech.Implementation",
+        "Tech.Profile",
+        "Tech.DefaultAllow",
+        "Tech.Exceptions",
+        "Tech.Exceptions0/1/2",
+        "[tech] type-array ID lists"
+      ],
+      "modes": [
+        "tool event in modes 0/1/2; rejected in 3/4"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "814 → current liveTypeIndex → CancelTechProduction → same type/hash/mode validation → nativeProduceEvent 0x10"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/sidebar.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "814 → current liveTypeIndex → CancelTechProduction → same type/hash/mode validation → nativeProduceEvent 0x10"
+      ],
+      "findings": [
+        "受 UnsafeTech、techOpen、许可和活类型身份约束；数据/参数模式拒绝。仅提交 Abandon 事件，不在本地改工厂或退款。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-production-status",
+      "label": "生产状态查看",
+      "feature": "生产状态查看",
+      "control_ids": [
+        815
+      ],
+      "config_keys": [],
+      "modes": [
+        "read-only six-factory display; independent notification scan"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "main.cpp progress update → six factory owner/product/step reads → clamp progress 0..54 to percentage"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/sidebar.h"
+      ],
+      "concrete_paths_reviewed": [
+        "main.cpp progress update → six factory owner/product/step reads → clamp progress 0..54 to percentage",
+        "sidebar.h scanProduction/resetProduction → separate four-factory notification observation"
+      ],
+      "findings": [
+        "状态区读取六类工厂；失败显示不可用。独立 scanProduction 通知只扫描四类，不将二者混写成同一实现。",
+        "硬件状态区区分待安装、待恢复、签名、槽不足、外部改动等；请求开启不等于已经生效。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-enhance-0",
+      "label": "科技加强：规则数据",
+      "feature": "科技加强：规则数据",
+      "control_ids": [
+        9097,
+        9470
+      ],
+      "config_keys": [
+        "Experimental.TechEnhance",
+        "Experimental.TechEnhanceImplementation",
+        "Experimental.TechEnhanceCompareLevel"
+      ],
+      "modes": [
+        "0 rule data"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9097/9470 → saved enhancement policy → techEnhancementTick/data record → conditional owned restoration"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/tech_enhancement.h",
+        "source/assist/source/tech_enhancement_bridge.h",
+        "source/assist/source/tech_enhancement_parameter_policy.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9097/9470 → saved enhancement policy → techEnhancementTick/data record → conditional owned restoration"
+      ],
+      "findings": [
+        "只改已列 21 个 ID 的目标等级：原 -1 与 LUNR 的 2..100 规范化为 1；不对所有类型批量写。",
+        "旧记录验证指针、类型数组/索引、vtable 和文本 ID；该旧数据记录没有 UID 字段，不声称具备数据模式的全部身份字段。",
+        "和科技规则数据路径协调，关闭只恢复仍拥有的字段；数据/参数切换先检查本局未完成生产。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "technology-enhance-1",
+      "label": "科技加强：精确科技等级（参数断点）",
+      "feature": "科技加强：精确科技等级（参数断点）",
+      "control_ids": [
+        9097,
+        9470
+      ],
+      "config_keys": [
+        "Experimental.TechEnhance",
+        "Experimental.TechEnhanceImplementation",
+        "Experimental.TechEnhanceCompareLevel"
+      ],
+      "modes": [
+        "1 exact native level; hardware tag 2"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9097/9470 → exact enhancement candidate catalogue → known UI/probe-token callback → live type/level validation"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/tech_enhancement.h",
+        "source/assist/source/tech_enhancement_bridge.h",
+        "source/assist/source/tech_enhancement_parameter_policy.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_hot.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9097/9470 → exact enhancement candidate catalogue → known UI/probe-token callback → live type/level validation"
+      ],
+      "findings": [
+        "候选目录 500ms 更新，但每次候选命中仍验证当前类型身份、数组成员和原生签名。仅精确等级语义，不以频繁目录刷新替代命中检查。",
+        "原生体被 Ares 等绕过会拒绝该实现；不能证明任意 MOD 可用，也不自动回退。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。",
+        "PRES/BUS 不显示的既有现场问题尚无当前本局类型/工厂/UI 证据闭环；不据旧受控用例宣称已修复。"
+      ]
+    },
+    {
+      "id": "technology-enhance-compare",
+      "label": "精确科技等级：比较玩家科技等级",
+      "feature": "精确科技等级：比较玩家科技等级",
+      "control_ids": [
+        9472
+      ],
+      "config_keys": [
+        "Experimental.TechEnhance",
+        "Experimental.TechEnhanceImplementation",
+        "Experimental.TechEnhanceCompareLevel"
+      ],
+      "modes": [
+        "exact enhancement optional compare; tag 3"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9472 → safe production handoff → comparison breakpoint → intended arithmetic EFlags only"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/tech_enhancement.h",
+        "source/assist/source/tech_enhancement_bridge.h",
+        "source/assist/source/tech_enhancement_parameter_policy.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9472 → safe production handoff → comparison breakpoint → intended arithmetic EFlags only"
+      ],
+      "findings": [
+        "比较选项仅对精确参数实现有效，另占一槽；改比较策略前等待尚未完成的原生产，不抢占在途生产。",
+        "只更改目标比较算术标志；未知调用/ABI/槽位失败保留原生路径。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "hardware-slots",
+      "label": "硬件断点4槽预算、所有权和异常派发",
+      "feature": "硬件断点4槽预算、所有权和异常派发",
+      "control_ids": [
+        9473
+      ],
+      "config_keys": [
+        "feature enable keys for six logical hardware sites"
+      ],
+      "modes": [
+        "six logical sites; four physical DR slots; partial ownership and cleanup"
+      ],
+      "kind": "internal_invariant",
+      "availability": "current_ui",
+      "entry_points": [
+        "Host hardwareBudgetAvailable → Service configure/Lease → owner-thread INT3 rendezvous and witness → independent readback"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_core.h",
+        "source/assist/source/tech_ui_breakpoint_rendezvous_guard.h"
+      ],
+      "concrete_paths_reviewed": [
+        "Host hardwareBudgetAvailable → Service configure/Lease → owner-thread INT3 rendezvous and witness → independent readback",
+        "VEH exact DR6/DR7/EIP/owner-thread route → logical site callback → owned-only restoration"
+      ],
+      "findings": [
+        "尊重外部 DR 槽、GD 以及保留非零配置；不足保持既有验证子集，不覆盖外部断点。写入不确定时保留待恢复 Lease，持有线程 handle 防数字 ID 复用。",
+        "回调要求自身线程和精确异常身份，混合/外部异常放行；配置深度阻止重入更改。活动审计 500ms，预算 1s 过期；全关时普通 idle inspection 仅 debugVisible 才运行。",
+        "主代理修正帮助：六类功能包括 FPS，各一槽；实际预算未知允许保存四槽内预设，Runtime 启用时才按真实槽复核。未知不是一律拒绝。"
+      ],
+      "review_status": "source_fixed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [
+        "H-HARDWARE-HELP-1"
+      ],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。",
+        "未测真实线程 DR/VEH/INT3、外部调试器竞争或性能收益；源码热路径边界不等于 FPS 测量。"
+      ]
+    },
+    {
+      "id": "placement-mode-0",
+      "label": "建筑放置：受控",
+      "feature": "建筑放置：受控",
+      "control_ids": [
+        476,
+        9096
+      ],
+      "config_keys": [
+        "Experimental.BuildAnywhere",
+        "Experimental.PlacementImplementation"
+      ],
+      "modes": [
+        "0 controlled"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "476/9096 → runtime placement implementation → owned guarded 4A8EB0 site → restore on disable/transition"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/direct_modes_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "476/9096 → runtime placement implementation → owned guarded 4A8EB0 site → restore on disable/transition"
+      ],
+      "findings": [
+        "受控单站点与直接两站点互斥；先退休旧实现，未知字节/所有权冲突不强行覆盖。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "placement-mode-1",
+      "label": "建筑放置：直接",
+      "feature": "建筑放置：直接",
+      "control_ids": [
+        476,
+        9096
+      ],
+      "config_keys": [
+        "Experimental.BuildAnywhere",
+        "Experimental.PlacementImplementation"
+      ],
+      "modes": [
+        "1 direct"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "476/9096 → direct placement two-site preflight/group install → owned group restore"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/direct_modes_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "476/9096 → direct placement two-site preflight/group install → owned group restore"
+      ],
+      "findings": [
+        "4A8EC3/4A918E 作为依赖组预检、安装及失败回滚；不能只留半组，不代表任何地形都可放。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "placement-mode-2",
+      "label": "建筑放置：原生事件",
+      "feature": "建筑放置：原生事件",
+      "control_ids": [
+        476,
+        9096
+      ],
+      "config_keys": [
+        "Experimental.BuildAnywhere",
+        "Experimental.PlacementImplementation"
+      ],
+      "modes": [
+        "2 native event"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "mode 2 → verify legacy placement/direct groups fully retired → offer/request/preview → native Place event → completion receipt"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/native_placement_policy.h",
+        "source/assist/source/native_placement_capture.h",
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h",
+        "source/assist/source/native_placement_geometry.h",
+        "source/assist/source/placement_event_host.h",
+        "source/assist/source/placement_event_input.h"
+      ],
+      "concrete_paths_reviewed": [
+        "mode 2 → verify legacy placement/direct groups fully retired → offer/request/preview → native Place event → completion receipt"
+      ],
+      "findings": [
+        "旧两种代码补丁完全恢复后才使用事件模式，不因不可安装悄悄换到其他实现。",
+        "请求携带 epoch、目录 hash、frame、owner/factory/product/type 身份；事件接受与实际建筑 OnMap 分开报告。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "native-placement-product",
+      "label": "匹配当前栏目已完成建筑",
+      "feature": "匹配当前栏目已完成建筑",
+      "control_ids": [
+        9251
+      ],
+      "config_keys": [
+        "Experimental.BuildAnywhere",
+        "Experimental.PlacementImplementation"
+      ],
+      "modes": [
+        "read-only active completed product"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "disabled informational list 9251 → native active building/defence tab → fresh factory/product/type capture → offer model"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/native_placement_policy.h",
+        "source/assist/source/native_placement_capture.h",
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h",
+        "source/assist/source/native_placement_geometry.h",
+        "source/assist/source/placement_event_host.h",
+        "source/assist/source/placement_event_input.h"
+      ],
+      "concrete_paths_reviewed": [
+        "disabled informational list 9251 → native active building/defence tab → fresh factory/product/type capture → offer model"
+      ],
+      "findings": [
+        "9251 是禁用的自动选择信息列表，用户不能手动挑任意产品。当前原生栏目、工厂、产品和类型身份共同决定候选。",
+        "旧目录、世界/house 变化或短暂读取失败不复用旧产品作为新放置目标。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "native-placement-preview-key",
+      "label": "切换自动放置预览",
+      "feature": "切换自动放置预览",
+      "control_ids": [
+        9252
+      ],
+      "config_keys": [
+        "Experimental.BuildAnywhere",
+        "Experimental.PlacementImplementation",
+        "Hotkeys.PlaceCompletedBuilding"
+      ],
+      "modes": [
+        "default Ctrl+Alt+G; immediate toggle"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9252 hotkey → current native offer → immediate admission → tool-owned preview toggle"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/native_placement_policy.h",
+        "source/assist/source/native_placement_capture.h",
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h",
+        "source/assist/source/native_placement_geometry.h",
+        "source/assist/source/placement_event_host.h",
+        "source/assist/source/placement_event_input.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9252 hotkey → current native offer → immediate admission → tool-owned preview toggle"
+      ],
+      "findings": [
+        "消息/队列繁忙、指针请求在途时拒绝，不能冻结旧屏幕位置等以后补发。",
+        "只建立工具预览；要求原生工具空闲、前台非聊天和稳定 viewport generation，不夺取游戏原生目标光标。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "native-placement-place-click",
+      "label": "预览后左键放置",
+      "feature": "预览后左键放置",
+      "control_ids": [],
+      "config_keys": [
+        "Experimental.BuildAnywhere",
+        "Experimental.PlacementImplementation"
+      ],
+      "modes": [
+        "matched left down/up; event queue; completion"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "physical left down/up → capture serial + current screen/camera/terrain → exact origin → native Place → bounded completion records"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/native_placement_policy.h",
+        "source/assist/source/native_placement_capture.h",
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h",
+        "source/assist/source/native_placement_geometry.h",
+        "source/assist/source/placement_event_host.h",
+        "source/assist/source/placement_event_input.h"
+      ],
+      "concrete_paths_reviewed": [
+        "physical left down/up → capture serial + current screen/camera/terrain → exact origin → native Place → bounded completion records"
+      ],
+      "findings": [
+        "Down/Up 串号配对；ready 为零时先由 dispatcher 更新样本，再做严格释放准入。原生投影验证画面/相机/地形，偶数地基原点使用 -(dimension-1)/2。",
+        "最多八个、十秒完成观察；入队时清 Q/W 缓存，只有相同 product 实际 OnMap 才确认地基。读失败保留责任，旧世界退休，不盲目重试。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。",
+        "合法碰撞/地形仍可由原生执行拒绝；超时后需要用户重新选择，不把队列成功当放置成功。"
+      ]
+    },
+    {
+      "id": "native-placement-cancel",
+      "label": "取消预览",
+      "feature": "取消预览",
+      "control_ids": [],
+      "config_keys": [
+        "Experimental.BuildAnywhere",
+        "Experimental.PlacementImplementation",
+        "Hotkeys.PlaceCompletedBuilding"
+      ],
+      "modes": [
+        "right/Esc/toggle/tab/product/native-tool/world/viewport change"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "native placement input cancellation → reset tool preview/capture → retain already queued completion ownership"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/placement_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/native_placement_policy.h",
+        "source/assist/source/native_placement_capture.h",
+        "source/assist/source/native_placement_bridge.h",
+        "source/assist/source/native_placement_preview_bridge.h",
+        "source/assist/source/native_placement_completion_bridge.h",
+        "source/assist/source/native_placement_geometry.h",
+        "source/assist/source/placement_event_host.h",
+        "source/assist/source/placement_event_input.h"
+      ],
+      "concrete_paths_reviewed": [
+        "native placement input cancellation → reset tool preview/capture → retain already queued completion ownership"
+      ],
+      "findings": [
+        "右键、Esc、重复快捷键与栏目/产品/世界/原生光标/视口变动退休工具预览。取消预览不撤销已经入队的游戏事件。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "control-mode-0",
+      "label": "控制全部：硬件参数",
+      "feature": "控制全部：硬件参数",
+      "control_ids": [
+        860,
+        9250
+      ],
+      "config_keys": [
+        "Experimental.ControlAll",
+        "Experimental.ControlImplementation"
+      ],
+      "modes": [
+        "UI 0; runtime Parameters 3; tag 4"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "860/9250 → retire code/house-flag companions → hardware tag 4 → published gate/current caller → true or strict native leaf"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_house_flags_bridge.h",
+        "source/assist/source/control_object_owner_bridge.h",
+        "source/assist/source/control_parameter_policy.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_hot.h"
+      ],
+      "concrete_paths_reviewed": [
+        "860/9250 → retire code/house-flag companions → hardware tag 4 → published gate/current caller → true or strict native leaf"
+      ],
+      "findings": [
+        "硬件模式先清旧代码和旧 house-flag 责任；槽不足不自动回退。网络所属方/命令所属方选项保存但本模式停用。",
+        "普通控制“直接 yes”是已记录的用户选择：世界准入在维护周期更新，热回调保留 gate/mode/stop/fault/policy revision 与 ESP caller，普通/严格两叶不解引用 ECX。",
+        "维护间隙的世界变化不保证立即撤销 yes；不能将明确接受的契约重新列成漏校验 bug，也不能声称降低硬件异常次数或提升 FPS。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [
+        "Notebook v166: 2026-11-08-control-direct-permission-hotpath",
+        "Notebook v166: 2026-11-08-hardware-control-and-host-compute-hotpaths"
+      ],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "control-mode-1",
+      "label": "控制全部：原生Hook",
+      "feature": "控制全部：原生Hook",
+      "control_ids": [
+        860,
+        9250
+      ],
+      "config_keys": [
+        "Experimental.ControlAll",
+        "Experimental.ControlImplementation"
+      ],
+      "modes": [
+        "UI 1; runtime Native 1"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "native control → owner-call prerequisites → predicate site → controlled callback → predicate-first retirement"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_house_flags_bridge.h",
+        "source/assist/source/control_object_owner_bridge.h",
+        "source/assist/source/control_command_owner_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "native control → owner-call prerequisites → predicate site → controlled callback → predicate-first retirement"
+      ],
+      "findings": [
+        "原生控制三处成组；安装先所有权调用、后判定，恢复先判定，严格调用保留至判定完全退休。未知签名/外部改动不覆盖。",
+        "此模式才可启用网络/命令所属方配套；原生仅本地选择或下单资格不保证远端平台接受。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "control-mode-2",
+      "label": "控制全部：Master三处补丁",
+      "feature": "控制全部：Master三处补丁",
+      "control_ids": [
+        860,
+        9250
+      ],
+      "config_keys": [
+        "Experimental.ControlAll",
+        "Experimental.ControlImplementation"
+      ],
+      "modes": [
+        "UI 2; runtime Master 2"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "Master control three-site group → same owned prerequisite/retire ordering"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_house_flags_bridge.h",
+        "source/assist/source/control_object_owner_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "Master control three-site group → same owned prerequisite/retire ordering"
+      ],
+      "findings": [
+        "Master 仍依赖三处成组与所有权恢复；网络和命令所属方偏好保留但不激活。原 house flags 数据实验仅有清理路径，无当前启用入口。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "control-command-owner",
+      "label": "命令采用单位所属方",
+      "feature": "命令采用单位所属方",
+      "control_ids": [
+        9193
+      ],
+      "config_keys": [
+        "Experimental.ControlCommandOwner",
+        "Experimental.ControlAll",
+        "Experimental.ControlImplementation",
+        "Experimental.NetworkHousePreserve"
+      ],
+      "modes": [
+        "native control only; local versus foreign; planning reject"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9193 → effective native-only preference → controlCommandOwnerReady → actor owner resolution → native request constructor"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_house_flags_bridge.h",
+        "source/assist/source/control_object_owner_bridge.h",
+        "source/assist/source/control_command_owner_bridge.h",
+        "source/assist/source/network_sender_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9193 → effective native-only preference → controlCommandOwnerReady → actor owner resolution → native request constructor"
+      ],
+      "findings": [
+        "要求前台、非聊天、同世界、拥有全部站点及原生活对象；外方联网请求还要求完整网络适配。自家命令沿原生路径。",
+        "外方规划 PlanCommit 缺少可验证 actor，明确拒绝；不会靠猜测所属方补造。部分内联汇编只做调用/清理边界阅读，未运行 ABI。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "control-network-house",
+      "label": "保留网络事件所属方",
+      "feature": "保留网络事件所属方",
+      "control_ids": [
+        9187
+      ],
+      "config_keys": [
+        "Experimental.NetworkHousePreserve",
+        "Experimental.ControlAll",
+        "Experimental.ControlImplementation"
+      ],
+      "modes": [
+        "native control compatibility; own/foreign pending events"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9187 → seven-site network group → bounded pending event owner metadata → send/retire drain"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_house_flags_bridge.h",
+        "source/assist/source/control_object_owner_bridge.h",
+        "source/assist/source/network_sender_bridge.h",
+        "source/assist/source/network_sender_policy.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9187 → seven-site network group → bounded pending event owner metadata → send/retire drain"
+      ],
+      "findings": [
+        "128 项、111-byte 事件的有界元数据；保留连续所属方前缀、帧头和 CRC，不直接改 DoList。",
+        "关闭仅取消未发的外方事件并等待已拥有发送/清理；硬件/Master 控制冲突时不激活。未完成真实联机包/OOS 验证。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "control-native-sell",
+      "label": "原生出售光标",
+      "feature": "原生出售光标",
+      "control_ids": [
+        9189
+      ],
+      "config_keys": [
+        "Experimental.NativeSellCursor",
+        "Experimental.NetworkHousePreserve"
+      ],
+      "modes": [
+        "two-site sell cursor; owner revalidation"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9189 → native CanSell/constructor pair → live object UID/token → latest owner → native House argument"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_house_flags_bridge.h",
+        "source/assist/source/control_object_owner_bridge.h",
+        "source/assist/source/native_sell_cursor_bridge.h",
+        "source/assist/source/network_sender_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9189 → native CanSell/constructor pair → live object UID/token → latest owner → native House argument"
+      ],
+      "findings": [
+        "保留真实 CanSell，构造事件前再次验证活对象/UID/token/所属方；不在本地调用 Sell 或直接销毁。失去依赖时拒绝，不强留半组。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "control-destruct",
+      "label": "自毁所选单位所属方",
+      "feature": "自毁所选单位所属方",
+      "control_ids": [
+        9253,
+        9185,
+        9254
+      ],
+      "config_keys": [
+        "Experimental.DestructSelectedOwner",
+        "Hotkeys.DestructSelectedOwner",
+        "Experimental.NetworkHousePreserve"
+      ],
+      "modes": [
+        "permission/button/key; immediate native Destruct event"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9253 permission +9185/button or9254 key → fresh Host selection/input → Runtime double capture → queue native Destruct"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_house_flags_bridge.h",
+        "source/assist/source/control_object_owner_bridge.h",
+        "source/assist/source/hotkey_host.h",
+        "source/assist/source/network_sender_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9253 permission +9185/button or9254 key → fresh Host selection/input → Runtime double capture → queue native Destruct"
+      ],
+      "findings": [
+        "150ms 内身份和当前选择双重捕获；有界至 4096，同所属方活对象。繁忙时不排旧请求、不重试；外方联网需要适配。",
+        "只确认事件入队，不承诺单位即时销毁或直接改 owner。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "control-switch-disabled",
+      "label": "切换当前控制玩家（暂不可用）",
+      "feature": "切换当前控制玩家（暂不可用）",
+      "control_ids": [
+        861,
+        862,
+        863,
+        864
+      ],
+      "config_keys": [
+        "Experimental.SwitchPlayerEnabled forced false"
+      ],
+      "modes": [
+        "disabled retained legacy entry"
+      ],
+      "kind": "disabled_retained",
+      "availability": "visible_disabled",
+      "entry_points": [
+        "disabled controls 861..864 → SwitchPlayer/RestorePlayer runtime refusal -4"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/control_mode_policy.h",
+        "source/assist/source/control_sites_bridge.h",
+        "source/assist/source/control_house_flags_bridge.h",
+        "source/assist/source/control_object_owner_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "disabled controls 861..864 → SwitchPlayer/RestorePlayer runtime refusal -4"
+      ],
+      "findings": [
+        "界面禁用、加载强制关闭，Runtime 旧命令返回 -4；保留函数不算当前可用功能。"
+      ],
+      "review_status": "disabled_verified_source",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "map-mode-1",
+      "label": "黑幕绘制：半透明绘制",
+      "feature": "黑幕绘制：半透明绘制",
+      "control_ids": [
+        808
+      ],
+      "config_keys": [
+        "Display.ShroudStrategy"
+      ],
+      "modes": [
+        "UI1 → runtime half2"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "808 strategy → resource readiness → two render sites → alpha-only drawing → owned restore and redraw"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_material_bridge.h",
+        "source/assist/source/direct_modes_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "808 strategy → resource readiness → two render sites → alpha-only drawing → owned restore and redraw"
+      ],
+      "findings": [
+        "半透明仅改变绘制 alpha，不改变 Cell 视野；资源未就绪不安装，关闭按拥有字节恢复并触发一次重绘。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "map-mode-2",
+      "label": "黑幕绘制：透明绘制",
+      "feature": "黑幕绘制：透明绘制",
+      "control_ids": [
+        808
+      ],
+      "config_keys": [
+        "Display.ShroudStrategy"
+      ],
+      "modes": [
+        "UI2 → runtime clear1"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "808 strategy → same render pair → clear drawing → owned restoration"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_material_bridge.h",
+        "source/assist/source/direct_modes_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "808 strategy → same render pair → clear drawing → owned restoration"
+      ],
+      "findings": [
+        "透明绘制与半透明共用两站点；不等同探图或雷达可见。旧素材模式已无可达开关，保存值按策略归一化。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "map-mode-3",
+      "label": "黑幕绘制：原生自动揭示",
+      "feature": "黑幕绘制：原生自动揭示",
+      "control_ids": [
+        808
+      ],
+      "config_keys": [
+        "Display.ShroudStrategy"
+      ],
+      "modes": [
+        "UI3 native auto reveal"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "808 strategy → match identity/explicit permission → once-per-world native reveal request → result"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_material_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/crc_shadow_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "808 strategy → match identity/explicit permission → once-per-world native reveal request → result"
+      ],
+      "findings": [
+        "按当前局身份限制自动 Reveal；仅明确失败的有限路径允许重试，丢失回执不无限重发。已发生的探图事件不能用撤销绘图补丁恢复。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "map-mode-4",
+      "label": "黑幕绘制：直接全图",
+      "feature": "黑幕绘制：直接全图",
+      "control_ids": [
+        808
+      ],
+      "config_keys": [
+        "Display.ShroudStrategy"
+      ],
+      "modes": [
+        "UI4 → runtime direct3"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "808 strategy → direct map five-site group → dependency preflight and maintenance → group retirement"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_material_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/crc_shadow_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "808 strategy → direct map five-site group → dependency preflight and maintenance → group retirement"
+      ],
+      "findings": [
+        "直接全图五站点可到达原生 MapReveal；依赖丢失会退休，不把它描述成纯显示。与硬件地图/CRC 不兼容组合在 Host/Runtime 拒绝。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "map-manual",
+      "label": "手动地图揭示许可和执行",
+      "feature": "手动地图揭示许可和执行",
+      "control_ids": [
+        9199
+      ],
+      "config_keys": [
+        "Experimental.ManualReveal",
+        "Experimental.RevealMap legacy migration",
+        "Hotkeys.RevealMap"
+      ],
+      "modes": [
+        "permission + action8/1008; default Ctrl+Alt+O"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9199 permission → actions[8]/1008 → explicit Reveal command → map/CRC/hardware compatibility admission"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_material_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/hotkey_host.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9199 permission → actions[8]/1008 → explicit Reveal command → map/CRC/hardware compatibility admission"
+      ],
+      "findings": [
+        "开关只授权，实际动作须显式热键；与绘制模式和硬件地图互斥检查，迁移旧配置不自动反复揭示。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "map-hardware",
+      "label": "硬件黑幕显示",
+      "feature": "硬件黑幕显示",
+      "control_ids": [
+        9492
+      ],
+      "config_keys": [
+        "Experimental.HardwareMapVisibility"
+      ],
+      "modes": [
+        "hardware tag1; local display flags"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9492 → budget and reveal mutex → tag1 callback → intended display EFlags → owned DR release"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_material_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9492 → budget and reveal mutex → tag1 callback → intended display EFlags → owned DR release"
+      ],
+      "findings": [
+        "仅显示判定的目标 flags，未证明雷达/探索等完整全图效果。槽不足拒绝且不回退；冲突在 Host 和 Runtime 均检查。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "crc-shadow",
+      "label": "CRC原始MapIsClear影子",
+      "feature": "CRC原始MapIsClear影子",
+      "control_ids": [
+        9196
+      ],
+      "config_keys": [
+        "Experimental.CrcMapIsClearShadow"
+      ],
+      "modes": [
+        "eight native readers/writers; explicit compatibility"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9196 → exact dependency signatures/epoch → MapIsClear original shadow → native readers/writers → owned restoration"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/shroud_policy.h",
+        "source/assist/source/shroud_render_bridge.h",
+        "source/assist/source/shroud_material_bridge.h",
+        "source/assist/source/direct_modes_bridge.h",
+        "source/assist/source/crc_shadow_policy.h",
+        "source/assist/source/crc_shadow_restore.h",
+        "source/assist/source/crc_shadow_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9196 → exact dependency signatures/epoch → MapIsClear original shadow → native readers/writers → owned restoration"
+      ],
+      "findings": [
+        "只处理 MapIsClear 的八个原生入口；不代替完整 checksum，不恢复已探索 Cell。原生合法写入更新原值，未知读暂留清理责任。",
+        "过晚不安全 epoch、已有 Ares/Phobos 及直接全图等不兼容条件拒绝；冲突时阻止新揭示，不宣称消除 OOS。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "sw-per-frame",
+      "label": "逐观察帧永久授予所有已注册超武",
+      "feature": "逐观察帧永久授予所有已注册超武",
+      "control_ids": [
+        9490
+      ],
+      "config_keys": [
+        "Experimental.SuperweaponPermanentGrant"
+      ],
+      "modes": [
+        "per observed local frame; on/off/world change"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9490 → observed frame trigger → owner/registered types bounded to256 → native GrantPermanent"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/superweapon_grant_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9490 → observed frame trigger → owner/registered types bounded to256 → native GrantPermanent"
+      ],
+      "findings": [
+        "逐观察帧扫描有界注册类型并重新验证 owner/type/index/签名；关闭只停止后续授予，已永久授予在本局保留。",
+        "不强制充能，不承诺每个真实游戏帧都被观察到；存在 Runtime 输入样本触发路径。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "sw-panel",
+      "label": "独立超武面板开启与状态",
+      "feature": "独立超武面板开启与状态",
+      "control_ids": [
+        9405
+      ],
+      "config_keys": [
+        "Display.SuperweaponPanel",
+        "Display.SuperweaponDetached",
+        "Display.SuperweaponCollapsed",
+        "Display.SuperweaponX",
+        "Display.SuperweaponY",
+        "Display.SuperweaponScale",
+        "Display.SuperweaponRows"
+      ],
+      "modes": [
+        "no-activate overlay; foreground/read loss; ready/not ready"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9405 → panel model →100ms sample →250ms input age guard → palette/icon paint"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/extra_settings_io.h",
+        "source/assist/source/superweapon_sidebar_host.h",
+        "source/assist/source/superweapon_sidebar_model.h",
+        "source/assist/source/superweapon_sidebar_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9405 → panel model →100ms sample →250ms input age guard → palette/icon paint"
+      ],
+      "findings": [
+        "按当前 owner、类型/实例身份和序列验证；失焦或读取失效隐藏/禁用，不接受旧图标点击。每轮仅一个图标读取，缓存用身份与读回关联。",
+        "显示 ready 与实际 Runtime CanFire 再校验分开；窗口 no-activate，未执行 Win32 真实焦点/绘制。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "sw-move-fold",
+      "label": "超武面板拖动折叠",
+      "feature": "超武面板拖动折叠",
+      "control_ids": [
+        9405
+      ],
+      "config_keys": [
+        "Display.SuperweaponPanel",
+        "Display.SuperweaponDetached",
+        "Display.SuperweaponCollapsed",
+        "Display.SuperweaponX",
+        "Display.SuperweaponY",
+        "Display.SuperweaponScale",
+        "Display.SuperweaponRows"
+      ],
+      "modes": [
+        "attached/detached/collapsed/drag; scale75..200; rows1..20"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "panel messages → drag/fold/detach → clamped geometry → save → recreate/refresh"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/extra_settings_io.h",
+        "source/assist/source/superweapon_sidebar_host.h",
+        "source/assist/source/superweapon_sidebar_model.h",
+        "source/assist/source/superweapon_sidebar_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "panel messages → drag/fold/detach → clamped geometry → save → recreate/refresh"
+      ],
+      "findings": [
+        "位置、比例和行数在有效范围归一化并持久化；拖动、折叠只改界面，不触发超武。实际多屏/DPI 拖动尚未验收。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "sw-target",
+      "label": "面板超武激活、目标光标与取消",
+      "feature": "面板超武激活、目标光标与取消",
+      "control_ids": [
+        9405
+      ],
+      "config_keys": [
+        "Display.SuperweaponPanel",
+        "Display.SuperweaponDetached",
+        "Display.SuperweaponCollapsed",
+        "Display.SuperweaponX",
+        "Display.SuperweaponY",
+        "Display.SuperweaponScale",
+        "Display.SuperweaponRows"
+      ],
+      "modes": [
+        "targeted cursor / no-target event / right cancel / stale rejection"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "panel down/up current item identity → SelectSuper request → superSelect → native CanFire/cursor or event → Host result"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/extra_settings_io.h",
+        "source/assist/source/superweapon_sidebar_host.h",
+        "source/assist/source/superweapon_sidebar_model.h",
+        "source/assist/source/superweapon_sidebar_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "panel down/up current item identity → SelectSuper request → superSelect → native CanFire/cursor or event → Host result",
+        "right click → SelectSuper arg=-1 → cancelSuperSidebarSelection → earlier dedicated cancel result branch"
+      ],
+      "findings": [
+        "已确认：无目标超武完成事件入队后旧成功分支仍提示地图选目标。主代理将该分支成功值改为2，Host r==2 显示事件入队，保留目标型为1。",
+        "针对完整 superSelect/namedSuper/cancel/Host result 的13个受控检查，基线2失败、修复后13通过；事件拒绝/不就绪不会误报，取消和空闲取消保持原行为。",
+        "早期“右键取消提示错误”候选已排除：完整 result 在通用分支前已有专用取消返回；没有为该候选改代码。"
+      ],
+      "review_status": "fixed_controlled_verified",
+      "verification_level": "production_function_controlled_fixture",
+      "confirmed_issue_ids": [
+        "H-SW-FEEDBACK-1"
+      ],
+      "evidence": [
+        "superweapon-feedback-before-frozen/receipt.json",
+        "superweapon-feedback-after-final/receipt.json"
+      ],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "single-player-fps",
+      "label": "自定义单机FPS",
+      "feature": "自定义单机FPS",
+      "control_ids": [
+        9494
+      ],
+      "config_keys": [
+        "SinglePlayer.FPS"
+      ],
+      "modes": [
+        "0 or10..240; single player modes0/5; tag32"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9494 normalized FPS → hardware wait entry → QPC fractional deadline → bounded waits and lifecycle revalidation"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/single_player_fps.h",
+        "source/assist/source/single_player_fps_runtime.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9494 normalized FPS → hardware wait entry → QPC fractional deadline → bounded waits and lifecycle revalidation"
+      ],
+      "findings": [
+        "仅模式0/5；使用整数余数保持 QPC 节拍，不补发积压帧。每段等候最多4ms，重复确认 stop/world/rate/500ms heartbeat。",
+        "等待中不调用引擎或 message pump；关闭在拥有站点退休后关闭 timer。未测实机 CPU/FPS/耗电，不承诺目标帧率必达。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "pause-toggle",
+      "label": "单机暂停/恢复",
+      "feature": "单机暂停/恢复",
+      "control_ids": [
+        9403,
+        9454
+      ],
+      "config_keys": [
+        "MOControls.Features bit16",
+        "Hotkeys.PauseToggle",
+        "Hotkeys.PauseStep"
+      ],
+      "modes": [
+        "single player0/5; default F5; focus/reset/rebind/disable"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9403 +9454/9455 → GameRuntimeHook production forwarding selector → AssistRuntimeFilter → AssistFilterMessage → pauseViewKeyService/pauseViewMessage"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/pause_view_bridge.h",
+        "source/assist/source/pause_view_policy.h",
+        "source/assist/source/native_message_policy.h",
+        "source/game_runtime/source/runtime.cpp",
+        "source/assist/source/hotkey_routes.h",
+        "source/shared/source/key_gesture.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9403 +9454/9455 → GameRuntimeHook production forwarding selector → AssistRuntimeFilter → AssistFilterMessage → pauseViewKeyService/pauseViewMessage",
+        "unfocused game WM_MOUSEMOVE → pauseViewTick/observe/reset → no release delivered outside game → rebind/disable → fresh ordinary key pair"
+      ],
+      "findings": [
+        "只允许单机0/5；焦点/菜单/心跳/世界/stop 变化取消暂停，外层 pump 不占用采样 lease。",
+        "已确认旧 suppressed 标记跨失焦/重绑或关闭保留，旧释放在游戏外丢失后，新普通 down 放行而 up 被旧标记吞掉。新非 autorepeat down 先退休旧标记，再按当前绑定决定新拥有。",
+        "重复 down 不清原拥有；关闭时尚未释放的原按键仍吞配对 up。22 检查穿过真实 Runtime 转发白名单和完整外层过滤：基线4失败，修复后22通过。"
+      ],
+      "review_status": "fixed_controlled_verified",
+      "verification_level": "production_outer_route_controlled_fixture",
+      "confirmed_issue_ids": [
+        "H-PAUSE-KEYPAIR-1"
+      ],
+      "evidence": [
+        "pause-pairing-before-final/receipt.json",
+        "pause-pairing-after-mouse-final/receipt.json"
+      ],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "pause-step",
+      "label": "暂停后前进一帧",
+      "feature": "暂停后前进一帧",
+      "control_ids": [
+        9455
+      ],
+      "config_keys": [
+        "MOControls.Features bit16",
+        "Hotkeys.PauseToggle",
+        "Hotkeys.PauseStep"
+      ],
+      "modes": [
+        "paused single step; default F6; observed frame high-water"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9403 +9454/9455 → GameRuntimeHook production forwarding selector → AssistRuntimeFilter → AssistFilterMessage → pauseViewKeyService/pauseViewMessage"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/pause_view_bridge.h",
+        "source/assist/source/pause_view_policy.h",
+        "source/assist/source/native_message_policy.h",
+        "source/game_runtime/source/runtime.cpp",
+        "source/assist/source/hotkey_routes.h",
+        "source/shared/source/key_gesture.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9403 +9454/9455 → GameRuntimeHook production forwarding selector → AssistRuntimeFilter → AssistFilterMessage → pauseViewKeyService/pauseViewMessage",
+        "unfocused game WM_MOUSEMOVE → pauseViewTick/observe/reset → no release delivered outside game → rebind/disable → fresh ordinary key pair"
+      ],
+      "findings": [
+        "步进等待真实观察帧推进后重新暂停，使用高水位避免倒退；超越期望帧状态 -4，不把发出 step 当精确推进证明。",
+        "已确认旧 suppressed 标记跨失焦/重绑或关闭保留，旧释放在游戏外丢失后，新普通 down 放行而 up 被旧标记吞掉。新非 autorepeat down 先退休旧标记，再按当前绑定决定新拥有。",
+        "重复 down 不清原拥有；关闭时尚未释放的原按键仍吞配对 up。22 检查穿过真实 Runtime 转发白名单和完整外层过滤：基线4失败，修复后22通过。"
+      ],
+      "review_status": "fixed_controlled_verified",
+      "verification_level": "production_outer_route_controlled_fixture",
+      "confirmed_issue_ids": [
+        "H-PAUSE-KEYPAIR-1"
+      ],
+      "evidence": [
+        "pause-pairing-before-final/receipt.json",
+        "pause-pairing-after-mouse-final/receipt.json"
+      ],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "native-mega",
+      "label": "原生任务成功通知入口",
+      "feature": "原生任务成功通知入口",
+      "control_ids": [
+        9191
+      ],
+      "config_keys": [
+        "Experimental.NativeMegaGateway"
+      ],
+      "modes": [
+        "native MegaMission successful OutList append only"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9191 →646E90 successful append at646F4E → byte-equal111 payload/current frame/id/owner → cancelNative(false)"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/native_mega_gateway_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9191 →646E90 successful append at646F4E → byte-equal111 payload/current frame/id/owner → cancelNative(false)"
+      ],
+      "findings": [
+        "只观察成功加入 OutList 的原生命令，取消自动化元数据，不重复提交事件或本地强设 Mission。",
+        "不声称覆盖 MegaMissionF 或规划流程；签名、所有权及失败清理仍约束入口。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "native-combat",
+      "label": "精确原生战斗查询",
+      "feature": "精确原生战斗查询",
+      "control_ids": [
+        9198
+      ],
+      "config_keys": [
+        "Experimental.NativeCombatQueries"
+      ],
+      "modes": [
+        "default raw approximation / explicit native queries"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "9198 → explicit guarded SelectWeapon/GetWeapon/IsCloseEnough/ObjectAir virtual query → bounded result"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/guard.cpp",
+        "source/assist/source/combat_query_policy.h",
+        "source/assist/source/combat_query_bridge.h"
+      ],
+      "concrete_paths_reviewed": [
+        "9198 → explicit guarded SelectWeapon/GetWeapon/IsCloseEnough/ObjectAir virtual query → bounded result"
+      ],
+      "findings": [
+        "默认使用读取近似，打开后才调用受保护原生查询；slot 上限18，指针/调用失败经 SEH 退回不可用。",
+        "具体 MOD 虚函数副作用/性能未验收；源代码 guard 不等同无副作用证明。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "frame-maintain",
+      "label": "帧通知诊断维护热路径",
+      "feature": "帧通知诊断维护热路径",
+      "control_ids": [],
+      "config_keys": [
+        "explicit frame diagnostic flag; runtime debug policy revision"
+      ],
+      "modes": [
+        "ordinary message fallback / explicit frame site / cleanup"
+      ],
+      "kind": "internal_invariant",
+      "availability": "internal_runtime",
+      "entry_points": [
+        "GameRuntimeHook PM_REMOVE dispatch ownership or watchdog → frameobserver::maintain(controllerID) → cleanup/discovery/admission"
+      ],
+      "paths_reviewed": [
+        "source/game_runtime/source/runtime.cpp",
+        "source/game_runtime/source/frame_signal_runtime.h",
+        "source/shared/source/frame_signal_policy.h"
+      ],
+      "concrete_paths_reviewed": [
+        "GameRuntimeHook PM_REMOVE dispatch ownership or watchdog → frameobserver::maintain(controllerID) → cleanup/discovery/admission",
+        "owned frame-commit callback → frame/QPC/event publication and optional compute signal"
+      ],
+      "findings": [
+        "维护先处理已拥有清理；普通无诊断请求不创建游戏补丁。通道探索有100ms上限，普通消费者使用 MessageFallback。",
+        "失焦/心跳暂时失效保留已装站点但 gate 回调；撤标志恢复，失败保留老 owner 责任。回调不扫描、不调用引擎命令，保留 LastError。",
+        "这是当前源码复核，不将上一轮 frame fixture 自动计为本轮重新执行；连接/worker 其他契约归主代理。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-ReadOnly",
+      "label": "Hook诊断步骤：ReadOnly",
+      "feature": "Hook诊断步骤：ReadOnly",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "no runtime attach; no sites"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::ReadOnly → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::ReadOnly → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "不加载 Runtime，仅只读基线；仍观察世界/OOS，不将基线无异常泛化成后续功能验证。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-RuntimeOnly",
+      "label": "Hook诊断步骤：RuntimeOnly",
+      "feature": "Hook诊断步骤：RuntimeOnly",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "all options off; no game sites"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::RuntimeOnly → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::RuntimeOnly → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "只建立 Windows 消息 Hook/Runtime 通道，功能全关，不主动安装游戏位址补丁。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-FrameSignal",
+      "label": "Hook诊断步骤：FrameSignal",
+      "feature": "Hook诊断步骤：FrameSignal",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "setFrameSampling(true,true);55DE81"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::FrameSignal → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::FrameSignal → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "明确诊断请求才装帧通知；不是普通产品无条件帧钩子。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-Tooltip",
+      "label": "Hook诊断步骤：Tooltip",
+      "feature": "Hook诊断步骤：Tooltip",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "buildTimeTooltip=1;7F74D8"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::Tooltip → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::Tooltip → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "只测建造时间文字槽，不包含 Cursor 布局槽或隐藏光标完整组合。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-Mega",
+      "label": "Hook诊断步骤：Mega",
+      "feature": "Hook诊断步骤：Mega",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "nativeMegaGateway=1;646F4E"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::Mega → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::Mega → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "只启用成功任务观察入口；测试器不自动向游戏发命令。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-Placement",
+      "label": "Hook诊断步骤：Placement",
+      "feature": "Hook诊断步骤：Placement",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "BuildAnywhere;implementation0;4A8EB0"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::Placement → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::Placement → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "使用受控放置实现，不将此步骤等同原生事件或直接放置。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-Camera",
+      "label": "Hook诊断步骤：Camera",
+      "feature": "Hook诊断步骤：Camera",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "independent diagnostic channel;6D8640"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::Camera → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::Camera → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "独立相机通道仍要求 identity、heartbeat 和原几何条件；不满足不强装。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-LowDamage",
+      "label": "Hook诊断步骤：LowDamage",
+      "feature": "Hook诊断步骤：LowDamage",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "low damage filter + network preserve;6F7D44"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::LowDamage → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::LowDamage → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "低伤害入口使用明示依赖；步骤只验证安装和人工观察，未执行伤害情景。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-AirType",
+      "label": "Hook诊断步骤：AirType",
+      "feature": "Hook诊断步骤：AirType",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "air mode1 +NativeAirWaypoints;7E2908"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::AirType → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::AirType → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "单飞机下单路径，不包含完整双入口路径。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-AirFull",
+      "label": "Hook诊断步骤：AirFull",
+      "feature": "Hook诊断步骤：AirFull",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "air mode2 +NativeAirWaypoints;416AB6/7E2908"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::AirFull → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::AirFull → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "两个飞机入口成组；共享站点被排除会整组跳过。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-Control",
+      "label": "Hook诊断步骤：Control",
+      "feature": "Hook诊断步骤：Control",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "controlAll runtime Native1;6339BA/637E40/50B6F0"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::Control → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::Control → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "诊断选原生三处模式，不是产品默认硬件参数实现。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-ShroudClear",
+      "label": "Hook诊断步骤：ShroudClear",
+      "feature": "Hook诊断步骤：ShroudClear",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "renderReveal1;47F038/47F274"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::ShroudClear → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::ShroudClear → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "透明绘制两处成组；正常观察不证明完整视野或联机安全。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-ShroudHalf",
+      "label": "Hook诊断步骤：ShroudHalf",
+      "feature": "Hook诊断步骤：ShroudHalf",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "renderReveal2;same render pair"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::ShroudHalf → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::ShroudHalf → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "半透明与透明共享同两处，排除任一共享入口使相关组都跳过。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-TechPair",
+      "label": "Hook诊断步骤：TechPair",
+      "feature": "Hook诊断步骤：TechPair",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "UnsafeTech +OpenTech arg2=0;6A97D2/6AA781"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::TechPair → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::TechPair → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "发当前目录 hash 的受控科技请求；忙或未完成请求不能误记正常。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-TechMaster",
+      "label": "Hook诊断步骤：TechMaster",
+      "feature": "Hook诊断步骤：TechMaster",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "UnsafeTech +OpenTech arg2=2;five Master sites"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::TechMaster → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::TechMaster → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "Master 五处组，同一类型目录/请求协议验证；不是数据/硬件参数科技。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-DirectPlacement",
+      "label": "Hook诊断步骤：DirectPlacement",
+      "feature": "Hook诊断步骤：DirectPlacement",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "BuildAnywhere +implementation1;4A8EC3/4A918E"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::DirectPlacement → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::DirectPlacement → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "直接放置两处组，不与受控组累加。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-Network",
+      "label": "Hook诊断步骤：Network",
+      "feature": "Hook诊断步骤：Network",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "networkHousePreserve;seven network sites"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::Network → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::Network → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "网络所属方完整依赖组；只人工操作时可能触发实际发送路径。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-CommandOwner",
+      "label": "Hook诊断步骤：CommandOwner",
+      "feature": "Hook诊断步骤：CommandOwner",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "network +native control +owner;four own sites plus dependencies"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::CommandOwner → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::CommandOwner → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "四处命令入口连同原生控制和网络依赖一起安装/恢复；不拆半组。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-Sell",
+      "label": "Hook诊断步骤：Sell",
+      "feature": "Hook诊断步骤：Sell",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "network +nativeSellCursor;6929E5/4AC179 plus network"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::Sell → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::Sell → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "出售两入口连同网络组；不自动出售用户单位。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-Crc",
+      "label": "Hook诊断步骤：Crc",
+      "feature": "Hook诊断步骤：Crc",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "ExperimentalReveal +crc shadow;eight CRC sites"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::Crc → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::Crc → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "只安装适配，不调用全图 Reveal、不刻意改 Cell/Visionary；不能认证完整全图。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-step-DirectMap",
+      "label": "Hook诊断步骤：DirectMap",
+      "feature": "Hook诊断步骤：DirectMap",
+      "control_ids": [
+        101,
+        102,
+        103,
+        104,
+        110,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "renderReveal3;five map sites"
+      ],
+      "kind": "standalone_diagnostic_step",
+      "availability": "separate_executable",
+      "entry_points": [
+        "standalone UI104/selection → catalog::steps Kind::DirectMap → buildPlan/start/install → verifyStep/ObservationClock → clear/restore"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "standalone UI104/selection → catalog::steps Kind::DirectMap → buildPlan/start/install → verifyStep/ObservationClock → clear/restore",
+        "catalog.h exact site dependencies → sequence transitions → observed bytes and shared registry"
+      ],
+      "findings": [
+        "独立 RA2HookTest.exe 的步骤，不是普通控制台开关；默认两基线不排入，按稳定 Kind 建计划。",
+        "匹配 Runtime/broker 摘要、全新游戏进程与可读世界后捕获目录基线；验证安装字节/新快照/精确登记数才计观察。恢复全部目录基线及登记归零后才下一组。",
+        "直接地图五处最后测试；还原代码不能倒转已经发生的世界事件。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-exclude",
+      "label": "Hook诊断：排除可疑组及共享依赖",
+      "feature": "Hook诊断：排除可疑组及共享依赖",
+      "control_ids": [
+        110,
+        112
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "idle multi-select; dependency closure"
+      ],
+      "kind": "standalone_diagnostic_operation",
+      "availability": "separate_executable",
+      "entry_points": [
+        "110 multi-select/112 clear → stable excluded Kind → catalog shared-site block → next buildPlan"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "110 multi-select/112 clear → stable excluded Kind → catalog shared-site block → next buildPlan"
+      ],
+      "findings": [
+        "排除站点会排除任何共享依赖组；从不为了另一组把已排除入口再装回。运行中右侧更改只影响下轮；本轮使用“略过本组”。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-skip",
+      "label": "Hook诊断：跳过当前组并恢复",
+      "feature": "Hook诊断：跳过当前组并恢复",
+      "control_ids": [
+        107
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "installing/pending/observing/stopped"
+      ],
+      "kind": "standalone_diagnostic_operation",
+      "availability": "separate_executable",
+      "entry_points": [
+        "107 → skip request → remember exclusion → wait pending request or restore → next eligible step"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "107 → skip request → remember exclusion → wait pending request or restore → next eligible step"
+      ],
+      "findings": [
+        "跳过记为未验收，不能记通过。未完请求先等待；当前局 OOS 后仅选好下轮起点，不能在失同步局继续。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-stop",
+      "label": "Hook诊断：结束诊断并恢复",
+      "feature": "Hook诊断：结束诊断并恢复",
+      "control_ids": [
+        108
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "active/closing/process exit/restore timeout"
+      ],
+      "kind": "standalone_diagnostic_operation",
+      "availability": "separate_executable",
+      "entry_points": [
+        "108 or window close → clearOptions/stop1 → await stop2 and baseline restore → release session"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "108 or window close → clearOptions/stop1 → await stop2 and baseline restore → release session"
+      ],
+      "findings": [
+        "进程已退出才可直接释放；活 Runtime 要 stop2 与完整基线恢复。15秒未清理保留窗口/会话责任，不假报已安全退出；ReadOnly 无 shared 的独立释放分支保留。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-continue",
+      "label": "Hook诊断：已恢复后继续下一组",
+      "feature": "Hook诊断：已恢复后继续下一组",
+      "control_ids": [
+        105,
+        111,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "normal early/after30s; following/single; baselines"
+      ],
+      "kind": "standalone_diagnostic_operation",
+      "availability": "separate_executable",
+      "entry_points": [
+        "105 → recheck current world/sites/request completion → record actual observed milliseconds → restore → Sequence next"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "105 → recheck current world/sites/request completion → record actual observed milliseconds → restore → Sequence next"
+      ],
+      "findings": [
+        "安装核对后开始30秒观察，计满只提醒，不自动正常。可提前人工确认，但仍检查本组安装/在途请求；单组/后续组与两基线开关决定新计划。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-focus",
+      "label": "Hook诊断：失焦暂停观察与焦点恢复确认",
+      "feature": "Hook诊断：失焦暂停观察与焦点恢复确认",
+      "control_ids": [],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "foreground/background; paused frame; recovery gate"
+      ],
+      "kind": "standalone_diagnostic_operation",
+      "availability": "separate_executable",
+      "entry_points": [
+        "timer → foreground and frame observation → ObservationClock hold/resume → verify current sites/snapshot"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "timer → foreground and frame observation → ObservationClock hold/resume → verify current sites/snapshot"
+      ],
+      "findings": [
+        "失焦保留已装 Hook 并冻结观察时间；帧停顿也不算观察。切回重新验证，1秒/5秒恢复窗口允许暂时繁忙，不等于要求连续稳定五秒。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-oos",
+      "label": "Hook诊断：OOS/断线停止",
+      "feature": "Hook诊断：OOS/断线停止",
+      "control_ids": [
+        106
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "native OOS/disconnect/world/frame/read failure; manual OOS"
+      ],
+      "kind": "standalone_diagnostic_operation",
+      "availability": "separate_executable",
+      "entry_points": [
+        "timer/106 → OOS/worldChanged/read outcome → Sequence stop → cleanup only"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "timer/106 → OOS/worldChanged/read outcome → Sequence stop → cleanup only"
+      ],
+      "findings": [
+        "出现 OOS/断线/世界换代停止，不允许在同一失同步局继续。只可记录排除并重开新进程/对局；清理补丁不回滚已有事件。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-persist",
+      "label": "Hook诊断：排除组持久化",
+      "feature": "Hook诊断：排除组持久化",
+      "control_ids": [
+        104,
+        110,
+        111,
+        112,
+        113
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "stable Kind keys; selection/start/baselines"
+      ],
+      "kind": "standalone_diagnostic_operation",
+      "availability": "separate_executable",
+      "entry_points": [
+        "load/save selection → hook-test.ini Skip.Kind/Selection → buildPlan"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp"
+      ],
+      "concrete_paths_reviewed": [
+        "load/save selection → hook-test.ini Skip.Kind/Selection → buildPlan"
+      ],
+      "findings": [
+        "排除以稳定 Kind 存储，不把本轮显示序号当持久 ID；开始组、继续后组、可选基线独立保存。普通工具箱旧配置不会被这个独立测试器加载。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "diagnostic-report",
+      "label": "Hook诊断：诊断观察记录",
+      "feature": "Hook诊断：诊断观察记录",
+      "control_ids": [
+        109
+      ],
+      "config_keys": [
+        "hook-test.ini [Skip].Kind",
+        "hook-test.ini [Selection].Start/Following/Baselines"
+      ],
+      "modes": [
+        "dynamic protocol/catalog identity; module/sites and manual outcome"
+      ],
+      "kind": "standalone_diagnostic_operation",
+      "availability": "separate_executable",
+      "entry_points": [
+        "open log → dynamic assist::Version/runtime::Version and catalog classification → module hash/site bytes/results → flush"
+      ],
+      "paths_reviewed": [
+        "source/hook_diagnostics/source/catalog.h",
+        "source/hook_diagnostics/source/selection.h",
+        "source/hook_diagnostics/source/sequence.h",
+        "source/hook_diagnostics/source/observation_gate.h",
+        "source/hook_diagnostics/source/main.cpp",
+        "source/hook_diagnostics/README.md"
+      ],
+      "concrete_paths_reviewed": [
+        "open log → dynamic assist::Version/runtime::Version and catalog classification → module hash/site bytes/results → flush"
+      ],
+      "findings": [
+        "当前 main.cpp 已使用动态协议与目录分类统计；本次 Assist 102，不沿用旧 89/101。README 当前指引改为按本次报告身份/分类计数，历史日期记录明确标作历史。",
+        "日志含模块路径/摘要、站点基线/安装/恢复、人工实际观察与停止结果；未触发功能不能当作完整事件或联机认证。日志落盘异常尚无本轮复现，不冒充新缺陷。"
+      ],
+      "review_status": "source_fixed",
+      "verification_level": "current_source_trace",
+      "confirmed_issue_ids": [
+        "H-DIAG-DOC-1"
+      ],
+      "evidence": [],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "sw-iron-hotkey",
+      "label": "铁幕独立快捷键",
+      "feature": "铁幕独立快捷键",
+      "control_ids": [],
+      "config_keys": [
+        "Hotkeys.IronCurtain"
+      ],
+      "modes": [
+        "IronCurtainSpecial; current house only"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "actions[9]/executeHotkey1009 → namedSuper bounded current House list → IronCurtainSpecial → superSelect → Host result"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/extra_settings_io.h",
+        "source/assist/source/superweapon_sidebar_host.h",
+        "source/assist/source/superweapon_sidebar_model.h",
+        "source/assist/source/superweapon_sidebar_bridge.h",
+        "source/assist/source/hotkey_host.h"
+      ],
+      "concrete_paths_reviewed": [
+        "actions[9]/executeHotkey1009 → namedSuper bounded current House list → IronCurtainSpecial → superSelect → Host result"
+      ],
+      "findings": [
+        "固定类型 ID 有界匹配；未找到返回 -4，不选其他超武。匹配后仍检查 owner/present/ready 和原生目标依赖。",
+        "同一13检查 fixture 包含具名 Iron/Chrono 正常目标分支；本条外层热键生命周期仍仅源码复核。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace_with_shared_function_fixture",
+      "confirmed_issue_ids": [],
+      "evidence": [
+        "superweapon-feedback-after-final/receipt.json"
+      ],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "sw-chrono-hotkey",
+      "label": "超时空独立快捷键",
+      "feature": "超时空独立快捷键",
+      "control_ids": [],
+      "config_keys": [
+        "Hotkeys.ChronoSphere"
+      ],
+      "modes": [
+        "ChronoSphereSpecial; current house only"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "actions[10]/executeHotkey1010 → namedSuper bounded current House list → ChronoSphereSpecial → superSelect → Host result"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/extra_settings_io.h",
+        "source/assist/source/superweapon_sidebar_host.h",
+        "source/assist/source/superweapon_sidebar_model.h",
+        "source/assist/source/superweapon_sidebar_bridge.h",
+        "source/assist/source/hotkey_host.h"
+      ],
+      "concrete_paths_reviewed": [
+        "actions[10]/executeHotkey1010 → namedSuper bounded current House list → ChronoSphereSpecial → superSelect → Host result"
+      ],
+      "findings": [
+        "固定类型 ID 有界匹配；未找到返回 -4，不选其他超武。匹配后仍检查 owner/present/ready 和原生目标依赖。",
+        "同一13检查 fixture 包含具名 Iron/Chrono 正常目标分支；本条外层热键生命周期仍仅源码复核。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace_with_shared_function_fixture",
+      "confirmed_issue_ids": [],
+      "evidence": [
+        "superweapon-feedback-after-final/receipt.json"
+      ],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    },
+    {
+      "id": "sw-custom-hotkey",
+      "label": "按超武类型ID绑定快捷键",
+      "feature": "按超武类型ID绑定快捷键",
+      "control_ids": [
+        410,
+        411,
+        412
+      ],
+      "config_keys": [
+        "SuperHotkeys.<type ID>"
+      ],
+      "modes": [
+        "bind ID; resolve current snapshot index on execution"
+      ],
+      "kind": "user_feature",
+      "availability": "current_ui",
+      "entry_points": [
+        "410/411/412 bindSuper → saved swBindings type ID → executeHotkey1020+ → current snapshot type→index → SelectSuper → superSelect/result"
+      ],
+      "paths_reviewed": [
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/extra_settings_io.h",
+        "source/assist/source/superweapon_sidebar_host.h",
+        "source/assist/source/superweapon_sidebar_model.h",
+        "source/assist/source/superweapon_sidebar_bridge.h",
+        "source/assist/source/hotkey_host.h"
+      ],
+      "concrete_paths_reviewed": [
+        "410/411/412 bindSuper → saved swBindings type ID → executeHotkey1020+ → current snapshot type→index → SelectSuper → superSelect/result"
+      ],
+      "findings": [
+        "按类型 ID 持久化，当前局快照重新匹配索引；缺失不发送。随后仍执行当前 owner/实例/ready/前台/聊天/新鲜度校验。",
+        "无目标反馈修复也适用此共用 superSelect/result；本条绑定 UI 未在 Windows 端执行。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace_with_shared_function_fixture",
+      "confirmed_issue_ids": [],
+      "evidence": [
+        "superweapon-feedback-after-final/receipt.json"
+      ],
+      "validation_gaps": [
+        "已沿当前源码复核所列路径；未在 Windows/WebView2、实际游戏、第三方扩展或多人联机中执行该功能。受控 fixture 不替代这些验收。"
+      ]
+    }
+  ],
+  "summary": {
+    "source_reviewed": 75,
+    "source_fixed": 3,
+    "disabled_verified_source": 1,
+    "fixed_controlled_verified": 3
+  },
+  "confirmed_findings": [
+    {
+      "id": "H-SW-FEEDBACK-1",
+      "status": "fixed_controlled_verified",
+      "owner": "root production / console fixture",
+      "before": "13 checks, 2 failures",
+      "after": "13 checks, 0 failures"
+    },
+    {
+      "id": "H-PAUSE-KEYPAIR-1",
+      "status": "fixed_controlled_verified",
+      "owner": "console",
+      "before": "22 checks, 4 failures",
+      "after": "22 checks, 0 failures; production outer Runtime selector included"
+    },
+    {
+      "id": "H-HARDWARE-HELP-1",
+      "status": "source_fixed",
+      "owner": "root",
+      "validation": "current help text and actual budget admission source trace"
+    },
+    {
+      "id": "H-TECHPROFILE-LABEL-1",
+      "status": "source_fixed",
+      "owner": "root",
+      "validation": "control428 text matches chooseTechProfile(1)/save/OpenTech"
+    },
+    {
+      "id": "H-DIAG-DOC-1",
+      "status": "source_fixed",
+      "owner": "console",
+      "validation": "README uses dynamic report identity/counts; historical evidence labelled historical"
+    }
+  ],
+  "related_input_finding": {
+    "id": "H-MOUSE-PAIR-1",
+    "status": "fixed_controlled_verified",
+    "owner": "console",
+    "entry": "788 priority enhanced input +736 AttackMove mouse button → Host servicePointer publication → GameRuntimeHook selector → complete AssistFilterMessage",
+    "production": "source/assist/source/native_message_policy.h",
+    "finding": "游戏外丢失旧释放后，新原生鼠标 down 放行而 up 被旧 blockedButtons 吞掉；新 down 先清同键旧拥有，当前可用增强路径再重新取得拥有。",
+    "before": "36 checks, 7 failures",
+    "after": "36 checks, 0 failures; final pause regression 22 checks, 0 failures",
+    "evidence": [
+      "mouse-pairing-before/receipt.json",
+      "mouse-pairing-after/receipt.json",
+      "pause-pairing-after-mouse-final/receipt.json"
+    ]
+  },
+  "availability_boundaries": [
+    {
+      "feature": "通用配置导入/导出及语言切换",
+      "state": "not_implemented_or_exposed",
+      "detail": "现代控制台没有这两个通用用户入口；INI 自动保存、字体/资源导入不等于配置导入导出。详见 console-matrix。"
+    },
+    {
+      "feature": "光标透明 SHA 替换",
+      "state": "visible_disabled",
+      "detail": "原生 install ID3 与模式choice2禁用；没有启用该保留路径。"
+    },
+    {
+      "feature": "Shift 五连点三控件",
+      "state": "hidden_retained",
+      "detail": "原生无可见布局且现代 capture 需 visibleStyle；不是当前可用三个功能。"
+    },
+    {
+      "feature": "RenderUpgrade",
+      "state": "visible_disabled_with_retained_options",
+      "detail": "owner9300/proxy12014禁用且有效运行值固定兼容策略；某些子参数可保存不代表升级功能运行。"
+    },
+    {
+      "feature": "DDraw 应用/恢复",
+      "state": "unwired_implementation",
+      "detail": "仅保留 header 实现，无 include/configure 用户路由；不计为已提供功能。"
+    },
+    {
+      "feature": "切换控制玩家",
+      "state": "visible_disabled",
+      "detail": "861..864禁用，Switch/Restore返回-4；保存选项强制关闭。"
+    },
+    {
+      "feature": "独立诊断器",
+      "state": "separate_executable",
+      "detail": "步骤与操作属于 RA2HookTest.exe，不是主控制台的普通功能开关。"
+    }
+  ],
+  "known_design_gaps": [
+    {
+      "id": "MP-STICKY-EXIT",
+      "status": "not_implemented",
+      "availability": "entry_enabled_exit_absent",
+      "entry": "9094/9095; Hotkeys.StickyGuard",
+      "paths": [
+        "source/assist/source/sticky_bridge.h",
+        "source/assist/source/tactical_controls.h",
+        "source/assist/source/hotkey_host.h"
+      ],
+      "detail": "联机 Sticky 允许通过同步原生任务进入，但再次按键不重发且没有同步退出实现。releaseSticky 对 network 返回 false；关闭/清理只能退休本地记录，不能承诺退出任务。UI 已明确说明，仍是产品功能缺口；本轮未实现退出。单机才可原生 ForceMission/NextMission 解除。"
+    }
+  ],
+  "excluded_candidates": [
+    {
+      "id": "SW-right-cancel-message",
+      "reason": "Full Host result has earlier SelectSuper arg=-1 dedicated cancel return; generic success branch is unreachable for that case."
+    },
+    {
+      "id": "hardware-control-missing-world-read-on-every-hit",
+      "reason": "Current published-gate/direct-yes hotpath was explicitly accepted; no new per-hit world check or claimed FPS gain."
+    }
+  ],
+  "unresolved_validation": [
+    "PRES/BUS UI availability report needs current real-world type/owner/factory/sidebar capture; no claim that historical fixture resolves it.",
+    "No Windows/WebView2 or actual game input/hardware exception/native x86 ABI/multiplayer/OOS execution this round.",
+    "Native guarded virtual queries can depend on MOD behavior; static SEH/identity checks do not prove absence of engine side effects.",
+    "Generic mouse pairing is now separately confirmed and fixed; related_input_finding records its own 36-check fixture, not an extra row or a second pause feature bug."
+  ],
+  "notebook": {
+    "library_identity": "libfile_cb63dfc5cec08191a25b0999349063f9",
+    "version": 166,
+    "sha256": "be48329938b2a71497d7782b9d4cddbc05249f556d178bec9239be509b82df4d"
+  }
+}

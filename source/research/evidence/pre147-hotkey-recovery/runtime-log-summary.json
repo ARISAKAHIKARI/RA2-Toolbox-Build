@@ -1,0 +1,75 @@
+{
+  "source_file": "Runtime.log",
+  "sha256": "6beda7933c9e99260679d2065dac9b88ce766b6c08f0ab7a85f70762b386f1b6",
+  "line_count": 898,
+  "first_timestamp": "2026-11-09 14:41:21.947",
+  "last_timestamp": "2026-11-09 14:50:47.480",
+  "version_labels": [
+    "1.0.46"
+  ],
+  "version_label_cannot_distinguish_1464": true,
+  "live_process_health_records": 258,
+  "live_health_fields": {
+    "request": [
+      "5"
+    ],
+    "ack": [
+      "5"
+    ],
+    "queueSent": {
+      "min": "805",
+      "max": "1075"
+    },
+    "queueFull": [
+      "0"
+    ],
+    "commandRejected": [
+      "0"
+    ],
+    "lastSubmitError": [
+      "0"
+    ],
+    "runtimeError": [
+      "0"
+    ],
+    "faultSerial": [
+      "0"
+    ],
+    "controlFrame": {
+      "min": "46710",
+      "max": "65800"
+    },
+    "callbackCount": {
+      "min": "0",
+      "max": "111326"
+    },
+    "computeRequested": [
+      "0x00001FA0"
+    ],
+    "computeApplied": [
+      "0x00001FA0"
+    ]
+  },
+  "display_records": 63,
+  "foreground_display_records": 59,
+  "nonforeground_display_records": 4,
+  "display_labels": [
+    "0"
+  ],
+  "game_exits": [
+    {
+      "line": 721,
+      "timestamp": "2026-11-09 14:46:45.599",
+      "reason": "target-exited",
+      "exit_code": "0x00000000"
+    }
+  ],
+  "limits": [
+    "Input begins mid-session; no startup version detail or hotkey trace.",
+    "Existing bridge-health renderStatus is renderRevealStatus, not external snap.renderStatus.",
+    "No proof of physical keys or exact现场 gate in this log.",
+    "queueSent activity is not proof of hotkey-originated commands.",
+    "compute mask Load bit is set: this log uses game-side loading computation."
+  ],
+  "scope": "Derived diagnostic counts only; no raw game executable, memory dump, or complete user log included."
+}

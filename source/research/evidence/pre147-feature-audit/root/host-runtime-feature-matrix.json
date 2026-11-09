@@ -1,0 +1,1417 @@
+{
+  "schema": "ra2-root-host-runtime-feature-review-v1",
+  "reviewed_utc": "2026-11-09T07:15:41.637709+00:00",
+  "product_baseline": "1.0.46.4",
+  "release_series": "1.0.47",
+  "source_baseline_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "scope": "Host/Runtime/共享采样/异步拥有者/命令身份补充审查",
+  "count": 32,
+  "counting": "共享机制与其它四组存在交叉；行数不是独立用户功能总数或实机通过数。",
+  "features": [
+    {
+      "id": "runtime.dispatch",
+      "label": "Runtime 回调串行和异常清理",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/game_runtime/source/runtime.cpp",
+          "sha256": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d"
+        },
+        {
+          "file": "source/shared/source/runtime_protocol.h",
+          "sha256": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b"
+        },
+        {
+          "file": "source/shared/source/runtime_fp_scope.h",
+          "sha256": "a85a7e2fe80a8ec888f127b938ab6f48ed689333fb2f6a46f3e74bdb0c0b1099"
+        },
+        {
+          "file": "source/shared/source/runtime_seh_scope.h",
+          "sha256": "a9b404935e2b0b9fac4c594d4c27e31b08c0141c5f0d7e25e63557991cb271f7"
+        }
+      ],
+      "entry_points": [
+        "GameRuntimeHook",
+        "GameRuntimePostHook",
+        "watchdogProc"
+      ],
+      "paths_reviewed": [
+        "CAS 拥有 dispatching 后才释放；重入不重复释放。",
+        "FP/SEH 清理在链到其他 hook 前执行；Cursor 与 Assist 连续但分别退出执行域。"
+      ],
+      "conclusion": "未发现本轮可证实新增缺陷；实际平台异常展开仍需 Windows 验证。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "runtime.owner",
+      "label": "控制器替换和旧状态恢复",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/game_runtime/source/runtime.cpp",
+          "sha256": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d"
+        },
+        {
+          "file": "source/shared/source/runtime_protocol.h",
+          "sha256": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b"
+        }
+      ],
+      "entry_points": [
+        "connect",
+        "cleanup"
+      ],
+      "paths_reviewed": [
+        "PID 相同还要求原保留进程对象存活。",
+        "旧 Assist、Cursor、Tooltip 实际 Detached 前保留旧 mapping；恢复尝试不等于恢复完成。",
+        "旧 0.6.x Runtime 模块拒绝并明确报 LegacyRuntime。"
+      ],
+      "conclusion": "保持旧所有者直到恢复完成，没有把数字 PID 当成完整身份。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "runtime.watchdog",
+      "label": "断连恢复 watchdog",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/game_runtime/source/runtime.cpp",
+          "sha256": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d"
+        },
+        {
+          "file": "source/shared/source/runtime_protocol.h",
+          "sha256": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b"
+        }
+      ],
+      "entry_points": [
+        "ensureWatchdog",
+        "watchdogProc"
+      ],
+      "paths_reviewed": [
+        "DLL pin 成功后注册线程 timer。",
+        "只做恢复，不调度新用户动作；线程迁移依赖执行管理器确认旧线程退出。",
+        "owner 存活通过保留句柄检查。"
+      ],
+      "conclusion": "源码路径已审；100 ms 为 timer 请求周期，不是绝对恢复时限。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "runtime.diagnostics",
+      "label": "异常观察和故障记录",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/game_runtime/source/runtime.cpp",
+          "sha256": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d"
+        },
+        {
+          "file": "source/shared/source/runtime_protocol.h",
+          "sha256": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b"
+        }
+      ],
+      "entry_points": [
+        "observeException",
+        "RuntimeReportException"
+      ],
+      "paths_reviewed": [
+        "限定绑定线程和异常类型；只写 IPC 诊断，不读游戏/分配/文件 I/O/恢复异常。",
+        "保留 GetLastError；返回 EXCEPTION_CONTINUE_SEARCH。",
+        "SEH 记录与原生观察使用分开的序列计数。"
+      ],
+      "conclusion": "诊断不被当作恢复或游戏行为成功回执。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "runtime.loader",
+      "label": "DllMain 装卸边界",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/game_runtime/source/runtime.cpp",
+          "sha256": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d"
+        },
+        {
+          "file": "source/shared/source/runtime_protocol.h",
+          "sha256": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b"
+        }
+      ],
+      "entry_points": [
+        "DllMain"
+      ],
+      "paths_reviewed": [
+        "Process attach 仅禁用线程通知；detach 只退出 entry 管理器。",
+        "没有在 loader lock 下执行游戏操作或 hook 恢复。"
+      ],
+      "conclusion": "源码检查完成；未执行 Windows loader。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "broker.target",
+      "label": "x86 Helper 目标和拥有者验证",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/runtime_broker/source/main.cpp",
+          "sha256": "680010a119c7e9462ed691cf0ecb38d84e32a1bb820499fcbc06a07629eccade"
+        },
+        {
+          "file": "source/shared/source/runtime_broker_protocol.h",
+          "sha256": "535290536bc6b3eabbadd4ba08d294ef1ff2657a27b0773ebbaa5fe685869b6f"
+        }
+      ],
+      "entry_points": [
+        "wWinMain",
+        "install"
+      ],
+      "paths_reviewed": [
+        "继承 owner 句柄与 Packet.owner 一致且存活。",
+        "窗口所属 PID/TID、runtime mapping magic/version/pid/owner 逐项核对。",
+        "拒绝空 PID/TID/HWND 和目标等于 owner。"
+      ],
+      "conclusion": "入口身份检查已追踪；没有放宽目标权限或身份检查。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "broker.abi",
+      "label": "Helper 加载前 ABI 验证",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/runtime_broker/source/main.cpp",
+          "sha256": "680010a119c7e9462ed691cf0ecb38d84e32a1bb820499fcbc06a07629eccade"
+        },
+        {
+          "file": "source/assist/source/protocol.h",
+          "sha256": "4e8f8b72aee03f7175cb0bcc4766af3cf8360463f04e93656d7bd4b92985e331"
+        },
+        {
+          "file": "source/shared/source/runtime_protocol.h",
+          "sha256": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b"
+        },
+        {
+          "file": "source/shared/source/game_entry_api.h",
+          "sha256": "a113072ab7abe73d1667b311c5b90d99e2571aa70cff665a8a90645fdabc243b"
+        }
+      ],
+      "entry_points": [
+        "describe"
+      ],
+      "paths_reviewed": [
+        "Assist/Runtime/Entry 版本、sizeof、导出函数和 Assist mapping 前缀先比对。",
+        "新字段只追加 Shared 尾部；不接受旧版本 mapping。"
+      ],
+      "conclusion": "本轮 Assist 升到 102，避免新旧 Host/Runtime 共享布局混用。",
+      "findings": [],
+      "evidence": [
+        "root/crossbit-abi.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": true,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "broker.partial_install",
+      "label": "部分 hook 安装失败及精确撤销",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/runtime_broker/source/main.cpp",
+          "sha256": "680010a119c7e9462ed691cf0ecb38d84e32a1bb820499fcbc06a07629eccade"
+        },
+        {
+          "file": "source/shared/source/runtime_broker_client.h",
+          "sha256": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1"
+        }
+      ],
+      "entry_points": [
+        "install",
+        "remove",
+        "Client::abort"
+      ],
+      "paths_reviewed": [
+        "任一 hook 失败清理已安装部分；错误保留。",
+        "Remove 以 pid/token 精确匹配且幂等；失效 hook 句柄视为已移除。",
+        "Client 对错误或可能部分安装的 helper 进入退休流程。"
+      ],
+      "conclusion": "已审所有权与重复撤销；原生 SetWindowsHookEx/Unhook 行为未实际执行。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "broker.nonblocking",
+      "label": "启动、请求和恢复的非阻塞轮询",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/runtime_broker_client.h",
+          "sha256": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1"
+        },
+        {
+          "file": "source/shared/source/host_game_input.h",
+          "sha256": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887"
+        }
+      ],
+      "entry_points": [
+        "Client::pollStartup",
+        "Client::poll",
+        "pulse"
+      ],
+      "paths_reviewed": [
+        "显式等待超时均为 0；晚到 Host pulse 先读取已就绪 ACK。",
+        "受控 2990/1990 ms 延迟与真实第二线程探测共享锁。",
+        "健康 200 次 pulse 检查；未把虚拟时间当真实卡顿。"
+      ],
+      "conclusion": "当前 110 项受控检查通过，恢复调用虚拟等待 0，正等待持锁探测 0；旧报告 4980 ms 问题在本轮基线已修。",
+      "findings": [],
+      "evidence": [
+        "root/broker_lifecycle/receipt.json",
+        "root/broker_retry/result.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "broker.mailbox",
+      "label": "单一在途 IPC 和迟到 ACK",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/runtime_broker_client.h",
+          "sha256": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1"
+        },
+        {
+          "file": "source/shared/source/host_game_input.h",
+          "sha256": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887"
+        }
+      ],
+      "entry_points": [
+        "Client::begin",
+        "Client::cancel",
+        "Client::install",
+        "Client::remove"
+      ],
+      "paths_reviewed": [
+        "在途请求保留 operation/intent/generation/sequence；未结束前不重用 mailbox。",
+        "取消 Install 仍排空 ACK，然后撤销精确 token。",
+        "另一 intent 不获取旧结果。"
+      ],
+      "conclusion": "现行受控生命周期和重试覆盖通过。",
+      "findings": [],
+      "evidence": [
+        "root/broker_lifecycle/receipt.json",
+        "root/broker_retry/result.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "broker.retirement",
+      "label": "Helper 退休、失败退避和句柄生命周期",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/runtime_broker_client.h",
+          "sha256": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1"
+        },
+        {
+          "file": "source/shared/source/host_game_input.h",
+          "sha256": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887"
+        }
+      ],
+      "entry_points": [
+        "Client::retire",
+        "Client::abort",
+        "Client::finishShutdown"
+      ],
+      "paths_reviewed": [
+        "仅原 CreateProcess 句柄；未证明退出前不关闭/reuse mailbox 或启动替代 helper。",
+        "TerminateProcess 失败保留所有权；1 秒安静间隔从调用完成后开始。",
+        "重入 guard 不提前关闭正在被系统调用使用的句柄。"
+      ],
+      "conclusion": "现行受控路径通过；同步 OS API 本身仍可能耗时，未声称 wall-clock 上限。",
+      "findings": [],
+      "evidence": [
+        "root/broker_lifecycle/receipt.json",
+        "root/broker_retry/result.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "host.subscriptions",
+      "label": "共享 Runtime 订阅与最后租约释放",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/host_game_input.h",
+          "sha256": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887"
+        }
+      ],
+      "entry_points": [
+        "install",
+        "release",
+        "clear",
+        "reap"
+      ],
+      "paths_reviewed": [
+        "按目标保留进程对象、transport 和客户端位图。",
+        "释放一个客户端不撤销仍被另一客户端使用的通道。",
+        "最后租约撤销等待 helper 生命周期完成。"
+      ],
+      "conclusion": "生产 Host 路由提取执行覆盖恢复与释放。",
+      "findings": [],
+      "evidence": [
+        "root/broker_lifecycle/receipt.json",
+        "root/broker_retry/result.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "host.window",
+      "label": "窗口重建与目标线程切换",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/host_game_input.h",
+          "sha256": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887"
+        },
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        }
+      ],
+      "entry_points": [
+        "rebindWindow",
+        "tick"
+      ],
+      "paths_reviewed": [
+        "同线程新窗口可重新绑定；线程改变释放旧 Bridge/队列后再连接。",
+        "保留目标对象防数字 PID/TID 重用；解析真实窗口生命周期。"
+      ],
+      "conclusion": "已审失窗、重建和重绑路径；真实窗口事件顺序待 Windows。",
+      "findings": [],
+      "evidence": [
+        "root/broker_lifecycle/receipt.json",
+        "root/broker_retry/result.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "host.retry",
+      "label": "相同目标重试和失败状态",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/host_game_input.h",
+          "sha256": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887"
+        },
+        {
+          "file": "source/assist/tests/host_broker_retry.cpp",
+          "sha256": "de2f532a6f7f96ca4db149e5b4f400234113fb21d60156a0321dde1df4daac4f"
+        },
+        {
+          "file": "source/assist/tests/host_broker_retry.py",
+          "sha256": "66e126cec188708b7012c0e1e3e3467e5aedd7fce6979623a872606afd0f2da1"
+        }
+      ],
+      "entry_points": [
+        "pulse",
+        "gameinput::install"
+      ],
+      "paths_reviewed": [
+        "缺少 helper、IO_PENDING、失败重试、generation 更新。",
+        "健康目标不额外启动 helper；保留错误原因。"
+      ],
+      "conclusion": "30 项当前受控检查通过，不将重试间隔计作采样降频。",
+      "findings": [],
+      "evidence": [
+        "root/broker_retry/result.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "host.process_selection",
+      "label": "手动进程偏好与旧会话退休",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        },
+        {
+          "file": "source/external_reader/source/process_target_selection.h",
+          "sha256": "512bcf16a65c65ad0b10d9a2bfdb18231a0c2f0a07a61fd637af36bfaf2f725d"
+        }
+      ],
+      "entry_points": [
+        "serviceGameTargetPreference"
+      ],
+      "paths_reviewed": [
+        "只有偏好 revision 变化才处理；规则/搜索保存不打断健康会话。",
+        "新明确 PID/creation 必须 preferredAlive；不同实例走 detach 再 reconnect。"
+      ],
+      "conclusion": "入口与既有控制台组交叉检查，属于共享路径而非另一个独立用户功能。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "host.pause",
+      "label": "战术暂停与只读副屏",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        }
+      ],
+      "entry_points": [
+        "pauseAssistControls",
+        "serviceReadOnlyDisplays",
+        "releaseBridge"
+      ],
+      "paths_reviewed": [
+        "清空命令/热键/指针队列，releaseBridge 清选择及规划状态。",
+        "副屏仍请求时保留只读会话；主叠层和乘员展示清除。",
+        "无副屏需求时 detach；重新启用不继承旧动作。"
+      ],
+      "conclusion": "已追踪保留显示和停止控制的分界；未把副屏保活当作命令通道授权。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "command.freshness",
+      "label": "普通命令时效和对局身份",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        },
+        {
+          "file": "source/assist/source/bridge.cpp",
+          "sha256": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1"
+        },
+        {
+          "file": "source/assist/source/command_delivery.h",
+          "sha256": "2515fdb0e73210348e4765099858d1e4da5a236a7c659062abd8a29c4182435a"
+        },
+        {
+          "file": "source/assist/source/plan_freshness.h",
+          "sha256": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c"
+        }
+      ],
+      "entry_points": [
+        "send",
+        "serviceCommandQueue",
+        "tick"
+      ],
+      "paths_reviewed": [
+        "队列建立与投递时检查 pid/match/原始时间。",
+        "聊天、前台、命令通道状态再次检查；Runtime 最终校验。",
+        "ACK 与执行状态区分，不重复推送过期意图。"
+      ],
+      "conclusion": "本轮源码复核，受控专项仅列在各具体修改项。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "command.reservation",
+      "label": "生产预定跨世界冻结",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        },
+        {
+          "file": "source/assist/source/bridge.cpp",
+          "sha256": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1"
+        },
+        {
+          "file": "source/assist/source/construction_policy.h",
+          "sha256": "78b888d6138b0b0f1825a8ba73058647119ca51c333dbf68b55da2b69da6b1ac"
+        }
+      ],
+      "entry_points": [
+        "send",
+        "serviceCommandQueue",
+        "Book"
+      ],
+      "paths_reviewed": [
+        "队列弹出后 readSnapshot 切换局身份时拒绝旧 reservation。",
+        "保留原类型目录 hash，busy 重排不得重新标记为新局。"
+      ],
+      "conclusion": "历史 11-08 跨世界缺陷已在当前基线修复；本轮不重复计为新增修复。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "command.selection",
+      "label": "优先选兵 mailbox 的目录身份和原始 TTL",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        },
+        {
+          "file": "source/assist/source/bridge.cpp",
+          "sha256": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1"
+        },
+        {
+          "file": "source/assist/source/protocol.h",
+          "sha256": "4e8f8b72aee03f7175cb0bcc4766af3cf8360463f04e93656d7bd4b92985e331"
+        }
+      ],
+      "entry_points": [
+        "sendSelection",
+        "serviceSelection",
+        "selectionCommand"
+      ],
+      "paths_reviewed": [
+        "在 ensureBridge 前冻结 pid/match/typeHash/created。",
+        "Host 与 Runtime 两端校验索引/掩码的目录 hash。",
+        "未知对局、跨局、过期不重标；UID 和特殊变体选择保持原定义。"
+      ],
+      "conclusion": "本轮确认并修复：21 项当前受控检查通过，冻结 pre.2 相同专项 7 项失败。",
+      "findings": [
+        "ROOT-SELECTION-CATALOGUE"
+      ],
+      "evidence": [
+        "final-checks/selection_catalogue_identity/selection_catalogue_current.receipt.json",
+        "root/selection_catalogue_before.receipt.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "command.compute_result",
+      "label": "异步计算结果身份和最终许可",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        },
+        {
+          "file": "source/assist/source/bridge.cpp",
+          "sha256": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1"
+        },
+        {
+          "file": "source/assist/source/compute_tasks.h",
+          "sha256": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c"
+        },
+        {
+          "file": "source/assist/source/compute_frame.h",
+          "sha256": "a88d6f9e3a79dad611a338ee0a60ac426bf40b96a627694534e482f125c54b55"
+        },
+        {
+          "file": "source/assist/source/external_orders_bridge.h",
+          "sha256": "14b829c97cae9709960724b58669d79b64cc17d5c5eb8f97b04f6ebf985f4fa1"
+        },
+        {
+          "file": "source/assist/source/extra_settings_io.h",
+          "sha256": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8"
+        }
+      ],
+      "entry_points": [
+        "serviceValueTask",
+        "servicePlanner",
+        "externalOrdersTick",
+        "serviceCooperative"
+      ],
+      "paths_reviewed": [
+        "结果 generation、原始 task、source match/frame/tick 经复核后发布。",
+        "允许尚有效的慢结果，不因任意新请求无限饿死；不将旧输入改成最新帧。",
+        "Runtime 最终以当前事实和手动优先复查。"
+      ],
+      "conclusion": "各计算槽具体行为由战术矩阵逐项列出；这里仅共享交付机制。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "sample.capture",
+      "label": "每个被观察逻辑帧的统一原始采样",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/world_frame.h",
+          "sha256": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f"
+        },
+        {
+          "file": "source/shared/source/world_frame_capture.h",
+          "sha256": "54e646ebfe75d8614f07b0b0fb65dfb3fcaa476bb1a05d6f2eb1c55d85315b41"
+        },
+        {
+          "file": "source/shared/source/world_frame_transport.h",
+          "sha256": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9"
+        },
+        {
+          "file": "source/external_reader/source/process_reader.h",
+          "sha256": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1"
+        },
+        {
+          "file": "source/assist/source/bridge.cpp",
+          "sha256": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1"
+        }
+      ],
+      "entry_points": [
+        "tick",
+        "CaptureGraph"
+      ],
+      "paths_reviewed": [
+        "统一 capture 在消费者投影前完成并 seal；需求位合并。",
+        "同一 source 身份复用已封存 bytes；world 变化废止旧身份。",
+        "本轮没有改低原始采样频率。"
+      ],
+      "conclusion": "源码检查完成；每个实际游戏帧是否都被调度观察须实机测量，不能由受控 fixture 推导。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "sample.raw_bytes",
+      "label": "缺页与跨页读取的完整性",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/world_frame.h",
+          "sha256": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f"
+        },
+        {
+          "file": "source/shared/source/world_frame_capture.h",
+          "sha256": "54e646ebfe75d8614f07b0b0fb65dfb3fcaa476bb1a05d6f2eb1c55d85315b41"
+        },
+        {
+          "file": "source/shared/source/world_frame_transport.h",
+          "sha256": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9"
+        },
+        {
+          "file": "source/external_reader/source/process_reader.h",
+          "sha256": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1"
+        }
+      ],
+      "entry_points": [
+        "Snapshot::read",
+        "Snapshot::capture",
+        "ProcessReader::frameRead",
+        "WorldFrameScope"
+      ],
+      "paths_reviewed": [
+        "绑定 token 后缺页不回退 live RPM。",
+        "必需页缺失使 scope 不完整；缺页请求只用于下一次 capture。",
+        "嵌套 scope 恢复旧 source 和完整性状态。"
+      ],
+      "conclusion": "真实 frame core 的无异常与 Win32 I/O 替身两种编译执行通过；Passenger 新专项另列。",
+      "findings": [],
+      "evidence": [
+        "root/supplemental/world_frame_core/receipt.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "sample.mapping",
+      "label": "共享采样发布和动态缓冲",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/world_frame.h",
+          "sha256": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f"
+        },
+        {
+          "file": "source/shared/source/world_frame_capture.h",
+          "sha256": "54e646ebfe75d8614f07b0b0fb65dfb3fcaa476bb1a05d6f2eb1c55d85315b41"
+        },
+        {
+          "file": "source/shared/source/world_frame_transport.h",
+          "sha256": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9"
+        },
+        {
+          "file": "source/external_reader/source/process_reader.h",
+          "sha256": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1"
+        }
+      ],
+      "entry_points": [
+        "Server::publish",
+        "Client::acquire"
+      ],
+      "paths_reviewed": [
+        "DataHeader、页范围、capacity、sequence 与 key 校验。",
+        "双缓冲发布与 immutable token 保留；持有者不读取被复用的新世界。",
+        "目标 PID/connection/match、generation 不匹配拒绝。"
+      ],
+      "conclusion": "源码复核，跨位数布局单独编译核对。",
+      "findings": [],
+      "evidence": [
+        "root/crossbit-abi.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "sample.identity",
+      "label": "外部只读客户端的连接身份",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/external_reader/source/process_reader.h",
+          "sha256": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1"
+        },
+        {
+          "file": "source/shared/source/world_frame_transport.h",
+          "sha256": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9"
+        }
+      ],
+      "entry_points": [
+        "beginWorldFrame",
+        "open",
+        "close",
+        "WorldFrameScope"
+      ],
+      "paths_reviewed": [
+        "显式 token 仍核对 pid、connection、match 和活跃客户端。",
+        "断连清 frame/demand；generation 不混用。",
+        "读失败不能把数据默认值标为完整新样本。"
+      ],
+      "conclusion": "与 Passenger 修复共同复核，未添加第二份原始世界采样。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "sample.display",
+      "label": "显示确认与控制时效分离",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        },
+        {
+          "file": "source/assist/source/display_sample_lease.h",
+          "sha256": "ab9d7035595cb45da27bfa5bef3d4a0dc89581339f4899b4d8a97c03f22b01cd"
+        },
+        {
+          "file": "source/external_reader/source/tactical_sampler.h",
+          "sha256": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab"
+        }
+      ],
+      "entry_points": [
+        "sampleExternal",
+        "displaylease::frameCurrent"
+      ],
+      "paths_reviewed": [
+        "同帧显示复用保留原 sampledTick；新近确认单独记录。",
+        "暂停的同帧展示不刷新命令时效。",
+        "失败样本回滚，换局/帧倒退清除。"
+      ],
+      "conclusion": "暂停显示和原始命令时间没有互相替代；旧空闲飞机缺陷已在 pre.1 修复。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "sample.ui_live",
+      "label": "相机和选取 UI 的额外只读输入",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        },
+        {
+          "file": "source/external_reader/source/tactical_sampler.h",
+          "sha256": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab"
+        },
+        {
+          "file": "source/external_reader/source/process_reader.h",
+          "sha256": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1"
+        },
+        {
+          "file": "source/external_reader/source/shared_reader.h",
+          "sha256": "c506270e566d1d3144877e677f0915e8908059b19d86580a6522a85fdf6b93aa"
+        }
+      ],
+      "entry_points": [
+        "sampleExternal UIKey",
+        "refreshCamera",
+        "shared_reader"
+      ],
+      "paths_reviewed": [
+        "当前选取列表和相机属 UI 状态，会独立读取来决定同世界帧的展示重投影。",
+        "不将 UI 读到的值重写为世界采样时间或新逻辑帧。",
+        "失败选择列表使用未知标记。"
+      ],
+      "conclusion": "这是非穷尽示例；chat、viewport、inspect 和即时身份确认等也有独立只读访问。明确区分 UI 输入与世界原始样本，不声称所有 live 读均已消失。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "sample.passenger",
+      "label": "乘员展示接入统一样本",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        },
+        {
+          "file": "source/assist/source/passenger_draw.h",
+          "sha256": "123eba0051124e5fef8884bb77ba9b8860d1866084b4b8a8a2ca30ee763916b5"
+        },
+        {
+          "file": "source/external_reader/source/passenger_bubbles.h",
+          "sha256": "23e8c3466eeaee760f123f304dafdbe6718cc0294a430ab08ff0b02b33f05aa7"
+        }
+      ],
+      "entry_points": [
+        "sampleExternal demand",
+        "passengerView"
+      ],
+      "paths_reviewed": [
+        "启用乘员/危险乘员请求 Passengers 与 Combat 字段。",
+        "显式传入同一 source 和 confirmed；核对 pid/match/frame/tick/house。",
+        "WorldFrameScope 覆盖全部乘员/类型/武器读取；缺页不续租。"
+      ],
+      "conclusion": "真实 CaptureGraph→Server→ProcessReader→passengerView 受控专项通过：旧头首次绘制14次live RPM，当前首次及1000次同帧重绘均0；详见显示矩阵。",
+      "findings": [
+        "DISPLAY-F5-PASSENGER-RAW-FRAME"
+      ],
+      "evidence": [
+        "display/passenger_current/receipt.json",
+        "display/passenger_before/receipt.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "worker.latest",
+      "label": "异步最新请求和旧结果退休",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/latest_worker.h",
+          "sha256": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81"
+        },
+        {
+          "file": "source/assist/tests/latest_worker.cpp",
+          "sha256": "2b5862ab94fc9c1a92302a5800fb5b22d732570dff97733c0efd91d98e66b7b9"
+        }
+      ],
+      "entry_points": [
+        "asyncwork::Latest"
+      ],
+      "paths_reviewed": [
+        "运行中的计算不持有 UI 发布锁；待处理只保留最新输入。",
+        "invalidate generation 丢弃旧计算结果，shutdown 返回并完成 join 后不再回调；开始 shutdown 后仍可执行已经发布的回调。",
+        "已发布 immutable 结果可在 presenter 持有时延续。"
+      ],
+      "conclusion": "生产 worker 的阻塞/并发 fixture 本轮运行通过；原始命令和日志单独保留。",
+      "findings": [],
+      "evidence": [
+        "root/supplemental/latest_worker/receipt.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "worker.recurring",
+      "label": "持续 worker 调度和关停",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/recurring_worker.h",
+          "sha256": "886abe4a62bdeba427582e99d4af41543c6ff7d63140931d19f468fd98d605dd"
+        }
+      ],
+      "entry_points": [
+        "asyncwork::Recurring"
+      ],
+      "paths_reviewed": [
+        "condition_variable 等待允许配置/暂停唤醒。",
+        "计算在锁外；退出与回调拥有者清理有序。",
+        "仅线程调度机制，未修改 raw sample 的逻辑帧契约。"
+      ],
+      "conclusion": "源码复核；没有给 OS 线程调度延迟作绝对保证。",
+      "findings": [],
+      "evidence": [],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "worker.frame_pool",
+      "label": "不可变帧存储复用",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/shared/source/frame_pool.h",
+          "sha256": "2816e39772b12e48b2dc768852793f51b06ebbde845abce0f0972800541c4edc"
+        },
+        {
+          "file": "source/shared/source/world_frame_pool.h",
+          "sha256": "58a99f8f9d926bbff9298d68006ff3ad45d648ca6c86751f75cbaf81660a91ab"
+        },
+        {
+          "file": "source/external_reader/source/scene_frame_reuse.h",
+          "sha256": "3d7edabade0ea44ad41eb3fb6c41d8afeff572b2c47d28d6c7ae54a1d43d9f40"
+        }
+      ],
+      "entry_points": [
+        "FramePool",
+        "worldframe::SnapshotPool",
+        "external::camera::FrameReuse",
+        "external::camera::samePixels"
+      ],
+      "paths_reviewed": [
+        "只有无外部 pin 的存储可复用；当前展示持有的结果不覆盖。",
+        "保留复用槽和空闲缓存数量受限；所有槽被 pin 时仍可分配临时帧，活跃帧总内存没有此处硬上限。失败不返回上一世界数据。"
+      ],
+      "conclusion": "本轮 snapshot_reuse ASan+UBSan 重新通过，不沿用历史日志；未执行泄漏检测。",
+      "findings": [],
+      "evidence": [
+        "final-checks/snapshot_reuse/execution.json",
+        "final-checks/snapshot_reuse/receipt.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "ui.toast_clock",
+      "label": "提示存活状态与 DWORD 回绕",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+        }
+      ],
+      "entry_points": [
+        "notify",
+        "activeToast",
+        "paint",
+        "tick"
+      ],
+      "paths_reviewed": [
+        "显式 toastActive 区分无提示和合法 0 截止时钟。",
+        "signed elapsed 判过期并退休，四个展示/状态门共用 helper。",
+        "换局清理 active 状态。"
+      ],
+      "conclusion": "本轮确认并修复：15 项当前受控检查通过，冻结 pre.2 相同专项 6 项失败。",
+      "findings": [
+        "ROOT-TOAST-WRAP"
+      ],
+      "evidence": [
+        "final-checks/toast_clock_wrap/toast_clock_current.receipt.json",
+        "root/toast_clock_before.receipt.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": true,
+        "cross_compile": false,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    },
+    {
+      "id": "abi.crossbit",
+      "label": "Host/Runtime 全共享布局双位数验证",
+      "availability": "internal_shared_mechanism",
+      "implementation_refs": [
+        {
+          "file": "source/assist/source/protocol.h",
+          "sha256": "4e8f8b72aee03f7175cb0bcc4766af3cf8360463f04e93656d7bd4b92985e331"
+        },
+        {
+          "file": "source/tools/verify_crossbit_abi.py",
+          "sha256": "46c0c26ea6318e8218b752c44b280d7ece3b0949201979401ac4bef326706c35"
+        },
+        {
+          "file": "source/tools/verify_windows_outputs.py",
+          "sha256": "0ce72921599f3122e3c9a581ce8ff6d8ad0042d6a7a6faa6faf6609169f19c58"
+        }
+      ],
+      "entry_points": [
+        "verify_crossbit_abi"
+      ],
+      "paths_reviewed": [
+        "真正 x86 和 x64 Windows 目标分别编译并读取对象布局。",
+        "897 条布局无差异；新增 selectTypeHash/overflow offset 与显式基准一致。",
+        "PE parser negative checks 通过。"
+      ],
+      "conclusion": "Assist102，Shared23162544；没有执行 Windows 映像。",
+      "findings": [],
+      "evidence": [
+        "root/crossbit-abi.json"
+      ],
+      "verification": {
+        "source_review": true,
+        "controlled_execution": false,
+        "cross_compile": true,
+        "windows_ui": false,
+        "actual_game": false,
+        "multiplayer": false,
+        "real_fps": false
+      },
+      "validation_gaps": [
+        "受控边界和源码审查不替代 Windows 原生调度、窗口/驱动、真实游戏或联机验收。"
+      ]
+    }
+  ],
+  "engine_findings": "本轮没有新的游戏反汇编地址、字段或原生 ABI 发现；所有新增结论来自工具箱源码及受控执行。",
+  "historical_issues_not_new_fixes": [
+    "Broker 持共享锁等待已在当前基线修复",
+    "生产预定跨局重标已在当前基线修复",
+    "暂停空闲飞机已在 pre.1 修复",
+    "建造提示框第75项边界已在当前基线修复"
+  ],
+  "unresolved": [
+    {
+      "id": "mixed-canvas-cursor-pixel-bounds",
+      "status": "unfixed_prior_automatic_approval_rejection",
+      "reason": "possible cybersecurity risk",
+      "retried_this_turn": false
+    }
+  ]
+}

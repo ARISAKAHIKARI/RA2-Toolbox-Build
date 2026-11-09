@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the frozen 1.0.47-pre.2 build; never build or publish.
+"""Package the frozen 1.0.47-pre.4 build; never build or publish.
 
 Use the verified 1.0.46.4 originals, themes, licenses and seven-file engine.
 Only prepare_runtime.py may change, with a current dependency check.
@@ -30,7 +30,9 @@ POLICY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(POLICY)
 require, sha, encoded = POLICY.require, POLICY.sha, POLICY.encoded
 
-VERSION, FILE_VERSION = '1.0.47-pre.2', '1.0.47.2'
+VERSION, FILE_VERSION = '1.0.47-pre.4', '1.0.47.4'
+ASSIST_PROTOCOL = 102
+BASE_SHARED_BYTES, SHARED_BYTES = 23162528, 23162544
 BASE_NAME = 'RA2Toolbox-1.0.46-x64-Full.zip'
 BASE_BYTES = 4428436
 BASE_SHA = 'd8d5d871e0358579b49c1a2dedbfca48c601ea22119bf897e18593ae7233533c'
@@ -84,6 +86,98 @@ CHECK_BINDINGS = {
 }
 FUNCTIONAL_CHECKS = frozenset({'console_receipt_order', 'catalogue_recovery',
                              'planner_batch_delivery', 'scene_extra_recovery'})
+FEATURE_BINDINGS = {
+    'planner_defense_delivery': (
+        {'source/assist/tests/planner_defense_delivery.cpp'},
+        {'source/assist/source/external_planner.h', 'source/assist/source/planner_task.h',
+         'source/assist/source/value_task.h', 'source/shared/source/latest_worker.h'}),
+    'missile_manual_lifecycle': (
+        {'source/assist/tests/missile_manual_lifecycle.py'},
+        {'source/assist/source/missile_bridge.h'}),
+    'missile_manual_capacity': (
+        {'source/assist/tests/missile_manual_capacity.py'},
+        {'source/assist/source/missile_bridge.h', 'source/assist/source/missile_compute.h',
+         'source/assist/source/compute_frame.h', 'source/assist/source/compute_input_copy.h',
+         'source/assist/source/compute_policy.h', 'source/assist/source/plan_freshness.h',
+         'source/assist/source/planner_types.h', 'source/assist/source/object_index.h',
+         'source/assist/source/unit_task_arbiter.h'}),
+    'patrol_capacity': (
+        {'source/assist/tests/mo_patrol_capacity.cpp'},
+        {'source/assist/source/mo_orders.h', 'source/assist/source/mo_patrol_graph.h'}),
+    'patrol_small_buffer': (
+        {'source/assist/tests/mo_patrol_capacity.cpp'},
+        {'source/assist/source/mo_orders.h', 'source/assist/source/mo_patrol_graph.h'}),
+    'selection_catalogue_identity': (
+        {'source/assist/tests/selection_catalogue_identity.py'},
+        {'source/assist/source/main.cpp', 'source/assist/source/bridge.cpp',
+         'source/assist/source/protocol.h'}),
+    'toast_clock_wrap': (
+        {'source/assist/tests/toast_clock_wrap.py'},
+        {'source/assist/source/main.cpp'}),
+    'console_composition': (
+        {'source/suite/tests/console_composition_test.mjs'},
+        {'source/suite/frontend/app.js'}),
+    'console_hotkey_presentation': (
+        {'source/suite/tests/console_hotkey_presentation_test.mjs'},
+        {'source/suite/frontend/app.js'}),
+    'secondary_drag_bounds': (
+        {'source/unit_monitor/tests/secondary_drag_bounds.py'},
+        {'source/unit_monitor/source/main.cpp'}),
+    'secondary_render_retry': (
+        {'source/unit_monitor/tests/secondary_render_retry.py'},
+        {'source/unit_monitor/source/main.cpp'}),
+    'icon_cache_reopen': (
+        {'source/unit_monitor/tests/icon_cache_reopen.py'},
+        {'source/unit_monitor/source/icon_cache.h', 'source/unit_monitor/source/core.h'}),
+    'superweapon_result_feedback': (
+        {'source/assist/tests/superweapon_result_feedback.py'},
+        {'source/assist/source/main.cpp', 'source/assist/source/bridge.cpp',
+         'source/assist/source/superweapon_sidebar_bridge.h'}),
+    'pause_key_pairing': (
+        {'source/assist/tests/pause_key_pairing.py', 'source/assist/tests/superweapon_result_feedback.py'},
+        {'source/assist/source/pause_view_bridge.h', 'source/assist/source/native_message_policy.h',
+         'source/game_runtime/source/runtime.cpp', 'source/assist/source/hotkey_routes.h',
+         'source/shared/source/key_gesture.h', 'source/assist/source/pause_view_policy.h',
+         'source/assist/source/pointer_intent.h'}),
+    'native_mouse_pairing': (
+        {'source/assist/tests/native_mouse_pairing.py', 'source/assist/tests/pause_key_pairing.py',
+         'source/assist/tests/superweapon_result_feedback.py'},
+        {'source/assist/source/native_message_policy.h', 'source/assist/source/pointer_host.h',
+         'source/game_runtime/source/runtime.cpp', 'source/assist/source/pause_view_bridge.h',
+         'source/assist/source/hotkey_routes.h', 'source/shared/source/key_gesture.h',
+         'source/assist/source/pause_view_policy.h', 'source/assist/source/pointer_intent.h'}),
+    'passenger_frame_sampling': (
+        {'source/assist/tests/passenger_frame_sampling.py',
+         'source/assist/tests/passenger_frame_sampling.cpp', 'source/assist/tests/world_frame_core.cpp',
+         'source/assist/tests/world_frame_core_test.py', 'source/tests/winmock/windows.h'},
+        {'source/assist/source/main.cpp', 'source/assist/source/passenger_draw.h',
+         'source/assist/source/passenger_motion.h', 'source/assist/source/display_sample_lease.h',
+         'source/assist/source/label_motion.h', 'source/external_reader/source/passenger_bubbles.h',
+         'source/external_reader/source/game_view.h', 'source/external_reader/source/process_reader.h',
+         'source/shared/source/world_frame.h', 'source/shared/source/world_frame_capture.h',
+         'source/shared/source/world_frame_transport.h'}),
+}
+HOTKEY_BASELINE_COMMIT = '93f02787d42b61ff5c30e450317f99ba00673149'
+HOTKEY_BASELINE_REGISTRY_SHA = '5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce'
+HOTKEY_BINDINGS = {
+    'hotkey_command_context': (
+        {'source/assist/tests/hotkey_command_context.py',
+         'source/assist/tests/fixtures/hotkey_pre1473/main.cpp',
+         'source/assist/tests/fixtures/hotkey_pre1473/hotkey_host.h'},
+        {'source/assist/source/main.cpp', 'source/assist/source/hotkey_host.h',
+         'source/assist/source/hotkey_routes.h', 'source/assist/source/control_link.h',
+         'source/assist/source/protocol.h', 'source/shared/source/key_gesture.h',
+         'source/assist/source/additional_settings.h', 'source/assist/source/type_hotkey.h',
+         'source/assist/source/automatic_features.h', 'source/assist/source/activation_diagnostic.h'}),
+    'hotkey_message_recovery': (
+        {'source/assist/tests/hotkey_message_recovery.py',
+         'source/assist/tests/fixtures/hotkey_pre1473/hotkey_routes.h'},
+        {'source/assist/source/hotkey_routes.h', 'source/shared/source/key_gesture.h'}),
+}
+HOTKEY_CHECKS = frozenset(HOTKEY_BINDINGS)
+FEATURE_BINDINGS.update(HOTKEY_BINDINGS)
+CHECK_BINDINGS.update(FEATURE_BINDINGS)
+FEATURE_CHECKS = frozenset(FEATURE_BINDINGS)
 DEPENDENCY_BINDINGS = (
     {'source/tools/test_dependency_probes.py'},
     {'source/engine/prepare_runtime.py', 'source/engine/runtime-dependencies.json'},
@@ -184,10 +278,205 @@ def functional_success_log(name, text):
     return False
 
 
+def feature_success_log(name, text):
+    """Recognize one complete current raw run, never a claimed-pass wrapper.
+
+    Exact current counts and scenario output are bound to the test and production
+    sources by validate_evidence. Build logs and failure controls cannot satisfy
+    these gates; the patrol ASan buffer run is a separate execution record.
+    """
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    exact = {
+        'planner_defense_delivery': [
+            'omitted first_defense=0 next_defense=1',
+            'returned drops=15 miners=20 duplicate=0 first=1 early=0 due=1',
+            'returned drops=0 miners=0 duplicate=0 first=1 early=0 due=1',
+            'returned drops=0 miners=20 duplicate=1 first=1 early=0 due=1',
+            'host_task first=0 next=1',
+            'PASS: 21 checks, 0 failures; real Planner final-batch defense lifecycle'],
+        'missile_manual_lifecycle': [
+            'dead_history count=1 new_owned=1',
+            'PASS: 16 checks, 0 failures; extracted production manual-ownership helpers'],
+        'missile_manual_capacity': [
+            'PASS: 23 checks, 0 failures; exact production ownership/delivery/Host dispatch paths'],
+        'patrol_capacity': [
+            'width=2 count=4 bind=1', 'width=4 count=8 bind=1',
+            'width=8 count=16 bind=1', 'width=10 count=16 bind=1',
+            'width=20 count=16 bind=1', 'width=40 count=16 bind=1',
+            'width=80 count=16 bind=1',
+            'PASS: 31 checks, 0 failures; real patrol to route, synthetic graph only'],
+        'patrol_small_buffer': [
+            'buffer count=16 digest=1280',
+            'PASS: 1 checks, 0 failures; real patrol to route, synthetic graph only'],
+        'selection_catalogue_identity': ['21 checks, 0 failures'],
+        'toast_clock_wrap': ['15 checks, 0 failures'],
+        'secondary_drag_bounds': ['PASS secondary drag: 7 boundary cases + 900 range cases'],
+        'secondary_render_retry': ['PASS secondary retry: 8 submission and recovery cases'],
+        'icon_cache_reopen': [
+            'PASS failed scope -> same-path reconnect -> cache persistence/restore; '
+            'healthy reconnect keeps generation'],
+        'passenger_frame_sampling': [
+            'first passenger paint: bubbles=1 live_RPM=0',
+            'PASS 1000 paints of one logic frame: zero live RPM, immutable contents/position',
+            'PASS missing/failed passenger page: no live fallback, 120ms lease never renewed, '
+            'next complete frame recovers',
+            'PASS no token/unconfirmed/wrong PID/match/frame/tick/retired publication/disabled/chat: '
+            'closed without RPM',
+            'PASS inspect disappearance/danger-only/shared demand routing: '
+            'no rate reduction or alternate live scanner',
+            'PASS paused frame independent confirmation and confirmation expiry',
+            'passenger frame sampling: 2158 checks passed'],
+    }
+    if name in exact:
+        return lines == exact[name]
+    if not lines:
+        return False
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('Duplicate result field')
+            result[key] = value
+        return result
+
+    try:
+        result = json.loads(lines[-1], object_pairs_hook=unique_object)
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(result, dict):
+        return False
+    console = {
+        'console_composition': (16, 'production listeners with controlled DOM event fixture'),
+        'console_hotkey_presentation': (8, 'actual production encodeHotkey and keyName'),
+    }
+    if name in console:
+        count, level = console[name]
+        return (len(lines) == count + 1 and len(set(lines[:-1])) == count
+                and all(line.startswith('PASS ') for line in lines[:-1])
+                and set(result) == {'suite', 'checks', 'failures', 'level'}
+                and result.get('suite') == name and result.get('level') == level
+                and type(result.get('checks')) is int and result['checks'] == count
+                and type(result.get('failures')) is int and result['failures'] == 0)
+    counts = {'superweapon_result_feedback': 13, 'pause_key_pairing': 22, 'native_mouse_pairing': 36}
+    if name in counts:
+        return (len(lines) == 1 and set(result) == {'checks', 'failures', 'passed'}
+                and type(result.get('checks')) is int and result['checks'] == counts[name]
+                and type(result.get('failures')) is int and result['failures'] == 0
+                and result.get('passed') is True)
+    return False
+
+
+def unique_json(text):
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('Duplicate result field')
+            result[key] = value
+        return result
+    return json.loads(text, object_pairs_hook=unique_object)
+
+
+def hotkey_success_log(name, text):
+    """Require current production results plus the frozen, executed failure case."""
+    try:
+        result = unique_json(text)
+    except (ValueError, TypeError):
+        return False
+    if not isinstance(result, dict) or result.get('passed') is not True:
+        return False
+    sources_key = 'sources' if name == 'hotkey_command_context' else 'source_hashes'
+    sources = result.get(sources_key)
+    expected_sources = set().union(*HOTKEY_BINDINGS[name])
+    if (not isinstance(sources, dict) or set(sources) != expected_sources
+            or not all(isinstance(value, str) and re.fullmatch(r'[0-9a-f]{64}', value)
+                       for value in sources.values())):
+        return False
+    if name == 'hotkey_command_context':
+        if (set(result) != {'passed', 'checks', 'scenarios', 'negative_control', 'sources', 'scope'}
+                or type(result.get('checks')) is not int or result['checks'] < 67
+                or type(result.get('scenarios')) is not int or result['scenarios'] < 22
+                or result['checks'] < result['scenarios']
+                or result.get('scope') != 'production Host identity, registration and hotkey dispatch '
+                'functions with simulated Win32 and command sink; not real Windows or game execution'):
+            return False
+        negative = result.get('negative_control')
+        if (not isinstance(negative, dict)
+                or set(negative) != {'requested', 'baseline_commit', 'reproduced', 'cases', 'scope',
+                                     'extracted_source_sha256', 'fixture_source_sha256'}
+                or negative.get('requested') is not True or negative.get('reproduced') is not True
+                or negative.get('baseline_commit') != HOTKEY_BASELINE_COMMIT
+                or negative.get('scope') != 'baseline main.cpp/hotkey_host.h functions; '
+                'current Registry shared with production case'
+                or negative.get('extracted_source_sha256') != {
+                    'source/assist/source/main.cpp': '34178e444c44be457f71c2b38df73124e60448cd3d88901219ca8bce2290026a',
+                    'source/assist/source/hotkey_host.h': '69dc30de77236285069f3234014fad1d231b209e264b120a52e6d6647cf81a75'}
+                or negative.get('fixture_source_sha256') != {
+                    'source/assist/tests/fixtures/hotkey_pre1473/main.cpp': 'c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f',
+                    'source/assist/tests/fixtures/hotkey_pre1473/hotkey_host.h': '5650d38558132a364500360848e45afd55953d3691c4b8cd581d13f01b34ad6c'}):
+            return False
+        cases = negative.get('cases')
+        expected = {
+            'registration': (2, 'display failure must retain command hotkey mode'),
+            'message': (1, 'WM_HOTKEY must dispatch AutoBoard after display failure'),
+            'service': (3, 'pending hotkey must dispatch AutoBoard after display failure'),
+        }
+        if not isinstance(cases, dict) or set(cases) != set(expected):
+            return False
+        for key, (checks, failure) in expected.items():
+            case = cases[key]
+            if (not isinstance(case, dict)
+                    or set(case) != {'passed', 'checks', 'scenarios', 'failure', 'returncode'}
+                    or case.get('passed') is not False or case.get('failure') != failure
+                    or any(type(case.get(field)) is not int or case[field] != value
+                           for field, value in (('checks', checks), ('scenarios', 1), ('returncode', 2)))):
+                return False
+        return True
+    if name == 'hotkey_message_recovery':
+        if (set(result) != {'test', 'passed', 'case_count', 'check_count', 'production_run',
+                           'current_missing_message_probe', 'baseline_negative_control',
+                           'source_hashes', 'scope'}
+                or result.get('test') != name
+                or type(result.get('case_count')) is not int or result['case_count'] <= 0
+                or type(result.get('check_count')) is not int
+                or result['check_count'] < result['case_count']
+                or result.get('scope') != 'Production Registry with synthetic key states and message timestamps; '
+                'not native Windows, a game process, GPU or multiplayer validation.'):
+            return False
+        summary = json.dumps({'case_count': result['case_count'],
+                              'check_count': result['check_count'], 'passed': True},
+                             separators=(',', ':'))
+        for key, code, stdout in (
+            ('production_run', 0, summary),
+            ('current_missing_message_probe', 0, 'PASS ordinary_without_wm expected=1 actual=1'),
+            ('baseline_negative_control', 1, 'FAIL ordinary_without_wm expected=1 actual=0'),
+        ):
+            row = result.get(key)
+            fields = {'exit_code', 'stdout', 'stderr'}
+            if key == 'baseline_negative_control':
+                fields |= {'commit', 'sha256', 'expected_failure'}
+            if (not isinstance(row, dict) or set(row) != fields
+                    or type(row.get('exit_code')) is not int or row['exit_code'] != code
+                    or row.get('stdout') != stdout or row.get('stderr') != ''):
+                return False
+            if key == 'baseline_negative_control' and (
+                    row.get('commit') != HOTKEY_BASELINE_COMMIT
+                    or row.get('sha256') != HOTKEY_BASELINE_REGISTRY_SHA
+                    or row.get('expected_failure') is not True):
+                return False
+        return True
+    return False
+
+
 def success_log(name, text):
     """Recognize existing test output; never append or synthesize a PASS marker."""
+    if name in HOTKEY_CHECKS:
+        return hotkey_success_log(name, text)
     if name in FUNCTIONAL_CHECKS:
         return functional_success_log(name, text)
+    if name in FEATURE_CHECKS:
+        return feature_success_log(name, text)
     objects, texts = [], [text]
 
     def visit(value):
@@ -264,10 +553,20 @@ def validate_evidence(validation, receipt_path, commit, source_tree, source_inpu
         require(isinstance(command, list) and command
                 and all(isinstance(value, str) and value for value in command),
                 'Missing executed command argv: ' + name)
+        if name == 'patrol_small_buffer':
+            compiled = check.get('compile_command')
+            require(isinstance(compiled, list) and compiled
+                    and all(isinstance(value, str) and value for value in compiled)
+                    and '-fsanitize=address' in compiled and '-fno-omit-frame-pointer' in compiled
+                    and not any(value.startswith('-fno-sanitize=') for value in compiled)
+                    and type(check.get('compile_exit_code')) is int and check['compile_exit_code'] == 0
+                    and '--small-buffer' in command[1:],
+                    'Patrol buffer gate requires the executed ASan build and buffer run')
         raw_path = check.get('log_path')
         require(isinstance(raw_path, str) and raw_path, 'Missing execution log: ' + name)
         path = Path(raw_path)
         path = (path if path.is_absolute() else receipt_path.parent / path).resolve()
+        report_path = path
         data = path.read_bytes()
         require(data and sha(data) == check.get('log_sha256'), 'Execution log is empty or changed: ' + name)
         require(success_log(name, data.decode('utf-8', errors='replace')),
@@ -282,6 +581,32 @@ def validate_evidence(validation, receipt_path, commit, source_tree, source_inpu
                         'Validated input is outside the completed build source: ' + path)
                 require(digest == source_inputs[path]['sha256'] == sha(tracked(path)),
                         'Tested source differs from compiled source: ' + path)
+        if name in HOTKEY_CHECKS:
+            report = json.loads(data)
+            embedded = report['sources' if name == 'hotkey_command_context' else 'source_hashes']
+            for path, digest in embedded.items():
+                require(digest == source_inputs[path]['sha256'] == sha(tracked(path)),
+                        'Hotkey raw report source differs from compiled source: ' + path)
+            if name == 'hotkey_command_context':
+                expected_results = {
+                    'production-all.log': {key: report[key] for key in ('passed', 'checks', 'scenarios')},
+                    **{'negative-control-' + key + '.log':
+                       {field: value for field, value in case.items() if field != 'returncode'}
+                       for key, case in report['negative_control']['cases'].items()},
+                }
+                expected_paths = {str(report_path.parent / filename): result
+                                  for filename, result in expected_results.items()}
+                supporting = check.get('supporting_logs')
+                require(isinstance(supporting, dict) and set(supporting) == set(expected_paths),
+                        'Missing current/negative hotkey execution log bindings')
+                for path, expected in expected_paths.items():
+                    raw = Path(path).read_bytes()
+                    require(supporting[path] == {'bytes': len(raw), 'sha256': sha(raw)},
+                            'Hotkey execution log changed after run: ' + path)
+                    actual = unique_json(raw)
+                    require(json.dumps(actual, sort_keys=True) == json.dumps(expected, sort_keys=True),
+                            'Hotkey execution log result differs from report: ' + path)
+                    logs[path] = supporting[path]
     return logs
 
 
@@ -290,6 +615,12 @@ def engine_change_plan(resources, engine):
     changed = sorted(name for name in engine if engine[name] != resources[name])
     require(set(changed) <= APPROVED_ENGINE_CHANGES, 'Engine change is outside the reviewed plan')
     return changed
+
+
+def verify_shared_transition(base_bytes, current_bytes):
+    require(type(base_bytes) is int and type(current_bytes) is int
+            and (base_bytes, current_bytes) == (BASE_SHARED_BYTES, SHARED_BYTES),
+            'Shared layout differs from reviewed Assist 102 tail extension')
 
 
 def assemble(resources, current, engine):
@@ -392,14 +723,14 @@ def main():
     require((version, file_version) == (VERSION, FILE_VERSION), 'Wrong prerelease version')
     identity_bytes = tracked('source/BUILD_SOURCE_MANIFEST.json')
     identity = json.loads(identity_bytes)
-    require(identity.get('version') == VERSION and identity.get('build_protocol') == 101,
+    require(identity.get('version') == VERSION and identity.get('build_protocol') == ASSIST_PROTOCOL,
             'Source identity or Assist protocol differs')
     require((binaries / 'BUILD_SOURCE_MANIFEST.json').read_bytes() == identity_bytes, 'Built source identity differs')
     target_bytes = (binaries / 'BUILD_TARGET.json').read_bytes()
     target = json.loads(target_bytes)
     require(tuple(target.get(key) for key in ('host', 'runtime', 'broker', 'assist_protocol',
                                              'cursor_protocol', 'runtime_protocol', 'console_ui'))
-            == ('x64', 'x86', 'x86', 101, 155, 4, 'webview2'), 'Wrong completed build profile')
+            == ('x64', 'x86', 'x86', ASSIST_PROTOCOL, 155, 4, 'webview2'), 'Wrong completed build profile')
     actual, errors = verify(binaries, host_arch='x64', webview2=True)
     require(not errors, 'PE verification failed: ' + '; '.join(errors))
     verified = dict(actual)
@@ -408,8 +739,8 @@ def main():
     for name, data in current.items():
         POLICY.verify_artifact_binding(name, built[name], verified[name], data)
 
-    require(actual['GameRuntime.dll']['assist_shared_bytes'] == base_manifest['assist_shared_bytes'],
-            'Shared layout changed despite unchanged protocol')
+    verify_shared_transition(base_manifest['assist_shared_bytes'],
+                             actual['GameRuntime.dll']['assist_shared_bytes'])
     for name in ('RA2Toolbox.exe', 'GameRuntime.dll', 'GameRuntimeHost32.exe'):
         require(sha(current[name]) != base_record['files'][name]['sha256'], 'Previous product program reused: ' + name)
     dependency_manifest = POLICY.verify_dependency_manifest(engine['engine/runtime-dependencies.json'])
@@ -445,7 +776,7 @@ def main():
             'build_method': 'Zig 0.13.0 Windows-target cross compilation on Linux',
             'build_provenance_sha256': sha(provenance_bytes), 'source_files_verified': len(source_inputs),
             'packaging_inputs': {name: tracked_inputs[name] for name in PACKAGE_INPUTS},
-            'assist_protocol': 101, 'cursor_protocol': 155, 'runtime_protocol': 4,
+            'assist_protocol': ASSIST_PROTOCOL, 'cursor_protocol': 155, 'runtime_protocol': 4,
             'assist_shared_bytes': actual['GameRuntime.dll']['assist_shared_bytes'],
             'actual_pe_verified': actual, 'validation': validation,
             'validation_evidence_sha256': sha(validation_bytes), 'verified_validation_logs': log_bindings,

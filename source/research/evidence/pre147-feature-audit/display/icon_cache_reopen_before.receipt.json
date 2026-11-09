@@ -1,0 +1,38 @@
+{
+  "source": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/unit_monitor/source/icon_cache.h",
+  "source_sha256": "5b41387539734baf50564c624b98df5cd7955fa57888cb05481dfbe355cf2cf7",
+  "test_sha256": "09906c0e895d40291511559eb8962c4aa790ba1d0e0d436dc813470f276c7224",
+  "verification_level": "Linux real production cache worker and filesystem; access visibility changed only for deterministic state observation",
+  "not_verified": [
+    "Windows MoveFileEx behavior",
+    "actual game asset caches"
+  ],
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O1",
+        "-pthread",
+        "-D_GLIBCXX_ASSERTIONS",
+        "-I",
+        "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/unit_monitor/source",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon_cache_reopen_before.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon_cache_reopen_before"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon_cache_reopen_before",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon-reopen-dn97s4ro"
+      ],
+      "exit_code": 3,
+      "stdout": "",
+      "stderr": "FAIL same-path open never retries after failed scope\n"
+    }
+  ]
+}

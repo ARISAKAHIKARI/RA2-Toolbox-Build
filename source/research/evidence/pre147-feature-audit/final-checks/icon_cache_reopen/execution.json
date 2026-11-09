@@ -1,0 +1,56 @@
+{
+  "name": "icon_cache_reopen",
+  "started_utc": "2026-11-09T07:10:51.072016+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "python3",
+    "-B",
+    "source/unit_monitor/tests/icon_cache_reopen.py",
+    "--output",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen",
+    "--label",
+    "current"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen/icon_cache_reopen_current_1.log",
+  "test_source_hashes": {
+    "source/unit_monitor/tests/icon_cache_reopen.py": "09906c0e895d40291511559eb8962c4aa790ba1d0e0d436dc813470f276c7224"
+  },
+  "production_source_hashes": {
+    "source/unit_monitor/source/core.h": "55a53aec7eabf94ba2f891dad3b2b0ea959fe268e3b2091c52bbb535afd87881",
+    "source/unit_monitor/source/icon_cache.h": "11d4846950493a6518eb0f0dba07187265dea55bf8ab397378b22272130f8594"
+  },
+  "steps": [
+    {
+      "stage": "driver",
+      "command": [
+        "python3",
+        "-B",
+        "source/unit_monitor/tests/icon_cache_reopen.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen",
+        "--label",
+        "current"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen/driver.log",
+      "log_sha256": "b935a995940d124331e6b9044e42d9957a5459305e621dd78313a87c62431bbd"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen/icon_cache_reopen_current_1.log",
+  "log_sha256": "b935a995940d124331e6b9044e42d9957a5459305e621dd78313a87c62431bbd",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "completed_utc": "2026-11-09T07:10:53.298326+00:00",
+  "elapsed_seconds": 2.226,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen/execution.json"
+}

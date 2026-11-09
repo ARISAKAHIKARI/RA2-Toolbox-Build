@@ -1,0 +1,70 @@
+=================================================================
+==11==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7eff67e00580 at pc 0x56541dce12f6 bp 0x7ffc729904b0 sp 0x7ffc729904a0
+WRITE of size 12 at 0x7eff67e00580 thread T0
+    #0 0x56541dce12f5 in assist::moorders::patrol(assist::moorders::Point const*, int, assist::moorders::Point*, assist::moorders::Options const&) /workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/../source/mo_orders.h:103
+    #1 0x56541dcded48 in main /workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/mo_patrol_capacity.cpp:36
+    #2 0x7eff6989d1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)
+    #3 0x7eff6989d28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)
+    #4 0x56541dcdd684 in _start (/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-before/mo_patrol_capacity+0x2684) (BuildId: ea540a4b7eb8036673a97132602e554296f70b6f)
+
+Address 0x7eff67e00580 is located in stack of thread T0 at offset 1408 in frame
+    #0 0x56541dcde08e in main /workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/mo_patrol_capacity.cpp:30
+
+  This frame has 22 object(s):
+    [32, 33) '<unknown>'
+    [48, 49) '__c' (line 30)
+    [64, 72) '__dnew'
+    [96, 104) '__guard'
+    [128, 140) 'point' (line 55)
+    [160, 176) '<unknown>'
+    [192, 220) 'options' (line 31)
+    [256, 284) '<unknown>'
+    [320, 348) '<unknown>'
+    [384, 432) 'open' (line 48)
+    [464, 512) 'closed' (line 48)
+    [544, 592) 'rejected' (line 59)
+    [624, 648) 'open' (line 57)
+    [688, 716) '<unknown>'
+    [752, 784) '<unknown>'
+    [816, 876) 'stroke' (line 35)
+    [912, 972) 'stroke' (line 42)
+    [1008, 1140) 'cells' (line 59)
+    [1216, 1408) 'out' (line 35) <== Memory access at offset 1408 overflows this variable
+    [1472, 1664) 'out' (line 55)
+    [1728, 2752) 'cells' (line 45)
+    [2880, 5952) 'out' (line 42)
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-buffer-overflow /workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/../source/mo_orders.h:103 in assist::moorders::patrol(assist::moorders::Point const*, int, assist::moorders::Point*, assist::moorders::Options const&)
+Shadow bytes around the buggy address:
+  0x7eff67e00300: f8 f8 f2 f2 f2 f2 00 00 00 00 00 00 00 04 f2 f2
+  0x7eff67e00380: f2 f2 00 00 00 00 00 00 00 04 f2 f2 f2 f2 00 00
+  0x7eff67e00400: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 04 f2
+  0x7eff67e00480: f2 f2 f2 f2 f2 f2 f2 f2 00 00 00 00 00 00 00 00
+  0x7eff67e00500: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x7eff67e00580:[f2]f2 f2 f2 f2 f2 f2 f2 00 00 00 00 00 00 00 00
+  0x7eff67e00600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7eff67e00680: f2 f2 f2 f2 f2 f2 f2 f2 00 00 00 00 00 00 00 00
+  0x7eff67e00700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7eff67e00780: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7eff67e00800: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==11==ABORTING

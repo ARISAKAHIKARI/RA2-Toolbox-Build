@@ -1,0 +1,57 @@
+[
+  {
+    "command": [
+      "node",
+      "source/suite/tests/console_composition_test.mjs"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "console_composition_test.final.log",
+    "app_sha256": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+    "test_sha256": "4bb04751ba7aaca9f351b462bc9d7dff6e33b6fc9991d074f7bacb0d1ffdac67"
+  },
+  {
+    "command": [
+      "node",
+      "source/suite/tests/console_hotkey_presentation_test.mjs"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "console_hotkey_presentation_test.final.log",
+    "app_sha256": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+    "test_sha256": "18f3a644f21c76650e98d58481fb14622625ab9e50e13488c46021749e1553cc"
+  },
+  {
+    "command": [
+      "node",
+      "source/suite/tests/console_store_test.mjs"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "console_store_test.final.log",
+    "app_sha256": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+    "test_sha256": "462e98438916e1c6474c84c9d7406b0b039c88da8a9eadc22dcc1fa8dfd700da"
+  },
+  {
+    "command": [
+      "node",
+      "source/suite/tests/console_receipt_order_test.mjs"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "console_receipt_order_test.final.log",
+    "app_sha256": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+    "test_sha256": "5c19ea621b9131f56eef0feacfeb71f097239841c5296064cd20f6f66d89b5ff"
+  },
+  {
+    "command": [
+      "node",
+      "source/suite/tests/console_debug_test.mjs"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "console_debug_test.final.log",
+    "app_sha256": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+    "test_sha256": "8e896aaa0c74d1bcd40a22e6a344054cf2459e0ddad56f75751bf330705cfafc"
+  }
+]

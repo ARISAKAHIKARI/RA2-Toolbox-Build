@@ -1,8 +1,10 @@
-# 1.0.47-pre.2 交付准备
+# 1.0.47-pre.4 交付准备
 
-本目录准备本地可审查的 Full / Update 包。脚本不修改源码、不执行 Windows 程序、不安装依赖、不推送源码，也不创建 GitHub Release。人类版本为 `1.0.47-pre.2`，PE 文件版本为 `1.0.47.2`；协议保持 Assist 101、Cursor 155、Runtime 4。
+本目录准备本地可审查的 Full / Update 包。脚本不修改源码、不执行 Windows 程序、不安装依赖、不推送源码，也不创建 GitHub Release。人类版本为 `1.0.47-pre.4`，PE 文件版本为 `1.0.47.4`；Assist 协议为 102，Cursor 155、Runtime 4 保持不变。Shared 从基线的 23,162,528 字节增加到 23,162,544 字节；只接受这次已审核的尾部扩展（目录 hash、火控满表状态及对齐），不允许把任意布局变化视为兼容。
 
-下列构建、最终打包命令需要本轮冻结提交及真实回执就绪后再执行。原七组门禁必须本轮重新执行，再加控制台应答、单位目录恢复、规划投递和场景附加图层恢复四组，共十一组。不得沿用上一版通过摘要，也不得把脚本的合成门控测试当作十一组本轮验证。
+下列构建、最终打包命令需要本轮冻结提交及真实回执就绪后再执行。保留原十个固定检查和 engine 变更时必需的 dependency 检查，保留此前十六个逐功能实际运行检查，本次再加两个快捷键链路回归，当前合计二十九组。所有门槛必须绑定本轮实际执行与冻结源码，不得沿用上一版通过摘要，也不得把脚本的合成门控测试当作生产验证。这里的组数不是功能点数，也不是测试断言数。
+
+缺陷前后对照保留 `1.0.47-pre.2` 的固定提交 `46420180d9137932ca98fd2e6c131bde4f2a6294`；它是回归比较来源，不改变下述 1.0.46.4 产品/资源基线。
 
 ## 固定资源基线
 
@@ -15,19 +17,19 @@
 
 Full 保持 53 个成员；原始素材、三套主题、八个许可证和七个 engine 文件共 47 个资源以此为基线。唯一允许替换的资源是明确审核的 `engine/prepare_runtime.py`；其余资源必须原字节保留。Update 包含三程序、loader、README、Start.cmd、七个 engine 和八个许可证，共 21 个成员。Update 不附带原始素材，适用于已有完整安装。两包共同成员必须完全相同。
 
-七个 engine 都必须与本轮冻结源码及构建回执逐字节一致。相对 1.0.46.4 基线保留了 `prepare_runtime.py` 的单文件依赖验证优化，因此回执必须显式列出这个变更并提供 `dependency_probes`，与十组固定检查合计十一组；脚本仍可识别没有 engine 变更的十组分支。本轮不捆绑 Python 包、生成插帧、预览、缓存、源码、开发记录或个人设置。光标混合画布修复因自动审核阻断仍未交付，未纳入本版。
+七个 engine 都必须与本轮冻结源码及构建回执逐字节一致。相对 1.0.46.4 基线保留了 `prepare_runtime.py` 的单文件依赖验证优化，因此回执必须显式列出这个变更并提供 `dependency_probes`，与二十八组固定检查合计二十九组；脚本仍可识别没有 engine 变更的二十八组分支。本轮不捆绑 Python 包、生成插帧、预览、缓存、源码、开发记录或个人设置。光标混合画布修复因自动审核阻断仍未交付，未纳入本版。
 
 依赖优化仅在 NumPy、SciPy、OpenCV 三项 managed 缓存记录全部有效且顺序匹配时，把原有三个验证子进程合并为一个。原 `PROBE_CODE` 字节不变，每项版本、来源及功能断言都继续执行；每项重新建立搜索路径，已加载依赖可在该批次内复用。独立总完成标记避免前一项成功掩盖后项零码早退。缺项、批验证失败或批子进程启动错误回到原逐项检查与修复路径；取消继续传播。下载、安装、PowerShell 和取消主体未改，Python 候选检查、引导和实际预处理进程也没有被消除。
 
-独立审查已核对 13 项便携测试及原始收据。测试实际执行原探测代码与批次脚本，但科学模块及 Popen 为替身；8 批计数由 24 次验证进程调用变为 8 次，24 次模块检查与各功能守卫次数保留。这是调用路径验证，不是实际 Windows 子进程启动耗时、真实科学扩展或物理 GPU 验收。
+既有依赖专项包含 13 项便携测试；发布门槛要求本轮重新执行。它执行原探测代码与批次脚本，但科学模块及 Popen 为替身；覆盖 8 批验证进程调用由 24 次变为 8 次、24 次模块检查与各功能守卫次数保持的路径。这是调用路径验证，不是实际 Windows 子进程启动耗时、真实科学扩展或物理 GPU 验收。
 
 ## 最小门控检查
 
-可在冻结、构建前执行以下轻量策略测试。它只读取真实基线并运行合成正负回执，不构建产品、不执行十一组本轮验证。
+可在冻结、构建前执行以下轻量策略测试。它只读取真实基线并运行合成正负回执，不构建产品、不执行二十九组本轮生产验证。
 
 ```bash
-RA2_REPO=/workspace/scratch/40121bc881b8/ra2-ui-146
-RA2_EVIDENCE=/workspace/scratch/5a310fe852f8/functional147pre2/delivery
+RA2_REPO=/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix
+RA2_EVIDENCE=/workspace/scratch/c1b87d8550cd/hotkey147pre4/delivery
 RA2_BASE=/workspace/scratch/5a310fe852f8/ui146-delivery-final
 python3 -B "$RA2_REPO/packages/v1.0.47/test_package_release.py" \
   --base-full "$RA2_BASE/RA2Toolbox-1.0.46-x64-Full.zip" \
@@ -35,7 +37,7 @@ python3 -B "$RA2_REPO/packages/v1.0.47/test_package_release.py" \
   --report "$RA2_EVIDENCE/package-gates.json"
 ```
 
-门控覆盖：真实资源与 engine 保留、基线篡改、旧提交/旧版本/错误树、未执行或缺组回执、缺失与变更源码指纹、缺失/变更/空/仅编译日志、失败体素场景、禁入成员、构建产物字节不一致，以及 engine 变更缺少依赖检查或超出审核范围。四个新组额外检查精确计数、两组场景恢复像素差异、伪 `passed` 包装、重复运行拼接与失败输出。门控报告会明确 `synthetic_receipt_fixtures:true` 与 `product_build_performed:false`。
+门控覆盖：真实资源与 engine 保留、基线篡改、旧提交/旧版本/错误树、未执行或缺组回执、缺失与变更源码指纹、缺失/变更/空/仅编译日志、失败体素场景、禁入成员、构建产物字节不一致，以及 engine 变更缺少依赖检查或超出审核范围。前一轮四组、此前十六组和本次两组额外检查精确计数与场景结果、伪 `passed` 包装、重复运行拼接、缺失场景和失败输出。逐功能与快捷键新增组的 JSON 结果拒绝重复字段、错误类型和额外字段。本轮还检查巡逻缓冲 ASan 编译/运行参数，以及 Shared 必须为已审核的 16 字节增量。门控报告会明确 `synthetic_receipt_fixtures:true` 与 `product_build_performed:false`。
 
 ## 冻结构建
 
@@ -65,8 +67,8 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
   "schema": "ra2.optimization-validation.v1",
   "commit": "本轮冻结提交",
   "source_tree_sha": "该提交的source树SHA",
-  "version": "1.0.47-pre.2",
-  "file_version": "1.0.47.2",
+  "version": "1.0.47-pre.4",
+  "file_version": "1.0.47.4",
   "engine_changes": ["engine/prepare_runtime.py"],
   "required_checks_passed": true,
   "windows_executed": false,
@@ -88,7 +90,7 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 }
 ```
 
-本轮 `checks` 必须恰好包含下述十个固定组名和 `dependency_probes`，共十一组。各组至少包含下表指纹，可以增加真实依赖。所有路径都相对于仓库，所有哈希都必须与构建回执及冻结 Git blob 的实际字节一致。`log_path` 可以绝对指定，或相对于 validation.json；日志不进入产品 ZIP。
+本轮 `checks` 必须恰好包含下述十个既有组名、后述十六个逐功能组名、本次两个快捷键回归组名和 `dependency_probes`，共二十九组。各组至少包含下表指纹，可以增加真实依赖。所有路径都相对于仓库，所有哈希都必须与构建回执及冻结 Git blob 的实际字节一致。`log_path` 可以绝对指定，或相对于 validation.json；日志不进入产品 ZIP。
 
 | 组名 | 必需测试（均在 `source/assist/tests/`） | 必需生产文件 |
 | --- | --- | --- |
@@ -103,7 +105,7 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 
 日志检查识别已有真实输出：分配器至少 8,063 个等价场景及同一工作区复用；快照的 `seqlock_interleavings` 通过与正检查数；科技采集的 `summary` 通过与正检查数；体素正场景数、零像素差异、正检查数、零失败；飞机及地形的实际 PASS 行。体素不固定旧检查数，预期失败的旧版对照不能冒充当前通过。
 
-新增四组使用实际运行原始日志；不要将包含 `stdout` 的包装收据或人工通过摘要放进这些组的 `log_path`。实际编译、运行 argv 和退出码可从原独立收据提取，原始日志字节和 SHA256 必须保留。
+前一轮四组继续使用实际运行原始日志；不要将包含 `stdout` 的包装收据或人工通过摘要放进这些组的 `log_path`。实际编译、运行 argv 和退出码可从原独立收据提取，原始日志字节和 SHA256 必须保留。
 
 | 组名 | 必需测试指纹 | 必需生产指纹 |
 | --- | --- | --- |
@@ -116,7 +118,70 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 
 这些专项执行了真实 ConsoleStore、Sampler、Planner/Task、场景缓存与 CPU 绘制代码；DOM/WebView2、进程内存和文件输入边界采用宿主替身。控制台测试不代表原生窗口验收，规划测试不代表真实游戏指令投递，CPU 像素恢复不代表物理 GPU 运行。前述平台限制仍适用。
 
+## 保留的逐功能修复门槛
+
+以下十六个既有组继续强制要求 `exit_code:0`、`executed_this_revision:true`、真实 argv、原始日志 SHA256，以及测试/生产源码 SHA256。编译成功不能替代运行成功；缺任何一组都拒绝打包。条件 dependency 规则及上述十个固定组不变。
+
+| 组名 | 原始日志必须包含的当前结果 |
+| --- | --- |
+| `planner_defense_delivery` | 21 项零失败；被裁掉的防御下一帧可返回、真正返回后的 350ms 冷却、HostTask 续帧结果齐全 |
+| `missile_manual_lifecycle` | 16 项零失败；`dead_history count=1 new_owned=1` |
+| `missile_manual_capacity` | 23 项零失败；生产所有权、最终投递及 Host 完成路径的精确摘要 |
+| `patrol_capacity` | 31 项零失败；宽度 2/4/8/10/20/40/80 的完整闭环均绑定成功，最长输出不超过 16 |
+| `patrol_small_buffer` | 独立 ASan 缓冲运行：`buffer count=16 digest=1280`，1 项零失败 |
+| `selection_catalogue_identity` | 单条 `21 checks, 0 failures` |
+| `toast_clock_wrap` | 单条 `15 checks, 0 failures` |
+| `console_composition` | 16 个不同 PASS 案例及同名 suite、checks 16、整数 failures 0、对应 level |
+| `console_hotkey_presentation` | 8 个不同 PASS 案例及同名 suite、checks 8、整数 failures 0、对应 level |
+| `secondary_drag_bounds` | 精确摘要：7 个边界案例和 900 个范围案例 |
+| `secondary_render_retry` | 精确摘要：8 个提交和恢复案例 |
+| `icon_cache_reopen` | 失败作用域→同路径重连→缓存保存/恢复成功；健康重连保持 generation 的精确摘要 |
+| `superweapon_result_feedback` | 单条整数 checks 13、failures 0、passed true |
+| `pause_key_pairing` | 单条整数 checks 22、failures 0、passed true |
+| `native_mouse_pairing` | 单条整数 checks 36、failures 0、passed true |
+| `passenger_frame_sampling` | 2158 项；首次绘制 live_RPM=0、1000 次重复绘制无实时读取、失败/时效/暂停/确认/需求路由结果全部存在 |
+
+`patrol_capacity` 与 `patrol_small_buffer` 是同一源码的两个独立实际执行，分别保留原始日志，不拼接结果。后者还必须记录 `compile_command`（含 `-fsanitize=address` 与 `-fno-omit-frame-pointer`，不得关闭 sanitizer）、整数 `compile_exit_code:0`，以及带 `--small-buffer` 的运行 argv。环境允许 `ASAN_OPTIONS=detect_leaks=0`，用于执行器不支持 LeakSanitizer 的场景；AddressSanitizer 仍须启用。不能将未启用 AddressSanitizer 的构建产生的同名 PASS 当作 ASan 验证。
+
+下表为新增组的最少源码绑定；精确集合在 `package_release.py::FEATURE_BINDINGS`。允许补充真实编译依赖。对抽取 fixture，源码指纹绑定表示来源关系，不表示完整原生 Host/UI 被执行。
+
+| 组名 | 必需测试文件 | 必需生产文件 |
+| --- | --- | --- |
+| `planner_defense_delivery` | `source/assist/tests/planner_defense_delivery.cpp` | `source/assist/source/external_planner.h`、`source/assist/source/planner_task.h`、`source/assist/source/value_task.h`、`source/shared/source/latest_worker.h` |
+| `missile_manual_lifecycle` | `source/assist/tests/missile_manual_lifecycle.py` | `source/assist/source/missile_bridge.h` |
+| `missile_manual_capacity` | `source/assist/tests/missile_manual_capacity.py` | `source/assist/source/compute_frame.h`、`source/assist/source/compute_input_copy.h`、`source/assist/source/compute_policy.h`、`source/assist/source/missile_bridge.h`、`source/assist/source/missile_compute.h`、`source/assist/source/object_index.h`、`source/assist/source/plan_freshness.h`、`source/assist/source/planner_types.h`、`source/assist/source/unit_task_arbiter.h` |
+| `patrol_capacity` | `source/assist/tests/mo_patrol_capacity.cpp` | `source/assist/source/mo_orders.h`、`source/assist/source/mo_patrol_graph.h` |
+| `patrol_small_buffer` | `source/assist/tests/mo_patrol_capacity.cpp` | `source/assist/source/mo_orders.h`、`source/assist/source/mo_patrol_graph.h` |
+| `selection_catalogue_identity` | `source/assist/tests/selection_catalogue_identity.py` | `source/assist/source/bridge.cpp`、`source/assist/source/main.cpp`、`source/assist/source/protocol.h` |
+| `toast_clock_wrap` | `source/assist/tests/toast_clock_wrap.py` | `source/assist/source/main.cpp` |
+| `console_composition` | `source/suite/tests/console_composition_test.mjs` | `source/suite/frontend/app.js` |
+| `console_hotkey_presentation` | `source/suite/tests/console_hotkey_presentation_test.mjs` | `source/suite/frontend/app.js` |
+| `secondary_drag_bounds` | `source/unit_monitor/tests/secondary_drag_bounds.py` | `source/unit_monitor/source/main.cpp` |
+| `secondary_render_retry` | `source/unit_monitor/tests/secondary_render_retry.py` | `source/unit_monitor/source/main.cpp` |
+| `icon_cache_reopen` | `source/unit_monitor/tests/icon_cache_reopen.py` | `source/unit_monitor/source/core.h`、`source/unit_monitor/source/icon_cache.h` |
+| `superweapon_result_feedback` | `source/assist/tests/superweapon_result_feedback.py` | `source/assist/source/bridge.cpp`、`source/assist/source/main.cpp`、`source/assist/source/superweapon_sidebar_bridge.h` |
+| `pause_key_pairing` | `source/assist/tests/pause_key_pairing.py`、`source/assist/tests/superweapon_result_feedback.py` | `source/assist/source/hotkey_routes.h`、`source/assist/source/native_message_policy.h`、`source/assist/source/pause_view_bridge.h`、`source/assist/source/pause_view_policy.h`、`source/assist/source/pointer_intent.h`、`source/game_runtime/source/runtime.cpp`、`source/shared/source/key_gesture.h` |
+| `native_mouse_pairing` | `source/assist/tests/native_mouse_pairing.py`、`source/assist/tests/pause_key_pairing.py`、`source/assist/tests/superweapon_result_feedback.py` | `source/assist/source/hotkey_routes.h`、`source/assist/source/native_message_policy.h`、`source/assist/source/pause_view_bridge.h`、`source/assist/source/pause_view_policy.h`、`source/assist/source/pointer_host.h`、`source/assist/source/pointer_intent.h`、`source/game_runtime/source/runtime.cpp`、`source/shared/source/key_gesture.h` |
+| `passenger_frame_sampling` | `source/assist/tests/passenger_frame_sampling.cpp`、`source/assist/tests/passenger_frame_sampling.py`、`source/assist/tests/world_frame_core.cpp`、`source/assist/tests/world_frame_core_test.py`、`source/tests/winmock/windows.h` | `source/assist/source/display_sample_lease.h`、`source/assist/source/label_motion.h`、`source/assist/source/main.cpp`、`source/assist/source/passenger_draw.h`、`source/assist/source/passenger_motion.h`、`source/external_reader/source/game_view.h`、`source/external_reader/source/passenger_bubbles.h`、`source/external_reader/source/process_reader.h`、`source/shared/source/world_frame.h`、`source/shared/source/world_frame_capture.h`、`source/shared/source/world_frame_transport.h` |
+
+控制台输入专项使用实际监听器与受控 DOM；输入配对跨越实际 Host 发布、Runtime 消息选择器与完整 Assist 过滤函数，但操作系统投递、窗口与原生边界仍受控。巡逻专项执行真实路线生成/图读取，图边界为构造样本，没有执行游戏原生巡逻。乘员专项执行真实读取器、帧传输、collector、租约与显示采样，重复绘制的零 RPM 是宿主计数，不能换算成真实 FPS。其余 Windows/游戏/GPU/联机限制与旧组相同。
+
 已执行的本轮测试可以在冻结后封装回执，只要测试时记录的所有测试与生产指纹仍与冻结提交一致；不能把过去版本的测试摘要重命名为本轮验证。回执表达可审查的来源关系，不提供密码学意义上的执行见证。
+
+## 本次快捷键回归门槛
+
+新增 `hotkey_command_context` 与 `hotkey_message_recovery` 两组，原二十七组继续保留。两组必须有本轮实际命令、零退出码、未改动的原始结果日志与测试/生产源码指纹。当前版本通过之外，还要保留同一受控场景在冻结 pre.3 源码 `93f02787d42b61ff5c30e450317f99ba00673149` 上的负面对照。基线源码随测试保存为固定字节 fixture，运行时校验 SHA256，不依赖远端拥有这个本地提交对象：旧版必须先编译成功，再运行并触发断言失败，不能将缺源码、提取失败或编译失败当作复现证据。
+
+`hotkey_command_context` 检查生产 Host 快捷键功能的命令上下文与投递，Win32 状态和命令接收端由受控替身提供。`hotkey_message_recovery` 检查真实快捷键 Registry 对消息边沿、异步按键状态和时间戳的处理。测试不代表真实 Windows 键盘钩子、游戏内指令执行或多人联机已验收。
+
+| 组名 | 原始结果与来源要求 |
+| --- | --- |
+| `hotkey_command_context` | 原始 `result.json` 中至少 22 个场景、67 项检查通过；production-all.log 的真实运行摘要须与报告逐字段一致；registration/message/service 三个旧版对照分别以预期断言与退出码 2 失败；13 个测试/生产来源摘要与冻结源一致，另绑定当前及三个负面对照原始日志的执行时摘要 |
+| `hotkey_message_recovery` | 原始 `result.json` 的正整数场景数、检查数与实际 production_run 摘要完全一致；当前缺消息 probe 为 actual=1/exit 0，固定 pre.3 源为 actual=0/exit 1；真实 Registry、手势逻辑、固定旧头文件和测试脚本四个来源摘要与冻结源一致 |
+
+两组结果拒绝重复 JSON 字段、错误类型、额外的通过包装、未请求或未复现的旧版对照、混合源码摘要，以及缺少真实当前执行的报告。两组场景可随新反例增加；Host 保留最低 22 个场景、67 项检查覆盖，门槛同时核对实际摘要一致及精确测试源码，不把某个旧场景数冒充当前运行。
+
+执行计划与执行回执分开。独立工作目录中的 `run_checks.py` 按 `pre4-check-run-spec.json` 真正运行每组命令，使用全新的输出目录，并在运行前后记录测试和生产源码 SHA256。`planning_source_sha256` 仅用于安排检查，不得作为已执行证据。全部实际运行成功后，`finish_validation.py` 才能把回执绑定最终冻结提交；它不会补写 PASS、改写已执行源码指纹或替代产品构建。
 
 ## 本地打包
 
@@ -137,8 +202,8 @@ python3 -B "$RA2_REPO/packages/v1.0.47/package_release.py" \
 
 成功仅输出四个文件：
 
-- `RA2Toolbox-1.0.47-pre.2-x64-Full.zip`
-- `RA2Toolbox-1.0.47-pre.2-x64-Update.zip`
+- `RA2Toolbox-1.0.47-pre.4-x64-Full.zip`
+- `RA2Toolbox-1.0.47-pre.4-x64-Update.zip`
 - `release-manifest.json`
 - `SHA256SUMS.txt`
 

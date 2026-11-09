@@ -1,0 +1,55 @@
+{
+  "name": "toast_clock_wrap",
+  "started_utc": "2026-11-09T07:10:50.186787+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "python3",
+    "-B",
+    "source/assist/tests/toast_clock_wrap.py",
+    "--output",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap",
+    "--label",
+    "current"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap/toast_clock_current_1.log",
+  "test_source_hashes": {
+    "source/assist/tests/toast_clock_wrap.py": "0f236a616fb69becdda017b782c2ed1bc6320d8270af5ee87da613b6eeb1e3af"
+  },
+  "production_source_hashes": {
+    "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f"
+  },
+  "steps": [
+    {
+      "stage": "driver",
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/toast_clock_wrap.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap",
+        "--label",
+        "current"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap/driver.log",
+      "log_sha256": "7f03496324e1fd3dc132ea1f49728d069e694270f56a81bdbb0886a389950536"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap/toast_clock_current_1.log",
+  "log_sha256": "7f03496324e1fd3dc132ea1f49728d069e694270f56a81bdbb0886a389950536",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "completed_utc": "2026-11-09T07:10:50.602297+00:00",
+  "elapsed_seconds": 0.416,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap/execution.json"
+}

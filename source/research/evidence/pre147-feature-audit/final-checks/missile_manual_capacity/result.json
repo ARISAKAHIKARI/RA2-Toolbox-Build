@@ -1,0 +1,37 @@
+{
+  "verification_level": "controlled_execution",
+  "source": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/missile_bridge.h",
+  "source_sha256": "10e5909ba978b416e3809fb255c6762d675b473ef92d8e4228aa54817b7bfe70",
+  "test_sha256": "26e5b147545a26421059444579699d76306aacf48497fad39843d0664bf61469",
+  "generated_sha256": "a287a19fddfc6ca9ea8766fa2014f1764a795554a0368bd0f0d21a09944eb6ee",
+  "extract_sha256": "c0b6fae61da0508aa60c1baf426bcdda6dd57014e1568a6aaa01cce6a0b5c8a2",
+  "commands": [
+    {
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-I",
+        "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/missile_manual_capacity.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/missile_manual_capacity"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/build.log",
+      "log_sha256": "3a9ca657550a0a6408fa2123979c99ea825b21fa4dd048c62b6164130060467d"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/missile_manual_capacity"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/run.log",
+      "log_sha256": "c6fc94c47e56c6d4aed9aed9f51f6cd68fe82be64a782d309168f9bbbf967f9c"
+    }
+  ]
+}

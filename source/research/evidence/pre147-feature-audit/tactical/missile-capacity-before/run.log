@@ -1,0 +1,16 @@
+FAIL: untracked manual input latches a visible automatic-fire pause
+FAIL: final native delivery gate blocks new Attack while saturated
+FAIL: final native delivery gate blocks new Sleep while saturated
+FAIL: failed manual registration cannot emit any new automatic command
+FAIL: already-computed Host Attack cannot cross the overflow latch
+FAIL: already-computed Host Sleep cannot cross the overflow latch
+FAIL: Host completion dispatch discards stale work and does not create another input
+FAIL: saturation drops retained result provenance
+FAIL: only the still-tool-owned hold receives Guard during overflow
+FAIL: a manual claim retires old tool ownership even without changing its token
+FAIL: release of owned holds does not silently clear the saturation latch
+FAIL: elapsed time cannot guess that an untracked manual order has ended
+FAIL: explicit disable clears the latch after existing ownership retires
+FAIL: a same-frame full-cohort input attempts sealed-roster cleanup only once
+FAIL: further manual input preserves the paused state
+FAIL: 23 checks, 15 failures; exact production ownership/delivery/Host dispatch paths

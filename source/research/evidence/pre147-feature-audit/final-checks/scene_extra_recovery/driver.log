@@ -1,0 +1,25 @@
+foundation-index failure_ready=0 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+foundation-width failure_ready=0 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+foundation-height failure_ready=0 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+move-x failure_ready=0 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+move-y failure_ready=0 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+normal-z failure_ready=0 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+mask-pointer failure_ready=0 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+mask-header failure_ready=0 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+mask-row failure_ready=0 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+layer_recoveries=9 pixel_mismatches=0
+scene_foundation-index variant=0 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_foundation-width variant=0 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_move-x variant=0 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_normal-z variant=0 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_mask-pointer variant=0 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_mask-row variant=0 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_foundation-index variant=1 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_foundation-width variant=1 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_move-x variant=1 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_normal-z variant=1 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_mask-pointer variant=1 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_mask-row variant=1 failure_scene=0 recovery_scene=1 pixel_mismatches=0
+scene_recoveries=12 pixel_mismatches=0
+healthy_digest=b87ea9343f6207a3 checks=109 failures=0
+PASS transactional frozen body/animation palette and depth caches, same-cache recovery, legal absent/wide/flat paths and actual SceneRenderer output

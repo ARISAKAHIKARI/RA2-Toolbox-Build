@@ -1,0 +1,2222 @@
+{
+  "schema": 1,
+  "baseline_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "product_baseline": "1.0.46.4",
+  "release_series": "1.0.47",
+  "scope": "现代Host控制台、表单/热键、配置持久化、进程选择UI和实际入口可达性",
+  "counting": "此表为共享功能/机制审查记录。存在跨display/tactical/root的支撑路径交叉和未实现入口边界记录；不能相加当作独立产品功能数，也不是实机通过数。",
+  "new_findings": [
+    {
+      "id": "C-IME-1",
+      "status": "fixed_controlled_verified",
+      "files": [
+        "source/suite/frontend/app.js"
+      ],
+      "description": "组合输入期间Enter/Escape被普通编辑/搜索/快捷键逻辑误拦截",
+      "before": "16组受控真实监听器检查中14失败",
+      "after": "16/16通过",
+      "limit": "非真实Windows/WebView2输入法"
+    },
+    {
+      "id": "C-KEYNAME-1",
+      "status": "fixed_controlled_verified",
+      "files": [
+        "source/suite/frontend/app.js"
+      ],
+      "description": "数字键盘运算符显示为字母，未知VK可能不可见",
+      "before": "8组真实生产函数检查中7失败",
+      "after": "8/8通过"
+    }
+  ],
+  "inventory": {
+    "categories": [
+      "视频",
+      "控制",
+      "自动功能",
+      "游戏规则",
+      "实验性功能",
+      "调试"
+    ],
+    "video_pages": [
+      "光标与渲染(module0)",
+      "监控视图(module1)"
+    ],
+    "configuration_files": [
+      "Toolbox.ini",
+      "settings.ini",
+      "Assist.ini"
+    ],
+    "general_import_export": false,
+    "locale_switch": false
+  },
+  "features": [
+    {
+      "id": "host.bootstrap",
+      "label": "首次创建默认配置",
+      "feature": "首次创建默认配置",
+      "entry_points": [
+        "source/suite/source/modern_console_main.h::prepareSettings/startServices",
+        "source/shared/source/initial_profiles.h::create/initialize"
+      ],
+      "control_ids": [],
+      "config_keys": [
+        "Assist.ini",
+        "settings.ini",
+        "Toolbox.ini"
+      ],
+      "modes": [
+        "首次运行",
+        "已有配置",
+        "目录不可写",
+        "初始化线程失败"
+      ],
+      "paths_reviewed": [
+        "CREATE_NEW 保留已有文件；创建失败区分文件已存在；完整写入并 FlushFileBuffers，失败删除本次未完成新文件。",
+        "后台 result.ok 经互斥发布，appReady 与 bootReady 同时就绪才启动3服务；初始化失败保留明确错误。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.single_instance",
+      "label": "单实例与重复打开窗口",
+      "feature": "单实例与重复打开窗口",
+      "entry_points": [
+        "source/suite/source/modern_console_main.h::wWinMain"
+      ],
+      "control_ids": [],
+      "config_keys": [],
+      "modes": [
+        "首次启动",
+        "再次启动",
+        "COM/窗口失败"
+      ],
+      "paths_reviewed": [
+        "命名互斥存在时查找窗口并还原/置前；当前创建的互斥句柄与 COM 失败路径清理。",
+        "窗口创建失败直接返回；未把旧隐藏模块窗口当作可见主界面。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.module_enable.cursor",
+      "label": "光标模块开关",
+      "feature": "光标模块开关",
+      "entry_points": [
+        "source/suite/frontend/app.js::moduleToggle/render/ConsoleStore.enable",
+        "source/suite/source/modern_console_main.h::onMessage/PaneReady/EnabledChanged"
+      ],
+      "control_ids": [
+        "DOM moduleToggle",
+        "module=0"
+      ],
+      "config_keys": [
+        "Toolbox.ini [Video] CursorEnabled",
+        "旧 [Modules] Cursor",
+        "settings.ini [Startup] AutoStart"
+      ],
+      "modes": [
+        "关闭",
+        "开启",
+        "启动中",
+        "关闭阶段",
+        "后台服务退出"
+      ],
+      "paths_reviewed": [
+        "前端按实际 module.ready 与 closed 禁用开关；native 限制 module0/1、服务启动和退出阶段，消息投递到owner线程。",
+        "EnabledChanged 读取真实 active 状态保存并回传；后台退出清 active 并显示需要重新打开。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未实测慢 owner 线程下连续模块切换；此通路未提供逐请求 seq 回执，UI以shell实际状态为准。",
+        "未执行 Windows 模块启停。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.module_enable.monitor",
+      "label": "单位监控模块开关",
+      "feature": "单位监控模块开关",
+      "entry_points": [
+        "source/suite/frontend/app.js::moduleToggle/render/ConsoleStore.enable",
+        "source/suite/source/modern_console_main.h::onMessage/saveModuleState"
+      ],
+      "control_ids": [
+        "DOM moduleToggle",
+        "module=1"
+      ],
+      "config_keys": [
+        "Toolbox.ini [Video] MonitorEnabled",
+        "旧 [Modules] Units"
+      ],
+      "modes": [
+        "关闭",
+        "开启",
+        "启动中",
+        "后台退出"
+      ],
+      "paths_reviewed": [
+        "同一控件按 videoModule 定位模块1；native post(1,ModuleEnable)与 active[1] 回报独立。",
+        "未把 tactical module2当作顶部模块开关暴露；错误由shell展示。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.navigation.categories",
+      "label": "六个功能分类",
+      "feature": "六个功能分类",
+      "entry_points": [
+        "source/suite/frontend/app.js::CATEGORIES/navigate",
+        "source/suite/source/modern_console_main.h::onMessage/selectPage",
+        "source/suite/source/settings_categories.h::row"
+      ],
+      "control_ids": [
+        "DOM navigation",
+        "category 0..5",
+        "module0/1/2"
+      ],
+      "config_keys": [
+        "Toolbox.ini [UI] Category5"
+      ],
+      "modes": [
+        "视频",
+        "控制",
+        "自动功能",
+        "游戏规则",
+        "实验性功能",
+        "调试"
+      ],
+      "paths_reviewed": [
+        "分类按钮映射 module2/category1..5，视频映射 module0/1；导航清搜索、停快捷键捕获并重置滚动位置。",
+        "native selectPage 导航owner，adapter先处理已准入FIFO再替换generation；过期页面仍可见但不能发送动作。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.navigation.video_tabs",
+      "label": "视频子页与键盘导航",
+      "feature": "视频子页与键盘导航",
+      "entry_points": [
+        "source/suite/frontend/app.js::videoTabs listeners/navigate/render"
+      ],
+      "control_ids": [
+        "DOM videoTabs data-module0/1"
+      ],
+      "config_keys": [
+        "Toolbox.ini [UI] VideoSection"
+      ],
+      "modes": [
+        "光标与渲染",
+        "监控视图",
+        "Left/Right/Home/End"
+      ],
+      "paths_reviewed": [
+        "tab按钮保持aria-selected与单一tabIndex；方向键循环并移动焦点，Home/End选首尾。",
+        "切换页清组节点与诊断行，缓存由pageKey独立保留。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "源码追踪；本轮未执行真实 Chromium 布局/焦点导航。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.navigation.restore",
+      "label": "重启恢复上次分类",
+      "feature": "重启恢复上次分类",
+      "entry_points": [
+        "source/suite/frontend/app.js::bridge shell handler",
+        "source/suite/source/modern_console_main.h::prepareSettings/startServices/selectPage"
+      ],
+      "control_ids": [
+        "shell selectedCategory/videoSection"
+      ],
+      "config_keys": [
+        "Toolbox.ini [UI] Category5/VideoSection"
+      ],
+      "modes": [
+        "初始化",
+        "用户先导航",
+        "非法保存值",
+        "WebView重连"
+      ],
+      "paths_reviewed": [
+        "ready只发握手不先导航覆盖保存选择；servicesReady首次shell才恢复，用户已导航优先。",
+        "native读取category clamp0..5、video clamp0..1；只在bootReady后持久化主动导航。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.bool_input",
+      "label": "布尔设置表单",
+      "feature": "布尔设置表单",
+      "entry_points": [
+        "source/suite/frontend/app.js::makeRow/patchRow/ConsoleStore.act",
+        "source/suite/source/console_adapter.h::read/apply"
+      ],
+      "control_ids": [
+        "type toggle / action toggle",
+        "不透明control token"
+      ],
+      "config_keys": [
+        "对应功能owner的现有INI键"
+      ],
+      "modes": [
+        "开",
+        "关",
+        "连续切换",
+        "disabled",
+        "退出"
+      ],
+      "paths_reviewed": [
+        "checkbox change发送boolean；Store拒绝错类型/不可见/禁用/旧generation；native再次查 HWND 祖先enabled和visible。",
+        "adapter BM_SETCHECK后直接调用owner BN_CLICKED，避免styled parent重复翻转。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.text_input",
+      "label": "Unicode文本编辑、提交与取消",
+      "feature": "Unicode文本编辑、提交与取消",
+      "entry_points": [
+        "source/suite/frontend/app.js::bindText/ConsoleStore.commit/act",
+        "source/suite/source/console_adapter.h::apply",
+        "source/suite/source/console_model.h::Parser::string"
+      ],
+      "control_ids": [
+        "type text",
+        "action text",
+        "Enter/Escape/blur"
+      ],
+      "config_keys": [
+        "对应owner设置；例如 [GameProcess] Keywords"
+      ],
+      "modes": [
+        "中文组合输入",
+        "普通Enter",
+        "Escape",
+        "blur",
+        "待ACK再次编辑",
+        "空文本",
+        "超长/非法Unicode"
+      ],
+      "paths_reviewed": [
+        "真实focus监听先beginEdit再用input.value创建草稿，排除了孤立beginEdit调用导致旧值覆盖的不可达候选。",
+        "输入期间保留草稿；Enter/blur提交，Escape撤销；合法Unicode按字节限长，native严格UTF8转UTF16并拒绝NUL。",
+        "修复组合输入期间Enter/Escape被误当提交/取消，使用isComposing或keyCode229交还IME。"
+      ],
+      "findings": [
+        "C-IME-1：已修复生产监听器对IME候选确认/取消的误拦截；本轮受控事件16 checks由14失败变0失败。"
+      ],
+      "review_status": "fixed_controlled_verified",
+      "verification_level": "production_listeners_controlled_DOM+production_store",
+      "evidence": [
+        "composition-events.before.log",
+        "console_composition_test.final.log",
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "事件夹具运行实际监听器和Store，但不模拟Windows输入法或可信浏览器组合事件；仍需WebView2中文输入法验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.number_input",
+      "label": "整数输入与owner归一化",
+      "feature": "整数输入与owner归一化",
+      "entry_points": [
+        "source/suite/frontend/app.js::makeRow(type number)/ConsoleStore.act",
+        "source/suite/source/console_adapter.h::numericText/apply",
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged",
+        "source/suite/source/video_settings_ui.h::VideoSettings::command"
+      ],
+      "control_ids": [
+        "type number",
+        "action text",
+        "VideoSettings Base12000+option"
+      ],
+      "config_keys": [
+        "owner数字键；显示编辑以displaySpecs为范围"
+      ],
+      "modes": [
+        "有效整数",
+        "空/正负号",
+        "非法指数/文本",
+        "越界",
+        "输入中"
+      ],
+      "paths_reviewed": [
+        "浏览器number仍通过text通路发送；native ES_NUMBER只接受整数文本，具体范围由owner extraNumber/spec clamp负责。",
+        "VideoSettings数字仅在完整数值且spec范围内跨线程发送；native EN_KILLFOCUS可重新同步。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store/parser+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log",
+        "console_model_test.run.log"
+      ],
+      "validation_gaps": [
+        "未逐字段执行Windows数字控件；空/部分输入的owner提示与失焦归一化仍须实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.choice_input.readonly",
+      "label": "只读下拉选择",
+      "feature": "只读下拉选择",
+      "entry_points": [
+        "source/suite/frontend/app.js::makeRow/patchRow/ConsoleStore.act",
+        "source/suite/source/console_adapter.h::options/read/apply"
+      ],
+      "control_ids": [
+        "type choice readonly",
+        "action select"
+      ],
+      "config_keys": [
+        "owner枚举/预设键"
+      ],
+      "modes": [
+        "合法项",
+        "无选择",
+        "选项清单更新",
+        "越界"
+      ],
+      "paths_reviewed": [
+        "选项标签作为textContent填入option，selectedIndex与pending同步；Store和adapter均验证索引。",
+        "native选项文本+itemdata组成身份；动态清单变化更换token，旧操作返回重新选择而不套用到新项。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.choice_input.editable",
+      "label": "预设下拉与自定义值",
+      "feature": "预设下拉与自定义值",
+      "entry_points": [
+        "source/suite/frontend/app.js::makeRow(choice)/bindText",
+        "source/suite/source/console_adapter.h::read/apply"
+      ],
+      "control_ids": [
+        "type choice presentation editable",
+        "select + text"
+      ],
+      "config_keys": [
+        "对应预设/自定义值键"
+      ],
+      "modes": [
+        "选择预设",
+        "输入自定义",
+        "中文组合输入",
+        "失败保留草稿"
+      ],
+      "paths_reviewed": [
+        "独立select与text input共享当前control，按动作类型发送；editable才允许text，readonly不接受。",
+        "同C-IME-1修复确保中文候选Enter不提前提交自定义值。"
+      ],
+      "findings": [
+        "与host.text_input同一缺陷 C-IME-1，不重复计为独立问题。"
+      ],
+      "review_status": "fixed_controlled_verified",
+      "verification_level": "production_listeners_controlled_DOM+production_store",
+      "evidence": [
+        "console_composition_test.final.log",
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.choice_input.list",
+      "label": "列表选择和激活",
+      "feature": "列表选择和激活",
+      "entry_points": [
+        "source/suite/frontend/app.js::makeRow(choice list)",
+        "source/suite/source/console_adapter.h::apply"
+      ],
+      "control_ids": [
+        "type choice presentation list",
+        "select/activate",
+        "双击/Enter"
+      ],
+      "config_keys": [
+        "owner列表对应键或动作"
+      ],
+      "modes": [
+        "选择",
+        "双击",
+        "Enter",
+        "禁用项",
+        "新清单"
+      ],
+      "paths_reviewed": [
+        "普通change发送select，双击/Enter发送activate；Store仅list允许activate，native只LISTBOX执行LBN_DBLCLK。",
+        "press/activate pending须自己的ACK，不能由值相同的快照提前吞掉。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.choice_input.disabled",
+      "label": "禁用选项和不支持的原生控件",
+      "feature": "禁用选项和不支持的原生控件",
+      "entry_points": [
+        "source/suite/frontend/app.js::canonical/patchRow/ConsoleStore.act",
+        "source/suite/source/console_adapter.h::read",
+        "source/shared/source/disabled_choices.h"
+      ],
+      "control_ids": [
+        "optionEnabled",
+        "readonly/disabled fallback",
+        "透明SHA modeBox index2"
+      ],
+      "config_keys": [],
+      "modes": [
+        "部分选项禁用",
+        "多选列表",
+        "原生radio",
+        "未知控件",
+        "生命周期监视失败"
+      ],
+      "paths_reviewed": [
+        "禁用choice项保留可见但前端option与Store及adapter三层拒绝选择。",
+        "未知原生控件变只读label；多选列表/radio显式禁用并提供说明；未安装生命周期subclass的控件不可改。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.range_input",
+      "label": "滑块输入",
+      "feature": "滑块输入",
+      "entry_points": [
+        "source/suite/frontend/app.js::makeRow(range)/patchRow",
+        "source/suite/source/console_adapter.h::read/apply"
+      ],
+      "control_ids": [
+        "type range",
+        "action range"
+      ],
+      "config_keys": [
+        "owner滑块键"
+      ],
+      "modes": [
+        "拖动",
+        "键盘调整",
+        "连续input/change",
+        "范围/步长"
+      ],
+      "paths_reviewed": [
+        "input只记本地数值草稿与output；change发送整数；native读取真实trackbar min/max与line-size并检验范围。",
+        "成功时TBM_SETPOS后owner收到THUMBPOSITION和ENDTRACK；未把output显示当成保存证明。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.hotkey_capture",
+      "label": "快捷键捕获与取消",
+      "feature": "快捷键捕获与取消",
+      "entry_points": [
+        "source/suite/frontend/app.js::startCapture/stopCapture/document key listeners/encodeHotkey"
+      ],
+      "control_ids": [
+        "type hotkey capture button",
+        "keydown/keyup",
+        "Escape",
+        "blur/focusin/pointerdown"
+      ],
+      "config_keys": [
+        "owner快捷键键"
+      ],
+      "modes": [
+        "普通键",
+        "纯修饰键",
+        "重复keydown",
+        "Win组合",
+        "IME",
+        "取消/失焦"
+      ],
+      "paths_reviewed": [
+        "capture按Esc取消、重复keydown不反复发送、Win组合拒绝；离开按钮或窗口失焦停止捕获。",
+        "修复组合输入键不被记录成快捷键并保留捕获状态；真实encoder同样拒绝IME事件。"
+      ],
+      "findings": [
+        "与文本/搜索共用 C-IME-1 修复；不是独立native热键逻辑缺陷。"
+      ],
+      "review_status": "fixed_controlled_verified",
+      "verification_level": "production_listeners_controlled_DOM+production_functions",
+      "evidence": [
+        "console_composition_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行Windows系统热键注册与输入法；受控DOM事件非真实浏览器验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.hotkey_modes",
+      "label": "快捷键触发方式和组合位",
+      "feature": "快捷键触发方式和组合位",
+      "entry_points": [
+        "source/suite/frontend/app.js::encodeHotkey/patchRow(hotkey)",
+        "source/suite/source/console_adapter.h::apply",
+        "source/shared/source/key_gesture.h::effective/normalize",
+        "source/shared/source/modern_ui.h::hotkeyGestureAllowed"
+      ],
+      "control_ids": [
+        "press/release/hold",
+        "double",
+        "Ctrl/Shift/Alt",
+        "Legacy0 mode"
+      ],
+      "config_keys": [
+        "Hotkeys/* 与功能HoldKey/ToggleKey"
+      ],
+      "modes": [
+        "按下",
+        "松开",
+        "持续按住",
+        "双击",
+        "仅键盘",
+        "旧配置模式0"
+      ],
+      "paths_reviewed": [
+        "前端保留模式/双击位，单修饰键移除自身prefix位；native只接受Stored掩码与字段允许的手势。",
+        "排除Hold-only首次绑定候选：Legacy0在native由RA2.Modern.Hold解释为Hold，前端展示相同上下文。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_functions+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.hotkey_names",
+      "label": "快捷键名称与数字键盘显示",
+      "feature": "快捷键名称与数字键盘显示",
+      "entry_points": [
+        "source/suite/frontend/app.js::virtualKey/encodeHotkey/keyName/patchRow"
+      ],
+      "control_ids": [
+        "数字键盘106..111",
+        "未知已接受VK"
+      ],
+      "config_keys": [
+        "保存编码不变"
+      ],
+      "modes": [
+        "Num */+/-/./分隔/除",
+        "组合键",
+        "普通字母数字",
+        "未知VK"
+      ],
+      "paths_reviewed": [
+        "修复数字键盘运算符被String.fromCharCode显示为j/k/l/m/n/o；增加明确Num名称。",
+        "未知VK退为可见的VK编号，避免173等显示不可见字符；保留已知字母、数字、F键和修饰前缀。"
+      ],
+      "findings": [
+        "C-KEYNAME-1：已确认生产encoder→keyName→patchRow可达；8组回归由7失败变0失败。"
+      ],
+      "review_status": "fixed_controlled_verified",
+      "verification_level": "actual_production_functions",
+      "evidence": [
+        "hotkey-names.before.log",
+        "console_hotkey_presentation_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.hotkey_special_clear",
+      "label": "特殊键、鼠标键与清除绑定",
+      "feature": "特殊键、鼠标键与清除绑定",
+      "entry_points": [
+        "source/suite/frontend/app.js::makeRow(hotkey)/patchRow",
+        "source/suite/source/console_adapter.h::apply"
+      ],
+      "control_ids": [
+        "hotkey special/mode/double/clear"
+      ],
+      "config_keys": [
+        "owner对应快捷键"
+      ],
+      "modes": [
+        "Esc/Enter/Tab",
+        "鼠标左右中侧键",
+        "keyboardOnly",
+        "未绑定",
+        "清除"
+      ],
+      "paths_reviewed": [
+        "特殊键保留原修饰/模式/双击位；keyboardOnly不列出鼠标键且native再次拒绝鼠标VK。",
+        "没有物理键时模式/双击/清除禁用，选特殊键仍可建立绑定，clear发送0。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.hotkey_conflicts",
+      "label": "快捷键冲突拒绝后恢复显示",
+      "feature": "快捷键冲突拒绝后恢复显示",
+      "entry_points": [
+        "source/assist/source/auto_settings_ui.h::autoSettingChanged",
+        "source/assist/source/type_bindings_ui.h::keyConflict/destructOwnerKeyConflict",
+        "source/assist/source/main.cpp::WM_COMMAND"
+      ],
+      "control_ids": [
+        "自动功能keyControl",
+        "200..211",
+        "447/450/451/456/474/478",
+        "411/441/724",
+        "9254"
+      ],
+      "config_keys": [
+        "[Hotkeys]",
+        "[SuperHotkeys]",
+        "[TypeHotkeys]",
+        "各功能HoldKey"
+      ],
+      "modes": [
+        "冲突",
+        "共享键策略",
+        "自毁独占",
+        "原键清除",
+        "无选定类型"
+      ],
+      "paths_reviewed": [
+        "实际编辑EN_CHANGE先进入autoSettingChanged：临时去掉自身绑定、检查冲突、用ControlUpdate恢复旧HKM值后提示，避免显示已改但运行旧键。",
+        "未把旧apply按钮的遗留分支单独当作当前编辑bug；自毁独占键另有更严格冲突检查。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.immediate_action",
+      "label": "普通按钮与立即动作去重",
+      "feature": "普通按钮与立即动作去重",
+      "entry_points": [
+        "source/suite/frontend/app.js::makeRow(button)/ConsoleStore.act",
+        "source/suite/source/console_adapter.h::apply",
+        "source/suite/source/console_model.h::immediateFresh"
+      ],
+      "control_ids": [
+        "type button",
+        "immediate metadata",
+        "action press"
+      ],
+      "config_keys": [],
+      "modes": [
+        "单击",
+        "双击",
+        "键盘repeat",
+        "待ACK",
+        "超时",
+        "关闭"
+      ],
+      "paths_reviewed": [
+        "pending立即动作拒绝二次提交，DOM过滤双击detail>1和重复Enter/Space；操作携带原inputTime。",
+        "native立即动作同时检验接收tick与UTC时间150ms窗口；过期返回错误，不延后执行。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store/parser+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log",
+        "console_model_test.run.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.action_receipts",
+      "label": "动作排队、顺序与归一化回执",
+      "feature": "动作排队、顺序与归一化回执",
+      "entry_points": [
+        "source/suite/frontend/app.js::ConsoleStore.receive/act",
+        "source/suite/source/console_adapter.h::post/service/acknowledge",
+        "source/suite/source/modern_console_main.h::publishModels"
+      ],
+      "control_ids": [
+        "seq/generation/id/revision",
+        "ActionMailbox256",
+        "ACK512"
+      ],
+      "config_keys": [],
+      "modes": [
+        "快照先于ACK",
+        "ACK先于快照",
+        "晚到拒绝",
+        "新编辑覆盖旧请求",
+        "归一化",
+        "导航"
+      ],
+      "paths_reviewed": [
+        "真实Store保持等待自己的ACK，再等待requiredRevision；中间值相同不能吞掉晚到拒绝。",
+        "adapter限制每轮16动作、shell每轮32ACK；admission预留512回执槽，导航先排空owner FIFO再换代。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store/parser+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log",
+        "console_model_test.run.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.drafts_lifecycle",
+      "label": "草稿在刷新、移除和重连时的归属",
+      "feature": "草稿在刷新、移除和重连时的归属",
+      "entry_points": [
+        "source/suite/frontend/app.js::ConsoleStore.receive/beginEdit/cancelEdit/unsubmittedCount"
+      ],
+      "control_ids": [
+        "module:id",
+        "draft.page",
+        "generation"
+      ],
+      "config_keys": [],
+      "modes": [
+        "聚焦未改",
+        "修改中刷新",
+        "控件被移除",
+        "新generation",
+        "后台拒绝",
+        "返回旧缓存页"
+      ],
+      "paths_reviewed": [
+        "同页正常刷新不覆盖编辑草稿；删除control清理其pending/draft并提示，不能影响其他控件。",
+        "新generation保存未确认text为草稿，清旧pending/error；旧page禁提交；关闭计数对相同值的未改草稿不误报。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "actual_production_store",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.control_availability",
+      "label": "禁用、隐藏、只读和退出状态",
+      "feature": "禁用、隐藏、只读和退出状态",
+      "entry_points": [
+        "source/suite/frontend/app.js::ConsoleStore.act/patchRow/render",
+        "source/suite/source/console_adapter.h::read/apply"
+      ],
+      "control_ids": [
+        "enabled/visible/readonly",
+        "store.closed"
+      ],
+      "config_keys": [],
+      "modes": [
+        "正常",
+        "disabled",
+        "hidden",
+        "只读",
+        "过期generation",
+        "closing"
+      ],
+      "paths_reviewed": [
+        "前端和owner再次核对可用性；read沿祖先检查style，capture不导出隐藏控件。",
+        "只读字段可查看，text写入拒绝；已失效token错误明确，不把HWND跨WebView传递。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.grouping",
+      "label": "分组、关联行与主次控件",
+      "feature": "分组、关联行与主次控件",
+      "entry_points": [
+        "source/suite/frontend/app.js::groupControls/settingLines/updateRows/groupPresentation",
+        "source/suite/source/console_adapter.h::capture",
+        "source/suite/source/settings_categories.h::row"
+      ],
+      "control_ids": [
+        "RA2.Console.Group/Row/Column/GroupHeader",
+        "type heading"
+      ],
+      "config_keys": [],
+      "modes": [
+        "同一功能多控件",
+        "缺坐标",
+        "跨分类",
+        "group header",
+        "空label"
+      ],
+      "paths_reviewed": [
+        "按原生逻辑row保持关联editor同排；缺坐标不合并无关控件；搜索匹配一项仍保留同排功能上下文。",
+        "分类由完整行IDs决定，不按旧原生页号硬映射；按钮自身已有动作名时省略重复标签。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_functions+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.search",
+      "label": "当前页搜索和清空",
+      "feature": "当前页搜索和清空",
+      "entry_points": [
+        "source/suite/frontend/app.js::groupControls/search listeners/setSearch"
+      ],
+      "control_ids": [
+        "DOM search/clearSearch",
+        "Ctrl+F",
+        "Escape"
+      ],
+      "config_keys": [],
+      "modes": [
+        "label/text/hint/options/group",
+        "中文组合输入",
+        "无匹配",
+        "清空"
+      ],
+      "paths_reviewed": [
+        "query trim+casefold后匹配标签/文本/说明/选项/分组；空搜索恢复本页，调试清空同时清分组/状态筛选。",
+        "修复IME Escape不清空正在组合的搜索，Ctrl+F也避开IME事件。"
+      ],
+      "findings": [
+        "共用 C-IME-1，不重复计独立缺陷。"
+      ],
+      "review_status": "fixed_controlled_verified",
+      "verification_level": "production_listeners_controlled_DOM+production_functions",
+      "evidence": [
+        "console_composition_test.final.log",
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.folds",
+      "label": "分组折叠、全部展开与错误可见性",
+      "feature": "分组折叠、全部展开与错误可见性",
+      "entry_points": [
+        "source/suite/frontend/app.js::groupPresentation/updateGroup/setGroupCollapsed/updateFoldAction"
+      ],
+      "control_ids": [
+        "DOM foldAll/group-summary",
+        "collapsedDefault/groupHeader"
+      ],
+      "config_keys": [],
+      "modes": [
+        "默认收起",
+        "用户展开",
+        "全部收起",
+        "搜索自动展开",
+        "搜索内手动折叠",
+        "运行/ACK错误"
+      ],
+      "paths_reviewed": [
+        "header开关留在折叠体外；错误摘要独立group-status，折叠不遮住故障。",
+        "搜索临时searchFolds不改页面常规折叠；group无detail时summary禁用，不显示空折叠按钮。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_functions+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.fold_persistence",
+      "label": "折叠偏好保存范围",
+      "feature": "折叠偏好保存范围",
+      "entry_points": [
+        "source/suite/frontend/app.js::collapsed/foldPreferencesSeen/searchFolds"
+      ],
+      "control_ids": [
+        "page/group key"
+      ],
+      "config_keys": [
+        "无跨重启INI键"
+      ],
+      "modes": [
+        "当前会话",
+        "切换页返回",
+        "搜索",
+        "WebView重建/重启"
+      ],
+      "paths_reviewed": [
+        "collapsed按页面+组名留在前端内存；searchFolds搜索改变清空。",
+        "当前实现只承诺会话内偏好，重新加载按native collapsedDefault；未把本轮源码没有的跨重启持久化当成已有功能。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "这是设计边界：跨重启记住折叠状态未实现；未据此伪造已复现功能错误。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.virtualized_controls",
+      "label": "长页面按可见区域创建控件",
+      "feature": "长页面按可见区域创建控件",
+      "entry_points": [
+        "source/suite/frontend/app.js::observer/chunkObserver/updateGroup/updateChunk/unmountGroup/unmountChunk/placeAfter"
+      ],
+      "control_ids": [
+        "48项分块阈值",
+        "24项逻辑行分批",
+        "RAF schedule"
+      ],
+      "config_keys": [],
+      "modes": [
+        "滚动",
+        "离屏",
+        "聚焦编辑",
+        "分组变化",
+        "搜索收缩",
+        "重新出现"
+      ],
+      "paths_reviewed": [
+        "离屏组/块卸载前检查activeElement，输入焦点在内则保留；按逻辑行分块不拆开关联editor。",
+        "高度占位保留滚动空间，releaseChunks取消observer并清cache；keyed placeAfter避免无谓DOM移动。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_placeAfter_fixture+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行本轮真实浏览器滚动/内存/布局基准；只做源路径与既有DOM摆放夹具，未声称实测性能提升。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.notices",
+      "label": "状态、失败提示与保存反馈",
+      "feature": "状态、失败提示与保存反馈",
+      "entry_points": [
+        "source/suite/frontend/app.js::render/notify/updateGroup",
+        "source/suite/source/modern_console_main.h::publishShell/storageFailureText"
+      ],
+      "control_ids": [
+        "globalNotice/statusText/toast/saveState/pendingCount/retrySave"
+      ],
+      "config_keys": [],
+      "modes": [
+        "运行错误",
+        "ACK拒绝",
+        "保存失败",
+        "恢复",
+        "等待确认",
+        "正在退出"
+      ],
+      "paths_reviewed": [
+        "真实错误来源/路径/section/key不含设置值；config.failed优先保存状态，错误恢复后允许再次提醒。",
+        "ACK错误留在对应行与组摘要并toast；全局状态保持可读，按钮角色和disabled来自metadata。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.diagnostic_view",
+      "label": "诊断入口筛选、观测时效与逐项校验开关",
+      "feature": "诊断入口筛选、观测时效与逐项校验开关",
+      "entry_points": [
+        "source/suite/frontend/app.js::canonicalDebug/debugStatus/filterDebugControls/renderDebug",
+        "source/suite/source/console_adapter.h::read/capture"
+      ],
+      "control_ids": [
+        "debugGroup/debugFilter/search",
+        "debug.siteId/address",
+        "opaque toggle token"
+      ],
+      "config_keys": [
+        "Assist.ini [DebugEntries] Skip_%08X（owner写入）"
+      ],
+      "modes": [
+        "ready",
+        "blocked",
+        "unknown",
+        "unused",
+        "unchecked",
+        "attention",
+        "安静/过期",
+        "旧generation"
+      ],
+      "paths_reviewed": [
+        "未观测/旧generation/超过5秒的样本不能显示已就绪；地址相同的call与breakpoint保留不同token。",
+        "筛选覆盖地址/用途/影响功能，普通探测工具控制不被目录筛选隐藏；关闭签名校验不制造ready。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "actual_production_debug_functions+source_trace",
+      "evidence": [
+        "console_debug_test.final.log"
+      ],
+      "validation_gaps": [
+        "只验证呈现、路由、时效；实际平台签名/Hook和游戏观测由root范围负责，未实机执行。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.protocol_validation",
+      "label": "前后端消息边界与Unicode序列化",
+      "feature": "前后端消息边界与Unicode序列化",
+      "entry_points": [
+        "source/suite/source/console_model.h::Parser/encodeSnapshot/encodeAck",
+        "source/suite/frontend/app.js::validText/ConsoleStore.act/receive"
+      ],
+      "control_ids": [
+        "protocol1",
+        "message<=262144B",
+        "text<=65536B",
+        "safe integer"
+      ],
+      "config_keys": [],
+      "modes": [
+        "重复字段",
+        "未知字段",
+        "错类型",
+        "非法UTF8/代理项",
+        "越界ID/seq",
+        "超长"
+      ],
+      "paths_reviewed": [
+        "native严格scalar JSON解析，拒绝重复/未知字段/尾随数据与越界数字；text检查decoded bytes，消息另限serialized bytes。",
+        "状态序列化对文本转义，前端全部用户文本用textContent；HTML结构由固定代码生成。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "actual_production_parser+store",
+      "evidence": [
+        "console_model_test.run.log",
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.webview_document",
+      "label": "内嵌页面、导航与消息来源限制",
+      "feature": "内嵌页面、导航与消息来源限制",
+      "entry_points": [
+        "source/suite/source/web_console.cpp::Host::State::initializeController/incoming",
+        "source/suite/frontend/index.html CSP"
+      ],
+      "control_ids": [
+        "NavigateToString",
+        "about:blank message source"
+      ],
+      "config_keys": [],
+      "modes": [
+        "首次内嵌导航",
+        "陌生导航",
+        "子frame",
+        "新窗口",
+        "权限",
+        "下载",
+        "浏览器快捷键"
+      ],
+      "paths_reviewed": [
+        "仅授权Host发出的精确内嵌data URI与navigation id；completed/document message来源要求about:blank。",
+        "禁止frame导航/新窗口/权限/下载/host objects/DevTools；CSP无网络connect，固定nonce脚本。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "本轮只源码核对；没有WebView2 COM导航运行，不能宣称浏览器安全全量验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.webview_failure",
+      "label": "控制台失败页面与重建",
+      "feature": "控制台失败页面与重建",
+      "entry_points": [
+        "source/suite/source/web_console.cpp::Host::create/State::error/dispose",
+        "source/suite/source/modern_console_main.h::onError/createBrowser/onMessage"
+      ],
+      "control_ids": [
+        "原生Retry ID1",
+        "安装说明ID2",
+        "ready handshake"
+      ],
+      "config_keys": [],
+      "modes": [
+        "loader缺失",
+        "WebView2版本旧",
+        "cache失败",
+        "process failed",
+        "重试",
+        "旧回调"
+      ],
+      "paths_reviewed": [
+        "错误转异步dispatcher再交shell；close取消注册事件并清queue，shared lifetime保留在回调完成之前。",
+        "重建browser清ready/closeQuery状态，真实新连接renewSession换generation，避免旧token继续提交。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.webview_queues",
+      "label": "控制台消息公平处理和有界队列",
+      "feature": "控制台消息公平处理和有界队列",
+      "entry_points": [
+        "source/suite/source/web_console.cpp::State::incoming/drain/wake",
+        "source/suite/source/console_adapter.h::post/service",
+        "source/suite/source/modern_console_main.h::publishModels"
+      ],
+      "control_ids": [
+        "DeliveryLimit1024",
+        "drain32",
+        "ActionMailbox256",
+        "ACK512"
+      ],
+      "config_keys": [],
+      "modes": [
+        "初始化早到消息",
+        "连续操作",
+        "队列满",
+        "后台关闭"
+      ],
+      "paths_reviewed": [
+        "early与正常消息有1024上限，满时关闭旧通路并显示错误；每次dispatcher仅32项后再post。",
+        "native动作及回执容量独立，避免无限积压；仅保留最新snapshot但不合并掉请求回执。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_mailbox+source_trace",
+      "evidence": [
+        "console_model_test.run.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.ini_single",
+      "label": "单项设置异步保存",
+      "feature": "单项设置异步保存",
+      "entry_points": [
+        "source/shared/source/async_ini_store.h::Operation/Store::enqueue/appendLocked/run"
+      ],
+      "control_ids": [
+        "Set/DeleteKey"
+      ],
+      "config_keys": [
+        "Assist.ini/settings.ini/Toolbox.ini各owner键"
+      ],
+      "modes": [
+        "写入",
+        "覆盖同键",
+        "删除",
+        "多个生产者",
+        "写盘落后"
+      ],
+      "paths_reviewed": [
+        "队列拥有section/key/value/path文本；单writer按顺序处理，不在UI等待磁盘。",
+        "同key Set跨可合并区间只保留最新；删除/flush顺序屏障不被抹掉；unknown其他key保留。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "actual_production_Store_linux_controlled_writer",
+      "evidence": [
+        "async_ini_store_test.run.log"
+      ],
+      "validation_gaps": [
+        "Linux受控writer不是Win32 INI落盘；本轮没有真实只读/占用/磁盘/掉电测试。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.ini_section",
+      "label": "整节替换、类型目录和绑定保存",
+      "feature": "整节替换、类型目录和绑定保存",
+      "entry_points": [
+        "source/shared/source/async_ini_store.h::Operation::sectionWrite/Store::appendLocked",
+        "source/assist/source/main.cpp::writeSection/saveCatalogue/save"
+      ],
+      "control_ids": [
+        "ReplaceSection/DeleteSection",
+        "MULTI_SZ"
+      ],
+      "config_keys": [
+        "Assist.ini [TypeHotkeys]/[AutoCSUnits]/[TypeCatalogue]"
+      ],
+      "modes": [
+        "整节替换",
+        "删除整节",
+        "失败后新单key",
+        "跨节连续保存",
+        "重试"
+      ],
+      "paths_reviewed": [
+        "复制完整MULTI_SZ含终止空串，不拆成先删后逐项写；只同section替换构成该section合并边界。",
+        "失败整节重放先于之后成功key补偿；避免重试擦掉较新值，其他节不受影响。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "actual_production_Store_linux_controlled_writer+source_trace",
+      "evidence": [
+        "async_ini_store_test.run.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.ini_cache",
+      "label": "读取未落盘的最新设置",
+      "feature": "读取未落盘的最新设置",
+      "entry_points": [
+        "source/shared/source/async_ini_store.h::Store::lookup/sectionIntentLocked/cachedReadString/cachedReadInt/readValue/readInteger"
+      ],
+      "control_ids": [
+        "lookup",
+        "cached profile aliases"
+      ],
+      "config_keys": [
+        "当前pending/failed intent cache"
+      ],
+      "modes": [
+        "未落盘",
+        "失败保留",
+        "section删除/替换",
+        "成功清cache",
+        "大小写与路径斜杠"
+      ],
+      "paths_reviewed": [
+        "按path/section/key归一化键索引；较新section与key按revision决定读值。",
+        "回退native只在cache unknown；字符串按size截断并NUL终止，int解析保留legacy前缀/引号语义。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "actual_production_Store_linux_controlled_writer+source_trace",
+      "evidence": [
+        "async_ini_store_test.run.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.ini_failures",
+      "label": "保存失败原因、保留意图与重试",
+      "feature": "保存失败原因、保留意图与重试",
+      "entry_points": [
+        "source/shared/source/async_ini_store.h::Store::failLocked/retryFailed/status",
+        "source/suite/source/modern_console_main.h::storageFailureText/retrySettings/publishShell",
+        "source/suite/frontend/app.js::ConsoleStore.retryConfig"
+      ],
+      "control_ids": [
+        "retrySave",
+        "config-retry seq",
+        "failed/canRetry"
+      ],
+      "config_keys": [
+        "失败的原path/section/key"
+      ],
+      "modes": [
+        "原生32/8",
+        "queue8",
+        "cache8",
+        "shutdown995",
+        "重试ACK",
+        "关闭保存阶段"
+      ],
+      "paths_reviewed": [
+        "错误来源区分Native/Queue/Cache/Shutdown；失败保存最新revision意图，旧writer失败不能盖掉新拒收意图。",
+        "仅idle且accepting且closePhase<3提供重试；重试回执只释放按钮，直到真实成功才清失败，未用acknowledgeError假装已保存。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "actual_production_Store+production_frontend_store",
+      "evidence": [
+        "async_ini_store_test.run.log",
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.ini_pressure",
+      "label": "连续设置变更与保存队列上限",
+      "feature": "连续设置变更与保存队列上限",
+      "entry_points": [
+        "source/shared/source/async_ini_store.h::Store::appendLocked/notify",
+        "source/assist/source/auto_settings_ui.h::changedSetting/flushAutoSettings"
+      ],
+      "control_ids": [
+        "300ms AutoSaveTimer3901",
+        "queue4096/cache8192",
+        "notice edge dedup"
+      ],
+      "config_keys": [
+        "owner完整保存集"
+      ],
+      "modes": [
+        "高频编辑",
+        "重复完整保存",
+        "慢writer",
+        "queue满",
+        "通知"
+      ],
+      "paths_reviewed": [
+        "changedSetting立即更新运行revision，只对磁盘保存300ms debounce；不会降低每逻辑帧游戏采样。",
+        "实际生产Store受控25轮×(200keys+3sections)保留203待处理项；通知按working/error边沿去重。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "actual_production_Store_controlled_pressure",
+      "evidence": [
+        "async_ini_store_test.run.log"
+      ],
+      "validation_gaps": [
+        "这是受控队列性质，不是Windows磁盘性能或端到端FPS；极端超出有界意图容量的负载仍有上限。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.close_drafts",
+      "label": "关闭前检查未提交输入",
+      "feature": "关闭前检查未提交输入",
+      "entry_points": [
+        "source/suite/frontend/app.js::ConsoleStore.unsubmittedCount/receive(close-check)",
+        "source/suite/source/modern_console_main.h::requestClose/onMessage(close)"
+      ],
+      "control_ids": [
+        "close-check seq/close unsubmitted",
+        "原生确认框"
+      ],
+      "config_keys": [],
+      "modes": [
+        "未改聚焦",
+        "改动草稿",
+        "pending",
+        "页面过期",
+        "迟到nonce",
+        "前端不响应"
+      ],
+      "paths_reviewed": [
+        "按nonce应答且上限10000；只聚焦未变值不算未保存，旧generation或未知归属保守计数。",
+        "有未提交项由原生确认，拒绝即继续使用；前端3秒不回应时第二次关闭才提供继续提示。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "actual_production_store+source_trace",
+      "evidence": [
+        "console_store_test.final.log",
+        "console_receipt_order_test.final.log"
+      ],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.close_saves",
+      "label": "关闭前完成保存与显式跳过",
+      "feature": "关闭前完成保存与显式跳过",
+      "entry_points": [
+        "source/suite/source/modern_console_main.h::beginShutdown/prepareCloseSaves/requestClose/proc",
+        "source/shared/source/async_ini_store.h::Store::beginShutdown/idle"
+      ],
+      "control_ids": [
+        "closePhase1..3",
+        "ClosePrepared mask",
+        "CloseTimer50ms"
+      ],
+      "config_keys": [
+        "最后一轮owner完整设置"
+      ],
+      "modes": [
+        "正常关闭",
+        "写盘失败",
+        "worker未准备",
+        "用户重试",
+        "用户显式跳过"
+      ],
+      "paths_reviewed": [
+        "保存阶段不使用破坏性硬deadline；等待三模块prepare、bootstrap完成和Store idle无失败，才进cleanup。",
+        "二次关闭在失败或3秒后提供明确跳过提示；否可重试，真正cleanup不再接受新配置重试。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.close_cleanup",
+      "label": "退出时界面与后台清理",
+      "feature": "退出时界面与后台清理",
+      "entry_points": [
+        "source/suite/source/modern_console_main.h::startCleanup/wWinMain tail",
+        "source/suite/source/web_console.cpp::State::dispose",
+        "source/shared/source/bounded_shutdown.h"
+      ],
+      "control_ids": [
+        "模块WM_CLOSE CloseToken",
+        "通知窗口撤销"
+      ],
+      "config_keys": [],
+      "modes": [
+        "正常退出",
+        "异常WM_QUIT/GetMessage失败",
+        "旧WebView回调"
+      ],
+      "paths_reviewed": [
+        "先停止准入再模块清理，配置writer不在UI析构join；最后flush属于profile cache管理不宣称掉电耐久。",
+        "异常消息循环退出走有界服务收尾；browser事件解除、notificationWindow清空；更深Runtime退订由root另审。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.process_search",
+      "label": "运行进程关键字筛选",
+      "feature": "运行进程关键字筛选",
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h::gameProcessSelectionFilter/Command",
+        "source/external_reader/source/process_target_selection.h::matchesKeywords"
+      ],
+      "control_ids": [
+        "GameProcessSearch12400",
+        "running12402"
+      ],
+      "config_keys": [
+        "编辑中不持久化；点击保存才写 [GameProcess] Keywords"
+      ],
+      "modes": [
+        "空",
+        "多关键词",
+        "大小写",
+        "名称/路径/描述",
+        "选择保持"
+      ],
+      "paths_reviewed": [
+        "非空query所有空白分隔词都须匹配；空query由UI直接显示全部。",
+        "重建列表前记录pid+creation，筛选内只恢复同身份；单候选可自动选，selected指针经visible索引映射。"
+      ],
+      "findings": [
+        "文本编辑进入现代bindText，因此受C-IME-1保护；原生过滤算法未修改。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.process_refresh",
+      "label": "刷新候选进程列表",
+      "feature": "刷新候选进程列表",
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h::gameProcessSelectionRefresh/Worker/updateGameProcessSelectionUI/shutdown"
+      ],
+      "control_ids": [
+        "GameProcessRefresh12403"
+      ],
+      "config_keys": [],
+      "modes": [
+        "刷新",
+        "重复点击",
+        "线程创建失败",
+        "读取失败",
+        "关闭时任务未结束"
+      ],
+      "paths_reviewed": [
+        "仅一个未完成job，按钮禁用；worker只拥有结果不触碰HWND，release/acquire done发布。",
+        "失败保留旧列表；成功清旧visible和选择后更换vector避免PID复用/重排错选；关闭递增generation并放弃UI引用不等待。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.process_keywords",
+      "label": "保存自动识别搜索词",
+      "feature": "保存自动识别搜索词",
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h::GameProcessSaveSearch handler",
+        "source/external_reader/source/process_target_selection.h::saveKeywords/publish"
+      ],
+      "control_ids": [
+        "GameProcessSaveSearch12401"
+      ],
+      "config_keys": [
+        "Toolbox.ini [GameProcess] Keywords"
+      ],
+      "modes": [
+        "保存",
+        "空词",
+        ">512",
+        "换行/NUL",
+        "写入失败"
+      ],
+      "paths_reviewed": [
+        "UI保存trim后文本；policy拒绝超512/换行/NUL，整节持久化后才发布revision。",
+        "成功文案说明关键词、已记名单与内置规则共同参与；保存失败保持原policy并输出Win32码。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.process_remember",
+      "label": "连接所选进程并加入检测名单",
+      "feature": "连接所选进程并加入检测名单",
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h::GameProcessRemember handler",
+        "source/external_reader/source/process_target_selection.h::rememberProcess"
+      ],
+      "control_ids": [
+        "GameProcessRunning12402",
+        "GameProcessRemember12404"
+      ],
+      "config_keys": [
+        "[GameProcess] ProgramCount/Program1..64",
+        "selectedPid/Creation仅会话"
+      ],
+      "modes": [
+        "无选择",
+        "正常",
+        "进程退出",
+        "PID复用",
+        "身份无权读取",
+        "名单满"
+      ],
+      "paths_reviewed": [
+        "点击时再次读identity，校验creation与非空path以及原path一致，不能只凭PID。",
+        "新增路径不覆盖旧规则；成功只发布优先连接policy，真正连接由Host生命周期响应，不伪报已连接。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.process_add",
+      "label": "手工添加程序路径或精确名称",
+      "feature": "手工添加程序路径或精确名称",
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h::GameProcessAdd handler",
+        "source/external_reader/source/process_target_selection.h::normalizedProgram/appendProgram/addProgram"
+      ],
+      "control_ids": [
+        "GameProcessTarget12405",
+        "GameProcessAdd12406"
+      ],
+      "config_keys": [
+        "[GameProcess] ProgramCount/Program1..64"
+      ],
+      "modes": [
+        "绝对盘符路径",
+        "UNC",
+        "精确文件名",
+        "双引号包裹",
+        "重复",
+        "非法字符",
+        "64项上限"
+      ],
+      "paths_reviewed": [
+        "trim与去外层双引号；拒绝通配符/换行/NUL/相对路径/空文件名；名称匹配与完整路径匹配语义分离。",
+        "最多64唯一程序，case/斜杠同值不重复；添加不会清旧程序或优先PID。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.process_remove",
+      "label": "移除已记程序规则",
+      "feature": "移除已记程序规则",
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h::GameProcessRemove handler/updateGameProcessSelectionUI",
+        "source/external_reader/source/process_target_selection.h::removeProgram"
+      ],
+      "control_ids": [
+        "GameProcessRemembered12407",
+        "GameProcessRemove12408"
+      ],
+      "config_keys": [
+        "[GameProcess] ProgramCount/Program1..64"
+      ],
+      "modes": [
+        "已选",
+        "未选",
+        "policy变化",
+        "写入失败"
+      ],
+      "paths_reviewed": [
+        "删除前用显示列表中的完整字符串到最新policy再次定位，避免旧index删错对象。",
+        "无选择禁用；只删选中规则，内置识别和其他记录不变；失败不发布成功policy。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.process_clear_preferred",
+      "label": "清除本次指定并回到自动规则",
+      "feature": "清除本次指定并回到自动规则",
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h::GameProcessClearPreferred handler",
+        "source/external_reader/source/process_target_selection.h::clearPreferredProcess"
+      ],
+      "control_ids": [
+        "GameProcessClearPreferred12409"
+      ],
+      "config_keys": [
+        "无持久PID；保留[GameProcess]规则"
+      ],
+      "modes": [
+        "有优先目标",
+        "无目标",
+        "清除后自动选择"
+      ],
+      "paths_reviewed": [
+        "只置selectedPid/Creation为0并发布revision，不删除关键词或记住名单，不持久化会话PID。",
+        "无优先PID禁用按钮；成功文本说明检测名单仍保留。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.process_status",
+      "label": "进程连接状态与操作反馈",
+      "feature": "进程连接状态与操作反馈",
+      "entry_points": [
+        "source/assist/source/game_process_selection_ui.h::updateGameProcessSelectionUI/Message"
+      ],
+      "control_ids": [
+        "GameProcessConnection12410",
+        "GameProcessFeedback12411"
+      ],
+      "config_keys": [],
+      "modes": [
+        "未连接",
+        "只读",
+        "运行暂停",
+        "等待回调",
+        "数据旧",
+        "指令就绪",
+        "错误"
+      ],
+      "paths_reviewed": [
+        "250ms UI更新限制不降低游戏原始采样；状态区分policy选择、实际pid与指令链路状态。",
+        "文本相同不反复SetWindowText；错误含Win32码而不把身份查询失败混为已连接。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "未执行 Windows / WebView2 原生界面与游戏联动；源码追踪不等于实机验收。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.asset_import_boundary",
+      "label": "文件导入实际入口边界",
+      "feature": "文件导入实际入口边界",
+      "entry_points": [
+        "source/cursor/source/main.cpp::importStyle (ID130)",
+        "source/suite/frontend/app.js::makeRow(button)",
+        "source/suite/source/console_adapter.h::capture/apply"
+      ],
+      "control_ids": [
+        "Cursor导入SHA ID130"
+      ],
+      "config_keys": [
+        "光标owner自有资源配置"
+      ],
+      "modes": [
+        "文件选择",
+        "取消",
+        "资源校验"
+      ],
+      "paths_reviewed": [
+        "源码搜索确认产品有光标SHA导入；UI按按钮路由到owner，取消native文件选择不会提交资源。",
+        "解析/资源缓存/失败回滚由display矩阵单独逐点审；本控制台没有通用INI导入/导出菜单。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "不把通用设置导入导出算作已实现/已验收；SHA文件解析与游戏展示见display责任范围。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.config_import_export_absent",
+      "label": "通用配置导入/导出（未提供入口）",
+      "feature": "通用配置导入/导出（未提供入口）",
+      "entry_points": [
+        "source/suite/frontend/app.js::CATEGORIES/makeRow",
+        "source/suite/frontend/index.html",
+        "source/suite/source/modern_console_main.h::onMessage"
+      ],
+      "control_ids": [],
+      "config_keys": [
+        "INI自动保存不等于导入/导出"
+      ],
+      "modes": [
+        "当前版本不存在该用户入口"
+      ],
+      "paths_reviewed": [
+        "检查现代导航、固定toolbar、消息协议和native shell未发现通用配置导入/导出动作；不臆造测试结果。"
+      ],
+      "findings": [],
+      "review_status": "not_implemented_or_exposed",
+      "verification_level": "source_inventory",
+      "evidence": [],
+      "validation_gaps": [
+        "不属于当前可用功能计数；若产品需要配置迁移/备份向导应作为后续新增需求。"
+      ],
+      "availability": "not_implemented_or_exposed",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.language",
+      "label": "中文界面与Unicode路径",
+      "feature": "中文界面与Unicode路径",
+      "entry_points": [
+        "source/suite/frontend/app.js::CATEGORIES/keyName/validText",
+        "source/suite/frontend/index.html",
+        "source/suite/source/console_adapter.h::utf8/wide",
+        "source/suite/source/console_model.h::detail::quote/Parser::string"
+      ],
+      "control_ids": [
+        "html lang zh-CN",
+        "静态中文label",
+        "native Unicode文本"
+      ],
+      "config_keys": [
+        "无Language/Locale切换key"
+      ],
+      "modes": [
+        "简/繁中文值",
+        "Unicode路径",
+        "emoji/代理项",
+        "键名显示"
+      ],
+      "paths_reviewed": [
+        "当前静态中文UI保留native Unicode文字与路径；不存在语言选择器，英文副标题不是语言切换功能。",
+        "协议受控覆盖UTF8/代理项；IME编辑和非可打印VK标签缺陷分别已修复。"
+      ],
+      "findings": [],
+      "review_status": "controlled_verified",
+      "verification_level": "production_parser/functions+source_inventory",
+      "evidence": [
+        "console_model_test.run.log",
+        "console_composition_test.final.log",
+        "console_hotkey_presentation_test.final.log"
+      ],
+      "validation_gaps": [
+        "Windows输入法和系统字体呈现未验收；多语言切换未实现，不当作已通过功能。"
+      ],
+      "availability": "static_chinese_ui_no_locale_switch",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.accessibility",
+      "label": "键盘操作、标签与状态语义",
+      "feature": "键盘操作、标签与状态语义",
+      "entry_points": [
+        "source/suite/frontend/app.js::makeRow/patchRow/render",
+        "source/suite/frontend/index.html"
+      ],
+      "control_ids": [
+        "aria-label/role switch/aria-current/tablist",
+        "label htmlFor",
+        "role status/alert"
+      ],
+      "config_keys": [],
+      "modes": [
+        "键盘Tab",
+        "标签点选",
+        "屏幕阅读器",
+        "错误提示"
+      ],
+      "paths_reviewed": [
+        "控件用稳定module/token id关联label；主开关role switch，分类aria-current，tab页aria-selected。",
+        "文本值与说明用textContent；readonly与disabled区分；错误/状态有alert/status语义。"
+      ],
+      "findings": [],
+      "review_status": "source_reviewed",
+      "verification_level": "source_trace",
+      "evidence": [],
+      "validation_gaps": [
+        "只源码检查；未使用屏幕阅读器或真实浏览器键盘遍历全部控件，不能宣称无障碍认证。"
+      ],
+      "availability": "current_ui_or_user_triggered_mechanism",
+      "windows_validation": "not_executed"
+    },
+    {
+      "id": "host.retained_feature_visibility",
+      "label": "停用/隐藏旧功能在现代控制台的可达性",
+      "feature": "停用/隐藏旧功能在现代控制台的可达性",
+      "entry_points": [
+        "source/suite/source/console_adapter.h::visibleStyle/read/capture",
+        "source/cursor/source/main.cpp::wWinMain",
+        "source/suite/source/video_settings_ui.h::VideoSettings::ready/create/sync"
+      ],
+      "control_ids": [
+        "Cursor install ID3",
+        "modeBox index2",
+        "clickBox/clickModeBox/clickGapBox原生ID0",
+        "RenderUpgrade proxyID12014 / owner9300"
+      ],
+      "config_keys": [
+        "历史Click.Enabled/Mode/IntervalMs",
+        "Display.RenderUpgrade及子参数"
+      ],
+      "modes": [
+        "透明SHA停用",
+        "旧Shift五连点隐藏",
+        "渲染升级入口禁用",
+        "旧saved true子参数"
+      ],
+      "paths_reviewed": [
+        "Shift三控件没有WS_VISIBLE且跳过advancedControls，capture同样排除：保留配置无当前UI入口。",
+        "install按钮可见disabled；透明SHA选项index2 optionEnabled=false；RenderUpgrade代理ready恒false且label明确暂不可用。",
+        "部分渲染子参数仍随历史RenderUpgrade=true可编辑，实际运行约束由display矩阵标记；没有擅自启用停用功能。"
+      ],
+      "findings": [
+        "DDraw configure/restore仅有header定义，当前无include/configure调用；不能把孤立实现列成可用入口。"
+      ],
+      "review_status": "source_reviewed",
+      "verification_level": "cross_reviewed_source_inventory",
+      "evidence": [
+        "与audit_all_display交叉核验source路径与控制ID"
+      ],
+      "validation_gaps": [
+        "这是可达性/保留配置分类；不能拿入口禁用或参数可保存冒充功能实机生效。"
+      ],
+      "availability": "mixed_visible_disabled_and_hidden_retained",
+      "windows_validation": "not_executed"
+    }
+  ],
+  "source_hashes_at_report": {
+    "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+    "source/assist/source/game_process_selection_ui.h": "dcd29ba4406e70871d57a07205d5b55d782eafe7f8363fa238dea56a7d4822f8",
+    "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+    "source/assist/source/type_bindings_ui.h": "90f29ad1d4d0d1c20ec22271ed24de29f16b027c970e0c79e13855166ba7e9ec",
+    "source/cursor/source/main.cpp": "88847fea360c76666b7f5eefd9b7bac32b464f449980f0797f146ceaf5a1a266",
+    "source/external_reader/source/process_target_selection.h": "512bcf16a65c65ad0b10d9a2bfdb18231a0c2f0a07a61fd637af36bfaf2f725d",
+    "source/shared/source/async_ini_store.h": "83eae8fae4b162c45c0f402ba8340fca457dbaf0452fc42d5c77a483270705a4",
+    "source/shared/source/bounded_shutdown.h": "d71d39a071be38c0d9f9415b807f18f4f7b06d7576ae14fb9dc965b6241c01c7",
+    "source/shared/source/disabled_choices.h": "845cc17e16a8ababb2b1088b7a6c0ba52a036edb782380c8fe3874b1fbcce318",
+    "source/shared/source/initial_profiles.h": "142c4964e1c78235fe6fba2847c7978f7f3e0dbad1148dbd15c943d2c7c26643",
+    "source/shared/source/key_gesture.h": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8",
+    "source/shared/source/modern_ui.h": "fec279d238b94c9611e852646cdf9a2400f6fdd74f02fb9b5eb04757fa949619",
+    "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+    "source/suite/frontend/index.html": "1987cf0516d8979d27a77587f1e01e110594f606ff34bf25164eb5018f7c6560",
+    "source/suite/source/console_adapter.h": "33d5a74466aa7a5e153350087317efdd1254d40e3a0583620fbd07bfe92c9012",
+    "source/suite/source/console_model.h": "35c131f0d2f17b3c1407a6a0188765cb8cda151ad49c688395bb0578a098cd20",
+    "source/suite/source/modern_console_main.h": "97aa4fc087b433ec5ede96dbc2b4dde9381aad3422f66bb8a45ecf51d0166570",
+    "source/suite/source/settings_categories.h": "782d273871e498e2017a31a4505093c4b46d31d79a967213644ea7f6513a18e6",
+    "source/suite/source/video_settings_ui.h": "1e584429f6ab18a3e22cd69931e707bf17edc5ffb3cf3bc6f989a9b667cfc240",
+    "source/suite/source/web_console.cpp": "882b753a6a836bff7370db5376accf0caa496bbec6874315c67fecfecc25d992"
+  },
+  "verification": {
+    "frontend_runs": "frontend-final-test-runs.json",
+    "portable_runs": "native-portable-test-runs.json",
+    "counterexamples": [
+      "composition-events.before.run.json",
+      "hotkey-names.before.run.json"
+    ],
+    "browser_attempt": "composition.baseline.run.json",
+    "browser_result": "Playwright launch failed: selected runtime has no chromium_headless_shell executable; no browser assertions executed",
+    "windows_webview2_game": "not executed"
+  },
+  "excluded_false_positives": [
+    {
+      "candidate": "beginEdit从control.text创建旧草稿",
+      "result": "实际focus监听马上用input.value刷新草稿；未证明可达损坏，不修"
+    },
+    {
+      "candidate": "Hold-only首键没有显式Hold位",
+      "result": "native Legacy0由RA2.Modern.Hold解释，符合旧配置语义，不修"
+    },
+    {
+      "candidate": "旧apply热键冲突分支未恢复HWND",
+      "result": "真实EN_CHANGE先经autoSettingChanged恢复旧绑定；不把不可达旧分支当现行编辑bug"
+    }
+  ]
+}
