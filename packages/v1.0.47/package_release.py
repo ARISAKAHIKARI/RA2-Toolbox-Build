@@ -171,7 +171,7 @@ HOTKEY_BINDINGS = {
          'source/assist/tests/fixtures/hotkey_pre1473/hotkey_host.h'},
         {'source/assist/source/main.cpp', 'source/assist/source/hotkey_host.h',
          'source/assist/source/hotkey_routes.h', 'source/assist/source/control_link.h',
-         'source/assist/source/protocol.h', 'source/shared/source/key_gesture.h',
+         'source/assist/source/protocol.h', 'source/assist/source/read_only_lifecycle.h', 'source/shared/source/key_gesture.h',
          'source/assist/source/additional_settings.h', 'source/assist/source/type_hotkey.h',
          'source/assist/source/automatic_features.h', 'source/assist/source/activation_diagnostic.h'}),
     'hotkey_message_recovery': (
@@ -540,6 +540,9 @@ def formation_ownership_success_log(text):
             return False
         names, failed = set(), []
         for case in cases:
+            # The actual WM owner refusal increments blocked; the poll owner
+            # early return does not. The former expression adds one erroneous
+            # WM refusal at high uptime, while both branches reject a live preview.
             fields = {'scenario', 'expected_send', 'sent', 'owned', 'mode', 'messages',
                       'sampled', 'actions', 'blocked', 'passed'}
             if (not isinstance(case, dict) or set(case) != fields
@@ -548,7 +551,8 @@ def formation_ownership_success_log(text):
                     or any(type(case.get(key)) is not int or case[key] not in (0, 1)
                            for key in fields - {'scenario', 'mode', 'passed'})
                     or type(case.get('mode')) is not int or case['mode'] != 2
-                    or case['blocked'] != 0
+                    or case['blocked'] != int(case['scenario'] == 'current_active_preview_wm'
+                        or (branch == 'baseline' and case['scenario'] == 'unset_high_uptime_wm'))
                     or case['passed'] != (case['sent'] == case['expected_send'])):
                 return False
             names.add(case['scenario'])

@@ -219,8 +219,8 @@ def formation_policy_fixture():
             message = int(name.endswith('_wm'))
             cases.append({'scenario': name, 'expected_send': expected, 'sent': sent,
                           'owned': int(not sent), 'mode': 2, 'messages': message,
-                          'sampled': int(not message and bool(sent)), 'actions': int(message or bool(sent)),
-                          'blocked': 0, 'passed': not failed})
+                          'sampled': int(not message and bool(sent)), 'actions': int(bool(sent)),
+                          'blocked': int(message and not sent), 'passed': not failed})
         summary = {'passed': branch == 'current', 'scenarios': 13, 'checks': 78,
                    'failures': 0 if branch == 'current' else 5}
         stdout = ''.join(json.dumps(record, separators=(',', ':')) + '\n' for record in cases + [summary])
@@ -681,6 +681,24 @@ class PackageGates(unittest.TestCase):
             with self.subTest(kind='live', bad=bad[:70]):
                 self.assertFalse(PACKAGE.success_log('hotkey_live_observation', bad))
         formation = formation_policy_fixture()
+        self.assertTrue(PACKAGE.success_log('formation_input_ownership', json.dumps(formation)))
+        for branch, blocked_names in (('current', {'current_active_preview_wm'}),
+                                      ('baseline', {'current_active_preview_wm', 'unset_high_uptime_wm'})):
+            self.assertEqual({case['scenario'] for case in formation[branch]['cases'] if case['blocked']},
+                             blocked_names)
+            for index, case in enumerate(formation[branch]['cases']):
+                for wrong in (1 - case['blocked'], True, False, -1, 2, '0'):
+                    changed = copy.deepcopy(formation)
+                    row = changed[branch]
+                    row['cases'][index]['blocked'] = wrong
+                    # Rebind the synthetic stdout and hash so this rejection
+                    # proves the exact counter/type rule, not a stale raw log.
+                    row['stdout'] = ''.join(json.dumps(record, separators=(',', ':')) + '\n'
+                                            for record in row['cases'] + [row['summary']])
+                    row['run_log_sha256'] = PACKAGE.sha((row['stdout'] + row['stderr']).encode())
+                    with self.subTest(kind='formation-blocked', branch=branch,
+                                      scenario=case['scenario'], wrong=wrong):
+                        self.assertFalse(PACKAGE.success_log('formation_input_ownership', json.dumps(changed)))
         for path, value in ((('passed',), 1), (('case_count',), True), (('check_count',), True),
                             (('current', 'compile_exit'), False), (('baseline', 'compile_exit'), 1),
                             (('baseline', 'run_exit'), True), (('baseline', 'run_exit'), 0),
