@@ -407,7 +407,7 @@ def feature_success_log(name, text):
             'PASS inspect disappearance/danger-only/shared demand routing: '
             'no rate reduction or alternate live scanner',
             'PASS paused frame independent confirmation and confirmation expiry',
-            'passenger frame sampling: 2158 checks passed'],
+            'passenger frame sampling: 2169 checks passed'],
     }
     if name in exact:
         return lines == exact[name]

@@ -104,7 +104,7 @@ FEATURE_LOGS = {
         'PASS no token/unconfirmed/wrong PID/match/frame/tick/retired publication/disabled/chat: closed without RPM\n'
         'PASS inspect disappearance/danger-only/shared demand routing: no rate reduction or alternate live scanner\n'
         'PASS paused frame independent confirmation and confirmation expiry\n'
-        'passenger frame sampling: 2158 checks passed\n'),
+        'passenger frame sampling: 2169 checks passed\n'),
 }
 
 # Synthetic report shapes exercise packaging rejection, never a product run.
