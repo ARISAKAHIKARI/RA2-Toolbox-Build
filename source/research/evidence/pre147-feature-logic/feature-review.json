@@ -12,7 +12,8 @@
     "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
     "source/external_reader/source/idle_aircraft.h": "8f136a5ca6f8066bfc1017caf3fd1d47578e4ddca3c40ab8be3d7873b80df7cf",
     "source/assist/source/protocol.h": "e51f848234a8b0509f23244745d4cb48378df5a98e9f892f89dd02f9f70ea406",
-    "source/assist/source/type_select_bridge.h": "c1159b0760c54dcc2d4fd2ac2c55a434f15107767fbc88c94797b8f7b56f65a9",
+    "source/assist/source/type_select_bridge.h": "a26aae1d1119298a23f466f6644e863e51109e31814c23c60894ad6d9976328f",
+    "source/assist/source/variant_keys.h": "e6b1d085d982fc8dc2143a18e8e5eb8c55c7308aa233841105542154dfe44b4b",
     "source/assist/source/autoload.h": "faf93595bb49d14802e2fe5d129e35a750c9f5f174db1c8fe4a16d27830103d6",
     "source/assist/source/autoload_bridge.h": "068f34763606cd4c4bab54a16004a6b2a3f654933bf9ca8e64318fff3db2cc48",
     "source/assist/source/native_orders_bridge.h": "3e86f39b9e559e07b4c4138098fd8096dc3cb8a0c123ddf56d5e481705e85270",
@@ -272,7 +273,8 @@
       "implementation_locations": [
         "source/assist/source/bridge.cpp",
         "source/assist/source/main.cpp",
-        "source/assist/source/type_select_bridge.h"
+        "source/assist/source/type_select_bridge.h",
+        "source/assist/source/variant_keys.h"
       ],
       "related_controlled_checks": [
         "selection_catalogue_identity",

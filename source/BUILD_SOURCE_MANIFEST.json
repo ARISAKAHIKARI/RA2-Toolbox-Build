@@ -1386,11 +1386,11 @@
       "Wait on unknown miner resource reads rather than treating them as absence or sending Guard.",
       "Queue up to 8192 selected unload carriers independently of native event room; retain identity/cancellation and reserve passenger follow-up delivery.",
       "Increase unload/ejection passenger tracking 8192 to 16384 and Host request staging 128 to 512 without changing wire layout or native event capacity.",
-      "Replace 512 variant keys and 4096 selection bound with set matching within the 16384 live-world limit."
+      "Replace 512 variant keys and 4096 selection bound with fixed-memory hash matching within the 16384 live-world limit, without allocator/destructor dependencies."
     ],
     "protocol": "Assist103 / Cursor155 / Runtime4 / Shared23162552 unchanged",
     "verification": "Current 39 regression groups, 15 extended portable fixtures, 60 selected-command checks, 17 feature-policy checks and 72 miner cases (2957 checks). Exact logs/source digests, negative controls, paired Windows-target build and package checks are bound by delivery receipts. No real Windows/game/GPU/multiplayer acceptance.",
     "research_note": "research/2026-11-09-pre147-feature-logic.md",
-    "capacity_checks": "25 controlled admission/variant checks, 5 roster cases/83 checks, current 512-request FIFO checks and affected regression groups reexecuted. No live-game acceptance."
+    "capacity_checks": "28 controlled admission/variant checks, 5 roster cases/83 checks, current 512-request FIFO checks and affected regression groups reexecuted. No live-game acceptance."
   }
 }

@@ -9,6 +9,7 @@
 #include "../source/native_orders.h"
 #include "../source/unload_policy.h"
 #include "../source/unload_admission.h"
+#include "../source/variant_keys.h"
 using namespace assist;using DWORD=uint32_t;
 constexpr uint32_t SmartUnloadOrders=1;
 struct Shared{uint32_t flags=SmartUnloadOrders;}shared,*sh=&shared;
@@ -75,6 +76,7 @@ int main(int argc,char**argv){std::string mode=argc>1?argv[1]:"all";
  reset();for(int n=0;n<300;++n)carrier(n);smartUnload(9);tick(2);clockNow=5000;int cap=1;eventRoom=1;int waiting=queuedUnload.count;smartUnloadAdmissionTick(9,99,cap);check(queuedUnload.count==waiting&&eventRoom==1,"last event slot remains available to passenger follow-up");clockNow=10000;cap=1;eventRoom=2;smartUnloadAdmissionTick(9,100,cap);check(queuedUnload.count>0,"accepted progress refreshes queue idle horizon");clockNow=20001;eventRoom=2;cap=1;smartUnloadAdmissionTick(9,101,cap);check(queuedUnload.count>0,"large active queue survives more than original idle duration");
  }
  if(mode!="unload"){
+ static typekeys::VariantKeys large;large.clear();for(uint32_t n=1;n<=16384;++n)large.add(n*16,n%57);bool complete=true;for(uint32_t n=1;n<=16384;++n)complete&=large.hasType(n*16)&&large.contains(n*16,n%57)&&!large.contains(n*16,99);check(complete,"all 16384 fixed-memory variant keys remain distinct");large.clear();check(large.empty()&&!large.contains(16,1),"fixed index resets across selections");large.epoch=UINT32_MAX;large.clear();large.add(16,2);check(large.contains(16,2)&&!large.contains(16,1),"fixed key generation wrap clears stale entries");
  reset();for(int n=0;n<600;++n){auto p=carrier(n,false);types[p]=0x800000+uint32_t(n)*0x1000;}
  check(selectVariant(9,true)==600&&selectedResult.size()==600,"all 600 selected variants retained beyond old 512 cap");
  reset();for(int n=0;n<5000;++n)carrier(n,false);check(selectVariant(9,true)==5000,"live selection beyond old 4096 bound supported");

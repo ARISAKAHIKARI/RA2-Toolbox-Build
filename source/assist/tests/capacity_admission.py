@@ -9,7 +9,7 @@ def block(text,signature):
  start=text.index(signature);at=text.index('{',start);depth=1;end=at+1
  while depth:depth+=(text[end]=='{')-(text[end]=='}');end+=1
  return text[start:end]
-paths=[src/n for n in ('native_orders_bridge.h','native_orders.h','unload_policy.h','unload_admission.h','object_index.h','type_select_bridge.h')]+[tests/'capacity_admission.cpp',Path(__file__).resolve()]
+paths=[src/n for n in ('native_orders_bridge.h','native_orders.h','unload_policy.h','unload_admission.h','object_index.h','type_select_bridge.h','variant_keys.h')]+[tests/'capacity_admission.cpp',Path(__file__).resolve()]
 hashes={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
 text=(src/'native_orders_bridge.h').read_text();unload=text[text.index('// Build one carrier-keyed roster'):text.index('static void watchEjections(')]
 variant=(src/'type_select_bridge.h').read_text();variant='#include <unordered_set>\n'+block(variant,'static uint32_t normalVariantWeapon(')+'\n'+block(variant,'static int selectVariant(')
