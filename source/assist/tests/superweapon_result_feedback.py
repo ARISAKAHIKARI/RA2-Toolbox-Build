@@ -61,6 +61,11 @@ PREAMBLE = r'''
 #include <string>
 #include <type_traits>
 #include <vector>
+#include "read_only_lifecycle.h"
+#include "command_gateway.h"
+namespace readonly=assist::readonly;
+namespace gateway=assist::gateway;
+namespace taskarbiter=assist::taskarbiter;
 using DWORD=uint32_t;
 enum Command {SelectSuper=1,SelectIron,SelectChrono,AttackOwnGround,
  PlaceCompletedBuilding,OpenTech,DestructPlayer,AirPathMove,StickyGuard,
@@ -69,15 +74,17 @@ enum Command {SelectSuper=1,SelectIron,SelectChrono,AttackOwnGround,
  CancelTechProduction,SmartUnload,CancelAdvanced};
 struct Shared {uint32_t ack=1,request=1;int result=0,count=0,command=SelectSuper,
  arg=0,arg2=0;uint32_t requestToken=0;uint64_t requestTypeHash=0;
- int techParameterStatus=0;bool stop=false;struct{bool active=false;}placementPreview;};
+ int techParameterStatus=0;bool stop=false;struct{bool active=false;}placementPreview;
+ volatile uint32_t readOnly=0,readOnlyRequest=0,readOnlyAck=0;};
 static Shared storage;static Shared*shared=&storage,*sh=&storage;
+static readonly::RuntimeState readOnlyState;
 struct Snapshot {int status=1,session=0,typeCount=0;uint32_t match=1;
  bool chat=false;int types[1]{};int loadUnits=0,loadVehicles=0,loadWaiting=0,
  loadUnassigned=0;}snap;
 static uint32_t ack=0,commandLatency=0,sentAt=0,match=1,inFlightMatch=1,
  autoRevealMatch=0,autoRevealDone=0,autoRevealRetry=0,pid=1;
 static unsigned inFlightRetries=0;static uint64_t techAcknowledgedHash=0;
-static bool fault=false,missileCleanup=false,techEnabled=false;
+static bool fault=false,missileCleanup=false,techEnabled=false,enabled=true;
 static int game=1,ui=1;static std::wstring destructPendingTarget=L"selected";
 static constexpr auto DestructForeignNotice=L"foreign";
 static struct{int mapStrategy=0;}extra;
@@ -102,13 +109,6 @@ template<class R,class...T>static R call(uint32_t address,T...){
 static void unselect(){++cursorCalls;}
 static DWORD sampleClock(Shared*){return 100;}
 namespace orderpolicy{enum class Reject{None};static Reject superWeaponEvent(bool,bool,bool,int){return Reject::None;}}
-namespace taskarbiter{enum class Owner{SuperWeapon};static uint32_t syntheticSuperWeaponActor(int n){return uint32_t(n+1);}}
-namespace gateway {
- struct Context{uint32_t match,tick;bool ready,chat;};
- struct Intent{uint32_t match,tick,actor,type,token;};
- enum class Failure{None};static Failure validate(const Context&,const Intent&,unsigned){return Failure::None;}
- static int makeQueuedReceipt(unsigned,const Intent&,uint32_t,taskarbiter::Owner){return 0;}
-}
 static struct {void begin(uint32_t,int){}bool canIssue(uint32_t,int){return frameOK;}
  void record(uint32_t,int,taskarbiter::Owner){}}actorFrameArbiter;
 static struct {unsigned nextSerial=1;}missionObserver;
@@ -116,7 +116,7 @@ namespace vanilla{struct Cell{short x,y;};}
 namespace intent{struct Event{int player,type;vanilla::Cell cell;};static Event superWeapon(int player,int,int type,vanilla::Cell cell){return {player,type,cell};}}
 static intent::Event lastEvent{};
 static bool submitConstructed(const intent::Event&e){if(!queueOK)return false;++emitted;lastEvent=e;return true;}
-static void recordReceipt(int){}
+static void recordReceipt(const gateway::Receipt&){}
 static unsigned rejected=0;
 // Production snap.commandRejected is represented by a reference member below.
 struct FullSnapshot:Snapshot{unsigned&commandRejected=rejected;};
@@ -143,7 +143,8 @@ static void check(bool condition,const char*name){++checks;if(!condition){++fail
 static bool said(const wchar_t*part){return !notices.empty()&&notices.back().find(part)!=std::wstring::npos;}
 static void reset(bool targeted=true){
  storage={};shared=sh=&storage;ack=0;notices.clear();memory.clear();names.clear();
- emitted=cursorCalls=dataWrites=0;ready=dependencies=queueOK=frameOK=true;fault=false;
+ emitted=cursorCalls=dataWrites=0;ready=dependencies=queueOK=frameOK=enabled=true;fault=false;
+ readOnlyState={};sentAt=0;inFlightMatch=1;inFlightRetries=0;
  memory[Instance+0x2C]=House;memory[Instance+0x6D]=1;memory[Instance+0x28]=Type;
  memory[Type+0xBC]=targeted?1:0;memory[Type+0x98]=7;memory[House+0x30]=2;memory[0xA8ED84]=90;
  names[Type+0x24]="IronCurtainSpecial";
@@ -179,6 +180,10 @@ int main(){
  check(r==1&&emitted==0&&said(L"选择目标"),"named chrono hotkey retains targeted behavior");
  reset(false);frameOK=false;r=superSelect(House,0);receipt(r);
  check(r==-6&&emitted==0&&said(L"未能提交"),"same-frame actor rejection never reports queued");
+ reset(false);storage.readOnly=1;sentAt=70;inFlightRetries=2;r=superSelect(House,0);receipt(r);
+ check(r==-6&&emitted==0&&notices.empty()&&ack==storage.ack&&sentAt==0&&inFlightMatch==0&&inFlightRetries==0,"read-only gate blocks native order and consumes receipt without feedback or retry");
+ reset(false);storage.readOnlyRequest=1;sentAt=70;inFlightRetries=2;r=superSelect(House,0);receipt(r);
+ check(r==-6&&emitted==0&&notices.empty()&&ack==storage.ack&&sentAt==0&&inFlightMatch==0&&inFlightRetries==0,"unacknowledged retirement blocks native order and consumes receipt without feedback or retry");
  std::cout<<"{\"checks\":"<<checks<<",\"failures\":"<<failures<<",\"passed\":"<<(failures?"false":"true")<<"}\n";
  return failures?1:0;
 }
@@ -196,6 +201,9 @@ def main():
         "bridge": args.bridge or args.source_root / "source/assist/source/bridge.cpp",
         "host": args.host or args.source_root / "source/assist/source/main.cpp",
         "cancel": args.source_root / "source/assist/source/superweapon_sidebar_bridge.h",
+        "read_only": args.source_root / "source/assist/source/read_only_lifecycle.h",
+        "gateway": args.source_root / "source/assist/source/command_gateway.h",
+        "arbiter": args.source_root / "source/assist/source/unit_task_arbiter.h",
         "test": Path(__file__).resolve(),
     }
     captured = {name: path.read_bytes() for name, path in files.items()}
@@ -212,12 +220,14 @@ def main():
         (inputs / (name + ".source")).write_bytes(data)
     cpp, binary = args.out / "fixture.cpp", args.out / "fixture"
     cpp.write_text(PREAMBLE + "\n" + "\n".join(bodies) + "\n" + CASES, encoding="utf-8")
-    compile_command = ["g++", "-std=c++17", "-O2", "-Wall", "-Wextra", str(cpp), "-o", str(binary)]
+    compile_command = ["g++", "-std=c++17", "-O2", "-Wall", "-Wextra", "-I", str(args.source_root / "source/assist/source"), str(cpp), "-o", str(binary)]
     compiled = subprocess.run(compile_command, text=True, capture_output=True)
     (args.out / "compile.log").write_text(compiled.stdout + compiled.stderr)
     run = subprocess.run([str(binary)], text=True, capture_output=True) if not compiled.returncode else None
     if run:
         (args.out / "run.log").write_text(run.stdout + run.stderr)
+    if any(path.read_bytes() != captured[name] for name, path in files.items()):
+        raise RuntimeError("production sources changed during controlled execution")
     receipt = {
         "test": "actual superSelect / namedSuper / cancelSuperSidebarSelection / full result() feedback",
         "compile_command": compile_command, "compile_returncode": compiled.returncode,

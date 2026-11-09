@@ -73,7 +73,7 @@ FEATURE_LOGS = {
     'patrol_small_buffer': (
         'buffer count=16 digest=1280\n'
         'PASS: 1 checks, 0 failures; real patrol to route, synthetic graph only\n'),
-    'selection_catalogue_identity': '21 checks, 0 failures\n',
+    'selection_catalogue_identity': '23 checks, 0 failures\n',
     'toast_clock_wrap': '15 checks, 0 failures\n',
     'console_composition': (
         ''.join(f'PASS synthetic composition case {i}\n' for i in range(16))
@@ -94,7 +94,7 @@ FEATURE_LOGS = {
     'input_ownership': (
         'PASS input_ownership: 61 checks; epoch, zero sentinel, 200ms leases, '
         'and normalized wrap boundary\n'),
-    'superweapon_result_feedback': '{"checks":13,"failures":0,"passed":true}\n',
+    'superweapon_result_feedback': '{"checks":15,"failures":0,"passed":true}\n',
     'pause_key_pairing': '{"checks":45,"failures":0,"passed":true}\n',
     'native_mouse_pairing': '{"checks":69,"failures":0,"passed":true}\n',
     'passenger_frame_sampling': (
@@ -566,7 +566,7 @@ class PackageGates(unittest.TestCase):
                                 ('width=80 count=16 bind=1', 'width=80 count=32 bind=0')],
             'patrol_small_buffer': [('1 checks', '0 checks'), ('0 failures', '1 failures'),
                                     ('count=16', 'count=32')],
-            'selection_catalogue_identity': [('21 checks', '20 checks'), ('0 failures', '1 failures')],
+            'selection_catalogue_identity': [('23 checks', '22 checks'), ('0 failures', '1 failures')],
             'toast_clock_wrap': [('15 checks', '14 checks'), ('0 failures', '1 failures')],
             'console_composition': [('"checks":16', '"checks":15'), ('"failures":0', '"failures":1'),
                                     ('"failures":0', '"failures":false')],
@@ -592,7 +592,7 @@ class PackageGates(unittest.TestCase):
                                   ('"compile_exit_code":0', '"compile_exit_code":1'),
                                   ('"exit_code":1', '"exit_code":0'),
                                   (PACKAGE.COLD_START_BASELINE_SHA, '0' * 64)],
-            'superweapon_result_feedback': [('"checks":13', '"checks":12'), ('"failures":0', '"failures":1'),
+            'superweapon_result_feedback': [('"checks":15', '"checks":14'), ('"failures":0', '"failures":1'),
                                              ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],
             'pause_key_pairing': [('"checks":45', '"checks":44'), ('"failures":0', '"failures":1'),
                                   ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],

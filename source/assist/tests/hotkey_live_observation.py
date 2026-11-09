@@ -141,7 +141,7 @@ def run(root: Path, out: Path) -> dict:
     spec.loader.exec_module(context)
     paths = [f'source/assist/source/{x}' for x in (
         'main.cpp', 'hotkey_host.h', 'hotkey_input_diagnostic.h', 'input_ownership.h',
-        'hotkey_routes.h', 'control_link.h', 'protocol.h', 'additional_settings.h',
+        'hotkey_routes.h', 'control_link.h', 'protocol.h', 'read_only_lifecycle.h', 'additional_settings.h',
         'type_hotkey.h', 'automatic_features.h', 'activation_diagnostic.h')]
     paths += ['source/shared/source/key_gesture.h', 'source/assist/tests/hotkey_command_context.py',
               'source/assist/tests/hotkey_live_observation.py']
@@ -172,7 +172,7 @@ def run(root: Path, out: Path) -> dict:
              'hotkeyDiagnosticState', 'hotkeyTraceAllowed', 'traceHotkeyService', 'traceHotkeyKeys',
              'logHotkeyInput', 'logHotkeyBindings', 'synchronizeHotkeyKeys', 'registerKey', 'registerKeys')
     parts = [context.function(main, name) for name in names]
-    parts += [context.function(host, name) for name in ('ownGroundHotkey', 'dispatchHotkeyGroup',
+    parts += [context.function(host, name) for name in ('ownGroundHotkey', 'dispatchHotkeyGroup', 'localHotkeyAction',
               'executeHotkey', 'serviceHotkeyBatch', 'handleHotkey')]
     actions = re.search(r'static const int actions\[\]\s*=\s*\{[^}]*\};', main).group()
     cpp = out / 'production.cpp'

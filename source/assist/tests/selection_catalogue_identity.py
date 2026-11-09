@@ -12,8 +12,9 @@ p.add_argument('--label', default='current')
 p.add_argument('--source-root', type=Path)
 a = p.parse_args()
 root = a.source_root or Path(__file__).resolve().parents[3]
-paths = [root / 'source/assist/source' / name for name in ('main.cpp', 'bridge.cpp', 'protocol.h')]
-host, runtime, protocol = [path.read_text() for path in paths]
+paths = [root / 'source/assist/source' / name for name in ('main.cpp', 'bridge.cpp', 'protocol.h', 'read_only_lifecycle.h')]
+captured = {path: path.read_bytes() for path in paths}
+host, runtime, protocol = [captured[path].decode('utf-8') for path in paths[:3]]
 
 def function(text, signature):
     start = text.index(signature)
@@ -32,12 +33,14 @@ code = r'''
 #include <string>
 #include <iostream>
 #include <functional>
+#include "read_only_lifecycle.h"
+namespace readonly=assist::readonly;
 using DWORD=uint32_t; using LONG=int32_t;
 constexpr int MaxTypes=512,SelectType=16;
 struct Type {char id[24]; uint16_t name[40]; int kind,index,naval,cost;};
 struct Snapshot {uint32_t match=1; int typeCount=2,chat=0;Type types[MaxTypes]{};};
 // Only OS/IPC dependencies are controlled; the functions below are extracted verbatim.
-struct Shared {volatile uint32_t selectRequest=0,selectAck=0; int selectIndex=0,selectGlobal=0;uint32_t selectObjectID=0,selectTick=0,selectMatch=0;int selectResult=0,selectCount=0;uint8_t selectTypes[MaxTypes]{};uint64_t selectTypeHash=0;};
+struct Shared {volatile uint32_t selectRequest=0,selectAck=0; int selectIndex=0,selectGlobal=0;uint32_t selectObjectID=0,selectTick=0,selectMatch=0;int selectResult=0,selectCount=0;uint8_t selectTypes[MaxTypes]{};uint64_t selectTypeHash=0;volatile uint32_t readOnly=0,readOnlyRequest=0,readOnlyAck=0;};
 namespace delivery {constexpr uint32_t UnknownMatch=0;struct Item{int command=0,arg=0,arg2=0;uint32_t pid=0,match=0,created=0;int retries=0;uint32_t notBefore=0,token=0;uint64_t typeHash=0;};}
 static Shared mailbox; static Shared *shared=&mailbox,*sh=&mailbox;
 static Snapshot snap;static DWORD clockNow=100;static uint32_t pid=77,match=1,selectionAck=0,selectionLatency=0,pendingSelectionObject=0;
@@ -85,6 +88,8 @@ int main(){
  reset();shared=nullptr;connectAction=[](){reorder();};sendSelection(0,false);check(!hasSelection&&mailbox.selectRequest==0,"connection refresh cannot retag original catalogue");
  reset();snap.match=0;sendSelection(0,false);snap.match=1;serviceSelection();check(!hasSelection&&mailbox.selectRequest==0,"unknown match cannot acquire later selection identity");
  reset();enabled=false;sendSelection(0,false);check(mailbox.selectRequest==0&&!hasSelection,"disabled feature does not submit");
+ reset();focused=false;sendSelection(0,false);focused=true;mailbox.readOnly=1;serviceSelection();check(!hasSelection&&mailbox.selectRequest==0&&wakeCalls==0,"read-only gate cancels pending selection without publication");
+ reset();focused=false;sendSelection(0,false);focused=true;mailbox.readOnlyRequest=1;serviceSelection();check(!hasSelection&&mailbox.selectRequest==0&&wakeCalls==0,"unacknowledged retirement cancels pending selection without publication");
  reset();clockNow=0xffffff00;sendSelection(0,false);clockNow=0x100;selectionCommand(1,clockNow);check(selectedCalls==1,"age survives tick wrap");
  reset();sendSelection(0,false);sh->selectTypeHash=0;selectionCommand(1,clockNow);check(selectedCalls==0&&sh->selectResult==-7,"missing catalogue identity is rejected");
  std::cout<<checks<<" checks, "<<failures<<" failures\n";return failures?1:0;
@@ -95,7 +100,7 @@ out.mkdir(parents=True, exist_ok=True)
 cpp = out / f'selection_catalogue_{a.label}.cpp'
 cpp.write_text(code)
 exe = cpp.with_suffix('')
-commands = [['g++', '-std=c++17', '-D_GLIBCXX_ASSERTIONS', '-fsanitize=undefined', '-fno-sanitize-recover=all', str(cpp), '-o', str(exe)], [str(exe)]]
+commands = [['g++', '-std=c++17', '-D_GLIBCXX_ASSERTIONS', '-fsanitize=undefined', '-fno-sanitize-recover=all', '-I', str(root / 'source/assist/source'), str(cpp), '-o', str(exe)], [str(exe)]]
 runs = []
 for i, cmd in enumerate(commands):
     r = subprocess.run(cmd, capture_output=True, text=True)
@@ -104,6 +109,8 @@ for i, cmd in enumerate(commands):
     runs.append(dict(command=cmd, exit_code=r.returncode, stdout=r.stdout, stderr=r.stderr))
     if r.returncode:
         break
-record = dict(sources={str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}, test_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), verification_level='controlled_execution_of_extracted_Host_and_Runtime_functions', not_verified=['Windows shared memory ABI execution', 'game selection and camera behavior'], runs=runs)
+if any(path.read_bytes() != data for path, data in captured.items()):
+    raise RuntimeError('production sources changed during controlled execution')
+record = dict(sources={str(path.relative_to(root)): hashlib.sha256(captured[path]).hexdigest() for path in paths}, test_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), verification_level='controlled_execution_of_extracted_Host_and_Runtime_functions', not_verified=['Windows shared memory ABI execution', 'game selection and camera behavior'], runs=runs)
 (out / f'selection_catalogue_{a.label}.receipt.json').write_text(json.dumps(record, indent=2) + '\n')
 raise SystemExit(0 if all(r['exit_code'] == 0 for r in runs) else 1)

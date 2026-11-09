@@ -114,7 +114,7 @@ FEATURE_BINDINGS = {
     'selection_catalogue_identity': (
         {'source/assist/tests/selection_catalogue_identity.py'},
         {'source/assist/source/main.cpp', 'source/assist/source/bridge.cpp',
-         'source/assist/source/protocol.h'}),
+         'source/assist/source/protocol.h', 'source/assist/source/read_only_lifecycle.h'}),
     'toast_clock_wrap': (
         {'source/assist/tests/toast_clock_wrap.py'},
         {'source/assist/source/main.cpp'}),
@@ -136,7 +136,8 @@ FEATURE_BINDINGS = {
     'superweapon_result_feedback': (
         {'source/assist/tests/superweapon_result_feedback.py'},
         {'source/assist/source/main.cpp', 'source/assist/source/bridge.cpp',
-         'source/assist/source/superweapon_sidebar_bridge.h'}),
+         'source/assist/source/superweapon_sidebar_bridge.h', 'source/assist/source/read_only_lifecycle.h',
+         'source/assist/source/command_gateway.h', 'source/assist/source/unit_task_arbiter.h'}),
     'pause_key_pairing': (
         {'source/assist/tests/pause_key_pairing.py', 'source/assist/tests/superweapon_result_feedback.py'},
         {'source/assist/source/pause_view_bridge.h', 'source/assist/source/native_message_policy.h', 'source/assist/source/read_only_lifecycle.h',
@@ -202,6 +203,7 @@ INPUT_INTEGRATION_BINDINGS = {
          'source/assist/tests/hotkey_command_context.py'},
         {'source/assist/source/main.cpp', 'source/assist/source/hotkey_host.h',
          'source/assist/source/hotkey_input_diagnostic.h', 'source/assist/source/input_ownership.h',
+         'source/assist/source/read_only_lifecycle.h',
          'source/assist/source/hotkey_routes.h', 'source/assist/source/control_link.h',
          'source/assist/source/protocol.h', 'source/shared/source/key_gesture.h',
          'source/assist/source/additional_settings.h', 'source/assist/source/type_hotkey.h',
@@ -382,7 +384,7 @@ def feature_success_log(name, text):
         'patrol_small_buffer': [
             'buffer count=16 digest=1280',
             'PASS: 1 checks, 0 failures; real patrol to route, synthetic graph only'],
-        'selection_catalogue_identity': ['21 checks, 0 failures'],
+        'selection_catalogue_identity': ['23 checks, 0 failures'],
         'toast_clock_wrap': ['15 checks, 0 failures'],
         'secondary_drag_bounds': ['PASS secondary drag: 7 boundary cases + 900 range cases'],
         'secondary_render_retry': ['PASS secondary retry: 8 submission and recovery cases'],
@@ -438,7 +440,7 @@ def feature_success_log(name, text):
                 and result.get('suite') == name and result.get('level') == level
                 and type(result.get('checks')) is int and result['checks'] == count
                 and type(result.get('failures')) is int and result['failures'] == 0)
-    counts = {'superweapon_result_feedback': 13, 'pause_key_pairing': 45, 'native_mouse_pairing': 69}
+    counts = {'superweapon_result_feedback': 15, 'pause_key_pairing': 45, 'native_mouse_pairing': 69}
     if name in counts:
         return (len(lines) == 1 and set(result) == {'checks', 'failures', 'passed'}
                 and type(result.get('checks')) is int and result['checks'] == counts[name]

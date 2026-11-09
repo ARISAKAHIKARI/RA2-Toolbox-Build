@@ -131,14 +131,14 @@ python3 -B "$RA2_REPO/packages/v1.0.43/build_release.py" \
 | `missile_manual_capacity` | 23 项零失败；生产所有权、最终投递及 Host 完成路径的精确摘要 |
 | `patrol_capacity` | 31 项零失败；宽度 2/4/8/10/20/40/80 的完整闭环均绑定成功，最长输出不超过 16 |
 | `patrol_small_buffer` | 独立 ASan 缓冲运行：`buffer count=16 digest=1280`，1 项零失败 |
-| `selection_catalogue_identity` | 单条 `21 checks, 0 failures` |
+| `selection_catalogue_identity` | 单条 `23 checks, 0 failures`，保留目录身份检查并覆盖只读与未ACK门 |
 | `toast_clock_wrap` | 单条 `15 checks, 0 failures` |
 | `console_composition` | 16 个不同 PASS 案例及同名 suite、checks 16、整数 failures 0、对应 level |
 | `console_hotkey_presentation` | 8 个不同 PASS 案例及同名 suite、checks 8、整数 failures 0、对应 level |
 | `secondary_drag_bounds` | 精确摘要：7 个边界案例和 900 个范围案例 |
 | `secondary_render_retry` | 精确摘要：8 个提交和恢复案例 |
 | `icon_cache_reopen` | 失败作用域→同路径重连→缓存保存/恢复成功；健康重连保持 generation 的精确摘要 |
-| `superweapon_result_feedback` | 单条整数 checks 13、failures 0、passed true |
+| `superweapon_result_feedback` | 单条整数 checks 15、failures 0、passed true，使用真实命令准入函数 |
 | `pause_key_pairing` | 单条整数 checks 45、failures 0、passed true，含只读切换和真实退休门 |
 | `native_mouse_pairing` | 单条整数 checks 69、failures 0、passed true，含只读切换和松键配对 |
 | `passenger_frame_sampling` | 2158 项；首次绘制 live_RPM=0、1000 次重复绘制无实时读取、失败/时效/暂停/确认/需求路由结果全部存在 |
