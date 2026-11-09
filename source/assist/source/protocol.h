@@ -27,7 +27,7 @@
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=101;
+constexpr uint32_t Magic=0x41533130, Version=102;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -264,6 +264,10 @@ struct Shared {
  volatile long worldSampleSeq=0;
  volatile uint32_t worldSampleSerial=0,worldSamplePages=0,worldSampleReads=0,worldSampleBytes=0,worldSampleRosters=0,worldSampleFailures=0;
  volatile int32_t worldSampleFrame=-1;
+ // Catalogue-bound selection owns its hash until selectAck. Append only;
+ // protocol 102 prevents an older Host from publishing an unbound mask.
+ uint64_t selectTypeHash=0;
+ volatile uint32_t missileManualOverflow=0; // Runtime-owned latched manual-priority pause.
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

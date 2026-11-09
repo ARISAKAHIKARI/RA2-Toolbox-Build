@@ -1,0 +1,825 @@
+FAIL text keeps composition Enter (isComposing)
+AssertionError [ERR_ASSERTION]: IME candidate selection/cancellation must not submit a setting
+
+1 !== 0
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:78:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL text keeps composition Enter (keyCode)
+AssertionError [ERR_ASSERTION]: IME candidate selection/cancellation must not submit a setting
+
+1 !== 0
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:78:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL text keeps composition Escape (isComposing)
+AssertionError [ERR_ASSERTION]: IME owns focus until composition finishes
++ actual - expected
+
++ null
+- <ref *1> Element {
+-   attributes: Map(1) {
+-     'aria-label' => '模糊关键词'
+-   },
+-   autocomplete: 'off',
+-   children: [],
+-   classList: {
+-     add: [Function: add],
+-     remove: [Function: remove],
+-     toggle: [Function: toggle]
+-   },
+-   className: 'field',
+-   dataset: {},
+-   disabled: false,
+-   id: 'control-0-1',
+-   listeners: Map(4) {
+-     'blur' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'focus' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'input' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'keydown' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ]
+-   },
+-   parentNode: <ref *4> Element {
+-     attributes: Map(0) {},
+-     children: [
+-       [Circular *1]
+-     ],
+-     classList: {
+-       add: [Function: add],
+-       remove: [Function: remove],
+-       toggle: [Function: toggle]
+-     },
+-     className: 'setting-editor',
+-     dataset: {},
+-     listeners: Map(0) {},
+-     parentNode: <ref *3> Element {
+-       attributes: Map(0) {},
+-       children: [
+-         <ref *2> Element {
+-           attributes: Map(0) {},
+-           children: [
+-             Element {
+-               attributes: Map(0) {},
+-               children: [],
+-               classList: {
+-                 add: [Function: add],
+-                 remove: [Function: remove],
+-                 toggle: [Function: toggle]
+-               },
+-               className: 'setting-label',
+-               dataset: {},
+-               hidden: false,
+-               htmlFor: 'control-0-1',
+-               listeners: Map(0) {},
+-               parentNode: [Circular *2],
+-               style: {},
+-               tagName: 'LABEL',
+-               textContent: '模糊关键词',
+-               value: ''
+-             },
+-             Element {
+-               attributes: Map(0) {},
+-               children: [],
+-               classList: {
+-                 add: [Function: add],
+-                 remove: [Function: remove],
+-                 toggle: [Function: toggle]
+-               },
+-               className: 'setting-description',
+-               dataset: {},
+-               hidden: true,
+-               listeners: Map(0) {},
+-               parentNode: [Circular *2],
+-               style: {},
+-               tagName: 'P',
+-               textContent: '',
+-               value: ''
+-             }
+-           ],
+-           classList: {
+-             add: [Function: add],
+-             remove: [Function: remove],
+-             toggle: [Function: toggle]
+-           },
+-           className: 'setting-copy',
+-           dataset: {},
+-           hidden: false,
+-           listeners: Map(0) {},
+-           parentNode: [Circular *3],
+-           style: {},
+-           tagName: 'DIV',
+-           textContent: '',
+-           value: ''
+-         },
+-         [Circular *4]
+-       ],
+-       classList: {
+-         add: [Function: add],
+-         remove: [Function: remove],
+-         toggle: [Function: toggle]
+-       },
+-       className: 'setting-row',
+-       dataset: {
+-         pending: 'false',
+-         type: 'text'
+-       },
+-       listeners: Map(0) {},
+-       parentNode: null,
+-       style: {},
+-       tagName: 'DIV',
+-       textContent: '',
+-       title: '',
+-       value: ''
+-     },
+-     style: {},
+-     tagName: 'DIV',
+-     textContent: '',
+-     value: ''
+-   },
+-   readOnly: false,
+-   spellcheck: false,
+-   style: {},
+-   tagName: 'INPUT',
+-   textContent: '',
+-   type: 'text',
+-   value: '中文候选'
+- }
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:79:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL text keeps composition Escape (keyCode)
+AssertionError [ERR_ASSERTION]: IME owns focus until composition finishes
++ actual - expected
+
++ null
+- <ref *1> Element {
+-   attributes: Map(1) {
+-     'aria-label' => '模糊关键词'
+-   },
+-   autocomplete: 'off',
+-   children: [],
+-   classList: {
+-     add: [Function: add],
+-     remove: [Function: remove],
+-     toggle: [Function: toggle]
+-   },
+-   className: 'field',
+-   dataset: {},
+-   disabled: false,
+-   id: 'control-0-1',
+-   listeners: Map(4) {
+-     'blur' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'focus' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'input' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'keydown' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ]
+-   },
+-   parentNode: <ref *4> Element {
+-     attributes: Map(0) {},
+-     children: [
+-       [Circular *1]
+-     ],
+-     classList: {
+-       add: [Function: add],
+-       remove: [Function: remove],
+-       toggle: [Function: toggle]
+-     },
+-     className: 'setting-editor',
+-     dataset: {},
+-     listeners: Map(0) {},
+-     parentNode: <ref *3> Element {
+-       attributes: Map(0) {},
+-       children: [
+-         <ref *2> Element {
+-           attributes: Map(0) {},
+-           children: [
+-             Element {
+-               attributes: Map(0) {},
+-               children: [],
+-               classList: {
+-                 add: [Function: add],
+-                 remove: [Function: remove],
+-                 toggle: [Function: toggle]
+-               },
+-               className: 'setting-label',
+-               dataset: {},
+-               hidden: false,
+-               htmlFor: 'control-0-1',
+-               listeners: Map(0) {},
+-               parentNode: [Circular *2],
+-               style: {},
+-               tagName: 'LABEL',
+-               textContent: '模糊关键词',
+-               value: ''
+-             },
+-             Element {
+-               attributes: Map(0) {},
+-               children: [],
+-               classList: {
+-                 add: [Function: add],
+-                 remove: [Function: remove],
+-                 toggle: [Function: toggle]
+-               },
+-               className: 'setting-description',
+-               dataset: {},
+-               hidden: true,
+-               listeners: Map(0) {},
+-               parentNode: [Circular *2],
+-               style: {},
+-               tagName: 'P',
+-               textContent: '',
+-               value: ''
+-             }
+-           ],
+-           classList: {
+-             add: [Function: add],
+-             remove: [Function: remove],
+-             toggle: [Function: toggle]
+-           },
+-           className: 'setting-copy',
+-           dataset: {},
+-           hidden: false,
+-           listeners: Map(0) {},
+-           parentNode: [Circular *3],
+-           style: {},
+-           tagName: 'DIV',
+-           textContent: '',
+-           value: ''
+-         },
+-         [Circular *4]
+-       ],
+-       classList: {
+-         add: [Function: add],
+-         remove: [Function: remove],
+-         toggle: [Function: toggle]
+-       },
+-       className: 'setting-row',
+-       dataset: {
+-         pending: 'false',
+-         type: 'text'
+-       },
+-       listeners: Map(0) {},
+-       parentNode: null,
+-       style: {},
+-       tagName: 'DIV',
+-       textContent: '',
+-       title: '',
+-       value: ''
+-     },
+-     style: {},
+-     tagName: 'DIV',
+-     textContent: '',
+-     value: ''
+-   },
+-   readOnly: false,
+-   spellcheck: false,
+-   style: {},
+-   tagName: 'INPUT',
+-   textContent: '',
+-   type: 'text',
+-   value: '中文候选'
+- }
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:79:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL editable choice keeps composition Enter (isComposing)
+AssertionError [ERR_ASSERTION]: IME candidate selection/cancellation must not submit a setting
+
+1 !== 0
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:78:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL editable choice keeps composition Enter (keyCode)
+AssertionError [ERR_ASSERTION]: IME candidate selection/cancellation must not submit a setting
+
+1 !== 0
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:78:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL editable choice keeps composition Escape (isComposing)
+AssertionError [ERR_ASSERTION]: IME owns focus until composition finishes
++ actual - expected
+
++ null
+- <ref *1> Element {
+-   attributes: Map(1) {
+-     'aria-label' => '自定义值（自定义值）'
+-   },
+-   autocomplete: 'off',
+-   children: [],
+-   classList: {
+-     add: [Function: add],
+-     remove: [Function: remove],
+-     toggle: [Function: toggle]
+-   },
+-   className: 'field choice-text',
+-   dataset: {},
+-   disabled: false,
+-   listeners: Map(4) {
+-     'blur' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'focus' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'input' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'keydown' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ]
+-   },
+-   parentNode: <ref *3> Element {
+-     attributes: Map(0) {},
+-     children: [
+-       [Circular *1],
+-       <ref *2> Element {
+-         attributes: Map(1) {
+-           'aria-label' => '自定义值'
+-         },
+-         children: [
+-           Element {
+-             attributes: Map(0) {},
+-             children: [],
+-             classList: {
+-               add: [Function: add],
+-               remove: [Function: remove],
+-               toggle: [Function: toggle]
+-             },
+-             dataset: {},
+-             disabled: false,
+-             listeners: Map(0) {},
+-             parentNode: [Circular *2],
+-             style: {},
+-             tagName: 'OPTION',
+-             textContent: 'old',
+-             value: '0'
+-           }
+-         ],
+-         classList: {
+-           add: [Function: add],
+-           remove: [Function: remove],
+-           toggle: [Function: toggle]
+-         },
+-         dataset: {},
+-         disabled: false,
+-         id: 'control-0-2',
+-         listeners: Map(1) {
+-           'change' => [
+-             {
+-               capture: false,
+-               listener: [Function (anonymous)]
+-             }
+-           ]
+-         },
+-         parentNode: [Circular *3],
+-         selectedIndex: 0,
+-         style: {
+-           maxWidth: '85px',
+-           minWidth: '55px'
+-         },
+-         tagName: 'SELECT',
+-         textContent: '',
+-         value: ''
+-       }
+-     ],
+-     classList: {
+-       add: [Function: add],
+-       remove: [Function: remove],
+-       toggle: [Function: toggle]
+-     },
+-     className: 'setting-editor',
+-     dataset: {},
+-     listeners: Map(0) {},
+-     parentNode: <ref *5> Element {
+-       attributes: Map(0) {},
+-       children: [
+-         <ref *4> Element {
+-           attributes: Map(0) {},
+-           children: [
+-             Element {
+-               attributes: Map(0) {},
+-               children: [],
+-               classList: {
+-                 add: [Function: add],
+-                 remove: [Function: remove],
+-                 toggle: [Function: toggle]
+-               },
+-               className: 'setting-label',
+-               dataset: {},
+-               hidden: false,
+-               htmlFor: 'control-0-2',
+-               listeners: Map(0) {},
+-               parentNode: [Circular *4],
+-               style: {},
+-               tagName: 'LABEL',
+-               textContent: '自定义值',
+-               value: ''
+-             },
+-             Element {
+-               attributes: Map(0) {},
+-               children: [],
+-               classList: {
+-                 add: [Function: add],
+-                 remove: [Function: remove],
+-                 toggle: [Function: toggle]
+-               },
+-               className: 'setting-description',
+-               dataset: {},
+-               hidden: true,
+-               listeners: Map(0) {},
+-               parentNode: [Circular *4],
+-               style: {},
+-               tagName: 'P',
+-               textContent: '',
+-               value: ''
+-             }
+-           ],
+-           classList: {
+-             add: [Function: add],
+-             remove: [Function: remove],
+-             toggle: [Function: toggle]
+-           },
+-           className: 'setting-copy',
+-           dataset: {},
+-           hidden: false,
+-           listeners: Map(0) {},
+-           parentNode: [Circular *5],
+-           style: {},
+-           tagName: 'DIV',
+-           textContent: '',
+-           value: ''
+-         },
+-         [Circular *3]
+-       ],
+-       classList: {
+-         add: [Function: add],
+-         remove: [Function: remove],
+-         toggle: [Function: toggle]
+-       },
+-       className: 'setting-row',
+-       dataset: {
+-         pending: 'false',
+-         type: 'choice'
+-       },
+-       listeners: Map(0) {},
+-       parentNode: null,
+-       style: {},
+-       tagName: 'DIV',
+-       textContent: '',
+-       title: '',
+-       value: ''
+-     },
+-     style: {},
+-     tagName: 'DIV',
+-     textContent: '',
+-     value: ''
+-   },
+-   spellcheck: false,
+-   style: {},
+-   tagName: 'INPUT',
+-   textContent: '',
+-   type: 'text',
+-   value: '中文候选'
+- }
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:79:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL editable choice keeps composition Escape (keyCode)
+AssertionError [ERR_ASSERTION]: IME owns focus until composition finishes
++ actual - expected
+
++ null
+- <ref *1> Element {
+-   attributes: Map(1) {
+-     'aria-label' => '自定义值（自定义值）'
+-   },
+-   autocomplete: 'off',
+-   children: [],
+-   classList: {
+-     add: [Function: add],
+-     remove: [Function: remove],
+-     toggle: [Function: toggle]
+-   },
+-   className: 'field choice-text',
+-   dataset: {},
+-   disabled: false,
+-   listeners: Map(4) {
+-     'blur' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'focus' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'input' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ],
+-     'keydown' => [
+-       {
+-         capture: false,
+-         listener: [Function (anonymous)]
+-       }
+-     ]
+-   },
+-   parentNode: <ref *3> Element {
+-     attributes: Map(0) {},
+-     children: [
+-       [Circular *1],
+-       <ref *2> Element {
+-         attributes: Map(1) {
+-           'aria-label' => '自定义值'
+-         },
+-         children: [
+-           Element {
+-             attributes: Map(0) {},
+-             children: [],
+-             classList: {
+-               add: [Function: add],
+-               remove: [Function: remove],
+-               toggle: [Function: toggle]
+-             },
+-             dataset: {},
+-             disabled: false,
+-             listeners: Map(0) {},
+-             parentNode: [Circular *2],
+-             style: {},
+-             tagName: 'OPTION',
+-             textContent: 'old',
+-             value: '0'
+-           }
+-         ],
+-         classList: {
+-           add: [Function: add],
+-           remove: [Function: remove],
+-           toggle: [Function: toggle]
+-         },
+-         dataset: {},
+-         disabled: false,
+-         id: 'control-0-2',
+-         listeners: Map(1) {
+-           'change' => [
+-             {
+-               capture: false,
+-               listener: [Function (anonymous)]
+-             }
+-           ]
+-         },
+-         parentNode: [Circular *3],
+-         selectedIndex: 0,
+-         style: {
+-           maxWidth: '85px',
+-           minWidth: '55px'
+-         },
+-         tagName: 'SELECT',
+-         textContent: '',
+-         value: ''
+-       }
+-     ],
+-     classList: {
+-       add: [Function: add],
+-       remove: [Function: remove],
+-       toggle: [Function: toggle]
+-     },
+-     className: 'setting-editor',
+-     dataset: {},
+-     listeners: Map(0) {},
+-     parentNode: <ref *5> Element {
+-       attributes: Map(0) {},
+-       children: [
+-         <ref *4> Element {
+-           attributes: Map(0) {},
+-           children: [
+-             Element {
+-               attributes: Map(0) {},
+-               children: [],
+-               classList: {
+-                 add: [Function: add],
+-                 remove: [Function: remove],
+-                 toggle: [Function: toggle]
+-               },
+-               className: 'setting-label',
+-               dataset: {},
+-               hidden: false,
+-               htmlFor: 'control-0-2',
+-               listeners: Map(0) {},
+-               parentNode: [Circular *4],
+-               style: {},
+-               tagName: 'LABEL',
+-               textContent: '自定义值',
+-               value: ''
+-             },
+-             Element {
+-               attributes: Map(0) {},
+-               children: [],
+-               classList: {
+-                 add: [Function: add],
+-                 remove: [Function: remove],
+-                 toggle: [Function: toggle]
+-               },
+-               className: 'setting-description',
+-               dataset: {},
+-               hidden: true,
+-               listeners: Map(0) {},
+-               parentNode: [Circular *4],
+-               style: {},
+-               tagName: 'P',
+-               textContent: '',
+-               value: ''
+-             }
+-           ],
+-           classList: {
+-             add: [Function: add],
+-             remove: [Function: remove],
+-             toggle: [Function: toggle]
+-           },
+-           className: 'setting-copy',
+-           dataset: {},
+-           hidden: false,
+-           listeners: Map(0) {},
+-           parentNode: [Circular *5],
+-           style: {},
+-           tagName: 'DIV',
+-           textContent: '',
+-           value: ''
+-         },
+-         [Circular *3]
+-       ],
+-       classList: {
+-         add: [Function: add],
+-         remove: [Function: remove],
+-         toggle: [Function: toggle]
+-       },
+-       className: 'setting-row',
+-       dataset: {
+-         pending: 'false',
+-         type: 'choice'
+-       },
+-       listeners: Map(0) {},
+-       parentNode: null,
+-       style: {},
+-       tagName: 'DIV',
+-       textContent: '',
+-       title: '',
+-       value: ''
+-     },
+-     style: {},
+-     tagName: 'DIV',
+-     textContent: '',
+-     value: ''
+-   },
+-   spellcheck: false,
+-   style: {},
+-   tagName: 'INPUT',
+-   textContent: '',
+-   type: 'text',
+-   value: '中文候选'
+- }
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:79:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL search keeps composition Escape (isComposing)
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'' !== '中文候选'
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:88:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL hotkey capture ignores IME event and remains armed (isComposing)
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:93:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL hotkey encoder does not infer a key from composition code (isComposing)
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+81 !== null
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:98:32
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL search keeps composition Escape (keyCode)
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'' !== '中文候选'
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:88:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL hotkey capture ignores IME event and remains armed (keyCode)
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1 !== 0
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:93:10
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL hotkey encoder does not infer a key from composition code (keyCode)
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+81 !== null
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:98:32
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_composition_test.mjs:112:36
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+PASS ordinary Enter still commits a finished Unicode edit exactly once
+PASS ordinary Escape still cancels an editor and clears search
+{"suite":"console_composition","checks":16,"failures":14,"level":"production listeners with controlled DOM event fixture"}

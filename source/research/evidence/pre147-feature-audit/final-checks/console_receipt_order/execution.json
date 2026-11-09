@@ -1,0 +1,45 @@
+{
+  "name": "console_receipt_order",
+  "started_utc": "2026-11-09T07:10:35.826767+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "node",
+    "source/suite/tests/console_receipt_order_test.mjs"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_receipt_order/run.log",
+  "test_source_hashes": {
+    "source/suite/tests/console_receipt_order_test.mjs": "5c19ea621b9131f56eef0feacfeb71f097239841c5296064cd20f6f66d89b5ff"
+  },
+  "production_source_hashes": {
+    "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd"
+  },
+  "steps": [
+    {
+      "stage": "run",
+      "command": [
+        "node",
+        "source/suite/tests/console_receipt_order_test.mjs"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_receipt_order/run.log",
+      "log_sha256": "4f153fc259a520d615517ca4fd3b59a6972d632f925bb391d8c756c8623bead2"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_receipt_order/run.log",
+  "log_sha256": "4f153fc259a520d615517ca4fd3b59a6972d632f925bb391d8c756c8623bead2",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "completed_utc": "2026-11-09T07:10:35.941861+00:00",
+  "elapsed_seconds": 0.115,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_receipt_order/execution.json"
+}

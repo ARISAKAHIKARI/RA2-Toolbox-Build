@@ -1,0 +1,106 @@
+{
+  "scope": "display/render/minimap/watch/monitor/FPS/zoom/assets/cursor",
+  "frozen_utc": "2026-11-09T07:04:37.191659+00:00",
+  "product_baseline": "1.0.46.4",
+  "source_base_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "target_version_line": "1.0.47",
+  "matrix": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/display-feature-matrix.json",
+  "matrix_rows": 164,
+  "matrix_source_fingerprints": 106,
+  "counting_warning": "164 is an audit-row count across settings/actions/modes/internal support paths, not an independent usable-feature count.",
+  "availability_row_counts": {
+    "retained_configuration_no_current_effect": 9,
+    "available": 113,
+    "disabled_ui_entry_saved_preference_retained": 1,
+    "retained_preference_geometry_validation_only": 1,
+    "disabled_no_op_entry": 1,
+    "retained_configuration_no_current_cursor_ui_entry": 3,
+    "retained_unwired_implementation": 2,
+    "internal_backend_not_independent_ui_feature": 16,
+    "standalone_unwired_helper": 7,
+    "experimental": 9,
+    "experimental_runtime_audited_separately": 2
+  },
+  "owned_files": [
+    "source/unit_monitor/source/main.cpp",
+    "source/unit_monitor/source/icon_cache.h",
+    "source/assist/source/passenger_draw.h",
+    "source/unit_monitor/tests/secondary_drag_bounds.py",
+    "source/unit_monitor/tests/secondary_render_retry.py",
+    "source/unit_monitor/tests/icon_cache_reopen.py",
+    "source/assist/tests/passenger_frame_sampling.py",
+    "source/assist/tests/passenger_frame_sampling.cpp"
+  ],
+  "owned_file_sha256": {
+    "source/unit_monitor/source/main.cpp": "c8651e8e734e1b86e38056040acef64d0f51e1f786b927198c3ab3ae07d23fc3",
+    "source/unit_monitor/source/icon_cache.h": "11d4846950493a6518eb0f0dba07187265dea55bf8ab397378b22272130f8594",
+    "source/assist/source/passenger_draw.h": "123eba0051124e5fef8884bb77ba9b8860d1866084b4b8a8a2ca30ee763916b5",
+    "source/unit_monitor/tests/secondary_drag_bounds.py": "7abda39335a7eefcad3875e05ca3bf02fbaa1f70087e3889ef65e4789f69124e",
+    "source/unit_monitor/tests/secondary_render_retry.py": "4d7403556dccde6c6e614d62ca4e83863b270aa3c91d6ff6b079fe21d504bc1f",
+    "source/unit_monitor/tests/icon_cache_reopen.py": "09906c0e895d40291511559eb8962c4aa790ba1d0e0d436dc813470f276c7224",
+    "source/assist/tests/passenger_frame_sampling.py": "ae534cd354e2c29d2b9a75e59fffdd8d159b888360d961044acc04dd657bb211",
+    "source/assist/tests/passenger_frame_sampling.cpp": "fb790fb5f3ed0c6c8fadca22803b710a9e6abaad283088f8598baf39f4a1c497"
+  },
+  "root_coordinated_changes": [
+    "source/assist/source/main.cpp: passenger demand and four-argument display call"
+  ],
+  "fixed_findings": [
+    {
+      "id": "DISPLAY-F1-SECONDARY-DRAG-BOUNDS",
+      "minimal_counterexample": "800x600 work area receives a drag captured for a 1200x800 panel; old std::clamp gets inverted bounds and aborts under _GLIBCXX_ASSERTIONS.",
+      "change": "Clamp each upper bound at least to the work origin; preserve travel-percent semantics.",
+      "before": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_drag_before.receipt.json",
+      "after": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_drag_current.receipt.json",
+      "result": "7 boundary cases + 900 range cases passed; actual extracted functions with UBSan."
+    },
+    {
+      "id": "DISPLAY-F2-SECONDARY-FAILED-REPLACEMENT",
+      "minimal_counterexample": "A previously accepted frame exists, then a changed replacement fails; clearing secondaryDirty made the old non-null frame suppress all retries. Two submissions can also share a tick.",
+      "change": "Track latest submission with a separate uint64 serial; retry unaccepted replacement at existing 250ms cadence; accepted unchanged pixels skip rasterization.",
+      "before": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_before.receipt.json",
+      "additional_before": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_tick_collision_before.receipt.json",
+      "after": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_current.receipt.json",
+      "result": "8 predicate cases passed, including same-millisecond submissions and DWORD wrap."
+    },
+    {
+      "id": "DISPLAY-F3-ICON-CACHE-REOPEN",
+      "minimal_counterexample": "First icon cache scope scan fails for an unavailable directory; worker remains joinable, so reconnecting the now-available same path never rescans.",
+      "change": "Separate active/pending scope work from a merely live worker; same-path explicit reconnect retries a completed failure while healthy scopes retain generation.",
+      "before": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon_cache_reopen_before.receipt.json",
+      "after": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon_cache_reopen_current.receipt.json",
+      "result": "Actual cache worker and Linux filesystem recovered, persisted and restored icon/palette; healthy reconnect kept generation."
+    },
+    {
+      "id": "DISPLAY-F5-PASSENGER-RAW-FRAME",
+      "minimal_counterexample": "paint calls passengerView after sampleExternal WorldFrameScope ended; actual ProcessReader falls back to live pages. Controlled first paint had 14 RPM calls despite an available sealed frame.",
+      "change": "Use authenticated same-PID/match/frame/tick Token and WorldFrameScope across every passenger read; add Passengers|Combat demand through root-owned main; never fall back live for missing data.",
+      "before": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/passenger_before/receipt.json",
+      "after": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/passenger_current/receipt.json",
+      "result": "Actual producer/IPC/reader/collector path: first paint and 1000 same-logic-frame paints had 0 live RPM; failure lease, recovery, identity and pause confirmation cases passed; 2158 total checks include fixture assertions."
+    }
+  ],
+  "root_change_review": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/root-change-cross-review.json",
+  "root_review_outcome": "No new blocking findings in toastActive lifetime or Host/Runtime catalogue identity (protocol 102); root owns final receipts/build.",
+  "source_restoration": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/full-source-restoration-summary.json",
+  "known_unfixed": [
+    {
+      "id": "DISPLAY-KNOWN-BLOCKED-MIXED-CANVAS",
+      "status": "unfixed_prior_automatic_approval_rejection",
+      "note": "此前混合画布光标像素边界修复及缩窄纯图片修复均被自动审批拒绝；本轮未重新尝试该修复，未将其改成通过。"
+    }
+  ],
+  "validation_limits": [
+    "No real Windows UI/game/GPU/multiplayer acceptance performed by this agent.",
+    "Passenger RPM counts are controlled synthetic-process measurements, not real-game FPS or wall-time improvements.",
+    "Retained, hidden, disabled and unwired rows are not accepted as available UI features.",
+    "No new native engine address/ABI findings; pure toolbox logic and existing published read contracts."
+  ],
+  "checks": [
+    "Matrix IDs/schema/source paths verified.",
+    "Owned current production/test SHA matches controlled execution receipts.",
+    "git -c core.whitespace=cr-at-eol diff --check on owned files exited 0.",
+    "All 3097 restore-plan paths and all 4016 baseline source blobs exist; blob integrity validated at each materialization."
+  ],
+  "no_commit": true,
+  "status": "frozen_ready_for_root_integration"
+}

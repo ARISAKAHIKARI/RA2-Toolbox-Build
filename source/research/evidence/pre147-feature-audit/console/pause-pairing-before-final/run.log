@@ -1,0 +1,5 @@
+{"checks":22,"failures":4,"passed":false}
+FAIL rebind after outside release preserves both edges of the new ordinary key
+FAIL disable after outside release preserves both edges of the new ordinary key
+FAIL modifier rebinding does not swallow plain-key release
+FAIL new system-key pair drops lost-release ownership

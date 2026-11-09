@@ -1,0 +1,414 @@
+In file included from source/assist/tests/../source/mo_orders.h:5,
+                 from source/assist/tests/../source/protocol.h:2,
+                 from source/assist/tests/../source/external_planner.h:2,
+                 from source/assist/tests/../source/planner_task.h:2,
+                 from source/assist/tests/planner_defense_delivery.cpp:1:
+source/assist/tests/../source/../../shared/source/key_gesture.h: In function ‘uint16_t keygesture::normalize(uint32_t, Mode)’:
+source/assist/tests/../source/../../shared/source/key_gesture.h:17:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   17 |  if(mode(value)==fallback)value&=uint16_t(~ModeMask);return value;
+      |  ^~
+source/assist/tests/../source/../../shared/source/key_gesture.h:17:54: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   17 |  if(mode(value)==fallback)value&=uint16_t(~ModeMask);return value;
+      |                                                      ^~~~~~
+source/assist/tests/../source/../../shared/source/key_gesture.h: In function ‘std::wstring keygesture::describe(uint32_t, const std::wstring&, bool)’:
+source/assist/tests/../source/../../shared/source/key_gesture.h:44:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   44 |  if(!prefix.empty())text+=L"；修饰键须保持按住";return text;
+      |  ^~
+source/assist/tests/../source/../../shared/source/key_gesture.h:44:49: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   44 |  if(!prefix.empty())text+=L"；修饰键须保持按住";return text;
+      |                                                 ^~~~~~
+source/assist/tests/../source/../../shared/source/key_gesture.h: In member function ‘void keygesture::Tracker::edge(unsigned int, bool, bool, uint32_t, uint16_t)’:
+source/assist/tests/../source/../../shared/source/key_gesture.h:51:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   51 |   if(vk>=256)return;if(!down){bool released=held[vk]!=0;held[vk]=0;
+      |   ^~
+source/assist/tests/../source/../../shared/source/key_gesture.h:51:21: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   51 |   if(vk>=256)return;if(!down){bool released=held[vk]!=0;held[vk]=0;
+      |                     ^~
+source/assist/tests/../source/mo_orders.h: In function ‘bool assist::moorders::gestureKey(uint32_t)’:
+source/assist/tests/../source/mo_orders.h:31:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   31 |  if(!key)return true;unsigned vk=key&255;
+      |  ^~
+source/assist/tests/../source/mo_orders.h:31:22: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   31 |  if(!key)return true;unsigned vk=key&255;
+      |                      ^~~~~~~~
+source/assist/tests/../source/mo_orders.h: In function ‘uint32_t assist::moorders::gestureConflicts(const GesturePolicy&, uint32_t)’:
+source/assist/tests/../source/mo_orders.h:41:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   41 |   if((enabled&gestureMode(j))&&p.buttons[i]==p.buttons[j]&&gestureKey(p.keys[j])&&gestureKeyIdentity(p.keys[i])==gestureKeyIdentity(p.keys[j]))out|=gestureMode(i)|gestureMode(j);return out;
+      |   ^~
+source/assist/tests/../source/mo_orders.h:41:179: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   41 |   if((enabled&gestureMode(j))&&p.buttons[i]==p.buttons[j]&&gestureKey(p.keys[j])&&gestureKeyIdentity(p.keys[i])==gestureKeyIdentity(p.keys[j]))out|=gestureMode(i)|gestureMode(j);return out;
+      |                                                                                                                                                                                   ^~~~~~
+source/assist/tests/../source/mo_orders.h:40:128: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   40 |  uint32_t out=0;for(int i=0;i<GestureCount;++i)if((enabled&gestureMode(i))&&gestureButton(p.buttons[i])&&gestureKey(p.keys[i]))for(int j=i+1;j<GestureCount;++j)
+      |                                                                                                                                ^~~
+source/assist/tests/../source/mo_orders.h:41:179: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   41 |   if((enabled&gestureMode(j))&&p.buttons[i]==p.buttons[j]&&gestureKey(p.keys[j])&&gestureKeyIdentity(p.keys[i])==gestureKeyIdentity(p.keys[j]))out|=gestureMode(i)|gestureMode(j);return out;
+      |                                                                                                                                                                                   ^~~~~~
+source/assist/tests/../source/mo_orders.h: In function ‘bool assist::moorders::gestureHeld(const Keys&, uint32_t)’:
+source/assist/tests/../source/mo_orders.h:48:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   48 |  for(unsigned vk=8;vk<256;++vk)if(keys[vk])return false;return true;
+      |  ^~~
+source/assist/tests/../source/mo_orders.h:48:57: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   48 |  for(unsigned vk=8;vk<256;++vk)if(keys[vk])return false;return true;
+      |                                                         ^~~~~~
+source/assist/tests/../source/mo_orders.h: In function ‘int assist::moorders::gestureSpecificity(uint32_t)’:
+source/assist/tests/../source/mo_orders.h:51:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   51 |  if(!key)return 0;unsigned vk=key&255,mods=(key>>8)&7;
+      |  ^~
+source/assist/tests/../source/mo_orders.h:51:19: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   51 |  if(!key)return 0;unsigned vk=key&255,mods=(key>>8)&7;
+      |                   ^~~~~~~~
+source/assist/tests/../source/mo_orders.h: In function ‘int assist::moorders::patrol(const Point*, int, Point*, const Options&)’:
+source/assist/tests/../source/mo_orders.h:96:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   96 |  if(!nodes||!out||n<=0||!validOptions(options))return 0;n=std::min(n,Nodes);
+      |  ^~
+source/assist/tests/../source/mo_orders.h:96:57: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   96 |  if(!nodes||!out||n<=0||!validOptions(options))return 0;n=std::min(n,Nodes);
+      |                                                         ^
+source/assist/tests/../source/mo_orders.h: In function ‘int assist::moorders::groupTarget(int, int, int)’:
+source/assist/tests/../source/mo_orders.h:120:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  120 |  if(actor<0||actor>=actors||groups<=0)return -1;int base=actors/groups,extra=actors%groups,wide=(base+1)*extra;
+      |  ^~
+source/assist/tests/../source/mo_orders.h:120:49: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  120 |  if(actor<0||actor>=actors||groups<=0)return -1;int base=actors/groups,extra=actors%groups,wide=(base+1)*extra;
+      |                                                 ^~~
+In file included from source/assist/tests/../source/protocol.h:5:
+source/assist/tests/../source/formation.h: In function ‘void assist::formation::layout(int, int, double, bool, Point*)’:
+source/assist/tests/../source/formation.h:44:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   44 |   if(count>=4)compact=std::max(3,compact);if(count>=8&&compact*compact==count)++compact;
+      |   ^~
+source/assist/tests/../source/formation.h:44:43: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   44 |   if(count>=4)compact=std::max(3,compact);if(count>=8&&compact*compact==count)++compact;
+      |                                           ^~
+In file included from source/assist/tests/../source/protocol.h:11:
+source/assist/tests/../source/ore_type_config.h: In function ‘bool assist::oreconfig::parse(const std::wstring&, char (&)[512][24], int&)’:
+source/assist/tests/../source/ore_type_config.h:18:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   18 |   if(!((c>=L'a'&&c<=L'z')||(c>=L'A'&&c<=L'Z')||(c>=L'0'&&c<=L'9')||c==L'_'||c==L'-')||id.size()==23)return false;id+=upper(char(c));}
+      |   ^~
+source/assist/tests/../source/ore_type_config.h:18:114: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   18 |   if(!((c>=L'a'&&c<=L'z')||(c>=L'A'&&c<=L'Z')||(c>=L'0'&&c<=L'9')||c==L'_'||c==L'-')||id.size()==23)return false;id+=upper(char(c));}
+      |                                                                                                                  ^~
+source/assist/tests/../source/ore_type_config.h:19:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   19 |  if(!add())return false;memcpy(out,parsed,sizeof parsed);count=n;return true;
+      |  ^~
+source/assist/tests/../source/ore_type_config.h:19:25: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   19 |  if(!add())return false;memcpy(out,parsed,sizeof parsed);count=n;return true;
+      |                         ^~~~~~
+In file included from source/assist/tests/../source/protocol.h:12:
+source/assist/tests/../source/feature_type_config.h: In function ‘bool assist::featuretypes::allowed(const Config&, int, const char*)’:
+source/assist/tests/../source/feature_type_config.h:18:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   18 |  if(!id||f.count<0||f.count>oreconfig::Limit)return false;for(int i=0;i<f.count;++i)if(oreconfig::equal(f.ids[i],id))return true;return false;}
+      |  ^~
+source/assist/tests/../source/feature_type_config.h:18:59: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   18 |  if(!id||f.count<0||f.count>oreconfig::Limit)return false;for(int i=0;i<f.count;++i)if(oreconfig::equal(f.ids[i],id))return true;return false;}
+      |                                                           ^~~
+In file included from source/assist/tests/../source/protocol.h:17:
+source/assist/tests/../source/pointer_intent.h: In function ‘int assist::pointerinput::resolveMouseMatches(const uint8_t*, int, const uint32_t*, const Bindings&, uint32_t, bool, MouseRoute*)’:
+source/assist/tests/../source/pointer_intent.h:78:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   78 |  if(!count&&(physical==FollowNative||physical==6))out[count++]={FollowNative,common};return count;
+      |  ^~
+source/assist/tests/../source/pointer_intent.h:78:86: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   78 |  if(!count&&(physical==FollowNative||physical==6))out[count++]={FollowNative,common};return count;
+      |                                                                                      ^~~~~~
+In file included from source/assist/tests/../source/construction_input.h:3,
+                 from source/assist/tests/../source/protocol.h:18:
+source/assist/tests/../source/construction_policy.h: In function ‘bool assist::construction::prerequisite(int, const std::vector<int>&, const std::vector<int>*, int)’:
+source/assist/tests/../source/construction_policy.h:12:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   12 |  if(index>=0)return has(index);if(index< -6)return false;
+      |  ^~
+source/assist/tests/../source/construction_policy.h:12:32: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   12 |  if(index>=0)return has(index);if(index< -6)return false;
+      |                                ^~
+source/assist/tests/../source/construction_policy.h:13:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   13 |  for(int n:groups[-index-1])if(has(n))return true;return false;
+      |  ^~~
+source/assist/tests/../source/construction_policy.h:13:51: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   13 |  for(int n:groups[-index-1])if(has(n))return true;return false;
+      |                                                   ^~~~~~
+source/assist/tests/../source/construction_policy.h: In function ‘bool assist::construction::available(const std::vector<int>&, const std::vector<int>&, const std::vector<int>&, const std::vector<int>*, int)’:
+source/assist/tests/../source/construction_policy.h:18:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   18 |  for(int n:needs)if(!prerequisite(n,owned,groups,future))return false;return true;
+      |  ^~~
+source/assist/tests/../source/construction_policy.h:18:71: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   18 |  for(int n:needs)if(!prerequisite(n,owned,groups,future))return false;return true;
+      |                                                                       ^~~~~~
+In file included from source/assist/tests/../source/protocol.h:19:
+source/assist/tests/../source/compute_policy.h: In function ‘uint32_t assist::compute::plannerFlags(uint32_t, uint32_t, bool)’:
+source/assist/tests/../source/compute_policy.h:12:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   12 |  for(int i=0;i<4;++i)if(i==1?magnetronIntents(mask,runtime)!=0:inside(mask,Feature(i))==runtime)out|=flags&bits[i];return out;
+      |  ^~~
+source/assist/tests/../source/compute_policy.h:12:116: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   12 |  for(int i=0;i<4;++i)if(i==1?magnetronIntents(mask,runtime)!=0:inside(mask,Feature(i))==runtime)out|=flags&bits[i];return out;
+      |                                                                                                                    ^~~~~~
+In file included from source/assist/tests/../source/compute_tasks.h:2,
+                 from source/assist/tests/../source/protocol.h:20:
+source/assist/tests/../source/autoload.h: In function ‘int assist::loading::assign(const Infantry*, int, Vehicle*, int, int, int, Composition&, Workspace&, int*, Compatible)’:
+source/assist/tests/../source/autoload.h:63:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   63 |    if(bi<0)break;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;
+      |    ^~
+source/assist/tests/../source/autoload.h:63:18: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   63 |    if(bi<0)break;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;
+      |                  ^~~
+source/assist/tests/../source/autoload.h:88:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   88 |    if(bi<0)continue;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;progress=true;
+      |    ^~
+source/assist/tests/../source/autoload.h:88:21: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   88 |    if(bi<0)continue;out[bi]=bj;v[bj].reserved+=p[bi].slots;++v[bj].passengers;composition.add(bj,p[bi].type);++assigned;progress=true;
+      |                     ^~~
+source/assist/tests/../source/compute_tasks.h: In function ‘assist::compute::LoadResult assist::compute::load(LoadInput&, assist::loading::Workspace&)’:
+source/assist/tests/../source/compute_tasks.h:20:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   20 |  if(!valid(i))return r;r.count=i.ns;
+      |  ^~
+source/assist/tests/../source/compute_tasks.h:20:24: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   20 |  if(!valid(i))return r;r.count=i.ns;
+      |                        ^
+source/assist/tests/../source/compute_tasks.h: In function ‘assist::compute::RepairResult assist::compute::repair(const RepairInput&)’:
+source/assist/tests/../source/compute_tasks.h:24:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   24 |  for(int n=0;n<i.count;++n)if(i.items[n].id&&decisions::shouldRepair(i.items[n].view))r.ids[r.count++]=i.items[n].id;return r;
+      |  ^~~
+source/assist/tests/../source/compute_tasks.h:24:118: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   24 |  for(int n=0;n<i.count;++n)if(i.items[n].id&&decisions::shouldRepair(i.items[n].view))r.ids[r.count++]=i.items[n].id;return r;
+      |                                                                                                                      ^~~~~~
+In file included from source/assist/tests/../source/compute_input_copy.h:3,
+                 from source/assist/tests/../source/compute_frame.h:6,
+                 from source/assist/tests/../source/protocol.h:21:
+source/assist/tests/../source/missile_compute.h: In function ‘assist::missilecompute::Result assist::missilecompute::calculateWithWorkspace(const Input&, Workspace&)’:
+source/assist/tests/../source/missile_compute.h:113:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  113 |   if(bt<0)break;const int bs=work.sources[bt][0];assigned[bs]=bt;++number[bt];damage[bt]+=i.edges[bs][bt].damage;
+      |   ^~
+source/assist/tests/../source/missile_compute.h:113:17: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  113 |   if(bt<0)break;const int bs=work.sources[bt][0];assigned[bs]=bt;++number[bt];damage[bt]+=i.edges[bs][bt].damage;
+      |                 ^~~~~
+source/assist/tests/../source/missile_compute.h:135:44: warning: suggest parentheses around ‘&&’ within ‘||’ [-Wparentheses]
+  135 |     action=i.sources[s].cooldown>3||covered&&i.targets[t].threatening<2?Hold:Attack;
+      |                                     ~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from source/assist/tests/../source/unload_compute.h:4,
+                 from source/assist/tests/../source/compute_input_copy.h:4:
+source/assist/tests/../source/unload_policy.h: In member function ‘bool assist::unloadpolicy::RosterLookup<Capacity>::add(uint32_t, int)’:
+source/assist/tests/../source/unload_policy.h:21:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   21 |   if(!pointer)return false;unsigned at=slot(pointer);if(at==Slots)return false;
+      |   ^~
+source/assist/tests/../source/unload_policy.h:21:28: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   21 |   if(!pointer)return false;unsigned at=slot(pointer);if(at==Slots)return false;
+      |                            ^~~~~~~~
+source/assist/tests/../source/unload_policy.h: In function ‘bool assist::unloadpolicy::initialMayContinue(int, int, int, bool, bool)’:
+source/assist/tests/../source/unload_policy.h:34:40: warning: suggest parentheses around ‘&&’ within ‘||’ [-Wparentheses]
+   34 |  if(mission==2&&(mode==0||ejectDeployer&&mode!=0))return landedAge>=0&&landedAge<=(mode==0?900:ScatterFrames);
+      |                           ~~~~~~~~~~~~~^~~~~~~~~
+source/assist/tests/../source/unload_compute.h: In function ‘assist::unloadcompute::Result assist::unloadcompute::calculate(const Input&)’:
+source/assist/tests/../source/unload_compute.h:84:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   84 |  for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n],i.targets,i.actions[n],i.targetCount);return r;
+      |  ^~~
+source/assist/tests/../source/unload_compute.h:84:101: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   84 |  for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n],i.targets,i.actions[n],i.targetCount);return r;
+      |                                                                                                     ^~~~~~
+source/assist/tests/../source/compute_input_copy.h: In static member function ‘static void assist::compute::InputCopy<assist::unloadcompute::Input>::copy(assist::unloadcompute::Input&, const assist::unloadcompute::Input&)’:
+source/assist/tests/../source/compute_input_copy.h:22:14: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of a non-trivial type ‘struct assist::unloadcompute::Input’ leaves 4485120 bytes unchanged [-Wclass-memaccess]
+   22 |   std::memcpy(&to,&from,offsetof(unloadcompute::Input,sources));
+      |   ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+source/assist/tests/../source/unload_compute.h:22:8: note: ‘struct assist::unloadcompute::Input’ declared here
+   22 | struct Input {
+      |        ^~~~~
+source/assist/tests/../source/compute_input_copy.h: In static member function ‘static void assist::compute::InputCopy<assist::missilecompute::Input>::copy(assist::missilecompute::Input&, const assist::missilecompute::Input&)’:
+source/assist/tests/../source/compute_input_copy.h:31:14: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of a non-trivial type ‘struct assist::missilecompute::Input’ leaves 1065984 bytes unchanged [-Wclass-memaccess]
+   31 |   std::memcpy(&to,&from,offsetof(missilecompute::Input,sources));
+      |   ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+source/assist/tests/../source/missile_compute.h:18:8: note: ‘struct assist::missilecompute::Input’ declared here
+   18 | struct Input {uint32_t match=0,tick=0;int frame=-1,count=0,targetCount=0,mode=Smart;
+      |        ^~~~~
+source/assist/tests/../source/compute_input_copy.h: In static member function ‘static void assist::compute::InputCopy<assist::compute::LoadInput>::copy(assist::compute::LoadInput&, const assist::compute::LoadInput&)’:
+source/assist/tests/../source/compute_input_copy.h:40:14: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of a non-trivial type ‘struct assist::compute::LoadInput’ leaves 843788 bytes unchanged [-Wclass-memaccess]
+   40 |   std::memcpy(&to,&from,offsetof(LoadInput,soldiers));
+      |   ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+source/assist/tests/../source/compute_tasks.h:8:8: note: ‘struct assist::compute::LoadInput’ declared here
+    8 | struct LoadInput {
+      |        ^~~~~~~~~
+source/assist/tests/../source/compute_input_copy.h:45:14: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of a non-trivial type ‘struct assist::loading::Composition’ leaves 524288 bytes unchanged [-Wclass-memaccess]
+   45 |   std::memcpy(&to.composition,&from.composition,offsetof(loading::Composition,numbers));
+      |   ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+source/assist/tests/../source/autoload.h:32:8: note: ‘struct assist::loading::Composition’ declared here
+   32 | struct Composition {
+      |        ^~~~~~~~~~~
+In file included from source/assist/tests/../source/cooperative_frame.h:2,
+                 from source/assist/tests/../source/protocol.h:22:
+source/assist/tests/../source/cooperative_plan.h: In function ‘std::vector<assist::cooperative::Assignment> assist::cooperative::allocate(const Input&)’:
+source/assist/tests/../source/cooperative_plan.h:51:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   51 |    if(best<0)continue;const auto&t=w.targets[best];double damage=w.expectedDamage[size_t(i)*nt+best];committed[best]+=damage;out.push_back({u.source.id,u.source.token,t.id,t.type,damage});
+      |    ^~
+source/assist/tests/../source/cooperative_plan.h:51:23: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   51 |    if(best<0)continue;const auto&t=w.targets[best];double damage=w.expectedDamage[size_t(i)*nt+best];committed[best]+=damage;out.push_back({u.source.id,u.source.token,t.id,t.type,damage});
+      |                       ^~~~~
+source/assist/tests/../source/cooperative_plan.h:75:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   75 |   if(best<0)continue;const auto&t=w.targets[best];if(w.mode==Enter)reserved[best]+=u.slots;++counts[best];out.push_back({u.source.id,u.source.token,t.id,t.type});
+      |   ^~
+source/assist/tests/../source/cooperative_plan.h:75:22: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   75 |   if(best<0)continue;const auto&t=w.targets[best];if(w.mode==Enter)reserved[best]+=u.slots;++counts[best];out.push_back({u.source.id,u.source.token,t.id,t.type});
+      |                      ^~~~~
+source/assist/tests/../source/cooperative_frame.h: In function ‘bool assist::cooperative::pack(FrameInput&, const Input&, const Request&, uint32_t, int)’:
+source/assist/tests/../source/cooperative_frame.h:15:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   15 |  if(out.unitCount)memcpy(out.units,i.units.data(),i.units.size()*sizeof(Unit));if(out.targetCount)memcpy(out.targets,i.targets.data(),i.targets.size()*sizeof(Target));
+      |  ^~
+source/assist/tests/../source/cooperative_frame.h:15:80: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   15 |  if(out.unitCount)memcpy(out.units,i.units.data(),i.units.size()*sizeof(Unit));if(out.targetCount)memcpy(out.targets,i.targets.data(),i.targets.size()*sizeof(Target));
+      |                                                                                ^~
+source/assist/tests/../source/cooperative_frame.h:16:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   16 |  if(!i.compatible.empty())memcpy(out.compatible,i.compatible.data(),i.compatible.size());if(out.damageCount)memcpy(out.expectedDamage,i.expectedDamage.data(),i.expectedDamage.size()*sizeof(double));return true;
+      |  ^~
+source/assist/tests/../source/cooperative_frame.h:16:90: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   16 |  if(!i.compatible.empty())memcpy(out.compatible,i.compatible.data(),i.compatible.size());if(out.damageCount)memcpy(out.expectedDamage,i.expectedDamage.data(),i.expectedDamage.size()*sizeof(double));return true;
+      |                                                                                          ^~
+source/assist/tests/../source/cooperative_frame.h: In function ‘bool assist::cooperative::copyFrame(FrameInput&, const FrameInput&)’:
+source/assist/tests/../source/cooperative_frame.h:21:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   21 |  if(!validFrame(out))return false;const size_t cells=size_t(out.unitCount)*out.targetCount;
+      |  ^~
+source/assist/tests/../source/cooperative_frame.h:21:35: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   21 |  if(!validFrame(out))return false;const size_t cells=size_t(out.unitCount)*out.targetCount;
+      |                                   ^~~~~
+source/assist/tests/../source/cooperative_frame.h:22:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   22 |  if(out.unitCount)memcpy(out.units,i.units,size_t(out.unitCount)*sizeof(Unit));if(out.targetCount)memcpy(out.targets,i.targets,size_t(out.targetCount)*sizeof(Target));if(cells)memcpy(out.compatible,i.compatible,cells);if(out.damageCount)memcpy(out.expectedDamage,i.expectedDamage,size_t(out.damageCount)*sizeof(double));return true;
+      |  ^~
+source/assist/tests/../source/cooperative_frame.h:22:80: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   22 |  if(out.unitCount)memcpy(out.units,i.units,size_t(out.unitCount)*sizeof(Unit));if(out.targetCount)memcpy(out.targets,i.targets,size_t(out.targetCount)*sizeof(Target));if(cells)memcpy(out.compatible,i.compatible,cells);if(out.damageCount)memcpy(out.expectedDamage,i.expectedDamage,size_t(out.damageCount)*sizeof(double));return true;
+      |                                                                                ^~
+source/assist/tests/../source/cooperative_frame.h: In function ‘void assist::cooperative::restrictSources(Input&, const Request&)’:
+source/assist/tests/../source/cooperative_frame.h:26:2: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   26 |  for(int n=0;n<r.count;++n)for(size_t i=0;i<input.units.size();++i)if(input.units[i].source.id==r.sources[n].id&&input.units[i].source.token==r.sources[n].token){out.units.push_back(input.units[i]);out.compatible.insert(out.compatible.end(),input.compatible.begin()+i*columns,input.compatible.begin()+(i+1)*columns);if(!input.expectedDamage.empty())out.expectedDamage.insert(out.expectedDamage.end(),input.expectedDamage.begin()+i*columns,input.expectedDamage.begin()+(i+1)*columns);break;}input=std::move(out);
+      |  ^~~
+source/assist/tests/../source/cooperative_frame.h:26:491: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   26 |  for(int n=0;n<r.count;++n)for(size_t i=0;i<input.units.size();++i)if(input.units[i].source.id==r.sources[n].id&&input.units[i].source.token==r.sources[n].token){out.units.push_back(input.units[i]);out.compatible.insert(out.compatible.end(),input.compatible.begin()+i*columns,input.compatible.begin()+(i+1)*columns);if(!input.expectedDamage.empty())out.expectedDamage.insert(out.expectedDamage.end(),input.expectedDamage.begin()+i*columns,input.expectedDamage.begin()+(i+1)*columns);break;}input=std::move(out);
+      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ^~~~~
+In file included from source/assist/tests/../source/protocol.h:25:
+source/assist/tests/../source/burst_compute.h: In function ‘assist::burstcompute::Result assist::burstcompute::calculate(const Input&)’:
+source/assist/tests/../source/burst_compute.h:38:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   38 |  if(i.count<0||i.count>MaxSources)return r;r.count=i.count;for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n]);return r;}
+      |  ^~
+source/assist/tests/../source/burst_compute.h:38:44: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   38 |  if(i.count<0||i.count>MaxSources)return r;r.count=i.count;for(int n=0;n<i.count;++n)r.decisions[n]=decide(i.sources[n]);return r;}
+      |                                            ^
+source/assist/tests/../source/protocol.h: In function ‘uint64_t assist::typeListHash(const Type*, int)’:
+source/assist/tests/../source/protocol.h:69:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   69 |  if(count<0||count>MaxTypes)return 0;uint64_t h=1469598103934665603ull;
+      |  ^~
+source/assist/tests/../source/protocol.h:69:38: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   69 |  if(count<0||count>MaxTypes)return 0;uint64_t h=1469598103934665603ull;
+      |                                      ^~~~~~~~
+source/assist/tests/../source/protocol.h: In function ‘int assist::remaining(int, int, int)’:
+source/assist/tests/../source/protocol.h:269:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  269 |  if(duration<=0)return 0; if(start==-1)return duration;
+      |  ^~
+source/assist/tests/../source/protocol.h:269:27: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  269 |  if(duration<=0)return 0; if(start==-1)return duration;
+      |                           ^~
+In file included from source/assist/tests/../source/external_planner.h:3:
+source/assist/tests/../source/native_orders.h: In function ‘double nativeorders::value(int, float, int, int)’:
+source/assist/tests/../source/native_orders.h:8:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+    8 |  if(weight<100)weight=100;if(weight>10000)weight=10000;
+      |  ^~
+source/assist/tests/../source/native_orders.h:8:27: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+    8 |  if(weight<100)weight=100;if(weight>10000)weight=10000;
+      |                           ^~
+In file included from source/assist/tests/../source/external_planner.h:4:
+source/assist/tests/../source/ore_queue.h: In function ‘int64_t assist::ore::dockDistance(int, int, int, int, bool)’:
+source/assist/tests/../source/ore_queue.h:13:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   13 |  if(dx<0)dx=-dx;if(dy<0)dy=-dy;return dx>dy?dx:dy;
+      |  ^~
+source/assist/tests/../source/ore_queue.h:13:17: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   13 |  if(dx<0)dx=-dx;if(dy<0)dy=-dy;return dx>dy?dx:dy;
+      |                 ^~
+In file included from source/assist/tests/../source/external_planner.h:7:
+source/assist/tests/../source/weapon_policy.h: In function ‘int assist::planner::weaponIndex(const Actor&, const Actor&)’:
+source/assist/tests/../source/weapon_policy.h:15:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   15 |  if(!(qm&bit))return 0;if(!(pm&bit))return 1;
+      |  ^~
+source/assist/tests/../source/weapon_policy.h:15:24: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   15 |  if(!(qm&bit))return 0;if(!(pm&bit))return 1;
+      |                        ^~
+source/assist/tests/../source/weapon_policy.h: In function ‘bool assist::planner::canTarget(const Actor&, const Actor&, int64_t, bool, int)’:
+source/assist/tests/../source/weapon_policy.h:41:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   41 |  if(distance<0||distance>0xFFFFFFFFll||!compatibleTarget(s,t,mag))return false;const auto&w=s.weapons[weaponIndex(s,t)];
+      |  ^~
+source/assist/tests/../source/weapon_policy.h:41:80: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   41 |  if(distance<0||distance>0xFFFFFFFFll||!compatibleTarget(s,t,mag))return false;const auto&w=s.weapons[weaponIndex(s,t)];
+      |                                                                                ^~~~~
+source/assist/tests/../source/external_planner.h: In static member function ‘static bool assist::planner::Planner::attackMadeProgress(const assist::planner::Actor&, Advanced&, int)’:
+source/assist/tests/../source/external_planner.h:62:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   62 |   if(dx*dx+dy*dy<16*16)return false;task.attackProgress=frame;task.progressX=a.x;task.progressY=a.y;return true;
+      |   ^~
+source/assist/tests/../source/external_planner.h:62:37: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   62 |   if(dx*dx+dy*dy<16*16)return false;task.attackProgress=frame;task.progressX=a.x;task.progressY=a.y;return true;
+      |                                     ^~~~
+In file included from source/assist/tests/../source/external_planner.h:108:
+source/assist/tests/../source/advanced_decision.h: In member function ‘void assist::planner::Planner::stepAdvanced(const assist::planner::World&, const assist::planner::Actor&, Advanced&, std::vector<assist::planner::Order>&, int, int, int, int, int)’:
+source/assist/tests/../source/advanced_decision.h:40:39: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+   40 |    if(attack&&w.frame-task.sent>=2)add(out,{a.id,task.token,best->id,0,1,0,CombatOrder});
+      |                                    ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+source/assist/tests/../source/advanced_decision.h:40:39: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+source/assist/tests/../source/advanced_decision.h:53:46: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+   53 |   if(task.progress.hold){if(!task.stopped)add(out,{a.id,task.token,0,0,5,0,CombatOrder});return;}
+      |                                           ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+source/assist/tests/../source/advanced_decision.h:53:46: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+source/assist/tests/../source/advanced_decision.h:5:16: warning: unused variable ‘current’ [-Wunused-variable]
+    5 |   const Actor* current=actor(task.target);bool currentReady=false,currentReposition=false;
+      |                ^~~~~~~
+source/assist/tests/../source/external_planner.h: In member function ‘uint32_t assist::planner::Planner::trackingFlags() const’:
+source/assist/tests/../source/external_planner.h:115:55: warning: enumerated and non-enumerated type in conditional expression [-Wextra]
+  115 |  uint32_t trackingFlags()const{uint32_t f=ore_.empty()?0:AutoOreReturn;for(const auto&i:advanced_)f|=i.second.mode==MagnetronMove?MagnetronInput:AdvancedInput;return f;}
+      |                                           ~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+source/assist/tests/../source/external_planner.h: In member function ‘void assist::planner::Planner::rejected(const assist::planner::Order&, int)’:
+source/assist/tests/../source/external_planner.h:142:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  142 |   if(order.purpose!=1&&order.purpose!=3)return;auto it=advanced_.find(order.unit);if(it==advanced_.end()||it->second.token!=order.token)return;auto&t=it->second;
+      |   ^~
+source/assist/tests/../source/external_planner.h:142:48: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  142 |   if(order.purpose!=1&&order.purpose!=3)return;auto it=advanced_.find(order.unit);if(it==advanced_.end()||it->second.token!=order.token)return;auto&t=it->second;
+      |                                                ^~~~
+source/assist/tests/../source/external_planner.h: In member function ‘std::vector<assist::planner::Order> assist::planner::Planner::step(const assist::planner::World&, uint32_t, int, int, int, int, int, int, bool, uint32_t, bool)’:
+source/assist/tests/../source/external_planner.h:158:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  158 |   if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop&&magnetronModes_==magnetronModes&&dropObserved_==observeDrop)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;magnetronModes_=magnetronModes;dropObserved_=observeDrop;queued=docking=yielded=0;targetChecks=0;
+      |   ^~
+source/assist/tests/../source/external_planner.h:158:170: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  158 |   if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop&&magnetronModes_==magnetronModes&&dropObserved_==observeDrop)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;magnetronModes_=magnetronModes;dropObserved_=observeDrop;queued=docking=yielded=0;targetChecks=0;
+      |                                                                                                                                                                          ^~~~~~
+source/assist/tests/../source/external_planner.h:177:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  177 |     if(!(a.flags&PointDefense)||!(a.flags&Own)||!positionValid(a)||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;++checked;
+      |     ^~
+source/assist/tests/../source/external_planner.h:177:123: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  177 |     if(!(a.flags&PointDefense)||!(a.flags&Own)||!positionValid(a)||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;++checked;
+      |                                                                                                                           ^~
+source/assist/tests/../source/external_planner.h:230:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  230 |     if(!a||it==advanced_.end()||!active.count(intent.id)||dropping.count(intent.id))continue;auto&task=it->second;bool mag=task.mode==MagnetronMove;int purpose=mag?3:1;
+      |     ^~
+source/assist/tests/../source/external_planner.h:230:94: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  230 |     if(!a||it==advanced_.end()||!active.count(intent.id)||dropping.count(intent.id))continue;auto&task=it->second;bool mag=task.mode==MagnetronMove;int purpose=mag?3:1;
+      |                                                                                              ^~~~
+source/assist/tests/../source/external_planner.h:272:59: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+  272 |      if(sent<MaxOrders&&world.frame>task.sent&&attack&&add(combat,{a->id,task.token,best->id,0,1,0,purpose})){++sent;if(mag)magneticReservations_.insert(best->id);}
+      |                                                        ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+source/assist/tests/../source/external_planner.h:272:59: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+source/assist/tests/../source/external_planner.h:280:46: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+  280 |     if(task.attacking){if(sent<MaxOrders&&add(combat,{a->id,task.token,0,task.progress.hold?0:task.cell,task.progress.hold?5:2,task.progress.hold?0:11,purpose}))++sent;continue;}
+      |                                           ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+source/assist/tests/../source/external_planner.h:280:46: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+source/assist/tests/../source/external_planner.h:282:62: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+  282 |     if(task.progress.hold&&!task.stopped&&sent<MaxOrders&&add(combat,{a->id,task.token,0,0,5,0,purpose}))++sent;
+      |                                                           ~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+source/assist/tests/../source/external_planner.h:282:62: warning: missing initializer for member ‘assist::planner::Order::refinery’ [-Wmissing-field-initializers]
+source/assist/tests/../source/external_planner.h:323:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  323 |    if(a->flags&Unloading)job.stage=ore::Docking;ore_.push_back(job);
+      |    ^~
+source/assist/tests/../source/external_planner.h:323:49: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  323 |    if(a->flags&Unloading)job.stage=ore::Docking;ore_.push_back(job);
+      |                                                 ^~~~
+source/assist/tests/../source/external_planner.h: In lambda function:
+source/assist/tests/../source/external_planner.h:360:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  360 |    if(j.stage==ore::Docking)return 1;return j.priority?2:3;
+      |    ^~
+source/assist/tests/../source/external_planner.h:360:38: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  360 |    if(j.stage==ore::Docking)return 1;return j.priority?2:3;
+      |                                      ^~~~~~
+source/assist/tests/../source/external_planner.h: In member function ‘std::vector<assist::planner::Order> assist::planner::Planner::step(const assist::planner::World&, uint32_t, int, int, int, int, int, int, bool, uint32_t, bool)’:
+source/assist/tests/../source/external_planner.h:375:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  375 |    if(d->waitCell)waitingCells_.erase(d->waitCell);d->waitCell=cell;waitingCells_.insert(cell);
+      |    ^~
+source/assist/tests/../source/external_planner.h:375:52: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  375 |    if(d->waitCell)waitingCells_.erase(d->waitCell);d->waitCell=cell;waitingCells_.insert(cell);
+      |                                                    ^

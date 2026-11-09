@@ -1,0 +1,11 @@
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-before/fixture.cpp: In function ‘int superSelect(uint32_t, int)’:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-before/fixture.cpp:99:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   99 |  if(!call<char>(0x6CC360,p))return -5;uint32_t t=get<uint32_t>(p+0x28);if(!t)return -4;
+      |  ^~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-before/fixture.cpp:99:39: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   99 |  if(!call<char>(0x6CC360,p))return -5;uint32_t t=get<uint32_t>(p+0x28);if(!t)return -4;
+      |                                       ^~~~~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-before/fixture.cpp: In function ‘int namedSuper(uint32_t, int)’:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-before/fixture.cpp:123:111: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+  123 |  for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(!p)continue;uint32_t t=get<uint32_t>(p+0x28);if(t&&sameid((const char*)(t+0x24),id))return superSelect(house,i);}return -4;
+      |                                                                                                               ^~~~~~~~~~~~~~~~~~~~~

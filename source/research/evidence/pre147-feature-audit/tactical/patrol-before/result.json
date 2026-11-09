@@ -1,0 +1,47 @@
+{
+  "verification_level": "controlled_execution",
+  "boundary": "Production pure geometry and graph reader; modeled native graph, no game or native receiver execution",
+  "commands": [
+    {
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-fsanitize=address",
+        "-fno-omit-frame-pointer",
+        "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/mo_patrol_capacity.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-before/mo_patrol_capacity"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-before/build.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-before/mo_patrol_capacity"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 1,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-before/run.log",
+      "log_sha256": "67205fdab05b0275f0c967a88642146a8b89fe7c60bcd1a32c69439639e1055e"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-before/mo_patrol_capacity",
+        "--small-buffer"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 1,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-before/asan-buffer.log",
+      "log_sha256": "bb1ee3e641f79978eb297c359d93ee3f06b0f86090859fa8f735154a9410ba70"
+    }
+  ],
+  "source_sha256": {
+    "source/assist/source/mo_orders.h": "3ff6faf48461cb39f2c05a69dd0dd4e0c45beda52e79bf25cdec2df2248b6f4a",
+    "source/assist/source/mo_patrol_graph.h": "0496df478d3698635267542c4a983078db6af7c89cfbbe9ec37da6998bd7e278",
+    "source/assist/tests/mo_patrol_capacity.cpp": "a9e5a82e43796bc011fa4cbd6f628eab129402eb7b5647801375b00224e34924"
+  }
+}

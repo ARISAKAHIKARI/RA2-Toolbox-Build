@@ -36,6 +36,10 @@ static bool pauseViewKeyService(MSG*msg=nullptr){
  const bool keyDown=msg&&(msg->message==WM_KEYDOWN||msg->message==WM_SYSKEYDOWN);
  const bool keyUp=msg&&(msg->message==WM_KEYUP||msg->message==WM_SYSKEYUP);
  const unsigned vk=msg?(unsigned(msg->wParam)&255):0;
+ // A new physical press proves any older release was missed outside this
+ // game input route. Preserve ownership across autorepeat and feature-off
+ // only until that original release or the next genuinely new press.
+ if(keyDown&&!(msg->lParam&(1u<<30)))pauseViewKeySuppressed[vk]=false;
  bool consumed=keyUp&&pauseViewKeySuppressed[vk];if(keyUp)pauseViewKeySuppressed[vk]=false;
  if(!pauseViewAvailable()||!sh->foreground||get<bool>(0xA8BC60+25)||get<int>(0xA8EDA0)){
   pauseViewHotkeys.cancel();return consumed;

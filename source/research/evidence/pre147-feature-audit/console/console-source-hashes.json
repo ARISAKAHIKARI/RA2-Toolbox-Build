@@ -1,0 +1,22 @@
+{
+  "source/assist/source/auto_settings_ui.h": "6892154993388114f83eb2c1860839fcfeed1e5b98e09ff30a4c822621fb3df2",
+  "source/assist/source/game_process_selection_ui.h": "dcd29ba4406e70871d57a07205d5b55d782eafe7f8363fa238dea56a7d4822f8",
+  "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+  "source/assist/source/type_bindings_ui.h": "90f29ad1d4d0d1c20ec22271ed24de29f16b027c970e0c79e13855166ba7e9ec",
+  "source/cursor/source/main.cpp": "88847fea360c76666b7f5eefd9b7bac32b464f449980f0797f146ceaf5a1a266",
+  "source/external_reader/source/process_target_selection.h": "512bcf16a65c65ad0b10d9a2bfdb18231a0c2f0a07a61fd637af36bfaf2f725d",
+  "source/shared/source/async_ini_store.h": "83eae8fae4b162c45c0f402ba8340fca457dbaf0452fc42d5c77a483270705a4",
+  "source/shared/source/bounded_shutdown.h": "d71d39a071be38c0d9f9415b807f18f4f7b06d7576ae14fb9dc965b6241c01c7",
+  "source/shared/source/disabled_choices.h": "845cc17e16a8ababb2b1088b7a6c0ba52a036edb782380c8fe3874b1fbcce318",
+  "source/shared/source/initial_profiles.h": "142c4964e1c78235fe6fba2847c7978f7f3e0dbad1148dbd15c943d2c7c26643",
+  "source/shared/source/key_gesture.h": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8",
+  "source/shared/source/modern_ui.h": "fec279d238b94c9611e852646cdf9a2400f6fdd74f02fb9b5eb04757fa949619",
+  "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+  "source/suite/frontend/index.html": "1987cf0516d8979d27a77587f1e01e110594f606ff34bf25164eb5018f7c6560",
+  "source/suite/source/console_adapter.h": "33d5a74466aa7a5e153350087317efdd1254d40e3a0583620fbd07bfe92c9012",
+  "source/suite/source/console_model.h": "35c131f0d2f17b3c1407a6a0188765cb8cda151ad49c688395bb0578a098cd20",
+  "source/suite/source/modern_console_main.h": "97aa4fc087b433ec5ede96dbc2b4dde9381aad3422f66bb8a45ecf51d0166570",
+  "source/suite/source/settings_categories.h": "782d273871e498e2017a31a4505093c4b46d31d79a967213644ea7f6513a18e6",
+  "source/suite/source/video_settings_ui.h": "1e584429f6ab18a3e22cd69931e707bf17edc5ffb3cf3bc6f989a9b667cfc240",
+  "source/suite/source/web_console.cpp": "882b753a6a836bff7370db5376accf0caa496bbec6874315c67fecfecc25d992"
+}

@@ -131,7 +131,7 @@ static HWND ui,overlay,statusLabel,swList,techList,techSearch,swHotkey,rateEdit,
 static HFONT font,titleFont;static HBRUSH bgBrush,editBrush;static HWND game;static DWORD pid,gameThread;static HANDLE mapping,gameProcess;static HMODULE module;static gameinput::Subscription hook;static Shared*shared;
 static void hideWorldOverlay(){overlaycompositor::host().hide(overlaycompositor::World);if(overlay)ShowWindow(overlay,SW_HIDE);}
 static uint32_t lastReceiptWrite=0,lastReceiptMatch=0;
-static Snapshot snap{},incoming{};static uint32_t ack,notice,oldMatch,snapshotSeq=~0u;static std::wstring root,statusText,toast;static DWORD toastUntil,lastFind,lastData,lastPulse;static int fps=visual::DefaultFPS,topMargin=20,repairMs=2000;static bool enabled=true,ready,techEnabled;static std::vector<int> techIndices;static std::wstring lastSearch;
+static Snapshot snap{},incoming{};static uint32_t ack,notice,oldMatch,snapshotSeq=~0u;static std::wstring root,statusText,toast;static DWORD toastUntil,lastFind,lastData,lastPulse;static bool toastActive=false;static int fps=visual::DefaultFPS,topMargin=20,repairMs=2000;static bool enabled=true,ready,techEnabled;static std::vector<int> techIndices;static std::wstring lastSearch;
 static bool infoAdaptive=false;
 static monitorrefresh::Tracker informationMonitor;
 static int informationFPS(){return infoAdaptive?informationMonitor.rate():std::clamp(fps,5,500);}
@@ -258,7 +258,8 @@ static void setConsoleRuntimeError(HWND control,bool failed){
 static uint64_t attachAttempts=0;
 static bool secondaryDisplayRequested();
 static void setStatus(const std::wstring&s){if(statusText!=s){statusText=s;if(hoverHelp.empty())SetWindowTextW(statusLabel,s.c_str());}}
-static void notify(const std::wstring&s){toast=s;toastUntil=GetTickCount()+DWORD(toastMs);setStatus(s);}
+static bool activeToast(DWORD now){if(toastActive&&int32_t(now-toastUntil)>=0)toastActive=false;return toastActive;}
+static void notify(const std::wstring&s){toast=s;toastUntil=GetTickCount()+DWORD(toastMs);toastActive=true;setStatus(s);}
 static void diag(const std::wstring &s){
  if(!diagEnabled||root.empty())return;
  HANDLE f=CreateFileW(path(L"Assist-debug.log").c_str(),FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
@@ -843,20 +844,26 @@ static void serviceSelection(){
   if(diagEnabled)diag(L"selection ack="+std::to_wstring(receipt)+L" result="+std::to_wstring(shared->selectResult)+L" count="+std::to_wstring(shared->selectCount));
  }
  if(!hasSelection)return;
- if(pendingSelection.pid!=pid||(pendingSelection.match&&pendingSelection.match!=snap.match)||DWORD(now-pendingSelection.created)>1500){hasSelection=false;return;}
+ if(pendingSelection.pid!=pid||!pendingSelection.match||pendingSelection.match!=snap.match||DWORD(now-pendingSelection.created)>1500){hasSelection=false;return;}
+ if((pendingSelection.arg>=0||pendingSelection.arg==-3)&&pendingSelection.typeHash!=typeListHash(snap.types,snap.typeCount)){
+  hasSelection=false;notify(L"单位清单已改变，请重新选择后提交。");return;
+ }
  if(!commandFocus()||!commandFresh(now)||snap.chat)return;
  if(shared->selectRequest!=shared->selectAck){wakeGame();return;}
  shared->selectObjectID=pendingSelectionObject;shared->selectIndex=pendingSelection.arg;shared->selectGlobal=pendingSelection.arg2;
- shared->selectTick=now;shared->selectMatch=snap.match;memcpy(shared->selectTypes,pendingSelectionTypes,sizeof pendingSelectionTypes);
+ shared->selectTick=pendingSelection.created;shared->selectMatch=pendingSelection.match;shared->selectTypeHash=pendingSelection.typeHash;memcpy(shared->selectTypes,pendingSelectionTypes,sizeof pendingSelectionTypes);
  MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->selectRequest);hasSelection=false;
  wakeGame();
 }
 static void sendSelection(int index,bool global,const uint8_t* mask=nullptr,uint32_t object=0){
  if(!enabled){notify(L"战术控制已暂停，请先启用后再选兵。");return;}
+ // Freeze the identity that gave meaning to the index/mask before any
+ // connection refresh. Selection never acquires a later match identity.
+ const delivery::Item intent{SelectType,index,int(global),pid,snap.match,GetTickCount(),0,0,0,typeListHash(snap.types,snap.typeCount)};
  pendingSelectionObject=object;
  if(mask)memcpy(pendingSelectionTypes,mask,sizeof pendingSelectionTypes);else memset(pendingSelectionTypes,0,sizeof pendingSelectionTypes);
  if(!shared)ensureBridge();
- pendingSelection={SelectType,index,int(global),pid,commandFresh(GetTickCount())?snap.match:delivery::UnknownMatch,GetTickCount()};hasSelection=true;
+ pendingSelection=intent;hasSelection=true;
  serviceSelection();
 }
 static void logPlanning(const planner::World&w,const wchar_t* reason){
@@ -1290,7 +1297,8 @@ static void sampleExternal(DWORD now){
   externalAt=displayNow;externalReader.begin();externalSourceConfirmed=false;
   if(externalWorldSource&&((commandMatch()&&externalWorldSource->key.match!=commandMatch())||externalWorldSource->key.pid!=externalReader.pid()||
     ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)!=externalReader.generation()))discardExternalWorld();
-  externalReader.setWorldDemand(worldframe::Base|((flags()&(Capacity|AllTransports))?worldframe::Passengers:0));
+  const bool passengerOverlay=enabled&&(extra.passengerBubbles||extra.dangerPassengers);
+  externalReader.setWorldDemand(worldframe::Base|(((flags()&(Capacity|AllTransports))||passengerOverlay)?worldframe::Passengers:0)|(passengerOverlay?worldframe::Combat:0));
   external::WorldFrameScope worldScope(externalReader,commandMatch());
   if(!worldScope){
    if(externalWorldSource){external::WorldFrameScope retained(externalReader,commandMatch(),externalWorldSource);if(!retained)discardExternalWorld();}
@@ -1699,7 +1707,7 @@ static void paint(){
  const auto placementDrawing=placementdrawing::capture();
  auto opaquePanels=overlaystack::opaqueBoxes(game,snap.width,snap.height);
  static std::vector<RECT> priorOpaquePanels;if(priorOpaquePanels.size()!=opaquePanels.size()||(!opaquePanels.empty()&&memcmp(priorOpaquePanels.data(),opaquePanels.data(),opaquePanels.size()*sizeof(RECT)))){priorOpaquePanels=opaquePanels;++paintRevision;}
- auto passengerBubbles=passengerView(renderNow,viewportTransform);
+ auto passengerBubbles=passengerView(renderNow,viewportTransform,externalWorldSource,externalSourceConfirmed);
  auto airLines=airway::lines();
  auto nativeBadges=buildreserve::nativeBadges();
  uint32_t pausedTabs=0,idleTabs=0;
@@ -1709,7 +1717,7 @@ static void paint(){
  bool tabPhase=(renderNow/400)%2==0;bool spiderPhase=(renderNow/650)%2==0;
  if(sidebaroverlay::update(origin,r,nativeBadges,buildreserve::nativeBadgeTab(),idleTabs,tabPhase,opaquePanels)){nativeBadges.clear();idleTabs=0;}
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
- bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
+ bool hasToast=panel&&activeToast(now);bool summary=panel&&snap.transports;
  worldrender::present();
  if(!placementDrawing.active&&!moDrawing.active&&!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();return;}
  viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){hideWorldOverlay();return;}
@@ -1934,7 +1942,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  else if(c==SwitchPlayer||c==RestorePlayer){pointerMatches.clear();commandQueue.clear();notify(c==RestorePlayer?L"已恢复原操控方。":L"已切换操控方；自动功能将按新操控方重新启动。");}
  else if(c==CancelTechProduction)notify(L"已请求取消生产。");
  else if(c==Produce)notify(L"生产请求已提交；是否接受以游戏生产队列为准。");
- else if(c==SelectSuper||c==SelectIron||c==SelectChrono)notify(L"已选择超级武器，请在地图上选择目标。");
+ else if(c==SelectSuper||c==SelectIron||c==SelectChrono)notify(r==2?L"超级武器事件已入队；实际执行以游戏为准。":L"已选择超级武器，请在地图上选择目标。");
  else if(c==SmartUnload)notify(n?L"已安排卸载 "+std::to_wstring(n)+L" 辆载具。":L"没有可卸载的已选载具。");
  else if(c==StickyGuard)notify(eventdelivery::isMultiplayer(snap.session)?L"Sticky 同步请求已入队："+std::to_wstring(n)+L" 个单位；联机退出尚未实现。":L"已切换 Sticky 驻守："+std::to_wstring(n)+L" 个单位；手动下令解除。");
  else if(selectedmode::index(c)>=0)notify(n?std::wstring(selectedmode::label(selectedmode::index(c)))+L"请求已入队："+std::to_wstring(n)+L" 个单位；实际执行以游戏为准。":L"没有可下令的己方地面单位。");
@@ -2042,6 +2050,12 @@ static void updateModeStatus(DWORD now){
   text+=!extra.minerDefenseEnabled?(active?L"正在恢复工作":L"关闭"):active?L"正在处理 "+std::to_wstring(active)+L" 个单位":participants.custom&&!participants.count?L"清单为空，未选择参与单位":!live?L"等待对局与连接就绪":L"监视中";
   if(live&&(extra.minerDefenseEnabled||active))text+=L" · 已下达点杀 "+std::to_wstring(shared->minerDefenseAttacks)+L" 次 / 已下达恢复 "+std::to_wstring(shared->minerDefenseResumes)+L" 次";
   SetWindowTextW(GetDlgItem(ui,9498),text.c_str());
+ }
+ {const bool live=shared&&!phase&&commandFresh(now);const bool overflow=live&&shared->missileManualOverflow;
+  std::wstring text=L"防空火控：";
+  text+=!extra.missileDefense?(live&&shared->missileHeld?L"正在结束旧火控":L"关闭"):!live?L"等待对局与连接就绪":overflow?L"已暂停，手动优先记录已满。手动任务完成后可关闭再开启火控。":L"监视中";
+  if(live&&extra.missileDefense&&!overflow)text+=L" · 参与单位 "+std::to_wstring(shared->missileSources)+L" / 空中目标 "+std::to_wstring(shared->missileTargets);
+  SetWindowTextW(GetDlgItem(ui,9499),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9499),extra.missileDefense&&overflow);
  }
  updatePlacementEventUI();
  std::wstring riskStatus=extra.placementImplementation==buildingmodes::PlacementEvent?
@@ -2382,16 +2396,16 @@ static void tick(){
  if(snap.status==-2){setStatus(L"游戏操作异常，指令功能已暂停；信息显示仍可使用。");if(!passiveVisible)hideWorldOverlay();return;}
  if(snap.status==-1){setStatus(L"当前游戏版本不兼容，指令功能已暂停；信息显示仍可使用。");if(!passiveVisible)hideWorldOverlay();return;}
  if(snap.status!=1){
-  if(int32_t(now-toastUntil)>=0){const auto p=externalSampler.probe();
+  if(!activeToast(now)){const auto p=externalSampler.probe();
    setStatus(L"正在读取当前对局；若长时间未恢复，请查看日志。");
   }
   if(!passiveVisible)hideWorldOverlay();return;
  }
- if(snap.bridgeStatus==1&&snap.readStatus!=1&&int32_t(now-toastUntil)>=0){
+ if(snap.bridgeStatus==1&&snap.readStatus!=1&&!activeToast(now)){
   const auto p=externalSampler.probe();
   setStatus(L"游戏已连接，正在更新单位信息。");
  }
- if(snap.match!=oldMatch){diag(L"match changed "+std::to_wstring(oldMatch)+L" -> "+std::to_wstring(snap.match));oldMatch=snap.match;notice=snap.noticeSerial;techEnabled=false;resetPlacementEvent();toastUntil=0;fillTech(true);typeTap.clear();fillTypeBindings(true);autoRevealMatch=autoRevealDone=0;}
+ if(snap.match!=oldMatch){diag(L"match changed "+std::to_wstring(oldMatch)+L" -> "+std::to_wstring(snap.match));oldMatch=snap.match;notice=snap.noticeSerial;techEnabled=false;resetPlacementEvent();toastUntil=0;toastActive=false;fillTech(true);typeTap.clear();fillTypeBindings(true);autoRevealMatch=autoRevealDone=0;}
  if(autoRevealPID!=pid){autoRevealPID=pid;autoRevealMatch=autoRevealDone=autoRevealRetry=0;}
  if(autoRevealNewMatch&&extra.experimentalReveal&&int32_t(now-autoRevealRetry)>=0&&commandFresh(now)&&snap.status==1&&snap.match&&autoRevealMatch!=commandMatch()){
   if(queueCommand(RevealMap,0,0,commandMatch()))autoRevealMatch=commandMatch();
@@ -2400,7 +2414,7 @@ static void tick(){
  syncTypeConfig();
  static DWORD panelTick;if(DWORD(now-panelTick)<200)return;panelTick=now;
  fillSW();fillTech();fillTypeBindings();fillExtraTypes(false);
- if(int32_t(now-toastUntil)>=0&&snap.readStatus==1){
+ if(!activeToast(now)&&snap.readStatus==1){
   if(!commandFresh(now)||commandQueue.size||(shared&&shared->request!=shared->ack)){setStatus(commandWaitReason());return;}
   auto ms=[](uint32_t us){wchar_t text[24];swprintf(text,24,L"%.2f",us/1000.0);return std::wstring(text);};
   std::wstring s=L"选中 "+std::to_wstring(snap.selected)+L" · 指令响应 "+std::to_wstring(commandLatency)+L" ms · 选兵响应 "+std::to_wstring(selectionLatency)+L" ms";

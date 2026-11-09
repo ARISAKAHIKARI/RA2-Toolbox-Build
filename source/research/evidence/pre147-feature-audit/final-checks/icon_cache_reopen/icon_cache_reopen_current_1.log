@@ -1,0 +1,1 @@
+PASS failed scope -> same-path reconnect -> cache persistence/restore; healthy reconnect keeps generation

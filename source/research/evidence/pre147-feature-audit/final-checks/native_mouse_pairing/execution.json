@@ -1,0 +1,60 @@
+{
+  "name": "native_mouse_pairing",
+  "started_utc": "2026-11-09T07:10:53.299385+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "python3",
+    "-B",
+    "source/assist/tests/native_mouse_pairing.py",
+    "--out",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing/run.log",
+  "test_source_hashes": {
+    "source/assist/tests/native_mouse_pairing.py": "064f3713519d3e344c826df9bf10839f6e1f84976eff303699b0515092a9294e",
+    "source/assist/tests/pause_key_pairing.py": "83c68c66d901616bbdd5252f5b509eba9497cbf34d01df696c99370c13ab53e1",
+    "source/assist/tests/superweapon_result_feedback.py": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83"
+  },
+  "production_source_hashes": {
+    "source/assist/source/hotkey_routes.h": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce",
+    "source/assist/source/native_message_policy.h": "3614887a2b8b3f198fa39949cfbf7989e715c4d0f4455a127172d3124762dbc5",
+    "source/assist/source/pause_view_bridge.h": "308cfc708df137b36853ce425cdfc043d2ac2a073e36446301f532bb39a7f7b5",
+    "source/assist/source/pause_view_policy.h": "f6e2fee547035c36ec70719b21ea733533b2d5b39b56adc88391d961396ea2f2",
+    "source/assist/source/pointer_host.h": "dd8ef5dfa63d3be792d2014619249fa4391f49186424cf1cf59a346214875d6a",
+    "source/assist/source/pointer_intent.h": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1",
+    "source/game_runtime/source/runtime.cpp": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d",
+    "source/shared/source/key_gesture.h": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8"
+  },
+  "steps": [
+    {
+      "stage": "driver",
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/native_mouse_pairing.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing/driver.log",
+      "log_sha256": "acfe01dc59206e7ab9cde566b025c23b4b5cf04f174b002018e15c3357ad603a"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing/run.log",
+  "log_sha256": "496d702813f25363dba061d1bb5f178d4e37d5ed649e82f89cebf44fce516d25",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "completed_utc": "2026-11-09T07:10:55.224679+00:00",
+  "elapsed_seconds": 1.925,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing/execution.json"
+}

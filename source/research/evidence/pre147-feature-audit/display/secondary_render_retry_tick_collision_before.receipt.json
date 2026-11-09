@@ -1,0 +1,36 @@
+{
+  "source": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/unit_monitor/source/main.cpp",
+  "source_sha256": "eea2f0ddcc86bbd5b273df72f358350f26b8a8327875714d671d144d19293ec7",
+  "test_sha256": "4d7403556dccde6c6e614d62ca4e83863b270aa3c91d6ff6b079fe21d504bc1f",
+  "predicate": "secondaryDirty||((!secondaryRenderedFrame||secondaryRenderedFrame->request.tick!=secondaryLastSubmit)&&DWORD(now-secondaryLastSubmit)>=250)",
+  "verification_level": "controlled_execution_of_extracted_production_predicate",
+  "not_verified": [
+    "Win32 allocation failure injection",
+    "actual monitor drawing"
+  ],
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-D_GLIBCXX_ASSERTIONS",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_tick_collision_before.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_tick_collision_before"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_tick_collision_before"
+      ],
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "secondary_render_retry_tick_collision_before: /workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_tick_collision_before.cpp:17: int main(): Assertion `due(false,accepted(100,1),350,100,2)' failed.\n"
+    }
+  ]
+}

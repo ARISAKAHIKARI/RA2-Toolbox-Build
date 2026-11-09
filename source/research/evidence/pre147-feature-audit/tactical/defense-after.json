@@ -1,0 +1,64 @@
+{
+  "phase": "after",
+  "baseline": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "commands": [
+    {
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-pedantic",
+        "source/assist/tests/planner_defense_delivery.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/defense-after"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/defense-after-build.log",
+      "log_sha256": "8eb23b14bb329141f05aefb180ada0fb882c9d87ee3ed94c6a09d21143c2790d"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/defense-after"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/defense-after-run.log",
+      "log_sha256": "ccee48d389834aa985cb6424ab1c221f97f6f951a08669dccc93ccfa14a7b3b5"
+    },
+    {
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-pedantic",
+        "source/assist/tests/planner_batch_delivery.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/ore-regression-after"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/ore-regression-after-build.log",
+      "log_sha256": "6c2ec7372f888002a8d72eba7cf446c1d74deb552a99e262d1c9fa45fc0c7b13"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/ore-regression-after"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/ore-regression-after-run.log",
+      "log_sha256": "8777c17f553ae3adc2a40f2e07b7dddae0b64cd895269ae0b7c7160fb25c1986"
+    }
+  ],
+  "sha256": {
+    "source/assist/source/external_planner.h": "2a3e8399e55e35bc650794abb1caf2d4d208d83df43153686c8a553a8286f04d",
+    "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+    "source/assist/tests/planner_defense_delivery.cpp": "b57101673ef6536715116f76886bce38f1bb202d318e5dbddb3941f6298e5bf7",
+    "source/assist/tests/planner_batch_delivery.cpp": "ca32e7f7222a05af7578c9315116a2da0ca0752bc1edf38c12c7ac2a2a994939"
+  }
+}

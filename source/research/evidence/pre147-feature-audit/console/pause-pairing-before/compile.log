@@ -1,0 +1,63 @@
+In file included from /workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/hotkey_routes.h:4,
+                 from /workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp:7:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/../../shared/source/key_gesture.h: In function ‘uint16_t keygesture::normalize(uint32_t, Mode)’:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/../../shared/source/key_gesture.h:17:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   17 |  if(mode(value)==fallback)value&=uint16_t(~ModeMask);return value;
+      |  ^~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/../../shared/source/key_gesture.h:17:54: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   17 |  if(mode(value)==fallback)value&=uint16_t(~ModeMask);return value;
+      |                                                      ^~~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/../../shared/source/key_gesture.h: In function ‘std::wstring keygesture::describe(uint32_t, const std::wstring&, bool)’:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/../../shared/source/key_gesture.h:44:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   44 |  if(!prefix.empty())text+=L"；修饰键须保持按住";return text;
+      |  ^~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/../../shared/source/key_gesture.h:44:49: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   44 |  if(!prefix.empty())text+=L"；修饰键须保持按住";return text;
+      |                                                 ^~~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/../../shared/source/key_gesture.h: In member function ‘void keygesture::Tracker::edge(unsigned int, bool, bool, uint32_t, uint16_t)’:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/../../shared/source/key_gesture.h:51:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   51 |   if(vk>=256)return;if(!down){bool released=held[vk]!=0;held[vk]=0;
+      |   ^~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/../../shared/source/key_gesture.h:51:21: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   51 |   if(vk>=256)return;if(!down){bool released=held[vk]!=0;held[vk]=0;
+      |                     ^~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/hotkey_routes.h: In member function ‘bool assist::hotkeyroute::Registry::add(int, uint16_t, bool, Register)’:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/hotkey_routes.h:15:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   15 |   if(!install(id,physical))return false;Group g;g.id=id;g.key=physical;g.actions.push_back(id);g.bindings.push_back(key);groups.push_back(std::move(g));return true;
+      |   ^~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/hotkey_routes.h:15:41: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   15 |   if(!install(id,physical))return false;Group g;g.id=id;g.key=physical;g.actions.push_back(id);g.bindings.push_back(key);groups.push_back(std::move(g));return true;
+      |                                         ^~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/hotkey_routes.h: In member function ‘bool assist::hotkeyroute::Pending::add(const assist::hotkeyroute::Group&, uint32_t, uint32_t)’:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/hotkey_routes.h:69:3: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   69 |   for(int id:g.actions)items[(head+count++)%Capacity]={id,tick,match};return true;
+      |   ^~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/hotkey_routes.h:69:71: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   69 |   for(int id:g.actions)items[(head+count++)%Capacity]={id,tick,match};return true;
+      |                                                                       ^~~~~~
+In file included from /workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp:9:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/pointer_intent.h: In function ‘int assist::pointerinput::resolveMouseMatches(const uint8_t*, int, const uint32_t*, const Bindings&, uint32_t, bool, MouseRoute*)’:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/pointer_intent.h:78:2: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   78 |  if(!count&&(physical==FollowNative||physical==6))out[count++]={FollowNative,common};return count;
+      |  ^~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source/pointer_intent.h:78:86: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   78 |  if(!count&&(physical==FollowNative||physical==6))out[count++]={FollowNative,common};return count;
+      |                                                                                      ^~~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp: In function ‘bool pauseViewKeyService(MSG*)’:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp:141:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  141 |    if(pauseViewHotkeys.press(group.id,now,match,actions))execute(actions);break;
+      |    ^~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp:141:75: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  141 |    if(pauseViewHotkeys.press(group.id,now,match,actions))execute(actions);break;
+      |                                                                           ^~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp: In function ‘int AssistFilterMessage(void*)’:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp:194:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  194 |   if(!(blockedButtons&bit))return 0;blockedButtons&=~bit;
+      |   ^~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp:194:37: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  194 |   if(!(blockedButtons&bit))return 0;blockedButtons&=~bit;
+      |                                     ^~~~~~~~~~~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp: At global scope:
+/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp:28:13: warning: ‘bool read(uint32_t, void*, size_t)’ defined but not used [-Wunused-function]
+   28 | static bool read(uint32_t,void*out,size_t bytes){std::memset(out,0,bytes);return true;}
+      |             ^~~~

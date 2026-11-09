@@ -1,0 +1,77 @@
+{
+  "name": "missile_allocator",
+  "started_utc": "2026-11-09T07:10:30.404471+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/fixture"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/run.log",
+  "test_source_hashes": {
+    "source/assist/tests/missile_allocation_equivalence.cpp": "5fa4d1add17f6df48e415aaf961b3f9ba554507a9a7c35d160a1cebc9d9b6fd1"
+  },
+  "production_source_hashes": {
+    "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+    "source/assist/source/missile_bridge.h": "10e5909ba978b416e3809fb255c6762d675b473ef92d8e4228aa54817b7bfe70",
+    "source/assist/source/missile_compute.h": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499"
+  },
+  "steps": [
+    {
+      "stage": "compile",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O2",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/production.d",
+        "source/assist/tests/missile_allocation_equivalence.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/fixture"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/compile.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "run",
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/fixture"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/run.log",
+      "log_sha256": "0339260c0a2f19f3f3b8c85e796cb16505cc2e258c0c7f64a1e31fad5e535f9a"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-UNDEBUG",
+    "-O2",
+    "-MMD",
+    "-MF",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/production.d",
+    "source/assist/tests/missile_allocation_equivalence.cpp",
+    "-o",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/fixture"
+  ],
+  "compile_exit_code": 0,
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/run.log",
+  "log_sha256": "0339260c0a2f19f3f3b8c85e796cb16505cc2e258c0c7f64a1e31fad5e535f9a",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "binary_sha256": "1dfda68d616295188d760d90db2ef217ce92ed9d057ca1d91b7eb5a191de5885",
+  "completed_utc": "2026-11-09T07:10:34.750483+00:00",
+  "elapsed_seconds": 4.346,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/execution.json"
+}

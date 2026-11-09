@@ -1,0 +1,38 @@
+{
+  "sources": {
+    "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e",
+    "source/assist/source/bridge.cpp": "a1924341718da07eff0ae127ea39fc5653fe3c1c490197f47075d6877e98e0d3",
+    "source/assist/source/protocol.h": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c"
+  },
+  "test_sha256": "8442a37e2688fd4ac6085dfee34497f0e6450234427eeb7f58f1875bc624bd0c",
+  "verification_level": "controlled_execution_of_extracted_Host_and_Runtime_functions",
+  "not_verified": [
+    "Windows shared memory ABI execution",
+    "game selection and camera behavior"
+  ],
+  "runs": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-D_GLIBCXX_ASSERTIONS",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/selection_catalogue_before.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/selection_catalogue_before"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/selection_catalogue_before"
+      ],
+      "exit_code": 1,
+      "stdout": "21 checks, 7 failures\n",
+      "stderr": "FAIL Host rejects pending selection after catalogue reorder\nFAIL Runtime rejects published index after reorder and acknowledges\nFAIL Runtime rejects stale union mask\nFAIL publication preserves original input age\nFAIL connection refresh cannot retag original catalogue\nFAIL unknown match cannot acquire later selection identity\nFAIL missing catalogue identity is rejected\n"
+    }
+  ]
+}

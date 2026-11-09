@@ -14,13 +14,60 @@ struct MissileMotion {uint32_t id=0,pointer=0;int frame=-1,x=0,y=0,z=0;double vx
 static MissileMotion missileMotion[256];static int missileMotionCursor;
 struct MissileManual {uint32_t id=0,pointer=0;int frame=0;};
 static MissileManual missileManual[1024];static int missileManualCount;
-static void pauseMissileForManual(uint32_t id,uint32_t pointer){if(!sh||!sh->missileEnabled)return;for(int n=0;n<missileManualCount;++n)if(missileManual[n].id==id){missileManual[n]={id,pointer,get<int>(0xA8ED84)};return;}if(missileManualCount<1024)missileManual[missileManualCount++]={id,pointer,get<int>(0xA8ED84)};}
+static bool missileManualBlocked;
+static uint32_t missileManualPruneMatch;static int missileManualPruneFrame=-1;
+static bool missileManualOverflowed(){return missileManualBlocked;}
+static void pruneMissileManual(){
+ // Historical dead/noncandidate actors cannot consume this bounded table
+ // forever. Only a complete sealed roster proves absence; a missing live
+ // index entry or an unreadable field must not evict an active manual order.
+ static uint64_t identities[16384];static bool retired[1024];
+ {
+  SampleReadScope source;if(!source)return;
+  // Every input in this captured frame sees the same immutable roster.
+  if(missileManualPruneMatch==worldFrame.key.match&&missileManualPruneFrame==worldFrame.key.frame)return;
+  missileManualPruneMatch=worldFrame.key.match;missileManualPruneFrame=worldFrame.key.frame;
+  Vec all{};if(!sampleRoster(0xA8EC78,all))return;int count=0;
+  for(int n=0;n<all.count;++n){const uint32_t p=item(all,n);if(!p)continue;
+   uint32_t id=0;if(!read(p+0x10,&id,sizeof id))return;if(id)identities[count++]=(uint64_t(id)<<32)|p;
+  }
+  std::sort(identities,identities+count);
+  const int frame=worldFrame.key.frame;
+  for(int n=0;n<missileManualCount;++n){const auto&r=missileManual[n];retired[n]=false;
+   // An input can have followed this frame's capture. Do not retire it from
+   // older raw facts, even when the newly selected actor is absent there.
+   if(frame<=r.frame)continue;
+   if(!std::binary_search(identities,identities+count,(uint64_t(r.id)<<32)|r.pointer)){retired[n]=true;continue;}
+   const int mission=get<int>(r.pointer+0xAC),queued=get<int>(r.pointer+0xB4);
+   retired[n]=!get<uint32_t>(r.pointer+0x2B4)&&!get<uint32_t>(r.pointer+0x5A4)&&
+    (mission==5||mission==6||mission==11||mission==13)&&(queued==-1||queued==mission)&&frame-r.frame>=12;
+  }
+  if(!source.complete())return;
+ }
+ int kept=0;for(int n=0;n<missileManualCount;++n)if(!retired[n])missileManual[kept++]=missileManual[n];missileManualCount=kept;
+}
+static void pauseMissileForManual(uint32_t id,uint32_t pointer){
+ if(!sh||!sh->missileEnabled)return;
+ // The explicit input owns this actor now. In particular an accepted
+ // cooperative Attack preserves its token; a later automatic Guard must not
+ // overwrite it merely because the old missile-control token still matches.
+ for(int n=0;n<missileSendCount;)if(missileSends[n].id==id)missileSends[n]=missileSends[--missileSendCount];else ++n;
+ if(missileManualBlocked)return;
+ for(int n=0;n<missileManualCount;++n)if(missileManual[n].id==id){missileManual[n]={id,pointer,get<int>(0xA8ED84)};return;}
+ if(missileManualCount>=1024)pruneMissileManual();
+ if(missileManualCount<1024)missileManual[missileManualCount++]={id,pointer,get<int>(0xA8ED84)};
+ // No safe slot means we cannot distinguish this manual command later.
+ // Latch off new fire control until explicit disable/reset or a new match;
+ // neither elapsed time nor a free slot proves that untracked work ended.
+ else missileManualBlocked=true;
+}
 static bool missileManuallyOwned(uint32_t p,bool observe=true){uint32_t id=get<uint32_t>(p+0x10);for(int n=0;n<missileManualCount;++n)if(missileManual[n].id==id){auto&r=missileManual[n];int m=get<int>(p+0xAC),q=get<int>(p+0xB4);
  bool ended=p!=r.pointer||(!get<uint32_t>(p+0x2B4)&&!get<uint32_t>(p+0x5A4)&&(m==5||m==6||m==11||m==13)&&(q==-1||q==m)&&get<int>(0xA8ED84)-r.frame>=12);
  if(ended){if(observe)r=missileManual[--missileManualCount];return false;}return true;}return false;}
 static int missileRecord(uint32_t id){for(int n=0;n<missileSendCount;++n)if(missileSends[n].id==id)return n;return -1;}
 static void publishMissileHeld(){missileHoldCount=0;for(int n=0;n<missileSendCount;++n)missileHoldCount+=missileSends[n].held||missileSends[n].controlled;if(sh)sh->missileHeld=missileHoldCount;}
 static void resetMissileControl(){
+ missileManualBlocked=false;missileManualPruneMatch=0;missileManualPruneFrame=-1;
  missileManualCount=0;missileFrames.clear();missileApplied=sh?sh->missileComputed:0;missilePending=missileScanned=false;missileFrame=-1;missileSendCount=missileSourceCursor=missileTargetCursor=missileManagedCursor=missileHoldCount=0;
  for(auto&m:missileMotion)m={};missileMotionCursor=0;
  if(sh){sh->missileSources=sh->missileTargets=sh->missileIssued=sh->missileHeld=0;}
@@ -120,6 +167,7 @@ static void pruneMissileSends(uint32_t now){
  }publishMissileHeld();
 }
 static bool submitMissile(uint32_t p,int action,uint32_t target,uint32_t house,int frame,DWORD now,bool advance=false){
+ if(missileManualOverflowed()&&action!=5)return false;
  uint32_t id=get<uint32_t>(p+0x10);int at=missileRecord(id);if(at<0&&missileSendCount>=1024)return false;
  if(!planningRoom(2)||!outgoingRoom())return false;
  if(!nativeMission(house,id,action,action==0?0:target,0,0,0,0,taskarbiter::Owner::MissileDefense))return false;
@@ -142,6 +190,7 @@ static bool releaseMissileHolds(uint32_t house,int frame,DWORD now){
  return missileHoldCount==0;
 }
 static void applyMissileResult(const missilecompute::Result&r,uint32_t house,int frame,DWORD now,const missilecompute::Input*source=nullptr){
+ if(missileManualOverflowed())return;
  const auto&input=source?*source:missileInput;
  if(r.match!=input.match||r.tick!=input.tick||r.frame!=input.frame||r.count<0||r.count>missilecompute::MaxOrders)return;
  if(missileSettings!=(sh->missileScope|(sh->missileAllocation<<8)|(sh->missileReserve<<16)|(sh->lowDamageFilter<<17)))return;
@@ -250,6 +299,10 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
 static bool missileControlTick(uint32_t house,int frame,DWORD now){
  pruneMissileSends(now);
  if(!sh->missileEnabled){missilePending=false;releaseMissileHolds(house,frame,now);if(!missileSendCount)resetMissileControl();return false;}
+ if(missileManualOverflowed()){
+  missileFrames.clear();missileApplied=sh->missileComputed;missilePending=missileScanned=false;missileFrame=-1;
+  sh->missileSources=sh->missileTargets=0;releaseMissileHolds(house,frame,now);return false;
+ }
  if(snap.chat||!simulationReady())return false;
  uint32_t settings=sh->missileScope|(sh->missileAllocation<<8)|(sh->missileReserve<<16)|(sh->lowDamageFilter<<17);
  if(settings!=missileSettings){missileFrames.clear();missileApplied=sh->missileComputed;missilePending=missileScanned=false;missileFrame=-1;missileSettings=settings;}

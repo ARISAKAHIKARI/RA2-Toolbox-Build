@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 1.0.47-pre.3 逐功能复审 | [当前入口、功能修复、统一乘员样本与验证边界](2026-11-09-pre147-feature-audit.md) | pre147-3 feature-matrix selection-catalogue manual-priority mouse-key-pairing patrol16 passenger-immutable Assist102 |
 | 1.0.47-pre.2 功能失败恢复 | [控制台回执、未改草稿、单位目录、让行批次和保存建筑缓存](2026-11-09-pre147-functional-recovery.md) | pre147-2 ACK-before-confirm unchanged-draft catalogue-short-read final-batch-budget frozen-image-transaction negative-controls |
 | 1.0.46.4 基线的 1.0.47 预发布修复与优化 | [精确导弹分配、快照/地形存储复用、VXL 恢复、暂停飞机与依赖探测](2026-11-09-pre147-audit-optimizations.md) | pre147-1 baseline1464 new-weak-identity two-level-heap paused-aircraft failed-source gate VXL-required retry16 bounded-pools no-FPS-claim |
 | 1.0.46 修订的建筑遮挡与恢复 | [基础尺寸缺页、BUILDNGZ 事务与真实场景缓存恢复](2026-11-08-release-146-building-depth-cache.md) | foundation sealed-missing-page 1x1 poison maskRevision commit-after-identity 36-recoveries native-Z-preserved |

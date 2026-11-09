@@ -1,0 +1,86 @@
+{
+  "verification_level": "controlled_execution",
+  "boundary": "Real production geometry and route reader, modeled native graph. ASan executed; LeakSanitizer disabled because executor restricts proc task access. No native receiver/game run.",
+  "commands": [
+    {
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-fsanitize=address",
+        "-fno-omit-frame-pointer",
+        "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/mo_patrol_capacity.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/mo_patrol_capacity"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment_overrides": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/build.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/mo_patrol_capacity"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment_overrides": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/run.log",
+      "log_sha256": "0868f486124c0b2840e467f14579f92e1866aa81872ae59d7f9d4d1c327f0865"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/mo_patrol_capacity",
+        "--small-buffer"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment_overrides": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/asan-buffer.log",
+      "log_sha256": "8683882cc2d93a5f86cd8d2eed8cf6853ef7c990b72d013d0b87f3fa63054b63"
+    },
+    {
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/mo_patrol_graph.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/mo_patrol_graph"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment_overrides": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/graph-build.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/mo_patrol_graph"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment_overrides": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/graph-run.log",
+      "log_sha256": "5d38339c5f496eb2d9ecdaac2fc8f76e87583fbcf189aba0cbe99ecaafa60e68"
+    }
+  ],
+  "source_sha256": {
+    "source/assist/source/mo_orders.h": "a7f38b1e0c4aeff688d6ee238bc74ca1fe7ddee3a71d5d2ea7af03c1a02fe7b3",
+    "source/assist/source/mo_patrol_graph.h": "0496df478d3698635267542c4a983078db6af7c89cfbbe9ec37da6998bd7e278",
+    "source/assist/tests/mo_patrol_capacity.cpp": "a9e5a82e43796bc011fa4cbd6f628eab129402eb7b5647801375b00224e34924",
+    "source/assist/tests/mo_patrol_graph.cpp": "2a0cdb9b972a9c63eeba3e6e614238ab65a4cbe77317ca2a794da23f68993dbf"
+  }
+}

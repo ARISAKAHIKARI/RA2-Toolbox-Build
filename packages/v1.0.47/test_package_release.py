@@ -2,7 +2,7 @@
 """Small packaging gates, using synthetic receipts and the real pinned base.
 
 Synthetic successful receipts below only exercise acceptance/rejection logic.
-They are never the eleven production checks or evidence for a release build.
+They are never production test runs or evidence for a release build.
 """
 from __future__ import annotations
 
@@ -49,6 +49,54 @@ FUNCTIONAL_LOGS = {
         'PASS transactional frozen body/animation palette and depth caches, same-cache recovery, '
         'legal absent/wide/flat paths and actual SceneRenderer output\n'),
 }
+FEATURE_LOGS = {
+    'planner_defense_delivery': (
+        'omitted first_defense=0 next_defense=1\n'
+        'returned drops=15 miners=20 duplicate=0 first=1 early=0 due=1\n'
+        'returned drops=0 miners=0 duplicate=0 first=1 early=0 due=1\n'
+        'returned drops=0 miners=20 duplicate=1 first=1 early=0 due=1\n'
+        'host_task first=0 next=1\n'
+        'PASS: 21 checks, 0 failures; real Planner final-batch defense lifecycle\n'),
+    'missile_manual_lifecycle': (
+        'dead_history count=1 new_owned=1\n'
+        'PASS: 16 checks, 0 failures; extracted production manual-ownership helpers\n'),
+    'missile_manual_capacity': (
+        'PASS: 23 checks, 0 failures; exact production ownership/delivery/Host dispatch paths\n'),
+    'patrol_capacity': (
+        'width=2 count=4 bind=1\nwidth=4 count=8 bind=1\nwidth=8 count=16 bind=1\n'
+        'width=10 count=16 bind=1\nwidth=20 count=16 bind=1\nwidth=40 count=16 bind=1\n'
+        'width=80 count=16 bind=1\n'
+        'PASS: 31 checks, 0 failures; real patrol to route, synthetic graph only\n'),
+    'patrol_small_buffer': (
+        'buffer count=16 digest=1280\n'
+        'PASS: 1 checks, 0 failures; real patrol to route, synthetic graph only\n'),
+    'selection_catalogue_identity': '21 checks, 0 failures\n',
+    'toast_clock_wrap': '15 checks, 0 failures\n',
+    'console_composition': (
+        ''.join(f'PASS synthetic composition case {i}\n' for i in range(16))
+        + '{"suite":"console_composition","checks":16,"failures":0,'
+        '"level":"production listeners with controlled DOM event fixture"}\n'),
+    'console_hotkey_presentation': (
+        ''.join(f'PASS synthetic key-name case {i}\n' for i in range(8))
+        + '{"suite":"console_hotkey_presentation","checks":8,"failures":0,'
+        '"level":"actual production encodeHotkey and keyName"}\n'),
+    'secondary_drag_bounds': 'PASS secondary drag: 7 boundary cases + 900 range cases\n',
+    'secondary_render_retry': 'PASS secondary retry: 8 submission and recovery cases\n',
+    'icon_cache_reopen': (
+        'PASS failed scope -> same-path reconnect -> cache persistence/restore; '
+        'healthy reconnect keeps generation\n'),
+    'superweapon_result_feedback': '{"checks":13,"failures":0,"passed":true}\n',
+    'pause_key_pairing': '{"checks":22,"failures":0,"passed":true}\n',
+    'native_mouse_pairing': '{"checks":36,"failures":0,"passed":true}\n',
+    'passenger_frame_sampling': (
+        'first passenger paint: bubbles=1 live_RPM=0\n'
+        'PASS 1000 paints of one logic frame: zero live RPM, immutable contents/position\n'
+        'PASS missing/failed passenger page: no live fallback, 120ms lease never renewed, next complete frame recovers\n'
+        'PASS no token/unconfirmed/wrong PID/match/frame/tick/retired publication/disabled/chat: closed without RPM\n'
+        'PASS inspect disappearance/danger-only/shared demand routing: no rate reduction or alternate live scanner\n'
+        'PASS paused frame independent confirmation and confirmation expiry\n'
+        'passenger frame sampling: 2158 checks passed\n'),
+}
 
 
 class PackageGates(unittest.TestCase):
@@ -67,7 +115,7 @@ class PackageGates(unittest.TestCase):
             'voxel_recovery': 'recovered_scenes=8 pixel_mismatches=0\nchecks=160 failures=0\n',
             'idle_aircraft_display': 'PASS paused same-source aircraft display; synthetic gate fixture\n',
             'terrain_reuse': 'PASS actual terrain storage: synthetic gate fixture\n',
-        } | FUNCTIONAL_LOGS
+        } | FUNCTIONAL_LOGS | FEATURE_LOGS
         checks = []
         for name, (tests, production) in PACKAGE.CHECK_BINDINGS.items():
             path = self.directory / (name + '.log')
@@ -77,6 +125,10 @@ class PackageGates(unittest.TestCase):
                            'log_path': path.name, 'log_sha256': PACKAGE.sha(path.read_bytes()),
                            'test_source_hashes': {p: self.inputs[p]['sha256'] for p in tests},
                            'production_source_hashes': {p: self.inputs[p]['sha256'] for p in production}})
+            if name == 'patrol_small_buffer':
+                checks[-1].update(command=['synthetic-gate-fixture', '--small-buffer'],
+                                  compile_command=['synthetic-compiler', '-fsanitize=address',
+                                                   '-fno-omit-frame-pointer'], compile_exit_code=0)
         self.receipt = {'schema': 'ra2.optimization-validation.v1', 'commit': self.commit,
                         'source_tree_sha': self.tree, 'version': PACKAGE.VERSION,
                         'file_version': PACKAGE.FILE_VERSION, 'required_checks_passed': True,
@@ -88,8 +140,24 @@ class PackageGates(unittest.TestCase):
         return PACKAGE.validate_evidence(receipt or self.receipt, self.directory / 'validation.json',
                                          self.commit, self.tree, self.inputs, self.sources.__getitem__)
 
-    def test_current_receipt_shape_accepts_ten_distinct_frozen_bindings(self):
-        self.assertEqual(len(self.verify()), 10)
+    def test_current_receipt_requires_all_legacy_and_feature_bindings(self):
+        legacy = {'missile_allocator', 'snapshot_reuse', 'tech_capture', 'voxel_recovery',
+                  'idle_aircraft_display', 'terrain_reuse', 'console_receipt_order',
+                  'catalogue_recovery', 'planner_batch_delivery', 'scene_extra_recovery'}
+        self.assertEqual(set(PACKAGE.CHECK_BINDINGS), legacy | set(FEATURE_LOGS))
+        self.assertEqual(set(PACKAGE.FEATURE_CHECKS), set(FEATURE_LOGS))
+        self.assertEqual(len(self.verify()), len(legacy) + len(FEATURE_LOGS))
+        self.assertEqual((PACKAGE.VERSION, PACKAGE.FILE_VERSION), ('1.0.47-pre.3', '1.0.47.3'))
+
+    def test_shared_transition_accepts_only_reviewed_protocol_102_tail(self):
+        self.assertEqual(PACKAGE.ASSIST_PROTOCOL, 102)
+        PACKAGE.verify_shared_transition(23162528, 23162544)
+        for base, current in ((23162528, 23162528), (23162528, 23162540),
+                              (23162544, 23162544), (23162520, 23162544),
+                              ('23162528', 23162544), (23162528, '23162544'),
+                              (True, 23162544), (23162528, True)):
+            with self.subTest(base=base, current=current), self.assertRaisesRegex(ValueError, 'Shared layout differs'):
+                PACKAGE.verify_shared_transition(base, current)
 
     def test_old_missing_duplicated_and_unexecuted_checks_are_rejected(self):
         for change in ({'commit': 'c' * 40}, {'source_tree_sha': 'd' * 40},
@@ -143,7 +211,7 @@ class PackageGates(unittest.TestCase):
             self.assertFalse(PACKAGE.success_log('voxel_recovery', bad))
 
     def test_new_groups_cannot_be_omitted_or_relabelled_as_unexecuted(self):
-        for name in PACKAGE.FUNCTIONAL_CHECKS:
+        for name in PACKAGE.FUNCTIONAL_CHECKS | PACKAGE.FEATURE_CHECKS:
             changed = copy.deepcopy(self.receipt)
             changed['checks'] = [row for row in changed['checks'] if row['name'] != name]
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'current optimization checks'):
@@ -156,7 +224,7 @@ class PackageGates(unittest.TestCase):
                     self.verify(changed)
 
     def test_new_groups_require_present_unchanged_run_logs(self):
-        for name in PACKAGE.FUNCTIONAL_CHECKS:
+        for name in PACKAGE.FUNCTIONAL_CHECKS | PACKAGE.FEATURE_CHECKS:
             row = next(row for row in self.receipt['checks'] if row['name'] == name)
             path = self.directory / row['log_path']
             original = path.read_bytes()
@@ -170,7 +238,7 @@ class PackageGates(unittest.TestCase):
             path.write_bytes(original)
 
     def test_new_groups_require_each_test_and_production_fingerprint(self):
-        for name in PACKAGE.FUNCTIONAL_CHECKS:
+        for name in PACKAGE.FUNCTIONAL_CHECKS | PACKAGE.FEATURE_CHECKS:
             for key, required in zip(('test_source_hashes', 'production_source_hashes'), PACKAGE.CHECK_BINDINGS[name]):
                 for source in required:
                     for missing in (False, True):
@@ -189,7 +257,7 @@ class PackageGates(unittest.TestCase):
                     self.sources[source] = original
 
     def test_new_groups_reject_claimed_pass_wrappers_duplicates_and_failure_output(self):
-        for name, good in FUNCTIONAL_LOGS.items():
+        for name, good in (FUNCTIONAL_LOGS | FEATURE_LOGS).items():
             row = next(row for row in self.receipt['checks'] if row['name'] == name)
             path = self.directory / row['log_path']
             for bad in ('{"passed":true}\n', 'compiled successfully\n', good + good,
@@ -231,6 +299,80 @@ class PackageGates(unittest.TestCase):
                     self.assertNotEqual(good, bad)
                     self.assertFalse(PACKAGE.success_log(name, bad))
 
+    def test_feature_counts_and_lifecycle_results_cannot_regress(self):
+        changes = {
+            'planner_defense_delivery': [('21 checks', '20 checks'), ('0 failures', '1 failures'),
+                                         ('next_defense=1', 'next_defense=0'),
+                                         ('early=0 due=1', 'early=1 due=0'),
+                                         ('host_task first=0 next=1', 'host_task first=0 next=0')],
+            'missile_manual_lifecycle': [('16 checks', '14 checks'), ('0 failures', '1 failures'),
+                                         ('count=1 new_owned=1', 'count=1024 new_owned=0')],
+            'missile_manual_capacity': [('23 checks', '22 checks'), ('0 failures', '1 failures')],
+            'patrol_capacity': [('31 checks', '30 checks'), ('0 failures', '1 failures'),
+                                ('width=80 count=16 bind=1', 'width=80 count=32 bind=0')],
+            'patrol_small_buffer': [('1 checks', '0 checks'), ('0 failures', '1 failures'),
+                                    ('count=16', 'count=32')],
+            'selection_catalogue_identity': [('21 checks', '20 checks'), ('0 failures', '1 failures')],
+            'toast_clock_wrap': [('15 checks', '14 checks'), ('0 failures', '1 failures')],
+            'console_composition': [('"checks":16', '"checks":15'), ('"failures":0', '"failures":1'),
+                                    ('"failures":0', '"failures":false')],
+            'console_hotkey_presentation': [('"checks":8', '"checks":7'), ('"failures":0', '"failures":1'),
+                                            ('"failures":0', '"failures":false')],
+            'secondary_drag_bounds': [('7 boundary cases', '6 boundary cases'), ('900 range cases', '899 range cases')],
+            'secondary_render_retry': [('8 submission', '7 submission')],
+            'icon_cache_reopen': [('healthy reconnect keeps generation', 'healthy reconnect loses generation')],
+            'superweapon_result_feedback': [('"checks":13', '"checks":12'), ('"failures":0', '"failures":1'),
+                                             ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],
+            'pause_key_pairing': [('"checks":22', '"checks":21'), ('"failures":0', '"failures":1'),
+                                  ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],
+            'native_mouse_pairing': [('"checks":36', '"checks":35'), ('"failures":0', '"failures":1'),
+                                     ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],
+            'passenger_frame_sampling': [('2158 checks', '2157 checks'), ('live_RPM=0', 'live_RPM=14'),
+                                         ('120ms lease never renewed', '120ms lease renewed')],
+        }
+        self.assertEqual(set(changes), set(FEATURE_LOGS))
+        for name, variants in changes.items():
+            good = FEATURE_LOGS[name]
+            self.assertTrue(PACKAGE.success_log(name, good), name)
+            for old, new in variants:
+                with self.subTest(name=name, change=(old, new)):
+                    bad = good.replace(old, new, 1)
+                    self.assertNotEqual(good, bad)
+                    self.assertFalse(PACKAGE.success_log(name, bad))
+            for missing in range(len(good.splitlines())):
+                lines = good.splitlines()
+                del lines[missing]
+                with self.subTest(name=name, missing_line=missing):
+                    self.assertFalse(PACKAGE.success_log(name, '\n'.join(lines)))
+
+    def test_feature_json_rejects_ambiguous_fields_and_duplicate_cases(self):
+        for name in ('console_composition', 'console_hotkey_presentation',
+                     'superweapon_result_feedback', 'pause_key_pairing', 'native_mouse_pairing'):
+            good = FEATURE_LOGS[name]
+            for bad in (good.replace('"failures":0', '"failures":1,"failures":0'),
+                        good.replace('"failures":0', '"failures":0,"unknown":true'),
+                        good.replace('"checks":', '"checks":true,"ignored":')):
+                with self.subTest(name=name, bad=bad):
+                    self.assertFalse(PACKAGE.success_log(name, bad))
+        for name in ('console_composition', 'console_hotkey_presentation'):
+            lines = FEATURE_LOGS[name].splitlines()
+            lines[1] = lines[0]
+            self.assertFalse(PACKAGE.success_log(name, '\n'.join(lines)))
+
+    def test_patrol_buffer_requires_actual_sanitizer_compile_and_buffer_command(self):
+        variants = (
+            {'compile_command': []}, {'compile_command': ['g++', '-fno-omit-frame-pointer']},
+            {'compile_command': ['g++', '-fsanitize=address']},
+            {'compile_command': ['g++', '-fsanitize=address', '-fno-omit-frame-pointer', '-fno-sanitize=all']},
+            {'compile_exit_code': 1}, {'compile_exit_code': False},
+            {'command': ['synthetic-gate-fixture']},
+        )
+        for change in variants:
+            changed = copy.deepcopy(self.receipt)
+            next(row for row in changed['checks'] if row['name'] == 'patrol_small_buffer').update(change)
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, 'executed ASan build'):
+                self.verify(changed)
+
     def test_real_published_resources_and_engine_are_pinned(self):
         resources, record, manifest = PACKAGE.pinned_base(BASE_FULL, BASE_MANIFEST)
         self.assertEqual((len(resources), len(record['files']), manifest['file_version']), (47, 53, '1.0.46.4'))
@@ -238,7 +380,7 @@ class PackageGates(unittest.TestCase):
             if name not in PACKAGE.APPROVED_ENGINE_CHANGES:
                 self.assertEqual((ROOT / 'source' / name).read_bytes(), resources[name], name)
 
-    def test_engine_change_requires_explicit_plan_and_eleventh_bound_check(self):
+    def test_engine_change_requires_explicit_plan_and_additional_bound_check(self):
         resources, _, _ = PACKAGE.pinned_base(BASE_FULL, BASE_MANIFEST)
         engine = {name: resources[name] for name in PACKAGE.POLICY.ENGINE}
         self.assertEqual(PACKAGE.engine_change_plan(resources, engine), [])
@@ -265,7 +407,8 @@ class PackageGates(unittest.TestCase):
                                   'test_source_hashes': {p: self.inputs[p]['sha256'] for p in tests},
                                   'production_source_hashes': {p: self.inputs[p]['sha256'] for p in production}})
         self.assertEqual(len(PACKAGE.validate_evidence(receipt, self.directory / 'validation.json',
-                         self.commit, self.tree, self.inputs, self.sources.__getitem__, changed)), 11)
+                         self.commit, self.tree, self.inputs, self.sources.__getitem__, changed)),
+                         len(PACKAGE.CHECK_BINDINGS) + 1)
         engine['engine/precompute.py'] += b'\n# unreviewed fixture change\n'
         with self.assertRaisesRegex(ValueError, 'outside the reviewed plan'):
             PACKAGE.engine_change_plan(resources, engine)

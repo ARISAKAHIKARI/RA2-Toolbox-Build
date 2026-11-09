@@ -1,0 +1,109 @@
+{
+  "scope": "Parser acceptance of already-existing raw logs only; not a new production execution or final frozen release validation.",
+  "new_raw_logs": [
+    {
+      "name": "planner_defense_delivery",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/defense-after-run.log",
+      "raw_log_sha256": "ccee48d389834aa985cb6424ab1c221f97f6f951a08669dccc93ccfa14a7b3b5",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "missile_manual_lifecycle",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-lifecycle-final/run.log",
+      "raw_log_sha256": "d1109ab695361e33367b3b4204fe74c86d1b2e081150fc53abebfc33a4de774a",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "missile_manual_capacity",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-capacity-after/run.log",
+      "raw_log_sha256": "c6fc94c47e56c6d4aed9aed9f51f6cd68fe82be64a782d309168f9bbbf967f9c",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "patrol_capacity",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/run.log",
+      "raw_log_sha256": "0868f486124c0b2840e467f14579f92e1866aa81872ae59d7f9d4d1c327f0865",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "patrol_small_buffer",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/patrol-after/asan-buffer.log",
+      "raw_log_sha256": "8683882cc2d93a5f86cd8d2eed8cf6853ef7c990b72d013d0b87f3fa63054b63",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "selection_catalogue_identity",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/root/selection_catalogue_current_1.log",
+      "raw_log_sha256": "f82186b2542b6d3349d524680a35156eb703abc9b427ba264b43aed7af3c1c24",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "toast_clock_wrap",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/root/toast_clock_current_1.log",
+      "raw_log_sha256": "7f03496324e1fd3dc132ea1f49728d069e694270f56a81bdbb0886a389950536",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "console_composition",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_composition_test.final.log",
+      "raw_log_sha256": "98c7cbfd0ff267b744d92fb2cccfbbbc839b13311f9dfea21d8e03a6e048da81",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "console_hotkey_presentation",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_hotkey_presentation_test.final.log",
+      "raw_log_sha256": "b027683b4b438750d8269b2744c4de783b9fe0efd41826b50f633578f3afbfb2",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "secondary_drag_bounds",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_drag_current_1.log",
+      "raw_log_sha256": "b0f18980f463b074d7f9488b226e858c985ca8fd0c5f4283dac6a3c3ea4149de",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "secondary_render_retry",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_current_1.log",
+      "raw_log_sha256": "e71a2b58efecc1e42e47f18e9cc0820a6ed68498225fb344b2bd40bb6c9c545f",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "icon_cache_reopen",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon_cache_reopen_current_1.log",
+      "raw_log_sha256": "b935a995940d124331e6b9044e42d9957a5459305e621dd78313a87c62431bbd",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "superweapon_result_feedback",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-after-final/run.log",
+      "raw_log_sha256": "889b90e4524c35ec38566282414c2709b520c6140c380d3b58bd641f45cd13c5",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "pause_key_pairing",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-after-mouse-final/run.log",
+      "raw_log_sha256": "66d2b205a30fdd3b531c475c8a063e2b8d7ba9ed9f0288801d7a66bdcfa046b9",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "native_mouse_pairing",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/mouse-pairing-after/run.log",
+      "raw_log_sha256": "496d702813f25363dba061d1bb5f178d4e37d5ed649e82f89cebf44fce516d25",
+      "accepted_by_current_parser": true
+    },
+    {
+      "name": "passenger_frame_sampling",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/display/passenger_current/run.log",
+      "raw_log_sha256": "c7510aa8c6dcb08e349405107619b96c23491f3e4333ebefb805200628a9f686",
+      "accepted_by_current_parser": true
+    }
+  ],
+  "legacy_functions_unchanged_from_pre2": {
+    "pinned_base": true,
+    "functional_success_log": true,
+    "engine_change_plan": true,
+    "assemble": true
+  },
+  "all_10_legacy_bindings_unchanged": true,
+  "package_source_sha256": "12aba137ec285dda18b2a9a4b026c292c626492299ce1d06f350056baa162778"
+}

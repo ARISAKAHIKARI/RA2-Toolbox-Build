@@ -1,0 +1,36 @@
+{
+  "source": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/unit_monitor/source/main.cpp",
+  "source_sha256": "c8651e8e734e1b86e38056040acef64d0f51e1f786b927198c3ab3ae07d23fc3",
+  "test_sha256": "7abda39335a7eefcad3875e05ca3bf02fbaa1f70087e3889ef65e4789f69124e",
+  "generated_cpp_sha256": "b0471586e30397696228be497d810051a7bd3e9654c09ec92e9ca5cddc74f53d",
+  "verification_level": "controlled_execution_of_extracted_production_functions",
+  "not_verified": [
+    "Windows event sequence",
+    "actual multi-monitor DPI layout"
+  ],
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-D_GLIBCXX_ASSERTIONS",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_drag_current.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_drag_current"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_drag_current"
+      ],
+      "exit_code": 0,
+      "stdout": "PASS secondary drag: 7 boundary cases + 900 range cases\n",
+      "stderr": ""
+    }
+  ]
+}

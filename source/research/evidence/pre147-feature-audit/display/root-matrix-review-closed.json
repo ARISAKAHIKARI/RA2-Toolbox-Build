@@ -1,0 +1,130 @@
+{
+  "schema": "ra2.report_accuracy_closure.v1",
+  "reviewed_utc": "2026-11-09T07:12:33.909800+00:00",
+  "reviewer": "audit_all_display",
+  "status": "closed",
+  "scope": "仅确认父任务指定 7 项报告整改及 latest_worker 补链，不新增功能审计或重跑产品测试。",
+  "prior_review": "display/root-matrix-review.json",
+  "subject": {
+    "file": "/workspace/scratch/33b3ee07b26a/feature147pre3/root/host-runtime-feature-matrix.json",
+    "sha256": "fa8aba92fe185a5eb3c4f935261d2a3cbcfa6a9248878634673cec323efa281f"
+  },
+  "requested_corrections_total": 7,
+  "requested_corrections_closed": 7,
+  "corrections": [
+    {
+      "id": "1",
+      "row": "worker.frame_pool",
+      "prior_comment": "RM-01",
+      "status": "closed",
+      "finding": "已明确保留复用槽/空闲缓存受限，全被持有时可另分配临时帧，活跃总内存无此处硬上限。"
+    },
+    {
+      "id": "2",
+      "row": "worker.latest",
+      "prior_comment": "RM-02",
+      "status": "closed",
+      "finding": "已明确 shutdown 返回且完成 join 后不回调，开始 shutdown 后仍可执行已发布回调。"
+    },
+    {
+      "id": "3",
+      "row": "worker.latest",
+      "prior_comment": "RM-03",
+      "status": "closed",
+      "finding": "已关联 root/supplemental/latest_worker/receipt.json；实际编译与执行均 exit 0，原始日志 SHA 及生产/测试源 SHA 全部匹配。"
+    },
+    {
+      "id": "4",
+      "row": "command.compute_result",
+      "prior_comment": "RM-04",
+      "status": "closed",
+      "finding": "已用 servicePlanner/externalOrdersTick 替换不存在的 applyExternalPlan，并补 external_orders_bridge.h/extra_settings_io.h 的准确 SHA 引用。"
+    },
+    {
+      "id": "5",
+      "row": "sample.raw_bytes",
+      "prior_comment": "RM-04",
+      "status": "closed",
+      "finding": "已以 Snapshot::read/capture 替换不存在的 ReadSet。"
+    },
+    {
+      "id": "6",
+      "row": "worker.frame_pool",
+      "prior_comment": "RM-04",
+      "status": "closed",
+      "finding": "已以 worldframe::SnapshotPool、external::camera::FrameReuse/samePixels 替换错误或模糊入口名。"
+    },
+    {
+      "id": "7",
+      "row": "host.retry",
+      "prior_comment": "RM-05",
+      "status": "closed",
+      "finding": "已使用当前引用内真实 gameinput::install/pulse，不再把未引用 main.cpp 的 attach 列为该行入口。"
+    }
+  ],
+  "reference_checks": {
+    "rows": 32,
+    "implementation_reference_occurrences": 86,
+    "distinct_implementation_files": 39,
+    "missing_implementation_files": [],
+    "sha_mismatches": [],
+    "missing_evidence_paths": []
+  },
+  "latest_worker_evidence": {
+    "receipt": "root/supplemental/latest_worker/receipt.json",
+    "receipt_sha256": "aeeba5cd2f731b5c5d354af14fe710617d82316d1fef37da863c4e9a8cfe16da",
+    "passed": true,
+    "source_inputs_unchanged": true,
+    "source_checks": [
+      {
+        "file": "source/shared/source/latest_worker.h",
+        "matches": true
+      },
+      {
+        "file": "source/assist/tests/latest_worker.cpp",
+        "matches": true
+      }
+    ],
+    "run_log_checks": [
+      {
+        "path": "/workspace/scratch/33b3ee07b26a/feature147pre3/root/supplemental/latest_worker/0.log",
+        "exit_code": 0,
+        "sha256_matches": true
+      },
+      {
+        "path": "/workspace/scratch/33b3ee07b26a/feature147pre3/root/supplemental/latest_worker/1.log",
+        "exit_code": 0,
+        "sha256_matches": true
+      }
+    ],
+    "success_line": "PASS nonblocking submission, independent execution, bounded newest-only queue, stale-world rejection and shutdown ownership",
+    "windows_executed": false,
+    "game_tested": false
+  },
+  "additional_confirmations": [
+    {
+      "prior_comment": "RM-06",
+      "status": "clarified",
+      "finding": "已补 shared_reader.h 准确引用，并明确 UI live 读示例非穷尽，含 chat/viewport/inspect/即时身份确认；没有声称世界帧之外所有读取均消失。"
+    },
+    {
+      "row": "sample.capture",
+      "status": "boundary_preserved",
+      "finding": "仍明确被观察逻辑帧与实际游戏每帧是否获调度的差别；没有额外实机验收声明。"
+    },
+    {
+      "row": "sample.passenger",
+      "status": "evidence_preserved",
+      "finding": "仍保留正确 F5 ID 和本轮 before/current receipts。"
+    }
+  ],
+  "not_part_of_closure": [
+    "父任务的 27 组主门禁本次不重新验证或重复计数。",
+    "world_frame_core 补充运行及最终 snapshot_reuse 收据的总报告整理由父任务继续；当前相关行仍保守标 source_review，未将未链接结果改称已执行。",
+    "原可选文字/元数据精度建议不构成 7 项整改的阻塞项。"
+  ],
+  "production_changed": false,
+  "tests_changed": false,
+  "tests_rerun_by_reviewer": false,
+  "display_group_remains_frozen": true
+}

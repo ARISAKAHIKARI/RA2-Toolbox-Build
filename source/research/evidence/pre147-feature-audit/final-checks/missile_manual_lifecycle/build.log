@@ -1,0 +1,12 @@
+/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_lifecycle/missile_manual_lifecycle.cpp:40:13: warning: ‘bool missileManualOverflowed()’ defined but not used [-Wunused-function]
+   40 | static bool missileManualOverflowed(){return missileManualBlocked;}
+      |             ^~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_lifecycle/missile_manual_lifecycle.cpp:35:52: warning: ‘missileMotionCursor’ defined but not used [-Wunused-variable]
+   35 | static MissileMotion missileMotion[256];static int missileMotionCursor;
+      |                                                    ^~~~~~~~~~~~~~~~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_lifecycle/missile_manual_lifecycle.cpp:35:22: warning: ‘missileMotion’ defined but not used [-Wunused-variable]
+   35 | static MissileMotion missileMotion[256];static int missileMotionCursor;
+      |                      ^~~~~~~~~~~~~
+/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_lifecycle/missile_manual_lifecycle.cpp:29:17: warning: ‘uint32_t worldByID(uint32_t)’ defined but not used [-Wunused-function]
+   29 | static uint32_t worldByID(uint32_t id){for(uint32_t p:roster)if(get<uint32_t>(p+0x10)==id)return p;return 0;}
+      |                 ^~~~~~~~~

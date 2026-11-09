@@ -1,0 +1,13 @@
+{
+  "command": [
+    "node",
+    "source/suite/tests/console_hotkey_presentation_test.mjs",
+    "--app",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/app.baseline.js"
+  ],
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "exit": 1,
+  "log": "hotkey-names.before.log",
+  "app_sha256": "c18c53e2d9a5860c019588a9bc8403a5e45a49049ce9d6347ad1bc16fbfd1cad",
+  "test_sha256": "18f3a644f21c76650e98d58481fb14622625ab9e50e13488c46021749e1553cc"
+}

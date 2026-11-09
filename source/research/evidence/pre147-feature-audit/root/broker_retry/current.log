@@ -1,0 +1,1 @@
+{"checks":30,"failures":0,"passed":true,"scope":"complete production pulse with deterministic host/Win32/broker substitutes; substitute delay checks completion-based retry only; no Windows/game validation"}

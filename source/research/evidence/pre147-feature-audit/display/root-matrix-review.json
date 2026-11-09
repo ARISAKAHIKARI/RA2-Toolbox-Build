@@ -1,0 +1,495 @@
+{
+  "schema": "ra2.report_accuracy_review.v1",
+  "reviewed_utc": "2026-11-09T07:10:39.829000+00:00",
+  "reviewer": "audit_all_display",
+  "scope": "仅独立快审 32 行 Host/Runtime 报告的准确性、引用、证据等级和验收边界；不是重开全部产品审计。",
+  "subject": {
+    "file": "/workspace/scratch/33b3ee07b26a/feature147pre3/root/host-runtime-feature-matrix.json",
+    "sha256": "6f29c1d2473a6f8fc31ed0b8b3c9d0e7e2f8616c53087152a118dda2a285baa2",
+    "count": 32
+  },
+  "source_baseline_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "production_changed": false,
+  "tests_changed": false,
+  "runtime_tests_rerun": false,
+  "checks": {
+    "rows": 32,
+    "unique_ids": 32,
+    "implementation_reference_occurrences": 83,
+    "distinct_implementation_files": 36,
+    "missing_implementation_files": [],
+    "sha_mismatches": [],
+    "missing_evidence_paths": [],
+    "controlled_execution_without_evidence": [
+      "worker.latest"
+    ]
+  },
+  "accepted_claims": [
+    {
+      "row": "sample.capture",
+      "judgment": "calibrated",
+      "reason": "明确每个被观察逻辑帧，并明确实际游戏每帧是否都得到调度观察须实机测量；未从 fixture 推导逐实机帧保证，也未声称降低原始采样频率。",
+      "optional_precision": "可写按活跃需求对被观察逻辑帧统一捕获/封存，保持失败/需求变化边界。"
+    },
+    {
+      "row": "sample.passenger",
+      "judgment": "current_evidence_linked",
+      "reason": "当前已使用 DISPLAY-F5-PASSENGER-RAW-FRAME，并链接真实 before/current receipt；旧头首次 14 次 live RPM，当前首次及 1000 次同帧 paint 均 0。验证仅为受控实际生产采样路径，不是游戏/FPS/GPU/Windows 验收。",
+      "test_seams": [
+        "Win32 I/O/IPC controlled fixture",
+        "viewport geometry",
+        "UTF-16/wchar display conversion"
+      ]
+    },
+    {
+      "row": "command.selection",
+      "judgment": "counts_match_receipts",
+      "reason": "本轮 21 检查，当前 0 失败；冻结 pre.2 相同专项 7 失败。"
+    },
+    {
+      "row": "ui.toast_clock",
+      "judgment": "counts_match_receipts",
+      "reason": "本轮 15 检查，当前 0 失败；冻结 pre.2 相同专项 6 失败。"
+    },
+    {
+      "row": "broker.nonblocking",
+      "judgment": "counts_and_limits_match_receipts",
+      "reason": "110 项当前检查、恢复调用虚拟等待 0、正等待持锁探测 0、健康 200 次 pulse 与当前 receipt 一致；明确虚拟时间不等于真实卡顿，OS 同步调用无绝对 wall-clock 保证。"
+    },
+    {
+      "row": "host.retry",
+      "judgment": "counts_match_receipt",
+      "reason": "30 项当前受控检查与 broker_retry/result.json 一致，entry 文件引用另见 RM-05。"
+    },
+    {
+      "row": "abi.crossbit",
+      "judgment": "counts_and_platform_boundary_match_receipt",
+      "reason": "协议 102、897 布局条目、x86/x64 指针 4/8 字节、Shared 23162544 字节、differences={}、PE parser negative checks pass、executed_windows_images=false 均匹配。"
+    },
+    {
+      "row": "broker.abi",
+      "judgment": "already_corrected_during_review",
+      "reason": "parent 已将不存在的 loadRuntime 改成当前 describe；当前快照不再列为未完成项。"
+    }
+  ],
+  "comments": [
+    {
+      "id": "RM-01",
+      "rows": [
+        "worker.frame_pool"
+      ],
+      "priority": "correct_report",
+      "kind": "bound_overstatement",
+      "observed": "容量和备用存储受限",
+      "evidence": [
+        {
+          "file": "source/shared/source/frame_pool.h",
+          "symbol": "asyncwork::FramePool::acquire"
+        },
+        {
+          "file": "source/shared/source/world_frame_pool.h",
+          "symbol": "worldframe::SnapshotPool::take/give"
+        }
+      ],
+      "reason": "FramePool 仅保留 Slots 个复用槽；全部仍被持有时 acquire 会另外 make_shared。SnapshotPool 仅保留 3 个空闲对象，空闲耗尽继续 new Snapshot。两者都没有在这里硬限制活跃帧总数/总内存。",
+      "recommended_text": "复用池限制保留的槽位/空闲对象数量；全部被持有时可分配临时帧，活跃帧总数与总内存还依赖调用者持有期。只复用没有外部持有者的存储。",
+      "product_change_requested": false
+    },
+    {
+      "id": "RM-02",
+      "rows": [
+        "worker.latest"
+      ],
+      "priority": "correct_report",
+      "kind": "shutdown_timing_qualification",
+      "observed": "shutdown 后不回调",
+      "evidence": [
+        {
+          "file": "source/shared/source/latest_worker.h",
+          "symbol": "asyncwork::Latest::run/shutdown"
+        }
+      ],
+      "reason": "run 在锁内确认发布后解锁调用 completed_；shutdown 置 stop_ 后 join，已经完成发布的回调可在 shutdown 等待期间执行。返回且 join 完成后才保证不再回调。",
+      "recommended_text": "invalidate 的 generation 拒绝旧计算结果；shutdown 等待 worker 退出，返回后不再回调。",
+      "product_change_requested": false
+    },
+    {
+      "id": "RM-03",
+      "rows": [
+        "worker.latest"
+      ],
+      "priority": "complete_evidence_link",
+      "kind": "controlled_execution_without_receipt",
+      "observed": "controlled_execution=true，但 evidence=[]，结论称本轮运行通过",
+      "evidence": [
+        {
+          "file": "source/assist/tests/latest_worker.cpp",
+          "symbol": "main"
+        }
+      ],
+      "reason": "当前 evidence 目录有 root/latest_worker 可执行文件，但未找到对应 latest_worker 原始成功日志/receipt。不能仅由可执行文件推导运行成功；这不是断言该测试未运行。",
+      "recommendation": "链接实际本轮运行命令、退出状态和保留日志/receipt；若证据尚未保留，先将该行标为 source_review，待最终回归收据到位后更新。",
+      "product_change_requested": false
+    },
+    {
+      "id": "RM-04",
+      "rows": [
+        "command.compute_result",
+        "sample.raw_bytes",
+        "worker.frame_pool"
+      ],
+      "priority": "correct_report",
+      "kind": "nonexistent_entry_names",
+      "replacements": [
+        {
+          "row": "command.compute_result",
+          "old": "applyExternalPlan",
+          "new": [
+            "servicePlanner",
+            "externalOrdersTick"
+          ],
+          "refs_to_add": [
+            "source/assist/source/external_orders_bridge.h"
+          ],
+          "note": "Host 发布函数 servicePlanner 位于 main.cpp；Runtime 最终消费/许可位于 externalOrdersTick。serviceCooperative 的实际定义在 extra_settings_io.h，建议同时加入该引用。"
+        },
+        {
+          "row": "sample.raw_bytes",
+          "old": "ReadSet",
+          "new": [
+            "worldframe::Snapshot::read",
+            "worldframe::Snapshot::capture"
+          ],
+          "refs_to_add": []
+        },
+        {
+          "row": "worker.frame_pool",
+          "old": "WorldFramePool",
+          "new": [
+            "worldframe::SnapshotPool"
+          ],
+          "refs_to_add": []
+        },
+        {
+          "row": "worker.frame_pool",
+          "old": "scene frame reuse",
+          "new": [
+            "external::camera::FrameReuse",
+            "external::camera::samePixels"
+          ],
+          "refs_to_add": []
+        }
+      ],
+      "product_change_requested": false
+    },
+    {
+      "id": "RM-05",
+      "rows": [
+        "host.retry"
+      ],
+      "priority": "correct_report",
+      "kind": "entry_defined_outside_cited_refs",
+      "observed": "entry_points 包含 attach，而 implementation_refs 未包含 main.cpp",
+      "evidence": [
+        {
+          "file": "source/assist/source/main.cpp",
+          "symbol": "attach"
+        },
+        {
+          "file": "source/shared/source/host_game_input.h",
+          "symbol": "gameinput::install/pulse"
+        }
+      ],
+      "recommendation": "若保留 attach，加入 source/assist/source/main.cpp 的准确 SHA；若该行仅指共享 Host helper 重试，则以该文件实际 install/pulse 入口命名。",
+      "product_change_requested": false
+    },
+    {
+      "id": "RM-06",
+      "rows": [
+        "sample.ui_live"
+      ],
+      "priority": "clarify_scope_optional",
+      "kind": "ui_live_read_scope",
+      "evidence": [
+        {
+          "file": "source/external_reader/source/shared_reader.h",
+          "symbol": "external::SharedReadView::live"
+        },
+        {
+          "file": "source/external_reader/source/tactical_sampler.h",
+          "symbol": "current/uiValue/refreshCamera"
+        },
+        {
+          "file": "source/assist/source/main.cpp",
+          "symbol": "sampleExternal/UIKey"
+        }
+      ],
+      "finding": "当前结论不声称所有 live 读消失，表述准确。实际还有 chat/viewport/inspect 与展示发布身份确认等 live 输入/检查；相机和选取应被读为例子，不能作为仅剩两类 live 读的全量白名单。",
+      "recommendation": "加入 shared_reader.h 证据链；可将 entry_points 中 sampleExternal UIKey 拆为 sampleExternal、UIKey（局部结构），并明确本行列举展示 UI 输入，完整世界采样与即时许可/身份确认是不同作用。",
+      "product_change_requested": false
+    },
+    {
+      "id": "RM-07",
+      "rows": [
+        "sample.mapping"
+      ],
+      "priority": "metadata_consistency_optional",
+      "kind": "cross_compile_flag",
+      "finding": "结论和证据引用实际 crossbit-abi.json，但 cross_compile=false。该状态是保守少计而非夸大。",
+      "recommendation": "可标 cross_compile=true 并限定为共享布局；或明确该证据为 abi.crossbit 的关联引用，不表示本行完整发布/读取行为执行。",
+      "product_change_requested": false
+    },
+    {
+      "id": "RM-08",
+      "rows": [
+        "abi.crossbit"
+      ],
+      "priority": "wording_optional",
+      "kind": "precise_build_artifact_description",
+      "finding": "verify_crossbit_abi 是脚本名而非 Python 函数；脚本编译 x86/x64 Windows exe 并从 PE 读取布局常量，不执行映像。897 条、协议 102、Shared 23162544 字节均与 receipt 一致。",
+      "recommendation": "entry_points 可写 source/tools/verify_crossbit_abi.py:main；把读取对象布局改为从编译后的 PE 读取布局常量。",
+      "product_change_requested": false
+    },
+    {
+      "id": "RM-09",
+      "rows": [
+        "sample.raw_bytes",
+        "worker.frame_pool"
+      ],
+      "priority": "finish_report_after_gates",
+      "kind": "pending_future_evidence_wording",
+      "finding": "当前 verification=false，没有冒充已通过；但待最终证据和将重跑是尚待收束的报告状态。",
+      "recommendation": "最终交付前链接实际当前专项/gate 收据并精确限定覆盖；Passenger 已覆盖自己的缺页/scope/失败恢复路径，不能据此自动认定所有 raw-byte 或 frame-pool 分支都已执行。",
+      "product_change_requested": false
+    }
+  ],
+  "row_reviews": [
+    {
+      "id": "runtime.dispatch",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "runtime.owner",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "runtime.watchdog",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "runtime.diagnostics",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "runtime.loader",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "broker.target",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "broker.abi",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "broker.partial_install",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "broker.nonblocking",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "broker.mailbox",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "broker.retirement",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "host.subscriptions",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "host.window",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "host.retry",
+      "status": "report_comments",
+      "comments": [
+        "RM-05"
+      ]
+    },
+    {
+      "id": "host.process_selection",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "host.pause",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "command.freshness",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "command.reservation",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "command.selection",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "command.compute_result",
+      "status": "report_comments",
+      "comments": [
+        "RM-04"
+      ]
+    },
+    {
+      "id": "sample.capture",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "sample.raw_bytes",
+      "status": "report_comments",
+      "comments": [
+        "RM-04",
+        "RM-09"
+      ]
+    },
+    {
+      "id": "sample.mapping",
+      "status": "report_comments",
+      "comments": [
+        "RM-07"
+      ]
+    },
+    {
+      "id": "sample.identity",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "sample.display",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "sample.ui_live",
+      "status": "report_comments",
+      "comments": [
+        "RM-06"
+      ]
+    },
+    {
+      "id": "sample.passenger",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "worker.latest",
+      "status": "report_comments",
+      "comments": [
+        "RM-02",
+        "RM-03"
+      ]
+    },
+    {
+      "id": "worker.recurring",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "worker.frame_pool",
+      "status": "report_comments",
+      "comments": [
+        "RM-01",
+        "RM-04",
+        "RM-09"
+      ]
+    },
+    {
+      "id": "ui.toast_clock",
+      "status": "no_obvious_report_accuracy_issue_found",
+      "comments": []
+    },
+    {
+      "id": "abi.crossbit",
+      "status": "report_comments",
+      "comments": [
+        "RM-08"
+      ]
+    }
+  ],
+  "source_sha256": {
+    "source/game_runtime/source/runtime.cpp": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d",
+    "source/shared/source/runtime_protocol.h": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b",
+    "source/shared/source/runtime_fp_scope.h": "a85a7e2fe80a8ec888f127b938ab6f48ed689333fb2f6a46f3e74bdb0c0b1099",
+    "source/shared/source/runtime_seh_scope.h": "a9b404935e2b0b9fac4c594d4c27e31b08c0141c5f0d7e25e63557991cb271f7",
+    "source/runtime_broker/source/main.cpp": "680010a119c7e9462ed691cf0ecb38d84e32a1bb820499fcbc06a07629eccade",
+    "source/shared/source/runtime_broker_protocol.h": "535290536bc6b3eabbadd4ba08d294ef1ff2657a27b0773ebbaa5fe685869b6f",
+    "source/assist/source/protocol.h": "4e8f8b72aee03f7175cb0bcc4766af3cf8360463f04e93656d7bd4b92985e331",
+    "source/shared/source/game_entry_api.h": "a113072ab7abe73d1667b311c5b90d99e2571aa70cff665a8a90645fdabc243b",
+    "source/shared/source/runtime_broker_client.h": "066dac01a5fb26bf0fa28de617d10bba344eb1fa73552fcebb3c8dfb523b68f1",
+    "source/shared/source/host_game_input.h": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887",
+    "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+    "source/assist/tests/host_broker_retry.cpp": "de2f532a6f7f96ca4db149e5b4f400234113fb21d60156a0321dde1df4daac4f",
+    "source/assist/tests/host_broker_retry.py": "66e126cec188708b7012c0e1e3e3467e5aedd7fce6979623a872606afd0f2da1",
+    "source/external_reader/source/process_target_selection.h": "512bcf16a65c65ad0b10d9a2bfdb18231a0c2f0a07a61fd637af36bfaf2f725d",
+    "source/assist/source/bridge.cpp": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1",
+    "source/assist/source/command_delivery.h": "2515fdb0e73210348e4765099858d1e4da5a236a7c659062abd8a29c4182435a",
+    "source/assist/source/plan_freshness.h": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c",
+    "source/assist/source/construction_policy.h": "78b888d6138b0b0f1825a8ba73058647119ca51c333dbf68b55da2b69da6b1ac",
+    "source/assist/source/compute_tasks.h": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c",
+    "source/assist/source/compute_frame.h": "a88d6f9e3a79dad611a338ee0a60ac426bf40b96a627694534e482f125c54b55",
+    "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+    "source/shared/source/world_frame_capture.h": "54e646ebfe75d8614f07b0b0fb65dfb3fcaa476bb1a05d6f2eb1c55d85315b41",
+    "source/shared/source/world_frame_transport.h": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9",
+    "source/external_reader/source/process_reader.h": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1",
+    "source/assist/source/display_sample_lease.h": "ab9d7035595cb45da27bfa5bef3d4a0dc89581339f4899b4d8a97c03f22b01cd",
+    "source/external_reader/source/tactical_sampler.h": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab",
+    "source/assist/source/passenger_draw.h": "123eba0051124e5fef8884bb77ba9b8860d1866084b4b8a8a2ca30ee763916b5",
+    "source/external_reader/source/passenger_bubbles.h": "23e8c3466eeaee760f123f304dafdbe6718cc0294a430ab08ff0b02b33f05aa7",
+    "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81",
+    "source/assist/tests/latest_worker.cpp": "2b5862ab94fc9c1a92302a5800fb5b22d732570dff97733c0efd91d98e66b7b9",
+    "source/shared/source/recurring_worker.h": "886abe4a62bdeba427582e99d4af41543c6ff7d63140931d19f468fd98d605dd",
+    "source/shared/source/frame_pool.h": "2816e39772b12e48b2dc768852793f51b06ebbde845abce0f0972800541c4edc",
+    "source/shared/source/world_frame_pool.h": "58a99f8f9d926bbff9298d68006ff3ad45d648ca6c86751f75cbaf81660a91ab",
+    "source/external_reader/source/scene_frame_reuse.h": "3d7edabade0ea44ad41eb3fb6c41d8afeff572b2c47d28d6c7ae54a1d43d9f40",
+    "source/tools/verify_crossbit_abi.py": "46c0c26ea6318e8218b752c44b280d7ece3b0949201979401ac4bef326706c35",
+    "source/tools/verify_windows_outputs.py": "0ce72921599f3122e3c9a581ce8ff6d8ad0042d6a7a6faa6faf6609169f19c58",
+    "source/assist/source/external_orders_bridge.h": "14b829c97cae9709960724b58669d79b64cc17d5c5eb8f97b04f6ebf985f4fa1",
+    "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+    "source/external_reader/source/shared_reader.h": "c506270e566d1d3144877e677f0915e8908059b19d86580a6522a85fdf6b93aa"
+  },
+  "limits": [
+    "此快审不增加任何 Windows UI、真实游戏、GPU、联机或真实 FPS 验收。",
+    "报告可与父任务后续重新生成的矩阵不同；结论锚定 subject SHA。",
+    "未新增引擎地址/ABI 发现，不重试被自动审批拒绝的混合画布光标修复。",
+    "显示组生产代码与测试继续冻结。"
+  ]
+}

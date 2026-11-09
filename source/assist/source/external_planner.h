@@ -10,6 +10,7 @@
 #include <cmath>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 namespace assist { namespace planner {
 // Controller-only snapshot -> orders. No game callback, pointer write or RNG.
@@ -154,6 +155,12 @@ public:
   if(!validWorld(world)){reset();return {};}
   if(world.match!=match_){reset();match_=world.match;}
   std::vector<Order> combat,out;combat.reserve(16);out.reserve(MaxOrders);
+  auto finishBatch=[&](std::vector<Order> orders){
+   // A candidate clipped by the final ore/combat merge has no delivery or
+   // receipt. Start the defense cooldown only for orders actually returned.
+   for(const auto&o:orders)if(o.purpose==DefenseOrder)defenseSent_[o.unit]=world.tick;
+   return orders;
+  };
   observeDrop|=autoDrop;
   if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop&&magnetronModes_==magnetronModes&&dropObserved_==observeDrop)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;magnetronModes_=magnetronModes;dropObserved_=observeDrop;queued=docking=yielded=0;targetChecks=0;
   actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();bool enemiesBuilt=false;
@@ -177,12 +184,15 @@ public:
     if(!(a.flags&PointDefense)||!(a.flags&Own)||!positionValid(a)||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;++checked;
     const Actor* current=actor(a.target);if(current&&(current->flags&Enemy)&&(current->flags&Saboteur))continue;
     auto pending=defenseSent_.find(a.id);if(pending!=defenseSent_.end()&&uint32_t(world.tick-pending->second)<350)continue;
+    // Raw rosters can contain duplicate actors. Candidate deduplication must
+    // not depend on starting the delivery cooldown before final selection.
+    if(std::any_of(combat.begin(),combat.end(),[&](const Order&o){return o.purpose==DefenseOrder&&o.unit==a.id;}))continue;
     const Actor* best=nullptr;int64_t bestDistance=INT64_MAX;
     enemies_.nearby(a.x,a.y,a.range,[&](int index){const auto&t=world.actors[index];if(!(t.flags&Saboteur))return;
      int64_t dx=int64_t(a.x)-t.x,dy=int64_t(a.y)-t.y,d=dx*dx+dy*dy;if(!canTarget(a,t,d,false))return;
      if(d<bestDistance||(d==bestDistance&&(!best||t.id<best->id))){best=&t;bestDistance=d;}
     });
-    if(best&&add(combat,{a.id,a.manualVersion,best->id,0,1,0,DefenseOrder,0})){defenseSent_[a.id]=world.tick;++sent;}
+    if(best&&add(combat,{a.id,a.manualVersion,best->id,0,1,0,DefenseOrder,0}))++sent;
    }if(world.count)defenseCursor_=(defenseCursor_+visited)%world.count;
   }else defenseSent_.clear();
 
@@ -283,7 +293,7 @@ public:
    }
   }
   for(auto i=advanced_.begin();i!=advanced_.end();)if(!active.count(i->first))i=advanced_.erase(i);else ++i;
-  if(!useOre)return combat;
+  if(!useOre)return finishBatch(std::move(combat));
   for(auto i=ore_.begin();i!=ore_.end();){const Actor*a=actor(i->id),*refinery=actor(i->refinery);
    // A disappearing/invalid miner is NOT evidence that it unloaded.
    double cargo=a?load(*a):-1;bool defending=a&&(a->flags&HarvesterDefending);
@@ -312,7 +322,7 @@ public:
    oreTurns_.clear();
    for(auto i=ore_.begin();i!=ore_.end();){if(i->suspended){++queued;++i;continue;}if(i->stage==ore::Docking||i->stage==ore::Yielding||!i->refinery){i=ore_.erase(i);continue;}
     if(add(out,{i->id,i->token,0,i->refinery,7,0x34,2,i->refinery}))++i;else break;
-   }return merge(combat,out);
+   }return finishBatch(merge(combat,out));
   }
   oreIDs_.clear();for(const auto&job:ore_)oreIDs_.insert(job.id);
   std::vector<const Actor*> newTrucks;
@@ -414,7 +424,7 @@ public:
    if(!job.waitCell){job.waitCell=waitingCell(job);if(job.waitCell)waitingCells_.insert(job.waitCell);}
    if(job.waitCell)add(out,{job.id,job.token,0,job.waitCell,2,11,0,job.refinery});
   }
-  return merge(combat,out);
+  return finishBatch(merge(combat,out));
  }
 };
 }}

@@ -1,0 +1,25 @@
+PASS a round-trip setting waits for its own receipt when the original value reappears
+PASS a snapshot sent after a bounded ACK batch cannot swallow the later rejection
+PASS toggle state before success ACK settles immediately once its revision is certified
+PASS text state before success ACK settles immediately once its revision is certified
+PASS choice state before success ACK settles immediately once its revision is certified
+PASS range state before success ACK settles immediately once its revision is certified
+PASS hotkey state before success ACK settles immediately once its revision is certified
+PASS an early matching value cannot bypass a later normalized revision
+PASS ACK before state still waits for the required native revision
+PASS older receipts cannot settle a later request after a matching intermediate state
+PASS a late rejection preserves a newer local draft and reports the failed request
+PASS a delayed success for the former edit cannot clear a new pending edit
+PASS old-generation receipts still cannot affect a replacement page action
+PASS button and list activation retain the receipt and revision requirements
+PASS legacy successful receipts without revision still converge on observed values
+PASS focusing an unchanged text editor does not report an unsaved change
+PASS focusing an unchanged number editor does not report an unsaved change
+PASS focusing an unchanged editable choice editor does not report an unsaved change
+PASS focusing an unchanged range editor does not report an unsaved change
+PASS a changed draft remains protected and undoing the edit removes the false close warning
+PASS a draft already equal to the current native value needs no separate write
+PASS retired-page drafts remain protected even if their cached old value is identical
+PASS an unacknowledged operation still prevents a clean close after its value appears
+PASS unknown draft ownership is retained and close counts stay bounded
+{"suite":"console_receipt_order","checks":24,"failures":0,"passed":true}

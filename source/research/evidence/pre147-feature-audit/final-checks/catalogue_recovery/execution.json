@@ -1,0 +1,79 @@
+{
+  "name": "catalogue_recovery",
+  "started_utc": "2026-11-09T07:10:35.942638+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/fixture"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/run.log",
+  "test_source_hashes": {
+    "source/unit_monitor/tests/catalogue_recovery.cpp": "10f8cf82b536f930dad5c547b1bd24bc39741ff6473d75f5f4040d3f408d3092",
+    "source/unit_monitor/tests/round_transition.cpp": "e97e5d1712d56ebc21c80e3e8303c35c87f7a79ab31f48d5a0e6b0738ce3c038"
+  },
+  "production_source_hashes": {
+    "source/external_reader/source/layout_probe.h": "cf682e591d80868fac944652a1d9cddca445f5d85ab878b2e88209279b0b27f0",
+    "source/unit_monitor/source/sampler.h": "024afa933113f07f31b02a3aff91e4a587d34c15a6a83c1419ea5e3fab235664"
+  },
+  "steps": [
+    {
+      "stage": "compile",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O2",
+        "-pthread",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/production.d",
+        "source/unit_monitor/tests/catalogue_recovery.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/fixture"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/compile.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "run",
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/fixture"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/run.log",
+      "log_sha256": "7033345aabed840bce11ac41a67c17dcd5f478c211dfc6d134118bbc9233fa1c"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-UNDEBUG",
+    "-O2",
+    "-pthread",
+    "-MMD",
+    "-MF",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/production.d",
+    "source/unit_monitor/tests/catalogue_recovery.cpp",
+    "-o",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/fixture"
+  ],
+  "compile_exit_code": 0,
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/run.log",
+  "log_sha256": "7033345aabed840bce11ac41a67c17dcd5f478c211dfc6d134118bbc9233fa1c",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "binary_sha256": "7841aea867655bb578dc166f46aaecdd8eee3f5fb3b850df2cf25a444590ca4b",
+  "completed_utc": "2026-11-09T07:10:39.502816+00:00",
+  "elapsed_seconds": 3.56,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/execution.json"
+}

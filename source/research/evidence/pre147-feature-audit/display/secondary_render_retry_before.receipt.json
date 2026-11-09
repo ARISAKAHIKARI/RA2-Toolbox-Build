@@ -1,0 +1,36 @@
+{
+  "source": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/unit_monitor/source/main.cpp",
+  "source_sha256": "822f9919a2d42293790fb833ead90d40881db84f0cd4b714b8ce0c4446561d6b",
+  "test_sha256": "c768f50387fd810d48006785c77f705c56a4558d9d46bbd2d5582608f7aa61a6",
+  "predicate": "secondaryDirty||(!secondaryRenderedFrame&&DWORD(now-secondaryLastSubmit)>=250)",
+  "verification_level": "controlled_execution_of_extracted_production_predicate",
+  "not_verified": [
+    "Win32 allocation failure injection",
+    "actual monitor drawing"
+  ],
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-D_GLIBCXX_ASSERTIONS",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_before.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_before"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_before"
+      ],
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "secondary_render_retry_before: /workspace/scratch/33b3ee07b26a/feature147pre3/display/secondary_render_retry_before.cpp:10: int main(): Assertion `due(false,accepted(50),500,100)' failed.\n"
+    }
+  ]
+}

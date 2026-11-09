@@ -1,0 +1,9 @@
+{
+  "source": "source/unit_monitor/source/main.cpp",
+  "source_sha256": "267cff1fae6b9d3179345f4032f6a1efc14a7287715f011e10a339c223442bb0",
+  "range": [
+    "static int secondaryTravelUnit(",
+    "static SecondaryDrag secondaryDrag;"
+  ],
+  "claim": "work 800x600, panel 1200x800 gives clamp low x=1920 > high x=1520 and low y=0 > high y=-200"
+}

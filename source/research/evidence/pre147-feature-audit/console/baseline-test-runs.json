@@ -1,0 +1,24 @@
+[
+  {
+    "command": [
+      "node",
+      "source/suite/tests/console_store_test.mjs"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "console_store_test.baseline.log",
+    "source_sha256": "c18c53e2d9a5860c019588a9bc8403a5e45a49049ce9d6347ad1bc16fbfd1cad",
+    "test_sha256": "462e98438916e1c6474c84c9d7406b0b039c88da8a9eadc22dcc1fa8dfd700da"
+  },
+  {
+    "command": [
+      "node",
+      "source/suite/tests/console_receipt_order_test.mjs"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "console_receipt_order_test.baseline.log",
+    "source_sha256": "c18c53e2d9a5860c019588a9bc8403a5e45a49049ce9d6347ad1bc16fbfd1cad",
+    "test_sha256": "5c19ea621b9131f56eef0feacfeb71f097239841c5296064cd20f6f66d89b5ff"
+  }
+]

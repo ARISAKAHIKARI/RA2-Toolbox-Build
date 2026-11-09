@@ -1,0 +1,48 @@
+{
+  "passed": true,
+  "tests_run": 13,
+  "failures": 0,
+  "errors": 0,
+  "metrics": {
+    "warm": {
+      "batches": 8,
+      "before_probe_processes": 24,
+      "after_probe_processes": 8,
+      "before_module_checks": 24,
+      "after_module_checks": 24,
+      "functional_checks": {
+        "numpy_arange": 24,
+        "numpy_solve": 8,
+        "scipy_tree": 8,
+        "scipy_distance": 8,
+        "cv_dis": 8,
+        "cv_color": 8,
+        "cv_resize": 8,
+        "cv_encode": 8
+      },
+      "downloads": 0,
+      "installations": 0,
+      "processes_modeled": true,
+      "original_probe_code_executed": true
+    }
+  },
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/dependency_probes/tests.log",
+  "log_sha256": "7be8ac02ef0008aa1cc11e967d0bd6fb96917b55144e81b49903bd34bf00e3c2",
+  "source_sha256": {
+    "source/engine/prepare_runtime.py": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96",
+    "source/engine/runtime-dependencies.json": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93",
+    "source/tools/test_dependency_probes.py": "e0fbe445990f95a8d76dc2db8990597db749aa5c04de04afe26e056fcd761f37"
+  },
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/tools/test_dependency_probes.py",
+    "--out",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/dependency_probes"
+  ],
+  "real_probe_children_started": 0,
+  "downloads": 0,
+  "installations": 0,
+  "windows_executed": false,
+  "native_extensions_executed": false,
+  "boundary": "Actual prepare/cache checks and original PROBE_CODE plus batch script; synthetic legal metadata, synthetic scientific modules and counting Popen. No subprocess, network or package installation in the test."
+}

@@ -1,0 +1,35 @@
+{
+  "verification_level": "controlled_execution",
+  "source": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/missile_bridge.h",
+  "source_sha256": "1675f0846512975a02cce4ebf161bcb12851aadbd65cb8b62de20bcc831566cb",
+  "test_sha256": "3ddf393ac5225fc0e2d8d59f2de6a72e7a5d75e559143727793eedd2d3e6ba8d",
+  "generated_sha256": "6c74ea4b7b64557476675c2a2cb040f87da6e310f926aa7103058b7907c6d236",
+  "extract_sha256": "bf229913ee27c2cc4f8295a91f51f3f606750eee6e28c964c9ca518d48680adb",
+  "commands": [
+    {
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-after/missile_manual_lifecycle.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-after/missile_manual_lifecycle"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-after/build.log",
+      "log_sha256": "ce671a9487b3ee43bbc8d99e61bb4f804958fc087c3ee986476dc65831def1f0"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-after/missile_manual_lifecycle"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/missile-after/run.log",
+      "log_sha256": "d1109ab695361e33367b3b4204fe74c86d1b2e081150fc53abebfc33a4de774a"
+    }
+  ]
+}

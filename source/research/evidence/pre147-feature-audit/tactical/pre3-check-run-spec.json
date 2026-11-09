@@ -1,0 +1,1574 @@
+{
+  "schema": "ra2.check-run-spec.v1",
+  "version": "1.0.47-pre.3",
+  "file_version": "1.0.47.3",
+  "scope": "Execution plan only; no test execution or release validation is claimed by this document.",
+  "repo": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "output_root": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks",
+  "product_baseline_file_version": "1.0.46.4",
+  "comparison_baseline_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "fixed_check_count": 26,
+  "current_engine_change_check_count": 27,
+  "instructions": [
+    "Create each output_directory before running its ordered steps; do not reuse an existing successful run directory.",
+    "Record each real argv, cwd, environment, start/end time, exit code and immutable raw log bytes. Stop a group on any failing step.",
+    "Record test/production SHA256 at execution time and check unchanged after execution and against the frozen build.",
+    "planning_source_sha256 is an observation for scheduling, not a tested-source receipt. Never relabel these values as executed evidence.",
+    "For compiler driver tests preserve generated compile/run receipt in addition to raw_log_path. Their stdout wrapper is not the feature gate log.",
+    "For direct C++ tests record compile_exit_code and compile_command; patrol_small_buffer requires ASan flags and the --small-buffer run.",
+    "Merge every real production/test dependency from compiler depfiles and driver receipts into source hash bindings where available.",
+    "Only after actual successful execution construct validation.json with current source tree/commit and call package_release.validate_evidence."
+  ],
+  "checks": [
+    {
+      "name": "missile_allocator",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator",
+      "test_source_paths": [
+        "source/assist/tests/missile_allocation_equivalence.cpp"
+      ],
+      "production_source_paths": [
+        "source/assist/source/main.cpp",
+        "source/assist/source/missile_bridge.h",
+        "source/assist/source/missile_compute.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+        "source/assist/source/missile_bridge.h": "10e5909ba978b416e3809fb255c6762d675b473ef92d8e4228aa54817b7bfe70",
+        "source/assist/source/missile_compute.h": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+        "source/assist/tests/missile_allocation_equivalence.cpp": "5fa4d1add17f6df48e415aaf961b3f9ba554507a9a7c35d160a1cebc9d9b6fd1"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/fixture"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O2",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/production.d",
+        "source/assist/tests/missile_allocation_equivalence.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/fixture"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/run.log",
+      "steps": [
+        {
+          "stage": "compile",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-UNDEBUG",
+            "-O2",
+            "-MMD",
+            "-MF",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/production.d",
+            "source/assist/tests/missile_allocation_equivalence.cpp",
+            "-o",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/compile.log"
+        },
+        {
+          "stage": "run",
+          "command": [
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/run.log"
+        }
+      ]
+    },
+    {
+      "name": "snapshot_reuse",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse",
+      "test_source_paths": [
+        "source/assist/tests/world_frame_reuse.cpp",
+        "source/assist/tests/world_frame_reuse.py"
+      ],
+      "production_source_paths": [
+        "source/shared/source/world_frame.h",
+        "source/shared/source/world_frame_pool.h",
+        "source/shared/source/world_frame_transport.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/tests/world_frame_reuse.cpp": "0cd7277e95c12e764113803543605935eb0cd760462784ae5ff3067c4232dcc0",
+        "source/assist/tests/world_frame_reuse.py": "2c5a77541b4fd1326fa5c8801d41f816e64fbe7e1632e8c81d9501ad17e18838",
+        "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+        "source/shared/source/world_frame_pool.h": "58a99f8f9d926bbff9298d68006ff3ad45d648ca6c86751f75cbaf81660a91ab",
+        "source/shared/source/world_frame_transport.h": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/world_frame_reuse.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse",
+        "--sanitize",
+        "address,undefined"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse/run.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/world_frame_reuse.py",
+            "--out",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse",
+            "--sanitize",
+            "address,undefined"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "tech_capture",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture",
+      "test_source_paths": [
+        "source/assist/tests/tech_enhancement_capture.cpp",
+        "source/assist/tests/tech_enhancement_capture.py"
+      ],
+      "production_source_paths": [
+        "source/assist/source/tech_enhancement.h",
+        "source/assist/source/tech_parameter_lookup.h",
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/bridge.cpp"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+        "source/assist/source/tech_parameter_lookup.h": "14fd3aa6ef6b4557804d44fd6743ac4b5bc1e92f7a23f7fc434c0ffe9a735a43",
+        "source/assist/source/tech_ui_breakpoint_bridge.h": "16669d5c032fbb66e9d21a974dea127d3b24b8f4ed7ee20bc2eac8aabf4c2d41",
+        "source/assist/tests/tech_enhancement_capture.cpp": "550db4fb9351cc7fdf68393ba08127838b68177395354b2b158c3e0beda887f0",
+        "source/assist/tests/tech_enhancement_capture.py": "a0d2336204b92d1f915598d5eaac8dce78c97312647f445c825bbe29536ad1bf",
+        "source/assist/source/bridge.cpp": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/tech_enhancement_capture.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture",
+        "--baseline",
+        "46420180d9137932ca98fd2e6c131bde4f2a6294"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture/current/run.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/tech_enhancement_capture.py",
+            "--out",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture",
+            "--baseline",
+            "46420180d9137932ca98fd2e6c131bde4f2a6294"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "voxel_recovery",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/voxel_recovery",
+      "test_source_paths": [
+        "source/assist/tests/voxel_part_capture.cpp",
+        "source/assist/tests/voxel_part_capture.py"
+      ],
+      "production_source_paths": [
+        "source/external_reader/source/camera_assets.h",
+        "source/external_reader/source/radar_scene.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/tests/voxel_part_capture.cpp": "904c141dd2944a5ca287041f6c221e37393098404b7191061bdd07f471ba6b36",
+        "source/assist/tests/voxel_part_capture.py": "d94318751948a6edfe230aed83acbdb286586ac7448f88242acd27dce43d98f6",
+        "source/external_reader/source/camera_assets.h": "b33669cbf6bb0430c773e5cd93f37a71403766e04bef557fff955b16bca3c0bd",
+        "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/voxel_part_capture.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/voxel_recovery"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/voxel_recovery/run.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/voxel_part_capture.py",
+            "--output",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/voxel_recovery"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/voxel_recovery/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "idle_aircraft_display",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display",
+      "test_source_paths": [
+        "source/assist/tests/idle_aircraft_display.cpp"
+      ],
+      "production_source_paths": [
+        "source/assist/source/aircraft_indicator.h",
+        "source/assist/source/main.cpp",
+        "source/external_reader/source/idle_aircraft.h",
+        "source/external_reader/source/tactical_sampler.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/aircraft_indicator.h": "3b81510daf5734a3a2db8bb5647d35f6b37eb9d34e25ebf6e80f020f66026dda",
+        "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+        "source/assist/tests/idle_aircraft_display.cpp": "1e16f480a865153f4c827dc3e5809e39a0013b13f95de3216ab88066aa227b14",
+        "source/external_reader/source/idle_aircraft.h": "8f136a5ca6f8066bfc1017caf3fd1d47578e4ddca3c40ab8be3d7873b80df7cf",
+        "source/external_reader/source/tactical_sampler.h": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/fixture"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O2",
+        "-pthread",
+        "-I",
+        "source/external_reader/source",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/production.d",
+        "source/assist/tests/idle_aircraft_display.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/fixture"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/run.log",
+      "steps": [
+        {
+          "stage": "compile",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-UNDEBUG",
+            "-O2",
+            "-pthread",
+            "-I",
+            "source/external_reader/source",
+            "-MMD",
+            "-MF",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/production.d",
+            "source/assist/tests/idle_aircraft_display.cpp",
+            "-o",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/compile.log"
+        },
+        {
+          "stage": "run",
+          "command": [
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/run.log"
+        }
+      ]
+    },
+    {
+      "name": "terrain_reuse",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse",
+      "test_source_paths": [
+        "source/assist/tests/terrain_storage_pool.cpp"
+      ],
+      "production_source_paths": [
+        "source/external_reader/source/radar_map.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/tests/terrain_storage_pool.cpp": "7b621df3f779e4bea59661cbd86aef8429081e18a16a9df13a9c6c9313fe25da",
+        "source/external_reader/source/radar_map.h": "34bfd768bb72dfbaf3750f57c91cb6bddefa85fe9a247f191595b9b11445df90"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse/fixture"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O2",
+        "-pthread",
+        "-I",
+        "source/external_reader/source",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse/production.d",
+        "source/assist/tests/terrain_storage_pool.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse/fixture"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse/run.log",
+      "steps": [
+        {
+          "stage": "compile",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-UNDEBUG",
+            "-O2",
+            "-pthread",
+            "-I",
+            "source/external_reader/source",
+            "-MMD",
+            "-MF",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse/production.d",
+            "source/assist/tests/terrain_storage_pool.cpp",
+            "-o",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse/compile.log"
+        },
+        {
+          "stage": "run",
+          "command": [
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse/run.log"
+        }
+      ]
+    },
+    {
+      "name": "console_receipt_order",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_receipt_order",
+      "test_source_paths": [
+        "source/suite/tests/console_receipt_order_test.mjs"
+      ],
+      "production_source_paths": [
+        "source/suite/frontend/app.js"
+      ],
+      "planning_source_sha256": {
+        "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+        "source/suite/tests/console_receipt_order_test.mjs": "5c19ea621b9131f56eef0feacfeb71f097239841c5296064cd20f6f66d89b5ff"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "node",
+        "source/suite/tests/console_receipt_order_test.mjs"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_receipt_order/run.log",
+      "steps": [
+        {
+          "stage": "run",
+          "command": [
+            "node",
+            "source/suite/tests/console_receipt_order_test.mjs"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_receipt_order/run.log"
+        }
+      ]
+    },
+    {
+      "name": "catalogue_recovery",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery",
+      "test_source_paths": [
+        "source/unit_monitor/tests/catalogue_recovery.cpp",
+        "source/unit_monitor/tests/round_transition.cpp"
+      ],
+      "production_source_paths": [
+        "source/external_reader/source/layout_probe.h",
+        "source/unit_monitor/source/sampler.h"
+      ],
+      "planning_source_sha256": {
+        "source/external_reader/source/layout_probe.h": "cf682e591d80868fac944652a1d9cddca445f5d85ab878b2e88209279b0b27f0",
+        "source/unit_monitor/source/sampler.h": "024afa933113f07f31b02a3aff91e4a587d34c15a6a83c1419ea5e3fab235664",
+        "source/unit_monitor/tests/catalogue_recovery.cpp": "10f8cf82b536f930dad5c547b1bd24bc39741ff6473d75f5f4040d3f408d3092",
+        "source/unit_monitor/tests/round_transition.cpp": "e97e5d1712d56ebc21c80e3e8303c35c87f7a79ab31f48d5a0e6b0738ce3c038"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/fixture"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O2",
+        "-pthread",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/production.d",
+        "source/unit_monitor/tests/catalogue_recovery.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/fixture"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/run.log",
+      "steps": [
+        {
+          "stage": "compile",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-UNDEBUG",
+            "-O2",
+            "-pthread",
+            "-MMD",
+            "-MF",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/production.d",
+            "source/unit_monitor/tests/catalogue_recovery.cpp",
+            "-o",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/compile.log"
+        },
+        {
+          "stage": "run",
+          "command": [
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/run.log"
+        }
+      ]
+    },
+    {
+      "name": "planner_batch_delivery",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery",
+      "test_source_paths": [
+        "source/assist/tests/planner_batch_delivery.cpp"
+      ],
+      "production_source_paths": [
+        "source/assist/source/external_planner.h",
+        "source/assist/source/planner_task.h",
+        "source/assist/source/value_task.h",
+        "source/shared/source/latest_worker.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/external_planner.h": "2a3e8399e55e35bc650794abb1caf2d4d208d83df43153686c8a553a8286f04d",
+        "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+        "source/assist/source/value_task.h": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204",
+        "source/assist/tests/planner_batch_delivery.cpp": "ca32e7f7222a05af7578c9315116a2da0ca0752bc1edf38c12c7ac2a2a994939",
+        "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/fixture"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O2",
+        "-pthread",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/production.d",
+        "source/assist/tests/planner_batch_delivery.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/fixture"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/run.log",
+      "steps": [
+        {
+          "stage": "compile",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-UNDEBUG",
+            "-O2",
+            "-pthread",
+            "-MMD",
+            "-MF",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/production.d",
+            "source/assist/tests/planner_batch_delivery.cpp",
+            "-o",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/compile.log"
+        },
+        {
+          "stage": "run",
+          "command": [
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/run.log"
+        }
+      ]
+    },
+    {
+      "name": "scene_extra_recovery",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery",
+      "test_source_paths": [
+        "source/assist/tests/game_assets_host_test.py",
+        "source/assist/tests/scene_extra_recovery.cpp",
+        "source/assist/tests/scene_extra_recovery.py"
+      ],
+      "production_source_paths": [
+        "source/external_reader/source/camera_assets.h",
+        "source/external_reader/source/camera_raster.h",
+        "source/external_reader/source/radar_decoration.h",
+        "source/external_reader/source/radar_scene.h",
+        "source/external_reader/source/scene_extra_layers.h",
+        "source/external_reader/source/world_scene_pipeline.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/tests/game_assets_host_test.py": "4965c42fa325878bd803f0c6b8697bdfe9066f5066588017c5832ac2a2b72a4e",
+        "source/assist/tests/scene_extra_recovery.cpp": "4b0d2fc7b113608c215497f4e342ab5bf56f6cc11202fa2767fc5aa3a1281931",
+        "source/assist/tests/scene_extra_recovery.py": "55b939dde88a8eefbb00257a19d02950cb10d1691a4af4fbcda96d6e31a266bc",
+        "source/external_reader/source/camera_assets.h": "b33669cbf6bb0430c773e5cd93f37a71403766e04bef557fff955b16bca3c0bd",
+        "source/external_reader/source/camera_raster.h": "c3bc498d9df00868387f6b477025f558236dc2f8ff1a16a9c94ee59eb8af11d5",
+        "source/external_reader/source/radar_decoration.h": "382d4e342fba4ad41593235b561de312504bb25aa7f771cfba035df0ce005447",
+        "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659",
+        "source/external_reader/source/scene_extra_layers.h": "06228a805780f79684162a046032dd3344fdf741245fd0344de22861e851965b",
+        "source/external_reader/source/world_scene_pipeline.h": "56b55686556b7fef84e0a3463cf6997dfdcf1be1e74237fc69923cce88793f8b"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/scene_extra_recovery.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery/run.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/scene_extra_recovery.py",
+            "--output",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "planner_defense_delivery",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery",
+      "test_source_paths": [
+        "source/assist/tests/planner_defense_delivery.cpp"
+      ],
+      "production_source_paths": [
+        "source/assist/source/external_planner.h",
+        "source/assist/source/planner_task.h",
+        "source/assist/source/value_task.h",
+        "source/shared/source/latest_worker.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/external_planner.h": "2a3e8399e55e35bc650794abb1caf2d4d208d83df43153686c8a553a8286f04d",
+        "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+        "source/assist/source/value_task.h": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204",
+        "source/assist/tests/planner_defense_delivery.cpp": "b57101673ef6536715116f76886bce38f1bb202d318e5dbddb3941f6298e5bf7",
+        "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery/fixture"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O2",
+        "-pthread",
+        "-Wall",
+        "-Wextra",
+        "-pedantic",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery/production.d",
+        "source/assist/tests/planner_defense_delivery.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery/fixture"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery/run.log",
+      "steps": [
+        {
+          "stage": "compile",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-UNDEBUG",
+            "-O2",
+            "-pthread",
+            "-Wall",
+            "-Wextra",
+            "-pedantic",
+            "-MMD",
+            "-MF",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery/production.d",
+            "source/assist/tests/planner_defense_delivery.cpp",
+            "-o",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery/compile.log"
+        },
+        {
+          "stage": "run",
+          "command": [
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery/run.log"
+        }
+      ]
+    },
+    {
+      "name": "missile_manual_lifecycle",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_lifecycle",
+      "test_source_paths": [
+        "source/assist/tests/missile_manual_lifecycle.py"
+      ],
+      "production_source_paths": [
+        "source/assist/source/missile_bridge.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/missile_bridge.h": "10e5909ba978b416e3809fb255c6762d675b473ef92d8e4228aa54817b7bfe70",
+        "source/assist/tests/missile_manual_lifecycle.py": "954f07adae311791ea1d0a4a1014fe390b61bf9312be3f85b3cb23253d29a11e"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/missile_manual_lifecycle.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_lifecycle"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_lifecycle/run.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/missile_manual_lifecycle.py",
+            "--output",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_lifecycle"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_lifecycle/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "missile_manual_capacity",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity",
+      "test_source_paths": [
+        "source/assist/tests/missile_manual_capacity.py"
+      ],
+      "production_source_paths": [
+        "source/assist/source/compute_frame.h",
+        "source/assist/source/compute_input_copy.h",
+        "source/assist/source/compute_policy.h",
+        "source/assist/source/missile_bridge.h",
+        "source/assist/source/missile_compute.h",
+        "source/assist/source/object_index.h",
+        "source/assist/source/plan_freshness.h",
+        "source/assist/source/planner_types.h",
+        "source/assist/source/unit_task_arbiter.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/compute_frame.h": "a88d6f9e3a79dad611a338ee0a60ac426bf40b96a627694534e482f125c54b55",
+        "source/assist/source/compute_input_copy.h": "71dfa9f605c10b3ccf058b1372370950b0b5e4a1672542cfe3fe3d4e888ca7b7",
+        "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+        "source/assist/source/missile_bridge.h": "10e5909ba978b416e3809fb255c6762d675b473ef92d8e4228aa54817b7bfe70",
+        "source/assist/source/missile_compute.h": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+        "source/assist/source/object_index.h": "6c5d6f8a3760b50cab0fc5274d7517bd96feb539bf0bd92a1225918f1ece8f8c",
+        "source/assist/source/plan_freshness.h": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c",
+        "source/assist/source/planner_types.h": "c4215d8d6328d492b548efa48d26aa2da4fef7a1d1328d57e9bd2e245071ffcc",
+        "source/assist/source/unit_task_arbiter.h": "86e4278cd05ba68d44f0ac9a8a292d16f5db00198e32ef865b10f85b556dd0a9",
+        "source/assist/tests/missile_manual_capacity.py": "26e5b147545a26421059444579699d76306aacf48497fad39843d0664bf61469"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/missile_manual_capacity.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/run.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/missile_manual_capacity.py",
+            "--output",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "patrol_capacity",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity",
+      "test_source_paths": [
+        "source/assist/tests/mo_patrol_capacity.cpp"
+      ],
+      "production_source_paths": [
+        "source/assist/source/mo_orders.h",
+        "source/assist/source/mo_patrol_graph.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/mo_orders.h": "a7f38b1e0c4aeff688d6ee238bc74ca1fe7ddee3a71d5d2ea7af03c1a02fe7b3",
+        "source/assist/source/mo_patrol_graph.h": "0496df478d3698635267542c4a983078db6af7c89cfbbe9ec37da6998bd7e278",
+        "source/assist/tests/mo_patrol_capacity.cpp": "a9e5a82e43796bc011fa4cbd6f628eab129402eb7b5647801375b00224e34924"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity/fixture"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O1",
+        "-g",
+        "-fsanitize=address",
+        "-fno-omit-frame-pointer",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity/production.d",
+        "source/assist/tests/mo_patrol_capacity.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity/fixture"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity/run.log",
+      "steps": [
+        {
+          "stage": "compile",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-UNDEBUG",
+            "-O1",
+            "-g",
+            "-fsanitize=address",
+            "-fno-omit-frame-pointer",
+            "-MMD",
+            "-MF",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity/production.d",
+            "source/assist/tests/mo_patrol_capacity.cpp",
+            "-o",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity/compile.log"
+        },
+        {
+          "stage": "run",
+          "command": [
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity/run.log"
+        }
+      ],
+      "note": "AddressSanitizer remains enabled; LeakSanitizer disabled for executor proc/ptrace restriction."
+    },
+    {
+      "name": "patrol_small_buffer",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer",
+      "test_source_paths": [
+        "source/assist/tests/mo_patrol_capacity.cpp"
+      ],
+      "production_source_paths": [
+        "source/assist/source/mo_orders.h",
+        "source/assist/source/mo_patrol_graph.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/mo_orders.h": "a7f38b1e0c4aeff688d6ee238bc74ca1fe7ddee3a71d5d2ea7af03c1a02fe7b3",
+        "source/assist/source/mo_patrol_graph.h": "0496df478d3698635267542c4a983078db6af7c89cfbbe9ec37da6998bd7e278",
+        "source/assist/tests/mo_patrol_capacity.cpp": "a9e5a82e43796bc011fa4cbd6f628eab129402eb7b5647801375b00224e34924"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer/fixture",
+        "--small-buffer"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-UNDEBUG",
+        "-O1",
+        "-g",
+        "-fsanitize=address",
+        "-fno-omit-frame-pointer",
+        "-MMD",
+        "-MF",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer/production.d",
+        "source/assist/tests/mo_patrol_capacity.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer/fixture"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer/run.log",
+      "steps": [
+        {
+          "stage": "compile",
+          "command": [
+            "g++",
+            "-std=c++17",
+            "-UNDEBUG",
+            "-O1",
+            "-g",
+            "-fsanitize=address",
+            "-fno-omit-frame-pointer",
+            "-MMD",
+            "-MF",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer/production.d",
+            "source/assist/tests/mo_patrol_capacity.cpp",
+            "-o",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer/fixture"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer/compile.log"
+        },
+        {
+          "stage": "run",
+          "command": [
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer/fixture",
+            "--small-buffer"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer/run.log"
+        }
+      ],
+      "note": "AddressSanitizer remains enabled; LeakSanitizer disabled for executor proc/ptrace restriction."
+    },
+    {
+      "name": "selection_catalogue_identity",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/selection_catalogue_identity",
+      "test_source_paths": [
+        "source/assist/tests/selection_catalogue_identity.py"
+      ],
+      "production_source_paths": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp",
+        "source/assist/source/protocol.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/bridge.cpp": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1",
+        "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+        "source/assist/source/protocol.h": "4e8f8b72aee03f7175cb0bcc4766af3cf8360463f04e93656d7bd4b92985e331",
+        "source/assist/tests/selection_catalogue_identity.py": "8442a37e2688fd4ac6085dfee34497f0e6450234427eeb7f58f1875bc624bd0c"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/selection_catalogue_identity.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/selection_catalogue_identity",
+        "--label",
+        "current"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/selection_catalogue_identity/selection_catalogue_current_1.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/selection_catalogue_identity.py",
+            "--output",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/selection_catalogue_identity",
+            "--label",
+            "current"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/selection_catalogue_identity/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "toast_clock_wrap",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap",
+      "test_source_paths": [
+        "source/assist/tests/toast_clock_wrap.py"
+      ],
+      "production_source_paths": [
+        "source/assist/source/main.cpp"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+        "source/assist/tests/toast_clock_wrap.py": "0f236a616fb69becdda017b782c2ed1bc6320d8270af5ee87da613b6eeb1e3af"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/toast_clock_wrap.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap",
+        "--label",
+        "current"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap/toast_clock_current_1.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/toast_clock_wrap.py",
+            "--output",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap",
+            "--label",
+            "current"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "console_composition",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_composition",
+      "test_source_paths": [
+        "source/suite/tests/console_composition_test.mjs"
+      ],
+      "production_source_paths": [
+        "source/suite/frontend/app.js"
+      ],
+      "planning_source_sha256": {
+        "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+        "source/suite/tests/console_composition_test.mjs": "4bb04751ba7aaca9f351b462bc9d7dff6e33b6fc9991d074f7bacb0d1ffdac67"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "node",
+        "source/suite/tests/console_composition_test.mjs"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_composition/run.log",
+      "steps": [
+        {
+          "stage": "run",
+          "command": [
+            "node",
+            "source/suite/tests/console_composition_test.mjs"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_composition/run.log"
+        }
+      ]
+    },
+    {
+      "name": "console_hotkey_presentation",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_hotkey_presentation",
+      "test_source_paths": [
+        "source/suite/tests/console_hotkey_presentation_test.mjs"
+      ],
+      "production_source_paths": [
+        "source/suite/frontend/app.js"
+      ],
+      "planning_source_sha256": {
+        "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+        "source/suite/tests/console_hotkey_presentation_test.mjs": "18f3a644f21c76650e98d58481fb14622625ab9e50e13488c46021749e1553cc"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "node",
+        "source/suite/tests/console_hotkey_presentation_test.mjs"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_hotkey_presentation/run.log",
+      "steps": [
+        {
+          "stage": "run",
+          "command": [
+            "node",
+            "source/suite/tests/console_hotkey_presentation_test.mjs"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_hotkey_presentation/run.log"
+        }
+      ]
+    },
+    {
+      "name": "secondary_drag_bounds",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_drag_bounds",
+      "test_source_paths": [
+        "source/unit_monitor/tests/secondary_drag_bounds.py"
+      ],
+      "production_source_paths": [
+        "source/unit_monitor/source/main.cpp"
+      ],
+      "planning_source_sha256": {
+        "source/unit_monitor/source/main.cpp": "c8651e8e734e1b86e38056040acef64d0f51e1f786b927198c3ab3ae07d23fc3",
+        "source/unit_monitor/tests/secondary_drag_bounds.py": "7abda39335a7eefcad3875e05ca3bf02fbaa1f70087e3889ef65e4789f69124e"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/unit_monitor/tests/secondary_drag_bounds.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_drag_bounds"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_drag_bounds/secondary_drag_current_1.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/unit_monitor/tests/secondary_drag_bounds.py",
+            "--output",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_drag_bounds"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_drag_bounds/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "secondary_render_retry",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry",
+      "test_source_paths": [
+        "source/unit_monitor/tests/secondary_render_retry.py"
+      ],
+      "production_source_paths": [
+        "source/unit_monitor/source/main.cpp"
+      ],
+      "planning_source_sha256": {
+        "source/unit_monitor/source/main.cpp": "c8651e8e734e1b86e38056040acef64d0f51e1f786b927198c3ab3ae07d23fc3",
+        "source/unit_monitor/tests/secondary_render_retry.py": "4d7403556dccde6c6e614d62ca4e83863b270aa3c91d6ff6b079fe21d504bc1f"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/unit_monitor/tests/secondary_render_retry.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry",
+        "--label",
+        "current"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry/secondary_render_retry_current_1.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/unit_monitor/tests/secondary_render_retry.py",
+            "--output",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry",
+            "--label",
+            "current"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "icon_cache_reopen",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen",
+      "test_source_paths": [
+        "source/unit_monitor/tests/icon_cache_reopen.py"
+      ],
+      "production_source_paths": [
+        "source/unit_monitor/source/core.h",
+        "source/unit_monitor/source/icon_cache.h"
+      ],
+      "planning_source_sha256": {
+        "source/unit_monitor/source/core.h": "55a53aec7eabf94ba2f891dad3b2b0ea959fe268e3b2091c52bbb535afd87881",
+        "source/unit_monitor/source/icon_cache.h": "11d4846950493a6518eb0f0dba07187265dea55bf8ab397378b22272130f8594",
+        "source/unit_monitor/tests/icon_cache_reopen.py": "09906c0e895d40291511559eb8962c4aa790ba1d0e0d436dc813470f276c7224"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/unit_monitor/tests/icon_cache_reopen.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen",
+        "--label",
+        "current"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen/icon_cache_reopen_current_1.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/unit_monitor/tests/icon_cache_reopen.py",
+            "--output",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen",
+            "--label",
+            "current"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "superweapon_result_feedback",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/superweapon_result_feedback",
+      "test_source_paths": [
+        "source/assist/tests/superweapon_result_feedback.py"
+      ],
+      "production_source_paths": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp",
+        "source/assist/source/superweapon_sidebar_bridge.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/bridge.cpp": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1",
+        "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+        "source/assist/source/superweapon_sidebar_bridge.h": "cc1dd3519c7b6920f238899bc9a321369e57e8e307553e886dbb6cb5df8d2fed",
+        "source/assist/tests/superweapon_result_feedback.py": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/superweapon_result_feedback.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/superweapon_result_feedback"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/superweapon_result_feedback/run.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/superweapon_result_feedback.py",
+            "--out",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/superweapon_result_feedback"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/superweapon_result_feedback/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "pause_key_pairing",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/pause_key_pairing",
+      "test_source_paths": [
+        "source/assist/tests/pause_key_pairing.py",
+        "source/assist/tests/superweapon_result_feedback.py"
+      ],
+      "production_source_paths": [
+        "source/assist/source/hotkey_routes.h",
+        "source/assist/source/native_message_policy.h",
+        "source/assist/source/pause_view_bridge.h",
+        "source/assist/source/pause_view_policy.h",
+        "source/assist/source/pointer_intent.h",
+        "source/game_runtime/source/runtime.cpp",
+        "source/shared/source/key_gesture.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/hotkey_routes.h": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce",
+        "source/assist/source/native_message_policy.h": "3614887a2b8b3f198fa39949cfbf7989e715c4d0f4455a127172d3124762dbc5",
+        "source/assist/source/pause_view_bridge.h": "308cfc708df137b36853ce425cdfc043d2ac2a073e36446301f532bb39a7f7b5",
+        "source/assist/source/pause_view_policy.h": "f6e2fee547035c36ec70719b21ea733533b2d5b39b56adc88391d961396ea2f2",
+        "source/assist/source/pointer_intent.h": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1",
+        "source/assist/tests/pause_key_pairing.py": "83c68c66d901616bbdd5252f5b509eba9497cbf34d01df696c99370c13ab53e1",
+        "source/assist/tests/superweapon_result_feedback.py": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83",
+        "source/game_runtime/source/runtime.cpp": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d",
+        "source/shared/source/key_gesture.h": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/pause_key_pairing.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/pause_key_pairing"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/pause_key_pairing/run.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/pause_key_pairing.py",
+            "--out",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/pause_key_pairing"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/pause_key_pairing/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "native_mouse_pairing",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing",
+      "test_source_paths": [
+        "source/assist/tests/native_mouse_pairing.py",
+        "source/assist/tests/pause_key_pairing.py",
+        "source/assist/tests/superweapon_result_feedback.py"
+      ],
+      "production_source_paths": [
+        "source/assist/source/hotkey_routes.h",
+        "source/assist/source/native_message_policy.h",
+        "source/assist/source/pause_view_bridge.h",
+        "source/assist/source/pause_view_policy.h",
+        "source/assist/source/pointer_host.h",
+        "source/assist/source/pointer_intent.h",
+        "source/game_runtime/source/runtime.cpp",
+        "source/shared/source/key_gesture.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/hotkey_routes.h": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce",
+        "source/assist/source/native_message_policy.h": "3614887a2b8b3f198fa39949cfbf7989e715c4d0f4455a127172d3124762dbc5",
+        "source/assist/source/pause_view_bridge.h": "308cfc708df137b36853ce425cdfc043d2ac2a073e36446301f532bb39a7f7b5",
+        "source/assist/source/pause_view_policy.h": "f6e2fee547035c36ec70719b21ea733533b2d5b39b56adc88391d961396ea2f2",
+        "source/assist/source/pointer_host.h": "dd8ef5dfa63d3be792d2014619249fa4391f49186424cf1cf59a346214875d6a",
+        "source/assist/source/pointer_intent.h": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1",
+        "source/assist/tests/native_mouse_pairing.py": "064f3713519d3e344c826df9bf10839f6e1f84976eff303699b0515092a9294e",
+        "source/assist/tests/pause_key_pairing.py": "83c68c66d901616bbdd5252f5b509eba9497cbf34d01df696c99370c13ab53e1",
+        "source/assist/tests/superweapon_result_feedback.py": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83",
+        "source/game_runtime/source/runtime.cpp": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d",
+        "source/shared/source/key_gesture.h": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/native_mouse_pairing.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing/run.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/native_mouse_pairing.py",
+            "--out",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "passenger_frame_sampling",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/passenger_frame_sampling",
+      "test_source_paths": [
+        "source/assist/tests/passenger_frame_sampling.cpp",
+        "source/assist/tests/passenger_frame_sampling.py",
+        "source/assist/tests/world_frame_core.cpp",
+        "source/assist/tests/world_frame_core_test.py",
+        "source/tests/winmock/windows.h"
+      ],
+      "production_source_paths": [
+        "source/assist/source/display_sample_lease.h",
+        "source/assist/source/label_motion.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/passenger_draw.h",
+        "source/assist/source/passenger_motion.h",
+        "source/external_reader/source/game_view.h",
+        "source/external_reader/source/passenger_bubbles.h",
+        "source/external_reader/source/process_reader.h",
+        "source/shared/source/world_frame.h",
+        "source/shared/source/world_frame_capture.h",
+        "source/shared/source/world_frame_transport.h"
+      ],
+      "planning_source_sha256": {
+        "source/assist/source/display_sample_lease.h": "ab9d7035595cb45da27bfa5bef3d4a0dc89581339f4899b4d8a97c03f22b01cd",
+        "source/assist/source/label_motion.h": "a1c11d506dad1118f7584913798fb19046209058fc7f73129c396dae11671e85",
+        "source/assist/source/main.cpp": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+        "source/assist/source/passenger_draw.h": "123eba0051124e5fef8884bb77ba9b8860d1866084b4b8a8a2ca30ee763916b5",
+        "source/assist/source/passenger_motion.h": "c15bb3ba5f03cccc8e4a6f8b31ff680dba521bac2d70dc1f33c7ec3396e0e6df",
+        "source/assist/tests/passenger_frame_sampling.cpp": "fb790fb5f3ed0c6c8fadca22803b710a9e6abaad283088f8598baf39f4a1c497",
+        "source/assist/tests/passenger_frame_sampling.py": "ae534cd354e2c29d2b9a75e59fffdd8d159b888360d961044acc04dd657bb211",
+        "source/assist/tests/world_frame_core.cpp": "71ef592d6442a3c9ea35e8e4688e355968393251d19e320a9c5b7f176da2472c",
+        "source/assist/tests/world_frame_core_test.py": "2ee49da359b7d77f4c8decc816c28e19065975a8c680caac093fe28dba63f13d",
+        "source/external_reader/source/game_view.h": "1cb66241d90ea90ed29b516651a7ba8313a672364ee542e6a051dd2aa6123063",
+        "source/external_reader/source/passenger_bubbles.h": "23e8c3466eeaee760f123f304dafdbe6718cc0294a430ab08ff0b02b33f05aa7",
+        "source/external_reader/source/process_reader.h": "f35cba703f366e776ee12f03a41a79e0e53c9e2a5a556da9d038fbdc50b62db1",
+        "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+        "source/shared/source/world_frame_capture.h": "54e646ebfe75d8614f07b0b0fb65dfb3fcaa476bb1a05d6f2eb1c55d85315b41",
+        "source/shared/source/world_frame_transport.h": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9",
+        "source/tests/winmock/windows.h": "44fc1239f939a94c7e43b9ad39f787312399a3e460fe3df9a265e161ff1f91ed"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/passenger_frame_sampling.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/passenger_frame_sampling"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/passenger_frame_sampling/run.log",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/assist/tests/passenger_frame_sampling.py",
+            "--out",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/passenger_frame_sampling"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/passenger_frame_sampling/driver.log"
+        }
+      ]
+    },
+    {
+      "name": "dependency_probes",
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "output_directory": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/dependency_probes",
+      "test_source_paths": [
+        "source/tools/test_dependency_probes.py"
+      ],
+      "production_source_paths": [
+        "source/engine/prepare_runtime.py",
+        "source/engine/runtime-dependencies.json"
+      ],
+      "planning_source_sha256": {
+        "source/engine/prepare_runtime.py": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96",
+        "source/engine/runtime-dependencies.json": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93",
+        "source/tools/test_dependency_probes.py": "e0fbe445990f95a8d76dc2db8990597db749aa5c04de04afe26e056fcd761f37"
+      },
+      "verification_level": "controlled_execution",
+      "windows_executed": false,
+      "game_tested": false,
+      "gpu_tested": false,
+      "multiplayer_tested": false,
+      "command": [
+        "python3",
+        "-B",
+        "source/tools/test_dependency_probes.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/dependency_probes"
+      ],
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/dependency_probes/receipt.json",
+      "steps": [
+        {
+          "stage": "driver",
+          "command": [
+            "python3",
+            "-B",
+            "source/tools/test_dependency_probes.py",
+            "--out",
+            "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/dependency_probes"
+          ],
+          "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/dependency_probes/driver.log"
+        }
+      ],
+      "conditional_on_engine_changes": [
+        "engine/prepare_runtime.py"
+      ]
+    }
+  ]
+}

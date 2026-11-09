@@ -1,0 +1,1 @@
+FAIL same-path open never retries after failed scope

@@ -1,0 +1,59 @@
+{
+  "name": "snapshot_reuse",
+  "started_utc": "2026-11-09T07:10:30.406231+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "ASAN_OPTIONS": "detect_leaks=0"
+  },
+  "command": [
+    "python3",
+    "-B",
+    "source/assist/tests/world_frame_reuse.py",
+    "--out",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse",
+    "--sanitize",
+    "address,undefined"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse/run.log",
+  "test_source_hashes": {
+    "source/assist/tests/world_frame_reuse.cpp": "0cd7277e95c12e764113803543605935eb0cd760462784ae5ff3067c4232dcc0",
+    "source/assist/tests/world_frame_reuse.py": "2c5a77541b4fd1326fa5c8801d41f816e64fbe7e1632e8c81d9501ad17e18838"
+  },
+  "production_source_hashes": {
+    "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+    "source/shared/source/world_frame_pool.h": "58a99f8f9d926bbff9298d68006ff3ad45d648ca6c86751f75cbaf81660a91ab",
+    "source/shared/source/world_frame_transport.h": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9"
+  },
+  "steps": [
+    {
+      "stage": "driver",
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/world_frame_reuse.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse",
+        "--sanitize",
+        "address,undefined"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse/driver.log",
+      "log_sha256": "10547392ad7190641dd4963903751007abd8d0afe7acf245c77f843e625db4e7"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse/run.log",
+  "log_sha256": "10547392ad7190641dd4963903751007abd8d0afe7acf245c77f843e625db4e7",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "completed_utc": "2026-11-09T07:10:44.532849+00:00",
+  "elapsed_seconds": 14.127,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse/execution.json"
+}

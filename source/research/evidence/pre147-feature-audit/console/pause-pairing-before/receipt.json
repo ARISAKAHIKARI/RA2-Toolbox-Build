@@ -1,0 +1,68 @@
+{
+  "test": "production pause pairing via AssistRuntimeFilter and AssistFilterMessage",
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-I/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/frozen/source/assist/source",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture.cpp",
+    "-o",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture"
+  ],
+  "compile_returncode": 0,
+  "run_command": [
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before/fixture"
+  ],
+  "run_returncode": 1,
+  "source_sha256": {
+    "pause": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pause_view_bridge.h",
+      "sha256": "68e137a5f7fb4f96bc55f2979e8ce523d368650a3a76fc8a53d2a14cd817500d"
+    },
+    "message": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/native_message_policy.h",
+      "sha256": "c779a3857556a28d305bd0e3e111103f1228fc18ac85d0df1b97d7c011502f71"
+    },
+    "registry": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/hotkey_routes.h",
+      "sha256": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce"
+    },
+    "tracker": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/shared/source/key_gesture.h",
+      "sha256": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8"
+    },
+    "policy": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pause_view_policy.h",
+      "sha256": "f6e2fee547035c36ec70719b21ea733533b2d5b39b56adc88391d961396ea2f2"
+    },
+    "pointer": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pointer_intent.h",
+      "sha256": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1"
+    },
+    "test": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/pause_key_pairing.py",
+      "sha256": "24736415b9da313f400437ab57d9f6267c2dfb9b5d7a01e8d20dc9b680df5856"
+    },
+    "extractor": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/superweapon_result_feedback.py",
+      "sha256": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83"
+    }
+  },
+  "function_sha256": [
+    "a9c993a7682e6e5631f798b979528a92d3cf8eb7a42b063d06a9889889384736",
+    "8eac78ffd7e2026a225f4a4176187740112d46269b47c6d8ad4ee49e40d5e595",
+    "cd68fdacdff8e902e5260c5f7499638b4ef0168a46cda4f69c2c85e7ad7a35e0",
+    "efdb566750dcd318a514180dd7ef1c1e34203fb17b9ac6506bd23164137163a6",
+    "6c5bce0c9b7ce187310ac052aad4f682f376d0f67f1c297b8ea71f4e50678bb4"
+  ],
+  "scope": "Linux controlled production input path; Win32 delivery, native memory/patch and unrelated inactive features are seams",
+  "windows_executed": false,
+  "game_executed": false,
+  "result": {
+    "checks": 22,
+    "failures": 4,
+    "passed": false
+  }
+}

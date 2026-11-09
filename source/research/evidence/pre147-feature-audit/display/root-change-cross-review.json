@@ -1,0 +1,66 @@
+{
+  "reviewer": "audit_all_display",
+  "reviewed_utc": "2026-11-09T06:42:32.418635+00:00",
+  "scope": "Independent source review of root-owned toast clock and catalogue-bound selection fixes",
+  "new_blocking_findings": [],
+  "source_sha256": {
+    "source/assist/source/main.cpp": "0ae4658a9775e742af6def596e63eb4c5c286995becbc60d1fed1a40ef4d425f",
+    "source/assist/source/bridge.cpp": "c122b39a30a2d53e9964f0e5dbfcea0f30e0f859cd8a76b8179ca570880488b1",
+    "source/assist/source/protocol.h": "4e8f8b72aee03f7175cb0bcc4766af3cf8360463f04e93656d7bd4b92985e331"
+  },
+  "checks": [
+    {
+      "item": "toastActive lifetime",
+      "refs": [
+        "main.cpp:134",
+        "main.cpp:261-262",
+        "main.cpp:1719",
+        "main.cpp:2392-2410"
+      ],
+      "result": "Explicit active flag separates no notification from valid wrapped deadline 0; notify replaces deadline; painting/status share activeToast; expiration retires once; new match clears both state fields. Saved duration remains 500..60000ms.",
+      "verification": "source review plus inspection of root before/current 15-check receipts; no extra OS timer or Windows paint run"
+    },
+    {
+      "item": "Host selection identity",
+      "refs": [
+        "main.cpp:838-868",
+        "main.cpp:995-1004",
+        "main.cpp:1475"
+      ],
+      "result": "Capture PID/match/catalogue hash and created time before ensureBridge; reject changed/unknown match, PID, expired pending and stale index/mask; publish original timestamp and hash only into idle selection mailbox; teardown/error clears pending.",
+      "verification": "source review plus root controlled-extraction receipt inspection"
+    },
+    {
+      "item": "Runtime selection identity",
+      "refs": [
+        "bridge.cpp:889-897",
+        "bridge.cpp:1342-1376",
+        "protocol.h:68-72",
+        "protocol.h:267-269"
+      ],
+      "result": "Consume rejects stale match/age/hash for nonnegative index and -3 mask, while -2 variant and -4 aircraft UID remain catalogue-independent; results/count publish before ACK; catalogue refreshed before command consumption in current tick.",
+      "verification": "source review; game object methods not executed by this reviewer"
+    },
+    {
+      "item": "Protocol compatibility",
+      "refs": [
+        "protocol.h:30-39",
+        "protocol.h:267-269",
+        "main.cpp:1079-1128",
+        "bridge.cpp:1290-1293"
+      ],
+      "result": "Shared tail appends uint64 hash, Version 102 derives common mapping namespace, both binaries export Version/sizeof Shared and Host validates module identity; no guessed engine ABI changes.",
+      "verification": "source review only; final Windows binary/ABI cross-build belongs to root"
+    }
+  ],
+  "root_receipts": [
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/root/toast_clock_before.receipt.json",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/root/toast_clock_current.receipt.json",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/root/selection_catalogue_before.receipt.json",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/root/selection_catalogue_current.receipt.json"
+  ],
+  "limits": [
+    "Did not run Windows/game/GPU/multiplayer.",
+    "Hashes capture review time; root may subsequently edit these shared files and regenerate final evidence."
+  ]
+}
