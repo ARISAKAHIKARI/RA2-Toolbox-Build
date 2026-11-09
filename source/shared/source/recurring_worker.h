@@ -55,10 +55,21 @@ public:
  explicit Recurring(std::function<std::shared_ptr<const Output>(const Input&)> work,std::function<void()> completed={}):work_(std::move(work)),completed_(std::move(completed)){}
  ~Recurring(){shutdown();}
  void submit(Input input,int rate,std::chrono::milliseconds lease=std::chrono::milliseconds(500)){
-  auto next=std::make_shared<const Input>(std::move(input));std::lock_guard<std::mutex>lock(mutex_);if(stop_)return;
-  rate=std::clamp(rate,5,1000);auto now=Clock::now();if(!input_||rate!=rate_)due_=now;
-  input_.swap(next);rate_=rate;expires_=now+lease;
-  if(!thread_.joinable())thread_=std::thread([this]{run();});cv_.notify_one();
+  submitShared(std::make_shared<const Input>(std::move(input)),rate,lease);
+ }
+ // Multiple consumers may share one immutable configuration. Lease renewals
+ // and replacement inputs at the same cadence are consumed at the next due
+ // time; waking a timer for each UI paint only makes it re-arm the same wait.
+ void submitShared(std::shared_ptr<const Input> next,int rate,std::chrono::milliseconds lease=std::chrono::milliseconds(500)){
+  if(!next)return;
+  std::lock_guard<std::mutex>lock(mutex_);if(stop_)return;
+  rate=std::clamp(rate,5,1000);auto now=Clock::now();
+  const bool restart=!input_||now>=expires_||rate!=rate_;
+  const auto expires=now+lease;const bool wake=restart||expires<expires_;
+  if(restart)due_=now;
+  input_.swap(next);rate_=rate;expires_=expires;
+  if(!thread_.joinable())thread_=std::thread([this]{run();});
+  if(wake)cv_.notify_one();
  }
  std::shared_ptr<const Output> get(){std::lock_guard<std::mutex>lock(mutex_);return latest_;}
  WorkerFailures failures()const noexcept{return failures_.get();}

@@ -11,6 +11,7 @@ import subprocess
 parser = argparse.ArgumentParser()
 parser.add_argument('--out', type=Path, required=True)
 parser.add_argument('--baseline', default='e5e9abd69cdf2963f7bef3dd8fbc3e12c4537a63')
+parser.add_argument('--baseline-has-page-deadlines', action='store_true')
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[3]
 source = repo / 'source'
@@ -42,7 +43,9 @@ for label in ['baseline', 'current']:
     for path, raw in closure.items():
         target = work / path.relative_to(repo)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(baseline if path == transport and label == 'baseline' else raw)
+        if label == 'baseline' and '/tests/' not in str(path.relative_to(repo)):
+            raw = subprocess.check_output(['git', 'show', args.baseline + ':' + str(path.relative_to(repo))], cwd=repo)
+        target.write_bytes(raw)
     header = work / transport.relative_to(repo)
     text = header.read_text()
     text = text.replace('namespace worldframe {', 'namespace worldframe { inline uint64_t subscriptionProbeVisits=0,subscriptionProbeSweeps=0;', 1)
@@ -60,7 +63,7 @@ for label in ['baseline', 'current']:
     binary = work / 'deadlines'
     command = ['g++', '-std=c++17', '-O2', '-pthread', '-fsanitize=undefined', '-fno-sanitize-recover=all',
                '-DWORLD_FRAME_SCAN_PROBE', '-I' + str(out)]
-    if label == 'current':
+    if label == 'current' or args.baseline_has_page_deadlines:
         command.append('-DEXPECT_DEADLINE')
     command += [str(work / seed.relative_to(repo)), '-o', str(binary)]
     build = subprocess.run(command, capture_output=True, text=True)

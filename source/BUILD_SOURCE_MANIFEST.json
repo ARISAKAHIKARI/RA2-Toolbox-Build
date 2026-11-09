@@ -1,6 +1,6 @@
 {
-  "name": "RA2 Toolbox 1.0.47-pre.7",
-  "version": "1.0.47-pre.7",
+  "name": "RA2 Toolbox 1.0.47-pre.8",
+  "version": "1.0.47-pre.8",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
@@ -1336,5 +1336,23 @@
       "read_only_lifecycle_integration"
     ],
     "research_note": "research/2026-11-09-pre147-feature-entry-recovery.md"
+  },
+  "SamplingScheduler147Pre8": {
+    "version": "1.0.47-pre.8",
+    "base_remote_commit": "f1e50c4512040f99f8dd2e8eb16990e3b7e64c83",
+    "changes": [
+      "Seqlock-validated unchanged-frame polling with ordinary connection/subscription work at least every 50ms",
+      "Demand-mask expiry caching without changing independent feature leases",
+      "Adjacent unobserved dependency pages coalesced into at most 64KiB reads with per-page fallback",
+      "Shared immutable render request and same-rate renewal without waking the existing deadline",
+      "Empty host input manager uses 250ms timer; active and failed-cleanup targets retain 4ms or focused tactical 1ms cadence"
+    ],
+    "preserved": [
+      "1000Hz observation target independent from presentation frequency",
+      "Source timestamps and per-game-frame capture identity",
+      "Prior worker recovery and GPU phase-region composition",
+      "Assist103 / Cursor155 / Runtime4 / 23162552-byte Shared"
+    ],
+    "verification": "Current portable comparisons and source-bound regressions; build, ABI and archive receipts accompany delivery. No real Windows/game/physical GPU/multiplayer acceptance asserted."
   }
 }

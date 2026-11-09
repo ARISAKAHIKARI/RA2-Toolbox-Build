@@ -31,6 +31,7 @@ class ProcessReader : public ReaderDiagnostics {
  std::shared_ptr<const ProcessConnection> connection_;
  std::shared_ptr<worldframe::Client> worldClient_;worldframe::Token worldFrame_;
  uint32_t worldDemand_=worldframe::Base;
+ uint32_t worldSubscribedAt_=0;
  std::array<uint64_t,8192> worldDemandBits_{};std::vector<uint32_t> worldDemands_;bool worldComplete_=true;
  bool frameRead(uint32_t address,void*out,size_t size,bool optional=false){
   if(!out||!worldframe::range(address,size)){++errors;if(!optional)worldComplete_=false;return false;}
@@ -127,7 +128,14 @@ public:
   worldClient_->subscribe(uintptr_t(this),worldDemand_);
   if(!frame)frame=worldClient_->acquire(match);else if(!worldClient_->accepts(frame))return false;
   if(!frame||!frame->sealed()||frame->key.pid!=pid()||frame->key.owner!=GetCurrentProcessId()||(match&&frame->key.match!=match))return false;
-  worldFrame_=std::move(frame);worldComplete_=true;return true;
+  worldFrame_=std::move(frame);worldComplete_=true;worldSubscribedAt_=GetTickCount();return true;
+ }
+ bool unchangedWorldFrame(const worldframe::Token&frame,uint32_t now){
+  // Full connection/liveness and demand maintenance still runs at least
+  // every 50 ms, including paused games. Never extend a source timestamp.
+  return worldClient_&&frame&&frame->key.pid==pid()&&
+   ((uint64_t(frame->key.connectionHigh)<<32)|frame->key.connectionLow)==generation()&&
+   uint32_t(now-worldSubscribedAt_)<50&&worldClient_->unchanged(frame,now);
  }
  void endWorldFrame(){
   if(worldClient_&&!worldDemands_.empty())worldClient_->request(worldDemands_);

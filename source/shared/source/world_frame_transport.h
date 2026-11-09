@@ -110,6 +110,7 @@ class Client {
  struct Lease {std::array<uint32_t,6>ticks{};uint32_t used=0;};std::unordered_map<uintptr_t,Lease>leases_;
  std::unordered_map<uint32_t,uint32_t> wanted_;uint32_t publishedAt_=0,prunedAt_=0;
  uint32_t expiryCheckedAt_=0,expiryAfter_=0;
+ uint32_t demandCheckedAt_=0,demandAfter_=0;bool demandDirty_=true;
  bool wantedDirty_=false,havePublished_=false,havePruned_=false;
  void pruneRequests(uint32_t now){
   if(havePruned_&&uint32_t(now-prunedAt_)<2)return;
@@ -134,9 +135,13 @@ class Client {
   publishedAt_=now;havePublished_=true;wantedDirty_=false;
  }
  void refreshDemand(uint32_t now){
-  uint32_t combined=0;for(auto it=leases_.begin();it!=leases_.end();){uint32_t mask=0;for(unsigned bit=0;bit<6;++bit)if((it->second.used&(1u<<bit))&&uint32_t(now-it->second.ticks[bit])<=250)mask|=1u<<bit;
+  // Renewals only postpone an expiry. Until the earliest possible expiry,
+  // an unchanged set of requested bits cannot change the aggregate mask.
+  if(!demandDirty_&&uint32_t(now-demandCheckedAt_)<demandAfter_)return;
+  uint32_t combined=0,next=251;for(auto it=leases_.begin();it!=leases_.end();){uint32_t mask=0;for(unsigned bit=0;bit<6;++bit)if(it->second.used&(1u<<bit)){
+    const uint32_t age=uint32_t(now-it->second.ticks[bit]);if(age<=250){mask|=1u<<bit;next=std::min(next,251-age);}}
    if(!mask)it=leases_.erase(it);else{combined|=mask;++it;}}
-  channel_->demandMask=combined;
+  channel_->demandMask=combined;demandCheckedAt_=now;demandAfter_=next;demandDirty_=false;
  }
  void heartbeat(uint32_t now){
   channel_->heartbeat=now;refreshDemand(now);
@@ -162,13 +167,28 @@ class Client {
   // the last local reader closed. Its predecessor's demands are not its own.
   InterlockedIncrement(&channel_->demandSeq);channel_->demandCount=0;++channel_->demandRevision;
   MemoryBarrier();InterlockedIncrement(&channel_->demandSeq);channel_->demandMask=0;
-  wantedDirty_=!wanted_.empty();havePublished_=havePruned_=false;expiryAfter_=0;return true;
+  wantedDirty_=!wanted_.empty();havePublished_=havePruned_=false;expiryAfter_=0;demandDirty_=true;demandAfter_=0;return true;
  }
  void clearCopy(){latest_.reset();if(copies_)copies_->clear();copies_.reset();copiedSerial_=0;copiedSlot_=-1;copiedData_={};for(auto&view:data_)view.close();}
  void close(){clearCopy();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;}
 public:
  explicit Client(uint32_t pid,uint64_t generation):pid_(pid),owner_(GetCurrentProcessId()),generation_(generation){}
  ~Client(){close();}Client(const Client&)=delete;Client&operator=(const Client&)=delete;
+ // Cheap duplicate observation: no mapping/import, subscription scan or
+ // heartbeat renewal. The caller must periodically take the ordinary path.
+ // Read both publication and observation seqlocks: a retired/replaced world
+ // must never be hidden merely because a retained token has the same serial.
+ bool unchanged(const Token&token,uint32_t now){
+  std::lock_guard<std::mutex>lock(mutex_);
+  if(!token||token!=latest_||!valid(channel_,pid_,owner_)||!connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32)))return false;
+  const LONG active=channel_->active;if(active<0||active>1||active!=copiedSlot_)return false;
+  const auto&s=channel_->slots[active];const LONG seq=s.seq,observedSeq=channel_->observationSeq;if((seq|observedSeq)&1)return false;
+  MemoryBarrier();const Key key=s.key,observed=channel_->observed;const uint32_t count=s.count,tick=channel_->observedTick;const DataRef ref=s.data;
+  MemoryBarrier();
+  return seq==s.seq&&observedSeq==channel_->observationSeq&&active==channel_->active&&
+   !std::memcmp(&key,&token->key,sizeof(Key))&&count==token->pages.size()&&sameData(ref,copiedData_)&&
+   key.sameFrame(observed)&&uint32_t(now-tick)<=500&&connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32));
+ }
  Token acquire(uint32_t match){
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return {};
   const uint32_t now=GetTickCount();heartbeat(now);
@@ -203,6 +223,7 @@ public:
  }
  void subscribe(uintptr_t reader,uint32_t demand){
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();
+  if((demand|Base)&~uint32_t(channel_->demandMask))demandDirty_=true;
   auto&lease=leases_[reader];lease.used|=demand|Base;for(unsigned bit=0;bit<6;++bit)if((demand|Base)&(1u<<bit))lease.ticks[bit]=now;
   heartbeat(now);
  }

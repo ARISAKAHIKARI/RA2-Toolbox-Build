@@ -326,3 +326,5 @@
 - [1.0.44：Broker 非阻塞生命周期、建造预定固定锚点/世界意图与 SHA/SHP 禁用](2026-11-08-release-144-broker-reservation-assets.md)（Host/UI 修复与受控前后对照；实机未验收）
 
 - [pre.7 后台异常恢复与GPU阶段区域](2026-11-09-pre147-worker-recovery-gpu-regions.md)：Latest/Recurring异常隔离及退避、视口阶段区域派发，保留串行位移和首/末全局工作；软件Vulkan逐像素验证边界。
+
+- [pre.8 共享采集、订阅和公共调度](2026-11-09-pre147-sampling-scheduler.md)：重复样本快路径、独立租约到期缓存、依赖页合并读取、同速续租免唤醒和空闲输入计时；受控调用对照及边界。

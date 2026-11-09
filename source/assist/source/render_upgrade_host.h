@@ -76,7 +76,9 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  if(sampleGeneration!=r.generation||sampleProcess!=r.pid||sampleMatch!=r.match||sampleReveal!=r.reveal){
   sampleReader.close();last.reset();sampleGeneration=r.generation;sampleProcess=r.pid;sampleMatch=r.match;sampleReveal=r.reveal;
  }
- if(!sampleReader.open(r.pid))return {};sampleReader.begin();
+ if(last&&renderpresentation::sameProjection(last->view,r.view)&&
+    sampleReader.unchangedWorldFrame(last->current->sourceFrame,GetTickCount())){timings.add(1,0);return {};}
+ if(!sampleReader.open(r.pid))return {}; // open starts this reader epoch once.
  external::radar::FrameScope scope(sampleReader,r.match);if(!scope)return {};
  const auto token=sampleReader.worldFrameToken();
  if(last&&last->current->sourceFrame&&token&&last->current->sourceFrame->key.serial==token->key.serial&&
@@ -111,7 +113,7 @@ static asyncwork::Recurring<Request,Frame> worker([](const Request&r)->std::shar
  if(process!=r.pid||epoch!=r.match){reader.close();renderer.reset();worldPipeline.reset();process=r.pid;epoch=r.match;hasFrameCompleteTime=false;}
  if(workerGeneration!=r.generation){workerGeneration=r.generation;hasFrameCompleteTime=false;preparationMotion.reset();worldPipeline.reset();}
  if(!reader.open(r.pid)){progress=-1;return unavailable();}
- reader.begin(); // Explicit fresh page epoch for every presentation request.
+ // open has already started the fresh page epoch for this presentation.
  auto fresh=[](uint32_t p,void*out,size_t n){return reader.readLive(p,out,n);};
  external::mainview::View before;
  if(!external::mainview::sample(fresh,before,r.view.transform)||!renderpresentation::sameProjection(before,r.view)||before.frame<r.view.frame){progress=-1;return unavailable();}
@@ -342,8 +344,9 @@ static void update(POINT origin,const RECT&client,const external::display::State
  }else{layers.clear();groupLease.reset();imageToken=0;if(!fresh)feedback::hide();}
  overlaycompositor::host().replaceGroupAt(publishContext,{overlaycompositor::RenderUpgrade,feedback::SelectionLayer,feedback::CursorLayer,feedback::MessageLayer,feedback::TimerLayer,feedback::StatusLayer,feedback::RallyLayer,feedback::PlanningHighlightLayer},std::move(layers));
  if(displaying&&presentedFrame&&presentedFrame->completedAtMs!=handedOffFrameMs){handedOffFrameMs=presentedFrame->completedAtMs;completionToHandoffMs=std::max(0.,presentationNow()-handedOffFrameMs);}
- samplingWorker.submit(liveRequest,renderpresentation::ObservationRate);
- worker.submit(liveRequest,informationFPS());
+ auto sharedRequest=std::make_shared<const Request>(liveRequest);
+ samplingWorker.submitShared(sharedRequest,renderpresentation::ObservationRate);
+ worker.submitShared(std::move(sharedRequest),informationFPS());
 
  const uint32_t now=GetTickCount();
  // Scene publication, current cursor feedback and worker submission run at

@@ -36,6 +36,7 @@ public:
 struct CaptureScratch {
  CaptureSet actors,types,small,houses;
  std::vector<uint32_t>queue,list,docks;
+ std::array<uint8_t,16*PageSize>pageScratch{};
  explicit CaptureScratch(PageAllocator allocator={}):actors(allocator),types(allocator),small(allocator),houses(allocator){}
  void reset(){actors.clear();types.clear();small.clear();houses.clear();queue.clear();list.clear();docks.clear();}
  bool valid()const{return actors.valid()&&types.valid()&&small.valid()&&houses.valid();}
@@ -153,7 +154,8 @@ public:
    block(0x89C3B0,96);for(unsigned i=0;i<24;++i)auxiliary(value<uint32_t>(0x89C3B0+i*4),0x114);
   }
   for(size_t i=0;i<scratch_->queue.size();++i){if(!working())return false;actor(scratch_->queue[i]);}
-  for(uint32_t page:requests){if(!working())return false;block(page,PageSize);}
+  if(!working())return false;
+  frame_.prefetchPages(live_,requests,scratch_->pageScratch.data(),scratch_->pageScratch.size());
   return working();
  }
 };
