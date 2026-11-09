@@ -279,15 +279,29 @@ test('close-check accepts only positive safe nonce values and bounds the count',
   assert.equal(store.drafts.size,10001);assert.equal(store.closed,false);
 });
 
-test('all fifteen groups preserve pinned master controls and recover the saved collapse preference',()=>{
-  for(let group=9601;group<=9615;++group){
-    const controls=[canonical({id:1,type:'toggle',label:'开关',groupHeader:true,collapsible:true,collapsedDefault:true}),canonical({id:2,type:'label',label:'正常状态',collapsible:true})];
-    let view=groupPresentation(controls,true);assert.equal(view.collapsed,true);assert.equal(view.headers.length,1);assert.equal(view.details.length,1);
-    controls[1]=canonical({...controls[1],runtimeError:true});view=groupPresentation(controls,true);assert.equal(view.collapsed,false);assert.equal(view.forced,true);
-    controls[1]=canonical({...controls[1],runtimeError:false});assert.equal(groupPresentation(controls,true).collapsed,true);
-    assert.equal(groupPresentation(controls,false).collapsed,false);assert.equal(groupPresentation(controls,true,true).collapsed,false);
-    assert.equal(groupPresentation(controls,true,false,new Set([2])).forced,true);
-  }
+test('folding preserves pinned controls and error visibility without forcing parameter bodies open',()=>{
+  const controls=[canonical({id:1,type:'toggle',label:'开关',groupHeader:true,collapsible:true,collapsedDefault:true}),canonical({id:2,type:'label',label:'正常状态',collapsible:true})];
+  let view=groupPresentation(controls,true);assert.equal(view.collapsed,true);assert.equal(view.headers.length,1);assert.equal(view.details.length,1);assert.equal(view.hasError,false);
+  controls[1]=canonical({...controls[1],runtimeError:true});view=groupPresentation(controls,true);
+  assert.equal(view.collapsed,true,'runtime errors must not disable the user fold preference');assert.equal(view.hasError,true);
+  controls[1]=canonical({...controls[1],runtimeError:false});view=groupPresentation(controls,true,false,new Set([2]));
+  assert.equal(view.collapsed,true);assert.equal(view.hasError,true,'rejected actions remain visible as group status');
+  assert.equal(groupPresentation(controls,false).collapsed,false);assert.equal(groupPresentation(controls,true).collapsed,true);
+});
+
+test('search autoexpands groups but explicit search folds override without changing saved preference',()=>{
+  const controls=[canonical({id:1,type:'toggle',label:'开关',groupHeader:true}),canonical({id:2,type:'number',label:'参数',text:'3'})];
+  assert.equal(groupPresentation(controls,true,true).collapsed,false,'first search reveals matching parameters');
+  assert.equal(groupPresentation(controls,true,true,new Set(),true).collapsed,true,'manual search fold is effective');
+  assert.equal(groupPresentation(controls,true,true,new Set(),false).collapsed,false);
+  assert.equal(groupPresentation(controls,false,true,new Set(),true).collapsed,true);
+  assert.equal(groupPresentation(controls,true,false,new Set(),false).collapsed,true,'search override does not survive search exit');
+  assert.equal(groupPresentation(controls,false,false,new Set(),true).collapsed,false);
+});
+
+test('action hierarchy accepts explicit semantic roles and defaults unknown legacy metadata to secondary',()=>{
+  for(const role of ['primary','secondary','danger'])assert.equal(canonical({id:1,type:'button',actionRole:role}).actionRole,role);
+  for(const role of [undefined,null,'','PRIMARY','destructive',{},1])assert.equal(canonical({id:1,type:'button',actionRole:role}).actionRole,'secondary');
 });
 test('metadata and immediate actions retain the original click time and reject duplicate pending execution',()=>{
   const {store,messages}=setup([{id:1,type:'button',label:'立即自毁',immediate:true,groupHeader:true,collapsible:true,collapsedDefault:true,runtimeError:true}]);
@@ -354,7 +368,7 @@ if (!failed && process.argv.includes('--browser')) {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(),'ra2-console-'));
   const html = path.join(temporary,'console.html');
   execFileSync(process.env.CONSOLE_PYTHON || 'python3',[path.join(here,'../../tools/bundle_console.py'),'--output',html]);
-  const browser = await chromium.launch({headless:true,...(process.env.CONSOLE_BROWSER_CHANNEL?{channel:process.env.CONSOLE_BROWSER_CHANNEL}:{}),args:['--no-sandbox']});
+  const browser = await chromium.launch({headless:true,...(process.env.CONSOLE_BROWSER_CHANNEL?{channel:process.env.CONSOLE_BROWSER_CHANNEL}:{}),...(process.env.CONSOLE_BROWSER_EXECUTABLE?{executablePath:process.env.CONSOLE_BROWSER_EXECUTABLE}:{}),args:['--no-sandbox']});
   let page;const errors=[],consoleErrors=[];
   const screenshotPath=process.env.CONSOLE_SCREENSHOT || path.join(temporary,'console-desktop.png');
   const diagnosticsPrefix=screenshotPath.replace(/\.png$/i,'');
@@ -387,7 +401,7 @@ if (!failed && process.argv.includes('--browser')) {
     let revision=1;
     const snapshot=(patch={})=>({kind:'state',protocol:1,module:0,generation:1,revision:revision++,page:'cursor',title:'光标与渲染',status:'已连接 · 170 Hz',controls,...patch});
     const receive=async message=>page.evaluate(message=>window.__receive(message),message);
-    await receive({kind:'shell',protocol:1,version:'1.0.41-pre.9',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
+    await receive({kind:'shell',protocol:1,version:'1.0.46 UI fixture',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
     await receive(snapshot()); await page.getByLabel('渲染升级',{exact:true}).waitFor();
     assert.equal(await page.getByLabel('绘制方式',{exact:true}).evaluate(element=>element.closest('.setting-row').dataset.settingLevel),'secondary','ordinary parameter rows must read below feature switches');
     await page.screenshot({path:screenshotPath,fullPage:false});
@@ -404,8 +418,10 @@ if (!failed && process.argv.includes('--browser')) {
     await page.waitForFunction(()=>document.querySelector('[data-module="0"]').getAttribute('aria-selected')==='true');
     await page.keyboard.press('Control+f');await page.keyboard.type('渲染升级');
     await page.waitForFunction(()=>document.getElementById('resultCount').textContent==='找到 1 项设置');
-    assert.equal(await page.locator('#foldAll').isVisible(),false,'search results remain expanded');
-    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#foldAll').isVisible(),true,'search results retain their bulk fold action');
+    await page.locator('#foldAll').click();await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===1);assert.equal(await page.locator('.settings-group.collapsed').count(),1,'search matches can be manually folded');
+    await page.locator('#foldAll').click();await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===0);assert.equal(await page.locator('.settings-group.collapsed').count(),0);
+    await page.locator('#search').focus();await page.keyboard.press('Escape');
     await page.waitForFunction(()=>document.getElementById('search').value==='');
     await page.getByLabel('绘制方式',{exact:true}).waitFor();
     for(const viewport of [{width:720,height:780},{width:540,height:720},{width:390,height:720}]){
@@ -481,17 +497,34 @@ if (!failed && process.argv.includes('--browser')) {
     await page.getByLabel('主开关 9601',{exact:true}).waitFor();assert.equal(await page.locator('.settings-group.collapsed').count(),15);
     assert.equal(await page.locator('#foldAll').textContent(),'全部展开','default collapsed groups must expose the correct bulk action');
     await page.locator('#foldAll').click();await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===0);
-    assert.equal(await page.locator('#foldAll').textContent(),'全部折叠');
+    assert.equal(await page.locator('#foldAll').textContent(),'全部收起');
     await page.locator('#foldAll').click();await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===15);
     await page.setViewportSize({width:1240,height:880});await page.screenshot({path:diagnosticsPrefix+'-folded.png',fullPage:false});
     assert.equal(await page.getByLabel('子参数 9601',{exact:true}).isVisible(),false,'folding details must preserve the master switch');
     const first=page.locator('.settings-group').filter({has:page.getByText('参数组 9601',{exact:true})});
     assert.equal(await first.locator('.group-header-controls .setting-row').getAttribute('title'),'只在悬停时显示说明');assert.equal(await first.locator('.setting-description:visible').count(),0,'ordinary help must not occupy a row');
     const failing=new Set([9607,9612,9613,9614]);await receive(foldedState(folded.map(c=>failing.has(Math.floor(c.id/10))&&c.type==='label'?{...c,label:`错误待还原 ${Math.floor(c.id/10)}`,runtimeError:true}:c)));
-    for(const n of failing){const section=page.locator('.settings-group').filter({has:page.getByText(`参数组 ${n}`,{exact:true})});await section.scrollIntoViewIfNeeded();await page.getByText(`错误待还原 ${n}`,{exact:true}).waitFor();assert.equal(await section.locator('.group-summary').getAttribute('aria-expanded'),'true');await section.locator('.group-summary').click();assert.equal(await section.locator('.group-summary').getAttribute('aria-expanded'),'true','a real error cannot be collapsed');}
-    await receive(foldedState(folded));await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===15);assert.equal(await page.locator('.settings-group.collapsed').count(),15,'recovery restores the prior closed preference');
-    const danger=[{id:9185,type:'button',label:'立即自毁',immediate:true}];await receive({kind:'state',protocol:1,module:0,generation:5,revision:1,page:'cursor',controls:danger,status:''});await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
-    const button=page.getByRole('button',{name:'立即自毁',exact:true});await button.waitFor();const sentBefore=await page.evaluate(()=>window.__sent.length);await button.dblclick();const submitted=await page.evaluate(()=>window.__sent.slice(-1)[0]);assert.equal(await page.evaluate(()=>window.__sent.length),sentBefore+1);assert.equal(submitted.action,'press');assert.ok(submitted.inputTime>0);assert.equal(Object.hasOwn(submitted,'receivedAt'),false);
+    for(const n of failing){
+      const section=page.locator('.settings-group').filter({has:page.getByText(`参数组 ${n}`,{exact:true})});await section.scrollIntoViewIfNeeded();
+      const status=section.locator('.group-status[data-tone="error"]');await status.waitFor();assert.ok((await status.textContent()).includes(`错误待还原 ${n}`));
+      assert.equal(await section.locator('.group-summary').getAttribute('aria-expanded'),'false','errors do not silently reopen parameters');
+      assert.equal(await section.locator('.group-body').isVisible(),false);assert.equal(await status.isVisible(),true,'error text stays outside the collapsed body');
+      await section.locator('.group-summary').click();assert.equal(await section.locator('.group-summary').getAttribute('aria-expanded'),'true');
+      await section.locator('.group-summary').click();assert.equal(await section.locator('.group-summary').getAttribute('aria-expanded'),'false');assert.equal(await status.isVisible(),true);
+    }
+    await page.locator('#foldAll').click();await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===0);
+    await page.locator('#foldAll').click();await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===15);
+    assert.equal(await page.locator('.group-status[data-tone="error"]:visible').count(),4,'bulk folding must retain every current error');
+    await receive(foldedState(folded));await page.waitForFunction(()=>[...document.querySelectorAll('.group-status[data-tone="error"]')].every(element=>!element.getClientRects().length));assert.equal(await page.locator('.settings-group.collapsed').count(),15,'recovery keeps the current fold preference');
+    await page.locator('#search').fill('子参数 9601');await page.getByLabel('子参数 9601',{exact:true}).waitFor();
+    assert.equal(await page.locator('.settings-group').count(),1);assert.equal(await page.locator('#foldAll').isVisible(),true);
+    await page.locator('.group-summary').click();assert.equal(await page.getByLabel('子参数 9601',{exact:true}).isVisible(),false,'manual title fold works during search');
+    await receive(foldedState(folded));assert.equal(await page.getByLabel('子参数 9601',{exact:true}).isVisible(),false,'background revisions preserve the temporary search fold');
+    await page.locator('#search').fill('子参数 9602');await page.getByLabel('子参数 9602',{exact:true}).waitFor();
+    await page.locator('#search').fill('');await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===15);
+    assert.equal(await page.locator('#foldAll').textContent(),'全部展开','search exit restores persisted group folds');
+    const danger=[{id:9185,type:'button',label:'立即自毁',immediate:true,actionRole:'danger'}];await receive({kind:'state',protocol:1,module:0,generation:5,revision:1,page:'cursor',controls:danger,status:''});await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
+    const button=page.getByRole('button',{name:'立即自毁',exact:true});await button.waitFor();assert.equal(await button.evaluate(element=>element.classList.contains('action-danger')),true);const sentBefore=await page.evaluate(()=>window.__sent.length);await button.dblclick();const submitted=await page.evaluate(()=>window.__sent.slice(-1)[0]);assert.equal(await page.evaluate(()=>window.__sent.length),sentBefore+1);assert.equal(submitted.action,'press');assert.ok(submitted.inputTime>0);assert.equal(Object.hasOwn(submitted,'receivedAt'),false);
     // Reproduce the shipped native row from tactical_controls.h: one feature,
     // four independent control tokens, one name and compact inline editors.
     const compound=[

@@ -1014,7 +1014,7 @@
     "historical_initial_publication": true,
     "superseded_by_same_version_revision": "2026-11-08-depth-tooltip-performance"
   },
-  "release_revision": "2026-11-08-depth-tooltip-performance",
+  "release_revision": "2026-11-09-ui-unification",
   "RevisedRelease146": {
     "version": "1.0.46",
     "file_version": "1.0.46.3",
@@ -1049,5 +1049,27 @@
       "Pinned Client snapshot ownership/page allocation",
       "Real Windows game performance and visual acceptance"
     ]
+  },
+  "UiRevision146": {
+    "version": "1.0.46",
+    "file_version": "1.0.46.4",
+    "baseline_public_commit": "cecb87411d75cbc739f243710f8c85b53bb3d355",
+    "scope": [
+      "Unify button, field, spacing, typography, feature and parameter hierarchy across the offline WebView2 console.",
+      "Use explicit primary, secondary and danger action metadata without changing native command IDs or settings.",
+      "Group video settings into rendering, cameras, minimap, production reminders and battlefield information; keep feature switches available while parameter bodies are folded.",
+      "Keep current errors visible outside collapsed parameter bodies; allow temporary search folds without changing normal page fold preferences.",
+      "Expose collapsible advanced cursor, process selection and platform Hook probe groups; preserve saved settings and action acknowledgements."
+    ],
+    "assist_protocol": 101,
+    "cursor_protocol": 155,
+    "runtime_protocol": 4,
+    "prerelease": false,
+    "make_latest": true,
+    "windows_executed": false,
+    "game_tested": false,
+    "multiplayer_tested": false,
+    "validation": "Current UI checks, browser rendering, native-model metadata, full Windows-target cross-build, exact source binding and ZIP integrity are recorded independently; no Windows game/GPU/multiplayer execution is claimed.",
+    "inherited_gameplay_fixes": "The released 1.0.46.3 building metadata, production tooltip, compute and lightweight packaging changes are retained. Historical performance checks are not claimed as rerun for this UI-only revision."
   }
 }

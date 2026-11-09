@@ -66,6 +66,7 @@
       optionEnabled: Array.isArray(control.optionEnabled) ? control.optionEnabled.map(value => value !== false).slice(0, 65536) : [],
       selected: Number.isInteger(control.selected) ? control.selected : -1, checked: Boolean(control.checked), enabled: control.enabled !== false,
       visible: control.visible !== false, readonly: Boolean(control.readonly), runtimeError: Boolean(control.runtimeError), groupHeader: Boolean(control.groupHeader), collapsible: Boolean(control.collapsible), collapsedDefault: Boolean(control.collapsedDefault), immediate: Boolean(control.immediate), min: Number.isFinite(control.min) ? control.min : 0,
+      actionRole: ['primary','secondary','danger'].includes(control.actionRole) ? control.actionRole : 'secondary',
       max: Number.isFinite(control.max) ? control.max : 100, step: Number.isFinite(control.step) && control.step > 0 ? control.step : 1,
       row: Number.isFinite(control.row) ? control.row : 0, column: Number.isFinite(control.column) ? control.column : 0, presentation: String(control.presentation || ''), debug: canonicalDebug(control.debug) };
     if (!TYPES.has(type)) { result.readonly = true; result.hint ||= '此设置目前仅供查看。'; }
@@ -238,9 +239,9 @@
     }
     return {number:'数值',range:'数值',text:'内容'}[control.type] || '';
   }
-  function groupPresentation(controls,userCollapsed,searching=false,ackErrors=new Set()) {
-    const forced=controls.some(control=>control.runtimeError || ackErrors.has(control.id));
-    return {forced,collapsed:Boolean(userCollapsed)&&!searching&&!forced,
+  function groupPresentation(controls,userCollapsed,searching=false,ackErrors=new Set(),searchCollapsed=false) {
+    const hasError=controls.some(control=>control.runtimeError || ackErrors.has(control.id));
+    return {hasError,collapsed:searching?Boolean(searchCollapsed):Boolean(userCollapsed),
       headers:controls.filter(control=>control.groupHeader && !['label','heading'].includes(control.type)),
       details:controls.filter(control=>!control.groupHeader)};
   }
@@ -252,13 +253,14 @@
   let selectedCategory = 0, videoModule = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, nextGroupId = 0, userNavigated = false, restoredNavigation = false;
   let debugGroup = '', debugFilter = '', debugGroupSignature = '';
   const debugRows = new Map();
-  const groupNodes = new Map(), collapsed = new Set(), foldPreferencesSeen = new Set();
+  const groupNodes = new Map(), collapsed = new Set(), foldPreferencesSeen = new Set(), searchFolds = new Map();
   const bridge = global.chrome?.webview;
   const store = new ConsoleStore(message => { if (bridge?.postMessage) bridge.postMessage(message); }, schedule);
   global.RA2Console = Object.freeze({ store, receive: message => store.receive(message) });
   function schedule() { if (scheduled) return; scheduled = true; requestAnimationFrame(() => { scheduled = false; render(); }); }
   function notify(text) { const element = $('toast'); element.textContent = text; element.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { element.hidden = true; }, 6000); }
-  function navigate(category, module = videoModule, restored = false) { if (!restored) userNavigated = true; selectedCategory = category; if (category === 0) videoModule = module; search = ''; $('search').value = ''; capture = null; if (restored) { store.current = {module: category === 0 ? videoModule : 2,category}; schedule(); } else store.navigate(category === 0 ? videoModule : 2, category); $('contentScroll').scrollTop = 0; }
+  function setSearch(value) { if(search!==value)searchFolds.clear();search=value; }
+  function navigate(category, module = videoModule, restored = false) { if (!restored) userNavigated = true; selectedCategory = category; if (category === 0) videoModule = module; setSearch(''); $('search').value = ''; capture = null; if (restored) { store.current = {module: category === 0 ? videoModule : 2,category}; schedule(); } else store.navigate(category === 0 ? videoModule : 2, category); $('contentScroll').scrollTop = 0; }
   for (let index = 0; index < CATEGORIES.length; index++) { const button = document.createElement('button'); button.className = 'nav-button'; button.type = 'button'; button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${CATEGORIES[index][3]}</svg><span></span>`; button.querySelector('span').textContent = CATEGORIES[index][0]; button.title = CATEGORIES[index][0]; button.addEventListener('click', () => navigate(index)); $('navigation').append(button); }
   $('videoTabs').addEventListener('click', event => { const button = event.target.closest('button[data-module]'); if (button) navigate(0, Number(button.dataset.module)); });
   $('videoTabs').addEventListener('keydown', event => {
@@ -269,17 +271,17 @@
     navigate(0,Number(buttons[index].dataset.module)); buttons[index].focus();
   });
   $('search').setAttribute('aria-keyshortcuts','Control+f');
-  $('search').addEventListener('input', event => { search = event.target.value; schedule(); });
-  $('search').addEventListener('keydown', event => { if (event.key === 'Escape' && !capture) { event.preventDefault(); $('search').value = search = ''; schedule(); } });
-  $('clearSearch').addEventListener('click', () => { $('search').value = search = ''; if(selectedCategory===5){debugGroup=debugFilter='';$('debugGroup').value=$('debugFilter').value='';} schedule(); $('search').focus(); });
+  $('search').addEventListener('input', event => { setSearch(event.target.value); schedule(); });
+  $('search').addEventListener('keydown', event => { if (event.key === 'Escape' && !capture) { event.preventDefault(); $('search').value = ''; setSearch(''); schedule(); } });
+  $('clearSearch').addEventListener('click', () => { $('search').value = ''; setSearch(''); if(selectedCategory===5){debugGroup=debugFilter='';$('debugGroup').value=$('debugFilter').value='';} schedule(); $('search').focus(); });
   $('debugGroup').addEventListener('change',event=>{debugGroup=event.target.value;schedule();});
   $('debugFilter').addEventListener('change',event=>{debugFilter=event.target.value;schedule();});
   $('moduleToggle').addEventListener('change', event => store.enable(videoModule, event.target.checked));
   $('retrySave').addEventListener('click', () => store.retryConfig());
   $('foldAll').addEventListener('click', () => {
-    const groups = [...groupNodes.values()].filter(group => group.hasDetails && !group.forced);
+    const groups = [...groupNodes.values()].filter(group => group.hasDetails);
     const shouldCollapse = groups.some(group => !group.body.hidden);
-    for (const group of groups) { const key = `${renderedPage}/${group.name}`; foldPreferencesSeen.add(key); if (shouldCollapse) collapsed.add(key); else collapsed.delete(key); }
+    for (const group of groups) setGroupCollapsed(group,shouldCollapse);
     schedule();
   });
   document.addEventListener('keydown', event => { if (!capture && event.ctrlKey && event.key.toLowerCase() === 'f') { event.preventDefault(); $('search').focus(); $('search').select(); } });
@@ -287,13 +289,21 @@
   function clearGroups() { for (const group of groupNodes.values()) { observer?.unobserve(group.section); releaseChunks(group); group.section.remove(); } groupNodes.clear(); }
   const estimateRows = controls => settingLines(controls).reduce((height,line) => height + (line.some(control=>control.type==='hotkey') ? 72 : 44),0);
   const chunkObserver = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const chunk = entry.target._chunk; if (!chunk) continue; chunk.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateChunk(chunk); else unmountChunk(chunk); } }, {root:$('contentScroll'),rootMargin:'500px'}) : null;
+  // A search can reveal and fold matches without overwriting the page's saved folds.
+  function setGroupCollapsed(group,value) {
+    const key=`${renderedPage}/${group.name}`;
+    if(group.searching){searchFolds.set(key,value);return;}
+    foldPreferencesSeen.add(key);if(value)collapsed.add(key);else collapsed.delete(key);
+  }
   function makeGroup(name) {
-    const section=document.createElement('section'),summary=document.createElement('button'),title=document.createElement('span'),count=document.createElement('span'),header=document.createElement('div'),body=document.createElement('div');
+    const section=document.createElement('section'),summary=document.createElement('button'),title=document.createElement('span'),count=document.createElement('span'),header=document.createElement('div'),status=document.createElement('div'),body=document.createElement('div');
     section.className='settings-group';summary.className='group-summary';summary.type='button';title.className='group-title';title.textContent=name;count.className='group-count';header.className='group-header-controls';
     const arrow=document.createElementNS('http://www.w3.org/2000/svg','svg');arrow.setAttribute('viewBox','0 0 12 12');arrow.setAttribute('class','chevron');arrow.innerHTML='<path d="m3 4 3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5"/>';
-    summary.append(title,count,arrow);body.className='group-body';body.id=`settings-group-${++nextGroupId}`;summary.setAttribute('aria-controls',body.id);section.append(summary,header,body);
-    const group={name,section,summary,count,header,headerRows:new Map(),body,controls:[],rows:new Map(),chunks:[],intersecting:!observer};section._group=group;
-    summary.addEventListener('click',()=>{if(group.forced){notify('此组仍有错误，状态保持展开；解除后恢复原收纳设置。');return;}const key=`${renderedPage}/${name}`;foldPreferencesSeen.add(key);if(collapsed.has(key))collapsed.delete(key);else collapsed.add(key);updateGroup(group);updateFoldAction();});
+    summary.append(title,count,arrow);body.className='group-body';body.id=`settings-group-${++nextGroupId}`;summary.setAttribute('aria-controls',body.id);
+    // Keep current failures outside the body, so closing parameters never hides them.
+    status.className='group-status';status.dataset.tone='error';status.hidden=true;status.setAttribute('role','alert');section.append(summary,header,body,status);
+    const group={name,section,summary,count,header,status,headerRows:new Map(),body,controls:[],rows:new Map(),chunks:[],intersecting:!observer};section._group=group;
+    summary.addEventListener('click',()=>{setGroupCollapsed(group,!group.body.hidden);updateGroup(group);updateFoldAction();});
     observer?.observe(section);return group;
   }
   function releaseChunks(group) { for (const chunk of group.chunks) { chunkObserver?.unobserve(chunk.element); chunk.element.remove(); } group.chunks=[]; group.chunkSignature=''; }
@@ -333,13 +343,20 @@
     const key=`${renderedPage}/${group.name}`;
     if(!foldPreferencesSeen.has(key)){foldPreferencesSeen.add(key);if(group.controls.some(control=>control.collapsible&&control.collapsedDefault))collapsed.add(key);}
     const ackErrors=new Set(group.controls.filter(control=>store.error(control.id)).map(control=>control.id));
-    const state=groupPresentation(group.controls,collapsed.has(key),Boolean(search.trim()),ackErrors);group.forced=state.forced;
-    group.section.classList.toggle('collapsed',state.collapsed);group.section.classList.toggle('has-runtime-error',state.forced);
+    const state=groupPresentation(group.controls,collapsed.has(key),group.searching,ackErrors,searchFolds.get(key));
+    group.section.classList.toggle('collapsed',state.collapsed);group.section.classList.toggle('has-runtime-error',state.hasError);
     group.hasDetails=state.details.length>0;group.summary.disabled=!group.hasDetails;
     group.summary.querySelector('.chevron').toggleAttribute('hidden',!group.hasDetails);
     group.summary.setAttribute('aria-expanded',String(!state.collapsed));
-    const countText=`${group.controls.length} 项${state.forced?' · 需要处理':''}`;if(group.count.textContent!==countText)group.count.textContent=countText;
-    updateRows(group.header,group.headerRows,state.headers,group.name);group.header.hidden=!state.headers.length;group.section.classList.toggle('has-header-controls',Boolean(state.headers.length));
+    const countText=`${group.controls.length} 项${state.hasError?' · 需要处理':''}`;if(group.count.textContent!==countText)group.count.textContent=countText;
+    const errors=state.hasError?group.controls.flatMap(control=>{
+      const error=store.error(control.id),label=control.label || control.text || '设置';
+      if(error)return [`${label}：${error}`];
+      if(!control.runtimeError)return [];
+      return [control.type==='label'?label:`${label}${control.text&&control.text!==label?'：'+control.text:'：运行异常'}`];
+    }):[];
+    const statusText=[...new Set(errors)].join('\n');if(group.status.textContent!==statusText)group.status.textContent=statusText;group.status.hidden=!state.hasError;
+    updateRows(group.header,group.headerRows,state.headers,group.name);group.header.hidden=!state.headers.length;group.section.classList.toggle('has-header-controls',Boolean(state.headers.length));group.section.classList.toggle('multiple-header-rows',settingLines(state.headers).length>1);
     group.body.hidden=state.collapsed;if(state.collapsed)return;
     if(!group.intersecting&&observer&&!group.body.contains(document.activeElement)){unmountGroup(group);return;}
     group.body.style.minHeight='';const details=state.details;
@@ -352,9 +369,9 @@
     }else{if(group.chunks.length){releaseChunks(group);group.body.replaceChildren();}updateRows(group.body,group.rows,details,'',Boolean(state.headers.length));}
   }
   function updateFoldAction() {
-    const groups=[...groupNodes.values()].filter(group=>group.hasDetails&&!group.forced);
-    $('foldAll').hidden=Boolean(search.trim())||!groups.length;
-    $('foldAll').textContent=groups.every(group=>group.body.hidden)?'全部展开':'全部折叠';
+    const groups=[...groupNodes.values()].filter(group=>group.hasDetails);
+    $('foldAll').hidden=!groups.length;
+    $('foldAll').textContent=groups.every(group=>group.body.hidden)?'全部展开':'全部收起';
   }
   function makeRow(control) {
     const element = document.createElement('div'), copy = document.createElement('div'), label = document.createElement('label'), description = document.createElement('p'), editor = document.createElement('div'); element.className = 'setting-row'; copy.className = 'setting-copy'; label.className = 'setting-label'; description.className = 'setting-description'; editor.className = 'setting-editor'; copy.append(label,description); element.append(copy,editor);
@@ -378,13 +395,13 @@
   function bindText(row,input) { input.autocomplete = 'off'; input.spellcheck = false; input.addEventListener('focus',() => { store.beginEdit(row.control.id); store.draft(row.control.id,input.value); }); input.addEventListener('input',() => store.draft(row.control.id,input.value)); input.addEventListener('blur',() => store.commit(row.control.id)); input.addEventListener('keydown',event => { if (event.key === 'Enter') { event.preventDefault(); store.commit(row.control.id); input.blur(); } else if (event.key === 'Escape') { event.preventDefault(); store.cancelEdit(row.control.id); input.blur(); } }); }
   function patchRow(row) {
     const control = row.control, error = store.error(control.id); row.element.dataset.pending = String(store.isPending(control.id)); row.element.classList.toggle('is-disabled',!control.enabled); row.element.classList.toggle('has-error',Boolean(error)||control.runtimeError);
-    const labelText=row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置')), hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText; row.element.title = control.hint;
+    let labelText=row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置')); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText; row.element.title = control.hint;
     if (!row.input) return;
     const disabled = !control.enabled || store.closed || store.state?.generation!==store.generation.get(store.current.module);
     row.element.classList.toggle('is-disabled',disabled);
     row.input.disabled = disabled; row.input.setAttribute('aria-label',row.inlineLabel?`${control.label} · ${row.inlineLabel}`:control.label || control.text || '设置');
     if (control.type === 'toggle') { row.input.checked = Boolean(store.value(control,'toggle'));row.toggleState.textContent=row.input.checked?'已开启':'已关闭'; }
-    else if (control.type === 'button') { row.input.textContent = control.text || control.label || '执行'; row.input.disabled = disabled || store.isPending(control.id); }
+    else if (control.type === 'button') { row.input.textContent = control.text || control.label || '执行'; row.input.disabled = disabled || store.isPending(control.id); row.input.className=`setting-button action-${control.actionRole}`; }
     else if (control.type === 'choice') { const optionSignature = JSON.stringify([control.options,control.optionEnabled]); if (row.optionSignature !== optionSignature) { row.optionSignature = optionSignature; row.input.replaceChildren(...control.options.map((text,index) => { const option = document.createElement('option'); option.value = String(index); option.textContent = text; option.disabled = control.optionEnabled[index] === false; return option; })); } const index = Number(store.value(control,'select')); if (row.input.selectedIndex !== index) row.input.selectedIndex = index; if (row.textInput) { row.textInput.disabled = disabled; if (document.activeElement !== row.textInput) row.textInput.value = String(store.value(control,'text')); } }
     else if (control.type === 'text' || control.type === 'number') { row.input.readOnly = control.readonly; if (document.activeElement !== row.input || control.readonly) row.input.value = String(store.value(control,'text')); }
     else if (control.type === 'range') { row.input.min = control.min; row.input.max = control.max; row.input.step = control.step; const value = store.value(control,'range'); if (document.activeElement !== row.input) row.input.value = value; row.output.textContent = String(value); }
@@ -417,7 +434,7 @@
   function renderSettingsGroups(controls,query='') {
     const groups=groupControls(controls,query),count=[...groups.values()].reduce((sum,items)=>sum+items.length,0);
     for(const [name,group]of groupNodes)if(!groups.has(name)){observer?.unobserve(group.section);releaseChunks(group);group.section.remove();groupNodes.delete(name);}
-    let after=null;for(const [name,items]of groups){let group=groupNodes.get(name);if(!group){group=makeGroup(name);groupNodes.set(name,group);}group.controls=items;placeAfter($('settings'),group.section,after);after=group.section;updateGroup(group);}
+    let after=null;for(const [name,items]of groups){let group=groupNodes.get(name);if(!group){group=makeGroup(name);groupNodes.set(name,group);}group.controls=items;group.searching=Boolean(query.trim());placeAfter($('settings'),group.section,after);after=group.section;updateGroup(group);}
     return {groups,count};
   }
   function renderDebug(state) {
@@ -449,9 +466,9 @@
   }
   function render() {
     const category = CATEGORIES[selectedCategory], state = store.state, currentPage = pageKey(store.current.module,store.current.category);
-    if (renderedPage !== currentPage) { clearGroups(); for(const row of debugRows.values())row.element.remove();debugRows.clear(); renderedPage = currentPage; }
+    if (renderedPage !== currentPage) { clearGroups();searchFolds.clear(); for(const row of debugRows.values())row.element.remove();debugRows.clear(); renderedPage = currentPage; }
     [...$('navigation').children].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
-    $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '1.0.41-pre.9';
+    $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '正在连接…';
     $('videoTabs').hidden = selectedCategory !== 0; $('categoryNote').hidden = selectedCategory === 0;
     const debugging=selectedCategory===5;$('settings').hidden=!state;$('debugTools').hidden=!debugging;$('debugPanel').hidden=!debugging || !state;$('categoryNote').textContent=debugging?'平台探测与入口状态':'每项功能独立启用';$('search').placeholder=debugging?'搜索入口、地址或影响功能…':'搜索当前页面…';$('contentScroll').setAttribute('aria-label',debugging?'平台 Hook 探测与入口调试':'功能设置');
     $('emptyState').querySelector('h2').textContent=debugging?'没有匹配的入口':'没有匹配的设置';$('clearSearch').textContent=debugging?'清除搜索与筛选':'清除搜索';

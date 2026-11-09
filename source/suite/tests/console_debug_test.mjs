@@ -170,6 +170,7 @@ if(!failed && process.argv.includes('--browser')){
     await page.locator('#debugFilter').selectOption('');await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===8);
     const toggle=page.locator('.debug-row[data-control-id="9001"] input');await toggle.focus();await toggle.uncheck();
     const action=await page.evaluate(()=>window.__sent.filter(m=>m.kind==='action').at(-1));assert.equal(action.id,9001);assert.equal(action.value,false);assert.equal(action.generation,7);
+    await page.waitForFunction(()=>document.querySelector('.debug-row[data-control-id="9001"] .debug-toggle-state').textContent==='等待应用');
     assert.equal(await page.locator('.debug-row[data-control-id="9001"] .debug-toggle-state').textContent(),'等待应用');
     await receive({kind:'ack',protocol:1,module:2,generation:7,id:9001,seq:action.seq,ok:true,revision});controls[0].checked=false;await receive(snapshot());
     await page.waitForFunction(()=>document.querySelector('.debug-row[data-control-id="9001"] .debug-toggle-state').textContent==='校验关闭');
@@ -181,7 +182,7 @@ if(!failed && process.argv.includes('--browser')){
     }
     controls[0].debug.ageMs=6000;await receive(snapshot());await page.waitForFunction(()=>document.querySelector('.debug-row[data-control-id="9001"] .debug-badge').textContent==='观测已过期');
     controls[0].debug.ageMs=0;await receive(snapshot());await page.waitForFunction(()=>document.querySelector('.debug-row[data-control-id="9001"] .debug-badge').textContent==='可调用');
-    await page.getByRole('button',{name:'控制',exact:true}).click();assert.equal(await page.locator('#debugPanel').isHidden(),true);
+    await page.getByRole('button',{name:'控制',exact:true}).click();await page.locator('#debugPanel').waitFor({state:'hidden'});assert.equal(await page.locator('#debugPanel').isHidden(),true);
     await page.getByRole('button',{name:'调试',exact:true}).click();await receive(snapshot());await page.waitForFunction(()=>document.querySelectorAll('.debug-row').length===8);
     assert.deepEqual(errors,[]);console.log('PASS debug browser: ordinary probe PID/start/cancel/report commands, live metadata, independent status, filtering, opaque toggle ACK, focus, expiry, navigation and 3 responsive sizes');
   }finally{await browser.close();}

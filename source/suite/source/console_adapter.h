@@ -154,6 +154,7 @@ class Host {
    c.collapsible=GetPropW(w,L"RA2.Console.Collapsible")!=nullptr;
    c.collapsedDefault=GetPropW(w,L"RA2.Console.CollapsedDefault")!=nullptr;
    c.immediate=GetPropW(w,L"RA2.Console.Immediate")!=nullptr;
+   c.actionRole=consolemodel::actionRoleFromMetadata(reinterpret_cast<UINT_PTR>(GetPropW(w,L"RA2.Console.ActionRole")));
   if(GetPropW(w,L"RA2.Console.Skip"))c.visible=false;
   if(auto row=GetPropW(w,L"RA2.Console.Row")){const LONG top=LONG(reinterpret_cast<INT_PTR>(row)-1),height=MulDiv(out.rect.bottom-out.rect.top,96,int(modernui::windowDpi(w)));out.rect.top=top;out.rect.bottom=top+height;c.row=int(top);}
   if(auto column=GetPropW(w,L"RA2.Console.Column")){const LONG left=LONG(reinterpret_cast<INT_PTR>(column)-1),width=MulDiv(out.rect.right-out.rect.left,96,int(modernui::windowDpi(w)));out.rect.left=left;out.rect.right=left+width;c.column=int(left);}

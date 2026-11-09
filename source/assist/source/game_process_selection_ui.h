@@ -217,6 +217,11 @@ static int createGameProcessSelectionControls(int page,int y){
   HWND control=pageControl(page,cls,text,x,row,width,height,id,style);
   pageControls.back().help=help;if(*help)modernui::tip(control,help);
   SetPropW(control,L"RA2.Console.Group",const_cast<wchar_t*>(L"游戏进程连接"));
+  SetPropW(control,L"RA2.Console.Collapsible",reinterpret_cast<HANDLE>(1));
+  // Keep this action group initially open so the chosen process stays visible.
+  // ActionRole: 1 = primary, 2 = destructive; unmarked actions stay secondary.
+  if(id==GameProcessRemember)SetPropW(control,L"RA2.Console.ActionRole",reinterpret_cast<HANDLE>(1));
+  else if(id==GameProcessRemove)SetPropW(control,L"RA2.Console.ActionRole",reinterpret_cast<HANDLE>(2));
   SetPropW(control,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(row)+1));
   SetPropW(control,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(x)+1));
   return control;

@@ -161,6 +161,10 @@ static int createPlatformHookProbeControls(int page,int y){
   HWND control=pageControl(page,cls,text,x,row,width,height,id,style);
   pageControls.back().help=help;if(*help)modernui::tip(control,help);
   SetPropW(control,L"RA2.Console.Group",const_cast<wchar_t*>(L"平台 Hook 探测"));
+  SetPropW(control,L"RA2.Console.Collapsible",reinterpret_cast<HANDLE>(1));
+  // Keep this action group initially open for the target and scan progress.
+  // ActionRole 1 is the primary action; cancel and report navigation are secondary.
+  if(id==HookProbeStart)SetPropW(control,L"RA2.Console.ActionRole",reinterpret_cast<HANDLE>(1));
   SetPropW(control,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(row)+1));
   SetPropW(control,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(x)+1));
   if(!wcscmp(cls,L"BUTTON"))SetPropW(control,L"RA2.Console.Immediate",reinterpret_cast<HANDLE>(1));

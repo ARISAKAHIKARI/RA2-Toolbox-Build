@@ -2502,7 +2502,7 @@ static void finalizeTacticalLayout(){
 #ifdef RA2_CONSOLE_WEBVIEW2
 static void prepareConsoleSettingsModel(){
  struct Group {int fold;const wchar_t*name;};
- static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9609,L"计算模式"},{9610,L"单位类型清单"},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"全图 CRC 原值镜像"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻参数"}};
+ static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9609,L"计算模式"},{9610,L"单位类型清单"},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"全图 CRC 原值镜像"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻"}};
  constexpr size_t count=sizeof(groups)/sizeof(groups[0]);int groupPages[count],groupRows[count];
  std::fill(std::begin(groupPages),std::end(groupPages),-999);std::fill(std::begin(groupRows),std::end(groupRows),-999);
  for(const auto&c:pageControls)for(size_t i=0;i<count;++i)if(GetDlgCtrlID(c.hwnd)==groups[i].fold){groupPages[i]=c.page;groupRows[i]=c.fullRect.y;}
@@ -2512,14 +2512,24 @@ static void prepareConsoleSettingsModel(){
   const int id=GetDlgCtrlID(c.hwnd);bool foldButton=false;
   SetPropW(c.hwnd,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(c.fullRect.y)+1));
   SetPropW(c.hwnd,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(c.fullRect.x)+1));
-  for(size_t i=0;i<count;++i){const auto&g=groups[i];const bool header=!c.fold&&groupPages[i]==c.page&&groupRows[i]==c.fullRect.y;
-   if(c.fold!=g.fold&&!header)continue;
+  for(size_t i=0;i<count;++i){const auto&g=groups[i];
+   // Some feature controls predate their native fold row. Keep their semantic
+   // group complete without changing categories, native folds or command IDs.
+   const bool extraHeader=g.fold==9615&&id>=9400&&id<=9402;
+   const bool extraDetail=(g.fold==9607&&id==896)||(g.fold==9615&&((id>=9440&&id<=9445)||id==9460||id==9461));
+   const bool header=extraHeader||(!extraDetail&&!c.fold&&groupPages[i]==c.page&&groupRows[i]==c.fullRect.y);
+   if(c.fold!=g.fold&&!header&&!extraDetail)continue;
    SetPropW(c.hwnd,L"RA2.Console.Group",reinterpret_cast<HANDLE>(const_cast<wchar_t*>(g.name)));
    SetPropW(c.hwnd,L"RA2.Console.Collapsible",reinterpret_cast<HANDLE>(1));
    if(!openedSettingGroups.count(g.fold))SetPropW(c.hwnd,L"RA2.Console.CollapsedDefault",reinterpret_cast<HANDLE>(1));
    if(header&&id!=g.fold)SetPropW(c.hwnd,L"RA2.Console.GroupHeader",reinterpret_cast<HANDLE>(1));
+   else if(extraDetail)RemovePropW(c.hwnd,L"RA2.Console.GroupHeader");
    foldButton|=id==g.fold;
   }
+  // Presentation only: command IDs, dispatch and confirmation rules are unchanged.
+  // Explicit metadata avoids guessing action severity from localized labels.
+  if(id==423||id==449||id==453)SetPropW(c.hwnd,L"RA2.Console.ActionRole",reinterpret_cast<HANDLE>(1));
+  else if(id==108||id==426||id==443||id==814||id==9185)SetPropW(c.hwnd,L"RA2.Console.ActionRole",reinterpret_cast<HANDLE>(2));
   if(id==9185||id==9176)SetPropW(c.hwnd,L"RA2.Console.Immediate",reinterpret_cast<HANDLE>(1));
   if(foldButton||id==989||id==990||id==991){SetPropW(c.hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(c.hwnd,SW_HIDE);}
  }

@@ -181,6 +181,17 @@ void serialization() {
     auto limited = fixture(); limited.controls[0].optionEnabled = {true, false};
     CHECK(encodeSnapshot(limited).find("\"optionEnabled\":[true,false]") != std::string::npos);
     CHECK(text.find("\"presentation\":\"list\"") != std::string::npos);
+    CHECK(text.find("\"actionRole\":\"secondary\"") != std::string::npos);
+    CHECK(actionRoleFromMetadata(0) == ActionRole::Secondary);
+    CHECK(actionRoleFromMetadata(1) == ActionRole::Primary);
+    CHECK(actionRoleFromMetadata(2) == ActionRole::Danger);
+    CHECK(actionRoleFromMetadata(255) == ActionRole::Secondary);
+    auto primary = fixture(); primary.controls[0].actionRole = ActionRole::Primary;
+    CHECK(encodeSnapshot(primary).find("\"actionRole\":\"primary\"") != std::string::npos);
+    primary.controls[0].actionRole = ActionRole::Danger;
+    CHECK(encodeSnapshot(primary).find("\"actionRole\":\"danger\"") != std::string::npos);
+    primary.controls[0].actionRole = static_cast<ActionRole>(255);
+    CHECK(encodeSnapshot(primary).find("\"actionRole\":\"secondary\"") != std::string::npos);
     CHECK(detail::quote(std::string(1, '\0')) == "\"\\u0000\"");
     CHECK(detail::quote(std::string("\xc0\xaf", 2)) == std::string("\"") + u8"��" + "\"");
     Action a;
