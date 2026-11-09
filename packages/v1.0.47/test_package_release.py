@@ -598,7 +598,7 @@ class PackageGates(unittest.TestCase):
                                   ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],
             'native_mouse_pairing': [('"checks":69', '"checks":68'), ('"failures":0', '"failures":1'),
                                      ('"passed":true', '"passed":false'), ('"failures":0', '"failures":false')],
-            'passenger_frame_sampling': [('2158 checks', '2157 checks'), ('live_RPM=0', 'live_RPM=14'),
+            'passenger_frame_sampling': [('2169 checks', '2168 checks'), ('live_RPM=0', 'live_RPM=14'),
                                          ('120ms lease never renewed', '120ms lease renewed')],
             'hotkey_command_context': [('"checks":67', '"checks":66'),
                                        ('"scenarios":22', '"scenarios":21'),
