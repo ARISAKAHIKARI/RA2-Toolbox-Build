@@ -214,7 +214,11 @@ int main(){
  fixture::event(view.NavigationCompleted,&view,completed);assert(host.ready());assert(messages==0);
  fixture::pump();assert(messages==1);
  assert(host.post("{\"hello\":\"世界\"}"));assert(view.posted==L"{\"hello\":\"世界\"}");
- assert(!host.post(std::string(2*1024*1024+1,'x')));assert(!host.post(std::string(1,char(0xff))));
+ // Outbound snapshots permit 8 MiB; exercise the inclusive boundary and its
+ // first rejected byte without changing the production transport limit.
+ const std::string atLimit="\""+std::string(8*1024*1024-2,'x')+"\"";
+ assert(host.post(atLimit));assert(view.posted.size()==atLimit.size());
+ assert(!host.post(atLimit+" "));assert(!host.post(std::string(1,char(0xff))));
  fixture::thread=2;auto calls=controller.boundsCalls;host.resize({0,0,8,8});assert(controller.boundsCalls==calls);assert(!host.ready());assert(!host.post("{}"));host.close();assert(!controller.closeCalls);fixture::thread=1;assert(host.ready());
  ICoreWebView2NavigationStartingEventArgs navigation;navigation.uri=L"https://example.com/";
  fixture::event(view.NavigationStarting,&view,navigation);assert(navigation.cancel);
@@ -224,7 +228,7 @@ int main(){
  ICoreWebView2PermissionRequestedEventArgs permission;fixture::event(view.PermissionRequested,&view,permission);assert(permission.state==COREWEBVIEW2_PERMISSION_STATE_DENY);
  ICoreWebView2DownloadStartingEventArgs download;fixture::event(view.DownloadStarting,&view,download);assert(download.cancel&&download.handled);
  ICoreWebView2WebMessageReceivedEventArgs foreign;foreign.uri=L"https://example.com/";fixture::event(view.WebMessageReceived,&view,foreign);
- ICoreWebView2WebMessageReceivedEventArgs oversized;oversized.json=std::wstring(65537,L'a');fixture::event(view.WebMessageReceived,&view,oversized);fixture::pump();assert(messages==1);
+ ICoreWebView2WebMessageReceivedEventArgs oversized;oversized.json=std::wstring(256*1024+1,L'a');fixture::event(view.WebMessageReceived,&view,oversized);fixture::pump();assert(messages==1);
  ICoreWebView2ProcessFailedEventArgs process;fixture::event(view.ProcessFailed,&view,process);assert(!host.ready());assert(errors==0);fixture::pump();assert(errors==1);
  host.close();assert(controller.closeCalls==1);assert(view.removeCount==8);assert(!host.ready());
  // A queued controller completion after close must never touch its HWND.

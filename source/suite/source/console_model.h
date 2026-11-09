@@ -27,6 +27,14 @@ struct DebugEntry {
     std::uint32_t ageMs = 0;
     bool sampled = false;
 };
+// HWND metadata stores these small values directly, never a string pointer.
+enum class ActionRole : std::uintptr_t { Secondary = 0, Primary = 1, Danger = 2 };
+inline ActionRole actionRoleFromMetadata(std::uintptr_t value) {
+    return value == 1 ? ActionRole::Primary : value == 2 ? ActionRole::Danger : ActionRole::Secondary;
+}
+inline const char* actionRoleName(ActionRole role) {
+    return role == ActionRole::Primary ? "primary" : role == ActionRole::Danger ? "danger" : "secondary";
+}
 struct Control {
     std::uint32_t id = 0;
     std::string type, label, text, group, hint, presentation;
@@ -37,6 +45,7 @@ struct Control {
     DebugEntry debug;
     // Optional per-option availability. Omitted entries retain legacy enabled behavior.
     std::vector<bool> optionEnabled;
+    ActionRole actionRole = ActionRole::Secondary;
 };
 struct Snapshot {
     unsigned module = 0;
@@ -402,6 +411,7 @@ inline std::string encodeSnapshot(const Snapshot& s) {
             ",\"label\":" + detail::quote(c.label) + ",\"text\":" + detail::quote(c.text) +
             ",\"group\":" + detail::quote(c.group) + ",\"hint\":" + detail::quote(c.hint) +
             ",\"presentation\":" + detail::quote(c.presentation) +
+            ",\"actionRole\":" + detail::quote(actionRoleName(c.actionRole)) +
             ",\"enabled\":" + detail::boolean(c.enabled) + ",\"visible\":" + detail::boolean(c.visible) +
             ",\"readonly\":" + detail::boolean(c.readonly) + ",\"checked\":" + detail::boolean(c.checked) +
             ",\"runtimeError\":" + detail::boolean(c.runtimeError) + ",\"groupHeader\":" + detail::boolean(c.groupHeader) +

@@ -2068,11 +2068,17 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
  // The modern view owns collapsed sections. Keep the old advanced fields
  // available to the typed settings adapter, including offscreen controls.
  if(!advancedOpen)toggleAdvanced(mainw);
+ SetPropW(primaryAction,L"RA2.Console.ActionRole",reinterpret_cast<HANDLE>(1));
  SetPropW(advancedAction,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(advancedAction,SW_HIDE);
+ SetPropW(advancedHeader,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));ShowWindow(advancedHeader,SW_HIDE);
  for(const auto&c:controlOrigins){
   SetPropW(c.handle,L"RA2.Console.Row",reinterpret_cast<HANDLE>(INT_PTR(c.logical.y)+1));
   SetPropW(c.handle,L"RA2.Console.Column",reinterpret_cast<HANDLE>(INT_PTR(c.logical.x)+1));
-  if(std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end())SetPropW(c.handle,L"RA2.Console.Group",reinterpret_cast<HANDLE>(const_cast<wchar_t*>(L"高级光标设置")));
+  if(std::find(advancedControls.begin(),advancedControls.end(),c.handle)!=advancedControls.end()){
+   SetPropW(c.handle,L"RA2.Console.Group",reinterpret_cast<HANDLE>(const_cast<wchar_t*>(L"高级光标设置")));
+   SetPropW(c.handle,L"RA2.Console.Collapsible",reinterpret_cast<HANDLE>(1));
+   SetPropW(c.handle,L"RA2.Console.CollapsedDefault",reinterpret_cast<HANDLE>(1));
+  }
  }
 #endif
  suite::registerPane(0,mainw,wndproc);

@@ -27,17 +27,23 @@ static BOOL testText(HWND h,LPCWSTR s){texts[h]=s;return TRUE;}static void layou
 #define ShowWindow show
 #define GetDlgItem item
 #define SetWindowTextW testText
-struct Shared {int techEnhanceParameterStatus=0,sidebarStatus=0;unsigned techEnhanceParameterExceptions=0,techEnhanceParameterError=0;}storage,*shared=&storage;
+struct Shared {int techEnhanceParameterStatus=0,sidebarStatus=0;unsigned techEnhanceParameterExceptions=0,techEnhanceParameterError=0,techEnhanceParameterSlots=0;}storage,*shared=&storage;
 static struct {bool sidebarEnabled=false;unsigned sidebarMode=0;}extra;static int hides=0,shown=0;static void hideWorldOverlay(){++hides;}
 #include CONSOLE_METADATA_ROUTES
 static void check(bool v){++checks;if(!v){std::fprintf(stderr,"metadata FAIL check %d\n",checks);std::abort();}}
 static HWND add(int n,int page,int y,int fold=0){auto h=HWND(INT_PTR(ids.size()+10));ids[h]=n;pageControls.push_back({h,page,{20,y,200,26},26,{},fold,{20,y,200,26}});return h;}
 int main(){
  std::set<int>groups;for(int group=9601;group<=9615;++group){int page=(group-9601)%5,y=(group-9601)*80;groups.insert(group);add(group,page,y);add(10000+group,page,y);add(20000+group,page,y+40,group);}add(9185,4,1800);add(9470,4,1840);auto status=add(9471,4,1880);for(int n:{989,990,991})add(n,4,1900+n);
+ add(896,1,2000);for(int id:{9400,9401,9402,9440,9441,9442,9443,9444,9445,9460,9461})add(id,4,2100+id);
+ for(int id:{108,423,426,443,449,453,814,9176})add(id,4,2500+id);
  openedSettingGroups={9602,9614};const auto before=openedSettingGroups;prepareConsoleSettingsModel();check(openedSettingGroups==before);check(layouts==1);
  for(int group:groups){auto fold=item(ui,group),master=item(ui,10000+group),child=item(ui,20000+group);auto name=getProp(fold,L"RA2.Console.Group");check(name&&name==getProp(master,L"RA2.Console.Group")&&name==getProp(child,L"RA2.Console.Group"));check(getProp(fold,L"RA2.Console.Skip")&&hidden.count(fold));check(!getProp(master,L"RA2.Console.Skip")&&!getProp(child,L"RA2.Console.Skip"));check(getProp(master,L"RA2.Console.GroupHeader")&&!getProp(child,L"RA2.Console.GroupHeader"));check(bool(getProp(child,L"RA2.Console.CollapsedDefault"))==!before.count(group));check(getProp(child,L"RA2.Console.Collapsible")&&getProp(master,L"RA2.Console.Collapsible"));}
  for(int n:{989,990,991})check(getProp(item(ui,n),L"RA2.Console.Skip"));check(getProp(item(ui,9185),L"RA2.Console.Immediate"));check(!getProp(item(ui,9470),L"RA2.Console.Skip")&&!getProp(status,L"RA2.Console.Skip"));
- for(int state=-7;state<=2;++state){storage.techEnhanceParameterStatus=state;storage.techEnhanceParameterError=123;storage.techEnhanceParameterExceptions=5;parameterStatus();check(bool(getProp(status,L"RA2.Console.RuntimeError"))==(state<0));check(texts[status].find(L"命中 5")!=std::wstring::npos);check((texts[status].find(L"错误 123")!=std::wstring::npos)==(state<0));}
+ for(int id:{423,449,453})check(getProp(item(ui,id),L"RA2.Console.ActionRole")==HANDLE(1));
+ for(int id:{108,426,443,814,9185})check(getProp(item(ui,id),L"RA2.Console.ActionRole")==HANDLE(2));
+ check(!getProp(item(ui,9176),L"RA2.Console.ActionRole")&&getProp(item(ui,9176),L"RA2.Console.Immediate"));
+ for(int id:{896,9400,9401,9402,9440,9441,9442,9443,9444,9445,9460,9461}){auto h=item(ui,id);check(getProp(h,L"RA2.Console.Group")==getProp(item(ui,id==896?9607:9615),L"RA2.Console.Group"));check(bool(getProp(h,L"RA2.Console.GroupHeader"))==(id>=9400&&id<=9402));check(getProp(h,L"RA2.Console.Collapsible")&&getProp(h,L"RA2.Console.CollapsedDefault"));check(!getProp(h,L"RA2.Console.Skip"));}
+ for(int state=-7;state<=2;++state){storage.techEnhanceParameterStatus=state;storage.techEnhanceParameterError=123;storage.techEnhanceParameterExceptions=5;storage.techEnhanceParameterSlots=3;parameterStatus();check(bool(getProp(status,L"RA2.Console.RuntimeError"))==(state<0));check(texts[status].find(L"命中 5")!=std::wstring::npos);check(texts[status].find(L"占用 3 槽")!=std::wstring::npos);check((texts[status].find(L"错误 123")!=std::wstring::npos)==(state<0));}
  shared=nullptr;parameterStatus();check(!getProp(status,L"RA2.Console.RuntimeError")&&texts[status].find(L"关闭")!=std::wstring::npos);setConsoleRuntimeError(nullptr,true);check(!getProp(nullptr,L"RA2.Console.RuntimeError"));
  shared=&storage;storage={};for(int status:{0,1,2,3})for(bool enabled:{false,true})for(unsigned mode:{0u,1u,2u}){storage.sidebarStatus=status;extra.sidebarEnabled=enabled;extra.sidebarMode=mode;hides=shown=0;worldFallback();const bool masked=status==3||(enabled&&mode==1);check(hides==int(masked)&&shown==int(!masked));}
  shared=nullptr;extra={};hides=shown=0;worldFallback();check(!hides&&shown==1);

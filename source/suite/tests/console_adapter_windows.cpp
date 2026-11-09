@@ -50,6 +50,7 @@ LRESULT CALLBACK paneProc(HWND w,UINT m,WPARAM a,LPARAM b){
   ctl(L"BUTTON",L"嵌套任务",BS_PUSHBUTTON,10,450,260,111);
   auto immediate=ctl(L"BUTTON",L"即时操作",BS_PUSHBUTTON,10,490,260,112);
   for(const auto*key:{L"RA2.Console.Immediate",L"RA2.Console.Collapsible",L"RA2.Console.CollapsedDefault",L"RA2.Console.GroupHeader",L"RA2.Console.RuntimeError"})SetPropW(immediate,key,reinterpret_cast<HANDLE>(1));
+  SetPropW(immediate,L"RA2.Console.ActionRole",reinterpret_cast<HANDLE>(2));
   return 0;
  }
  if(m==WM_COMMAND){f.actionThread=GetCurrentThreadId();int id=LOWORD(a),notification=HIWORD(a);
@@ -124,6 +125,7 @@ void immediateRegression(Fixture& f){
  f.host.navigate(0,-1,"video/immediate");auto snapshot=awaitSnapshot(f,[](const consolemodel::Snapshot&s){return s.page=="video/immediate";});if(!snapshot)return;
  const auto*c=find(*snapshot,"button","即时操作"),*nested=find(*snapshot,"button","嵌套任务");check(c&&nested,"immediate controls sampled");if(!c||!nested)return;
  check(c->immediate&&c->groupHeader&&c->collapsible&&c->collapsedDefault&&c->runtimeError,"all five native metadata flags reach snapshot");
+ check(c->actionRole==consolemodel::ActionRole::Danger&&nested->actionRole==consolemodel::ActionRole::Secondary,"explicit action role and default secondary survive native capture");
  auto make=[&](uint64_t seq,uint32_t id){consolemodel::Action a;a.module=0;a.generation=snapshot->generation;a.id=id;a.seq=seq;a.action="press";return a;};
  auto receipt=[&](uint64_t seq,bool okay){bool got=false;pumpUntil([&]{consolemodel::Ack a;while(f.host.takeAck(a))if(a.seq==seq){got=true;check(a.ok==okay,"immediate disposition");check(okay||(!a.error.empty()&&!a.revision),"expired operation has an explicit error and no success revision");}return got;});check(got,"immediate acknowledgement");};
  auto fresh=make(1,c->id);fresh.inputTime=consoleadapter::detail::utcMilliseconds();fresh.receivedAt=1;check(f.host.post(fresh),"fresh immediate admitted");receipt(1,true);check(f.immediatePresses==1,"fresh operation executes exactly once despite caller supplied stale receivedAt");
