@@ -32,7 +32,7 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
 }
 ''' +text[end:]
     text+=r'''
-static bool nativeReady(){return true;}static bool stickyOwns(uint32_t){return false;}
+static bool nativeReady(){return simulationReady();}static bool stickyOwns(uint32_t){return false;}
 static bool nativeEnemy(uint32_t p,uint32_t h){return get<uint32_t>(p+0x21C)!=h;}
 static bool GuardedEnterAction(uint32_t,uint32_t,uint32_t,unsigned*out){*out=5;return true;}
 static struct {struct Capacity{int occupants=0,maximum=0,used=0;};bool entryCompatible(uint32_t,uint32_t,uint32_t){return false;}Capacity capacity(uint32_t){return {};}int entrySlots(uint32_t,uint32_t){return 1;}uint32_t entryDestination(uint32_t){return 0;}}clickView;
@@ -52,6 +52,13 @@ static void graph(bool closed=false){uint32_t actor=actors[0],token=0x400000;put
 }
 static void submitRoute(){check(messageMo(WM_MBUTTONDOWN)&&moHolding);check(messageMo(WM_MBUTTONUP)&&moStage==1);for(int i=0;i<4;++i)step();check(moStage==2&&events.size()==4);}
 int main(){
+ // A host seqlock collision during drag is unavailable policy, not cancel.
+ for(int mode:{1,2,4}){begin();held.fill(false);held[mode==1?17:mode==2?16:'Z']=true;sh->moFeatures=mode;
+  check(messageMo(WM_MBUTTONDOWN)&&moHolding);++sh->moGesturePolicySeq;
+  check(messageMo(WM_MOUSEMOVE)&&moHolding&&moPreview.active);step();check(moHolding&&moPreview.active&&events.empty());
+  ++sh->moGesturePolicySeq;put(0xA8ED84,snap.frame+1);check(messageMo(WM_MOUSEMOVE)&&moHolding);put(0xA8ED84,snap.frame);
+  sh->moGestures.keys[moorders::gestureIndex(mode)]='G';messageMo(WM_MOUSEMOVE);check(!moHolding&&events.empty());
+ }
  begin();submitRoute();graph();step();check(moStage==4&&events.size()==5&&events.back().eventKind==vanilla::EventType::PlanConnect);graph(true);step();check(!moStage&&sh->moOrderStatus==2&&events.size()==6&&events.back().eventKind==vanilla::EventType::PlanCommit&&!moOrdersPending());
  // Every selected actor must begin with a verified empty plan.
  begin();moRouteCount=4;graph();check(messageMo(WM_MBUTTONDOWN)&&!moHolding&&int32_t(sh->moOrderStatus)==-17&&events.empty());

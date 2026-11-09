@@ -225,8 +225,8 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 103, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162552,
+    baseline = {'assist::Version': 104, 'runtime::Version': 4, 'gameentry::Version': 3,
+                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162608,
                 'assist::Shared.aircraftAllocationPolicy': 23125936,
                 'assist::Shared.nativeCombatQueries': 23125940,
                 'assist::Shared.singlePlayerFPS': 23154136,
@@ -251,6 +251,16 @@ def main():
                 'assist::Shared.readOnly': 23162540,
                 'assist::Shared.readOnlyRequest': 23162544,
                 'assist::Shared.readOnlyAck': 23162548,
+                'assist::Shared.airEventSeq': 23162552,
+                'assist::Shared.airEventReport': 23162556,
+                'assist::Shared.bombBoardEnabled': 23162576,
+                'assist::Shared.bombBoardRangeCells': 23162580,
+                'assist::Shared.bombBoardActive': 23162584,
+                'assist::Shared.bombBoardIssued': 23162588,
+                'assist::Shared.bombBoardWaiting': 23162592,
+                'assist::Shared.keepInputUnlocked': 23162596,
+                'assist::Shared.inputUnlockCount': 23162600,
+                'assist::Shared.inputUnlockStatus': 23162604,
                 'sizeof(assist::hardwareperf::Snapshot)': 96,
                 'sizeof(worldframe::Key)': 64, 'sizeof(worldframe::Page)': 5128,
                 'sizeof(worldframe::DataHeader)': 64, 'sizeof(worldframe::DataRef)': 8,
@@ -280,7 +290,7 @@ def main():
     # Protocol99 adds an independent SpiderDefense type filter.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol103 Shared23162552, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol104 Shared23162608, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 

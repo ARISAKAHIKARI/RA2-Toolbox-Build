@@ -82,7 +82,7 @@ template<class R,class...Args>static R call(uint32_t at,uint32_t self,Args...){a
 static keygesture::Tracker runtimeKeys;
 namespace taskarbiter{enum class Owner{Formation};}
 struct Command{uint32_t id=0,cell=0;};static std::vector<Command> commands;static int feedbacks=0;
-static bool simulationReady(){return true;}static int outgoingRoom(){return 256-int(commands.size());}
+static bool simulationReady(bool allowNewerFrame=false){return allowNewerFrame||get<int>(0xA8ED84)==snap.frame;}static int outgoingRoom(){return 256-int(commands.size());}
 static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target,uint32_t cell,int targetKind,int extra1,int extra2,taskarbiter::Owner owner){
  assert(house==lastHouse&&mission==2&&!target&&targetKind==11&&!extra1&&!extra2&&owner==taskarbiter::Owner::Formation);
  commands.push_back({id,cell});return true;
@@ -130,6 +130,11 @@ static void drainExact(const formation::Preview&preview){
 }
 
 int main(){
+ // Same captured drag survives a concurrent host policy publication.
+ setup();message(WM_MBUTTONDOWN);++sh->moGesturePolicySeq;
+ message(WM_MOUSEMOVE,0,false,130,130);assert(formationQuick&&formationView.active&&commands.empty());
+ formationTick(lastHouse,snap.frame,clockValue);assert(formationQuick&&formationView.active);
+ ++sh->moGesturePolicySeq;message(WM_MOUSEMOVE,0,false,140,140);message(WM_MBUTTONUP,0,false,140,140);assert(formationJobCount==25);
  setup();message(WM_MBUTTONDOWN);auto before=sh->formationPreview;
  assert(before.active&&before.shape==formation::quick::Shape&&before.count==25);
  message(WM_MBUTTONUP);assert(!sh->formationPreview.active&&formationMemory.quick&&formationMemory.count==25);

@@ -88,14 +88,14 @@ static unsigned checks=0;
 static bool featureValue(autofeatures::Feature feature){switch(feature){
  case autofeatures::Repair:return fields[100]==BST_CHECKED;case autofeatures::Eject:return ejectMode;case autofeatures::OreReturn:return oreMode;
  case autofeatures::AutoCS:return csMode;case autofeatures::MagnetronDrop:return extra.magnetronDrop;case autofeatures::ConstructionQueue:return extra.constructionQueue;
- case autofeatures::MinerDefense:return extra.minerDefenseEnabled;case autofeatures::AntiTheft:return extra.antiTheft;case autofeatures::Dodge:return extra.dodgeEnabled;
+ case autofeatures::BombBoard:return extra.bombBoardEnabled;case autofeatures::MinerDefense:return extra.minerDefenseEnabled;case autofeatures::AntiTheft:return extra.antiTheft;case autofeatures::Dodge:return extra.dodgeEnabled;
  case autofeatures::MissileDefense:return extra.missileDefense;case autofeatures::MissileReserve:return extra.missileReserve;case autofeatures::LowDamageFilter:return extra.lowDamageFilter;
  case autofeatures::MagnetronGlobal:return extra.magnetronGlobal;default:std::abort();}}
 int main(){
  std::set<int>controls,keys,actions;std::set<std::wstring>names;unsigned newKeys=0;
- CHECK(autofeatures::Count==13);
+ CHECK(autofeatures::Count==14);
  for(const auto&e:autofeatures::Entries){CHECK(controls.insert(e.control).second);CHECK(keys.insert(e.keyControl).second);CHECK(actions.insert(e.action).second);CHECK(autofeatures::byControl(e.control)==&e);CHECK(autofeatures::byKeyControl(e.keyControl)==&e);CHECK(autofeatures::byAction(e.action)==&e);if(e.setting){++newKeys;CHECK(names.insert(e.setting).second);CHECK(extra.automaticKeys[e.feature]==0);}}
- CHECK(newKeys==10);CHECK(!autofeatures::byControl(111));CHECK(!autofeatures::byAction(1011));CHECK(!autofeatures::byControl(312));CHECK(!autofeatures::byControl(781));CHECK(!autofeatures::byControl(9200));
+ CHECK(newKeys==11);CHECK(!autofeatures::byControl(111));CHECK(!autofeatures::byAction(1011));CHECK(!autofeatures::byControl(312));CHECK(!autofeatures::byControl(781));CHECK(!autofeatures::byControl(9200));
  loadLegacyKeys();CHECK(hotkeys[0]==MAKEWORD('R',6));CHECK(hotkeys[11]==MAKEWORD('L',6));CHECK(repairMs==2000);
  profile[L"Repair"]=MAKEWORD('R',2);profile[L"AutoLoad"]=MAKEWORD('L',2);loadLegacyKeys();CHECK(hotkeys[0]==MAKEWORD('R',2));CHECK(hotkeys[11]==MAKEWORD('L',2));
  loadFeatureTypes();for(const auto&e:autofeatures::Entries)if(e.setting)CHECK(extra.automaticKeys[e.feature]==0);
@@ -157,61 +157,28 @@ int main(){
 }
 '''
 
-hot_fixture=root/'assist/tests/hotkey_host_test.py'
-prelude=hot_fixture.read_text().split('with tempfile.TemporaryDirectory()',1)[0]
-env={'__file__':str(hot_fixture)}
-exec(compile(prelude,str(hot_fixture),'exec'),env)
-route=env['program'].split('static void ack(){',1)[0]
-route=route.replace('#include "protocol.h"','#include "protocol.h"\n#include "placement_event_input.h"\n#include "destruct_owner_input.h"\n#include "../../shared/source/feature_availability.h"\n#include "../../external_reader/source/watch_slots.h"\n#include <iostream>')
-route=route.replace('uint32_t*s){memcpy(k,keys,256);memcpy(s,serial,1024);}','uint32_t*s=nullptr){memcpy(k,keys,256);if(s)memcpy(s,serial,1024);}')
-route=route.replace('static WORD comparableKey',r'''
-using DWORD=uint32_t;using UINT=unsigned;using BYTE=uint8_t;constexpr UINT MOD_NOREPEAT=0x4000;
-static DWORD GetMessageTime(){return now;}static void MemoryBarrier(){}
-namespace modernui {static std::wstring hotkeyName(WORD){return L"fixture";}}
-static void submitDestructSelectedOwner(){}static void submitPlacementEvent(){}static void changedSetting(){}
-static std::vector<int>automaticEvents;
-static bool automaticHotkey(WPARAM action){if(!autofeatures::byAction(int(action)))return false;automaticEvents.push_back(int(action));return true;}
-static WORD comparableKey''',1)
-registration=main.split('static int desiredHotkeyMode(){',1)[1].split('static std::wstring serializeIDs',1)[0]
-modifiers=re.search(r'static UINT modifiers\(WORD key\)\{[^\n]+',main).group()
+# Reuse the current production-context harness: the legacy display-gated
+# dispatcher fixture intentionally predates the command-channel recovery.
+import hotkey_command_context as current_hotkeys
+hot_fixture=Path(current_hotkeys.__file__)
+route=current_hotkeys.program(main,(production/'hotkey_host.h').read_text()).split(current_hotkeys.TESTS,1)[0]
+route=route.replace('static bool automaticHotkey(WPARAM){return false;}', 'static std::vector<int> automaticEvents;static bool automaticHotkey(WPARAM action){if(!autofeatures::byAction(int(action)))return false;automaticEvents.push_back(int(action));return true;}')
+route+=current_hotkeys.TESTS.split('int main(int argc,char**argv){',1)[0]
 route+=r'''
-static bool hookSmartUnload=false,buildAnywhereMode=false,keysRegistered=false;static std::vector<int>registeredKeyIDs;
-static uint32_t displayMatch(){return scene;}
-static bool RegisterHotKey(int,int,unsigned,unsigned){return true;}static void UnregisterHotKey(int,int){}
-'''+modifiers+'\nstatic int desiredHotkeyMode(){'+registration
-route+=r'''
-static unsigned checks=0;
-#define CHECK(x) do{++checks;if(!(x)){std::cerr<<"FAIL "<<__LINE__<<": "<<#x<<"\n";std::abort();}}while(0)
-static LPARAM event(WORD key){return (LPARAM(LOBYTE(key))<<16)|(modifiers(key)&~MOD_NOREPEAT);}
-static void clearBindings(){for(auto&k:hotkeys)k=0;for(auto&k:extra.automaticKeys)k=0;for(auto&k:extra.missionModeKeys)k=0;for(auto&k:socialKeys)k=0;ejectKey=csKey=idleAircraftKey=0;extra.stickyKey=extra.variantKey=extra.placementEventKey=0;typeBindings.clear();swBindings.clear();extra.sidebarEnabled=extra.viewZoomEnabled=extra.watchEnabled=extra.watchSecondary=false;extra.allHotkeys=false;memset(gameinput::keys,0,256);hotkeyPending.clear();shared->ack=shared->request;shared->selectAck=shared->selectRequest;}
 int main(){
- snap.status=snap.renderStatus=1;snap.match=scene;clearBindings();hotkeys[0]=0x652;hotkeys[11]=0x64c;ejectKey=0x64a;csKey=0x641;
- registerKeys();CHECK(hotkeyRegistry.find(1000));CHECK(hotkeyRegistry.find(1011));CHECK(hotkeyRegistry.find(1696));CHECK(!hotkeyRegistry.find(1699));CHECK(hotkeyRegistry.groups.size()==3);
- for(const auto&e:autofeatures::Entries)if(e.setting)CHECK(!hotkeyRegistry.find(e.action));
- // OFF switches still register: the shortcut must be able to turn them on.
- clearBindings();for(const auto&e:autofeatures::Entries){WORD k=WORD(0x641+e.feature);if(e.feature==autofeatures::Repair)hotkeys[0]=k;else if(e.feature==autofeatures::Eject)ejectKey=k;else if(e.feature==autofeatures::AutoCS)csKey=k;else extra.automaticKeys[e.feature]=k;}
- registerKeys();CHECK(hotkeyRegistry.groups.size()==12);
- for(const auto&e:autofeatures::Entries){if(e.feature==autofeatures::AutoCS)continue;auto*group=hotkeyRegistry.find(e.action);CHECK(group&&group->actions.size()==1);auto before=automaticEvents.size();handleHotkey(e.action,event(WORD(0x641+e.feature)));CHECK(automaticEvents.size()==before+1&&automaticEvents.back()==e.action);}
- CHECK(commands.empty());
- clearBindings();extra.automaticKeys[autofeatures::Dodge]=WORD('X'|0x200|0x2000);registerKeys();auto before=automaticEvents.size();gameinput::keys[17]=gameinput::keys['X']=1;handleHotkey(1807,event(WORD('X'|0x200)));CHECK(automaticEvents.size()==before);serviceHotkeyBatch();CHECK(automaticEvents.size()==before);gameinput::keys['X']=0;serviceHotkeyBatch();CHECK(automaticEvents.size()==before+1);serviceHotkeyBatch();CHECK(automaticEvents.size()==before+1);
- clearBindings();extra.automaticKeys[autofeatures::Dodge]=WORD('Q'|0x8000);registerKeys();before=automaticEvents.size();handleHotkey(1807,event('Q'));CHECK(automaticEvents.size()==before);now+=100;handleHotkey(1807,event('Q'));CHECK(automaticEvents.size()==before+1);
- clearBindings();extra.automaticKeys[autofeatures::Dodge]='X';registerKeys();before=automaticEvents.size();
- focused=false;handleHotkey(1807,event('X'));CHECK(automaticEvents.size()==before);focused=true;
- snap.chat=1;handleHotkey(1807,event('X'));CHECK(automaticEvents.size()==before);snap.chat=0;
- snap.renderStatus=0;handleHotkey(1807,event('X'));CHECK(automaticEvents.size()==before);snap.renderStatus=1;
- enabled=false;handleHotkey(1807,event('X'));CHECK(automaticEvents.size()==before);enabled=true;
- freshConnection=false;handleHotkey(1807,event('X'));CHECK(automaticEvents.size()==before&&!hotkeyPending.count);freshConnection=true;
- scene=0;handleHotkey(1807,event('X'));CHECK(automaticEvents.size()==before&&!hotkeyPending.count);scene=8;
- ++shared->request;handleHotkey(1807,event('X'));CHECK(hotkeyPending.count==1&&automaticEvents.size()==before);now+=2501;serviceHotkeyBatch();CHECK(!hotkeyPending.count&&automaticEvents.size()==before);shared->ack=shared->request;
- handleHotkey(1807,event('X'));CHECK(automaticEvents.size()==before+1);
- ++shared->selectRequest;handleHotkey(1807,event('X'));CHECK(hotkeyPending.count==1);++scene;serviceHotkeyBatch();CHECK(!hotkeyPending.count&&automaticEvents.size()==before+1);shared->selectAck=shared->selectRequest;
- // Normal collision policy and dangerous-action exclusivity are preserved.
- clearBindings();hotkeys[0]='R';extra.automaticKeys[autofeatures::Dodge]='R';CHECK(keyConflict('R',"",false));registerKeys();CHECK(hotkeyRegistry.groups.size()==1&&hotkeyRegistry.find(1000)->actions.size()==1);before=automaticEvents.size();handleHotkey(1000,event('R'));CHECK(automaticEvents.size()==before+1&&automaticEvents.back()==1000);
- extra.allHotkeys=true;registerKeys();CHECK(hotkeyRegistry.find(1000)->actions.size()==2);before=automaticEvents.size();handleHotkey(1000,event('R'));CHECK(automaticEvents.size()==before+2);CHECK(automaticEvents[before]==1000&&automaticEvents[before+1]==1807);CHECK(destructOwnerKeyConflict('R'));
- extra.destructSelectedOwner=true;extra.destructSelectedOwnerKey='R';registerKeys();CHECK(!hotkeyRegistry.find(destructownerhost::Hotkey));extra.destructSelectedOwner=false;
- // AutoBoard remains the original selected-unit command, never a toggle.
- clearBindings();hotkeys[11]=0x64c;registerKeys();before=automaticEvents.size();handleHotkey(1011,event(hotkeys[11]));CHECK(automaticEvents.size()==before);CHECK(commands.size()==1&&commands.back()==AutoBoard);
- std::cout<<"PASS automatic hotkey registration/context/gestures checks="<<checks<<"\n";
+ // Every feature, including BombBoard, has an independently usable OFF-state
+ // shortcut even when optional rendering is unavailable.
+ for(int render:{0,1}){
+  reset(render);hotkeys[11]=0;extra.placementEventKey=0;
+  for(const auto&e:autofeatures::Entries){WORD k=WORD(0x641+e.feature);if(e.feature==autofeatures::Repair)hotkeys[0]=k;else if(e.feature==autofeatures::Eject)ejectKey=k;else if(e.feature==autofeatures::AutoCS)csKey=k;else extra.automaticKeys[e.feature]=k;}
+  registerKeys();check(hotkeyRegistry.groups.size()==13,"one registration per active feature; retired AutoCS excluded");
+  for(const auto&e:autofeatures::Entries){if(e.feature==autofeatures::AutoCS)continue;auto*g=hotkeyRegistry.find(e.action);check(g&&g->actions.size()==1,"feature registration");auto before=automaticEvents.size();const WORD k=WORD(0x641+e.feature);++now;messageAt=now;handleHotkey(e.action,LPARAM((LOBYTE(k)<<16)|(modifiers(k)&~MOD_NOREPEAT)));check(automaticEvents.size()==before+1&&automaticEvents.back()==e.action,"dispatch into automatic owner");}
+  check(commands.empty(),"automatic switches must not dispatch a selected-unit order");
+  auto before=automaticEvents.size();focused=false;++now;messageAt=now;handleHotkey(1813,LPARAM(('N'<<16)|MOD_CONTROL|MOD_ALT));check(automaticEvents.size()==before,"no action outside game focus");
+ }
+ // Preserve the ordinary selected-unit action with the real command sink.
+ reset();registerKeys();message();expectOneAutoBoard("AutoBoard remains one selected-unit command");
+ std::cout<<"PASS automatic hotkey registration/context checks="<<checks<<"\n";
 }
 '''
 

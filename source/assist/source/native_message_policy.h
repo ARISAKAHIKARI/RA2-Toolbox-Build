@@ -57,6 +57,7 @@ extern "C" int AssistFilterMessage(void* raw){
  if(pauseViewMessage(msg))return 1;
  if(nativePlacementCompletionPending())nativePlacementCompletionTick(sampleClock(sh));
  if(nativePlacementMessage(msg))return 1;
+ if(directair::message(msg))return 1;
  if(moOrdersMessage(msg))return 1;
  if(formationMessage(msg))return 1;
  if(reservationMessage(msg))return 1;
@@ -112,12 +113,18 @@ extern "C" int AssistFilterMessage(void* raw){
  msg->message=WM_NULL;msg->wParam=msg->lParam=0;return 1;
 }
 extern "C" int GuardedAssistFilter(void*);
+static bool gestureWantsInputSample(const MSG*msg){
+ if(!msg||!sh||!sh->foreground)return false;
+ const auto edge=moorders::gestureMouseEdge(msg->message,uintptr_t(msg->wParam));
+ if(sh->keepInputUnlocked&&(edge.down||edge.up||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP))return true;
+ return (edge.down||edge.up)&&((sh->moFeatures&7u)||sh->formationPolicy.enabled||directair::enabled()||moOrdersPending()||directAirPending());
+}
 extern "C" void AssistRuntimeFilter(void* message){
  // Input can arrive in a new simulation frame without a Host-ready bit.
  // Refresh through the existing dispatcher; never relax event frame checks.
  bool refresh=false;
  gameentry::scoped(gameentry::Client::Assist,false,[&]{
-  refresh=readonly::commands(sh)&&!readOnlyState.active&&(superweaponGrantWantsInputSample(static_cast<const MSG*>(message))||nativePlacementWantsInputSample(static_cast<const MSG*>(message)));
+  refresh=readonly::commands(sh)&&!readOnlyState.active&&(gestureWantsInputSample(static_cast<const MSG*>(message))||superweaponGrantWantsInputSample(static_cast<const MSG*>(message))||nativePlacementWantsInputSample(static_cast<const MSG*>(message)));
   if(!refresh)GuardedAssistFilter(message);
  });
  if(!refresh)return;
