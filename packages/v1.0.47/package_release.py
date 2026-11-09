@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the frozen 1.0.47-pre.10 build; never build or publish.
+"""Package the frozen 1.0.47 build; never build or publish.
 
 Use the verified 1.0.46.4 originals, themes, licenses and seven-file engine.
 Only prepare_runtime.py may change, with a current dependency check.
@@ -34,7 +34,7 @@ ENTRY = importlib.util.module_from_spec(ENTRY_SPEC)
 ENTRY_SPEC.loader.exec_module(ENTRY)
 ENTRY_BINDINGS = ENTRY.BINDINGS
 
-VERSION, FILE_VERSION = '1.0.47-pre.10', '1.0.47.10'
+VERSION, FILE_VERSION = '1.0.47', '1.0.47.10'
 ASSIST_PROTOCOL = 103
 BASE_SHARED_BYTES, SHARED_BYTES = 23162528, 23162552
 BASE_NAME = 'RA2Toolbox-1.0.46-x64-Full.zip'
@@ -1157,7 +1157,7 @@ def main():
             'validation_evidence_sha256': sha(validation_bytes), 'verified_validation_logs': log_bindings,
             'controlled_windows_checks': False, 'current_release_binaries_executed_on_windows': False,
             'full_game_tested': False, 'physical_gpu_tested': False, 'multiplayer_tested': False,
-            'prerelease': True, 'make_latest': False,
+            'prerelease': False, 'make_latest': True,
             'deferred_work': ['cursor_mixed_canvas_fix'] + ([] if changed_engine else ['dependency_probe_optimization']),
             'resources': {'source_release': 'v1.0.46', 'source_file_version': '1.0.46.4',
                           'source_commit': BASE_COMMIT, 'archive': BASE_NAME, 'bytes': BASE_BYTES,

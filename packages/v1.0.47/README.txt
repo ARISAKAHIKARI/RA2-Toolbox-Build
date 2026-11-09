@@ -1,4 +1,4 @@
-RA2 Toolbox 1.0.47-pre.10
+RA2 Toolbox 1.0.47
 Windows 文件版本：1.0.47.10
 
 本轮修复与优化
