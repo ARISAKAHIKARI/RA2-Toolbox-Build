@@ -1,0 +1,19 @@
+{
+  "compiler": "Zig 0.13.0",
+  "target": "x86-windows-gnu",
+  "optimization": "O2",
+  "workspace_bytes": 66304,
+  "explicit_subtractions_bytes": [
+    64,
+    20,
+    32,
+    48,
+    44
+  ],
+  "alloca_probe_bytes": [
+    8544
+  ],
+  "largest_fixed_request": 8544,
+  "production_sha256": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+  "scope": "Production function with static-workspace wrapper; includes alloca probe requests. No Windows execution or total game-thread stack-depth claim."
+}

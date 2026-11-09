@@ -1,0 +1,199 @@
+{
+  "recorded_at_utc": "2026-11-09T03:57:05.282116+00:00",
+  "baseline": "1.0.46.4",
+  "planned_release": "1.0.47; version files unchanged by this agent",
+  "checks": [
+    {
+      "name": "voxel_recovery",
+      "command": [
+        "python",
+        "source/assist/tests/voxel_part_capture.py",
+        "--output",
+        "/workspace/scratch/5a310fe852f8/opt147/render/voxel"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "executed_this_revision": true,
+      "log_path": "/workspace/scratch/5a310fe852f8/opt147/render/voxel/run.log",
+      "log_sha256": "ddb93eda608133ca6ba67845327e6f591d53f53c1007f3d28057c8c731657a74",
+      "test_source_hashes": {
+        "source/assist/tests/voxel_part_capture.py": "d94318751948a6edfe230aed83acbdb286586ac7448f88242acd27dce43d98f6",
+        "source/assist/tests/voxel_part_capture.cpp": "904c141dd2944a5ca287041f6c221e37393098404b7191061bdd07f471ba6b36",
+        "source/assist/tests/game_assets_host_test.py": "4965c42fa325878bd803f0c6b8697bdfe9066f5066588017c5832ac2a2b72a4e"
+      },
+      "production_source_hashes": {
+        "source/external_reader/source/camera_assets.h": "b33669cbf6bb0430c773e5cd93f37a71403766e04bef557fff955b16bca3c0bd",
+        "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659",
+        "source/external_reader/source/voxel_preview.h": "9564cbf1ae05cb7653dbf67d6b5e6676ec09e869c301c9fa1981e945c8566c86",
+        "source/assist/source/minimap_overlay.h": "3fe7371e9e5f5b80b39a5da75021ee7703bfa02a8864a2a7ec0a71f6e6a2f7bd",
+        "source/assist/source/watch_scene.h": "f89c564c6ffe5505343180f6d0ffb4598d130b6e815b4540d0ad05bd26b03cb4",
+        "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e"
+      },
+      "scope": "Actual Context, VXL/HVA, SceneRenderer and CPU composition over synthetic Win32/process/file boundaries; true voxel markers recover in the same renderer 20ms after a transient failure. Integration caller hashes are included for review, not a claim of full Host or physical GPU execution.",
+      "result": {
+        "checks": 151,
+        "failures": 0,
+        "recovery_scenes": 8,
+        "recovery_pixel_mismatches": 0,
+        "baseline_failures": 69,
+        "baseline_recovery_pixel_mismatches": 4704,
+        "healthy_digest_both": "8f320cbad81486c3",
+        "recovery_delay_ms": 20,
+        "confirmed_voxel_marker": true
+      },
+      "receipt_path": "/workspace/scratch/5a310fe852f8/opt147/render/voxel/receipt.json",
+      "receipt_sha256": "9d4387eb39bd15d3799b35d4ff643cfe53e28c331c2c2b59da84da0723447cc7",
+      "baseline_receipt_path": "/workspace/scratch/5a310fe852f8/opt147/render/voxel-baseline/receipt.json",
+      "baseline_receipt_sha256": "7b10772d6d03d3998f8967dd69e1862b2c5500ad96a0490196d97172e0d6da53"
+    },
+    {
+      "name": "idle_aircraft_display",
+      "command": [
+        "/workspace/scratch/5a310fe852f8/opt147/render/idle_aircraft_display"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "executed_this_revision": true,
+      "log_path": "/workspace/scratch/5a310fe852f8/opt147/render/idle_aircraft_display.run.log",
+      "log_sha256": "bac486eae790070708d02c17912d28e7c076af78deb2696d1fc22fa56317ca1e",
+      "test_source_hashes": {
+        "source/assist/tests/idle_aircraft_display.cpp": "1e16f480a865153f4c827dc3e5809e39a0013b13f95de3216ab88066aa227b14",
+        "source/assist/tests/enemy_markers.cpp": "02700cbc69df44b81e5f3bc246004e4567ed9ecab611fa94d6a32fa38d398bf6",
+        "source/assist/tests/idle_aircraft_selection_lease.cpp": "4e91cdaad039cd9a0cc3309af6adbc86e710df450f44fe67ca8ab0e2fc16f02a"
+      },
+      "production_source_hashes": {
+        "source/external_reader/source/tactical_sampler.h": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab",
+        "source/external_reader/source/idle_aircraft.h": "8f136a5ca6f8066bfc1017caf3fd1d47578e4ddca3c40ab8be3d7873b80df7cf",
+        "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+        "source/assist/source/aircraft_indicator.h": "3b81510daf5734a3a2db8bb5647d35f6b37eb9d34e25ebf6e80f020f66026dda",
+        "source/assist/source/idle_aircraft_selection.h": "c4d2c741a9010f0159616a5f761a3fde035d7d90437f0e87998cec84b9d2d0d8",
+        "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e"
+      },
+      "scope": "Actual TacticalSampler and production sealed Snapshot. Derived refresh reads no live bytes; separate exact production selection header test retains 500ms TTL. Full Win32 Host is reserved to root cross-build. Same-source derived failures are remembered by match/frame/serial; full tactical sample and epoch/reset permit another attempt. Controlled repeated healthy records occupy 8191 slots and a distinct final object has a missing field page.",
+      "binary_sha256": "e11b600baf52f2948cafa7a8f1c661ca467a133791afc3247b92171babb29536",
+      "log_origin": "Raw stdout/stderr written by subprocess after executing the current binary; no reconstruction.",
+      "receipt_path": "/workspace/scratch/5a310fe852f8/opt147/render/idle_aircraft_display.receipt.json",
+      "receipt_sha256": "a0fa4d2d62de886220a73ed845182650d3472e561fdd3509736a8980dffb6a56",
+      "failed_source_retry_result": {
+        "controlled_aircraft_slots": 8192,
+        "first_failed_derived_read_calls": 294898,
+        "same_source_repeated_calls_before": 294898,
+        "same_source_repeated_calls_after": 0,
+        "live_read_calls": 0,
+        "before_header_sha256": "b8f4fc0f5cc55488245190a7a7754b2e89130d6e4c50eaea496b7d3b4e021ec7",
+        "before_log_path": "/workspace/scratch/5a310fe852f8/opt147/render/idle_aircraft_display.before_retry_gate.run.log",
+        "before_log_sha256": "3e3210990015d9f771c96459205eab38c9cfa0bfddb72d09e9a14c205b7dbf03"
+      }
+    },
+    {
+      "name": "terrain_reuse",
+      "command": [
+        "/workspace/scratch/5a310fe852f8/opt147/render/terrain_storage_pool"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "exit_code": 0,
+      "executed_this_revision": true,
+      "log_path": "/workspace/scratch/5a310fe852f8/opt147/render/terrain_storage_pool.run.log",
+      "log_sha256": "e9b2d7ba43c29997378565c9aef16827b998edfee225d27d04c26f936616139f",
+      "test_source_hashes": {
+        "source/assist/tests/terrain_storage_pool.cpp": "7b621df3f779e4bea59661cbd86aef8429081e18a16a9df13a9c6c9313fe25da",
+        "source/assist/tests/terrain_storage_performance.cpp": "32db6aefd08beb8575a194cd54a08ed717b4f74c45a80f1ebc5beb57f301029c",
+        "source/assist/tests/shared_scene_sampling.cpp": "c6375b7e460aa684d6f2374093c90e89cdb938a8335528f8b25d1f9c82a66cfa"
+      },
+      "production_source_hashes": {
+        "source/external_reader/source/radar_map.h": "34bfd768bb72dfbaf3750f57c91cb6bddefa85fe9a247f191595b9b11445df90",
+        "source/external_reader/source/shared_scene.h": "87e8e426bc52e13e9ac5d5cfda39d70bb17b968b453731d56da9d353dfaadbd3",
+        "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659",
+        "source/external_reader/source/world_scene_pipeline.h": "56b55686556b7fef84e0a3463cf6997dfdcf1be1e74237fc69923cce88793f8b",
+        "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+        "source/assist/source/minimap_overlay.h": "3fe7371e9e5f5b80b39a5da75021ee7703bfa02a8864a2a7ec0a71f6e6a2f7bd",
+        "source/assist/source/watch_scene.h": "f89c564c6ffe5505343180f6d0ffb4598d130b6e815b4540d0ad05bd26b03cb4"
+      },
+      "scope": "Actual Sampler/SharedSceneProvider with sealed pages; immutable reader lifetime, fresh shared_ptr control blocks, reuse, fallback, failure, mode and concurrent-release checks. SceneRenderer/minimap/watch integration hashes are reviewed callers, not execution claims for those Host paths. Allocation bytes are not FPS.",
+      "allocation_result": {
+        "baseline_warm_bytes": 15345816,
+        "current_warm_bytes": 141288,
+        "baseline_warm_calls": 22,
+        "current_warm_calls": 18,
+        "baseline_large_allocations": 4,
+        "current_large_allocations": 0,
+        "current_initial_or_fallback_bytes": 15345868,
+        "same_publication_second_consumer_bytes": 0,
+        "idle_pool_limit": 3
+      },
+      "binary_sha256": "e8696609185852ff7eeac70e49213948dc7d48d8d41842eac8d631968a8f7146",
+      "log_origin": "Exact stdout captured from successful exec_command output; persisted after execution without rerunning."
+    }
+  ],
+  "additional_successful_executions": [
+    {
+      "command": [
+        "/workspace/scratch/5a310fe852f8/opt147/render/idle_aircraft_selection_lease"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/opt147/render/idle_aircraft_selection_lease.run.log",
+      "log_sha256": "82614f197228c56e1915d4a513c7efb0216dfa56c60a93e2d35c09302cf9f5f0",
+      "binary_sha256": "a2f475a375f779e6858a915abd00c74774d1696790f05f18c78a628733a5c2e6"
+    },
+    {
+      "command": [
+        "/workspace/scratch/5a310fe852f8/opt147/render/terrain_storage_performance"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/opt147/render/terrain_storage_performance.run.log",
+      "log_sha256": "4318e822a19340a9b4414ea4c8c7ab4e8e495b822b7d21b40665658b557728ae",
+      "binary_sha256": "27519a3d868a4f1bff13f0c22addcf2ed5b348cd2fb2dc38feb4da4711fccb70"
+    },
+    {
+      "command": [
+        "/workspace/scratch/5a310fe852f8/opt147/render/terrain_storage_pool_asan"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/opt147/render/terrain_storage_pool.asan-ubsan.log",
+      "log_sha256": "e9b2d7ba43c29997378565c9aef16827b998edfee225d27d04c26f936616139f",
+      "binary_sha256": "a8586176e2ab4c136ccc8261a7c88279d7c3ecef54feadf49a14a1775f6bd1a0"
+    },
+    {
+      "command": [
+        "/workspace/scratch/5a310fe852f8/opt147/render/shared_scene_sampling"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/opt147/render/shared_scene_sampling.run.log",
+      "log_sha256": "8e994d47b466a99831ed6a0c5b486b33cd1df06333154c1a204813e84eaa6af0",
+      "binary_sha256": "6886257c7f0fee0757f03ba5671c63ab03c6f82dd218951590a468915cfdf7c5"
+    },
+    {
+      "command": [
+        "/workspace/scratch/5a310fe852f8/opt147/render/radar_visibility_publication"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/opt147/render/radar_visibility_publication.run.log",
+      "log_sha256": "3f2f7a81cb4ce752bd1ece4e803dfe4f1a286316bda183647d5f366aeba7587c",
+      "binary_sha256": "30cd6bfbe04f4d2dd55de9c5d7e98ec69d996e751cd0770f57bf7dd7ee23ad1a"
+    }
+  ],
+  "limitations": [
+    "Synthetic CPU process/files/UI boundaries; no Windows/game/multiplayer/physical GPU acceptance.",
+    "LeakSanitizer is unavailable under ptrace; ASan+UBSan ran with detect_leaks=0.",
+    "Existing enemy_markers.cpp fails the same freshReads assertion with both saved baseline and current TacticalSampler.",
+    "Existing hotkey_host_test.py does not compile against current middle_input_host interfaces; unrelated fixture was not modified."
+  ],
+  "owned_production_source_hashes": {
+    "source/external_reader/source/camera_assets.h": "b33669cbf6bb0430c773e5cd93f37a71403766e04bef557fff955b16bca3c0bd",
+    "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659",
+    "source/external_reader/source/radar_map.h": "34bfd768bb72dfbaf3750f57c91cb6bddefa85fe9a247f191595b9b11445df90",
+    "source/external_reader/source/tactical_sampler.h": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab",
+    "source/external_reader/source/idle_aircraft.h": "8f136a5ca6f8066bfc1017caf3fd1d47578e4ddca3c40ab8be3d7873b80df7cf",
+    "source/assist/source/aircraft_indicator.h": "3b81510daf5734a3a2db8bb5647d35f6b37eb9d34e25ebf6e80f020f66026dda",
+    "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e"
+  },
+  "implementation_report_path": "/workspace/scratch/5a310fe852f8/opt147/render/implementation.md",
+  "implementation_report_sha256": "23b3940d34fc163751ee4a20ad102db59f06fdd9e120361fa6c576c0cae5f1d4"
+}

@@ -365,6 +365,7 @@ void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavi
 }
 #endif
 
+#ifndef WORLD_FRAME_FIXTURE_ONLY
 int main(){
  fixture::overlap();fixture::partial();fixture::graphs();fixture::capacity();fixture::nothrowPages();
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
@@ -372,3 +373,4 @@ int main(){
 #endif
  std::printf("PASS production world frame core: %zu checks; overlap/immutable/failed/missing/roster/demand/queue/page-capacity\n",fixture::checks);
 }
+#endif

@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 1.0.46.4 基线的 1.0.47 预发布修复与优化 | [精确导弹分配、快照/地形存储复用、VXL 恢复、暂停飞机与依赖探测](2026-11-09-pre147-audit-optimizations.md) | pre147-1 baseline1464 new-weak-identity two-level-heap paused-aircraft failed-source gate VXL-required retry16 bounded-pools no-FPS-claim |
 | 1.0.46 修订的建筑遮挡与恢复 | [基础尺寸缺页、BUILDNGZ 事务与真实场景缓存恢复](2026-11-08-release-146-building-depth-cache.md) | foundation sealed-missing-page 1x1 poison maskRevision commit-after-identity 36-recoveries native-Z-preserved |
 | 1.0.46 修订的四类原生生产时间 | [类型布局、原指令查询、工厂剩余和侧栏一致性](2026-11-08-release-146-production-time.md) | Building Unit Infantry Aircraft native-TimeToBuild scratch-prefix UTF16 final-cameo 47-native-cases no-game |
 | 1.0.46 修订的计算输入与重复工作 | [独占输入池、有效范围、同样本资格缓存和订阅时限](2026-11-08-release-146-input-and-cache-performance.md) | ValueTask owned-lease prefix-copy FrameHistory AntiTheft full-token earliest-expiry 500Hz no-FPS-claim |

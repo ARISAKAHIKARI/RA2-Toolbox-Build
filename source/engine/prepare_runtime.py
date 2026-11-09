@@ -444,14 +444,27 @@ print('RA2_DEPENDENCY_OK')
 """
 
 
-def run_probe(python: Path, row: dict, paths: list[Path], origin: Path, progress: Progress) -> bool:
+BATCH_PROBE_CODE = r"""
+import json,sys
+code,checks=json.loads(sys.argv[1])
+base_path=sys.path[:]
+probe=compile(code,'<dependency-probe>','exec')
+for check in checks:
+ sys.path[:]=base_path
+ sys.argv[1]=json.dumps(check)
+ exec(probe,{'__name__':'__main__'})
+print('RA2_DEPENDENCIES_OK')
+"""
+
+
+def execute_probe(python: Path, code: str, payload: str, progress: Progress,
+                  success_marker: bytes) -> bool:
     progress.checkpoint()
-    payload = json.dumps([[str(path) for path in paths], row["module"], row["module_version"], str(origin)])
     flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     # A descendant retaining a pipe's write end must not make a finished probe
     # wait forever for EOF. A temporary file has no pipe-drain dependency.
     with tempfile.TemporaryFile() as output:
-        process = subprocess.Popen([str(python), "-I", "-S", "-c", PROBE_CODE, payload],
+        process = subprocess.Popen([str(python), "-I", "-S", "-c", code, payload],
                                    stdin=subprocess.DEVNULL, stdout=output,
                                    stderr=subprocess.STDOUT, creationflags=flags)
         deadline = time.monotonic() + 60
@@ -462,11 +475,26 @@ def run_probe(python: Path, row: dict, paths: list[Path], origin: Path, progress
                     return False
                 time.sleep(0.1)
             output.seek(0)
-            return process.returncode == 0 and b"RA2_DEPENDENCY_OK" in output.read(65536)
+            return process.returncode == 0 and success_marker in output.read(65536)
         finally:
             if process.poll() is None:
                 process.kill()
                 process.wait(timeout=5)
+
+
+def run_probe(python: Path, row: dict, paths: list[Path], origin: Path, progress: Progress) -> bool:
+    payload = json.dumps([[str(path) for path in paths], row["module"], row["module_version"], str(origin)])
+    return execute_probe(python, PROBE_CODE, payload, progress, b"RA2_DEPENDENCY_OK")
+
+
+def run_batch_probe(python: Path, checks: list[tuple[dict, list[Path], Path]], progress: Progress) -> bool:
+    payload = json.dumps([PROBE_CODE, [
+        [[str(path) for path in paths], row["module"], row["module_version"], str(origin)]
+        for row, paths, origin in checks
+    ]])
+    # A successful earlier module cannot certify an interrupted batch. The
+    # separate completion marker is emitted only after every original probe.
+    return execute_probe(python, BATCH_PROBE_CODE, payload, progress, b"RA2_DEPENDENCIES_OK")
 
 
 def component_from_index(index: dict, row: dict, components: Path) -> Path | None:
@@ -491,7 +519,7 @@ def component_from_index(index: dict, row: dict, components: Path) -> Path | Non
 
 
 def prepare_components(root: Path, python: Path, manifest: dict, progress: Progress,
-                       *, probe=run_probe, fetch=download_archive) -> list[Path]:
+                       *, probe=run_probe, fetch=download_archive, batch_probe=None) -> list[Path]:
     runtime = directory(root / "runtime")
     managed = directory(runtime / "downloaded")
     components = directory(managed / "packages")
@@ -505,6 +533,35 @@ def prepare_components(root: Path, python: Path, manifest: dict, progress: Progr
                 index = {"schema_version": 1, "components": {}}
         except (OSError, ValueError, DependencyError):
             index = {"schema_version": 1, "components": {}}
+        # Only a complete managed cache takes this path. Legacy, missing or
+        # failed components retain the original individual selection/repair.
+        # A caller injecting its own probe never implicitly launches a child.
+        if batch_probe is None and probe is run_probe:
+            batch_probe = run_batch_probe
+        packages = manifest["packages"]
+        if batch_probe is not None and len(packages) == len(EXPECTED_PACKAGES) and all(
+                tuple(row.get(key) for key in ("id", "version", "module", "module_version")) == expected
+                for row, expected in zip(packages, EXPECTED_PACKAGES)):
+            cached = []
+            checks = []
+            for row in packages:
+                progress.checkpoint()
+                active = component_from_index(index, row, components)
+                if active is None:
+                    break
+                cached.append(active)
+                checks.append((row, search_paths(cached, legacy), active))
+            else:
+                progress.write("dependency_check", "正在检查预处理依赖：NumPy、SciPy、OpenCV")
+                try:
+                    healthy = batch_probe(python, checks, progress)
+                except Cancelled:
+                    raise
+                except OSError:
+                    healthy = False
+                if healthy:
+                    progress.checkpoint()
+                    return search_paths(cached, legacy)
         selected = []
         for row in manifest["packages"]:
             progress.checkpoint()

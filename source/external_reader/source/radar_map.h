@@ -21,6 +21,7 @@
 #include "radar_shroud_selector.h"
 #include <memory>
 #include <array>
+#include <mutex>
 #include "../../shared/source/parallel_rows.h"
 // Read-only YRpp MapClass/CellClass/RadarClass model. Projection matches
 // GetCrdOnRadar (0x6557F0); never calls game functions or captures the screen.
@@ -143,12 +144,39 @@ inline uint32_t terrainColor(int land,int level,bool fog){
  int r=std::min(255,int(c>>16)+shade),g=std::min(255,int((c>>8)&255)+shade),b=std::min(255,int(c&255)+shade);if(fog){r=r*2/3;g=g*2/3;b=b*2/3;}return uint32_t(r<<16|g<<8|b);
 }
 template<class Read> class Sampler {
+ struct TerrainStorage {
+  Terrain value;std::vector<uint32_t>touched;
+  void prepare(bool real){
+   // Only this storage's retired writer recorded these indices. Untouched
+   // holes retain the same defaults as a fresh 512x512 allocation.
+   for(uint32_t i:touched){value.colors[i]=0;value.shade[i]={};if(i<value.baseColors.size())value.baseColors[i]=0;if(i<value.art.size())value.art[i]={};}
+   touched.clear();value.colors.resize(512*512);value.shade.resize(512*512);
+   if(real){value.baseColors.resize(512*512);value.art.resize(512*512);}else{value.baseColors.clear();value.art.clear();}
+  }
+ };
+ struct TerrainPool {std::mutex mutex;std::array<std::unique_ptr<TerrainStorage>,3>idle;};
+ std::shared_ptr<TerrainPool>terrainPool_=std::make_shared<TerrainPool>();std::shared_ptr<TerrainStorage>pendingStorage_;
+ std::shared_ptr<TerrainStorage> acquireTerrain(){
+  std::unique_ptr<TerrainStorage>storage;
+  {std::lock_guard<std::mutex>lock(terrainPool_->mutex);for(auto&slot:terrainPool_->idle)if(slot){storage=std::move(slot);break;}}
+  if(!storage)storage=std::make_unique<TerrainStorage>();
+  // Every publication has a NEW control block. Reuse only raw storage after
+  // its final reader releases it: old weak owners must remain expired even
+  // when a later Terrain happens to occupy the same address. A full idle
+  // pool releases excess storage; in-flight readers never limit new capture.
+  std::weak_ptr<TerrainPool>pool=terrainPool_;
+  return std::shared_ptr<TerrainStorage>(storage.release(),[pool](TerrainStorage*p){
+   std::unique_ptr<TerrainStorage>retired(p);if(auto state=pool.lock()){
+    std::lock_guard<std::mutex>lock(state->mutex);for(auto&slot:state->idle)if(!slot){slot=std::move(retired);break;}
+   }
+  });
+ }
  ActiveProjection projection_;
  bool particles_=true,lasers_=true,wholeWorld_=false;Read read_;GameView<Read> view_;Geometry geo_{};std::vector<uint32_t> pointers_;std::shared_ptr<Terrain> pending_;std::shared_ptr<const Terrain> terrain_;
  std::vector<uint32_t> tileTypes_,overlayTypes_,smudgeTypes_,prefetchCells_;std::vector<artvariants::Pool> resourcePools_;size_t cursor_=0;int lastFrame_=-1;uint32_t reveal_=0;unsigned revision_=0;
  struct MaskBits {uint8_t state=0,shroud=0,fog=0;}; // state: unknown, verified, unavailable
  std::vector<MaskBits> maskBits_;std::array<int8_t,256> frameLookup_{};bool pendingIncomplete_=false;
- void discardPending(){pending_.reset();pointers_.clear();maskBits_.clear();cursor_=0;pendingIncomplete_=false;}
+ void discardPending(){pending_.reset();pendingStorage_.reset();pointers_.clear();maskBits_.clear();cursor_=0;pendingIncomplete_=false;}
  template<class T>T get(uint32_t a,T fallback={})const{return view_.template get<T>(a,fallback);}
  template<class R>static auto prefetch(R read,const std::vector<uint32_t>&p,size_t span,int)->decltype(read.prefetch(p,span),void()){read.prefetch(p,span);}
  template<class R>static void prefetch(R,const std::vector<uint32_t>&,size_t,long){}
@@ -178,7 +206,7 @@ public:
  void effects(bool particles,bool lasers){particles_=particles;lasers_=lasers;}
  void wholeWorld(bool enabled){if(enabled!=wholeWorld_){wholeWorld_=enabled;reset();}}
  void discardIncomplete(){discardPending();}
- void reset(bool keepProjection=false){if(!keepProjection)projection_.reset();geo_={};discardPending();terrain_.reset();lastFrame_=-1;++revision_;}
+ void reset(bool keepProjection=false){if(!keepProjection)projection_.reset();geo_={};discardPending();terrain_.reset();terrainPool_=std::make_shared<TerrainPool>();lastFrame_=-1;++revision_;}
  bool radarProjectionCompatible(const Frame&frame,bool tacticalOverview=false){Geometry projected;return frame.terrain&&
   (tacticalOverview?tacticalOverviewProjection(frame.terrain->geo,projected):projection_.resolve(read_,frame.terrain->geo,projected))&&projected.same(frame.terrain->geo);}
  unsigned revision()const{return revision_;}
@@ -209,11 +237,10 @@ public:
   if(!g.same(geo_)||frame<lastFrame_||reveal_!=reveal){reset(activeRadarProjection);geo_=g;reveal_=reveal;}lastFrame_=frame;
   if(!pending_){pointers_.resize(g.count);if(!read_(g.cells,pointers_.data(),pointers_.size()*4)||(!reveal&&!shroudselector::readLookup(read_,frameLookup_))){discardPending();return false;}
    if(!reveal)maskBits_.resize(512*512);
-   pending_=std::make_shared<Terrain>();pending_->geo=g;pending_->reveal=bool(reveal);pending_->wholeWorld=wholeWorld_;pending_->colors.resize(512*512);pending_->shade.resize(512*512);if(real){
+   pendingStorage_=acquireTerrain();pendingStorage_->prepare(real);pending_=std::shared_ptr<Terrain>(pendingStorage_,&pendingStorage_->value);pending_->geo=g;pending_->reveal=bool(reveal);pending_->wholeWorld=wholeWorld_;if(real){
     // An unreadable catalogue is not an empty one. Otherwise live cells lose
     // their materials in a supposedly complete published terrain bank.
     if(!view_.vecChecked(0xA8ED28,tileTypes_,65536)||!view_.vecChecked(0xA83D80,overlayTypes_)||!view_.vecChecked(0xA8EC18,smudgeTypes_,4096)){discardPending();return false;}
-    pending_->baseColors.resize(512*512);pending_->art.resize(512*512);
     auto checkedArt=[&](uint32_t at,void*out,size_t bytes){bool ok=read_(at,out,bytes);if(!ok)pendingIncomplete_=true;return ok;};resourcePools_=artvariants::pools(checkedArt,overlayTypes_);
     if(pendingIncomplete_){discardPending();return false;}
    }cursor_=0;}
@@ -248,6 +275,7 @@ public:
    std::array<uint8_t,0x148> cell{};if(!read_(p,cell.data(),cell.size())){pendingIncomplete_=true;continue;}
    int16_t cx=0,cy=0;int land=-1;std::memcpy(&cx,cell.data()+0x24,2);std::memcpy(&cy,cell.data()+0x26,2);std::memcpy(&land,cell.data()+0xEC,4);
    if(cx!=x||cy!=y){pendingIncomplete_=true;continue;}
+   pendingStorage_->touched.push_back(uint32_t(cursor_));
    if(!reveal)maskBits_[cursor_]={1,cell[0x12C],cell[0x140]};
    int level=int8_t(cell[0x11B]);if(real&&flat)pending_->baseColors[cursor_]=terrainColor(land,level,false);
    bool admitted=flat&&(!reveal||g.bounds.usable(x,y,level,cell[0x11C]!=0));

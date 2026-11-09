@@ -3,6 +3,7 @@
 
 static compute::FrameHistory<missilecompute::Input> missileFrames;static uint32_t missileApplied=0;
 static missilecompute::Input missileInput,missileCapture;
+static missilecompute::Workspace missileWorkspace;
 static missilecompute::Result missileResult;
 static bool missilePending,missileScanned;
 static uint32_t missileSerial,missileScanTick,missileSettings;
@@ -265,7 +266,7 @@ static bool missileControlTick(uint32_t house,int frame,DWORD now){
  missileFrame=frame;missileScanTick=now;missileScanned=true;
  if(!outside){missileSourceCursor=nextSourceCursor;missileTargetCursor=nextTargetCursor;missileManagedCursor=nextManagedCursor;}
  const auto&i=missileInput;sh->missileSources=i.count;sh->missileTargets=i.targetCount;if(!i.count)return true;
- if(!outside)applyMissileResult(missilecompute::calculate(i),house,frame,now);
+ if(!outside)applyMissileResult(missilecompute::calculateWithWorkspace(i,missileWorkspace),house,frame,now);
  else {InterlockedIncrement(&sh->missileInputSeq);MemoryBarrier();compute::copyInput(sh->missileInput,i);missileSerial=compute::nextTask(sh->missileTask);missileFrames.retain(missileSerial,i,{nextSourceCursor,nextTargetCursor,nextManagedCursor});sh->missileTask=missileSerial;MemoryBarrier();InterlockedIncrement(&sh->missileInputSeq);missilePending=true;notifyHost();}
  return true;
 }

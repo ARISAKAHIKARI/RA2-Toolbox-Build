@@ -1,0 +1,1 @@
+PASS sealed shared scene: three concurrent consumers, one capture, no live fallback, whole-world north edge, common body/camera anchor, main-disabled producer, paused timestamp, late coverage, old serial/rewind, missing-input recovery and strict/optional failures

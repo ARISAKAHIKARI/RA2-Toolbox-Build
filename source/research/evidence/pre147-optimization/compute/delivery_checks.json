@@ -1,0 +1,32 @@
+{
+  "checks": [
+    {
+      "name": "missile_allocator",
+      "command": [
+        "/workspace/scratch/5a310fe852f8/opt147/compute/missile_allocation_equivalence"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "source/assist/tests/missile_allocation_equivalence.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/opt147/compute/missile_allocation_equivalence"
+      ],
+      "exit_code": 0,
+      "executed_this_revision": true,
+      "log_path": "/workspace/scratch/5a310fe852f8/opt147/compute/equivalence-and-timing.jsonl",
+      "log_sha256": "7f90191563fb8aee96477589fa41f98d1f99cc1f48908d3633512a11508e1d90",
+      "production_source_hashes": {
+        "source/assist/source/missile_compute.h": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+        "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e",
+        "source/assist/source/missile_bridge.h": "f1452196b2cd99783eae0bb3713683f14740e64e98ea2b12c426a19c630f212b"
+      },
+      "test_source_hashes": {
+        "source/assist/tests/missile_allocation_equivalence.cpp": "5fa4d1add17f6df48e415aaf961b3f9ba554507a9a7c35d160a1cebc9d9b6fd1",
+        "source/assist/tests/missile_compute.cpp": "d0ca3b1327717fe8a0487c1c425ab24ac397bb2bb1e3cee7bb3a00621366bd85"
+      }
+    }
+  ]
+}

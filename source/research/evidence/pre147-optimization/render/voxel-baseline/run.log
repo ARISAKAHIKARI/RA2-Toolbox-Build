@@ -1,0 +1,71 @@
+recovered_scenes=8 pixel_mismatches=4704
+healthy_digest=8f320cbad81486c3 checks=151 failures=69
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL nonempty failed component rejects capture
+FAIL failed capture leaves output untouched
+FAIL unavailable binding cannot commit default geometry
+FAIL unavailable binding cannot commit default geometry
+FAIL unavailable binding cannot commit default geometry
+FAIL unavailable binding cannot commit default geometry
+FAIL unavailable binding cannot commit default geometry
+FAIL unavailable binding cannot commit default geometry
+FAIL unavailable binding cannot commit default geometry
+FAIL unavailable binding cannot commit default geometry
+FAIL unavailable binding cannot commit default geometry
+FAIL unavailable binding cannot commit default geometry
+FAIL nonnull voxel with missing HVA rejected
+FAIL absent voxel does not require its unused HVA slot
+FAIL absent extra voxel does not require its unused HVA
+FAIL failed component cannot publish ready materials
+FAIL recovered scene equals fresh healthy renderer
+FAIL failed component cannot publish ready materials
+FAIL recovered scene equals fresh healthy renderer
+FAIL failed component cannot publish ready materials
+FAIL recovered scene equals fresh healthy renderer
+FAIL failed component cannot publish ready materials
+FAIL recovered scene equals fresh healthy renderer
+FAIL failed component cannot publish ready materials
+FAIL recovered scene equals fresh healthy renderer
+FAIL failed component cannot publish ready materials
+FAIL recovered scene equals fresh healthy renderer
+FAIL failed component cannot publish ready materials
+FAIL recovered scene equals fresh healthy renderer
+FAIL failed component cannot publish ready materials
+FAIL recovered scene equals fresh healthy renderer

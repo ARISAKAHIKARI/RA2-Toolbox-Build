@@ -2,6 +2,16 @@
 #include "../../assist/source/idle_aircraft_policy.h"
 #include <stdint.h>
 namespace external { namespace aircraft {
+// This display stamp belongs to the aircraft scan, which runs less often than
+// the other tactical samples. An exact confirmed publication may keep its
+// pixels visible while paused without renewing command timestamps.
+struct Sample {
+ uint32_t match=0,tick=0,serial=0;int frame=-1,count=0,total=0;
+ bool current(uint32_t worldMatch,int worldFrame,uint32_t worldSerial,uint32_t now,bool confirmed)const{
+  return match==worldMatch&&tick&&frame>=0&&count>=0&&count<=total&&total<=8192&&
+   (uint32_t(now-tick)<=500||(confirmed&&frame==worldFrame&&serial==worldSerial));
+ }
+};
 // Raw YRpp fields only. No virtual query, pathfinder, mission change or RNG.
 template<class Read> struct Inspect {
  Read read;

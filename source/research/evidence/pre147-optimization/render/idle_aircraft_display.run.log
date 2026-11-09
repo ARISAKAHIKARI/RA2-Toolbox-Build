@@ -1,0 +1,2 @@
+sealed_tail_failure entries=8192 first_reads=294898 repeated_reads=0
+PASS paused same-source aircraft display; lagging serial sealed-only refresh; immutable timestamp; lost confirmation; failed-candidate count/ID rollback; sealed failure retry gate; configuration reset; next-frame recovery; valid empty list; epoch/frame/serial isolation and tick wrap

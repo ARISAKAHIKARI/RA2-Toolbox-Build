@@ -515,24 +515,43 @@ bool captureActor(uint32_t p,uint32_t type,uint32_t id,ActorArt&out,const extern
  }
 
  auto stem=text(type+0x1F8,25);if(stem.empty())stem=text(type+0x24,24);
- double sx=1,sy=1;read(type+0x360,&sx,8);read(type+0x368,&sy,8);if(!std::isfinite(sx)||sx<=0||sx>8)sx=1;if(!std::isfinite(sy)||sy<=0||sy>8)sy=1;
+ double sx=1,sy=1;const bool haveScaleX=read(type+0x360,&sx,8),haveScaleY=read(type+0x368,&sy,8);if(!std::isfinite(sx)||sx<=0||sx>8)sx=1;if(!std::isfinite(sy)||sy<=0||sy>8)sy=1;
+ // ActorArt is immutable after capture and shared by all matching units.
+ // A known-empty part is legal; an unreadable slot or nonempty resource is
+ // not. Never retain a body-only model after a transient component failure.
+ enum class PartCapture {Absent,Ready,Unavailable};
  auto part=[&](const std::string&suffix,uint32_t at,bool turret){
   external::voxel::Model model;std::vector<uint8_t> v,h;
-  bool ok=!stem.empty()&&files.load(stem+suffix+".VXL",v)&&files.load(stem+suffix+".HVA",h)&&external::assets::vxl(v,h,model,0,float(sx),float(sy));
-  if(!ok)ok=external::voxel::capturePart(resourceRead,word(at),word(at+4),model,0,float(sx),float(sy));
-  if(ok){for(auto&f:model.faces){f.turret=turret;f.part=turret?(suffix=="BARL"?2:1):0;}next.model.faces.insert(next.model.faces.end(),model.faces.begin(),model.faces.end());}return ok;
+  const bool diskVoxel=!stem.empty()&&files.load(stem+suffix+".VXL",v);
+  bool ok=diskVoxel&&files.load(stem+suffix+".HVA",h)&&external::assets::vxl(v,h,model,0,float(sx),float(sy));
+  if(!ok){uint32_t vxl=0,hva=0;
+   if(!read(at,&vxl,4))return PartCapture::Unavailable;
+   if(!vxl&&!diskVoxel)return PartCapture::Absent;
+   if(!read(at+4,&hva,4))return PartCapture::Unavailable;
+   ok=external::voxel::capturePart(resourceRead,vxl,hva,model,0,float(sx),float(sy));
+  }
+  if(!ok)return PartCapture::Unavailable;
+  for(auto&f:model.faces){f.turret=turret;f.part=turret?(suffix=="BARL"?2:1):0;}next.model.faces.insert(next.model.faces.end(),model.faces.begin(),model.faces.end());return PartCapture::Ready;
  };
- if(next.kind!=3&&part("",type+0xB0,false)){
+ const auto body=next.kind==3?PartCapture::Absent:part("",type+0xB0,false);
+ if(body==PartCapture::Unavailable){failure="actor-voxel-body";return false;}
+ if(body==PartCapture::Ready){
+  if(!haveScaleX||!haveScaleY){failure="actor-voxel-scale";return false;}
   if(!spritePalette(type,"",false,owner,next.colors))return false;next.paletteLive=lastPaletteLive_;
-  next.voxel=true;int offset=int32_t(word(type+0x720));if(offset<-4096||offset>4096)return false;next.turretOffset=float(offset)*12/256*float(sx);
-  int variant=-1;if(int(word(type+0x808))>0&&!uint8_t(word(type+0xCD5)))variant=int(word(p+0x124));
+  next.voxel=true;int offset=0;if(!read(type+0x720,&offset,4)||offset<-4096||offset>4096){failure="actor-voxel-turret-offset";return false;}next.turretOffset=float(offset)*12/256*float(sx);
+  int variant=-1,count=0;if(!read(type+0x808,&count,4)){failure="actor-voxel-variant-count";return false;}
+  if(count>0){uint8_t gated=0;if(!read(type+0xCD5,&gated,1)||(!gated&&!read(p+0x124,&variant,4))){failure="actor-voxel-variant";return false;}}
   if(variant>=0&&variant<18){
    // Native 73B90E and 70DCF0 select ExtraBarrels/ExtraTurrets by
    // CurrentTurretNumber (+124), not CurrentWeaponNumber (+138).
    for(uint32_t at:{type+0xC8+uint32_t(variant)*8,type+0x158+uint32_t(variant)*8}){
-    external::voxel::Model component;if(external::voxel::capturePart(resourceRead,word(at),word(at+4),component,0,float(sx),float(sy))){for(auto&f:component.faces){f.turret=true;f.part=at<type+0x158?1:2;}next.model.faces.insert(next.model.faces.end(),component.faces.begin(),component.faces.end());}
+    uint32_t vxl=0,hva=0;if(!read(at,&vxl,4)){failure="actor-extra-voxel-slot";return false;}
+    if(!vxl)continue;
+    if(!read(at+4,&hva,4)){failure="actor-extra-voxel-slot";return false;}
+    external::voxel::Model component;if(!external::voxel::capturePart(resourceRead,vxl,hva,component,0,float(sx),float(sy))){failure="actor-extra-voxel-resource";return false;}
+    for(auto&f:component.faces){f.turret=true;f.part=at<type+0x158?1:2;}next.model.faces.insert(next.model.faces.end(),component.faces.begin(),component.faces.end());
    }
-  }else{part("TUR",type+0xB8,true);part("BARL",type+0xC0,true);}
+  }else if(part("TUR",type+0xB8,true)==PartCapture::Unavailable||part("BARL",type+0xC0,true)==PartCapture::Unavailable){failure="actor-voxel-component";return false;}
  }else{
   bool buildup=next.kind==3&&(expected?expected->variant==-2:external::buildings::buildup(game,p));
   next.pointer=word(type+(buildup?0xE00:0xA4));std::string filename;bool loaded=false;

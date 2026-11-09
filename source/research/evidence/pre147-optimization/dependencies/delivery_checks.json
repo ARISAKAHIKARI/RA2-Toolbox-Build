@@ -1,0 +1,25 @@
+{
+  "checks": [
+    {
+      "name": "dependency_probes",
+      "command": [
+        "python",
+        "source/tools/test_dependency_probes.py",
+        "--out",
+        "/workspace/scratch/5a310fe852f8/opt147/dependencies"
+      ],
+      "environment": {},
+      "exit_code": 0,
+      "executed_this_revision": true,
+      "log_path": "/workspace/scratch/5a310fe852f8/opt147/dependencies/receipt.json",
+      "log_sha256": "150679c2947bf646227a262233bf4b6ee20590c33cbc1eef6bedb84856022d6d",
+      "test_source_hashes": {
+        "source/tools/test_dependency_probes.py": "e0fbe445990f95a8d76dc2db8990597db749aa5c04de04afe26e056fcd761f37"
+      },
+      "production_source_hashes": {
+        "source/engine/prepare_runtime.py": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96",
+        "source/engine/runtime-dependencies.json": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+      }
+    }
+  ]
+}

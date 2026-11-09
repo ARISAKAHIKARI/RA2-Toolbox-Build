@@ -215,7 +215,9 @@ static planner::Statistics plannerState;static uint64_t planningGeneration=1,pla
 static std::vector<planner::Receipt> plannerReceipts;
 static compute::ValueTask<dodgecompute::Input,dodgecompute::Result> dodgeTask(dodgecompute::calculate,calculationCompleted);
 static compute::ValueTask<burstcompute::Input,burstcompute::Result> burstTask(burstcompute::calculate,calculationCompleted);
-static compute::ValueTask<missilecompute::Input,missilecompute::Result> missileTask(missilecompute::calculate,calculationCompleted);
+// The sole missile worker owns this scratch; reset never exposes it to the UI.
+static missilecompute::Workspace missileWorkspace;
+static compute::ValueTask<missilecompute::Input,missilecompute::Result> missileTask([](missilecompute::Input&i){return missilecompute::calculateWithWorkspace(i,missileWorkspace);},calculationCompleted);
 static compute::ValueTask<unloadcompute::Input,unloadcompute::Result> unloadTask(unloadcompute::calculate,calculationCompleted);
 static compute::ValueTask<compute::LoadInput,compute::LoadResult> loadTask([](compute::LoadInput&i){static auto work=std::make_unique<loading::Workspace>();return compute::load(i,*work);},calculationCompleted);
 static compute::ValueTask<compute::RepairInput,compute::RepairResult> repairTask(compute::repair,calculationCompleted);
@@ -1306,9 +1308,16 @@ static void sampleExternal(DWORD now){
   const bool sameUI=ui.selected==previousUI.selected&&ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies;
   externalSampler.worldEpoch(source->key.match);
   if(externalWorldSource&&externalWorldSource->key.sameFrame(source->key)&&externalWorldSource->key.serial==source->key.serial&&sameUI){
+   // The 100ms aircraft scan can precede the publication where play paused.
+   // Fill that derived sample once from the already pinned immutable bytes;
+   // its source tick stays unchanged and never renews command freshness.
+   if(!externalSampler.idleAircraftDisplay().current(source->key.match,source->key.frame,source->key.serial,displayNow,true)){
+    if(!externalSampler.refreshAircraft(source->key.tick,source->key.serial)||!worldScope.complete()){externalSampler.invalidateSample(&externalPublished);return;}
+    externalSampler.commitSample();
+   }
    externalSampler.refreshCamera(displayNow);externalPublished=externalSampler.state();externalPublished.sampledTick=source->key.tick;externalData=&externalPublished;externalSourceConfirmed=true;mergeExternal();return;
   }
-  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions());
+  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions(),source->key.serial);
   if(!worldScope.complete()){externalSampler.invalidateSample(&externalPublished);return;}
   externalSampler.commitSample();
   externalPublished=candidate;externalData=&externalPublished;externalWorldSource=source;externalSourceConfirmed=true;previousUI=ui;

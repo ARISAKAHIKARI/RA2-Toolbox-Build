@@ -1,5 +1,6 @@
 #pragma once
 #include "world_frame.h"
+#include "world_frame_pool.h"
 #include <windows.h>
 #include <mutex>
 #include <map>
@@ -101,6 +102,9 @@ public:
 class Client {
  std::mutex mutex_;HANDLE mapping_=nullptr;Channel*channel_=nullptr;
  uint32_t pid_=0,owner_=0;Token latest_;uint32_t copiedSerial_=0;
+ // Pool only dead publications' storage, never their shared/weak identity.
+ // Full pools allocate normally; no wait for a reader or dropped publication.
+ std::shared_ptr<SnapshotPool> copies_;
  std::array<DataView,2>data_;DataRef copiedData_{};LONG copiedSlot_=-1;
  uint64_t generation_=0;
  struct Lease {std::array<uint32_t,6>ticks{};uint32_t used=0;};std::unordered_map<uintptr_t,Lease>leases_;
@@ -160,7 +164,7 @@ class Client {
   MemoryBarrier();InterlockedIncrement(&channel_->demandSeq);channel_->demandMask=0;
   wantedDirty_=!wanted_.empty();havePublished_=havePruned_=false;expiryAfter_=0;return true;
  }
- void clearCopy(){latest_.reset();copiedSerial_=0;copiedSlot_=-1;copiedData_={};for(auto&view:data_)view.close();}
+ void clearCopy(){latest_.reset();if(copies_)copies_->clear();copies_.reset();copiedSerial_=0;copiedSlot_=-1;copiedData_={};for(auto&view:data_)view.close();}
  void close(){clearCopy();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;}
 public:
  explicit Client(uint32_t pid,uint64_t generation):pid_(pid),owner_(GetCurrentProcessId()),generation_(generation){}
@@ -183,7 +187,8 @@ public:
     MemoryBarrier();if(seq==s.seq&&active==channel_->active&&connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32)))return latest_;continue;
    }
    if(count&&!data_[active].open(key,uint32_t(active),ref))return {};
-   auto next=std::make_shared<Snapshot>();const bool ok=next->import(key,stats,count?data_[active].pages():nullptr,count);
+   if(!copies_)copies_=std::make_shared<SnapshotPool>();
+   auto next=SnapshotPool::acquire(copies_);const bool ok=next->import(key,stats,count?data_[active].pages():nullptr,count);
    MemoryBarrier();if(seq!=s.seq||active!=channel_->active||!connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32)))continue;if(!ok)return {};
    latest_=std::move(next);copiedSerial_=key.serial;copiedSlot_=active;copiedData_=ref;return latest_;
   }return {};

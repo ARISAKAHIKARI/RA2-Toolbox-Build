@@ -1,0 +1,278 @@
+{
+  "timestamp_utc": "2026-11-09T03:42:05.359366+00:00",
+  "baseline": {
+    "version": "1.0.46.4",
+    "local_head": "5a0f36704e80cc715215318660e31786c4c26cbc",
+    "tree": "74117a0d765d4ae69a38fbebd7a177444c7e2b71",
+    "remote_source_commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a"
+  },
+  "future_release": "1.0.47; version/release metadata untouched by this task",
+  "production_changes": [
+    {
+      "id": "snapshot-storage-reuse",
+      "files": [
+        "source/shared/source/world_frame_pool.h",
+        "source/shared/source/world_frame_transport.h"
+      ],
+      "behavior": "Snapshot and PageBuffer storage returns to a bounded three-idle-slot pool only after the last strong publication token is released. Every publication receives a new shared_ptr control block; weak identity cannot revive. Saturation allocates a normal fallback; a full idle pool deletes the returned object. No new lock, wait, skipped acquisition, lowered cadence or wire layout change.",
+      "lifecycle": "Release CAS/acquire exchange transfers exclusive raw storage. The deleter moves its pool reference to a local before returning storage, so expired weak controls cannot retain the pool. clearCopy clears idle storage and detaches the old pool; late tokens retain and return only to that old pool.",
+      "design_rejected": "Direct shared_ptr FramePool reuse would keep weak tokens alive and could make converterMetadata/radar terrain weak identity reuse stale content. That draft was replaced before final verification.",
+      "scope": "Original Client mutex boundaries and import/seqlock acceptance remain. Each cold allocation and every required payload copy remain permitted.",
+      "memory_tradeoff": "At most three idle Snapshot/page buffers are retained per live pool in addition to currently held publications; storage grows on demand and is cleared when the transport copy retires. At maximum page capacity each page buffer is 84,017,152 bytes; the three-idle-page-buffer bound is 252,051,456 bytes, not a preallocation. Normal steady two-buffer reuse uses fewer idle slots."
+    },
+    {
+      "id": "exact-tech-single-array-pass",
+      "files": [
+        "source/assist/source/tech_ui_breakpoint_bridge.h"
+      ],
+      "behavior": "One traversal per native type array at the existing cold refresh boundary; decode each visited member once for all applicable rules. Preserve each rule first matching index; stop an array once every corresponding rule is captured. No heap allocation or persistent authorization result cache was added.",
+      "preserved": [
+        "500 ms clock and wrap behavior",
+        "immediate rebuild after missing/unready policy index",
+        "world/signature/admission gates",
+        "hot callback live identity/level/array checks",
+        "Rules/Exact in-production handoff",
+        "index publication after full capture",
+        "first-match order and UID-zero rejection"
+      ]
+    }
+  ],
+  "measurements": {
+    "snapshot_baseline": [
+      {
+        "pages": 28,
+        "new_frames": 20,
+        "owner_allocations": 20,
+        "owner_allocated_bytes": 2624800,
+        "page_allocations": 20,
+        "page_allocated_bytes": 3281920,
+        "same_frame_acquires": 2000,
+        "same_frame_owner_allocations": 0,
+        "same_frame_page_allocations": 0,
+        "retained_token_unchanged": true,
+        "new_mapping_operations": 0
+      },
+      {
+        "pages": 512,
+        "new_frames": 20,
+        "owner_allocations": 20,
+        "owner_allocated_bytes": 2624800,
+        "page_allocations": 20,
+        "page_allocated_bytes": 52510720,
+        "same_frame_acquires": 2000,
+        "same_frame_owner_allocations": 0,
+        "same_frame_page_allocations": 0,
+        "retained_token_unchanged": true,
+        "new_mapping_operations": 0
+      },
+      {
+        "pages": 4096,
+        "new_frames": 20,
+        "owner_allocations": 20,
+        "owner_allocated_bytes": 2624800,
+        "page_allocations": 20,
+        "page_allocated_bytes": 420085760,
+        "same_frame_acquires": 2000,
+        "same_frame_owner_allocations": 0,
+        "same_frame_page_allocations": 0,
+        "retained_token_unchanged": true,
+        "new_mapping_operations": 0
+      }
+    ],
+    "snapshot_after": [
+      {
+        "case": "steady_client",
+        "pages": 28,
+        "new_publications": 20,
+        "snapshot_allocations": 0,
+        "page_allocations": 0,
+        "control_block_allocations": 20,
+        "control_block_bytes": 800,
+        "same_frame_acquires": 2000,
+        "same_frame_allocations": 0,
+        "retained_token_unchanged": true
+      },
+      {
+        "case": "steady_client",
+        "pages": 512,
+        "new_publications": 20,
+        "snapshot_allocations": 0,
+        "page_allocations": 0,
+        "control_block_allocations": 20,
+        "control_block_bytes": 800,
+        "same_frame_acquires": 2000,
+        "same_frame_allocations": 0,
+        "retained_token_unchanged": true
+      },
+      {
+        "case": "steady_client",
+        "pages": 4096,
+        "new_publications": 20,
+        "snapshot_allocations": 0,
+        "page_allocations": 0,
+        "control_block_allocations": 20,
+        "control_block_bytes": 800,
+        "same_frame_acquires": 2000,
+        "same_frame_allocations": 0,
+        "retained_token_unchanged": true
+      }
+    ],
+    "tech_before": [
+      {
+        "case": "no_targets_128",
+        "identity": 8046515372498361180,
+        "safe_reads": 5397,
+        "direct_reads": 5376,
+        "visits": 2688
+      },
+      {
+        "case": "no_targets_512",
+        "identity": 8046515372498361180,
+        "safe_reads": 21525,
+        "direct_reads": 21504,
+        "visits": 10752
+      },
+      {
+        "case": "no_targets_4096",
+        "identity": 8046515372498361180,
+        "safe_reads": 172053,
+        "direct_reads": 172032,
+        "visits": 86016
+      },
+      {
+        "case": "all_rules_before_long_tail",
+        "identity": 2096961121787577785,
+        "safe_reads": 354,
+        "direct_reads": 396,
+        "visits": 118
+      }
+    ],
+    "tech_after": [
+      {
+        "case": "no_targets_128",
+        "identity": 8046515372498361180,
+        "safe_reads": 771,
+        "direct_reads": 768,
+        "visits": 384
+      },
+      {
+        "case": "no_targets_512",
+        "identity": 8046515372498361180,
+        "safe_reads": 3075,
+        "direct_reads": 3072,
+        "visits": 1536
+      },
+      {
+        "case": "no_targets_4096",
+        "identity": 8046515372498361180,
+        "safe_reads": 24579,
+        "direct_reads": 24576,
+        "visits": 12288
+      },
+      {
+        "case": "all_rules_before_long_tail",
+        "identity": 2096961121787577785,
+        "safe_reads": 51,
+        "direct_reads": 69,
+        "visits": 24
+      }
+    ],
+    "interpretation": "Operation counts after warmup. Linux x64 fixture observes one 40-byte control block per new publication; that small identity allocation is intentional. No real Windows allocation size, CPU percentage, FPS or wall-time improvement claimed."
+  },
+  "verification": {
+    "world_reuse": {
+      "passed": true,
+      "sanitizer": "ASan+UBSan",
+      "leak_detection": false,
+      "checks": 6988,
+      "report": "world_reuse_final/receipt.json",
+      "cases": [
+        "real_palette_cache_same_address_new_publication",
+        "weak_identity_and_pool_lifetime",
+        "steady_client",
+        "steady_client",
+        "steady_client",
+        "nine_pinned_publications_and_retirement",
+        "growth_duplicate_page_and_control_block_failure_recovery",
+        "concurrent_acquire_last_release",
+        "seqlock_interleavings"
+      ]
+    },
+    "tech_capture": {
+      "passed": true,
+      "sanitizer": "UBSan",
+      "scenarios": 18,
+      "checks": 57529,
+      "baseline_checks": 399891,
+      "all_capture_identities_equal": true,
+      "report": "tech_capture/receipt.json"
+    },
+    "midgame": {
+      "passed": true,
+      "scenarios": 50,
+      "checks": 179,
+      "report": "midgame_final.json"
+    },
+    "world_core": {
+      "passed": true,
+      "without_exceptions_checks": 74634,
+      "platform_fixture_checks": 75357,
+      "log": "world_frame_core.log"
+    },
+    "cross_compile": {
+      "passed": true,
+      "compiler": "Zig 0.13.0",
+      "targets": [
+        "x86-windows-gnu",
+        "x86_64-windows-gnu"
+      ],
+      "flags": [
+        "-std=c++17",
+        "-O2",
+        "-fno-exceptions",
+        "-c"
+      ],
+      "source": "pool_codegen.cpp",
+      "outputs": {
+        "pool_x86.obj": "04f8f40e07a35b60f80cef0cf0def4e28f7d3f50070289f39d3f391c8bc5bd86",
+        "pool_x64.obj": "367435ec232e8ea347934a9306ef0857e8253b502eb1510256a25a05e6560837"
+      },
+      "boundary": "Actual Client::acquire and SnapshotPool compiled to Windows objects only; not full-product link or native execution."
+    },
+    "independent_review": {
+      "reviewer": "/root/audit_runtime/review_snapshot_pool",
+      "result": "Actual production design reviewed; no remaining overwrite/weak-revival/ABA/double-delete issue found. Reviewer also identified that the initial control-allocation failure fixture hit raw Snapshot allocation; fixed by releasing an idle object and asserting large==0, small==1, pages==0, then confirming recovery reuses that raw object."
+    },
+    "environment_failure_preserved": {
+      "path": "world_reuse_asan/run.log",
+      "reason": "LeakSanitizer could not enumerate /proc task information in this container. Initial attempt failed at shutdown. Explicit ASAN_OPTIONS=detect_leaks=0 was used for subsequent passing ASan+UBSan execution; no successful LeakSanitizer claim."
+    },
+    "diff_check": true
+  },
+  "source_sha256": {
+    "source/shared/source/world_frame_pool.h": "58a99f8f9d926bbff9298d68006ff3ad45d648ca6c86751f75cbaf81660a91ab",
+    "source/shared/source/world_frame_transport.h": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "16669d5c032fbb66e9d21a974dea127d3b24b8f4ed7ee20bc2eac8aabf4c2d41",
+    "source/assist/tests/world_frame_core.cpp": "71ef592d6442a3c9ea35e8e4688e355968393251d19e320a9c5b7f176da2472c",
+    "source/assist/tests/world_frame_reuse.cpp": "0cd7277e95c12e764113803543605935eb0cd760462784ae5ff3067c4232dcc0",
+    "source/assist/tests/world_frame_reuse.py": "2c5a77541b4fd1326fa5c8801d41f816e64fbe7e1632e8c81d9501ad17e18838",
+    "source/assist/tests/tech_enhancement_capture.cpp": "550db4fb9351cc7fdf68393ba08127838b68177395354b2b158c3e0beda887f0",
+    "source/assist/tests/tech_enhancement_capture.py": "a0d2336204b92d1f915598d5eaac8dce78c97312647f445c825bbe29536ad1bf"
+  },
+  "commands": [
+    "python source/assist/tests/tech_enhancement_capture.py --baseline 5a0f36704e80cc715215318660e31786c4c26cbc --out /workspace/scratch/5a310fe852f8/opt147/runtime/tech_capture",
+    "ASAN_OPTIONS=detect_leaks=0 python source/assist/tests/world_frame_reuse.py --out /workspace/scratch/5a310fe852f8/opt147/runtime/world_reuse_final --sanitize address,undefined",
+    "python source/assist/tests/tech_enhancement_midgame.py --after-only --build-dir /workspace/scratch/5a310fe852f8/opt147/runtime/midgame_final --output /workspace/scratch/5a310fe852f8/opt147/runtime/midgame_final.json",
+    "python source/assist/tests/world_frame_core_test.py",
+    "/workspace/scratch/40121bc881b8/ui146-deps/zig-linux-x86_64-0.13.0/zig c++ -target x86_64-windows-gnu -std=c++17 -O2 -fno-exceptions -c /workspace/scratch/5a310fe852f8/opt147/runtime/pool_codegen.cpp -o /workspace/scratch/5a310fe852f8/opt147/runtime/pool_x64.obj",
+    "/workspace/scratch/40121bc881b8/ui146-deps/zig-linux-x86_64-0.13.0/zig c++ -target x86-windows-gnu -std=c++17 -O2 -fno-exceptions -c /workspace/scratch/5a310fe852f8/opt147/runtime/pool_codegen.cpp -o /workspace/scratch/5a310fe852f8/opt147/runtime/pool_x86.obj"
+  ],
+  "not_done": [
+    "No commit or publication",
+    "No version change",
+    "No Notebook or INDEX edits",
+    "No changes to missile, cursor, or renderer production files",
+    "No native Windows/game/multiplayer/FPS execution",
+    "No successful LeakSanitizer run"
+  ]
+}

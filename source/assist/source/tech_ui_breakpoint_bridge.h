@@ -446,11 +446,22 @@ static void techEnhanceParametersTick(uint32_t house,DWORD now){
  enhancementFailure=0;enhancementDesired=true;
  if(!enhancementParameterScan||DWORD(now-enhancementParameterScan)>=500||!policy.enhanced||!policy.enhancementIndex.ready()){
   enhancementParameterScan=now;InterlockedExchange(&policy.enhanced,0);policy.enhancementIndex.reset();for(auto&t:policy.enhancement)t={};
-  for(unsigned i=0;i<techenhancement::Count;++i){const auto&r=techenhancement::Rules[i];Vec types=vec(r.array,4096);
-   for(int index=0;index<types.count;++index){const uint32_t pointer=item(types,index);if(!pointer||techEnhancementCatalogueLevel(pointer,get<int>(pointer+0x634))!=1)continue;
-    char id[24]{};if(get<uint32_t>(pointer)!=r.vtable||!read(pointer+0x24,id,sizeof id)||!memchr(id,0,sizeof id)||!techenhancement::sameID(id,r.id)||!techenhancement::eligible(r,get<int>(pointer+0x634)))continue;
-    const uint32_t uid=get<uint32_t>(pointer+0x10);if(!uid)continue;
-    policy.enhancement[i]={{pointer,uid,r.vtable},types.items,index,get<int>(pointer+0x634)};break;
+  // All rules for one native array share this capture, not a long-lived
+  // authorization cache. Array order still determines each rule's first
+  // match, and the hot callback retains its live identity/membership guards.
+  for(unsigned first=0;first<techenhancement::Count;++first){const uint32_t array=techenhancement::Rules[first].array;
+   bool seen=false;for(unsigned prior=0;prior<first;++prior)if(techenhancement::Rules[prior].array==array){seen=true;break;}if(seen)continue;
+   unsigned remaining=0;for(unsigned i=first;i<techenhancement::Count;++i)if(techenhancement::Rules[i].array==array)++remaining;
+   const Vec types=vec(array,4096);
+   for(int index=0;index<types.count;++index){const uint32_t pointer=item(types,index);if(!pointer)continue;
+    const int level=get<int>(pointer+0x634);if(level!=-1&&(level<2||level>100))continue;
+    uint32_t table=0;char id[24]{};if(!read(pointer,&table,4)||!read(pointer+0x24,id,sizeof id)||!memchr(id,0,sizeof id))continue;
+    uint32_t uid=0;bool identified=false;
+    for(unsigned i=first;i<techenhancement::Count;++i){const auto&r=techenhancement::Rules[i];
+     if(r.array!=array||policy.enhancement[i].type.pointer||table!=r.vtable||!techenhancement::sameID(id,r.id)||!techenhancement::eligible(r,level))continue;
+     if(!identified){uid=get<uint32_t>(pointer+0x10);identified=true;}if(uid){policy.enhancement[i]={{pointer,uid,r.vtable},types.items,index,level};--remaining;}
+    }
+    if(!remaining)break;
    }
   }
   policy.enhancementIndex.rebuild(policy.enhancement,[](const EnhancedIdentity&t){return t.type.pointer;});MemoryBarrier();

@@ -27,7 +27,7 @@ static LRESULT CALLBACK aircraftButtonProc(HWND window,UINT message,WPARAM wp,LP
  if(message==WM_LBUTTONUP){if(extra.idleAircraft)selectNextIdleAircraft();return 0;}
  if(message==WM_PAINT){
   PAINTSTRUCT paint{};HDC dc=BeginPaint(window,&paint);RECT r{};GetClientRect(window,&r);
-  auto ready=aircraftPainter.get();int idle=externalSampler.idleAircraftCount,total=externalSampler.aircraftTotal;
+  auto ready=aircraftPainter.get();const auto&sample=externalSampler.idleAircraftDisplay();int idle=sample.count,total=sample.total;
   if(ready&&ready->request.width==r.right&&ready->request.height==r.bottom&&ready->request.idle==idle&&ready->request.total==total){BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=r.right;info.bmiHeader.biHeight=-r.bottom;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;SetDIBitsToDevice(dc,0,0,r.right,r.bottom,0,0,0,r.bottom,ready->pixels.data(),&info,DIB_RGB_COLORS);}
   else{AircraftPaint request{int(r.right),int(r.bottom),idle,total,{}};GetObjectW(font,sizeof request.font,&request.font);aircraftPainter.submit(request);HBRUSH bg=CreateSolidBrush(RGB(27,34,30));FillRect(dc,&r,bg);DeleteObject(bg);}
   EndPaint(window,&paint);return 0;
@@ -36,7 +36,7 @@ static LRESULT CALLBACK aircraftButtonProc(HWND window,UINT message,WPARAM wp,LP
 }
 static void updateAircraftButton(POINT origin,const RECT&client){
  if(!extra.idleAircraft||!enabled||!externalData||snap.renderStatus!=1||!foregroundGame()||snap.chat||
-    !externalSampler.idleAircraftTick||uint32_t(sampleRenderClock(nullptr)-externalSampler.idleAircraftTick)>500||snap.width<=0||snap.height<=0){hideAircraftButton();return;}
+    !externalSampler.idleAircraftDisplay().current(externalData->match,externalData->frame,externalWorldSource?externalWorldSource->key.serial:0,sampleRenderClock(nullptr),externalSourceConfirmed&&bool(externalWorldSource))||snap.width<=0||snap.height<=0){hideAircraftButton();return;}
  if(!aircraftButton){WNDCLASSW cls{};cls.lpfnWndProc=aircraftButtonProc;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"RA2IdleAircraft103";cls.hCursor=LoadCursorW(nullptr,IDC_HAND);RegisterClassW(&cls);
   aircraftButton=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,cls.lpszClassName,L"空闲飞机 / 总飞机",WS_POPUP,0,0,104,28,nullptr,nullptr,cls.hInstance,nullptr);
  }
@@ -45,5 +45,5 @@ static void updateAircraftButton(POINT origin,const RECT&client){
  const auto&box=aircraftButtonBox;
  overlaystack::place(aircraftButton,overlaystack::Layer::Aircraft,origin.x+box.x,origin.y+box.y,box.w,box.h,SWP_NOACTIVATE|SWP_SHOWWINDOW);
  static std::shared_ptr<const AircraftPixels> seen;auto completed=aircraftPainter.get();if(completed!=seen){seen=std::move(completed);InvalidateRect(aircraftButton,nullptr,FALSE);}
- static int idle=-1,total=-1;if(idle!=externalSampler.idleAircraftCount||total!=externalSampler.aircraftTotal){idle=externalSampler.idleAircraftCount;total=externalSampler.aircraftTotal;InvalidateRect(aircraftButton,nullptr,FALSE);}
+ const auto&sample=externalSampler.idleAircraftDisplay();static int idle=-1,total=-1;if(idle!=sample.count||total!=sample.total){idle=sample.count;total=sample.total;InvalidateRect(aircraftButton,nullptr,FALSE);}
 }

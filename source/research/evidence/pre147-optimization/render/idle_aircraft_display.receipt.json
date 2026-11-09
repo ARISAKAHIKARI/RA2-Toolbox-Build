@@ -1,0 +1,24 @@
+{
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-pthread",
+    "-I",
+    "source/external_reader/source",
+    "source/assist/tests/idle_aircraft_display.cpp",
+    "-o",
+    "/workspace/scratch/5a310fe852f8/opt147/render/idle_aircraft_display"
+  ],
+  "compile_exit_code": 0,
+  "command": [
+    "/workspace/scratch/5a310fe852f8/opt147/render/idle_aircraft_display"
+  ],
+  "exit_code": 0,
+  "stdout": "sealed_tail_failure entries=8192 first_reads=294898 repeated_reads=0\nPASS paused same-source aircraft display; lagging serial sealed-only refresh; immutable timestamp; lost confirmation; failed-candidate count/ID rollback; sealed failure retry gate; configuration reset; next-frame recovery; valid empty list; epoch/frame/serial isolation and tick wrap\n",
+  "stderr": "",
+  "sha256": {
+    "/workspace/scratch/40121bc881b8/ra2-ui-146/source/assist/tests/idle_aircraft_display.cpp": "1e16f480a865153f4c827dc3e5809e39a0013b13f95de3216ab88066aa227b14",
+    "/workspace/scratch/40121bc881b8/ra2-ui-146/source/external_reader/source/tactical_sampler.h": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab"
+  }
+}

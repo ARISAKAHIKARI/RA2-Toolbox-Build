@@ -1,0 +1,194 @@
+{
+  "schema": "ra2.targeted-evidence.v1",
+  "baseline_file_version": "1.0.46.4",
+  "target_version": "1.0.47-pre.1",
+  "baseline_local_commit": "5a0f36704e80cc715215318660e31786c4c26cbc",
+  "files": [
+    {
+      "path": "compute/missile-optimization-receipt.json",
+      "bytes": 6270,
+      "sha256": "017b9796152db83d451c580a3c493268bb1025c93cc745a71e1b4642caa8fc4d"
+    },
+    {
+      "path": "compute/equivalence-and-timing.jsonl",
+      "bytes": 2627,
+      "sha256": "7f90191563fb8aee96477589fa41f98d1f99cc1f48908d3633512a11508e1d90"
+    },
+    {
+      "path": "compute/sanitized-equivalence.jsonl",
+      "bytes": 83,
+      "sha256": "c4ee087413ee74bebf8d8abb30a58632962498b4289b18b1ea666e7d308fde53"
+    },
+    {
+      "path": "compute/sanitized-errors.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "compute/missile-behavior.log",
+      "bytes": 108,
+      "sha256": "906f6424b5c9a137977b359aa94464c4d68ff9b13825edba3a2a95b2a9d93c60"
+    },
+    {
+      "path": "compute/missile-stack.json",
+      "bytes": 515,
+      "sha256": "4ec13174629bbb8584ba254035b856cc7a16ddbf6043db8fed0fa0a0da23939f"
+    },
+    {
+      "path": "compute/delivery_checks.json",
+      "bytes": 1384,
+      "sha256": "0c3cc5810cf758a4abaad4f2bf91de27358e1c66fa23b420f1193178a4b97a20"
+    },
+    {
+      "path": "runtime/runtime_optimization_receipt.json",
+      "bytes": 12157,
+      "sha256": "81cc3669a7219f8a0dea1c4b72277d4edb6be6f6532daa192ed2bde6eded7594"
+    },
+    {
+      "path": "runtime/delivery_checks.json",
+      "bytes": 2820,
+      "sha256": "c36dc816964e337f48c46ba10127c8df43544a5b76c9136974871d3b903ff9b8"
+    },
+    {
+      "path": "runtime/world_reuse_final/receipt.json",
+      "bytes": 3032,
+      "sha256": "b8222697c145f2d3e665bdf09d1e9b3969380b5a7c530bf676f30a7afca1cd71"
+    },
+    {
+      "path": "runtime/world_reuse_final/run.log",
+      "bytes": 1310,
+      "sha256": "10547392ad7190641dd4963903751007abd8d0afe7acf245c77f843e625db4e7"
+    },
+    {
+      "path": "runtime/tech_capture/receipt.json",
+      "bytes": 9230,
+      "sha256": "ab9a59efad4b4a2c0247078652e477d3446769de0c2460f25c3292efd82ed6ea"
+    },
+    {
+      "path": "runtime/midgame_final.json",
+      "bytes": 14465,
+      "sha256": "57fce65a7c9495c8e68085bc6dc53dff9775f2833042bb281ed83a09666d6ca4"
+    },
+    {
+      "path": "runtime/world_frame_core.log",
+      "bytes": 2106,
+      "sha256": "f960d48b7c4d0d74a6d7ee1e5316c68b151397b16e5d04c6adf1f8628be332c7"
+    },
+    {
+      "path": "runtime/world_reuse_asan/run.log",
+      "bytes": 266,
+      "sha256": "c02f369120374d9bb795bd30e3569fa61909e62e160805792c788e751dd2a92e"
+    },
+    {
+      "path": "render/delivery_checks.json",
+      "bytes": 12603,
+      "sha256": "3cb596a32e6a0ddaf3b19d5f656316f0dcbfd87cfd7cdff5fe7f94583d9016bf"
+    },
+    {
+      "path": "render/implementation.md",
+      "bytes": 9890,
+      "sha256": "23b3940d34fc163751ee4a20ad102db59f06fdd9e120361fa6c576c0cae5f1d4"
+    },
+    {
+      "path": "render/voxel/receipt.json",
+      "bytes": 33290,
+      "sha256": "9d4387eb39bd15d3799b35d4ff643cfe53e28c331c2c2b59da84da0723447cc7"
+    },
+    {
+      "path": "render/voxel/run.log",
+      "bytes": 92,
+      "sha256": "ddb93eda608133ca6ba67845327e6f591d53f53c1007f3d28057c8c731657a74"
+    },
+    {
+      "path": "render/voxel-baseline/receipt.json",
+      "bytes": 36716,
+      "sha256": "7b10772d6d03d3998f8967dd69e1862b2c5500ad96a0490196d97172e0d6da53"
+    },
+    {
+      "path": "render/voxel-baseline/run.log",
+      "bytes": 3464,
+      "sha256": "66c03a8bcd8fcca2b83948848edf9b03fe0b2a88672c6eb6055eb6e81467104a"
+    },
+    {
+      "path": "render/idle_aircraft_display.receipt.json",
+      "bytes": 1145,
+      "sha256": "a0fa4d2d62de886220a73ed845182650d3472e561fdd3509736a8980dffb6a56"
+    },
+    {
+      "path": "render/idle_aircraft_display.run.log",
+      "bytes": 353,
+      "sha256": "bac486eae790070708d02c17912d28e7c076af78deb2696d1fc22fa56317ca1e"
+    },
+    {
+      "path": "render/idle_aircraft_display.before_retry_gate.receipt.json",
+      "bytes": 1187,
+      "sha256": "0c4646b375c21ecbf6921e3bcfcf26e45330d05d153903459029e46ff1dfb7a5"
+    },
+    {
+      "path": "render/idle_aircraft_display.before_retry_gate.run.log",
+      "bytes": 250,
+      "sha256": "3e3210990015d9f771c96459205eab38c9cfa0bfddb72d09e9a14c205b7dbf03"
+    },
+    {
+      "path": "render/idle_aircraft_selection_lease.run.log",
+      "bytes": 155,
+      "sha256": "82614f197228c56e1915d4a513c7efb0216dfa56c60a93e2d35c09302cf9f5f0"
+    },
+    {
+      "path": "render/terrain_storage_pool.run.log",
+      "bytes": 263,
+      "sha256": "e9b2d7ba43c29997378565c9aef16827b998edfee225d27d04c26f936616139f"
+    },
+    {
+      "path": "render/terrain_storage_pool.asan-ubsan.log",
+      "bytes": 263,
+      "sha256": "e9b2d7ba43c29997378565c9aef16827b998edfee225d27d04c26f936616139f"
+    },
+    {
+      "path": "render/terrain_storage_pool.lsan-unavailable.log",
+      "bytes": 219,
+      "sha256": "0a815e3a1ae6ef8d4d0aa7db0fc7908522bab5eac1afbb87d41e7161688f3fd2"
+    },
+    {
+      "path": "render/terrain_storage_performance.run.log",
+      "bytes": 1382,
+      "sha256": "4318e822a19340a9b4414ea4c8c7ab4e8e495b822b7d21b40665658b557728ae"
+    },
+    {
+      "path": "render/shared_scene_sampling.run.log",
+      "bytes": 264,
+      "sha256": "8e994d47b466a99831ed6a0c5b486b33cd1df06333154c1a204813e84eaa6af0"
+    },
+    {
+      "path": "render/radar_visibility_publication.run.log",
+      "bytes": 173,
+      "sha256": "3f2f7a81cb4ce752bd1ece4e803dfe4f1a286316bda183647d5f366aeba7587c"
+    },
+    {
+      "path": "render/enemy_markers.current.log",
+      "bytes": 127,
+      "sha256": "b440ff57616c46391b76f2c40c7aea7b1913e90ff4e8b8d11a65a06eff88c651"
+    },
+    {
+      "path": "render/enemy_markers.baseline.log",
+      "bytes": 136,
+      "sha256": "8371ebfe587c96df8a8fb0a9ce05db89bdbc8ddae742fce59d45409f2e9c3a64"
+    },
+    {
+      "path": "dependencies/delivery_checks.json",
+      "bytes": 933,
+      "sha256": "e0fc8427b2e47f1bae4a589d6ab7cf6c254a1dddb37a11a012918f16b3ee8390"
+    },
+    {
+      "path": "dependencies/receipt.json",
+      "bytes": 1782,
+      "sha256": "150679c2947bf646227a262233bf4b6ee20590c33cbc1eef6bedb84856022d6d"
+    },
+    {
+      "path": "dependencies/tests.log",
+      "bytes": 1959,
+      "sha256": "540081225fad5db2cd284b6321d7ecd62264dc1966eacd6ea26cf554c31df841"
+    }
+  ],
+  "note": "Exact copies of existing targeted test receipts and raw logs. Failed baseline/environment/legacy-fixture attempts remain explicitly named; prototype algorithm experiments are excluded. Integration caller hashes identify reviewed source, not native execution. Frozen build and package receipts follow separately. No game executables or dumps."
+}

@@ -1,0 +1,2 @@
+sealed_tail_failure entries=8192 first_reads=294898 repeated_reads=294898
+idle_aircraft_display.before_retry_gate: source/assist/tests/idle_aircraft_display.cpp:64: int main(): Assertion `repeatedReads==0&&state.complete&&state.liveReads==0' failed.
