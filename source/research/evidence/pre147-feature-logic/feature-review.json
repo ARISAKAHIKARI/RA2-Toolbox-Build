@@ -5,17 +5,17 @@
   "inventory_origin": "76 prior tactical IDs retained only as inventory; old assertions/receipts are not inherited. Four related feature families added. Rows state the inspected logic boundary, not whole-file or all-MOD certification.",
   "feature_points": 80,
   "source_sha256": {
-    "source/assist/source/bridge.cpp": "e79fde0ca1d6fd8010a2f5934306ca307b4e4ad653a0a6be51e08e4539502c28",
+    "source/assist/source/bridge.cpp": "e75e16043c110d7588c6235bf28eb5696699472bedb3a986a73faadcbc30b20e",
     "source/assist/source/compute_tasks.h": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c",
     "source/assist/source/repair_delivery.h": "86be5a055b6789a6570bee6f6d1455b2731c96e1a4706c11c713f4e4e4dc4ea8",
     "source/assist/source/tactical_decisions.h": "dd6dc31d55fb7d20d962570e05182557c69729e0cdd2d61f56af351c4b4977cb",
     "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
     "source/external_reader/source/idle_aircraft.h": "8f136a5ca6f8066bfc1017caf3fd1d47578e4ddca3c40ab8be3d7873b80df7cf",
     "source/assist/source/protocol.h": "e51f848234a8b0509f23244745d4cb48378df5a98e9f892f89dd02f9f70ea406",
-    "source/assist/source/type_select_bridge.h": "d6581d44c34144528441253804538d4589d46ad854e79161fdf7a107b39ef30e",
+    "source/assist/source/type_select_bridge.h": "c1159b0760c54dcc2d4fd2ac2c55a434f15107767fbc88c94797b8f7b56f65a9",
     "source/assist/source/autoload.h": "faf93595bb49d14802e2fe5d129e35a750c9f5f174db1c8fe4a16d27830103d6",
     "source/assist/source/autoload_bridge.h": "068f34763606cd4c4bab54a16004a6b2a3f654933bf9ca8e64318fff3db2cc48",
-    "source/assist/source/native_orders_bridge.h": "594a27690b5a9de6953e74839a50fc8eaa5b4a427627b0badbe18266751a4d3f",
+    "source/assist/source/native_orders_bridge.h": "3e86f39b9e559e07b4c4138098fd8096dc3cb8a0c123ddf56d5e481705e85270",
     "source/assist/source/unload_compute_bridge.h": "620aba997d4a09ee85e3cf30fa9a89ef85947762c12ed7d4eb248f4cbc12ab61",
     "source/assist/source/unload_compute.h": "9320d8940db3a948d51533a4931457cd676a01c07b64fed085395d11b7d19711",
     "source/assist/source/unload_policy.h": "b699168531498e797f13045fd1932c31439df61ed16bc93c92644205caddc568",
@@ -278,7 +278,9 @@
         "selection_catalogue_identity",
         "catalogue_recovery"
       ],
-      "fixed_findings": [],
+      "fixed_findings": [
+        "F9"
+      ],
       "status": "source_reviewed",
       "live_game_verified": false
     },
@@ -331,7 +333,7 @@
     {
       "id": "unload.command",
       "label": "显式智能卸载",
-      "inspection": "卸载任务、乘员用途、取消；初始载具入队受容量限制",
+      "inspection": "卸载任务、乘员用途、取消；8192载具完整排队、16384乘员、保留跟进额度",
       "implementation_locations": [
         "source/assist/source/native_orders_bridge.h",
         "source/assist/source/unload_compute.h",
@@ -339,16 +341,20 @@
         "source/assist/source/unload_policy.h"
       ],
       "related_controlled_checks": [
-        "passenger_frame_sampling"
+        "passenger_frame_sampling",
+        "capacity_admission",
+        "unload_roster_runtime"
       ],
-      "fixed_findings": [],
+      "fixed_findings": [
+        "F7"
+      ],
       "status": "source_reviewed",
       "live_game_verified": false
     },
     {
       "id": "unload.deploy",
       "label": "卸载后展开",
-      "inspection": "卸载任务、乘员用途、取消；初始载具入队受容量限制",
+      "inspection": "卸载任务、乘员用途、取消；8192载具完整排队、16384乘员、保留跟进额度",
       "implementation_locations": [
         "source/assist/source/native_orders_bridge.h",
         "source/assist/source/unload_compute.h",
@@ -356,16 +362,20 @@
         "source/assist/source/unload_policy.h"
       ],
       "related_controlled_checks": [
-        "passenger_frame_sampling"
+        "passenger_frame_sampling",
+        "capacity_admission",
+        "unload_roster_runtime"
       ],
-      "fixed_findings": [],
+      "fixed_findings": [
+        "F7"
+      ],
       "status": "source_reviewed",
       "live_game_verified": false
     },
     {
       "id": "unload.engineer",
       "label": "卸载后工程师任务",
-      "inspection": "卸载任务、乘员用途、取消；初始载具入队受容量限制",
+      "inspection": "卸载任务、乘员用途、取消；8192载具完整排队、16384乘员、保留跟进额度",
       "implementation_locations": [
         "source/assist/source/native_orders_bridge.h",
         "source/assist/source/unload_compute.h",
@@ -373,16 +383,20 @@
         "source/assist/source/unload_policy.h"
       ],
       "related_controlled_checks": [
-        "passenger_frame_sampling"
+        "passenger_frame_sampling",
+        "capacity_admission",
+        "unload_roster_runtime"
       ],
-      "fixed_findings": [],
+      "fixed_findings": [
+        "F7"
+      ],
       "status": "source_reviewed",
       "live_game_verified": false
     },
     {
       "id": "unload.spy",
       "label": "卸载后间谍渗透",
-      "inspection": "卸载任务、乘员用途、取消；初始载具入队受容量限制",
+      "inspection": "卸载任务、乘员用途、取消；8192载具完整排队、16384乘员、保留跟进额度",
       "implementation_locations": [
         "source/assist/source/native_orders_bridge.h",
         "source/assist/source/unload_compute.h",
@@ -390,16 +404,20 @@
         "source/assist/source/unload_policy.h"
       ],
       "related_controlled_checks": [
-        "passenger_frame_sampling"
+        "passenger_frame_sampling",
+        "capacity_admission",
+        "unload_roster_runtime"
       ],
-      "fixed_findings": [],
+      "fixed_findings": [
+        "F7"
+      ],
       "status": "source_reviewed",
       "live_game_verified": false
     },
     {
       "id": "unload.attack",
       "label": "卸载后自动攻击",
-      "inspection": "卸载任务、乘员用途、取消；初始载具入队受容量限制",
+      "inspection": "卸载任务、乘员用途、取消；8192载具完整排队、16384乘员、保留跟进额度",
       "implementation_locations": [
         "source/assist/source/native_orders_bridge.h",
         "source/assist/source/unload_compute.h",
@@ -407,9 +425,13 @@
         "source/assist/source/unload_policy.h"
       ],
       "related_controlled_checks": [
-        "passenger_frame_sampling"
+        "passenger_frame_sampling",
+        "capacity_admission",
+        "unload_roster_runtime"
       ],
-      "fixed_findings": [],
+      "fixed_findings": [
+        "F7"
+      ],
       "status": "source_reviewed",
       "live_game_verified": false
     },
@@ -426,7 +448,9 @@
       "related_controlled_checks": [
         "passenger_frame_sampling"
       ],
-      "fixed_findings": [],
+      "fixed_findings": [
+        "F7"
+      ],
       "status": "source_reviewed",
       "live_game_verified": false
     },

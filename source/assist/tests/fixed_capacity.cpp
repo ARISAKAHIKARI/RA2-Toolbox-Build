@@ -14,9 +14,9 @@
 int main(){
  using namespace assist;
  delivery::Queue queue;
- for(int i=0;i<128;++i)assert(queue.add({Produce,i,0,1,1,100}));
- assert(!queue.add({Produce,128,0,1,1,100}));
- for(int i=0;i<128;++i){delivery::Item out;assert(queue.peek(101,1,1,true,out)&&out.arg==i);queue.consume();}
+ for(int i=0;i<delivery::Capacity;++i)assert(queue.add({Produce,i,0,1,1,100}));
+ assert(!queue.add({Produce,delivery::Capacity,0,1,1,100}));
+ for(int i=0;i<delivery::Capacity;++i){delivery::Item out;assert(queue.peek(101,1,1,true,out)&&out.arg==i);queue.consume();}
  assert(!queue.size);
  outgoing::Batch batch;batch.begin(1);
  for(int i=0;i<32;++i)batch.accept();
@@ -67,5 +67,5 @@ int main(){
  moorders::Point nodes[moorders::Nodes]{};int count=0;
  for(int i=0;i<400;++i)moorders::sample(nodes,count,{i*2,0},true);
  assert(count==256&&nodes[255].x==798&&nodes[0].x==0);
- std::cout<<"PASS: fixed queues128, cooperative1024/retry, ownership8192/reuse, repair16384/tombstones, stroke256/tail\n";
+ std::cout<<"PASS: fixed request queue capacity, cooperative1024/retry, ownership8192/reuse, repair16384/tombstones, stroke256/tail\n";
 }
