@@ -1,0 +1,25 @@
+{
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-pthread",
+    "-I",
+    "source/external_reader/source",
+    "-DENEMY_SAMPLER_HEADER=\"/workspace/scratch/5a310fe852f8/opt147/render/before_retry_gate/tactical_sampler.h\"",
+    "source/assist/tests/idle_aircraft_display.cpp",
+    "-o",
+    "/workspace/scratch/5a310fe852f8/opt147/render/idle_aircraft_display.before_retry_gate"
+  ],
+  "compile_exit_code": 0,
+  "command": [
+    "/workspace/scratch/5a310fe852f8/opt147/render/idle_aircraft_display.before_retry_gate"
+  ],
+  "exit_code": -6,
+  "stdout": "sealed_tail_failure entries=8192 first_reads=294898 repeated_reads=294898\n",
+  "stderr": "idle_aircraft_display.before_retry_gate: source/assist/tests/idle_aircraft_display.cpp:64: int main(): Assertion `repeatedReads==0&&state.complete&&state.liveReads==0' failed.\n",
+  "sha256": {
+    "/workspace/scratch/40121bc881b8/ra2-ui-146/source/assist/tests/idle_aircraft_display.cpp": "1e16f480a865153f4c827dc3e5809e39a0013b13f95de3216ab88066aa227b14",
+    "/workspace/scratch/5a310fe852f8/opt147/render/before_retry_gate/tactical_sampler.h": "b8f4fc0f5cc55488245190a7a7754b2e89130d6e4c50eaea496b7d3b4e021ec7"
+  }
+}

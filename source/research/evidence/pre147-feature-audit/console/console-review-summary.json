@@ -1,0 +1,63 @@
+{
+  "baseline_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "modified_production": [
+    "source/suite/frontend/app.js"
+  ],
+  "added_tests": [
+    "source/suite/tests/console_composition_test.mjs",
+    "source/suite/tests/console_hotkey_presentation_test.mjs"
+  ],
+  "hashes": {
+    "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+    "source/suite/tests/console_composition_test.mjs": "4bb04751ba7aaca9f351b462bc9d7dff6e33b6fc9991d074f7bacb0d1ffdac67",
+    "source/suite/tests/console_hotkey_presentation_test.mjs": "18f3a644f21c76650e98d58481fb14622625ab9e50e13488c46021749e1553cc"
+  },
+  "matrix": "console-matrix.json",
+  "matrix_records": 56,
+  "confirmed_fixed_defects": 2,
+  "tests": {
+    "composition": {
+      "before_failures": 14,
+      "after_passed": 16
+    },
+    "hotkey_names": {
+      "before_failures": 7,
+      "after_passed": 8
+    },
+    "existing_frontend": {
+      "store": 35,
+      "receipt": 24,
+      "debug": 16
+    },
+    "portable_cpp": [
+      "async_ini_store_test",
+      "console_model_test (45732 checks in this run; runtime-dependent counter, not feature count)"
+    ]
+  },
+  "browser": "Attempted Playwright launch; selected executable absent, no browser assertions executed",
+  "windows_webview2_or_game_run": false,
+  "raw_records": [
+    "frontend-final-test-runs.json",
+    "native-portable-test-runs.json",
+    "composition-events.before.run.json",
+    "hotkey-names.before.run.json",
+    "composition.baseline.run.json"
+  ],
+  "bundle": {
+    "command": [
+      "python",
+      "source/tools/bundle_console.py",
+      "--output",
+      "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console-final.html",
+      "--header",
+      "/workspace/scratch/33b3ee07b26a/feature147pre3/console/web_console_assets.final.h"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "stdout": "Console view: 102112 UTF-8 bytes\n",
+    "outputs": {
+      "console-final.html": "44c005b63882f7eb9c18742747fe2e8bf13f4300c3062a5547d0328e32638604",
+      "web_console_assets.final.h": "c89589cd1237ca0be2f3421982c02b88a8f91799237487dec0437eeaa2872ae5"
+    }
+  }
+}

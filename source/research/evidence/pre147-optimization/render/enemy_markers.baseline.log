@@ -1,0 +1,1 @@
+enemy_markers_baseline: source/assist/tests/enemy_markers.cpp:64: int main(): Assertion `f.mem.mapReads==0&&f.mem.freshReads>0' failed.

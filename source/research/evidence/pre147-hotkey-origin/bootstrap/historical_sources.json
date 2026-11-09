@@ -1,0 +1,56 @@
+[
+  {
+    "version": "v1.0.43",
+    "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/sources/v1.0.43/main.cpp",
+    "commit": "bf3fbe88faa96513649f2998aa0ab6e71935f4a8",
+    "github_blob_sha": "e6c387d9f26d9728713b4dc752e15a8cdeb40deb",
+    "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/bf3fbe88faa96513649f2998aa0ab6e71935f4a8/source/assist/source/main.cpp",
+    "sha256": "60a194d16c3f6e124aa678f57dc33049b1b974b8c2212988546ee7d523538b16",
+    "bytes": 258182
+  },
+  {
+    "version": "v1.0.44-pre.2",
+    "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/sources/v1.0.44-pre.2/main.cpp",
+    "commit": "944586abf9cd331d2aaf9fe24af744a593bd31d3",
+    "github_blob_sha": "be6ad581fc949f7ab9f53c5223869faab2b6728a",
+    "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/944586abf9cd331d2aaf9fe24af744a593bd31d3/source/assist/source/main.cpp",
+    "sha256": "0000654ac95a49d364977931fa7b6edb995d9c7af069e2cd14f86627f73958d0",
+    "bytes": 263795
+  },
+  {
+    "version": "v1.0.46.4",
+    "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/sources/v1.0.46.4/main.cpp",
+    "commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a",
+    "github_blob_sha": "7326adfb8a11fb59761af66e315285dada87eb6f",
+    "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/f452d1cb95c57f465356b55a3d7b83fb7403a70a/source/assist/source/main.cpp",
+    "sha256": "cb446fd28028f9b73379d4963dbd491e6aa2a5bc8d83166c45672fef99adc3df",
+    "bytes": 267018
+  },
+  {
+    "version": "v1.0.43",
+    "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/sources/v1.0.43/runtime_feature_demand.h",
+    "commit": "bf3fbe88faa96513649f2998aa0ab6e71935f4a8",
+    "github_blob_sha": "38b5583aa66c9f34d4855e31adf3342a32e14f75",
+    "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/bf3fbe88faa96513649f2998aa0ab6e71935f4a8/source/assist/source/runtime_feature_demand.h",
+    "sha256": "f07e599773d3e33bad81e7ba68ab405aef7725e604a1763c3783a459ece08bf9",
+    "bytes": 1668
+  },
+  {
+    "version": "v1.0.46.4",
+    "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/sources/v1.0.46.4/runtime_feature_demand.h",
+    "commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a",
+    "github_blob_sha": "38b5583aa66c9f34d4855e31adf3342a32e14f75",
+    "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/f452d1cb95c57f465356b55a3d7b83fb7403a70a/source/assist/source/runtime_feature_demand.h",
+    "sha256": "f07e599773d3e33bad81e7ba68ab405aef7725e604a1763c3783a459ece08bf9",
+    "bytes": 1668
+  },
+  {
+    "version": "v1.0.43",
+    "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/sources/v1.0.43/additional_settings.h",
+    "commit": "bf3fbe88faa96513649f2998aa0ab6e71935f4a8",
+    "github_blob_sha": "5804c96f8c9a7ea64c176034964e2b76930821eb",
+    "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/bf3fbe88faa96513649f2998aa0ab6e71935f4a8/source/assist/source/additional_settings.h",
+    "sha256": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+    "bytes": 5537
+  }
+]

@@ -14,7 +14,7 @@ static bool compatible(bool publish=true){
  if(publish)signatureRevision=admitted?debugentries::policyRevision:0;return admitted;
 }
 static void disable(){enabled=false;clock.reset();if(sh)sh->singlePlayerFPSActive=0;}
-static bool fresh(){return sh&&!sh->stop&&!fault&&DWORD(sampleClock(sh)-sh->heartbeat)<=500&&sh->singlePlayerFPS>=10&&valid(sh->singlePlayerFPS);}
+static bool fresh(){return sh&&!sh->stop&&!fault&&readonly::commands(sh)&&!readOnlyState.active&&DWORD(sampleClock(sh)-sh->heartbeat)<=500&&sh->singlePlayerFPS>=10&&valid(sh->singlePlayerFPS);}
 static bool live(){return fresh()&&session(get<int>(0xA8B238))&&get<bool>(0xA8E9A0)&&scenario&&get<uint32_t>(0xA8B230)==scenario&&get<int>(0xA8ED84)>=lastFrame;}
 static void maintain(){
  desired=false;failure=0;

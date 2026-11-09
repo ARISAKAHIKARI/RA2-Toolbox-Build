@@ -1,0 +1,36 @@
+{
+  "source": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/unit_monitor/source/main.cpp",
+  "source_sha256": "c8651e8e734e1b86e38056040acef64d0f51e1f786b927198c3ab3ae07d23fc3",
+  "test_sha256": "4d7403556dccde6c6e614d62ca4e83863b270aa3c91d6ff6b079fe21d504bc1f",
+  "predicate": "secondaryDirty||((!secondaryRenderedFrame||secondaryRenderedFrame->request.serial!=secondarySubmitSerial)&&DWORD(now-secondaryLastSubmit)>=250)",
+  "verification_level": "controlled_execution_of_extracted_production_predicate",
+  "not_verified": [
+    "Win32 allocation failure injection",
+    "actual monitor drawing"
+  ],
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-D_GLIBCXX_ASSERTIONS",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry/secondary_render_retry_current.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry/secondary_render_retry_current"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry/secondary_render_retry_current"
+      ],
+      "exit_code": 0,
+      "stdout": "PASS secondary retry: 8 submission and recovery cases\n",
+      "stderr": ""
+    }
+  ]
+}

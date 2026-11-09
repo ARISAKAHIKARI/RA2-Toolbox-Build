@@ -63,7 +63,7 @@ static bool autoSettingChanged(int id,int notification){
   SendMessageW(GetDlgItem(ui,861),BM_SETCHECK,BST_UNCHECKED,0);
   pointerMatches.clear();changedSetting();syncAdditional();notify(L"此功能暂不可用。");return true;
  }
- if((id==897||id==898||id==899)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==897)extra.passengerBubbles=on;else if(id==898)extra.dangerPassengers=on;else extra.magnetronDrop=on;changedSetting();syncAdditional();return true;}
+ if((id==897||id==898||id==899||id==9498||id==9499)&&notification==BN_CLICKED){bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==897)extra.passengerBubbles=on;else if(id==898)extra.dangerPassengers=on;else if(id==9498)extra.passengerOwn=on;else if(id==9499)extra.passengerAlways=on;else extra.magnetronDrop=on;changedSetting();syncAdditional();return true;}
  if(id==9065&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=1){minimapMode=next;changedSetting();}return true;}
  if(id==850&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=3){minimapPosition=next;changedSetting();}return true;}
  if((id==9100||id==9101)&&select){int next=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(next>=0&&next<=2){(id==9100?minimapAlignX:minimapAlignY)=next;changedSetting();}return true;}

@@ -1,0 +1,64 @@
+{
+  "name": "planner_tasks",
+  "command": [
+    "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/planner_tasks"
+  ],
+  "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+  "exit_code": 0,
+  "executed_this_revision": true,
+  "source_inputs_unchanged": true,
+  "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/planner_tasks.run.log",
+  "log_sha256": "079c6554d7acb74a1b61ce99276abdaffa5b6c29f7c607a96969dfb11f4ae409",
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-pthread",
+    "-O2",
+    "source/assist/tests/planner_tasks.cpp",
+    "-o",
+    "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/planner_tasks"
+  ],
+  "compile_exit_code": 0,
+  "commands": [
+    {
+      "stage": "compile",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-pthread",
+        "-O2",
+        "source/assist/tests/planner_tasks.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/planner_tasks"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "started_utc": "2026-11-09T04:54:35.662520+00:00",
+      "finished_utc": "2026-11-09T04:54:39.159729+00:00",
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/planner_tasks.compile.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "run",
+      "command": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/planner_tasks"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "started_utc": "2026-11-09T04:54:39.159998+00:00",
+      "finished_utc": "2026-11-09T04:54:39.290455+00:00",
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/planner_tasks.run.log",
+      "log_sha256": "079c6554d7acb74a1b61ce99276abdaffa5b6c29f7c607a96969dfb11f4ae409"
+    }
+  ],
+  "production_source_hashes": {
+    "source/assist/source/external_planner.h": "a3d21360f652cc0b5a86e581ec2c0f52466945b8f146a4023bcaf5fea1e32c4d",
+    "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+    "source/assist/source/value_task.h": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204",
+    "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81"
+  },
+  "test_source_hashes": {
+    "source/assist/tests/planner_tasks.cpp": "375d1a4e1ccf35a2290d6f09a348b60c68ccfacc6d4d838eef9bc6b0be9eec96"
+  },
+  "binary_sha256": "247bf43f9b308c2329b2c4ce9b1bd78990a48459ffa8d76fd29c968bb24dc98b"
+}

@@ -5,6 +5,7 @@
 #include "formation.h"
 #include "air_path_policy.h"
 #include <stdint.h>
+#include "read_only_lifecycle.h"
 #include "../../shared/source/hardware_slot_budget.h"
 #include <stddef.h>
 #include "planner_types.h"
@@ -27,7 +28,7 @@
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=101;
+constexpr uint32_t Magic=0x41533130, Version=103;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -264,6 +265,13 @@ struct Shared {
  volatile long worldSampleSeq=0;
  volatile uint32_t worldSampleSerial=0,worldSamplePages=0,worldSampleReads=0,worldSampleBytes=0,worldSampleRosters=0,worldSampleFailures=0;
  volatile int32_t worldSampleFrame=-1;
+ // Catalogue-bound selection owns its hash until selectAck. Append only;
+ // protocol 102 prevents an older Host from publishing an unbound mask.
+ uint64_t selectTypeHash=0;
+ volatile uint32_t missileManualOverflow=0; // Runtime-owned latched manual-priority pause.
+ // Host command pause retains the shared world producer. Runtime alone ACKs
+ // completed retirement; protocol 103 rejects peers without this fence.
+ volatile uint32_t readOnly=0,readOnlyRequest=0,readOnlyAck=0;
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

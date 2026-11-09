@@ -76,7 +76,9 @@ fi
 "$python_bin" - "$build_dir/BUILD_TARGET.json" "$console_ui" <<'JSONPY'
 import json,sys
 from pathlib import Path
-info={"host":"x64","runtime":"x86","broker":"x86","assist_protocol":101,"cursor_protocol":155,"runtime_protocol":4,"console_ui":sys.argv[2],"game_tested":False}
+sys.path.insert(0,str(Path("tools").resolve()))
+from verify_windows_outputs import ASSIST_PROTOCOL, CURSOR_PROTOCOL, RUNTIME_PROTOCOL
+info={"host":"x64","runtime":"x86","broker":"x86","assist_protocol":ASSIST_PROTOCOL,"cursor_protocol":CURSOR_PROTOCOL,"runtime_protocol":RUNTIME_PROTOCOL,"console_ui":sys.argv[2],"game_tested":False}
 if sys.argv[2]=='webview2':
     info.update(webview2_sdk="1.0.4314.35",webview2_loader="WebView2Loader.dll",webview2_runtime="Microsoft Edge WebView2 Evergreen Runtime")
 Path(sys.argv[1]).write_text(json.dumps(info,indent=2)+'\n',encoding='utf-8')

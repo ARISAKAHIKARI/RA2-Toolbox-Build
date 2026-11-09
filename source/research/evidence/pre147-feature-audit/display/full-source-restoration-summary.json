@@ -1,0 +1,21 @@
+{
+  "plan_count": 3097,
+  "missing_plan_paths": [],
+  "all_source_blob_count": 4016,
+  "missing_source_paths": [],
+  "cursor": {
+    "owner": "audit_all_display",
+    "base": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+    "range_start": 640,
+    "next_index": 3097,
+    "total": 3097,
+    "last_batch": "/workspace/scratch/33b3ee07b26a/feature147pre3/download-full-3072.json",
+    "errors": [],
+    "materialize": {
+      "saved": 25,
+      "identical": 0,
+      "preserved_working_changes": []
+    }
+  },
+  "verification": "Each restored batch was checked by materialize_batch.py against Git blob SHA1 and expected size; existing files preserved."
+}

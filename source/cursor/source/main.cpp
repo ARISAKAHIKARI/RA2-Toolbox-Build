@@ -55,6 +55,7 @@
 #include <future>
 #include <atomic>
 #include "perf_policy.h"
+#include "../../shared/source/timer_resolution.h"
 #include "playback.h"
 #include <map>
 #include <deque>
@@ -2085,16 +2086,17 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
 #else
  ShowWindow(mainw,SW_SHOW);
 #endif
- updatePrimaryAction();if(wcsstr(cmd,L"restore")){try{restoreFile();cursorDialog(lastStatus.c_str(),L"恢复 SHA",MB_OK);}catch(const std::exception& e){error(e);}DestroyWindow(mainw);return 0;}RegisterHotKey(mainw,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F11);RegisterHotKey(mainw,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F12);RegisterHotKey(mainw,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F10);RegisterHotKey(mainw,4,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F9);timeBeginPeriod(1);QueryPerformanceFrequency(&freq);LARGE_INTEGER next;QueryPerformanceCounter(&next);updateRefresh(true);MSG msg;bool quit=false;
+ updatePrimaryAction();if(wcsstr(cmd,L"restore")){try{restoreFile();cursorDialog(lastStatus.c_str(),L"恢复 SHA",MB_OK);}catch(const std::exception& e){error(e);}DestroyWindow(mainw);return 0;}RegisterHotKey(mainw,1,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F11);RegisterHotKey(mainw,2,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F12);RegisterHotKey(mainw,3,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F10);RegisterHotKey(mainw,4,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,VK_F9);QueryPerformanceFrequency(&freq);LARGE_INTEGER next;QueryPerformanceCounter(&next);updateRefresh(true);MSG msg;bool quit=false;
  HANDLE frameTimer=CreateWaitableTimerExW(nullptr,nullptr,0x2,TIMER_ALL_ACCESS);
  if(!frameTimer)frameTimer=CreateWaitableTimerW(nullptr,FALSE,nullptr);
- LONGLONG armedDeadline=0;uimessages::Queue messages;
+ LONGLONG armedDeadline=0;uimessages::Queue messages;timerresolution::Lease timerResolution;
  while(!quit){
   unsigned dispatched=0;
   while(dispatched++<32&&messages.peek(msg)){if(msg.message==WM_QUIT){quit=true;break;}TranslateMessage(&msg);DispatchMessageW(&msg);}
   if(quit)break;
 #if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
   if(consoleClosePrepared){
+   timerResolution.state(false);
    // Keep only the owner message pump alive until the shell has drained the
    // configuration service and requests actual restoration/close.
    if(frameTimer&&armedDeadline){CancelWaitableTimer(frameTimer);armedDeadline=0;}
@@ -2103,6 +2105,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   }
 #endif
   motionPoll();autoTick();updateRefresh();pollPrepare();
+  timerResolution.state(running||burst.left>0);
   LARGE_INTEGER now;QueryPerformanceCounter(&now);
   if(now.QuadPart>=next.QuadPart){
    LONGLONG drawStarted=now.QuadPart;
@@ -2130,6 +2133,6 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,LPWSTR cmd,int){
   if(!frameTimer){DWORD delay=DWORD(std::max<LONGLONG>(1,(deadline-now.QuadPart)*1000/freq.QuadPart));MsgWaitForMultipleObjectsEx(0,nullptr,delay,QS_ALLINPUT,MWMO_INPUTAVAILABLE);}
  }
  if(frameTimer)CloseHandle(frameTimer);
- timeEndPeriod(1);hookStop();cursorReader.close();if(dib){SelectObject(memdc,oldbm);DeleteObject(dib);}if(memdc)DeleteDC(memdc);CloseHandle(mutex);return 0;
+ timerResolution.state(false);hookStop();cursorReader.close();if(dib){SelectObject(memdc,oldbm);DeleteObject(dib);}if(memdc)DeleteDC(memdc);CloseHandle(mutex);return 0;
 }
 

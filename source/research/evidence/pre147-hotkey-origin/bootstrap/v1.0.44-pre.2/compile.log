@@ -1,0 +1,44 @@
+In file included from /workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_input_copy.h:3,
+                 from /workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_frame.h:6,
+                 from /workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/protocol.h:21,
+                 from /workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/runtime_feature_demand.h:2,
+                 from /workspace/scratch/c1b87d8550cd/hotkey-root-cause/command-history/results/v1.0.44-pre.2/production.cpp:2:
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/missile_compute.h: In function ‘assist::missilecompute::Result assist::missilecompute::calculateWithWorkspace(const Input&, Workspace&)’:
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/missile_compute.h:135:44: warning: suggest parentheses around ‘&&’ within ‘||’ [-Wparentheses]
+  135 |     action=i.sources[s].cooldown>3||covered&&i.targets[t].threatening<2?Hold:Attack;
+      |                                     ~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/unload_compute.h:4,
+                 from /workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_input_copy.h:4:
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/unload_policy.h: In function ‘bool assist::unloadpolicy::initialMayContinue(int, int, int, bool, bool)’:
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/unload_policy.h:34:40: warning: suggest parentheses around ‘&&’ within ‘||’ [-Wparentheses]
+   34 |  if(mission==2&&(mode==0||ejectDeployer&&mode!=0))return landedAge>=0&&landedAge<=(mode==0?900:ScatterFrames);
+      |                           ~~~~~~~~~~~~~^~~~~~~~~
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_input_copy.h: In static member function ‘static void assist::compute::InputCopy<assist::unloadcompute::Input>::copy(assist::unloadcompute::Input&, const assist::unloadcompute::Input&)’:
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_input_copy.h:22:14: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of a non-trivial type ‘struct assist::unloadcompute::Input’ leaves 4485120 bytes unchanged [-Wclass-memaccess]
+   22 |   std::memcpy(&to,&from,offsetof(unloadcompute::Input,sources));
+      |   ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/unload_compute.h:22:8: note: ‘struct assist::unloadcompute::Input’ declared here
+   22 | struct Input {
+      |        ^~~~~
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_input_copy.h: In static member function ‘static void assist::compute::InputCopy<assist::missilecompute::Input>::copy(assist::missilecompute::Input&, const assist::missilecompute::Input&)’:
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_input_copy.h:31:14: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of a non-trivial type ‘struct assist::missilecompute::Input’ leaves 1065984 bytes unchanged [-Wclass-memaccess]
+   31 |   std::memcpy(&to,&from,offsetof(missilecompute::Input,sources));
+      |   ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/missile_compute.h:18:8: note: ‘struct assist::missilecompute::Input’ declared here
+   18 | struct Input {uint32_t match=0,tick=0;int frame=-1,count=0,targetCount=0,mode=Smart;
+      |        ^~~~~
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_input_copy.h: In static member function ‘static void assist::compute::InputCopy<assist::compute::LoadInput>::copy(assist::compute::LoadInput&, const assist::compute::LoadInput&)’:
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_input_copy.h:40:14: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of a non-trivial type ‘struct assist::compute::LoadInput’ leaves 843788 bytes unchanged [-Wclass-memaccess]
+   40 |   std::memcpy(&to,&from,offsetof(LoadInput,soldiers));
+      |   ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/protocol.h:20:
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_tasks.h:8:8: note: ‘struct assist::compute::LoadInput’ declared here
+    8 | struct LoadInput {
+      |        ^~~~~~~~~
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_input_copy.h:45:14: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of a non-trivial type ‘struct assist::loading::Composition’ leaves 524288 bytes unchanged [-Wclass-memaccess]
+   45 |   std::memcpy(&to.composition,&from.composition,offsetof(loading::Composition,numbers));
+      |   ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/compute_tasks.h:2:
+/workspace/scratch/c1b87d8550cd/ra2-hotkey-fix/source/assist/source/autoload.h:32:8: note: ‘struct assist::loading::Composition’ declared here
+   32 | struct Composition {
+      |        ^~~~~~~~~~~

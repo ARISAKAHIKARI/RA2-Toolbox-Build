@@ -1,0 +1,41 @@
+diff --git a/source/assist/source/external_planner.h b/source/assist/source/external_planner.h
+index 6188c80..7dc8365 100644
+--- a/source/assist/source/external_planner.h
++++ b/source/assist/source/external_planner.h
+@@ -62,12 +62,21 @@ class Planner {
+   if(dx*dx+dy*dy<16*16)return false;task.attackProgress=frame;task.progressX=a.x;task.progressY=a.y;return true;
+  }
+  static bool add(std::vector<Order>& out,Order order){if(out.size()>=MaxOrders)return false;out.push_back(order);return true;}
+- static std::vector<Order> merge(const std::vector<Order>& combat,const std::vector<Order>& ore){
++ std::vector<Order> merge(const std::vector<Order>& combat,const std::vector<Order>& ore){
+   std::vector<Order> result;result.reserve(MaxOrders);size_t c=0,o=0;
+   // Interleave both families before the bounded native event allowance runs
+   // out. Per-item masks acknowledge successful and rejected orders separately.
+   while(result.size()<MaxOrders&&(c<combat.size()||o<ore.size())){
+-   if(o<ore.size())result.push_back(ore[o++]);
++   if(o<ore.size()){
++    const auto&order=ore[o++];result.push_back(order);
++    // A candidate omitted by the final batch has no delivery or receipt.
++    // Charge its bounded retry budget only once it is actually returned.
++    if(order.purpose==OreYield){auto it=oreTurns_.find(order.refinery);
++     if(it!=oreTurns_.end()&&it->second.displaced==order.unit&&it->second.displacedToken==order.token){
++      ++it->second.attempts;it->second.sent=frame_;++oreYieldAttempts;
++     }
++    }
++   }
+    if(c<combat.size()&&result.size()<MaxOrders)result.push_back(combat[c++]);
+   }return result;
+  }
+@@ -370,8 +379,11 @@ public:
+   // consume the entire order budget. Retrying is bounded even on rejection.
+   for(auto&job:ore_){if(job.suspended)continue;auto it=oreTurns_.find(job.refinery);if(it==oreTurns_.end()||it->second.displaced!=job.id)continue;auto&t=it->second;
+    if(t.released||t.attempts>=ore::MaxDockAttempts||world.frame-t.sent<ore::YieldRetryFrames)continue;
++   // Repeated actors must not reserve a second release or waiting cell for
++   // the same turn while its first candidate awaits final batch selection.
++   if(std::any_of(out.begin(),out.end(),[&](const Order&o){return o.purpose==OreYield&&o.refinery==job.refinery;}))continue;
+    const auto*c=sample(job,job.waitCell);if(!c||c->occupation||c->land==2||c->land==7){waitingCells_.erase(job.waitCell);job.waitCell=waitingCell(job);if(job.waitCell)waitingCells_.insert(job.waitCell);}
+-   if(job.waitCell&&add(out,{job.id,job.token,0,job.waitCell,2,11,OreYield,job.refinery})){++t.attempts;++oreYieldAttempts;t.sent=world.frame;}
++   if(job.waitCell)add(out,{job.id,job.token,0,job.waitCell,2,11,OreYield,job.refinery});
+   }
+   for(auto&job:ore_){const Actor* a=actor(job.id),*refinery=actor(job.refinery);if(job.suspended||!a||!refinery){++queued;continue;}
+    auto turn=oreTurns_.find(job.refinery);

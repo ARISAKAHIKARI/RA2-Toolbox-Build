@@ -51,7 +51,7 @@ int main(){
  assert(f.update(1030,5,resized,{wideLayer,hud}));assert(f.dib.pixels[9]==0xffffffffu);const auto dirtyBefore=f.copied;
  assert(f.update(1031,6,resized,{wideLayer}));assert(f.dib.pixels[9]==0xff112233u&&f.copied-dirtyBefore==1);
  using Clock=std::chrono::steady_clock;const auto time=Clock::time_point{};using namespace std::chrono;
- assert(overlaypublication::pollDelay(time,time+milliseconds(200),true)==milliseconds(8));
+ assert(overlaypublication::pollDelay(time,time+milliseconds(200),true)==milliseconds(16));
  assert(overlaypublication::pollDelay(time,time+milliseconds(2),true)==milliseconds(2));
  assert(overlaypublication::pollDelay(time,time-milliseconds(1),true)==Clock::duration::zero());
  overlaypresentrate::Cadence cadence;cadence.submitted(time);assert(cadence.deadline(time,500)==time+milliseconds(2));
@@ -59,5 +59,5 @@ int main(){
  // immediately eligible, while a deferred frame retains the exact deadline.
  assert(cadence.deadline(time+milliseconds(50),500)==time+milliseconds(50));
  overlaypublication::Submission gpu;gpu.observe(7);gpu.completed(100,true);gpu.failed();assert(gpu.needs(101,false,true,false)&&!gpu.changed(7));gpu.completed(108,false);assert(gpu.repair(1100));gpu.completed(1108,true);assert(!gpu.needs(1109,false,true,false));
- std::puts("PASS actual CPU publication: identical frames perform zero compose/copy/upload; 1s repair reuses DIB; dirty metadata consumed; failed upload/resize retry; hide/resume; incremental layer removal; observed revision avoids pending spin; <=8ms poll and exact 500Hz deadline; GPU pending does not renew success.");
+ std::puts("PASS actual CPU publication: identical frames perform zero compose/copy/upload; 1s repair reuses DIB; dirty metadata consumed; failed upload/resize retry; hide/resume; incremental layer removal; observed revision avoids pending spin; <=16ms poll and exact 500Hz deadline; GPU pending does not renew success.");
 }

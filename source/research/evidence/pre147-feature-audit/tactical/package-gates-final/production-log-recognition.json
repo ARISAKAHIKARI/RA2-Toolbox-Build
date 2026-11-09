@@ -1,0 +1,199 @@
+{
+  "scope": "Read-only package parser verification of the parent final 27 actual check logs, not a new production execution. Final frozen build/provenance validation remains a separate required step.",
+  "summary_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/execution-summary.json",
+  "summary_sha256": "c9a85f260be38ca89b4532b50dd63a55315aab39ecce0453afbc6c97eea8f690",
+  "package_source_sha256": "12aba137ec285dda18b2a9a4b026c292c626492299ce1d06f350056baa162778",
+  "groups": [
+    {
+      "name": "missile_allocator",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_allocator/run.log",
+      "log_sha256": "0339260c0a2f19f3f3b8c85e796cb16505cc2e258c0c7f64a1e31fad5e535f9a",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "snapshot_reuse",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/snapshot_reuse/run.log",
+      "log_sha256": "10547392ad7190641dd4963903751007abd8d0afe7acf245c77f843e625db4e7",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "tech_capture",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture/current/run.log",
+      "log_sha256": "025a37c808abdab4a11cd0d5af453f7cbf089c3cdd95db0c99082ca640259eee",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "voxel_recovery",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/voxel_recovery/run.log",
+      "log_sha256": "ddb93eda608133ca6ba67845327e6f591d53f53c1007f3d28057c8c731657a74",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "idle_aircraft_display",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/idle_aircraft_display/run.log",
+      "log_sha256": "bac486eae790070708d02c17912d28e7c076af78deb2696d1fc22fa56317ca1e",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "terrain_reuse",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/terrain_reuse/run.log",
+      "log_sha256": "e9b2d7ba43c29997378565c9aef16827b998edfee225d27d04c26f936616139f",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "console_receipt_order",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_receipt_order/run.log",
+      "log_sha256": "4f153fc259a520d615517ca4fd3b59a6972d632f925bb391d8c756c8623bead2",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "catalogue_recovery",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/catalogue_recovery/run.log",
+      "log_sha256": "7033345aabed840bce11ac41a67c17dcd5f478c211dfc6d134118bbc9233fa1c",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "planner_batch_delivery",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_batch_delivery/run.log",
+      "log_sha256": "8777c17f553ae3adc2a40f2e07b7dddae0b64cd895269ae0b7c7160fb25c1986",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "scene_extra_recovery",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/scene_extra_recovery/run.log",
+      "log_sha256": "a975bfa0019c0bf128de7031a520a58e8b4d65fa3cad655ab0075b067158041a",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "planner_defense_delivery",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/planner_defense_delivery/run.log",
+      "log_sha256": "ccee48d389834aa985cb6424ab1c221f97f6f951a08669dccc93ccfa14a7b3b5",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "missile_manual_lifecycle",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_lifecycle/run.log",
+      "log_sha256": "d1109ab695361e33367b3b4204fe74c86d1b2e081150fc53abebfc33a4de774a",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "missile_manual_capacity",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/missile_manual_capacity/run.log",
+      "log_sha256": "c6fc94c47e56c6d4aed9aed9f51f6cd68fe82be64a782d309168f9bbbf967f9c",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "patrol_capacity",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_capacity/run.log",
+      "log_sha256": "0868f486124c0b2840e467f14579f92e1866aa81872ae59d7f9d4d1c327f0865",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "patrol_small_buffer",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/patrol_small_buffer/run.log",
+      "log_sha256": "8683882cc2d93a5f86cd8d2eed8cf6853ef7c990b72d013d0b87f3fa63054b63",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "selection_catalogue_identity",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/selection_catalogue_identity/selection_catalogue_current_1.log",
+      "log_sha256": "f82186b2542b6d3349d524680a35156eb703abc9b427ba264b43aed7af3c1c24",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "toast_clock_wrap",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap/toast_clock_current_1.log",
+      "log_sha256": "7f03496324e1fd3dc132ea1f49728d069e694270f56a81bdbb0886a389950536",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "console_composition",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_composition/run.log",
+      "log_sha256": "98c7cbfd0ff267b744d92fb2cccfbbbc839b13311f9dfea21d8e03a6e048da81",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "console_hotkey_presentation",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/console_hotkey_presentation/run.log",
+      "log_sha256": "b027683b4b438750d8269b2744c4de783b9fe0efd41826b50f633578f3afbfb2",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "secondary_drag_bounds",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_drag_bounds/secondary_drag_current_1.log",
+      "log_sha256": "b0f18980f463b074d7f9488b226e858c985ca8fd0c5f4283dac6a3c3ea4149de",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "secondary_render_retry",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry/secondary_render_retry_current_1.log",
+      "log_sha256": "e71a2b58efecc1e42e47f18e9cc0820a6ed68498225fb344b2bd40bb6c9c545f",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "icon_cache_reopen",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/icon_cache_reopen/icon_cache_reopen_current_1.log",
+      "log_sha256": "b935a995940d124331e6b9044e42d9957a5459305e621dd78313a87c62431bbd",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "superweapon_result_feedback",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/superweapon_result_feedback/run.log",
+      "log_sha256": "889b90e4524c35ec38566282414c2709b520c6140c380d3b58bd641f45cd13c5",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "pause_key_pairing",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/pause_key_pairing/run.log",
+      "log_sha256": "66d2b205a30fdd3b531c475c8a063e2b8d7ba9ed9f0288801d7a66bdcfa046b9",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "native_mouse_pairing",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/native_mouse_pairing/run.log",
+      "log_sha256": "496d702813f25363dba061d1bb5f178d4e37d5ed649e82f89cebf44fce516d25",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "passenger_frame_sampling",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/passenger_frame_sampling/run.log",
+      "log_sha256": "c7510aa8c6dcb08e349405107619b96c23491f3e4333ebefb805200628a9f686",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    },
+    {
+      "name": "dependency_probes",
+      "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/dependency_probes/receipt.json",
+      "log_sha256": "14b8e2ab5ab132eed43220ec687d1bda07fce9edbab86d28d5683245a8d9cce4",
+      "accepted_by_current_parser": true,
+      "required_source_bindings_present_and_current": true
+    }
+  ],
+  "accepted_count": 27,
+  "raw_logs_modified": false
+}

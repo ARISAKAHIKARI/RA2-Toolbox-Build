@@ -1,0 +1,13 @@
+{
+  "command": [
+    "node",
+    "source/suite/tests/console_composition_test.mjs",
+    "--app",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/app.baseline.js"
+  ],
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "exit": 1,
+  "log": "composition-events.before.log",
+  "app_sha256": "c18c53e2d9a5860c019588a9bc8403a5e45a49049ce9d6347ad1bc16fbfd1cad",
+  "test_sha256": "4bb04751ba7aaca9f351b462bc9d7dff6e33b6fc9991d074f7bacb0d1ffdac67"
+}

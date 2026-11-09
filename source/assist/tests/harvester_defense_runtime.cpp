@@ -440,6 +440,25 @@ int main(int argc,char**argv){
   for(int n=0;n<40&&events.size()==1;++n){const unsigned before=cellReads;step();CHECK(cellReads-before<2000);CHECK(sh->minerDefenseActive==1);}
   CHECK(events.size()==2);harvestTuple(events.back(),62080);observe(events.back());step();CHECK(!minerDefensePending());
  });
+ run("restore_rechecks_exhausted_search_winner",[]{
+  attackStarted();observeAttack();step();kill();cells.erase(ResourceCell);resource(54,62);
+  outgoingOkay=false;
+  for(int n=0;n<12&&!minerDefenseJobs.at(MinerID).identity.search.done;++n)step();
+  CHECK(minerDefenseJobs.at(MinerID).identity.search.done);
+  CHECK(minerDefenseJobs.at(MinerID).identity.search.best==62054);
+  cells.erase(62054);outgoingOkay=true;
+  for(int n=0;n<40&&events.size()==1;++n)step();
+  CHECK(events.size()==2);harvestTuple(events.back(),62080);
+ });
+ run("restore_unknown_search_winner_waits_without_guard",[]{
+  attackStarted();observeAttack();step();kill();cells.erase(ResourceCell);resource(54,62);
+  outgoingOkay=false;
+  for(int n=0;n<12&&!minerDefenseJobs.at(MinerID).identity.search.done;++n)step();
+  CHECK(minerDefenseJobs.at(MinerID).identity.search.done);
+  outgoingOkay=true;failRead=cellPointer(54,62)+0x44;
+  step(1,16,false);CHECK(events.size()==1&&minerDefensePending());
+  failRead=0;step();CHECK(events.size()==2);harvestTuple(events.back(),62054);
+ });
  run("position_read_uncertainty_retains_work_for_recovery",[]{
   attackStarted();observeAttack();step();failRead=Miner+0x9C;step(1,16,false);CHECK(events.size()==1&&sh->minerDefenseActive==1);
   failRead=0;kill();step();CHECK(events.size()==2);harvestTuple(events.back());

@@ -1,0 +1,22 @@
+width=2 count=4 bind=1
+width=4 count=8 bind=1
+width=8 count=16 bind=1
+FAIL: closed-stroke resampling stays inside the route admission limit before submission
+FAIL: generated materialized path passes the real pre-Connect route reader
+FAIL: generated closed path passes the real pre-Commit route reader
+width=10 count=20 bind=0
+FAIL: closed-stroke resampling stays inside the route admission limit before submission
+FAIL: generated materialized path passes the real pre-Connect route reader
+FAIL: generated closed path passes the real pre-Commit route reader
+width=20 count=32 bind=0
+FAIL: closed-stroke resampling stays inside the route admission limit before submission
+FAIL: generated materialized path passes the real pre-Connect route reader
+FAIL: generated closed path passes the real pre-Commit route reader
+width=40 count=32 bind=0
+FAIL: closed-stroke resampling stays inside the route admission limit before submission
+FAIL: generated materialized path passes the real pre-Connect route reader
+FAIL: generated closed path passes the real pre-Commit route reader
+==10==Can't open /proc/9/task for reading.
+==9==LeakSanitizer has encountered a fatal error.
+==9==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==9==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)

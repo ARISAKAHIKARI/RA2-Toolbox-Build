@@ -1,11 +1,11 @@
 {
-  "name": "RA2 Toolbox 1.0.46",
-  "version": "1.0.46",
+  "name": "RA2 Toolbox 1.0.47",
+  "version": "1.0.47",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
   "resources_legacy_reuse": true,
-  "build_protocol": 101,
+  "build_protocol": 103,
   "validation": "This revision records only focused checks actually executed against its frozen production and test source bytes. Historical suites are not counted as new execution. Complete Windows-target compilation, static PE/ABI validation, paired component digests and archive verification are recorded separately in the frozen build receipts and release-manifest.json; this source manifest does not assert their completion. No live Windows/DWM, user-platform, game, physical GPU or multiplayer acceptance is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
@@ -27,7 +27,7 @@
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,
-  "package_type": "Windows x64 stable lightweight Full and Update, same-build x86 Runtime/broker, pinned WebView2 loader; generated cursor DIS/preview and optional Python scientific runtime excluded.",
+  "package_type": "Windows x64 prerelease lightweight Full and Update, same-build x86 Runtime/broker, pinned WebView2 loader; generated cursor DIS/preview and optional Python scientific runtime excluded.",
   "runtime_transport_protocol": 4,
   "game_code_patching": "Prefer native events, polling and external rendering; gameplay code changes, simulation mutations and original-value CRC mirror retain explicit HIGH RISK labels. Read-only native queries, build-time display and HideCursor are not classified as HIGH RISK. Cursor tooltip repair owns validated data/vtable slots without rewriting .text; this is not a multiplayer certification.",
   "input_entry": "Windows WH_GETMESSAGE/WH_CALLWNDPROCRET; ordinary sessions use frame-counter polling, native frame notification only explicitly selected diagnostic test",
@@ -43,10 +43,10 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "stable",
+  "release_status": "prerelease",
   "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; Debug entry catalog plus independent read-only platform Hook scan tools, manual PID, optional same-build original EXE, progress/cancellation and local HTML/JSON reports; existing action generation/revision acknowledgement preserved.",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement. Active, identity-verified enhancement targets may enter the toolbox catalogue despite Insignificant; Spawned and zero-owner exclusions and native build/factory rules remain. Ares replacing the native CanBuild body still makes the internal Exact comparison unavailable.",
-  "calculation_locations": "Fifteen tactical decision families selectable; native queries/events always GameRuntime; host planner and six value-only compute lanes run on persistent workers, with UI publication and original source deadlines.",
+  "calculation_locations": "Fifteen tactical compute slots, fourteen current visible controls; Dodge location choice applies to Scatter only. Forward-path dodge always uses Runtime native pathing. Native queries/events remain in GameRuntime. Host tasks retain original source deadlines.",
   "player_control": "Implementation0 now Master basic instruction patches (high risk), implementation1 native detours; current-player switching and enemy-building Sell disabled",
   "refresh_experiment": "Cursor high refresh enabled; renderer upgrade entry disabled; map-only viewport zoom/sidebar/SP pause remain explicit experimental options",
   "architecture_variants": {
@@ -1014,7 +1014,7 @@
     "historical_initial_publication": true,
     "superseded_by_same_version_revision": "2026-11-08-depth-tooltip-performance"
   },
-  "release_revision": "2026-11-09-ui-unification",
+  "release_revision": "2026-11-09-feature-entry-recovery-pre6",
   "RevisedRelease146": {
     "version": "1.0.46",
     "file_version": "1.0.46.3",
@@ -1071,5 +1071,326 @@
     "multiplayer_tested": false,
     "validation": "Current UI checks, browser rendering, native-model metadata, full Windows-target cross-build, exact source binding and ZIP integrity are recorded independently; no Windows game/GPU/multiplayer execution is claimed.",
     "inherited_gameplay_fixes": "The released 1.0.46.3 building metadata, production tooltip, compute and lightweight packaging changes are retained. Historical performance checks are not claimed as rerun for this UI-only revision."
+  },
+  "AuditOptimizations147Pre1": {
+    "baseline_file_version": "1.0.46.4",
+    "baseline_source_commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a",
+    "baseline_tree_sha": "74117a0d765d4ae69a38fbebd7a177444c7e2b71",
+    "version": "1.0.47-pre.1",
+    "file_version": "1.0.47.1",
+    "prerelease": true,
+    "make_latest": false,
+    "scope": [
+      "Preserve missile assignment ordering and actions using per-target candidate heaps plus a global target heap; Host and Runtime each reuse an exclusively owned workspace.",
+      "Reuse retired Snapshot and page storage with a bounded idle pool while creating a fresh shared ownership identity for every publication; pinned readers retain immutable content.",
+      "Reuse retired terrain arrays and clear only previously touched cells; do not change capture admission, frequency, completeness or fallback allocation.",
+      "Capture each technology type array once per existing refresh while preserving first-match ordering and all live callback checks.",
+      "Reject incomplete mandatory VXL components and metadata; retry required actor recovery through the existing bounded decode path.",
+      "Bind the idle-aircraft display to its own committed sealed sample; derive missing paused display data once per source without extending command freshness, and avoid retrying an immutable failed supplement.",
+      "For three healthy managed dependency caches, execute the original NumPy, SciPy and OpenCV version/origin/native-function probes in one isolated process; failure or incomplete cache keeps the original individual repair path."
+    ],
+    "focused_checks": [
+      "missile_allocator",
+      "snapshot_reuse",
+      "tech_capture",
+      "voxel_recovery",
+      "idle_aircraft_display",
+      "terrain_reuse",
+      "dependency_probes"
+    ],
+    "assist_protocol": 101,
+    "cursor_protocol": 155,
+    "runtime_protocol": 4,
+    "sampling_frequency_reduced": false,
+    "windows_executed": false,
+    "game_tested": false,
+    "gpu_tested": false,
+    "multiplayer_tested": false,
+    "validation": "Current targeted evidence is bound to exact production/test SHA256 values. Frozen Windows-target builds, PE inspection and archive checks are recorded separately; no real Windows/game/GPU/multiplayer/FPS claim. No new game executable, address, field or ABI finding is introduced.",
+    "remaining_work": [
+      "The previously confirmed mixed-canvas cursor pixel-bound defect is not fixed: automatic action review blocked both the broad task and a narrowed image-only repair with a possible cybersecurity risk message.",
+      "Native Windows, real-game performance/visual and multiplayer acceptance remain unperformed.",
+      "Warm dependency batching retains every module check; other helper/interpolation process startup costs remain."
+    ]
+  },
+  "FunctionalRecovery147Pre2": {
+    "baseline_file_version": "1.0.46.4",
+    "baseline_source_commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a",
+    "baseline_tree_sha": "74117a0d765d4ae69a38fbebd7a177444c7e2b71",
+    "previous_version": "1.0.47-pre.1",
+    "previous_local_commit": "b928999f5da90f6f9de0d18151b04b498217464c",
+    "previous_remote_commit": "f874c422c4596df9c34025ff43ce96a6110b7116",
+    "version": "1.0.47-pre.2",
+    "file_version": "1.0.47.2",
+    "prerelease": true,
+    "make_latest": false,
+    "scope": [
+      "Retain pending console operations until their matching acknowledgement; an unrelated matching state snapshot cannot hide a later rejection.",
+      "Count actually changed drafts on close, while preserving pending operations and unknown or retired page drafts; focus alone is not an unsaved change.",
+      "Invalidate an incomplete unit type catalogue and retry on the next complete sample instead of permanently caching partial metadata under a valid stamp.",
+      "Charge ore yield attempts only when the order enters the final bounded planner batch, preserving retry timing and receipt policy for returned orders. Bound same-refinery yield candidates before waiting-cell selection so duplicate Actor inputs retain the original three-attempt ceiling.",
+      "Reject incomplete saved building/animation image metadata and nonzero unreadable depth masks before caching images; recover using the same image cache on healthy input."
+    ],
+    "focused_checks": [
+      "console_receipt_order",
+      "catalogue_recovery",
+      "planner_batch_delivery",
+      "scene_extra_recovery"
+    ],
+    "previous_release_gates_required_again": [
+      "missile_allocator",
+      "snapshot_reuse",
+      "tech_capture",
+      "voxel_recovery",
+      "idle_aircraft_display",
+      "terrain_reuse",
+      "dependency_probes"
+    ],
+    "assist_protocol": 101,
+    "cursor_protocol": 155,
+    "runtime_protocol": 4,
+    "sampling_frequency_reduced": false,
+    "windows_executed": false,
+    "game_tested": false,
+    "gpu_tested": false,
+    "multiplayer_tested": false,
+    "validation": "Four new focused suites execute actual production paths with frozen pre.1 negative controls and current source/test SHA256 bindings. The seven existing release gates are required to execute again. Completed full builds, exact source synchronization and archive checks are recorded separately in frozen delivery receipts; this manifest alone does not assert their completion. No new game address, field or ABI finding is introduced.",
+    "remaining_work": [
+      "The mixed-canvas cursor pixel-bound repair remains blocked by automatic approval review with a possible cybersecurity risk message; this turn does not retry that action.",
+      "Native Windows/WebView2, real-game visual and performance, physical GPU and multiplayer acceptance remain unperformed.",
+      "Historical standalone enemy_markers and hotkey_host fixture limitations remain separately documented in the pre.1 audit note; they are not counted as passing release gates."
+    ],
+    "focused_assertions": 362
+  },
+  "FeatureAudit147Pre3": {
+    "baseline_file_version": "1.0.46.4",
+    "comparison_remote_commit": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+    "version": "1.0.47-pre.3",
+    "file_version": "1.0.47.3",
+    "prerelease": true,
+    "make_latest": false,
+    "review_record_counts": {
+      "tactical": 76,
+      "compute_slots": 15,
+      "visible_compute_slots": 14,
+      "display": 164,
+      "hardware": 82,
+      "console": 56,
+      "host_runtime": 32
+    },
+    "counting": "Shared, mode, disabled and internal entries overlap; records and assertions are not independent usable feature counts.",
+    "fixes": [
+      "Selection catalogue identity and original input deadline",
+      "Defense cooldown only on returned batch orders",
+      "Manual-priority lifecycle retirement and latched full-table pause",
+      "Patrol generation matches existing 16-node admission",
+      "IME event ownership and keypad/unknown-key naming",
+      "Pause key and enhanced mouse stale pair retirement",
+      "Immediate superweapon event feedback",
+      "Secondary-monitor bounds and failed render retry identity",
+      "Icon-cache same-path recovery",
+      "Toast lifetime at DWORD wrap",
+      "Passenger display bound to the authenticated immutable raw frame",
+      "Current source/build/diagnostic protocol identities share strict verification constants"
+    ],
+    "assist_protocol": 102,
+    "assist_shared_bytes": 23162544,
+    "append_only_fields": {
+      "selectTypeHash": 23162528,
+      "missileManualOverflow": 23162536
+    },
+    "cursor_protocol": 155,
+    "runtime_protocol": 4,
+    "current_release_gates": 27,
+    "sampling_frequency_reduced": false,
+    "windows_executed": false,
+    "game_tested": false,
+    "gpu_tested": false,
+    "multiplayer_tested": false,
+    "validation": "Current focused execution and negative controls have exact source/test/log bindings. Full builds, PE checks, source synchronization and archive verification are recorded separately; this manifest alone does not assert their completion.",
+    "remaining_work": [
+      "Mixed-canvas cursor pixel-bound repair remains blocked by prior automatic approval review: possible cybersecurity risk; not retried.",
+      "Multiplayer Sticky synchronized exit is not implemented.",
+      "PRES/BUS live-display report still needs current match, owner, factory and sidebar evidence.",
+      "Windows/WebView2, actual game, physical GPU, multiplayer and real FPS acceptance remain unperformed."
+    ],
+    "research_note": "research/2026-11-09-pre147-feature-audit.md"
+  },
+  "HotkeyRecovery147Pre4": {
+    "baseline_file_version": "1.0.46.4",
+    "previous_source_commit": "93f02787d42b61ff5c30e450317f99ba00673149",
+    "version": "1.0.47-pre.4",
+    "file_version": "1.0.47.4",
+    "prerelease": true,
+    "make_latest": false,
+    "inherited_build_metadata_corrections": [
+      "source/BUILD_SOURCE_MANIFEST.json",
+      "source/build-zig-x64.sh",
+      "source/tools/verify_windows_outputs.py",
+      "source/tools/build_hook_diagnostics.py",
+      "source/tools/verify_hook_diagnostics.py"
+    ],
+    "assist_protocol": 102,
+    "assist_shared_bytes": 23162544,
+    "cursor_protocol": 155,
+    "runtime_protocol": 4,
+    "required_release_gates": 29,
+    "new_release_gates": [
+      "hotkey_command_context",
+      "hotkey_message_recovery"
+    ],
+    "validation": "Source and packaging preparation only. Actual current focused executions, complete Windows-target build, PE/ABI checks and ZIP verification must be recorded in their own frozen-source receipts. This manifest does not assert completion.",
+    "windows_executed": false,
+    "game_tested": false,
+    "gpu_tested": false,
+    "multiplayer_tested": false,
+    "immediate_action_sample_gap_ms": 150,
+    "input_diagnostics": "Default input path uses counters; rejection reasons and command submission outcomes are recorded in Runtime.log.",
+    "hotkey_context_minimum_checks": 67,
+    "hotkey_context_minimum_scenarios": 22,
+    "hotkey_result_binding": "Actual counts may grow; current and all three baseline context stdout logs must match the report and execution-time digests.",
+    "research_note": "source/research/2026-11-09-pre147-hotkey-recovery.md",
+    "source_log_sha256": "6beda7933c9e99260679d2065dac9b88ce766b6c08f0ab7a85f70762b386f1b6",
+    "changes": [
+      "Separate command hotkey readiness from external display/viewport sampling.",
+      "Retain ordinary key bindings when system registration fails; reuse foreground physical-edge sampling.",
+      "Deduplicate polling and queued messages, with cancellation and epoch fences.",
+      "Keep the 150 ms input bound for immediate selection/cursor actions across sampling gaps.",
+      "Add bounded input counters and rejection/command receipts; detailed routine stages remain debug-only."
+    ],
+    "preserved_audit_source_tree": "e2dc13b345ce84e0064fa1d1bc7ac506ce0e759f"
+  },
+  "HotkeyInput147Pre5": {
+    "version": "1.0.47-pre.5",
+    "file_version": "1.0.47.5",
+    "baseline_file_version": "1.0.46.4",
+    "prerelease": true,
+    "make_latest": false,
+    "assist_protocol": 102,
+    "assist_shared_bytes": 23162544,
+    "cursor_protocol": 155,
+    "runtime_protocol": 4,
+    "required_release_gates": 34,
+    "new_release_gates": [
+      "hotkey_input_diagnostic",
+      "input_ownership",
+      "formation_input_ownership",
+      "hotkey_live_observation",
+      "hotkey_cold_start"
+    ],
+    "changes": [
+      "Start the shared-world producer for an enabled, currently readable game without waiting for its first external sample.",
+      "Bound formation input ownership to the current match and a nonzero 200 ms lease, including normalized clock-wrap handling.",
+      "Observe configured hotkeys, actual foreground identity, registration, admission gates and dispatch outcomes with bounded logging."
+    ],
+    "cold_start_boundary": "The reproduced old cycle requires no existing bridge, other Runtime demands off and the default OwnGround binding cleared. Default OwnGround itself already requests Runtime.",
+    "v135_boundary": "Inherited v35 Advanced settings can independently request Runtime and mask the old cycle; persistent recognition permission is not supported by source evidence. This is not proof of the reported on-device cause.",
+    "field_status": "The supplied pre.4 session had an already-connected and command-ready interval with no active submissions. The cold-start repair cannot alone explain that interval; live Windows/game confirmation remains outstanding.",
+    "validation": "All 34 groups executed on the current production/test bytes. The later source-manifest identity correction changes no bound test or production input; final validation must recheck those digests and bind the final source commit. Fresh Windows-target build, PE/ABI and ZIP checks are recorded separately; this manifest alone does not assert their completion.",
+    "windows_executed": false,
+    "game_tested": false,
+    "gpu_tested": false,
+    "multiplayer_tested": false,
+    "research_notes": [
+      "research/2026-11-09-v135-warm-start.md",
+      "research/2026-11-09-hotkey-pre4-live-failure.md"
+    ]
+  },
+  "FeatureEntry147Pre6": {
+    "version": "1.0.47-pre.6",
+    "file_version": "1.0.47.6",
+    "baseline_file_version": "1.0.46.4",
+    "previous_source_commit": "6183f0762fffd114f374848d8534214d98abd70f",
+    "prerelease": true,
+    "make_latest": false,
+    "assist_protocol": 103,
+    "assist_shared_bytes": 23162552,
+    "append_only_fields": {
+      "readOnly": 23162540,
+      "readOnlyRequest": 23162544,
+      "readOnlyAck": 23162548
+    },
+    "cursor_protocol": 155,
+    "runtime_protocol": 4,
+    "scope": "Review and restore existing feature entry paths before assessing internal algorithms; settings, activation, input routing, sampling admission, pause and recovery.",
+    "changes": [
+      "Expose the existing SuperweaponPanel and DetailedStatus settings through the unified video control page and their existing owner/persistence paths.",
+      "Remove the unavailable renderer dependency from the still-consumed camera motion setting only.",
+      "Allow local hotkey actions to progress while unrelated Runtime command mailboxes are busy, preserving command FIFO and context deadlines.",
+      "Forward valid current-match formation keys before generic ownership rejection and retain explicit message/context fences.",
+      "Use the producer GetTickCount timebase for display, watch and idle-aircraft sample admission; keep QPC for animation and reject zero-timestamp readiness.",
+      "Keep secondary-display shared sampling alive while tactical controls are paused through explicit acknowledged read-only retirement, with command/input gates and no old request replay."
+    ],
+    "validation": "Preparation metadata. Current-source executions, negative controls, frozen Windows-target build, strict x86/x64 ABI/PE and package checks must be recorded separately; this manifest alone does not assert completion.",
+    "windows_executed": false,
+    "game_tested": false,
+    "gpu_tested": false,
+    "multiplayer_tested": false,
+    "field_status": "The supplied pre.4 live-session failure remains unconfirmed on the affected Windows installation. Reproduced source defects do not by themselves identify that recorded incident.",
+    "required_release_gates": 39,
+    "new_release_gates": [
+      "console_display_entry",
+      "hotkey_entry_recovery",
+      "display_entry_clock",
+      "read_only_lifecycle",
+      "read_only_lifecycle_integration"
+    ],
+    "research_note": "research/2026-11-09-pre147-feature-entry-recovery.md"
+  },
+  "SamplingScheduler147Pre8": {
+    "version": "1.0.47-pre.8",
+    "base_remote_commit": "f1e50c4512040f99f8dd2e8eb16990e3b7e64c83",
+    "changes": [
+      "Seqlock-validated unchanged-frame polling with ordinary connection/subscription work at least every 50ms",
+      "Demand-mask expiry caching without changing independent feature leases",
+      "Adjacent unobserved dependency pages coalesced into at most 64KiB reads with per-page fallback",
+      "Shared immutable render request and same-rate renewal without waking the existing deadline",
+      "Empty host input manager uses 250ms timer; active and failed-cleanup targets retain 4ms or focused tactical 1ms cadence",
+      "Empty/disabled compositor parks; unchanged configure heartbeat does not notify; rate and expired heartbeat changes notify",
+      "Overlay presentation uses interruptible high-resolution DeadlineWake",
+      "Assist clock creation/arming failure falls back to interruptible event timeout instead of exiting",
+      "Cursor precision lease is scoped to active cursor/click work and released on shutdown preparation"
+    ],
+    "preserved": [
+      "1000Hz observation target independent from presentation frequency",
+      "Source timestamps and per-game-frame capture identity",
+      "Prior worker recovery and GPU phase-region composition",
+      "Assist103 / Cursor155 / Runtime4 / 23162552-byte Shared"
+    ],
+    "verification": "Current portable comparisons and source-bound regressions; build, ABI and archive receipts accompany delivery. No real Windows/game/physical GPU/multiplayer acceptance asserted."
+  },
+  "ClockEvents147Pre9": {
+    "version": "1.0.47-pre.9",
+    "base_remote_commit": "5752595b916542e620b725ad2949f143b99ffa63",
+    "changes": [
+      "Main observation wakes on new immutable publication; duplicate same-frame exports do not signal",
+      "50ms no-publication maintenance and 4ms polling fallback without notification support",
+      "Configuration changes, invalidation, shutdown and retry backoff retain independent deadlines",
+      "Detached Assist clock parks; 250ms UI discovery remains",
+      "Empty input manager maintains 1000ms periodic timer with immediate attach resume",
+      "Overlay housekeeping uses 16ms; publication and high-refresh deadlines remain independent"
+    ],
+    "verification": "39 source-bound regression groups plus publication/scheduler/clock failure fixtures. Controlled threads and Win32 boundaries do not establish real Windows/game/GPU timing. Final paired Windows-target build and archive receipts are separate.",
+    "research_note": "research/2026-11-09-pre147-clock-events.md"
+  },
+  "FeatureLogic147Pre10": {
+    "version": "1.0.47",
+    "file_version": "1.0.47.10",
+    "base_remote_commit": "08aefd921ebe9b2960094dea0e41023ea9d963a4",
+    "changes": [
+      "Retain selected Sleep/Guard/Harmless command tails across event-budget exhaustion in the existing once-per-frame, identity-bound batch.",
+      "Replace stale or ineligible current anti-infiltrator targets while retaining valid current shots.",
+      "Exclude invalid formation slots from stable nearest assignment.",
+      "Cache quick-placement cell legality and occupancy per solve, premeasure path lengths and stop repeating exhausted-anchor searches.",
+      "Restart miner resource search if a completed winner empties before delivery.",
+      "Wait on unknown miner resource reads rather than treating them as absence or sending Guard.",
+      "Queue up to 8192 selected unload carriers independently of native event room; retain identity/cancellation and reserve passenger follow-up delivery.",
+      "Increase unload/ejection passenger tracking 8192 to 16384 and Host request staging 128 to 512 without changing wire layout or native event capacity.",
+      "Replace 512 variant keys and 4096 selection bound with fixed-memory hash matching within the 16384 live-world limit, without allocator/destructor dependencies."
+    ],
+    "protocol": "Assist103 / Cursor155 / Runtime4 / Shared23162552 unchanged",
+    "verification": "Current 39 regression groups, 15 extended portable fixtures, 60 selected-command checks, 17 feature-policy checks and 72 miner cases (2957 checks). Exact logs/source digests, negative controls, paired Windows-target build and package checks are bound by delivery receipts. No real Windows/game/GPU/multiplayer acceptance.",
+    "research_note": "research/2026-11-09-pre147-feature-logic.md",
+    "capacity_checks": "28 controlled admission/variant checks, 5 roster cases/83 checks, current 512-request FIFO checks and affected regression groups reexecuted. No live-game acceptance."
   }
 }

@@ -37,7 +37,7 @@ struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagno
 #endif
 };
 struct Lease {Subscription id=0;gameentry::Client client{};unsigned target=0;};
-struct Host {std::recursive_mutex mutex;Target targets[32]{};Lease leases[256]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;const wchar_t* installStage=L"not-started";};
+struct Host {std::recursive_mutex mutex;Target targets[32]{};Lease leases[256]{};Subscription next=0;HMODULE module=nullptr;HANDLE timer=nullptr;volatile LONG pulseBusy=0;bool preciseTimer=false;DWORD timerPeriod=4;const wchar_t* installStage=L"not-started";};
 inline Host& host(){static Host*value=new Host;return *value;}
 inline const wchar_t* installationStage(){auto&h=host();std::lock_guard<std::recursive_mutex> lock(h.mutex);return h.installStage;}
 struct Capacity {unsigned targets=0,subscriptions=0;};
@@ -222,12 +222,17 @@ inline bool takePointer(Subscription id,PointerPress&out,DWORD&dropped){
  for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&q=h.targets[l.target].pointer;dropped=q.dropped;q.dropped=0;if(!q.count)return false;out=q.items[q.head];q.head=(q.head+1)%128;--q.count;return true;}return false;
 }
 inline void updateTimer(){
- auto&h=host();bool fast=false;
- for(auto&t:h.targets)if(t.pid&&t.fastTactical&&t.pointer.enabled&&t.pointer.focused)fast=true;
- if(fast==h.preciseTimer||!h.timer)return;
- if(fast&&timeBeginPeriod(1)!=TIMERR_NOERROR)return;
- if(!ChangeTimerQueueTimer(nullptr,h.timer,fast?1:4,fast?1:4)){if(fast)timeEndPeriod(1);return;}
- if(!fast)timeEndPeriod(1);h.preciseTimer=fast;
+ auto&h=host();bool fast=false,active=false;
+ for(auto&t:h.targets)if(t.pid){active=true;if(t.fastTactical&&t.pointer.enabled&&t.pointer.focused)fast=true;}
+ // Retained failed-unhook/broker cleanup targets keep the active cadence.
+ // Only an empty manager keeps a 1 s housekeeping cadence; attach resumes
+ // before its first post. Keep the queue timer periodic so it is rearmable.
+ const DWORD period=active?(fast?1:4):1000;
+ if(!h.timer||(fast==h.preciseTimer&&period==h.timerPeriod))return;
+ const bool acquired=fast&&!h.preciseTimer;
+ if(acquired&&timeBeginPeriod(1)!=TIMERR_NOERROR)return;
+ if(!ChangeTimerQueueTimer(nullptr,h.timer,period,period)){if(acquired)timeEndPeriod(1);return;}
+ if(!fast&&h.preciseTimer)timeEndPeriod(1);h.preciseTimer=fast;h.timerPeriod=period;
 }
 inline void setFastTactical(Subscription id,bool enabled){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
@@ -378,6 +383,7 @@ inline Subscription install(gameentry::Client client,DWORD thread,DWORD pid,HWND
  h.installStage=L"host-timer";
  if(!h.timer&&!CreateTimerQueueTimer(&h.timer,nullptr,pulse,nullptr,4,4,WT_EXECUTEDEFAULT)){DWORD error=GetLastError();clear(t);SetLastError(error);return 0;}
  if(!++h.next)++h.next;*slot={h.next,client,at};
+ updateTimer();
 #ifdef _WIN64
  if(t.brokerPending){InterlockedExchange(&t.control->enabled,0);h.installStage=L"broker-connecting";return slot->id;}
 #endif

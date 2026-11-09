@@ -2,8 +2,9 @@
 #include "protocol.h"
 #include "additional_settings.h"
 namespace assist {
-// Connection demand is independent of the optional external display sample.
-// These bits are consumed by Runtime's input, maintenance or order paths.
+// Runtime feature maintenance demand is independent of a completed display sample.
+// The Host also starts the shared-world producer for an enabled readable session;
+// these feature bits alone must not gate the producer of its first sample.
 // Capacity/Iron/Production/etc. are external presentation and are excluded.
 constexpr uint32_t RuntimeFeatureFlags=AutoRepair|AutoCS|NativeOrders|EjectAssist|
  UnsafeTech|AdvancedInput|SmartUnloadOrders|AutoOreReturn|BuildAnywhere|CustomCS|

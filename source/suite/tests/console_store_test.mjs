@@ -163,6 +163,7 @@ test('large immutable state revisions keep drafts and resolve only the changed s
   const controls = Array.from({length:3000},(_,index) => ({id:index+1,type:'text',label:`设置 ${index+1}`,text:String(index),group:`分组 ${Math.floor(index/100)}`}));
   const {store,state} = setup(controls); store.beginEdit(1500); store.draft(1500,'尚未提交'); store.act(2800,'text','new');
   store.receive(state({revision:2,controls:controls.map(control => control.id===2800 ? {...control,text:'new'} : control)}));
+  assert.equal(store.isPending(2800),true);store.receive({kind:'ack',protocol:1,module:0,generation:1,id:2800,seq:store.seq,ok:true,revision:2});
   assert.equal(store.pending.size,0); assert.equal(store.value(store.getControl(1500),'text'),'尚未提交'); assert.equal(groupControls(store.state.controls).size,30);
 });
 test('UTF8 send limits match native decoded bytes and reject invalid string boundaries',()=>{

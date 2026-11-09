@@ -1,0 +1,23 @@
+{
+  "schema": "ra2.packaging-gate-execution.v1",
+  "scope": "packaging_policy_and_evidence_parser_only",
+  "command": [
+    "python3",
+    "-B",
+    "/workspace/scratch/5a310fe852f8/functional147pre2/packaging/verify_focused_gate.py"
+  ],
+  "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+  "started_utc": "2026-11-09T04:57:00.040213+00:00",
+  "finished_utc": "2026-11-09T04:57:00.169829+00:00",
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/packaging/actual-focused-gates.log",
+  "log_sha256": "fdc9c4aa695fccf6e70d60bd8918d1ad48cf8f614ef323205c3f358386844db4",
+  "product_build_performed": false,
+  "product_suites_rerun": false,
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "result_report_path": "/workspace/scratch/5a310fe852f8/functional147pre2/packaging/actual-focused-gates.json",
+  "result_report_sha256": "fdc9c4aa695fccf6e70d60bd8918d1ad48cf8f614ef323205c3f358386844db4"
+}

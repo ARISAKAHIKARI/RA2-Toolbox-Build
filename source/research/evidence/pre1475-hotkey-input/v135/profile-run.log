@@ -1,0 +1,5 @@
+current_fresh_defaults advanced=0 ownGround=1606 flags=0x00000000 demand=1
+current_manual_only_ownGround_unbound advanced=0 ownGround=0 flags=0x00000000 demand=0
+current_inherits_v135_hook_default advanced=1 ownGround=0 flags=0x00002400 demand=1
+v135_preserves_explicit_advanced_off advanced=0 ownGround=0 flags=0x00000000 demand=0
+PASS v135 profile demand boundary: 4 cases, 12 checks; profile API mocked, production load/save statements and demand headers

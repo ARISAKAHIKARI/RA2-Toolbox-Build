@@ -1,4 +1,5 @@
 #include "type_hotkey.h"
+#include "variant_keys.h"
 static uint32_t normalVariantWeapon(uint32_t p,uint32_t type){
  if(!get<bool>(type+0x805))return 0;
  int slot=get<int>(p+0x138),count=get<int>(type+0x80C);if(slot==-1)slot=0;
@@ -10,13 +11,16 @@ static uint32_t normalVariantWeapon(uint32_t p,uint32_t type){
 }
 static int selectVariant(uint32_t house,bool global){
  if(!nativeDependenciesReady(0x48DC90,0x6FBFA0)||(!global&&!nativeDependencyReady(0x6D2140)))return -12;
- struct Key{uint32_t type,weapon;};static Key keys[512];int keyCount=0;
- Vec selected=vec(0xA8ECB8,4096);for(int i=0;i<selected.count&&keyCount<512;++i){uint32_t p=item(selected,i);if(!p||!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k),weapon=t?normalVariantWeapon(p,t):1;if(!t||weapon==1)continue;
-  bool seen=false;for(int j=0;j<keyCount;++j)if(keys[j].type==t&&keys[j].weapon==weapon)seen=true;if(!seen)keys[keyCount++]={t,weapon};
+ // Selection keys are not the 512-entry UI type catalogue. A modded live
+ // selection can contain more variants; keep all keys in the world bound.
+ static typekeys::VariantKeys keys;keys.clear();
+ Vec selected=vec(0xA8ECB8,16384);
+ for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);if(!p||!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k),weapon=t?normalVariantWeapon(p,t):1;if(!t||weapon==1)continue;
+  keys.add(t,weapon);
  }
- if(!keyCount)return 0;uint32_t tactical=get<uint32_t>(0x887324);if(!global&&!tactical)return -4;
- static uint32_t chosen[16384];int count=0;Vec all=vec(0xA8EC78);for(int i=0;i<all.count&&count<16384;++i){uint32_t p=item(all,i);if(!p||!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k);bool same=false;
-  for(int j=0;j<keyCount;++j)if(keys[j].type==t&&normalVariantWeapon(p,t)==keys[j].weapon){same=true;break;}if(!same||!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x13C),p))continue;
+ if(keys.empty())return 0;uint32_t tactical=get<uint32_t>(0x887324);if(!global&&!tactical)return -4;
+ static uint32_t chosen[16384];int count=0;Vec all=vec(0xA8EC78);for(int i=0;i<all.count&&count<16384;++i){uint32_t p=item(all,i);if(!p||!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k);if(!t||!keys.hasType(t))continue;
+  uint32_t weapon=normalVariantWeapon(p,t);if(weapon==1||!keys.contains(t,weapon)||!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x13C),p))continue;
   if(!global){POINT point{};if(!call<bool>(0x6D2140,tactical,(const void*)(p+0x9C),&point))continue;}chosen[count++]=p;
  }
  if(!count)return 0;unselect();int n=0;for(int i=0;i<count;++i)if(selection(chosen[i]))++n;return n;

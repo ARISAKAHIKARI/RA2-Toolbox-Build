@@ -1,0 +1,210 @@
+{
+  "scope": "Read-only committed source history; no native Windows/game run. This corrects causal attribution, not a new release.",
+  "versions": {
+    "v143": {
+      "commit": "bf3fbe88faa96513649f2998aa0ab6e71935f4a8",
+      "files": {
+        "main.cpp": {
+          "bytes": 258182,
+          "sha256": "60a194d16c3f6e124aa678f57dc33049b1b974b8c2212988546ee7d523538b16",
+          "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/v143/main.cpp",
+          "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/bf3fbe88faa96513649f2998aa0ab6e71935f4a8/source/assist/source/main.cpp"
+        },
+        "hotkey_routes.h": {
+          "bytes": 6026,
+          "sha256": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce",
+          "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/v143/hotkey_routes.h",
+          "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/bf3fbe88faa96513649f2998aa0ab6e71935f4a8/source/assist/source/hotkey_routes.h"
+        },
+        "hotkey_host.h": {
+          "bytes": 7786,
+          "sha256": "5650d38558132a364500360848e45afd55953d3691c4b8cd581d13f01b34ad6c",
+          "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/v143/hotkey_host.h",
+          "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/bf3fbe88faa96513649f2998aa0ab6e71935f4a8/source/assist/source/hotkey_host.h"
+        }
+      }
+    },
+    "v1464": {
+      "commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a",
+      "files": {
+        "main.cpp": {
+          "bytes": 267018,
+          "sha256": "cb446fd28028f9b73379d4963dbd491e6aa2a5bc8d83166c45672fef99adc3df",
+          "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/v1464/main.cpp",
+          "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/f452d1cb95c57f465356b55a3d7b83fb7403a70a/source/assist/source/main.cpp"
+        },
+        "hotkey_routes.h": {
+          "bytes": 6026,
+          "sha256": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce",
+          "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/v1464/hotkey_routes.h",
+          "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/f452d1cb95c57f465356b55a3d7b83fb7403a70a/source/assist/source/hotkey_routes.h"
+        },
+        "hotkey_host.h": {
+          "bytes": 7786,
+          "sha256": "5650d38558132a364500360848e45afd55953d3691c4b8cd581d13f01b34ad6c",
+          "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/v1464/hotkey_host.h",
+          "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/f452d1cb95c57f465356b55a3d7b83fb7403a70a/source/assist/source/hotkey_host.h"
+        }
+      }
+    },
+    "pre1473": {
+      "commit": "93f02787d42b61ff5c30e450317f99ba00673149",
+      "files": {
+        "main.cpp": {
+          "bytes": 269410,
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+          "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/pre1473/main.cpp",
+          "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/93f02787d42b61ff5c30e450317f99ba00673149/source/assist/source/main.cpp"
+        },
+        "hotkey_routes.h": {
+          "bytes": 6026,
+          "sha256": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce",
+          "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/pre1473/hotkey_routes.h",
+          "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/93f02787d42b61ff5c30e450317f99ba00673149/source/assist/source/hotkey_routes.h"
+        },
+        "hotkey_host.h": {
+          "bytes": 7786,
+          "sha256": "5650d38558132a364500360848e45afd55953d3691c4b8cd581d13f01b34ad6c",
+          "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/pre1473/hotkey_host.h",
+          "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/93f02787d42b61ff5c30e450317f99ba00673149/source/assist/source/hotkey_host.h"
+        }
+      }
+    }
+  },
+  "whole_header_equality": {
+    "hotkey_routes.h": true,
+    "hotkey_host.h": true
+  },
+  "functions": {
+    "modifiers": {
+      "equal_all_three": true,
+      "normalized_function_sha256": {
+        "v143": "fc2a49cf38855b222e83459a4ef1f68cd5c7869d1447dfb9bdc85171668b975d",
+        "v1464": "fc2a49cf38855b222e83459a4ef1f68cd5c7869d1447dfb9bdc85171668b975d",
+        "pre1473": "fc2a49cf38855b222e83459a4ef1f68cd5c7869d1447dfb9bdc85171668b975d"
+      }
+    },
+    "foregroundGame": {
+      "equal_all_three": true,
+      "normalized_function_sha256": {
+        "v143": "be09a386187c4b84becbbc8a95d16050f41e60b84532f3ecb90d5e624c575ba4",
+        "v1464": "be09a386187c4b84becbbc8a95d16050f41e60b84532f3ecb90d5e624c575ba4",
+        "pre1473": "be09a386187c4b84becbbc8a95d16050f41e60b84532f3ecb90d5e624c575ba4"
+      }
+    },
+    "desiredHotkeyMode": {
+      "equal_all_three": true,
+      "normalized_function_sha256": {
+        "v143": "b684bf556e8e2371ec4cdd5fb7033850c53311363c50f117db1647bbf72acc3b",
+        "v1464": "b684bf556e8e2371ec4cdd5fb7033850c53311363c50f117db1647bbf72acc3b",
+        "pre1473": "b684bf556e8e2371ec4cdd5fb7033850c53311363c50f117db1647bbf72acc3b"
+      },
+      "v143_function": "static int desiredHotkeyMode(){\n if(!foregroundGame()||snap.renderStatus!=1||snap.chat)return 0;\n if(enabled&&snap.status==1)return 2;\n return !enabled&&extra.watchSecondary&&snap.readStatus==1?1:0;\n}"
+    },
+    "registerKey": {
+      "equal_all_three": true,
+      "normalized_function_sha256": {
+        "v143": "c368e2436574708f2358c28d24652ad5600aa57469822a907d57629744d751d6",
+        "v1464": "c368e2436574708f2358c28d24652ad5600aa57469822a907d57629744d751d6",
+        "pre1473": "c368e2436574708f2358c28d24652ad5600aa57469822a907d57629744d751d6"
+      },
+      "v143_function": "static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.allHotkeys,[](int slot,WORD chord){\n if(keygesture::sampledOnly(chord))return true;\n if(!RegisterHotKey(ui,slot,modifiers(chord),LOBYTE(chord)))return false;registeredKeyIDs.push_back(slot);return true;});}"
+    },
+    "registerKeys": {
+      "equal_all_three": true,
+      "normalized_function_sha256": {
+        "v143": "46902bd2673036240f7befd2bd0f6850364232d84a4f2f3e1d05ad0f48b1a876",
+        "v1464": "46902bd2673036240f7befd2bd0f6850364232d84a4f2f3e1d05ad0f48b1a876",
+        "pre1473": "46902bd2673036240f7befd2bd0f6850364232d84a4f2f3e1d05ad0f48b1a876"
+      }
+    },
+    "synchronizeHotkeyKeys": {
+      "equal_all_three": true,
+      "normalized_function_sha256": {
+        "v143": "63dd7007048967ed40f4fe2f07ac6366b17581d6b7408418a424e0fc67c68d5b",
+        "v1464": "63dd7007048967ed40f4fe2f07ac6366b17581d6b7408418a424e0fc67c68d5b",
+        "pre1473": "63dd7007048967ed40f4fe2f07ac6366b17581d6b7408418a424e0fc67c68d5b"
+      },
+      "v143_function": "static void synchronizeHotkeyKeys(){uint8_t down[256]{};for(unsigned key=0;key<256;++key)down[key]=(GetAsyncKeyState(int(key))&0x8000)!=0;hotkeyRegistry.synchronize(down,registeredHotkeyMode==1?displayMatch():commandMatch());}"
+    },
+    "readOnlyWatchHotkey": {
+      "equal_all_three": true,
+      "normalized_function_sha256": {
+        "v143": "fb8788e15757b505e89aa1277def0c6fe6485a4cedb796fe339241fd38b74ac7",
+        "v1464": "fb8788e15757b505e89aa1277def0c6fe6485a4cedb796fe339241fd38b74ac7",
+        "pre1473": "fb8788e15757b505e89aa1277def0c6fe6485a4cedb796fe339241fd38b74ac7"
+      }
+    },
+    "serviceReadOnlyWatchKeys": {
+      "equal_all_three": true,
+      "normalized_function_sha256": {
+        "v143": "d6730ecd77c498c3a99f68f259a1e845a5096739bbd3647be301afb58bdf640e",
+        "v1464": "d6730ecd77c498c3a99f68f259a1e845a5096739bbd3647be301afb58bdf640e",
+        "pre1473": "d6730ecd77c498c3a99f68f259a1e845a5096739bbd3647be301afb58bdf640e"
+      }
+    },
+    "formationInputOwns": {
+      "equal_all_three": true,
+      "normalized_function_sha256": {
+        "v143": "636e664489f27963bde5a72df0c4e0b0b360b64d51d68c261d7ede1a0aa1ecf2",
+        "v1464": "636e664489f27963bde5a72df0c4e0b0b360b64d51d68c261d7ede1a0aa1ecf2",
+        "pre1473": "636e664489f27963bde5a72df0c4e0b0b360b64d51d68c261d7ede1a0aa1ecf2"
+      }
+    }
+  },
+  "message_pump": {
+    "v143": [
+      {
+        "line": 2570,
+        "text": " case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;"
+      },
+      {
+        "line": 2828,
+        "text": " syncInformationRate(true);startClock();uimessages::Queue messages;MSG m;while(messages.get(m)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}"
+      }
+    ],
+    "v1464": [
+      {
+        "line": 2660,
+        "text": " case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;"
+      },
+      {
+        "line": 2918,
+        "text": " syncInformationRate(true);startClock();uimessages::Queue messages;MSG m;while(messages.get(m)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}"
+      }
+    ],
+    "pre1473": [
+      {
+        "line": 2683,
+        "text": " case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;"
+      },
+      {
+        "line": 2941,
+        "text": " syncInformationRate(true);startClock();uimessages::Queue messages;MSG m;while(messages.get(m)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}"
+      }
+    ]
+  },
+  "known_history": [
+    {
+      "finding": "The renderStatus requirement in hotkey_host service/handle is already present in version 1.0.28, and absent from the previously changed 1.0.19 hotkey_host file.",
+      "version": "1.0.28",
+      "commit": "8d4f5980dce6adcfa63ff45bc8af6e93c99a9a56",
+      "date_utc": "2026-10-21T04:51:52Z",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/8d4f5980dce6adcfa63ff45bc8af6e93c99a9a56/source/assist/source/hotkey_host.h"
+    },
+    {
+      "finding": "The complete pre.3 Registry implementation, including sampledOnly filtering of physical press events, already exists in 1.0.39-pre.7. Ordinary keys depend on WM_HOTKEY in that version as in 1.0.43.",
+      "version": "1.0.39-pre.7",
+      "commit": "7b920372a8eb872bfafc1ba03da15028da425acf",
+      "date_utc": "2026-10-29T09:04:38Z",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/7b920372a8eb872bfafc1ba03da15028da425acf/source/assist/source/hotkey_routes.h"
+    }
+  ],
+  "conclusion": [
+    "No removal of ordinary-key polling between v1.0.43 and 1.0.46.4 can be attributed to hotkey_routes.h: the entire file is byte-identical.",
+    "No newly introduced renderStatus gate between these versions can be attributed to hotkey_host.h or desiredHotkeyMode: the relevant files/functions are identical.",
+    "RegisterHotKey failure dropping a binding is also unchanged, as are registration synchronization, WM_HOTKEY dispatch and the per-module message loop.",
+    "pre.4 negative controls demonstrate existing failure conditions (absent WM_HOTKEY / unavailable display state), not the commit that newly caused the user regression.",
+    "The remaining plausible regression is a changed producer, readiness state or sampling dependency feeding the unchanged gates; this history review alone does not establish that cause."
+  ]
+}

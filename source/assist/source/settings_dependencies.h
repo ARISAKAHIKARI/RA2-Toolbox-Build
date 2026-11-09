@@ -88,7 +88,9 @@ inline Decision decision(int id,const State&s){
  case 420:if(s.hardwareBlocked&2)return {Need::HardwareBudget};return {};
  case 9097:if(s.hardwareBlocked&4)return {Need::HardwareBudget};return {};
  case 108:case 208:return require(s,{Need::ManualReveal});
- case 9324:case 9306:case 9313:return require(s,{Need::Render});
+ // Shared camera motion remains active independently of the main renderer.
+ case 9324:return {};
+ case 9306:case 9313:return require(s,{Need::Render});
  case 9304:case 9307:case 9308:case 9309:case 9314:return require(s,{Need::Render,Need::Quality});
  case 9305:return require(s,{Need::Render,Need::Quality,Need::Reconstruction});
  case 9040:case 9041:case 9181:case 881:return require(s,{Need::Missile});

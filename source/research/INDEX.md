@@ -6,6 +6,16 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 1.0.47-pre.10 功能内部逻辑 | [命令尾部续发、有效目标、队形和矿车恢复](2026-11-09-pre147-feature-logic.md) | 80-feature-boundaries selected-mode-tail anti-theft-valid-target valid-slot quick-placement-cache miner-resource-recheck unknown-read no-new-native-ABI |
+| 1.0.47-pre.9 整体时钟优化 | [发布事件采样、空闲休眠与独立高刷](2026-11-09-pre147-clock-events.md) | publication-event 250Hz-fallback 50ms-maintenance idle-park reconnect timer-failure no-FPS-claim |
+| v1.0.35 先运行再覆盖后的识别差异 | [配置继承、首帧冷启动修正与已连接现场反证](2026-11-09-v135-warm-start.md) | ff5a76 v135 INI-preservation Advanced-default OwnGround-exception no-persistent-PID readable-session-demand cold-start 11-77 unresolved-live-input |
+| 1.0.47-pre.4 快捷键仍失效的实机记录 | [完整会话、六条命令热键状态与输入未观测边界](2026-11-09-hotkey-pre4-live-failure.md) | pre147-4 live-failure mode2-groups9 zero-input-counters foreground-unobserved Win32-1409 silent-sampler-exit unresolved |
+| 主动快捷键近期回归的版本源头 | [1.0.43 对照、共享采样冷启动循环与时钟反例](2026-11-09-hotkey-regression-origin.md) | 944586 pre144-2 unchanged-hotkeys needsBridge bootstrap-loop producer-tick display-clock confirmed no-unique-live-cause |
+| 1.0.47-pre.4 主动快捷键恢复 | [命令与展示解耦、普通键后备及消息去重](2026-11-09-pre147-hotkey-recovery.md) | AutoBoard request5 displayRenderStatus commandHotkeyContext RegisterHotKey polling WM_HOTKEY event-time cancel-fence no-replay |
+| 1.0.47-pre.6 功能入口复审 | [可见设置、输入队列、同源时钟与只读采样恢复](2026-11-09-pre147-feature-entry-recovery.md) | feature-entry readonly Assist103 command-local FIFO formation-context sample-clock pause-resume |
+| 1.0.47-pre.3 逐功能复审 | [当前入口、功能修复、统一乘员样本与验证边界](2026-11-09-pre147-feature-audit.md) | pre147-3 feature-matrix selection-catalogue manual-priority mouse-key-pairing patrol16 passenger-immutable Assist102 |
+| 1.0.47-pre.2 功能失败恢复 | [控制台回执、未改草稿、单位目录、让行批次和保存建筑缓存](2026-11-09-pre147-functional-recovery.md) | pre147-2 ACK-before-confirm unchanged-draft catalogue-short-read final-batch-budget frozen-image-transaction negative-controls |
+| 1.0.46.4 基线的 1.0.47 预发布修复与优化 | [精确导弹分配、快照/地形存储复用、VXL 恢复、暂停飞机与依赖探测](2026-11-09-pre147-audit-optimizations.md) | pre147-1 baseline1464 new-weak-identity two-level-heap paused-aircraft failed-source gate VXL-required retry16 bounded-pools no-FPS-claim |
 | 1.0.46 修订的建筑遮挡与恢复 | [基础尺寸缺页、BUILDNGZ 事务与真实场景缓存恢复](2026-11-08-release-146-building-depth-cache.md) | foundation sealed-missing-page 1x1 poison maskRevision commit-after-identity 36-recoveries native-Z-preserved |
 | 1.0.46 修订的四类原生生产时间 | [类型布局、原指令查询、工厂剩余和侧栏一致性](2026-11-08-release-146-production-time.md) | Building Unit Infantry Aircraft native-TimeToBuild scratch-prefix UTF16 final-cameo 47-native-cases no-game |
 | 1.0.46 修订的计算输入与重复工作 | [独占输入池、有效范围、同样本资格缓存和订阅时限](2026-11-08-release-146-input-and-cache-performance.md) | ValueTask owned-lease prefix-copy FrameHistory AntiTheft full-token earliest-expiry 500Hz no-FPS-claim |
@@ -316,3 +326,9 @@
 - [设置保存误报权限、重复旧键删除与运行中重试](2026-11-07-settings-save-recovery.md)（1.0.43-pre.13；实际 Store/生产保存轨迹反例，真实错误来源与失败意图保留；非用户 Windows 文件系统实测）
 
 - [1.0.44：Broker 非阻塞生命周期、建造预定固定锚点/世界意图与 SHA/SHP 禁用](2026-11-08-release-144-broker-reservation-assets.md)（Host/UI 修复与受控前后对照；实机未验收）
+
+- [pre.7 后台异常恢复与GPU阶段区域](2026-11-09-pre147-worker-recovery-gpu-regions.md)：Latest/Recurring异常隔离及退避、视口阶段区域派发，保留串行位移和首/末全局工作；软件Vulkan逐像素验证边界。
+
+- [pre.8 共享采集、订阅和公共调度](2026-11-09-pre147-sampling-scheduler.md)：重复样本快路径、独立租约到期缓存、依赖页合并读取、同速续租免唤醒和空闲输入计时；受控调用对照及边界。
+
+- [2026-11-10 载员气泡：己方与常驻选项](2026-11-10-passenger-display.md)：已有共享帧显示选项，未新增逆向地址或原生调用。

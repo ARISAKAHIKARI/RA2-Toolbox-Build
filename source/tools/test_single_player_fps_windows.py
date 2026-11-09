@@ -23,6 +23,7 @@ def main():
         'assist/tests/single_player_fps_windows.cpp',
         'assist/source/single_player_fps_runtime.h',
         'assist/source/single_player_fps.h',
+        'assist/source/read_only_lifecycle.h',
         'assist/source/tech_ui_breakpoint_core.h',
         'tools/test_single_player_fps_windows.py',
     ]

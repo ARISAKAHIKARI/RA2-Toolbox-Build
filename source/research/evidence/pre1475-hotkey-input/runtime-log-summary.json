@@ -1,0 +1,1035 @@
+{
+  "schema": "ra2.hotkey-pre4-live-failure-summary.v1",
+  "recorded_date": "2026-11-09",
+  "status": "live-failure-reported-input-stage-unresolved",
+  "input": {
+    "sha256": "4a350e12638be731ead8a98206100694fcbcbad0e4ccb9c87925f111f55d1f34",
+    "bytes": 1982899,
+    "line_count": 2472,
+    "timestamp_interpretation": "Timestamps are preserved as recorded; timezone is not established by the log.",
+    "retention": "Raw user log remains outside the repository; this file contains selected fields and aggregate statistics only."
+  },
+  "sessions": [
+    {
+      "first_line": 1,
+      "last_line": 836,
+      "line_count": 836,
+      "first_timestamp": "2026-11-09 15:15:55.760",
+      "last_timestamp": "2026-11-09 15:42:41.356",
+      "version": "v1.0.43-pre.9",
+      "host_pid": 80464,
+      "bridge_health_count": 383,
+      "nonzero_target_pid_health_count": 74,
+      "target_pid_health_counts": {
+        "0": 309,
+        "57556": 11,
+        "68240": 41,
+        "81856": 22
+      }
+    },
+    {
+      "first_line": 837,
+      "last_line": 1900,
+      "line_count": 1064,
+      "first_timestamp": "2026-11-09 15:42:47.103",
+      "last_timestamp": "2026-11-09 16:11:09.752",
+      "version": "v1.0.43-pre.9",
+      "host_pid": 79688,
+      "bridge_health_count": 439,
+      "nonzero_target_pid_health_count": 157,
+      "target_pid_health_counts": {
+        "0": 282,
+        "57556": 36,
+        "68752": 27,
+        "72596": 94
+      }
+    },
+    {
+      "first_line": 1901,
+      "last_line": 2472,
+      "line_count": 572,
+      "first_timestamp": "2026-11-09 16:12:36.630",
+      "last_timestamp": "2026-11-09 16:22:04.379",
+      "version": "v1.0.47-pre.4",
+      "host_pid": 76612,
+      "bridge_health_count": 133,
+      "nonzero_target_pid_health_count": 38,
+      "target_pid_health_counts": {
+        "0": 95,
+        "53692": 38
+      }
+    }
+  ],
+  "pre4": {
+    "host_pid": 76612,
+    "target_pid": 53692,
+    "target_thread_id": 75764,
+    "version": "v1.0.47-pre.4",
+    "target_observation": {
+      "discovery": {
+        "line": 2225,
+        "timestamp": "2026-11-09 16:18:34.722",
+        "selectedPid": 53692,
+        "selectedTid": 75764,
+        "candidates": 1,
+        "windows": 3
+      },
+      "read_attach": {
+        "line": 2226,
+        "timestamp": "2026-11-09 16:18:34.722",
+        "pid": 53692,
+        "tid": 75764
+      },
+      "hook_install": {
+        "line": 2232,
+        "timestamp": "2026-11-09 16:18:34.885",
+        "hookType": "WH_GETMESSAGE",
+        "pid": 53692,
+        "thread": 75764,
+        "runtimeVersion": 4,
+        "assistVersion": 102
+      },
+      "first_ready_activation": {
+        "line": 2255,
+        "timestamp": "2026-11-09 16:18:42.169",
+        "gate": "ready",
+        "gateCode": 1,
+        "match": 3,
+        "frame": 0
+      },
+      "target_exit": {
+        "line": 2367,
+        "timestamp": "2026-11-09 16:20:11.078",
+        "pid": 53692,
+        "reason": "target-exited",
+        "processExitCode": "0x00000000"
+      }
+    },
+    "bridge_health_count": 133,
+    "nonzero_pid_health_count": 38,
+    "command_ready_health_count": 23,
+    "active_health_histograms": {
+      "stage": {
+        "connected": 36,
+        "no-reported-callback": 1,
+        "not-subscribed": 1
+      },
+      "commandStatus": {
+        "0": 2,
+        "1": 23,
+        "10": 10,
+        "8": 3
+      },
+      "fresh": {
+        "0": 5,
+        "1": 33
+      },
+      "displayReadStatus": {
+        "0": 14,
+        "1": 24
+      },
+      "displayRenderStatus": {
+        "0": 16,
+        "1": 22
+      },
+      "commandChat": {
+        "0": 38
+      },
+      "hotkeyMode": {
+        "0": 32,
+        "2": 6
+      },
+      "hotkeyGroups": {
+        "0": 32,
+        "9": 6
+      },
+      "hotkeyPending": {
+        "0": 38
+      },
+      "hotkeyMessages": {
+        "0": 38
+      },
+      "hotkeySampled": {
+        "0": 38
+      },
+      "hotkeyActions": {
+        "0": 38
+      },
+      "hotkeyBlocked": {
+        "0": 38
+      },
+      "hotkeyFallbacks": {
+        "0": 32,
+        "2": 6
+      },
+      "hotkeyLastError": {
+        "0": 32,
+        "1409": 6
+      },
+      "request": {
+        "0": 38
+      },
+      "ack": {
+        "0": 38
+      },
+      "runtimeError": {
+        "0": 38
+      },
+      "faultSerial": {
+        "0": 38
+      },
+      "nativeHook": {
+        "0": 10,
+        "1": 28
+      },
+      "clickHook": {
+        "0": 10,
+        "1": 28
+      },
+      "hookConflicts": {
+        "0": 38
+      },
+      "installedCodePatches": {
+        "0": 38
+      },
+      "queueSent": {
+        "0": 38
+      },
+      "queueFull": {
+        "0": 38
+      },
+      "commandRejected": {
+        "0": 38
+      },
+      "lastSubmitError": {
+        "0": 38
+      },
+      "postError": {
+        "0": 36,
+        "87": 2
+      }
+    },
+    "command_ready_health_histograms": {
+      "fresh": {
+        "1": 23
+      },
+      "displayReadStatus": {
+        "0": 1,
+        "1": 22
+      },
+      "displayRenderStatus": {
+        "0": 1,
+        "1": 22
+      },
+      "hotkeyMode": {
+        "0": 17,
+        "2": 6
+      },
+      "hotkeyGroups": {
+        "0": 17,
+        "9": 6
+      },
+      "commandChat": {
+        "0": 23
+      },
+      "nativeHook": {
+        "1": 23
+      },
+      "clickHook": {
+        "1": 23
+      },
+      "postError": {
+        "0": 23
+      },
+      "runtimeError": {
+        "0": 23
+      },
+      "faultSerial": {
+        "0": 23
+      }
+    },
+    "mode2_health_observations": [
+      {
+        "line": 2264,
+        "timestamp": "2026-11-09 16:18:43.167",
+        "pid": 53692,
+        "match": 3,
+        "commandStatus": 1,
+        "fresh": 1,
+        "displayReadStatus": 1,
+        "displayRenderStatus": 1,
+        "commandChat": 0,
+        "hotkeyMode": 2,
+        "hotkeyGroups": 9,
+        "hotkeyPending": 0,
+        "hotkeyMessages": 0,
+        "hotkeySampled": 0,
+        "hotkeyActions": 0,
+        "hotkeyBlocked": 0,
+        "hotkeyFallbacks": 2,
+        "hotkeyLastError": 1409,
+        "request": 0,
+        "ack": 0,
+        "controlFrame": 58,
+        "callbackCount": 190,
+        "dispatches": 188
+      },
+      {
+        "line": 2265,
+        "timestamp": "2026-11-09 16:18:44.160",
+        "pid": 53692,
+        "match": 3,
+        "commandStatus": 1,
+        "fresh": 1,
+        "displayReadStatus": 1,
+        "displayRenderStatus": 1,
+        "commandChat": 0,
+        "hotkeyMode": 2,
+        "hotkeyGroups": 9,
+        "hotkeyPending": 0,
+        "hotkeyMessages": 0,
+        "hotkeySampled": 0,
+        "hotkeyActions": 0,
+        "hotkeyBlocked": 0,
+        "hotkeyFallbacks": 2,
+        "hotkeyLastError": 1409,
+        "request": 0,
+        "ack": 0,
+        "controlFrame": 120,
+        "callbackCount": 291,
+        "dispatches": 290
+      },
+      {
+        "line": 2268,
+        "timestamp": "2026-11-09 16:18:45.166",
+        "pid": 53692,
+        "match": 3,
+        "commandStatus": 1,
+        "fresh": 1,
+        "displayReadStatus": 1,
+        "displayRenderStatus": 1,
+        "commandChat": 0,
+        "hotkeyMode": 2,
+        "hotkeyGroups": 9,
+        "hotkeyPending": 0,
+        "hotkeyMessages": 0,
+        "hotkeySampled": 0,
+        "hotkeyActions": 0,
+        "hotkeyBlocked": 0,
+        "hotkeyFallbacks": 2,
+        "hotkeyLastError": 1409,
+        "request": 0,
+        "ack": 0,
+        "controlFrame": 179,
+        "callbackCount": 390,
+        "dispatches": 390
+      },
+      {
+        "line": 2269,
+        "timestamp": "2026-11-09 16:18:46.170",
+        "pid": 53692,
+        "match": 3,
+        "commandStatus": 1,
+        "fresh": 1,
+        "displayReadStatus": 1,
+        "displayRenderStatus": 1,
+        "commandChat": 0,
+        "hotkeyMode": 2,
+        "hotkeyGroups": 9,
+        "hotkeyPending": 0,
+        "hotkeyMessages": 0,
+        "hotkeySampled": 0,
+        "hotkeyActions": 0,
+        "hotkeyBlocked": 0,
+        "hotkeyFallbacks": 2,
+        "hotkeyLastError": 1409,
+        "request": 0,
+        "ack": 0,
+        "controlFrame": 240,
+        "callbackCount": 490,
+        "dispatches": 491
+      },
+      {
+        "line": 2279,
+        "timestamp": "2026-11-09 16:18:48.174",
+        "pid": 53692,
+        "match": 3,
+        "commandStatus": 1,
+        "fresh": 1,
+        "displayReadStatus": 1,
+        "displayRenderStatus": 1,
+        "commandChat": 0,
+        "hotkeyMode": 2,
+        "hotkeyGroups": 9,
+        "hotkeyPending": 0,
+        "hotkeyMessages": 0,
+        "hotkeySampled": 0,
+        "hotkeyActions": 0,
+        "hotkeyBlocked": 0,
+        "hotkeyFallbacks": 2,
+        "hotkeyLastError": 1409,
+        "request": 0,
+        "ack": 0,
+        "controlFrame": 358,
+        "callbackCount": 686,
+        "dispatches": 687
+      },
+      {
+        "line": 2322,
+        "timestamp": "2026-11-09 16:19:31.168",
+        "pid": 53692,
+        "match": 3,
+        "commandStatus": 1,
+        "fresh": 1,
+        "displayReadStatus": 1,
+        "displayRenderStatus": 1,
+        "commandChat": 0,
+        "hotkeyMode": 2,
+        "hotkeyGroups": 9,
+        "hotkeyPending": 0,
+        "hotkeyMessages": 0,
+        "hotkeySampled": 0,
+        "hotkeyActions": 0,
+        "hotkeyBlocked": 0,
+        "hotkeyFallbacks": 2,
+        "hotkeyLastError": 1409,
+        "request": 0,
+        "ack": 0,
+        "controlFrame": 2932,
+        "callbackCount": 4008,
+        "dispatches": 4013
+      }
+    ],
+    "registration_failure_count": 14,
+    "registration_failures": [
+      {
+        "line": 2260,
+        "timestamp": "2026-11-09 16:18:42.180",
+        "id": 1000,
+        "key": 1618,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2261,
+        "timestamp": "2026-11-09 16:18:42.180",
+        "id": 1727,
+        "key": 1606,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2275,
+        "timestamp": "2026-11-09 16:18:47.883",
+        "id": 1000,
+        "key": 1618,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2276,
+        "timestamp": "2026-11-09 16:18:47.884",
+        "id": 1727,
+        "key": 1606,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2293,
+        "timestamp": "2026-11-09 16:19:01.794",
+        "id": 1000,
+        "key": 1618,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2294,
+        "timestamp": "2026-11-09 16:19:01.794",
+        "id": 1727,
+        "key": 1606,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2317,
+        "timestamp": "2026-11-09 16:19:29.570",
+        "id": 1000,
+        "key": 1618,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2318,
+        "timestamp": "2026-11-09 16:19:29.570",
+        "id": 1727,
+        "key": 1606,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2348,
+        "timestamp": "2026-11-09 16:20:04.435",
+        "id": 1000,
+        "key": 1618,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2349,
+        "timestamp": "2026-11-09 16:20:04.436",
+        "id": 1727,
+        "key": 1606,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2357,
+        "timestamp": "2026-11-09 16:20:06.177",
+        "id": 1000,
+        "key": 1618,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2358,
+        "timestamp": "2026-11-09 16:20:06.177",
+        "id": 1727,
+        "key": 1606,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2359,
+        "timestamp": "2026-11-09 16:20:06.407",
+        "id": 1000,
+        "key": 1618,
+        "route": "foreground-poll",
+        "Win32": 1409
+      },
+      {
+        "line": 2360,
+        "timestamp": "2026-11-09 16:20:06.407",
+        "id": 1727,
+        "key": 1606,
+        "route": "foreground-poll",
+        "Win32": 1409
+      }
+    ],
+    "conflicting_chords": [
+      {
+        "id": 1000,
+        "key_decimal": 1618,
+        "key_hex": "0x0652",
+        "chord": "Ctrl+Alt+R"
+      },
+      {
+        "id": 1727,
+        "key_decimal": 1606,
+        "key_hex": "0x0646",
+        "chord": "Ctrl+Alt+F"
+      }
+    ],
+    "registration_error": {
+      "value": 1409,
+      "symbol": "ERROR_HOTKEY_ALREADY_REGISTERED",
+      "definition_source": "Windows SDK winerror.h",
+      "recorded_route": "foreground-poll",
+      "interpretation": "Binding is retained in the production registry; two reported conflicts do not prove that all hotkeys are unavailable or identify the conflicting owner."
+    },
+    "display_observations": [
+      {
+        "line": 2263,
+        "timestamp": "2026-11-09 16:18:42.310",
+        "targetHz": 500,
+        "windowMs": 6143,
+        "samples": 18,
+        "foreground": 1
+      },
+      {
+        "line": 2273,
+        "timestamp": "2026-11-09 16:18:47.323",
+        "targetHz": 500,
+        "windowMs": 5016,
+        "samples": 293,
+        "foreground": 1
+      },
+      {
+        "line": 2285,
+        "timestamp": "2026-11-09 16:18:52.522",
+        "targetHz": 500,
+        "windowMs": 5197,
+        "samples": 85,
+        "foreground": 0
+      },
+      {
+        "line": 2289,
+        "timestamp": "2026-11-09 16:18:58.622",
+        "targetHz": 500,
+        "windowMs": 6100,
+        "samples": 12,
+        "foreground": 0
+      },
+      {
+        "line": 2296,
+        "timestamp": "2026-11-09 16:19:03.866",
+        "targetHz": 500,
+        "windowMs": 5244,
+        "samples": 40,
+        "foreground": 0
+      },
+      {
+        "line": 2300,
+        "timestamp": "2026-11-09 16:19:08.935",
+        "targetHz": 500,
+        "windowMs": 5070,
+        "samples": 14,
+        "foreground": 0
+      },
+      {
+        "line": 2304,
+        "timestamp": "2026-11-09 16:19:13.979",
+        "targetHz": 500,
+        "windowMs": 5044,
+        "samples": 12,
+        "foreground": 0
+      },
+      {
+        "line": 2308,
+        "timestamp": "2026-11-09 16:19:19.075",
+        "targetHz": 500,
+        "windowMs": 5096,
+        "samples": 9,
+        "foreground": 0
+      },
+      {
+        "line": 2314,
+        "timestamp": "2026-11-09 16:19:25.172",
+        "targetHz": 500,
+        "windowMs": 6096,
+        "samples": 10,
+        "foreground": 0
+      },
+      {
+        "line": 2321,
+        "timestamp": "2026-11-09 16:19:30.171",
+        "targetHz": 500,
+        "windowMs": 5001,
+        "samples": 46,
+        "foreground": 1
+      },
+      {
+        "line": 2325,
+        "timestamp": "2026-11-09 16:19:35.371",
+        "targetHz": 500,
+        "windowMs": 5199,
+        "samples": 208,
+        "foreground": 0
+      },
+      {
+        "line": 2330,
+        "timestamp": "2026-11-09 16:19:41.225",
+        "targetHz": 500,
+        "windowMs": 5853,
+        "samples": 13,
+        "foreground": 0
+      },
+      {
+        "line": 2334,
+        "timestamp": "2026-11-09 16:19:46.522",
+        "targetHz": 500,
+        "windowMs": 5296,
+        "samples": 12,
+        "foreground": 0
+      },
+      {
+        "line": 2338,
+        "timestamp": "2026-11-09 16:19:51.839",
+        "targetHz": 500,
+        "windowMs": 5318,
+        "samples": 9,
+        "foreground": 0
+      },
+      {
+        "line": 2342,
+        "timestamp": "2026-11-09 16:19:56.917",
+        "targetHz": 500,
+        "windowMs": 5078,
+        "samples": 10,
+        "foreground": 0
+      },
+      {
+        "line": 2346,
+        "timestamp": "2026-11-09 16:20:01.972",
+        "targetHz": 500,
+        "windowMs": 5055,
+        "samples": 11,
+        "foreground": 0
+      },
+      {
+        "line": 2362,
+        "timestamp": "2026-11-09 16:20:06.978",
+        "targetHz": 500,
+        "windowMs": 5008,
+        "samples": 147,
+        "foreground": 1
+      }
+    ],
+    "display_foreground_counts": {
+      "0": 13,
+      "1": 4
+    },
+    "dialog_transitions": [
+      {
+        "line": 2241,
+        "timestamp": "2026-11-09 16:18:36.165",
+        "tactical": 0,
+        "specialDialog": 0,
+        "dialogCount": 0,
+        "readable": 1,
+        "frame": 0
+      },
+      {
+        "line": 2262,
+        "timestamp": "2026-11-09 16:18:42.310",
+        "tactical": 1,
+        "specialDialog": 0,
+        "dialogCount": 0,
+        "readable": 1,
+        "frame": 4
+      },
+      {
+        "line": 2271,
+        "timestamp": "2026-11-09 16:18:46.403",
+        "tactical": 1,
+        "specialDialog": 8,
+        "dialogCount": 0,
+        "readable": 1,
+        "frame": 255
+      },
+      {
+        "line": 2277,
+        "timestamp": "2026-11-09 16:18:47.885",
+        "tactical": 1,
+        "specialDialog": 0,
+        "dialogCount": 0,
+        "readable": 1,
+        "frame": 340
+      },
+      {
+        "line": 2353,
+        "timestamp": "2026-11-09 16:20:05.512",
+        "tactical": 1,
+        "specialDialog": 1,
+        "dialogCount": 0,
+        "readable": 1,
+        "frame": 4986
+      },
+      {
+        "line": 2355,
+        "timestamp": "2026-11-09 16:20:06.161",
+        "tactical": 1,
+        "specialDialog": 0,
+        "dialogCount": 0,
+        "readable": 1,
+        "frame": 5022
+      }
+    ],
+    "activation_transitions": [
+      {
+        "line": 2234,
+        "timestamp": "2026-11-09 16:18:34.885",
+        "gate": "initial-or-no-world",
+        "gateCode": 0,
+        "match": 0,
+        "frame": 0
+      },
+      {
+        "line": 2238,
+        "timestamp": "2026-11-09 16:18:35.131",
+        "gate": "tactical-hidden-or-dialog",
+        "gateCode": 10,
+        "match": 1,
+        "frame": 0
+      },
+      {
+        "line": 2240,
+        "timestamp": "2026-11-09 16:18:36.149",
+        "gate": "observer-defeated-or-no-command-house",
+        "gateCode": 8,
+        "match": 1,
+        "frame": 0
+      },
+      {
+        "line": 2242,
+        "timestamp": "2026-11-09 16:18:36.431",
+        "gate": "tactical-hidden-or-dialog",
+        "gateCode": 10,
+        "match": 2,
+        "frame": 0
+      },
+      {
+        "line": 2253,
+        "timestamp": "2026-11-09 16:18:41.440",
+        "gate": "tactical-hidden-or-dialog",
+        "gateCode": 10,
+        "match": 2,
+        "frame": 0
+      },
+      {
+        "line": 2255,
+        "timestamp": "2026-11-09 16:18:42.169",
+        "gate": "ready",
+        "gateCode": 1,
+        "match": 3,
+        "frame": 0
+      },
+      {
+        "line": 2270,
+        "timestamp": "2026-11-09 16:18:46.401",
+        "gate": "tactical-hidden-or-dialog",
+        "gateCode": 10,
+        "match": 3,
+        "frame": 255
+      },
+      {
+        "line": 2274,
+        "timestamp": "2026-11-09 16:18:47.867",
+        "gate": "ready",
+        "gateCode": 1,
+        "match": 3,
+        "frame": 338
+      },
+      {
+        "line": 2352,
+        "timestamp": "2026-11-09 16:20:05.509",
+        "gate": "tactical-hidden-or-dialog",
+        "gateCode": 10,
+        "match": 3,
+        "frame": 4986
+      },
+      {
+        "line": 2356,
+        "timestamp": "2026-11-09 16:20:06.169",
+        "gate": "ready",
+        "gateCode": 1,
+        "match": 3,
+        "frame": 5022
+      },
+      {
+        "line": 2361,
+        "timestamp": "2026-11-09 16:20:06.424",
+        "gate": "observer-defeated-or-no-command-house",
+        "gateCode": 8,
+        "match": 3,
+        "frame": 5036
+      }
+    ],
+    "progress_observations": [
+      {
+        "line": 2230,
+        "timestamp": "2026-11-09 16:18:34.728",
+        "callbackCount": 0,
+        "dispatches": 0,
+        "controlFrame": 0,
+        "nativeHook": 0,
+        "clickHook": 0,
+        "runtimeError": 0,
+        "faultSerial": 0,
+        "postError": 0
+      },
+      {
+        "line": 2237,
+        "timestamp": "2026-11-09 16:18:34.912",
+        "callbackCount": 2,
+        "dispatches": 2,
+        "controlFrame": 0,
+        "nativeHook": 0,
+        "clickHook": 0,
+        "runtimeError": 0,
+        "faultSerial": 0,
+        "postError": 0
+      },
+      {
+        "line": 2259,
+        "timestamp": "2026-11-09 16:18:42.175",
+        "callbackCount": 95,
+        "dispatches": 94,
+        "controlFrame": 0,
+        "nativeHook": 1,
+        "clickHook": 1,
+        "runtimeError": 0,
+        "faultSerial": 0,
+        "postError": 0
+      },
+      {
+        "line": 2264,
+        "timestamp": "2026-11-09 16:18:43.167",
+        "callbackCount": 190,
+        "dispatches": 188,
+        "controlFrame": 58,
+        "nativeHook": 1,
+        "clickHook": 1,
+        "runtimeError": 0,
+        "faultSerial": 0,
+        "postError": 0
+      },
+      {
+        "line": 2279,
+        "timestamp": "2026-11-09 16:18:48.174",
+        "callbackCount": 686,
+        "dispatches": 687,
+        "controlFrame": 358,
+        "nativeHook": 1,
+        "clickHook": 1,
+        "runtimeError": 0,
+        "faultSerial": 0,
+        "postError": 0
+      },
+      {
+        "line": 2322,
+        "timestamp": "2026-11-09 16:19:31.168",
+        "callbackCount": 4008,
+        "dispatches": 4013,
+        "controlFrame": 2932,
+        "nativeHook": 1,
+        "clickHook": 1,
+        "runtimeError": 0,
+        "faultSerial": 0,
+        "postError": 0
+      },
+      {
+        "line": 2345,
+        "timestamp": "2026-11-09 16:20:01.164",
+        "callbackCount": 6332,
+        "dispatches": 6339,
+        "controlFrame": 4727,
+        "nativeHook": 1,
+        "clickHook": 1,
+        "runtimeError": 0,
+        "faultSerial": 0,
+        "postError": 0
+      },
+      {
+        "line": 2364,
+        "timestamp": "2026-11-09 16:20:09.546",
+        "callbackCount": 6920,
+        "dispatches": 6927,
+        "controlFrame": 5130,
+        "nativeHook": 1,
+        "clickHook": 1,
+        "runtimeError": 0,
+        "faultSerial": 0,
+        "postError": 0
+      },
+      {
+        "line": 2368,
+        "timestamp": "2026-11-09 16:20:11.078",
+        "callbackCount": 6920,
+        "dispatches": 6927,
+        "controlFrame": 5130,
+        "nativeHook": 1,
+        "clickHook": 1,
+        "runtimeError": 0,
+        "faultSerial": 0,
+        "postError": 87
+      }
+    ],
+    "command_record_counts": {
+      "command-submit": 0,
+      "command-result": 0
+    }
+  },
+  "counter_semantics": {
+    "messages": "Increments when the command handleHotkey entry runs; not a count of all physical keyboard input.",
+    "sampled": "Increments when Registry.sample emits a configured gesture; not a count of polling invocations.",
+    "actions": "Counts actions reaching dispatchHotkeyGroup.",
+    "blocked": "Counts specific message/immediate-action rejection branches; does not cover every serviceHotkeyBatch early return.",
+    "registration_reset": "registerKeys resets fallbacks and lastError, but does not reset messages, sampled, actions or blocked.",
+    "unobserved_service_early_returns": [
+      "formationInputOwns()",
+      "runtimeMiddleOwnsNow()",
+      "!commandHotkeyContext()",
+      "!connected"
+    ],
+    "render_status_names": "displayRenderStatus is the external display snapshot status. The older renderStatus field logs incoming.renderRevealStatus and must not be substituted."
+  },
+  "established": [
+    "The pre.4 session reached a real target, installed its message hook and recorded ongoing callbacks, dispatches and advancing game frames.",
+    "Six health observations report command hotkey mode 2 with nine physical key groups, fresh command state, display read/render 1 and command chat 0.",
+    "Every nonzero-target health observation has zero messages, sampled gestures, actions and blocked counters; these counters survive registration changes in the reviewed pre.4 source.",
+    "No command-submit or command-result record occurs in the pre.4 session; request, ack, queueSent, commandRejected and lastSubmitError remain zero in the target health observations.",
+    "Longer mode-0 periods have nearby display observations with foreground=0. This is the software observation, not proof of the actual foreground window identity.",
+    "The two older sessions are 1.0.43-pre.9, not the stable 1.0.43 release."
+  ],
+  "not_established": [
+    "A single causal defect explaining every attempted user hotkey.",
+    "Which keys the user actually pressed, their timing, or the full loaded binding table.",
+    "Whether the actual foreground HWND/PID was the intended game window when the software reported foreground=0.",
+    "Whether GetAsyncKeyState returned the expected key/modifier states.",
+    "Whether a silent input-ownership or connection/context early return prevented polling.",
+    "The owner of the two conflicting system hotkeys.",
+    "A successful live fix or completed subsequent product validation."
+  ],
+  "scope": "User-supplied live log analysis plus interpretation of the frozen pre.4 source. This is failure evidence, not a reproduction or a fixed-game acceptance result.",
+  "source_interpretation": {
+    "source/assist/source/main.cpp": {
+      "commit": "3cd2f472b24921a3fcbca48a85e09e8a08d6f569",
+      "sha256": "53c0dae3ece505449535dc481e9a37af7fa4cf7b057abd04a22b580210367f30",
+      "line_ranges": {
+        "diagnostic_fields": [
+          229,
+          230
+        ],
+        "health_log_render_field_names": [
+          441,
+          459
+        ],
+        "foreground_check": [
+          551,
+          551
+        ],
+        "command_context_and_mode": [
+          577,
+          586
+        ],
+        "registration_fallback_and_counter_reset": [
+          590,
+          599
+        ],
+        "command_link": [
+          688,
+          694
+        ]
+      }
+    },
+    "source/assist/source/hotkey_host.h": {
+      "commit": "3cd2f472b24921a3fcbca48a85e09e8a08d6f569",
+      "sha256": "10fcedf4e9586892dbd8eab0684d1dcff93e9d273dedfbc8abfa8f54d136e090",
+      "line_ranges": {
+        "action_counter": [
+          12,
+          16
+        ],
+        "service_early_returns_and_sampling_counter": [
+          57,
+          69
+        ],
+        "message_and_blocked_counters": [
+          79,
+          90
+        ]
+      }
+    },
+    "source/assist/source/middle_input_host.h": {
+      "commit": "3cd2f472b24921a3fcbca48a85e09e8a08d6f569",
+      "sha256": "44f8ae86fa56da3aa07b46a3d1c99af3f3956c3bafb647da85cad27b2aaa1887",
+      "line_ranges": {
+        "runtime_input_ownership": [
+          21,
+          26
+        ]
+      }
+    }
+  },
+  "privacy": "No raw log lines, original user filesystem paths, module inventories or complete log contents are included."
+}

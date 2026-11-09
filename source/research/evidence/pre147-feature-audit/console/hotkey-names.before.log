@@ -1,0 +1,72 @@
+FAIL NumpadMultiply displays its captured key instead of a letter
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'j' !== 'Num *'
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:17:77
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:29:35
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL NumpadAdd displays its captured key instead of a letter
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'k' !== 'Num +'
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:17:77
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:29:35
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL NumpadComma displays its captured key instead of a letter
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'l' !== 'Num 分隔'
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:17:77
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:29:35
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL NumpadSubtract displays its captured key instead of a letter
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'m' !== 'Num -'
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:17:77
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:29:35
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL NumpadDecimal displays its captured key instead of a letter
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'n' !== 'Num .'
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:17:77
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:29:35
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL NumpadDivide displays its captured key instead of a letter
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'o' !== 'Num /'
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:17:77
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:29:35
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+FAIL an unmapped accepted virtual key has a visible unambiguous fallback
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'\f' !== 'VK 12'
+
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:22:55
+    at file:///workspace/scratch/33b3ee07b26a/ra2-toolbox/source/suite/tests/console_hotkey_presentation_test.mjs:29:35
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+PASS ordinary letters digits function keys and numpad digits retain their names
+{"suite":"console_hotkey_presentation","checks":8,"failures":7,"level":"actual production encodeHotkey and keyName"}

@@ -1,0 +1,88 @@
+{
+  "passed": true,
+  "cases": 4,
+  "checks": 12,
+  "compile_exit_code": 0,
+  "run_exit_code": 0,
+  "compile_command": "g++ -std=c++17 -I source/assist/source source/research/evidence/pre1475-hotkey-input/v135/profile_demand.cpp -o <temporary-output>/profile_demand",
+  "scope": "Production profile read/save statements and hook/feature-demand headers; in-memory profile API; does not execute Win32 INI, process discovery, full Host tick, or game commands. The feature-demand result is distinct from the corrected overall needsBridge expression.",
+  "historical_source_refs": [
+    {
+      "version": "1.0.35",
+      "commit": "ff5a76ada06efdd764d9c3ef13cd452b4d69ef14",
+      "path": "source/assist/source/main.cpp",
+      "git_blob": "dd0d861f71fa2fdbcdfcfb49cb8542ce20c3b05b",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/ff5a76ada06efdd764d9c3ef13cd452b4d69ef14/source/assist/source/main.cpp"
+    },
+    {
+      "version": "1.0.47-pre.4",
+      "commit": "7e9ce38d898d536690f95ca8a5b6dec932908843",
+      "path": "source/assist/source/main.cpp",
+      "sha256": "53c0dae3ece505449535dc481e9a37af7fa4cf7b057abd04a22b580210367f30",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/7e9ce38d898d536690f95ca8a5b6dec932908843/source/assist/source/main.cpp"
+    }
+  ],
+  "extracted_statements": {
+    "v135_load": "hookAdvanced=value(L\"Hooks\",L\"Advanced\",value(L\"NativeOrders\",L\"EnableInputHooks\",1))!=0;",
+    "v135_save": "write(L\"Hooks\",L\"Advanced\",hookAdvanced);write(L\"Hooks\",L\"SmartUnload\",hookSmartUnload);",
+    "current_load": "hookAdvanced=value(L\"Hooks\",L\"Advanced\",value(L\"NativeOrders\",L\"EnableInputHooks\",0))!=0;"
+  },
+  "statement_sha256": {
+    "v135_load": "ad3d551d1d2857e964e3ea649ef0bc369f0a814e298c922ce209b7dc1630f011",
+    "v135_save": "252013fb167c923f6f639a8ce7320bf955d3397d745178aba89c9188dc71e6e6",
+    "current_load": "f6a8c887fef4ac3227907853e02bad9ebb411d94824ff774d4be13ddc2be0833"
+  },
+  "compiled_header_sha256": {
+    "source/assist/source/additional_settings.h": "f3afc3a84d4fcbec41a5e664dd13c96df7293c3ad9eb51d43fab663aea63c9ca",
+    "source/assist/source/air_path_policy.h": "19672ab3f39a5a2e6134c133bbacc379c8461f7804fa20f8a3865c582053759e",
+    "source/assist/source/autoload.h": "faf93595bb49d14802e2fe5d129e35a750c9f5f174db1c8fe4a16d27830103d6",
+    "source/assist/source/automatic_features.h": "1f787b4b5ec5ffadb02a99a6d816adf680d77eb01a9f8b98d810cb5b57892905",
+    "source/assist/source/building_event_settings.h": "d7a7db59aa33c844bd570f45f1b0d2ad82da16e937d579fbaae5186d96e0a4fe",
+    "source/assist/source/burst_compute.h": "d881c4431df1b121210029b1a79c9e46e26fbac45ae60928a13d32ea539ee83b",
+    "source/assist/source/command_gateway.h": "a0a5676e5bd28af90ca10e374c7dbc9d8a96098b2a6b446c42063f795bc76198",
+    "source/assist/source/command_intent.h": "71e07afdac107d8dc6a216712b25693d42db876dea40215cb89cf3f4ef0e54aa",
+    "source/assist/source/compute_frame.h": "a88d6f9e3a79dad611a338ee0a60ac426bf40b96a627694534e482f125c54b55",
+    "source/assist/source/compute_input_copy.h": "71dfa9f605c10b3ccf058b1372370950b0b5e4a1672542cfe3fe3d4e888ca7b7",
+    "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+    "source/assist/source/compute_tasks.h": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c",
+    "source/assist/source/construction_input.h": "0084b88c5c2713594ff005e61e175c817d4dcf70a57d09aa19a5c18a67a0393b",
+    "source/assist/source/construction_policy.h": "78b888d6138b0b0f1825a8ba73058647119ca51c333dbf68b55da2b69da6b1ac",
+    "source/assist/source/control_mode_policy.h": "c5309b7c84ead21979f6c91b3dcb7296603d7f2ce5183f49f01e2f1fb3332885",
+    "source/assist/source/cooperative_frame.h": "58862cd08044f0249629be08983815195bd7258a57ad7557794a1be8b4d14cc8",
+    "source/assist/source/cooperative_plan.h": "5b4db18682aa32504c68cc66fe34ae95554d570c2f85e493e070afc48a52d8dd",
+    "source/assist/source/cooperative_types.h": "be64cdf584a8eb643ddbe442439350c4b620d75964c26b1a1d0c55f664d62755",
+    "source/assist/source/disabled_feature_policy.h": "28ab53cd92f405156fad9d557aaa0d0ee14cfe16fe8b3e73c012fd55593e28d2",
+    "source/assist/source/dodge_compute.h": "1f37cce7426c49268f8a9ed8a400b0941c4bfecd3379e8312e2253ccd9ff76b5",
+    "source/assist/source/feature_type_config.h": "9fea2e80e73601e79fb73f388deff1e3f99f99558b5a3c0a609e34d55d897ad9",
+    "source/assist/source/formation.h": "f5213574cd7228a142e56407ce44a17a25ee2865658603980f9a18ca4a4d2d3a",
+    "source/assist/source/hook_policy.h": "77a81035c8846b8f649f942c4225c8ba72c962a5e9e16bdacd7f42a8db5960ea",
+    "source/assist/source/mega_queue_backend.h": "02b36f3c661c06fd0279271272f91608b661e2ac16cbb6146cf0e350ec640f1f",
+    "source/assist/source/missile_compute.h": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+    "source/assist/source/mo_orders.h": "a7f38b1e0c4aeff688d6ee238bc74ca1fe7ddee3a71d5d2ea7af03c1a02fe7b3",
+    "source/assist/source/native_placement_policy.h": "838ef085195ad63de7caf8e8d2f964aeded1c7210789fb1d7bfa65ccdb00aa46",
+    "source/assist/source/ore_type_config.h": "eef48140f2bcb1fdd134f55de73a6b78826430488dd657d9f8637fc6491634d2",
+    "source/assist/source/plan_freshness.h": "098a5432d1e60b9cdedc6443f35eedf2ef1be94e1c6e6f95364bc96da3049c0c",
+    "source/assist/source/planner_types.h": "c4215d8d6328d492b548efa48d26aa2da4fef7a1d1328d57e9bd2e245071ffcc",
+    "source/assist/source/player_test_policy.h": "2d106829eca4e42a9d25804bc4bb4333eede3f020bbf69ab2d7e1417f32ed39b",
+    "source/assist/source/pointer_intent.h": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1",
+    "source/assist/source/protocol.h": "4e8f8b72aee03f7175cb0bcc4766af3cf8360463f04e93656d7bd4b92985e331",
+    "source/assist/source/runtime_feature_demand.h": "c726978bc3e8337da27cb6f150ba11bd48ce25b0b3236df92dba3fe7a3ef53c8",
+    "source/assist/source/tactical_decisions.h": "dd6dc31d55fb7d20d962570e05182557c69729e0cdd2d61f56af351c4b4977cb",
+    "source/assist/source/unit_task_arbiter.h": "86e4278cd05ba68d44f0ac9a8a292d16f5db00198e32ef865b10f85b556dd0a9",
+    "source/assist/source/unload_compute.h": "9320d8940db3a948d51533a4931457cd676a01c07b64fed085395d11b7d19711",
+    "source/assist/source/unload_policy.h": "b699168531498e797f13045fd1932c31439df61ed16bc93c92644205caddc568",
+    "source/assist/source/vanilla_constructor_catalog.h": "78e77c217943beffa000fbfd7a749f0043fa617498a5a1c48f917a3b27276040",
+    "source/shared/source/debug_entry_types.h": "acb4aeca8ea08b6cb3d88c9a794976d1e07734634526c270c05e938fbf658a5c",
+    "source/shared/source/feature_availability.h": "f60feff8e03ea34db478dc2a388b1ea4f0a89880bf724573003045dd3669151a",
+    "source/shared/source/hardware_performance.h": "65e0db646cc5c98bbda57fdb501362776f479eff58295da0ae1cde11cd398c58",
+    "source/shared/source/hardware_slot_budget.h": "997a06543ddf6c77de423740ec82863db69a4f9efff3be679b1e309368e6e8c8",
+    "source/shared/source/key_gesture.h": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8",
+    "source/shared/source/viewport_scale.h": "40645cde0ef9e9f5a0cd39d9686efde112a173e616b2833126ca3fe5cddf7fad"
+  },
+  "artifacts": {
+    "profile_demand.cpp": "77f56a511a10f00b7c90b1bed4aa2d5b43bbba8cda600c2e58e9cef2c06d82e3",
+    "profile-run.log": "9ff9bc066f5d64c112b4009ff93c08a75275539735c98c7a3bd3a0785c9e55fa"
+  },
+  "windows_executed": false,
+  "game_tested": false
+}

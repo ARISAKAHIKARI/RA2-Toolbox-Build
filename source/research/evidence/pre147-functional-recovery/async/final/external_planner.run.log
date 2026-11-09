@@ -1,0 +1,2 @@
+PASS: nearest refinery, occupied dock, FIFO and manual pause persists across empty/full changes until mining resumes
+PASS: rank priority, neutral/cloaked exclusion, destination resume, stationary timeout and intent cancellation using snapshots only

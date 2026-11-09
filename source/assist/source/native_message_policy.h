@@ -22,6 +22,36 @@ static void recordRuntimeGesture(const MSG*msg,bool keyContext,uint32_t epoch,ui
 }
 extern "C" int AssistFilterMessage(void* raw){
  auto*msg=static_cast<MSG*>(raw);if(!msg)return 0;
+ // Physical ownership outlives feature reset: remember only a real DOWN that
+ // this filter actually consumed. A fresh DOWN/DBLCLK retires a lost old UP;
+ // keyboard autorepeat preserves its original pair. Normal owners still get
+ // the release first; only their unhandled, already-owned UP needs balancing.
+ static bool ownedDown[256]{};
+ struct Pair {
+  MSG*message;bool*owned;unsigned key=0;bool down=false,up=false,repeat=false,prior=false;
+  ~Pair(){if(key&&down&&!repeat&&message->message==WM_NULL)owned[key]=true;}
+ } pair{msg,ownedDown};
+ switch(msg->message){
+  case WM_KEYDOWN:case WM_SYSKEYDOWN:pair.key=unsigned(msg->wParam)&255;pair.down=true;pair.repeat=(msg->lParam&(1u<<30))!=0;break;
+  case WM_KEYUP:case WM_SYSKEYUP:pair.key=unsigned(msg->wParam)&255;pair.up=true;break;
+  case WM_LBUTTONDOWN:case WM_LBUTTONDBLCLK:pair.key=VK_LBUTTON;pair.down=true;break;case WM_LBUTTONUP:pair.key=VK_LBUTTON;pair.up=true;break;
+  case WM_RBUTTONDOWN:case WM_RBUTTONDBLCLK:pair.key=VK_RBUTTON;pair.down=true;break;case WM_RBUTTONUP:pair.key=VK_RBUTTON;pair.up=true;break;
+  case WM_MBUTTONDOWN:case WM_MBUTTONDBLCLK:pair.key=VK_MBUTTON;pair.down=true;break;case WM_MBUTTONUP:pair.key=VK_MBUTTON;pair.up=true;break;
+  case WM_XBUTTONDOWN:case WM_XBUTTONDBLCLK:pair.key=HIWORD(msg->wParam)==XBUTTON1?VK_XBUTTON1:HIWORD(msg->wParam)==XBUTTON2?VK_XBUTTON2:0;pair.down=true;break;
+  case WM_XBUTTONUP:pair.key=HIWORD(msg->wParam)==XBUTTON1?VK_XBUTTON1:HIWORD(msg->wParam)==XBUTTON2?VK_XBUTTON2:0;pair.up=true;break;
+ }
+ if(pair.key){pair.prior=ownedDown[pair.key];if(pair.up||(pair.down&&!pair.repeat))ownedDown[pair.key]=false;}
+ auto balanceRelease=[&](){
+  if(!pair.up||!pair.prior)return 0;
+  msg->message=WM_NULL;msg->wParam=msg->lParam=0;return 1;
+ };
+ if(!readonly::commands(sh)||readOnlyState.active){
+  // No new action or physical-key sample is permitted while commands close.
+  // Only balance an earlier consumed DOWN, even after its owner was reset.
+  runtimeKeys.clear();blockedButtons=0;blockedOrigins[0]={};blockedOrigins[1]={};
+  if(pair.key&&(pair.up||(pair.down&&!pair.repeat)))pauseViewKeySuppressed[pair.key]=false;
+  return balanceRelease();
+ }
  bool keyContext=sh&&!sh->stop&&!fault&&sh->foreground&&!get<bool>(0xA8BC60+25)&&DWORD(sampleClock(sh)-sh->heartbeat)<=150;
  recordRuntimeGesture(msg,keyContext,match,sampleClock(sh));
  if(pauseViewMessage(msg))return 1;
@@ -32,14 +62,18 @@ extern "C" int AssistFilterMessage(void* raw){
  if(reservationMessage(msg))return 1;
  bool left=msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONUP||msg->message==WM_LBUTTONDBLCLK;
  bool right=msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONUP||msg->message==WM_RBUTTONDBLCLK;
- if(!left&&!right)return 0;
+ if(!left&&!right)return balanceRelease();
  bool up=msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONUP;
  uint32_t bit=left?1:2,physical=left?6:4;int slot=left?0:1;
  if(up){
-  if(!(blockedButtons&bit))return 0;blockedButtons&=~bit;
+  if(!(blockedButtons&bit))return balanceRelease();blockedButtons&=~bit;
   if(sh){auto record=blockedOrigins[slot];record.tick=sampleClock(sh);sh->suppressedClick=record;}
   msg->message=WM_NULL;msg->wParam=msg->lParam=0;return 1;
  }
+ // A fresh DOWN (including DBLCLK) starts a new physical pair. Its previous
+ // UP may have gone to another window; do not let that stale ownership eat
+ // this pair's release if the current DOWN must stay native.
+ blockedButtons&=~bit;
  if(!sh||fault||sh->stop||!nativeReady()||!sh->foreground||DWORD(sampleClock(sh)-sh->heartbeat)>150)return 0;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);if(foreground!=GetCurrentProcessId())return 0;
  auto seq=sh->pointerPolicySeq;if(seq&1)return 0;pointerinput::NativePolicy policy;MemoryBarrier();memcpy(&policy,&sh->pointerPolicy,sizeof policy);MemoryBarrier();
@@ -83,7 +117,7 @@ extern "C" void AssistRuntimeFilter(void* message){
  // Refresh through the existing dispatcher; never relax event frame checks.
  bool refresh=false;
  gameentry::scoped(gameentry::Client::Assist,false,[&]{
-  refresh=superweaponGrantWantsInputSample(static_cast<const MSG*>(message))||nativePlacementWantsInputSample(static_cast<const MSG*>(message));
+  refresh=readonly::commands(sh)&&!readOnlyState.active&&(superweaponGrantWantsInputSample(static_cast<const MSG*>(message))||nativePlacementWantsInputSample(static_cast<const MSG*>(message)));
   if(!refresh)GuardedAssistFilter(message);
  });
  if(!refresh)return;

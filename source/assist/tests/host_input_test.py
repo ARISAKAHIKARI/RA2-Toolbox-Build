@@ -11,8 +11,8 @@ header=r'''
 #define ZeroMemory(p,n) std::memset(p,0,n)
 using BOOL=int;using SIZE_T=size_t;using DWORD_PTR=uintptr_t;using WPARAM=uintptr_t;using LPARAM=intptr_t;using DWORD=uint32_t;using LONG=int32_t;using UINT=unsigned;using BOOLEAN=unsigned char;using HWND=void*;using HHOOK=void*;using HMODULE=void*;using HANDLE=void*;using HOOKPROC=void*;
 #define CALLBACK
-constexpr int WH_GETMESSAGE=3,WH_CALLWNDPROCRET=12,ERROR_INVALID_PARAMETER=87,ERROR_ALREADY_EXISTS=183,ERROR_NOT_ENOUGH_MEMORY=8,ERROR_ACCESS_DENIED=5,ERROR_INVALID_HANDLE=6,ERROR_REVISION_MISMATCH=1306,ERROR_BUSY=170,ERROR_NOT_READY=21,ERROR_SUCCESS=0,ERROR_PARTIAL_COPY=299,ERROR_INVALID_HOOK_HANDLE=1404;
-constexpr unsigned INPUT_MOUSE=0,MOUSEEVENTF_LEFTDOWN=2,MOUSEEVENTF_LEFTUP=4,SYNCHRONIZE=1,WAIT_OBJECT_0=0,WAIT_TIMEOUT=258,PAGE_READWRITE=4,FILE_MAP_ALL_ACCESS=1,WT_EXECUTEDEFAULT=0,WM_NULL=0;
+constexpr int WH_GETMESSAGE=3,WH_CALLWNDPROCRET=12,ERROR_INVALID_PARAMETER=87,ERROR_ALREADY_EXISTS=183,ERROR_NOT_ENOUGH_MEMORY=8,ERROR_ACCESS_DENIED=5,ERROR_INVALID_HANDLE=6,ERROR_REVISION_MISMATCH=1306,ERROR_BUSY=170,ERROR_NOT_READY=21,ERROR_SUCCESS=0,ERROR_PARTIAL_COPY=299,ERROR_INVALID_HOOK_HANDLE=1404,ERROR_IO_PENDING=997,ERROR_GEN_FAILURE=31;
+constexpr unsigned INPUT_MOUSE=0,MOUSEEVENTF_LEFTDOWN=2,MOUSEEVENTF_LEFTUP=4,SYNCHRONIZE=1,WAIT_OBJECT_0=0,WAIT_TIMEOUT=258,PAGE_READWRITE=4,FILE_MAP_ALL_ACCESS=1,FILE_MAP_READ=4,WT_EXECUTEDEFAULT=0,WM_NULL=0;
 constexpr bool FALSE=false;
 constexpr unsigned WM_SETCURSOR=32,WM_MOUSEMOVE=512,HTCLIENT=1,SMTO_ABORTIFHUNG=2,SMTO_BLOCK=1,SMTO_ERRORONEXIT=32;
 #define MAKELPARAM(a,b) (LPARAM(uint32_t(a)|(uint32_t(b)<<16)))
@@ -37,6 +37,9 @@ DWORD GetTickCount();DWORD GetCurrentProcessId();bool PostMessageW(HWND,UINT,uin
 HANDLE OpenThread(DWORD,bool,DWORD);DWORD WaitForSingleObject(HANDLE,DWORD);bool CloseHandle(HANDLE);
 HANDLE CreateFileMappingW(HANDLE,void*,DWORD,DWORD,DWORD,const wchar_t*);void* MapViewOfFile(HANDLE,DWORD,DWORD,DWORD,size_t);bool UnmapViewOfFile(void*);
 HANDLE CreateEventW(void*,bool,bool,const wchar_t*);
+HANDLE OpenFileMappingW(DWORD,bool,const wchar_t*);
+HANDLE OpenEventW(DWORD,bool,const wchar_t*);bool SetEvent(HANDLE);
+inline LONG InterlockedIncrement(volatile LONG*p){return __sync_add_and_fetch(p,1);}
 bool CreateTimerQueueTimer(HANDLE*,HANDLE,void(*)(void*,BOOLEAN),void*,DWORD,DWORD,DWORD);
 inline LONG InterlockedExchange(volatile LONG*p,LONG v){return __atomic_exchange_n(p,v,__ATOMIC_SEQ_CST);}
 inline LONG InterlockedCompareExchange(volatile LONG*p,LONG v,LONG c){__atomic_compare_exchange_n(p,&c,v,false,__ATOMIC_SEQ_CST,__ATOMIC_SEQ_CST);return c;}
@@ -58,7 +61,7 @@ static DWORD unhookError=ERROR_ACCESS_DENIED;
 static std::unordered_set<uintptr_t> exitedProcesses;static bool waitFailed=false,denyProcessWait=false;
 static uint64_t preciseOverride=0;static int timerBalance=0,timerPeriod=4;
 bool QueryPerformanceCounter(LARGE_INTEGER*p){p->QuadPart=preciseOverride?preciseOverride:uint64_t(clockMs)*1000;return true;}bool QueryPerformanceFrequency(LARGE_INTEGER*p){p->QuadPart=1000000;return true;}
-unsigned timeBeginPeriod(unsigned p){assert(p==1);++timerBalance;return 0;}unsigned timeEndPeriod(unsigned p){assert(p==1);--timerBalance;return 0;}bool ChangeTimerQueueTimer(HANDLE,HANDLE,DWORD due,DWORD period){assert(due==period);timerPeriod=period;return true;}
+unsigned timeBeginPeriod(unsigned p){assert(p==1);++timerBalance;return 0;}unsigned timeEndPeriod(unsigned p){assert(p==1);--timerBalance;return 0;}bool ChangeTimerQueueTimer(HANDLE,HANDLE,DWORD due,DWORD period){assert(due==period);timerPeriod=due;return true;}
 static POINT cursorPoint{100,100};static bool keyDown[256]{};static uint32_t nativeHwnd=42;static bool readable=true;
 HANDLE OpenProcess(DWORD access,bool,DWORD pid){if(denyProcessWait&&access==SYNCHRONIZE){error=ERROR_ACCESS_DENIED;return nullptr;}return (HANDLE)(uintptr_t)pid;}
 bool GetExitCodeProcess(HANDLE,DWORD*p){*p=STILL_ACTIVE;return true;}
@@ -87,6 +90,7 @@ void* GetProcAddress(HMODULE,const char*n){static uint32_t info[]={4,sizeof(runt
 bool FreeLibrary(HMODULE){return true;}DWORD GetTickCount(){return clockMs;}DWORD GetCurrentProcessId(){return 456;}
 bool PostMessageW(HWND window,UINT msg,uintptr_t tag,intptr_t owner){assert(window==(HWND)(uintptr_t)nativeHwnd&&msg==WM_NULL&&tag==runtime::WakeTag&&owner==456);++posts;if(failPost)error=5;return !failPost;}
 HANDLE OpenThread(DWORD,bool,DWORD tid){return (HANDLE)(uintptr_t)tid;}DWORD WaitForSingleObject(HANDLE h,DWORD){if(waitFailed)return 0xffffffffu;return (oldDead&&uintptr_t(h)<32)||exitedProcesses.count(uintptr_t(h))?WAIT_OBJECT_0:WAIT_TIMEOUT;}bool CloseHandle(HANDLE){return true;}
+HANDLE OpenFileMappingW(DWORD,bool,const wchar_t*){return nullptr;}
 HANDLE CreateFileMappingW(HANDLE,void*,DWORD,DWORD,DWORD n,const wchar_t*){assert(n==sizeof(block));return (HANDLE)1;}
 void* MapViewOfFile(HANDLE,DWORD,DWORD,DWORD,size_t){return &block;}bool UnmapViewOfFile(void*){return true;}
 HANDLE CreateEventW(void*,bool,bool,const wchar_t*){return (HANDLE)2;}
@@ -133,8 +137,8 @@ int main(){
  keyDown[VK_XBUTTON2]=false;pulse(nullptr,0);
  keyDown[VK_CONTROL]=true;keyDown[VK_XBUTTON2]=true;pulse(nullptr,0);assert(takePointer(a,press,dropped)&&press.operation==3);
  keyDown[VK_CONTROL]=false;keyDown[VK_XBUTTON2]=false;pulse(nullptr,0);
- for(int i=0;i<20;++i){keyDown[VK_MBUTTON]=true;pulse(nullptr,0);keyDown[VK_MBUTTON]=false;pulse(nullptr,0);}
- assert(takePointer(a,press,dropped)&&dropped==4);
+ for(int i=0;i<140;++i){keyDown[VK_MBUTTON]=true;pulse(nullptr,0);keyDown[VK_MBUTTON]=false;pulse(nullptr,0);}
+ assert(takePointer(a,press,dropped)&&dropped==12);
  fg=99;pulse(nullptr,0);assert(!takePointer(a,press,dropped));fg=42;keyDown[VK_MBUTTON]=true;pulse(nullptr,0);assert(!takePointer(a,press,dropped));keyDown[VK_MBUTTON]=false;pulse(nullptr,0);
  // A right drag (even returning to its origin) is camera input, never Cancel/Move.
  for(bool returnToOrigin:{false,true}){
@@ -234,28 +238,37 @@ int main(){
  assert(release(Client::Assist,afterFailure));host().timer=savedTimer;
  // Live subscribers retain the shared hook pair; distinguish the two bounded
  // resources and never remove an unrelated target when rejecting capacity.
- gameinput::Subscription liveTargets[8]{};
- for(unsigned n=0;n<8;++n){nativeHwnd=3000+n;liveTargets[n]=install(Client::Cursor,13,nativeHwnd,(HWND)(uintptr_t)nativeHwnd);assert(liveTargets[n]);}
- assert(capacity().targets==8&&capacity().subscriptions==8);
+ gameinput::Subscription liveTargets[32]{};
+ for(unsigned n=0;n<32;++n){nativeHwnd=3000+n;liveTargets[n]=install(Client::Cursor,13,nativeHwnd,(HWND)(uintptr_t)nativeHwnd);assert(liveTargets[n]);}
+ assert(capacity().targets==32&&capacity().subscriptions==32);
  nativeHwnd=4000;assert(!install(Client::Assist,13,4000,(HWND)4000));
  assert(GetLastError()==ERROR_NOT_ENOUGH_MEMORY&&std::wstring(installationStage())==L"target-slots");
  for(auto id:liveTargets)assert(release(Client::Cursor,id));
- nativeHwnd=42;gameinput::Subscription full[32]{};
+ nativeHwnd=42;gameinput::Subscription full[256]{};
  for(auto&id:full){id=install(Client::Assist,13,42,win);assert(id);}
- assert(capacity().targets==1&&capacity().subscriptions==32);
+ assert(capacity().targets==1&&capacity().subscriptions==256);
  assert(!install(Client::Cursor,13,42,win));
  assert(GetLastError()==ERROR_NOT_ENOUGH_MEMORY&&std::wstring(installationStage())==L"subscription-slots");
  assert(!release(Client::Cursor,full[0]));
  auto oldSubscription=full[0];assert(release(Client::Assist,oldSubscription));
  auto replacement=install(Client::Cursor,13,42,win);assert(replacement&&replacement!=oldSubscription);
  assert(!release(Client::Assist,oldSubscription)&&wake(replacement));
- for(unsigned n=1;n<32;++n)assert(release(Client::Assist,full[n]));
+ for(unsigned n=1;n<256;++n)assert(release(Client::Assist,full[n]));
  assert(health(replacement).subscribed);assert(release(Client::Cursor,replacement));
  assert(!refreshCursor(win,43)&&!refreshCursor(nullptr,42)&&cursorRefreshes==0);
  fg=99;assert(!refreshCursor(win,42)&&cursorRefreshes==0);fg=42;
  assert(refreshCursor(win,42)&&cursorRefreshes==1);refreshSucceeds=false;assert(!refreshCursor(win,42)&&cursorRefreshes==2);
  fg=99;assert(clickPair(win,42).sent==0&&sends==0);fg=42;sentCount=1;auto partial=clickPair(win,42);assert(partial.sent==1&&partial.error==5&&partial.released&&sends==2);
  fg=42;sentCount=0;assert(clickPair(win,42).sent==0&&sends==3);fg=42;sentCount=2;auto success=clickPair(win,42);assert(success.sent==2&&success.error==0&&success.released&&sends==4);
+ // All real subscription/cleanup scenarios above have finished.
+ for(auto& target:host().targets)if(target.pid)clear(target);
+ for(auto& lease:host().leases)lease={};updateTimer();
+ assert(host().timerPeriod==1000&&timerPeriod==1000&&timerBalance==0);
+ const int idlePosts=posts;for(unsigned i=0;i<100;++i){clockMs+=1000;pulse(nullptr,0);}assert(posts==idlePosts);
+ nativeHwnd=42;windowThread=12;fg=42;oldDead=false;waitFailed=false;failUnhook=false;exitedProcesses.clear();
+ auto resumed=install(Client::Assist,12,42,(HWND)42);assert(resumed&&host().timerPeriod==4&&timerPeriod==4);
+ assert(release(Client::Assist,resumed));assert(timerPeriod==1000&&timerBalance==0);
+ std::puts("PASS idle host cadence 4ms -> 1000ms, no-target callbacks post nothing, attach restores 4ms before returning");
 }
 '''
 other='''#include "host_game_input.h"

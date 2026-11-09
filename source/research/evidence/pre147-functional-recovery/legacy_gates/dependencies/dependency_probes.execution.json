@@ -1,0 +1,57 @@
+{
+  "check": {
+    "name": "dependency_probes",
+    "command": [
+      "python",
+      "source/tools/test_dependency_probes.py",
+      "--out",
+      "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/dependencies"
+    ],
+    "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+    "environment": {
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "exit_code": 0,
+    "executed_this_revision": true,
+    "source_inputs_unchanged": true,
+    "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/dependencies/receipt.json",
+    "log_sha256": "cfd042c1f7f700b151d7b19edd0fb33d63f5ce59ff59c978509ad6cb6685a14c",
+    "package_success_marker": true,
+    "test_source_hashes": {
+      "source/tools/test_dependency_probes.py": "e0fbe445990f95a8d76dc2db8990597db749aa5c04de04afe26e056fcd761f37"
+    },
+    "production_source_hashes": {
+      "source/engine/prepare_runtime.py": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96",
+      "source/engine/runtime-dependencies.json": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+    },
+    "execution_receipt_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/dependencies/dependency_probes.execution.json",
+    "scope": "Current portable fixture execution. No Windows/game/physical GPU/multiplayer execution claim. Integration caller hashes are bindings, not full Host execution."
+  },
+  "commands": [
+    {
+      "stage": "run",
+      "argv": [
+        "python",
+        "source/tools/test_dependency_probes.py",
+        "--out",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/dependencies"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "started_utc": "2026-11-09T04:50:01.647621+00:00",
+      "finished_utc": "2026-11-09T04:50:02.290444+00:00",
+      "elapsed_seconds": 0.6428403280006023,
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/dependencies/dependency_probes.command.log",
+      "log_sha256": "1a985f671b05fb335a4e25e8f8393494bd9845b432194e0311ea65ddf48a5e14"
+    }
+  ],
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "input_sha256_before": {
+    "source/tools/test_dependency_probes.py": "e0fbe445990f95a8d76dc2db8990597db749aa5c04de04afe26e056fcd761f37",
+    "source/engine/prepare_runtime.py": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96",
+    "source/engine/runtime-dependencies.json": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+  }
+}

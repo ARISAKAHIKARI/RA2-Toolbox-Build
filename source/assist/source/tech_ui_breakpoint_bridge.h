@@ -346,10 +346,10 @@ static bool restoreTechParameters(){using namespace techparameters;const bool ch
 static bool restoreTechEnhanceParameters(){using namespace techparameters;const bool changed=enhancementDesired||(service.lease.tags()&12)||service.lease.uncertain;InterlockedExchange(&policy.enhanced,0);enhancementDesired=false;enhancementFailure=0;enhancementCameoBlocked=false;if(changed)attempted=0;refusedGroups&=~12u;configure();return techEnhanceParametersRetired();}
 static void maintainTechParameters(){
  using namespace techparameters;syncDebugBreakpointPolicy();service.poll();singlefps::maintain();
- if(!sh||sh->stop||fault){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;enhancementCameoBlocked=false;fullFailureRetry.reset();controlFailureRetry.reset();InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
+ if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;enhancementCameoBlocked=false;fullFailureRetry.reset();controlFailureRetry.reset();InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
  else if(!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();}
- if(!sh||sh->stop||fault||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();}
- if(!sh||sh->stop||fault||!sh->mapVisibility){InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;}
+ if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();}
+ if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||!sh->mapVisibility){InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;}
  refreshControlEligibility();configure();
  // Idle slot inspection enters an actual owner-thread INT3 rendezvous and
  // briefly owns a VEH/handle even with every hardware feature disabled.
@@ -358,7 +358,7 @@ static void maintainTechParameters(){
  // admission and active audits still inspect the real registers themselves.
  // Stop/fault and pending restoration never start another idle inspection.
  static DWORD inspected=0;const DWORD now=GetTickCount();
- if(sh&&sh->debugVisible&&!sh->stop&&!fault&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!singlefps::desired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
+ if(sh&&sh->debugVisible&&!sh->stop&&!fault&&readonly::commands(sh)&&!readOnlyState.active&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!singlefps::desired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
 }
 static bool requestTechParameters(uint32_t house){
  using namespace techparameters;maintainTechParameters();
@@ -446,11 +446,22 @@ static void techEnhanceParametersTick(uint32_t house,DWORD now){
  enhancementFailure=0;enhancementDesired=true;
  if(!enhancementParameterScan||DWORD(now-enhancementParameterScan)>=500||!policy.enhanced||!policy.enhancementIndex.ready()){
   enhancementParameterScan=now;InterlockedExchange(&policy.enhanced,0);policy.enhancementIndex.reset();for(auto&t:policy.enhancement)t={};
-  for(unsigned i=0;i<techenhancement::Count;++i){const auto&r=techenhancement::Rules[i];Vec types=vec(r.array,4096);
-   for(int index=0;index<types.count;++index){const uint32_t pointer=item(types,index);if(!pointer||techEnhancementCatalogueLevel(pointer,get<int>(pointer+0x634))!=1)continue;
-    char id[24]{};if(get<uint32_t>(pointer)!=r.vtable||!read(pointer+0x24,id,sizeof id)||!memchr(id,0,sizeof id)||!techenhancement::sameID(id,r.id)||!techenhancement::eligible(r,get<int>(pointer+0x634)))continue;
-    const uint32_t uid=get<uint32_t>(pointer+0x10);if(!uid)continue;
-    policy.enhancement[i]={{pointer,uid,r.vtable},types.items,index,get<int>(pointer+0x634)};break;
+  // All rules for one native array share this capture, not a long-lived
+  // authorization cache. Array order still determines each rule's first
+  // match, and the hot callback retains its live identity/membership guards.
+  for(unsigned first=0;first<techenhancement::Count;++first){const uint32_t array=techenhancement::Rules[first].array;
+   bool seen=false;for(unsigned prior=0;prior<first;++prior)if(techenhancement::Rules[prior].array==array){seen=true;break;}if(seen)continue;
+   unsigned remaining=0;for(unsigned i=first;i<techenhancement::Count;++i)if(techenhancement::Rules[i].array==array)++remaining;
+   const Vec types=vec(array,4096);
+   for(int index=0;index<types.count;++index){const uint32_t pointer=item(types,index);if(!pointer)continue;
+    const int level=get<int>(pointer+0x634);if(level!=-1&&(level<2||level>100))continue;
+    uint32_t table=0;char id[24]{};if(!read(pointer,&table,4)||!read(pointer+0x24,id,sizeof id)||!memchr(id,0,sizeof id))continue;
+    uint32_t uid=0;bool identified=false;
+    for(unsigned i=first;i<techenhancement::Count;++i){const auto&r=techenhancement::Rules[i];
+     if(r.array!=array||policy.enhancement[i].type.pointer||table!=r.vtable||!techenhancement::sameID(id,r.id)||!techenhancement::eligible(r,level))continue;
+     if(!identified){uid=get<uint32_t>(pointer+0x10);identified=true;}if(uid){policy.enhancement[i]={{pointer,uid,r.vtable},types.items,index,level};--remaining;}
+    }
+    if(!remaining)break;
    }
   }
   policy.enhancementIndex.rebuild(policy.enhancement,[](const EnhancedIdentity&t){return t.type.pointer;});MemoryBarrier();

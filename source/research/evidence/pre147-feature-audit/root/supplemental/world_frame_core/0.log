@@ -1,0 +1,17 @@
+GRAPH Base 28 reads/114688 bytes/3 rosters; Combat 34/139264/3; Passengers 30/122880/3; Ore 34/139264/8; Visual 39/159744/24
+PASS nothrow pages: zero initial page allocation, bounded geometric growth, injected initial/growth/import failure, retained bytes/capacity, reset reuse, no repeated allocation after failure and successful recovery
+PASS production world frame core: 74634 checks; overlap/immutable/failed/missing/roster/demand/queue/page-capacity
+GRAPH Base 28 reads/114688 bytes/3 rosters; Combat 34/139264/3; Passengers 30/122880/3; Ore 34/139264/8; Visual 39/159744/24
+PASS nothrow pages: zero initial page allocation, bounded geometric growth, injected initial/growth/import failure, retained bytes/capacity, reset reuse, no repeated allocation after failure and successful recovery
+MAPPING pages=0 capacity=0 control=65900 payload=0 total=65900
+MAPPING pages=1 capacity=1 control=65900 payload=10384 total=76284
+MAPPING pages=28 capacity=32 control=65900 payload=328320 total=394220
+MAPPING pages=33 capacity=64 control=65900 payload=656512 total=722412
+MAPPING pages=512 capacity=512 control=65900 payload=5251200 total=5317100
+MAPPING pages=513 capacity=1024 control=65900 payload=10502272 total=10568172
+MAPPING pages=4096 capacity=4096 control=65900 payload=42008704 total=42074604
+MAPPING pages=16384 capacity=16384 control=65900 payload=168034432 total=168100332
+PASS dynamic mappings: bounded geometric growth, no per-frame create/open/map, producer create/map failure preserves publication, consumer open/map failure defers, header/descriptor identity, retire/reconnect and pinned tokens
+PASS mapping interleavings: double publication during open rejects mixed bytes; retire during open keeps mapped handle alive and rejects retired token
+PASS production transport/ProcessReader/Runtime: pinned publication, independent pause observation, required/optional failures, no live fallback, sustained demand, same-frame single capture, independent world/frame/House rejection
+PASS production world frame core: 75357 checks; overlap/immutable/failed/missing/roster/demand/queue/page-capacity

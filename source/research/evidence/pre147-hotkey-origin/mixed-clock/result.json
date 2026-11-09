@@ -1,0 +1,238 @@
+{
+  "passed": true,
+  "scope": "compiled exact historical mergeExternal age/read/render statements and desiredHotkeyMode functions; synthetic clock inputs, not the complete UI or native Windows/game",
+  "introducing_commit": "944586abf9cd331d2aaf9fe24af744a593bd31d3",
+  "case_count": 11,
+  "checks": 33,
+  "assumptions": [
+    "Healthy command side is represented by snap.status=1; foreground=true, enabled=true and chat=false.",
+    "The 8ms future producer timestamp is a deliberately chosen model input, not a measured Windows clock skew or an observed timestamp from the user log.",
+    "confirmed=false models an incomplete sampling attempt followed by merge; this fixture does not execute WorldFrameScope, readSnapshot, registration APIs or key arrival timing.",
+    "confirmed=true bypasses the age check exactly as production does; independent producer confirmation itself is not simulated or inferred from wall-clock age.",
+    "The modeled future-tick rejection stops when displayNow reaches sampledTick. Repeated short context loss is possible but a persistent outage is not established."
+  ],
+  "sources": {
+    "v143": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/v143/main.cpp",
+      "commit": "bf3fbe88faa96513649f2998aa0ab6e71935f4a8",
+      "sha256": "60a194d16c3f6e124aa678f57dc33049b1b974b8c2212988546ee7d523538b16"
+    },
+    "v1464": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/registry-history/v1464/main.cpp",
+      "commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a",
+      "sha256": "cb446fd28028f9b73379d4963dbd491e6aa2a5bc8d83166c45672fef99adc3df"
+    },
+    "clock_ms.h": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/v1464/clock_ms.h",
+      "commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a",
+      "sha256": "fe005a2dbc48c344da3a26607cdf9b47f207b251fa13ae9c924ad3bac1e4384c"
+    },
+    "world_frame_runtime.h": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/v1464/world_frame_runtime.h",
+      "commit": "f452d1cb95c57f465356b55a3d7b83fb7403a70a",
+      "sha256": "c9d04f2944a8517494fe52e6c20e73b1fc35fe68600b0dc4ff2c3e9b200ce5c1"
+    },
+    "introducing_patch": {
+      "path": "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/944586-main.patch",
+      "commit": "944586abf9cd331d2aaf9fe24af744a593bd31d3",
+      "sha256": "798b7535127028ad4742af1e4b034d63f9f5bf376cc75d42e5076bad9f5b3da8"
+    }
+  },
+  "fragments": {
+    "v143": {
+      "read_status": {
+        "start_line": 1210,
+        "end_line": 1210,
+        "text": "snap.readStatus=d.status==1&&d.sampledTick&&DWORD(displayNow-d.sampledTick)>=2000?0:d.status;",
+        "extracted_sha256": "ec975ae56528d73793237c83d21f3a844b38027f18070be84b2d28d5216a606d"
+      },
+      "valid_and_render": {
+        "start_line": 1213,
+        "end_line": 1215,
+        "text": "const bool externalValid=d.status==1&&d.sampledTick&&\n                           DWORD(displayNow-d.sampledTick)<2000;\n snap.renderStatus=externalValid&&d.renderStatus==1?1:0;",
+        "extracted_sha256": "293c2643840d29c651e22cf827c8171ef9c4633ed4628b212a7a864a13f8ccfa"
+      },
+      "desired_hotkey_mode": {
+        "start_line": 560,
+        "end_line": 564,
+        "text": "static int desiredHotkeyMode(){\n if(!foregroundGame()||snap.renderStatus!=1||snap.chat)return 0;\n if(enabled&&snap.status==1)return 2;\n return !enabled&&extra.watchSecondary&&snap.readStatus==1?1:0;\n}",
+        "extracted_sha256": "b684bf556e8e2371ec4cdd5fb7033850c53311363c50f117db1647bbf72acc3b"
+      }
+    },
+    "v1464": {
+      "read_status": {
+        "start_line": 1246,
+        "end_line": 1246,
+        "text": "snap.readStatus=d.status==1&&d.sampledTick&&DWORD(displayNow-d.sampledTick)>=2000&&!externalSourceConfirmed?0:d.status;",
+        "extracted_sha256": "4f0c542fa8b42ba7a32663342413e6fb4adb345b425db42a1b0f4f3430badbe1"
+      },
+      "valid_and_render": {
+        "start_line": 1249,
+        "end_line": 1251,
+        "text": "const bool externalValid=d.status==1&&d.sampledTick&&\n                           (DWORD(displayNow-d.sampledTick)<2000||externalSourceConfirmed);\n snap.renderStatus=externalValid&&d.renderStatus==1?1:0;",
+        "extracted_sha256": "562dabccd6068e146d3e0e3526abbb3a079e522a07cd73fcdf388d4ccab00447"
+      },
+      "desired_hotkey_mode": {
+        "start_line": 565,
+        "end_line": 569,
+        "text": "static int desiredHotkeyMode(){\n if(!foregroundGame()||snap.renderStatus!=1||snap.chat)return 0;\n if(enabled&&snap.status==1)return 2;\n return !enabled&&extra.watchSecondary&&snap.readStatus==1?1:0;\n}",
+        "extracted_sha256": "b684bf556e8e2371ec4cdd5fb7033850c53311363c50f117db1647bbf72acc3b"
+      }
+    }
+  },
+  "context_source_lines": {
+    "v143/main.cpp": {
+      "old_sample_uses_display_clock": [
+        1252,
+        1252
+      ]
+    },
+    "v1464/main.cpp": {
+      "merge_uses_host_display_clock": [
+        1242,
+        1251
+      ],
+      "confirmation_reset_before_attempt": [
+        1288,
+        1288
+      ],
+      "missing_token_returns": [
+        1292,
+        1296
+      ],
+      "same_frame_confirmation": [
+        1308,
+        1310
+      ],
+      "producer_tick_and_incomplete_return": [
+        1311,
+        1314
+      ],
+      "read_snapshot_calls_merge": [
+        1462,
+        1462
+      ],
+      "hotkey_mode_change_reregisters": [
+        2272,
+        2272
+      ]
+    },
+    "v1464/clock_ms.h": {
+      "separate_gettick_and_qpc_clock_domains": [
+        8,
+        25
+      ]
+    },
+    "v1464/world_frame_runtime.h": {
+      "producer_key_tick_uses_GetTickCount": [
+        33,
+        34
+      ]
+    }
+  },
+  "commands": {
+    "compile": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/mixed-clock-evidence/probe.cpp",
+      "-o",
+      "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/mixed-clock-evidence/probe"
+    ],
+    "run": [
+      "/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/mixed-clock-evidence/probe"
+    ]
+  },
+  "exit_codes": {
+    "compile": 0,
+    "run": 0
+  },
+  "results": [
+    {
+      "case": "old_host_clock_same_time",
+      "unsigned_age": 0,
+      "read_status": 1,
+      "render_status": 1,
+      "desired_hotkey_mode": 2
+    },
+    {
+      "case": "new_producer_ahead_8ms_unconfirmed",
+      "unsigned_age": 4294967288,
+      "read_status": 0,
+      "render_status": 0,
+      "desired_hotkey_mode": 0
+    },
+    {
+      "case": "new_producer_ahead_8ms_confirmed",
+      "unsigned_age": 4294967288,
+      "read_status": 1,
+      "render_status": 1,
+      "desired_hotkey_mode": 2
+    },
+    {
+      "case": "new_producer_ahead_1ms_unconfirmed",
+      "unsigned_age": 4294967295,
+      "read_status": 0,
+      "render_status": 0,
+      "desired_hotkey_mode": 0
+    },
+    {
+      "case": "new_clock_catches_up",
+      "unsigned_age": 0,
+      "read_status": 1,
+      "render_status": 1,
+      "desired_hotkey_mode": 2
+    },
+    {
+      "case": "new_fresh_past_sample",
+      "unsigned_age": 16,
+      "read_status": 1,
+      "render_status": 1,
+      "desired_hotkey_mode": 2
+    },
+    {
+      "case": "new_true_expiry_2000ms",
+      "unsigned_age": 2000,
+      "read_status": 0,
+      "render_status": 0,
+      "desired_hotkey_mode": 0
+    },
+    {
+      "case": "new_independently_confirmed_old_frame",
+      "unsigned_age": 2000,
+      "read_status": 1,
+      "render_status": 1,
+      "desired_hotkey_mode": 2
+    },
+    {
+      "case": "new_confirmed_invalid_display_sample",
+      "unsigned_age": 8,
+      "read_status": 0,
+      "render_status": 0,
+      "desired_hotkey_mode": 0
+    },
+    {
+      "case": "new_confirmed_hidden_display",
+      "unsigned_age": 8,
+      "read_status": 1,
+      "render_status": 0,
+      "desired_hotkey_mode": 0
+    },
+    {
+      "case": "new_uint32_wrap_fresh",
+      "unsigned_age": 32,
+      "read_status": 1,
+      "render_status": 1,
+      "desired_hotkey_mode": 2
+    }
+  ],
+  "artifacts": {
+    "mixed_clock_probe.py": "cc91b92dee7617cb70bf588ab5d241429c121b85b2150d0aadc63704f56b0f58",
+    "probe.cpp": "f7766010992b6eee5a90aadbf9c9467b574ad8e58387f5565a548e2e87148bb2",
+    "probe": "ce4fffc8508f712a75342796e98a1c7cbf484a955c293c33515e35c4ed92b45b",
+    "compile.log": "3f04a460febc83b40dce2d133e05b0c780e339eab78e18c68b0c554480f1aeea",
+    "run.log": "c9b99512d6291e6ed170982723a76e55c4ab12495fca720bcf1916fd78b3822d"
+  }
+}

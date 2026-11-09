@@ -1,0 +1,1 @@
+PASS: 22 incomplete terrain batches rejected; front retained/recovered; live masks reject missing reads; null cells and page fallback remain valid; world changes invalidate

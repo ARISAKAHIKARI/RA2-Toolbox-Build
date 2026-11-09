@@ -1,0 +1,17 @@
+PASS debug navigation is category 5 and preserves independent category caches
+PASS typed optional metadata is immutable and ordinary controls remain ordinary
+PASS read-only probe tools keep ordinary action tokens beside the debug catalogue
+PASS unconnected data is unknown even when a retained sample says ready or installed
+PASS call readiness is independent from hook installation
+PASS actual blocked sites and hook conflicts retain separate evidence
+PASS relative age expires quiet observations without relying on host clocks
+PASS switching validation off does not manufacture a ready observation
+PASS malformed metadata cannot display unverified ready or installed state
+PASS search includes full addresses, entry labels, purposes and affected features
+PASS status filters distinguish blocked, unobserved, unused and unchecked entries
+PASS individual toggle uses opaque control token and waits for ACK snapshot revision
+PASS toggle rejection restores observed setting and displays an explicit error
+PASS cached previous-generation diagnostics cannot submit or claim current readiness
+PASS new snapshot owns its local receipt time and refreshes an expired observation
+PASS same address call and breakpoint retain independent controls and settings
+16 debug console core scenarios passed

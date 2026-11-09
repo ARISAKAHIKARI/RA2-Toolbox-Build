@@ -1,0 +1,37 @@
+{
+  "source_sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+  "test_sha256": "0f236a616fb69becdda017b782c2ed1bc6320d8270af5ee87da613b6eeb1e3af",
+  "predicates": {
+    "visible": "panel&&activeToast(now)",
+    "expired": "!activeToast(now)",
+    "clear": "toastUntil=0;toastActive=false;"
+  },
+  "verification_level": "controlled_execution_of_extracted_production_toast_logic",
+  "not_verified": [
+    "Windows painting and OS timer"
+  ],
+  "runs": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap/toast_clock_current.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap/toast_clock_current"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/toast_clock_wrap/toast_clock_current"
+      ],
+      "exit_code": 0,
+      "stdout": "15 checks, 0 failures\n",
+      "stderr": ""
+    }
+  ]
+}

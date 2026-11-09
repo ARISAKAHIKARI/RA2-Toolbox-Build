@@ -1,0 +1,87 @@
+{
+  "schema": "ra2.functional-package-parser-verification.v1",
+  "scope": "parser_and_working_source_binding_only",
+  "passed": true,
+  "product_build_performed": false,
+  "product_suites_rerun": false,
+  "frozen_commit_validation_performed": false,
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "checks": [
+    {
+      "name": "console_receipt_order",
+      "accepted": true,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/console/receipt-order.current.log",
+      "log_sha256": "4f153fc259a520d615517ca4fd3b59a6972d632f925bb391d8c756c8623bead2",
+      "source_fingerprints_verified": 3
+    },
+    {
+      "name": "catalogue_recovery",
+      "accepted": true,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/catalogue.after.stdout.log",
+      "log_sha256": "7033345aabed840bce11ac41a67c17dcd5f478c211dfc6d134118bbc9233fa1c",
+      "source_fingerprints_verified": 4
+    },
+    {
+      "name": "scene_extra_recovery",
+      "accepted": true,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/render/fixed2/run.log",
+      "log_sha256": "a975bfa0019c0bf128de7031a520a58e8b4d65fa3cad655ab0075b067158041a",
+      "source_fingerprints_verified": 193
+    },
+    {
+      "name": "planner_batch_delivery",
+      "accepted": true,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/planner_batch_delivery.run.log",
+      "log_sha256": "8777c17f553ae3adc2a40f2e07b7dddae0b64cd895269ae0b7c7160fb25c1986",
+      "source_fingerprints_verified": 5
+    }
+  ],
+  "actual_failed_or_obsolete_logs": [
+    {
+      "name": "console_receipt_order",
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/console/receipt-order.before.log",
+      "log_sha256": "aac40a329d341cb2820d3e9c39a8dbc639f5004a6b7923f73ab4c97b8559c8d7",
+      "rejected": true
+    },
+    {
+      "name": "catalogue_recovery",
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/catalogue.before.stdout.log",
+      "log_sha256": "b6f2948216649aec8fe253e9d0cff934f3a2e86670b1ee2918b2187fb22c81a7",
+      "rejected": true
+    },
+    {
+      "name": "planner_batch_delivery",
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/baseline_run.log",
+      "log_sha256": "ef4c55f9251155c5a6f9fb36e879acbc6a160ea76f798aaf6818208a4ce7e036",
+      "rejected": true
+    },
+    {
+      "name": "planner_batch_delivery",
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/fixed_batch_run.log",
+      "log_sha256": "58179b1fb8d81c0186b59a20d758012dfebe0d4ecc8aea769b7e34d56626486e",
+      "rejected": true
+    },
+    {
+      "name": "scene_extra_recovery",
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/render/baseline2/run.log",
+      "log_sha256": "2bb10cf56c089cc1ea6f6581b3db06bb1aafc92458e3ff8f6c2ec6e9fea436a7",
+      "rejected": true
+    }
+  ],
+  "input_receipt_sha256": {
+    "/workspace/scratch/5a310fe852f8/functional147pre2/focused_checks.json": "59851dad4183442cbc9e65a9400a957bc7bd7285f64caa6703834b17a001c6d1",
+    "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/delivery_checks.json": "b379a407ee6992404a3b54a5f8c6eb9c803d13a7a86acaf84be7d28f6f6497e6"
+  },
+  "gate_input_sha256": {
+    "packages/v1.0.43/build_release.py": "0d742d2e8b74306888113a07341cd1b45088045992b4e8d384bb80d2049da612",
+    "packages/v1.0.46/package_release.py": "503907f9aed1217c0fccd9a0312a9e3cef5c267798119009115f555a78d57799",
+    "packages/v1.0.47/package_release.py": "aecbd38743fade52e8729c5f5361d49a84086a0072970377f19f9beafc26fe09",
+    "packages/v1.0.47/test_package_release.py": "64d5eb0d0ef581f100cc3c8a530b628efb9d8d2f9cf61051955469ed0ac821b3",
+    "packages/v1.0.47/README.txt": "702354b9ccdd99781841c79a51c6af68e68429a7b04dad332c954331e3b64a70",
+    "packages/v1.0.47/PACKAGING.md": "c75ded3e317e46ed56cab3519522a23d2e2a9a074ef0f1c8ed5a8f8a72b4186f"
+  },
+  "verifier_sha256": "0475518efda8c840906d9c2043ece3001e2593df3069d66dbdcb47cbe0e9539c"
+}

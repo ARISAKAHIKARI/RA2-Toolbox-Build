@@ -1,0 +1,221 @@
+{
+  "baseline_commit": "5a0f36704e80cc715215318660e31786c4c26cbc",
+  "reference_header_sha256": "4ec27f1eeeb1b79bb0804c65581211e5385adc9c4762b1fcc9225fc327386166",
+  "production_source_hashes": {
+    "source/assist/source/missile_compute.h": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+    "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e",
+    "source/assist/source/missile_bridge.h": "f1452196b2cd99783eae0bb3713683f14740e64e98ea2b12c426a19c630f212b"
+  },
+  "test_source_hashes": {
+    "source/assist/tests/missile_allocation_equivalence.cpp": "5fa4d1add17f6df48e415aaf961b3f9ba554507a9a7c35d160a1cebc9d9b6fd1",
+    "source/assist/tests/missile_compute.cpp": "d0ca3b1327717fe8a0487c1c425ab24ac397bb2bb1e3cee7bb3a00621366bd85"
+  },
+  "equivalence": {
+    "equivalent_scenarios": 8063,
+    "workspace_bytes": 66304,
+    "same_workspace_reused": true
+  },
+  "timings": [
+    {
+      "sources": 32,
+      "targets": 32,
+      "mode": 0,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 0.07642,
+      "optimized_median_ms": 0.02283
+    },
+    {
+      "sources": 32,
+      "targets": 32,
+      "mode": 1,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 0.060113,
+      "optimized_median_ms": 0.021054
+    },
+    {
+      "sources": 32,
+      "targets": 32,
+      "mode": 2,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 0.075746,
+      "optimized_median_ms": 0.021616
+    },
+    {
+      "sources": 32,
+      "targets": 32,
+      "mode": 3,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 0.059775,
+      "optimized_median_ms": 0.021426
+    },
+    {
+      "sources": 64,
+      "targets": 64,
+      "mode": 0,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 0.569922,
+      "optimized_median_ms": 0.102252
+    },
+    {
+      "sources": 64,
+      "targets": 64,
+      "mode": 1,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 0.450063,
+      "optimized_median_ms": 0.092
+    },
+    {
+      "sources": 64,
+      "targets": 64,
+      "mode": 2,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 0.624658,
+      "optimized_median_ms": 0.107788
+    },
+    {
+      "sources": 64,
+      "targets": 64,
+      "mode": 3,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 0.452913,
+      "optimized_median_ms": 0.089293
+    },
+    {
+      "sources": 128,
+      "targets": 128,
+      "mode": 0,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 4.358823,
+      "optimized_median_ms": 0.471065
+    },
+    {
+      "sources": 128,
+      "targets": 128,
+      "mode": 1,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 3.591839,
+      "optimized_median_ms": 0.483872
+    },
+    {
+      "sources": 128,
+      "targets": 128,
+      "mode": 2,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 4.361087,
+      "optimized_median_ms": 0.458497
+    },
+    {
+      "sources": 128,
+      "targets": 128,
+      "mode": 3,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 3.281861,
+      "optimized_median_ms": 0.447259
+    },
+    {
+      "sources": 256,
+      "targets": 256,
+      "mode": 0,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 34.133385,
+      "optimized_median_ms": 1.77835
+    },
+    {
+      "sources": 256,
+      "targets": 256,
+      "mode": 0,
+      "pattern": "same_distance",
+      "baseline_median_ms": 36.991791,
+      "optimized_median_ms": 2.721941
+    },
+    {
+      "sources": 256,
+      "targets": 256,
+      "mode": 1,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 26.671531,
+      "optimized_median_ms": 1.791569
+    },
+    {
+      "sources": 256,
+      "targets": 256,
+      "mode": 1,
+      "pattern": "same_distance",
+      "baseline_median_ms": 30.148519,
+      "optimized_median_ms": 2.735327
+    },
+    {
+      "sources": 256,
+      "targets": 256,
+      "mode": 2,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 34.173586,
+      "optimized_median_ms": 1.787863
+    },
+    {
+      "sources": 256,
+      "targets": 256,
+      "mode": 2,
+      "pattern": "same_distance",
+      "baseline_median_ms": 37.898536,
+      "optimized_median_ms": 2.765034
+    },
+    {
+      "sources": 256,
+      "targets": 256,
+      "mode": 3,
+      "pattern": "varied_distance",
+      "baseline_median_ms": 26.422378,
+      "optimized_median_ms": 1.779119
+    },
+    {
+      "sources": 256,
+      "targets": 256,
+      "mode": 3,
+      "pattern": "same_distance",
+      "baseline_median_ms": 30.536189,
+      "optimized_median_ms": 2.652266
+    }
+  ],
+  "sanitizers": {
+    "address": true,
+    "undefined": true,
+    "leak": false,
+    "exit_code": 0,
+    "environment": {
+      "ASAN_OPTIONS": "detect_leaks=0"
+    },
+    "command": [
+      "/workspace/scratch/5a310fe852f8/opt147/compute/missile_allocation_sanitized",
+      "--no-benchmark"
+    ],
+    "stdout_sha256": "c4ee087413ee74bebf8d8abb30a58632962498b4289b18b1ea666e7d308fde53",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "existing_behavior_log": {
+    "path": "/workspace/scratch/5a310fe852f8/opt147/compute/missile-behavior.log",
+    "sha256": "906f6424b5c9a137977b359aa94464c4d68ff9b13825edba3a2a95b2a9d93c60",
+    "exit_code": 0
+  },
+  "stack": {
+    "compiler": "Zig 0.13.0",
+    "target": "x86-windows-gnu",
+    "optimization": "O2",
+    "workspace_bytes": 66304,
+    "explicit_subtractions_bytes": [
+      64,
+      20,
+      32,
+      48,
+      44
+    ],
+    "alloca_probe_bytes": [
+      8544
+    ],
+    "largest_fixed_request": 8544,
+    "production_sha256": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+    "scope": "Production function with static-workspace wrapper; includes alloca probe requests. No Windows execution or total game-thread stack-depth claim."
+  },
+  "independent_review": "Column head order, optimistic global keys, remove-before-key-change, source-major exact ties and finite progress reviewed; no discrepancy found.",
+  "scope": "Pure value fixtures and x86 object-code generation. No Windows/game/GPU/multiplayer/FPS execution. Timings are paired container microbenchmarks; no fixed game speedup claim."
+}

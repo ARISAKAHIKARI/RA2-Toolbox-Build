@@ -7,7 +7,7 @@ static void servicePointer(){
  const DWORD capturedNow=GetTickCount();
  auto visible=external::display::inspect([](uint32_t at,void*p,size_t n){return externalReader.readFresh(at,p,n);});
  nativeviewportprojection::Transform viewport{};const bool viewportStable=nativeviewhost::sampleTransform(shared,viewport);
- const bool inputReady=viewportStable&&!formationInputOwns()&&!runtimeMiddleOwnsNow()&&shared&&!shared->viewZoomBusy&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
+ const bool inputReady=enabled&&readonly::commands(shared)&&viewportStable&&!formationInputOwns()&&!runtimeMiddleOwnsNow()&&shared&&!shared->viewZoomBusy&&commandFresh(capturedNow)&&foregroundGame()&&!incoming.chat&&visible.visible();
  gameinput::setPointerContext(hook,commandMatch(),inputReady,viewport.generation);
  if(pointerMatches.active()&&(!inputReady||!extra.allHotkeys||pointerMatches.revision!=settingsRevision||
     pointerMatches.capture.match!=commandMatch()||pointerMatches.capture.inputSerial!=gameinput::pointerCancelSerial(hook)))pointerMatches.clear();

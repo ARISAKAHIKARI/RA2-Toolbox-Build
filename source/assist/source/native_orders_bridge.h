@@ -1,5 +1,7 @@
 #include "native_orders.h"
 #include "unload_policy.h"
+#include "unload_admission.h"
+static unloadadmission::Queue queuedUnload;
 // All simulation commands go through EventClass constructors and the game's
 // outgoing queue. This file NEVER writes a unit's mission, target, or locomotor.
 struct NativeOrder {uint32_t p,id,cell,nearest,token,mode;int gx,gy;nativeorders::Progress progress;uint32_t target;int sentFrame;bool attacking,stopped,global;};
@@ -35,7 +37,7 @@ struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;i
 static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;
 static ObjectIndex watchedPassengers;
 static void restoreNativeHooks();
-static void clearNativeOrders(bool retireHooks){globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;if(retireHooks)restoreNativeHooks();resetUnloadCalculation();}
+static void clearNativeOrders(bool retireHooks){queuedUnload.clear();globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;if(retireHooks)restoreNativeHooks();resetUnloadCalculation();}
 static bool nativeMember(Vec,uint32_t p){return worldObjects.contains(p);}
 static bool nativeReady(){return simulationReady()&&sh->foreground&&!get<bool>(0xA8BC60+25);}
 
@@ -55,12 +57,13 @@ static void cancelUnloadPassenger(uint32_t p){for(int i=0;i<unloadCount;)
  if(unloadPassengers[i].p==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
  else ++i;}
 static void cancelNative(uint32_t p,bool manual=true){
+ queuedUnload.cancel(p,get<uint32_t>(p+0x10));
  if(manual)releaseSticky(p);
  pauseGlobalMagnetron(p);
  cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);for(i=0;i<unloadCount;)
  if(unloadPassengers[i].p==p||unloadPassengers[i].carrier==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
  else ++i;}
-static void cancelAutomatic(uint32_t p){releaseSticky(p);cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));
+static void cancelAutomatic(uint32_t p){queuedUnload.cancel(p,get<uint32_t>(p+0x10));releaseSticky(p);cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));
  cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);
  // Keep a release record until a native Guard can follow a tool-issued Sleep.
  // Manual click paths still use cancelNative because their own order takes over.
@@ -112,33 +115,92 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
   recentPassengers[at]={p,get<uint32_t>(p+0x10),carrier,get<uint32_t>(carrier+0x10),typeOf(carrier,2),manualVersions.get(get<uint32_t>(p+0x10)),now,frame};
  }
 }
-static int smartUnload(uint32_t house){
- // Smart unload only creates native EventClass missions. The input-hook
- // installation state is unrelated and must never prevent a manual hotkey
- // from starting an otherwise valid unload in a restricted launcher.
- if(!(sh->flags&SmartUnloadOrders)||!loadInterfaces())return -12;
- Vec selected=vec(0xA8ECB8),inf=vec(0xA83DE8);int sent=0;
+// Build one carrier-keyed roster per admission tick. A large selected cohort
+// must not rescan every infantry object once for each selected transport.
+struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1;};
+static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*2];static int unloadRosterCount;
+static void buildUnloadAdmissionRoster(uint32_t house){
+ unloadRosterCount=0;Vec inf=vec(0xA83DE8);
+ for(int n=0;n<inf.count&&unloadRosterCount<nativeorders::MaxPassengers;++n){uint32_t p=item(inf,n),carrier=p?get<uint32_t>(p+0x11C):0;
+  if(!carrier||!worldObjects.contains(carrier)||queuedUnload.find(carrier,get<uint32_t>(carrier+0x10))<0||kind(p)!=1||!own(p,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
+  unloadRoster[unloadRosterCount++]={carrier,p,get<uint32_t>(p+0x10),manualVersions.get(get<uint32_t>(p+0x10)),-1};
+ }
+ for(int n=0;n<recentPassengerCount&&unloadRosterCount<nativeorders::MaxPassengers*2;++n){const auto&r=recentPassengers[n];
+  if(queuedUnload.find(r.carrier,r.carrierID)>=0)unloadRoster[unloadRosterCount++]={r.carrier,r.p,r.id,r.token,n};
+ }
+ std::sort(unloadRoster,unloadRoster+unloadRosterCount,[](const auto&a,const auto&b){if(a.carrier!=b.carrier)return a.carrier<b.carrier;if(a.pointer!=b.pointer)return a.pointer<b.pointer;return a.history<b.history;});
+}
+static bool unloadCarrierEligible(uint32_t p,uint32_t house){return p&&worldObjects.contains(p)&&own(p,house)&&live(p)&&kind(p)==2&&featureObjectAllowed(featuretypes::UnloadTransport,p)&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C);}
+static int smartUnloadNow(uint32_t house,uint32_t p){
+ if(!unloadCarrierEligible(p,house))return 0;
  const int frame=get<int>(0xA8ED84);const DWORD now=sampleClock(sh);
- for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);if(!p||!own(p,house)||kind(p)!=2||!featureObjectAllowed(featuretypes::UnloadTransport,p)||get<bool>(p+0x1C8))continue;
-  uint32_t roster[nativeorders::MaxPassengers];int count=0;
-  for(int j=0;j<inf.count&&count<nativeorders::MaxPassengers;++j){uint32_t q=item(inf,j);if(q&&kind(q)==1&&featureObjectAllowed(featuretypes::UnloadPassenger,q)&&get<uint32_t>(q+0x21C)==house&&get<uint32_t>(q+0x11C)==p)roster[count++]=q;}
-  for(int j=0;j<recentPassengerCount&&count<nativeorders::MaxPassengers;++j){const auto&old=recentPassengers[j];uint32_t q=old.p;
-   if(old.carrier!=p||old.carrierID!=get<uint32_t>(p+0x10)||old.carrierType!=typeOf(p,2)||
-      DWORD(now-old.tick)>1500||frame<old.frame||frame-old.frame>90||!worldObjects.contains(q)||
-      get<uint32_t>(q+0x10)!=old.id||!own(q,house)||get<uint32_t>(q+0x11C)||manualVersions.get(old.id)!=old.token||
-      !featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
-   bool found=false;for(int k=0;k<count;++k)found|=roster[k]==q;
-   if(!found)roster[count++]=q;
-  }
-  const bool loaded=get<int>(p+0x114)>0;if(!loaded&&!count)continue;
-  int replace=0;for(int j=0;j<unloadCount;++j)if(unloadPassengers[j].p==p||unloadPassengers[j].carrier==p)++replace;
-  if(count>nativeorders::MaxPassengers-unloadCount+replace)return sent?sent:-6;
-  // Do not issue a second Deploy to an empty vehicle or an active unload.
-  if(loaded&&get<int>(p+0xAC)!=16&&get<int>(p+0xB4)!=16&&
-     !nativeMission(house,get<uint32_t>(p+0x10),16,0,0,0,0,0,taskarbiter::Owner::Unload))return sent?sent:-6;
-  cancelNative(p);++sent;
-  for(int j=0;j<count;++j){uint32_t q=roster[j];auto&r=unloadPassengers[unloadCount++];r={};r.job=++unloadJobSerial;r.p=q;r.id=get<uint32_t>(q+0x10);r.carrier=p;r.carrierID=get<uint32_t>(p+0x10);r.carrierType=typeOf(p,2);r.frame=get<int>(0xA8ED84);r.manualToken=manualVersions.get(r.id);}
- }return sent;
+ static uint32_t roster[nativeorders::MaxPassengers];int count=0;uint32_t previous=0;
+ auto*begin=std::lower_bound(unloadRoster,unloadRoster+unloadRosterCount,p,[](const UnloadRosterEntry&r,uint32_t carrier){return r.carrier<carrier;});
+ for(auto*at=begin;at<unloadRoster+unloadRosterCount&&at->carrier==p;++at){uint32_t q=at->pointer;
+  if(q==previous)continue;
+  if(!worldObjects.contains(q)||get<uint32_t>(q+0x10)!=at->id||!own(q,house)||kind(q)!=1||manualVersions.get(at->id)!=at->token||!featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
+  uint32_t carrier=get<uint32_t>(q+0x11C);
+  if(at->history>=0){const auto&old=recentPassengers[at->history];
+   if(old.carrierID!=get<uint32_t>(p+0x10)||old.carrierType!=typeOf(p,2)||DWORD(now-old.tick)>1500||frame<old.frame||frame-old.frame>90||carrier)continue;
+  }else if(carrier!=p)continue;
+  if(count==nativeorders::MaxPassengers)return -6;
+  previous=q;roster[count++]=q;
+ }
+ const bool loaded=get<int>(p+0x114)>0;if(!loaded&&!count)return 0;
+ int replace=0;for(int j=0;j<unloadCount;++j)if(unloadPassengers[j].p==p||unloadPassengers[j].carrier==p)++replace;
+ if(count>nativeorders::MaxPassengers-unloadCount+replace)return -6;
+ // Queue acceptance is separate from this native Deploy. Existing active
+ // unload and empty historical carriers never receive a second Deploy.
+ if(loaded&&get<int>(p+0xAC)!=16&&get<int>(p+0xB4)!=16&&
+    !nativeMission(house,get<uint32_t>(p+0x10),16,0,0,0,0,0,taskarbiter::Owner::Unload))return -6;
+ cancelNative(p);
+ for(int j=0;j<count;++j){uint32_t q=roster[j];auto&r=unloadPassengers[unloadCount++];r={};r.job=++unloadJobSerial;r.p=q;r.id=get<uint32_t>(q+0x10);r.carrier=p;r.carrierID=get<uint32_t>(p+0x10);r.carrierType=typeOf(p,2);r.frame=frame;r.manualToken=manualVersions.get(r.id);}
+ return 1;
+}
+static int smartUnload(uint32_t house){
+ if(!(sh->flags&SmartUnloadOrders)||!loadInterfaces())return -12;
+ if(!simulationReady()||get<bool>(0xA8BC60+25))return -11;
+ const DWORD now=sampleClock(sh);queuedUnload.begin(match,house,now);
+ static unloadadmission::Carrier candidates[unloadadmission::Capacity];static unloadpolicy::RosterLookup<unloadadmission::Capacity> selected;selected.clear();
+ static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> recent;recent.clear();
+ const int frame=get<int>(0xA8ED84);
+ for(int n=0;n<recentPassengerCount;++n){const auto&r=recentPassengers[n];
+  if(DWORD(now-r.tick)<=1500&&frame>=r.frame&&frame-r.frame<=90)recent.add(r.carrier,n);
+ }
+ int count=0,added=0;Vec v=vec(0xA8ECB8);
+ for(int n=0;n<v.count;++n){uint32_t p=item(v,n);if(!unloadCarrierEligible(p,house)||selected.find(p)>=0)continue;
+  uint32_t id=get<uint32_t>(p+0x10);int old=recent.find(p);
+  if(get<int>(p+0x114)<=0&&(old<0||recentPassengers[old].carrierID!=id||recentPassengers[old].carrierType!=typeOf(p,2)))continue;
+  if(count==unloadadmission::Capacity)return -42;
+  selected.add(p,count);candidates[count++]={p,id,manualVersions.get(id)};
+  if(queuedUnload.find(p,id)<0)++added;
+ }
+ // Preflight the whole request; never report a silently truncated prefix.
+ if(added>unloadadmission::Capacity-queuedUnload.count)return -42;
+ for(int n=0;n<count;++n)queuedUnload.add(candidates[n]);
+ return count; // acknowledgement means arranged, not physically unloaded
+}
+static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
+ const DWORD now=sampleClock(sh);
+ if(!(sh->flags&SmartUnloadOrders)||queuedUnload.epoch!=match||queuedUnload.house!=house||DWORD(now-queuedUnload.lastProgress)>12000){queuedUnload.clear();return;}
+ if(!queuedUnload.count||queuedUnload.frame==frame||!loadInterfaces()||!simulationReady()||get<bool>(0xA8BC60+25))return;
+ queuedUnload.frame=frame;queuedUnload.reindex();
+ if(budget<=0||!outgoingRoom())return;
+ // Reserve delivery room for passengers already on the ground. Enlarging
+ // carrier storage must not starve their follow-up commands until timeout.
+ int admissionBudget=std::min(budget,nativeorders::EventBudget);
+ if(unloadCount)admissionBudget=std::min(admissionBudget,outgoingRoom()/2);
+ if(admissionBudget<=0)return;
+ buildUnloadAdmissionRoster(house);int todo=std::min(queuedUnload.count,nativeorders::WorkPerFrame);
+ while(todo--&&queuedUnload.count&&budget>0&&admissionBudget>0&&outgoingRoom()){
+  if(queuedUnload.cursor>=queuedUnload.count)queuedUnload.cursor=0;
+  int at=queuedUnload.cursor++;auto task=queuedUnload.carriers[at];
+  if(!unloadCarrierEligible(task.pointer,house)||get<uint32_t>(task.pointer+0x10)!=task.id||worldByID(task.id)!=task.pointer||manualVersions.get(task.id)!=task.token||
+     (task.attempted&&DWORD(now-task.attemptedAt)>3500)){queuedUnload.remove(at);continue;}
+  if(!task.attempted){queuedUnload.carriers[at].attempted=true;queuedUnload.carriers[at].attemptedAt=now;}
+  int result=smartUnloadNow(house,task.pointer);
+  if(result>=0){queuedUnload.cancel(task.pointer,task.id);queuedUnload.lastProgress=now;if(result>0){--budget;--admissionBudget;}}
+ }
 }
 static void watchEjections(uint32_t house,int frame,Vec all){
  snap.ejectWatched=0;if(!(sh->flags&EjectAssist))return;
@@ -232,7 +294,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
 static void nativeOrdersTick(uint32_t house,int frame){
  if(frame==nativeFrame)return;nativeFrame=frame;
  pruneMagnetronPauses(frame); // drop is independently enabled, even without NativeOrders
- if(!(sh->flags&NativeOrders)&&!unloadCount){if(nativeCount)advancedObjects.clear();nativeCount=0;snap.advancedUnits=snap.unloadPending=0;return;}
+ if(!(sh->flags&NativeOrders)&&!unloadCount&&!queuedUnload.count){if(nativeCount)advancedObjects.clear();nativeCount=0;snap.advancedUnits=snap.unloadPending=0;return;}
  // Input interception is for advanced click / CS capture ONLY.  An input
  // hook error must not cancel an independently observed disembark/ejection:
  // those workers issue vanilla EventClass orders and need no code patch.
@@ -254,11 +316,11 @@ static void nativeOrdersTick(uint32_t house,int frame){
    advancedObjects.add(p,o.id,uint32_t(nativeCount));
   }
  }
- int budget=recurringBudget(EventLane::Unload);if(unloadCount||(sh->flags&EjectAssist))smartUnloadTick(house,frame,budget);
+ int budget=recurringBudget(EventLane::Unload);smartUnloadAdmissionTick(house,frame,budget);if(unloadCount||(sh->flags&EjectAssist))smartUnloadTick(house,frame,budget);
  // Advanced decisions use the selected shared Planner backend.
  // This state stores click intents and validates actor identities in either mode.
  for(int i=0;i<nativeCount;){auto&o=nativeOrders[i];if(!worldObjects.contains(o.p)||!own(o.p,house)||get<uint32_t>(o.p+0x10)!=o.id)removeOrder(i);else ++i;}
  if(nativeCount||snap.advancedUnits){advancedObjects.clear();for(int i=0;i<nativeCount;++i)advancedObjects.add(nativeOrders[i].p,nativeOrders[i].id,uint32_t(i+1));}
- snap.advancedUnits=nativeCount;snap.unloadPending=0;for(int i=0;i<unloadCount;++i)if(unloadPassengers[i].mode!=1)++snap.unloadPending;
+ snap.advancedUnits=nativeCount;snap.unloadPending=queuedUnload.count;for(int i=0;i<unloadCount;++i)if(unloadPassengers[i].mode!=1)++snap.unloadPending;
 }
 

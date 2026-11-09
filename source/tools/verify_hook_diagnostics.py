@@ -9,7 +9,32 @@ from pathlib import Path
 import argparse, hashlib, json, struct, sys
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from pe32_image import Image
-from verify_windows_outputs import SYSTEM, HOOKS, CURSOR_MAPPING, verify_cursor_mapping, verify_host_manifest, verify_worker_manifest, RELEASE_FILE_VERSION
+from verify_windows_outputs import (SYSTEM, HOOKS, CURSOR_MAPPING, verify_cursor_mapping,
+ verify_host_manifest, verify_worker_manifest, RELEASE_FILE_VERSION,
+ ASSIST_PROTOCOL, ASSIST_SHARED_BYTES, ASSIST_MAPPING, ENTRY_PROTOCOL,
+ ENTRY_REQUEST_BYTES, RUNTIME_PROTOCOL, RUNTIME_CONTROL_BYTES)
+
+def verify_protocol_identity(host,runtime):
+ # Equal host/Runtime exports are not sufficient: both must match the exact
+ # current product ABI. Keep the expected values shared with its PE verifier.
+ def exported(pe,symbol,size):
+  exports=pe.exports()
+  if symbol not in exports:raise ValueError('Missing identity export: '+symbol)
+  return pe.at_rva(exports[symbol],size)
+ expected=struct.pack('<II',ASSIST_PROTOCOL,ASSIST_SHARED_BYTES)
+ prefix=(ASSIST_MAPPING+'\0').encode('utf-16le')
+ for pe,info,mapping in ((host,'AssistHostProtocolInfo','AssistHostMappingPrefix'),
+                         (runtime,'AssistProtocolInfo','AssistMappingPrefix')):
+  if exported(pe,info,8)!=expected:raise ValueError(info+': current Assist protocol/Shared size mismatch')
+  if exported(pe,mapping,len(prefix))!=prefix:raise ValueError(mapping+': current mapping namespace mismatch')
+ if exported(runtime,'GameEntryManagerInfo',8)!=struct.pack('<II',ENTRY_PROTOCOL,ENTRY_REQUEST_BYTES):
+  raise ValueError('entry manager API mismatch')
+ if exported(runtime,'GameRuntimeInfo',8)!=struct.pack('<II',RUNTIME_PROTOCOL,RUNTIME_CONTROL_BYTES):
+  raise ValueError('Runtime diagnostic transport ABI mismatch')
+ return dict(assist_protocol=ASSIST_PROTOCOL,assist_shared_bytes=ASSIST_SHARED_BYTES,
+             assist_mapping=ASSIST_MAPPING,entry_protocol=ENTRY_PROTOCOL,
+             entry_request_bytes=ENTRY_REQUEST_BYTES,runtime_protocol=RUNTIME_PROTOCOL,
+             runtime_control_bytes=RUNTIME_CONTROL_BYTES)
 
 def main():
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--root',type=Path,required=True);a=p.parse_args();root=a.root.resolve()
@@ -39,13 +64,8 @@ def main():
  records['RA2HookTest.exe']['common_controls_activation']=verify_host_manifest(host,'x64')
  records['RA2HookTest.exe']['process_manifest']=verify_worker_manifest(host,'amd64','diagnostic host')
  records['GameRuntimeHost32.exe']['process_manifest']=verify_worker_manifest(images['GameRuntimeHost32.exe'],'x86','broker')
- def exported(pe,name,n):return pe.at_rva(pe.exports()[name],n)
- assert exported(host,'AssistHostProtocolInfo',8)==exported(runtime,'AssistProtocolInfo',8)==struct.pack('<II',100,23162400)
- assert exported(runtime,'GameEntryManagerInfo',8)==struct.pack('<II',3,108)
- assert exported(runtime,'GameRuntimeInfo',8)==struct.pack('<II',4,176)
- prefix='Local\\RA2Assist_v100_\0'.encode('utf-16le')
- assert exported(host,'AssistHostMappingPrefix',len(prefix))==exported(runtime,'AssistMappingPrefix',len(prefix))==prefix
- report=dict(verified=records,host_architecture='x64',runtime_architecture='x86',assist_protocol=101,runtime_protocol=4,cursor_protocol=cursor_protocol,game_tested=False,multiplayer_tested=False)
+ identity=verify_protocol_identity(host,runtime)
+ report=dict(verified=records,host_architecture='x64',runtime_architecture='x86',**identity,cursor_protocol=cursor_protocol,game_tested=False,multiplayer_tested=False)
  (root/'HOOK_TEST_VERIFIED.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
- print('PASS standalone x64 test host + x86 Runtime/broker; PE/import/manifest/Assist99/Runtime4/Cursor155 verified')
+ print(f'PASS standalone x64 test host + x86 Runtime/broker; PE/import/manifest/Assist{ASSIST_PROTOCOL}/Runtime{RUNTIME_PROTOCOL}/Cursor{cursor_protocol} verified')
 if __name__=='__main__':main()

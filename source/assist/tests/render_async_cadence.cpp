@@ -5,7 +5,7 @@
 #include <cstdio>
 template<class F>void eventually(F f){const auto end=std::chrono::steady_clock::now()+std::chrono::seconds(2);while(!f()){assert(std::chrono::steady_clock::now()<end);std::this_thread::yield();}}
 int main(){
- assert(renderpresentation::ObservationRate==1000);
+ assert(renderpresentation::ObservationFallbackRate==250);
  std::atomic<int> reads{0},renders{0};std::mutex mutex;std::condition_variable cv;bool entered=false,release=false;
  asyncwork::Recurring<int,int> sampler([&](const int&){++reads;return std::make_shared<const int>(7);});
  asyncwork::Recurring<int,int> renderer([&](const int&){
@@ -13,7 +13,7 @@ int main(){
   if(renders.fetch_add(1)==0){std::unique_lock<std::mutex>lock(mutex);entered=true;cv.notify_all();cv.wait(lock,[&]{return release;});}
   return state;
  });
- sampler.submit(0,1000);eventually([&]{return bool(sampler.get());});renderer.submit(0,500);
+ sampler.submit(0,renderpresentation::ObservationFallbackRate);eventually([&]{return bool(sampler.get());});renderer.submit(0,500);
  {std::unique_lock<std::mutex>lock(mutex);assert(cv.wait_for(lock,std::chrono::seconds(2),[&]{return entered;}));}
  const int before=reads.load();eventually([&]{return reads.load()>=before+12;});assert(!renderer.get());
  {std::lock_guard<std::mutex>lock(mutex);release=true;cv.notify_all();}

@@ -1,0 +1,1484 @@
+{
+  "schema": "ra2.feature-logic-audit.v1",
+  "version": "1.0.47-pre.10",
+  "base_remote_commit": "08aefd921ebe9b2960094dea0e41023ea9d963a4",
+  "inventory_origin": "76 prior tactical IDs retained only as inventory; old assertions/receipts are not inherited. Four related feature families added. Rows state the inspected logic boundary, not whole-file or all-MOD certification.",
+  "feature_points": 80,
+  "source_sha256": {
+    "source/assist/source/bridge.cpp": "e75e16043c110d7588c6235bf28eb5696699472bedb3a986a73faadcbc30b20e",
+    "source/assist/source/compute_tasks.h": "b4fe46f0102ccb5bc46d6414fe830ab1b8d5d5b16277a617725379f65236153c",
+    "source/assist/source/repair_delivery.h": "86be5a055b6789a6570bee6f6d1455b2731c96e1a4706c11c713f4e4e4dc4ea8",
+    "source/assist/source/tactical_decisions.h": "dd6dc31d55fb7d20d962570e05182557c69729e0cdd2d61f56af351c4b4977cb",
+    "source/assist/source/main.cpp": "8c10063a0f6ef2e39d955dbf44ad647364bb927fc300accba76c32be370bed06",
+    "source/external_reader/source/idle_aircraft.h": "8f136a5ca6f8066bfc1017caf3fd1d47578e4ddca3c40ab8be3d7873b80df7cf",
+    "source/assist/source/protocol.h": "e51f848234a8b0509f23244745d4cb48378df5a98e9f892f89dd02f9f70ea406",
+    "source/assist/source/type_select_bridge.h": "a26aae1d1119298a23f466f6644e863e51109e31814c23c60894ad6d9976328f",
+    "source/assist/source/variant_keys.h": "d41ff79400b46f2ef320a3426f74c93014c94329b5a26463d66cfd0ed8dff6c7",
+    "source/assist/source/autoload.h": "faf93595bb49d14802e2fe5d129e35a750c9f5f174db1c8fe4a16d27830103d6",
+    "source/assist/source/autoload_bridge.h": "068f34763606cd4c4bab54a16004a6b2a3f654933bf9ca8e64318fff3db2cc48",
+    "source/assist/source/native_orders_bridge.h": "3e86f39b9e559e07b4c4138098fd8096dc3cb8a0c123ddf56d5e481705e85270",
+    "source/assist/source/unload_compute_bridge.h": "620aba997d4a09ee85e3cf30fa9a89ef85947762c12ed7d4eb248f4cbc12ab61",
+    "source/assist/source/unload_compute.h": "9320d8940db3a948d51533a4931457cd676a01c07b64fed085395d11b7d19711",
+    "source/assist/source/unload_policy.h": "b699168531498e797f13045fd1932c31439df61ed16bc93c92644205caddc568",
+    "source/assist/source/hook_policy.h": "77a81035c8846b8f649f942c4225c8ba72c962a5e9e16bdacd7f42a8db5960ea",
+    "source/assist/source/pointer_bridge.h": "a2ca6e1666f6b9114da99b9d8f6894b46a121ef0852ec81ee8985d0f576d6e7d",
+    "source/assist/source/external_planner.h": "53eac0618e5356c6229d3fc7af113a246b4d9c896268bc3050a1c595170fba57",
+    "source/assist/source/advanced_decision.h": "30014b95bf18f57f27f5c55f353f0651e5c97acb6c41998f3a3fd9cef2c4df55",
+    "source/assist/source/external_orders_bridge.h": "14b829c97cae9709960724b58669d79b64cc17d5c5eb8f97b04f6ebf985f4fa1",
+    "source/assist/source/runtime_planner_bridge.h": "6fa51870307070da33fbe451c5d54b03a593ebb5b48029decdd692370241a226",
+    "source/assist/source/magnetron_drop_bridge.h": "6a5ab99baad2b48a45722e73144312e6fabde05ac3732b53268a76f63943d021",
+    "source/assist/source/cooperative_bridge.h": "d579af32a468c625258611e10fd2a1a05ee91b71ec5b3c953a68649b11e6376e",
+    "source/assist/source/cooperative_plan.h": "5b4db18682aa32504c68cc66fe34ae95554d570c2f85e493e070afc48a52d8dd",
+    "source/assist/source/cooperative_types.h": "be64cdf584a8eb643ddbe442439350c4b620d75964c26b1a1d0c55f664d62755",
+    "source/external_reader/source/cooperative_damage.h": "967b33ef3fbce8756222a2a31006c1bf2fb3daf7cd54c2929efa30ffd3a4cc84",
+    "source/assist/source/player_test_bridge.h": "e5be907ccf9fd51c844f2ff533d3b275eb163bbf414514f68e69a06b2c828cc9",
+    "source/assist/source/auto_cs_bridge.h": "caecde46b2eb9874b907181154b88221feaf996178769e4e3e312cf49eccff54",
+    "source/assist/source/disabled_feature_policy.h": "28ab53cd92f405156fad9d557aaa0d0ee14cfe16fe8b3e73c012fd55593e28d2",
+    "source/assist/source/mo_orders.h": "a7f38b1e0c4aeff688d6ee238bc74ca1fe7ddee3a71d5d2ea7af03c1a02fe7b3",
+    "source/assist/source/mo_orders_bridge.h": "e6c9dbe5d105b02cc4c5758e2619d563c84fe9fa15831e4b42b2939a5321fbe3",
+    "source/assist/source/mo_patrol_graph.h": "0496df478d3698635267542c4a983078db6af7c89cfbbe9ec37da6998bd7e278",
+    "source/assist/source/mo_patrol_planning_bridge.h": "e012bb381778cdd5ea12acdf049329a5690ff4cb3973149b34d69ccd472474a7",
+    "source/assist/source/formation.h": "505583f4bbed87b54d0c1587c32f638b5537ef4d2dd5b79f7c1743a5af9bf245",
+    "source/assist/source/formation_bridge.h": "ef1db4b064937aff080fbd448df12915f4a82576eb9ac02b515ab9f8916affe9",
+    "source/assist/source/formation_quick.h": "301bd2a426484bc10cc99bc893b02c952838b2dca37cf048d560bd4ba9810d78",
+    "source/assist/source/sticky_bridge.h": "e2b6443bf14f39fdd869b1425536b3d426c9b865fbe6dc6098ea0a79c126464f",
+    "source/assist/source/selected_mode_bridge.h": "134a9072732af341abbe47382867fceece6a9537b95875b5c71bfddab75aec4d",
+    "source/assist/source/attack_ground_bridge.h": "7960fbddf23dfc66556c2492e15b43bdbb341489f295318f09cb3ee0478192d2",
+    "source/assist/source/ore_queue.h": "9cee038574b9ca4cf06643644aed6b3ef12c1096fea2a3e1e762ac80cb07a293",
+    "source/assist/source/ore_harvest_bridge.h": "86fa79e17f63e2cccc8022a64ffc1870aead79d8bb3c95f0dd5d64b975824450",
+    "source/assist/source/ore_harvest_search.h": "a84805e129bbc190efd84f8baa70bd3ff9b1ff833ad51f482e3f69e9e488ab6e",
+    "source/assist/source/ore_type_config.h": "eef48140f2bcb1fdd134f55de73a6b78826430488dd657d9f8637fc6491634d2",
+    "source/assist/source/harvester_defense.h": "185e4b46e15bca7aa51bc4790d70674b5adb76f2ab32acc15bcb7192d58cf8dd",
+    "source/assist/source/harvester_defense_raw.h": "c890e9e25578dc0dc53b69f488f402608157516847e47b4ec5a5c1770dbab627",
+    "source/assist/source/harvester_defense_bridge.h": "dbcf460ddb5bd9d154cfad48c4dabf871168ce56fcab3dee067e13dab6f0eca1",
+    "source/assist/source/anti_theft_bridge.h": "06c91fb2abaaa97bf68b7776cd328029782eb852c64a1979ec199ce897abd8d4",
+    "source/assist/source/anti_theft_sample_bridge.h": "33a5890d76a10ca9733c6456b904315f4b66186affd1f6b0bf914fb3bec610dc",
+    "source/assist/source/dodge_bridge.h": "d251be34caad0f481a7ca39279e724a704202894be43c19bf80435ae74052dc9",
+    "source/assist/source/reverse_dodge_bridge.h": "1428c86d0b01d6287b2380b40916e30c469d74d49642cb8d049d2feadd06916f",
+    "source/assist/source/reverse_dodge.h": "bfba33db695041b59d5282b11592ded3f4a9e002d34ac5ced574b986095dd3f1",
+    "source/assist/source/dodge_compute.h": "1f37cce7426c49268f8a9ed8a400b0941c4bfecd3379e8312e2253ccd9ff76b5",
+    "source/assist/source/missile_bridge.h": "10e5909ba978b416e3809fb255c6762d675b473ef92d8e4228aa54817b7bfe70",
+    "source/assist/source/missile_compute.h": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+    "source/assist/source/compute_frame.h": "a88d6f9e3a79dad611a338ee0a60ac426bf40b96a627694534e482f125c54b55",
+    "source/assist/source/weapon_policy.h": "38cb967a4656087b9b7694544e520741c225ee6408c998fe9d99f0aeada19ceb",
+    "source/assist/source/input_patch.h": "18b1e77d65fff3066f69a89dd33606ddddbf7a1a316e8815221966c61d841f2b",
+    "source/assist/source/air_path_host.h": "8bd0168087d769e7e4a447a5557fedcc311ce01f19a5f2793e4d305a9b78da65",
+    "source/assist/source/air_path_policy.h": "19672ab3f39a5a2e6134c133bbacc379c8461f7804fa20f8a3865c582053759e",
+    "source/assist/source/construction_host.h": "4672538f176f05ed0d6c92bcfb6f7e91f21dc1b35388ae3510efdd1aa5584e35",
+    "source/assist/source/construction_policy.h": "78b888d6138b0b0f1825a8ba73058647119ca51c333dbf68b55da2b69da6b1ac",
+    "source/assist/source/construction_sidebar_bridge.h": "b4d9a9eff8a216a817637c851f194e06313cb80452d9a85deed3973ecdd60cfe",
+    "source/assist/source/social_bridge.h": "6f55ac28d8697859ed1a74d5c867eb305430452c598b5f45f0fb5cb5b5b5605e",
+    "source/assist/source/hotkey_host.h": "62c1953eadf547435cadb140275c7bfd85cb9d418ba8f6ce0e558960a2cc6def",
+    "source/shared/source/feature_availability.h": "f60feff8e03ea34db478dc2a388b1ea4f0a89880bf724573003045dd3669151a",
+    "source/assist/source/extra_settings_io.h": "386f0d08cb02ae65d47899c15f64d1f5753abfdd0cf948f635fc6270622de0e8",
+    "source/assist/source/burst_bridge.h": "cebbc8276a30c8c8d56c3346664ed3408f9f05fa15a3869aacbbc5a8f077bb25",
+    "source/assist/source/compute_policy.h": "0f97556abe9641c5ebaf1af1efa30175eea6eb434129022c6fd6c337df04e796",
+    "source/assist/source/player_test_policy.h": "2d106829eca4e42a9d25804bc4bb4333eede3f020bbf69ab2d7e1417f32ed39b",
+    "source/assist/source/tech_data_policy.h": "7ca69e3c850805663526c968cd5b917cca23b1c14c371d4a415cdb964385c1f4",
+    "source/assist/source/tech_parameter_lookup.h": "14fd3aa6ef6b4557804d44fd6743ac4b5bc1e92f7a23f7fc434c0ffe9a735a43",
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/superweapon_grant_bridge.h": "7a7e01fd9b208ee6ac35570e30257dc79690c5c116e9e7ba9440d91e50ccde39",
+    "source/assist/source/superweapon_sidebar_model.h": "4cfcbea10399d19b5ed22cb09a9ee6a4f1c3944d0b6b2eb1c369747b1849ba26"
+  },
+  "features": [
+    {
+      "id": "repair.manual",
+      "label": "显式维修协议命令",
+      "inspection": "维修资格、等待观察、手动/自动取消",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/compute_tasks.h",
+        "source/assist/source/repair_delivery.h",
+        "source/assist/source/tactical_decisions.h"
+      ],
+      "related_controlled_checks": [
+        "repair_delivery",
+        "planner_batch_delivery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "repair.auto",
+      "label": "自动维修",
+      "inspection": "维修资格、等待观察、手动/自动取消",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/compute_tasks.h",
+        "source/assist/source/repair_delivery.h",
+        "source/assist/source/tactical_decisions.h"
+      ],
+      "related_controlled_checks": [
+        "repair_delivery",
+        "planner_batch_delivery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "repair.unrepairable",
+      "label": "允许维修通常不可维修建筑",
+      "inspection": "维修资格、等待观察、手动/自动取消",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/compute_tasks.h",
+        "source/assist/source/repair_delivery.h",
+        "source/assist/source/tactical_decisions.h"
+      ],
+      "related_controlled_checks": [
+        "repair_delivery",
+        "planner_batch_delivery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "select.combat",
+      "label": "选择作战单位",
+      "inspection": "身份、类别、空闲/满载/受损、类型变种",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/tactical_decisions.h"
+      ],
+      "related_controlled_checks": [
+        "selection_catalogue_identity",
+        "catalogue_recovery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "select.empty_transport",
+      "label": "选择空载运输载具",
+      "inspection": "身份、类别、空闲/满载/受损、类型变种",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/tactical_decisions.h"
+      ],
+      "related_controlled_checks": [
+        "selection_catalogue_identity",
+        "catalogue_recovery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "select.damaged",
+      "label": "选择受损单位",
+      "inspection": "身份、类别、空闲/满载/受损、类型变种",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/tactical_decisions.h"
+      ],
+      "related_controlled_checks": [
+        "selection_catalogue_identity",
+        "catalogue_recovery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "select.idle_miner",
+      "label": "轮选空闲矿车",
+      "inspection": "身份、类别、空闲/满载/受损、类型变种",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/tactical_decisions.h"
+      ],
+      "related_controlled_checks": [
+        "selection_catalogue_identity",
+        "catalogue_recovery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "select.idle_engineer",
+      "label": "轮选空闲工程师",
+      "inspection": "身份、类别、空闲/满载/受损、类型变种",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/tactical_decisions.h"
+      ],
+      "related_controlled_checks": [
+        "selection_catalogue_identity",
+        "catalogue_recovery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "select.idle_transport",
+      "label": "定位空闲运输载具",
+      "inspection": "身份、类别、空闲/满载/受损、类型变种",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/tactical_decisions.h"
+      ],
+      "related_controlled_checks": [
+        "selection_catalogue_identity",
+        "catalogue_recovery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "select.idle_aircraft",
+      "label": "轮选空闲飞机",
+      "inspection": "身份、类别、空闲/满载/受损、类型变种",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp",
+        "source/external_reader/source/idle_aircraft.h"
+      ],
+      "related_controlled_checks": [
+        "selection_catalogue_identity",
+        "catalogue_recovery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "select.type",
+      "label": "按类型与组合类型选兵",
+      "inspection": "身份、类别、空闲/满载/受损、类型变种",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp",
+        "source/assist/source/protocol.h",
+        "source/assist/source/type_select_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "selection_catalogue_identity",
+        "catalogue_recovery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "select.variant",
+      "label": "按当前武器变体选择同类单位",
+      "inspection": "身份、类别、空闲/满载/受损、类型变种",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp",
+        "source/assist/source/type_select_bridge.h",
+        "source/assist/source/variant_keys.h"
+      ],
+      "related_controlled_checks": [
+        "selection_catalogue_identity",
+        "catalogue_recovery"
+      ],
+      "fixed_findings": [
+        "F9"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "beacons.clear",
+      "label": "清除信标",
+      "inspection": "会话/所属、依赖与失败回执",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "load.nearest",
+      "label": "自动装车：就近优先",
+      "inspection": "容量、体积、目标合法性、延迟发送的手动版本",
+      "implementation_locations": [
+        "source/assist/source/autoload.h",
+        "source/assist/source/autoload_bridge.h",
+        "source/assist/source/compute_tasks.h"
+      ],
+      "related_controlled_checks": [
+        "autoload",
+        "passenger_frame_sampling"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "load.balanced",
+      "label": "自动装车：兵种均衡",
+      "inspection": "容量、体积、目标合法性、延迟发送的手动版本",
+      "implementation_locations": [
+        "source/assist/source/autoload.h",
+        "source/assist/source/autoload_bridge.h",
+        "source/assist/source/compute_tasks.h"
+      ],
+      "related_controlled_checks": [
+        "autoload",
+        "passenger_frame_sampling"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "unload.command",
+      "label": "显式智能卸载",
+      "inspection": "卸载任务、乘员用途、取消；8192载具完整排队、16384乘员、保留跟进额度",
+      "implementation_locations": [
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/unload_compute.h",
+        "source/assist/source/unload_compute_bridge.h",
+        "source/assist/source/unload_policy.h"
+      ],
+      "related_controlled_checks": [
+        "passenger_frame_sampling",
+        "capacity_admission",
+        "unload_roster_runtime"
+      ],
+      "fixed_findings": [
+        "F7"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "unload.deploy",
+      "label": "卸载后展开",
+      "inspection": "卸载任务、乘员用途、取消；8192载具完整排队、16384乘员、保留跟进额度",
+      "implementation_locations": [
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/unload_compute.h",
+        "source/assist/source/unload_compute_bridge.h",
+        "source/assist/source/unload_policy.h"
+      ],
+      "related_controlled_checks": [
+        "passenger_frame_sampling",
+        "capacity_admission",
+        "unload_roster_runtime"
+      ],
+      "fixed_findings": [
+        "F7"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "unload.engineer",
+      "label": "卸载后工程师任务",
+      "inspection": "卸载任务、乘员用途、取消；8192载具完整排队、16384乘员、保留跟进额度",
+      "implementation_locations": [
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/unload_compute.h",
+        "source/assist/source/unload_compute_bridge.h",
+        "source/assist/source/unload_policy.h"
+      ],
+      "related_controlled_checks": [
+        "passenger_frame_sampling",
+        "capacity_admission",
+        "unload_roster_runtime"
+      ],
+      "fixed_findings": [
+        "F7"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "unload.spy",
+      "label": "卸载后间谍渗透",
+      "inspection": "卸载任务、乘员用途、取消；8192载具完整排队、16384乘员、保留跟进额度",
+      "implementation_locations": [
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/unload_compute.h",
+        "source/assist/source/unload_compute_bridge.h",
+        "source/assist/source/unload_policy.h"
+      ],
+      "related_controlled_checks": [
+        "passenger_frame_sampling",
+        "capacity_admission",
+        "unload_roster_runtime"
+      ],
+      "fixed_findings": [
+        "F7"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "unload.attack",
+      "label": "卸载后自动攻击",
+      "inspection": "卸载任务、乘员用途、取消；8192载具完整排队、16384乘员、保留跟进额度",
+      "implementation_locations": [
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/unload_compute.h",
+        "source/assist/source/unload_compute_bridge.h",
+        "source/assist/source/unload_policy.h"
+      ],
+      "related_controlled_checks": [
+        "passenger_frame_sampling",
+        "capacity_admission",
+        "unload_roster_runtime"
+      ],
+      "fixed_findings": [
+        "F7"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "escape.auto",
+      "label": "载员自动逃生",
+      "inspection": "危险触发、卸载候选、重复下令",
+      "implementation_locations": [
+        "source/assist/source/hook_policy.h",
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/unload_compute.h",
+        "source/assist/source/unload_compute_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "passenger_frame_sampling"
+      ],
+      "fixed_findings": [
+        "F7"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "attack.advanced",
+      "label": "高级移动攻击",
+      "inspection": "射程、目标、发射观察与超时",
+      "implementation_locations": [
+        "source/assist/source/advanced_decision.h",
+        "source/assist/source/external_orders_bridge.h",
+        "source/assist/source/external_planner.h",
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/pointer_bridge.h",
+        "source/assist/source/runtime_planner_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "planner_batch_delivery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "magnetron.rotate",
+      "label": "磁电轮换攻击",
+      "inspection": "抬升目标保留、发射计时、失效和落地",
+      "implementation_locations": [
+        "source/assist/source/external_orders_bridge.h",
+        "source/assist/source/external_planner.h",
+        "source/assist/source/magnetron_drop_bridge.h",
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/runtime_planner_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "magnetron",
+        "magnetron_rof",
+        "magnetron_landing",
+        "magnetron_compute"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "magnetron.global",
+      "label": "磁电全局无限吸",
+      "inspection": "抬升目标保留、发射计时、失效和落地",
+      "implementation_locations": [
+        "source/assist/source/external_orders_bridge.h",
+        "source/assist/source/external_planner.h",
+        "source/assist/source/magnetron_drop_bridge.h",
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/runtime_planner_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "magnetron",
+        "magnetron_rof",
+        "magnetron_landing",
+        "magnetron_compute"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "magnetron.drop",
+      "label": "磁电全局自动摔落",
+      "inspection": "抬升目标保留、发射计时、失效和落地",
+      "implementation_locations": [
+        "source/assist/source/external_orders_bridge.h",
+        "source/assist/source/external_planner.h",
+        "source/assist/source/magnetron_drop_bridge.h",
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/runtime_planner_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "magnetron",
+        "magnetron_rof",
+        "magnetron_landing",
+        "magnetron_compute"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "enter.advanced",
+      "label": "高级进驻",
+      "inspection": "容量/预留、点击优先、只重规划未发尾部",
+      "implementation_locations": [
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/cooperative_plan.h",
+        "source/assist/source/cooperative_types.h",
+        "source/assist/source/pointer_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "cooperative",
+        "robust_cooperative",
+        "cooperative_snapshot"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "air.quota_first",
+      "label": "飞机按数量分配1",
+      "inspection": "配额、伤害覆盖、已发任务保留",
+      "implementation_locations": [
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/cooperative_plan.h",
+        "source/assist/source/cooperative_types.h",
+        "source/assist/source/pointer_bridge.h",
+        "source/external_reader/source/cooperative_damage.h"
+      ],
+      "related_controlled_checks": [
+        "cooperative",
+        "robust_cooperative",
+        "cooperative_snapshot"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "air.quota_second",
+      "label": "飞机按数量分配2",
+      "inspection": "配额、伤害覆盖、已发任务保留",
+      "implementation_locations": [
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/cooperative_plan.h",
+        "source/assist/source/cooperative_types.h",
+        "source/assist/source/pointer_bridge.h",
+        "source/external_reader/source/cooperative_damage.h"
+      ],
+      "related_controlled_checks": [
+        "cooperative",
+        "robust_cooperative",
+        "cooperative_snapshot"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "air.coverage",
+      "label": "飞机五格伤害覆盖",
+      "inspection": "配额、伤害覆盖、已发任务保留",
+      "implementation_locations": [
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/cooperative_plan.h",
+        "source/assist/source/cooperative_types.h",
+        "source/assist/source/pointer_bridge.h",
+        "source/external_reader/source/cooperative_damage.h"
+      ],
+      "related_controlled_checks": [
+        "cooperative",
+        "robust_cooperative",
+        "cooperative_snapshot"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "air.single",
+      "label": "飞机单目标120%与取消选中",
+      "inspection": "配额、伤害覆盖、已发任务保留",
+      "implementation_locations": [
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/cooperative_plan.h",
+        "source/assist/source/cooperative_types.h",
+        "source/assist/source/pointer_bridge.h",
+        "source/external_reader/source/cooperative_damage.h"
+      ],
+      "related_controlled_checks": [
+        "cooperative",
+        "robust_cooperative",
+        "cooperative_snapshot"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "disk.primary",
+      "label": "飞碟主武器攻击",
+      "inspection": "目标身份、原生命令准入、当前模式",
+      "implementation_locations": [
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/pointer_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "sell.drained",
+      "label": "出售被吸取目标",
+      "inspection": "所属、存活、类型、原生结果",
+      "implementation_locations": [
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/pointer_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "sell.vehicle",
+      "label": "出售战车",
+      "inspection": "所属、存活、类型、原生结果",
+      "implementation_locations": [
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/pointer_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "sell.enemy",
+      "label": "出售敌方建筑实验",
+      "inspection": "所属、存活、类型、原生结果",
+      "implementation_locations": [
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/player_test_bridge.h",
+        "source/assist/source/pointer_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "attack.direct",
+      "label": "直接攻击移动",
+      "inspection": "射程、目标、发射观察与超时",
+      "implementation_locations": [
+        "source/assist/source/native_orders_bridge.h",
+        "source/assist/source/pointer_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "planner_batch_delivery"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "cs.hold",
+      "label": "按键移动攻击CS",
+      "inspection": "按键持有、上下文取消、废弃自动CS的区别",
+      "implementation_locations": [
+        "source/assist/source/auto_cs_bridge.h",
+        "source/assist/source/disabled_feature_policy.h",
+        "source/assist/source/pointer_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "tasks.cancel",
+      "label": "停止所选单位自动任务",
+      "inspection": "手动接管、取消、共享队列和换局",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/external_orders_bridge.h",
+        "source/assist/source/native_orders_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "planner_batch_delivery",
+        "missile_manual_lifecycle"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "mo.fuzzy",
+      "label": "模糊下令",
+      "inspection": "模糊/区域分配、巡逻容量和环路",
+      "implementation_locations": [
+        "source/assist/source/mo_orders.h",
+        "source/assist/source/mo_orders_bridge.h",
+        "source/assist/source/mo_patrol_graph.h",
+        "source/assist/source/mo_patrol_planning_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "patrol_capacity",
+        "patrol_small_buffer"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "mo.region",
+      "label": "区域目标分配",
+      "inspection": "模糊/区域分配、巡逻容量和环路",
+      "implementation_locations": [
+        "source/assist/source/mo_orders.h",
+        "source/assist/source/mo_orders_bridge.h",
+        "source/assist/source/mo_patrol_graph.h",
+        "source/assist/source/mo_patrol_planning_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "patrol_capacity",
+        "patrol_small_buffer"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "mo.patrol",
+      "label": "自定义巡逻圈与计划提交",
+      "inspection": "模糊/区域分配、巡逻容量和环路",
+      "implementation_locations": [
+        "source/assist/source/mo_orders.h",
+        "source/assist/source/mo_orders_bridge.h",
+        "source/assist/source/mo_patrol_graph.h",
+        "source/assist/source/mo_patrol_planning_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "patrol_capacity",
+        "patrol_small_buffer"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "formation.line",
+      "label": "队形：矩形横队",
+      "inspection": "合法落点、稳定分配、占位类别、缓存寿命、续行",
+      "implementation_locations": [
+        "source/assist/source/formation.h",
+        "source/assist/source/formation_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "formation_quick",
+        "feature_logic_policy",
+        "formation_input_ownership"
+      ],
+      "fixed_findings": [
+        "F3"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "formation.spread",
+      "label": "队形：分散横队",
+      "inspection": "合法落点、稳定分配、占位类别、缓存寿命、续行",
+      "implementation_locations": [
+        "source/assist/source/formation.h",
+        "source/assist/source/formation_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "formation_quick",
+        "feature_logic_policy",
+        "formation_input_ownership"
+      ],
+      "fixed_findings": [
+        "F3"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "formation.circle",
+      "label": "队形：圆形聚集",
+      "inspection": "合法落点、稳定分配、占位类别、缓存寿命、续行",
+      "implementation_locations": [
+        "source/assist/source/formation.h",
+        "source/assist/source/formation_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "formation_quick",
+        "feature_logic_policy",
+        "formation_input_ownership"
+      ],
+      "fixed_findings": [
+        "F3"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "formation.fan",
+      "label": "队形：扇形60度",
+      "inspection": "合法落点、稳定分配、占位类别、缓存寿命、续行",
+      "implementation_locations": [
+        "source/assist/source/formation.h",
+        "source/assist/source/formation_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "formation_quick",
+        "feature_logic_policy",
+        "formation_input_ownership"
+      ],
+      "fixed_findings": [
+        "F3"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "formation.square",
+      "label": "队形：正方形聚集",
+      "inspection": "合法落点、稳定分配、占位类别、缓存寿命、续行",
+      "implementation_locations": [
+        "source/assist/source/formation.h",
+        "source/assist/source/formation_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "formation_quick",
+        "feature_logic_policy",
+        "formation_input_ownership"
+      ],
+      "fixed_findings": [
+        "F3"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "formation.hollow",
+      "label": "队形：空心框聚集",
+      "inspection": "合法落点、稳定分配、占位类别、缓存寿命、续行",
+      "implementation_locations": [
+        "source/assist/source/formation.h",
+        "source/assist/source/formation_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "formation_quick",
+        "feature_logic_policy",
+        "formation_input_ownership"
+      ],
+      "fixed_findings": [
+        "F3"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "formation.continue",
+      "label": "保持队形继续移动",
+      "inspection": "合法落点、稳定分配、占位类别、缓存寿命、续行",
+      "implementation_locations": [
+        "source/assist/source/formation_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "formation_quick",
+        "feature_logic_policy",
+        "formation_input_ownership"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "formation.quick_point",
+      "label": "快速点按占位",
+      "inspection": "合法落点、稳定分配、占位类别、缓存寿命、续行",
+      "implementation_locations": [
+        "source/assist/source/formation_bridge.h",
+        "source/assist/source/formation_quick.h",
+        "source/assist/source/mo_orders.h"
+      ],
+      "related_controlled_checks": [
+        "formation_quick",
+        "feature_logic_policy",
+        "formation_input_ownership"
+      ],
+      "fixed_findings": [
+        "F4"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "formation.quick_curve",
+      "label": "快速拖线排位",
+      "inspection": "合法落点、稳定分配、占位类别、缓存寿命、续行",
+      "implementation_locations": [
+        "source/assist/source/formation_bridge.h",
+        "source/assist/source/formation_quick.h",
+        "source/assist/source/mo_orders.h"
+      ],
+      "related_controlled_checks": [
+        "formation_quick",
+        "feature_logic_policy",
+        "formation_input_ownership"
+      ],
+      "fixed_findings": [
+        "F4"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "guard.sticky",
+      "label": "Sticky驻守",
+      "inspection": "Sticky进入/退出；多人退出未实现",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/sticky_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "mission.sleep",
+      "label": "所选单位休眠",
+      "inspection": "固定选中单位、单帧预算、死亡/换局/手动版本和一次反馈",
+      "implementation_locations": [
+        "source/assist/source/attack_ground_bridge.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/protocol.h",
+        "source/assist/source/selected_mode_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "selected_commands"
+      ],
+      "fixed_findings": [
+        "F1"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "mission.guard",
+      "label": "所选单位警戒",
+      "inspection": "固定选中单位、单帧预算、死亡/换局/手动版本和一次反馈",
+      "implementation_locations": [
+        "source/assist/source/attack_ground_bridge.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/protocol.h",
+        "source/assist/source/selected_mode_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "selected_commands"
+      ],
+      "fixed_findings": [
+        "F1"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "mission.harmless",
+      "label": "所选单位无害",
+      "inspection": "固定选中单位、单帧预算、死亡/换局/手动版本和一次反馈",
+      "implementation_locations": [
+        "source/assist/source/attack_ground_bridge.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/protocol.h",
+        "source/assist/source/selected_mode_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "selected_commands"
+      ],
+      "fixed_findings": [
+        "F1"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "mission.own_ground",
+      "label": "攻击脚下",
+      "inspection": "固定选中单位、单帧预算、死亡/换局/手动版本和一次反馈",
+      "implementation_locations": [
+        "source/assist/source/attack_ground_bridge.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp"
+      ],
+      "related_controlled_checks": [
+        "selected_commands"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "ore.return",
+      "label": "自动返矿排队及卸后恢复采矿",
+      "inspection": "满载、矿厂兼容、卸载优先、让行和手动接管",
+      "implementation_locations": [
+        "source/assist/source/external_orders_bridge.h",
+        "source/assist/source/external_planner.h",
+        "source/assist/source/ore_harvest_bridge.h",
+        "source/assist/source/ore_harvest_search.h",
+        "source/assist/source/ore_queue.h"
+      ],
+      "related_controlled_checks": [
+        "ore_regression",
+        "ore_priority",
+        "ore_delivery_effect"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "ore.custom_types",
+      "label": "矿车与矿场独立类型清单",
+      "inspection": "满载、矿厂兼容、卸载优先、让行和手动接管",
+      "implementation_locations": [
+        "source/assist/source/external_orders_bridge.h",
+        "source/assist/source/ore_harvest_bridge.h",
+        "source/assist/source/ore_queue.h",
+        "source/assist/source/ore_type_config.h"
+      ],
+      "related_controlled_checks": [
+        "ore_regression",
+        "ore_priority",
+        "ore_delivery_effect"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "miner.spider",
+      "label": "自动点杀蜘蛛与原工作恢复",
+      "inspection": "威胁、滞回、原工作恢复、资源变化与未知读取",
+      "implementation_locations": [
+        "source/assist/source/external_orders_bridge.h",
+        "source/assist/source/harvester_defense.h",
+        "source/assist/source/harvester_defense_bridge.h",
+        "source/assist/source/harvester_defense_raw.h",
+        "source/assist/source/ore_harvest_bridge.h"
+      ],
+      "related_controlled_checks": [
+        "miner_defense_runtime"
+      ],
+      "fixed_findings": [
+        "F5",
+        "F6"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "defense.antitheft",
+      "label": "防御建筑优先攻击渗透单位",
+      "inspection": "旧目标可攻击性、新目标选择、拒绝重试",
+      "implementation_locations": [
+        "source/assist/source/anti_theft_bridge.h",
+        "source/assist/source/anti_theft_sample_bridge.h",
+        "source/assist/source/external_orders_bridge.h",
+        "source/assist/source/external_planner.h"
+      ],
+      "related_controlled_checks": [
+        "feature_logic_policy",
+        "planner_defense_delivery"
+      ],
+      "fixed_findings": [
+        "F2"
+      ],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "dodge.forward",
+      "label": "顺向移动两格躲弹",
+      "inspection": "资格、优先级、手动接管；物理弹体未实机验证",
+      "implementation_locations": [
+        "source/assist/source/dodge_bridge.h",
+        "source/assist/source/reverse_dodge.h",
+        "source/assist/source/reverse_dodge_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "dodge.scatter",
+      "label": "原版Scatter躲弹",
+      "inspection": "资格、优先级、手动接管；物理弹体未实机验证",
+      "implementation_locations": [
+        "source/assist/source/dodge_bridge.h",
+        "source/assist/source/dodge_compute.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "missile.targets",
+      "label": "火控目标范围与参与单位",
+      "inspection": "目标清单、分配模式、伤害预留和人工请求",
+      "implementation_locations": [
+        "source/assist/source/compute_frame.h",
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/missile_bridge.h",
+        "source/assist/source/missile_compute.h",
+        "source/assist/source/protocol.h"
+      ],
+      "related_controlled_checks": [
+        "missile_allocator",
+        "missile_manual_capacity",
+        "missile_manual_lifecycle"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "missile.smart",
+      "label": "火控智能分配",
+      "inspection": "目标清单、分配模式、伤害预留和人工请求",
+      "implementation_locations": [
+        "source/assist/source/compute_frame.h",
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/missile_bridge.h",
+        "source/assist/source/missile_compute.h",
+        "source/assist/source/protocol.h"
+      ],
+      "related_controlled_checks": [
+        "missile_allocator",
+        "missile_manual_capacity",
+        "missile_manual_lifecycle"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "missile.balanced",
+      "label": "火控平均分配",
+      "inspection": "目标清单、分配模式、伤害预留和人工请求",
+      "implementation_locations": [
+        "source/assist/source/compute_frame.h",
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/missile_bridge.h",
+        "source/assist/source/missile_compute.h",
+        "source/assist/source/protocol.h"
+      ],
+      "related_controlled_checks": [
+        "missile_allocator",
+        "missile_manual_capacity",
+        "missile_manual_lifecycle"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "missile.reserve",
+      "label": "提前休眠留枪与释放",
+      "inspection": "目标清单、分配模式、伤害预留和人工请求",
+      "implementation_locations": [
+        "source/assist/source/compute_frame.h",
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/missile_bridge.h",
+        "source/assist/source/missile_compute.h",
+        "source/assist/source/protocol.h"
+      ],
+      "related_controlled_checks": [
+        "missile_allocator",
+        "missile_manual_capacity",
+        "missile_manual_lifecycle"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "damage.filter",
+      "label": "过滤低伤害自动目标",
+      "inspection": "武器、射程/装甲/保护、可选原生查询边界",
+      "implementation_locations": [
+        "source/assist/source/cooperative_bridge.h",
+        "source/assist/source/external_planner.h",
+        "source/assist/source/missile_bridge.h",
+        "source/assist/source/weapon_policy.h"
+      ],
+      "related_controlled_checks": [
+        "feature_logic_policy"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "damage.native",
+      "label": "修改原生低伤害索敌实验",
+      "inspection": "武器、射程/装甲/保护、可选原生查询边界",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/input_patch.h"
+      ],
+      "related_controlled_checks": [
+        "feature_logic_policy"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "airpath.compat",
+      "label": "飞机兼容路径点",
+      "inspection": "兼容/原生事件/局部与完整补丁模式边界",
+      "implementation_locations": [
+        "source/assist/source/air_path_host.h",
+        "source/assist/source/air_path_policy.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp",
+        "source/assist/source/pointer_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "airpath.native_events",
+      "label": "原生键触发的事件兼容路径",
+      "inspection": "兼容/原生事件/局部与完整补丁模式边界",
+      "implementation_locations": [
+        "source/assist/source/air_path_host.h",
+        "source/assist/source/air_path_policy.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/main.cpp",
+        "source/assist/source/pointer_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "airpath.patch_ui",
+      "label": "飞机原生下单补丁",
+      "inspection": "兼容/原生事件/局部与完整补丁模式边界",
+      "implementation_locations": [
+        "source/assist/source/air_path_host.h",
+        "source/assist/source/air_path_policy.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/input_patch.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "airpath.patch_full",
+      "label": "飞机完整原生补丁",
+      "inspection": "兼容/原生事件/局部与完整补丁模式边界",
+      "implementation_locations": [
+        "source/assist/source/air_path_host.h",
+        "source/assist/source/air_path_policy.h",
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/input_patch.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "queue.reservation",
+      "label": "生产预定与取消",
+      "inspection": "预定取消、合法选项、现有队列和生产预算",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/construction_host.h",
+        "source/assist/source/construction_policy.h",
+        "source/assist/source/construction_sidebar_bridge.h",
+        "source/assist/source/main.cpp"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "social.cheer",
+      "label": "喝彩",
+      "inspection": "显式操作、冷却、上下文和请求反馈",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/hotkey_host.h",
+        "source/assist/source/social_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "social.taunt",
+      "label": "嘲讽1–8",
+      "inspection": "显式操作、冷却、上下文和请求反馈",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/hotkey_host.h",
+        "source/assist/source/social_bridge.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "retired.autocs",
+      "label": "退役自动CS",
+      "inspection": "禁用可见性和旧配置迁移，未重新启用",
+      "implementation_locations": [
+        "source/assist/source/auto_cs_bridge.h",
+        "source/assist/source/disabled_feature_policy.h",
+        "source/assist/source/hook_policy.h",
+        "source/shared/source/feature_availability.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "disabled_legacy",
+      "live_game_verified": false
+    },
+    {
+      "id": "retired.c4",
+      "label": "退役步兵强制进驻",
+      "inspection": "禁用可见性和旧配置迁移，未重新启用",
+      "implementation_locations": [
+        "source/assist/source/extra_settings_io.h",
+        "source/assist/source/pointer_bridge.h",
+        "source/shared/source/feature_availability.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "disabled_legacy",
+      "live_game_verified": false
+    },
+    {
+      "id": "retired.burst",
+      "label": "退役刷弹",
+      "inspection": "禁用可见性和旧配置迁移，未重新启用",
+      "implementation_locations": [
+        "source/assist/source/bridge.cpp",
+        "source/assist/source/burst_bridge.h",
+        "source/assist/source/compute_policy.h",
+        "source/assist/source/extra_settings_io.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "disabled_legacy",
+      "live_game_verified": false
+    },
+    {
+      "id": "destruct.enemy",
+      "label": "自毁敌方单位",
+      "inspection": "玩家解析、身份、请求和执行回执；实机效果未验收",
+      "implementation_locations": [
+        "source/assist/source/player_test_bridge.h",
+        "source/assist/source/player_test_policy.h"
+      ],
+      "related_controlled_checks": [],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "tech.full",
+      "label": "科技全开",
+      "inspection": "数据恢复和硬件参数查询边界",
+      "implementation_locations": [
+        "source/assist/source/tech_data_policy.h",
+        "source/assist/source/tech_parameter_lookup.h"
+      ],
+      "related_controlled_checks": [
+        "tech_data_recovery",
+        "tech_capture"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "tech.enhancement",
+      "label": "科技加强",
+      "inspection": "预计算候选、精确参数准入；不宣称Ares替换入口已解决",
+      "implementation_locations": [
+        "source/assist/source/tech_enhancement.h",
+        "source/assist/source/tech_parameter_lookup.h"
+      ],
+      "related_controlled_checks": [
+        "tech_capture"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    },
+    {
+      "id": "superweapon.grant",
+      "label": "超武持续授予/侧栏",
+      "inspection": "每帧授予、侧栏待确认和关闭状态；不宣称多人同步",
+      "implementation_locations": [
+        "source/assist/source/superweapon_grant_bridge.h",
+        "source/assist/source/superweapon_sidebar_model.h"
+      ],
+      "related_controlled_checks": [
+        "superweapon_sidebar_model",
+        "superweapon_result_feedback"
+      ],
+      "fixed_findings": [],
+      "status": "source_reviewed",
+      "live_game_verified": false
+    }
+  ],
+  "execution_boundary": "Related checks cover policies/fragments/fixtures, not whole-feature live acceptance. No Windows/game/GPU/multiplayer execution."
+}

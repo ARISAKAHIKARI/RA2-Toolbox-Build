@@ -74,7 +74,10 @@ inline MouseEdge gestureMouseEdge(uint32_t message,uintptr_t wParam){
 inline uint32_t gestureUpMessage(uint32_t button){return button==1?0x208:button==2||button==3?0x20C:button==4?0x205:button==6?0x202:0;}
 // Compatibility helper for old callers; production uses the shared policy.
 template<class Keys>inline uint32_t claimsMiddle(uint32_t features,const Keys&keys){return resolveGesture(GesturePolicy{},features&7u,1,keys).mode;}
-constexpr int Actors=1024,Targets=1024,Nodes=256,Waypoints=32,Lines=1024;
+// Patrol graph admission validates at most sixteen native waypoints. Keep
+// the full 256-point captured stroke and resample its whole loop to that
+// bound before submitting any nodes; a larger route cannot later connect.
+constexpr int Actors=1024,Targets=1024,Nodes=256,Waypoints=16,Lines=1024;
 struct Point {int x=0,y=0,z=0;}; // World leptons in previews, map cells in geometry.
 struct Line {Point from,to;};
 struct Preview {

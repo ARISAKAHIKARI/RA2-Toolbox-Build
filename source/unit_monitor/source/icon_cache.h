@@ -53,10 +53,11 @@ inline uint64_t scope(const std::filesystem::path&exe,bool legacy=false){
 }
 }
 class IconCache {
- std::mutex mutex;std::condition_variable cv;std::thread worker;bool stop=false,contextPending=false,dirty=false,ready=false;uint64_t generation=0,scopeHash=0;
+ std::mutex mutex;std::condition_variable cv;std::thread worker;bool stop=false,contextPending=false,contextBusy=false,dirty=false,ready=false;uint64_t generation=0,scopeHash=0;
  std::filesystem::path exe,directory,file;std::map<std::string,iconcache::Record> entries,pendingEntries;
  void run(){std::unique_lock<std::mutex> lock(mutex);for(;;){cv.wait_for(lock,std::chrono::milliseconds(500),[&]{return stop||contextPending;});
    if(contextPending){
+    contextBusy=true;
     if(dirty&&scopeHash){std::vector<iconcache::Record> save;for(auto&e:entries)save.push_back(e.second);auto p=file;auto h=scopeHash;dirty=false;lock.unlock();bool ok=iconcache::write(p,h,save);lock.lock();writeFailed=!ok;if(!ok)dirty=true;}
     auto x=exe,dir=directory;auto gen=generation;contextPending=false;lock.unlock();auto h=iconcache::scope(x);auto p=dir/(std::to_string(h)+".bin");auto records=h?iconcache::read(p,h):std::vector<iconcache::Record>{};
     bool migrated=false;
@@ -67,7 +68,7 @@ class IconCache {
       records.insert(records.end(),previous.begin(),previous.end());migrated=migrated||!previous.empty();
      }
     }
-    lock.lock();
+    lock.lock();contextBusy=false;
     if(gen==generation){if(scopeHash!=h)entries.clear();scopeHash=h;file=p;for(auto&r:records)if(entries.size()<MaxTypes&&!entries.count(iconcache::key(r)))entries[iconcache::key(r)]=r;
      for(auto&e:pendingEntries)if(entries.size()<MaxTypes||entries.count(e.first))entries[e.first]=e.second;
      dirty=dirty||migrated||!pendingEntries.empty();pendingEntries.clear();ready=h!=0;loaded=int(entries.size());}continue;}
@@ -78,7 +79,9 @@ public:
  std::atomic<int> loaded{0};std::atomic<bool> writeFailed{false};
  ~IconCache(){if(worker.joinable()){{std::lock_guard<std::mutex> l(mutex);stop=true;}cv.notify_one();worker.join();}}
  void rescope(){std::lock_guard<std::mutex> l(mutex);++generation;contextPending=true;cv.notify_one();}
- void open(const std::filesystem::path&game,const std::filesystem::path&folder){std::lock_guard<std::mutex> l(mutex);bool same=exe==game&&directory==folder;if(same&&(ready||worker.joinable()))return;
+ // A live worker is not proof that its first scope scan succeeded. A later
+ // reconnect may retry a failed scope; successful or in-flight scopes reuse.
+ void open(const std::filesystem::path&game,const std::filesystem::path&folder){std::lock_guard<std::mutex> l(mutex);bool same=exe==game&&directory==folder;if(same&&(ready||contextPending||contextBusy))return;
   ++generation;exe=game;directory=folder;ready=false;pendingEntries.clear();contextPending=true;if(!worker.joinable())worker=std::thread([this]{run();});cv.notify_one();}
  bool restorePalette(const Type&t,Snapshot&s){std::lock_guard<std::mutex> l(mutex);if(!ready)return false;auto it=entries.find(iconcache::key(t));if(it==entries.end())return false;
   memcpy(s.palette,it->second.palette,sizeof s.palette);s.paletteReady=1;return true;}

@@ -1,0 +1,1 @@
+PASS actual terrain storage: raw-address reuse with fresh control block; expired weak owner; held readers/12 publications; concurrent releases; real/diagram defaults; partial and missing-page rejection/recovery; multi-step capture; reset and late-reader lifetime

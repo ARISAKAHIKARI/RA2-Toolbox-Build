@@ -1,0 +1,313 @@
+{
+  "baseline": "5a0f36704e80cc715215318660e31786c4c26cbc",
+  "phases": {
+    "baseline": {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "-I/workspace/scratch/40121bc881b8/ra2-ui-146/source/assist/source",
+        "-I/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture/baseline",
+        "/workspace/scratch/40121bc881b8/ra2-ui-146/source/assist/tests/tech_enhancement_capture.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture/baseline/tech-capture"
+      ],
+      "subject_sha256": "b4fbc803a74d51f8f98b54093af0e4ee5ff2051e84a1a6b452276d352bd73480",
+      "rows": [
+        {
+          "case": "no_targets_128",
+          "identity": 8046515372498361180,
+          "safe_reads": 5397,
+          "direct_reads": 5376,
+          "visits": 2688
+        },
+        {
+          "case": "no_targets_512",
+          "identity": 8046515372498361180,
+          "safe_reads": 21525,
+          "direct_reads": 21504,
+          "visits": 10752
+        },
+        {
+          "case": "no_targets_4096",
+          "identity": 8046515372498361180,
+          "safe_reads": 172053,
+          "direct_reads": 172032,
+          "visits": 86016
+        },
+        {
+          "case": "all_named_rules",
+          "identity": 2096961121787577785,
+          "safe_reads": 354,
+          "direct_reads": 396,
+          "visits": 118
+        },
+        {
+          "case": "all_rules_before_long_tail",
+          "identity": 2096961121787577785,
+          "safe_reads": 354,
+          "direct_reads": 396,
+          "visits": 118
+        },
+        {
+          "case": "duplicate_names_uid_zero_and_level_bounds",
+          "identity": 4068561205387368780,
+          "safe_reads": 151,
+          "direct_reads": 177,
+          "visits": 59
+        },
+        {
+          "case": "invalid_candidates",
+          "identity": 16778184589296334430,
+          "safe_reads": 77,
+          "direct_reads": 107,
+          "visits": 48
+        },
+        {
+          "case": "array_unreadable",
+          "identity": 5243640375404736844,
+          "safe_reads": 60,
+          "direct_reads": 45,
+          "visits": 13
+        },
+        {
+          "case": "array_recovered",
+          "identity": 2218899847941281405,
+          "safe_reads": 144,
+          "direct_reads": 117,
+          "visits": 34
+        },
+        {
+          "case": "invalid_array_bounds",
+          "identity": 5381808339234165373,
+          "safe_reads": 30,
+          "direct_reads": 12,
+          "visits": 3
+        },
+        {
+          "case": "array_bounds_recovered",
+          "identity": 2218899847941281405,
+          "safe_reads": 114,
+          "direct_reads": 84,
+          "visits": 24
+        },
+        {
+          "case": "id_unreadable",
+          "identity": 5438710239684986641,
+          "safe_reads": 67,
+          "direct_reads": 49,
+          "visits": 18
+        },
+        {
+          "case": "id_recovered",
+          "identity": 6156922277842636636,
+          "safe_reads": 142,
+          "direct_reads": 109,
+          "visits": 36
+        },
+        {
+          "case": "vtable_unreadable",
+          "identity": 5438710239684986641,
+          "safe_reads": 201,
+          "direct_reads": 158,
+          "visits": 54
+        },
+        {
+          "case": "unready_index_recaptures",
+          "identity": 6156922277842636636,
+          "safe_reads": 276,
+          "direct_reads": 218,
+          "visits": 72
+        },
+        {
+          "case": "old_candidate_removed",
+          "identity": 5438710239684986641,
+          "safe_reads": 343,
+          "direct_reads": 267,
+          "visits": 90
+        },
+        {
+          "case": "clock_before_wrap",
+          "identity": 7702211290841327917,
+          "safe_reads": 45,
+          "direct_reads": 27,
+          "visits": 8
+        },
+        {
+          "case": "clock_after_wrap_due",
+          "identity": 7702211290841327917,
+          "safe_reads": 90,
+          "direct_reads": 54,
+          "visits": 16
+        },
+        {
+          "case": "summary",
+          "checks": 399891,
+          "passed": true
+        }
+      ]
+    },
+    "current": {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "-I/workspace/scratch/40121bc881b8/ra2-ui-146/source/assist/source",
+        "-I/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture/current",
+        "/workspace/scratch/40121bc881b8/ra2-ui-146/source/assist/tests/tech_enhancement_capture.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture/current/tech-capture"
+      ],
+      "subject_sha256": "c37e86df4e349984be3870ddc40a14f0371c58b01db82d0774d9569d4265d4ed",
+      "rows": [
+        {
+          "case": "no_targets_128",
+          "identity": 8046515372498361180,
+          "safe_reads": 771,
+          "direct_reads": 768,
+          "visits": 384
+        },
+        {
+          "case": "no_targets_512",
+          "identity": 8046515372498361180,
+          "safe_reads": 3075,
+          "direct_reads": 3072,
+          "visits": 1536
+        },
+        {
+          "case": "no_targets_4096",
+          "identity": 8046515372498361180,
+          "safe_reads": 24579,
+          "direct_reads": 24576,
+          "visits": 12288
+        },
+        {
+          "case": "all_named_rules",
+          "identity": 2096961121787577785,
+          "safe_reads": 51,
+          "direct_reads": 69,
+          "visits": 24
+        },
+        {
+          "case": "all_rules_before_long_tail",
+          "identity": 2096961121787577785,
+          "safe_reads": 51,
+          "direct_reads": 69,
+          "visits": 24
+        },
+        {
+          "case": "duplicate_names_uid_zero_and_level_bounds",
+          "identity": 4068561205387368780,
+          "safe_reads": 13,
+          "direct_reads": 17,
+          "visits": 7
+        },
+        {
+          "case": "invalid_candidates",
+          "identity": 16778184589296334430,
+          "safe_reads": 9,
+          "direct_reads": 13,
+          "visits": 6
+        },
+        {
+          "case": "array_unreadable",
+          "identity": 5243640375404736844,
+          "safe_reads": 7,
+          "direct_reads": 6,
+          "visits": 2
+        },
+        {
+          "case": "array_recovered",
+          "identity": 2218899847941281405,
+          "safe_reads": 16,
+          "direct_reads": 15,
+          "visits": 5
+        },
+        {
+          "case": "invalid_array_bounds",
+          "identity": 5381808339234165373,
+          "safe_reads": 5,
+          "direct_reads": 3,
+          "visits": 1
+        },
+        {
+          "case": "array_bounds_recovered",
+          "identity": 2218899847941281405,
+          "safe_reads": 14,
+          "direct_reads": 12,
+          "visits": 4
+        },
+        {
+          "case": "id_unreadable",
+          "identity": 5438710239684986641,
+          "safe_reads": 7,
+          "direct_reads": 5,
+          "visits": 2
+        },
+        {
+          "case": "id_recovered",
+          "identity": 6156922277842636636,
+          "safe_reads": 14,
+          "direct_reads": 11,
+          "visits": 4
+        },
+        {
+          "case": "vtable_unreadable",
+          "identity": 5438710239684986641,
+          "safe_reads": 20,
+          "direct_reads": 16,
+          "visits": 6
+        },
+        {
+          "case": "unready_index_recaptures",
+          "identity": 6156922277842636636,
+          "safe_reads": 27,
+          "direct_reads": 22,
+          "visits": 8
+        },
+        {
+          "case": "old_candidate_removed",
+          "identity": 5438710239684986641,
+          "safe_reads": 34,
+          "direct_reads": 27,
+          "visits": 10
+        },
+        {
+          "case": "clock_before_wrap",
+          "identity": 7702211290841327917,
+          "safe_reads": 5,
+          "direct_reads": 3,
+          "visits": 1
+        },
+        {
+          "case": "clock_after_wrap_due",
+          "identity": 7702211290841327917,
+          "safe_reads": 10,
+          "direct_reads": 6,
+          "visits": 2
+        },
+        {
+          "case": "summary",
+          "checks": 57529,
+          "passed": true
+        }
+      ]
+    }
+  },
+  "windows_executed": false,
+  "game_executed": false,
+  "boundary": "Exact production scan block, vec/item and catalogue-level function; synthetic arrays and admitted world/signature state. Operation counts, not timings.",
+  "identities_equal": true,
+  "source_sha256": {
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "16669d5c032fbb66e9d21a974dea127d3b24b8f4ed7ee20bc2eac8aabf4c2d41",
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/tech_parameter_lookup.h": "14fd3aa6ef6b4557804d44fd6743ac4b5bc1e92f7a23f7fc434c0ffe9a735a43",
+    "source/assist/tests/tech_enhancement_capture.cpp": "550db4fb9351cc7fdf68393ba08127838b68177395354b2b158c3e0beda887f0",
+    "source/assist/tests/tech_enhancement_capture.py": "a0d2336204b92d1f915598d5eaac8dce78c97312647f445c825bbe29536ad1bf"
+  },
+  "passed": true
+}

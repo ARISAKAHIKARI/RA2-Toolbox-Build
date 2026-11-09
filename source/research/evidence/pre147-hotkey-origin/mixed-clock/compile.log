@@ -1,0 +1,4 @@
+/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/mixed-clock-evidence/probe.cpp: In function ‘Result v143::probe(const Display&, DWORD, bool)’:
+/workspace/scratch/c1b87d8550cd/hotkey-root-cause/sampling-history/mixed-clock-evidence/probe.cpp:15:52: warning: unused parameter ‘externalSourceConfirmed’ [-Wunused-parameter]
+   15 | Result probe(const Display&d,DWORD displayNow,bool externalSourceConfirmed){snap={};
+      |                                               ~~~~~^~~~~~~~~~~~~~~~~~~~~~~

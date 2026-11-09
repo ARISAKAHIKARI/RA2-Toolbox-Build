@@ -1,0 +1,7 @@
+15 checks, 6 failures
+FAIL no toast must not suppress status after half wrap
+FAIL creation across tick wrap
+FAIL zero deadline is valid when active
+FAIL zero deadline last millisecond
+FAIL match reset clears active notification
+FAIL retired toast cannot reappear after full wrap

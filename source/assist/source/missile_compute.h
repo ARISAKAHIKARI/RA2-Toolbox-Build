@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <climits>
 #include <algorithm>
+#include <memory>
 #include <new>
 namespace assist { namespace missilecompute {
 constexpr int MaxSources=256,MaxTargets=256,MaxOrders=256,LookAhead=30,CoveragePercent=120,MaxAdvanceFrames=60,AdvanceLeash=1024,ReleaseGraceFrames=30;
@@ -24,8 +25,16 @@ inline void reset(Input& input){
 }
 struct Assignment {int source=0,target=-1,action=Attack;};
 struct Result {uint32_t match=0,tick=0;int frame=-1,count=0;Assignment orders[MaxOrders];};
+// One workspace belongs to one calculation lane. Keep the 64 KiB candidate
+// storage out of the game's stack and reuse it without retaining input facts.
+struct Workspace {
+ uint8_t sources[MaxTargets][MaxSources];
+ uint8_t targets[MaxTargets];
+ uint16_t count[MaxTargets];
+};
+static_assert(MaxSources<=256&&MaxTargets<=256,"candidate indices must fit in one byte");
 inline bool valid(const Input&i){return i.frame>=0&&i.count>=0&&i.count<=MaxSources&&i.targetCount>=0&&i.targetCount<=MaxTargets&&i.mode>=0&&i.mode<=3;}
-inline Result calculate(const Input&i){
+inline Result calculateWithWorkspace(const Input&i,Workspace&work){
  Result r;r.match=i.match;r.tick=i.tick;r.frame=i.frame;if(!valid(i))return r;
  int assigned[MaxSources],number[MaxTargets]{},options[MaxSources]{};int64_t damage[MaxTargets]{};
  bool busy[MaxSources]{};
@@ -41,26 +50,68 @@ inline Result calculate(const Input&i){
   if(busy[s]&&(i.sources[s].pendingMission==Attack||i.sources[s].pendingMission==0))for(int t=0;t<i.targetCount;++t)
    if(i.sources[s].pending==i.targets[t].id&&i.edges[s][t].damage>0){assigned[s]=t;++number[t];if(!(i.mode&ReserveSleep)||i.sources[s].committedTarget!=i.targets[t].id)damage[t]+=i.edges[s][t].damage;break;}
  }
- for(int pass=0;pass<i.count;++pass){int bs=-1,bt=-1,br=INT_MAX;
-  for(int s=0;s<i.count;++s)if(!busy[s]&&assigned[s]<0)for(int t=0;t<i.targetCount;++t){
-   const auto&e=i.edges[s][t];const auto&target=i.targets[t];int ready=std::max(e.eta,i.sources[s].cooldown);
-   if(e.damage<=0||target.hp<=0||ready>LookAhead||((i.mode&1)==Smart&&damage[t]*100>=int64_t(target.hp)*CoveragePercent))continue;
-   bool better=bt<0;
-   if(!better){
+ // A target's damage/count changes during allocation, but every source for
+ // that target shares those keys. Its remaining source order is therefore
+ // fixed. Heapify each column once, then remove consumed sources at its head.
+ // A second heap orders the column heads. An assigned head is an optimistic
+ // old key: removing it can only worsen that column, so repair it only when
+ // it reaches the global head. Every edge is removed at most once, giving
+ // O(S*T*(log(S)+log(T))) worst-case work instead of O(S*S*T).
+ auto later=[&](int t,uint8_t a,uint8_t b){
+   const auto&x=i.edges[a][t];const auto&y=i.edges[b][t];
+   const int ar=std::max(x.eta,i.sources[a].cooldown),br=std::max(y.eta,i.sources[b].cooldown);
+   if(ar!=br)return ar>br;
+   if(options[a]!=options[b])return options[a]>options[b];
+   const bool ac=i.sources[a].current==i.targets[t].id,bc=i.sources[b].current==i.targets[t].id;
+   if(ac!=bc)return bc;
+   if(x.distance!=y.distance)return x.distance>y.distance;
+   if(i.sources[a].id!=i.sources[b].id)return i.sources[a].id>i.sources[b].id;
+   return a>b;
+ };
+ int targetCount=0;
+ for(int t=0;t<i.targetCount;++t){
+  work.count[t]=0;
+  if(i.targets[t].hp<=0||((i.mode&1)==Smart&&damage[t]*100>=int64_t(i.targets[t].hp)*CoveragePercent))continue;
+  auto&order=work.sources[t];
+  for(int s=0;s<i.count;++s)if(!busy[s]&&i.edges[s][t].damage>0&&std::max(i.edges[s][t].eta,i.sources[s].cooldown)<=LookAhead)order[work.count[t]++]=uint8_t(s);
+  std::make_heap(order,order+work.count[t],[&](uint8_t a,uint8_t b){return later(t,a,b);});
+  if(work.count[t])work.targets[targetCount++]=uint8_t(t);
+ }
+ auto clean=[&](int t){
+   auto&count=work.count[t];auto&order=work.sources[t];
+   while(count&&assigned[order[0]]>=0){std::pop_heap(order,order+count,[&](uint8_t a,uint8_t b){return later(t,a,b);});--count;}
+ };
+ auto betterTarget=[&](int t,int bt){
+    const int s=work.sources[t][0],bs=work.sources[bt][0];
+    const auto&e=i.edges[s][t];const auto&target=i.targets[t];
     const int64_t left=(i.mode&1)==Even?number[t]:damage[t]*i.targets[bt].hp;
     const int64_t right=(i.mode&1)==Even?number[bt]:damage[bt]*target.hp;
-    if(left!=right)better=left<right;
-    else if(target.threatening!=i.targets[bt].threatening)better=target.threatening>i.targets[bt].threatening;
-    else if(ready!=br)better=ready<br;
-    else if(options[s]!=options[bs])better=options[s]<options[bs];
-    else if((i.sources[s].current==target.id)!=(i.sources[bs].current==i.targets[bt].id))better=i.sources[s].current==target.id;
-    else if(e.distance!=i.edges[bs][bt].distance)better=e.distance<i.edges[bs][bt].distance;
-    else if(target.id!=i.targets[bt].id)better=target.id<i.targets[bt].id;
-    else better=i.sources[s].id<i.sources[bs].id;
-   }
-   if(better){bs=s;bt=t;br=ready;}
+    if(left!=right)return left<right;
+    if(target.threatening!=i.targets[bt].threatening)return target.threatening>i.targets[bt].threatening;
+    const int ready=std::max(e.eta,i.sources[s].cooldown),br=std::max(i.edges[bs][bt].eta,i.sources[bs].cooldown);
+    if(ready!=br)return ready<br;
+    if(options[s]!=options[bs])return options[s]<options[bs];
+    if((i.sources[s].current==target.id)!=(i.sources[bs].current==i.targets[bt].id))return i.sources[s].current==target.id;
+    if(e.distance!=i.edges[bs][bt].distance)return e.distance<i.edges[bs][bt].distance;
+    if(target.id!=i.targets[bt].id)return target.id<i.targets[bt].id;
+    if(i.sources[s].id!=i.sources[bs].id)return i.sources[s].id<i.sources[bs].id;
+    // The original source-major scan keeps its first exact tie, even for
+    // duplicate IDs in a value input. Column traversal must preserve that.
+    return s<bs||(s==bs&&t<bt);
+ };
+ auto laterTarget=[&](uint8_t a,uint8_t b){return betterTarget(b,a);};
+ auto reinsert=[&](int t){if(work.count[t]){work.targets[targetCount++]=uint8_t(t);std::push_heap(work.targets,work.targets+targetCount,laterTarget);}};
+ std::make_heap(work.targets,work.targets+targetCount,laterTarget);
+ for(int pass=0;pass<i.count;++pass){int bt=-1;
+  while(targetCount){
+   // Remove a target before changing its source head or its damage/count key.
+   // The keys of every target still in the global heap remain unchanged.
+   std::pop_heap(work.targets,work.targets+targetCount,laterTarget);const int t=work.targets[--targetCount];
+   if(assigned[work.sources[t][0]]>=0){clean(t);reinsert(t);continue;}
+   bt=t;break;
   }
-  if(bs<0)break;assigned[bs]=bt;++number[bt];damage[bt]+=i.edges[bs][bt].damage;
+  if(bt<0)break;const int bs=work.sources[bt][0];assigned[bs]=bt;++number[bt];damage[bt]+=i.edges[bs][bt].damage;
+  if((i.mode&1)!=Smart||damage[bt]*100<int64_t(i.targets[bt].hp)*CoveragePercent){clean(bt);reinsert(bt);}
  }
  // Only immediately usable shots justify sending a ready gun ahead. Future
  // assignments/cooldowns are planning reservations, not guaranteed damage.
@@ -108,6 +159,13 @@ inline Result calculate(const Input&i){
   r.orders[r.count++]={s,t,action};
  }
  return r;
+}
+// Convenience entry for standalone value callers. Production Runtime and Host
+// pass their own reusable workspace, so neither allocates once per calculation.
+inline Result calculate(const Input&i){
+ if(!valid(i)){Result r;r.match=i.match;r.tick=i.tick;r.frame=i.frame;return r;}
+ std::unique_ptr<Workspace>work(new Workspace);
+ return calculateWithWorkspace(i,*work);
 }
 } }
 

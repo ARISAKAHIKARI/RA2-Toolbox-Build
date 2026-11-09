@@ -1,0 +1,4 @@
+/workspace/scratch/40121bc881b8/ra2-ui-146/source/third_party/xbrz/xbrz.cpp: In function ‘void {anonymous}::blendPixel(const Kernel_3x3&, uint32_t*, int, unsigned char, const xbrz::ScalerCfg&)’:
+/workspace/scratch/40121bc881b8/ra2-ui-146/source/third_party/xbrz/xbrz.cpp:419:38: warning: parameter declaration before lambda trailing return type only optional with ‘-std=c++2b’ or ‘-std=gnu++2b’ [-Wc++23-extensions]
+  419 |         const bool doLineBlend = [&] -> bool
+      |                                      ^~

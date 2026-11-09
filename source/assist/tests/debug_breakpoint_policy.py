@@ -60,7 +60,7 @@ def main():
         raise RuntimeError(run.stdout + run.stderr)
     result = json.loads(run.stdout)
     result["subject_sha256"] = hashlib.sha256((subject + lease + fps).encode()).hexdigest()
-    names = ["tech_ui_breakpoint_bridge.h", "tech_ui_breakpoint_core.h", "tech_ui_breakpoint_hot.h", "tech_ui_breakpoint_debug.h", "single_player_fps_runtime.h", "single_player_fps.h", "control_parameter_policy.h", "map_visibility_parameter_policy.h", "tech_enhancement_parameter_policy.h"]
+    names = ["tech_ui_breakpoint_bridge.h", "tech_ui_breakpoint_core.h", "tech_ui_breakpoint_hot.h", "tech_ui_breakpoint_debug.h", "single_player_fps_runtime.h", "single_player_fps.h", "read_only_lifecycle.h", "control_parameter_policy.h", "map_visibility_parameter_policy.h", "tech_enhancement_parameter_policy.h"]
     paths = [source / name for name in names] + [tests / "debug_breakpoint_policy.cpp", Path(__file__)]
     paths += [source.parents[1] / "shared/source" / name for name in ("debug_entry_types.h", "debug_entry_policy.h", "debug_entry_catalog.h", "master_control_policy.h", "patch_context.h")]
     result["source_sha256"] = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}

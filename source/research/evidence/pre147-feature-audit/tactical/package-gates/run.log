@@ -1,0 +1,48 @@
+{
+  "schema": "ra2.packaging-gates.v1",
+  "scope": "packaging_policy_only",
+  "synthetic_receipt_fixtures": true,
+  "product_build_performed": false,
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "tests_run": 19,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "base_archive_sha256": "d8d5d871e0358579b49c1a2dedbfca48c601ea22119bf897e18593ae7233533c",
+  "base_manifest_sha256": "1d30a70514dcba77b26a330db130150850fe24c6fd962c513212542db10dc26b",
+  "gate_inputs": {
+    "packages/v1.0.43/build_release.py": "0d742d2e8b74306888113a07341cd1b45088045992b4e8d384bb80d2049da612",
+    "packages/v1.0.46/package_release.py": "503907f9aed1217c0fccd9a0312a9e3cef5c267798119009115f555a78d57799",
+    "packages/v1.0.47/package_release.py": "12aba137ec285dda18b2a9a4b026c292c626492299ce1d06f350056baa162778",
+    "packages/v1.0.47/test_package_release.py": "c9ed72959b007c62f8dfce8b9e72b57f5f28c2e1cfb2f496e16f650f1e103036",
+    "packages/v1.0.47/README.txt": "17bb64f9a5d3ef78f5f3db605093ec0168ea1c1ab5079daa30b064747cab8cf2",
+    "packages/v1.0.47/PACKAGING.md": "97e976b4ef86eb0fa945dc5f81ba2d157f521f81d236ea8d6b427de175ee92cb"
+  }
+}
+test_changed_binary_bytes_cannot_match_completed_build_receipt (__main__.PackageGates.test_changed_binary_bytes_cannot_match_completed_build_receipt) ... ok
+test_current_receipt_requires_all_legacy_and_feature_bindings (__main__.PackageGates.test_current_receipt_requires_all_legacy_and_feature_bindings) ... ok
+test_engine_change_requires_explicit_plan_and_additional_bound_check (__main__.PackageGates.test_engine_change_requires_explicit_plan_and_additional_bound_check) ... ok
+test_feature_counts_and_lifecycle_results_cannot_regress (__main__.PackageGates.test_feature_counts_and_lifecycle_results_cannot_regress) ... ok
+test_feature_json_rejects_ambiguous_fields_and_duplicate_cases (__main__.PackageGates.test_feature_json_rejects_ambiguous_fields_and_duplicate_cases) ... ok
+test_missing_or_changed_source_hash_cannot_relabel_a_previous_run (__main__.PackageGates.test_missing_or_changed_source_hash_cannot_relabel_a_previous_run) ... ok
+test_new_group_result_counts_and_both_pixel_recoveries_are_mandatory (__main__.PackageGates.test_new_group_result_counts_and_both_pixel_recoveries_are_mandatory) ... ok
+test_new_groups_cannot_be_omitted_or_relabelled_as_unexecuted (__main__.PackageGates.test_new_groups_cannot_be_omitted_or_relabelled_as_unexecuted) ... ok
+test_new_groups_reject_claimed_pass_wrappers_duplicates_and_failure_output (__main__.PackageGates.test_new_groups_reject_claimed_pass_wrappers_duplicates_and_failure_output) ... ok
+test_new_groups_require_each_test_and_production_fingerprint (__main__.PackageGates.test_new_groups_require_each_test_and_production_fingerprint) ... ok
+test_new_groups_require_present_unchanged_run_logs (__main__.PackageGates.test_new_groups_require_present_unchanged_run_logs) ... ok
+test_old_missing_duplicated_and_unexecuted_checks_are_rejected (__main__.PackageGates.test_old_missing_duplicated_and_unexecuted_checks_are_rejected) ... ok
+test_patrol_buffer_requires_actual_sanitizer_compile_and_buffer_command (__main__.PackageGates.test_patrol_buffer_requires_actual_sanitizer_compile_and_buffer_command) ... ok
+test_product_payload_has_full_resources_and_paired_complete_small_update (__main__.PackageGates.test_product_payload_has_full_resources_and_paired_complete_small_update) ... ok
+test_real_published_resources_and_engine_are_pinned (__main__.PackageGates.test_real_published_resources_and_engine_are_pinned) ... ok
+test_shared_transition_accepts_only_reviewed_protocol_102_tail (__main__.PackageGates.test_shared_transition_accepts_only_reviewed_protocol_102_tail) ... ok
+test_tampered_empty_or_compile_only_log_is_rejected (__main__.PackageGates.test_tampered_empty_or_compile_only_log_is_rejected) ... ok
+test_tampered_published_archive_or_manifest_is_rejected (__main__.PackageGates.test_tampered_published_archive_or_manifest_is_rejected) ... ok
+test_voxel_gate_accepts_new_check_count_but_rejects_failed_or_expected_failure (__main__.PackageGates.test_voxel_gate_accepts_new_check_count_but_rejects_failed_or_expected_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 2.881s
+
+OK

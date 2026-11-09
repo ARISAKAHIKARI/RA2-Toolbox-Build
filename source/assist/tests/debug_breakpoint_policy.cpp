@@ -13,6 +13,7 @@
 #include "map_visibility_parameter_policy.h"
 #include "tech_enhancement_parameter_policy.h"
 #include "single_player_fps.h"
+#include "read_only_lifecycle.h"
 using namespace assist;
 using DWORD=uint32_t;using LONG=int32_t;using HANDLE=void*;using LONGLONG=int64_t;
 struct LARGE_INTEGER {int64_t QuadPart=0;};
@@ -51,8 +52,10 @@ struct Shared {
  uint32_t techEnhance=0,techEnhanceImplementation=techenhanceparams::Exact,techEnhanceCompareLevel=0;
  uint32_t controlAll=0,mapVisibility=0,renderReveal=0;
  uint32_t singlePlayerFPS=0,singlePlayerFPSActive=0,singlePlayerFPSHits=0;
+ uint32_t readOnly=0,readOnlyRequest=0,readOnlyAck=0;
 } wire;
 static Shared*sh=&wire;static bool fault=false;static uint32_t techImplementation=4;
+static readonly::RuntimeState readOnlyState;
 static DWORD sampleClock(Shared*){return now;}
 #include "debug_breakpoint_lease.inc"
 namespace assist { namespace techbp {

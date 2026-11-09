@@ -7,7 +7,7 @@ namespace external { namespace layout {
 enum class Stage : uint8_t {
  Ready, WaitingForMatch, UnreadableGameFlag, UnreadableLocalHouse,
  InvalidLocalHouse, UnreadableFrame, InvalidFrame, MissingLocalHouseInList, UnrecognizedUnitLayout,
- UnreadableHouseList, UnstableSnapshot
+ UnreadableHouseList, UnstableSnapshot, UnreadableTypeCatalogue
 };
 struct Result { Stage stage=Stage::WaitingForMatch; uint32_t address=0, value=0; };
 inline const wchar_t* description(Stage stage) {
@@ -23,6 +23,7 @@ inline const wchar_t* description(Stage stage) {
  case Stage::UnrecognizedUnitLayout:return L"单位数组非空但类型标识不匹配（检查游戏版本）";
  case Stage::UnreadableHouseList:return L"玩家名单读取不完整，等待下一次完整采样";
  case Stage::UnstableSnapshot:return L"采样期间对局或玩家名单变化，旧数据已清空";
+ case Stage::UnreadableTypeCatalogue:return L"单位类型目录读取不完整，等待下一次完整采样";
  }
  return L"未知读取状态";
 }

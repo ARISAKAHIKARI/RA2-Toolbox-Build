@@ -1,0 +1,64 @@
+[
+  {
+    "name": "round_transition",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-pthread",
+      "-O2",
+      "source/unit_monitor/tests/round_transition.cpp",
+      "-o",
+      "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/round_transition"
+    ],
+    "command": [
+      "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/round_transition"
+    ],
+    "environment": {},
+    "exit_code": 0,
+    "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/round_transition.run.log",
+    "log_sha256": "8474740e826af07b9166a4792ff2461aea8bde42f66d244457a3a2955c0efc04"
+  },
+  {
+    "name": "async_sampling",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-pthread",
+      "-O2",
+      "source/unit_monitor/tests/async_sampling.cpp",
+      "-o",
+      "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/async_sampling"
+    ],
+    "command": [
+      "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/async_sampling"
+    ],
+    "environment": {},
+    "exit_code": 0,
+    "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/async_sampling.run.log",
+    "log_sha256": "db35588524d46f45b3e0621200eba46131a162a2fcff847935e329bda890fcc0"
+  },
+  {
+    "name": "catalogue_sanitized",
+    "compile_command": [
+      "g++",
+      "-std=c++17",
+      "-pthread",
+      "-O1",
+      "-g",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "source/unit_monitor/tests/catalogue_recovery.cpp",
+      "-o",
+      "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/catalogue_sanitized"
+    ],
+    "command": [
+      "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/catalogue_sanitized"
+    ],
+    "environment": {
+      "ASAN_OPTIONS": "detect_leaks=0"
+    },
+    "exit_code": 0,
+    "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/monitor/catalogue_sanitized.run.log",
+    "log_sha256": "7033345aabed840bce11ac41a67c17dcd5f478c211dfc6d134118bbc9233fa1c"
+  }
+]

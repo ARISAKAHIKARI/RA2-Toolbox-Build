@@ -10,6 +10,7 @@
 #include <cmath>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 namespace assist { namespace planner {
 // Controller-only snapshot -> orders. No game callback, pointer write or RNG.
@@ -62,12 +63,21 @@ class Planner {
   if(dx*dx+dy*dy<16*16)return false;task.attackProgress=frame;task.progressX=a.x;task.progressY=a.y;return true;
  }
  static bool add(std::vector<Order>& out,Order order){if(out.size()>=MaxOrders)return false;out.push_back(order);return true;}
- static std::vector<Order> merge(const std::vector<Order>& combat,const std::vector<Order>& ore){
+ std::vector<Order> merge(const std::vector<Order>& combat,const std::vector<Order>& ore){
   std::vector<Order> result;result.reserve(MaxOrders);size_t c=0,o=0;
   // Interleave both families before the bounded native event allowance runs
   // out. Per-item masks acknowledge successful and rejected orders separately.
   while(result.size()<MaxOrders&&(c<combat.size()||o<ore.size())){
-   if(o<ore.size())result.push_back(ore[o++]);
+   if(o<ore.size()){
+    const auto&order=ore[o++];result.push_back(order);
+    // A candidate omitted by the final batch has no delivery or receipt.
+    // Charge its bounded retry budget only once it is actually returned.
+    if(order.purpose==OreYield){auto it=oreTurns_.find(order.refinery);
+     if(it!=oreTurns_.end()&&it->second.displaced==order.unit&&it->second.displacedToken==order.token){
+      ++it->second.attempts;it->second.sent=frame_;++oreYieldAttempts;
+     }
+    }
+   }
    if(c<combat.size()&&result.size()<MaxOrders)result.push_back(combat[c++]);
   }return result;
  }
@@ -145,6 +155,12 @@ public:
   if(!validWorld(world)){reset();return {};}
   if(world.match!=match_){reset();match_=world.match;}
   std::vector<Order> combat,out;combat.reserve(16);out.reserve(MaxOrders);
+  auto finishBatch=[&](std::vector<Order> orders){
+   // A candidate clipped by the final ore/combat merge has no delivery or
+   // receipt. Start the defense cooldown only for orders actually returned.
+   for(const auto&o:orders)if(o.purpose==DefenseOrder)defenseSent_[o.unit]=world.tick;
+   return orders;
+  };
   observeDrop|=autoDrop;
   if(world.frame==frame_&&world.inputSerial==inputSerial_&&flags==flags_&&dropEnabled_==autoDrop&&magnetronModes_==magnetronModes&&dropObserved_==observeDrop)return out;frame_=world.frame;inputSerial_=world.inputSerial;flags_=flags;dropEnabled_=autoDrop;magnetronModes_=magnetronModes;dropObserved_=observeDrop;queued=docking=yielded=0;targetChecks=0;
   actors_.clear();enemies_.clear();refineries_.clear();trucks_.clear();areas_.clear();bool enemiesBuilt=false;
@@ -166,14 +182,23 @@ public:
    int visited=0,checked=0,sent=0;
    for(;visited<world.count&&checked<128&&sent<6;++visited){int n=(defenseCursor_+visited)%world.count;const auto&a=world.actors[n];
     if(!(a.flags&PointDefense)||!(a.flags&Own)||!positionValid(a)||(a.flags&(Disabled|Limbo|OffMap|Transported)))continue;++checked;
-    const Actor* current=actor(a.target);if(current&&(current->flags&Enemy)&&(current->flags&Saboteur))continue;
+    const Actor* current=actor(a.target);
+    // A stale or unreachable target pointer is not an effective defense.
+    // Keep a valid shot; otherwise let a nearer, eligible infiltrator replace it.
+    if(current&&positionValid(*current)&&(current->flags&Enemy)&&(current->flags&Saboteur)){
+     const int64_t dx=int64_t(a.x)-current->x,dy=int64_t(a.y)-current->y;
+     if(canTarget(a,*current,dx*dx+dy*dy,false))continue;
+    }
     auto pending=defenseSent_.find(a.id);if(pending!=defenseSent_.end()&&uint32_t(world.tick-pending->second)<350)continue;
+    // Raw rosters can contain duplicate actors. Candidate deduplication must
+    // not depend on starting the delivery cooldown before final selection.
+    if(std::any_of(combat.begin(),combat.end(),[&](const Order&o){return o.purpose==DefenseOrder&&o.unit==a.id;}))continue;
     const Actor* best=nullptr;int64_t bestDistance=INT64_MAX;
     enemies_.nearby(a.x,a.y,a.range,[&](int index){const auto&t=world.actors[index];if(!(t.flags&Saboteur))return;
      int64_t dx=int64_t(a.x)-t.x,dy=int64_t(a.y)-t.y,d=dx*dx+dy*dy;if(!canTarget(a,t,d,false))return;
      if(d<bestDistance||(d==bestDistance&&(!best||t.id<best->id))){best=&t;bestDistance=d;}
     });
-    if(best&&add(combat,{a.id,a.manualVersion,best->id,0,1,0,DefenseOrder,0})){defenseSent_[a.id]=world.tick;++sent;}
+    if(best&&add(combat,{a.id,a.manualVersion,best->id,0,1,0,DefenseOrder,0}))++sent;
    }if(world.count)defenseCursor_=(defenseCursor_+visited)%world.count;
   }else defenseSent_.clear();
 
@@ -274,7 +299,7 @@ public:
    }
   }
   for(auto i=advanced_.begin();i!=advanced_.end();)if(!active.count(i->first))i=advanced_.erase(i);else ++i;
-  if(!useOre)return combat;
+  if(!useOre)return finishBatch(std::move(combat));
   for(auto i=ore_.begin();i!=ore_.end();){const Actor*a=actor(i->id),*refinery=actor(i->refinery);
    // A disappearing/invalid miner is NOT evidence that it unloaded.
    double cargo=a?load(*a):-1;bool defending=a&&(a->flags&HarvesterDefending);
@@ -303,7 +328,7 @@ public:
    oreTurns_.clear();
    for(auto i=ore_.begin();i!=ore_.end();){if(i->suspended){++queued;++i;continue;}if(i->stage==ore::Docking||i->stage==ore::Yielding||!i->refinery){i=ore_.erase(i);continue;}
     if(add(out,{i->id,i->token,0,i->refinery,7,0x34,2,i->refinery}))++i;else break;
-   }return merge(combat,out);
+   }return finishBatch(merge(combat,out));
   }
   oreIDs_.clear();for(const auto&job:ore_)oreIDs_.insert(job.id);
   std::vector<const Actor*> newTrucks;
@@ -370,8 +395,11 @@ public:
   // consume the entire order budget. Retrying is bounded even on rejection.
   for(auto&job:ore_){if(job.suspended)continue;auto it=oreTurns_.find(job.refinery);if(it==oreTurns_.end()||it->second.displaced!=job.id)continue;auto&t=it->second;
    if(t.released||t.attempts>=ore::MaxDockAttempts||world.frame-t.sent<ore::YieldRetryFrames)continue;
+   // Repeated actors must not reserve a second release or waiting cell for
+   // the same turn while its first candidate awaits final batch selection.
+   if(std::any_of(out.begin(),out.end(),[&](const Order&o){return o.purpose==OreYield&&o.refinery==job.refinery;}))continue;
    const auto*c=sample(job,job.waitCell);if(!c||c->occupation||c->land==2||c->land==7){waitingCells_.erase(job.waitCell);job.waitCell=waitingCell(job);if(job.waitCell)waitingCells_.insert(job.waitCell);}
-   if(job.waitCell&&add(out,{job.id,job.token,0,job.waitCell,2,11,OreYield,job.refinery})){++t.attempts;++oreYieldAttempts;t.sent=world.frame;}
+   if(job.waitCell)add(out,{job.id,job.token,0,job.waitCell,2,11,OreYield,job.refinery});
   }
   for(auto&job:ore_){const Actor* a=actor(job.id),*refinery=actor(job.refinery);if(job.suspended||!a||!refinery){++queued;continue;}
    auto turn=oreTurns_.find(job.refinery);
@@ -402,7 +430,7 @@ public:
    if(!job.waitCell){job.waitCell=waitingCell(job);if(job.waitCell)waitingCells_.insert(job.waitCell);}
    if(job.waitCell)add(out,{job.id,job.token,0,job.waitCell,2,11,0,job.refinery});
   }
-  return merge(combat,out);
+  return finishBatch(merge(combat,out));
  }
 };
 }}

@@ -33,6 +33,17 @@ template<class Read> class TacticalSampler {
  uint32_t typePointers_[assist::MaxTypes]{};std::unordered_set<uint32_t> stopped_;
  struct FactoryState {uint32_t pointer=0,product=0,changed=0;int progress=0,balance=0;bool seen=false;};FactoryState factories_[6];uint32_t productionAt_=0;
  uint32_t idleLines_=0,pausedLines_=0,activeTabs_=0;
+ aircraft::Sample aircraftSample_{},publishedAircraft_{},failedAircraftRefresh_{};std::array<uint32_t,8192>publishedAircraftIDs_{};bool aircraftChanged_=false;
+ void clearAircraftCandidate(){idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;aircraftSample_={};aircraftChanged_=true;}
+ bool captureAircraft(uint32_t house,int frame,uint32_t now,uint32_t sourceSerial){
+  clearAircraftCandidate();bool complete=true;auto checked=[&](uint32_t at,void*out,size_t n){const bool ok=read_(at,out,n);complete&=ok;return ok;};
+  GameView<decltype(checked)> view(checked);std::vector<uint32_t>objects;if(!view.vecChecked(0xA8E390,objects,8192))return false;
+  aircraft::Inspect<decltype(checked)>planes{checked};
+  for(uint32_t p:objects)if(planes.valid(p,house)){++aircraftTotal;if(planes.idle(p,house)){uint32_t id=0;if(checked(p+0x10,&id,4)&&id)idleAircraftIDs[idleAircraftCount++]=id;}}
+  if(!complete){clearAircraftCandidate();return false;}
+  std::sort(idleAircraftIDs,idleAircraftIDs+idleAircraftCount);idleAircraftTick=now;
+  aircraftSample_={state_.match,now,sourceSerial,frame,idleAircraftCount,aircraftTotal};return true;
+ }
  template<class R>static auto current(R r,uint32_t p,void*out,size_t n,int)->decltype(r.live(p,out,n)){return r.live(p,out,n);}
  template<class R>static bool current(R r,uint32_t p,void*out,size_t n,long){return r(p,out,n);}
  template<class T>T uiValue(uint32_t p,T fallback={}){T value{};return current(read_,p,&value,sizeof value,0)?value:fallback;}
@@ -180,16 +191,28 @@ public:
  display::State displayState()const{return display_;}
  const enemies::Frame& enemyMarkers()const{return enemies_;}
  const status::Frame& unitStatuses()const{return statuses_;}
+ const aircraft::Sample& idleAircraftDisplay()const{return publishedAircraft_;}
+ bool refreshAircraft(uint32_t sourceTick,uint32_t sourceSerial){
+  if(state_.status!=1||!house_)return false;
+  // A missing page cannot recover in the same sealed publication. Remember
+  // only failed derived attempts; a new source or full sample may try again.
+  if(failedAircraftRefresh_.frame==state_.frame&&failedAircraftRefresh_.match==state_.match&&failedAircraftRefresh_.serial==sourceSerial)return false;
+  if(captureAircraft(house_,state_.frame,sourceTick,sourceSerial)){failedAircraftRefresh_={};return true;}
+  failedAircraftRefresh_={state_.match,sourceTick,sourceSerial,state_.frame};return false;
+ }
  const nativeviewportprojection::Transform&sampledViewport()const{return sampledViewport_;}
  void viewport(const nativeviewportprojection::Transform&t,bool ready=true){if(viewport_!=t||viewportReady_!=ready)sceneFrame_=-1;viewport_=t;viewportReady_=ready;}
  void productionReminders(uint32_t enabled,uint32_t&idle,uint32_t&paused)const{idle=paused=0;for(int i=0;i<6;++i){unsigned tab=i<4?i:3;if(!(enabled&(1u<<i))||(activeTabs_&(1u<<tab)))continue;if(idleLines_&(1u<<i))idle|=1u<<tab;if(pausedLines_&(1u<<i))paused|=1u<<tab;}}
- void reset(){idleLines_=pausedLines_=activeTabs_=0;idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_=publishedEnemies_={};statuses_=publishedStatuses_={};statusOptions_=sceneStatusOptions_=0;sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
+ void reset(){idleLines_=pausedLines_=activeTabs_=0;idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;aircraftSample_=publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_=publishedEnemies_={};statuses_=publishedStatuses_={};statusOptions_=sceneStatusOptions_=0;sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
  const assist::Snapshot&state()const{return state_;}
- void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_)sceneFrame_=-1;sharedMatch_=epoch;}
- void commitSample(){publishedEnemies_=enemies_;publishedStatuses_=statuses_;}
+ void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_){sceneFrame_=-1;productionAt_=0;clearAircraftCandidate();publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;}sharedMatch_=epoch;}
+ void commitSample(){publishedEnemies_=enemies_;publishedStatuses_=statuses_;
+  if(aircraftChanged_){publishedAircraft_=aircraftSample_;std::copy_n(idleAircraftIDs,idleAircraftCount,publishedAircraftIDs_.begin());aircraftChanged_=false;}}
  void invalidateSample(const assist::Snapshot*stable=nullptr){sceneFrame_=-1;catalogueReady_=false;catalogueHash_=0;sceneAt_=0;productionAt_=0;for(auto&f:factories_)f={};enemyNames_.clear();enemyOwnerCount_=0;
-  if(stable){state_=*stable;enemies_=publishedEnemies_;statuses_=publishedStatuses_;}else enemies_.count=statuses_.count=0;}
+  if(stable){state_=*stable;enemies_=publishedEnemies_;statuses_=publishedStatuses_;}else enemies_.count=statuses_.count=0;
+  if(stable&&stable->match==publishedAircraft_.match){aircraftSample_=publishedAircraft_;idleAircraftTick=publishedAircraft_.tick;idleAircraftCount=publishedAircraft_.count;aircraftTotal=publishedAircraft_.total;std::copy_n(publishedAircraftIDs_.begin(),idleAircraftCount,idleAircraftIDs);}
+  else{clearAircraftCandidate();publishedAircraft_={};}aircraftChanged_=false;}
  void refreshCamera(uint32_t now){
   if(state_.status!=1)return;uint32_t tactical=uiValue<uint32_t>(0x887324);if(tactical<0x10000)return;
   rebaseCamera(uiValue<int>(tactical+0xB0),uiValue<int>(tactical+0xB4));
@@ -204,14 +227,15 @@ public:
   for(int i=0;i<enemies_.count;++i){shift(enemies_.items[i].x,dx);shift(enemies_.items[i].y,dy);}
   for(int i=0;i<statuses_.count;++i){shift(statuses_.items[i].x,dx);shift(statuses_.items[i].y,dy);}
  }
- const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false,uint32_t statusOptions=0){
+ const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false,uint32_t statusOptions=0,uint32_t sourceSerial=0){
+  failedAircraftRefresh_={};
   auto ui=[&](uint32_t at,void*out,size_t n){return current(read_,at,out,n,0);};
   statusOptions_=statusOptions&3;state_.sampledTick=now;state_.renderStatus=0;display_=display::inspect(ui);
   sampledViewport_=viewport_;if(!viewportReady_){state_.labels=state_.threatCount=state_.crateCount=0;enemies_.count=statuses_.count=0;return state_;}
   probe_=layout::inspect(ui);
   if(probe_.stage!=layout::Stage::Ready){
    enemies_.count=statuses_.count=0;
-   idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=0;
+   idleProductionMask=pausedProductionMask=0;clearAircraftCandidate();state_.status=0;state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=0;
    state_.typeCount=state_.swCount=state_.threatCount=state_.crateCount=0;
    house_=0;catalogueReady_=false;return state_;
   }
@@ -219,7 +243,7 @@ public:
   auto houses=vec(0xA80228,32);if(std::find(houses.begin(),houses.end(),house)==houses.end()){
    enemies_.count=statuses_.count=0;
    probe_={layout::Stage::MissingLocalHouseInList,0xA80228,house};
-   idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
+   idleProductionMask=pausedProductionMask=0;clearAircraftCandidate();state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
    state_.threatCount=state_.crateCount=0;house_=0;catalogueReady_=false;return state_;
   }
   bool fresh=house!=house_||frame<lastFrame_;if(fresh){++serial_;house_=house;catalogueReady_=false;catalogueHash_=0;for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=statuses_.count=0;enemyNames_.clear();}lastFrame_=frame;
@@ -262,7 +286,7 @@ public:
    for(size_t i=0;i<objects.size()&&i<128;++i){if(objects[i]&&kind(objects[i])>=0){anyKnown=true;break;}}
    if(!anyKnown){probe_={layout::Stage::UnrecognizedUnitLayout,0xA8EC78,uint32_t(objects.size())};
     enemies_.count=statuses_.count=0;
-    idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
+    idleProductionMask=pausedProductionMask=0;clearAircraftCandidate();state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
     state_.threatCount=state_.crateCount=0;catalogueReady_=false;return state_;}
   }
   for(auto p:objects){int k=p?kind(p):-1;if(k<0||get<int>(p+0x6C)<=0||!get<uint8_t>(p+0x74)||get<uint8_t>(p+0x81)||!get<uint8_t>(p+0x90))continue;
@@ -304,9 +328,7 @@ public:
    }
    if(flags&assist::Production)productionReminders(63,idleProductionMask,pausedProductionMask);
    productionTabsY=get<int>(0x87F7E8+0x1544+44,200)-32;if(productionTabsY<100||productionTabsY>state_.height-32)productionTabsY=168;
-   idleAircraftCount=aircraftTotal=0;aircraft::Inspect<Read> planes{read_};
-   for(uint32_t p:vec(0xA8E390,8192))if(planes.valid(p,house)){++aircraftTotal;if(idleAircraftCount<8192&&planes.idle(p,house))idleAircraftIDs[idleAircraftCount++]=get<uint32_t>(p+0x10);}
-   std::sort(idleAircraftIDs,idleAircraftIDs+idleAircraftCount);idleAircraftTick=now;
+   captureAircraft(house,frame,now,sourceSerial);
   }
   if((flags&assist::Crates)&&tactical){uint32_t cells=get<uint32_t>(0x87F7E8+316);int capacity=get<int>(0x87F7E8+320);auto overlays=vec(0xA83D80,4096);
    if(cells>=0x10000&&capacity>0&&capacity<=512*512)for(int i=0;i<256&&state_.crateCount<assist::MaxCrates;++i){uint32_t c=0x87F7E8+344+i*16;int x=get<int16_t>(c+12),y=get<int16_t>(c+14);if(x<=0||y<=0||x>=512||y>=512||y*512+x>=capacity||!assist::remaining(get<int>(c),get<int>(c+8),frame))continue;

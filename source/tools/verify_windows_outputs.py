@@ -39,6 +39,13 @@ SYSTEM = {'kernel32.dll', 'user32.dll', 'gdi32.dll', 'winmm.dll', 'gdiplus.dll',
           'msvcrt.dll', 'ucrtbase.dll', 'ntdll.dll', 'version.dll', 'ws2_32.dll',
           'shlwapi.dll', 'oleaut32.dll', 'imm32.dll'}
 NEURAL_SYSTEM = SYSTEM | {'d3d12.dll', 'dxgi.dll', 'wintrust.dll', 'crypt32.dll'}
+ASSIST_PROTOCOL = 103
+ASSIST_SHARED_BYTES = 23162552
+ASSIST_MAPPING = f'Local\\RA2Assist_v{ASSIST_PROTOCOL}_'
+ENTRY_PROTOCOL = 3
+ENTRY_REQUEST_BYTES = 108
+RUNTIME_PROTOCOL = 4
+RUNTIME_CONTROL_BYTES = 176
 CURSOR_PROTOCOL = 155
 CURSOR_MAPPING = 'Local\\RA2CursorBridge_v155_%lu'
 
@@ -210,17 +217,17 @@ def verify(root, host_arch='x86', neural_helper=False, webview2=False):
             a = host.at_rva(host.exports()['AssistHostProtocolInfo'], 8)
             b = bridge.at_rva(bridge.exports()['AssistProtocolInfo'], 8)
             protocol, shared_bytes = struct.unpack('<II', a)
-            if a != b or protocol != 101 or shared_bytes != 23162528:
+            if a != b or protocol != ASSIST_PROTOCOL or shared_bytes != ASSIST_SHARED_BYTES:
                 raise ValueError('host/bridge protocol or Shared structure size mismatch')
-            marker = 'Local\\RA2Assist_v101_\0'.encode('utf-16le')
+            marker = (ASSIST_MAPPING + '\0').encode('utf-16le')
             if 'AssistHostMappingPrefix' not in host.exports() or host.at_rva(host.exports()['AssistHostMappingPrefix'],len(marker)) != marker:
                 raise ValueError('host mapping namespace mismatch')
             if bridge.at_rva(bridge.exports()['AssistMappingPrefix'], len(marker)) != marker:
                 raise ValueError('incorrect exported mapping namespace')
             manager = images['GameRuntime.dll']
-            if struct.unpack('<II',manager.at_rva(manager.exports()['GameEntryManagerInfo'],8)) != (3,108):
+            if struct.unpack('<II',manager.at_rva(manager.exports()['GameEntryManagerInfo'],8)) != (ENTRY_PROTOCOL, ENTRY_REQUEST_BYTES):
                 raise ValueError('entry manager API mismatch')
-            if struct.unpack('<II', manager.at_rva(manager.exports()['GameRuntimeInfo'],8)) != (4,176):
+            if struct.unpack('<II', manager.at_rva(manager.exports()['GameRuntimeInfo'],8)) != (RUNTIME_PROTOCOL, RUNTIME_CONTROL_BYTES):
                 raise ValueError('Runtime diagnostic transport ABI mismatch')
             start=manager.optional+manager.u16(manager.nt+20)
             for symbol in ('GameRuntimeHook','GameRuntimePostHook'):

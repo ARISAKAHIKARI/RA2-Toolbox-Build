@@ -1,0 +1,37 @@
+{
+  "phase": "before",
+  "baseline": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "commands": [
+    {
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-pedantic",
+        "source/assist/tests/planner_defense_delivery.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/planner_defense_before"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/defense-before-build.log",
+      "log_sha256": "9fab5fcb78e521415116d7032b0a32d0f50795ac85cee35dd7d4c3bd760a607b"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/planner_defense_before"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit_code": 1,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/defense-before-run.log",
+      "log_sha256": "0de261ada97b966f5d16cb1e1edc61572efb1c1fb77ff5fcaf7c50290642ee3c"
+    }
+  ],
+  "sha256": {
+    "source/assist/source/external_planner.h": "a3d21360f652cc0b5a86e581ec2c0f52466945b8f146a4023bcaf5fea1e32c4d",
+    "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+    "source/assist/tests/planner_defense_delivery.cpp": "b57101673ef6536715116f76886bce38f1bb202d318e5dbddb3941f6298e5bf7"
+  }
+}

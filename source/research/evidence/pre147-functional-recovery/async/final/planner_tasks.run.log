@@ -1,0 +1,1 @@
+PASS 240 stateful planner frames and receipts match synchronous decisions; blocked computation leaves caller responsive, invalidated bridge result rejected

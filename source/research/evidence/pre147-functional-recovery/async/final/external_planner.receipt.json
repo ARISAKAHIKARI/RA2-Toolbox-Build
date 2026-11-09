@@ -1,0 +1,64 @@
+{
+  "name": "external_planner",
+  "command": [
+    "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/external_planner"
+  ],
+  "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+  "exit_code": 0,
+  "executed_this_revision": true,
+  "source_inputs_unchanged": true,
+  "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/external_planner.run.log",
+  "log_sha256": "6021b802c515db07ee39d8e65f08fb8457863d9fd84a45cb906132b3beb9ad65",
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-pthread",
+    "-O2",
+    "source/assist/tests/external_planner.cpp",
+    "-o",
+    "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/external_planner"
+  ],
+  "compile_exit_code": 0,
+  "commands": [
+    {
+      "stage": "compile",
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-pthread",
+        "-O2",
+        "source/assist/tests/external_planner.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/external_planner"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "started_utc": "2026-11-09T04:54:35.899172+00:00",
+      "finished_utc": "2026-11-09T04:54:38.768201+00:00",
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/external_planner.compile.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "run",
+      "command": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/external_planner"
+      ],
+      "cwd": "/workspace/scratch/40121bc881b8/ra2-ui-146",
+      "started_utc": "2026-11-09T04:54:38.768272+00:00",
+      "finished_utc": "2026-11-09T04:54:38.775934+00:00",
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/async/final/external_planner.run.log",
+      "log_sha256": "6021b802c515db07ee39d8e65f08fb8457863d9fd84a45cb906132b3beb9ad65"
+    }
+  ],
+  "production_source_hashes": {
+    "source/assist/source/external_planner.h": "a3d21360f652cc0b5a86e581ec2c0f52466945b8f146a4023bcaf5fea1e32c4d",
+    "source/assist/source/planner_task.h": "76a6c3cb78777f48abfc9d375df0fc9891458c3d34c6561a3eef823857b33364",
+    "source/assist/source/value_task.h": "e61f6b7cb27dc7600b0c207a2923f1144ec24b9efc05f1d813b6878b9b3ca204",
+    "source/shared/source/latest_worker.h": "79d55cd096758342ec6748b83177ae9cb9d6440888f564d150fd46848da21d81"
+  },
+  "test_source_hashes": {
+    "source/assist/tests/external_planner.cpp": "65f1843498b7217be098fbddb583c1514d4d284025d0cc180bcbae01e6c732be"
+  },
+  "binary_sha256": "aa3b267e8c65fd3d7324fc65f396c965113732c3a3f1a5aba1258cb94e6fd2e5"
+}

@@ -7,20 +7,24 @@ static int selectedModeCommand(uint32_t house,int mission){
  // Automatic pointer features need nativeReady's foreground gate; these
  // deliberate requests still require the full simulation/session boundary.
  if(!simulationReady()||get<bool>(0xA8BC60+25))return -11;
- Vec selected=vec(0xA8ECB8);int sent=0,sticky=0;uint32_t voice=0;bool failed=false;
+ // Use the same bounded, frozen-cohort command continuation as own-ground.
+ // Queue pressure must not silently discard the unsubmitted selection tail.
+ auto&job=ownground::job;
+ if(job.pending)return -6;
+ Vec selected=vec(0xA8ECB8);if(selected.count<0||selected.count>ownground::Capacity)return -42;
+ job.count=job.next=job.sent=0;job.mission=mission;job.request=sh->request;
+ job.epoch=match;job.started=sampleClock(sh);job.frame=-1;job.voiced=false;
+ int sticky=0;
  for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);int k=kind(p);
   if(!worldObjects.contains(p)||!own(p,house)||!live(p)||(k!=1&&k!=2)||
      get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x2B0)||get<bool>(p+0x1C8))continue;
   // A normal event cannot promise to release Sticky. In particular, never
   // let cancellation invoke the SP-only local ForceMission exit here.
   if(stickyOwns(p)||get<int>(p+0xAC)==6||get<int>(p+0xB4)==6){++sticky;continue;}
-  if(!outgoingRoom()){failed=true;break;}
-  // Same explicit-input hand-back as pointer commands: invalidate stale
-  // automation tokens/leases before recording the new native order receipt.
-  cancelNative(p,false);
-  if(!nativeMission(house,get<uint32_t>(p+0x10),mission,0,0,0)){failed=true;break;}
-  ++sent;if(!voice)voice=p;
+  const uint32_t id=get<uint32_t>(p+0x10);
+  job.sources[job.count++]={p,id,manualVersions.get(id),0,false};
  }
- if(voice)inputFeedback(voice,0,false);
- return sent?sent:failed?-6:sticky?-41:0;
+ if(!job.count)return sticky?-41:0;
+ job.pending=true;ownGroundTick(house,get<int>(0xA8ED84),job.started);
+ return job.pending?-30:sh->result>0?int(sh->count):int(sh->result);
 }

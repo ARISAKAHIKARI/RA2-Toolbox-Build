@@ -1,0 +1,38 @@
+{
+  "source": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/unit_monitor/source/icon_cache.h",
+  "source_sha256": "11d4846950493a6518eb0f0dba07187265dea55bf8ab397378b22272130f8594",
+  "test_sha256": "09906c0e895d40291511559eb8962c4aa790ba1d0e0d436dc813470f276c7224",
+  "verification_level": "Linux real production cache worker and filesystem; access visibility changed only for deterministic state observation",
+  "not_verified": [
+    "Windows MoveFileEx behavior",
+    "actual game asset caches"
+  ],
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O1",
+        "-pthread",
+        "-D_GLIBCXX_ASSERTIONS",
+        "-I",
+        "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/unit_monitor/source",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon_cache_reopen_current.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon_cache_reopen_current"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon_cache_reopen_current",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/display/icon-reopen-jeyp7ujk"
+      ],
+      "exit_code": 0,
+      "stdout": "PASS failed scope -> same-path reconnect -> cache persistence/restore; healthy reconnect keeps generation\n",
+      "stderr": ""
+    }
+  ]
+}

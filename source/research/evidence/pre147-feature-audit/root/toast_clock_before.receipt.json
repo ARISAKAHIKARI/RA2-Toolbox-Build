@@ -1,0 +1,37 @@
+{
+  "source_sha256": "7e91604697a8ce3e0840fe9096882926c6ea4db8364fd502a47d7001042721b9",
+  "test_sha256": "0f236a616fb69becdda017b782c2ed1bc6320d8270af5ee87da613b6eeb1e3af",
+  "predicates": {
+    "visible": "panel&&now<toastUntil",
+    "expired": "int32_t(now-toastUntil)>=0",
+    "clear": "toastUntil=0;"
+  },
+  "verification_level": "controlled_execution_of_extracted_production_toast_logic",
+  "not_verified": [
+    "Windows painting and OS timer"
+  ],
+  "runs": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/toast_clock_before.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/toast_clock_before"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/toast_clock_before"
+      ],
+      "exit_code": 1,
+      "stdout": "15 checks, 6 failures\n",
+      "stderr": "FAIL no toast must not suppress status after half wrap\nFAIL creation across tick wrap\nFAIL zero deadline is valid when active\nFAIL zero deadline last millisecond\nFAIL match reset clears active notification\nFAIL retired toast cannot reappear after full wrap\n"
+    }
+  ]
+}

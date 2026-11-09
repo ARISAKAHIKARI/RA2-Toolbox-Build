@@ -1,0 +1,7 @@
+first passenger paint: bubbles=1 live_RPM=0
+PASS 1000 paints of one logic frame: zero live RPM, immutable contents/position
+PASS missing/failed passenger page: no live fallback, 120ms lease never renewed, next complete frame recovers
+PASS no token/unconfirmed/wrong PID/match/frame/tick/retired publication/disabled/chat: closed without RPM
+PASS inspect disappearance/danger-only/shared demand routing: no rate reduction or alternate live scanner
+PASS paused frame independent confirmation and confirmation expiry
+passenger frame sampling: 2158 checks passed

@@ -1,0 +1,55 @@
+{
+  "name": "secondary_render_retry",
+  "started_utc": "2026-11-09T07:10:50.603149+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "python3",
+    "-B",
+    "source/unit_monitor/tests/secondary_render_retry.py",
+    "--output",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry",
+    "--label",
+    "current"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry/secondary_render_retry_current_1.log",
+  "test_source_hashes": {
+    "source/unit_monitor/tests/secondary_render_retry.py": "4d7403556dccde6c6e614d62ca4e83863b270aa3c91d6ff6b079fe21d504bc1f"
+  },
+  "production_source_hashes": {
+    "source/unit_monitor/source/main.cpp": "c8651e8e734e1b86e38056040acef64d0f51e1f786b927198c3ab3ae07d23fc3"
+  },
+  "steps": [
+    {
+      "stage": "driver",
+      "command": [
+        "python3",
+        "-B",
+        "source/unit_monitor/tests/secondary_render_retry.py",
+        "--output",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry",
+        "--label",
+        "current"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry/driver.log",
+      "log_sha256": "e71a2b58efecc1e42e47f18e9cc0820a6ed68498225fb344b2bd40bb6c9c545f"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry/secondary_render_retry_current_1.log",
+  "log_sha256": "e71a2b58efecc1e42e47f18e9cc0820a6ed68498225fb344b2bd40bb6c9c545f",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "completed_utc": "2026-11-09T07:10:51.071055+00:00",
+  "elapsed_seconds": 0.468,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/secondary_render_retry/execution.json"
+}

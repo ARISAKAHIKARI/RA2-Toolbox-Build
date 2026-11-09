@@ -1,0 +1,24 @@
+{
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O0",
+        "-pthread",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/render/integration-review/catalogue_modes.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/render/integration-review/catalogue_modes"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/render/integration-review/catalogue_modes"
+      ],
+      "exit_code": -6
+    }
+  ],
+  "source_sha256": "1504be13a3fdcd5b4f9e728c5c1c835a86b6591e5eb90fa68c83c5924b6aada2",
+  "sampler_sha256": "024afa933113f07f31b02a3aff91e4a587d34c15a6a83c1419ea5e3fab235664"
+}

@@ -1,0 +1,69 @@
+foundation-index failure_ready=1 fault_hits=1 recovery_ready=1 pixel_mismatches=2304
+foundation-width failure_ready=1 fault_hits=1 recovery_ready=1 pixel_mismatches=192
+foundation-height failure_ready=1 fault_hits=1 recovery_ready=1 pixel_mismatches=192
+move-x failure_ready=1 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+move-y failure_ready=1 fault_hits=1 recovery_ready=1 pixel_mismatches=0
+normal-z failure_ready=1 fault_hits=1 recovery_ready=1 pixel_mismatches=768
+mask-pointer failure_ready=1 fault_hits=1 recovery_ready=1 pixel_mismatches=192
+mask-header failure_ready=1 fault_hits=1 recovery_ready=1 pixel_mismatches=192
+mask-row failure_ready=1 fault_hits=1 recovery_ready=1 pixel_mismatches=192
+layer_recoveries=9 pixel_mismatches=4032
+scene_foundation-index variant=0 failure_scene=1 recovery_scene=1 pixel_mismatches=1856
+scene_foundation-width variant=0 failure_scene=1 recovery_scene=1 pixel_mismatches=192
+scene_move-x variant=0 failure_scene=1 recovery_scene=1 pixel_mismatches=0
+scene_normal-z variant=0 failure_scene=1 recovery_scene=1 pixel_mismatches=768
+scene_mask-pointer variant=0 failure_scene=1 recovery_scene=1 pixel_mismatches=192
+scene_mask-row variant=0 failure_scene=1 recovery_scene=1 pixel_mismatches=192
+scene_foundation-index variant=1 failure_scene=1 recovery_scene=1 pixel_mismatches=1484
+scene_foundation-width variant=1 failure_scene=1 recovery_scene=1 pixel_mismatches=424
+scene_move-x variant=1 failure_scene=1 recovery_scene=1 pixel_mismatches=0
+scene_normal-z variant=1 failure_scene=1 recovery_scene=1 pixel_mismatches=1696
+scene_mask-pointer variant=1 failure_scene=1 recovery_scene=1 pixel_mismatches=424
+scene_mask-row variant=1 failure_scene=1 recovery_scene=1 pixel_mismatches=424
+scene_recoveries=12 pixel_mismatches=7652
+healthy_digest=b87ea9343f6207a3 checks=109 failures=45
+FAIL foundation-index incomplete layer rejected
+FAIL foundation-index same cache recovers to healthy pixels and native depth
+FAIL foundation-width incomplete layer rejected
+FAIL foundation-width same cache recovers to healthy pixels and native depth
+FAIL foundation-height incomplete layer rejected
+FAIL foundation-height same cache recovers to healthy pixels and native depth
+FAIL move-x incomplete layer rejected
+FAIL move-y incomplete layer rejected
+FAIL normal-z incomplete layer rejected
+FAIL normal-z same cache recovers to healthy pixels and native depth
+FAIL mask-pointer incomplete layer rejected
+FAIL mask-pointer same cache recovers to healthy pixels and native depth
+FAIL mask-header incomplete layer rejected
+FAIL mask-header same cache recovers to healthy pixels and native depth
+FAIL mask-row incomplete layer rejected
+FAIL mask-row same cache recovers to healthy pixels and native depth
+FAIL nonzero malformed mask cannot become absent cached mask
+FAIL malformed mask recovers without resource revision
+FAIL animation-palette failed metadata is rejected
+FAIL animation-palette retry in same presentation restores correct art
+FAIL animation-flat failed metadata is rejected
+FAIL animation-flat retry in same presentation restores correct art
+FAIL body-palette failed metadata is rejected
+FAIL foundation-index actual SceneRenderer rejects incomplete saved art
+FAIL foundation-index retained scene equals complete reference
+FAIL foundation-width actual SceneRenderer rejects incomplete saved art
+FAIL foundation-width retained scene equals complete reference
+FAIL move-x actual SceneRenderer rejects incomplete saved art
+FAIL normal-z actual SceneRenderer rejects incomplete saved art
+FAIL normal-z retained scene equals complete reference
+FAIL mask-pointer actual SceneRenderer rejects incomplete saved art
+FAIL mask-pointer retained scene equals complete reference
+FAIL mask-row actual SceneRenderer rejects incomplete saved art
+FAIL mask-row retained scene equals complete reference
+FAIL foundation-index actual SceneRenderer rejects incomplete saved art
+FAIL foundation-index retained scene equals complete reference
+FAIL foundation-width actual SceneRenderer rejects incomplete saved art
+FAIL foundation-width retained scene equals complete reference
+FAIL move-x actual SceneRenderer rejects incomplete saved art
+FAIL normal-z actual SceneRenderer rejects incomplete saved art
+FAIL normal-z retained scene equals complete reference
+FAIL mask-pointer actual SceneRenderer rejects incomplete saved art
+FAIL mask-pointer retained scene equals complete reference
+FAIL mask-row actual SceneRenderer rejects incomplete saved art
+FAIL mask-row retained scene equals complete reference

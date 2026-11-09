@@ -445,13 +445,22 @@ static bool minerDefenseResume(MinerDefenseJob&j,uint32_t house,int frame,DWORD 
  }
  if(!oreHarvestMapCurrent()&&!oreHarvestMapCapture())return false;
  uint32_t cell=j.resourceCell;
- if(!cell||oreHarvestCell(int(cell%1000),int(cell/1000),j.identity.speed)!=1){
+ const int original=cell?oreHarvestCell(int(cell%1000),int(cell/1000),j.identity.speed):0;
+ if(original<0)return false;
+ if(!original){
   auto&search=j.identity.search;if(!search.radius&&!search.at&&!search.done)search.begin(j.identity.originX,j.identity.originY);
   int local=std::min(searchBudget,256),before=local;search.advance(local,[&](int x,int y){return oreHarvestCell(x,y,j.identity.speed);});searchBudget-=before-local;
   if(!search.done)return false;cell=search.best;
  }
- if(cell&&oreHarvestCell(int(cell%1000),int(cell/1000),j.identity.speed)==1)minerDefenseSend(j,house,frame,now,10,0,cell,11);
- else minerDefenseSend(j,house,frame,now,5,0,0,0);
+ if(cell){
+  const int current=oreHarvestCell(int(cell%1000),int(cell/1000),j.identity.speed);
+  // A completed search can outlive its winning resource while waiting for
+  // event budget. Missing reads must not turn it into Guard, and an exhausted
+  // winner must restart the bounded search instead of abandoning mining.
+  if(current<0)return false;
+  if(!current){j.identity.search.begin(j.identity.originX,j.identity.originY);return false;}
+  minerDefenseSend(j,house,frame,now,10,0,cell,11);
+ }else minerDefenseSend(j,house,frame,now,5,0,0,0);
  return false;
 }
 static bool minerDefenseTick(uint32_t house,int frame,DWORD now){

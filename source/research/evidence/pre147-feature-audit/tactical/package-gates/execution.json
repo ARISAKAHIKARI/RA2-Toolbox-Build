@@ -1,0 +1,30 @@
+{
+  "scope": "packaging policy only; synthetic receipts are not production check evidence",
+  "command": [
+    "python3",
+    "-B",
+    "packages/v1.0.47/test_package_release.py",
+    "--base-full",
+    "/workspace/scratch/5a310fe852f8/ui146-delivery-final/RA2Toolbox-1.0.46-x64-Full.zip",
+    "--base-manifest",
+    "/workspace/scratch/5a310fe852f8/ui146-delivery-final/release-manifest.json",
+    "--report",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/package-gates/report.json"
+  ],
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "started_utc": "2026-11-09T07:10:46.932344+00:00",
+  "finished_utc": "2026-11-09T07:10:49.943051+00:00",
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/tactical/package-gates/run.log",
+  "log_sha256": "ef5af123c7d04027009a6a708265b94652e9eeca4fbdf728739b00b790ce4719",
+  "packaging_source_sha256": {
+    "packages/v1.0.47/package_release.py": "12aba137ec285dda18b2a9a4b026c292c626492299ce1d06f350056baa162778",
+    "packages/v1.0.47/test_package_release.py": "c9ed72959b007c62f8dfce8b9e72b57f5f28c2e1cfb2f496e16f650f1e103036",
+    "packages/v1.0.47/README.txt": "17bb64f9a5d3ef78f5f3db605093ec0168ea1c1ab5079daa30b064747cab8cf2",
+    "packages/v1.0.47/PACKAGING.md": "97e976b4ef86eb0fa945dc5f81ba2d157f521f81d236ea8d6b427de175ee92cb"
+  },
+  "inputs_unchanged_after_execution": true
+}

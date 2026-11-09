@@ -1,0 +1,245 @@
+{
+  "started_utc": "2026-11-09T04:49:31.948806+00:00",
+  "head_before": "b928999f5da90f6f9de0d18151b04b498217464c",
+  "definitions": [
+    {
+      "name": "missile_allocator",
+      "group": "compute",
+      "command": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/compute/missile_allocation_equivalence"
+      ],
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/compute/equivalence-and-timing.jsonl",
+      "test_paths": [
+        "source/assist/tests/missile_allocation_equivalence.cpp"
+      ],
+      "production_paths": [
+        "source/assist/source/missile_compute.h",
+        "source/assist/source/main.cpp",
+        "source/assist/source/missile_bridge.h"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-UNDEBUG",
+        "source/assist/tests/missile_allocation_equivalence.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/compute/missile_allocation_equivalence"
+      ]
+    },
+    {
+      "name": "snapshot_reuse",
+      "group": "runtime",
+      "command": [
+        "python",
+        "source/assist/tests/world_frame_reuse.py",
+        "--out",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/world_reuse_final",
+        "--sanitize",
+        "address,undefined"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=0",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/world_reuse_final/receipt.json",
+      "test_paths": [
+        "source/assist/tests/world_frame_core.cpp",
+        "source/assist/tests/world_frame_reuse.cpp",
+        "source/assist/tests/world_frame_reuse.py"
+      ],
+      "production_paths": [
+        "source/shared/source/world_frame.h",
+        "source/shared/source/world_frame_pool.h",
+        "source/shared/source/world_frame_transport.h"
+      ]
+    },
+    {
+      "name": "tech_capture",
+      "group": "runtime",
+      "command": [
+        "python",
+        "source/assist/tests/tech_enhancement_capture.py",
+        "--baseline",
+        "5a0f36704e80cc715215318660e31786c4c26cbc",
+        "--out",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture"
+      ],
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/runtime/tech_capture/receipt.json",
+      "test_paths": [
+        "source/assist/tests/tech_enhancement_capture.cpp",
+        "source/assist/tests/tech_enhancement_capture.py"
+      ],
+      "production_paths": [
+        "source/assist/source/tech_ui_breakpoint_bridge.h",
+        "source/assist/source/tech_enhancement.h",
+        "source/assist/source/tech_parameter_lookup.h",
+        "source/assist/source/bridge.cpp"
+      ]
+    },
+    {
+      "name": "voxel_recovery",
+      "group": "render",
+      "command": [
+        "python",
+        "source/assist/tests/voxel_part_capture.py",
+        "--output",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/voxel"
+      ],
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/voxel/run.log",
+      "test_paths": [
+        "source/assist/tests/voxel_part_capture.py",
+        "source/assist/tests/voxel_part_capture.cpp",
+        "source/assist/tests/game_assets_host_test.py"
+      ],
+      "production_paths": [
+        "source/external_reader/source/camera_assets.h",
+        "source/external_reader/source/radar_scene.h",
+        "source/external_reader/source/voxel_preview.h",
+        "source/assist/source/minimap_overlay.h",
+        "source/assist/source/watch_scene.h",
+        "source/assist/source/main.cpp"
+      ]
+    },
+    {
+      "name": "idle_aircraft_display",
+      "group": "render",
+      "command": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display"
+      ],
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display.run.log",
+      "test_paths": [
+        "source/assist/tests/idle_aircraft_display.cpp",
+        "source/assist/tests/enemy_markers.cpp"
+      ],
+      "production_paths": [
+        "source/external_reader/source/tactical_sampler.h",
+        "source/external_reader/source/idle_aircraft.h",
+        "source/shared/source/world_frame.h",
+        "source/assist/source/aircraft_indicator.h",
+        "source/assist/source/idle_aircraft_selection.h",
+        "source/assist/source/main.cpp"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "-I",
+        "source/external_reader/source",
+        "source/assist/tests/idle_aircraft_display.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/idle_aircraft_display"
+      ]
+    },
+    {
+      "name": "terrain_reuse",
+      "group": "render",
+      "command": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_storage_pool"
+      ],
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_storage_pool.run.log",
+      "test_paths": [
+        "source/assist/tests/terrain_storage_pool.cpp",
+        "source/assist/tests/shared_scene_sampling.cpp"
+      ],
+      "production_paths": [
+        "source/external_reader/source/radar_map.h",
+        "source/external_reader/source/shared_scene.h",
+        "source/external_reader/source/radar_scene.h",
+        "source/external_reader/source/world_scene_pipeline.h",
+        "source/shared/source/world_frame.h",
+        "source/assist/source/minimap_overlay.h",
+        "source/assist/source/watch_scene.h"
+      ],
+      "compile_command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "-I",
+        "source/external_reader/source",
+        "source/assist/tests/terrain_storage_pool.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/render/terrain_storage_pool"
+      ]
+    },
+    {
+      "name": "dependency_probes",
+      "group": "dependencies",
+      "command": [
+        "python",
+        "source/tools/test_dependency_probes.py",
+        "--out",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/dependencies"
+      ],
+      "environment": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "log_path": "/workspace/scratch/5a310fe852f8/functional147pre2/legacy_gates/dependencies/receipt.json",
+      "test_paths": [
+        "source/tools/test_dependency_probes.py"
+      ],
+      "production_paths": [
+        "source/engine/prepare_runtime.py",
+        "source/engine/runtime-dependencies.json"
+      ]
+    }
+  ],
+  "input_sha256_before": {
+    "source/assist/source/aircraft_indicator.h": "3b81510daf5734a3a2db8bb5647d35f6b37eb9d34e25ebf6e80f020f66026dda",
+    "source/assist/source/bridge.cpp": "a1924341718da07eff0ae127ea39fc5653fe3c1c490197f47075d6877e98e0d3",
+    "source/assist/source/idle_aircraft_selection.h": "c4d2c741a9010f0159616a5f761a3fde035d7d90437f0e87998cec84b9d2d0d8",
+    "source/assist/source/main.cpp": "cdc1d4076d0278aa41c5fdc357579ed10ac58785d07a21199769883cffb2d12e",
+    "source/assist/source/minimap_overlay.h": "3fe7371e9e5f5b80b39a5da75021ee7703bfa02a8864a2a7ec0a71f6e6a2f7bd",
+    "source/assist/source/missile_bridge.h": "f1452196b2cd99783eae0bb3713683f14740e64e98ea2b12c426a19c630f212b",
+    "source/assist/source/missile_compute.h": "f9681c757b46e935025db29bc2a6447abb664490b265875914a4b20344b7c499",
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/tech_parameter_lookup.h": "14fd3aa6ef6b4557804d44fd6743ac4b5bc1e92f7a23f7fc434c0ffe9a735a43",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "16669d5c032fbb66e9d21a974dea127d3b24b8f4ed7ee20bc2eac8aabf4c2d41",
+    "source/assist/source/watch_scene.h": "f89c564c6ffe5505343180f6d0ffb4598d130b6e815b4540d0ad05bd26b03cb4",
+    "source/assist/tests/enemy_markers.cpp": "02700cbc69df44b81e5f3bc246004e4567ed9ecab611fa94d6a32fa38d398bf6",
+    "source/assist/tests/game_assets_host_test.py": "4965c42fa325878bd803f0c6b8697bdfe9066f5066588017c5832ac2a2b72a4e",
+    "source/assist/tests/idle_aircraft_display.cpp": "1e16f480a865153f4c827dc3e5809e39a0013b13f95de3216ab88066aa227b14",
+    "source/assist/tests/missile_allocation_equivalence.cpp": "5fa4d1add17f6df48e415aaf961b3f9ba554507a9a7c35d160a1cebc9d9b6fd1",
+    "source/assist/tests/shared_scene_sampling.cpp": "c6375b7e460aa684d6f2374093c90e89cdb938a8335528f8b25d1f9c82a66cfa",
+    "source/assist/tests/tech_enhancement_capture.cpp": "550db4fb9351cc7fdf68393ba08127838b68177395354b2b158c3e0beda887f0",
+    "source/assist/tests/tech_enhancement_capture.py": "a0d2336204b92d1f915598d5eaac8dce78c97312647f445c825bbe29536ad1bf",
+    "source/assist/tests/terrain_storage_pool.cpp": "7b621df3f779e4bea59661cbd86aef8429081e18a16a9df13a9c6c9313fe25da",
+    "source/assist/tests/voxel_part_capture.cpp": "904c141dd2944a5ca287041f6c221e37393098404b7191061bdd07f471ba6b36",
+    "source/assist/tests/voxel_part_capture.py": "d94318751948a6edfe230aed83acbdb286586ac7448f88242acd27dce43d98f6",
+    "source/assist/tests/world_frame_core.cpp": "71ef592d6442a3c9ea35e8e4688e355968393251d19e320a9c5b7f176da2472c",
+    "source/assist/tests/world_frame_reuse.cpp": "0cd7277e95c12e764113803543605935eb0cd760462784ae5ff3067c4232dcc0",
+    "source/assist/tests/world_frame_reuse.py": "2c5a77541b4fd1326fa5c8801d41f816e64fbe7e1632e8c81d9501ad17e18838",
+    "source/engine/prepare_runtime.py": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96",
+    "source/engine/runtime-dependencies.json": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93",
+    "source/external_reader/source/camera_assets.h": "b33669cbf6bb0430c773e5cd93f37a71403766e04bef557fff955b16bca3c0bd",
+    "source/external_reader/source/idle_aircraft.h": "8f136a5ca6f8066bfc1017caf3fd1d47578e4ddca3c40ab8be3d7873b80df7cf",
+    "source/external_reader/source/radar_map.h": "34bfd768bb72dfbaf3750f57c91cb6bddefa85fe9a247f191595b9b11445df90",
+    "source/external_reader/source/radar_scene.h": "30fee7c406d9f95d32fbf1f69553c36d5c9b00360c9463cbd463afee29c28659",
+    "source/external_reader/source/shared_scene.h": "87e8e426bc52e13e9ac5d5cfda39d70bb17b968b453731d56da9d353dfaadbd3",
+    "source/external_reader/source/tactical_sampler.h": "827b100e89171d910113221b3ca2fe3feaaca26a4fcc6e3aa757c8a408210dab",
+    "source/external_reader/source/voxel_preview.h": "9564cbf1ae05cb7653dbf67d6b5e6676ec09e869c301c9fa1981e945c8566c86",
+    "source/external_reader/source/world_scene_pipeline.h": "56b55686556b7fef84e0a3463cf6997dfdcf1be1e74237fc69923cce88793f8b",
+    "source/shared/source/world_frame.h": "8baf056386c21c2ad65b4673eb1b74ecbdb90c3fe6625ec599183e8ec4400c5f",
+    "source/shared/source/world_frame_pool.h": "58a99f8f9d926bbff9298d68006ff3ad45d648ca6c86751f75cbaf81660a91ab",
+    "source/shared/source/world_frame_transport.h": "39a867e81eda223da5ad07c0d23ff8fb768323c99ed50aeedc1332bd7b2c10d9",
+    "source/tools/test_dependency_probes.py": "e0fbe445990f95a8d76dc2db8990597db749aa5c04de04afe26e056fcd761f37"
+  },
+  "package_gate_source_sha256": "155849a1e8cce1dd34b39ed512769a38247dc99520c62f3926f4328b32cff044"
+}

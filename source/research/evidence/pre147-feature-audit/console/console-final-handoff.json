@@ -1,0 +1,468 @@
+{
+  "scope": "console final handoff plus independent hardware second review",
+  "frozen_at": "2026-11-09T07:24:17.174527+00:00",
+  "product_baseline": "1.0.46.4",
+  "release_series": "1.0.47",
+  "remote_base": "46420180d9137932ca98fd2e6c131bde4f2a6294",
+  "owned_changed_files": {
+    "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd",
+    "source/assist/source/pause_view_bridge.h": "308cfc708df137b36853ce425cdfc043d2ac2a073e36446301f532bb39a7f7b5",
+    "source/assist/source/native_message_policy.h": "3614887a2b8b3f198fa39949cfbf7989e715c4d0f4455a127172d3124762dbc5",
+    "source/hook_diagnostics/README.md": "d4ab587a434ad4b3f2f1c67107a6300ff3aeb20e922e38b101e963941bf132c7",
+    "source/suite/tests/console_composition_test.mjs": "4bb04751ba7aaca9f351b462bc9d7dff6e33b6fc9991d074f7bacb0d1ffdac67",
+    "source/suite/tests/console_hotkey_presentation_test.mjs": "18f3a644f21c76650e98d58481fb14622625ab9e50e13488c46021749e1553cc",
+    "source/assist/tests/superweapon_result_feedback.py": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83",
+    "source/assist/tests/pause_key_pairing.py": "83c68c66d901616bbdd5252f5b509eba9497cbf34d01df696c99370c13ab53e1",
+    "source/assist/tests/native_mouse_pairing.py": "064f3713519d3e344c826df9bf10839f6e1f84976eff303699b0515092a9294e",
+    "source/tools/build_hook_diagnostics.py": "34cb8b4f9ac505e7cf2b4655cb25dad949ce36a117c82780af97a2b9138e800b",
+    "source/tools/verify_hook_diagnostics.py": "de54aaa1f3422c8a037b1abe5be5aa8e7fb1c7cffacf19e53851c61ff4f8d114"
+  },
+  "root_owned_production_changes": [
+    "source/assist/source/bridge.cpp::superSelect no-target returns2",
+    "source/assist/source/main.cpp::result r2 queued feedback",
+    "source/assist/source/tactical_controls.h::hardware budget help and428 INI apply label",
+    "source/tools/verify_windows_outputs.py::strict shared Assist/Entry/Runtime ABI constants"
+  ],
+  "matrices": {
+    "console": {
+      "path": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console-matrix.json",
+      "records": 56,
+      "status_counts": {
+        "controlled_verified": 28,
+        "fixed_controlled_verified": 5,
+        "source_reviewed": 22,
+        "not_implemented_or_exposed": 1
+      }
+    },
+    "hardware": {
+      "path": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/hardware-recheck.json",
+      "records": 82,
+      "status_counts": {
+        "source_reviewed": 75,
+        "source_fixed": 2,
+        "disabled_verified_source": 1,
+        "fixed_controlled_verified": 4
+      }
+    },
+    "counting": "Rows include modes, mechanisms, disabled boundaries and separate diagnostics. Do not sum rows as enabled feature count or game pass count."
+  },
+  "new_confirmed_behavior_bugs": [
+    "C-IME-1",
+    "C-KEYNAME-1",
+    "H-SW-FEEDBACK-1",
+    "H-PAUSE-KEYPAIR-1",
+    "H-MOUSE-PAIR-1",
+    "H-DIAG-ABI-1"
+  ],
+  "new_documentation_corrections": [
+    "H-HARDWARE-HELP-1",
+    "H-TECHPROFILE-LABEL-1",
+    "H-DIAG-DOC-1"
+  ],
+  "verified_runs": [
+    {
+      "command": [
+        "python",
+        "source/assist/tests/superweapon_result_feedback.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-after-final"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "baseline_receipt": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-before-frozen/receipt.json",
+      "receipt": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-after-final/receipt.json",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/superweapon-feedback-after-final/run.log",
+      "result": {
+        "checks": 13,
+        "failures": 0,
+        "passed": true
+      },
+      "dependencies": {
+        "bridge": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/bridge.cpp",
+          "sha256": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1",
+          "matches_current": true
+        },
+        "host": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/main.cpp",
+          "sha256": "c824b03b81a7ee2cef824db5b04498dd4ca7c7935c956960ccc10ee0280b1b1f",
+          "matches_current": true
+        },
+        "cancel": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/superweapon_sidebar_bridge.h",
+          "sha256": "cc1dd3519c7b6920f238899bc9a321369e57e8e307553e886dbb6cb5df8d2fed",
+          "matches_current": true
+        },
+        "test": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/superweapon_result_feedback.py",
+          "sha256": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83",
+          "matches_current": true
+        }
+      }
+    },
+    {
+      "command": [
+        "python",
+        "source/assist/tests/pause_key_pairing.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-after-mouse-final"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "baseline_receipt": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-before-final/receipt.json",
+      "receipt": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-after-mouse-final/receipt.json",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/pause-pairing-after-mouse-final/run.log",
+      "result": {
+        "checks": 22,
+        "failures": 0,
+        "passed": true
+      },
+      "dependencies": {
+        "pause": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pause_view_bridge.h",
+          "sha256": "308cfc708df137b36853ce425cdfc043d2ac2a073e36446301f532bb39a7f7b5",
+          "matches_current": true
+        },
+        "message": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/native_message_policy.h",
+          "sha256": "3614887a2b8b3f198fa39949cfbf7989e715c4d0f4455a127172d3124762dbc5",
+          "matches_current": true
+        },
+        "runtime": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/game_runtime/source/runtime.cpp",
+          "sha256": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d",
+          "matches_current": true
+        },
+        "registry": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/hotkey_routes.h",
+          "sha256": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce",
+          "matches_current": true
+        },
+        "tracker": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/shared/source/key_gesture.h",
+          "sha256": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8",
+          "matches_current": true
+        },
+        "policy": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pause_view_policy.h",
+          "sha256": "f6e2fee547035c36ec70719b21ea733533b2d5b39b56adc88391d961396ea2f2",
+          "matches_current": true
+        },
+        "pointer": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pointer_intent.h",
+          "sha256": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1",
+          "matches_current": true
+        },
+        "test": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/pause_key_pairing.py",
+          "sha256": "83c68c66d901616bbdd5252f5b509eba9497cbf34d01df696c99370c13ab53e1",
+          "matches_current": true
+        },
+        "extractor": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/superweapon_result_feedback.py",
+          "sha256": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83",
+          "matches_current": true
+        }
+      }
+    },
+    {
+      "command": [
+        "python",
+        "source/assist/tests/native_mouse_pairing.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/console/mouse-pairing-after"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "baseline_receipt": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/mouse-pairing-before/receipt.json",
+      "receipt": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/mouse-pairing-after/receipt.json",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/mouse-pairing-after/run.log",
+      "result": {
+        "checks": 36,
+        "failures": 0,
+        "passed": true
+      },
+      "dependencies": {
+        "message": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/native_message_policy.h",
+          "sha256": "3614887a2b8b3f198fa39949cfbf7989e715c4d0f4455a127172d3124762dbc5",
+          "matches_current": true
+        },
+        "host": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pointer_host.h",
+          "sha256": "dd8ef5dfa63d3be792d2014619249fa4391f49186424cf1cf59a346214875d6a",
+          "matches_current": true
+        },
+        "runtime": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/game_runtime/source/runtime.cpp",
+          "sha256": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d",
+          "matches_current": true
+        },
+        "pause": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pause_view_bridge.h",
+          "sha256": "308cfc708df137b36853ce425cdfc043d2ac2a073e36446301f532bb39a7f7b5",
+          "matches_current": true
+        },
+        "registry": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/hotkey_routes.h",
+          "sha256": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce",
+          "matches_current": true
+        },
+        "tracker": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/shared/source/key_gesture.h",
+          "sha256": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8",
+          "matches_current": true
+        },
+        "policy": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pause_view_policy.h",
+          "sha256": "f6e2fee547035c36ec70719b21ea733533b2d5b39b56adc88391d961396ea2f2",
+          "matches_current": true
+        },
+        "pointer": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pointer_intent.h",
+          "sha256": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1",
+          "matches_current": true
+        },
+        "test": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/native_mouse_pairing.py",
+          "sha256": "064f3713519d3e344c826df9bf10839f6e1f84976eff303699b0515092a9294e",
+          "matches_current": true
+        },
+        "fixture_helper": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/pause_key_pairing.py",
+          "sha256": "83c68c66d901616bbdd5252f5b509eba9497cbf34d01df696c99370c13ab53e1",
+          "matches_current": true
+        },
+        "extractor": {
+          "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/superweapon_result_feedback.py",
+          "sha256": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83",
+          "matches_current": true
+        }
+      }
+    },
+    {
+      "command": [
+        "node",
+        "source/suite/tests/console_composition_test.mjs"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_composition_test.final.log",
+      "exit": 0,
+      "production_sha256": {
+        "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd"
+      },
+      "test_sha256": "4bb04751ba7aaca9f351b462bc9d7dff6e33b6fc9991d074f7bacb0d1ffdac67"
+    },
+    {
+      "command": [
+        "node",
+        "source/suite/tests/console_hotkey_presentation_test.mjs"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_hotkey_presentation_test.final.log",
+      "exit": 0,
+      "production_sha256": {
+        "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd"
+      },
+      "test_sha256": "18f3a644f21c76650e98d58481fb14622625ab9e50e13488c46021749e1553cc"
+    },
+    {
+      "command": [
+        "node",
+        "source/suite/tests/console_store_test.mjs"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_store_test.final.log",
+      "exit": 0,
+      "production_sha256": {
+        "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd"
+      },
+      "test_sha256": "462e98438916e1c6474c84c9d7406b0b039c88da8a9eadc22dcc1fa8dfd700da"
+    },
+    {
+      "command": [
+        "node",
+        "source/suite/tests/console_receipt_order_test.mjs"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_receipt_order_test.final.log",
+      "exit": 0,
+      "production_sha256": {
+        "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd"
+      },
+      "test_sha256": "5c19ea621b9131f56eef0feacfeb71f097239841c5296064cd20f6f66d89b5ff"
+    },
+    {
+      "command": [
+        "node",
+        "source/suite/tests/console_debug_test.mjs"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_debug_test.final.log",
+      "exit": 0,
+      "production_sha256": {
+        "source/suite/frontend/app.js": "ea4ca6d3d706d567f2d97b1733b393d8c7d82bdb46b231d75ca32a7e9ed4b2bd"
+      },
+      "test_sha256": "8e896aaa0c74d1bcd40a22e6a344054cf2459e0ddad56f75751bf330705cfafc"
+    },
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "source/suite/tests/async_ini_store_test.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/console/async_ini_store_test"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/async_ini_store_test.compile.log",
+      "production_sha256": {
+        "source/shared/source/async_ini_store.h": "83eae8fae4b162c45c0f402ba8340fca457dbaf0452fc42d5c77a483270705a4"
+      },
+      "test_sha256": "53b420efe6f0463adea01503150cab57e8b547fd90cc52fb94ce78dc793a046f",
+      "binary_sha256": "0f050198c0d6d1bb4bf751a4e4ca54a47d980d93fc1ec950049ef5c8d2128c43",
+      "matches_current_sources": true
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/console/async_ini_store_test"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/async_ini_store_test.run.log",
+      "production_sha256": {
+        "source/shared/source/async_ini_store.h": "83eae8fae4b162c45c0f402ba8340fca457dbaf0452fc42d5c77a483270705a4"
+      },
+      "test_sha256": "53b420efe6f0463adea01503150cab57e8b547fd90cc52fb94ce78dc793a046f",
+      "binary_sha256": "0f050198c0d6d1bb4bf751a4e4ca54a47d980d93fc1ec950049ef5c8d2128c43",
+      "matches_current_sources": true
+    },
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "source/suite/tests/console_model_test.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_model_test"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_model_test.compile.log",
+      "production_sha256": {
+        "source/suite/source/console_model.h": "35c131f0d2f17b3c1407a6a0188765cb8cda151ad49c688395bb0578a098cd20"
+      },
+      "test_sha256": "8988aceab93b0b36117d7e9869bcd5f248a6a28f2c547bd96062ae15f9a32bf0",
+      "binary_sha256": "dc00295641b7b9ca918a63c297605b615ce1d6c7eb69ba645fe09fdb91e1616f",
+      "matches_current_sources": true
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_model_test"
+      ],
+      "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+      "exit": 0,
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_model_test.run.log",
+      "production_sha256": {
+        "source/suite/source/console_model.h": "35c131f0d2f17b3c1407a6a0188765cb8cda151ad49c688395bb0578a098cd20"
+      },
+      "test_sha256": "8988aceab93b0b36117d7e9869bcd5f248a6a28f2c547bd96062ae15f9a32bf0",
+      "binary_sha256": "dc00295641b7b9ca918a63c297605b615ce1d6c7eb69ba645fe09fdb91e1616f",
+      "matches_current_sources": true
+    },
+    {
+      "receipt": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/identity-test-receipt.json",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/identity-test.log",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/diagnostic_identity_test.py"
+      ],
+      "source_sha256": {
+        "source/tools/build_hook_diagnostics.py": "34cb8b4f9ac505e7cf2b4655cb25dad949ce36a117c82780af97a2b9138e800b",
+        "source/tools/verify_hook_diagnostics.py": "de54aaa1f3422c8a037b1abe5be5aa8e7fb1c7cffacf19e53851c61ff4f8d114",
+        "source/tools/verify_windows_outputs.py": "49831c9723b672cbafe7db7174d1d36db3971503f0bb3cd3b8eb81ca8b711646",
+        "source/assist/source/protocol.h": "4e8f8b72aee03f7175cb0bcc4766af3cf8360463f04e93656d7bd4b92985e331",
+        "source/shared/source/game_entry_api.h": "a113072ab7abe73d1667b311c5b90d99e2571aa70cff665a8a90645fdabc243b",
+        "source/shared/source/runtime_protocol.h": "eb480104be375885b5370692c3c90d76409fd32f2d7f95415e7df6344693a56b"
+      },
+      "result": {
+        "checks": 29,
+        "failures": 0,
+        "passed": true
+      },
+      "exit_code": null
+    },
+    {
+      "receipt": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/syntax-receipt.json",
+      "log": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/syntax.log",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "-m",
+        "py_compile",
+        "source/tools/build_hook_diagnostics.py",
+        "source/tools/verify_hook_diagnostics.py",
+        "source/tools/verify_windows_outputs.py"
+      ],
+      "source_sha256": {
+        "source/tools/build_hook_diagnostics.py": "34cb8b4f9ac505e7cf2b4655cb25dad949ce36a117c82780af97a2b9138e800b",
+        "source/tools/verify_hook_diagnostics.py": "de54aaa1f3422c8a037b1abe5be5aa8e7fb1c7cffacf19e53851c61ff4f8d114",
+        "source/tools/verify_windows_outputs.py": "49831c9723b672cbafe7db7174d1d36db3971503f0bb3cd3b8eb81ca8b711646"
+      },
+      "result": null,
+      "exit_code": 0
+    }
+  ],
+  "remaining": [
+    {
+      "id": "MP-STICKY-EXIT",
+      "status": "not_implemented",
+      "detail": "Current visible Sticky permits multiplayer entry only. Network releaseSticky returns false; repeated key and local cleanup do not provide synchronized exit. UI states limitation. No implementation change this round."
+    },
+    {
+      "id": "PRES-BUS-sidebar",
+      "status": "unresolved_field_validation",
+      "detail": "No current game snapshot/type/factory/sidebar evidence closes this existing observation. Historical controlled cases are not current real-game acceptance."
+    },
+    {
+      "id": "config-import-export-locale",
+      "status": "not_exposed",
+      "detail": "No general config import/export or language selector. Chinese Unicode UI and automatic INI persistence are separate supported mechanisms."
+    },
+    {
+      "id": "retained-disabled",
+      "status": "unavailable_or_unwired",
+      "detail": "Transparent SHA replacement visible disabled; Shift five-click hidden; RenderUpgrade disabled with retained child parameters; DDraw apply/restore header unwired; current-player switching disabled."
+    },
+    {
+      "id": "live-validation",
+      "status": "not_executed",
+      "detail": "No Windows/WebView2/real IME/native x86 game/hardware DR/VEH/multiplayer/OOS/FPS measurement. Playwright browser launch failed before assertions because runtime Chromium executable absent."
+    }
+  ],
+  "excluded_candidates": [
+    "Store beginEdit overwrite absent from actual bindText path",
+    "Legacy0 Hold semantics valid",
+    "Old apply branch preempted by actual EN_CHANGE revert",
+    "SW cancel dedicated early return correct",
+    "Accepted direct-yes hardware control hotpath not relabelled missing-guard bug"
+  ],
+  "seams": "Portable fixtures compile real production functions/routes; native memory/platform input, established connection and unrelated inactive features are explicit controlled seams.",
+  "not_committed": true,
+  "production_frozen": true,
+  "diagnostic_tools_followup": {
+    "finding": "H-DIAG-ABI-1: builder/validator retained inconsistent old protocol, Shared size, namespace and success label",
+    "changed_tools": [
+      "source/tools/build_hook_diagnostics.py",
+      "source/tools/verify_hook_diagnostics.py"
+    ],
+    "shared_constant_source": "source/tools/verify_windows_outputs.py",
+    "identity_test": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/identity-test-receipt.json",
+    "syntax_test": "/workspace/scratch/33b3ee07b26a/feature147pre3/console/diagnostic-tools/syntax-receipt.json",
+    "baseline": "Old identity block rejects valid current pair and accepts mutually consistent old pair; old BUILD_TARGET records Assist101.",
+    "final": "29 checks, 0 failures; 3-file py_compile exit0; strict current Assist102/Shared23162544/mappingv102, Entry3/108, Runtime4/176.",
+    "scope": "Controlled export-table bytes and actual builder metadata expression only. No actual PE parsing or linking in these checks. Root will build diagnostic helper from matching main build and verify real PE separately.",
+    "windows_tested": false,
+    "game_tested": false,
+    "actual_pe_tested": false
+  }
+}

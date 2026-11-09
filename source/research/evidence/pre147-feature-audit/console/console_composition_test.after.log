@@ -1,0 +1,17 @@
+PASS text keeps composition Enter (isComposing)
+PASS text keeps composition Enter (keyCode)
+PASS text keeps composition Escape (isComposing)
+PASS text keeps composition Escape (keyCode)
+PASS editable choice keeps composition Enter (isComposing)
+PASS editable choice keeps composition Enter (keyCode)
+PASS editable choice keeps composition Escape (isComposing)
+PASS editable choice keeps composition Escape (keyCode)
+PASS search keeps composition Escape (isComposing)
+PASS hotkey capture ignores IME event and remains armed (isComposing)
+PASS hotkey encoder does not infer a key from composition code (isComposing)
+PASS search keeps composition Escape (keyCode)
+PASS hotkey capture ignores IME event and remains armed (keyCode)
+PASS hotkey encoder does not infer a key from composition code (keyCode)
+PASS ordinary Enter still commits a finished Unicode edit exactly once
+PASS ordinary Escape still cancels an editor and clears search
+{"suite":"console_composition","checks":16,"failures":0,"level":"production listeners with controlled DOM event fixture"}

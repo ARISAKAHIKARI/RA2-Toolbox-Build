@@ -1,0 +1,36 @@
+PASS ready does not overwrite saved navigation before services initialize
+PASS reject malformed state without changing generation, drafts, or current state
+PASS new model cannot overwrite the focused editing draft
+PASS only the newest acknowledgement can resolve a pending edit
+PASS backend rejection shows an error and returns to observed state
+PASS generation rollover rejects stale state and clears stale actions
+PASS each tactical category has an independent cached state
+PASS all canonical setting types retain their action semantics
+PASS disabled choice entries stay visible and cannot send select or activate actions
+PASS disabled, invisible and closing controls cannot send actions
+PASS buttons resolve on ack without requiring an artificial state change
+PASS unsupported controls remain visible as readonly explanatory entries
+PASS group filtering includes labels, hints, options and respects native visibility
+PASS gesture capture preserves release/hold/double and exact native modifier bits
+PASS default action sequence survives WebView reload time scale and never sends unsafe integers
+PASS large immutable state revisions keep drafts and resolve only the changed setting
+PASS UTF8 send limits match native decoded bytes and reject invalid string boundaries
+PASS old-generation acknowledgements cannot settle a new-generation action
+PASS native normalization converges with snapshots before or after a successful ack
+PASS an accepted rapid round-trip edit resolves even when native state deduplicates to the original
+PASS removed choice tokens clear only their records and preserve unrelated stable drafts
+PASS cached old-generation pages remain readable but cannot submit stale actions
+PASS ACK revision threshold excludes delayed snapshots and converges on native normalized value
+PASS authoritative normalized state before its ACK revision settles without another snapshot
+PASS serialized JSON size is bounded separately from decoded text size
+PASS keyed DOM placement attaches a detached first group and row, then preserves and reorders existing nodes
+PASS native close-check reports unsubmitted work without changing drafts, pending actions, or close state
+PASS close-check accepts only positive safe nonce values and bounds the count
+PASS folding preserves pinned controls and error visibility without forcing parameter bodies open
+PASS search autoexpands groups but explicit search folds override without changing saved preference
+PASS action hierarchy accepts explicit semantic roles and defaults unknown legacy metadata to secondary
+PASS metadata and immediate actions retain the original click time and reject duplicate pending execution
+PASS searching one editor retains its feature and never merges missing row coordinates
+PASS configuration retry preserves failed settings and awaits the matching shell receipt
+PASS configuration retry remains available during close saving but respects cleanup refusal
+35 console model tests passed

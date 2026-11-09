@@ -1,0 +1,38 @@
+{
+  "sources": {
+    "source/assist/source/main.cpp": "0ae4658a9775e742af6def596e63eb4c5c286995becbc60d1fed1a40ef4d425f",
+    "source/assist/source/bridge.cpp": "c122b39a30a2d53e9964f0e5dbfcea0f30e0f859cd8a76b8179ca570880488b1",
+    "source/assist/source/protocol.h": "4e8f8b72aee03f7175cb0bcc4766af3cf8360463f04e93656d7bd4b92985e331"
+  },
+  "test_sha256": "8442a37e2688fd4ac6085dfee34497f0e6450234427eeb7f58f1875bc624bd0c",
+  "verification_level": "controlled_execution_of_extracted_Host_and_Runtime_functions",
+  "not_verified": [
+    "Windows shared memory ABI execution",
+    "game selection and camera behavior"
+  ],
+  "runs": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-D_GLIBCXX_ASSERTIONS",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/selection_catalogue_current.cpp",
+        "-o",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/selection_catalogue_current"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/root/selection_catalogue_current"
+      ],
+      "exit_code": 0,
+      "stdout": "21 checks, 0 failures\n",
+      "stderr": ""
+    }
+  ]
+}

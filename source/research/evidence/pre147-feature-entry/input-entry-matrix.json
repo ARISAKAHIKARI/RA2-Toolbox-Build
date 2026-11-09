@@ -1,0 +1,317 @@
+{
+  "baseline_commit": "18af5094f1cbd955ebaac9fbe3c85a0682ef7ce9",
+  "scope": "Input entry audit; static source review and controlled production-function execution are identified separately. No Windows/game validation claim. No feature-internal algorithm review.",
+  "matrix": [
+    {
+      "family_action": "消息泵 / 全部WM快捷键",
+      "entry": "main message loop → IsDialogMessage → WM_HOTKEY → readOnlyWatchHotkey/handleHotkey",
+      "gates": "窗口仍存活、关闭流程未开始；随后进入各业务门控",
+      "recovery": "消息计数不随registerKeys清除；模式由tick重新计算",
+      "conclusion": "静态审查；没有发现吞掉全部WM_HOTKEY的源码分支；非Windows现场验证",
+      "source_functions": "main.cpp::message loop, proc"
+    },
+    {
+      "family_action": "普通命令 / AutoLoad等1001–1011",
+      "entry": "RegisterHotKey和Registry.sample → dispatchHotkeyGroup → Pending → executeHotkey → send",
+      "gates": "enabled、游戏前台、真实命令通道、非聊天、fresh<1500ms；命令/选兵邮箱必须可用",
+      "recovery": "失焦/聊天/暂停会cancel，恢复同步已按住键；释放后新按键重新触发",
+      "conclusion": "生产函数执行验证；正常命令保持串行，未引入缺ACK猜测重放",
+      "source_functions": "hotkey_host.h::handleHotkey/serviceHotkeyBatch; main.cpp::send"
+    },
+    {
+      "family_action": "普通键物理兜底 / 全部命令族",
+      "entry": "Registry.sample(GetAsyncKeyState)",
+      "gates": "精确Ctrl/Alt/Shift；不接受额外Win；初次采样抑制已按住主键",
+      "recovery": "match变化、cancel后重新同步；原WM去重水位保留已有语义",
+      "conclusion": "受影响回归44场景193检查通过；不能证明现场GetAsyncKeyState一定有权限/一定看到极短按键",
+      "source_functions": "hotkey_routes.h::Registry"
+    },
+    {
+      "family_action": "松开 / 双击快捷键",
+      "entry": "WM按下+物理sample释放+expired单次到期",
+      "gates": "合法修饰键须持续；双击窗口350ms；普通WM最大2500ms",
+      "recovery": "取消清手势；恢复后不把旧第一次按键升级成双击",
+      "conclusion": "现有消息回归和本轮type release/double实际执行通过",
+      "source_functions": "hotkey_routes.h::message/sample/expired"
+    },
+    {
+      "family_action": "注册冲突 / Win32 1409",
+      "entry": "registerKey → Registry.add",
+      "gates": "OS失败记录fallback，物理组仍保留；Hold模式不能注册成命令",
+      "recovery": "绑定/模式变化registerKeys重建，立即同步当前键",
+      "conclusion": "静态+既有context执行验证；没有发现因一个1409导致全部组丢失",
+      "source_functions": "main.cpp::registerKey/registerKeys"
+    },
+    {
+      "family_action": "自动功能开关 / 13项目录，当前AutoCS禁用",
+      "entry": "automaticHotkey → 实际UI owner WM_COMMAND",
+      "gates": "现有控制存在、ready且IsWindowEnabled；仍受前台/聊天/上下文约束",
+      "recovery": "本轮按local动作执行，可越过无关command/select busy；原Pending年龄不刷新",
+      "conclusion": "发现并修复F2：pre5四类busy均导致自动开关2.5s后丢失；修后各1次",
+      "source_functions": "automatic_hotkeys_host.h; automatic_features.h; hotkey_host.h::localHotkeyAction"
+    },
+    {
+      "family_action": "载员逃生1696 / 自动维修1000",
+      "entry": "各自原绑定 → automaticHotkey",
+      "gates": "与自动UI owner相同；不走游戏命令邮箱",
+      "recovery": "same local取出策略；当前可用owner不重建Registry",
+      "conclusion": "执行端点验证+console agent核对owner无同步registerKeys",
+      "source_functions": "automatic_features.h::Entries"
+    },
+    {
+      "family_action": "AutoCS1699 / 高级Hold旧保留ID",
+      "entry": "registerKeys(featureavailability::AutoCS) / pointer授权",
+      "gates": "AutoCS当前编译门为false；高级键由Hold+鼠标入口处理",
+      "recovery": "开关/绑定变化刷新；本轮不重新启用不可用功能",
+      "conclusion": "静态审查；非“注册遗漏”或全部快捷键根因",
+      "source_functions": "main.cpp::registerKeys; hotkey_host.h::executeHotkey"
+    },
+    {
+      "family_action": "同键fanout",
+      "entry": "Group → firstPerGesture或全部 → Pending.popReady",
+      "gates": "本地动作按一次消费；游戏动作仍等command/select ACK",
+      "recovery": "延期游戏动作保持原tick和FIFO；上下文/epoch/超时会取消",
+      "conclusion": "发现并修复F2；同组自动开关+watch+AutoBoard执行一次且不互相饿死",
+      "source_functions": "hotkey_routes.h::Pending::popReady; hotkey_host.h::serviceHotkeyBatch"
+    },
+    {
+      "family_action": "只读跟踪1730–1732 / 主控制启用",
+      "entry": "executeHotkey → watchhost::pin",
+      "gates": "配置watch；只读world有效、非聊天、前台、无formation占用",
+      "recovery": "本地动作可越过无关命令邮箱；world失败仍不盲选目标",
+      "conclusion": "发现并修复F2入口耦合；执行验证只到pin端点，不声称验证渲染/采集算法",
+      "source_functions": "hotkey_host.h::executeHotkey; watch_host.h::pin"
+    },
+    {
+      "family_action": "副屏跟踪 / 主控制暂停(mode1)",
+      "entry": "readOnlyWatchHotkey/serviceReadOnlyWatchKeys → dispatchReadOnlyWatchKeys",
+      "gates": "前台、renderStatus1、readStatus1、watchSecondary、非聊天",
+      "recovery": "手势同步/epoch正常；生产者暂停后恢复路径由lifecycle agent专项负责",
+      "conclusion": "静态路径已审；不将本轮Host端点通过当副屏已可渲染",
+      "source_functions": "main.cpp::desiredHotkeyMode/serviceReadOnlyWatchKeys"
+    },
+    {
+      "family_action": "侧栏1734 / 视角缩放1720–1722",
+      "entry": "executeHotkey改设置 → syncAdditional",
+      "gates": "相应功能已开启；仍只接收合法新输入",
+      "recovery": "本轮按local分类绕过无关command ACK，不改原配置owner",
+      "conclusion": "侧栏busy反例执行通过；缩放同分类静态审查",
+      "source_functions": "hotkey_host.h::localHotkeyAction/executeHotkey"
+    },
+    {
+      "family_action": "类型1100–1611 / 合并选兵",
+      "entry": "firstForKey → groupMask → sendSelection(-3)",
+      "gates": "每个规范化组合注册一次；当局类型存在；显式gesture或legacy double规则",
+      "recovery": "匹配epoch、取消typeTap；priority selection保留1500ms上限",
+      "conclusion": "新增执行验证合并两类型、legacy双按、松开、显式双击均通过",
+      "source_functions": "type_hotkey.h; hotkey_host.h::executeHotkey"
+    },
+    {
+      "family_action": "变体1700 / 空闲飞机1701",
+      "entry": "executeHotkey → sendSelection / selectNextIdleAircraft",
+      "gates": "变体手势；飞机另需新鲜外部单位数据和可见战场",
+      "recovery": "选择意图过期或身份变更丢弃；新输入可恢复",
+      "conclusion": "静态审查；飞机数据年龄时钟问题交root专项修复，未在此测试算法",
+      "source_functions": "idle_aircraft_selection.h; main.cpp::sendSelection"
+    },
+    {
+      "family_action": "超级武器1020+ / 铁幕1009 / 超时空1010",
+      "entry": "注册去重复 → executeHotkey查当局超级武器 → send",
+      "gates": "确实拥有目标超级武器；常规命令上下文和邮箱",
+      "recovery": "无目标给提示；恢复后重新按键；无缺ACK重放",
+      "conclusion": "静态审查；未发现全部命令阻断的新门控",
+      "source_functions": "main.cpp::registerKeys; hotkey_host.h::executeHotkey"
+    },
+    {
+      "family_action": "喝彩1710 / 嘲讽1711–1718 / Sticky1723 / 普通任务模式",
+      "entry": "executeHotkey → send对应命令",
+      "gates": "常规上下文与命令邮箱；Runtime能力/冷却在内部另验",
+      "recovery": "当前match、有限队列年龄；不因local旁路绕过游戏提交",
+      "conclusion": "静态审查；命令序列保护保留",
+      "source_functions": "hotkey_host.h::executeHotkey"
+    },
+    {
+      "family_action": "攻击脚下 / 所属方自毁 / 原生事件放置",
+      "entry": "dispatchHotkeyGroup即时分支",
+      "gates": "必须独立/允许的绑定、输入<=150ms、当前selection/viewport和空闲通道",
+      "recovery": "过期/碰撞/忙直接提示重新按，不延后解析变化后的选择",
+      "conclusion": "发现并修复F3：formation有效租约active0时WM即时路径此前可越过owner；修后拒绝",
+      "source_functions": "hotkey_host.h::dispatchHotkeyGroup/handleHotkey"
+    },
+    {
+      "family_action": "编队队形WM转交",
+      "entry": "handleHotkey → formationHotkey → formationKey mailbox",
+      "gates": "当前match且active、完整物理绑定、当前context水位后、消息<=150ms",
+      "recovery": "owner每tick手势cancel不重置独立context水位；失焦/换局/再注册拒绝旧消息",
+      "conclusion": "发现并修复F1：pre5当前preview分支不可达，旧match反而吞普通动作；新增回归通过",
+      "source_functions": "formation_host.h::formationHotkey; middle_input_host.h::runtimeMiddleOwnsNow"
+    },
+    {
+      "family_action": "编队 / QuickFormation原生MSG",
+      "entry": "AssistRuntimeFilter → formationMessage",
+      "gates": "formationContext；当前游戏前台/聊天/心跳/preview状态；无额外传统feature门",
+      "recovery": "Esc/松键/失焦/换局reset或cancel；publish写当前match",
+      "conclusion": "实际formation入口、25单位preview、reset、5鼠标键/传统Alt/只读及快速resume配对已受控执行；算法与游戏事件仍非实机验证",
+      "source_functions": "formation_bridge.h::formationMessage/formationTick"
+    },
+    {
+      "family_action": "中键/侧键/其他配置手势",
+      "entry": "AssistRuntimeFilter → moOrdersMessage；Host runtimeMiddleOwnsNow拒绝重复捕获",
+      "gates": "精确配置手势、当前preview match、runtime context；冲突声明仍保留输入所有权",
+      "recovery": "释放/Esc/策略/身份变化reset；输入所有权释放后新按键可恢复",
+      "conclusion": "Host当前/旧preview及恢复执行验证；Runtime内部作静态入口审查",
+      "source_functions": "middle_input_host.h; mo_orders_bridge.h::moOrdersMessage/moOrdersTick"
+    },
+    {
+      "family_action": "增强鼠标 / 协同 / 卸矿 / 卖车等",
+      "entry": "Host pollPointer → servicePointer → pointer mailbox",
+      "gates": "100ms捕获时效、epoch/viewport/cancelSerial、聊天/前台/owner排斥",
+      "recovery": "context变化disarm并清fanout，保留已提交ACK语义",
+      "conclusion": "静态审查；发现主控制暂停保留Shared会失去原间接门，已交lifecycle补显式enabled/readOnly",
+      "source_functions": "pointer_host.h::servicePointer; host_game_input.h::pollPointer"
+    },
+    {
+      "family_action": "原生建造标签 / 原生Planning按住",
+      "entry": "nativekeyhost::current/load + gameinput::keySnapshot",
+      "gates": "从原生只读CommandClass表取绑定；Host pointer context时效和前台",
+      "recovery": "读取失败250ms后重试；PID/match变更重新取绑定；key tracker随context清理",
+      "conclusion": "静态审查；没有发现单个空绑定令全部命令被停用",
+      "source_functions": "native_hotkeys.h; native_hotkeys_host.h; construction_host.h; air_path_host.h"
+    },
+    {
+      "family_action": "按钮 / 基础命令",
+      "entry": "proc WM_COMMAND → send → commandQueue",
+      "gates": "按钮可接受工具前台；参数/epoch/功能能力仍检查",
+      "recovery": "队列12s上限、当前PID/已知match；UnknownMatch仅允许RevealMap",
+      "conclusion": "静态审查+console agent互核；未认证epoch须重新触发。candidate存在的误导反馈列低优先级，不放宽epoch",
+      "source_functions": "main.cpp::proc/send; command_delivery.h::Queue"
+    },
+    {
+      "family_action": "优先选兵邮箱 / 所有选兵来源",
+      "entry": "sendSelection → serviceSelection",
+      "gates": "已知match、类型hash、前台可用、fresh、非聊天；selectRequest必须ACK",
+      "recovery": "pending1500ms取消，旧match/类型列表变更立即取消；不会重放缺ACK",
+      "conclusion": "静态审查；该邮箱仍串行游戏动作，但不再拖死local动作",
+      "source_functions": "main.cpp::sendSelection/serviceSelection"
+    },
+    {
+      "family_action": "总开关/聊天/暂停/失焦/换局恢复",
+      "entry": "commandHotkeyContext → registerKeys/cancel → synchronize",
+      "gates": "真实command ready及readonly许可，不依赖展示renderStatus",
+      "recovery": "重新同步按住键；新release→press恢复；local与formation分别验epoch/年龄",
+      "conclusion": "本轮恢复用例通过；Runtime/OS实机焦点行为仍需现场日志",
+      "source_functions": "hotkey_host.h; hotkey_routes.h; main.cpp::desiredHotkeyMode"
+    },
+    {
+      "family_action": "原生消息所有权 / 暂停与恢复后的成对输入",
+      "entry": "AssistFilterMessage central pair ledger → original owners → release-only fallback",
+      "gates": "只记录实际被WM_NULL消费的物理DOWN；只读时不采样物理键、不进入动作owner；normal owner先处理UP",
+      "recovery": "真正新DOWN/DBLCLK清旧所有权；repeat不清；feature reset与已ACKresume不丢原UP；新完整pair仍按配置恢复",
+      "conclusion": "执行验证：实际formation capture/layout/reset+中央filter，45场景188检查全过；开发中间态编译成功且37个预期失败。不是pre5现场根因证据",
+      "source_functions": "native_message_policy.h::AssistFilterMessage; formation_bridge.h::formationMessage/resetFormation"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "title": "formation WM fallback priority/epoch",
+      "baseline": "Current match preview is rejected by runtimeMiddleOwnsNow before formationHotkey; an old match can bypass that guard and steal the command.",
+      "status": "fixed in hotkey_host.h with current identity, binding, age and independent context watermark"
+    },
+    {
+      "id": "F2",
+      "title": "unrelated mailboxes block local actions",
+      "baseline": "All pending actions waited for command/selection queue and ACKs, including persistent local toggles and read-only pins. Four busy forms reproduce eventual expiry without dispatch.",
+      "status": "fixed with localHotkeyAction and Pending.popReady; game FIFO/age preserved"
+    },
+    {
+      "id": "F3",
+      "title": "formation lease bypass for immediate WM actions",
+      "baseline": "WM entry checked runtimeMiddleOwnsNow only, while sampler also checked formationInputOwns; an active post-gesture lease with inactive preview failed to protect immediate WM actions.",
+      "status": "fixed by keeping formationInputOwns in ordinary owner refusal"
+    },
+    {
+      "id": "F4",
+      "title": "old context message can revive after newly reachable formation handoff",
+      "baseline": "The intermediate priority fix alone allowed <=150ms old messages after reregister, short focus gap, or epoch change.",
+      "status": "three intermediate failing cases reproduced; fixed by context watermark distinct from owner cancellation"
+    },
+    {
+      "id": "F5",
+      "title": "read-only retirement loses physical input pair ownership",
+      "baseline": "Development intermediate, not released pre.5: command admission closes before an owned UP, or real formation reset removes feature ownership; after acknowledged resume the original UP still arrives without its swallowed DOWN.",
+      "status": "fixed by a central ledger of actual WM_NULL-consumed DOWN events; owners keep normal action decisions, only unmatched owned releases are retired without actions; new DOWN/DBLCLK clears lost ownership",
+      "evidence": "readonly-pairing-final/result.json",
+      "negative_fixture_sha256": "959b707cedaca064e1b3c44030b152da14d697035093e1e0007d22bd07bf8569"
+    }
+  ],
+  "validation": {
+    "new_entry": {
+      "scenarios": 33,
+      "checks": 77,
+      "result": "current/result.json"
+    },
+    "pre5_negative": {
+      "scenarios": 15,
+      "checks": 30,
+      "failed_assertions": 17,
+      "result": "pre5-lease/result.json"
+    },
+    "intermediate_fence_negative": {
+      "scenarios": 33,
+      "checks": 77,
+      "failed_assertions": 3,
+      "result": "before-context-fence/result.json"
+    },
+    "existing_message": {
+      "scenarios": 44,
+      "checks": 193,
+      "result": "message-regression.json"
+    },
+    "existing_context": {
+      "scenarios": 35,
+      "checks": 104,
+      "result": "context-regression/result.json"
+    },
+    "existing_ownership": {
+      "scenarios": 13,
+      "checks": 78,
+      "result": "ownership-regression.json"
+    },
+    "readonly_pairs": {
+      "scenarios": 45,
+      "checks": 188,
+      "result": "readonly-pairing-final/result.json",
+      "negative_failed_assertions": 37,
+      "negative_provenance": "development intermediate, not pre.5"
+    },
+    "pause_pairing": {
+      "checks": 45,
+      "result": "pause-pairing-ledger/receipt.json"
+    },
+    "mouse_pairing": {
+      "checks": 69,
+      "result": "mouse-pairing-ledger/receipt.json"
+    }
+  },
+  "changed_files": [
+    "source/assist/source/hotkey_host.h",
+    "source/assist/source/hotkey_routes.h",
+    "source/assist/tests/hotkey_entry_recovery.py",
+    "source/assist/tests/hotkey_command_context.py",
+    "source/assist/source/native_message_policy.h",
+    "source/assist/tests/native_readonly_pairing.py",
+    "source/assist/tests/pause_key_pairing.py",
+    "source/assist/tests/native_mouse_pairing.py",
+    "source/assist/tests/fixtures/read_only_pre_pairing/native_message_policy.h",
+    "source/assist/tests/fixtures/read_only_pre_pairing/README.md"
+  ],
+  "limits": [
+    "OS message delivery, UIPI and game-process execution were not exercised.",
+    "The command/watch/UI owner seams observe Host dispatch, not game completion or image rendering.",
+    "Missing ACKs still intentionally block subsequent game-changing commands; no speculative resend was added.",
+    "Native feature algorithms and multiplayer semantics are outside this entry audit.",
+    "Root and lifecycle/console agents separately own clock, pause/producer, explicit read-only protocol and UI control audits.",
+    "Final unified validation must rebind the fully settled source tree; this task did not freeze or commit a release."
+  ]
+}

@@ -17,6 +17,7 @@
 #include "gpu_compositor.h"
 #include "overlay_submit_policy.h"
 #include "pipeline_timing.h"
+#include "deadline_wake.h"
 // One EXE-owned passive window for multiple logical layers. No game hooks,
 // engine functions, screen capture, window activation or input forwarding.
 // Producers retain their immutable pixels; this host owns only composition.
@@ -41,7 +42,7 @@ struct Node {Surface surface;uint64_t lastSeen=0;};
 // Successful HWND submissions, not DWM/vblank/displayed-frame measurements.
 struct UploadStatistics {uint64_t count=0,lastTick=0,intervalMs=0,maxGapMs=0,failures=0;};
 class Host {
- std::mutex mutex;std::condition_variable cv;std::thread thread;
+ std::mutex mutex;asyncwork::DeadlineWake cv;std::thread thread;
  std::map<uint64_t,Node> nodes;Context context{};overlaycomposition::Rect mapExclusion{};
  uint64_t generation=0,revision=0,heartbeat=0;bool enabled=false,stop=false,top=false;
  int rate=60;DWORD error=0;bool startupFailed=false;std::atomic<HWND> ownedWindow{nullptr};
@@ -83,7 +84,12 @@ class Host {
    {
     std::unique_lock<std::mutex>lock(mutex);if(stop)break;
     const auto wait=overlaypublication::pollDelay(std::chrono::steady_clock::now(),wakeAt,wakeScheduled);
-    cv.wait_for(lock,wait,[&]{return stop||submission.changed(revision);});wakeScheduled=false;if(stop)break;
+    // No periodic work when disabled/empty. New content, activation and stop
+    // carry revisions; live layers retain the existing focus/TTL poll bound.
+    auto ready=[&]{return stop||submission.changed(revision);};
+    if(!enabled||nodes.empty())cv.wait(lock,ready);
+    else cv.wait_until(lock,std::chrono::steady_clock::now()+wait,ready);
+    wakeScheduled=false;if(stop)break;
     const auto now=GetTickCount64();
     for(auto i=nodes.begin();i!=nodes.end();)if(now-i->second.lastSeen>750){i=nodes.erase(i);++revision;}else ++i;
     current=context;version=revision;submission.observe(version);active=enabled&&now-heartbeat<500;highest=top;hz=rate;
@@ -192,14 +198,18 @@ public:
  void setDiagnosticsSink(pipelineperf::Sink sink){diagnosticsSink_.store(sink,std::memory_order_relaxed);}
  Context configure(uintptr_t window,uint32_t pid,uint32_t match,int width,int height,int cameraX,int cameraY,bool active,bool highest,int hz,bool deferCamera=false,uint64_t projection=0){
   std::lock_guard<std::mutex>lock(mutex);if(stop)return {};
+  const auto priorRevision=revision,now=GetTickCount64();
   active=active&&window&&pid&&match&&width>0&&height>0&&width<=8192&&height<=8192&&uint64_t(width)*height<=16*1024*1024;
   bool changed=enabled!=active||context.window!=window||context.pid!=pid||context.match!=match||context.width!=width||context.height!=height||context.projection!=projection;
   if(changed){nodes.clear();++generation;++revision;uploadStatistics_={};uploadContinuous_=false;}
   if(top!=highest){top=highest;++revision;}
   const int committedX=deferCamera&&!changed?context.cameraX:cameraX,committedY=deferCamera&&!changed?context.cameraY:cameraY;
   if(context.cameraX!=committedX||context.cameraY!=committedY)++revision;
-  context={generation,window,pid,match,width,height,committedX,committedY,projection};enabled=active;heartbeat=GetTickCount64();rate=hz;
-  if(active&&!thread.joinable())thread=std::thread([this]{run();});cv.notify_one();
+  // Heartbeat renewals alone need no wake; rate changes and stale-to-live
+  // recovery must interrupt a pending deadline even with identical pixels.
+  if(rate!=hz||(enabled&&active&&now-heartbeat>=500))++revision;
+  context={generation,window,pid,match,width,height,committedX,committedY,projection};enabled=active;heartbeat=now;rate=hz;
+  if(active&&!thread.joinable())thread=std::thread([this]{run();});if(revision!=priorRevision)cv.notify_one();
   auto desired=context;desired.cameraX=cameraX;desired.cameraY=cameraY;return active?desired:Context{};
  }
 private:

@@ -236,5 +236,11 @@ void main(){
   for(uint y=field(draw,25);y<field(draw,27);++y)for(uint x=field(draw,24);x<field(draw,26);++x){uint key=(y/128u)*((p.width+127u)/128u)+x/128u,job=commands.v[p.reserved+key*2u+1u];if(job!=0u){compose(uvec2(x%128u,y%128u),job-1u);memoryBarrierBuffer();}}return;
  }
 #endif
+#ifndef SCENE_PAGES
+ // Viewport interior phases use an 8-pixel aligned destination rectangle.
+ // The packed origin reuses the formerly unused format word (128-byte ABI).
+ compose(gl_GlobalInvocationID.xy+uvec2(p.format&65535u,p.format>>16u),0u);
+#else
  compose(gl_GlobalInvocationID.xy,gl_WorkGroupID.z);
+#endif
 }

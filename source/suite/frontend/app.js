@@ -7,6 +7,8 @@
   const pageKey = (module, category = 0) => module === 2 ? `2/${category}` : String(module);
   const controlKey = (module, id) => `${module}:${id}`;
   const safeInteger = value => Number.isSafeInteger(value) && value >= 0;
+  // Enter/Escape may belong to an IME candidate, not to this editor.
+  const composingKey = event => event.isComposing === true || event.keyCode === 229;
   function placeAfter(container,node,after) { if(node.parentNode!==container || node.previousSibling!==after) container.insertBefore(node,after?after.nextSibling:container.firstChild); }
   function validText(value,maxBytes=65536) {
     if (typeof value !== 'string') return false;
@@ -96,7 +98,7 @@
       if (!message || typeof message !== 'object' || message.protocol !== PROTOCOL) return false;
       if(message.kind==='close-check') {
         if(!safeInteger(message.seq) || !message.seq) return false;
-        this.emit({kind:'close',seq:message.seq,unsubmitted:Math.min(10000,this.drafts.size+this.pending.size)});
+        this.emit({kind:'close',seq:message.seq,unsubmitted:this.unsubmittedCount()});
         return true;
       }
       if (message.kind === 'shell') {
@@ -138,7 +140,10 @@
           const key = controlKey(message.module, control.id), pending = this.pending.get(key);
           if (pending && pending.generation === message.generation && message.revision > pending.revision) {
             pending.observedRevision=message.revision;
-            if(pending.acknowledged && pending.requiredRevision>0 ? message.revision>=pending.requiredRevision : !['press','activate'].includes(pending.action) && (pending.acknowledged || actualValue(control,pending.action)===pending.value)) this.pending.delete(key);
+            // A matching value may come from an unrelated earlier capture.
+            // Only this request's receipt can certify that it ran; native ACK
+            // batching can deliver that receipt after the corresponding state.
+            if(pending.acknowledged && (pending.requiredRevision>0 ? message.revision>=pending.requiredRevision : !['press','activate'].includes(pending.action))) this.pending.delete(key);
           }
         }
         this.changed('state'); return true;
@@ -156,6 +161,21 @@
         this.changed(message.ok ? 'ack' : 'error'); return true;
       }
       return false;
+    }
+    unsubmittedCount() {
+      let count=Math.min(10000,this.pending.size);const indexes=new Map();
+      // Focus owns a draft so live updates cannot overwrite an editor. An
+      // unchanged draft is not an unsaved edit; unknown/retired pages remain
+      // conservative. Index each referenced page once for the close check.
+      for(const [key,draft]of this.drafts) {
+        if(count>=10000)break;
+        if(!indexes.has(draft.page)) {
+          const page=this.pages.get(draft.page);indexes.set(draft.page,page && page.generation===this.generation.get(page.module)?new Map(page.controls.map(control=>[controlKey(page.module,control.id),control])):null);
+        }
+        const control=indexes.get(draft.page)?.get(key);
+        if(!control || !['text','number','choice','range'].includes(control.type) || actualValue(control,control.type==='range'?'range':'text')!==draft.value)count++;
+      }
+      return count;
     }
     beginEdit(id) { const control = this.getControl(id); if (!control) return; const key = controlKey(this.current.module, id); if (!this.drafts.has(key)) this.drafts.set(key, { value: control.text, editing: true,page:this.state.page }); else this.drafts.get(key).editing = true; this.changed('draft'); }
     draft(id, value) { const key = controlKey(this.current.module, id); this.drafts.set(key, { value, editing: true,page:this.state?.page }); }
@@ -200,8 +220,8 @@
   }
   const SPECIAL_KEYS = { Backspace: 8, Tab: 9, Enter: 13, Shift: 16, Control: 17, Alt: 18, Pause: 19, CapsLock: 20, Escape: 27, Space: 32, PageUp: 33, PageDown: 34, End: 35, Home: 36, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, Insert: 45, Delete: 46, NumpadMultiply: 106, NumpadAdd: 107, NumpadSubtract: 109, NumpadDecimal: 110, NumpadDivide: 111, NumLock: 144, ScrollLock: 145, Semicolon: 186, Equal: 187, Comma: 188, Minus: 189, Period: 190, Slash: 191, Backquote: 192, BracketLeft: 219, Backslash: 220, BracketRight: 221, Quote: 222 };
   function virtualKey(event) { if (Number.isInteger(event.keyCode) && event.keyCode > 0 && event.keyCode <= 255 && event.keyCode !== 229) return event.keyCode; const code = event.code || ''; if (/^Key[A-Z]$/.test(code)) return code.charCodeAt(3); if (/^Digit[0-9]$/.test(code)) return code.charCodeAt(5); if (/^F(?:[1-9]|1[0-9]|2[0-4])$/.test(code)) return 111 + Number(code.slice(1)); if (/^Numpad[0-9]$/.test(code)) return 96 + Number(code.slice(6)); return SPECIAL_KEYS[code] || SPECIAL_KEYS[event.key] || (event.key?.length === 1 ? event.key.toUpperCase().charCodeAt(0) : 0); }
-  function encodeHotkey(event, previous = 0) { if (event.metaKey) return null; const vk = virtualKey(event); if (!vk || vk > 255) return null; let mods = (event.shiftKey ? 0x100 : 0) | (event.ctrlKey ? 0x200 : 0) | (event.altKey ? 0x400 : 0); if (vk === 16) mods &= ~0x100; if (vk === 17) mods &= ~0x200; if (vk === 18) mods &= ~0x400; return (previous & 0xb000) | mods | vk; }
-  function keyName(value) { const vk = value & 255; if (!vk) return '未绑定'; const names = { 1:'鼠标左键',2:'鼠标右键',4:'鼠标中键',5:'鼠标侧键 1',6:'鼠标侧键 2',8:'Backspace',9:'Tab',13:'Enter',16:'Shift',17:'Ctrl',18:'Alt',19:'Pause',20:'Caps Lock',27:'Esc',32:'Space',33:'Page Up',34:'Page Down',35:'End',36:'Home',37:'←',38:'↑',39:'→',40:'↓',45:'Insert',46:'Delete',144:'Num Lock',145:'Scroll Lock',186:';',187:'=',188:',',189:'-',190:'.',191:'/',192:'`',219:'[',220:'\\',221:']',222:"'" }; const prefix = []; if ((value & 0x200) && vk !== 17) prefix.push('Ctrl'); if ((value & 0x100) && vk !== 16) prefix.push('Shift'); if ((value & 0x400) && vk !== 18) prefix.push('Alt'); const name = names[vk] || (vk >= 112 && vk <= 135 ? `F${vk - 111}` : vk >= 96 && vk <= 105 ? `Num ${vk - 96}` : String.fromCharCode(vk)); return [...prefix, name].join(' + '); }
+  function encodeHotkey(event, previous = 0) { if (composingKey(event) || event.metaKey) return null; const vk = virtualKey(event); if (!vk || vk > 255) return null; let mods = (event.shiftKey ? 0x100 : 0) | (event.ctrlKey ? 0x200 : 0) | (event.altKey ? 0x400 : 0); if (vk === 16) mods &= ~0x100; if (vk === 17) mods &= ~0x200; if (vk === 18) mods &= ~0x400; return (previous & 0xb000) | mods | vk; }
+  function keyName(value) { const vk = value & 255; if (!vk) return '未绑定'; const names = { 1:'鼠标左键',2:'鼠标右键',4:'鼠标中键',5:'鼠标侧键 1',6:'鼠标侧键 2',8:'Backspace',9:'Tab',13:'Enter',16:'Shift',17:'Ctrl',18:'Alt',19:'Pause',20:'Caps Lock',27:'Esc',32:'Space',33:'Page Up',34:'Page Down',35:'End',36:'Home',37:'←',38:'↑',39:'→',40:'↓',45:'Insert',46:'Delete',106:'Num *',107:'Num +',108:'Num 分隔',109:'Num -',110:'Num .',111:'Num /',144:'Num Lock',145:'Scroll Lock',186:';',187:'=',188:',',189:'-',190:'.',191:'/',192:'`',219:'[',220:'\\',221:']',222:"'" }; const prefix = []; if ((value & 0x200) && vk !== 17) prefix.push('Ctrl'); if ((value & 0x100) && vk !== 16) prefix.push('Shift'); if ((value & 0x400) && vk !== 18) prefix.push('Alt'); const name = names[vk] || (vk >= 112 && vk <= 135 ? `F${vk - 111}` : vk >= 96 && vk <= 105 ? `Num ${vk - 96}` : (vk>=48 && vk<=57 || vk>=65 && vk<=90) ? String.fromCharCode(vk) : `VK ${vk}`); return [...prefix, name].join(' + '); }
   const debugToolControls = controls => controls.filter(control => control.visible && !control.debug?.present);
   function groupControls(controls, query = '') {
     const groups=new Map(),needle=query.trim().toLocaleLowerCase();let heading='常用设置';
@@ -272,7 +292,7 @@
   });
   $('search').setAttribute('aria-keyshortcuts','Control+f');
   $('search').addEventListener('input', event => { setSearch(event.target.value); schedule(); });
-  $('search').addEventListener('keydown', event => { if (event.key === 'Escape' && !capture) { event.preventDefault(); $('search').value = ''; setSearch(''); schedule(); } });
+  $('search').addEventListener('keydown', event => { if (!composingKey(event) && event.key === 'Escape' && !capture) { event.preventDefault(); $('search').value = ''; setSearch(''); schedule(); } });
   $('clearSearch').addEventListener('click', () => { $('search').value = ''; setSearch(''); if(selectedCategory===5){debugGroup=debugFilter='';$('debugGroup').value=$('debugFilter').value='';} schedule(); $('search').focus(); });
   $('debugGroup').addEventListener('change',event=>{debugGroup=event.target.value;schedule();});
   $('debugFilter').addEventListener('change',event=>{debugFilter=event.target.value;schedule();});
@@ -284,7 +304,7 @@
     for (const group of groups) setGroupCollapsed(group,shouldCollapse);
     schedule();
   });
-  document.addEventListener('keydown', event => { if (!capture && event.ctrlKey && event.key.toLowerCase() === 'f') { event.preventDefault(); $('search').focus(); $('search').select(); } });
+  document.addEventListener('keydown', event => { if (!capture && !composingKey(event) && event.ctrlKey && event.key.toLowerCase() === 'f') { event.preventDefault(); $('search').focus(); $('search').select(); } });
   const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const group = entry.target._group; if (!group) continue; group.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateGroup(group); else if (!group.body.contains(document.activeElement)) unmountGroup(group); } }, { root: $('contentScroll'), rootMargin: '600px' }) : null;
   function clearGroups() { for (const group of groupNodes.values()) { observer?.unobserve(group.section); releaseChunks(group); group.section.remove(); } groupNodes.clear(); }
   const estimateRows = controls => settingLines(controls).reduce((height,line) => height + (line.some(control=>control.type==='hotkey') ? 72 : 44),0);
@@ -392,7 +412,7 @@
     else { element.classList.add('label-row'); editor.remove(); }
     const inputId = `control-${store.current.module}-${control.id}`; if (row.input) { row.input.id = inputId; label.htmlFor = inputId; } return row;
   }
-  function bindText(row,input) { input.autocomplete = 'off'; input.spellcheck = false; input.addEventListener('focus',() => { store.beginEdit(row.control.id); store.draft(row.control.id,input.value); }); input.addEventListener('input',() => store.draft(row.control.id,input.value)); input.addEventListener('blur',() => store.commit(row.control.id)); input.addEventListener('keydown',event => { if (event.key === 'Enter') { event.preventDefault(); store.commit(row.control.id); input.blur(); } else if (event.key === 'Escape') { event.preventDefault(); store.cancelEdit(row.control.id); input.blur(); } }); }
+  function bindText(row,input) { input.autocomplete = 'off'; input.spellcheck = false; input.addEventListener('focus',() => { store.beginEdit(row.control.id); store.draft(row.control.id,input.value); }); input.addEventListener('input',() => store.draft(row.control.id,input.value)); input.addEventListener('blur',() => store.commit(row.control.id)); input.addEventListener('keydown',event => { if (composingKey(event)) return; if (event.key === 'Enter') { event.preventDefault(); store.commit(row.control.id); input.blur(); } else if (event.key === 'Escape') { event.preventDefault(); store.cancelEdit(row.control.id); input.blur(); } }); }
   function patchRow(row) {
     const control = row.control, error = store.error(control.id); row.element.dataset.pending = String(store.isPending(control.id)); row.element.classList.toggle('is-disabled',!control.enabled); row.element.classList.toggle('has-error',Boolean(error)||control.runtimeError);
     let labelText=row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置')); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText; row.element.title = control.hint;
@@ -409,8 +429,8 @@
   }
   function startCapture(row) { stopCapture(); capture = { row, modifier: null, usedModifier: false }; row.input.focus(); patchRow(row); }
   function stopCapture() { const previous = capture?.row; capture = null; if (previous) patchRow(previous); }
-  document.addEventListener('keydown',event => { if (!capture) return; event.preventDefault(); event.stopPropagation(); if (event.repeat) return; if (event.key === 'Escape') { stopCapture(); return; } if (event.metaKey) { notify('当前快捷键格式不支持 Win 组合键，请使用 Ctrl、Shift 或 Alt。'); return; } if (['Shift','Control','Alt'].includes(event.key)) { capture.modifier = event; return; } capture.usedModifier = true; const row = capture.row, previous = Number(store.value(row.control,'hotkey')) || 0, value = encodeHotkey(event,previous); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
-  document.addEventListener('keyup',event => { if (!capture || capture.usedModifier || !capture.modifier || event.key !== capture.modifier.key) return; event.preventDefault(); const row = capture.row, value = encodeHotkey(capture.modifier,Number(store.value(row.control,'hotkey')) || 0); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
+  document.addEventListener('keydown',event => { if (!capture || composingKey(event)) return; event.preventDefault(); event.stopPropagation(); if (event.repeat) return; if (event.key === 'Escape') { stopCapture(); return; } if (event.metaKey) { notify('当前快捷键格式不支持 Win 组合键，请使用 Ctrl、Shift 或 Alt。'); return; } if (['Shift','Control','Alt'].includes(event.key)) { capture.modifier = event; return; } capture.usedModifier = true; const row = capture.row, previous = Number(store.value(row.control,'hotkey')) || 0, value = encodeHotkey(event,previous); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
+  document.addEventListener('keyup',event => { if (!capture || composingKey(event) || capture.usedModifier || !capture.modifier || event.key !== capture.modifier.key) return; event.preventDefault(); const row = capture.row, value = encodeHotkey(capture.modifier,Number(store.value(row.control,'hotkey')) || 0); if (value !== null) { stopCapture(); store.act(row.control.id,'hotkey',value); } },true);
   document.addEventListener('pointerdown',event => { if (capture && event.target !== capture.row.input) stopCapture(); },true);
   document.addEventListener('focusin',event => { if (capture && event.target !== capture.row.input) stopCapture(); });
   global.addEventListener('blur',stopCapture);

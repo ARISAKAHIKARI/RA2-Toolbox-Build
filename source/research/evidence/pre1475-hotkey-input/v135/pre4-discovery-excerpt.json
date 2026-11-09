@@ -1,0 +1,54 @@
+{
+  "original_sha256": "4a350e12638be731ead8a98206100694fcbcbad0e4ccb9c87925f111f55d1f34",
+  "version": "1.0.47-pre.4",
+  "host_alias": "host-1",
+  "target_alias": "game-1",
+  "selection": "Only allowlisted discovery/connection fields; no original user paths, filenames beyond public product versions, module list or complete raw lines. PID/TID/HWND values are omitted.",
+  "events": [
+    {
+      "line": 2225,
+      "time": "16:18:34.722",
+      "event": "game-discovery",
+      "target_alias": "game-1",
+      "fields": {
+        "candidates": "1",
+        "windows": "3",
+        "knownNames": "1",
+        "descriptions": "0",
+        "remembered": "0",
+        "explicitSelection": "0",
+        "openError": "0"
+      }
+    },
+    {
+      "line": 2226,
+      "time": "16:18:34.722",
+      "event": "read-attached",
+      "target_alias": "game-1",
+      "fields": {}
+    },
+    {
+      "line": 2232,
+      "time": "16:18:34.885",
+      "event": "hook-installed",
+      "target_alias": "game-1",
+      "fields": {
+        "runtimeVersion": "4",
+        "assistVersion": "102"
+      }
+    },
+    {
+      "line": 2237,
+      "time": "16:18:34.912",
+      "event": "bridge-health",
+      "target_alias": "game-1",
+      "fields": {
+        "stage": "connected",
+        "status": "1",
+        "commandStatus": "10",
+        "fresh": "1"
+      }
+    }
+  ],
+  "conclusion": "This successful attachment used knownNames=1, remembered=0, explicitSelection=0, descriptions=0. It does not establish whether a game process existed during the earlier no-target phase."
+}

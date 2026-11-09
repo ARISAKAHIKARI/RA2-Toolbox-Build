@@ -1,0 +1,59 @@
+{
+  "name": "tech_capture",
+  "started_utc": "2026-11-09T07:10:30.406411+00:00",
+  "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "command": [
+    "python3",
+    "-B",
+    "source/assist/tests/tech_enhancement_capture.py",
+    "--out",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture",
+    "--baseline",
+    "46420180d9137932ca98fd2e6c131bde4f2a6294"
+  ],
+  "raw_log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture/current/run.log",
+  "test_source_hashes": {
+    "source/assist/tests/tech_enhancement_capture.cpp": "550db4fb9351cc7fdf68393ba08127838b68177395354b2b158c3e0beda887f0",
+    "source/assist/tests/tech_enhancement_capture.py": "a0d2336204b92d1f915598d5eaac8dce78c97312647f445c825bbe29536ad1bf"
+  },
+  "production_source_hashes": {
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/tech_parameter_lookup.h": "14fd3aa6ef6b4557804d44fd6743ac4b5bc1e92f7a23f7fc434c0ffe9a735a43",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "16669d5c032fbb66e9d21a974dea127d3b24b8f4ed7ee20bc2eac8aabf4c2d41",
+    "source/assist/source/bridge.cpp": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1"
+  },
+  "steps": [
+    {
+      "stage": "driver",
+      "command": [
+        "python3",
+        "-B",
+        "source/assist/tests/tech_enhancement_capture.py",
+        "--out",
+        "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture",
+        "--baseline",
+        "46420180d9137932ca98fd2e6c131bde4f2a6294"
+      ],
+      "exit_code": 0,
+      "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture/driver.log",
+      "log_sha256": "e7c3df20100d8c005bd701ff3a2f777292a5be11543015d4128d7b73744a6448"
+    }
+  ],
+  "windows_executed": false,
+  "game_tested": false,
+  "gpu_tested": false,
+  "multiplayer_tested": false,
+  "scope": "Actual current portable fixture/production-fragment execution with the seams declared by its driver. No Windows/game/GPU execution. Caller hashes bind integration inputs; they do not imply execution of the entire application.",
+  "source_inputs_unchanged": true,
+  "exit_code": 0,
+  "log_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture/current/run.log",
+  "log_sha256": "025a37c808abdab4a11cd0d5af453f7cbf089c3cdd95db0c99082ca640259eee",
+  "executed_this_revision": true,
+  "passed_execution": true,
+  "completed_utc": "2026-11-09T07:10:32.178217+00:00",
+  "elapsed_seconds": 1.772,
+  "execution_receipt_path": "/workspace/scratch/33b3ee07b26a/feature147pre3/final-checks/tech_capture/execution.json"
+}

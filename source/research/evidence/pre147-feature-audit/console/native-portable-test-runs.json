@@ -1,0 +1,66 @@
+[
+  {
+    "command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "-pthread",
+      "source/suite/tests/async_ini_store_test.cpp",
+      "-o",
+      "/workspace/scratch/33b3ee07b26a/feature147pre3/console/async_ini_store_test"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "async_ini_store_test.compile.log",
+    "production_sha256": {
+      "source/shared/source/async_ini_store.h": "83eae8fae4b162c45c0f402ba8340fca457dbaf0452fc42d5c77a483270705a4"
+    },
+    "test_sha256": "53b420efe6f0463adea01503150cab57e8b547fd90cc52fb94ce78dc793a046f",
+    "binary_sha256": "0f050198c0d6d1bb4bf751a4e4ca54a47d980d93fc1ec950049ef5c8d2128c43"
+  },
+  {
+    "command": [
+      "/workspace/scratch/33b3ee07b26a/feature147pre3/console/async_ini_store_test"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "async_ini_store_test.run.log",
+    "production_sha256": {
+      "source/shared/source/async_ini_store.h": "83eae8fae4b162c45c0f402ba8340fca457dbaf0452fc42d5c77a483270705a4"
+    },
+    "test_sha256": "53b420efe6f0463adea01503150cab57e8b547fd90cc52fb94ce78dc793a046f",
+    "binary_sha256": "0f050198c0d6d1bb4bf751a4e4ca54a47d980d93fc1ec950049ef5c8d2128c43"
+  },
+  {
+    "command": [
+      "g++",
+      "-std=c++17",
+      "-O2",
+      "-pthread",
+      "source/suite/tests/console_model_test.cpp",
+      "-o",
+      "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_model_test"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "console_model_test.compile.log",
+    "production_sha256": {
+      "source/suite/source/console_model.h": "35c131f0d2f17b3c1407a6a0188765cb8cda151ad49c688395bb0578a098cd20"
+    },
+    "test_sha256": "8988aceab93b0b36117d7e9869bcd5f248a6a28f2c547bd96062ae15f9a32bf0",
+    "binary_sha256": "dc00295641b7b9ca918a63c297605b615ce1d6c7eb69ba645fe09fdb91e1616f"
+  },
+  {
+    "command": [
+      "/workspace/scratch/33b3ee07b26a/feature147pre3/console/console_model_test"
+    ],
+    "cwd": "/workspace/scratch/33b3ee07b26a/ra2-toolbox",
+    "exit": 0,
+    "log": "console_model_test.run.log",
+    "production_sha256": {
+      "source/suite/source/console_model.h": "35c131f0d2f17b3c1407a6a0188765cb8cda151ad49c688395bb0578a098cd20"
+    },
+    "test_sha256": "8988aceab93b0b36117d7e9869bcd5f248a6a28f2c547bd96062ae15f9a32bf0",
+    "binary_sha256": "dc00295641b7b9ca918a63c297605b615ce1d6c7eb69ba645fe09fdb91e1616f"
+  }
+]

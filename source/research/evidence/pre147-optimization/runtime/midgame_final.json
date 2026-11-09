@@ -1,0 +1,439 @@
+{
+  "schema": 2,
+  "assertions_enabled": true,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "windows_executed": false,
+  "source_sha256": {
+    "source/assist/source/bridge.cpp": "a1924341718da07eff0ae127ea39fc5653fe3c1c490197f47075d6877e98e0d3",
+    "source/assist/source/protocol.h": "f1c0cd7a24a3afbf71e320a9750633e9ca2abe35dd26268a00fa8e08d1ccc77c",
+    "source/assist/source/sidebar.h": "244a350441dabbc7ff382f6e41b750f5e7db190762f0cccb1a8a3f5715f3754c",
+    "source/assist/source/sidebar_policy.h": "928e16cbbfd10e9ecf907ca360b1214a7b2eeff93c24a2dddf4fae5226769b36",
+    "source/assist/source/tech_enhancement.h": "16ef9e67731c85ae6898990376c307842a839e7933c716bda2326c642406e61c",
+    "source/assist/source/tech_enhancement_bridge.h": "b0fa93b6e0dfc22eea8801f67e21cec729b70bfc2c4045945378179604cd8488",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "16669d5c032fbb66e9d21a974dea127d3b24b8f4ed7ee20bc2eac8aabf4c2d41",
+    "source/assist/source/tech_enhancement_parameter_policy.h": "248b871027fa46377f058467f8152b5564a049b2bdb52f0cdfda15d9abbc0490",
+    "source/assist/source/tech_parameter_lookup.h": "14fd3aa6ef6b4557804d44fd6743ac4b5bc1e92f7a23f7fc434c0ffe9a735a43",
+    "source/assist/source/technology_mode_policy.h": "33e92d7331d9458d621e368c457276969960d904454779036f91116c789499e8",
+    "source/assist/source/session_epoch.h": "1935c87ea55edd287c53b64472c5de8f617204a924c4ca8602fc247d0a6297d9",
+    "source/external_reader/source/catalogue_stamp.h": "2e366702bfabdf89b6e4e30f06a72e84971e414d0108f3b8f94bf82745aeb600",
+    "source/assist/tests/tech_enhancement_midgame.py": "79155c0e79eab50d0edc3a8da1ddf35c2ff8649631a4b299ed68a8bbe6aa5764",
+    "source/assist/tests/tech_enhancement_midgame.cpp": "36dc183da11742b09013f90ff190c9e531220990f45c7a159157a080d9175bd1"
+  },
+  "before_commit": null,
+  "refresh_before_skipped": true,
+  "before_catalogue_commit": null,
+  "boundary": "Actual production activation, restoration, effective catalogue filtering, type selection, and cameo gate functions; native eligibility/factory/AddCameo, signatures, and DR readiness are modeled; memory is private synthetic mmap data. No native game instructions execute.",
+  "civilian_rules": "PRES/BUS Insignificant=yes and their different owner/prerequisite relationships are modeled from agreeing public original-rule candidates. Owner groups and the prerequisite index are synthetic; no user MOD rules or live sidebar were read. The original refresh controls retain their generic Insignificant=false BUS fixture.",
+  "before": [],
+  "before_catalogue": [],
+  "after": [
+    {
+      "case": "legacy_midgame_refresh",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_midgame_refresh\",\"status\":\"PASS\",\"checks\":5}",
+      "stderr": "",
+      "checks": 5
+    },
+    {
+      "case": "legacy_recheck_once",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_recheck_once\",\"status\":\"PASS\",\"checks\":4}",
+      "stderr": "",
+      "checks": 4
+    },
+    {
+      "case": "legacy_inactive_master",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_inactive_master\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "legacy_active_master",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_active_master\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_pending_master",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_pending_master\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_no_change",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_no_change\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "legacy_unreadable_world",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_unreadable_world\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_midgame_catalogue",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_midgame_catalogue\",\"status\":\"PASS\",\"checks\":7}",
+      "stderr": "",
+      "checks": 7
+    },
+    {
+      "case": "exact_pending_readiness",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_pending_readiness\",\"status\":\"PASS\",\"checks\":4}",
+      "stderr": "",
+      "checks": 4
+    },
+    {
+      "case": "exact_off_reenable",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_off_reenable\",\"status\":\"PASS\",\"checks\":4}",
+      "stderr": "",
+      "checks": 4
+    },
+    {
+      "case": "exact_native_rule_rejected",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_native_rule_rejected\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_factory_missing",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_factory_missing\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "legacy_civilian_bus",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_civilian_bus\",\"status\":\"PASS\",\"checks\":7}",
+      "stderr": "",
+      "checks": 7
+    },
+    {
+      "case": "legacy_civilian_pres",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_civilian_pres\",\"status\":\"PASS\",\"checks\":7}",
+      "stderr": "",
+      "checks": 7
+    },
+    {
+      "case": "exact_civilian_bus",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_civilian_bus\",\"status\":\"PASS\",\"checks\":7}",
+      "stderr": "",
+      "checks": 7
+    },
+    {
+      "case": "exact_civilian_pres",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_civilian_pres\",\"status\":\"PASS\",\"checks\":7}",
+      "stderr": "",
+      "checks": 7
+    },
+    {
+      "case": "exact_civilian_inactive",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_civilian_inactive\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_civilian_not_whitelisted",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_civilian_not_whitelisted\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_civilian_wrong_vtable",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_civilian_wrong_vtable\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_civilian_wrong_array",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_civilian_wrong_array\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_civilian_unreadable",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_civilian_unreadable\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_civilian_ineligible_level",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_civilian_ineligible_level\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_civilian_unowned",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_civilian_unowned\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_civilian_conflict",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_civilian_conflict\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_civilian_wrong_index",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_civilian_wrong_index\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_civilian_world_changed",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_civilian_world_changed\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_civilian_world_unreadable",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_civilian_world_unreadable\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_civilian_stopped",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_civilian_stopped\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "legacy_civilian_fault",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"legacy_civilian_fault\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_civilian_missing_prerequisite",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_civilian_missing_prerequisite\",\"status\":\"PASS\",\"checks\":4}",
+      "stderr": "",
+      "checks": 4
+    },
+    {
+      "case": "exact_civilian_factory_owner_mismatch",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_civilian_factory_owner_mismatch\",\"status\":\"PASS\",\"checks\":4}",
+      "stderr": "",
+      "checks": 4
+    },
+    {
+      "case": "exact_filter_spawned",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_filter_spawned\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_filter_no_owner",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_filter_no_owner\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_full_capacity",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_full_capacity\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_failed_signature",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_failed_signature\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_dependency_canbuild",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_dependency_canbuild\",\"status\":\"PASS\",\"checks\":5}",
+      "stderr": "",
+      "checks": 5
+    },
+    {
+      "case": "exact_dependency_factory",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_dependency_factory\",\"status\":\"PASS\",\"checks\":5}",
+      "stderr": "",
+      "checks": 5
+    },
+    {
+      "case": "exact_dependency_tab",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_dependency_tab\",\"status\":\"PASS\",\"checks\":5}",
+      "stderr": "",
+      "checks": 5
+    },
+    {
+      "case": "exact_dependency_addcameo",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_dependency_addcameo\",\"status\":\"PASS\",\"checks\":5}",
+      "stderr": "",
+      "checks": 5
+    },
+    {
+      "case": "exact_dependency_active_handoff",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_dependency_active_handoff\",\"status\":\"PASS\",\"checks\":4}",
+      "stderr": "",
+      "checks": 4
+    },
+    {
+      "case": "production_dependency_canbuild",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"production_dependency_canbuild\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_ares_body_bypassed",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_ares_body_bypassed\",\"status\":\"PASS\",\"checks\":4}",
+      "stderr": "",
+      "checks": 4
+    },
+    {
+      "case": "rules_to_exact_ares_busy_handoff",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"rules_to_exact_ares_busy_handoff\",\"status\":\"PASS\",\"checks\":5}",
+      "stderr": "",
+      "checks": 5
+    },
+    {
+      "case": "exact_full_allowlist",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_full_allowlist\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_busy_mode_handoff",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_busy_mode_handoff\",\"status\":\"PASS\",\"checks\":2}",
+      "stderr": "",
+      "checks": 2
+    },
+    {
+      "case": "exact_index_published",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_index_published\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_index_rebuild_removed",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_index_rebuild_removed\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_index_unready_recapture",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_index_unready_recapture\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_index_empty_capture",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_index_empty_capture\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    },
+    {
+      "case": "exact_index_capture_failure",
+      "status": "PASS",
+      "returncode": 0,
+      "stdout": "{\"case\":\"exact_index_capture_failure\",\"status\":\"PASS\",\"checks\":3}",
+      "stderr": "",
+      "checks": 3
+    }
+  ],
+  "after_subject_sha256": "a21c99017fa4334817be0df4060000bc19324f349069f280790627e307f85ecd",
+  "checks": 179,
+  "cases": 50,
+  "source_unchanged": true,
+  "before_reproduced": null,
+  "before_catalogue_reproduced": null,
+  "required_checks_passed": true
+}

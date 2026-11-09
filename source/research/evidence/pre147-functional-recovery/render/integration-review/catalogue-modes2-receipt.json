@@ -1,0 +1,25 @@
+{
+  "commands": [
+    {
+      "command": [
+        "g++",
+        "-std=c++17",
+        "-O0",
+        "-pthread",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/render/integration-review/catalogue_modes.cpp",
+        "-o",
+        "/workspace/scratch/5a310fe852f8/functional147pre2/render/integration-review/catalogue_modes2"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "/workspace/scratch/5a310fe852f8/functional147pre2/render/integration-review/catalogue_modes2"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "source_sha256": "6ed0ccdb0f935f557c34e47c4c9172552978c4e1b66d10ea2b7d2253ccfb02d1",
+  "sampler_sha256": "024afa933113f07f31b02a3aff91e4a587d34c15a6a83c1419ea5e3fab235664",
+  "note": "The count-bound scenario explicitly triggers a rebuild; a failed periodic catalogue stamp retains the previous good table by the pre-existing policy."
+}

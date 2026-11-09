@@ -186,7 +186,10 @@ struct MappingRecord {
 };
 std::shared_ptr<MappingRecord>forceDataCollision;
 std::function<void()>onConsumerMap;
-struct Handle {std::shared_ptr<ProcessRecord> process;std::shared_ptr<MappingRecord> mapping;};
+struct EventRecord {bool signaled=false;};
+std::map<std::wstring,std::weak_ptr<EventRecord>>events;
+unsigned eventSignals=0,eventCreates=0,eventOpens=0,failEventCreate=0;
+struct Handle {std::shared_ptr<ProcessRecord> process;std::shared_ptr<MappingRecord> mapping;std::shared_ptr<EventRecord> event;};
 uint32_t currentPid=HostPid,clock=100,lastError=0;size_t rpmCalls=0;
 Memory*gameMemory=nullptr;
 std::shared_ptr<ProcessRecord>process=std::make_shared<ProcessRecord>(ProcessRecord{GamePid,12345,true});
@@ -196,6 +199,16 @@ worldframe::Channel*channel(){wchar_t path[100];worldframe::name(path,GamePid,Ho
 std::shared_ptr<MappingRecord>payload(const worldframe::Slot&slot,unsigned index){wchar_t path[160];worldframe::dataName(path,slot.key,index,slot.data.allocation);auto found=mappings.find(path);return found==mappings.end()?nullptr:found->second.lock();}
 }
 extern "C" {
+HANDLE CreateEventW(void*,BOOL manual,BOOL initial,const wchar_t*name){
+ CHECK(!manual);++fixture::eventCreates;if(fixture::failEventCreate){--fixture::failEventCreate;return nullptr;}
+ auto&weak=fixture::events[name];auto event=weak.lock();if(!event){event=std::make_shared<fixture::EventRecord>();event->signaled=initial;weak=event;}
+ return new fixture::Handle{{},{},std::move(event)};
+}
+HANDLE OpenEventW(DWORD access,BOOL,const wchar_t*name){
+ CHECK(access==SYNCHRONIZE);++fixture::eventOpens;auto event=fixture::events[name].lock();
+ return event?new fixture::Handle{{},{},std::move(event)}:nullptr;
+}
+BOOL SetEvent(HANDLE handle){auto*h=static_cast<fixture::Handle*>(handle);CHECK(h&&h->event);h->event->signaled=true;++fixture::eventSignals;return TRUE;}
 HANDLE OpenProcess(DWORD,BOOL,DWORD pid){if(pid!=fixture::GamePid){fixture::lastError=ERROR_INVALID_PARAMETER;return nullptr;}return new fixture::Handle{fixture::process,{}};}
 BOOL CloseHandle(HANDLE handle){if(!handle||handle==INVALID_HANDLE_VALUE)return FALSE;delete static_cast<fixture::Handle*>(handle);return TRUE;}
 DWORD GetLastError(){return fixture::lastError;}
@@ -365,6 +378,7 @@ void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavi
 }
 #endif
 
+#ifndef WORLD_FRAME_FIXTURE_ONLY
 int main(){
  fixture::overlap();fixture::partial();fixture::graphs();fixture::capacity();fixture::nothrowPages();
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
@@ -372,3 +386,4 @@ int main(){
 #endif
  std::printf("PASS production world frame core: %zu checks; overlap/immutable/failed/missing/roster/demand/queue/page-capacity\n",fixture::checks);
 }
+#endif

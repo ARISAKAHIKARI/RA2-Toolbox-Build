@@ -68,6 +68,8 @@
 #include "crate_names.h"
 #include "type_hotkey.h"
 #include "hotkey_routes.h"
+#include "hotkey_input_diagnostic.h"
+#include "input_ownership.h"
 #include "pointer_batch.h"
 #include "ui_layout.h"
 #include "additional_settings.h"
@@ -131,7 +133,7 @@ static HWND ui,overlay,statusLabel,swList,techList,techSearch,swHotkey,rateEdit,
 static HFONT font,titleFont;static HBRUSH bgBrush,editBrush;static HWND game;static DWORD pid,gameThread;static HANDLE mapping,gameProcess;static HMODULE module;static gameinput::Subscription hook;static Shared*shared;
 static void hideWorldOverlay(){overlaycompositor::host().hide(overlaycompositor::World);if(overlay)ShowWindow(overlay,SW_HIDE);}
 static uint32_t lastReceiptWrite=0,lastReceiptMatch=0;
-static Snapshot snap{},incoming{};static uint32_t ack,notice,oldMatch,snapshotSeq=~0u;static std::wstring root,statusText,toast;static DWORD toastUntil,lastFind,lastData,lastPulse;static int fps=visual::DefaultFPS,topMargin=20,repairMs=2000;static bool enabled=true,ready,techEnabled;static std::vector<int> techIndices;static std::wstring lastSearch;
+static Snapshot snap{},incoming{};static uint32_t ack,notice,oldMatch,snapshotSeq=~0u;static std::wstring root,statusText,toast;static DWORD toastUntil,lastFind,lastData,lastPulse;static bool toastActive=false;static int fps=visual::DefaultFPS,topMargin=20,repairMs=2000;static bool enabled=true,ready,techEnabled;static std::vector<int> techIndices;static std::wstring lastSearch;
 static bool infoAdaptive=false;
 static monitorrefresh::Tracker informationMonitor;
 static int informationFPS(){return infoAdaptive?informationMonitor.rate():std::clamp(fps,5,500);}
@@ -215,7 +217,9 @@ static planner::Statistics plannerState;static uint64_t planningGeneration=1,pla
 static std::vector<planner::Receipt> plannerReceipts;
 static compute::ValueTask<dodgecompute::Input,dodgecompute::Result> dodgeTask(dodgecompute::calculate,calculationCompleted);
 static compute::ValueTask<burstcompute::Input,burstcompute::Result> burstTask(burstcompute::calculate,calculationCompleted);
-static compute::ValueTask<missilecompute::Input,missilecompute::Result> missileTask(missilecompute::calculate,calculationCompleted);
+// The sole missile worker owns this scratch; reset never exposes it to the UI.
+static missilecompute::Workspace missileWorkspace;
+static compute::ValueTask<missilecompute::Input,missilecompute::Result> missileTask([](missilecompute::Input&i){return missilecompute::calculateWithWorkspace(i,missileWorkspace);},calculationCompleted);
 static compute::ValueTask<unloadcompute::Input,unloadcompute::Result> unloadTask(unloadcompute::calculate,calculationCompleted);
 static compute::ValueTask<compute::LoadInput,compute::LoadResult> loadTask([](compute::LoadInput&i){static auto work=std::make_unique<loading::Workspace>();return compute::load(i,*work);},calculationCompleted);
 static compute::ValueTask<compute::RepairInput,compute::RepairResult> repairTask(compute::repair,calculationCompleted);
@@ -223,10 +227,17 @@ static void resetPlanning(){calculationWindow.store(nullptr);calculationPID.stor
 static long worldRevision=-1;static uint32_t plannerAck;static int submittedPlanFrame;static std::vector<planner::Order> submittedPlan;
 static typekeys::Tap typeTap,variantTap,formationTap;
 static hotkeyroute::Registry hotkeyRegistry;static hotkeyroute::Pending hotkeyPending;
+static int registeredHotkeyMode=0;
+struct HotkeyDiagnostics {uint32_t messages=0,sampled=0,actions=0,blocked=0,fallbacks=0,queued=0,dialogHandled=0,traceDropped=0;DWORD lastError=0;};
+static HotkeyDiagnostics hotkeyDiagnostics;
+static hotkeydiagnostic::Monitor hotkeyInputMonitor;
+static uint32_t hotkeyBindingRevision=0;
+static std::wstring hotkeyDiagnosticState();
 static pointerinput::PendingMatches pointerMatches;
 static std::wstring infantryEntryResult;static uint32_t infantryEntryResultMatch=0;
 static void serviceHotkeyBatch();
-static bool formationInputOwns(){return shared&&(shared->formationPreview.active||int32_t(shared->formationConsumedUntil-sampleClock(shared))>0);}
+static uint32_t commandMatch();
+static bool formationInputOwns(){return shared&&inputownership::ownsFormation(shared->formationPreview.active,shared->formationPreview.match,commandMatch(),shared->formationConsumedUntil,sampleClock(shared));}
 static bool formationHotkey(WORD);
 static AdditionalSettings extra;static HWND extraControls[ExtraControlCount];
 static bool debugPageActive=false;static void updateDebugEntries(bool force=false);
@@ -256,7 +267,8 @@ static void setConsoleRuntimeError(HWND control,bool failed){
 static uint64_t attachAttempts=0;
 static bool secondaryDisplayRequested();
 static void setStatus(const std::wstring&s){if(statusText!=s){statusText=s;if(hoverHelp.empty())SetWindowTextW(statusLabel,s.c_str());}}
-static void notify(const std::wstring&s){toast=s;toastUntil=GetTickCount()+DWORD(toastMs);setStatus(s);}
+static bool activeToast(DWORD now){if(toastActive&&int32_t(now-toastUntil)>=0)toastActive=false;return toastActive;}
+static void notify(const std::wstring&s){toast=s;toastUntil=GetTickCount()+DWORD(toastMs);toastActive=true;setStatus(s);}
 static void diag(const std::wstring &s){
  if(!diagEnabled||root.empty())return;
  HANDLE f=CreateFileW(path(L"Assist-debug.log").c_str(),FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
@@ -434,6 +446,12 @@ static void logBridgeHealth(bool force=false){
   L" nativeExceptionCount="+std::to_wstring(h.nativeSerial)+
   L" match="+std::to_wstring(incoming.match)+L" status="+std::to_wstring(incoming.status)+
   L" commandStatus="+std::to_wstring(incoming.commandStatus)+L" fresh="+std::to_wstring(data)+
+  L" displayReadStatus="+std::to_wstring(snap.readStatus)+L" displayRenderStatus="+std::to_wstring(snap.renderStatus)+
+  L" commandChat="+std::to_wstring(incoming.chat)+L" hotkeyMode="+std::to_wstring(registeredHotkeyMode)+
+  L" hotkeyGroups="+std::to_wstring(hotkeyRegistry.groups.size())+L" hotkeyPending="+std::to_wstring(hotkeyPending.count)+
+  L" hotkeyMessages="+std::to_wstring(hotkeyDiagnostics.messages)+L" hotkeySampled="+std::to_wstring(hotkeyDiagnostics.sampled)+
+  L" hotkeyActions="+std::to_wstring(hotkeyDiagnostics.actions)+L" hotkeyBlocked="+std::to_wstring(hotkeyDiagnostics.blocked)+
+  L" hotkeyFallbacks="+std::to_wstring(hotkeyDiagnostics.fallbacks)+L" hotkeyLastError="+std::to_wstring(hotkeyDiagnostics.lastError)+hotkeyDiagnosticState()+
   L" request="+std::to_wstring(shared?shared->request:0)+L" ack="+std::to_wstring(shared?shared->ack:0)+
   L" controlFrame="+std::to_wstring(incoming.frame)+L" techOpen="+std::to_wstring(incoming.techOpen)+
   L" techVisible="+std::to_wstring(incoming.techVisible)+L" techUnavailable="+std::to_wstring(incoming.techUnavailable)+
@@ -562,22 +580,41 @@ static bool secondaryDisplayRequested(){return minimapSecondary||extra.watchSeco
 static secondarydisplay::Monitor secondaryDisplayMonitor;
 static bool secondaryDisplayAvailable(){return secondaryDisplayRequested()&&secondaryDisplayMonitor.get(game,ui,GetTickCount()).available();}
 static bool displayFrameRequested(){return overlayvisibility::visible()&&snap.renderStatus==1&&((enabled&&foregroundGame())||secondaryDisplayAvailable());}
+static bool commandChannelReady();
+// The Runtime owns command readiness, including pause/menu state. A failed
+// external viewport/display sample must not disable unrelated gameplay keys.
+// Freshness is checked at dispatch; a delayed callback does not churn bindings.
+static bool commandHotkeyContext(){return enabled&&foregroundGame()&&commandChannelReady()&&!incoming.chat;}
 static int desiredHotkeyMode(){
+ if(commandHotkeyContext())return 2;
  if(!foregroundGame()||snap.renderStatus!=1||snap.chat)return 0;
- if(enabled&&snap.status==1)return 2;
  return !enabled&&extra.watchSecondary&&snap.readStatus==1?1:0;
 }
-static int registeredHotkeyMode=0;
 static uint32_t commandMatch();static uint32_t displayMatch();
 static bool destructOwnerKeyConflict(WORD key);
-static void synchronizeHotkeyKeys(){uint8_t down[256]{};for(unsigned key=0;key<256;++key)down[key]=(GetAsyncKeyState(int(key))&0x8000)!=0;hotkeyRegistry.synchronize(down,registeredHotkeyMode==1?displayMatch():commandMatch());}
+static void synchronizeHotkeyKeys(){uint8_t down[256]{};for(unsigned key=0;key<256;++key)down[key]=(GetAsyncKeyState(int(key))&0x8000)!=0;hotkeyRegistry.synchronize(down,registeredHotkeyMode==1?displayMatch():commandMatch(),GetTickCount());}
 static bool registerKey(int id,WORD key){return hotkeyRegistry.add(id,key,extra.allHotkeys,[](int slot,WORD chord){
  if(keygesture::sampledOnly(chord))return true;
- if(!RegisterHotKey(ui,slot,modifiers(chord),LOBYTE(chord)))return false;registeredKeyIDs.push_back(slot);return true;});}
-static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();typeTap.clear();variantTap.clear();formationTap.clear();registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;if(!keysRegistered)return;int failures=0;
+ if(!RegisterHotKey(ui,slot,modifiers(chord),LOBYTE(chord))){
+  hotkeyDiagnostics.lastError=GetLastError();++hotkeyDiagnostics.fallbacks;
+  critical(L"hotkey-registration id="+std::to_wstring(slot)+L" key="+std::to_wstring(chord)+
+   L" route=foreground-poll Win32="+std::to_wstring(hotkeyDiagnostics.lastError));
+  return true; // Keep the binding: the foreground sampler observes its edge.
+ }
+ registeredKeyIDs.push_back(slot);return true;});}
+// Snapshot only configured bindings, never typed text. Repeated foreground
+// registration with the same table is identified by its logged mode/revision.
+static void logHotkeyBindings(){
+ std::wstring table=L" mode="+std::to_wstring(registeredHotkeyMode)+L" autoLoadKey="+std::to_wstring(hotkeys[11])+L" groups="+std::to_wstring(hotkeyRegistry.groups.size());
+ for(const auto&g:hotkeyRegistry.groups){table+=L" [id="+std::to_wstring(g.id)+L" physical="+std::to_wstring(g.key)+L" actions=";
+  for(size_t n=0;n<g.actions.size();++n){if(n)table+=L",";table+=std::to_wstring(g.actions[n])+L":"+std::to_wstring(g.bindings[n]);}table+=L"]";}
+ static std::wstring previous;if(table==previous)return;previous=table;++hotkeyBindingRevision;
+ critical(L"hotkey-bindings revision="+std::to_wstring(hotkeyBindingRevision)+table);
+}
+static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();typeTap.clear();variantTap.clear();formationTap.clear();hotkeyDiagnostics.fallbacks=0;hotkeyDiagnostics.lastError=0;registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;if(!keysRegistered){logHotkeyBindings();return;}int failures=0;
  if(registeredHotkeyMode==1){
   for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
-  synchronizeHotkeyKeys();if(failures)notify(L"副屏跟踪快捷键注册失败，请更换组合。");return;
+  synchronizeHotkeyKeys();logHotkeyBindings();if(failures)notify(L"副屏跟踪快捷键注册失败，请更换组合。");return;
  }
  for(int i=0;i<12;++i)if((i!=8||extra.manualReveal)&&LOBYTE(hotkeys[i])&&!registerKey(1000+i,hotkeys[i]))++failures;
  for(size_t i=0;i<swBindings.size()&&i<64;++i){auto&b=swBindings[i];if((b.id=="IronCurtainSpecial"&&b.key==hotkeys[9])||(b.id=="ChronoSphereSpecial"&&b.key==hotkeys[10]))continue;if(LOBYTE(b.key)&&!registerKey(int(1020+i),b.key))++failures;}
@@ -600,7 +637,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
   if(destructOwnerKeyConflict(WORD(extra.destructSelectedOwnerKey))||!destructownerhost::exclusive(hotkeyRegistry,extra.destructSelectedOwnerKey)||
      !registerKey(destructownerhost::Hotkey,WORD(extra.destructSelectedOwnerKey)))++failures;
  }
- synchronizeHotkeyKeys();if(failures)notify(L"有 "+std::to_wstring(failures)+L" 个快捷键冲突或注册失败，请更换组合，修改后自动生效。");
+ synchronizeHotkeyKeys();logHotkeyBindings();if(failures)notify(L"有 "+std::to_wstring(failures)+L" 个快捷键冲突或注册失败，请更换组合，修改后自动生效。");
 }
 static std::wstring serializeIDs(const std::set<std::string>& ids){
  std::wstring result;for(const auto& id:ids){if(!result.empty())result+=L",";result+=wide(id.c_str());}return result;
@@ -663,13 +700,77 @@ static bool commandFocus(){
   fg==ui||fg==rootUi||(fg&&(GetAncestor(fg,GA_ROOT)==ui||GetAncestor(fg,GA_ROOT)==rootUi)));
 #endif
 }
-static controllink::View commandLink(){return {shared!=nullptr,lastData!=0,shared&&shared->stop!=0,
+#include "read_only_lifecycle.h"
+static controllink::View commandLink(){return {shared!=nullptr,lastData!=0,shared&&(shared->stop!=0||!readonly::commands(shared)),
  incoming.status,incoming.commandStatus,incoming.match};}
 static uint32_t commandMatch(){return controllink::identity(commandLink());}
 static uint32_t displayMatch(){return externalData&&externalData->status==1?externalData->match:snap.match;}
 static bool uninitializedBridgeTimedOut(){return shared&&!commandMatch()&&attachAt&&DWORD(GetTickCount()-attachAt)>8000&&(!lastData||DWORD(GetTickCount()-lastData)>8000)&&shared->request==shared->ack;}
 static bool commandChannelReady(){return controllink::ready(commandLink());}
 static bool commandFresh(DWORD now){return commandChannelReady()&&DWORD(now-lastData)<1500;}
+// These observations explain admission without granting input or changing focus.
+static std::wstring hotkeyDiagnosticState(){
+ const DWORD now=GetTickCount();const HWND foreground=GetForegroundWindow();DWORD foregroundPid=0,windowPid=0;
+ const DWORD foregroundTid=foreground?GetWindowThreadProcessId(foreground,&foregroundPid):0;
+ const bool windowValid=game&&IsWindow(game);const DWORD windowTid=windowValid?GetWindowThreadProcessId(game,&windowPid):0;
+ return std::wstring(L" hotkeyGate=")+hotkeydiagnostic::name(hotkeyInputMonitor.gate)+
+  L" hotkeyServiceCalls="+std::to_wstring(hotkeyInputMonitor.calls)+L" hotkeyPollReads="+std::to_wstring(hotkeyInputMonitor.reads)+
+  L" hotkeyServiceBlocked="+std::to_wstring(hotkeyInputMonitor.blocked)+
+  L" hotkeyFormationBlocked="+std::to_wstring(hotkeyInputMonitor.perGate[size_t(hotkeydiagnostic::Gate::FormationOwned)])+
+  L" hotkeyMiddleBlocked="+std::to_wstring(hotkeyInputMonitor.perGate[size_t(hotkeydiagnostic::Gate::MiddleOwned)])+
+  L" hotkeyPhysicalPresses="+std::to_wstring(hotkeyInputMonitor.configuredPresses)+L" hotkeyHeldOnSync="+std::to_wstring(hotkeyInputMonitor.heldOnSync)+
+  L" hotkeyChordMatches="+std::to_wstring(hotkeyInputMonitor.chordMatches)+L" hotkeyModifierMismatches="+std::to_wstring(hotkeyInputMonitor.mismatches)+
+  L" hotkeyQueued="+std::to_wstring(hotkeyDiagnostics.queued)+L" hotkeyDialogHandled="+std::to_wstring(hotkeyDiagnostics.dialogHandled)+
+  L" hotkeyTraceDropped="+std::to_wstring(hotkeyDiagnostics.traceDropped)+L" hotkeyBindingRevision="+std::to_wstring(hotkeyBindingRevision)+
+  L" autoLoadKey="+std::to_wstring(hotkeys[11])+L" hostTick="+std::to_wstring(now)+
+  L" foreground="+std::to_wstring(foregroundGame())+L" foregroundHwnd="+std::to_wstring(uintptr_t(foreground))+
+  L" foregroundPid="+std::to_wstring(foregroundPid)+L" foregroundTid="+std::to_wstring(foregroundTid)+
+  L" gameWindowHwnd="+std::to_wstring(uintptr_t(game))+L" gameWindowValid="+std::to_wstring(windowValid)+L" gameWindowIconic="+std::to_wstring(windowValid&&IsIconic(game))+
+  L" gameWindowPid="+std::to_wstring(windowPid)+L" gameWindowTid="+std::to_wstring(windowTid)+
+  L" formationActive="+std::to_wstring(shared?shared->formationPreview.active:0)+L" formationMatch="+std::to_wstring(shared?shared->formationPreview.match:0)+
+  L" formationConsumedUntil="+std::to_wstring(shared?shared->formationConsumedUntil:0)+
+  L" middleActive="+std::to_wstring(shared?shared->moOrdersPreview.active:0)+L" middleMatch="+std::to_wstring(shared?shared->moOrdersPreview.match:0);
+}
+static bool hotkeyTraceAllowed(){
+ static DWORD started=0;static uint32_t count=0;const DWORD now=GetTickCount();
+ if(DWORD(now-started)>=1000){started=now;count=0;}if(count>=64){++hotkeyDiagnostics.traceDropped;return false;}++count;return true;
+}
+static void traceHotkeyService(bool context,bool connected,bool formationOwned,bool middleOwned){
+ using Gate=hotkeydiagnostic::Gate;
+ const Gate gate=!context?(!enabled?Gate::Disabled:!game||!IsWindow(game)?Gate::NoGame:incoming.chat?Gate::Chat:!commandChannelReady()?Gate::ConnectionNotReady:Gate::NotForeground):
+  !connected?Gate::Stale:formationOwned?Gate::FormationOwned:middleOwned?Gate::MiddleOwned:Gate::Ready;
+ if(hotkeyInputMonitor.begin(gate,pid,commandMatch(),hotkeyBindingRevision,GetTickCount())&&hotkeyTraceAllowed())
+  critical(L"hotkey-service pid="+std::to_wstring(pid)+L" mode="+std::to_wstring(registeredHotkeyMode)+hotkeyDiagnosticState());
+}
+static void traceHotkeyKeys(const uint8_t*keys){
+ hotkeyInputMonitor.observe(keys,hotkeyRegistry.groups,[](hotkeydiagnostic::Event event){
+  if(!hotkeyTraceAllowed())return;
+  critical(std::wstring(L"hotkey-physical kind=")+(event.kind==hotkeydiagnostic::Kind::Press?L"press":L"held-on-sync")+
+   L" id="+std::to_wstring(event.id)+L" key="+std::to_wstring(event.key)+L" actualModifiers="+std::to_wstring(event.actualModifiers)+
+   L" modifiersMatch="+std::to_wstring(event.modifiersMatch)+L" gate="+hotkeydiagnostic::name(hotkeyInputMonitor.gate)+
+   L" pid="+std::to_wstring(pid)+L" match="+std::to_wstring(commandMatch()));
+ });
+}
+// Log configured action edges only, never raw keyboard sampling or per-frame
+// diagnostics. Automatic edge records plus bounded service observations separate
+// missing input from admission and command failure; chat/background text is not sampled.
+static void logHotkeyInput(const wchar_t* stage,int id=0,uint16_t key=0,DWORD messageTick=0){
+ if(!hotkeyTraceAllowed())return;
+ const DWORD now=GetTickCount();
+ const auto* group=hotkeyRegistry.find(id);
+ const std::wstring line=std::wstring(L"hotkey-input stage=")+stage+L" id="+std::to_wstring(id)+L" key="+std::to_wstring(key)+
+  L" pid="+std::to_wstring(pid)+L" match="+std::to_wstring(commandMatch())+
+  L" enabled="+std::to_wstring(enabled)+L" foreground="+std::to_wstring(foregroundGame())+
+  L" commandReady="+std::to_wstring(commandChannelReady())+L" fresh="+std::to_wstring(commandFresh(now))+
+  L" commandStatus="+std::to_wstring(incoming.commandStatus)+L" chat="+std::to_wstring(incoming.chat)+
+  L" displayRenderStatus="+std::to_wstring(snap.renderStatus)+L" messageAgeMs="+std::to_wstring(messageTick?DWORD(now-messageTick):0)+
+  L" pending="+std::to_wstring(hotkeyPending.count)+L" backlog="+std::to_wstring(commandQueue.size)+
+  L" registrySynchronized="+std::to_wstring(hotkeyRegistry.synchronized)+L" bindingFound="+std::to_wstring(group!=nullptr)+
+  L" registryWaiting="+std::to_wstring(group&&group->waiting)+L" registrySuppressed="+std::to_wstring(group&&group->suppressed)+
+  L" registryDown="+std::to_wstring(group&&group->down)+L" registryFence="+std::to_wstring(group&&group->fenceTimed?group->fenceTick:0)+
+  L" registryEdge="+std::to_wstring(group&&group->edgeTimed?group->edgeTick:0);
+ critical(line);
+}
 static uint32_t currentHardwareBudget(){return shared&&commandFresh(GetTickCount())?shared->hardwareSlotBudget:0;}
 static uint32_t requestedHardwareTags(){
  return (extra.singlePlayerFPS>0?slotbudget::FPS:0u)|(extra.mapVisibility?slotbudget::Map:0u)|(extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
@@ -816,7 +917,9 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
   notify(commandWaitReason());
   return;
  }
- diag(L"send command="+std::to_wstring(command)+L" match="+std::to_wstring(snap.match)+L" req="+std::to_wstring(shared->request+1)+(command==SelectType?(arg2?L" selection=all":L" selection=visible"):L""));
+ if(userCommand(command))critical(L"command-submit command="+std::to_wstring(command)+L" match="+std::to_wstring(commandMatch())+
+  L" request="+std::to_wstring(shared->request+1)+L" source="+(fromQueue?std::wstring(L"queue"):std::wstring(L"input")));
+ else diag(L"send command="+std::to_wstring(command)+L" match="+std::to_wstring(snap.match)+L" req="+std::to_wstring(shared->request+1));
  if(command==OpenTech){int requested=0;
   for(int i=0;i<MaxTypes;++i){shared->techAllowed[i]=i<snap.typeCount&&techAllowed(snap.types[i]);requested+=shared->techAllowed[i]!=0;}
   diag(L"Tech request implementation="+std::to_wstring(techImplementation)+L" profile="+std::to_wstring(techProfile)+L" selected="+std::to_wstring(requested)+L" match="+std::to_wstring(snap.match));
@@ -834,27 +937,33 @@ static void send(int command,int arg=0,int arg2=0,int retries=0,bool fromQueue=f
 // consumed by tick() under the same manager lease, without a separate hook.
 static uint32_t pendingSelectionObject=0;
 static void serviceSelection(){
- if(!shared)return;DWORD now=GetTickCount();uint32_t receipt=shared->selectAck;
+ if(!shared)return;if(!enabled||!readonly::commands(shared)){hasSelection=false;return;}DWORD now=GetTickCount();uint32_t receipt=shared->selectAck;
  if(receipt!=selectionAck){MemoryBarrier();selectionAck=receipt;
   selectionLatency=DWORD(now-shared->selectTick);
   if(!hasSelection&&shared->selectResult==-8)notify(L"请先关闭游戏聊天输入框。");
   if(diagEnabled)diag(L"selection ack="+std::to_wstring(receipt)+L" result="+std::to_wstring(shared->selectResult)+L" count="+std::to_wstring(shared->selectCount));
  }
  if(!hasSelection)return;
- if(pendingSelection.pid!=pid||(pendingSelection.match&&pendingSelection.match!=snap.match)||DWORD(now-pendingSelection.created)>1500){hasSelection=false;return;}
+ if(pendingSelection.pid!=pid||!pendingSelection.match||pendingSelection.match!=snap.match||DWORD(now-pendingSelection.created)>1500){hasSelection=false;return;}
+ if((pendingSelection.arg>=0||pendingSelection.arg==-3)&&pendingSelection.typeHash!=typeListHash(snap.types,snap.typeCount)){
+  hasSelection=false;notify(L"单位清单已改变，请重新选择后提交。");return;
+ }
  if(!commandFocus()||!commandFresh(now)||snap.chat)return;
  if(shared->selectRequest!=shared->selectAck){wakeGame();return;}
  shared->selectObjectID=pendingSelectionObject;shared->selectIndex=pendingSelection.arg;shared->selectGlobal=pendingSelection.arg2;
- shared->selectTick=now;shared->selectMatch=snap.match;memcpy(shared->selectTypes,pendingSelectionTypes,sizeof pendingSelectionTypes);
+ shared->selectTick=pendingSelection.created;shared->selectMatch=pendingSelection.match;shared->selectTypeHash=pendingSelection.typeHash;memcpy(shared->selectTypes,pendingSelectionTypes,sizeof pendingSelectionTypes);
  MemoryBarrier();InterlockedIncrement((volatile LONG*)&shared->selectRequest);hasSelection=false;
  wakeGame();
 }
 static void sendSelection(int index,bool global,const uint8_t* mask=nullptr,uint32_t object=0){
  if(!enabled){notify(L"战术控制已暂停，请先启用后再选兵。");return;}
+ // Freeze the identity that gave meaning to the index/mask before any
+ // connection refresh. Selection never acquires a later match identity.
+ const delivery::Item intent{SelectType,index,int(global),pid,snap.match,GetTickCount(),0,0,0,typeListHash(snap.types,snap.typeCount)};
  pendingSelectionObject=object;
  if(mask)memcpy(pendingSelectionTypes,mask,sizeof pendingSelectionTypes);else memset(pendingSelectionTypes,0,sizeof pendingSelectionTypes);
  if(!shared)ensureBridge();
- pendingSelection={SelectType,index,int(global),pid,commandFresh(GetTickCount())?snap.match:delivery::UnknownMatch,GetTickCount()};hasSelection=true;
+ pendingSelection=intent;hasSelection=true;
  serviceSelection();
 }
 static void logPlanning(const planner::World&w,const wchar_t* reason){
@@ -1052,7 +1161,9 @@ static void probeNativeViewportMapping(){
  CloseHandle(probe);
 }
 static bool ensureBridge(){
- if(!enabled)return false; // A secondary display alone never installs the command runtime.
+ if(!enabled&&(!secondaryDisplayRequested()||!externalReader.canRead()))return false;
+ // A paused secondary consumer needs the same Runtime producer, admitted
+ // strictly as read-only before its first callback; it never enables commands.
  if(shared)return true;
  // Runtime feature maintenance still checks local playable state and exact signatures.
  if(!game)return false;
@@ -1116,8 +1227,8 @@ static bool ensureBridge(){
  shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared){DWORD error=GetLastError();releaseBridge();return bridgeConnectFailed(L"映射命令共享内存失败",error);}
  uint32_t hostWindow=gameinput::windowToken(ui);if(!hostWindow){releaseBridge();return bridgeConnectFailed(L"工具箱窗口句柄无法与 32 位运行组件互通",ERROR_INVALID_WINDOW_HANDLE);}
  memset(shared,0,sizeof *shared);shared->viewportHostCapabilities=nativeviewportprojection::HostHandshake;
- shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=hostWindow;shared->heartbeat=now;shared->flags=flags();shared->scanMs=8;shared->repairMs=repairMs;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
- shared->megaQueueMode=megaQueueMode;shared->objectQueueMode=objectQueueMode;shared->driverStatus=0;syncAdditional();syncTypeConfig();
+ shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=hostWindow;shared->heartbeat=now;shared->readOnly=enabled?0u:1u;shared->readOnlyRequest=enabled?0u:1u;shared->flags=enabled?flags():0u;shared->scanMs=8;shared->repairMs=repairMs;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
+ shared->megaQueueMode=megaQueueMode;shared->objectQueueMode=objectQueueMode;shared->driverStatus=0;if(enabled){syncAdditional();syncTypeConfig();}
  shared->clockTick=now;shared->clockStart=0;shared->clockFrequency=0;
  module=candidateModule;
  hook=gameinput::install(gameentry::Client::Assist,gameThread,pid,game);
@@ -1213,7 +1324,7 @@ static EnemyRasterKey enemyRasterKey(const external::enemies::Marker&m){return {
 static uint32_t statusOptions(){return (extra.parasiteMarker?external::status::Parasite:0)|(extra.crateBuffMarkers?external::status::CrateBuffs:0);}
 static void updateStatusDisplay(const Snapshot&source){
  const auto&f=externalSampler.unitStatuses();
- if(!statusOptions()||snap.renderStatus!=1||!displaylease::frameCurrent(f,source.match,source.frame,sampleRenderClock(nullptr),externalSourceConfirmed,external::status::Maximum)){statusMotion.clear();return;}
+ if(!statusOptions()||snap.renderStatus!=1||!displaylease::frameCurrent(f,source.match,source.frame,GetTickCount(),externalSourceConfirmed,external::status::Maximum)){statusMotion.clear();return;}
  statusSample.labels=f.count;statusSample.match=f.match;statusSample.sampledTick=f.tick;statusSample.frame=f.frame;
  statusSample.cameraX=source.cameraX;statusSample.cameraY=source.cameraY;
  for(int i=0;i<f.count;++i){const auto&m=f.items[i];statusSample.label[i]={m.id,m.x,m.y};}
@@ -1221,7 +1332,7 @@ static void updateStatusDisplay(const Snapshot&source){
 }
 static void updateEnemyDisplay(const Snapshot&source){
  const auto&f=externalSampler.enemyMarkers();
- if(!extra.enemyMarkers||snap.renderStatus!=1||!displaylease::frameCurrent(f,source.match,source.frame,sampleRenderClock(nullptr),externalSourceConfirmed,external::enemies::Maximum)){clearEnemyDisplay();return;}
+ if(!extra.enemyMarkers||snap.renderStatus!=1||!displaylease::frameCurrent(f,source.match,source.frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)){clearEnemyDisplay();return;}
  if(enemyRasterMatch!=f.match){clearEnemyDisplay();enemyRasterMatch=f.match;}
  enemySample.labels=f.count;enemySample.match=f.match;enemySample.sampledTick=f.tick;enemySample.frame=f.frame;
  enemySample.cameraX=source.cameraX;enemySample.cameraY=source.cameraY;
@@ -1239,11 +1350,11 @@ static void discardExternalWorld(){
 static void mergeExternal(){
  if(!externalData)return;
  if(commandMatch()&&externalPublished.match!=commandMatch()){discardExternalWorld();return;}
- const auto&d=*externalData;const DWORD displayNow=sampleRenderClock(nullptr);
+ const auto&d=*externalData;const DWORD displayNow=GetTickCount(); // Match the producer timestamp; QPC is for interpolation only.
  bool control=commandMatch()!=0; // preserve authoritative command identity/catalogue even when display data is delayed
  // External snapshots are display data, never authoritative for a live
  // command bridge. An incompatible EXE layout must not disable a healthy DLL.
- snap.readStatus=d.status==1&&d.sampledTick&&DWORD(displayNow-d.sampledTick)>=2000&&!externalSourceConfirmed?0:d.status;
+ snap.readStatus=d.status==1&&(!d.sampledTick||(DWORD(displayNow-d.sampledTick)>=2000&&!externalSourceConfirmed))?0:d.status;
  snap.bridgeStatus=shared&&lastData&&DWORD(GetTickCount()-lastData)<1500?incoming.status:0;
  snap.commandStatus=commandChannelReady()?1:0;
  const bool externalValid=d.status==1&&d.sampledTick&&
@@ -1288,7 +1399,8 @@ static void sampleExternal(DWORD now){
   externalAt=displayNow;externalReader.begin();externalSourceConfirmed=false;
   if(externalWorldSource&&((commandMatch()&&externalWorldSource->key.match!=commandMatch())||externalWorldSource->key.pid!=externalReader.pid()||
     ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)!=externalReader.generation()))discardExternalWorld();
-  externalReader.setWorldDemand(worldframe::Base|((flags()&(Capacity|AllTransports))?worldframe::Passengers:0));
+  const bool passengerOverlay=enabled&&(extra.passengerBubbles||extra.dangerPassengers);
+  externalReader.setWorldDemand(worldframe::Base|(((flags()&(Capacity|AllTransports))||passengerOverlay)?worldframe::Passengers:0)|(passengerOverlay?worldframe::Combat:0));
   external::WorldFrameScope worldScope(externalReader,commandMatch());
   if(!worldScope){
    if(externalWorldSource){external::WorldFrameScope retained(externalReader,commandMatch(),externalWorldSource);if(!retained)discardExternalWorld();}
@@ -1306,9 +1418,16 @@ static void sampleExternal(DWORD now){
   const bool sameUI=ui.selected==previousUI.selected&&ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies;
   externalSampler.worldEpoch(source->key.match);
   if(externalWorldSource&&externalWorldSource->key.sameFrame(source->key)&&externalWorldSource->key.serial==source->key.serial&&sameUI){
+   // The 100ms aircraft scan can precede the publication where play paused.
+   // Fill that derived sample once from the already pinned immutable bytes;
+   // its source tick stays unchanged and never renews command freshness.
+   if(!externalSampler.idleAircraftDisplay().current(source->key.match,source->key.frame,source->key.serial,GetTickCount(),true)){
+    if(!externalSampler.refreshAircraft(source->key.tick,source->key.serial)||!worldScope.complete()){externalSampler.invalidateSample(&externalPublished);return;}
+    externalSampler.commitSample();
+   }
    externalSampler.refreshCamera(displayNow);externalPublished=externalSampler.state();externalPublished.sampledTick=source->key.tick;externalData=&externalPublished;externalSourceConfirmed=true;mergeExternal();return;
   }
-  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions());
+  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions(),source->key.serial);
   if(!worldScope.complete()){externalSampler.invalidateSample(&externalPublished);return;}
   externalSampler.commitSample();
   externalPublished=candidate;externalData=&externalPublished;externalWorldSource=source;externalSourceConfirmed=true;previousUI=ui;
@@ -1677,10 +1796,10 @@ static void paint(){
  DWORD now=sampleClock(shared);int labelCount=motion.render(renderNow,labelViews);
  for(int i=0;i<labelCount;++i)nativeviewhost::localPoint(viewportTransform,labelViews[i].x,labelViews[i].y);
  const auto&statusFrame=externalSampler.unitStatuses();
- int statusCount=statusOptions()&&externalData&&displaylease::frameCurrent(statusFrame,externalData->match,externalData->frame,renderNow,externalSourceConfirmed,external::status::Maximum)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
+ int statusCount=statusOptions()&&externalData&&displaylease::frameCurrent(statusFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::status::Maximum)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
  const auto&rawEnemyFrame=externalSampler.enemyMarkers();
  for(int i=0;i<statusCount;++i)nativeviewhost::localPoint(viewportTransform,statusViews[i].x,statusViews[i].y);
- int rawEnemyCount=extra.enemyMarkers&&externalData&&displaylease::frameCurrent(rawEnemyFrame,externalData->match,externalData->frame,renderNow,externalSourceConfirmed,external::enemies::Maximum)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
+ int rawEnemyCount=extra.enemyMarkers&&externalData&&displaylease::frameCurrent(rawEnemyFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups,clusteredEnemies,clusteredEnemyViews):0;
  std::copy(clusteredEnemyViews,clusteredEnemyViews+enemyCount,enemyViews);
  for(int i=0;i<enemyCount;++i)nativeviewhost::localPoint(viewportTransform,enemyViews[i].x,enemyViews[i].y);
@@ -1690,7 +1809,7 @@ static void paint(){
  const auto placementDrawing=placementdrawing::capture();
  auto opaquePanels=overlaystack::opaqueBoxes(game,snap.width,snap.height);
  static std::vector<RECT> priorOpaquePanels;if(priorOpaquePanels.size()!=opaquePanels.size()||(!opaquePanels.empty()&&memcmp(priorOpaquePanels.data(),opaquePanels.data(),opaquePanels.size()*sizeof(RECT)))){priorOpaquePanels=opaquePanels;++paintRevision;}
- auto passengerBubbles=passengerView(renderNow,viewportTransform);
+ auto passengerBubbles=passengerView(renderNow,viewportTransform,externalWorldSource,externalSourceConfirmed);
  auto airLines=airway::lines();
  auto nativeBadges=buildreserve::nativeBadges();
  uint32_t pausedTabs=0,idleTabs=0;
@@ -1700,7 +1819,7 @@ static void paint(){
  bool tabPhase=(renderNow/400)%2==0;bool spiderPhase=(renderNow/650)%2==0;
  if(sidebaroverlay::update(origin,r,nativeBadges,buildreserve::nativeBadgeTab(),idleTabs,tabPhase,opaquePanels)){nativeBadges.clear();idleTabs=0;}
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
- bool hasToast=panel&&now<toastUntil;bool summary=panel&&snap.transports;
+ bool hasToast=panel&&activeToast(now);bool summary=panel&&snap.transports;
  worldrender::present();
  if(!placementDrawing.active&&!moDrawing.active&&!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();return;}
  viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){hideWorldOverlay();return;}
@@ -1857,7 +1976,9 @@ static std::wstring submitDiagnostic(){
   L"，满="+std::to_wstring(snap.queueFull)+L"，计时失败="+std::to_wstring(snap.queueTimingFailure);
 }
 static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;MemoryBarrier();ack=a;commandLatency=sentAt?DWORD(GetTickCount()-sentAt):0;int r=shared->result,n=shared->count,c=shared->command;
- diag(L"ack command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
+ if(!enabled||!readonly::commands(shared)){sentAt=0;inFlightMatch=0;inFlightRetries=0;return;}
+ if(userCommand(c))critical(L"command-result command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
+ else diag(L"ack command="+std::to_wstring(c)+L" result="+std::to_wstring(r)+L" count="+std::to_wstring(n)+L" ack="+std::to_wstring(a));
  if(c==AttackOwnGround){
   std::wstring message=r>0?(n?L"攻击脚下请求已入队："+std::to_wstring(n)+L" 个单位；开火仍遵循原生射程、冷却和弹药。":L"没有可下令的己方地面单位。"):
    L"攻击脚下未全部提交（已入队 "+std::to_wstring(n)+L" 个）："+(r==-41?L"所选单位仍处于 Sticky。":r==-40?L"当前会话不支持此指令。":r==-42?L"所选单位超过 8192 个。":L"指令过期、单位状态改变或事件提交失败，请重新执行。");
@@ -1925,7 +2046,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  else if(c==SwitchPlayer||c==RestorePlayer){pointerMatches.clear();commandQueue.clear();notify(c==RestorePlayer?L"已恢复原操控方。":L"已切换操控方；自动功能将按新操控方重新启动。");}
  else if(c==CancelTechProduction)notify(L"已请求取消生产。");
  else if(c==Produce)notify(L"生产请求已提交；是否接受以游戏生产队列为准。");
- else if(c==SelectSuper||c==SelectIron||c==SelectChrono)notify(L"已选择超级武器，请在地图上选择目标。");
+ else if(c==SelectSuper||c==SelectIron||c==SelectChrono)notify(r==2?L"超级武器事件已入队；实际执行以游戏为准。":L"已选择超级武器，请在地图上选择目标。");
  else if(c==SmartUnload)notify(n?L"已安排卸载 "+std::to_wstring(n)+L" 辆载具。":L"没有可卸载的已选载具。");
  else if(c==StickyGuard)notify(eventdelivery::isMultiplayer(snap.session)?L"Sticky 同步请求已入队："+std::to_wstring(n)+L" 个单位；联机退出尚未实现。":L"已切换 Sticky 驻守："+std::to_wstring(n)+L" 个单位；手动下令解除。");
  else if(selectedmode::index(c)>=0)notify(n?std::wstring(selectedmode::label(selectedmode::index(c)))+L"请求已入队："+std::to_wstring(n)+L" 个单位；实际执行以游戏为准。":L"没有可下令的己方地面单位。");
@@ -2033,6 +2154,12 @@ static void updateModeStatus(DWORD now){
   text+=!extra.minerDefenseEnabled?(active?L"正在恢复工作":L"关闭"):active?L"正在处理 "+std::to_wstring(active)+L" 个单位":participants.custom&&!participants.count?L"清单为空，未选择参与单位":!live?L"等待对局与连接就绪":L"监视中";
   if(live&&(extra.minerDefenseEnabled||active))text+=L" · 已下达点杀 "+std::to_wstring(shared->minerDefenseAttacks)+L" 次 / 已下达恢复 "+std::to_wstring(shared->minerDefenseResumes)+L" 次";
   SetWindowTextW(GetDlgItem(ui,9498),text.c_str());
+ }
+ {const bool live=shared&&!phase&&commandFresh(now);const bool overflow=live&&shared->missileManualOverflow;
+  std::wstring text=L"防空火控：";
+  text+=!extra.missileDefense?(live&&shared->missileHeld?L"正在结束旧火控":L"关闭"):!live?L"等待对局与连接就绪":overflow?L"已暂停，手动优先记录已满。手动任务完成后可关闭再开启火控。":L"监视中";
+  if(live&&extra.missileDefense&&!overflow)text+=L" · 参与单位 "+std::to_wstring(shared->missileSources)+L" / 空中目标 "+std::to_wstring(shared->missileTargets);
+  SetWindowTextW(GetDlgItem(ui,9499),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9499),extra.missileDefense&&overflow);
  }
  updatePlacementEventUI();
  std::wstring riskStatus=extra.placementImplementation==buildingmodes::PlacementEvent?
@@ -2207,12 +2334,12 @@ static bool readOnlyWatchHotkey(WPARAM id,LPARAM event){
  WORD key=MAKEWORD(HIWORD(event),((LOWORD(event)&MOD_SHIFT)?HOTKEYF_SHIFT:0)|((LOWORD(event)&MOD_CONTROL)?HOTKEYF_CONTROL:0)|((LOWORD(event)&MOD_ALT)?HOTKEYF_ALT:0));
  if(!group||hotkeyroute::canonical(key)!=group->key)return true;
  hotkeyroute::Group selected;
- if(hotkeyRegistry.press(int(id),GetTickCount(),displayMatch(),selected))dispatchReadOnlyWatchKeys(selected);
+ if(hotkeyRegistry.message(int(id),DWORD(GetMessageTime()),GetTickCount(),displayMatch(),selected))dispatchReadOnlyWatchKeys(selected);
  return true;
 }
 static void serviceReadOnlyWatchKeys(){
  bool active=desiredHotkeyMode()==1;uint32_t match=displayMatch();
- if(!active){hotkeyRegistry.cancel();return;}
+ if(!active){hotkeyRegistry.cancel(GetTickCount());return;}
  uint8_t down[256]{};for(unsigned key=0;key<256;++key)down[key]=(GetAsyncKeyState(int(key))&0x8000)!=0;
  // Registration synchronizes held keys. The registry also synchronizes its
  // first sample/epoch change without erasing a valid WM_HOTKEY already seen.
@@ -2248,19 +2375,38 @@ static void serviceGameTargetPreference(){
  }
  requestGameReconnect();
 }
+// Keep the producer lease alive without publishing tactical input or options.
+static void maintainReadOnlyBridge(DWORD now){
+ if(!shared)return;
+ readonly::request(*shared,[]{MemoryBarrier();});
+ shared->heartbeat=now;shared->foreground=0;shared->flags=0;shared->scanMs=8;
+ shared->plannerTracking=shared->runtimeTracking=shared->cooperativeFrameWanted=0;
+ shared->externalDisplay=1;shared->viewportHostCapabilities=nativeviewhost::capabilityRequest(shared);
+ gameinput::setPointerContext(hook,commandMatch(),false);pointerMatches.clear();
+ gameinput::setFastTactical(hook,false);gameinput::setFrameSampling(hook,true);
+ if(DWORD(now-lastPulse)>=16)wakeGame();
+}
 // Stop command work while preserving the shared read-only session and pins.
 static void pauseAssistControls(){
  if(!secondaryDisplayRequested()){detach(L"host-paused");clockState(false,informationFPS());registerKeys();setStatus(L"已暂停。");return;}
  commandQueue.clear();sentAt=0;inFlightMatch=0;inFlightRetries=0;hotkeyPending.clear();pointerMatches.clear();
- resetConstruction();resetAirPath();resetPlacementEvent();releaseBridge();
+ resetConstruction();resetAirPath();resetPlacementEvent();
+ resetPlanning();submittedPlan.clear();worldRevision=-1;plannerAck=0;hasSelection=false;selectionAck=0;
+ cooperativeDelivered=cooperativeReceipt=0;retryCooperative=false;submittedCooperative.clear();acceptedCooperative.clear();processedCooperative.clear();cooperativeSourcePool={};
+ if(!shared&&externalReader.canRead())ensureBridge();maintainReadOnlyBridge(GetTickCount());
  worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();hideConstruction();
  minimap::hidePrimary();watchwindows::hidePrimary();clearPassengerDisplay();
  sampleExternal(GetTickCount());registerKeys();clockState(displayFrameRequested(),informationFPS());
  setStatus(L"战术控制已暂停，副屏信息继续显示。");
 }
 static bool serviceReadOnlyDisplays(DWORD now){
- if(enabled)return false;
- if(shared)releaseBridge();
+ // A quick off/on must wait for Runtime to cancel and retire the old work.
+ if(enabled&&(!shared||(!shared->readOnly&&readonly::settled(*shared))))return false;
+ if(enabled&&shared&&shared->readOnly&&readonly::settled(*shared))return false;
+ if(!secondaryDisplayRequested()&&!enabled){if(shared)releaseBridge();return true;}
+ if(!shared&&externalReader.canRead())ensureBridge();
+ now=GetTickCount();maintainReadOnlyBridge(now);
+ if(shared){readSnapshot();result();if(uninitializedBridgeTimedOut())releaseBridge();}
  sampleExternal(now);serviceReadOnlyWatchKeys();clockState(displayFrameRequested(),informationFPS());
  if(snap.renderStatus!=1){minimap::hide();watchwindows::hide();}
  return true;
@@ -2315,12 +2461,17 @@ static void tick(){
   return;
  }
  if(serviceReadOnlyDisplays(now))return;
+ // The shared-world consumer needs Runtime to publish its first frame.
+ // A readable enabled session is demand by itself; waiting for externalData
+ // here creates a cold-start cycle hidden by old enabled-hook settings.
  sampleExternal(now);uint32_t configured=flags();
- bool needsBridge=debugPageActive||runtimeFeatureDemand(configured,extra,techMode,buildTimeTooltipEnabled)||(shared&&shared->minerDefenseActive)||(externalData&&externalData->status==1)||commandQueue.size||hasSelection||externalSampler.flashCount;
+ bool needsBridge=(enabled&&externalReader.canRead())||debugPageActive||runtimeFeatureDemand(configured,extra,techMode,buildTimeTooltipEnabled)||(shared&&shared->minerDefenseActive)||(externalData&&externalData->status==1)||commandQueue.size||hasSelection||externalSampler.flashCount;
  if(needsBridge&&!shared)ensureBridge();
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){
   shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;
+  // Settings are published while the Runtime fence is still closed.
+  MemoryBarrier();shared->readOnly=0;
   // The high marker announces this Host's handshake; low capability bits are
   // granted only after Runtime publishes a stable, compatible viewport.
   shared->viewportHostCapabilities=nativeviewhost::capabilityRequest(shared);
@@ -2373,16 +2524,16 @@ static void tick(){
  if(snap.status==-2){setStatus(L"游戏操作异常，指令功能已暂停；信息显示仍可使用。");if(!passiveVisible)hideWorldOverlay();return;}
  if(snap.status==-1){setStatus(L"当前游戏版本不兼容，指令功能已暂停；信息显示仍可使用。");if(!passiveVisible)hideWorldOverlay();return;}
  if(snap.status!=1){
-  if(int32_t(now-toastUntil)>=0){const auto p=externalSampler.probe();
+  if(!activeToast(now)){const auto p=externalSampler.probe();
    setStatus(L"正在读取当前对局；若长时间未恢复，请查看日志。");
   }
   if(!passiveVisible)hideWorldOverlay();return;
  }
- if(snap.bridgeStatus==1&&snap.readStatus!=1&&int32_t(now-toastUntil)>=0){
+ if(snap.bridgeStatus==1&&snap.readStatus!=1&&!activeToast(now)){
   const auto p=externalSampler.probe();
   setStatus(L"游戏已连接，正在更新单位信息。");
  }
- if(snap.match!=oldMatch){diag(L"match changed "+std::to_wstring(oldMatch)+L" -> "+std::to_wstring(snap.match));oldMatch=snap.match;notice=snap.noticeSerial;techEnabled=false;resetPlacementEvent();toastUntil=0;fillTech(true);typeTap.clear();fillTypeBindings(true);autoRevealMatch=autoRevealDone=0;}
+ if(snap.match!=oldMatch){diag(L"match changed "+std::to_wstring(oldMatch)+L" -> "+std::to_wstring(snap.match));oldMatch=snap.match;notice=snap.noticeSerial;techEnabled=false;resetPlacementEvent();toastUntil=0;toastActive=false;fillTech(true);typeTap.clear();fillTypeBindings(true);autoRevealMatch=autoRevealDone=0;}
  if(autoRevealPID!=pid){autoRevealPID=pid;autoRevealMatch=autoRevealDone=autoRevealRetry=0;}
  if(autoRevealNewMatch&&extra.experimentalReveal&&int32_t(now-autoRevealRetry)>=0&&commandFresh(now)&&snap.status==1&&snap.match&&autoRevealMatch!=commandMatch()){
   if(queueCommand(RevealMap,0,0,commandMatch()))autoRevealMatch=commandMatch();
@@ -2391,7 +2542,7 @@ static void tick(){
  syncTypeConfig();
  static DWORD panelTick;if(DWORD(now-panelTick)<200)return;panelTick=now;
  fillSW();fillTech();fillTypeBindings();fillExtraTypes(false);
- if(int32_t(now-toastUntil)>=0&&snap.readStatus==1){
+ if(!activeToast(now)&&snap.readStatus==1){
   if(!commandFresh(now)||commandQueue.size||(shared&&shared->request!=shared->ack)){setStatus(commandWaitReason());return;}
   auto ms=[](uint32_t us){wchar_t text[24];swprintf(text,24,L"%.2f",us/1000.0);return std::wstring(text);};
   std::wstring s=L"选中 "+std::to_wstring(snap.selected)+L" · 指令响应 "+std::to_wstring(commandLatency)+L" ms · 选兵响应 "+std::to_wstring(selectionLatency)+L" ms";
@@ -2655,7 +2806,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case renderupgrade::ReadyMessage:{renderupgrade::presentCompleted();renderupgrade::readyPending=false;return 0;}
  case InputMessage:{shiftClickTick();InterlockedExchange(&inputPending,0);return 0;}
  case ControlMessage:{tick();InterlockedExchange(&controlPending,0);return 0;}
- case DataMessage:{if(shared&&wp==pid){InterlockedExchange(&shared->hostNotifyPending,0);readSnapshot();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();}return 0;}
+ case DataMessage:{if(shared&&wp==pid){InterlockedExchange(&shared->hostNotifyPending,0);readSnapshot();if(!enabled||!readonly::commands(shared)){hasSelection=false;pointerMatches.clear();gameinput::setPointerContext(hook,commandMatch(),false);result();return 0;}serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceHotkeyBatch();serviceConstruction();serviceAirPath();}return 0;}
  case WM_TIMER:if(wp==2){updateHoverHelp();return 0;}if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
  case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
@@ -2915,7 +3066,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
 #else
  ShowWindow(ui,show);
 #endif
- syncInformationRate(true);startClock();uimessages::Queue messages;MSG m;while(messages.get(m)>0){if(!IsDialogMessageW(ui,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}
+ syncInformationRate(true);startClock();uimessages::Queue messages;MSG m;while(messages.get(m)>0){const bool hotkeyMessage=m.message==WM_HOTKEY;if(hotkeyMessage){++hotkeyDiagnostics.queued;logHotkeyInput(L"queue",int(m.wParam),0,DWORD(m.time));}const bool dialogHandled=IsDialogMessageW(ui,&m)!=FALSE;if(hotkeyMessage&&dialogHandled)++hotkeyDiagnostics.dialogHandled;if(!dialogHandled){TranslateMessage(&m);DispatchMessageW(&m);}}DestroyWindow(overlay);surface.clear();textRasters.clear();glyphRasters.clear();labelRasters.clear();DeleteObject(font);DeleteObject(bgBrush);DeleteObject(editBrush);GdiplusShutdown(token);CloseHandle(single);return 0;}
 
 
 

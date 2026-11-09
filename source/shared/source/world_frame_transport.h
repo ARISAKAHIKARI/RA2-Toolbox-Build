@@ -1,5 +1,6 @@
 #pragma once
 #include "world_frame.h"
+#include "world_frame_pool.h"
 #include <windows.h>
 #include <mutex>
 #include <map>
@@ -41,6 +42,10 @@ inline void appendNumber(wchar_t*out,size_t&i,uint32_t n){wchar_t digits[10];uns
 inline void name(wchar_t*out,uint32_t pid,uint32_t owner){
  const wchar_t*prefix=L"Local\\RA2WorldFrame_v002_";size_t i=0;while(*prefix)out[i++]=*prefix++;
  appendNumber(out,i,pid);out[i++]=L'_';appendNumber(out,i,owner);out[i]=0;
+}
+inline void notificationName(wchar_t*out,uint32_t pid,uint32_t owner,uint64_t connection){
+ const wchar_t*prefix=L"Local\\RA2WorldReady_v001";size_t i=0;while(*prefix)out[i++]=*prefix++;
+ for(uint32_t n:{pid,owner,uint32_t(connection),uint32_t(connection>>32)}){out[i++]=L'_';appendNumber(out,i,n);}out[i]=0;
 }
 inline void dataName(wchar_t*out,const Key&key,uint32_t slot,uint32_t allocation){
  const wchar_t*prefix=L"Local\\RA2WorldData_v002";size_t i=0;while(*prefix)out[i++]=*prefix++;
@@ -100,12 +105,17 @@ public:
 // already producing later frames. Neither process waits for a reader lease.
 class Client {
  std::mutex mutex_;HANDLE mapping_=nullptr;Channel*channel_=nullptr;
+ std::shared_ptr<void> notification_;
  uint32_t pid_=0,owner_=0;Token latest_;uint32_t copiedSerial_=0;
+ // Pool only dead publications' storage, never their shared/weak identity.
+ // Full pools allocate normally; no wait for a reader or dropped publication.
+ std::shared_ptr<SnapshotPool> copies_;
  std::array<DataView,2>data_;DataRef copiedData_{};LONG copiedSlot_=-1;
  uint64_t generation_=0;
  struct Lease {std::array<uint32_t,6>ticks{};uint32_t used=0;};std::unordered_map<uintptr_t,Lease>leases_;
  std::unordered_map<uint32_t,uint32_t> wanted_;uint32_t publishedAt_=0,prunedAt_=0;
  uint32_t expiryCheckedAt_=0,expiryAfter_=0;
+ uint32_t demandCheckedAt_=0,demandAfter_=0;bool demandDirty_=true;
  bool wantedDirty_=false,havePublished_=false,havePruned_=false;
  void pruneRequests(uint32_t now){
   if(havePruned_&&uint32_t(now-prunedAt_)<2)return;
@@ -130,9 +140,13 @@ class Client {
   publishedAt_=now;havePublished_=true;wantedDirty_=false;
  }
  void refreshDemand(uint32_t now){
-  uint32_t combined=0;for(auto it=leases_.begin();it!=leases_.end();){uint32_t mask=0;for(unsigned bit=0;bit<6;++bit)if((it->second.used&(1u<<bit))&&uint32_t(now-it->second.ticks[bit])<=250)mask|=1u<<bit;
+  // Renewals only postpone an expiry. Until the earliest possible expiry,
+  // an unchanged set of requested bits cannot change the aggregate mask.
+  if(!demandDirty_&&uint32_t(now-demandCheckedAt_)<demandAfter_)return;
+  uint32_t combined=0,next=251;for(auto it=leases_.begin();it!=leases_.end();){uint32_t mask=0;for(unsigned bit=0;bit<6;++bit)if(it->second.used&(1u<<bit)){
+    const uint32_t age=uint32_t(now-it->second.ticks[bit]);if(age<=250){mask|=1u<<bit;next=std::min(next,251-age);}}
    if(!mask)it=leases_.erase(it);else{combined|=mask;++it;}}
-  channel_->demandMask=combined;
+  channel_->demandMask=combined;demandCheckedAt_=now;demandAfter_=next;demandDirty_=false;
  }
  void heartbeat(uint32_t now){
   channel_->heartbeat=now;refreshDemand(now);
@@ -158,13 +172,39 @@ class Client {
   // the last local reader closed. Its predecessor's demands are not its own.
   InterlockedIncrement(&channel_->demandSeq);channel_->demandCount=0;++channel_->demandRevision;
   MemoryBarrier();InterlockedIncrement(&channel_->demandSeq);channel_->demandMask=0;
-  wantedDirty_=!wanted_.empty();havePublished_=havePruned_=false;expiryAfter_=0;return true;
+  wantedDirty_=!wanted_.empty();havePublished_=havePruned_=false;expiryAfter_=0;demandDirty_=true;demandAfter_=0;return true;
  }
- void clearCopy(){latest_.reset();copiedSerial_=0;copiedSlot_=-1;copiedData_={};for(auto&view:data_)view.close();}
- void close(){clearCopy();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;}
+ void clearCopy(){latest_.reset();if(copies_)copies_->clear();copies_.reset();copiedSerial_=0;copiedSlot_=-1;copiedData_={};for(auto&view:data_)view.close();}
+ void close(){clearCopy();notification_.reset();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;}
 public:
  explicit Client(uint32_t pid,uint64_t generation):pid_(pid),owner_(GetCurrentProcessId()),generation_(generation){}
  ~Client(){close();}Client(const Client&)=delete;Client&operator=(const Client&)=delete;
+ // Only the main observation worker waits on this auto-reset event. All
+ // consumers still share immutable tokens and validate their own identities.
+ // Server creates the event: old runtimes/creation failure keep the bounded
+ // polling fallback instead of silently dropping to the maintenance rate.
+ std::shared_ptr<void> publicationSignal(){
+  std::lock_guard<std::mutex>lock(mutex_);
+  if(!valid(channel_,pid_,owner_)||!connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32)))return {};
+  if(!notification_){wchar_t path[100];notificationName(path,pid_,owner_,generation_);
+   if(HANDLE event=OpenEventW(SYNCHRONIZE,FALSE,path))notification_=std::shared_ptr<void>(event,[](void*h){CloseHandle(h);});}
+  return notification_;
+ }
+ // Cheap duplicate observation: no mapping/import, subscription scan or
+ // heartbeat renewal. The caller must periodically take the ordinary path.
+ // Read both publication and observation seqlocks: a retired/replaced world
+ // must never be hidden merely because a retained token has the same serial.
+ bool unchanged(const Token&token,uint32_t now){
+  std::lock_guard<std::mutex>lock(mutex_);
+  if(!token||token!=latest_||!valid(channel_,pid_,owner_)||!connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32)))return false;
+  const LONG active=channel_->active;if(active<0||active>1||active!=copiedSlot_)return false;
+  const auto&s=channel_->slots[active];const LONG seq=s.seq,observedSeq=channel_->observationSeq;if((seq|observedSeq)&1)return false;
+  MemoryBarrier();const Key key=s.key,observed=channel_->observed;const uint32_t count=s.count,tick=channel_->observedTick;const DataRef ref=s.data;
+  MemoryBarrier();
+  return seq==s.seq&&observedSeq==channel_->observationSeq&&active==channel_->active&&
+   !std::memcmp(&key,&token->key,sizeof(Key))&&count==token->pages.size()&&sameData(ref,copiedData_)&&
+   key.sameFrame(observed)&&uint32_t(now-tick)<=500&&connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32));
+ }
  Token acquire(uint32_t match){
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return {};
   const uint32_t now=GetTickCount();heartbeat(now);
@@ -183,7 +223,8 @@ public:
     MemoryBarrier();if(seq==s.seq&&active==channel_->active&&connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32)))return latest_;continue;
    }
    if(count&&!data_[active].open(key,uint32_t(active),ref))return {};
-   auto next=std::make_shared<Snapshot>();const bool ok=next->import(key,stats,count?data_[active].pages():nullptr,count);
+   if(!copies_)copies_=std::make_shared<SnapshotPool>();
+   auto next=SnapshotPool::acquire(copies_);const bool ok=next->import(key,stats,count?data_[active].pages():nullptr,count);
    MemoryBarrier();if(seq!=s.seq||active!=channel_->active||!connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32)))continue;if(!ok)return {};
    latest_=std::move(next);copiedSerial_=key.serial;copiedSlot_=active;copiedData_=ref;return latest_;
   }return {};
@@ -198,6 +239,7 @@ public:
  }
  void subscribe(uintptr_t reader,uint32_t demand){
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();
+  if((demand|Base)&~uint32_t(channel_->demandMask))demandDirty_=true;
   auto&lease=leases_[reader];lease.used|=demand|Base;for(unsigned bit=0;bit<6;++bit)if((demand|Base)&(1u<<bit))lease.ticks[bit]=now;
   heartbeat(now);
  }
@@ -223,6 +265,7 @@ inline std::shared_ptr<Client>acquireClient(uint32_t pid,uint64_t generation){
 
 class Server {
  HANDLE mapping_=nullptr;Channel*channel_=nullptr;uint32_t owner_=0,openAt_=0;
+ HANDLE notification_=nullptr;uint32_t notificationAttempt_=0;bool notificationTried_=false;
  std::array<DataView,2>data_;
  std::vector<uint32_t>requests_;uint32_t requestRevision_=0;
  uint64_t connection_=0;
@@ -233,7 +276,9 @@ class Server {
   if(channel_&&connectionMatches(channel_,uint32_t(connection_),uint32_t(connection_>>32))&&channel_->active>=0)retire();
   return false;
  }
- void close(){for(auto&view:data_)view.close();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;owner_=0;connection_=0;requests_.clear();requestRevision_=0;}
+ void closeNotification(){if(notification_)CloseHandle(notification_);notification_=nullptr;notificationTried_=false;}
+ void signal(){if(notification_)SetEvent(notification_);}
+ void close(){closeNotification();for(auto&view:data_)view.close();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;owner_=0;connection_=0;requests_.clear();requestRevision_=0;}
  void failed(PublishError error){if(channel_){channel_->publishError=uint32_t(error);channel_->publishSystemError=(error==PublishError::CreateMapping||error==PublishError::MapView)?GetLastError():0;++channel_->publishFailures;}}
 public:
  ~Server(){disconnect();}
@@ -248,7 +293,11 @@ public:
   }
   if(!channel_)return false;
   const LONG seq=channel_->connectionSeq;if(seq&1)return false;MemoryBarrier();const uint64_t connection=uint64_t(channel_->connectionHigh)<<32|channel_->connectionLow;MemoryBarrier();if(seq!=channel_->connectionSeq)return false;
-  if(connection!=connection_){retire();connection_=connection;requests_.clear();requestRevision_=0;}
+  if(connection!=connection_){retire();closeNotification();connection_=connection;requests_.clear();requestRevision_=0;}
+  if(!notification_&&(!notificationTried_||uint32_t(now-notificationAttempt_)>=1000)){
+   notificationTried_=true;notificationAttempt_=now;wchar_t path[100];notificationName(path,GetCurrentProcessId(),owner_,connection_);
+   notification_=CreateEventW(nullptr,FALSE,FALSE,path);
+  }
   return needed(now);
  }
  const std::vector<uint32_t>&requests(){
@@ -289,9 +338,9 @@ public:
   out.key=frame.key;out.counters=frame.counters;out.count=count;out.data=count?data_[slot].ref():DataRef{};
   MemoryBarrier();InterlockedIncrement(&out.seq);
   if(!connectionMatches(channel_,frame.key.connectionLow,frame.key.connectionHigh)){failed(PublishError::Identity);return;}
-  channel_->publishError=uint32_t(PublishError::None);channel_->publishSystemError=0;InterlockedExchange(&channel_->active,slot);
+  channel_->publishError=uint32_t(PublishError::None);channel_->publishSystemError=0;InterlockedExchange(&channel_->active,slot);signal();
  }
- void retire(){if(channel_){InterlockedExchange(&channel_->active,-1);InterlockedIncrement(&channel_->observationSeq);channel_->observedTick=0;MemoryBarrier();InterlockedIncrement(&channel_->observationSeq);}for(auto&view:data_)view.close();}
+ void retire(){if(channel_){const LONG active=InterlockedExchange(&channel_->active,-1);InterlockedIncrement(&channel_->observationSeq);channel_->observedTick=0;MemoryBarrier();InterlockedIncrement(&channel_->observationSeq);if(active>=0)signal();}for(auto&view:data_)view.close();}
  void disconnect(){retire();close();openAt_=0;}
 };
 }

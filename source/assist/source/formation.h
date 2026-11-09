@@ -73,8 +73,9 @@ inline void layout(int count,int shape,double stretch,bool click,Point*out){
 // Stable nearest-slot assignment reduces crossing. Tie breaks use selection
 // order, never game RNG. Caller has already checked and de-duplicated cells.
 inline void assign(const Unit*units,int count,Slot*slots){
+ count=std::clamp(count,0,Maximum);
  bool used[Maximum]{};Slot assigned[Maximum]{};
- for(int n=0;n<count;++n){int best=-1;double distance=1e100;for(int j=0;j<count;++j)if(!used[j]){double dx=double(units[n].x)-slots[j].x,dy=double(units[n].y)-slots[j].y,d=dx*dx+dy*dy;if(d<distance){distance=d;best=j;}}if(best>=0){used[best]=true;assigned[n]=slots[best];}}
+ for(int n=0;n<count;++n){int best=-1;double distance=1e100;for(int j=0;j<count;++j)if(!used[j]&&slots[j].valid){double dx=double(units[n].x)-slots[j].x,dy=double(units[n].y)-slots[j].y,d=dx*dx+dy*dy;if(d<distance){distance=d;best=j;}}if(best>=0){used[best]=true;assigned[n]=slots[best];}}
  for(int n=0;n<count;++n)slots[n]=assigned[n];
 }
 }}

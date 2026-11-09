@@ -1,0 +1,252 @@
+{
+  "source_commit": "18af5094f1cbd955ebaac9fbe3c85a0682ef7ce9",
+  "scope": "Host/shared transport/worker entry audit; no new native reverse engineering; source review is not Windows execution",
+  "entry_matrix": [
+    {
+      "entry": "Assist normal control",
+      "source": "source/assist/source/main.cpp",
+      "source_sha256": "cedea56e1c259dca6c425b55f3e7e98dbe1ad3926f1fcb9b843c27d439c4fdc1",
+      "references": [
+        {
+          "pattern": "static bool ensureBridge(){",
+          "lines": [
+            1162
+          ]
+        },
+        {
+          "pattern": "if(serviceReadOnlyDisplays(now))return;",
+          "lines": [
+            2440
+          ]
+        },
+        {
+          "pattern": "bool needsBridge=",
+          "lines": [
+            2445
+          ]
+        }
+      ],
+      "flow": "Enabled readable session is independent producer demand. Runtime bootstrap may retry without an already published external world. Native window/protocol/ownership failure remains a real connection requirement.",
+      "finding": "Static review; cold start has existing production-function execution coverage. No new cold-start defect claimed."
+    },
+    {
+      "entry": "Assist paused secondary watch/minimap",
+      "source": "source/assist/source/main.cpp",
+      "source_sha256": "cedea56e1c259dca6c425b55f3e7e98dbe1ad3926f1fcb9b843c27d439c4fdc1",
+      "references": [
+        {
+          "pattern": "static void pauseAssistControls(){",
+          "lines": [
+            2375
+          ]
+        },
+        {
+          "pattern": "static bool serviceReadOnlyDisplays(DWORD now){",
+          "lines": [
+            2384
+          ]
+        }
+      ],
+      "flow": "Pre.5 unconditionally releases Assist bridge, then attempts WorldFrameScope and returns before ensureBridge. Fresh world publication cannot continue after retirement.",
+      "finding": "Confirmed controlled execution: 6 cases / 21 checks, exactly cold secondary, Cursor-only secondary, warm pause fail 5 assertions. Current repair is in progress and separately tested."
+    },
+    {
+      "entry": "Shared Runtime producer",
+      "source": "source/assist/source/bridge.cpp",
+      "source_sha256": "70d43306bf242912ef7367e23533b023251d7198a547c28cf77c633ea782e1c1",
+      "references": [
+        {
+          "pattern": "static void disconnect(){",
+          "lines": [
+            192
+          ]
+        },
+        {
+          "pattern": "if(!sh){wchar_t n[80]",
+          "lines": [
+            1291
+          ]
+        },
+        {
+          "pattern": "const bool sharedWorldWanted=worldFrameServer.wanted",
+          "lines": [
+            1317
+          ]
+        }
+      ],
+      "flow": "Requires valid Assist mapping and owner. stop/disconnect retires server before wanted/publish; an independent subscriber cannot bootstrap it.",
+      "finding": "Static causal link, Runtime physical execution modeled in lifecycle fixture."
+    },
+    {
+      "entry": "Cursor",
+      "source": "source/cursor/source/main.cpp",
+      "source_sha256": "88847fea360c76666b7f5eefd9b7bac32b464f449980f0797f146ceaf5a1a266",
+      "references": [
+        {
+          "pattern": "static bool hookStart(bool hide=true){",
+          "lines": [
+            673
+          ]
+        },
+        {
+          "pattern": "static void autoTick(){",
+          "lines": [
+            856
+          ]
+        },
+        {
+          "pattern": "if(m==suite::ModuleEnable)",
+          "lines": [
+            1776
+          ]
+        }
+      ],
+      "flow": "Own Cursor subscription; broker pending retries 75ms. Cursor resource/snapshot path is independent and does not execute Tactical producer. Transient focus changes hide presentation without giving the Assist world channel a producer.",
+      "finding": "No additional defect proved. Deliberate fatal hide/initial-frame timeout autoPaused state requires reenable or target exit; do not label this as infinite recovery failure."
+    },
+    {
+      "entry": "Standalone UnitMonitor",
+      "source": "source/unit_monitor/source/main.cpp",
+      "source_sha256": "c8651e8e734e1b86e38056040acef64d0f51e1f786b927198c3ab3ae07d23fc3",
+      "references": [
+        {
+          "pattern": "static void consumeSample(DWORD now){",
+          "lines": [
+            437
+          ]
+        },
+        {
+          "pattern": "static void tick(bool displayFrame=false){",
+          "lines": [
+            457
+          ]
+        },
+        {
+          "pattern": "if(m==suite::ModuleEnable)",
+          "lines": [
+            626
+          ]
+        }
+      ],
+      "flow": "Enabled or own secondaryEnabled causes discovery and latest-worker submission. Result acceptance checks generation, PID, process connection and sample age.",
+      "finding": "No Assist producer dependency. SamplingTask private ReadSession uses ordinary RPM until an explicit WorldFrameScope is entered; no such scope in this module."
+    },
+    {
+      "entry": "Watch windows",
+      "source": "source/assist/source/watch_host.h",
+      "source_sha256": "415df1f75d638f34715755c3f79a3560ab19f8c0f382f6739f6a704f88bdd16e",
+      "references": [
+        {
+          "pattern": "static void pin(uint32_t key){",
+          "lines": [
+            75
+          ]
+        },
+        {
+          "pattern": "static void update(uint32_t now){",
+          "lines": [
+            86
+          ]
+        }
+      ],
+      "flow": "Primary requires enabled + requested + foreground; secondary has independent request/monitor gate. Sampling needs valid world identity and shared scene provider. New PID/match invalidates worker results and rebinds tracks.",
+      "finding": "Affected by confirmed paused producer loss in pre.5; no separate worker permanent latch proved."
+    },
+    {
+      "entry": "Minimap",
+      "source": "source/assist/source/main.cpp",
+      "source_sha256": "cedea56e1c259dca6c425b55f3e7e98dbe1ad3926f1fcb9b843c27d439c4fdc1",
+      "references": [
+        {
+          "pattern": "minimap::update(origin,r,battlefield)",
+          "lines": [
+            1790
+          ]
+        }
+      ],
+      "flow": "Called from common paint after valid display/world ownership. Shared source is a consumer, not an independent Runtime bootstrap.",
+      "finding": "Affected by confirmed paused producer loss when secondary requested. No renderer internals audited."
+    },
+    {
+      "entry": "Render/compositor",
+      "source": "source/assist/source/render_upgrade_host.h",
+      "source_sha256": "87380c024279e6b7ecd8c06650a7f21b4c7ee6738d2acc784ed863ac74e89534",
+      "references": [
+        {
+          "pattern": "static void update(POINT origin,const RECT&client,const external::display::State&displayState){",
+          "lines": [
+            222
+          ]
+        },
+        {
+          "pattern": "const bool requested=renderUpgradeEnabled",
+          "lines": [
+            231
+          ]
+        }
+      ],
+      "flow": "Requested render/overlay/counter demand also requires enabled, game foreground, live PID/window and compatible display. Hidden/disabled suspends scene and compositor workers. Renderer opt-ins remain availability-gated separately by frontend.",
+      "finding": "Pause hiding the main game overlay is intentional. No promise of independent paused main renderer; no raster/GPU algorithm audit."
+    },
+    {
+      "entry": "Shared game entry / broker",
+      "source": "source/shared/source/host_game_input.h",
+      "source_sha256": "d0a80e9a7c09e6e4d39a19c679d592783885e8b59b5ebab747325a43f2999887",
+      "references": [
+        {
+          "pattern": "inline void release(",
+          "lines": []
+        },
+        {
+          "pattern": "inline void setFrameSampling(",
+          "lines": [
+            237
+          ]
+        },
+        {
+          "pattern": "inline Subscription install(",
+          "lines": [
+            302
+          ]
+        }
+      ],
+      "flow": "Each client has a lease and enabled bit; releasing Assist while Cursor remains leaves Cursor only. Pending broker/old target retirement must finish before reuse. Shared world channel is bound to game PID + Host owner + connection.",
+      "finding": "Static review plus preexisting broker recovery research; no additional lifetime lock proved in this pass."
+    }
+  ],
+  "new_readonly_design": [
+    "Assist protocol 103 appends readOnly/readOnlyRequest/readOnlyAck. Old paired DLL rejected by identity/version check.",
+    "Host maintains producer heartbeat/frame sampling while it clears command, selection, pointer, planner and pending UI input.",
+    "Runtime retires owned features, terminally cancels all request sources and mailboxes, publishes a cleanup ACK, then only captures the existing immutable world source.",
+    "Ordinary admission cannot resume before matching readOnlyRequest/ACK. Same-world calculation placement stays latched; a world first seen read-only applies pending config on first command entry."
+  ],
+  "runtime_tests": "Final execution is being recorded at lifecycle/integration-final/result.json and lifecycle/unit-final/result.json. Each negative control states its exact historical or development-fixture provenance. Controlled execution is not a live-game repair confirmation.",
+  "boundaries": [
+    "No native Windows hooks, actual game sessions, GPU output, pixels, FPS or multiplayer execution.",
+    "Standalone UnitMonitor deliberately retains private external reads; it was not migrated to shared world sampling.",
+    "Display freshness, active command readiness and function availability are distinct. Shared healthy connection does not prove input delivery or every worker result.",
+    "No current live user session proves the paused-secondary defect caused the originally reported all-hotkeys failure."
+  ],
+  "new_implementation_cross_review": [
+    {
+      "issue": "cooperative source replay across retirement",
+      "origin": "Introduced risk while implementing persistent read-only mapping in pre.6; pre.5 releaseBridge retired the mapping. Frozen pre-cancellation helper is a development intermediate, not a released pre.5 defect.",
+      "resolution": "Retire shared cooperativeRequest under cooperativeSeq, retain clickSerial, validate exact old/current consumer."
+    },
+    {
+      "issue": "single-player FPS can reopen itself during readonly retirement",
+      "origin": "Interaction created by new pre.6 read-only mode with the existing fresh/maintain path. Pre.5 lacked this protocol mode; do not attribute a nonexistent readOnly field defect to pre.5.",
+      "resolution": "Actual fresh callback and maintenance reject readonly/awaiting ACK/Runtime active fence; old pre.5 fresh source is a controlled comparison under new conditions."
+    },
+    {
+      "issue": "owned input release lost during readonly transition or immediate resume",
+      "origin": "Cross-review of newly introduced pre.6 readonly input early-return; fixed negative fixture is an explicitly documented development intermediate.",
+      "resolution": "Record only actually swallowed physical DOWN, retain ownership until matching release or proven new DOWN; normal action owners retain first decision after resume."
+    },
+    {
+      "issue": "first command epoch initialization after a readonly-only world",
+      "origin": "New pre.6 read-only world observer can consume an epoch transition before normal command startup.",
+      "resolution": "Separate commandComputeEpoch initializes only the first ordinary entry of that epoch; same-epoch pause keeps next-match-only settings unchanged."
+    }
+  ]
+}

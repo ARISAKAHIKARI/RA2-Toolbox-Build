@@ -1,0 +1,82 @@
+{
+  "test": "production generic mouse pairing via Host policy and Runtime outer filters",
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-I/workspace/scratch/33b3ee07b26a/feature147pre3/console/mouse-pairing-after/frozen/source/assist/source",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/mouse-pairing-after/fixture.cpp",
+    "-o",
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/mouse-pairing-after/fixture"
+  ],
+  "compile_returncode": 0,
+  "run_command": [
+    "/workspace/scratch/33b3ee07b26a/feature147pre3/console/mouse-pairing-after/fixture"
+  ],
+  "run_returncode": 0,
+  "source_sha256": {
+    "message": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/native_message_policy.h",
+      "sha256": "3614887a2b8b3f198fa39949cfbf7989e715c4d0f4455a127172d3124762dbc5"
+    },
+    "host": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pointer_host.h",
+      "sha256": "dd8ef5dfa63d3be792d2014619249fa4391f49186424cf1cf59a346214875d6a"
+    },
+    "runtime": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/game_runtime/source/runtime.cpp",
+      "sha256": "a599a1ce08b1a29cf64254cc6fb93356c22f4ac5db9f3a57b4666eb6c0df3a6d"
+    },
+    "pause": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pause_view_bridge.h",
+      "sha256": "308cfc708df137b36853ce425cdfc043d2ac2a073e36446301f532bb39a7f7b5"
+    },
+    "registry": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/hotkey_routes.h",
+      "sha256": "5f44086a95f720b361d34a11b31093ddfbaf9692b379e181fe7dc0d9fc5995ce"
+    },
+    "tracker": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/shared/source/key_gesture.h",
+      "sha256": "af8fea2e034dc3e6424c56cbaa1973b63ccb773bc30ee1dd791ab121faa347e8"
+    },
+    "policy": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pause_view_policy.h",
+      "sha256": "f6e2fee547035c36ec70719b21ea733533b2d5b39b56adc88391d961396ea2f2"
+    },
+    "pointer": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/source/pointer_intent.h",
+      "sha256": "b620232823297d0465b12c432e5de721e7880a83cad80b8ec8bcdd11ec907dd1"
+    },
+    "test": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/native_mouse_pairing.py",
+      "sha256": "064f3713519d3e344c826df9bf10839f6e1f84976eff303699b0515092a9294e"
+    },
+    "fixture_helper": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/pause_key_pairing.py",
+      "sha256": "83c68c66d901616bbdd5252f5b509eba9497cbf34d01df696c99370c13ab53e1"
+    },
+    "extractor": {
+      "path": "/workspace/scratch/33b3ee07b26a/ra2-toolbox/source/assist/tests/superweapon_result_feedback.py",
+      "sha256": "bdbf266171dd4bf28c715d9b1d736de6609861bd273dc64ce0172764ca11ba83"
+    }
+  },
+  "function_sha256": [
+    "c6c57cef3fbdd72aa4401399a7ca3b740864ce34642db4d02440fc5f65e54ac5",
+    "8eac78ffd7e2026a225f4a4176187740112d46269b47c6d8ad4ee49e40d5e595",
+    "cd68fdacdff8e902e5260c5f7499638b4ef0168a46cda4f69c2c85e7ad7a35e0",
+    "a6f5fc7ffcdd941312f62dd2a52fae28a7afcff627113a99c98933d791ca25ca",
+    "6c5bce0c9b7ce187310ac052aad4f682f376d0f67f1c297b8ea71f4e50678bb4",
+    "792fa8be1832473a140ddec25857812a7a52c05d2de6fad421d97e7f3e83c071",
+    "f516d582b5a07492e8c11d80fef66f3420bacd05e3056742890e0c3d80a6037c"
+  ],
+  "scope": "Linux controlled production input path; Win32 delivery, native memory/patch and unrelated inactive features are seams",
+  "windows_executed": false,
+  "game_executed": false,
+  "result": {
+    "checks": 36,
+    "failures": 0,
+    "passed": true
+  }
+}

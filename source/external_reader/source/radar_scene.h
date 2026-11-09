@@ -562,7 +562,11 @@ public:
     if(source!=art_.end()&&!(liveVoxels&&voxelArt(source->second,0)))ready=sharedActor(assets,source->second,m.pose,sharedImage,0);}
    size_t previous=camera::pixels(*cached.image),next=sharedImage?camera::pixels(*sharedImage):camera::pixels(image);
    if(ready&&pixels-previous+next<=rendermemory::PosePixels){if(!sharedImage){camera::opaque(image);sharedImage=std::make_shared<const voxel::Image>(std::move(image));}pixels=pixels-previous+next;cached.image=std::move(sharedImage);cached.ready=true;}
-   cached.retry=cached.ready&&!cached.image->incomplete?0:frame.tick+((transition||(m.kind==3&&!cached.ready))?16u:2000u);
+   // Ordinary VXL art is mandatory for a new scene. Once a transient resource
+   // read recovers, do not hold that whole scene behind the optional-art 2s
+   // retry. The existing decode budget still bounds every preparation pass.
+   const bool requiredActor=!cached.ready&&(m.kind==3||(m.kind<5&&m.pose.voxel));
+   cached.retry=cached.ready&&!cached.image->incomplete?0:frame.tick+((transition||requiredActor)?16u:2000u);
   };
   // Time budgets scale throughput with actual decode cost, not eight poses
   // per completed render. Every lane gets one attempt even after a slow job;

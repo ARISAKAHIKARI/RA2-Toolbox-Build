@@ -154,6 +154,31 @@ public:
   }return ok;
  }
  template<class Read>bool prefetch(Read&&live,uint32_t address,size_t n){return capture(live,address,nullptr,n);}
+ // The caller supplies retained scratch and a bounded page list. Coalesce
+ // only adjacent, completely unobserved pages; existing/partial pages keep
+ // their exact read-set semantics. A failed speculative span publishes no
+ // bytes and falls back to the original per-page/partial-range path.
+ template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes){
+  if(sealed_||overflow_)return false;
+  const size_t limit=std::min<size_t>(16,scratchBytes/PageSize);bool ok=true;
+  for(size_t first=0;first<addresses.size();){
+   const uint32_t at=addresses[first];size_t end=first+1;
+   if(scratch&&limit>1&&!(at&(PageSize-1))&&range(at,PageSize)&&!find(at)){
+    while(end<addresses.size()&&end-first<limit&&
+      uint64_t(at)+(end-first)*PageSize==addresses[end]&&range(addresses[end],PageSize)&&!find(addresses[end]))++end;
+   }
+   const size_t count=end-first;
+   if(count>1&&pages.reserve(pages.size()+count)){
+    ++counters.calls;counters.pageAttempts+=uint32_t(count);counters.bytes+=uint32_t(count*PageSize);
+    if(live(at,scratch,count*PageSize)){
+     for(size_t n=0;n<count;++n){auto*p=add(addresses[first+n]);if(!p)return false;p->full=1;std::memcpy(p->bytes.data(),scratch+n*PageSize,PageSize);}
+     first=end;continue;
+    }
+    ++counters.failedReads;
+   }
+   for(;first<end;++first){if(!prefetch(live,addresses[first],PageSize))ok=false;if(overflow_)return false;}
+  }return ok;
+ }
  // The transport copies one producer publication. Reject malformed, duplicate
  // or unaligned page keys before exposing any bytes to another process.
  bool import(const Key&source,const Counters&stats,const Page*input,size_t count){

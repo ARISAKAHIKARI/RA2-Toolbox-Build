@@ -128,7 +128,7 @@ ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(4
 automaticToggle(899,L"磁电全局自动摔落",extra.magnetronDrop);next();
 note(L"独立检查全图己方磁电已吸起的载具，包括己方、盟友和敌方，手动强制攻击也生效。检测建筑、地面坦克、树木、矿柱、悬崖及水陆不适配；两栖/悬浮不因普通水陆而摔，排除下方空中单位和桥面。默认关闭，实际摔落效果仍需测试。",76);
 automaticToggle(799,L"生产预定",extra.constructionQueue);next();
-note(L"建筑/防御各预定 5 项，步兵/载具各 30 项；可建造单位接连进入原生队列。",44);
+note(L"建筑/防御各可预定 32 项，步兵/载具各 128 项；按原生队列可用容量接续提交。",44);
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 toggle(780,L"允许维修通常不可维修的建筑",repairUnrepairable);next();
 oreCheck=toggle(470,L"矿车自动卸矿",oreMode,20,245);key(9504,extra.automaticKeys[autofeatures::OreReturn],280,205);button(9605,L"展开设置",500,125);next();
@@ -154,6 +154,7 @@ automaticToggle(885,L"自动躲弹",extra.dodgeEnabled);next();
 label(L"躲弹方式",20,260);choices(combo(895),{L"顺向移动 2 格",L"原版散开（Scatter）"},extra.dodgeMode);next();
 note(L"对己方可移动地面单位预判敌机攻击与逼近碾压，短距离躲避。支持类型清单，不保证躲过追踪弹或瞬时伤害。",60);
 toggle(880,L"防空火控",extra.missileDefense,20,245);key(9508,extra.automaticKeys[autofeatures::MissileDefense],280,205);button(9603,L"展开设置",500,125);next();
+item(L"STATIC",L"防空火控：关闭",20,605,9499,0,44);next(44);
 activeFoldGroup=9603;
 label(L"目标范围",20,260);choices(combo(9040),{L"仅导弹类",L"所有敌方空中单位"},extra.missileScope);next();
 label(L"火力分配",20,260);choices(combo(9041),{L"智能分配（血量与伤害）",L"平均分配"},extra.missileAllocation);next();
@@ -205,13 +206,13 @@ auto hiddenToggle=[&](int id,const wchar_t* text,bool on){auto h=placedControl({
 for(int i=0;i<7;++i){bool on=value(L"Display",displayIni[i],0)!=0;if(i==0||i==1||i==3)check[i]=hiddenToggle(300+i,displayNames[i],on);else{check[i]=toggle(300+i,displayNames[i],on);next();}}
 extraControls[FrozenEnabled]=hiddenToggle(723,L"冷冻剩余时间",extra.frozen);
 extraControls[EnemyMarkersEnabled]=hiddenToggle(785,L"敌方单位提示",extra.enemyMarkers);
-hiddenToggle(897,L"敌方载员气泡",extra.passengerBubbles);hiddenToggle(898,L"危险载员常驻提示",extra.dangerPassengers);
+hiddenToggle(897,L"载具载员气泡",extra.passengerBubbles);hiddenToggle(898,L"危险载员常驻提示",extra.dangerPassengers);hiddenToggle(9498,L"载员气泡包含己方",extra.passengerOwn);hiddenToggle(9499,L"载员气泡常驻显示",extra.passengerAlways);
 hiddenToggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);hiddenToggle(893,L"火力 / 防御 / 速度强化",extra.crateBuffMarkers);
 #else
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],0)!=0);next();}
 extraControls[FrozenEnabled]=toggle(723,L"冷冻剩余时间",extra.frozen);next();
 extraControls[EnemyMarkersEnabled]=toggle(785,L"显示敌方单位提示",extra.enemyMarkers);next();
-toggle(897,L"敌方载员气泡",extra.passengerBubbles);next();toggle(898,L"危险载员常驻提示",extra.dangerPassengers);next();
+toggle(897,L"载具载员气泡",extra.passengerBubbles);next();toggle(898,L"危险载员常驻提示",extra.dangerPassengers);next();toggle(9498,L"载员气泡包含己方",extra.passengerOwn);next();toggle(9499,L"载员气泡常驻显示",extra.passengerAlways);next();
 toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
 toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
 #endif
@@ -341,7 +342,7 @@ label(L"进入实现",20,260);choices(combo(9180),{L"占领任务＋建筑格",L
 note(L"步兵强制进入暂时停用；已保存的配置、快捷键和鼠标绑定均不执行。高级进驻不受此项影响。",60);
 item(L"STATIC",L"步兵强制进入建筑：关闭",20,605,813);next();
 item(L"STATIC",L"硬件断点：总计 4 槽 · 等待主线程检查",20,605,9473,0,44);next(44);
-note(L"槽位预算：科技全开 1；精确科技加强 1；玩家等级比较另加 1；控制全部 1。硬件黑幕显示另占 1。默认组合共 3 槽，额外比较或黑幕显示可用第 4 槽。槽位不足或尚未完成检查时禁止开启，关闭后释放槽位。",65);
+note(L"硬件断点总计 4 槽：科技全开、精确科技加强、玩家等级比较、控制全部、硬件黑幕显示、单机 FPS 各占 1 槽。实际占用未测定时可保存四槽内预设；启用时复核可用槽，槽位不足则不生效，关闭后释放。",65);
 toggle(9097,L"科技加强",extra.techEnhance);next();
 label(L"加强实现",20,260);choices(combo(9470),{L"高危：规则数据（旧版）",L"实验性：精确科技等级（不改指令／规则）"},extra.techEnhanceImplementation);next();
 toggle(9472,L"按等级 1 比较玩家科技等级（额外占一槽）",extra.techEnhanceCompareLevel);next();
@@ -355,7 +356,7 @@ activeFoldGroup=9607;
 label(L"搜索科技许可",20,260);techSearch=edit(421,L"",290,335);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
 int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换许可",488,137);next();button(425,L"全选",488,65);button(426,L"清空",560,65);next();button(427,L"兼容预设",488,137);rowY=listTop+164;
-button(428,L"查看许可清单",20,285);button(814,L"取消所选类型的生产",320,305);next();
+button(428,L"使用 INI 许可清单",20,285);button(814,L"取消所选类型的生产",320,305);next();
 note(L"原生面板两种模式均请在游戏建造栏生产或取消；此清单只设置许可，不从工具箱下单。旧三种模式保留工具箱生产。完成建筑也可使用上方独立的原生事件放置。",65);
 item(L"STATIC",L"生产进度：等待游戏",20,605,815,0,105);next(105);
 activeFoldGroup=0;
@@ -402,7 +403,7 @@ note(L"默认关闭；默认 Ctrl＋鼠标侧键 2，沿用“出售被吸取目
 toggle(788,L"优先执行增强指令",extra.overrideNative);next();
 note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的鼠标操作生效。",44);
 item(L"STATIC",L"计算模式",20,455,832,0,30);button(9609,L"展开设置",500,125);next(30);
-note(L"按功能选择工具箱计算或游戏内计算；修改后从下一局开始使用。",44);
+note(L"按功能选择工具箱计算或游戏内计算；修改后从下一局开始使用。躲弹仅原版散开可切换计算位置；顺向移动始终由游戏内原生寻路执行。",44);
 activeFoldGroup=9609;
 for(int i=0;i<compute::Count;++i){if(i==compute::BurstRefresh)continue;label(compute::label(i),20,260);choices(combo(9000+i),{L"工具箱计算",L"游戏内计算"},(computeRequested>>i)&1u);next();}
 item(L"STATIC",L"当前计算模式：等待对局",20,605,833,0,192);next(192);

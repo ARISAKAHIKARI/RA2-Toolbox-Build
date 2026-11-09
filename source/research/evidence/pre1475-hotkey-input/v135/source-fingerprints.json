@@ -1,0 +1,49 @@
+{
+  "version": "1.0.35",
+  "commit": "ff5a76ada06efdd764d9c3ef13cd452b4d69ef14",
+  "repository": "ARISAKAHIKARI/RA2-Toolbox-Build",
+  "files": [
+    {
+      "path": "source/assist/source/main.cpp",
+      "git_blob": "dd0d861f71fa2fdbcdfcfb49cb8542ce20c3b05b",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/ff5a76ada06efdd764d9c3ef13cd452b4d69ef14/source/assist/source/main.cpp"
+    },
+    {
+      "path": "source/external_reader/source/process_discovery.h",
+      "git_blob": "da4c12d6b36f262de8a99fe2b7cf39dbb4f4e54c",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/ff5a76ada06efdd764d9c3ef13cd452b4d69ef14/source/external_reader/source/process_discovery.h"
+    },
+    {
+      "path": "source/assist/source/extra_settings_io.h",
+      "git_blob": "e2ab5e98afdfe4625e946d182481df7a501cca2a",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/ff5a76ada06efdd764d9c3ef13cd452b4d69ef14/source/assist/source/extra_settings_io.h"
+    },
+    {
+      "path": "source/assist/source/startup_signature_compat.h",
+      "git_blob": "5bb7fa384a63714e2ccb0aa960ad40b3b8395759",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/ff5a76ada06efdd764d9c3ef13cd452b4d69ef14/source/assist/source/startup_signature_compat.h"
+    },
+    {
+      "path": "source/external_reader/source/process_image_identity.h",
+      "git_blob": "ddd2bff9437fffd45fb2f18eb01ff81e32d2994e",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/ff5a76ada06efdd764d9c3ef13cd452b4d69ef14/source/external_reader/source/process_image_identity.h"
+    },
+    {
+      "path": "source/suite/source/main.cpp",
+      "git_blob": "d47931f6b60326674e3f992ea47c367f0b39f087",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/ff5a76ada06efdd764d9c3ef13cd452b4d69ef14/source/suite/source/main.cpp"
+    },
+    {
+      "path": "source/assist/source/bridge.cpp",
+      "git_blob": "6fdea147f2b16ec5dab0a86b029bcbc4cdf8d432",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/ff5a76ada06efdd764d9c3ef13cd452b4d69ef14/source/assist/source/bridge.cpp"
+    },
+    {
+      "path": "source/assist/source/hook_policy.h",
+      "git_blob": "6b598b4d53085ab458c31fd90d9bf61f962e0128",
+      "url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/blob/ff5a76ada06efdd764d9c3ef13cd452b4d69ef14/source/assist/source/hook_policy.h"
+    }
+  ],
+  "scope": "Git blob identities of primary historical source. No private game executable, dump, user INI, or original runtime log is included."
+}
+
