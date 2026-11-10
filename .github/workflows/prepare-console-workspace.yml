@@ -1,7 +1,7 @@
 name: Prepare console architecture workspace
 on:
   push:
-    branches: [codex/console-architecture-20261103, codex/control-hardware-20261104]
+    branches: [codex/console-architecture-20261103, codex/control-hardware-20261104, codex/input-panels-20261110-eefcc91a]
     paths: [.github/workflows/prepare-console-workspace.yml]
   workflow_dispatch:
 permissions:
@@ -21,8 +21,7 @@ jobs:
             .github
             verification
             release
-            packages/v1.0.39-pre.6
-            packages/v1.0.39-pre.7
+            packages
       - name: Package the clean git-backed development workspace
         shell: bash
         run: |
