@@ -1,0 +1,202 @@
+{
+  "log_sha256": "6d4973692fefaa8f3c5fc39ed74f62b94ac7a625dd9ab64b508060e4e1168447",
+  "log_lines": 1213,
+  "log_first_timestamp": "2026-11-10 22:37:47.868",
+  "log_last_timestamp": "2026-11-10 22:58:52.465",
+  "runtime_versions": {
+    "1.0.48.1": 931,
+    "isibility=0": 8,
+    "isibility=1": 8,
+    "erbose": 5,
+    "alue=1": 4,
+    "alidated-fallback-or-none": 18,
+    "1.0.46-pre.2": 73,
+    "1.0.41-pre.4": 79,
+    "1.0.44": 130
+  },
+  "compared_old_ref": "v1.0.44",
+  "compared_current_commit": "5c2fa50747915e8b56a1a1a6e2ea5033c691c97e",
+  "local_equivalent_commit": "d5991d1",
+  "source_comparison": {
+    "sidebar.h": {
+      "v144_sha256": "3a4e3dc6e6a3e94e33210429aa2e98110a4ccaaf95e5564d37a905ab562cdd88",
+      "v1481_sha256": "244a350441dabbc7ff382f6e41b750f5e7db190762f0cccb1a8a3f5715f3754c",
+      "equal_ignoring_line_endings_and_final_newline": true
+    },
+    "placement_bridge.h": {
+      "v144_sha256": "0edec95601fd2700843b829ab2c9fc47bc8d29e96265a5b96fb51ac224766427",
+      "v1481_sha256": "f9f6749d33896906f3e041af54b84b7b3f94ef5eab421a58dca63d5962e35563",
+      "equal_ignoring_line_endings_and_final_newline": false
+    },
+    "bridge.cpp": {
+      "v144_sha256": "0ba9c6d31eea65678a83569622b6706e20405c64737aac0f7920e4bc9762d0c5",
+      "v1481_sha256": "943132fd597d3923bc2f6722feedd21a1209f209d7a145e91b81e80cc6036f88",
+      "equal_ignoring_line_endings_and_final_newline": false
+    },
+    "tech_enhancement_bridge.h": {
+      "v144_git_blob": "d07b43e8ed974b4b2654854ec1744b79674ce373",
+      "v1481_git_blob": "d07b43e8ed974b4b2654854ec1744b79674ce373",
+      "byte_identical": true
+    },
+    "tech_data_bridge.h": {
+      "v144_git_blob": "fc14400aba05bc12ee400d462e181b9ddb4745cc",
+      "v1481_git_blob": "fc14400aba05bc12ee400d462e181b9ddb4745cc",
+      "byte_identical": true
+    },
+    "tech_data_policy.h": {
+      "v144_git_blob": "9e68e2452aaedc1c102e7996d57ed79af56c7ecb",
+      "v1481_git_blob": "9e68e2452aaedc1c102e7996d57ed79af56c7ecb",
+      "byte_identical": true
+    }
+  },
+  "limitations": [
+    "No per-click Produce/Abandon trace in supplied log",
+    "Version-labelled log sections are not per-version success/failure observations",
+    "No proof of OutList clearing or attribution of foreign detours",
+    "No live JJ or multiplayer execution in this audit"
+  ],
+  "cadence_ms": {
+    "catalogue_refresh": 1000,
+    "pending_refresh_minimum": 16,
+    "legacy_enhancement_type_scan": 500,
+    "exact_enhancement_candidate_scan": 500,
+    "missing_cameos": "once per active game frame; failed candidate retry >=250 ms",
+    "native_permission": "persistent hook/call-time handling; not a periodic grant pulse"
+  },
+  "log_signals": [
+    {
+      "line": 68,
+      "timestamp": "2026-11-10 22:38:35.638",
+      "version": "1.0.48.1",
+      "fields": {
+        "tech_requested_applied": "4/4",
+        "tech_error": "0",
+        "enhance_requested_legacy_status": "1/0",
+        "network_requested_applied": "1/1",
+        "read_only": "0"
+      }
+    },
+    {
+      "line": 489,
+      "timestamp": "2026-11-10 22:50:17.054",
+      "version": "1.0.48.1",
+      "fields": {
+        "tech_requested_applied": "4/4",
+        "tech_error": "0",
+        "enhance_requested_legacy_status": "1/0",
+        "network_requested_applied": "0/0",
+        "read_only": "0"
+      }
+    },
+    {
+      "line": 520,
+      "timestamp": "2026-11-10 22:50:42.719",
+      "version": "1.0.48.1",
+      "fields": {
+        "tech_requested_applied": "5/4",
+        "tech_error": "-43",
+        "enhance_requested_legacy_status": "0/0",
+        "network_requested_applied": "0/0",
+        "read_only": "0"
+      }
+    },
+    {
+      "line": 555,
+      "timestamp": "2026-11-10 22:51:13.178",
+      "version": "1.0.48.1",
+      "fields": {
+        "tech_requested_applied": "5/5",
+        "tech_error": "0",
+        "enhance_requested_legacy_status": "0/0",
+        "network_requested_applied": "0/0",
+        "read_only": "0"
+      }
+    },
+    {
+      "line": 576,
+      "timestamp": "2026-11-10 22:51:33.807",
+      "version": "1.0.48.1",
+      "fields": {
+        "tech_requested_applied": "5/5",
+        "tech_error": "0",
+        "enhance_requested_legacy_status": "0/0",
+        "network_requested_applied": "1/-2",
+        "read_only": "0"
+      }
+    },
+    {
+      "line": 972,
+      "timestamp": "2026-11-10 22:55:36.327",
+      "version": "1.0.46-pre.2",
+      "fields": {
+        "tech_requested_applied": "5/5",
+        "tech_error": "0",
+        "enhance_requested_legacy_status": "1/0",
+        "network_requested_applied": "1/-2",
+        "read_only": null
+      }
+    },
+    {
+      "line": 1133,
+      "timestamp": "2026-11-10 22:57:21.465",
+      "version": "1.0.44",
+      "fields": {
+        "tech_requested_applied": "5/5",
+        "tech_error": "0",
+        "enhance_requested_legacy_status": "1/0",
+        "network_requested_applied": "1/-2",
+        "read_only": null
+      }
+    }
+  ],
+  "log_probe_baseline": {
+    "1.0.48.1": {
+      "line": 346,
+      "bytes": {
+        "004F7870": "83EC3C8A44244453558BE9565784C089",
+        "006A97D2": "E899E0E4FF8B54242C8B0D4C3DA80083",
+        "006AA781": "E8EAD0E4FF85C00F85DA020000EB268B",
+        "0064C6E9": "E91239110490903BD60F8569050000E9",
+        "00647BEB": "E91084E703909090908B3D84DAA80033",
+        "00647EB4": "E94781EC039090900405C644242C2088",
+        "0064C598": "E9633A0F049085D20F849700000083FA"
+      }
+    },
+    "1.0.46-pre.2": {
+      "line": 953,
+      "bytes": {
+        "004F7870": "83EC3C8A44244453558BE9565784C089",
+        "006A97D2": "E899E0E4FF8B54242C8B0D4C3DA80083",
+        "006AA781": "E8EAD0E4FF85C00F85DA020000EB268B",
+        "0064C6E9": "E91239110490903BD60F8569050000E9",
+        "00647BEB": "E91084E703909090908B3D84DAA80033",
+        "00647EB4": "E94781EC039090900405C644242C2088",
+        "0064C598": "E9633A0F049085D20F849700000083FA"
+      }
+    },
+    "1.0.41-pre.4": {
+      "line": 1029,
+      "bytes": {
+        "004F7870": "83EC3C8A44244453558BE9565784C089",
+        "006A97D2": "E899E0E4FF8B54242C8B0D4C3DA80083",
+        "006AA781": "E8EAD0E4FF85C00F85DA020000EB268B",
+        "0064C6E9": "E91239110490903BD60F8569050000E9",
+        "00647BEB": "E91084E703909090908B3D84DAA80033",
+        "00647EB4": "E94781EC039090900405C644242C2088",
+        "0064C598": "E9633A0F049085D20F849700000083FA"
+      }
+    },
+    "1.0.44": {
+      "line": 1111,
+      "bytes": {
+        "004F7870": "83EC3C8A44244453558BE9565784C089",
+        "006A97D2": "E899E0E4FF8B54242C8B0D4C3DA80083",
+        "006AA781": "E8EAD0E4FF85C00F85DA020000EB268B",
+        "0064C6E9": "E91239110490903BD60F8569050000E9",
+        "00647BEB": "E91084E703909090908B3D84DAA80033",
+        "00647EB4": "E94781EC039090900405C644242C2088",
+        "0064C598": "E9633A0F049085D20F849700000083FA"
+      }
+    }
+  }
+}
