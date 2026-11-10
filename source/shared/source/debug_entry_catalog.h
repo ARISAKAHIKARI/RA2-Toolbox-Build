@@ -4,6 +4,8 @@
 // Patch bypass affects context fingerprints; replay shape and ownership remain mandatory.
 namespace debugentries {
 inline constexpr Entry Entries[]={
+ {id(Kind::Patch,0x0042A5B0),0x0042A5B0,Kind::Patch,"寻路队列清理加速", "单机性能", "保留队列有效范围、搜索编号与原生搜索；仅单机，完整语义校验不可跳过", "单机卡顿修复",Checkable},
+ {id(Kind::Patch,0x0070508A),0x0070508A,Kind::Patch,"心控连线计算加速", "单机性能", "保留原生端点、32 段裁剪与绘制；减少重复投影，严格校验不可跳过", "单机卡顿修复",Checkable},
  {id(Kind::Call,0x006AA600),0x006AA600,Kind::Call,"侧栏重检入口", "科技", "原生侧栏重检入口可调用性；保留原入口及平台跳转链", "侧栏兼容诊断",Checkable},
  {id(Kind::Call,0x006ABC60),0x006ABC60,Kind::Call,"建造项目页签", "科技", "按建造类型确定原生侧栏页签", "科技侧栏、授予超武、侧栏修复",Checkable},
  {id(Kind::Call,0x005F7900),0x005F7900,Kind::Call,"建造工厂查找", "科技", "查找项目对应的原生生产工厂", "科技侧栏、生产与侧栏修复",Checkable},

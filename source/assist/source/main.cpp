@@ -2163,6 +2163,13 @@ static void updateModeStatus(DWORD now){
   if(live&&extra.missileDefense&&!overflow)text+=L" · 参与单位 "+std::to_wstring(shared->missileSources)+L" / 空中目标 "+std::to_wstring(shared->missileTargets);
   SetWindowTextW(GetDlgItem(ui,9499),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9499),extra.missileDefense&&overflow);
  }
+ {const bool live=shared&&!phase&&commandFresh(now);
+  auto stateText=[&](unsigned bit,int state){return !(extra.singlePlayerLagFix&bit)?L"关闭":!live?L"等待对局":state==1?L"已生效":state==-1?L"联机停用":state==-2?L"版本不兼容或补丁冲突":L"等待生效";};
+  std::wstring text=L"寻路清理：";text+=stateText(1,live?shared->lagPathStatus:0);
+  if(live&&shared->lagPathStatus==1)text+=L" · "+std::to_wstring(shared->lagPathHits)+L" 次";
+  text+=L"\r\n心控连线：";text+=stateText(2,live?shared->lagMindStatus:0);
+  if(live&&shared->lagMindStatus==1)text+=L" · "+std::to_wstring(shared->lagMindHits)+L" 次";
+  SetWindowTextW(GetDlgItem(ui,9540),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9540),live&&((extra.singlePlayerLagFix&1&&shared->lagPathStatus==-2)||(extra.singlePlayerLagFix&2&&shared->lagMindStatus==-2)));}
  updatePlacementEventUI();
  std::wstring riskStatus=extra.placementImplementation==buildingmodes::PlacementEvent?
   std::wstring(L"原生事件放置：")+(!buildAnywhereMode?L"关闭":phase?L"等待游戏就绪":snap.placementStatus==2?L"已就绪；自动匹配当前建筑／防御栏，按配置键预览，左键放置":snap.placementStatus<0?L"旧补丁未能还原或版本不兼容，未启用":L"等待旧补丁还原并启用"):

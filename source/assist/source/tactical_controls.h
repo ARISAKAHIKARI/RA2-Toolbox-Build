@@ -248,6 +248,10 @@ toggle(9327,L"原生建造栏提示框显示建造时间",buildTimeTooltipEnable
 number(9494,L"单机游戏 FPS（0 = 原版）",extra.singlePlayerFPS,L"0 或 10–240");
 note(L"控制单机游戏速度；可填 40、45、50，在原版 4、5 速之间细调。联机不生效。0 交回原版速度设置；实际速度受游戏计算耗时限制。",64);
 item(L"STATIC",L"单机游戏 FPS：原版",20,605,9495,0,44);next(44);
+toggle(9538,L"单机卡顿修复：寻路队列清理（实验性）",(extra.singlePlayerLagFix&1)!=0);next();
+toggle(9539,L"单机卡顿修复：心控连线计算（实验性）",(extra.singlePlayerLagFix&2)!=0);next();
+note(L"减少寻路清理与连线计算的重复工作，保留原生搜索规则和连线绘制。两项可分别开关；只在支持的单机版本生效，联机自动停用。",60);
+item(L"STATIC",L"单机卡顿修复：关闭",20,605,9540,0,48);next(48);
 EnableWindow(toggle(9300,L"渲染升级（全视口 · 实验性，入口暂不可用）",renderUpgradeEnabled),FALSE);next();
 note(L"入口暂时关闭，保留已保存的启用值和画质设置。");
 toggle(9313,L"额外画质处理（关闭：基础快速绘制）",renderProcessing);next();

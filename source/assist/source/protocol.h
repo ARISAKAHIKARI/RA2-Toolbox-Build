@@ -29,7 +29,7 @@
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=104;
+constexpr uint32_t Magic=0x41533130, Version=105;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -277,6 +277,10 @@ struct Shared {
  volatile uint32_t bombBoardEnabled=0,bombBoardRangeCells=8;
  volatile uint32_t bombBoardActive=0,bombBoardIssued=0,bombBoardWaiting=0;
  volatile uint32_t keepInputUnlocked=0,inputUnlockCount=0;volatile int32_t inputUnlockStatus=0;
+ // Assist105: optional native SP acceleration; bit 0 queue clear, bit 1 mind links.
+ volatile uint32_t singlePlayerLagFix=0;
+ volatile int32_t lagPathStatus=0,lagMindStatus=0;
+ volatile uint32_t lagPathHits=0,lagMindHits=0;
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

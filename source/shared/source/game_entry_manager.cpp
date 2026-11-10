@@ -73,6 +73,7 @@ static Result applyPatch(const Request&r){
  const auto transition=patches.proposal(r.address,r.before,r.after,r.length);
  if(transition==assist::hookregistry::Transition::Deny)return patchDenied(r.address,patches.conflict(r.address)?debugentries::Reason::Foreign:debugentries::Reason::None);
  if(transition==assist::hookregistry::Transition::Install){
+  if(singlelag::size(r.address)){int mode=-1;if(!patchRead(0xA8B238,&mode,4)||!singlelag::singlePlayer(mode))return patchDenied(r.address,debugentries::Reason::Unsupported);}
   if(!multiplayerpatch::mayInstall([](uint32_t at,void*out,size_t n){
    SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)at,out,n,&got)&&got==n;
   }))return patchDenied(r.address,debugentries::Reason::Unsupported);

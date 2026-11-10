@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "direct_patch_policy.h"
+#include "single_player_lag_policy.h"
 #include "native_sidebar_policy.h"
 #include "native_viewport_policy.h"
 // Explicit 1.0.4 judgment opt-ins and 1.0.6 render-only test sites.
@@ -35,6 +36,7 @@ constexpr uint32_t ControlPlanningOwner=0x6FFC93;
 constexpr uint32_t ControlObjectOwner=0x6FFE2B;
 inline bool callSite(uint32_t at){return at==TechDraw||at==TechPrune||at==ControlOwner||at==ControlPlanning||at==NativeSellCursor;}
 inline unsigned size(uint32_t at){
+ if(auto n=singlelag::size(at))return n;
  if(auto s=nativesidebarpolicy::find(at))return s->size;
  if(nativeviewportpolicy::find(at))return nativeviewportpolicy::size(at);
  if(at==PauseLoop)return 5;

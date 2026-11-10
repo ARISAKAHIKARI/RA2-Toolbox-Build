@@ -107,6 +107,7 @@ static constexpr Probe Probes[]={
 };
 template<class Read> bool compatibleImpl(uint32_t site,Read read,bool policy){
  if(!experimentalpatch::size(site))return false;
+ if(singlelag::size(site))return singlelag::compatible(site,read); // strict, never debug-bypassed
  bool readable=true,matched=true,probed=false,platform=false;
  auto checkedRead=[&](uint32_t at,void*out,size_t n){probed=true;const bool ok=read(at,out,n);readable=readable&&ok;return ok;};
  if(nativesidebarpolicy::find(site))matched=nativesidebarpolicy::compatible(site,checkedRead);
