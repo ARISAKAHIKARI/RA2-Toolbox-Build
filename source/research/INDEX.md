@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 原版多单位寻路 | [逐单位同步搜索、24 方向缓冲与重试](2026-11-10-multi-unit-pathfinding.md) | 4CBBA0 87E8B8 4D3920 55B610 Path640 sequential shared-workspace not-shared-route dynamic-occupancy |
 | 原版 A* 搜索主体审查 | [过期节点重复展开、禁行边扫描及复杂度](2026-11-10-astar-search-audit.md) | 42C290 stale-entry native-fixture 14-to-11 banned-edges linear retry-5 not-whole-search-O(N) no-runtime-change |
 | 单机卡顿修复（保持原生结果） | [A* 清理与心控曲线重复计算](2026-11-10-single-player-lag.md) | Assist105 42A5B0 70508A rep-stosd generation-wrap 66-to-35 native-raster strict-hash SP-only no-GPU-takeover |
 | 原版自毁入队却不执行 | [AI DoList 调度与 OutList 清理修复](2026-11-10-destruct-delivery.md) | Destruct AI-skipped 64C380 Respond 4C6CB0 DisplayHidden OutList accepted-event delivery 32-cases no-live-game |
