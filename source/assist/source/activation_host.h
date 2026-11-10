@@ -13,6 +13,21 @@ static void logFeatureActivation(DWORD now){
  mix(incoming.status);mix(incoming.commandStatus);mix(incoming.hookInstalled);mix(incoming.hookConflicts);
  mix(incoming.placementStatus);mix(incoming.nativeAirStatus);mix(incoming.renderRevealStatus);mix(incoming.techOpen);mix(incoming.techError);
  mix(shared->techEnhanceStatus);mix(shared->playerControlStatus);mix(shared->networkHouseStatus);mix(shared->controlCommandOwnerStatus);mix(shared->nativeMegaGatewayStatus);mix(shared->nativeSellCursorStatus);mix(shared->crcMapShadowStatus);mix(shared->buildTimeTooltipStatus);mix(shared->lowDamageStatus);
+ debugentries::Observation sellCursorEntry{},sellOwnerEntry{};bool sellDebugValid=false;
+ if(extra.nativeSellCursor&&shared->nativeSellCursorStatus<0){
+  const int cursorIndex=debugentries::index(debugentries::id(debugentries::Kind::Patch,0x6929E5));
+  const int ownerIndex=debugentries::index(debugentries::id(debugentries::Kind::Patch,0x4AC179));
+  if(cursorIndex>=0&&ownerIndex>=0)for(unsigned attempt=0;attempt<3;++attempt){
+   const LONG before=InterlockedCompareExchange(&shared->debugSnapshotSeq,0,0);if(before&1)continue;
+   sellCursorEntry=shared->debugSnapshot.entries[cursorIndex];sellOwnerEntry=shared->debugSnapshot.entries[ownerIndex];MemoryBarrier();
+   if(before==InterlockedCompareExchange(&shared->debugSnapshotSeq,0,0)){
+    sellDebugValid=sellCursorEntry.id==debugentries::id(debugentries::Kind::Patch,0x6929E5)&&sellOwnerEntry.id==debugentries::id(debugentries::Kind::Patch,0x4AC179);break;
+   }
+  }
+ }
+ mix(sellDebugValid);if(sellDebugValid)for(const auto&o:{sellCursorEntry,sellOwnerEntry}){
+  mix(uint32_t(o.signature));mix(uint32_t(o.hook));mix(uint32_t(o.reason));mix(uint32_t(o.error));
+ }
  static activation::LogCadence cadence;
  const bool blocked=incoming.status<0||incoming.commandStatus!=activation::Ready||shared->stop;
  if(!cadence.due(key,now,blocked))return;
@@ -31,7 +46,13 @@ static void logFeatureActivation(DWORD now){
   L" commandOwner="+std::to_wstring(extra.commandOwnerRequested())+L"/"+std::to_wstring(shared->controlCommandOwnerStatus)+
   L" mega="+std::to_wstring(extra.nativeMegaGateway)+L"/"+std::to_wstring(shared->nativeMegaGatewayStatus)+
   L" sellCursor="+std::to_wstring(extra.nativeSellCursor)+L"/"+std::to_wstring(shared->nativeSellCursorStatus)+
+  L" sellCursorReason="+(nativesell::failureText(shared->nativeSellCursorStatus)?std::wstring(nativesell::failureText(shared->nativeSellCursorStatus)):L"none")+
   L" crc="+std::to_wstring(extra.crcMapShadow)+L"/"+std::to_wstring(shared->crcMapShadowStatus)+
   L" tooltip="+std::to_wstring(buildTimeTooltipEnabled)+L"/"+std::to_wstring(shared->buildTimeTooltipStatus)+
   L" lowDamage="+std::to_wstring(extra.lowDamageFilter?(extra.lowDamageNetwork?1:2):0)+L"/"+std::to_wstring(shared->lowDamageStatus));
+ if(sellDebugValid){
+  std::wstring detail=L"native-sell-admission status="+std::to_wstring(shared->nativeSellCursorStatus)+L" session="+std::to_wstring(incoming.session);
+  for(const auto&o:{sellCursorEntry,sellOwnerEntry})detail+=L" entry="+std::to_wstring(o.id&0x00ffffffu)+L" signature="+std::to_wstring(uint32_t(o.signature))+L" hook="+std::to_wstring(uint32_t(o.hook))+L" reason="+std::to_wstring(uint32_t(o.reason))+L" error="+std::to_wstring(o.error)+L" ageMs="+std::to_wstring(DWORD(now-o.tick));
+  critical(detail);
+ }
 }

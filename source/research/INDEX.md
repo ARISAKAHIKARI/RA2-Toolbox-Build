@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 原生变卖光标单机启用失败 | [无关OutList依赖、按路径准入与具体错误反馈](2026-11-10-native-sell-cursor-admission.md) | 1.0.48.1 sellCursor -2 6929E5 4AC179 4AC18C SP-AI queue-admission 12-byte-stack unresolved-live-site |
 | 1.0.48-pre.1 原生路径点和自动操作 | [松键提交、拖框恢复、绑弹上车与触发输入锁](2026-11-10-input-planning-and-bomb-board.md) | Assist104 append-MegaMission real-keyup PlanCommit no-arrival-hook seqlock-preview AttachedBomb UserInputLocked SDK-only-evidence |
 | 1.0.47-pre.10 功能内部逻辑 | [命令尾部续发、有效目标、队形和矿车恢复](2026-11-09-pre147-feature-logic.md) | 80-feature-boundaries selected-mode-tail anti-theft-valid-target valid-slot quick-placement-cache miner-resource-recheck unknown-read no-new-native-ABI |
 | 1.0.47-pre.9 整体时钟优化 | [发布事件采样、空闲休眠与独立高刷](2026-11-09-pre147-clock-events.md) | publication-event 250Hz-fallback 50ms-maintenance idle-park reconnect timer-failure no-FPS-claim |

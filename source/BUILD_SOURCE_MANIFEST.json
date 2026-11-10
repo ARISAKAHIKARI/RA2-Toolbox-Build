@@ -1,6 +1,6 @@
 {
-  "name": "RA2 Toolbox 1.0.48",
-  "version": "1.0.48",
+  "name": "RA2 Toolbox 1.0.48.1",
+  "version": "1.0.48.1",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
@@ -1019,7 +1019,7 @@
     "historical_initial_publication": true,
     "superseded_by_same_version_revision": "2026-11-08-depth-tooltip-performance"
   },
-  "release_revision": "2026-11-10-input-panels-direct-sell-release",
+  "release_revision": "2026-11-10-native-sell-cursor-admission",
   "RevisedRelease146": {
     "version": "1.0.46",
     "file_version": "1.0.46.3",
@@ -1443,5 +1443,18 @@
       "verification"
     ],
     "note": "正式版本号发布；功能与 pre.2 一致，重新编译配套组件。联机功能保留实验状态，不把受控验证表述为真实联机验证。"
+  },
+  "native_sell_cursor_hotfix_1481": {
+    "file_version": "1.0.48.3",
+    "base_commit": "91f81906ac514ab417ba83c77b79d203a279e5c5",
+    "assist_protocol": 105,
+    "assist_shared_bytes": 23162640,
+    "research": "research/2026-11-10-native-sell-cursor-admission.md",
+    "changes": [
+      "SP-AI native Sell admission no longer depends on unused OutList append bytes",
+      "Native queue contract retained for human/MP paths; stack cleanup dependencies checked",
+      "Specific failure feedback and per-entry Runtime.log observations"
+    ],
+    "validation": "Production admission policy passed on three private native code images and 64 required-byte mutations each; old source fails the queue-detour negative control. No live platform/game/multiplayer test."
   }
 }

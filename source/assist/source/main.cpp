@@ -33,6 +33,7 @@
 #include <cstdint>
 #include "protocol.h"
 #include "../../shared/source/debug_entry_policy.h"
+#include "../../shared/source/native_sell_policy.h"
 #ifdef RA2_CONSOLE_WEBVIEW2
 #include "../../suite/source/console_model.h"
 #endif
@@ -2232,6 +2233,7 @@ static void updateModeStatus(DWORD now){
   SetWindowTextW(GetDlgItem(ui,9188),network.c_str());
   std::wstring sell=L"高危 · 原生变卖光标：";
   if(fresh&&extra.nativeSellCursor&&eventdelivery::isMultiplayer(incoming.session)&&!networkHouseReady()&&shared->nativeSellCursorStatus==0)sell+=L"等待事件所属方保留已启用";
+  else if(shared&&nativesell::failureText(shared->nativeSellCursorStatus))sell+=nativesell::failureText(shared->nativeSellCursorStatus);
   else sell+=stateText(extra.nativeSellCursor,shared?shared->nativeSellCursorStatus:0);
   SetWindowTextW(GetDlgItem(ui,9190),sell.c_str());
   std::wstring mega=L"高危 · 原生成功入口观察：";mega+=stateText(extra.nativeMegaGateway,shared?shared->nativeMegaGatewayStatus:0);

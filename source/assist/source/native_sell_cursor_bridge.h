@@ -1,6 +1,7 @@
 #include "../../shared/source/debug_entry_checks.h"
-// Native Sell input only: the original CanSell, constructor, OutList append,
-// transport and receiver still execute. Never call Building::Sell locally.
+#include "../../shared/source/native_sell_policy.h"
+// Keep native CanSell and ordinary queued Sell. SP-AI uses the complete native
+// event receiver and skips the downstream constructor/OutList append.
 static bool networkHousePreserveReady();
 static bool nativeSellCursorActive;
 struct NativeSellCandidate {
@@ -8,11 +9,14 @@ struct NativeSellCandidate {
  int frame=0,session=0;
 };
 static NativeSellCandidate nativeSellCandidate;
+static bool nativeSellQueueCompatible(){
+ return nativesell::queueCompatible([](uint32_t at,void*out,size_t n){return read(at,out,n);});
+}
 static bool nativeSellCursorReady(){
  if(!nativeSellCursorActive||!sh||!sh->nativeSellCursor||!sh->foreground||
     snap.status!=1||snap.match!=match||!riskReady(true)||get<bool>(0xA8BC60+25)||
     !get<bool>(0x880999)||!playableHouse(lastHouse))return false;
- return !eventdelivery::isMultiplayer(get<int>(0xA8B238))||networkHousePreserveReady();
+ return !eventdelivery::isMultiplayer(get<int>(0xA8B238))||(networkHousePreserveReady()&&nativeSellQueueCompatible());
 }
 static bool nativeSellCursorTarget(uint32_t object,uint32_t& owner,uint32_t& index){
  if(!object||!worldObjects.contains(object)||!live(object)||kind(object)!=3||
@@ -21,7 +25,9 @@ static bool nativeSellCursorTarget(uint32_t object,uint32_t& owner,uint32_t& ind
  if(!id||worldByID(id)!=object||!playableHouse(owner))return false;
  const int ownerIndex=get<int>(owner+0x30);Vec houses=vec(0xA80228,32);
  if(ownerIndex<0||ownerIndex>=houses.count||item(houses,ownerIndex)!=owner)return false;
- if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&!networkSenderHouse(ownerIndex))return false;
+ const int session=get<int>(0xA8B238);
+ if(eventdelivery::isMultiplayer(session)&&!networkSenderHouse(ownerIndex))return false;
+ if(nativesell::requiresNativeQueue(eventdelivery::isSingleplayer(session),sellHumanHouse(owner))&&!nativeSellQueueCompatible())return false;
  index=uint32_t(ownerIndex);return true;
 }
 static int nativeSellCursorAction(unsigned op,uint32_t object,uint32_t suppliedOwner){
@@ -176,13 +182,20 @@ static void nativeSellCursorTick(){
  if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&!networkHousePreserveReady()){
   restoreNativeSellCursor();if(sh)sh->nativeSellCursorStatus=-4;return;
  }
- prepareNativeSellCursor();nativeSellCursorActive=false;bool ok=true;
- for(auto&s:nativeSellSites){uint8_t bytes[16]{};const bool active=codeHookRegistry.active(s.address);
-  if(codeHookRegistry.conflict(s.address)||!patchcontext::compatible(s.address,[](uint32_t at,void*out,size_t n){return read(at,out,n);})||
-     !read(s.address,bytes,s.size)||(active?memcmp(bytes,s.after,s.size):!hookregistry::admissibleOriginal(s.address,bytes,s.size)))ok=false;
+ if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&!nativeSellQueueCompatible()){
+  restoreNativeSellCursor();if(sh)sh->nativeSellCursorStatus=nativesell::QueueUnavailable;return;
+ }
+ prepareNativeSellCursor();nativeSellCursorActive=false;int failure=0;
+ for(unsigned i=0;i<2;++i){auto&s=nativeSellSites[i];uint8_t bytes[16]{};const bool active=codeHookRegistry.active(s.address);
+  const int base=i?nativesell::OwnerConflict:nativesell::CursorConflict;
+  if(codeHookRegistry.conflict(s.address)){failure=base;break;}
+  if(!patchcontext::compatible(s.address,[](uint32_t at,void*out,size_t n){return read(at,out,n);})){failure=base-1;break;}
+  if(!read(s.address,bytes,s.size)){failure=base-2;break;}
+  if(active?memcmp(bytes,s.after,s.size):!hookregistry::admissibleOriginal(s.address,bytes,s.size)){failure=base-3;break;}
  }
  // Install the House adapter first; publish active only after the complete pair.
- if(ok)ok=installRiskSite(nativeSellSites[1])&&installRiskSite(nativeSellSites[0]);
- if(!ok){restoreNativeSellCursor();if(sh)sh->nativeSellCursorStatus=-2;return;}
+ if(!failure&&!installRiskSite(nativeSellSites[1]))failure=nativesell::OwnerInstall;
+ if(!failure&&!installRiskSite(nativeSellSites[0]))failure=nativesell::CursorInstall;
+ if(failure){restoreNativeSellCursor();if(sh&&sh->nativeSellCursorStatus==0)sh->nativeSellCursorStatus=failure;return;}
  nativeSellCursorActive=true;sh->nativeSellCursorStatus=1;
 }

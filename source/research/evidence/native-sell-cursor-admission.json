@@ -1,0 +1,34 @@
+{
+  "cases": [
+    {
+      "source": "00-clean-game.mem",
+      "sha256": "94ac595e7a6fef82839b7959f3f926a52708fc857fbc65aa9ff88428dff3f4bd",
+      "returncode": 0,
+      "output": "PASS: native SP-AI admission bypasses only the unused queue; 64 required dependency-byte mutations rejected; human/MP queue gating retained"
+    },
+    {
+      "source": "gamemd-spawn(4).exe",
+      "sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "returncode": 0,
+      "output": "PASS: native SP-AI admission bypasses only the unused queue; 64 required dependency-byte mutations rejected; human/MP queue gating retained"
+    },
+    {
+      "source": "gamemd-spawn(5).exe",
+      "sha256": "ebb8b7bd07236c9ba7cbb2ad01bdca82b99faf2fccf08d79f7f60f59c4d77707",
+      "returncode": 0,
+      "output": "PASS: native SP-AI admission bypasses only the unused queue; 64 required dependency-byte mutations rejected; human/MP queue gating retained"
+    }
+  ],
+  "prior_source_negative_control": {
+    "returncode": 1,
+    "output": "FAIL: unrelated downstream OutList replacement blocks native SP-AI Sell admission"
+  },
+  "user_log": {
+    "sha256": "57b9efd85952553a0469d0aee1515c6f92da975460467b76cc304a611995b426",
+    "reported_version": "1.0.48-pre.2",
+    "failure": "sellCursor=1/-2",
+    "session": 0,
+    "exact_failed_site_not_in_log": true
+  },
+  "scope": "Production admission policy plus privately captured/mapped native code. Queue replacement is synthetic; not a capture of the user's live platform. No real Windows/game/network execution."
+}
