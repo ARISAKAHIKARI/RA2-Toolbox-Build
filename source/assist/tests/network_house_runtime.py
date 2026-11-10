@@ -180,6 +180,28 @@ for protocol in (0,1,2):
         return {'runtime_command':32,'foreign_house':1,'same_native_local_and_decoded_event':True}
     check(f'runtime_foreign_destruct_through_sender_protocol_{protocol}',actual_command)
 for protocol in (0,1,2):
+    def display_hidden_delivery(protocol=protocol):
+        m=setup(3,protocol);assert toggle(m,True).networkHouseStatus==1
+        # Submit through the actual Runtime command gateway, then hide the
+        # tactical display before the engine consumes the accepted OutList.
+        s=n.state(m);s.command=32;s.arg=m.enemy;s.arg2=200;s.requestToken=1
+        s.request+=1;s.requestTick=m.clock;s.requestMatch=s.data.match;n.save(m,s)
+        s=m.hook();assert s.result==1 and m.r(0xa802c8)==1
+        before=logical_out(m)
+        m.b(0xa8e378,0)
+        s=n.tick(m);assert s.data.commandStatus==10,s.data.commandStatus
+        assert logical_out(m)==before
+        # Hidden display still denies a *new* command, without deleting the old one.
+        s.command=32;s.request+=1;s.requestTick=m.clock;s.requestMatch=s.data.match;n.save(m,s)
+        m.hook();assert logical_out(m)==before
+        sent,local=send(m);remote=[b for b in decode(m) if b[0]!=0x1c]
+        assert sent==(0 if protocol==0 else 1) and len(local)==len(remote)==1,(sent,len(local),len(remote))
+        assert local==remote and local[0][:3]==bytes((8,0,1))
+        assert n.state(m).networkHouseDropped==0 and m.r(0xa802c8)==0
+        return {'accepted_before_display_hidden':True,'new_input_denied':True,
+                'foreign_destruct_delivered':True,'foreign_dropped':0}
+    check(f'display_hidden_queued_destruct_protocol_{protocol}',display_hidden_delivery)
+for protocol in (0,1,2):
     def own_wire(protocol=protocol):
         m=setup(3,protocol);assert toggle(m,True).networkHouseStatus==1
         fill(m,[(kind,0,ident) for kind,house,ident in MIXED],126)

@@ -374,7 +374,7 @@ static bool simulationReady(bool allowNewerFrame=false){
   memcpy(out,(const void*)(uintptr_t)at,size);return true;
  }).visible();
 }
-static bool enqueue(Event&e,const intent::EventOrder& order,OrderAuthority authority,const NativePlacementSubmission* placement=nullptr){
+static bool enqueue(Event&e,const intent::EventOrder& order,OrderAuthority authority,const NativePlacementSubmission* placement=nullptr,bool* responded=nullptr){
  if(!simulationReady()||get<bool>(0xA8BC60+25)){++snap.commandRejected;return false;}
  if(!validateMoSubmission(order)||!validateBombBoardSubmission(order)||!validateDirectAirSubmission(order)){snap.lastSubmitError=7;++snap.commandRejected;return false;}
  if(!validateNativePlacement(order,placement)||!nativePlacementPacket(e,order)){
@@ -413,6 +413,23 @@ static bool enqueue(Event&e,const intent::EventOrder& order,OrderAuthority autho
     (!networkHousePreserveReady()||!networkSenderHouse(int(e.house)))){
   snap.lastSubmitError=42;++snap.commandRejected;return false;
  }
+ // The original DoList scheduler visits only current/human Houses. A valid
+ // singleplayer AI Destruct would otherwise remain unexecuted indefinitely.
+ // Keep its original packet and receiver; only this explicit SP operation may
+ // use immediate response on the already leased simulation thread.
+ if(e.kind==vanilla::EventType::Destruct&&authority==OrderAuthority::DestructPlayerTest&&
+    eventdelivery::isSingleplayer(get<int>(0xA8B238))){
+  Vec houses=vec(0xA80228,32);uint32_t target=item(houses,int(e.house));uint8_t current=0,human=0;
+  if(!read(target+0x1EC,&current,1)||!read(target+0x1ED,&human,1)){snap.lastSubmitError=7;++snap.commandRejected;return false;}
+  if(!current&&!human){
+   static const uint8_t receiver[]={0x81,0xEC,0x70,0x03,0x00,0x00,0x33,0xC0,0x53,0x55,0x56,0x8B,0xF1};
+   if(!debugentries::pattern(debugentries::Kind::Call,0x4C6CB0,receiver,sizeof receiver,read)){snap.lastSubmitError=12;++snap.commandRejected;return false;}
+   call<void>(0x4C6CB0,uint32_t(uintptr_t(&e)));
+   if(!get<bool>(target+0x1F6)){snap.lastSubmitError=6;++snap.commandRejected;return false;}
+   if(responded)*responded=true;
+   snap.lastSubmitError=0;--outgoingBudget;return true;
+  }
+ }
  constexpr uint32_t p=0xA802C8;
  int count=get<int>(p),tail=get<int>(p+8);
  if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&queueAvailable(count,tail)){
@@ -450,7 +467,7 @@ static entrygate::Snapshot currentEntryBoundary(){
 // ENTRY: the only ordinary EventClass construction-and-submit channel.
 // Caller / planner supplies a semantic intent, never a raw address or packet.
 // This does not replace the two separately verified high-level append backends.
-static bool submitConstructed(const intent::EventOrder& order,OrderAuthority authority=OrderAuthority::Local,const NativePlacementSubmission* placement=nullptr){
+static bool submitConstructed(const intent::EventOrder& order,OrderAuthority authority=OrderAuthority::Local,const NativePlacementSubmission* placement=nullptr,bool* responded=nullptr){
  if(!validateMoSubmission(order)||!validateBombBoardSubmission(order)||!validateDirectAirSubmission(order)){snap.lastSubmitError=7;++snap.commandRejected;return false;}
  if(!authorizePlayerOrder(order,authority)){++snap.commandRejected;return false;}
  if(!validateNativePlacement(order,placement)){snap.lastSubmitError=43;++snap.commandRejected;return false;}
@@ -477,7 +494,7 @@ static bool submitConstructed(const intent::EventOrder& order,OrderAuthority aut
  const auto state=constructors::fill(packet,order,
   [](uint32_t address,uint32_t self,auto... args){call<void>(address,self,args...);});
  if(state!=constructors::Verdict::Ready){snap.lastSubmitError=8;++snap.commandRejected;return false;}
- return enqueue(packet,order,authority,placement); // SP DoList / MP OutList, timing and receipt centrally.
+ return enqueue(packet,order,authority,placement,responded); // Central delivery, including explicit SP AI Destruct.
 }
 // Original game QueueMegaMission verified in two user-provided 32-bit EXEs.
 // x86 __fastcall ABI (NOT the EventClass ctor):

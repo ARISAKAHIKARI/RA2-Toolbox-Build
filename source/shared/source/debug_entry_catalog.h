@@ -47,6 +47,7 @@ inline constexpr Entry Entries[]={
  {id(Kind::Call,0x004494C0),0x004494C0,Kind::Call,"原生出售能力", "出售", "检查原生出售能力入口；虚函数原目标身份仍须一致", "原生出售光标",Checkable},
  {id(Kind::Call,0x006385C0),0x006385C0,Kind::Call,"原生航点续接", "航点", "检查原生规划航点续接入口", "飞行航点到达续接",Checkable},
  {id(Kind::Call,0x004C66C0),0x004C66C0,Kind::Call,"无参数事件构造", "命令", "构造无参数原生命令事件", "欢呼、玩家自毁测试",Checkable},
+ {id(Kind::Call,0x004C6CB0),0x004C6CB0,Kind::Call,"原生事件执行", "命令", "执行单机 AI 所属方的一次自毁事件", "玩家自毁测试",Checkable},
  {id(Kind::Call,0x00536350),0x00536350,Kind::Call,"原生嘲讽命令", "社交", "调用已注册的原生嘲讽命令；注册对象及固定虚函数身份仍须一致", "多人嘲讽",Checkable},
  {id(Kind::Call,0x005B2FD0),0x005B2FD0,Kind::Call,"强制原生任务", "任务", "检查原生任务切换入口", "停留任务与恢复",Checkable},
  {id(Kind::Call,0x005B3570),0x005B3570,Kind::Call,"继续原生任务", "任务", "检查原生下一任务入口", "停留任务恢复",Checkable},
