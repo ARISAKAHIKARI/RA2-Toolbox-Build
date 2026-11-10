@@ -1,0 +1,5 @@
+d8b867e10504fac42fa2b0a961542d39c4ed51645a13709fe6c25635160ed61a  RA2Toolbox-1.0.48-release-manifest.json
+abae26814bf032a9336be86e3961d7218d63737acaf2c68b9e486a0f5b53a7a4  RA2Toolbox-1.0.48-verification.zip
+dd6b89dacda804b9e3d108082bbc4fdb1fcffe1732eab9b6dfea27702e7fd37b  RA2Toolbox-1.0.48-x64-Dependencies.zip
+a751e7d5ec76724426f72ed85bf4d5dc0362199d6c43069f70c774d8b2404a8b  RA2Toolbox-1.0.48-x64-Full.zip
+75ab9199408960d1dc065e51fe819c360b1c99b06d690138ab13685ee442c0d2  RA2Toolbox-1.0.48-x64-Update.zip
