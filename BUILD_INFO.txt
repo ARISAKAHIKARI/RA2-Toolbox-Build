@@ -1,12 +1,14 @@
-RA2 Toolbox 1.0.48 / Windows file version 1.0.48.2
-Release tag: v1.0.48; stable release, designated Latest.
-Build source: a6c4e974d578679051a9eb8d948f028294156af2; 849 tracked inputs verified against GitHub blobs.
-Local frozen build commit: 4b30ad3de3762480b2f2e1313484986d84fcaa5d (partial checkout).
+RA2 Toolbox 1.0.48.1 / Windows file version 1.0.48.3
+Release tag: v1.0.48.1; stable hotfix, designated Latest.
+Build source: 5526a252193e25052d77c06cdeac8d45aa80e551; 853 tracked inputs verified against GitHub blobs.
+Local frozen build commit: 09ede753f2926ddef3551b8c62f4bbb90b341e26 (partial checkout).
 Compiler: Zig 0.13.0; x64 host with x86 GameRuntime and GameRuntimeHost32.
 WebView2 SDK: 1.0.4314.35; paired x64 WebView2Loader.dll.
 Assist protocol: 105; AssistShared bytes: 23162640.
 Rebuild and static PE verification completed successfully with unchanged inputs and outputs.
-Production behavior is identical to the delivered 1.0.48-pre.2; only formal release metadata changed.
-Release assets include Update, Full, separate Dependencies, verification, release-manifest and SHA256SUMS.
-Package details and attachment hashes: packages/v1.0.48/.
-Controlled native probes do not imply real Windows/game/platform/multiplayer acceptance.
+Native Sell cursor admission: 3 original code images; 64 necessary dependency-byte mutations rejected per image; prior-source negative control reproduced the unrelated queue dependency.
+Debug-entry production policy: 5533 checks passed.
+Release assets: Update, Full, verification, release-manifest and SHA256SUMS.
+Dependencies unchanged: reuse RA2Toolbox-1.0.48-x64-Dependencies.zip from v1.0.48.
+Package details and attachment hashes: packages/v1.0.48.1/.
+User platform, real Windows/game clicks and multiplayer behavior remain untested.

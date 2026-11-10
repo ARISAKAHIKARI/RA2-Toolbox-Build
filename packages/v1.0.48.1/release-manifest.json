@@ -1,0 +1,388 @@
+{
+  "version": "1.0.48.1",
+  "file_version": "1.0.48.3",
+  "tag": "v1.0.48.1",
+  "source_commit": "5526a252193e25052d77c06cdeac8d45aa80e551",
+  "source_binding": {
+    "remote_commit": "5526a252193e25052d77c06cdeac8d45aa80e551",
+    "remote_tree": "95f14542d7ecc13c0e1b9dc18c385aed875b33a1",
+    "local_build_commit": "09ede753f2926ddef3551b8c62f4bbb90b341e26",
+    "source_inputs_checked": 853,
+    "all_tracked_build_source_blobs_match_remote": true,
+    "mismatches": []
+  },
+  "build_artifacts": {
+    "RA2Toolbox.exe": {
+      "bytes": 9516032,
+      "sha256": "3f66341f9087c8af0e1350ac2f37cbdda454684505973c4f5dd83812daf5cee9"
+    },
+    "GameRuntime.dll": {
+      "bytes": 25123328,
+      "sha256": "50c216968478b8ca167a30b9d6f4c1fd53b7fb38cac869c8b8eb6ed14d9708a3"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 214528,
+      "sha256": "429bbb43c7fb75364e57f798817868fdbf905245ccc380867f17540ddbc15bb4"
+    },
+    "WebView2Loader.dll": {
+      "bytes": 194912,
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  },
+  "archives": {
+    "RA2Toolbox-1.0.48.1-x64-Update.zip": {
+      "bytes": 4128368,
+      "sha256": "6fb15bc16e8224717940ecaa7b381ea99445999a5121503dc6031208e4afcd23"
+    },
+    "RA2Toolbox-1.0.48.1-x64-Full.zip": {
+      "bytes": 4513836,
+      "sha256": "cc23b745fd54329a6966fd30ba957c05352d4b5201fd8752d21cb61dd935d340"
+    },
+    "RA2Toolbox-1.0.48.1-verification.zip": {
+      "bytes": 78846,
+      "sha256": "d8f6226b736333ad47a3395f68be3becd3c87069ffa908b62afb0a173aa26953"
+    }
+  },
+  "packages": {
+    "Update": {
+      "version": "1.0.48.1",
+      "file_version": "1.0.48.3",
+      "kind": "x64 Update",
+      "source_commit": "5526a252193e25052d77c06cdeac8d45aa80e551",
+      "local_build_commit": "09ede753f2926ddef3551b8c62f4bbb90b341e26",
+      "tracked_build_inputs_verified": 853,
+      "assist_protocol": 105,
+      "assist_shared_bytes": 23162640,
+      "build_and_static_PE_passed": true,
+      "actual_game_tested": false,
+      "actual_multiplayer_tested": false,
+      "user_platform_tested": false,
+      "files": {
+        "GameRuntime.dll": {
+          "bytes": 25123328,
+          "sha256": "50c216968478b8ca167a30b9d6f4c1fd53b7fb38cac869c8b8eb6ed14d9708a3"
+        },
+        "GameRuntimeHost32.exe": {
+          "bytes": 214528,
+          "sha256": "429bbb43c7fb75364e57f798817868fdbf905245ccc380867f17540ddbc15bb4"
+        },
+        "RA2Toolbox.exe": {
+          "bytes": 9516032,
+          "sha256": "3f66341f9087c8af0e1350ac2f37cbdda454684505973c4f5dd83812daf5cee9"
+        },
+        "README.txt": {
+          "bytes": 1689,
+          "sha256": "ababa1257731ba1b646639c86b607a3f0e1420b1c60357f3511fe3ffc78a55bc"
+        },
+        "Start.cmd": {
+          "bytes": 68,
+          "sha256": "9869da39057c74b61f63f7e86fea14bf952aa976cec61d8324491c3ab255f3c5"
+        },
+        "WebView2Loader.dll": {
+          "bytes": 194912,
+          "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+        },
+        "engine/dis_render.py": {
+          "bytes": 2222,
+          "sha256": "eb953f31b8453a3ae1cd79c363840f0706116a9a8ca8ecd3cb1e41fb99930fc9"
+        },
+        "engine/player-template.html": {
+          "bytes": 10054,
+          "sha256": "da85d9fc8d3d25b96e7023d754c47d9832687ff344dbba8adcb350df56b46daa"
+        },
+        "engine/precompute.py": {
+          "bytes": 8166,
+          "sha256": "aa347f080f06c95c6fb880caa57b4c5d205e67fd29e4b16b0b3e9be135c07fad"
+        },
+        "engine/prepare_runtime.ps1": {
+          "bytes": 23292,
+          "sha256": "507886249889153d21c55e428b962e3d7127c89c5be3c3a699871e50ee7b2022"
+        },
+        "engine/prepare_runtime.py": {
+          "bytes": 31598,
+          "sha256": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96"
+        },
+        "engine/preview_builder.py": {
+          "bytes": 4135,
+          "sha256": "a4de364d3f2e7909802931954d2c330bd160529ad988c68032cd479a3e90edca"
+        },
+        "engine/runtime-dependencies.json": {
+          "bytes": 3623,
+          "sha256": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+        },
+        "engine/test_precompute_cache.py": {
+          "bytes": 12063,
+          "sha256": "2b754af68e04e62f14ace39832cd8c585127f5285c69bb78823379e8cfd091b4"
+        },
+        "licenses/LICENSE-GPL.txt": {
+          "bytes": 35151,
+          "sha256": "7fe14716ed31cc71fc3bf9af293c368d464a853a70ea86e9995388f6b9e929e5"
+        },
+        "licenses/LLVM-libcxx-LICENSE.txt": {
+          "bytes": 16703,
+          "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b"
+        },
+        "licenses/LLVM-libcxxabi-LICENSE.txt": {
+          "bytes": 16706,
+          "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c"
+        },
+        "licenses/THIRD_PARTY_NOTICES.md": {
+          "bytes": 10726,
+          "sha256": "f91a916d0fe79493cd71e32390dc5f7ec326f59bef494d86af0a996fbc8a1207"
+        },
+        "licenses/WebView2/LICENSE.txt": {
+          "bytes": 1487,
+          "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55"
+        },
+        "licenses/WebView2/NOTICE.txt": {
+          "bytes": 3894,
+          "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+        },
+        "licenses/Zig-LICENSE.txt": {
+          "bytes": 1080,
+          "sha256": "5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177"
+        },
+        "licenses/xbrz-License.txt": {
+          "bytes": 33093,
+          "sha256": "321429c853d59b621414832581e93ff38586c348aa2de43c7e571b33423d670a"
+        }
+      }
+    },
+    "Full": {
+      "version": "1.0.48.1",
+      "file_version": "1.0.48.3",
+      "kind": "x64 Full",
+      "source_commit": "5526a252193e25052d77c06cdeac8d45aa80e551",
+      "local_build_commit": "09ede753f2926ddef3551b8c62f4bbb90b341e26",
+      "tracked_build_inputs_verified": 853,
+      "assist_protocol": 105,
+      "assist_shared_bytes": 23162640,
+      "build_and_static_PE_passed": true,
+      "actual_game_tested": false,
+      "actual_multiplayer_tested": false,
+      "user_platform_tested": false,
+      "files": {
+        "GameRuntime.dll": {
+          "bytes": 25123328,
+          "sha256": "50c216968478b8ca167a30b9d6f4c1fd53b7fb38cac869c8b8eb6ed14d9708a3"
+        },
+        "GameRuntimeHost32.exe": {
+          "bytes": 214528,
+          "sha256": "429bbb43c7fb75364e57f798817868fdbf905245ccc380867f17540ddbc15bb4"
+        },
+        "RA2Toolbox.exe": {
+          "bytes": 9516032,
+          "sha256": "3f66341f9087c8af0e1350ac2f37cbdda454684505973c4f5dd83812daf5cee9"
+        },
+        "README.txt": {
+          "bytes": 1689,
+          "sha256": "ababa1257731ba1b646639c86b607a3f0e1420b1c60357f3511fe3ffc78a55bc"
+        },
+        "Start.cmd": {
+          "bytes": 68,
+          "sha256": "9869da39057c74b61f63f7e86fea14bf952aa976cec61d8324491c3ab255f3c5"
+        },
+        "WebView2Loader.dll": {
+          "bytes": 194912,
+          "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+        },
+        "assets/groups.json": {
+          "bytes": 41126,
+          "sha256": "381601b066eaa3edc613262e116c48efdf387124728bc20d93347ba0e5bc62ba"
+        },
+        "assets/original.sha": {
+          "bytes": 358500,
+          "sha256": "d1cdc8d48ffbf4a579a16c456a77d945e5cbe4f2def7dbee687ac3908156c3d6"
+        },
+        "assets/pairs.txt": {
+          "bytes": 2948,
+          "sha256": "014b1c780c474cbc96f004e105e660ae4d884c2f290f4992131fbf51475a63ec"
+        },
+        "assets/palette.bgra": {
+          "bytes": 1024,
+          "sha256": "7510fd2f15598e00489bfb02f7441dfa988397faec252fd18dd2437dbdf1bbee"
+        },
+        "assets/transparent.sha": {
+          "bytes": 358500,
+          "sha256": "a0cb38d050044ae66306814330845464bfc8c9484871927d40ef8e9c6810bc87"
+        },
+        "engine/dis_render.py": {
+          "bytes": 2222,
+          "sha256": "eb953f31b8453a3ae1cd79c363840f0706116a9a8ca8ecd3cb1e41fb99930fc9"
+        },
+        "engine/player-template.html": {
+          "bytes": 10054,
+          "sha256": "da85d9fc8d3d25b96e7023d754c47d9832687ff344dbba8adcb350df56b46daa"
+        },
+        "engine/precompute.py": {
+          "bytes": 8166,
+          "sha256": "aa347f080f06c95c6fb880caa57b4c5d205e67fd29e4b16b0b3e9be135c07fad"
+        },
+        "engine/prepare_runtime.ps1": {
+          "bytes": 23292,
+          "sha256": "507886249889153d21c55e428b962e3d7127c89c5be3c3a699871e50ee7b2022"
+        },
+        "engine/prepare_runtime.py": {
+          "bytes": 31598,
+          "sha256": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96"
+        },
+        "engine/preview_builder.py": {
+          "bytes": 4135,
+          "sha256": "a4de364d3f2e7909802931954d2c330bd160529ad988c68032cd479a3e90edca"
+        },
+        "engine/runtime-dependencies.json": {
+          "bytes": 3623,
+          "sha256": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+        },
+        "engine/test_precompute_cache.py": {
+          "bytes": 12063,
+          "sha256": "2b754af68e04e62f14ace39832cd8c585127f5285c69bb78823379e8cfd091b4"
+        },
+        "licenses/LICENSE-GPL.txt": {
+          "bytes": 35151,
+          "sha256": "7fe14716ed31cc71fc3bf9af293c368d464a853a70ea86e9995388f6b9e929e5"
+        },
+        "licenses/LLVM-libcxx-LICENSE.txt": {
+          "bytes": 16703,
+          "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b"
+        },
+        "licenses/LLVM-libcxxabi-LICENSE.txt": {
+          "bytes": 16706,
+          "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c"
+        },
+        "licenses/THIRD_PARTY_NOTICES.md": {
+          "bytes": 10726,
+          "sha256": "f91a916d0fe79493cd71e32390dc5f7ec326f59bef494d86af0a996fbc8a1207"
+        },
+        "licenses/WebView2/LICENSE.txt": {
+          "bytes": 1487,
+          "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55"
+        },
+        "licenses/WebView2/NOTICE.txt": {
+          "bytes": 3894,
+          "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+        },
+        "licenses/Zig-LICENSE.txt": {
+          "bytes": 1080,
+          "sha256": "5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177"
+        },
+        "licenses/xbrz-License.txt": {
+          "bytes": 33093,
+          "sha256": "321429c853d59b621414832581e93ff38586c348aa2de43c7e571b33423d670a"
+        },
+        "profiles/bibata-amber/LICENSE-source.txt": {
+          "bytes": 35132,
+          "sha256": "fe92c7ac268ce17193b98298336d3793a843a94eba9efc7ad112f9f48ad9b214"
+        },
+        "profiles/bibata-amber/SOURCE-NOTICE.txt": {
+          "bytes": 513,
+          "sha256": "c3869258975dd1e27550a8907447b430171fd3fcf8089e5f5263b96af8b8faf4"
+        },
+        "profiles/bibata-amber/SOURCE.svg": {
+          "bytes": 1095,
+          "sha256": "dcaec7b594b577c7b396a4e327f6b30b2ef40bf200c4fd54ce029ab2fa519669"
+        },
+        "profiles/bibata-amber/groups.json": {
+          "bytes": 41126,
+          "sha256": "381601b066eaa3edc613262e116c48efdf387124728bc20d93347ba0e5bc62ba"
+        },
+        "profiles/bibata-amber/original.sha": {
+          "bytes": 359220,
+          "sha256": "d0948a348ebc81e6eed3633e70d1dd939369564e2a90791d4441353133eb6868"
+        },
+        "profiles/bibata-amber/pairs.txt": {
+          "bytes": 2948,
+          "sha256": "014b1c780c474cbc96f004e105e660ae4d884c2f290f4992131fbf51475a63ec"
+        },
+        "profiles/bibata-amber/palette.bgra": {
+          "bytes": 1024,
+          "sha256": "55f1a98bd07b1cd7abd7d21d9d0a2418f1a1916222ec58c4db53e40aaa7acccd"
+        },
+        "profiles/bibata-amber/profile.ini": {
+          "bytes": 86,
+          "sha256": "30dedf7b2fa8cbab9339b176ca34bffd3e83f29e3fb793ae11ef508a3241f9c8"
+        },
+        "profiles/bibata-amber/rendered-source.svg": {
+          "bytes": 1095,
+          "sha256": "e65fb03890323e7d5490645ed70595043897e63693a3d26777a057bac3f85ca0"
+        },
+        "profiles/bibata-ice/LICENSE-source.txt": {
+          "bytes": 35132,
+          "sha256": "fe92c7ac268ce17193b98298336d3793a843a94eba9efc7ad112f9f48ad9b214"
+        },
+        "profiles/bibata-ice/SOURCE-NOTICE.txt": {
+          "bytes": 511,
+          "sha256": "44fc0a4fe847e1e4cd5af8e8de880ef233def3c231643263cc13815acdaf26fe"
+        },
+        "profiles/bibata-ice/SOURCE.svg": {
+          "bytes": 1095,
+          "sha256": "dcaec7b594b577c7b396a4e327f6b30b2ef40bf200c4fd54ce029ab2fa519669"
+        },
+        "profiles/bibata-ice/groups.json": {
+          "bytes": 41126,
+          "sha256": "381601b066eaa3edc613262e116c48efdf387124728bc20d93347ba0e5bc62ba"
+        },
+        "profiles/bibata-ice/original.sha": {
+          "bytes": 359220,
+          "sha256": "2fd5c731b5a183c3f2b2e6494aa480e57b2ccffd54618c2d45c1caa068148cf2"
+        },
+        "profiles/bibata-ice/pairs.txt": {
+          "bytes": 2948,
+          "sha256": "014b1c780c474cbc96f004e105e660ae4d884c2f290f4992131fbf51475a63ec"
+        },
+        "profiles/bibata-ice/palette.bgra": {
+          "bytes": 1024,
+          "sha256": "d7e99099512455cb2ea022d1360aac2968c7563c0028ebd9268b0a93f5e095ed"
+        },
+        "profiles/bibata-ice/profile.ini": {
+          "bytes": 82,
+          "sha256": "82b3b98d64a7b577c2437979430b1d14e0f4dbb267e89ca1ce9b049f5815f2bf"
+        },
+        "profiles/bibata-ice/rendered-source.svg": {
+          "bytes": 1095,
+          "sha256": "56ff12e6a8e236340166b5c856e40457fe610a24ee409ff3e0d3905c993b3af0"
+        },
+        "profiles/capitaine/LICENSE-source.txt": {
+          "bytes": 9466,
+          "sha256": "d4ae93fd33a12e778bca17b9591f4b7cb5916267f432edcba746c528d270746f"
+        },
+        "profiles/capitaine/SOURCE-NOTICE.txt": {
+          "bytes": 518,
+          "sha256": "73924b94cb3b516c65fd8b7bb0bd4145849d9cc36612e982e20a222fec86624c"
+        },
+        "profiles/capitaine/SOURCE.svg": {
+          "bytes": 1383,
+          "sha256": "a48a4807f356e414553d7e77e5ec06b84cd465c05607b2a1c39cc3a1d724fb28"
+        },
+        "profiles/capitaine/groups.json": {
+          "bytes": 41126,
+          "sha256": "381601b066eaa3edc613262e116c48efdf387124728bc20d93347ba0e5bc62ba"
+        },
+        "profiles/capitaine/original.sha": {
+          "bytes": 358534,
+          "sha256": "8e6da3364deb96a6391dc98259b1953745c8ce1cc6254f68456be74047f93e6f"
+        },
+        "profiles/capitaine/pairs.txt": {
+          "bytes": 2948,
+          "sha256": "014b1c780c474cbc96f004e105e660ae4d884c2f290f4992131fbf51475a63ec"
+        },
+        "profiles/capitaine/palette.bgra": {
+          "bytes": 1024,
+          "sha256": "c357b6c9265094dc3d919aad50ce4e8a7fa924e8a8498aed30d4aaedb4cb197e"
+        },
+        "profiles/capitaine/profile.ini": {
+          "bytes": 76,
+          "sha256": "a01ab28031fe19d7ceb6fca8210b1c92c2fbb322d3150c5ac3b139e8fb4eb103"
+        },
+        "profiles/capitaine/rendered-source.svg": {
+          "bytes": 1383,
+          "sha256": "a48a4807f356e414553d7e77e5ec06b84cd465c05607b2a1c39cc3a1d724fb28"
+        }
+      }
+    }
+  },
+  "unchanged_dependencies": "RA2Toolbox-1.0.48-x64-Dependencies.zip",
+  "user_platform_tested": false,
+  "actual_game_tested": false,
+  "actual_multiplayer_tested": false
+}
