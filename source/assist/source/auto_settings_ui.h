@@ -91,6 +91,7 @@ static bool autoSettingChanged(int id,int notification){
   extra.mapVisibility=on;changedSetting();syncAdditional();return true;
  }
  if(id==9490&&notification==BN_CLICKED){extra.superweaponGrant=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
+ if(id==9538&&notification==BN_CLICKED){extra.blockTriggerCamera=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();wakeGame();notify(extra.blockTriggerCamera?L"已请求屏蔽地图触发切屏，请查看硬件断点就绪状态。":L"已恢复地图触发视角移动。");return true;}
  if(id==9536&&notification==BN_CLICKED){extra.keepInputUnlocked=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();wakeGame();notify(extra.keepInputUnlocked?L"保持操作权限已开启：游戏触发输入锁时自动解除。":L"保持操作权限已关闭：后续输入锁由地图触发控制。");return true;}
  if(id==9530&&notification==BN_CLICKED){extra.bombBoardEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();wakeGame();return true;}
  if(id==9496&&notification==BN_CLICKED){extra.minerDefenseEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();wakeGame();return true;}

@@ -1,3 +1,4 @@
+#include "panel_placement.h"
 #include "construction_catalog.h"
 #include "native_cameos.h"
 #include "native_badge_display.h"
@@ -126,6 +127,10 @@ static void resizePanel(){
  // Do not repeatedly raise a stationary panel above sibling overlays. On a
  // resize discard copied client pixels; the back buffer supplies a full frame.
  overlaystack::place(window,overlaystack::Layer::Construction,x,y,w,h,SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS|(visible?SWP_NOZORDER:SWP_SHOWWINDOW));
+}
+static assist::panelplacement::Rect occupiedRect(){
+ if(!window||!geometryReady||!paintReady||!IsWindowVisible(window))return {};
+ return {paintedLayout.left(),paintedLayout.top(),paintedLayout.width(),paintedLayout.height()};
 }
 static bool usable();
 static bool displayReady(){return extra.constructionQueue&&enabled&&foregroundGame()&&constructionDisplayVisible();}

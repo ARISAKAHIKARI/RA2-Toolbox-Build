@@ -333,3 +333,5 @@
 - [pre.8 共享采集、订阅和公共调度](2026-11-09-pre147-sampling-scheduler.md)：重复样本快路径、独立租约到期缓存、依赖页合并读取、同速续租免唤醒和空闲输入计时；受控调用对照及边界。
 
 - [2026-11-10 载员气泡：己方与常驻选项](2026-11-10-passenger-display.md)：已有共享帧显示选项，未新增逆向地址或原生调用。
+
+- [2026-11-10：完整解锁、触发视角保护、面板布局与 Sell 直接组包](2026-11-10-input-panels-direct-sell.md)：Scenario+35A2、WWMouse计数、共享DR tag64；单机AI完整接收器、联机AI拒绝、直接wire→transport，无OutList；受控证据，未双机验证。

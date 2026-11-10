@@ -18,6 +18,7 @@
 // selection/cancellation returns through the existing authenticated command
 // mailbox. The native support page remains intact, including during read loss.
 #include "superweapon_sidebar_model.h"
+#include "panel_placement.h"
 namespace swsidebar {
 
 class Panel {
@@ -25,14 +26,14 @@ class Panel {
  HWND window_=nullptr,game_=nullptr;uint32_t pid_=0,match_=0;bool inputReady_=false,shown_=false,drag_=false,buttonDown_=false;
  DWORD sampled_=0;int width_=0,height_=0,clientW_=0,clientH_=0,mapRight_=0,screenW_=0,logicalMapRight_=0,scroll_=0,hover_=-1,pressed_=-1;
  int left_=0,top_=0,pressX_=0,pressY_=0;POINT dragOffset_{};
- nativeviewportprojection::Transform viewport_{};
+ nativeviewportprojection::Transform viewport_{};assist::panelplacement::Rect occupied_{};
  Options options_;Read read_;std::function<void(int,uint32_t,uint32_t)>select_;std::function<void(const Options&)>changed_;
  Entry pressedEntry_;std::array<uint16_t,256>palette_{};bool paletteReady_=false;
  std::vector<Entry> entries_;std::map<uint32_t,Icon>icons_;assist::construction::PanelBuffer buffer_;
  int px(int n)const{return std::max(1,n*options_.scale/100);}
  int title()const{return px(24);}int cellW()const{return px(66);}int cellH()const{return px(65);}
  int columns()const{return 2;}
- int rows()const{return std::clamp(options_.rows,1,std::max(1,(clientH_-title()-px(8))/cellH()));}
+ int rows()const{return assist::panelplacement::rows(int(entries_.size()),options_.rows,(clientH_-title()-px(8))/cellH());}
  int hit(int x,int y)const{
   if(options_.collapsed||x<px(4)||y<title()+px(4))return -1;
   int col=(x-px(4))/cellW(),row=(y-title()-px(4))/cellH();if(col>=columns()||row>=rows())return -1;
@@ -44,6 +45,7 @@ class Panel {
   width_=columns()*cellW()+px(8);height_=title()+(options_.collapsed?0:rows()*cellH()+px(8));
   if(options_.detached){left_=std::clamp(options_.x,0,std::max(0,clientW_-width_));top_=std::clamp(options_.y,0,std::max(0,clientH_-height_));}
   else{left_=std::clamp(mapRight_-width_-px(4),0,std::max(0,clientW_-width_));top_=std::clamp((clientH_-height_)/2,0,std::max(0,clientH_-height_));}
+  if(!drag_){auto r=assist::panelplacement::avoid({left_,top_,width_,height_},occupied_,clientW_,clientH_,px(4));left_=r.x;top_=r.y;}
   scroll_=std::clamp(scroll_,0,std::max(0,((int(entries_.size())+1)/2-rows())*2));
   POINT origin{};if(window_&&ClientToScreen(game_,&origin))overlaystack::place(window_,overlaystack::Layer::Construction,origin.x+left_,origin.y+top_,width_,height_,SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_NOCOPYBITS|(shown_?SWP_SHOWWINDOW:0));
  }
@@ -91,7 +93,7 @@ class Panel {
   if(m==WM_LBUTTONUP){
    const bool down=self->buttonDown_;const int pressed=self->pressed_;const Entry expected=self->pressedEntry_;
    self->buttonDown_=false;self->pressed_=-1;
-   if(self->drag_){self->drag_=false;if(GetCapture()==w)ReleaseCapture();self->options_.x=self->left_;self->options_.y=self->top_;self->changed();return 0;}
+   if(self->drag_){self->drag_=false;if(GetCapture()==w)ReleaseCapture();self->options_.x=self->left_;self->options_.y=self->top_;self->geometry();self->changed();return 0;}
    if(GetCapture()==w)ReleaseCapture();if(!down)return 0;
    if(!self->usable())return 0;
    if(y<self->title()&&self->pressY_<self->title()){
@@ -128,7 +130,8 @@ public:
  // pixels (before scaling to the HWND client), not the enlarged zoom-out R.
  // It is transient geometry and must not be saved in Options.
  void update(HWND game,uint32_t process,uint32_t match,bool inputReady,const Options&options,Read read,
-             std::function<void(int,uint32_t,uint32_t)>select,std::function<void(const Options&)>changed,int physicalMapRight=0,const nativeviewportprojection::Transform&transform={}){
+             std::function<void(int,uint32_t,uint32_t)>select,std::function<void(const Options&)>changed,int physicalMapRight=0,const nativeviewportprojection::Transform&transform={},assist::panelplacement::Rect occupied={}){
+  occupied_=occupied;
   if(viewport_!=transform){hide();sampled_=0;viewport_=transform;}
   if(!drag_)options_=options;options_.scale=std::clamp(options_.scale,75,200);options_.rows=std::clamp(options_.rows,1,20);read_=std::move(read);select_=std::move(select);changed_=std::move(changed);
   if(!overlayvisibility::visible()||!options.enabled||!game||!match||!IsWindow(game)||IsIconic(game)||GetForegroundWindow()!=game){hide();return;}

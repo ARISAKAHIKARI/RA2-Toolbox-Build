@@ -116,7 +116,7 @@ extern "C" int GuardedAssistFilter(void*);
 static bool gestureWantsInputSample(const MSG*msg){
  if(!msg||!sh||!sh->foreground)return false;
  const auto edge=moorders::gestureMouseEdge(msg->message,uintptr_t(msg->wParam));
- if(sh->keepInputUnlocked&&(edge.down||edge.up||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP))return true;
+ if(sh->keepInputUnlocked&&(msg->message==WM_MOUSEMOVE||edge.down||edge.up||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP))return true;
  return (edge.down||edge.up)&&((sh->moFeatures&7u)||sh->formationPolicy.enabled||directair::enabled()||moOrdersPending()||directAirPending());
 }
 extern "C" void AssistRuntimeFilter(void* message){

@@ -19,7 +19,8 @@ static bool enemyBuildingSellAllowed(uint32_t object){
  // It does not change ownership, CurrentPlayer or any receiver-side check.
  return playertest::SellAvailable&&sh&&(sh->flags&SellEnemy)&&lastHouse&&
   object&&worldObjects.contains(object)&&kind(object)==3&&nativeEnemy(object,lastHouse)&&
-  playableHouse(get<uint32_t>(object+0x21C));
+  playableHouse(get<uint32_t>(object+0x21C))&&
+  (!eventdelivery::isMultiplayer(get<int>(0xA8B238))||sellHumanHouse(get<uint32_t>(object+0x21C)));
 }
 static int destructPlayerTarget(uint32_t house,uint32_t expectedID,uint32_t expectedIndex){
  if(!playertest::DestructAvailable||!lastHouse||!playableHouse(lastHouse)||

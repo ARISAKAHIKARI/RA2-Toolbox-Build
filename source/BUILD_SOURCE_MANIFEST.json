@@ -1,18 +1,18 @@
 {
-  "name": "RA2 Toolbox 1.0.48-pre.1",
-  "version": "1.0.48-pre.1",
+  "name": "RA2 Toolbox 1.0.48-pre.2",
+  "version": "1.0.48-pre.2",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
   "resources_legacy_reuse": true,
-  "build_protocol": 104,
+  "build_protocol": 105,
   "validation": "This revision records only focused checks actually executed against its frozen production and test source bytes. Historical suites are not counted as new execution. Complete Windows-target compilation, static PE/ABI validation, paired component digests and archive verification are recorded separately in the frozen build receipts and release-manifest.json; this source manifest does not assert their completion. No live Windows/DWM, user-platform, game, physical GPU or multiplayer acceptance is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
     "Experimental.HardwareMapVisibility": "default0; one shared DR slot, flag-only mode0 black-shroud gate; excludes full unit/radar/selection support; incompatible with other map draw/reveal modes",
     "Experimental.SuperweaponPermanentGrant": "default0; native permanent grant each observed game frame; normal charge; no automatic multiplayer broadcast",
     "Orders.MegaMissionBackend": "0=constructor; 1=high-level MP; SP uses constructor/DoList centrally",
-    "Orders.ObjectEventBackend": "0=constructor; 1=ClickedEvent MP; SP uses constructor/DoList centrally",
+    "Orders.ObjectEventBackend": "0=constructor; 1=ClickedEvent MP for repair; explicit Sell always bypasses ClickedEvent/constructor; multiplayer Sell serializes wire packets directly, no native OutList/packer",
     "Display.ShroudStrategy": "UI0=off,1/2=HIGH RISK original half/clear draw hooks,3=HIGH RISK automatic reveal,4=HIGH RISK direct map; material5/6 are visible disabled choices and resolve to off; stored7/8 aliases1/2",
     "Display.BuildTimeTooltip": "default0 after one-time migration; independent native sidebar time tooltip; no high-risk prefix",
     "Experimental.CrcMapIsClearShadow": "default0; HIGH RISK MapIsClear-only original-value input at native CRC; MP automatic/native reveal only; enable before first tool reveal in a new match; not a full reveal or platform compatibility guarantee",
@@ -24,10 +24,11 @@
     "FeatureTypes.SpiderDefenseCustom": "default0=native miner detection independent of OreTypes; 1=eligible own ground vehicles/infantry named in the list; empty custom list means no new defense jobs",
     "DebugEntries.Skip_<kind+address>": "default0=strict; exact1 bypasses only this entry reference signature; stable kind/address key; Call/Patch/Breakpoint independent; system hooks without a machine-code signature show not applicable",
     "Cursor.PositionMode": "default0=自动匹配游戏; 1=跟随系统鼠标; 2=游戏画布拉伸到全屏. Automatic mapping requires strict clip geometry and actual sampled game dimensions; explicit mapping supports automatic dimensions or paired manual game width/height. The position target is the current game monitor, independent of image scale percent and DPI size multipliers.",
-    "Input.KeepUnlocked": "default0; clear validated local UserInputLocked byte in playable foreground context; disabling never reapplies an old lock",
+    "Input.KeepUnlocked": "default0; restore native Scenario input lock, WWMouse lock count and keyboard state; optional shared DR tag64 blocks repeated trigger46 before selection clearing; multiplayer exposed but not live-tested",
     "BombBoard.Enabled": "default0; own attached-bomb infantry use nearest legal own transport; manual ownership survives temporary suspension",
     "BombBoard.RangeCells": "default8; integer1-64",
-    "Aircraft.NativeWaypoints": "native event UI mode2 appends through central gateway then releases real game planning key; custom held key remains compatibility mode"
+    "Aircraft.NativeWaypoints": "native event UI mode2 appends through central gateway then releases real game planning key; custom held key remains compatibility mode",
+    "Input.BlockTriggerCamera": "default0; shared DR tag64 skips trigger48/49/112/145 only; preserves Unlock, ZoomOut and map bounds"
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,
@@ -1412,5 +1413,18 @@
     "assist_shared_bytes": 23162608,
     "research": "research/2026-11-10-input-planning-and-bomb-board.md",
     "validation_scope": "Focused controlled production tests; Windows-target build and static PE/ABI receipts recorded separately. No real game, native aircraft arrival, explosion or multiplayer acceptance."
+  },
+  "input_panels_sell_pre2": {
+    "assist_protocol": 105,
+    "assist_shared_bytes": 23162640,
+    "base_commit": "00a4494708fe409c56246cdc793fe811c777acb7",
+    "research": "research/2026-11-10-input-panels-direct-sell.md",
+    "changes": [
+      "Native Scenario/WWMouse unlock and trigger input/camera filter",
+      "Superweapon panel rows shrink to entries and avoid reservation rectangle",
+      "SP AI Sell runs original complete event receiver; MP AI refused",
+      "MP shortcut Sell encodes native wire and calls active reliable transport; local DoList mirrors same execute frame; no OutList/constructor/packer calls"
+    ],
+    "validation_scope": "Portable production-policy tests and captured-native Unicorn probes passed. Build/PE receipts recorded separately. No Windows loader, visual/game/real-platform or multiplayer test."
   }
 }

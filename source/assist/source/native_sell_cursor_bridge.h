@@ -49,7 +49,8 @@ static int nativeSellCursorAction(unsigned op,uint32_t object,uint32_t suppliedO
     frame<candidate.frame||frame-candidate.frame>90||DWORD(now-candidate.tick)>1500)return 0;
  // Native OutList is the next consumer even in SP; do not check the toolbox's
  // SP DoList lane here or claim that the original append has already happened.
- if(!queueAvailable(get<int>(0xA802C8),get<int>(0xA802D0)))return 0;
+ const bool singleAI=eventdelivery::isSingleplayer(session)&&!sellHumanHouse(owner);
+ if(!singleAI&&!queueAvailable(get<int>(0xA802C8),get<int>(0xA802D0)))return 0;
  actorFrameArbiter.begin(match,frame);
  if(!manualVersions.trackable(id)||!actorFrameArbiter.canIssue(id,token)||
     !actorLeaseArbiter.canIssue(match,frame,id,object,token,taskarbiter::Owner::Sell))return 0;
@@ -63,6 +64,12 @@ static int nativeSellCursorAction(unsigned op,uint32_t object,uint32_t suppliedO
  if(!nativeSellCursorReady()||!nativeSellCursorTarget(object,checkedOwner,checkedIndex)||
     checkedOwner!=owner||checkedIndex!=index||get<uint32_t>(object+0x10)!=id||
     get<uint32_t>(owner+0x10)!=ownerID||manualVersions.get(id)!=token)return 0;
+ if(singleAI){
+  static constexpr uint8_t continuation[]={0x8D,0x4C,0x24,0x28,0x52,0xE8,0x54,0xA4,1,0};
+  if(!debugentries::pattern(debugentries::Kind::Call,0x4AC182,continuation,sizeof continuation,read))return -1;
+  Event packet{};if(!sellpacket::event(packet,int(index),id,uint32_t(frame))||!executeSinglePlayerAISell(packet,object)){sh->nativeSellCursorStatus=-5;return -1;}
+  actorFrameArbiter.record(id,token,taskarbiter::Owner::Sell);++sh->nativeSellOwnerAdjusted;return -1;
+ }
  ++sh->nativeSellOwnerAdjusted;
  return int(index)+1; // 0 means replay the original CurrentHouse load.
 }
@@ -116,6 +123,8 @@ static __declspec(naked) void nativeSellOwnerEntry(){__asm {
  push 10
  call GuardedRiskAction
  add esp,12
+ cmp eax,-1
+ je consumed
  test eax,eax
  jz original
  dec eax
@@ -127,6 +136,14 @@ static __declspec(naked) void nativeSellOwnerEntry(){__asm {
  popad
  popfd
  push 4AC182h
+ ret
+consumed:
+ fxrstor [esp]
+ mov esp,ebx
+ popad
+ popfd
+ add esp,12
+ push 4AC20Ch
  ret
 original:
  fxrstor [esp]

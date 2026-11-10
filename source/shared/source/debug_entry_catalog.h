@@ -165,6 +165,12 @@ inline constexpr Entry Entries[]={
  {id(Kind::Breakpoint,0x0055D7BC),0x0055D7BC,Kind::Breakpoint,"单机帧率参数断点", "硬件断点", "调整原生模拟帧间隔以应用目标帧率；仅单机模式，共享四个硬件断点槽", "单机模拟帧率与运行节奏",Checkable},
  {id(Kind::System,0x00000003),0x00000003,Kind::System,"游戏消息调度入口", "系统调度", "WH_GETMESSAGE 系统 Hook；无固定游戏代码签名", "Runtime 调度与重连",0},
  {id(Kind::System,0x0000000C),0x0000000C,Kind::System,"消息返回通知入口", "系统调度", "WH_CALLWNDPROCRET 系统 Hook；无固定游戏代码签名", "Runtime 消息返回通知",0},
+ {id(Kind::Call,0x004C6CB0),0x004C6CB0,Kind::Call,"单机 AI 变卖事件接收", "出售", "仅单机执行完整 Sell 接收分支", "单机电脑建筑变卖",Checkable},
+ {id(Kind::Call,0x004C6F3B),0x004C6F3B,Kind::Call,"Sell 接收所属方约定", "出售", "保留接收器对象所属方检查", "单机电脑建筑变卖",Checkable},
+ {id(Kind::Call,0x004AC182),0x004AC182,Kind::Call,"原生出售光标收尾", "出售", "单机 AI 已处理后跳过重复追加", "单机电脑建筑变卖",Checkable},
+ {id(Kind::Call,0x00684290),0x00684290,Kind::Call,"剧情原生解锁", "输入", "解除剧情标志、鼠标锁计数并刷新输入", "保持操作权限",Checkable},
+ {id(Kind::Call,0x006842C7),0x006842C7,Kind::Call,"剧情解锁收尾", "输入", "验证剧情解锁双标志与刷新调用", "保持操作权限",Checkable},
+ {id(Kind::Breakpoint,0x006DD8B0),0x006DD8B0,Kind::Breakpoint,"剧情输入与视角保护", "硬件断点", "只拦截锁定和镜头动作，共享 1 槽", "保持操作权限、屏蔽触发切屏",Checkable},
 };
 inline constexpr uint32_t Count=sizeof(Entries)/sizeof(Entries[0]);
 static_assert(Count<=Capacity,"debug entry catalogue capacity");

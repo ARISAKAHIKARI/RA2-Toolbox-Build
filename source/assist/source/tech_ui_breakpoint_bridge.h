@@ -1,4 +1,5 @@
 #include "tech_ui_breakpoint_core.h"
+#include "trigger_input_policy.h"
 #include "tech_ui_breakpoint_debug.h"
 #include "tech_enhancement_parameter_policy.h"
 #include "tech_parameter_lookup.h"
@@ -26,6 +27,12 @@ struct TypeIdentity{uint32_t pointer=0,id=0,table=0;};
 struct EnhancedIdentity{TypeIdentity type;uint32_t items=0;int index=-1,level=0;};
 struct Policy{volatile LONG enabled=0;uint32_t house=0,houseID=0,scenario=0;int session=-1,frame=-1;TypeIdentity types[1024]{};volatile LONG enhanced=0,controlling=0,compareLevel=0,showing=0;EnhancedIdentity enhancement[techenhancement::Count]{};techlookup::PointerIndex<64> enhancementIndex;};
 static Policy policy;static techbp::Service service;
+static bool triggerDesired=false,triggerEnabled=false;static int triggerFailure=0;
+static techbp::SignatureSnapshot<sizeof triggerinput::Prefix> triggerSignature;static uint32_t triggerRevision=0;
+static bool triggerCompatible(bool publishSnapshot=true){
+ const bool ok=techbp::debugSignatureSnapshot(triggerSignature,triggerinput::Entry,triggerinput::Entry,techbp::patternDigest(triggerinput::Prefix),read,publishSnapshot);
+ if(publishSnapshot)triggerRevision=ok?debugentries::policyRevision:0;return ok;
+}
 static bool mapDesired=false,mapRedrawPending=false;static int mapFailure=0;static volatile LONG mapExceptions=0;static bool lastMapPresentation=false;
 static int failure=0,enhancementFailure=0,controlFailure=0;static bool desired=false,enhancementDesired=false,controlDesired=false,enhancementCompareRequested=false,enhancementCameoBlocked=false;
 // Published eligibility is refreshed on the ordinary owner-thread maintenance
@@ -43,7 +50,7 @@ static FailureRetry fullFailureRetry,controlFailureRetry;
 static volatile LONG fullExceptions=0,enhancementExceptions=0,controlExceptions=0;static unsigned probeDepth=0;static uint32_t probeToken=0;
 static uint32_t controlAdmissionChecks=0,worldCaptures=0;
 static hardwareperf::Window performanceWindow;
-static constexpr uint32_t sites[techbp::SiteCount]={0x4F7870,mapvisibility::Address,0x4F7951,0x4F7B66,controlparams::Entry,singlefps::Entry};
+static constexpr uint32_t sites[techbp::SiteCount]={0x4F7870,mapvisibility::Address,0x4F7951,0x4F7B66,controlparams::Entry,singlefps::Entry,triggerinput::Entry};
 inline unsigned hash(uint32_t p){return ((p>>4)*2654435761u)&1023u;}
 static techbp::SignatureSnapshot<20> nativeDraw;static techbp::SignatureSnapshot<15> nativePrune;static techbp::SignatureSnapshot<16> nativeEntry;
 static techbp::SignatureSnapshot<13> enhancementLimit;static techbp::SignatureSnapshot<16> enhancementCompare,enhancementEntry;
@@ -132,7 +139,7 @@ static bool retryFailure(FailureRetry&retry,uint32_t group){
  retry.defer();return true;
 }
 static void syncDebugBreakpointPolicy(){
- static uint32_t observed=0;static bool required[techbp::SiteCount]={true,true,true,true,true,true};
+ static uint32_t observed=0;static bool required[techbp::SiteCount]={true,true,true,true,true,true,true};
  const uint32_t revision=debugentries::policyRevision;if(observed==revision)return;observed=revision;
  bool changed[techbp::SiteCount]{};uint32_t groups=0;
  for(unsigned i=0;i<techbp::SiteCount;++i){const bool next=debugentries::signatureRequired(debugentries::Kind::Breakpoint,sites[i]);changed[i]=next!=required[i];required[i]=next;if(changed[i])groups|=1u<<i;}
@@ -146,6 +153,7 @@ static void syncDebugBreakpointPolicy(){
  else if(mapPolicyRevision)mapPolicyRevision=revision;
  if(changed[5]){singlefps::disable();singlefps::desired=false;singlefps::failure=0;singlefps::signatureRevision=0;singlefps::native.valid=false;}
  else if(singlefps::signatureRevision)singlefps::signatureRevision=revision;
+ if(changed[6]){triggerEnabled=triggerDesired=false;triggerFailure=0;triggerRevision=0;triggerSignature.valid=false;}else if(triggerRevision)triggerRevision=revision;
  if(groups){attempted=0;refusedGroups&=~groups;}
 }
 static bool debugExactUnreachable=false;
@@ -156,7 +164,7 @@ static void inspectDebugBreakpointSignatures(){
  at=now;revision=debugentries::policyRevision;
  // These probes only observe bytes; they never configure a DR, create a
  // timer/VEH, publish a callback permission, or change an owned snapshot.
- nativeCompatible(false);enhancementCompatible(false);mapCompatible(false);controlCompatible(false);singlefps::compatible(false);
+ nativeCompatible(false);enhancementCompatible(false);mapCompatible(false);controlCompatible(false);singlefps::compatible(false);triggerCompatible(false);
  debugExactUnreachable=enhancementBodyBypassed();
 }
 static void publishDebugBreakpointStates(){
@@ -167,8 +175,8 @@ static void publishDebugBreakpointStates(){
  const uint32_t pendingGroups=service.pendingGroups();const bool uncertain=service.lease.uncertain!=0,resources=service.resources();
  auto off=[&](uint32_t group){return !(retained&group)&&!uncertain&&!(pendingGroups&group)&&
   ((retained&(techbp::AllTags&~group))||!(resourceGroups&group)||!resources);};
- const bool requested[techbp::SiteCount]={bool((sh->flags&UnsafeTech)&&techmode::parameters(techImplementation)),bool(sh->mapVisibility),enhancedRequested(),enhancedRequested()&&bool(sh->techEnhanceCompareLevel),controlmode::parameters(sh->controlAll),sh->singlePlayerFPS>=10&&singlefps::valid(sh->singlePlayerFPS)};
- const int failures[techbp::SiteCount]={failure,mapFailure,enhancementFailure,enhancementFailure,controlFailure,singlefps::failure};
+ const bool requested[techbp::SiteCount]={bool((sh->flags&UnsafeTech)&&techmode::parameters(techImplementation)),bool(sh->mapVisibility),enhancedRequested(),enhancedRequested()&&bool(sh->techEnhanceCompareLevel),controlmode::parameters(sh->controlAll),sh->singlePlayerFPS>=10&&singlefps::valid(sh->singlePlayerFPS),bool(sh->keepInputUnlocked||sh->blockTriggerCamera)};
+ const int failures[techbp::SiteCount]={failure,mapFailure,enhancementFailure,enhancementFailure,controlFailure,singlefps::failure,triggerFailure};
  for(unsigned i=0;i<techbp::SiteCount;++i){const uint32_t group=1u<<i;const bool pending=(pendingGroups&group)||uncertain;
   Hook hook=Hook::Inactive;Reason reason=Reason::NoRequest;int error=0;
   if(pending){hook=Hook::Pending;reason=Reason::OwnerPending;error=int(service.lastError);}
@@ -200,6 +208,7 @@ static void publishHardwarePerformance(){
 static void publish(){
  if(!sh)return;inspectDebugBreakpointSignatures();publishDebugBreakpointStates();publishHardwarePerformance();const uint32_t active=service.activeTags();
  sh->hardwareSlotBudget=service.slotBudget();
+ sh->triggerInputStatus=triggerFailure?triggerFailure:triggerDesired?(ready(triggerinput::Tag)?techbp::Ready:(refusedGroups&triggerinput::Tag)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(triggerinput::Tag)?techbp::Off:techbp::Waiting;
  sh->singlePlayerFPSStatus=singlefps::failure?singlefps::failure:singlefps::desired?(ready(singlefps::Tag)&&sh->singlePlayerFPSActive?techbp::Ready:(refusedGroups&singlefps::Tag)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(singlefps::Tag)?techbp::Off:techbp::Waiting;
  const bool mapPresentation=policy.showing!=0;if(mapPresentation!=lastMapPresentation){mapRedrawPending=true;lastMapPresentation=mapPresentation;}
  sh->mapVisibilityStatus=mapFailure?mapFailure:mapDesired?(ready(mapvisibility::Tag)?techbp::Ready:(refusedGroups&mapvisibility::Tag)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(mapvisibility::Tag)?techbp::Off:service.state<0?service.state:techbp::Waiting;
@@ -238,11 +247,11 @@ static bool refreshControlEligibility(){
  controlEligible=GuardedControlWorldEligible()!=0;return controlEligible;
 }
 static bool configure(){
- const uint32_t wanted=(desired&&!failure?FullGroup:0u)|(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7)?enhancementTags():0u)|(controlDesired&&!controlFailure?16u:0u)|(mapDesired&&!mapFailure?mapvisibility::Tag:0u)|(singlefps::desired&&!singlefps::failure?singlefps::Tag:0u);service.poll();if(!service.resources())resourceGroups=0;
+ const uint32_t wanted=(desired&&!failure?FullGroup:0u)|(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7)?enhancementTags():0u)|(controlDesired&&!controlFailure?16u:0u)|(mapDesired&&!mapFailure?mapvisibility::Tag:0u)|(singlefps::desired&&!singlefps::failure?singlefps::Tag:0u)|(triggerDesired&&!triggerFailure?triggerinput::Tag:0u);service.poll();if(!service.resources())resourceGroups=0;
  if(!service.pending()){refusedGroups&=~service.activeTags();if(service.state==techbp::Slots)refusedGroups|=attempted&~service.activeTags();}
  if(service.pending()){publish();return false;}
  if(!healthy()){
-  controlEligible=false;
+  controlEligible=false;triggerEnabled=false;
   InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);
   InterlockedExchange(&policy.showing,0);if(mapDesired)mapFailure=int(service.state);
   if(controlDesired){controlFailure=int(service.state);controlFailureRetry.defer();}
@@ -260,6 +269,7 @@ static bool configure(){
  InterlockedExchange(&policy.controlling,controlDesired&&!controlFailure&&controlEligible&&ready(16)?1:0);
  if(mapDesired&&!mapFailure)InterlockedExchange(&policy.showing,ready(mapvisibility::Tag)?1:0);
  if(singlefps::desired&&!singlefps::failure)singlefps::enabled=ready(singlefps::Tag);else singlefps::disable();
+ triggerEnabled=triggerDesired&&!triggerFailure&&ready(triggerinput::Tag);
  publish();return service.activeTags()==wanted;
 }
 }
@@ -280,6 +290,20 @@ static bool mapVisibilityParameter(CONTEXT&context){
 extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
  using namespace techparameters;auto&context=*static_cast<CONTEXT*>(raw);
  if(tag>=techbp::SiteCount||context.Eip!=sites[tag])return 0;
+ if(tag==6){
+  if(!triggerEnabled||!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||
+   !(sh->keepInputUnlocked||sh->blockTriggerCamera)||context.Ecx<0x10000||context.Esp<0x10000||context.Esp>UINT32_MAX-20)return 0;
+  const int action=*reinterpret_cast<const volatile int*>(uintptr_t(context.Ecx+0x2C));
+  if(!triggerinput::blocked(action,sh->keepInputUnlocked,sh->blockTriggerCamera))return 0;
+  if(!world()||DWORD(sampleClock(sh)-sh->heartbeat)>=3000||triggerRevision!=debugentries::policyRevision||
+   !triggerSignature.matches(reinterpret_cast<const volatile uint8_t*>(uintptr_t(triggerinput::Entry))))return 0;
+  const uint32_t caller=*reinterpret_cast<const volatile uint32_t*>(uintptr_t(context.Esp));
+  if(!nativeExecutableRange(caller,1))return 0;
+  // thiscall bool Execute(House*,Object*,Trigger*,Cell&), ret 16. The original
+  // action is presentation-only; leave trigger progression and other actions.
+  context.Eax=1;context.Eip=caller;context.Esp+=20;
+  if(action==46)++sh->triggerInputBlocked;else ++sh->triggerCameraBlocked;return 1;
+ }
  if(tag==5)return singlefps::parameter(context)?1:0;
  if(tag==1)return mapVisibilityParameter(context)?1:0;
  if(tag==4){
@@ -344,8 +368,17 @@ static bool techParametersRetired(){using namespace techparameters;return !(serv
 static bool techEnhanceParametersRetired(){using namespace techparameters;return !(service.lease.mask&&((service.lease.tags()&12)||service.lease.uncertain))&&!service.pending()&&((service.lease.tags()&(techbp::AllTags&~12u))||!service.resources());}
 static bool restoreTechParameters(){using namespace techparameters;const bool changed=desired||(service.lease.tags()&FullGroup)||service.lease.uncertain;InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();if(changed)attempted=0;refusedGroups&=~FullGroup;configure();return techParametersRetired();}
 static bool restoreTechEnhanceParameters(){using namespace techparameters;const bool changed=enhancementDesired||(service.lease.tags()&12)||service.lease.uncertain;InterlockedExchange(&policy.enhanced,0);enhancementDesired=false;enhancementFailure=0;enhancementCameoBlocked=false;if(changed)attempted=0;refusedGroups&=~12u;configure();return techEnhanceParametersRetired();}
+static bool restoreTriggerInput(){using namespace techparameters;triggerEnabled=triggerDesired=false;triggerFailure=0;refusedGroups&=~triggerinput::Tag;configure();return groupOff(triggerinput::Tag);}
+static void maintainTriggerInput(){
+ using namespace techparameters;triggerDesired=false;triggerFailure=0;
+ if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||!(sh->keepInputUnlocked||sh->blockTriggerCamera)||
+  DWORD(sampleClock(sh)-sh->heartbeat)>=3000||!lastHouse||!get<bool>(0xA8E9A0)){triggerEnabled=false;return;}
+ if(!captureWorld(lastHouse)){triggerEnabled=false;return;}
+ if(!triggerCompatible()){triggerEnabled=false;triggerFailure=techbp::Signature;return;}
+ triggerDesired=true;
+}
 static void maintainTechParameters(){
- using namespace techparameters;syncDebugBreakpointPolicy();service.poll();singlefps::maintain();
+ using namespace techparameters;syncDebugBreakpointPolicy();service.poll();singlefps::maintain();maintainTriggerInput();
  if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active){InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);desired=enhancementDesired=controlDesired=false;failure=enhancementFailure=controlFailure=0;enhancementCameoBlocked=false;fullFailureRetry.reset();controlFailureRetry.reset();InterlockedExchange(&policy.controlling,0);InterlockedExchange(&policy.showing,0);}
  else if(!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();}
  if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();}
@@ -358,7 +391,7 @@ static void maintainTechParameters(){
  // admission and active audits still inspect the real registers themselves.
  // Stop/fault and pending restoration never start another idle inspection.
  static DWORD inspected=0;const DWORD now=GetTickCount();
- if(sh&&sh->debugVisible&&!sh->stop&&!fault&&readonly::commands(sh)&&!readOnlyState.active&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!singlefps::desired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
+ if(sh&&sh->debugVisible&&!sh->stop&&!fault&&readonly::commands(sh)&&!readOnlyState.active&&lastHouse&&get<bool>(0xA8E9A0)&&!desired&&!enhancementDesired&&!controlDesired&&!mapDesired&&!singlefps::desired&&!triggerDesired&&!service.pending()&&(!inspected||DWORD(now-inspected)>=500)){inspected=now;service.inspect();publish();}
 }
 static bool requestTechParameters(uint32_t house){
  using namespace techparameters;maintainTechParameters();
