@@ -1,0 +1,1096 @@
+{
+  "scope": "Execute private native hierarchical search on small synthetic subzone graphs.\n\nOnly Map::Get_Cell_Zone_Index is fixture IO; the original search, heap, score\narithmetic and route reconstruction execute in Unicorn. The optional stale\nfilter is an emulator experiment, NOT an installed or shipped game patch.\nNo executable bytes, raw dumps, real-game timing or multiplayer claims output.\n",
+  "game_sha256": "268a81b7422b3bb855e1b4a162aadba4d807f88fb9f70feb99118211d8fbb8d0",
+  "results": [
+    {
+      "banned_entries": 0,
+      "native": {
+        "counts": {
+          "pops": [
+            5,
+            5,
+            7
+          ],
+          "expansions": [
+            4,
+            4,
+            6
+          ],
+          "edge_checks": [
+            9,
+            9,
+            14
+          ],
+          "banned_comparisons": [
+            0,
+            0,
+            0
+          ],
+          "stale_pops": [
+            0,
+            0,
+            1
+          ],
+          "instructions": 3697,
+          "zone_index_calls": 6
+        },
+        "paths": [
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ]
+        ],
+        "popped": [
+          {
+            "level": 2,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 1,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.002000093460083,
+            "best": 2.000999927520752,
+            "stale": true
+          },
+          {
+            "level": 2,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          }
+        ]
+      },
+      "emulated_stale_filter": {
+        "counts": {
+          "pops": [
+            5,
+            5,
+            7
+          ],
+          "expansions": [
+            4,
+            4,
+            5
+          ],
+          "edge_checks": [
+            9,
+            9,
+            11
+          ],
+          "banned_comparisons": [
+            0,
+            0,
+            0
+          ],
+          "stale_pops": [
+            0,
+            0,
+            1
+          ],
+          "instructions": 3545,
+          "zone_index_calls": 6
+        },
+        "paths": [
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ]
+        ],
+        "popped": [
+          {
+            "level": 2,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 1,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.002000093460083,
+            "best": 2.000999927520752,
+            "stale": true
+          },
+          {
+            "level": 2,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          }
+        ]
+      }
+    },
+    {
+      "banned_entries": 64,
+      "native": {
+        "counts": {
+          "pops": [
+            5,
+            5,
+            7
+          ],
+          "expansions": [
+            4,
+            4,
+            6
+          ],
+          "edge_checks": [
+            9,
+            9,
+            14
+          ],
+          "banned_comparisons": [
+            256,
+            256,
+            384
+          ],
+          "stale_pops": [
+            0,
+            0,
+            1
+          ],
+          "instructions": 9283,
+          "zone_index_calls": 6
+        },
+        "paths": [
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ]
+        ],
+        "popped": [
+          {
+            "level": 2,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 1,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.002000093460083,
+            "best": 2.000999927520752,
+            "stale": true
+          },
+          {
+            "level": 2,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          }
+        ]
+      },
+      "emulated_stale_filter": {
+        "counts": {
+          "pops": [
+            5,
+            5,
+            7
+          ],
+          "expansions": [
+            4,
+            4,
+            5
+          ],
+          "edge_checks": [
+            9,
+            9,
+            11
+          ],
+          "banned_comparisons": [
+            256,
+            256,
+            384
+          ],
+          "stale_pops": [
+            0,
+            0,
+            1
+          ],
+          "instructions": 9131,
+          "zone_index_calls": 6
+        },
+        "paths": [
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ]
+        ],
+        "popped": [
+          {
+            "level": 2,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 1,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.002000093460083,
+            "best": 2.000999927520752,
+            "stale": true
+          },
+          {
+            "level": 2,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          }
+        ]
+      }
+    },
+    {
+      "banned_entries": 256,
+      "native": {
+        "counts": {
+          "pops": [
+            5,
+            5,
+            7
+          ],
+          "expansions": [
+            4,
+            4,
+            6
+          ],
+          "edge_checks": [
+            9,
+            9,
+            14
+          ],
+          "banned_comparisons": [
+            1024,
+            1024,
+            1536
+          ],
+          "stale_pops": [
+            0,
+            0,
+            1
+          ],
+          "instructions": 25411,
+          "zone_index_calls": 6
+        },
+        "paths": [
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ]
+        ],
+        "popped": [
+          {
+            "level": 2,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 1,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.002000093460083,
+            "best": 2.000999927520752,
+            "stale": true
+          },
+          {
+            "level": 2,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          }
+        ]
+      },
+      "emulated_stale_filter": {
+        "counts": {
+          "pops": [
+            5,
+            5,
+            7
+          ],
+          "expansions": [
+            4,
+            4,
+            5
+          ],
+          "edge_checks": [
+            9,
+            9,
+            11
+          ],
+          "banned_comparisons": [
+            1024,
+            1024,
+            1536
+          ],
+          "stale_pops": [
+            0,
+            0,
+            1
+          ],
+          "instructions": 25259,
+          "zone_index_calls": 6
+        },
+        "paths": [
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ],
+          [
+            0,
+            2,
+            3,
+            4,
+            5
+          ]
+        ],
+        "popped": [
+          {
+            "level": 2,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 1,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 3,
+            "score": 2.002000093460083,
+            "best": 2.000999927520752,
+            "stale": true
+          },
+          {
+            "level": 2,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 2,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 1,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 0,
+            "score": 0.0,
+            "best": 0.0,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 2,
+            "score": 1.0010000467300415,
+            "best": 1.0010000467300415,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 3,
+            "score": 2.000999927520752,
+            "best": 2.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 4,
+            "score": 3.000999927520752,
+            "best": 3.000999927520752,
+            "stale": false
+          },
+          {
+            "level": 0,
+            "subzone": 5,
+            "score": 4.000999927520752,
+            "best": 4.000999927520752,
+            "stale": false
+          }
+        ]
+      }
+    }
+  ],
+  "equal_cost_control": {
+    "pops": [
+      5,
+      5,
+      6
+    ],
+    "expansions": [
+      4,
+      4,
+      5
+    ],
+    "edge_checks": [
+      9,
+      9,
+      11
+    ],
+    "banned_comparisons": [
+      0,
+      0,
+      0
+    ],
+    "stale_pops": [
+      0,
+      0,
+      0
+    ],
+    "instructions": 3426,
+    "zone_index_calls": 6
+  },
+  "live_game_tested": false,
+  "shipped_patch": false
+}
