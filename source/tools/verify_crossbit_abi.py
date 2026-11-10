@@ -225,8 +225,8 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 104, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162608,
+    baseline = {'assist::Version': 105, 'runtime::Version': 4, 'gameentry::Version': 3,
+                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162632,
                 'assist::Shared.aircraftAllocationPolicy': 23125936,
                 'assist::Shared.nativeCombatQueries': 23125940,
                 'assist::Shared.singlePlayerFPS': 23154136,
@@ -261,6 +261,11 @@ def main():
                 'assist::Shared.keepInputUnlocked': 23162596,
                 'assist::Shared.inputUnlockCount': 23162600,
                 'assist::Shared.inputUnlockStatus': 23162604,
+                'assist::Shared.singlePlayerLagFix': 23162608,
+                'assist::Shared.lagPathStatus': 23162612,
+                'assist::Shared.lagMindStatus': 23162616,
+                'assist::Shared.lagPathHits': 23162620,
+                'assist::Shared.lagMindHits': 23162624,
                 'sizeof(assist::hardwareperf::Snapshot)': 96,
                 'sizeof(worldframe::Key)': 64, 'sizeof(worldframe::Page)': 5128,
                 'sizeof(worldframe::DataHeader)': 64, 'sizeof(worldframe::DataRef)': 8,
@@ -290,7 +295,7 @@ def main():
     # Protocol99 adds an independent SpiderDefense type filter.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol104 Shared23162608, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol105 Shared23162632, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 

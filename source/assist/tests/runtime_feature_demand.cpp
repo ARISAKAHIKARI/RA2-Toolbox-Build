@@ -30,6 +30,7 @@ int main(){
  check(demand(0,off)); // The default attack-own-ground hotkey is a real consumer.
  off.missionModeKeys[selectedmode::OwnGround]=0; // Isolate every cold opt-in below.
  check(!demand(0,off));check(!off.minerDefenseEnabled&&off.minerDefenseRangeCells==1);
+ for(uint32_t bit:{1u,2u,3u}){auto settings=off;settings.singlePlayerLagFix=bit;check(demand(0,settings));settings.singlePlayerLagFix=0;check(!demand(0,settings));}
  {auto settings=off;settings.singlePlayerFPS=45;check(demand(0,settings));settings.singlePlayerFPS=0;check(!demand(0,settings));}
  for(uint32_t feature:{1u,2u,4u,7u,16u,23u}){auto settings=off;settings.moFeatures=feature;check(demand(0,settings));settings.moFeatures=0;check(!demand(0,settings));}
  {auto settings=off;settings.superweaponPanel=true;check(!demand(0,settings));}

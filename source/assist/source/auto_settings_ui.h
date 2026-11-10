@@ -92,6 +92,7 @@ static bool autoSettingChanged(int id,int notification){
  }
  if(id==9490&&notification==BN_CLICKED){extra.superweaponGrant=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9536&&notification==BN_CLICKED){extra.keepInputUnlocked=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();wakeGame();notify(extra.keepInputUnlocked?L"保持操作权限已开启：游戏触发输入锁时自动解除。":L"保持操作权限已关闭：后续输入锁由地图触发控制。");return true;}
+ if((id==9538||id==9539)&&notification==BN_CLICKED){const uint32_t bit=id==9538?1u:2u;const bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;extra.singlePlayerLagFix=on?(extra.singlePlayerLagFix|bit):(extra.singlePlayerLagFix&~bit);changedSetting();syncAdditional();wakeGame();notify(on?L"已请求单机卡顿修复，请查看下方生效状态。":L"已关闭该项单机卡顿修复。");return true;}
  if(id==9530&&notification==BN_CLICKED){extra.bombBoardEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();wakeGame();return true;}
  if(id==9496&&notification==BN_CLICKED){extra.minerDefenseEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();wakeGame();return true;}
  if(id==9405&&notification==BN_CLICKED){extra.superweaponPanel=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}

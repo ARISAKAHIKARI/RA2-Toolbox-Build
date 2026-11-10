@@ -27,6 +27,7 @@ static void loadAdditionalSettings(){
  autofeatures::loadKeys(extra.automaticKeys,[](const wchar_t*section,const wchar_t*name,int fallback){return value(section,name,fallback);});
  {const int rate=value(L"SinglePlayer",L"FPS",0);extra.singlePlayerFPS=singlefps::valid(unsigned(rate))?rate:0;}
  extra.keepInputUnlocked=value(L"Input",L"KeepUnlocked",0)!=0;
+ extra.singlePlayerLagFix=uint32_t(value(L"SinglePlayer",L"LagFix",0))&3u;
  extra.bombBoardEnabled=value(L"BombBoard",L"Enabled",0)!=0;extra.bombBoardRangeCells=std::clamp(value(L"BombBoard",L"RangeCells",8),1,64);
  extra.minerDefenseEnabled=value(L"MinerDefense",L"Enabled",0)!=0;
  extra.minerDefenseRangeCells=std::clamp(value(L"MinerDefense",L"ExtraRangeCells",1),0,30);
@@ -163,6 +164,7 @@ static bool saveAdditionalSettings(){
  autofeatures::saveKeys(extra.automaticKeys,[](const wchar_t*section,const wchar_t*name,uint32_t key){write(section,name,int(key));});
  write(L"SinglePlayer",L"FPS",extra.singlePlayerFPS);
  write(L"Input",L"KeepUnlocked",extra.keepInputUnlocked);
+ write(L"SinglePlayer",L"LagFix",extra.singlePlayerLagFix&3u);
  write(L"BombBoard",L"Enabled",extra.bombBoardEnabled);write(L"BombBoard",L"RangeCells",extra.bombBoardRangeCells);
  write(L"MinerDefense",L"Enabled",extra.minerDefenseEnabled);write(L"MinerDefense",L"ExtraRangeCells",extra.minerDefenseRangeCells);
  write(L"Display",L"SuperweaponDetached",superweaponOptions.detached);write(L"Display",L"SuperweaponCollapsed",superweaponOptions.collapsed);write(L"Display",L"SuperweaponX",superweaponOptions.x);write(L"Display",L"SuperweaponY",superweaponOptions.y);write(L"Display",L"SuperweaponScale",superweaponOptions.scale);write(L"Display",L"SuperweaponRows",superweaponOptions.rows);
@@ -292,6 +294,7 @@ static void syncAdditional(){
  shared->smallMapClamp=extra.smallMapClamp;
  shared->singlePlayerFPS=uint32_t(extra.singlePlayerFPS);
  shared->keepInputUnlocked=extra.keepInputUnlocked;
+ shared->singlePlayerLagFix=extra.singlePlayerLagFix&3u;
  shared->bombBoardRangeCells=uint32_t(std::clamp(extra.bombBoardRangeCells,1,64));shared->bombBoardEnabled=extra.bombBoardEnabled;
  shared->minerDefenseRangeCells=uint32_t(std::clamp(extra.minerDefenseRangeCells,0,30));shared->minerDefenseEnabled=extra.minerDefenseEnabled;
  shared->sidebarMode=extra.sidebarEnabled&&extra.sidebarMode<=2?extra.sidebarMode:0u;

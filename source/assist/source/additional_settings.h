@@ -13,6 +13,7 @@ struct AdditionalSettings {
  debugentries::Config debugPolicy; // Stable per-entry opt-ins; no entry skips by default.
  int singlePlayerFPS=0; // 0 native; independent of renderer refresh
  bool keepInputUnlocked=false;
+ uint32_t singlePlayerLagFix=0;
  bool bombBoardEnabled=false;int bombBoardRangeCells=8;
  bool minerDefenseEnabled=false;int minerDefenseRangeCells=1; // Independent of automatic ore return.
  uint32_t overlayKey=0xC0; // ` / · on the standard keyboard; presentation only.

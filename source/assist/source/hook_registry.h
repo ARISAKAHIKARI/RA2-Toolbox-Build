@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "crc_shadow_policy.h"
+#include "../../shared/source/single_player_lag_policy.h"
 #include "../../shared/source/direct_patch_policy.h"
 #include "../../shared/source/native_sidebar_policy.h"
 #include "../../shared/source/native_viewport_policy.h"
@@ -10,8 +11,9 @@
 // Game-thread-only ownership bookkeeping, NOT a stop-the-world x86 patcher.
 // A stale/foreign site is sticky: never overwrite it on retries or detach.
 namespace assist { namespace hookregistry {
-enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Combat, NetworkTransport, NativeSell, NativeMega, ControlCommand, CrcShadow, Viewport, Unknown };
+enum class Owner : uint8_t { Frame, CS, Cursor, NativeEvent, FootClick, Decide, MouseUp, Placement, Sidebar, NativeAir, RenderMask, C4Test, PlayerControl, Camera, Combat, NetworkTransport, NativeSell, NativeMega, ControlCommand, CrcShadow, Viewport, Performance, Unknown };
 inline Owner ownerAt(uint32_t a){
+ if(singlelag::size(a))return Owner::Performance;
  if(nativesidebarpolicy::find(a))return Owner::Sidebar;
  if(nativeviewportpolicy::find(a))return Owner::Viewport;
  if(crcshadow::findSite(a))return Owner::CrcShadow;
@@ -57,6 +59,7 @@ inline Owner ownerAt(uint32_t a){
 }
 inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  if(!bytes)return false;
+ if(singlelag::size(at))return singlelag::original(at,bytes,size);
  if(nativesidebarpolicy::find(at))return nativesidebarpolicy::original(at,bytes,size);
  if(nativeviewportpolicy::find(at))return nativeviewportpolicy::original(at,bytes,size);
  if(auto s=crcshadow::findSite(at))return size==s->size&&!memcmp(bytes,s->original,size);
