@@ -1,5 +1,6 @@
 #pragma once
 #include "mo_orders.h"
+#include "air_path_events.h"
 #include "../../shared/source/debug_entry_types.h"
 #include "player_test_policy.h"
 #include "formation.h"
@@ -28,7 +29,7 @@
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=103;
+constexpr uint32_t Magic=0x41533130, Version=104;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -272,6 +273,10 @@ struct Shared {
  // Host command pause retains the shared world producer. Runtime alone ACKs
  // completed retirement; protocol 103 rejects peers without this fence.
  volatile uint32_t readOnly=0,readOnlyRequest=0,readOnlyAck=0;
+ volatile long airEventSeq=0;airevents::Report airEventReport;
+ volatile uint32_t bombBoardEnabled=0,bombBoardRangeCells=8;
+ volatile uint32_t bombBoardActive=0,bombBoardIssued=0,bombBoardWaiting=0;
+ volatile uint32_t keepInputUnlocked=0,inputUnlockCount=0;volatile int32_t inputUnlockStatus=0;
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

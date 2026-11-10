@@ -68,7 +68,7 @@ static void servicePointer(){
  if(buildreserve::nativePointer(e)){leftCaptured=false;return;}
  airway::manual(e);
  // Native Z planning owns the original click; do not append another feature.
- if(airway::native()&&airway::held(e.keys)&&airway::selectedAircraft()){leftCaptured=false;return;}
+ if((airway::native()||airpathpolicy::direct(snap.session,extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork))&&airway::held(e.keys)&&airway::selectedAircraft()){leftCaptured=false;return;}
  RECT client{};if(!GetClientRect(game,&client)||client.right!=e.width||client.bottom!=e.height)return;
  DWORD now=GetTickCount();if(!commandFresh(now)||!foregroundGame()||DWORD(now-e.tick)>100||snap.chat)return;
  static pointerinput::Intent in;in={};in.tick=e.tick;in.inputSerial=e.serial;in.match=e.match;

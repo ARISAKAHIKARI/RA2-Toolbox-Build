@@ -105,9 +105,9 @@ label(L"队形按住键",20,306);key(9051,extra.formationHold,345,280,true);mode
 note(L"按住队形键或双击 Alt 进入，点按提交当前预览；拖动方向决定朝向。形状可共用键，每敲一次切换，长按不重复。Esc 取消。提交后退出预览；成员不变时后续移动保持队形。",44);
 note(L"正方形默认 B，空心框默认 N。框形未拖动时边框面积与中空面积约 3∶1，拖到最大变成单层边框；其余形状拖到最大为一横排。",44);
 activeFoldGroup=0;
-label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生事件兼容（旧原生优先）",L"高危：原生下单补丁",L"高危：完整原生补丁"},airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));next();
+label(L"飞机路径点",20,260);choices(combo(803),{L"关闭",L"兼容路径点",L"原生路径点事件",L"高危：原生下单补丁",L"高危：完整原生补丁"},airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));next();
 label(L"路径点按住键",20,306);{auto h=key(894,extra.airPathKey);modernui::holdKey(h);}next();
-note(L"留空跟随游戏路径点键；兼容选项在单机、联机均通过原生移动事件接续，不改写代码。高危选项会改写飞机入口；完整原生还改本机到达任务，可能不同步。",60);
+note(L"原生事件模式：按住游戏路径点键点击地面，松键提交；不安装飞机入口或到达补丁。兼容模式逐段下令，自定义按住键使用兼容模式。高危选项保留实验。",60);
 item(L"STATIC",L"飞机路径点：关闭",20,605,866);next();
 toggle(795,L"Shift 五连点",shiftClickEnabled,20,270);choices(combo(796),{L"自动兼容",L"始终追加四次点击",L"不追加点击"},shiftClickMode);next();
 number(797,L"连续点击间隔 / 毫秒",shiftClickGap,L"0–250");
@@ -147,6 +147,10 @@ note(L"填写参与点杀的己方地面载具或步兵类型 ID（不是蜘蛛 
 number(9497,L"防蛛额外索敌距离 / 格",extra.minerDefenseRangeCells,L"0–30 · 默认 1");
 note(L"蜘蛛进入武器射程＋N 格时点杀；目标死亡或离开射程＋N＋1 格后，矿车恢复采矿、卸矿或等待。其他单位只接管闲置警戒／区域警戒，结束后返回原位及原警戒状态。",76);
 item(L"STATIC",L"点杀蜘蛛：关闭",20,605,9498,0,44);next(44);
+automaticToggle(9530,L"绑弹步兵自动上车",extra.bombBoardEnabled);next();
+number(9531,L"绑弹步兵寻找载具范围 / 格",extra.bombBoardRangeCells,L"1–64 · 默认 8");
+note(L"己方步兵被绑炸弹后，寻找范围内最近且可进入、有空位的己方载具。手动下令后暂停处理这枚炸弹；没有合适载具时等待。",60);
+item(L"STATIC",L"绑弹步兵自动上车：关闭",20,605,9532,0,44);next(44);
 label(L"自动装车分配方式",20,260);extraControls[LoadLogic]=combo(700);choices(extraControls[LoadLogic],{L"就近优先",L"兵种均衡"},extra.loadMode);next();
 extraControls[LoadRadius]=number(701,L"自动装车范围 / 格",extra.loadRadius,L"1–512");
 automaticToggle(804,L"防御建筑优先攻击渗透单位",extra.antiTheft);next();
@@ -206,13 +210,13 @@ auto hiddenToggle=[&](int id,const wchar_t* text,bool on){auto h=placedControl({
 for(int i=0;i<7;++i){bool on=value(L"Display",displayIni[i],0)!=0;if(i==0||i==1||i==3)check[i]=hiddenToggle(300+i,displayNames[i],on);else{check[i]=toggle(300+i,displayNames[i],on);next();}}
 extraControls[FrozenEnabled]=hiddenToggle(723,L"冷冻剩余时间",extra.frozen);
 extraControls[EnemyMarkersEnabled]=hiddenToggle(785,L"敌方单位提示",extra.enemyMarkers);
-hiddenToggle(897,L"载具载员气泡",extra.passengerBubbles);hiddenToggle(898,L"危险载员常驻提示",extra.dangerPassengers);hiddenToggle(9498,L"载员气泡包含己方",extra.passengerOwn);hiddenToggle(9499,L"载员气泡常驻显示",extra.passengerAlways);
+hiddenToggle(897,L"载具载员气泡",extra.passengerBubbles);hiddenToggle(898,L"危险载员常驻提示",extra.dangerPassengers);hiddenToggle(9533,L"载员气泡包含己方",extra.passengerOwn);hiddenToggle(9534,L"载员气泡常驻显示",extra.passengerAlways);
 hiddenToggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);hiddenToggle(893,L"火力 / 防御 / 速度强化",extra.crateBuffMarkers);
 #else
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],0)!=0);next();}
 extraControls[FrozenEnabled]=toggle(723,L"冷冻剩余时间",extra.frozen);next();
 extraControls[EnemyMarkersEnabled]=toggle(785,L"显示敌方单位提示",extra.enemyMarkers);next();
-toggle(897,L"载具载员气泡",extra.passengerBubbles);next();toggle(898,L"危险载员常驻提示",extra.dangerPassengers);next();toggle(9498,L"载员气泡包含己方",extra.passengerOwn);next();toggle(9499,L"载员气泡常驻显示",extra.passengerAlways);next();
+toggle(897,L"载具载员气泡",extra.passengerBubbles);next();toggle(898,L"危险载员常驻提示",extra.dangerPassengers);next();toggle(9533,L"载员气泡包含己方",extra.passengerOwn);next();toggle(9534,L"载员气泡常驻显示",extra.passengerAlways);next();
 toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
 toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
 #endif
@@ -286,6 +290,9 @@ note(L"自定义坐标是布局框左上角，对齐决定地图在框内的位�
 detailCheck=toggle(481,L"显示运行耗时",showDetails);next();
 
 heading(4,904,L"高级与实验性设置",L"各项按实际实现单独标注。全图 CRC 原值镜像属于高危；原生武器／射程查询仍不标高危。详细限制悬停查看。");
+toggle(9536,L"保持操作权限（解除触发输入锁）",extra.keepInputUnlocked);next();
+note(L"地图触发器锁定输入后自动解除，可继续选择己方单位并下令。关闭后不重新锁定，后续由地图触发控制。只处理原版输入锁；不恢复战败状态或改变单位归属。",60);
+item(L"STATIC",L"保持操作权限：关闭",20,605,9537,0,44);next(44);
 button(9094,L"Sticky 驻守（实验性／支持联机进入）",20,306);key(9095,extra.stickyKey);next();note(L"所选地面单位进入 Sticky=6；默认 Ctrl+Alt+S，可改组合或双击。联机仅支持同步进入，重复键不重发，退出尚未实现。单机可再次按键或手动下令解除；实际进入后显示金色标记。");
 for(int i=0;i<selectedmode::Count;++i){button(9170+2*i,selectedmode::label(i),20,306);key(9171+2*i,extra.missionModeKeys[i]);next();}
 note(L"前三项为一次原版任务，默认未绑定；驻守是 Guard=5。攻击脚下默认 Ctrl+Alt+F，可改组合键或双击，对选中的己方步兵、战车各自下令；零射程武器按原生判定选择自身或当前格，不修改射程、冷却及弹药。这些命令不解除 Sticky。",84);

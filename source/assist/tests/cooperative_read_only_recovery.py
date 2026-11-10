@@ -77,7 +77,7 @@ def run(ROOT, OUT, old_header=None):
     ''' + body + r'''
     static void check(bool v,const char*text){++checks;if(!v){++failures;std::cout<<"FAIL "<<text<<'\n';}}
     static void init(){
-     *sh=Shared{};resetRuntimeCooperative();submissions=collects=0;
+     state=std::make_unique<Shared>();sh=state.get();resetRuntimeCooperative();submissions=collects=0;
      sh->computeApplied=compute::All;sh->flags=AdvancedEnter;
      auto&r=sh->cooperativeRequest;r.serial=5;r.match=match;r.tick=1000;r.target=20;r.type=30;
      r.frame=100;r.mode=cooperative::Enter;r.count=1;r.viewWidth=1024;r.viewHeight=768;r.sources[0]={10,0};

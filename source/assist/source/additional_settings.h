@@ -12,6 +12,8 @@ struct AdditionalSettings {
  uint32_t automaticKeys[autofeatures::Count]{}; // New automatic switches start unbound; legacy keys stay in their original settings.
  debugentries::Config debugPolicy; // Stable per-entry opt-ins; no entry skips by default.
  int singlePlayerFPS=0; // 0 native; independent of renderer refresh
+ bool keepInputUnlocked=false;
+ bool bombBoardEnabled=false;int bombBoardRangeCells=8;
  bool minerDefenseEnabled=false;int minerDefenseRangeCells=1; // Independent of automatic ore return.
  uint32_t overlayKey=0xC0; // ` / · on the standard keyboard; presentation only.
  uint32_t stickyKey='S'|(6<<8);
@@ -42,7 +44,7 @@ struct AdditionalSettings {
  bool enemyMarkers=false,idleAircraft=false,constructionQueue=false,airWaypoints=false;
  uint32_t productionReminderMask=0; // buildings, defenses, infantry, vehicles, ships, aircraft
  uint32_t airPathKey=0;
- uint32_t nativeAirNetwork=0; // 0=compatibility, 1=UI gate experiment, 2=full native experiment
+ uint32_t nativeAirNetwork=0; // 0=native events, 1=UI gate experiment, 2=full native experiment
  bool parasiteMarker=false,crateBuffMarkers=false;
  bool watchEnabled=false,watchSecondary=false,watchDanger=false;int watchSecondaryX=10000,watchSecondaryY=0;uint32_t watchKeys[3]={'W'|(6<<8),'W'|(6<<8),'W'|(6<<8)};
  bool passengerBubbles=false,dangerPassengers=false,passengerOwn=false,passengerAlways=false,magnetronDrop=false;

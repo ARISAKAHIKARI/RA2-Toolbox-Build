@@ -1644,7 +1644,8 @@ static void drawEnemyMarker(Graphics&g,const external::enemies::Marker&m,const v
 #include "placement_event_host.h"
 #include "placement_event_drawing.h"
 #include "air_path_host.h"
-static void serviceAirPath(){airway::service();}
+#include "air_path_events_host.h"
+static void serviceAirPath(){serviceAirEventFeedback();airway::service();}
 static void resetAirPath(){airway::reset();}
 static void airPathResult(int r,int n,uint32_t id,uint32_t token){airway::result(r,n,id,token);}
 #include "aircraft_indicator.h"
@@ -2166,8 +2167,15 @@ static void updateModeStatus(DWORD now){
  std::wstring riskStatus=extra.placementImplementation==buildingmodes::PlacementEvent?
   std::wstring(L"原生事件放置：")+(!buildAnywhereMode?L"关闭":phase?L"等待游戏就绪":snap.placementStatus==2?L"已就绪；自动匹配当前建筑／防御栏，按配置键预览，左键放置":snap.placementStatus<0?L"旧补丁未能还原或版本不兼容，未启用":L"等待旧补丁还原并启用"):
   L"高危 · 随处建造："+riskText(buildAnywhereMode,snap.placementStatus);
- std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==3?L"高危 · 原生下单":snap.nativeAirStatus==4?L"高危 · 完整原生":snap.nativeAirStatus==1?L"高危 · 原生模式":L"等待生效";
+ std::wstring airStatus=L"飞机路径点：";airStatus+=!(extra.airWaypoints||extra.nativeAirWaypoints)?L"关闭":phase?L"等待游戏就绪":airpathpolicy::direct(snap.session,extra.nativeAirWaypoints&&!extra.airPathKey,extra.nativeAirNetwork)?L"原生事件 · 按游戏路径点键添加，松键提交":extra.airWaypoints||extra.airPathKey||!airway::native()?L"兼容模式":snap.nativeAirStatus==-2?L"启用或关闭失败，请查看日志":snap.nativeAirStatus==-1?L"不支持此游戏版本":snap.nativeAirStatus==3?L"高危 · 原生下单":snap.nativeAirStatus==4?L"高危 · 完整原生":snap.nativeAirStatus==1?L"高危 · 原生模式":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,866),airStatus.c_str());
+ {const bool live=shared&&!phase&&commandFresh(now);const int state=live?shared->inputUnlockStatus:3;
+  std::wstring text=L"保持操作权限：";text+=!extra.keepInputUnlocked?L"关闭":!live||state==3?L"等待游戏命令就绪":state<0?L"未能解除输入锁，请查看游戏版本与连接":L"已启用";
+  if(live&&extra.keepInputUnlocked)text+=L" · 已解除 "+std::to_wstring(shared->inputUnlockCount)+L" 次输入锁";
+  SetWindowTextW(GetDlgItem(ui,9537),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9537),extra.keepInputUnlocked&&live&&state<0);}
+ {std::wstring text=L"绑弹步兵自动上车：";text+=!extra.bombBoardEnabled?L"关闭":phase?L"等待对局":L"监视中";
+  if(shared&&extra.bombBoardEnabled&&!phase)text+=L" · 发现 "+std::to_wstring(shared->bombBoardActive)+L" / 已下令 "+std::to_wstring(shared->bombBoardIssued)+L" / 待匹配 "+std::to_wstring(shared->bombBoardWaiting);
+  SetWindowTextW(GetDlgItem(ui,9532),text.c_str());}
  {const uint32_t active=moorders::gestureEnabled(extra.moFeatures,extra.formationEnabled);const auto invalid=moorders::gestureInvalid(extra.moGestures,active),conflict=moorders::gestureConflicts(extra.moGestures,active);
   const wchar_t*names[]={L"模糊下令",L"区域目标分配",L"自定义巡逻圈",L"快速占位"};std::wstring text=invalid?L"无效按住键（请使用持续按住）：":conflict?L"重复配置，冲突项暂停接管：":L"按键配置：无冲突";
   uint32_t mask=invalid?invalid:conflict;for(int i=0;i<4;++i)if(mask&(1u<<i)){text+=names[i];text+=L" ";}SetWindowTextW(GetDlgItem(ui,9460),text.c_str());}
@@ -2477,7 +2485,7 @@ static void tick(){
   // granted only after Runtime publishes a stable, compatible viewport.
   shared->viewportHostCapabilities=nativeviewhost::capabilityRequest(shared);
   gameinput::setFastTactical(hook,shared->dodgeEnabled||shared->dodgeActive||shared->scrollRefreshHz);
-  DWORD wakePeriod=shared->foreground?16:(shared->minerDefenseEnabled||shared->minerDefenseActive||shared->dodgeEnabled||shared->dodgeActive||shared->missileEnabled||shared->missileHeld||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
+  DWORD wakePeriod=shared->foreground?16:(shared->bombBoardEnabled||shared->minerDefenseEnabled||shared->minerDefenseActive||shared->dodgeEnabled||shared->dodgeActive||shared->missileEnabled||shared->missileHeld||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();performanceDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   static renderpresentation::StatusCadence computeStatusCadence;

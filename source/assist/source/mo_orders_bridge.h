@@ -23,7 +23,7 @@ template<class Work>static void moSubmission(int kind,int index,Work&& work){
 }
 static uint32_t moGestureButton=0,moSuppressedButton=0;static moorders::GesturePolicy moCapturedGestures;
 static moorders::Options moCapturedOptions;
-static bool moCapturedPolicy();
+static bool moCapturedPolicy(bool captured=false);
 #include "mo_patrol_planning_bridge.h"
 static moorders::Preview moPreview;
 static bool moOrdersPending(){return moHolding||moStage||moQueueAt<moQueueCount||moPlanningUI.draining;}
@@ -38,7 +38,7 @@ static void resetMoOrders(){
 static bool moOrdersContext(bool preview=false){
  // A brief host render stall must not destroy a read-only captured preview.
  // Capture, release and every event submission retain the strict 150ms gate.
- if(!sh||fault||sh->stop||!nativeReady()||!sh->foreground||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u)||get<bool>(0x87F7E8+0x11B1))return false;
+ if(!sh||fault||sh->stop||!(preview?simulationReady(true):nativeReady())||!sh->foreground||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u)||get<bool>(0x87F7E8+0x11B1))return false;
  DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);return foreground==GetCurrentProcessId();
 }
 static bool moActorValid(const MoActor&a){
@@ -284,9 +284,9 @@ static void moCommit(){
  }else moAssignments(false);
  moPreview.active=0;moOrdersPublish();sh->moOrderStatus=1;
 }
-static bool moCapturedPolicy(){return moReadGestures()&&moorders::sameGestures(moCapturedGestures,moRuntimeGestures)&&moorders::sameOptions(moCapturedOptions,moRuntimeOptions)&&(moGestureEnabled()&uint32_t(moMode))&&!(moorders::gestureConflicts(moRuntimeGestures,moGestureEnabled())&uint32_t(moMode));}
+static bool moCapturedPolicy(bool captured){return moReadGestures(captured)&&moorders::sameGestures(moCapturedGestures,moRuntimeGestures)&&moorders::sameOptions(moCapturedOptions,moRuntimeOptions)&&(moGestureEnabled()&uint32_t(moMode))&&!(moorders::gestureConflicts(moRuntimeGestures,moGestureEnabled())&uint32_t(moMode));}
 static bool moCapturedHold(){
- if(!moCapturedPolicy())return false;const int index=moorders::gestureIndex(uint32_t(moMode));if(index<0)return false;
+ if(!moCapturedPolicy(true))return false;const int index=moorders::gestureIndex(uint32_t(moMode));if(index<0)return false;
  uint8_t keys[256]{};moGestureKeyboard(keys);return moorders::gestureHeld(keys,moCapturedGestures.keys[index]);
 }
 static bool moOrdersMessage(MSG*msg){
@@ -325,9 +325,10 @@ static bool moOrdersMessage(MSG*msg){
 static void moOrdersTick(uint32_t house,int frame,DWORD now){
  if(!moOrdersPending())return;
  if(moPlanningUI.draining){moPlanningReset();return;}
- if(moEpoch!=match||moHouse!=house||!sh||(sh->moFeatures&moMode)==0||!moOrdersContext(moHolding)||!moCapturedPolicy()){resetMoOrders();return;}
+ if(moEpoch!=match||moHouse!=house||!sh||(sh->moFeatures&moMode)==0||!moOrdersContext(moHolding)||!moCapturedPolicy(true)){resetMoOrders();return;}
  if(moHolding){if(!moCapturedHold()){resetMoOrders();return;}if(DWORD(now-moPreviewAt)>=400)moBuildPreview();else if(moOutlineDirty&&DWORD(now-moOutlineAt)>=16){moUpdateOutline();moOrdersPublish();}return;}
  if(frame<moStartFrame||frame-moStartFrame>1800||DWORD(now-moStarted)>30000){sh->moOrderStatus=uint32_t(-7);resetMoOrders();return;}
+ if(!moReadGestures())return; // Retry an incomplete policy read; never submit from its cache.
  // Standard-object commands each get one final native capability/identity
  // check immediately before submission. Accepted commands are never retried.
  int visited=0;

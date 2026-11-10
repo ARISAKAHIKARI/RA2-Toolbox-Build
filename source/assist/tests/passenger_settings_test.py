@@ -29,7 +29,7 @@ cpp+='static bool edit(int id,int notification){'+body+'return false;}\n'
 cpp+='static void load(){'+load+'}\nstatic void save(){'+save+'}\n'
 cpp+=r'''
 int main(){load();assert(!extra.passengerBubbles&&!extra.dangerPassengers&&!extra.passengerOwn&&!extra.passengerAlways);
- for(auto p:{std::pair<int,bool*>{897,&extra.passengerBubbles},{898,&extra.dangerPassengers},{9498,&extra.passengerOwn},{9499,&extra.passengerAlways}}){
+ for(auto p:{std::pair<int,bool*>{897,&extra.passengerBubbles},{898,&extra.dangerPassengers},{9533,&extra.passengerOwn},{9534,&extra.passengerAlways}}){
   for(bool on:{false,true}){int before=changes;fields[p.first]=on;assert(edit(p.first,BN_CLICKED));assert(*p.second==on&&changes==before+1&&syncs==changes);save();*p.second=!on;load();assert(*p.second==on);}
  }
  assert(profile.size()==4);std::puts("PASS passenger settings: four independent toggles, one owner notification, production INI off/on roundtrips");

@@ -147,7 +147,7 @@ static bool refreshControlEligibility(){return false;}
 static unsigned checks=0,failures=0;
 static void check(bool value,const char*text){++checks;if(!value){++failures;std::cout<<"FAIL "<<text<<'\n';}}
 static void resetCase(){
- *sh=Shared{};sh->heartbeat=observedNow;fault=false;readOnlyState={};
+ state=std::make_unique<Shared>();sh=state.get();sh->heartbeat=observedNow;fault=false;readOnlyState={};
  singlefps::release();techparameters::service.retire();
  techparameters::attempted=techparameters::resourceGroups=techparameters::refusedGroups=0;
  techparameters::retryAt=techparameters::auditAt=0;

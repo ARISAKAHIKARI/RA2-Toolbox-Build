@@ -10,7 +10,7 @@ import subprocess
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--zig", type=Path, required=True)
+    parser.add_argument("--zig", type=Path, help="Optional Windows compiler; omit for portable controlled execution")
     parser.add_argument("--build-dir", type=Path, required=True)
     args = parser.parse_args()
     source = Path(__file__).resolve().parents[1] / "source"
@@ -54,10 +54,11 @@ int main(){
  for(int mode:{0,5,3,4}){session=mode;
   // Request was captured in event-compatible mode. Switch the shared setting
   // before Runtime consumes that already published mailbox request.
-  state={};state.nativeAirNetwork=0;check(true);
+  state={};state.nativeAirNetwork=0;check(false);
+  state.flags=AirWaypoints;check(true);state.flags=NativeAirWaypoints;
   state.nativeAirNetwork=1;check(false);
   state.nativeAirNetwork=2;check(false);
-  state.nativeAirNetwork=0;check(true);
+  state.nativeAirNetwork=0;check(false);
   state.flags=0;check(false);
   // A custom held key explicitly selects the sampled event route.
   state.flags=AirWaypoints;state.nativeAirNetwork=2;check(true);
@@ -71,7 +72,8 @@ int main(){
     cpp = args.build_dir / "air-path-command-admission.cpp"
     exe = args.build_dir / "air-path-command-admission.exe"
     cpp.write_text(prelude + branch + postlude, encoding="utf-8")
-    subprocess.run([str(args.zig.resolve()), "c++", "-target", "x86_64-windows-gnu",
+    compiler=[str(args.zig.resolve()), "c++", "-target", "x86_64-windows-gnu"] if args.zig else ["g++"]
+    subprocess.run(compiler+[
                     "-std=c++17", "-O2", "-I", str(source), str(cpp.resolve()),
                     "-o", str(exe.resolve())], check=True)
     subprocess.run([str(exe.resolve())], check=True)

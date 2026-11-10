@@ -217,8 +217,8 @@ int main(){
 
  if(std::getenv("RA2_PASSENGER_MODES_TEST")){
   ++scenarios;
-  for(int id:{897,898,9498,9499}){const int option=optionFor(id);check(option>=0,"passenger option has unique owner spec");if(option>=0)check(visible[12000+option]!=0,"passenger option visible on video page");}
-  const int inspect=optionFor(897),danger=optionFor(898),own=optionFor(9498),always=optionFor(9499);
+  for(int id:{897,898,9533,9534}){const int option=optionFor(id);check(option>=0,"passenger option has unique owner spec");if(option>=0)check(visible[12000+option]!=0,"passenger option visible on video page");}
+  const int inspect=optionFor(897),danger=optionFor(898),own=optionFor(9533),always=optionFor(9534);
   if(inspect>=0&&danger>=0&&own>=0&&always>=0){
    sharedDisplay.values[inspect]=1;sharedDisplay.values[danger]=0;video.sync(true);
    check(IsWindowEnabled(visible[12000+own])&&IsWindowEnabled(visible[12000+always]),"inspect enables own and permanent choices");

@@ -58,7 +58,7 @@ constexpr uint32_t air=0x40000,house=0x10000;
 static void position(uint32_t cell){put<int>(air+0x9c,int(cell%1000)*256+128);put<int>(air+0xa0,int(cell/1000)*256+128);put<int>(air+0xa4,512);}
 static pointerinput::Intent input;static pointerinput::Mailbox box;
 static void initialize(int mode){
- airway::reset();memory.clear();commandQueue.size=0;epoch=8;snap.session=mode;extra.nativeAirWaypoints=true;extra.airWaypoints=false;extra.nativeAirNetwork=0;extra.airPathKey=0;
+ airway::reset();memory.clear();commandQueue.size=0;epoch=8;snap.session=mode;extra.nativeAirWaypoints=false;extra.airWaypoints=true;extra.nativeAirNetwork=0;extra.airPathKey=0;
  for(unsigned n=0;n<0x800;++n)memory[air+n]=0;
  held['Z']=true;enabled=fresh=true;lastNotice.clear();input={};box={};
  put<uint32_t>(0xa83d4c,house);put<uint32_t>(air,0x7e22a4);put<uint32_t>(air+0x10,40);put<uint32_t>(air+0x21c,house);
@@ -104,10 +104,10 @@ int main(){for(int mode:{3,4}){
  for(int n=0;n<40&&!airway::jobs.empty();++n){airway::service();if(commandQueue.size){commandQueue.discard(0);airway::result(1,1,40,13);}clockNow+=1000;}
  assert(airway::jobs.empty());
 }
- initialize(5);assert(!airway::native()&&airway::active());capture(30020,1);assert(airway::jobs.size()==1); // existing mode 0 is compatibility in SP too
- initialize(5);extra.nativeAirNetwork=1;assert(airway::native()&&!airway::active());capture(30020,1);assert(airway::jobs.empty());
+ initialize(5);assert(!airway::native()&&airway::active());capture(30020,1);assert(airway::jobs.size()==1); // explicit compatibility mode in SP too
+ initialize(5);extra.nativeAirWaypoints=true;extra.nativeAirNetwork=1;assert(airway::native()&&!airway::active());capture(30020,1);assert(airway::jobs.empty());
  for(int mode:{3,4})for(unsigned experiment:{1u,2u}){
-  initialize(mode);extra.nativeAirNetwork=experiment;
+  initialize(mode);extra.nativeAirWaypoints=true;extra.nativeAirNetwork=experiment;
   assert(airway::native()&&!airway::active());capture(30020,1);held['Z']=false;airway::service();
   assert(airway::jobs.empty()&&commandQueue.size==0); // native click has one owner
   assert(airpathpolicy::arrival(mode,true,experiment)==(experiment==2));

@@ -1,11 +1,11 @@
 {
-  "name": "RA2 Toolbox 1.0.47",
-  "version": "1.0.47",
+  "name": "RA2 Toolbox 1.0.48-pre.1",
+  "version": "1.0.48-pre.1",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
   "resources_legacy_reuse": true,
-  "build_protocol": 103,
+  "build_protocol": 104,
   "validation": "This revision records only focused checks actually executed against its frozen production and test source bytes. Historical suites are not counted as new execution. Complete Windows-target compilation, static PE/ABI validation, paired component digests and archive verification are recorded separately in the frozen build receipts and release-manifest.json; this source manifest does not assert their completion. No live Windows/DWM, user-platform, game, physical GPU or multiplayer acceptance is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
@@ -23,7 +23,11 @@
     "FeatureTypes.SpiderDefense": "default HARV,CMIN; active only when SpiderDefenseCustom=1; independent own attacker type whitelist, never spider target IDs",
     "FeatureTypes.SpiderDefenseCustom": "default0=native miner detection independent of OreTypes; 1=eligible own ground vehicles/infantry named in the list; empty custom list means no new defense jobs",
     "DebugEntries.Skip_<kind+address>": "default0=strict; exact1 bypasses only this entry reference signature; stable kind/address key; Call/Patch/Breakpoint independent; system hooks without a machine-code signature show not applicable",
-    "Cursor.PositionMode": "default0=自动匹配游戏; 1=跟随系统鼠标; 2=游戏画布拉伸到全屏. Automatic mapping requires strict clip geometry and actual sampled game dimensions; explicit mapping supports automatic dimensions or paired manual game width/height. The position target is the current game monitor, independent of image scale percent and DPI size multipliers."
+    "Cursor.PositionMode": "default0=自动匹配游戏; 1=跟随系统鼠标; 2=游戏画布拉伸到全屏. Automatic mapping requires strict clip geometry and actual sampled game dimensions; explicit mapping supports automatic dimensions or paired manual game width/height. The position target is the current game monitor, independent of image scale percent and DPI size multipliers.",
+    "Input.KeepUnlocked": "default0; clear validated local UserInputLocked byte in playable foreground context; disabling never reapplies an old lock",
+    "BombBoard.Enabled": "default0; own attached-bomb infantry use nearest legal own transport; manual ownership survives temporary suspension",
+    "BombBoard.RangeCells": "default8; integer1-64",
+    "Aircraft.NativeWaypoints": "native event UI mode2 appends through central gateway then releases real game planning key; custom held key remains compatibility mode"
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,
@@ -1392,5 +1396,21 @@
     "verification": "Current 39 regression groups, 15 extended portable fixtures, 60 selected-command checks, 17 feature-policy checks and 72 miner cases (2957 checks). Exact logs/source digests, negative controls, paired Windows-target build and package checks are bound by delivery receipts. No real Windows/game/GPU/multiplayer acceptance.",
     "research_note": "research/2026-11-09-pre147-feature-logic.md",
     "capacity_checks": "28 controlled admission/variant checks, 5 roster cases/83 checks, current 512-request FIFO checks and affected regression groups reexecuted. No live-game acceptance."
+  },
+  "current_revision": {
+    "base_release": "1.0.47",
+    "features": [
+      "native appended aircraft waypoint events with deferred real key release and feedback",
+      "bombed own infantry board nearest eligible own transport in configurable radius",
+      "opt-in local trigger input lock clearing"
+    ],
+    "fixes": [
+      "MO captured drag survives transient policy publication and newer simulation frame",
+      "passenger own/always control IDs no longer collide with defense status rows"
+    ],
+    "assist_protocol": 104,
+    "assist_shared_bytes": 23162608,
+    "research": "research/2026-11-10-input-planning-and-bomb-board.md",
+    "validation_scope": "Focused controlled production tests; Windows-target build and static PE/ABI receipts recorded separately. No real game, native aircraft arrival, explosion or multiplayer acceptance."
   }
 }

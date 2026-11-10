@@ -30,6 +30,7 @@ static bool nativePlacementCompletionPending(){return false;}
 static void nativePlacementCompletionTick(uint32_t){}
 static bool nativePlacementMessage(MSG*){return false;}
 static bool moOrdersMessage(MSG*){return false;}
+namespace directair {static bool message(MSG*){return false;}}
 static bool reservationMessage(MSG*){return false;}
 static bool nativeReady(){return true;}
 static bool cooperativeSingleInput(uint32_t){return false;}

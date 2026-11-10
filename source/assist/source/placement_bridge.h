@@ -564,7 +564,7 @@ static void placementTick(){
   if(!riskAirActive){restoreRiskSite(riskSites[1]);restoreRiskSite(riskSites[2]);}
   snap.nativeAirStatus=riskAirActive?(airpathpolicy::multiplayer(get<int>(0xA8B238))?(advance?4:3):1):supported?-2:-1;
  }else{riskAirActive=false;bool a=restoreRiskSite(riskSites[1]),b=restoreRiskSite(riskSites[2]);
-  snap.nativeAirStatus=a&&b?((sh->flags&NativeAirWaypoints)&&airpathpolicy::events(get<int>(0xA8B238),false,true,sh->nativeAirNetwork)?2:0):-2;}
+  snap.nativeAirStatus=a&&b?((sh->flags&NativeAirWaypoints)&&airpathpolicy::direct(get<int>(0xA8B238),true,sh->nativeAirNetwork)?2:0):-2;}
 }
 
 

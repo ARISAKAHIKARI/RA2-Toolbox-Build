@@ -66,7 +66,7 @@ constexpr DisplaySpec displaySpecs[]={
  {9420,0,65535,DisplayControl::Hotkey},
  {9494,0,240,DisplayControl::Number},
  {9405,0,1,DisplayControl::Check},{481,0,1,DisplayControl::Check},
- {9498,0,1,DisplayControl::Check},{9499,0,1,DisplayControl::Check}
+ {9533,0,1,DisplayControl::Check},{9534,0,1,DisplayControl::Check}
 };
 static_assert(sizeof(displaySpecs)/sizeof(displaySpecs[0])==DisplayOptionCount,"Every shared setting has one owner");
 inline bool validDisplayEdit(int option,int value){return option>=0&&option<DisplayOptionCount&&value>=displaySpecs[option].min&&value<=displaySpecs[option].max&&(option!=SinglePlayerFPS||value==0||value>=10);}

@@ -3,7 +3,7 @@
 namespace assist { namespace autofeatures {
 // Only persistent automatic behavior switches belong here. Type filters,
 // numeric parameters and explicit commands (including AutoBoard) do not.
-enum Feature {Repair,Eject,MagnetronDrop,ConstructionQueue,OreReturn,MinerDefense,AntiTheft,Dodge,MissileDefense,MissileReserve,LowDamageFilter,MagnetronGlobal,AutoCS,Count};
+enum Feature {Repair,Eject,MagnetronDrop,ConstructionQueue,OreReturn,MinerDefense,AntiTheft,Dodge,MissileDefense,MissileReserve,LowDamageFilter,MagnetronGlobal,AutoCS,BombBoard,Count};
 struct Entry {Feature feature;int control,keyControl,action;const wchar_t*name;const wchar_t*setting;};
 inline constexpr Entry Entries[]={
  {Repair,100,200,1000,L"自动维修",nullptr},
@@ -18,7 +18,8 @@ inline constexpr Entry Entries[]={
  {MissileReserve,9181,9509,1809,L"提前休眠留枪",L"MissileReserve"},
  {LowDamageFilter,9182,9510,1810,L"过滤低伤害自动目标",L"LowDamageFilter"},
  {MagnetronGlobal,9042,9511,1811,L"磁电全局无限吸",L"MagnetronGlobal"},
- {AutoCS,446,447,1699,L"自动移动攻击（CS）",nullptr}
+ {AutoCS,446,447,1699,L"自动移动攻击（CS）",nullptr},
+ {BombBoard,9530,9535,1813,L"绑弹步兵自动上车",L"BombBoard"}
 };
 static_assert(sizeof(Entries)/sizeof(Entries[0])==Count,"one entry per automatic feature");
 inline const Entry*byControl(int id){for(const auto&entry:Entries)if(entry.control==id)return &entry;return nullptr;}

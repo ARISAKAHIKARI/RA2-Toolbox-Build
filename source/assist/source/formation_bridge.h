@@ -189,8 +189,8 @@ static void formationRefreshHold(){
  formationHolding=false;formationHoldingKey=0;
  if(!formationModal&&!formationButton)formationCancel();else formationPublish();
 }
-static bool formationQuickAuthorized(){
- if(!formationQuick||!moReadGestures()||!moorders::sameGestures(formationQuickPolicy,moRuntimeGestures)||!(moGestureEnabled()&moorders::QuickFormation)||(moorders::gestureConflicts(moRuntimeGestures,moGestureEnabled())&moorders::QuickFormation))return false;
+static bool formationQuickAuthorized(bool captured=false){
+ if(!formationQuick||!moReadGestures(captured)||!moorders::sameGestures(formationQuickPolicy,moRuntimeGestures)||!(moGestureEnabled()&moorders::QuickFormation)||(moorders::gestureConflicts(moRuntimeGestures,moGestureEnabled())&moorders::QuickFormation))return false;
  uint8_t keys[256]{};moGestureKeyboard(keys);return moorders::gestureHeld(keys,formationQuickPolicy.keys[3]);
 }
 static bool formationMessage(MSG*msg){
@@ -206,7 +206,7 @@ static bool formationMessage(MSG*msg){
  // All four gestures resolve through the same configured policy. The
  // captured button and keyboard hold remain authoritative until release.
  if(formationQuick&&down&&key==VK_ESCAPE){formationCancel();formationSuppressed[key]=true;return swallow();}
- if(formationQuick&&!formationQuickAuthorized()){formationCancel();formationButton=false;return false;}
+ if(formationQuick&&!formationQuickAuthorized(true)){formationCancel();formationButton=false;return false;}
  if(formationQuick&&gestureMouse.down&&gestureMouse.button!=formationQuickMouse){formationCancel();return false;}
  if(gestureMouse.down&&moReadGestures()){
   uint8_t keys[256]{};moGestureKeyboard(keys);auto resolved=moGestureResolve(gestureMouse.button,keys);
@@ -261,7 +261,7 @@ static bool formationMessage(MSG*msg){
 static void formationTick(uint32_t house,int frame,DWORD now){
  if(formationEpoch!=match){resetFormation();formationEpoch=match;}
  if(!formationContext(formationQuick&&formationButton)){if(formationView.active)formationCancel();formationFollow={};if(!sh->formationPolicy.enabled){formationJobCount=0;formationForget();}}
- formationRefreshHold();if(formationQuick&&!formationQuickAuthorized())formationCancel();
+ formationRefreshHold();if(formationQuick&&!formationQuickAuthorized(true))formationCancel();
  if(formationQuick&&formationQuickPending&&DWORD(now-formationLayoutTick)>=16){
   if(formationSelectionMatchesPreview())formationQuickLayout(formationQuickX,formationQuickY,formationQuickPX,formationQuickPY);else formationCancel();
  }
