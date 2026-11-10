@@ -32,8 +32,16 @@ static bool techGate(uint32_t type,uint32_t house){
 // Reservation uses the same live whitelist as full technology. The native
 // build-limit path retains limits; factory ownership/power checks stay native.
 static bool techParameterReservationAllowed(uint32_t type,uint32_t house);
+static bool techEnhancementReservationCanBuild(uint32_t type,uint32_t house);
 static bool reservationCanBuild(uint32_t type,uint32_t house){
- return type&&nativeDependencyReady(0x4F7870)&&call<int>(0x4F7870,house,(void*)(uintptr_t)type,techGate(type,house)||techParameterReservationAllowed(type,house),true)>0;
+ if(!type||!nativeDependencyReady(0x4F7870))return false;
+ const bool full=techGate(type,house)||techParameterReservationAllowed(type,house);
+ if(call<int>(0x4F7870,house,(void*)(uintptr_t)type,full,true)>0)return true;
+ // Exact enhancement does not modify Type::TechLevel. Use the same guarded
+ // native probe as cameo admission; a plain call has no authorized probe
+ // token and would reject a type which the sidebar correctly accepted.
+ // A failed full-mode limit test must never fall back to weaker admission.
+ return !full&&techEnhancementReservationCanBuild(type,house);
 }
 static int typeSlot(uint32_t type){for(int i=0;i<snap.typeCount;++i)if(typePointers[i]==type)return i;return -1;}
 static int typeTab(int i){if(i<0||i>=snap.typeCount||!nativeDependencyReady(0x6ABC60))return -1;auto&t=snap.types[i];return callFast<int>(0x6ABC60,t.kind,t.index,0);}

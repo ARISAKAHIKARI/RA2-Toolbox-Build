@@ -1,0 +1,49 @@
+{
+  "base_remote_commit": "2c066d5f41bb0fb8142a763ee46f8e898cb077ea",
+  "native_disassembly_sha256": "94ac595e7a6fef82839b7959f3f926a52708fc857fbc65aa9ff88428dff3f4bd",
+  "runtime_admission_cases": 74,
+  "host_exact_forecast_cases": 399,
+  "original_host_suite_executed": true,
+  "negative_controls": {
+    "technology_reservation_test.py": {
+      "returncode": 1,
+      "expected_assertion_failure": true,
+      "baseline": "2e7fada"
+    },
+    "construction_host_test.py": {
+      "returncode": 1,
+      "expected_assertion_failure": true,
+      "baseline": "2e7fada"
+    }
+  },
+  "native_calls_modeled": true,
+  "native_game_execution_performed": false,
+  "live_JJ_tested": false,
+  "live_multiplayer_tested": false,
+  "log_files": {
+    "host-test.log": {
+      "sha256": "f0feab72318b043df45a45a2d184424ad9a6e185966f4ad621faec87683ebcbf",
+      "bytes": 1445
+    },
+    "admission-test.log": {
+      "sha256": "a4065d24cb53c87e2e8962cc5fb4fc709f663bd4a4ad1df96988a36916cb883d",
+      "bytes": 371
+    },
+    "baseline-construction_host_test.py.log": {
+      "sha256": "d3dfd508e01aba7bb11fbe831e3504389f4f5446eab1faa6d33dfa274763b71e",
+      "bytes": 605
+    },
+    "baseline-technology_reservation_test.py.log": {
+      "sha256": "54935475eb09cf92cf4a494b7f5155d2f5327010a0929e5376b048c21454cf2b",
+      "bytes": 664
+    }
+  },
+  "sources": {
+    "source/assist/source/sidebar.h": "d0b049830e37f65240d67cb7610e64e1f16ca69a79a469f6f127dc18b50afa9f",
+    "source/assist/source/construction_host.h": "f170104540ca1bd3ecd61cdf1f9f739fcb510eb79dc87af5bd0a61152cbe5dc8",
+    "source/assist/source/construction_catalog.h": "338da883168bb62b797f9823e5cdd6b2eba274d6e57e5c66a1fbc4cc0ab8f6b9",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "fa47b814b09a7c1a5bde1b202ffdbfff6542125bcdab4c6ca8256dc00902a204",
+    "source/assist/tests/construction_host_test.py": "c0f6c27a44b1fe5d358407554e4317b62e8bc9bb4ca90b8ab3e96ee626109020",
+    "source/assist/tests/technology_reservation_test.py": "cbe589ec59e26884bc3599684ac97f4aad38a8b0e62026bf79e76e14b63312e7"
+  }
+}

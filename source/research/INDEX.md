@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 科技加强预定准入修复 | [Exact probe、只读预测与原生图标保留](2026-11-10-technology-reservation-admission-fix.md) | 1.0.49-pre.2 reservation CanBuild token Exact-level signed-JG native-cameo no-live-JJ-claim |
 | JJ 联机科技点击后未生产 | [旧式／硬件共用链路、刷新频率与日志边界](2026-11-10-jj-production-regression-audit.md) | 1.0.44-to-1.0.48.1 unchanged-tech-cadence Produce Abandon network-Unsupported no-OutList-clear-proof |
 | 私有操控入队接管 | [原实现保留、三入口与直接编码传输](2026-11-10-private-control-outlist.md) | 1.0.49-pre.1 private-OutList 4068E0 4C6860 6521C0 42-callers 3-DR-slots reliable-accept atomic-retire |
 | 原生变卖光标单机启用失败 | [无关OutList依赖、按路径准入与具体错误反馈](2026-11-10-native-sell-cursor-admission.md) | 1.0.48.1 sellCursor -2 6929E5 4AC179 4AC18C SP-AI queue-admission 12-byte-stack unresolved-live-site |

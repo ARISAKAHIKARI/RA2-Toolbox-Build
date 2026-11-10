@@ -411,6 +411,12 @@ static bool techParameterReservationAllowed(uint32_t type,uint32_t house){
   desired&&!failure&&policy.enabled&&ready(FullGroup)&&house==lastHouse&&house==policy.house&&
   world()&&fullType(type)&&nativeCompatible();
 }
+static bool techEnhancementReservationCanBuild(uint32_t type,uint32_t house){
+ // This existing probe owns its game-entry token and validates the live
+ // local House, type identity, exact-mode DR group and native signatures.
+ // It does not broaden exact enhancement to full technology.
+ return techparameters::enhancedRequested()&&GuardedTechEnhancementProbe(house,type)>0;
+}
 static int techEnhancementCatalogueLevel(uint32_t type,int level){
  if(!techparameters::enhancedRequested()||!type||(!techenhancement::eligible(techenhancement::Rules[9],level)&&level!=-1))return level;
  uint32_t table=0;char id[24]{};if(!read(type,&table,4)||!read(type+0x24,id,sizeof id)||!memchr(id,0,sizeof id))return level;
