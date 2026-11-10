@@ -32,6 +32,7 @@
 #include <cstdio>
 #include <cstdint>
 #include "protocol.h"
+#include "private_outlist.h"
 #include "../../shared/source/debug_entry_policy.h"
 #include "../../shared/source/native_sell_policy.h"
 #ifdef RA2_CONSOLE_WEBVIEW2
@@ -774,14 +775,14 @@ static void logHotkeyInput(const wchar_t* stage,int id=0,uint16_t key=0,DWORD me
 }
 static uint32_t currentHardwareBudget(){return shared&&commandFresh(GetTickCount())?shared->hardwareSlotBudget:0;}
 static uint32_t requestedHardwareTags(){
- return ((extra.keepInputUnlocked||extra.blockTriggerCamera)?slotbudget::Trigger:0u)|(extra.singlePlayerFPS>0?slotbudget::FPS:0u)|(extra.mapVisibility?slotbudget::Map:0u)|(extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
+ return (extra.privateOutMode==2?slotbudget::PrivateOut:0u)|((extra.keepInputUnlocked||extra.blockTriggerCamera)?slotbudget::Trigger:0u)|(extra.singlePlayerFPS>0?slotbudget::FPS:0u)|(extra.mapVisibility?slotbudget::Map:0u)|(extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
   (extra.techEnhance&&extra.techEnhanceImplementation==1?(slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u)):0u);
 }
 static bool hardwareBudgetAvailable(uint32_t additional){
  const auto budget=currentHardwareBudget(),wanted=requestedHardwareTags()|additional;
  // Without a fresh register snapshot this is a saved four-slot plan only.
  // Runtime still admits installation using actual registers and ownership.
- return slotbudget::known(budget)?slotbudget::allows(budget,wanted):!(wanted&~127u)&&slotbudget::count(wanted)<=4;
+ return slotbudget::known(budget)?slotbudget::allows(budget,wanted):!(wanted&~1023u)&&slotbudget::count(wanted)<=4;
 }
 static std::wstring hardwareBudgetReason(uint32_t additional){
  const auto budget=currentHardwareBudget();if(!slotbudget::known(budget))return L"硬件断点预设超出预算：需要 "+std::to_wstring(slotbudget::count(requestedHardwareTags()|additional))+L" 槽，总计只有 4 槽";
@@ -2177,8 +2178,12 @@ static void updateModeStatus(DWORD now){
   std::wstring camera=L"触发视角保护：";camera+=!extra.blockTriggerCamera?L"关闭":!live?L"等待游戏":shared->triggerInputStatus==1?L"已就绪":shared->triggerInputStatus<0?L"未就绪（槽位、入口或线程不可用）":L"等待安装";
   if(live&&extra.blockTriggerCamera)camera+=L" · 已拦截 "+std::to_wstring(shared->triggerCameraBlocked)+L" 次";
   SetWindowTextW(GetDlgItem(ui,9539),camera.c_str());
+  std::wstring queue=L"操控私有队列：";queue+=!extra.privateOutMode?L"原实现":!live?L"等待游戏":privateout::statusText(shared->privateOutStatus);
+  if(live)queue+=L" · 待发 "+std::to_wstring(shared->privateOutPending)+L" · 已接管 "+std::to_wstring(shared->privateOutAccepted)+L" · 已提交 "+std::to_wstring(shared->privateOutSent)+L" · 拒绝 "+std::to_wstring(shared->privateOutRejected)+L" · 取消 "+std::to_wstring(shared->privateOutCancelled);
+  SetWindowTextW(GetDlgItem(ui,9751),queue.c_str());
   std::wstring sell=L"联机快捷键变卖：";sell+=!live?L"等待游戏":shared->sellDirectStatus<0?L"请求未发送（目标失效或发送条件不满足）":shared->sellDirectPending?L"等待发送时机":L"已就绪";
   if(live)sell+=L" · 已发 "+std::to_wstring(shared->sellDirectSent)+L" · 待发 "+std::to_wstring(shared->sellDirectPending)+L" · 拒绝 "+std::to_wstring(shared->sellDirectRejected);
+  if(extra.privateOutMode)sell=L"联机快捷键变卖：使用上方操控私有队列的状态与计数";
   SetWindowTextW(GetDlgItem(ui,9540),sell.c_str());}
  {std::wstring text=L"绑弹步兵自动上车：";text+=!extra.bombBoardEnabled?L"关闭":phase?L"等待对局":L"监视中";
   if(shared&&extra.bombBoardEnabled&&!phase)text+=L" · 发现 "+std::to_wstring(shared->bombBoardActive)+L" / 已下令 "+std::to_wstring(shared->bombBoardIssued)+L" / 待匹配 "+std::to_wstring(shared->bombBoardWaiting);

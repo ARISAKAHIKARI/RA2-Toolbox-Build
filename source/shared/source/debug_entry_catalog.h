@@ -171,6 +171,12 @@ inline constexpr Entry Entries[]={
  {id(Kind::Call,0x00684290),0x00684290,Kind::Call,"剧情原生解锁", "输入", "解除剧情标志、鼠标锁计数并刷新输入", "保持操作权限",Checkable},
  {id(Kind::Call,0x006842C7),0x006842C7,Kind::Call,"剧情解锁收尾", "输入", "验证剧情解锁双标志与刷新调用", "保持操作权限",Checkable},
  {id(Kind::Breakpoint,0x006DD8B0),0x006DD8B0,Kind::Breakpoint,"剧情输入与视角保护", "硬件断点", "只拦截锁定和镜头动作，共享 1 槽", "保持操作权限、屏蔽触发切屏",Checkable},
+ {id(Kind::Patch,0x4068E0),0x4068E0,Kind::Patch,"操控构造共同入口","私有队列（高危）","验证固定调用及返回约定；不覆盖其他补丁","操控入队接管",Checkable},
+ {id(Kind::Patch,0x4C6860),0x4C6860,Kind::Patch,"组合任务构造入口","私有队列（高危）","验证固定调用及返回约定；不覆盖其他补丁","操控入队接管",Checkable},
+ {id(Kind::Patch,0x6521C0),0x6521C0,Kind::Patch,"预定命令提交入口","私有队列（高危）","验证固定调用及返回约定；不覆盖其他补丁","操控入队接管",Checkable},
+ {id(Kind::Breakpoint,0x4068E0),0x4068E0,Kind::Breakpoint,"操控构造共同入口","私有队列（高危）","验证固定调用及返回约定；不覆盖其他补丁","操控入队接管",Checkable},
+ {id(Kind::Breakpoint,0x4C6860),0x4C6860,Kind::Breakpoint,"组合任务构造入口","私有队列（高危）","验证固定调用及返回约定；不覆盖其他补丁","操控入队接管",Checkable},
+ {id(Kind::Breakpoint,0x6521C0),0x6521C0,Kind::Breakpoint,"预定命令提交入口","私有队列（高危）","验证固定调用及返回约定；不覆盖其他补丁","操控入队接管",Checkable},
 };
 inline constexpr uint32_t Count=sizeof(Entries)/sizeof(Entries[0]);
 static_assert(Count<=Capacity,"debug entry catalogue capacity");

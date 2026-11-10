@@ -25,6 +25,7 @@ struct AdditionalSettings {
  bool controlCommandOwner=false;
  bool networkHousePreserve=false,nativeSellCursor=false;
  bool crcMapShadow=false;
+ int privateOutMode=0; // 0 original, 1 private Hook, 2 private hardware breakpoints
  bool nativeMegaGateway=false; // Optional native observer; ordinary input uses the message path.
  bool nativeCombatQueries=false; // Explicit engine selector/range calls; raw observations are the default.
  bool techEnhance=false,techEnhanceCompareLevel=false;int techEnhanceImplementation=0;int placementImplementation=0;

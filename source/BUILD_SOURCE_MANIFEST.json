@@ -1,11 +1,11 @@
 {
-  "name": "RA2 Toolbox 1.0.48.1",
-  "version": "1.0.48.1",
+  "name": "RA2 Toolbox 1.0.49-pre.1",
+  "version": "1.0.49-pre.1",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
   "resources_legacy_reuse": true,
-  "build_protocol": 105,
+  "build_protocol": 106,
   "validation": "This revision records only focused checks actually executed against its frozen production and test source bytes. Historical suites are not counted as new execution. Complete Windows-target compilation, static PE/ABI validation, paired component digests and archive verification are recorded separately in the frozen build receipts and release-manifest.json; this source manifest does not assert their completion. No live Windows/DWM, user-platform, game, physical GPU or multiplayer acceptance is claimed.",
   "build_requirement": "Zig 0.13.0; x86 paired build or x64 host with x86 runtime and broker.",
   "settings": {
@@ -28,7 +28,8 @@
     "BombBoard.Enabled": "default0; own attached-bomb infantry use nearest legal own transport; manual ownership survives temporary suspension",
     "BombBoard.RangeCells": "default8; integer1-64",
     "Aircraft.NativeWaypoints": "native event UI mode2 appends through central gateway then releases real game planning key; custom held key remains compatibility mode",
-    "Input.BlockTriggerCamera": "default0; shared DR tag64 skips trigger48/49/112/145 only; preserves Unlock, ZoomOut and map bounds"
+    "Input.BlockTriggerCamera": "default0; shared DR tag64 skips trigger48/49/112/145 only; preserves Unlock, ZoomOut and map bounds",
+    "Experimental.PrivateOutMode": "default0=original; 1=HIGH RISK private queue Hook; 2=HIGH RISK private queue three hardware slots; native and tool gameplay commands; SP DoList / MP own wire to reliable transport; no native OutList; changing/off cancels pending"
   },
   "legacy_root_exe_or_dll_included": false,
   "entry_manager_api": 3,

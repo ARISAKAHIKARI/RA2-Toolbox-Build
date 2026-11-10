@@ -41,9 +41,11 @@ static bool riskRenderReady(bool captured=false){return sh&&!sh->stop&&DWORD(sam
 static int smallMapCameraAction(uint32_t),highScrollAction(uint32_t);
 static int nativeSellCursorAction(unsigned,uint32_t,uint32_t);static int nativeMegaGatewayAction(unsigned,uint32_t,uint32_t);
 static int controlCommandOwnerAction(unsigned,uint32_t,uint32_t);static int controlObjectOwnerAction(unsigned,uint32_t,uint32_t);
+static int privateOutAction(unsigned,uint32_t,uint32_t);
 extern "C" int __cdecl AssistRiskAction(unsigned op,unsigned object,unsigned house){
  // Only GuardedRiskAction calls this helper, after obtaining a Capture lease.
  // Keep live world checks, but don't re-enter Validate on every drawn cell.
+ if(op==15||op==16||op==17)return privateOutAction(op,object,house);
  if(op==13)return controlCommandOwnerAction(op,object,house);
  if(op==14)return controlObjectOwnerAction(op,object,house);
  if(op==8)return riskRenderReady(true)?highScrollAction(object):0;

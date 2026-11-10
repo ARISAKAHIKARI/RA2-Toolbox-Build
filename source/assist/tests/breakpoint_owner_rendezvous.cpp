@@ -107,7 +107,7 @@ static void hit(uint32_t address){
  EXCEPTION_RECORD record{EXCEPTION_SINGLE_STEP,reinterpret_cast<void*>(uintptr_t(address))};EXCEPTION_POINTERS p{&record,&context};
  CHECK(handler&&handler(&p)==EXCEPTION_CONTINUE_EXECUTION);commit(context);
 }
-static uint32_t sites[SiteCount]={0x401000,0x402000,0x403000,0x404000,0x405000,0x406000};
+static uint32_t sites[SiteCount]={0x401000,0x402000,0x403000,0x404000,0x405000,0x406000,0x407000,0x408000,0x409000,0x40a000};
 static void clearFaults(){faults.clear();allMissing=ignoreWrites=omitWitness=mutateBeforeWrite=false;failWait=failClose=failDuplicate=failAdd=failRemove=failPin=false;beforeReply={};callbackAction={};callbackResult=true;trapEipOffset=0;}
 struct Case {
  KernelThread owner{101};Service service;
@@ -194,6 +194,8 @@ static int benchmark(unsigned iterations){
 int main(int argc,char**argv){
  if(argc==3&&!std::strcmp(argv[1],"--benchmark"))return benchmark(unsigned(std::strtoul(argv[2],nullptr,10)));
  {Case c("normal witness, readback, synchronous install and owned cleanup");const auto original=c.owner.context;unsigned w=witnessHits;CHECK(c.enable());CHECK(c.service.state==Ready&&c.service.confirmed&&c.service.activeTags()==3);CHECK(witnessHits==w+1&&c.service.witnessed_&&!c.service.witnessLease_.mask);CHECK(!c.service.pending()&&!c.service.handlerDepth_);unsigned cb=callbacks;hit(sites[0]);hit(sites[1]);CHECK(callbacks==cb+2);CHECK(!c.service.retire());CHECK(!c.service.occupied());CHECK(Service::same(Service::registers(c.owner.context),Service::registers(original)));}
+ {Case c("private three-slot group shares and releases with control");CHECK(c.enable(16));CHECK(c.enable(16|896));CHECK(c.service.state==Ready&&c.service.activeTags()==(16|896));unsigned cb=callbacks;hit(sites[7]);hit(sites[8]);hit(sites[9]);CHECK(callbacks==cb+3);CHECK(c.enable(16)&&c.service.activeTags()==16);CHECK(assist::slotbudget::tags(c.service.slotBudget())==16);}
+ {Case c("private group shortage is transactional");CHECK(c.enable(3));const auto before=c.owner.context;CHECK(c.enable(3|896));CHECK(c.service.state==Slots&&c.service.activeTags()==3);CHECK(Service::same(Service::registers(before),Service::registers(c.owner.context)));}
  {Case c("INT3 EIP at trap plus one");trapEipOffset=1;CHECK(c.enable(1)&&c.service.state==Ready);}
  for(Fault fault:{Swallow,NoDebug,NoControl,BadIp}){Case c("missing or consumed private trap rejects locally and retries");faults[trapCalls+1]=fault;CHECK(c.enable(1));CHECK(c.service.state==System&&c.service.lastError==ERROR_NOT_SUPPORTED&&!c.service.occupied());CHECK(!c.service.pending()&&!c.service.handlerDepth_);faults.clear();CHECK(c.enable(1)&&c.service.state==Ready);}
  {Case c("self-test hardware witness absent restores first and rejects");omitWitness=true;CHECK(c.enable(1));CHECK(c.service.state==System&&c.service.lastError==ERROR_NOT_SUPPORTED&&!c.service.occupied()&&!c.owner.context.Dr0);omitWitness=false;CHECK(c.enable(1)&&c.service.state==Ready);}
@@ -261,3 +263,4 @@ int main(int argc,char**argv){
  for(auto*h:handles){CHECK(h->closed);delete h;}
  std::printf("{\"pass\":true,\"scenarios\":%u,\"checks\":%u,\"trap_calls\":%u,\"witness_hits\":%u,\"foreign_bypass_cases\":%u,\"slot_matrix_deliveries\":%u,\"infinite_waits\":%u,\"production_suspend_calls\":%u,\"production_resume_calls\":%u,\"production_worker_calls\":%u,\"windows_executed\":false,\"game_executed\":false}\n",scenarios,checks,trapCalls,witnessHits,foreignBypassCases,slotMatrixDeliveries,waitInfinite,productionSuspends,productionResumes,productionWorkers);
 }
+

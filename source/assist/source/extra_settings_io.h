@@ -74,6 +74,7 @@ static void loadAdditionalSettings(){
  extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.destructSelectedOwner=value(L"Experimental",L"DestructSelectedOwner",0)!=0;
  extra.destructSelectedOwnerKey=uint32_t(value(L"Hotkeys",L"DestructSelectedOwner",0))&65535;
+ extra.privateOutMode=std::clamp(value(L"Experimental",L"PrivateOutMode",0),0,2);
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
  extra.nativeSellCursor=value(L"Experimental",L"NativeSellCursor",0)!=0;
  extra.nativeMegaGateway=explicitPatchPreferences&&value(L"Experimental",L"NativeMegaGateway",0)!=0;
@@ -186,6 +187,7 @@ static bool saveAdditionalSettings(){
  write(L"Hotkeys",L"DestructSelectedOwner",extra.destructSelectedOwnerKey);
  write(L"Experimental",L"NetworkHousePreserve",extra.networkHousePreserve);write(L"Experimental",L"NativeSellCursor",extra.nativeSellCursor);
  write(L"Experimental",L"NativeMegaGateway",extra.nativeMegaGateway);
+ write(L"Experimental",L"PrivateOutMode",extra.privateOutMode);
  write(L"Experimental",L"NativeCombatQueries",extra.nativeCombatQueries);
  write(L"Experimental",L"ControlCommandOwner",extra.controlCommandOwner);
  write(L"Experimental",L"ControlImplementation",extra.controlImplementation);
@@ -304,7 +306,7 @@ static void syncAdditional(){
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->crcMapShadow=extra.crcMapShadow;
  shared->networkHousePreserve=extra.networkHouseRequested();shared->nativeSellCursor=extra.nativeSellCursor;
- shared->nativeMegaGateway=extra.nativeMegaGateway;
+ shared->nativeMegaGateway=extra.nativeMegaGateway;shared->privateOutMode=extra.privateOutMode;
  shared->nativeCombatQueries=extra.nativeCombatQueries;
  shared->controlCommandOwner=extra.commandOwnerRequested();
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);

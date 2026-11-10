@@ -17,6 +17,7 @@ inline Owner ownerAt(uint32_t a){
  if(crcshadow::findSite(a))return Owner::CrcShadow;
  if(auto s=directpatch::find(a))return s->group==directpatch::Group::Map?Owner::RenderMask:Owner::Placement;
  switch(a){
+ case 0x4068E0:case 0x4C6860:case 0x6521C0:return Owner::NetworkTransport;
  case 0x007F74D8:return Owner::Sidebar;
  case 0x007F74C8:return Owner::Cursor;
  case 0x00646EF5:return Owner::ControlCommand;
@@ -61,6 +62,9 @@ inline bool knownOriginal(uint32_t at,const uint8_t* bytes,unsigned size){
  if(nativeviewportpolicy::find(at))return nativeviewportpolicy::original(at,bytes,size);
  if(auto s=crcshadow::findSite(at))return size==s->size&&!memcmp(bytes,s->original,size);
  if(directpatch::find(at))return directpatch::original(at,bytes,size);
+ if(at==0x4068E0){static const uint8_t b[]={0xC3,0x90,0x90,0x90,0x90};return size==sizeof b&&!memcmp(bytes,b,size);}
+ if(at==0x4C6860){static const uint8_t b[]={0x8B,0xC1,0x8B,0x4C,0x24,0x04};return size==sizeof b&&!memcmp(bytes,b,size);}
+ if(at==0x6521C0){static const uint8_t b[]={0xA1,0x84,0xED,0xA8,0};return size==sizeof b&&!memcmp(bytes,b,size);}
  const uint8_t*signature=nullptr;unsigned expected=0;
  static const uint8_t pre6NetworkSend[]={0x83,0xEC,0x1C,0x53,0x55};
  static const uint8_t pre6NetworkPlainHouse[]={0x88,0x8C,0x40,0xD6,0x02,0xA8,0x00};
