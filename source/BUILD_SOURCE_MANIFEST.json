@@ -1,6 +1,6 @@
 {
-  "name": "RA2 Toolbox 1.0.48-pre.2",
-  "version": "1.0.48-pre.2",
+  "name": "RA2 Toolbox 1.0.48",
+  "version": "1.0.48",
   "compiled_game_binary_included": false,
   "source": "Current rendering branch: x64 external host with x86 GameRuntime and hook broker; Vulkan rendering is optional.",
   "resources": "Full retains raw cursor SHA/palette/group metadata, three style bases, native programs and seven matching engine files. Missing observed animation pairs are generated and cached locally; missing pinned scientific dependencies are obtained on demand. Full/Update exclude generated DIS timelines and preview HTML and preserve installed user data on overlay.",
@@ -48,7 +48,7 @@
     "TacticalClass::SetTacticalPosition (0x6D6000), native camera update",
     "GScreenClass::Render (0x4F4480), native composition and presentation"
   ],
-  "release_status": "prerelease",
+  "release_status": "stable",
   "frontend": "WebView2 console with native settings model/adapter and asynchronous INI persistence; Debug entry catalog plus independent read-only platform Hook scan tools, manual PID, optional same-build original EXE, progress/cancellation and local HTML/JSON reports; existing action generation/revision acknowledgement preserved.",
   "technology_experiment": "Native AddCameo; selectable data/legacy modes and local UI hardware execution breakpoint parameter modes for full technology and 21-type enhancement. Active, identity-verified enhancement targets may enter the toolbox catalogue despite Insignificant; Spawned and zero-owner exclusions and native build/factory rules remain. Ares replacing the native CanBuild body still makes the internal Exact comparison unavailable.",
   "calculation_locations": "Fifteen tactical compute slots, fourteen current visible controls; Dodge location choice applies to Scatter only. Forward-path dodge always uses Runtime native pathing. Native queries/events remain in GameRuntime. Host tasks retain original source deadlines.",
@@ -1019,7 +1019,7 @@
     "historical_initial_publication": true,
     "superseded_by_same_version_revision": "2026-11-08-depth-tooltip-performance"
   },
-  "release_revision": "2026-11-09-feature-entry-recovery-pre6",
+  "release_revision": "2026-11-10-input-panels-direct-sell-release",
   "RevisedRelease146": {
     "version": "1.0.46",
     "file_version": "1.0.46.3",
@@ -1426,5 +1426,22 @@
       "MP shortcut Sell encodes native wire and calls active reliable transport; local DoList mirrors same execute frame; no OutList/constructor/packer calls"
     ],
     "validation_scope": "Portable production-policy tests and captured-native Unicorn probes passed. Build/PE receipts recorded separately. No Windows loader, visual/game/real-platform or multiplayer test."
+  },
+  "stable_release_148": {
+    "promoted_from": "1.0.48-pre.2",
+    "numeric_file_version": "1.0.48.2",
+    "assist_protocol": 105,
+    "assist_shared_bytes": 23162640,
+    "source_feature_commit": "9342c7ede9c71036e908d4bd54ed6ac7c7fd99e0",
+    "rebuild_required": true,
+    "real_game_tested": false,
+    "multiplayer_tested": false,
+    "packages": [
+      "x64-Update",
+      "x64-Full",
+      "x64-Dependencies",
+      "verification"
+    ],
+    "note": "正式版本号发布；功能与 pre.2 一致，重新编译配套组件。联机功能保留实验状态，不把受控验证表述为真实联机验证。"
   }
 }
