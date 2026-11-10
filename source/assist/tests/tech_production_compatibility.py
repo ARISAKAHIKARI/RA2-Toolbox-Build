@@ -6,11 +6,13 @@ from tech_parameter_lookup import block
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--out',type=Path,required=True)
 p.add_argument('--before-ref',default='250dffe')
+p.add_argument('--boundary-ref',default='e1b9465')
 a=p.parse_args();here=Path(__file__).resolve().parent;repo=here.parents[2];src=here.parent/'source'
 a.out.mkdir(parents=True,exist_ok=True)
 bridge='source/assist/source/tech_ui_breakpoint_bridge.h'
 current=(repo/bridge).read_text()
 previous=subprocess.check_output(['git','show',a.before_ref+':'+bridge],cwd=repo,text=True)
+boundary=subprocess.check_output(['git','show',a.boundary_ref+':'+bridge],cwd=repo,text=True)
 fixture=(here/'tech_parameter_lookup.cpp').read_text()
 cases=(here/'tech_production_compatibility.cpp').read_text()
 flags=(src/'tech_enhancement_parameter_policy.h').read_text()
@@ -18,7 +20,7 @@ oracle=block(flags,'inline constexpr uint32_t compareFlags(').replace('compareFl
 report={'baseline_commit':subprocess.check_output(['git','rev-parse',a.before_ref],cwd=repo,text=True).strip(),
         'live_JJ_tested':False,'live_multiplayer_tested':False,'windows_executed':False,
         'scope':'Actual source-extracted permission callback and guards; synthetic memory/stack, no native game or DR execution.'}
-for phase,source,extra,expected in [('baseline-default',previous,False,0),('baseline-new-contract',previous,True,1),('current',current,True,0)]:
+for phase,source,extra,expected in [('baseline-default',previous,False,0),('baseline-new-contract',previous,True,1),('pre-boundary-fix',boundary,True,1),('current',current,True,0)]:
  out=a.out/phase;out.mkdir(exist_ok=True)
  pieces=[block(current,'struct '+n)+';' for n in ('TypeIdentity','EnhancedIdentity','Policy')]
  pieces+=['static Policy policy;',block(source,'inline unsigned hash('),
@@ -44,7 +46,7 @@ for phase,source,extra,expected in [('baseline-default',previous,False,0),('base
  if build.returncode:raise RuntimeError(phase+' compile failure: '+build.stderr)
  run=subprocess.run([str(exe.resolve())],text=True,capture_output=True);(out/'run.log').write_text(run.stdout+run.stderr)
  assert run.returncode==expected,(phase,run.returncode,run.stdout,run.stderr)
- if expected:assert 'compatibility admits an additional local-house caller' in run.stderr
+ if expected:assert ('cold private probe cannot enter extended permission before token initialization' if phase=='pre-boundary-fix' else 'compatibility admits an additional local-house caller') in run.stderr
  report[phase]={'returncode':run.returncode,'expected_returncode':expected,'stdout':run.stdout.strip(),'stderr':run.stderr.strip()}
  print(phase,run.stdout.strip() or run.stderr.strip())
 paths=[bridge,'source/assist/tests/tech_parameter_lookup.cpp','source/assist/tests/tech_parameter_lookup.py','source/assist/tests/tech_production_compatibility.cpp','source/assist/tests/tech_production_compatibility.py']

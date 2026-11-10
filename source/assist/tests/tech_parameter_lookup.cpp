@@ -30,6 +30,7 @@ template<class T>static void put(uint32_t p,T v){assert(mapped(p,sizeof v));std:
 static LONG InterlockedExchange(volatile LONG*p,LONG v){const LONG before=*p;*p=v;return before;}
 static LONG InterlockedCompareExchange(volatile LONG*p,LONG v,LONG expected){const LONG before=*p;if(before==expected)*p=v;return before;}
 namespace subject {
+static void AssistTechEnhancementProbeCall(){}
 struct Context {uint32_t Eip=0x4F7951,Esp=Stack,Eax=99,Ebx=10,Ecx=Type,Edx=98,Ebp=House,Esi=97,Edi=Type,EFlags=0x1F7202;};
 constexpr unsigned UnsafeTech=4096;
 struct Settings {unsigned techProductionCompatibility=0,techProductionFullPasses=0,techProductionEnhancePasses=0;unsigned flags=UnsafeTech,techEnhance=1,techEnhanceImplementation=1,techEnhanceCompareLevel=1,stop=0;} storage,*sh=&storage;
@@ -51,7 +52,7 @@ static void counters(){worldCalls=worldReads=totalReads=nativeChecks=enhancement
 static void rebuild(){using namespace subject;policy.enhancementIndex.rebuild(policy.enhancement,[](const EnhancedIdentity&t){return t.type.pointer;});}
 static void fullRecord(uint32_t pointer,uint32_t id,uint32_t table){using namespace subject;unsigned n=techlookup::bucket(pointer,1023);while(policy.types[n].pointer&&policy.types[n].pointer!=pointer)n=(n+1)&1023;policy.types[n]={pointer,id,table};}
 static void seed(unsigned rule=10){
- using namespace subject;std::memset(reinterpret_cast<void*>(uintptr_t(0x10000000)),0,0x100000);policy=Policy{};storage={};sh=&storage;fault=false;unreadable=0;techImplementation=techmode::Parameters;lastHouse=House;probeDepth=probeToken=0;gameentry::activeToken=0;
+ using namespace subject;std::memset(reinterpret_cast<void*>(uintptr_t(0x10000000)),0,0x100000);policy=Policy{};storage={};sh=&storage;fault=false;unreadable=0;techImplementation=techmode::Parameters;lastHouse=House;probeDepth=probeToken=0;techEnhanceProbeReturn=0x700014;gameentry::activeToken=0;
  policy.enabled=policy.enhanced=policy.compareLevel=1;policy.house=House;policy.houseID=77;policy.scenario=Scenario;policy.session=3;policy.frame=100;
  put<uint32_t>(0xA83D4C,House);put<uint32_t>(House+0x10,77);put<uint32_t>(0xA8B230,Scenario);put<int>(0xA8B238,3);put<int>(0xA8ED84,101);put<bool>(0xA8E9A0,true);put<uint32_t>(0xAC1198,0);
  put<uint32_t>(Type,techenhancement::Rules[rule].vtable);put<uint32_t>(Type+0x10,100);put<int>(Type+0x634,-1);

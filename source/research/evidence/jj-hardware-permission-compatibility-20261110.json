@@ -16,18 +16,24 @@
     "stdout": "",
     "stderr": "FAIL compatibility admits an additional local-house caller (check 132831)"
   },
+  "pre-boundary-fix": {
+    "returncode": 1,
+    "expected_returncode": 1,
+    "stdout": "",
+    "stderr": "FAIL cold private probe cannot enter extended permission before token initialization (check 138055)"
+  },
   "current": {
     "returncode": 0,
     "expected_returncode": 0,
-    "stdout": "{\"pass\":true,\"checks\":138079,\"callback_cases\":1649,\"flags_differential_cases\":131136,\"absent_full_world_reads\":0,\"absent_enhancement_world_reads\":0,\"absent_enhancement_signature_calls\":0}",
+    "stdout": "{\"pass\":true,\"checks\":138087,\"callback_cases\":1651,\"flags_differential_cases\":131136,\"absent_full_world_reads\":0,\"absent_enhancement_world_reads\":0,\"absent_enhancement_signature_calls\":0}",
     "stderr": ""
   },
   "sha256": {
-    "source/assist/source/tech_ui_breakpoint_bridge.h": "9dc168a533fb8745193d84c5c140e9c6f75837fbbea29328471f1fbc16237333",
-    "source/assist/tests/tech_parameter_lookup.cpp": "23759fe582bab767e5f50293eaec94b6f224fb8d5005a19b3bbdcabd1dd2ec87",
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "2c40e230ff52c8dab4b03ce9add5e3de8a7da83e96fa87928e67a45e4f125d8f",
+    "source/assist/tests/tech_parameter_lookup.cpp": "082a7f0e36b2ad51e52edc54bf35d6996a4bcc8f4e20376659e67123ae24c747",
     "source/assist/tests/tech_parameter_lookup.py": "a2e32454ce12940937b55dd45c9225839cd5a24bf3c6b9f92c3e8b46a3fd04c0",
-    "source/assist/tests/tech_production_compatibility.cpp": "abc8eb8fc9bec57835e9bcbcd4b50773251dc3c6a9380f0825d4a0113f37bc6d",
-    "source/assist/tests/tech_production_compatibility.py": "7672b17173b31f956018c6c965399df273dda8e376f262d9fc3ff3611641a8b3"
+    "source/assist/tests/tech_production_compatibility.cpp": "da0e20e9ca6e1582f779c2f2c6994d51933cf6ffb938a8cd6f1f0fcf5fcd258d",
+    "source/assist/tests/tech_production_compatibility.py": "520643272fe1e52e73473c3553ababf9e6abb624e3b558448d0e3bba07beadeb"
   },
   "passed": true,
   "version": "1.0.49-pre.3",

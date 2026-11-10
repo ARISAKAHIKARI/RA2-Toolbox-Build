@@ -45,6 +45,8 @@ static void productionCompatibility(){using namespace subject;
   seed();storage.techProductionCompatibility=1;source(tag,0x71000000,1);auto c=context(tag);if(tag)c.Ebp=House+4;else c.Ecx=House+4;const auto before=c;check(!dispatch(c,tag),"other House never receives compatibility permission");check(!std::memcmp(&before,&c,sizeof c),"other House context unchanged");
  }
  for(unsigned tag:{2u,3u}){
+  seed();storage.techProductionCompatibility=1;techEnhanceProbeReturn=0;source(tag,uint32_t(uintptr_t(&AssistTechEnhancementProbeCall)+20),1);
+  rejects(tag,"cold private probe cannot enter extended permission before token initialization");check(passes(tag)==0,"cold private probe does not increment pass count");
   seed();storage.techProductionCompatibility=1;source(tag,techEnhanceProbeReturn,1);rejects(tag,"compatibility cannot authorize inactive private probe");
   probeDepth=1;probeToken=99;gameentry::activeToken=98;rejects(tag,"compatibility cannot authorize stale probe token");
   gameentry::activeToken=99;succeeds(tag,"valid probe remains accepted");check(passes(tag)==0,"valid private probe is not an extra caller");

@@ -345,7 +345,8 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
   (probeDepth&&returnAddress==techEnhanceProbeReturn&&include==1&&probeToken&&uint32_t(InterlockedCompareExchange(&gameentry::activeToken,0,0))==probeToken);
  // Our own probe remains token-bound, even when other callers are admitted.
  // This only expands who may ask the already captured local-house policy.
- const bool extended=!caller&&sh->techProductionCompatibility&&returnAddress>=0x10000&&returnAddress!=techEnhanceProbeReturn&&include<=1;
+ const bool extended=!caller&&sh->techProductionCompatibility&&returnAddress>=0x10000&&returnAddress!=techEnhanceProbeReturn&&
+  returnAddress!=uint32_t(uintptr_t(&AssistTechEnhancementProbeCall)+20)&&include<=1;
  if(!caller&&!extended)return 0;
  const unsigned i=policy.enhancementIndex.find(policy.enhancement,pointer,[](const EnhancedIdentity&t){return t.type.pointer;});
  if(i>=techenhancement::Count)return 0;
