@@ -39,8 +39,8 @@ SYSTEM = {'kernel32.dll', 'user32.dll', 'gdi32.dll', 'winmm.dll', 'gdiplus.dll',
           'msvcrt.dll', 'ucrtbase.dll', 'ntdll.dll', 'version.dll', 'ws2_32.dll',
           'shlwapi.dll', 'oleaut32.dll', 'imm32.dll'}
 NEURAL_SYSTEM = SYSTEM | {'d3d12.dll', 'dxgi.dll', 'wintrust.dll', 'crypt32.dll'}
-ASSIST_PROTOCOL = 106
-ASSIST_SHARED_BYTES = 23162672
+ASSIST_PROTOCOL = 107
+ASSIST_SHARED_BYTES = 23162680
 ASSIST_MAPPING = f'Local\\RA2Assist_v{ASSIST_PROTOCOL}_'
 ENTRY_PROTOCOL = 3
 ENTRY_REQUEST_BYTES = 108

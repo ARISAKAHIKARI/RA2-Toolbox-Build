@@ -1,0 +1,36 @@
+{
+  "baseline_commit": "250dffea84891bc9fdbd505dc3887ecedccfbfb7",
+  "live_JJ_tested": false,
+  "live_multiplayer_tested": false,
+  "windows_executed": false,
+  "scope": "Actual source-extracted permission callback and guards; synthetic memory/stack, no native game or DR execution.",
+  "baseline-default": {
+    "returncode": 0,
+    "expected_returncode": 0,
+    "stdout": "{\"pass\":true,\"checks\":132826,\"callback_cases\":322,\"flags_differential_cases\":131136,\"absent_full_world_reads\":0,\"absent_enhancement_world_reads\":0,\"absent_enhancement_signature_calls\":0}",
+    "stderr": ""
+  },
+  "baseline-new-contract": {
+    "returncode": 1,
+    "expected_returncode": 1,
+    "stdout": "",
+    "stderr": "FAIL compatibility admits an additional local-house caller (check 132831)"
+  },
+  "current": {
+    "returncode": 0,
+    "expected_returncode": 0,
+    "stdout": "{\"pass\":true,\"checks\":138079,\"callback_cases\":1649,\"flags_differential_cases\":131136,\"absent_full_world_reads\":0,\"absent_enhancement_world_reads\":0,\"absent_enhancement_signature_calls\":0}",
+    "stderr": ""
+  },
+  "sha256": {
+    "source/assist/source/tech_ui_breakpoint_bridge.h": "9dc168a533fb8745193d84c5c140e9c6f75837fbbea29328471f1fbc16237333",
+    "source/assist/tests/tech_parameter_lookup.cpp": "23759fe582bab767e5f50293eaec94b6f224fb8d5005a19b3bbdcabd1dd2ec87",
+    "source/assist/tests/tech_parameter_lookup.py": "a2e32454ce12940937b55dd45c9225839cd5a24bf3c6b9f92c3e8b46a3fd04c0",
+    "source/assist/tests/tech_production_compatibility.cpp": "abc8eb8fc9bec57835e9bcbcd4b50773251dc3c6a9380f0825d4a0113f37bc6d",
+    "source/assist/tests/tech_production_compatibility.py": "7672b17173b31f956018c6c965399df273dda8e376f262d9fc3ff3611641a8b3"
+  },
+  "passed": true,
+  "version": "1.0.49-pre.3",
+  "assist_protocol": 107,
+  "assist_shared_bytes": 23162680
+}

@@ -28,6 +28,7 @@ struct AdditionalSettings {
  int privateOutMode=0; // 0 original, 1 private Hook, 2 private hardware breakpoints
  bool nativeMegaGateway=false; // Optional native observer; ordinary input uses the message path.
  bool nativeCombatQueries=false; // Explicit engine selector/range calls; raw observations are the default.
+ bool techProductionCompatibility=false;
  bool techEnhance=false,techEnhanceCompareLevel=false;int techEnhanceImplementation=0;int placementImplementation=0;
  uint32_t placementEventKey='G'|(6<<8); // Explicit one-shot completed-building placement.
  bool viewZoomEnabled=false;int viewZoomPercent=100;uint32_t sidebarMode=0;bool sidebarEnabled=false,smallMapClamp=false;

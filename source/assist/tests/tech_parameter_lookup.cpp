@@ -32,7 +32,7 @@ static LONG InterlockedCompareExchange(volatile LONG*p,LONG v,LONG expected){con
 namespace subject {
 struct Context {uint32_t Eip=0x4F7951,Esp=Stack,Eax=99,Ebx=10,Ecx=Type,Edx=98,Ebp=House,Esi=97,Edi=Type,EFlags=0x1F7202;};
 constexpr unsigned UnsafeTech=4096;
-struct Settings {unsigned flags=UnsafeTech,techEnhance=1,techEnhanceImplementation=1,techEnhanceCompareLevel=1,stop=0;} storage,*sh=&storage;
+struct Settings {unsigned techProductionCompatibility=0,techProductionFullPasses=0,techProductionEnhancePasses=0;unsigned flags=UnsafeTech,techEnhance=1,techEnhanceImplementation=1,techEnhanceCompareLevel=1,stop=0;} storage,*sh=&storage;
 static bool fault=false,controlEligible=false;static unsigned techImplementation=techmode::Parameters;
 static uint32_t lastHouse=House,worldCaptures=0,fullStack[4]{};
 static unsigned probeDepth=0;static uint32_t probeToken=0,techEnhanceProbeReturn=0x700014;

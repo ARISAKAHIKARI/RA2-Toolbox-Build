@@ -320,33 +320,41 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
  }
  if(tag<2)techbp::countOwner(fullExceptions);else techbp::countOwner(enhancementExceptions);
  if(tag==0){
-  // The original CALL has already pushed its return address. Classify the
-  // two native UI callers before any expensive world/type queries.
-  if(context.Esp<0x10000)return 0;auto*args=reinterpret_cast<uint32_t*>(uintptr_t(context.Esp));
-  const uint32_t caller=args[0],pointer=args[1];const bool draw=caller==0x6A97D7,prune=caller==0x6AA786;
-  if((!draw&&!prune)||pointer<0x10000||args[2]||args[3]!=(draw?0u:1u))return 0;
+  // The original CALL has already pushed its return address. Keep the
+  // historical two-caller path unless the explicit compatibility option is on.
+  if(context.Esp<0x10000||context.Esp>UINT32_MAX-16)return 0;auto*args=reinterpret_cast<uint32_t*>(uintptr_t(context.Esp));
+  const uint32_t caller=args[0],pointer=args[1];
+  const bool sidebar=(caller==0x6A97D7&&args[3]==0)||(caller==0x6AA786&&args[3]==1);
+  const bool extended=!sidebar&&sh&&sh->techProductionCompatibility&&caller>=0x10000&&args[3]<=1;
+  if((!sidebar&&!extended)||pointer<0x10000||args[2])return 0;
   if(!policy.enabled||!sh||sh->stop||fault||!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)||context.Ecx!=policy.house)return 0;
   // Reject uncaptured types using local data before reading the live world.
   // A candidate still needs every current identity and signature guard.
   const auto*t=fullIdentity(pointer);if(!t)return 0;
   if(!world()||get<uint32_t>(pointer)!=t->table||get<uint32_t>(pointer+0x10)!=t->id)return 0;
   if(!nativeCompatibleHot()){InterlockedExchange(&policy.enabled,0);return 0;}
-  args[2]=1;return 1;
+  args[2]=1;if(extended)++sh->techProductionFullPasses;return 1;
  }
  if(!policy.enhanced||!sh||sh->stop||fault||!sh->techEnhance||(tag==3&&!policy.compareLevel))return 0;
- const uint32_t stack=context.Esp,returnAddress=get<uint32_t>(stack+0x4C),pointer=get<uint32_t>(stack+0x50);
+ const uint32_t stack=context.Esp;if(stack<0x10000||stack>UINT32_MAX-0x5C)return 0;
+ const uint32_t returnAddress=get<uint32_t>(stack+0x4C),pointer=get<uint32_t>(stack+0x50);
  if(context.Ebp!=policy.house||get<uint32_t>(stack+0x10)!=policy.house||get<uint32_t>(stack+0x54)||
   (tag==2?context.Edi:context.Ecx)!=pointer||pointer<0x10000)return 0;
- const uint32_t include=get<uint32_t>(stack+0x58);const bool caller=(returnAddress==0x6A97D7&&include==0)||(returnAddress==0x6AA786&&include==1)||
+ const uint32_t include=get<uint32_t>(stack+0x58);
+ const bool caller=(returnAddress==0x6A97D7&&include==0)||(returnAddress==0x6AA786&&include==1)||
   (probeDepth&&returnAddress==techEnhanceProbeReturn&&include==1&&probeToken&&uint32_t(InterlockedCompareExchange(&gameentry::activeToken,0,0))==probeToken);
- if(!caller)return 0;
+ // Our own probe remains token-bound, even when other callers are admitted.
+ // This only expands who may ask the already captured local-house policy.
+ const bool extended=!caller&&sh->techProductionCompatibility&&returnAddress>=0x10000&&returnAddress!=techEnhanceProbeReturn&&include<=1;
+ if(!caller&&!extended)return 0;
  const unsigned i=policy.enhancementIndex.find(policy.enhancement,pointer,[](const EnhancedIdentity&t){return t.type.pointer;});
  if(i>=techenhancement::Count)return 0;
  const auto&t=policy.enhancement[i];
  if(!world()||!enhancementCompatibleHot())return 0;
  if(get<uint32_t>(pointer)!=t.type.table||get<uint32_t>(pointer+0x10)!=t.type.id||get<int>(pointer+0x634)!=t.level||
     get<uint32_t>(techenhancement::Rules[i].array+4)!=t.items||t.index<0||t.index>=get<int>(techenhancement::Rules[i].array+16)||get<uint32_t>(t.items+uint32_t(t.index)*4)!=pointer)return 0;
- context.EFlags=tag==2?techenhanceparams::limitFlags(context.EFlags):techenhanceparams::compareFlags(1,context.Ebx,context.EFlags);return 1;
+ context.EFlags=tag==2?techenhanceparams::limitFlags(context.EFlags):techenhanceparams::compareFlags(1,context.Ebx,context.EFlags);
+ if(extended)++sh->techProductionEnhancePasses;return 1;
 }
 extern "C" unsigned BeginTechEnhancementProbe(){using namespace techparameters;if(!gameentry::active(gameentry::Client::Assist)||!policy.enhanced||!enhancementReady()||probeDepth>=16)return 0;static constexpr uint8_t stub[]={0x8B,0x4C,0x24,4,0x8B,0x44,0x24,8,0x6A,1,0x6A,0,0x50,0xB8,0x70,0x78,0x4F,0,0xFF,0xD0,0xC2,8,0};
  const auto*start=reinterpret_cast<const uint8_t*>(&AssistTechEnhancementProbeCall);if(memcmp(start,stub,sizeof stub))return 0;

@@ -2132,6 +2132,7 @@ static void updateModeStatus(DWORD now){
  {const int p=shared?shared->techEnhanceParameterStatus:0;const wchar_t*label=p==1?L"已安装":p==2?L"等待安装／恢复":p==-1?L"原生入口不兼容":p==-2?L"没有空闲硬件断点":p==-3?L"Windows 线程操作失败":p==-4?L"断点已被其他工具改变":p==-5?L"线程归属不匹配":p==-6?L"与当前科技模式不兼容":p==-7?L"当前生产未完成，等待安全切换":p==-8?L"Ares 已替换原生比较流程，请选择规则模式":L"关闭";
   std::wstring text=std::wstring(L"科技加强参数拦截：")+label;
   if(shared){text+=L" · 占用 "+std::to_wstring(shared->techEnhanceParameterSlots)+L" 槽 · 命中 "+std::to_wstring(shared->techEnhanceParameterExceptions)+L" 次";if(p<0)text+=L" · 错误 "+std::to_wstring(shared->techEnhanceParameterError);}
+  if(shared&&extra.techProductionCompatibility)text+=L" · 额外许可放行 "+std::to_wstring(shared->techProductionEnhancePasses)+L" 次";
   SetWindowTextW(GetDlgItem(ui,9471),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9471),p<0);
  }
 
@@ -2266,6 +2267,7 @@ static void updateModeStatus(DWORD now){
  if(shared&&(techImplementation==buildingmodes::TechParameters||snap.techOpen==5)){
   const int state=shared->techParameterStatus;const wchar_t*label=state==1?L"已安装":state==2?L"等待安装／恢复":state==-1?L"原生查询不兼容":state==-2?L"没有空闲硬件断点":state==-3?L"Windows 线程操作失败":state==-4?L"断点状态已被其他工具改变":state==-5?L"线程归属不匹配":L"关闭";
   progress+=std::wstring(L"\n参数拦截：")+label+L" · 命中 "+std::to_wstring(shared->techParameterExceptions)+L" 次";
+  if(extra.techProductionCompatibility)progress+=L" · 额外许可放行 "+std::to_wstring(shared->techProductionFullPasses)+L" 次";
   if(state<0)progress+=L" · 错误 "+std::to_wstring(shared->techParameterError);progress+=L"\n";
  }
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
