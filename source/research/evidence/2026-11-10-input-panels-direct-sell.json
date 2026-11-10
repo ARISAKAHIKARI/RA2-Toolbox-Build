@@ -1,0 +1,43 @@
+{
+  "source_commit": "9342c7ede9c71036e908d4bd54ed6ac7c7fd99e0",
+  "local_build_commit": "6313f512f12e8f0a78c221ead64f0b88478295a9",
+  "all_tracked_build_source_blobs_match_remote": true,
+  "tracked_inputs": 846,
+  "windows_target_build_exit": 0,
+  "static_PE_ABI_exit": 0,
+  "assist_protocol": 105,
+  "assist_shared_bytes": 23162640,
+  "portable_production_tests_passed": 3,
+  "native_wire_cases_passed": 12,
+  "native_unlock_receiver_cases_passed": 6,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "binaries": {
+    "RA2Toolbox.exe": {
+      "bytes": 9509376,
+      "sha256": "f86987cca53cbfcbb96849f7254275c1713488351340ffb3698f0fa6e11b1f45"
+    },
+    "GameRuntime.dll": {
+      "bytes": 25122304,
+      "sha256": "0ea667509dfc53bff505db913d9d5a3d2523f15144724e04503d2da1fe42929f"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 214528,
+      "sha256": "c14abf1784383096ccd22a0610ffe88b923e573ed54ff8fc26312f29a765578e"
+    },
+    "WebView2Loader.dll": {
+      "bytes": 194912,
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  },
+  "packages": {
+    "RA2Toolbox-1.0.48-pre.2-Input-Panels-Sell-x64-Update.zip": {
+      "bytes": 4126219,
+      "sha256": "cc17e03e715a70b65892edc9b91e603935d6039b8155d799483dcb612ca460c6"
+    },
+    "RA2Toolbox-1.0.48-pre.2-verification.zip": {
+      "bytes": 117885,
+      "sha256": "6763310ce4e39472c6ac014b1d9be1807be5a082bcca712d1a83fb5d5c5a5848"
+    }
+  }
+}

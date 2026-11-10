@@ -63,3 +63,10 @@ TActionClass::Execute 6DD8B0，ECX=TAction，动作编号+2C，参数 House*, Ob
 - native_sell_wire_probe.py：12个protocol0/1/2×House0/1/7/31案例，生产C++编码与原生649CA0输出逐字节相同；原生64BDD0压缩解包还原相同Sell。仅捕获型transport，未发网络。
 - native_input_sell_receiver_probe.py：原生684290对初始鼠标深度0/1/5/64完整解锁并刷新；原生4C6CB0→447110保留Owner拒绝/接受，接受时进入Selling任务19。完整拆除动画、退款和House AI后继未运行。
 - 生产构建：x64 Host + x86 Runtime/broker，Assist105，预计Shared23162640。最终PE与包哈希以构建后收据为准，不在本文预先声称通过。
+
+
+## 最终交付收据
+
+代码提交 `9342c7ede9c71036e908d4bd54ed6ac7c7fd99e0`；846个冻结构建输入Git blob与该提交逐个一致。完整 x64 Host / x86 Runtime、broker 编译及静态 PE/ABI 校验均返回0；Assist105，Shared23162640。三个生产策略测试、12项原生wire对照、6项原生解锁/接收案例通过；无真实游戏或联机测试。
+
+更新包 `RA2Toolbox-1.0.48-pre.2-Input-Panels-Sell-x64-Update.zip`，4,126,219字节，SHA256 `cc17e03e715a70b65892edc9b91e603935d6039b8155d799483dcb612ca460c6`。独立依赖包 `RA2Toolbox-1.0.48-x64-Dependencies.zip`，104,375,534字节，SHA256 `dd6b89dacda804b9e3d108082bbc4fdb1fcffe1732eab9b6dfea27702e7fd37b`。两包已交付；详细二进制与验证包哈希见 [交付收据](evidence/2026-11-10-input-panels-direct-sell.json)。
