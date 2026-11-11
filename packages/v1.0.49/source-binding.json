@@ -1,0 +1,11 @@
+{
+  "version": "1.0.49",
+  "local_build_commit": "4bf09ca0e0cc8597c2e6b1f0f25b688acbe1a5f0",
+  "remote_commit": "d643891ee950747c99c07dbd749375bc54a0d172",
+  "remote_tree": "55fc581ea9df8bfaef0c0eeb1d75e813fa06b1ca",
+  "source_inputs_checked": 878,
+  "all_tracked_build_source_blobs_match_remote": true,
+  "mismatches": [],
+  "comparison": "git blob SHA for every tracked source input; preserves remote-only repository files",
+  "local_source_tree_verified_at": "2026-11-11T09:36:47.115Z"
+}
