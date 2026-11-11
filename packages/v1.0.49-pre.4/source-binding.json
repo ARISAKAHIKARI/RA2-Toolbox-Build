@@ -1,0 +1,11 @@
+{
+  "version": "1.0.49-pre.4",
+  "remote_commit": "fd5e953c2f37416a6c0f99c0d32d1529ea524d07",
+  "remote_tree": "6b148c2eec3d5fb9763566807776c7df38be14f1",
+  "local_build_commit": "e2ba5cbab1f64417a633b07a5717a1a65adb0eab",
+  "source_inputs_checked": 864,
+  "all_tracked_build_source_blobs_match_remote": true,
+  "mismatches": [],
+  "complete_remote_checkout": false,
+  "scope": "Every local tracked source input matched the remote commit; unrelated historical research/test files are not materialized."
+}
