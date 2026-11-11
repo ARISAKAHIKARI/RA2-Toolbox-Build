@@ -3,7 +3,7 @@
 #include "../../shared/source/overlay_recovery.h"
 namespace worldpresentation {
 // Keep the raster phase in client pixels even when tight bitmap bounds move.
-inline float rasterOrigin(int logical,float scale){return float(std::floor(double(logical)*scale)/scale);}
+inline float rasterOrigin(int logical,float scale){return float(std::floor(float(logical)*scale)/scale);}
 // Moving cameras may use a just-completed frame while the next one renders.
 // Frozen content at the current camera is valid without periodic re-rasterizing.
 inline bool cameraFrameCurrent(uint32_t now,uint32_t tick,int x,int y,int wantedX,int wantedY){

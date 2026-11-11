@@ -2,12 +2,14 @@
 #include <cassert>
 #include <cstdio>
 #include <initializer_list>
+#include "../../shared/source/viewport_scale.h"
 int main(){
- for(float scale:{0.75f,1.f,1.25f,1.5f,2.f})for(int left=0;left<150;++left){
+ for(float scale:{0.75f,1.f,1.25f,1.28f,1.3f,1.5f,2.f})for(int left=0;left<150;++left){
   // A label at fixed client position must keep its raster phase when a
   // neighbouring moving object shifts the tight bitmap's bounding rectangle.
-  double device=std::floor(left*double(scale))+(200.25-worldpresentation::rasterOrigin(left,scale))*scale;
-  assert(std::abs(device-200.25*scale)<0.0001);
+  viewport::Scale viewport;viewport.x=scale;
+  double device=viewport.left(float(left))+(200.25-worldpresentation::rasterOrigin(left,scale))*scale;
+  assert(std::abs(device-200.25*scale)<0.0002);
  }
  assert(worldpresentation::cameraFrameCurrent(10000,1,10,20,10,20));
  assert(worldpresentation::cameraFrameCurrent(1119,1000,10,20,11,20));

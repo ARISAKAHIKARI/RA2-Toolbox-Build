@@ -14,7 +14,7 @@
 
 1. 单位状态的“敌方单位提示”下增加“仅隐形、幻影和敌方间谍”。默认关闭，开启后过滤现有标识；真实兵种 / 所属颜色沿用公共采样和绘制。Display/EnemySpecialOnly 独立保存，切换设置或同帧新 publication 都刷新成员列表。旧补绘 UI 移除，保留内部实现和旧选项编号，但旧 INI / 按钮消息不能再发布 revealUnits。
 2. passengerView 原先遇到 unconfirmed 或 WorldFrameScope 获取失败直接 clear，绕过 120ms Sample lease。现在只在同 PID、match、house、相机、视口和选项下保留完整值；失败不续期、不做另一轮实时 RPM，成功空结果立即撤下。baseline 负对照在第一次 unconfirmed paint 失败，新实现通过。
-3. 普通覆盖层原先先推进 compositor camera，再等异步 World 位图，期间旧层被拒绝。现在延迟提交相机，完成的 World 画面和相机通过现有 replaceGroupAt 原子提交。移动相机下只容许不足 120ms 的完成帧；换局、尺寸、投影和隐藏仍失效。普通信息显示也使用已有短读失败视口保留。紧边界位图的变换原点对齐设备像素，避免非整数缩放时边界移动改变数字栅格相位。
+3. 普通覆盖层原先先推进 compositor camera，再等异步 World 位图，期间旧层被拒绝。现在延迟提交相机，完成的 World 画面和相机通过现有 replaceGroupAt 原子提交。移动相机以独立视口读数为准（不使用可能过期的对象快照相机），只容许不足 120ms 的完成帧；换局、尺寸、投影和隐藏仍失效。普通信息显示也使用已有短读失败视口保留。紧边界位图的变换原点对齐设备像素，避免非整数缩放时边界移动改变数字栅格相位。
 4. formation / MO 拖动若丢失鼠标 UP，active preview 会持续占用所有快捷键。新增物理松开 250ms 取消路径，覆盖全部五种可配鼠标键及原生编队拖动；不会合成 UP 或补交指令。native continuation 的 down / consumed lease 一并清理。编队键盘按住状态从物理键查询恢复，避免队列键态残留。
 5. Host 只检查 helper 存活不足以证明 Win32 回调仍在。新增连续观察下 callback 3s 不前进的传输恢复，至少 10s 间隔；宿主采样间隔超过 1s 重新观察，避免宿主卡顿误触发。异步 Remove ACK 后再 Install，保留 Shared、订阅、match 和 request/ACK，不重放指令。
 6. 显式重连始终重新注册并同步快捷键；过期连接请求传输修复。status -2 的故障连接走原有 stop / retirement，等待清理完成，不强制确认未完成命令，不强制卸载。
@@ -24,7 +24,7 @@
 - `assist/tests/special_enemy_markers.cpp`：真实阵营、三类单位、己方/盟友/中立/死亡/运输/永久隐藏排除、同帧设置及 publication 切换。
 - `assist/tests/reveal_settings.py`：8 种旧 INI / 消息组合均无法重新开启模型补绘。
 - `assist/tests/passenger_frame_sampling.py`：2185 项受控检查，包含旧源负对照、1000 次同帧绘制零实时 RPM、120ms 不续期和相机/选项失效。
-- `assist/tests/world_presentation.cpp`：五种缩放的栅格相位、相机期限及已有提交恢复。
+- `assist/tests/world_presentation.cpp`：七种缩放的栅格相位（含 1.28 / 1.3 非精确二进制比例）、相机期限及已有提交恢复。
 - `assist/tests/input_ownership.cpp`、`lost_gesture_release.py`：物理键、五种鼠标键、延迟/丢失释放及续行租约。
 - `assist/tests/host_broker_retry.py`：38 项完整生产 pulse 测试，覆盖异步恢复、退避、多个目标、请求序号保留及健康回调不重装。
 - `assist/tests/manual_reconnect.py`、`formation_input_ownership.py`、`hotkey_routes.cpp`：重连动作、13 场景 78 项生产快捷键路径和现有路由。

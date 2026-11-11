@@ -265,10 +265,10 @@ static void formationTick(uint32_t house,int frame,DWORD now){
  // The native mouse-up can be lost when focus/capture changes. Do not
  // infer a click or commit the preview from polling; retire only its input lease.
  const unsigned button=formationQuick?moorders::gestureVK(formationQuickMouse):(formationButtonUp==WM_LBUTTONUP?VK_LBUTTON:VK_RBUTTON);
- if(formationReleaseWatch.expired(formationButton,button&&(GetAsyncKeyState(button)&0x8000),now)){
+ if(formationReleaseWatch.expired(formationButton,formationButton&&button&&(GetAsyncKeyState(button)&0x8000),now)){
   formationButton=false;formationQuickCaptured=false;formationQuickMouse=0;formationCancel();formationReleaseWatch.clear();
  }
- if(formationFollowReleaseWatch.expired(formationFollow.down,(GetAsyncKeyState(VK_LBUTTON)&0x8000)!=0,now)){
+ if(formationFollowReleaseWatch.expired(formationFollow.down,formationFollow.down&&(GetAsyncKeyState(VK_LBUTTON)&0x8000)!=0,now)){
   formationFollow={};sh->formationConsumedUntil=0;formationFollowReleaseWatch.clear();
  }
  formationRefreshHold();if(formationQuick&&!formationQuickAuthorized(true))formationCancel();

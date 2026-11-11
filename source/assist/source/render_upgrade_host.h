@@ -25,6 +25,8 @@
 // External read/render; the sampler observes native frame-number changes.
 // No engine drawing or feature command is dispatched by this pipeline.
 namespace renderupgrade {
+// Independently read desired camera, distinct from the last committed pixels.
+static overlaycompositor::Context informationContext;
 static double presentationNow(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 struct Request {uint64_t generation=0;bool materialRefresh=true;int detail=1,colorPrecision=1;uint32_t pid=0,match=0,tick=0;int width=0,height=0;uint32_t reveal=0;int paletteRange=1,pixelScaleMode=0;external::mainview::View view;overlaycompositor::Context context;bool gpu=false;double decodeBudgetMs=4.;int displayRate=60;external::presentation::Profile profile;bool supplementalOnly=false;};
 struct Frame {
@@ -269,6 +271,7 @@ static bool syncRadarExclusion(const RECT&client){
  overlaycompositor::host().setMapExclusion(excluded);return true;
 }
 static void update(POINT origin,const RECT&client,const external::display::State&displayState){
+ informationContext={};
  static const bool diagnostics=[](){overlaycompositor::host().setDiagnosticsSink(critical);return true;}();(void)diagnostics;
  if(!overlayvisibility::visible()){stop();return;}
  const auto selected=external::presentation::settings().get();static uint64_t profileRevision=~uint64_t(0);
@@ -300,7 +303,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
   // or invalidate an in-flight job; known menus/focus/world changes do so above.
   if(nativeviewhost::stable(shared,transform)&&viewLease.retain(uintptr_t(game),pid,match,client.right,client.bottom,viewNow,transform)){
    const auto&prior=viewLease.view();
-   overlaycompositor::host().configure(uintptr_t(game),pid,match,client.right,client.bottom,
+   informationContext=overlaycompositor::host().configure(uintptr_t(game),pid,match,client.right,client.bottom,
     prior.cameraX,prior.cameraY,true,false,informationFPS(),true,nativeviewhost::key(transform));
    if(renderUpgradeEnabled){
     auto held=groupLease.frame();
@@ -349,6 +352,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  const auto renderPath=physicalpresentation::renderPath(physical,renderPhysicalOutput);
  auto context=overlaycompositor::host().configure(uintptr_t(game),pid,displayMatch(),client.right,client.bottom,
   visible?view.cameraX:0,visible?view.cameraY:0,visible,false,informationFPS(),true,nativeviewhost::key(view.transform));
+ informationContext=context;
  sidebarhud::update(pid,displayMatch(),view,context,harvesterCounterEnabled,powerDeltaEnabled);
  if(!sceneRequested){progress=0;return;}
  active=true;

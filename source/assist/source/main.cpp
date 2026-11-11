@@ -1750,7 +1750,8 @@ static void present(){auto frame=worker.get();
   if(frame->context.token!=context.token){overlaycompositor::host().hide(overlaycompositor::World);return;}
   overlaycomposition::Surface layer{overlaycompositor::World,10,frame->context,{frame->relative.x,frame->relative.y,frame->w,frame->h},true,255,std::move(pixels)};
   if(!renderUpgradeEnabled){
-   if(!worldpresentation::cameraFrameCurrent(GetTickCount(),frame->tick,frame->context.cameraX,frame->context.cameraY,snap.cameraX,snap.cameraY)){overlaycompositor::host().hide(overlaycompositor::World);return;}
+   const auto&wanted=renderupgrade::informationContext;
+   if(wanted.token!=context.token||!worldpresentation::cameraFrameCurrent(GetTickCount(),frame->tick,frame->context.cameraX,frame->context.cameraY,wanted.cameraX,wanted.cameraY)){overlaycompositor::host().hide(overlaycompositor::World);return;}
    // Camera and pixels become visible atomically: never clear a complete
    // layer merely because its replacement is still on the worker thread.
    overlaycompositor::host().replaceGroupAt(frame->context,{overlaycompositor::World},{std::move(layer)});
