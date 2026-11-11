@@ -13,10 +13,21 @@ static bool privateOutActive(){return privateEnabled&&sh&&sh->privateOutMode==pr
 static bool privateOutPending(){return privateQueue.count!=0;}
 static int privateOutRoom(){return privateOutActive()?int(privateout::Capacity-privateQueue.count):0;}
 static void privateStatus(int value){if(sh){sh->privateOutPending=privateQueue.count;sh->privateOutStatus=value;}}
+static bool privateDestructHouse(int index,uint32_t house,uint32_t id){
+ Vec houses=vec(0xA80228,32);
+ return index>=0&&index<houses.count&&house>=0x10000&&id&&item(houses,index)==house&&
+  get<uint32_t>(house+0x10)==id&&get<int>(house+0x30)==index&&playableHouse(house)&&!get<bool>(house+0x1F7)&&
+  (!eventdelivery::isMultiplayer(get<int>(0xA8B238))||networkSenderHouse(index));
+}
 static bool privateOutQueue(const Event&source,bool manual){
  if(!privateOutActive()||GetCurrentThreadId()!=privateOwner||!riskReady(true)||!readonly::commands(sh)||readOnlyState.active)return false;
  privateout::Pending p{};if(!privateout::canonical(p.event,source))return false;
  const int frame=get<int>(0xA8ED84);const uint32_t id=privateout::actor(p.event);
+ if(p.event.kind==vanilla::EventType::Destruct){
+  Vec houses=vec(0xA80228,32);p.stamp.targetHouse=item(houses,int(p.event.house));
+  p.stamp.targetID=p.stamp.targetHouse>=0x10000?get<uint32_t>(p.stamp.targetHouse+0x10):0;
+  if(!privateDestructHouse(int(p.event.house),p.stamp.targetHouse,p.stamp.targetID)){++sh->privateOutRejected;privateStatus(-7);return false;}
+ }
  if(id&&p.event.payload[4]==0x34){
   indexWorld(frame);const uint32_t actor=worldByID(id);
   if(!actor||!live(actor)){++sh->privateOutRejected;privateStatus(-7);return false;}
@@ -33,7 +44,7 @@ static bool privateOutQueue(const Event&source,bool manual){
   }
   if(p.event.kind==0x16&&eventdelivery::isMultiplayer(snap.session)&&!sellHumanHouse(p.stamp.owner)){++sh->privateOutRejected;privateStatus(-7);return false;}
  }
- p.event.frame=uint32_t(frame);p.stamp.epoch=match;p.stamp.house=lastHouse;p.stamp.scenario=get<uint32_t>(0xA8B230);p.stamp.at=sampleClock(sh);p.manual=manual;
+ p.event.frame=uint32_t(frame);p.stamp.epoch=match;p.stamp.house=lastHouse;p.stamp.scenario=get<uint32_t>(0xA8B230);p.stamp.at=sampleClock(sh);p.manual=manual||p.event.kind==vanilla::EventType::Destruct;
  if(privateQueue.count==privateout::Capacity){++sh->privateOutRejected;privateStatus(-6);return false;}
  if(manual&&p.stamp.actorPointer&&!nativeMegaQueueCallDepth&&!nativeObjectQueueCallDepth)cancelNative(p.stamp.actorPointer,false);
  p.stamp.revision=manualVersions.get(p.stamp.actorID);
@@ -45,11 +56,12 @@ static bool privateOutQueue(const Event&source,bool manual){
 }
 static bool privateValid(const privateout::Pending&p){
  if(p.stamp.epoch!=match||p.stamp.house!=lastHouse||p.stamp.scenario!=get<uint32_t>(0xA8B230)||(!p.manual&&DWORD(sampleClock(sh)-p.stamp.at)>3000))return false;
+ if(p.event.kind==vanilla::EventType::Destruct&&!privateDestructHouse(int(p.event.house),p.stamp.targetHouse,p.stamp.targetID))return false;
  const uint32_t a=p.stamp.actorPointer;if(!a)return true;
  return (p.manual||manualVersions.get(p.stamp.actorID)==p.stamp.revision)&&worldByID(p.stamp.actorID)==a&&live(a)&&get<uint32_t>(a+0x10)==p.stamp.actorID&&get<uint32_t>(a+0x21C)==p.stamp.owner&&get<uint32_t>(p.stamp.owner+0x10)==p.stamp.ownerID;
 }
 static void servicePrivateOutBatch(){
- if(!privateOutActive()||!privateQueue.count||!simulationReady()||snap.chat)return;
+ if(!privateOutActive()||!privateQueue.count||!simulationReady(false,true)||snap.chat)return;
  if(privateRetry&&int32_t(sampleClock(sh)-privateRetry)<0)return;
  // Old native commands must leave first. We never move or edit that list.
  if(get<int>(0xA802C8)!=0){privateStatus(2);return;}
@@ -62,7 +74,7 @@ static void servicePrivateOutBatch(){
   const auto&p=privateQueue.at(n);if(!privateValid(p)||p.event.house!=privateQueue.at(0).event.house)break;events[n++]=p.event;
  }
  if(!n)return;
- uint32_t timing=0;if(!gameSendTiming(timing)||!simulationReady())return;
+ uint32_t timing=0;if(!gameSendTiming(timing)||!simulationReady(false,true))return;
  const bool network=eventdelivery::isMultiplayer(snap.session);privateout::Wire wire{};
  const int protocol=get<int>(0xA8B24C),delay=get<int>(0xA8B550),interval=get<int>(0xA8B554);
  const uint16_t serial=get<uint16_t>(0xAFA400);const uint32_t crc=get<uint32_t>(0xAC51FC);
@@ -77,7 +89,7 @@ static void servicePrivateOutBatch(){
  }
  // All external callbacks precede this commit boundary. No allocation or
  // callback occurs between transport acceptance and queue retirement.
- if(!simulationReady()||get<int>(0x8B41F8)!=count||get<int>(0x8B4200)!=tail||get<int>(0xA8ED84)!=frame||
+ if(!simulationReady(false,true)||get<int>(0x8B41F8)!=count||get<int>(0x8B4200)!=tail||get<int>(0xA8ED84)!=frame||
    (network&&(get<uint16_t>(0xAFA400)!=serial||get<int>(0xA8B24C)!=protocol||get<int>(0xA8B550)!=delay||get<int>(0xA8B554)!=interval||get<uint32_t>(0xAC51FC)!=crc)))return;
  for(unsigned i=0;i<n;++i)if(!privateValid(privateQueue.at(i)))return;
  if(network&&!call<int>(0x5414C0,transport,wire.bytes,int(wire.size),1,-1)){privateRetry=sampleClock(sh)+50;privateStatus(-8);return;}

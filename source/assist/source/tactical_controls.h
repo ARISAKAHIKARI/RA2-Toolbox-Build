@@ -404,7 +404,7 @@ label(L"目标所属方（请明确选择）");next();
 EnableWindow(combo(862,20,305,240),FALSE);EnableWindow(button(863,L"切换至所选玩家",340,285),FALSE);next();
 EnableWindow(button(864,L"恢复原操控方",20,285),FALSE);next();
 toggle(9253,L"高危：自毁选定单位的所属方",extra.destructSelectedOwner,20,455);EnableWindow(button(9185,L"立即自毁",500,125),extra.destructSelectedOwner);next();
-note(L"自愿开启后，按快捷键或点击立即执行。读取游戏当下选定单位的所属方，一次提交原生整方自毁事件，影响其全部单位和建筑；混合所属方、选取过期或忙碌时拒绝且不补发。联机跨方必须已启用“保留事件所属方”，仍有不同步风险。默认关闭、快捷键不绑定；不显示确认弹窗。",65);
+note(L"自愿开启后，按快捷键或点击立即执行。读取游戏当下选定单位的所属方，一次提交原生整方自毁事件，影响其全部单位和建筑；混合所属方、选取过期或忙碌时拒绝且不补发。联机跨方需私有操控队列已接管，或“保留事件所属方”完整就绪；联机电脑方不支持。入队不代表远端收到或执行。默认关闭、快捷键不绑定；不显示确认弹窗。",65);
 label(L"自毁快捷键（默认不绑定）",20,306);key(9254,extra.destructSelectedOwnerKey);next();
 note(L"必须使用独立快捷键；不允许与其他动作共享，即使已开启“执行所有匹配功能”。忙碌、失焦、聊天或超时后须重新按键。",44);
 item(L"STATIC",L"",20,605,9186,0,52);pageControls.back().feedbackHidden=true;next(52);

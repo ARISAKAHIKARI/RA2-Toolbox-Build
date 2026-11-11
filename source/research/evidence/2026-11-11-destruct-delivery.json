@@ -1,0 +1,484 @@
+{
+  "scope": "Controlled production gates and x86 private encoder/native decoder/receiver. No live game or platform execution.",
+  "baseline_local_commit": "4396cea",
+  "baseline_hidden_delivery_regression_reproduced": true,
+  "gate_results": {
+    "hidden_delivery": true,
+    "visible_only_admission": true,
+    "blocking_boundaries": 14,
+    "live_platform_tested": false
+  },
+  "private_capture": {
+    "memory_sha256": "94ac595e7a6fef82839b7959f3f926a52708fc857fbc65aa9ff88428dff3f4bd",
+    "fixture_sha256": "ee64dda4cf4bc6f705d82c32a54abcb8f2f27ef0a3904ef20472528872a75bc4",
+    "capture_cases": [
+      {
+        "active": false,
+        "caller": "0x443499",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": false,
+        "caller": "0x4435ad",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": false,
+        "caller": "0x443688",
+        "constructor": "0x4c6780"
+      },
+      {
+        "active": false,
+        "caller": "0x4437f5",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": false,
+        "caller": "0x4439d2",
+        "constructor": "0x4c6780"
+      },
+      {
+        "active": false,
+        "caller": "0x443b1c",
+        "constructor": "0x4c6780"
+      },
+      {
+        "active": false,
+        "caller": "0x48ca48",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": false,
+        "caller": "0x48cac9",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": false,
+        "caller": "0x48cbc5",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": false,
+        "caller": "0x4abb5a",
+        "constructor": "0x4c6ae0"
+      },
+      {
+        "active": false,
+        "caller": "0x4ac18c",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": false,
+        "caller": "0x4ac1b7",
+        "constructor": "0x4c6650"
+      },
+      {
+        "active": false,
+        "caller": "0x4ac23f",
+        "constructor": "0x4c6b60"
+      },
+      {
+        "active": false,
+        "caller": "0x4d7633",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": false,
+        "caller": "0x4e1e59",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": false,
+        "caller": "0x4f13ea",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": false,
+        "caller": "0x4f15cb",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": false,
+        "caller": "0x4f1674",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": false,
+        "caller": "0x55cffe",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": false,
+        "caller": "0x5da898",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": false,
+        "caller": "0x646ef5",
+        "constructor": "0x4c6860"
+      },
+      {
+        "active": false,
+        "caller": "0x646fd2",
+        "constructor": "0x4c68e0"
+      },
+      {
+        "active": false,
+        "caller": "0x647079",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": false,
+        "caller": "0x647129",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": false,
+        "caller": "0x6471f1",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": false,
+        "caller": "0x64a306",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": false,
+        "caller": "0x6a8eed",
+        "constructor": "0x4c6ae0"
+      },
+      {
+        "active": false,
+        "caller": "0x6aa7ec",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": false,
+        "caller": "0x6aa8d2",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": false,
+        "caller": "0x6aaf41",
+        "constructor": "0x4c6b60"
+      },
+      {
+        "active": false,
+        "caller": "0x6ab02f",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": false,
+        "caller": "0x6ab130",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": false,
+        "caller": "0x6ab204",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": false,
+        "caller": "0x6ab236",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": false,
+        "caller": "0x6ab34e",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": false,
+        "caller": "0x6ab401",
+        "constructor": "0x4c6ae0"
+      },
+      {
+        "active": false,
+        "caller": "0x6ab516",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": false,
+        "caller": "0x6ab773",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": false,
+        "caller": "0x6ffe39",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": false,
+        "caller": "0x730f71",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": false,
+        "caller": "0x73188f",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": false,
+        "caller": "0x7319a1",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": true,
+        "caller": "0x443499",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": true,
+        "caller": "0x4435ad",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": true,
+        "caller": "0x443688",
+        "constructor": "0x4c6780"
+      },
+      {
+        "active": true,
+        "caller": "0x4437f5",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": true,
+        "caller": "0x4439d2",
+        "constructor": "0x4c6780"
+      },
+      {
+        "active": true,
+        "caller": "0x443b1c",
+        "constructor": "0x4c6780"
+      },
+      {
+        "active": true,
+        "caller": "0x48ca48",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": true,
+        "caller": "0x48cac9",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": true,
+        "caller": "0x48cbc5",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": true,
+        "caller": "0x4abb5a",
+        "constructor": "0x4c6ae0"
+      },
+      {
+        "active": true,
+        "caller": "0x4ac18c",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": true,
+        "caller": "0x4ac1b7",
+        "constructor": "0x4c6650"
+      },
+      {
+        "active": true,
+        "caller": "0x4ac23f",
+        "constructor": "0x4c6b60"
+      },
+      {
+        "active": true,
+        "caller": "0x4d7633",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": true,
+        "caller": "0x4e1e59",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": true,
+        "caller": "0x4f13ea",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": true,
+        "caller": "0x4f15cb",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": true,
+        "caller": "0x4f1674",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": true,
+        "caller": "0x55cffe",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": true,
+        "caller": "0x5da898",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": true,
+        "caller": "0x646ef5",
+        "constructor": "0x4c6860"
+      },
+      {
+        "active": true,
+        "caller": "0x646fd2",
+        "constructor": "0x4c68e0"
+      },
+      {
+        "active": true,
+        "caller": "0x647079",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": true,
+        "caller": "0x647129",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": true,
+        "caller": "0x6471f1",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": true,
+        "caller": "0x64a306",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": true,
+        "caller": "0x6a8eed",
+        "constructor": "0x4c6ae0"
+      },
+      {
+        "active": true,
+        "caller": "0x6aa7ec",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": true,
+        "caller": "0x6aa8d2",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": true,
+        "caller": "0x6aaf41",
+        "constructor": "0x4c6b60"
+      },
+      {
+        "active": true,
+        "caller": "0x6ab02f",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": true,
+        "caller": "0x6ab130",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": true,
+        "caller": "0x6ab204",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": true,
+        "caller": "0x6ab236",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": true,
+        "caller": "0x6ab34e",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": true,
+        "caller": "0x6ab401",
+        "constructor": "0x4c6ae0"
+      },
+      {
+        "active": true,
+        "caller": "0x6ab516",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": true,
+        "caller": "0x6ab773",
+        "constructor": "0x4c6970"
+      },
+      {
+        "active": true,
+        "caller": "0x6ffe39",
+        "constructor": "0x4c65e0"
+      },
+      {
+        "active": true,
+        "caller": "0x730f71",
+        "constructor": "0x4c66c0"
+      },
+      {
+        "active": true,
+        "caller": "0x73188f",
+        "constructor": "0x4c6720"
+      },
+      {
+        "active": true,
+        "caller": "0x7319a1",
+        "constructor": "0x4c6720"
+      }
+    ],
+    "planning_cases": 4,
+    "transport_retry_atomicity": true,
+    "destruct_pipeline": [
+      {
+        "protocol": 0,
+        "target_house": 1,
+        "local_house": 0,
+        "wire_bytes": 222,
+        "retry_once": true,
+        "receiver_target_only": true
+      },
+      {
+        "protocol": 1,
+        "target_house": 1,
+        "local_house": 0,
+        "wire_bytes": 15,
+        "retry_once": true,
+        "receiver_target_only": true
+      },
+      {
+        "protocol": 2,
+        "target_house": 1,
+        "local_house": 0,
+        "wire_bytes": 15,
+        "retry_once": true,
+        "receiver_target_only": true
+      }
+    ],
+    "destruct_identity_cancellations": 3,
+    "multiplayer_AI_rejected": true,
+    "target_route_cases": 5,
+    "live_game_tested": false,
+    "live_platform_tested": false
+  },
+  "native_wire_cases": 327,
+  "native_wire_memory_sha256": "94ac595e7a6fef82839b7959f3f926a52708fc857fbc65aa9ff88428dff3f4bd",
+  "receiver_fixtures": [
+    {
+      "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+      "passed_cases": 20
+    },
+    {
+      "game_sha256": "ebb8b7bd07236c9ba7cbb2ad01bdca82b99faf2fccf08d79f7f60f59c4d77707",
+      "passed_cases": 20
+    }
+  ],
+  "live_multiplayer_tested": false,
+  "full_House_AI_destruction_tested": false
+}

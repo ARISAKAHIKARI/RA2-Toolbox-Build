@@ -33,7 +33,7 @@ inline bool canonical(vanilla::Packet&out,const vanilla::Packet&in){
  if(out.kind==4)out.payload[6]=0; // dictionary slot metadata, never user data
  return true;
 }
-struct Stamp {uint32_t epoch=0,house=0,scenario=0,at=0,actorPointer=0,actorID=0,owner=0,ownerID=0,revision=0;};
+struct Stamp {uint32_t epoch=0,house=0,scenario=0,at=0,actorPointer=0,actorID=0,owner=0,ownerID=0,revision=0,targetHouse=0,targetID=0;};
 struct Pending {vanilla::Packet event{};Stamp stamp{};bool manual=false;};
 struct Queue {
  Pending entries[Capacity]{};unsigned head=0,count=0;

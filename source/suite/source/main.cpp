@@ -11,6 +11,7 @@
 #define _UNICODE
 #endif
 #include <windows.h>
+#include "app_icon.h"
 #include "../../shared/source/bounded_shutdown.h"
 #include <commctrl.h>
 #include <string>
@@ -153,7 +154,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR cmd,int show){
  videoSection=std::clamp(int(GetPrivateProfileIntW(L"UI",L"VideoSection",0,config.c_str())),0,1);
  INITCOMMONCONTROLSEX cc{sizeof cc,ICC_WIN95_CLASSES};InitCommonControlsEx(&cc);
  font=modernui::makeFont();
- WNDCLASSW wc{};wc.hInstance=h;wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2Toolbox020";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=LoadIconW(nullptr,IDI_APPLICATION);HBRUSH brush=CreateSolidBrush(modernui::Background);wc.hbrBackground=brush;RegisterClassW(&wc);
+ WNDCLASSEXW wc{};wc.cbSize=sizeof wc;wc.hInstance=h;wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2Toolbox020";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=suite::applicationIcon(h,false);wc.hIconSm=suite::applicationIcon(h,true);HBRUSH brush=CreateSolidBrush(modernui::Background);wc.hbrBackground=brush;RegisterClassExW(&wc);
  RECT work{};SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);frame=CreateWindowW(wc.lpszClassName,L"红警工具箱 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1120,std::max(550,std::min(900,int(work.bottom-work.top)-30)),nullptr,nullptr,h,nullptr);
  for(int i=0;i<3;++i){workers[i]=CreateThread(nullptr,0,run,(LPVOID)(uintptr_t)i,0,nullptr);if(!workers[i])active[i]=false;}
  consoleDpi=modernui::windowDpi(frame);applyDpi(consoleDpi);SetWindowPos(frame,nullptr,0,0,std::min(modernui::scale(1120,consoleDpi),int(work.right-work.left)-20),std::min(modernui::scale(900,consoleDpi),int(work.bottom-work.top)-30),SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);layout();ShowWindow(frame,show);MSG msg;while(GetMessageW(&msg,nullptr,0,0)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}

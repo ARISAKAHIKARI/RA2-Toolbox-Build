@@ -367,20 +367,21 @@ static bool gameSendTiming(uint32_t& result){
  result=invokeGameClock(callback);
  return true;
 }
-static bool simulationReady(bool allowNewerFrame=false){
+static bool simulationReady(bool allowNewerFrame=false,bool allowDisplayHidden=false){
+ const bool hidden=allowDisplayHidden&&snap.commandStatus==activation::DisplayHidden;
  if(!gameentry::active(gameentry::Client::Assist)||!sh||((sh->stop||!readonly::commands(sh)||readOnlyState.active)&&!missileCleanup)||fault||
-    snap.status!=1||(snap.commandStatus!=1&&!missileCleanup)||!match||!lastHouse||
+    snap.status!=1||(snap.commandStatus!=1&&!hidden&&!missileCleanup)||!match||!lastHouse||
     (DWORD(sampleClock(sh)-sh->heartbeat)>=3000&&!missileCleanup)||!get<bool>(0xA8E9A0))return false;
  const uint32_t house=get<uint32_t>(0xA83D4C);const int frame=get<int>(0xA8ED84),session=get<int>(0xA8B238);
  if(house!=lastHouse||house==get<uint32_t>(0xAC1198)||get<bool>(house+0x1F5)||
     get<bool>(house+0x1F6)||get<bool>(house+0x1F8)||frame<0||frame>=INT32_MAX||
     (allowNewerFrame?frame<snap.frame:frame!=snap.frame)||session!=snap.session||!eventdelivery::mayQueue(session))return false;
- return external::display::inspect([](uint32_t at,void*out,size_t size){
+ return hidden||external::display::inspect([](uint32_t at,void*out,size_t size){
   memcpy(out,(const void*)(uintptr_t)at,size);return true;
  }).visible();
 }
 #include "sell_single_bridge.h"
-static bool enqueue(Event&e,const intent::EventOrder& order,OrderAuthority authority,const NativePlacementSubmission* placement=nullptr){
+static bool enqueue(Event&e,const intent::EventOrder& order,OrderAuthority authority,const NativePlacementSubmission* placement=nullptr,bool* responded=nullptr){
  if(!simulationReady()||get<bool>(0xA8BC60+25)){++snap.commandRejected;return false;}
  if(!validateMoSubmission(order)||!validateBombBoardSubmission(order)||!validateDirectAirSubmission(order)){snap.lastSubmitError=7;++snap.commandRejected;return false;}
  if(!validateNativePlacement(order,placement)||!nativePlacementPacket(e,order)){
@@ -426,6 +427,23 @@ static bool enqueue(Event&e,const intent::EventOrder& order,OrderAuthority autho
     (!networkHousePreserveReady()||!networkSenderHouse(int(e.house)))){
   snap.lastSubmitError=42;++snap.commandRejected;return false;
  }
+ // The original DoList scheduler visits only current/human Houses. A valid
+ // singleplayer AI Destruct would otherwise remain unexecuted indefinitely.
+ // Keep its original packet and receiver; only this explicit SP operation may
+ // use immediate response on the already leased simulation thread.
+ if(e.kind==vanilla::EventType::Destruct&&authority==OrderAuthority::DestructPlayerTest&&
+    eventdelivery::isSingleplayer(get<int>(0xA8B238))){
+  Vec houses=vec(0xA80228,32);uint32_t target=item(houses,int(e.house));uint8_t current=0,human=0;
+  if(!read(target+0x1EC,&current,1)||!read(target+0x1ED,&human,1)){snap.lastSubmitError=7;++snap.commandRejected;return false;}
+  if(!current&&!human){
+   static const uint8_t receiver[]={0x81,0xEC,0x70,0x03,0x00,0x00,0x33,0xC0,0x53,0x55,0x56,0x8B,0xF1};
+   if(!debugentries::pattern(debugentries::Kind::Call,0x4C6CB0,receiver,sizeof receiver,read)){snap.lastSubmitError=12;++snap.commandRejected;return false;}
+   call<void>(0x4C6CB0,uint32_t(uintptr_t(&e)));
+   if(!get<bool>(target+0x1F6)){snap.lastSubmitError=6;++snap.commandRejected;return false;}
+   if(responded)*responded=true;
+   snap.lastSubmitError=0;--outgoingBudget;return true;
+  }
+ }
  if(privateOutActive()){if(!privateOutQueue(e,false))return false;--outgoingBudget;++snap.queueSent;++snap.queuedEvents;return true;}
  constexpr uint32_t p=0xA802C8;
  int count=get<int>(p),tail=get<int>(p+8);
@@ -464,7 +482,7 @@ static entrygate::Snapshot currentEntryBoundary(){
 // ENTRY: the only ordinary EventClass construction-and-submit channel.
 // Caller / planner supplies a semantic intent, never a raw address or packet.
 // This does not replace the two separately verified high-level append backends.
-static bool submitConstructed(const intent::EventOrder& order,OrderAuthority authority=OrderAuthority::Local,const NativePlacementSubmission* placement=nullptr){
+static bool submitConstructed(const intent::EventOrder& order,OrderAuthority authority=OrderAuthority::Local,const NativePlacementSubmission* placement=nullptr,bool* responded=nullptr){
  if(!validateMoSubmission(order)||!validateBombBoardSubmission(order)||!validateDirectAirSubmission(order)){snap.lastSubmitError=7;++snap.commandRejected;return false;}
  if(!authorizePlayerOrder(order,authority)){++snap.commandRejected;return false;}
  if(!validateNativePlacement(order,placement)){snap.lastSubmitError=43;++snap.commandRejected;return false;}
@@ -490,12 +508,12 @@ static bool submitConstructed(const intent::EventOrder& order,OrderAuthority aut
  Event packet{};
  if(order.domain==vanilla::Domain::Object&&order.eventKind==0x16){
   if(!sellpacket::event(packet,order.player,uint32_t(order.a),uint32_t(snap.frame)))return false;
-  return enqueue(packet,order,authority,placement);
+  return enqueue(packet,order,authority,placement,responded);
  }
  const auto state=constructors::fill(packet,order,
   [](uint32_t address,uint32_t self,auto... args){call<void>(address,self,args...);});
  if(state!=constructors::Verdict::Ready){snap.lastSubmitError=8;++snap.commandRejected;return false;}
- return enqueue(packet,order,authority,placement); // SP DoList / MP OutList, timing and receipt centrally.
+ return enqueue(packet,order,authority,placement,responded); // SP DoList / MP OutList, timing and receipt centrally.
 }
 // Original game QueueMegaMission verified in two user-provided 32-bit EXEs.
 // x86 __fastcall ABI (NOT the EventClass ctor):
@@ -1279,6 +1297,8 @@ static void suspendedSnapshot(DWORD now,bool render,int reason){
  suspendedOptions();if(!render){scrollRendering=false;scrollCadence={};}
  uint8_t chat=1;const bool chatKnown=read(0xA8BC79,&chat,sizeof chat);
  snap.commandStatus=reason;snap.chat=!chatKnown||chat!=0;runtimeKeys.clear();
+ // Already accepted commands do not depend on the tactical window being visible.
+ if(reason==activation::DisplayHidden&&privateOutPending()&&simulationReady(false,true)){indexWorld(snap.frame);servicePrivateOut();}
  if(render&&good&&chatKnown){pauseViewTick();buildTimeTooltipTick();renderRevealTick();viewZoomTick();sidebarViewTick();smallMapCameraTick();radarNavigationTick(now);highScrollTick(preciseclock::micros());}
  if(!render&&riskRenderActive)riskRenderRedrawPending=true;
  pointerTick();publishSnapshot(now);

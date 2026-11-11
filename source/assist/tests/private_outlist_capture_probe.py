@@ -45,6 +45,12 @@ def run(name,*args):
 for tag,at,n in [(7,0x4068e0,5),(8,0x4c6860,6),(9,0x6521c0,5)]:
  dest=run('Entry',tag);u.mem_write(at,b'\xe9'+struct.pack('<I',(dest-at-5)&0xffffffff)+b'\x90'*(n-5))
 w(0xa83d4c,0x20001000);w(0x20001030,0);w(0x20001010,77);w(0x20002010,0x1234);w(0x2000221c,0x20001000);w(0xa8b230,0x20003000);w(0xa8ed84,1230);w(0xa8b238,3);w(0xac4cf4,0);w(cell,0x00050004)
+# Synthetic current/human Houses for House-only command identity checks.
+w(0xa8022c,0x20060000);w(0xa80230,2);w(0xa80238,2)
+w(0x20060000,0x20001000);w(0x20060004,0x20010000)
+w(0x20010010,78);w(0x20010030,1)
+u.mem_write(0x200011ec,b'\x01\x01');u.mem_write(0x200101ec,b'\x00\x01')
+for h in (0x20001000,0x20010000):u.mem_write(h+0x1f5,bytes(4))
 argsByCtor={0x4c65e0:[0,6,0x1234,0x34],0x4c6650:[0,0x17,cell],0x4c66c0:[0,8],0x4c6720:[0,3,1],0x4c6780:[0,0x2a,0x1234,0x34,1001,11],0x4c6860:[0,0x1234,0x34,2,0,0,1001,11,0,0],0x4c68e0:[0,0x1234,0x34,2,0,0,1001,11,3,4],0x4c6970:[0,0xe,7,1,0],0x4c6ae0:[0,0xb,7,1,0,cell],0x4c6b60:[0,0x12,1,cell]}
 header=Path(__file__).parents[1]/'source/private_outlist_sites.h'
 sites=[]
@@ -94,5 +100,53 @@ sendOK=True;run('Advance',50);run('Send');assert run('Count')==0 and run('Sent')
 assert len(sent)==2 and sent[0]==sent[1] and flushes==1
 run('Send');assert len(sent)==2 and flushes==1
 run('Submit',packet);run('Stop');assert run('Count')==0
-Path(a.output).write_text(json.dumps({'memory_sha256':hashlib.sha256(b).hexdigest(),'fixture_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'capture_cases':checks,'planning_cases':4,'transport_retry_atomicity':True,'live_game_tested':False,'live_platform_tested':False},indent=2))
-print('PASS',len(checks),'production capture/fallback ABI cases, planning, transport failure/retry, ring wrap and cancellation')
+# Destruct: actual production queue -> encoder -> native decoder -> original
+# Event::Respond and House end-state setter. Transport and Houses are synthetic.
+destruct=[]
+def native(at,self,*args):
+ stopAt.clear();w(stack,stop)
+ for i,x in enumerate(args):w(stack+4+i*4,x)
+ u.reg_write(UC_X86_REG_ESP,stack);u.reg_write(UC_X86_REG_ECX,self);u.emu_start(at,stop,count=100000)
+ assert u.reg_read(UC_X86_REG_EIP)==stop and u.reg_read(UC_X86_REG_ESP)==stack+4+4*len(args)
+def prepare_destruct(proto):
+ run('Reset',1);w(0xa8b24c,proto);w(0xa802c8,0);w(0x8b41f8,0);w(0x8b41fc,0);w(0x8b4200,0)
+ for h in (0x20001000,0x20010000):u.mem_write(h+0x1f5,bytes(4))
+ w(0x20010010,78);w(0x20010030,1);w(0x20060004,0x20010000);u.mem_write(0x200101ed,b'\x01')
+ e=bytearray(111);e[0]=8;e[2]=1;struct.pack_into('<I',e,3,1230);u.mem_write(packet,bytes(e))
+for proto in (0,1,2):
+ prepare_destruct(proto)
+ if 'Target' in exports:
+  run('Legacy',0);assert run('Target',0x20010000,78,1)==1
+ assert run('Submit',packet)==1
+ run('Advance',4000) # Explicit accepted Destruct is not an automation timeout.
+ before=len(sent);sendOK=False;run('Send');assert run('Count')==1 and r(0x8b41f8)==0
+ sendOK=True;run('Advance',50);run('Send');assert run('Count')==0 and run('Sent')==1
+ assert len(sent)==before+2 and sent[-1]==sent[-2]
+ local=bytes(u.mem_read(0x8b4204,111));assert local[:3]==b'\x08\x00\x01'
+ wire=sent[-1];u.mem_write(packet,wire)
+ if proto:
+  w(0x8b41f8,0);w(0x8b41fc,0);w(0x8b4200,0)
+  u.reg_write(UC_X86_REG_EDX,len(wire));native(0x64bdd0,packet)
+  assert r(0x8b41f8)==2;decoded=bytes(u.mem_read(0x8b4204+111,111))
+ else:
+  assert len(wire)==222;decoded=wire[111:]
+ assert decoded[:7]==local[:7],('Destruct decoder target/frame',proto)
+ u.mem_write(packet,decoded);native(0x4c6cb0,packet)
+ assert bytes(u.mem_read(0x200101f6,1))==b'\x01' and bytes(u.mem_read(0x200011f6,1))==b'\x00'
+ assert r(0x20010298)==1230 and r(0x200102a0)==0
+ destruct.append({'protocol':proto,'target_house':1,'local_house':0,'wire_bytes':len(wire),'retry_once':True,'receiver_target_only':True})
+# Identity recycling between admission and send must cancel, never retarget.
+identity_cases=0
+for address,value in ((0x20010010,79),(0x20010030,2),(0x20060004,0x20012000)):
+ prepare_destruct(1);assert run('Submit',packet)==1;w(address,value);before=len(sent);run('Send')
+ assert run('Count')==0 and len(sent)==before and r(0x8b41f8)==0;identity_cases+=1
+prepare_destruct(1);u.mem_write(0x200101ed,b'\x00');assert run('Submit',packet)==0
+if 'Target' in exports:
+ assert run('Target',0x20010000,78,1)==0xfffffffc
+ prepare_destruct(1);run('Reset',0);run('Legacy',0)
+ assert run('Target',0x20010000,78,1)==0xffffffd6
+ run('Legacy',1);assert run('Target',0x20010000,78,1)==1
+ assert run('Target',0x20010000,79,1)==0xfffffff9
+prepare_destruct(1);assert run('Submit',packet)==1;run('Stop');before=len(sent);run('Send');assert run('Count')==0 and len(sent)==before
+Path(a.output).write_text(json.dumps({'memory_sha256':hashlib.sha256(b).hexdigest(),'fixture_sha256':hashlib.sha256(Path(a.dll).read_bytes()).hexdigest(),'capture_cases':checks,'planning_cases':4,'transport_retry_atomicity':True,'destruct_pipeline':destruct,'destruct_identity_cancellations':identity_cases,'multiplayer_AI_rejected':True,'target_route_cases':5 if 'Target' in exports else 0,'live_game_tested':False,'live_platform_tested':False},indent=2))
+print('PASS',len(checks),'capture/fallback cases, planning, retry, 3 Destruct wire/receiver paths, target identity/cancellation')

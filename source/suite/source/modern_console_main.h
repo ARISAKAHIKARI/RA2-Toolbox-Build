@@ -12,6 +12,7 @@
 #define _UNICODE
 #endif
 #include <windows.h>
+#include "app_icon.h"
 #include <objbase.h>
 #include <commctrl.h>
 #include <shellapi.h>
@@ -377,7 +378,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR command,int show){
  const HRESULT com=CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
  if(FAILED(com)){MessageBoxW(nullptr,L"无法初始化控制台界面，请重新启动工具箱。",L"红警工具箱",MB_OK|MB_ICONERROR);if(single)CloseHandle(single);return 1;}
  INITCOMMONCONTROLSEX cc{sizeof cc,ICC_WIN95_CLASSES};InitCommonControlsEx(&cc);
- WNDCLASSW wc{};wc.hInstance=h;wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2Toolbox020";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=LoadIconW(nullptr,IDI_APPLICATION);RegisterClassW(&wc);
+ WNDCLASSEXW wc{};wc.cbSize=sizeof wc;wc.hInstance=h;wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2Toolbox020";wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=suite::applicationIcon(h,false);wc.hIconSm=suite::applicationIcon(h,true);RegisterClassExW(&wc);
  RECT work{};SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
  frame=CreateWindowW(wc.lpszClassName,L"红警工具箱 v" RA2_RELEASE_VERSION_W,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,std::min(1220,int(work.right-work.left)-20),std::min(900,int(work.bottom-work.top)-30),nullptr,nullptr,h,nullptr);
  if(!frame){CoUninitialize();if(single)CloseHandle(single);return 1;}

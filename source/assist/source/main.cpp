@@ -161,7 +161,7 @@ static_assert(external::status::Maximum<=MaxLabels,"Unit status markers share th
 static assist::PlayerTestInfo playerChoices[32]{};static int playerChoiceCount;static uint32_t playerChoicesMatch;
 static DWORD playerChoicesTick,playerChoicesPid;static std::wstring destructPendingTarget;
 static int playerChoicesCurrent=-1;
-static constexpr const wchar_t* DestructForeignNotice=L"联机跨所属方自毁需要“保留事件所属方”已启用；当前关闭、恢复中或不可用，本次不会发送。";
+static constexpr const wchar_t* DestructForeignNotice=L"联机跨所属方自毁需要私有操控队列已接管，或“保留事件所属方”完整就绪；当前条件不满足，本次不会发送。";
 static uint64_t techAcknowledgedHash=0;static bool techMode;static bool autoRevealNewMatch=false;static uint32_t autoRevealMatch=0,autoRevealRetry=0,autoRevealDone=0,autoRevealPID=0;
 static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;
 static HWND schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
@@ -1996,7 +1996,8 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  if(c==OpenTech&&r==-44){notify(L"科技规则数据尚未完成应用或恢复，请查看状态；原值恢复完成前不会切换实现。");return;}
  if(c==DestructPlayer){
   std::wstring message;
-  if(r>0&&n==1)message=L"自毁请求已入队："+destructPendingTarget+L"；实际执行以游戏为准。";
+  if(r==2&&n==1)message=L"已触发单机 AI 所属方的原生自毁；完整销毁以游戏为准。";
+  else if(r>0&&n==1)message=L"自毁请求已入队："+destructPendingTarget+L"；入队不代表远端已收到或执行。";
   else if(r==-42)message=std::wstring(L"自毁请求未入队：")+DestructForeignNotice;
   else if(r==-7)message=L"自毁请求未入队：请选择同一所属方的存活单位；空选、混合所属方或选取身份改变时不执行。";
   else if(r==-4)message=L"自毁请求未入队：对局已改变，请重新选择后执行。";
