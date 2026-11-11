@@ -353,8 +353,6 @@ note(L"步兵强制进入暂时停用；已保存的配置、快捷键和鼠标�
 item(L"STATIC",L"步兵强制进入建筑：关闭",20,605,813);next();
 item(L"STATIC",L"硬件断点：总计 4 槽 · 等待主线程检查",20,605,9473,0,44);next(44);
 note(L"硬件断点总计 4 槽：科技全开、精确科技加强、玩家等级比较、控制全部、硬件黑幕显示、单机 FPS 各占 1 槽。实际占用未测定时可保存四槽内预设；启用时复核可用槽，槽位不足则不生效，关闭后释放。",65);
-toggle(9753,L"高危：硬件科技生产许可重查兼容",extra.techProductionCompatibility);next();
-note(L"同时适用于下方两个硬件科技模式。默认关闭，保留原侧栏调用范围；开启后，本方许可类型的其他原生科技查询也生效，不额外占槽。可能影响联机同步；平台独立的规则校验仍可能拒绝。关闭可能取消依赖额外许可的在产项目。",65);
 toggle(9097,L"科技加强",extra.techEnhance);next();
 label(L"加强实现",20,260);choices(combo(9470),{L"高危：规则数据（旧版）",L"实验性：精确科技等级（不改指令／规则）"},extra.techEnhanceImplementation);next();
 toggle(9472,L"按等级 1 比较玩家科技等级（额外占一槽）",extra.techEnhanceCompareLevel);next();
@@ -365,6 +363,8 @@ toggle(420,buildingmodes::technologyCaption(techImplementation),techMode,20,455)
 label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"高危：受控模式（默认）",L"高危：经典兼容",L"高危：直接模式",L"高危：原生面板（规则数据）",L"实验性：原生面板（参数拦截，不改指令／规则）"},techImplementation);next();
 note(L"参数拦截模式默认在统一可建查询入口按侧栏调用来源分流，只占一个断点并改变本次查询参数，不改游戏指令／虚表／规则；真正工厂、阵营相容、海陆及限额保留。断点冲突时拒绝，不覆盖其他工具。规则数据模式通过放宽类型的建造条件供原生建造栏使用；这些规则同时影响所有玩家和 AI，联机高危。关闭还原规则后，游戏可能取消不再合法的未完成生产；切换旧模式会先等待相关生产完成或取消。旧三种改码模式保留；直接模式不使用下方许可筛选。",85);
 activeFoldGroup=9607;
+toggle(9753,L"高危：硬件科技生产许可重查兼容",extra.techProductionCompatibility);next();
+note(L"适用于科技全开的参数拦截、科技加强的精确等级模式。默认关闭，保留原侧栏调用范围；开启后，本方许可类型的其他原生科技查询也生效，不额外占槽。可能影响联机同步；平台独立的规则校验仍可能拒绝。关闭可能取消依赖额外许可的在产项目。",65);
 label(L"搜索科技许可",20,260);techSearch=edit(421,L"",290,335);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
 int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换许可",488,137);next();button(425,L"全选",488,65);button(426,L"清空",560,65);next();button(427,L"兼容预设",488,137);rowY=listTop+164;
