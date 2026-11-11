@@ -1,0 +1,48 @@
+{
+  "commit": "baec9d8d282bb143db641556dc3330dff8338c9a",
+  "source_tree_sha": "45c15cc53e03e736b5a44cdaeda9636cf5c549b5",
+  "started_utc": "2026-11-11T04:47:57.848811+00:00",
+  "platform": "linux",
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "zig_version": "0.13.0",
+  "webview2_sdk": "1.0.4314.35",
+  "output_dir": "/workspace/scratch/eefcc91a0942/build_149pre5",
+  "output_directory_was_empty": true,
+  "controlled_windows_checks": false,
+  "runtime_tested": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "build_returncode": 0,
+  "build_artifacts": {
+    "RA2Toolbox.exe": {
+      "bytes": 9569280,
+      "sha256": "e84090c0c5d660f870ff5a9c19ab420aebb4ebcbc2b88f00faf173bc813f00bc"
+    },
+    "GameRuntime.dll": {
+      "bytes": 25147392,
+      "sha256": "f8a2db7d0eb128f9632668f289ee8a8e2019931fe2ee31ee242f0137fe64bec2"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 214528,
+      "sha256": "8157c19e9d1a0529e70fbf7555991d00f424e72f9bd1c901ebcfefde290f4a1c"
+    },
+    "WebView2Loader.dll": {
+      "bytes": 194912,
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  },
+  "build_artifacts_unchanged_after_pe_verification": true,
+  "static_pe_verification_returncode": 0,
+  "completed_utc": "2026-11-11T04:54:39.685610+00:00",
+  "source_inputs_unchanged_after_build": true,
+  "git_head_verified_at_finish": true,
+  "source_inputs_checked": 870,
+  "build_provenance_sha256": "8b012d0879737986786299293456f1176ffacf059502f769c13888b19b40d385"
+}
