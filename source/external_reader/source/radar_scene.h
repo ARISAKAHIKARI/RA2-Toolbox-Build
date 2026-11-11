@@ -198,6 +198,10 @@ public:
   const auto&i=*found->second.image;x=int(std::floor(double(i.x)/i.rasterScale));y=int(std::floor(double(i.y)/i.rasterScale));w=int(std::ceil(double(i.x+i.width)/i.rasterScale))-x;h=int(std::ceil(double(i.y+i.height)/i.rasterScale))-y;
   return w>0&&h>0&&w<=2048&&h<=2048;
  }
+ std::shared_ptr<const voxel::Image> exactImage(const Marker&m)const{
+  const auto found=sprites_.find(imageKey(m));
+  return found!=sprites_.end()&&found->second.ready&&found->second.image&&!found->second.image->incomplete?found->second.image:nullptr;
+ }
  bool feedbackVisibility(const std::vector<uint8_t>*&out)const{
   out=nullptr;if(!complete_)return false;if(complete_->reveal)return true;
   if(maskSource_!=complete_||mask_.width!=width_||mask_.height!=height_||mask_.alpha.size()!=size_t(width_)*height_)return false;

@@ -43,6 +43,9 @@ static void loadAdditionalSettings(){
  renderHighRefresh=value(L"Display",L"RenderHighRefresh",1)!=0;
  renderMaterialRefresh=value(L"Display",L"RenderMaterialRefresh",1)!=0;
  renderSceneDetail=std::clamp(value(L"Display",L"RenderSceneDetail",1),0,1);
+ revealCloakedUnits=value(L"Display",L"RevealCloakedUnits",0)!=0;
+ revealMirageUnits=value(L"Display",L"RevealMirageUnits",0)!=0;
+ revealEnemySpies=value(L"Display",L"RevealEnemySpies",0)!=0;
  renderUpgradeEnabled=value(L"Display",L"RenderUpgrade",0)!=0;
  unifiedOverlayEnabled=value(L"Display",L"UnifiedOverlay",0)!=0;
  renderUpgradeLayer=std::clamp(value(L"Display",L"RenderUpgradeLayer",1),0,1);
@@ -208,6 +211,9 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"ShroudStrategy",extra.mapStrategy);
  write(L"Display",L"MinimapPosition",minimapPosition);write(L"Display",L"MinimapX",minimapX);write(L"Display",L"MinimapY",minimapY);
  write(L"Display",L"MinimapAlignX",minimapAlignX);write(L"Display",L"MinimapAlignY",minimapAlignY);
+ write(L"Display",L"RevealCloakedUnits",revealCloakedUnits);
+ write(L"Display",L"RevealMirageUnits",revealMirageUnits);
+ write(L"Display",L"RevealEnemySpies",revealEnemySpies);
  write(L"Display",L"RenderUpgrade",renderUpgradeEnabled);
  write(L"Display",L"BuildTimeTooltip",buildTimeTooltipEnabled);write(L"Display",L"HarvesterCounter",harvesterCounterEnabled);write(L"Display",L"PowerDelta",powerDeltaEnabled);
  write(L"Display",L"RenderProcessing",renderProcessing);

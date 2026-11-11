@@ -8,8 +8,9 @@ namespace external { namespace presentation {
 // Extra reconstruction remains opt-in; supported effects/relighting default on.
 struct Profile {
  bool gpu=false,material=false,particles=true,lasers=true,voxelLighting=true,spriteLighting=true,motion=true;
+ uint8_t revealUnits=0;
  int detail=0,precision=0,palette=0,scale=1;
- bool operator==(const Profile&o)const{return std::tie(motion,gpu,material,particles,lasers,voxelLighting,spriteLighting,detail,precision,palette,scale)==std::tie(o.motion,o.gpu,o.material,o.particles,o.lasers,o.voxelLighting,o.spriteLighting,o.detail,o.precision,o.palette,o.scale);}
+ bool operator==(const Profile&o)const{return std::tie(revealUnits,motion,gpu,material,particles,lasers,voxelLighting,spriteLighting,detail,precision,palette,scale)==std::tie(o.revealUnits,o.motion,o.gpu,o.material,o.particles,o.lasers,o.voxelLighting,o.spriteLighting,o.detail,o.precision,o.palette,o.scale);}
  bool operator!=(const Profile&o)const{return !(*this==o);}
 };
 struct Selection {Profile profile;uint64_t revision=0;};

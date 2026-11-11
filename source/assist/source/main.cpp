@@ -108,6 +108,7 @@ namespace renderupgrade {static void stop();static void shutdown();}
 namespace minimap {static void hide();static void clear();static void destroy();}
 namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
+static bool revealCloakedUnits=false,revealMirageUnits=false,revealEnemySpies=false;
 static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderPhysicalOutput=false,renderMaterialRefresh=true,renderHighRefresh=true,renderVulkanEnabled=true;static int renderUpgradeLayer=1,renderPaletteRange=1,renderPixelScale=3,renderSceneDetail=1,renderColorPrecision=1;
 static bool renderProcessing=false,renderXbrzEnabled=false;
 #if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
@@ -2089,6 +2090,7 @@ static void serviceCommandQueue(DWORD now){
 static void publishSuiteDisplay(){
  if(!ready)return;
  external::presentation::Profile profile;profile.motion=renderHighRefresh;profile.gpu=renderVulkanEnabled;profile.material=effectiveRenderInterpolation();profile.detail=effectiveRenderDetail();profile.precision=effectiveRenderPrecision();profile.palette=effectiveRenderPalette();profile.scale=effectiveRenderScale();
+ profile.revealUnits=uint8_t(revealCloakedUnits?1:0)|uint8_t(revealMirageUnits?2:0)|uint8_t(revealEnemySpies?4:0);
  profile.particles=renderParticleEffects;profile.lasers=renderLaserEffects;profile.voxelLighting=renderVoxelLighting;profile.spriteLighting=renderSpriteLighting;external::presentation::settings().publish(profile);
 #ifdef RA2_UNIFIED
  suite::DisplayState state;
@@ -2842,10 +2844,10 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  // without changing the saved preference or stopping an existing renderer.
  if(id==9300){SendDlgItemMessageW(w,id,BM_SETCHECK,renderUpgradeEnabled?BST_CHECKED:BST_UNCHECKED,0);EnableWindow(GetDlgItem(w,id),FALSE);return 0;}
  if(ready&&!updatingControls&&rejectUnavailableSetting(id,HIWORD(wp)))return 0;
- if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9313||id==9314||(id>=9320&&id<=9327)){
+ if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9313||id==9314||(id>=9320&&id<=9327)||(id>=9760&&id<=9762)){
   if(updatingControls)return 0;
   if(id==9302||id==9304||id==9305||id==9308||id==9309){if(HIWORD(wp)!=CBN_SELCHANGE)return 0;int choice=int(SendDlgItemMessageW(w,id,CB_GETCURSEL,0,0));if(choice<0||choice>(id==9305?3:1))return 0;if(id==9302)renderUpgradeLayer=std::clamp(choice,0,1);else if(id==9304)renderPaletteRange=std::clamp(choice,0,1);else if(id==9309)renderColorPrecision=std::clamp(choice,0,1);else if(id==9308)renderSceneDetail=std::clamp(choice,0,1);else renderPixelScale=std::clamp(choice,0,3);}
-  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9313)renderProcessing=on;else if(id==9314)renderXbrzEnabled=on;else if(id==9320)renderParticleEffects=on;else if(id==9321)renderLaserEffects=on;else if(id==9322)renderVoxelLighting=on;else if(id==9323)renderSpriteLighting=on;else if(id==9324)renderHighRefresh=on;else if(id==9325)harvesterCounterEnabled=on;else if(id==9326)powerDeltaEnabled=on;else if(id==9327)buildTimeTooltipEnabled=on;else unifiedOverlayEnabled=on;}
+  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9313)renderProcessing=on;else if(id==9314)renderXbrzEnabled=on;else if(id==9320)renderParticleEffects=on;else if(id==9321)renderLaserEffects=on;else if(id==9322)renderVoxelLighting=on;else if(id==9323)renderSpriteLighting=on;else if(id==9324)renderHighRefresh=on;else if(id==9325)harvesterCounterEnabled=on;else if(id==9326)powerDeltaEnabled=on;else if(id==9327)buildTimeTooltipEnabled=on;else if(id==9760)revealCloakedUnits=on;else if(id==9761)revealMirageUnits=on;else if(id==9762)revealEnemySpies=on;else unifiedOverlayEnabled=on;}
   if(id==9327){syncAdditional();wakeGame();}
   renderupgrade::stop();++paintRevision;changedSetting();paint();
   if(!renderUpgradeEnabled)SetWindowTextW(GetDlgItem(w,9303),unifiedOverlayEnabled?L"统一覆盖层：世界信息＋主屏统计；交互窗口尚未合并":L"渲染升级：关闭");

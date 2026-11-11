@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 隐形、幻影及敌方间谍局部补绘 | [共享采样、真实类型与局部遮罩](2026-11-11-local-unit-reveal.md) | 1.0.49-pre.6 main-view read-only cloak disguise enemy-spy sparse-mask no-live-visual-proof |
 | 自毁事件联机投递与图标 | [两条发送路径、目标身份与原版接收器验证](2026-11-11-destruct-delivery-and-icon.md) | 1.0.49-pre.5 Destruct DisplayHidden private-queue House-ID native-receiver no-live-platform-claim |
 | JJ 硬件科技生产许可覆盖 | [现场前提更正、可选扩展查询与验证边界](2026-11-10-jj-hardware-permission-compatibility.md) | 1.0.49-pre.3 explicit-opt-in local-house CanBuild caller-scope Assist107 no-live-JJ-claim |
 | 科技加强预定准入修复 | [Exact probe、只读预测与原生图标保留](2026-11-10-technology-reservation-admission-fix.md) | 1.0.49-pre.2 reservation CanBuild token Exact-level signed-JG native-cameo no-live-JJ-claim |

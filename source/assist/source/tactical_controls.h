@@ -242,6 +242,10 @@ number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · �
 #endif
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
+toggle(9760,L"补绘未探测的隐形 / 潜水单位",revealCloakedUnits);next();
+toggle(9761,L"幻影显示真实坦克外形",revealMirageUnits);next();
+toggle(9762,L"敌方间谍显示真实兵种和颜色",revealEnemySpies);next();
+note(L"三个开关独立生效，默认关闭；无需开启全视口渲染升级。仅主画面局部补绘，保留地图黑幕设置，不改变游戏探测、选取、攻击判定。敌方间谍不包含己方与盟友。",72);
 toggle(9325,L"矿车指示器（工作中 / 总数）",harvesterCounterEnabled);next();
 toggle(9326,L"电量指示器（发电 − 耗电）",powerDeltaEnabled);next();
 toggle(9327,L"原生建造栏提示框显示建造时间",buildTimeTooltipEnabled);next();
