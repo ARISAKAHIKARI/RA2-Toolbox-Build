@@ -8,6 +8,7 @@
 namespace external { namespace nativedraw {
 // GPL-3.0 adaptation of Vera20K draw_state.rs. Values are read from the
 // engine-owned Techno, never advanced or written by a presentation viewport.
+struct Presentation {bool uncloak=false,trueForm=false;};
 struct State {bool visible=true,disguised=false;uint32_t type=0,owner=0;int kind=-1;int16_t waterline=0;camera::Material material;};
 // CnCNet yr-patches0318b1f: adopt its observer/detached-alliance policy only
 // when the live branch resolves to the documented cloak patch instructions.
@@ -20,7 +21,7 @@ template<class Read>bool alive(const GameView<Read>&g,uint32_t p,int kind){
  return kind>=0&&g.template get<uint8_t>(p+0x74)&&!g.template get<uint8_t>(p+0x81)&&g.template get<uint8_t>(p+0x90)&&
   (g.template get<int>(p+0x6C)>0||(kind==2&&g.template get<uint8_t>(p+0x3CD)));
 }
-template<class Read>State capture(Read read,uint32_t p,uint32_t type,int kind,uint32_t observer,int frame){
+template<class Read>State capture(Read read,uint32_t p,uint32_t type,int kind,uint32_t observer,int frame,Presentation presentation={}){
  GameView<Read> g(read);State out;out.type=type;out.owner=g.template get<uint32_t>(p+0x21C);out.kind=kind;
  const bool owned=g.template get<uint8_t>(p+0x41A)!=0,editor=g.template get<uint8_t>(0xA8ED6B)!=0;
  const int house=g.template get<int>(observer+0x30,-1),cloak=g.template get<int>(p+0x220),progress=g.template get<int>(p+0x224);
@@ -40,10 +41,12 @@ template<class Read>State capture(Read read,uint32_t p,uint32_t type,int kind,ui
    character=scaled<=63?1:scaled<=127?2:scaled<=191?3:owned?3:scaled<255?4:5;}
  }
  if(kind==3){int stage=g.template get<int8_t>(p+0x6ED);if(stage)character=stage<=10?(stage>5?2:1):shadowVisible()?3:5;}
+ // Permanent Invisible types are not cloaked combat units.
+ if(presentation.uncloak&&kind>=0&&kind<=2&&!g.template get<uint8_t>(type+0xC9A))character=0;
  out.visible=character<5;if(!out.visible)return out;
  unsigned selector=character==1?1:(character==2||character==3)?2:character==4?(progress?2:1):0;
  if(g.template get<uint8_t>(p+0x270)||g.template get<uint8_t>(p+0x271))selector|=kind==3&&g.template get<uint8_t>(type+0x16B1)?3:2;
- if(kind==1||kind==2){
+ if((kind==1||kind==2)&&!presentation.trueForm){
   const bool active=g.template get<uint8_t>(p+0x1D8)!=0,owner=out.owner==observer;
   const bool blink=assist::remaining(g.template get<int>(p+0x1EC,-1),g.template get<int>(p+0x1F4),frame)!=0;
   const int phase=int32_t(uint32_t(frame)-g.template get<uint32_t>(p+0x1DC)+64u)%256;

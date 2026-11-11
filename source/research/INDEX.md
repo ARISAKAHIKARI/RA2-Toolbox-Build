@@ -6,6 +6,13 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| OutList、本机与远端 DoList 的过滤边界 | [容量、协议解码、执行权限及平台实测反馈](2026-11-11-event-queue-filter-boundaries.md) | 649CA0 64BDD0 FrameInfo Respond Hardened-v17 user-report LAN1001-usable lbw-Destruct-fails JJ-control-fails cause-unresolved |
+| 隐形、幻影及敌方间谍局部补绘 | [共享采样、真实类型与局部遮罩](2026-11-11-local-unit-reveal.md) | 1.0.49-pre.6 main-view read-only cloak disguise enemy-spy sparse-mask no-live-visual-proof |
+| 自毁事件联机投递与图标 | [两条发送路径、目标身份与原版接收器验证](2026-11-11-destruct-delivery-and-icon.md) | 1.0.49-pre.5 Destruct DisplayHidden private-queue House-ID native-receiver no-live-platform-claim |
+| JJ 硬件科技生产许可覆盖 | [现场前提更正、可选扩展查询与验证边界](2026-11-10-jj-hardware-permission-compatibility.md) | 1.0.49-pre.3 explicit-opt-in local-house CanBuild caller-scope Assist107 no-live-JJ-claim |
+| 科技加强预定准入修复 | [Exact probe、只读预测与原生图标保留](2026-11-10-technology-reservation-admission-fix.md) | 1.0.49-pre.2 reservation CanBuild token Exact-level signed-JG native-cameo no-live-JJ-claim |
+| JJ 联机科技点击后未生产 | [历史前提已更正、刷新频率与日志边界](2026-11-10-jj-production-regression-audit.md) | 1.0.44-to-1.0.48.1 unchanged-tech-cadence Produce Abandon network-Unsupported no-OutList-clear-proof |
+| 私有操控入队接管 | [原实现保留、三入口与直接编码传输](2026-11-10-private-control-outlist.md) | 1.0.49-pre.1 private-OutList 4068E0 4C6860 6521C0 42-callers 3-DR-slots reliable-accept atomic-retire |
 | 原生变卖光标单机启用失败 | [无关OutList依赖、按路径准入与具体错误反馈](2026-11-10-native-sell-cursor-admission.md) | 1.0.48.1 sellCursor -2 6929E5 4AC179 4AC18C SP-AI queue-admission 12-byte-stack unresolved-live-site |
 | 1.0.48-pre.1 原生路径点和自动操作 | [松键提交、拖框恢复、绑弹上车与触发输入锁](2026-11-10-input-planning-and-bomb-board.md) | Assist104 append-MegaMission real-keyup PlanCommit no-arrival-hook seqlock-preview AttachedBomb UserInputLocked SDK-only-evidence |
 | 1.0.47-pre.10 功能内部逻辑 | [命令尾部续发、有效目标、队形和矿车恢复](2026-11-09-pre147-feature-logic.md) | 80-feature-boundaries selected-mode-tail anti-theft-valid-target valid-slot quick-placement-cache miner-resource-recheck unknown-read no-new-native-ABI |

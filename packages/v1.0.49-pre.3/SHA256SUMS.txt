@@ -1,0 +1,2 @@
+a5d5be9e250a8f505679d2ac5445861d10ce1b39e01f90517d9160a1dafbfd1b  RA2Toolbox-1.0.49-pre.3-x64-Update.zip
+8089eeed911b3162b2e1d01cbe6f4eb7c75f25b5268d73f4b9966e6b7d506516  RA2Toolbox-1.0.49-pre.3-verification.zip

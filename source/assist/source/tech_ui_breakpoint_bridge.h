@@ -34,6 +34,7 @@ static bool triggerCompatible(bool publishSnapshot=true){
  if(publishSnapshot)triggerRevision=ok?debugentries::policyRevision:0;return ok;
 }
 static bool mapDesired=false,mapRedrawPending=false;static int mapFailure=0;static volatile LONG mapExceptions=0;static bool lastMapPresentation=false;
+static bool privateDesired=false;static int privateFailure=0;
 static int failure=0,enhancementFailure=0,controlFailure=0;static bool desired=false,enhancementDesired=false,controlDesired=false,enhancementCompareRequested=false,enhancementCameoBlocked=false;
 // Published eligibility is refreshed on the ordinary owner-thread maintenance
 // boundary. It is independent of the installed DR lease and never authorizes
@@ -50,7 +51,7 @@ static FailureRetry fullFailureRetry,controlFailureRetry;
 static volatile LONG fullExceptions=0,enhancementExceptions=0,controlExceptions=0;static unsigned probeDepth=0;static uint32_t probeToken=0;
 static uint32_t controlAdmissionChecks=0,worldCaptures=0;
 static hardwareperf::Window performanceWindow;
-static constexpr uint32_t sites[techbp::SiteCount]={0x4F7870,mapvisibility::Address,0x4F7951,0x4F7B66,controlparams::Entry,singlefps::Entry,triggerinput::Entry};
+static constexpr uint32_t sites[techbp::SiteCount]={0x4F7870,mapvisibility::Address,0x4F7951,0x4F7B66,controlparams::Entry,singlefps::Entry,triggerinput::Entry,0x4068E0,0x4C6860,0x6521C0};
 inline unsigned hash(uint32_t p){return ((p>>4)*2654435761u)&1023u;}
 static techbp::SignatureSnapshot<20> nativeDraw;static techbp::SignatureSnapshot<15> nativePrune;static techbp::SignatureSnapshot<16> nativeEntry;
 static techbp::SignatureSnapshot<13> enhancementLimit;static techbp::SignatureSnapshot<16> enhancementCompare,enhancementEntry;
@@ -139,7 +140,7 @@ static bool retryFailure(FailureRetry&retry,uint32_t group){
  retry.defer();return true;
 }
 static void syncDebugBreakpointPolicy(){
- static uint32_t observed=0;static bool required[techbp::SiteCount]={true,true,true,true,true,true,true};
+ static uint32_t observed=0;static bool required[techbp::SiteCount]={true,true,true,true,true,true,true,true,true,true};
  const uint32_t revision=debugentries::policyRevision;if(observed==revision)return;observed=revision;
  bool changed[techbp::SiteCount]{};uint32_t groups=0;
  for(unsigned i=0;i<techbp::SiteCount;++i){const bool next=debugentries::signatureRequired(debugentries::Kind::Breakpoint,sites[i]);changed[i]=next!=required[i];required[i]=next;if(changed[i])groups|=1u<<i;}
@@ -154,6 +155,7 @@ static void syncDebugBreakpointPolicy(){
  if(changed[5]){singlefps::disable();singlefps::desired=false;singlefps::failure=0;singlefps::signatureRevision=0;singlefps::native.valid=false;}
  else if(singlefps::signatureRevision)singlefps::signatureRevision=revision;
  if(changed[6]){triggerEnabled=triggerDesired=false;triggerFailure=0;triggerRevision=0;triggerSignature.valid=false;}else if(triggerRevision)triggerRevision=revision;
+ if(changed[7]||changed[8]||changed[9]){privateDesired=false;privateEnabled=false;privateFailure=0;groups|=privateout::BreakpointTags;}
  if(groups){attempted=0;refusedGroups&=~groups;}
 }
 static bool debugExactUnreachable=false;
@@ -175,8 +177,8 @@ static void publishDebugBreakpointStates(){
  const uint32_t pendingGroups=service.pendingGroups();const bool uncertain=service.lease.uncertain!=0,resources=service.resources();
  auto off=[&](uint32_t group){return !(retained&group)&&!uncertain&&!(pendingGroups&group)&&
   ((retained&(techbp::AllTags&~group))||!(resourceGroups&group)||!resources);};
- const bool requested[techbp::SiteCount]={bool((sh->flags&UnsafeTech)&&techmode::parameters(techImplementation)),bool(sh->mapVisibility),enhancedRequested(),enhancedRequested()&&bool(sh->techEnhanceCompareLevel),controlmode::parameters(sh->controlAll),sh->singlePlayerFPS>=10&&singlefps::valid(sh->singlePlayerFPS),bool(sh->keepInputUnlocked||sh->blockTriggerCamera)};
- const int failures[techbp::SiteCount]={failure,mapFailure,enhancementFailure,enhancementFailure,controlFailure,singlefps::failure,triggerFailure};
+ const bool requested[techbp::SiteCount]={bool((sh->flags&UnsafeTech)&&techmode::parameters(techImplementation)),bool(sh->mapVisibility),enhancedRequested(),enhancedRequested()&&bool(sh->techEnhanceCompareLevel),controlmode::parameters(sh->controlAll),sh->singlePlayerFPS>=10&&singlefps::valid(sh->singlePlayerFPS),bool(sh->keepInputUnlocked||sh->blockTriggerCamera),sh->privateOutMode==2,sh->privateOutMode==2,sh->privateOutMode==2};
+ const int failures[techbp::SiteCount]={failure,mapFailure,enhancementFailure,enhancementFailure,controlFailure,singlefps::failure,triggerFailure,privateFailure,privateFailure,privateFailure};
  for(unsigned i=0;i<techbp::SiteCount;++i){const uint32_t group=1u<<i;const bool pending=(pendingGroups&group)||uncertain;
   Hook hook=Hook::Inactive;Reason reason=Reason::NoRequest;int error=0;
   if(pending){hook=Hook::Pending;reason=Reason::OwnerPending;error=int(service.lastError);}
@@ -247,11 +249,11 @@ static bool refreshControlEligibility(){
  controlEligible=GuardedControlWorldEligible()!=0;return controlEligible;
 }
 static bool configure(){
- const uint32_t wanted=(desired&&!failure?FullGroup:0u)|(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7)?enhancementTags():0u)|(controlDesired&&!controlFailure?16u:0u)|(mapDesired&&!mapFailure?mapvisibility::Tag:0u)|(singlefps::desired&&!singlefps::failure?singlefps::Tag:0u)|(triggerDesired&&!triggerFailure?triggerinput::Tag:0u);service.poll();if(!service.resources())resourceGroups=0;
+ const uint32_t wanted=(desired&&!failure?FullGroup:0u)|(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7)?enhancementTags():0u)|(controlDesired&&!controlFailure?16u:0u)|(mapDesired&&!mapFailure?mapvisibility::Tag:0u)|(singlefps::desired&&!singlefps::failure?singlefps::Tag:0u)|(triggerDesired&&!triggerFailure?triggerinput::Tag:0u)|(privateDesired&&!privateFailure?privateout::BreakpointTags:0u);service.poll();if(!service.resources())resourceGroups=0;
  if(!service.pending()){refusedGroups&=~service.activeTags();if(service.state==techbp::Slots)refusedGroups|=attempted&~service.activeTags();}
  if(service.pending()){publish();return false;}
  if(!healthy()){
-  controlEligible=false;triggerEnabled=false;
+  controlEligible=false;triggerEnabled=false;privateEnabled=false;
   InterlockedExchange(&policy.enabled,0);InterlockedExchange(&policy.enhanced,0);InterlockedExchange(&policy.controlling,0);
   InterlockedExchange(&policy.showing,0);if(mapDesired)mapFailure=int(service.state);
   if(controlDesired){controlFailure=int(service.state);controlFailureRetry.defer();}
@@ -290,6 +292,7 @@ static bool mapVisibilityParameter(CONTEXT&context){
 extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
  using namespace techparameters;auto&context=*static_cast<CONTEXT*>(raw);
  if(tag>=techbp::SiteCount||context.Eip!=sites[tag])return 0;
+ if(tag>=7){if(!privateEnabled||!privateDesired||!sh||sh->privateOutMode!=2||sh->stop||fault)return 0;context.Eip=privateEntry(tag);return 1;}
  if(tag==6){
   if(!triggerEnabled||!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||
    !(sh->keepInputUnlocked||sh->blockTriggerCamera)||context.Ecx<0x10000||context.Esp<0x10000||context.Esp>UINT32_MAX-20)return 0;
@@ -317,33 +320,42 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
  }
  if(tag<2)techbp::countOwner(fullExceptions);else techbp::countOwner(enhancementExceptions);
  if(tag==0){
-  // The original CALL has already pushed its return address. Classify the
-  // two native UI callers before any expensive world/type queries.
-  if(context.Esp<0x10000)return 0;auto*args=reinterpret_cast<uint32_t*>(uintptr_t(context.Esp));
-  const uint32_t caller=args[0],pointer=args[1];const bool draw=caller==0x6A97D7,prune=caller==0x6AA786;
-  if((!draw&&!prune)||pointer<0x10000||args[2]||args[3]!=(draw?0u:1u))return 0;
+  // The original CALL has already pushed its return address. Keep the
+  // historical two-caller path unless the explicit compatibility option is on.
+  if(context.Esp<0x10000||context.Esp>UINT32_MAX-16)return 0;auto*args=reinterpret_cast<uint32_t*>(uintptr_t(context.Esp));
+  const uint32_t caller=args[0],pointer=args[1];
+  const bool sidebar=(caller==0x6A97D7&&args[3]==0)||(caller==0x6AA786&&args[3]==1);
+  const bool extended=!sidebar&&sh&&sh->techProductionCompatibility&&caller>=0x10000&&args[3]<=1;
+  if((!sidebar&&!extended)||pointer<0x10000||args[2])return 0;
   if(!policy.enabled||!sh||sh->stop||fault||!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)||context.Ecx!=policy.house)return 0;
   // Reject uncaptured types using local data before reading the live world.
   // A candidate still needs every current identity and signature guard.
   const auto*t=fullIdentity(pointer);if(!t)return 0;
   if(!world()||get<uint32_t>(pointer)!=t->table||get<uint32_t>(pointer+0x10)!=t->id)return 0;
   if(!nativeCompatibleHot()){InterlockedExchange(&policy.enabled,0);return 0;}
-  args[2]=1;return 1;
+  args[2]=1;if(extended)++sh->techProductionFullPasses;return 1;
  }
  if(!policy.enhanced||!sh||sh->stop||fault||!sh->techEnhance||(tag==3&&!policy.compareLevel))return 0;
- const uint32_t stack=context.Esp,returnAddress=get<uint32_t>(stack+0x4C),pointer=get<uint32_t>(stack+0x50);
+ const uint32_t stack=context.Esp;if(stack<0x10000||stack>UINT32_MAX-0x5C)return 0;
+ const uint32_t returnAddress=get<uint32_t>(stack+0x4C),pointer=get<uint32_t>(stack+0x50);
  if(context.Ebp!=policy.house||get<uint32_t>(stack+0x10)!=policy.house||get<uint32_t>(stack+0x54)||
   (tag==2?context.Edi:context.Ecx)!=pointer||pointer<0x10000)return 0;
- const uint32_t include=get<uint32_t>(stack+0x58);const bool caller=(returnAddress==0x6A97D7&&include==0)||(returnAddress==0x6AA786&&include==1)||
+ const uint32_t include=get<uint32_t>(stack+0x58);
+ const bool caller=(returnAddress==0x6A97D7&&include==0)||(returnAddress==0x6AA786&&include==1)||
   (probeDepth&&returnAddress==techEnhanceProbeReturn&&include==1&&probeToken&&uint32_t(InterlockedCompareExchange(&gameentry::activeToken,0,0))==probeToken);
- if(!caller)return 0;
+ // Our own probe remains token-bound, even when other callers are admitted.
+ // This only expands who may ask the already captured local-house policy.
+ const bool extended=!caller&&sh->techProductionCompatibility&&returnAddress>=0x10000&&returnAddress!=techEnhanceProbeReturn&&
+  returnAddress!=uint32_t(uintptr_t(&AssistTechEnhancementProbeCall)+20)&&include<=1;
+ if(!caller&&!extended)return 0;
  const unsigned i=policy.enhancementIndex.find(policy.enhancement,pointer,[](const EnhancedIdentity&t){return t.type.pointer;});
  if(i>=techenhancement::Count)return 0;
  const auto&t=policy.enhancement[i];
  if(!world()||!enhancementCompatibleHot())return 0;
  if(get<uint32_t>(pointer)!=t.type.table||get<uint32_t>(pointer+0x10)!=t.type.id||get<int>(pointer+0x634)!=t.level||
     get<uint32_t>(techenhancement::Rules[i].array+4)!=t.items||t.index<0||t.index>=get<int>(techenhancement::Rules[i].array+16)||get<uint32_t>(t.items+uint32_t(t.index)*4)!=pointer)return 0;
- context.EFlags=tag==2?techenhanceparams::limitFlags(context.EFlags):techenhanceparams::compareFlags(1,context.Ebx,context.EFlags);return 1;
+ context.EFlags=tag==2?techenhanceparams::limitFlags(context.EFlags):techenhanceparams::compareFlags(1,context.Ebx,context.EFlags);
+ if(extended)++sh->techProductionEnhancePasses;return 1;
 }
 extern "C" unsigned BeginTechEnhancementProbe(){using namespace techparameters;if(!gameentry::active(gameentry::Client::Assist)||!policy.enhanced||!enhancementReady()||probeDepth>=16)return 0;static constexpr uint8_t stub[]={0x8B,0x4C,0x24,4,0x8B,0x44,0x24,8,0x6A,1,0x6A,0,0x50,0xB8,0x70,0x78,0x4F,0,0xFF,0xD0,0xC2,8,0};
  const auto*start=reinterpret_cast<const uint8_t*>(&AssistTechEnhancementProbeCall);if(memcmp(start,stub,sizeof stub))return 0;
@@ -383,6 +395,7 @@ static void maintainTechParameters(){
  else if(!(sh->flags&UnsafeTech)||!techmode::parameters(techImplementation)){InterlockedExchange(&policy.enabled,0);desired=false;failure=0;fullFailureRetry.reset();}
  if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||!controlmode::parameters(sh->controlAll)){InterlockedExchange(&policy.controlling,0);controlDesired=false;controlFailure=0;controlFailureRetry.reset();}
  if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||!sh->mapVisibility){InterlockedExchange(&policy.showing,0);mapDesired=false;mapFailure=0;}
+ if(!sh||sh->stop||fault||!readonly::commands(sh)||readOnlyState.active||sh->privateOutMode!=2){privateDesired=false;if(privateMode==2)privateEnabled=false;}
  refreshControlEligibility();configure();
  // Idle slot inspection enters an actual owner-thread INT3 rendezvous and
  // briefly owns a VEH/handle even with every hardware feature disabled.
@@ -406,6 +419,12 @@ static bool techParameterReservationAllowed(uint32_t type,uint32_t house){
  return sh&&(sh->flags&UnsafeTech)&&snap.techOpen&&techmode::parameters(techImplementation)&&
   desired&&!failure&&policy.enabled&&ready(FullGroup)&&house==lastHouse&&house==policy.house&&
   world()&&fullType(type)&&nativeCompatible();
+}
+static bool techEnhancementReservationCanBuild(uint32_t type,uint32_t house){
+ // This existing probe owns its game-entry token and validates the live
+ // local House, type identity, exact-mode DR group and native signatures.
+ // It does not broaden exact enhancement to full technology.
+ return techparameters::enhancedRequested()&&GuardedTechEnhancementProbe(house,type)>0;
 }
 static int techEnhancementCatalogueLevel(uint32_t type,int level){
  if(!techparameters::enhancedRequested()||!type||(!techenhancement::eligible(techenhancement::Rules[9],level)&&level!=-1))return level;
@@ -544,3 +563,20 @@ static bool restoreSinglePlayerFPS(){
  if(!singlePlayerFPSRetired())return false;singlefps::release();publish();return true;
 }
 
+
+static bool privateBpRetired(){return techparameters::groupOff(privateout::BreakpointTags);}
+static bool privateBpRequest(bool enabled){
+ using namespace techparameters;
+ if(!enabled){privateDesired=false;privateFailure=0;refusedGroups&=~privateout::BreakpointTags;configure();return privateBpRetired();}
+ privateFailure=0;
+ for(const auto&s:privateSites){uint8_t b[16]{};const bool readable=read(s.address,b,s.size),matched=readable&&!memcmp(b,s.before,s.size);
+  if(!debugentries::allow(debugentries::Kind::Breakpoint,s.address,readable,matched)||!matched){privateFailure=techbp::Signature;break;}}
+ privateDesired=privateFailure==0;configure();return privateDesired&&ready(privateout::BreakpointTags);
+}
+
+static int privateBpStatus(){
+ using namespace techparameters;
+ if(privateFailure==techbp::Signature)return -1;
+ if(refusedGroups&privateout::BreakpointTags||service.state==techbp::Slots)return -2;
+ return privateFailure||service.state<0?-3:3;
+}

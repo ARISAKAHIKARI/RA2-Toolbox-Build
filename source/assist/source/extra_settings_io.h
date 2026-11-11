@@ -43,6 +43,9 @@ static void loadAdditionalSettings(){
  renderHighRefresh=value(L"Display",L"RenderHighRefresh",1)!=0;
  renderMaterialRefresh=value(L"Display",L"RenderMaterialRefresh",1)!=0;
  renderSceneDetail=std::clamp(value(L"Display",L"RenderSceneDetail",1),0,1);
+ revealCloakedUnits=value(L"Display",L"RevealCloakedUnits",0)!=0;
+ revealMirageUnits=value(L"Display",L"RevealMirageUnits",0)!=0;
+ revealEnemySpies=value(L"Display",L"RevealEnemySpies",0)!=0;
  renderUpgradeEnabled=value(L"Display",L"RenderUpgrade",0)!=0;
  unifiedOverlayEnabled=value(L"Display",L"UnifiedOverlay",0)!=0;
  renderUpgradeLayer=std::clamp(value(L"Display",L"RenderUpgradeLayer",1),0,1);
@@ -68,12 +71,14 @@ static void loadAdditionalSettings(){
  extra.sidebarKey=uint32_t(value(L"Hotkeys",L"ToggleSidebar",extra.sidebarKey))&65535;extra.pauseKeys[0]=uint32_t(value(L"Hotkeys",L"PauseToggle",extra.pauseKeys[0]))&65535;extra.pauseKeys[1]=uint32_t(value(L"Hotkeys",L"PauseStep",extra.pauseKeys[1]))&65535;
  extra.techEnhance=value(L"Experimental",L"TechEnhance",0)!=0;
  extra.techEnhanceCompareLevel=value(L"Experimental",L"TechEnhanceCompareLevel",0)!=0;
+ extra.techProductionCompatibility=value(L"Experimental",L"TechProductionCompatibility",0)!=0;
  extra.mapVisibility=value(L"Experimental",L"HardwareMapVisibility",0)!=0;
  extra.superweaponGrant=value(L"Experimental",L"SuperweaponPermanentGrant",0)!=0;
  extra.techEnhanceImplementation=std::clamp(value(L"Experimental",L"TechEnhanceImplementation",0),0,1);
  extra.crcMapShadow=value(L"Experimental",L"CrcMapIsClearShadow",0)!=0;
  extra.destructSelectedOwner=value(L"Experimental",L"DestructSelectedOwner",0)!=0;
  extra.destructSelectedOwnerKey=uint32_t(value(L"Hotkeys",L"DestructSelectedOwner",0))&65535;
+ extra.privateOutMode=std::clamp(value(L"Experimental",L"PrivateOutMode",0),0,2);
  extra.networkHousePreserve=value(L"Experimental",L"NetworkHousePreserve",0)!=0;
  extra.nativeSellCursor=value(L"Experimental",L"NativeSellCursor",0)!=0;
  extra.nativeMegaGateway=explicitPatchPreferences&&value(L"Experimental",L"NativeMegaGateway",0)!=0;
@@ -179,6 +184,7 @@ static bool saveAdditionalSettings(){
  write(L"Experimental",L"TechEnhance",extra.techEnhance);write(L"Experimental",L"PlacementImplementation",extra.placementImplementation);
  write(L"Experimental",L"HardwareMapVisibility",extra.mapVisibility);
  write(L"Experimental",L"SuperweaponPermanentGrant",extra.superweaponGrant);
+ write(L"Experimental",L"TechProductionCompatibility",extra.techProductionCompatibility);
  write(L"Experimental",L"TechEnhanceImplementation",extra.techEnhanceImplementation);write(L"Experimental",L"TechEnhanceCompareLevel",extra.techEnhanceCompareLevel);
  write(L"Hotkeys",L"PlaceCompletedBuilding",extra.placementEventKey);
  write(L"Experimental",L"CrcMapIsClearShadow",extra.crcMapShadow);
@@ -186,6 +192,7 @@ static bool saveAdditionalSettings(){
  write(L"Hotkeys",L"DestructSelectedOwner",extra.destructSelectedOwnerKey);
  write(L"Experimental",L"NetworkHousePreserve",extra.networkHousePreserve);write(L"Experimental",L"NativeSellCursor",extra.nativeSellCursor);
  write(L"Experimental",L"NativeMegaGateway",extra.nativeMegaGateway);
+ write(L"Experimental",L"PrivateOutMode",extra.privateOutMode);
  write(L"Experimental",L"NativeCombatQueries",extra.nativeCombatQueries);
  write(L"Experimental",L"ControlCommandOwner",extra.controlCommandOwner);
  write(L"Experimental",L"ControlImplementation",extra.controlImplementation);
@@ -204,6 +211,9 @@ static bool saveAdditionalSettings(){
  write(L"Display",L"ShroudStrategy",extra.mapStrategy);
  write(L"Display",L"MinimapPosition",minimapPosition);write(L"Display",L"MinimapX",minimapX);write(L"Display",L"MinimapY",minimapY);
  write(L"Display",L"MinimapAlignX",minimapAlignX);write(L"Display",L"MinimapAlignY",minimapAlignY);
+ write(L"Display",L"RevealCloakedUnits",revealCloakedUnits);
+ write(L"Display",L"RevealMirageUnits",revealMirageUnits);
+ write(L"Display",L"RevealEnemySpies",revealEnemySpies);
  write(L"Display",L"RenderUpgrade",renderUpgradeEnabled);
  write(L"Display",L"BuildTimeTooltip",buildTimeTooltipEnabled);write(L"Display",L"HarvesterCounter",harvesterCounterEnabled);write(L"Display",L"PowerDelta",powerDeltaEnabled);
  write(L"Display",L"RenderProcessing",renderProcessing);
@@ -300,11 +310,12 @@ static void syncAdditional(){
  InterlockedIncrement(&shared->moGesturePolicySeq);shared->moGestures=extra.moGestures;shared->moOptions=extra.moOptions;MemoryBarrier();InterlockedIncrement(&shared->moGesturePolicySeq);
  shared->mapVisibility=extra.mapVisibility;
  shared->superweaponGrant=extra.superweaponGrant;
+ shared->techProductionCompatibility=extra.techProductionCompatibility;
  shared->buildTimeTooltip=buildTimeTooltipEnabled;shared->placementImplementation=extra.placementImplementation;shared->techEnhance=extra.techEnhance;shared->techEnhanceImplementation=uint32_t(extra.techEnhanceImplementation);shared->techEnhanceCompareLevel=extra.techEnhanceCompareLevel;
  shared->nativeAirNetwork=extra.nativeAirNetwork;
  shared->crcMapShadow=extra.crcMapShadow;
  shared->networkHousePreserve=extra.networkHouseRequested();shared->nativeSellCursor=extra.nativeSellCursor;
- shared->nativeMegaGateway=extra.nativeMegaGateway;
+ shared->nativeMegaGateway=extra.nativeMegaGateway;shared->privateOutMode=extra.privateOutMode;
  shared->nativeCombatQueries=extra.nativeCombatQueries;
  shared->controlCommandOwner=extra.commandOwnerRequested();
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);

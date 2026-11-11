@@ -25,11 +25,11 @@ static bool controlCommandOwnerMegaCompatible(){
 static bool controlCommandOwnerReady(uint32_t owner){
  if(!sh||!sh->controlCommandOwner||!controlmode::native(sh->controlAll)||controlTransitionPending()||!sh->foreground||
     !riskReady(true)||snap.status!=1||snap.commandStatus!=1||get<bool>(0xA8BC60+25)||
-    !controlCommandOwnerOwnSites()||!controlCommandOwnerNativeObjectReady()||
+    (!privateOutActive()&&(!controlCommandOwnerOwnSites()||!controlCommandOwnerNativeObjectReady()))||
     !playableHouse(owner))return false;
  const int index=get<int>(owner+0x30);const uint32_t identity=get<uint32_t>(owner+0x10);Vec houses=vec(0xA80228,32);
  if(index<0||index>=houses.count||item(houses,index)!=owner)return false;
- const bool transport=owner==lastHouse||!eventdelivery::isMultiplayer(get<int>(0xA8B238))||
+ const bool transport=privateOutActive()||owner==lastHouse||!eventdelivery::isMultiplayer(get<int>(0xA8B238))||
   (networkHousePreserveReady()&&networkSenderHouse(index));
  return transport&&get<uint32_t>(owner+0x10)==identity&&get<int>(owner+0x30)==index&&item(houses,index)==owner;
 }

@@ -1,0 +1,165 @@
+{
+  "version": "1.0.49-pre.5",
+  "source_binding": {
+    "local_build_commit": "baec9d8d282bb143db641556dc3330dff8338c9a",
+    "remote_commit": "2738270558167e8a43475fec2df7fd5482e6e5de",
+    "remote_tree": "48048cc7d05289b9374c20b5f971386633fd2e2b",
+    "source_inputs_checked": 870,
+    "all_tracked_build_source_blobs_match_remote": true,
+    "remote_tree_not_truncated": true
+  },
+  "build_artifacts": {
+    "RA2Toolbox.exe": {
+      "bytes": 9569280,
+      "sha256": "e84090c0c5d660f870ff5a9c19ab420aebb4ebcbc2b88f00faf173bc813f00bc"
+    },
+    "GameRuntime.dll": {
+      "bytes": 25147392,
+      "sha256": "f8a2db7d0eb128f9632668f289ee8a8e2019931fe2ee31ee242f0137fe64bec2"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 214528,
+      "sha256": "8157c19e9d1a0529e70fbf7555991d00f424e72f9bd1c901ebcfefde290f4a1c"
+    },
+    "WebView2Loader.dll": {
+      "bytes": 194912,
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  },
+  "package": {
+    "version": "1.0.49-pre.5",
+    "file_version": "1.0.49.5",
+    "kind": "x64 Update",
+    "source_commit": "2738270558167e8a43475fec2df7fd5482e6e5de",
+    "local_build_commit": "baec9d8d282bb143db641556dc3330dff8338c9a",
+    "assist_protocol": 107,
+    "assist_shared_bytes": 23162680,
+    "source_inputs_checked": 870,
+    "build_and_static_PE_passed": true,
+    "native_wire_cases": 327,
+    "production_capture_cases": 84,
+    "destruct_protocols_checked": [
+      0,
+      1,
+      2
+    ],
+    "target_identity_cancellation_checked": true,
+    "receiver_cases_per_spawn_fixture": 20,
+    "app_icon_sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ],
+    "live_JJ_tested": false,
+    "live_multiplayer_tested": false,
+    "live_Windows_UI_tested": false,
+    "scope": "Repair Destruct delivery gates, preserve queued target identity, restore explicit singleplayer AI response, add application/window icon. Native and private send paths retained; no remote ACK or full-destruction claim.",
+    "files": {
+      "GameRuntime.dll": {
+        "bytes": 25147392,
+        "sha256": "f8a2db7d0eb128f9632668f289ee8a8e2019931fe2ee31ee242f0137fe64bec2"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 214528,
+        "sha256": "8157c19e9d1a0529e70fbf7555991d00f424e72f9bd1c901ebcfefde290f4a1c"
+      },
+      "RA2Toolbox.exe": {
+        "bytes": 9569280,
+        "sha256": "e84090c0c5d660f870ff5a9c19ab420aebb4ebcbc2b88f00faf173bc813f00bc"
+      },
+      "README.txt": {
+        "bytes": 1272,
+        "sha256": "752494ae3f3992c551c37a25de31b6450717ddc3bea7277fbca0683f3288ef33"
+      },
+      "Start.cmd": {
+        "bytes": 68,
+        "sha256": "9869da39057c74b61f63f7e86fea14bf952aa976cec61d8324491c3ab255f3c5"
+      },
+      "WebView2Loader.dll": {
+        "bytes": 194912,
+        "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+      },
+      "engine/dis_render.py": {
+        "bytes": 2222,
+        "sha256": "eb953f31b8453a3ae1cd79c363840f0706116a9a8ca8ecd3cb1e41fb99930fc9"
+      },
+      "engine/player-template.html": {
+        "bytes": 10054,
+        "sha256": "da85d9fc8d3d25b96e7023d754c47d9832687ff344dbba8adcb350df56b46daa"
+      },
+      "engine/precompute.py": {
+        "bytes": 8166,
+        "sha256": "aa347f080f06c95c6fb880caa57b4c5d205e67fd29e4b16b0b3e9be135c07fad"
+      },
+      "engine/prepare_runtime.ps1": {
+        "bytes": 23292,
+        "sha256": "507886249889153d21c55e428b962e3d7127c89c5be3c3a699871e50ee7b2022"
+      },
+      "engine/prepare_runtime.py": {
+        "bytes": 31598,
+        "sha256": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96"
+      },
+      "engine/preview_builder.py": {
+        "bytes": 4135,
+        "sha256": "a4de364d3f2e7909802931954d2c330bd160529ad988c68032cd479a3e90edca"
+      },
+      "engine/runtime-dependencies.json": {
+        "bytes": 3623,
+        "sha256": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+      },
+      "engine/test_precompute_cache.py": {
+        "bytes": 12063,
+        "sha256": "2b754af68e04e62f14ace39832cd8c585127f5285c69bb78823379e8cfd091b4"
+      },
+      "licenses/LICENSE-GPL.txt": {
+        "bytes": 35151,
+        "sha256": "7fe14716ed31cc71fc3bf9af293c368d464a853a70ea86e9995388f6b9e929e5"
+      },
+      "licenses/LLVM-libcxx-LICENSE.txt": {
+        "bytes": 16703,
+        "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b"
+      },
+      "licenses/LLVM-libcxxabi-LICENSE.txt": {
+        "bytes": 16706,
+        "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c"
+      },
+      "licenses/THIRD_PARTY_NOTICES.md": {
+        "bytes": 10726,
+        "sha256": "f91a916d0fe79493cd71e32390dc5f7ec326f59bef494d86af0a996fbc8a1207"
+      },
+      "licenses/WebView2/LICENSE.txt": {
+        "bytes": 1487,
+        "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55"
+      },
+      "licenses/WebView2/NOTICE.txt": {
+        "bytes": 3894,
+        "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+      },
+      "licenses/Zig-LICENSE.txt": {
+        "bytes": 1080,
+        "sha256": "5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177"
+      },
+      "licenses/xbrz-License.txt": {
+        "bytes": 33093,
+        "sha256": "321429c853d59b621414832581e93ff38586c348aa2de43c7e571b33423d670a"
+      }
+    }
+  },
+  "archives": {
+    "RA2Toolbox-1.0.49-pre.5-x64-Update.zip": {
+      "bytes": 4184063,
+      "sha256": "9592cae292f8bb0451fc4d1165d99aec340f530a0c26fb1264c443eb31a7e6bb"
+    },
+    "RA2Toolbox-1.0.49-pre.5-verification.zip": {
+      "bytes": 91822,
+      "sha256": "87e59fa9f58621163b687dd3a71b2f0d43c7bccc83f43f4f0e7bbac9c8dbaa84"
+    }
+  },
+  "github_release_created": false
+}

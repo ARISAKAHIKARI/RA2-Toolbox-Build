@@ -39,8 +39,8 @@ SYSTEM = {'kernel32.dll', 'user32.dll', 'gdi32.dll', 'winmm.dll', 'gdiplus.dll',
           'msvcrt.dll', 'ucrtbase.dll', 'ntdll.dll', 'version.dll', 'ws2_32.dll',
           'shlwapi.dll', 'oleaut32.dll', 'imm32.dll'}
 NEURAL_SYSTEM = SYSTEM | {'d3d12.dll', 'dxgi.dll', 'wintrust.dll', 'crypt32.dll'}
-ASSIST_PROTOCOL = 105
-ASSIST_SHARED_BYTES = 23162640
+ASSIST_PROTOCOL = 107
+ASSIST_SHARED_BYTES = 23162680
 ASSIST_MAPPING = f'Local\\RA2Assist_v{ASSIST_PROTOCOL}_'
 ENTRY_PROTOCOL = 3
 ENTRY_REQUEST_BYTES = 108
@@ -91,6 +91,37 @@ def verify_host_manifest(pe, host_arch='x86'):
             raise ValueError('EXE Common Controls dependency identity/version/architecture mismatch')
     return {'resource_type': 24, 'resource_id': 1, 'languages': [language for language, _ in leaves],
             'name': 'Microsoft.Windows.Common-Controls', 'version': '6.0.0.0', 'architecture': architecture}
+
+
+def verify_application_icon(pe):
+    groups = pe.resource_blobs(14, 101)
+    if not groups:
+        raise ValueError('EXE application icon group 101 missing')
+    sizes = set()
+    for language, group in groups:
+        reserved, kind, count = struct.unpack_from('<HHH', group)
+        if reserved or kind != 1 or len(group) != 6 + count * 14:
+            raise ValueError('EXE application icon group malformed')
+        for i in range(count):
+            width, height, _, _, planes, bits, size, resource = struct.unpack_from('<BBBBHHIH', group, 6+i*14)
+            width, height = width or 256, height or 256
+            blobs = dict(pe.resource_blobs(3, resource))
+            blob = blobs.get(language)
+            if blob is None or len(blob) != size or width != height or planes not in (0, 1) or bits != 32:
+                raise ValueError('EXE icon image missing or inconsistent')
+            if blob.startswith(b'\x89PNG\r\n\x1a\n'):
+                actual = struct.unpack_from('>II', blob, 16)
+            else:
+                dib, w, h, p, b = struct.unpack_from('<IiiHH', blob)
+                if dib < 40 or p != 1 or b != 32:
+                    raise ValueError('EXE icon bitmap format unsupported')
+                actual = (w, h//2)
+            if actual != (width, height):
+                raise ValueError('EXE icon dimensions differ from directory')
+            sizes.add(width)
+    if not {16, 20, 24, 32, 40, 48, 64, 128, 256} <= sizes:
+        raise ValueError('EXE icon lacks required taskbar/Explorer DPI sizes')
+    return {'group_id': 101, 'sizes': sorted(sizes), 'windows_visual_tested': False}
 
 
 def verify_worker_manifest(pe, architecture='x86', label='x86 broker'):
@@ -205,6 +236,7 @@ def verify(root, host_arch='x86', neural_helper=False, webview2=False):
                 recs[name]['cursor_protocol'] = verify_cursor_mapping(images[name], name)
                 recs[name]['cursor_mapping'] = CURSOR_MAPPING
             recs['RA2Toolbox.exe']['common_controls_activation'] = verify_host_manifest(host, host_arch)
+            recs['RA2Toolbox.exe']['application_icon'] = verify_application_icon(host)
             if host_arch == 'x64':
                 recs[BROKER]['process_manifest'] = verify_broker_manifest(images[BROKER])
             if webview2:

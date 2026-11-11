@@ -242,6 +242,10 @@ number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · �
 #endif
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
+toggle(9760,L"补绘未探测的隐形 / 潜水单位",revealCloakedUnits);next();
+toggle(9761,L"幻影显示真实坦克外形",revealMirageUnits);next();
+toggle(9762,L"敌方间谍显示真实兵种和颜色",revealEnemySpies);next();
+note(L"三个开关独立生效，默认关闭；无需开启全视口渲染升级。仅主画面局部补绘，保留地图黑幕设置，不改变游戏探测、选取、攻击判定。敌方间谍不包含己方与盟友。",72);
 toggle(9325,L"矿车指示器（工作中 / 总数）",harvesterCounterEnabled);next();
 toggle(9326,L"电量指示器（发电 − 耗电）",powerDeltaEnabled);next();
 toggle(9327,L"原生建造栏提示框显示建造时间",buildTimeTooltipEnabled);next();
@@ -361,8 +365,10 @@ note(L"开放奶牛、电影英雄等隐藏类型；关闭后恢复本功能修�
 item(L"STATIC",L"科技加强：关闭",20,605,9098);next();
 toggle(420,buildingmodes::technologyCaption(techImplementation),techMode,20,455);button(9607,L"展开设置",500,125);next();
 label(L"实现方式",20,180);choices(combo(896,220,405,180),{L"高危：受控模式（默认）",L"高危：经典兼容",L"高危：直接模式",L"高危：原生面板（规则数据）",L"实验性：原生面板（参数拦截，不改指令／规则）"},techImplementation);next();
-note(L"参数拦截模式在统一可建查询入口按侧栏调用来源分流，只占一个断点并改变本次查询参数，不改游戏指令／虚表／规则；真正工厂、阵营相容、海陆及限额保留。断点冲突时拒绝，不覆盖其他工具。规则数据模式通过放宽类型的建造条件供原生建造栏使用；这些规则同时影响所有玩家和 AI，联机高危。关闭还原规则后，游戏可能取消不再合法的未完成生产；切换旧模式会先等待相关生产完成或取消。旧三种改码模式保留；直接模式不使用下方许可筛选。",85);
+note(L"参数拦截模式默认在统一可建查询入口按侧栏调用来源分流，只占一个断点并改变本次查询参数，不改游戏指令／虚表／规则；真正工厂、阵营相容、海陆及限额保留。断点冲突时拒绝，不覆盖其他工具。规则数据模式通过放宽类型的建造条件供原生建造栏使用；这些规则同时影响所有玩家和 AI，联机高危。关闭还原规则后，游戏可能取消不再合法的未完成生产；切换旧模式会先等待相关生产完成或取消。旧三种改码模式保留；直接模式不使用下方许可筛选。",85);
 activeFoldGroup=9607;
+toggle(9753,L"高危：硬件科技生产许可重查兼容",extra.techProductionCompatibility);next();
+note(L"适用于科技全开的参数拦截、科技加强的精确等级模式。默认关闭，保留原侧栏调用范围；开启后，本方许可类型的其他原生科技查询也生效，不额外占槽。可能影响联机同步；平台独立的规则校验仍可能拒绝。关闭可能取消依赖额外许可的在产项目。",65);
 label(L"搜索科技许可",20,260);techSearch=edit(421,L"",290,335);SendMessageW(techSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"搜索名称或单位 ID");next();
 techList=item(L"LISTBOX",L"",20,455,422,LBS_NOTIFY|WS_VSCROLL|WS_TABSTOP,152);
 int listTop=rowY;button(423,L"生产所选",488,137);next();button(424,L"切换许可",488,137);next();button(425,L"全选",488,65);button(426,L"清空",560,65);next();button(427,L"兼容预设",488,137);rowY=listTop+164;
@@ -370,6 +376,9 @@ button(428,L"使用 INI 许可清单",20,285);button(814,L"取消所选类型的
 note(L"原生面板两种模式均请在游戏建造栏生产或取消；此清单只设置许可，不从工具箱下单。旧三种模式保留工具箱生产。完成建筑也可使用上方独立的原生事件放置。",65);
 item(L"STATIC",L"生产进度：等待游戏",20,605,815,0,105);next(105);
 activeFoldGroup=0;
+label(L"操控入队实现",20,180);choices(combo(9750,210,415),{L"原实现（默认）",L"高危实验：私有队列 Hook",L"高危实验：私有队列硬件断点（3 槽）"},extra.privateOutMode);next();
+note(L"接管原生操控命令与工具箱命令：单机提交本地执行队列，联机自行编码后交给原传输层，不写原生 OutList。关闭或切换会取消未发送命令。硬件模式与其他功能共用四槽，命中频繁时可能卡顿；平台和联机实测待验证。",85);
+item(L"STATIC",L"操控私有队列：原实现",20,605,9751,0,65);next(65);
 toggle(9191,L"高危：原生 MegaMission 成功入口观察",extra.nativeMegaGateway);next();
 note(L"默认关闭；普通手动输入由消息与任务观察处理。此附加入口会改写游戏代码，在原生命令成功发送后登记手动优先并取消冲突任务。发出原生事件不需要开启它。",65);
 item(L"STATIC",L"原生命令仲裁：等待对局",20,605,9192,0,44);next(44);
@@ -399,7 +408,7 @@ label(L"目标所属方（请明确选择）");next();
 EnableWindow(combo(862,20,305,240),FALSE);EnableWindow(button(863,L"切换至所选玩家",340,285),FALSE);next();
 EnableWindow(button(864,L"恢复原操控方",20,285),FALSE);next();
 toggle(9253,L"高危：自毁选定单位的所属方",extra.destructSelectedOwner,20,455);EnableWindow(button(9185,L"立即自毁",500,125),extra.destructSelectedOwner);next();
-note(L"自愿开启后，按快捷键或点击立即执行。读取游戏当下选定单位的所属方，一次提交原生整方自毁事件，影响其全部单位和建筑；混合所属方、选取过期或忙碌时拒绝且不补发。联机跨方必须已启用“保留事件所属方”，仍有不同步风险。默认关闭、快捷键不绑定；不显示确认弹窗。",65);
+note(L"自愿开启后，按快捷键或点击立即执行。读取游戏当下选定单位的所属方，一次提交原生整方自毁事件，影响其全部单位和建筑；混合所属方、选取过期或忙碌时拒绝且不补发。联机跨方需私有操控队列已接管，或“保留事件所属方”完整就绪；联机电脑方不支持。入队不代表远端收到或执行。默认关闭、快捷键不绑定；不显示确认弹窗。",65);
 label(L"自毁快捷键（默认不绑定）",20,306);key(9254,extra.destructSelectedOwnerKey);next();
 note(L"必须使用独立快捷键；不允许与其他动作共享，即使已开启“执行所有匹配功能”。忙碌、失焦、聊天或超时后须重新按键。",44);
 item(L"STATIC",L"",20,605,9186,0,52);pageControls.back().feedbackHidden=true;next(52);

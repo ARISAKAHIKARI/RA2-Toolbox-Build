@@ -12,7 +12,9 @@ a=source.index('static external::ReadSession paintReader;');b=source.index('stat
 source=source[:a]+'static int proc=0;\nstatic void resetPaint(){paintReady=false;} static void requestPaint(){} static void pumpPaint(){}\n'+source[b:]
 prefix=r'''
 #include "native_hotkeys.h"
+#include "panel_placement.h"
 #include "construction_catalog.h"
+#include "tech_enhancement.h"
 #include "native_cameos.h"
 #include "native_badge_display.h"
 #include "../../shared/source/overlay_visibility.h"
@@ -37,7 +39,7 @@ static construction::InputPolicy reservationPolicy;static construction::InputCli
 static void publishReservationPolicy(const construction::InputPolicy&p){reservationPolicy=p;}
 static bool takeReservationClick(construction::InputClick&out){if(!inputPending)return false;inputPending=false;out=inputClick;reservationPolicy={};return true;}
 static bool SetLayeredWindowAttributes(HWND,int,int alpha,int flags){assert(flags==LWA_ALPHA);panelAlpha=alpha;return true;}
-static struct{bool constructionQueue=true;}extra;
+static struct{bool constructionQueue=true,techEnhance=false,techEnhanceCompareLevel=false;int techEnhanceImplementation=0;}extra;
 static struct{int typeCount=3,chat=0,renderStatus=1,width=2560,height=1440;struct{int kind=7,index=0,naval=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
 static bool techAllowed(const decltype(snap.types[0])&){return techWhitelist;}
 static delivery::Queue commandQueue;
@@ -79,7 +81,7 @@ static constexpr uint32_t H=0x500000,C=0x510000,R=0x520000,T=0x600000,P=0x700000
 static void w(uint32_t p,int v){externalReader.put(p,v);}static void byte(uint32_t p,uint8_t v){externalReader.put(p,v);}
 static void list(uint32_t p,std::initializer_list<int> v){static uint32_t items=0x900000;w(p+4,items);w(p+8,v.size());w(p+16,v.size());for(int i:v){w(items,i);items+=4;}items+=32;}
 static void setup(){
- techMode=false;techWhitelist=true;buildreserve::reset();commandQueue.clear();soundRequests=0;externalReader.bytes.assign(0x1000000,0);externalReader.pages.clear();externalReader.available.reset();externalReader.fail=0;extra.constructionQueue=true;focused=fresh=enabled=queueAccept=true;++match;++now;
+ techMode=false;techWhitelist=true;extra.techEnhance=false;extra.techEnhanceCompareLevel=false;extra.techEnhanceImplementation=0;buildreserve::reset();commandQueue.clear();soundRequests=0;externalReader.bytes.assign(0x1000000,0);externalReader.pages.clear();externalReader.available.reset();externalReader.fail=0;extra.constructionQueue=true;focused=fresh=enabled=queueAccept=true;++match;++now;
  w(0xA8ED84,10);w(0xA83D4C,H);w(H+0x34,C);w(C+0xB4,0);w(C+0xB8,0);w(H+0x1D4,10);w(0x8871E0,R);
  list(0xA83C68,{T,T+0x2000,T+0x4000});list(R+0x358,{0});for(int g=1;g<6;++g)list(R+0x358+g*28,{});
  for(int i=0;i<3;++i){auto t=T+i*0x2000;snap.types[i].index=i;w(t+0x634,1);w(t+0x6CC,1);w(t+0xDA0,-1);w(t+0xDA4,-1);w(t+0xDF8,i);list(t+0x638,i==1?std::initializer_list<int>{-1}:i==2?std::initializer_list<int>{1}:std::initializer_list<int>{});list(t+0x654,{});}
@@ -284,6 +286,54 @@ int main(){
  assert(books[3].items.size()==3);for(int slot:{3,4,5}){tick();assert(commandQueue.size==1&&commandQueue.slots[0].arg==slot);
   uint32_t token=books[3].token;commandQueue.clear();result(1,1,0,token);assert(books[3].items.size()==size_t(5-slot));}
  std::cout<<"PASS: visible first unit cameo, 128-item FIFO with a native 30-item window, native full queue and ACK shadow, separate ground/air/naval factories\n";
+
+ // Exact enhancement previews the same two signed level tests as Runtime.
+ // It must never turn into full technology or authorize a same-name impostor.
+ unsigned exactCases=0;
+ for(const auto&r:techenhancement::Rules){
+  setup();uint32_t target=T+0x6000;int kind=r.array==0xA8E348?16:r.array==0xA83CE0?40:3;
+  list(r.array,{int(target)});w(target,int(r.vtable));
+  for(int i=0;i<24;++i)byte(target+0x24+i,i<int(strlen(r.id))?uint8_t(r.id[i]):0);
+  w(target+0x634,-1);w(target+0x6CC,1);w(target+0xDA0,-1);w(target+0xDA4,-1);
+  list(target+0x638,{1});list(target+0x654,{});w(T+0x2000+0xEB8,kind);
+  snap.typeCount=4;snap.types[3].kind=kind;snap.types[3].index=0;
+  extra.techEnhance=true;extra.techEnhanceImplementation=1;
+  auto read=[](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);};
+  construction::Catalogue<decltype(read)> cat(read);assert(cat.load(H,{1}));
+  const int index=encode(kind,0);
+  auto possible=[&](){return cat.possible(target,kind,false,true,technologyRequested(index));};
+  assert(possible());++exactCases;
+  extra.techEnhance=false;assert(!possible());extra.techEnhance=true;++exactCases;
+  extra.techEnhanceImplementation=0;assert(!possible());extra.techEnhanceImplementation=1;++exactCases;
+  // Original rules enhancement is read from actual level 1, not granted by
+  // the Exact flag or a same-name match in the wrong array/vtable.
+  extra.techEnhanceImplementation=0;w(target+0x634,1);assert(possible());
+  extra.techEnhanceImplementation=1;w(target+0x634,-1);++exactCases;
+  w(target+0x6CC,2);assert(!possible());w(target+0x6CC,1);++exactCases;
+  w(target+0xDA0,2);assert(!possible());w(target+0xDA0,-1);++exactCases;
+  w(target+0xDA4,1);assert(!possible());w(target+0xDA4,-1);++exactCases;
+  byte(target+0xD9B,1);assert(!possible());byte(H+0x2BC,1);assert(possible());byte(target+0xD9B,0);++exactCases;
+  list(target+0x638,{2});assert(!possible());list(target+0x638,{1});++exactCases;
+  w(T+0x2000+0xEB8,99);assert(!possible());w(T+0x2000+0xEB8,kind);++exactCases;
+  assert(!cat.possible(target,kind,false,false,technologyRequested(index)));++exactCases;
+  w(target,int(r.vtable)+4);assert(!possible());w(target,int(r.vtable));++exactCases;
+  byte(target+0x24,'?');assert(!possible());byte(target+0x24,r.id[0]);++exactCases;
+  w(get<uint32_t>(r.array+4),int(target+0x1000));assert(!possible());w(get<uint32_t>(r.array+4),int(target));++exactCases;
+  externalReader.fail=target+0x634;assert(!possible());externalReader.fail=0;++exactCases;
+  w(target+0x634,-2);assert(!possible());w(target+0x634,-1);++exactCases;
+  w(H+0x1D4,0);assert(cat.load(H,{1}));assert(possible());++exactCases;
+  extra.techEnhanceCompareLevel=true;assert(!possible());w(H+0x1D4,1);assert(cat.load(H,{1}));assert(possible());++exactCases;
+  extra.techEnhanceCompareLevel=false;w(target+0x634,10);assert(!possible());extra.techEnhanceCompareLevel=true;
+  assert(possible()==techenhancement::sameID(r.id,"LUNR"));++exactCases;
+ }
+ // Native sidebar permission outranks a missing read-only forecast. Runtime
+ // remains the submit authority. Losing the cameo restores normal cancellation.
+ snap.typeCount=3;setup();reserve(choice(1));books[0].source=0;books[0].retry=now+10000;
+ w(T+0x2000+0x634,-1);uint32_t strip=0x87F7E8+0x1544;
+ w(strip+84,2);w(strip+88+52,1);w(strip+92+52,7);tick();tick(700);
+ assert(books[0].items==std::vector<int>({1})&&commandQueue.size==0);
+ w(strip+84,1);tick();tick(700);assert(books[0].items.empty());
+ std::cout<<"PASS: "<<exactCases<<" exact-enhancement forecast cases, original/full distinctions, signed optional comparison, country/prerequisite/factory/identity failures; native cameo preserves FIFO until removal\n";
  assert(!l.set(0,0,3840,2160));
  std::cout<<"PASS: actual host service FIFO32/128/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions\n";
 }

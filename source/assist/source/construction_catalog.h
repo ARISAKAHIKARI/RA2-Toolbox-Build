@@ -1,8 +1,15 @@
 #pragma once
 #include "construction_policy.h"
+#include "tech_enhancement.h"
 #include "../../unit_monitor/source/owned_counter.h"
 #include <cstring>
 namespace assist { namespace construction {
+// Full technology and exact enhancement have different permissions. Exact
+// changes only the selected level tests, never country/prerequisite rules.
+struct Technology {
+ bool full,exact,compareLevel;int index;
+ constexpr Technology(bool all=false,bool enhanced=false,bool compare=false,int slot=-1):full(all),exact(enhanced),compareLevel(compare),index(slot){}
+};
 // Read-only YRpp layout. Keep failures distinct from empty prerequisite lists.
 template<class Read> class Catalogue {
  Read read;uint32_t house=0,types=0;int count=0,parent=-1,country=-1,tech=-1;
@@ -14,6 +21,17 @@ template<class Read> class Catalogue {
   out.assign(size_t(n),0);return !n||read(p,out.data(),size_t(n)*4);
  }
  static bool sameID(const char*a,const char*b){for(int i=0;i<25;++i){unsigned x=(unsigned char)a[i],y=(unsigned char)b[i];if(x>='a'&&x<='z')x-=32;if(y>='a'&&y<='z')y-=32;if(x!=y)return false;if(!x)return true;}return false;}
+ bool exactLevel(uint32_t t,int kind,int level,int index)const{
+  const uint32_t array=kind==16?0xA8E348:kind==40?0xA83CE0:kind==3?0xA8B218:0;
+  if(!array||index<0)return false;
+  uint32_t table=0;char id[24]{};
+  if(!read(t,&table,4)||!read(t+0x24,id,sizeof id))return false;
+  for(const auto&r:techenhancement::Rules)if(r.array==array&&r.vtable==table&&techenhancement::sameID(id,r.id)&&techenhancement::eligible(r,level)){
+   techenhancement::Record candidate{};candidate.pointer=t;candidate.index=index;
+   return read(array+4,&candidate.items,4)&&techenhancement::identity(r,candidate,read);
+  }
+  return false;
+ }
 public:
  explicit Catalogue(Read r):read(r){}
  bool load(uint32_t h,const std::vector<int>&future){
@@ -35,11 +53,17 @@ public:
   predicted=owned;for(int i:future)if(i>=0&&i<count)++predicted[i];return true;
  }
  uint32_t type(int index)const{return index>=0&&index<count?get<uint32_t>(types+index*4):0;}
- bool possible(uint32_t t,int kind=7,bool naval=false,bool forecast=true,bool technology=false)const{
+ bool possible(uint32_t t,int kind=7,bool naval=false,bool forecast=true,Technology technology={})const{
   if(t<0x10000)return false;
   const auto&counts=forecast?predicted:owned;
-  if(!technology){
-  int level=get<int>(t+0x634,-1);if(level<0||level>tech)return false;
+  if(!technology.full){
+  int level=0;if(!read(t+0x634,&level,4))return false;
+  const bool exact=technology.exact&&exactLevel(t,kind,level,technology.index);
+  // The first DR skips only TechLevel == -1; the optional second DR performs
+  // the signed player-level comparison as 1. LUNR keeps its actual level
+  // without that second option, and every non-whitelisted type stays native.
+  if(exact){if((technology.compareLevel?1:level)>tech)return false;}
+  else if(level<0||level>tech)return false;
   if(!countryAllowed(get<uint32_t>(t+0x6CC),get<uint32_t>(t+0xDA0),get<uint32_t>(t+0xDA4),parent,country))return false;
   // Third/Soviet/Allied stolen-tech flags are D9B..D9D, not D9D..D9F.
   for(int i=0;i<3;++i)if(get<uint8_t>(t+0xD9B+i,1)&&!get<uint8_t>(house+0x2BC+i))return false;
@@ -57,6 +81,6 @@ public:
  bool preview(int index)const{uint32_t t=type(index);if(!possible(t)||possible(t,7,false,false))return false;
   int limit=get<int>(t+0x3B8);return limit<=0||int64_t(limits[index])+predicted[index]-owned[index]<limit;
  }
- bool append(int index,bool technology=false){uint32_t t=type(index);if(!possible(t,7,false,true,technology))return false;++predicted[index];return true;}
+ bool append(int index,Technology technology={}){uint32_t t=type(index);if(!possible(t,7,false,true,technology))return false;++predicted[index];return true;}
 };
 }}

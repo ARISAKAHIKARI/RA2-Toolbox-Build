@@ -1,4 +1,5 @@
 #include "../../shared/source/release_version.h"
+101 ICON "app.ico"
 #ifdef RA2_HOST_X64
 1 24 "app-x64.manifest"
 #else

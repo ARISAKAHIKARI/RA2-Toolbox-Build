@@ -105,6 +105,7 @@ static bool autoSettingChanged(int id,int notification){
   extra.placementEventKey=next;registerKeys();changedSetting();return true;
  }
  if(id==9097&&notification==BN_CLICKED){extra.techEnhance=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
+ if(id==9753&&notification==BN_CLICKED){extra.techProductionCompatibility=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();wakeGame();notify(extra.techProductionCompatibility?L"已开启硬件科技生产许可重查兼容；请查看额外许可放行次数，放行不等于生产成功。":L"已恢复仅侧栏许可；依赖额外许可的在产项目可能被游戏取消。");return true;}
  if(id==9472&&notification==BN_CLICKED){extra.techEnhanceCompareLevel=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9470&&select){extra.techEnhanceImplementation=std::clamp(int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0)),0,1);changedSetting();syncAdditional();return true;}
  if(id>=9480&&id<=9485&&edit){BOOL ok=FALSE;const int value=int(GetDlgItemInt(ui,id,&ok,FALSE));const int lo=id==9483?1:2,hi=id==9483?8:16;
@@ -120,6 +121,7 @@ static bool autoSettingChanged(int id,int notification){
   if(id==9187)extra.networkHousePreserve=on;else extra.nativeSellCursor=on;
   pointerMatches.clear();changedSetting();syncAdditional();updatePlayerTestUI(true);return true;
  }
+ if(id==9750&&notification==CBN_SELCHANGE){extra.privateOutMode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));changedSetting();syncAdditional();return true;}
  if(id==9191&&notification==BN_CLICKED){extra.nativeMegaGateway=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9198&&notification==BN_CLICKED){extra.nativeCombatQueries=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if(id==9193&&notification==BN_CLICKED){extra.controlCommandOwner=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;pointerMatches.clear();changedSetting();syncAdditional();return true;}

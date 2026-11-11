@@ -1,0 +1,50 @@
+{
+  "commit": "e2ba5cbab1f64417a633b07a5717a1a65adb0eab",
+  "source_tree_sha": "d02a689a1ed09a92064b53b67611e57a9197af48",
+  "started_utc": "2026-11-11T04:04:30.794623+00:00",
+  "platform": "linux",
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "zig_version": "0.13.0",
+  "webview2_sdk": "1.0.4314.35",
+  "output_dir": "/workspace/scratch/eefcc91a0942/build_149pre4",
+  "output_directory_was_empty": true,
+  "controlled_windows_checks": false,
+  "runtime_tested": false,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "build_returncode": 0,
+  "build_artifacts": {
+    "RA2Toolbox.exe": {
+      "bytes": 9530368,
+      "sha256": "af7136acff19c25d982ae605c01fbb9a4b0752a7b5101576ac5715c9d6365d18"
+    },
+    "GameRuntime.dll": {
+      "bytes": 25144832,
+      "sha256": "0c7d24d583532044b20ffc9308abdfbe46288526a9f097974e068d0c2143b101"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 214528,
+      "sha256": "b957bea87bdea01bec4737c5f21bdc1822ccaf2fa0ce134652cd732fd5e94c92"
+    },
+    "WebView2Loader.dll": {
+      "bytes": 194912,
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  },
+  "build_artifacts_unchanged_after_pe_verification": true,
+  "static_pe_verification_returncode": 0,
+  "completed_utc": "2026-11-11T04:13:03.903895+00:00",
+  "source_inputs_unchanged_after_build": true,
+  "git_head_verified_at_finish": true,
+  "source_inputs_checked": 864,
+  "build_provenance_sha256": "4ceafc6a0253917d75e12715faf052d074c88929d2c07001e505210e69f5c971",
+  "console_model_regression": "console_model: 30480 checks passed",
+  "pe_verification_stdout": "PASS: 3 current outputs; x64 host/x86 runtime/broker; hooks exported; ABI/Shared size match; version 1.0.49.4\nPASS: pinned x64 WebView2 loader, license notices and host integration; no WebView2 dependency in the x86 game components\nPASS: no unbundled third-party or compiler-runtime DLL dependencies\nPASS: actual EXE RT_MANIFEST/1 enables x64 Common Controls 6 for subclass helper imports\nNOTE: static validation does not execute the Windows loader or the game\n"
+}

@@ -40,3 +40,4 @@ result=json.loads(run.stdout);assert result['pass'];print(run.stdout,end='')
 paths=[core,core.parent/'tech_ui_breakpoint_hot.h',core.parent/'tech_ui_breakpoint_rendezvous_guard.h',core.parent/'../../shared/source/runtime_seh_scope.h',source,Path(__file__).resolve()]
 report={'pass':True,'scope':__doc__,'source_sha256':{str(p.resolve()):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},'command':command,'result':result,'windows_execution':False,'game_execution':False}
 (a.out/'result.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+

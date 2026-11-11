@@ -1,5 +1,6 @@
 #pragma once
 #include "scene_bank.h"
+#include "render_profile.h"
 #include "scene_poses.h"
 #include "radar_publication.h"
 #include <chrono>
@@ -70,11 +71,11 @@ template<class Reader>class SharedSceneProvider {
   void prefetch(const std::vector<uint32_t>&p,size_t n)const{batch(*owner->reader_,p,n,0);}
  };
  struct Key {
-  uint32_t pid=0,match=0,reveal=0,serial=0;worldframe::Key source;bool managed=false;
+  uint32_t pid=0,match=0,reveal=0,serial=0;uint8_t revealOptions=0;worldframe::Key source;bool managed=false;
   PublicationContext world;
   bool sameWorld(const Key&o)const{return pid==o.pid&&match==o.match&&managed==o.managed&&(!managed||source.sameWorld(o.source))&&
    world.house==o.world.house&&world.cells==o.world.cells&&world.bounds==o.world.bounds&&world.rawWidth==o.world.rawWidth&&world.rawHeight==o.world.rawHeight;}
-  bool same(const Key&o)const{return sameWorld(o)&&reveal==o.reveal&&serial==o.serial&&world.frame==o.world.frame;}
+  bool same(const Key&o)const{return sameWorld(o)&&reveal==o.reveal&&revealOptions==o.revealOptions&&serial==o.serial&&world.frame==o.world.frame;}
  };
  struct Demand {uint32_t tick=0;uint8_t mask=0;bool present=false,real=false;};
  std::mutex producerMutex_;Reader*reader_=nullptr;Read read_{this};Sampler<Read>sampler_{read_};
@@ -92,7 +93,7 @@ public:
   const auto token=sourceFrame(reader);
   if constexpr(HasWorldFrame<Reader>::value)if(!token)return {};
   std::lock_guard<std::mutex>lock(producerMutex_);reader_=&reader;
-  Key key;key.pid=pid;key.match=match;key.reveal=!!reveal;key.world=publicationContext(read_);
+  Key key;key.revealOptions=presentation::settings().get().profile.revealUnits;key.pid=pid;key.match=match;key.reveal=!!reveal;key.world=publicationContext(read_);
   if(token){key.serial=token->key.serial;key.source=token->key;key.managed=true;}
   if(!key.world.active||!completeFrame(reader)){++statistics_.failed;return {};}
   // A queued consumer can still hold an older token. Its completion time is
@@ -104,12 +105,13 @@ public:
   }
   auto&demand=demands_[unsigned(consumer)];demand={now,uint8_t(uint8_t(particles)|(uint8_t(lasers)<<1)),true,real};
   auto bank=bank_.get(pid,match,reveal,now,real,token);
-  const bool matches=bank&&sameWorld(*bank,key.world)&&bank->frame==key.world.frame&&
+  const bool matches=bank&&bank->revealOptions==key.revealOptions&&sameWorld(*bank,key.world)&&bank->frame==key.world.frame&&
    (!token||(bank->sourceFrame&&bank->sourceFrame->key.sameFrame(token->key)&&bank->sourceFrame->key.serial==token->key.serial));
   if(matches&&supportsEffects(*bank,particles,lasers)){
    ++statistics_.reused;return bank;
   }
-  // Config/view changes can reproject the sealed facts but may not silently
+  // Presentation policy changes may decode the SAME sealed bytes again.
+  // Ordinary config/view changes may not silently
   // add a second capture when a late consumer requests more effect coverage.
   if(haveAttempt_&&attempted_.same(key)){++statistics_.deferred;return {};}
   attempted_=key;haveAttempt_=true;++statistics_.attempts;
@@ -126,7 +128,7 @@ public:
    sampler_.discardIncomplete();++statistics_.failed;return {};
   }
   if(!sampler_.hasTerrain()){++statistics_.deferred;return {};}
-  auto frame=sampler_.snapshot(token?token->key.tick:now,key.world.frame);
+  auto frame=sampler_.snapshot(token?token->key.tick:now,key.world.frame,key.revealOptions);
   frame.sourceFrame=token;
   frame.observedMs=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
   preparePoses(frame,read_);

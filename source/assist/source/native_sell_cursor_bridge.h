@@ -10,13 +10,14 @@ struct NativeSellCandidate {
 };
 static NativeSellCandidate nativeSellCandidate;
 static bool nativeSellQueueCompatible(){
+ if(privateOutActive())return true;
  return nativesell::queueCompatible([](uint32_t at,void*out,size_t n){return read(at,out,n);});
 }
 static bool nativeSellCursorReady(){
  if(!nativeSellCursorActive||!sh||!sh->nativeSellCursor||!sh->foreground||
     snap.status!=1||snap.match!=match||!riskReady(true)||get<bool>(0xA8BC60+25)||
     !get<bool>(0x880999)||!playableHouse(lastHouse))return false;
- return !eventdelivery::isMultiplayer(get<int>(0xA8B238))||(networkHousePreserveReady()&&nativeSellQueueCompatible());
+ return !eventdelivery::isMultiplayer(get<int>(0xA8B238))||(privateOutActive()||(networkHousePreserveReady()&&nativeSellQueueCompatible()));
 }
 static bool nativeSellCursorTarget(uint32_t object,uint32_t& owner,uint32_t& index){
  if(!object||!worldObjects.contains(object)||!live(object)||kind(object)!=3||
@@ -26,7 +27,8 @@ static bool nativeSellCursorTarget(uint32_t object,uint32_t& owner,uint32_t& ind
  const int ownerIndex=get<int>(owner+0x30);Vec houses=vec(0xA80228,32);
  if(ownerIndex<0||ownerIndex>=houses.count||item(houses,ownerIndex)!=owner)return false;
  const int session=get<int>(0xA8B238);
- if(eventdelivery::isMultiplayer(session)&&!networkSenderHouse(ownerIndex))return false;
+ if(eventdelivery::isMultiplayer(session)&&!sellHumanHouse(owner))return false;
+ if(eventdelivery::isMultiplayer(session)&&!privateOutActive()&&!networkSenderHouse(ownerIndex))return false;
  if(nativesell::requiresNativeQueue(eventdelivery::isSingleplayer(session),sellHumanHouse(owner))&&!nativeSellQueueCompatible())return false;
  index=uint32_t(ownerIndex);return true;
 }
@@ -56,7 +58,7 @@ static int nativeSellCursorAction(unsigned op,uint32_t object,uint32_t suppliedO
  // Native OutList is the next consumer even in SP; do not check the toolbox's
  // SP DoList lane here or claim that the original append has already happened.
  const bool singleAI=eventdelivery::isSingleplayer(session)&&!sellHumanHouse(owner);
- if(!singleAI&&!queueAvailable(get<int>(0xA802C8),get<int>(0xA802D0)))return 0;
+ if(!singleAI&&(privateOutActive()?privateOutRoom()<=0:!queueAvailable(get<int>(0xA802C8),get<int>(0xA802D0))))return 0;
  actorFrameArbiter.begin(match,frame);
  if(!manualVersions.trackable(id)||!actorFrameArbiter.canIssue(id,token)||
     !actorLeaseArbiter.canIssue(match,frame,id,object,token,taskarbiter::Owner::Sell))return 0;
@@ -179,7 +181,7 @@ static void restoreNativeSellCursor(){
 static void nativeSellCursorTick(){
  if(!sh||!sh->nativeSellCursor){restoreNativeSellCursor();return;}
  if(!riskReady()||snap.chat||snap.status!=1){restoreNativeSellCursor();if(sh)sh->nativeSellCursorStatus=-3;return;}
- if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&!networkHousePreserveReady()){
+ if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&!privateOutActive()&&!networkHousePreserveReady()){
   restoreNativeSellCursor();if(sh)sh->nativeSellCursorStatus=-4;return;
  }
  if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&!nativeSellQueueCompatible()){

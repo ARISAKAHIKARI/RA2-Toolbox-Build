@@ -1,0 +1,168 @@
+{
+  "version": "1.0.49-pre.3",
+  "source_binding": {
+    "local_commit": "dedab394b277722e0a577584b53f4605fbe82afe",
+    "local_source_tree": "6be97de420d2f50b957d663e8b24fd637d1e88b2",
+    "remote_commit": "b06e7aca2b0b3f4b59d6efbc622bb06a31899ed1",
+    "remote_tree": "aa9eaca99994503464f35ad6915a3d7508753e63",
+    "source_inputs_checked": 876,
+    "all_tracked_build_source_blobs_match_remote": true,
+    "branch": "codex/private-outlist-20261110",
+    "build_mode": "full build followed by verified incremental Runtime boundary fix"
+  },
+  "build_artifacts": {
+    "RA2Toolbox.exe": {
+      "bytes": 9530368,
+      "sha256": "b1ab5131d8f7cf519553cb3a5683dcc893ee36b48c090bb8dbc554b201d4df00"
+    },
+    "GameRuntime.dll": {
+      "bytes": 25144832,
+      "sha256": "c66398cf4c441d957a07357a419de450cd03a8ce7032d230e1411fcb6d736d18"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 214528,
+      "sha256": "6e19968c2ad46857a4942a9110d69640c7b372a8e967734b562ebc3b40368cfe"
+    },
+    "WebView2Loader.dll": {
+      "bytes": 194912,
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  },
+  "package": {
+    "version": "1.0.49-pre.3",
+    "file_version": "1.0.49.3",
+    "kind": "x64 Update",
+    "source_commit": "b06e7aca2b0b3f4b59d6efbc622bb06a31899ed1",
+    "local_build_commit": "dedab394b277722e0a577584b53f4605fbe82afe",
+    "assist_protocol": 107,
+    "assist_shared_bytes": 23162680,
+    "source_inputs_checked": 876,
+    "build_and_static_PE_passed": true,
+    "live_JJ_tested": false,
+    "live_multiplayer_tested": false,
+    "scope": "Explicit opt-in CanBuild caller coverage for Full/Exact hardware technology. JJ live compatibility remains unverified.",
+    "files": {
+      "GameRuntime.dll": {
+        "bytes": 25144832,
+        "sha256": "c66398cf4c441d957a07357a419de450cd03a8ce7032d230e1411fcb6d736d18"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 214528,
+        "sha256": "6e19968c2ad46857a4942a9110d69640c7b372a8e967734b562ebc3b40368cfe"
+      },
+      "RA2Toolbox.exe": {
+        "bytes": 9530368,
+        "sha256": "b1ab5131d8f7cf519553cb3a5683dcc893ee36b48c090bb8dbc554b201d4df00"
+      },
+      "README.txt": {
+        "bytes": 1055,
+        "sha256": "f17934f16bc89b338a00ff9029725843afcc24575162c952732e3c77164ff678"
+      },
+      "Start.cmd": {
+        "bytes": 68,
+        "sha256": "9869da39057c74b61f63f7e86fea14bf952aa976cec61d8324491c3ab255f3c5"
+      },
+      "WebView2Loader.dll": {
+        "bytes": 194912,
+        "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+      },
+      "engine/dis_render.py": {
+        "bytes": 2222,
+        "sha256": "eb953f31b8453a3ae1cd79c363840f0706116a9a8ca8ecd3cb1e41fb99930fc9"
+      },
+      "engine/player-template.html": {
+        "bytes": 10054,
+        "sha256": "da85d9fc8d3d25b96e7023d754c47d9832687ff344dbba8adcb350df56b46daa"
+      },
+      "engine/precompute.py": {
+        "bytes": 8166,
+        "sha256": "aa347f080f06c95c6fb880caa57b4c5d205e67fd29e4b16b0b3e9be135c07fad"
+      },
+      "engine/prepare_runtime.ps1": {
+        "bytes": 23292,
+        "sha256": "507886249889153d21c55e428b962e3d7127c89c5be3c3a699871e50ee7b2022"
+      },
+      "engine/prepare_runtime.py": {
+        "bytes": 31598,
+        "sha256": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96"
+      },
+      "engine/preview_builder.py": {
+        "bytes": 4135,
+        "sha256": "a4de364d3f2e7909802931954d2c330bd160529ad988c68032cd479a3e90edca"
+      },
+      "engine/runtime-dependencies.json": {
+        "bytes": 3623,
+        "sha256": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+      },
+      "engine/test_precompute_cache.py": {
+        "bytes": 12063,
+        "sha256": "2b754af68e04e62f14ace39832cd8c585127f5285c69bb78823379e8cfd091b4"
+      },
+      "licenses/LICENSE-GPL.txt": {
+        "bytes": 35151,
+        "sha256": "7fe14716ed31cc71fc3bf9af293c368d464a853a70ea86e9995388f6b9e929e5"
+      },
+      "licenses/LLVM-libcxx-LICENSE.txt": {
+        "bytes": 16703,
+        "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b"
+      },
+      "licenses/LLVM-libcxxabi-LICENSE.txt": {
+        "bytes": 16706,
+        "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c"
+      },
+      "licenses/THIRD_PARTY_NOTICES.md": {
+        "bytes": 10726,
+        "sha256": "f91a916d0fe79493cd71e32390dc5f7ec326f59bef494d86af0a996fbc8a1207"
+      },
+      "licenses/WebView2/LICENSE.txt": {
+        "bytes": 1487,
+        "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55"
+      },
+      "licenses/WebView2/NOTICE.txt": {
+        "bytes": 3894,
+        "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+      },
+      "licenses/Zig-LICENSE.txt": {
+        "bytes": 1080,
+        "sha256": "5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177"
+      },
+      "licenses/xbrz-License.txt": {
+        "bytes": 33093,
+        "sha256": "321429c853d59b621414832581e93ff38586c348aa2de43c7e571b33423d670a"
+      }
+    }
+  },
+  "archives": [
+    {
+      "path": "/workspace/scratch/eefcc91a0942/deliverables/RA2Toolbox-1.0.49-pre.3-x64-Update.zip",
+      "bytes": 4142563,
+      "sha256": "a5d5be9e250a8f505679d2ac5445861d10ce1b39e01f90517d9160a1dafbfd1b"
+    },
+    {
+      "path": "/workspace/scratch/eefcc91a0942/deliverables/RA2Toolbox-1.0.49-pre.3-verification.zip",
+      "bytes": 173218,
+      "sha256": "8089eeed911b3162b2e1d01cbe6f4eb7c75f25b5268d73f4b9966e6b7d506516"
+    }
+  ],
+  "saved_files": [
+    {
+      "file_name": "RA2Toolbox-1.0.49-pre.3-x64-Update.zip",
+      "library_file_id": "libfile_fde3_f-c7b9616408ac81918f5384ad3f2985df_e70932d743d88191950045c9a74e889b",
+      "file_id": "file_000000001c6081f5b6633deea6afb0b3",
+      "current_version_number": 0
+    },
+    {
+      "file_name": "RA2Toolbox-1.0.49-pre.3-verification.zip",
+      "library_file_id": "libfile_fde3_f-9d71529cc84c8191aec1315c0214f2d2_e70932d743d88191950045c9a74e889b",
+      "file_id": "file_00000000aa3481f58edfcea92f122cb0",
+      "current_version_number": 0
+    },
+    {
+      "file_name": "RA2-Reverse-Engineering-Notes.sqlite",
+      "library_file_id": "libfile_fde3_f-cb63dfc5cec08191a25b0999349063f9_e70932d743d88191950045c9a74e889b",
+      "file_id": "file_00000000289c81f5889ec4d114cb7a20",
+      "current_version_number": 180
+    }
+  ],
+  "github_release_created": false
+}

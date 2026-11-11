@@ -69,8 +69,10 @@ static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentI
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
 // A requested full-technology whitelist also protects a reservation while the
 // Runtime is installing/restoring that mode. Only Runtime authorizes production.
-static bool technologyRequested(int index){
- const int slot=typeSlot(index);return techMode&&slot>=0&&slot<snap.typeCount&&techAllowed(snap.types[slot]);
+static construction::Technology technologyRequested(int index){
+ const int slot=typeSlot(index);
+ return {techMode&&slot>=0&&slot<snap.typeCount&&techAllowed(snap.types[slot]),
+  extra.techEnhance&&extra.techEnhanceImplementation==1,extra.techEnhanceCompareLevel,typeIndex(index)};
 }
 static std::wstring nameOf(int index){int slot=typeSlot(index);return slot>=0?std::wstring((const wchar_t*)snap.types[slot].name):L"未知类型";}
 static void result(int status,int count,uint32_t id,uint32_t token){for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.id!=id||b.token!=token||!token||b.stage!=1)continue;
@@ -427,7 +429,10 @@ static void service(){
  }
  auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> forecast(read);
  if(usable()&&loadForecast(forecast))for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.items.empty()||b.stage||b.source)continue;
-  int slot=typeSlot(b.head());if(slot<0||!forecast.possible(typePointer(b.head()),absKind(b.head()),get<uint8_t>(typePointer(b.head())+0xCCE)!=0,true,technologyRequested(b.head()))){
+  // A native cameo can carry permissions our read-only forecast cannot model
+  // (including a pending technology-mode handoff). Do not cancel such a FIFO
+  // from the preview; Runtime still checks current CanBuild and its factory.
+  int slot=typeSlot(b.head());if(slot<0||(!nativeCameo(b.head(),tab)&&!forecast.possible(typePointer(b.head()),absKind(b.head()),get<uint8_t>(typePointer(b.head())+0xCCE)!=0,true,technologyRequested(b.head())))){
    if(!b.missing)b.missing=now;else if(uint32_t(now-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
   }else b.missing=0;
  }

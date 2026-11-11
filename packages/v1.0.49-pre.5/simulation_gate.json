@@ -1,0 +1,5 @@
+{
+  "scope": "Extracted production simulationReady with controlled state/read boundaries",
+  "result": "PASS extracted simulationReady: hidden accepted delivery and 15 fail-closed boundaries",
+  "live_game_tested": false
+}

@@ -29,9 +29,9 @@ static int destructPlayerTarget(uint32_t house,uint32_t expectedID,uint32_t expe
  if(expectedIndex>=uint32_t(houses.count)||item(houses,int(expectedIndex))!=house||
     get<uint32_t>(house+0x10)!=expectedID||get<int>(house+0x30)!=int(expectedIndex))return -7;
  // The unadapted native sender replaces House with CurrentHouse. Foreign
- // Destruct is admitted only while the complete managed preservation group is ready.
+ // Destruct requires either our private encoder or the complete native sender group.
  if(eventdelivery::isMultiplayer(get<int>(0xA8B238))&&house!=lastHouse){
-  if(!networkHousePreserveReady())return -42;
+  if(!privateOutActive()&&!networkHousePreserveReady())return -42;
   if(!networkSenderHouse(int(expectedIndex)))return -4;
  }
  return 1;
@@ -110,10 +110,11 @@ static int destructPlayerCommand(uint32_t house,uint32_t expectedID,uint32_t exp
  if(!debugentries::pattern(debugentries::Kind::Call,0x4C66C0,ctor,sizeof ctor,read)){destructSelectedArmed=false;return -12;}
  intent::EventOrder event{};event.domain=vanilla::Domain::NoOptions;
  event.eventKind=vanilla::EventType::Destruct;event.player=int(expectedIndex);
- // The receiver owns all effects. This path only appends the vanilla event;
- // a successful return means queued, not that the House was destroyed.
- const bool queued=submitConstructed(event,OrderAuthority::DestructPlayerTest);destructSelectedArmed=false;
- return queued?1:snap.lastSubmitError==42?-42:snap.lastSubmitError==7?-7:-6;
+ // Singleplayer AI Houses have no native DoList dispatch; the gateway may
+ // respond to this explicit packet. Multiplayer always uses queued delivery.
+ bool responded=false;
+ const bool accepted=submitConstructed(event,OrderAuthority::DestructPlayerTest,nullptr,&responded);destructSelectedArmed=false;
+ return accepted?(responded?2:1):snap.lastSubmitError==42?-42:snap.lastSubmitError==7?-7:snap.lastSubmitError==12?-12:-6;
 }
 static bool samePlayerWorld(){
  // Readiness can drop temporarily in menus; it is not a world identity.

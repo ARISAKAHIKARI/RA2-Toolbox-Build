@@ -1,0 +1,65 @@
+{
+  "scope": "Original 0x5414C0 broadcast preflight and return-value semantics.\nPeer Send callbacks are controlled; this is not a network delivery test.\n",
+  "game_sha256": "c287d62a4d6a25b547e9339d071dd6e03adcf545699062e478aaeee38c60e89a",
+  "cases": [
+    {
+      "case": "broadcast_success",
+      "result": 1,
+      "peer_calls": [
+        {
+          "peer": 0,
+          "recipient": 0,
+          "return": 1
+        },
+        {
+          "peer": 1,
+          "recipient": 0,
+          "return": 1
+        }
+      ]
+    },
+    {
+      "case": "broadcast_child_failure_not_propagated",
+      "result": 1,
+      "peer_calls": [
+        {
+          "peer": 0,
+          "recipient": 0,
+          "return": 1
+        },
+        {
+          "peer": 1,
+          "recipient": 0,
+          "return": 0
+        }
+      ]
+    },
+    {
+      "case": "full_second_peer_preflight_rejects_all",
+      "result": 0,
+      "peer_calls": []
+    },
+    {
+      "case": "inactive_transport",
+      "result": 0,
+      "peer_calls": []
+    },
+    {
+      "case": "zero_connections",
+      "result": 0,
+      "peer_calls": []
+    },
+    {
+      "case": "relay_child_failure_propagated",
+      "result": 0,
+      "peer_calls": [
+        {
+          "peer": 0,
+          "recipient": 255,
+          "return": 0
+        }
+      ]
+    }
+  ],
+  "live_network_tested": false
+}

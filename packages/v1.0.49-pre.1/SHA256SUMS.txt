@@ -1,0 +1,4 @@
+669f31a7f9a753a1346f3d37e05ea4c0b69e2aa6607a805029505ad22244b00f  RA2Toolbox-1.0.49-pre.1-release-manifest.json
+f43978d770d88239275aab00b0083871a80d6398d1a2cbb9e0ddc8f1ff40c7cb  RA2Toolbox-1.0.49-pre.1-verification.zip
+c56c53755b10931790c588ddd65963d7a09511ad314f9af03441bf18b52b1be2  RA2Toolbox-1.0.49-pre.1-x64-Full.zip
+f3589cd3322fe5e47021ff000b71cdd7a6c420948c64352e0c9d42cfba9145fe  RA2Toolbox-1.0.49-pre.1-x64-Update.zip

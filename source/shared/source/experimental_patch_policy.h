@@ -37,6 +37,7 @@ inline bool callSite(uint32_t at){return at==TechDraw||at==TechPrune||at==Contro
 inline unsigned size(uint32_t at){
  if(auto s=nativesidebarpolicy::find(at))return s->size;
  if(nativeviewportpolicy::find(at))return nativeviewportpolicy::size(at);
+ if(at==0x4068E0||at==0x6521C0)return 5;if(at==0x4C6860)return 6;
  if(at==PauseLoop)return 5;
  if(at==0x64DCCA||at==0x4F576B||at==0x577ACA||at==0x577DB0)return 6;
  if(at==0x4FC328||at==0x577BC7||at==0x577CA7||at==0x577F48)return 7;if(at==BuildTimeTooltip||at==CursorTooltipLayout)return 4;if(at==FrameCommitted)return 6;if(at==ControlMegaOwner)return 10;if(at==ControlMegaFOwner)return 10;if(at==ControlPlanningOwner)return 8;if(at==ControlObjectOwner)return 5;if(at==NetworkFrameGroup)return 5;if(at==NetworkPlainLimit)return 8;if(at==NetworkSend)return 5;if(at==NetworkPlainHouse)return 7;if(at==NetworkCompressedHouse)return 7;if(at==NetworkPack)return 6;if(at==NetworkDictionary)return 10;if(at==NativeSellCursor)return 5;if(at==NativeSellOwner)return 9;if(at==NativeMegaSuccess)return 7;if(auto s=directpatch::find(at))return s->size;if(masterTech(at))return at==MasterPrune?6:5;if(callSite(at)||at==CameraClamp||at==ControlHouse)return 5;return at==ScrollMap?8:at==Placement?5:at==AirType?4:at==AirArrival?10:at==ShroudDraw?5:at==FogDraw?5:(at==C4Execution||at==C4Movement||at==LowDamage)?6:0;}

@@ -32,6 +32,7 @@
 #include <cstdio>
 #include <cstdint>
 #include "protocol.h"
+#include "private_outlist.h"
 #include "../../shared/source/debug_entry_policy.h"
 #include "../../shared/source/native_sell_policy.h"
 #ifdef RA2_CONSOLE_WEBVIEW2
@@ -107,6 +108,7 @@ namespace renderupgrade {static void stop();static void shutdown();}
 namespace minimap {static void hide();static void clear();static void destroy();}
 namespace watchwindows {static void hide();}
 static uint32_t computeRequested=compute::Default;
+static bool revealCloakedUnits=false,revealMirageUnits=false,revealEnemySpies=false;
 static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderPhysicalOutput=false,renderMaterialRefresh=true,renderHighRefresh=true,renderVulkanEnabled=true;static int renderUpgradeLayer=1,renderPaletteRange=1,renderPixelScale=3,renderSceneDetail=1,renderColorPrecision=1;
 static bool renderProcessing=false,renderXbrzEnabled=false;
 #if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
@@ -160,7 +162,7 @@ static_assert(external::status::Maximum<=MaxLabels,"Unit status markers share th
 static assist::PlayerTestInfo playerChoices[32]{};static int playerChoiceCount;static uint32_t playerChoicesMatch;
 static DWORD playerChoicesTick,playerChoicesPid;static std::wstring destructPendingTarget;
 static int playerChoicesCurrent=-1;
-static constexpr const wchar_t* DestructForeignNotice=L"联机跨所属方自毁需要“保留事件所属方”已启用；当前关闭、恢复中或不可用，本次不会发送。";
+static constexpr const wchar_t* DestructForeignNotice=L"联机跨所属方自毁需要私有操控队列已接管，或“保留事件所属方”完整就绪；当前条件不满足，本次不会发送。";
 static uint64_t techAcknowledgedHash=0;static bool techMode;static bool autoRevealNewMatch=false;static uint32_t autoRevealMatch=0,autoRevealRetry=0,autoRevealDone=0,autoRevealPID=0;
 static uint32_t schedulerMode=0,schedulerTarget=0,megaQueueMode=0,objectQueueMode=0;
 static HWND schedulerEntryCombo,megaQueueCombo,objectQueueCombo;
@@ -774,14 +776,14 @@ static void logHotkeyInput(const wchar_t* stage,int id=0,uint16_t key=0,DWORD me
 }
 static uint32_t currentHardwareBudget(){return shared&&commandFresh(GetTickCount())?shared->hardwareSlotBudget:0;}
 static uint32_t requestedHardwareTags(){
- return ((extra.keepInputUnlocked||extra.blockTriggerCamera)?slotbudget::Trigger:0u)|(extra.singlePlayerFPS>0?slotbudget::FPS:0u)|(extra.mapVisibility?slotbudget::Map:0u)|(extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
+ return (extra.privateOutMode==2?slotbudget::PrivateOut:0u)|((extra.keepInputUnlocked||extra.blockTriggerCamera)?slotbudget::Trigger:0u)|(extra.singlePlayerFPS>0?slotbudget::FPS:0u)|(extra.mapVisibility?slotbudget::Map:0u)|(extra.parameterControlRequested()?slotbudget::Control:0u)|(techMode&&techImplementation==buildingmodes::TechParameters?slotbudget::Full:0u)|
   (extra.techEnhance&&extra.techEnhanceImplementation==1?(slotbudget::Enhance|(extra.techEnhanceCompareLevel?slotbudget::Compare:0u)):0u);
 }
 static bool hardwareBudgetAvailable(uint32_t additional){
  const auto budget=currentHardwareBudget(),wanted=requestedHardwareTags()|additional;
  // Without a fresh register snapshot this is a saved four-slot plan only.
  // Runtime still admits installation using actual registers and ownership.
- return slotbudget::known(budget)?slotbudget::allows(budget,wanted):!(wanted&~127u)&&slotbudget::count(wanted)<=4;
+ return slotbudget::known(budget)?slotbudget::allows(budget,wanted):!(wanted&~1023u)&&slotbudget::count(wanted)<=4;
 }
 static std::wstring hardwareBudgetReason(uint32_t additional){
  const auto budget=currentHardwareBudget();if(!slotbudget::known(budget))return L"硬件断点预设超出预算：需要 "+std::to_wstring(slotbudget::count(requestedHardwareTags()|additional))+L" 槽，总计只有 4 槽";
@@ -1995,7 +1997,8 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  if(c==OpenTech&&r==-44){notify(L"科技规则数据尚未完成应用或恢复，请查看状态；原值恢复完成前不会切换实现。");return;}
  if(c==DestructPlayer){
   std::wstring message;
-  if(r>0&&n==1)message=L"自毁请求已入队："+destructPendingTarget+L"；实际执行以游戏为准。";
+  if(r==2&&n==1)message=L"已触发单机 AI 所属方的原生自毁；完整销毁以游戏为准。";
+  else if(r>0&&n==1)message=L"自毁请求已入队："+destructPendingTarget+L"；入队不代表远端已收到或执行。";
   else if(r==-42)message=std::wstring(L"自毁请求未入队：")+DestructForeignNotice;
   else if(r==-7)message=L"自毁请求未入队：请选择同一所属方的存活单位；空选、混合所属方或选取身份改变时不执行。";
   else if(r==-4)message=L"自毁请求未入队：对局已改变，请重新选择后执行。";
@@ -2087,6 +2090,7 @@ static void serviceCommandQueue(DWORD now){
 static void publishSuiteDisplay(){
  if(!ready)return;
  external::presentation::Profile profile;profile.motion=renderHighRefresh;profile.gpu=renderVulkanEnabled;profile.material=effectiveRenderInterpolation();profile.detail=effectiveRenderDetail();profile.precision=effectiveRenderPrecision();profile.palette=effectiveRenderPalette();profile.scale=effectiveRenderScale();
+ profile.revealUnits=uint8_t(revealCloakedUnits?1:0)|uint8_t(revealMirageUnits?2:0)|uint8_t(revealEnemySpies?4:0);
  profile.particles=renderParticleEffects;profile.lasers=renderLaserEffects;profile.voxelLighting=renderVoxelLighting;profile.spriteLighting=renderSpriteLighting;external::presentation::settings().publish(profile);
 #ifdef RA2_UNIFIED
  suite::DisplayState state;
@@ -2131,6 +2135,7 @@ static void updateModeStatus(DWORD now){
  {const int p=shared?shared->techEnhanceParameterStatus:0;const wchar_t*label=p==1?L"已安装":p==2?L"等待安装／恢复":p==-1?L"原生入口不兼容":p==-2?L"没有空闲硬件断点":p==-3?L"Windows 线程操作失败":p==-4?L"断点已被其他工具改变":p==-5?L"线程归属不匹配":p==-6?L"与当前科技模式不兼容":p==-7?L"当前生产未完成，等待安全切换":p==-8?L"Ares 已替换原生比较流程，请选择规则模式":L"关闭";
   std::wstring text=std::wstring(L"科技加强参数拦截：")+label;
   if(shared){text+=L" · 占用 "+std::to_wstring(shared->techEnhanceParameterSlots)+L" 槽 · 命中 "+std::to_wstring(shared->techEnhanceParameterExceptions)+L" 次";if(p<0)text+=L" · 错误 "+std::to_wstring(shared->techEnhanceParameterError);}
+  if(shared&&extra.techProductionCompatibility)text+=L" · 额外许可放行 "+std::to_wstring(shared->techProductionEnhancePasses)+L" 次";
   SetWindowTextW(GetDlgItem(ui,9471),text.c_str());setConsoleRuntimeError(GetDlgItem(ui,9471),p<0);
  }
 
@@ -2177,8 +2182,12 @@ static void updateModeStatus(DWORD now){
   std::wstring camera=L"触发视角保护：";camera+=!extra.blockTriggerCamera?L"关闭":!live?L"等待游戏":shared->triggerInputStatus==1?L"已就绪":shared->triggerInputStatus<0?L"未就绪（槽位、入口或线程不可用）":L"等待安装";
   if(live&&extra.blockTriggerCamera)camera+=L" · 已拦截 "+std::to_wstring(shared->triggerCameraBlocked)+L" 次";
   SetWindowTextW(GetDlgItem(ui,9539),camera.c_str());
+  std::wstring queue=L"操控私有队列：";queue+=!extra.privateOutMode?L"原实现":!live?L"等待游戏":privateout::statusText(shared->privateOutStatus);
+  if(live)queue+=L" · 待发 "+std::to_wstring(shared->privateOutPending)+L" · 已接管 "+std::to_wstring(shared->privateOutAccepted)+L" · 已提交 "+std::to_wstring(shared->privateOutSent)+L" · 拒绝 "+std::to_wstring(shared->privateOutRejected)+L" · 取消 "+std::to_wstring(shared->privateOutCancelled);
+  SetWindowTextW(GetDlgItem(ui,9751),queue.c_str());
   std::wstring sell=L"联机快捷键变卖：";sell+=!live?L"等待游戏":shared->sellDirectStatus<0?L"请求未发送（目标失效或发送条件不满足）":shared->sellDirectPending?L"等待发送时机":L"已就绪";
   if(live)sell+=L" · 已发 "+std::to_wstring(shared->sellDirectSent)+L" · 待发 "+std::to_wstring(shared->sellDirectPending)+L" · 拒绝 "+std::to_wstring(shared->sellDirectRejected);
+  if(extra.privateOutMode)sell=L"联机快捷键变卖：使用上方操控私有队列的状态与计数";
   SetWindowTextW(GetDlgItem(ui,9540),sell.c_str());}
  {std::wstring text=L"绑弹步兵自动上车：";text+=!extra.bombBoardEnabled?L"关闭":phase?L"等待对局":L"监视中";
   if(shared&&extra.bombBoardEnabled&&!phase)text+=L" · 发现 "+std::to_wstring(shared->bombBoardActive)+L" / 已下令 "+std::to_wstring(shared->bombBoardIssued)+L" / 待匹配 "+std::to_wstring(shared->bombBoardWaiting);
@@ -2261,6 +2270,7 @@ static void updateModeStatus(DWORD now){
  if(shared&&(techImplementation==buildingmodes::TechParameters||snap.techOpen==5)){
   const int state=shared->techParameterStatus;const wchar_t*label=state==1?L"已安装":state==2?L"等待安装／恢复":state==-1?L"原生查询不兼容":state==-2?L"没有空闲硬件断点":state==-3?L"Windows 线程操作失败":state==-4?L"断点状态已被其他工具改变":state==-5?L"线程归属不匹配":L"关闭";
   progress+=std::wstring(L"\n参数拦截：")+label+L" · 命中 "+std::to_wstring(shared->techParameterExceptions)+L" 次";
+  if(extra.techProductionCompatibility)progress+=L" · 额外许可放行 "+std::to_wstring(shared->techProductionFullPasses)+L" 次";
   if(state<0)progress+=L" · 错误 "+std::to_wstring(shared->techParameterError);progress+=L"\n";
  }
  if(techMode&&commandFresh(now)&&externalReader.readFresh(0xA83D4C,&owner,4)&&owner>=0x10000){
@@ -2834,10 +2844,10 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  // without changing the saved preference or stopping an existing renderer.
  if(id==9300){SendDlgItemMessageW(w,id,BM_SETCHECK,renderUpgradeEnabled?BST_CHECKED:BST_UNCHECKED,0);EnableWindow(GetDlgItem(w,id),FALSE);return 0;}
  if(ready&&!updatingControls&&rejectUnavailableSetting(id,HIWORD(wp)))return 0;
- if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9313||id==9314||(id>=9320&&id<=9327)){
+ if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9313||id==9314||(id>=9320&&id<=9327)||(id>=9760&&id<=9762)){
   if(updatingControls)return 0;
   if(id==9302||id==9304||id==9305||id==9308||id==9309){if(HIWORD(wp)!=CBN_SELCHANGE)return 0;int choice=int(SendDlgItemMessageW(w,id,CB_GETCURSEL,0,0));if(choice<0||choice>(id==9305?3:1))return 0;if(id==9302)renderUpgradeLayer=std::clamp(choice,0,1);else if(id==9304)renderPaletteRange=std::clamp(choice,0,1);else if(id==9309)renderColorPrecision=std::clamp(choice,0,1);else if(id==9308)renderSceneDetail=std::clamp(choice,0,1);else renderPixelScale=std::clamp(choice,0,3);}
-  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9313)renderProcessing=on;else if(id==9314)renderXbrzEnabled=on;else if(id==9320)renderParticleEffects=on;else if(id==9321)renderLaserEffects=on;else if(id==9322)renderVoxelLighting=on;else if(id==9323)renderSpriteLighting=on;else if(id==9324)renderHighRefresh=on;else if(id==9325)harvesterCounterEnabled=on;else if(id==9326)powerDeltaEnabled=on;else if(id==9327)buildTimeTooltipEnabled=on;else unifiedOverlayEnabled=on;}
+  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9313)renderProcessing=on;else if(id==9314)renderXbrzEnabled=on;else if(id==9320)renderParticleEffects=on;else if(id==9321)renderLaserEffects=on;else if(id==9322)renderVoxelLighting=on;else if(id==9323)renderSpriteLighting=on;else if(id==9324)renderHighRefresh=on;else if(id==9325)harvesterCounterEnabled=on;else if(id==9326)powerDeltaEnabled=on;else if(id==9327)buildTimeTooltipEnabled=on;else if(id==9760)revealCloakedUnits=on;else if(id==9761)revealMirageUnits=on;else if(id==9762)revealEnemySpies=on;else unifiedOverlayEnabled=on;}
   if(id==9327){syncAdditional();wakeGame();}
   renderupgrade::stop();++paintRevision;changedSetting();paint();
   if(!renderUpgradeEnabled)SetWindowTextW(GetDlgItem(w,9303),unifiedOverlayEnabled?L"统一覆盖层：世界信息＋主屏统计；交互窗口尚未合并":L"渲染升级：关闭");

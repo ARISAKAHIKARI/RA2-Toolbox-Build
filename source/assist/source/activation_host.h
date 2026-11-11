@@ -7,6 +7,7 @@ static void logFeatureActivation(DWORD now){
  auto mix=[&](uint32_t value){key^=value;key*=1099511628211ull;};
  mix(pid);mix(settingsRevision);mix(desiredFlags);mix(shared->flags);mix(shared->stop);mix(shared->readOnly);mix(shared->readOnlyRequest);mix(shared->readOnlyAck);
  mix(techMode);mix(techImplementation);mix(buildTimeTooltipEnabled);
+ mix(extra.techProductionCompatibility);mix(shared->techParameterStatus);mix(shared->techEnhanceParameterStatus);
  mix(extra.controlRequest());mix(extra.renderReveal);mix(extra.techEnhance);mix(extra.nativeAirNetwork);
  mix(extra.networkHouseRequested());mix(extra.commandOwnerRequested());mix(extra.nativeMegaGateway);mix(extra.nativeSellCursor);mix(extra.crcMapShadow);
  mix(extra.missileDefense);mix(extra.dodgeEnabled);mix(extra.magnetronGlobal);mix(extra.magnetronDrop);mix(extra.formationEnabled);mix(extra.lowDamageFilter);mix(extra.lowDamageNetwork);
@@ -38,6 +39,10 @@ static void logFeatureActivation(DWORD now){
   L" patches="+std::to_wstring(incoming.hookInstalled)+L" conflicts="+std::to_wstring(incoming.hookConflicts)+
   L" requested/applied tech="+std::to_wstring(techMode?techImplementation+1:0)+L"/"+std::to_wstring(incoming.techOpen)+L" techError="+std::to_wstring(incoming.techError)+
   L" techEnhance="+std::to_wstring(extra.techEnhance)+L"/"+std::to_wstring(shared->techEnhanceStatus)+
+  L" techHardware="+std::to_wstring(shared->techParameterStatus)+L"/"+std::to_wstring(shared->techEnhanceParameterStatus)+
+  L" techHardwareHits="+std::to_wstring(shared->techParameterExceptions)+L"/"+std::to_wstring(shared->techEnhanceParameterExceptions)+
+  L" techProductionCompatibility="+std::to_wstring(shared->techProductionCompatibility)+
+  L" techExtraPermissionPasses="+std::to_wstring(shared->techProductionFullPasses)+L"/"+std::to_wstring(shared->techProductionEnhancePasses)+
   L" placement="+std::to_wstring(buildAnywhereMode)+L"/"+std::to_wstring(incoming.placementStatus)+
   L" map="+std::to_wstring(extra.renderReveal)+L"/"+std::to_wstring(incoming.renderRevealStatus)+
   L" air="+std::to_wstring(extra.nativeAirWaypoints?extra.nativeAirNetwork+1:0)+L"/"+std::to_wstring(incoming.nativeAirStatus)+

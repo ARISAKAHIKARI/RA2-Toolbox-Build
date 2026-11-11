@@ -13,6 +13,7 @@
 #include "voxel_animation_visuals.h"
 #include "world_effects.h"
 #include "native_draw_state.h"
+#include "reveal_policy.h"
 #include "native_scene_extras.h"
 #include "tether_draw_order.h"
 #include "native_display_order.h"
@@ -116,6 +117,7 @@ public:
  }
 };
 struct Marker {double u=0,v=0;uint32_t color=0;bool building=false;uint32_t object=0,id=0,type=0,owner=0,parent=0,parentId=0;int x=0,y=0,z=0,kind=-1,drawZ=0,sort=0,layer=2;bool normalLight=false,onBridge=false,disguised=false,tetherHidden=false;std::vector<tetherdraw::Key>tetherRedraw;int16_t waterline=0;camera::Material material;visual::Pose pose;int displayOrder=-1,rank=-1;};
+struct Revealed {Marker original,shown;bool originalVisible=false;};
 struct CellArt {uint32_t cell=0,type=0,overlayType=0,overlaySourceType=0,smudgeType=0,rubbleType=0,flags=0,pixelFX=0;int land=0;uint8_t smudgeData=0;int16_t overlay=-1;uint8_t sub=0;int8_t level=0;uint8_t overlayFrame=0;bool sourceHidden=false;uint32_t sourceColor=0;};
 struct Scene {int width=0,height=0;std::vector<uint32_t> pixels;std::shared_ptr<const gpumotion::Guides> guides;std::shared_ptr<const gpupresent::Frame> gpu;bool boltsRendered=false;};
 // The game stores the selected shroud/fog SHP frame at each Cell. -1 selects
@@ -132,7 +134,7 @@ struct Terrain {Geometry geo;std::vector<uint32_t> colors,baseColors;std::vector
  bool wholeWorld=false;
 };
 struct EffectSnapshot {std::vector<nativefeedback::Bolt> bolts;bool boltsValid=false;std::shared_ptr<const worldfx::Snapshot>world;};
-struct Frame {std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;std::shared_ptr<const sceneextras::Snapshot> extras;std::shared_ptr<const EffectSnapshot> effects;uint8_t effectMask=3;double observedMs=0;
+struct Frame {uint8_t revealOptions=0;std::vector<Revealed> revealed;std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;std::shared_ptr<const sceneextras::Snapshot> extras;std::shared_ptr<const EffectSnapshot> effects;uint8_t effectMask=3;double observedMs=0;
  // Retain the actual immutable raw publication, not only its frame number.
  // A later renderer pins this token for lighting/visibility/material queries.
  worldframe::Token sourceFrame;
@@ -310,8 +312,8 @@ public:
   if(pendingIncomplete_){discardPending();return false;}
   if(cursor_==pointers_.size()){terrain_=pending_;discardPending();++revision_;}return true;
  }
- Frame snapshot(uint32_t now,int observedFrame=-1)const{
-  GameView<Read> live(read_);Frame out;out.effectMask=uint8_t(particles_)|(uint8_t(lasers_)<<1);out.terrain=terrain_;out.tick=now;out.frame=observedFrame>=0?observedFrame:lastFrame_;if(!terrain_)return out;
+ Frame snapshot(uint32_t now,int observedFrame=-1,uint8_t revealOptions=0)const{
+  GameView<Read> live(read_);Frame out;out.revealOptions=revealOptions;out.effectMask=uint8_t(particles_)|(uint8_t(lasers_)<<1);out.terrain=terrain_;out.tick=now;out.frame=observedFrame>=0?observedFrame:lastFrame_;if(!terrain_)return out;
   // Terrain construction is bounded and can span several publications.
   // Full-world membership must use THIS raw sample's visibility, never an
   // older terrain bank's colors or the native Radar rectangle. This lookup is
@@ -356,17 +358,32 @@ public:
   prefetch(read_,bodies,0x800,0);out.markers.reserve(bodies.size());
   for(uint32_t p:bodies){int kind=view_.kind(p);if(!nativedraw::alive(view_,p,kind)||(kind!=3&&get<uint32_t>(p+0x11C)))continue;
    if(kind==3&&!terrain_->reveal&&out.extras&&out.extras->frozenValid&&get<uint8_t>(p+0x6E7))continue;
-   auto drawState=nativedraw::capture(read_,p,view_.type(p,kind),kind,geo_.house,out.frame);if(!drawState.visible)continue;
+   const auto type=view_.type(p,kind);
+   const auto nativeState=nativedraw::capture(read_,p,type,kind,geo_.house,out.frame);
+   auto drawState=nativeState;
+   // Resolve disguise only after the independent cloak option admits a hidden unit.
+   reveal::Facts facts{kind,get<int>(p+0x220),bool(get<uint8_t>(type+0xC9A)),nativeState.visible,nativeState.disguised,false};
+   auto decision=reveal::decide(revealOptions,facts);
+   if(decision.uncloak)drawState=nativedraw::capture(read_,p,type,kind,geo_.house,out.frame,{true,false});
+   facts.disguised=drawState.disguised;
+   if(kind==1&&facts.disguised&&(revealOptions&reveal::EnemySpy))facts.enemy=geo_.house>=0x10000&&view_.enemy(p,geo_.house);
+   decision=reveal::decide(revealOptions,facts);
+   if(!drawState.visible)continue;
+   if(decision.trueForm)drawState=nativedraw::capture(read_,p,type,kind,geo_.house,out.frame,{decision.uncloak,true});
    int x=get<int>(p+0x9C,-1),y=get<int>(p+0xA0,-1);if(x<0||y<0||x>=512*256||y>=512*256)continue;int cx=x/256,cy=y/256;
    if(!visibleCell(cx,cy))continue;uint32_t owner=get<uint32_t>(p+0x21C);uint8_t rgb[3]{};if(owner<0x10000||!read_(owner+22265,rgb,3))continue;
    Marker m;geo_.project(double(x)/256,double(y)/256,m.u,m.v);if(!wholeWorld_&&(m.u<0||m.u>=1||m.v<0||m.v>=1))continue;
    m.color=uint32_t(rgb[0])<<16|uint32_t(rgb[1])<<8|rgb[2];m.building=kind==3;m.object=p;m.id=get<uint32_t>(p+0x10);m.type=view_.type(p,kind);m.owner=owner;m.x=x;m.y=y;m.z=get<int>(p+0xA4);m.kind=kind;m.onBridge=get<uint8_t>(p+0x8C)!=0;m.pose=visual::pose(live,p,m.type,kind,out.frame);
-   m.material=drawState.material;m.waterline=drawState.waterline;m.disguised=drawState.disguised;
+   m.layer=std::clamp(get<int>(p+0x94,2),0,4);if(kind==3)m.sort=(get<uint8_t>(m.type+0x16C5)?32:0)-(get<uint8_t>(m.type+0x16B7)?16:0);
    // Native 70A990 uses raw Veterancy and hides the insignia of an enemy
    // disguise. A failed optional read is unknown, never a fabricated rank.
    m.rank=captureRank(optionalread::View<Read>{read_},p,owner,geo_.house);
-   if(drawState.disguised){m.type=drawState.type;m.owner=drawState.owner;m.kind=drawState.kind;m.pose={};if(m.kind<3){m.pose=visual::pose(live,p,m.type,kind,out.frame);if(m.kind!=kind){m.pose.frame=visual::previewFrame(live,m.type,m.kind,int(m.pose.body)-8);m.pose.variant=-1;m.pose.turretFrame=-1;}}}
-   m.layer=std::clamp(get<int>(p+0x94,2),0,4);if(kind==3)m.sort=(get<uint8_t>(m.type+0x16C5)?32:0)-(get<uint8_t>(m.type+0x16B7)?16:0);out.markers.push_back(m);
+   auto display=[&](const nativedraw::State&state){auto result=m;result.material=state.material;result.waterline=state.waterline;result.disguised=state.disguised;
+    if(state.disguised){result.type=state.type;result.owner=state.owner;result.kind=state.kind;result.pose={};if(result.kind<3){result.pose=visual::pose(live,p,result.type,kind,out.frame);if(result.kind!=kind){result.pose.frame=visual::previewFrame(live,result.type,result.kind,int(result.pose.body)-8);result.pose.variant=-1;result.pose.turretFrame=-1;}}}
+    return result;
+   };
+   if(nativeState.visible)out.markers.push_back(display(nativeState));
+   if(decision)out.revealed.push_back({nativeState.visible?display(nativeState):m,display(drawState),nativeState.visible});
   }
   tetherdraw::capture(read_,out.markers);
   std::shared_ptr<worldfx::Snapshot>world;

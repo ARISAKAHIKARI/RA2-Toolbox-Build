@@ -1,0 +1,153 @@
+{
+  "version": "1.0.49-pre.4",
+  "source_binding": {
+    "version": "1.0.49-pre.4",
+    "remote_commit": "fd5e953c2f37416a6c0f99c0d32d1529ea524d07",
+    "remote_tree": "6b148c2eec3d5fb9763566807776c7df38be14f1",
+    "local_build_commit": "e2ba5cbab1f64417a633b07a5717a1a65adb0eab",
+    "source_inputs_checked": 864,
+    "all_tracked_build_source_blobs_match_remote": true,
+    "mismatches": [],
+    "complete_remote_checkout": false,
+    "scope": "Every local tracked source input matched the remote commit; unrelated historical research/test files are not materialized."
+  },
+  "build_artifacts": {
+    "RA2Toolbox.exe": {
+      "bytes": 9530368,
+      "sha256": "af7136acff19c25d982ae605c01fbb9a4b0752a7b5101576ac5715c9d6365d18"
+    },
+    "GameRuntime.dll": {
+      "bytes": 25144832,
+      "sha256": "0c7d24d583532044b20ffc9308abdfbe46288526a9f097974e068d0c2143b101"
+    },
+    "GameRuntimeHost32.exe": {
+      "bytes": 214528,
+      "sha256": "b957bea87bdea01bec4737c5f21bdc1822ccaf2fa0ce134652cd732fd5e94c92"
+    },
+    "WebView2Loader.dll": {
+      "bytes": 194912,
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    }
+  },
+  "package": {
+    "version": "1.0.49-pre.4",
+    "file_version": "1.0.49.4",
+    "kind": "x64 Update",
+    "source_commit": "fd5e953c2f37416a6c0f99c0d32d1529ea524d07",
+    "local_build_commit": "e2ba5cbab1f64417a633b07a5717a1a65adb0eab",
+    "assist_protocol": 107,
+    "assist_shared_bytes": 23162680,
+    "source_inputs_checked": 864,
+    "build_and_static_PE_passed": true,
+    "console_model_regression": "console_model: 30480 checks passed",
+    "live_JJ_tested": false,
+    "live_multiplayer_tested": false,
+    "live_Windows_UI_tested": false,
+    "scope": "Move compatibility toggle into GameRules > Technology settings, below implementation. Existing setting key, default, protocol and runtime behavior are unchanged. Old-mode PRES/BUS production remains unresolved.",
+    "files": {
+      "GameRuntime.dll": {
+        "bytes": 25144832,
+        "sha256": "0c7d24d583532044b20ffc9308abdfbe46288526a9f097974e068d0c2143b101"
+      },
+      "GameRuntimeHost32.exe": {
+        "bytes": 214528,
+        "sha256": "b957bea87bdea01bec4737c5f21bdc1822ccaf2fa0ce134652cd732fd5e94c92"
+      },
+      "RA2Toolbox.exe": {
+        "bytes": 9530368,
+        "sha256": "af7136acff19c25d982ae605c01fbb9a4b0752a7b5101576ac5715c9d6365d18"
+      },
+      "README.txt": {
+        "bytes": 591,
+        "sha256": "f29bfe25c66e44eb17d256b7e7ad6dfab5bdeefd3fb8ef13385cbc8a80566468"
+      },
+      "Start.cmd": {
+        "bytes": 68,
+        "sha256": "9869da39057c74b61f63f7e86fea14bf952aa976cec61d8324491c3ab255f3c5"
+      },
+      "WebView2Loader.dll": {
+        "bytes": 194912,
+        "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+      },
+      "engine/dis_render.py": {
+        "bytes": 2222,
+        "sha256": "eb953f31b8453a3ae1cd79c363840f0706116a9a8ca8ecd3cb1e41fb99930fc9"
+      },
+      "engine/player-template.html": {
+        "bytes": 10054,
+        "sha256": "da85d9fc8d3d25b96e7023d754c47d9832687ff344dbba8adcb350df56b46daa"
+      },
+      "engine/precompute.py": {
+        "bytes": 8166,
+        "sha256": "aa347f080f06c95c6fb880caa57b4c5d205e67fd29e4b16b0b3e9be135c07fad"
+      },
+      "engine/prepare_runtime.ps1": {
+        "bytes": 23292,
+        "sha256": "507886249889153d21c55e428b962e3d7127c89c5be3c3a699871e50ee7b2022"
+      },
+      "engine/prepare_runtime.py": {
+        "bytes": 31598,
+        "sha256": "5e71fa788e9ebf912434d584808f9cd1ceb6069e1a3a7147b7bf6f4e02ba1a96"
+      },
+      "engine/preview_builder.py": {
+        "bytes": 4135,
+        "sha256": "a4de364d3f2e7909802931954d2c330bd160529ad988c68032cd479a3e90edca"
+      },
+      "engine/runtime-dependencies.json": {
+        "bytes": 3623,
+        "sha256": "24e0e66c19c5ff29d541b24bb40a4d75d2493cb86d09bd701f85d970cad88e93"
+      },
+      "engine/test_precompute_cache.py": {
+        "bytes": 12063,
+        "sha256": "2b754af68e04e62f14ace39832cd8c585127f5285c69bb78823379e8cfd091b4"
+      },
+      "licenses/LICENSE-GPL.txt": {
+        "bytes": 35151,
+        "sha256": "7fe14716ed31cc71fc3bf9af293c368d464a853a70ea86e9995388f6b9e929e5"
+      },
+      "licenses/LLVM-libcxx-LICENSE.txt": {
+        "bytes": 16703,
+        "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b"
+      },
+      "licenses/LLVM-libcxxabi-LICENSE.txt": {
+        "bytes": 16706,
+        "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c"
+      },
+      "licenses/THIRD_PARTY_NOTICES.md": {
+        "bytes": 10726,
+        "sha256": "f91a916d0fe79493cd71e32390dc5f7ec326f59bef494d86af0a996fbc8a1207"
+      },
+      "licenses/WebView2/LICENSE.txt": {
+        "bytes": 1487,
+        "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55"
+      },
+      "licenses/WebView2/NOTICE.txt": {
+        "bytes": 3894,
+        "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+      },
+      "licenses/Zig-LICENSE.txt": {
+        "bytes": 1080,
+        "sha256": "5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177"
+      },
+      "licenses/xbrz-License.txt": {
+        "bytes": 33093,
+        "sha256": "321429c853d59b621414832581e93ff38586c348aa2de43c7e571b33423d670a"
+      }
+    }
+  },
+  "archives": {
+    "RA2Toolbox-1.0.49-pre.4-x64-Update.zip": {
+      "bytes": 4142370,
+      "sha256": "02b2b99628b9db372bfb622bbcdf6478568355e4e918aa8edd1f4111de7e2392"
+    }
+  },
+  "github_release_created": false,
+  "saved_files": [
+    {
+      "file_name": "RA2Toolbox-1.0.49-pre.4-x64-Update.zip",
+      "library_file_id": "libfile_fde3_f-8cfda7612c148191b9fcae17eec8c060_e70932d743d88191950045c9a74e889b",
+      "file_id": "file_00000000e534821187495c6d4642ac7e",
+      "current_version_number": 0
+    }
+  ]
+}

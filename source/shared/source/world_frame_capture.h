@@ -77,6 +77,14 @@ template<class Read>class CaptureGraph {
   block(p,0x800);const uint32_t vt=value<uint32_t>(p);
   const int kind=vt==0x7F5C70?2:vt==0x7EB058?1:vt==0x7E3EBC?3:vt==0x7E22A4?0:-1;
   if(kind<0)return;type(value<uint32_t>(p+(kind==3?0x520:kind==1?0x6C0:0x6C4)));house(value<uint32_t>(p+0x21C));
+  // A visual publication must include the native disguise as well as the
+  // real type. Main-view replacement needs BOTH bounds from the same epoch.
+  if((demand_&Visual)&&(kind==1||kind==2)&&value<uint8_t>(p+0x1D8)){
+   const uint32_t disguise=value<uint32_t>(p+0x518),table=value<uint32_t>(disguise);
+   if(table==0x7F6218||table==0x7EB610||table==0x7E2868||table==0x7E4570)type(disguise);
+   else auxiliary(disguise,0x400); // TerrainType; do not read a TechnoType-sized object.
+   house(value<uint32_t>(p+0x51C));
+  }
   if(kind==3&&(demand_&Visual)){
    for(unsigned i=0;i<21;++i)animation(value<uint32_t>(p+0x55C+i*4));
    for(unsigned i=0;i<8;++i)animation(value<uint32_t>(p+0x5C8+i*4));

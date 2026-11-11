@@ -1,0 +1,8 @@
+{
+  "remote_commit": "bdaf9abb6fbc9bc0f860c59070e1c718f8c53261",
+  "remote_tree": "e3dde099ab2a76c34d499c4a1f0237a1c15f0b91",
+  "local_build_commit": "2d3e0eed2a60d739ef98caa079913e809eda77fc",
+  "source_inputs_checked": 863,
+  "all_tracked_build_source_blobs_match_remote": true,
+  "mismatches": []
+}
