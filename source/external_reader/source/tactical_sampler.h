@@ -20,6 +20,7 @@ namespace external {
 template<class Read> class TacticalSampler {
  Read read_;assist::Snapshot state_{};layout::Result probe_{};uint32_t house_=0,serial_=0;int lastFrame_=-1;
  uint32_t sharedMatch_=0;
+ catalogue::Dependencies catalogueDependencies_;
  uint64_t catalogueHash_=0;uint32_t catalogueAt_=0;bool catalogueReady_=false;
  int sceneFrame_=-1,sceneX_=0,sceneY_=0,sceneWidth_=0,sceneHeight_=0;uint32_t sceneFlags_=0,selectionHash_=0,sceneAt_=0;
  struct LabelSource {uint32_t object=0,id=0,type=0,owner=0;int kind=-1;bool selected=false;};
@@ -212,10 +213,10 @@ public:
  const nativeviewportprojection::Transform&sampledViewport()const{return sampledViewport_;}
  void viewport(const nativeviewportprojection::Transform&t,bool ready=true){if(viewport_!=t||viewportReady_!=ready)sceneFrame_=-1;viewport_=t;viewportReady_=ready;}
  void productionReminders(uint32_t enabled,uint32_t&idle,uint32_t&paused)const{idle=paused=0;for(int i=0;i<6;++i){unsigned tab=i<4?i:3;if(!(enabled&(1u<<i))||(activeTabs_&(1u<<tab)))continue;if(idleLines_&(1u<<i))idle|=1u<<tab;if(pausedLines_&(1u<<i))paused|=1u<<tab;}}
- void reset(){idleLines_=pausedLines_=activeTabs_=0;idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;aircraftSample_=publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_=publishedEnemies_={};statuses_=publishedStatuses_={};statusOptions_=sceneStatusOptions_=0;sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
+ void reset(){catalogueDependencies_.clear();idleLines_=pausedLines_=activeTabs_=0;idleProductionMask=pausedProductionMask=idleAircraftTick=0;idleAircraftCount=aircraftTotal=0;aircraftSample_=publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;probe_={};catalogueHash_=0;catalogueAt_=0;catalogueReady_=false;house_=serial_=0;lastFrame_=-1;state_={};sceneFrame_=-1;sceneFlags_=selectionHash_=sceneAt_=0;flashCount=0;productionAt_=0;for(auto&f:factories_)f={};stopped_.clear();enemies_=publishedEnemies_={};statuses_=publishedStatuses_={};statusOptions_=sceneStatusOptions_=0;sceneEnemies_=false;enemyNames_.clear();enemyOwnerCount_=0;}
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
  const assist::Snapshot&state()const{return state_;}
- void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_){sceneFrame_=-1;productionAt_=0;clearAircraftCandidate();publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;}sharedMatch_=epoch;}
+ void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_){catalogueDependencies_.clear();sceneFrame_=-1;productionAt_=0;clearAircraftCandidate();publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;}sharedMatch_=epoch;}
  void commitSample(){publishedEnemies_=enemies_;publishedStatuses_=statuses_;
   if(aircraftChanged_){publishedAircraft_=aircraftSample_;std::copy_n(idleAircraftIDs,idleAircraftCount,publishedAircraftIDs_.begin());aircraftChanged_=false;}}
  void invalidateSample(const assist::Snapshot*stable=nullptr){sceneFrame_=-1;catalogueReady_=false;catalogueHash_=0;sceneAt_=0;productionAt_=0;for(auto&f:factories_)f={};enemyNames_.clear();enemyOwnerCount_=0;
@@ -223,7 +224,7 @@ public:
   if(stable&&stable->match==publishedAircraft_.match){aircraftSample_=publishedAircraft_;idleAircraftTick=publishedAircraft_.tick;idleAircraftCount=publishedAircraft_.count;aircraftTotal=publishedAircraft_.total;std::copy_n(publishedAircraftIDs_.begin(),idleAircraftCount,idleAircraftIDs);}
   else{clearAircraftCandidate();publishedAircraft_={};}aircraftChanged_=false;}
  void refreshCamera(uint32_t now){
-  if(state_.status!=1)return;uint32_t tactical=uiValue<uint32_t>(0x887324);if(tactical<0x10000)return;
+  if(state_.status!=1)return;catalogueDependencies_.maintain(read_);uint32_t tactical=uiValue<uint32_t>(0x887324);if(tactical<0x10000)return;
   rebaseCamera(uiValue<int>(tactical+0xB0),uiValue<int>(tactical+0xB4));
  }
  void rebaseCamera(int x,int y){
@@ -247,19 +248,20 @@ public:
    enemies_.count=statuses_.count=0;
    idleProductionMask=pausedProductionMask=0;clearAircraftCandidate();state_.status=0;state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=0;
    state_.typeCount=state_.swCount=state_.threatCount=state_.crateCount=0;
-   house_=0;catalogueReady_=false;return state_;
+   house_=0;catalogueReady_=false;catalogueDependencies_.clear();return state_;
   }
   uint32_t house=get<uint32_t>(0xA83D4C);int frame=get<int>(0xA8ED84,-1);
   auto houses=vec(0xA80228,32);if(std::find(houses.begin(),houses.end(),house)==houses.end()){
    enemies_.count=statuses_.count=0;
    probe_={layout::Stage::MissingLocalHouseInList,0xA80228,house};
    idleProductionMask=pausedProductionMask=0;clearAircraftCandidate();state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
-   state_.threatCount=state_.crateCount=0;house_=0;catalogueReady_=false;return state_;
+   state_.threatCount=state_.crateCount=0;house_=0;catalogueReady_=false;catalogueDependencies_.clear();return state_;
   }
-  bool fresh=house!=house_||frame<lastFrame_;if(fresh){++serial_;house_=house;catalogueReady_=false;catalogueHash_=0;for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=statuses_.count=0;enemyNames_.clear();}lastFrame_=frame;
+  bool fresh=house!=house_||frame<lastFrame_;if(fresh){catalogueDependencies_.clear();++serial_;house_=house;catalogueReady_=false;catalogueHash_=0;for(auto&f:factories_)f={};flashCount=0;productionAt_=now-100;enemies_.count=statuses_.count=0;enemyNames_.clear();}lastFrame_=frame;
+  catalogueDependencies_.maintain(read_);
   if(fresh||uint32_t(now-catalogueAt_)>=uint32_t(catalogueReady_?500:100)){
    catalogue::Stamp stamp;catalogueAt_=now;
-   if(catalogue::capture(read_,stamp)){
+   if(catalogueDependencies_.capture(read_,stamp)){
     if(!catalogueReady_||catalogueHash_!=stamp.hash){types();sceneFrame_=-1;catalogueHash_=stamp.hash;}
     catalogueReady_=true;
    }else{catalogueReady_=false;int count=state_.typeCount;types();if(count!=state_.typeCount)sceneFrame_=-1;}
@@ -319,9 +321,11 @@ public:
    productionAt_=now;idleProductionMask=pausedProductionMask=0;state_.factories=state_.busyFactories=state_.pausedFactories=state_.completedFactories=0;
    // YRpp House::Primary_ForBuildings/Defenses/Infantry/Vehicles/Ships/Aircraft.
    const uint32_t offsets[]={0x53BC,0x53CC,0x53B0,0x53B4,0x53B8,0x53AC};
+   // Sidebar cameo counts and tab position are local UI state; pausing the
+   // simulation must not expire them from the shared world sample.
    idleLines_=pausedLines_=activeTabs_=0;
    for(int i=0;i<6;++i){int tab=i<4?i:3;uint32_t f=get<uint32_t>(house+offsets[i]);auto&previous=factories_[i];
-    if(f<0x10000||get<uint32_t>(f+0x6C)!=house){previous={};if(i<4){int n=get<int>(0x87F7E8+0x1544+tab*3988+84,-1);if(n>0&&n<=75)idleLines_|=1u<<i;}continue;}
+    if(f<0x10000||get<uint32_t>(f+0x6C)!=house){previous={};if(i<4){int n=uiValue<int>(0x87F7E8+0x1544+tab*3988+84,-1);if(n>0&&n<=75)idleLines_|=1u<<i;}continue;}
     uint32_t product=get<uint32_t>(f+0x58);int progress=get<int>(f+0x24),balance=get<int>(f+0x60);
     bool busy=product||get<int>(f+0x50)>0,complete=busy&&progress>=54;
     // +71 records who last changed suspension; Unsuspend leaves it set.
@@ -337,7 +341,7 @@ public:
     if(!busy)idleLines_|=1u<<i;else if(paused)pausedLines_|=1u<<i;
    }
    if(flags&assist::Production)productionReminders(63,idleProductionMask,pausedProductionMask);
-   productionTabsY=get<int>(0x87F7E8+0x1544+44,200)-32;if(productionTabsY<100||productionTabsY>state_.height-32)productionTabsY=168;
+   productionTabsY=uiValue<int>(0x87F7E8+0x1544+44,200)-32;if(productionTabsY<100||productionTabsY>state_.height-32)productionTabsY=168;
    captureAircraft(house,frame,now,sourceSerial);
   }
   if((flags&assist::Crates)&&tactical){uint32_t cells=get<uint32_t>(0x87F7E8+316);int capacity=get<int>(0x87F7E8+320);auto overlays=vec(0xA83D80,4096);

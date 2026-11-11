@@ -33,12 +33,13 @@ class ProcessReader : public ReaderDiagnostics {
  uint32_t worldDemand_=worldframe::Base;
  uint32_t worldSubscribedAt_=0;
  std::array<uint64_t,8192> worldDemandBits_{};std::vector<uint32_t> worldDemands_;bool worldComplete_=true;
+ void requestWorldPage(uint32_t page){
+  const uint32_t index=page>>12;const uint64_t mask=uint64_t(1)<<(index&63);
+  if(!(worldDemandBits_[index>>6]&mask)){worldDemandBits_[index>>6]|=mask;worldDemands_.push_back(page);}
+ }
  bool frameRead(uint32_t address,void*out,size_t size,bool optional=false){
   if(!out||!worldframe::range(address,size)){++errors;if(!optional)worldComplete_=false;return false;}
-  for(uint32_t page=address&~4095u;uint64_t(page)<uint64_t(address)+size;page+=4096){
-   const uint32_t index=page>>12;const uint64_t mask=uint64_t(1)<<(index&63);
-   if(!(worldDemandBits_[index>>6]&mask)){worldDemandBits_[index>>6]|=mask;worldDemands_.push_back(page);}
-  }
+  for(uint32_t page=address&~4095u;uint64_t(page)<uint64_t(address)+size;page+=4096)requestWorldPage(page);
   if(worldFrame_->read(address,out,size)){++pageHits;return true;}
   ++errors;if(!optional||!worldFrame_->observed(address,size))worldComplete_=false;return false;
  }
@@ -142,6 +143,12 @@ public:
   if(worldClient_&&!worldDemands_.empty())worldClient_->request(worldDemands_);
   for(uint32_t page:worldDemands_){const uint32_t index=page>>12;worldDemandBits_[index>>6]=0;}
   worldDemands_.clear();worldFrame_.reset();worldComplete_=true;
+ }
+ // Renew dependencies of a still-active derived cache without rereading or
+ // certifying their values. Actual reads remain bound to the sealed token.
+ void retainWorldPages(const std::vector<uint32_t>&pages){
+  if(!worldFrame_)return;
+  for(uint32_t page:pages)if(!(page&4095u)&&worldframe::range(page,worldframe::PageSize))requestWorldPage(page);
  }
  bool worldFrameActive()const{return bool(worldFrame_);}
  void setWorldDemand(uint32_t demand){worldDemand_=demand|worldframe::Base;}

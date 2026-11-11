@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | OutList、本机与远端 DoList 的过滤边界 | [容量、协议解码、执行权限及平台实测反馈](2026-11-11-event-queue-filter-boundaries.md) | 649CA0 64BDD0 FrameInfo Respond Hardened-v17 user-report LAN1001-usable lbw-Destruct-fails JJ-control-fails cause-unresolved |
 | 特殊单位标识、跟随覆盖层闪烁与快捷键恢复 | [禁用补绘、显示连续性、输入恢复](2026-11-11-marker-overlay-input-recovery.md) | 1.0.49-fix.1 EnemySpecialOnly passenger lease atomic camera lost release callback recovery |
+| 目录依赖提前过期导致周期性缺样本 | [500ms 目录与 250ms 页租期、暂停 UI 域修复](2026-11-11-catalogue-sampling-expiry.md) | fix.2 actual-sampler page-demand 44-to-0 controlled no-live-proof |
 | 隐形、幻影及敌方间谍局部补绘 | [共享采样、真实类型与局部遮罩](2026-11-11-local-unit-reveal.md) | 1.0.49-pre.6 main-view read-only cloak disguise enemy-spy sparse-mask no-live-visual-proof |
 | 自毁事件联机投递与图标 | [两条发送路径、目标身份与原版接收器验证](2026-11-11-destruct-delivery-and-icon.md) | 1.0.49-pre.5 Destruct DisplayHidden private-queue House-ID native-receiver no-live-platform-claim |
 | JJ 硬件科技生产许可覆盖 | [现场前提更正、可选扩展查询与验证边界](2026-11-10-jj-hardware-permission-compatibility.md) | 1.0.49-pre.3 explicit-opt-in local-house CanBuild caller-scope Assist107 no-live-JJ-claim |
