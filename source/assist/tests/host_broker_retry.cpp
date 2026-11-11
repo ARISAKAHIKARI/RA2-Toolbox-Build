@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <memory>
 #include <mutex>
+#include "../../shared/source/input_transport_recovery.h"
+static void MemoryBarrier(){}
 
 using DWORD=uint32_t;
 using LONG=int32_t;
@@ -21,7 +23,7 @@ static bool QueryPerformanceCounter(LARGE_INTEGER*p){p->QuadPart=uint64_t(clockN
 namespace preciseclock {static uint64_t micros(){return uint64_t(clockNow)*1000;}}
 namespace runtime {
 constexpr uint32_t Tactical=1,Cursor=2;
-struct Control {volatile LONG enabled=0;DWORD heartbeat=0;uint32_t ready=0;};
+struct Control {volatile LONG enabled=0;DWORD heartbeat=0;uint32_t ready=0;LONG diagnosticSeq=0,callbacks=0,wakePending=0;uint32_t request=17,ack=16;};
 }
 namespace framesignal {
 constexpr uint32_t Compute=1,ExplicitDiagnostic=2,Native=1;
@@ -33,7 +35,8 @@ struct Client {
  bool installOK=false;
  DWORD delay=3000,error=126;
  uint32_t healthyGeneration=9,nextToken=77,nextGeneration=10;
- unsigned installs=0;
+ unsigned installs=0,removes=0;bool removeOK=true;
+ bool remove(DWORD,uint32_t,uint32_t,uint64_t){++removes;if(!removeOK){lastError=ERROR_IO_PENDING;return false;}return true;}
  bool alive(uint32_t generation){return generation==healthyGeneration;}
  bool install(DWORD,DWORD,uint32_t,uint32_t&token,uint32_t&generation,uint64_t=0){
   ++installs;clockNow+=delay;lastError=error;
@@ -45,6 +48,7 @@ static Client&client(){static Client value;return value;}
 }
 namespace gameinput {
 struct Target {
+ inputtransport::Recovery recovery;bool repairTransport=false;
  DWORD pid=0,thread=0;HWND window=nullptr;runtime::Control*control=nullptr;
  uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0,lastPostError=0;uint64_t brokerIntent=0;bool brokerPending=false;
  bool frameSampling=false,diagnosticFrame=false,fastTactical=false;
@@ -72,7 +76,7 @@ static void check(bool yes,const char*message){++checks;if(!yes){++failures;std:
 static void reset(){
  clockNow=1000;lastError=0;runtimebroker::client()={};auto&h=gameinput::host();
  h.pulseBusy=0;for(auto&t:h.targets)t={};for(auto&l:h.leases)l={};
- for(auto&c:controls){c.enabled=0;c.heartbeat=0;c.ready=0;}
+ for(auto&c:controls)c={};
  gameinput::posts=gameinput::clears=gameinput::polls=gameinput::timerUpdates=0;
 }
 static gameinput::Target&bind(unsigned index,uint32_t generation,uint32_t clients=3){
@@ -138,6 +142,17 @@ int main(){
  clockNow=wrapFailedAt+1000;pulse();
  check(runtimebroker::client().installs==2,"wrapped deadline admits exactly one next attempt");
 
+ reset();auto&silent=bind(0,9);auto&broker=runtimebroker::client();broker.delay=0;broker.installOK=true;
+ pulse();for(clockNow=1100;clockNow<3900;clockNow+=100)pulse();clockNow=3999;pulse();check(!broker.removes,"callback recovery does not start early");
+ broker.removeOK=false;clockNow=4000;pulse();check(broker.removes==1&&silent.repairTransport&&!broker.installs,"stalled callback begins asynchronous removal before installing");
+ check(silent.control==&controls[0]&&controls[0].request==17&&controls[0].ack==16,"repair preserves mapping and unacknowledged command serial");
+ clockNow=4004;broker.removeOK=true;pulse();check(broker.removes==2&&broker.installs==1&&!silent.repairTransport,"removal ACK permits exactly one fresh hook pair");
+ check(silent.control->enabled==3&&gameinput::host().leases[0].id==1,"repair preserves both subscribers and enables their masks");
+ clockNow=4008;pulse();for(clockNow=4100;clockNow<7000;clockNow+=100)pulse();clockNow=7008;pulse();check(broker.installs==1,"persistent silence is bounded by ten-second recovery cooldown");
+ for(clockNow=7100;clockNow<14000;clockNow+=100)pulse();clockNow=14000;pulse();check(broker.installs==2,"continued silence receives a bounded later retry");
+ reset();auto&live=bind(0,9);runtimebroker::client().delay=0;runtimebroker::client().installOK=true;
+ for(clockNow=1000;clockNow<20000;clockNow+=100){++live.control->callbacks;pulse();}
+ check(!runtimebroker::client().installs&&!runtimebroker::client().removes,"live callbacks never trigger recovery even with frozen game frames");
  std::printf("{\"checks\":%u,\"failures\":%u,\"passed\":%s,\"scope\":\"complete production pulse with deterministic host/Win32/broker substitutes; substitute delay checks completion-based retry only; no Windows/game validation\"}\n",checks,failures,failures?"false":"true");
  return failures?1:0;
 }

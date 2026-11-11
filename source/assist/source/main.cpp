@@ -1411,14 +1411,14 @@ static void sampleExternal(DWORD now){
   }
   const auto source=externalReader.worldFrameToken();
   if(externalWorldSource&&(!externalWorldSource->key.sameWorld(source->key)||source->key.frame<externalWorldSource->key.frame))discardExternalWorld();
-  struct UIKey {uint32_t selected=0,flags=0,status=0,viewport=0;bool enemies=false;};static UIKey previousUI;
-  UIKey ui{2166136261u,flags(),statusOptions(),viewportTransform.generation,extra.enemyMarkers};
+  struct UIKey {uint32_t selected=0,flags=0,status=0,viewport=0;bool enemies=false,specialOnly=false;};static UIKey previousUI;
+  UIKey ui{2166136261u,flags(),statusOptions(),viewportTransform.generation,extra.enemyMarkers,extra.enemySpecialOnly};
   struct Selected {uint32_t vt,items;int capacity;uint32_t flags;int count,step;}selected{};
   std::array<uint32_t,4096>selectedItems{};
   if(externalReader.readLive(0xA8ECB8,&selected,sizeof selected)&&selected.count>=0&&selected.count<=4096&&selected.capacity>=selected.count&&(!selected.count||externalReader.readLive(selected.items,selectedItems.data(),size_t(selected.count)*4))){
    for(int i=0;i<selected.count;++i)ui.selected=(ui.selected^selectedItems[i])*16777619u;
   }else ui.selected=0;
-  const bool sameUI=ui.selected==previousUI.selected&&ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies;
+  const bool sameUI=ui.selected==previousUI.selected&&ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies&&ui.specialOnly==previousUI.specialOnly;
   externalSampler.worldEpoch(source->key.match);
   if(externalWorldSource&&externalWorldSource->key.sameFrame(source->key)&&externalWorldSource->key.serial==source->key.serial&&sameUI){
    // The 100ms aircraft scan can precede the publication where play paused.
@@ -1430,7 +1430,7 @@ static void sampleExternal(DWORD now){
    }
    externalSampler.refreshCamera(displayNow);externalPublished=externalSampler.state();externalPublished.sampledTick=source->key.tick;externalData=&externalPublished;externalSourceConfirmed=true;mergeExternal();return;
   }
-  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions(),source->key.serial);
+  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions(),source->key.serial,extra.enemySpecialOnly);
   if(!worldScope.complete()){externalSampler.invalidateSample(&externalPublished);return;}
   externalSampler.commitSample();
   externalPublished=candidate;externalData=&externalPublished;externalWorldSource=source;externalSourceConfirmed=true;previousUI=ui;
@@ -1730,7 +1730,9 @@ static worldpresentation::Submission submission;
 static void submit(Job input){
  nativeviewhost::Transform transform;if(!nativeviewhost::sampleTransform(shared,transform)||input.projection!=nativeviewhost::key(transform))return;
  submission.submitted();input.context=overlaycompositor::host().capture(uintptr_t(game),pid);
- if(input.context.token&&(input.context.cameraX!=snap.cameraX||input.context.cameraY!=snap.cameraY))input.context.token=0;
+ // Capture the camera the pixels actually use; World commits it with the
+ // completed bitmap when the full-scene renderer is inactive.
+ if(input.context.token){input.context.cameraX=snap.cameraX;input.context.cameraY=snap.cameraY;}
  POINT origin{};ClientToScreen(game,&origin);input.relative={input.origin.x-origin.x,input.origin.y-origin.y};
  worker.submit(std::move(input));
 }
@@ -1745,8 +1747,17 @@ static void present(){auto frame=worker.get();
   // Immutable pixels are shared with the single compositor; no extra HWND is
   // shown for labels, passenger bubbles, timers, formation or world markers.
   auto pixels=std::shared_ptr<const std::vector<uint32_t>>(frame,&frame->pixels);
-  if(frame->context.token!=context.token||frame->context.cameraX!=context.cameraX||frame->context.cameraY!=context.cameraY){overlaycompositor::host().hide(overlaycompositor::World);return;}
-  overlaycompositor::host().publish({overlaycompositor::World,10,frame->context,{frame->relative.x,frame->relative.y,frame->w,frame->h},true,255,std::move(pixels)});
+  if(frame->context.token!=context.token){overlaycompositor::host().hide(overlaycompositor::World);return;}
+  overlaycomposition::Surface layer{overlaycompositor::World,10,frame->context,{frame->relative.x,frame->relative.y,frame->w,frame->h},true,255,std::move(pixels)};
+  if(!renderUpgradeEnabled){
+   if(!worldpresentation::cameraFrameCurrent(GetTickCount(),frame->tick,frame->context.cameraX,frame->context.cameraY,snap.cameraX,snap.cameraY)){overlaycompositor::host().hide(overlaycompositor::World);return;}
+   // Camera and pixels become visible atomically: never clear a complete
+   // layer merely because its replacement is still on the worker thread.
+   overlaycompositor::host().replaceGroupAt(frame->context,{overlaycompositor::World},{std::move(layer)});
+  }else{
+   if(frame->context.cameraX!=context.cameraX||frame->context.cameraY!=context.cameraY){overlaycompositor::host().hide(overlaycompositor::World);return;}
+   overlaycompositor::host().publish(std::move(layer));
+  }
   if(IsWindowVisible(overlay))ShowWindow(overlay,SW_HIDE);
   displayed=frame;return;
  }
@@ -1872,7 +1883,7 @@ static void paint(){
  std::array<external::sidebar::Frame,4> shapes; // immutable sidebar SHP pixels
  for(int i=0;i<4;++i)if(idleTabs&(1u<<i))shapes[i]=sidebarShapes.frames[i];
  auto draw=[=,labelViews=std::move(labels),enemyViews=std::move(enemies),statusViews=std::move(statuses),formation=formationhost::drawing(),used=snap.used,capacity=snap.capacity,toast=toast,labelScale=labelScalePercent](Graphics&g) mutable {
- g.SetSmoothingMode(SmoothingModeAntiAlias);g.ScaleTransform(view.x,view.y);g.TranslateTransform(-float(left),-float(up));
+ g.SetSmoothingMode(SmoothingModeAntiAlias);g.ScaleTransform(view.x,view.y);g.TranslateTransform(-worldpresentation::rasterOrigin(left,view.x),-worldpresentation::rasterOrigin(up,view.y));
   for(const auto&b:opaquePanels)g.SetClip(RectF(float(b.left),float(b.top),float(b.right-b.left),float(b.bottom-b.top)),CombineModeExclude);
   if(idleTabs&&tabPhase){auto state=g.Save();g.SetInterpolationMode(InterpolationModeNearestNeighbor);g.SetPixelOffsetMode(PixelOffsetModeHalf);
    for(int i=0;i<4;++i)if(idleTabs&(1u<<i)){auto&f=shapes[i];Bitmap shape(f.width,f.height,f.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(f.pixels.data()));g.DrawImage(&shape,RectF(f.x*sx,f.y*sy,f.width*sx,f.height*sy));}g.Restore(state);
@@ -2090,7 +2101,7 @@ static void serviceCommandQueue(DWORD now){
 static void publishSuiteDisplay(){
  if(!ready)return;
  external::presentation::Profile profile;profile.motion=renderHighRefresh;profile.gpu=renderVulkanEnabled;profile.material=effectiveRenderInterpolation();profile.detail=effectiveRenderDetail();profile.precision=effectiveRenderPrecision();profile.palette=effectiveRenderPalette();profile.scale=effectiveRenderScale();
- profile.revealUnits=uint8_t(revealCloakedUnits?1:0)|uint8_t(revealMirageUnits?2:0)|uint8_t(revealEnemySpies?4:0);
+ profile.revealUnits=0; // Use the existing enemy markers; model reveal remains suspended.
  profile.particles=renderParticleEffects;profile.lasers=renderLaserEffects;profile.voxelLighting=renderVoxelLighting;profile.spriteLighting=renderSpriteLighting;external::presentation::settings().publish(profile);
 #ifdef RA2_UNIFIED
  suite::DisplayState state;
@@ -2376,10 +2387,15 @@ static void serviceReadOnlyWatchKeys(){
 }
 // A connection check must never turn the feature host off or replay a request.
 static void requestGameReconnect(){
- const bool wasEnabled=enabled;const DWORD now=GetTickCount();enabled=true;
+ const DWORD now=GetTickCount();enabled=true;
+ if(shared&&incoming.status==-2){
+  commandQueue.clear();hotkeyPending.clear();pointerMatches.clear();sentAt=0;inFlightMatch=0;
+  resetConstruction();resetAirPath();releaseBridge();
+ }
  lastFind=now-2000;lastProcessCheck=now-250;
  if(!shared){bridgeBlocked=false;bridgeAttempts=0;bridgeRetryAt=0;bridgeFailure.clear();}
- if(!wasEnabled||registeredHotkeyMode!=desiredHotkeyMode())registerKeys();
+ registerKeys(); // Also re-arm the physical-key fallback on an existing connection.
+ if(shared&&!commandFresh(now))gameinput::repair(hook);
 #ifdef RA2_UNIFIED
  suite::reportEnabled(2,true);
 #endif
@@ -2847,7 +2863,7 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9313||id==9314||(id>=9320&&id<=9327)||(id>=9760&&id<=9762)){
   if(updatingControls)return 0;
   if(id==9302||id==9304||id==9305||id==9308||id==9309){if(HIWORD(wp)!=CBN_SELCHANGE)return 0;int choice=int(SendDlgItemMessageW(w,id,CB_GETCURSEL,0,0));if(choice<0||choice>(id==9305?3:1))return 0;if(id==9302)renderUpgradeLayer=std::clamp(choice,0,1);else if(id==9304)renderPaletteRange=std::clamp(choice,0,1);else if(id==9309)renderColorPrecision=std::clamp(choice,0,1);else if(id==9308)renderSceneDetail=std::clamp(choice,0,1);else renderPixelScale=std::clamp(choice,0,3);}
-  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9313)renderProcessing=on;else if(id==9314)renderXbrzEnabled=on;else if(id==9320)renderParticleEffects=on;else if(id==9321)renderLaserEffects=on;else if(id==9322)renderVoxelLighting=on;else if(id==9323)renderSpriteLighting=on;else if(id==9324)renderHighRefresh=on;else if(id==9325)harvesterCounterEnabled=on;else if(id==9326)powerDeltaEnabled=on;else if(id==9327)buildTimeTooltipEnabled=on;else if(id==9760)revealCloakedUnits=on;else if(id==9761)revealMirageUnits=on;else if(id==9762)revealEnemySpies=on;else unifiedOverlayEnabled=on;}
+  else{if(HIWORD(wp)!=BN_CLICKED)return 0;bool on=SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)==BST_CHECKED;if(id==9300)renderUpgradeEnabled=on;else if(id==9306)renderPhysicalOutput=on;else if(id==9307)renderMaterialRefresh=on;else if(id==9310)renderVulkanEnabled=on;else if(id==9313)renderProcessing=on;else if(id==9314)renderXbrzEnabled=on;else if(id==9320)renderParticleEffects=on;else if(id==9321)renderLaserEffects=on;else if(id==9322)renderVoxelLighting=on;else if(id==9323)renderSpriteLighting=on;else if(id==9324)renderHighRefresh=on;else if(id==9325)harvesterCounterEnabled=on;else if(id==9326)powerDeltaEnabled=on;else if(id==9327)buildTimeTooltipEnabled=on;else if(id==9760||id==9761||id==9762){revealCloakedUnits=revealMirageUnits=revealEnemySpies=false;}else unifiedOverlayEnabled=on;}
   if(id==9327){syncAdditional();wakeGame();}
   renderupgrade::stop();++paintRevision;changedSetting();paint();
   if(!renderUpgradeEnabled)SetWindowTextW(GetDlgItem(w,9303),unifiedOverlayEnabled?L"统一覆盖层：世界信息＋主屏统计；交互窗口尚未合并":L"渲染升级：关闭");

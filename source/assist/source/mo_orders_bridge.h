@@ -15,6 +15,7 @@ static int moStrokeCount=0,moRouteCount=0,moMode=0,moStage=0,moNodeAt=0,moActorA
 static uint32_t moEpoch=0,moHouse=0,moStarted=0,moPreviewAt=0,moOutlineAt=0,moHover=0;
 static bool moOutlineDirty=false;
 static int moStageFrame=0,moStartFrame=0;static bool moHolding=false,moFeedback=false;
+static inputownership::ReleaseWatch moReleaseWatch;
 static bool moWaypointSubmitted=false;static mopatrol::Path moPaths[moorders::Actors];
 static int moSubmitting=0,moSubmittingActor=-1;
 template<class Work>static void moSubmission(int kind,int index,Work&& work){
@@ -32,6 +33,7 @@ static void moOrdersPublish(){
  InterlockedIncrement(&sh->moOrdersPreviewSeq);MemoryBarrier();sh->moOrdersPreview=moPreview;MemoryBarrier();InterlockedIncrement(&sh->moOrdersPreviewSeq);notifyHost();
 }
 static void resetMoOrders(){
+ moReleaseWatch.clear();
  if(moWaypointSubmitted&&sh)sh->moOrderStatus=uint32_t(-16);moWaypointSubmitted=false;
  moHolding=false;moStage=moQueueCount=moQueueAt=moActorCount=moStrokeCount=moTargetCount=moRouteCount=0;moPreview={};moCurrent={};moOutlineDirty=false;moMode=0;moFeedback=false;moGestureButton=0;if(moEpoch!=match||moHouse!=lastHouse)moSuppressedButton=0;moPlanningReset();moOrdersPublish();
 }
@@ -320,9 +322,10 @@ static bool moOrdersMessage(MSG*msg){
  if(resolved.mode==moorders::Patrol&&!moGraphEmpty()){sh->moOrderStatus=uint32_t(-17);moSuppressedButton=edge.button;return swallow();}
  if(resolved.mode==moorders::Patrol&&!moPlanningCapture(msg)){sh->moOrderStatus=uint32_t(-15);moSuppressedButton=edge.button;return swallow();}
  moQueueCount=moQueueAt=moStage=0;moMode=int(resolved.mode);moHover=hover;moStrokeCount=0;moCapturedGestures=moRuntimeGestures;moCapturedOptions=moRuntimeOptions;moGestureButton=moSuppressedButton=edge.button;
- moCurrent=point;moorders::sample(moStroke,moStrokeCount,point);moHolding=true;moBuildPreview();return swallow();
+ moCurrent=point;moorders::sample(moStroke,moStrokeCount,point);moReleaseWatch.clear();moHolding=true;moBuildPreview();return swallow();
 }
 static void moOrdersTick(uint32_t house,int frame,DWORD now){
+ if(moReleaseWatch.expired(moHolding,moGestureButton&&(GetAsyncKeyState(moorders::gestureVK(moGestureButton))&0x8000),now)){resetMoOrders();moReleaseWatch.clear();return;}
  if(!moOrdersPending())return;
  if(moPlanningUI.draining){moPlanningReset();return;}
  if(moEpoch!=match||moHouse!=house||!sh||(sh->moFeatures&moMode)==0||!moOrdersContext(moHolding)||!moCapturedPolicy(true)){resetMoOrders();return;}

@@ -17,19 +17,27 @@ static std::vector<PassengerVisual> passengerView(uint32_t renderNow,const nativ
  // Reproject the same authenticated observation as the other information
  // layers. A missing page must never fall back to another live world scan.
  std::vector<PassengerVisual> out;if(!enabled||!externalData||snap.chat||(!extra.passengerBubbles&&!extra.dangerPassengers)){clearPassengerDisplay();return out;}
- if(!confirmed||!source||!externalData->match||source->key.pid!=pid||source->key.match!=externalData->match||
+ if(!source||!externalData->match||source->key.pid!=pid||source->key.match!=externalData->match||
     source->key.frame!=externalData->frame||source->key.tick!=externalData->sampledTick){clearPassengerDisplay();return out;}
- external::WorldFrameScope worldScope(externalReader,externalData->match,source);
- if(!worldScope){clearPassengerDisplay();return out;}
  external::Projection projection;projection.width=snap.width-160;projection.height=snap.height;projection.cameraX=snap.cameraX;projection.cameraY=snap.cameraY;
  if(transform.active){projection.width=transform.logical.w;projection.height=transform.logical.h;}passengerMotion.projection(transform.generation);
  const auto area=nativeviewhost::clip(transform,projection.width,projection.height);
- projection.zScale=externalReader.get<double>(0xB0CD48,0.0866025403784);
- auto read=[](uint32_t at,void*p,size_t n){return externalReader.read(at,p,n);};
- uint32_t house=0;bool houseReady=read(0xA83D4C,&house,4)&&house>=0x10000&&house==source->key.house;
+ const uint32_t house=source->key.house;
  PassengerDisplayKey key{pid,externalData->match,house,projection.width,projection.height,projection.cameraX,projection.cameraY,extra.passengerBubbles,extra.dangerPassengers,extra.passengerOwn,extra.passengerAlways,nativeviewhost::key(transform)};
- auto sampled=external::passengers::sampleChecked(read,house,projection,extra.passengerBubbles,extra.dangerPassengers,extra.passengerOwn,extra.passengerAlways);
- const auto*held=passengerSamples.observe(key,houseReady&&sampled.complete&&worldScope.complete(),std::move(sampled.bubbles),renderNow);
+ external::passengers::Sample sampled;sampled.complete=false;
+ if(confirmed){
+  external::WorldFrameScope worldScope(externalReader,externalData->match,source);
+  if(worldScope){
+   projection.zScale=externalReader.get<double>(0xB0CD48,0.0866025403784);
+   auto read=[](uint32_t at,void*p,size_t n){return externalReader.read(at,p,n);};
+   uint32_t observed=0;const bool houseReady=read(0xA83D4C,&observed,4)&&house>=0x10000&&observed==house;
+   if(houseReady)sampled=external::passengers::sampleChecked(read,house,projection,extra.passengerBubbles,extra.dangerPassengers,extra.passengerOwn,extra.passengerAlways);
+   sampled.complete=houseReady&&sampled.complete&&worldScope.complete();
+  }
+ }
+ // Failed acquisition retains only the last complete display value for 120ms.
+ // Repeated failures cannot refresh that lease or authorize any input.
+ const auto*held=passengerSamples.observe(key,sampled.complete,std::move(sampled.bubbles),renderNow);
  if(!held){passengerMotion.clear();return out;}const auto&bubbles=*held;
  const auto* anchors=passengerMotion.update(bubbles,externalData->match,externalData->frame,externalData->sampledTick,renderNow,projection.cameraX,projection.cameraY);
  for(size_t index=0;index<bubbles.size();++index){const auto&b=bubbles[index];const auto&anchor=anchors[index];

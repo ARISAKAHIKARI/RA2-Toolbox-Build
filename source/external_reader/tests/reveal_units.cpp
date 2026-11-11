@@ -89,6 +89,6 @@ void bounds(){
  tank.incomplete=true;assert(!reveal::rectangles(tank,m,view,150,120,.5,rects));cases+=4;
 }
 int main(){policy();alternatives();masks();bounds();
- for(auto option:{suite::RevealCloakedUnits,suite::RevealMirageUnits,suite::RevealEnemySpies}){assert(suite::validDisplayEdit(option,0)&&suite::validDisplayEdit(option,1)&&!suite::validDisplayEdit(option,2));++cases;}
+ for(auto option:{suite::RevealCloakedUnits,suite::RevealMirageUnits,suite::RevealEnemySpies}){assert(suite::validDisplayEdit(option,0)&&!suite::validDisplayEdit(option,1)&&!suite::validDisplayEdit(option,2));++cases;}
  std::cout<<"{\"passed\":true,\"controlled_cases\":"<<cases<<",\"live_game_tested\":false}\n";
 }

@@ -9,6 +9,7 @@
 #include "runtime_protocol.h"
 #include "frame_signal_client.h"
 #include "message_query.h"
+#include "input_transport_recovery.h"
 #include "../../external_reader/source/shared_reader.h"
 #ifdef _WIN64
 #include "runtime_broker_client.h"
@@ -31,7 +32,7 @@ struct Health {
 inline bool heldBinding(uint32_t binding);
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0,viewportGeneration=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
 struct PointerQueue {PointerPress items[128]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0,viewportGeneration=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
-struct Target {keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr,process=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false,frameSampling=false,diagnosticFrame=false;std::shared_ptr<framesignal::Client> frameSignal;
+struct Target {inputtransport::Recovery recovery;bool repairTransport=false;keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr,process=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false,frameSampling=false,diagnosticFrame=false;std::shared_ptr<framesignal::Client> frameSignal;
 #ifdef _WIN64
  uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0;uint64_t brokerIntent=0;bool brokerPending=false;
 #endif
@@ -240,6 +241,29 @@ inline void setFastTactical(Subscription id,bool enabled){
 }
 inline bool nativeFrameSampling(Subscription id){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id){auto&t=h.targets[l.target];framesignal::Stamp stamp;if(t.frameSignal&&t.frameSignal->current(stamp)&&stamp.state==framesignal::Native&&stamp.serial>0&&stamp.frequency>0){LARGE_INTEGER q{};QueryPerformanceCounter(&q);return double(q.QuadPart-stamp.qpc)*1000./stamp.frequency<100.;}}return false;}
 inline void setFrameSampling(Subscription id,bool enabled,bool diagnostic=false){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&t=h.targets[l.target];if(!enabled||t.diagnosticFrame!=diagnostic)t.frameSignal.reset();t.frameSampling=enabled;t.diagnosticFrame=enabled&&diagnostic;return;}}
+inline bool serviceTransportRepair(Target&t,uint32_t enabled,DWORD now){
+#ifdef _WIN64
+ if(!t.repairTransport)return false;
+ if(t.brokerRetry&&int32_t(now-t.brokerRetry)<0)return true;
+ // Drain removal ACK before asking for a fresh pair. Keep IPC, subscriptions
+ // and every request/ACK serial intact throughout this nonblocking operation.
+ if(!runtimebroker::client().remove(t.pid,t.brokerToken,t.brokerGeneration,t.brokerIntent)){
+  const DWORD error=GetLastError();t.lastPostError=error;t.brokerRetry=error==ERROR_IO_PENDING?0:GetTickCount()+1000;return true;
+ }
+ t.brokerToken=0;t.brokerGeneration=0;t.brokerPending=false;t.brokerRetry=0;t.repairTransport=false;
+ InterlockedExchange(&t.control->wakePending,0);
+#endif
+ return false;
+}
+inline bool repair(Subscription id){
+ auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
+ for(auto&l:h.leases)if(id&&l.id==id){auto&t=h.targets[l.target];
+#ifdef _WIN64
+  if(!t.brokerPending&&t.brokerToken){t.repairTransport=true;t.brokerRetry=0;return true;}
+#endif
+  post(t,mask(l.client));return false;
+ }return false;
+}
 inline void CALLBACK pulse(void*,BOOLEAN){
  auto&h=host();if(InterlockedCompareExchange(&h.pulseBusy,1,0))return;
  struct Reset {volatile LONG*value;~Reset(){InterlockedExchange(value,0);}} reset{&h.pulseBusy};
@@ -247,6 +271,13 @@ inline void CALLBACK pulse(void*,BOOLEAN){
  for(unsigned i=0;i<32;++i){auto&t=h.targets[i];if(!t.pid)continue;
   uint32_t enabled=0;for(auto&l:h.leases)if(l.id&&l.target==i)enabled|=mask(l.client);
   if(!enabled){clear(t);continue;}if(!t.control)continue;
+#ifdef _WIN64
+  const LONG diagnostic=t.control->diagnosticSeq;
+  const auto callbacks=uint32_t(t.control->callbacks);MemoryBarrier();
+  const bool usable=!(diagnostic&1)&&diagnostic==t.control->diagnosticSeq&&!t.brokerPending&&t.brokerToken&&!t.lastPostError;
+  if(t.recovery.due(callbacks,now,usable))t.repairTransport=true;
+  if(serviceTransportRepair(t,enabled,now))continue;
+#endif
 #ifdef _WIN64
   if(t.brokerPending||!t.brokerToken||!runtimebroker::client().alive(t.brokerGeneration)){
    InterlockedExchange(&t.control->enabled,0);

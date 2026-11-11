@@ -298,10 +298,10 @@ static void update(POINT origin,const RECT&client,const external::display::State
  if(!displayState.readable||!nativeviewhost::sample(shared,[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);},view,transform)){
   // Unknown is not known-hidden. A short torn read must not toggle the HWND
   // or invalidate an in-flight job; known menus/focus/world changes do so above.
-  if(renderUpgradeEnabled&&nativeviewhost::stable(shared,transform)&&viewLease.retain(uintptr_t(game),pid,match,client.right,client.bottom,viewNow,transform)){
+  if(nativeviewhost::stable(shared,transform)&&viewLease.retain(uintptr_t(game),pid,match,client.right,client.bottom,viewNow,transform)){
    const auto&prior=viewLease.view();
    overlaycompositor::host().configure(uintptr_t(game),pid,match,client.right,client.bottom,
-    prior.cameraX,prior.cameraY,true,false,informationFPS(),sceneRequested,nativeviewhost::key(transform));
+    prior.cameraX,prior.cameraY,true,false,informationFPS(),true,nativeviewhost::key(transform));
    if(renderUpgradeEnabled){
     auto held=groupLease.frame();
     if(held){
@@ -348,7 +348,7 @@ static void update(POINT origin,const RECT&client,const external::display::State
  // out of its configured 4K mode.
  const auto renderPath=physicalpresentation::renderPath(physical,renderPhysicalOutput);
  auto context=overlaycompositor::host().configure(uintptr_t(game),pid,displayMatch(),client.right,client.bottom,
-  visible?view.cameraX:0,visible?view.cameraY:0,visible,false,informationFPS(),sceneRequested,nativeviewhost::key(view.transform));
+  visible?view.cameraX:0,visible?view.cameraY:0,visible,false,informationFPS(),true,nativeviewhost::key(view.transform));
  sidebarhud::update(pid,displayMatch(),view,context,harvesterCounterEnabled,powerDeltaEnabled);
  if(!sceneRequested){progress=0;return;}
  active=true;

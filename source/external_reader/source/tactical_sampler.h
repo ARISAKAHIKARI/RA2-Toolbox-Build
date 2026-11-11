@@ -26,7 +26,7 @@ template<class Read> class TacticalSampler {
  LabelSource labelSources_[assist::MaxLabels]{};display::State display_{};
  nativeviewportprojection::Transform viewport_{},sampledViewport_{};bool viewportReady_=true;
  status::Frame statuses_{},publishedStatuses_{};uint32_t statusOptions_=0,sceneStatusOptions_=0;
- enemies::Frame enemies_{},publishedEnemies_{};bool sceneEnemies_=false;int sceneEnemyWidth_=0,sceneEnemyHeight_=0;uint32_t enemyOwnerSignature_=0,sceneEnemyOwners_=0;
+ enemies::Frame enemies_{},publishedEnemies_{};bool sceneEnemies_=false,specialOnly_=false,sceneSpecialOnly_=false;uint32_t sceneSourceSerial_=0;int sceneEnemyWidth_=0,sceneEnemyHeight_=0;uint32_t enemyOwnerSignature_=0,sceneEnemyOwners_=0;
  struct EnemyOwner {uint32_t pointer=0,color=0;int index=-1;};
  EnemyOwner enemyOwners_[32]{};int enemyOwnerCount_=0;
  struct EnemyTypeName {uint16_t text[40]{};};std::unordered_map<uint32_t,EnemyTypeName> enemyNames_;
@@ -83,11 +83,20 @@ template<class Read> class TacticalSampler {
    m.worldX=get<int>(m.object+0x9C,INT32_MIN);m.worldY=get<int>(m.object+0xA0,INT32_MIN);
    project(proj,m.worldX,m.worldY,get<int>(m.object+0xA4,INT32_MIN),x,y);
    if(x==INT32_MIN||y==INT32_MIN)return false; // Offscreen coordinates remain valid.
+   if(specialOnly_&&!specialEnemy(m.object,m.type,m.kind))return false;
    m.x=x;m.y=y;m.color=owner->color;m.player=owner->index;
   }return true;
  }
+ bool specialEnemy(uint32_t p,uint32_t t,int k){
+  if(k<0||k>2||get<uint8_t>(t+0xC9A))return false;
+  if(get<int>(p+0x220)>0)return true;
+  if((k==1||k==2)&&get<uint8_t>(p+0x1D8))return true;
+  if(k==1&&get<uint8_t>(t+0xEBE))return true; // Infiltrate, including an undisguised spy.
+  char id[5]{};return k==2&&read_(t+0x24,id,sizeof id)&&std::memcmp(id,"MGTK",5)==0;
+ }
  void addEnemy(uint32_t p,uint32_t t,int k,uint32_t owner,const Projection&proj){
   const auto*enemy=enemyOwner(owner);if(!enemy||t<0x10000||(k!=3&&get<uint32_t>(p+0x11C,0xffffffffu)))return;
+  if(specialOnly_&&!specialEnemy(p,t,k))return;
   uint32_t id=get<uint32_t>(p+0x10);if(!id)return;int x,y;
   int worldX=get<int>(p+0x9C,INT32_MIN),worldY=get<int>(p+0xA0,INT32_MIN);
   if(!project(proj,worldX,worldY,get<int>(p+0xA4,INT32_MIN),x,y))return;
@@ -227,7 +236,8 @@ public:
   for(int i=0;i<enemies_.count;++i){shift(enemies_.items[i].x,dx);shift(enemies_.items[i].y,dy);}
   for(int i=0;i<statuses_.count;++i){shift(statuses_.items[i].x,dx);shift(statuses_.items[i].y,dy);}
  }
- const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false,uint32_t statusOptions=0,uint32_t sourceSerial=0){
+ const assist::Snapshot&sample(uint32_t now,uint32_t flags,bool enemyMarkers=false,uint32_t statusOptions=0,uint32_t sourceSerial=0,bool specialOnly=false){
+  specialOnly_=specialOnly;
   failedAircraftRefresh_={};
   auto ui=[&](uint32_t at,void*out,size_t n){return current(read_,at,out,n,0);};
   statusOptions_=statusOptions&3;state_.sampledTick=now;state_.renderStatus=0;display_=display::inspect(ui);
@@ -267,8 +277,8 @@ public:
   int sw=uiValue<int>(0xB0CE30),sh=uiValue<int>(0xB0CE34);if(sw>0&&sw<statuses_.width)statuses_.width=sw;if(sh>0&&sh<statuses_.height)statuses_.height=sh;
   uint32_t selectedHash=2166136261u;for(uint32_t p:vec(0xA8ECB8,4096))selectedHash=(selectedHash^p)*16777619u;
   bool cameraChanged=proj.cameraX!=sceneX_||proj.cameraY!=sceneY_;
-  bool scene=fresh||statusOptions_!=sceneStatusOptions_||showEnemies!=sceneEnemies_||frame!=sceneFrame_||flags!=sceneFlags_||selectedHash!=selectionHash_||proj.width!=sceneWidth_||proj.height!=sceneHeight_||(showEnemies&&(enemyProj.width!=sceneEnemyWidth_||enemyProj.height!=sceneEnemyHeight_||enemyOwnerSignature_!=sceneEnemyOwners_))||(cameraChanged&&uint32_t(now-sceneAt_)>=16);
-  if(!scene&&refreshLabels(proj)&&(!statusOptions_||refreshStatuses(proj))&&(!showEnemies||refreshEnemies(enemyProj))){
+  bool scene=fresh||statusOptions_!=sceneStatusOptions_||showEnemies!=sceneEnemies_||specialOnly_!=sceneSpecialOnly_||(specialOnly_&&sourceSerial!=sceneSourceSerial_)||frame!=sceneFrame_||flags!=sceneFlags_||selectedHash!=selectionHash_||proj.width!=sceneWidth_||proj.height!=sceneHeight_||(showEnemies&&(enemyProj.width!=sceneEnemyWidth_||enemyProj.height!=sceneEnemyHeight_||enemyOwnerSignature_!=sceneEnemyOwners_))||(cameraChanged&&uint32_t(now-sceneAt_)>=16);
+  if(!scene&&(!specialOnly_||sourceSerial)&&refreshLabels(proj)&&(!statusOptions_||refreshStatuses(proj))&&(!showEnemies||refreshEnemies(enemyProj))){
    int dx=proj.cameraX-priorX,dy=proj.cameraY-priorY;
    for(int i=0;i<state_.crateCount;++i){state_.crates[i].x-=dx;state_.crates[i].y-=dy;}
    for(int i=0;i<state_.threatCount;++i){auto&t=state_.threats[i];t.x-=dx;t.y-=dy;t.tx-=dx;t.ty-=dy;}
@@ -276,7 +286,7 @@ public:
   }
   sceneStatusOptions_=statusOptions_;statuses_.count=0;sceneAt_=now;
   sceneFrame_=frame;sceneFlags_=flags;selectionHash_=selectedHash;sceneX_=proj.cameraX;sceneY_=proj.cameraY;sceneWidth_=proj.width;sceneHeight_=proj.height;
-  sceneEnemies_=showEnemies;sceneEnemyWidth_=enemyProj.width;sceneEnemyHeight_=enemyProj.height;sceneEnemyOwners_=enemyOwnerSignature_;enemies_.count=enemies_.omitted=0;
+  sceneSourceSerial_=sourceSerial;sceneSpecialOnly_=specialOnly_;sceneEnemies_=showEnemies;sceneEnemyWidth_=enemyProj.width;sceneEnemyHeight_=enemyProj.height;sceneEnemyOwners_=enemyOwnerSignature_;enemies_.count=enemies_.omitted=0;
   state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=state_.threatCount=state_.crateCount=0;
   GameView<Read> view(read_);auto objects=vec(0xA8EC78);uint32_t allies=get<uint32_t>(house+0x5788);
   // A valid process handle and match flag do not prove that the YR 1.001

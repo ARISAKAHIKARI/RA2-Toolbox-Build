@@ -43,7 +43,7 @@ struct AdditionalSettings {
 #endif
  bool c4Test=false;uint32_t c4Key='C'|(4<<8),c4Mouse=1,c4Mode=0;
  uint32_t renderReveal=0;int mapStrategy=0;bool manualReveal=false,experimentalReveal=false,antiTheft=false,nativeAirWaypoints=false;
- bool enemyMarkers=false,idleAircraft=false,constructionQueue=false,airWaypoints=false;
+ bool enemyMarkers=false,enemySpecialOnly=false,idleAircraft=false,constructionQueue=false,airWaypoints=false;
  uint32_t productionReminderMask=0; // buildings, defenses, infantry, vehicles, ships, aircraft
  uint32_t airPathKey=0;
  uint32_t nativeAirNetwork=0; // 0=native events, 1=UI gate experiment, 2=full native experiment

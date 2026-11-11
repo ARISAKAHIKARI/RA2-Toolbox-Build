@@ -39,7 +39,9 @@ def main():
     for name, path in variants:
         before = digest(path)
         routes = output / (name + "-pulse.inc")
-        routes.write_text(function(path.read_text(encoding="utf-8-sig"), "inline void CALLBACK pulse(") + "\n", encoding="utf-8")
+        body=path.read_text(encoding="utf-8-sig")
+        helper=function(body,"inline bool serviceTransportRepair(")+"\n" if "inline bool serviceTransportRepair(" in body else ""
+        routes.write_text(helper+function(body, "inline void CALLBACK pulse(") + "\n", encoding="utf-8")
         executable = output / name
         command = [args.cxx, "-std=c++17", "-O2", "-D_WIN64",
                    '-DHOST_BROKER_PULSE="' + routes.as_posix() + '"',

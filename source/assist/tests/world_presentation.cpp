@@ -1,7 +1,19 @@
 #include "../source/world_presentation.h"
 #include <cassert>
 #include <cstdio>
+#include <initializer_list>
 int main(){
+ for(float scale:{0.75f,1.f,1.25f,1.5f,2.f})for(int left=0;left<150;++left){
+  // A label at fixed client position must keep its raster phase when a
+  // neighbouring moving object shifts the tight bitmap's bounding rectangle.
+  double device=std::floor(left*double(scale))+(200.25-worldpresentation::rasterOrigin(left,scale))*scale;
+  assert(std::abs(device-200.25*scale)<0.0001);
+ }
+ assert(worldpresentation::cameraFrameCurrent(10000,1,10,20,10,20));
+ assert(worldpresentation::cameraFrameCurrent(1119,1000,10,20,11,20));
+ assert(!worldpresentation::cameraFrameCurrent(1120,1000,10,20,11,20));
+ assert(worldpresentation::cameraFrameCurrent(0x30,0xfffffff0u,0,0,1,1));
+
  overlayui::Context context{101,7,3,3840,2160};overlayui::Recovery recovery;
  worldpresentation::ContextRevision revision;
  assert(!revision.changed(0,0,0,0,0));

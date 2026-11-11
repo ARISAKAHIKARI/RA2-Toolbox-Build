@@ -21,6 +21,7 @@ struct FormationMemory {int count=0,ax=0,ay=0;double facing=0;bool directed=fals
 static FormationMemory formationMemory;
 struct FormationFollow {uint32_t cell=0,tick=0;int frame=0;bool down=false,dragged=false;UINT up=0;int x=0,y=0;};
 static FormationFollow formationFollow;
+static inputownership::ReleaseWatch formationReleaseWatch,formationFollowReleaseWatch;
 static bool formationSameSelection(){
  if(!formationMemory.count)return false;Vec selected=vec(0xA8ECB8);if(selected.count!=formationMemory.count)return false;
  bool found[formation::Maximum]{};
@@ -34,7 +35,7 @@ static bool formationOwns(uint32_t id){for(int n=0;n<formationJobCount;++n)if(fo
 static void formationPublish(){if(!sh)return;formationView.tick=sampleClock(sh);formationView.match=match;++formationView.revision;
  InterlockedIncrement(&sh->formationSeq);MemoryBarrier();sh->formationPreview=formationView;MemoryBarrier();InterlockedIncrement(&sh->formationSeq);sh->formationJobs=formationJobCount;notifyHost();}
 static void formationCancel(){if(formationQuick)formationButton=false;formationEndQuick();formationView.active=formationView.dragging=0;formationView.count=0;formationModal=formationHolding=false;formationHoldingKey=0;formationPublish();}
-static void resetFormation(){formationForget();formationEndQuick();formationQuickCaptured=false;formationQuickMouse=0;formationFeedback=false;formationView={};formationModal=formationHolding=formationButton=false;formationHoldingKey=0;formationAltAt=0;formationHoldConsumed=false;formationJobCount=formationJobCursor=0;memset(formationSuppressed,0,sizeof formationSuppressed);if(sh){sh->formationJobs=0;formationPublish();}}
+static void resetFormation(){formationReleaseWatch.clear();formationFollowReleaseWatch.clear();formationForget();formationEndQuick();formationQuickCaptured=false;formationQuickMouse=0;formationFeedback=false;formationView={};formationModal=formationHolding=formationButton=false;formationHoldingKey=0;formationAltAt=0;formationHoldConsumed=false;formationJobCount=formationJobCursor=0;memset(formationSuppressed,0,sizeof formationSuppressed);if(sh){sh->formationJobs=0;formationPublish();}}
 static bool formationContext(bool preview=false){
  if(!sh||fault||sh->stop||!sh->foreground||!gameentry::active(gameentry::Client::Assist)||snap.status!=1||!match||!lastHouse||snap.commandStatus!=1||!get<bool>(0xA8E9A0)||get<uint32_t>(0xA83D4C)!=lastHouse||get<bool>(0xA8BC60+25)||DWORD(sampleClock(sh)-sh->heartbeat)>(preview?1000u:150u))return false;
  int frame=get<int>(0xA8ED84);if(frame<snap.frame||int64_t(frame)-snap.frame>6||frame<0||frame>=INT32_MAX||get<int>(0xA8B238)!=snap.session||!eventdelivery::mayQueue(snap.session)||get<bool>(lastHouse+0x1F5)||get<bool>(lastHouse+0x1F6)||get<bool>(lastHouse+0x1F8))return false;
@@ -137,7 +138,7 @@ static void formationWatchNative(MSG*msg){
  // member set and in-flight jobs until the actual selection changes.
  // Native left messages (including box selection and its one voice) pass on.
  if(msg->message==WM_LBUTTONDOWN){
-  formationFollow={};formationFollow.down=true;formationFollow.up=WM_LBUTTONUP;formationFollow.x=short(LOWORD(msg->lParam));formationFollow.y=short(HIWORD(msg->lParam));
+  formationFollowReleaseWatch.clear();formationFollow={};formationFollow.down=true;formationFollow.up=WM_LBUTTONUP;formationFollow.x=short(LOWORD(msg->lParam));formationFollow.y=short(HIWORD(msg->lParam));
   int x,y,px,py;bool ground=false;
   if(!(GetKeyState(VK_SHIFT)&0x8000)&&!(GetKeyState(VK_CONTROL)&0x8000)&&!(GetKeyState(VK_MENU)&0x8000)&&formationPoint(msg,x,y,px,py,&ground)&&ground)
    sh->formationConsumedUntil=inputownership::afterGesture(sampleClock(sh));
@@ -181,8 +182,8 @@ static bool formationSwitch(uint32_t key){if(formationQuick)return false;key=for
 static void formationRefreshHold(){
  if(!formationHolding)return;
  uint8_t keys[256]{};const unsigned vk=formationHoldingKey&255;
- keys[vk]=(GetKeyState(int(vk))&0x8000)!=0;
- for(unsigned key:{16u,17u,18u})keys[key]=(GetKeyState(int(key))&0x8000)!=0;
+ keys[vk]=(GetAsyncKeyState(int(vk))&0x8000)!=0;
+ for(unsigned key:{16u,17u,18u})keys[key]=(GetAsyncKeyState(int(key))&0x8000)!=0;
  runtimeKeys.decorate(keys);
  const bool same=keygesture::normalize(formationHoldingKey,keygesture::Mode::Hold)==keygesture::normalize(formationPolicy.hold,keygesture::Mode::Hold);
  if(same&&keygesture::matchesHold(keys,formationHoldingKey))return;
@@ -212,7 +213,7 @@ static bool formationMessage(MSG*msg){
   uint8_t keys[256]{};moGestureKeyboard(keys);auto resolved=moGestureResolve(gestureMouse.button,keys);
   if(resolved.mode==moorders::QuickFormation){
    int x,y,px,py;if(!formationPoint(msg,x,y,px,py))return false;
-   formationCancel();formationSavedShape=formationView.shape;formationQuick=true;formationQuickCaptured=true;formationQuickMouse=gestureMouse.button;formationQuickPolicy=moRuntimeGestures;formationView.shape=formation::quick::Shape;formationView.active=1;formationView.dragging=0;formationModal=false;formationButton=true;formationButtonUp=moorders::gestureUpMessage(gestureMouse.button);
+   formationCancel();formationSavedShape=formationView.shape;formationQuick=true;formationQuickCaptured=true;formationQuickMouse=gestureMouse.button;formationQuickPolicy=moRuntimeGestures;formationView.shape=formation::quick::Shape;formationView.active=1;formationView.dragging=0;formationModal=false;formationButton=true;formationReleaseWatch.clear();formationButtonUp=moorders::gestureUpMessage(gestureMouse.button);
    formationSelect();if(!formationView.count){formationCancel();formationButton=false;formationQuickCaptured=false;formationQuickMouse=0;return false;}
    formationView.ax=x;formationView.ay=y;formationStartX=px;formationStartY=py;formationQuickPath.push(x/256,y/256);formationQuickLayout(x,y,px,py);sh->formationConsumedUntil=inputownership::afterGesture(sampleClock(sh));return swallow();
   }
@@ -244,7 +245,7 @@ static bool formationMessage(MSG*msg){
  }
  if(msg->message==(formationPolicy.mouse==1?WM_LBUTTONDOWN:WM_RBUTTONDOWN)){int x,y,px,py;if(!formationPoint(msg,x,y,px,py))return false;
   if(!formationSelectionMatchesPreview()){formationCancel();return swallow();}
-  formationButton=true;formationButtonUp=formationPolicy.mouse==1?WM_LBUTTONUP:WM_RBUTTONUP;formationStartX=formationPixelX=px;formationStartY=formationPixelY=py;
+  formationButton=true;formationReleaseWatch.clear();formationButtonUp=formationPolicy.mouse==1?WM_LBUTTONUP:WM_RBUTTONUP;formationStartX=formationPixelX=px;formationStartY=formationPixelY=py;
   sh->formationConsumedUntil=inputownership::afterGesture(sampleClock(sh));return swallow();
  }
  if(msg->message==WM_MOUSEMOVE){if(DWORD(sampleClock(sh)-formationLayoutTick)<16)return formationButton?swallow():false;int x,y,px,py;if(formationPoint(msg,x,y,px,py)){
@@ -261,6 +262,15 @@ static bool formationMessage(MSG*msg){
 static void formationTick(uint32_t house,int frame,DWORD now){
  if(formationEpoch!=match){resetFormation();formationEpoch=match;}
  if(!formationContext(formationQuick&&formationButton)){if(formationView.active)formationCancel();formationFollow={};if(!sh->formationPolicy.enabled){formationJobCount=0;formationForget();}}
+ // The native mouse-up can be lost when focus/capture changes. Do not
+ // infer a click or commit the preview from polling; retire only its input lease.
+ const unsigned button=formationQuick?moorders::gestureVK(formationQuickMouse):(formationButtonUp==WM_LBUTTONUP?VK_LBUTTON:VK_RBUTTON);
+ if(formationReleaseWatch.expired(formationButton,button&&(GetAsyncKeyState(button)&0x8000),now)){
+  formationButton=false;formationQuickCaptured=false;formationQuickMouse=0;formationCancel();formationReleaseWatch.clear();
+ }
+ if(formationFollowReleaseWatch.expired(formationFollow.down,(GetAsyncKeyState(VK_LBUTTON)&0x8000)!=0,now)){
+  formationFollow={};sh->formationConsumedUntil=0;formationFollowReleaseWatch.clear();
+ }
  formationRefreshHold();if(formationQuick&&!formationQuickAuthorized(true))formationCancel();
  if(formationQuick&&formationQuickPending&&DWORD(now-formationLayoutTick)>=16){
   if(formationSelectionMatchesPreview())formationQuickLayout(formationQuickX,formationQuickY,formationQuickPX,formationQuickPY);else formationCancel();

@@ -210,12 +210,14 @@ auto hiddenToggle=[&](int id,const wchar_t* text,bool on){auto h=placedControl({
 for(int i=0;i<7;++i){bool on=value(L"Display",displayIni[i],0)!=0;if(i==0||i==1||i==3)check[i]=hiddenToggle(300+i,displayNames[i],on);else{check[i]=toggle(300+i,displayNames[i],on);next();}}
 extraControls[FrozenEnabled]=hiddenToggle(723,L"冷冻剩余时间",extra.frozen);
 extraControls[EnemyMarkersEnabled]=hiddenToggle(785,L"敌方单位提示",extra.enemyMarkers);
+ hiddenToggle(9763,L"仅标识隐形、幻影和敌方间谍",extra.enemySpecialOnly);
 hiddenToggle(897,L"载具载员气泡",extra.passengerBubbles);hiddenToggle(898,L"危险载员常驻提示",extra.dangerPassengers);hiddenToggle(9533,L"载员气泡包含己方",extra.passengerOwn);hiddenToggle(9534,L"载员气泡常驻显示",extra.passengerAlways);
 hiddenToggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);hiddenToggle(893,L"火力 / 防御 / 速度强化",extra.crateBuffMarkers);
 #else
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],0)!=0);next();}
 extraControls[FrozenEnabled]=toggle(723,L"冷冻剩余时间",extra.frozen);next();
 extraControls[EnemyMarkersEnabled]=toggle(785,L"显示敌方单位提示",extra.enemyMarkers);next();
+ toggle(9763,L"仅标识隐形、幻影和敌方间谍",extra.enemySpecialOnly);next();
 toggle(897,L"载具载员气泡",extra.passengerBubbles);next();toggle(898,L"危险载员常驻提示",extra.dangerPassengers);next();toggle(9533,L"载员气泡包含己方",extra.passengerOwn);next();toggle(9534,L"载员气泡常驻显示",extra.passengerAlways);next();
 toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
 toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
@@ -242,10 +244,6 @@ number(816,L"载员与状态文字缩放 / %",labelScalePercent,L"50–250 · �
 #endif
 marginEdit=number(311,L"文字提示上边距 / 像素",topMargin,L"0–4096");
 toastEdit=number(471,L"战术提示时长 / 毫秒",toastMs,L"500–60000");
-toggle(9760,L"补绘未探测的隐形 / 潜水单位",revealCloakedUnits);next();
-toggle(9761,L"幻影显示真实坦克外形",revealMirageUnits);next();
-toggle(9762,L"敌方间谍显示真实兵种和颜色",revealEnemySpies);next();
-note(L"三个开关独立生效，默认关闭；无需开启全视口渲染升级。仅主画面局部补绘，保留地图黑幕设置，不改变游戏探测、选取、攻击判定。敌方间谍不包含己方与盟友。",72);
 toggle(9325,L"矿车指示器（工作中 / 总数）",harvesterCounterEnabled);next();
 toggle(9326,L"电量指示器（发电 − 耗电）",powerDeltaEnabled);next();
 toggle(9327,L"原生建造栏提示框显示建造时间",buildTimeTooltipEnabled);next();

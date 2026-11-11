@@ -90,6 +90,13 @@ int main(){
  fixture::clock=2140;publish(Passenger&~4095u,true);CHECK(passengerSample(2140,token).empty());zeroLiveReads();
  fixture::clock=2160;publish();CHECK(passengerSample(2160,token).size()==1);zeroLiveReads();
  std::puts("PASS missing/failed passenger page: no live fallback, 120ms lease never renewed, next complete frame recovers");
+ CHECK(passengerSample(2161,token,false).size()==1);zeroLiveReads();
+ CHECK(passengerSample(2279,token,false).size()==1);CHECK(passengerSample(2280,token,false).empty());zeroLiveReads();
+ CHECK(passengerSample(2160,token).size()==1);++snap.cameraX;
+ CHECK(passengerSample(2161,token,false).empty());--snap.cameraX;
+ CHECK(passengerSample(2160,token).size()==1);extra.passengerAlways=true;
+ CHECK(passengerSample(2161,token,false).empty());extra.passengerAlways=false;
+ std::puts("PASS unconfirmed world acquisition retains bubbles for 120ms without renewal; camera/options invalidate immediately");
  CHECK(passengerSample(2161,{}).empty());CHECK(passengerSample(2162,token,false).empty());zeroLiveReads();
  ++snap.frame;CHECK(passengerSample(2163,token).empty());--snap.frame;
  ++snap.match;CHECK(passengerSample(2164,token).empty());--snap.match;

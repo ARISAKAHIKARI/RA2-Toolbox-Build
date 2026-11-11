@@ -23,6 +23,20 @@ static void lease(uint32_t start,bool normalizedZero){
 }
 
 int main(){
+ ReleaseWatch release;
+ check(!release.expired(true,true,1000),"held button does not time out");
+ check(!release.expired(true,false,1001),"first physical release begins grace");
+ check(!release.expired(true,false,1250),"delayed mouse-up gets 249ms to arrive");
+ check(release.expired(true,false,1251),"lost mouse-up expires at 250ms");
+ check(!release.expired(false,false,1252),"normal mouse-up clears observer");
+ check(!release.expired(true,false,2000),"new capture gets a new deadline");
+ check(!release.expired(true,true,2100),"re-press clears old release");
+ check(!release.expired(true,false,2200),"second release starts again");
+ check(!release.expired(true,false,2449),"old release cannot cancel a new drag");
+ check(release.expired(true,false,2450),"new release eventually cancels");
+ release.clear();check(!release.expired(true,false,0xffffff80u),"release across clock wrap starts");
+ check(!release.expired(true,false,0x79u),"wrapped release retains 249ms");
+ check(release.expired(true,false,0x7au),"wrapped release cancels at 250ms");
  check(!ownsFormation(true,0,0,0,10000),"unidentified active preview owns no input");
  check(!ownsFormation(true,7,8,0,10000),"active preview from another match owns no input");
  check(!ownsFormation(false,7,8,afterGesture(10000),10000),"lease from another match owns no input");
