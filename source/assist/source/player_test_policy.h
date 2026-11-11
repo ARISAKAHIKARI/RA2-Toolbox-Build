@@ -3,8 +3,8 @@
 namespace assist { namespace playertest {
 // Product availability, shared by host and Runtime; not a user setting.
 constexpr bool Available=true;
-// Explicit enemy-building sale experiment; off until opted in by the user.
-constexpr bool SellAvailable=true;
+// Direct-packet sale is suspended, including old settings and stale requests.
+constexpr bool SellAvailable=false;
 // One explicit button request, never a persistent automatic capability.
 constexpr bool DestructAvailable=true;
 // Player-context replacement is independent of manual event submission.

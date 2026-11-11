@@ -197,6 +197,17 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .settings-line:last-child { border-bottom: 0; }
 .setting-row { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); min-width: 0; min-height: 44px; padding: 6px 0; }
 .setting-copy { min-width: 0; flex: 1 1 220px; }
+.setting-row.has-choice-help { flex-wrap: wrap; }
+.choice-help { flex: 1 0 100%; min-width: 0; color: var(--muted); font-size: var(--text-small); line-height: 1.65; overflow-wrap: anywhere; }
+.choice-current { margin: 0 0 4px; white-space: pre-line; }
+.choice-help summary { cursor: pointer; color: var(--accent); width: fit-content; padding: 3px 0; }
+.choice-help summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.choice-help details[open] > div { margin: 6px 0; padding: 2px 12px; border-left: 2px solid var(--border); }
+.choice-help section { margin: 9px 0; }
+.choice-help strong { color: var(--text); font-weight: 600; }
+.choice-help section p { margin: 3px 0 0; white-space: pre-line; }
+.compound-row > .setting-row.has-choice-help { flex: 1 1 100%; max-width: 100%; }
+.compound-row > .setting-row.has-choice-help .setting-copy { flex: 1 1 auto; }
 .setting-label { display: block; color: var(--text); font-size: var(--text-label); font-weight: 600; line-height: 1.65; overflow-wrap: anywhere; }
 .setting-row[title]:not([title=""]) .setting-label::after { content: "ⓘ"; display: inline-block; margin-left: 5px; color: var(--muted); font-size: 10px; font-weight: 400; }
 .setting-description { margin: 3px 0 0; color: var(--muted); font-size: var(--text-small); line-height: 1.6; overflow-wrap: anywhere; }
@@ -377,3 +388,6 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
   .toggle input:checked ~ .switch-track::after, .module-toggle input:checked + .switch-track::after { background: HighlightText; }
   .setting-button:disabled, .subtle-button:disabled, .hotkey-capture:disabled, .icon-button:disabled, .text-button:disabled { color: GrayText; border-color: GrayText; }
 }
+
+.brand-mark { background: transparent; border: 0; }
+.brand-mark img { display: block; width: 100%; height: 100%; }

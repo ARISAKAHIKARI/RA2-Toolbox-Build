@@ -1,4 +1,5 @@
 #pragma once
+#include "choice_descriptions.h"
 // Compatibility ports own all legacy HWND access. The visible console sees
 // immutable values and opaque lifetime tokens, never windows or native messages.
 #ifndef WIN32_LEAN_AND_MEAN
@@ -168,6 +169,7 @@ class Host {
    const bool combo=detail::sameClass(cls,L"COMBOBOX"),list=detail::sameClass(cls,L"LISTBOX"),tabs=detail::sameClass(cls,WC_TABCONTROLW);
    c.type="choice";c.readonly=!combo||(style&3)==CBS_DROPDOWNLIST;c.presentation=list?"list":!c.readonly?"editable":"";
    c.options=detail::options(w,cls,&out.optionIdentity);
+   if(combo)c.optionDescriptions=choicedescriptions::describe(c.options);
    if(auto mask=reinterpret_cast<uintptr_t>(GetPropW(w,disabledchoices::Property)))for(size_t i=0;i<c.options.size();++i)c.optionEnabled.push_back(i<32&&((mask>>i)&1));
    c.selected=combo?int(SendMessageW(w,CB_GETCURSEL,0,0)):list?int(SendMessageW(w,LB_GETCURSEL,0,0)):tabs?TabCtrl_GetCurSel(w):ListView_GetNextItem(w,-1,LVNI_SELECTED);
    if(list&&(style&(LBS_MULTIPLESEL|LBS_EXTENDEDSEL))){c.enabled=false;c.hint+=" 原生多选列表需要集合适配器，当前不可修改。";}

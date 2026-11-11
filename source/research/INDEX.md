@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 特殊单位不透明叠加、模式说明与胶囊图标 | [原画面保留、公共绘制、直接组包停用](2026-11-11-special-overlay-mode-help.md) | 1.0.51 additive opaque EnemySpecialMode per-option help disabled-sale no-live-visual-proof |
 | OutList、本机与远端 DoList 的过滤边界 | [容量、协议解码、执行权限及平台实测反馈](2026-11-11-event-queue-filter-boundaries.md) | 649CA0 64BDD0 FrameInfo Respond Hardened-v17 user-report LAN1001-usable lbw-Destruct-fails JJ-control-fails cause-unresolved |
 | 特殊单位标识、跟随覆盖层闪烁与快捷键恢复 | [禁用补绘、显示连续性、输入恢复](2026-11-11-marker-overlay-input-recovery.md) | 1.0.49-fix.1 EnemySpecialOnly passenger lease atomic camera lost release callback recovery |
 | 目录依赖提前过期导致周期性缺样本 | [500ms 目录与 250ms 页租期、暂停 UI 域修复](2026-11-11-catalogue-sampling-expiry.md) | fix.2 actual-sampler page-demand 44-to-0 controlled no-live-proof |

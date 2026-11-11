@@ -3,6 +3,7 @@
 #include "formation_quick.h"
 #include "../../shared/source/latest_worker.h"
 #include "formation_engine.h"
+#include "preview_overlay_draw.h"
 #include "../../external_reader/source/shared_scene.h"
 #include "../../external_reader/source/render_profile.h"
 namespace formationhost {
@@ -34,7 +35,7 @@ static void update(){
 struct Drawing {std::shared_ptr<const Frame> frame;bool active=false;int mouse=0,cameraX=0,cameraY=0;std::wstring quickHint;nativeviewhost::Transform transform;};
 static Drawing drawing(){nativeviewhost::Transform transform;if(!nativeviewhost::sampleTransform(shared,transform))return {};return {frame&&frame->transform==transform?frame:nullptr,visible(),int(extra.formationMouse),snap.cameraX,snap.cameraY,runtimeGestureDescription(moorders::QuickFormation),transform};}
 static void draw(Graphics&g,const Drawing&d){
- if(d.frame&&d.frame->composite){const auto&i=*d.frame->composite;float x=float(i.x+d.frame->projection.cameraX-d.cameraX),y=float(i.y+d.frame->projection.cameraY-d.cameraY),right=x+i.width,bottom=y+i.height;if(nativeviewhost::localPoint(d.transform,x,y)&&nativeviewhost::localPoint(d.transform,right,bottom)){Bitmap bitmap(i.width,i.height,i.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(const_cast<uint32_t*>(i.pixels.data())));auto saved=g.Save();if(d.transform.active){const auto area=d.transform.physical;g.SetClip(RectF(float(area.x),float(area.y),float(area.w),float(area.h)),CombineModeIntersect);}g.DrawImage(&bitmap,RectF(x,y,right-x,bottom-y),0.f,0.f,float(i.width),float(i.height),UnitPixel,nullptr);g.Restore(saved);}}
+ if(d.frame&&d.frame->composite)previewoverlay::draw(g,*d.frame->composite,d.frame->projection,d.transform,d.cameraX,d.cameraY);
  if(d.active){const wchar_t*names[]={L"矩形横队",L"分散横队",L"圆形聚集",L"扇形",L"正方形聚集",L"空心框聚集"};bool quick=d.frame&&d.frame->preview.shape==formation::quick::Shape;std::wstring text=L"队形 · "+std::wstring(quick?L"快速占位":names[d.frame?std::clamp(d.frame->preview.shape,0,formation::Shapes-1):0])+(quick?L" · "+d.quickHint+L" 点按聚集 / 拖线排位 · Esc 取消":d.mouse==1?L" · 左拖排列 / 左击提交预览 · Esc 取消":L" · 右拖排列 / 右击提交预览 · Esc 取消");if(d.frame&&d.frame->missing)text+=L" · "+std::to_wstring(d.frame->missing)+L" 个模型未载入";drawText(g,text,18,44,12,Color(230,220,244,255));}
 }
 static void shutdown(){worker.shutdown();}

@@ -1619,6 +1619,7 @@ static void drawLabel(Graphics&g,const visual::LabelView&l,float sx,float sy,int
 }
 #include "game_assets_host.h"
 #include "formation_host.h"
+#include "special_unit_overlay_host.h"
 #include "mo_orders_host.h"
 #include "status_draw.h"
 #include "passenger_draw.h"
@@ -1815,12 +1816,13 @@ static void paint(){
  int statusCount=statusOptions()&&externalData&&displaylease::frameCurrent(statusFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::status::Maximum)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
  const auto&rawEnemyFrame=externalSampler.enemyMarkers();
  for(int i=0;i<statusCount;++i)nativeviewhost::localPoint(viewportTransform,statusViews[i].x,statusViews[i].y);
- int rawEnemyCount=extra.enemyMarkers&&externalData&&displaylease::frameCurrent(rawEnemyFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
+ int rawEnemyCount=extra.enemyMarkers&&!specialoverlayhost::active()&&externalData&&displaylease::frameCurrent(rawEnemyFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups,clusteredEnemies,clusteredEnemyViews):0;
  std::copy(clusteredEnemyViews,clusteredEnemyViews+enemyCount,enemyViews);
  for(int i=0;i<enemyCount;++i)nativeviewhost::localPoint(viewportTransform,enemyViews[i].x,enemyViews[i].y);
  const auto&enemyFrame=clusteredEnemies;
- updateAircraftButton(origin,r);formationhost::update();
+ updateAircraftButton(origin,r);formationhost::update();specialoverlayhost::update(viewportTransform);
+ const auto specialDrawing=specialoverlayhost::drawing();
  const auto moDrawing=moordershost::drawing();
  const auto placementDrawing=placementdrawing::capture();
  auto opaquePanels=overlaystack::opaqueBoxes(game,snap.width,snap.height);
@@ -1837,7 +1839,7 @@ static void paint(){
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
  bool hasToast=panel&&activeToast(now);bool summary=panel&&snap.transports;
  worldrender::present();
- if(!placementDrawing.active&&!moDrawing.active&&!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();return;}
+ if(!specialDrawing.frame&&!placementDrawing.active&&!moDrawing.active&&!formationhost::visible()&&!labelCount&&!hasToast&&!summary&&!snap.threatCount&&!snap.crateCount&&!enemyCount&&!statusCount&&!idleTabs&&passengerBubbles.empty()&&airLines.empty()&&nativeBadges.empty()){worldrender::invalidate();overlayRecovery.suspend();hideWorldOverlay();return;}
  viewport::Scale view;if(!view.set(snap.width,snap.height,r.right,r.bottom)){hideWorldOverlay();return;}
  const int physicalW=r.right,physicalH=r.bottom;r.right=view.gameWidth;r.bottom=view.gameHeight;
  const float sx=1,sy=1; // Positions, glyphs, icons and bounds share game-pixel space.
@@ -1847,6 +1849,7 @@ static void paint(){
  int left=r.right,up=r.bottom,right=0,bottom=0;
  auto include=[&](float x,float y,float w,float h){int x0=std::clamp(int(std::floor(x)),0,int(r.right)),y0=std::clamp(int(std::floor(y)),0,int(r.bottom));int x1=std::clamp(int(std::ceil(x+w)),0,int(r.right)),y1=std::clamp(int(std::ceil(y+h)),0,int(r.bottom));if(x1>x0&&y1>y0){left=std::min(left,x0);up=std::min(up,y0);right=std::max(right,x1);bottom=std::max(bottom,y1);}};
  if(placementDrawing.active||formationhost::visible()||moDrawing.active)include(0,0,r.right,r.bottom);
+ if(specialDrawing.frame){const auto&b=specialDrawing.bounds;include(b.x,b.y,b.w,b.h);}
  for(const auto&b:passengerBubbles)include(b.left,b.top,b.width,b.height+6);
  for(const auto&b:nativeBadges)include(b.x*sx,b.y*sy,b.w*sx,b.h*sy);
  for(auto l:airLines)include(std::min(l.x,l.tx)*sx-6,std::min(l.y,l.ty)*sy-6,std::abs(l.x-l.tx)*sx+12,std::abs(l.y-l.ty)*sy+12);
@@ -1894,6 +1897,7 @@ static void paint(){
    if(count>construction::VisibleCapacity)numbers=L"×"+std::to_wstring(count);
    drawText(g,numbers,b.x*sx+2,b.y*sy,std::max(8.f,10.f*sy),Color(255,255,239,158));}
   auto mapState=g.Save();if(viewportTransform.active)g.SetClip(RectF(float(mapClip.x),float(mapClip.y),float(mapClip.w),float(mapClip.h)),CombineModeIntersect);
+  specialoverlayhost::draw(g,specialDrawing);
   auto enemyClip=g.Save();if(!viewportTransform.active)g.SetClip(RectF(0,0,enemyFrame.width*sx,enemyFrame.height*sy),CombineModeIntersect);
   for(int i=0;i<enemyCount;++i){const auto&v=enemyViews[i];if(onMap(v.x,v.y)&&(viewportTransform.active||external::enemies::onScreen(v.x,v.y,enemyFrame.width,enemyFrame.height)))drawEnemyMarker(g,enemyFrame.items[i],v,sx,sy);}g.Restore(enemyClip);
   Pen flightPen(Color(210,130,235,160),1.5f);flightPen.SetEndCap(LineCapArrowAnchor);for(auto l:airLines){g.DrawLine(&flightPen,float(l.x)*sx,float(l.y)*sy,float(l.tx)*sx,float(l.ty)*sy);g.DrawEllipse(&flightPen,float(l.tx)*sx-3,float(l.ty)*sy-3,6.f,6.f);}
@@ -2200,7 +2204,7 @@ static void updateModeStatus(DWORD now){
   std::wstring sell=L"联机快捷键变卖：";sell+=!live?L"等待游戏":shared->sellDirectStatus<0?L"请求未发送（目标失效或发送条件不满足）":shared->sellDirectPending?L"等待发送时机":L"已就绪";
   if(live)sell+=L" · 已发 "+std::to_wstring(shared->sellDirectSent)+L" · 待发 "+std::to_wstring(shared->sellDirectPending)+L" · 拒绝 "+std::to_wstring(shared->sellDirectRejected);
   if(extra.privateOutMode)sell=L"联机快捷键变卖：使用上方操控私有队列的状态与计数";
-  SetWindowTextW(GetDlgItem(ui,9540),sell.c_str());}
+  SetWindowTextW(GetDlgItem(ui,9540),playertest::SellAvailable?sell.c_str():L"快捷键变卖：暂不可用");}
  {std::wstring text=L"绑弹步兵自动上车：";text+=!extra.bombBoardEnabled?L"关闭":phase?L"等待对局":L"监视中";
   if(shared&&extra.bombBoardEnabled&&!phase)text+=L" · 发现 "+std::to_wstring(shared->bombBoardActive)+L" / 已下令 "+std::to_wstring(shared->bombBoardIssued)+L" / 待匹配 "+std::to_wstring(shared->bombBoardWaiting);
   SetWindowTextW(GetDlgItem(ui,9532),text.c_str());}
@@ -3030,7 +3034,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  setStatus(L"正在退出；恢复最多等待 2 秒，超时跳过。");
  SetWindowTextW(GetAncestor(w,GA_ROOT),L"红警工具箱 · 正在退出（恢复最多等待 2 秒）…");
  SetTimer(w,BridgeCloseTimer,100,nullptr);return 0;
- case WM_DESTROY:shutdownPlatformHookProbe();shutdownGameProcessSelectionUI();renderupgrade::shutdown();worldrender::worker.shutdown();sidebaroverlay::worker.shutdown();formationhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);
+ case WM_DESTROY:shutdownPlatformHookProbe();shutdownGameProcessSelectionUI();renderupgrade::shutdown();worldrender::worker.shutdown();sidebaroverlay::worker.shutdown();formationhost::shutdown();specialoverlayhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);
 #if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
  if(!consoleClosePrepared)
 #endif

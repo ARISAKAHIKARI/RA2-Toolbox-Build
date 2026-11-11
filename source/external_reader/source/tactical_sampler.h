@@ -88,13 +88,7 @@ template<class Read> class TacticalSampler {
    m.x=x;m.y=y;m.color=owner->color;m.player=owner->index;
   }return true;
  }
- bool specialEnemy(uint32_t p,uint32_t t,int k){
-  if(k<0||k>2||get<uint8_t>(t+0xC9A))return false;
-  if(get<int>(p+0x220)>0)return true;
-  if((k==1||k==2)&&get<uint8_t>(p+0x1D8))return true;
-  if(k==1&&get<uint8_t>(t+0xEBE))return true; // Infiltrate, including an undisguised spy.
-  char id[5]{};return k==2&&read_(t+0x24,id,sizeof id)&&std::memcmp(id,"MGTK",5)==0;
- }
+ bool specialEnemy(uint32_t p,uint32_t t,int k){return enemies::special(read_,p,t,k);}
  void addEnemy(uint32_t p,uint32_t t,int k,uint32_t owner,const Projection&proj){
   const auto*enemy=enemyOwner(owner);if(!enemy||t<0x10000||(k!=3&&get<uint32_t>(p+0x11C,0xffffffffu)))return;
   if(specialOnly_&&!specialEnemy(p,t,k))return;

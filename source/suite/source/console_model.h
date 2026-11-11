@@ -46,6 +46,7 @@ struct Control {
     // Optional per-option availability. Omitted entries retain legacy enabled behavior.
     std::vector<bool> optionEnabled;
     ActionRole actionRole = ActionRole::Secondary;
+    std::vector<std::string> optionDescriptions;
 };
 struct Snapshot {
     unsigned module = 0;
@@ -427,6 +428,14 @@ inline std::string encodeSnapshot(const Snapshot& s) {
             out += detail::quote(option);
         }
         out += "]";
+        if (!c.optionDescriptions.empty()) {
+            out += ",\"optionDescriptions\":[";
+            for (std::size_t i = 0; i < c.optionDescriptions.size(); ++i) {
+                if (i) out.push_back(',');
+                out += detail::quote(c.optionDescriptions[i]);
+            }
+            out += "]";
+        }
         if (!c.optionEnabled.empty()) {
             out += ",\"optionEnabled\":[";
             for (std::size_t i = 0; i < c.optionEnabled.size(); ++i) {

@@ -1,3 +1,4 @@
+#pragma once
 #include "../../external_reader/source/voxel_preview.h"
 #include "../../external_reader/source/scene_lighting.h"
 #include "../../external_reader/source/camera_raster.h"
@@ -12,7 +13,7 @@ template<class Reader,class Assets>class Renderer {
 public:
  Reader&reader;Assets&assets;std::function<bool(uint32_t,void*,size_t)> read;
  Renderer(Reader&r,Assets&a):reader(r),assets(a),read([&r](uint32_t p,void*out,size_t n){return r.readFresh(p,out,n);}){}
- uint32_t paintRevision=0,composedRevision=0;bool compositePrecision=false;unsigned compositeScale=0;std::shared_ptr<const external::voxel::Image>composed;
+ uint32_t paintRevision=0,composedRevision=0;bool compositePrecision=false;unsigned compositeScale=0,compositeOpacity=0;std::shared_ptr<const external::voxel::Image>composed;
  size_t decodeCursor=0;double decodeBudgetMs=4.;external::camera::NativeCanvas blank;external::camera::ViewportCanvas compositor;std::vector<uint32_t>transparent;int compositeX=0,compositeY=0;
  template<class A>static auto shared(A&a,const typename A::ActorArt&art,const external::visual::Pose&pose,std::shared_ptr<const external::voxel::Image>&out,int)->decltype(a.renderSharedActor(art,pose,out),bool()){return a.renderSharedActor(art,pose,out);}
  template<class A>static bool shared(A&a,const typename A::ActorArt&art,const external::visual::Pose&pose,std::shared_ptr<const external::voxel::Image>&out,long){external::voxel::Image image;if(!a.renderActor(art,pose,image))return false;out=std::make_shared<const external::voxel::Image>(std::move(image));return true;}
@@ -78,10 +79,11 @@ void update(const formation::Preview&next,const external::Projection&projection)
  std::sort(visuals.begin(),visuals.end(),[](const Visual&a,const Visual&b){if(a.y!=b.y)return a.y<b.y;if(a.x!=b.x)return a.x<b.x;return std::less<const external::voxel::Image*>{}(a.image.get(),b.image.get());});
  uint64_t hash=(uint64_t(revision)<<32)^uint64_t(facing+1)*1099511628211ull^uint64_t(next.shape+1)*16777619ull^missing;for(const auto&v:visuals){hash=(hash^uint32_t(v.x))*1099511628211ull;hash=(hash^uint32_t(v.y))*1099511628211ull;hash=(hash^uintptr_t(v.image.get()))*1099511628211ull;hash=(hash^uint32_t(v.light.intensity))*1099511628211ull;for(int c:v.light.tint)hash=(hash^uint32_t(c))*1099511628211ull;}if(hash!=visualSignature){visualSignature=hash;++paintRevision;}
 }
-std::shared_ptr<const external::voxel::Image> compose(bool precision,unsigned scale){
- if(visuals.empty()){composed.reset();return {};}if(composed&&composedRevision==paintRevision&&compositePrecision==precision&&compositeScale==scale)return composed;int left=INT32_MAX,top=INT32_MAX,right=INT32_MIN,bottom=INT32_MIN;for(const auto&v:visuals){int sample=std::max(1,v.image->rasterScale);left=std::min(left,v.x+v.image->x/sample-8);top=std::min(top,v.y+v.image->y/sample-8);right=std::max(right,v.x+(v.image->x+v.image->width)/sample+8);bottom=std::max(bottom,v.y+(v.image->y+v.image->height)/sample+8);}int w=right-left,h=bottom-top;if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024)return {};
+std::shared_ptr<const external::voxel::Image> compose(bool precision,unsigned scale,unsigned opacity=PreviewOpacity){
+ opacity=std::min(opacity,255u);
+ if(visuals.empty()){composed.reset();return {};}if(composed&&composedRevision==paintRevision&&compositePrecision==precision&&compositeScale==scale&&compositeOpacity==opacity)return composed;int left=INT32_MAX,top=INT32_MAX,right=INT32_MIN,bottom=INT32_MIN;for(const auto&v:visuals){int sample=std::max(1,v.image->rasterScale);left=std::min(left,v.x+v.image->x/sample-8);top=std::min(top,v.y+v.image->y/sample-8);right=std::max(right,v.x+(v.image->x+v.image->width)/sample+8);bottom=std::max(bottom,v.y+(v.image->y+v.image->height)/sample+8);}int w=right-left,h=bottom-top;if(w<1||h<1||w>8192||h>8192||uint64_t(w)*h>16*1024*1024)return {};
  if(blank.width()!=w||blank.height()!=h){if(!blank.reset(w,h))return {};transparent.assign(size_t(w)*h,0);compositor.reset();}auto mode=precision?external::colorprecision::Mode::SmoothRGB:external::colorprecision::Mode::NativeSteps;if(!compositor.prepare(blank,transparent,w,h,0,0,w,h,1,mode,scale))return {};
- for(const auto&v:visuals)compositor.blit(*v.image,float(v.x-left),float(v.y-top),1,1,float(v.y),v.light,1,0,v.image);auto image=std::make_shared<external::voxel::Image>();if(!compositor.finish(image->pixels,true))return {};image->width=w;image->height=h;image->x=left;image->y=top;image->intrinsicAlpha=true;for(auto&pixel:image->pixels){uint32_t next=0;for(int shift:{0,8,16,24})next|=((((pixel>>shift)&255)*PreviewOpacity+127)/255)<<shift;pixel=next;}composed=image;composedRevision=paintRevision;compositePrecision=precision;compositeScale=scale;return image;
+ for(const auto&v:visuals)compositor.blit(*v.image,float(v.x-left),float(v.y-top),1,1,float(v.y),v.light,1,0,v.image);auto image=std::make_shared<external::voxel::Image>();if(!compositor.finish(image->pixels,true))return {};image->width=w;image->height=h;image->x=left;image->y=top;image->intrinsicAlpha=true;if(opacity<255)for(auto&pixel:image->pixels){uint32_t next=0;for(int shift:{0,8,16,24})next|=((((pixel>>shift)&255)*opacity+127)/255)<<shift;pixel=next;}composed=image;composedRevision=paintRevision;compositePrecision=precision;compositeScale=scale;compositeOpacity=opacity;return image;
 }
 
 };

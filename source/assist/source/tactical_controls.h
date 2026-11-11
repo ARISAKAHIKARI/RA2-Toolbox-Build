@@ -210,14 +210,16 @@ auto hiddenToggle=[&](int id,const wchar_t* text,bool on){auto h=placedControl({
 for(int i=0;i<7;++i){bool on=value(L"Display",displayIni[i],0)!=0;if(i==0||i==1||i==3)check[i]=hiddenToggle(300+i,displayNames[i],on);else{check[i]=toggle(300+i,displayNames[i],on);next();}}
 extraControls[FrozenEnabled]=hiddenToggle(723,L"冷冻剩余时间",extra.frozen);
 extraControls[EnemyMarkersEnabled]=hiddenToggle(785,L"敌方单位提示",extra.enemyMarkers);
- hiddenToggle(9763,L"仅标识隐形、幻影和敌方间谍",extra.enemySpecialOnly);
+ hiddenToggle(9763,L"仅显示隐形、幻影和敌方间谍",extra.enemySpecialOnly);
+ {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",9764,CBS_DROPDOWNLIST);choices(h,{L"文字标记",L"不透明叠加"},extra.enemySpecialMode);ShowWindow(h,SW_HIDE);}
 hiddenToggle(897,L"载具载员气泡",extra.passengerBubbles);hiddenToggle(898,L"危险载员常驻提示",extra.dangerPassengers);hiddenToggle(9533,L"载员气泡包含己方",extra.passengerOwn);hiddenToggle(9534,L"载员气泡常驻显示",extra.passengerAlways);
 hiddenToggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);hiddenToggle(893,L"火力 / 防御 / 速度强化",extra.crateBuffMarkers);
 #else
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],0)!=0);next();}
 extraControls[FrozenEnabled]=toggle(723,L"冷冻剩余时间",extra.frozen);next();
 extraControls[EnemyMarkersEnabled]=toggle(785,L"显示敌方单位提示",extra.enemyMarkers);next();
- toggle(9763,L"仅标识隐形、幻影和敌方间谍",extra.enemySpecialOnly);next();
+ toggle(9763,L"仅显示隐形、幻影和敌方间谍",extra.enemySpecialOnly);next();
+ label(L"特殊单位显示方式",20,200);choices(combo(9764,240,385,130),{L"文字标记",L"不透明叠加"},extra.enemySpecialMode);next();
 toggle(897,L"载具载员气泡",extra.passengerBubbles);next();toggle(898,L"危险载员常驻提示",extra.dangerPassengers);next();toggle(9533,L"载员气泡包含己方",extra.passengerOwn);next();toggle(9534,L"载员气泡常驻显示",extra.passengerAlways);next();
 toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
 toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
@@ -414,9 +416,9 @@ item(L"STATIC",L"",20,605,9186,0,52);pageControls.back().feedbackHidden=true;nex
 toggle(9189,L"高危：原生变卖光标允许对手建筑",extra.nativeSellCursor);next();
 note(L"启用后请自行点击游戏原版 $ 变卖按钮，再指向对手建筑。只放宽所属方资格，仍检查建筑能否出售；单机电脑建筑调用原版 Sell 接收器；其余沿用原版构造入队。联机电脑建筑不生效，原生光标仍需所属方保留已启用；与下面的特殊键鼠入口独立。",65);
 item(L"STATIC",L"原生变卖光标：关闭",20,605,9190,0,44);next(44);
-extraControls[SellEnemyEnabled]=toggle(722,L"高危：快捷键变卖对手建筑（联机直接组包）",extra.sellEnemy);next();
-item(L"STATIC",L"快捷键变卖：等待操作",20,605,9540,0,44);next(44);
-note(L"默认关闭；默认 Ctrl＋鼠标侧键 2，沿用“出售被吸取目标”的键鼠配置。单机支持电脑建筑。联机快捷键直接组协议包，不经过 OutList；仅人类所属方，电脑建筑不生效。传输接受不代表变卖完成，联机效果待实测。",65);
+extraControls[SellEnemyEnabled]=toggle(722,L"快捷键变卖对手建筑（直接组包，暂不可用）",false);EnableWindow(extraControls[SellEnemyEnabled],FALSE);next();
+item(L"STATIC",L"快捷键变卖：暂不可用",20,605,9540,0,44);next(44);
+note(L"直接组包入口已停用，旧配置也不会启用。原生变卖光标仍使用上方的独立开关。",65);
 
 toggle(788,L"优先执行增强指令",extra.overrideNative);next();
 note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的鼠标操作生效。",44);

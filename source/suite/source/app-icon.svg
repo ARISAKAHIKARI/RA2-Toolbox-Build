@@ -1,15 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
   <defs>
-    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#EF4059"/>
-      <stop offset="1" stop-color="#B71332"/>
+    <linearGradient id="warm" x1="0" y1="0" x2="0.8" y2="1">
+      <stop stop-color="#FFB34D"/><stop offset="0.5" stop-color="#FF5B72"/><stop offset="1" stop-color="#CF2989"/>
     </linearGradient>
+    <linearGradient id="cool" x1="0" y1="0" x2="0.9" y2="1">
+      <stop stop-color="#62F5D6"/><stop offset="0.5" stop-color="#37BCEC"/><stop offset="1" stop-color="#7962EE"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#FFFFFF" stop-opacity="0.65"/><stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="pill"><rect x="18" y="74" width="220" height="108" rx="54"/></clipPath>
+    <filter id="shadow" x="-25%" y="-50%" width="150%" height="210%"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0C2244" flood-opacity="0.28"/></filter>
   </defs>
-  <rect x="8" y="8" width="240" height="240" rx="50" fill="#111824"/>
-  <rect x="16" y="16" width="224" height="224" rx="43" fill="url(#red)"/>
-  <path d="M91 91V70a13 13 0 0 1 13-13h48a13 13 0 0 1 13 13v21" fill="none" stroke="#FFF5ED" stroke-width="16"/>
-  <rect x="44" y="88" width="168" height="117" rx="20" fill="#171E2C"/>
-  <path d="M48 128h160" stroke="#FFF5ED" stroke-width="8"/>
-  <rect x="116" y="115" width="24" height="38" rx="6" fill="#FFF5ED"/>
-  <path d="M70 176h27m62 0h27" stroke="#EF4059" stroke-width="9" stroke-linecap="round"/>
+  <g transform="rotate(-42 128 128)" filter="url(#shadow)">
+    <rect x="18" y="74" width="220" height="108" rx="54" fill="url(#warm)"/>
+    <g clip-path="url(#pill)">
+      <rect x="128" y="74" width="110" height="108" fill="url(#cool)"/>
+      <path d="M128 74v108" stroke="#172843" stroke-opacity="0.18" stroke-width="4"/>
+      <rect x="24" y="80" width="208" height="96" rx="48" fill="url(#sheen)"/>
+    </g>
+    <rect x="19.5" y="75.5" width="217" height="105" rx="52.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.62" stroke-width="3"/>
+    <path d="M46 111a32 32 0 0 1 27-18h32" fill="none" stroke="#FFFFFF" stroke-opacity="0.76" stroke-width="7" stroke-linecap="round"/>
+    <path d="M147 94h31" fill="none" stroke="#FFFFFF" stroke-opacity="0.56" stroke-width="7" stroke-linecap="round"/>
+  </g>
 </svg>
