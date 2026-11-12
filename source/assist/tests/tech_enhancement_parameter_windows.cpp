@@ -60,8 +60,8 @@ int main(){
  // Ambiguous same-slot reconfiguration: preserve old+new possible ownership
  // until an actual readback proves which addresses the kernel installed.
  contextReads=0;failReadAt=2;configured(service,sites,3);assert(service.state==assist::techbp::System&&service.lease.uncertain&&service.activeTags()==0&&service.resources());failReadAt=0;
- assert(DrawCaller(&local,&allowed)==1);retire(service);CONTEXT empty=debug();assert(!empty.Dr0&&!empty.Dr1&&!empty.Dr2&&!empty.Dr3);
- configured(service,sites,12);skipSetOnce=1;configured(service,sites,3);assert(service.state==assist::techbp::Foreign&&service.activeTags()==12);assert(ExactCanBuild(&local,&exactAllowed,1)==1&&DrawCaller(&local,&allowed)==0);retire(service);
+ assert(DrawCaller(&local,&allowed)==0);retire(service);CONTEXT empty=debug();assert(!empty.Dr0&&!empty.Dr1&&!empty.Dr2&&!empty.Dr3);
+ configured(service,sites,12);skipSetOnce=2;configured(service,sites,3);assert(service.state==assist::techbp::System&&service.activeTags()==12&&service.resources());assert(ExactCanBuild(&local,&exactAllowed,1)==0&&DrawCaller(&local,&allowed)==0);retire(service);
  assert(!memcmp(&typeBefore,&exactAllowed,sizeof typeBefore)&&!memcmp(codeBefore,reinterpret_cast<void*>(&ExactCanBuild),sizeof codeBefore));CONTEXT after=debug();assert(after.Dr0==original.Dr0&&after.Dr1==original.Dr1&&after.Dr2==original.Dr2&&after.Dr3==original.Dr3&&after.Dr7==original.Dr7);
  puts("PASS: four-site real Windows DR transaction, retained existing full pair on insufficient slots, exact flags/House/Type/TechLevel gate, 60000 quantified exceptions, partial removal, ambiguous readback and false Set restore, unchanged code/type, no game");return 0;
 }

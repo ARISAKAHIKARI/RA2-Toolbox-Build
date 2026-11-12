@@ -24,7 +24,7 @@ current=out/'current-publish.inc';current.write_text('\n'.join(block(s,n)for n i
 obj=build_guard(a.zig,out)
 results={}
 for phase,inc in [('baseline',baseline/'publish.inc'),('current',current)]:
- exe=out/(phase+'.exe');cmd=[str(Path(a.zig).resolve()),'c++','-target','x86-windows-gnu','-std=c++17','-O1','-UNDEBUG','-DEXPECT_HIDDEN='+str(int(phase=='baseline')),'-DTECH_CORE_HEADER="'+core.resolve().as_posix()+'"','-DTECH_PUBLISH_ROUTES="'+inc.resolve().as_posix()+'"',str(here/'tech_ui_publish_windows.cpp'),str(obj),'-o',str(exe),'-lkernel32']
+ exe=out/(phase+'.exe');cmd=[str(Path(a.zig).resolve()),'c++','-target','x86-windows-gnu','-std=c++17','-fms-extensions','-fasm-blocks','-O1','-UNDEBUG','-DEXPECT_HIDDEN='+str(int(phase=='baseline')),'-DTECH_CORE_HEADER="'+core.resolve().as_posix()+'"','-DTECH_PUBLISH_ROUTES="'+inc.resolve().as_posix()+'"',str(here/'tech_ui_publish_windows.cpp'),str(obj),'-o',str(exe),'-lkernel32']
  r=subprocess.run(cmd,capture_output=True,text=True);(out/(phase+'-build.log')).write_text(r.stdout+r.stderr,encoding='utf-8')
  if r.returncode:raise SystemExit(r.stdout+r.stderr)
  r=subprocess.run([str(exe)],capture_output=True,text=True,timeout=20);(out/(phase+'.log')).write_text(r.stdout+r.stderr,encoding='utf-8')

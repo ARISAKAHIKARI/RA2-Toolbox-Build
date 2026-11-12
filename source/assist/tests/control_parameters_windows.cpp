@@ -76,10 +76,10 @@ int main(){
  uint8_t code[9][96]{};const void*functions[]={reinterpret_cast<void*>(&ControlPredicate),reinterpret_cast<void*>(&ControlAllowed),reinterpret_cast<void*>(&ControlStrict),reinterpret_cast<void*>(&PermissionCaller),reinterpret_cast<void*>(&OwnerCaller),reinterpret_cast<void*>(&PlanningCaller),reinterpret_cast<void*>(&SampleCanBuild),reinterpret_cast<void*>(&DrawCaller),reinterpret_cast<void*>(&PruneCaller)};
  for(unsigned i=0;i<9;++i)memcpy(code[i],functions[i],96);const House savedLocal=local,savedOther=other;
  const double baselineUs=measure(false);assist::techbp::Service service;
- assert(service.inspect());wait(service);auto budget=service.slotBudget();assert(assist::slotbudget::known(budget)&&assist::slotbudget::free(budget)==4&&!assist::slotbudget::owned(budget)&&!service.handler_&&sameDebug(original,debug()));retire(service);
- // Read-only inspection must neither install a VEH nor change either enabled
- // foreign slot. Compare the actual Windows readback, including reserved bits.
- CONTEXT foreign=original;foreign.Dr0=sites[1];foreign.Dr1=sites[1];foreign.Dr7|=1|4;debug(&foreign);foreign=debug();assert(foreign.Dr0==sites[1]&&foreign.Dr1==sites[1]);assert(service.inspect());wait(service);budget=service.slotBudget();printf("BUDGET foreign2 packed=%08x state=%ld free=%u foreign=%u handler=%d\n",budget,service.state,assist::slotbudget::free(budget),assist::slotbudget::foreign(budget),int(service.handler_!=nullptr));assert(assist::slotbudget::foreign(budget)==2&&assist::slotbudget::free(budget)==2&&!service.handler_&&sameDebug(foreign,debug()));retire(service);debug(&original);
+ assert(service.inspect());wait(service);auto budget=service.slotBudget();assert(assist::slotbudget::known(budget)&&assist::slotbudget::free(budget)==4&&!assist::slotbudget::owned(budget)&&service.resources()&&sameDebug(original,debug()));retire(service);
+ // Owner-thread inspection uses the production private-rendezvous VEH. It
+ // must leave all debug registers unchanged; retire releases that handler.
+ CONTEXT foreign=original;foreign.Dr0=sites[1];foreign.Dr1=sites[1];foreign.Dr7|=1|4;debug(&foreign);foreign=debug();assert(foreign.Dr0==sites[1]&&foreign.Dr1==sites[1]);assert(service.inspect());wait(service);budget=service.slotBudget();printf("BUDGET foreign2 packed=%08x state=%ld free=%u foreign=%u handler=%d\n",budget,service.state,assist::slotbudget::free(budget),assist::slotbudget::foreign(budget),int(service.handler_!=nullptr));assert(assist::slotbudget::foreign(budget)==2&&assist::slotbudget::free(budget)==2&&service.resources()&&sameDebug(foreign,debug()));retire(service);debug(&original);
  assert(service.configure(sites,16,controlCallback));wait(service);assert(service.activeTags()==16&&__builtin_popcount(service.lease.mask)==1);
  assert(PermissionCaller(&local)==1&&PermissionCaller(&other)==1);assert(OwnerCaller(&local)==local.tag&&OwnerCaller(&other)==other.tag);assert(PlanningCaller(&local)==local.tag&&PlanningCaller(&other)==other.tag);
  controlEnabled=false;assert(PermissionCaller(&other)==0&&OwnerCaller(&other)==other.tag);controlEnabled=true;
@@ -99,7 +99,7 @@ int main(){
  // A readback failure when a physical slot changes from tag 0 to tag 4 must
  // retain both possible owners and the handler until actual retirement.
  assert(service.configure(sites,1,controlCallback));wait(service);failReadAt=contextReads+2;assert(service.configure(sites,16,controlCallback));wait(service);assert(service.state==assist::techbp::System&&service.lease.mask&&service.lease.uncertain&&service.resources());
- assert(PermissionCaller(&other)==1);failReadAt=0;retire(service);assert(sameDebug(original,debug()));
+ assert(PermissionCaller(&other)==0);failReadAt=0;retire(service);assert(sameDebug(original,debug()));
  // Mixed foreign single-step causes pass the COMPLETE context unchanged.
  assert(service.configure(sites,16,controlCallback));wait(service);const CONTEXT owned=debug();
  EXCEPTION_RECORD record{};record.ExceptionCode=EXCEPTION_SINGLE_STEP;

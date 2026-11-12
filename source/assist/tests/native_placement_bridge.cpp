@@ -20,6 +20,9 @@
 #include "../source/constructor_adapter.h"
 #include "../source/entry_gate.h"
 #include "../source/event_delivery.h"
+#include "../source/startup_dependency_policy.h"
+#include "../source/sell_packet.h"
+#include "../source/read_only_lifecycle.h"
 using namespace assist;
 using Event=vanilla::Packet;
 static Shared*sh;static Snapshot snap;
@@ -52,6 +55,15 @@ static bool read(uint32_t p,void*out,size_t n){++reads;if(failRead&&p<=failRead&
  auto at=memory(p,n);if(!at)return false;memcpy(out,at,n);return true;}
 struct Vec{uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
 static Vec vec(uint32_t p,int limit=16384){Vec v{};if(!read(p,&v,sizeof v)||v.count<0||v.count>limit||v.count>v.capacity||v.items<0x10000)return {};return v;}
+static uint32_t item(const Vec&v,int i){return i>=0&&i<v.count?get<uint32_t>(v.items+unsigned(i)*4):0;}
+// Place uses the ordinary native queue. Unrelated sale/private-queue and
+// startup-constructor branches must remain unreachable in this fixture.
+static uint32_t worldByID(uint32_t){assert(false);return 0;}
+static bool sellHumanHouse(uint32_t){assert(false);return false;}
+static bool executeSinglePlayerAISell(Event&,uint32_t){assert(false);return false;}
+static bool privateOutActive(){return false;}
+static bool privateOutQueue(Event&,bool){assert(false);return false;}
+static bool nativeDependencyReady(uint32_t){assert(false);return false;}
 static DWORD sampleClock(Shared*){return clockNow;}
 static bool simulationReady(bool preview=false){int frame=get<int>(0xA8ED84);return ready&&get<uint32_t>(0xA83D4C)==lastHouse&&frame>=0&&(preview?frame>=snap.frame:frame==snap.frame)&&get<int>(0xA8B238)==snap.session&&eventdelivery::mayQueue(get<int>(0xA8B238));}
 static bool nativePlacementRetired(){return retired;}
@@ -97,6 +109,7 @@ namespace gameentry {
  enum class Client{Assist};static bool allowed=true;static int depth=0;
  static bool active(Client){return true;}
  struct Scope{bool entered;explicit Scope(Client):entered(allowed&&!depth){if(entered)++depth;}~Scope(){if(entered)--depth;}explicit operator bool()const{return entered;}};
+ template<class Fn>bool scoped(Client client,bool,Fn&&fn){Scope scope(client);if(!scope)return false;fn();return true;}
 }
 #include "../source/native_viewport_query.h"
 struct FixtureCell{short x,y;};struct FixtureCoord{int x,y,z;};
@@ -111,6 +124,8 @@ static bool nativePlacementPacket(const Event&,const intent::EventOrder&);
 // This fixture exercises Place, never MO Waypoints. The production MO guard
 // accepts every non-Waypoints order unless a MO submission is in progress.
 static bool validateMoSubmission(const intent::EventOrder&o){return o.domain==vanilla::Domain::Place;}
+static bool validateBombBoardSubmission(const intent::EventOrder&o){return o.domain==vanilla::Domain::Place;}
+static bool validateDirectAirSubmission(const intent::EventOrder&o){return o.domain==vanilla::Domain::Place;}
 #define memcpy queueCopy
 #include "native_placement_entry_extract.h"
 #undef memcpy
@@ -128,6 +143,8 @@ static BOOL fixtureClient(HWND,POINT*){return TRUE;}
 #define ScreenToClient fixtureClient
 #include "../source/native_placement_bridge.h"
 static bool superweaponGrantWantsInputSample(const MSG*){return false;}
+static bool gestureWantsInputSample(const MSG*){return false;}
+static readonly::RuntimeState readOnlyState{};
 namespace dispatchrouter {enum class Trigger {Message};}
 static volatile LONG hostWorkPending=0;
 static int inputDispatches=0,filterCalls=0;static bool sampleAllowed=true;
