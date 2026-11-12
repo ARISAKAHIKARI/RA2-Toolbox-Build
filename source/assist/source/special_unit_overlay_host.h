@@ -41,7 +41,9 @@ static void update(const nativeviewhost::Transform&transform){
  const bool same=submittedSource==source&&submittedX==snap.cameraX&&submittedY==snap.cameraY&&submittedSettings==selection.revision;
  // Cached materials may finish over several bounded decode rounds. A warm
  // stationary publication needs no repeated worker job or composite upload.
- if(same&&frame&&frame->source==source&&frame->missing==0&&frame->projection.cameraX==snap.cameraX&&frame->projection.cameraY==snap.cameraY)return;
+ // Ready materials alone do not prove composition succeeded. Retry a failed
+ // image on the same paused frame; genuinely empty/cull-only results stay idle.
+ if(same&&frame&&frame->source==source&&frame->missing==0&&(frame->composite||frame->identities.empty())&&frame->projection.cameraX==snap.cameraX&&frame->projection.cameraY==snap.cameraY)return;
  if(same&&uint32_t(now-submittedAt)<16)return;
  submittedAt=now;submittedSource=source;submittedX=snap.cameraX;submittedY=snap.cameraY;submittedSettings=selection.revision;
  Request request{pid,source->key.match,source,{snap.cameraX,snap.cameraY,transform.active?transform.logical.w:snap.width,transform.active?transform.logical.h:snap.height},

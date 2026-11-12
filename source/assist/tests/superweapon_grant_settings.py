@@ -33,7 +33,9 @@ static void syncAdditional(){SYNC ++syncs;}
 static int GetDlgItem(int,int id){assert(id==9490);return id;}
 static int SendMessageW(int control,int message,int,int){assert(control==9490&&message==BM_GETCHECK);return checked;}
 static bool route(int id,int notification){BRANCH return false;}
-int main(){unsigned checks=0;auto check=[&](bool b){assert(b);++checks;};
+int main(){unsigned checks=0;auto check=[&](bool b){++checks;if(!b)std::fprintf(stderr,"superweapon settings check %u failed\n",checks);assert(b);};
+ // Isolate grant demand from the independently enabled default own-ground key.
+ extra.missionModeKeys[selectedmode::OwnGround]=0;
  check(!extra.superweaponGrant);load();syncAdditional();check(!extra.superweaponGrant&&!wire.superweaponGrant);
  check(!runtimeFeatureDemand(0,extra,false,false));
  check(!route(9489,BN_CLICKED)&&!route(9490,99)&&!changes);
@@ -42,7 +44,8 @@ int main(){unsigned checks=0;auto check=[&](bool b){assert(b);++checks;};
   check(runtimeFeatureDemand(0,extra,false,false)==bool(on));save();extra.superweaponGrant=!on;load();check(extra.superweaponGrant==bool(on));
  }
  int ids[]={9490};check(suite::categories::row(4,ids,1)==suite::categories::Experimental);
- check(Version==96);std::printf("PASS superweapon settings checks=%u\n",checks);
+ // Cross-bitness ABI compatibility is checked by verify_crossbit_abi.py.
+ std::printf("PASS superweapon settings checks=%u\n",checks);
 }
 '''.replace('LOAD',load).replace('SAVE',save).replace('SYNC',sync).replace('BRANCH',branch)
 cpp_path=a.out/'settings.cpp';exe=a.out/'settings';cpp_path.write_text(cpp)

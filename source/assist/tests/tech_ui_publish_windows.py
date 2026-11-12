@@ -5,6 +5,7 @@ RemoveVectoredExceptionHandler failure is injected. No game process touched.
 """
 import argparse,hashlib,json,subprocess
 from pathlib import Path
+from breakpoint_windows_build import build_guard
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--zig',required=True);p.add_argument('--out',required=True);a=p.parse_args()
 here=Path(__file__).resolve().parent;source=here.parent/'source';out=Path(a.out).resolve();out.mkdir(parents=True,exist_ok=True);baseline=here/'fixtures/tech_ui_publish_baseline'
 sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest()
@@ -20,9 +21,10 @@ need+=['static uint32_t enhancementTags(){','static bool enhancementReady(){']
 if 'static bool groupOff(uint32_t group){' in s:need.append('static bool groupOff(uint32_t group){')
 need.append('static void publish(){')
 current=out/'current-publish.inc';current.write_text('\n'.join(block(s,n)for n in need),encoding='utf-8')
+obj=build_guard(a.zig,out)
 results={}
 for phase,inc in [('baseline',baseline/'publish.inc'),('current',current)]:
- exe=out/(phase+'.exe');cmd=[str(Path(a.zig).resolve()),'c++','-target','x86-windows-gnu','-std=c++17','-O1','-UNDEBUG','-DEXPECT_HIDDEN='+str(int(phase=='baseline')),'-DTECH_CORE_HEADER="'+core.resolve().as_posix()+'"','-DTECH_PUBLISH_ROUTES="'+inc.resolve().as_posix()+'"',str(here/'tech_ui_publish_windows.cpp'),'-o',str(exe),'-lkernel32']
+ exe=out/(phase+'.exe');cmd=[str(Path(a.zig).resolve()),'c++','-target','x86-windows-gnu','-std=c++17','-O1','-UNDEBUG','-DEXPECT_HIDDEN='+str(int(phase=='baseline')),'-DTECH_CORE_HEADER="'+core.resolve().as_posix()+'"','-DTECH_PUBLISH_ROUTES="'+inc.resolve().as_posix()+'"',str(here/'tech_ui_publish_windows.cpp'),str(obj),'-o',str(exe),'-lkernel32']
  r=subprocess.run(cmd,capture_output=True,text=True);(out/(phase+'-build.log')).write_text(r.stdout+r.stderr,encoding='utf-8')
  if r.returncode:raise SystemExit(r.stdout+r.stderr)
  r=subprocess.run([str(exe)],capture_output=True,text=True,timeout=20);(out/(phase+'.log')).write_text(r.stdout+r.stderr,encoding='utf-8')

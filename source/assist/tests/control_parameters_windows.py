@@ -1,9 +1,11 @@
 """Own-process Windows x86 DR/VEH control routing and joint-slot verification; no game or peers."""
 import argparse, hashlib, json, re, statistics, subprocess
 from pathlib import Path
+from breakpoint_windows_build import build_guard
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--zig',type=Path,required=True);p.add_argument('--build-dir',type=Path,required=True);p.add_argument('--output',type=Path,required=True);a=p.parse_args();a.build_dir.mkdir(parents=True,exist_ok=True)
 here=Path(__file__).resolve().parent;source=here.parent/'source';paths=[source/'tech_ui_breakpoint_core.h',source/'tech_ui_breakpoint_hot.h',source/'control_parameter_policy.h',here/'control_parameters_windows.cpp',here/'tech_ui_breakpoint_windows.cpp',Path(__file__)];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();before={str(p):sha(p)for p in paths}
-exe=a.build_dir/'control-parameters-windows.exe';flags=['-target','x86-windows-gnu','-std=c++17','-O2','-UNDEBUG','-fms-extensions','-fasm-blocks'];subprocess.run([str(a.zig.resolve()),'c++',*flags,str(here/'control_parameters_windows.cpp'),'-o',str(exe.resolve()),'-lkernel32'],check=True)
+obj=build_guard(a.zig,a.build_dir)
+exe=a.build_dir/'control-parameters-windows.exe';flags=['-target','x86-windows-gnu','-std=c++17','-O2','-UNDEBUG','-fms-extensions','-fasm-blocks'];subprocess.run([str(a.zig.resolve()),'c++',*flags,str(here/'control_parameters_windows.cpp'),str(obj),'-o',str(exe.resolve()),'-lkernel32'],check=True)
 # Build an isolated comparison from the SAME fixture and dependencies. Only the
 # pre-optimization VEH dispatch/counter block is restored below; the classifier,
 # slot lifecycle, compiler and validation remain identical to the current run.
@@ -24,7 +26,7 @@ text=text[:start]+'''  auto&c=*p->ContextRecord;const Registers r=registers(c);u
   if(s->callback&&s->callback(&c,tag))InterlockedIncrement(&s->changed);
 '''+text[end:];legacy_core.write_text(text)
 legacy_exe=a.build_dir/'control-parameters-legacy-dispatch.exe';legacy_source=legacy_root/(here/'control_parameters_windows.cpp').relative_to(repo)
-subprocess.run([str(a.zig.resolve()),'c++',*flags,str(legacy_source),'-o',str(legacy_exe.resolve()),'-lkernel32'],check=True)
+subprocess.run([str(a.zig.resolve()),'c++',*flags,str(legacy_source),str(obj),'-o',str(legacy_exe.resolve()),'-lkernel32'],check=True)
 def run_fixture(path):
  r=subprocess.run([str(path.resolve())],capture_output=True,text=True,timeout=45);print(r.stdout,end='');print(r.stderr,end='');assert r.returncode==0,r.returncode
  m=re.search(r'CONTROL_QPC calls=30000 slots=1 baseline_us=([\d.]+) active_us=([\d.]+) additional_us_per_exception=([\d.]+)',r.stdout);assert m

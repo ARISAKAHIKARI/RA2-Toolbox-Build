@@ -39,12 +39,13 @@ STATUS
 static settingsdeps::State state(){settingsdeps::State s;using settingsdeps::Need;s.set(Need::ExactTechnology,extra.techEnhance&&extra.techEnhanceImplementation==1);BLOCKED return s;}
 static bool route(int id,int notification,bool select=false){BRANCHES return false;}
 static bool click(int on){checked=on;if(!settingsdeps::decision(9492,state()).enabled()){checked=extra.mapVisibility;return false;}return route(9492,BN_CLICKED);}
-int main(){unsigned checks=0;auto check=[&](bool b){assert(b);++checks;};
+int main(){unsigned checks=0;auto check=[&](bool b){++checks;if(!b)std::fprintf(stderr,"map settings check %u failed\n",checks);assert(b);};
+ extra.missionModeKeys[selectedmode::OwnGround]=0; // Isolate map demand from the default own-ground key.
  load();syncAdditional();check(!extra.mapVisibility&&!wire.mapVisibility&&!runtimeFeatureDemand(0,extra,false,false));
  for(int id:{860,420,9097,9492})check(settingsdeps::decision(id,state()).enabled());
  check(click(1)&&extra.mapVisibility&&wire.mapVisibility); // Offline configuration uses the four-slot plan.
  save();extra.mapVisibility=false;load();check(extra.mapVisibility);check(click(0));
- check(hardwareBudgetStatus().find(L"预设 0 / 4")!=std::wstring::npos&&hardwareBudgetStatus().find(L"连接后复核")!=std::wstring::npos);
+ check(hardwareBudgetStatus().find(L"预设 0 / 4")!=std::wstring::npos&&hardwareBudgetStatus().find(L"实际占用未测定，启用时复核")!=std::wstring::npos);
  budget=slotbudget::pack(4,0,0,0);check(click(1)&&extra.mapVisibility&&wire.mapVisibility&&requestedHardwareTags()==slotbudget::Map);check(runtimeFeatureDemand(0,extra,false,false));
  budget=slotbudget::pack(0,4,0,23);check(click(0)&&!extra.mapVisibility&&!wire.mapVisibility); // Disable remains available.
  extra.controlAll=true;extra.techEnhance=true;extra.techEnhanceImplementation=1;techMode=true;
@@ -75,7 +76,7 @@ int main(){unsigned checks=0;auto check=[&](bool b){assert(b);++checks;};
  extra.mapStrategy=0;extra.manualReveal=true;check(click(1)&&!extra.mapVisibility&&!checked);extra.manualReveal=false;check(click(1)&&extra.mapVisibility);
  selected=2;check(route(808,1,true)&&selected==0&&extra.mapVisibility&&extra.mapStrategy==0);checked=1;check(route(9199,0)&&checked==0&&!extra.manualReveal);
  check(click(0));extra.mapVisibility=true;save();extra.mapVisibility=false;load();syncAdditional();check(extra.mapVisibility&&wire.mapVisibility);
- check(!route(9491,BN_CLICKED)&&!route(9492,9));check(notices==9);check(Version==96);
+ check(!route(9491,BN_CLICKED)&&!route(9492,9));check(notices==9);
  std::printf("PASS map settings/admission checks=%u\n",checks);
 }
 '''

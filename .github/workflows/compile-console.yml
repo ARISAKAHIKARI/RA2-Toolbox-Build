@@ -49,6 +49,24 @@ jobs:
             g++ -std=c++17 -O2 -UNDEBUG "source/assist/tests/$name.cpp" -o "diagnostics/console-browser/$name"
             "diagnostics/console-browser/$name"
           done
+      - name: Verify special overlays, sampling and input recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in special_overlay_lifecycle special_overlay_settings passenger_frame_sampling catalogue_frame_sampling lost_gesture_release host_broker_retry manual_reconnect; do
+            python3 "source/assist/tests/$name.py" --out "diagnostics/console-browser/$name"
+          done
+          python3 source/assist/tests/formation_input_ownership.py --output diagnostics/console-browser/formation-input.json
+          for name in special_enemy_markers enemy_markers world_presentation input_ownership hotkey_routes; do
+            g++ -std=c++17 -O1 -UNDEBUG -pthread "source/assist/tests/$name.cpp" -o "diagnostics/console-browser/$name"
+            "diagnostics/console-browser/$name"
+          done
+          g++ -std=c++17 -O1 -UNDEBUG -pthread source/assist/tests/special_unit_overlay.cpp source/third_party/xbrz/xbrz.cpp -o diagnostics/console-browser/special_unit_overlay
+          diagnostics/console-browser/special_unit_overlay
+          g++ -std=c++17 -O1 -UNDEBUG source/suite/tests/choice_descriptions.cpp -o diagnostics/console-browser/choice_descriptions
+          diagnostics/console-browser/choice_descriptions
+          node source/suite/tests/choice_help_test.mjs
+          node source/suite/tests/console_composition_test.mjs
       - name: Install the pinned browser fixture dependencies
         shell: bash
         run: |

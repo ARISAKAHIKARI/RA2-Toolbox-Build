@@ -28,6 +28,10 @@ static uint32_t typePointers[4]{0x600000};
 static uint32_t house=0x500000;static std::map<uint32_t,uint32_t> mem;
 static int c=1,arg=0,result=0,n=0,events=0,canBuild=1;
 static bool cameo=true,factoryFound=true,append=true,fullPermission=false;static int nativeLimit=1;
+static bool dependencies=true;
+static bool nativeDependenciesReady(uint32_t build,uint32_t factory,uint32_t event){assert(build==0x6ABC60&&factory==0x4F7870&&event==0x5F7900);return dependencies;}
+static bool nativeDependencyReady(uint32_t address){assert(address==0x4F7870);return dependencies;}
+static bool techEnhancementReservationCanBuild(uint32_t,uint32_t){return false;} // Enhancement is covered by construction_host_test.py.
 static constexpr int ProduceDeferred=1,ProduceReserved=2;
 template<class T>T get(uint32_t address){auto i=mem.find(address);return i==mem.end()?T{}:T(i->second);}
 template<class T>T call(uint32_t,uint32_t,void*,bool limited,bool){return T(limited?nativeLimit:canBuild);}
@@ -53,6 +57,10 @@ static int run(int category,uint32_t offset,int waiting,uint32_t product=0x70000
 }
 int main(){
  sh->flags=ReserveConstruction;
+ dependencies=false;
+ assert(run(16,0x53B0,0)==-12&&events==0);
+ assert(run(7,0x53BC,0,0,false,true,ProduceReserved)==-12&&events==0);
+ dependencies=true;
  for(auto item:{std::pair<int,uint32_t>{16,0x53B0},{40,0x53B4},{3,0x53AC}}){
   int before=events;assert(run(item.first,item.second,29)==0&&n==1&&events==before+1);
   assert(run(item.first,item.second,0)==0&&n==1&&events==before+2);

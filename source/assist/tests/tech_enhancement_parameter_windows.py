@@ -1,8 +1,10 @@
 """Real own-process Windows DR/VEH four-site exact-TechLevel transaction fixture."""
 import argparse,hashlib,json,re,subprocess
 from pathlib import Path
+from breakpoint_windows_build import build_guard
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--zig',required=True,type=Path);p.add_argument('--build-dir',required=True,type=Path);p.add_argument('--output',required=True,type=Path);a=p.parse_args();here=Path(__file__).resolve().parent;repo=here.parents[2];a.build_dir.mkdir(parents=True,exist_ok=True);exe=a.build_dir/'tech-enhancement-parameters-windows.exe'
-paths=['source/assist/source/tech_ui_breakpoint_core.h','source/assist/source/tech_ui_breakpoint_hot.h','source/assist/source/tech_enhancement_parameter_policy.h','source/assist/tests/tech_ui_breakpoint_windows.cpp','source/assist/tests/tech_enhancement_parameter_windows.cpp','source/assist/tests/tech_enhancement_parameter_windows.py'];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();before={n:sha(repo/n)for n in paths};flags=['-target','x86-windows-gnu','-std=c++17','-O2','-UNDEBUG','-fms-extensions','-fasm-blocks'];subprocess.run([str(a.zig.resolve()),'c++',*flags,str(here/'tech_enhancement_parameter_windows.cpp'),'-o',str(exe.resolve()),'-lkernel32'],check=True)
+obj=build_guard(a.zig,a.build_dir)
+paths=['source/assist/source/tech_ui_breakpoint_core.h','source/assist/source/tech_ui_breakpoint_hot.h','source/assist/source/tech_enhancement_parameter_policy.h','source/assist/tests/tech_ui_breakpoint_windows.cpp','source/assist/tests/tech_enhancement_parameter_windows.cpp','source/assist/tests/tech_enhancement_parameter_windows.py'];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();before={n:sha(repo/n)for n in paths};flags=['-target','x86-windows-gnu','-std=c++17','-O2','-UNDEBUG','-fms-extensions','-fasm-blocks'];subprocess.run([str(a.zig.resolve()),'c++',*flags,str(here/'tech_enhancement_parameter_windows.cpp'),str(obj),'-o',str(exe.resolve()),'-lkernel32'],check=True)
 runs=[]
 for i in range(3):
  r=subprocess.run([str(exe.resolve())],capture_output=True,text=True);print(r.stdout,end='');print(r.stderr,end='');assert r.returncode==0,r.returncode

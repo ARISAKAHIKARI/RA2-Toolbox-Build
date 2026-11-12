@@ -25,7 +25,7 @@ struct EnemyMemory {
  }
  uint64_t hash()const{uint64_t h=1469598103934665603ull;for(auto b:data)h=(h^b)*1099511628211ull;return h;}
 };
-struct EnemyRead {EnemyMemory*m;bool operator()(uint32_t a,void*out,size_t n)const{return m->read(a,out,n);}bool fresh(uint32_t a,void*out,size_t n)const{return m->read(a,out,n,true);}};
+struct EnemyRead {EnemyMemory*m;bool operator()(uint32_t a,void*out,size_t n)const{return m->read(a,out,n);}bool live(uint32_t a,void*out,size_t n)const{return m->read(a,out,n,true);}};
 struct EnemyFixture {
  static constexpr uint32_t local=0x680000,enemy=0x6A0000,ally=0x6C0000,neutral=0x6E0000,tactical=0x7A0000;
  static constexpr uint32_t type=0x650000,enemyType=0x652000,infType=0x654000,buildingType=0x656000,airType=0x658000;
@@ -123,9 +123,11 @@ int main(){using F=EnemyFixture;using namespace assist;
    assert(s.label[0].x==labelX-3&&s.label[0].y==labelY-5);
    assert(f.marks().tick==s.sampledTick); // Same object sample; camera rebase does not age it independently.
   }
-  assert(f.mem.scans==0);f.mem.guard=0;const auto&s=f.sample();
+  // The live reader now supplies the camera at both admission and publication.
+  // Its first changed view refreshes once; repeated identical views stay cached.
+  assert(f.mem.scans==1);f.mem.guard=0;const auto&s=f.sample();
   assert(f.marks().count==4&&s.cameraX==cx&&s.cameraY==cy);
-  std::cout<<"PASS 1000 camera changes during sampling: no enemy gaps/rescan storm, same camera rebase as capacity labels\n";
+  std::cout<<"PASS 1000 samples of a changed live camera: one refresh, no enemy gaps/rescan storm, same rebase as capacity labels\n";
  }
  {
   F f;f.mem.put<int>(F::foe+0x9C,70*256);f.mem.put<int>(F::foe+0xA0,20*256);f.sample();assert(!f.has(2));f.mem.put<int>(0xB0CE30,1920);f.sample();assert(f.has(2));

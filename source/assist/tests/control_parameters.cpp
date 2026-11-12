@@ -25,7 +25,7 @@ constexpr unsigned UnsafeTech=4096;
 static unsigned techImplementation=4;static bool compatible=true;static uint32_t stack[4]{};
 static uint32_t controlPolicyRevision=debugentries::policyRevision;
 namespace techmode{static bool parameters(unsigned mode){return mode==4;}}
-struct Shared {uint32_t controlAll=controlmode::Parameters,stop=0,flags=UnsafeTech;}storage,*sh=&storage;
+struct Shared {uint32_t controlAll=controlmode::Parameters,stop=0,flags=UnsafeTech,techProductionCompatibility=0,techProductionFullPasses=0;}storage,*sh=&storage;
 struct Policy {int controlling=1,enabled=1;uint32_t house=0x10000,houseID=10,scenario=0x60000;int session=3,frame=100;}policy;
 struct TypeIdentity {uint32_t pointer,id,table;};
 static const TypeIdentity fullCandidate{0x60000,60,0x7F6218};

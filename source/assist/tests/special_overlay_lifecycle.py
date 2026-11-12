@@ -45,7 +45,17 @@ int main(){
  worker.result=completed();update(transform);assert(frame);snap.chat=true;update(transform);assert(!frame);snap.chat=false;
  source();update(transform);worker.result=completed();update(transform);assert(frame);++match;source();update(transform);assert(!frame);worker.result=old;update(transform);assert(!frame);
  worker.result=completed();update(transform);assert(frame);front=false;update(transform);assert(!frame);
- std::cout<<"PASS warm no-op, bounded unconfirmed hold, confirmed empty, identity/profile/mode/world changes, stale completion, chat/focus cleanup\n";
+ // A transient compositor failure must not become a completed warm frame.
+ // Hold the exact same paused source/camera/settings while the worker retries.
+ front=true;source();update(transform);auto failed=completed();failed->composite.reset();worker.result=failed;update(transform);
+ const int beforeRetry=worker.submissions;now+=15;update(transform);assert(worker.submissions==beforeRetry);
+ ++now;update(transform);assert(worker.submissions==beforeRetry+1);
+ worker.result=completed();update(transform);assert(frame&&frame->composite);const int recovered=worker.submissions;
+ now+=1000;update(transform);assert(worker.submissions==recovered);
+ // A genuinely empty/cull-only result has no pixels to compose and stays idle.
+ clear();source();update(transform);auto empty=completed();empty->identities.clear();empty->composite.reset();worker.result=empty;update(transform);
+ const int emptySubmissions=worker.submissions;now+=1000;update(transform);assert(worker.submissions==emptySubmissions);
+ std::cout<<"PASS warm no-op, bounded unconfirmed hold, confirmed empty, identity/profile/mode/world changes, stale completion, chat/focus cleanup, paused compositor retry and empty-result idle\n";
 }
 '''
 cpp=a.out/'lifecycle.cpp';cpp.write_text(code);exe=a.out/'lifecycle'
