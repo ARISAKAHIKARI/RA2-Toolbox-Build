@@ -1,0 +1,77 @@
+name: Publish RA2 Toolbox 1.0.50
+on:
+  push:
+    branches: [codex/release-1.0.50-20261112]
+    paths:
+      - .github/workflows/publish-v150.yml
+      - .github/scripts/release_150.py
+      - source/shared/source/release_version.h
+      - packages/v1.0.50/**
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: publish-v150
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force diagnostics-v150,baseline-v149 | Out-Null
+          python .github/scripts/release_150.py snapshot
+          if($LASTEXITCODE -ne 0){throw 'Source snapshot failed'}
+      - name: Build paired Windows programs and verify package prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/build-v150"
+          bash source/build-zig-x64.sh > diagnostics-v150/build.log 2>&1 || { tail -100 diagnostics-v150/build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root build-v150 --host-arch x64 --webview2 > diagnostics-v150/static-pe.log 2>&1 || { cat diagnostics-v150/static-pe.log; exit 1; }
+          cat diagnostics-v150/static-pe.log
+      - name: Reuse verified resources and assemble release packages
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v1.0.49 --repo $env:GITHUB_REPOSITORY --dir baseline-v149 --pattern 'RA2Toolbox-1.0.49-x64-*.zip'
+          if($LASTEXITCODE -ne 0){throw 'Baseline download failed'}
+          python .github/scripts/release_150.py package
+          if($LASTEXITCODE -ne 0){throw 'Package verification failed'}
+      - name: Publish 1.0.50 as latest and retract 1.0.49
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python .github/scripts/release_150.py publish
+          if($LASTEXITCODE -ne 0){throw 'Publication failed'}
+      - name: Preserve build and publication receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.50-release-receipts
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            diagnostics-v150/
+            dist-v150/source-inputs.json
+            dist-v150/publication.json
+            dist-v150/*manifest.json
+            dist-v150/*SHA256SUMS.txt
