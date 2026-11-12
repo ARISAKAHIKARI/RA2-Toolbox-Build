@@ -1,0 +1,58 @@
+name: Publish verified 1.0.50 artifacts
+on:
+  push:
+    branches: [codex/publish-1.0.50-artifacts-20261112]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: publish-v150
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/download-artifact@v4
+        with:
+          name: RA2Toolbox-Console-MVVM-x64
+          path: build-v150
+          run-id: 43150713484
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: RA2Toolbox-Console-MVVM-build-log
+          path: diagnostics-v150
+          run-id: 43150713484
+          github-token: ${{ github.token }}
+      - name: Verify exact compiled source and assemble packages
+        run: |
+          set -euo pipefail
+          mv diagnostics-v150/console-build.log diagnostics-v150/build.log
+          python .github/scripts/release_150.py snapshot-artifact
+          python source/tools/verify_windows_outputs.py --root build-v150 --host-arch x64 --webview2 | tee diagnostics-v150/static-pe.log
+          mkdir baseline-v149
+          gh release download v1.0.49 --repo "$GITHUB_REPOSITORY" --dir baseline-v149 --pattern 'RA2Toolbox-1.0.49-x64-*.zip'
+          python .github/scripts/release_150.py package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.50-verified-release-packages
+          path: dist-v150/
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish latest and retract 1.0.49
+        run: python .github/scripts/release_150.py publish
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-1.0.50-publication-receipt
+          path: dist-v150/publication.json
+          retention-days: 30
+          if-no-files-found: warn

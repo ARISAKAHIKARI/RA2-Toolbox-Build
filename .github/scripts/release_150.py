@@ -14,7 +14,7 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 def run(*args):
-    return subprocess.check_output(args, cwd=ROOT, text=True).strip()
+    return subprocess.check_output(args, cwd=ROOT, text=True, encoding="utf-8").strip()
 
 def record(data):
     return {"bytes": len(data), "sha256": sha(data)}
@@ -46,7 +46,7 @@ def snapshot():
 
 def package():
     before = json.loads((OUT / "source-inputs.json").read_text(encoding="utf-8"))
-    assert before["commit"] == run("git", "rev-parse", "HEAD")
+    assert before.get("checkout_commit", before["commit"]) == run("git", "rev-parse", "HEAD")
     assert before["files"] == inputs(), "Tracked sources changed during build"
     sys.path.insert(0, str(ROOT / "source/tools"))
     from verify_windows_outputs import verify, read_release_version
@@ -97,11 +97,15 @@ def package():
         "BUILD_TARGET.json": (BIN / "BUILD_TARGET.json").read_bytes(),
         "build.log": (ROOT / "diagnostics-v150/build.log").read_bytes(),
         "static-pe.log": (ROOT / "diagnostics-v150/static-pe.log").read_bytes()}
+    if (BIN / "CONSOLE_COMPILE.json").is_file():
+        evidence["CONSOLE_COMPILE.json"] = (BIN / "CONSOLE_COMPILE.json").read_bytes()
     path = OUT / ("RA2Toolbox-" + VERSION + "-verification.zip")
     archives[path.name] = archive(path, evidence)
     manifest = {"version": VERSION, "file_version": "1.0.50.0", "tag": "v1.0.50",
         "source_commit": before["commit"], "source_tree": before["source_tree"],
-        "source_inputs_unchanged_after_build": True, "source_inputs_checked": len(before["files"]),
+        "source_inputs_unchanged_after_build": None if "imported_artifact" in before else True,
+        "packaging_inputs_unchanged": True, "source_inputs_checked": len(before["files"]),
+        "imported_artifact": before.get("imported_artifact"),
         "build_method": "GitHub Actions windows-2022; Zig 0.13.0",
         "build_artifacts": {n: record(d) for n, d in paired.items()},
         "actual_pe_verified": actual, "archives": archives,
@@ -123,9 +127,12 @@ def api(path, *options):
 
 def publish():
     repo = os.environ["GITHUB_REPOSITORY"]
-    commit = run("git", "rev-parse", "HEAD")
+    manifest = json.loads((OUT / "RA2Toolbox-1.0.50-release-manifest.json").read_text(encoding="utf-8"))
+    commit = manifest["source_commit"]
     tag = "v1.0.50"
-    subprocess.run(["git", "push", "origin", "HEAD:refs/heads/main"], cwd=ROOT, check=True)
+    main = api("repos/" + repo + "/git/ref/heads/main")
+    if main["object"]["sha"] != commit:
+        api("repos/" + repo + "/git/refs/heads/main", "-X", "PATCH", "-f", "sha=" + commit, "-F", "force=false")
     def find_release():
         for page in range(1, 20):
             rows = api("repos/" + repo + "/releases?per_page=100&page=" + str(page))
@@ -170,5 +177,23 @@ def publish():
         "assets": expected})
     print("PUBLISHED " + release["html_url"] + "; v1.0.49 retracted as draft")
 
+def snapshot_artifact():
+    OUT.mkdir(exist_ok=True)
+    compiled = json.loads((BIN / "CONSOLE_COMPILE.json").read_text(encoding="utf-8-sig"))
+    commit = "810a4f9b1905f730acfd4a7b9d7b0cba04b74288"
+    assert compiled["commit"] == commit
+    assert run("git", "rev-parse", "HEAD:source") == run("git", "rev-parse", commit + ":source")
+    for row in compiled["files"]:
+        assert record((BIN / row["name"]).read_bytes()) == {k: row[k] for k in ("bytes", "sha256")}
+    assert {row["name"] for row in compiled["files"]} == set(NAMES)
+    write_json(OUT / "source-inputs.json", {"commit": commit,
+        "checkout_commit": run("git", "rev-parse", "HEAD"),
+        "source_tree": run("git", "rev-parse", commit + ":source"), "files": inputs(),
+        "imported_artifact": {"workflow_run_id": 43150713484, "job_id": 130958940850,
+            "artifact_id": 13913299457, "source_commit": commit,
+            "paired_binary_hashes_match_build_receipt": True,
+            "source_tree_matches_packaging_checkout": True,
+            "snapshot_taken_before_build": False}})
+
 if __name__ == "__main__":
-    {"snapshot": snapshot, "package": package, "publish": publish}[sys.argv[1]]()
+    {"snapshot": snapshot, "snapshot-artifact": snapshot_artifact, "package": package, "publish": publish}[sys.argv[1]]()
