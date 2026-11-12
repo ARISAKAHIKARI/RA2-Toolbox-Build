@@ -1,6 +1,6 @@
 """Own-process x86 DR retirement plus source-bound native UI diagnostics.
 
-Actual Windows Suspend/Get/Set/readback/Resume and production Service; only
+Actual Windows owner-thread DR transactions and production Service; only
 RemoveVectoredExceptionHandler failure is injected. No game process touched.
 """
 import argparse,hashlib,json,subprocess
