@@ -92,6 +92,8 @@ jobs:
     if: github.ref != 'refs/heads/codex/runtime-stack-20261104'
     runs-on: windows-latest
     timeout-minutes: 35
+    env:
+      PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -158,7 +160,7 @@ jobs:
           python source/assist/tests/tech_enhancement_parameter_settings.py --zig $env:ZIG_EXE --build-dir diagnostics/console-win32/level-switch --output diagnostics/console-win32/level-switch/result.json
           if($LASTEXITCODE -ne 0){throw 'Independent level comparison setting failed'}
           python source/tools/verify_crossbit_abi.py --zig $env:ZIG_EXE --output diagnostics/console-win32/abi.json
-          if($LASTEXITCODE -ne 0){throw 'Protocol 96 ABI mismatch'}
+          if($LASTEXITCODE -ne 0){throw 'Cross-bitness ABI mismatch'}
       - name: Verify native placement click admission and local UI completion
         shell: pwsh
         run: |

@@ -11,9 +11,21 @@ static ULONG testRemoveVeh(PVOID handler){if(failRemoval){++rejectedRemovals;Set
 #include TECH_CORE_HEADER
 #include "../source/tech_enhancement_parameter_policy.h"
 #include "../source/map_visibility_parameter_policy.h"
+#include "../source/single_player_fps.h"
+#include "../source/trigger_input_policy.h"
+#include "../source/protocol.h"
 #undef RemoveVectoredExceptionHandler
-struct Shared {int mapVisibilityStatus=0;uint32_t mapVisibilityError=0,mapVisibilityExceptions=0;uint32_t hardwareSlotBudget=0;int techParameterStatus=0;unsigned techParameterError=0,techParameterSlots=0,techParameterExceptions=0;int techEnhanceParameterStatus=0;unsigned techEnhanceParameterError=0,techEnhanceParameterSlots=0,techEnhanceParameterExceptions=0;}wire,*sh=&wire;
+static assist::Shared wire{},*sh=&wire;
 namespace techparameters {
+namespace triggerinput=assist::triggerinput;
+namespace singlefps {constexpr uint32_t Tag=assist::singlefps::Tag;static int failure=0;static bool desired=false;}
+static int triggerFailure=0;static bool triggerDesired=false,enhancementCameoBlocked=false;
+// Independent signature/performance diagnostics are seams; the actual
+// Service ownership and complete production status publisher run below.
+static void inspectDebugBreakpointSignatures(){}
+static void publishDebugBreakpointStates(){}
+static void publishHardwarePerformance(){}
+
 inline constexpr uint32_t FullGroup=1u;namespace mapvisibility=assist::mapvisibility;
 static bool mapDesired=false,lastMapPresentation=false,mapRedrawPending=false;static int mapFailure=0;static LONG mapExceptions=0;static struct{LONG showing=0;}policy;
 static assist::techbp::Service service;static bool desired=false,enhancementDesired=false,enhancementCompareRequested=true;static int failure=0,enhancementFailure=0;static unsigned refusedGroups=0,resourceGroups=0;static volatile LONG fullExceptions=0,enhancementExceptions=0;
@@ -28,7 +40,7 @@ extern "C" __declspec(noinline) void site2(){InterlockedExchangeAdd(&dummy,2);}
 extern "C" __declspec(noinline) void site3(){InterlockedExchangeAdd(&dummy,3);}
 static bool callback(void*,uint32_t){return false;}
 static void settle(){DWORD before=GetTickCount();while(techparameters::service.pending()&&DWORD(GetTickCount()-before)<5000)Sleep(1);check(!techparameters::service.pending());}
-int main(){using namespace techparameters;const uint32_t sites[]={uint32_t(uintptr_t(&site0)),uint32_t(uintptr_t(&site1)),uint32_t(uintptr_t(&site2)),uint32_t(uintptr_t(&site3))};
+int main(){using namespace techparameters;const uint32_t sites[assist::techbp::SiteCount]={uint32_t(uintptr_t(&site0)),uint32_t(uintptr_t(&site1)),uint32_t(uintptr_t(&site2)),uint32_t(uintptr_t(&site3))};
  check(service.configure(sites,12,callback));settle();check(service.activeTags()==12&&service.resources()&&service.state==techbp::Ready);enhancementDesired=true;resourceGroups=12;publish();check(sh->techEnhanceParameterStatus==techbp::Ready&&sh->techParameterStatus==0);
  enhancementDesired=false;check(!service.retire());settle();check(service.activeTags()==0&&!service.lease.mask);failRemoval=true;check(!service.retire());check(service.state==techbp::System&&service.resources()&&!service.pending());publish();const int failedStatus=sh->techEnhanceParameterStatus;
 #if EXPECT_HIDDEN
