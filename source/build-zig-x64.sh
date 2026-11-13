@@ -52,7 +52,8 @@ rc "$runtime_dir/dll_version.res" shared/source/dll_version.rc
 "$ZIG" c++ -target x86-windows-msvc -O2 -fms-extensions -fno-stack-protector -c cursor/source/resource_guard.cpp -o "$runtime_dir/resource_guard.o"
 "$ZIG" c++ -target x86-windows-gnu -O2 -DUNICODE -D_UNICODE -fms-extensions -fasm-blocks -fno-stack-protector -fno-builtin -fno-exceptions -fno-rtti -c cursor/source/hide.cpp -o "$runtime_dir/hide.o"
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -fms-extensions -fasm-blocks -fno-stack-protector -fno-builtin -fno-exceptions -fno-rtti -c game_runtime/source/runtime.cpp -o "$runtime_dir/runtime.o"
-"$ZIG" c++ -target x86-windows-gnu -shared -Wl,--exclude-all-symbols "$runtime_dir/runtime.o" "$runtime_dir/game_entry_manager.o" "$runtime_dir/bridge.o" "$runtime_dir/guard.o" "$runtime_dir/hide.o" "$runtime_dir/resource_guard.o" game_runtime/source/runtime.def "$runtime_dir/dll_version.res" -o "$build_dir/GameRuntime.dll" -lkernel32 -luser32 -lgdi32 -lwinmm
+"$ZIG" c++ -target x86-windows-gnu -shared "$runtime_dir/runtime.o" "$runtime_dir/game_entry_manager.o" "$runtime_dir/bridge.o" "$runtime_dir/guard.o" "$runtime_dir/hide.o" "$runtime_dir/resource_guard.o" game_runtime/source/runtime.def "$runtime_dir/dll_version.res" -o "$build_dir/GameRuntime.dll" -lkernel32 -luser32 -lgdi32 -lwinmm
+"$python_bin" tools/restrict_runtime_exports.py "$build_dir/GameRuntime.dll"
 rc "$runtime_dir/broker.res" runtime_broker/source/app.rc
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -municode runtime_broker/source/main.cpp "$runtime_dir/broker.res" -o "$build_dir/GameRuntimeHost32.exe" -Wl,--subsystem,windows -lkernel32 -luser32
 "$python_bin" tools/build_app_icon.py
