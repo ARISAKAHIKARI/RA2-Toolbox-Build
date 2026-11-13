@@ -26,7 +26,7 @@ def main():
    'REPAIR_MANUAL':manual,
    'REPAIR_RESET':reset[resetStart:resetEnd]+reset[autoStart:autoEnd]+'pendingRepairs.clear();',
   }
-  sections['SAMPLE_SCOPE']='static void requestWorldRange('+sections['SAMPLE_SCOPE']
+  sections['SAMPLE_SCOPE']='static worldframe::DemandLeases runtimeDemandLeases;\nstatic void requestWorldRange('+sections['SAMPLE_SCOPE']
   defines=[]
   for name,value in sections.items():
    target=dest/(name.lower()+'.inc');target.write_text(value+'\n');defines.append('-D'+name+'="'+str(target)+'"')

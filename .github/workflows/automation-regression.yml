@@ -1,8 +1,10 @@
 name: Verify automation admission and world sampling
 on:
   push:
-    branches: [main, codex/automation-hotfix-20261113]
+    branches: [main, codex/automation-hotfix-20261113, codex/sampling-validity-20261114]
     paths:
+      - source/assist/source/world_frame_runtime.h
+      - source/assist/tests/world_frame_retention.*
       - source/assist/source/bridge.cpp
       - source/assist/source/external_orders_bridge.h
       - source/assist/source/main.cpp
@@ -37,6 +39,7 @@ jobs:
           mkdir -p diagnostics/automation
           python source/assist/tests/defense_admission.py --out diagnostics/automation/defense --sanitize
           python source/assist/tests/world_frame_capture_performance.py --out diagnostics/automation/capture
+          python source/assist/tests/world_frame_retention.py --out diagnostics/automation/retention
           python source/assist/tests/world_frame_core_test.py 2>&1 | tee diagnostics/automation/core.log
           python source/assist/tests/tactical_frame_sampling.py --out diagnostics/automation/tactical
       - uses: actions/upload-artifact@v4
@@ -89,12 +92,12 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'Update candidate packaging failed'}
       - uses: actions/upload-artifact@v4
         with:
-          name: RA2Toolbox-1.0.50-AutomationFix-x64-Update
+          name: RA2Toolbox-1.0.50-SamplingFix-x64-Update
           retention-days: 30
           if-no-files-found: error
           path: |
-            artifacts/RA2Toolbox-1.0.50-AutomationFix-x64-Update.zip
-            artifacts/automation-fix-manifest.json
+            artifacts/RA2Toolbox-1.0.50-SamplingFix-x64-Update.zip
+            artifacts/sampling-fix-manifest.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

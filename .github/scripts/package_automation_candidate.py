@@ -12,13 +12,13 @@ for name in names:
  path=a.root/name
  if not path.is_file():raise SystemExit('Missing paired update file: '+name)
  files.append({'name':name,'bytes':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
-manifest={'version':'1.0.50','candidate':'AutomationFix-20261113','source_commit':os.environ['GITHUB_SHA'],
+manifest={'version':'1.0.50','candidate':'SamplingFix-20261113','source_commit':os.environ['GITHUB_SHA'],
  'host':'x64','runtime':'x86','public_release_replaced':False,'game_tested':False,'files':files}
 raw=(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n').encode()
-archive=a.out/'RA2Toolbox-1.0.50-AutomationFix-x64-Update.zip'
+archive=a.out/'RA2Toolbox-1.0.50-SamplingFix-x64-Update.zip'
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
  for name in names:z.write(a.root/name,name)
- z.writestr('AUTOMATION_FIX_BUILD.json',raw)
+ z.writestr('SAMPLING_FIX_BUILD.json',raw)
 manifest['archive']={'name':archive.name,'bytes':archive.stat().st_size,'sha256':hashlib.sha256(archive.read_bytes()).hexdigest()}
-(a.out/'automation-fix-manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+(a.out/'sampling-fix-manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 print(json.dumps(manifest['archive']))

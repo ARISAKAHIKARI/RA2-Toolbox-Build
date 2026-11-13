@@ -262,7 +262,7 @@ void transport(){
  currentPid=HostPid;const auto beforeRpm=rpmCalls;auto a=client->acquire(7);CHECK(a&&a->key.sameFrame(first->key));CHECK(client->acquire(7)==a);CHECK(!client->acquire(8));uint32_t value=0;CHECK(a->read(0x10000,&value,4)&&value==0x11112222);
  clock=105;client->request({0x13000,0x14000,0x13000,0xFFFF,0x15001});currentPid=GamePid;const auto&requests=server.requests();CHECK(requests.size()==2);CHECK(std::find(requests.begin(),requests.end(),0x13000)!=requests.end());CHECK(std::find(requests.begin(),requests.end(),0x14000)!=requests.end());
  auto second=publication(2,51,0x33334444);server.observe(second->key);server.publish(*second);currentPid=HostPid;auto b=client->acquire(7);CHECK(b&&b!=a&&client->acquire(7)==b);CHECK(b->read(0x10000,&value,4)&&value==0x33334444);CHECK(a->read(0x10000,&value,4)&&value==0x11112222);CHECK(rpmCalls==beforeRpm);
- auto*c=channel();CHECK(c);auto&slot=c->slots[c->active];++slot.seq;CHECK(!client->acquire(7));++slot.seq;const auto count=slot.count;slot.count=worldframe::MaxPages+1;CHECK(!client->acquire(7));slot.count=count;CHECK(client->acquire(7)==b);
+ auto*c=channel();CHECK(c);auto&slot=c->slots[c->active];++slot.seq;CHECK(client->acquire(7)==b);++slot.seq;const auto count=slot.count;slot.count=worldframe::MaxPages+1;CHECK(!client->acquire(7));slot.count=count;CHECK(client->acquire(7)==b);
  // An actual independent producer observation can keep a paused frame usable;
  // neither Host polling nor a fresh heartbeat can change its acquisition tick.
  clock=900;client->subscribe(1,worldframe::Base);CHECK(channel()->demandMask==worldframe::Base);CHECK(!client->acquire(7));currentPid=GamePid;server.observe(second->key);currentPid=HostPid;CHECK(client->acquire(7)==b&&b->key.tick==105);

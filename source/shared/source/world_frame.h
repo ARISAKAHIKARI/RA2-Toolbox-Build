@@ -77,6 +77,36 @@ public:
 };
 inline bool range(uint32_t address,size_t n){return address>=0x10000&&n&&n<=32u*1024u*1024u&&uint64_t(address)+n<=0x80000000ull;}
 inline uint32_t bucket(uint32_t page){return ((page>>12)*2654435761u)&(IndexSize-1);}
+// Keep dependency addresses, never bytes, across short derived-cache gaps.
+// Renewing a request cannot prolong any sampled data's lifetime. Fixed storage
+// bounds membership and avoids allocating or reading a clock on every field.
+class DemandLeases {
+ struct Entry {uint32_t page=0,tick=0;};
+ std::array<Entry,MaxPages> entries_{};
+ std::array<uint16_t,IndexSize> index_{};
+ uint32_t count_=0,checkedAt_=0,checkAfter_=0;
+ void prune(uint32_t now){
+  if(uint32_t(now-checkedAt_)<checkAfter_)return;
+  uint32_t kept=0,next=Lifetime+1;
+  for(uint32_t i=0;i<count_;++i){const auto entry=entries_[i];const uint32_t age=uint32_t(now-entry.tick);
+   if(age<=Lifetime){entries_[kept++]=entry;next=std::min(next,Lifetime+1-age);}}
+  if(kept!=count_){count_=kept;index_.fill(0);
+   for(uint32_t i=0;i<count_;++i){uint32_t slot=bucket(entries_[i].page);while(index_[slot])slot=(slot+1)&(IndexSize-1);index_[slot]=uint16_t(i+1);}}
+  checkedAt_=now;checkAfter_=next;
+ }
+public:
+ static constexpr uint32_t Lifetime=1000;
+ void clear(){count_=0;index_.fill(0);checkAfter_=0;}
+ size_t size()const{return count_;}
+ bool retain(uint32_t page,uint32_t now){
+  if((page&(PageSize-1))||!range(page,PageSize))return false;
+  uint32_t slot=bucket(page);
+  while(index_[slot]){auto&entry=entries_[index_[slot]-1];if(entry.page==page){entry.tick=now;return true;}slot=(slot+1)&(IndexSize-1);}
+  if(count_==MaxPages){prune(now);if(count_==MaxPages)return false;slot=bucket(page);while(index_[slot])slot=(slot+1)&(IndexSize-1);}
+  entries_[count_]={page,now};index_[slot]=uint16_t(++count_);checkAfter_=0;return true;
+ }
+ void append(uint32_t now,std::vector<uint32_t>&out){prune(now);for(uint32_t i=0;i<count_;++i)out.push_back(entries_[i].page);}
+};
 inline bool bit(const std::array<uint64_t,64>&bits,size_t n){return (bits[n>>6]>>(n&63))&1u;}
 inline void mark(std::array<uint64_t,64>&bits,size_t at,size_t n){
  while(n){const unsigned shift=unsigned(at&63);const size_t count=std::min<size_t>(n,64-shift);

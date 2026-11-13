@@ -176,6 +176,17 @@ class Client {
  }
  void clearCopy(){latest_.reset();if(copies_)copies_->clear();copies_.reset();copiedSerial_=0;copiedSlot_=-1;copiedData_={};for(auto&view:data_)view.close();}
  void close(){clearCopy();notification_.reset();if(channel_)UnmapViewOfFile(channel_);channel_=nullptr;if(mapping_)CloseHandle(mapping_);mapping_=nullptr;}
+ bool acceptsObserved(const Token&token,uint32_t now)const{
+  if(!token||!valid(channel_,pid_,owner_))return false;
+  for(unsigned retry=0;retry<2;++retry){
+   const LONG active=channel_->active,seq=channel_->observationSeq;if(active<0||active>1)return false;if(seq&1)continue;
+   MemoryBarrier();const Key observed=channel_->observed;const uint32_t tick=channel_->observedTick;MemoryBarrier();
+   if(seq!=channel_->observationSeq||active!=channel_->active)continue;
+   return connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32))&&uint32_t(now-tick)<=1000&&token->key.sameWorld(observed)&&
+    token->key.connectionLow==uint32_t(generation_)&&token->key.connectionHigh==uint32_t(generation_>>32)&&
+    token->key.frame<=observed.frame&&(uint32_t(now-token->key.tick)<=500||token->key.frame==observed.frame);
+  }return false;
+ }
 public:
  explicit Client(uint32_t pid,uint64_t generation):pid_(pid),owner_(GetCurrentProcessId()),generation_(generation){}
  ~Client(){close();}Client(const Client&)=delete;Client&operator=(const Client&)=delete;
@@ -211,6 +222,8 @@ public:
   for(int retry=0;retry<2;++retry){
    const LONG active=channel_->active;if(active<0||active>1){clearCopy();return {};}
    auto&s=channel_->slots[active];const LONG seq=s.seq;if(seq&1)continue;MemoryBarrier();const Key key=s.key;const uint32_t count=s.count;const DataRef ref=s.data;const Counters stats=s.counters;
+   // A torn header is a retry, not evidence of a malformed publication.
+   MemoryBarrier();if(seq!=s.seq||active!=channel_->active||!connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32)))continue;
    if(key.pid!=pid_||key.owner!=owner_||!key.match||key.frame<0||count>MaxPages||key.connectionLow!=uint32_t(generation_)||key.connectionHigh!=uint32_t(generation_>>32)||
       (count?(!dataCapacity(ref.capacity)||count>ref.capacity||!ref.allocation):(ref.capacity||ref.allocation)))return {};
    if(uint32_t(now-key.tick)>500){
@@ -227,15 +240,13 @@ public:
    auto next=SnapshotPool::acquire(copies_);const bool ok=next->import(key,stats,count?data_[active].pages():nullptr,count);
    MemoryBarrier();if(seq!=s.seq||active!=channel_->active||!connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32)))continue;if(!ok)return {};
    latest_=std::move(next);copiedSerial_=key.serial;copiedSlot_=active;copiedData_=ref;return latest_;
-  }return {};
+  }
+  // Only a publication race may reuse the local immutable token. Stable bad
+  // headers/imports still reject above. Never advance its tick or serial.
+  return latest_&&(!match||latest_->key.match==match)&&acceptsObserved(latest_,now)?latest_:Token{};
  }
  bool accepts(const Token&token){
-  std::lock_guard<std::mutex>lock(mutex_);if(!token||!open()||channel_->active<0)return false;
-  const LONG seq=channel_->observationSeq;if(seq&1)return false;MemoryBarrier();
-  const Key observed=channel_->observed;const uint32_t tick=channel_->observedTick;MemoryBarrier();const uint32_t now=GetTickCount();
-  return seq==channel_->observationSeq&&uint32_t(now-tick)<=1000&&token->key.sameWorld(observed)&&
-   token->key.connectionLow==uint32_t(generation_)&&token->key.connectionHigh==uint32_t(generation_>>32)&&
-   token->key.frame<=observed.frame&&(uint32_t(now-token->key.tick)<=500||token->key.frame==observed.frame);
+  std::lock_guard<std::mutex>lock(mutex_);return token&&open()&&acceptsObserved(token,GetTickCount());
  }
  void subscribe(uintptr_t reader,uint32_t demand){
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();

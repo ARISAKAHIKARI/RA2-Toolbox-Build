@@ -26,7 +26,7 @@ def main():
     fixture=fixture.replace('static bool antiTheftBuilding(uint32_t){return false;}static bool antiTheftThreat(uint32_t,uint32_t){return false;}',
         '#define antiTheftBuilding actualAntiTheftBuilding\n#include "anti_theft_bridge.h"\n#undef antiTheftBuilding\nstatic bool antiTheftBuilding(uint32_t p){if(countWork)++buildingChecks;return actualAntiTheftBuilding(p);}')
     scope=(src/'world_frame_runtime.h').read_text()
-    scope='\n'.join(function(scope,s) for s in ('static void requestWorldRange(', 'static bool readWorldSample(', 'class SampleReadScope'))+';\n'
+    scope='static worldframe::DemandLeases runtimeDemandLeases;\n'+'\n'.join(function(scope,s) for s in ('static void requestWorldRange(', 'static bool readWorldSample(', 'class SampleReadScope'))+';\n'
     scope=scope.replace('static bool readWorldSample(', 'static bool readWorldSampleRaw(')
     scope+='\nstatic bool readWorldSample(uint32_t at,void*out,size_t n){if(countWork)++sampleReads;const bool ok=readWorldSampleRaw(at,out,n);if(readMutation){auto mutation=readMutation;mutation(at,n);}return ok;}\n'
     (out/'sample_scope_production.h').write_text(scope)

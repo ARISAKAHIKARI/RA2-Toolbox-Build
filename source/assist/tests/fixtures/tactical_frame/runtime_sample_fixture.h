@@ -17,7 +17,7 @@ static bool read(uint32_t at,void*out,size_t n){
 }
 static void fixtureResetWorld(){
  assert(!sampleReadDepth);worldFrameReady=fixtureCaptureAttempted=false;sampleReadComplete=true;
- runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ runtimeWorldDemands.clear();runtimeDemandLeases.clear();runtimeDemandBits.fill(0);
  fixtureCaptureCount=fixtureCaptureReads=fixtureCaptureBytes=fixtureSampleReads=fixtureLiveReads=fixtureCaptureCellReads=fixtureSampleCellReads=0;
 }
 static bool fixtureCaptureWorld(uint32_t now){
@@ -25,7 +25,7 @@ static bool fixtureCaptureWorld(uint32_t now){
  readFixtureLive(0xA8B230,&key.scenario,4);readFixtureLive(0x87F924,&key.cells,4);readFixtureLive(0x87F928,&key.cellCount,4);
  if(fixtureCaptureAttempted&&fixtureLastAttempt.sameFrame(key))return worldFrameReady;
  fixtureLastAttempt=key;fixtureCaptureAttempted=true;worldFrameReady=false;
- auto demands=std::move(runtimeWorldDemands);runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ auto demands=std::move(runtimeWorldDemands);runtimeDemandLeases.append(now,demands);runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
  worldFrame.reset(key);worldframe::CaptureGraph<decltype(&readFixtureLive)> capture(worldFrame,&readFixtureLive);
  const unsigned beforeCellReads=cellReads;const bool complete=capture.capture(worldframe::Base|worldframe::Ore|worldframe::Combat,demands);fixtureCaptureCellReads+=cellReads-beforeCellReads;
  ++fixtureCaptureCount;fixtureCaptureReads+=worldFrame.counters.calls;fixtureCaptureBytes+=worldFrame.counters.bytes;

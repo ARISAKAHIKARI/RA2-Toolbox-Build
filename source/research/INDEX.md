@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 采样有效性、依赖保留与失败补采 | [同帧失败退避、完整发布复用和地址需求租期](2026-11-13-sampling-validity-retention.md) | actual-runtime transport demand-gap bounded-retry immutable-timestamp no-live-FPS-proof |
 | 1.0.50 卡顿与防偷点杀失效调查 | [用户日志、有效旧目标准入与相邻页批读](2026-11-13-automation-stall-and-sampling.md) | source-log controlled-negative current-target-range Combat-demand 2048-actors 2094-to-173 identical-pages no-live-FPS-proof |
 | 1.0.50 发布后检查 | [暂停合成重试、测试恢复与发布流程修正](2026-11-12-release-followup.md) | host-only paused compositor retry post-release source no-game-claim |
 | 特殊单位不透明叠加、模式说明与胶囊图标 | [原画面保留、公共绘制、直接组包停用](2026-11-11-special-overlay-mode-help.md) | 1.0.50 additive opaque EnemySpecialMode per-option help disabled-sale no-live-visual-proof |
