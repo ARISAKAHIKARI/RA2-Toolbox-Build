@@ -110,8 +110,11 @@ static bool QueryPerformanceFrequency(LARGE_INTEGER*p){p->QuadPart=1000000;retur
 static HANDLE CreateWaitableTimerExW(void*,void*,unsigned,unsigned){return reinterpret_cast<HANDLE>(1);}
 static HANDLE CreateWaitableTimerW(void*,int,void*){return reinterpret_cast<HANDLE>(1);}
 static void CloseHandle(HANDLE){}
-namespace assist {namespace techbp {enum{Signature=-1,System=-2,Slots=-3};constexpr uint32_t AllTags=63u;}}
+namespace assist {namespace techbp {enum{Signature=-1,System=-2,Slots=-3};constexpr uint32_t AllTags=1023u;}}
 namespace assist {namespace mapvisibility {constexpr uint32_t Tag=2u;}}
+namespace assist {namespace triggerinput {constexpr uint32_t Tag=64u;}}
+namespace assist {namespace privateout {constexpr uint32_t BreakpointTags=896u;}}
+namespace assist {static uint32_t privateMode=0;static bool privateEnabled=false;static void maintainTriggerInput(){}}
 namespace assist {namespace singlefps {
 static Clock clock;static HANDLE timer;static uint64_t frequency;
 static uint32_t scenario;static int lastFrame=-1;
@@ -122,12 +125,13 @@ static bool compatible(bool=true){return true;}
 namespace assist {namespace techparameters {
 struct Policy {long enabled=0,enhanced=0,controlling=0,showing=0;} policy;
 static bool desired=false,enhancementDesired=false,controlDesired=false,mapDesired=false;
-static bool enhancementCameoBlocked=false,controlEligible=false;
+static bool enhancementCameoBlocked=false,controlEligible=false,triggerDesired=false,triggerEnabled=false,privateDesired=false;
+static int triggerFailure=0,privateFailure=0;
 static int failure=0,enhancementFailure=0,controlFailure=0,mapFailure=0;
 struct Retry {void reset(){}void defer(){}} fullFailureRetry,controlFailureRetry;
 static uint32_t FullGroup=1,resourceGroups=0,refusedGroups=0,attempted=0;
 static DWORD retryAt=0,auditAt=0;
-static int sites[6]{},callback=0;
+static int sites[10]{},callback=0;
 struct Service {
  struct Lease {uint32_t mask=0;bool uncertain=false;uint32_t tags()const{return mask;}} lease;
  int state=1;

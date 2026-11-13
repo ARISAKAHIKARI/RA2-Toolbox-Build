@@ -9,7 +9,7 @@ static external::ReadSession reader;static external::sidebarindicators::Engine e
 static asyncwork::Latest<Request,Result>worker([](const Request&r)->std::shared_ptr<const Result>{
  if(readerPid!=r.pid||readerMatch!=r.match){reader.close();engine.reset();readerPid=r.pid;readerMatch=r.match;}
  if(!reader.open(r.pid))return {};reader.begin();
- external::radar::FrameScope scope(reader,r.match,{},worldframe::Base|(r.harvesters?worldframe::Ore|worldframe::Passengers:0));if(!scope)return {};
+ external::radar::FrameScope scope(reader,r.match,{},worldframe::Resources|(r.harvesters?worldframe::Ore|worldframe::Passengers:0));if(!scope)return {};
  auto read=[](uint32_t p,void*out,size_t n){return reader.read(p,out,n);};auto fresh=[](uint32_t p,void*out,size_t n){return reader.readLive(p,out,n);};
  external::mainview::View view;if(!external::mainview::sample(fresh,view,r.view.transform)||view.house!=r.view.house||view.screenW!=r.view.screenW||view.screenH!=r.view.screenH||view.x!=r.view.x||view.width!=r.view.width||view.transform!=r.view.transform)return {};
  const auto source=reader.worldFrameToken();const uint32_t now=GetTickCount();

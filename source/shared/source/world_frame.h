@@ -14,7 +14,11 @@
 // live-reader fallback belongs in this type. The producer alone may fill pages.
 namespace worldframe {
 constexpr uint32_t Version=1,PageSize=4096,MaxPages=16384,IndexSize=32768;
-enum Demand:uint32_t {Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32};
+enum Demand:uint32_t {Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64};
+// Visual and Resources are Host-local collection lanes. Their extra pages
+// must never subscribe the game-thread producer to a display working set.
+inline bool visualDemand(uint32_t demand){return (demand&(Visual|Resources))!=0;}
+inline uint32_t runtimeDemand(uint32_t demand){return visualDemand(demand)?uint32_t(Base):(demand|Base);}
 struct Key {
  uint32_t pid=0,owner=0,match=0,serial=0,tick=0,demand=0;
  uint32_t scenario=0,cells=0,house=0,cellCount=0;
@@ -133,9 +137,13 @@ class Snapshot {
  }
 public:
  Key key{};Counters counters{};PageBuffer pages;
+ // Local provenance only; not part of Key/Page/Channel wire layouts. All
+ // command consumers unwrap this owner and read only its authoritative bytes.
+ std::shared_ptr<const Snapshot> controlSource;
+ int32_t visualFrame=-1;uint32_t visualTick=0;uint64_t visualSerial=0;
  explicit Snapshot(PageAllocator allocator={})noexcept:pages(allocator){}
  Snapshot(const Snapshot&)=delete;Snapshot&operator=(const Snapshot&)=delete;
- void reset(const Key&next){key=next;counters={};pages.clear();index_.fill(0);sealed_=overflow_=false;}
+ void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};pages.clear();index_.fill(0);sealed_=overflow_=false;}
  bool sealed()const{return sealed_;}bool overflow()const{return overflow_;}
  bool seal(){sealed_=true;return !overflow_;}
  const Page*find(uint32_t address)const{
@@ -226,6 +234,13 @@ public:
    index_[slot]=uint32_t(pages.size());
   }counters=stats;return seal();
  }
+ bool extendVisual(const std::shared_ptr<const Snapshot>&source){
+  if(!source||source.get()==this||source->controlSource||!source->sealed()||source->overflow())return false;
+  if(!import(source->key,source->counters,source->pages.data(),source->pages.size()))return false;
+  controlSource=source;sealed_=false;return true;
+ }
 };
 using Token=std::shared_ptr<const Snapshot>;
+inline Token authoritative(const Token&token){return token&&token->controlSource?token->controlSource:token;}
+inline bool sameObservation(const Token&a,const Token&b){return a&&b&&(a->controlSource||b->controlSource?a==b:a->key.sameFrame(b->key)&&a->key.serial==b->key.serial);}
 }

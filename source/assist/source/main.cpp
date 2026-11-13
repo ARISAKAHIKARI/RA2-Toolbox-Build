@@ -1409,7 +1409,7 @@ static void sampleExternal(DWORD now){
   if(externalWorldSource&&((commandMatch()&&externalWorldSource->key.match!=commandMatch())||externalWorldSource->key.pid!=externalReader.pid()||
     ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)!=externalReader.generation()))discardExternalWorld();
   const bool passengerOverlay=enabled&&(extra.passengerBubbles||extra.dangerPassengers);
-  externalReader.setWorldDemand(worldframe::Base|(((flags()&(Capacity|AllTransports))||passengerOverlay)?worldframe::Passengers:0)|(passengerOverlay?worldframe::Combat:0));
+  externalReader.setWorldDemand(worldframe::Resources|(((flags()&(Capacity|AllTransports))||passengerOverlay)?worldframe::Passengers:0)|(passengerOverlay?worldframe::Combat:0));
   external::WorldFrameScope worldScope(externalReader,commandMatch());
   if(!worldScope){
    if(externalWorldSource){external::WorldFrameScope retained(externalReader,commandMatch(),externalWorldSource);if(!retained)discardExternalWorld();}
@@ -1426,7 +1426,7 @@ static void sampleExternal(DWORD now){
   }else ui.selected=0;
   const bool sameUI=ui.selected==previousUI.selected&&ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies&&ui.specialOnly==previousUI.specialOnly;
   externalSampler.worldEpoch(source->key.match);
-  if(externalWorldSource&&externalWorldSource->key.sameFrame(source->key)&&externalWorldSource->key.serial==source->key.serial&&sameUI){
+  if(worldframe::sameObservation(externalWorldSource,source)&&sameUI){
    // The 100ms aircraft scan can precede the publication where play paused.
    // Fill that derived sample once from the already pinned immutable bytes;
    // its source tick stays unchanged and never renews command freshness.

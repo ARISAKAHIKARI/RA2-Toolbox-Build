@@ -130,6 +130,9 @@ public:
   if(!worldClient_)worldClient_=worldframe::acquireClient(pid(),generation());
   worldClient_->subscribe(uintptr_t(this),worldDemand_);
   if(!frame)frame=worldClient_->acquire(match);else if(!worldClient_->accepts(frame))return false;
+  if(worldframe::visualDemand(worldDemand_)){
+   if(frame&&!frame->controlSource)frame=worldClient_->visual(frame,worldDemand_,[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);});
+  }else frame=worldframe::authoritative(frame);
   if(!frame||!frame->sealed()||frame->key.pid!=pid()||frame->key.owner!=GetCurrentProcessId()||(match&&frame->key.match!=match))return false;
   worldFrame_=std::move(frame);worldComplete_=true;worldSubscribedAt_=GetTickCount();return true;
  }
@@ -138,11 +141,14 @@ public:
   // every 50 ms, including paused games. Never extend a source timestamp.
   return worldClient_&&frame&&frame->key.pid==pid()&&
    ((uint64_t(frame->key.connectionHigh)<<32)|frame->key.connectionLow)==generation()&&
-   uint32_t(now-worldSubscribedAt_)<50&&worldClient_->unchanged(frame,now);
+   uint32_t(now-worldSubscribedAt_)<50&&worldClient_->unchanged(worldframe::authoritative(frame),now);
  }
  std::shared_ptr<void> worldPublicationSignal(){return worldClient_?worldClient_->publicationSignal():std::shared_ptr<void>{};}
  void endWorldFrame(){
-  if(worldClient_&&!worldDemands_.empty())worldClient_->request(worldDemands_);
+  if(worldClient_&&!worldDemands_.empty()){
+   if(worldFrame_&&worldFrame_->controlSource)worldClient_->requestVisual(worldDemands_,!worldComplete_);
+   else worldClient_->request(worldDemands_);
+  }
   for(uint32_t page:worldDemands_){const uint32_t index=page>>12;worldDemandBits_[index>>6]=0;}
   worldDemands_.clear();worldFrame_.reset();worldComplete_=true;
  }

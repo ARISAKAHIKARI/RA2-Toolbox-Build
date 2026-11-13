@@ -45,7 +45,7 @@ public:
  ~FrameScope(){if constexpr(HasWorldFrame<Reader>::value){
   if(entered_){
    const auto current=reader_.worldFrameToken();
-   const bool childIncomplete=previous_&&current&&previous_->key.sameFrame(current->key)&&previous_->key.serial==current->key.serial&&!reader_.worldFrameComplete();
+   const bool childIncomplete=previous_&&current&&worldframe::sameObservation(previous_,current)&&!reader_.worldFrameComplete();
    if(previous_){reader_.setWorldDemand(previousDemand_);reader_.beginWorldFrame(previous_->key.match,previous_);if(!previousComplete_||childIncomplete)reader_.markWorldIncomplete();}
    else reader_.endWorldFrame();
   }
@@ -72,10 +72,10 @@ template<class Reader>class SharedSceneProvider {
  };
  struct Key {
   uint32_t pid=0,match=0,reveal=0,serial=0;uint8_t revealOptions=0;worldframe::Key source;bool managed=false;
-  PublicationContext world;
+  PublicationContext world;uint64_t visual=0;
   bool sameWorld(const Key&o)const{return pid==o.pid&&match==o.match&&managed==o.managed&&(!managed||source.sameWorld(o.source))&&
    world.house==o.world.house&&world.cells==o.world.cells&&world.bounds==o.world.bounds&&world.rawWidth==o.world.rawWidth&&world.rawHeight==o.world.rawHeight;}
-  bool same(const Key&o)const{return sameWorld(o)&&reveal==o.reveal&&revealOptions==o.revealOptions&&serial==o.serial&&world.frame==o.world.frame;}
+  bool same(const Key&o)const{return sameWorld(o)&&reveal==o.reveal&&revealOptions==o.revealOptions&&serial==o.serial&&world.frame==o.world.frame&&visual==o.visual;}
  };
  struct Demand {uint32_t tick=0;uint8_t mask=0;bool present=false,real=false;};
  std::mutex producerMutex_;Reader*reader_=nullptr;Read read_{this};Sampler<Read>sampler_{read_};
@@ -94,19 +94,19 @@ public:
   if constexpr(HasWorldFrame<Reader>::value)if(!token)return {};
   std::lock_guard<std::mutex>lock(producerMutex_);reader_=&reader;
   Key key;key.revealOptions=presentation::settings().get().profile.revealUnits;key.pid=pid;key.match=match;key.reveal=!!reveal;key.world=publicationContext(read_);
-  if(token){key.serial=token->key.serial;key.source=token->key;key.managed=true;}
+  if(token){key.visual=token->visualSerial;key.serial=token->key.serial;key.source=token->key;key.managed=true;}
   if(!key.world.active||!completeFrame(reader)){++statistics_.failed;return {};}
   // A queued consumer can still hold an older token. Its completion time is
   // not a new observation or a genuine game rewind. Only a later serial may
   // reset the terrain owner to a smaller logic frame.
-  if(token&&haveAttempt_&&attempted_.sameWorld(key)&&int32_t(key.serial-attempted_.serial)<0){++statistics_.deferred;return {};}
+  if(token&&haveAttempt_&&attempted_.sameWorld(key)&&(int32_t(key.serial-attempted_.serial)<0||(key.serial==attempted_.serial&&key.visual&&attempted_.visual&&key.visual<attempted_.visual))){++statistics_.deferred;return {};}
   if(haveAttempt_&&(!attempted_.sameWorld(key)||key.world.frame<attempted_.world.frame)){
    sampler_.reset();demands_={};haveAttempt_=false;
   }
   auto&demand=demands_[unsigned(consumer)];demand={now,uint8_t(uint8_t(particles)|(uint8_t(lasers)<<1)),true,real};
   auto bank=bank_.get(pid,match,reveal,now,real,token);
   const bool matches=bank&&bank->revealOptions==key.revealOptions&&sameWorld(*bank,key.world)&&bank->frame==key.world.frame&&
-   (!token||(bank->sourceFrame&&bank->sourceFrame->key.sameFrame(token->key)&&bank->sourceFrame->key.serial==token->key.serial));
+   (!token||(bank->sourceFrame&&bank->sourceFrame->key.sameFrame(token->key)&&bank->sourceFrame->key.serial==token->key.serial&&(!token->controlSource||bank->sourceFrame==token)));
   if(matches&&supportsEffects(*bank,particles,lasers)){
    ++statistics_.reused;return bank;
   }

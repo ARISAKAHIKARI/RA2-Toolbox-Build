@@ -1,6 +1,7 @@
 #pragma once
 #include "world_frame.h"
 #include "world_frame_pool.h"
+#include "world_frame_visual.h"
 #include <windows.h>
 #include <mutex>
 #include <map>
@@ -105,6 +106,7 @@ public:
 // already producing later frames. Neither process waits for a reader lease.
 class Client {
  std::mutex mutex_;HANDLE mapping_=nullptr;Channel*channel_=nullptr;
+ std::mutex visualMutex_;VisualCache visuals_;
  std::shared_ptr<void> notification_;
  uint32_t pid_=0,owner_=0;Token latest_;uint32_t copiedSerial_=0;
  // Pool only dead publications' storage, never their shared/weak identity.
@@ -246,9 +248,16 @@ public:
   return latest_&&(!match||latest_->key.match==match)&&acceptsObserved(latest_,now)?latest_:Token{};
  }
  bool accepts(const Token&token){
-  std::lock_guard<std::mutex>lock(mutex_);return token&&open()&&acceptsObserved(token,GetTickCount());
+  std::lock_guard<std::mutex>lock(mutex_);const auto source=authoritative(token);return source&&open()&&acceptsObserved(source,GetTickCount());
+ }
+ template<class Live>Token visual(const Token&source,uint32_t demand,Live live){
+  std::lock_guard<std::mutex>lock(visualMutex_);return visuals_.acquire(source,demand,GetTickCount(),live);
+ }
+ void requestVisual(const std::vector<uint32_t>&pages,bool retry){
+  std::lock_guard<std::mutex>lock(visualMutex_);visuals_.request(pages,GetTickCount(),retry);
  }
  void subscribe(uintptr_t reader,uint32_t demand){
+  demand=runtimeDemand(demand);
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();
   if((demand|Base)&~uint32_t(channel_->demandMask))demandDirty_=true;
   auto&lease=leases_[reader];lease.used|=demand|Base;for(unsigned bit=0;bit<6;++bit)if((demand|Base)&(1u<<bit))lease.ticks[bit]=now;
@@ -327,6 +336,7 @@ public:
  void observe(const Key&key){if(!needed(GetTickCount()))return;InterlockedIncrement(&channel_->observationSeq);channel_->observed=key;channel_->observedTick=GetTickCount();MemoryBarrier();InterlockedIncrement(&channel_->observationSeq);}
  void publish(const Snapshot&frame){
   if(!needed(GetTickCount()))return;
+  if(frame.controlSource){failed(PublishError::Identity);return;}
   if(!frame.sealed()||frame.overflow()||frame.pages.size()>MaxPages){failed(PublishError::Capacity);return;}
   if(frame.key.pid!=GetCurrentProcessId()||frame.key.owner!=owner_||!connectionMatches(channel_,frame.key.connectionLow,frame.key.connectionHigh)){failed(PublishError::Identity);return;}
   // Same-frame wakeups may need to recover an expired transport, but an

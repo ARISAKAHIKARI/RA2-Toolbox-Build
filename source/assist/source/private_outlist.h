@@ -43,6 +43,13 @@ struct Queue {
  bool pop(unsigned n=1){if(n>count)return false;head=(head+n)%Capacity;count-=n;if(!count)head=0;return true;}
  void clear(){head=count=0;}
 };
+// Charge cancelled leading records against a per-frame inspection budget.
+// A long expired queue must not monopolize the native message callback.
+template<class Valid>unsigned prune(Queue&queue,unsigned&budget,Valid valid){
+ unsigned dropped=0;
+ while(queue.count&&budget){--budget;if(valid(queue.at(0)))break;queue.pop();++dropped;}
+ return dropped;
+}
 struct Wire {
  uint8_t bytes[WireCapacity]{};unsigned size=0,count=0;bool mega=false;
  vanilla::Packet local[BatchCapacity]{};

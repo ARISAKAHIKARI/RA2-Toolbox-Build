@@ -131,5 +131,14 @@ int main(){
  {radar::FrameScope inner(independentFailure,3,next,worldframe::Visual);assert(inner&&independentFailure.complete);independentFailure.markWorldIncomplete();}
  assert(independentFailure.current==first&&independentFailure.complete&&independentFailure.demand==worldframe::Base);
 
+
+ setup();auto control=token(20,17,6000);
+ auto visual=[&](uint64_t revision){auto v=std::make_shared<worldframe::Snapshot>();assert(v->extendVisual(control));v->visualSerial=revision;assert(v->seal());return v;};
+ auto va=visual(1),vb=visual(2);radar::SceneBank visualBank;radar::SharedSceneProvider<Reader>visualProvider(visualBank);Reader ar(va),br(vb),old(va);
+ auto a=acquire(visualProvider,ar,radar::SceneConsumer::Main,6000);assert(a);
+ auto b=acquire(visualProvider,br,radar::SceneConsumer::Main,6001);assert(b&&b!=a&&b->sourceFrame==vb);
+ assert(!acquire(visualProvider,old,radar::SceneConsumer::Watch,6002));
+ Reader parent(control);{radar::FrameScope child(parent,3,va,worldframe::Resources);assert(child);parent.markWorldIncomplete();}
+ assert(parent.current==control&&parent.complete);
  std::puts("PASS sealed shared scene: three concurrent consumers, one capture, no live fallback, whole-world north edge, common body/camera anchor, main-disabled producer, paused timestamp, late coverage, old serial/rewind, missing-input recovery and strict/optional failures");
 }

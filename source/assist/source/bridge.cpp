@@ -1397,6 +1397,7 @@ static bool serviceReadOnlyRuntime(DWORD now){
  publishSnapshot(now);return true;
 }
 static void tick(){
+ LARGE_INTEGER start{},end{},controlEnd{},worldEnd{};static LARGE_INTEGER frequency{};if(!frequency.QuadPart)QueryPerformanceFrequency(&frequency);QueryPerformanceCounter(&start);
  sampleReadDepth=0;sampleReadComplete=true; // A platform unwind must never leak the sample domain.
  // A detached legacy fault may still own asynchronous retirement. Finish it
  // before opening a fresh mailbox; mapped failures retain their Host below.
@@ -1452,7 +1453,7 @@ static void tick(){
    (scrollRefreshActive&&(!sh->scrollRefreshMode||!sh->scrollRefreshHz));
  bool fastDue=sh->foreground&&(sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHeld||burstCount)&&preciseNow-fastSampleAt>=2000;
  if(worldChange==worldlife::Change::Same&&!cmd&&!resultsDue&&!soundPending&&!frameDue&&!refreshDue&&!fastDue&&DWORD(now-last)<period)return;last=now;fastSampleAt=preciseNow;
- LARGE_INTEGER start,end,controlEnd,worldEnd;static LARGE_INTEGER frequency{};if(!frequency.QuadPart)QueryPerformanceFrequency(&frequency);QueryPerformanceCounter(&start);
+ // Include admission and maintenance in game-thread timing.
  uint32_t house=0;const auto authority=worldlife::authority(read,house);const int frame=worldSample.frame,sessionMode=worldSample.session;
  const bool worldGone=worldChange==worldlife::Change::Absent;
  bool active=false;

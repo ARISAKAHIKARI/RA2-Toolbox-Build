@@ -21,7 +21,8 @@ static void ownGroundTick(uint32_t house,int frame,DWORD now){
  if(!sh||sh->stop||fault||j.epoch!=match||sh->request!=j.request||DWORD(now-j.started)>3500||
     !simulationReady()||get<bool>(0xA8BC60+25)){ownground::finish(-7);return;}
  if(j.frame==frame)return;j.frame=frame;
- while(j.next<j.count){
+ unsigned examined=0;
+ while(j.next<j.count&&examined++<64){
   const auto&s=j.sources[j.next];
   if(!ownGroundEligible(s.pointer,house)||get<uint32_t>(s.pointer+0x10)!=s.id||
      worldByID(s.id)!=s.pointer||manualVersions.get(s.id)!=s.token||stickyOwns(s.pointer)||

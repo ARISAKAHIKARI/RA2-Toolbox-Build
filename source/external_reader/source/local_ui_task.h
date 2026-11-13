@@ -22,7 +22,7 @@ private:
  std::shared_ptr<const Result>run(const Input&input){const auto&r=input.request;
   if(pid_!=r.pid||match_!=r.match){reader_.close();engine_.reset();for(auto&p:old_)p.clear();images_={};pid_=r.pid;match_=r.match;}
   if(!reader_.open(r.pid))return {};reader_.begin();
-  radar::FrameScope scope(reader_,r.match,input.sourceFrame,worldframe::Base|worldframe::Passengers);if(!scope)return {};
+  radar::FrameScope scope(reader_,r.match,input.sourceFrame,worldframe::Resources|worldframe::Passengers);if(!scope)return {};
   auto fresh=[&](uint32_t p,void*out,size_t n){return radar::liveRead(reader_,p,out,n);};worldui::WorldRead<Reader> world{&reader_};mainview::View before;
   if(!mainview::sample(fresh,before,r.view.transform)||!mainview::sameViewport(before,r.view)||before.frame<r.view.frame)return {};uint32_t sampled=clock_();Plan plan;
   const auto source=radar::sourceFrame(reader_);auto observed=before;
@@ -39,7 +39,7 @@ public:
  explicit Task(std::function<uint32_t()>clock):clock_(std::move(clock)),worker_([this](const Input&i){return run(i);}){}
  void submit(const Request&r,const std::vector<nativefeedback::Object>&objects,worldframe::Token source={}){Input input;input.request=r;input.sourceFrame=std::move(source);for(const auto&o:objects)if(o.kind>=0&&o.kind<=3)input.objects.push_back(o);worker_.submit(std::move(input));}
  std::shared_ptr<const Result>get(){return worker_.get();}
- std::shared_ptr<const Result>visible(const Request&r,uint32_t now,worldframe::Token source={}){auto result=worker_.get();if(!result||(source&&(!result->sourceFrame||!source->key.sameFrame(result->sourceFrame->key)||source->key.serial!=result->sourceFrame->key.serial))||!sameProfile(result->request,r,0)||result->request.pid!=r.pid||result->request.match!=r.match||result->request.generation!=r.generation||result->request.width!=r.width||result->request.height!=r.height||result->request.context.token!=r.context.token||!mainview::sameViewport(result->view,r.view)||r.view.frame<result->view.frame||uint32_t(now-result->sampledTick)>150)return {};return result;}
+ std::shared_ptr<const Result>visible(const Request&r,uint32_t now,worldframe::Token source={}){auto result=worker_.get();if(!result||(source&&(!worldframe::sameObservation(source,result->sourceFrame)))||!sameProfile(result->request,r,0)||result->request.pid!=r.pid||result->request.match!=r.match||result->request.generation!=r.generation||result->request.width!=r.width||result->request.height!=r.height||result->request.context.token!=r.context.token||!mainview::sameViewport(result->view,r.view)||r.view.frame<result->view.frame||uint32_t(now-result->sampledTick)>150)return {};return result;}
  void invalidate(){worker_.invalidate();}void shutdown(){worker_.shutdown();}
 };
 }}

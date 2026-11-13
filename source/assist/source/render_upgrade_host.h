@@ -87,8 +87,7 @@ static asyncwork::Recurring<Request,Observation> samplingWorker([](const Request
  if(!sampleReader.open(r.pid))return {}; // open starts this reader epoch once.
  external::radar::FrameScope scope(sampleReader,r.match);if(!scope)return {};
  const auto token=sampleReader.worldFrameToken();
- if(last&&last->current->sourceFrame&&token&&last->current->sourceFrame->key.serial==token->key.serial&&
-    last->current->sourceFrame->key.sameFrame(token->key)&&renderpresentation::sameProjection(last->view,r.view)){timings.add(1,0);return {};}
+ if(last&&last->current->sourceFrame&&token&&worldframe::sameObservation(last->current->sourceFrame,token)&&renderpresentation::sameProjection(last->view,r.view)){timings.add(1,0);return {};}
  const double captureStarted=presentationNow();
  auto live=[](uint32_t p,void*out,size_t n){return sampleReader.readLive(p,out,n);};
  external::mainview::View before;

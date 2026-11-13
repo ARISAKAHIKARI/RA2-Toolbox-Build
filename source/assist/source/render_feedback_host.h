@@ -53,7 +53,7 @@ static bool update(const Request&r,const std::shared_ptr<const Frame>&scene,int 
  selectionContext=r.context;
  const auto source=sourceFrame(*scene,0);
  if constexpr(external::radar::HasWorldFrame<std::decay_t<decltype(externalReader)>>::value)if(!source)return false;
- external::radar::FrameScope worldScope(externalReader,r.match,source,worldframe::Base|worldframe::Passengers);if(!worldScope)return false;
+ external::radar::FrameScope worldScope(externalReader,r.match,source,worldframe::Resources|worldframe::Passengers);if(!worldScope)return false;
  auto fresh=[](uint32_t p,void*out,size_t n){return external::radar::liveRead(externalReader,p,out,n);};
  external::worldui::WorldRead<std::decay_t<decltype(externalReader)>> world{&externalReader};
  external::mainview::View before;

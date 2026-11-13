@@ -232,7 +232,7 @@ void panelBox(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius=4){
 };
 static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest&request)->std::shared_ptr<const Painted>{
  if(!paintReader.open(request.pid))return {};paintReader.begin();paintAssets.identity(request.pid,request.match);
- if(!request.sourceFrame)return {};paintReader.setWorldDemand(worldframe::Base);
+ if(!request.sourceFrame)return {};paintReader.setWorldDemand(worldframe::Resources);
  external::WorldFrameScope source(paintReader,request.match,request.sourceFrame);if(!source)return {};
  int width=request.width,height=request.height;if(width<1||height<1||uint64_t(width)*height>4*1024*1024)return {};
  auto out=std::make_shared<Painted>();out->request=request;out->pixels.resize(size_t(width)*height);

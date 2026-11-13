@@ -121,7 +121,7 @@ static void taskPublication(Memory&m,const worldframe::Token&token){
  Reader::latest=token;std::atomic<uint32_t>now{5000};localui::Task<Request,Reader>task([&]{return now.load();});Request request;request.view=m.view;
  const nativefeedback::Object object{Memory::factory,13,Memory::type,m.view.house,{500,500,80,80},3};m.vector(0xA8ECB8,0x55000,{Memory::factory});
  task.submit(request,{object},token);until([&]{return bool(task.get());});auto first=task.get();assert(first->sourceFrame==token&&first->primary==1&&first->images[2].pixels&&first->sourceFrame->key.tick==1000);
- assert(Reader::lastDemand==(worldframe::Base|worldframe::Passengers)&&Reader::liveWorld==0&&Reader::selectedFlags==0&&Reader::liveRoster==0);
+ assert(Reader::lastDemand==(worldframe::Base|worldframe::Resources|worldframe::Passengers)&&Reader::liveWorld==0&&Reader::selectedFlags==0&&Reader::liveRoster==0);
  m.vector(0xA8ECB8,0x55000,{});task.submit(request,{object},token);until([&]{return task.get()!=first;});auto unselected=task.get();assert(unselected->primary==0&&!unselected->images[2].pixels&&unselected->sourceFrame==token);
  m.vector(0xA8ECB8,0x55000,{Memory::factory});task.submit(request,{object},token);until([&]{return task.get()!=unselected;});auto stable=task.get();assert(stable->primary==1&&task.visible(request,now,token)==stable);
  // A missing critical raw object never reads the current game object and

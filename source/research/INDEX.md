@@ -350,3 +350,5 @@
 - [2026-11-10 载员气泡：己方与常驻选项](2026-11-10-passenger-display.md)：已有共享帧显示选项，未新增逆向地址或原生调用。
 
 - [2026-11-10：完整解锁、触发视角保护、面板布局与 Sell 直接组包](2026-11-10-input-panels-direct-sell.md)：Scenario+35A2、WWMouse计数、共享DR tag64；单机AI完整接收器、联机AI拒绝、直接wire→transport，无OutList；受控证据，未双机验证。
+
+| 游戏线程采样、半透明逐像素校验与长队列分帧（pre.3） | [游戏线程阻塞修复](2026-11-14-mainthread-stalls.md) | Host VisualCache controlSource Resources halfShroud 128 64 |

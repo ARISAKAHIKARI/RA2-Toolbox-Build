@@ -9,6 +9,7 @@ static uint32_t privateMode=0,privateEpoch=0,privateRetry=0;
 static bool privateEnabled=false,privateCompatible=false;
 static DWORD privateOwner=0,privateChecked=0;
 static int privateDispatchFrame=-1,privateDispatchBudget=0;
+static unsigned privatePruneBudget=0;
 static bool privateOutActive(){return privateEnabled&&sh&&sh->privateOutMode==privateMode&&!sh->stop&&!fault;}
 static bool privateOutPending(){return privateQueue.count!=0;}
 static int privateOutRoom(){return privateOutActive()?int(privateout::Capacity-privateQueue.count):0;}
@@ -65,7 +66,9 @@ static void servicePrivateOutBatch(){
  if(privateRetry&&int32_t(sampleClock(sh)-privateRetry)<0)return;
  // Old native commands must leave first. We never move or edit that list.
  if(get<int>(0xA802C8)!=0){privateStatus(2);return;}
- while(privateQueue.count&&!privateValid(privateQueue.at(0))){privateQueue.pop();++sh->privateOutCancelled;privateStatus(-7);}
+ const unsigned cancelled=privateout::prune(privateQueue,privatePruneBudget,privateValid);
+ if(cancelled){sh->privateOutCancelled+=cancelled;privateStatus(-7);}
+ if(!privatePruneBudget)return;
  if(!privateQueue.count)return;
  const int count=get<int>(0x8B41F8),tail=get<int>(0x8B4200),frame=get<int>(0xA8ED84);
  if(!eventdelivery::singleRoom(count,tail)||privateDispatchBudget<=0)return;
@@ -102,7 +105,7 @@ static void servicePrivateOutBatch(){
  if(network)call<void>(0x541820,transport);
 }
 static void servicePrivateOut(){
- const int frame=get<int>(0xA8ED84);if(frame!=privateDispatchFrame){privateDispatchFrame=frame;privateDispatchBudget=128;}
+ const int frame=get<int>(0xA8ED84);if(frame!=privateDispatchFrame){privateDispatchFrame=frame;privateDispatchBudget=128;privatePruneBudget=128;}
  // Match native OutList capacity per frame; manual commands do not consume
  // automation admission credit. At most six fixed 24-event packet batches.
  for(unsigned i=0;i<6&&privateQueue.count&&privateDispatchBudget>0;++i){const unsigned before=privateQueue.count;servicePrivateOutBatch();if(privateQueue.count==before)break;}

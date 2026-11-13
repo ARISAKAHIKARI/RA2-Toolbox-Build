@@ -78,6 +78,11 @@ int main(){unsigned checks=0;auto check=[&](bool x){++checks;if(!x){std::fprintf
  check(events.size()==3&&events[0].tag==0x34&&events[0].target==1000);
  check(events[1].tag==11&&events[2].tag==11&&events[1].target==10010);
  check(!ownground::job.pending&&pendingAckReady&&shared.count==3&&voices==1);
+ fresh();for(int i=0;i<256;++i)actor(i);budget=0;attackOwnGroundCommand(0x90000,100,1);selection.clear();ids.clear();
+ ownGroundTick(0x90000,11,116);check(ownground::job.pending&&ownground::job.next==64&&events.empty());
+ ownGroundTick(0x90000,11,117);check(ownground::job.next==64);
+ for(int f=12;f<15;++f)ownGroundTick(0x90000,f,116+(f-11)*16);
+ check(!ownground::job.pending&&events.empty()&&pendingAckReady&&shared.count==0);
  fresh();for(int i=0;i<60;++i)actor(i,i%2?0:256);attackOwnGroundCommand(0x90000,100,1);
  check(events.size()==24&&ownground::job.pending&&!pendingAckReady);
  budget=24;ownGroundTick(0x90000,10,101);check(events.size()==24); // no second send in same frame

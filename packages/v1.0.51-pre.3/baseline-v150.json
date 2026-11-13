@@ -1,0 +1,32 @@
+{
+  "tag": "v1.0.50",
+  "release_id": 442481359,
+  "source_commit": "810a4f9b1905f730acfd4a7b9d7b0cba04b74288",
+  "base_main": "28edd24e70591699cbbbd193a70159c6f298d272",
+  "assets": {
+    "RA2Toolbox-1.0.50-release-manifest.json": {
+      "bytes": 41527,
+      "sha256": "acee454117a2d09112de7d8248d90f93e1eb724d008a03de059bb0766841709d"
+    },
+    "RA2Toolbox-1.0.50-SHA256SUMS.txt": {
+      "bytes": 508,
+      "sha256": "9f91fa035aa7e1969320370fbc3603e5f0d3af51b2e6403c261c93dda1b333fd"
+    },
+    "RA2Toolbox-1.0.50-verification.zip": {
+      "bytes": 229836,
+      "sha256": "fd3f21b8c1371e0989f4f3a30d0f427d79740bb46b313c3dd5bfcfa081300d0d"
+    },
+    "RA2Toolbox-1.0.50-x64-Dependencies.zip": {
+      "bytes": 104375737,
+      "sha256": "0ea350bf4a66c1df7f5c891c620443652846be50ca6e5573b1012c791c44e27d"
+    },
+    "RA2Toolbox-1.0.50-x64-Full.zip": {
+      "bytes": 4684743,
+      "sha256": "61e7e3c7a66e8ec9990da0f758da7d6c3e4c63383f40a0dc3415b02c4c1e6726"
+    },
+    "RA2Toolbox-1.0.50-x64-Update.zip": {
+      "bytes": 4293159,
+      "sha256": "c8aea92d2581df9b1ec1a5f6eefa4b8aac51550b0d578293f7d991f76afe4ce6"
+    }
+  }
+}
