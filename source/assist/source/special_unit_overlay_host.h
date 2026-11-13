@@ -9,7 +9,7 @@ struct Frame {uint32_t pid=0,match=0,tick=0;worldframe::Token source;external::P
 static external::ReadSession reader;static Assets assets(reader);static Engine engine(reader,assets);static specialoverlay::Visibility visibility;
 static asyncwork::Latest<Request,Frame>worker([](const Request&r)->std::shared_ptr<const Frame>{
  if(engine.paint.process!=r.pid||engine.paint.epoch!=r.match){engine.reset();visibility.reset();reader.close();engine.paint.process=r.pid;engine.paint.epoch=r.match;}
- if(!reader.open(r.pid))return {};reader.setWorldDemand(worldframe::Visual);reader.begin();external::WorldFrameScope scope(reader,r.match,r.source);if(!scope)return {};
+ if(!reader.open(r.pid))return {};reader.setWorldDemand(worldframe::Base);reader.begin();external::WorldFrameScope scope(reader,r.match,r.source);if(!scope)return {};
  auto current=[&]{uint32_t house=0,scenario=0;int frame=-1;return r.source&&reader.readLive(0xA83D4C,&house,4)&&house==r.source->key.house&&reader.readLive(0xA8B230,&scenario,4)&&scenario==r.source->key.scenario&&reader.readLive(0xA8ED84,&frame,4)&&frame>=r.source->key.frame&&(frame==r.source->key.frame||uint32_t(GetTickCount()-r.source->key.tick)<=150);};
  if(!current())return {};
  static external::presentation::Profile applied;static bool have=false;if(!have||applied!=r.selection.profile){engine.reset();applied=r.selection.profile;have=true;}
