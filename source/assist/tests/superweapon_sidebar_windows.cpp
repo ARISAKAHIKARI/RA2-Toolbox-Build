@@ -54,7 +54,8 @@ struct Memory{
  bool read(uint32_t p,void*out,size_t size){if(fail)return false;auto*b=static_cast<uint8_t*>(out);for(size_t i=0;i<size;++i){auto found=data.find(p+uint32_t(i));if(found==data.end())return false;b[i]=found->second;}return true;}
 };
 namespace canceltest{
-static int armed=-1,writes=0,calls=0;
+static int armed=-1,writes=0,calls=0;static bool dependencyReady=true;
+static bool nativeDependencyReady(uint32_t entry){assert(entry==0x4A8BF0);return dependencyReady;}
 template<class T>static T get(uint32_t p){assert(p==0x8809A0);return T(armed);}
 template<class T>static void put(uint32_t p,T value){assert(p==0x8809A0&&value==-1);armed=int(value);++writes;}
 template<class T>static T call(uint32_t function,uint32_t self,void*argument){assert(function==0x4A8BF0&&self==0x87F7E8&&argument==nullptr);++calls;}
@@ -106,7 +107,7 @@ int main(){
  // obsolete cached type entries instead of growing an unbounded icon map.
  memory.set<int>(0xA8ED84,100);memory.set<int>(0x8A00A4,640);memory.set<int>(0x8A00A8,480);memory.set<int>(0x886FA0,0);memory.set<int>(0xB0CE30,500);memory.set<int>(house+0x264,0);
  panel.sampled_=tick-101;panel.update(gameWindow,1,2,true,panel.options_,panel.read_,panel.select_,{});assert(panel.entries_.empty()&&panel.icons_.empty()&&!panel.shown_);
- using namespace canceltest;assert(cancelSuperSidebarSelection()==0&&writes==0&&calls==0);armed=3;assert(cancelSuperSidebarSelection()==1&&armed==-1&&writes==1&&calls==1);
+ using namespace canceltest;assert(cancelSuperSidebarSelection()==0&&writes==0&&calls==0);armed=3;dependencyReady=false;assert(cancelSuperSidebarSelection()==-12&&armed==3&&writes==0&&calls==0);dependencyReady=true;assert(cancelSuperSidebarSelection()==1&&armed==-1&&writes==1&&calls==1);
  panel.window_=nullptr;captureChanged=nullptr;panelPointer=nullptr;
  std::puts("superweapon actual Panel proc/update: capture, replacement, readiness, read loss, visibility, lease, SHP/palette invalidation, empty-list cache retirement, cancellation and Runtime local-cancel guard passed");
 }
