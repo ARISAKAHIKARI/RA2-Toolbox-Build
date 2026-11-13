@@ -1,0 +1,133 @@
+{
+  "schema": "ra2.sampling-fix-verification.v1",
+  "source_commit": "6203eeb03ed980079cd56fbe4cc9db75fcfe098b",
+  "workflow_run": 43428658645,
+  "workflow_url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/actions/runs/43428658645",
+  "jobs": [
+    {
+      "id": 131896299534,
+      "name": "automation-correctness",
+      "conclusion": "success"
+    },
+    {
+      "id": 131896299860,
+      "name": "windows-build-and-capture",
+      "conclusion": "success"
+    }
+  ],
+  "archive": {
+    "name": "RA2Toolbox-1.0.50-SamplingFix-x64-Update.zip",
+    "bytes": 4301874,
+    "sha256": "dbc92e38db62a86cea3c43439634f46f40b472e6216c50de1ef053a9d0aa7299"
+  },
+  "files": [
+    {
+      "name": "RA2Toolbox.exe",
+      "bytes": 9846784,
+      "sha256": "ebbbef39fedc2964c971a847268c9a71bf7a60dc81a22cf16788f1ca230a1ac5"
+    },
+    {
+      "name": "GameRuntime.dll",
+      "bytes": 25052672,
+      "sha256": "183d9f1ed9c0e35730061a74c54717a5b752854c247dff99282e0af4c42f8757"
+    },
+    {
+      "name": "GameRuntimeHost32.exe",
+      "bytes": 214528,
+      "sha256": "67f83924892882e1c652747f0f5f63ecc714487bd10ec9b86ac7b3058d3c97ea"
+    },
+    {
+      "name": "WebView2Loader.dll",
+      "bytes": 194912,
+      "sha256": "d3fce90bdeecb08596e377dea6a316354dd8949e32ff09b89d51be00c14e21b6"
+    },
+    {
+      "name": "licenses/WebView2/LICENSE.txt",
+      "bytes": 1487,
+      "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55"
+    },
+    {
+      "name": "licenses/WebView2/NOTICE.txt",
+      "bytes": 3894,
+      "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+    },
+    {
+      "name": "BUILD_SOURCE_MANIFEST.json",
+      "bytes": 109382,
+      "sha256": "032ce87351fbd6d26c05f1205b0f3b60040635ad80f84cc9c6f4401ec4f6135e"
+    },
+    {
+      "name": "BUILD_TARGET.json",
+      "bytes": 344,
+      "sha256": "3d936e1e1ea854982d034449e4d4fe6df7272ce85f53afdf4b902b44632827f5"
+    },
+    {
+      "name": "WINDOWS_BUILD_ARTIFACTS.json",
+      "bytes": 27998,
+      "sha256": "984181e6d28cf6cdec5b79be0fc1fd235a0497a6b016e982bacfe2f73a52daef"
+    }
+  ],
+  "targets": {
+    "host": "x64",
+    "runtime": "x86",
+    "broker": "x86",
+    "file_version": "1.0.50.0",
+    "assist_protocol": 107
+  },
+  "checks": {
+    "retention_cases": 8,
+    "retention_checks": 16807,
+    "retention_ubsan": true,
+    "core_platform_checks": 75422,
+    "defense_admission_checks": 20,
+    "capture_linux_checks": 26912,
+    "capture_own_process_windows_rpm_checks": 32349,
+    "catalogue_local_checks": 60628,
+    "tactical_integration": true,
+    "all_archive_file_hashes": true,
+    "paired_pe_machines": true
+  },
+  "retention_source_hashes_lf": {
+    "source/shared/source/world_frame.h": "f9223605cb76b6f57af4fc65cfc1bb1f6358dcc308252a72aff730410a251266",
+    "source/shared/source/world_frame_transport.h": "f60c6c1ef2e564bf2d9683828cedf851b88b55b05609facf4b6a001291a29810",
+    "source/assist/source/world_frame_runtime.h": "dda07c4c1f404ce37cf33948ff9273cf88b8162f0c338aa25399dfd2e1dca89c",
+    "source/assist/tests/world_frame_core.cpp": "2d69db3b2d923b01e4ed901f92970752d2cb78b21b32c1632d050917f5ae251c",
+    "source/assist/tests/world_frame_retention.cpp": "1b80b581a5989c0e1a69ef6066a651e6d44efcf4446a5a5dee71ad2dc5b48480"
+  },
+  "windows_source_bindings_crlf": [
+    {
+      "path": "source/shared/source/world_frame.h",
+      "baseline_sha256": "1c4f5aaee16b18a4aabe8bb2293eda2be39fa21283d3755421e9ce82d92d60d8",
+      "current_sha256": "6252f892ea6a864e005c7479e09b4dda22c22a14995fc7c1c140fb0ee5037601"
+    },
+    {
+      "path": "source/shared/source/world_frame_capture.h",
+      "baseline_sha256": "2986e50224115b1042d7e5cdac1f8ac3acf1bb9e089bed12f549db2be60b825b",
+      "current_sha256": "c2118a48e3bf4712f8595b9a481c53e46ae5109f8d87ddebadd6bf50d7104cd9"
+    },
+    {
+      "path": "source/assist/source/world_frame_runtime.h",
+      "current_sha256": "500105e25f0fa28f397199afbe6db3f08512a3a945b0801f2a12d098b4822e92"
+    },
+    {
+      "path": "source/assist/tests/world_frame_core.cpp",
+      "current_sha256": "9e37c08d00999cc7a934f88798d6a59bdb83af97ab57d8a7884d354e179ecade"
+    },
+    {
+      "path": "source/assist/tests/world_frame_capture_performance.cpp",
+      "current_sha256": "9c4af91bd27af96fc61d96a930db4a7b869fb7d84367ea483522d93d8cd73982"
+    },
+    {
+      "path": "source/assist/tests/world_frame_capture_performance.py",
+      "current_sha256": "8f485547ec7b0f8ad48f9f81011e51330cc4e2a3396e323b0110e367a0b8dd9e"
+    }
+  ],
+  "windows_source_line_endings_verified_against_local_lf": true,
+  "game_tested": false,
+  "multiplayer_tested": false,
+  "public_release_replaced": false,
+  "limits": [
+    "Controlled memory/Win32 fixtures and real Windows own-process RPM; no live game FPS or multiplayer acceptance.",
+    "Address demand leases do not extend sampled bytes or the existing activity/identity limits."
+  ]
+}

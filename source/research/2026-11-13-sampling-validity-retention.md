@@ -21,3 +21,9 @@
 - `.github/workflows/automation-regression.yml` 增加八组回归并编译完整配对 Windows Host/Runtime/Broker，保存独立 SamplingFix 更新候选，不覆盖正式附件。
 
 以上是源码及受控测试证据，不能证明用户“刚进游戏卡顿”的根因已经解决。没有真实游戏/多人联机/FPS 验收；需以新候选运行结果和新日志继续判断。
+
+## 最终配对成品
+
+源码 `6203eeb03ed980079cd56fbe4cc9db75fcfe098b`，Actions `43428658645` 两项作业通过。Windows 自进程真实 RPM 对照 32349 项通过，完整 x64 Host、x86 Runtime/Broker 编译与 PE/ABI 校验通过。更新包所有文件的大小、SHA-256 和架构复核通过，包体 4301874 字节，SHA-256 `dbc92e38db62a86cea3c43439634f46f40b472e6216c50de1ef053a9d0aa7299`。原有正式发布附件未替换。
+
+Linux 与 Windows 原始源码哈希分别记录 LF 和 Git Windows checkout 的 CRLF，按行尾转换逐文件核对一致，不把不同原始哈希误称为相同。失败计数仍统计采集尝试；新增受限重试会使同一失败逻辑帧产生多次失败计数，不能把计数直接解释为丢失的逻辑帧数。最终构建记录见 `packages/v1.0.50-SamplingFix/verification.json`。
