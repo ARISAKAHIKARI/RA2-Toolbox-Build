@@ -2021,7 +2021,7 @@ static void result(){if(!shared)return;uint32_t a=shared->ack;if(a==ack)return;M
  if(c==DestructPlayer){
   std::wstring message;
   if(r==2&&n==1)message=L"已触发单机 AI 所属方的原生自毁；完整销毁以游戏为准。";
-  else if(r>0&&n==1)message=L"自毁请求已入队："+destructPendingTarget+L"；入队不代表远端已收到或执行。";
+  else if(r>0&&n==1)message=L"自毁请求已提交："+destructPendingTarget+L"。";
   else if(r==-42)message=std::wstring(L"自毁请求未入队：")+DestructForeignNotice;
   else if(r==-7)message=L"自毁请求未入队：请选择同一所属方的存活单位；空选、混合所属方或选取身份改变时不执行。";
   else if(r==-4)message=L"自毁请求未入队：对局已改变，请重新选择后执行。";
@@ -2230,7 +2230,7 @@ static void updateModeStatus(DWORD now){
   else if(state<0)text+=L"已停止，请重新选择并操作";
   else if(!(extra.moFeatures&7u))text+=L"关闭";
   else if(state==1)text+=L"正在提交";
-  else if(state==2)text+=L"提交结束（不代表目标已完成）";
+  else if(state==2)text+=L"指令提交完成";
   else text+=L"等待操作";
   if(shared&&(shared->moOrderAccepted||shared->moOrderRejected))text+=L" · 已提交 "+std::to_wstring(shared->moOrderAccepted)+L" / 已跳过 "+std::to_wstring(shared->moOrderRejected);
   SetWindowTextW(GetDlgItem(ui,9461),text.c_str());}
