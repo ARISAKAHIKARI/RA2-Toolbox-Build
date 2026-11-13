@@ -31,7 +31,7 @@ MSYS2_ARG_CONV_EXCL='*' "$ZIG" rc /fo suite/source/app.res suite/source/app.rc
 "$ZIG" c++ -target x86-windows-msvc -O2 -fms-extensions -fno-stack-protector -c cursor/source/resource_guard.cpp -o cursor/source/resource_guard.o
 "$ZIG" c++ -target x86-windows-gnu -O2 -DUNICODE -D_UNICODE -fms-extensions -fasm-blocks -fno-stack-protector -fno-builtin -fno-exceptions -fno-rtti -c cursor/source/hide.cpp -o cursor/source/hide.o
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -fms-extensions -fasm-blocks -fno-stack-protector -fno-builtin -fno-exceptions -fno-rtti -c game_runtime/source/runtime.cpp -o game_runtime/source/runtime.o
-"$ZIG" c++ -target x86-windows-gnu -shared game_runtime/source/runtime.o shared/source/game_entry_manager.o assist/source/bridge.o assist/source/guard.o cursor/source/hide.o cursor/source/resource_guard.o game_runtime/source/runtime.def shared/source/dll_version.res -o GameRuntime.dll -lkernel32 -luser32 -lgdi32 -lwinmm
+"$ZIG" c++ -target x86-windows-gnu -shared -Wl,--exclude-all-symbols game_runtime/source/runtime.o shared/source/game_entry_manager.o assist/source/bridge.o assist/source/guard.o cursor/source/hide.o cursor/source/resource_guard.o game_runtime/source/runtime.def shared/source/dll_version.res -o GameRuntime.dll -lkernel32 -luser32 -lgdi32 -lwinmm
 for entry in Cursor Monitor Tactical;do
   case "$entry" in Cursor) module=cursor;;Monitor) module=unit_monitor;;Tactical) module=assist;;esac
   "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -DRA2_UNIFIED -DwWinMain="${entry}Entry" -Isuite/source -c "$module/source/main.cpp" -o "suite/source/$module.o"
