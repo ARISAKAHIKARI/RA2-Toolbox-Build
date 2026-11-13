@@ -1,0 +1,44 @@
+{
+  "version": "1.0.51-pre.2",
+  "product_commit": "5d2c59c74d08178ff00ecba1ae8a2a3eba21816e",
+  "validation_commit": "6efcc40aa834b03cbed2037e84f9ea98e1962812",
+  "workflow_run": 43474228906,
+  "job": 132053716421,
+  "production_sources_unchanged": true,
+  "production_sha256": {
+    "source/assist/source/watch_scene.h": "c39f4f7d06c39c387fe2f1dcb02a3ee1d2f294d348d6a3f4ac69df54caf2c284",
+    "source/external_reader/source/radar_scene.h": "f2e0834bf64fb266c288cb2f9c9add283232f6dcf3d56ecbc34d03da76bfeb25",
+    "source/external_reader/source/world_scene_pipeline.h": "56b55686556b7fef84e0a3463cf6997dfdcf1be1e74237fc69923cce88793f8b"
+  },
+  "passed": [
+    "66 three-camera Pipeline RGBA/Z/A comparisons with 2048 actors",
+    "64x64 and 128x128 production watch Renderer, 1024 actors",
+    "same-bank sub-cell camera movement and source read-failure recovery",
+    "128x128 separated camera relocation: three completed images equal full-map preparation"
+  ],
+  "controlled_means_ms": {
+    "map64": {
+      "total_before": 2.5596,
+      "total_after": 2.393625,
+      "prepare_before": 0.650035,
+      "prepare_after": 0.59406
+    },
+    "map128": {
+      "total_before": 2.879485,
+      "total_after": 2.54983,
+      "prepare_before": 0.829175,
+      "prepare_after": 0.698015
+    }
+  },
+  "completion_observation": {
+    "map128_step1": {
+      "before_camera_x": -88,
+      "after_camera_x": -81,
+      "before_center_x": 30731,
+      "after_center_x": 30796,
+      "before_extra_rounds": 1,
+      "completed_images_equal": true
+    }
+  },
+  "scope": "Controlled in-memory scene on Windows using actual production rendering classes; completed-image parity permits bounded preparation retries. No game, live FPS, original game material visual or multiplayer acceptance."
+}
