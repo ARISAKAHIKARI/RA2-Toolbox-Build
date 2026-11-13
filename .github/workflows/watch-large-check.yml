@@ -1,0 +1,44 @@
+name: Validate large-map watch coverage
+on:
+  push:
+    branches: [codex/watch-large-validation-20261114]
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare exact production and expanded scene fixture
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          New-Item -ItemType Directory -Force baseline | Out-Null
+          git show e802ac9a9a789df2d440b619ac01d741a45079a5:source/external_reader/source/world_scene_pipeline.h | Set-Content -Encoding utf8 baseline/world_scene_pipeline.h
+          git show e802ac9a9a789df2d440b619ac01d741a45079a5:source/assist/source/watch_scene.h | Set-Content -Encoding utf8 baseline/watch_scene.h
+          python .github/scripts/verify_watch_large_map.py
+          if($LASTEXITCODE -ne 0){throw 'Fixture preparation failed'}
+      - name: Execute actual renderer on two map sizes and separated cameras
+        shell: bash
+        run: |
+          set -euo pipefail
+          python source/tools/test_watch_world_performance.py --zig "$(cygpath -u "$ZIG_EXE")" --build-dir large-check --baseline-dir baseline
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: watch-large-validation
+          path: |
+            large-check/
+            large-production-inputs.json
+          retention-days: 30
