@@ -71,6 +71,9 @@ jobs:
         with:
           name: RA2Toolbox-1.0.51-pre.3-regressions
           path: diagnostics-v151pre3/checks
+      - name: Install icon encoder
+        shell: pwsh
+        run: python -m pip install Pillow==11.3.0
       - name: Install Zig and bind source snapshot
         shell: pwsh
         run: |
@@ -102,6 +105,7 @@ jobs:
           export RA2_CONSOLE_UI=webview2
           export RA2_OUTPUT_DIR="$PWD/build-v151pre3"
           bash source/build-zig-x64.sh > diagnostics-v151pre3/build.log 2>&1 || { tail -100 diagnostics-v151pre3/build.log; exit 1; }
+          git restore source/suite/source/app.ico
           python source/tools/verify_windows_outputs.py --root build-v151pre3 --host-arch x64 --webview2 > diagnostics-v151pre3/static-pe.log 2>&1 || { cat diagnostics-v151pre3/static-pe.log; exit 1; }
           cat diagnostics-v151pre3/static-pe.log
       - name: Assemble and verify packages

@@ -203,7 +203,7 @@ def verify(root, host_arch='x86', neural_helper=False, webview2=False):
                 raise ValueError('unchanged v0.4.1 binary')
             exports = pe.exports()
             if name.endswith('.dll') and ({x.split('@')[0] for x in exports}!=set(HOOKS[name]) or any('@' in x and exports[x]!=exports[x.split('@')[0]] for x in exports)):
-                raise ValueError('unexpected component export bypass')
+                raise ValueError('unexpected component export bypass: exports=' + repr(sorted(exports.items())) + ' expected=' + repr(HOOKS[name]))
             required = HOOKS.get(name, ('AssistHostProtocolInfo',) if name == 'RA2Toolbox.exe' else ())
             if name == BROKER and exports:
                 raise ValueError('unexpected x86 broker export; broker is an IPC child, not another game entry')

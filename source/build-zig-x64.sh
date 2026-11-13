@@ -55,6 +55,7 @@ rc "$runtime_dir/dll_version.res" shared/source/dll_version.rc
 "$ZIG" c++ -target x86-windows-gnu -shared "$runtime_dir/runtime.o" "$runtime_dir/game_entry_manager.o" "$runtime_dir/bridge.o" "$runtime_dir/guard.o" "$runtime_dir/hide.o" "$runtime_dir/resource_guard.o" game_runtime/source/runtime.def "$runtime_dir/dll_version.res" -o "$build_dir/GameRuntime.dll" -lkernel32 -luser32 -lgdi32 -lwinmm
 rc "$runtime_dir/broker.res" runtime_broker/source/app.rc
 "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -municode runtime_broker/source/main.cpp "$runtime_dir/broker.res" -o "$build_dir/GameRuntimeHost32.exe" -Wl,--subsystem,windows -lkernel32 -luser32
+"$python_bin" tools/build_app_icon.py
 rc "$host_dir/app.res" /d RA2_HOST_X64=1 suite/source/app.rc
 if [ "$console_ui" = webview2 ]; then
   "$ZIG" c++ -target x86_64-windows-gnu -std=c++17 -O2 -fms-extensions "${console_flags[@]}" -I"$sdk_dir/include" -I"$generated_dir" -c suite/source/web_console.cpp -o "$host_dir/web_console.o"

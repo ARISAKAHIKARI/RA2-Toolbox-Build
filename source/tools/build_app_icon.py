@@ -10,7 +10,8 @@ from PIL import Image
 p=argparse.ArgumentParser();p.add_argument('--preview',type=Path);a=p.parse_args()
 root=Path(__file__).resolve().parents[1];source=root/'suite/source/app-icon.png';ico=source.with_name('app.ico')
 with Image.open(source) as rendered:im=rendered.convert('RGBA')
-assert im.width==im.height and im.width>=256,'Square source of at least 256 pixels required'
+assert im.width==im.height and im.width>=128,'Square source of at least 128 pixels required'
+if im.width<256: im=im.resize((256,256),Image.Resampling.LANCZOS)
 assert im.getextrema()[3]==(0,255),'Source must preserve transparent background and opaque artwork'
 sizes=[(v,v) for v in [16,20,24,32,40,48,64,128,256]]
 im.save(ico,format='ICO',sizes=sizes)
