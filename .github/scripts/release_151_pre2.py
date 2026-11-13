@@ -162,6 +162,9 @@ def publish():
                 return None
         raise RuntimeError("Release pagination exceeded limit")
 
+    head = api("repos/" + repo + "/git/ref/heads/codex/watch-ui-fix-20261114")["object"]["sha"]
+    assert head == commit, "Superseded build must not publish"
+
     existing = find_release()
     if existing:
         assert existing["draft"], "Refusing to replace an already published release"

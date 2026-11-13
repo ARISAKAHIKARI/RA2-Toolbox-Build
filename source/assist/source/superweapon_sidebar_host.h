@@ -62,15 +62,15 @@ class Panel {
   g.DrawString(options_.collapsed?L"+":L"−",-1,&font,Gdiplus::PointF(float(width_-px(22)),float(px(4))),&white);
   if(!options_.collapsed)for(int slot=0,n=scroll_;slot<rows()*columns()&&n<int(entries_.size());++slot,++n){
    const auto&e=entries_[n];int x=px(4)+(slot%columns())*cellW(),y=title()+px(4)+(slot/columns())*cellH();
-   Gdiplus::SolidBrush backing(Gdiplus::Color(255,n==hover_?47:23,n==hover_?74:35,n==hover_?87:45));g.FillRectangle(&backing,x,y,px(60),px(48));
+   Gdiplus::SolidBrush backing(Gdiplus::Color(255,n==hover_?55:28,n==hover_?64:33,n==hover_?43:26));g.FillRectangle(&backing,x,y,px(60),px(48));
    auto found=icons_.find(e.type);if(found!=icons_.end()&&!found->second.image.pixels.empty()){
     auto&im=found->second.image;Gdiplus::Bitmap bitmap(im.width,im.height,im.width*4,PixelFormat32bppPARGB,reinterpret_cast<BYTE*>(im.pixels.data()));
     float sx=float(px(60))/std::max(1,im.canvasWidth),sy=float(px(48))/std::max(1,im.canvasHeight);
     g.DrawImage(&bitmap,Gdiplus::RectF(float(x)+(im.x+im.canvasWidth/2)*sx,float(y)+(im.y+im.canvasHeight/2)*sy,im.width*sx,im.height*sy));
    }else g.DrawString(e.name,-1,&font,Gdiplus::RectF(float(x+px(3)),float(y+px(8)),float(px(54)),float(px(36))),&fmt,&muted);
    if(!e.ready){Gdiplus::SolidBrush dim(Gdiplus::Color(115,0,0,0));g.FillRectangle(&dim,x,y,px(60),px(48));}
-   Gdiplus::Pen border(e.ready?Gdiplus::Color(255,91,213,159):Gdiplus::Color(255,75,98,110),float(px(1)));g.DrawRectangle(&border,x,y,px(60),px(48));
-   Gdiplus::SolidBrush progress(Gdiplus::Color(255,72,166,145));g.FillRectangle(&progress,x,y+px(45),px(60)*e.percent/100,px(3));
+   Gdiplus::Pen border(e.ready?Gdiplus::Color(255,181,193,137):Gdiplus::Color(255,91,102,76),float(px(1)));g.DrawRectangle(&border,x,y,px(60),px(48));
+   Gdiplus::SolidBrush progress(Gdiplus::Color(255,139,158,99));g.FillRectangle(&progress,x,y+px(45),px(60)*e.percent/100,px(3));
    std::wstring state=e.suspended?L"Ⅱ":e.draining?L"▶":e.ready?L"":std::to_wstring((int64_t(e.frames)+14)/15)+L"s";
    g.DrawString(state.c_str(),-1,&font,Gdiplus::RectF(float(x),float(y+px(49)),float(px(62)),float(px(16))),&fmt,e.ready?&white:&muted);
   }

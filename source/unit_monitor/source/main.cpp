@@ -265,11 +265,11 @@ static std::shared_ptr<const RenderFrame> renderPixels(const RenderRequest&r){
   Pen frameEdge(Color(255,130,137,110),1.f),frameInset(Color(255,14,17,14),1.f);g.DrawRectangle(&frameEdge,cursorX-panelW-4,6.f,panelW-1,panelH-1);g.DrawRectangle(&frameInset,cursorX-panelW-3,7.f,panelW-3,panelH-3);
   uint32_t pc=p.color;Pen rule(Color(180,(pc>>16)&255,(pc>>8)&255,pc&255),2.f);g.DrawLine(&rule,x,9.f,x+w,9.f);
   std::wstring name=(const wchar_t*)p.name;if(name.empty())name=L"玩家 "+std::to_wstring(p.houseIndex+1);if(p.local)name=L"我·"+name;
-  int maxChars=std::max(3,int(w/11));if(int(name.size())>maxChars)name=name.substr(0,maxChars-1)+L"…";
+  int maxChars=std::max(3,int((w-(pages>1?28:0))/11));if(int(name.size())>maxChars)name=name.substr(0,maxChars-1)+L"…";
   text(g,name,x,12,11,color(pc),true);
   const std::wstring money=p.creditsKnown?L"$ "+std::to_wstring(p.credits):L"$ —";
   text(g,money,x,27,std::min(10.f,w/(float(money.size())*.65f)),Color(255,241,215,131),true);
-  if(pages>1)text(g,std::to_wstring(current+1)+L"/"+std::to_wstring(pages),x+w-26,28,9,Color::White);
+  if(pages>1)text(g,std::to_wstring(current+1)+L"/"+std::to_wstring(pages),x+w-26,13,9,Color::White);
   for(int j=start;j<finish;j++){
    int ix=entries[j],slot=j-start;const auto& c=p.cells[ix];int category=snap->types[ix].category;
    float tx=x+(slot%across)*tileW,ty=44+(slot/across)*rowH;
