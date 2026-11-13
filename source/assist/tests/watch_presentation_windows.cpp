@@ -8,6 +8,8 @@
 #include <cstdio>
 #include <algorithm>
 int main(){
+ assert(watchpresentation::queueDelay(100,99)==1&&watchpresentation::queueDelay(99,100)==0);
+ assert(watchpresentation::queueDelay(7,0xfffffffeu)==9);
  Gdiplus::GdiplusStartupInput startup;ULONG_PTR token=0;assert(Gdiplus::GdiplusStartup(&token,&startup,nullptr)==Gdiplus::Ok);
  {
   HDC screen=GetDC(nullptr),target=CreateCompatibleDC(screen);HBITMAP bitmap=CreateCompatibleBitmap(screen,640,512);auto old=SelectObject(target,bitmap);ReleaseDC(nullptr,screen);assert(target&&bitmap&&old);

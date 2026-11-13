@@ -11,6 +11,7 @@ constexpr int strategyFromUI(int index){return index>=0&&index<=4?index:-1;}
 constexpr int runtimeMode(int strategy){return strategy==1||strategy==7?2:strategy==2||strategy==8?1:strategy==4?3:0;}
 constexpr bool materialMode(unsigned mode){return mode==4||mode==5;}
 constexpr bool fullPreview(int strategy){return strategy==1||strategy==2||strategy==3||strategy==7||strategy==8;}
+constexpr unsigned overlayOpacity(int strategy){return strategy==1||strategy==7?128u:strategy==2||strategy==3||strategy==4||strategy==8?0u:255u;}
 constexpr bool automaticReveal(int strategy){return strategy==3;}
 constexpr bool revealEnabled(bool manual,int strategy){return manual||automaticReveal(strategy);}
 }}

@@ -13,6 +13,7 @@
 #include "../../external_reader/source/voxel_preview.h"
 #include "../../shared/source/overlay_stack.h"
 #include "../../shared/source/overlay_visibility.h"
+#include "../../external_reader/source/display_state.h"
 
 // A detached, non-activating interaction panel. All game access is read-only;
 // selection/cancellation returns through the existing authenticated command
@@ -31,7 +32,7 @@ class Panel {
  Entry pressedEntry_;std::array<uint16_t,256>palette_{};bool paletteReady_=false;
  std::vector<Entry> entries_;std::map<uint32_t,Icon>icons_;assist::construction::PanelBuffer buffer_;
  int px(int n)const{return std::max(1,n*options_.scale/100);}
- int title()const{return px(24);}int cellW()const{return px(66);}int cellH()const{return px(65);}
+ int title()const{return px(20);}int cellW()const{return px(66);}int cellH()const{return px(65);}
  int columns()const{return 2;}
  int rows()const{return assist::panelplacement::rows(int(entries_.size()),options_.rows,(clientH_-title()-px(8))/cellH());}
  int hit(int x,int y)const{
@@ -39,7 +40,7 @@ class Panel {
   int col=(x-px(4))/cellW(),row=(y-title()-px(4))/cellH();if(col>=columns()||row>=rows())return -1;
   int n=scroll_+row*columns()+col;return n<int(entries_.size())?n:-1;
  }
- bool usable()const{return overlayvisibility::visible()&&inputReady_&&shown_&&game_&&GetForegroundWindow()==game_&&DWORD(GetTickCount()-sampled_)<250;}
+ bool usable()const{return overlayvisibility::visible()&&inputReady_&&shown_&&game_&&GetForegroundWindow()==game_&&DWORD(GetTickCount()-sampled_)<250&&external::display::inspect(read_).visible();}
  void changed(){if(changed_)changed_(options_);}
  void geometry(){
   width_=columns()*cellW()+px(8);height_=title()+(options_.collapsed?0:rows()*cellH()+px(8));
@@ -51,12 +52,12 @@ class Panel {
  }
  void paint(HDC target){
   HDC dc=buffer_.acquire(target,width_,height_);if(!dc)return;
-  Gdiplus::Graphics g(dc);g.Clear(Gdiplus::Color(255,15,22,29));
-  Gdiplus::SolidBrush titleBrush(Gdiplus::Color(255,31,53,65)),white(Gdiplus::Color(255,220,235,240)),muted(Gdiplus::Color(255,135,157,169));
+  Gdiplus::Graphics g(dc);g.Clear(Gdiplus::Color(255,35,39,34));
+  Gdiplus::SolidBrush titleBrush(Gdiplus::Color(255,62,67,53)),white(Gdiplus::Color(255,230,233,206)),muted(Gdiplus::Color(255,156,163,136));
   g.FillRectangle(&titleBrush,0,0,width_,title());
   Gdiplus::FontFamily family(L"Microsoft YaHei UI");Gdiplus::Font font(&family,float(px(11)),Gdiplus::FontStyleRegular,Gdiplus::UnitPixel);
   Gdiplus::StringFormat fmt;fmt.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);fmt.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-  std::wstring text=hover_>=0&&hover_<int(entries_.size())?entries_[hover_].name:L"超武  "+std::to_wstring(entries_.size());g.DrawString(text.c_str(),-1,&font,Gdiplus::RectF(float(px(6)),float(px(4)),float(width_-px(48)),float(title())),&fmt,&white);
+  std::wstring text=hover_>=0&&hover_<int(entries_.size())?entries_[hover_].name:L"";g.DrawString(text.c_str(),-1,&font,Gdiplus::RectF(float(px(6)),float(px(4)),float(width_-px(48)),float(title())),&fmt,&white);
   g.DrawString(options_.detached?L"▣":L"↗",-1,&font,Gdiplus::PointF(float(width_-px(43)),float(px(4))),&white);
   g.DrawString(options_.collapsed?L"+":L"−",-1,&font,Gdiplus::PointF(float(width_-px(22)),float(px(4))),&white);
   if(!options_.collapsed)for(int slot=0,n=scroll_;slot<rows()*columns()&&n<int(entries_.size());++slot,++n){
@@ -70,7 +71,7 @@ class Panel {
    if(!e.ready){Gdiplus::SolidBrush dim(Gdiplus::Color(115,0,0,0));g.FillRectangle(&dim,x,y,px(60),px(48));}
    Gdiplus::Pen border(e.ready?Gdiplus::Color(255,91,213,159):Gdiplus::Color(255,75,98,110),float(px(1)));g.DrawRectangle(&border,x,y,px(60),px(48));
    Gdiplus::SolidBrush progress(Gdiplus::Color(255,72,166,145));g.FillRectangle(&progress,x,y+px(45),px(60)*e.percent/100,px(3));
-   std::wstring state=e.suspended?L"暂停":e.draining?L"运作中":e.ready?L"就绪":std::to_wstring((int64_t(e.frames)+14)/15)+L"s "+std::to_wstring(e.percent)+L"%";
+   std::wstring state=e.suspended?L"Ⅱ":e.draining?L"▶":e.ready?L"":std::to_wstring((int64_t(e.frames)+14)/15)+L"s";
    g.DrawString(state.c_str(),-1,&font,Gdiplus::RectF(float(x),float(y+px(49)),float(px(62)),float(px(16))),&fmt,e.ready?&white:&muted);
   }
   if(hover_>=0&&hover_<int(entries_.size())){std::wstring name=entries_[hover_].name;SetWindowTextW(window_,name.c_str());}
@@ -85,6 +86,7 @@ class Panel {
    self->pressedEntry_=self->pressed_>=0?self->entries_[self->pressed_]:Entry{};SetCapture(w);
    if(y<self->title()&&x<self->width_-self->px(48)){self->drag_=true;self->dragOffset_={x,y};SetCapture(w);}return 0;}
   if(m==WM_MOUSEMOVE){
+   if(self->drag_&&!self->usable()){self->hide();return 0;}
    if(self->drag_){POINT p{};GetCursorPos(&p);ScreenToClient(self->game_,&p);self->options_.detached=true;self->options_.x=p.x-self->dragOffset_.x;self->options_.y=p.y-self->dragOffset_.y;self->geometry();}
    else{int hover=self->hit(x,y);if(hover!=self->hover_){self->hover_=hover;InvalidateRect(w,nullptr,FALSE);}TRACKMOUSEEVENT track{sizeof track,TME_LEAVE,w,0};TrackMouseEvent(&track);}return 0;}
   if(m==WM_MOUSELEAVE){self->hover_=-1;InvalidateRect(w,nullptr,FALSE);return 0;}
@@ -103,7 +105,7 @@ class Panel {
    int n=self->hit(x,y);if(n>=0&&n==pressed&&sameSelection(expected,self->entries_[n])&&self->entries_[n].ready&&self->select_&&selectable(self->read_,expected))self->select_(expected.index,expected.instance,expected.type);return 0;
   }
   if(m==WM_RBUTTONUP){if(self->usable()&&self->select_)self->select_(-1,0,0);return 0;}
-  if(m==WM_MOUSEWHEEL){self->scroll_+=short(HIWORD(a))<0?2:-2;self->geometry();InvalidateRect(w,nullptr,FALSE);return 0;}
+  if(m==WM_MOUSEWHEEL){if(!self->usable())return 0;self->scroll_+=short(HIWORD(a))<0?2:-2;self->geometry();InvalidateRect(w,nullptr,FALSE);return 0;}
   if(m==WM_PAINT){PAINTSTRUCT ps{};HDC dc=BeginPaint(w,&ps);self->paint(dc);EndPaint(w,&ps);return 0;}
   return DefWindowProcW(w,m,a,b);
  }
@@ -139,6 +141,8 @@ public:
   RECT client{};if(!GetClientRect(game_,&client)||client.right<100||client.bottom<100){hide();return;}clientW_=client.right;clientH_=client.bottom;
   if(!window_){WNDCLASSW wc{};wc.hInstance=GetModuleHandleW(nullptr);wc.lpfnWndProc=proc;wc.lpszClassName=L"RA2ToolboxDetachedSuperweapon139";wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));RegisterClassW(&wc);
    window_=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE|WS_EX_TOPMOST,wc.lpszClassName,L"超级武器",WS_POPUP,0,0,1,1,nullptr,nullptr,wc.hInstance,this);if(!window_)return;}
+  const auto display=external::display::inspect(read_);if(display.readable&&!display.visible()){hide();return;}
+  inputReady=inputReady&&display.visible();
   DWORD now=GetTickCount();if(!sampled_||DWORD(now-sampled_)>=100){std::vector<Entry> next;int w=0,h=0,right=0;
    if(!sample(read_,next,w,h,right,transform)){inputReady_=false;if(!sampled_||DWORD(now-sampled_)>=250)hide();return;}
    bool changedEntries=next!=entries_;entries_=std::move(next);sampled_=now;screenW_=w;logicalMapRight_=right;

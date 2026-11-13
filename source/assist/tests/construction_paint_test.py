@@ -15,6 +15,7 @@ scope=function((root/'external_reader/source/process_reader.h').read_text(), 'cl
 prefix=r'''
 
 #include "construction_policy.h"
+#include "panel_placement.h"
 #include "fixtures/tactical_frame/sealed_host_reader.h"
 #include <cassert>
 #include <string>

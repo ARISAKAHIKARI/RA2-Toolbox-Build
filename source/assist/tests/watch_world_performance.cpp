@@ -90,17 +90,17 @@ static void watchRun(const std::shared_ptr<radar::Terrain>&t){
  std::printf("PASS actual watch Renderer %d updates x 3 cameras, 1024 actors, full prepare-world/dynamic ambient/pose/camera: total_mean_ms=%.6f->%.6f prepare=%.6f->%.6f cameras=%.6f->%.6f reads=%llu->%llu\n",completed,a/completed,b/completed,ap/completed,bp/completed,ad/completed,bd/completed,(unsigned long long)(ar/completed),(unsigned long long)(br/completed));
  // Keep exactly one immutable bank while the observed focus moves in
  // sub-cell increments. The old actual Renderer repeatedly overwrites its
- // fresh anchor with this bank; the new camera and body advance together.
+ // fresh anchor with this bank; both implementations must advance together.
  auto bank=std::make_shared<const radar::Frame>(frame(t,200,1024));radar::sceneBank().publish(7,9,true,bank);
  for(int i=0;i<3;++i){auto&m=bank->markers[360+i*35];old.tracks[i].target=current.tracks[i].target={m.object,m.id};}
  for(int warm=0;warm<12;++warm){assert(old.update(200)&&current.update(200));}
- const auto sampled=bank->markers[360];double previous=current.views[0].frame.cameraX;const double oldCenter=old.views[0].frame.cameraX;auto previousPixels=current.views[0].scene->pixels;
+ const auto sampled=bank->markers[360];double previous=current.views[0].frame.cameraX;auto previousPixels=current.views[0].scene->pixels;
  for(int step=1;step<=8;++step){put(sampled.object+0x9C,std::array<int,3>{{sampled.x+step*32,sampled.y,24}});assert(old.update(200+step)&&current.update(200+step));
-  assert(old.views[0].frame.cameraX==oldCenter);assert(current.views[0].frame.cameraX>previous);assert(current.views[0].frame.center.x==sampled.x+step*32&&current.views[0].frame.center.z==24);assert(current.views[0].scene->pixels!=previousPixels);previous=current.views[0].frame.cameraX;previousPixels=current.views[0].scene->pixels;
+  assert(old.views[0].frame.cameraX==current.views[0].frame.cameraX);assert(old.views[0].scene->pixels==current.views[0].scene->pixels);assert(current.views[0].frame.cameraX>previous);assert(current.views[0].frame.center.x==sampled.x+step*32&&current.views[0].frame.center.z==24);assert(current.views[0].scene->pixels!=previousPixels);previous=current.views[0].frame.cameraX;previousPixels=current.views[0].scene->pixels;
   assert(bank->markers[360].x==sampled.x&&bank->markers[360].z==sampled.z&&bank->frame==200); // no source publication mutation
  }
  auto held=current.views[0].scene;const auto target=current.tracks[0].target;failAt=sampled.object+0x9C;assert(current.update(209));assert(current.views[0].scene==held&&current.tracks[0].target==target);failAt=0;put(sampled.object+0x9C,std::array<int,3>{{sampled.x+9*32,sampled.y,24}});assert(current.update(210)&&current.views[0].frame.center.x==sampled.x+9*32);
- std::puts("PASS actual Renderer stale-bank regression: 8 sub-cell steps old camera stationary/new camera+body move; native observed elevation; no bank mutation; failed target retains image+tracking and recovers");
+ std::puts("PASS actual Renderer stale-bank regression: 8 sub-cell steps full and cropped cameras+body move identically; native observed elevation; no bank mutation; failed target retains image+tracking and recovers");
 }
 static void anchorCases(const std::shared_ptr<radar::Terrain>&t){
  Read read;auto sample=frame(t,300,8);auto carrier=sample.markers[2];constexpr uint32_t infantry=0xE00000,infantryId=50000;

@@ -1,20 +1,22 @@
 #pragma once
 #include "special_unit_overlay_engine.h"
+#include "special_unit_visibility.h"
 namespace specialoverlayhost {
 using Assets=external::cameraassets::Context<external::ReadSession>;
 using Engine=specialoverlay::Renderer<external::ReadSession,Assets>;
 struct Request {uint32_t pid,match;worldframe::Token source;external::Projection projection;std::vector<external::enemies::Marker> targets;external::presentation::Selection selection;nativeviewhost::Transform transform;};
 struct Frame {uint32_t pid=0,match=0,tick=0;worldframe::Token source;external::Projection projection;std::vector<specialoverlay::Identity> identities;external::presentation::Selection selection;nativeviewhost::Transform transform;std::shared_ptr<const external::voxel::Image> composite;int missing=0;};
-static external::ReadSession reader;static Assets assets(reader);static Engine engine(reader,assets);
+static external::ReadSession reader;static Assets assets(reader);static Engine engine(reader,assets);static specialoverlay::Visibility visibility;
 static asyncwork::Latest<Request,Frame>worker([](const Request&r)->std::shared_ptr<const Frame>{
- if(engine.paint.process!=r.pid||engine.paint.epoch!=r.match){engine.reset();reader.close();engine.paint.process=r.pid;engine.paint.epoch=r.match;}
- if(!reader.open(r.pid))return {};reader.begin();external::WorldFrameScope scope(reader,r.match,r.source);if(!scope)return {};
+ if(engine.paint.process!=r.pid||engine.paint.epoch!=r.match){engine.reset();visibility.reset();reader.close();engine.paint.process=r.pid;engine.paint.epoch=r.match;}
+ if(!reader.open(r.pid))return {};reader.setWorldDemand(worldframe::Visual);reader.begin();external::WorldFrameScope scope(reader,r.match,r.source);if(!scope)return {};
  auto current=[&]{uint32_t house=0,scenario=0;int frame=-1;return r.source&&reader.readLive(0xA83D4C,&house,4)&&house==r.source->key.house&&reader.readLive(0xA8B230,&scenario,4)&&scenario==r.source->key.scenario&&reader.readLive(0xA8ED84,&frame,4)&&frame>=r.source->key.frame&&(frame==r.source->key.frame||uint32_t(GetTickCount()-r.source->key.tick)<=150);};
  if(!current())return {};
  static external::presentation::Profile applied;static bool have=false;if(!have||applied!=r.selection.profile){engine.reset();applied=r.selection.profile;have=true;}
  auto projection=r.projection;projection.zScale=external::projectionZScale(external::SharedReadView{&reader});
  external::xbrzadapter::gpuPresentation(r.selection.profile.gpu);external::presentation::apply(r.selection.profile,assets,projection.width,projection.height,projection.width,projection.height);assets.beginPresentation();
  engine.update(r.targets,projection,r.source->key.frame);auto composite=engine.compose(r.selection.profile.precision!=0,unsigned(r.selection.profile.scale));
+ if(composite&&!visibility.apply([&](uint32_t p,void*out,size_t n){return reader.readFresh(p,out,n);},assets,projection,r.selection.profile.overlayShroudOpacity,composite))return {};
  if(!scope.complete()||!current())return {};
  auto out=std::make_shared<Frame>();out->pid=r.pid;out->match=r.match;out->tick=GetTickCount();out->source=r.source;out->projection=projection;out->identities=engine.identities;out->selection=r.selection;out->transform=r.transform;out->composite=std::move(composite);out->missing=engine.paint.missing;return out;
 });

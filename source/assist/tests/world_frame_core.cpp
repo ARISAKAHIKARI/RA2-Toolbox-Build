@@ -359,7 +359,10 @@ void hostReads(){
  CHECK(reader.beginWorldFrame(7,first));CHECK(!reader.read(0x12000,&value,4));CHECK(!reader.worldFrameComplete());
  CHECK(reader.beginWorldFrame(7,first));CHECK(!reader.readOptional(0x12000,&value,4));CHECK(reader.worldFrameComplete());CHECK(!reader.readOptional(0x13000,&value,4));CHECK(!reader.worldFrameComplete());
  CHECK(reader.beginWorldFrame(7,first));CHECK(!reader.read(0xFFFF,&value,4));CHECK(!reader.worldFrameComplete());CHECK(rpmCalls==before);
- reader.endWorldFrame();CHECK(reader.readLive(0x10000,&value,4));CHECK(rpmCalls==before+1);
+ CHECK(reader.worldMissingReads>0&&reader.worldUnreadableReads>0&&reader.worldInvalidReads>0);
+ CHECK(reader.worldFirstMissingAddress==0x13000&&reader.worldLastMissingAddress==0x13000);
+ reader.endWorldFrame();CHECK(reader.worldMissingReads>0);reader.begin();CHECK(!reader.worldMissingReads&&!reader.worldUnreadableReads&&!reader.worldInvalidReads&&!reader.worldFirstMissingAddress);
+ CHECK(reader.readLive(0x10000,&value,4));CHECK(rpmCalls==before+1);
  const auto oldConnection=reader.connectionIdentity();process->alive=false;process=std::make_shared<ProcessRecord>(ProcessRecord{GamePid,12346,true});external::ProcessReader reused;CHECK(reused.open(GamePid));CHECK(reused.generation()!=oldConnection->generation);CHECK(!reused.beginWorldFrame(7,first));reused.close();reader.close();gameMemory=nullptr;
 }
 void runtime(){

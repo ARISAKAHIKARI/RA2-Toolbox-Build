@@ -2,6 +2,7 @@
 #include "watch_scene.h"
 #include "watch_world_lifetime.h"
 #include <cstdio>
+#include <cstring>
 namespace watchhost {
 static constexpr int Width=external::watch::NativeViewWidth,Height=external::watch::NativeViewHeight;
 struct View {external::watch::Frame frame;external::watch::Box box;bool shown=false;int pixelWidth=0,pixelHeight=0;std::shared_ptr<const std::vector<uint32_t>> pixels;std::shared_ptr<const gpupresent::Frame> gpu;};
@@ -11,21 +12,32 @@ static watchworld::Lifetime lifetime;static uint32_t lifetimeSample=0;static boo
 static std::array<int,2> panelDemand[2][3]{};
 static void demand(int slot,bool second,int width,int height){if(slot>=0&&slot<3)panelDemand[second][slot]={std::clamp(width,0,2048),std::clamp(height,0,2048)};}
 struct Request {uint32_t pid,match,tick,control;int width,height;bool reveal,danger,suppressed;std::array<external::watch::Track,3> tracks;external::presentation::Selection selection;std::array<std::array<int,2>,3> outputSizes;};
-struct Result {uint32_t pid,match,control,tick,diagnosticTick=0;std::array<external::watch::Track,3> tracks;bool suppressed=false;std::string diagnostic;std::array<View,3> views;};
+struct Result {uint32_t pid,match,control,tick;std::array<external::watch::Track,3> tracks;bool suppressed=false;std::array<View,3> views;};
 static std::shared_ptr<const Result> applied;
 static external::ReadSession renderReader;
 static external::cameraassets::Context<external::ReadSession> renderAssets(renderReader);
 static watchscene::Renderer<external::ReadSession,decltype(renderAssets)> renderer(renderReader,renderAssets);
 static asyncwork::Latest<Request,Result> worker([](const Request&r)->std::shared_ptr<const Result>{
- static watchpresentation::Metric queue,work,sampling,preparation,draws[3];static uint64_t reused=0;static uint32_t reported=GetTickCount(),diagnosticTick=0;static std::string diagnostic;
- const double workAt=watchpresentation::now();queue.add(uint32_t(GetTickCount()-r.tick));
+ static watchpresentation::Metric queue,work,sampling,preparation,draws[3];static uint64_t reused=0,missing=0,unreadable=0,invalid=0;static std::array<uint64_t,decltype(renderer)::Timings::FailureCount> reasons{};static uint32_t firstMissing=0,lastMissing=0,reported=GetTickCount();
+ const double workAt=watchpresentation::now();queue.add(watchpresentation::queueDelay(GetTickCount(),r.tick));
  if(renderer.process!=r.pid||renderer.epoch!=r.match){renderer.reset();renderReader.close();renderer.process=r.pid;renderer.epoch=r.match;}
  if(!renderReader.open(r.pid))return {};renderReader.begin();
  if(!external::display::inspect(external::SharedReadView{&renderReader}).visible())return {};
  renderer.width=r.width;renderer.height=r.height;renderer.revealMap=r.reveal;renderer.danger=r.danger;
  renderer.outputSizes=r.outputSizes;
  renderer.features(r.selection.profile);renderer.syncTracks(r.control,r.tracks,r.suppressed);const bool updated=renderer.update(GetTickCount());work.add(watchpresentation::now()-workAt,updated);
- const auto&t=renderer.timings;sampling.add(t.sample,updated);if(t.prepared)preparation.add(t.prepare);for(int i=0;i<3;++i)if(t.attempted[i]){draws[i].add(t.draw[i]);reused+=t.reused[i];}if(!updated)return {};
+ const auto&t=renderer.timings;sampling.add(t.sample,updated);if(t.prepared)preparation.add(t.prepare,t.prepareComplete);for(int i=0;i<3;++i)if(t.attempted[i]){draws[i].add(t.draw[i],t.drawComplete[i]);reused+=t.reused[i];}
+ ++reasons[t.failure];missing+=renderReader.worldMissingReads;unreadable+=renderReader.worldUnreadableReads;invalid+=renderReader.worldInvalidReads;
+ if(renderReader.worldFirstMissingAddress){if(!firstMissing)firstMissing=renderReader.worldFirstMissingAddress;lastMissing=renderReader.worldLastMissingAddress;}
+ unsigned directViews=0;for(const auto&v:renderer.views)directViews+=bool(v.scene)&&bool(v.scene->gpu);
+ const uint32_t finished=GetTickCount();if(uint32_t(finished-reported)>=5000){char line[1200];std::snprintf(line,sizeof line,
+  "watch render jobs=%llu fail=%llu direct=%u shared=%d reused=%llu source-age=%u ms queue=%.2f/max%.2f sample=%.2f prepare=%.2f/fail%llu draw=%.2f/%.2f/%.2f total=%.2f/max%.2f reasons[frame/scene/stale/terrain/anchor/prepare/draw/incomplete]=%llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu missing-reads=%llu unreadable-reads=%llu invalid-reads=%llu first=%08X last=%08X",
+  (unsigned long long)work.count,(unsigned long long)work.failed,directViews,renderer.sharedSource,(unsigned long long)reused,watchpresentation::queueDelay(finished,renderer.sourceTick),queue.average(),queue.maximum,sampling.average(),preparation.average(),(unsigned long long)preparation.failed,draws[0].average(),draws[1].average(),draws[2].average(),work.average(),work.maximum,
+  (unsigned long long)reasons[1],(unsigned long long)reasons[2],(unsigned long long)reasons[3],(unsigned long long)reasons[4],(unsigned long long)reasons[5],(unsigned long long)reasons[6],(unsigned long long)reasons[7],(unsigned long long)reasons[8],(unsigned long long)missing,(unsigned long long)unreadable,(unsigned long long)invalid,firstMissing,lastMissing);
+  // Log on the worker even during a continuous run of rejected frames.
+  critical(std::wstring(line,line+std::strlen(line)));reported=finished;queue=work=sampling=preparation={};for(auto&d:draws)d={};reused=missing=unreadable=invalid=0;reasons={};firstMissing=lastMissing=0;
+ }
+ if(!updated)return {};
  auto result=std::make_shared<Result>();result->pid=r.pid;result->match=r.match;result->control=r.control;result->tick=r.tick;result->suppressed=renderer.autoSuppressed;std::copy(std::begin(renderer.tracks),std::end(renderer.tracks),result->tracks.begin());
  for(int i=0;i<3;++i){auto&v=renderer.views[i];auto&out=result->views[i];out.shown=v.shown;out.box=v.box;out.frame.focus=v.frame.focus;out.frame.bounds=v.frame.bounds;out.frame.center=v.frame.center;out.frame.cameraX=v.frame.cameraX;out.frame.cameraY=v.frame.cameraY;out.frame.dangerous=v.frame.dangerous;
   if(v.shown&&v.scene){
@@ -35,8 +47,6 @@ static asyncwork::Latest<Request,Result> worker([](const Request&r)->std::shared
   }
   out.shown=out.shown&&(bool(out.gpu)||bool(out.pixels));
  }
- unsigned directViews=0;for(const auto&v:result->views)directViews+=bool(v.gpu);
- const uint32_t finished=GetTickCount();if(uint32_t(finished-reported)>=5000){char line[768];std::snprintf(line,sizeof line,"watch render jobs=%llu fail=%llu direct=%u shared=%d reused=%llu source-age=%u ms queue=%.2f/max%.2f sample=%.2f prepare=%.2f draw=%.2f/%.2f/%.2f total=%.2f/max%.2f",(unsigned long long)work.count,(unsigned long long)work.failed,directViews,renderer.sharedSource,(unsigned long long)reused,uint32_t(finished-renderer.sourceTick),queue.average(),queue.maximum,sampling.average(),preparation.average(),draws[0].average(),draws[1].average(),draws[2].average(),work.average(),work.maximum);diagnostic=line;diagnosticTick=reported=finished;queue=work=sampling=preparation={};for(auto&d:draws)d={};reused=0;}result->diagnostic=diagnostic;result->diagnosticTick=diagnosticTick;
  // Normal sampling shares a page cache. A trigger can replace VisibleRect
  // while assets decode, so validate the completed batch against uncached
  // bounds before publishing. Dropping the batch preserves the UI's slots.
@@ -98,7 +108,7 @@ static void update(uint32_t now){
  // Asset decoding can take longer than an overlay interval. Keep the current
  // panels until an accepted result changes their lifetime, and consume each
  // immutable result once rather than replaying its old tracking decisions.
- auto result=worker.get();if(result&&result!=applied&&result->pid==pid&&result->match==epoch&&result->control==controls){applied=result;std::copy(result->views.begin(),result->views.end(),views);std::copy(result->tracks.begin(),result->tracks.end(),tracks);autoSuppressed=result->suppressed;static uint32_t logged=0;if(result->diagnosticTick&&logged!=result->diagnosticTick){logged=result->diagnosticTick;critical(std::wstring(result->diagnostic.begin(),result->diagnostic.end()));}}
+ auto result=worker.get();if(result&&result!=applied&&result->pid==pid&&result->match==epoch&&result->control==controls){applied=result;std::copy(result->views.begin(),result->views.end(),views);std::copy(result->tracks.begin(),result->tracks.end(),tracks);autoSuppressed=result->suppressed;}
  arrange();
  Request r{pid,epoch,now,controls,snap.width,snap.height,bool(extra.renderReveal||assist::shroudpolicy::fullPreview(extra.mapStrategy)),bool(extra.watchDanger),autoSuppressed,{}};std::copy(std::begin(tracks),std::end(tracks),r.tracks.begin());r.selection=selection;
  for(int i=0;i<3;++i){int w=std::max(primary?panelDemand[0][i][0]:0,secondary?panelDemand[1][i][0]:0),h=std::max(primary?panelDemand[0][i][1]:0,secondary?panelDemand[1][i][1]:0);r.outputSizes[i]={w>0?w:320,h>0?h:256};}worker.submit(std::move(r));

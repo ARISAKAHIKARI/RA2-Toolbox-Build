@@ -19,6 +19,9 @@ public:
  void committed(const Visual&v){image_=v.image;sequence_=v.sequence;sourceWidth_=v.sourceWidth;sourceHeight_=v.sourceHeight;width_=v.width;height_=v.height;gpu_=v.gpu;dangerous_=v.dangerous;known_=true;}
 };
 inline double now(){return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();}
+// GetTickCount can advance between the caller's timestamp and submission;
+// clamp a future stamp instead of converting it to a 49-day queue delay.
+inline uint32_t queueDelay(uint32_t now,uint32_t submitted){const int32_t elapsed=int32_t(now-submitted);return elapsed>0?uint32_t(elapsed):0;}
 struct Metric {
  uint64_t count=0,failed=0;double total=0,maximum=0;
  void add(double ms,bool success=true){++count;failed+=!success;total+=ms;if(ms>maximum)maximum=ms;}

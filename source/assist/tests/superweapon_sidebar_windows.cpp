@@ -61,7 +61,7 @@ template<class T>static T call(uint32_t function,uint32_t self,void*argument){as
 #include "../source/superweapon_sidebar_bridge.h"
 }
 int main(){
- Memory memory;constexpr uint32_t house=0x20000,items=0x30000,instance=0x40000,type=0x50000;
+ Memory memory;memory.set<uint8_t>(0xA8E378,1);memory.set<int>(0xA8EDA0,0);memory.set<int>(0xA8ED8C,0);constexpr uint32_t house=0x20000,items=0x30000,instance=0x40000,type=0x50000;
  memory.set<uint32_t>(0xA83D4C,house);memory.set<uint32_t>(house+0x258,items);memory.set<int>(house+0x25C,1);memory.set<int>(house+0x264,1);
  memory.set<uint32_t>(items,instance);memory.set<uint32_t>(instance+0x28,type);memory.set<uint32_t>(instance+0x2C,house);memory.set<uint8_t>(instance+0x6D,1);memory.set<uint8_t>(instance+0x6F,1);memory.set<uint8_t>(instance+0x70,0);memory.set<uint8_t>(type+0xF5,0);memory.set<uint8_t>(type+0xE5,0);
  swsidebar::Panel panel;panelPointer=&panel;panel.window_=panelWindow;panel.game_=gameWindow;panel.pid_=1;panel.match_=2;
@@ -77,6 +77,12 @@ int main(){
  down();memory.set<uint8_t>(instance+0x70,1);up();assert(sent.size()==1);memory.set<uint8_t>(instance+0x70,0);
  down();memory.fail=true;up();assert(sent.size()==1);memory.fail=false;
  down();overlayvisibility::shown=false;up();assert(sent.size()==1);overlayvisibility::shown=true;
+ // A menu can open between press and release, before the next Host tick.
+ down();memory.set<int>(0xA8ED8C,1);up();assert(sent.size()==1);
+ panel.update(gameWindow,1,2,true,panel.options_,panel.read_,panel.select_,{});assert(!panel.shown_&&!panel.inputReady_);
+ memory.set<int>(0xA8ED8C,0);memory.set<int>(0xA8EDA0,1);panel.shown_=panel.inputReady_=true;
+ panel.update(gameWindow,1,2,true,panel.options_,panel.read_,panel.select_,{});assert(!panel.shown_);
+ memory.set<int>(0xA8EDA0,0);panel.shown_=panel.inputReady_=true;assert(panel.usable());
  down();swsidebar::Panel::proc(panelWindow,WM_CANCELMODE,0,0);up();assert(sent.size()==1&&!captureWindow);
  // An input lease expires before a retained image does; short failure never
  // authorizes a click, then the original 250ms display lease hides it.

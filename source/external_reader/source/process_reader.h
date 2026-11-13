@@ -18,6 +18,7 @@ namespace external {
 struct ReaderDiagnostics {
  uint32_t reads=0,errors=0,pageHits=0,pageMisses=0,pageFallbacks=0,prefetchedPages=0,prefetchMisses=0,pageEvictions=0,pageCurrentEvictions=0,pageBudgetDenials=0,pageAllocationFailures=0,emergencyPageReads=0,pagePressureRetired=0;
  // Read-only diagnostics: do not change access rights or game memory.
+ uint32_t worldMissingReads=0,worldUnreadableReads=0,worldInvalidReads=0,worldFirstMissingAddress=0,worldLastMissingAddress=0;
  DWORD lastOpenError=0,lastReadError=0,lastRegionQueryError=0;
  uint32_t lastFailedAddress=0;
  size_t lastFailedSize=0;
@@ -38,10 +39,11 @@ class ProcessReader : public ReaderDiagnostics {
   if(!(worldDemandBits_[index>>6]&mask)){worldDemandBits_[index>>6]|=mask;worldDemands_.push_back(page);}
  }
  bool frameRead(uint32_t address,void*out,size_t size,bool optional=false){
-  if(!out||!worldframe::range(address,size)){++errors;if(!optional)worldComplete_=false;return false;}
+  if(!out||!worldframe::range(address,size)){++errors;if(!optional){worldComplete_=false;++worldInvalidReads;}return false;}
   for(uint32_t page=address&~4095u;uint64_t(page)<uint64_t(address)+size;page+=4096)requestWorldPage(page);
   if(worldFrame_->read(address,out,size)){++pageHits;return true;}
-  ++errors;if(!optional||!worldFrame_->observed(address,size))worldComplete_=false;return false;
+  ++errors;const bool observed=worldFrame_->observed(address,size);if(!optional||!observed){worldComplete_=false;if(observed)++worldUnreadableReads;else ++worldMissingReads;
+   if(!worldFirstMissingAddress)worldFirstMissingAddress=address;worldLastMissingAddress=address;}return false;
  }
  using PageOrder=std::list<uint32_t>;
  struct Page {std::array<unsigned char,4096> bytes;uint64_t epoch=0;PageOrder::iterator order;};
@@ -162,7 +164,7 @@ public:
  // Keep address-to-storage bindings between observations, never their old
  // values. The first access in a new epoch refills the page from the game.
  // This avoids freeing/allocating thousands of 4 KiB nodes every frame.
- void begin(){const auto retired=trimUnderPressure();if(!++epoch_){clearPages();epoch_=1;}emergency_.epoch=0;growthBlocked_=failedTrackingBlocked_=false;failedPages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=prefetchedPages=prefetchMisses=pageEvictions=pageCurrentEvictions=pageBudgetDenials=pageAllocationFailures=emergencyPageReads=0;pagePressureRetired=uint32_t(retired);lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
+ void begin(){worldMissingReads=worldUnreadableReads=worldInvalidReads=worldFirstMissingAddress=worldLastMissingAddress=0;const auto retired=trimUnderPressure();if(!++epoch_){clearPages();epoch_=1;}emergency_.epoch=0;growthBlocked_=failedTrackingBlocked_=false;failedPages_.clear();reads=errors=pageHits=pageMisses=pageFallbacks=prefetchedPages=prefetchMisses=pageEvictions=pageCurrentEvictions=pageBudgetDenials=pageAllocationFailures=emergencyPageReads=0;pagePressureRetired=uint32_t(retired);lastReadError=0;lastFailedAddress=0;lastFailedSize=0;lastBytesRead=0;lastRegionState=lastRegionProtect=0;lastRegionQueried=false;lastRegionQueryError=0;}
  size_t cachedPageStorage()const{return pages_.size();}
  size_t pageBufferAllocations()const{return pageAllocations_;}
  // Adjacent actor pages enter this epoch in one bounded RPM call. A failed

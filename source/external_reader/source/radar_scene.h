@@ -39,7 +39,7 @@ inline const char* renderFailureName(RenderFailure f){switch(f){
 template<class Assets>class SceneRenderer {
  presentation::Profile features_;
  liveshape::Cache gatherShapes_;sceneextras::Layers extraLayers_;sceneextras::TrailLayers trailLayers_;
- bool prepareWorldOnly_=false;
+ bool prepareWorldOnly_=false,croppedWorld_=false;
  bool outputSized_=false;
  std::shared_ptr<const worldscene::Snapshot> preparedWorld_;
  std::array<std::array<std::shared_ptr<const voxel::Image>,47>,2> worldShroud_{};
@@ -180,7 +180,7 @@ public:
  explicit SceneRenderer(size_t pages=camera::NativeCanvas::MaximumPages):nativeBudget_(pages==camera::NativeCanvas::MaximumPages?camera::NativeCanvas::sharedBudget():std::make_shared<camera::NativeCanvas::Budget>()){if(pages!=camera::NativeCanvas::MaximumPages)nativeBudget_->maximum=std::clamp<size_t>(pages,1,camera::NativeCanvas::MaximumPages);}
  void guideEnabled(bool enabled,uint64_t contextKey=0){if(enabled!=guideEnabled_||contextKey!=guideExternalContext_){guideEnabled_=enabled;guideExternalContext_=contextKey;motionContext_=std::make_shared<const uint8_t>(0);}}
  void directPresentation(bool enabled){if(enabled!=directPresentation_){gpuFrameReuse_.reset();directPresentation_=enabled;}}
- void prepareWorld(bool enabled){if(prepareWorldOnly_!=enabled){reset();prepareWorldOnly_=enabled;}}
+ void prepareWorld(bool enabled,bool cropped=false){if(prepareWorldOnly_!=enabled||croppedWorld_!=cropped){reset();prepareWorldOnly_=enabled;croppedWorld_=cropped;}}
  // Independent of SceneRegion: radar keeps its mask, annotations, admission
  // and projection while raster work follows the physical panel dimensions.
  void outputSized(bool enabled){if(outputSized_!=enabled){reset();outputSized_=enabled;}}
@@ -236,7 +236,7 @@ public:
   // native viewport. No ceil-induced pixel row becomes part of the view.
   int nativeWidth=viewport.backingWidth(),nativeHeight=viewport.backingHeight();
   if((complete_&&(!complete_->geo.same(domain)||complete_->reveal!=frame.terrain->reveal))||(building_&&(!building_->geo.same(domain)||building_->reveal!=frame.terrain->reveal))||exactX!=spanX_||exactY!=spanY_)clearBackground();
-  if(region.active&&!prepareWorldOnly_){
+  if(region.active&&(!prepareWorldOnly_||croppedWorld_)){
    if(!coverageLocal_||!coverage_.contains(region.x,region.y,region.width,region.height,nativeWidth,nativeHeight)){
     clearBackground();coverage_=terraincoverage::Region::plan(region.x,region.y,region.width,region.height,nativeWidth,nativeHeight);coverageLocal_=true;
     if(!coverage_.ready)return {};
@@ -507,14 +507,14 @@ public:
   phaseReads(stageStats_.extraReads);
   stage(stageStats_.terrainMs,stageStats_.terrainReads);auto markers=frame.markers;
   if(!features_.particles)markers.erase(std::remove_if(markers.begin(),markers.end(),[](const Marker&m){return m.kind==7||m.kind==8||(m.kind==5&&!m.parent);}),markers.end());
-  if(region.active&&!prepareWorldOnly_)markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){
+  if(region.active&&(!prepareWorldOnly_||croppedWorld_))markers.erase(std::remove_if(markers.begin(),markers.end(),[&](const Marker&m){
    double x=(double(m.x)-m.y)*30/256.+geo.offsetX*30,y=(double(m.x)+m.y)*15/256.-geo.offsetY*15-screenHeight(m.z,projectionScale);
    if(x<region.x-512||x>region.x+region.width+512||y<region.y-512||y>region.y+region.height+512)return true;
    // Once this exact pose is known, cull its real body+attachment bounds
    // before palette validation, VXL preparation and command recording.
    // Unknown poses keep the conservative discovery halo until decoded.
    auto cached=sprites_.find(imageKey(m));
-   if(detail&&cached!=sprites_.end()&&cached->second.ready&&!cached->second.image->incomplete&&m.x>=0&&m.y>=0&&m.x<512*256&&m.y<512*256){
+   if(!prepareWorldOnly_&&detail&&cached!=sprites_.end()&&cached->second.ready&&!cached->second.image->incomplete&&m.x>=0&&m.y>=0&&m.x<512*256&&m.y<512*256){
     const auto cell=frame.terrain->art[(m.y/256)*512+m.x/256].cell;const int level=game.template get<int8_t>(cell+0x11B);
     const float drop=m.pose.shadow.known?float(m.pose.shadow.drop):float(std::max(0,screenHeight(m.z,projectionScale)-(level+(m.onBridge?4:0))*15));
     return !detailed_.visible(*cached->second.image,float(x),float(y+camera::anchorY(m.kind)),drop);

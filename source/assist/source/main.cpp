@@ -1398,7 +1398,7 @@ static void sampleExternal(DWORD now){
  if(viewportKnown){motion.projection(viewportTransform.generation);statusMotion.projection(viewportTransform.generation);enemyMotion.projection(viewportTransform.generation);}
  static pipelineperf::Window timings(L"information-sample",{L"total"});pipelineperf::Scope total(timings,0,critical);
  if(shared&&shared->viewZoomBusy)return;
- 
+
  if(!externalReader.valid())return;
  const DWORD displayNow=sampleRenderClock(nullptr);
  const DWORD period=((enabled&&foregroundGame())||secondaryDisplayAvailable())?DWORD(1000/informationFPS()):250;
@@ -1707,6 +1707,7 @@ static bool constructionDisplayFresh(){
 #include "../../external_reader/source/sidebar_shapes.h"
 static external::sidebar::Cache sidebarShapes;
 static void serviceSuperweaponPanel(){
+ if(!overlayvisibility::visible()||!constructionDisplayVisible()){superweaponPanel.hide();return;}
  nativeviewhost::Transform transform;if(!nativeviewhost::sampleTransform(shared,transform)){superweaponPanel.hide();return;}
  superweaponOptions.enabled=enabled&&extra.superweaponPanel&&overlayvisibility::visible();
  superweaponPanel.update(game,pid,commandMatch(),enabled&&foregroundGame()&&!snap.chat&&commandFresh(GetTickCount())&&constructionDisplayFresh(),superweaponOptions,
@@ -2113,6 +2114,7 @@ static void publishSuiteDisplay(){
  if(!ready)return;
  external::presentation::Profile profile;profile.motion=renderHighRefresh;profile.gpu=renderVulkanEnabled;profile.material=effectiveRenderInterpolation();profile.detail=effectiveRenderDetail();profile.precision=effectiveRenderPrecision();profile.palette=effectiveRenderPalette();profile.scale=effectiveRenderScale();
  profile.revealUnits=0; // Use the existing enemy markers; model reveal remains suspended.
+ profile.overlayShroudOpacity=uint8_t(shroudpolicy::overlayOpacity(extra.mapStrategy));
  profile.particles=renderParticleEffects;profile.lasers=renderLaserEffects;profile.voxelLighting=renderVoxelLighting;profile.spriteLighting=renderSpriteLighting;external::presentation::settings().publish(profile);
 #ifdef RA2_UNIFIED
  suite::DisplayState state;

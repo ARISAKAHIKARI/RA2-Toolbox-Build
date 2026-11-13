@@ -236,8 +236,8 @@ static std::shared_ptr<const RenderFrame> renderPixels(const RenderRequest&r){
  for(int pi=0;pi<snap->playerCount;++pi){auto& p=snap->players[pi];if(!showOthers&&!p.local)continue;
   int entries=0;for(int i=0;i<snap->typeCount;++i)entries+=um::showCell(snap->types[i].category,p.cells[i],buildings);
   int across=entries>1&&maxWidth>=112?2:1;float panelW=across==2?maxWidth:std::min(84.f,maxWidth),rowH=std::min(44.f,(panelW-12)/across-4)*.8f+18;
-  int rows=std::max(1,int((viewportH-top-73)/rowH)),per=rows*across,pages=std::max(1,(entries+per-1)/per),start=(page%pages)*per,shownRows=std::max(1,(std::min(entries,start+per)-start+across-1)/across);
-  croppedW+=panelW+4;croppedH=std::max(croppedH,top+60+shownRows*rowH);
+  int rows=std::max(1,int((viewportH-top-61)/rowH)),per=rows*across,pages=std::max(1,(entries+per-1)/per),start=(page%pages)*per,shownRows=std::max(1,(std::min(entries,start+per)-start+across-1)/across);
+  croppedW+=panelW+4;croppedH=std::max(croppedH,top+48+shownRows*rowH);
  }
  width=std::min(viewportW,std::max(1,int(croppedW+2)));height=std::min(viewportH,std::max(1,int(croppedH+2)));
  if(demo){width=viewportW;height=viewportH;}
@@ -256,24 +256,23 @@ static std::shared_ptr<const RenderFrame> renderPixels(const RenderRequest&r){
   float panelW=across==2?maxWidth:std::min(84.f,maxWidth),x=cursorX+6,w=panelW-12;
   cursorX+=panelW+4;
   float tileW=w/across,iconW=std::min(44.f,tileW-4),iconH=iconW*.8f,rowH=iconH+18;
-  int rows=std::max(1,int((viewportH-top-73)/rowH)),per=rows*across;
+  int rows=std::max(1,int((viewportH-top-61)/rowH)),per=rows*across;
   int pages=std::max(1,(int(entries.size())+per-1)/per),current=page%pages;
   int start=current*per,finish=std::min(int(entries.size()),start+per);
   int shownRows=std::max(1,(finish-start+across-1)/across);
-  float panelH=56+shownRows*rowH+4;
-  SolidBrush panel(Color(158,12,19,29));g.FillRectangle(&panel,cursorX-panelW-4,6.f,panelW,panelH);
+  float panelH=44+shownRows*rowH+4;
+  SolidBrush panel(Color(228,36,39,35));g.FillRectangle(&panel,cursorX-panelW-4,6.f,panelW,panelH);
+  Pen frameEdge(Color(255,130,137,110),1.f),frameInset(Color(255,14,17,14),1.f);g.DrawRectangle(&frameEdge,cursorX-panelW-4,6.f,panelW-1,panelH-1);g.DrawRectangle(&frameInset,cursorX-panelW-3,7.f,panelW-3,panelH-3);
   uint32_t pc=p.color;Pen rule(Color(180,(pc>>16)&255,(pc>>8)&255,pc&255),2.f);g.DrawLine(&rule,x,9.f,x+w,9.f);
   std::wstring name=(const wchar_t*)p.name;if(name.empty())name=L"玩家 "+std::to_wstring(p.houseIndex+1);if(p.local)name=L"我·"+name;
   int maxChars=std::max(3,int(w/11));if(int(name.size())>maxChars)name=name.substr(0,maxChars-1)+L"…";
   text(g,name,x,12,11,color(pc),true);
   const std::wstring money=p.creditsKnown?L"$ "+std::to_wstring(p.credits):L"$ —";
   text(g,money,x,27,std::min(10.f,w/(float(money.size())*.65f)),Color(255,241,215,131),true);
-  text(g,L"拥有 / +生产",x,41,9,Color(255,214,225,237));
-  if(entries.empty())text(g,L"暂无单位",x,60,10,Color(255,190,204,221));
-  if(pages>1)text(g,std::to_wstring(current+1)+L"/"+std::to_wstring(pages),x+w-26,41,9,Color::White);
+  if(pages>1)text(g,std::to_wstring(current+1)+L"/"+std::to_wstring(pages),x+w-26,28,9,Color::White);
   for(int j=start;j<finish;j++){
    int ix=entries[j],slot=j-start;const auto& c=p.cells[ix];int category=snap->types[ix].category;
-   float tx=x+(slot%across)*tileW,ty=56+(slot/across)*rowH;
+   float tx=x+(slot%across)*tileW,ty=44+(slot/across)*rowH;
    drawIcon(g,snap->types[ix],*snap,tx,ty,iconW,iconH,pc);
    if(category!=3||buildings)text(g,std::to_wstring(um::shownOwned(category,c,buildings)),tx+1,ty+iconH,12,Color::White,true);
    if(c.queued){float qx=category==3&&!buildings?tx+1:tx+iconW/2; text(g,L"+"+std::to_wstring(c.queued),qx,ty+iconH+1,10,color(pc),true);}
