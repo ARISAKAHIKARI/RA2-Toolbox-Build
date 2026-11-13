@@ -17,16 +17,28 @@ void leases(){
  leases->append(1101,pages);CHECK(pages.size()==1&&pages[0]==0x10000000);leases->clear();pages.clear();leases->append(1102,pages);CHECK(pages.empty());
  std::puts("PASS dependency leases: bounded membership, renewal, expiry, wrap, full-capacity expiry recovery and explicit clear");
 }
-void demandGap(){
+void demandGap(bool paused=false){
  using namespace assist;currentPid=GamePid;fixture::clock=2000;retireWorldFrame();Memory m;setup(m);Read read{&m};
  constexpr uint32_t extra=0x760100;m.put(extra,0x12345678u);
  auto capture=[&](int frame){m.put(0xA8ED84,frame);snap.frame=frame;fixture::clock+=16;return captureWorldFrame(read,worldlife::capture(read),House,fixture::clock,worldframe::Base);};
  CHECK(capture(50));{SampleReadScope scope;uint32_t value=0;CHECK(!readWorldSample(extra,&value,4));}
  CHECK(capture(51));{SampleReadScope scope;uint32_t value=0;CHECK(readWorldSample(extra,&value,4)&&value==0x12345678u&&scope.complete());}
+ if(paused)fixture::clock+=2000;
  CHECK(capture(52));CHECK(capture(53)); // A derived cache skips its raw reads.
  m.put(extra,0x55667788u);CHECK(capture(54));
  {SampleReadScope scope;uint32_t value=0;CHECK(readWorldSample(extra,&value,4)&&value==0x55667788u&&scope.complete());}
  std::puts("PASS dependency gap: retained demand acquires new bytes after skipped reads");
+}
+void pendingDemand(){
+ using namespace assist;currentPid=GamePid;fixture::clock=8000;retireWorldFrame();Memory m;setup(m);Read read{&m};snap.frame=50;
+ constexpr uint32_t extra=0x760100;m.put(extra,0x11223344u);
+ CHECK(captureWorldFrame(read,worldlife::capture(read),House,fixture::clock,worldframe::Base));{SampleReadScope scope;uint32_t value=0;CHECK(!readWorldSample(extra,&value,4));}
+ ++fixture::clock;m.put(0xA8ED84,51);snap.frame=51;m.put(0xA8EC78+16,-1);
+ CHECK(!captureWorldFrame(read,worldlife::capture(read),House,fixture::clock,worldframe::Base));
+ fixture::clock+=2000;m.put(0xA8EC78+16,3);
+ CHECK(captureWorldFrame(read,worldlife::capture(read),House,fixture::clock,worldframe::Base));
+ {SampleReadScope scope;uint32_t value=0;CHECK(readWorldSample(extra,&value,4)&&value==0x11223344u&&scope.complete());}
+ std::puts("PASS pending demand: failed captures never acknowledge/forget an unfulfilled dependency");
 }
 void failedRetry(){
  using namespace assist;currentPid=GamePid;fixture::clock=3000;retireWorldFrame();Memory m;setup(m);Read read{&m};snap.frame=50;
@@ -75,6 +87,6 @@ void failedPublication(){
 int main(int argc,char**argv){
  if(argc!=2)return 2;const std::string name=argv[1];
  if(name=="demand")retention::demandGap();else if(name=="retry")retention::failedRetry();
- else if(name=="busy")retention::busyPublication();else if(name=="publication")retention::failedPublication();else if(name=="leases")retention::leases();else if(name=="backoff")retention::failureBackoff();else return 2;
+ else if(name=="busy")retention::busyPublication();else if(name=="publication")retention::failedPublication();else if(name=="paused-demand")retention::demandGap(true);else if(name=="pending-demand")retention::pendingDemand();else if(name=="leases")retention::leases();else if(name=="backoff")retention::failureBackoff();else return 2;
  std::printf("{\"case\":\"%s\",\"checks\":%zu,\"pass\":true}\n",name.c_str(),fixture::checks);
 }

@@ -25,7 +25,7 @@ cmd=['g++','-std=c++17','-O1','-UNDEBUG','-pthread','-fsanitize=undefined','-fno
 r=subprocess.run(cmd,capture_output=True,text=True);(out/'build.log').write_text(r.stdout+r.stderr)
 if r.returncode:raise SystemExit(r.stdout+r.stderr)
 rows=[]
-for case in ('demand','retry','busy','publication') + (() if a.expect_failure else ('leases','backoff')):
+for case in ('demand','retry','busy','publication') + (() if a.expect_failure else ('leases','backoff','paused-demand','pending-demand')):
  r=subprocess.run([str(exe),case],capture_output=True,text=True);(out/(case+'.log')).write_text(r.stdout+r.stderr);print(case+': '+r.stdout+r.stderr,end='')
  assert (r.returncode!=0)==a.expect_failure,(case,r.returncode)
  rows.append({'case':case,'exit_code':r.returncode})

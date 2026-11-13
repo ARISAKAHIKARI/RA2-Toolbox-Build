@@ -50,9 +50,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  }else captureRetryDelay=0;
  lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
  auto&requests=worldFrameCaptureRequests;const auto&hostRequests=worldFrameServer.requests();requests.assign(hostRequests.begin(),hostRequests.end());requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
+ // Pending consumption can predate a long pause or failed capture. Renew its
+ // addresses at this acquisition boundary and acknowledge only on success.
+ for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
  runtimeDemandLeases.append(key.tick,requests);
  std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
- runtimeWorldDemands.clear();runtimeDemandBits.fill(0);key.serial=++worldFrameSerial;key.demand=worldFrameServer.demandRevision();worldFrame.reset(key);
+ key.serial=++worldFrameSerial;key.demand=worldFrameServer.demandRevision();worldFrame.reset(key);
  worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);bool complete=capture.capture(demand,requests);
  // These checks deliberately bypass the read set. Cached self-comparison is
  // not evidence that the frame/world/House survived the acquisition boundary.
@@ -66,6 +69,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(sh)++sh->worldSampleFailures;return false;
  }
  captureRetryDelay=0;
+ runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
  worldFrameReady=true;worldFrameServer.publish(worldFrame);
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;

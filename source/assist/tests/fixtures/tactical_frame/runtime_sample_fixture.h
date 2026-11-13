@@ -25,11 +25,11 @@ static bool fixtureCaptureWorld(uint32_t now){
  readFixtureLive(0xA8B230,&key.scenario,4);readFixtureLive(0x87F924,&key.cells,4);readFixtureLive(0x87F928,&key.cellCount,4);
  if(fixtureCaptureAttempted&&fixtureLastAttempt.sameFrame(key))return worldFrameReady;
  fixtureLastAttempt=key;fixtureCaptureAttempted=true;worldFrameReady=false;
- auto demands=std::move(runtimeWorldDemands);runtimeDemandLeases.append(now,demands);runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ auto demands=runtimeWorldDemands;for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,now);runtimeDemandLeases.append(now,demands);
  worldFrame.reset(key);worldframe::CaptureGraph<decltype(&readFixtureLive)> capture(worldFrame,&readFixtureLive);
  const unsigned beforeCellReads=cellReads;const bool complete=capture.capture(worldframe::Base|worldframe::Ore|worldframe::Combat,demands);fixtureCaptureCellReads+=cellReads-beforeCellReads;
  ++fixtureCaptureCount;fixtureCaptureReads+=worldFrame.counters.calls;fixtureCaptureBytes+=worldFrame.counters.bytes;
- worldFrameReady=worldFrame.seal()&&complete;return worldFrameReady;
+ worldFrameReady=worldFrame.seal()&&complete;if(worldFrameReady){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}return worldFrameReady;
 }
 // Original fixtures expose a sparse logical map. Support the actual producer's
 // page reads without allocating a 128 MiB array of mostly empty Cell objects.
