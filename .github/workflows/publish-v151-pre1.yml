@@ -1,0 +1,119 @@
+name: Publish RA2 Toolbox 1.0.51-pre.1
+on:
+  push:
+    branches: [codex/release-1.0.51-pre.1-20261113]
+    paths:
+      - .github/workflows/publish-v151-pre1.yml
+      - .github/scripts/release_151_pre1.py
+      - source/shared/source/release_version.h
+      - source/BUILD_SOURCE_MANIFEST.json
+      - packages/v1.0.51-pre.1/**
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publish-v151-pre1
+  cancel-in-progress: false
+jobs:
+  correctness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          sparse-checkout: source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify sampling retention, transport and tactical consumers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-checks
+          python source/assist/tests/world_frame_retention.py --out release-checks/retention
+          python source/assist/tests/world_frame_core_test.py 2>&1 | tee release-checks/core.log
+          python source/assist/tests/tactical_frame_sampling.py --out release-checks/tactical
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-1.0.51-pre.1-regressions
+          retention-days: 30
+          path: release-checks/
+  release:
+    needs: correctness
+    runs-on: windows-2022
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.51-pre.1-regressions
+          path: diagnostics-v151pre1/checks
+      - name: Install Zig and bind the source snapshot
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if((& $zig version) -ne '0.13.0'){throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force diagnostics-v151pre1,baseline-v150 | Out-Null
+          python .github/scripts/release_151_pre1.py snapshot
+          if($LASTEXITCODE -ne 0){throw 'Source snapshot failed'}
+      - name: Build and verify the paired Windows programs
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/build-v151pre1"
+          bash source/build-zig-x64.sh > diagnostics-v151pre1/build.log 2>&1 || { tail -100 diagnostics-v151pre1/build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root build-v151pre1 --host-arch x64 --webview2 > diagnostics-v151pre1/static-pe.log 2>&1 || { cat diagnostics-v151pre1/static-pe.log; exit 1; }
+          cat diagnostics-v151pre1/static-pe.log
+      - name: Assemble and verify the release packages
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v1.0.50 --repo $env:GITHUB_REPOSITORY --dir baseline-v150 --pattern 'RA2Toolbox-1.0.50-x64-*.zip' --pattern 'RA2Toolbox-1.0.50-release-manifest.json'
+          if($LASTEXITCODE -ne 0){throw 'Baseline download failed'}
+          python .github/scripts/release_151_pre1.py package
+          if($LASTEXITCODE -ne 0){throw 'Package verification failed'}
+      - name: Preserve complete packages before publication
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.51-pre.1-complete-packages
+          retention-days: 30
+          if-no-files-found: error
+          path: dist-v151pre1/
+      - name: Publish the requested prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python .github/scripts/release_151_pre1.py publish
+          if($LASTEXITCODE -ne 0){throw 'Publication failed'}
+      - name: Preserve build and publication receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.51-pre.1-release-receipts
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            diagnostics-v151pre1/
+            dist-v151pre1/source-inputs.json
+            dist-v151pre1/publication.json
+            dist-v151pre1/*manifest.json
+            dist-v151pre1/*SHA256SUMS.txt
