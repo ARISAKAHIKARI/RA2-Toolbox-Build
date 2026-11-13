@@ -1,4 +1,4 @@
-"""Compare actual current capture to immutable 1.0.45 production headers."""
+"""Compare production capture with the pinned 1.0.50 source; optionally use real own-process Windows RPM."""
 from pathlib import Path
 import argparse
 import hashlib
@@ -7,8 +7,12 @@ import subprocess
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--out', required=True, type=Path)
-parser.add_argument('--baseline', default='88812eda0d23d065d61d6f742315b7d0581fd1a8')
+parser.add_argument('--baseline', default='1d970c9c9b2929b2c215213e1834a70bf82178b0')
+parser.add_argument('--zig', type=Path)
+parser.add_argument('--windows-rpm', action='store_true')
 args = parser.parse_args()
+if args.windows_rpm and not args.zig:
+    parser.error('--windows-rpm requires --zig')
 repo = Path(__file__).resolve().parents[3]
 out = args.out.resolve()
 baseline = out / 'baseline'
@@ -22,10 +26,14 @@ for name in ('world_frame.h', 'world_frame_capture.h'):
     (baseline / name).write_text(text.replace('namespace worldframe {', 'namespace baseline_worldframe {', 1))
     bindings.append({'path': relative, 'baseline_sha256': hashlib.sha256(raw).hexdigest(),
                      'current_sha256': hashlib.sha256((repo / relative).read_bytes()).hexdigest()})
-binary = out / 'capture-correctness'
-command = ['g++', '-std=c++17', '-O2', '-fno-exceptions', '-fsanitize=undefined', '-fno-sanitize-recover=all',
+binary = out / ('capture-correctness.exe' if args.windows_rpm else 'capture-correctness')
+compiler = [str(args.zig.resolve()), 'c++', '-target', 'x86-windows-gnu', '-DREAL_WINDOWS_RPM'] if args.windows_rpm else ['g++']
+sanitizer = [] if args.windows_rpm else ['-fsanitize=undefined', '-fno-sanitize-recover=all']
+command = compiler + ['-std=c++17', '-O2', '-UNDEBUG', '-fno-exceptions'] + sanitizer + [
            '-DBASELINE_CAPTURE_HEADER="' + str(baseline / 'world_frame_capture.h') + '"',
            str(Path(__file__).with_suffix('.cpp')), '-o', str(binary)]
+if args.windows_rpm:
+    command.append('-lkernel32')
 build = subprocess.run(command, capture_output=True, text=True)
 (out / 'build.log').write_text(build.stdout + build.stderr)
 if build.returncode:
@@ -37,8 +45,8 @@ for relative in ('source/assist/source/world_frame_runtime.h', 'source/assist/te
     bindings.append({'path': relative, 'current_sha256': hashlib.sha256((repo / relative).read_bytes()).hexdigest()})
 receipt = {'baseline_commit': args.baseline, 'passed': run.returncode == 0,
            'build_command': command, 'build_exit_code': build.returncode, 'run_exit_code': run.returncode,
-           'source_bindings': bindings, 'windows_executed': False, 'game_tested': False,
-           'limits': ['Actual production C++ capture with synthetic memory; no Windows RPM execution or game FPS measurement.',
+           'source_bindings': bindings, 'windows_executed': args.windows_rpm, 'own_process_windows_rpm': args.windows_rpm, 'game_tested': False,
+           'limits': ['Actual production C++ capture with synthetic bytes; Windows mode calls RPM only on this fixture process. No game FPS measurement.',
                       'Frozen baseline headers change only namespace to permit side-by-side execution.']}
 (out / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
 print(run.stdout, end='')

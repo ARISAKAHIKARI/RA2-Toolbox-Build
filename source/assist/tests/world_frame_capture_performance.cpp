@@ -56,6 +56,11 @@ void spans(){
  {auto m=input;m.put(0xA8EC78+16,-1);compare("invalid-required-roster",m,63);}
  {auto m=input;m.put(ActorA+0x274,Temporal);for(unsigned i=0;i<60;++i)m.put(Temporal+i*0x100+0x44,Temporal+((i+1)%60)*0x100);compare("temporal-chain-52-bound",m,63);}
  {auto m=input;m.put(ActorA+0x274,Temporal);for(unsigned i=0;i<12;++i)m.put(Temporal+i*0x100+0x44,Temporal+((i+1)%12)*0x100);compare("temporal-cycle",m,63);}
+ for(unsigned count:{512u,2048u}){
+  Memory crowded(0x2000000);setup(crowded);std::vector<uint32_t>actors;
+  for(unsigned i=0;i<count;++i){const uint32_t p=0x1000100+i*0x1000;actors.push_back(p);crowded.put(p,0x7F5C70u);crowded.put(p+0x6C4,Type);crowded.put(p+0x21C,House);crowded.put(p+0x10,i+100);}
+  std::reverse(actors.begin(),actors.end());roster(crowded,0xA8EC78,TechnoList,actors);compare(("crowded-roster-"+std::to_string(count)).c_str(),crowded,63);
+ }
 }
 void reusedScratch(){
  Memory memory;many(memory);worldframe::Snapshot sample;worldframe::CaptureScratch scratch;

@@ -158,7 +158,10 @@ public:
  // only adjacent, completely unobserved pages; existing/partial pages keep
  // their exact read-set semantics. A failed speculative span publishes no
  // bytes and falls back to the original per-page/partial-range path.
- template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes){
+ // Speculative roster warming can suppress individual fallback: a failed
+ // span then observes no bytes, leaving each original field/range read to
+ // establish its own partial-page validity and failure masks.
+ template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes,bool individualFallback=true){
   if(sealed_||overflow_)return false;
   const size_t limit=std::min<size_t>(16,scratchBytes/PageSize);bool ok=true;
   for(size_t first=0;first<addresses.size();){
@@ -168,6 +171,7 @@ public:
       uint64_t(at)+(end-first)*PageSize==addresses[end]&&range(addresses[end],PageSize)&&!find(addresses[end]))++end;
    }
    const size_t count=end-first;
+   if(!individualFallback&&count==1){first=end;continue;}
    if(count>1&&pages.reserve(pages.size()+count)){
     ++counters.calls;counters.pageAttempts+=uint32_t(count);counters.bytes+=uint32_t(count*PageSize);
     if(live(at,scratch,count*PageSize)){
@@ -176,6 +180,7 @@ public:
     }
     ++counters.failedReads;
    }
+   if(!individualFallback){first=end;continue;}
    for(;first<end;++first){if(!prefetch(live,addresses[first],PageSize))ok=false;if(overflow_)return false;}
   }return ok;
  }

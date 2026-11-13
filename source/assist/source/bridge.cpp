@@ -1498,7 +1498,7 @@ static void tick(){
  uint32_t worldDemand=worldframe::Base;
  if(sharedWorldWanted)worldDemand|=worldFrameServer.demandMask();
  if(sh->dodgeEnabled||dodgeCount)worldDemand|=worldframe::Bullets|worldframe::Combat;
- if(sh->missileEnabled||missileHoldCount||sh->minerDefenseEnabled||minerDefensePending()||sh->magnetronGlobal||sh->magnetronDrop||(sh->flags&(AdvancedInput|MagnetronInput|AircraftSpread|AdvancedEnter))||nativeCount||runtimeCoopPending)worldDemand|=worldframe::Combat;
+ if(sh->missileEnabled||missileHoldCount||sh->minerDefenseEnabled||minerDefensePending()||sh->magnetronGlobal||sh->magnetronDrop||(sh->flags&(AdvancedInput|MagnetronInput|AircraftSpread|AdvancedEnter|AntiTheft))||nativeCount||runtimeCoopPending)worldDemand|=worldframe::Combat;
  if(sh->flags&(Capacity|AutoOreReturn|AdvancedEnter|AircraftSpread|EjectAssist)||sh->bombBoardEnabled||loadLedger.count||loadCalculationPending||unloadCount||queuedUnload.count||cooperativeEffectCount)worldDemand|=worldframe::Passengers;
  if((sh->flags&AutoOreReturn)||oreHarvestNeedsWork()||sh->minerDefenseEnabled||minerDefensePending())worldDemand|=worldframe::Ore;
  if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand);

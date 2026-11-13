@@ -11,6 +11,11 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#ifdef REAL_WINDOWS_RPM
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 namespace fixture {
 size_t checks=0;
@@ -39,7 +44,11 @@ struct Memory {
   for(const auto&span:denied)if(uint64_t(p)<uint64_t(span.first)+span.second&&uint64_t(span.first)<uint64_t(p)+n)ok=false;
   calls.push_back({p,n,ok});
   if(!ok){std::memset(out,0xEF,n);return false;}
+#ifdef REAL_WINDOWS_RPM
+  SIZE_T got=0;CHECK(ReadProcessMemory(GetCurrentProcess(),bytes.data()+p,out,n,&got)&&got==n);
+#else
   std::memcpy(out,bytes.data()+p,n);
+#endif
   if(!(p&4095u)&&!(n&4095u))for(size_t i=0;i<n;i+=worldframe::PageSize)++successfulPages[p+uint32_t(i)];
   return true;
  }

@@ -1,0 +1,103 @@
+name: Verify automation admission and world sampling
+on:
+  push:
+    branches: [main, codex/automation-hotfix-20261113]
+    paths:
+      - source/assist/source/bridge.cpp
+      - source/assist/source/external_orders_bridge.h
+      - source/assist/source/main.cpp
+      - source/suite/source/app-icon.*
+      - source/suite/source/app.ico
+      - source/tools/build_app_icon.py
+      - source/shared/source/world_frame*.h
+      - source/assist/tests/defense_admission.*
+      - source/assist/tests/world_frame_capture_performance.*
+      - source/assist/tests/world_frame_core.cpp
+      - .github/workflows/automation-regression.yml
+      - .github/scripts/package_automation_candidate.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  automation-correctness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          sparse-checkout: source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check production admission and immutable capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics/automation
+          python source/assist/tests/defense_admission.py --out diagnostics/automation/defense --sanitize
+          python source/assist/tests/world_frame_capture_performance.py --out diagnostics/automation/capture
+          python source/assist/tests/world_frame_core_test.py 2>&1 | tee diagnostics/automation/core.log
+          python source/assist/tests/tactical_frame_sampling.py --out diagnostics/automation/tactical
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-Automation-regressions
+          retention-days: 30
+          path: diagnostics/automation/
+  windows-build-and-capture:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          sparse-checkout: |
+            source
+            .github
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV ('ZIG_EXE='+(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)
+          New-Item -ItemType Directory -Force diagnostics,artifacts/console | Out-Null
+      - name: Verify real own-process Windows RPM and capture equivalence
+        shell: pwsh
+        run: |
+          python source/assist/tests/world_frame_capture_performance.py --zig $env:ZIG_EXE --windows-rpm --out diagnostics/windows-capture
+          if($LASTEXITCODE -ne 0){throw 'Windows capture equivalence failed'}
+      - name: Compile and verify the paired x64 host and x86 runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/artifacts/console"
+          bash source/build-zig-x64.sh > diagnostics/console-build.log 2>&1 || { tail -100 diagnostics/console-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+      - name: Package the source-bound update candidate
+        shell: pwsh
+        run: |
+          python .github/scripts/package_automation_candidate.py --root artifacts/console --out artifacts
+          if($LASTEXITCODE -ne 0){throw 'Update candidate packaging failed'}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.50-AutomationFix-x64-Update
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            artifacts/RA2Toolbox-1.0.50-AutomationFix-x64-Update.zip
+            artifacts/automation-fix-manifest.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-Automation-Windows-verification
+          retention-days: 30
+          path: diagnostics/

@@ -480,7 +480,13 @@ static void logBridgeHealth(bool force=false){
   L" commandRejected="+std::to_wstring(incoming.commandRejected)+L" lastSubmitError="+std::to_wstring(incoming.lastSubmitError)+
   L" entryContended="+std::to_wstring(incoming.entryContended)+L" entryWrongThread="+std::to_wstring(incoming.entryWrongThread)+
   L" scanUs="+std::to_wstring(incoming.scanMicros)+L" controlUs="+std::to_wstring(incoming.controlMicros)+
-  L" worldUs="+std::to_wstring(incoming.worldMicros)+L" displayUs="+std::to_wstring(incoming.displayMicros));
+  L" worldUs="+std::to_wstring(incoming.worldMicros)+L" displayUs="+std::to_wstring(incoming.displayMicros)+
+  L" sampleFrame="+std::to_wstring(shared?shared->worldSampleFrame:-1)+L" samplePages="+std::to_wstring(shared?shared->worldSamplePages:0)+
+  L" sampleReads="+std::to_wstring(shared?shared->worldSampleReads:0)+L" sampleBytes="+std::to_wstring(shared?shared->worldSampleBytes:0)+L" sampleFailures="+std::to_wstring(shared?shared->worldSampleFailures:0)+
+  L" planWorldFrame="+std::to_wstring(shared?shared->world.frame:-1)+L" planActors="+std::to_wstring(shared?shared->world.count:0)+
+  L" planRequest="+std::to_wstring(shared?shared->planRequest:0)+L" planAck="+std::to_wstring(shared?shared->planAck:0)+L" planResult="+std::to_wstring(shared?shared->planResult:0)+
+  L" planAcceptedMask="+std::to_wstring(shared?shared->planAcceptedMask:0)+L" planRejectedMask="+std::to_wstring(shared?shared->planRejectedMask:0)+
+  L" privateOutMode="+std::to_wstring(shared?shared->privateOutMode:0)+L" privateOutStatus="+std::to_wstring(shared?shared->privateOutStatus:0));
 }
 static int value(const wchar_t*sec,const wchar_t*key,int def){return GetPrivateProfileIntW(sec,key,def,path(L"Assist.ini").c_str());}
 static bool saveWriteOK=true;

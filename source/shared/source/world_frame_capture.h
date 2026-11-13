@@ -35,10 +35,10 @@ public:
 };
 struct CaptureScratch {
  CaptureSet actors,types,small,houses;
- std::vector<uint32_t>queue,list,docks;
+ std::vector<uint32_t>queue,list,docks,warmPages;
  std::array<uint8_t,16*PageSize>pageScratch{};
  explicit CaptureScratch(PageAllocator allocator={}):actors(allocator),types(allocator),small(allocator),houses(allocator){}
- void reset(){actors.clear();types.clear();small.clear();houses.clear();queue.clear();list.clear();docks.clear();}
+ void reset(){actors.clear();types.clear();small.clear();houses.clear();queue.clear();list.clear();docks.clear();warmPages.clear();}
  bool valid()const{return actors.valid()&&types.valid()&&small.valid()&&houses.valid();}
 };
 // These layouts are inherited from the supported YR readers, not new native
@@ -161,6 +161,15 @@ public:
    for(uint32_t layer=0;layer<5;++layer)if(vector(0x8A0360+layer*24,65536,list))for(uint32_t p:list)enqueue(p);
    block(0x89C3B0,96);for(unsigned i=0;i<24;++i)auxiliary(value<uint32_t>(0x89C3B0+i*4),0x114);
   }
+  // The published roster already identifies the next actor ranges. Warm
+  // adjacent, unobserved pages in bounded reads instead of one OS call per
+  // actor page. A failed speculative span leaves the original partial reads
+  // untouched; pointer-followed actors still use the normal discovery path.
+  auto&warm=scratch_->warmPages;
+  for(uint32_t p:scratch_->queue)if(range(p,0x800))
+   for(uint32_t page=p&~4095u;uint64_t(page)<uint64_t(p)+0x800;page+=PageSize)warm.push_back(page);
+  std::sort(warm.begin(),warm.end());warm.erase(std::unique(warm.begin(),warm.end()),warm.end());
+  frame_.prefetchPages(live_,warm,scratch_->pageScratch.data(),scratch_->pageScratch.size(),false);
   for(size_t i=0;i<scratch_->queue.size();++i){if(!working())return false;actor(scratch_->queue[i]);}
   if(!working())return false;
   frame_.prefetchPages(live_,requests,scratch_->pageScratch.data(),scratch_->pageScratch.size());

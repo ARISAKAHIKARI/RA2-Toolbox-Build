@@ -201,6 +201,21 @@ static bool rawDockLinked(uint32_t refinery,uint32_t unit){
  for(int i=0;i<n;++i)if(get<uint32_t>(links+i*4)==unit)return true;return false;
 }
 #include "ore_harvest_bridge.h"
+// Retain only an effective current shot. A live infiltrator outside the
+// weapon annulus (or no longer targetable) must not block a new nearby threat
+// after the planner has already decided to switch.
+static bool antiTheftCurrentTargetUsable(uint32_t unit,uint32_t house){
+ const uint32_t target=get<uint32_t>(unit+0x2B4);
+ if(!antiTheftThreat(target,house)||!get<bool>(target+0x90)||get<bool>(target+0x81)||
+    get<uint32_t>(target+0x11C)||get<int>(target+0x220)!=0)return false;
+ const int sk=kind(unit),tk=kind(target);const uint32_t st=typeOf(unit,sk),tt=typeOf(target,tk);
+ if(!st||!tt)return false;
+ planner::Actor source{},victim{};rawCombatInfo(unit,st,sk,source,true);rawCombatInfo(target,tt,tk,victim,false);
+ const int64_t dx=int64_t(get<int>(unit+0x9C))-get<int>(target+0x9C),dy=int64_t(get<int>(unit+0xA0))-get<int>(target+0xA0);
+ if(dx< -1048576||dx>1048576||dy< -1048576||dy>1048576)return false;
+ return planner::canTarget(source,victim,dx*dx+dy*dy,false);
+}
+
 static bool externalOrderValid(const planner::Order&o,uint32_t house){
  uint32_t unit=worldByID(o.unit);if(!unit||!own(unit,house)||manualVersions.get(o.unit)!=o.token||(stickyOwns(unit)&&o.purpose!=planner::MagnetronDropOrder))return false;
  if(get<int>(unit+0x6C)<=0||!get<bool>(unit+0x74)||get<bool>(unit+0x81)||!get<bool>(unit+0x90)||get<bool>(unit+0x1C8)||get<uint32_t>(unit+0x11C))return false;
@@ -209,7 +224,7 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
  if(o.purpose==planner::MagnetronDropOrder)return o.mission==13&&!o.target&&!o.destination&&!o.destinationTag&&!o.pursuit&&o.refinery&&rawMagnetronDrop(unit,worldByID(o.refinery),house);
  int globalIndex=orderIndex(unit);if(globalIndex>=0&&nativeOrders[globalIndex].global&&(!sh->magnetronGlobal||(o.mission==2&&!o.pursuit)))return false;
  bool defense=o.purpose==planner::DefenseOrder,combat=o.purpose==1||o.purpose==3,mag=o.purpose==3;
- if(defense){if(!(sh->flags&AntiTheft)||!antiTheftBuilding(unit)||o.mission!=1||!o.target||o.destination||o.destinationTag||!antiTheftThreat(worldByID(o.target),house)||antiTheftThreat(get<uint32_t>(unit+0x2B4),house))return false;}
+ if(defense){if(!(sh->flags&AntiTheft)||!antiTheftBuilding(unit)||o.mission!=1||!o.target||o.destination||o.destinationTag||!antiTheftThreat(worldByID(o.target),house)||antiTheftCurrentTargetUsable(unit,house))return false;}
  if(combat){if(mag?!rawMagnetron(unit):!featureObjectAllowed(featuretypes::AdvancedAttack,unit))return false;int index=orderIndex(unit);if(!(sh->flags&(mag?MagnetronInput:AdvancedInput))||snap.nativeHookStatus!=1||index<0||nativeOrders[index].token!=o.token||nativeOrders[index].mode!=(mag?planner::MagnetronMove:planner::OrdinaryMove))return false;}
  else if(o.purpose==0||o.purpose==2||o.purpose==planner::OreYield){
   if(manualVersions.orePaused(o.unit))return false;
