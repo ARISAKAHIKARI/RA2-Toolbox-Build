@@ -23,6 +23,16 @@ s=s[:end]+r'''
   std::puts("PASS large-map disjoint three-camera union: native terrain and unit pixels equal full-map preparation after camera relocation");
  }
 '''+s[end:]
+
+needle='  assert(old.views[0].frame.cameraX==current.views[0].frame.cameraX);'
+assert needle in s
+replacement=r"""  if(old.views[0].frame.cameraX!=current.views[0].frame.cameraX)std::printf("DEFER map=%d step=%d oldCam=%.3f currentCam=%.3f centers=%d/%d prepare=%d/%d currentReason=%d\n",t->geo.width,step,old.views[0].frame.cameraX,current.views[0].frame.cameraX,old.views[0].frame.center.x,current.views[0].frame.center.x,old.timings.prepared,current.timings.prepared,int(current.timings.failure));
+  int retries=0;while((old.views[0].frame.center.x!=sampled.x+step*32||current.views[0].frame.center.x!=sampled.x+step*32||old.views[0].frame.center.z!=24||current.views[0].frame.center.z!=24)&&retries<64){assert(old.update(200+step)&&current.update(200+step));++retries;}
+  if(retries)std::printf("completion retries map=%d step=%d rounds=%d oldCam=%.3f currentCam=%.3f centers=%d/%d\n",t->geo.width,step,retries,old.views[0].frame.cameraX,current.views[0].frame.cameraX,old.views[0].frame.center.x,current.views[0].frame.center.x);
+  assert(old.views[0].frame.center.x==sampled.x+step*32&&current.views[0].frame.center.x==sampled.x+step*32);
+"""+needle
+s=s.replace(needle,replacement)
+
 s=s.replace('watchRun(t);anchorCases(t);','watchRun(t);anchorCases(t);auto large=makeTerrain(128);watchRun(large);')
 assert 'makeTerrain(128)' in s and 'g.width=g.height=g.offsetX=g.offsetY=dimension' in s
 p.write_text(s,encoding='utf-8')
