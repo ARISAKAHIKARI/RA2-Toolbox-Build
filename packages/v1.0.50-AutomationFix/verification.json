@@ -1,0 +1,81 @@
+{
+  "schema": "ra2.automation-fix.verification.v1",
+  "candidate": "1.0.50-AutomationFix-20261113",
+  "source_commit": "d38471c405cb0794d8ad208c7d2e03acdd047c70",
+  "baseline_commit": "1d970c9c9b2929b2c215213e1834a70bf82178b0",
+  "workflow_run": 43420538546,
+  "workflow_url": "https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/actions/runs/43420538546",
+  "jobs": {
+    "automation_correctness": 131869121461,
+    "windows_build_and_capture": 131869120959
+  },
+  "checks": {
+    "defense_admission": 20,
+    "linux_capture": 26912,
+    "windows_capture_with_real_own_process_rpm": 32349,
+    "world_core_and_transport": 75422,
+    "tactical_sampling": "passed",
+    "paired_windows_build": "passed",
+    "version": "1.0.50.0",
+    "shared_protocol": 107,
+    "embedded_icon_payloads_match_source": 9
+  },
+  "reading_calls": {
+    "roster_512": {
+      "before": 558,
+      "after": 77
+    },
+    "roster_2048": {
+      "before": 2094,
+      "after": 173
+    },
+    "equal_published_bytes": true
+  },
+  "icon": {
+    "source_blob": "bc95d8783b98094ebae36fe83484aea1ea27bae9",
+    "ico_blob": "3c04a6eeb71a37e1f74aa742607cd631b50da411",
+    "sizes": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ],
+    "transparent": true
+  },
+  "archive": {
+    "name": "RA2Toolbox-1.0.50-AutomationFix-x64-Update.zip",
+    "bytes": 4326118,
+    "sha256": "10d9ccf51fa6b929f500458587156a14b37a6047fd34a59ec8bb756e0b441fd3",
+    "verified_payload_files": 9
+  },
+  "artifacts": [
+    {
+      "id": 14035025504,
+      "name": "RA2Toolbox-Automation-Windows-verification",
+      "digest": "sha256:463fd56634c6951b3d5da23eb5dbe961284aa098bebb783409c9e8f25f16128c"
+    },
+    {
+      "id": 14033902426,
+      "name": "RA2Toolbox-1.0.50-AutomationFix-x64-Update",
+      "digest": "sha256:e130c79d6ef4737ac9d8df0a2dfc1b58cbcb5907b8522ca193268d2749e41312"
+    },
+    {
+      "id": 14032339961,
+      "name": "RA2Toolbox-Automation-regressions",
+      "digest": "sha256:78031e3e7d09d2482f55acdfa858957e10e63a468de44453682f8fd47e70fe8c"
+    }
+  ],
+  "public_release_replaced": false,
+  "real_game_tested": false,
+  "windows_visual_tested": false,
+  "limits": [
+    "The log establishes elevated control-stage cost, not a unique version-regression cause.",
+    "The reproduced defense admission defect also exists in 1.0.48; actual user scenario requires gameplay retest.",
+    "Read-call reduction is not a measured game FPS improvement."
+  ]
+}
