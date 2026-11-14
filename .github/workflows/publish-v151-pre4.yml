@@ -48,7 +48,7 @@ jobs:
           python source/assist/tests/tactical_frame_sampling.py --out release-checks/tactical
           python source/assist/tests/dodge_compute_routing.py --out release-checks/dodge-routing
           python source/assist/tests/reverse_dodge_hotpath.py --baseline-ref a2c4ed3e2cf3749706d7a60cd4ead6f486fb7db0 --out release-checks/reverse
-          g++ -std=c++17 -O2 -UNDEBUG -DMEMCPY_OBSERVATION=1 -fno-builtin-memcpy -Wl,--wrap=memcpy -Isource/assist/source source/assist/tests/compute_observation.cpp -o release-checks/observations
+          g++ -std=c++17 -O2 -UNDEBUG -DMEMCPY_OBSERVATION=1 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-builtin-memcpy -Wl,--wrap=memcpy -Isource/assist/source source/assist/tests/compute_observation.cpp -o release-checks/observations
           release-checks/observations | tee release-checks/observations.log
           python source/assist/tests/missile_manual_capacity.py --output release-checks/missile-manual > release-checks/missile-manual.log 2>&1
           python source/assist/tests/missile_input_reset.py --out release-checks/missile-reset

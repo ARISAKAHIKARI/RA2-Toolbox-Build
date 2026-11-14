@@ -81,7 +81,7 @@ def main():
         assert before["first_roster_visits"] == 64 * 512
         assert after["first_roster_visits"] == 512
     paths = [SRC / "reverse_dodge_bridge.h", SRC / "dodge_bridge.h", SRC / "reverse_dodge.h",
-             SRC / "dodge_compute.h", HERE / "reverse_dodge_hotpath.cpp", Path(__file__).resolve()]
+             SRC / "dodge_compute.h", SRC / "reverse_target_index.h", HERE / "reverse_dodge_hotpath.cpp", Path(__file__).resolve()]
     receipt = {"pass": True, "scope": __doc__, "baseline_commit": args.baseline_ref,
                "baseline_only": args.baseline_only, "variants": records,
                "source_sha256": {str(f.relative_to(REPO)): hashlib.sha256(f.read_bytes()).hexdigest() for f in paths},
