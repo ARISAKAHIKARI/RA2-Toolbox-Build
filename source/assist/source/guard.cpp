@@ -24,10 +24,11 @@ extern "C" int AssistExceptionFilter(void* raw,unsigned boundary){
 }
 // A live identity read must not turn an expired object pointer into a Runtime
 // fault. Read on every call, without a cached success or process-memory syscall.
+extern "C" unsigned AssistReadObjectIdentity(unsigned);
 extern "C" int GuardedReadObjectIdentity(unsigned object,unsigned* id){
  if(!id||object<0x10000u||object>=0x80000000u-0x14u)return 0;
  const unsigned long saved=GetLastError();int result=0;
- __try {__try {*id=*reinterpret_cast<const volatile unsigned*>(object+0x10u);result=1;}
+ __try {__try {*id=AssistReadObjectIdentity(object);result=1;}
   __except(assistguard::noReportAccess(_exception_info())){result=0;}}
  __finally {SetLastError(saved);}return result;
 }

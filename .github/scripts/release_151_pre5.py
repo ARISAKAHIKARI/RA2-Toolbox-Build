@@ -54,7 +54,7 @@ def package():
     actual, errors = verify(BIN, host_arch="x64", webview2=True)
     assert not errors, errors
     checks = ROOT / "diagnostics-v151pre5/checks"
-    for path in ("entry-hotpath/result.json", "identity/result.json", "runtime-scope/result.json"):
+    for path in ("entry-hotpath/result.json", "identity/result.json", "runtime-scope-pre4/result.json", "runtime-scope/result.json"):
         assert json.loads((checks / path).read_text(encoding="utf-8"))["pass"], path
     assert json.loads((checks / "tech-current/result.json").read_text(encoding="utf-8"))["required_checks_passed"]
     assert json.loads((checks / "runtime-scope/result.json").read_text(encoding="utf-8"))["windows_test_process_executed"]

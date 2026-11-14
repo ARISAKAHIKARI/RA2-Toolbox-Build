@@ -40,7 +40,7 @@ def main():
             raise RuntimeError(run.stdout + run.stderr)
         results[label] = json.loads(run.stdout)
     assert results["before"]["semantic_digest"] == results["after"]["semantic_digest"]
-    paths = [ROOT / path, SRC / "object_index.h", SRC / "guard.cpp", SRC / "exception_policy.h", HERE / "object_identity_read.cpp", Path(__file__), HERE / "entry_hotpath.py"]
+    paths = [ROOT / path, SRC / "object_index.h", SRC / "guard.cpp", SRC / "object_identity_read_leaf.h", SRC / "exception_policy.h", HERE / "object_identity_read.cpp", Path(__file__), HERE / "entry_hotpath.py"]
     report = {"pass": True, "baseline_commit": args.baseline, "scope": __doc__, "results": results,
               "source_sha256": {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},
               "windows_executed": False, "game_tested": False,

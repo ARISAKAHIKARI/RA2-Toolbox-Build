@@ -21,3 +21,11 @@
 ## 保留的成本与范围
 
 没有降低采样频率、候选容量或身份复核次数，没有延长命令寿命，没有把游戏原生函数挪到后台。公共 call/put 使用更轻的权限验证；硬件异常命中次数及 CPU/Windows 的异常派发成本没有在本轮消除。控制快照仍先在 Runtime 捕获，再完整复制控制页到共享发布槽；本轮没有改页面 wire 格式或这一发布架构。
+
+## Windows 发布前发现并修正的边界缺陷
+
+初次 pre.5 运行 `43552222327` 的真实 Windows 回归程序以 `0xC0000005` 退出。跟踪运行 `43577203223` 中，普通返回、外层 AV 清理及恢复执行的 debug 异常三种作用域都通过，随后在 identity 阶段异常退出。原始 `guard.o` 的 `GuardedReadObjectIdentity` 只有直接读取和 Get/SetLastError，没有 FS:0 注册、SEH filter 或作用域表；这是工具链对仅含可内联内存操作的异常保护优化造成的缺陷，尚未发布到 pre.5。
+
+修正为 MSVC SEH 包装调用另一个翻译单元中的 `AssistReadObjectIdentity` 叶函数。叶函数定义由 Runtime 主 TU 和实际 Windows 夹具各自单独链接，不标 noexcept，不在 SEH 翻译单元提供函数体；保留每次读取及原有局部故障返回。Windows 测试还对照 pre.4 的管理器/Policy/客户端与同一修正后的 SEH 夹具，用于区分公共权限改动和读取保护。
+
+运行 `43577596788` 使用 pre.4 管理器和当前管理器分别链接同一个未修正读取边界，两者均通过三种作用域场景，并在 identity-start 以相同指令偏移 `+0x120C` 失败，进一步隔离出读取保护的问题；这不是在运行已发布 pre.4 的读取实现。原始失败对象 guard.o SHA-256 `bfe2678f8674ebd59dbe2b1abc9365d3d9dd70f11fae3f2998facbb63c7aa75c`；测试 EXE SHA-256 `e9f11cbbe1507bf785a2bbcb1892fd5b2c9e5794053ec20b0d7594ab25524416`。修正后将两个管理器版本的 Windows 运行都设为发布门槛。

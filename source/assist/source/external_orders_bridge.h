@@ -36,6 +36,7 @@ static void observePausedOre(uint32_t house,int frame){
  }
  snap.oreManual=int(manualVersions.pausedCount);
 }
+#include "object_identity_read_leaf.h"
 extern "C" int GuardedReadObjectIdentity(unsigned,unsigned*);
 static bool readObjectIdentity(uint32_t object,uint32_t&id){
  // Raw sample consumers must stay on the sealed source, including failures.

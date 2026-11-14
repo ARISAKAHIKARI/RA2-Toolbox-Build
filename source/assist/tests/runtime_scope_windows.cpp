@@ -5,6 +5,7 @@
 #include <cstdio>
 #include "../../shared/source/game_entry_client.h"
 #include "../../shared/source/runtime_fp_scope.h"
+#include "../source/object_identity_read_leaf.h"
 
 // The execution manager and the shared scope helpers are the production
 // implementations. Only guard callbacks unrelated to this fixture are stubbed

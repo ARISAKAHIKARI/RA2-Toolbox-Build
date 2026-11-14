@@ -17,6 +17,7 @@ here = Path(__file__).resolve().parent
 out = a.out.resolve()
 out.mkdir(parents=True, exist_ok=True)
 paths = ['source/cursor/source/resource_guard.cpp', 'source/assist/source/guard.cpp', 'source/assist/source/exception_policy.h',
+         'source/assist/source/object_identity_read_leaf.h',
          'source/shared/source/runtime_seh_scope.h', 'source/shared/source/game_entry_client.h',
          'source/shared/source/game_entry_manager.cpp', 'source/shared/source/entry_policy.h',
          'source/shared/source/game_entry_validation.h',
