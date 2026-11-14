@@ -120,10 +120,13 @@ static void setup(){
 }
 static std::vector<uint8_t> bytes(){return std::vector<uint8_t>((uint8_t*)Memory,(uint8_t*)(Memory+MemorySize));}
 static MSG mouse(unsigned message,int x=1500,int y=30){return MSG{(HWND)uintptr_t(0x1234),message,0,LPARAM(uint32_t(uint16_t(x))|(uint32_t(uint16_t(y))<<16))};}
+#ifdef _WIN32
+static LONG CALLBACK fixtureException(EXCEPTION_POINTERS*p){if(p->ExceptionRecord->ExceptionCode==EXCEPTION_ACCESS_VIOLATION)std::printf("fixture AV at %p access=%lu target=%p\n",p->ExceptionRecord->ExceptionAddress,p->ExceptionRecord->NumberParameters?p->ExceptionRecord->ExceptionInformation[0]:99,p->ExceptionRecord->NumberParameters>1?(void*)p->ExceptionRecord->ExceptionInformation[1]:nullptr);return EXCEPTION_CONTINUE_SEARCH;}
+#endif
 int main(){
  std::setvbuf(stdout,nullptr,_IONBF,0);
 #ifdef _WIN32
- AddVectoredExceptionHandler(1,[](EXCEPTION_POINTERS*p)->LONG{if(p->ExceptionRecord->ExceptionCode==EXCEPTION_ACCESS_VIOLATION)std::printf("fixture AV at %p access=%lu target=%p\n",p->ExceptionRecord->ExceptionAddress,p->ExceptionRecord->NumberParameters?p->ExceptionRecord->ExceptionInformation[0]:99,p->ExceptionRecord->NumberParameters>1?(void*)p->ExceptionRecord->ExceptionInformation[1]:nullptr);return EXCEPTION_CONTINUE_SEARCH;});
+ AddVectoredExceptionHandler(1,fixtureException);
  SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);
  assert(Memory>=uintptr_t(engineArena)&&Memory+MemorySize<=uintptr_t(engineArena)+sizeof engineArena);
  MEMORY_BASIC_INFORMATION owned{};assert(VirtualQuery((void*)Memory,&owned,sizeof owned)&&owned.Type==MEM_IMAGE&&owned.AllocationBase==GetModuleHandleW(nullptr));

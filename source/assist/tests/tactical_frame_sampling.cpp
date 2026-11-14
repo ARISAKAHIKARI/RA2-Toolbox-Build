@@ -108,6 +108,9 @@ static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const 
  for(int n=0;n<ns;++n){const int target=assignment[n];if(target>=0&&target<nv&&worldByID(soldiers[n].id)==soldiers[n].object&&manualVersions.get(soldiers[n].id)==tokens[n])assignments.emplace_back(soldiers[n].id,vehicles[target].id);}
  return 1;
 }
+static int indexedFrame=-1,indexedCount=-1,globalVehicleCandidateCount=0;
+static uint32_t indexedItems=0,indexedVehicleHouse=0,globalVehicleCandidates[16384]{};static bool indexedGlobalVehicles=false;
+static void minerDefenseReindexManual(ManualVersions&){}
 #include "tactical_frame_production.h"
 #include "fixtures/tactical_frame/missile_edge_pre1513.h"
 static compute::FrameHistory<compute::LoadInput>legacyLoadFrames;
@@ -239,6 +242,13 @@ static void testMissile(){
  }
  std::puts("PASS missile raw/fresh selector facts, missing retention, manual generations and native query boundaries");
 }
+static void testIdentitySampleFailure(){
+ reset();const auto t=makeType(),carrier=object(t,2,20),passenger=object(t,1,21);vectorAt(0xA8EC78,0x800000,{carrier,passenger});
+ indexedFrame=-1;seal(passenger);check(refreshWorldIndex(snap.frame,true)&&worldObjects.contains(carrier)&&worldObjects.contains(passenger),"partial sampled UID page erased active identities");check(missingLiveReads>0&&!sampleReadDepth,"execution identity retry must run outside sampled scope");
+ advance(carrier);indexedFrame=-1;check(!refreshWorldIndex(snap.frame,false)&&!worldObjects.contains(carrier)&&indexedFrame==-1,"pure observer must not live-rescan or use partial index");check(!missingLiveReads,"pure observer retried missing identity live");
+ advance();check(refreshWorldIndex(snap.frame,false)&&worldObjects.contains(carrier)&&worldObjects.contains(passenger),"complete next sample failed to recover index");
+ std::puts("PASS identity-sample recovery: partial UID sample retries execution identity guard after scope exit; pure observation waits; complete next frame recovers");
+}
 static void testUnload(){
  reset();uint32_t type=makeType(),bt=makeType(),p=object(type,1,20),target=object(bt,3,30,0x30000);set<bool>(type+0xEC3,true);sh->flags=SmartUnloadOrders;enterResult=9;vectorAt(0xA8EC78,0x800000,{p,target});seal();
  UnloadPassenger r{};r.p=p;r.id=20;r.job=1;r.mode=0;r.carrierType=bt;r.frame=r.landedFrame=snap.frame;r.x=r.y=1000;static unloadcompute::Input input;input.count=input.targetCount=0;
@@ -305,5 +315,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(){sh=new Shared{};testCooperative();testLoad();testDodge();testReverse();testMissile();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testDodge();testReverse();testMissile();testIdentitySampleFailure();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif

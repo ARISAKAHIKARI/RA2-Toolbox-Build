@@ -40,6 +40,8 @@ def production():
                       "static bool rawOreCompatible(", "static bool rawDockBusy(", "static bool rawDockLinked("):
         add(function(orders, signature))
     add('#include "raw_combat.h"')
+    add(function(source["bridge.cpp"], "static void indexWorld("))
+    add(function(source["bridge.cpp"], "static bool refreshWorldIndex("))
     add(function(source["harvester_defense_raw.h"], "static bool minerDefenseMiner("))
     add(function(source["harvester_defense_raw.h"], "static bool minerDefenseDock("))
     dodge = source["dodge_bridge.h"]
@@ -92,6 +94,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cxx", default="g++")
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--negative-control", action="store_true")
     args = parser.parse_args()
     content, scope, names = production()
     out = args.out.resolve() if args.out else Path(tempfile.mkdtemp(prefix="tactical-frame-"))
@@ -108,11 +111,27 @@ def main():
     (out / "run.log").write_text(run.stdout + run.stderr)
     print(run.stdout + run.stderr, end="")
     run.check_returncode()
+    negative = None
+    if args.negative_control:
+        old = subprocess.check_output(["git", "show", "418347c5d753f5acb72026fcaf3c45935a65769d:source/assist/source/bridge.cpp"], cwd=SRC.parents[2], text=True)
+        sampled = function(old, "  if(worldFrameReady){SampleReadScope sample;indexWorld(frame);")
+        legacy = "static bool refreshWorldIndex(int frame,bool executionGuards){\n" + sampled + "\nelse if(executionGuards)indexWorld(frame);else{worldObjects.clear();indexedFrame=-1;}\nreturn indexedFrame==frame;\n}"
+        current = function(content, "static bool refreshWorldIndex(")
+        legacy_content = content.replace(current, legacy)
+        (out / "tactical_frame_production.h").write_text(legacy_content)
+        negative_exe = out / "identity-before"
+        subprocess.run([args.cxx, *flags, str(HERE / "tactical_frame_sampling.cpp"), "-o", str(negative_exe)], check=True, capture_output=True, text=True)
+        bad = subprocess.run([str(negative_exe), "--identity-only"], capture_output=True, text=True)
+        (out / "identity-before.log").write_text(bad.stdout + bad.stderr)
+        negative = {"source_commit": "418347c5d753f5acb72026fcaf3c45935a65769d", "sampled_branch_sha256": hashlib.sha256(sampled.encode()).hexdigest(), "exit": bad.returncode, "passed": bad.returncode == 1 and "partial sampled UID page erased active identities" in bad.stderr}
+        print("pre.8 identity failure reproduced:", negative["passed"])
+        assert negative["passed"], negative
+        (out / "tactical_frame_production.h").write_text(content)
     paths = [SRC / n for n in names] + [SRC / "planner_world_copy.h", SRC / "anti_theft_sample_bridge.h", SRC / "tactical_frame_read.h", SRC / "raw_combat.h",
             SRC / "combat_probe_bridge.h", SRC / "ore_harvest_bridge.h", SHARED / "world_frame.h",
             HERE / "tactical_frame_sampling.cpp", Path(__file__).resolve(),
             HERE / "fixtures/tactical_frame/autoload_before.h"]
-    report = {"pass": True, "scope": __doc__, "flags": flags, "output": run.stdout,
+    report = {"pass": True, "identity_negative_control": negative, "scope": __doc__, "flags": flags, "output": run.stdout,
               "windows_executed": False, "game_process_tested": False, "multiplayer_tested": False,
               "extracted_sha256": {"tactical_frame_production.h": hashlib.sha256(content.encode()).hexdigest(),
                                    "sample_scope_production.h": hashlib.sha256(scope.encode()).hexdigest()},

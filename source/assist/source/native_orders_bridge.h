@@ -98,6 +98,7 @@ static bool unloadExit(const UnloadPassenger&r,int mission,int frame){
 }
 static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  if(!(sh->flags&SmartUnloadOrders)||snap.chat){recentPassengerCount=0;return;}
+ if(indexedFrame!=frame)return; // incomplete identity sample: retain history until retry
  for(int n=0;n<recentPassengerCount;){auto&r=recentPassengers[n];
   if(DWORD(now-r.tick)>1500||frame<r.frame||frame-r.frame>90||!worldObjects.contains(r.p)||
      get<uint32_t>(r.p+0x10)!=r.id||manualVersions.get(r.id)!=r.token)

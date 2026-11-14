@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Execute camera transaction failure checks
         run: |
           mkdir -p checks
@@ -21,6 +23,7 @@ jobs:
           g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/native_pip_bridge.cpp -o checks/native-pip-bridge
           checks/native-pip-bridge | tee checks/bridge.log
           python source/assist/tests/native_pip_hook_lease.py --out checks/lease
+          python source/assist/tests/tactical_frame_sampling.py --negative-control --out checks/tactical
       - uses: actions/upload-artifact@v4
         with:
           name: native-pip-portable
@@ -50,7 +53,6 @@ jobs:
           export ZIG="$(cygpath -u "$ZIG_EXE")"
           python source/assist/tests/native_pip_windows.py --zig "$ZIG" --out native-pip-checks/native-integration
       - name: Build paired programs and verify ABI
-        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail

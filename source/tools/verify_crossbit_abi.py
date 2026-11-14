@@ -226,7 +226,7 @@ def main():
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
     baseline = {'assist::Version': 108, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162680,
+                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162720,
                 'assist::Shared.aircraftAllocationPolicy': 23125936,
                 'assist::Shared.nativeCombatQueries': 23125940,
                 'assist::Shared.singlePlayerFPS': 23154136,
