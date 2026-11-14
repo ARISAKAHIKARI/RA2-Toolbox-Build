@@ -53,6 +53,7 @@ jobs:
           export ZIG="$(cygpath -u "$ZIG_EXE")"
           python source/assist/tests/native_pip_windows.py --zig "$ZIG" --out native-pip-checks/native-integration
       - name: Build paired programs and verify ABI
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail
