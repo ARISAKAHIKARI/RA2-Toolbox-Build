@@ -185,24 +185,42 @@ static void name(uint32_t t,uint16_t*out,int n){uint32_t p=get<uint32_t>(t+0x60)
 #include "build_time_tooltip.h"
 static bool sameid(const char*a,const char*b){for(int i=0;i<24;++i){if(a[i]!=b[i])return false;if(!a[i])return true;}return true;}
 static bool own(uint32_t p,uint32_t house){return live(p)&&get<uint32_t>(p+0x21c)==house;}
-static void indexWorld(int frame){Vec all=vec(0xA8EC78);if(indexedFrame==frame&&indexedCount==all.count&&indexedItems==all.items&&indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal)&&indexedVehicleHouse==lastHouse)return;
- globalVehicleCandidateCount=0;indexedGlobalVehicles=sh&&sh->magnetronGlobal;indexedVehicleHouse=lastHouse;worldObjects.clear();for(int i=0;i<all.count;++i){uint32_t p=item(all,i);if(p>=0x10000){uint32_t id=0;if(read(p+0x10,&id,sizeof id)&&id)worldObjects.add(p,id);if(id&&indexedGlobalVehicles&&kind(p)==2&&get<uint32_t>(p+0x21C)==lastHouse)globalVehicleCandidates[globalVehicleCandidateCount++]=p;}}indexedFrame=frame;indexedCount=all.count;indexedItems=all.items;
+static void indexWorld(int frame){
+ Vec all{};const auto unknown=[](){worldObjects.clear();indexedFrame=-1;globalVehicleCandidateCount=0;};
+ if(!read(0xA8EC78,&all,sizeof all)||all.count<0||all.count>16384||all.capacity<all.count||all.capacity>262144||(all.count&&all.items<0x10000)){unknown();return;}
+ if(indexedFrame==frame&&indexedCount==all.count&&indexedItems==all.items&&indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal)&&indexedVehicleHouse==lastHouse)return;
+ // One bounded roster read. In particular a live retry must not reinterpret
+ // a failed header, item span or UID read as an absent unit.
+ static uint32_t pointers[16384];if(all.count&&!read(all.items,pointers,size_t(all.count)*4)){unknown();return;}
+ globalVehicleCandidateCount=0;indexedGlobalVehicles=sh&&sh->magnetronGlobal;indexedVehicleHouse=lastHouse;worldObjects.clear();bool complete=true;
+ for(int i=0;i<all.count;++i){const uint32_t p=pointers[i];if(p<0x10000)continue;uint32_t id=0;
+  if(!read(p+0x10,&id,4)){complete=false;continue;}if(id)worldObjects.add(p,id);
+  if(id&&indexedGlobalVehicles&&kind(p)==2&&get<uint32_t>(p+0x21C)==lastHouse)globalVehicleCandidates[globalVehicleCandidateCount++]=p;
+ }
+ if(!complete||(sampleReadDepth&&!sampleReadComplete)){unknown();return;}
+ indexedFrame=frame;indexedCount=all.count;indexedItems=all.items;
  static int prunedFrame=-100000;if((!sampleReadDepth||sampleReadComplete)&&manualVersions.used>=ManualVersions::Size/2&&(frame<prunedFrame||frame-prunedFrame>=300)){
-  static ManualVersions liveVersions;liveVersions.copyLive(manualVersions,[](uint32_t id){uint32_t p=worldObjects.byId(id);uint32_t found=0;return p&&read(p+0x10,&found,sizeof found)&&found==id;});minerDefenseReindexManual(liveVersions);manualVersions=liveVersions;prunedFrame=frame;
+  // Only the complete index proves membership; do not perform a second
+  // fallible UID read while deciding which manual revisions to retain.
+  static ManualVersions liveVersions;liveVersions.copyLive(manualVersions,[](uint32_t id){return worldObjects.byId(id)!=0;});minerDefenseReindexManual(liveVersions);manualVersions=liveVersions;prunedFrame=frame;
  }
 }
 // A sealed snapshot may still contain failed pages. An incomplete identity
 // projection is unknown, not an empty world. Execution guards may rebuild the
 // live identity index after leaving the sealed scope; pure observers must wait.
 static bool refreshWorldIndex(int frame,bool executionGuards){
+ static uint32_t failedMatch=0,failedAt=0;static int failedFrame=-1;
+ const uint32_t now=sampleClock(sh);
+ if(failedMatch==match&&failedFrame==frame&&uint32_t(now-failedAt)<16)return false;
  if(worldFrameReady){
   bool complete=false;
   {SampleReadScope sample;indexWorld(frame);complete=sample.complete();}
-  if(complete)return true;
+  if(complete&&indexedFrame==frame)return true;
  }
  worldObjects.clear();indexedFrame=-1;globalVehicleCandidateCount=0;
  if(!executionGuards)return false;
- indexWorld(frame);return indexedFrame==frame;
+ indexWorld(frame);if(indexedFrame==frame)return true;
+ failedMatch=match;failedFrame=frame;failedAt=now;return false;
 }
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
@@ -1528,7 +1546,11 @@ static void tick(){
   sh->flags|sh->plannerTracking|((sh->cooperativePlan!=sh->cooperativeAck)?AutoOreReturn:0),(sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)));
  if(needsIndex){
   const bool liveGuards=(directSellPending()||privateOutPending()||sh->privateOutMode)||cmd||resultsDue||actorLeaseArbiter.count||missionObserver.pending()||pendingRepairs.count||loadLedger.count||repairAt<repairCount||repairCalculationPending||loadCalculationPending||runtimeCoopPending||entryReservationCount||cooperativeEffectCount||nativeCount||unloadCount||queuedUnload.count||missileHoldCount||dodgeCount||stickyCount||formationJobCount||moOrdersPending()||directAirPending()||minerDefensePending()||ownground::job.pending||oreHarvestNeedsWork();
-  refreshWorldIndex(frame,liveGuards);
+  if(!refreshWorldIndex(frame,liveGuards)){
+   // Leave requests, passenger history, manual revisions and all active jobs
+   // untouched. Missing live guards are unknown too; retry on the next wake.
+   ++sh->worldSampleFailures;publishSnapshot(now);return;
+  }
  }
  privateOutTick();servicePrivateOut();serviceDirectSell();
  // Release stale leases before any feature sends a new game order. No game
