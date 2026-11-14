@@ -4,7 +4,7 @@
 
 ## 分工和成本
 
-游戏线程仍在原有稳定边界执行 CaptureGraph、采集后世界/House/帧复核和 seal；它将页缓冲的所有权交给独立 Win32 线程，不复制页面。后台线程负责 DataView 映射创建/增长、全部 Page 复制和发布通知；只读取自己持有的封口页，不执行游戏函数、不调用 Live reader，也不持有 game-entry 锁。
+游戏线程仍在原有稳定边界执行 CaptureGraph、采集后世界/House/帧复核和 seal；它将页缓冲的所有权交给独立 Win32 线程，不复制页面。无有效 Host 订阅时只保留本地采样，不启动或唤醒发布线程。后台线程负责 DataView 映射创建/增长、全部 Page 复制和发布通知；只读取自己持有的封口页，不执行游戏函数、不调用 Live reader，也不持有 game-entry 锁。
 
 PublicationPool 最多三份页缓冲：一份后台持有、一份待发布、一份用于下一次采集。pending 是最新状态槽，更新可以合并；没有把命令、Ctrl+D 工作任务或执行回执放进这个覆盖槽。缓冲几何增长后复用，内存上界增加；初次捕获/较大样本的缓冲扩容和实际捕获成本仍在游戏线程。本次没有调整同帧补采策略，也没有改变 Host 导入执行上下文。
 
@@ -22,7 +22,7 @@ TransportVersion=3（WorldFrame/WorldData v003，通知 v002）；Assist=109 强
 
 - `world_frame_publication.cpp`：后台固定持有旧样本时连续采集1万次，旧字节和时间戳不变，至多三份地址；并发生产/消费1万次，最新 pending、取消和租约复用。
 - `world_frame_authority.cpp`：实际 Client/Server，受控 Win32 I/O；提交/退役交错、旧 generation 拒收、后台断开不清控制观察、tick零快速路径。
-- `world_frame_async_dll.cpp` / `world_frame_async_host.cpp`：真实 Windows DLL/线程/命名映射，执行实际 world_frame_runtime.h 和原 CaptureGraph；原生 ReadProcessMemory 只读取测试自有的合成内存。阻塞后台首个映射时前台仍完成1000次采集；读回帧/单位字段核对，检查暂停同帧通道恢复、停止轮询、重启、Host卸载引用后的模块存活与最终自动卸载。Live 回调断言只能由测试前台调用。x86/x64各三次新进程。旧版同步 fixture 单独保留为 transport/采样回归，并未冒充异步测试。
+- `world_frame_async_dll.cpp` / `world_frame_async_host.cpp`：真实 Windows DLL/线程/命名映射，执行实际 world_frame_runtime.h 和原 CaptureGraph；原生 ReadProcessMemory 只读取测试自有的合成内存。阻塞后台首个映射时前台仍完成1000次采集；无订阅的本地采集前后 CreateThread 启动计数仍为0；读回帧/单位字段核对，检查暂停同帧通道恢复、停止轮询、重启、Host卸载引用后的模块存活与最终自动卸载。Live 回调断言只能由测试前台调用。x86/x64各三次新进程。旧版同步 fixture 单独保留为 transport/采样回归，并未冒充异步测试。
 - `world_frame_async_portable.py`：UBSan、原有8项保留/失败/需求回归、池和退役验证；`world_frame_core_test.py` 76122项；`tactical_frame_sampling.py --negative-control` 检查任务/身份保留。
 - `.github/workflows/async-world-publication.yml`：Windows 成套编译、实际 PE、导出/ABI/版本/依赖检查和测试日志。各次运行以 Actions 的 source SHA 和结果为准；初轮975744b的六次Windows worker测试与完整编译通过，portable测试因错误地在最后一个映射句柄关闭后首次导入而失败，测试已改为先导入再验证持有令牌与断开语义。
 

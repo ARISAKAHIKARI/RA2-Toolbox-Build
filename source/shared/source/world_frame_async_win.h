@@ -59,6 +59,9 @@ public:
  void invalidate(){pool_.invalidate();if(event_)SetEvent(event_);}
  bool publish(const Snapshot&frame,const Server&control){
   reap();
+  // Local automatic consumers may need a sample without any Host subscriber.
+  // Keep their capture buffer local and do not launch/wake a transport worker.
+  if(!control.observes(frame.key))return false;
   const uint32_t epoch=pool_.epoch();
   // A prior success is not sufficient: heartbeat expiry/retirement can remove
   // the advertised descriptor while this immutable game frame stays paused.

@@ -6,7 +6,10 @@
 #include <cstring>
 #include <cwchar>
 static HANDLE gate=nullptr;static DWORD gameThread=0;
-static std::atomic<bool>blockNext{true},entered{false};
+static std::atomic<bool>blockNext{true},entered{false};static unsigned threadStarts=0;
+static HANDLE WINAPI countedThread(LPSECURITY_ATTRIBUTES security,SIZE_T stack,LPTHREAD_START_ROUTINE start,LPVOID context,DWORD flags,LPDWORD id){
+ ++threadStarts;return CreateThread(security,stack,start,context,flags,id);
+}
 // Delay only the worker's first real payload mapping, using native Win32 for
 // every mapping/event/thread. The product Runtime and publisher are unchanged.
 static HANDLE WINAPI delayedMapping(HANDLE file,LPSECURITY_ATTRIBUTES security,DWORD protect,DWORD high,DWORD low,LPCWSTR name){
@@ -16,8 +19,10 @@ static HANDLE WINAPI delayedMapping(HANDLE file,LPSECURITY_ATTRIBUTES security,D
  return CreateFileMappingW(file,security,protect,high,low,name);
 }
 #define CreateFileMappingW delayedMapping
+#define CreateThread countedThread
 #include "../../shared/source/world_frame_async_win.h"
 #undef CreateFileMappingW
+#undef CreateThread
 #define WORLD_FRAME_FIXTURE_ONLY
 #define REAL_WINDOWS_RPM
 #include "world_frame_core.cpp"
@@ -36,6 +41,14 @@ static bool capture(){
  assert(worldFrameServer.wanted(GetCurrentProcessId(),GetTickCount()));
  const uint32_t serial=worldFrameSerial+1;memory.put(0xA8ED84,int(serial));memory.put(fixture::ActorA+0x6C,int(serial));snap.frame=int(serial);
  fixture::Read live{&memory};return captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base);
+}
+extern "C" __declspec(dllexport) int Idle(){
+ using namespace assist;gameThread=GetCurrentThreadId();shared.owner=GetCurrentProcessId();fixture::setup(memory);
+ memory.beforeRead=[](uint32_t,size_t){assert(GetCurrentThreadId()==gameThread);};
+ assert(!worldFrameServer.wanted(shared.owner,GetTickCount()));assert(threadStarts==0);
+ fixture::Read live{&memory};snap.frame=50;
+ assert(captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base));
+ assert(threadStarts==0);return 1;
 }
 extern "C" __declspec(dllexport) int Start(HANDLE delayGate){
  using namespace assist;gate=delayGate;gameThread=GetCurrentThreadId();blockNext=true;entered=false;ResetEvent(gate);
