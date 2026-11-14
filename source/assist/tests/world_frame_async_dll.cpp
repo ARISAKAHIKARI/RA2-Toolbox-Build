@@ -48,7 +48,10 @@ extern "C" __declspec(dllexport) int Idle(){
  assert(!worldFrameServer.wanted(shared.owner,GetTickCount()));assert(threadStarts==0);
  fixture::Read live{&memory};snap.frame=50;
  assert(captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base));
- assert(threadStarts==0);return 1;
+ assert(threadStarts==0);
+ // Isolate this no-subscriber scenario from the next fresh connection: the
+ // normal failed-open backoff is 100 ms and is not a worker failure.
+ worldFrameServer.disconnect();return 1;
 }
 extern "C" __declspec(dllexport) int Start(HANDLE delayGate){
  using namespace assist;gate=delayGate;gameThread=GetCurrentThreadId();blockNext=true;entered=false;ResetEvent(gate);
