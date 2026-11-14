@@ -143,6 +143,16 @@ static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int fra
   if(j>=0){dodgeRemember(dodgeJobs[j],s);if(d.release)finishDodge(dodgeJobs[j]);}
  }
 }
+// Both dodge modes use the same Host calculation/publication path. The third
+// retained cursor records the mode so an old async result cannot cross modes.
+static void dispatchDodgeCalculation(uint32_t house,int frame,DWORD now,int nextCursor,int nextJobCursor,int mode){
+ const auto&i=dodgeInput;if(!i.count)return;
+ if(compute::inside(sh->computeApplied,compute::Dodge)){applyDodgeResult(dodgecompute::calculate(i),house,frame,now);return;}
+ if(!externalInputFrame)return;
+ InterlockedIncrement(&sh->dodgeInputSeq);MemoryBarrier();sh->dodgeInput=i;
+ dodgeTask=compute::nextTask(sh->dodgeTask);dodgeFrames.retain(dodgeTask,i,{nextCursor,nextJobCursor,mode});
+ sh->dodgeTask=dodgeTask;MemoryBarrier();InterlockedIncrement(&sh->dodgeInputSeq);dodgePending=true;notifyHost();
+}
 #include "reverse_dodge_bridge.h"
 // Capture only facts. Native events, identity/lease checks and receipt changes
 // run after this scope has restored live reads.
@@ -168,22 +178,21 @@ static bool dodgeControlTick(uint32_t house,int frame,DWORD now){
  bool threatsCollected=false;auto collect=[&]{if(!threatsCollected)threatsCollected=collectDodgeThreats();return threatsCollected;};
  // Effect/lease maintenance is live even when no complete raw frame is ready.
  updateDodgeJobs(house,frame,now);
- if(sh->dodgeEnabled&&sh->dodgeMode==0){if(!collect())return false;dodgePending=false;return reverseDodgeTick(house,frame,now);}
- reverseWasEnabled=false;
  if(outside&&compute::newer(sh->dodgeComputed,dodgeApplied)){
   const uint32_t completed=sh->dodgeComputed;long seq=sh->dodgeResultSeq;
   if(!(seq&1)){MemoryBarrier();dodgeResult=sh->dodgeResult;MemoryBarrier();if(seq==sh->dodgeResultSeq&&completed==sh->dodgeComputed){
    const auto*source=dodgeFrames.find(completed);
-   if(!source)dodgeApplied=completed;
-   else if(collect()){dodgeApplied=completed;applyDodgeResult(dodgeResult,house,frame,now,source);if(const auto*c=dodgeFrames.cursors(completed)){dodgeCursor=(*c)[0];dodgeJobCursor=(*c)[1];}}
+   const auto*c=dodgeFrames.cursors(completed);const int mode=sh->dodgeEnabled&&sh->dodgeMode==0?0:1;
+   if(!source||!c||(*c)[2]!=mode)dodgeApplied=completed;
+   else if(collect()){dodgeApplied=completed;applyDodgeResult(dodgeResult,house,frame,now,source);if(mode){dodgeCursor=(*c)[0];dodgeJobCursor=(*c)[1];}}
   }}
  }
+ if(sh->dodgeEnabled&&sh->dodgeMode==0){if(!collect())return false;return reverseDodgeTick(house,frame,now);}
+ reverseWasEnabled=false;
  if(outside&&!externalInputFrame)return false;
  int nextCursor=0,nextJobCursor=0;
  if(!collect()||!collectDodgeInput(house,frame,now,nextCursor,nextJobCursor))return false;
  if(!outside){dodgeCursor=nextCursor;dodgeJobCursor=nextJobCursor;}
  sh->dodgeActive=0;for(int n=0;n<dodgeCount;++n)if(dodgeJobs[n].active)++sh->dodgeActive;
- const auto&i=dodgeInput;if(!i.count)return true;
- if(!outside)applyDodgeResult(dodgecompute::calculate(i),house,frame,now);
- else {InterlockedIncrement(&sh->dodgeInputSeq);MemoryBarrier();sh->dodgeInput=i;dodgeTask=compute::nextTask(sh->dodgeTask);dodgeFrames.retain(dodgeTask,i,{nextCursor,nextJobCursor,0});sh->dodgeTask=dodgeTask;MemoryBarrier();InterlockedIncrement(&sh->dodgeInputSeq);dodgePending=true;notifyHost();}return true;
+ dispatchDodgeCalculation(house,frame,now,nextCursor,nextJobCursor,1);return true;
 }

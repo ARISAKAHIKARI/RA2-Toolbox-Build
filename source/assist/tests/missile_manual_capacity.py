@@ -19,7 +19,7 @@ repo = Path(__file__).resolve().parents[3]
 source = args.source or repo / "source/assist/source/missile_bridge.h"
 raw = source.read_bytes()
 text = raw.decode()
-state = text[text.index("static compute::FrameHistory<missilecompute::Input>"):text.index("static bool missileTarget(")]
+state = text[text.index("static compute::FrameHistory<missilecompute::"):text.index("static bool missileTarget(")]
 delivery = text[text.index("static void pruneMissileSends("):text.index("// The producer has already sealed")]
 dispatch = text[text.index("static bool missileControlTick("):]
 observability = "" if "static bool missileManualOverflowed(" in state else "static bool missileManualOverflowed(){return false;}\n"
@@ -179,6 +179,10 @@ int main(){
 args.output.mkdir(parents=True, exist_ok=True)
 generated = args.output / "missile_manual_capacity.cpp"
 actual = state + delivery + dispatch
+if "missilecompute::Observation" in state:
+    cases=cases.replace("missileFrames.retain(1,missileInput);", "missilecompute::observe(missileObservation,missileInput);missileFrames.retain(1,missileObservation);")
+    collector=collector.replace("missileInput.tick=now;return true;", "missileInput.tick=now;missilecompute::observe(missileObservation,missileInput);return true;")
+    cases=cases.replace("missileInput.targets[0]={get<uint32_t>(target+0x10),target,100};", "missileInput.targets[0]={get<uint32_t>(target+0x10),target,100};missilecompute::observe(missileObservation,missileInput);")
 generated.write_text(fixture + "\n// BEGIN EXACT PRODUCTION STATE\n" + state + observability
                      + "\n// END EXACT PRODUCTION STATE\n" + collector
                      + "\n// BEGIN EXACT PRODUCTION DELIVERY AND DISPATCH\n" + delivery + dispatch

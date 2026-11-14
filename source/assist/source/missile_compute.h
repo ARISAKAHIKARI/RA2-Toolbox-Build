@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <memory>
 #include <new>
+#include <cstring>
 namespace assist { namespace missilecompute {
 constexpr int MaxSources=256,MaxTargets=256,MaxOrders=256,LookAhead=30,CoveragePercent=120,MaxAdvanceFrames=60,AdvanceLeash=1024,ReleaseGraceFrames=30;
 enum Mode { Smart=0, Even=1 };
@@ -17,6 +18,16 @@ struct Target {uint32_t id=0,pointer=0;int hp=0;uint32_t threatening=0;};
 struct Edge {int damage=0;uint32_t distance=0;int eta=0,close=1;};
 struct Input {uint32_t match=0,tick=0;int frame=-1,count=0,targetCount=0,mode=Smart;
  Source sources[MaxSources];Target targets[MaxTargets];Edge edges[MaxSources][MaxTargets];};
+// Final Runtime admission consumes only the source/target identities and
+// ownership tokens. Retaining each 1 MiB edge matrix serves no execution use.
+struct Observation {uint32_t match=0,tick=0;int frame=-1,count=0,targetCount=0,mode=Smart;
+ Source sources[MaxSources];Target targets[MaxTargets];};
+inline void observe(Observation&to,const Input&from){
+ to.match=from.match;to.tick=from.tick;to.frame=from.frame;to.count=from.count;to.targetCount=from.targetCount;to.mode=from.mode;
+ if(to.count<0||to.count>MaxSources||to.targetCount<0||to.targetCount>MaxTargets)return;
+ std::memcpy(to.sources,from.sources,size_t(to.count)*sizeof(to.sources[0]));
+ std::memcpy(to.targets,from.targets,size_t(to.targetCount)*sizeof(to.targets[0]));
+}
 inline void reset(Input& input){
  // Construct directly in the existing storage. Input{} assignment can put
  // a >1 MiB temporary on the game's default 1 MiB stack before an early-out.

@@ -50,6 +50,23 @@ template<>struct InputCopy<LoadInput> {
   for(int n=0;n<to.ns;++n)std::memcpy(to.compatible[n],from.compatible[n],size_t(to.nv));
  }
 };
+template<>struct InputCopy<LoadObservation> {
+ static void copy(LoadObservation&to,const LoadObservation&from){
+  std::memcpy(&to,&from,offsetof(LoadObservation,soldiers));
+  if(!valid(to)){std::memcpy(&to,&from,sizeof(to));return;}
+  std::memcpy(to.soldiers,from.soldiers,size_t(to.ns)*sizeof(to.soldiers[0]));
+  std::memcpy(to.vehicles,from.vehicles,size_t(to.nv)*sizeof(to.vehicles[0]));
+  std::memcpy(to.tokens,from.tokens,size_t(to.ns)*sizeof(to.tokens[0]));
+ }
+};
+template<>struct InputCopy<missilecompute::Observation> {
+ static void copy(missilecompute::Observation&to,const missilecompute::Observation&from){
+  std::memcpy(&to,&from,offsetof(missilecompute::Observation,sources));
+  if(to.count<0||to.count>missilecompute::MaxSources||to.targetCount<0||to.targetCount>missilecompute::MaxTargets){std::memcpy(&to,&from,sizeof(to));return;}
+  std::memcpy(to.sources,from.sources,size_t(to.count)*sizeof(to.sources[0]));
+  std::memcpy(to.targets,from.targets,size_t(to.targetCount)*sizeof(to.targets[0]));
+ }
+};
 template<class Input>inline void copyInput(Input&to,const Input&from){
  if(&to!=&from)InputCopy<Input>::copy(to,from);
 }

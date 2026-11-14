@@ -123,6 +123,9 @@ template<bool Baseline,class Input,class Output>static void service(Worker<Basel
  else serviceValueTask(worker,request,computed,source,destination,sequence);
 }
 template<bool Baseline,class Input,class Output>static void hostMeasurement(const char*name,int ns,int nt){
+#ifdef VALUE_TASK_CURRENT_ONLY
+ if constexpr(Baseline)return;
+#endif
  ++scenarios;auto source=std::make_unique<Input>();auto destination=std::make_unique<Output>();fill(*source,ns,nt);
  snap.match=9;snap.frame=10;shared->computeFrame=10;shared->computeFrameMatch=9;shared->computeFrameSeq=2;planningGeneration=1;
  std::mutex mutex;std::condition_variable cv;bool entered=false,release=false;std::atomic<unsigned>executed{0};bool pinnedSame=false;
@@ -150,7 +153,12 @@ template<bool Baseline,class Input,class Output>static void hostMeasurement(cons
  std::sort(times.begin(),times.end());std::printf("HOST {\"variant\":\"%s\",\"type\":\"%s\",\"sources\":%d,\"targets\":%d,\"input_bytes\":%zu,\"calls\":500,\"input_allocations\":%llu,\"input_allocation_bytes\":%llu,\"main_thread_allocations\":%llu,\"main_thread_allocation_bytes\":%llu,\"request_allocations\":500,\"copied_bytes\":%llu,\"median_ns_per_100\":%lld,\"executed_jobs\":%u}\n",Baseline?"baseline":"current",name,ns,nt,sizeof(Input),(unsigned long long)large,(unsigned long long)largeBytes,(unsigned long long)count,(unsigned long long)bytes,(unsigned long long)copies,times[2],executed.load());
 }
 static void runtimePublication(){
- for(bool baseline:{true,false}){++scenarios;unloadFrames.clear();baselineUnloadFrames.clear();shared->unloadTask=0;shared->unloadInputSeq=0;externalInputFrame=true;fill(unloadExternalInput,1,1);
+#ifdef VALUE_TASK_CURRENT_ONLY
+ const auto variants={false};
+#else
+ const auto variants={true,false};
+#endif
+ for(bool baseline:variants){++scenarios;unloadFrames.clear();baselineUnloadFrames.clear();shared->unloadTask=0;shared->unloadInputSeq=0;externalInputFrame=true;fill(unloadExternalInput,1,1);
   for(int n=0;n<16;++n){if(baseline)publishUnloadCalculationBaseline();else publishUnloadCalculation();}
   watch(&unloadExternalInput,sizeof unloadExternalInput);measuring=true;
   for(int n=0;n<500;++n){if(baseline)publishUnloadCalculationBaseline();else publishUnloadCalculation();}

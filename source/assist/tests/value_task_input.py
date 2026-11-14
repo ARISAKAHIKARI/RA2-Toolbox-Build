@@ -18,6 +18,7 @@ def main():
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--baseline', default='HEAD')
     p.add_argument('--cxx', default='g++')
+    p.add_argument('--current-only', action='store_true', help='verify current transfer/worker paths without historical allocation comparisons')
     a = p.parse_args()
     here = Path(__file__).resolve().parent
     repo = here.parents[2]
@@ -29,7 +30,7 @@ def main():
     baseline_task = out / 'baseline-value-task.h'
     baseline_task.write_text(old('value_task.h').replace('namespace compute {', 'namespace baselinecompute {', 1).replace('"../../shared/source/latest_worker.h"', '"' + str(repo / 'source/shared/source/latest_worker.h') + '"'))
     baseline_frame = out / 'baseline-compute-frame.h'
-    baseline_frame.write_text(old('compute_frame.h').replace('namespace compute {', 'namespace baselinehistory {', 1))
+    baseline_frame.write_text(old('compute_frame.h').replace('namespace compute {', 'namespace baselinehistory {', 1).replace('copyInput(p->value,input);', 'assist::compute::copyInput(p->value,input);'))
     extracted = {}
     main_source = (source / 'main.cpp').read_text()
     for label, text in [('current', main_source), ('baseline', old('main.cpp'))]:
@@ -60,10 +61,12 @@ def main():
     load = (source / 'autoload_bridge.h').read_text()
     assert 'compute::copyInput(loadCaptureCohort,sh->loadInput);' in load
     assert 'compute::copyInput(sh->loadInput,in);' in load
-    command = [a.cxx, '-std=c++17', '-O2', '-pthread', '-UNDEBUG', '-U_FORTIFY_SOURCE', '-D_FORTIFY_SOURCE=0', '-fno-builtin-memcpy',
+    command = [a.cxx, '-std=c++17', '-O2', '-I' + str(source), '-pthread', '-UNDEBUG', '-U_FORTIFY_SOURCE', '-D_FORTIFY_SOURCE=0', '-fno-builtin-memcpy',
                '-Wl,--wrap=memcpy', '-fsanitize=undefined', '-fno-sanitize-recover=all',
                '-DBASELINE_VALUE_TASK="' + str(baseline_task) + '"',
                '-DBASELINE_FRAME_HISTORY="' + str(baseline_frame) + '"']
+    if a.current_only:
+        command.append('-DVALUE_TASK_CURRENT_ONLY=1')
     command += ['-D' + name.upper() + '="' + str(path) + '"' for name, path in extracted.items()]
     exe = out / 'value-task-input'
     command += [str(here / 'value_task_input.cpp'), '-o', str(exe)]
@@ -80,13 +83,13 @@ def main():
     if any(digest(path) != bindings[str(path.relative_to(repo))] for path in inputs):
         raise SystemExit('Input-transfer sources changed during checking')
     report = {'schema': 'ra2.value-task-input.v1', 'passed': True, 'baseline_commit': baseline,
-              'records': records, 'build_command': command, 'run_exit_code': run.returncode,
+              'records': records, 'current_only': a.current_only, 'build_command': command, 'run_exit_code': run.returncode,
               'source_bindings': [{'path': path, 'sha256': value} for path, value in bindings.items()],
               'extracted_routes': {name: digest(path) for name, path in extracted.items()},
               'baseline_value_task_sha256': digest(baseline_task), 'baseline_history_sha256': digest(baseline_frame),
               'windows_executed': False, 'game_tested': False, 'multiplayer_tested': False,
               'scope': [
-                  'Actual current/baseline serviceValueTask and publishUnloadCalculation execute with controlled Win32 timing/barrier/notification boundaries.',
+                  ('Current serviceValueTask and publishUnloadCalculation execute with controlled Win32 seams; historical allocation comparisons are omitted.' if a.current_only else 'Actual current/baseline serviceValueTask and publishUnloadCalculation execute with controlled Win32 timing/barrier/notification boundaries.'),
                   'Actual current/baseline ValueTask and Latest threads run; one calculation is held to measure the established newest-pending queue without changing its execution semantics.',
                   'Actual InputCopy, FrameHistory, unload/missile/load calculators compare counted payloads and results with complete source copies; load mutation and future composition type rows are retained.',
                   'Pinned leases, bounded idle reuse with allocation fallback, allocation failure, generation invalidation and return after ValueTask destruction execute.',

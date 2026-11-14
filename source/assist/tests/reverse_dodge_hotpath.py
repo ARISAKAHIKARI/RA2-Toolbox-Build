@@ -38,7 +38,7 @@ def extract(reverse, dodge):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--baseline-ref", default="a4450ee784ad7844cacf848f1319c55e10aa8c23")
+    p.add_argument("--baseline-ref", default="a2c4ed3e2cf3749706d7a60cd4ead6f486fb7db0")
     p.add_argument("--baseline-only", action="store_true")
     args = p.parse_args()
     out = args.out.resolve(); out.mkdir(parents=True, exist_ok=True)
@@ -56,6 +56,8 @@ def main():
         exe = directory / "reverse-hotpath"
         command = ["g++", "-std=c++17", "-O2", "-UNDEBUG", "-I", str(directory), "-I", str(SRC),
                    str(HERE / "reverse_dodge_hotpath.cpp"), "-o", str(exe)]
+        if label == "after":
+            command.insert(1,"-DREVERSE_QUERY_BUDGET_GUARD=1")
         build = subprocess.run(command, capture_output=True, text=True)
         (directory / "build.log").write_text(build.stdout + build.stderr)
         build.check_returncode()
@@ -74,9 +76,10 @@ def main():
         assert before["semantic_digest"] == after["semantic_digest"]
         assert before["cases"] == after["cases"] and before["continuation_passes"] == after["continuation_passes"]
         assert before["stress_actor_attempts"] == after["stress_actor_attempts"] == 64
-        assert before["repeated_roster_visits"] == 64 * 512 * 99
+        assert before["repeated_roster_visits"] == 0
         assert after["repeated_roster_visits"] == 0
-        assert after["first_roster_visits"] == before["first_roster_visits"] == 64 * 512
+        assert before["first_roster_visits"] == 64 * 512
+        assert after["first_roster_visits"] == 512
     paths = [SRC / "reverse_dodge_bridge.h", SRC / "dodge_bridge.h", SRC / "reverse_dodge.h",
              SRC / "dodge_compute.h", HERE / "reverse_dodge_hotpath.cpp", Path(__file__).resolve()]
     receipt = {"pass": True, "scope": __doc__, "baseline_commit": args.baseline_ref,

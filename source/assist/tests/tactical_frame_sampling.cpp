@@ -24,6 +24,8 @@ using namespace assist;
 using DWORD=uint32_t;
 static Shared*sh;static Snapshot snap;static uint32_t match=1,lastHouse=0x20000;
 static bool fault=false,externalInputFrame=true;static DWORD clockNow=1000;
+static uint64_t readRequests=0;
+static unsigned leaseChecks=0;static bool leaseAllowed=true;
 static unsigned nativeCalls=0,hostNotifies=0,submissions=0,liveReads=0,liveRosterReads=0,missingLiveReads=0;
 static uint32_t missingPage=0,nextAddress=0x100000;static int enterResult=3;
 static std::vector<uint8_t> memory(0xC00000);
@@ -43,7 +45,7 @@ static bool liveRead(uint32_t at,void*out,size_t n){
  if(at<0x10000||uint64_t(at)+n>memory.size())return false;
  std::memcpy(out,memory.data()+at,n);return true;
 }
-static bool read(uint32_t at,void*out,size_t n){return sampleReadDepth?readWorldSample(at,out,n):liveRead(at,out,n);}
+static bool read(uint32_t at,void*out,size_t n){++readRequests;return sampleReadDepth?readWorldSample(at,out,n):liveRead(at,out,n);}
 template<class T>static T get(uint32_t at){T value{};read(at,&value,sizeof value);return value;}
 template<class T>static void set(uint32_t at,T value){assert(uint64_t(at)+sizeof value<=memory.size());std::memcpy(memory.data()+at,&value,sizeof value);}
 static uint32_t alloc(){const uint32_t out=nextAddress;nextAddress+=0x2000;assert(nextAddress<0x400000);return out;}
@@ -85,11 +87,11 @@ static void notifyHost(){assert(!sampleReadDepth);++hostNotifies;}
 static void nativeBoundary(){assert(!sampleReadDepth);++nativeCalls;if(nativeMutation){auto mutation=std::move(nativeMutation);nativeMutation={};mutation();}}
 template<class R,class...Args>static R call(uint32_t,uint32_t,Args...){nativeBoundary();return R(1);}
 static bool rawMagnetronDrop(uint32_t p,uint32_t q,uint32_t){nativeBoundary();return p&&q;}
-namespace gameentry {enum class Client{Assist};static bool active(Client){return true;}}
+namespace gameentry {enum class Client{Assist};static bool active(Client){++leaseChecks;return leaseAllowed;}}
 static runtimefault::Context faultContext;
 struct FaultPhase {runtimefault::Context previous=faultContext;FaultPhase(unsigned phase,unsigned source=0,unsigned target=0){faultContext={phase,source,target};}~FaultPhase(){faultContext=previous;}};
 extern "C" int GuardedEnterAction(unsigned,unsigned p,unsigned target,unsigned*out){
- nativeBoundary();const uint64_t key=(uint64_t(get<uint32_t>(p+0x10))<<32)|get<uint32_t>(target+0x10);
+ if(!leaseAllowed)std::abort();nativeBoundary();const uint64_t key=(uint64_t(get<uint32_t>(p+0x10))<<32)|get<uint32_t>(target+0x10);
  *out=live(p)&&live(target)&&!forbiddenEnter.count(key)?unsigned(enterResult):0;return 1;
 }
 extern "C" int GuardedObjectAir(unsigned p,int*out){nativeBoundary();auto found=airOverride.find(p);*out=found==airOverride.end()?(kind(p)==0||get<bool>(p+0x134)):found->second;return 1;}
@@ -107,7 +109,12 @@ static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const 
  return 1;
 }
 #include "tactical_frame_production.h"
+#include "fixtures/tactical_frame/missile_edge_pre1513.h"
+static compute::FrameHistory<compute::LoadInput>legacyLoadFrames;
+#define loadFrames legacyLoadFrames
 #include "fixtures/tactical_frame/autoload_before.h"
+#include "fixtures/tactical_frame/autoload_pre1513.h"
+#undef loadFrames
 static int harvestEvents=0;static planner::Order harvestLast{};
 static int admitPlannerOrder(const planner::Order&o,uint32_t house){assert(!sampleReadDepth);if(!oreHarvestOrderValid(o,house))return -1;++harvestEvents;harvestLast=o;return 1;}
 static void check(bool value,const char*why){if(!value){std::fprintf(stderr,"FAIL %s\n",why);std::exit(1);}}
@@ -130,7 +137,7 @@ static void seal(uint32_t omit=0,bool knownFailure=false){
 static void advance(uint32_t omit=0,bool failure=false){++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);seal(omit,failure);}
 static void reset(){
  check(!sampleReadDepth,"scope leaked between tests");memory.assign(memory.size(),0);::new(static_cast<void*>(sh)) Shared{};std::memset(&snap,0,sizeof snap);
- worldObjects.clear();manualVersions.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
+ leaseChecks=0;leaseAllowed=true;worldObjects.clear();manualVersions.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
  worldFrameReady=false;nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
  loadCalculationPending=loadCaptureWaiting=loadAckPending=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
  missileSendCount=missileManualCount=missileMotionCursor=missileSourceCursor=missileTargetCursor=missileManagedCursor=0;for(auto&m:missileMotion)m={};
@@ -164,13 +171,15 @@ static void setupLoad(int variant){
 }
 static void testLoad(){
  for(int variant=0;variant<32;++variant){setupLoad(variant);int old=legacyAutoLoad(lastHouse,nullptr);auto expected=assignments;int oldUnits=snap.loadUnits,oldWaiting=snap.loadWaiting,oldUnassigned=snap.loadUnassigned;check(old==1,"legacy load fixture rejected");
-  assignments.clear();submissions=0;liveRosterReads=0;loadCalculationPending=false;int next=autoLoad(lastHouse);check(next==old&&assignments==expected,"load assignment changed");check(snap.loadUnits==oldUnits&&snap.loadWaiting==oldWaiting&&snap.loadUnassigned==oldUnassigned,"load cohort counters changed");check(liveRosterReads==0,"load collector reacquired Techno roster");}
+  setupLoad(variant);check(pre1513AutoLoad(lastHouse,nullptr)==old&&assignments==expected,"pre.3 assignment reference changed");
+  const auto oldLeases=leaseChecks,oldQueries=nativeCalls;assignments.clear();submissions=0;liveRosterReads=0;loadCalculationPending=false;leaseChecks=nativeCalls=0;int next=autoLoad(lastHouse);check(nativeCalls==oldQueries,"load changed native legality queries");check(leaseChecks==1&&oldLeases>1,"load batch repeated manager validation");check(next==old&&assignments==expected,"load assignment changed");check(snap.loadUnits==oldUnits&&snap.loadWaiting==oldWaiting&&snap.loadUnassigned==oldUnassigned,"load cohort counters changed");check(liveRosterReads==0,"load collector reacquired Techno roster");}
  setupLoad(0);uint32_t passenger=get<uint32_t>(0x820000),carrier=get<uint32_t>(0x800000);seal(carrier);const uint32_t task=sh->loadTask;
  check(autoLoad(lastHouse)==-30&&loadCaptureWaiting&&sh->loadTask==task&&!submissions,"load missing page published or executed");check(!missingLiveReads,"load missing raw page fell back live");
  vectorAt(0xA8ECB8,0x820000,{});advance();compute::LoadInput cohort{};check(autoLoad(lastHouse,&cohort)==1&&submissions==1&&!assignments.empty()&&assignments[0].first==get<uint32_t>(passenger+0x10),"load retry lost original click cohort");
  setupLoad(0);passenger=get<uint32_t>(0x820000);const uint32_t replacement=get<uint32_t>(passenger+0x10)+1000;set<uint32_t>(passenger+0x10,replacement);worldObjects.add(passenger,replacement);
  check(autoLoad(lastHouse)==-30&&loadCaptureWaiting&&!submissions,"load combined a new click identity with old sealed facts");
  advance();check(autoLoad(lastHouse,&cohort)==1&&submissions==1&&!assignments.empty()&&assignments[0].first==replacement,"load replacement identity did not retry on its own frame");
+ setupLoad(0);leaseAllowed=false;const auto beforeQueries=nativeCalls;check(autoLoad(lastHouse)==-12&&nativeCalls==beforeQueries&&!submissions,"load queried native engine without a lease");leaseAllowed=true;
  std::puts("PASS 32 load assignment variants, shared roster, native matrix boundary and frozen-cohort retry");
 }
 static void testDodge(){
@@ -212,6 +221,22 @@ static void testMissile(){
  const uint32_t alternateType=makeType(),weapon=makeWeapon(alternateType);vectorAt(0xA8EC78,0x800000,{p,q});sh->nativeCombatQueries=sh->missileEnabled=1;seal(weapon,true);
  nativeMutation=[&]{set<uint32_t>(type+0x898,weapon);pauseMissileForManual(20,p);manualVersions.change(20,p,false);};
  check(!collectMissileInput(lastHouse,snap.frame,clockNow,sc,tc,mc)&&missileManualCount==1&&manualVersions.get(20)!=0,"failed missile capture erased a later native-boundary manual pause");
+
+ {
+ // Dense, non-close cohort: exact pre.3 edge parity while sharing only
+ // Runtime-owned record/motion lookups inside this sealed observation.
+ reset();type=makeType();airType=makeType();const uint32_t weapon=makeWeapon(type);
+ std::vector<uint32_t>sources,targets,all;for(int n=0;n<32;++n){sources.push_back(object(type,2,500+n,lastHouse,1000+n,1000));targets.push_back(object(airType,0,1000+n,0x30000,2200+n,1000));all.push_back(sources.back());all.push_back(targets.back());}
+ vectorAt(0xA8EC78,0x800000,all);seal();missileSendCount=1024;
+ for(int n=0;n<1024;++n){missileSends[n]={};missileSends[n].id=10000+n;}
+ for(int n=0;n<32;++n){auto&r=missileSends[992+n];r.id=500+n;r.pointer=sources[n];auto&m=missileMotion[224+n];m.id=1000+n;m.pointer=targets[n];m.known=true;m.vx=-20;}
+ static missilecompute::Edge beforeEdges[32][32];readRequests=0;
+ {SampleReadScope scope;for(int n=0;n<32;++n)for(int t=0;t<32;++t)beforeEdges[n][t]=legacyMissileEdgeFacts(sources[n],targets[t],weapon,0,1);check(scope.complete(),"reference matrix incomplete");}
+ const auto oldReads=readRequests;readRequests=0;int motions[32];std::fill_n(motions,32,-2);
+ {SampleReadScope scope;for(int n=0;n<32;++n){const int record=missileRecord(500+n);for(int t=0;t<32;++t){const auto edge=missileEdgeFacts(sources[n],targets[t],weapon,0,1,record,&motions[t]);check(!std::memcmp(&edge,&beforeEdges[n][t],sizeof edge),"cached missile edge changed");}}check(scope.complete(),"indexed matrix incomplete");}
+ const auto newReads=readRequests;check(newReads*4<oldReads,"missile pair loop repeated per-target lookup");
+ std::printf("PASS missile dense edge parity: 1024 pairs, logical field reads %llu -> %llu; source history lookup once per row and motion identity once per column\n",(unsigned long long)oldReads,(unsigned long long)newReads);
+ }
  std::puts("PASS missile raw/fresh selector facts, missing retention, manual generations and native query boundaries");
 }
 static void testUnload(){

@@ -30,7 +30,8 @@ def production():
     names = ["cooperative_bridge.h", "external_orders_bridge.h", "dodge_bridge.h",
              "reverse_dodge_bridge.h", "missile_bridge.h", "autoload_bridge.h",
              "unload_compute_bridge.h", "native_orders_bridge.h", "world_frame_runtime.h", "bridge.cpp",
-             "harvester_defense_bridge.h", "harvester_defense_raw.h"]
+             "harvester_defense_bridge.h", "harvester_defense_raw.h", "compute_tasks.h",
+             "compute_input_copy.h", "missile_compute.h", "reverse_target_index.h"]
     source = {name: (SRC / name).read_text() for name in names}
     parts = []
     add = parts.append
@@ -56,6 +57,7 @@ def production():
                       "static loading::Observation loadingObservation(", "static int passengerSlots("):
         add(function(load, signature))
     add("static bool loadQueryFailed;")
+    add(function(load, "static bool queryEnterAction("))
     add(function(load, "static bool canEnter("))
     for signature in ("static bool captureLoadSelection(", "static bool collectLoadFacts(",
                       "static int autoLoad(uint32_t house,const compute::LoadInput*cohort){"):
@@ -77,7 +79,7 @@ def production():
     add("static std::unordered_map<uint32_t,uint32_t> minerDefenseLinkedRefinery;static uint32_t minerDefenseRefineries[planner::MaxRefineries];static int minerDefenseRefineryCount;static bool minerDefenseRefineryIncomplete;")
     add(function(source["harvester_defense_bridge.h"], "static bool minerDefenseIndexRefineries("))
     reverse = source["reverse_dodge_bridge.h"]
-    add('#include "reverse_dodge.h"')
+    add('#include "reverse_dodge.h"\n#include "reverse_target_index.h"')
     add(function(reverse, "static bool reverseVector("))
     add(reverse[reverse.index("struct ReverseTarget"):reverse.index("static bool reverseDodgeTick(")])
     scope = source["world_frame_runtime.h"]

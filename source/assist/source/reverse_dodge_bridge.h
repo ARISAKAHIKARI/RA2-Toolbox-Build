@@ -1,4 +1,5 @@
 #include "reverse_dodge.h"
+#include "reverse_target_index.h"
 // Read-only projectile/terrain observation; movement goes through nativeMission.
 // Never call Scatter, SetDestination, or alter a projectile on this peer.
 struct ReverseShot {uint32_t id=0,pointer=0;int frame=0;bool handled=false;};
@@ -56,15 +57,29 @@ static bool reverseDodgeActor(uint32_t p,uint32_t q,uint32_t house,int frame,DWO
 }
 struct ReverseTarget {uint32_t pointer,id;};
 static ReverseTarget reverseTargets[16384];static int reverseTargetCount;
+static reversedodge::TargetIndex reverseTargetIndex;
+struct ReverseTargetStamp {uint32_t epoch=0,serial=0,house=0,config=0,requested=0;bool ready=false,attempted=false;
+ bool same(uint32_t h)const{return attempted&&epoch==match&&serial==worldFrame.key.serial&&house==h&&config==uint32_t(featureConfigRevision)&&requested==uint32_t(sh->featureConfigSeq);}
+};
+static ReverseTargetStamp reverseTargetStamp;
+static bool captureReverseTargetIndex(uint32_t house){
+ if(reverseTargetStamp.same(house))return reverseTargetStamp.ready;
+ reverseTargetStamp={match,worldFrame.key.serial,house,uint32_t(featureConfigRevision),uint32_t(sh->featureConfigSeq),false,true};reverseTargetIndex.clear();
+ if(reverseTargetStamp.requested&1u)return false;
+ Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
+ for(int n=0;n<all.count;++n){uint32_t p=item(all,n);if(!dodgeSource(p,house))continue;
+  const uint32_t cell=readMapCell(get<int>(p+0x9C)/256,get<int>(p+0xA0)/256);
+  if(!reverseTargetIndex.add(cell,p,get<uint32_t>(p+0x10)))return false;
+ }
+ reverseTargetStamp.ready=sampleReadComplete&&reverseTargetStamp.config==uint32_t(featureConfigRevision)&&reverseTargetStamp.requested==uint32_t(sh->featureConfigSeq);return reverseTargetStamp.ready;
+}
 static bool collectReverseTargets(const DodgeThreatRef&ref,uint32_t house,reversedodge::Point&delta){
  SampleReadScope frameRead;if(!frameRead)return false;
  reverseTargetCount=0;
  if(!dodgeThreatCurrent(ref)||!reverseVector(ref.pointer,delta))return frameRead.complete();
  if(worldObjects.contains(ref.target))reverseTargets[reverseTargetCount++]={ref.target,get<uint32_t>(ref.target+0x10)};
- else {Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
-  for(int n=0;n<all.count&&reverseTargetCount<16384;++n){uint32_t p=item(all,n);if(!dodgeSource(p,house))continue;
-   if(ref.target==readMapCell(get<int>(p+0x9C)/256,get<int>(p+0xA0)/256))reverseTargets[reverseTargetCount++]={p,get<uint32_t>(p+0x10)};
-  }
+ else {if(!captureReverseTargetIndex(house))return false;
+  reverseTargetIndex.visit(ref.target,[&](uint32_t p,uint32_t id){if(dodgeSource(p,house))reverseTargets[reverseTargetCount++]={p,id};});
  }
  return frameRead.complete();
 }
@@ -84,6 +99,10 @@ static bool collectReverseDodgeInput(uint32_t house,int frame,DWORD now){
 static bool reverseDodgeTick(uint32_t house,int frame,DWORD now){
  if(reverseMatch!=match||!reverseWasEnabled){memset(reverseShots,0,sizeof reverseShots);reverseMatch=match;}
  reverseWasEnabled=true;
+ // Eligibility also includes Runtime-owned Sticky state. Share a successful
+ // index within this non-pumping dispatch, then refresh it on the next one.
+ // A failed immutable observation remains deferred until its source changes.
+ if(reverseTargetStamp.ready)reverseTargetStamp.attempted=false;
  for(int n=0;n<dodgeThreatCount;++n){const auto&ref=dodgeThreatRefs[n];if(!ref.projectile||reverseShotHandled(ref,frame))continue;
   reversedodge::Point delta{};if(!collectReverseTargets(ref,house,delta))continue;
   // The sample chose candidates; native path legality and submission retain
@@ -94,6 +113,9 @@ static bool reverseDodgeTick(uint32_t house,int frame,DWORD now){
   if(!reverseVector(ref.pointer,delta)){shot->handled=true;continue;}
   bool done=true;const uint32_t target=get<uint32_t>(ref.pointer+0x10C);
   if(target!=ref.target)continue;
+  // Keep the original pending-shot deadline, but do not run native terrain
+  // queries when the common sender has no room to accept a movement event.
+  if(reverseTargetCount&&!outgoingRoom())continue;
   for(int k=0;k<reverseTargetCount;++k){const auto&candidate=reverseTargets[k];
    if(worldByID(candidate.id)!=candidate.pointer)continue;
    if(!worldObjects.contains(target)&&target!=readMapCell(get<int>(candidate.pointer+0x9C)/256,get<int>(candidate.pointer+0xA0)/256))continue;
@@ -102,7 +124,7 @@ static bool reverseDodgeTick(uint32_t house,int frame,DWORD now){
   shot->handled=done;
  }
  if(!collectReverseDodgeInput(house,frame,now))return false;
- applyDodgeResult(dodgecompute::calculate(dodgeInput),house,frame,now);
+ dispatchDodgeCalculation(house,frame,now,-1,-1,0);
  sh->dodgeActive=0;for(int n=0;n<dodgeCount;++n)if(dodgeJobs[n].active)++sh->dodgeActive;
  return true;
 }

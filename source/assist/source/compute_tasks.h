@@ -1,5 +1,6 @@
 #pragma once
 #include "autoload.h"
+#include <cstring>
 #include "tactical_decisions.h"
 #include "cooperative_types.h"
 namespace assist { namespace compute {
@@ -11,6 +12,21 @@ struct LoadInput {
  uint32_t tokens[loading::MaxInfantry]{};loading::Composition composition;
  uint8_t compatible[loading::MaxInfantry][loading::MaxVehicles]{};
 };
+// Runtime execution needs identities and source fields, never the assignment
+// matrix or composition workspace. Keep this small observation in FrameHistory.
+struct LoadObservation {
+ uint32_t match=0,tick=0;int frame=-1,ns=0,nv=0,mode=0,radius=30;
+ loading::Infantry soldiers[loading::MaxInfantry];loading::Vehicle vehicles[loading::MaxVehicles];
+ uint32_t tokens[loading::MaxInfantry]{};
+};
+inline bool valid(const LoadObservation&i){return i.ns>=0&&i.ns<=loading::MaxInfantry&&i.nv>=0&&i.nv<=loading::MaxVehicles;}
+inline void observe(LoadObservation&to,const LoadInput&from){
+ to.match=from.match;to.tick=from.tick;to.frame=from.frame;to.ns=from.ns;to.nv=from.nv;to.mode=from.mode;to.radius=from.radius;
+ if(!valid(to))return;
+ std::memcpy(to.soldiers,from.soldiers,size_t(to.ns)*sizeof(to.soldiers[0]));
+ std::memcpy(to.vehicles,from.vehicles,size_t(to.nv)*sizeof(to.vehicles[0]));
+ std::memcpy(to.tokens,from.tokens,size_t(to.ns)*sizeof(to.tokens[0]));
+}
 struct LoadResult {uint32_t match=0,tick=0;int frame=-1,count=0;int assignment[loading::MaxInfantry]{};};
 struct RepairCandidate {uint32_t id=0;decisions::RepairView view;};
 struct RepairInput {uint32_t match=0,tick=0;int frame=-1,count=0;RepairCandidate items[8192];};

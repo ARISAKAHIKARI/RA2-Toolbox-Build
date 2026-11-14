@@ -31,12 +31,15 @@ static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,uint32_
 static loading::Observation loadingObservation(uint32_t p){return {get<int>(p+0xAC),get<int>(p+0xB4),get<uint32_t>(p+0x2B4),get<uint32_t>(p+0x5A4)};}
 extern "C" int GuardedEnterAction(unsigned,unsigned,unsigned,unsigned*);
 static bool loadQueryFailed;
-static bool canEnter(uint32_t p,uint32_t target){
- if(p==target||loadQueryFailed||!gameentry::active(gameentry::Client::Assist))return false;
+// Called only inside an already validated, non-pumping Runtime query batch.
+// Native failures still abort the batch; final submission uses canEnter below.
+static bool queryEnterAction(uint32_t p,uint32_t target){
+ if(p==target||loadQueryFailed)return false;
  FaultPhase phase(runtimefault::LoadLegality,p,target);unsigned action=0;
  if(!GuardedEnterAction(get<uint32_t>(get<uint32_t>(p)+0x74),p,target,&action)){loadQueryFailed=true;return false;}
  return action==3;
 }
+static bool canEnter(uint32_t p,uint32_t target){return gameentry::active(gameentry::Client::Assist)&&queryEnterAction(p,target);}
 static int passengerSlots(uint32_t p){int k=kind(p);uint32_t type=typeOf(p,k);return type?loading::slots(get<double>(type+0x380)):0;}
 static void finishLoadingReservation(const loading::Reservation&r,uint32_t session,int frame,bool boarded){
  if(!r.ticket)return;gateway::Receipt outcome{};
@@ -60,7 +63,7 @@ struct LoadSelectionFact {loading::Infantry unit;bool acceptable=false,candidate
 static LoadSelectionFact loadSelectionFacts[4096];
 static compute::LoadInput loadSample;
 static int loadAcceptRoom[loading::MaxVehicles];
-static compute::FrameHistory<compute::LoadInput> loadFrames;static compute::LoadResult loadResultCopy;static compute::LoadInput loadCaptureCohort;
+static compute::FrameHistory<compute::LoadObservation> loadFrames;static compute::LoadObservation loadObservation;static compute::LoadResult loadResultCopy;static compute::LoadInput loadCaptureCohort;
 static int autoLoad(uint32_t house,const compute::LoadInput*cohort=nullptr);
 static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens){
  using namespace loading;int frame=get<int>(0xA8ED84);loadQueryFailed=false;
@@ -189,10 +192,11 @@ static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
  snap.loadUnits=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;snap.loadVehicles=in.nv;
  // Engine legality is its own phase. No SampleReadScope survives into a
  // GuardedEnterAction call, assignment, reservation, or outgoing event.
+ if(!gameentry::active(gameentry::Client::Assist))return -12;
  bool accepts[MaxVehicles]{};
  for(int j=0;j<in.nv;++j)if(loadAcceptRoom[j]>0&&worldByID(in.vehicles[j].id)==in.vehicles[j].object)
   for(int n=0;n<loadSelectionCount;++n){const auto&fact=loadSelectionFacts[n];const auto&p=fact.unit;
-   if(fact.acceptable&&p.object!=in.vehicles[j].object&&p.slots<=loadAcceptRoom[j]&&worldByID(p.id)==p.object&&canEnter(p.object,in.vehicles[j].object)){accepts[j]=true;break;}
+   if(fact.acceptable&&p.object!=in.vehicles[j].object&&p.slots<=loadAcceptRoom[j]&&worldByID(p.id)==p.object&&queryEnterAction(p.object,in.vehicles[j].object)){accepts[j]=true;break;}
   }
  if(loadQueryFailed)return -15;
  for(int n=0;n<loadSelectionCount;++n){const auto&fact=loadSelectionFacts[n];const auto&p=fact.unit;if(!fact.candidate)continue;
@@ -205,12 +209,12 @@ static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
  if(!in.nv){snap.loadUnassigned+=in.ns;return 1;}
  faultContext.phase=runtimefault::LoadAssign;
  for(int n=0;n<in.ns;++n)for(int j=0;j<in.nv;++j){const auto&p=in.soldiers[n];const auto&v=in.vehicles[j];int64_t dx=int64_t(p.x)-v.x,dy=int64_t(p.y)-v.y,limit=int64_t(in.radius)*256;
-  in.compatible[n][j]=p.slots<=freeSlots(v)&&p.slots<=v.sizeLimit&&dx*dx+dy*dy<=limit*limit&&worldByID(p.id)==p.object&&worldByID(v.id)==v.object&&canEnter(p.object,v.object);
+  in.compatible[n][j]=p.slots<=freeSlots(v)&&p.slots<=v.sizeLimit&&dx*dx+dy*dy<=limit*limit&&worldByID(p.id)==p.object&&worldByID(v.id)==v.object&&queryEnterAction(p.object,v.object);
   if(loadQueryFailed)return -15;
  }
  if(!compute::inside(sh->computeApplied,compute::Load)){
   compute::copyInput(sh->loadInput,in);loadCalculationPending=true;
-  const uint32_t serial=compute::nextTask(sh->loadTask);loadFrames.retain(serial,in);MemoryBarrier();sh->loadTask=serial;notifyHost();return -30;
+  const uint32_t serial=compute::nextTask(sh->loadTask);compute::observe(loadObservation,in);loadFrames.retain(serial,loadObservation);MemoryBarrier();sh->loadTask=serial;notifyHost();return -30;
  }
  static int assignment[MaxInfantry];static Workspace workspace;
  assign(in.soldiers,in.ns,in.vehicles,in.nv,in.mode,in.radius,in.composition,workspace,assignment,[&](const Infantry&p,const Vehicle&v){return in.compatible[&p-in.soldiers][&v-in.vehicles]!=0;});

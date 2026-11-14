@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <vector>
 #include "reverse_dodge.h"
+#include "reverse_target_index.h"
 #include "dodge_compute.h"
 using namespace assist;
 using DWORD=uint32_t;
@@ -15,7 +16,7 @@ static DodgeThreatRef dodgeThreatRefs[8192];static int dodgeThreatCount;
 struct DodgeJob {uint32_t pointer=0,id=0;bool active=false;};
 static DodgeJob dodgeJobs[512];static int dodgeCount;
 static dodgecompute::Input dodgeCapture,dodgeInput;
-static struct {unsigned dodgeActive=0;} shared;
+static struct {unsigned dodgeActive=0;long featureConfigSeq=2;} shared;
 static auto*sh=&shared;
 static uint32_t match=1;
 static std::vector<uint8_t> memory(8*1024*1024);
@@ -23,7 +24,9 @@ static std::vector<uint32_t> units;
 static std::unordered_set<uint32_t> members;
 static struct {bool contains(uint32_t p)const{return members.count(p)!=0;}}worldObjects;
 static int currentFrame=100;
-static bool sampleReady=true,sampleComplete=true,actorAccept=true,sourceEnabled=true;
+static struct {struct {uint32_t serial=1;}key;}worldFrame;static uint32_t featureConfigRevision=1;
+static bool sampleReady=true,sampleComplete=true,actorAccept=true,sourceEnabled=true,queueReady=true;
+static bool&sampleReadComplete=sampleComplete;
 static uint32_t actorAttempts=0,continuations=0,observations=0;
 static uint64_t rosterVisits=0,readCount=0;
 static uint32_t checks=0,cases=0,semanticDigest=2166136261u;
@@ -41,15 +44,17 @@ static uint32_t worldByID(uint32_t id){for(auto p:units)if(get<uint32_t>(p+0x10)
 static bool dodgeSource(uint32_t p,uint32_t){return sourceEnabled&&worldObjects.contains(p);}
 static int dodgeThreat(uint32_t,uint32_t,uint32_t){return 1;}
 static void dodgeObserve(uint32_t p,uint32_t,dodgecompute::Source&s){++observations;s.pointer=p;s.id=get<uint32_t>(p+0x10);s.frame=currentFrame;s.count=1;s.freshThreat=1;for(int n=0;n<dodgeCount;++n)if(dodgeJobs[n].pointer==p)s.active=dodgeJobs[n].active;}
-static bool reverseDodgeActor(uint32_t,uint32_t,uint32_t,int,DWORD,reversedodge::Point){++actorAttempts;return actorAccept;}
+static bool outgoingRoom(){return queueReady;}
+static bool reverseDodgeActor(uint32_t,uint32_t,uint32_t,int,DWORD,reversedodge::Point){++actorAttempts;return actorAccept&&queueReady;}
 static void applyDodgeResult(const dodgecompute::Result&,uint32_t,int,DWORD){++continuations;}
+static void dispatchDodgeCalculation(uint32_t h,int f,DWORD n,int,int,int){applyDodgeResult(dodgecompute::calculate(dodgeInput),h,f,n);}
 #include "reverse_hotpath_production.h"
 static void check(bool ok,const char*message){++checks;if(!ok){std::fprintf(stderr,"FAIL: %s\n",message);std::exit(1);}}
 static void seal(uint32_t extra=0){++cases;for(uint32_t v:{actorAttempts,continuations,observations,sh->dodgeActive,extra})semanticDigest=(semanticDigest^v)*16777619u;}
 static void reset(int count=4){
  std::fill(memory.begin(),memory.end(),uint8_t(0));units.clear();members.clear();std::memset(reverseShots,0,sizeof reverseShots);
- reverseMatch=match=1;reverseWasEnabled=false;dodgeThreatCount=dodgeCount=0;shared={};
- currentFrame=100;sampleReady=sampleComplete=actorAccept=sourceEnabled=true;actorAttempts=continuations=observations=0;rosterVisits=readCount=0;
+ ++worldFrame.key.serial;reverseMatch=match=1;reverseWasEnabled=false;dodgeThreatCount=dodgeCount=0;shared={};
+ currentFrame=100;sampleReady=sampleComplete=actorAccept=sourceEnabled=queueReady=true;actorAttempts=continuations=observations=0;rosterVisits=readCount=0;
  for(int n=0;n<count;++n){uint32_t p=Unit+uint32_t(n)*0x400;units.push_back(p);members.insert(p);set<uint32_t>(p+0x10,1000+uint32_t(n));set<int>(p+0x9C,(40+n)*256);set<int>(p+0xA0,40*256);}
 }
 static void addBullet(unsigned n,uint32_t target=Unit,uint32_t id=700){
@@ -57,7 +62,7 @@ static void addBullet(unsigned n,uint32_t target=Unit,uint32_t id=700){
  set<double>(p+0xE8,20.);set<double>(p+0xF0,0.);set<uint32_t>(p+0x10C,target);
  dodgeThreatRefs[dodgeThreatCount++]={p,target,true,id};
 }
-static void tick(int frame=100){currentFrame=frame;check(reverseDodgeTick(0x600000,frame,1000+uint32_t(frame))==sampleComplete,"continuation completion");}
+static void tick(int frame=100){if(frame!=currentFrame)++worldFrame.key.serial;currentFrame=frame;check(reverseDodgeTick(0x600000,frame,1000+uint32_t(frame))==sampleComplete,"continuation completion");}
 static uint32_t tableDigest(){uint32_t h=2166136261u;for(const auto&s:reverseShots)for(uint32_t v:{s.id,s.pointer,uint32_t(s.frame),uint32_t(s.handled)})h=(h^v)*16777619u;return h;}
 int main(){
  reset();addBullet(0);tick();check(actorAttempts==1,"initial direct target");for(int n=0;n<99;++n)tick();check(actorAttempts==1&&continuations==100,"handled direct shot or ongoing maintenance repeated");seal(tableDigest());
@@ -86,5 +91,9 @@ int main(){
  reset();addBullet(0);set<uint32_t>(Bullet+0x10C,units[1]);tick();check(actorAttempts==0&&!reverseShot(Bullet,100)->handled,"changed current target defers the sampled candidate");dodgeThreatRefs[0].target=units[1];tick();check(actorAttempts==1,"updated target may retry in same frame");seal(tableDigest());
  reset();addBullet(0);dodgeThreatRefs[dodgeThreatCount++]={units[1],Unit,false,1001};dodgeCount=1;dodgeJobs[0]={Unit,1000,true};tick();tick();check(actorAttempts==1&&continuations==2&&sh->dodgeActive==1&&observations>=2,"nonprojectile and active-job input remain serviced");seal(tableDigest());
  reset();addBullet(0,Cell);sourceEnabled=false;tick();sourceEnabled=true;tick();check(actorAttempts==0,"completed no-candidate shot stays handled under existing contract");seal(tableDigest());
+#ifdef REVERSE_QUERY_BUDGET_GUARD
+ reset();addBullet(0);queueReady=false;tick();check(!actorAttempts&&!reverseShot(Bullet,100)->handled&&reverseShot(Bullet,100)->frame==100,"full queue ran native placement or changed deadline");queueReady=true;tick(101);check(actorAttempts==1&&reverseShot(Bullet,101)->handled,"pending movement did not recover after room returned");
+ reset();addBullet(0);queueReady=false;tick();queueReady=true;tick(109);check(!actorAttempts&&reverseShot(Bullet,109)->handled,"queue wait renewed original pending deadline");
+#endif
  std::printf("{\"pass\":true,\"checks\":%u,\"cases\":%u,\"semantic_digest\":%u,\"first_roster_visits\":%llu,\"repeated_roster_visits\":%llu,\"first_reads\":%llu,\"repeated_reads\":%llu,\"stress_actor_attempts\":%u,\"continuation_passes\":%u}\n",checks,cases,semanticDigest,(unsigned long long)firstVisits,(unsigned long long)repeatVisits,(unsigned long long)firstReads,(unsigned long long)repeatReads,stressActors,stressContinuations);
 }
