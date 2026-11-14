@@ -121,20 +121,22 @@ static void setup(){
 static std::vector<uint8_t> bytes(){return std::vector<uint8_t>((uint8_t*)Memory,(uint8_t*)(Memory+MemorySize));}
 static MSG mouse(unsigned message,int x=1500,int y=30){return MSG{(HWND)uintptr_t(0x1234),message,0,LPARAM(uint32_t(uint16_t(x))|(uint32_t(uint16_t(y))<<16))};}
 int main(){
+ std::setvbuf(stdout,nullptr,_IONBF,0);
 #ifdef _WIN32
+ AddVectoredExceptionHandler(1,[](EXCEPTION_POINTERS*p)->LONG{if(p->ExceptionRecord->ExceptionCode==EXCEPTION_ACCESS_VIOLATION)std::printf("fixture AV at %p access=%lu target=%p\n",p->ExceptionRecord->ExceptionAddress,p->ExceptionRecord->NumberParameters?p->ExceptionRecord->ExceptionInformation[0]:99,p->ExceptionRecord->NumberParameters>1?(void*)p->ExceptionRecord->ExceptionInformation[1]:nullptr);return EXCEPTION_CONTINUE_SEARCH;});
  SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);
  assert(Memory>=uintptr_t(engineArena)&&Memory+MemorySize<=uintptr_t(engineArena)+sizeof engineArena);
  MEMORY_BASIC_INFORMATION owned{};assert(VirtualQuery((void*)Memory,&owned,sizeof owned)&&owned.Type==MEM_IMAGE&&owned.AllocationBase==GetModuleHandleW(nullptr));
 #else
  assert(mmap((void*)Memory,MemorySize,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE,-1,0)==(void*)Memory);
 #endif
- setup();const auto before=bytes();sidebarViewRenderDepth=1;assert(GuardedNativePipAction(1,0)==1);assert((phases==std::vector<int>{0,1,2}));assert(bytes()==before);assert(sh->nativePipFrames==1&&sh->nativePipMicros==900&&locks==unlocks);
+ std::puts("stage initial setup");setup();std::puts("stage initial render");const auto before=bytes();sidebarViewRenderDepth=1;assert(GuardedNativePipAction(1,0)==1);assert((phases==std::vector<int>{0,1,2}));assert(bytes()==before);assert(sh->nativePipFrames==1&&sh->nativePipMicros==900&&locks==unlocks);
  auto comp=get<void*>(0x88731C);auto&image=surfaces.at(uintptr_t(comp));assert(image.pixels[8*1280+984]==0x1232);assert(GuardedNativePipAction(3,0)==1&&image.pixels[8*1280+984]==0xACE0);
  clockTick+=20;assert(GuardedNativePipAction(1,0)==1&&sh->nativePipFrames==1); // same logic frame, reuse pixels
  auto down=mouse(WM_LBUTTONDOWN);assert(nativePipMessage(&down)&&down.message==WM_NULL);auto up=mouse(WM_LBUTTONUP);assert(nativePipMessage(&up)&&nativePipJumpPending);sidebarViewRenderDepth=0;assert(GuardedNativePipAction(4,0)==1&&navigations==1);
  assert(GuardedNativePipAction(3,0)==1);put(0xA8EDA0,int32_t(1));sidebarViewRenderDepth=1;assert(!GuardedNativePipAction(1,0)&&!nativePipUnderlayPending());put(0xA8EDA0,int32_t(0));sidebarViewRenderDepth=0;
  assert(GuardedNativePipAction(2,0)==1&&!nativeMapPipLease);
- setup();sh->nativePipPinRequest=1;sh->nativePipPinMatch=match;sh->nativePipPinTick=clockTick;sidebarViewRenderDepth=1;assert(GuardedNativePipAction(1,0)==1&&nativePipObject==Object);assert(GuardedNativePipAction(3,0));selection.clear();clockTick+=20;put(0xA8ED84,int32_t(2));assert(GuardedNativePipAction(1,0)&&nativePipObject==Object);assert(GuardedNativePipAction(3,0));
+ std::puts("stage follow/input/lifetime");setup();sh->nativePipPinRequest=1;sh->nativePipPinMatch=match;sh->nativePipPinTick=clockTick;sidebarViewRenderDepth=1;assert(GuardedNativePipAction(1,0)==1&&nativePipObject==Object);assert(GuardedNativePipAction(3,0));selection.clear();clockTick+=20;put(0xA8ED84,int32_t(2));assert(GuardedNativePipAction(1,0)&&nativePipObject==Object);assert(GuardedNativePipAction(3,0));
  sh->nativePipVisible=0;clockTick+=20;put(0xA8ED84,int32_t(3));assert(!GuardedNativePipAction(1,0)&&nativePipObject==Object&&!nativePipUnderlayPending());sh->nativePipVisible=1;assert(GuardedNativePipAction(1,0)&&nativePipObject==Object);assert(GuardedNativePipAction(3,0));
  const uint32_t priorPin=sh->nativePipPinAck;sh->nativePipPinRequest=priorPin+1;sh->nativePipPinMatch=match-1;sh->nativePipPinTick=clockTick;clockTick+=20;put(0xA8ED84,int32_t(4));assert(GuardedNativePipAction(1,0)&&nativePipObject==Object&&sh->nativePipPinAck==priorPin+1);assert(GuardedNativePipAction(3,0));
  // The consumed button pair must remain balanced when the overlay is hidden.
@@ -147,10 +149,10 @@ int main(){
  // A logic-frame rewind invalidates the cached camera even at identical pointers.
  put(Tactical+0xD64,int32_t(1500));put(0xA8ED84,int32_t(1));clockTick+=20;assert(GuardedNativePipAction(1,0)&&nativePipLastFrame==1&&nativePipCenterX==1500);assert(GuardedNativePipAction(3,0));
 
- clockTick+=20;put(0xA8ED84,int32_t(5));const auto original=bytes();throwPhase=1;assert(!GuardedNativePipAction(1,0));assert(nativePipFailed&&!nativePipTransaction.borrowed()&&bytes()==original&&locks==unlocks);sidebarViewRenderDepth=0;assert(GuardedNativePipAction(2,0)==1);
+ std::puts("stage renderer fault");clockTick+=20;put(0xA8ED84,int32_t(5));const auto original=bytes();throwPhase=1;assert(!GuardedNativePipAction(1,0));assert(nativePipFailed&&!nativePipTransaction.borrowed()&&bytes()==original&&locks==unlocks);sidebarViewRenderDepth=0;assert(GuardedNativePipAction(2,0)==1);
 #ifdef _WIN32
- setup();sidebarViewRenderDepth=1;unlockFault=true;const auto beforeFilters=filters;SetLastError(0x1256);GuardedNativePipAction(1,0);assert(nativePipFailed&&locks==unlocks&&filters==beforeFilters+1&&captureDepth==0&&GetLastError()==0x1256);assert(GuardedNativePipAction(3,0));sidebarViewRenderDepth=0;assert(GuardedNativePipAction(2,0));
- setup();const auto original2=bytes();DWORD old=0;assert(VirtualProtect((void*)Tactical,4096,PAGE_READONLY,&old));sidebarViewRenderDepth=1;assert(!GuardedNativePipAction(1,0)&&nativePipTransaction.borrowed());assert(VirtualProtect((void*)Tactical,4096,old,&old));assert(GuardedNativePipAction(3,0)&&!nativePipTransaction.borrowed()&&bytes()==original2);sidebarViewRenderDepth=0;assert(GuardedNativePipAction(2,0));
+ std::puts("stage unlock fault");setup();sidebarViewRenderDepth=1;unlockFault=true;const auto beforeFilters=filters;SetLastError(0x1256);GuardedNativePipAction(1,0);assert(nativePipFailed&&locks==unlocks&&filters==beforeFilters+1&&captureDepth==0&&GetLastError()==0x1256);assert(GuardedNativePipAction(3,0));sidebarViewRenderDepth=0;assert(GuardedNativePipAction(2,0));
+ std::puts("stage partial-entry memory fault");setup();const auto original2=bytes();DWORD old=0;assert(VirtualProtect((void*)Tactical,4096,PAGE_READONLY,&old));sidebarViewRenderDepth=1;assert(!GuardedNativePipAction(1,0)&&nativePipTransaction.borrowed());assert(VirtualProtect((void*)Tactical,4096,old,&old));assert(GuardedNativePipAction(3,0)&&!nativePipTransaction.borrowed()&&bytes()==original2);sidebarViewRenderDepth=0;assert(GuardedNativePipAction(2,0));
 #endif
  std::puts("PASS production native PiP adapter: three phases, complete camera/dirty/selection restoration, fixed/follow camera, shared-frame reuse, underlay cleanup, scaled input ownership/navigation, menu hiding, shutdown and renderer faults; synthetic engine/surfaces; no live-game/FPS claim");
 }
