@@ -210,16 +210,16 @@ auto hiddenToggle=[&](int id,const wchar_t* text,bool on){auto h=placedControl({
 for(int i=0;i<7;++i){bool on=value(L"Display",displayIni[i],0)!=0;if(i==0||i==1||i==3)check[i]=hiddenToggle(300+i,displayNames[i],on);else{check[i]=toggle(300+i,displayNames[i],on);next();}}
 extraControls[FrozenEnabled]=hiddenToggle(723,L"冷冻剩余时间",extra.frozen);
 extraControls[EnemyMarkersEnabled]=hiddenToggle(785,L"敌方单位提示",extra.enemyMarkers);
- hiddenToggle(9763,L"仅显示隐形、幻影和敌方间谍",extra.enemySpecialOnly);
- {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",9764,CBS_DROPDOWNLIST);choices(h,{L"文字标记",L"不透明叠加"},extra.enemySpecialMode);ShowWindow(h,SW_HIDE);}
+ hiddenToggle(9763,L"显示隐形、幻影和敌方间谍",extra.enemySpecialOnly);
+ {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",9764,CBS_DROPDOWNLIST);choices(h,{L"文字标记",L"真实模型叠加"},extra.enemySpecialMode);ShowWindow(h,SW_HIDE);}
 hiddenToggle(897,L"载具载员气泡",extra.passengerBubbles);hiddenToggle(898,L"危险载员常驻提示",extra.dangerPassengers);hiddenToggle(9533,L"载员气泡包含己方",extra.passengerOwn);hiddenToggle(9534,L"载员气泡常驻显示",extra.passengerAlways);
 hiddenToggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);hiddenToggle(893,L"火力 / 防御 / 速度强化",extra.crateBuffMarkers);
 #else
 for(int i=0;i<7;++i){check[i]=toggle(300+i,displayNames[i],value(L"Display",displayIni[i],0)!=0);next();}
 extraControls[FrozenEnabled]=toggle(723,L"冷冻剩余时间",extra.frozen);next();
 extraControls[EnemyMarkersEnabled]=toggle(785,L"显示敌方单位提示",extra.enemyMarkers);next();
- toggle(9763,L"仅显示隐形、幻影和敌方间谍",extra.enemySpecialOnly);next();
- label(L"特殊单位显示方式",20,200);choices(combo(9764,240,385,130),{L"文字标记",L"不透明叠加"},extra.enemySpecialMode);next();
+ toggle(9763,L"显示隐形、幻影和敌方间谍",extra.enemySpecialOnly);next();
+ label(L"特殊单位显示方式",20,200);choices(combo(9764,240,385,130),{L"文字标记",L"真实模型叠加"},extra.enemySpecialMode);next();
 toggle(897,L"载具载员气泡",extra.passengerBubbles);next();toggle(898,L"危险载员常驻提示",extra.dangerPassengers);next();toggle(9533,L"载员气泡包含己方",extra.passengerOwn);next();toggle(9534,L"载员气泡常驻显示",extra.passengerAlways);next();
 toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
 toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();
@@ -252,8 +252,8 @@ toggle(9327,L"原生建造栏提示框显示建造时间",buildTimeTooltipEnable
 number(9494,L"单机游戏 FPS（0 = 原版）",extra.singlePlayerFPS,L"0 或 10–240");
 note(L"控制单机游戏速度；可填 40、45、50，在原版 4、5 速之间细调。联机不生效。0 交回原版速度设置；实际速度受游戏计算耗时限制。",64);
 item(L"STATIC",L"单机游戏 FPS：原版",20,605,9495,0,44);next(44);
-EnableWindow(toggle(9300,L"渲染升级（全视口 · 实验性，入口暂不可用）",renderUpgradeEnabled),FALSE);next();
-note(L"入口暂时关闭，保留已保存的启用值和画质设置。");
+EnableWindow(toggle(9300,L"渲染升级（暂不可开启）",renderUpgradeEnabled),renderUpgradeEnabled);next();
+note(L"暂不支持开启；此前已开启时可在此关闭。");
 toggle(9313,L"额外画质处理（关闭：基础快速绘制）",renderProcessing);next();
 note(L"仅开启渲染升级时，跳过扩色、连续光照增强、精细 VXL与 xBRZ；仍执行基本素材解码和原生色盘映射。下方已保存的画质选项保留，需独立开启额外画质处理才生效。",64);
 toggle(9306,L"4K 物理像素增强（独占全屏保留原分辨率 · 实验性）",renderPhysicalOutput);next();

@@ -140,7 +140,7 @@ static void loadAdditionalSettings(){
  extra.parasiteMarker=value(L"Display",L"ParasiteMarker",0)!=0;extra.crateBuffMarkers=value(L"Display",L"CrateBuffMarkers",0)!=0;
  extra.passengerBubbles=value(L"Display",L"PassengerBubbles",0)!=0;extra.dangerPassengers=value(L"Display",L"DangerPassengers",0)!=0;extra.passengerOwn=value(L"Display",L"PassengerOwn",0)!=0;extra.passengerAlways=value(L"Display",L"PassengerAlways",0)!=0;extra.magnetronDrop=value(L"Magnetron",L"AutoDrop",0)!=0;
  extra.enemyMarkers=value(L"Display",L"EnemyMarkers",0)!=0;
- extra.enemySpecialOnly=value(L"Display",L"EnemySpecialOnly",0)!=0;
+ extra.enemySpecialOnly=value(L"Display",L"EnemySpecialEnabled",value(L"Display",L"EnemySpecialOnly",0))!=0;
  extra.enemySpecialMode=std::clamp(value(L"Display",L"EnemySpecialMode",0),0,1);
  extra.overrideNative=value(L"Mouse",L"OverrideNative",0)!=0;
  extra.allHotkeys=value(L"Hotkeys",L"ExecuteAllMatches",0)!=0;
@@ -255,7 +255,7 @@ static bool saveAdditionalSettings(){
  write(L"Experimental",L"ScrollRefreshHz",extra.scrollRefreshHz);
 #endif
  write(L"Experimental",L"InfantryC4",extra.c4Test);write(L"Experimental",L"C4HoldKey",extra.c4Key);write(L"Experimental",L"C4Mouse",extra.c4Mouse);write(L"Experimental",L"InfantryEntryMode",extra.c4Mode);
- write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Aircraft",L"WaypointMode",airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));write(L"Aircraft",L"WaypointHoldKey",extra.airPathKey);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Production",L"ReminderLines",extra.productionReminderMask);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"EnemySpecialOnly",extra.enemySpecialOnly);write(L"Display",L"EnemySpecialMode",extra.enemySpecialMode);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
+ write(L"Experimental",L"RenderReveal",extra.renderReveal);write(L"Experimental",L"NativeAirWaypoints",extra.nativeAirWaypoints);write(L"Aircraft",L"ZWaypoints",extra.airWaypoints);write(L"Aircraft",L"WaypointMode",airpathpolicy::mode(extra.airWaypoints,extra.nativeAirWaypoints,extra.nativeAirNetwork));write(L"Aircraft",L"WaypointHoldKey",extra.airPathKey);write(L"Production",L"ReserveNext",extra.constructionQueue);write(L"Production",L"ReminderLines",extra.productionReminderMask);write(L"Display",L"EnemyMarkers",extra.enemyMarkers);write(L"Display",L"EnemySpecialEnabled",extra.enemySpecialOnly);write(L"Display",L"EnemySpecialOnly",extra.enemySpecialOnly);write(L"Display",L"EnemySpecialMode",extra.enemySpecialMode);write(L"Display",L"IdleAircraftIndicator",extra.idleAircraft);
  write(L"Display",L"ParasiteMarker",extra.parasiteMarker);write(L"Display",L"CrateBuffMarkers",extra.crateBuffMarkers);
  write(L"Hotkeys",L"ExecuteAllMatches",extra.allHotkeys);write(L"Mouse",L"OverrideNative",extra.overrideNative);
  for(int i=0;i<pointerinput::MouseCount;++i)write(L"Mouse",pointerinput::mouseSetting(i),extra.mouseButtons[i]);

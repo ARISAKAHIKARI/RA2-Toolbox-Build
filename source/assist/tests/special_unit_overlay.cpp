@@ -69,8 +69,8 @@ int main(){
  seal();render.update(targets,projection,tick);assert(reader.complete&&render.identities.size()==2);
  auto current=std::make_unique<external::enemies::Frame>();current->count=2;std::copy(targets.begin(),targets.end(),current->items);
  assert(specialoverlay::stillPresent(render.identities,*current));++current->items[0].owner;assert(!specialoverlay::stillPresent(render.identities,*current));--current->items[0].owner;++current->items[0].type;assert(!specialoverlay::stillPresent(render.identities,*current));
- assert(specialoverlay::enabled(true,true,1)&&!specialoverlay::enabled(false,true,1)&&!specialoverlay::enabled(true,false,1)&&!specialoverlay::enabled(true,true,0));
- std::puts("PASS viewport culling, real missing-page rejection/recovery, removal/type/owner validation and exclusive mode admission");
+ assert(specialoverlay::enabled(true,1)&&!specialoverlay::enabled(false,1)&&!specialoverlay::enabled(true,0));
+ std::puts("PASS viewport culling, real missing-page rejection/recovery, removal/type/owner validation and independent special-toggle mode admission");
  // Clearing does not mutate already published immutable image bytes.
  auto saved=render.compose(false,1);auto pixels=saved->pixels;render.reset();assert(render.paint.visuals.empty()&&saved->pixels==pixels);
 }

@@ -136,8 +136,13 @@ int main(){using F=EnemyFixture;using namespace assist;
   auto m=f.marks();assert(external::enemies::fresh(m,m.match,m.tick+249)&&!external::enemies::fresh(m,m.match,m.tick+250)&&!external::enemies::fresh(m,m.match+1,m.tick));
   m.tick=0xfffffff0u;assert(external::enemies::fresh(m,m.match,7));
   std::vector<uint32_t> objects{F::unit};for(int i=0;i<external::enemies::Maximum+1;++i){uint32_t p=0x100000+uint32_t(i+16)*0x800;f.object(p,100+i,F::enemy,2,F::enemyType);objects.push_back(p);}f.world(objects);f.next();f.sample();assert(f.marks().count==external::enemies::Maximum&&f.marks().omitted==1);
+  // A special enemy after the normal cap keeps its independent display slot.
+  const uint32_t special=0x600000;f.object(special,9001,F::enemy,2,F::enemyType);f.mem.put(special+0x220,2);objects.push_back(special);f.world(objects);f.next();f.mem.scans=0;
+  f.sampler.sample(++f.now,0,true,0,1,false,true);assert(f.mem.scans==1);
+  assert(f.marks().count==external::enemies::Maximum&&f.marks().omitted==2);
+  assert(f.sampler.specialEnemyMarkers().count==1&&f.sampler.specialEnemyMarkers().items[0].id==9001);
   f.mem.put<int>(0xA8EC78+16,20000);f.next();f.sample();assert(f.marks().count==0);
-  std::cout<<"PASS tactical viewport/sidebar bounds, invalid coordinates, freshness/epoch/wrap, 2048-marker limit and corrupt object-array bounds\n";
+  std::cout<<"PASS tactical viewport/sidebar bounds, invalid coordinates, freshness/epoch/wrap, 2048-marker limit, independent special capacity and corrupt object-array bounds\n";
  }
 }
 

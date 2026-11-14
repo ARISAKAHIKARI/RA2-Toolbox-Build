@@ -43,5 +43,25 @@ int main(){using namespace assist;Memory m;Read read{&m};constexpr uint32_t hous
  assert(count(true,10)==1);m.put(unit+0x220,2);assert(count(true,11)==2);
  m.put(unit+0x220,0);assert(count(true,12)==1);
  sampler.sample(100,0,false,0,13,true);assert(sampler.enemyMarkers().count==0);
- std::cout<<"PASS special-only markers: cloak/Mirage/spy, real allegiance, allies/neutral/dead/transport/permanent-invisible exclusions, same-frame setting/publication changes\n";
+ // Independent channels share one roster traversal, including same-frame publications.
+ for(bool general:{false,true})for(bool special:{false,true}){
+  m.worldScans=0;sampler.sample(101,0,general,0,20+general*2+special,false,special);
+  assert(sampler.enemyMarkers().count==(general?2:0));assert(sampler.specialEnemyMarkers().count==(special?1:0));assert(m.worldScans==1);
+ }
+ auto stable=sampler.state();sampler.commitSample();
+ const auto normal=sampler.enemyMarkers().items[0],specific=sampler.specialEnemyMarkers().items[0];
+ sampler.rebaseCamera(stable.cameraX+7,stable.cameraY+11);
+ assert(sampler.enemyMarkers().items[0].x==normal.x-7&&sampler.specialEnemyMarkers().items[0].x==specific.x-7);
+ assert(sampler.enemyMarkers().items[0].y==normal.y-11&&sampler.specialEnemyMarkers().items[0].y==specific.y-11);
+ sampler.invalidateSample(&stable);assert(sampler.enemyMarkers().count==2&&sampler.specialEnemyMarkers().count==1);
+ assert(sampler.enemyMarkers().items[0].x==normal.x&&sampler.specialEnemyMarkers().items[0].x==specific.x);
+ m.put(unit+0x220,2);m.worldScans=0;sampler.sample(102,0,true,0,30,false,true);
+ assert(m.worldScans==1&&sampler.enemyMarkers().count==2&&sampler.specialEnemyMarkers().count==2);
+ m.put(unit+0x220,0);sampler.sample(103,0,true,0,31,false,true);assert(sampler.specialEnemyMarkers().count==1);
+ sampler.invalidateSample();assert(!sampler.enemyMarkers().count&&!sampler.specialEnemyMarkers().count);
+ sampler.sample(104,0,false,0,32,false,true);assert(!sampler.enemyMarkers().count&&sampler.specialEnemyMarkers().count==1);
+ m.put<uint8_t>(0xA8E378,0);sampler.sample(105,0,true,0,33,false,true);assert(!sampler.enemyMarkers().count&&!sampler.specialEnemyMarkers().count);
+ m.put<uint8_t>(0xA8E378,1);sampler.sample(106,0,true,0,34,false,true);assert(sampler.enemyMarkers().count==2&&sampler.specialEnemyMarkers().count==1);
+ sampler.reset();assert(!sampler.enemyMarkers().count&&!sampler.specialEnemyMarkers().count);
+ std::cout<<"PASS independent switch matrix, shared roster, publication membership, both-channel rollback/rebase/menu/reset; special-only markers: cloak/Mirage/spy, real allegiance, allies/neutral/dead/transport/permanent-invisible exclusions, same-frame setting/publication changes\n";
 }

@@ -13,6 +13,8 @@ def main():
  inputs=[source,policy,fixture,enemy,root/'source/external_reader/source/tactical_sampler.h',root/'source/assist/source/label_motion.h',root/'source/external_reader/source/unit_status.h',root/'source/external_reader/source/enemy_markers.h']
  hashes={str(path):sha(path) for path in inputs}
  lines=[]
+ text_policy=re.search(r'static bool enemyTextEnabled\(\)\{([^}]+)\}',source.read_text())
+ if text_policy:lines.append('auto enemyTextEnabled=[&](){'+text_policy.group(1)+'};')
  for name in ['statusCount','rawEnemyCount']:
   matches=[line.strip() for line in source.read_text().splitlines() if re.match(r'int '+name+r'=',line.strip())]
   if len(matches)!=1:raise SystemExit('Production paint gate marker changed: '+name)

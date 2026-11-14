@@ -22,15 +22,15 @@ static asyncwork::Latest<Request,Frame>worker([](const Request&r)->std::shared_p
 });
 static std::shared_ptr<const Frame>frame;
 static uint32_t lastConfirmed=0,submittedAt=0;static worldframe::Token submittedSource;static int submittedX=0,submittedY=0;static uint64_t submittedSettings=0;
-static bool active(){return specialoverlay::enabled(extra.enemyMarkers,extra.enemySpecialOnly,extra.enemySpecialMode);}
+static bool active(){return specialoverlay::enabled(extra.enemySpecialOnly,extra.enemySpecialMode);}
 static void clear(){if(!submittedSource&&!frame&&!lastConfirmed)return;worker.invalidate();submittedSource.reset();lastConfirmed=0;if(frame){frame.reset();++paintRevision;}}
 static void update(const nativeviewhost::Transform&transform){
  if(!active()||!externalWorldSource||!externalData||!foregroundGame()||snap.chat){clear();return;}
- const auto now=GetTickCount();const auto source=externalWorldSource;const auto&markers=externalSampler.enemyMarkers();const auto selection=external::presentation::settings().get();
+ const auto now=GetTickCount();const auto source=externalWorldSource;const auto&markers=externalSampler.specialEnemyMarkers();const auto selection=external::presentation::settings().get();
  if(source->key.pid!=pid||source->key.match!=commandMatch()||markers.match!=source->key.match||markers.house!=source->key.house||markers.frame!=source->key.frame){clear();return;}
  if(frame&&(!frame->source->key.sameWorld(source->key)||frame->transform!=transform||frame->selection.revision!=selection.revision)){clear();}
  if(!externalSourceConfirmed){if(!lastConfirmed||uint32_t(now-lastConfirmed)>=120)clear();return;}
- if(!markers.count){clear();return;}
+ if(markers.count<=0||markers.count>external::enemies::Maximum){clear();return;}
  lastConfirmed=now;
  if(frame&&!specialoverlay::stillPresent(frame->identities,markers)){frame.reset();++paintRevision;}
  auto next=worker.get();

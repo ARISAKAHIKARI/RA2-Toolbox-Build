@@ -234,6 +234,16 @@ int main(){
  std::printf("{\"passed\":%s,\"scenarios\":%u,\"checks\":%u,\"failed\":%u}\n",failed?"false":"true",scenarios,checks,failed);return failed?1:0;
 }
 '''
+    if headers == suite:
+        # The frozen negative control predates this separate saved-on renderer fix.
+        program = program.replace('\n if(std::getenv("RA2_PASSENGER_MODES_TEST")){', r'''
+ ++scenarios;sharedDisplay.values[suite::RenderUpgrade]=1;render.sync(true);
+ const auto upgrade=visible[12000+suite::RenderUpgrade];check(IsWindowEnabled(upgrade)&&controls[upgrade].value==1,"saved-on renderer can be closed through visible control");
+ controls[upgrade].value=0;render.command(MAKEWPARAM(12000+suite::RenderUpgrade,BN_CLICKED));
+ check(posted.size()==1&&posted[0].option==suite::RenderUpgrade&&posted[0].value==0,"renderer close reaches original owner option");posted.clear();
+ sharedDisplay.values[suite::RenderUpgrade]=0;render.sync(true);check(!IsWindowEnabled(upgrade)&&!controls[upgrade].value,"closed renderer is disabled and unchecked");
+ controls[upgrade].value=1;render.command(MAKEWPARAM(12000+suite::RenderUpgrade,BN_CLICKED));check(posted.empty()&&!controls[upgrade].value,"unavailable renderer cannot be reenabled by synthetic click");
+ if(std::getenv("RA2_PASSENGER_MODES_TEST")){''')
     cpp = out / 'production-entry.cpp'
     cpp.write_text(program)
     exe = out / 'production-entry'

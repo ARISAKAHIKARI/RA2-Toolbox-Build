@@ -1339,9 +1339,11 @@ static void updateStatusDisplay(const Snapshot&source){
  for(int i=0;i<f.count;++i){const auto&m=f.items[i];statusSample.label[i]={m.id,m.x,m.y};}
  statusMotion.update(statusSample,f.frame);
 }
+static bool enemyTextEnabled(){return extra.enemyMarkers||(extra.enemySpecialOnly&&extra.enemySpecialMode==0);}
+static const external::enemies::Frame&enemyTextFrame(){return extra.enemyMarkers?externalSampler.enemyMarkers():externalSampler.specialEnemyMarkers();}
 static void updateEnemyDisplay(const Snapshot&source){
- const auto&f=externalSampler.enemyMarkers();
- if(!extra.enemyMarkers||snap.renderStatus!=1||!displaylease::frameCurrent(f,source.match,source.frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)){clearEnemyDisplay();return;}
+ const auto&f=enemyTextFrame();
+ if(!enemyTextEnabled()||snap.renderStatus!=1||!displaylease::frameCurrent(f,source.match,source.frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)){clearEnemyDisplay();return;}
  if(enemyRasterMatch!=f.match){clearEnemyDisplay();enemyRasterMatch=f.match;}
  enemySample.labels=f.count;enemySample.match=f.match;enemySample.sampledTick=f.tick;enemySample.frame=f.frame;
  enemySample.cameraX=source.cameraX;enemySample.cameraY=source.cameraY;
@@ -1417,14 +1419,14 @@ static void sampleExternal(DWORD now){
   }
   const auto source=externalReader.worldFrameToken();
   if(externalWorldSource&&(!externalWorldSource->key.sameWorld(source->key)||source->key.frame<externalWorldSource->key.frame))discardExternalWorld();
-  struct UIKey {uint32_t selected=0,flags=0,status=0,viewport=0;bool enemies=false,specialOnly=false;};static UIKey previousUI;
-  UIKey ui{2166136261u,flags(),statusOptions(),viewportTransform.generation,extra.enemyMarkers,extra.enemySpecialOnly};
+  struct UIKey {uint32_t selected=0,flags=0,status=0,viewport=0,specialMode=0;bool enemies=false,specialOnly=false;};static UIKey previousUI;
+  UIKey ui{2166136261u,flags(),statusOptions(),viewportTransform.generation,uint32_t(extra.enemySpecialMode),extra.enemyMarkers,extra.enemySpecialOnly};
   struct Selected {uint32_t vt,items;int capacity;uint32_t flags;int count,step;}selected{};
   std::array<uint32_t,4096>selectedItems{};
   if(externalReader.readLive(0xA8ECB8,&selected,sizeof selected)&&selected.count>=0&&selected.count<=4096&&selected.capacity>=selected.count&&(!selected.count||externalReader.readLive(selected.items,selectedItems.data(),size_t(selected.count)*4))){
    for(int i=0;i<selected.count;++i)ui.selected=(ui.selected^selectedItems[i])*16777619u;
   }else ui.selected=0;
-  const bool sameUI=ui.selected==previousUI.selected&&ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies&&ui.specialOnly==previousUI.specialOnly;
+  const bool sameUI=ui.selected==previousUI.selected&&ui.flags==previousUI.flags&&ui.status==previousUI.status&&ui.viewport==previousUI.viewport&&ui.enemies==previousUI.enemies&&ui.specialOnly==previousUI.specialOnly&&ui.specialMode==previousUI.specialMode;
   externalSampler.worldEpoch(source->key.match);
   if(worldframe::sameObservation(externalWorldSource,source)&&sameUI){
    // The 100ms aircraft scan can precede the publication where play paused.
@@ -1436,7 +1438,7 @@ static void sampleExternal(DWORD now){
    }
    externalSampler.refreshCamera(displayNow);externalPublished=externalSampler.state();externalPublished.sampledTick=source->key.tick;externalData=&externalPublished;externalSourceConfirmed=true;mergeExternal();return;
   }
-  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions(),source->key.serial,extra.enemySpecialOnly);
+  externalSampler.stopped(plannerState.stopped);const auto&candidate=externalSampler.sample(source->key.tick,flags(),extra.enemyMarkers,statusOptions(),source->key.serial,false,extra.enemySpecialOnly);
   if(!worldScope.complete()){externalSampler.invalidateSample(&externalPublished);return;}
   externalSampler.commitSample();
   externalPublished=candidate;externalData=&externalPublished;externalWorldSource=source;externalSourceConfirmed=true;previousUI=ui;
@@ -1821,9 +1823,9 @@ static void paint(){
  for(int i=0;i<labelCount;++i)nativeviewhost::localPoint(viewportTransform,labelViews[i].x,labelViews[i].y);
  const auto&statusFrame=externalSampler.unitStatuses();
  int statusCount=statusOptions()&&externalData&&displaylease::frameCurrent(statusFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::status::Maximum)?std::min(statusFrame.count,statusMotion.render(renderNow,statusViews)):0;
- const auto&rawEnemyFrame=externalSampler.enemyMarkers();
+ const auto&rawEnemyFrame=enemyTextFrame();
  for(int i=0;i<statusCount;++i)nativeviewhost::localPoint(viewportTransform,statusViews[i].x,statusViews[i].y);
- int rawEnemyCount=extra.enemyMarkers&&!specialoverlayhost::active()&&externalData&&displaylease::frameCurrent(rawEnemyFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
+ int rawEnemyCount=enemyTextEnabled()&&externalData&&displaylease::frameCurrent(rawEnemyFrame,externalData->match,externalData->frame,GetTickCount(),externalSourceConfirmed,external::enemies::Maximum)?std::min(rawEnemyFrame.count,enemyMotion.render(renderNow,enemyViews)):0;
  int enemyCount=rawEnemyCount?enemyclusters::render(rawEnemyFrame,enemyViews,rawEnemyCount,enemyGroups,clusteredEnemies,clusteredEnemyViews):0;
  std::copy(clusteredEnemyViews,clusteredEnemyViews+enemyCount,enemyViews);
  for(int i=0;i<enemyCount;++i)nativeviewhost::localPoint(viewportTransform,enemyViews[i].x,enemyViews[i].y);
@@ -2869,9 +2871,13 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  if(debugEntryCommand(id,HIWORD(wp)))return 0;
  DependencyCommandRefresh dependencyRefresh;
  if(HIWORD(wp)==BN_CLICKED&&toggleSettingsFold(id))return 0;
- // Keep the disabled render entry closed to forwarded/synthetic notifications,
- // without changing the saved preference or stopping an existing renderer.
- if(id==9300){SendDlgItemMessageW(w,id,BM_SETCHECK,renderUpgradeEnabled?BST_CHECKED:BST_UNCHECKED,0);EnableWindow(GetDlgItem(w,id),FALSE);return 0;}
+ // The unavailable renderer can be stopped if an older configuration enabled
+ // it. New enables are rejected; accepted disables use the normal save/stop path.
+ if(id==9300){
+  const bool closing=!updatingControls&&HIWORD(wp)==BN_CLICKED&&renderUpgradeEnabled&&SendDlgItemMessageW(w,id,BM_GETCHECK,0,0)!=BST_CHECKED;
+  if(!closing){SendDlgItemMessageW(w,id,BM_SETCHECK,renderUpgradeEnabled?BST_CHECKED:BST_UNCHECKED,0);EnableWindow(GetDlgItem(w,id),renderUpgradeEnabled);return 0;}
+  EnableWindow(GetDlgItem(w,id),FALSE);
+ }
  if(ready&&!updatingControls&&rejectUnavailableSetting(id,HIWORD(wp)))return 0;
  if(id==9300||id==9301||id==9302||id==9304||id==9305||id==9306||id==9307||id==9308||id==9309||id==9310||id==9313||id==9314||(id>=9320&&id<=9327)||(id>=9760&&id<=9762)){
   if(updatingControls)return 0;

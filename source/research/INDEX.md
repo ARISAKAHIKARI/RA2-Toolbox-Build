@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 特殊单位独立显示与渲染关闭（pre.6） | [双通道共用采样、独立 UI 与旧配置关闭](2026-11-14-independent-special-display.md) | independent-switch general-labels true-model cap2048 rollback legacy-INI saved-render-off Host-only |
 | 公共权限验证与实时 ID 读取（pre.5） | [同一管理器的轻量验证和局部读取保护](2026-11-14-common-entry-and-identity.md) | acquire-release same-Policy exact-token sealed-source UID no-RPM local-SEH no-FPS-claim |
 | 副相机、显形迷雾与独立面板 UI | [局部场景准备、原生目的像素遮罩和统一显隐](2026-11-14-watch-visibility-and-ui.md) | pre151-2 actual-renderer crop-union sealed-mask menu reentry purpose-copy stage-diagnostics no-live-FPS-proof |
 | 采样有效性、依赖保留与失败补采 | [同帧失败退避、完整发布复用和地址需求租期](2026-11-13-sampling-validity-retention.md) | actual-runtime transport demand-gap bounded-retry immutable-timestamp no-live-FPS-proof |

@@ -7,10 +7,13 @@ root = Path(__file__).resolve().parents[2]
 main = (root/'assist/source/main.cpp').read_text(encoding='utf-8')
 io = (root/'assist/source/extra_settings_io.h').read_text(encoding='utf-8')
 globals_ = 'static bool renderUpgradeEnabled='+main.split('static bool renderUpgradeEnabled=',1)[1].split('static bool minimapEnabled=',1)[0]
-load = io.split('static void loadAdditionalSettings(){', 1)[1].split(' extra.viewZoomEnabled=', 1)[0]
+load = io.split(' renderProcessing=value(',1)[1].split(' extra.viewZoomEnabled=',1)[0]
+load = ' renderProcessing=value('+load
 save = '\n'.join(line for line in io.splitlines() if line.lstrip().startswith('write(L"Display",') and ('L"Render' in line or 'L"UnifiedOverlay"' in line))
 handler = main.split(' if(id==9300||', 1)[1].split('\n if(id==862', 1)[0]
 handler = ' if(id==9300||'+handler
+early = main.split(' if(id==9300){',1)[1].split('\n if(ready&&!updatingControls',1)[0]
+handler = ' if(id==9300){'+early+'\n'+handler
 auto_ui = (root/'assist/source/auto_settings_ui.h').read_text(encoding='utf-8')
 changed_setting = 'static void changedSetting(){'+auto_ui.split('static void changedSetting(){', 1)[1].split('static void syncSecondaryLayoutControls(){', 1)[0]
 fixture = r'''
@@ -18,12 +21,13 @@ fixture = r'''
 #include <cassert>
 #include <map>
 #include <string>
-static std::map<std::wstring,int> profile;static std::map<int,int> controls;
-static bool updatingControls=false,autoSavePending=false;static int paintRevision=0,settingsRevision=0,changes=0,stops=0,ui=1,timerDelay=0;
-constexpr int AutoSaveTimer=3901;
-constexpr int CBN_SELCHANGE=1,BN_CLICKED=2,CB_GETCURSEL=3,BM_GETCHECK=4,BST_CHECKED=1;
+static std::map<std::wstring,int> profile;static std::map<int,int> controls;static std::map<int,bool> available;
+static bool revealCloakedUnits=false,revealMirageUnits=false,revealEnemySpies=false;static bool updatingControls=false,autoSavePending=false;static int paintRevision=0,settingsRevision=0,changes=0,stops=0,ui=1,timerDelay=0;
+constexpr int AutoSaveTimer=3901,FALSE=0;
+constexpr int CBN_SELCHANGE=1,BN_CLICKED=2,CB_GETCURSEL=3,BM_GETCHECK=4,BM_SETCHECK=5,BST_CHECKED=1,BST_UNCHECKED=0;
 static int HIWORD(unsigned v){return int(v>>16);}
-static int SendDlgItemMessageW(int,int id,int,int,int){return controls[id];}
+static int SendDlgItemMessageW(int,int id,int msg,int val,int){if(msg==BM_SETCHECK)controls[id]=val;return controls[id];}
+static void EnableWindow(int id,bool on){available[id]=on;}static void syncAdditional(){}static void wakeGame(){}
 static int GetDlgItem(int,int id){return id;}
 static void SetWindowTextW(int,const wchar_t*){}
 static void SetTimer(int,int,int delay,void*){++changes;timerDelay=delay;}static void syncTypeConfig(){}static void paint(){}
@@ -50,7 +54,10 @@ int main(){
   assert(paintRevision==revision&&changes==count&&stops==stopped);
  }
  updatingControls=true;controls[9305]=0;int old=renderPixelScale;handle(9305,CBN_SELCHANGE<<16);assert(renderPixelScale==old);updatingControls=false;
- for(int id:{9300,9301,9306,9310}){controls[id]=1;handle(id,BN_CLICKED<<16);}save();load();assert(renderUpgradeEnabled&&unifiedOverlayEnabled&&renderPhysicalOutput&&renderVulkanEnabled);
+ controls[9300]=1;int before=changes;handle(9300,BN_CLICKED<<16);assert(!renderUpgradeEnabled&&!controls[9300]&&!available[9300]&&changes==before);
+ profile[L"RenderUpgrade"]=1;load();assert(renderUpgradeEnabled);updatingControls=true;controls[9300]=0;handle(9300,BN_CLICKED<<16);assert(renderUpgradeEnabled&&controls[9300]&&available[9300]);updatingControls=false;
+ controls[9300]=0;handle(9300,CBN_SELCHANGE<<16);assert(renderUpgradeEnabled&&controls[9300]);controls[9300]=0;int stopBefore=stops;handle(9300,BN_CLICKED<<16);assert(!renderUpgradeEnabled&&!available[9300]&&changes==before+1&&stops==stopBefore+1);save();renderUpgradeEnabled=true;load();assert(!renderUpgradeEnabled);
+ for(int id:{9301,9306,9310}){controls[id]=1;handle(id,BN_CLICKED<<16);}save();load();assert(!renderUpgradeEnabled&&unifiedOverlayEnabled&&renderPhysicalOutput&&renderVulkanEnabled);
  controls[9310]=0;handle(9310,BN_CLICKED<<16);save();renderVulkanEnabled=true;load();assert(!renderVulkanEnabled);
  // Removed neural controls and legacy INI values cannot dispatch processing.
  profile[L"RenderDLSS5"]=1;load();int stopped=stops,revision=paintRevision,count=changes;
@@ -66,4 +73,4 @@ with tempfile.TemporaryDirectory() as temp:
     source.write_text(fixture,encoding='utf-8')
     subprocess.run(['g++','-std=c++17','-O2',str(source),'-o',str(binary)],check=True)
     subprocess.run([str(binary)],check=True)
-print('PASS: actual render control events and INI load/save, 32 color/detail/refresh/scale combinations, adaptive mode 3 retained, removed neural control/legacy INI is inert, explicit quality/xBRZ round-trip, invalid/programmatic events ignored')
+print('PASS: unavailable renderer defaults off, saved activation can close/save but never reopen; actual render control events and INI load/save, 32 color/detail/refresh/scale combinations, adaptive mode 3 retained, removed neural control/legacy INI is inert, explicit quality/xBRZ round-trip, invalid/programmatic events ignored')

@@ -20,7 +20,7 @@ inline const wchar_t* videoSectionName(VideoSection section){
 struct VideoEntry {DisplayOption option;VideoGroup group;const wchar_t*label;const wchar_t*choices;VideoSection section;bool groupHeader=false;};
 inline constexpr VideoEntry videoEntries[]={
  {OverlayToggleKey,VideoGroup::Render,L"所有覆盖层显隐键（默认 · / `）",L"",VideoSection::Render},
- {RenderUpgrade,VideoGroup::Render,L"渲染升级（入口暂不可用）",L"",VideoSection::Render,true},
+ {RenderUpgrade,VideoGroup::Render,L"渲染升级（暂不可开启）",L"",VideoSection::Render,true},
  {SinglePlayerFPS,VideoGroup::Render,L"单机游戏 FPS（0 = 原版，10–240）",L"",VideoSection::Render},
  {RenderHighRefresh,VideoGroup::Render,L"高刷移动补帧（只读帧号取样）",L"",VideoSection::Render},
  {RenderPhysical,VideoGroup::Render,L"按显示器物理像素绘制",L"",VideoSection::Render},
@@ -88,7 +88,7 @@ class VideoSettings {
   auto on=[&](DisplayOption o){return s.values[o]!=0;};
   if(option==PassengerOwn)return on(PassengerBubbles)||on(DangerPassengers);
   if(option==PassengerAlways)return on(PassengerBubbles);
-  if(option==RenderUpgrade)return false; // Entry only; retain the saved value and all child settings.
+  if(option==RenderUpgrade)return on(RenderUpgrade); // Existing saved activation may be closed; new activation stays unavailable.
   // Camera motion still consumes this preference while the main renderer is off.
   if(option==RenderHighRefresh)return true;
   if(option==RenderProcessing||option==RenderPhysical)return on(RenderUpgrade);

@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
+#include <cstring>
 // Host display data only. Never part of Shared, a command, or a game write.
 namespace external { namespace enemies {
 constexpr int Maximum=2048;
@@ -23,6 +24,11 @@ struct Frame {
  uint32_t match=0,tick=0,house=0;int frame=-1,count=0,omitted=0,width=0,height=0;
  Marker items[Maximum]{};
 };
+inline void copyFrame(Frame&to,const Frame&from){
+ if(&to==&from)return;
+ std::memcpy(&to,&from,offsetof(Frame,items));
+ if(from.count>=0&&from.count<=Maximum)std::memcpy(to.items,from.items,size_t(from.count)*sizeof(Marker));
+}
 inline bool fresh(const Frame&f,uint32_t match,uint32_t now){
  return f.match==match&&f.tick&&uint32_t(now-f.tick)<250&&f.count>=0&&f.count<=Maximum;
 }

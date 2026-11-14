@@ -23,7 +23,7 @@ static uint32_t now=1000,pid=7,match=1;static uint64_t paintRevision=0;
 static bool externalData=true,front=true,externalSourceConfirmed=true;static worldframe::Token externalWorldSource;
 static struct{bool enemyMarkers=true,enemySpecialOnly=true;int enemySpecialMode=1;}extra;
 static struct{bool chat=false;int cameraX=0,cameraY=0,width=800,height=600;}snap;
-static struct{external::enemies::Frame markers;const auto&enemyMarkers(){return markers;}}externalSampler;
+static struct{external::enemies::Frame markers;const auto&specialEnemyMarkers(){return markers;}}externalSampler;
 static uint32_t GetTickCount(){return now;}static bool foregroundGame(){return front;}static uint32_t commandMatch(){return match;}
 namespace specialoverlay {
 '''+identity+'}\n'+types+r'''
@@ -35,7 +35,7 @@ static void source(int logic=1){auto next=std::make_shared<worldframe::Snapshot>
  auto&m=externalSampler.markers;m.count=1;m.match=match;m.house=9;m.frame=logic;m.items[0].object=0x200000;m.items[0].id=1;m.items[0].type=0x300000;m.items[0].owner=0x400000;}
 static std::shared_ptr<Frame> completed(){auto f=std::make_shared<Frame>();f->pid=pid;f->match=match;f->source=externalWorldSource;f->transform=transform;f->selection=external::presentation::settings().get();f->identities={{0x200000,1,0x300000,0x400000}};f->composite=std::make_shared<external::voxel::Image>();return f;}
 int main(){
- source();update(transform);assert(worker.submissions==1&&!frame);worker.result=completed();update(transform);assert(frame);const auto revision=paintRevision;update(transform);assert(paintRevision==revision&&worker.submissions==1);
+ extra.enemyMarkers=false;assert(active());source();update(transform);assert(worker.submissions==1&&!frame);worker.result=completed();update(transform);assert(frame);const auto revision=paintRevision;extra.enemyMarkers=true;update(transform);assert(frame&&paintRevision==revision&&worker.submissions==1);
  externalSourceConfirmed=false;now+=119;update(transform);assert(frame);++now;update(transform);assert(!frame);externalSourceConfirmed=true;
  source();update(transform);worker.result=completed();update(transform);assert(frame);externalSampler.markers.count=0;update(transform);assert(!frame&&!lastConfirmed);
  source();update(transform);worker.result=completed();update(transform);assert(frame);++externalSampler.markers.items[0].owner;update(transform);assert(!frame);
@@ -45,6 +45,7 @@ int main(){
  worker.result=completed();update(transform);assert(frame);snap.chat=true;update(transform);assert(!frame);snap.chat=false;
  source();update(transform);worker.result=completed();update(transform);assert(frame);++match;source();update(transform);assert(!frame);worker.result=old;update(transform);assert(!frame);
  worker.result=completed();update(transform);assert(frame);front=false;update(transform);assert(!frame);
+ extra.enemySpecialOnly=false;update(transform);assert(!frame);extra.enemyMarkers=false;extra.enemySpecialOnly=true;assert(active());
  // A transient compositor failure must not become a completed warm frame.
  // Hold the exact same paused source/camera/settings while the worker retries.
  front=true;source();update(transform);auto failed=completed();failed->composite.reset();worker.result=failed;update(transform);

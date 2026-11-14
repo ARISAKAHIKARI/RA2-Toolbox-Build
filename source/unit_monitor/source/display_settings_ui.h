@@ -13,8 +13,8 @@ static void syncUnitSettings(bool force=false){
   else if(suite::displaySpecs[i].control==suite::DisplayControl::Choice)SendMessageW(control,CB_SETCURSEL,state.values[i],0);
   else if(force||GetFocus()!=control)SetWindowTextW(control,std::to_wstring(state.values[i]).c_str());
  }
- EnableWindow(unitSettingControls[suite::EnemySpecialOnly],state.values[suite::EnemyMarkers]!=0);
- EnableWindow(unitSettingControls[suite::EnemySpecialMode],state.values[suite::EnemyMarkers]&&state.values[suite::EnemySpecialOnly]);
+ EnableWindow(unitSettingControls[suite::EnemySpecialOnly],TRUE);
+ EnableWindow(unitSettingControls[suite::EnemySpecialMode],state.values[suite::EnemySpecialOnly]);
  EnableWindow(unitSettingControls[suite::AllTransports],state.values[suite::Capacity]!=0);
  EnableWindow(unitSettingControls[suite::InfoFPS],state.values[suite::InfoAdaptive]==0);
  syncUnitInformationRate();
@@ -26,12 +26,12 @@ template<class Create> static void createUnitSettings(Create ctl){
   auto h=ctl(L"BUTTON",text,BS_AUTOCHECKBOX|WS_TABSTOP,x,y,680-x,26,600+option);unitSettingControls[option]=h;EnableWindow(h,FALSE);
  };
  toggle(suite::EnemyMarkers,L"敌方单位提示",58);
- toggle(suite::EnemySpecialOnly,L"仅隐形、幻影和敌方间谍",92,374);
- modernui::tip(unitSettingControls[suite::EnemySpecialOnly],L"只显示隐形 / 潜水状态单位、幻影与敌方间谍；可选择文字标记或不透明外观叠加。关闭后恢复全部敌方标记。");
+ toggle(suite::EnemySpecialOnly,L"显示隐形、幻影和敌方间谍",92);
+ modernui::tip(unitSettingControls[suite::EnemySpecialOnly],L"显示隐形、潜水状态单位、幻影和敌方间谍。可选择文字标记或真实模型叠加，与敌方单位提示分别开关。");
  ctl(L"STATIC",L"显示方式",0,374,131,100,24,0);
  auto mode=ctl(L"COMBOBOX",L"",CBS_DROPDOWNLIST|WS_TABSTOP,478,128,202,100,600+suite::EnemySpecialMode);
- SendMessageW(mode,CB_ADDSTRING,0,LPARAM(L"文字标记"));SendMessageW(mode,CB_ADDSTRING,0,LPARAM(L"不透明叠加"));unitSettingControls[suite::EnemySpecialMode]=mode;EnableWindow(mode,FALSE);
- modernui::tip(mode,L"不透明叠加：在当前位置显示真实外观，保留原画面，不擦除幻影树形、不重画地形；队形预览保持原样。");
+ SendMessageW(mode,CB_ADDSTRING,0,LPARAM(L"文字标记"));SendMessageW(mode,CB_ADDSTRING,0,LPARAM(L"真实模型叠加"));unitSettingControls[suite::EnemySpecialMode]=mode;EnableWindow(mode,FALSE);
+ modernui::tip(mode,L"文字标记：在目标位置显示单位名称。真实模型叠加：在目标位置显示单位的真实外观。");
  toggle(suite::Capacity,L"载具载员与容量",168);
  toggle(suite::AllTransports,L"同时显示未选中的载具",202,374);
  modernui::tip(unitSettingControls[suite::AllTransports],L"需先开启“载具载员与容量”。关闭父功能时保留此选项，重新开启后恢复使用。");

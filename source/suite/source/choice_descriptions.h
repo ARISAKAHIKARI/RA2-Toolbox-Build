@@ -8,7 +8,7 @@ namespace choicedescriptions {
 struct Group {std::vector<std::string> options, descriptions;};
 inline const std::vector<Group>& groups(){
  static const std::vector<Group> value={
-  {{"文字标记","不透明叠加"},{
+  {{"文字标记","真实模型叠加"},{
    "在隐形、潜水、幻影和间谍单位附近显示文字，方便快速辨认目标。与外观叠加相比，占用更少绘制资源。",
    "在单位当前位置叠加真实兵种外观和所属方配色，不擦除游戏原有的树形或伪装图案。用于直接辨认特殊敌方单位。"}},
   {{"高危：受控模式（默认）","高危：经典兼容","高危：直接模式","高危：原生面板（规则数据）","实验性：原生面板（参数拦截，不改指令／规则）"},{

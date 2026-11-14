@@ -3,7 +3,7 @@
 #include "../../external_reader/source/enemy_markers.h"
 #include <unordered_map>
 namespace specialoverlay {
-inline bool enabled(bool markers,bool only,int mode){return markers&&only&&mode==1;}
+inline bool enabled(bool special,int mode){return special&&mode==1;}
 inline uint64_t identity(const external::enemies::Marker&m){return (uint64_t(m.object)<<32)|m.id;}
 struct Identity {uint32_t object=0,id=0,type=0,owner=0;};
 inline bool stillPresent(const std::vector<Identity>&drawn,const external::enemies::Frame&current){

@@ -14,7 +14,7 @@ int main(int argc,char**argv){
  Snapshot source=f.sampler.sample(f.now,Capacity,true,3);
  const Snapshot*externalData=&source;
  auto statusFrame=f.sampler.unitStatuses();auto rawEnemyFrame=f.sampler.enemyMarkers();
- struct{bool enemyMarkers=true;}extra;bool externalSourceConfirmed=true;
+ struct{bool enemyMarkers=true,enemySpecialOnly=false;int enemySpecialMode=0;}extra;bool externalSourceConfirmed=true;
  visual::Motion statusMotion,enemyMotion;
  visual::LabelView statusViews[MaxLabels],enemyViews[MaxLabels];
  Snapshot input{};input.match=source.match;input.frame=source.frame;input.sampledTick=source.sampledTick;input.cameraX=source.cameraX;input.cameraY=source.cameraY;
@@ -22,6 +22,7 @@ int main(int argc,char**argv){
  input.labels=rawEnemyFrame.count;for(int i=0;i<input.labels;++i)input.label[i]={rawEnemyFrame.items[i].id,rawEnemyFrame.items[i].x,rawEnemyFrame.items[i].y};enemyMotion.update(input);
  assert(source.status==1&&statusFrame.count==1&&rawEnemyFrame.count==4);
  auto paintCounts=[&](uint32_t renderNow){
+  auto GetTickCount=[&](){return renderNow;};
 #include PAINT_GATES
   return std::array<int,2>{statusCount,rawEnemyCount};
  };

@@ -12,11 +12,13 @@ def block(text,start):
  return text[i:j]
 io=(root/'assist/source/extra_settings_io.h').read_text();ui=(root/'assist/source/auto_settings_ui.h').read_text();controls=(root/'assist/source/tactical_controls.h').read_text()
 loads=''.join(re.search(r'extra\.'+f+r'=[^;]+;',io).group() for f in ['enemySpecialOnly','enemySpecialMode','sellEnemy'])
-saves=''.join(re.search(r'write\(L"Display",L"'+f+r'",[^;]+;',io).group() for f in ['EnemySpecialOnly','EnemySpecialMode'])
+saves=''.join(re.search(r'write\(L"Display",L"'+f+r'",[^;]+;',io).group() for f in ['EnemySpecialEnabled','EnemySpecialOnly','EnemySpecialMode'])
 owner=block(ui,'if(id==9764&&select)');sale=block(ui,'if((id==860||id==722)&&notification==BN_CLICKED)')
 button=next(l for l in controls.splitlines() if 'extraControls[SellEnemyEnabled]=toggle' in l)
 unit=(root/'unit_monitor/source/display_settings_ui.h').read_text().replace('#include "../../suite/source/video_settings_ui.h"','')
 flags=block(io,'static uint32_t additionalFlags()')
+host=(root/'assist/source/main.cpp').read_text()
+text_policy=block(host,'static bool enemyTextEnabled()')+block(host,'static const external::enemies::Frame&enemyTextFrame()')
 prefix=r'''
 #define RA2_UNIFIED
 #include "display_settings.h"
@@ -43,7 +45,9 @@ namespace modernui {void heading(int){}void tip(int,const wchar_t*){}}
 namespace suite {enum class VideoGroup{Monitor};struct VideoSettings{void sync(bool){}template<class C>void create(C,VideoGroup,int,int,int){}bool command(WPARAM){return false;}};
 static DisplayState state;bool readDisplaySettings(DisplayState&out){out=state;return true;}void requestDisplaySetting(int o,int v){requestedOption=o;requestedValue=v;}}
 static int statsInformationFPS(){return 144;}
-static struct {bool enemySpecialOnly=false,sellEnemy=false,controlAll=false;
+namespace external {namespace enemies {struct Frame {int tag;};}}
+static struct {external::enemies::Frame general{1},special{2};const auto&enemyMarkers(){return general;}const auto&specialEnemyMarkers(){return special;}}externalSampler;
+static struct {bool enemyMarkers=false,enemySpecialOnly=false,sellEnemy=false,controlAll=false;
  bool frozen=false,antiTheft=false,constructionQueue=false,nativeAirWaypoints=false,airWaypoints=false,experimentalReveal=false,enter=false,air=false,disk=false,sellDrained=false,sellVehicles=false;
  int enemySpecialMode=0,airPathKey=0;}extra;
 static int techMode=0;enum {Frozen=1,UnsafeTech=2,AntiTheft=4,ReserveConstruction=8,NativeAirWaypoints=16,AirWaypoints=32,ExperimentalReveal=64,AdvancedEnter=128,AircraftSpread=256,DiskPrimary=512,SellDrained=1024,SellVehicles=2048,SellEnemy=4096};
@@ -54,19 +58,22 @@ static void write(const wchar_t*,const wchar_t*k,int v){ini[k]=v;}
 static int extraControls[1]{};constexpr int SellEnemyEnabled=0;
 static int toggle(int id,const wchar_t*,bool on){fields[id]=on;available[id]=true;return id;}static void next(){}
 '''
-code=prefix+unit+f'\nvoid load(){{const bool sellOptIn=true;{loads}}}\nvoid save(){{{saves}}}\nbool owner(int id,bool select){{{owner}return false;}}\nbool sale(int id,int notification){{{sale}return false;}}\nvoid button(){{{button}}}\n'+flags+r'''
+code=prefix+unit+text_policy+f'\nvoid load(){{const bool sellOptIn=true;{loads}}}\nvoid save(){{{saves}}}\nbool owner(int id,bool select){{{owner}return false;}}\nbool sale(int id,int notification){{{sale}return false;}}\nvoid button(){{{button}}}\n'+flags+r'''
 int main(){
+ for(bool general:{false,true})for(bool special:{false,true})for(int mode:{0,1}){extra.enemyMarkers=general;extra.enemySpecialOnly=special;extra.enemySpecialMode=mode;assert(enemyTextEnabled()==(general||(special&&mode==0)));assert(enemyTextFrame().tag==(general?1:2));}
  auto create=[](const wchar_t*,const wchar_t*,int,int,int,int,int,int id){available[id]=true;return id;};createUnitSettings(create);
+ const int special=600+suite::EnemySpecialOnly;assert(available[special]);
  const int mode=600+suite::EnemySpecialMode;assert(!available[mode]);suite::state.values[suite::EnemyMarkers]=1;syncUnitSettings(true);assert(!available[mode]);
- suite::state.values[suite::EnemySpecialOnly]=1;suite::state.values[suite::EnemySpecialMode]=1;syncUnitSettings(true);assert(available[mode]&&fields[mode]==1);
+ suite::state.values[suite::EnemyMarkers]=0;suite::state.values[suite::EnemySpecialOnly]=1;suite::state.values[suite::EnemySpecialMode]=1;syncUnitSettings(true);assert(available[mode]&&fields[mode]==1);suite::state.values[suite::EnemyMarkers]=1;syncUnitSettings(true);assert(available[special]&&available[mode]);suite::state.values[suite::EnemyMarkers]=0;syncUnitSettings(true);assert(available[special]&&available[mode]);
  fields[mode]=0;assert(unitSettingCommand(wp(mode,CBN_SELCHANGE)));assert(requestedOption==suite::EnemySpecialMode&&requestedValue==0);
  fields[9764]=1;assert(owner(9764,true)&&extra.enemySpecialMode==1);extra.enemySpecialOnly=true;save();extra.enemySpecialMode=0;extra.enemySpecialOnly=false;load();assert(extra.enemySpecialMode==1&&extra.enemySpecialOnly);
+ assert(ini[L"EnemySpecialEnabled"]==1&&ini[L"EnemySpecialOnly"]==1);ini.erase(L"EnemySpecialEnabled");load();assert(extra.enemySpecialOnly);ini[L"EnemySpecialEnabled"]=0;load();assert(!extra.enemySpecialOnly);extra.enemySpecialOnly=true;save();
  ini[L"EnemySpecialMode"]=9;load();assert(extra.enemySpecialMode==1);ini[L"EnemySpecialMode"]=-9;load();assert(extra.enemySpecialMode==0);
  suite::state.values[suite::EnemySpecialOnly]=0;syncUnitSettings();requestedOption=-1;unitSettingCommand(wp(mode,CBN_SELCHANGE));assert(requestedOption==-1);
  assert(!suite::validDisplayEdit(suite::EnemySpecialMode,-1)&&!suite::validDisplayEdit(suite::EnemySpecialMode,2));
  static_assert(!playertest::SellAvailable);ini[L"SellEnemyBuildings"]=1;load();assert(!extra.sellEnemy);button();assert(!available[722]&&!fields[722]);
  fields[722]=1;assert(sale(722,BN_CLICKED));assert(!extra.sellEnemy&&!fields[722]&&!available[722]);extra.sellEnemy=true;assert(!(additionalFlags()&SellEnemy));
- std::cout<<"PASS production choice control/owner/INI, disabled parent gating, invalid values, old sale config/click/shared flags blocked\n";
+ std::cout<<"PASS production choice control/owner/INI, independent special toggle/mode gating and canonical/legacy settings migration, invalid values, old sale config/click/shared flags blocked\n";
 }
 '''
 cpp=a.out/'settings.cpp';cpp.write_text(code);exe=a.out/'settings'
