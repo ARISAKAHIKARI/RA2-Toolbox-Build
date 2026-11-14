@@ -78,7 +78,9 @@ static LONG CALLBACK resumeDebug(EXCEPTION_POINTERS* pointers){
 }
 extern "C" void FixtureRuntimeScopeBody(void* raw){
  auto& state=*static_cast<Case*>(raw);
+ std::puts("STAGE body-enter");
  const bool acquired=gameentry::scoped(gameentry::Client::Assist,true,[&]{
+  std::puts("STAGE body-acquired");
   ++state.entered;assert(gameentry::active(gameentry::Client::Assist));
   // Rejected scheduling must not release the live caller's exact lease.
   bool ran=false;const bool nested=gameentry::scoped(gameentry::Client::Cursor,false,[&]{ran=true;});
@@ -88,7 +90,8 @@ extern "C" void FixtureRuntimeScopeBody(void* raw){
   bool loserOwned=InterlockedCompareExchange(&state.dispatch,1,0)==0;
   runtimeunwind::run([]{},[&]{if(loserOwned)InterlockedExchange(&state.dispatch,0);});
   assert(!loserOwned&&state.dispatch==1);
-  SetLastError(0x3456);RuntimeFPScope fp;
+  std::puts("STAGE body-fp");SetLastError(0x3456);RuntimeFPScope fp;
+  std::puts("STAGE body-fp-ok");
   runtimeunwind::run([&]{
    // A nested Capture has its own LIFO token; finally must release it before
    // the surrounding scoped Enter can release the outer token.
@@ -108,7 +111,13 @@ extern "C" void FixtureRuntimeScopeBody(void* raw){
  });
  assert(acquired);++state.completed;
 }
+static LONG WINAPI traceUnhandled(EXCEPTION_POINTERS*p){
+ std::fprintf(stderr,"UNHANDLED code=%08lx ip=%08lx sp=%08lx bp=%08lx\n",p->ExceptionRecord->ExceptionCode,p->ContextRecord->Eip,p->ContextRecord->Esp,p->ContextRecord->Ebp);std::fflush(stderr);
+ return EXCEPTION_CONTINUE_SEARCH;
+}
 int main(){
+ std::setvbuf(stdout,nullptr,_IONBF,0);SetUnhandledExceptionFilter(traceUnhandled);
+ std::puts("STAGE scope-start");
  SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);
  void* page=VirtualAlloc(nullptr,4096,MEM_RESERVE|MEM_COMMIT,PAGE_NOACCESS);assert(page);
  void* handler=AddVectoredExceptionHandler(1,resumeDebug);assert(handler);
@@ -119,7 +128,9 @@ int main(){
  for(unsigned mode=0;mode<3;++mode){
   controlWord(expectedControl);mxcsr(expectedMxcsr);
   Case state;state.mode=mode;state.noAccess=page;currentCase=&state;
+  std::printf("STAGE scope-outer %u\n",mode);
   const unsigned caught=FixtureRuntimeScopeOuter(&state);
+  std::printf("STAGE scope-return %u caught=%u\n",mode,caught);
   assert(caught==(mode==1?1u:0u));
   assert(state.entered==1&&state.completed==(mode==1?0u:1u));
   assert(state.cleanups==1&&state.captureCleanups==1&&state.dispatch==0&&state.resumed==(mode==2?1u:0u));
@@ -131,6 +142,6 @@ int main(){
  }
  controlWord(originalControl);mxcsr(originalMxcsr);
  assert(RemoveVectoredExceptionHandler(handler));assert(VirtualFree(page,0,MEM_RELEASE));
- identityReadChecks();
+ std::puts("STAGE identity-start");identityReadChecks();
  std::printf("PASS Windows x86 production scoped entry/manager + SEH finally: %u normal/outer-AV/resumed-debug cases; exact nested capture, rejected entry/CAS, FP restore and reentry passed; no game process\n",checks);
 }
