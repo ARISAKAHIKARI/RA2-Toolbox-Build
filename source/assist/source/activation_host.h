@@ -45,7 +45,7 @@ static void logFeatureActivation(DWORD now){
   mix(uint32_t(o.signature));mix(uint32_t(o.hook));mix(uint32_t(o.reason));mix(uint32_t(o.error));
  }
  static activation::LogCadence cadence;
- const bool blocked=incoming.status<0||incoming.commandStatus!=activation::Ready||shared->stop;
+ const bool blocked=incoming.status<0||incoming.commandStatus!=activation::Ready||shared->stop||incoming.placementStatus<0;
  if(!cadence.due(key,now,blocked))return;
  critical(L"feature-activation requestedFlags="+std::to_wstring(desiredFlags)+L" publishedFlags="+std::to_wstring(shared->flags)+
   L" gate="+activation::name(incoming.commandStatus)+L" gateCode="+std::to_wstring(incoming.commandStatus)+
@@ -75,7 +75,7 @@ static void logFeatureActivation(DWORD now){
   std::wstring detail=L"placement-admission mode="+std::to_wstring(extra.placementImplementation)+L" requested="+std::to_wstring(buildAnywhereMode)+
    L" status="+std::to_wstring(incoming.placementStatus)+L" session="+std::to_wstring(incoming.session)+L" debugValid="+std::to_wstring(placementDebugValid);
   if(placementDebugValid)for(const auto&o:placementEntries)detail+=L" entry="+hex32(o.id&0x00ffffffu)+L" signature="+std::to_wstring(uint32_t(o.signature))+L" hook="+std::to_wstring(uint32_t(o.hook))+L" reason="+std::to_wstring(uint32_t(o.reason))+L" error="+std::to_wstring(o.error)+L" ageMs="+std::to_wstring(DWORD(now-o.tick));
-  // Small Host-side, read-only evidence, only on a changed failed admission.
+  // Small Host-side, read-only evidence, on failed admission changes and bounded 5-second retries.
   // Never perform these reads in the game callback or use them to allow work.
   for(uint32_t at:{0x4A8EB0u,0x4A9060u,0x4A8EC3u,0x4A918Eu,0x464AC0u}){
    uint8_t bytes[20]{};detail+=L" probe-"+hex32(at)+L"=";

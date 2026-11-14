@@ -40,15 +40,16 @@ int main(){
  assert(messages[0].find(L"placementMode=2")!=std::wstring::npos&&messages[1].find(L"placement-admission mode=2")!=std::wstring::npos);
  assert(messages[1].find(L"entry=0x004A8EB0 signature=3 hook=5 reason=1 error=-2")!=std::wstring::npos);
  assert(messages[1].find(L"probe-0x004A918E=CCCC")!=std::wstring::npos);
- logFeatureActivation(1008);logFeatureActivation(1100);logFeatureActivation(6000);assert(messages.size()==2&&externalReader.reads==5);
- extra.placementImplementation=0;logFeatureActivation(6250);assert(messages.size()==4&&externalReader.reads==10&&messages.back().find(L"mode=0")!=std::wstring::npos);
+ logFeatureActivation(1008);logFeatureActivation(1100);logFeatureActivation(5999);assert(messages.size()==2&&externalReader.reads==5);
+ logFeatureActivation(6000);assert(messages.size()==4&&externalReader.reads==10);
+ extra.placementImplementation=0;logFeatureActivation(6250);assert(messages.size()==6&&externalReader.reads==15&&messages.back().find(L"mode=0")!=std::wstring::npos);
  auto&o=data.debugSnapshot.entries[debugentries::index(debugentries::id(debugentries::Kind::Patch,0x4A8EB0))];o.reason=debugentries::Reason::Unreadable;
- logFeatureActivation(6600);assert(messages.size()==6&&messages.back().find(L"reason=2")!=std::wstring::npos);
- data.debugSnapshotSeq=3;logFeatureActivation(6950);assert(messages.size()==8&&messages.back().find(L"debugValid=0")!=std::wstring::npos&&messages.back().find(L"entry=")==std::wstring::npos);
- incoming.placementStatus=2;logFeatureActivation(7300);assert(messages.size()==9&&externalReader.reads==20);
+ logFeatureActivation(6600);assert(messages.size()==8&&messages.back().find(L"reason=2")!=std::wstring::npos);
+ data.debugSnapshotSeq=3;logFeatureActivation(6950);assert(messages.size()==10&&messages.back().find(L"debugValid=0")!=std::wstring::npos&&messages.back().find(L"entry=")==std::wstring::npos);
+ incoming.placementStatus=2;logFeatureActivation(7300);assert(messages.size()==11&&externalReader.reads==25);
  data.debugSnapshotSeq=4;externalReader.fail=0x4A918E;incoming.placementStatus=-2;logFeatureActivation(7650);
- assert(messages.size()==11&&externalReader.reads==25&&messages.back().find(L"probe-0x004A918E=unreadable")!=std::wstring::npos);
- std::cout<<"PASS production placement diagnostics: mode/status/entry reason, bounded Host-only bytes, stable-state no-op, mode/reason changes, torn snapshot rejection and unreadable probe\n";
+ assert(messages.size()==13&&externalReader.reads==30&&messages.back().find(L"probe-0x004A918E=unreadable")!=std::wstring::npos);
+ std::cout<<"PASS production placement diagnostics: mode/status/entry reason, bounded Host-only bytes, bounded failure retry, stable fast path, mode/reason changes, torn snapshot rejection and unreadable probe\n";
 }
 '''
 cpp=a.out/'diagnostic.cpp';cpp.write_text(code);exe=a.out/'diagnostic';r=subprocess.run(['g++','-std=c++17','-O1','-I'+str(root/'shared/source'),'-I'+str(root/'assist/source'),str(cpp),'-o',str(exe)],capture_output=True,text=True);(a.out/'compile.log').write_text(r.stdout+r.stderr)
