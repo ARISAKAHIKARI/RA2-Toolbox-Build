@@ -1,0 +1,40 @@
+name: Publish RA2 Toolbox 1.0.51-pre.10
+on:
+  push:
+    branches: [codex/publish-v151-pre10]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: publish-v151-pre10
+  cancel-in-progress: false
+jobs:
+  package-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download pinned verified programs and prior complete packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run download 43640706706 --repo "$GITHUB_REPOSITORY" --name async-world-windows --dir imported-v151pre10
+          gh run download 43640706706 --repo "$GITHUB_REPOSITORY" --name async-world-portable --dir imported-v151pre10/portable
+          mkdir -p baseline-v151pre9
+          gh release download v1.0.51-pre.9 --repo "$GITHUB_REPOSITORY" --dir baseline-v151pre9 --pattern 'RA2Toolbox-1.0.51-pre.9-x64-*.zip' --pattern 'RA2Toolbox-1.0.51-pre.9-release-manifest.json'
+      - name: Verify and assemble complete packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/release_151_pre10.py package
+      - name: Publish checked prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/release_151_pre10.py publish
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-1.0.51-pre.10-release-receipts
+          path: dist-v151pre10/
