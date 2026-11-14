@@ -110,6 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/runtime_scope_windows.py --zig "$ZIG" --entry-ref 061e106b71c81d79ea687edf36ad8401ffb722f8 --out diagnostics-v151pre5/checks/runtime-scope-pre4 || echo "Pre.4 entry comparison failed; inspect its result.json"
           python source/assist/tests/runtime_scope_windows.py --zig "$ZIG" --out diagnostics-v151pre5/checks/runtime-scope
           "$ZIG" c++ -target x86-windows-gnu -std=c++17 -O2 -UNDEBUG -Isource/assist/source source/assist/tests/compute_observation.cpp -o diagnostics-v151pre5/checks/observations-win32.exe
           diagnostics-v151pre5/checks/observations-win32.exe | tee diagnostics-v151pre5/checks/observations-win32.log
