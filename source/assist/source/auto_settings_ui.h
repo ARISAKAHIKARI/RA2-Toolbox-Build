@@ -23,6 +23,10 @@ static void syncSecondaryLayoutControls(){
 static bool autoSettingChanged(int id,int notification){
  if(!ready||updatingControls)return false;
  const bool edit=notification==EN_CHANGE,select=notification==CBN_SELCHANGE;
+ if(id==9220&&notification==BN_CLICKED){extra.nativePip=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(extra.nativePip){extra.watchEnabled=false;ControlUpdate guard;SendDlgItemMessageW(ui,9060,BM_SETCHECK,BST_UNCHECKED,0);}registerKeys();changedSetting();syncAdditional();wakeGame();return true;}
+ if(id==9221&&edit){const WORD next=WORD(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));if(keyConflict(next,"",false)){ControlUpdate guard;SendDlgItemMessageW(ui,id,HKM_SETHOTKEY,extra.nativePipKey,0);notify(L"此快捷键已用于其他操作。");return true;}extra.nativePipKey=next;registerKeys();changedSetting();return true;}
+ if(id==9222&&notification==BN_CLICKED){if(!extra.nativePip){notify(L"请先开启原生画中画。");return true;}requestNativePipPin();return true;}
+
  // These older editors intentionally allow their own shared-key patterns
  // (notably the three watch slots). Only reserve new automatic bindings here.
  if(edit){
@@ -152,7 +156,7 @@ static bool autoSettingChanged(int id,int notification){
  if(id==885&&notification==BN_CLICKED){extra.dodgeEnabled=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
  if((id==9040||id==9041)&&select){int v=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(v>=0&&v<=1){(id==9040?extra.missileScope:extra.missileAllocation)=v;changedSetting();syncAdditional();}return true;}
  if(id==9042&&notification==BN_CLICKED){extra.magnetronGlobal=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
- if((id==9060||id==9061)&&notification==BN_CLICKED){(id==9060?extra.watchEnabled:extra.watchDanger)=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;registerKeys();changedSetting();return true;}
+ if((id==9060||id==9061)&&notification==BN_CLICKED){(id==9060?extra.watchEnabled:extra.watchDanger)=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;if(id==9060&&extra.watchEnabled){extra.nativePip=false;ControlUpdate guard;SendDlgItemMessageW(ui,9220,BM_SETCHECK,BST_UNCHECKED,0);}registerKeys();changedSetting();return true;}
  if(id==9095&&edit){extra.stickyKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));registerKeys();changedSetting();return true;}
  if(id==9094&&notification==BN_CLICKED){send(StickyGuard);return true;}
  if(id>=9170&&id<9170+2*selectedmode::Count){int index=(id-9170)/2;

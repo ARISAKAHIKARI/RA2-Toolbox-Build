@@ -1,0 +1,62 @@
+name: Native PiP integration checks
+on:
+  push:
+    branches: [codex/native-pip-20261114]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-pip-integration
+  cancel-in-progress: true
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute camera transaction failure checks
+        run: |
+          mkdir -p checks
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/native_pip_core.cpp -o checks/native-pip-core
+          checks/native-pip-core | tee checks/core.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-pip-portable
+          path: checks/
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare compiler
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Build paired programs and verify ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/native-pip-build"
+          mkdir -p native-pip-checks
+          bash source/build-zig-x64.sh > native-pip-checks/build.log 2>&1 || { tail -100 native-pip-checks/build.log; exit 1; }
+          git restore source/suite/source/app.ico
+          python source/tools/verify_windows_outputs.py --root native-pip-build --host-arch x64 --webview2 | tee native-pip-checks/pe.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-pip-windows
+          path: |
+            native-pip-checks/
+            native-pip-build/*.exe
+            native-pip-build/*.dll
+            native-pip-build/*.json

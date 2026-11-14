@@ -1,6 +1,11 @@
 #pragma once
 #include "view_zoom_native_state.h"
 static int __cdecl nativeViewGuarded(unsigned action,uint32_t argument){RuntimeFPScope fp;int result=0;runtimeunwind::run([&]{result=GuardedNativeViewAction(action,argument);},[&]{fp.restore();});return result;}
+static int __cdecl nativeMapComplete(unsigned action,uint32_t argument){
+ const int ready=nativeViewGuarded(action,argument);
+ if(nativePipDemand()){if(ready&&!nativeViewSwapped&&!nativeViewMutation&&!nativeViewHold&&(!nativeViewActive||!nativeViewError))GuardedNativePipAction(1,0);else if(sh)sh->nativePipStatus=1;}
+ return ready;
+}
 static __declspec(naked) void nativeViewMapEntry(){__asm {
  pushfd
  pushad
@@ -89,7 +94,7 @@ static __declspec(naked) void nativeViewAfterEntry(){__asm {
  ldmxcsr [esp+512]
  push 0
  push 5
- call nativeViewGuarded
+ call nativeMapComplete
  add esp,8
  fxrstor [esp]
  mov esp,ebx
@@ -350,6 +355,18 @@ static void nativeViewMakeSites(){
  }
  nativeViewQueryOwner=nativeViewClickQueryOwned;
 }
+static bool nativeMapAcquire(bool zoom){
+ nativeViewMakeSites();auto&s=nativeViewSites[5];
+ if(codeHookRegistry.active(s.address)){
+  if((!nativeMapZoomLease&&!nativeMapPipLease)||codeHookRegistry.conflict(s.address)||!riskSiteCurrent(s))return false;
+ }else if(!installRiskSite(s))return false;
+ (zoom?nativeMapZoomLease:nativeMapPipLease)=true;return true;
+}
+static bool nativeMapRelease(bool zoom){
+ bool&lease=zoom?nativeMapZoomLease:nativeMapPipLease;if(!lease)return true;
+ if(zoom?nativeMapPipLease:nativeMapZoomLease){lease=false;return true;}
+ if(!restoreRiskSite(nativeViewSites[5]))return false;lease=false;return true;
+}
 static bool nativeViewAllSites(){
  if(!nativeViewHooks||!nativeSidebarInstalled||!sidebarViewTrackingIntact())return false;
  bool ok=true;for(unsigned i=0;i<11;++i)ok=sidebarViewOwnsSite(i)&&ok;
@@ -359,7 +376,8 @@ static bool nativeViewAllSites(){
 }
 static bool nativeViewRemoveSites(){
  nativeViewMakeSites();bool ok=true;
- for(unsigned i=unsigned(sizeof(nativeViewSites)/sizeof(nativeViewSites[0]));i>1;--i)ok=restoreRiskSite(nativeViewSites[i-1])&&ok;
+ for(unsigned i=unsigned(sizeof(nativeViewSites)/sizeof(nativeViewSites[0]));i>1;--i)if(i-1!=5)ok=restoreRiskSite(nativeViewSites[i-1])&&ok;
+ ok=nativeMapRelease(true)&&ok;
  if(ok)nativeViewHooks=false;return ok;
 }
 static bool nativeViewInstall(){
@@ -367,16 +385,17 @@ static bool nativeViewInstall(){
  if(!nativeSidebarInstalled||!sidebarViewTrackingIntact()||!nativeViewIdle())return false;
  // Check the complete group before installing the first additional site.
  for(unsigned i=1;i<sizeof(nativeViewSites)/sizeof(nativeViewSites[0]);++i){const auto&s=nativeViewSites[i];uint8_t bytes[16]{};
+  if(i==5&&nativeMapPipLease&&riskSiteCurrent(s)&&!codeHookRegistry.conflict(s.address))continue;
   if(codeHookRegistry.active(s.address)||codeHookRegistry.conflict(s.address)||!read(s.address,bytes,s.size)||!hookregistry::admissibleOriginal(s.address,bytes,s.size)||
      !patchcontext::compatible(s.address,[](uint32_t at,void*out,size_t n){return read(at,out,n);}))return false;
  }
- for(unsigned i=1;i<sizeof(nativeViewSites)/sizeof(nativeViewSites[0]);++i)if(!installRiskSite(nativeViewSites[i])){nativeViewRemoveSites();return false;}
+ for(unsigned i=1;i<sizeof(nativeViewSites)/sizeof(nativeViewSites[0]);++i)if(!(i==5?nativeMapAcquire(true):installRiskSite(nativeViewSites[i]))){nativeViewRemoveSites();return false;}
  nativeViewHooks=true;return nativeViewAllSites();
 }
 static bool nativeViewRetired(){
  if(nativeViewActive||nativeViewHooks||nativeViewSwapped||nativeViewMutation||nativeViewHold||nativeViewWorldWait||nativeViewInRender||nativeViewWndDepth||nativeViewQueryDepth||
     nativeViewRaster[0]||nativeViewRaster[1]||nativeViewBuffersOwned[0]||nativeViewBuffersOwned[1])return false;
- nativeViewMakeSites();for(unsigned i=1;i<sizeof(nativeViewSites)/sizeof(nativeViewSites[0]);++i)if(codeHookRegistry.active(nativeViewSites[i].address))return false;return true;
+ nativeViewMakeSites();for(unsigned i=1;i<sizeof(nativeViewSites)/sizeof(nativeViewSites[0]);++i)if((i!=5||nativeMapZoomLease)&&codeHookRegistry.active(nativeViewSites[i].address))return false;return true;
 }
 // Reused singleton/pair addresses after loading are not ownership continuity.
 // Recompute only current local presentation with current centres, then retire

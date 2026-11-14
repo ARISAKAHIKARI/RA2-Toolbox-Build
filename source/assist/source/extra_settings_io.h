@@ -94,7 +94,8 @@ static void loadAdditionalSettings(){
  for(int i=0;i<selectedmode::Count;++i)extra.missionModeKeys[i]=value(L"Hotkeys",selectedmode::setting(i),extra.missionModeKeys[i])&65535;
  extra.watchSecondary=value(L"Watch",L"SecondaryEnabled",0)!=0;
  extra.watchSecondaryX=std::clamp(value(L"Watch",L"SecondaryX",10000),0,10000);extra.watchSecondaryY=std::clamp(value(L"Watch",L"SecondaryY",0),0,10000);
- extra.watchEnabled=value(L"Watch",L"Enabled",0)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",0)!=0;for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};extra.watchKeys[n]=value(L"Watch",keys[n],n?extra.watchKeys[0]:extra.watchKeys[n])&65535;}
+ extra.nativePip=value(L"NativePiP",L"Enabled",0)!=0;extra.nativePipKey=value(L"NativePiP",L"PinKey",0)&65535;
+ extra.watchEnabled=!extra.nativePip&&value(L"Watch",L"Enabled",0)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",0)!=0;for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};extra.watchKeys[n]=value(L"Watch",keys[n],n?extra.watchKeys[0]:extra.watchKeys[n])&65535;}
  extra.formationEnabled=value(L"Formation",L"Enabled",0)!=0;extra.formationHold=value(L"Formation",L"HoldKey",18)&65535;extra.formationMouse=value(L"Formation",L"MouseButton",2)==1?1:2;
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey",L"SquareKey",L"FrameKey"};for(int n=0;n<6;++n)extra.formationKeys[n]=value(L"Formation",shapeKeys[n],extra.formationKeys[n])&65535;
  for(int i=0;i<compute::Count;++i){int fallback=compute::inside(compute::Default,compute::Feature(i));
@@ -203,6 +204,7 @@ static bool saveAdditionalSettings(){
  for(int i=0;i<selectedmode::Count;++i)write(L"Hotkeys",selectedmode::setting(i),extra.missionModeKeys[i]);
  write(L"Watch",L"SecondaryEnabled",extra.watchSecondary);
  write(L"Watch",L"SecondaryX",extra.watchSecondaryX);write(L"Watch",L"SecondaryY",extra.watchSecondaryY);
+ write(L"NativePiP",L"Enabled",extra.nativePip);write(L"NativePiP",L"PinKey",extra.nativePipKey);
  write(L"Watch",L"Enabled",extra.watchEnabled);write(L"Watch",L"DangerCarriers",extra.watchDanger);for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};write(L"Watch",keys[n],extra.watchKeys[n]);}
  write(L"Formation",L"Enabled",extra.formationEnabled);write(L"Formation",L"HoldKey",extra.formationHold);write(L"Formation",L"MouseButton",extra.formationMouse);
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey",L"SquareKey",L"FrameKey"};for(int n=0;n<6;++n)write(L"Formation",shapeKeys[n],extra.formationKeys[n]);
@@ -300,6 +302,7 @@ static void syncRefreshRate(){extra.scrollRefreshMode=0;if(!shared)return;
 static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
  syncDebugEntrySettings();
+ shared->nativePipEnabled=enabled&&extra.nativePip?1u:0u;
  shared->viewZoomPercent=extra.viewZoomEnabled?uint32_t(extra.viewZoomPercent):100;
  shared->smallMapClamp=extra.smallMapClamp;
  shared->singlePlayerFPS=uint32_t(extra.singlePlayerFPS);

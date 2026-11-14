@@ -9,6 +9,7 @@ static NativeViewRect nativeViewA{},nativeViewR{},nativeViewPreviousA{};
 static void*nativeViewRaster[2]{},*nativeViewRasterCurrent[2]{},*nativeViewBuffersOwned[2]{};
 static void*nativeViewWindow[2]{},*nativeViewWindowBuffers[2]{},*nativeViewOldCurrent=nullptr;
 static void*nativeViewLocked[2]{};
+static bool nativeMapZoomLease=false,nativeMapPipLease=false;
 static bool nativeViewHooks=false,nativeViewActive=false,nativeViewInRender=false,nativeViewSwapped=false,nativeViewSuspended=false;
 static bool nativeViewMutation=false,nativeViewGeometryUncertain=false,nativeViewHold=false,nativeViewRestorePending=false,nativeViewHadMap=false;
 static bool nativeViewWorldWait=false,nativeViewPublished=false,nativeViewPublishedActive=false;
@@ -38,7 +39,7 @@ static bool nativeViewDemand(){return sh&&!sh->stop&&!fault&&
  viewzoom::valid(featureavailability::zoomPercent(int(sh->viewZoomPercent)))&&featureavailability::zoomPercent(int(sh->viewZoomPercent))!=100;}
 static bool nativeViewNeedsTracking(){return nativeViewDemand()||nativeViewHooks||nativeViewActive||nativeViewSwapped||nativeViewMutation||nativeViewHold;}
 static bool nativeViewRenderNeeded(){return nativeViewActive||nativeViewSwapped||nativeViewMutation||nativeViewHold||nativeViewWorldWait;}
-static bool nativeViewIdle(){return !sidebarViewRendering()&&!nativeViewInRender&&!nativeViewWndDepth&&!nativeViewQueryDepth;}
+static bool nativeViewIdle(){return !sidebarViewRendering()&&!nativeViewInRender&&!nativeViewWndDepth&&!nativeViewQueryDepth&&!nativePipBusy();}
 static bool nativeViewPair(void*a,void*b,void*const*pair){return a&&b&&a!=b&&
  (a==pair[0]||a==pair[1])&&(b==pair[0]||b==pair[1]);}
 static bool nativeViewRasterPointer(void*p){return p&&(p==nativeViewRaster[0]||p==nativeViewRaster[1]);}

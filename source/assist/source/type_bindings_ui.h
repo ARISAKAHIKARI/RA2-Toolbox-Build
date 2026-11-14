@@ -17,6 +17,7 @@ static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
  if(extra.allHotkeys)return false;key=comparableKey(key);
  for(auto k:hotkeys)if(comparableKey(k)==key)return true;
  if(automaticKeyConflict(key))return true;
+ if(extra.nativePip&&comparableKey(WORD(extra.nativePipKey))==key)return true;
  for(auto&b:swBindings)if(comparableKey(b.key)==key)return true;
  if(ignore.empty())for(auto&b:typeBindings)if(comparableKey(b.key)==key)return true;
  if(comparableKey(idleAircraftKey)==key)return true;

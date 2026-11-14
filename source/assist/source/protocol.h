@@ -29,7 +29,7 @@
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=107;
+constexpr uint32_t Magic=0x41533130, Version=108;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -284,6 +284,11 @@ struct Shared {
  // Optional local-house CanBuild coverage beyond the two sidebar callers.
  // Counts are successful permission edits, never completed production.
  volatile uint32_t techProductionCompatibility=0,techProductionFullPasses=0,techProductionEnhancePasses=0;
+ // Native picture-in-picture: Host owns enable/pin requests; Runtime owns
+ // status, pin acknowledgement and measured completed-render cost.
+ volatile uint32_t nativePipEnabled=0,nativePipPinRequest=0,nativePipPinAck=0,nativePipPinMatch=0,nativePipPinTick=0;
+ volatile int32_t nativePipStatus=0;
+ volatile uint32_t nativePipFrames=0,nativePipMicros=0,nativePipMaxMicros=0;
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

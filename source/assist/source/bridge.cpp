@@ -874,6 +874,7 @@ static bool nativeObjectUnhooked(){return nativeObjectSignature();}
 #include "scroll_refresh_bridge.h"
 #include "sidebar_view_bridge.h"
 #include "view_zoom_bridge.h"
+#include "native_pip_bridge.h"
 #include "pause_view_bridge.h"
 #include "tech_ui_breakpoint_bridge.h"
 #include "cooperative_bridge.h"
@@ -1266,7 +1267,7 @@ static void suspendedOptions(){
  // The native map zoom shares the sidebar Render dispatcher even when the
  // sidebar itself is visible. Focus loss, pause or observer mode must not
  // tear that dispatcher down while the zoom owns or is retiring its view.
- if(sh->sidebarMode==0&&!nativeViewNeedsTracking())restoreSidebarView();
+ if(sh->sidebarMode==0&&!nativeViewNeedsTracking()&&!nativePipDemand())restoreSidebarView();
  if(!(sh->moFeatures&pauseview::Feature))restorePauseView();
  if(!sh->nativeSellCursor)restoreNativeSellCursor();
  if(!sh->nativeMegaGateway)restoreNativeMegaGateway();
@@ -1530,7 +1531,7 @@ static void tick(){
  stickyTick(false);
  observePausedOre(house,frame);
  observeUnloadRoster(house,frame,now);
- viewZoomTick();sidebarViewTick();smallMapCameraTick();radarNavigationTick(now);highScrollTick(preciseNow);
+ viewZoomTick();sidebarViewTick();smallMapCameraTick();radarNavigationTick(now);if(nativePipJumpPending&&nativePipDemand())GuardedNativePipAction(4,0);highScrollTick(preciseNow);
  // Only tick consumes feature requests; neither Hook callback can bypass
  // the shared game-thread intent/validation/event pipeline.
  superweaponGrantTick(house,frame,now);

@@ -43,6 +43,7 @@ static void executeHotkey(WPARAM wp,bool fanout){
   {ControlUpdate guard;SendDlgItemMessageW(ui,9091,CB_SETCURSEL,viewzoom::index(extra.viewZoomPercent),0);}
   save();syncAdditional();notify(L"视角缩放请求："+(viewzoom::caption(extra.viewZoomPercent)?std::wstring(viewzoom::caption(extra.viewZoomPercent)):std::to_wstring(extra.viewZoomPercent)+L"%"));return;
  }
+ if(wp==1750){requestNativePipPin();return;}
  if(wp==1723){send(StickyGuard);return;}
  if(wp>=1724&&wp<1724+selectedmode::Count){send(selectedmode::command(int(wp-1724)));return;}
  if(wp>=1730&&wp<=1732){watchhost::pin(extra.watchKeys[wp-1730]);return;}

@@ -466,6 +466,7 @@ static void logBridgeHealth(bool force=false){
   L" inputPatchMask="+std::to_wstring(incoming.inputPatchMask)+L" hookConflicts="+std::to_wstring(incoming.hookConflicts)+
   L" installedCodePatches="+std::to_wstring(incoming.hookInstalled)+L" nativeAirMode="+std::to_wstring(incoming.nativeAirStatus)+
   L" zoomStatus="+std::to_wstring(shared?shared->viewZoomStatus:0)+L" zoomApplied="+std::to_wstring(shared?shared->viewZoomApplied:100)+L" refreshMode="+std::to_wstring(shared?shared->scrollRefreshMode:0)+L" scrollHz="+std::to_wstring(shared?shared->scrollRefreshHz:0)+L" scrollStatus="+std::to_wstring(shared?shared->scrollRefreshStatus:0)+L" scrollDraws="+std::to_wstring(shared?shared->scrollRefreshDraws:0)+L" extraRenderMilliHz="+std::to_wstring(shared?shared->scrollRefreshRateMilli:0)+L" extraRenderMaxGapUs="+std::to_wstring(shared?shared->scrollRefreshMaxGapUs:0)+
+  L" nativePipStatus="+std::to_wstring(shared?shared->nativePipStatus:0)+L" nativePipFrames="+std::to_wstring(shared?shared->nativePipFrames:0)+L" nativePipUs="+std::to_wstring(shared?shared->nativePipMicros:0)+
   L" renderReveal="+std::to_wstring(shared?shared->renderReveal:0)+L" renderStatus="+std::to_wstring(incoming.renderRevealStatus)+
   L" computeRequested="+hex32(shared?shared->computeRequested:0)+L" computeApplied="+hex32(shared?shared->computeApplied:0)+
   L" placementStatus="+std::to_wstring(incoming.placementStatus)+L" controlStatus="+std::to_wstring(shared?shared->playerControlStatus:0)+
@@ -621,6 +622,11 @@ static void logHotkeyBindings(){
  static std::wstring previous;if(table==previous)return;previous=table;++hotkeyBindingRevision;
  critical(L"hotkey-bindings revision="+std::to_wstring(hotkeyBindingRevision)+table);
 }
+static void requestNativePipPin(){
+ if(!extra.nativePip)return;const DWORD now=GetTickCount();
+ if(!shared||!commandFresh(now)){notify(L"等待当前对局连接。");return;}
+ shared->nativePipPinMatch=commandMatch();shared->nativePipPinTick=now;MemoryBarrier();++shared->nativePipPinRequest;wakeGame();
+}
 static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);registeredKeyIDs.clear();hotkeyRegistry.clear();hotkeyPending.clear();typeTap.clear();variantTap.clear();formationTap.clear();hotkeyDiagnostics.fallbacks=0;hotkeyDiagnostics.lastError=0;registeredHotkeyMode=desiredHotkeyMode();keysRegistered=registeredHotkeyMode!=0;if(!keysRegistered){logHotkeyBindings();return;}int failures=0;
  if(registeredHotkeyMode==1){
   for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
@@ -632,6 +638,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  for(const auto&entry:autofeatures::Entries)if(entry.setting){const WORD key=WORD(extra.automaticKeys[entry.feature]);if(LOBYTE(key)&&!registerKey(entry.action,key))++failures;}
  if(LOBYTE(ejectKey)&&!registerKey(1696,ejectKey))++failures;
  if(hookSmartUnload&&LOBYTE(unloadKey)&&!registerKey(1698,unloadKey))++failures;
+ if(extra.nativePip&&LOBYTE(extra.nativePipKey)&&!registerKey(1750,WORD(extra.nativePipKey)))++failures;
  if(featureavailability::AutoCS&&hookAutoCS&&LOBYTE(csKey)&&!registerKey(1699,csKey))++failures;
  if(extra.sidebarEnabled&&LOBYTE(extra.sidebarKey)&&!registerKey(1734,WORD(extra.sidebarKey)))++failures;
  if(extra.viewZoomEnabled){for(int i=0;i<3;++i)if(!registerKey(1720+i,WORD(extra.viewZoomKeys[i])))++failures;}
@@ -2241,6 +2248,8 @@ static void updateModeStatus(DWORD now){
  std::wstring renderText=(extra.mapStrategy!=0)?L"高危 · 地图显示：":L"地图显示：";renderText+=extra.mapStrategy==3?(autoRevealDone&&autoRevealDone==commandMatch()?L"自动地图全开已执行":L"等待自动地图全开"):snap.renderRevealStatus==-2?L"启用或关闭失败，请查看日志":!extra.renderReveal?L"关闭":phase?L"等待游戏就绪":snap.renderRevealStatus==1?L"已启用":L"等待生效";
  SetWindowTextW(GetDlgItem(ui,809),renderText.c_str());
  {int c=shared?shared->smallMapClampStatus:0;const wchar_t*status=c==1?L"已安装单轴／双轴修正":c==2?L"当前地图无需修正":c==3?L"等待有效几何":c==-2?L"入口冲突或还原未完成":L"关闭";SetWindowTextW(GetDlgItem(ui,9464),(std::wstring(L"小图相机：")+status).c_str());}
+ {const int s=shared?shared->nativePipStatus:0;const wchar_t*text=s==3?L"跟随单位":s==2?L"固定区域":s==1?L"等待战场绘制":s==-1?L"当前渲染布局不兼容":s==-2?L"离屏资源尚未就绪":s<0?L"异常已暂停":L"关闭";
+  std::wstring status=std::wstring(L"原生画中画：")+text;if(shared&&s>1)status+=L" · 绘制 "+std::to_wstring(shared->nativePipMicros)+L" μs · 累计 "+std::to_wstring(shared->nativePipFrames)+L" 帧";SetWindowTextW(GetDlgItem(ui,9223),status.c_str());setConsoleRuntimeError(GetDlgItem(ui,9223),s<0);}
  {int s=shared?shared->sidebarStatus:0;const wchar_t*status=s==1?L"已全部隐藏":s==3?L"只保留雷达":s==2?L"等待绘制安全点":s==-1?L"不支持当前显示几何":s==-2?L"版本或 Hook 冲突":s==-3?L"原生布局切换失败":L"完整";SetWindowTextW(GetDlgItem(ui,9407),(std::wstring(L"侧边栏：")+status).c_str());}
  {int p=shared?shared->pauseViewStatus:0;const wchar_t*status=p==1?L"运行中":p==2?L"已暂停":p==3?L"等待前进一帧":p==-1?L"仅支持单机／战役":p==-2?L"版本或 Hook 冲突":p==-3?L"原生暂停调用失败":p==-4?L"跨过多帧，已暂停":L"关闭";
   std::wstring text=std::wstring(L"逐帧操作：")+status;SetWindowTextW(GetDlgItem(ui,9406),text.c_str());}

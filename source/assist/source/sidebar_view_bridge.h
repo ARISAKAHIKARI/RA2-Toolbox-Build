@@ -6,6 +6,8 @@
 // view_zoom_bridge; this module owns physical A, sidebar input, and the columns.
 struct NativeSidebarRect {int x=0,y=0,w=0,h=0;};
 static bool nativeViewNeedsTracking(),nativeViewRenderNeeded(),nativeViewQuiesce();
+static bool nativePipDemand(),nativePipQuiesce(),nativePipUnderlayPending(),nativePipBusy();
+extern "C" int __cdecl GuardedNativePipAction(unsigned,unsigned);
 static bool nativeViewCurrentGeometry(const NativeSidebarRect&,const NativeSidebarRect&);
 static unsigned nativeViewSidebarRetirement();static void nativeViewSidebarRetired();
 extern "C" int __cdecl GuardedNativeViewAction(unsigned,unsigned);
@@ -292,6 +294,8 @@ extern "C" int __cdecl AssistSidebarViewAction(unsigned action,unsigned argument
  if(action==23)return restoreSidebarViewImpl()?1:0;
  if(action==20){
   if(sidebarViewRenderDepth||(sh&&sh->viewZoomBusy))return 2; // recursive/incomplete layout presentation
+  if(nativePipUnderlayPending()||nativePipBusy())GuardedNativePipAction(3,0);
+  if(nativePipBusy())return 2; // unretired camera state, not an image-upload failure
   if(nativeViewRenderNeeded()&&GuardedNativeViewAction(0,0)!=1)return 2;
   ++sidebarViewRenderDepth;return 1;
  }
@@ -421,6 +425,7 @@ static bool sidebarViewGeometry(){
  sidebarViewRefresh(true);sidebarViewGeometryUncertain=false;return true;
 }
 static bool restoreSidebarViewImpl(){
+ if(!nativePipQuiesce())return false;
  if(!nativeViewQuiesce()){if(sh)sh->sidebarStatus=2;return false;}
  // A foreign tracking hook can hide an in-flight Render. Retain its surface
  // lease until process shutdown rather than interpreting missing depth as idle.
@@ -477,7 +482,7 @@ static void sidebarViewTickImpl(){
  if(!sh)return;
  const bool nativeRequested=nativeViewNeedsTracking();
  const int desiredMode=sh->sidebarMode<=2?int(sh->sidebarMode):0;
- if(sh->stop||fault||(desiredMode==0&&!nativeRequested)){restoreSidebarView();return;}
+ if(sh->stop||fault||(desiredMode==0&&!nativeRequested&&!nativePipDemand())){restoreSidebarView();return;}
  if(sidebarViewConflict){sh->sidebarStatus=-2;return;}
  if(sidebarViewFailed){sh->sidebarStatus=-3;return;}
  if(sidebarViewRendering()){sh->sidebarStatus=2;return;}
@@ -493,6 +498,9 @@ static void sidebarViewTickImpl(){
  }
  if(!sidebarViewRenderSerial){sh->sidebarStatus=2;return;}
  if(!sidebarViewTrackingIntact())return;
+ if(nativePipDemand())GuardedNativePipAction(0,0);else if(!nativePipQuiesce())return;
+ // The standalone PiP needs render lifetime tracking, not sidebar geometry.
+ if(!nativeSidebarInstalled&&desiredMode==0&&!nativeRequested){sh->sidebarStatus=0;return;}
  if(nativeSidebarInstalled){
   bool sitesIntact=true;for(unsigned i=0;i<11;++i)sitesIntact=sidebarViewOwnsSite(i)&&sitesIntact;
   if(!sitesIntact){sidebarViewConflict=true;sh->sidebarStatus=-2;return;}

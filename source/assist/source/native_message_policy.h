@@ -54,6 +54,7 @@ extern "C" int AssistFilterMessage(void* raw){
  }
  bool keyContext=sh&&!sh->stop&&!fault&&sh->foreground&&!get<bool>(0xA8BC60+25)&&DWORD(sampleClock(sh)-sh->heartbeat)<=150;
  recordRuntimeGesture(msg,keyContext,match,sampleClock(sh));
+ if(nativePipMessage(msg))return 1;
  if(pauseViewMessage(msg))return 1;
  if(nativePlacementCompletionPending())nativePlacementCompletionTick(sampleClock(sh));
  if(nativePlacementMessage(msg))return 1;

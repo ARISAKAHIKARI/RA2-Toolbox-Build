@@ -225,7 +225,7 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 107, 'runtime::Version': 4, 'gameentry::Version': 3,
+    baseline = {'assist::Version': 108, 'runtime::Version': 4, 'gameentry::Version': 3,
                 'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162680,
                 'assist::Shared.aircraftAllocationPolicy': 23125936,
                 'assist::Shared.nativeCombatQueries': 23125940,
