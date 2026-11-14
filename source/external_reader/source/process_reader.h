@@ -147,7 +147,7 @@ public:
  void endWorldFrame(){
   if(worldClient_&&!worldDemands_.empty()){
    if(worldFrame_&&worldFrame_->controlSource)worldClient_->requestVisual(worldDemands_,!worldComplete_);
-   else worldClient_->request(worldDemands_);
+   else worldClient_->request(worldDemands_,!worldComplete_);
   }
   for(uint32_t page:worldDemands_){const uint32_t index=page>>12;worldDemandBits_[index>>6]=0;}
   worldDemands_.clear();worldFrame_.reset();worldComplete_=true;

@@ -40,6 +40,21 @@ void pendingDemand(){
  {SampleReadScope scope;uint32_t value=0;CHECK(readWorldSample(extra,&value,4)&&value==0x11223344u&&scope.complete());}
  std::puts("PASS pending demand: failed captures never acknowledge/forget an unfulfilled dependency");
 }
+void requestPriority(){
+ using namespace fixture;currentPid=HostPid;fixture::clock=1000;Memory memory;gameMemory=&memory;
+ external::ProcessReader reader;CHECK(reader.open(GamePid));auto client=worldframe::acquireClient(GamePid,reader.generation());CHECK(!client->acquire(7));
+ currentPid=GamePid;worldframe::Server server;CHECK(server.wanted(HostPid,fixture::clock));auto source=publication(1,50,123);source->key.connectionLow=uint32_t(reader.generation());server.observe(source->key);server.publish(*source);
+ currentPid=HostPid;CHECK(reader.beginWorldFrame(7,source));client->request({0x14000});const uint32_t first=channel()->demandRevision;
+ ++fixture::clock;uint32_t value=0;const auto beforeRpm=rpmCalls;CHECK(!reader.read(0x13000,&value,4)&&!reader.worldFrameComplete());reader.endWorldFrame();
+ CHECK(channel()->demandRevision==first+1);currentPid=GamePid;auto pages=server.requests();CHECK(std::find(pages.begin(),pages.end(),0x13000)!=pages.end());CHECK(rpmCalls==beforeRpm&&source->key.tick==1000);
+ // A repeated failure with unchanged dependencies must not republish at 1 kHz.
+ currentPid=HostPid;const auto after=channel()->demandRevision;CHECK(reader.beginWorldFrame(7,source));CHECK(!reader.read(0x13000,&value,4));reader.endWorldFrame();CHECK(channel()->demandRevision==after);
+ // Successful reads retain ordinary coalescing; they cannot mark an old frame
+ // fresh or request extra game reads merely to refresh a cached display.
+ client->request({0x15000});CHECK(channel()->demandRevision==after);fixture::clock+=2;client->subscribe(1,worldframe::Base);CHECK(channel()->demandRevision==after+1);
+ reader.close();client.reset();server.disconnect();gameMemory=nullptr;
+ std::puts("PASS missing dependency priority: failed ProcessReader publishes within 1 ms without next consumer tick; unchanged failures deduplicate; successful requests coalesce; no extra live read/restamp");
+}
 void failedRetry(){
  using namespace assist;currentPid=GamePid;fixture::clock=3000;retireWorldFrame();Memory m;setup(m);Read read{&m};snap.frame=50;
  m.put(0xA8EC78+16,-1);auto before=worldlife::capture(read);CHECK(!captureWorldFrame(read,before,House,fixture::clock,worldframe::Base));
@@ -86,7 +101,7 @@ void failedPublication(){
 }
 int main(int argc,char**argv){
  if(argc!=2)return 2;const std::string name=argv[1];
- if(name=="demand")retention::demandGap();else if(name=="retry")retention::failedRetry();
+ if(name=="priority")retention::requestPriority();else if(name=="demand")retention::demandGap();else if(name=="retry")retention::failedRetry();
  else if(name=="busy")retention::busyPublication();else if(name=="publication")retention::failedPublication();else if(name=="paused-demand")retention::demandGap(true);else if(name=="pending-demand")retention::pendingDemand();else if(name=="leases")retention::leases();else if(name=="backoff")retention::failureBackoff();else return 2;
  std::printf("{\"case\":\"%s\",\"checks\":%zu,\"pass\":true}\n",name.c_str(),fixture::checks);
 }

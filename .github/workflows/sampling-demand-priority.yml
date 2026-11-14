@@ -1,0 +1,32 @@
+name: Sampling demand priority
+on:
+  push:
+    branches: [codex/sampling-demand-priority-20261115]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sampling-demand-priority
+  cancel-in-progress: true
+jobs:
+  correctness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify priority, deduplication and baseline failure
+        run: |
+          mkdir -p checks
+          python source/assist/tests/world_frame_retention.py --negative-priority --out checks/retention
+          python source/assist/tests/world_frame_core_test.py > checks/core.log
+          python source/assist/tests/tactical_frame_sampling.py --negative-control --out checks/tactical
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sampling-demand-priority-checks
+          path: checks/

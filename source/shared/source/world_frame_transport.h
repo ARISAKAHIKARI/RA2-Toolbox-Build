@@ -119,10 +119,11 @@ class Client {
  uint32_t expiryCheckedAt_=0,expiryAfter_=0;
  uint32_t demandCheckedAt_=0,demandAfter_=0;bool demandDirty_=true;
  bool wantedDirty_=false,havePublished_=false,havePruned_=false;
- void pruneRequests(uint32_t now){
-  if(havePruned_&&uint32_t(now-prunedAt_)<2)return;
-  // Keep the existing 2 ms eligibility/heartbeat clock even when no entry
-  // can expire. Only the full-table walk is skipped, not request processing.
+ void pruneRequests(uint32_t now,bool immediate=false){
+  if(!immediate&&havePruned_&&uint32_t(now-prunedAt_)<2)return;
+  // Successful-reader maintenance keeps the 2 ms clock. Incomplete reads
+  // may need expired capacity immediately; the expiry deadline still skips
+  // full-table walks when no entry can expire.
   prunedAt_=now;havePruned_=true;
   if(uint32_t(now-expiryCheckedAt_)<expiryAfter_)return;
   uint32_t next=251;
@@ -134,8 +135,8 @@ class Client {
   // invalidate this lower bound. Unsigned elapsed time also handles wrap.
   expiryCheckedAt_=now;expiryAfter_=next;
  }
- void publishRequests(uint32_t now){
-  if(!wantedDirty_||(havePublished_&&uint32_t(now-publishedAt_)<2))return;
+ void publishRequests(uint32_t now,bool immediate=false){
+  if(!wantedDirty_||(!immediate&&havePublished_&&uint32_t(now-publishedAt_)<2))return;
   InterlockedIncrement(&channel_->demandSeq);uint32_t count=0;
   for(const auto&entry:wanted_)channel_->demands[count++]=entry.first;
   channel_->demandCount=count;++channel_->demandRevision;MemoryBarrier();InterlockedIncrement(&channel_->demandSeq);
@@ -263,19 +264,22 @@ public:
   auto&lease=leases_[reader];lease.used|=demand|Base;for(unsigned bit=0;bit<6;++bit)if((demand|Base)&(1u<<bit))lease.ticks[bit]=now;
   heartbeat(now);
  }
- void request(const std::vector<uint32_t>&pages){
+ void request(const std::vector<uint32_t>&pages,bool incomplete=false){
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();channel_->heartbeat=now;refreshDemand(now);
   // Missing or newly used ranges become a demand for the NEXT capture. A
   // consumer must not quietly supplement the sealed frame through RPM.
   // Retire expired keys before admitting replacements at the capacity limit.
-  pruneRequests(now);
+  pruneRequests(now,incomplete);
   for(uint32_t p:pages)if(!(p&4095u)&&range(p,PageSize)){
    auto found=wanted_.find(p);if(found!=wanted_.end())found->second=now;
    else if(wanted_.size()<MaxPages){wanted_.emplace(p,now);wantedDirty_=true;}
   }
   // Unchanged membership only renews local leases; do not copy the entire
   // list or make Server allocate another vector on every high-rate read pass.
-  publishRequests(now);
+  // A failed reader may not run again until the next sample/cached sweep.
+  // Its new dependency must not wait for an unscheduled 2 ms flush. Unchanged
+  // membership still renews leases without a list copy or revision increment.
+  publishRequests(now,incomplete);
  }
 };
 inline std::shared_ptr<Client>acquireClient(uint32_t pid,uint64_t generation){
