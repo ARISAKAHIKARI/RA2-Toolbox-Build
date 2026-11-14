@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--before-ref", default="cc3f0117c233284cec1963a11c26d637d55817fe")
     parser.add_argument("--cxx", default="g++")
+    parser.add_argument("--current-only", action="store_true", help="verify current callbacks without historical optimization comparison")
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
     repo = here.parents[2]
@@ -40,14 +41,14 @@ def main():
     sha = lambda data: hashlib.sha256(data).hexdigest()
     hashes = {name: sha((repo / name).read_bytes()) for name in paths}
     current = (repo / bridge_path).read_text()
-    previous = subprocess.check_output(["git", "show", args.before_ref + ":" + bridge_path], cwd=repo, text=True)
-    old_flags = subprocess.check_output(["git", "show", args.before_ref + ":source/assist/source/tech_enhancement_parameter_policy.h"], cwd=repo, text=True)
-    report = {"schema": 1, "before_commit": args.before_ref, "source_sha256": hashes,
+    previous = current if args.current_only else subprocess.check_output(["git", "show", args.before_ref + ":" + bridge_path], cwd=repo, text=True)
+    old_flags = (src / "tech_enhancement_parameter_policy.h").read_text() if args.current_only else subprocess.check_output(["git", "show", args.before_ref + ":source/assist/source/tech_enhancement_parameter_policy.h"], cwd=repo, text=True)
+    report = {"schema": 1, "before_commit": None if args.current_only else args.before_ref, "current_only": args.current_only, "source_sha256": hashes,
               "scope": __doc__, "assertions_enabled": True, "game_tested": False,
               "windows_executed": False, "multiplayer_tested": False, "gpu_tested": False,
               "baseline_model": "Both phases use the current Policy storage fixture. The baseline uses the unmodified pinned callback/world/signature/fullType functions; it never reads the added index. Index lifecycle-only cases run in the current phase."}
     args.out.mkdir(parents=True, exist_ok=True)
-    for phase, source in (("before", previous), ("after", current)):
+    for phase, source in ([("after", current)] if args.current_only else [("before", previous), ("after", current)]):
         out = args.out / phase
         out.mkdir(exist_ok=True)
         pieces = [block(current, "struct " + name) + ";" for name in ("TypeIdentity", "EnhancedIdentity", "Policy")]
@@ -68,7 +69,7 @@ def main():
                    "static int enhancementDispatch(Context&context,unsigned tag){" + enhancement + "}"]
         subject = "\n\n".join(pieces) + "\n"
         (out / "subject.inc").write_text(subject)
-        oracle = block(old_flags, "inline uint32_t compareFlags(").replace("compareFlags(", "originalCompareFlags(", 1)
+        oracle = block(old_flags, "uint32_t compareFlags(").replace("compareFlags(", "originalCompareFlags(", 1).replace("~ArithmeticFlags", "~techenhanceparams::ArithmeticFlags")
         (out / "flags-oracle.inc").write_text(oracle + "\n")
         exe = out / "tech-parameter-lookup"
         command = [args.cxx, "-std=c++17", "-O2", "-UNDEBUG", "-fno-exceptions", "-fno-rtti",
@@ -89,7 +90,7 @@ def main():
         report[phase]["flags_oracle_sha256"] = sha(oracle.encode())
         print(phase, run.stdout.strip())
     report["source_unchanged"] = hashes == {name: sha((repo / name).read_bytes()) for name in paths}
-    report["required_checks_passed"] = report["source_unchanged"] and report["before"]["pass"] and report["after"]["pass"]
+    report["required_checks_passed"] = report["source_unchanged"] and (args.current_only or report["before"]["pass"]) and report["after"]["pass"]
     (args.out / "result.json").write_text(json.dumps(report, indent=2) + "\n")
     raise SystemExit(0 if report["required_checks_passed"] else 1)
 

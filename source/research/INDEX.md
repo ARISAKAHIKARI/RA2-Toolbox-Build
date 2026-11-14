@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 公共权限验证与实时 ID 读取（pre.5） | [同一管理器的轻量验证和局部读取保护](2026-11-14-common-entry-and-identity.md) | acquire-release same-Policy exact-token sealed-source UID no-RPM local-SEH no-FPS-claim |
 | 副相机、显形迷雾与独立面板 UI | [局部场景准备、原生目的像素遮罩和统一显隐](2026-11-14-watch-visibility-and-ui.md) | pre151-2 actual-renderer crop-union sealed-mask menu reentry purpose-copy stage-diagnostics no-live-FPS-proof |
 | 采样有效性、依赖保留与失败补采 | [同帧失败退避、完整发布复用和地址需求租期](2026-11-13-sampling-validity-retention.md) | actual-runtime transport demand-gap bounded-retry immutable-timestamp no-live-FPS-proof |
 | 1.0.50 卡顿与防偷点杀失效调查 | [用户日志、有效旧目标准入与相邻页批读](2026-11-13-automation-stall-and-sampling.md) | source-log controlled-negative current-target-range Combat-demand 2048-actors 2094-to-173 identical-pages no-live-FPS-proof |

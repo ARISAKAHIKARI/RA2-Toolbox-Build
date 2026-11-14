@@ -10,6 +10,54 @@
 // implementations. Only guard callbacks unrelated to this fixture are stubbed
 // by exception_policy_windows.cpp, whose main is not used here.
 extern "C" unsigned FixtureRuntimeScopeOuter(void*);
+extern "C" int GuardedReadObjectIdentity(unsigned,unsigned*);
+static DWORD WINAPI foreignValidation(void*){
+ for(unsigned i=0;i<10000;++i)if(gameentry::active(gameentry::Client::Assist))return 1;
+ return 0;
+}
+static void identityBenchmark(unsigned object){
+ constexpr unsigned samples=50000;volatile unsigned sink=0;
+ LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);
+ for(unsigned round=0;round<3;++round){double times[2]{};
+  for(unsigned pass=0;pass<2;++pass){const unsigned mode=round==1?1-pass:pass;LARGE_INTEGER begin{},end{};QueryPerformanceCounter(&begin);
+   for(unsigned n=0;n<samples;++n){unsigned id=0;bool ok=false;
+    if(mode)ok=GuardedReadObjectIdentity(object,&id)!=0;
+    else{SIZE_T got=0;ok=ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(uintptr_t(object+0x10)),&id,4,&got)&&got==4;}
+    assert(ok&&id==99);sink+=id;
+   }
+   QueryPerformanceCounter(&end);times[mode]=double(end.QuadPart-begin.QuadPart)*1000000/double(frequency.QuadPart)/samples;
+  }
+  std::printf("IDENTITY_BENCH {\"round\":%u,\"samples\":%u,\"rpm_us_per_read\":%.6f,\"local_us_per_read\":%.6f}\n",round,samples,times[0],times[1]);
+ }
+ assert(sink==6*samples*99);
+}
+static void identityReadChecks(){
+ auto*pages=static_cast<unsigned char*>(VirtualAlloc(nullptr,8192,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));assert(pages);
+ const unsigned object=unsigned(uintptr_t(pages));unsigned id=0;
+ *reinterpret_cast<unsigned*>(pages+0x10)=77;SetLastError(0x6432);
+ assert(GuardedReadObjectIdentity(object,&id)&&id==77&&GetLastError()==0x6432);
+ *reinterpret_cast<unsigned*>(pages+0x10)=99;
+ assert(GuardedReadObjectIdentity(object,&id)&&id==99);
+ DWORD prior=0;assert(VirtualProtect(pages,8192,PAGE_NOACCESS,&prior));id=123;
+ SetLastError(0x6432);assert(!GuardedReadObjectIdentity(object,&id)&&id==123&&GetLastError()==0x6432);
+ assert(VirtualProtect(pages,8192,PAGE_READWRITE,&prior));
+ assert(VirtualProtect(pages+4096,4096,PAGE_NOACCESS,&prior));id=123;
+ SetLastError(0x6432);assert(!GuardedReadObjectIdentity(object+4096-18,&id)&&id==123&&GetLastError()==0x6432);
+ assert(!GuardedReadObjectIdentity(0,&id)&&!GuardedReadObjectIdentity(0x80000000u-0x14u,&id)&&!GuardedReadObjectIdentity(object,nullptr));
+ assert(GuardedReadObjectIdentity(object,&id)&&id==99);
+ identityBenchmark(object);
+ assert(VirtualFree(pages,0,MEM_RELEASE));id=123;SetLastError(0x6432);
+ assert(!GuardedReadObjectIdentity(object,&id)&&id==123&&GetLastError()==0x6432);
+ assert(gameentry::scoped(gameentry::Client::Assist,true,[]{
+  for(unsigned n=0;n<100000;++n)assert(gameentry::active(gameentry::Client::Assist));
+  assert(!gameentry::active(gameentry::Client::Cursor));
+  HANDLE thread=CreateThread(nullptr,0,foreignValidation,nullptr,0,nullptr);assert(thread);
+  assert(WaitForSingleObject(thread,10000)==WAIT_OBJECT_0);DWORD result=99;
+  assert(GetExitCodeThread(thread,&result)&&result==0);assert(CloseHandle(thread));
+  assert(gameentry::active(gameentry::Client::Assist));
+ }));
+ std::puts("PASS actual x86 identity reads: live UID changes, AV/freed/cross-page failure, LastError preservation, recovery; 100000 live validations and 10000 foreign-thread denials");
+}
 struct Case {
  unsigned mode=0,entered=0,completed=0,cleanups=0,captureCleanups=0,resumed=0;
  volatile LONG dispatch=0;
@@ -83,5 +131,6 @@ int main(){
  }
  controlWord(originalControl);mxcsr(originalMxcsr);
  assert(RemoveVectoredExceptionHandler(handler));assert(VirtualFree(page,0,MEM_RELEASE));
+ identityReadChecks();
  std::printf("PASS Windows x86 production scoped entry/manager + SEH finally: %u normal/outer-AV/resumed-debug cases; exact nested capture, rejected entry/CAS, FP restore and reentry passed; no game process\n",checks);
 }

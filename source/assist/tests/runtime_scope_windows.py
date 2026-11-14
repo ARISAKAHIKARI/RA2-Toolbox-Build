@@ -17,6 +17,7 @@ out.mkdir(parents=True, exist_ok=True)
 paths = ['source/cursor/source/resource_guard.cpp', 'source/assist/source/guard.cpp', 'source/assist/source/exception_policy.h',
          'source/shared/source/runtime_seh_scope.h', 'source/shared/source/game_entry_client.h',
          'source/shared/source/game_entry_manager.cpp', 'source/shared/source/entry_policy.h',
+         'source/shared/source/game_entry_validation.h',
          'source/shared/source/runtime_fp_scope.h', 'source/assist/tests/exception_policy_windows.cpp',
          'source/assist/tests/exception_policy_seh_boundary.cpp', 'source/assist/tests/runtime_scope_windows.cpp',
          'source/assist/tests/runtime_scope_seh_outer.cpp', 'source/assist/tests/runtime_scope_windows.py']

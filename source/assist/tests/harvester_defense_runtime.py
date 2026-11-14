@@ -39,7 +39,7 @@ def main():
     native = (SRC / "native_orders_bridge.h").read_text(encoding="utf-8")
     extract = "\n".join(function(external, needle) for needle in (
         "static bool refreshOreConfig(", "static bool oreTypeAllowed(",
-        "static bool oreMiner(", "static uint32_t worldByID(",
+        "static bool oreMiner(", "static bool readObjectIdentity(", "static uint32_t worldByID(",
         "static uint32_t rawObjectID(", "static uint32_t readMapCell(",
         "static bool rawOreCompatible("))
     extract += "\n" + function(native, "static bool nativeEnemy(") + "\n"

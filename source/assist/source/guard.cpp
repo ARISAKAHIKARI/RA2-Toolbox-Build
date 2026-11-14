@@ -22,6 +22,15 @@ extern "C" int AssistExceptionFilter(void* raw,unsigned boundary){
  AssistReportException(boundary,record->code,(unsigned)record->address,access?record->info[0]:~0u,access?record->info[1]:0);
  return action==assistguard::Disposition::ReportHandle?1:0;
 }
+// A live identity read must not turn an expired object pointer into a Runtime
+// fault. Read on every call, without a cached success or process-memory syscall.
+extern "C" int GuardedReadObjectIdentity(unsigned object,unsigned* id){
+ if(!id||object<0x10000u||object>=0x80000000u-0x14u)return 0;
+ const unsigned long saved=GetLastError();int result=0;
+ __try {__try {*id=*reinterpret_cast<const volatile unsigned*>(object+0x10u);result=1;}
+  __except(assistguard::noReportAccess(_exception_info())){result=0;}}
+ __finally {SetLastError(saved);}return result;
+}
 // A failed native legality query rejects this batch before submission. SEH
 // bounds faults, not side effects of platform/MOD overrides. UI marks this risk.
 extern "C" int GuardedEnterAction(unsigned address,unsigned source,unsigned target,unsigned* action){

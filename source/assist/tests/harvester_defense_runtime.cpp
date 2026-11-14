@@ -87,6 +87,8 @@ static bool planningRoom(int){return planningOkay;}
 static bool outgoingRoom(){return outgoingOkay;}
 static void consumePlanning(int){++consumed;}
 static void releaseAutoOwner(uint32_t id){++releases;actorLeaseArbiter.manual(id);}
+// Native protected read is an explicit memory boundary in this portable fixture.
+extern "C" int GuardedReadObjectIdentity(unsigned p,unsigned*id){assert(!sampleReadDepth);return read(p+0x10,id,4);}
 // Complete helper functions extracted verbatim by the runner, not recoded.
 #include "miner_runtime_extract.h"
 #include "../source/raw_combat.h"

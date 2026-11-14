@@ -37,7 +37,7 @@ struct Settings {unsigned techProductionCompatibility=0,techProductionFullPasses
 static bool fault=false,controlEligible=false;static unsigned techImplementation=techmode::Parameters;
 static uint32_t lastHouse=House,worldCaptures=0,fullStack[4]{};
 static unsigned probeDepth=0;static uint32_t probeToken=0,techEnhanceProbeReturn=0x700014;
-namespace gameentry {static volatile LONG activeToken=0;}
+namespace gameentry {static volatile LONG activeToken=0;static uint32_t currentToken(){return uint32_t(activeToken);}}
 namespace debugentries {static uint32_t policyRevision=77;}
 namespace eventdelivery {static bool mayQueue(int session){return session==3;}}
 static techbp::SignatureSnapshot<20> nativeDraw;static techbp::SignatureSnapshot<15> nativePrune;static techbp::SignatureSnapshot<16> nativeEntry;

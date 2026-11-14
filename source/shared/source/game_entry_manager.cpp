@@ -1,6 +1,8 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <atomic>
+#include "game_entry_validation.h"
 #include "entry_policy.h"
 #include "experimental_patch_policy.h"
 #include "patch_context.h"
@@ -11,7 +13,9 @@ using namespace gameentry;
 static Policy policy;
 static HANDLE boundThreadHandle=nullptr;
 static uint32_t boundThreadId=0;
-static volatile LONG busy,activeThread,activeModule,entries,reentrant,contended,wrongThread;
+static volatile LONG busy,entries,reentrant,contended,wrongThread;
+static std::atomic<uint32_t>activeThread{0},activeModule{0};
+static_assert(std::atomic<uint32_t>::is_always_lock_free,"Runtime owner reads must be lock-free");
 static assist::hookregistry::Registry<> patches;
 static uint32_t patchModules[decltype(patches)::CapacityLimit];
 static int32_t patchErrors[decltype(patches)::CapacityLimit];
@@ -135,20 +139,20 @@ extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
  if(!r||r->size!=sizeof(Request)||r->version!=Version)return int32_t(Result::Invalid);
  const DWORD tid=GetCurrentThreadId();
  if(r->operation==Operation::Leave){
-  if(InterlockedCompareExchange(&activeThread,0,0)!=LONG(tid)||
-     InterlockedCompareExchange(&activeModule,0,0)!=LONG(r->module))return int32_t(Result::WrongOwner);
+  if(activeThread.load(std::memory_order_acquire)!=tid||
+     activeModule.load(std::memory_order_acquire)!=r->module)return int32_t(Result::WrongOwner);
   const auto result=policy.leave(tid,*r);
-  if(result==Result::Ok&&!policy.module){InterlockedExchange(&activeModule,0);InterlockedExchange(&activeThread,0);InterlockedExchange(&busy,0);}
+  if(result==Result::Ok&&!policy.module){activeModule.store(0,std::memory_order_release);activeThread.store(0,std::memory_order_release);InterlockedExchange(&busy,0);}
   return int32_t(result);
  }
  // Scheduling cannot reenter. Only explicit Capture may nest under a live
  // parent token. Mutation requires the current owner and exact lease token.
- const bool owned=InterlockedCompareExchange(&activeThread,0,0)==LONG(tid)&&
-                  InterlockedCompareExchange(&activeModule,0,0)==LONG(r->module)&&
+ const bool owned=activeThread.load(std::memory_order_acquire)==tid&&
+                  activeModule.load(std::memory_order_acquire)==r->module&&
                   policy.sameModule(tid,*r);
  if((r->operation==Operation::Enter)||!owned){
   if(InterlockedCompareExchange(&busy,1,0)){
-   if(InterlockedCompareExchange(&activeThread,0,0)==LONG(tid))InterlockedIncrement(&reentrant);
+   if(activeThread.load(std::memory_order_acquire)==tid)InterlockedIncrement(&reentrant);
    else InterlockedIncrement(&contended);
    return int32_t(Result::Busy);
   }
@@ -162,7 +166,7 @@ extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
    // A fresh outer entry still verifies the retained thread object, including
    // numeric TID reuse. No handle wait/open is needed for the nested level.
    if(!owned)refreshBoundThreadHandle(tid);
-   InterlockedExchange(&activeThread,LONG(tid));InterlockedExchange(&activeModule,LONG(r->module));
+   activeThread.store(tid,std::memory_order_release);activeModule.store(r->module,std::memory_order_release);
    InterlockedIncrement(&entries);retain=true;
   }
   else if(result==Result::WrongThread)InterlockedIncrement(&wrongThread);
@@ -201,6 +205,16 @@ extern "C" __declspec(dllexport) int32_t __stdcall ManageGameEntry(Request*r){
  }
  if(!owned&&!retain)InterlockedExchange(&busy,0);
  return int32_t(result);
+}
+bool gameentry::validateCurrent(Client client,uint32_t module,uint32_t token){
+ const uint32_t tid=GetCurrentThreadId();
+ // Only this thread can mutate Policy while the published owner is live.
+ // A foreign caller must not read the owner-only policy fields concurrently.
+ if(activeThread.load(std::memory_order_acquire)==tid&&
+    activeModule.load(std::memory_order_acquire)==module&&policy.owns(tid,module,client,token))return true;
+ // Keep the original rejection/diagnostic behavior on the cold path.
+ Request r{};r.operation=Operation::Validate;r.client=client;r.module=module;r.token=token;
+ return ManageGameEntry(&r)==int32_t(Result::Ok);
 }
 extern "C" void EntryRuntimeDetach(){
  if(boundThreadHandle){CloseHandle(boundThreadHandle);boundThreadHandle=nullptr;boundThreadId=0;}

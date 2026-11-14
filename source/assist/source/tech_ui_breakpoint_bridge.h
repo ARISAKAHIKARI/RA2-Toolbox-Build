@@ -342,7 +342,7 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
   (tag==2?context.Edi:context.Ecx)!=pointer||pointer<0x10000)return 0;
  const uint32_t include=get<uint32_t>(stack+0x58);
  const bool caller=(returnAddress==0x6A97D7&&include==0)||(returnAddress==0x6AA786&&include==1)||
-  (probeDepth&&returnAddress==techEnhanceProbeReturn&&include==1&&probeToken&&uint32_t(InterlockedCompareExchange(&gameentry::activeToken,0,0))==probeToken);
+  (probeDepth&&returnAddress==techEnhanceProbeReturn&&include==1&&probeToken&&gameentry::currentToken()==probeToken);
  // Our own probe remains token-bound, even when other callers are admitted.
  // This only expands who may ask the already captured local-house policy.
  const bool extended=!caller&&sh->techProductionCompatibility&&returnAddress>=0x10000&&returnAddress!=techEnhanceProbeReturn&&
@@ -359,7 +359,7 @@ extern "C" int __cdecl AssistTechUiParameter(void*raw,unsigned tag){
 }
 extern "C" unsigned BeginTechEnhancementProbe(){using namespace techparameters;if(!gameentry::active(gameentry::Client::Assist)||!policy.enhanced||!enhancementReady()||probeDepth>=16)return 0;static constexpr uint8_t stub[]={0x8B,0x4C,0x24,4,0x8B,0x44,0x24,8,0x6A,1,0x6A,0,0x50,0xB8,0x70,0x78,0x4F,0,0xFF,0xD0,0xC2,8,0};
  const auto*start=reinterpret_cast<const uint8_t*>(&AssistTechEnhancementProbeCall);if(memcmp(start,stub,sizeof stub))return 0;
- techEnhanceProbeReturn=uint32_t(uintptr_t(start+20));if(!probeDepth)probeToken=uint32_t(InterlockedCompareExchange(&gameentry::activeToken,0,0));return ++probeDepth;}
+ techEnhanceProbeReturn=uint32_t(uintptr_t(start+20));if(!probeDepth)probeToken=gameentry::currentToken();return ++probeDepth;}
 extern "C" void EndTechEnhancementProbe(unsigned token){using namespace techparameters;if(token&&token==probeDepth)--probeDepth;else probeDepth=0;if(!probeDepth)probeToken=0;}
 static bool mapVisibilityParametersRetired(){using namespace techparameters;return groupOff(mapvisibility::Tag);}
 static bool restoreMapVisibilityParameters(){

@@ -3,6 +3,8 @@
 #error Game execution entry is Runtime-only; host modules must submit through host_game_input.
 #endif
 #include <windows.h>
+#include <atomic>
+#include "game_entry_validation.h"
 #include "game_entry_api.h"
 #include "runtime_seh_scope.h"
 namespace gameentry {
@@ -14,35 +16,37 @@ inline Manage manager(){return &ManageGameEntry;}
 inline uint32_t moduleIdentity(){
  // A module's base is immutable for its lifetime. Hot draw callbacks used to
  // enter the loader on every Capture/Validate/Leave operation.
- static volatile LONG cached=0;
- const uint32_t found=uint32_t(InterlockedCompareExchange(&cached,0,0));
+ static std::atomic<uint32_t>cached{0};
+ const uint32_t found=cached.load(std::memory_order_acquire);
  if(found)return found;
  HMODULE m=nullptr;
  GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
    reinterpret_cast<LPCWSTR>(&moduleIdentity),&m);
  const uint32_t identity=uint32_t(uintptr_t(m));
- if(identity)InterlockedCompareExchange(&cached,LONG(identity),0);
+ if(identity){uint32_t empty=0;cached.compare_exchange_strong(empty,identity,std::memory_order_release,std::memory_order_relaxed);}
  return identity;
 }
 inline bool manage(Request&r){auto f=manager();return f&&f(&r)==int32_t(Result::Ok);}
-inline volatile LONG activeToken=0;
+inline std::atomic<uint32_t>activeToken{0};
+static_assert(std::atomic<uint32_t>::is_always_lock_free,"Runtime token reads must be lock-free");
+inline uint32_t currentToken(){return activeToken.load(std::memory_order_acquire);}
 inline bool enter(Client client,bool bind,Request&r){
  r={};r.operation=Operation::Enter;r.client=client;r.module=moduleIdentity();r.bindThread=bind;
  if(!manage(r))return false;
- InterlockedExchange(&activeToken,LONG(r.token));return true;
+ activeToken.store(r.token,std::memory_order_release);return true;
 }
 inline bool capture(Client client,Request&r){
  r={};r.operation=Operation::Capture;r.client=client;r.module=moduleIdentity();
- r.token=uint32_t(InterlockedCompareExchange(&activeToken,0,0));
+ r.token=currentToken();
  if(!manage(r))return false;
- InterlockedExchange(&activeToken,LONG(r.token));return true;
+ activeToken.store(r.token,std::memory_order_release);return true;
 }
 inline void leave(Request&r){r.operation=Operation::Leave;
- if(manage(r))InterlockedExchange(&activeToken,LONG(r.token));
+ if(manage(r))activeToken.store(r.token,std::memory_order_release);
 }
 inline bool active(Client c){
- Request r{};r.operation=Operation::Validate;r.client=c;r.module=moduleIdentity();
- r.token=uint32_t(InterlockedCompareExchange(&activeToken,0,0));return r.token&&manage(r);
+ const uint32_t token=currentToken();
+ return token&&validateCurrent(c,moduleIdentity(),token);
 }
 struct Scope {
  Request request{};bool acquired=false;
@@ -60,7 +64,7 @@ template<class Fn>bool scoped(Client client,bool bind,Fn&& fn){
 }
 inline bool patch(Client c,uint32_t at,const uint8_t*before,const uint8_t*after,unsigned n){
  if(!before||!after||n>16||!n)return false;
- Request r{};r.operation=Operation::Patch;r.client=c;r.module=moduleIdentity();r.address=at;r.length=n;r.token=uint32_t(InterlockedCompareExchange(&activeToken,0,0));
+ Request r{};r.operation=Operation::Patch;r.client=c;r.module=moduleIdentity();r.address=at;r.length=n;r.token=currentToken();
  for(unsigned i=0;i<n;++i){r.before[i]=before[i];r.after[i]=after[i];}return manage(r);
 }
 inline Request inspect(uint32_t at=0,bool observe=false){
@@ -68,5 +72,5 @@ inline Request inspect(uint32_t at=0,bool observe=false){
  Request r{};r.client=Client::Assist;r.module=moduleIdentity();r.address=at;r.bindThread=observe;manage(r);return r;
 }
 inline void markConflict(uint32_t at){Request r{};r.operation=Operation::MarkConflict;
- r.client=Client::Assist;r.module=moduleIdentity();r.address=at;r.token=uint32_t(InterlockedCompareExchange(&activeToken,0,0));manage(r);}
+ r.client=Client::Assist;r.module=moduleIdentity();r.address=at;r.token=currentToken();manage(r);}
 }

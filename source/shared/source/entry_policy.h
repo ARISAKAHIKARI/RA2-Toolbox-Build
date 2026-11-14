@@ -36,9 +36,10 @@ struct Policy {
   thread=tid;module=r.module;client=uint32_t(r.client);
   token=nextToken();tokens[0]=token;depth=1;r.token=token;return Result::Ok;
  }
- bool owns(uint32_t tid,const Request&r)const{
-  return module&&tid==thread&&r.module==module&&uint32_t(r.client)==client&&r.token==token;
+ bool owns(uint32_t tid,uint32_t owner,Client caller,uint32_t lease)const{
+  return module&&tid==thread&&owner==module&&uint32_t(caller)==client&&lease==token;
  }
+ bool owns(uint32_t tid,const Request&r)const{return owns(tid,r.module,r.client,r.token);}
  bool sameModule(uint32_t tid,const Request&r)const{
   return module&&tid==thread&&r.module==module&&uint32_t(r.client)==client;
  }

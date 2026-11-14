@@ -36,8 +36,14 @@ static void observePausedOre(uint32_t house,int frame){
  }
  snap.oreManual=int(manualVersions.pausedCount);
 }
-static uint32_t worldByID(uint32_t id){uint32_t p=worldObjects.byId(id),actual=0;return p&&read(p+0x10,&actual,sizeof actual)&&actual==id?p:0;}
-static uint32_t rawObjectID(uint32_t pointer){uint32_t id=0;return worldObjects.contains(pointer)&&read(pointer+0x10,&id,sizeof id)?id:0;}
+extern "C" int GuardedReadObjectIdentity(unsigned,unsigned*);
+static bool readObjectIdentity(uint32_t object,uint32_t&id){
+ // Raw sample consumers must stay on the sealed source, including failures.
+ if(sampleReadDepth)return read(object+0x10,&id,sizeof id);
+ return GuardedReadObjectIdentity(object,&id)!=0;
+}
+static uint32_t worldByID(uint32_t id){uint32_t p=worldObjects.byId(id),actual=0;return p&&readObjectIdentity(p,actual)&&actual==id?p:0;}
+static uint32_t rawObjectID(uint32_t pointer){uint32_t id=0;return worldObjects.contains(pointer)&&readObjectIdentity(pointer,id)?id:0;}
 static uint32_t readMapCell(int x,int y){
  if(x<=0||y<=0||x>=512||y>=512)return 0;int index=y*512+x,count=get<int>(0x87F7E8+320);uint32_t cells=get<uint32_t>(0x87F7E8+316);
  return cells>=0x10000&&count>index&&count<=512*512?get<uint32_t>(cells+index*4):0;
