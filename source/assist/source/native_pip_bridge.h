@@ -8,13 +8,14 @@ static nativepip::Transaction nativePipTransaction;
 static nativepip::Cadence nativePipCadence;
 static void*nativePipSurfaces[2]{},*nativePipBuffers[2]{},*nativePipLocks[2]{};
 static bool nativePipFailed=false,nativePipRendering=false,nativePipContent=false,nativePipPinned=false;
-static uint32_t nativePipScenario=0,nativePipTactical=0,nativePipObject=0,nativePipID=0;
+static uint32_t nativePipScenario=0,nativePipTactical=0,nativePipObject=0,nativePipID=0,nativePipEpoch=0;
+static int nativePipLastFrame=-1;
 static int nativePipCenterX=0,nativePipCenterY=0;
 static uint32_t nativePipAllocatedAt=0;
 static uint32_t nativePipMouseOwned=0,nativePipJumpAt=0,nativePipJumpMatch=0;
 static smallcamera::Point nativePipJumpPoint{};
 static bool nativePipJumpPending=false;
-struct NativePipUnderlay {void*surface=nullptr;uint32_t scenario=0,tactical=0;int x=0,y=0,width=0,height=0,pitch=0;std::array<uint16_t,nativepip::DisplayWidth*nativepip::DisplayHeight> pixels{};};
+struct NativePipUnderlay {void*surface=nullptr;uint32_t scenario=0,tactical=0,epoch=0;int frame=-1,x=0,y=0,width=0,height=0,pitch=0;std::array<uint16_t,nativepip::DisplayWidth*nativepip::DisplayHeight> pixels{};};
 static NativePipUnderlay nativePipUnderlay;
 static bool nativePipUnderlayPending(){return nativePipUnderlay.surface!=nullptr;}
 static bool nativePipBusy(){return nativePipRendering||nativePipTransaction.borrowed();}
@@ -43,7 +44,7 @@ static bool nativePipRestoreUnderlay(){
  auto&u=nativePipUnderlay;if(!u.surface)return true;void*surface=u.surface;
  // A scene/layout replacement can reuse addresses. Never replay old pixels
  // into an unverified replacement surface or call through its stale pointer.
- if(u.scenario!=get<uint32_t>(0xA8B230)||u.tactical!=get<uint32_t>(0x887324)||
+ if(u.epoch!=match||get<int>(0xA8ED84)<u.frame||u.scenario!=get<uint32_t>(0xA8B230)||u.tactical!=get<uint32_t>(0x887324)||
     (surface!=get<void*>(0x88731C)&&surface!=get<void*>(0x8872FC))){u.surface=nullptr;return true;}
  if(nativeViewSurfaceValue(surface,0x7C)!=u.width||nativeViewSurfaceValue(surface,0x80)!=u.height||nativeViewSurfaceValue(surface,0x74)!=u.pitch){u.surface=nullptr;return true;}
  auto*bits=nativeViewSurfaceLock(surface);if(!bits)return false;nativePipLocks[0]=surface;
@@ -56,7 +57,7 @@ static bool nativePipQuiesceImpl(){
  if(!nativeMapRelease(false))return false;
  for(auto&p:nativePipSurfaces){if(p)nativeViewFreeSurface(p);p=nullptr;}
  for(unsigned i=0;i<2;++i){if(nativePipBuffers[i])nativeViewFreeBuffer(i!=0,nativePipBuffers[i]);nativePipBuffers[i]=nullptr;}
- nativePipCadence.reset();nativePipContent=nativePipPinned=nativePipFailed=false;nativePipJumpPending=false;nativePipScenario=nativePipTactical=nativePipObject=nativePipID=nativePipAllocatedAt=0;
+ nativePipCadence.reset();nativePipContent=nativePipPinned=nativePipFailed=false;nativePipJumpPending=false;nativePipScenario=nativePipTactical=nativePipObject=nativePipID=nativePipAllocatedAt=nativePipEpoch=0;nativePipLastFrame=-1;
  if(sh){sh->nativePipPinAck=sh->nativePipPinRequest;sh->nativePipStatus=0;}return true;
 }
 static bool nativePipQuiesce(){
@@ -99,7 +100,7 @@ static bool nativePipBlit(){
  auto*source=nativeViewSurfaceLock(nativePipSurfaces[0]);if(!source)return false;nativePipLocks[0]=nativePipSurfaces[0];
  auto*target=nativeViewSurfaceLock(dst);if(!target)return false;nativePipLocks[1]=dst;
  auto&u=nativePipUnderlay;if(u.surface)return false;
- u.scenario=nativePipScenario;u.tactical=nativePipTactical;u.x=x;u.y=y;u.width=cw;u.height=ch;u.pitch=dp;
+ u.scenario=nativePipScenario;u.tactical=nativePipTactical;u.epoch=nativePipEpoch;u.frame=nativePipLastFrame;u.x=x;u.y=y;u.width=cw;u.height=ch;u.pitch=dp;
  for(int row=0;row<nativepip::DisplayHeight;++row)memcpy(u.pixels.data()+size_t(row)*nativepip::DisplayWidth,target+size_t(y+row)*dp+x*2,nativepip::DisplayWidth*2);
  u.surface=dst;
  for(int row=0;row<nativepip::DisplayHeight;++row){auto*s=(const uint16_t*)(source+size_t(row*2)*sp);auto*d=(uint16_t*)(target+size_t(y+row)*dp)+x;
@@ -124,9 +125,10 @@ extern "C" int __cdecl AssistNativePipAction(unsigned action,unsigned){
  }
  if(action!=1||!nativePipVisible()||nativePipRendering||sidebarViewRenderDepth!=1||!sidebarViewTrackingIntact()||!nativeMapPipLease||!nativePipSurfaces[0]||!nativePipSurfaces[1]||!nativePipBuffers[0]||!nativePipBuffers[1])return 0;
  const uint32_t scenario=get<uint32_t>(0xA8B230),tactical=get<uint32_t>(0x887324);if(!scenario||tactical<0x10000)return 0;
- if(scenario!=nativePipScenario||tactical!=nativePipTactical){nativePipScenario=scenario;nativePipTactical=tactical;nativePipPinned=nativePipContent=false;nativePipObject=nativePipID=0;nativePipCadence.reset();}
- nativePipPin(tactical);nativePipFollow();
- const uint32_t now=GetTickCount();const int frame=get<int>(0xA8ED84);
+ const int frame=get<int>(0xA8ED84);
+ if(match!=nativePipEpoch||frame<nativePipLastFrame||scenario!=nativePipScenario||tactical!=nativePipTactical){nativePipEpoch=match;nativePipScenario=scenario;nativePipTactical=tactical;nativePipPinned=nativePipContent=false;nativePipObject=nativePipID=0;nativePipCadence.reset();}
+ nativePipLastFrame=frame;nativePipPin(tactical);nativePipFollow();
+ const uint32_t now=GetTickCount();
  if(nativePipCadence.due(now,frame)&&!(GetAsyncKeyState(VK_LBUTTON)&0x8000)){
   const auto bounds=external::mapbounds::sample([](uint32_t at,void*out,size_t n){return read(at,out,n);});
   double cx=nativePipCenterX,cy=nativePipCenterY;if(!bounds.clampCamera(cx,cy,nativepip::RasterWidth,nativepip::RasterHeight)){sh->nativePipStatus=1;return 0;}
@@ -155,7 +157,7 @@ static bool nativePipMessage(MSG*msg){
  const uint32_t bit=(leftDown||leftUp)?1:(rightDown||rightUp)?2:0;const bool owned=bit&&(nativePipMouseOwned&bit);
  if(bit&&(leftUp||rightUp||leftDown||rightDown))nativePipMouseOwned&=~bit;
  bool inside=false;const auto&u=nativePipUnderlay;
- if(nativePipVisible()&&!nativePipRendering&&u.surface&&u.scenario==get<uint32_t>(0xA8B230)&&u.tactical==get<uint32_t>(0x887324)&&
+ if(nativePipVisible()&&!nativePipRendering&&u.surface&&u.epoch==match&&get<int>(0xA8ED84)>=u.frame&&u.scenario==get<uint32_t>(0xA8B230)&&u.tactical==get<uint32_t>(0x887324)&&
     msg->hwnd==(HWND)(uintptr_t)get<uint32_t>(0xB73550)){
   RECT client{};if(GetClientRect(msg->hwnd,&client)&&client.right>0&&client.bottom>0){
    const int x=int(int64_t(short(LOWORD(msg->lParam)))*u.width/client.right),y=int(int64_t(short(HIWORD(msg->lParam)))*u.height/client.bottom);
