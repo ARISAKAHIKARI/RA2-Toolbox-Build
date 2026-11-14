@@ -6,6 +6,8 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| Ctrl+D 与部分样本身份索引 | [未知身份不等于单位消失](2026-11-15-sampling-identity-retention.md) | pre8-negative SampleReadScope UID index unknown execution-guard retry passenger-combat-demand |
+| 原生画中画与 MO 小镜头路线 | [共用 Render、恢复事务和小地图范围](2026-11-14-native-pip.md) | native-PiP Assist108 Tactical-6D3D10 RGB16 save-under shared-lease no-native-minimap |
 | 车内乘员卸载准入与工具箱异常边界 | [pre.8 源码时序、失败对照与验证边界](2026-11-14-unload-host-exceptions.md) | SmartUnload Ctrl+D limbo own Host compositor timing terminate |
 | 原生事件放置启用被旧入口误拦（pre.7） | [外部代码差异与工具箱清理责任分离](2026-11-14-placement-admission.md) | placementStatus-minus2 native-event unused-site fingerprint foreign-code ownership 47-checks pre6-negative |
 | 特殊单位独立显示与渲染关闭（pre.6） | [双通道共用采样、独立 UI 与旧配置关闭](2026-11-14-independent-special-display.md) | independent-switch general-labels true-model cap2048 rollback legacy-INI saved-render-off Host-only |

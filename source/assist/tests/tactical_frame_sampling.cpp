@@ -244,8 +244,9 @@ static void testMissile(){
 }
 static void testIdentitySampleFailure(){
  reset();const auto t=makeType(),carrier=object(t,2,20),passenger=object(t,1,21);vectorAt(0xA8EC78,0x800000,{carrier,passenger});
- indexedFrame=-1;seal(passenger);check(refreshWorldIndex(snap.frame,true)&&worldObjects.contains(carrier)&&worldObjects.contains(passenger),"partial sampled UID page erased active identities");check(missingLiveReads>0&&!sampleReadDepth,"execution identity retry must run outside sampled scope");
- advance(carrier);indexedFrame=-1;check(!refreshWorldIndex(snap.frame,false)&&!worldObjects.contains(carrier)&&indexedFrame==-1,"pure observer must not live-rescan or use partial index");check(!missingLiveReads,"pure observer retried missing identity live");
+ sh->magnetronGlobal=1;manualVersions.change(21,passenger,false);manualVersions.change(21,passenger,false);for(unsigned id=100;id<100+ManualVersions::Size/2;++id)manualVersions.change(id,0,false);
+ indexedFrame=-1;seal(passenger);check(refreshWorldIndex(snap.frame,true)&&worldObjects.contains(carrier)&&worldObjects.contains(passenger),"partial sampled UID page erased active identities");check(missingLiveReads>0&&!sampleReadDepth,"execution identity retry must run outside sampled scope");check(manualVersions.get(21)==2,"partial UID sample erased manual revision");
+ advance(passenger);indexedFrame=-1;check(!refreshWorldIndex(snap.frame,false)&&!worldObjects.contains(carrier)&&indexedFrame==-1&&globalVehicleCandidateCount==0,"pure observer must not live-rescan or use partial index");check(!missingLiveReads,"pure observer retried missing identity live");
  advance();check(refreshWorldIndex(snap.frame,false)&&worldObjects.contains(carrier)&&worldObjects.contains(passenger),"complete next sample failed to recover index");
  std::puts("PASS identity-sample recovery: partial UID sample retries execution identity guard after scope exit; pure observation waits; complete next frame recovers");
 }

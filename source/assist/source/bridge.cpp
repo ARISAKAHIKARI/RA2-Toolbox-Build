@@ -187,7 +187,7 @@ static bool sameid(const char*a,const char*b){for(int i=0;i<24;++i){if(a[i]!=b[i
 static bool own(uint32_t p,uint32_t house){return live(p)&&get<uint32_t>(p+0x21c)==house;}
 static void indexWorld(int frame){Vec all=vec(0xA8EC78);if(indexedFrame==frame&&indexedCount==all.count&&indexedItems==all.items&&indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal)&&indexedVehicleHouse==lastHouse)return;
  globalVehicleCandidateCount=0;indexedGlobalVehicles=sh&&sh->magnetronGlobal;indexedVehicleHouse=lastHouse;worldObjects.clear();for(int i=0;i<all.count;++i){uint32_t p=item(all,i);if(p>=0x10000){uint32_t id=0;if(read(p+0x10,&id,sizeof id)&&id)worldObjects.add(p,id);if(id&&indexedGlobalVehicles&&kind(p)==2&&get<uint32_t>(p+0x21C)==lastHouse)globalVehicleCandidates[globalVehicleCandidateCount++]=p;}}indexedFrame=frame;indexedCount=all.count;indexedItems=all.items;
- static int prunedFrame=-100000;if(manualVersions.used>=ManualVersions::Size/2&&(frame<prunedFrame||frame-prunedFrame>=300)){
+ static int prunedFrame=-100000;if((!sampleReadDepth||sampleReadComplete)&&manualVersions.used>=ManualVersions::Size/2&&(frame<prunedFrame||frame-prunedFrame>=300)){
   static ManualVersions liveVersions;liveVersions.copyLive(manualVersions,[](uint32_t id){uint32_t p=worldObjects.byId(id);uint32_t found=0;return p&&read(p+0x10,&found,sizeof found)&&found==id;});minerDefenseReindexManual(liveVersions);manualVersions=liveVersions;prunedFrame=frame;
  }
 }
@@ -200,7 +200,7 @@ static bool refreshWorldIndex(int frame,bool executionGuards){
   {SampleReadScope sample;indexWorld(frame);complete=sample.complete();}
   if(complete)return true;
  }
- worldObjects.clear();indexedFrame=-1;
+ worldObjects.clear();indexedFrame=-1;globalVehicleCandidateCount=0;
  if(!executionGuards)return false;
  indexWorld(frame);return indexedFrame==frame;
 }

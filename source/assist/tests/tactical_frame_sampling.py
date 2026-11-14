@@ -126,6 +126,16 @@ def main():
         negative = {"source_commit": "418347c5d753f5acb72026fcaf3c45935a65769d", "sampled_branch_sha256": hashlib.sha256(sampled.encode()).hexdigest(), "exit": bad.returncode, "passed": bad.returncode == 1 and "partial sampled UID page erased active identities" in bad.stderr}
         print("pre.8 identity failure reproduced:", negative["passed"])
         assert negative["passed"], negative
+        old_index = function(old, "static void indexWorld(")
+        current_index = function(content, "static void indexWorld(")
+        (out / "tactical_frame_production.h").write_text(content.replace(current_index, old_index))
+        prune_exe = out / "manual-prune-before"
+        subprocess.run([args.cxx, *flags, str(HERE / "tactical_frame_sampling.cpp"), "-o", str(prune_exe)], check=True, capture_output=True, text=True)
+        bad_prune = subprocess.run([str(prune_exe), "--identity-only"], capture_output=True, text=True)
+        (out / "manual-prune-before.log").write_text(bad_prune.stdout + bad_prune.stderr)
+        negative["manual_prune_passed"] = bad_prune.returncode == 1 and "partial UID sample erased manual revision" in bad_prune.stderr
+        print("pre.8 premature manual pruning reproduced:", negative["manual_prune_passed"])
+        assert negative["manual_prune_passed"]
         (out / "tactical_frame_production.h").write_text(content)
     paths = [SRC / n for n in names] + [SRC / "planner_world_copy.h", SRC / "anti_theft_sample_bridge.h", SRC / "tactical_frame_read.h", SRC / "raw_combat.h",
             SRC / "combat_probe_bridge.h", SRC / "ore_harvest_bridge.h", SHARED / "world_frame.h",
