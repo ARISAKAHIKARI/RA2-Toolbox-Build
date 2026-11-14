@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Run actual rule-data technology/native placement mode transitions with bounded native/patch mocks."""
-import argparse,json,subprocess
+import argparse,json,subprocess,sys,hashlib
 from pathlib import Path
 
 def block(s,start):
@@ -9,8 +9,8 @@ def block(s,start):
  return s[a:i]
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--zig',type=Path,required=True);p.add_argument('--build-dir',type=Path,required=True);a=p.parse_args()
- src=Path(__file__).resolve().parents[1]/'source';sidebar=(src/'sidebar.h').read_text(encoding='utf-8');placement=(src/'placement_bridge.h').read_text(encoding='utf-8');bridge=(src/'bridge.cpp').read_text(encoding='utf-8');master=(src/'master_tech_bridge.h').read_text(encoding='utf-8')
+ p=argparse.ArgumentParser();tool=p.add_mutually_exclusive_group(required=True);tool.add_argument('--zig',type=Path);tool.add_argument('--cxx',type=Path);p.add_argument('--placement-source',type=Path);p.add_argument('--negative-control',action='store_true');p.add_argument('--build-dir',type=Path,required=True);a=p.parse_args()
+ src=Path(__file__).resolve().parents[1]/'source';sidebar=(src/'sidebar.h').read_text(encoding='utf-8');placement=(a.placement_source or src/'placement_bridge.h').read_text(encoding='utf-8');bridge=(src/'bridge.cpp').read_text(encoding='utf-8');master=(src/'master_tech_bridge.h').read_text(encoding='utf-8')
  names=['static int typeSlot(uint32_t type)','static int typeTab(','static void sidebarRedraw(','static int canonicalKind(','static bool hasCameo(','static uint32_t techFactory(','static bool techTransitionProductionPending(','static bool ensureTechCameo(','static void restoreTech(','static void observeMasterCameos(','static void refreshTech(']
  functions='\n'.join(block(sidebar,x) for x in names)
  retire='\n'.join(block(placement,x) for x in ['static bool nativeTextTechRetired(','static bool nativeTechRetired(','static bool nativePlacementRetired(','static bool setTechSites('])
@@ -56,6 +56,10 @@ template<class R,class... A>static R call(uint32_t address,uint32_t,A... args){
  if constexpr(!std::is_void_v<R>)return R(value);
 }
 template<class R,class... A>static R callFast(uint32_t,A...){return R(0);}
+// Entry availability is a bounded engine mock here; this fixture owns mode transitions.
+static bool nativeDependencyReady(uint32_t,bool=false){return true;}
+template<class... A>static bool nativeDependenciesReady(A...){return true;}
+static bool techNativeDependencies(unsigned){return true;}
 static bool dataApplyOK=true,dataRestoreOK=true,dataOwned=false;static int dataApplies=0,dataRestores=0;
 static bool applyTechData(uint32_t){++dataApplies;if(!dataApplyOK)return false;dataOwned=true;return true;}
 static bool restoreTechData(){++dataRestores;if(dataOwned&&!dataRestoreOK)return false;dataOwned=false;return true;}
@@ -146,6 +150,26 @@ int main(){int checks=0,failures=0;auto check=[&](bool ok,const char*name){++che
  reset();opts.flags=BuildAnywhere;opts.placementImplementation=2;placementModeTick();check(snap.placementStatus==2&&nativePlacementRetired()&&installs==0,"independent native placement installs nothing");
  opts.placementImplementation=0;placementModeTick();check(riskPlacementActive&&codeHookRegistry.installed()==1,"old placement remains available");opts.placementImplementation=2;placementModeTick();check(nativePlacementRetired()&&snap.placementStatus==2&&codeHookRegistry.installed()==0,"placement cleanup before native mode");
  codeHookRegistry.markConflict(directpatch::Sites[5].address);placementModeTick();check(snap.placementStatus==-2&&!nativePlacementRetired(),"placement conflict blocks native readiness");
+ // Foreign legacy instruction bytes are not evidence that we own a patch.
+ // Reproduce all three choices being blocked by an unrelated platform edit:
+ // the two code adapters still reject it, but the native event must be usable.
+ reset();opts.flags=BuildAnywhere;
+ for(uint32_t at:{riskSites[0].address,directpatch::Sites[5].address,directpatch::Sites[6].address})seed<uint8_t>(at,0xCC);
+ const auto foreign=mem;opts.placementImplementation=0;placementModeTick();check(snap.placementStatus==-2&&mem==foreign,"controlled adapter leaves unsupported platform bytes alone");
+ opts.placementImplementation=1;placementModeTick();check(snap.placementStatus==-2&&mem==foreign,"direct adapter leaves unsupported platform bytes alone");
+ opts.placementImplementation=2;placementModeTick();check(snap.placementStatus==2&&nativePlacementRetired()&&mem==foreign&&installs==0,"native event does not require pristine unused platform code");
+ // Missing bytes, real journals and recognizable untracked replacements still block.
+ reset();opts.flags=BuildAnywhere;opts.placementImplementation=2;unreadable=riskSites[0].address;placementModeTick();check(snap.placementStatus==-2,"unreadable old site does not prove retirement");
+ for(unsigned which:{0u,1u,2u}){reset();opts.flags=BuildAnywhere;opts.placementImplementation=2;
+  const uint32_t at=which==0?riskSites[0].address:directpatch::Sites[which+4].address;
+  const unsigned n=which==0?riskSites[0].size:directpatch::Sites[which+4].size;
+  const uint8_t*replacement=which==0?riskSites[0].after:directpatch::Sites[which+4].after;
+  for(unsigned i=0;i<n;++i)seed<uint8_t>(at+i,replacement[i]);placementModeTick();check(snap.placementStatus==-2,"untracked recognizable own placement patch blocks native event");
+ }
+ reset();opts.flags=BuildAnywhere;opts.placementImplementation=0;placementModeTick();failRestore=riskSites[0].address;
+ opts.placementImplementation=2;placementModeTick();check(snap.placementStatus==-2&&codeHookRegistry.active(riskSites[0].address),"failed actual restore remains a debt");
+ failRestore=0;placementModeTick();check(snap.placementStatus==2&&nativePlacementRetired(),"restoration recovery enables native event without restart");
+
  std::printf("technology rule-data production transition checks=%d failures=%d; bounded engine/data/patch mocks, no game/netplay\n",checks,failures);return failures?1:0;
 }
 '''
@@ -153,8 +177,19 @@ int main(){int checks=0,failures=0;auto check=[&](bool ok,const char*name){++che
  code=code.replace('RISKARRAY',risk).replace('MASTERARRAY',masterarray).replace('RETIRE',retire).replace('FUNCTIONS',functions).replace('DISPATCH',dispatch).replace('PLACE',place)
  code=code.replace('#include "hook_registry.h"','#include "hook_registry.h"\n#include "../../shared/source/experimental_patch_policy.h"')
  a.build_dir.mkdir(parents=True,exist_ok=True);cpp=a.build_dir/'technology_data_mode.cpp';exe=a.build_dir/'technology_data_mode.exe';cpp.write_text(code,encoding='utf-8')
- cmd=[str(a.zig),'c++','-target','x86_64-windows-gnu','-std=c++17','-O1','-fno-exceptions','-fno-rtti','-I',str(src),str(cpp),'-o',str(exe)]
+ cmd=([str(a.zig),'c++','-target','x86_64-windows-gnu'] if a.zig else [str(a.cxx)])+['-std=c++17','-O1','-fno-exceptions','-fno-rtti','-I',str(src),str(cpp),'-o',str(exe)]
  c=subprocess.run(cmd,text=True,capture_output=True);(a.build_dir/'build.log').write_text(c.stdout+c.stderr,encoding='utf-8')
  if c.returncode:print(c.stderr);raise SystemExit(c.returncode)
- r=subprocess.run([str(exe)],text=True,capture_output=True);(a.build_dir/'test.log').write_text(r.stdout+r.stderr,encoding='utf-8');(a.build_dir/'result.json').write_text(json.dumps(dict(exit_code=r.returncode,production_functions_extracted=True,game_tested=False,multiplayer_tested=False,output=r.stdout+r.stderr),indent=2),encoding='utf-8');print(r.stdout+r.stderr);raise SystemExit(r.returncode)
+ r=subprocess.run([str(exe)],text=True,capture_output=True);(a.build_dir/'test.log').write_text(r.stdout+r.stderr,encoding='utf-8');print(r.stdout+r.stderr)
+ report=dict(passed=r.returncode==0,exit_code=r.returncode,production_functions_extracted=True,placement_sha256=hashlib.sha256((a.placement_source or src/'placement_bridge.h').read_bytes()).hexdigest(),game_tested=False,multiplayer_tested=False,output=r.stdout+r.stderr)
+ if a.negative_control and r.returncode==0:
+  baseline='5e1502339dc6bfc3b46231bb874875e979dde3c9';old=a.build_dir/'pre6-placement.h'
+  old.write_bytes(subprocess.check_output(['git','show',baseline+':source/assist/source/placement_bridge.h'],cwd=src.parents[2]))
+  child=[sys.executable,str(Path(__file__).resolve()),'--build-dir',str(a.build_dir/'baseline'),'--placement-source',str(old.resolve())]
+  child+=['--zig',str(a.zig.resolve())] if a.zig else ['--cxx',str(a.cxx.resolve())]
+  negative=subprocess.run(child,text=True,capture_output=True);(a.build_dir/'negative-driver.log').write_text(negative.stdout+negative.stderr)
+  expected=negative.returncode==1 and 'checks=47 failures=1' in negative.stdout and 'FAIL native event does not require pristine unused platform code' in negative.stdout
+  report['negative_control']=dict(passed=expected,baseline=baseline,driver_exit=negative.returncode,expected_failures=1)
+  report['passed']=report['passed'] and expected;print('pre.6 negative control: '+('expected single platform-byte rejection reproduced' if expected else 'FAILED'))
+ (a.build_dir/'result.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8');raise SystemExit(not report['passed'])
 if __name__=='__main__':main()

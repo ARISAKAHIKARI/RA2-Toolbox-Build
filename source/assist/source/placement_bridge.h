@@ -424,11 +424,18 @@ static bool nativeTextTechRetired(){
 }
 static bool nativeTechRetired(){return nativeTextTechRetired()&&techParametersRetired();}
 static bool nativePlacementRetired(){
- if(riskPlacementActive)return false;
- auto reader=[](uint32_t at,void*out,size_t n){return read(at,out,n);};
- if(!techmode::retired(riskSites[0],codeHookRegistry,reader))return false;
- for(const auto&s:directpatch::Sites)if(s.group==directpatch::Group::Placement&&!techmode::retired(s,codeHookRegistry,reader))return false;
- // No retired older placement entry may retain ownership either.
+ prepareRiskSites();if(riskPlacementActive)return false;
+ // Place events do not execute our legacy proximity adapters. Foreign code
+ // is not a restoration debt: leave it untouched and validate the actual
+ // event/viewport entry points when they are used. Still reject active or
+ // conflicted journals and a recognizable untracked replacement of our own.
+ auto retired=[](const auto&s){
+  uint8_t bytes[16]{};
+  return s.size&&s.size<=sizeof bytes&&!codeHookRegistry.active(s.address)&&!codeHookRegistry.conflict(s.address)&&
+   read(s.address,bytes,s.size)&&memcmp(bytes,s.after,s.size)!=0;
+ };
+ if(!retired(riskSites[0]))return false;
+ for(const auto&s:directpatch::Sites)if(s.group==directpatch::Group::Placement&&!retired(s))return false;
  return !codeHookRegistry.active(0x464AC0)&&!codeHookRegistry.conflict(0x464AC0);
 }
 static bool setTechSites(bool enabled){

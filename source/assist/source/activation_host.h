@@ -6,7 +6,7 @@ static void logFeatureActivation(DWORD now){
  uint64_t key=1469598103934665603ull;
  auto mix=[&](uint32_t value){key^=value;key*=1099511628211ull;};
  mix(pid);mix(settingsRevision);mix(desiredFlags);mix(shared->flags);mix(shared->stop);mix(shared->readOnly);mix(shared->readOnlyRequest);mix(shared->readOnlyAck);
- mix(techMode);mix(techImplementation);mix(buildTimeTooltipEnabled);
+ mix(techMode);mix(techImplementation);mix(buildTimeTooltipEnabled);mix(extra.placementImplementation);
  mix(extra.techProductionCompatibility);mix(shared->techParameterStatus);mix(shared->techEnhanceParameterStatus);
  mix(extra.controlRequest());mix(extra.renderReveal);mix(extra.techEnhance);mix(extra.nativeAirNetwork);
  mix(extra.networkHouseRequested());mix(extra.commandOwnerRequested());mix(extra.nativeMegaGateway);mix(extra.nativeSellCursor);mix(extra.crcMapShadow);
@@ -29,6 +29,21 @@ static void logFeatureActivation(DWORD now){
  mix(sellDebugValid);if(sellDebugValid)for(const auto&o:{sellCursorEntry,sellOwnerEntry}){
   mix(uint32_t(o.signature));mix(uint32_t(o.hook));mix(uint32_t(o.reason));mix(uint32_t(o.error));
  }
+ const uint32_t placementSites[]={0x4A8EB0,0x4A8EC3,0x4A918E};
+ debugentries::Observation placementEntries[3]{};bool placementDebugValid=false;
+ if(incoming.placementStatus<0){
+  for(unsigned attempt=0;attempt<3;++attempt){
+   const LONG before=InterlockedCompareExchange(&shared->debugSnapshotSeq,0,0);if(before&1)continue;
+   bool valid=shared->debugSnapshot.count==debugentries::Count;
+   for(unsigned i=0;i<3;++i){const int at=debugentries::index(debugentries::id(debugentries::Kind::Patch,placementSites[i]));
+    if(at<0){valid=false;continue;}placementEntries[i]=shared->debugSnapshot.entries[at];valid=valid&&placementEntries[i].id==debugentries::id(debugentries::Kind::Patch,placementSites[i]);
+   }MemoryBarrier();
+   if(before==InterlockedCompareExchange(&shared->debugSnapshotSeq,0,0)){placementDebugValid=valid;break;}
+  }
+ }
+ mix(placementDebugValid);if(placementDebugValid)for(const auto&o:placementEntries){
+  mix(uint32_t(o.signature));mix(uint32_t(o.hook));mix(uint32_t(o.reason));mix(uint32_t(o.error));
+ }
  static activation::LogCadence cadence;
  const bool blocked=incoming.status<0||incoming.commandStatus!=activation::Ready||shared->stop;
  if(!cadence.due(key,now,blocked))return;
@@ -44,6 +59,7 @@ static void logFeatureActivation(DWORD now){
   L" techProductionCompatibility="+std::to_wstring(shared->techProductionCompatibility)+
   L" techExtraPermissionPasses="+std::to_wstring(shared->techProductionFullPasses)+L"/"+std::to_wstring(shared->techProductionEnhancePasses)+
   L" placement="+std::to_wstring(buildAnywhereMode)+L"/"+std::to_wstring(incoming.placementStatus)+
+  L" placementMode="+std::to_wstring(extra.placementImplementation)+
   L" map="+std::to_wstring(extra.renderReveal)+L"/"+std::to_wstring(incoming.renderRevealStatus)+
   L" air="+std::to_wstring(extra.nativeAirWaypoints?extra.nativeAirNetwork+1:0)+L"/"+std::to_wstring(incoming.nativeAirStatus)+
   L" control="+std::to_wstring(extra.controlRequest())+L"/"+std::to_wstring(shared->playerControlStatus)+
@@ -55,6 +71,18 @@ static void logFeatureActivation(DWORD now){
   L" crc="+std::to_wstring(extra.crcMapShadow)+L"/"+std::to_wstring(shared->crcMapShadowStatus)+
   L" tooltip="+std::to_wstring(buildTimeTooltipEnabled)+L"/"+std::to_wstring(shared->buildTimeTooltipStatus)+
   L" lowDamage="+std::to_wstring(extra.lowDamageFilter?(extra.lowDamageNetwork?1:2):0)+L"/"+std::to_wstring(shared->lowDamageStatus));
+ if(incoming.placementStatus<0){
+  std::wstring detail=L"placement-admission mode="+std::to_wstring(extra.placementImplementation)+L" requested="+std::to_wstring(buildAnywhereMode)+
+   L" status="+std::to_wstring(incoming.placementStatus)+L" session="+std::to_wstring(incoming.session)+L" debugValid="+std::to_wstring(placementDebugValid);
+  if(placementDebugValid)for(const auto&o:placementEntries)detail+=L" entry="+hex32(o.id&0x00ffffffu)+L" signature="+std::to_wstring(uint32_t(o.signature))+L" hook="+std::to_wstring(uint32_t(o.hook))+L" reason="+std::to_wstring(uint32_t(o.reason))+L" error="+std::to_wstring(o.error)+L" ageMs="+std::to_wstring(DWORD(now-o.tick));
+  // Small Host-side, read-only evidence, only on a changed failed admission.
+  // Never perform these reads in the game callback or use them to allow work.
+  for(uint32_t at:{0x4A8EB0u,0x4A9060u,0x4A8EC3u,0x4A918Eu,0x464AC0u}){
+   uint8_t bytes[20]{};detail+=L" probe-"+hex32(at)+L"=";
+   if(!externalReader.readLive(at,bytes,sizeof bytes)){detail+=L"unreadable";continue;}
+   wchar_t byte[3];for(auto b:bytes){swprintf(byte,3,L"%02X",unsigned(b));detail+=byte;}
+  }critical(detail);
+ }
  if(sellDebugValid){
   std::wstring detail=L"native-sell-admission status="+std::to_wstring(shared->nativeSellCursorStatus)+L" session="+std::to_wstring(incoming.session);
   for(const auto&o:{sellCursorEntry,sellOwnerEntry})detail+=L" entry="+std::to_wstring(o.id&0x00ffffffu)+L" signature="+std::to_wstring(uint32_t(o.signature))+L" hook="+std::to_wstring(uint32_t(o.hook))+L" reason="+std::to_wstring(uint32_t(o.reason))+L" error="+std::to_wstring(o.error)+L" ageMs="+std::to_wstring(DWORD(now-o.tick));
