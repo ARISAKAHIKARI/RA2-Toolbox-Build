@@ -348,6 +348,12 @@ public:
   return seq==channel_->observationSeq&&tick&&uint32_t(GetTickCount()-tick)<=1000&&key.sameWorld(observed)&&key.frame<=observed.frame;
  }
  void observe(const Key&key){if(role_!=Role::Control||!needed(GetTickCount()))return;InterlockedIncrement(&channel_->observationSeq);channel_->observed=key;channel_->observedTick=GetTickCount();MemoryBarrier();InterlockedIncrement(&channel_->observationSeq);}
+ template<class Frame>bool published(const Frame&frame)const{
+  if(!channel_||!connectionMatches(channel_,frame.key.connectionLow,frame.key.connectionHigh))return false;
+  const LONG active=channel_->active;if(active<0||active>1)return false;const auto&slot=channel_->slots[active];const LONG seq=slot.seq;if(seq&1)return false;
+  MemoryBarrier();const bool same=slot.count==frame.pages.size()&&!std::memcmp(&slot.key,&frame.key,sizeof(Key));MemoryBarrier();
+  return same&&seq==slot.seq&&active==channel_->active&&connectionMatches(channel_,frame.key.connectionLow,frame.key.connectionHigh);
+ }
  template<class Frame>bool publish(const Frame&frame){return publish(frame,[]{return true;});}
  template<class Frame,class Current>bool publish(const Frame&frame,Current current){
   if(!current())return false;

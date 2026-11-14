@@ -50,4 +50,10 @@ extern "C" __declspec(dllexport) int ReadLatest(){
  if(!token->read(0xA8ED84,&frame,4)||!token->read(fixture::ActorA+0x6C,&hp,4)||frame!=int(token->key.serial)||hp!=frame)return -1;
  return int(token->key.serial);
 }
+extern "C" __declspec(dllexport) int Resume(){
+ using namespace assist;worldFrameServer.retire();client->subscribe(1,worldframe::Base);
+ fixture::Read live{&memory};const auto before=worldlife::capture(live);const auto calls=memory.calls.size();const auto key=worldFrame.key;
+ assert(captureWorldFrame(live,before,fixture::House,GetTickCount(),worldframe::Base));
+ assert(memory.calls.size()==calls&&!std::memcmp(&worldFrame.key,&key,sizeof key));return 1;
+}
 extern "C" __declspec(dllexport) int Stop(){assist::retireWorldFrame();return assist::worldFramePublication.stop()?1:0;}

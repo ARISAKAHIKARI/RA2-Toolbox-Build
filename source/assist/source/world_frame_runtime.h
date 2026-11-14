@@ -6,7 +6,7 @@ static worldframe::Snapshot worldFrame;
 static worldframe::Server worldFrameServer;
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
 // Existing synchronous transport fixtures keep their explicit execution seam.
-struct WorldFramePublication {bool begin(worldframe::Snapshot&){return true;}void invalidate(){}bool stop(){return true;}bool publish(const worldframe::Snapshot&frame){return worldFrameServer.publish(frame);}};
+struct WorldFramePublication {bool begin(worldframe::Snapshot&){return true;}void invalidate(){}bool stop(){return true;}bool publish(const worldframe::Snapshot&frame,const worldframe::Server&){return worldFrameServer.publish(frame);}};
 #else
 #include "../../shared/source/world_frame_async_win.h"
 using WorldFramePublication=worldframe::AsyncPublisher<>;
@@ -51,7 +51,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // was retired or local automatic work advanced without a live Host reader.
   // Re-export the existing immutable sample; publish() deduplicates its exact
   // descriptor. Never recapture or invent a newer observation/acquisition tick.
-  if(worldFrameReady){worldFramePublication.publish(worldFrame);return true;}
+  if(worldFrameReady){worldFramePublication.publish(worldFrame,worldFrameServer);return true;}
   // A failed attempt was never published. Retry transient failures even if
   // the game has paused, with bounded backoff rather than every worker wake.
   if(uint32_t(key.tick-failedCaptureAt)<captureRetryDelay)return false;
@@ -79,7 +79,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  }
  captureRetryDelay=0;
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
- worldFrameReady=true;worldFramePublication.publish(worldFrame);
+ worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;
 }

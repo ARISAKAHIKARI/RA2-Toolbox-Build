@@ -9,7 +9,7 @@ namespace worldframe {
 template<class Writer=Server>class AsyncPublisher {
  PublicationPool pool_;HANDLE thread_=nullptr,event_=nullptr;HMODULE module_=nullptr;
  std::atomic<bool>stopping_{false};
- std::atomic<uint32_t>doneSerial_{0},doneEpoch_{0},attemptSerial_{0},attemptEpoch_{0},attemptAt_{0};
+ std::atomic<uint32_t>attemptSerial_{0},attemptEpoch_{0},attemptAt_{0};
  uint32_t launchAt_=0;bool launchTried_=false;
  static DWORD WINAPI run(void*opaque){
   auto*self=static_cast<AsyncPublisher*>(opaque);
@@ -20,10 +20,8 @@ template<class Writer=Server>class AsyncPublisher {
     Publication job;
     while(!self->stopping_.load(std::memory_order_acquire)&&self->pool_.take(job)){
      const auto current=[&]{return !self->stopping_.load(std::memory_order_acquire)&&self->pool_.current(job)&&writer.observes(job.key);};
-     bool ok=false;
-     if(self->pool_.current(job)&&writer.wanted(job.key.owner,GetTickCount()))ok=writer.publish(job,current);
+     if(self->pool_.current(job)&&writer.wanted(job.key.owner,GetTickCount()))writer.publish(job,current);
      self->attemptAt_.store(GetTickCount(),std::memory_order_relaxed);self->attemptEpoch_.store(job.epoch,std::memory_order_relaxed);self->attemptSerial_.store(job.key.serial,std::memory_order_release);
-     if(ok){self->doneEpoch_.store(job.epoch,std::memory_order_relaxed);self->doneSerial_.store(job.key.serial,std::memory_order_release);}
      self->pool_.finish(job);
     }
    }
@@ -36,7 +34,7 @@ template<class Writer=Server>class AsyncPublisher {
  void reap(){
   if(thread_&&WaitForSingleObject(thread_,0)==WAIT_OBJECT_0){
    CloseHandle(thread_);CloseHandle(event_);thread_=event_=nullptr;module_=nullptr;pool_.invalidate();
-   doneSerial_.store(0,std::memory_order_relaxed);doneEpoch_.store(0,std::memory_order_relaxed);attemptSerial_.store(0,std::memory_order_relaxed);launchTried_=false;
+   attemptSerial_.store(0,std::memory_order_relaxed);launchTried_=false;
   }
  }
  bool launch(){
@@ -59,10 +57,12 @@ public:
  AsyncPublisher()=default;AsyncPublisher(const AsyncPublisher&)=delete;AsyncPublisher&operator=(const AsyncPublisher&)=delete;
  bool begin(Snapshot&frame){return pool_.begin(frame);}
  void invalidate(){pool_.invalidate();if(event_)SetEvent(event_);}
- bool publish(const Snapshot&frame){
+ bool publish(const Snapshot&frame,const Server&control){
   reap();
   const uint32_t epoch=pool_.epoch();
-  if(doneSerial_.load(std::memory_order_acquire)==frame.key.serial&&doneEpoch_.load(std::memory_order_relaxed)==epoch)return true;
+  // A prior success is not sufficient: heartbeat expiry/retirement can remove
+  // the advertised descriptor while this immutable game frame stays paused.
+  if(control.published(frame))return true;
   if(attemptSerial_.load(std::memory_order_acquire)==frame.key.serial&&attemptEpoch_.load(std::memory_order_relaxed)==epoch&&uint32_t(GetTickCount()-attemptAt_.load(std::memory_order_relaxed))<16)return false;
   if(!launch()||!pool_.submit(frame))return false;SetEvent(event_);return true;
  }
