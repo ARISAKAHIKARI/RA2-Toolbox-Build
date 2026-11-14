@@ -154,7 +154,7 @@ class Host {
       if(std::none_of(layers.begin(),layers.end(),[](const Surface&s){return bool(s.gpu);}))continue;
      }
     }
-    stage=L"cpu-clipping";if(!clipWindow(current,layers)){submission.failed();continue;}
+    stage=L"gpu-clipping";if(!clipWindow(current,layers)){submission.failed();continue;}
     uploadCadence.submitted(std::chrono::steady_clock::now());{pipelineperf::Scope timing(timings,3);stage=L"gpu-present";updated=gpuComposition.present(window,current,layers);}
     submission.completed(GetTickCount64(),updated);
     const auto completed=std::chrono::steady_clock::now();
@@ -167,7 +167,7 @@ class Host {
     gpuComposition.reset();auto style=GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_NOREDIRECTIONBITMAP;
     SetWindowLongPtrW(window,GWL_EXSTYLE,style&~WS_EX_LAYERED);SetWindowLongPtrW(window,GWL_EXSTYLE,style|WS_EX_LAYERED);gpuWindow=false;cpu.lost();
    }
-   if(!clipWindow(current,layers)){submission.failed();continue;}
+   stage=L"cpu-clipping";if(!clipWindow(current,layers)){submission.failed();continue;}
    {
     bool composed=cpuPrepared&&cpuVersion==version&&cpuToken==current.token;
     if(!composed){pipelineperf::Scope timing(timings,0);stage=L"cpu-compose";composed=cpu.compose(current,std::move(layers),dib);cpuPrepared=composed;if(composed){cpuVersion=version;cpuToken=current.token;}}

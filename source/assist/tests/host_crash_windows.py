@@ -8,7 +8,7 @@ rows=[]
 for name,kind,code in [('av','unhandled-native','C0000005'),('thread','std-terminate','E0000001')]:
  folder=a.out/name;folder.mkdir(exist_ok=True);child=subprocess.Popen([str(exe),str(folder),name],stdout=subprocess.PIPE,stderr=subprocess.PIPE);stdout,stderr=child.communicate(timeout=30)
  log=(folder/'HostCrash.log').read_text();dump=(folder/'HostCrash.dmp').read_bytes()
- assert child.returncode and kind in log and code in log and f'pid=0x{child.pid:016X}' in log and 'tid=' in log and 'moduleRva=' in log and 'dumpWritten=0x0000000000000001' in log,(name,child.returncode,log,stderr)
+ assert child.returncode and kind in log and code in log and f'pid=0x{child.pid:016X}' in log and 'utc=' in log and 'tid=' in log and 'moduleRva=' in log and 'dumpWritten=0x0000000000000001' in log,(name,child.returncode,log,stderr)
  assert dump[:4]==b'MDMP' and len(dump)>32
  streams=struct.unpack_from('<I',dump,8)[0];directory=struct.unpack_from('<I',dump,12)[0]
  assert streams and directory+streams*12<=len(dump)

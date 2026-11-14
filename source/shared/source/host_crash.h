@@ -24,6 +24,9 @@ inline void number(const char*key,uintptr_t value)noexcept{
 inline void record(EXCEPTION_POINTERS*exception,const char*kind)noexcept{
  if(InterlockedCompareExchange(&recording,1,0))return;
  line("\r\nRA2Toolbox " RA2_RELEASE_VERSION " Host fatal ");line(kind);line("\r\n");
+ SYSTEMTIME time{};GetSystemTime(&time);char stamp[]="utc=0000-00-00T00:00:00.000Z\r\n";
+ auto digits=[&](unsigned at,unsigned count,unsigned value){while(count){stamp[at+--count]=char('0'+value%10);value/=10;}};
+ digits(4,4,time.wYear);digits(9,2,time.wMonth);digits(12,2,time.wDay);digits(15,2,time.wHour);digits(18,2,time.wMinute);digits(21,2,time.wSecond);digits(24,3,time.wMilliseconds);line(stamp);
  number("pid=",GetCurrentProcessId());number("tid=",GetCurrentThreadId());
  if(exception&&exception->ExceptionRecord){const auto&r=*exception->ExceptionRecord;
   number("exception=",r.ExceptionCode);number("address=",uintptr_t(r.ExceptionAddress));
@@ -57,6 +60,10 @@ inline LONG WINAPI filter(EXCEPTION_POINTERS*exception)noexcept{
  exception.ExceptionAddress=reinterpret_cast<void*>(context.Eip);
 #endif
  EXCEPTION_POINTERS pointers{&exception,&context};record(&pointers,"std-terminate");
+ // GNU's unhandled C++ SEH can reach our filter before terminate(). Keep
+ // that original throw dump; append the final termination cause either way.
+ line("termination=std-terminate\r\n");number("terminationCode=",exception.ExceptionCode);
+ if(logFile!=INVALID_HANDLE_VALUE)FlushFileBuffers(logFile);
  TerminateProcess(GetCurrentProcess(),exception.ExceptionCode);ExitProcess(exception.ExceptionCode);
 }
 inline bool directory(const wchar_t*path)noexcept{

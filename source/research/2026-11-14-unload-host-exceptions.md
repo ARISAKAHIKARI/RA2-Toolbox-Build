@@ -53,6 +53,8 @@ workers start. It prepares file handles/paths and system dbghelp during startup;
 fatal recording avoids the normal logger/locks and uses a small Host-only dump.
 `host_crash_windows.py` checks native access violation and unhandled C++ worker
 child processes, PID/thread/code/module recording and MDMP thread streams.
+With GNU's C++ runtime, its unhandled SEH may reach the filter before
+`terminate()`: retain that original throw dump and append the termination cause.
 No game dump, suspended game thread, automatic upload or fault-recovery claim.
 
 The console embeds the existing canonical `app-icon.png`; Windows Edge checks

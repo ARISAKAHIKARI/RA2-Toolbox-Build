@@ -16,5 +16,5 @@ for name,text,expected in [('current',source.read_text(),0),('pre7',old,1)]:
  header=a.out/(name+'.h');header.write_text(code);exe=a.out/name
  r=subprocess.run(['g++','-std=c++17','-O1','-UNDEBUG','-DUNLOAD_ADMISSION_HEADER="'+str(header)+'"',str(Path(__file__).with_suffix('.cpp')),'-o',str(exe)],capture_output=True,text=True);(a.out/(name+'-build.log')).write_text(r.stdout+r.stderr)
  if r.returncode:print(r.stderr);raise SystemExit(r.returncode)
- r=subprocess.run([str(exe)],capture_output=True,text=True);(a.out/(name+'-run.log')).write_text(r.stdout+r.stderr);print(name,r.returncode,r.stdout+r.stderr);rows.append(dict(name=name,exit=r.returncode,expected=expected,passed=r.returncode==expected,extracted_sha256=hashlib.sha256(header.read_bytes()).hexdigest()))
+ r=subprocess.run([str(exe)],capture_output=True,text=True);(a.out/(name+'-run.log')).write_text(r.stdout+r.stderr);print(name,r.returncode,r.stdout+r.stderr);rows.append(dict(name=name,exit=r.returncode,expected=expected,passed=r.returncode==expected and (name!='pre7' or 'FAIL loaded passenger lost before Deploy' in r.stderr),extracted_sha256=hashlib.sha256(header.read_bytes()).hexdigest()))
 (a.out/'result.json').write_text(json.dumps(dict(passed=all(x['passed'] for x in rows),cases=rows,real_game=False),indent=2)+'\n');assert all(x['passed'] for x in rows),rows
