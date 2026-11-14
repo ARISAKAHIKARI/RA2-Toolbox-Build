@@ -38,7 +38,12 @@ static int fixtureClient(HWND,RECT*r){*r={0,0,1920,1080};return 1;}
 #include "../source/small_map_camera.h"
 #include "../source/native_pip_core.h"
 using namespace assist;
-constexpr uintptr_t Memory=0x400000;constexpr size_t MemorySize=0xC00000;constexpr uint32_t Tactical=0xC00000,Object=0xC10000;
+// The PE loader owns the arena before CRT heaps/stacks can occupy engine
+// addresses. Tests clear only the verified subrange, never image code/imports.
+#ifdef _WIN32
+alignas(4096) static volatile uint8_t engineArena[0xD00000];
+#endif
+constexpr uintptr_t Memory=0x800000;constexpr size_t MemorySize=0x800000;constexpr uint32_t Tactical=0xC00000,Object=0xC10000;
 static bool read(uint32_t p,void*out,size_t n){if(p<Memory||uint64_t(p)+n>Memory+MemorySize)return false;memcpy(out,(void*)(uintptr_t)p,n);return true;}
 template<class T>static T get(uint32_t p){T v{};if(!read(p,&v,sizeof v))throw std::runtime_error("invalid test read");return v;}
 template<class T>static void put(uint32_t p,const T&v){assert(p>=Memory&&uint64_t(p)+sizeof v<=Memory+MemorySize);memcpy((void*)(uintptr_t)p,&v,sizeof v);}
@@ -52,7 +57,7 @@ static bool nativeViewExecutable(uint32_t){return true;}
 static bool nativeMapAcquire(bool){nativeMapPipLease=true;return true;}
 static bool nativeMapRelease(bool){nativeMapPipLease=false;return true;}
 struct Surface{int w=576,h=384;std::vector<uint16_t> pixels;};static std::map<uintptr_t,Surface> surfaces;
-static uintptr_t nextSurface=0xD00000;static unsigned locks=0,unlocks=0;
+static uintptr_t nextSurface=0xD00000;static unsigned locks=0,unlocks=0;static bool unlockFault=false;
 static void*surface(int w,int h){const auto p=nextSurface;nextSurface+=0x1000;surfaces[p]={w,h,std::vector<uint16_t>(size_t(w)*h,0xACE0)};return (void*)p;}
 static void*nativeViewNewSurface(int w,int h){return surface(w,h);}
 static void nativeViewFreeSurface(void*p){surfaces.erase(uintptr_t(p));}
@@ -61,7 +66,11 @@ static void nativeViewFreeBuffer(bool,void*){}
 static bool nativeViewBufferValid(void*,int,int){return true;}
 static int nativeViewSurfaceValue(void*p,unsigned member){auto it=surfaces.find(uintptr_t(p));if(it==surfaces.end())return 0;return member==0x7C?it->second.w:member==0x80?it->second.h:member==0x74?it->second.w*2:member==0x70?2:0;}
 static unsigned char*nativeViewSurfaceLock(void*p){auto it=surfaces.find(uintptr_t(p));if(it==surfaces.end())return nullptr;++locks;return (unsigned char*)it->second.pixels.data();}
-static void nativeViewSurfaceUnlock(void*){++unlocks;}
+static void nativeViewSurfaceUnlock(void*){++unlocks;
+#ifdef _WIN32
+ if(unlockFault){unlockFault=false;RaiseException(EXCEPTION_ACCESS_VIOLATION,0,0,nullptr);}
+#endif
+}
 static bool live(uint32_t p){return p==Object&&get<int>(p+0x6C)>0&&get<bool>(p+0x74)&&!get<bool>(p+0x81)&&get<bool>(p+0x90);}
 static int kind(uint32_t p){return p==Object?1:-1;}
 struct Vec{int count;};static std::vector<uint32_t> selection;
@@ -87,12 +96,13 @@ template<class R,class...Args>static R call(uint32_t address,uint32_t self,void*
 extern "C" int __cdecl GuardedNativePipAction(unsigned,unsigned);
 #include "../source/native_pip_bridge.h"
 #ifdef _WIN32
-extern "C" unsigned BeginAssistCapture(){return 1;}
-extern "C" void EndAssistCapture(unsigned){}
-extern "C" int AssistExceptionFilter(void*,unsigned){return EXCEPTION_EXECUTE_HANDLER;}
+static unsigned captureDepth=0,filters=0;
+extern "C" unsigned BeginAssistCapture(){return ++captureDepth;}
+extern "C" void EndAssistCapture(unsigned token){assert(token==captureDepth&&captureDepth);--captureDepth;}
+extern "C" int AssistExceptionFilter(void*,unsigned boundary){assert(boundary==33);++filters;return EXCEPTION_EXECUTE_HANDLER;}
 // The production MSVC SEH header is compiled in a separate object.
 #else
-extern "C" int __cdecl GuardedNativePipAction(unsigned action,unsigned argument){static unsigned depth=0;if(depth)return 0;++depth;int result=0;try{result=AssistNativePipAction(action,argument);}catch(...){AssistNativePipFailed();}if(!AssistNativePipRestore())AssistNativePipFailed();AssistNativePipUnlock();AssistNativePipEnd();--depth;return result;}
+extern "C" int __cdecl GuardedNativePipAction(unsigned action,unsigned argument){static unsigned depth=0;if(depth)return 0;++depth;int result=0;try{result=AssistNativePipAction(action,argument);}catch(...){AssistNativePipFailed();}if(!AssistNativePipRestore())AssistNativePipFailed();AssistNativePipUnlock();AssistNativePipUnlock();AssistNativePipEnd();--depth;return result;}
 #endif
 static void checkNested(){nestedDone=true;assert(nativePipTransaction.borrowed());assert(!GuardedNativePipAction(0,0));assert(nativePipTransaction.borrowed());}
 static void setup(){
@@ -112,7 +122,9 @@ static std::vector<uint8_t> bytes(){return std::vector<uint8_t>((uint8_t*)Memory
 static MSG mouse(unsigned message,int x=1500,int y=30){return MSG{(HWND)uintptr_t(0x1234),message,0,LPARAM(uint32_t(uint16_t(x))|(uint32_t(uint16_t(y))<<16))};}
 int main(){
 #ifdef _WIN32
- assert(VirtualAlloc((void*)Memory,MemorySize,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE)==(void*)Memory);
+ SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);
+ assert(Memory>=uintptr_t(engineArena)&&Memory+MemorySize<=uintptr_t(engineArena)+sizeof engineArena);
+ MEMORY_BASIC_INFORMATION owned{};assert(VirtualQuery((void*)Memory,&owned,sizeof owned)&&owned.Type==MEM_IMAGE&&owned.AllocationBase==GetModuleHandleW(nullptr));
 #else
  assert(mmap((void*)Memory,MemorySize,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE,-1,0)==(void*)Memory);
 #endif
@@ -125,8 +137,19 @@ int main(){
  setup();sh->nativePipPinRequest=1;sh->nativePipPinMatch=match;sh->nativePipPinTick=clockTick;sidebarViewRenderDepth=1;assert(GuardedNativePipAction(1,0)==1&&nativePipObject==Object);assert(GuardedNativePipAction(3,0));selection.clear();clockTick+=20;put(0xA8ED84,int32_t(2));assert(GuardedNativePipAction(1,0)&&nativePipObject==Object);assert(GuardedNativePipAction(3,0));
  sh->nativePipVisible=0;clockTick+=20;put(0xA8ED84,int32_t(3));assert(!GuardedNativePipAction(1,0)&&nativePipObject==Object&&!nativePipUnderlayPending());sh->nativePipVisible=1;assert(GuardedNativePipAction(1,0)&&nativePipObject==Object);assert(GuardedNativePipAction(3,0));
  const uint32_t priorPin=sh->nativePipPinAck;sh->nativePipPinRequest=priorPin+1;sh->nativePipPinMatch=match-1;sh->nativePipPinTick=clockTick;clockTick+=20;put(0xA8ED84,int32_t(4));assert(GuardedNativePipAction(1,0)&&nativePipObject==Object&&sh->nativePipPinAck==priorPin+1);assert(GuardedNativePipAction(3,0));
+ // The consumed button pair must remain balanced when the overlay is hidden.
+ assert(GuardedNativePipAction(1,0));auto hideDown=mouse(WM_RBUTTONDOWN);assert(nativePipMessage(&hideDown));sh->nativePipVisible=0;auto hideUp=mouse(WM_RBUTTONUP,0,1000);assert(nativePipMessage(&hideUp)&&nativePipMouseOwned==0);sh->nativePipVisible=1;assert(GuardedNativePipAction(3,0));
+ // Reused actor address with a different UID stops following.
+ put(Object+0x10,uint32_t(43));clockTick+=20;put(0xA8ED84,int32_t(5));assert(GuardedNativePipAction(1,0)&&nativePipObject==0);assert(GuardedNativePipAction(3,0));
+ // Same world/surface addresses across a new match cannot replay old pixels.
+ clockTick+=20;put(0xA8ED84,int32_t(6));assert(GuardedNativePipAction(1,0));auto mainSurface=get<void*>(0x88731C);auto&replacement=surfaces.at(uintptr_t(mainSurface));std::fill(replacement.pixels.begin(),replacement.pixels.end(),uint16_t(0x55AA));++match;
+ assert(GuardedNativePipAction(3,0)&&replacement.pixels[8*1280+984]==0x55AA);clockTick+=20;assert(GuardedNativePipAction(1,0)&&nativePipEpoch==match&&nativePipObject==0);assert(GuardedNativePipAction(3,0));
+ // A logic-frame rewind invalidates the cached camera even at identical pointers.
+ put(Tactical+0xD64,int32_t(1500));put(0xA8ED84,int32_t(1));clockTick+=20;assert(GuardedNativePipAction(1,0)&&nativePipLastFrame==1&&nativePipCenterX==1500);assert(GuardedNativePipAction(3,0));
+
  clockTick+=20;put(0xA8ED84,int32_t(5));const auto original=bytes();throwPhase=1;assert(!GuardedNativePipAction(1,0));assert(nativePipFailed&&!nativePipTransaction.borrowed()&&bytes()==original&&locks==unlocks);sidebarViewRenderDepth=0;assert(GuardedNativePipAction(2,0)==1);
 #ifdef _WIN32
+ setup();sidebarViewRenderDepth=1;unlockFault=true;const auto beforeFilters=filters;SetLastError(0x1256);GuardedNativePipAction(1,0);assert(nativePipFailed&&locks==unlocks&&filters==beforeFilters+1&&captureDepth==0&&GetLastError()==0x1256);assert(GuardedNativePipAction(3,0));sidebarViewRenderDepth=0;assert(GuardedNativePipAction(2,0));
  setup();const auto original2=bytes();DWORD old=0;assert(VirtualProtect((void*)Tactical,4096,PAGE_READONLY,&old));sidebarViewRenderDepth=1;assert(!GuardedNativePipAction(1,0)&&nativePipTransaction.borrowed());assert(VirtualProtect((void*)Tactical,4096,old,&old));assert(GuardedNativePipAction(3,0)&&!nativePipTransaction.borrowed()&&bytes()==original2);sidebarViewRenderDepth=0;assert(GuardedNativePipAction(2,0));
 #endif
  std::puts("PASS production native PiP adapter: three phases, complete camera/dirty/selection restoration, fixed/follow camera, shared-frame reuse, underlay cleanup, scaled input ownership/navigation, menu hiding, shutdown and renderer faults; synthetic engine/surfaces; no live-game/FPS claim");

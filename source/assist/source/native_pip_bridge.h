@@ -27,7 +27,7 @@ static NativePipIO nativePipIO;
 static bool nativePipDemand(){return sh&&sh->nativePipEnabled&&!sh->readOnly&&!sh->stop&&!fault;}
 extern "C" int __cdecl AssistNativePipRestore(){return nativePipTransaction.restore(nativePipIO)?1:0;}
 extern "C" void __cdecl AssistNativePipUnlock(){
- for(auto&p:nativePipLocks)if(p){auto*surface=p;p=nullptr;nativeViewSurfaceUnlock(surface);}
+ for(auto&p:nativePipLocks)if(p){auto*surface=p;p=nullptr;nativeViewSurfaceUnlock(surface);return;}
 }
 extern "C" void __cdecl AssistNativePipFailed(){nativePipFailed=true;nativePipContent=false;if(sh)sh->nativePipStatus=-3;}
 static bool nativePipResources(){
@@ -106,7 +106,7 @@ static bool nativePipBlit(){
  for(int row=0;row<nativepip::DisplayHeight;++row){auto*s=(const uint16_t*)(source+size_t(row*2)*sp);auto*d=(uint16_t*)(target+size_t(y+row)*dp)+x;
   for(int col=0;col<nativepip::DisplayWidth;++col)d[col]=s[col*2];
  }
- AssistNativePipUnlock();return true;
+ AssistNativePipUnlock();AssistNativePipUnlock();return true;
 }
 extern "C" int __cdecl AssistNativePipAction(unsigned action,unsigned){
  if(!sh)return 0;

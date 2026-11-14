@@ -20,6 +20,13 @@ int main(){
  }
  for(int which=0;which<4;++which){auto io=world();Transaction tx;if(which==0)io.set(Tactical+0xDB0,int32_t(501));if(which==1)io.set(Tactical+0xE0,int32_t(801));if(which==2)io.failRead=true;if(which==3)io.set(SurfaceSlots[1],uint32_t(0));const auto before=io.bytes;assert(!tx.capture(io,Tactical));assert(!tx.enter(io,buffers,1200,1500));assert(tx.restore(io));assert(io.bytes==before);}
  auto io=world();const auto before=io.bytes;Transaction tx;assert(tx.capture(io,Tactical)&&tx.enter(io,buffers,1200,1500));io.failWrite=io.writes+1;assert(!tx.restore(io)&&tx.borrowed());io.failWrite=0;assert(tx.restore(io)&&io.bytes==before);
+ // Renderer reallocation keeps the new backing; restore payload there.
+ auto moved=world();Transaction movedTx;assert(movedTx.capture(moved,Tactical)&&movedTx.enter(moved,buffers,100,100));
+ moved.set(0xB0CE7C,uint32_t(0x360000));moved.set(0xB0CE80,int32_t(2));
+ assert(!movedTx.restore(moved)&&movedTx.borrowed()&&moved.get<int32_t>(DirtyCount)==0);
+ moved.set(0xB0CE80,int32_t(12));assert(movedTx.restore(moved)&&!movedTx.borrowed());
+ assert(moved.get<uint32_t>(0xB0CE7C)==0x360000&&moved.get<int32_t>(DirtyCount)==3);
+ for(unsigned i=0;i<60;++i)assert(moved.bytes.at(0x360000+i)==uint8_t(i));
  Cadence c;assert(c.due(100,1));c.completed(100,1,1000);assert(!c.due(200,1));assert(!c.due(116,2));assert(c.due(117,2));c.completed(200,2,5000);assert(!c.due(249,3)&&c.due(250,3));c.completed(0xfffffff0u,5,1000);assert(!c.due(0,6)&&c.due(1,6));c.reset();assert(c.due(0,0));
  std::puts("PASS native PiP transaction: all partial-entry write failures, complete byte restoration, camera/adjacent zoom bytes, selection/visible tables, invalid layouts, retryable restoration and measured-cost cadence incl. clock wrap; synthetic memory, no engine execution");
 }

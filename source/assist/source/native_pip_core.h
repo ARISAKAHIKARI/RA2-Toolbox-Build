@@ -66,13 +66,16 @@ public:
   write(Bounds,v.bounds);write(Cache,v.cache);
   for(unsigned n=0;n<10;++n)write(v.tactical+CameraOffsets[n],v.camera[n]);
   write(v.tactical+0xD7C,v.zoom);
+  bool dirtyRestored=true;
   if(v.dirty){uint32_t items=0;int32_t capacity=0;
    // A MOD can append a dirty rectangle during drawing and reallocate the
    // vector. Restore into its CURRENT backing; never resurrect a freed one.
    const bool valid=io.read(0xB0CE7C,&items,4)&&io.read(0xB0CE80,&capacity,4)&&items>=0x10000&&capacity>=v.dirty;
-   ok=valid&&ok;if(valid)ok=io.write(items,v.dirtyItems.data(),size_t(v.dirty)*DirtyStride)&&ok;
+   dirtyRestored=valid&&io.write(items,v.dirtyItems.data(),size_t(v.dirty)*DirtyStride);ok=dirtyRestored&&ok;
   }
-  write(DirtyCount,v.dirty);write(FullRedraw,v.redraw);
+  // An invalid/replaced backing cannot safely advertise the saved count.
+  // Retain the transaction for retry without publishing count > capacity.
+  if(dirtyRestored)write(DirtyCount,v.dirty);write(FullRedraw,v.redraw);
   if(v.selected)ok=io.write(Selectable,v.selection.data(),size_t(v.selected)*12)&&ok;
   if(v.visible)ok=io.write(v.tactical+0xE4,v.cells.data(),size_t(v.visible)*4)&&ok;
   write(v.tactical+0xDB0,v.selected);write(v.tactical+0xE0,v.visible);
