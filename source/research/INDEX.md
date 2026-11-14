@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 车内乘员卸载准入与工具箱异常边界 | [pre.8 源码时序、失败对照与验证边界](2026-11-14-unload-host-exceptions.md) | SmartUnload Ctrl+D limbo own Host compositor timing terminate |
 | 原生事件放置启用被旧入口误拦（pre.7） | [外部代码差异与工具箱清理责任分离](2026-11-14-placement-admission.md) | placementStatus-minus2 native-event unused-site fingerprint foreign-code ownership 47-checks pre6-negative |
 | 特殊单位独立显示与渲染关闭（pre.6） | [双通道共用采样、独立 UI 与旧配置关闭](2026-11-14-independent-special-display.md) | independent-switch general-labels true-model cap2048 rollback legacy-INI saved-render-off Host-only |
 | 公共权限验证与实时 ID 读取（pre.5） | [同一管理器的轻量验证和局部读取保护](2026-11-14-common-entry-and-identity.md) | acquire-release same-Policy exact-token sealed-source UID no-RPM local-SEH no-FPS-claim |

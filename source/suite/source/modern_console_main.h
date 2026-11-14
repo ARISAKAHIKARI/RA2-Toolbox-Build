@@ -13,6 +13,7 @@
 #endif
 #include <windows.h>
 #include "app_icon.h"
+#include "../../shared/source/host_crash.h"
 #include <objbase.h>
 #include <commctrl.h>
 #include <shellapi.h>
@@ -374,6 +375,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR command,int show){
  using namespace consolemain;
  HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Toolbox_v020");
  if(GetLastError()==ERROR_ALREADY_EXISTS){if(auto old=FindWindowW(L"RA2Toolbox020",nullptr)){ShowWindow(old,SW_RESTORE);SetForegroundWindow(old);}if(single)CloseHandle(single);return 0;}
+ hostcrash::install();
  instance=h;args=command?command:L"";wchar_t path[32768]{};GetModuleFileNameW(nullptr,path,32768);root=path;auto slash=root.find_last_of(L"\\/");if(slash!=std::wstring::npos)root.resize(slash);config=root+L"\\Toolbox.ini";
  const HRESULT com=CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
  if(FAILED(com)){MessageBoxW(nullptr,L"无法初始化控制台界面，请重新启动工具箱。",L"红警工具箱",MB_OK|MB_ICONERROR);if(single)CloseHandle(single);return 1;}

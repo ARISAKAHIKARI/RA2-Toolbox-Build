@@ -117,12 +117,19 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
 }
 // Build one carrier-keyed roster per admission tick. A large selected cohort
 // must not rescan every infantry object once for each selected transport.
+// Loaded passengers are alive but in limbo/off-map; own() deliberately means
+// a live on-map actor. Keep their identity/owner/life checks without applying
+// that map-presence gate until they have actually left the carrier.
+static bool unloadPassengerEligible(uint32_t p,uint32_t house){
+ return p&&worldObjects.contains(p)&&kind(p)==1&&get<uint32_t>(p+0x21C)==house&&
+  get<int>(p+0x6C)>0&&get<bool>(p+0x74)&&(get<uint32_t>(p+0x11C)||live(p));
+}
 struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1;};
 static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*2];static int unloadRosterCount;
 static void buildUnloadAdmissionRoster(uint32_t house){
  unloadRosterCount=0;Vec inf=vec(0xA83DE8);
  for(int n=0;n<inf.count&&unloadRosterCount<nativeorders::MaxPassengers;++n){uint32_t p=item(inf,n),carrier=p?get<uint32_t>(p+0x11C):0;
-  if(!carrier||!worldObjects.contains(carrier)||queuedUnload.find(carrier,get<uint32_t>(carrier+0x10))<0||kind(p)!=1||!own(p,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
+  if(!carrier||!worldObjects.contains(carrier)||queuedUnload.find(carrier,get<uint32_t>(carrier+0x10))<0||!unloadPassengerEligible(p,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
   unloadRoster[unloadRosterCount++]={carrier,p,get<uint32_t>(p+0x10),manualVersions.get(get<uint32_t>(p+0x10)),-1};
  }
  for(int n=0;n<recentPassengerCount&&unloadRosterCount<nativeorders::MaxPassengers*2;++n){const auto&r=recentPassengers[n];
@@ -138,7 +145,7 @@ static int smartUnloadNow(uint32_t house,uint32_t p){
  auto*begin=std::lower_bound(unloadRoster,unloadRoster+unloadRosterCount,p,[](const UnloadRosterEntry&r,uint32_t carrier){return r.carrier<carrier;});
  for(auto*at=begin;at<unloadRoster+unloadRosterCount&&at->carrier==p;++at){uint32_t q=at->pointer;
   if(q==previous)continue;
-  if(!worldObjects.contains(q)||get<uint32_t>(q+0x10)!=at->id||!own(q,house)||kind(q)!=1||manualVersions.get(at->id)!=at->token||!featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
+  if(!unloadPassengerEligible(q,house)||get<uint32_t>(q+0x10)!=at->id||manualVersions.get(at->id)!=at->token||!featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
   uint32_t carrier=get<uint32_t>(q+0x11C);
   if(at->history>=0){const auto&old=recentPassengers[at->history];
    if(old.carrierID!=get<uint32_t>(p+0x10)||old.carrierType!=typeOf(p,2)||DWORD(now-old.tick)>1500||frame<old.frame||frame-old.frame>90||carrier)continue;

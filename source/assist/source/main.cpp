@@ -456,7 +456,8 @@ static void logBridgeHealth(bool force=false){
   L" hotkeyActions="+std::to_wstring(hotkeyDiagnostics.actions)+L" hotkeyBlocked="+std::to_wstring(hotkeyDiagnostics.blocked)+
   L" hotkeyFallbacks="+std::to_wstring(hotkeyDiagnostics.fallbacks)+L" hotkeyLastError="+std::to_wstring(hotkeyDiagnostics.lastError)+hotkeyDiagnosticState()+
   L" request="+std::to_wstring(shared?shared->request:0)+L" ack="+std::to_wstring(shared?shared->ack:0)+
-  L" controlFrame="+std::to_wstring(incoming.frame)+L" techOpen="+std::to_wstring(incoming.techOpen)+
+  L" unloadPending="+std::to_wstring(incoming.unloadPending)+L" unloadIssued="+std::to_wstring(incoming.unloadIssued)+
+  L" lastSubmitError="+std::to_wstring(incoming.lastSubmitError)+L" controlFrame="+std::to_wstring(incoming.frame)+L" techOpen="+std::to_wstring(incoming.techOpen)+
   L" techVisible="+std::to_wstring(incoming.techVisible)+L" techUnavailable="+std::to_wstring(incoming.techUnavailable)+
   L" techError="+std::to_wstring(incoming.techError)+
   L" session="+std::to_wstring(incoming.session)+L" featureFlags="+hex32(shared?shared->flags:0)+

@@ -13,6 +13,7 @@
 #include "overlay_group.h"
 #include "overlay_present_monitor.h"
 #include <atomic>
+#include <new>
 #include "overlay_stack.h"
 #include "gpu_compositor.h"
 #include "overlay_submit_policy.h"
@@ -40,7 +41,7 @@ struct DIB {
 };
 struct Node {Surface surface;uint64_t lastSeen=0;};
 // Successful HWND submissions, not DWM/vblank/displayed-frame measurements.
-struct UploadStatistics {uint64_t count=0,lastTick=0,intervalMs=0,maxGapMs=0,failures=0;};
+struct UploadStatistics {uint64_t count=0,lastTick=0,intervalMs=0,maxGapMs=0,failures=0,exceptions=0;};
 class Host {
  std::mutex mutex;asyncwork::DeadlineWake cv;std::thread thread;
  std::map<uint64_t,Node> nodes;Context context{};overlaycomposition::Rect mapExclusion{};
@@ -77,7 +78,31 @@ class Host {
   };
   overlaypresentrate::Cadence uploadCadence;
   std::chrono::steady_clock::time_point lastUploadComplete{},wakeAt{};bool wakeScheduled=false,cpuPrepared=false;uint64_t cpuVersion=0,cpuToken=0;
+  std::chrono::steady_clock::time_point exceptionRetryAt{};uint64_t exceptionCount=0,lastExceptionLog=0;bool exceptionLogged=false;
+  auto recover=[&](DWORD code,const wchar_t*kind,const wchar_t*stage)noexcept{
+   ++exceptionCount;exceptionRetryAt=std::chrono::steady_clock::now()+std::chrono::milliseconds(100);
+   // Only this presentation thread owns these resources. Drop partial output;
+   // retain the producers' latest immutable layers for a bounded retry.
+   try{cpu.reset();dib.clear();gpuComposition.reset();
+    if(gpuWindow){auto style=GetWindowLongPtrW(window,GWL_EXSTYLE)&~WS_EX_NOREDIRECTIONBITMAP;
+     SetWindowLongPtrW(window,GWL_EXSTYLE,style&~WS_EX_LAYERED);SetWindowLongPtrW(window,GWL_EXSTYLE,style|WS_EX_LAYERED);gpuWindow=false;}
+    ShowWindow(window,SW_HIDE);visible=false;cpuPrepared=false;presented=~uint64_t(0);token=0;windowRegion.clear();submission.failed();
+   }catch(...){} // Recovery diagnostics must not replace the original failure.
+   try{std::lock_guard<std::mutex>lock(mutex);error=code;++uploadStatistics_.failures;++uploadStatistics_.exceptions;
+    uploadContinuous_=false;uploadStatistics_.intervalMs=uploadStatistics_.maxGapMs=0;
+   }catch(...){}
+   const auto now=GetTickCount64();if(!exceptionLogged||now-lastExceptionLog>=1000){
+    exceptionLogged=true;lastExceptionLog=now;
+    try{if(auto sink=diagnosticsSink_.load(std::memory_order_relaxed))sink(std::wstring(L"compositor-exception type=")+kind+L" stage="+stage+L" count="+std::to_wstring(exceptionCount)+L" retryMs=100 code="+std::to_wstring(code));}catch(...){}
+   }
+  };
   for(;;){
+   const wchar_t*stage=L"wait";
+   try{
+    {std::unique_lock<std::mutex>lock(mutex);if(stop)break;
+     // New frames/heartbeats cannot bypass exception backoff. Stop can.
+     if(exceptionRetryAt>std::chrono::steady_clock::now())cv.wait_until(lock,exceptionRetryAt,[&]{return stop;});if(stop)break;
+    }
    timings.report(diagnosticsSink_.load(std::memory_order_relaxed));
    MSG message{};while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)){if(message.message==WM_DISPLAYCHANGE){displayRate.invalidate();cpu.lost();submission.failed();}TranslateMessage(&message);DispatchMessageW(&message);}
    Context current;std::vector<Surface> layers;uint64_t version;bool active,highest;int hz;
@@ -93,7 +118,7 @@ class Host {
     const auto now=GetTickCount64();
     for(auto i=nodes.begin();i!=nodes.end();)if(now-i->second.lastSeen>750){i=nodes.erase(i);++revision;}else ++i;
     current=context;version=revision;submission.observe(version);active=enabled&&now-heartbeat<500;highest=top;hz=rate;
-    for(const auto&n:nodes)if(overlaycomposition::valid(n.second.surface,current)){layers.push_back(n.second.surface);overlaycomposition::excludeMapRect(layers.back(),mapExclusion);}
+    stage=L"layers";for(const auto&n:nodes)if(overlaycomposition::valid(n.second.surface,current)){layers.push_back(n.second.surface);overlaycomposition::excludeMapRect(layers.back(),mapExclusion);}
    }
    const HWND target=reinterpret_cast<HWND>(current.window);DWORD fg=0;GetWindowThreadProcessId(GetForegroundWindow(),&fg);
    RECT client{};POINT origin{};
@@ -129,8 +154,8 @@ class Host {
       if(std::none_of(layers.begin(),layers.end(),[](const Surface&s){return bool(s.gpu);}))continue;
      }
     }
-    if(!clipWindow(current,layers)){submission.failed();continue;}
-    uploadCadence.submitted(std::chrono::steady_clock::now());{pipelineperf::Scope timing(timings,3);updated=gpuComposition.present(window,current,layers);}
+    stage=L"cpu-clipping";if(!clipWindow(current,layers)){submission.failed();continue;}
+    uploadCadence.submitted(std::chrono::steady_clock::now());{pipelineperf::Scope timing(timings,3);stage=L"gpu-present";updated=gpuComposition.present(window,current,layers);}
     submission.completed(GetTickCount64(),updated);
     const auto completed=std::chrono::steady_clock::now();
     {std::lock_guard<std::mutex>lock(mutex);if(context.token==current.token){if(updated){auto&statistics=uploadStatistics_;statistics.intervalMs=uploadContinuous_?uint64_t(std::max<int64_t>(0,std::chrono::duration_cast<std::chrono::milliseconds>(completed-lastUploadComplete).count())):0;statistics.maxGapMs=std::max(statistics.maxGapMs,statistics.intervalMs);++statistics.count;statistics.lastTick=GetTickCount64();uploadContinuous_=true;lastUploadComplete=completed;}else ++uploadStatistics_.failures;}}
@@ -145,12 +170,12 @@ class Host {
    if(!clipWindow(current,layers)){submission.failed();continue;}
    {
     bool composed=cpuPrepared&&cpuVersion==version&&cpuToken==current.token;
-    if(!composed){pipelineperf::Scope timing(timings,0);composed=cpu.compose(current,std::move(layers),dib);cpuPrepared=composed;if(composed){cpuVersion=version;cpuToken=current.token;}}
+    if(!composed){pipelineperf::Scope timing(timings,0);stage=L"cpu-compose";composed=cpu.compose(current,std::move(layers),dib);cpuPrepared=composed;if(composed){cpuVersion=version;cpuToken=current.token;}}
     if(!composed){updated=false;submission.failed();}
     else{
      {std::lock_guard<std::mutex>lock(mutex);if(!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY){cpu.lost();continue;}}
      const bool needsUpload=cpu.needsUpload(repair||submission.pending()||!visible||token!=current.token);
-     bool copied=true;if(cpu.needsCopy()){pipelineperf::Scope timing(timings,1);copied=cpu.copy(dib);}if(!copied){submission.failed();continue;}
+     bool copied=true;if(cpu.needsCopy()){pipelineperf::Scope timing(timings,1);stage=L"dib-copy";copied=cpu.copy(dib);}if(!copied){submission.failed();continue;}
      if(!needsUpload){
       // A camera/group revision can leave the same clipped pixels. Consume
       // it without copying the full HWND to DWM; placement still runs below.
@@ -166,7 +191,7 @@ class Host {
       if(stop||!enabled||context.token!=current.token||context.cameraX!=current.cameraX||context.cameraY!=current.cameraY||rate!=requestedHz||revision!=version){cpu.lost();continue;}
      }
      uploadCadence.submitted(std::chrono::steady_clock::now());
-     {pipelineperf::Scope timing(timings,2);updated=UpdateLayeredWindow(window,nullptr,&origin,&size,dib.dc,&zero,0,&blend,ULW_ALPHA)!=FALSE;}
+     {pipelineperf::Scope timing(timings,2);stage=L"layered-upload";updated=UpdateLayeredWindow(window,nullptr,&origin,&size,dib.dc,&zero,0,&blend,ULW_ALPHA)!=FALSE;}
      submission.completed(GetTickCount64(),updated);
      const auto completed=std::chrono::steady_clock::now();
      {std::lock_guard<std::mutex>lock(mutex);if(context.token==current.token){
@@ -189,6 +214,8 @@ class Host {
     if(updated){visible=true;lastOrigin=origin;wasTop=highest;}
    }
    {std::lock_guard<std::mutex>lock(mutex);error=updated?0:GetLastError();}
+   }catch(const std::bad_alloc&){recover(ERROR_NOT_ENOUGH_MEMORY,L"allocation",stage);}
+    catch(...){recover(ERROR_UNHANDLED_EXCEPTION,L"exception",stage);}
   }
   gpuComposition.reset();overlaystack::forget(window);DestroyWindow(window);ownedWindow=nullptr;
  }

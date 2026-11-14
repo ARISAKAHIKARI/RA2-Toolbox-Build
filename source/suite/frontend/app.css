@@ -390,4 +390,4 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 }
 
 .brand-mark { background: transparent; border: 0; }
-.brand-mark img { display: block; width: 100%; height: 100%; }
+.brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }

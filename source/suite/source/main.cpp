@@ -12,6 +12,7 @@
 #endif
 #include <windows.h>
 #include "app_icon.h"
+#include "../../shared/source/host_crash.h"
 #include "../../shared/source/bounded_shutdown.h"
 #include <commctrl.h>
 #include <string>
@@ -144,6 +145,7 @@ static LRESULT CALLBACK proc(HWND w,UINT m,WPARAM wp,LPARAM lp){switch(m){
  }return DefWindowProcW(w,m,wp,lp);}
 int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR cmd,int show){
  HANDLE single=CreateMutexW(nullptr,FALSE,L"Local\\RA2Toolbox_v020");if(GetLastError()==ERROR_ALREADY_EXISTS){HWND old=FindWindowW(L"RA2Toolbox020",nullptr);if(old){ShowWindow(old,SW_RESTORE);SetForegroundWindow(old);}CloseHandle(single);return 0;}
+ hostcrash::install();
  instance=h;args=cmd;wchar_t exe[32768];GetModuleFileNameW(nullptr,exe,32768);std::wstring root=exe;root.resize(root.find_last_of(L"\\/"));config=root+L"\\Toolbox.ini";
  if(!initialprofiles::initialize(root)){MessageBoxW(nullptr,L"無法建立預設配置，請將工具箱移到可寫入的資料夾後重試。",L"紅警工具箱",MB_OK|MB_ICONERROR);CloseHandle(single);return 1;}
  const int cursorDefault=GetPrivateProfileIntW(L"Startup",L"AutoStart",0,(root+L"\\settings.ini").c_str());
