@@ -580,7 +580,7 @@ static void pollOverlayVisibility(){
   overlayvisibility::toggle();
  }
  static uint32_t observedRevision=0;const auto next=overlayvisibility::revision.load();
- if(next!=observedRevision){observedRevision=next;++paintRevision;paint();}
+ if(next!=observedRevision){observedRevision=next;if(shared)shared->nativePipVisible=overlayvisibility::visible()?1u:0u;++paintRevision;paint();}
 }
 static void wakeGame(){
  if(gameinput::wake(hook))lastPulse=GetTickCount();
@@ -622,6 +622,7 @@ static void logHotkeyBindings(){
  static std::wstring previous;if(table==previous)return;previous=table;++hotkeyBindingRevision;
  critical(L"hotkey-bindings revision="+std::to_wstring(hotkeyBindingRevision)+table);
 }
+static bool commandFresh(DWORD now);
 static void requestNativePipPin(){
  if(!extra.nativePip)return;const DWORD now=GetTickCount();
  if(!shared||!commandFresh(now)){notify(L"等待当前对局连接。");return;}

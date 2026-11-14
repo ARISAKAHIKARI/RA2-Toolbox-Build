@@ -286,7 +286,7 @@ struct Shared {
  volatile uint32_t techProductionCompatibility=0,techProductionFullPasses=0,techProductionEnhancePasses=0;
  // Native picture-in-picture: Host owns enable/pin requests; Runtime owns
  // status, pin acknowledgement and measured completed-render cost.
- volatile uint32_t nativePipEnabled=0,nativePipPinRequest=0,nativePipPinAck=0,nativePipPinMatch=0,nativePipPinTick=0;
+ volatile uint32_t nativePipVisible=1,nativePipEnabled=0,nativePipPinRequest=0,nativePipPinAck=0,nativePipPinMatch=0,nativePipPinTick=0;
  volatile int32_t nativePipStatus=0;
  volatile uint32_t nativePipFrames=0,nativePipMicros=0,nativePipMaxMicros=0;
 };

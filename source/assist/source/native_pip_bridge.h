@@ -23,7 +23,7 @@ struct NativePipIO {
  bool write(uint32_t p,const void*data,size_t n){memcpy((void*)(uintptr_t)p,data,n);return true;}
 };
 static NativePipIO nativePipIO;
-static bool nativePipDemand(){return sh&&sh->nativePipEnabled&&!sh->stop&&!fault;}
+static bool nativePipDemand(){return sh&&sh->nativePipEnabled&&!sh->readOnly&&!sh->stop&&!fault;}
 extern "C" int __cdecl AssistNativePipRestore(){return nativePipTransaction.restore(nativePipIO)?1:0;}
 extern "C" void __cdecl AssistNativePipUnlock(){
  for(auto&p:nativePipLocks)if(p){auto*surface=p;p=nullptr;nativeViewSurfaceUnlock(surface);}
@@ -64,7 +64,7 @@ static bool nativePipQuiesce(){
  return GuardedNativePipAction(2,0)!=0;
 }
 static bool nativePipVisible(){
- return nativePipDemand()&&sh->foreground&&!get<bool>(0xA8BC60+25)&&!get<int>(0xA8EDA0)&&
+ return nativePipDemand()&&sh->nativePipVisible&&sh->foreground&&!get<bool>(0xA8BC60+25)&&!get<int>(0xA8EDA0)&&
   !get<int>(0xA9FAB0)&&!get<uint8_t>(0xA9FA94)&&get<bool>(0xA8E9A0);
 }
 static void nativePipPin(uint32_t tactical){

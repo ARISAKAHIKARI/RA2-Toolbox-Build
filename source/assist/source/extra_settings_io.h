@@ -302,6 +302,7 @@ static void syncRefreshRate(){extra.scrollRefreshMode=0;if(!shared)return;
 static void syncAdditional(){
  if(!playertest::Available)extra.controlAll=false;if(!playertest::SellAvailable)extra.sellEnemy=false;if(!playertest::SwitchAvailable)extra.switchPlayerEnabled=false;if(!shared)return;
  syncDebugEntrySettings();
+ shared->nativePipVisible=overlayvisibility::visible()?1u:0u;
  shared->nativePipEnabled=enabled&&extra.nativePip?1u:0u;
  shared->viewZoomPercent=extra.viewZoomEnabled?uint32_t(extra.viewZoomPercent):100;
  shared->smallMapClamp=extra.smallMapClamp;

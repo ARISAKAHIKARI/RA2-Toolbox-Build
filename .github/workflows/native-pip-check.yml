@@ -18,6 +18,9 @@ jobs:
           mkdir -p checks
           g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/native_pip_core.cpp -o checks/native-pip-core
           checks/native-pip-core | tee checks/core.log
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/native_pip_bridge.cpp -o checks/native-pip-bridge
+          checks/native-pip-bridge | tee checks/bridge.log
+          python source/assist/tests/native_pip_hook_lease.py --out checks/lease
       - uses: actions/upload-artifact@v4
         with:
           name: native-pip-portable
@@ -40,6 +43,12 @@ jobs:
           Expand-Archive zig.zip zig
           Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
           python -m pip install Pillow==11.3.0
+      - name: Execute native PiP Windows SEH integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/native_pip_windows.py --zig "$ZIG" --out native-pip-checks/native-integration
       - name: Build paired programs and verify ABI
         shell: bash
         run: |
