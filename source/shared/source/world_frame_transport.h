@@ -217,7 +217,7 @@ public:
   MemoryBarrier();
   return seq==s.seq&&observedSeq==channel_->observationSeq&&active==channel_->active&&
    !std::memcmp(&key,&token->key,sizeof(Key))&&count==token->pages.size()&&sameData(ref,copiedData_)&&
-   key.sameFrame(observed)&&uint32_t(now-tick)<=500&&connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32));
+   tick&&key.sameFrame(observed)&&uint32_t(now-tick)<=500&&connectionMatches(channel_,uint32_t(generation_),uint32_t(generation_>>32));
  }
  Token acquire(uint32_t match){
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return {};

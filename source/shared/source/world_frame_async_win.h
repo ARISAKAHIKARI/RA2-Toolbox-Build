@@ -33,6 +33,12 @@ template<class Writer=Server>class AsyncPublisher {
   const HMODULE module=self->module_;
   FreeLibraryAndExitThread(module,0);return 0;
  }
+ void reap(){
+  if(thread_&&WaitForSingleObject(thread_,0)==WAIT_OBJECT_0){
+   CloseHandle(thread_);CloseHandle(event_);thread_=event_=nullptr;module_=nullptr;pool_.invalidate();
+   doneSerial_.store(0,std::memory_order_relaxed);doneEpoch_.store(0,std::memory_order_relaxed);attemptSerial_.store(0,std::memory_order_relaxed);launchTried_=false;
+  }
+ }
  bool launch(){
   if(thread_){
    if(WaitForSingleObject(thread_,0)!=WAIT_OBJECT_0)return !stopping_.load(std::memory_order_acquire);
@@ -54,6 +60,7 @@ public:
  bool begin(Snapshot&frame){return pool_.begin(frame);}
  void invalidate(){pool_.invalidate();if(event_)SetEvent(event_);}
  bool publish(const Snapshot&frame){
+  reap();
   const uint32_t epoch=pool_.epoch();
   if(doneSerial_.load(std::memory_order_acquire)==frame.key.serial&&doneEpoch_.load(std::memory_order_relaxed)==epoch)return true;
   if(attemptSerial_.load(std::memory_order_acquire)==frame.key.serial&&attemptEpoch_.load(std::memory_order_relaxed)==epoch&&uint32_t(GetTickCount()-attemptAt_.load(std::memory_order_relaxed))<16)return false;

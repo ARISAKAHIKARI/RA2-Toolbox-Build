@@ -4,38 +4,50 @@
 #include <atomic>
 #include <cassert>
 #include <cstring>
-#include "../../shared/source/world_frame_async_win.h"
-static HANDLE gate=nullptr;static std::atomic<bool>blockNext{true},entered{false};
-struct SlowWriter:worldframe::Server {
- explicit SlowWriter(Role role):Server(role){}
- template<class Frame,class Current>bool publish(const Frame&frame,Current current){
-  if(blockNext.exchange(false)){entered.store(true,std::memory_order_release);if(WaitForSingleObject(gate,INFINITE)!=WAIT_OBJECT_0)return false;}
-  return Server::publish(frame,current);
+#include <cwchar>
+static HANDLE gate=nullptr;static DWORD gameThread=0;
+static std::atomic<bool>blockNext{true},entered{false};
+// Delay only the worker's first real payload mapping, using native Win32 for
+// every mapping/event/thread. The product Runtime and publisher are unchanged.
+static HANDLE WINAPI delayedMapping(HANDLE file,LPSECURITY_ATTRIBUTES security,DWORD protect,DWORD high,DWORD low,LPCWSTR name){
+ if(name&&wcsncmp(name,L"Local\\RA2WorldData_",19)==0&&GetCurrentThreadId()!=gameThread&&blockNext.exchange(false)){
+  entered.store(true,std::memory_order_release);if(WaitForSingleObject(gate,INFINITE)!=WAIT_OBJECT_0)return nullptr;
  }
-};
-static worldframe::Snapshot frame;
+ return CreateFileMappingW(file,security,protect,high,low,name);
+}
+#define CreateFileMappingW delayedMapping
+#include "../../shared/source/world_frame_async_win.h"
+#undef CreateFileMappingW
+#define WORLD_FRAME_FIXTURE_ONLY
+#define REAL_WINDOWS_RPM
+#include "world_frame_core.cpp"
+#include "../source/world_lifecycle.h"
+namespace assist {
+struct FixtureShared {volatile LONG worldSampleSeq=0;uint32_t owner=0,worldSampleFailures=0,worldSamplePages=0,worldSampleReads=0,worldSampleBytes=0,worldSampleRosters=0,worldSampleSerial=0;int worldSampleFrame=-1;};
+static FixtureShared shared;static FixtureShared*sh=&shared;static uint32_t match=7;
+static struct {int frame=50;}snap;
+// No WORLD_FRAME_PLATFORM_FIXTURE: execute the actual async Runtime path.
+#include "../source/world_frame_runtime.h"
+}
 static std::shared_ptr<worldframe::Client>client;
-static worldframe::Server control;
-static worldframe::AsyncPublisher<SlowWriter>publisher;
-static uint32_t serial=0,generation=70;
+static fixture::Memory memory;
 static bool capture(){
- if(!publisher.begin(frame))return false;
- worldframe::Key key{};key.pid=key.owner=GetCurrentProcessId();key.match=7;key.serial=++serial;key.frame=int(serial);key.tick=GetTickCount();key.generationLow=generation;key.connectionLow=721;key.scenario=0x10000;key.house=0x20000;key.cells=0x30000;key.cellCount=1;
- frame.reset(key);const auto read=[&](uint32_t,void*out,size_t n){memset(out,int(serial&255),n);return true;};
- for(unsigned i=0;i<8;++i)if(!frame.prefetch(read,0x10000+i*4096,4096))return false;
- if(!frame.seal())return false;control.observe(frame.key);return publisher.publish(frame);
+ using namespace assist;client->subscribe(1,worldframe::Base);
+ assert(worldFrameServer.wanted(GetCurrentProcessId(),GetTickCount()));
+ const uint32_t serial=worldFrameSerial+1;memory.put(0xA8ED84,int(serial));memory.put(fixture::ActorA+0x6C,int(serial));snap.frame=int(serial);
+ fixture::Read live{&memory};return captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base);
 }
 extern "C" __declspec(dllexport) int Start(HANDLE delayGate){
- gate=delayGate;blockNext=true;entered=false;serial=0;++generation;ResetEvent(gate);
- client=worldframe::acquireClient(GetCurrentProcessId(),721);client->subscribe(1,worldframe::Base);
- if(!control.wanted(GetCurrentProcessId(),GetTickCount()))return 0;
- return capture()?1:0;
+ using namespace assist;gate=delayGate;gameThread=GetCurrentThreadId();blockNext=true;entered=false;ResetEvent(gate);
+ retireWorldFrame();worldFrameSerial=0;shared.owner=GetCurrentProcessId();fixture::setup(memory);
+ memory.beforeRead=[](uint32_t,size_t){assert(GetCurrentThreadId()==gameThread);};
+ client=worldframe::acquireClient(GetCurrentProcessId(),721);return capture()?1:0;
 }
 extern "C" __declspec(dllexport) int Entered(){return entered.load(std::memory_order_acquire)?1:0;}
-extern "C" __declspec(dllexport) int Advance(){for(int i=0;i<1000;++i)if(!capture())return 0;return int(serial);}
+extern "C" __declspec(dllexport) int Advance(){for(int i=0;i<1000;++i)if(!capture())return 0;return int(assist::worldFrameSerial);}
 extern "C" __declspec(dllexport) int ReadLatest(){
- auto token=client->acquire(7);if(!token)return 0;
- for(size_t i=0;i<token->pages.size();++i)for(auto byte:token->pages[i].bytes)if(byte!=uint8_t(token->key.serial))return -1;
+ auto token=client->acquire(7);if(!token)return 0;int frame=-1,hp=-1;
+ if(!token->read(0xA8ED84,&frame,4)||!token->read(fixture::ActorA+0x6C,&hp,4)||frame!=int(token->key.serial)||hp!=frame)return -1;
  return int(token->key.serial);
 }
-extern "C" __declspec(dllexport) int Stop(){publisher.invalidate();control.retire();return publisher.stop()?1:0;}
+extern "C" __declspec(dllexport) int Stop(){assist::retireWorldFrame();return assist::worldFramePublication.stop()?1:0;}

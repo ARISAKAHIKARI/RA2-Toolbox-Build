@@ -11,5 +11,5 @@ for arch in ['x86','x86_64']:
  for attempt in range(3):
   r=subprocess.run([str(exe),str(dll)],capture_output=True,text=True,timeout=30);(out/f'run-{attempt}.log').write_text(r.stdout+r.stderr);print(arch,attempt,r.returncode,r.stdout+r.stderr);rows.append(dict(arch=arch,attempt=attempt,exit=r.returncode,passed=r.returncode==0))
   if r.returncode:break
-sources={str(x):hashlib.sha256(x.read_bytes()).hexdigest() for x in [here/'world_frame_async_dll.cpp',here/'world_frame_async_host.cpp',here.parents[1]/'shared/source/world_frame_async_win.h',here.parents[1]/'shared/source/world_frame_publication.h',here.parents[1]/'shared/source/world_frame_transport.h']}
+sources={str(x):hashlib.sha256(x.read_bytes()).hexdigest() for x in [here/'world_frame_async_dll.cpp',here/'world_frame_async_host.cpp',here.parent/'source/world_frame_runtime.h',here.parent/'source/world_lifecycle.h',here/'world_frame_core.cpp',here.parents[1]/'shared/source/world_frame_capture.h',here.parents[1]/'shared/source/world_frame_async_win.h',here.parents[1]/'shared/source/world_frame_publication.h',here.parents[1]/'shared/source/world_frame_transport.h']}
 passed=len(rows)==6 and all(r['passed']for r in rows);(a.out/'result.json').write_text(json.dumps(dict(passed=passed,windows_dll_executed=True,game_tested=False,runs=rows,sources=sources),indent=2)+'\n');assert passed

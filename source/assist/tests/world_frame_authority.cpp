@@ -14,8 +14,12 @@ void run(){
  currentPid=GamePid;auto newer=frame.key;++newer.generationLow;control.observe(newer);CHECK(!writer.observes(frame.key));
  currentPid=HostPid;CHECK(!client->acquire(7));
  currentPid=GamePid;frame.key=newer;frame.key.serial=3;CHECK(writer.publish(frame,[&]{return writer.observes(frame.key);}));const auto observationSeq=channel()->observationSeq;
+ currentPid=HostPid;auto third=client->acquire(7);CHECK(third&&third->key.serial==3);currentPid=GamePid;
  writer.disconnect();CHECK(channel()->observationSeq==observationSeq&&channel()->observedTick==2000&&channel()->active>=0);
- currentPid=HostPid;CHECK(client->acquire(7)->key.serial==3);currentPid=GamePid;control.disconnect();currentPid=HostPid;CHECK(!client->acquire(7));
+ currentPid=HostPid;CHECK(client->acquire(7)==third);
+ // Retirement uses tick zero, including the first 500 ms after boot/wrap.
+ fixture::clock=100;channel()->observedTick=0;CHECK(!client->unchanged(third,100)&&!client->accepts(third)&&!client->acquire(7));
+ currentPid=GamePid;control.disconnect();currentPid=HostPid;CHECK(!client->acquire(7));
  std::puts("PASS publication authority: independent writer, late commit after retirement rejected while fresh, old generation rejected, worker disconnect preserves game-owned observations and current frame");
 }
 }
