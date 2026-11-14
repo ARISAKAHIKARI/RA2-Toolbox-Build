@@ -234,7 +234,7 @@ static void disconnect(){
  worldFrameServer.disconnect();restorePlayerContext();reset();
  // In particular, raw direct patches have no disabled callback to fall back
  // through. Do not acknowledge stop/unmap IPC while any feature still owns one.
- if(!featureRestorationComplete())return;
+ if(!featureRestorationComplete()||!worldFramePublication.stop())return;
  if(sh&&sh->magic==Magic&&sh->version==Version&&sh->pid==GetCurrentProcessId()&&sh->stop){MemoryBarrier();sh->stop=2;}
  InterlockedExchange(&hostWorkPending,0);if(controllerProcess)CloseHandle(controllerProcess);controllerProcess=nullptr;controllerPID=controllerCheckAt=0;restoreFrameDriver();InterlockedExchange(&messageGameThread,0);sessionTracker.update(false,0,-1,-1);hookWorld.reset();commandDormant=worldCleanupPending=false;readOnlyState={};commandComputeEpoch=0;if(sh)UnmapViewOfFile(sh);sh=nullptr;if(mapping)CloseHandle(mapping);mapping=nullptr;lastHouse=pendingAck=0;pendingAckReady=false;
  // The pinned DLL outlives a Host connection. Only completed retirement and

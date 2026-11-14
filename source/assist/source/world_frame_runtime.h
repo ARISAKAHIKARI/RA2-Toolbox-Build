@@ -4,6 +4,14 @@
 
 static worldframe::Snapshot worldFrame;
 static worldframe::Server worldFrameServer;
+#ifdef WORLD_FRAME_PLATFORM_FIXTURE
+// Existing synchronous transport fixtures keep their explicit execution seam.
+struct WorldFramePublication {bool begin(worldframe::Snapshot&){return true;}void invalidate(){}bool stop(){return true;}bool publish(const worldframe::Snapshot&frame){return worldFrameServer.publish(frame);}};
+#else
+#include "../../shared/source/world_frame_async_win.h"
+using WorldFramePublication=worldframe::AsyncPublisher<>;
+#endif
+static WorldFramePublication worldFramePublication;
 static uint32_t worldFrameSerial=0;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
 static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
 static worldframe::DemandLeases runtimeDemandLeases;
@@ -31,7 +39,7 @@ public:
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
-static void retireWorldFrame(){worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);}
+static void retireWorldFrame(){worldFramePublication.invalidate();if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand){
  worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,before.scenario,before.cells,house,uint32_t(before.count),before.frame,before.session};
  if(!worldProducerGeneration){LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);worldProducerGeneration=uint64_t(stamp.QuadPart);if(!worldProducerGeneration)worldProducerGeneration=1;}
@@ -43,11 +51,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // was retired or local automatic work advanced without a live Host reader.
   // Re-export the existing immutable sample; publish() deduplicates its exact
   // descriptor. Never recapture or invent a newer observation/acquisition tick.
-  if(worldFrameReady){worldFrameServer.publish(worldFrame);return true;}
+  if(worldFrameReady){worldFramePublication.publish(worldFrame);return true;}
   // A failed attempt was never published. Retry transient failures even if
   // the game has paused, with bounded backoff rather than every worker wake.
   if(uint32_t(key.tick-failedCaptureAt)<captureRetryDelay)return false;
  }else captureRetryDelay=0;
+ if(!worldFramePublication.begin(worldFrame))return false;
  lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
  auto&requests=worldFrameCaptureRequests;const auto&hostRequests=worldFrameServer.requests();requests.assign(hostRequests.begin(),hostRequests.end());requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
  // Pending consumption can predate a long pause or failed capture. Renew its
@@ -70,7 +79,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  }
  captureRetryDelay=0;
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
- worldFrameReady=true;worldFrameServer.publish(worldFrame);
+ worldFrameReady=true;worldFramePublication.publish(worldFrame);
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;
 }

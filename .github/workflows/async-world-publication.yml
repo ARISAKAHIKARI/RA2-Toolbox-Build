@@ -1,0 +1,75 @@
+name: Async world publication
+on:
+  push:
+    branches: [codex/async-world-publish-20261115]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: async-world-publication
+  cancel-in-progress: true
+jobs:
+  correctness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate ownership, late retirement and retained sampling
+        run: |
+          python source/assist/tests/world_frame_async_portable.py --out checks/async
+          python source/assist/tests/world_frame_core_test.py > checks/core.log
+          python source/assist/tests/tactical_frame_sampling.py --negative-control --out checks/tactical
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: async-world-portable
+          path: checks/
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare compiler
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Execute real x86 and x64 worker DLL lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out checks/windows
+      - name: Build and verify paired programs
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/async-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/build.log 2>&1 || { tail -100 checks/build.log; exit 1; }
+          git restore source/suite/source/app.ico
+          python source/tools/verify_windows_outputs.py --root async-build --host-arch x64 --webview2 | tee checks/pe.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: async-world-windows
+          path: |
+            checks/
+            async-build/*.exe
+            async-build/*.dll
+            async-build/*.json

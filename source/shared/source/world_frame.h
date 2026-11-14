@@ -58,6 +58,7 @@ public:
  Page&back()noexcept{return data_[size_-1];}const Page&back()const noexcept{return data_[size_-1];}
  Page&operator[](size_t i)noexcept{return data_[i];}const Page&operator[](size_t i)const noexcept{return data_[i];}
  void clear()noexcept{size_=0;}
+ void swap(PageBuffer&other)noexcept{std::swap(data_,other.data_);std::swap(size_,other.size_);std::swap(capacity_,other.capacity_);std::swap(allocator_,other.allocator_);}
  bool reserve(size_t needed)noexcept{
   if(needed<=capacity_)return true;if(needed>MaxPages)return false;
   size_t next=capacity_?capacity_:1;while(next<needed)next*=2;
