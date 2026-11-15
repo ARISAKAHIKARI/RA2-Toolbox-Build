@@ -27,6 +27,10 @@ template<unsigned Capacity=8192> struct RosterLookup {
 // For automatic ejection only, allow a short grace after landing, but never
 // override explicit user Stop (13) or Enter (7).
 constexpr int ScatterFrames=180;
+inline bool retainNotIndexedPassenger(bool sameIdentity,bool stillInCarrier,bool indexComplete,int elapsed){
+ return sameIdentity&&elapsed>=0&&
+        ((stillInCarrier&&elapsed<=900)||(!indexComplete&&elapsed<=90));
+}
 // YRpp Sequence::Deploy=27; Deployed/DeployedFire/DeployedIdle=28..30.
 inline bool completedDeploy(int sequence){return sequence>=28&&sequence<=30;}
 inline bool deployObserved(int sequence){return sequence>=27&&sequence<=30;}

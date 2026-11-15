@@ -307,6 +307,14 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
   bool member=nativeMember(inf,p),carrierMember=nativeMember(all,r.carrier);
   bool carrierValid=carrierMember&&get<uint32_t>(r.carrier+0x10)==r.carrierID;
   bool carrierAlive=carrierValid&&own(r.carrier,house);
+  // Keep later Ctrl+D passengers while the infantry list only exposes the
+  // first occupant's exit. Never authorize a stale UID/manual token.
+  if(r.mode==0&&!member&&worldObjects.contains(p)&&
+     get<uint32_t>(p+0x10)==r.id&&manualVersions.get(r.id)==r.manualToken&&
+     get<uint32_t>(p+0x21C)==house&&get<int>(p+0x6C)>0&&
+     unloadpolicy::retainNotIndexedPassenger(true,
+       carrierValid&&get<uint32_t>(p+0x11C)==r.carrier,
+       indexedFrame==frame,frame-r.frame))continue;
   uint32_t passengerType=member&&kind(p)==1?typeOf(p,1):0;
   if(member&&(!featureTypeAllowed(r.mode?featuretypes::EscapePassenger:featuretypes::UnloadPassenger,passengerType)||!featureTypeAllowed(r.mode?featuretypes::EscapeTransport:featuretypes::UnloadTransport,r.carrierType)))r.cancelled=true;
   bool ejectDeployer=r.mode!=1&&passengerType>=0x10000&&get<bool>(passengerType+0xEC8);
