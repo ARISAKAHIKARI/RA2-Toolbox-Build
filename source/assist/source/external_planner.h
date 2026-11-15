@@ -423,8 +423,8 @@ public:
    // Adopt a game-side Enter already underway, or a miner physically at
    // the unloading slot, rather than issuing a second Enter on the same turn.
    if(first&&!busy){
-    const bool near=dockDistance(*a,*refinery)<=ore::NearDockCells;
-    if((a->mission==7||a->queued==7)||(near&&job.dockAttempts>0)){
+    const bool nearDock=dockDistance(*a,*refinery)<=ore::NearDockCells;
+    if((a->mission==7||a->queued==7)||(nearDock&&job.dockAttempts>0)){
      job.stage=ore::Docking;job.dockingObserved|=(a->flags&Unloading)!=0;
      ++docking;continue;
     }
