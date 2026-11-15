@@ -145,7 +145,7 @@ static void buildUnloadAdmissionRoster(uint32_t house){
 // Reject stale/foreign carriers, not the transport's own unload-in-progress
 // state; otherwise the queued command is acknowledged then discarded next tick.
 static bool unloadCarrierEligible(uint32_t p,uint32_t house){return p&&worldObjects.contains(p)&&own(p,house)&&live(p)&&kind(p)==2&&featureObjectAllowed(featuretypes::UnloadTransport,p)&&!get<uint32_t>(p+0x11C);}
-static int smartUnloadNow(uint32_t house,uint32_t p){
+static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
  if(!unloadCarrierEligible(p,house))return 0;
  const int frame=get<int>(0xA8ED84);const DWORD now=sampleClock(sh);
  static uint32_t roster[nativeorders::MaxPassengers];int count=0;uint32_t previous=0;
@@ -161,11 +161,14 @@ static int smartUnloadNow(uint32_t house,uint32_t p){
   previous=q;roster[count++]=q;
  }
  const bool loaded=get<int>(p+0x114)>0;
- // The acknowledgement counts selected carriers, not enrolled passengers.
- // Never consume a queued Ctrl+D as a success before at least one identity-
- // checked passenger continuation exists. Wait for the next complete roster
- // (bounded by queuedUnload's original 3500ms retry lifetime).
- if(!count)return -6;
+ // Missing infantry is not proof of an empty transport: it may carry tanks,
+ // or the infantry list may lag native D. Issue at most one ordinary Deploy
+ // on initial admission, but retain this Ctrl+D for later passenger enrolment.
+ // Return 2 means "native event issued, passenger admission still pending".
+ if(!count){
+  if(!loaded||!firstAttempt||get<bool>(p+0x1C8)||get<int>(p+0xAC)==16||get<int>(p+0xB4)==16)return -6;
+  return nativeMission(house,get<uint32_t>(p+0x10),16,0,0,0,0,0,taskarbiter::Owner::Unload)?2:-6;
+ }
  int replace=0;for(int j=0;j<unloadCount;++j)if(unloadPassengers[j].p==p||unloadPassengers[j].carrier==p)++replace;
  if(count>nativeorders::MaxPassengers-unloadCount+replace)return -6;
  // Queue acceptance is separate from this native Deploy. Existing active
@@ -236,8 +239,10 @@ static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
   if(!unloadCarrierEligible(task.pointer,house)||get<uint32_t>(task.pointer+0x10)!=task.id||worldByID(task.id)!=task.pointer||manualVersions.get(task.id)!=task.token||
      (task.attempted&&DWORD(now-task.attemptedAt)>3500)){queuedUnload.remove(at);continue;}
   if(!task.attempted){queuedUnload.carriers[at].attempted=true;queuedUnload.carriers[at].attemptedAt=now;}
-  int result=smartUnloadNow(house,task.pointer);
-  if(result>=0){queuedUnload.cancel(task.pointer,task.id);queuedUnload.lastProgress=now;if(result>0){--budget;--admissionBudget;}}
+  int result=smartUnloadNow(house,task.pointer,!task.attempted);
+  if(result==2){ // Preserve the queued identity while the native unload runs.
+   queuedUnload.lastProgress=now;--budget;--admissionBudget;
+  }else if(result>=0){queuedUnload.cancel(task.pointer,task.id);queuedUnload.lastProgress=now;if(result>0){--budget;--admissionBudget;}}
  }
 }
 static void watchEjections(uint32_t house,int frame,Vec all){
