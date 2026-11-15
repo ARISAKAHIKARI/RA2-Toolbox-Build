@@ -133,7 +133,10 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
 // that map-presence gate until they have actually left the carrier.
 static bool unloadPassengerEligible(uint32_t p,uint32_t house){
  return p&&worldObjects.contains(p)&&kind(p)==1&&get<uint32_t>(p+0x21C)==house&&
-  get<int>(p+0x6C)>0&&get<bool>(p+0x74)&&(get<uint32_t>(p+0x11C)||live(p));
+  get<int>(p+0x6C)>0&&
+  // Loaded infantry is often Limbo/inactive until the engine ejects each one.
+  // Enrollment must not be restricted to the first currently active exit.
+  (get<uint32_t>(p+0x11C)||get<bool>(p+0x74)&&live(p));
 }
 struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1;};
 static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*2];static int unloadRosterCount;
@@ -166,6 +169,28 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
   }else if(carrier!=p)continue;
   if(count==nativeorders::MaxPassengers)return -6;
   previous=q;roster[count++]=q;
+ }
+ // Native cargo chain contains the entire load even while later occupants
+ // remain inactive/limbo. Supplement the infantry inventory once per carrier
+ // admission; do not turn a partial active-unit sample into a one-person job.
+ const int cargoCount=get<int>(p+0x114);
+ if(cargoCount>0&&cargoCount<=256){
+  uint32_t q=get<uint32_t>(p+0x118);
+  uint32_t seen[256]{};int scanned=0;
+  while(q&&scanned<cargoCount){
+   if(!worldObjects.contains(q)||get<uint32_t>(q+0x11C)!=p)break;
+   bool duplicate=false;for(int k=0;k<scanned;++k)if(seen[k]==q){duplicate=true;break;}
+   if(duplicate)break;
+   seen[scanned++]=q;
+   if(unloadPassengerEligible(q,house)&&featureObjectAllowed(featuretypes::UnloadPassenger,q)){
+    bool enrolled=false;for(int k=0;k<count;++k)if(roster[k]==q){enrolled=true;break;}
+    if(!enrolled){if(count==nativeorders::MaxPassengers)return -6;roster[count++]=q;}
+   }
+   q=get<uint32_t>(q+0x30);
+  }
+  // A torn list must not silently omit later passengers. The original
+  // infantry roster is still used for recovered prior ejectees.
+  if(scanned!=cargoCount||q)return -6;
  }
  const bool loaded=get<int>(p+0x114)>0;
  // Missing infantry is not proof of an empty transport: it may carry tanks,

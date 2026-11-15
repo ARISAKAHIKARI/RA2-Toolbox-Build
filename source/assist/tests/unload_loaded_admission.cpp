@@ -25,7 +25,7 @@ static DWORD sampleClock(Shared*){return 1000;}
 template<class T>static T get(uint32_t address){
  if(address==0xA8ED84)return T(10);
  auto at=objects.find(address&~0xfffu);if(at==objects.end())return T{};const auto&o=at->second;
- switch(address&0xfff){case 0:return T(o.k==1?0x7EB058:o.k==2?0x7F5C70:0x7E3EBC);case 0x10:return T(o.id);case 0x6C:return T(o.hp);case 0x74:return T(o.active);case 0x81:return T(o.limbo);case 0x90:return T(o.onMap);case 0x21C:return T(o.owner);case 0x11C:return T(o.carrier);case 0x114:return T(o.passengers);case 0x1C8:return T(o.deployed);case 0xAC:return T(o.mission);case 0xB4:return T(o.queued);default:throw std::runtime_error("unexpected read");}
+ switch(address&0xfff){case 0:return T(o.k==1?0x7EB058:o.k==2?0x7F5C70:0x7E3EBC);case 0x10:return T(o.id);case 0x6C:return T(o.hp);case 0x74:return T(o.active);case 0x81:return T(o.limbo);case 0x90:return T(o.onMap);case 0x21C:return T(o.owner);case 0x11C:return T(o.carrier);case 0x114:return T(o.passengers);case 0x118:return T(o.type==44&&o.k==2?0x20000:0);case 0x30:return T(o.carrier?o.type==42?0:0:0);case 0x1C8:return T(o.deployed);case 0xAC:return T(o.mission);case 0xB4:return T(o.queued);default:throw std::runtime_error("unexpected read");}
 }
 struct World {bool contains(uint32_t p)const{return objects.count(p)!=0;}} worldObjects;
 struct Versions {uint32_t token=0,carrierMove=0;uint32_t get(uint32_t id)const{return token+(id==10?carrierMove:0);}} manualVersions;
@@ -121,6 +121,34 @@ int main(){try{
  buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1&&unloadCount==1&&deployments==0,
   "first Ctrl+D command snapshot must survive native-first ejection without second key press");
 #endif
+ // Real carrier cargo is a linked list; later occupants can remain
+ // inactive/limbo until their own turn to exit.
+ reset();
+ const uint32_t second=0x30000,third=0x40000;
+ objects[transport].passengers=3;
+ objects[passenger].type=42;
+ objects[second]={12,1,transport,43,1};objects[third]={13,1,transport,45,1};
+ objects[second].active=false;objects[third].active=false;
+ objects[second].limbo=objects[third].limbo=true;
+ objects[second].onMap=objects[third].onMap=false;
+ infantry.push_back(second);infantry.push_back(third);
+ buildUnloadAdmissionRoster(1);
+ check(smartUnloadNow(1,transport)==1&&unloadCount==3,
+       "all three loaded passengers must enroll, not just the active first exit");
+ bool gotSecond=false,gotThird=false;
+ for(int i=0;i<unloadCount;++i){gotSecond|=unloadPassengers[i].id==12;gotThird|=unloadPassengers[i].id==13;}
+ check(gotSecond&&gotThird&&deployments==1,"each passenger owns one followup, single Deploy");
+ // When the first one has already landed, the two remaining passengers
+ // must be carried forward with the history snapshot and native chain.
+ reset();
+ objects[transport].passengers=2;objects[second]={12,1,transport,43,1};objects[third]={13,1,transport,45,1};
+ objects[second].active=objects[third].active=false;
+ infantry.push_back(second);infantry.push_back(third);
+ objects[passenger].carrier=0;objects[passenger].onMap=true;
+ recentPassengers[0]={passenger,11,transport,10,44,0,1000,10};recentPassengerCount=1;
+ buildUnloadAdmissionRoster(1);
+ check(smartUnloadNow(1,transport)==1&&unloadCount==3,
+       "native-first staggered ejection must retain all three passengers");
  reset();objects[passenger].limbo=false;objects[passenger].onMap=true;infantry.push_back(passenger);buildUnloadAdmissionRoster(1);smartUnloadNow(1,transport);check(unloadCount==1,"duplicate passenger jobs");
  std::puts("PASS production unload admission: job before Deploy for loaded/limbo passenger; native-first history, owner/life/filter/carrier/kind/identity/manual-token guards and duplicate roster");return 0;
  }catch(const std::exception&e){std::fprintf(stderr,"FAIL %s\n",e.what());return 1;}}
