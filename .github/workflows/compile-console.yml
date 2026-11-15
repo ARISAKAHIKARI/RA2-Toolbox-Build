@@ -10,6 +10,30 @@ concurrency:
   group: console-compile-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  ore-dock-and-return:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - name: Prove first Enter, in-flight dock single-shot, and full miner handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics/ore-dock
+          for suite in ore_regression ore_priority ore_delivery_effect; do
+            g++ -std=c++17 -O1 -UNDEBUG "source/assist/tests/${suite}.cpp" -o "diagnostics/ore-dock/${suite}"
+            "diagnostics/ore-dock/${suite}" | tee "diagnostics/ore-dock/${suite}.log"
+          done
+      - name: Preserve ore-dock test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-ore-dock-regression
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics/ore-dock/*.log
   ctrl-d-one-press:
     runs-on: ubuntu-latest
     timeout-minutes: 10
