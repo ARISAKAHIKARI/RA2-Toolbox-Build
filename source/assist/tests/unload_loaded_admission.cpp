@@ -43,7 +43,19 @@ static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int 
 namespace taskarbiter {enum class Owner {Unload};}
 static bool nativeMission(uint32_t,uint32_t,int mission,int,int,int,int,int,taskarbiter::Owner){if(mission!=16)throw std::runtime_error("unexpected mission");++deployments;return true;}
 static void finishUnloadFollowup(const UnloadPassenger&,int){}
+static void finishUnloadFollowup(const UnloadPassenger&,int){}
+#ifdef USE_PRODUCTION_CARRIER_AND_COMMAND
+static void releaseSticky(uint32_t){}
+static void pauseGlobalMagnetron(uint32_t){}
+static void cancelBurst(uint32_t){}
+static void cancelDodge(uint32_t){}
+static void cancelOreJob(uint32_t){}
+static void cancelLoadingJobs(uint32_t){}
+static int orderIndex(uint32_t){return -1;}
+static void removeOrder(int){}
+#else
 static void cancelNative(uint32_t){++cancellations;unloadCount=0;}
+#endif
 static bool unloadCarrierEligible(uint32_t p,uint32_t house);
 #include UNLOAD_ADMISSION_HEADER
 #ifndef USE_PRODUCTION_CARRIER_AND_COMMAND
@@ -58,6 +70,29 @@ int main(){try{
  reset();buildUnloadAdmissionRoster(1);objects[passenger].id=99;smartUnloadNow(1,transport);check(unloadCount==0,"reused passenger identity");
  reset();buildUnloadAdmissionRoster(1);manualVersions.token=1;smartUnloadNow(1,transport);check(unloadCount==0,"new manual command overwritten");
 #ifdef USE_PRODUCTION_CARRIER_AND_COMMAND
+ // A manual Move on the carrier cannot cancel the disembarked passenger's
+ // independently-owned follow-up; a manual order on that passenger can.
+ reset();buildUnloadAdmissionRoster(1);
+ check(smartUnloadNow(1,transport)==1&&unloadCount==1,"enrol passenger before movement");
+ objects[transport].passengers=0;objects[passenger].carrier=0;
+ objects[passenger].limbo=false;objects[passenger].onMap=true;
+ cancelNative(transport);
+ check(unloadCount==1&&unloadPassengers[0].id==11,
+       "carrier Move must preserve independent disembarked passenger followup");
+ cancelNative(passenger);
+ check(unloadCount==0,"manual passenger Move must cancel its own followup");
+ // If the native unload finishes before command admission, moving the
+ // empty carrier must also retain that pending latched Ctrl+D.
+ reset();observeUnloadRoster(1,10,1000);
+ objects[transport].passengers=0;objects[passenger].carrier=0;
+ objects[passenger].limbo=false;objects[passenger].onMap=true;
+ cancelNative(transport);
+ check(queuedUnload.count==1,"empty carrier Move must retain pending Ctrl+D roster");
+ buildUnloadAdmissionRoster(1);
+ check(smartUnloadNow(1,transport)==1&&unloadCount==1,
+       "late admission after carrier Move must still enrol disembarked passenger");
+ reset();cancelNative(transport);
+ check(queuedUnload.count==0,"manual Move with passengers still aboard cancels unstarted unload");
  reset();objects[transport].deployed=true;objects[transport].mission=16;
  buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1&&unloadCount==1&&deployments==0,
   "native-first Deploy must not discard a Ctrl+D passenger or send duplicate Deploy");
