@@ -61,8 +61,10 @@ int main(){try{
  buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1&&unloadCount==1&&deployments==0,
   "native-first Deploy must not discard a Ctrl+D passenger or send duplicate Deploy");
  reset();infantry.clear();buildUnloadAdmissionRoster(1);
- check(smartUnloadNow(1,transport)<0&&unloadCount==0&&deployments==0&&cancellations==0,
-  "missing passenger roster must not acknowledge and drop pending command");
+ check(smartUnloadNow(1,transport)==2&&unloadCount==0&&deployments==1&&cancellations==0,
+  "vehicle-only or temporarily absent infantry must issue one Deploy and retain the pending command");
+ check(smartUnloadNow(1,transport,false)<0&&deployments==1,
+  "pending missing-passenger retry must not issue a duplicate native Deploy");
  reset();observeUnloadRoster(1,10,1000);
  check(recentPassengerCount==1,"ordinary loaded passenger must be remembered before the first Ctrl+D");
  objects[transport].passengers=0;objects[transport].deployed=true;objects[transport].mission=16;
