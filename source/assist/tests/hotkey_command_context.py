@@ -126,6 +126,7 @@ static unsigned destructSubmissions=0,placementSubmissions=0;
 static void submitDestructSelectedOwner(){++destructSubmissions;}
 static void submitPlacementEvent(){++placementSubmissions;}
 static bool automaticHotkey(WPARAM){return false;}
+static void requestNativePipPin(){throw std::runtime_error("unexpected PiP route");}
 static void selectNextIdleAircraft(){throw std::runtime_error("unexpected aircraft route");}
 static void sendSelection(int,bool,const uint8_t* =nullptr){throw std::runtime_error("unexpected selection route");}
 // This fixture's endpoint is the real Host dispatch into send(), not a game
