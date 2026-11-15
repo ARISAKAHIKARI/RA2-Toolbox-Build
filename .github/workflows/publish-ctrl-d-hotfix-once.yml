@@ -1,0 +1,113 @@
+name: Publish Ctrl+D pre.11 and withdraw old previews
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-ctrl-d-hotfix-once.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: ra2-ctrl-d-preview-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COMPILED_RUN: '43711214481'
+      COMPILED_SHA: '3f4b6419b79d8d21804b930faa12e5309667f071'
+      RELEASE_TAG: 'v1.0.51-pre.11'
+    steps:
+      - name: Confirm compiler and Ctrl+D regression passed
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$COMPILED_RUN" --jq '.head_sha')
+          test "$actual" = "$COMPILED_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$COMPILED_RUN/jobs?per_page=100" |
+            jq -e '[.jobs[] | select(.name=="windows-x64" or .name=="ctrl-d-one-press") | select(.conclusion=="success")] | length == 2'
+      - name: Download exact Windows build and package Update
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/update dist/base dist/full
+          gh run download "$COMPILED_RUN" --repo "$GITHUB_REPOSITORY" --name RA2Toolbox-Console-MVVM-x64 --dir dist/update
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll CONSOLE_COMPILE.json; do
+            test -s "dist/update/$n"
+          done
+          jq -e --arg commit "$COMPILED_SHA" '.commit == $commit and .compile_only == true and .game_tested == false' dist/update/CONSOLE_COMPILE.json
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.51-pre.11-x64-Update.zip .)
+      - name: Build Full package with previous release resources and new binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release download v1.0.51-pre.10 --repo "$GITHUB_REPOSITORY" --pattern RA2Toolbox-1.0.51-pre.10-x64-Full.zip --dir dist/base
+          unzip -q dist/base/RA2Toolbox-1.0.51-pre.10-x64-Full.zip -d dist/full
+          exe=$(find dist/full -type f -name RA2Toolbox.exe -print -quit)
+          test -n "$exe"
+          root=$(dirname "$exe")
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do
+            test -f "$root/$n"
+            cp "dist/update/$n" "$root/$n"
+            cmp "dist/update/$n" "$root/$n"
+          done
+          for n in CONSOLE_COMPILE.json BUILD_SOURCE_MANIFEST.json BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do
+            if test -f "dist/update/$n"; then cp "dist/update/$n" "$root/$n"; fi
+          done
+          if test -d dist/update/licenses; then
+            mkdir -p "$root/licenses"
+            cp -a dist/update/licenses/. "$root/licenses/"
+          fi
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.51-pre.11-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.11-x64-Update.zip
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.11-x64-Full.zip
+      - name: Publish latest Ctrl+D repair test release
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum RA2Toolbox-1.0.51-pre.11-x64-Update.zip RA2Toolbox-1.0.51-pre.11-x64-Full.zip > SHA256SUMS.txt
+          cat > RELEASE_NOTES.md <<'EOF'
+          ## Ctrl+D first-press repair (test release)
+          
+          Binaries built from commit 3f4b6419b79d8d21804b930faa12e5309667f071. The internal executable version remains 1.0.51.10.
+          
+          - Snapshot the selected carrier's passenger identity on the first Ctrl+D command.
+          - Continue passenger tasks when native D starts unloading first; retain ordinary passenger history.
+          - Avoid redundant Deploy events and still unload vehicles that carry non-infantry cargo.
+          
+          Production-code-based one-press Ctrl+D tests and the paired Windows x64 / x86 compile passed in GitHub Actions run 43711214481. The overall CI run was NOT green due to an independent console-browser sampling/display regression. Real gameplay and multiplayer were NOT tested.
+          
+          Full combines support resources from pre.10 with the updated matching binaries. Update is for an existing pre.10 Full installation. Close game/toolbox and back up configuration before replacing all four binaries.
+          EOF
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber RA2Toolbox-1.0.51-pre.11-x64-Update.zip RA2Toolbox-1.0.51-pre.11-x64-Full.zip SHA256SUMS.txt
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$COMPILED_SHA" --prerelease --title "RA2 Toolbox 1.0.51-pre.11 - Ctrl+D 单按修复测试版" --notes-file RELEASE_NOTES.md RA2Toolbox-1.0.51-pre.11-x64-Update.zip RA2Toolbox-1.0.51-pre.11-x64-Full.zip SHA256SUMS.txt
+          fi
+      - name: Withdraw old pre.1 through pre.10 into recoverable drafts
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease | jq -e '.isDraft == false and .isPrerelease == true'
+          mkdir -p metadata
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > metadata/release-snapshot-before-withdrawal.json
+          for n in $(seq 1 10); do
+            tag="v1.0.51-pre.$n"
+            id=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --jq '.id')
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$id" -F draft=true >/dev/null
+            draft=$(gh api "repos/$GITHUB_REPOSITORY/releases/$id" --jq '.draft')
+            test "$draft" = true
+            echo "Hidden draft: $tag"
+          done
+      - name: Keep recovery snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.51-pre.11-release-audit
+          retention-days: 30
+          if-no-files-found: warn
+          path: metadata/
