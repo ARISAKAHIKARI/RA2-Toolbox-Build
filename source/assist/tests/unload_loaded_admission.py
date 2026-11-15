@@ -12,9 +12,12 @@ for name,text,expected in [('current',source.read_text(),0),('pre7',old,1)]:
  code='\n'.join(block(bridge.read_text(),x) for x in ['static bool live(','static int kind(','static bool own('])+'\n'
  if 'static bool unloadPassengerEligible(' in text:code+=block(text,'static bool unloadPassengerEligible(')+'\n'
  code+=text[text.index('struct UnloadRosterEntry {'):text.index('static bool unloadCarrierEligible(')]
- code+=block(text,'static int smartUnloadNow(')+'\n'
+ if name=='current':code+=block(text,'static bool unloadCarrierEligible(')+'\\n'
+ code+=block(text,'static int smartUnloadNow(')+'\\n'
+ if name=='current':code+=block(text,'static int smartUnload(uint32_t house)')+'\\n'
  header=a.out/(name+'.h');header.write_text(code);exe=a.out/name
- r=subprocess.run(['g++','-std=c++17','-O1','-UNDEBUG','-DUNLOAD_ADMISSION_HEADER="'+str(header)+'"',str(Path(__file__).with_suffix('.cpp')),'-o',str(exe)],capture_output=True,text=True);(a.out/(name+'-build.log')).write_text(r.stdout+r.stderr)
+ flags=['-DUSE_PRODUCTION_CARRIER_AND_COMMAND'] if name=='current' else []
+ r=subprocess.run(['g++','-std=c++17','-O1','-UNDEBUG',*flags,'-DUNLOAD_ADMISSION_HEADER="'+str(header)+'"',str(Path(__file__).with_suffix('.cpp')),'-o',str(exe)],capture_output=True,text=True);(a.out/(name+'-build.log')).write_text(r.stdout+r.stderr)
  if r.returncode:print(r.stderr);raise SystemExit(r.returncode)
  r=subprocess.run([str(exe)],capture_output=True,text=True);(a.out/(name+'-run.log')).write_text(r.stdout+r.stderr);print(name,r.returncode,r.stdout+r.stderr);rows.append(dict(name=name,exit=r.returncode,expected=expected,passed=r.returncode==expected and (name!='pre7' or 'FAIL loaded passenger lost before Deploy' in r.stderr),extracted_sha256=hashlib.sha256(header.read_bytes()).hexdigest()))
 (a.out/'result.json').write_text(json.dumps(dict(passed=all(x['passed'] for x in rows),cases=rows,real_game=False),indent=2)+'\n');assert all(x['passed'] for x in rows),rows
