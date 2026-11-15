@@ -188,6 +188,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install pinned icon build dependency
+        shell: bash
+        run: python -m pip install Pillow==11.3.0
       - name: Install Zig 0.13.0
         shell: pwsh
         run: |

@@ -1,5 +1,5 @@
 """Real own-process DR1-tag gate and production flag callback on Windows x86."""
-import argparse,hashlib,json,subprocess
+import argparse,hashlib,json,struct,subprocess
 from pathlib import Path
 from breakpoint_windows_build import build_guard
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--zig',type=Path,required=True);p.add_argument('--out',type=Path,required=True);a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
@@ -7,8 +7,16 @@ here=Path(__file__).resolve().parent;src=here.parent/'source';s=(src/'tech_ui_br
 while depth:depth+=(s[at]=='{')-(s[at]=='}');at+=1
 extract=a.out/'map-callback.inc';extract.write_text(s[start:at]+'\n');exe=a.out/'map-visibility.exe'
 obj=build_guard(a.zig,a.out)
-cmd=[str(a.zig.resolve()),'c++','-target','x86-windows-gnu','-std=c++17','-O2','-UNDEBUG','-fno-exceptions','-fno-rtti','-fms-extensions','-fasm-blocks','-DMAP_CALLBACK_EXTRACT="'+extract.resolve().as_posix()+'"',str(here/'map_visibility_windows.cpp'),str(obj),'-o',str(exe),'-lkernel32']
+cmd=[str(a.zig.resolve()),'c++','-target','x86-windows-gnu','-std=c++17','-O2','-UNDEBUG','-fno-exceptions','-fno-rtti','-fms-extensions','-fasm-blocks','-DMAP_CALLBACK_EXTRACT="'+extract.resolve().as_posix()+'"',str(here/'map_visibility_windows.cpp'),str(obj),'-Wl,--image-base,0x10000000','-o',str(exe),'-lkernel32']
 build=subprocess.run(cmd,capture_output=True,text=True);(a.out/'build.log').write_text(build.stdout+build.stderr);assert build.returncode==0,build.stdout+build.stderr
+# The fixture calls a hard-coded game VA at 0x6D88F4. Do not let the
+# synthetic executable image/ASLR occupy that address. Production PE files
+# are untouched; Zig 0.13 does not accept --disable-dynamicbase here.
+image=bytearray(exe.read_bytes());pe=struct.unpack_from('<I',image,0x3c)[0];opt=pe+24
+assert image[pe:pe+4]==b'PE\0\0' and struct.unpack_from('<H',image,opt)[0]==0x10b
+assert struct.unpack_from('<I',image,opt+28)[0]==0x10000000
+flags=struct.unpack_from('<H',image,opt+70)[0]
+struct.pack_into('<H',image,opt+70,flags&~0x40);exe.write_bytes(image)
 run=subprocess.run([str(exe)],capture_output=True,text=True,timeout=40);(a.out/'run.log').write_text(run.stdout+run.stderr);print(run.stdout,end='');assert run.returncode==0,run.stderr
 report=dict(scope=__doc__,result=json.loads(run.stdout.strip()),source_sha256={str(x.relative_to(here.parents[1])):hashlib.sha256(x.read_bytes()).hexdigest()for x in [src/'tech_ui_breakpoint_bridge.h',src/'tech_ui_breakpoint_core.h',src/'tech_ui_breakpoint_hot.h',src/'tech_ui_breakpoint_debug.h',src.parents[1]/'shared/source/debug_entry_types.h',src.parents[1]/'shared/source/debug_entry_policy.h',src.parents[1]/'shared/source/debug_entry_catalog.h',src/'map_visibility_parameter_policy.h',here/'map_visibility_windows.cpp',Path(__file__)]})
 (a.out/'result.json').write_text(json.dumps(report,indent=2)+'\n')

@@ -119,6 +119,9 @@ static bool redrawRevealTest(){return false;}
 namespace pauseview {constexpr unsigned Feature=1;}
 namespace controlmode {static bool native(unsigned){return false;}static bool sender(unsigned){return false;}}
 static bool nativeViewNeedsTracking(){return false;}
+// The extracted suspendedOptions() also consults native PiP demand.
+// The synthetic startup fixture does not enable a native camera.
+static bool nativePipDemand(){return false;}
 static bool riskPlacementActive=false,riskAirActive=false,riskControlActive=false,riskLowDamageActive=false;
 static void restoreMapVisibilityParameters(){}static void restoreSidebarView(){}
 static void restorePauseView(){}static void restoreNativeSellCursor(){}
