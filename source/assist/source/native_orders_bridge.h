@@ -183,6 +183,11 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
    if(duplicate)break;
    seen[scanned++]=q;
    if(unloadPassengerEligible(q,house)&&featureObjectAllowed(featuretypes::UnloadPassenger,q)){
+    // An actor reused between roster snapshot and admission must never
+    // inherit the prior passenger's Ctrl+D intent.
+    const uint32_t id=get<uint32_t>(q+0x10),token=manualVersions.get(id);
+    for(auto*at=begin;at<unloadRoster+unloadRosterCount&&at->carrier==p;++at)
+     if(at->pointer==q&&(at->id!=id||at->token!=token))return -6;
     bool enrolled=false;for(int k=0;k<count;++k)if(roster[k]==q){enrolled=true;break;}
     if(!enrolled){if(count==nativeorders::MaxPassengers)return -6;roster[count++]=q;}
    }
