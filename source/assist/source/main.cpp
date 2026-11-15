@@ -1794,11 +1794,12 @@ static void present(){auto frame=worker.get();
 }
 }
 #include "sidebar_overlay.h"
+#include "unit_info_panel_host.h"
 static void hideSidebarOverlay(){sidebaroverlay::invalidate();}
 static void paint(){
  static pipelineperf::Window timings(L"host-paint",{L"total",L"information",L"world-handoff",L"panels",L"hud"});pipelineperf::Scope total(timings,0,critical);
  ++displayCounters.paints;
- if(!overlayvisibility::visible()){renderupgrade::stop();worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchhost::suspend();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
+ if(!overlayvisibility::visible()){unitpanelhost::panel.hide();renderupgrade::stop();worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchhost::suspend();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
  {pipelineperf::Scope sample(timings,1);if(enabled||secondaryDisplayRequested())sampleExternal(GetTickCount());} // Display cadence is independent of command servicing.
  const auto displayState=external::display::inspect([](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);});
  RECT r{};GetClientRect(game,&r);POINT origin{};ClientToScreen(game,&origin);
@@ -1807,18 +1808,18 @@ static void paint(){
  // Pass the readable/hidden distinction through before the legacy UI gates.
  {pipelineperf::Scope handoff(timings,2);renderupgrade::update(origin,r,displayState);}
  nativeviewhost::Transform viewportTransform;
- if(!nativeviewhost::sampleTransform(shared,viewportTransform)||externalSampler.sampledViewport()!=viewportTransform){worldrender::invalidate();hideWorldOverlay();clearPassengerDisplay();return;}
+ if(!nativeviewhost::sampleTransform(shared,viewportTransform)||externalSampler.sampledViewport()!=viewportTransform){unitpanelhost::panel.hide();worldrender::invalidate();hideWorldOverlay();clearPassengerDisplay();return;}
  static uint64_t projectionKey=~uint64_t(0);const uint64_t currentProjection=nativeviewhost::key(viewportTransform);
  if(projectionKey!=currentProjection){projectionKey=currentProjection;++paintRevision;clearPassengerDisplay();worldrender::invalidate();}
  motion.projection(viewportTransform.generation);statusMotion.projection(viewportTransform.generation);enemyMotion.projection(viewportTransform.generation);
  const auto mapClip=nativeviewhost::clip(viewportTransform,snap.width,snap.height);
  auto onMap=[=](float x,float y){return !viewportTransform.active||nativeviewportprojection::contains(mapClip,int(std::floor(x)),int(std::floor(y)));};
  const auto passive=passiveDisplayState(displayState,r);
- if(passive==overlaydisplay::State::Hidden){worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
+ if(passive==overlaydisplay::State::Hidden){unitpanelhost::panel.hide();worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hide();watchwindows::hide();hideConstruction();clearPassengerDisplay();return;}
  if(passive==overlaydisplay::State::Hold){
   // Retain existing pixels only. Do not rebuild from a failed information
   // sample, refresh an input authorization, or renew the read-failure lease.
-  if(!enabled||!foregroundGame()||snap.chat){worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();hideConstruction();clearPassengerDisplay();return;}
+  if(!enabled||!foregroundGame()||snap.chat){unitpanelhost::panel.hide();worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();minimap::hidePrimary();watchwindows::hidePrimary();hideConstruction();clearPassengerDisplay();return;}
   overlaycompositor::host().touch(overlaycompositor::World,uintptr_t(game),pid);overlaycompositor::host().touch(sidebaroverlay::Layer,uintptr_t(game),pid);return;
  }
  const bool battlefield=displayState.visible();
@@ -1827,7 +1828,7 @@ static void paint(){
   if(prior.changed(c.token,c.cameraX,c.cameraY,snap.cameraX,snap.cameraY))++paintRevision;}
  {pipelineperf::Scope panels(timings,3);minimap::update(origin,r,battlefield);watchhost::update(renderNow);watchwindows::update(origin,r,battlefield);}
  pipelineperf::Scope hud(timings,4);
- if(!enabled||!foregroundGame()||snap.chat){worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();hideConstruction();clearPassengerDisplay();return;}
+ if(!enabled||!foregroundGame()||snap.chat){unitpanelhost::panel.hide();worldrender::invalidate();hideSidebarOverlay();overlayRecovery.suspend();hideWorldOverlay();hideAircraftButton();hideConstruction();clearPassengerDisplay();return;}
  DWORD now=sampleClock(shared);int labelCount=motion.render(renderNow,labelViews);
  for(int i=0;i<labelCount;++i)nativeviewhost::localPoint(viewportTransform,labelViews[i].x,labelViews[i].y);
  const auto&statusFrame=externalSampler.unitStatuses();
@@ -1852,6 +1853,19 @@ static void paint(){
  if(flags()&Production)externalSampler.productionReminders(extra.productionReminderMask,idleTabs,pausedTabs);
  idleTabs|=pausedTabs;
  idleTabs=sidebarShapes.update([](uint32_t at,void*out,size_t size){return externalReader.readFresh(at,out,size);},renderNow,pid,commandMatch(),snap.width,snap.height,idleTabs,pausedTabs);
+ // Display the same completed tactical sample in a separate non-activating
+ // click-owning HWND. The background overlay stays click-through and never
+ // decodes a second selection/cargo list on its render thread.
+ const auto&selectionModel=externalSampler.selectionPanel();
+ if(externalData&&externalSourceConfirmed&&selectionModel.match==externalData->match&&
+    selectionModel.frame==externalData->frame&&snap.width>0&&snap.height>0&&
+    mapClip.w>0&&mapClip.h>0){
+  const double uiX=double(r.right)/snap.width,uiY=double(r.bottom)/snap.height;
+  const int screenX=origin.x+int(std::lround((mapClip.x+12)*uiX));
+  const int screenBottom=origin.y+int(std::lround((mapClip.y+mapClip.h-12)*uiY));
+  const int available=std::max(0,int(std::lround(mapClip.w*uiX))-24);
+  unitpanelhost::panel.update(selectionModel,screenX,screenBottom,available);
+ }else unitpanelhost::panel.hide();
  bool tabPhase=(renderNow/400)%2==0;bool spiderPhase=(renderNow/650)%2==0;
  if(sidebaroverlay::update(origin,r,nativeBadges,buildreserve::nativeBadgeTab(),idleTabs,tabPhase,opaquePanels)){nativeBadges.clear();idleTabs=0;}
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
@@ -1932,7 +1946,7 @@ static void paint(){
   if(summary){std::wstring text=L"载员 "+std::to_wstring(used)+L" / "+std::to_wstring(capacity)+L" · 剩余 "+std::to_wstring(std::max(0,capacity-used));SolidBrush bg(Color(150,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,26.f);drawText(g,text,panelX+10,y+4,13,Color::White);y+=30;}
   if(hasToast){SolidBrush bg(Color(155,13,21,31));g.FillRectangle(&bg,panelX,y,panelW,27.f);drawText(g,toast,panelX+10,y+4,12,Color(255,220,233,247));y+=31;}
  };
- if(!nativeviewhost::stable(shared,viewportTransform)){worldrender::invalidate();hideWorldOverlay();return;}
+ if(!nativeviewhost::stable(shared,viewportTransform)){unitpanelhost::panel.hide();worldrender::invalidate();hideWorldOverlay();return;}
  worldrender::Job job{pid,snap.match,GetTickCount(),w,h,physicalW,physicalH,origin,std::move(draw)};job.projection=currentProjection;worldrender::submit(std::move(job));
 
 }
@@ -3059,7 +3073,7 @@ if(id==991){wchar_t query[128]{};GetWindowTextW(featureSearch,query,128);std::ws
  setStatus(L"正在退出；恢复最多等待 2 秒，超时跳过。");
  SetWindowTextW(GetAncestor(w,GA_ROOT),L"红警工具箱 · 正在退出（恢复最多等待 2 秒）…");
  SetTimer(w,BridgeCloseTimer,100,nullptr);return 0;
- case WM_DESTROY:shutdownPlatformHookProbe();shutdownGameProcessSelectionUI();renderupgrade::shutdown();worldrender::worker.shutdown();sidebaroverlay::worker.shutdown();formationhost::shutdown();specialoverlayhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);
+ case WM_DESTROY:unitpanelhost::panel.destroy();shutdownPlatformHookProbe();shutdownGameProcessSelectionUI();renderupgrade::shutdown();worldrender::worker.shutdown();sidebaroverlay::worker.shutdown();formationhost::shutdown();specialoverlayhost::shutdown();watchhost::shutdown();watchwindows::destroy();minimap::destroy();destroyAircraftButton();destroyConstruction();KillTimer(w,AutoSaveTimer);KillTimer(w,BridgeCloseTimer);
 #if defined(RA2_UNIFIED) && defined(RA2_CONSOLE_WEBVIEW2)
  if(!consoleClosePrepared)
 #endif

@@ -11,7 +11,7 @@
 namespace overlaystack {
 // The opaque replacement scene is a background, including its shared host
 // HWND. Every information/interaction window must remain above that backdrop.
-enum class Layer:int {RenderUpgrade=5,World=10,Statistics=20,Minimap=30,Watch=40,Aircraft=50,Construction=60,Diagnostics=80,Cursor=100};
+enum class Layer:int {RenderUpgrade=5,World=10,Statistics=20,UnitPanel=22,Minimap=30,Watch=40,Aircraft=50,Construction=60,Diagnostics=80,Cursor=100};
 struct Entry {HWND window=nullptr;Layer layer=Layer::World;};
 inline std::mutex mutex;
 inline std::vector<Entry> entries;
