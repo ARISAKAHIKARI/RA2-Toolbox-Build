@@ -43,7 +43,6 @@ static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int 
 namespace taskarbiter {enum class Owner {Unload};}
 static bool nativeMission(uint32_t,uint32_t,int mission,int,int,int,int,int,taskarbiter::Owner){if(mission!=16)throw std::runtime_error("unexpected mission");++deployments;return true;}
 static void finishUnloadFollowup(const UnloadPassenger&,int){}
-static void finishUnloadFollowup(const UnloadPassenger&,int){}
 #ifdef USE_PRODUCTION_CARRIER_AND_COMMAND
 static void releaseSticky(uint32_t){}
 static void pauseGlobalMagnetron(uint32_t){}
