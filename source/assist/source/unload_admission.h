@@ -3,6 +3,13 @@
 namespace assist { namespace unloadadmission {
 constexpr int Capacity=8192;
 struct Carrier {uint32_t pointer=0,id=0,token=0,attemptedAt=0;bool attempted=false;};
+// A native Deploy can temporarily expose neither a loaded passenger nor a
+// disembarked one. Keep the one-shot request briefly, but do not capture a
+// passenger boarded later after the original unload has ended.
+inline bool awaitEmpty(const Carrier&task,uint32_t now,bool deploying){
+ const uint32_t age=now-task.attemptedAt;
+ return age<=1500&&(deploying||age<=250);
+}
 // Runtime-only storage, separate from both passenger planning batches and the
 // game's event budget. Swap removal keeps cancellation and admission bounded.
 struct Queue {

@@ -1,7 +1,7 @@
 name: Async world publication
 on:
   push:
-    branches: [codex/async-world-publish-20261115]
+    branches: [codex/ctrl-d-camera-audit-20261115]
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,6 +23,8 @@ jobs:
           python source/assist/tests/world_frame_async_portable.py --out checks/async
           python source/assist/tests/world_frame_core_test.py > checks/core.log
           python source/assist/tests/tactical_frame_sampling.py --negative-control --out checks/tactical
+          python source/assist/tests/unload_loaded_admission.py --out checks/unload
+          python source/assist/tests/world_frame_capture_performance.py --out checks/capture
       - uses: actions/upload-artifact@v4
         if: always()
         with:

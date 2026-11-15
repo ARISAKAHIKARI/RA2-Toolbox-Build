@@ -178,7 +178,11 @@ static int smartUnload(uint32_t house){
  int count=0,added=0;Vec v=vec(0xA8ECB8);
  for(int n=0;n<v.count;++n){uint32_t p=item(v,n);if(!unloadCarrierEligible(p,house)||selected.find(p)>=0)continue;
   uint32_t id=get<uint32_t>(p+0x10);int old=recent.find(p);
-  if(get<int>(p+0x114)<=0&&(old<0||recentPassengers[old].carrierID!=id||recentPassengers[old].carrierType!=typeOf(p,2)))continue;
+  // Native D can start unloading before the host receives Ctrl+D. Keep that
+  // explicit input through the short transition when the passenger count is
+  // already zero but the infantry roster has not exposed its new location.
+  if(get<int>(p+0x114)<=0&&(old<0||recentPassengers[old].carrierID!=id||recentPassengers[old].carrierType!=typeOf(p,2))&&
+     get<int>(p+0xAC)!=16&&get<int>(p+0xB4)!=16)continue;
   if(count==unloadadmission::Capacity)return -42;
   selected.add(p,count);candidates[count++]={p,id,manualVersions.get(id)};
   if(queuedUnload.find(p,id)<0)++added;
@@ -207,7 +211,11 @@ static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
      (task.attempted&&DWORD(now-task.attemptedAt)>3500)){queuedUnload.remove(at);continue;}
   if(!task.attempted){queuedUnload.carriers[at].attempted=true;queuedUnload.carriers[at].attemptedAt=now;}
   int result=smartUnloadNow(house,task.pointer);
-  if(result>=0){queuedUnload.cancel(task.pointer,task.id);queuedUnload.lastProgress=now;if(result>0){--budget;--admissionBudget;}}
+  // Keep a one-shot input through the native Deploy gap; an empty carrier
+  // cannot wait indefinitely for an unrelated passenger to board later.
+  if(!result&&!unloadadmission::awaitEmpty(task,now,
+      get<int>(task.pointer+0xAC)==16||get<int>(task.pointer+0xB4)==16)){queuedUnload.cancel(task.pointer,task.id);continue;}
+  if(result>0){queuedUnload.cancel(task.pointer,task.id);queuedUnload.lastProgress=now;--budget;--admissionBudget;}
  }
 }
 static void watchEjections(uint32_t house,int frame,Vec all){

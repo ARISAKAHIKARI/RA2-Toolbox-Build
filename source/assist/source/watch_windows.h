@@ -170,7 +170,13 @@ static void placePanel(int slot,bool second,int x,int y,int w,int h){
  if(changed||repair)keep.submitted(overlaystack::place(window,overlaystack::Layer::Watch,x,y,w,h,SWP_NOACTIVATE|SWP_SHOWWINDOW)!=FALSE);
  auto&gpu=gpuPanels[panel];auto&buffer=second?secondaryBuffers[slot]:buffers[slot];if(repair)gpu.gate.invalidate();
  const bool newImage=view.gpu?gpu.needs(view,w,h):buffer.needs(visual(view,w,h));
- if(resized||repair||newImage||paintPending[panel]){InvalidateRect(window,nullptr,FALSE);paintingVerified=true;UpdateWindow(window);paintingVerified=false;}
+ if(resized||repair||newImage||paintPending[panel]){
+  InvalidateRect(window,nullptr,FALSE);
+  // The secondary monitor may block in GDI/DWM composition. Leave its paint
+  // on the window queue so multiple rendered frames coalesce to the newest
+  // immutable view instead of blocking the host's capture/control loop.
+  if(!second){paintingVerified=true;UpdateWindow(window);paintingVerified=false;}
+ }
 }
 static void update(POINT origin,const RECT&client,bool verifiedBattlefield){
  reportTimings();

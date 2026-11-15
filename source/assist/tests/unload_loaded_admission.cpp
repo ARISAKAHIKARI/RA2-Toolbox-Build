@@ -47,9 +47,16 @@ static void reset(){objects.clear();infantry={passenger};objects[transport]={10,
 int main(){try{
  reset();check(!own(passenger,1),"production own must reject loaded off-map passenger");buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1,"loaded carrier admission");check(unloadCount==1,"loaded passenger lost before Deploy");check(deployments==1&&unloadPassengers[0].id==11&&unloadPassengers[0].carrier==transport,"job must exist before unload");
  reset();objects[transport].passengers=0;objects[passenger].carrier=0;objects[passenger].limbo=false;objects[passenger].onMap=true;recentPassengers[0]={passenger,11,transport,10,44,0,1000,10};recentPassengerCount=1;buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1&&unloadCount==1&&deployments==0,"native-first history must still enrol");
+ reset();objects[transport].passengers=0;objects[transport].mission=16;infantry.clear();buildUnloadAdmissionRoster(1);
+ check(smartUnloadNow(1,transport)==0,"transition gap should not create a phantom passenger");
+ auto pending=queuedUnload.carriers[0];pending.attempted=true;pending.attemptedAt=1000;
+ check(unloadadmission::awaitEmpty(pending,1200,true),"one press must survive the native Deploy gap");
+ check(!unloadadmission::awaitEmpty(pending,1251,false)&&!unloadadmission::awaitEmpty(pending,2501,true),"empty request cannot catch a later boarding");
+ infantry.push_back(passenger);objects[passenger].carrier=0;objects[passenger].limbo=false;objects[passenger].onMap=true;recentPassengers[0]={passenger,11,transport,10,44,0,1000,10};recentPassengerCount=1;
+ buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1&&unloadCount==1,"one press should enroll after delayed ejection visibility");
  for(int cause=0;cause<7;++cause){reset();switch(cause){case 0:objects[passenger].owner=2;break;case 1:objects[passenger].hp=0;break;case 2:objects[passenger].active=false;break;case 3:objects[passenger].allowed=false;break;case 4:objects[passenger].carrier=0;break;case 5:objects[passenger].k=3;break;case 6:objects[passenger].carrier=0x30000;objects[0x30000]={30,1,0,44,2};break;}buildUnloadAdmissionRoster(1);smartUnloadNow(1,transport);check(unloadCount==0,"invalid passenger enrolled");}
  reset();buildUnloadAdmissionRoster(1);objects[passenger].id=99;smartUnloadNow(1,transport);check(unloadCount==0,"reused passenger identity");
  reset();buildUnloadAdmissionRoster(1);manualVersions.token=1;smartUnloadNow(1,transport);check(unloadCount==0,"new manual command overwritten");
  reset();objects[passenger].limbo=false;objects[passenger].onMap=true;infantry.push_back(passenger);buildUnloadAdmissionRoster(1);smartUnloadNow(1,transport);check(unloadCount==1,"duplicate passenger jobs");
- std::puts("PASS production unload admission: job before Deploy for loaded/limbo passenger; native-first history, owner/life/filter/carrier/kind/identity/manual-token guards and duplicate roster");return 0;
+ std::puts("PASS production unload admission: one-shot Deploy gap and bounded empty expiry; loaded/limbo and native-first passengers, owner/life/filter/carrier/kind/identity/manual-token guards and duplicate roster");return 0;
  }catch(const std::exception&e){std::fprintf(stderr,"FAIL %s\n",e.what());return 1;}}

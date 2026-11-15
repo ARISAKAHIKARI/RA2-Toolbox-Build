@@ -10,6 +10,7 @@ template<class Writer=Server>class AsyncPublisher {
  PublicationPool pool_;HANDLE thread_=nullptr,event_=nullptr;HMODULE module_=nullptr;
  std::atomic<bool>stopping_{false};
  std::atomic<uint32_t>attemptSerial_{0},attemptEpoch_{0},attemptAt_{0};
+ std::atomic<uint32_t>successfulEpoch_{0};bool replacementNeeded_=false;
  uint32_t launchAt_=0;bool launchTried_=false;
  static DWORD WINAPI run(void*opaque){
   auto*self=static_cast<AsyncPublisher*>(opaque);
@@ -20,7 +21,8 @@ template<class Writer=Server>class AsyncPublisher {
     Publication job;
     while(!self->stopping_.load(std::memory_order_acquire)&&self->pool_.take(job)){
      const auto current=[&]{return !self->stopping_.load(std::memory_order_acquire)&&self->pool_.current(job)&&writer.observes(job.key);};
-     if(self->pool_.current(job)&&writer.wanted(job.key.owner,GetTickCount()))writer.publish(job,current);
+     if(self->pool_.current(job)&&writer.wanted(job.key.owner,GetTickCount())&&writer.publish(job,current))
+      self->successfulEpoch_.store(job.epoch,std::memory_order_release);
      self->attemptAt_.store(GetTickCount(),std::memory_order_relaxed);self->attemptEpoch_.store(job.epoch,std::memory_order_relaxed);self->attemptSerial_.store(job.key.serial,std::memory_order_release);
      self->pool_.finish(job);
     }
@@ -34,7 +36,7 @@ template<class Writer=Server>class AsyncPublisher {
  void reap(){
   if(thread_&&WaitForSingleObject(thread_,0)==WAIT_OBJECT_0){
    CloseHandle(thread_);CloseHandle(event_);thread_=event_=nullptr;module_=nullptr;pool_.invalidate();
-   attemptSerial_.store(0,std::memory_order_relaxed);launchTried_=false;
+   attemptSerial_.store(0,std::memory_order_relaxed);successfulEpoch_.store(0,std::memory_order_relaxed);replacementNeeded_=true;launchTried_=false;
   }
  }
  bool launch(){
@@ -63,9 +65,12 @@ public:
   // Keep their capture buffer local and do not launch/wake a transport worker.
   if(!control.observes(frame.key))return false;
   const uint32_t epoch=pool_.epoch();
+  if(replacementNeeded_&&successfulEpoch_.load(std::memory_order_acquire)==epoch)replacementNeeded_=false;
   // A prior success is not sufficient: heartbeat expiry/retirement can remove
   // the advertised descriptor while this immutable game frame stays paused.
-  if(control.published(frame))return true;
+  // A dead publication worker may have removed the named data mapping while
+  // the control descriptor still names this paused frame. Rebuild it once.
+  if(!replacementNeeded_&&control.published(frame))return true;
   if(attemptSerial_.load(std::memory_order_acquire)==frame.key.serial&&attemptEpoch_.load(std::memory_order_relaxed)==epoch&&uint32_t(GetTickCount()-attemptAt_.load(std::memory_order_relaxed))<16)return false;
   if(!launch()||!pool_.submit(frame))return false;SetEvent(event_);return true;
  }

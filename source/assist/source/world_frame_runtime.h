@@ -65,6 +65,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  runtimeDemandLeases.append(key.tick,requests);
  std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
  key.serial=++worldFrameSerial;key.demand=worldFrameServer.demandRevision();worldFrame.reset(key);
+ // A subscribed first capture otherwise repeatedly grows and copies its
+ // page buffer during match entry. After reset the live prefix is empty, so
+ // reserving raw storage copies no sampled bytes; failure retains old growth.
+ if(worldFrameServer.observes(key)&&worldFrame.pages.capacity()<4096)worldFrame.pages.reserve(4096);
  worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);bool complete=capture.capture(demand,requests);
  // These checks deliberately bypass the read set. Cached self-comparison is
  // not evidence that the frame/world/House survived the acquisition boundary.

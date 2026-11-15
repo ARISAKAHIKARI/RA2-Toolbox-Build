@@ -6,7 +6,7 @@
 #include <cstring>
 #include <cwchar>
 static HANDLE gate=nullptr;static DWORD gameThread=0;
-static std::atomic<bool>blockNext{true},entered{false};static unsigned threadStarts=0;
+static std::atomic<bool>blockNext{true},entered{false},dropWorker{false};static unsigned threadStarts=0;
 static HANDLE WINAPI countedThread(LPSECURITY_ATTRIBUTES security,SIZE_T stack,LPTHREAD_START_ROUTINE start,LPVOID context,DWORD flags,LPDWORD id){
  ++threadStarts;return CreateThread(security,stack,start,context,flags,id);
 }
@@ -18,9 +18,15 @@ static HANDLE WINAPI delayedMapping(HANDLE file,LPSECURITY_ATTRIBUTES security,D
  }
  return CreateFileMappingW(file,security,protect,high,low,name);
 }
+static DWORD waitWorker(HANDLE event,DWORD timeout){
+ if(GetCurrentThreadId()!=gameThread&&dropWorker.exchange(false))return WAIT_FAILED;
+ return WaitForSingleObject(event,timeout);
+}
 #define CreateFileMappingW delayedMapping
 #define CreateThread countedThread
+#define WaitForSingleObject waitWorker
 #include "../../shared/source/world_frame_async_win.h"
+#undef WaitForSingleObject
 #undef CreateFileMappingW
 #undef CreateThread
 #define WORLD_FRAME_FIXTURE_ONLY
@@ -69,6 +75,16 @@ extern "C" __declspec(dllexport) int ReadLatest(){
 extern "C" __declspec(dllexport) int Resume(){
  using namespace assist;worldFrameServer.retire();client->subscribe(1,worldframe::Base);
  fixture::Read live{&memory};const auto before=worldlife::capture(live);const auto calls=memory.calls.size();const auto key=worldFrame.key;
+ assert(captureWorldFrame(live,before,fixture::House,GetTickCount(),worldframe::Base));
+ assert(memory.calls.size()==calls&&!std::memcmp(&worldFrame.key,&key,sizeof key));return 1;
+}
+extern "C" __declspec(dllexport) int DropWorker(){
+ dropWorker=true;assist::worldFramePublication.invalidate();return int(threadStarts);
+}
+extern "C" __declspec(dllexport) int WorkerStarts(){return int(threadStarts);}
+extern "C" __declspec(dllexport) int Resubmit(){
+ using namespace assist;fixture::Read live{&memory};const auto before=worldlife::capture(live);
+ const auto calls=memory.calls.size(),key=worldFrame.key;
  assert(captureWorldFrame(live,before,fixture::House,GetTickCount(),worldframe::Base));
  assert(memory.calls.size()==calls&&!std::memcmp(&worldFrame.key,&key,sizeof key));return 1;
 }
