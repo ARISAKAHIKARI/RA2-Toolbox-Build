@@ -310,6 +310,7 @@ public:
     idleProductionMask=pausedProductionMask=0;clearAircraftCandidate();state_.status=0;state_.labels=state_.typeCount=state_.swCount=0;
     state_.threatCount=state_.crateCount=0;catalogueReady_=false;return state_;}
   }
+  uint32_t panelCarrier=0; // captured in the existing world-object pass
   for(auto p:objects){int k=p?kind(p):-1;if(k<0||get<int>(p+0x6C)<=0||!get<uint8_t>(p+0x74)||get<uint8_t>(p+0x81)||!get<uint8_t>(p+0x90))continue;
    uint32_t owner=get<uint32_t>(p+0x21C),t=type(p,k);bool local=owner==house,selected=local&&uiValue<uint8_t>(p+0x83);if(selected){
     ++state_.selected;
@@ -317,6 +318,7 @@ public:
      auto*g=panel_.selectedType(t,k);
      if(g)name(t,g->name.data());
      if(panel_.selected==1){
+      panelCarrier=p;
       auto&u=panel_.single;u={};u.id=get<uint32_t>(p+0x10);u.type=t;u.kind=k;
       u.health=get<int>(p+0x6C);u.strength=get<int>(t+0xA0);
       u.ammo=get<int>(p+0x2FC,-1);u.ammoMax=get<int>(t+0x684);
@@ -343,9 +345,7 @@ public:
   // selected. The chain is sampled under the same WorldFrameScope as the
   // selection; the paint thread never traverses game memory.
   if(panel_.selected==1&&panel_.single.kind==2&&panel_.single.capacity>0){
-   uint32_t carrier=0;
-   for(uint32_t p:objects)if(get<uint32_t>(p+0x10)==panel_.single.id&&
-     type(p,kind(p))==panel_.single.type&&get<uint32_t>(p+0x21C)==house){carrier=p;break;}
+   const uint32_t carrier=panelCarrier;
    if(carrier){
     const int expected=get<int>(carrier+0x114,-1);
     uint32_t q=get<uint32_t>(carrier+0x118);
