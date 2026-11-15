@@ -10,6 +10,27 @@ concurrency:
   group: console-compile-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  ctrl-d-one-press:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          sparse-checkout: source
+      - name: Verify native-first Ctrl+D passenger continuation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/unload_loaded_admission.py --out diagnostics/ctrl-d-unload
+      - name: Preserve Ctrl+D regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-CtrlD-single-press-evidence
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics/ctrl-d-unload/
   console-browser:
     if: github.ref != 'refs/heads/codex/runtime-stack-20261104'
     runs-on: ubuntu-latest

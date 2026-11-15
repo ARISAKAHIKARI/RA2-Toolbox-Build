@@ -12,9 +12,9 @@ for name,text,expected in [('current',source.read_text(),0),('pre7',old,1)]:
  code='\n'.join(block(bridge.read_text(),x) for x in ['static bool live(','static int kind(','static bool own('])+'\n'
  if 'static bool unloadPassengerEligible(' in text:code+=block(text,'static bool unloadPassengerEligible(')+'\n'
  code+=text[text.index('struct UnloadRosterEntry {'):text.index('static bool unloadCarrierEligible(')]
- if name=='current':code+=block(text,'static bool unloadCarrierEligible(')+'\\n'
- code+=block(text,'static int smartUnloadNow(')+'\\n'
- if name=='current':code+=block(text,'static int smartUnload(uint32_t house)')+'\\n'
+ if name=='current':code+=block(text,'static bool unloadCarrierEligible(')+'\n'
+ code+=block(text,'static int smartUnloadNow(')+'\n'
+ if name=='current':code+=block(text,'static int smartUnload(uint32_t house)')+'\n'
  header=a.out/(name+'.h');header.write_text(code);exe=a.out/name
  flags=['-DUSE_PRODUCTION_CARRIER_AND_COMMAND'] if name=='current' else []
  r=subprocess.run(['g++','-std=c++17','-O1','-UNDEBUG',*flags,'-DUNLOAD_ADMISSION_HEADER="'+str(header)+'"',str(Path(__file__).with_suffix('.cpp')),'-o',str(exe)],capture_output=True,text=True);(a.out/(name+'-build.log')).write_text(r.stdout+r.stderr)
