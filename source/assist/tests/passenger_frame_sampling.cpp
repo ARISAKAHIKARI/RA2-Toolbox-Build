@@ -67,7 +67,7 @@ static void publish(uint32_t omittedPage=0,bool failedPage=false){
  memory.put(0xA8ED84,snap.frame);
  key.connectionLow=uint32_t(frameServer.connection());key.connectionHigh=uint32_t(frameServer.connection()>>32);key.generationLow=77;
  worldframe::Snapshot frame;frame.reset(key);if(failedPage)memory.denied.push_back({omittedPage,4096});
- worldframe::CaptureGraph<fixture::Read> graph(frame,fixture::Read{&memory});CHECK(graph.capture(key.demand,{}));CHECK(frame.seal());memory.denied.clear();
+ worldframe::CaptureGraph<fixture::Read> graph(frame,fixture::Read{&memory});CHECK(graph.capture(worldframe::runtimeDemand(key.demand),{}));CHECK(frame.seal());memory.denied.clear();
  worldframe::Snapshot filtered;const worldframe::Snapshot*chosen=&frame;
  if(omittedPage&&!failedPage){std::vector<worldframe::Page> pages;for(size_t i=0;i<frame.pages.size();++i)if(frame.pages[i].address!=omittedPage)pages.push_back(frame.pages[i]);CHECK(filtered.import(key,frame.counters,pages.data(),pages.size()));chosen=&filtered;}
  frameServer.observe(key);CHECK(frameServer.publish(*chosen));fixture::currentPid=fixture::HostPid;
@@ -83,7 +83,7 @@ static void observed(){
 static void zeroLiveReads(){CHECK(fixture::rpmCalls==0&&memory.calls.empty());}
 int main(){
  std::setvbuf(stdout,nullptr,_IONBF,0);
- setup();publish();CHECK(externalReader.worldDemand()==(worldframe::Resources|worldframe::Base|worldframe::Passengers|worldframe::Combat));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==(worldframe::Base|worldframe::Passengers|worldframe::Combat));
+ setup();publish();CHECK(externalReader.worldDemand()==(worldframe::Resources|worldframe::Base|worldframe::Passengers|worldframe::Combat));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);
  auto first=passengerSample(fixture::clock,token);std::printf("first passenger paint: bubbles=%zu live_RPM=%zu\n",first.size(),fixture::rpmCalls);std::fflush(stdout);
  CHECK(first.size()==1&&first[0].id==42&&first[0].danger);zeroLiveReads();
  // A live value changes after capture. Rendering the sealed frame must retain
@@ -119,7 +119,7 @@ int main(){
  memory.put(Carrier+0x431,uint8_t(0));fixture::clock=2220;publish();CHECK(passengerSample(2220,token).empty());zeroLiveReads();
  extra.passengerBubbles=false;extra.dangerPassengers=true;fixture::clock=2240;publish();auto danger=passengerSample(2240,token);CHECK(danger.size()==1&&danger[0].danger);zeroLiveReads();
  extra.dangerPassengers=false;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Resources|worldframe::Base));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);CHECK(passengerSample(2241,token).empty());zeroLiveReads();
- optionFlags=Capacity;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Resources|worldframe::Base|worldframe::Passengers));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==(worldframe::Base|worldframe::Passengers));optionFlags=0;
+ optionFlags=Capacity;configureDemand();CHECK(externalReader.worldDemand()==(worldframe::Resources|worldframe::Base|worldframe::Passengers));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);optionFlags=0;
  std::puts("PASS inspect disappearance/danger-only/shared demand routing: no rate reduction or alternate live scanner");
  // A paused, independently re-observed frame is still the same immutable
  // publication; this does not refresh its acquisition tick.
