@@ -267,6 +267,8 @@ static int smartUnload(uint32_t house){
 static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
  const DWORD now=sampleClock(sh);
  if(!(sh->flags&SmartUnloadOrders)||queuedUnload.epoch!=match||queuedUnload.house!=house||DWORD(now-queuedUnload.lastProgress)>12000){queuedUnload.clear();return;}
+ // Failed UID/page capture means unknown, never an empty cargo roster.
+ if(!unloadpolicy::completeIdentityIndex(indexedFrame,frame))return;
  if(!queuedUnload.count||queuedUnload.frame==frame||!loadInterfaces()||!simulationReady()||get<bool>(0xA8BC60+25))return;
  queuedUnload.frame=frame;queuedUnload.reindex();
  if(budget<=0||!outgoingRoom())return;
@@ -300,21 +302,18 @@ static void watchEjections(uint32_t house,int frame,Vec all){
 }
 #include "unload_compute_bridge.h"
 static void smartUnloadTick(uint32_t house,int frame,int&budget){
+ // An incomplete global identity snapshot must not cancel already admitted
+ // passengers. Resume them on the next complete world-index frame.
+ if(!unloadpolicy::completeIdentityIndex(indexedFrame,frame))return;
  serviceUnloadCalculation(house,frame,budget);
  if(externalInputFrame){unloadExternalInput.count=0;unloadExternalInput.targetCount=0;unloadExternalInput.match=match;unloadExternalInput.tick=sampleClock(sh);unloadExternalInput.frame=frame;}
- Vec all=vec(0xA8EC78),inf=vec(0xA83DE8);watchEjections(house,frame,all);int todo=unloadCount;if(todo>nativeorders::WorkPerFrame)todo=nativeorders::WorkPerFrame;
+ Vec all=vec(0xA8EC78);watchEjections(house,frame,all);int todo=unloadCount;if(todo>nativeorders::WorkPerFrame)todo=nativeorders::WorkPerFrame;
  while(todo--&&unloadCount){if(unloadCursor>=unloadCount)unloadCursor=0;int i=unloadCursor++;auto&r=unloadPassengers[i];uint32_t p=r.p;
-  bool member=nativeMember(inf,p),carrierMember=nativeMember(all,r.carrier);
+  // The global indexed Techno list is authoritative. The live infantry
+  // roster can temporarily omit later passengers during sequential ejection.
+  bool member=worldObjects.contains(p),carrierMember=nativeMember(all,r.carrier);
   bool carrierValid=carrierMember&&get<uint32_t>(r.carrier+0x10)==r.carrierID;
   bool carrierAlive=carrierValid&&own(r.carrier,house);
-  // Keep later Ctrl+D passengers while the infantry list only exposes the
-  // first occupant's exit. Never authorize a stale UID/manual token.
-  if(r.mode==0&&!member&&worldObjects.contains(p)&&
-     get<uint32_t>(p+0x10)==r.id&&manualVersions.get(r.id)==r.manualToken&&
-     get<uint32_t>(p+0x21C)==house&&get<int>(p+0x6C)>0&&
-     unloadpolicy::retainNotIndexedPassenger(true,
-       carrierValid&&get<uint32_t>(p+0x11C)==r.carrier,
-       indexedFrame==frame,frame-r.frame))continue;
   uint32_t passengerType=member&&kind(p)==1?typeOf(p,1):0;
   if(member&&(!featureTypeAllowed(r.mode?featuretypes::EscapePassenger:featuretypes::UnloadPassenger,passengerType)||!featureTypeAllowed(r.mode?featuretypes::EscapeTransport:featuretypes::UnloadTransport,r.carrierType)))r.cancelled=true;
   bool ejectDeployer=r.mode!=1&&passengerType>=0x10000&&get<bool>(passengerType+0xEC8);

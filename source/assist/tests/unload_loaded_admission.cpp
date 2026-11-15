@@ -150,14 +150,11 @@ int main(){try{
  buildUnloadAdmissionRoster(1);
  check(smartUnloadNow(1,transport)==1&&unloadCount==3,
        "native-first staggered ejection must retain all three passengers");
- check(unloadpolicy::retainNotIndexedPassenger(true,true,true,800),
-       "later loaded occupants survive absent infantry roster entries");
- check(unloadpolicy::retainNotIndexedPassenger(true,false,false,45),
-       "short identity gaps cannot cancel freshly unloaded passengers");
- check(!unloadpolicy::retainNotIndexedPassenger(true,false,true,45)&&
-       !unloadpolicy::retainNotIndexedPassenger(false,true,false,45)&&
-       !unloadpolicy::retainNotIndexedPassenger(true,true,true,901),
-       "stale or changed identities are never resurrected");
+ check(unloadpolicy::completeIdentityIndex(10,10),
+       "complete index permits independent passenger followups");
+ check(!unloadpolicy::completeIdentityIndex(-1,10)&&
+       !unloadpolicy::completeIdentityIndex(9,10),
+       "failed or stale world index must not cancel pending passenger jobs");
  reset();objects[passenger].limbo=false;objects[passenger].onMap=true;infantry.push_back(passenger);buildUnloadAdmissionRoster(1);smartUnloadNow(1,transport);check(unloadCount==1,"duplicate passenger jobs");
  std::puts("PASS production unload admission: job before Deploy for loaded/limbo passenger; native-first history, owner/life/filter/carrier/kind/identity/manual-token guards and duplicate roster");return 0;
  }catch(const std::exception&e){std::fprintf(stderr,"FAIL %s\n",e.what());return 1;}}
