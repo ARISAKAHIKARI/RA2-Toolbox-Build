@@ -15,7 +15,7 @@ struct Object {uint32_t id=0,owner=1,carrier=0,type=42;int k=1,hp=100,passengers
 static std::unordered_map<uint32_t,Object> objects;
 constexpr uint32_t transport=0x10000,passenger=0x20000;
 static std::vector<uint32_t> infantry;
-static uint32_t match=1;
+static uint32_t match=1;static int indexedFrame=10;static struct {bool chat=false;} snap;
 static unsigned deployments=0,cancellations=0;
 struct Shared{uint32_t flags=1;} shared,*sh=&shared;
 constexpr uint32_t SmartUnloadOrders=1;
@@ -63,6 +63,14 @@ int main(){try{
  reset();infantry.clear();buildUnloadAdmissionRoster(1);
  check(smartUnloadNow(1,transport)<0&&unloadCount==0&&deployments==0&&cancellations==0,
   "missing passenger roster must not acknowledge and drop pending command");
+ reset();observeUnloadRoster(1,10,1000);
+ check(recentPassengerCount==1,"ordinary loaded passenger must be remembered before the first Ctrl+D");
+ objects[transport].passengers=0;objects[transport].deployed=true;objects[transport].mission=16;
+ objects[passenger].carrier=0;objects[passenger].limbo=false;objects[passenger].onMap=true;
+ check(smartUnload(1)==1&&queuedUnload.count==1,"native D preceding hotkey must still select the carrier from history");
+ buildUnloadAdmissionRoster(1);
+ check(smartUnloadNow(1,transport)==1&&unloadCount==1&&deployments==0,
+  "single Ctrl+D must continue after D already ejected the passenger");
  reset();check(smartUnload(1)==1&&recentPassengerCount==1&&queuedUnload.count==1,
   "first Ctrl+D must latch selected passenger identity before game unloads");
  objects[transport].deployed=true;objects[transport].passengers=0;objects[transport].mission=16;

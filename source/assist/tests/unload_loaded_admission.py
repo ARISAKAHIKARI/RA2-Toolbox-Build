@@ -12,6 +12,7 @@ for name,text,expected in [('current',source.read_text(),0),('pre7',old,1)]:
  code='\n'.join(block(bridge.read_text(),x) for x in ['static bool live(','static int kind(','static bool own('])+'\n'
  if 'static bool unloadPassengerEligible(' in text:code+=block(text,'static bool unloadPassengerEligible(')+'\n'
  code+=text[text.index('struct UnloadRosterEntry {'):text.index('static bool unloadCarrierEligible(')]
+ if name=='current':code+=block(text,'static void observeUnloadRoster(')+'\n'
  if name=='current':code+=block(text,'static bool unloadCarrierEligible(')+'\n'
  code+=block(text,'static int smartUnloadNow(')+'\n'
  if name=='current':code+=block(text,'static int smartUnload(uint32_t house)')+'\n'
