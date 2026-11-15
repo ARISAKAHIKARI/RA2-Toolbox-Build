@@ -138,6 +138,7 @@ static void hideWorldOverlay(){overlaycompositor::host().hide(overlaycompositor:
 static uint32_t lastReceiptWrite=0,lastReceiptMatch=0;
 static Snapshot snap{},incoming{};static uint32_t ack,notice,oldMatch,snapshotSeq=~0u;static std::wstring root,statusText,toast;static DWORD toastUntil,lastFind,lastData,lastPulse;static bool toastActive=false;static int fps=visual::DefaultFPS,topMargin=20,repairMs=2000;static bool enabled=true,ready,techEnabled;static std::vector<int> techIndices;static std::wstring lastSearch;
 static bool infoAdaptive=false;
+static bool unitPanelEnabled=false; // independent, persisted, default-off visual option
 static monitorrefresh::Tracker informationMonitor;
 static int informationFPS(){return infoAdaptive?informationMonitor.rate():std::clamp(fps,5,500);}
 static void publishSuiteDisplay();
@@ -673,7 +674,7 @@ static void chooseTechProfile(int next){
  techProfile=std::clamp(next,0,2);
  techExceptions=profileExceptions[techProfile];
 }
-static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)write(L"Hotkeys",wide(iniKeys[i]).c_str(),hotkeys[i]);write(L"Display",L"FPS",fps);write(L"Display",L"AdaptiveFPS",infoAdaptive);write(L"Display",L"LabelRefreshVersion",1);write(L"Display",L"TopMargin",topMargin);
+static bool save(){++settingsRevision;saveWriteOK=true;for(int i=0;i<12;++i)write(L"Hotkeys",wide(iniKeys[i]).c_str(),hotkeys[i]);write(L"Display",L"FPS",fps);write(L"Display",L"AdaptiveFPS",infoAdaptive);write(L"Display",L"UnitPanel",unitPanelEnabled);write(L"Display",L"LabelRefreshVersion",1);write(L"Display",L"TopMargin",topMargin);
  write(L"Display",L"LabelScalePercent",labelScalePercent);write(L"Display",L"ConstructionScalePercent",constructionScalePercent);
  for(int i=0;i<7;++i){const wchar_t*names[]={L"Capacity",L"Iron",L"Production",L"AllTransports",L"Psychic",L"Crates",L"TextPanel"};write(L"Display",names[i],SendMessageW(check[i],BM_GETCHECK,0,0)==BST_CHECKED);}
  write(L"Modes",L"AutoRepair",SendMessageW(repairCheck,BM_GETCHECK,0,0)==BST_CHECKED);write(L"Modes",L"RepairUnrepairable",repairUnrepairable);write(L"Experimental",L"NativeTechProduction",techMode);write(L"Modes",L"RepairMs",repairMs);
@@ -1857,7 +1858,7 @@ static void paint(){
  // click-owning HWND. The background overlay stays click-through and never
  // decodes a second selection/cargo list on its render thread.
  const auto&selectionModel=externalSampler.selectionPanel();
- if(externalData&&externalSourceConfirmed&&selectionModel.match==externalData->match&&
+ if(unitPanelEnabled&&externalData&&externalSourceConfirmed&&selectionModel.match==externalData->match&&
     selectionModel.frame==externalData->frame&&snap.width>0&&snap.height>0&&
     mapClip.w>0&&mapClip.h>0){
   const double uiX=double(r.right)/snap.width,uiY=double(r.bottom)/snap.height;
@@ -1865,7 +1866,8 @@ static void paint(){
   const int screenBottom=origin.y+int(std::lround((mapClip.y+mapClip.h-12)*uiY));
   const int available=std::max(0,int(std::lround(mapClip.w*uiX))-24);
   unitpanelhost::panel.update(selectionModel,screenX,screenBottom,available);
- }else unitpanelhost::panel.hide();
+ }else if(unitPanelEnabled)unitpanelhost::panel.miss();
+ else unitpanelhost::panel.hide();
  bool tabPhase=(renderNow/400)%2==0;bool spiderPhase=(renderNow/650)%2==0;
  if(sidebaroverlay::update(origin,r,nativeBadges,buildreserve::nativeBadgeTab(),idleTabs,tabPhase,opaquePanels)){nativeBadges.clear();idleTabs=0;}
  bool panel=SendMessageW(check[6],BM_GETCHECK,0,0)==BST_CHECKED;
@@ -2893,6 +2895,13 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  case WM_TIMER:if(wp==2){updateHoverHelp();return 0;}if(wp==AutoSaveTimer){flushAutoSettings();return 0;}tick();return 0;
  case WM_HOTKEY:if(!readOnlyWatchHotkey(wp,lp))handleHotkey(wp,lp);return 0;
  case WM_COMMAND:{int id=LOWORD(wp);
+ if(id==9770&&HIWORD(wp)==BN_CLICKED){
+  if(updatingControls)return 0;
+  unitPanelEnabled=SendDlgItemMessageW(w,9770,BM_GETCHECK,0,0)==BST_CHECKED;
+  externalSampler.unitPanelEnabled(unitPanelEnabled);
+  if(!unitPanelEnabled)unitpanelhost::panel.hide();
+  changedSetting();paint();return 0;
+ }
  if(debugEntryCommand(id,HIWORD(wp)))return 0;
  DependencyCommandRefresh dependencyRefresh;
  if(HIWORD(wp)==BN_CLICKED&&toggleSettingsFold(id))return 0;
@@ -3085,6 +3094,7 @@ int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();
  objectQueueMode=value(L"Orders",L"ObjectEventBackend",0)==1?1u:0u;
  schedulerMode=0;schedulerTarget=0; // Message manager is the only entry.
  infoAdaptive=value(L"Display",L"AdaptiveFPS",0)!=0;
+ unitPanelEnabled=value(L"Display",L"UnitPanel",0)!=0;externalSampler.unitPanelEnabled(unitPanelEnabled);
  int refreshRevision=value(L"Display",L"LabelRefreshVersion",0);fps=visual::initialFPS(value(L"Display",L"FPS",visual::DefaultFPS),refreshRevision);if(refreshRevision<1){write(L"Display",L"FPS",fps);write(L"Display",L"LabelRefreshVersion",1);}topMargin=std::clamp(value(L"Display",L"TopMargin",20),0,4096);
  labelScalePercent=viewport::percent(value(L"Display",L"LabelScalePercent",100));constructionScalePercent=viewport::percent(value(L"Display",L"ConstructionScalePercent",100));
  techProfile=std::clamp(value(L"Tech",L"Profile",value(L"main",L"CustomTech",0)?1:0),0,2);

@@ -15,7 +15,7 @@ namespace unitpanelhost {
 class Panel {
  HWND window_=nullptr;
  external::unitpanel::Model model_{};
- uint64_t signature_=0;
+ uint64_t signature_=0;DWORD lastGoodAt_=0;
  bool folded_=false,details_=true;
  int page_=0,focused_=-1,width_=390,height_=40;
  static constexpr int Header=38,Footer=30;
@@ -189,11 +189,13 @@ class Panel {
   return true;
  }
 public:
- void hide(){if(window_&&IsWindowVisible(window_))ShowWindow(window_,SW_HIDE);}
+ void hide(){lastGoodAt_=0;if(window_&&IsWindowVisible(window_))ShowWindow(window_,SW_HIDE);}
+ void miss(){if(lastGoodAt_&&DWORD(GetTickCount()-lastGoodAt_)<550)return;hide();}
  void destroy(){if(window_){DestroyWindow(window_);window_=nullptr;}model_={};signature_=0;}
  void update(const external::unitpanel::Model&model,int x,int bottom,int availableWidth){
-  if(model.selected<=0||model.groupCount<=0||availableWidth<230){hide();return;}
+  if(model.selected<=0||model.groupCount<=0||availableWidth<230){miss();return;}
   if(!ensure())return;
+  lastGoodAt_=GetTickCount();
   const uint64_t key=model.visualSignature();
   bool newEpoch=model_.match!=model.match;
   if(newEpoch){page_=0;focused_=-1;}
@@ -203,7 +205,10 @@ public:
   int newHeight=wantedHeight();
   if(newWidth!=width_||newHeight!=height_){width_=newWidth;height_=newHeight;InvalidateRect(window_,nullptr,FALSE);}
   // Preserve game focus and never turn the panel into a gameplay click.
-  overlaystack::place(window_,overlaystack::Layer::UnitPanel,
+  RECT last{};const bool visible=IsWindowVisible(window_)!=FALSE;
+  const bool same=visible&&GetWindowRect(window_,&last)&&last.left==x&&
+    last.top==bottom-height_&&last.right-last.left==width_&&last.bottom-last.top==height_;
+  if(!same)overlaystack::place(window_,overlaystack::Layer::UnitPanel,
     x,bottom-height_,width_,height_,SWP_NOACTIVATE|SWP_SHOWWINDOW);
  }
 };

@@ -65,6 +65,7 @@ inline constexpr VideoEntry videoEntries[]={
  {TextHints,VideoGroup::Monitor,L"战术文字提示",L"",VideoSection::Information,true},
  {IdleAircraft,VideoGroup::Monitor,L"空闲飞机指示器",L"",VideoSection::Information,true},
  {SuperweaponPanel,VideoGroup::Monitor,L"独立超级武器面板",L"",VideoSection::Information,true},
+ {UnitPanel,VideoGroup::Monitor,L"统一单位面板（左下角 · Cameo）",L"",VideoSection::Information,true},
  {PassengerBubbles,VideoGroup::Monitor,L"载具载员气泡",L"",VideoSection::Information,true},
  {PassengerOwn,VideoGroup::Monitor,L"载员气泡包含己方",L"",VideoSection::Information},
  {PassengerAlways,VideoGroup::Monitor,L"载员气泡常驻显示",L"",VideoSection::Information},

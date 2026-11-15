@@ -212,6 +212,7 @@ extraControls[FrozenEnabled]=hiddenToggle(723,L"冷冻剩余时间",extra.frozen
 extraControls[EnemyMarkersEnabled]=hiddenToggle(785,L"敌方单位提示",extra.enemyMarkers);
  hiddenToggle(9763,L"显示隐形、幻影和敌方间谍",extra.enemySpecialOnly);
  {auto h=placedControl({-3,{0,0,1,1}},L"COMBOBOX",L"",9764,CBS_DROPDOWNLIST);choices(h,{L"文字标记",L"真实模型叠加"},extra.enemySpecialMode);ShowWindow(h,SW_HIDE);}
+hiddenToggle(9770,L"统一单位面板（左下角）",unitPanelEnabled);
 hiddenToggle(897,L"载具载员气泡",extra.passengerBubbles);hiddenToggle(898,L"危险载员常驻提示",extra.dangerPassengers);hiddenToggle(9533,L"载员气泡包含己方",extra.passengerOwn);hiddenToggle(9534,L"载员气泡常驻显示",extra.passengerAlways);
 hiddenToggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);hiddenToggle(893,L"火力 / 防御 / 速度强化",extra.crateBuffMarkers);
 #else
@@ -220,6 +221,8 @@ extraControls[FrozenEnabled]=toggle(723,L"冷冻剩余时间",extra.frozen);next
 extraControls[EnemyMarkersEnabled]=toggle(785,L"显示敌方单位提示",extra.enemyMarkers);next();
  toggle(9763,L"显示隐形、幻影和敌方间谍",extra.enemySpecialOnly);next();
  label(L"特殊单位显示方式",20,200);choices(combo(9764,240,385,130),{L"文字标记",L"真实模型叠加"},extra.enemySpecialMode);next();
+toggle(9770,L"统一单位面板（左下角）",unitPanelEnabled);next();
+note(L"显示单位类型、Cameo、载具载员；独立开关，默认关闭，关闭时不采样面板。");
 toggle(897,L"载具载员气泡",extra.passengerBubbles);next();toggle(898,L"危险载员常驻提示",extra.dangerPassengers);next();toggle(9533,L"载员气泡包含己方",extra.passengerOwn);next();toggle(9534,L"载员气泡常驻显示",extra.passengerAlways);next();
 toggle(892,L"蜘蛛寄生标志",extra.parasiteMarker);next();
 toggle(893,L"箱子强化标志",extra.crateBuffMarkers);next();

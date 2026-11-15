@@ -20,7 +20,7 @@
 namespace external {
 template<class Read> class TacticalSampler {
  Read read_;assist::Snapshot state_{};layout::Result probe_{};
- unitpanel::Model panel_{},publishedPanel_{};uint32_t house_=0,serial_=0;int lastFrame_=-1;
+ unitpanel::Model panel_{},publishedPanel_{};bool unitPanelEnabled_=false;uint32_t house_=0,serial_=0;int lastFrame_=-1;
  uint32_t sharedMatch_=0;
  catalogue::Dependencies catalogueDependencies_;
  uint64_t catalogueHash_=0;uint32_t catalogueAt_=0;bool catalogueReady_=false;
@@ -224,6 +224,7 @@ public:
  void stopped(const std::vector<uint32_t>&ids){stopped_.clear();stopped_.insert(ids.begin(),ids.end());}
  const assist::Snapshot&state()const{return state_;}
  const unitpanel::Model&selectionPanel()const{return panel_;}
+ void unitPanelEnabled(bool on){if(on!=unitPanelEnabled_){unitPanelEnabled_=on;sceneFrame_=-1;panel_=publishedPanel_={};}}
  void worldEpoch(uint32_t epoch){if(epoch!=sharedMatch_){catalogueDependencies_.clear();sceneFrame_=-1;productionAt_=0;clearAircraftCandidate();publishedAircraft_=failedAircraftRefresh_={};aircraftChanged_=false;}sharedMatch_=epoch;}
  void commitSample(){publishedPanel_=panel_;enemies::copyFrame(publishedEnemies_,enemies_);enemies::copyFrame(publishedSpecialEnemies_,specialEnemies_);publishedStatuses_=statuses_;
   if(aircraftChanged_){publishedAircraft_=aircraftSample_;std::copy_n(idleAircraftIDs,idleAircraftCount,publishedAircraftIDs_.begin());aircraftChanged_=false;}}
@@ -298,7 +299,7 @@ public:
   sceneFrame_=frame;sceneFlags_=flags;selectionHash_=selectedHash;sceneX_=proj.cameraX;sceneY_=proj.cameraY;sceneWidth_=proj.width;sceneHeight_=proj.height;
   sceneSourceSerial_=sourceSerial;sceneSpecialOnly_=specialOnly_;sceneEnemies_=showEnemies;sceneSpecialEnabled_=showSpecial;sceneEnemyWidth_=enemyProj.width;sceneEnemyHeight_=enemyProj.height;sceneEnemyOwners_=enemyOwnerSignature_;enemies_.count=enemies_.omitted=specialEnemies_.count=specialEnemies_.omitted=0;
   state_.labels=state_.selected=state_.transports=state_.used=state_.capacity=state_.threatCount=state_.crateCount=0;
-  panel_.reset(state_.match,frame);
+  if(unitPanelEnabled_)panel_.reset(state_.match,frame);else panel_={};
   GameView<Read> view(read_);auto objects=vec(0xA8EC78);uint32_t allies=get<uint32_t>(house+0x5788);
   // A valid process handle and match flag do not prove that the YR 1.001
   // object ABI applies. Report a mismatch rather than silently showing zero
@@ -314,7 +315,7 @@ public:
   for(auto p:objects){int k=p?kind(p):-1;if(k<0||get<int>(p+0x6C)<=0||!get<uint8_t>(p+0x74)||get<uint8_t>(p+0x81)||!get<uint8_t>(p+0x90))continue;
    uint32_t owner=get<uint32_t>(p+0x21C),t=type(p,k);bool local=owner==house,selected=local&&uiValue<uint8_t>(p+0x83);if(selected){
     ++state_.selected;
-    if(t>=0x10000){
+    if(unitPanelEnabled_&&t>=0x10000){
      auto*g=panel_.selectedType(t,k);
      if(g)name(t,g->name.data());
      if(panel_.selected==1){
@@ -344,7 +345,7 @@ public:
   // Read one bounded passenger chain only when exactly one OWNED transport is
   // selected. The chain is sampled under the same WorldFrameScope as the
   // selection; the paint thread never traverses game memory.
-  if(panel_.selected==1&&panel_.single.kind==2&&panel_.single.capacity>0){
+  if(unitPanelEnabled_&&panel_.selected==1&&panel_.single.kind==2&&panel_.single.capacity>0){
    const uint32_t carrier=panelCarrier;
    if(carrier){
     const int expected=get<int>(carrier+0x114,-1);
