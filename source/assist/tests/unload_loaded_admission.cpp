@@ -11,7 +11,7 @@
 #include "../source/unload_admission.h"
 using namespace assist;
 using DWORD=uint32_t;
-struct Object {uint32_t id=0,owner=1,carrier=0,type=42;int k=1,hp=100,passengers=0,mission=5,queued=-1;bool active=true,limbo=false,onMap=true,allowed=true,deployed=false;};
+struct Object {uint32_t id=0,owner=1,carrier=0,type=42;int k=1,hp=100,passengers=0,mission=5,queued=-1;bool active=true,limbo=false,onMap=true,allowed=true,deployed=false;uint32_t next=0,head=0;};
 static std::unordered_map<uint32_t,Object> objects;
 constexpr uint32_t transport=0x10000,passenger=0x20000;
 static std::vector<uint32_t> infantry;
@@ -25,7 +25,7 @@ static DWORD sampleClock(Shared*){return 1000;}
 template<class T>static T get(uint32_t address){
  if(address==0xA8ED84)return T(10);
  auto at=objects.find(address&~0xfffu);if(at==objects.end())return T{};const auto&o=at->second;
- switch(address&0xfff){case 0:return T(o.k==1?0x7EB058:o.k==2?0x7F5C70:0x7E3EBC);case 0x10:return T(o.id);case 0x6C:return T(o.hp);case 0x74:return T(o.active);case 0x81:return T(o.limbo);case 0x90:return T(o.onMap);case 0x21C:return T(o.owner);case 0x11C:return T(o.carrier);case 0x114:return T(o.passengers);case 0x118:return T(o.type==44&&o.k==2?0x20000:0);case 0x30:return T(o.carrier?o.type==42?0:0:0);case 0x1C8:return T(o.deployed);case 0xAC:return T(o.mission);case 0xB4:return T(o.queued);default:throw std::runtime_error("unexpected read");}
+ switch(address&0xfff){case 0:return T(o.k==1?0x7EB058:o.k==2?0x7F5C70:0x7E3EBC);case 0x10:return T(o.id);case 0x6C:return T(o.hp);case 0x74:return T(o.active);case 0x81:return T(o.limbo);case 0x90:return T(o.onMap);case 0x21C:return T(o.owner);case 0x11C:return T(o.carrier);case 0x114:return T(o.passengers);case 0x118:return T(o.head);case 0x30:return T(o.next);case 0x1C8:return T(o.deployed);case 0xAC:return T(o.mission);case 0xB4:return T(o.queued);default:throw std::runtime_error("unexpected read");}
 }
 struct World {bool contains(uint32_t p)const{return objects.count(p)!=0;}} worldObjects;
 struct Versions {uint32_t token=0,carrierMove=0;uint32_t get(uint32_t id)const{return token+(id==10?carrierMove:0);}} manualVersions;
@@ -61,7 +61,7 @@ static bool unloadCarrierEligible(uint32_t p,uint32_t house);
 static bool unloadCarrierEligible(uint32_t p,uint32_t house){return worldObjects.contains(p)&&own(p,house)&&kind(p)==2;}
 #endif
 static void check(bool v,const char*why){if(!v)throw std::runtime_error(why);}
-static void reset(){objects.clear();infantry={passenger};selectedCarriers={transport};objects[transport]={10,1,0,44,2};objects[transport].passengers=1;objects[passenger]={11,1,transport};objects[passenger].limbo=true;objects[passenger].onMap=false;queuedUnload.clear();queuedUnload.begin(1,1,1000);queuedUnload.add({transport,10,0});recentPassengerCount=unloadCount=0;deployments=cancellations=0;manualVersions.token=manualVersions.carrierMove=0;}
+static void reset(){objects.clear();infantry={passenger};selectedCarriers={transport};objects[transport]={10,1,0,44,2};objects[transport].passengers=1;objects[transport].head=passenger;objects[passenger]={11,1,transport};objects[passenger].limbo=true;objects[passenger].onMap=false;queuedUnload.clear();queuedUnload.begin(1,1,1000);queuedUnload.add({transport,10,0});recentPassengerCount=unloadCount=0;deployments=cancellations=0;manualVersions.token=manualVersions.carrierMove=0;}
 int main(){try{
  reset();check(!own(passenger,1),"production own must reject loaded off-map passenger");buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1,"loaded carrier admission");check(unloadCount==1,"loaded passenger lost before Deploy");check(deployments==1&&unloadPassengers[0].id==11&&unloadPassengers[0].carrier==transport,"job must exist before unload");
  reset();objects[transport].passengers=0;objects[passenger].carrier=0;objects[passenger].limbo=false;objects[passenger].onMap=true;recentPassengers[0]={passenger,11,transport,10,44,0,1000,10};recentPassengerCount=1;buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1&&unloadCount==1&&deployments==0,"native-first history must still enrol");
@@ -101,7 +101,7 @@ int main(){try{
  reset();objects[transport].deployed=true;objects[transport].mission=16;
  buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1&&unloadCount==1&&deployments==0,
   "native-first Deploy must not discard a Ctrl+D passenger or send duplicate Deploy");
- reset();infantry.clear();buildUnloadAdmissionRoster(1);
+ reset();objects[passenger].k=2;infantry.clear();buildUnloadAdmissionRoster(1);
  check(smartUnloadNow(1,transport)==2&&unloadCount==0&&deployments==1&&cancellations==0,
   "vehicle-only or temporarily absent infantry must issue one Deploy and retain the pending command");
  check(smartUnloadNow(1,transport,false)<0&&deployments==1,
@@ -128,6 +128,7 @@ int main(){try{
  objects[transport].passengers=3;
  objects[passenger].type=42;
  objects[second]={12,1,transport,43,1};objects[third]={13,1,transport,45,1};
+ objects[passenger].next=second;objects[second].next=third;
  objects[second].active=false;objects[third].active=false;
  objects[second].limbo=objects[third].limbo=true;
  objects[second].onMap=objects[third].onMap=false;
@@ -141,7 +142,7 @@ int main(){try{
  // When the first one has already landed, the two remaining passengers
  // must be carried forward with the history snapshot and native chain.
  reset();
- objects[transport].passengers=2;objects[second]={12,1,transport,43,1};objects[third]={13,1,transport,45,1};
+ objects[transport].passengers=2;objects[transport].head=second;objects[second]={12,1,transport,43,1};objects[third]={13,1,transport,45,1};objects[second].next=third;
  objects[second].active=objects[third].active=false;
  infantry.push_back(second);infantry.push_back(third);
  objects[passenger].carrier=0;objects[passenger].onMap=true;
