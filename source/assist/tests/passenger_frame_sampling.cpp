@@ -71,7 +71,14 @@ static void publish(uint32_t omittedPage=0,bool failedPage=false){
  worldframe::Snapshot filtered;const worldframe::Snapshot*chosen=&frame;
  if(omittedPage&&!failedPage){std::vector<worldframe::Page> pages;for(size_t i=0;i<frame.pages.size();++i)if(frame.pages[i].address!=omittedPage)pages.push_back(frame.pages[i]);CHECK(filtered.import(key,frame.counters,pages.data(),pages.size()));chosen=&filtered;}
  frameServer.observe(key);CHECK(frameServer.publish(*chosen));fixture::currentPid=fixture::HostPid;
+ // The Host visual extension can legitimately repair a producer's missing
+ // page by reading the same frame via its separate visual capture lane.
+ // Deny the page in both captures to test a *failed* acquisition and ensure
+ // that repeated failed paints never renew the 120-ms display lease.
+ if(omittedPage)memory.denied.push_back({omittedPage,4096});
  CHECK(externalReader.beginWorldFrame(match));token=externalReader.worldFrameToken();externalReader.endWorldFrame();
+ memory.denied.clear();
+ if(omittedPage){uint32_t probe=0;CHECK(!token->read(Passenger,&probe,sizeof probe));}
  snap.match=match;snap.sampledTick=key.tick;externalData=&snap;externalReader.begin();memory.calls.clear();fixture::rpmCalls=0;
 }
 static void observed(){
