@@ -424,7 +424,7 @@ public:
    // the unloading slot, rather than issuing a second Enter on the same turn.
    if(first&&!busy){
     const bool near=dockDistance(*a,*refinery)<=ore::NearDockCells;
-    if((a->mission==7||a->queued==7)||near){
+    if((a->mission==7||a->queued==7)||(near&&job.dockAttempts>0)){
      job.stage=ore::Docking;job.dockingObserved|=(a->flags&Unloading)!=0;
      ++docking;continue;
     }

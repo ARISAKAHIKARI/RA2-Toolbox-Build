@@ -59,6 +59,17 @@ int main(){
  w.actors[0].mission=2;w.actors[0].queued=12;
  v=p.step(w,AutoOreReturn,200,300,90);
  assert(v.size()==1&&v[0].mission==7);
+ // A full miner ALREADY at a free dock must receive its FIRST Enter, rather
+ // than being suppressed by the anti-duplicate safeguard.
+ p.reset();setup(w,1);w.actors[1].radioIDs[0]=0;
+ w.actors[0].x=w.actors[1].x;w.actors[0].y=w.actors[1].y;
+ v=p.step(w,AutoOreReturn,200,300,90);
+ assert(v.size()==1&&v[0].mission==7);
+ // Keep the game's own already-entering mission without duplicate events.
+ p.reset();setup(w,1);w.actors[1].radioIDs[0]=0;
+ w.actors[0].mission=7;w.actors[0].destination=500;
+ v=p.step(w,AutoOreReturn,200,300,90);
+ assert(v.empty());
  // A waiting miner that has already begun native unloading must never receive
  // a stale waiting-cell Move, including when automation is switched off.
  p.reset();setup(w,1);v=p.step(w,AutoOreReturn,200,300,90);assert(v.size()==1&&v[0].mission==2);p.accepted(v[0],w.frame);

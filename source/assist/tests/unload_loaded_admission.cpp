@@ -42,6 +42,7 @@ struct UnloadPassenger {uint32_t job,p,id,carrier,carrierID,carrierType;int fram
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount;static uint32_t unloadJobSerial;
 namespace taskarbiter {enum class Owner {Unload};}
 static bool nativeMission(uint32_t,uint32_t,int mission,int,int,int,int,int,taskarbiter::Owner){if(mission!=16)throw std::runtime_error("unexpected mission");++deployments;return true;}
+static void finishUnloadFollowup(const UnloadPassenger&,int){}
 static void cancelNative(uint32_t){++cancellations;unloadCount=0;}
 static bool unloadCarrierEligible(uint32_t p,uint32_t house);
 #include UNLOAD_ADMISSION_HEADER
