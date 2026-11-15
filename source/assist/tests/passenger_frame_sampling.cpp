@@ -37,6 +37,11 @@ constexpr uint32_t PassengerType=0x310100,Enemy=0x130000,PassengerName=0x700100;
 static worldframe::Token token;
 static void setup(){
  fixture::currentPid=fixture::HostPid;fixture::gameMemory=&memory;
+ // Host VisualCache now validates live world identity against the sealed
+ // control source. Seed the same standard scenario/map/session/active fields
+ // as the transport fixture rather than asserting that blank game memory is
+ // a valid visual observation.
+ fixture::setup(memory);
  CHECK(externalReader.open(fixture::GamePid));snap.width=800;snap.height=600;snap.frame=100;snap.status=1;snap.match=match;
  memory.put(0xA83D4C,fixture::House);memory.put(0xA8B230,fixture::Scenario);memory.put(0xB0CD48,0.0866025403784);
  memory.vector(0xA8EC78,fixture::TechnoList,{Carrier});memory.vector(0xA8EB40,fixture::BuildingList,{});
@@ -57,12 +62,15 @@ static void publish(uint32_t omittedPage=0,bool failedPage=false){
  CHECK(!externalReader.worldFrameActive());configureDemand();externalReader.beginWorldFrame(match);externalReader.endWorldFrame();
  fixture::currentPid=fixture::GamePid;CHECK(frameServer.wanted(fixture::HostPid,fixture::clock));
  auto key=fixture::key(++snap.frame);key.match=match;key.serial=++serial;key.tick=fixture::clock;key.demand=externalReader.worldDemand();
+ // The running game advances its live frame before collecting the visual
+ // extension; stale fixture frame 50 would correctly fail visualStamp().
+ memory.put(0xA8ED84,snap.frame);
  key.connectionLow=uint32_t(frameServer.connection());key.connectionHigh=uint32_t(frameServer.connection()>>32);key.generationLow=77;
  worldframe::Snapshot frame;frame.reset(key);if(failedPage)memory.denied.push_back({omittedPage,4096});
  worldframe::CaptureGraph<fixture::Read> graph(frame,fixture::Read{&memory});CHECK(graph.capture(key.demand,{}));CHECK(frame.seal());memory.denied.clear();
  worldframe::Snapshot filtered;const worldframe::Snapshot*chosen=&frame;
  if(omittedPage&&!failedPage){std::vector<worldframe::Page> pages;for(size_t i=0;i<frame.pages.size();++i)if(frame.pages[i].address!=omittedPage)pages.push_back(frame.pages[i]);CHECK(filtered.import(key,frame.counters,pages.data(),pages.size()));chosen=&filtered;}
- frameServer.observe(key);frameServer.publish(*chosen);fixture::currentPid=fixture::HostPid;
+ frameServer.observe(key);CHECK(frameServer.publish(*chosen));fixture::currentPid=fixture::HostPid;
  CHECK(externalReader.beginWorldFrame(match));token=externalReader.worldFrameToken();externalReader.endWorldFrame();
  snap.match=match;snap.sampledTick=key.tick;externalData=&snap;externalReader.begin();memory.calls.clear();fixture::rpmCalls=0;
 }
