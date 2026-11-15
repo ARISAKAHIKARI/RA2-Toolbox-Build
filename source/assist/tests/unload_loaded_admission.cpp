@@ -145,7 +145,7 @@ int main(){try{
  objects[transport].passengers=2;objects[transport].head=second;objects[second]={12,1,transport,43,1};objects[third]={13,1,transport,45,1};objects[second].next=third;
  objects[second].active=objects[third].active=false;
  infantry.push_back(second);infantry.push_back(third);
- objects[passenger].carrier=0;objects[passenger].onMap=true;
+ objects[passenger].carrier=0;objects[passenger].limbo=false;objects[passenger].onMap=true;
  recentPassengers[0]={passenger,11,transport,10,44,0,1000,10};recentPassengerCount=1;
  buildUnloadAdmissionRoster(1);
  check(smartUnloadNow(1,transport)==1&&unloadCount==3,
