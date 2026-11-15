@@ -1421,7 +1421,7 @@ static void sampleExternal(DWORD now){
   if(externalWorldSource&&((commandMatch()&&externalWorldSource->key.match!=commandMatch())||externalWorldSource->key.pid!=externalReader.pid()||
     ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)!=externalReader.generation()))discardExternalWorld();
   const bool passengerOverlay=enabled&&(extra.passengerBubbles||extra.dangerPassengers);
-  externalReader.setWorldDemand(worldframe::Resources|(((flags()&(Capacity|AllTransports))||passengerOverlay)?worldframe::Passengers:0)|(passengerOverlay?worldframe::Combat:0));
+  externalReader.setWorldDemand(worldframe::Resources|(((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)?worldframe::Passengers:0)|(passengerOverlay?worldframe::Combat:0));
   external::WorldFrameScope worldScope(externalReader,commandMatch());
   if(!worldScope){
    if(externalWorldSource){external::WorldFrameScope retained(externalReader,commandMatch(),externalWorldSource);if(!retained)discardExternalWorld();}

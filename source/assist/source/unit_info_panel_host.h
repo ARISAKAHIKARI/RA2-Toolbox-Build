@@ -161,7 +161,11 @@ class Panel {
  }
  void click(int x,int y,bool right=false){
   if(x<ButtonW+3){
-   if(right){details_=!details_;}else{folded_=!folded_;page_=0;}
+   // Bottom button folds; upper 'i' toggles details. Right-click fold
+   // mirrors the reference panel's details gesture.
+   const int foldY=height_-ButtonW-1;
+   if(right||(!folded_&&y<foldY-2))details_=!details_;
+   else{folded_=!folded_;page_=0;}
    InvalidateRect(window_,nullptr,FALSE);return;
   }
   if(folded_)return;
