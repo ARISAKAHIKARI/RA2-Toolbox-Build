@@ -20,7 +20,7 @@ static fixture::Memory memory;
 static Snapshot snap{};
 static Snapshot*externalData=&snap;
 static uint32_t pid=fixture::GamePid,match=7,serial=0,optionFlags=0;
-static bool enabled=true;
+static bool enabled=true,unitPanelEnabled=false; // follows host display-demand toggle
 static struct {bool passengerBubbles=true,dangerPassengers=false,passengerOwn=false,passengerAlways=false;}extra;
 static uint32_t flags(){return optionFlags;}
 namespace nativeviewhost {
