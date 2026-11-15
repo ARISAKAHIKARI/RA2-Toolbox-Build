@@ -1865,6 +1865,9 @@ static void paint(){
   const int screenX=origin.x+int(std::lround((mapClip.x+12)*uiX));
   const int screenBottom=origin.y+int(std::lround((mapClip.y+mapClip.h-12)*uiY));
   const int available=std::max(0,int(std::lround(mapClip.w*uiX))-24);
+  unitpanelhost::panel.refreshCameos(selectionModel,
+   [](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);},
+   pid,selectionModel.match,GetTickCount());
   unitpanelhost::panel.update(selectionModel,screenX,screenBottom,available);
  }else if(unitPanelEnabled)unitpanelhost::panel.miss();
  else unitpanelhost::panel.hide();

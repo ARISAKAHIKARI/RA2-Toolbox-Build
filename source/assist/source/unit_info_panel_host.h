@@ -6,6 +6,7 @@
 #include <cstdint>
 #include "../../external_reader/source/unit_info_panel_model.h"
 #include "../../shared/source/overlay_stack.h"
+#include "unit_info_panel_cameos.h"
 
 // RA2 Toolbox's original unit panel implementation. No MO source/assets,
 // engine hooks, game events or game-memory reads live in this UI object.
@@ -15,7 +16,7 @@ namespace unitpanelhost {
 class Panel {
  HWND window_=nullptr;
  external::unitpanel::Model model_{};
- uint64_t signature_=0;DWORD lastGoodAt_=0;
+ uint64_t signature_=0;DWORD lastGoodAt_=0;unitpanelcameo::Cache cameos_{};uint32_t cameoRevision_=0;
  bool folded_=false,details_=true;
  int page_=0,focused_=-1,width_=390,height_=40;
  static constexpr int Header=38,Footer=30;
@@ -23,16 +24,21 @@ class Panel {
   std::wstring value;for(uint16_t c:src){if(!c)break;if(c>=32)value.push_back(wchar_t(c));}
   return value.empty()?L"未知单位":value;
  }
+ static constexpr int CellW=60,CellH=48,ButtonW=26,Pad=7,Gap=1;
  int entries()const{return model_.selected==1?model_.passengerCount:model_.groupCount;}
- int perPage()const{return model_.selected==1?6:8;}
+ int perPage()const{return model_.selected==1?7:9;}
  int pages()const{return external::unitpanel::pageCount(entries(),perPage());}
- int rows()const{return (std::min(perPage(),std::max(0,entries()-page_*perPage()))+1)/2;}
+ int slots()const{return model_.selected==1?2+std::min(7,std::max(0,entries()-page_*perPage())):
+   std::min(9,std::max(0,entries()-page_*perPage()));}
+ int cols()const{int n=slots();return n<=1?1:n<=4?2:3;}
+ int rows()const{return std::max(1,(slots()+cols()-1)/cols());}
+ int wantedWidth()const{
+  if(folded_)return ButtonW+3;
+  return ButtonW+Pad*2+4+cols()*CellW+(cols()-1)*Gap;
+ }
  int wantedHeight()const{
-  if(folded_)return Header;
-  if(model_.selected==1){
-   return Header+78+(model_.single.passengers>0?24+std::max(1,rows())*45:24)+Footer;
-  }
-  return Header+std::max(1,rows())*49+Footer+8;
+  if(folded_)return ButtonW+3;
+  return Pad*2+rows()*CellH+(rows()-1)*Gap+(details_?42:0)+(pages()>1?22:0);
  }
  static void label(Gdiplus::Graphics&g,const std::wstring&s,float x,float y,float size,
                    Gdiplus::Color color,bool strong=false){
@@ -51,92 +57,130 @@ class Panel {
  static void box(Gdiplus::Graphics&g,float x,float y,float w,float h,Gdiplus::Color c){
   Gdiplus::SolidBrush b(c);g.FillRectangle(&b,x,y,w,h);
  }
+ static void outline(Gdiplus::Graphics&g,int x,int y,int w,int h,Gdiplus::Color color){
+  Gdiplus::Pen pen(color,1);g.DrawRectangle(&pen,x,y,w-1,h-1);
+ }
+ void cameo(Gdiplus::Graphics&g,uint32_t type,int kind,int x,int y,
+            const std::array<uint16_t,40>&nm){
+  if(const auto*icon=cameos_.get(type)){
+   auto*buf=reinterpret_cast<BYTE*>(const_cast<uint32_t*>(icon->argb.data()));
+   Gdiplus::Bitmap bmp(um::IW,um::IH,um::IW*4,PixelFormat32bppARGB,buf);
+   g.DrawImage(&bmp,Gdiplus::Rect(x,y,CellW,CellH),0,0,um::IW,um::IH,Gdiplus::UnitPixel);
+  }else{
+   box(g,float(x),float(y),CellW,CellH,Gdiplus::Color(255,32,42,52));
+   box(g,float(x+3),float(y+3),CellW-6,CellH-6,tint(kind));
+   label(g,name(nm).substr(0,1),float(x+20),float(y+10),20,
+         Gdiplus::Color(255,21,28,35),true);
+  }
+ }
  void paint(Gdiplus::Graphics&g){
   using namespace Gdiplus;
-  g.SetSmoothingMode(SmoothingModeAntiAlias);
-  g.Clear(Color(255,16,24,37));
-  box(g,0,0,float(width_),4,Color(255,87,181,226));
-  box(g,0,Header-1,float(width_),1,Color(255,58,73,92));
-  const std::wstring heading=model_.selected==1?L"单位信息 / 载员":L"选中单位 · "+std::to_wstring(model_.selected);
-  label(g,heading,12,10,14,Color(255,235,246,255),true);
-  box(g,float(width_-38),4,34,30,Color(255,40,58,75));
-  label(g,folded_?L"+":L"−",float(width_-27),9,16,Color(255,218,235,249),true);
+  g.SetSmoothingMode(SmoothingModeNone);
+  g.SetInterpolationMode(InterpolationModeNearestNeighbor);
+  g.SetPixelOffsetMode(PixelOffsetModeHalf);
+  g.Clear(Color(255,10,12,15));
+  // Original MO-style compact 60x48 cameo grid: close spacing, bevel border,
+  // and a left-side fold/details button column. Artwork is never copied.
+  const int fx=2,fy=height_-ButtonW-1;
+  box(g,float(fx),float(fy),ButtonW-2,ButtonW-2,Color(255,47,55,66));
+  outline(g,fx,fy,ButtonW-2,ButtonW-2,Color(255,159,165,175));
+  label(g,folded_?L"▸":L"◂",float(fx+5),float(fy+2),17,
+        Color(255,230,222,147),true);
   if(folded_)return;
-  int y=Header+5;
-  if(model_.selected==1){
-   const auto&u=model_.single;
-   box(g,9,float(y),float(width_-18),72,Color(255,27,38,54));
-   box(g,16,float(y+11),47,47,tint(u.kind));
-   label(g,u.name.empty()?L"?":name(u.name).substr(0,1),29,float(y+18),22,Color(255,21,30,38),true);
-   label(g,name(u.name),72,float(y+8),14,Color(255,246,250,254),true);
-   label(g,L"生命 "+std::to_wstring(std::max(0,u.health))+L" / "+std::to_wstring(std::max(0,u.strength)),
-     72,float(y+30),12,Color(255,196,214,230));
-   float hpRatio=u.strength>0?std::clamp(float(u.health)/u.strength,0.f,1.f):0.f;
-   box(g,72,float(y+51),float(width_-96),5,Color(255,64,68,77));
-   box(g,72,float(y+51),float(width_-96)*hpRatio,5,
-       hpRatio<=.25f?Color(255,238,91,91):hpRatio<=.5f?Color(255,241,185,81):Color(255,93,209,140));
-   const std::wstring extras=L"等级 "+std::to_wstring(u.level)+
-     (u.ammoMax>0?L"    弹药 "+std::to_wstring(std::max(0,u.ammo))+L"/"+std::to_wstring(u.ammoMax):L"");
-   label(g,extras,72,float(y+58),10,Color(255,156,188,215));
-   y+=79;
-   if(u.passengers>0){
-    label(g,L"车内载员 "+std::to_wstring(u.passengers)+(u.capacity>0?L" / "+std::to_wstring(u.capacity):L""),
-          12,float(y),12,Color(255,190,210,226),true);
-    y+=24;
-    if(!model_.passengersComplete){
-     label(g,L"载员链尚未完成验证",16,float(y+8),12,Color(255,255,194,118));
-    }else{
-     const int start=page_*perPage();
-     for(int i=start;i<std::min(start+perPage(),model_.passengerCount);++i){
-      const auto&p=model_.passenger[i];int col=(i-start)%2,row=(i-start)/2;
-      float cx=10+col*((width_-20)/2.f),cy=y+row*45.f;
-      box(g,cx,cy,float((width_-20)/2-4),41,Color(255,36,49,65));
-      box(g,cx+5,cy+5,31,31,tint(p.kind));
-      label(g,name(p.name).substr(0,1),cx+13,cy+8,15,Color(255,20,30,41),true);
-      label(g,name(p.name).substr(0,9),cx+41,cy+4,11,Color(255,239,246,252),true);
-      label(g,L"HP "+std::to_wstring(std::max(0,p.health)),cx+41,cy+23,10,Color(255,157,191,217));
-     }
-    }
-    y+=std::max(1,rows())*45;
-   }else{
-    label(g,L"无载员 · 当前仅查看，不修改游戏命令",13,float(y+2),11,Color(255,148,178,200));
-    y+=24;
-   }
-  }else{
-   int start=page_*perPage();
-   for(int i=start;i<std::min(start+perPage(),model_.groupCount);++i){
-    const auto&u=model_.groups[i];int col=(i-start)%2,row=(i-start)/2;
-    float cx=10+col*((width_-20)/2.f),cy=y+row*49.f;
-    box(g,cx,cy,float((width_-20)/2-5),44,
-        focused_==i?Color(255,62,79,98):Color(255,31,45,62));
-    box(g,cx+6,cy+6,33,32,tint(u.kind));
-    label(g,name(u.name).substr(0,1),cx+15,cy+10,15,Color(255,23,33,42),true);
-    label(g,name(u.name).substr(0,9),cx+45,cy+5,11,Color(255,236,245,252),true);
-    label(g,L"× "+std::to_wstring(u.count),cx+45,cy+24,11,Color(255,146,214,244),true);
-   }
-   y+=std::max(1,rows())*49+7;
+  if(height_>=ButtonW*2+6){
+   int dy=fy-ButtonW-2;
+   box(g,float(fx),float(dy),ButtonW-2,ButtonW-2,
+       details_?Color(255,80,89,100):Color(255,40,47,57));
+   outline(g,fx,dy,ButtonW-2,ButtonW-2,Color(255,133,148,164));
+   label(g,L"i",float(fx+9),float(dy+3),15,Color(255,244,240,214),true);
   }
-  box(g,0,float(height_-Footer),float(width_),1,Color(255,58,73,92));
-  label(g,L"仅查看 · 不改变游戏选中",12,float(height_-Footer+8),10,Color(255,143,174,197));
+  int bx=ButtonW+4,by=Pad-2;
+  int gw=Pad*2+cols()*CellW+(cols()-1)*Gap;
+  int gh=Pad*2+rows()*CellH+(rows()-1)*Gap;
+  box(g,float(bx),float(by),float(gw),float(gh),Color(255,11,14,18));
+  outline(g,bx,by,gw,gh,Color(255,127,135,146));
+  const int gx=bx+Pad,gy=by+Pad;
+  for(int slot=0;slot<slots();++slot){
+   int col=slot%cols(),row=slot/cols();
+   const int x=gx+col*(CellW+Gap),y=gy+row*(CellH+Gap);
+   box(g,float(x),float(y),CellW,CellH,Color(255,37,42,50));
+   if(model_.selected==1){
+    if(slot==1){ // MO's second info tile, no pseudo-cameo.
+     const auto&u=model_.single;
+     const int hp=std::max(0,u.health),maxHP=std::max(1,u.strength);
+     label(g,L"HP "+std::to_wstring(hp),float(x+4),float(y+2),10,Color(255,238,246,247),true);
+     box(g,float(x+4),float(y+20),52,5,Color(255,73,74,80));
+     box(g,float(x+4),float(y+20),52*std::clamp(float(hp)/maxHP,0.f,1.f),5,
+         hp<maxHP/3?Color(255,230,81,72):Color(255,95,203,105));
+     label(g,u.level>=2?L"精英":u.level?L"老兵":L"普通",float(x+3),float(y+29),10,
+           Color(255,231,211,126));
+    }else{
+     const auto&u=slot==0?model_.single:model_.passenger[page_*7+slot-2];
+     cameo(g,u.type,u.kind,x,y,u.name);
+    }
+   }else{
+    const auto&u=model_.groups[page_*9+slot];
+    cameo(g,u.type,u.kind,x,y,u.name);
+    if(u.count>1){
+     const std::wstring n=L"x"+std::to_wstring(u.count);
+     const int badgeW=std::min(41,12+int(n.size())*7);
+     box(g,float(x+CellW-badgeW),float(y+CellH-17),float(badgeW),16,Color(235,12,12,15));
+     label(g,n,float(x+CellW-badgeW+3),float(y+CellH-17),12,Color(255,255,241,187),true);
+    }
+   }
+   outline(g,x,y,CellW,CellH,slot==focused_?Color(255,242,220,115):Color(255,89,97,107));
+  }
+  int footer=by+gh+2;
+  if(details_){
+   box(g,float(bx),float(footer),float(gw),39,Color(255,22,27,36));
+   outline(g,bx,footer,gw,39,Color(255,89,100,113));
+   if(model_.selected==1){
+    const auto&u=model_.single;
+    label(g,name(u.name).substr(0,16),float(bx+5),float(footer+1),11,Color(255,225,233,245),true);
+    std::wstring more=L"HP "+std::to_wstring(std::max(0,u.health))+L"/"+std::to_wstring(std::max(0,u.strength));
+    if(u.ammoMax>0)more+=L" 弹 "+std::to_wstring(std::max(0,u.ammo))+L"/"+std::to_wstring(u.ammoMax);
+    else if(u.passengers>0)more+=L" 载员 "+std::to_wstring(u.passengers);
+    label(g,more.substr(0,27),float(bx+5),float(footer+20),10,Color(255,187,206,224));
+   }else if(focused_>=0&&focused_<slots()){
+    const auto&u=model_.groups[page_*9+focused_];
+    label(g,name(u.name).substr(0,19),float(bx+5),float(footer+2),11,Color(255,238,243,248),true);
+    label(g,L"选中 "+std::to_wstring(u.count)+L" · 只读预览",float(bx+5),float(footer+20),10,Color(255,193,215,227));
+   }else{
+    label(g,L"选中 "+std::to_wstring(model_.selected)+L" 个 · "+
+       std::to_wstring(model_.groupCount)+L" 类",float(bx+5),float(footer+8),11,Color(255,216,231,236));
+   }
+   footer+=42;
+  }
   if(pages()>1){
-   label(g,L"‹",float(width_-91),float(height_-Footer+5),18,Color(255,210,236,251),true);
+   box(g,float(bx),float(footer),float(gw),20,Color(255,26,30,39));
+   label(g,L"◀",float(bx+5),float(footer+1),12,Color(255,230,220,143),true);
    label(g,std::to_wstring(page_+1)+L"/"+std::to_wstring(pages()),
-     float(width_-71),float(height_-Footer+9),10,Color(255,197,222,237));
-   label(g,L"›",float(width_-22),float(height_-Footer+5),18,Color(255,210,236,251),true);
+         float(bx+gw/2-9),float(footer+3),10,Color(255,239,242,245));
+   label(g,L"▶",float(bx+gw-22),float(footer+1),12,Color(255,230,220,143),true);
   }
  }
  void click(int x,int y,bool right=false){
-  if(y<Header&&x>=width_-48){folded_=!folded_;page_=0;InvalidateRect(window_,nullptr,FALSE);return;}
-  if(folded_){folded_=false;InvalidateRect(window_,nullptr,FALSE);return;}
-  if(right){focused_=-1;InvalidateRect(window_,nullptr,FALSE);return;}
-  if(y>=height_-Footer&&pages()>1){
-   if(x>=width_-102&&x<width_-75)page_=(page_+pages()-1)%pages();
-   else if(x>=width_-42)page_=(page_+1)%pages();
-  }else if(model_.selected>1&&y>=Header){
-   const int col=std::clamp((x-10)/std::max(1,(width_-20)/2),0,1);
-   const int row=std::clamp((y-(Header+5))/49,0,3);
-   const int idx=page_*perPage()+row*2+col;
-   if(idx<model_.groupCount)focused_=idx; // local detail focus only
+  if(x<ButtonW+3){
+   if(right){details_=!details_;}else{folded_=!folded_;page_=0;}
+   InvalidateRect(window_,nullptr,FALSE);return;
+  }
+  if(folded_)return;
+  int bx=ButtonW+4,by=Pad-2;
+  const int gh=Pad*2+rows()*CellH+(rows()-1)*Gap;
+  int footer=by+gh+(details_?44:2);
+  if(pages()>1&&y>=footer){
+   if(x<bx+40)page_=(page_+pages()-1)%pages();
+   else if(x>bx+Pad*2+cols()*CellW+(cols()-1)*Gap-42)page_=(page_+1)%pages();
+   focused_=-1;
+  }else{
+   const int gx=bx+Pad,gy=by+Pad;
+   if(x>=gx&&y>=gy){
+    int c=(x-gx)/(CellW+Gap),row=(y-gy)/(CellH+Gap);
+    int cell=row*cols()+c;
+    if(c<cols()&&cell>=0&&cell<slots()&&
+       (x-gx)%(CellW+Gap)<CellW&&(y-gy)%(CellH+Gap)<CellH)
+     focused_=cell; // visual focus only: no game selection or cargo command
+   }
   }
   InvalidateRect(window_,nullptr,FALSE);
  }
@@ -189,11 +233,17 @@ class Panel {
   return true;
  }
 public:
+ template<class Read>void refreshCameos(const external::unitpanel::Model&model,Read read,
+        uint32_t pid,uint32_t match,DWORD now){
+  const auto before=cameos_.revision();
+  cameos_.refresh(model,read,pid,match,now);
+  if(cameos_.revision()!=before&&window_)InvalidateRect(window_,nullptr,FALSE);
+ }
  void hide(){lastGoodAt_=0;if(window_&&IsWindowVisible(window_))ShowWindow(window_,SW_HIDE);}
  void miss(){if(lastGoodAt_&&DWORD(GetTickCount()-lastGoodAt_)<550)return;hide();}
- void destroy(){if(window_){DestroyWindow(window_);window_=nullptr;}model_={};signature_=0;}
+ void destroy(){if(window_){DestroyWindow(window_);window_=nullptr;}cameos_.clear();model_={};signature_=0;}
  void update(const external::unitpanel::Model&model,int x,int bottom,int availableWidth){
-  if(model.selected<=0||model.groupCount<=0||availableWidth<230){miss();return;}
+  if(model.selected<=0||model.groupCount<=0||availableWidth<150){miss();return;}
   if(!ensure())return;
   lastGoodAt_=GetTickCount();
   const uint64_t key=model.visualSignature();
@@ -201,7 +251,7 @@ public:
   if(newEpoch){page_=0;focused_=-1;}
   if(key!=signature_){model_=model;signature_=key;InvalidateRect(window_,nullptr,FALSE);}
   page_=external::unitpanel::clampPage(page_,entries(),perPage());
-  int newWidth=std::min(390,availableWidth);
+  int newWidth=std::min(wantedWidth(),availableWidth);
   int newHeight=wantedHeight();
   if(newWidth!=width_||newHeight!=height_){width_=newWidth;height_=newHeight;InvalidateRect(window_,nullptr,FALSE);}
   // Preserve game focus and never turn the panel into a gameplay click.
