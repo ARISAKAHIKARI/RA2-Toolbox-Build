@@ -332,7 +332,8 @@ public:
   }
   oreIDs_.clear();for(const auto&job:ore_)oreIDs_.insert(job.id);
   std::vector<const Actor*> newTrucks;
-  for(const auto*a:trucks_)if(!(a->flags&(OrePaused|HarvesterDefending))&&!active.count(a->id)&&!oreIDs_.count(a->id)&&(returningRefinery(*a)||(load(*a)>0&&a->mission==12)||(full(*a)&&ore::automaticMission(a->mission))))newTrucks.push_back(a);
+  for(const auto*a:trucks_)if(!(a->flags&(OrePaused|HarvesterDefending))&&!active.count(a->id)&&!oreIDs_.count(a->id)&&(returningRefinery(*a)||(load(*a)>0&&a->mission==12)
+    ||(full(*a)&&ore::returnStage(a->mission,a->queued))))newTrucks.push_back(a);
   std::sort(newTrucks.begin(),newTrucks.end(),[](auto*a,auto*b){return a->id<b->id;});
   for(const auto*a:newTrucks){if(ore_.size()>=ore::MaxJobs)break;const Actor* refinery=returningRefinery(*a);if(!refinery)refinery=nearest(*a);if(!refinery)continue;
    OreJob job{a->id,refinery->id,a->manualVersion};job.x=a->x;job.y=a->y;job.progressFrame=world.frame;job.initialCargo=load(*a);job.dockingObserved=(a->flags&Unloading)!=0;
@@ -346,7 +347,9 @@ public:
    if(moved){job.x=a->x;job.y=a->y;job.progressFrame=world.frame;if(job.stage==ore::Yielding)job.stage=ore::Docking;}
    bool linked=false;for(uint32_t id:r->radioIDs)if(id==job.id)linked=true;
    if((a->flags&Unloading)||linked){job.dockingObserved=true;job.stage=ore::Docking;job.progressFrame=world.frame;}
-   else if(job.stage==ore::Docking&&world.frame-job.sent>=ore::DockStallFrames&&world.frame-job.progressFrame>=ore::DockStallFrames){job.stage=ore::Yielding;job.waitCell=0;}
+   else if(job.stage==ore::Docking&&ore::yieldStalledDock(dockDistance(*a,*r)<=ore::NearDockCells,
+   a->mission==7||a->queued==7,linked,(a->flags&Unloading)!=0,
+   world.frame-job.sent,world.frame-job.progressFrame)){job.stage=ore::Yielding;job.waitCell=0;}
   }
   // Arrival is physical, never inferred from an accepted OutList event.
   for(auto&job:ore_){if(job.suspended)continue;const Actor*a=actor(job.id),*r=actor(job.refinery);
@@ -411,10 +414,23 @@ public:
    bool first=turn!=oreTurns_.end()?turn->second.winner==job.id:heads[job.refinery]==job.id;
    bool busy=occupied(*refinery,job.id);
    if(job.stage==ore::Docking){++docking;
-    if(first&&(job.resumePending||a->destination!=job.refinery)&&!(a->flags&Unloading)&&!busy&&job.dockAttempts<ore::MaxDockAttempts&&world.frame-job.sent>=90)add(out,{job.id,job.token,0,job.refinery,7,0x34,0,job.refinery});
+    if(first&&ore::retryDockEnter(dockDistance(*a,*refinery)<=ore::NearDockCells,
+   a->mission==7||a->queued==7,busy,(a->flags&Unloading)!=0,
+   job.resumePending,a->destination!=job.refinery,world.frame-job.sent,job.dockAttempts))
+    add(out,{job.id,job.token,0,job.refinery,7,0x34,0,job.refinery});
     continue;
    }
-   if(first&&!busy){if(add(out,{job.id,job.token,0,job.refinery,7,0x34,0,job.refinery}))++docking;else ++queued;continue;}
+   // Adopt a game-side Enter already underway, or a miner physically at
+   // the unloading slot, rather than issuing a second Enter on the same turn.
+   if(first&&!busy){
+    const bool near=dockDistance(*a,*refinery)<=ore::NearDockCells;
+    if((a->mission==7||a->queued==7)||near){
+     job.stage=ore::Docking;job.dockingObserved|=(a->flags&Unloading)!=0;
+     ++docking;continue;
+    }
+    if(add(out,{job.id,job.token,0,job.refinery,7,0x34,0,job.refinery}))++docking;else ++queued;
+    continue;
+   }
    ++queued;
    if(job.stage==ore::Waiting&&job.waitCell){const auto*c=sample(job,job.waitCell);
     if(!c||c->occupation||c->land==2||c->land==7){waitingCells_.erase(job.waitCell);job.waitCell=0;}

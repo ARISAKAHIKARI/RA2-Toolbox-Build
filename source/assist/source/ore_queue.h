@@ -29,4 +29,20 @@ struct Queue {
 };
 inline bool full(double amount){return amount>=1.0;}
 inline bool automaticMission(int mission){return mission==5||mission==10||mission==12||mission==16;}
+// An accepted Enter is not a request to refresh Enter every few frames:
+// the native dock handshake may trail the unit's position and mission sample.
+inline bool retryDockEnter(bool nearDock,bool nativeEntering,bool busy,bool unloading,
+ bool resumePending,bool destinationChanged,int elapsed,int attempts){
+ return !nearDock&&!nativeEntering&&!busy&&!unloading&&(resumePending||destinationChanged)
+        &&attempts<MaxDockAttempts&&elapsed>=90;
+}
+inline bool yieldStalledDock(bool nearDock,bool nativeEntering,bool linked,bool unloading,
+ int elapsed,int withoutProgress){
+ return !nearDock&&!nativeEntering&&!linked&&!unloading
+        &&elapsed>=DockStallFrames&&withoutProgress>=DockStallFrames;
+}
+inline bool returnStage(int mission,int queued){
+ return automaticMission(mission)||mission==7
+        ||(mission==2&&(queued==7||queued==10||queued==12||queued==16));
+}
 }}

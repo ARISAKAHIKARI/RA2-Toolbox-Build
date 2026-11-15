@@ -34,6 +34,31 @@ int main(){
  p.reset();setup(w,1);int moves=0;
  for(int f=1;f<500;++f){w.frame=f;v=p.step(w,AutoOreReturn,200,300,90);for(auto&o:v){if(o.mission==2)++moves;p.accepted(o,f);}}
  assert(moves==4); // initial position + at most 3 bounded reposition attempts
+ // Reproduce the reported Enter -> dock slot -> repeated Enter -> eject.
+ p.reset();setup(w,1);w.actors[1].radioIDs[0]=0;
+ v=p.step(w,AutoOreReturn,200,300,90);
+ assert(v.size()==1&&v[0].mission==7);
+ p.accepted(v[0],w.frame);
+ w.actors[0].x=w.actors[1].x;w.actors[0].y=w.actors[1].y;
+ w.actors[0].destination=0;w.actors[0].mission=10;
+ for(int t=0;t<260;++t){++w.frame;v=p.step(w,AutoOreReturn,200,300,90);
+  for(const auto&o:v)assert(o.unit!=1||o.mission!=7);}
+ // Native Enter may still be executing while its destination sample lags.
+ p.reset();setup(w,1);w.actors[1].radioIDs[0]=0;
+ v=p.step(w,AutoOreReturn,200,300,90);assert(v.size()==1&&v[0].mission==7);p.accepted(v[0],w.frame);
+ w.actors[0].mission=7;w.actors[0].destination=0;
+ for(int t=0;t<130;++t){++w.frame;v=p.step(w,AutoOreReturn,200,300,90);
+  for(const auto&o:v)assert(o.unit!=1||o.mission!=7);}
+ assert(ore::retryDockEnter(false,false,false,false,false,true,90,1));
+ assert(!ore::retryDockEnter(true,false,false,false,false,true,300,1));
+ assert(!ore::yieldStalledDock(true,false,false,false,300,300));
+ assert(ore::yieldStalledDock(false,false,false,false,180,180));
+ // A full miner whose native Return transition briefly reports Move with a
+ // queued Harvest/Return must still be enrolled, not skipped for one scan.
+ p.reset();setup(w,1);w.actors[1].radioIDs[0]=0;
+ w.actors[0].mission=2;w.actors[0].queued=12;
+ v=p.step(w,AutoOreReturn,200,300,90);
+ assert(v.size()==1&&v[0].mission==7);
  // A waiting miner that has already begun native unloading must never receive
  // a stale waiting-cell Move, including when automation is switched off.
  p.reset();setup(w,1);v=p.step(w,AutoOreReturn,200,300,90);assert(v.size()==1&&v[0].mission==2);p.accepted(v[0],w.frame);

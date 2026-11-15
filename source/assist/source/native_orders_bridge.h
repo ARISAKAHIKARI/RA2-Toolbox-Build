@@ -57,17 +57,24 @@ static void cancelUnloadPassenger(uint32_t p){for(int i=0;i<unloadCount;)
  if(unloadPassengers[i].p==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
  else ++i;}
 static void cancelNative(uint32_t p,bool manual=true){
- queuedUnload.cancel(p,get<uint32_t>(p+0x10));
+ // If the original Ctrl+D has already unloaded the transporter, its
+ // passenger roster may still await the next admission tick. Retain that
+ // pending handoff while moving this now-empty transport. An interruption
+ // with passengers still aboard cancels only the unstarted unload.
+ const uint32_t carrierID=get<uint32_t>(p+0x10);
+ if(queuedUnload.find(p,carrierID)<0||get<int>(p+0x114)>0)
+  queuedUnload.cancel(p,carrierID);
  if(manual)releaseSticky(p);
  pauseGlobalMagnetron(p);
  cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);for(i=0;i<unloadCount;)
- if(unloadPassengers[i].p==p||unloadPassengers[i].carrier==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
+ // Transport commands must not cancel the passengers' independent post-ejection jobs.
+ if(unloadPassengers[i].p==p){finishUnloadFollowup(unloadPassengers[i],get<int>(0xA8ED84));unloadPassengers[i]=unloadPassengers[--unloadCount];}
  else ++i;}
 static void cancelAutomatic(uint32_t p){queuedUnload.cancel(p,get<uint32_t>(p+0x10));releaseSticky(p);cancelBurst(get<uint32_t>(p+0x10));cancelDodge(get<uint32_t>(p+0x10));
  cancelOreJob(p);cancelLoadingJobs(p);int i=orderIndex(p);if(i>=0)removeOrder(i);
  // Keep a release record until a native Guard can follow a tool-issued Sleep.
  // Manual click paths still use cancelNative because their own order takes over.
- for(i=0;i<unloadCount;++i)if(unloadPassengers[i].p==p||unloadPassengers[i].carrier==p)unloadPassengers[i].cancelled=true;
+ for(i=0;i<unloadCount;++i)if(unloadPassengers[i].p==p)unloadPassengers[i].cancelled=true;
 }
 // Registers a new explicit intent only after its native event is accepted.
 static bool nativeOutgoing(uint32_t p,int mission,uint32_t packedCell,uint32_t target,uint32_t destination,uint32_t bindings){
@@ -177,6 +184,12 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
  // native Deploy while its in-progress state is present.
  if(loaded&&!get<bool>(p+0x1C8)&&get<int>(p+0xAC)!=16&&get<int>(p+0xB4)!=16&&
     !nativeMission(house,get<uint32_t>(p+0x10),16,0,0,0,0,0,taskarbiter::Owner::Unload))return -6;
+ // A NEW Ctrl+D supersedes this carrier's prior unload episode. Moving
+ // the carrier does not; the passenger's own manual order does.
+ for(int j=0;j<unloadCount;)if(unloadPassengers[j].carrier==p){
+  finishUnloadFollowup(unloadPassengers[j],frame);
+  unloadPassengers[j]=unloadPassengers[--unloadCount];
+ }else ++j;
  cancelNative(p);
  for(int j=0;j<count;++j){uint32_t q=roster[j];auto&r=unloadPassengers[unloadCount++];r={};r.job=++unloadJobSerial;r.p=q;r.id=get<uint32_t>(q+0x10);r.carrier=p;r.carrierID=get<uint32_t>(p+0x10);r.carrierType=typeOf(p,2);r.frame=frame;r.manualToken=manualVersions.get(r.id);}
  return 1;
