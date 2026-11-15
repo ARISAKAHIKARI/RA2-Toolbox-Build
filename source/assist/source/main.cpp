@@ -1862,9 +1862,9 @@ static void paint(){
     selectionModel.frame==externalData->frame&&snap.width>0&&snap.height>0&&
     mapClip.w>0&&mapClip.h>0){
   const double uiX=double(r.right)/snap.width,uiY=double(r.bottom)/snap.height;
-  const int screenX=origin.x+int(std::lround((mapClip.x+12)*uiX));
-  const int screenBottom=origin.y+int(std::lround((mapClip.y+mapClip.h-12)*uiY));
-  const int available=std::max(0,int(std::lround(mapClip.w*uiX))-24);
+  const int screenX=origin.x+2;
+  const int screenBottom=origin.y+r.bottom-2;
+  const int available=std::max(0,r.right-4);
   unitpanelhost::panel.refreshCameos(selectionModel,
    [](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);},
    pid,selectionModel.match,GetTickCount());

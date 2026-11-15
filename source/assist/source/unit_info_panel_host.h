@@ -17,7 +17,7 @@ class Panel {
  HWND window_=nullptr;
  external::unitpanel::Model model_{};
  uint64_t signature_=0;DWORD lastGoodAt_=0;unitpanelcameo::Cache cameos_{};uint32_t cameoRevision_=0;
- bool folded_=false,details_=true;
+ bool folded_=false,details_=false;
  int page_=0,focused_=-1,width_=390,height_=40;
  static constexpr int Header=38,Footer=30;
  static std::wstring name(const std::array<uint16_t,40>&src){
@@ -144,10 +144,9 @@ class Panel {
    }else if(focused_>=0&&focused_<slots()){
     const auto&u=model_.groups[page_*9+focused_];
     label(g,name(u.name).substr(0,19),float(bx+5),float(footer+2),11,Color(255,238,243,248),true);
-    label(g,L"选中 "+std::to_wstring(u.count)+L" · 只读预览",float(bx+5),float(footer+20),10,Color(255,193,215,227));
+    label(g,L"×"+std::to_wstring(u.count),float(bx+5),float(footer+20),10,Color(255,193,215,227));
    }else{
-    label(g,L"选中 "+std::to_wstring(model_.selected)+L" 个 · "+
-       std::to_wstring(model_.groupCount)+L" 类",float(bx+5),float(footer+8),11,Color(255,216,231,236));
+    label(g,std::to_wstring(model_.selected)+L" / "+std::to_wstring(model_.groupCount),float(bx+5),float(footer+8),11,Color(255,216,231,236));
    }
    footer+=42;
   }
