@@ -1861,10 +1861,9 @@ static void paint(){
  if(unitPanelEnabled&&externalData&&externalSourceConfirmed&&selectionModel.match==externalData->match&&
     selectionModel.frame==externalData->frame&&snap.width>0&&snap.height>0&&
     mapClip.w>0&&mapClip.h>0){
-  const double uiX=double(r.right)/snap.width,uiY=double(r.bottom)/snap.height;
   const int screenX=origin.x+2;
-  const int screenBottom=origin.y+r.bottom-2;
-  const int available=std::max(0,r.right-4);
+  const int screenBottom=origin.y+int(r.bottom)-2;
+  const int available=std::max(0,int(r.right)-4);
   unitpanelhost::panel.refreshCameos(selectionModel,
    [](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);},
    pid,selectionModel.match,GetTickCount());
