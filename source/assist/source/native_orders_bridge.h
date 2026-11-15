@@ -138,7 +138,10 @@ static void buildUnloadAdmissionRoster(uint32_t house){
  }
  std::sort(unloadRoster,unloadRoster+unloadRosterCount,[](const auto&a,const auto&b){if(a.carrier!=b.carrier)return a.carrier<b.carrier;if(a.pointer!=b.pointer)return a.pointer<b.pointer;return a.history<b.history;});
 }
-static bool unloadCarrierEligible(uint32_t p,uint32_t house){return p&&worldObjects.contains(p)&&own(p,house)&&live(p)&&kind(p)==2&&featureObjectAllowed(featuretypes::UnloadTransport,p)&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C);}
+// A Ctrl+D command may arrive after the game's native D began deploying.
+// Reject stale/foreign carriers, not the transport's own unload-in-progress
+// state; otherwise the queued command is acknowledged then discarded next tick.
+static bool unloadCarrierEligible(uint32_t p,uint32_t house){return p&&worldObjects.contains(p)&&own(p,house)&&live(p)&&kind(p)==2&&featureObjectAllowed(featuretypes::UnloadTransport,p)&&!get<uint32_t>(p+0x11C);}
 static int smartUnloadNow(uint32_t house,uint32_t p){
  if(!unloadCarrierEligible(p,house))return 0;
  const int frame=get<int>(0xA8ED84);const DWORD now=sampleClock(sh);
@@ -154,12 +157,19 @@ static int smartUnloadNow(uint32_t house,uint32_t p){
   if(count==nativeorders::MaxPassengers)return -6;
   previous=q;roster[count++]=q;
  }
- const bool loaded=get<int>(p+0x114)>0;if(!loaded&&!count)return 0;
+ const bool loaded=get<int>(p+0x114)>0;
+ // The acknowledgement counts selected carriers, not enrolled passengers.
+ // Never consume a queued Ctrl+D as a success before at least one identity-
+ // checked passenger continuation exists. Wait for the next complete roster
+ // (bounded by queuedUnload's original 3500ms retry lifetime).
+ if(!count)return -6;
  int replace=0;for(int j=0;j<unloadCount;++j)if(unloadPassengers[j].p==p||unloadPassengers[j].carrier==p)++replace;
  if(count>nativeorders::MaxPassengers-unloadCount+replace)return -6;
  // Queue acceptance is separate from this native Deploy. Existing active
  // unload and empty historical carriers never receive a second Deploy.
- if(loaded&&get<int>(p+0xAC)!=16&&get<int>(p+0xB4)!=16&&
+ // Original D can already have initiated unloading. Never queue a second
+ // native Deploy while its in-progress state is present.
+ if(loaded&&!get<bool>(p+0x1C8)&&get<int>(p+0xAC)!=16&&get<int>(p+0xB4)!=16&&
     !nativeMission(house,get<uint32_t>(p+0x10),16,0,0,0,0,0,taskarbiter::Owner::Unload))return -6;
  cancelNative(p);
  for(int j=0;j<count;++j){uint32_t q=roster[j];auto&r=unloadPassengers[unloadCount++];r={};r.job=++unloadJobSerial;r.p=q;r.id=get<uint32_t>(q+0x10);r.carrier=p;r.carrierID=get<uint32_t>(p+0x10);r.carrierType=typeOf(p,2);r.frame=frame;r.manualToken=manualVersions.get(r.id);}
@@ -186,6 +196,23 @@ static int smartUnload(uint32_t house){
  // Preflight the whole request; never report a silently truncated prefix.
  if(added>unloadadmission::Capacity-queuedUnload.count)return -42;
  for(int n=0;n<count;++n)queuedUnload.add(candidates[n]);
+ // Latch the passenger identities at the command boundary, not one frame
+ // later: native D may unlink their carrier before admissionTick runs.
+ // This only remembers members of the explicitly selected own transports;
+ // all UID/manual-command/owner/filter checks still run at admission.
+ if(count){
+  static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> tracked;tracked.clear();
+  for(int n=0;n<recentPassengerCount;++n)tracked.add(recentPassengers[n].p,n);
+  Vec inf=vec(0xA83DE8);
+  for(int n=0;n<inf.count;++n){uint32_t q=item(inf,n);if(!q)continue;
+   uint32_t carrier=get<uint32_t>(q+0x11C);
+   if(selected.find(carrier)<0||!unloadPassengerEligible(q,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
+   const uint32_t id=get<uint32_t>(q+0x10),carrierID=get<uint32_t>(carrier+0x10);
+   int at=tracked.find(q);
+   if(at<0){if(recentPassengerCount==nativeorders::MaxPassengers)continue;at=recentPassengerCount++;tracked.add(q,at);}
+   recentPassengers[at]={q,id,carrier,carrierID,typeOf(carrier,2),manualVersions.get(id),now,frame};
+  }
+ }
  return count; // acknowledgement means arranged, not physically unloaded
 }
 static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
