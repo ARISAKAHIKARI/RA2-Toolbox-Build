@@ -38,7 +38,10 @@ inline bool retryDockEnter(bool nearDock,bool nativeEntering,bool busy,bool unlo
 }
 inline bool yieldStalledDock(bool nearDock,bool nativeEntering,bool linked,bool unloading,
  int elapsed,int withoutProgress){
- return !nearDock&&!nativeEntering&&!linked&&!unloading
+ // A near-dock miner without radio/unload progress may eventually yield
+ // its TOOLBOX queue reservation. This does not issue a second native Enter
+ // or any Move to the miner, and it must never yield active native entry.
+ return !nativeEntering&&!linked&&!unloading
         &&elapsed>=DockStallFrames&&withoutProgress>=DockStallFrames;
 }
 inline bool returnStage(int mission,int queued){

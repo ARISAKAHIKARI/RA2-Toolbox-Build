@@ -51,7 +51,8 @@ int main(){
   for(const auto&o:v)assert(o.unit!=1||o.mission!=7);}
  assert(ore::retryDockEnter(false,false,false,false,false,true,90,1));
  assert(!ore::retryDockEnter(true,false,false,false,false,true,300,1));
- assert(!ore::yieldStalledDock(true,false,false,false,300,300));
+ assert(!ore::yieldStalledDock(true,true,false,false,300,300));
+ assert(ore::yieldStalledDock(true,false,false,false,300,300));
  assert(ore::yieldStalledDock(false,false,false,false,180,180));
  // A full miner whose native Return transition briefly reports Move with a
  // queued Harvest/Return must still be enrolled, not skipped for one scan.
