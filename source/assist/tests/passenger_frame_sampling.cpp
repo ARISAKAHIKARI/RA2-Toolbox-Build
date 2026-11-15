@@ -1,6 +1,7 @@
 // Production display/collector/ProcessReader/IPC with synthetic game bytes.
 #include "protocol.h"
 #include "../../shared/source/world_frame_capture.h"
+#include "../../shared/source/world_frame_visual.h"
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>

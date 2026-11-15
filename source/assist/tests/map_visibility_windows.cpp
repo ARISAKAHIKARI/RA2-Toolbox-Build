@@ -12,6 +12,9 @@
 #ifdef NDEBUG
 #error Hardware verification requires assertions.
 #endif
+// The synthetic code page is chosen by Windows, not mapped over another
+// module's reservation at the stock game's fixed address.
+extern "C" uint32_t mapFixtureCallTarget=0;
 static void wait(assist::techbp::Service&s){const DWORD at=GetTickCount();while(s.pending()){assert(DWORD(GetTickCount()-at)<5000);Sleep(1);}}
 static void retire(assist::techbp::Service&s){const DWORD at=GetTickCount();while(!s.retire()){assert(DWORD(GetTickCount()-at)<5000);Sleep(1);}}
 struct DebugAccess{HANDLE target;CONTEXT value{};bool okay=false;};
@@ -35,7 +38,7 @@ extern "C" __declspec(naked) int __stdcall CallMapGate(void*){__asm {
  push edi
  mov eax,[esp+12]
  mov edi,-1
- mov edx,6D88F4h
+ mov edx,dword ptr [mapFixtureCallTarget]
  call edx
  mov eax,edi
  pop edi
@@ -50,8 +53,12 @@ static bool sameMapDebug(const CONTEXT&a,const CONTEXT&b){return a.Dr0==b.Dr0&&a
 int main(){
  SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);setbuf(stdout,nullptr);unsigned checks=0;
  auto check=[&](bool okay){++checks;if(!okay){fprintf(stderr,"Map check %u failed; error=%lu hits=%ld\n",checks,GetLastError(),techparameters::mapExceptions);abort();}};
- auto*page=VirtualAlloc(reinterpret_cast<void*>(0x6D0000),65536,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE);check(page==reinterpret_cast<void*>(0x6D0000));
- auto*code=reinterpret_cast<uint8_t*>(assist::mapvisibility::PrefixAddress);
+ auto*page=VirtualAlloc(nullptr,65536,MEM_COMMIT|MEM_RESERVE,PAGE_EXECUTE_READWRITE);check(page!=nullptr);
+ check(uintptr_t(page)<=UINT32_MAX-0x88F4u-21u);
+ mapvisibility::PrefixAddress=uint32_t(uintptr_t(page)+0x88F4u);
+ mapvisibility::Address=mapvisibility::PrefixAddress+8;
+ mapFixtureCallTarget=mapvisibility::PrefixAddress;
+ auto*code=reinterpret_cast<uint8_t*>(uintptr_t(mapvisibility::PrefixAddress));
  memcpy(code,assist::mapvisibility::Prefix,sizeof assist::mapvisibility::Prefix);
  // Fixture continuation: EDI=-2; EBX=8; ret. Not a game dump or game patch.
  const uint8_t suffix[]={0xBF,0xFE,0xFF,0xFF,0xFF,0xBB,8,0,0,0,0xC3};memcpy(code+10,suffix,sizeof suffix);

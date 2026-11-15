@@ -1,7 +1,14 @@
 #pragma once
 #include <stdint.h>
 namespace assist { namespace mapvisibility {
-inline constexpr uint32_t Tag=2u,Address=0x6D88FC,PrefixAddress=0x6D88F4;
+inline constexpr uint32_t Tag=2u;
+#ifdef RA2_MAP_VISIBILITY_RELOCATABLE_FIXTURE
+// Only the own-process Windows breakpoint fixture relocates its synthetic
+// instruction sequence. Production RVA/policy remains compile-time fixed.
+inline uint32_t Address=0,PrefixAddress=0;
+#else
+inline constexpr uint32_t Address=0x6D88FC,PrefixAddress=0x6D88F4;
+#endif
 inline constexpr uint8_t Prefix[]={0x8B,0x80,0x2C,1,0,0,0xA8,0x18,0x75,5};
 inline uint32_t visibleFlags(uint32_t flags){return flags&~0x40u;}
 inline bool compatible(const volatile uint8_t*code){
