@@ -249,7 +249,7 @@ static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
  while(todo--&&queuedUnload.count&&budget>0&&admissionBudget>0&&outgoingRoom()){
   if(queuedUnload.cursor>=queuedUnload.count)queuedUnload.cursor=0;
   int at=queuedUnload.cursor++;auto task=queuedUnload.carriers[at];
-  if(!unloadCarrierEligible(task.pointer,house)||get<uint32_t>(task.pointer+0x10)!=task.id||worldByID(task.id)!=task.pointer||manualVersions.get(task.id)!=task.token||
+  if(!unloadCarrierEligible(task.pointer,house)||get<uint32_t>(task.pointer+0x10)!=task.id||worldByID(task.id)!=task.pointer||!unloadadmission::retainAfterCarrierMove(task.token,manualVersions.get(task.id),get<int>(task.pointer+0x114))||
      (task.attempted&&DWORD(now-task.attemptedAt)>3500)){queuedUnload.remove(at);continue;}
   if(!task.attempted){queuedUnload.carriers[at].attempted=true;queuedUnload.carriers[at].attemptedAt=now;}
   int result=smartUnloadNow(house,task.pointer,!task.attempted);

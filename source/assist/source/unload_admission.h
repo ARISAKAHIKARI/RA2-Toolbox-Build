@@ -2,6 +2,12 @@
 #include "object_index.h"
 namespace assist { namespace unloadadmission {
 constexpr int Capacity=8192;
+// A transport's manual Move after its passengers all disembarked must not
+// invalidate the already-latched passenger handoff. A Move while still loaded
+// cancels the old unload so that automation never overrides user movement.
+inline bool retainAfterCarrierMove(uint32_t admittedToken,uint32_t currentToken,int loaded){
+ return currentToken==admittedToken||loaded<=0;
+}
 struct Carrier {uint32_t pointer=0,id=0,token=0,attemptedAt=0;bool attempted=false;};
 // Runtime-only storage, separate from both passenger planning batches and the
 // game's event budget. Swap removal keeps cancellation and admission bounded.

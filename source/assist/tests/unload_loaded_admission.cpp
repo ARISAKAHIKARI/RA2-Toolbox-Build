@@ -28,7 +28,7 @@ template<class T>static T get(uint32_t address){
  switch(address&0xfff){case 0:return T(o.k==1?0x7EB058:o.k==2?0x7F5C70:0x7E3EBC);case 0x10:return T(o.id);case 0x6C:return T(o.hp);case 0x74:return T(o.active);case 0x81:return T(o.limbo);case 0x90:return T(o.onMap);case 0x21C:return T(o.owner);case 0x11C:return T(o.carrier);case 0x114:return T(o.passengers);case 0x1C8:return T(o.deployed);case 0xAC:return T(o.mission);case 0xB4:return T(o.queued);default:throw std::runtime_error("unexpected read");}
 }
 struct World {bool contains(uint32_t p)const{return objects.count(p)!=0;}} worldObjects;
-struct Versions {uint32_t token=0;uint32_t get(uint32_t)const{return token;}} manualVersions;
+struct Versions {uint32_t token=0,carrierMove=0;uint32_t get(uint32_t id)const{return token+(id==10?carrierMove:0);}} manualVersions;
 static uint32_t typeOf(uint32_t p,int){return objects.at(p).type;}
 namespace featuretypes {constexpr int UnloadPassenger=1,UnloadTransport=2;}
 static bool featureObjectAllowed(int,uint32_t p){return objects.at(p).allowed;}
@@ -48,7 +48,7 @@ static void releaseSticky(uint32_t){}
 static void pauseGlobalMagnetron(uint32_t){}
 static void cancelBurst(uint32_t){}
 static void cancelDodge(uint32_t){}
-static void cancelOreJob(uint32_t){}
+static void cancelOreJob(uint32_t p){if(p==transport)++manualVersions.carrierMove;}
 static void cancelLoadingJobs(uint32_t){}
 static int orderIndex(uint32_t){return -1;}
 static void removeOrder(int){}
@@ -61,7 +61,7 @@ static bool unloadCarrierEligible(uint32_t p,uint32_t house);
 static bool unloadCarrierEligible(uint32_t p,uint32_t house){return worldObjects.contains(p)&&own(p,house)&&kind(p)==2;}
 #endif
 static void check(bool v,const char*why){if(!v)throw std::runtime_error(why);}
-static void reset(){objects.clear();infantry={passenger};selectedCarriers={transport};objects[transport]={10,1,0,44,2};objects[transport].passengers=1;objects[passenger]={11,1,transport};objects[passenger].limbo=true;objects[passenger].onMap=false;queuedUnload.clear();queuedUnload.begin(1,1,1000);queuedUnload.add({transport,10,0});recentPassengerCount=unloadCount=0;deployments=cancellations=0;manualVersions.token=0;}
+static void reset(){objects.clear();infantry={passenger};selectedCarriers={transport};objects[transport]={10,1,0,44,2};objects[transport].passengers=1;objects[passenger]={11,1,transport};objects[passenger].limbo=true;objects[passenger].onMap=false;queuedUnload.clear();queuedUnload.begin(1,1,1000);queuedUnload.add({transport,10,0});recentPassengerCount=unloadCount=0;deployments=cancellations=0;manualVersions.token=manualVersions.carrierMove=0;}
 int main(){try{
  reset();check(!own(passenger,1),"production own must reject loaded off-map passenger");buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1,"loaded carrier admission");check(unloadCount==1,"loaded passenger lost before Deploy");check(deployments==1&&unloadPassengers[0].id==11&&unloadPassengers[0].carrier==transport,"job must exist before unload");
  reset();objects[transport].passengers=0;objects[passenger].carrier=0;objects[passenger].limbo=false;objects[passenger].onMap=true;recentPassengers[0]={passenger,11,transport,10,44,0,1000,10};recentPassengerCount=1;buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1&&unloadCount==1&&deployments==0,"native-first history must still enrol");
@@ -87,6 +87,12 @@ int main(){try{
  objects[passenger].limbo=false;objects[passenger].onMap=true;
  cancelNative(transport);
  check(queuedUnload.count==1,"empty carrier Move must retain pending Ctrl+D roster");
+ check(manualVersions.get(10)!=queuedUnload.carriers[0].token,
+       "carrier Move must advance the manual version in the fixture");
+ check(unloadadmission::retainAfterCarrierMove(queuedUnload.carriers[0].token,manualVersions.get(10),0),
+       "completed unload may enrol passengers across transport manual version change");
+ check(!unloadadmission::retainAfterCarrierMove(queuedUnload.carriers[0].token,manualVersions.get(10),1),
+       "loaded carrier manual Move must not resurrect stale native unloading");
  buildUnloadAdmissionRoster(1);
  check(smartUnloadNow(1,transport)==1&&unloadCount==1,
        "late admission after carrier Move must still enrol disembarked passenger");
