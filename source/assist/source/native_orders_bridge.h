@@ -108,7 +108,10 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  for(int n=0;n<recentPassengerCount;++n)history.add(recentPassengers[n].p,n);
  Vec inf=vec(0xA83DE8);
  for(int n=0;n<inf.count;++n){uint32_t p=item(inf,n);if(!p)continue;uint32_t carrier=get<uint32_t>(p+0x11C);
-  if(!carrier||!worldObjects.contains(carrier)||!own(carrier,house)||kind(carrier)!=2||!get<bool>(carrier+0x83)||
+  // Normal loaded passengers must be remembered too. 0x83 is an
+  // exceptional vehicle state used by EjectAssist; requiring it here
+  // left ordinary Ctrl+D with no pre-ejection passenger history.
+  if(!carrier||!worldObjects.contains(carrier)||!own(carrier,house)||kind(carrier)!=2||
      !featureObjectAllowed(featuretypes::UnloadTransport,carrier)||get<uint32_t>(p+0x21C)!=house||
      !featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
   int at=history.find(p);
