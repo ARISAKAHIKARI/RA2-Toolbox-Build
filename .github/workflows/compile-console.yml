@@ -10,6 +10,19 @@ concurrency:
   group: console-compile-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  unit-panel-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - name: Verify the cached selected-unit and passenger view model
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/unit_info_panel_model.cpp -o /tmp/ra2-unit-panel-test
+          /tmp/ra2-unit-panel-test
   ore-dock-and-return:
     runs-on: ubuntu-latest
     timeout-minutes: 12
