@@ -132,7 +132,14 @@ public:
   if(!frame)frame=worldClient_->acquire(match);else if(!worldClient_->accepts(frame))return false;
   if(worldframe::visualDemand(worldDemand_)){
    if(frame&&!frame->controlSource)frame=worldClient_->visual(frame,worldDemand_,[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);});
-  }else frame=worldframe::authoritative(frame);
+  }else{
+   frame=worldframe::authoritative(frame);
+   // A producer scene boundary is sufficient for Host-only visual decoding,
+   // but never a command input. This explicitly prevents a stale display
+   // publication being accepted during the first Base/Combat/Passengers
+   // subscription after a control hotkey or user-mode transition.
+   if(frame&&worldframe::boundaryOnlySource(frame->key))return false;
+  }
   if(!frame||!frame->sealed()||frame->key.pid!=pid()||frame->key.owner!=GetCurrentProcessId()||(match&&frame->key.match!=match))return false;
   worldFrame_=std::move(frame);worldComplete_=true;worldSubscribedAt_=GetTickCount();return true;
  }
