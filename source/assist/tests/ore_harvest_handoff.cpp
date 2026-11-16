@@ -157,6 +157,18 @@ int main(){sh=new Shared{};unsigned checks=0;auto check=[&](bool b){if(!b)std::f
  reset();step();unloadDone();failRead=Miner+0x74;step();check(events.empty()&&pending()==1);failRead=0;finish();check(events.size()==1);
  reset();step();unloadDone();failRead=cellPointer(52,62)+0x44;step();check(events.empty());failRead=0;finish();check(events.size()==1);
  reset();step();unloadDone();queueOkay=false;for(int n=0;n<6;++n)step();check(events.empty()&&pending()==1);queueOkay=true;finish();check(events.size()==1);
+ // Completed nearest-search observation must survive repeated unreadable
+ // live miner and Cell data. Unknown reads are not three failed admissions.
+ for(uint32_t unreadable:{Miner+0x74,cellPointer(56,62)+0x44}){
+  reset();step();unloadDone();queueOkay=false;
+  for(int n=0;n<20&&!oreHarvestJobs[0].search.done;++n)step();
+  check(pending()==1&&oreHarvestJobs[0].search.done&&oreHarvestJobs[0].search.best==62056&&events.empty());
+  const auto before=oreHarvestJobs[0].search.best;
+  failRead=unreadable;
+  for(int n=0;n<6;++n){step();check(pending()==1&&events.empty()&&oreHarvestJobs[0].search.best==before&&oreHarvestJobs[0].retries==0);}
+  failRead=0;queueOkay=true;finish();check(events.size()==1&&!pending());
+ }
+
  reset();step();unloadDone();snap.chat=1;for(int n=0;n<6;++n)step();check(events.empty()&&pending()==1);snap.chat=0;finish();check(events.size()==1);
  reset();step();unloadDone();held=true;for(int n=0;n<4;++n)step();check(events.empty());
  // Explicit Harvest/Return also increments the native input version, but the
