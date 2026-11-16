@@ -18,10 +18,18 @@ constexpr uint32_t Version=1,PageSize=4096,MaxPages=16384,IndexSize=32768;
 // alive. It permits a small authoritative scene boundary; the Host's own
 // VisualCache independently gathers non-command actor data off-game-thread.
 enum Demand:uint32_t {Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64,HostDisplayOnly=128};
-// Visual and Resources are Host-local collection lanes. Their extra pages
-// must never subscribe the game-thread producer to a display working set.
-inline bool visualDemand(uint32_t demand){return (demand&(Visual|Resources))!=0;}
-inline uint32_t runtimeDemand(uint32_t demand){return visualDemand(demand)?uint32_t(Base):(demand|Base);}
+// Visual and Resources are Host-local ONLY for a purely display subscription.
+// A mixed Visual|Combat (or Resources|Passengers) reader is a command reader:
+// its native input pages must not disappear from the producer's demand mask.
+// Reject unknown/future flags from the display-only lane by default.
+inline bool visualDemand(uint32_t demand){
+ constexpr uint32_t displayFlags=uint32_t(Base|Visual|Resources);
+ return (demand&uint32_t(Visual|Resources))!=0&&(demand&~displayFlags)==0;
+}
+inline uint32_t runtimeDemand(uint32_t demand){
+ return visualDemand(demand)?uint32_t(Base):
+        ((demand&~uint32_t(Visual|Resources|HostDisplayOnly))|uint32_t(Base));
+}
 struct Key {
  uint32_t pid=0,owner=0,match=0,serial=0,tick=0,demand=0;
  uint32_t scenario=0,cells=0,house=0,cellCount=0;
