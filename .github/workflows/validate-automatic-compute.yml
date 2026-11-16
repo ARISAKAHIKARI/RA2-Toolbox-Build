@@ -112,3 +112,16 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/auto_repair_runtime.py --out /tmp/ra2-repair-state
+  unload-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run production Ctrl+D carrier admission, retries and capacity checks
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/capacity_admission.py --out /tmp/ra2-unload-state --case unload
+      - name: Test post-ejection passenger history with missing live UID
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/unload_roster_runtime.py --out /tmp/ra2-unload-roster --before source/assist/source/native_orders_bridge.h
