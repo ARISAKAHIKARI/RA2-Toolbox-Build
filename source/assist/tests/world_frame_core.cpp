@@ -473,14 +473,14 @@ void runtime(){
   // new full graph; merely re-exporting the sealed boundary would lose input.
   setup(memory);before=worldlife::capture(read);snap.frame=before.frame;
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
-  CHECK(worldFrameBoundaryOnly&&worldFrameReady);
+  CHECK(worldFrameBoundaryOnly&&worldFrameReady&&worldframe::boundaryOnlySource(worldFrame.key));
   // Display-only boundaries cannot admit a native command, even if a
   // particular required scalar happens to be present.
   {SampleReadScope blocked;CHECK(!blocked&&!blocked.complete());}
   int hp=0;CHECK(!worldFrame.read(ActorA+0x6C,&hp,sizeof hp));
   const auto shallowSerial=worldFrame.key.serial;
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base));
-  CHECK(worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.key.serial>shallowSerial);
+  CHECK(worldFrameReady&&!worldFrameBoundaryOnly&&!worldframe::boundaryOnlySource(worldFrame.key)&&worldFrame.key.serial>shallowSerial);
   {SampleReadScope upgraded;CHECK(upgraded&&upgraded.complete());}
   CHECK(worldFrame.read(ActorA+0x6C,&hp,sizeof hp)&&hp==100);
   // A second command read in the same logic frame is still exactly one
@@ -508,7 +508,47 @@ void displayLeaseTransition(){
  CHECK(channel()->demandMask==worldframe::Base);
  subscriber.reset();clock=2000;
 }
-void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavings();runtime();hostReads();hostIsolation();displayLeaseTransition();std::puts("PASS production transport/ProcessReader/Runtime: pinned publication, independent pause observation, required/optional failures, no live fallback, sustained demand, same-frame single capture, independent world/frame/House rejection");}
+void hostBoundaryCommandGuard(){
+ currentPid=HostPid;clock=3000;Memory memory;setup(memory);gameMemory=&memory;
+ external::ProcessReader reader;
+ CHECK(reader.open(GamePid));reader.setWorldDemand(worldframe::Resources);
+ CHECK(!reader.beginWorldFrame(7)); // establish display-only subscription
+ currentPid=GamePid;worldframe::Server server;
+ CHECK(server.wanted(HostPid,clock));
+ auto shallow=std::make_shared<worldframe::Snapshot>();
+ auto k=key();k.tick=clock;k.serial=80;k.generationLow=777;
+ k.connectionLow=uint32_t(reader.generation());k.connectionHigh=uint32_t(reader.generation()>>32);
+ k.demand=worldframe::BoundaryOnlyKeyBit;
+ shallow->reset(k);Read read{&memory};
+ worldframe::CaptureGraph<Read> boundary(*shallow,read);
+ CHECK(boundary.capture(worldframe::Base|worldframe::HostDisplayOnly,{}));
+ CHECK(shallow->seal());server.observe(shallow->key);CHECK(server.publish(*shallow));
+ currentPid=HostPid;CHECK(reader.beginWorldFrame(7));
+ CHECK(reader.worldFrameToken()->controlSource);
+ reader.endWorldFrame();reader.setWorldDemand(worldframe::Base);
+ // This request revoked the display-only lease immediately. Even though
+ // the old sealed bytes are still valid for drawing, Host native admission
+ // must reject them and must never fall back to live RPM.
+ const auto oldReads=rpmCalls;
+ CHECK(!reader.beginWorldFrame(7));
+ CHECK(channel()->demandMask==worldframe::Base);
+ CHECK(rpmCalls==oldReads);
+ currentPid=GamePid;
+ auto full=std::make_shared<worldframe::Snapshot>();
+ ++k.serial;++k.frame;k.tick+=16;k.demand=0;
+ memory.put(0xA8ED84,k.frame);
+ full->reset(k);worldframe::CaptureGraph<Read> graph(*full,read);
+ CHECK(graph.capture(worldframe::Base,{}));CHECK(full->seal());
+ server.observe(full->key);CHECK(server.publish(*full));
+ currentPid=HostPid;clock+=16;
+ CHECK(reader.beginWorldFrame(7));
+ CHECK(!reader.worldFrameToken()->controlSource);
+ int hp=0;CHECK(reader.read(ActorA+0x6C,&hp,4)&&hp==100);
+ reader.close();currentPid=GamePid;server.disconnect();
+ currentPid=HostPid;gameMemory=nullptr;
+ std::puts("PASS Host first-command guard: display-only source rejected, live fallbacks forbidden, full next publication accepted");
+}
+void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavings();runtime();hostReads();hostIsolation();displayLeaseTransition();hostBoundaryCommandGuard();std::puts("PASS production transport/ProcessReader/Runtime: pinned publication, independent pause observation, required/optional failures, no live fallback, sustained demand, same-frame single capture, independent world/frame/House rejection");}
 }
 #endif
 
