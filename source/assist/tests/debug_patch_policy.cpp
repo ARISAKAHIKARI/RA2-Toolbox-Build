@@ -21,8 +21,9 @@ int main(){
   if(!original)++changed;
   check(signatureRequired(Kind::Call,e.address));check(signatureRequired(Kind::Breakpoint,e.address));
  }
- std::fprintf(stderr,"diagnostic patch-catalogue=%u changed=%u\n",patches,changed);
- check(patches==82);check(changed>60);
+ // The shipping catalogue now contains 85 eligible patch sites; the
+ // historical 82-site fixture was stale before this tooltip hotfix.
+ check(patches==85);check(changed>60);
  // Complete range reads continue after mismatch; the second pause probe is unreadable.
  Config skip{};setSkip(skip,id(Kind::Patch,0x55D360),true);applyPolicy(skip);unsigned reads=0;
  check(!patchcontext::compatible(0x55D360,[&](uint32_t at,void*out,size_t n){++reads;memset(out,0,n);return at!=0x55DECF;}));check(reads==2);
