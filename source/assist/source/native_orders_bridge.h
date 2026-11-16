@@ -147,6 +147,20 @@ static bool unloadPassengerEligible(uint32_t p,uint32_t house){
   // Enrollment must not be restricted to the first currently active exit.
   (get<uint32_t>(p+0x11C)||get<bool>(p+0x74)&&live(p));
 }
+// Every carrier commits its Ctrl+D roster atomically: unknown later
+// passengers block the entire admission instead of creating a one-person job.
+// 0 unknown, -1 confirmed invalid, 1 eligible (loaded/limbo allowed).
+static int unloadPassengerKnowledge(uint32_t p,uint32_t house,uint32_t&id,uint32_t&carrier){
+ id=carrier=0;if(!p||!worldObjects.contains(p))return -1;
+ uint32_t vt=0,owner=0;int hp=0;uint8_t onMap=0,alive=0,limbo=0;
+ if(!read(p,&vt,sizeof vt)||!read(p+0x10,&id,sizeof id)||
+    !read(p+0x11C,&carrier,sizeof carrier)||!read(p+0x21C,&owner,sizeof owner)||
+    !read(p+0x6C,&hp,sizeof hp)||!read(p+0x74,&onMap,sizeof onMap)||
+    !read(p+0x90,&alive,sizeof alive)||!read(p+0x81,&limbo,sizeof limbo))return 0;
+ if(vt!=0x7EB058u||!id||owner!=house||hp<=0)return -1;
+ if(!carrier&&(!onMap||!alive||limbo))return -1;
+ return 1;
+}
 struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1;};
 static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*2];static int unloadRosterCount;
 static void buildUnloadAdmissionRoster(uint32_t house){
@@ -188,47 +202,51 @@ static bool unloadCarrierEligible(uint32_t p,uint32_t house){return p&&worldObje
 static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
  if(!unloadCarrierEligible(p,house))return 0;
  const int frame=get<int>(0xA8ED84);const DWORD now=sampleClock(sh);
+ int cargoCount=0;uint32_t nativeCarrierID=0;
+ if(!read(p+0x114,&cargoCount,sizeof cargoCount)||!read(p+0x10,&nativeCarrierID,sizeof nativeCarrierID))return -6;
+ if(cargoCount<0||cargoCount>256||!nativeCarrierID)return -6;
  static uint32_t roster[nativeorders::MaxPassengers];int count=0;uint32_t previous=0;
  auto*begin=std::lower_bound(unloadRoster,unloadRoster+unloadRosterCount,p,[](const UnloadRosterEntry&r,uint32_t carrier){return r.carrier<carrier;});
  for(auto*at=begin;at<unloadRoster+unloadRosterCount&&at->carrier==p;++at){uint32_t q=at->pointer;
   if(q==previous)continue;
-  if(!unloadPassengerEligible(q,house)||get<uint32_t>(q+0x10)!=at->id||manualVersions.get(at->id)!=at->token||!featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
-  uint32_t carrier=get<uint32_t>(q+0x11C);
+  uint32_t uid=0,carrier=0;const int known=unloadPassengerKnowledge(q,house,uid,carrier);
+  if(!known)return -6; // Unknown later passenger must not be dropped.
+  if(known<0||uid!=at->id||manualVersions.get(at->id)!=at->token||
+     !featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
   if(at->history>=0){const auto&old=recentPassengers[at->history];
-   if(old.carrierID!=get<uint32_t>(p+0x10)||old.carrierType!=typeOf(p,2)||DWORD(now-old.tick)>1500||frame<old.frame||frame-old.frame>90||carrier)continue;
+   if(old.carrierID!=nativeCarrierID||old.carrierType!=typeOf(p,2)||DWORD(now-old.tick)>1500||frame<old.frame||frame-old.frame>90||carrier)continue;
   }else if(carrier!=p)continue;
   if(count==nativeorders::MaxPassengers)return -6;
   previous=q;roster[count++]=q;
  }
- // Native cargo chain contains the entire load even while later occupants
+  // Native cargo chain contains the entire load even while later occupants
  // remain inactive/limbo. Supplement the infantry inventory once per carrier
  // admission; do not turn a partial active-unit sample into a one-person job.
- const int cargoCount=get<int>(p+0x114);
- if(cargoCount>0&&cargoCount<=256){
-  uint32_t q=get<uint32_t>(p+0x118);
+ if(cargoCount>0){
+  uint32_t q=0;if(!read(p+0x118,&q,sizeof q))return -6;
   uint32_t seen[256]{};int scanned=0;
   while(q&&scanned<cargoCount){
-   if(!worldObjects.contains(q)||get<uint32_t>(q+0x11C)!=p)break;
+   uint32_t id=0,carrier=0;const int known=unloadPassengerKnowledge(q,house,id,carrier);
+   if(!known)return -6;
+   if(known<0||carrier!=p)break;
    bool duplicate=false;for(int k=0;k<scanned;++k)if(seen[k]==q){duplicate=true;break;}
    if(duplicate)break;
    seen[scanned++]=q;
-   if(unloadPassengerEligible(q,house)&&featureObjectAllowed(featuretypes::UnloadPassenger,q)){
-    // An actor reused between roster snapshot and admission must never
-    // inherit the prior passenger's Ctrl+D intent.
-    const uint32_t id=get<uint32_t>(q+0x10),token=manualVersions.get(id);
+   if(featureObjectAllowed(featuretypes::UnloadPassenger,q)){
+    const uint32_t token=manualVersions.get(id);
     for(auto*at=begin;at<unloadRoster+unloadRosterCount&&at->carrier==p;++at)
      if(at->pointer==q&&(at->id!=id||at->token!=token))return -6;
     bool enrolled=false;for(int k=0;k<count;++k)if(roster[k]==q){enrolled=true;break;}
     if(!enrolled){if(count==nativeorders::MaxPassengers)return -6;roster[count++]=q;}
    }
-   q=get<uint32_t>(q+0x30);
+   uint32_t next=0;if(!read(q+0x30,&next,sizeof next))return -6;
+   q=next;
   }
-  // A torn list must not silently omit later passengers. The original
-  // infantry roster is still used for recovered prior ejectees.
+  // Validate every native link, including the final null tail.
   if(scanned!=cargoCount||q)return -6;
  }
- const bool loaded=get<int>(p+0x114)>0;
- // Missing infantry is not proof of an empty transport: it may carry tanks,
+ const bool loaded=cargoCount>0;
+  // Missing infantry is not proof of an empty transport: it may carry tanks,
  // or the infantry list may lag native D. Issue at most one ordinary Deploy
  // on initial admission, but retain this Ctrl+D for later passenger enrolment.
  // Return 2 means "native event issued, passenger admission still pending".
