@@ -10,6 +10,9 @@ static std::atomic<bool>blockNext{true},entered{false};
 static std::atomic<DWORD>backgroundReadThread{0};
 static unsigned threadStarts=0;
 static void*recoveryMemory=nullptr;
+// Shadow test models native game memory by its x86 addresses; the callback
+// still executes on the actual pinned production worker thread.
+static const uint8_t*shadowImage=nullptr;static size_t shadowImageSize=0;
 static HANDLE WINAPI countedThread(LPSECURITY_ATTRIBUTES security,SIZE_T stack,LPTHREAD_START_ROUTINE start,LPVOID context,DWORD flags,LPDWORD id){
  ++threadStarts;return CreateThread(security,stack,start,context,flags,id);
 }
@@ -23,12 +26,17 @@ static HANDLE WINAPI delayedMapping(HANDLE file,LPSECURITY_ATTRIBUTES security,D
 }
 static BOOL WINAPI auditedNativeRead(HANDLE proc,LPCVOID address,LPVOID output,SIZE_T size,SIZE_T*got){
  if(GetCurrentThreadId()!=gameThread)backgroundReadThread.store(GetCurrentThreadId(),std::memory_order_release);
+ const uintptr_t at=uintptr_t(address);
+ if(shadowImage&&at>=0x10000&&at<=shadowImageSize&&size<=shadowImageSize-at){
+  std::memcpy(output,shadowImage+at,size);if(got)*got=size;return TRUE;
+ }
  return ReadProcessMemory(proc,address,output,size,got);
 }
 #define CreateFileMappingW delayedMapping
 #define CreateThread countedThread
 #define ReadProcessMemory auditedNativeRead
 #include "../../shared/source/world_frame_async_win.h"
+#include "../../shared/source/world_frame_shadow_win.h"
 #undef ReadProcessMemory
 #undef CreateFileMappingW
 #undef CreateThread
@@ -114,4 +122,30 @@ extern "C" __declspec(dllexport) int ProbeReady(){
  if(worldFrame.find(hints[0].address&~4095u))return -3;
  return 1;
 }
-extern "C" __declspec(dllexport) int Stop(){assist::retireWorldFrame();return assist::worldFramePublication.stop()?1:0;}
+extern "C" __declspec(dllexport) int ShadowBegin(){
+ using namespace assist;
+ shadowImage=memory.bytes.data();shadowImageSize=memory.bytes.size();
+ backgroundReadThread.store(0,std::memory_order_release);
+ if(!worldFrameReady||!worldFrame.sealed())return -1;
+ const auto key=worldFrame.key;
+ if(!worldFrameShadow.request(key,worldframe::Base,GetTickCount()))return -2;
+ return 1;
+}
+extern "C" __declspec(dllexport) int ShadowReady(){
+ using namespace assist;
+ worldframe::BackgroundTrialResult result{};
+ auto key=worldFrame.key;key.tick=GetTickCount();
+ if(!worldFrameShadow.poll(key,result))return 0;
+ if(result.status!=worldframe::BackgroundTrialStatus::CandidateOnly||
+    result.counters.calls<1||!result.pages||result.usableForCommands())return -1;
+ if(!backgroundReadThread.load(std::memory_order_acquire)||
+    backgroundReadThread.load(std::memory_order_acquire)==gameThread)return -2;
+ if(!worldFrameReady||!worldFrame.sealed())return -3;
+ return 1;
+}
+extern "C" __declspec(dllexport) int Stop(){
+ assist::retireWorldFrame();
+ const bool published=assist::worldFramePublication.stop();
+ const bool shadow=assist::worldFrameShadow.stop();
+ return published&&shadow?1:0;
+}
