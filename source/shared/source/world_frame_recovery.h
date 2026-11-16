@@ -1,5 +1,5 @@
 #pragma once
-#include "world_frame_capture.h"
+#include "world_frame.h"
 #include <atomic>
 #include <mutex>
 
