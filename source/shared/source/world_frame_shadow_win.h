@@ -64,8 +64,8 @@ class ShadowGraphWorker {
    {
     std::lock_guard<std::mutex>lock(self->gate_);
     if(job.epoch!=self->epoch_.load(std::memory_order_acquire))continue;
-    if(resultReady_&&result_.after.sameWorld(result.after)&&
-       result.after.frame<result_.after.frame)continue;
+    if(self->resultReady_&&self->result_.after.sameWorld(result.after)&&
+       result.after.frame<self->result_.after.frame)continue;
     self->result_=result;self->resultEpoch_=job.epoch;self->resultReady_=true;
    }
   }
