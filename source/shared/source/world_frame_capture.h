@@ -33,6 +33,10 @@ public:
   if((!capacity_||size_>=capacity_/2)&&!grow())return {false};entries_[slot(address)]={address,generation_};++size_;return {true};
  }
 };
+// Recently missed exact consumer field, not stale data. The acquisition
+// boundary can fill this range before broad page subscriptions. A caller may
+// store its last observed tick to bound the hint's lifetime.
+struct RequestedSpan {uint32_t address=0,bytes=0,tick=0;};
 struct CaptureScratch {
  CaptureSet actors,types,small,houses;
  std::vector<uint32_t>queue,list,docks,warmPages;
@@ -117,7 +121,8 @@ public:
   out.resize(size_t(v.count));if(!v.count)return true;
   return frame_.capture(live_,v.items,out.data(),out.size()*4);
  }
- bool capture(uint32_t demand,const std::vector<uint32_t>&requests){
+ bool capture(uint32_t demand,const std::vector<uint32_t>&requests,
+              const RequestedSpan*exact=nullptr,size_t exactCount=0){
   if(!working())return false;
   demand_=demand|Base;const bool visuals=(demand_&Visual)!=0;
   // Global fields are one read per overlapping page, regardless of which
@@ -172,6 +177,21 @@ public:
   frame_.prefetchPages(live_,warm,scratch_->pageScratch.data(),scratch_->pageScratch.size(),false);
   for(size_t i=0;i<scratch_->queue.size();++i){if(!working())return false;actor(scratch_->queue[i]);}
   if(!working())return false;
+  // Only a confirmed miss records exact bytes. A full-page read may fail on a
+  // transient allocation boundary even when a specific field is readable.
+  // Try bounded exact ranges after normal actor discovery but BEFORE broad
+  // page demands, so the latter cannot mark their bytes failed first.
+  // This remains the same single unsealed acquisition: no live fallback in
+  // an already sealed consumer or a second capture of the game frame.
+  size_t exactBytes=0;constexpr size_t ExactBudget=16*1024;
+  for(size_t i=0;exact&&i<exactCount;++i){
+   const auto&span=exact[i];
+   if(!span.bytes||span.bytes>256||!range(span.address,span.bytes)||
+      uint32_t(frame_.key.tick-span.tick)>1000||exactBytes+span.bytes>ExactBudget)continue;
+   exactBytes+=span.bytes;
+   frame_.prefetch(live_,span.address,span.bytes);
+   if(!working())return false;
+  }
   frame_.prefetchPages(live_,requests,scratch_->pageScratch.data(),scratch_->pageScratch.size());
   return working();
  }
