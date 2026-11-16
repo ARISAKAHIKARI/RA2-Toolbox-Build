@@ -284,6 +284,10 @@ public:
   demand=runtimeDemand(demand);
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();
   if((demand|Base)&~uint32_t(channel_->demandMask))demandDirty_=true;
+  // A previously active command lease may have aged out while its reader
+  // continued subscribing display data. Resuming command mode must revoke
+  // HostDisplayOnly IMMEDIATELY, even when everControl was already true.
+  if(!display&&(channel_->demandMask&HostDisplayOnly))demandDirty_=true;
   auto&lease=leases_[reader];lease.used|=demand|Base;
   for(unsigned bit=0;bit<6;++bit)if((demand|Base)&(1u<<bit))lease.ticks[bit]=now;
   if(display){
