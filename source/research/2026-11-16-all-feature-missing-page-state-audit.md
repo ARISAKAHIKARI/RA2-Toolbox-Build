@@ -70,3 +70,33 @@
 - `.github/workflows/validate-automatic-compute.yml`：独立 `regression`、`defense-state`、`ore-state`、`missile-state` 作业，避免一个旧夹具失败导致另几项未执行。
 
 受测内容与运行报告按准确提交 SHA 关联；不得把单元通过表述成实机成功。当前 PR: https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/pull/36
+
+## 续审 · 自动装车账本与躲弹任务（同一 PR，不更换架构）
+
+本轮继续直接审查 `autoload_bridge.h` 的生产在途账本及 `dodge_bridge.h` 的生产任务维护/Host 回执应用，确认了比“缺页未捕获”更深一层的 **二次实时验证假阴性**。
+
+### 已补修复
+
+- **自动装车：`autoload.h::inspectReservation` 四态确认。** 将实时读取明确分为 `Unknown / Active / Boarded / Invalid`：每个 UID、阵营、血量、游戏存活标志、载具身份、上车目标、运动状态读取失败都不允许更改 `loadLedger`；读取完整后才允许 `takenOver` 记录 `enterObserved`。被载具真正接收的单位，即使不在实时 Techno 名单，只要原乘员与载具 UID 和 CarriedBy 字段匹配，就按已上车完成回执。
+- **自动装车：本地 feature filter 的未知与显式拒绝分离。** 配置正在更新或自定义 TypeID 暂时不可读只暂停账本动作，不把类型误判为禁用；载具乘员和运输载具各用正确的 Passenger/Transport 过滤器。
+- **自动装车：接口暂不可用不再清空所有任务。** `loadInterfaces` 失败时暂停发单并保留既有 ticket；原来 900 个游戏帧的任务超时界限保留，避免无界占用账本。保留原有原生 `GuardedEnterAction` 与 `nativeMission` 提交通道。
+- **自动闪避：快照不完整只允许等待，不能取消原任务。** `dodgeSourceKnowledge` 在 `SampleReadScope` 下做完整性判定；`updateDodgeJobs` 的删除仅在证实非本实体/手动版本失效/明确不合规时发生；实时坐标、队列、旋转计时、Scatter marker 必须**全部读成功**才可以改 `x/y`、`quietFrame` 与观察回执。
+- **自动闪避：修复二次 UID 实时读失败引发的误取消。** 原来的 `worldByID` 在已经完整索引的基础上再读一次实时 UID，若读取失败就返回 0，然后直接删除活跃闪避任务。新逻辑先判断 `worldObjects.byId` 完整索引中的指针，再用显式带返回值的实时 UID 读取核对；读取失败是 `Unknown`，真正 UID 变更才是 `Invalid`。Host 计算结果应用路径同时处理。
+- **关闭和退出安全**：原生回执、手动版本、原始 deadline 与事件队列限制不变；本轮没有增加任意单帧重新发包、游戏内直接写任务、混合采样通道或新的 Hook。
+
+### 新增针对生产代码的回归
+
+| 测试 | 覆盖 |
+| --- | --- |
+| `source/assist/tests/autoload_reservation_state.cpp` | 运行生产四态观察函数，逐字段注入源单位/载具缺页、UID 复用、敌方接管、载具上车、缺少目标、Passenger-vs-Transport 两种过滤器、过期旧帧 |
+| `source/assist/tests/tactical_frame_sampling.cpp` · `testBoardingLedgerUnknown` | 运行生产 `autoLoadTick` 账本：实时 UID/归属/坐标/任务缺页、接口暂断、上车确认（原名单中乘员消失）、UID 替换、900 帧过期清理 |
+| `source/assist/tests/tactical_frame_sampling.cpp` · `testDodgeLeaseMissing` | 运行生产 `dodgeSourceKnowledge`/`updateDodgeJobs`：sealed 页不完整、UID 读取失败、实时位置读取失败、恢复后真实位置改变、完整样本证明 Native 任务已失效 |
+| `.github/workflows/validate-automatic-compute.yml` | 独立 `boarding-state` CI，并加入 `windows-target-build`：尝试编译真实 x86 Runtime 与 x64 Host，而不生成 Release |
+
+2026-11-16 的生产路径 GitHub Actions Linux 工作流（commit `93daaf6f34e5585629867f1fb9f1760f62fe879c`）中，`regression`、`boarding-state`、`defense-state`、`ore-state`、`missile-state` 全部成功。Windows 目标编译为另外的 CI 门槛，尚不把 Linux 回归成功等同于 Windows 实机或联机验收。
+
+### 当前边界
+
+- 自动装车和闪避的**本地账本/任务清理**已完成这轮最危险的缺页假阴性修复；其余多个原生最终提交守卫仍需按事件回执和平台差异验证。
+- 数据读取失败时不凭默认零值发原生指令；若单次 native legality 查询失败，仍遵守已有重试界限，不应假定指令已经执行。
+- 旧 `source/research` 报告中“自动装车账本/闪避实时任务仍需加固”两项已由本节实现和测试覆盖；剩余为 Windows 编译、真实游戏、联机、多单位负载回归，而非再次改采样架构。
