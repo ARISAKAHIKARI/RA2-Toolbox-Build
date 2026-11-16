@@ -56,7 +56,8 @@ def production():
     load = source["autoload_bridge.h"]
     add(load[load.index("static bool loadCalculationPending,"):load.index("static int submitLoading(")])
     for signature in ("static bool loadingObject(", "static uint32_t incomingVehicle(",
-                      "static loading::Observation loadingObservation(", "static int passengerSlots("):
+                      "static loading::Observation loadingObservation(", "static int loadingFilterStatus(",
+                      "static loading::ReservationView loadingReservationView(", "static int passengerSlots("):
         add(function(load, signature))
     add("static bool loadQueryFailed;")
     add(function(load, "static bool queryEnterAction("))
