@@ -429,12 +429,6 @@ note(L"直接组包入口已停用，旧配置也不会启用。原生变卖光�
 
 toggle(788,L"优先执行增强指令",extra.overrideNative);next();
 note(L"用于增强操作与普通地面命令冲突的情况；仅对支持的鼠标操作生效。",44);
-item(L"STATIC",L"计算模式",20,455,832,0,30);button(9609,L"展开设置",500,125);next(30);
-note(L"按功能选择工具箱计算或游戏内计算；修改后从下一局开始使用。躲弹仅原版散开可切换计算位置；顺向移动始终由游戏内原生寻路执行。",44);
-activeFoldGroup=9609;
-for(int i=0;i<compute::Count;++i){if(i==compute::BurstRefresh)continue;label(compute::label(i),20,260);choices(combo(9000+i),{L"工具箱计算",L"游戏内计算"},(computeRequested>>i)&1u);next();}
-item(L"STATIC",L"当前计算模式：等待对局",20,605,833,0,192);next(192);
-activeFoldGroup=0;
 label(L"移动指令兼容模式",20,260);megaQueueCombo=combo(761);choices(megaQueueCombo,{L"标准（推荐）",L"兼容模式（实验性）"},megaQueueMode);next();
 label(L"维修与出售兼容模式",20,260);objectQueueCombo=combo(762);choices(objectQueueCombo,{L"标准（推荐）",L"兼容模式（实验性）"},objectQueueMode);next();
 note(L"兼容模式需重启游戏和工具箱后生效。通常保持标准模式即可。",44);
