@@ -75,5 +75,14 @@ int main(){
  mailbox.finish(fresh);
  assert(mailbox.ready(key(14,71,1056),ready,RecoverySpans)==1);
  assert(ready[0].address==updated.address);
- std::puts("PASS async recovery: bounded hints, source-only read, no stale publication, nonblocking producer, epoch retirement");
+ // A new epoch may legitimately rewind frame numbers without inheriting the
+ // previous epoch's completion watermark.
+ mailbox.invalidate();
+ const RequestedSpan rewound{0x650000,4,1099};
+ assert(mailbox.submit(key(2,71,1100),&rewound,1));
+ assert(mailbox.take(pending));
+ mailbox.finish(RecoveryMailbox::probe(pending,[](uint32_t,void*,size_t){return true;}));
+ assert(mailbox.ready(key(3,71,1116),ready,RecoverySpans)==1);
+ assert(ready[0].address==rewound.address);
+ std::puts("PASS async recovery: bounded hints, source-only read, no stale publication, nonblocking producer, epoch retirement and rewind");
 }
