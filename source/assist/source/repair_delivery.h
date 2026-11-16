@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 namespace assist { namespace repairdelivery {
-struct Observation {bool valid=false,repairing=false,healthy=false;};
+struct Observation {bool valid=false,repairing=false,healthy=false,uncertain=false;};
 // Repair is a toggle. A timer cannot establish that a previous toggle was
 // consumed. Keep pending identities until actual state/identity evidence.
 template<unsigned Size=16384> struct Pending {
@@ -26,6 +26,7 @@ template<unsigned Size=16384> struct Pending {
  template<class Read>void observe(Read read){
   if(!count)return;
   for(auto&r:slots)if(r.state==1){const Observation o=read(r.id,r.pointer);
+   if(o.uncertain)continue; // An unreadable page is not proof of a failed Repair toggle.
    if(!o.valid||o.repairing||o.healthy){r.state=2;--count;}
   }
   if(!count)clear();
