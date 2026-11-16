@@ -21,6 +21,7 @@ int main(){
   if(!original)++changed;
   check(signatureRequired(Kind::Call,e.address));check(signatureRequired(Kind::Breakpoint,e.address));
  }
+ std::fprintf(stderr,"diagnostic patch-catalogue=%u changed=%u\n",patches,changed);
  check(patches==82);check(changed>60);
  // Complete range reads continue after mismatch; the second pause probe is unreadable.
  Config skip{};setSkip(skip,id(Kind::Patch,0x55D360),true);applyPolicy(skip);unsigned reads=0;
