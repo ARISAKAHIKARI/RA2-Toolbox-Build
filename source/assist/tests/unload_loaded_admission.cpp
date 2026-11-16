@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
@@ -15,7 +16,7 @@ struct Object {uint32_t id=0,owner=1,carrier=0,type=42;int k=1,hp=100,passengers
 static std::unordered_map<uint32_t,Object> objects;
 constexpr uint32_t transport=0x10000,passenger=0x20000;
 static std::vector<uint32_t> infantry;
-static uint32_t match=1;static int indexedFrame=10;static struct {bool chat=false;} snap;
+static uint32_t missingRead=0;static uint32_t match=1;static int indexedFrame=10;static struct {bool chat=false;} snap;
 static unsigned deployments=0,cancellations=0;
 struct Shared{uint32_t flags=1;} shared,*sh=&shared;
 constexpr uint32_t SmartUnloadOrders=1;
@@ -26,6 +27,12 @@ template<class T>static T get(uint32_t address){
  if(address==0xA8ED84)return T(10);
  auto at=objects.find(address&~0xfffu);if(at==objects.end())return T{};const auto&o=at->second;
  switch(address&0xfff){case 0:return T(o.k==1?0x7EB058:o.k==2?0x7F5C70:0x7E3EBC);case 0x10:return T(o.id);case 0x6C:return T(o.hp);case 0x74:return T(o.active);case 0x81:return T(o.limbo);case 0x90:return T(o.onMap);case 0x21C:return T(o.owner);case 0x11C:return T(o.carrier);case 0x114:return T(o.passengers);case 0x118:return T(o.head);case 0x30:return T(o.next);case 0x1C8:return T(o.deployed);case 0xAC:return T(o.mission);case 0xB4:return T(o.queued);default:throw std::runtime_error("unexpected read");}
+}
+static bool read(uint32_t at,void*out,size_t size){
+ if(missingRead&&at==missingRead)return false;
+ if(size==1){uint8_t v=get<uint8_t>(at);std::memcpy(out,&v,size);return true;}
+ if(size==4){uint32_t v=get<uint32_t>(at);std::memcpy(out,&v,size);return true;}
+ return false;
 }
 struct World {bool contains(uint32_t p)const{return objects.count(p)!=0;}} worldObjects;
 struct Versions {uint32_t token=0,carrierMove=0;uint32_t get(uint32_t id)const{return token+(id==10?carrierMove:0);}} manualVersions;
