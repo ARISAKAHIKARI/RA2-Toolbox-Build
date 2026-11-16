@@ -32,6 +32,6 @@ jobs:
       - name: Check settings migration and native UI
         run: |
           set -euo pipefail
-          python3 source/assist/tests/auto_settings_ui_test.py
+          python3 source/assist/tests/fixed_compute_settings.py
           python3 source/assist/tests/ui_geometry_test.py
           python3 source/tools/audit_architecture.py
