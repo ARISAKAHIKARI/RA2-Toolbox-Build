@@ -225,11 +225,11 @@ public:
  template<class Read>bool prefetch(Read&&live,uint32_t address,size_t n){return capture(live,address,nullptr,n);}
  // The caller supplies retained scratch and a bounded page list. Coalesce
  // only adjacent, completely unobserved pages; existing/partial pages keep
- // their exact read-set semantics. A failed speculative span publishes no
- // bytes and falls back to the original per-page/partial-range path.
- // Speculative roster warming can suppress individual fallback: a failed
- // span then observes no bytes, leaving each original field/range read to
- // establish its own partial-page validity and failure masks.
+ // their exact read-set semantics. A failed speculative batch publishes no
+ // invalid data. Up to two split levels salvage readable subranges without
+ // allowing a bad page to discard a whole 16-page unit warmup.
+ // At worst the batch uses 7 speculative calls; required field reads retain
+ // the original per-page and partial-range fallback.
  template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes,bool individualFallback=true){
   if(sealed_||overflow_)return false;
   const size_t limit=std::min<size_t>(16,scratchBytes/PageSize);bool ok=true;
@@ -242,12 +242,27 @@ public:
    const size_t count=end-first;
    if(!individualFallback&&count==1){first=end;continue;}
    if(count>1&&pages.reserve(pages.size()+count)){
-    ++counters.calls;counters.pageAttempts+=uint32_t(count);counters.bytes+=uint32_t(count*PageSize);
-    if(live(at,scratch,count*PageSize)){
-     for(size_t n=0;n<count;++n){auto*p=add(addresses[first+n]);if(!p)return false;p->full=1;std::memcpy(p->bytes.data(),scratch+n*PageSize,PageSize);}
-     first=end;continue;
-    }
-    ++counters.failedReads;
+    // A failed live read may alter scratch, but never publishes its bytes.
+    // Successful subranges are copied before the next reuse of scratch.
+    const auto salvage=[&](auto&& self,size_t begin,size_t span,unsigned depth)->bool{
+     ++counters.calls;counters.pageAttempts+=uint32_t(span);counters.bytes+=uint32_t(span*PageSize);
+     if(live(addresses[begin],scratch,span*PageSize)){
+      for(size_t i=0;i<span;++i){
+       auto*p=add(addresses[begin+i]);if(!p)return false;
+       p->full=1;std::memcpy(p->bytes.data(),scratch+i*PageSize,PageSize);
+      }
+      return true;
+     }
+     ++counters.failedReads;
+     if(depth>=2||span<4)return false;
+     const size_t left=span/2;
+     const bool leftOk=self(self,begin,left,depth+1);
+     if(overflow_)return false;
+     const bool rightOk=self(self,begin+left,span-left,depth+1);
+     return leftOk&&rightOk;
+    };
+    if(salvage(salvage,first,count,0)){first=end;continue;}
+    if(overflow_)return false;
    }
    if(!individualFallback){first=end;continue;}
    for(;first<end;++first){if(!prefetch(live,addresses[first],PageSize))ok=false;if(overflow_)return false;}
