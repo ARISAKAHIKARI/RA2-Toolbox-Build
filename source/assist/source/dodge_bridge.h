@@ -113,10 +113,15 @@ static int dodgeSourceKnowledge(uint32_t p,uint32_t house){
  return sample.complete()?(eligible?1:-1):0;
 }
 static void updateDodgeJobs(uint32_t house,int frame,DWORD now){
- for(int n=0;n<dodgeCount;){auto&j=dodgeJobs[n];uint32_t p=worldByID(j.id);
+ for(int n=0;n<dodgeCount;){auto&j=dodgeJobs[n];
+  // A complete index can prove absence. worldByID adds another fallible
+  // live UID read; its failure cannot retire an otherwise owned job.
+  const uint32_t p=worldObjects.byId(j.id);
   if(p!=j.pointer||manualVersions.get(j.id)!=j.token||(!j.active&&(!sh->dodgeEnabled||frame-j.lastSeen>300))){
    cancelDodge(j.id);continue;
   }
+  uint32_t uid=0;if(!read(p+0x10,&uid,sizeof uid)){++n;continue;}
+  if(uid!=j.id){cancelDodge(j.id);continue;}
   const int eligible=dodgeSourceKnowledge(p,house);
   if(eligible<0){cancelDodge(j.id);continue;}
   if(!eligible){++n;continue;} // Missing fields: preserve ownership and progress.
@@ -148,8 +153,10 @@ static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int fra
  const auto&input=source?*source:dodgeInput;
  if(r.match!=input.match||r.tick!=input.tick||r.frame!=input.frame||r.count!=input.count||r.count<0||r.count>dodgecompute::MaxSources)return;
  for(int n=0;n<r.count;++n){if(!freshness::valid(r.match,match,r.tick,r.frame,now,frame,freshness::Tactical)||snap.chat)break;
-  const auto&old=input.sources[n];uint32_t p=worldByID(old.id);int j=dodgeIndex(old.id);
+  const auto&old=input.sources[n];uint32_t p=worldObjects.byId(old.id);int j=dodgeIndex(old.id);
   if(p!=old.pointer||manualVersions.get(old.id)!=old.token){cancelDodge(old.id);continue;}
+  uint32_t uid=0;if(!read(p+0x10,&uid,sizeof uid))continue;
+  if(uid!=old.id){cancelDodge(old.id);continue;}
   const int eligible=dodgeSourceKnowledge(p,house);
   if(eligible<0){cancelDodge(old.id);continue;}
   if(!eligible)continue; // Failed read cannot authorize cancel or new Scatter.
