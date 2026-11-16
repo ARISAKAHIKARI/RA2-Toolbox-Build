@@ -14,7 +14,7 @@ def main():
  paths=[r/'source/assist/source'/name for name in ['bridge.cpp','repair_delivery.h','compute_tasks.h','compute_frame.h','compute_policy.h','plan_freshness.h','tactical_decisions.h','world_frame_runtime.h','tactical_frame_read.h']]+[r/'source/shared/source/world_frame.h',here/'auto_repair_runtime.cpp',Path(__file__).resolve()]
  digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();hashes={str(p.relative_to(r)):digest(p) for p in paths}
  def run(source,dest,before=False):
-  dest.mkdir(parents=True,exist_ok=True);text=source.read_text();reset=block(text,'static void reset(bool retireHooks=true)')
+  dest.mkdir(parents=True,exist_ok=True);text=source.read_text();reset=block(text,'static void reset(bool retireHooks=true,bool preserveMissile=false)')
   manual=block(text,'else if(c==Repair)');manual=manual[manual.index('{')+1:-1]
   resetStart=reset.index('repairCount=repairAt=repairDone=0;');resetEnd=reset.index('for(auto&v:lastIdle)',resetStart)
   autoStart=reset.index('autoWas=false;');autoEnd=reset.index('if(retireHooks)',autoStart)
