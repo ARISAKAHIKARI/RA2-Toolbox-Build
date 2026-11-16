@@ -12,7 +12,7 @@ struct Reservation {uint32_t object,id,vehicle,vehicleID;int slots,frame;int las
 // neither an absent passenger nor a finished Enter. Keep the old ledger state
 // until all fields needed for that transition have been read successfully.
 // Reader: bool(uint32_t,void*,size_t). Present: bool(pointer).
-// Allowed: int(pointer,kind) where -1 is unreadable, 0 denied, 1 accepted.
+// Allowed: int(pointer,kind,isTransport) where -1 is unreadable, 0 denied, 1 accepted.
 enum class ReservationState : uint8_t { Unknown, Active, Boarded, Invalid };
 struct ReservationView {
  ReservationState state=ReservationState::Unknown;
@@ -44,7 +44,7 @@ ReservationView inspectReservation(const Reservation&r,uint32_t house,int frame,
  if(sourceVT!=expectedSource||vehicleVT!=0x7F5C70u||sourceHouse!=house||vehicleHouse!=house||
     sourceHP<=0||vehicleHP<=0||!sourceAlive||!vehicleAlive||!sourceMap||!vehicleMap||
     sourceLimbo||vehicleLimbo||sourceDisabled||vehicleDisabled){view.state=ReservationState::Invalid;return view;}
- const int passengerAllowed=allowed(r.object,r.kind),transportAllowed=allowed(r.vehicle,2);
+ const int passengerAllowed=allowed(r.object,r.kind,false),transportAllowed=allowed(r.vehicle,2,true);
  if(passengerAllowed<0||transportAllowed<0)return view;
  if(!passengerAllowed||!transportAllowed){view.state=ReservationState::Invalid;return view;}
  if(!get(r.object+0xAC,view.mission.mission)||!get(r.object+0xB4,view.mission.queued)||
