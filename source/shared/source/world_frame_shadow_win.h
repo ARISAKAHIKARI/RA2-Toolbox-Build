@@ -18,6 +18,7 @@ class ShadowGraphWorker {
  HMODULE pin_=nullptr;
  Request queued_{};
  BackgroundTrialResult result_{};
+ uint32_t resultEpoch_=0;
  bool queuedReady_=false,resultReady_=false;
  uint32_t requestedAt_=0;
  BackgroundGraphOrder deliveryOrder_;
@@ -65,7 +66,7 @@ class ShadowGraphWorker {
     if(job.epoch!=self->epoch_.load(std::memory_order_acquire))continue;
     if(resultReady_&&result_.after.sameWorld(result.after)&&
        result.after.frame<result_.after.frame)continue;
-    self->result_=result;self->resultReady_=true;
+    self->result_=result;self->resultEpoch_=job.epoch;self->resultReady_=true;
    }
   }
   const HMODULE module=self->pin_;
@@ -102,6 +103,11 @@ public:
  // At most one shadow graph per second. The game thread does not wait for
  // a worker read or an in-flight capture; a busy mailbox simply skips a tick.
  bool request(const Key&key,uint32_t demand,uint32_t now){
+  // A completed disconnect may be followed by a fresh host connection.
+  // Reap the old thread first; never rearm while its DLL-pin is active.
+  reap();
+  if(stopping_.load(std::memory_order_acquire)&&!thread_)
+   stopping_.store(false,std::memory_order_release);
   if(stopping_.load(std::memory_order_acquire)||!key.match||
       !key.pid||!key.scenario||!key.house||!key.cells||
       (requestedAt_&&uint32_t(now-requestedAt_)<1000))return false;
@@ -115,7 +121,9 @@ public:
  bool poll(const Key&current,BackgroundTrialResult&out){
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
   if(!lock.owns_lock()||!resultReady_)return false;
-  const auto candidate=result_;resultReady_=false;
+  const auto candidate=result_;const auto resultEpoch=resultEpoch_;
+  resultReady_=false;
+  if(resultEpoch!=epoch_.load(std::memory_order_acquire))return false;
   if(!deliveryOrder_.admit(candidate,current))return false;
   out=candidate;return true;
  }
