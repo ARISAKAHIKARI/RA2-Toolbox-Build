@@ -91,9 +91,14 @@ void hostVisual(){
  CHECK(visual->counters.bytes>=rawBytes+512*4096&&visual->pages.size()>=rawPages+512);
  const auto calls=m.calls.size();CHECK(cache.acquire(raw,worldframe::Resources,101,live)==visual&&m.calls.size()==calls);
  CHECK(worldframe::authoritative(visual)==raw&&!worldframe::sameObservation(raw,visual));
- CHECK(worldframe::runtimeDemand(worldframe::Resources|worldframe::Combat)==worldframe::Base);
- CHECK(worldframe::runtimeDemand(worldframe::Visual|worldframe::Passengers)==worldframe::Base);
+ CHECK(worldframe::visualDemand(worldframe::Resources|worldframe::Visual));
+ CHECK(!worldframe::visualDemand(worldframe::Resources|worldframe::Combat));
+ CHECK(!worldframe::visualDemand(worldframe::Visual|worldframe::Passengers));
+ CHECK(!worldframe::visualDemand(worldframe::Visual|worldframe::HostDisplayOnly));
+ CHECK(worldframe::runtimeDemand(worldframe::Resources|worldframe::Combat)==(worldframe::Base|worldframe::Combat));
+ CHECK(worldframe::runtimeDemand(worldframe::Visual|worldframe::Passengers)==(worldframe::Base|worldframe::Passengers));
  CHECK(worldframe::runtimeDemand(worldframe::Combat|worldframe::Passengers)==(worldframe::Base|worldframe::Combat|worldframe::Passengers));
+ CHECK(worldframe::runtimeDemand(worldframe::Resources|worldframe::Visual)==worldframe::Base);
  // A missing visual page recovers while paused, without renewing control time.
  constexpr uint32_t extra=0xE00100;m.put(extra,456u);CHECK(!visual->read(extra,&value,4));cache.request({extra&~4095u},102,true);
  CHECK(!cache.acquire(raw,worldframe::Resources,102,live));auto extended=cache.acquire(raw,worldframe::Resources,116,live);
@@ -506,7 +511,20 @@ void displayLeaseTransition(){
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  subscriber->subscribe(79,worldframe::Base);
  CHECK(channel()->demandMask==worldframe::Base);
- subscriber.reset();clock=2000;
+ // Mixed visual+native subscriptions must NEVER look like display-only.
+ // Exercise both cold and hot transitions on the same reader lease.
+ clock+=252;
+ subscriber->subscribe(79,worldframe::Visual|worldframe::Combat);
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::Combat));
+ clock+=252;
+ subscriber->subscribe(79,worldframe::Resources|worldframe::Passengers);
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::Passengers));
+ clock+=252;
+ subscriber->subscribe(79,worldframe::Visual);
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
+ subscriber->subscribe(79,worldframe::Resources|worldframe::Ore);
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::Ore));
+ subscriber.reset();clock=2400;
 }
 void hostBoundaryCommandGuard(){
  currentPid=HostPid;clock=3000;Memory memory;setup(memory);gameMemory=&memory;
@@ -532,6 +550,12 @@ void hostBoundaryCommandGuard(){
  const auto oldReads=rpmCalls;
  CHECK(!reader.beginWorldFrame(7));
  CHECK(channel()->demandMask==worldframe::Base);
+ CHECK(rpmCalls==oldReads);
+ // Mixed demand cannot route through Host VisualCache to bypass the command
+ // guard, even if Visual is one of the flags requested by the reader.
+ reader.setWorldDemand(worldframe::Visual|worldframe::Combat);
+ CHECK(!reader.beginWorldFrame(7));
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::Combat));
  CHECK(rpmCalls==oldReads);
  currentPid=GamePid;
  auto full=std::make_shared<worldframe::Snapshot>();
