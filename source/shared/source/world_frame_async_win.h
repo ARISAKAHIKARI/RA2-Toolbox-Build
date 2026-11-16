@@ -18,6 +18,13 @@ template<class Writer=Server>class AsyncPublisher {
    Writer writer(Server::Role::PublicationOnly);
    while(!self->stopping_.load(std::memory_order_acquire)){
     const DWORD wait=WaitForSingleObject(self->event_,100);if(wait==WAIT_FAILED)break;
+    Publication job;
+    while(!self->stopping_.load(std::memory_order_acquire)&&self->pool_.take(job)){
+     const auto current=[&]{return !self->stopping_.load(std::memory_order_acquire)&&self->pool_.current(job)&&writer.observes(job.key);};
+     if(self->pool_.current(job)&&writer.wanted(job.key.owner,GetTickCount()))writer.publish(job,current);
+     self->attemptAt_.store(GetTickCount(),std::memory_order_relaxed);self->attemptEpoch_.store(job.epoch,std::memory_order_relaxed);self->attemptSerial_.store(job.key.serial,std::memory_order_release);
+     self->pool_.finish(job);
+    }
     // A low-priority bounded native read batch can warm missing fields.
     // These bytes NEVER become a command sample; the next producer capture
     // re-reads candidates under its normal identity/frame checks.
@@ -28,13 +35,6 @@ template<class Writer=Server>class AsyncPublisher {
       return ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<LPCVOID>(uintptr_t(at)),out,n,&received)&&received==n;
      });
      self->recovery_.finish(result);
-    }
-    Publication job;
-    while(!self->stopping_.load(std::memory_order_acquire)&&self->pool_.take(job)){
-     const auto current=[&]{return !self->stopping_.load(std::memory_order_acquire)&&self->pool_.current(job)&&writer.observes(job.key);};
-     if(self->pool_.current(job)&&writer.wanted(job.key.owner,GetTickCount()))writer.publish(job,current);
-     self->attemptAt_.store(GetTickCount(),std::memory_order_relaxed);self->attemptEpoch_.store(job.epoch,std::memory_order_relaxed);self->attemptSerial_.store(job.key.serial,std::memory_order_release);
-     self->pool_.finish(job);
     }
    }
    writer.disconnect();
