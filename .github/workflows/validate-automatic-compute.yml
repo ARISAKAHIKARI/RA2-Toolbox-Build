@@ -129,3 +129,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/unload_loaded_admission.py --out /tmp/ra2-unload-loaded --current-only
+      - name: Fault-inject production live passenger follow-up reads
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG source/assist/tests/unload_followup_live.cpp -o /tmp/ra2-unload-followup
+          /tmp/ra2-unload-followup
