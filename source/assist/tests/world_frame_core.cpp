@@ -123,6 +123,15 @@ void overlap(){
  CHECK(!s.read(0x10000,out.data(),4));CHECK(s.seal());
  std::fill(m.bytes.begin()+0x10000,m.bytes.begin()+0x12000,0xFF);
  CHECK(s.read(0x10FF8,out.data(),24));for(unsigned i=0;i<24;++i)CHECK(out[i]==uint8_t(0xF8+i));
+ // A second-page miss must leave the caller's entire result untouched.
+ // This catches partial-copy corruption even when callers check false.
+ worldframe::Snapshot incomplete;incomplete.reset(key());
+ CHECK(incomplete.prefetch(read,0x10FF8,8));CHECK(incomplete.seal());
+ std::array<uint8_t,24> untouched{};untouched.fill(0xA5);
+ const auto beforeMiss=m.calls.size();
+ CHECK(!incomplete.read(0x10FF8,untouched.data(),untouched.size()));
+ CHECK(m.calls.size()==beforeMiss);
+ for(auto byte:untouched)CHECK(byte==0xA5);
  const auto before=m.calls.size();CHECK(!s.capture(read,0x12000,out.data(),4));CHECK(!s.read(0x12000,out.data(),4));CHECK(!s.observed(0x12000,4));CHECK(m.calls.size()==before);
  CHECK(!s.read(0x10000,nullptr,4));CHECK(!s.read(0xFFFF,out.data(),4));CHECK(!s.read(0x7FFFFFFF,out.data(),4));CHECK(!s.read(0x10000,out.data(),0));
  worldframe::Snapshot imported;CHECK(imported.import(s.key,s.counters,s.pages.data(),s.pages.size()));CHECK(imported.read(0x10FF8,out.data(),24));CHECK(imported.key.sameFrame(s.key));
