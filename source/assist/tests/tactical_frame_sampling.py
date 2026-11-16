@@ -49,6 +49,9 @@ def production():
     for signature in ("static bool dodgeSource(", "static int dodgeThreat(", "static bool dodgeBusy(",
                       "static bool dodgeSeen(", "static void dodgeObserve(", "static bool collectDodgeInput("):
         add(function(dodge, signature))
+    add("static void cancelDodge(uint32_t);static void recordReceipt(const gateway::Receipt&);")
+    add(function(dodge, "static int dodgeSourceKnowledge("))
+    add(function(dodge, "static void updateDodgeJobs("))
     add('#include "combat_query_bridge.h"\n#include "combat_probe_bridge.h"')
     coop = source["cooperative_bridge.h"]
     add(function(coop, "struct CooperativeFrameRead") + ";")
