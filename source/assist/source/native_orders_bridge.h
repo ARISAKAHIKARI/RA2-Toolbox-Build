@@ -128,10 +128,10 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
   if(!carrier||!worldObjects.contains(carrier)||!own(carrier,house)||kind(carrier)!=2||
      !featureObjectAllowed(featuretypes::UnloadTransport,carrier)||get<uint32_t>(p+0x21C)!=house||
      !featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
-  int at=history.find(p);
-  if(at<0){if(recentPassengerCount==nativeorders::MaxPassengers)continue;at=recentPassengerCount++;history.add(p,at);}
   uint32_t uid=0,carrierUID=0;
   if(!read(p+0x10,&uid,sizeof uid)||!read(carrier+0x10,&carrierUID,sizeof carrierUID)||!uid||!carrierUID)continue;
+  int at=history.find(p);
+  if(at<0){if(recentPassengerCount==nativeorders::MaxPassengers)continue;at=recentPassengerCount++;history.add(p,at);}
   recentPassengers[at]={p,uid,carrier,carrierUID,typeOf(carrier,2),manualVersions.get(uid),now,frame};
  }
 }
