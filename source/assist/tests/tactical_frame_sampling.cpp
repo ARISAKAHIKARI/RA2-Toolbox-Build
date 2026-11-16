@@ -4,6 +4,7 @@
 #include "object_index.h"
 #include "ore_queue.h"
 #include "native_orders.h"
+#include "unload_followup_state.h"
 #include "repair_delivery.h"
 #include "unit_task_arbiter.h"
 #include "../../shared/source/world_frame.h"
