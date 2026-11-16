@@ -32,6 +32,12 @@ with tempfile.TemporaryDirectory(prefix="ra2_world_frame_") as tmp:
         str(root / "world_frame_core.cpp"), "-o", str(no_exceptions),
     ], check=True)
     subprocess.run([str(no_exceptions)], check=True)
+    precise = directory / "world_frame_exact_demand"
+    subprocess.run([
+        "g++", "-std=c++17", "-O2", "-fno-exceptions",
+        str(root / "world_frame_exact_demand.cpp"), "-o", str(precise),
+    ], check=True)
+    subprocess.run([str(precise)], check=True)
     binary = directory / "world_frame_core"
     subprocess.run([
         "g++", "-std=c++17", "-O2", "-pthread", "-DWORLD_FRAME_PLATFORM_FIXTURE",
