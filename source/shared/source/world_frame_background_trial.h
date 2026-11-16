@@ -19,8 +19,41 @@ struct BackgroundGraphPolicy {
 enum class BackgroundTrialStatus:uint8_t {
  InvalidBoundary, CaptureFailure, WorldChanged, TooOld, OutOfOrder, CandidateOnly
 };
+// Read-only projection: no native object addresses, UID membership, actions,
+// EventClass, or pointers may escape the worker's private Snapshot. The source
+// is an approximate cross-frame discovery, never command authority.
+struct BackgroundGraphFacts {
+ uint32_t visited=0,actors=0,owned=0,other=0,alive=0,dead=0;
+ uint32_t missingIdentity=0,unknownVtable=0;
+ uint32_t units=0,infantry=0,aircraft=0,buildings=0;
+};
+inline BackgroundGraphFacts backgroundFacts(const Snapshot&sample,
+                                             const CaptureScratch&scratch){
+ BackgroundGraphFacts out{};
+ if(!sample.sealed()||sample.overflow())return out;
+ for(uint32_t p:scratch.queue){
+  ++out.visited;
+  uint32_t vt=0,uid=0,owner=0;int32_t hp=0;
+  uint8_t onMap=0,limbo=0,alive=0;
+  if(!sample.read(p,&vt,4)){++out.missingIdentity;continue;}
+  const int kind=vt==0x7F5C70u?2:vt==0x7EB058u?1:
+                 vt==0x7E3EBCu?3:vt==0x7E22A4u?0:-1;
+  if(kind<0){++out.unknownVtable;continue;}
+  if(!sample.read(p+0x10,&uid,4)||!sample.read(p+0x21C,&owner,4)||
+     !sample.read(p+0x6C,&hp,4)||!sample.read(p+0x74,&onMap,1)||
+     !sample.read(p+0x81,&limbo,1)||!sample.read(p+0x90,&alive,1)||
+     !uid||owner<0x10000){++out.missingIdentity;continue;}
+  ++out.actors;
+  if(owner==sample.key.house)++out.owned;else ++out.other;
+  if(hp>0&&onMap&&!limbo&&alive)++out.alive;else ++out.dead;
+  if(kind==0)++out.infantry;else if(kind==1)++out.units;
+  else if(kind==2)++out.aircraft;else ++out.buildings;
+ }
+ return out;
+}
 struct BackgroundTrialResult {
  BackgroundTrialStatus status=BackgroundTrialStatus::InvalidBoundary;
+ BackgroundGraphFacts facts{};
  Key before{},after{};
  Counters counters{};
  uint32_t pages=0;
@@ -68,6 +101,9 @@ BackgroundTrialResult backgroundTrialWithStorage(Stamp stamp,Read read,uint32_t 
  const bool complete=graph.capture(demand,requests);
  const bool sealed=sample.seal();
  out.counters=sample.counters;out.pages=uint32_t(sample.pages.size());
+ // Derive facts from the sealed read-set, never by touching native memory a
+ // second time. Partial fields stay unknown, not zero or a dead object.
+ if(complete&&sealed&&!sample.overflow())out.facts=backgroundFacts(sample,scratch);
  out.after=stamp();++out.frameChecks;
  if(!out.before.sameWorld(out.after)){
   out.status=BackgroundTrialStatus::WorldChanged;return out;
