@@ -28,6 +28,8 @@ struct Key {
  bool sameWorld(const Key&o)const{return pid==o.pid&&owner==o.owner&&match==o.match&&scenario==o.scenario&&cells==o.cells&&house==o.house&&cellCount==o.cellCount&&session==o.session&&generationLow==o.generationLow&&generationHigh==o.generationHigh&&connectionLow==o.connectionLow&&connectionHigh==o.connectionHigh;}
  bool sameFrame(const Key&o)const{return sameWorld(o)&&frame==o.frame;}
 };
+// Producer-local field request; not part of the serialized Key/Page layout.
+struct RequestedSpan {uint32_t address=0,bytes=0,tick=0;};
 struct Counters {uint32_t calls=0,bytes=0,pageHits=0,pageAttempts=0,rangeAttempts=0,failedReads=0,rosterCaptures=0,overflows=0;};
 struct Page {
  uint32_t address=0,full=0;
