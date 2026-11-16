@@ -18,6 +18,7 @@ static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>
 // sample. Keep only addresses/lengths; never retain the old values or read
 // game memory from a consumer after seal. No hot-path allocation.
 static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
+static bool worldFrameReady=false;
 static void rememberMissingWorldSpan(uint32_t at,size_t bytes){
  if(!worldFrameReady||!worldFrame.sealed()||!bytes||bytes>256||
     !worldframe::range(at,bytes))return;
@@ -27,7 +28,7 @@ static void rememberMissingWorldSpan(uint32_t at,size_t bytes){
 }
 static worldframe::DemandLeases runtimeDemandLeases;
 static worldframe::CaptureScratch worldFrameCaptureScratch{};static std::vector<uint32_t>worldFrameCaptureRequests;
-static bool worldFrameReady=false;static worldframe::Key lastCaptureAttempt{};static bool haveCaptureAttempt=false;
+static worldframe::Key lastCaptureAttempt{};static bool haveCaptureAttempt=false;
 static uint32_t failedCaptureAt=0,captureRetryDelay=0;
 static uint64_t worldProducerGeneration=0;
 static void requestWorldRange(uint32_t at,size_t n){
