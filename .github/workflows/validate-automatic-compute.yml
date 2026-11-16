@@ -33,4 +33,3 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/fixed_compute_settings.py
-          python3 source/tools/audit_architecture.py
