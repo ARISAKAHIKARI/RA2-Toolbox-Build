@@ -1,5 +1,6 @@
-// Test real CaptureGraph acquisition on a worker thread; only original game
-// read() and world-boundary checks are synthetic. Nothing reaches EventClass.
+// Real production Graph sampled off-thread. The candidate is approximate:
+// same game, bounded age and monotonic delivery; native commands still require
+// independent real-time authoritative admission.
 #define WORLD_FRAME_FIXTURE_ONLY
 #include "world_frame_core.cpp"
 #include "../../shared/source/world_frame_background_trial.h"
@@ -14,8 +15,9 @@ int main(){
  using worldframe::BackgroundTrialStatus;
  Memory memory;setup(memory);
  std::atomic<int>frame{50};
+ std::atomic<uint32_t>tick{100};
  std::thread::id gameThread=std::this_thread::get_id(),captureThread;
- auto boundary=[&]{auto k=key(frame.load(std::memory_order_acquire));return k;};
+ auto boundary=[&]{auto k=key(frame.load(std::memory_order_acquire));k.tick=tick.load(std::memory_order_acquire);return k;};
  auto workerRead=[&](uint32_t p,void*out,size_t n){
   captureThread=std::this_thread::get_id();
   return memory.read(p,out,n);
@@ -27,11 +29,14 @@ int main(){
  assert(result.status==BackgroundTrialStatus::CandidateOnly&&result.pages>0);
  assert(result.counters.calls>0&&result.frameChecks==2);
  assert(!result.usableForCommands());
+ worldframe::BackgroundGraphOrder order;
+ assert(order.admit(result,boundary()));
+ assert(!order.admit(result,boundary())); // duplicate observation
  std::printf("PASS background full graph: %u pages, %u native reads, %u bytes, zero main-thread graph calls\n",
    result.pages,result.counters.calls,result.counters.bytes);
 
- // Frame transition in the middle of the exact real CaptureGraph execution
- // must discard its entire candidate even when both inventories were readable.
+ // One-frame movement DURING capture is fine for non-command discovery.
+ // The order gate still rejects an old result that arrives after a new one.
  bool switched=false;
  memory.beforeRead=[&](uint32_t p,size_t n){
   if(!switched&&p<=Scenario&&uint64_t(p)+n>=uint64_t(Scenario)+4096){
@@ -40,9 +45,25 @@ int main(){
  };
  std::thread changed([&]{result=worldframe::backgroundTrial(boundary,workerRead,worldframe::Base);});
  changed.join();memory.beforeRead={};
- assert(switched&&result.status==BackgroundTrialStatus::WorldChanged);
+ assert(switched&&result.status==BackgroundTrialStatus::CandidateOnly);
+ assert(result.before.frame==50&&result.after.frame==51);
+ assert(order.admit(result,boundary()));
+ auto prior=result;prior.after.frame=50;
+ assert(!order.admit(prior,boundary()));
  assert(!result.usableForCommands());
- // An identity/generation transition without a frame change is also rejected.
+ // Same-frame updates must have a strictly newer observation time.
+ auto sameFrame=result;sameFrame.before.tick=101;sameFrame.after.tick=101;
+ tick.store(105);
+ assert(order.admit(sameFrame,boundary()));
+ assert(!order.admit(sameFrame,boundary()));
+ // A delivery 161 ms late does not pass despite the game/world still matching.
+ auto stale=result;
+ tick.store(300);
+ assert(!order.admit(stale,boundary()));
+ tick.store(105);
+
+ // World/match/generation changes remain hard boundaries even across one
+ // frame. A different game's roster must never become a candidate.
  std::atomic<uint32_t>generation{1};bool replaced=false;
  auto generationBoundary=[&]{auto k=boundary();k.generationLow=generation.load();return k;};
  memory.beforeRead=[&](uint32_t p,size_t n){
@@ -53,10 +74,44 @@ int main(){
  std::thread changedWorld([&]{result=worldframe::backgroundTrial(generationBoundary,workerRead,worldframe::Base);});
  changedWorld.join();memory.beforeRead={};
  assert(replaced&&result.status==BackgroundTrialStatus::WorldChanged);
+ assert(!order.admit(result,generationBoundary()));
 
- // Blocking the entire background graph must leave game-thread boundary
- // checks available and must not stall the authoritative thread or hold an
- // engine lock. A bounded queue and actual DMA/CPU throttle come later.
+ // Excessive capture age or a frame rewind is not an approximate live graph.
+ bool delayed=false;
+ memory.beforeRead=[&](uint32_t p,size_t n){
+  if(!delayed&&p<=Scenario&&uint64_t(p)+n>=uint64_t(Scenario)+4096){
+   delayed=true;tick.fetch_add(121,std::memory_order_release);
+  }
+ };
+ std::thread slow([&]{result=worldframe::backgroundTrial(boundary,workerRead,worldframe::Base);});
+ slow.join();memory.beforeRead={};
+ assert(delayed&&result.status==BackgroundTrialStatus::TooOld);
+ tick.store(105);
+ bool rewound=false;
+ memory.beforeRead=[&](uint32_t p,size_t n){
+  if(!rewound&&p<=Scenario&&uint64_t(p)+n>=uint64_t(Scenario)+4096){
+   rewound=true;frame.fetch_sub(1,std::memory_order_release);
+  }
+ };
+ std::thread backward([&]{result=worldframe::backgroundTrial(boundary,workerRead,worldframe::Base);});
+ backward.join();memory.beforeRead={};
+ assert(rewound&&result.status==BackgroundTrialStatus::OutOfOrder);
+ frame.store(51);
+
+ // Too many frames during capture are stale even if 120 ms has not elapsed.
+ bool raced=false;
+ memory.beforeRead=[&](uint32_t p,size_t n){
+  if(!raced&&p<=Scenario&&uint64_t(p)+n>=uint64_t(Scenario)+4096){
+   raced=true;frame.fetch_add(7,std::memory_order_release);
+  }
+ };
+ std::thread skipped([&]{result=worldframe::backgroundTrial(boundary,workerRead,worldframe::Base);});
+ skipped.join();memory.beforeRead={};
+ assert(raced&&result.status==BackgroundTrialStatus::TooOld);
+ frame.store(51);
+
+ // Blocking the background graph must NOT block the game-thread clock/world
+ // checks. Only the worker waits; no engine lock is acquired.
  std::mutex mutex;std::condition_variable cv;bool entered=false,release=false;
  memory.beforeRead=[&](uint32_t p,size_t n){
   if(p<=0xA80208u&&uint64_t(p)+n>0xA80208u){
@@ -77,9 +132,12 @@ int main(){
  assert(result.status==BackgroundTrialStatus::CandidateOnly);
  assert(!result.usableForCommands());
 
- // Same frame/identity still CANNOT certify an atomic snapshot. Hooks,
- // input, UI and other threads may update state without incrementing frame.
- auto current=boundary();assert(current.sameFrame(boundary()));
- assert(!result.usableForCommands());
- std::puts("PASS shadow-only capture: frame/epoch rejection, thread isolation, blocked worker never blocks game, no command adoption");
+ // A fresh candidate from a NEW game can pass only if a current stamp
+ // corroborates that same new game. Older outstanding jobs stay rejected.
+ auto newWorld=result;
+ newWorld.before.generationLow=2;newWorld.after.generationLow=2;
+ auto newCurrent=boundary();newCurrent.generationLow=2;
+ assert(order.admit(newWorld,newCurrent));
+ assert(!order.admit(result,newCurrent));
+ std::puts("PASS approximate Graph: cross-frame allowed, same-game/age/order enforced, worker isolation, no command adoption");
 }
