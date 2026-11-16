@@ -1212,6 +1212,36 @@ static repairdelivery::Observation observePendingRepair(uint32_t id,uint32_t poi
  if(type<0x10000||!read(type+0xA0,&maxHP,sizeof maxHP))return {false,false,false,true};
  return {true,repairing!=0,maxHP>0&&hp>=maxHP};
 }
+// The batch cursor only advances after a complete admission observation.
+// A second live UID or building field read can fail after indexWorld succeeds;
+// treating the default-zero result as a rejected building silently loses Repair.
+enum class RepairAdmission { Unknown, Skip, Issue };
+static RepairAdmission checkedRepairAdmission(uint32_t id,uint32_t house,uint32_t&pointer,bool&recent){
+ pointer=worldObjects.byId(id);recent=false;
+ if(!pointer)return RepairAdmission::Skip;
+ uint32_t uid=0,vt=0,owner=0,type=0;int hp=0,maximum=0;
+ uint8_t alive=0,onMap=0,limbo=1,repairing=0,repairable=0;
+ if(!read(pointer+0x10,&uid,sizeof uid)||!read(pointer,&vt,sizeof vt)||
+    !read(pointer+0x21C,&owner,sizeof owner)||!read(pointer+0x6C,&hp,sizeof hp)||
+    !read(pointer+0x90,&alive,sizeof alive)||!read(pointer+0x74,&onMap,sizeof onMap)||
+    !read(pointer+0x81,&limbo,sizeof limbo)||!read(pointer+0x520,&type,sizeof type)||
+    !read(pointer+0x6E8,&repairing,sizeof repairing))return RepairAdmission::Unknown;
+ if(uid!=id||vt!=0x7E3EBCu||owner!=house||hp<=0||!alive||!onMap||limbo)return RepairAdmission::Skip;
+ if(type<0x10000)return RepairAdmission::Skip;
+ if(!read(type+0xA0,&maximum,sizeof maximum)||!read(type+0x157A,&repairable,sizeof repairable))return RepairAdmission::Unknown;
+ if(!refreshFeatureTypes())return RepairAdmission::Unknown;
+ // When customized, the TypeID source itself must be readable; a failed
+ // read is not proof that the building was explicitly filtered out.
+ if(featureConfig.filters[featuretypes::RepairBuilding].custom){
+  char typeName[24]{};
+  if(!read(type+0x24,typeName,23))return RepairAdmission::Unknown;
+ }
+ if(!featureTypeAllowed(featuretypes::RepairBuilding,type)||
+    (!((sh->flags&RepairUnrepairable)!=0)&&!repairable))return RepairAdmission::Skip;
+ recent=pendingRepairs.contains(id,pointer);
+ return decisions::shouldRepair({hp,maximum,true,repairing!=0,recent})?
+   RepairAdmission::Issue:RepairAdmission::Skip;
+}
 static void repairTick(uint32_t house,DWORD now){
  const bool automatic=(sh->flags&AutoRepair)!=0;
  // Cancel before polling: a late host result must not resurrect disabled work.
@@ -1228,12 +1258,16 @@ static void repairTick(uint32_t house,DWORD now){
  int frame=get<int>(0xA8ED84);if(budgetFrame!=frame||budgetMatch!=match){budgetFrame=frame;budgetMatch=match;budget=recurringBudget(EventLane::Repair);}
  if(repairAt<repairCount&&budget>0){
   indexWorld(frame);
-  while(repairAt<repairCount&&budget>0){uint32_t id=repairIDs[repairAt],p=worldByID(id);
-  const bool recent=pendingRepairs.contains(id,p);
-  if(p&&kind(p)==3&&own(p,house)){uint32_t t=typeOf(p,3);if(t&&featureTypeAllowed(featuretypes::RepairBuilding,t)&&((sh->flags&RepairUnrepairable)||get<uint8_t>(t+0x157A))&&decisions::shouldRepair({get<int>(p+0x6c),get<int>(t+0xA0),true,
-     get<bool>(p+0x6E8),recent})){if(!pendingRepairs.room(id)||!repairEvent(house,id))break;
-     pendingRepairs.queued(id,p);--budget;++repairDone;++snap.repairTotal;}}
-  ++repairAt;
+  // Never retire queued candidates if a new UID roster could not be sealed.
+  if(indexedFrame==frame)while(repairAt<repairCount&&budget>0){
+   const uint32_t id=repairIDs[repairAt];uint32_t p=0;bool recent=false;
+   const RepairAdmission status=checkedRepairAdmission(id,house,p,recent);
+   if(status==RepairAdmission::Unknown)break;
+   if(status==RepairAdmission::Issue){
+    if(!pendingRepairs.room(id)||!repairEvent(house,id))break;
+    pendingRepairs.queued(id,p);--budget;++repairDone;++snap.repairTotal;
+   }
+   ++repairAt;
   }
  }
  // Completion reports events actually queued, not the number of candidates.
