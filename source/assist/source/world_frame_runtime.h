@@ -118,7 +118,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
  runtimeDemandLeases.append(key.tick,requests);
  std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
- key.serial=++worldFrameSerial;key.demand=worldFrameServer.demandRevision();worldFrame.reset(key);
+ key.serial=++worldFrameSerial;
+ key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
+            (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
+ worldFrame.reset(key);
  // Probe up to 64 fields on the worker but permit only 16 freshly
  // verified fields to enter this logic frame. Both arrays are stack-bounded.
  // Rotate the direct-mapped hint table so busy units are not permanently first.
