@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG source/assist/tests/debug_patch_policy.cpp -o /tmp/tooltip-patch-policy
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/debug_patch_policy.cpp -o /tmp/tooltip-patch-policy
           /tmp/tooltip-patch-policy
       - name: Exercise hook retirement and fault recovery
         shell: bash
