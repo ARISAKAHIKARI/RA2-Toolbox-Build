@@ -79,7 +79,7 @@ static bool readWorldSample(uint32_t at,void*out,size_t n){
 class SampleReadScope {
  unsigned previousDepth_;bool previousComplete_,ready_,finished_=false,result_=false;
 public:
- SampleReadScope():previousDepth_(sampleReadDepth),previousComplete_(sampleReadComplete),ready_(worldFrameReady&&worldFrame.sealed()&&worldFrame.key.match==match&&worldFrame.key.frame==snap.frame){++sampleReadDepth;sampleReadComplete=ready_;}
+ SampleReadScope():previousDepth_(sampleReadDepth),previousComplete_(sampleReadComplete),ready_(worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.sealed()&&worldFrame.key.match==match&&worldFrame.key.frame==snap.frame){++sampleReadDepth;sampleReadComplete=ready_;}
  explicit operator bool()const{return ready_;}
  bool complete()const{return finished_?result_:ready_&&sampleReadComplete;}
  void finish(){if(finished_)return;result_=complete();sampleReadDepth=previousDepth_;sampleReadComplete=previousComplete_&&(!previousDepth_||result_);finished_=true;}
