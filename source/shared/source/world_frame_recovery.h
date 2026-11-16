@@ -9,8 +9,11 @@
 namespace worldframe {
 // Background reads are independent of the authoritative game frame.
 // Keep the worker's batch broad, while producer confirmation stays bounded.
-constexpr size_t RecoverySpans=64;
-constexpr size_t RecoveryBytes=8*1024;
+// This is the maximum background probe batch, not an eager per-frame read.
+// The mailbox only probes actual confirmed missing fields; no dummy entries.
+constexpr size_t RecoverySpans=128;
+constexpr size_t RecoveryBytes=16*1024;
+// Keep the synchronous authoritative recheck on the game thread much smaller.
 constexpr size_t RecoveryConfirmSpans=16;
 constexpr size_t RecoveryConfirmBytes=2*1024;
 struct RecoveryJob {
