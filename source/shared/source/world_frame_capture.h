@@ -37,7 +37,6 @@ public:
 // Recently missed exact consumer field, not stale data. The acquisition
 // boundary can fill this range before broad page subscriptions. A caller may
 // store its last observed tick to bound the hint's lifetime.
-struct RequestedSpan {uint32_t address=0,bytes=0,tick=0;};
 struct CaptureScratch {
  CaptureSet actors,types,small,houses;
  std::vector<uint32_t>queue,list,docks,warmPages;
