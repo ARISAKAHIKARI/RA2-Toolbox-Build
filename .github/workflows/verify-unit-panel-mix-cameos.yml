@@ -1,0 +1,66 @@
+name: Verify unit panel MIX Cameo integration
+on:
+  push:
+    branches: [feature/unit-panel-mix-cameos-20261116]
+    paths:
+      - 'source/**'
+      - '.github/workflows/verify-unit-panel-mix-cameos.yml'
+  pull_request:
+    paths:
+      - 'source/**'
+      - '.github/workflows/verify-unit-panel-mix-cameos.yml'
+permissions:
+  contents: read
+concurrency:
+  group: unit-panel-mix-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  mix-source-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify production MIX first, native fallback and palette decoding
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/unit_info_panel_mix_cameos.cpp -o /tmp/ra2-unit-panel-mix
+          /tmp/ra2-unit-panel-mix
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/unit_info_panel_model.cpp -o /tmp/ra2-unit-panel-model
+          /tmp/ra2-unit-panel-model
+  windows-paired-build:
+    needs: mix-source-regression
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare Zig 0.13.0 and packaging
+        shell: pwsh
+        run: |
+          python -m pip install Pillow==11.3.0
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if ((& $zig version) -ne '0.13.0') {throw 'Wrong Zig compiler'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force diagnostics,artifacts/console | Out-Null
+      - name: Compile x86 Runtime and x64 WebView2 Host; verify artifact ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/artifacts/console"
+          bash source/build-zig-x64.sh > diagnostics/unit-panel-mix-build.log 2>&1 || { tail -120 diagnostics/unit-panel-mix-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-panel-mix-compile-diagnostics
+          path: diagnostics
+          retention-days: 14
