@@ -2,6 +2,10 @@
 #include "../../shared/source/world_frame_capture.h"
 #include "../../shared/source/world_frame_recovery.h"
 #include "../../shared/source/world_frame_transport.h"
+#ifndef WORLD_FRAME_PLATFORM_FIXTURE
+#include "../../shared/source/world_frame_shadow_win.h"
+#endif
+#include <cstdio>
 
 static worldframe::Snapshot worldFrame;
 static worldframe::Server worldFrameServer;
@@ -20,6 +24,24 @@ struct WorldFramePublication {
 using WorldFramePublication=worldframe::AsyncPublisher<>;
 #endif
 static WorldFramePublication worldFramePublication;
+#ifdef WORLD_FRAME_PLATFORM_FIXTURE
+struct WorldFrameShadowFixture {
+ void invalidate(){}
+ bool stop(){return true;}
+};
+static WorldFrameShadowFixture worldFrameShadow;
+#else
+static worldframe::ShadowGraphWorker worldFrameShadow;
+// An explicit diagnostic opt-in: the normal build does NOT duplicate a full
+// game-world scan every second until shadow sampling is proven beneficial.
+static bool shadowGraphOptIn(){
+ static const bool enabled=[](){
+  char value[3]{};
+  return GetEnvironmentVariableA("RA2TOOLBOX_SHADOW_GRAPH",value,sizeof value)==1&&value[0]=='1';
+ }();
+ return enabled;
+}
+#endif
 static uint32_t worldFrameSerial=0;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
 static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
 // Fixed-size, direct-mapped hints for fields actually MISSING in a sealed
@@ -60,7 +82,7 @@ public:
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
-static void retireWorldFrame(){worldFramePublication.invalidate();if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
+static void retireWorldFrame(){worldFrameShadow.invalidate();worldFramePublication.invalidate();if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand){
  worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,before.scenario,before.cells,house,uint32_t(before.count),before.frame,before.session};
  if(!worldProducerGeneration){LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);worldProducerGeneration=uint64_t(stamp.QuadPart);if(!worldProducerGeneration)worldProducerGeneration=1;}
@@ -139,6 +161,22 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  }
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
  worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
+#ifndef WORLD_FRAME_PLATFORM_FIXTURE
+ // Shadow graph is explicitly diagnostic and read-only. It never replaces
+ // worldFrame, alters command status, or changes the game-thread capture plan.
+ if(shadowGraphOptIn()){
+  worldframe::BackgroundTrialResult shadow{};
+  if(worldFrameShadow.poll(key,shadow)){
+   char diagnostic[256]{};
+   std::snprintf(diagnostic,sizeof diagnostic,
+     "RA2 shadow capture frame=%d..%d pages=%u reads=%u bytes=%u (discovery only)\n",
+     shadow.before.frame,shadow.after.frame,shadow.pages,
+     shadow.counters.calls,shadow.counters.bytes);
+   OutputDebugStringA(diagnostic);
+  }
+  worldFrameShadow.request(key,worldframe::Base,key.tick);
+ }
+#endif
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;
 }
