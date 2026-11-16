@@ -25,7 +25,11 @@ static void pauseGlobalMagnetron(uint32_t p){
 static void pruneMagnetronPauses(int frame){
  globalMagnetronPauseIndex.clear();
  for(int i=0;i<globalMagnetronPauseCount;){const auto&p=globalMagnetronPauses[i];
-  if(!worldObjects.contains(p.pointer)||get<uint32_t>(p.pointer+0x10)!=p.id||frame<p.frame||frame-p.frame>=90)globalMagnetronPauses[i]=globalMagnetronPauses[--globalMagnetronPauseCount];
+  const bool expired=frame<p.frame||frame-p.frame>=90;
+  uint32_t uid=0;
+  const bool known=worldObjects.contains(p.pointer)&&read(p.pointer+0x10,&uid,sizeof uid);
+  if(expired||!worldObjects.contains(p.pointer)||(known&&uid!=p.id))
+   globalMagnetronPauses[i]=globalMagnetronPauses[--globalMagnetronPauseCount];
   else {globalMagnetronPauseIndex.add(p.pointer,p.id,uint32_t(i+1));++i;}
  }
  if(globalMagnetronPauseOverflow>=0&&(frame<globalMagnetronPauseOverflow||frame-globalMagnetronPauseOverflow>=90))globalMagnetronPauseOverflow=-1;
@@ -107,9 +111,12 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  if(!(sh->flags&SmartUnloadOrders)||snap.chat){recentPassengerCount=0;return;}
  if(indexedFrame!=frame)return; // incomplete identity sample: retain history until retry
  for(int n=0;n<recentPassengerCount;){auto&r=recentPassengers[n];
-  if(DWORD(now-r.tick)>1500||frame<r.frame||frame-r.frame>90||!worldObjects.contains(r.p)||
-     get<uint32_t>(r.p+0x10)!=r.id||manualVersions.get(r.id)!=r.token)
-   r=recentPassengers[--recentPassengerCount];else ++n;
+  const bool expired=DWORD(now-r.tick)>1500||frame<r.frame||frame-r.frame>90;
+  const bool present=worldObjects.contains(r.p);
+  uint32_t uid=0;const bool known=present&&read(r.p+0x10,&uid,sizeof uid);
+  if(expired||!present||manualVersions.get(r.id)!=r.token||(known&&uid!=r.id))
+   r=recentPassengers[--recentPassengerCount];
+  else ++n; // Unreadable UID is not proof the prior Ctrl+D passenger vanished.
  }
  static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> history;history.clear();
  for(int n=0;n<recentPassengerCount;++n)history.add(recentPassengers[n].p,n);
@@ -123,7 +130,9 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
      !featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
   int at=history.find(p);
   if(at<0){if(recentPassengerCount==nativeorders::MaxPassengers)continue;at=recentPassengerCount++;history.add(p,at);}
-  recentPassengers[at]={p,get<uint32_t>(p+0x10),carrier,get<uint32_t>(carrier+0x10),typeOf(carrier,2),manualVersions.get(get<uint32_t>(p+0x10)),now,frame};
+  uint32_t uid=0,carrierUID=0;
+  if(!read(p+0x10,&uid,sizeof uid)||!read(carrier+0x10,&carrierUID,sizeof carrierUID)||!uid||!carrierUID)continue;
+  recentPassengers[at]={p,uid,carrier,carrierUID,typeOf(carrier,2),manualVersions.get(uid),now,frame};
  }
 }
 // Build one carrier-keyed roster per admission tick. A large selected cohort
