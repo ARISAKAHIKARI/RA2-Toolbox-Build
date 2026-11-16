@@ -38,6 +38,12 @@ with tempfile.TemporaryDirectory(prefix="ra2_world_frame_") as tmp:
         str(root / "world_frame_exact_demand.cpp"), "-o", str(precise),
     ], check=True)
     subprocess.run([str(precise)], check=True)
+    async_recovery = directory / "world_frame_async_recovery"
+    subprocess.run([
+        "g++", "-std=c++17", "-O2", "-pthread", "-UNDEBUG",
+        str(root / "world_frame_async_recovery.cpp"), "-o", str(async_recovery),
+    ], check=True)
+    subprocess.run([str(async_recovery)], check=True)
     binary = directory / "world_frame_core"
     subprocess.run([
         "g++", "-std=c++17", "-O2", "-pthread", "-DWORLD_FRAME_PLATFORM_FIXTURE",
