@@ -1,0 +1,130 @@
+name: One-time complete backup and cleanup of legacy draft/prerelease releases
+on:
+  push:
+    branches: [release/1.0.51-latest-20261116]
+    paths:
+      - '.github/workflows/cleanup-legacy-releases-after-latest.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ra2-legacy-release-cleanup-after-stable-v1051
+  cancel-in-progress: false
+jobs:
+  full-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    permissions:
+      # Draft releases are visible ONLY to callers with push permission.
+      # contents:read sees the three public prereleases but omits 25 drafts.
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify privileged draft visibility and expected inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,subprocess
+          repo=os.environ['GITHUB_REPOSITORY']
+          x=json.loads(subprocess.check_output(['gh','api',f'/repos/{repo}/releases?per_page=100&page=1']))
+          drafts=[r for r in x if r['draft']]
+          targets=[r for r in x if r['draft'] or r['prerelease']]
+          print(f"visible releases={len(x)}, drafts={len(drafts)}, targets={len(targets)}")
+          if len(x)<30 or len(drafts)<25 or len(targets)<28:
+            raise SystemExit('Insufficient draft visibility; fail-closed, no deletion')
+          PY
+      - name: Download all release binaries, verify sizes/digests and deduplicate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/tools/backup_legacy_releases.py backup \
+            --repo "$GITHUB_REPOSITORY" --root legacy-release-backup
+          python3 - <<'PY'
+          import json
+          m=json.load(open('legacy-release-backup/manifest.json',encoding='utf-8'))
+          assert m['release_count']>=28 and m['original_asset_bytes']>=2_400_000_000
+          print("Complete verifiable legacy backup:",m['release_count'],"releases")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-legacy-manifest-28-releases
+          path: legacy-release-backup/manifest.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Upload complete archive, including draft release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-legacy-complete-backup-90d
+          path: legacy-release-backup/
+          compression-level: 0
+          retention-days: 90
+          if-no-files-found: error
+      - name: Capture backup receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          m=json.load(open('legacy-release-backup/manifest.json',encoding='utf-8'))
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as o:
+            o.write(f"Full legacy backup uploaded: **{m['release_count']}** releases, "
+                    f"**{m['original_asset_bytes']}** original asset bytes.\n\n")
+            o.write("Backup artifact retention: **90 days**. All per-asset SHA-256 recorded.\n")
+          PY
+
+  prune:
+    needs: full-backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-legacy-manifest-28-releases
+          path: legacy-release-backup
+      - name: Require stable v1.0.51 to be published as Latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          # This job may reach the gate before the independently running
+          # Windows build/publish job; do not delete anything before Latest.
+          for i in $(seq 1 120); do
+            if gh api "/repos/$GITHUB_REPOSITORY/releases/latest" \
+              --jq '.tag_name' | grep -qx v1.0.51; then
+              gh release view v1.0.51 --repo "$GITHUB_REPOSITORY" \
+                --json isDraft,isPrerelease,assets | \
+                jq -e '.isDraft==false and .isPrerelease==false and (.assets|length)==3'
+              exit 0
+            fi
+            sleep 15
+          done
+          echo 'Stable v1.0.51 is not Latest; no releases were deleted'
+          exit 1
+      - name: Permanently remove only backed-up draft/prerelease records
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s legacy-release-backup/manifest.json
+          python3 source/tools/backup_legacy_releases.py cleanup \
+            --repo "$GITHUB_REPOSITORY" --root legacy-release-backup
+      - name: Verify sole Latest and absence of all draft/pre releases
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "/repos/$GITHUB_REPOSITORY/releases?per_page=100" > final-releases.json
+          jq -e 'all(.[]; (.draft==false and .prerelease==false))' final-releases.json
+          gh api "/repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name' | grep -qx v1.0.51
+          jq -r '.[].tag_name' final-releases.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-completed-cleanup-receipt
+          path: final-releases.json
+          retention-days: 90
+          if-no-files-found: error
