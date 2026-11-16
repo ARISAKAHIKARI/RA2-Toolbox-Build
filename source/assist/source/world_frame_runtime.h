@@ -50,6 +50,10 @@ static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>
 static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
 static uint32_t lastRecoverySubmitAt=0;
 static bool worldFrameReady=false;
+// Only a Host display-only subscription may use a boundary-only source.
+// Every command input must upgrade to a fresh complete graph, even if the
+// last view-only acquisition used the same game logic frame.
+static bool worldFrameBoundaryOnly=false;
 static void rememberMissingWorldSpan(uint32_t at,size_t bytes){
  if(!worldFrameReady||!worldFrame.sealed()||!bytes||bytes>256||
     !worldframe::range(at,bytes))return;
@@ -82,8 +86,10 @@ public:
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
-static void retireWorldFrame(){worldFrameShadow.invalidate();worldFramePublication.invalidate();if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
-template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand){
+static void retireWorldFrame(){worldFrameShadow.invalidate();worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
+template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
+ const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
+ const uint32_t captureDemand=boundaryOnly?demand:(demand&~uint32_t(worldframe::HostDisplayOnly));
  worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,before.scenario,before.cells,house,uint32_t(before.count),before.frame,before.session};
  if(!worldProducerGeneration){LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);worldProducerGeneration=uint64_t(stamp.QuadPart);if(!worldProducerGeneration)worldProducerGeneration=1;}
  key.generationLow=uint32_t(worldProducerGeneration);key.generationHigh=uint32_t(worldProducerGeneration>>32);
@@ -94,7 +100,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // was retired or local automatic work advanced without a live Host reader.
   // Re-export the existing immutable sample; publish() deduplicates its exact
   // descriptor. Never recapture or invent a newer observation/acquisition tick.
-  if(worldFrameReady){worldFramePublication.publish(worldFrame,worldFrameServer);return true;}
+  if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)){
+   worldFramePublication.publish(worldFrame,worldFrameServer);return true;
+  }
+  // A hotkey/manual order admitted in the same logic frame after a display
+  // boundary snapshot must not inherit that reduced read set. This one-way
+  // escalation is exceptional and publishes a new serial, never mixed bytes.
   // A failed attempt was never published. Retry transient failures even if
   // the game has paused, with bounded backoff rather than every worker wake.
   if(uint32_t(key.tick-failedCaptureAt)<captureRetryDelay)return false;
@@ -137,12 +148,13 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(worldFramePublication.requestRecovery(key,candidates.data(),candidateCount))lastRecoverySubmitAt=key.tick;
  }
  worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
- bool complete=capture.capture(demand,requests,verified.data(),verifiedCount);
+ bool complete=capture.capture(captureDemand,requests,verified.data(),verifiedCount);
  // These checks deliberately bypass the read set. Cached self-comparison is
  // not evidence that the frame/world/House survived the acquisition boundary.
  const auto after=worldlife::capture(live);uint32_t afterHouse=0;
  const bool stable=live(0xA83D4C,&afterHouse,4)&&after.readable&&after.valid()&&before.same(after)&&before.frame==after.frame&&house==afterHouse;
  if(!complete||!stable||!worldFrame.seal()){
+  worldFrameBoundaryOnly=false;
   // A failed roster/page acquisition does not revoke the last complete Host
   // publication. Its original age/identity still decide whether it is usable.
   // World/House changes invalidate it immediately, independent of graph failure.
@@ -160,6 +172,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    if(hint.address==f.address&&hint.bytes==f.bytes){hint={};break;}
  }
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ worldFrameBoundaryOnly=boundaryOnly;
  worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
 #ifndef WORLD_FRAME_PLATFORM_FIXTURE
  // Shadow graph is explicitly diagnostic and read-only. It never replaces
