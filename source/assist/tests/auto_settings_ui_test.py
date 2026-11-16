@@ -125,10 +125,13 @@ int main(){
  extra.dodgeMode=0;
  for(int mode:{1,0}){fields[895]=mode;assert(autoSettingChanged(895,CBN_SELCHANGE));assert(extra.dodgeMode==mode);}
  fields[895]=9;autoSettingChanged(895,CBN_SELCHANGE);assert(extra.dodgeMode==0);
- for(int i=0;i<compute::Count;++i){fields[9000+i]=1;assert(autoSettingChanged(9000+i,CBN_SELCHANGE)&&compute::inside(computeRequested,compute::Feature(i)));fields[9000+i]=0;assert(autoSettingChanged(9000+i,CBN_SELCHANGE)&&!compute::inside(computeRequested,compute::Feature(i)));}
- computeRequested=153;saveFeatureTypes();computeRequested=0;loadFeatureTypes();assert(computeRequested==153);
- for(int legacy:{0,1}){profile.erase(L"MagnetronGlobal");profile.erase(L"MagnetronDrop");profile[L"Magnetron"]=legacy;loadFeatureTypes();assert(compute::inside(computeRequested,compute::MagnetronGlobal)==bool(legacy)&&compute::inside(computeRequested,compute::MagnetronDrop)==bool(legacy));}
- profile[L"MagnetronGlobal"]=0;profile[L"MagnetronDrop"]=1;profile[L"Magnetron"]=0;loadFeatureTypes();assert(!compute::inside(computeRequested,compute::MagnetronGlobal)&&compute::inside(computeRequested,compute::MagnetronDrop));
+ // Legacy selectors must no longer modify the internal split.
+ for(int i=0;i<compute::Count;++i){fields[9000+i]=1;assert(!autoSettingChanged(9000+i,CBN_SELCHANGE));}
+ profile[L"MagnetronGlobal"]=1;profile[L"MagnetronDrop"]=0;profile[L"Magnetron"]=1;
+ computeRequested=0;loadFeatureTypes();assert(computeRequested==compute::Fixed);
+ profile[L"MagnetronGlobal"]=0;profile[L"MagnetronDrop"]=1;profile[L"Magnetron"]=0;
+ computeRequested=compute::All;saveFeatureTypes();loadFeatureTypes();assert(computeRequested==compute::Fixed);
+ assert(profile[L"MagnetronGlobal"]==0&&profile[L"MagnetronDrop"]==1&&profile[L"Magnetron"]==0);
 
  minimapEnabled=extra.watchEnabled=false;fields[9162]=fields[9163]=1;assert(autoSettingChanged(9162,BN_CLICKED)&&minimapSecondary);assert(autoSettingChanged(9163,BN_CLICKED)&&extra.watchSecondary);
  assert(!minimapEnabled&&!extra.watchEnabled);saveFeatureTypes();minimapSecondary=extra.watchSecondary=false;loadFeatureTypes();assert(minimapSecondary&&extra.watchSecondary);
