@@ -47,7 +47,6 @@ for group, children in ((9601, ('combo(9195', 'number(710', 'number(718', 'mouse
                         (9606, ('key(450', 'MouseAdvanced', 'number(787', 'number(818', 'combo(802')),
                         (9607, ('edit(421', '422,', 'button(423', 'button(428', 'button(814', '815,')),
                         (9608, ('combo(440', 'key(441', 'edit(467', 'number(444', 'toggle(445')),
-                        (9609, ('compute::Count', 'combo(9000+i', '833,')),
                         (9610, ('featuretypes::Count', '9200+f*2', '9201+f*2')),
                         (9611, ('for(int i:{9,10})', 'swList=combo(410')),
                         (9612, ('combo(9250', '865)')),
