@@ -100,3 +100,12 @@ jobs:
           name: RA2Toolbox-MissingPageAudit-Windows-BuildLog
           retention-days: 14
           path: diagnostics/
+  repair-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify production repair pending-ticket unknown-state handling
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/auto_repair_runtime.py --out /tmp/ra2-repair-state
