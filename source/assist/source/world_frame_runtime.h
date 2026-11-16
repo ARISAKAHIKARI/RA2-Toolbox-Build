@@ -1,5 +1,6 @@
 #pragma once
 #include "../../shared/source/world_frame_capture.h"
+#include "../../shared/source/world_frame_recovery.h"
 #include "../../shared/source/world_frame_transport.h"
 
 static worldframe::Snapshot worldFrame;
