@@ -331,6 +331,29 @@ static void testIdentitySampleFailure(){
  advance();check(refreshWorldIndex(snap.frame,false)&&worldObjects.contains(carrier)&&worldObjects.contains(passenger),"complete next sample failed to recover index");
  std::puts("PASS identity-sample recovery: partial UID sample retries execution identity guard after scope exit; pure observation waits; complete next frame recovers");
 }
+static void testMissionReceiptIncomplete(){
+ reset();uint32_t t=makeType(),p=object(t,2,20);set<int>(p+0xAC,0);set<int>(p+0xB4,-1);
+ auto observed=observeMissionReceipt(20);
+ check(observed.valid&&observed.mission==0&&observed.queued==-1,"complete mission 0 observation rejected");
+ // Native receipt must not treat an unreadable mission as a zero-value mission.
+ for(uint32_t off:{0x10u,0xACu,0xB4u,0x11Cu}){
+  missingPage=(p+off)&~4095u;denyLivePage=true;
+  check(!observeMissionReceipt(20).valid,"missing UID/mission/queue/carrier yielded a valid native receipt");
+  denyLivePage=false;missingPage=0;
+ }
+ gateway::MissionObserver<4> observer;
+ gateway::MissionState before{true,2,-1,0};
+ const uint32_t ticket=observer.record(match,20,0,0,snap.frame,clockNow,before,taskarbiter::Owner::Dodge);
+ check(ticket&&observer.pending(),"cannot start receipt observer");
+ missingPage=p&~4095u;denyLivePage=true;
+ unsigned received=0;
+ check(observer.pollWithReceipts(match,snap.frame+1,clockNow+16,[](uint32_t id){return observeMissionReceipt(id);},
+    [&](const gateway::Receipt&){++received;})==0&&observer.pending()&&!received,"missing page acknowledged native order");
+ denyLivePage=false;missingPage=0;
+ check(observer.pollWithReceipts(match,snap.frame+2,clockNow+32,[](uint32_t id){return observeMissionReceipt(id);},
+    [&](const gateway::Receipt&){++received;})==1&&!observer.pending()&&received==1,"complete native mission did not resolve receipt");
+ std::puts("PASS native mission receipts: missing UID/mission/queue/carrier never acknowledges default-zero mission");
+}
 static void testLeasesNeedCompleteIdentityNotSecondLiveRead(){
  reset();const uint32_t type=makeType(),p=object(type,2,20);
  check(actorLeaseArbiter.record(match,snap.frame,20,p,manualVersions.get(20),taskarbiter::Owner::Dodge,77),"cannot seed original automatic lease");
@@ -415,5 +438,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testIdentitySampleFailure();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif
