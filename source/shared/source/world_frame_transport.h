@@ -114,7 +114,11 @@ class Client {
  std::shared_ptr<SnapshotPool> copies_;
  std::array<DataView,2>data_;DataRef copiedData_{};LONG copiedSlot_=-1;
  uint64_t generation_=0;
- struct Lease {std::array<uint32_t,6>ticks{};uint32_t used=0;};std::unordered_map<uintptr_t,Lease>leases_;
+ struct Lease {
+  std::array<uint32_t,6>ticks{};uint32_t used=0;
+  uint32_t displayAt=0,controlAt=0;
+  bool everDisplay=false,everControl=false;
+ };std::unordered_map<uintptr_t,Lease>leases_;
  std::unordered_map<uint32_t,uint32_t> wanted_;uint32_t publishedAt_=0,prunedAt_=0;
  uint32_t expiryCheckedAt_=0,expiryAfter_=0;
  uint32_t demandCheckedAt_=0,demandAfter_=0;bool demandDirty_=true;
@@ -146,10 +150,28 @@ class Client {
   // Renewals only postpone an expiry. Until the earliest possible expiry,
   // an unchanged set of requested bits cannot change the aggregate mask.
   if(!demandDirty_&&uint32_t(now-demandCheckedAt_)<demandAfter_)return;
-  uint32_t combined=0,next=251;for(auto it=leases_.begin();it!=leases_.end();){uint32_t mask=0;for(unsigned bit=0;bit<6;++bit)if(it->second.used&(1u<<bit)){
-    const uint32_t age=uint32_t(now-it->second.ticks[bit]);if(age<=250){mask|=1u<<bit;next=std::min(next,251-age);}}
-   if(!mask)it=leases_.erase(it);else{combined|=mask;++it;}}
-  channel_->demandMask=combined;demandCheckedAt_=now;demandAfter_=next;demandDirty_=false;
+  uint32_t combined=0,next=251;bool displayActive=false,controlActive=false;
+  for(auto it=leases_.begin();it!=leases_.end();){uint32_t mask=0;
+   for(unsigned bit=0;bit<6;++bit)if(it->second.used&(1u<<bit)){
+    const uint32_t age=uint32_t(now-it->second.ticks[bit]);
+    if(age<=250){mask|=1u<<bit;next=std::min(next,251-age);}
+   }
+   if(!mask)it=leases_.erase(it);
+   else{
+    combined|=mask;const auto&lease=it->second;
+    if(lease.everDisplay&&uint32_t(now-lease.displayAt)<=250){
+     displayActive=true;next=std::min(next,251-uint32_t(now-lease.displayAt));
+    }
+    if(lease.everControl&&uint32_t(now-lease.controlAt)<=250){
+     controlActive=true;next=std::min(next,251-uint32_t(now-lease.controlAt));
+    }
+    ++it;
+   }
+  }
+  // A single live command reader disables the fast display-only path.
+  channel_->demandMask=combined|
+    ((combined==Base&&displayActive&&!controlActive)?HostDisplayOnly:0u);
+  demandCheckedAt_=now;demandAfter_=next;demandDirty_=false;
  }
  void heartbeat(uint32_t now){
   channel_->heartbeat=now;refreshDemand(now);
@@ -258,10 +280,19 @@ public:
   std::lock_guard<std::mutex>lock(visualMutex_);visuals_.request(pages,GetTickCount(),retry);
  }
  void subscribe(uintptr_t reader,uint32_t demand){
+  const bool display=visualDemand(demand);
   demand=runtimeDemand(demand);
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();
   if((demand|Base)&~uint32_t(channel_->demandMask))demandDirty_=true;
-  auto&lease=leases_[reader];lease.used|=demand|Base;for(unsigned bit=0;bit<6;++bit)if((demand|Base)&(1u<<bit))lease.ticks[bit]=now;
+  auto&lease=leases_[reader];lease.used|=demand|Base;
+  for(unsigned bit=0;bit<6;++bit)if((demand|Base)&(1u<<bit))lease.ticks[bit]=now;
+  if(display){
+   if(!lease.everDisplay)demandDirty_=true;
+   lease.everDisplay=true;lease.displayAt=now;
+  }else{
+   if(!lease.everControl)demandDirty_=true;
+   lease.everControl=true;lease.controlAt=now;
+  }
   heartbeat(now);
  }
  void request(const std::vector<uint32_t>&pages,bool incomplete=false){
