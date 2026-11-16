@@ -54,17 +54,16 @@ public:
  }
 };
 template<class Stamp,class Read>
-BackgroundTrialResult backgroundTrial(Stamp stamp,Read read,uint32_t demand,
-                                       const std::vector<uint32_t>&requests={}){
+BackgroundTrialResult backgroundTrialWithStorage(Stamp stamp,Read read,uint32_t demand,
+                Snapshot&sample,CaptureScratch&scratch,const std::vector<uint32_t>&requests={}){
  BackgroundTrialResult out{};
  out.before=stamp();++out.frameChecks;
  if(!out.before.pid||out.before.house<0x10000||out.before.scenario<0x10000||
     out.before.cells<0x10000||!out.before.match||out.before.frame<0)return out;
- // Real production CaptureGraph executes on the calling worker thread.
- // The worker snapshot remains private; no command token escapes this call.
- Snapshot sample;
+ // The worker retains its page capacity and traversal storage across
+ // observations. The reset invalidates every previous byte/index, so this
+ // is storage reuse, never stale-observation reuse or command authority.
  sample.reset(out.before);
- CaptureScratch scratch;
  CaptureGraph<Read> graph(sample,read,scratch);
  const bool complete=graph.capture(demand,requests);
  const bool sealed=sample.seal();
@@ -85,5 +84,15 @@ BackgroundTrialResult backgroundTrial(Stamp stamp,Read read,uint32_t demand,
  out.status=complete&&sealed&&!sample.overflow()?
    BackgroundTrialStatus::CandidateOnly:BackgroundTrialStatus::CaptureFailure;
  return out;
+}
+// Standalone test/one-shot callers still receive private buffers; the
+// production long-lived worker calls backgroundTrialWithStorage to avoid
+// repeated 4 KiB page-node and traversal-array allocations.
+template<class Stamp,class Read>
+BackgroundTrialResult backgroundTrial(Stamp stamp,Read read,uint32_t demand,
+                                       const std::vector<uint32_t>&requests={}){
+ Snapshot sample;
+ CaptureScratch scratch;
+ return backgroundTrialWithStorage(stamp,read,demand,sample,scratch,requests);
 }
 } // namespace worldframe
