@@ -433,6 +433,34 @@ int main(int argc,char**argv){
   step(20,400);CHECK(events.size()==2);step(20,400);CHECK(events.size()==3);step(20,400);CHECK(events.size()==4);
   step(20,400);CHECK(events.size()==5&&events.back().mission==10&&sh->minerDefenseAttacks==4);
  });
+ run("missing_state_over_two_seconds_preserves_spider_defense_job",[]{
+  attackStarted();observeAttack();step();
+  for(int n=0;n<5;++n){
+   ++snap.frame;clockNow+=700;set<int>(0xA8ED84,snap.frame);sampleWorld();
+   failRead=Miner+0x74;
+   minerDefenseTick(House,snap.frame,clockNow);
+   CHECK(minerDefensePending()&&events.size()==1);
+   failRead=0;
+  }
+  kill();step();CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
+ });
+ run("unreadable_restoring_source_is_not_successful_restoration",[]{
+  attackStarted();observeAttack();step();kill();step();
+  CHECK(events.size()==2&&minerDefensePending());
+  int searchBudget=256;auto&job=minerDefenseJobs.at(MinerID);
+  failRead=Miner+0x9C;
+  CHECK(!minerDefenseResume(job,House,snap.frame,clockNow,searchBudget));
+  CHECK(events.size()==2&&minerDefensePending());
+  failRead=0;observe(events.back());step();CHECK(!minerDefensePending());
+ });
+ run("unreadable_refinery_preserves_original_restore_target",[]{
+  refineryWork();attackStarted();observeAttack();step();kill();
+  auto&job=minerDefenseJobs.at(MinerID);CHECK(job.identity.refinery==RefineryID);
+  int searchBudget=256;failRead=Refinery+0x10;
+  CHECK(!minerDefenseResume(job,House,snap.frame,clockNow,searchBudget));
+  CHECK(job.identity.refinery==RefineryID&&job.identity.refineryPointer==Refinery&&events.size()==1);
+  failRead=0;step();CHECK(events.size()==2&&events.back().mission==7);
+ });
  run("state_read_uncertainty_retains_without_order",[]{
   attackStarted();observeAttack();step();failRead=Miner+0x74;step(1,16,false);CHECK(events.size()==1&&sh->minerDefenseActive==1);
   failRead=0;kill();step();CHECK(events.size()==2);harvestTuple(events.back());
