@@ -155,9 +155,21 @@ public:
  }
  bool read(uint32_t address,void*out,size_t n)const{
   if(!sealed_||!out||!range(address,n))return false;
+  // A missing later page must not partly modify the caller's output.
+  // Check the sealed CPU index first; no extra game read or IPC is performed.
+  if(n<=PageSize-(address&(PageSize-1))){
+   const size_t offset=address&(PageSize-1);const auto*p=find(address&~(PageSize-1));
+   if(!p||!covered(*p,offset,n))return false;
+   std::memcpy(out,p->bytes.data()+offset,n);return true;
+  }
+  uint32_t verify=address;size_t remaining=n;
+  while(remaining){const size_t offset=verify&(PageSize-1),count=std::min<size_t>(remaining,PageSize-offset);
+   const auto*p=find(verify&~(PageSize-1));if(!p||!covered(*p,offset,count))return false;
+   verify+=uint32_t(count);remaining-=count;
+  }
   auto*dest=static_cast<uint8_t*>(out);
   while(n){const size_t offset=address&(PageSize-1),count=std::min<size_t>(n,PageSize-offset);
-   const auto*p=find(address&~(PageSize-1));if(!p||!covered(*p,offset,count))return false;
+   const auto*p=find(address&~(PageSize-1));
    std::memcpy(dest,p->bytes.data()+offset,count);dest+=count;address+=uint32_t(count);n-=count;}
   return true;
  }
