@@ -29,6 +29,13 @@ int main(){
  assert(result.status==BackgroundTrialStatus::CandidateOnly&&result.pages>0);
  assert(result.counters.calls>0&&result.frameChecks==2);
  assert(!result.usableForCommands());
+ // These read-only facts come from the WORKER'S SEALED sample. Incomplete
+ // native identity must not become an owned/dead unit or an actionable UID.
+ assert(result.facts.visited>=3);
+ assert(result.facts.actors>=3);
+ assert(result.facts.owned==result.facts.actors); // all fixture units belong to House
+ assert(result.facts.units+result.facts.infantry+result.facts.aircraft+
+        result.facts.buildings==result.facts.actors);
  worldframe::BackgroundGraphOrder order;
  assert(order.admit(result,boundary()));
  assert(!order.admit(result,boundary())); // duplicate observation
@@ -54,6 +61,16 @@ int main(){
   assert(retained.pages.data()==allocation&&retained.pages.capacity()==capacity);
   assert(retained.read(ActorA+0x6C,&hp,sizeof hp)&&hp==55);
   memory.put(ActorA+0x6C,100);
+ }
+ // An unreadable UID is UNKNOWN, never an actor with default identity.
+ {
+  memory.denied.push_back({ActorA+0x10,4});
+  std::thread partial([&]{result=worldframe::backgroundTrial(boundary,workerRead,worldframe::Base);});
+  partial.join();
+  assert(result.status==BackgroundTrialStatus::CandidateOnly);
+  assert(result.facts.missingIdentity>0);
+  assert(result.facts.actors>=1);
+  memory.denied.clear();
  }
 
  // One-frame movement DURING capture is fine for non-command discovery.
