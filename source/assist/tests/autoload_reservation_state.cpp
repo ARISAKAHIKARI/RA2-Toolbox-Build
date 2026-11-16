@@ -45,7 +45,7 @@ static loading::Reservation make(int kind=1){
  put<uint32_t>(Passenger+0x2B4,0);put<uint32_t>(Passenger+0x5A4,Other);
  put<int>(Passenger+0x9C,1234);put<int>(Passenger+0xA0,5678);
  put<uint32_t>(Passenger+0x500,0);
- return {Passenger,11,Carrier,22,1,100};
+ loading::Reservation r{Passenger,11,Carrier,22,1,100};r.kind=kind;return r;
 }
 static loading::ReservationView sample(const loading::Reservation&r,int frame=101){
  return loading::inspectReservation(r,House,frame,readBytes,
