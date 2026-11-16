@@ -347,11 +347,13 @@ static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
   const int knowledge=unloadCarrierKnowledge(task,house);
   if(knowledge<0){queuedUnload.remove(at);continue;}
   if(!knowledge)continue; // Missing page is not a completed Ctrl+D.
-  if(!task.attempted){queuedUnload.carriers[at].attempted=true;queuedUnload.carriers[at].attemptedAt=now;}
+  // A missing passenger page must not consume the one native Deploy attempt.
+  // Only a confirmed queued Deploy starts the original 3.5-second deadline.
   const int result=smartUnloadNow(house,task.pointer,!task.attempted);
-  if(result==2){ // Native Deploy accepted; passenger admission remains pending.
+  if(result==2){
+   if(!task.attempted){queuedUnload.carriers[at].attempted=true;queuedUnload.carriers[at].attemptedAt=now;}
    queuedUnload.lastProgress=now;--budget;--admissionBudget;
-  }else if(result==1){ // Only an actual completed enrollment can retire intent.
+  }else if(result==1){
    queuedUnload.cancel(task.pointer,task.id);queuedUnload.lastProgress=now;--budget;--admissionBudget;
   }
   // Zero/negative admission is deferred, never silently acknowledged.
