@@ -85,7 +85,7 @@ public:
   if(result.epoch!=epoch())return;
   // An older worker result cannot replace a newer completed result in the
   // same producer generation. Preserve the original read's provenance.
-  if(hasResult_&&result_.key.sameWorld(result.key)&&result.key.frame<result_.key.frame)return;
+  if(hasResult_&&result_.epoch==result.epoch&&result_.key.sameWorld(result.key)&&result.key.frame<result_.key.frame)return;
   result_=result;hasResult_=true;
  }
  size_t ready(const Key&current,RequestedSpan*out,size_t max){
