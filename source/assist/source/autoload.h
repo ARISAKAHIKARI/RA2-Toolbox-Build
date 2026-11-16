@@ -8,6 +8,55 @@ struct Infantry {uint32_t object=0,id=0;int x=0,y=0,slots=0;uint32_t type=0;int 
 struct Vehicle {uint32_t object=0,id=0;int x=0,y=0,capacity=0,used=0,reserved=0;double sizeLimit=128;int passengers=0;};
 struct Observation {int mission=0,queued=-1;uint32_t target=0,destination=0;};
 struct Reservation {uint32_t object,id,vehicle,vehicleID;int slots,frame;int lastSent=-1,x=0,y=0,progress=0,lastAttempt=-1,retryAfter=0,attempts=0;Observation initial{};bool enterObserved=false;int kind=1;uint32_t ticket=0,queuedAt=0;};
+// Native boarding reservations use a four-state observation. A read error is
+// neither an absent passenger nor a finished Enter. Keep the old ledger state
+// until all fields needed for that transition have been read successfully.
+// Reader: bool(uint32_t,void*,size_t). Present: bool(pointer).
+// Allowed: int(pointer,kind) where -1 is unreadable, 0 denied, 1 accepted.
+enum class ReservationState : uint8_t { Unknown, Active, Boarded, Invalid };
+struct ReservationView {
+ ReservationState state=ReservationState::Unknown;
+ Observation mission{};uint32_t incoming=0;int x=0,y=0;
+};
+template<class Reader,class Present,class Allowed>
+ReservationView inspectReservation(const Reservation&r,uint32_t house,int frame,Reader read,Present present,Allowed allowed){
+ ReservationView view{};
+ if(r.object<0x10000||r.vehicle<0x10000||r.id==0||r.vehicleID==0||frame<r.frame)return view;
+ auto get=[&](uint32_t p,auto&v){return read(p,&v,sizeof v);};
+ uint32_t sourceID=0,vehicleID=0,carrier=0;
+ if(!get(r.object+0x10,sourceID)||!get(r.vehicle+0x10,vehicleID)||!get(r.object+0x11C,carrier))return view;
+ if(sourceID!=r.id||vehicleID!=r.vehicleID){view.state=ReservationState::Invalid;return view;}
+ if(carrier==r.vehicle){view.state=ReservationState::Boarded;return view;}
+ if(carrier){view.state=ReservationState::Invalid;return view;}
+ // World identity index is published atomically before this service runs.
+ // Boarding is detected above even if its passenger left the native roster.
+ if(!present(r.object)||!present(r.vehicle)){view.state=ReservationState::Invalid;return view;}
+ uint32_t sourceVT=0,vehicleVT=0,sourceHouse=0,vehicleHouse=0;
+ int sourceHP=0,vehicleHP=0;
+ uint8_t sourceAlive=0,vehicleAlive=0,sourceMap=0,vehicleMap=0,sourceLimbo=1,vehicleLimbo=1,sourceDisabled=0,vehicleDisabled=0;
+ if(!get(r.object,sourceVT)||!get(r.vehicle,vehicleVT)||!get(r.object+0x21C,sourceHouse)||!get(r.vehicle+0x21C,vehicleHouse)||
+    !get(r.object+0x6C,sourceHP)||!get(r.vehicle+0x6C,vehicleHP)||
+    !get(r.object+0x90,sourceAlive)||!get(r.vehicle+0x90,vehicleAlive)||
+    !get(r.object+0x74,sourceMap)||!get(r.vehicle+0x74,vehicleMap)||
+    !get(r.object+0x81,sourceLimbo)||!get(r.vehicle+0x81,vehicleLimbo)||
+    !get(r.object+0x1C8,sourceDisabled)||!get(r.vehicle+0x1C8,vehicleDisabled))return view;
+ const uint32_t expectedSource=r.kind==1?0x7EB058u:r.kind==2?0x7F5C70u:0;
+ if(sourceVT!=expectedSource||vehicleVT!=0x7F5C70u||sourceHouse!=house||vehicleHouse!=house||
+    sourceHP<=0||vehicleHP<=0||!sourceAlive||!vehicleAlive||!sourceMap||!vehicleMap||
+    sourceLimbo||vehicleLimbo||sourceDisabled||vehicleDisabled){view.state=ReservationState::Invalid;return view;}
+ const int passengerAllowed=allowed(r.object,r.kind),transportAllowed=allowed(r.vehicle,2);
+ if(passengerAllowed<0||transportAllowed<0)return view;
+ if(!passengerAllowed||!transportAllowed){view.state=ReservationState::Invalid;return view;}
+ if(!get(r.object+0xAC,view.mission.mission)||!get(r.object+0xB4,view.mission.queued)||
+    !get(r.object+0x2B4,view.mission.target)||!get(r.object+0x5A4,view.mission.destination)||
+    !get(r.object+0x9C,view.x)||!get(r.object+0xA0,view.y))return view;
+ if(view.mission.mission==7||view.mission.queued==7){
+  uint32_t queued=0;if(!get(r.object+0x500,queued))return view;
+  view.incoming=queued>=0x10000?queued:view.mission.destination?view.mission.destination:view.mission.target;
+ }
+ view.state=ReservationState::Active;
+ return view;
+}
 inline bool takenOver(Reservation&r,const Observation&now,uint32_t incoming){
  if(incoming&&incoming!=r.vehicle)return true;
  if(now.queued>=0&&now.queued!=7&&now.queued!=r.initial.queued)return true;
