@@ -67,3 +67,36 @@ jobs:
           set -euo pipefail
           g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG source/assist/tests/autoload_reservation_state.cpp -o /tmp/ra2-autoload-reservation
           /tmp/ra2-autoload-reservation
+  windows-target-build:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV ('ZIG_EXE='+(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)
+          New-Item -ItemType Directory -Force diagnostics,artifacts/console | Out-Null
+      - name: Compile paired Windows x86 Runtime and x64 Host
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/artifacts/console"
+          bash source/build-zig-x64.sh > diagnostics/windows-build.log 2>&1 || { tail -120 diagnostics/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-MissingPageAudit-Windows-BuildLog
+          retention-days: 14
+          path: diagnostics/
