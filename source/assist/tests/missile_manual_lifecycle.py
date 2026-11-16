@@ -89,6 +89,12 @@ int main(){
  fresh=unit(2000);pauseMissileForManual(2000,fresh);
  check(missileManualCount==1024,"partial roster UID read does not retire valid manual records");
 
+ reset();fill();clockFrame=worldFrame.key.frame=101;roster.clear();rosterReadable=false;
+ pruneMissileManual();
+ check(missileManualCount==1024&&missileManualPruneFrame!=101,"failed roster must not commit the manual-prune frame stamp");
+ rosterReadable=true;pruneMissileManual();
+ check(missileManualCount==0&&missileManualPruneFrame==101,"a recovered same-frame roster can safely prune proven absences");
+
  reset();fill();roster.clear();clockFrame=101;worldFrame.key.frame=100;
  fresh=unit(2000);pauseMissileForManual(2000,fresh);
  check(missileManualCount==1024,"same-frame sealed roster cannot retire a later captured manual cohort");
