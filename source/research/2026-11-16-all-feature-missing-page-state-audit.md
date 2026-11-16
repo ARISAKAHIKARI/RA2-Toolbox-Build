@@ -100,3 +100,20 @@
 - 自动装车和闪避的**本地账本/任务清理**已完成这轮最危险的缺页假阴性修复；其余多个原生最终提交守卫仍需按事件回执和平台差异验证。
 - 数据读取失败时不凭默认零值发原生指令；若单次 native legality 查询失败，仍遵守已有重试界限，不应假定指令已经执行。
 - 旧 `source/research` 报告中“自动装车账本/闪避实时任务仍需加固”两项已由本节实现和测试覆盖；剩余为 Windows 编译、真实游戏、联机、多单位负载回归，而非再次改采样架构。
+
+## 续审 · 公共租约与原生命令回执
+
+本轮沿两条跨功能生命周期链路审查，发现独立于各功能采样器的 **二次实时读取假阴性**。
+
+1. `bridge.cpp::sweepActiveLeases`：`refreshWorldIndex` 已验证每一条 UID 并发布不可部分提交的 `worldObjects` 后，原先的 `actorLeaseArbiter.sweep` 又调用 `worldByID` 读取实时 UID。这个第二次读取失败就会把有效租约当作不存在，导致所有使用此租约的自动操作（闪避、蜘蛛防御、自动装车等）失去事件拥有者。现改为只消费已核验的 `worldObjects.byId` 和手动版本；正常 Match/Frame/45 帧 deadline、手动版本变更仍会撤销租约，**实际下令仍走实时 UID/权限校验**。
+2. `bridge.cpp::observeMissionReceipt`：公共 `missionObserver.pollWithReceipts` 的旧回调先赋值 `valid=true`，再用 `get<int>` 取任务和 queued；读取失败可能被默认 `0` 填入，从而将 Mission 0 错误确认为已接受。现 UID、mission、queued、carrier 全部使用带返回值的实时 `read`；任何必需字段未知都返回 `valid=false`，保留观察者自身 300 帧原始过期策略。
+3. `repair_delivery.h::Pending::observe` 与 `bridge.cpp::observePendingRepair`：旧回调用一次可失败的 `worldByID/kind/own/get` 组成 `valid=false`，导致原生 Repair toggle 待确认记录被误删；现为 `Observation.uncertain` 增加单独门禁，只有索引证实身份替换、活体字段完整否定，或 Repair Flag/HP 到达确认终态时才完成回执。与自动维修关闭后的主动取消互不干涉。
+
+### 回归和门禁
+
+- `tactical_frame_sampling.cpp::testLeasesNeedCompleteIdentityNotSecondLiveRead`：再现 secondary UID 读取失败，验证租约保持、没有额外实时读取；手动 token 修改与完整名单证实缺失仍退休。
+- `tactical_frame_sampling.cpp::testMissionReceiptIncomplete`：枚举 UID/mission/queued/carrier 缺失，跑生产观察函数和原生 `MissionObserver`，确认未知时不 ACK、恢复后才 ACK。
+- `auto_repair_runtime.cpp::unknown_live_repair_receipt_does_not_retire_pending_toggle`：抽取生产 `repairTick` 与 `observePendingRepair`，对 UID 和维修 Flag 注入失败，确认记录保持，恢复真实 Repairing 才退休。
+- `.github/workflows/validate-automatic-compute.yml`：独立 `repair-state` 测试工作；Windows x86 Runtime / x64 Host 目标编译仍作为硬门禁，Linux 测试通过不等价于实机联机通过。
+
+不更换原始采样架构、计算位置、原生事件构造器或时钟策略；每项失效处理与相应失败注入均纳入 PR #36，未合并或发布。
