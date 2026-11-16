@@ -66,7 +66,8 @@ def production():
     add(function(load, "static bool queryEnterAction("))
     add(function(load, "static bool canEnter("))
     for signature in ("static bool captureLoadSelection(", "static bool collectLoadFacts(",
-                      "static int autoLoad(uint32_t house,const compute::LoadInput*cohort){"):
+                      "static int autoLoad(uint32_t house,const compute::LoadInput*cohort){",
+                      "static void autoLoadTick("):
         add(function(load, signature))
     unload = source["unload_compute_bridge.h"]
     add(function(source["native_orders_bridge.h"], "struct UnloadPassenger") + ";")
