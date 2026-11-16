@@ -7,8 +7,12 @@
 // The worker may see a different moment from the sealed command snapshot;
 // only a subsequent normal CaptureGraph read can publish these fields.
 namespace worldframe {
-constexpr size_t RecoverySpans=16;
-constexpr size_t RecoveryBytes=2048;
+// Background reads are independent of the authoritative game frame.
+// Keep the worker's batch broad, while producer confirmation stays bounded.
+constexpr size_t RecoverySpans=64;
+constexpr size_t RecoveryBytes=8*1024;
+constexpr size_t RecoveryConfirmSpans=16;
+constexpr size_t RecoveryConfirmBytes=2*1024;
 struct RecoveryJob {
  Key key{};
  uint32_t epoch=0;
