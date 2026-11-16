@@ -490,7 +490,25 @@ void runtime(){
   CHECK(memory.calls.size()==upgradeReads);
   retireWorldFrame();
 }
-void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavings();runtime();hostReads();hostIsolation();std::puts("PASS production transport/ProcessReader/Runtime: pinned publication, independent pause observation, required/optional failures, no live fallback, sustained demand, same-frame single capture, independent world/frame/House rejection");}
+void displayLeaseTransition(){
+ // An existing Host reader can change purpose without changing reader ID.
+ // Command subscriptions must revoke the display-only marker immediately,
+ // even after their prior command lease aged out behind a display lease.
+ currentPid=HostPid;clock=1400;
+ auto subscriber=worldframe::acquireClient(GamePid,71234);
+ CHECK(!subscriber->acquire(7));
+ subscriber->subscribe(79,worldframe::Resources);
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
+ subscriber->subscribe(79,worldframe::Base);
+ CHECK(channel()->demandMask==worldframe::Base);
+ clock+=252;
+ subscriber->subscribe(79,worldframe::Resources);
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
+ subscriber->subscribe(79,worldframe::Base);
+ CHECK(channel()->demandMask==worldframe::Base);
+ subscriber.reset();clock=2000;
+}
+void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavings();runtime();hostReads();hostIsolation();displayLeaseTransition();std::puts("PASS production transport/ProcessReader/Runtime: pinned publication, independent pause observation, required/optional failures, no live fallback, sustained demand, same-frame single capture, independent world/frame/House rejection");}
 }
 #endif
 
