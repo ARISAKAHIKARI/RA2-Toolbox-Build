@@ -1612,6 +1612,7 @@ static void tick(){
   !loadLedger.count&&!loadCalculationPending&&!repairCalculationPending&&
   !(repairAt<repairCount)&&!pendingRepairs.count&&!entryReservationCount&&
   !cooperativeEffectCount&&!actorLeaseArbiter.count&&!missionObserver.pending()&&
+  !ownground::job.pending&&!nativePlacementCompletionPending()&&!scrollRefreshActive&&
   !runtimeCoopPending&&!oreHarvestNeedsWork()&&!moOrdersPending()&&
   !directAirPending()&&!directSellPending()&&!privateOutPending()&&
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
