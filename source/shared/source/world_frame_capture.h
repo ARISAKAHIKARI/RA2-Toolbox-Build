@@ -125,6 +125,24 @@ public:
               const RequestedSpan*exact=nullptr,size_t exactCount=0){
   if(!working())return false;
   demand_=demand|Base;const bool visuals=(demand_&Visual)!=0;
+  // Only a confirmed miss records exact bytes. A full-page read may fail on a
+  // transient allocation boundary even when a specific field is readable.
+  // Try bounded exact ranges BEFORE normal graph discovery and broad
+  // page demands, so neither can mark their bytes failed first.
+  // This remains the same single unsealed acquisition: no live fallback in
+  // an already sealed consumer or a second capture of the game frame.
+  size_t exactBytes=0,exactReads=0;
+  constexpr size_t ExactBudget=4*1024,ExactMaxReads=48;
+  // Rotate the ring start across frames so persistent misses do not starve
+  // other active fields under a strict maximum number of live calls.
+  for(size_t step=0;exact&&step<exactCount&&exactReads<ExactMaxReads;++step){
+   const auto&span=exact[(step+(frame_.key.serial%exactCount))%exactCount];
+   if(!span.bytes||span.bytes>256||!range(span.address,span.bytes)||
+      uint32_t(frame_.key.tick-span.tick)>1000||exactBytes+span.bytes>ExactBudget)continue;
+   exactBytes+=span.bytes;++exactReads;
+   frame_.prefetch(live_,span.address,span.bytes);
+   if(!working())return false;
+  }
   // Global fields are one read per overlapping page, regardless of which
   // collector originally owned them. No Selected object list is frozen here.
   for(uint32_t p:{0xA80208u,0xA83CE0u,0xA8B230u,0xA8BC60u,0xA8E348u,0xA8ED84u,0x8871E0u,0x887324u,0x8A00A4u,0x8B4108u,0xAC1198u,0xB0CD48u})block(p,128);
@@ -177,21 +195,6 @@ public:
   frame_.prefetchPages(live_,warm,scratch_->pageScratch.data(),scratch_->pageScratch.size(),false);
   for(size_t i=0;i<scratch_->queue.size();++i){if(!working())return false;actor(scratch_->queue[i]);}
   if(!working())return false;
-  // Only a confirmed miss records exact bytes. A full-page read may fail on a
-  // transient allocation boundary even when a specific field is readable.
-  // Try bounded exact ranges after normal actor discovery but BEFORE broad
-  // page demands, so the latter cannot mark their bytes failed first.
-  // This remains the same single unsealed acquisition: no live fallback in
-  // an already sealed consumer or a second capture of the game frame.
-  size_t exactBytes=0;constexpr size_t ExactBudget=16*1024;
-  for(size_t i=0;exact&&i<exactCount;++i){
-   const auto&span=exact[i];
-   if(!span.bytes||span.bytes>256||!range(span.address,span.bytes)||
-      uint32_t(frame_.key.tick-span.tick)>1000||exactBytes+span.bytes>ExactBudget)continue;
-   exactBytes+=span.bytes;
-   frame_.prefetch(live_,span.address,span.bytes);
-   if(!working())return false;
-  }
   frame_.prefetchPages(live_,requests,scratch_->pageScratch.data(),scratch_->pageScratch.size());
   return working();
  }
