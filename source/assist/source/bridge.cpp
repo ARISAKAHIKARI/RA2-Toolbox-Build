@@ -230,6 +230,15 @@ static void sweepActiveLeases(int frame){
   return std::pair<uint32_t,uint32_t>{worldObjects.byId(id),manualVersions.get(id)};
  });
 }
+// Mission receipts must not turn a failed mission/queue read into a valid
+// default-zero observation (e.g. a spurious mission 0 acknowledgement).
+static gateway::MissionState observeMissionReceipt(uint32_t id){
+ const uint32_t p=worldObjects.byId(id);if(!p)return {};
+ uint32_t currentID=0,carrier=0;int mission=-1,queued=-1;
+ if(!read(p+0x10,&currentID,sizeof currentID)||!read(p+0xAC,&mission,sizeof mission)||
+    !read(p+0xB4,&queued,sizeof queued)||!read(p+0x11C,&carrier,sizeof carrier)||currentID!=id)return {};
+ return {true,mission,queued,carrier};
+}
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
 static void reset(bool retireHooks=true,bool preserveMissile=false){retireWorldFrame();restorePrivateOut();minerDefenseReset();restoreTriggerInput();restoreSinglePlayerFPS();resetOwnGround();superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();nativePlacementReset();if(retireHooks)nativePlacementCompletionReset();restorePauseView();resetMoOrders();resetDirectAir();resetDirectSell();resetBombBoard();if(retireHooks){restoreSidebarView();resetHookReadiness();restoreCrcMapShadow();restoreBuildTimeTooltip();restorePrivateOut();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);restoreViewZoom();}stickyCount=0;runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
@@ -1188,16 +1197,28 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else result=-4;
  sh->result=result;sh->count=n;pendingAck=req;pendingAckReady=true;
 }
+static repairdelivery::Observation observePendingRepair(uint32_t id,uint32_t pointer,uint32_t house){
+ const uint32_t p=worldObjects.byId(id);
+ if(!p||p!=pointer)return {}; // Complete UID roster proves absence/replacement.
+ uint32_t liveID=0,vt=0,owner=0,type=0;int hp=0,maxHP=0;
+ uint8_t alive=0,onMap=0,limbo=1,repairing=0;
+ // A failed live field does not prove that the toggle was consumed.
+ if(!read(p+0x10,&liveID,sizeof liveID)||!read(p,&vt,sizeof vt)||
+    !read(p+0x21C,&owner,sizeof owner)||!read(p+0x6C,&hp,sizeof hp)||
+    !read(p+0x90,&alive,sizeof alive)||!read(p+0x74,&onMap,sizeof onMap)||
+    !read(p+0x81,&limbo,sizeof limbo)||!read(p+0x520,&type,sizeof type)||
+    !read(p+0x6E8,&repairing,sizeof repairing))return {false,false,false,true};
+ if(liveID!=id||vt!=0x7E3EBCu||owner!=house||hp<=0||!alive||!onMap||limbo)return {};
+ if(type<0x10000||!read(type+0xA0,&maxHP,sizeof maxHP))return {false,false,false,true};
+ return {true,repairing!=0,maxHP>0&&hp>=maxHP};
+}
 static void repairTick(uint32_t house,DWORD now){
  const bool automatic=(sh->flags&AutoRepair)!=0;
  // Cancel before polling: a late host result must not resurrect disabled work.
  if(!automatic)cancelAutomaticRepairWork();
  repairCalculationTick(now);
  pendingRepairs.observe([&](uint32_t id,uint32_t pointer){
-  uint32_t p=worldByID(id);bool valid=p==pointer&&p&&kind(p)==3&&own(p,house);
-  if(!valid)return repairdelivery::Observation{};
-  uint32_t t=typeOf(p,3);int maximum=t?get<int>(t+0xA0):0;
-  return repairdelivery::Observation{true,get<bool>(p+0x6E8),maximum>0&&get<int>(p+0x6C)>=maximum};
+  return observePendingRepair(id,pointer,house);
  });
  const DWORD interval=clampedRepairInterval(sh->repairMs);
  bool deferred=false;
@@ -1580,10 +1601,7 @@ static void tick(){
  formationTick(house,frame,now);moOrdersTick(house,frame,now);directair::tick(house,frame,now);bombboard::tick(house,frame);loadingCalculationTick(house,now);repairTick(house,now);autoLoadTick(house,frame);nativeOrdersTick(house,frame);
  // Read-only observation, bounded to 32 outstanding orders per game frame.
  if(missionObserver.pending())snap.observedEvents+=missionObserver.pollWithReceipts(match,frame,now,[](uint32_t id){
-  gateway::MissionState current{};uint32_t p=worldByID(id);
-  if(p){current.valid=true;current.mission=get<int>(p+0xAC);
-   current.queued=get<int>(p+0xB4);current.carrier=get<uint32_t>(p+0x11C);}
-  return current;
+  return observeMissionReceipt(id);
  },[](const gateway::Receipt& receipt){
   recordReceipt(receipt);
   actorLeaseArbiter.release(receipt.match,receipt.unit,receipt.serial);
