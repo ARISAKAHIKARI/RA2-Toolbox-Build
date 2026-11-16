@@ -314,7 +314,9 @@ void transport(){
  auto*c=channel();CHECK(c);auto&slot=c->slots[c->active];++slot.seq;CHECK(client->acquire(7)==b);++slot.seq;const auto count=slot.count;slot.count=worldframe::MaxPages+1;CHECK(!client->acquire(7));slot.count=count;CHECK(client->acquire(7)==b);
  // An actual independent producer observation can keep a paused frame usable;
  // neither Host polling nor a fresh heartbeat can change its acquisition tick.
- clock=900;client->subscribe(1,worldframe::Base);CHECK(channel()->demandMask==worldframe::Base);CHECK(!client->acquire(7));currentPid=GamePid;server.observe(second->key);currentPid=HostPid;CHECK(client->acquire(7)==b&&b->key.tick==105);
+ clock=900;client->subscribe(2,worldframe::Visual);
+  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
+  client->subscribe(1,worldframe::Base);CHECK(channel()->demandMask==worldframe::Base);CHECK(!client->acquire(7));currentPid=GamePid;server.observe(second->key);currentPid=HostPid;CHECK(client->acquire(7)==b&&b->key.tick==105);
  currentPid=GamePid;auto changed=second->key;++changed.frame;server.observe(changed);currentPid=HostPid;CHECK(!client->acquire(7));currentPid=GamePid;server.observe(second->key);currentPid=HostPid;CHECK(client->acquire(7)==b);
  // A new connection for the same PID invalidates old cached publications and
  // explicit tokens even while the old reader and immutable bytes still live.
@@ -420,12 +422,15 @@ void hostIsolation(){
  external::ProcessReader reader;CHECK(reader.open(GamePid));reader.setWorldDemand(worldframe::Resources);CHECK(!reader.beginWorldFrame(7));
  currentPid=GamePid;worldframe::Server server;CHECK(server.wanted(HostPid,clock));auto raw=std::make_shared<worldframe::Snapshot>();auto k=key();k.tick=clock;k.generationLow=777;k.connectionLow=uint32_t(reader.generation());k.connectionHigh=uint32_t(reader.generation()>>32);raw->reset(k);
  Read live{&m};worldframe::CaptureGraph<Read>graph(*raw,live);CHECK(graph.capture(worldframe::Base,{}));CHECK(raw->seal());server.observe(raw->key);server.publish(*raw);
- currentPid=HostPid;CHECK(reader.beginWorldFrame(7));auto derived=reader.worldFrameToken();CHECK(derived&&derived->controlSource);CHECK(channel()->demandMask==worldframe::Base);
+ currentPid=HostPid;CHECK(reader.beginWorldFrame(7));auto derived=reader.worldFrameToken();CHECK(derived&&derived->controlSource);
+  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  constexpr uint32_t extra=0x760100;m.put(extra,0x12345678u);uint32_t value=0;const auto before=rpmCalls;CHECK(!reader.read(extra,&value,4)&&rpmCalls==before&&!reader.worldFrameComplete());reader.endWorldFrame();
  CHECK(server.requests().empty());clock+=16;CHECK(reader.beginWorldFrame(7));derived=reader.worldFrameToken();CHECK(reader.read(extra,&value,4)&&value==0x12345678u);reader.endWorldFrame();CHECK(server.requests().empty());
  // A command scope unwraps the frozen authoritative source. It cannot read
  // an additional display page, nor can it fall back to live memory.
- reader.setWorldDemand(worldframe::Base);CHECK(reader.beginWorldFrame(7,derived));CHECK(!reader.worldFrameToken()->controlSource);const auto noFallback=rpmCalls;CHECK(!reader.read(extra,&value,4)&&rpmCalls==noFallback);reader.endWorldFrame();CHECK(server.requests().size()==1);
+ reader.setWorldDemand(worldframe::Base);CHECK(reader.beginWorldFrame(7,derived));
+  CHECK(channel()->demandMask==worldframe::Base);
+  CHECK(!reader.worldFrameToken()->controlSource);const auto noFallback=rpmCalls;CHECK(!reader.read(extra,&value,4)&&rpmCalls==noFallback);reader.endWorldFrame();CHECK(server.requests().size()==1);
  currentPid=GamePid;const auto failures=channel()->publishFailures;server.publish(*derived);CHECK(channel()->publishFailures==failures+1&&channel()->publishError==uint32_t(worldframe::PublishError::Identity));
  // Block only a Host visual page. A separate transport mutex must permit
  // the producer to publish and an authoritative consumer to acquire it.
@@ -462,7 +467,24 @@ void runtime(){
   CHECK(!captureWorldFrame(read,before,House,clock,worldframe::Base));CHECK(changed&&!worldFrameReady);const auto after=memory.calls.size();CHECK(!captureWorldFrame(read,before,House,clock,worldframe::Base));CHECK(memory.calls.size()==after);memory.beforeRead={};
  };
  rejectChange(0xA8ED84,51);rejectChange(0xA8B230,Scenario+0x10000);rejectChange(0x87F924,Cells+0x10000);rejectChange(0xA83D4C,House+0x10000);
- retireWorldFrame();CHECK(!worldFrameReady&&runtimeWorldDemands.empty());{SampleReadScope retired;CHECK(!retired&&!retired.complete());}
+ retireWorldFrame();CHECK(!worldFrameReady&&runtimeWorldDemands.empty());{SampleReadScope retired;CHECK(!retired&&!retired.complete();}
+  // Display-only captured a small scene boundary. The first Ctrl+D or
+  // native read arriving in this SAME frame must upgrade it atomically to a
+  // new full graph; merely re-exporting the sealed boundary would lose input.
+  setup(memory);before=worldlife::capture(read);snap.frame=before.frame;
+  CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
+  CHECK(worldFrameBoundaryOnly&&worldFrameReady);
+  int hp=0;CHECK(!worldFrame.read(ActorA+0x6C,&hp,sizeof hp));
+  const auto shallowSerial=worldFrame.key.serial;
+  CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base));
+  CHECK(worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.key.serial>shallowSerial);
+  CHECK(worldFrame.read(ActorA+0x6C,&hp,sizeof hp)&&hp==100);
+  // A second command read in the same logic frame is still exactly one
+  // complete acquisition. No stale previous visual bytes are borrowed.
+  const auto upgradeReads=memory.calls.size();
+  CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base));
+  CHECK(memory.calls.size()==upgradeReads);
+  retireWorldFrame();
 }
 void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavings();runtime();hostReads();hostIsolation();std::puts("PASS production transport/ProcessReader/Runtime: pinned publication, independent pause observation, required/optional failures, no live fallback, sustained demand, same-frame single capture, independent world/frame/House rejection");}
 }
