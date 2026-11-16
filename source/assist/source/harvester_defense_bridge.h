@@ -485,13 +485,15 @@ static bool minerDefenseTick(uint32_t house,int frame,DWORD now){
   if(worldByID(it->first)!=old.pointer||manualVersions.get(it->first)!=old.token)it=minerDefenseWork.erase(it);else ++it;
  }
  if(minerDefenseFrame==frame&&minerDefenseInput==inputSerial&&minerDefenseConfigRevision==featureConfigRevision)return false;
- minerDefenseFrame=frame;minerDefenseInput=inputSerial;minerDefenseConfigRevision=featureConfigRevision;
  if(!freshness::valid(planningWorld.match,match,planningWorld.tick,planningWorld.frame,now,frame,freshness::Tactical))return false;
  minerDefenseRosterAttempted=false;
  minerDefenseActors.clear();minerDefenseEnemies.clear();
  for(int n=0;n<planningWorld.count;++n){const auto&a=planningWorld.actors[n];minerDefenseActors.add(a);if(minerdefense::threat(a))minerDefenseEnemies.add(n,a);}
  // Do not use previous refinery/radio cache if the current capture failed.
  if(!minerDefenseIndexRefineries())return false;
+ // Mark the frame consumed only after all required lists were readable.
+ // An incomplete sample is not a completed scan (even during a paused frame).
+ minerDefenseFrame=frame;minerDefenseInput=inputSerial;minerDefenseConfigRevision=featureConfigRevision;
  const uint32_t before=sh->minerDefenseAttacks+sh->minerDefenseResumes;int searchBudget=2048,issued=0;
  // Rotate existing jobs as well as new miners. Six event slots and the bounded
  // resource search budget must not be monopolized by the same first jobs.
