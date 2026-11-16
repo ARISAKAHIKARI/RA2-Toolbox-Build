@@ -20,6 +20,7 @@ static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int 
 struct Object {uint32_t p,id,carrier=0,owner=1,type=42;int kind=1;bool selected=false,allowed=true,alive=true;};
 static std::unordered_map<uint32_t,Object> objects;
 static std::vector<uint32_t> infantry;
+static int indexedFrame=-1;
 struct Vec {int count=0;};static Vec vec(uint32_t at){if(at!=0xA83DE8)throw std::runtime_error("unexpected roster");return {int(infantry.size())};}
 static uint32_t item(Vec,int i){return infantry.at(i);}
 static Object* object(uint32_t p){auto at=objects.find(p);return at==objects.end()?nullptr:&at->second;}
@@ -42,14 +43,14 @@ static bool featureObjectAllowed(int,uint32_t p){auto*o=object(p);return o&&o->a
 #include ROSTER_CURRENT
 static uint32_t passenger(unsigned n){return 0x100000+n*0x1000;}
 constexpr uint32_t carrier=0x80000000;
-static void reset(unsigned n){objects.clear();infantry.clear();manualVersions.values.clear();unknownField=0;recentPassengerCount=0;std::memset(recentPassengers,0,sizeof recentPassengers);snap={};shared={};objects[carrier]={carrier,50000,0,1,42,2,true};for(unsigned i=0;i<n;++i){uint32_t p=passenger(i);objects[p]={p,100+i,carrier};infantry.push_back(p);}}
+static void reset(unsigned n){indexedFrame=-1;objects.clear();infantry.clear();manualVersions.values.clear();unknownField=0;recentPassengerCount=0;std::memset(recentPassengers,0,sizeof recentPassengers);snap={};shared={};objects[carrier]={carrier,50000,0,1,42,2,true};for(unsigned i=0;i<n;++i){uint32_t p=passenger(i);objects[p]={p,100+i,carrier};infantry.push_back(p);}}
 using Observe=void(*)(uint32_t,int,DWORD);
 struct History {std::vector<RecentPassenger> values;};
 static History capture(){return {std::vector<RecentPassenger>(recentPassengers,recentPassengers+recentPassengerCount)};}
 static void restore(const History&h){recentPassengerCount=int(h.values.size());std::copy(h.values.begin(),h.values.end(),recentPassengers);}
 static unsigned cases=0,checks=0;
 static void expect(bool v,const char*why){++checks;if(!v)throw std::runtime_error(why);}
-static void compare(History&before,History&after,int frame,DWORD now){restore(before);observeUnloadRosterBefore(1,frame,now);before=capture();restore(after);observeUnloadRoster(1,frame,now);after=capture();expect(before.values.size()==after.values.size(),"history count changed");expect(before.values.empty()||!std::memcmp(before.values.data(),after.values.data(),before.values.size()*sizeof(RecentPassenger)),"history identity/order/timestamp changed");}
+static void compare(History&before,History&after,int frame,DWORD now){indexedFrame=frame;restore(before);observeUnloadRosterBefore(1,frame,now);before=capture();restore(after);observeUnloadRoster(1,frame,now);after=capture();expect(before.values.size()==after.values.size(),"history count changed");expect(before.values.empty()||!std::memcmp(before.values.data(),after.values.data(),before.values.size()*sizeof(RecentPassenger)),"history identity/order/timestamp changed");}
 template<class F>void run(const char*name,F f){f();++cases;std::printf("PASS\t%s\n",name);}
 int main(){try{
  run("same_frame_selection_native_first_and_duplicate_roster",[]{reset(3);objects[carrier].selected=false;History b,a;compare(b,a,1,1000);expect(a.values.empty(),"not selected");objects[carrier].selected=true;compare(b,a,1,1001);expect(a.values.size()==3,"same frame selection must be observed");infantry.push_back(passenger(1));compare(b,a,1,1002);expect(a.values.size()==3,"duplicate vector entry does not append history");for(unsigned i=0;i<3;++i)objects[passenger(i)].carrier=0;compare(b,a,1,1003);expect(a.values.size()==3,"native unload before command preserves roster");});
@@ -57,19 +58,19 @@ int main(){try{
  run("disable_chat_and_type_owner_guards",[]{reset(5);objects[passenger(0)].allowed=false;objects[passenger(1)].owner=2;History b,a;compare(b,a,1,1000);expect(a.values.size()==3,"passenger filters");sh->flags=0;compare(b,a,1,1001);expect(a.values.empty(),"disable clears history");sh->flags=SmartUnloadOrders;compare(b,a,1,1002);snap.chat=true;compare(b,a,1,1003);expect(a.values.empty(),"chat clears history");snap.chat=false;objects[carrier].allowed=false;compare(b,a,1,1004);expect(a.values.empty(),"carrier filter");objects[carrier].allowed=true;objects[carrier].owner=2;compare(b,a,1,1005);expect(a.values.empty(),"carrier owner");});
  run("capacity_preserves_oldest_order_and_rebuilt_swapped_indices",[]{reset(nativeorders::MaxPassengers+1);History b,a;compare(b,a,1,1000);expect(a.values.size()==nativeorders::MaxPassengers&&a.values.back().p==passenger(nativeorders::MaxPassengers-1),"bounded overflow retains original order");for(unsigned i=0;i<nativeorders::MaxPassengers;i+=3){objects[passenger(i)].carrier=0;manualVersions.values[100+i]=1;}compare(b,a,2,1010);compare(b,a,2,1011);expect(a.values.size()<nativeorders::MaxPassengers,"swapped history rebuilt without stale slots");});
  run("unreadable_uid_preserves_latched_ctrl_d_passenger",[]{
-  reset(2);objects[carrier].selected=true;observeUnloadRoster(1,10,1000);
+  reset(2);objects[carrier].selected=true;indexedFrame=10;observeUnloadRoster(1,10,1000);
   expect(recentPassengerCount==2,"loaded two passengers not observed");
   auto p=passenger(1);objects[p].carrier=0;
-  unknownField=p+0x10;observeUnloadRoster(1,11,1020);
+  unknownField=p+0x10;indexedFrame=11;observeUnloadRoster(1,11,1020);
   expect(recentPassengerCount==2,"transient UID read erased the second passenger's Ctrl+D history");
-  unknownField=0;observeUnloadRoster(1,12,1040);
+  unknownField=0;indexedFrame=12;observeUnloadRoster(1,12,1040);
   expect(recentPassengerCount==2,"recovered UID should retain the ejected second passenger");
-  objects[p].id=900;observeUnloadRoster(1,13,1060);
+  objects[p].id=900;indexedFrame=13;observeUnloadRoster(1,13,1060);
   expect(recentPassengerCount==1,"proven UID reuse should retire old passenger history");
  });
  run("lookup_collision_capacity_clear",[]{unloadpolicy::RosterLookup<8> index;std::vector<uint32_t> keys;for(uint32_t p=1;keys.size()<9;++p)if(index.slot(p)==0)keys.push_back(p);for(int n=0;n<8;++n)expect(index.add(keys[n],n),"collision insert");expect(!index.add(keys[8],8),"overflow rejected");for(int n=0;n<8;++n)expect(index.find(keys[n])==n,"collision find");expect(index.add(keys[3],99)&&index.find(keys[3])==99,"existing update at capacity");index.clear();for(auto p:keys)expect(index.find(p)==-1,"clear occupied slots");expect(index.add(keys[8],8)&&index.find(keys[8])==8,"reuse after clear");});
  reset(8192);observeUnloadRosterBefore(1,1,1000);auto start=capture();
- auto time=[&](Observe fn){restore(start);auto at=std::chrono::steady_clock::now();for(int n=0;n<7;++n)fn(1,1,1000+n);return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-at).count();};
+ auto time=[&](Observe fn){restore(start);indexedFrame=1;auto at=std::chrono::steady_clock::now();for(int n=0;n<7;++n)fn(1,1,1000+n);return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-at).count();};
  double old=time(observeUnloadRosterBefore),fresh=time(observeUnloadRoster);std::printf("BENCHMARK_MS\t%.3f\t%.3f\t8192\t7\n",old,fresh);
  std::printf("SUMMARY\t%u\t%u\n",cases,checks);return 0;
  }catch(const std::exception&e){std::fprintf(stderr,"FAIL: %s\n",e.what());return 1;}}
