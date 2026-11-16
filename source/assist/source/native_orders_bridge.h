@@ -185,13 +185,13 @@ static int unloadCarrierKnowledge(const unloadadmission::Carrier&task,uint32_t h
  const uint32_t p=task.pointer;
  if(!p||!worldObjects.contains(p))return -1;
  uint32_t id=0,vt=0,owner=0,carried=0;int hp=0,cargo=0;
- uint8_t map=0,alive=0,limbo=1,disabled=0;
+ uint8_t map=0,alive=0,limbo=1;
  if(!read(p+0x10,&id,sizeof id)||!read(p,&vt,sizeof vt)||
     !read(p+0x21C,&owner,sizeof owner)||!read(p+0x6C,&hp,sizeof hp)||
     !read(p+0x114,&cargo,sizeof cargo)||!read(p+0x11C,&carried,sizeof carried)||
     !read(p+0x74,&map,sizeof map)||!read(p+0x90,&alive,sizeof alive)||
-    !read(p+0x81,&limbo,sizeof limbo)||!read(p+0x1C8,&disabled,sizeof disabled))return 0;
- if(id!=task.id||vt!=0x7F5C70u||owner!=house||hp<=0||!map||!alive||limbo||disabled||carried)return -1;
+    !read(p+0x81,&limbo,sizeof limbo))return 0;
+ if(id!=task.id||vt!=0x7F5C70u||owner!=house||hp<=0||!map||!alive||limbo||carried)return -1;
  if(!unloadadmission::retainAfterCarrierMove(task.token,manualVersions.get(task.id),cargo))return -1;
  // A failed optional TypeID/feature-query observation cannot establish death
  // or cancellation. The original 3.5s / 12s admission horizon still applies.
