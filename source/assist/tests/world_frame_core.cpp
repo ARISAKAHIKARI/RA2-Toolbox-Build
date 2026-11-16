@@ -179,6 +179,62 @@ void graphs(){
   worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});CHECK(!g.capture(worldframe::Visual,{}));CHECK(s.counters.overflows==1);CHECK(s.counters.calls<256);
  }
 }
+void speculativeBatchFaultIsolation(){
+ // One unreadable page in a 16-page warm batch previously threw away all
+ // 16 speculative pages. Bounded split probing salvages 12 good pages in
+ // five calls; the remaining pages are still unknown until field reads.
+ constexpr uint32_t base=0x760000;
+ std::vector<uint32_t>addresses;
+ Memory memory;
+ for(uint32_t i=0;i<16;++i){
+  const uint32_t address=base+i*worldframe::PageSize;
+  addresses.push_back(address);memory.put(address+0x28,0xBEEF0000u+i);
+ }
+ memory.partialPages.insert(base+10*worldframe::PageSize);
+ std::array<uint8_t,16*worldframe::PageSize>scratch{};
+ Read live{&memory};
+ worldframe::Snapshot sample;sample.reset(key());
+ CHECK(sample.prefetchPages(live,addresses,scratch.data(),scratch.size(),false));
+ CHECK(memory.calls.size()==5&&sample.pages.size()==12);
+ CHECK(sample.counters.calls==5&&sample.counters.failedReads==3);
+ for(uint32_t i=0;i<16;++i){
+  const bool retained=i<8||i>=12;
+  CHECK(bool(sample.find(addresses[i]))==retained);
+ }
+ uint32_t value=0;
+ const auto before=memory.calls.size();
+ CHECK(sample.capture(live,addresses[2]+0x28,&value,4)&&value==0xBEEF0002u);
+ CHECK(memory.calls.size()==before); // already-warmed page does not live-read
+ CHECK(sample.capture(live,addresses[9]+0x28,&value,4)&&value==0xBEEF0009u);
+ CHECK(sample.capture(live,addresses[10]+0x28,&value,4)&&value==0xBEEF000Au);
+ CHECK(memory.calls.size()==before+3); // good full page + failed full page + exact
+ memory.uniqueSuccessfulBytes();
+ CHECK(sample.seal());
+ CHECK(sample.read(addresses[9]+0x28,&value,4)&&value==0xBEEF0009u);
+ CHECK(sample.read(addresses[10]+0x28,&value,4)&&value==0xBEEF000Au);
+ CHECK(!sample.read(addresses[10]+0x80,&value,4)); // failed page not fabricated
+ // If ALL adjacent pages fail, do not recursively scan or invent any
+ // successful page. The speculative budget stays at seven attempts.
+ Memory allBad;
+ for(uint32_t address:addresses)allBad.partialPages.insert(address);
+ worldframe::Snapshot absent;absent.reset(key());
+ CHECK(absent.prefetchPages(Read{&allBad},addresses,scratch.data(),scratch.size(),false));
+ CHECK(allBad.calls.size()==7&&absent.counters.calls==7);
+ CHECK(absent.pages.size()==0&&absent.counters.failedReads==7);
+ CHECK(absent.seal()&&!absent.read(addresses[0],&value,4));
+ // Required page subscribers keep their original fallbacks. A bad page
+ // remains missing, while other addresses may still be sealed successfully.
+ Memory required;
+ for(uint32_t i=0;i<16;++i)required.put(addresses[i]+0x28,0xBEEF0000u+i);
+ required.partialPages.insert(addresses[10]);
+ worldframe::Snapshot strict;strict.reset(key());
+ CHECK(!strict.prefetchPages(Read{&required},addresses,scratch.data(),scratch.size(),true));
+ CHECK(strict.pages.size()==16&&strict.seal());
+ CHECK(strict.read(addresses[8]+0x28,&value,4)&&value==0xBEEF0008u);
+ CHECK(!strict.read(addresses[10]+0x28,&value,4));
+ required.uniqueSuccessfulBytes();
+ std::puts("PASS bounded speculative split: 12/16 pages salvaged, no duplicate bytes, 7-call worst-case cap");
+}
 void capacity(){
  worldframe::Snapshot s;s.reset(key());size_t calls=0;
  auto live=[&](uint32_t p,void*out,size_t n){++calls;std::memset(out,int(p>>12)&255,n);return true;};
@@ -578,7 +634,7 @@ void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavi
 
 #ifndef WORLD_FRAME_FIXTURE_ONLY
 int main(){
- fixture::hostVisual();fixture::overlap();fixture::partial();fixture::graphs();fixture::capacity();fixture::nothrowPages();
+ fixture::hostVisual();fixture::overlap();fixture::partial();fixture::graphs();fixture::speculativeBatchFaultIsolation();fixture::capacity();fixture::nothrowPages();
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
  fixture::platform();
 #endif
