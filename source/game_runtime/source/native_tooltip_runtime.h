@@ -101,7 +101,7 @@ static bool maintain(bool allowInstall){
   layoutInstalled=gameentry::inspect(LayoutSlot).active!=0;layoutPending=layoutInstalled;
  }
  policySeen=true;if(!textPending)textRequired=nextText;if(!layoutPending)layoutRequired=nextLayout;
- if(textPending||layoutPending){CursorTooltipStatus(cursorWanted?-1:0);return installed;}
+ if(textPending||layoutPending){CursorTooltipStatus(cursorWanted?-1:0);return false;}
  if(wanted&&!installed&&allowInstall&&compatible()){
   const bool ok=gameentry::patch(gameentry::Client::Assist,Slot,(const uint8_t*)&Original,(const uint8_t*)&target,4);
   // The writer records actual bytes even if flush/protection restoration
@@ -110,6 +110,16 @@ static bool maintain(bool allowInstall){
  }else if(!wanted&&installed){
   if(gameentry::patch(gameentry::Client::Assist,Slot,(const uint8_t*)&target,(const uint8_t*)&Original,4))installed=false;
   else installed=gameentry::inspect(Slot).active;
+ }else if(wanted&&installed&&allowInstall){
+  // The journal is still ours, but a platform may have put the stock
+  // vtable pointer back. Reapply ONLY if the slot equals the exact original,
+  // the same journal remains unconflicted, and the native ABI still matches.
+  // A foreign pointer is never overwritten or adopted as our own.
+  uint32_t current=0;SIZE_T readBytes=0;const auto journal=gameentry::inspect(Slot);
+  if(journal.active&&!journal.conflict&&journal.length==4&&
+     ReadProcessMemory(GetCurrentProcess(),(const void*)Slot,&current,4,&readBytes)&&
+     readBytes==4&&current==Original&&compatible())
+   gameentry::patch(gameentry::Client::Assist,Slot,(const uint8_t*)&Original,(const uint8_t*)&target,4);
  }
  const uint32_t layoutTarget=uint32_t(uintptr_t(&layoutEntry));
  if(cursorWanted&&!layoutInstalled&&allowInstall&&compatible()&&layoutCompatible()){
@@ -118,21 +128,33 @@ static bool maintain(bool allowInstall){
  }else if(!cursorWanted&&layoutInstalled){
   if(gameentry::patch(gameentry::Client::Assist,LayoutSlot,(const uint8_t*)&layoutTarget,(const uint8_t*)&LayoutOriginal,4))layoutInstalled=false;
   else layoutInstalled=gameentry::inspect(LayoutSlot).active;
+ }else if(cursorWanted&&layoutInstalled&&allowInstall){
+  uint32_t current=0;SIZE_T readBytes=0;const auto journal=gameentry::inspect(LayoutSlot);
+  if(journal.active&&!journal.conflict&&journal.length==4&&
+     ReadProcessMemory(GetCurrentProcess(),(const void*)LayoutSlot,&current,4,&readBytes)&&
+     readBytes==4&&current==LayoutOriginal&&compatible()&&layoutCompatible())
+   gameentry::patch(gameentry::Client::Assist,LayoutSlot,(const uint8_t*)&LayoutOriginal,(const uint8_t*)&layoutTarget,4);
  }
  // Physical ownership is retained even on a failed flush/restore. Readiness
  // additionally requires the actual slot to remain ours (foreign writes are
  // never overwritten). An unavailable repair is visible to the controller.
  uint32_t textActual=0,layoutActual=0;SIZE_T got=0;
- const bool ready=cursorWanted&&installed&&layoutInstalled&&compatible()&&layoutCompatible()&&
-  ReadProcessMemory(GetCurrentProcess(),(const void*)Slot,&textActual,4,&got)&&got==4&&textActual==target&&
+ const auto textJournal=gameentry::inspect(Slot);
+ const bool textReady=installed&&textJournal.active&&!textJournal.conflict&&textJournal.length==4&&
+  ReadProcessMemory(GetCurrentProcess(),(const void*)Slot,&textActual,4,&got)&&got==4&&textActual==target;
+ const auto layoutJournal=gameentry::inspect(LayoutSlot);
+ const bool layoutReady=layoutInstalled&&layoutJournal.active&&!layoutJournal.conflict&&layoutJournal.length==4&&
   ReadProcessMemory(GetCurrentProcess(),(const void*)LayoutSlot,&layoutActual,4,&got)&&got==4&&layoutActual==layoutTarget;
+ const bool ready=cursorWanted&&textReady&&layoutReady&&compatible()&&layoutCompatible();
  CursorTooltipStatus(cursorWanted?(ready?1:-1):0);
- return installed;
+ // Return actual byte ownership, not a possibly stale bool from the journal.
+ // Build-time text must never report success if another hook owns the slot.
+ return textReady;
 }
 }
 extern "C" bool NativeTooltipBuildTime(bool wanted){
- nativetooltip::buildTimeWanted=wanted;nativetooltip::maintain(wanted);
- return wanted?nativetooltip::installed:(!nativetooltip::installed||CursorTooltipNeeded());
+ nativetooltip::buildTimeWanted=wanted;const bool textReady=nativetooltip::maintain(wanted);
+ return wanted?textReady:(!nativetooltip::installed||CursorTooltipNeeded());
 }
 extern "C" void NativeTooltipMaintain(bool allowInstall){
  gameentry::scoped(gameentry::Client::Assist,false,[&]{nativetooltip::maintain(allowInstall);});
