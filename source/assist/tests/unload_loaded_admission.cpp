@@ -141,6 +141,13 @@ int main(){try{
  objects[second].onMap=objects[third].onMap=false;
  infantry.push_back(second);infantry.push_back(third);
  buildUnloadAdmissionRoster(1);
+ missingRead=third+0x10;
+ check(smartUnloadNow(1,transport)<0&&!unloadCount&&!deployments,
+       "third passenger unknown must not commit only the first two");
+ missingRead=second+0x30;
+ check(smartUnloadNow(1,transport)<0&&!unloadCount&&!deployments,
+       "unreadable middle cargo next-link must not commit a partial roster");
+ missingRead=0;
  check(smartUnloadNow(1,transport)==1&&unloadCount==3,
        "all three loaded passengers must enroll, not just the active first exit");
  bool gotSecond=false,gotThird=false;
