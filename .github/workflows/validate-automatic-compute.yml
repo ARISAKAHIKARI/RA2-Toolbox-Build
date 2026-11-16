@@ -57,3 +57,13 @@ jobs:
       - name: Test bounded manual suppression and same-frame retry
         run: |
           python3 source/assist/tests/missile_manual_lifecycle.py --output /tmp/ra2-missile-state
+  boarding-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test exact production automatic-boarding four-state observer
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG source/assist/tests/autoload_reservation_state.cpp -o /tmp/ra2-autoload-reservation
+          /tmp/ra2-autoload-reservation
