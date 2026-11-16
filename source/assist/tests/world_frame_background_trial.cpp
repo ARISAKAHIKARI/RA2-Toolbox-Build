@@ -59,7 +59,7 @@ int main(){
  // engine lock. A bounded queue and actual DMA/CPU throttle come later.
  std::mutex mutex;std::condition_variable cv;bool entered=false,release=false;
  memory.beforeRead=[&](uint32_t p,size_t n){
-  if(p==0xA80208u&&n==worldframe::PageSize){
+  if(p<=0xA80208u&&uint64_t(p)+n>0xA80208u){
    std::unique_lock<std::mutex>guard(mutex);
    entered=true;cv.notify_one();
    cv.wait(guard,[&]{return release;});
