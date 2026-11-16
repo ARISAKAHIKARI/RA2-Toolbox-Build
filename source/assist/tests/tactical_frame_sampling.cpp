@@ -78,7 +78,9 @@ static bool antiTheftBuilding(uint32_t){return false;}static bool antiTheftThrea
 struct NativeOrder {uint32_t id=0,cell=0,token=0,mode=0;bool global=false;uint32_t pointer=0;};
 static NativeOrder nativeOrders[128];static int nativeCount=0;
 static int orderIndex(uint32_t p){for(int n=0;n<nativeCount;++n)if(nativeOrders[n].pointer==p)return n;return -1;}
-static int dodgeCount=0,missileHoldCount=0;
+static int dodgeCount=0,missileHoldCount=0,dodgeCancelled=0,dodgeObserved=0;
+struct DodgeLeaseStub {template<class...Args>void record(Args...) {}};
+static DodgeLeaseStub actorLeaseArbiter;
 static oreconfig::Config oreConfig{};static long oreConfigRevision=0;
 static bool refreshOreConfig(){return true;}
 static DWORD sampleClock(Shared*){return clockNow;}
@@ -113,6 +115,8 @@ static int indexedFrame=-1,indexedCount=-1,globalVehicleCandidateCount=0;
 static uint32_t indexedItems=0,indexedVehicleHouse=0,globalVehicleCandidates[16384]{};static bool indexedGlobalVehicles=false;
 static void minerDefenseReindexManual(ManualVersions&){}
 #include "tactical_frame_production.h"
+static void cancelDodge(uint32_t id){for(int i=0;i<dodgeCount;++i)if(dodgeJobs[i].id==id){dodgeJobs[i]=dodgeJobs[--dodgeCount];++dodgeCancelled;return;}}
+static void recordReceipt(const gateway::Receipt&){++dodgeObserved;}
 #include "fixtures/tactical_frame/missile_edge_pre1513.h"
 static compute::FrameHistory<compute::LoadInput>legacyLoadFrames;
 #define loadFrames legacyLoadFrames
@@ -197,6 +201,31 @@ static void testDodge(){
  // A genuinely empty bullet array is complete, including a null item buffer.
  set<uint32_t>(bullet+0x10,30);vectorAt(0xA8ED40,0,{});advance();check(collectDodgeThreats()&&dodgeThreatCount==0,"empty bullet roster rejected");
  std::puts("PASS dodge shared Bullet/Techno input, live reuse guard and failed/empty roster distinction");
+}
+static void testDodgeLeaseMissing(){
+ reset();sh->dodgeEnabled=1;uint32_t type=makeType(),p=object(type,2,20);
+ vectorAt(0xA8EC78,0x800000,{p});seal();
+ dodgeJobs[0]={};dodgeCount=1;dodgeCancelled=dodgeObserved=0;
+ auto&job=dodgeJobs[0];job.id=20;job.pointer=p;job.token=manualVersions.get(20);job.active=true;
+ job.x=1000;job.y=1000;job.quietFrame=snap.frame;
+ check(dodgeSourceKnowledge(p,lastHouse)==1,"complete same-frame dodge source should be eligible");
+ // A live read can fail AFTER the sealed source was captured. That must not
+ // synthesize movement, observe Scatter, or mutate the lease checkpoint.
+ set<int>(p+0x9C,0);missingPage=p&~4095u;denyLivePage=true;
+ updateDodgeJobs(lastHouse,snap.frame,clockNow);
+ check(dodgeCount==1&&dodgeCancelled==0&&!dodgeObserved&&job.x==1000&&job.quietFrame==snap.frame,"missing motion page changed active dodge state");
+ denyLivePage=false;missingPage=0;
+ updateDodgeJobs(lastHouse,snap.frame,clockNow);
+ check(dodgeCount==1&&dodgeCancelled==0&&job.x==0&&job.observed&&dodgeObserved==1,"recovered movement not observed");
+ // Incomplete sealed source is unknown, not verified ineligible.
+ advance(p);check(dodgeSourceKnowledge(p,lastHouse)==0,"missing dodge source did not report unknown");
+ updateDodgeJobs(lastHouse,snap.frame,clockNow);
+ check(dodgeCount==1&&!dodgeCancelled,"missing source retired active dodge owner");
+ // Proven native mission loss still retires the old dodge task.
+ set<int>(p+0xAC,0);advance();check(dodgeSourceKnowledge(p,lastHouse)==-1,"complete invalid native mission did not prove retirement");
+ updateDodgeJobs(lastHouse,snap.frame,clockNow);
+ check(dodgeCount==0&&dodgeCancelled==1,"confirmed ineligible dodge owner not retired");
+ std::puts("PASS dodge lease state-machine: sealed unknown and live motion failures cannot cancel or advance job");
 }
 static void testReverse(){
  reset();sh->dodgeEnabled=1;uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),owner=object(airType,0,21,0x30000),bullet=alloc(),cell=alloc();
@@ -320,5 +349,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testDodge();testReverse();testMissile();testIdentitySampleFailure();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testIdentitySampleFailure();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif
