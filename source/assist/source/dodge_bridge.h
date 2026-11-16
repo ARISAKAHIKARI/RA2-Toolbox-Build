@@ -104,19 +104,41 @@ static int createDodge(const dodgecompute::Source&s){
  n=dodgeCount++;auto&j=dodgeJobs[n];j={};j.serial=++dodgeSerial;if(!j.serial)j.serial=++dodgeSerial;
  j.id=s.id;j.pointer=s.pointer;j.token=s.token;j.lastSeen=s.frame;return n;
 }
+// A missing sealed page is not evidence that a live dodge owner disappeared.
+// Return -1 only after a complete same-frame source observation; 0 is unknown.
+static int dodgeSourceKnowledge(uint32_t p,uint32_t house){
+ if(!p)return -1;
+ SampleReadScope sample;if(!sample)return 0;
+ const bool eligible=dodgeSource(p,house);
+ return sample.complete()?(eligible?1:-1):0;
+}
 static void updateDodgeJobs(uint32_t house,int frame,DWORD now){
  for(int n=0;n<dodgeCount;){auto&j=dodgeJobs[n];uint32_t p=worldByID(j.id);
-  if(p!=j.pointer||manualVersions.get(j.id)!=j.token||!dodgeSource(p,house)||(!j.active&&(!sh->dodgeEnabled||frame-j.lastSeen>300))){cancelDodge(j.id);continue;}
+  if(p!=j.pointer||manualVersions.get(j.id)!=j.token||(!j.active&&(!sh->dodgeEnabled||frame-j.lastSeen>300))){
+   cancelDodge(j.id);continue;
+  }
+  const int eligible=dodgeSourceKnowledge(p,house);
+  if(eligible<0){cancelDodge(j.id);continue;}
+  if(!eligible){++n;continue;} // Missing fields: preserve ownership and progress.
   if(j.active){
-   int x=get<int>(p+0x9C),y=get<int>(p+0xA0);bool moved=x!=j.x||y!=j.y;
-   // Rotation alone may have preceded the command; destination/movement or
-   // a changed native Scatter marker are evidence of later engine activity.
-   if(!j.observed&&(moved||get<uint32_t>(p+0x5A4)||get<int>(p+0xB4)==2||(!j.marker&&get<bool>(p+0x6B2)))){
+   int x=0,y=0,queued=0,rotatingStart=0,rotatingDuration=0;uint32_t destination=0;
+   short rotatingFlag=0;uint8_t marker=0;
+   // Validate all fields before changing a receipt, quiet clock or position.
+   // One failed live read must not synthesize movement to coordinate (0,0).
+   if(!read(p+0x9C,&x,sizeof x)||!read(p+0xA0,&y,sizeof y)||
+      !read(p+0x5A4,&destination,sizeof destination)||!read(p+0xB4,&queued,sizeof queued)||
+      !read(p+0x6B2,&marker,sizeof marker)||!read(p+0x39C,&rotatingFlag,sizeof rotatingFlag)||
+      !read(p+0x390,&rotatingStart,sizeof rotatingStart)||!read(p+0x398,&rotatingDuration,sizeof rotatingDuration)){
+    ++n;continue;
+   }
+   const bool moved=x!=j.x||y!=j.y;
+   const bool busy=(rotatingFlag>0&&remaining(rotatingStart,rotatingDuration,frame)>0)||
+      destination||queued==2||queued==29;
+   if(!j.observed&&(moved||destination||queued==2||(!j.marker&&marker))){
     j.observed=true;j.quietFrame=frame;gateway::observed(j.receipt,now);recordReceipt(j.receipt);
    }
-   if(moved||dodgeBusy(p,frame))j.quietFrame=frame;
+   if(moved||busy)j.quietFrame=frame;
    j.x=x;j.y=y;
-   // Keep lower-priority automation from interrupting a long turn/path.
    actorLeaseArbiter.record(match,frame,j.id,p,j.token,taskarbiter::Owner::Dodge,j.receipt.serial);
   }
   ++n;
@@ -127,7 +149,10 @@ static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int fra
  if(r.match!=input.match||r.tick!=input.tick||r.frame!=input.frame||r.count!=input.count||r.count<0||r.count>dodgecompute::MaxSources)return;
  for(int n=0;n<r.count;++n){if(!freshness::valid(r.match,match,r.tick,r.frame,now,frame,freshness::Tactical)||snap.chat)break;
   const auto&old=input.sources[n];uint32_t p=worldByID(old.id);int j=dodgeIndex(old.id);
-  if(p!=old.pointer||manualVersions.get(old.id)!=old.token||!dodgeSource(p,house)){cancelDodge(old.id);continue;}
+  if(p!=old.pointer||manualVersions.get(old.id)!=old.token){cancelDodge(old.id);continue;}
+  const int eligible=dodgeSourceKnowledge(p,house);
+  if(eligible<0){cancelDodge(old.id);continue;}
+  if(!eligible)continue; // Failed read cannot authorize cancel or new Scatter.
   if((old.job&&(j<0||dodgeJobs[j].serial!=old.job))||(!old.job&&j>=0))continue;
   dodgecompute::Source s{};dodgeObserve(p,house,s);auto liveDecision=dodgecompute::decide(s);auto d=r.decisions[n];
   if(d.scatter!=liveDecision.scatter||d.release!=liveDecision.release)continue;
