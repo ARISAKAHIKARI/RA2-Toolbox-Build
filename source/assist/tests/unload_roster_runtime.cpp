@@ -68,6 +68,13 @@ int main(){try{
   objects[p].id=900;indexedFrame=13;observeUnloadRoster(1,13,1060);
   expect(recentPassengerCount==1,"proven UID reuse should retire old passenger history");
  });
+ run("unknown_new_uid_does_not_allocate_phantom_history_slot",[]{
+  reset(2);objects[carrier].selected=true;indexedFrame=10;unknownField=passenger(1)+0x10;
+  observeUnloadRoster(1,10,1000);
+  expect(recentPassengerCount==1&&recentPassengers[0].p==passenger(0),"unreadable new UID consumed a roster slot");
+  unknownField=0;indexedFrame=11;observeUnloadRoster(1,11,1016);
+  expect(recentPassengerCount==2&&recentPassengers[1].p==passenger(1),"recovered UID did not rejoin the full Ctrl+D roster");
+ });
  run("lookup_collision_capacity_clear",[]{unloadpolicy::RosterLookup<8> index;std::vector<uint32_t> keys;for(uint32_t p=1;keys.size()<9;++p)if(index.slot(p)==0)keys.push_back(p);for(int n=0;n<8;++n)expect(index.add(keys[n],n),"collision insert");expect(!index.add(keys[8],8),"overflow rejected");for(int n=0;n<8;++n)expect(index.find(keys[n])==n,"collision find");expect(index.add(keys[3],99)&&index.find(keys[3])==99,"existing update at capacity");index.clear();for(auto p:keys)expect(index.find(p)==-1,"clear occupied slots");expect(index.add(keys[8],8)&&index.find(keys[8])==8,"reuse after clear");});
  reset(8192);observeUnloadRosterBefore(1,1,1000);auto start=capture();
  auto time=[&](Observe fn){restore(start);indexedFrame=1;auto at=std::chrono::steady_clock::now();for(int n=0;n<7;++n)fn(1,1,1000+n);return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-at).count();};
