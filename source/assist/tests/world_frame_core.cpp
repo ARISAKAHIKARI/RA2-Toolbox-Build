@@ -474,10 +474,14 @@ void runtime(){
   setup(memory);before=worldlife::capture(read);snap.frame=before.frame;
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
   CHECK(worldFrameBoundaryOnly&&worldFrameReady);
+  // Display-only boundaries cannot admit a native command, even if a
+  // particular required scalar happens to be present.
+  {SampleReadScope blocked;CHECK(!blocked&&!blocked.complete());}
   int hp=0;CHECK(!worldFrame.read(ActorA+0x6C,&hp,sizeof hp));
   const auto shallowSerial=worldFrame.key.serial;
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base));
   CHECK(worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.key.serial>shallowSerial);
+  {SampleReadScope upgraded;CHECK(upgraded&&upgraded.complete());}
   CHECK(worldFrame.read(ActorA+0x6C,&hp,sizeof hp)&&hp==100);
   // A second command read in the same logic frame is still exactly one
   // complete acquisition. No stale previous visual bytes are borrowed.
