@@ -99,13 +99,19 @@ extern "C" int GuardedEnterAction(unsigned,unsigned p,unsigned target,unsigned*o
 }
 extern "C" int GuardedObjectAir(unsigned p,int*out){nativeBoundary();auto found=airOverride.find(p);*out=found==airOverride.end()?(kind(p)==0||get<bool>(p+0x134)):found->second;return 1;}
 extern "C" int GuardedCombatWeapon(unsigned p,unsigned q,unsigned*weapon,int*slot,int*close,int*air){nativeBoundary();*weapon=get<uint32_t>(typeOf(p,kind(p))+0x898);*slot=0;*close=1;auto found=airOverride.find(q);*air=found==airOverride.end()?(kind(q)==0||get<bool>(q+0x134)):found->second;return *weapon?1:0;}
-static bool loadInterfaces(){assert(!sampleReadDepth);return true;}
+static bool interfacesReady=true;
+static unsigned loadingFinished=0,loadingBoarded=0,loadingResends=0;
+static bool loadInterfaces(){assert(!sampleReadDepth);return interfacesReady;}
+enum class EventLane {Boarding};
+static int recurringBudget(EventLane){return 4;}
+static bool outgoingRoom(){return true;}
+static bool enterEvent(uint32_t,uint32_t,uint32_t,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
 static loading::Ledger<> loadLedger;
 static repairdelivery::Pending<> pendingRepairs;
 static compute::FrameHistory<compute::RepairInput> repairFrames;
 static uint32_t repairIDs[8192],repairTaskSeen;static int repairCount,repairAt,repairDone;
 static bool repairCalculationPending;static DWORD repairCalculationStarted;
-static void finishLoadingReservation(const loading::Reservation&,uint32_t,int,bool){assert(!sampleReadDepth);}
+static void finishLoadingReservation(const loading::Reservation&,uint32_t,int,bool boarded){assert(!sampleReadDepth);++loadingFinished;if(boarded)++loadingBoarded;}
 static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens){
  assert(!sampleReadDepth);++submissions;assignments.clear();
  for(int n=0;n<ns;++n){const int target=assignment[n];if(target>=0&&target<nv&&worldByID(soldiers[n].id)==soldiers[n].object&&manualVersions.get(soldiers[n].id)==tokens[n])assignments.emplace_back(soldiers[n].id,vehicles[target].id);}
@@ -189,6 +195,48 @@ static void testLoad(){
  advance();check(autoLoad(lastHouse,&cohort)==1&&submissions==1&&!assignments.empty()&&assignments[0].first==replacement,"load replacement identity did not retry on its own frame");
  setupLoad(0);leaseAllowed=false;const auto beforeQueries=nativeCalls;check(autoLoad(lastHouse)==-12&&nativeCalls==beforeQueries&&!submissions,"load queried native engine without a lease");leaseAllowed=true;
  std::puts("PASS 32 load assignment variants, shared roster, native matrix boundary and frozen-cohort retry");
+}
+static void testBoardingLedgerUnknown(){
+ setupLoad(0);const uint32_t passenger=get<uint32_t>(0x820000),carrier=get<uint32_t>(0x800000),passengerID=get<uint32_t>(passenger+0x10),carrierID=get<uint32_t>(carrier+0x10);
+ const int sourceKind=kind(passenger);
+ loading::Reservation r{passenger,passengerID,carrier,carrierID,1,snap.frame};
+ r.kind=sourceKind;r.initial=loadingObservation(passenger);r.lastSent=snap.frame;r.progress=snap.frame;r.retryAfter=snap.frame+30;
+ check(loadLedger.add(r),"boarding ledger fixture did not reserve");
+ interfacesReady=true;loadingFinished=loadingBoarded=loadingResends=0;
+ // Unknown live UID/owner/motion must not cancel, send, or change the ledger.
+ for(uint32_t offset:{0x10u,0x21Cu,0x9Cu,0xACu}){
+  advance();missingPage=(passenger+offset)&~4095u;denyLivePage=true;
+  const int previousProgress=loadLedger.records[0].progress;
+  autoLoadTick(lastHouse,snap.frame);
+  check(loadLedger.count==1&&!loadingFinished&&!loadingResends&&loadLedger.records[0].progress==previousProgress,"missing live boarding field changed ledger");
+  denyLivePage=false;missingPage=0;
+ }
+ // A temporary query-interface outage does not discard accepted native tickets.
+ advance();interfacesReady=false;autoLoadTick(lastHouse,snap.frame);
+ check(loadLedger.count==1&&!loadingFinished&&!loadingResends,"interface outage erased pending boarding ticket");
+ interfacesReady=true;
+ // Confirm the transport pointer even when the passenger has left the roster.
+ set<uint32_t>(passenger+0x11C,carrier);worldObjects.clear();worldObjects.add(carrier,carrierID);
+ advance();autoLoadTick(lastHouse,snap.frame);
+ check(!loadLedger.count&&loadingFinished==1&&loadingBoarded==1&&!loadingResends,"confirmed boarding did not complete native ticket");
+ // A UID replacement cannot retain or complete the predecessor's reservation.
+ setupLoad(0);const uint32_t p2=get<uint32_t>(0x820000),v2=get<uint32_t>(0x800000);
+ loading::Reservation old{p2,get<uint32_t>(p2+0x10),v2,get<uint32_t>(v2+0x10),1,snap.frame};
+ old.kind=kind(p2);old.initial=loadingObservation(p2);old.lastSent=snap.frame;old.retryAfter=snap.frame+30;
+ check(loadLedger.add(old),"replacement fixture ledger missing");
+ loadingFinished=loadingBoarded=loadingResends=0;
+ set<uint32_t>(p2+0x10,old.id+1000);advance();autoLoadTick(lastHouse,snap.frame);
+ check(!loadLedger.count&&loadingFinished==1&&!loadingBoarded&&!loadingResends,"recycled source UID was not retired");
+ // Native gateway stays unavailable: only the independent 900-frame expiry applies.
+ setupLoad(0);const uint32_t p3=get<uint32_t>(0x820000),v3=get<uint32_t>(0x800000);
+ loading::Reservation expires{p3,get<uint32_t>(p3+0x10),v3,get<uint32_t>(v3+0x10),1,snap.frame};
+ expires.kind=kind(p3);expires.initial=loadingObservation(p3);check(loadLedger.add(expires),"expiry fixture ledger missing");
+ loadingFinished=loadingBoarded=loadingResends=0;interfacesReady=false;
+ snap.frame+=901;clockNow+=901*16;set<int>(0xA8ED84,snap.frame);
+ autoLoadTick(lastHouse,snap.frame);
+ check(!loadLedger.count&&loadingFinished==1&&!loadingBoarded&&!loadingResends,"unavailable gateway removed bounded expiry");
+ interfacesReady=true;
+ std::puts("PASS automatic boarding ledger: missing live reads retain, boarding confirms, identity replacement and expiry retire");
 }
 static void testDodge(){
  reset();sh->dodgeEnabled=1;uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),owner=object(airType,0,21,0x30000),bullet=alloc();
@@ -349,5 +397,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testIdentitySampleFailure();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testIdentitySampleFailure();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif
