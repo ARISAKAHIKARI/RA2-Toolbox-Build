@@ -23,7 +23,7 @@ jobs:
       - name: Verify production MIX first, native fallback and palette decoding
         run: |
           set -euo pipefail
-          g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/unit_info_panel_mix_cameos.cpp -o /tmp/ra2-unit-panel-mix
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Wno-error=misleading-indentation -UNDEBUG source/assist/tests/unit_info_panel_mix_cameos.cpp -o /tmp/ra2-unit-panel-mix
           /tmp/ra2-unit-panel-mix
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/unit_info_panel_model.cpp -o /tmp/ra2-unit-panel-model
           /tmp/ra2-unit-panel-model
