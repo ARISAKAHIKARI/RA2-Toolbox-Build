@@ -143,6 +143,22 @@ public:
    frame_.prefetch(live_,span.address,span.bytes);
    if(!working())return false;
   }
+  // Only a non-command Host display consumer, AND an explicit producer
+  // admission check, may request this boundary-only read set. The external
+  // VisualCache performs its own full Graph discovery on the Host thread.
+  // Do not capture unit/Type/Weapon/House object graphs here: no command
+  // admission can use a boundary-only sample as its full actor census.
+  if(demand_==uint32_t(Base|HostDisplayOnly)){
+   for(uint32_t p:{0xA80208u,0xA83CE0u,0xA8B230u,0xA8BC60u,0xA8E348u,
+                   0xA8ED84u,0x8871E0u,0x887324u,0x8A00A4u,0x8B4108u,
+                   0xAC1198u,0xB0CD48u})block(p,128);
+   block(0x87F7E8,0x1500);
+   block(frame_.key.scenario,0x1300);
+   // A game-thread read-only scene has no native commands. The Host already
+   // owns lazy display page subscriptions: don't pull these page ranges
+   // back onto the game's producer solely to paint an overlay.
+   return working();
+  }
   // Global fields are one read per overlapping page, regardless of which
   // collector originally owned them. No Selected object list is frozen here.
   for(uint32_t p:{0xA80208u,0xA83CE0u,0xA8B230u,0xA8BC60u,0xA8E348u,0xA8ED84u,0x8871E0u,0x887324u,0x8A00A4u,0x8B4108u,0xAC1198u,0xB0CD48u})block(p,128);
