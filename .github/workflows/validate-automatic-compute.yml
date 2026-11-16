@@ -125,3 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/unload_roster_runtime.py --out /tmp/ra2-unload-roster --before source/assist/source/native_orders_bridge.h
+      - name: Test production three-passenger native cargo handoff
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/unload_loaded_admission.py --out /tmp/ra2-unload-loaded --current-only
