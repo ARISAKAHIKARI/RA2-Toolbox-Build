@@ -493,6 +493,15 @@ int main(int argc,char**argv){
   attackStarted();observeAttack();step();failRead=Miner+0x9C;step(1,16,false);CHECK(events.size()==1&&sh->minerDefenseActive==1);
   failRead=0;kill();step();CHECK(events.size()==2);harvestTuple(events.back());
  });
+ run("unreadable_spider_target_keeps_attack_episode_instead_of_restoring",[]{
+  attackStarted();observeAttack();step();
+  for(uint32_t unavailable:{Drone+0x6C4,Drone+0x9C,DroneType+0x10}){
+   failRead=unavailable;step(1,16,false);
+   CHECK(minerDefensePending()&&!minerDefenseJobs.at(MinerID).restoring&&events.size()==1);
+   failRead=0;
+  }
+  kill();step();CHECK(events.size()==2);harvestTuple(events.back());
+ });
  run("native_target_read_uncertainty_retains_work_for_recovery",[]{
   attackStarted();observeAttack();step();failRead=Miner+0x2B4;step(1,16,false);CHECK(events.size()==1&&sh->minerDefenseActive==1);
   failRead=0;kill();step();CHECK(events.size()==2);harvestTuple(events.back());
