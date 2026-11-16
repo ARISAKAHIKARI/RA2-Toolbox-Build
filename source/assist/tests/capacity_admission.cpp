@@ -86,8 +86,12 @@ int main(int argc,char**argv){std::string mode=argc>1?argv[1]:"all";
  unreadableField=0;tick(3);check(sent.size()==1&&!queuedUnload.count,"recovered cargo state did not resume original Ctrl+D");
  reset();p=carrier(0);smartUnload(9);uint32_t probePassenger=memory[p+0x118];
  unreadableField=probePassenger+0x10;tick(2);
- check(sent.empty()&&queuedUnload.count==1&&unloadCount==0,"missing passenger UID committed partial Ctrl+D");
- unreadableField=0;tick(3);check(sent.size()==1&&unloadCount==1,"recovered passenger UID did not resume Ctrl+D");
+ check(sent.empty()&&queuedUnload.count==1&&unloadCount==0&&!queuedUnload.carriers[0].attempted,
+       "missing passenger UID burned native Deploy or committed partial Ctrl+D");
+ tick(300);check(sent.empty()&&queuedUnload.count==1&&!queuedUnload.carriers[0].attempted,
+       "unreadable passenger for 4.8 seconds exhausted an unstarted Ctrl+D");
+ unreadableField=0;tick(301);check(sent.size()==1&&unloadCount==1,
+       "recovered passenger UID did not resume original first Deploy");
  reset();p=carrier(0);smartUnload(9);probePassenger=memory[p+0x118];
  unreadableField=probePassenger+0x30;tick(2);
  check(sent.empty()&&queuedUnload.count==1&&unloadCount==0,"missing cargo next link committed incomplete roster");
