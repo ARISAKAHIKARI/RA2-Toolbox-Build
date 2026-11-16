@@ -167,11 +167,15 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  if(shadowGraphOptIn()){
   worldframe::BackgroundTrialResult shadow{};
   if(worldFrameShadow.poll(key,shadow)){
-   char diagnostic[256]{};
+   char diagnostic[384]{};
    std::snprintf(diagnostic,sizeof diagnostic,
-     "RA2 shadow capture frame=%d..%d pages=%u reads=%u bytes=%u (discovery only)\n",
-     shadow.before.frame,shadow.after.frame,shadow.pages,
-     shadow.counters.calls,shadow.counters.bytes);
+     "RA2 read-only background graph frame=%d..%d actors=%u own=%u other=%u "
+     "alive=%u dead=%u uncertain=%u visited=%u pages=%u calls=%u bytes=%u "
+     "(approximate; never command authority)\n",
+     shadow.before.frame,shadow.after.frame,
+     shadow.facts.actors,shadow.facts.owned,shadow.facts.other,
+     shadow.facts.alive,shadow.facts.dead,shadow.facts.missingIdentity,
+     shadow.facts.visited,shadow.pages,shadow.counters.calls,shadow.counters.bytes);
    OutputDebugStringA(diagnostic);
   }
   worldFrameShadow.request(key,worldframe::Base,key.tick);
