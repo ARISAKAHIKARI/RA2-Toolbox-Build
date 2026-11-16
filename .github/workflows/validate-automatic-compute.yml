@@ -138,3 +138,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/unload_followup_tick_runtime.py --out /tmp/ra2-unload-followup-tick
+      - name: Exercise source-extracted EjectAssist enrollment under missing native fields
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/unload_ejection_runtime.py --out /tmp/ra2-unload-ejection
