@@ -10,6 +10,8 @@
 // alternate native-command sample. The main control sampler remains authoritative.
 namespace worldframe {
 class ShadowGraphWorker {
+ static constexpr size_t MaxTrialPages=4096,MaxTrialBytes=16*1024*1024;
+ static constexpr unsigned MaxTrialReads=4096;
  struct Request {Key key{};uint32_t demand=Base,epoch=0;};
  std::mutex gate_;
  std::atomic<uint32_t> epoch_{1};
@@ -47,9 +49,14 @@ class ShadowGraphWorker {
   auto*self=static_cast<ShadowGraphWorker*>(opaque);
   SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);
   {
-  // One allocator/storage owner per pinned worker lifetime. The owning scope
-  // ends before FreeLibraryAndExitThread, including on stop/retirement.
-  Snapshot retainedSample;CaptureScratch retainedScratch;
+  // One allocator/storage owner per pinned worker lifetime. A failed
+  // allocation ends this diagnostic graph only; the command sampler owns
+  // separate pages and cannot be harmed by shadow memory pressure.
+  PageAllocator bounded{};
+  bounded.allocate=[](size_t size,void*)noexcept->void*{
+   return size<=MaxTrialPages*sizeof(Page)?std::malloc(size):nullptr;
+  };
+  Snapshot retainedSample(bounded);CaptureScratch retainedScratch(bounded);
   for(;;){
    if(self->stopping_.load(std::memory_order_acquire))break;
    if(WaitForSingleObject(self->event_,250)==WAIT_FAILED)break;
@@ -61,9 +68,18 @@ class ShadowGraphWorker {
    }
    if(!found||job.epoch!=self->epoch_.load(std::memory_order_acquire))continue;
    // One Snapshot and graph scratch belong exclusively to this thread.
+   // Real RPM work is bounded by time, calls and bytes. Once exhausted,
+   // the graph fails closed with CaptureFailure; it NEVER publishes an
+   // incomplete authoritative command sample.
+   const DWORD began=GetTickCount();size_t bytes=0;unsigned calls=0;
    const auto result=backgroundTrialWithStorage([&]{return stamp(job.key);},
-     [](uint32_t at,void*out,size_t n){return live(at,out,n);},
-     job.demand,retainedSample,retainedScratch);
+     [&](uint32_t at,void*out,size_t n){
+      if(self->stopping_.load(std::memory_order_acquire)||
+         job.epoch!=self->epoch_.load(std::memory_order_acquire)||
+         uint32_t(GetTickCount()-began)>BackgroundGraphPolicy::MaxCaptureMs||
+         calls>=MaxTrialReads||n>MaxTrialBytes-bytes)return false;
+      ++calls;bytes+=n;return live(at,out,n);
+     },job.demand,retainedSample,retainedScratch);
    if(job.epoch!=self->epoch_.load(std::memory_order_acquire)||
       self->stopping_.load(std::memory_order_acquire))continue;
    {
