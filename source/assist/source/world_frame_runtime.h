@@ -14,6 +14,17 @@ using WorldFramePublication=worldframe::AsyncPublisher<>;
 static WorldFramePublication worldFramePublication;
 static uint32_t worldFrameSerial=0;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
 static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
+// Fixed-size, direct-mapped hints for fields actually MISSING in a sealed
+// sample. Keep only addresses/lengths; never retain the old values or read
+// game memory from a consumer after seal. No hot-path allocation.
+static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
+static void rememberMissingWorldSpan(uint32_t at,size_t bytes){
+ if(!worldFrameReady||!worldFrame.sealed()||!bytes||bytes>256||
+    !worldframe::range(at,bytes))return;
+ uint32_t key=at^(at>>13)^(uint32_t(bytes)*0x9E3779B9u);
+ runtimeMissingSpans[(key^(key>>16))&(runtimeMissingSpans.size()-1)]=
+     {at,uint32_t(bytes),GetTickCount()};
+}
 static worldframe::DemandLeases runtimeDemandLeases;
 static worldframe::CaptureScratch worldFrameCaptureScratch{};static std::vector<uint32_t>worldFrameCaptureRequests;
 static bool worldFrameReady=false;static worldframe::Key lastCaptureAttempt{};static bool haveCaptureAttempt=false;
@@ -27,7 +38,7 @@ static void requestWorldRange(uint32_t at,size_t n){
 static bool readWorldSample(uint32_t at,void*out,size_t n){
  requestWorldRange(at,n); // Keep successful consumer dependencies subscribed.
  const bool ok=worldFrameReady&&worldFrame.read(at,out,n);
- if(!ok)sampleReadComplete=false;return ok;
+ if(!ok){sampleReadComplete=false;rememberMissingWorldSpan(at,n);}return ok;
 }
 class SampleReadScope {
  unsigned previousDepth_;bool previousComplete_,ready_,finished_=false,result_=false;
@@ -39,7 +50,7 @@ public:
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
-static void retireWorldFrame(){worldFramePublication.invalidate();if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);}
+static void retireWorldFrame(){worldFramePublication.invalidate();if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand){
  worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,before.scenario,before.cells,house,uint32_t(before.count),before.frame,before.session};
  if(!worldProducerGeneration){LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);worldProducerGeneration=uint64_t(stamp.QuadPart);if(!worldProducerGeneration)worldProducerGeneration=1;}
@@ -65,7 +76,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  runtimeDemandLeases.append(key.tick,requests);
  std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
  key.serial=++worldFrameSerial;key.demand=worldFrameServer.demandRevision();worldFrame.reset(key);
- worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);bool complete=capture.capture(demand,requests);
+ worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);bool complete=capture.capture(demand,requests,runtimeMissingSpans.data(),runtimeMissingSpans.size());
  // These checks deliberately bypass the read set. Cached self-comparison is
  // not evidence that the frame/world/House survived the acquisition boundary.
  const auto after=worldlife::capture(live);uint32_t afterHouse=0;
