@@ -132,7 +132,7 @@ public:
   // This remains the same single unsealed acquisition: no live fallback in
   // an already sealed consumer or a second capture of the game frame.
   size_t exactBytes=0,exactReads=0;
-  constexpr size_t ExactBudget=2*1024,ExactMaxReads=16;
+  constexpr size_t ExactBudget=RecoveryConfirmBytes,ExactMaxReads=RecoveryConfirmSpans;
   // Rotate the ring start across frames so persistent misses do not starve
   // other active fields under a strict maximum number of live calls.
   for(size_t step=0;exact&&step<exactCount&&exactReads<ExactMaxReads;++step){
