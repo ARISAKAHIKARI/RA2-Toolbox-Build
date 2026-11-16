@@ -7,6 +7,7 @@
 #include <cstring>
 #include <unordered_map>
 #include <vector>
+#include "../source/native_orders.h"
 #include "../source/unload_compute.h"
 #include "../source/unload_policy.h"
 #include "../source/unload_followup_state.h"
