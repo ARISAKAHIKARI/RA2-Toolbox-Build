@@ -224,8 +224,12 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
  // admission; do not turn a partial active-unit sample into a one-person job.
  if(cargoCount>0){
   uint32_t q=0;if(!read(p+0x118,&q,sizeof q))return -6;
+  // A transport can contain vehicles only, or have no infantry-chain head
+  // while vanilla Deploy is still pending. Issue at most one native Deploy,
+  // but retain the Ctrl+D queue until a complete passenger handoff exists.
+  const bool awaitingNativeRoster=!q&&!count;
   uint32_t seen[256]{};int scanned=0;
-  while(q&&scanned<cargoCount){
+  while(!awaitingNativeRoster&&q&&scanned<cargoCount){
    uint32_t id=0,carrier=0;const int known=unloadPassengerKnowledge(q,house,id,carrier);
    if(!known)return -6;
    if(known<0||carrier!=p)break;
@@ -243,7 +247,7 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
    q=next;
   }
   // Validate every native link, including the final null tail.
-  if(scanned!=cargoCount||q)return -6;
+  if(!awaitingNativeRoster&&(scanned!=cargoCount||q))return -6;
  }
  const bool loaded=cargoCount>0;
   // Missing infantry is not proof of an empty transport: it may carry tanks,
