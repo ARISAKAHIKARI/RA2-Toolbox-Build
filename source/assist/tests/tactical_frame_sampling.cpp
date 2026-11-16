@@ -5,6 +5,7 @@
 #include "ore_queue.h"
 #include "native_orders.h"
 #include "repair_delivery.h"
+#include "unit_task_arbiter.h"
 #include "../../shared/source/world_frame.h"
 #include "../../shared/source/runtime_fault.h"
 #include "../../external_reader/source/cooperative_reader.h"
@@ -79,8 +80,7 @@ struct NativeOrder {uint32_t id=0,cell=0,token=0,mode=0;bool global=false;uint32
 static NativeOrder nativeOrders[128];static int nativeCount=0;
 static int orderIndex(uint32_t p){for(int n=0;n<nativeCount;++n)if(nativeOrders[n].pointer==p)return n;return -1;}
 static int dodgeCount=0,missileHoldCount=0,dodgeCancelled=0,dodgeObserved=0;
-struct DodgeLeaseStub {template<class...Args>void record(Args...) {}};
-static DodgeLeaseStub actorLeaseArbiter;
+static taskarbiter::LeaseArbiter<64> actorLeaseArbiter;
 static oreconfig::Config oreConfig{};static long oreConfigRevision=0;
 static bool refreshOreConfig(){return true;}
 static DWORD sampleClock(Shared*){return clockNow;}
@@ -151,7 +151,7 @@ static void seal(uint32_t omit=0,bool knownFailure=false){
 static void advance(uint32_t omit=0,bool failure=false){++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);seal(omit,failure);}
 static void reset(){
  check(!sampleReadDepth,"scope leaked between tests");memory.assign(memory.size(),0);::new(static_cast<void*>(sh)) Shared{};std::memset(&snap,0,sizeof snap);
- leaseChecks=0;leaseAllowed=true;worldObjects.clear();manualVersions.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
+ leaseChecks=0;leaseAllowed=true;worldObjects.clear();manualVersions.clear();actorLeaseArbiter.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
  worldFrameReady=false;nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;denyLivePage=false;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
  loadCalculationPending=loadCaptureWaiting=loadAckPending=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
  missileSendCount=missileManualCount=missileMotionCursor=missileSourceCursor=missileTargetCursor=missileManagedCursor=0;for(auto&m:missileMotion)m={};
@@ -331,6 +331,24 @@ static void testIdentitySampleFailure(){
  advance();check(refreshWorldIndex(snap.frame,false)&&worldObjects.contains(carrier)&&worldObjects.contains(passenger),"complete next sample failed to recover index");
  std::puts("PASS identity-sample recovery: partial UID sample retries execution identity guard after scope exit; pure observation waits; complete next frame recovers");
 }
+static void testLeasesNeedCompleteIdentityNotSecondLiveRead(){
+ reset();const uint32_t type=makeType(),p=object(type,2,20);
+ check(actorLeaseArbiter.record(match,snap.frame,20,p,manualVersions.get(20),taskarbiter::Owner::Dodge,77),"cannot seed original automatic lease");
+ // The live roster has already produced a complete indexed UID. A second
+ // readWorldByID may nevertheless fail between the producer and sweep.
+ missingPage=p&~4095u;denyLivePage=true;
+ check(!worldByID(20),"fixture did not reproduce double live UID failure");
+ const unsigned attempted=liveReads;
+ sweepActiveLeases(snap.frame);
+ check(actorLeaseArbiter.find(20)>=0&&liveReads==attempted,"secondary UID failure released valid automatic lease or read live again");
+ denyLivePage=false;missingPage=0;
+ manualVersions.change(20,p,false);sweepActiveLeases(snap.frame);
+ check(actorLeaseArbiter.find(20)<0,"explicit manual revision must still release lease");
+ manualVersions.clear();check(actorLeaseArbiter.record(match,snap.frame,20,p,0,taskarbiter::Owner::Dodge,79),"cannot seed replacement lease");
+ worldObjects.clear();sweepActiveLeases(snap.frame);
+ check(actorLeaseArbiter.find(20)<0,"complete index absence must retire old lease");
+ std::puts("PASS shared automatic lease sweep: unknown second UID does not retire ownership; manual and complete absence do");
+}
 static void testUnload(){
  reset();uint32_t type=makeType(),bt=makeType(),p=object(type,1,20),target=object(bt,3,30,0x30000);set<bool>(type+0xEC3,true);sh->flags=SmartUnloadOrders;enterResult=9;vectorAt(0xA8EC78,0x800000,{p,target});seal();
  UnloadPassenger r{};r.p=p;r.id=20;r.job=1;r.mode=0;r.carrierType=bt;r.frame=r.landedFrame=snap.frame;r.x=r.y=1000;static unloadcompute::Input input;input.count=input.targetCount=0;
@@ -397,5 +415,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testIdentitySampleFailure();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testIdentitySampleFailure();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif
