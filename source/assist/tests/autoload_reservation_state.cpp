@@ -32,6 +32,9 @@ static int allowed(uint32_t p,int kind,bool transport){
 static void test(bool ok,const char*description){++checks;if(!ok){std::fprintf(stderr,"FAILED %s\n",description);std::abort();}}
 static loading::Reservation make(int kind=1){
  bytes.clear();present={Passenger,Carrier};bad=0;allowedPassenger=allowedTransport=1;reads=0;
+ // Native allocations are contiguous; unassigned fields are zero-filled.
+ for(uint32_t i=0;i<0x5A8;++i)bytes[Passenger+i]=0;
+ for(uint32_t i=0;i<0x220;++i)bytes[Carrier+i]=0;
  put<uint32_t>(Passenger,kind==1?0x7EB058u:0x7F5C70u);
  put<uint32_t>(Carrier,0x7F5C70u);
  put<uint32_t>(Passenger+0x10,11);put<uint32_t>(Carrier+0x10,22);
@@ -55,6 +58,7 @@ int main(){
  auto r=make();auto v=sample(r);
  test(v.state==loading::ReservationState::Active&&v.x==1234&&v.y==5678&&v.mission.mission==2,"complete source");
  test(v.incoming==0,"no invented Enter destination");
+ test(reads<=5,"normal active boarding should use at most five live reads");
  for(uint32_t offset:{0u,0x10u,0x21Cu,0x6Cu,0x90u,0x74u,0x81u,0x1C8u,
        0x11Cu,0xACu,0xB4u,0x2B4u,0x5A4u,0x9Cu,0xA0u}){
   bad=Passenger+offset;v=sample(r);
