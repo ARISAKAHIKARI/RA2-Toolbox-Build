@@ -12,12 +12,16 @@ int main(int argc,char**argv){
  auto start=(Start)GetProcAddress(module,"Start");auto entered=(Fn)GetProcAddress(module,"Entered");auto advance=(Fn)GetProcAddress(module,"Advance");auto latest=(Fn)GetProcAddress(module,"ReadLatest");auto stop=(Fn)GetProcAddress(module,"Stop");auto resume=(Fn)GetProcAddress(module,"Resume");auto idle=(Fn)GetProcAddress(module,"Idle");
  auto probeBegin=(Fn)GetProcAddress(module,"ProbeBegin");
  auto probeReady=(Fn)GetProcAddress(module,"ProbeReady");
- assert(start&&entered&&advance&&latest&&stop&&resume&&idle&&probeBegin&&probeReady);
+ auto shadowBegin=(Fn)GetProcAddress(module,"ShadowBegin");
+ auto shadowReady=(Fn)GetProcAddress(module,"ShadowReady");
+ assert(start&&entered&&advance&&latest&&stop&&resume&&idle&&probeBegin&&probeReady&&shadowBegin&&shadowReady);
  assert(idle()==1);
  assert(start(gate));until(entered,1);const DWORD begin=GetTickCount();assert(advance()==1001);std::printf("Game-side 1000 captures/submissions completed in %lu ms while actual publication worker remained blocked\n",GetTickCount()-begin);
  assert(entered()==1);assert(SetEvent(gate));until(latest,1001);Sleep(20);assert(resume()==1);until(latest,1001);
  assert(probeBegin()==1);until(probeReady,1);
  std::puts("PASS real background recovery: Win32 read ran off-game-thread; sealed command sample unchanged");
+ assert(shadowBegin()==1);until(shadowReady,1);
+ std::puts("PASS pinned shadow graph: production CaptureGraph executed off-game-thread; no command snapshot adopted");
  until(stop,1);assert(latest()==0);
  // Restart, then remove the loader's reference while the worker is blocked.
  // Its independent module reference must keep every function valid until exit.
