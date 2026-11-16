@@ -1,0 +1,37 @@
+name: Verify automatic compute and atomic sampling
+on:
+  push:
+    branches: [feature/automatic-compute-atomic-sample-20261116]
+    paths:
+      - 'source/**'
+      - '.github/workflows/validate-automatic-compute.yml'
+  pull_request:
+    paths:
+      - 'source/**'
+      - '.github/workflows/validate-automatic-compute.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: automatic-compute-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check sealed world pages and consumer recovery
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/world_frame_core_test.py
+          python3 source/assist/tests/tactical_frame_sampling.py --out /tmp/ra2-automatic-sampling
+      - name: Check settings migration and native UI
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/auto_settings_ui_test.py
+          python3 source/assist/tests/ui_geometry_test.py
+          python3 source/tools/audit_architecture.py
