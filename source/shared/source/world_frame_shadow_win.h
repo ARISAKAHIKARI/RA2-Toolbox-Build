@@ -46,6 +46,10 @@ class ShadowGraphWorker {
  static DWORD WINAPI threadMain(void*opaque){
   auto*self=static_cast<ShadowGraphWorker*>(opaque);
   SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);
+  {
+  // One allocator/storage owner per pinned worker lifetime. The owning scope
+  // ends before FreeLibraryAndExitThread, including on stop/retirement.
+  Snapshot retainedSample;CaptureScratch retainedScratch;
   for(;;){
    if(self->stopping_.load(std::memory_order_acquire))break;
    if(WaitForSingleObject(self->event_,250)==WAIT_FAILED)break;
@@ -57,8 +61,9 @@ class ShadowGraphWorker {
    }
    if(!found||job.epoch!=self->epoch_.load(std::memory_order_acquire))continue;
    // One Snapshot and graph scratch belong exclusively to this thread.
-   const auto result=backgroundTrial([&]{return stamp(job.key);},
-     [](uint32_t at,void*out,size_t n){return live(at,out,n);},job.demand);
+   const auto result=backgroundTrialWithStorage([&]{return stamp(job.key);},
+     [](uint32_t at,void*out,size_t n){return live(at,out,n);},
+     job.demand,retainedSample,retainedScratch);
    if(job.epoch!=self->epoch_.load(std::memory_order_acquire)||
       self->stopping_.load(std::memory_order_acquire))continue;
    {
@@ -69,6 +74,7 @@ class ShadowGraphWorker {
     self->result_=result;self->resultEpoch_=job.epoch;self->resultReady_=true;
    }
   }
+  } // Release Snapshot/PageBuffer/CaptureScratch before the DLL pin.
   const HMODULE module=self->pin_;
   FreeLibraryAndExitThread(module,0);return 0;
  }
