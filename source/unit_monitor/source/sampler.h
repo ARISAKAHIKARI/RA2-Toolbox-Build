@@ -139,10 +139,14 @@ public:
    // in-factory product is not yet delivered, even if HouseClass counted it.
    if(get<uint8_t>(obj+972)&&cell.owned>0)cell.owned--;
   }
-  // Load up to four cameos per sample, prioritizing displayed rows, then
-  // warming other already-loaded native cameos for the next match/panel.
-  // Only consume budget when loadIcon succeeds so unloaded enemy-faction SHP pointers do not starve ready icons.
-  int budget=4;state.missingIcons=0;
+  // Both production (queued) and owned rows resolve from the same
+  // MIX/loose-first Cameo source, falling back to a verified native SHP.
+  // Only count successful icons against the four-icon decode budget, while
+  // bounding FAILED attempts as well: an inaccessible native SHP or a missing
+  // MOD archive must not cause hundreds of file/RPM probes every sample.
+  // Never turn a failed icon into an owned/queued zero or suppress its row.
+  int budget=4,attempts=0;constexpr int MaxAttempts=12;
+  state.missingIcons=0;
   for(int pass=0;pass<2;++pass)for(int step=0;step<state.typeCount;step++){
    int i=(iconCursor+step)%state.typeCount;auto&t=state.types[i];
    bool used=false;for(int j=0;j<state.playerCount;j++)if(state.players[j].cells[i].owned||state.players[j].cells[i].queued)used=true;
@@ -151,7 +155,15 @@ public:
    if(cache&&t.iconReady==1&&!t.iconCached)t.iconCached=cache->remember(t,state);
    if(t.iconReady==1)continue;
    if(cache&&(!t.iconReady||(t.iconReady==2&&!state.paletteReady)))cache->restore(t,state);
-   bool missing=!t.iconReady;if(used&&missing)state.missingIcons++;if(budget>0&&(!t.iconRetry||int32_t(tick-t.iconRetry)>=0)){t.iconRetry=tick+500;if(loadIcon(t)){budget--;if(used&&missing)state.missingIcons--;if(cache)t.iconCached=cache->remember(t,state);}}
+   bool missing=!t.iconReady;
+   if(used&&missing)state.missingIcons++;
+   if(budget>0&&attempts<MaxAttempts&&(!t.iconRetry||int32_t(tick-t.iconRetry)>=0)){
+    ++attempts;t.iconRetry=tick+500;
+    if(loadIcon(t)){
+     --budget;if(used&&missing)state.missingIcons--;
+     if(cache)t.iconCached=cache->remember(t,state);
+    }
+   }
   }
   if(state.typeCount)iconCursor=(iconCursor+4)%state.typeCount;
   if(!roundstate::capture(read,end,probe_))return invalidate(tick);
