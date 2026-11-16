@@ -86,9 +86,11 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  runtimeDemandLeases.append(key.tick,requests);
  std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
  key.serial=++worldFrameSerial;key.demand=worldFrameServer.demandRevision();worldFrame.reset(key);
- // Collect at most 16 recent missing fields without any heap allocations.
- // Rotate the direct-mapped hint table so consistently busy units are fair.
- std::array<worldframe::RequestedSpan,worldframe::RecoverySpans>candidates{},verified{};
+ // Probe up to 64 fields on the worker but permit only 16 freshly
+ // verified fields to enter this logic frame. Both arrays are stack-bounded.
+ // Rotate the direct-mapped hint table so busy units are not permanently first.
+ std::array<worldframe::RequestedSpan,worldframe::RecoverySpans>candidates{};
+ std::array<worldframe::RequestedSpan,worldframe::RecoveryConfirmSpans>verified{};
  size_t candidateCount=0,verifiedCount=0;
  const size_t start=key.serial%runtimeMissingSpans.size();
  for(size_t step=0;step<runtimeMissingSpans.size()&&candidateCount<candidates.size();++step){
