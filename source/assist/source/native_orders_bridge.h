@@ -230,13 +230,23 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
   const bool awaitingNativeRoster=!q&&!count;
   uint32_t seen[256]{};int scanned=0;
   while(!awaitingNativeRoster&&q&&scanned<cargoCount){
-   uint32_t id=0,carrier=0;const int known=unloadPassengerKnowledge(q,house,id,carrier);
+   uint32_t id=0,carrier=0,vt=0;
+   if(!read(q,&vt,sizeof vt))return -6;
+   int known=0;
+   if(vt==0x7EB058u)known=unloadPassengerKnowledge(q,house,id,carrier);
+   else {
+    // The native cargo chain contains vehicles as well as infantry. Visit
+    // every link, but create post-ejection work only for actual infantry.
+    if(!read(q+0x10,&id,sizeof id)||!read(q+0x11C,&carrier,sizeof carrier))return -6;
+    known=id? -1:0;
+   }
    if(!known)return -6;
-   if(known<0||carrier!=p)break;
+   if(carrier!=p)break;
+   if(known<0&&vt==0x7EB058u)break; // Proven-invalid infantry, not vehicle cargo.
    bool duplicate=false;for(int k=0;k<scanned;++k)if(seen[k]==q){duplicate=true;break;}
    if(duplicate)break;
    seen[scanned++]=q;
-   if(featureObjectAllowed(featuretypes::UnloadPassenger,q)){
+   if(known>0&&featureObjectAllowed(featuretypes::UnloadPassenger,q)){
     const uint32_t token=manualVersions.get(id);
     for(auto*at=begin;at<unloadRoster+unloadRosterCount&&at->carrier==p;++at)
      if(at->pointer==q&&(at->id!=id||at->token!=token))return -6;
