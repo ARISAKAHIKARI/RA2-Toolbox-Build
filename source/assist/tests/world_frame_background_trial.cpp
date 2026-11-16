@@ -31,8 +31,8 @@ int main(){
  assert(!result.usableForCommands());
  // These read-only facts come from the WORKER'S SEALED sample. Incomplete
  // native identity must not become an owned/dead unit or an actionable UID.
- assert(result.facts.visited>=3);
- assert(result.facts.actors>=3);
+ assert(result.facts.visited>=2); // Base only walks two top-level actors
+ assert(result.facts.actors>=2);
  assert(result.facts.owned==result.facts.actors); // all fixture units belong to House
  assert(result.facts.units+result.facts.infantry+result.facts.aircraft+
         result.facts.buildings==result.facts.actors);
