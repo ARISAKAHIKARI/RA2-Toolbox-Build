@@ -364,10 +364,33 @@ static void watchEjections(uint32_t house,int frame,Vec all){
  snap.ejectWatched=0;if(!(sh->flags&EjectAssist))return;
  watchedPassengers.clear();for(int i=0;i<unloadCount;++i)watchedPassengers.add(unloadPassengers[i].p,unloadPassengers[i].id);
  Vec inf=vec(0xA83DE8);
- for(int j=0;j<inf.count;++j){uint32_t p=item(inf,j);if(!p||get<uint32_t>(p+0x21C)!=house||!featureObjectAllowed(featuretypes::EscapePassenger,p))continue;uint32_t carrier=get<uint32_t>(p+0x11C);
-  if(!carrier||!nativeMember(all,carrier)||!own(carrier,house)||kind(carrier)!=2||!get<bool>(carrier+0x83)||!featureObjectAllowed(featuretypes::EscapeTransport,carrier))continue;
+ for(int j=0;j<inf.count;++j){
+  const uint32_t p=item(inf,j);if(!p||!worldObjects.contains(p))continue;
+  uint32_t owner=0,carrier=0;
+  // No default-zero owner/carrier can justify a new ejection ticket.
+  if(!read(p+0x21C,&owner,sizeof owner)||!read(p+0x11C,&carrier,sizeof carrier))continue;
+  if(owner!=house||!carrier||!nativeMember(all,carrier)||
+     !featureObjectAllowed(featuretypes::EscapePassenger,p))continue;
+  uint32_t transportVT=0,carrierID=0,carrierOwner=0,carrierType=0;int carrierHP=0;
+  uint8_t eject=0,onMap=0,alive=0,limbo=1;
+  if(!read(carrier,&transportVT,sizeof transportVT)||
+     !read(carrier+0x10,&carrierID,sizeof carrierID)||
+     !read(carrier+0x21C,&carrierOwner,sizeof carrierOwner)||
+     !read(carrier+0x6C,&carrierHP,sizeof carrierHP)||
+     !read(carrier+0x74,&onMap,sizeof onMap)||!read(carrier+0x90,&alive,sizeof alive)||
+     !read(carrier+0x81,&limbo,sizeof limbo)||!read(carrier+0x83,&eject,sizeof eject)||
+     !read(carrier+0x6C4,&carrierType,sizeof carrierType))continue;
+  if(transportVT!=0x7F5C70u||!carrierID||carrierOwner!=house||carrierHP<=0||
+     !onMap||!alive||limbo||!eject||
+     !featureObjectAllowed(featuretypes::EscapeTransport,carrier))continue;
   ++snap.ejectWatched;
-  if(!watchedPassengers.contains(p)&&unloadCount<nativeorders::MaxPassengers){auto&r=unloadPassengers[unloadCount++];r={};r.job=++unloadJobSerial;r.p=p;r.id=get<uint32_t>(p+0x10);r.carrier=carrier;r.carrierID=get<uint32_t>(carrier+0x10);r.carrierType=typeOf(carrier,2);r.frame=frame;r.mode=1;r.manualToken=manualVersions.get(r.id);watchedPassengers.add(p,r.id);}
+  if(watchedPassengers.contains(p)||unloadCount>=nativeorders::MaxPassengers)continue;
+  uint32_t id=0,vt=0;
+  if(!read(p,&vt,sizeof vt)||!read(p+0x10,&id,sizeof id)||vt!=0x7EB058u||!id||carrierType<0x10000)continue;
+  auto&r=unloadPassengers[unloadCount++];r={};r.job=++unloadJobSerial;
+  r.p=p;r.id=id;r.carrier=carrier;r.carrierID=carrierID;r.carrierType=carrierType;
+  r.frame=frame;r.mode=1;r.manualToken=manualVersions.get(id);
+  watchedPassengers.add(p,id);
  }
 }
 #include "unload_compute_bridge.h"
