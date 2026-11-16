@@ -467,7 +467,7 @@ void runtime(){
   CHECK(!captureWorldFrame(read,before,House,clock,worldframe::Base));CHECK(changed&&!worldFrameReady);const auto after=memory.calls.size();CHECK(!captureWorldFrame(read,before,House,clock,worldframe::Base));CHECK(memory.calls.size()==after);memory.beforeRead={};
  };
  rejectChange(0xA8ED84,51);rejectChange(0xA8B230,Scenario+0x10000);rejectChange(0x87F924,Cells+0x10000);rejectChange(0xA83D4C,House+0x10000);
- retireWorldFrame();CHECK(!worldFrameReady&&runtimeWorldDemands.empty());{SampleReadScope retired;CHECK(!retired&&!retired.complete();}
+ retireWorldFrame();CHECK(!worldFrameReady&&runtimeWorldDemands.empty());{SampleReadScope retired;CHECK(!retired&&!retired.complete());}
   // Display-only captured a small scene boundary. The first Ctrl+D or
   // native read arriving in this SAME frame must upgrade it atomically to a
   // new full graph; merely re-exporting the sealed boundary would lose input.
