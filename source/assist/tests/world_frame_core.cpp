@@ -222,6 +222,18 @@ void speculativeBatchFaultIsolation(){
  CHECK(allBad.calls.size()==7&&absent.counters.calls==7);
  CHECK(absent.pages.size()==0&&absent.counters.failedReads==7);
  CHECK(absent.seal()&&!absent.read(addresses[0],&value,4));
+ // Saturated faults over dozens of units must not allocate a fresh
+ // two-level split tree for EVERY group. Base attempts are unchanged (64),
+ // but the additional recovery calls are globally capped at 32.
+ Memory saturated;
+ std::vector<uint32_t>many;
+ for(uint32_t i=0;i<64*16;++i)many.push_back(base+i*worldframe::PageSize);
+ saturated.denied.push_back({base,64*16*worldframe::PageSize});
+ worldframe::Snapshot bounded;bounded.reset(key());
+ CHECK(bounded.prefetchPages(Read{&saturated},many,scratch.data(),scratch.size(),false));
+ CHECK(saturated.calls.size()==64+32);
+ CHECK(bounded.counters.calls==64+32&&bounded.counters.failedReads==64+32);
+ CHECK(bounded.pages.size()==0&&bounded.seal());
  // Required page subscribers keep their original fallbacks. A bad page
  // remains missing, while other addresses may still be sealed successfully.
  Memory required;
