@@ -1,4 +1,5 @@
 #include "native_orders.h"
+#include "unload_followup_state.h"
 #include "unload_policy.h"
 #include "unload_admission.h"
 static unloadadmission::Queue queuedUnload;
@@ -371,74 +372,114 @@ static void watchEjections(uint32_t house,int frame,Vec all){
 }
 #include "unload_compute_bridge.h"
 static void smartUnloadTick(uint32_t house,int frame,int&budget){
- // An incomplete global identity snapshot must not cancel already admitted
- // passengers. Resume them on the next complete world-index frame.
+ // A complete identity roster is necessary but not sufficient: a subsequent
+ // live mission/owner/position read can still fail after the index was sealed.
  if(!unloadpolicy::completeIdentityIndex(indexedFrame,frame))return;
  serviceUnloadCalculation(house,frame,budget);
  if(externalInputFrame){unloadExternalInput.count=0;unloadExternalInput.targetCount=0;unloadExternalInput.match=match;unloadExternalInput.tick=sampleClock(sh);unloadExternalInput.frame=frame;}
  Vec all=vec(0xA8EC78);watchEjections(house,frame,all);int todo=unloadCount;if(todo>nativeorders::WorkPerFrame)todo=nativeorders::WorkPerFrame;
  while(todo--&&unloadCount){if(unloadCursor>=unloadCount)unloadCursor=0;int i=unloadCursor++;auto&r=unloadPassengers[i];uint32_t p=r.p;
-  // The global indexed Techno list is authoritative. The live infantry
-  // roster can temporarily omit later passengers during sequential ejection.
-  bool member=worldObjects.contains(p),carrierMember=nativeMember(all,r.carrier);
-  bool carrierValid=carrierMember&&get<uint32_t>(r.carrier+0x10)==r.carrierID;
-  bool carrierAlive=carrierValid&&own(r.carrier,house);
-  uint32_t passengerType=member&&kind(p)==1?typeOf(p,1):0;
-  if(member&&(!featureTypeAllowed(r.mode?featuretypes::EscapePassenger:featuretypes::UnloadPassenger,passengerType)||!featureTypeAllowed(r.mode?featuretypes::EscapeTransport:featuretypes::UnloadTransport,r.carrierType)))r.cancelled=true;
-  bool ejectDeployer=r.mode!=1&&passengerType>=0x10000&&get<bool>(passengerType+0xEC8);
-  bool done=manualVersions.get(r.id)!=r.manualToken||!member||get<uint32_t>(p+0x10)!=r.id||kind(p)!=1||get<uint32_t>(p+0x21C)!=house||get<int>(p+0x6C)<=0;
-  if(!done){uint32_t carrier=get<uint32_t>(p+0x11C);
-   if(carrier&&(carrier!=r.carrier||!carrierValid||r.stage!=0||r.landedFrame))done=true;
-   if(!carrier&&live(p)){if(!r.landedFrame)r.landedFrame=frame;
-    int m=get<int>(p+0xAC);if(r.stage==0&&!unloadpolicy::initialMayContinue(m,r.mode,frame-r.landedFrame,unloadExit(r,m,frame),ejectDeployer))done=true;
-   }
+  // Manual commands and a complete UID roster are authoritative retirements.
+  // Everything else must pass a checked live field observation first.
+  const bool member=worldObjects.contains(p);
+  if(manualVersions.get(r.id)!=r.manualToken||!member){
+   finishUnloadFollowup(r,frame);r=unloadPassengers[--unloadCount];unloadCursor=i;continue;
   }
-  if(!done&&(r.stage==1||r.stage==2)&&live(p)&&!get<uint32_t>(p+0x11C)){
-   int mission=get<int>(p+0xAC);
+  unloadfollowup::Observation live{};
+  const auto knowledge=unloadfollowup::observe(p,r.id,house,
+      [](uint32_t at,void*out,size_t bytes){return read(at,out,bytes);},live);
+  if(knowledge==unloadfollowup::Knowledge::Unknown)continue; // Preserve all mutable task checkpoints.
+  if(knowledge==unloadfollowup::Knowledge::Invalid){
+   finishUnloadFollowup(r,frame);r=unloadPassengers[--unloadCount];unloadCursor=i;continue;
+  }
+  const bool carrierMember=nativeMember(all,r.carrier);
+  bool carrierValid=false,carrierAlive=false,carrierEject=false;uint32_t carrierOwner=0;
+  if(carrierMember){
+   uint8_t raw[0x220-0x10]{};
+   if(!read(r.carrier+0x10,raw,sizeof raw))continue;
+   auto field=[&](size_t at,auto&value){std::memcpy(&value,raw+at-0x10,sizeof value);};
+   uint32_t carrierUID=0;int carrierHP=0;uint8_t onMap=0,alive=0,limbo=1,eject=0;
+   field(0x10,carrierUID);field(0x21C,carrierOwner);field(0x6C,carrierHP);
+   field(0x74,onMap);field(0x90,alive);field(0x81,limbo);field(0x83,eject);
+   carrierValid=carrierUID==r.carrierID;
+   carrierAlive=carrierValid&&carrierOwner==house&&carrierHP>0&&onMap&&alive&&!limbo;
+   carrierEject=eject!=0;
+  }
+  // During a filter update or type-name page failure, do not "cancel" an
+  // otherwise legitimate multi-passenger follow-up.
+  if(!refreshFeatureTypes())continue;
+  const auto passengerFeature=r.mode?featuretypes::EscapePassenger:featuretypes::UnloadPassenger;
+  const auto transportFeature=r.mode?featuretypes::EscapeTransport:featuretypes::UnloadTransport;
+  if(featureConfig.filters[passengerFeature].custom){
+   char id[24]{};if(!read(live.type+0x24,id,23))continue;
+  }
+  if(featureConfig.filters[transportFeature].custom){
+   char id[24]{};if(r.carrierType<0x10000||!read(r.carrierType+0x24,id,23))continue;
+  }
+  if(!featureTypeAllowed(passengerFeature,live.type)||!featureTypeAllowed(transportFeature,r.carrierType))r.cancelled=true;
+  const bool ejectDeployer=r.mode!=1&&live.deployer;
+  bool done=false;const bool onFoot=!live.carrier&&live.live();
+  if(live.carrier&&(live.carrier!=r.carrier||!carrierValid||r.stage!=0||r.landedFrame))done=true;
+  if(!live.carrier&&live.live()){
+   if(!r.landedFrame)r.landedFrame=frame;
+   if(r.stage==0&&!unloadpolicy::initialMayContinue(live.mission,r.mode,frame-r.landedFrame,
+      unloadfollowup::unloadExit(live,r.carrier,r.mode,r.landedFrame,frame),ejectDeployer))done=true;
+  }
+  if(!done&&(r.stage==1||r.stage==2)&&onFoot){
+   const int mission=live.mission;
    if(r.stage==1&&r.sleepObserved&&(mission==13||mission==7))done=true;
-   else if(mission!=0&&mission!=5&&mission!=6&&mission!=11&&!(ejectDeployer&&mission==2&&frame-r.landedFrame<=unloadpolicy::ScatterFrames)&&!(r.stage==2&&mission==16)&&!(mission==7&&get<uint32_t>(p+0x5A4)==r.carrier))done=true;
+   else if(mission!=0&&mission!=5&&mission!=6&&mission!=11&&
+       !(ejectDeployer&&mission==2&&frame-r.landedFrame<=unloadpolicy::ScatterFrames)&&
+       !(r.stage==2&&mission==16)&&!(mission==7&&live.destination==r.carrier))done=true;
    else if(r.stage==1&&mission==0)r.sleepObserved=true;
   }
-  bool release=!done&&(r.cancelled||(r.mode==0&&!(sh->flags&SmartUnloadOrders))||(r.mode!=0&&!(sh->flags&EjectAssist))||(r.mode!=1&&frame-r.frame>900));
-  if(!done&&!release&&r.stage==3&&live(p)&&!get<uint32_t>(p+0x11C)){
-   uint32_t target=worldByID(r.followTarget);if(target!=r.followTargetPointer)target=0;
-   int mission=get<int>(p+0xAC);
-   const bool linked=target&&(get<uint32_t>(p+0x2B4)==target||get<uint32_t>(p+0x5A4)==target);
-   const int x=get<int>(p+0x9C),y=get<int>(p+0xA0);
-   if(x!=r.x||y!=r.y){r.x=x;r.y=y;r.stableSince=frame;}
-   if(target&&get<uint32_t>(target+0x21C)==house){r.followObserved=true;done=true;}
-   else if(mission==13||get<int>(p+0xB4)==13)done=true;
+  bool release=!done&&(r.cancelled||(r.mode==0&&!(sh->flags&SmartUnloadOrders))||
+      (r.mode!=0&&!(sh->flags&EjectAssist))||(r.mode!=1&&frame-r.frame>900));
+  if(!done&&!release&&r.stage==3&&onFoot){
+   uint32_t target=worldObjects.byId(r.followTarget);
+   if(target!=r.followTargetPointer)target=0;
+   uint32_t targetHouse=0;
+   if(target&&!read(target+0x21C,&targetHouse,sizeof targetHouse))continue;
+   const int mission=live.mission;
+   const bool linked=target&&(live.target==target||live.destination==target);
+   if(live.x!=r.x||live.y!=r.y){r.x=live.x;r.y=live.y;r.stableSince=frame;}
+   if(target&&targetHouse==house){r.followObserved=true;done=true;}
+   else if(mission==13||live.queued==13)done=true;
    else if(linked&&(mission==8||mission==7||mission==2)&&frame-r.stableSince<120){r.followObserved=true;continue;}
    else if(mission!=0&&mission!=5&&mission!=6&&mission!=11&&mission!=2&&mission!=7&&mission!=8)done=true;
    else if(frame-r.sentFrame<30||frame-r.stableSince<2)continue;
    else if(++r.retries>=6){
     if(mission==0){if(budget<=0||!nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload))continue;--budget;}
     done=true;
-   }
-   else {finishUnloadFollowup(r,frame);r.followTicket=0;r.followObserved=false;r.stage=0;r.sentFrame=0;}
+   }else {finishUnloadFollowup(r,frame);r.followTicket=0;r.followObserved=false;r.stage=0;r.sentFrame=0;}
   }
   if(!done&&r.mode==1){
    if(!(sh->flags&EjectAssist))done=true;
-   else if(carrierAlive){if(!get<bool>(r.carrier+0x83)||get<uint32_t>(p+0x11C)!=r.carrier)done=true;}
-   else if(carrierValid&&get<uint32_t>(r.carrier+0x21C)!=house)done=true;
+   else if(carrierAlive){if(!carrierEject||live.carrier!=r.carrier)done=true;}
+   else if(carrierValid&&carrierOwner!=house)done=true;
    else {r.mode=2;r.frame=frame;}
   }
   release=!done&&(release||((r.mode!=0&&!(sh->flags&EjectAssist))||(r.mode!=1&&frame-r.frame>900)));
   if(release){
-   // Never leave an undeployed passenger asleep after timeout / switch-off.
-   if((r.stage==1||r.stage==2||r.stage==3)&&get<int>(p+0xAC)==0&&live(p)&&!get<uint32_t>(p+0x11C)&&!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x554),p)){
-    if(budget>0&&nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;done=true;}else continue;
+   // Repair a genuine idle Sleep, not a fabricated mission=0 from a bad page.
+   if((r.stage==1||r.stage==2||r.stage==3)&&live.mission==0&&onFoot){
+    uint32_t vt=0,wakeMethod=0;
+    if(!read(p,&vt,sizeof vt)||vt<0x10000||!read(vt+0x554,&wakeMethod,sizeof wakeMethod))continue;
+    if(!call<bool>(wakeMethod,p)){
+     if(budget>0&&nativeMission(house,r.id,5,0,0,0,0,0,taskarbiter::Owner::Unload)){--budget;done=true;}else continue;
+    }else done=true;
    }else done=true;
   }
-  if(!done&&r.mode!=1&&live(p)&&!get<uint32_t>(p+0x11C)){uint32_t t=typeOf(p,1);int currentMission=get<int>(p+0xAC);
-   // Normal unloading also scatters infantry away from the exit. Keep this
-   // explicit unload job while they walk out; never append Sleep/Deploy to
-   // their temporary Move. Manual orders cancel via the shared input manager.
-   if(r.mode==0&&currentMission==7&&unloadExit(r,currentMission,frame))continue;
-   const bool earlySpecialist=!ejectDeployer&&(get<bool>(t+0xEC3)||get<bool>(t+0xEBE));
-   if(r.mode==0&&!earlySpecialist&&(currentMission==2||get<int>(p+0xB4)==2)&&frame-r.frame<=900){r.x=get<int>(p+0x9C);r.y=get<int>(p+0xA0);r.stableSince=frame;continue;}
+  if(!done&&r.mode!=1&&onFoot){
+   const int currentMission=live.mission;
+   if(r.mode==0&&currentMission==7&&unloadfollowup::unloadExit(live,r.carrier,r.mode,r.landedFrame,frame))continue;
+   const bool earlySpecialist=!ejectDeployer&&(live.engineer||live.spy);
+   if(r.mode==0&&!earlySpecialist&&(currentMission==2||live.queued==2)&&frame-r.frame<=900){
+    r.x=live.x;r.y=live.y;r.stableSince=frame;continue;
+   }
    if(!r.landedFrame)r.landedFrame=frame;
-   if(!t||(!r.stage&&!unloadpolicy::initialMayContinue(currentMission,r.mode,frame-r.landedFrame,unloadExit(r,currentMission,frame),ejectDeployer)))done=true;
+   if(!r.stage&&!unloadpolicy::initialMayContinue(currentMission,r.mode,frame-r.landedFrame,
+      unloadfollowup::unloadExit(live,r.carrier,r.mode,r.landedFrame,frame),ejectDeployer))done=true;
    else if(compute::inside(sh->computeApplied,r.mode==0?compute::Unload:compute::Escape)){
     auto&input=unloadLocalInput;input.count=0;input.targetCount=0;input.match=match;input.tick=sampleClock(sh);input.frame=frame;
     if(collectUnloadSource(input,r,house,frame)){
@@ -449,7 +490,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
     collectUnloadSource(unloadExternalInput,r,house,frame);
    }
   }
-  if(done){finishUnloadFollowup(unloadPassengers[i],frame);unloadPassengers[i]=unloadPassengers[--unloadCount];unloadCursor=i;}
+  if(done){finishUnloadFollowup(r,frame);r=unloadPassengers[--unloadCount];unloadCursor=i;}
  }
  publishUnloadCalculation();
 }
