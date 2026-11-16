@@ -29,7 +29,8 @@ struct Fixture {
  }
  bool load(const char*name,std::vector<uint8_t>&out){
   ++loads;auto it=files.find(name);
-  if(it==files.end())return false;out=it->second;return true;
+  if(it==files.end())return false;
+  out=it->second;return true;
  }
  void resolve(um::Type&t){
   ++resolves;
