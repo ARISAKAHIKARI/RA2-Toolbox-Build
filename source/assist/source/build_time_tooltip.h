@@ -36,7 +36,7 @@ static void buildTimeTooltipTick(){
  const bool wanted=sh&&!sh->stop&&sh->buildTimeTooltip&&!fault&&snap.status==1;
  if(!wanted){restoreBuildTimeTooltip();return;}
  const uint32_t now=sampleClock(sh);
- static uint32_t lastVerifyAt=0,lastAttemptAt=0,lastAttemptMatch=0;
+ static uint32_t lastVerifyAt=0;
  // An installed hook is not proof of a live vtable patch: a platform may
  // restore the original pointer at any moment. Re-check the shared Runtime
  // owner periodically, not on every 8 ms tactical update.
@@ -47,10 +47,8 @@ static void buildTimeTooltipTick(){
   sh->buildTimeTooltipStatus=buildTimeTooltipActive?1:-2;
   if(buildTimeTooltipActive)return;
  }
- // A missing or conflicting native slot must not trigger full signature
- // probing every frame. The first attempt of a new match remains immediate.
- if(lastAttemptMatch==match&&lastAttemptAt&&uint32_t(now-lastAttemptAt)<250)return;
- lastAttemptMatch=match;lastAttemptAt=now;
+ // Inactive or explicitly re-enabled hooks still get an immediate attempt.
+ // Preserve the existing hook-admission retry cadence for compatibility.
  if(!buildTimeTooltipCompatible()){sh->buildTimeTooltipStatus=-2;return;}
  buildTimeTooltipActive=NativeTooltipBuildTime(true);
  lastVerifyAt=now;
