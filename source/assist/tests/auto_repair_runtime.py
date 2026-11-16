@@ -22,6 +22,7 @@ def main():
    'SAMPLE_SCOPE':(r/'source/assist/source/world_frame_runtime.h').read_text().split('static void requestWorldRange(',1)[1].split('static void retireWorldFrame(',1)[0],
    'REPAIR_EVENT':block(text,'static bool repairEvent('),
    'REPAIR_CALCULATION':text[text.index('static DWORD clampedRepairInterval('):text.index('static int superSelect(')],
+   'REPAIR_OBSERVE':block(text,'static repairdelivery::Observation observePendingRepair('),
    'REPAIR_TICK':block(text,'static void repairTick('),
    'REPAIR_MANUAL':manual,
    'REPAIR_RESET':reset[resetStart:resetEnd]+reset[autoStart:autoEnd]+'pendingRepairs.clear();',
