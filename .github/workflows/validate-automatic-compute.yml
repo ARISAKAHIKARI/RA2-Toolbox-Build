@@ -97,6 +97,12 @@ jobs:
           export RA2_OUTPUT_DIR="$PWD/artifacts/console"
           bash source/build-zig-x64.sh > diagnostics/windows-build.log 2>&1 || { tail -120 diagnostics/windows-build.log; exit 1; }
           python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+      - name: Execute actual Win32 x86/x64 asynchronous recovery worker lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out diagnostics/async-recovery
       - uses: actions/upload-artifact@v4
         if: always()
         with:
