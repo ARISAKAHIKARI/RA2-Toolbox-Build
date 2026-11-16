@@ -14,7 +14,10 @@
 // live-reader fallback belongs in this type. The producer alone may fill pages.
 namespace worldframe {
 constexpr uint32_t Version=1,PageSize=4096,MaxPages=16384,IndexSize=32768;
-enum Demand:uint32_t {Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64};
+// Non-wire-layout subscription classification: only Host visual readers are
+// alive. It permits a small authoritative scene boundary; the Host's own
+// VisualCache independently gathers non-command actor data off-game-thread.
+enum Demand:uint32_t {Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64,HostDisplayOnly=128};
 // Visual and Resources are Host-local collection lanes. Their extra pages
 // must never subscribe the game-thread producer to a display working set.
 inline bool visualDemand(uint32_t demand){return (demand&(Visual|Resources))!=0;}
