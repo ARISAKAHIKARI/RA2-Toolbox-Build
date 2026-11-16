@@ -126,7 +126,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  std::array<worldframe::RequestedSpan,worldframe::RecoveryConfirmSpans>verified{};
  size_t candidateCount=0,verifiedCount=0;
  const size_t start=key.serial%runtimeMissingSpans.size();
- for(size_t step=0;step<runtimeMissingSpans.size()&&candidateCount<candidates.size();++step){
+ for(size_t step=0;!boundaryOnly&&step<runtimeMissingSpans.size()&&candidateCount<candidates.size();++step){
   const auto&f=runtimeMissingSpans[(start+step)%runtimeMissingSpans.size()];
   if(f.bytes&&f.bytes<=256&&worldframe::range(f.address,f.bytes)&&
      uint32_t(key.tick-f.tick)<=1000)candidates[candidateCount++]=f;
