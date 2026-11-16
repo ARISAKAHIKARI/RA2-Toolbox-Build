@@ -46,6 +46,29 @@ int main(){
  Config v{};setSkip(v,id(Kind::Patch,0x7F74D8),true);applyPolicy(v);
  check(reg.proposal(0x7F74D8,foreign,ours,4)==Transition::Deny);check(observation(Kind::Patch,0x7F74D8)->reason==Reason::Structural);
  check(reg.proposal(0x7F74D8,slot,ours,4)==Transition::Install);reg.commit(0x7F74D8,slot,ours,4,Transition::Install);
- reg.markConflict(0x7F74D8);check(reg.proposal(0x7F74D8,ours,slot,4)==Transition::Deny);check(reg.active(0x7F74D8));
+ // A platform restored the vanilla pointer, not a foreign detour: the same
+ // owner may safely reapply the exact journaled callback without adding a
+ // second patch record or altering the future restoration target.
+ check(reg.proposal(0x7F74D8,slot,ours,4)==Transition::Reapply);
+ reg.commit(0x7F74D8,slot,ours,4,Transition::Reapply);
+ check(reg.active(0x7F74D8)&&reg.installed()==1);
+ check(reg.proposal(0x7F74D8,ours,slot,4)==Transition::Restore);
+ check(reg.proposal(0x7F74D8,foreign,ours,4)==Transition::Deny);
+ reg.markConflict(0x7F74D8);
+ check(reg.proposal(0x7F74D8,slot,ours,4)==Transition::Deny);
+ check(reg.proposal(0x7F74D8,ours,slot,4)==Transition::Deny);
+ check(reg.active(0x7F74D8));
+ // Layout is independently owned; a restored native layout pointer must be
+ // recoverable while an arbitrary pointer or sticky foreign owner is refused.
+ const uint8_t layoutOriginal[]={0xA0,0x8B,0x47,0},layoutOurs[]={0,0x40,0,0x10};
+ Config layoutPolicy{};setSkip(layoutPolicy,id(Kind::Patch,0x7F74C8),true);applyPolicy(layoutPolicy);
+ Registry<> layout;check(layout.proposal(0x7F74C8,layoutOriginal,layoutOurs,4)==Transition::Install);
+ layout.commit(0x7F74C8,layoutOriginal,layoutOurs,4,Transition::Install);
+ check(layout.proposal(0x7F74C8,layoutOriginal,layoutOurs,4)==Transition::Reapply);
+ check(layout.proposal(0x7F74C8,foreign,layoutOurs,4)==Transition::Deny);
+ check(layout.proposal(0x7F74C8,layoutOurs,layoutOriginal,4)==Transition::Restore);
+ layout.commit(0x7F74C8,layoutOurs,layoutOriginal,4,Transition::Restore);
+ check(!layout.active(0x7F74C8));
+ check(layout.proposal(0x7F74C8,layoutOriginal,layoutOurs,4)==Transition::Install);
  std::printf("PASS: %u production patch checks; %u sites, %u context gates actually relaxed, %u journaled data operands\n",checks,patches,changed,operands);
 }
