@@ -44,7 +44,7 @@ static loading::ReservationView loadingReservationView(const loading::Reservatio
  return loading::inspectReservation(r,house,frame,
   [](uint32_t at,void*out,size_t n){return read(at,out,n);},
   [](uint32_t p){return worldObjects.contains(p);},
-  [](uint32_t p,int kind){return loadingFilterStatus(kind==2?featuretypes::LoadTransport:featuretypes::LoadPassenger,p,kind);});
+  [](uint32_t p,int kind,bool transport){return loadingFilterStatus(transport?featuretypes::LoadTransport:featuretypes::LoadPassenger,p,kind);});
 }
 extern "C" int GuardedEnterAction(unsigned,unsigned,unsigned,unsigned*);
 static bool loadQueryFailed;
@@ -201,10 +201,10 @@ static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
  for(int n=0;n<loadLedger.count;){auto&r=loadLedger.records[n];
   if(frame-r.frame>900){finishLoadingReservation(r,match,frame,false);loadLedger.erase(n);continue;}
   const auto view=loadingReservationView(r,house,frame);
-  if(view.state==ReservationState::Unknown){++n;continue;}
-  const bool boarded=view.state==ReservationState::Boarded;
-  const bool remove=view.state==ReservationState::Invalid||boarded||
-    (view.state==ReservationState::Active&&takenOver(r,view.mission,view.incoming));
+  if(view.state==loading::ReservationState::Unknown){++n;continue;}
+  const bool boarded=view.state==loading::ReservationState::Boarded;
+  const bool remove=view.state==loading::ReservationState::Invalid||boarded||
+    (view.state==loading::ReservationState::Active&&takenOver(r,view.mission,view.incoming));
   if(remove){finishLoadingReservation(r,match,frame,boarded);loadLedger.erase(n);}else ++n;
  }
  if(!cohort){loadFrames.clear();loadTaskSeen=sh->loadComputed;loadCalculationStarted=sampleClock(sh);loadCaptureWaiting=false;snap.loadIssued=0;}
@@ -262,9 +262,9 @@ static void autoLoadTick(uint32_t house,int frame){
  for(int i=0;i<loadLedger.count;){auto&r=loadLedger.records[i];
   if(frame-r.frame>900){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;}
   const auto view=loadingReservationView(r,house,frame);
-  if(view.state==ReservationState::Unknown){++i;continue;}
-  const bool boarded=view.state==ReservationState::Boarded;
-  if(boarded||view.state==ReservationState::Invalid||
+  if(view.state==loading::ReservationState::Unknown){++i;continue;}
+  const bool boarded=view.state==loading::ReservationState::Boarded;
+  if(boarded||view.state==loading::ReservationState::Invalid||
      loading::takenOver(r,view.mission,view.incoming)){
    finishLoadingReservation(r,match,frame,boarded);loadLedger.erase(i);continue;
   }
