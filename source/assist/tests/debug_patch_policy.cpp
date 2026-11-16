@@ -5,7 +5,8 @@
 #include <cstdlib>
 using namespace debugentries;
 static unsigned checks=0;
-static void check(bool value){++checks;if(!value){std::fprintf(stderr,"check %u failed\n",checks);std::abort();}}
+static void checked(bool value,int line){++checks;if(!value){std::fprintf(stderr,"check %u failed at line %d\n",checks,line);std::abort();}}
+#define check(value) checked(bool(value),__LINE__)
 int main(){
  auto zeros=[](uint32_t,void*out,size_t n){memset(out,0,n);return true;};
  unsigned patches=0,changed=0;
