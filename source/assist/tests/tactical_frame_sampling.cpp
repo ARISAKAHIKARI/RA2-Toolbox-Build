@@ -68,6 +68,7 @@ static bool nativeEnemy(uint32_t p,uint32_t h){
 static bool unloadBuildingCandidate(uint32_t p,uint32_t h,bool){return nativeEnemy(p,h);}
 static uint32_t readMapCell(int x,int y){if(x<=0||y<=0||x>=512||y>=512)return 0;const int index=y*512+x,count=get<int>(0x87F7E8+320);uint32_t cells=get<uint32_t>(0x87F7E8+316);return cells>=0x10000&&count>index&&count<=512*512?get<uint32_t>(cells+uint32_t(index)*4):0;}
 static bool sameid(const char*a,const char*b){for(int i=0;i<24;++i){if(a[i]!=b[i])return false;if(!a[i])return true;}return true;}
+static featuretypes::Config featureConfig{};
 static bool refreshFeatureTypes(){return true;}static long featureConfigRevision=0;
 static bool featureTypeAllowed(featuretypes::Feature,uint32_t type){return type>=0x10000;}
 static bool featureObjectAllowed(featuretypes::Feature f,uint32_t p){return p&&featureTypeAllowed(f,typeOf(p,kind(p)));}
