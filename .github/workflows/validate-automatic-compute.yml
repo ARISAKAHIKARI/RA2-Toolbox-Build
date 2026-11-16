@@ -33,23 +33,27 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/fixed_compute_settings.py
-  state-machine-regressions:
+  defense-state:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Verify spider-defense recovery on synthetic native memory
+      - name: Test spider-defense pending, unknown and restoration states
         run: |
-          set -euo pipefail
           python3 source/assist/tests/harvester_defense_runtime.py --out /tmp/ra2-defense-state
-      - name: Verify auto-ore post-unload state retention
+  ore-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test ore handoff and repeated missing-page recovery
         run: |
-          set -euo pipefail
           python3 source/assist/tests/ore_harvest_handoff.py --out /tmp/ra2-ore-state
-      - name: Verify native manual suppression on missing roster pages
+  missile-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test bounded manual suppression and same-frame retry
         run: |
-          set -euo pipefail
           python3 source/assist/tests/missile_manual_lifecycle.py --output /tmp/ra2-missile-state
