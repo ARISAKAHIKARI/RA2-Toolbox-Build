@@ -154,6 +154,27 @@ static void buildUnloadAdmissionRoster(uint32_t house){
 // A Ctrl+D command may arrive after the game's native D began deploying.
 // Reject stale/foreign carriers, not the transport's own unload-in-progress
 // state; otherwise the queued command is acknowledged then discarded next tick.
+// Three-state admission for an already-accepted Ctrl+D request.
+//  1: native fields prove an eligible carrier
+//  0: unreadable or query unavailable; do NOT retire the player's intent
+// -1: complete roster/fields prove replacement, death or manual takeover
+static int unloadCarrierKnowledge(const unloadadmission::Carrier&task,uint32_t house){
+ const uint32_t p=task.pointer;
+ if(!p||!worldObjects.contains(p))return -1;
+ uint32_t id=0,vt=0,owner=0,carried=0;int hp=0,cargo=0;
+ uint8_t map=0,alive=0,limbo=1,disabled=0;
+ if(!read(p+0x10,&id,sizeof id)||!read(p,&vt,sizeof vt)||
+    !read(p+0x21C,&owner,sizeof owner)||!read(p+0x6C,&hp,sizeof hp)||
+    !read(p+0x114,&cargo,sizeof cargo)||!read(p+0x11C,&carried,sizeof carried)||
+    !read(p+0x74,&map,sizeof map)||!read(p+0x90,&alive,sizeof alive)||
+    !read(p+0x81,&limbo,sizeof limbo)||!read(p+0x1C8,&disabled,sizeof disabled))return 0;
+ if(id!=task.id||vt!=0x7F5C70u||owner!=house||hp<=0||!map||!alive||limbo||disabled||carried)return -1;
+ if(!unloadadmission::retainAfterCarrierMove(task.token,manualVersions.get(task.id),cargo))return -1;
+ // A failed optional TypeID/feature-query observation cannot establish death
+ // or cancellation. The original 3.5s / 12s admission horizon still applies.
+ if(!featureObjectAllowed(featuretypes::UnloadTransport,p))return 0;
+ return 1;
+}
 static bool unloadCarrierEligible(uint32_t p,uint32_t house){return p&&worldObjects.contains(p)&&own(p,house)&&live(p)&&kind(p)==2&&featureObjectAllowed(featuretypes::UnloadTransport,p)&&!get<uint32_t>(p+0x11C);}
 static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
  if(!unloadCarrierEligible(p,house))return 0;
@@ -281,13 +302,18 @@ static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
  while(todo--&&queuedUnload.count&&budget>0&&admissionBudget>0&&outgoingRoom()){
   if(queuedUnload.cursor>=queuedUnload.count)queuedUnload.cursor=0;
   int at=queuedUnload.cursor++;auto task=queuedUnload.carriers[at];
-  if(!unloadCarrierEligible(task.pointer,house)||get<uint32_t>(task.pointer+0x10)!=task.id||worldByID(task.id)!=task.pointer||!unloadadmission::retainAfterCarrierMove(task.token,manualVersions.get(task.id),get<int>(task.pointer+0x114))||
-     (task.attempted&&DWORD(now-task.attemptedAt)>3500)){queuedUnload.remove(at);continue;}
+  if(task.attempted&&DWORD(now-task.attemptedAt)>3500){queuedUnload.remove(at);continue;}
+  const int knowledge=unloadCarrierKnowledge(task,house);
+  if(knowledge<0){queuedUnload.remove(at);continue;}
+  if(!knowledge)continue; // Missing page is not a completed Ctrl+D.
   if(!task.attempted){queuedUnload.carriers[at].attempted=true;queuedUnload.carriers[at].attemptedAt=now;}
-  int result=smartUnloadNow(house,task.pointer,!task.attempted);
-  if(result==2){ // Preserve the queued identity while the native unload runs.
+  const int result=smartUnloadNow(house,task.pointer,!task.attempted);
+  if(result==2){ // Native Deploy accepted; passenger admission remains pending.
    queuedUnload.lastProgress=now;--budget;--admissionBudget;
-  }else if(result>=0){queuedUnload.cancel(task.pointer,task.id);queuedUnload.lastProgress=now;if(result>0){--budget;--admissionBudget;}}
+  }else if(result==1){ // Only an actual completed enrollment can retire intent.
+   queuedUnload.cancel(task.pointer,task.id);queuedUnload.lastProgress=now;--budget;--admissionBudget;
+  }
+  // Zero/negative admission is deferred, never silently acknowledged.
  }
 }
 static void watchEjections(uint32_t house,int frame,Vec all){
