@@ -20,7 +20,7 @@ int main(){
  for(size_t i=0;i<hints.size();++i)
   hints[i]={uint32_t(0x610000+i*256),128,980};
  hints[1]=hints[0]; // duplicates cannot cause extra background reads
- hints[2].tick=0; // stale
+ hints[2].tick=UINT32_MAX; // 1001 ms old across the tick wrap: stale
  hints[3].bytes=500; // invalid 256-byte limit
  assert(mailbox.submit(key(),hints.data(),hints.size()));
  RecoveryJob pending{};assert(mailbox.take(pending));
