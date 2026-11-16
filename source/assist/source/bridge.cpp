@@ -1487,7 +1487,7 @@ static bool serviceReadOnlyRuntime(DWORD now){
  uint8_t chat=1;snap.chat=!readLiveWorld(0xA8BC79,&chat,1)||chat!=0;
  // The normal immutable producer remains the only world sampler. No command
  // maintenance, native view update or suspendedSnapshot(render) runs here.
- if(wanted)captureWorldFrame(readLiveWorld,world,house,now,worldFrameServer.demandMask());
+ if(wanted)captureWorldFrame(readLiveWorld,world,house,now,worldFrameServer.demandMask(),true);
  else retireWorldFrame();
  publishSnapshot(now);return true;
 }
@@ -1580,7 +1580,7 @@ static void tick(){
  if(!active){
   resetOwnGround();
   if(authority==worldlife::Authority::ViewOnly&&!commandDormant){cancelCooperativePlan(-3);reset(false);commandDormant=true;}
-  if(sharedWorldWanted)captureWorldFrame(readLiveWorld,worldSample,house,now,worldFrameServer.demandMask());
+  if(sharedWorldWanted)captureWorldFrame(readLiveWorld,worldSample,house,now,worldFrameServer.demandMask(),true);
   suspendedSnapshot(now,worldSample.running&&display.visible(),authority==worldlife::Authority::ViewOnly?activation::ViewOnly:!worldSample.running?activation::Paused:activation::DisplayHidden);return;
  }
  commandDormant=false;
@@ -1597,7 +1597,28 @@ static void tick(){
  if(sh->missileEnabled||missileHoldCount||sh->minerDefenseEnabled||minerDefensePending()||sh->magnetronGlobal||sh->magnetronDrop||(sh->flags&(AdvancedInput|MagnetronInput|AircraftSpread|AdvancedEnter|AntiTheft))||nativeCount||runtimeCoopPending||unloadCount||queuedUnload.count)worldDemand|=worldframe::Combat;
  if(sh->flags&(Capacity|AutoOreReturn|AdvancedEnter|AircraftSpread|EjectAssist|SmartUnloadOrders)||sh->bombBoardEnabled||loadLedger.count||loadCalculationPending||unloadCount||queuedUnload.count||cooperativeEffectCount)worldDemand|=worldframe::Passengers;
  if((sh->flags&AutoOreReturn)||oreHarvestNeedsWork()||sh->minerDefenseEnabled||minerDefensePending())worldDemand|=worldframe::Ore;
- if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand);
+ // The full display graph belongs to the separate Host VisualCache. The
+ // game thread may publish a small scene boundary only if ALL Host readers
+ // are display-only and no local native command feature has any pending work.
+ // A same-frame hotkey later upgrades this boundary to a full graph.
+ const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&!sh->flags&&!sh->moFeatures&&
+  !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&!sh->bombBoardEnabled&&
+  !sh->minerDefenseEnabled&&!minerDefensePending()&&!sh->superweaponGrant&&
+  !sh->placementPreview.active&&!sh->runtimeTracking&&!sh->plannerTracking&&
+  !sh->magnetronGlobal&&!sh->magnetronDrop&&!sh->dodgeEnabled&&!sh->burstEnabled&&
+  !sh->burstHoldEnabled&&!sh->burstHeld&&!sh->missileEnabled&&!sh->scrollRefreshHz&&
+  !sh->formationPolicy.enabled&&!formationJobCount&&!stickyCount&&!dodgeCount&&
+  !burstCount&&!missileHoldCount&&!nativeCount&&!unloadCount&&!queuedUnload.count&&
+  !loadLedger.count&&!loadCalculationPending&&!repairCalculationPending&&
+  !(repairAt<repairCount)&&!pendingRepairs.count&&!entryReservationCount&&
+  !cooperativeEffectCount&&!actorLeaseArbiter.count&&!missionObserver.pending()&&
+  !runtimeCoopPending&&!oreHarvestNeedsWork()&&!moOrdersPending()&&
+  !directAirPending()&&!directSellPending()&&!privateOutPending()&&
+  !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
+ const bool hostDisplayOnly=sharedWorldWanted&&noCommandWork&&
+  worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
+ if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))
+  captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,hostDisplayOnly);
  externalInputFrame=inputMatch!=match||inputFrame!=frame;if(externalInputFrame){inputMatch=match;inputFrame=frame;}
  bool finishSnapshot=false;
  withInputPublication(sh,match,now,frame,externalInputFrame,[&]{
