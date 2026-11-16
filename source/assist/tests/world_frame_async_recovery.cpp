@@ -16,7 +16,7 @@ static Key key(int frame=10,int match=71,uint32_t tick=1000){
 }
 int main(){
  RecoveryMailbox mailbox;
- std::array<RequestedSpan,32>hints{};
+ std::array<RequestedSpan,128>hints{};
  for(size_t i=0;i<hints.size();++i)
   hints[i]={uint32_t(0x610000+i*256),128,980};
  hints[1]=hints[0]; // duplicates cannot cause extra background reads
@@ -24,7 +24,9 @@ int main(){
  hints[3].bytes=500; // invalid 256-byte limit
  assert(mailbox.submit(key(),hints.data(),hints.size()));
  RecoveryJob pending{};assert(mailbox.take(pending));
+ assert(RecoverySpans>16&&RecoverySpans==64);
  assert(pending.count==RecoverySpans);
+ assert(pending.count*128==RecoveryBytes); // worker byte budget
  assert(pending.fields[0].address==hints[0].address);
  assert(pending.fields[1].address==hints[4].address);
  assert(!mailbox.take(pending));
@@ -84,5 +86,12 @@ int main(){
  mailbox.finish(RecoveryMailbox::probe(pending,[](uint32_t,void*,size_t){return true;}));
  assert(mailbox.ready(key(3,71,1116),ready,RecoverySpans)==1);
  assert(ready[0].address==rewound.address);
- std::puts("PASS async recovery: bounded hints, source-only read, no stale publication, nonblocking producer, epoch retirement and rewind");
+ // Large fields are capacity-limited by bytes even when 64 slots remain.
+ std::array<RequestedSpan,RecoverySpans>large{};
+ for(size_t i=0;i<large.size();++i)large[i]={uint32_t(0x710000+i*256),256,1100};
+ assert(mailbox.submit(key(4,71,1200),large.data(),large.size()));
+ assert(mailbox.take(pending)&&pending.count==RecoveryBytes/256);
+ // Delayed fields get a chance in subsequent batches rather than being
+ // permanently starved by a hard 16-slot first-page queue.
+ std::puts("PASS async recovery: 64-probe/8-KiB ceiling, source-only read, stale-world rejection, nonblocking producer and epoch rewind");
 }
