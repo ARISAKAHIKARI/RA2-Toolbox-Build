@@ -113,6 +113,15 @@ int main(){try{
   "vehicle-only or temporarily absent infantry must issue one Deploy and retain the pending command");
  check(smartUnloadNow(1,transport,false)<0&&deployments==1,
   "pending missing-passenger retry must not issue a duplicate native Deploy");
+ reset();objects[transport].passengers=2;
+ const uint32_t mixedInfantry=0x50000;
+ objects[passenger].k=2;objects[passenger].next=mixedInfantry;
+ objects[mixedInfantry]={14,1,transport,46,1};
+ objects[mixedInfantry].limbo=true;objects[mixedInfantry].onMap=false;
+ infantry.push_back(mixedInfantry);
+ buildUnloadAdmissionRoster(1);
+ check(smartUnloadNow(1,transport)==1&&unloadCount==1&&unloadPassengers[0].id==14&&deployments==1,
+  "mixed vehicle-first cargo must still enrol the later infantry and Deploy exactly once");
  reset();observeUnloadRoster(1,10,1000);
  check(recentPassengerCount==1,"ordinary loaded passenger must be remembered before the first Ctrl+D");
  objects[transport].passengers=0;objects[transport].deployed=true;objects[transport].mission=16;
