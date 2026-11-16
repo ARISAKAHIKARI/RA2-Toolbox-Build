@@ -222,6 +222,14 @@ static bool refreshWorldIndex(int frame,bool executionGuards){
  indexWorld(frame);if(indexedFrame==frame)return true;
  failedMatch=match;failedFrame=frame;failedAt=now;return false;
 }
+// Identity-index publication already checked every UID. Avoid a second
+// fallible live UID read when deciding whether an automatic lease still exists.
+static void sweepActiveLeases(int frame){
+ if(!actorLeaseArbiter.count)return;
+ actorLeaseArbiter.sweep(match,frame,[](uint32_t id){
+  return std::pair<uint32_t,uint32_t>{worldObjects.byId(id),manualVersions.get(id)};
+ });
+}
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
 static void reset(bool retireHooks=true,bool preserveMissile=false){retireWorldFrame();restorePrivateOut();minerDefenseReset();restoreTriggerInput();restoreSinglePlayerFPS();resetOwnGround();superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();nativePlacementReset();if(retireHooks)nativePlacementCompletionReset();restorePauseView();resetMoOrders();resetDirectAir();resetDirectSell();resetBombBoard();if(retireHooks){restoreSidebarView();resetHookReadiness();restoreCrcMapShadow();restoreBuildTimeTooltip();restorePrivateOut();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);restoreViewZoom();}stickyCount=0;runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
@@ -1555,9 +1563,7 @@ static void tick(){
  privateOutTick();servicePrivateOut();serviceDirectSell();
  // Release stale leases before any feature sends a new game order. No game
  // state mutation occurs here: only indexed actor identities are inspected.
- if(actorLeaseArbiter.count)actorLeaseArbiter.sweep(match,frame,[](uint32_t id){
-  uint32_t p=worldByID(id);return std::pair<uint32_t,uint32_t>{p,manualVersions.get(id)};
- });
+ sweepActiveLeases(frame);
  stickyTick(false);
  observePausedOre(house,frame);
  observeUnloadRoster(house,frame,now);
