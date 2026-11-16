@@ -254,8 +254,12 @@ static void autoLoadTick(uint32_t house,int frame){
  static int processed=-1;static uint32_t processedMatch;if(frame==processed&&match==processedMatch)return;processed=frame;processedMatch=match;
  if(!loadLedger.count)return;
  if(!loadInterfaces()){
-  // A temporarily unreadable/hooked query gateway is not proof that every
-  // passenger task was cancelled. Do not erase native tickets or retry Enter.
+  // A temporarily unreadable/hooked gateway is not proof of cancellation.
+  // The pre-existing 900-game-frame deadline remains an independent bound.
+  for(int i=0;i<loadLedger.count;){const auto&r=loadLedger.records[i];
+   if(frame-r.frame>900){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);}
+   else ++i;
+  }
   snap.loadWaiting=loadLedger.count;return;
  }
  int budget=outgoingRoom()?recurringBudget(EventLane::Boarding):0;
