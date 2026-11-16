@@ -50,6 +50,12 @@ with tempfile.TemporaryDirectory(prefix="ra2_world_frame_") as tmp:
         str(root / "world_frame_background_trial.cpp"), "-o", str(shadow),
     ], check=True)
     subprocess.run([str(shadow)], check=True)
+    split = directory / "world_frame_display_split"
+    subprocess.run([
+        "g++", "-std=c++17", "-O2", "-UNDEBUG",
+        str(root / "world_frame_display_split.cpp"), "-o", str(split),
+    ], check=True)
+    subprocess.run([str(split)], check=True)
     binary = directory / "world_frame_core"
     subprocess.run([
         "g++", "-std=c++17", "-O2", "-pthread", "-DWORLD_FRAME_PLATFORM_FIXTURE",
