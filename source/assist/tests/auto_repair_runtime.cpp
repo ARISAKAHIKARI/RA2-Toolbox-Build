@@ -42,13 +42,36 @@ static unsigned sampleReadDepth=0;static uint32_t missingSamplePage=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};static std::vector<uint32_t> runtimeWorldDemands;
 #include SAMPLE_SCOPE
 struct Vec{uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
-static bool read(uint32_t at,void*out,size_t n){if(at==0xA8EB40)++buildingScans;if(!sampleReadDepth)throw std::runtime_error("collector read escaped scope");return readWorldSample(at,out,n);}
+static uint32_t missingLiveRead=0;
+static bool read(uint32_t at,void*out,size_t n){
+ if(!sampleReadDepth){
+  if(missingLiveRead&&uint64_t(at)<=missingLiveRead&&uint64_t(at)+n>missingLiveRead)return false;
+  auto copy=[&](const auto&value){if(n!=sizeof value)return false;std::memcpy(out,&value,n);return true;};
+  for(const auto&b:buildings){
+   if(at==b.pointer)return copy(uint32_t(0x7E3EBC));
+   if(at==b.pointer+0x10)return copy(b.id);
+   if(at==b.pointer+0x21C)return copy(b.house);
+   if(at==b.pointer+0x6C)return copy(b.hp);
+   if(at==b.pointer+0x90)return copy(uint8_t(b.alive));
+   if(at==b.pointer+0x74)return copy(uint8_t(b.alive));
+   if(at==b.pointer+0x81)return copy(uint8_t(!b.alive));
+   if(at==b.pointer+0x520)return copy(b.type);
+   if(at==b.pointer+0x6E8)return copy(uint8_t(b.repairing));
+   if(at==b.type+0xA0)return copy(b.maximum);
+  }
+  return false;
+ }
+ if(at==0xA8EB40)++buildingScans;
+ return readWorldSample(at,out,n);
+}
 #include "../source/tactical_frame_read.h"
 template<class T>static T get(uint32_t at);
 static Vec vec(uint32_t at){Vec out{};read(at,&out,sizeof out);return out;}
 static uint32_t item(Vec v,int i){return get<uint32_t>(v.items+uint32_t(i)*4);}
 static Building* byPointer(uint32_t p){for(auto&b:buildings)if(b.pointer==p)return &b;return nullptr;}
 static uint32_t worldByID(uint32_t id){for(const auto&b:buildings)if(b.alive&&b.id==id)return b.pointer;return 0;}
+struct BuildingIndex {uint32_t byId(uint32_t id)const{return worldByID(id);}};
+static BuildingIndex worldObjects;
 static bool own(uint32_t p,uint32_t house){if(sampleReadDepth)return get<bool>(p+0x74)&&get<uint32_t>(p+0x21C)==house;auto*b=byPointer(p);return b&&b->alive&&b->house==house;}
 static int kind(uint32_t p){if(sampleReadDepth)return get<bool>(p+0x74)?3:-1;auto*b=byPointer(p);return b&&b->alive?3:-1;}
 static uint32_t typeOf(uint32_t p,int){if(sampleReadDepth)return get<uint32_t>(p+0x520);auto*b=byPointer(p);return b?b->type:0;}
@@ -79,6 +102,7 @@ enum class EventLane{Repair};static int recurringBudget(EventLane){return perFra
 static bool nativeObjectEvent(int player,int event,uint32_t id){if(sampleReadDepth)throw std::runtime_error("native event inside sample scope");if(player!=0||event!=0x15)throw std::runtime_error("wrong event");++queueAttempts;if(!queueAvailable)return false;sent.push_back({id,currentFrame});return true;}
 #include REPAIR_EVENT
 #include REPAIR_CALCULATION
+#include REPAIR_OBSERVE
 #include REPAIR_TICK
 // Exactly the manual Repair branch and terminal publication from command().
 static void manualRepair(uint32_t req,DWORD now){prepareSample();uint32_t house=lastHouse;int result=1,n=0;
@@ -95,7 +119,7 @@ static void setup(bool automatic=true,bool internal=true,unsigned count=1){
  ++match;lastHouse=0x200000;currentFrame=0;chat=externalInputFrame=false;queueAvailable=true;perFrameBudget=64;buildingScans=notifications=queueAttempts=indexCalls=0;sent.clear();buildings.clear();
  for(unsigned i=0;i<count;++i)buildings.push_back({0x300000+i*0x10000,0x800000+i*0x10000,100+i,lastHouse});
  repairCount=repairAt=repairDone=0;repairAckRequest=repairAckStarted=pendingAck=0;repairAckPending=pendingAckReady=false;repairCalculationPending=false;repairCalculationStarted=repairTaskSeen=0;autoWas=false;lastAuto=0;pendingRepairs.clear();repairFrames.clear();
- worldFrameReady=false;sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=0;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
+ worldFrameReady=false;sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
 }
 static void tick(DWORD now,int frame,bool input=false){currentFrame=frame;externalInputFrame=input;prepareSample();repairTick(lastHouse,now);}
 struct WorkerResult{uint32_t task;compute::RepairResult value;};
@@ -108,6 +132,17 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
  });
  run("missing_page_preserves_due_retry",false,[]{
   setup(true,true,0);tick(1000,1);buildings.push_back({0x300000,0x800000,100,lastHouse});missingSamplePage=0x300000;tick(3000,2);expect(!autoWas&&lastAuto==1000&&sent.empty(),"incomplete collector must not advance timer or publish empty candidates");missingSamplePage=0;tick(3016,3);expect(sent.size()==1&&lastAuto==3016,"page recovery retries on next admitted frame");
+ });
+ run("unknown_live_repair_receipt_does_not_retire_pending_toggle",false,[]{
+  setup(true,true,1);tick(1000,1);
+  expect(sent.size()==1&&pendingRepairs.count==1,"repair toggle not queued");
+  missingLiveRead=buildings[0].pointer+0x10;
+  tick(1016,2);
+  expect(pendingRepairs.count==1,"unreadable UID erroneously cleared pending repair");
+  missingLiveRead=buildings[0].pointer+0x6E8;tick(1032,3);
+  expect(pendingRepairs.count==1,"unreadable repair flag erroneously cleared pending");
+  missingLiveRead=0;buildings[0].repairing=true;tick(1048,4);
+  expect(pendingRepairs.count==0,"confirmed repair native flag must retire ticket");
  });
  run("late_automatic_result_after_off",true,[]{
   setup(true,false);tick(1000,1);auto old=calculate();expect(repairCalculationPending,"automatic calculation started");
