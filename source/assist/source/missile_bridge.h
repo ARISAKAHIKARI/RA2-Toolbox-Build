@@ -26,7 +26,6 @@ static void pruneMissileManual(){
   SampleReadScope source;if(!source)return;
   // Every input in this captured frame sees the same immutable roster.
   if(missileManualPruneMatch==worldFrame.key.match&&missileManualPruneFrame==worldFrame.key.frame)return;
-  missileManualPruneMatch=worldFrame.key.match;missileManualPruneFrame=worldFrame.key.frame;
   Vec all{};if(!sampleRoster(0xA8EC78,all))return;int count=0;
   for(int n=0;n<all.count;++n){const uint32_t p=item(all,n);if(!p)continue;
    uint32_t id=0;if(!read(p+0x10,&id,sizeof id))return;if(id)identities[count++]=(uint64_t(id)<<32)|p;
@@ -43,6 +42,8 @@ static void pruneMissileManual(){
     (mission==5||mission==6||mission==11||mission==13)&&(queued==-1||queued==mission)&&frame-r.frame>=12;
   }
   if(!source.complete())return;
+  // A failed page can be recovered during the same frozen native frame.
+  missileManualPruneMatch=worldFrame.key.match;missileManualPruneFrame=worldFrame.key.frame;
  }
  int kept=0;for(int n=0;n<missileManualCount;++n)if(!retired[n])missileManual[kept++]=missileManual[n];missileManualCount=kept;
 }
