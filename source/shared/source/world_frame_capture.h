@@ -1,5 +1,6 @@
 #pragma once
 #include "world_frame.h"
+#include "world_frame_recovery.h"
 #include <limits>
 
 namespace worldframe {
