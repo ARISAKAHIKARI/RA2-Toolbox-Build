@@ -25,7 +25,11 @@ int main(int argc,char**argv){
  until(stop,1);assert(latest()==0);
  // Restart, then remove the loader's reference while the worker is blocked.
  // Its independent module reference must keep every function valid until exit.
- assert(start(gate));until(entered,1);assert(stop()==0);assert(FreeLibrary(module));assert(GetModuleHandleW(L"async-publication.dll"));assert(SetEvent(gate));
+ assert(start(gate));until(entered,1);
+ // A disconnected and fully retired shadow worker must restart in a new
+ // connection, even while the separate publication worker is blocked.
+ assert(shadowBegin()==1);until(shadowReady,1);
+ assert(stop()==0);assert(FreeLibrary(module));assert(GetModuleHandleW(L"async-publication.dll"));assert(SetEvent(gate));
  const DWORD deadline=GetTickCount();while(GetModuleHandleW(L"async-publication.dll")){assert(GetTickCount()-deadline<5000);Sleep(1);}CloseHandle(gate);
  std::puts("PASS real Windows DLL: no idle worker without subscriber, background named-mapping publication, pinned source bytes, latest pending state, paused same-frame re-export without live reads/restamp, nonblocking retire/stop, restart, module reference while copying and automatic safe unload; no game process loaded");
 }
