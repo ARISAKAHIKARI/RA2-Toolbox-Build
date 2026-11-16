@@ -42,6 +42,7 @@ def production():
     add('#include "raw_combat.h"')
     add(function(source["bridge.cpp"], "static void indexWorld("))
     add(function(source["bridge.cpp"], "static bool refreshWorldIndex("))
+    add(function(source["bridge.cpp"], "static void sweepActiveLeases("))
     add(function(source["harvester_defense_raw.h"], "static bool minerDefenseMiner("))
     add(function(source["harvester_defense_raw.h"], "static bool minerDefenseDock("))
     dodge = source["dodge_bridge.h"]
