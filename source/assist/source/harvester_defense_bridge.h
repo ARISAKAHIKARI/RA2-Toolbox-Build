@@ -218,12 +218,21 @@ static bool minerDefenseRefreshSelector(int frame){
  if(!minerDefenseSelectorKnown||changed)minerDefenseSelector=next;
  minerDefenseSelectorKnown=true;minerDefenseWasEnabled=sh->minerDefenseEnabled!=0;return true;
 }
-static bool minerDefenseVictim(uint32_t id,uint32_t house,planner::Actor&a,uint32_t&pointer,uint32_t&type,uint32_t&typeID){
+static bool minerDefenseVictim(uint32_t id,uint32_t house,planner::Actor&a,uint32_t&pointer,uint32_t&type,uint32_t&typeID,bool*unknown=nullptr){
+ if(unknown)*unknown=false;
  pointer=worldByID(id);type=typeID=0;
- if(!pointer||!minerDefenseThreat(pointer,house,false)||!oreHarvestRead(pointer+0x6C4,type)||type<0x10000||
-    !oreHarvestRead(type+0x10,typeID)||!typeID)return false;
+ if(!pointer)return false; // A complete UID index proves the old object absent.
+ int hp=0;
+ if(!oreHarvestRead(pointer+0x6C4,type)||!oreHarvestRead(pointer+0x6C,hp)){
+  if(unknown)*unknown=true;return false;
+ }
+ if(type<0x10000||hp<=0)return false;
+ if(!oreHarvestRead(type+0x10,typeID)){if(unknown)*unknown=true;return false;}
+ if(!typeID||!minerDefenseThreat(pointer,house,false))return false;
  a={};a.id=id;a.type=type;a.kind=2;a.flags=planner::Enemy|planner::ParasiteThreat;
- if(!read(pointer+0x9C,&a.x,3*sizeof(int))||!oreHarvestRead(type+0x9C,a.armor))return false;
+ if(!read(pointer+0x9C,&a.x,3*sizeof(int))||!oreHarvestRead(type+0x9C,a.armor)){
+  if(unknown)*unknown=true;return false;
+ }
  rawCombatInfo(pointer,type,2,a,false,false);return minerdefense::threat(a);
 }
 static bool minerDefenseCapture(const planner::Actor&a,uint32_t house,MinerDefenseJob&j){
@@ -529,9 +538,10 @@ static bool minerDefenseTick(uint32_t house,int frame,DWORD now){
   // Failed admission/read attempts never consume the successful-send retries.
   if(j.restoring&&frame-j.restoreStartedFrame>=600&&DWORD(now-j.restoreStartedAt)>=15000){minerDefenseDrop(id);continue;}
   if(!j.restoring){
-   planner::Actor victim{};uint32_t p=0,t=0,tid=0;
-   const bool retain=!ended&&minerDefenseVictim(j.target,house,victim,p,t,tid)&&p==j.targetPointer&&t==j.targetType&&tid==j.targetTypeID&&
+   planner::Actor victim{};uint32_t p=0,t=0,tid=0;bool victimUnknown=false;
+   const bool retain=!ended&&minerDefenseVictim(j.target,house,victim,p,t,tid,&victimUnknown)&&p==j.targetPointer&&t==j.targetType&&tid==j.targetTypeID&&
     minerdefense::inRange(source,victim,int(sh->minerDefenseRangeCells),true);
+   if(victimUnknown){if(!j.uncertainAt)j.uncertainAt=now;continue;}
    if(retain){
     if((state.mission==1||state.queued==1)&&currentTarget==j.target)continue;
     if(frame-j.sentFrame<12||DWORD(now-j.sentAt)<350)continue;
