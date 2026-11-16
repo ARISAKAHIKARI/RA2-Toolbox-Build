@@ -35,6 +35,27 @@ int main(){
  std::printf("PASS background full graph: %u pages, %u native reads, %u bytes, zero main-thread graph calls\n",
    result.pages,result.counters.calls,result.counters.bytes);
 
+ // Long-lived production worker must reuse allocation capacity but NEVER
+ // reuse previously observed bytes. Same frame counter cannot make a cached
+ // HP value valid: every new graph observation reacquires mutable fields.
+ {
+  worldframe::Snapshot retained;
+  worldframe::CaptureScratch scratch;
+  auto first=worldframe::backgroundTrialWithStorage(boundary,workerRead,worldframe::Base,retained,scratch);
+  assert(first.status==BackgroundTrialStatus::CandidateOnly);
+  const auto*allocation=retained.pages.data();
+  const auto capacity=retained.pages.capacity();
+  assert(allocation&&capacity>=retained.pages.size());
+  int hp=0;
+  assert(retained.read(ActorA+0x6C,&hp,sizeof hp)&&hp==100);
+  memory.put(ActorA+0x6C,55);
+  auto second=worldframe::backgroundTrialWithStorage(boundary,workerRead,worldframe::Base,retained,scratch);
+  assert(second.status==BackgroundTrialStatus::CandidateOnly);
+  assert(retained.pages.data()==allocation&&retained.pages.capacity()==capacity);
+  assert(retained.read(ActorA+0x6C,&hp,sizeof hp)&&hp==55);
+  memory.put(ActorA+0x6C,100);
+ }
+
  // One-frame movement DURING capture is fine for non-command discovery.
  // The order gate still rejects an old result that arrives after a new one.
  bool switched=false;
