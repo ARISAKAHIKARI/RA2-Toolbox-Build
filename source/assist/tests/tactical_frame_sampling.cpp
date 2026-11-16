@@ -376,6 +376,17 @@ static void testUnload(){
  reset();uint32_t type=makeType(),bt=makeType(),p=object(type,1,20),target=object(bt,3,30,0x30000);set<bool>(type+0xEC3,true);sh->flags=SmartUnloadOrders;enterResult=9;vectorAt(0xA8EC78,0x800000,{p,target});seal();
  UnloadPassenger r{};r.p=p;r.id=20;r.job=1;r.mode=0;r.carrierType=bt;r.frame=r.landedFrame=snap.frame;r.x=r.y=1000;static unloadcompute::Input input;input.count=input.targetCount=0;
  check(collectUnloadSource(input,r,lastHouse,snap.frame)&&input.count==1&&input.targetCount==1&&input.actions[0][0]==uint8_t(9|64),"unload specialist query capture");check(nativeCalls==1,"unload native query lost");check(unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),"unload valid live source rejected");
+ // A completed sealed sample does not imply later native fields remain
+ // readable. Failed live source or specialist type reads cannot admit orders.
+ missingPage=p&~4095u;denyLivePage=true;
+ check(!unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),
+       "unload accepted a missing live mission/owner/UID page at final admission");
+ denyLivePage=false;missingPage=type&~4095u;denyLivePage=true;
+ check(!unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),
+       "unload accepted unreadable specialist flags at final admission");
+ denyLivePage=false;missingPage=missingLiveReads=0;
+ check(unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),
+       "unload final admission did not recover after missing live pages");
  set<int>(p+0xAC,2);check(!unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),"unload local apply would accept later mission");
  const auto queries=nativeCalls;set<uint32_t>(p+0x10,44);worldObjects.add(p,44);r.id=44;check(!collectUnloadSource(input,r,lastHouse,snap.frame)&&input.count==1&&nativeCalls==queries,"unload combined a new job identity with old sampled fields");r.id=20;set<uint32_t>(p+0x10,20);
  advance(target);const int before=input.count;check(!collectUnloadSource(input,r,lastHouse,snap.frame)&&input.count==before,"unload missing target published partial source");check(!missingLiveReads,"unload missing target fell back live");
