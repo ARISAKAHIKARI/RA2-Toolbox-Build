@@ -77,6 +77,7 @@ static bool minerDefenseOwns(uint32_t){return false;}
 static void minerDefenseRememberOre(const planner::Order&,uint32_t){}
 static bool rawMagnetronDrop(uint32_t,uint32_t,uint32_t){assert(false);return false;}
 static bool antiTheftBuilding(uint32_t){assert(false);return false;}static bool antiTheftThreat(uint32_t,uint32_t){assert(false);return false;}
+static bool antiTheftCurrentTargetUsable(uint32_t,uint32_t){assert(false);return false;} // Defense runs in a separate fixture.
 static bool rawMagnetron(uint32_t){assert(false);return false;}static bool featureObjectAllowed(int,uint32_t){assert(false);return false;}
 static bool nativeEnemy(uint32_t,uint32_t){assert(false);return false;}
 static void rawCombatInfo(uint32_t,uint32_t,int,planner::Actor&,bool){assert(false);}
