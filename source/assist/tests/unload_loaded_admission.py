@@ -1,16 +1,17 @@
 """Execute production unload admission with real own/live rules and pre.7 control."""
 from pathlib import Path
 import argparse,hashlib,json,subprocess
-p=argparse.ArgumentParser();p.add_argument('--out',type=Path,required=True);a=p.parse_args();a.out=a.out.resolve();a.out.mkdir(parents=True,exist_ok=True)
+p=argparse.ArgumentParser();p.add_argument('--out',type=Path,required=True);p.add_argument('--current-only',action='store_true');a=p.parse_args();a.out=a.out.resolve();a.out.mkdir(parents=True,exist_ok=True)
 root=Path(__file__).resolve().parents[3];bridge=root/'source/assist/source/bridge.cpp';source=root/'source/assist/source/native_orders_bridge.h'
 def block(text,marker):
  start=text.index(marker);at=text.index('{',start);depth=1;end=at+1
  while depth:depth+=(text[end]=='{')-(text[end]=='}');end+=1
  return text[start:end]
-old=subprocess.check_output(['git','show','c46aa4be4c0b562ca163a6df6f510459a4872ca6:source/assist/source/native_orders_bridge.h'],cwd=root).decode();rows=[]
-for name,text,expected in [('current',source.read_text(),0),('pre7',old,1)]:
+old='' if a.current_only else subprocess.check_output(['git','show','c46aa4be4c0b562ca163a6df6f510459a4872ca6:source/assist/source/native_orders_bridge.h'],cwd=root).decode();rows=[]
+for name,text,expected in ([('current',source.read_text(),0)] if a.current_only else [('current',source.read_text(),0),('pre7',old,1)]):
  code='\n'.join(block(bridge.read_text(),x) for x in ['static bool live(','static int kind(','static bool own('])+'\n'
  if 'static bool unloadPassengerEligible(' in text:code+=block(text,'static bool unloadPassengerEligible(')+'\n'
+ if 'static int unloadPassengerKnowledge(' in text:code+=block(text,'static int unloadPassengerKnowledge(')+'\n'
  code+=text[text.index('struct UnloadRosterEntry {'):text.index('static bool unloadCarrierEligible(')]
  if name=='current':code+=block(text,'static void observeUnloadRoster(')+'\n'
  if name=='current':code+=block(text,'static void cancelNative(')+'\n'
