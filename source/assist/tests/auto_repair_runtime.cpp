@@ -19,6 +19,11 @@ using namespace assist;
 using DWORD=uint32_t;
 constexpr uint32_t AutoRepair=64,RepairUnrepairable=134217728;
 namespace featuretypes {constexpr int RepairBuilding=1;}
+struct StubFeatureFilter {bool custom=false;};
+struct StubFeatureConfig {StubFeatureFilter filters[3];};
+static StubFeatureConfig featureConfig;
+static bool repairFilterKnown=true;
+static bool refreshFeatureTypes(){return repairFilterKnown;}
 struct Shared {
  uint32_t flags=0,repairMs=2000,computeApplied=compute::Default,repairTask=0,repairComputed=0;
  int32_t repairResultSeq=0;compute::RepairInput repairInput;compute::RepairResult repairResult;int result=0,count=0;
@@ -58,6 +63,7 @@ static bool read(uint32_t at,void*out,size_t n){
    if(at==b.pointer+0x520)return copy(b.type);
    if(at==b.pointer+0x6E8)return copy(uint8_t(b.repairing));
    if(at==b.type+0xA0)return copy(b.maximum);
+   if(at==b.type+0x157A)return copy(uint8_t(b.repairable));
   }
   return false;
  }
@@ -97,12 +103,14 @@ static void prepareSample(){
 }
 static void MemoryBarrier(){}
 static void notifyHost(){if(sampleReadDepth)throw std::runtime_error("publication inside sample scope");++notifications;}
-static void indexWorld(int){++indexCalls;}
+static int indexedFrame=-1;
+static void indexWorld(int frame){indexedFrame=frame;++indexCalls;}
 enum class EventLane{Repair};static int recurringBudget(EventLane){return perFrameBudget;}
 static bool nativeObjectEvent(int player,int event,uint32_t id){if(sampleReadDepth)throw std::runtime_error("native event inside sample scope");if(player!=0||event!=0x15)throw std::runtime_error("wrong event");++queueAttempts;if(!queueAvailable)return false;sent.push_back({id,currentFrame});return true;}
 #include REPAIR_EVENT
 #include REPAIR_CALCULATION
 #include REPAIR_OBSERVE
+#include REPAIR_ADMISSION
 #include REPAIR_TICK
 // Exactly the manual Repair branch and terminal publication from command().
 static void manualRepair(uint32_t req,DWORD now){prepareSample();uint32_t house=lastHouse;int result=1,n=0;
@@ -119,7 +127,7 @@ static void setup(bool automatic=true,bool internal=true,unsigned count=1){
  ++match;lastHouse=0x200000;currentFrame=0;chat=externalInputFrame=false;queueAvailable=true;perFrameBudget=64;buildingScans=notifications=queueAttempts=indexCalls=0;sent.clear();buildings.clear();
  for(unsigned i=0;i<count;++i)buildings.push_back({0x300000+i*0x10000,0x800000+i*0x10000,100+i,lastHouse});
  repairCount=repairAt=repairDone=0;repairAckRequest=repairAckStarted=pendingAck=0;repairAckPending=pendingAckReady=false;repairCalculationPending=false;repairCalculationStarted=repairTaskSeen=0;autoWas=false;lastAuto=0;pendingRepairs.clear();repairFrames.clear();
- worldFrameReady=false;sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
+ worldFrameReady=false;sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;indexedFrame=-1;featureConfig={};repairFilterKnown=true;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
 }
 static void tick(DWORD now,int frame,bool input=false){currentFrame=frame;externalInputFrame=input;prepareSample();repairTick(lastHouse,now);}
 struct WorkerResult{uint32_t task;compute::RepairResult value;};
@@ -132,6 +140,16 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
  });
  run("missing_page_preserves_due_retry",false,[]{
   setup(true,true,0);tick(1000,1);buildings.push_back({0x300000,0x800000,100,lastHouse});missingSamplePage=0x300000;tick(3000,2);expect(!autoWas&&lastAuto==1000&&sent.empty(),"incomplete collector must not advance timer or publish empty candidates");missingSamplePage=0;tick(3016,3);expect(sent.size()==1&&lastAuto==3016,"page recovery retries on next admitted frame");
+ });
+ run("unknown_live_repair_admission_preserves_unsent_cursor",false,[]{
+  setup(true,true,1);missingLiveRead=buildings[0].pointer+0x10;tick(1000,1);
+  expect(repairAt==0&&repairCount==1&&sent.empty(),"missing candidate UID advanced repair cursor");
+  missingLiveRead=buildings[0].type+0xA0;tick(1016,2);
+  expect(repairAt==0&&sent.empty(),"missing maximum HP advanced repair cursor");
+  missingLiveRead=0;repairFilterKnown=false;tick(1032,3);
+  expect(repairAt==0&&sent.empty(),"incomplete feature filter advanced repair cursor");
+  repairFilterKnown=true;tick(1048,4);
+  expect(repairAt==1&&sent.size()==1&&sent[0].id==100,"repair admission recovery failed to send original candidate");
  });
  run("unknown_live_repair_receipt_does_not_retire_pending_toggle",false,[]{
   setup(true,true,1);tick(1000,1);
