@@ -23,6 +23,7 @@ def main():
    'REPAIR_EVENT':block(text,'static bool repairEvent('),
    'REPAIR_CALCULATION':text[text.index('static DWORD clampedRepairInterval('):text.index('static int superSelect(')],
    'REPAIR_OBSERVE':block(text,'static repairdelivery::Observation observePendingRepair('),
+   'REPAIR_ADMISSION':text[text.index('// The batch cursor only advances after a complete admission observation.'):text.index('static void repairTick(')],
    'REPAIR_TICK':block(text,'static void repairTick('),
    'REPAIR_MANUAL':manual,
    'REPAIR_RESET':reset[resetStart:resetEnd]+reset[autoStart:autoEnd]+'pendingRepairs.clear();',
