@@ -6,7 +6,14 @@ static worldframe::Snapshot worldFrame;
 static worldframe::Server worldFrameServer;
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
 // Existing synchronous transport fixtures keep their explicit execution seam.
-struct WorldFramePublication {bool begin(worldframe::Snapshot&){return true;}void invalidate(){}bool stop(){return true;}bool publish(const worldframe::Snapshot&frame,const worldframe::Server&){return worldFrameServer.publish(frame);}};
+struct WorldFramePublication {
+ bool begin(worldframe::Snapshot&){return true;}
+ void invalidate(){}
+ bool stop(){return true;}
+ bool publish(const worldframe::Snapshot&frame,const worldframe::Server&){return worldFrameServer.publish(frame);}
+ bool requestRecovery(const worldframe::Key&,const worldframe::RequestedSpan*,size_t){return false;}
+ size_t recovered(const worldframe::Key&,worldframe::RequestedSpan*,size_t){return 0;}
+};
 #else
 #include "../../shared/source/world_frame_async_win.h"
 using WorldFramePublication=worldframe::AsyncPublisher<>;
@@ -18,6 +25,7 @@ static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>
 // sample. Keep only addresses/lengths; never retain the old values or read
 // game memory from a consumer after seal. No hot-path allocation.
 static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
+static uint32_t lastRecoverySubmitAt=0;
 static bool worldFrameReady=false;
 static void rememberMissingWorldSpan(uint32_t at,size_t bytes){
  if(!worldFrameReady||!worldFrame.sealed()||!bytes||bytes>256||
@@ -51,7 +59,7 @@ public:
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
-static void retireWorldFrame(){worldFramePublication.invalidate();if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});}
+static void retireWorldFrame(){worldFramePublication.invalidate();if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand){
  worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,before.scenario,before.cells,house,uint32_t(before.count),before.frame,before.session};
  if(!worldProducerGeneration){LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);worldProducerGeneration=uint64_t(stamp.QuadPart);if(!worldProducerGeneration)worldProducerGeneration=1;}
@@ -77,7 +85,34 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  runtimeDemandLeases.append(key.tick,requests);
  std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
  key.serial=++worldFrameSerial;key.demand=worldFrameServer.demandRevision();worldFrame.reset(key);
- worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);bool complete=capture.capture(demand,requests,runtimeMissingSpans.data(),runtimeMissingSpans.size());
+ // Collect at most 16 recent missing fields without any heap allocations.
+ // Rotate the direct-mapped hint table so consistently busy units are fair.
+ std::array<worldframe::RequestedSpan,worldframe::RecoverySpans>candidates{},verified{};
+ size_t candidateCount=0,verifiedCount=0;
+ const size_t start=key.serial%runtimeMissingSpans.size();
+ for(size_t step=0;step<runtimeMissingSpans.size()&&candidateCount<candidates.size();++step){
+  const auto&f=runtimeMissingSpans[(start+step)%runtimeMissingSpans.size()];
+  if(f.bytes&&f.bytes<=256&&worldframe::range(f.address,f.bytes)&&
+     uint32_t(key.tick-f.tick)<=1000)candidates[candidateCount++]=f;
+ }
+ // Background bytes are NEVER reused as same-frame command observations.
+ // Successful probes only choose which exact ranges the original producer
+ // reads under its existing before/after identity and frame validation.
+ std::array<worldframe::RequestedSpan,worldframe::RecoverySpans>background{};
+ const size_t readyCount=worldFramePublication.recovered(key,background.data(),background.size());
+ for(size_t i=0;i<readyCount&&verifiedCount<verified.size();++i)
+  for(size_t j=0;j<candidateCount;++j)
+   if(background[i].address==candidates[j].address&&background[i].bytes==candidates[j].bytes){
+    verified[verifiedCount++]=candidates[j];break;
+   }
+ // Do not turn a cold worker start or a dropped latest-work slot into total
+ // starvation. Two synchronous field retries are the strict fallback limit.
+ if(!verifiedCount)for(size_t i=0;i<std::min<size_t>(2,candidateCount);++i)verified[verifiedCount++]=candidates[i];
+ if(candidateCount&&(!lastRecoverySubmitAt||uint32_t(key.tick-lastRecoverySubmitAt)>=32)){
+  if(worldFramePublication.requestRecovery(key,candidates.data(),candidateCount))lastRecoverySubmitAt=key.tick;
+ }
+ worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
+ bool complete=capture.capture(demand,requests,verified.data(),verifiedCount);
  // These checks deliberately bypass the read set. Cached self-comparison is
  // not evidence that the frame/world/House survived the acquisition boundary.
  const auto after=worldlife::capture(live);uint32_t afterHouse=0;
@@ -90,6 +125,15 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(sh)++sh->worldSampleFailures;return false;
  }
  captureRetryDelay=0;
+ // Remove confirmed exact misses from the hint ring. Otherwise an old
+ // successful worker result would cause extra live reads on every frame.
+ for(size_t i=0;i<verifiedCount;++i){
+  uint8_t bytes[256]{};
+  const auto&f=verified[i];
+  if(!worldFrame.read(f.address,bytes,f.bytes))continue;
+  for(auto&hint:runtimeMissingSpans)
+   if(hint.address==f.address&&hint.bytes==f.bytes){hint={};break;}
+ }
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
  worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
