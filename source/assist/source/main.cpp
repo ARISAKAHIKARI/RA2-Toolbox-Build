@@ -1866,6 +1866,8 @@ static void paint(){
   const int available=std::max(0,int(r.right)-4);
   unitpanelhost::panel.refreshCameos(selectionModel,
    [](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);},
+   [](um::Type&t){gameassets::resolveCameo(t);},
+   &gameassets::cameo,
    pid,selectionModel.match,GetTickCount());
   unitpanelhost::panel.update(selectionModel,screenX,screenBottom,available);
  }else if(unitPanelEnabled)unitpanelhost::panel.miss();
