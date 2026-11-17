@@ -29,6 +29,9 @@ assert runtime.index('if(asyncCommand)') < runtime.index('worldframe::CaptureGra
 assert 'commandRequestGate.defer(key,graphDemand' in runtime
 assert 'commandRequestGate.submitted(key,graphDemand' in runtime
 assert runtime.index('commandRequestGate.defer(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
+assert 'worldFrameCommandWorker.deferBusy(key,graphDemand,requestRevision,globalVehicles)' in runtime
+assert runtime.index('worldFrameCommandWorker.deferBusy(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
+assert 'coalesceInFlightWorld(lastRequestedKey_,key' in worker
 assert 'commandRequestGate.reset()' in runtime
 assert 'worldFrameCommandWorker.request(key,graphDemand' in runtime
 assert 'CaptureGraph<decltype(checkedRead)>' in worker
