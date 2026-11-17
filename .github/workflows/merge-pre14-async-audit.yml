@@ -1,0 +1,50 @@
+name: Audit integration of pre.14 lineage with async command fixes
+on:
+  push:
+    branches: [codex/async-command-capture-20261117]
+    paths:
+      - .github/workflows/merge-pre14-async-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  merge-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Try exact two-parent three-way merge without writing to production
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p integration-evidence
+          git config user.name 'RA2Toolbox Integration Audit'
+          git config user.email 'integration-audit@users.noreply.github.com'
+          git fetch --no-tags origin 'refs/tags/v1.0.51:refs/tags/v1.0.51'
+          git fetch --no-tags origin 'refs/heads/codex/async-command-capture-20261117:refs/remotes/origin/async-command-capture'
+          git checkout -B integration-audit v1.0.51
+          echo "BASE_STABLE=$(git rev-parse HEAD)" | tee integration-evidence/merge-report.txt
+          echo "ASYNC_HEAD=$(git rev-parse refs/remotes/origin/async-command-capture)" | tee -a integration-evidence/merge-report.txt
+          if git merge --no-commit --no-ff refs/remotes/origin/async-command-capture >integration-evidence/merge.log 2>&1; then
+            echo 'MERGE_RESULT=clean' | tee -a integration-evidence/merge-report.txt
+          else
+            echo 'MERGE_RESULT=conflicts' | tee -a integration-evidence/merge-report.txt
+            git diff --name-only --diff-filter=U | tee integration-evidence/conflict-paths.txt
+            while IFS= read -r file; do
+              test -n "$file" || continue
+              printf '%s: ' "$file"
+              grep -c '^<<<<<<<' "$file" || true
+            done < integration-evidence/conflict-paths.txt | tee integration-evidence/conflict-counts.txt
+            echo '===== Conflict list ====='
+            cat integration-evidence/conflict-paths.txt
+          fi
+          git diff --stat | tail -60 | tee integration-evidence/change-stat.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pre14-async-three-way-conflict-report
+          retention-days: 14
+          path: integration-evidence/
