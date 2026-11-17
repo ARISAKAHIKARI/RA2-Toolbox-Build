@@ -8,7 +8,8 @@
 // CCToolTip callback runs first; Process724AD0 measures/copies our text into
 // the same native box. Never extend Sidebar's 66-wchar static buffer in place.
 // Layout/ABI: YRpp d979554; synthetic query pattern: Phobos f06797e (GPL-3.0).
-static bool buildTimeTooltipActive,buildTimeTooltipFailed;static uint32_t buildTimeTooltipFailedMatch;
+static bool buildTimeTooltipActive,buildTimeTooltipFailed,buildTimeTooltipClaimed;
+static uint32_t buildTimeTooltipFailedMatch;
 extern "C" void AssistBuildTimeTooltipFailed(){buildTimeTooltipFailed=true;buildTimeTooltipFailedMatch=match;}
 static void restoreBuildTimeTooltip();
 static bool buildTimeTooltipCompatible(){
@@ -43,6 +44,7 @@ static void buildTimeTooltipTick(){
  if(buildTimeTooltipActive){
   if(lastVerifyAt&&uint32_t(now-lastVerifyAt)<250)return;
   lastVerifyAt=now;
+  buildTimeTooltipClaimed=true; // Runtime may retain wanted even on a failed install.
   buildTimeTooltipActive=NativeTooltipBuildTime(true);
   sh->buildTimeTooltipStatus=buildTimeTooltipActive?1:-2;
   if(buildTimeTooltipActive)return;
@@ -50,17 +52,24 @@ static void buildTimeTooltipTick(){
  // Inactive or explicitly re-enabled hooks still get an immediate attempt.
  // Preserve the existing hook-admission retry cadence for compatibility.
  if(!buildTimeTooltipCompatible()){sh->buildTimeTooltipStatus=-2;return;}
+ buildTimeTooltipClaimed=true;
  buildTimeTooltipActive=NativeTooltipBuildTime(true);
  lastVerifyAt=now;
  sh->buildTimeTooltipStatus=buildTimeTooltipActive?1:-2;
 }
 static void restoreBuildTimeTooltip(){
+ // When this feature has never claimed the Runtime slot, calling the
+ // cross-module owner on every 8 ms game-thread tick is pure overhead.
+ if(!buildTimeTooltipActive&&!buildTimeTooltipClaimed){
+  if(sh)sh->buildTimeTooltipStatus=0;
+  return;
+ }
  // Release only this feature's claim. The cursor can still need the same
  // slot with the build-time option off, including after Assist disconnects.
  if(!NativeTooltipBuildTime(false)){
   buildTimeTooltipActive=true;if(sh)sh->buildTimeTooltipStatus=-2;return;
  }
- buildTimeTooltipActive=false;
+ buildTimeTooltipActive=false;buildTimeTooltipClaimed=false;
  if(sh)sh->buildTimeTooltipStatus=0;
 }
 // No gameplay object is constructed, registered, charged or ticked. Only the
