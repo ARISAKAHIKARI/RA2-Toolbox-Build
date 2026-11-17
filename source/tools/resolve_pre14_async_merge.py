@@ -65,8 +65,8 @@ def resolve(path, source):
     if "<<<<<<<" in text or ">>>>>>>" in text:
         raise RuntimeError(f"{path}: unresolved conflict marker")
     if str(path).endswith("/autoload.h"):
-        text = must_replace(text, "uint32_t ticket=0,queuedAt=0;};",
-                            "uint32_t ticket=0,queuedAt=0,manualToken=0;};", str(path))
+        text = must_replace(text, "Observation initial{};bool enterObserved=false;int kind=1;uint32_t ticket=0,queuedAt=0;};",
+                            "Observation initial{};bool enterObserved=false;int kind=1;uint32_t ticket=0,queuedAt=0,manualToken=0;};", str(path))
     if str(path).endswith("/autoload_bridge.h"):
         text = upgrade_autoload(text)
     if str(path).endswith("/world_frame_runtime.h"):
