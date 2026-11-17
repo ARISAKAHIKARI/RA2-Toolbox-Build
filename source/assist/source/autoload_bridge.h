@@ -91,7 +91,7 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
    {p.id,p.object,tokens[i]}, {},{v.id,v.object}};
   cancelUnloadPassenger(p.object);uint32_t ticket=0;
   bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,proof,&ticket);
-  Reservation job{p.object,p.id,v.object,v.id,p.slots,frame};job.lastSent=sent?frame:-1;job.lastAttempt=frame;job.attempts=sent?0:1;job.retryAfter=sent?frame+30:frame+8;job.x=p.x;job.y=p.y;job.progress=frame;job.initial=loadingObservation(p.object);job.kind=p.kind;job.ticket=ticket;job.queuedAt=sent?sampleClock(sh):0;loadLedger.add(job);
+  Reservation job{p.object,p.id,v.object,v.id,p.slots,frame};job.lastSent=sent?frame:-1;job.lastAttempt=frame;job.attempts=sent?0:1;job.retryAfter=sent?frame+30:frame+8;job.x=p.x;job.y=p.y;job.progress=frame;job.initial=loadingObservation(p.object);job.kind=p.kind;job.manualToken=tokens[i];job.ticket=ticket;job.queuedAt=sent?sampleClock(sh):0;loadLedger.add(job);
   if(sent)++snap.loadIssued;else ++snap.loadWaiting;
  }
  return snap.loadWaiting?2:1;
@@ -244,7 +244,7 @@ static void autoLoadTick(uint32_t house,int frame){
  }
  auto present=[&](uint32_t p){return worldObjects.contains(p);};int budget=outgoingRoom()?recurringBudget(EventLane::Boarding):0;
  for(int i=0;i<loadLedger.count;){auto&r=loadLedger.records[i];bool remove=!present(r.object)||!present(r.vehicle);
-  if(!remove)remove=!featureObjectAllowed(featuretypes::LoadPassenger,r.object)||!featureObjectAllowed(featuretypes::LoadTransport,r.vehicle)||get<uint32_t>(r.object+0x10)!=r.id||get<uint32_t>(r.vehicle+0x10)!=r.vehicleID||get<uint32_t>(r.object+0x11C)!=0||!own(r.object,house)||!own(r.vehicle,house)||frame-r.frame>900;
+  if(!remove)remove=!featureObjectAllowed(featuretypes::LoadPassenger,r.object)||!featureObjectAllowed(featuretypes::LoadTransport,r.vehicle)||get<uint32_t>(r.object+0x10)!=r.id||get<uint32_t>(r.vehicle+0x10)!=r.vehicleID||get<uint32_t>(r.object+0x11C)!=0||!own(r.object,house)||!own(r.vehicle,house)||manualVersions.get(r.id)!=r.manualToken||frame-r.frame>900;
   if(remove){
    bool boarded=present(r.object)&&get<uint32_t>(r.object+0x10)==r.id&&get<uint32_t>(r.object+0x11C)==r.vehicle;
    finishLoadingReservation(r,match,frame,boarded);loadLedger.erase(i);continue;
@@ -257,7 +257,11 @@ static void autoLoadTick(uint32_t house,int frame){
   if(due&&frame>=r.retryAfter&&budget>0&&outgoingRoom()>0&&loadingObject(r.object,house,r.kind)&&loadingObject(r.vehicle,house,2)&&canEnter(r.object,r.vehicle)){
    r.lastAttempt=frame;
    uint32_t ticket=0;
-   if(enterEvent(house,r.id,r.vehicleID,&ticket)){
+   // Reissue the SAME job, not a newer permission after a player order.
+   // The existing 900-frame task timeout controls durable retry lifetime.
+   const executionproof::Ticket proof{match,house,0,
+      {r.id,r.object,r.manualToken}, {},{r.vehicleID,r.vehicle}};
+   if(enterEvent(house,r.id,r.vehicleID,proof,&ticket)){
     // End the superseded Enter receipt before recording the replacement.
     finishLoadingReservation(r,match,frame,false);
     r.ticket=ticket;r.queuedAt=sampleClock(sh);r.lastSent=frame;r.progress=frame;r.retryAfter=frame+30;r.attempts=0;--budget;
