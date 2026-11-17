@@ -149,6 +149,18 @@ def upgrade_world_capture(text, async_source):
             "static WorldFramePublication worldFramePublication;\n",
             "static WorldFramePublication worldFramePublication;\n" + worker,
             "capture_worker_defs")
+    # The stable function signature/identity check survived the merge; its
+    # adjacent async-demand declarations were inside the pre14 conflict block.
+    if "const bool asyncCommand=" not in text:
+        anchor = "const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);"
+        declaration = (anchor + "\n"
+          " const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled();\n"
+          " bool globalVehicles=false;\n"
+          "#ifndef WORLD_FRAME_PLATFORM_FIXTURE\n"
+          " if(asyncCommand)globalVehicles=sh&&sh->magnetronGlobal;\n"
+          "#endif\n"
+          " const uint32_t graphDemand=demand&~uint32_t(worldframe::HostDisplayOnly);")
+        text = must_replace(text,anchor,declaration,"capture_async_demands")
     fields = (
         ("static uint32_t worldFrameCapturedDemand=0;","static uint32_t worldFrameSerial=0;"),
         ("static uint64_t worldFrameCapturedRevision=0;","static uint32_t worldFrameCapturedDemand=0;"),
