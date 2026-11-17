@@ -23,10 +23,12 @@ static uint32_t incomingVehicle(uint32_t p){
  uint32_t queued=get<uint32_t>(p+0x500);if(queued>=0x10000)return queued;
  uint32_t destination=get<uint32_t>(p+0x5A4);return destination?destination:get<uint32_t>(p+0x2B4);
 }
-static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,uint32_t* receiptID=nullptr){
- // Ordinary Enter is just a vanilla MegaMission with a destination object.
- // Use exactly the same constructor and enqueue entry as ore/attack/unload.
- return nativeMission(house,infantry,7,0,vehicle,0x34,0,0,taskarbiter::Owner::AutoLoad,receiptID);
+static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,
+ const executionproof::Ticket&proof,uint32_t* receiptID=nullptr){
+ // The original capture-time passenger and carrier pointers are not trusted
+ // until the native dispatcher confirms both UIDs and the manual revision.
+ return submitProvenMission(house,infantry,7,0,vehicle,0x34,
+   taskarbiter::Owner::AutoLoad,proof,receiptID);
 }
 static loading::Observation loadingObservation(uint32_t p){return {get<int>(p+0xAC),get<int>(p+0xB4),get<uint32_t>(p+0x2B4),get<uint32_t>(p+0x5A4)};}
 extern "C" int GuardedEnterAction(unsigned,unsigned,unsigned,unsigned*);
@@ -83,7 +85,12 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
    ++snap.loadUnassigned;if(loadQueryFailed)return -15;continue;
   }
   room[j]-=p.slots;
-  cancelUnloadPassenger(p.object);uint32_t ticket=0;bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,&ticket);
+  // Saved source/target identities come from the frozen LoadInput cohort.
+  // Never upgrade a delayed worker assignment to permission to Enter.
+  const executionproof::Ticket proof{match,house,sampleClock(sh),
+   {p.id,p.object,tokens[i]}, {},{v.id,v.object}};
+  cancelUnloadPassenger(p.object);uint32_t ticket=0;
+  bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,proof,&ticket);
   Reservation job{p.object,p.id,v.object,v.id,p.slots,frame};job.lastSent=sent?frame:-1;job.lastAttempt=frame;job.attempts=sent?0:1;job.retryAfter=sent?frame+30:frame+8;job.x=p.x;job.y=p.y;job.progress=frame;job.initial=loadingObservation(p.object);job.kind=p.kind;job.ticket=ticket;job.queuedAt=sent?sampleClock(sh):0;loadLedger.add(job);
   if(sent)++snap.loadIssued;else ++snap.loadWaiting;
  }
