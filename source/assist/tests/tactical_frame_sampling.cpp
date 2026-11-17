@@ -6,6 +6,7 @@
 #include "native_orders.h"
 #include "repair_delivery.h"
 #include "../../shared/source/world_frame.h"
+#include "../../shared/source/world_frame_command_index.h"
 #include "../../shared/source/runtime_fault.h"
 #include "../../external_reader/source/cooperative_reader.h"
 #include <cassert>
@@ -40,6 +41,8 @@ static std::array<uint64_t,8192> runtimeDemandBits{};
 static std::vector<uint32_t> runtimeWorldDemands;
 static uint32_t runtimeDemandRevision=1;
 struct CommandWorkerFixture {static bool enabled(){return false;}};static CommandWorkerFixture worldFrameCommandWorker;
+static worldframe::CommandRoster worldFrameCommandRoster;
+static bool commandRosterReady(){return false;}
 #include "sample_scope_production.h"
 static bool liveRead(uint32_t at,void*out,size_t n){
  ++liveReads;if(at==0xA8EC78||(at>=0x800000&&at<0x810000))++liveRosterReads;
@@ -55,7 +58,7 @@ struct Vec {uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
 static Vec vec(uint32_t at,int limit=16384){Vec v{};if(!read(at,&v,sizeof v)||v.count<0||v.count>limit||v.count>v.capacity||v.items<0x10000)return {};return v;}
 static uint32_t item(Vec v,int n){return n>=0&&n<v.count?get<uint32_t>(v.items+uint32_t(n)*4):0;}
 #include "tactical_frame_read.h"
-static ObjectIndex worldObjects;static ManualVersions manualVersions;
+static ObjectIndexView worldObjects;static ManualVersions manualVersions;
 static int kind(uint32_t p){const uint32_t vt=get<uint32_t>(p);return vt==0x7F5C70?2:vt==0x7EB058?1:vt==0x7E3EBC?3:vt==0x7E22A4?0:-1;}
 static uint32_t typeOf(uint32_t p,int k){return k>=0?get<uint32_t>(p+(k==3?0x520:k==1?0x6C0:0x6C4)):0;}
 static bool live(uint32_t p){return p>=0x10000&&get<int>(p+0x6C)>0&&get<bool>(p+0x74)&&!get<bool>(p+0x81)&&get<bool>(p+0x90);}
