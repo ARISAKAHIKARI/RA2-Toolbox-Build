@@ -24,6 +24,20 @@
 - Windows 原生 DLL/Host 夹具补充“模式切换拒收、匹配模式成功、过期任务零 RPM”验证。此处的 `80 ms` 只是**过期上限**，不表示 60 Hz 下有 80 ms 的命令执行延迟预算；实际同帧要求仍可能严格到约 16.7 ms。
 - 以上仅处理可证明的安全性和无效开销问题；并未证明多单位压力下异步命令采样能及时交付。真实游戏确认前继续保留实验开关，绝不将其视为默认启用或可直接发布的方案。
 
+## 延迟命令执行凭证（统一 nativeMission 入口）
+
+本轮新增 `assist::executionproof::Ticket`，将原始 `{match, house, timestamp, unit ID, unit pointer, manual token, target ID/pointer, destination ID/pointer}` 作为**候选执行凭证**。这不是封包、不是授权缓存，也不是绕过游戏线程的引擎操作。纯验证器不分配内存、不遍历全地图；游戏线程从现有 `worldByID` + `manualVersions` + `own` 获取**当前**身份并拒绝 UID/指针不符、人工接管、对局/所属方变化、目标复用、过期和请求事件不匹配。之后仍经过 `orderpolicy::missionWithTargetTag`、同帧/跨帧任务仲裁、原始 `submitMegaMission` / `submitConstructed` 和队列状态检查。成功入队仅意味着 Queued；`missionObserver` 再独立观察状态。
+
+已接入的真实消费端：
+
+- **AutoLoad**：`compute::LoadInput` 冻结的 `p.object,p.id,tokens[i]` 与 `vehicle.object,vehicle.id` 作为执行凭证交给 `submitProvenMission`，避免后台结果落地前单位/载具身份变化。
+- **Unload**：`unloadcompute::Input` 冻结的 `s.pointer,s.id,s.token`，以及选择目标时的原始 ID/指针，在原生最终入口再次验证；保留载员 Limbo 特殊准入与完整三乘员跟进。
+- **External planner / Ore / Combat / Magnetron / Defense**：沿用 wire 中原始 `o.token`；由于当前 `planner::Order` wire **不保存对象指针**，在上游 `externalOrderValid` 判定后立即绑定当前 `worldByID` 指针，然后在 `nativeMission` 复核一次。这提供提交窗口的 UID/指针一致性，**不能冒充规划快照时的原始指针凭证**；未来可在不破坏 ABI 的单独 provenance side-channel 内传递完整原始来源。
+
+注意：普通手动命令和未迁移的老自动功能仍可使用 `nativeMission` 的 legacy 可选凭证分支。当前只是把数条**后台计算结果**改成必须走 proof-required wrapper，而不是宣称所有命令均持有完整原始来源凭证。仍必须遵守零主线程全量采集、误差闭合以及实机 x86/CnCNet/JJ 验证；异步 CommandCaptureWorker 仍以 `RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=1` 试验性启用，不可默认开放。
+
+回归包括：自定义纯 C++ 执行凭证判定（对局/所属方/对象 ABA 指针复用/人工版本变更/目标及目的地替换/事件参数匹配/32 位计时回绕）与生产采矿准入提取式测试、可移植测试和 Windows 原生 ABI 构建。**不把离线单元测试当成真实联机成功率证明。**
+
 ## 跨帧持久命令第一步：Ctrl+D（仍为实验性）
 
 **入队不等于执行成功。** 现有 `queuedUnload` 已能跨帧保留显式 Ctrl+D 的载具 UID、手动版本和事件阶段，`nativeMission()` 仍必须在原生游戏线程完成合法性和 EventClass 提交。这轮具体关闭三个会导致“按一次无效 / 越忙越卡”的漏洞：
