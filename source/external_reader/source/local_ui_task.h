@@ -22,7 +22,7 @@ private:
  std::shared_ptr<const Result>run(const Input&input){const auto&r=input.request;
   if(pid_!=r.pid||match_!=r.match){reader_.close();engine_.reset();for(auto&p:old_)p.clear();images_={};pid_=r.pid;match_=r.match;}
   if(!reader_.open(r.pid))return {};reader_.begin();
-  radar::FrameScope scope(reader_,r.match,input.sourceFrame,worldframe::Resources|worldframe::Passengers);if(!scope)return {};
+  radar::FrameScope scope(reader_,r.match,input.sourceFrame,worldframe::Resources|worldframe::HostVisualPassengers);if(!scope)return {};
   auto fresh=[&](uint32_t p,void*out,size_t n){return radar::liveRead(reader_,p,out,n);};worldui::WorldRead<Reader> world{&reader_};mainview::View before;
   if(!mainview::sample(fresh,before,r.view.transform)||!mainview::sameViewport(before,r.view)||before.frame<r.view.frame)return {};uint32_t sampled=clock_();Plan plan;
   const auto source=radar::sourceFrame(reader_);auto observed=before;

@@ -32,7 +32,7 @@ template<class Reader>bool liveRead(Reader&reader,uint32_t p,void*out,size_t n){
 template<class Reader>class FrameScope {
  Reader&reader_;worldframe::Token previous_;uint32_t previousDemand_=0;bool ok_=true,entered_=false,previousComplete_=true;
 public:
- FrameScope(Reader&r,uint32_t match,worldframe::Token token={},uint32_t demand=worldframe::Visual|worldframe::Passengers):reader_(r){
+ FrameScope(Reader&r,uint32_t match,worldframe::Token token={},uint32_t demand=worldframe::Visual|worldframe::HostVisualPassengers):reader_(r){
   if constexpr(HasWorldFrame<Reader>::value){
    previousDemand_=r.worldDemand();r.setWorldDemand(demand);
    previous_=r.worldFrameToken();previousComplete_=!previous_||r.worldFrameComplete();
