@@ -676,6 +676,18 @@ void hostBoundaryCommandGuard(){
  CHECK(shallow->seal());server.observe(shallow->key);CHECK(server.publish(*shallow));
  currentPid=HostPid;CHECK(reader.beginWorldFrame(7));
  CHECK(reader.worldFrameToken()->controlSource);
+ reader.endWorldFrame();
+ // A rich display using this same real ProcessReader should still use the
+ // tiny immutable boundary plus Host-only actor, passenger and weapon RPM.
+ reader.setWorldDemand(worldframe::Resources|worldframe::HostVisualPassengers|worldframe::HostVisualCombat);
+ clock+=17;
+ CHECK(reader.beginWorldFrame(7));
+ CHECK(reader.worldFrameToken()->controlSource);
+ int displayHp=0;
+ CHECK(reader.read(ActorA+0x6C,&displayHp,4)&&displayHp==100);
+ CHECK(reader.read(Passenger+0x6C,&displayHp,4)&&displayHp==100);
+ CHECK(reader.read(Weapon,&displayHp,4));
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  reader.endWorldFrame();reader.setWorldDemand(worldframe::Base);
  // This request revoked the display-only lease immediately. Even though
  // the old sealed bytes are still valid for drawing, Host native admission
