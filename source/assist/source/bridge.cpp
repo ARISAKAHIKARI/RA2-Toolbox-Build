@@ -1288,8 +1288,12 @@ static void repairTick(uint32_t house,DWORD now){
  autoWas=automatic&&!deferred;snap.autoRepair=automatic;
  static int budgetFrame=-1,budget;static uint32_t budgetMatch;
  int frame=get<int>(0xA8ED84);if(budgetFrame!=frame||budgetMatch!=match){budgetFrame=frame;budgetMatch=match;budget=recurringBudget(EventLane::Repair);}
- if(repairAt<repairCount&&budget>0){
-  indexWorld(frame);
+ if(repairAt<repairCount&&budget>0&&
+    (!worldFrameCommandWorker.enabled()||commandRosterReady())){
+  // The worker's sealed identity hash is already bound by refreshWorldIndex.
+  // Calling legacy indexWorld here would clear that shared hash and turn all
+  // further command lookups into empty-world failures in the same frame.
+  if(!worldFrameCommandWorker.enabled())indexWorld(frame);
   while(repairAt<repairCount&&budget>0){uint32_t id=repairIDs[repairAt],p=worldByID(id);
   const bool recent=pendingRepairs.contains(id,p);
   if(p&&kind(p)==3&&own(p,house)){uint32_t t=typeOf(p,3);if(t&&featureTypeAllowed(featuretypes::RepairBuilding,t)&&((sh->flags&RepairUnrepairable)||get<uint8_t>(t+0x157A))&&decisions::shouldRepair({get<int>(p+0x6c),get<int>(t+0xA0),true,
