@@ -647,6 +647,12 @@ void displayLeaseTransition(){
  clock+=252;
  subscriber->subscribe(79,worldframe::Visual);
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
+ // Enriched Host visual demands still publish a scene boundary only.
+ clock+=252;
+ subscriber->subscribe(79,worldframe::Resources|worldframe::HostVisualPassengers|worldframe::HostVisualCombat);
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
+ subscriber->subscribe(79,worldframe::Visual|worldframe::HostVisualPassengers);
+ CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  subscriber->subscribe(79,worldframe::Resources|worldframe::Ore);
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::Ore));
  subscriber.reset();clock=2400;
