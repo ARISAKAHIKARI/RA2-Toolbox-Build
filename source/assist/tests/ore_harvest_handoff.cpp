@@ -38,7 +38,8 @@ constexpr uint32_t Overlay=0x20060000,Tiberium=0x20070000,OverlayItems=0x2008000
 constexpr uint32_t Cells=0x21000000,CellBase=0x30000000,Map=0x87F7E8;
 static Shared*sh;static Snapshot snap;static planner::World planningWorld;
 static uint32_t match=7,lastHouse=House;static bool fault=false,queueOkay=true,held=false,bursted=false,dodging=false;
-static DWORD clockNow=1000;static uint32_t failRead=0;static unsigned reads=0,cellReads=0,maxCellReads=0;static uint64_t observerCellReads=0;
+static DWORD clockNow=1000;
+static uint32_t sampleClock(Shared*){return clockNow;}static uint32_t failRead=0;static unsigned reads=0,cellReads=0,maxCellReads=0;static uint64_t observerCellReads=0;
 static bool kernelReads=false;
 static uint8_t globals[0x500000]{},objects[0x100000]{};
 static ManualVersions manualVersions;static ObjectIndex worldObjects;static taskarbiter::FrameArbiter<> actorFrameArbiter;
