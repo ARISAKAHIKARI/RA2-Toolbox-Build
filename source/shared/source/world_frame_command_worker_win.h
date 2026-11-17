@@ -15,7 +15,7 @@ class CommandCaptureWorker {
  static constexpr unsigned MaxCalls=8192;
  static constexpr size_t MaxBytes=64u*1024u*1024u;
  static constexpr DWORD MaxWorkMs=120,MaxHandoffMs=80;
- struct Work {Key key{};uint32_t demand=Base,epoch=0,requestRevision=0;std::vector<uint32_t>pages;};
+ struct Work {Key key{};uint32_t demand=Base,epoch=0;uint64_t requestRevision=0;std::vector<uint32_t>pages;};
  std::mutex gate_;
  std::atomic<uint32_t>epoch_{1};
  std::atomic<bool>stopping_{false};
@@ -25,11 +25,11 @@ class CommandCaptureWorker {
  Snapshot staging_,completed_;
  CaptureScratch scratch_;
  Key completedKey_{};
- uint32_t completedDemand_=0,completedEpoch_=0,completedRevision_=0;
+ uint32_t completedDemand_=0,completedEpoch_=0;uint64_t completedRevision_=0;
  bool queuedReady_=false,completedReady_=false;
  DWORD lastRequestedAt_=0;
  Key lastRequestedKey_{};
- uint32_t lastRequestedDemand_=0,lastRequestedRevision_=0;
+ uint32_t lastRequestedDemand_=0;uint64_t lastRequestedRevision_=0;
  std::atomic<uint32_t>accepted_{0},rejected_{0};
  static bool live(uint32_t address,void*out,size_t bytes){
   if(!out||!range(address,bytes))return false;
@@ -136,7 +136,7 @@ public:
   }();
   return value;
  }
- bool request(const Key&key,uint32_t demand,uint32_t revision,const std::vector<uint32_t>&pages){
+ bool request(const Key&key,uint32_t demand,uint64_t revision,const std::vector<uint32_t>&pages){
   if(!key.pid||!key.owner||!key.match||key.house<0x10000||
      !key.scenario||!key.cells||key.frame<0||!demand||
      pages.size()>MaxPages)return false;
@@ -160,7 +160,7 @@ public:
   lastRequestedDemand_=demand;lastRequestedRevision_=revision;
   SetEvent(event_);return true;
  }
- bool take(const Key&current,uint32_t demand,uint32_t revision,Snapshot&into){
+ bool take(const Key&current,uint32_t demand,uint64_t revision,Snapshot&into){
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
   if(!lock.owns_lock()||!completedReady_)return false;
   if(completedEpoch_!=epoch_.load(std::memory_order_acquire)||
