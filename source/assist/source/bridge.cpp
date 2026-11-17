@@ -44,6 +44,7 @@
 #include "dispatch_router.h"
 #include "order_policy.h"
 #include "unit_task_arbiter.h"
+#include "execution_proof.h"
 #include "../../external_reader/source/display_state.h"
 #include "../../shared/source/message_query.h"
 #include "../../shared/source/runtime_memory.h"
@@ -720,7 +721,8 @@ static void showOrderLines(uint32_t object){
 static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target,
                           uint32_t dest,int destTag,uint32_t nearest=0,int nearestTag=0,
                           taskarbiter::Owner owner=taskarbiter::Owner::Generic,uint32_t* receiptID=nullptr,
-                          int targetTag=-1,OrderAuthority authority=OrderAuthority::Local,bool appendWaypoint=false,bool cooperativeTakeover=false,bool forceConstructed=false){
+                          int targetTag=-1,OrderAuthority authority=OrderAuthority::Local,bool appendWaypoint=false,bool cooperativeTakeover=false,bool forceConstructed=false,
+                          const executionproof::Ticket* proof=nullptr){
  const bool foreign=authority==OrderAuthority::PlayerTest&&sh&&controlmode::proxyOrders(sh->controlAll)&&playableHouse(house);
  if(!id||!house||(house!=lastHouse&&!foreign)||!eventdelivery::mayQueue(get<int>(0xA8B238))||!loadInterfaces())return false;
  const uint8_t resolvedTargetTag=targetTag>=0?uint8_t(targetTag):(target?0x34:0);
@@ -740,6 +742,21 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  auto reject=orderpolicy::missionWithTargetTag(object!=0,object&&own(object,house),object&&live(object),
   mission,resolvedTargetTag,target,targetObject!=0,targetCellValid,destTag==0x34,destObject!=0);
  if(reject!=orderpolicy::Reject::None){++snap.commandRejected;return false;}
+ // The original planner's proof is optional on legacy/manual callers, but
+ // mandatory for migrated delayed planners. A candidate never grants authority.
+ // Verify UID->current pointer, original manual token, House, object-bound
+ // target identity and the actual requested event parameters on Game thread.
+ if(proof){
+  const auto orderFailure=executionproof::ordered(*proof,id,target,resolvedTargetTag,dest,uint8_t(destTag));
+  const auto liveFailure=orderFailure==executionproof::Failure::None?
+   executionproof::verify(*proof,{match,house,submittedAt},
+      [](uint32_t uid){return worldByID(uid);},
+      [](uint32_t uid){return manualVersions.get(uid);},
+      [](uint32_t p,uint32_t h){return own(p,h);}):orderFailure;
+  if(liveFailure!=executionproof::Failure::None){
+   snap.lastSubmitError=7;++snap.commandRejected;return false;
+  }
+ }
  const int frame=get<int>(0xA8ED84);
  actorFrameArbiter.begin(match,frame);
  // An explicitly captured limited aircraft click must leave failed/unused
