@@ -18,10 +18,23 @@ template<class Live>VisualStamp visualStamp(Live live,const Snapshot&base){
  get(0xA8B230,out.scenario);get(0x87F7E8+0x13C,out.cells);get(0x87F7E8+0x140,out.count);
  get(0xA83D4C,out.house);get(0xA8ED84,out.frame);get(0xA8B238,out.session);get(0xA8E9A0,active);
  get(0x87F7E8+0xF4,out.bounds);get(0x87F7E8+0x1240,out.rawWidth);get(0x87F7E8+0x1244,out.rawHeight);
- std::array<int,6>bounds{};int rw=0,rh=0;
- ok=base.read(0x87F7E8+0xF4,bounds.data(),sizeof bounds)&&base.read(0x87F7E8+0x1240,&rw,4)&&base.read(0x87F7E8+0x1244,&rh,4)&&ok;
+ // Full command-authoritative snapshots may carry geometry bytes that can
+ // be compared directly. A display-only Key intentionally carries ZERO
+ // game-thread pages: compare geometry across the two independent Host reads
+ // (before/after) instead, and require the same map/House/session/frame epoch.
  const auto&key=base.key;
- out.valid=ok&&active==1&&out.scenario==key.scenario&&out.cells==key.cells&&out.house==key.house&&out.count==key.cellCount&&out.session==key.session&&out.frame>=key.frame&&bounds==out.bounds&&rw==out.rawWidth&&rh==out.rawHeight;
+ bool sourceGeometry=true;
+ if(!boundaryOnlySource(key)){
+  std::array<int,6>bounds{};int rw=0,rh=0;
+  sourceGeometry=base.read(0x87F7E8+0xF4,bounds.data(),sizeof bounds)&&
+    base.read(0x87F7E8+0x1240,&rw,4)&&
+    base.read(0x87F7E8+0x1244,&rh,4)&&
+    bounds==out.bounds&&rw==out.rawWidth&&rh==out.rawHeight;
+ }
+ out.valid=ok&&sourceGeometry&&out.rawWidth>0&&out.rawHeight>0&&
+  active==1&&out.scenario==key.scenario&&out.cells==key.cells&&
+  out.house==key.house&&out.count==key.cellCount&&
+  out.session==key.session&&out.frame>=key.frame;
  return out;
 }
 class VisualCache {
