@@ -65,7 +65,10 @@ public:
   const uint32_t epoch=pool_.epoch();
   // A prior success is not sufficient: heartbeat expiry/retirement can remove
   // the advertised descriptor while this immutable game frame stays paused.
-  if(control.published(frame))return true;
+  // A descriptor can outlive a failed/exited worker's DataView handles.
+  // After reap/stop, do not trust it as proof that the backing data is still
+  // reachable. Restart a worker and let its own Server verify/rebuild the map.
+  if(thread_&&control.published(frame))return true;
   if(attemptSerial_.load(std::memory_order_acquire)==frame.key.serial&&attemptEpoch_.load(std::memory_order_relaxed)==epoch&&uint32_t(GetTickCount()-attemptAt_.load(std::memory_order_relaxed))<16)return false;
   if(!launch()||!pool_.submit(frame))return false;SetEvent(event_);return true;
  }
