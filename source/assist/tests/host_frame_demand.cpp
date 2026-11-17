@@ -5,7 +5,7 @@
 using namespace assist;
 int main(){
  using namespace compute;
- static_assert(Default==0,"new installations should start with host-side pure computation");
+ static_assert(Default==Fixed,"shipped fixed placement retains pre14 settings; active Host lanes still wake on demand");
  static_assert((All&(1u<<BurstRefresh))!=0,"retired burst slot is ABI-retained");
  HostFrameDemand d{};
  // The old computeApplied != All shortcut produced unconditional native
@@ -32,5 +32,5 @@ int main(){
  for(auto mask:{Default,All}){d={};d.placement=mask;d.pending=true;assert(needsFrameNotification(d));}
  // A single unrelated setting never produces a wake.
  d={};d.flags=1u;assert(!needsFrameNotification(d));
- std::puts("PASS host-first placement and active-demand-only frame notifications");
+ std::puts("PASS pre14 fixed placement and active-demand-only frame notifications");
 }
