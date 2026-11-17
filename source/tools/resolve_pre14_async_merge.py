@@ -75,6 +75,7 @@ def resolve(path, source):
     print(f"RESOLVED {path} ({len(blocks)} conflict sections)")
 
 def upgrade_autoload(text):
+    print('AUTOLOAD_ENTER_DEBUG',len(text),repr(text[max(0,text.find('enterEvent')-70):text.find('enterEvent')+320]),repr(text[:140]))
     text = must_replace(
         text,
         "static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,uint32_t* receiptID=nullptr){",
