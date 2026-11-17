@@ -132,7 +132,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   bool enemy=!ownActor&&(advanced||threat||spider)&&nativeEnemy(p,house);
   if(!tracked&&!harvester&&!oreDock&&!enemy&&!turret&&!dropSource&&!spiderSource)continue;
   auto&a=w.actors[w.count++];memset(&a,0,sizeof a);a.combatFirst=-1;oreParticipant[w.count-1]=harvester||defenseMiner;
-  a.id=get<uint32_t>(p+0x10);a.type=type;a.kind=k;a.x=get<int>(p+0x9C);a.y=get<int>(p+0xA0);a.z=get<int>(p+0xA4);
+  a.id=get<uint32_t>(p+0x10);a.sourcePointer=p;a.type=type;a.kind=k;a.x=get<int>(p+0x9C);a.y=get<int>(p+0xA0);a.z=get<int>(p+0xA4);
   a.mission=get<int>(p+0xAC);a.queued=get<int>(p+0xB4);a.cost=get<int>(type+0x610);a.veterancy=get<float>(p+0x150);a.manualVersion=manualVersions.get(a.id);
   if(ownActor)a.flags|=planner::Own;else if(enemy)a.flags|=planner::Enemy;
   if(get<bool>(p+0x83))a.flags|=planner::Selected;if(get<bool>(p+0x1C8))a.flags|=planner::Disabled;
@@ -302,15 +302,13 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  // Native Harvest click uses (10,nullptr,clickedCell,nullptr), not Move's
  // nearest-accessible override. Preserve that exact target packing.
  const bool nearest=o.purpose!=planner::OreHarvestOrder&&o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
- // The planning wire format already carries the original manual token,
- // but not the actor/target pointers. Bind the current identity at the shared
- // planner admission, then recheck it inside nativeMission before enqueue.
- // Do not pretend this pointer was observed in the original worker frame.
+ // Identity provenance comes from the original captured World, not a
+ // possibly recycled unit rebound after the Host finishes computing.
  const uint32_t destinationID=o.destinationTag==0x34?o.destination:0;
- const executionproof::Ticket proof{match,house,0,
-   {o.unit,worldByID(o.unit),o.token},
-   {o.target,o.target?worldByID(o.target):0},
-   {destinationID,destinationID?worldByID(destinationID):0}};
+ const executionproof::Ticket proof{sh->planMatch,house,sh->planTick,
+   {o.unit,o.unitPointer,o.token},
+   {o.target,o.targetPointer},
+   {destinationID,o.destinationPointer}};
  if(!submitProvenMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,
     o.purpose==3?taskarbiter::Owner::Magnetron:
       (o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore,
