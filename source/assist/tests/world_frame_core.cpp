@@ -128,7 +128,8 @@ void hostRichVisualFromBoundary(){
  CHECK(boundary.capture(worldframe::Base|worldframe::HostDisplayOnly,{}));
  CHECK(raw->seal()&&raw->counters.rosterCaptures==0);
  CHECK(!raw->find(ActorA&~4095u));
- const auto beforeReads=raw->counters.calls,beforePages=raw->pages.size();
+ const uint32_t beforeReads=raw->counters.calls;
+ const size_t beforePages=raw->pages.size();
  const uint32_t wanted=worldframe::Resources|worldframe::HostVisualPassengers|worldframe::HostVisualCombat;
  CHECK(worldframe::visualDemand(wanted));
  CHECK(worldframe::runtimeDemand(wanted)==worldframe::Base);
