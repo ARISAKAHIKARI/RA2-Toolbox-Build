@@ -163,6 +163,17 @@ public:
   }();
   return value;
  }
+ // The dispatcher calls this BEFORE assembling up to 16K page addresses.
+ // A busy same-world request can be retained without making any stale result
+ // authoritative. Both the lock and read-only check are nonblocking.
+ bool deferBusy(const Key&key,uint32_t demand,uint64_t revision,bool globalVehicles=false){
+  std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
+  if(!lock.owns_lock()||stopping_.load(std::memory_order_acquire))return false;
+  const bool outstanding=queuedReady_||capturing_.load(std::memory_order_acquire);
+  return coalesceInFlightWorld(lastRequestedKey_,key,lastRequestedDemand_,demand,
+      lastRequestedRevision_,revision,lastRequestedGlobal_,globalVehicles,
+      uint32_t(GetTickCount()-lastRequestedAt_),outstanding,MaxHandoffMs);
+ }
  bool request(const Key&key,uint32_t demand,uint64_t revision,const std::vector<uint32_t>&pages,bool globalVehicles=false){
   if(!key.pid||!key.owner||!key.match||key.house<0x10000||
      !key.scenario||!key.cells||key.frame<0||!demand||
