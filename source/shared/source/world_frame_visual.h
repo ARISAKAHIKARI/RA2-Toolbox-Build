@@ -41,10 +41,11 @@ public:
   // Host visual profiles are NOT Runtime command demand. Only this
   // read-only Host cache expands them into actor/passenger/combat graph
   // ranges; the published game-thread boundary remains small.
-  const uint32_t visualDetails=demand&uint32_t(HostVisualPassengers|HostVisualCombat);
-  demand=(demand&~uint32_t(Resources|HostVisualPassengers|HostVisualCombat))|Base;
+  const uint32_t visualDetails=demand&uint32_t(HostVisualPassengers|HostVisualCombat|HostVisualOre);
+  demand=(demand&~uint32_t(Resources|HostVisualPassengers|HostVisualCombat|HostVisualOre))|Base;
   if(visualDetails&HostVisualPassengers)demand|=Passengers;
   if(visualDetails&HostVisualCombat)demand|=Combat;
+  if(visualDetails&HostVisualOre)demand|=Ore;
   uint32_t combined=0;for(unsigned bit=0;bit<6;++bit){const uint32_t flag=1u<<bit;if(demand&flag){demanded_|=flag;demandTicks_[bit]=now;}if((demanded_&flag)&&uint32_t(now-demandTicks_[bit])<=250)combined|=flag;}
   if(latest_&&base_==source&&builtRevision_==revision_&&(demand&~builtDemand_)==0){++statistics.reused;return latest_;}
   if(attempted_==source&&uint32_t(now-attemptedAt_)<16)return {};
