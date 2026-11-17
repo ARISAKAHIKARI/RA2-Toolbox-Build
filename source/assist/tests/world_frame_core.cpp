@@ -91,8 +91,9 @@ void hostVisual(){
  CHECK(visual->counters.bytes>=rawBytes+512*4096&&visual->pages.size()>=rawPages+512);
  const auto calls=m.calls.size();CHECK(cache.acquire(raw,worldframe::Resources,101,live)==visual&&m.calls.size()==calls);
  CHECK(worldframe::authoritative(visual)==raw&&!worldframe::sameObservation(raw,visual));
- CHECK(worldframe::runtimeDemand(worldframe::Resources|worldframe::Combat)==worldframe::Base);
- CHECK(worldframe::runtimeDemand(worldframe::Visual|worldframe::Passengers)==worldframe::Base);
+ CHECK(worldframe::runtimeDemand(worldframe::Resources|worldframe::Combat)==(worldframe::Base|worldframe::Combat));
+ CHECK(worldframe::runtimeDemand(worldframe::Resources|worldframe::HostVisualCombat|worldframe::HostVisualPassengers)==worldframe::Base);
+ CHECK(worldframe::runtimeDemand(worldframe::Visual|worldframe::Passengers)==(worldframe::Base|worldframe::Passengers));
  CHECK(worldframe::runtimeDemand(worldframe::Combat|worldframe::Passengers)==(worldframe::Base|worldframe::Combat|worldframe::Passengers));
  // A missing visual page recovers while paused, without renewing control time.
  constexpr uint32_t extra=0xE00100;m.put(extra,456u);CHECK(!visual->read(extra,&value,4));cache.request({extra&~4095u},102,true);
@@ -455,7 +456,55 @@ void runtime(){
  rejectChange(0xA8ED84,51);rejectChange(0xA8B230,Scenario+0x10000);rejectChange(0x87F924,Cells+0x10000);rejectChange(0xA83D4C,House+0x10000);
  retireWorldFrame();CHECK(!worldFrameReady&&runtimeWorldDemands.empty());{SampleReadScope retired;CHECK(!retired&&!retired.complete());}
 }
-void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavings();runtime();hostReads();hostIsolation();std::puts("PASS production transport/ProcessReader/Runtime: pinned publication, independent pause observation, required/optional failures, no live fallback, sustained demand, same-frame single capture, independent world/frame/House rejection");}
+void displayOnlyRuntime(){
+ using namespace assist;
+ CHECK(mappedBytes==0);clock=41000;currentPid=HostPid;
+ auto client=worldframe::acquireClient(GamePid,183);
+ CHECK(!client->acquire(7));
+ client->subscribe(1,worldframe::Visual|worldframe::HostVisualPassengers|worldframe::HostVisualCombat);
+ CHECK(channel()&&channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
+ currentPid=GamePid;retireWorldFrame();worldFrameServer.disconnect();
+ CHECK(worldFrameServer.wanted(HostPid,clock));
+ CHECK(worldFrameServer.demandMask()==(worldframe::Base|worldframe::HostDisplayOnly));
+ Memory memory;setup(memory);Read read{&memory};auto before=worldlife::capture(read);
+ CHECK(before.valid());snap.frame=before.frame;const size_t firstCalls=memory.calls.size();
+ CHECK(captureWorldFrame(read,before,House,clock,worldFrameServer.demandMask(),true));
+ CHECK(worldFrameReady&&worldFrameBoundaryOnly&&worldFrame.pages.size()==0&&
+       worldFrame.counters.calls==0&&worldFrame.counters.bytes==0&&
+       worldframe::boundaryOnlySource(worldFrame.key));
+ CHECK(memory.calls.size()-firstCalls<=9); // independent world/House only
+ {SampleReadScope scope;CHECK(!scope&&!scope.complete());}
+ const uint32_t boundarySerial=worldFrame.key.serial;
+ currentPid=HostPid;auto shallow=client->acquire(7);
+ CHECK(shallow&&worldframe::boundaryOnlySource(shallow->key)&&shallow->pages.size()==0);
+ auto visual=client->visual(shallow,worldframe::Visual|worldframe::HostVisualPassengers|
+                            worldframe::HostVisualCombat,read);
+ int hp=0;uint32_t type=0,weapon=0;
+ CHECK(visual&&visual->controlSource==shallow&&visual->sealed());
+ CHECK(visual->read(ActorA+0x6C,&hp,4)&&hp==100);
+ CHECK(visual->read(ActorA+0x6C4,&type,4)&&type==Type);
+ CHECK(visual->read(Type+0x898,&weapon,4)&&weapon==Weapon);
+ CHECK(!shallow->read(ActorA+0x6C,&hp,4));
+ // Mixed command subscription revokes display-only classification immediately.
+ client->subscribe(2,worldframe::Base);
+ CHECK(channel()->demandMask==worldframe::Base);
+ currentPid=GamePid;CHECK(worldFrameServer.wanted(HostPid,clock));
+ const size_t graphBefore=memory.calls.size();
+ CHECK(captureWorldFrame(read,before,House,clock,worldFrameServer.demandMask(),true));
+ CHECK(worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.key.serial>boundarySerial&&
+       worldFrame.pages.size()>0&&worldFrame.counters.calls>0&&memory.calls.size()>graphBefore);
+ {SampleReadScope scope;CHECK(scope&&readWorldSample(ActorA+0x6C,&hp,4)&&hp==100&&scope.complete());}
+ currentPid=HostPid;auto full=client->acquire(7);
+ CHECK(full&&!worldframe::boundaryOnlySource(full->key)&&full->read(ActorA+0x6C,&hp,4));
+ CHECK(!shallow->read(ActorA+0x6C,&hp,4));
+ client->subscribe(3,worldframe::Visual|worldframe::Passengers);
+ CHECK((channel()->demandMask&worldframe::Passengers)!=0&&
+       !(channel()->demandMask&worldframe::HostDisplayOnly));
+ currentPid=GamePid;retireWorldFrame();worldFrameServer.disconnect();
+ currentPid=HostPid;client.reset();shallow.reset();visual.reset();full.reset();CHECK(mappedBytes==0);
+ std::puts("PASS zero-page Host boundary, enriched actor/weapon display, mixed demand fail-closed, same-frame command escalation");
+}
+void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavings();runtime();hostReads();hostIsolation();displayOnlyRuntime();std::puts("PASS production transport/ProcessReader/Runtime: pinned publication, independent pause observation, required/optional failures, no live fallback, sustained demand, same-frame single capture, independent world/frame/House rejection");}
 }
 #endif
 
