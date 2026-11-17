@@ -142,7 +142,12 @@ public:
      pages.size()>MaxPages)return false;
   const DWORD now=GetTickCount();
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
-  if(!lock.owns_lock()||stopping_.load(std::memory_order_acquire))return false;
+  if(!lock.owns_lock())return false;
+  reap(); // A prior stop may have completed after the previous connection.
+  if(stopping_.load(std::memory_order_acquire)){
+   if(thread_)return false; // The old pinned worker has not exited yet.
+   stopping_.store(false,std::memory_order_release);
+  }
   if(lastRequestedKey_.sameFrame(key)&&lastRequestedDemand_==demand&&lastRequestedRevision_==revision&&
       uint32_t(now-lastRequestedAt_)<16)return true;
   if(!launch())return false;
