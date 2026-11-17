@@ -11,14 +11,20 @@ coop=(root/'cooperative_bridge.h').read_text(encoding='utf-8')
 ui=(root/'main.cpp').read_text(encoding='utf-8')
 protocol=(root/'protocol.h').read_text(encoding='utf-8')
 reader=(root/'../../external_reader/source/process_discovery.h').read_text(encoding='utf-8')
-assert 'Version=42' in protocol
-assert 'RA2Assist_v042_' in bridge and 'RA2Assist_v042_' in ui
+# The wire version moves on every ABI update; asserting an obsolete fixed
+# numeric value makes a command-safety regression meaningless.
+assert 'Version=' in protocol
+assert 'AssistProtocolInfo[2]={Version,sizeof(Shared)}' in bridge
+assert 'MappingPrefixValue' in bridge
 assert bridge.count('static bool nativeMission(')==1
 assert 'static bool nativeObjectEvent(' in bridge
 assert 'static bool nativeProduceEvent(' in bridge
-assert 'nativeMission(house,infantry,7,0,vehicle,0x34' in load
+assert 'submitProvenMission(house,infantry,7,0,vehicle,0x34' in load
+assert 'static bool submitProvenMission(' in bridge
+assert 'executionproof::verify(*proof' in bridge
+assert 'executionproof::ordered(*proof' in bridge
 assert 'static bool nativeMission(' not in native
-assert 'nativeObjectEvent(get<int>(lastHouse+0x30),0x16,' in (root/'pointer_bridge.h').read_text()
+assert 'if(nativeObjectEvent(' in (root/'pointer_bridge.h').read_text()
 assert '++snap.queuedEvents' in bridge and 'snap.observedEvents+=missionObserver.pollWithReceipts(' in bridge
 assert 'missionObserver.clear()' in bridge
 assert 'unloadCount=0;' not in input_hooks and 'writeInputCodeGuarded' not in input_hooks

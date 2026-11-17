@@ -2,6 +2,12 @@ name: Async world publication
 on:
   push:
     branches: [codex/async-world-publish-20261115]
+  pull_request:
+    paths:
+      - 'source/shared/source/world_frame_*.h'
+      - 'source/assist/source/world_frame_runtime.h'
+      - 'source/assist/tests/world_frame_async_*'
+      - '.github/workflows/async-world-publication.yml'
   workflow_dispatch:
 permissions:
   contents: read

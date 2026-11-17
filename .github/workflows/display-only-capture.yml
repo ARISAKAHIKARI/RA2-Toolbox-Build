@@ -1,0 +1,82 @@
+name: Off-thread Host display capture
+on:
+  pull_request:
+    paths:
+      - 'source/shared/source/world_frame*.h'
+      - 'source/assist/source/world_frame_runtime.h'
+      - 'source/assist/source/world_capture*.h'
+      - 'source/assist/source/bridge.cpp'
+      - 'source/assist/source/main.cpp'
+      - 'source/assist/source/command_cursor_host.h'
+      - 'source/external_reader/source/process_reader.h'
+      - 'source/external_reader/source/shared_scene.h'
+      - 'source/assist/tests/world_frame_core.cpp'
+      - 'source/assist/tests/display_capture_offthread.cpp'
+      - '.github/workflows/display-only-capture.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: offthread-display-capture
+  cancel-in-progress: true
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate real capture/runtime/host headers and demand boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checks
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/display_capture_offthread.cpp -o checks/display-admission
+          checks/display-admission | tee checks/admission.log
+          python source/assist/tests/world_frame_core_test.py | tee checks/core.log
+          python source/assist/tests/world_frame_retention.py --out checks/retention | tee checks/retention.log
+          python source/assist/tests/tactical_frame_sampling.py --out checks/tactical | tee checks/tactical.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: display-capture-portable
+          path: checks/
+  native:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install paired native compiler
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Build x64 Host and x86 Runtime, check exports and ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/display-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/build.log 2>&1 || { tail -120 checks/build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root display-build --host-arch x64 --webview2 | tee checks/pe.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: display-capture-native
+          path: |
+            checks/
+            display-build/*.exe
+            display-build/*.dll
+            display-build/*.json

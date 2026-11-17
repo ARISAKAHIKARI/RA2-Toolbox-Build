@@ -1,0 +1,53 @@
+In file included from /home/runner/work/RA2-Toolbox-Build/RA2-Toolbox-Build/source/assist/tests/ore_harvest_handoff.cpp:122:
+/home/runner/work/RA2-Toolbox-Build/RA2-Toolbox-Build/checks/ore/ore_admission_extract.h: In function ‘bool externalOrderValid(const assist::planner::Order&, uint32_t)’:
+/home/runner/work/RA2-Toolbox-Build/RA2-Toolbox-Build/checks/ore/ore_admission_extract.h:24:35: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+   24 |   float storage[4];memcpy(storage,(void*)(unit+0x33C),sizeof storage);if(ore::storageAmount(storage)<=0)return false;
+      |                                   ^~~~~~~~~~~~~~~~~~~
+{"checks":84,"assertions_active":true,"normal_reads":8145,"normal_max_cell_reads_per_frame":50,"idle_100_frames_reads":30000,"idle_observer_map_cell_reads":0,"capture_and_observer_fixture":{"transport":"Linux_memcpy_synthetic_buffers_and_map","miners":129,"frames":100,"reads":30400,"microseconds_per_frame":520.094},"sealed_frame_captures":101,"capture_reads":29896,"capture_bytes":147275776,"capture_cell_reads":0,"sample_reads":68959,"live_guard_reads":505,"pass":true}
+{
+  "scope": "Build the real ore observer/search and complete production admission functions.\n\nSynthetic private memory and the nativeMission event boundary are explicit seams;\nno game process, mouse input, native pathfinder or networking is operated.\n",
+  "architectures": {
+    "native": {
+      "checks": 84,
+      "assertions_active": true,
+      "normal_reads": 8145,
+      "normal_max_cell_reads_per_frame": 50,
+      "idle_100_frames_reads": 30000,
+      "idle_observer_map_cell_reads": 0,
+      "capture_and_observer_fixture": {
+        "transport": "Linux_memcpy_synthetic_buffers_and_map",
+        "miners": 129,
+        "frames": 100,
+        "reads": 30400,
+        "microseconds_per_frame": 520.094
+      },
+      "sealed_frame_captures": 101,
+      "capture_reads": 29896,
+      "capture_bytes": 147275776,
+      "capture_cell_reads": 0,
+      "sample_reads": 68959,
+      "live_guard_reads": 505,
+      "pass": true,
+      "executed": true,
+      "exit_code": 0
+    }
+  },
+  "production_scope_extract_sha256": "9765a18a97dd8cfa24ece6baaa26631af6dd63eeb23b1703e8b5de7ab339123e",
+  "game_process_operated": false,
+  "windows_executed": false,
+  "source_sha256": {
+    "assist/source/ore_harvest_bridge.h": "0844b8e7ed658fa736c13f7749d10d58b263c8afa01592b65aef923d5860ea1e",
+    "assist/source/ore_harvest_search.h": "a84805e129bbc190efd84f8baa70bd3ff9b1ff833ad51f482e3f69e9e488ab6e",
+    "assist/source/external_orders_bridge.h": "be69e75597a8ef461bd4a337944f1f3ed4bee3e050095fcea27877e7ea178e98",
+    "assist/source/planner_types.h": "c40d0b448853803f690e6f9873741d965508748cb3568563cebb2f1c1e2abdcb",
+    "assist/source/ore_queue.h": "ec6e0afa9685ae9398f97a2dc131982fd6a777dd4a430235cf1f561e101a4bf1",
+    "assist/source/bridge.cpp": "c77abe73f4a0de41c67795816d9de6d2ab2e9087c0378ed0294db52a1e0373bf",
+    "assist/source/world_frame_runtime.h": "37eb0abf98f3c42ae757e1a261c8554c1da59473a539c98ab7501d331225a28b",
+    "assist/tests/ore_harvest_handoff.cpp": "479904309a011e1d01c47351e23193ba9c578f7fec4103c67ed53fd1281b2cc4",
+    "assist/tests/runtime_sample_fixture.py": "578c8d1dbaca69339ed88319ca5103b8947904183d00c48dd65325ce40b75430",
+    "assist/tests/fixtures/tactical_frame/runtime_sample_fixture.h": "6b2f0afa2ef91395805cec5e578601178715833dd0e9c316b346e3b6c20abedc",
+    "shared/source/world_frame.h": "40557dd686b85865d0fd3dffd62aed2b9533e9bd33e21af99116a4b450f3a8e7",
+    "shared/source/world_frame_capture.h": "a1ba88b26a864131f6e1c801d0916634e731a8d4add9e53cf7aff6b0c4fae917",
+    "assist/tests/ore_harvest_handoff.py": "b4c3e7eb0feb8cd43fe5c6e7a4d6d9a5e0476444d1019ec382638e8af401b5e0"
+  }
+}

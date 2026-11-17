@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "current",
+      "exit": 0,
+      "expected": 0,
+      "passed": true,
+      "extracted_sha256": "5820fbc58b2b4d45659d3108062b70d9f4ac37323bd82f6d70d9a117ded597d7"
+    }
+  ],
+  "real_game": false
+}

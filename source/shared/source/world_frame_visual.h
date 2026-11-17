@@ -18,10 +18,23 @@ template<class Live>VisualStamp visualStamp(Live live,const Snapshot&base){
  get(0xA8B230,out.scenario);get(0x87F7E8+0x13C,out.cells);get(0x87F7E8+0x140,out.count);
  get(0xA83D4C,out.house);get(0xA8ED84,out.frame);get(0xA8B238,out.session);get(0xA8E9A0,active);
  get(0x87F7E8+0xF4,out.bounds);get(0x87F7E8+0x1240,out.rawWidth);get(0x87F7E8+0x1244,out.rawHeight);
- std::array<int,6>bounds{};int rw=0,rh=0;
- ok=base.read(0x87F7E8+0xF4,bounds.data(),sizeof bounds)&&base.read(0x87F7E8+0x1240,&rw,4)&&base.read(0x87F7E8+0x1244,&rh,4)&&ok;
+ // Full command-authoritative snapshots may carry geometry bytes that can
+ // be compared directly. A display-only Key intentionally carries ZERO
+ // game-thread pages: compare geometry across the two independent Host reads
+ // (before/after) instead, and require the same map/House/session/frame epoch.
  const auto&key=base.key;
- out.valid=ok&&active==1&&out.scenario==key.scenario&&out.cells==key.cells&&out.house==key.house&&out.count==key.cellCount&&out.session==key.session&&out.frame>=key.frame&&bounds==out.bounds&&rw==out.rawWidth&&rh==out.rawHeight;
+ bool sourceGeometry=true;
+ if(!boundaryOnlySource(key)){
+  std::array<int,6>bounds{};int rw=0,rh=0;
+  sourceGeometry=base.read(0x87F7E8+0xF4,bounds.data(),sizeof bounds)&&
+    base.read(0x87F7E8+0x1240,&rw,4)&&
+    base.read(0x87F7E8+0x1244,&rh,4)&&
+    bounds==out.bounds&&rw==out.rawWidth&&rh==out.rawHeight;
+ }
+ out.valid=ok&&sourceGeometry&&
+  active==1&&out.scenario==key.scenario&&out.cells==key.cells&&
+  out.house==key.house&&out.count==key.cellCount&&
+  out.session==key.session&&out.frame>=key.frame;
  return out;
 }
 class VisualCache {
@@ -38,7 +51,14 @@ public:
  template<class Live>Token acquire(const Token&source,uint32_t demand,uint32_t now,Live live){
   if(!source||source->controlSource||!source->sealed())return {};
   if((base_&&!base_->key.sameWorld(source->key))||(!base_&&attempted_&&!attempted_->key.sameWorld(source->key))){latest_.reset();base_.reset();attempted_.reset();leases_.clear();revision_=builtRevision_=0;builtDemand_=demanded_=0;}
-  demand=(demand&~uint32_t(Resources))|Base;
+  // Host visual profiles are NOT Runtime command demand. Only this
+  // read-only Host cache expands them into actor/passenger/combat graph
+  // ranges; the published game-thread boundary remains small.
+  const uint32_t visualDetails=demand&uint32_t(HostVisualPassengers|HostVisualCombat|HostVisualOre);
+  demand=(demand&~uint32_t(Resources|HostVisualPassengers|HostVisualCombat|HostVisualOre))|Base;
+  if(visualDetails&HostVisualPassengers)demand|=Passengers;
+  if(visualDetails&HostVisualCombat)demand|=Combat;
+  if(visualDetails&HostVisualOre)demand|=Ore;
   uint32_t combined=0;for(unsigned bit=0;bit<6;++bit){const uint32_t flag=1u<<bit;if(demand&flag){demanded_|=flag;demandTicks_[bit]=now;}if((demanded_&flag)&&uint32_t(now-demandTicks_[bit])<=250)combined|=flag;}
   if(latest_&&base_==source&&builtRevision_==revision_&&(demand&~builtDemand_)==0){++statistics.reused;return latest_;}
   if(attempted_==source&&uint32_t(now-attemptedAt_)<16)return {};

@@ -535,13 +535,22 @@ static void nativeOrdersTick(uint32_t house,int frame){
  // Match the pending-input horizon. After it expires, normal mission, queued
  // mission, destination and target checks still protect an ongoing command.
  if(sh->magnetronGlobal&&!snap.chat&&globalMagnetronPauseOverflow<0){
-  for(int n=0;n<globalVehicleCandidateCount&&nativeCount<nativeorders::MaxOrders;++n){uint32_t p=globalVehicleCandidates[n];if(!p||!own(p,house)||!rawMagnetron(p)||stickyOwns(p)||formationOwns(get<uint32_t>(p+0x10))||globalMagnetronPauseIndex.contains(p)||orderIndex(p)>=0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x5A4)||get<uint32_t>(p+0x2B4)||get<uint32_t>(p+0x2AC))continue;
+  // Never inspect all 16K worker candidates on the native callback. The
+  // cursor advances across frames, so a busy roster is admitted fairly.
+  // Each visited object must still pass the live native eligibility checks.
+  const unsigned total=unsigned(globalVehicleCandidateCount);
+  const unsigned candidateBudget=globalVehicleScan.budget(total);
+  unsigned examined=0;
+  for(;examined<candidateBudget&&nativeCount<nativeorders::MaxOrders;++examined){
+   const int n=int(globalVehicleScan.index(total,examined));
+   uint32_t p=globalVehicleCandidateAt(n);if(!p||!own(p,house)||!rawMagnetron(p)||stickyOwns(p)||formationOwns(get<uint32_t>(p+0x10))||globalMagnetronPauseIndex.contains(p)||orderIndex(p)>=0||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C)||get<uint32_t>(p+0x5A4)||get<uint32_t>(p+0x2B4)||get<uint32_t>(p+0x2AC))continue;
    int m=get<int>(p+0xAC),q=get<int>(p+0xB4);if((m!=5&&m!=6&&m!=11&&m!=13)||(q!=-1&&q!=m))continue;
    int x=get<int>(p+0x9C)/256,y=get<int>(p+0xA0)/256;if(x<=0||x>=512||y<=0||y>=512)continue;
    auto&o=nativeOrders[nativeCount++];o={};o.p=p;o.id=get<uint32_t>(p+0x10);o.token=manualVersions.get(o.id);o.mode=planner::MagnetronMove;o.cell=o.nearest=y*1000+x;o.gx=x*256+128;o.gy=y*256+128;o.global=true;o.progress.hold=true;
    advancedObjects.add(p,o.id,uint32_t(nativeCount));
   }
- }
+  globalVehicleScan.advance(total,examined);
+ }else if(!sh->magnetronGlobal)globalVehicleScan.reset();
  int budget=recurringBudget(EventLane::Unload);smartUnloadAdmissionTick(house,frame,budget);if(unloadCount||(sh->flags&EjectAssist))smartUnloadTick(house,frame,budget);
  // Advanced decisions use the selected shared Planner backend.
  // This state stores click intents and validates actor identities in either mode.

@@ -31,7 +31,9 @@ static void serviceCommandCursorHint(){
  scanAt=now;scanPid=pid;scanMatch=commandMatch();scanKeys=held;scanRevision=settingsRevision;
  if((previewReader.pid()!=pid||previewReader.generation()!=externalReader.generation())&&!previewReader.open(pid)){clear();return;}
  previewReader.begin();
- const uint32_t demand=worldframe::Base|((allowed&(pointerinput::Advanced|pointerinput::CS|pointerinput::Magnetron))?worldframe::Combat:0)|((allowed&pointerinput::Enter)?worldframe::Passengers:0);
+ const uint32_t demand=worldframe::Resources|
+   ((allowed&(pointerinput::Advanced|pointerinput::CS|pointerinput::Magnetron))?worldframe::HostVisualCombat:0)|
+   ((allowed&pointerinput::Enter)?worldframe::HostVisualPassengers:0);
  external::radar::FrameScope worldScope(previewReader,commandMatch(),{},demand);if(!worldScope)return;
  auto read=[&](uint32_t at,void*p,size_t n){return previewReader.read(at,p,n);};
  auto input=[&](uint32_t at,void*p,size_t n){return external::radar::liveRead(previewReader,at,p,n);};

@@ -1,0 +1,34 @@
+Auto-merging source/assist/source/autoload.h
+CONFLICT (content): Merge conflict in source/assist/source/autoload.h
+Auto-merging source/assist/source/autoload_bridge.h
+CONFLICT (content): Merge conflict in source/assist/source/autoload_bridge.h
+Auto-merging source/assist/source/bridge.cpp
+CONFLICT (content): Merge conflict in source/assist/source/bridge.cpp
+Auto-merging source/assist/source/compute_policy.h
+CONFLICT (content): Merge conflict in source/assist/source/compute_policy.h
+Auto-merging source/assist/source/main.cpp
+CONFLICT (content): Merge conflict in source/assist/source/main.cpp
+Auto-merging source/assist/source/native_orders_bridge.h
+CONFLICT (content): Merge conflict in source/assist/source/native_orders_bridge.h
+Auto-merging source/assist/source/ore_harvest_bridge.h
+Auto-merging source/assist/source/unload_compute_bridge.h
+Auto-merging source/assist/source/world_frame_runtime.h
+CONFLICT (content): Merge conflict in source/assist/source/world_frame_runtime.h
+Auto-merging source/assist/tests/ore_harvest_handoff.cpp
+CONFLICT (content): Merge conflict in source/assist/tests/ore_harvest_handoff.cpp
+Auto-merging source/assist/tests/tactical_frame_sampling.cpp
+Auto-merging source/assist/tests/unload_loaded_admission.py
+CONFLICT (content): Merge conflict in source/assist/tests/unload_loaded_admission.py
+Auto-merging source/assist/tests/world_frame_async_dll.cpp
+CONFLICT (content): Merge conflict in source/assist/tests/world_frame_async_dll.cpp
+Auto-merging source/assist/tests/world_frame_async_host.cpp
+CONFLICT (content): Merge conflict in source/assist/tests/world_frame_async_host.cpp
+Auto-merging source/assist/tests/world_frame_core.cpp
+CONFLICT (content): Merge conflict in source/assist/tests/world_frame_core.cpp
+Auto-merging source/external_reader/source/process_reader.h
+Auto-merging source/shared/source/release_version.h
+CONFLICT (content): Merge conflict in source/shared/source/release_version.h
+Auto-merging source/shared/source/world_frame.h
+CONFLICT (content): Merge conflict in source/shared/source/world_frame.h
+Auto-merging source/shared/source/world_frame_async_win.h
+Automatic merge failed; fix conflicts and then commit the result.

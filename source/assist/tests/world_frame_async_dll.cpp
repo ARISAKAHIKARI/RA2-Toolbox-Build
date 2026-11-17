@@ -40,12 +40,14 @@ static BOOL WINAPI auditedNativeRead(HANDLE proc,LPCVOID address,LPVOID output,S
 #undef ReadProcessMemory
 #undef CreateFileMappingW
 #undef CreateThread
+// The publication's counted thread hook must not instrument command workers.
+#include "../../shared/source/world_frame_command_worker_win.h"
 #define WORLD_FRAME_FIXTURE_ONLY
 #define REAL_WINDOWS_RPM
 #include "world_frame_core.cpp"
 #include "../source/world_lifecycle.h"
 namespace assist {
-struct FixtureShared {volatile LONG worldSampleSeq=0;uint32_t owner=0,worldSampleFailures=0,worldSamplePages=0,worldSampleReads=0,worldSampleBytes=0,worldSampleRosters=0,worldSampleSerial=0;int worldSampleFrame=-1;};
+struct FixtureShared {volatile LONG worldSampleSeq=0;uint32_t owner=0,magnetronGlobal=0,worldSampleFailures=0,worldSamplePages=0,worldSampleReads=0,worldSampleBytes=0,worldSampleRosters=0,worldSampleSerial=0;int worldSampleFrame=-1;};
 static FixtureShared shared;static FixtureShared*sh=&shared;static uint32_t match=7;
 static struct {int frame=50;}snap;
 // No WORLD_FRAME_PLATFORM_FIXTURE: execute the actual async Runtime path.
@@ -149,3 +151,18 @@ extern "C" __declspec(dllexport) int Stop(){
  const bool shadow=assist::worldFrameShadow.stop();
  return published&&shadow?1:0;
 }
+
+// The worker may disappear while the descriptor still advertises the last
+// paused frame. Stop only the publisher here, retaining the control observation
+// and immutable capture; the next same-frame call must restart its worker.
+extern "C" __declspec(dllexport) int RecoverPublisher(){
+ using namespace assist;
+ if(!worldFramePublication.stop())return 0;
+ fixture::Read live{&memory};const auto before=worldlife::capture(live);
+ const auto key=worldFrame.key;const auto calls=memory.calls.size();
+ const unsigned starts=threadStarts;
+ if(!captureWorldFrame(live,before,fixture::House,GetTickCount(),worldframe::Base))return -1;
+ if(worldFrame.key.serial!=key.serial||memory.calls.size()!=calls||threadStarts!=starts+1)return -1;
+ return 1;
+}
+extern "C" __declspec(dllexport) int Stop(){assist::retireWorldFrame();return assist::worldFramePublication.stop()?1:0;}

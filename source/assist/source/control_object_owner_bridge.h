@@ -28,7 +28,7 @@ static int controlObjectOwnerAction(unsigned op,uint32_t sourceAddress,uint32_t 
  if(!read(sourceAddress,source,sizeof source)||source[4]!=0x34)return reject();
  memcpy(&id,source,4);if(!id)return reject();
  const int frame=get<int>(0xA8ED84);if(frame<0||frame>=INT32_MAX)return reject();
- indexWorld(frame);
+ if(!prepareWorldIndex(frame))return reject();
  const uint32_t object=worldByID(id);
  if(!object||!worldObjects.contains(object)||!live(object)||kind(object)<0||
     get<uint32_t>(object+0x10)!=id)return reject();
