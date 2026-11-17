@@ -21,14 +21,15 @@ struct WorldFrameCommandFixture {
  static bool enabled(){return false;}
  void invalidate(){}
  bool stop(){return true;}
- bool request(const worldframe::Key&,uint32_t,uint64_t,const std::vector<uint32_t>&){return false;}
- bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&){return false;}
+ bool request(const worldframe::Key&,uint32_t,uint64_t,const std::vector<uint32_t>&,bool=false){return false;}
+ bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&,worldframe::CommandRoster*=nullptr){return false;}
 };
 using WorldFrameCommandWorker=WorldFrameCommandFixture;
 #else
 using WorldFrameCommandWorker=::worldframe::CommandCaptureWorker;
 #endif
 static WorldFrameCommandWorker worldFrameCommandWorker;
+static worldframe::CommandRoster worldFrameCommandRoster;
 static uint32_t worldFrameSerial=0;static uint32_t worldFrameCapturedDemand=0;
 static uint64_t worldFrameCapturedRevision=0;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
 static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
@@ -60,7 +61,7 @@ public:
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
-static void retireWorldFrame(){worldFrameCommandWorker.invalidate();worldFramePublication.invalidate();worldFrameBoundaryOnly=false;worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);if(!++runtimeDemandRevision)++runtimeDemandRevision;}
+static void retireWorldFrame(){worldFrameCommandWorker.invalidate();worldFrameCommandRoster.invalidate();worldFramePublication.invalidate();worldFrameBoundaryOnly=false;worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);if(!++runtimeDemandRevision)++runtimeDemandRevision;}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
  // Only an explicitly admitted all-display subscription may skip the
  // game-thread CaptureGraph. Full command sampling has distinct authority.
@@ -96,7 +97,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // adopt a worker result without blocking the game's message pump.
   const uint64_t requestRevision=(uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
   if(worldFramePublication.begin(worldFrame)&&
-     worldFrameCommandWorker.take(key,graphDemand,requestRevision,worldFrame)){
+     worldFrameCommandWorker.take(key,graphDemand,requestRevision,worldFrame,&worldFrameCommandRoster)){
    // A background success still needs a NEW independent synchronous
    // world/frame/House identity check immediately before command delivery.
    const auto after=worldlife::capture(live);uint32_t afterHouse=0;
@@ -133,7 +134,11 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
   for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
   runtimeDemandLeases.append(key.tick,requests);
-  worldFrameCommandWorker.request(key,graphDemand,requestRevision,requests);
+  bool globalVehicles=false;
+#ifndef WORLD_FRAME_PLATFORM_FIXTURE
+  globalVehicles=sh&&sh->magnetronGlobal;
+#endif
+  worldFrameCommandWorker.request(key,graphDemand,requestRevision,requests,globalVehicles);
   return false;
  }
  if(!worldFramePublication.begin(worldFrame))return false;
