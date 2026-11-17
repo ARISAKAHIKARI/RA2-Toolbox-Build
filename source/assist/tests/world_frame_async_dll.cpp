@@ -72,4 +72,17 @@ extern "C" __declspec(dllexport) int Resume(){
  assert(captureWorldFrame(live,before,fixture::House,GetTickCount(),worldframe::Base));
  assert(memory.calls.size()==calls&&!std::memcmp(&worldFrame.key,&key,sizeof key));return 1;
 }
+// The worker may disappear while the descriptor still advertises the last
+// paused frame. Stop only the publisher here, retaining the control observation
+// and immutable capture; the next same-frame call must restart its worker.
+extern "C" __declspec(dllexport) int RecoverPublisher(){
+ using namespace assist;
+ if(!worldFramePublication.stop())return 0;
+ fixture::Read live{&memory};const auto before=worldlife::capture(live);
+ const auto key=worldFrame.key;const auto calls=memory.calls.size();
+ const unsigned starts=threadStarts;
+ if(!captureWorldFrame(live,before,fixture::House,GetTickCount(),worldframe::Base))return -1;
+ if(worldFrame.key.serial!=key.serial||memory.calls.size()!=calls||threadStarts!=starts+1)return -1;
+ return 1;
+}
 extern "C" __declspec(dllexport) int Stop(){assist::retireWorldFrame();return assist::worldFramePublication.stop()?1:0;}
