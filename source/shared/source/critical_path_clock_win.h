@@ -14,7 +14,7 @@ inline uint32_t elapsedUs(uint64_t start){
  if(!frequency)return 0;
  const uint64_t difference=stop-start;
  const uint64_t us=(difference/frequency)*1000000u+(difference%frequency)*1000000u/frequency;
- return uint32_t((std::min)<uint64_t>(us,UINT32_MAX));
+ return uint32_t(std::min<uint64_t>(us,UINT32_MAX));
 }
 }
 #else
