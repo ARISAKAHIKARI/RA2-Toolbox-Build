@@ -1617,7 +1617,11 @@ static void tick(){
   external::catalogue::Stamp stamp;catalogueAt=now;
   if(external::catalogue::capture([](uint32_t a,void*p,size_t n){return read(a,p,n);},stamp)){
    if(!catalogueReady||catalogueHash!=stamp.hash)scanTypes();catalogueHash=stamp.hash;catalogueReady=true;
-  }else{catalogueReady=false;scanTypes();}
+  }else{
+   // A failed stamp read means UNKNOWN, not a changed type catalogue.
+   // Keep the last complete cache and retry the cheap stamp. Never trigger
+   // full type scanning every 100ms because of a transient missing page.
+  }
  }
  uint32_t worldDemand=worldframe::Base;
  if(sharedWorldWanted)worldDemand|=worldFrameServer.demandMask();
