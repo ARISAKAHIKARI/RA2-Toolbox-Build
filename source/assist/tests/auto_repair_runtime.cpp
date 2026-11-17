@@ -135,7 +135,7 @@ static void setup(bool automatic=true,bool internal=true,unsigned count=1){
  ++match;lastHouse=0x200000;currentFrame=0;chat=externalInputFrame=false;queueAvailable=true;perFrameBudget=64;buildingScans=notifications=queueAttempts=indexCalls=0;sent.clear();buildings.clear();
  for(unsigned i=0;i<count;++i)buildings.push_back({0x300000+i*0x10000,0x800000+i*0x10000,100+i,lastHouse});
  repairCount=repairAt=repairDone=0;repairAckRequest=repairAckStarted=pendingAck=0;repairAckPending=pendingAckReady=false;repairCalculationPending=false;repairCalculationStarted=repairTaskSeen=0;autoWas=false;lastAuto=0;pendingRepairs.clear();repairFrames.clear();
- worldFrameReady=false;sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;indexedFrame=-1;featureConfig={};repairFilterKnown=true;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
+ worldFrameReady=false;sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;indexedFrame=-1;featureConfig={};repairFilterKnown=true;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();repairResultGate.reset();repairValidatedSerial=repairStagedCount=0;runtimeDemandRevision=1;
 }
 static void tick(DWORD now,int frame,bool input=false){currentFrame=frame;externalInputFrame=input;prepareSample();repairTick(lastHouse,now);}
 struct WorkerResult{uint32_t task;compute::RepairResult value;};
@@ -278,7 +278,10 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
   for(int i=0;i<result.value.count;++i){uint32_t id=uint32_t((8191-i)*2);if(i%11==0)id+=1;if(i%37==0)id=2;
    result.value.ids[i]=id;if(!(id&1))expected.push_back(id);
   }
-  deliver(result);repairCalculationTick(1008);
+  deliver(result);
+  repairCalculationTick(1008);
+  expect(repairCalculationPending&&repairCount==0,"bounded result verification never publishes a partial batch");
+  for(int step=1;step<=8&&repairCalculationPending;++step)repairCalculationTick(1008+step*8);
   expect(!repairCalculationPending&&repairCount==int(expected.size()),"full-capacity results filter unknown IDs");
   expect(std::equal(expected.begin(),expected.end(),repairIDs),"membership preserves result order, duplicates, zero and edge IDs");
   expect(sent.empty(),"membership acceptance does not itself issue game events");
