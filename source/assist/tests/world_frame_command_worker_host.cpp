@@ -10,12 +10,30 @@ int main(int argc,char**argv){
   auto result=reinterpret_cast<Fn>(GetProcAddress(dll,name));assert(result);return result;
  };
  const Fn start=fn("Start"),poll=fn("Poll"),stale=fn("NeverAdmitStale");
+ const Fn startGlobal=fn("StartGlobal"),pollGlobal=fn("PollGlobal");
+ const Fn wrongGlobal=fn("PollWrongGlobal"),rejected=fn("RejectedCount");
  const Fn stop=fn("Stop"),reads=fn("GameReadCount");
+ // Read a sealed global-vehicle roster but refuse to adopt it when the
+ // live setting was switched off before the exact-frame handoff.
+ const int rejectedBefore=rejected();
+ assert(startGlobal()==1);
+ bool wrongModeRejected=false;
+ for(int attempt=0;attempt<150&&!wrongModeRejected;++attempt){
+  Sleep(10);
+  assert(wrongGlobal()==0);
+  wrongModeRejected=rejected()>rejectedBefore;
+ }
+ assert(wrongModeRejected&&reads()==0);
  assert(start()==1);
  // Never synchronously wait for a worker on the game's message callback.
  // This is an external test harness polling in a separate process.
  int result=0;
  for(int attempt=0;attempt<150&&!result;++attempt){Sleep(10);result=poll();}
+ assert(result==1&&reads()==0);
+ // A new worker result with the matching setting still adopts correctly.
+ assert(startGlobal()==1);
+ result=0;
+ for(int attempt=0;attempt<150&&!result;++attempt){Sleep(10);result=pollGlobal();}
  assert(result==1&&reads()==0);
  assert(stale()==1);
  bool stopped=false;
