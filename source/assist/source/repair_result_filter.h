@@ -10,7 +10,7 @@ namespace assist { namespace repairfilter {
 // No heap, no OS memory reads, no full-table clear, and no unbounded probes.
 // An adversarial hash collision is UNKNOWN, never permission to issue an order.
 struct Filter {
- static constexpr unsigned MaxItems=8192,Slots=32768,MaxOperationsPerTick=512,MaxProbe=32;
+ static constexpr unsigned MaxItems=8192,Slots=32768,MaxOperationsPerTick=4096,MaxProbe=32;
  uint32_t values[Slots]{},generations[Slots]{},generation=1;
  unsigned built=0,filtered=0;
  bool running=false,failed=false;
