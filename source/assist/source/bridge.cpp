@@ -278,6 +278,7 @@ static gateway::MissionState observeMissionReceipt(uint32_t id){
  if(!read(p+0x10,&currentID,sizeof currentID)||!read(p+0xAC,&mission,sizeof mission)||
     !read(p+0xB4,&queued,sizeof queued)||!read(p+0x11C,&carrier,sizeof carrier)||currentID!=id)return {};
  return {true,mission,queued,carrier};
+}
 
 // Never dereference an old/stale worker roster from a native command path.
 static uint32_t globalVehicleCandidateAt(int index){
