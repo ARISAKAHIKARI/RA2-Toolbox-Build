@@ -121,7 +121,7 @@ static bool repairCalculationPending;static DWORD repairCalculationStarted;stati
 static uint32_t lastIdle[3];static int prevBusy,prevPaused,prevCompleted;static bool productionBaseline;
 static uint8_t techAllowed[MaxTypes];static bool enhancementChangedCatalogue=false;
 static uint32_t typePointers[MaxTypes];
-static ManualVersions manualVersions;static ObjectIndex worldObjects;static int indexedFrame=-1,indexedCount=-1;static uint32_t indexedItems;
+static ManualVersions manualVersions;static ObjectIndexView worldObjects;static int indexedFrame=-1,indexedCount=-1;static uint32_t indexedItems;
 // Reuse the mandatory world-index traversal for global magnetron discovery.
 // Input and planning still revalidate identities and native eligibility.
 static uint32_t globalVehicleCandidates[16384];static int globalVehicleCandidateCount=0;static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
@@ -210,8 +210,36 @@ static void indexWorld(int frame){
 // A sealed snapshot may still contain failed pages. An incomplete identity
 // projection is unknown, not an empty world. Execution guards may rebuild the
 // live identity index after leaving the sealed scope; pure observers must wait.
+// The worker-built identity projection is not a native EventClass grant.
+// Its only lifetime is the currently sealed exact game logic frame. Every
+// native operation still verifies live UID, House, mission and eligibility.
+static bool commandRosterReady(){
+ return worldFrameCommandWorker.enabled()&&worldFrameReady&&!worldFrameBoundaryOnly&&
+  worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
+  worldFrameCommandRoster.current(worldFrame.key)&&
+  worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal)&&
+  worldFrame.key.house==lastHouse;
+}
 static bool refreshWorldIndex(int frame,bool executionGuards){
  static uint32_t failedMatch=0,failedAt=0;static int failedFrame=-1;
+ if(worldFrameCommandWorker.enabled()){
+  if(!commandRosterReady()||frame!=worldFrame.key.frame){
+   indexedFrame=-1;globalVehicleCandidateCount=0;
+   return false; // no synchronous full-roster or hash construction
+  }
+  static uint32_t adoptedSerial=0;
+  if(indexedFrame!=frame||adoptedSerial!=worldFrame.key.serial){
+   worldObjects.bind(&worldFrameCommandRoster.objects,commandRosterReady);
+   indexedCount=worldFrameCommandRoster.count;indexedItems=worldFrameCommandRoster.items;
+   indexedGlobalVehicles=worldFrameCommandRoster.global;indexedVehicleHouse=lastHouse;
+   const auto&candidates=worldFrameCommandRoster.globalVehicles;
+   globalVehicleCandidateCount=int(std::min<size_t>(16384,candidates.size()));
+   if(globalVehicleCandidateCount)
+    std::memcpy(globalVehicleCandidates,candidates.data(),size_t(globalVehicleCandidateCount)*4);
+   indexedFrame=frame;adoptedSerial=worldFrame.key.serial;
+  }
+  return true;
+ }
  const uint32_t now=sampleClock(sh);
  if(failedMatch==match&&failedFrame==frame&&uint32_t(now-failedAt)<16)return false;
  if(worldFrameReady){
