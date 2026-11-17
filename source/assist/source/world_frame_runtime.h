@@ -151,8 +151,14 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  if(candidateCount&&(!lastRecoverySubmitAt||uint32_t(key.tick-lastRecoverySubmitAt)>=32)){
   if(worldFramePublication.requestRecovery(key,candidates.data(),candidateCount))lastRecoverySubmitAt=key.tick;
  }
- worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
- bool complete=capture.capture(captureDemand,requests,verified.data(),verifiedCount);
+ // A display-only boundary is metadata, not a memory sample. Avoid even
+ // constructing/resetting the synchronous CaptureGraph or touching actor
+ // scratch in the game-message callback. Full command capture is unchanged.
+ bool complete=true;
+ if(!boundaryOnly){
+  worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
+  complete=capture.capture(captureDemand,requests,verified.data(),verifiedCount);
+ }
  // These checks deliberately bypass the read set. Cached self-comparison is
  // not evidence that the frame/world/House survived the acquisition boundary.
  const auto after=worldlife::capture(live);uint32_t afterHouse=0;
