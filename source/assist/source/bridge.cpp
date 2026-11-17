@@ -202,7 +202,7 @@ static void name(uint32_t t,uint16_t*out,int n){uint32_t p=get<uint32_t>(t+0x60)
 #include "build_time_tooltip.h"
 static bool sameid(const char*a,const char*b){for(int i=0;i<24;++i){if(a[i]!=b[i])return false;if(!a[i])return true;}return true;}
 static bool own(uint32_t p,uint32_t house){return live(p)&&get<uint32_t>(p+0x21c)==house;}
-static void indexWorld(int frame){
+static void indexWorldImpl(int frame){
  Vec all{};const auto unknown=[](){worldObjects.clear();indexedFrame=-1;globalVehicleCandidateCount=0;};
  if(!read(0xA8EC78,&all,sizeof all)||all.count<0||all.count>16384||all.capacity<all.count||all.capacity>262144||(all.count&&all.items<0x10000)){unknown();return;}
  if(indexedFrame==frame&&indexedCount==all.count&&indexedItems==all.items&&indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal)&&indexedVehicleHouse==lastHouse)return;
@@ -221,6 +221,13 @@ static void indexWorld(int frame){
   // fallible UID read while deciding which manual revisions to retain.
   static ManualVersions liveVersions;liveVersions.copyLive(manualVersions,[](uint32_t id){return worldObjects.byId(id)!=0;});minerDefenseReindexManual(liveVersions);manualVersions=liveVersions;prunedFrame=frame;
  }
+}
+static uint32_t criticalIndexCalls=0;
+static void indexWorld(int frame){
+ const bool sampled=AssistCriticalTimingEnabled()&&((++criticalIndexCalls&7u)==0);
+ const uint64_t start=sampled?criticalpath::ticks():0;
+ indexWorldImpl(frame);
+ if(start)AssistCriticalTimingRecord(criticalpath::WorldIndex,criticalpath::elapsedUs(start));
 }
 // A sealed snapshot may still contain failed pages. An incomplete identity
 // projection is unknown, not an empty world. Execution guards may rebuild the
@@ -1310,7 +1317,7 @@ static void scanCrates(uint32_t tactical,int frame,DWORD now,uint32_t flags){
  }
  if(tactical)for(int i=0;i<crateCount;++i){auto&c=crateCache[i];POINT pt{};if(!call<bool>(0x6D2140,tactical,c.coords,&pt))continue;snap.crates[snap.crateCount++]={c.cellX,c.cellY,pt.x,pt.y,c.preview};}
 }
-static void scan(uint32_t house,int frame,DWORD now){
+static void scanImpl(uint32_t house,int frame,DWORD now){
  snap.labels=0;snap.selected=0;snap.transports=snap.used=snap.capacity=0;
  uint32_t tactical=get<uint32_t>(0x887324),flags=sh->flags;
  const bool capacityReady=(flags&Capacity)&&nativeDependencyReady(0x473460);
@@ -1351,6 +1358,13 @@ static bool scanSummary(uint32_t house,int frame,DWORD now,uint32_t flags){
  snap.swCount=0;Vec sw=vec(house+0x254,256);if(nativeDependencyReady(0x6CC360))for(int i=0;i<sw.count&&snap.swCount<MaxSW;++i){uint32_t p=item(sw,i);if(!p||get<uint32_t>(p+0x2C)!=house||!get<bool>(p+0x6D))continue;uint32_t t=get<uint32_t>(p+0x28);if(!t)continue;auto&d=snap.supers[snap.swCount++];memset(&d,0,sizeof d);memcpy(d.id,(void*)(t+0x24),23);name(t,d.name,40);d.index=i;d.ready=call<char>(0x6CC360,p);d.frames=remaining(get<int>(p+0x30),get<int>(p+0x38),frame);}
  scanProduction(house,frame,flags);
  return true;
+}
+static uint32_t criticalScanCalls=0;
+static void scan(uint32_t house,int frame,DWORD now){
+ const bool sampled=AssistCriticalTimingEnabled()&&((++criticalScanCalls&7u)==0);
+ const uint64_t start=sampled?criticalpath::ticks():0;
+ scanImpl(house,frame,now);
+ if(start)AssistCriticalTimingRecord(criticalpath::SceneScan,criticalpath::elapsedUs(start));
 }
 static void shiftScene(int dx,int dy){
  for(int i=0;i<snap.labels;++i){snap.label[i].x-=dx;snap.label[i].y-=dy;}
@@ -1761,7 +1775,11 @@ extern "C" void GuardedAssistTick();
 extern "C" void AssistRuntimeMessage(int code,WPARAM wp,LPARAM lp){
  if(code>=0){
   InterlockedExchange(&hostWorkPending,1);
+  static uint32_t criticalDispatchCalls=0;
+  const bool sampled=AssistCriticalTimingEnabled()&&((++criticalDispatchCalls&7u)==0);
+  const uint64_t started=sampled?criticalpath::ticks():0;
   dispatchFromTrigger(dispatchrouter::Trigger::Message,GetTickCount(),wp==PM_REMOVE?reinterpret_cast<const MSG*>(lp):nullptr);
+  if(started)AssistCriticalTimingRecord(criticalpath::TacticalDispatch,criticalpath::elapsedUs(started));
  }
 }
 extern "C" void AssistRuntimeWatchdog(){
