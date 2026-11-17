@@ -30,7 +30,7 @@ jobs:
           git config user.email 'integration-ci@users.noreply.github.com'
           git fetch --no-tags origin 'refs/tags/v1.0.51:refs/tags/v1.0.51'
           git fetch --no-tags origin 'refs/heads/codex/async-command-capture-20261117:refs/remotes/origin/async-command-capture'
-          git checkout -B integrate/pre14-async-20261118 v1.0.51
+          git checkout -B integrate/stable-async-20261118-v2 v1.0.51
           git config core.autocrlf input
           if git -c merge.renormalize=true merge -s ort -X renormalize -X diff-algorithm=histogram --no-commit --no-ff refs/remotes/origin/async-command-capture >checks/merge.log 2>&1; then
             echo 'Auto-merge: no remaining conflicts'
@@ -67,7 +67,7 @@ jobs:
           set -euo pipefail
           git add -A
           git commit -m "merge: retain stable 1.0.51/pre14 fixes and integrate async command proof"
-          git push origin HEAD:refs/heads/integrate/pre14-async-20261118
+          git push origin HEAD:refs/heads/integrate/stable-async-20261118-v2
           echo "INTEGRATED_SHA=$(git rev-parse HEAD)"
           git log -1 --format='PARENTS=%P'
       - uses: actions/upload-artifact@v4
