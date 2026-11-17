@@ -91,8 +91,11 @@ planner_types=(root / 'planner_types.h').read_text()
 planner_engine=(root / 'external_planner.h').read_text()
 assert 'sourcePointer=0;' in planner_types
 assert 'unitPointer=0,targetPointer=0,destinationPointer=0;' in planner_types
-assert 'o.unitPointer=source?source->sourcePointer:0;' in planner_engine
-assert 'o.targetPointer=target?target->sourcePointer:0;' in planner_engine
+assert 'stampProvenance(o,' in planner_engine
+provenance=(root / 'planner_provenance.h').read_text()
+assert 'order.unitPointer=source?source->sourcePointer:0;' in provenance
+assert 'order.targetPointer=target?target->sourcePointer:0;' in provenance
+assert 'order.destinationPointer=dest?dest->sourcePointer:0;' in provenance
 assert 'ManualTakeover' in proof and 'TargetChanged' in proof and 'WrongMatch' in proof
 assert 'THREAD_PRIORITY_BELOW_NORMAL' in worker
 assert 'WaitForSingleObject(thread_,0)' in worker
