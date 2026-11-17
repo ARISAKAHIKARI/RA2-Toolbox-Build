@@ -102,6 +102,24 @@ def resolve(path, source):
     text = PATTERN.sub(pick, text)
     if "<<<<<<<" in text or ">>>>>>>" in text:
         raise RuntimeError(f"{path}: unresolved conflict marker")
+    if str(path) == "source/assist/source/bridge.cpp":
+        # Keep pre14's explicit Unknown/Issue/Invalid repair admissibility,
+        # but never clear a worker-published UID index in the same frame.
+        original = (
+          " if(repairAt<repairCount&&budget>0){\n"
+          "  indexWorld(frame);\n"
+          "  // Never retire queued candidates if a new UID roster could not be sealed.\n"
+          "  if(indexedFrame==frame)while(repairAt<repairCount&&budget>0){")
+        guarded = (
+          " if(repairAt<repairCount&&budget>0&&\n"
+          "    (!worldFrameCommandWorker.enabled()||commandRosterReady())){\n"
+          "  if(!worldFrameCommandWorker.enabled())indexWorld(frame);\n"
+          "  // Pre14's tri-state repair eligibility stays in place.\n"
+          "  if(indexedFrame==frame||worldFrameCommandWorker.enabled())while(repairAt<repairCount&&budget>0){")
+        if original in text:
+            text = must_replace(text,original,guarded,"repair_index_worker_handoff")
+        elif guarded not in text:
+            raise RuntimeError("merged repair admission lost worker roster guard")
     if str(path).endswith("/autoload.h"):
         text = must_replace(text, "Observation initial{};bool enterObserved=false;int kind=1;uint32_t ticket=0,queuedAt=0;};",
                             "Observation initial{};bool enterObserved=false;int kind=1;uint32_t ticket=0,queuedAt=0,manualToken=0;};", str(path))
