@@ -194,7 +194,17 @@ def main():
     source = git("show",":3:source/assist/source/world_frame_runtime.h").replace("\r\n","\n")
     for path in paths:
         resolve(path, source)
-    subprocess.run(["git","add","--",*paths], check=True)
+    # pre14's generated fixture scope defines this state itself; the parallel
+    # async-branch fixture must not define it a second time.
+    fixture = Path("source/assist/tests/fixtures/tactical_frame/runtime_sample_fixture.h")
+    fixture_text = fixture.read_text(encoding="utf-8")
+    state = "static bool worldFrameBoundaryOnly=false;\n"
+    if state in fixture_text:
+        if fixture_text.count(state) != 1:
+            raise RuntimeError("unexpected fixture worldFrameBoundaryOnly declarations")
+        fixture.write_text(fixture_text.replace(state, ""), encoding="utf-8", newline="\n")
+        print("FIXED fixture duplicate worldFrameBoundaryOnly")
+    subprocess.run(["git","add","--",*paths,str(fixture)], check=True)
     if git("diff","--name-only","--diff-filter=U").strip():
         raise RuntimeError("Unmerged files remain")
     print(f"RESOLVED_ALL {len(paths)}")
