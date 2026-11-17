@@ -1,7 +1,7 @@
-name: Verify game-thread worst-case probe budget and tooltip idle fast path
+name: Verify game-thread cost and Host off-thread display capture
 on:
   push:
-    branches: [fix/game-thread-probe-budget-20261117]
+    branches: [fix/game-thread-probe-budget-20261117, fix/display-capture-offthread-admission-20261117]
     paths:
       - 'source/**'
       - '.github/workflows/verify-game-thread-probe-budget.yml'
@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: game-thread-probes-${{ github.ref }}
+  group: offthread-display-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -21,6 +21,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Prove passive display flags and page requests never force a command graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/display_capture_offthread.cpp -o /tmp/display-capture-offthread
+          /tmp/display-capture-offthread
       - name: Regress irrelevant message fast path and original 17 input messages
         shell: bash
         run: |
@@ -80,7 +86,7 @@ jobs:
           if ((& $zig version) -ne '0.13.0') {throw 'Incorrect Zig version'}
           Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
           New-Item -ItemType Directory -Force diagnostics,dist/compiled | Out-Null
-      - name: Compile x86 GameRuntime and x64 WebView2 Host with budget changes
+      - name: Compile x86 GameRuntime and x64 Host with isolated visual subscriptions
         shell: bash
         run: |
           set -euo pipefail
@@ -94,6 +100,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: RA2Toolbox-game-thread-budget-windows-diagnostics
+          name: RA2Toolbox-offthread-display-windows-diagnostics
           path: diagnostics/
           retention-days: 14
