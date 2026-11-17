@@ -83,6 +83,10 @@ assert 'submitProvenMission(house,r.id,decision.mission' in unload
 assert '{s.id,s.pointer,s.token}' in unload
 assert 'capturedTargetPointer=q.pointer;' in unload
 assert 'submitProvenMission(house,o.unit,o.mission' in external
+assert 'if(o.purpose==planner::MagnetronDropOrder){' in external
+drop=external.split('if(o.purpose==planner::MagnetronDropOrder){',1)[-1].split('if(!submitProvenMission(',1)[0]
+assert 'executionproof::verify(proof' in drop
+assert 'nativeObjectEvent(' in drop
 assert '{o.unit,o.unitPointer,o.token}' in external
 assert '{o.target,o.targetPointer}' in external
 assert 'a.sourcePointer=p;' in external
