@@ -32,7 +32,7 @@
 
 - **AutoLoad**：`compute::LoadInput` 冻结的 `p.object,p.id,tokens[i]` 与 `vehicle.object,vehicle.id` 作为执行凭证交给 `submitProvenMission`，避免后台结果落地前单位/载具身份变化。
 - **Unload**：`unloadcompute::Input` 冻结的 `s.pointer,s.id,s.token`，以及选择目标时的原始 ID/指针，在原生最终入口再次验证；保留载员 Limbo 特殊准入与完整三乘员跟进。
-- **External planner / Ore / Combat / Magnetron / Defense**：沿用 wire 中原始 `o.token`；由于当前 `planner::Order` wire **不保存对象指针**，在上游 `externalOrderValid` 判定后立即绑定当前 `worldByID` 指针，然后在 `nativeMission` 复核一次。这提供提交窗口的 UID/指针一致性，**不能冒充规划快照时的原始指针凭证**；未来可在不破坏 ABI 的单独 provenance side-channel 内传递完整原始来源。
+- **External planner / Ore / Combat / Magnetron / Defense**：在游戏端采样 `planner::World::Actor::sourcePointer`，Host 规划返回 `planner::Order::unitPointer/targetPointer/destinationPointer`，全部来自**同一原始采样世界**。原始 `manualVersion` 和 `planTick` 不重置；迟到的候选仍在游戏线程复核，指针/UID 复用、人工接管和目标改变必须拒绝。**Assist Host/Runtime ABI 版本从 109 升为 110，必须配套替换。**工具箱自己跟进矿车原生卸载的 `OreHarvestOrder` 不来自 Host，使用该任务冻结的 `j.pointer`、当前匹配的对局以及其自身持续任务截止时间，不误用 Host 截止时间。
 
 注意：普通手动命令和未迁移的老自动功能仍可使用 `nativeMission` 的 legacy 可选凭证分支。当前只是把数条**后台计算结果**改成必须走 proof-required wrapper，而不是宣称所有命令均持有完整原始来源凭证。仍必须遵守零主线程全量采集、误差闭合以及实机 x86/CnCNet/JJ 验证；异步 CommandCaptureWorker 仍以 `RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=1` 试验性启用，不可默认开放。
 
