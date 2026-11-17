@@ -20,7 +20,17 @@ def must_replace(content, old, new, name):
     return content.replace(old, new, 1)
 
 def maybe_replace(content, old, new, name):
-    if new in content:
+    # Git's CRLF-renormalized merge may already have integrated the feature
+    # but wrapped the call differently. Check the actual semantics, not spacing.
+    present = {
+        "autoload_enter_signature": "const executionproof::Ticket&proof",
+        "autoload_enter_dispatch": "return submitProvenMission(house,infantry",
+        "autoload_initial": "enterEvent(house,p.id,v.id,proof,&ticket)",
+        "autoload_token": "job.manualToken=tokens[i]",
+        "autoload_retry": "enterEvent(house,r.id,r.vehicleID,proof,&ticket)",
+        "autoload_takeover": "manualVersions.get(r.id)!=r.manualToken",
+    }
+    if new in content or (name in present and present[name] in content):
         print(f"PRESERVED_MERGED {name}")
         return content
     return must_replace(content,old,new,name)
