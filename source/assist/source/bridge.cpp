@@ -78,7 +78,11 @@ static volatile LONG hostWorkPending; // one coalesced grant from the Runtime ho
 static volatile LONG messageGameThread; // Thread confirmed by WH_GETMESSAGE for this game window.
 // Invoked only on the owning game-thread. Message and breakpoint producers
 // sample before calling these exports; no background work or allocation.
-extern "C" int __cdecl AssistCriticalTimingEnabled(){return sh&&sh->criticalTimingEnabled&&!sh->stop&&!fault?1:0;}
+extern "C" int __cdecl AssistCriticalTimingEnabled(){
+ const DWORD bound=DWORD(InterlockedCompareExchange(&messageGameThread,0,0));
+ return sh&&sh->criticalTimingEnabled&&!sh->stop&&!fault&&
+  (!bound||bound==GetCurrentThreadId())?1:0;
+}
 extern "C" void __cdecl AssistCriticalTimingRecord(unsigned stage,uint32_t micros){
  if(AssistCriticalTimingEnabled()&&stage<criticalpath::StageCount)criticalProfiler.add(stage,micros);
 }
