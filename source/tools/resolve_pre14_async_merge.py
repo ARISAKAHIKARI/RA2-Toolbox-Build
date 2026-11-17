@@ -47,7 +47,7 @@ def resolve(path, source):
         "source/assist/source/bridge.cpp": 4,
         "source/assist/source/compute_policy.h": 1,
         "source/assist/source/main.cpp": 1,
-        "source/assist/source/native_orders_bridge.h": 3,
+        "source/assist/source/native_orders_bridge.h": 4,
         "source/assist/source/world_frame_runtime.h": 1,
         "source/assist/tests/ore_harvest_handoff.cpp": 1,
         "source/assist/tests/unload_loaded_admission.py": 1,
