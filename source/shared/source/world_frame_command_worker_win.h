@@ -1,5 +1,6 @@
 #pragma once
 #include "world_frame_capture.h"
+#include "world_frame_command_policy.h"
 #include <windows.h>
 #include <atomic>
 #include <mutex>
@@ -164,9 +165,8 @@ public:
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
   if(!lock.owns_lock()||!completedReady_)return false;
   if(completedEpoch_!=epoch_.load(std::memory_order_acquire)||
-     !completedKey_.sameFrame(current)||
-     completedRevision_!=revision||(demand&~completedDemand_)||
-     uint32_t(GetTickCount()-completedKey_.tick)>MaxHandoffMs){
+     !acceptCommandCapture(completedKey_,current,completedDemand_,demand,
+                           completedRevision_,revision,GetTickCount(),MaxHandoffMs)){
    completedReady_=false;++rejected_;return false;
   }
   // A second same-frame request cannot reuse an already taken sample:
