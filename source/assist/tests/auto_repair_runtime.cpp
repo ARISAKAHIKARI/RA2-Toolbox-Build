@@ -15,6 +15,7 @@
 #include "../source/compute_policy.h"
 #include "../source/plan_freshness.h"
 #include "../source/repair_delivery.h"
+#include "../source/repair_result_filter.h"
 using namespace assist;
 using DWORD=uint32_t;
 constexpr uint32_t AutoRepair=64,RepairUnrepairable=134217728;
@@ -39,12 +40,15 @@ struct Queued{uint32_t id;int frame;};static std::vector<Queued> sent;
 static uint32_t repairIDs[8192];static int repairCount,repairAt,repairDone;
 static bool pendingAckReady,repairAckPending;static uint32_t pendingAck,repairAckRequest;static DWORD repairAckStarted;
 static bool repairCalculationPending;static DWORD repairCalculationStarted;static uint32_t repairTaskSeen;
+static repairfilter::Filter repairResultGate;
+static uint32_t repairValidatedSerial=0;static unsigned repairStagedCount=0;
 static bool autoWas;static DWORD lastAuto;
 static repairdelivery::Pending<> pendingRepairs;
 static worldframe::Snapshot worldFrame;
 static bool worldFrameReady=false,sampleReadComplete=true,sampleAvailable=true;
 static unsigned sampleReadDepth=0;static uint32_t missingSamplePage=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};static std::vector<uint32_t> runtimeWorldDemands;
+static uint32_t runtimeDemandRevision=1;
 #include SAMPLE_SCOPE
 struct Vec{uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
 static uint32_t missingLiveRead=0;
@@ -105,6 +109,9 @@ static void MemoryBarrier(){}
 static void notifyHost(){if(sampleReadDepth)throw std::runtime_error("publication inside sample scope");++notifications;}
 static int indexedFrame=-1;
 static void indexWorld(int frame){indexedFrame=frame;++indexCalls;}
+struct StubCommandWorker {bool enabled()const{return false;}};
+static StubCommandWorker worldFrameCommandWorker;
+static bool commandRosterReady(){return false;}
 enum class EventLane{Repair};static int recurringBudget(EventLane){return perFrameBudget;}
 static bool nativeObjectEvent(int player,int event,uint32_t id){if(sampleReadDepth)throw std::runtime_error("native event inside sample scope");if(player!=0||event!=0x15)throw std::runtime_error("wrong event");++queueAttempts;if(!queueAvailable)return false;sent.push_back({id,currentFrame});return true;}
 #include REPAIR_EVENT
