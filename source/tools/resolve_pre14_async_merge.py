@@ -46,8 +46,19 @@ def resolve(path, source):
         stable = git("show",":2:"+str(path)).replace("\r\n","\n")
         if "unloadCarrierKnowledge" not in stable or "unloadPassengerKnowledge" not in stable:
             raise RuntimeError("pre14 complete Ctrl+D knowledge state machine missing")
+        worker_side = git("show",":3:"+str(path)).replace("\r\n","\n")
+        start = " if(sh->magnetronGlobal&&!snap.chat&&globalMagnetronPauseOverflow<0){"
+        stop = " int budget=recurringBudget(EventLane::Unload);"
+        if stable.count(start)!=1 or worker_side.count(start)!=1:
+            raise RuntimeError("native global vehicle registration anchor missing")
+        stable_first = stable.index(start);stable_last=stable.index(stop,stable_first)
+        worker_first=worker_side.index(start);worker_last=worker_side.index(stop,worker_first)
+        worker_reg=worker_side[worker_first:worker_last]
+        if "globalVehicleScan.budget(total)" not in worker_reg or "globalVehicleScan.advance(total,examined)" not in worker_reg:
+            raise RuntimeError("bounded global candidate cursor missing")
+        stable = stable[:stable_first]+worker_reg+stable[stable_last:]
         path.write_text(stable, encoding="utf-8", newline="\n")
-        print("RESOLVED_SAFE pre14 atomic Ctrl+D tri-state admission (defer async hash optimization)")
+        print("RESOLVED_SAFE pre14 Ctrl+D tri-state plus bounded 64 global candidate cursor")
         return
     blocks = PATTERN.findall(text)
     if not blocks:
