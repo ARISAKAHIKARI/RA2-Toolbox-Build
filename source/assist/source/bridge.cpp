@@ -23,6 +23,7 @@
 #include "outgoing_batch.h"
 #include "object_index.h"
 #include "global_vehicle_scan_policy.h"
+#include "repair_result_filter.h"
 #include "hook_policy.h"
 #include "activation_diagnostic.h"
 #include "event_delivery.h"
@@ -1052,12 +1053,16 @@ static DWORD clampedRepairInterval(uint32_t ms){
  return ms<500?500:ms>30000?30000:ms;
 }
 static compute::FrameHistory<compute::RepairInput> repairFrames;static compute::RepairResult repairResultCopy;
+// Input membership proof is staged across callbacks, never 8K-sort on Game.
+static repairfilter::Filter repairResultGate;
+static uint32_t repairValidatedSerial=0;static unsigned repairStagedCount=0;
 static void cancelAutomaticRepairWork(){
  // A manual Repair request owns its pending calculation and candidate list.
  // Keep queued toggle receipts: disabling automation cannot retract an event
  // already handed to the engine, nor make its next scan toggle it twice.
  if(repairAckPending||(!repairCalculationPending&&repairAt>=repairCount))return;
  repairCalculationPending=false;repairCalculationStarted=0;
+ repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
  repairCount=repairAt=repairDone=0;repairFrames.clear();
  repairTaskSeen=sh->repairComputed;
 }
@@ -1077,28 +1082,60 @@ static int collectRepairs(uint32_t house,DWORD now,bool refresh=false){
  if(!source.complete())return -6;source.finish();
  repairCount=repairAt=repairDone=0;
  if(internal){repairCount=count;std::copy_n(candidates.begin(),count,repairIDs);return count;}
- if(!refresh){repairFrames.clear();repairTaskSeen=sh->repairComputed;}
+ if(!refresh){repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
+  repairFrames.clear();repairTaskSeen=sh->repairComputed;}
  auto&in=sh->repairInput;in=candidate;
  repairCalculationPending=true;if(!refresh)repairCalculationStarted=now;const uint32_t serial=compute::nextTask(sh->repairTask);repairFrames.retain(serial,in);MemoryBarrier();sh->repairTask=serial;notifyHost();return -30;
 }
 static void repairCalculationTick(DWORD now){
  if(!repairCalculationPending)return;
- if(DWORD(now-repairCalculationStarted)>1000){repairCalculationPending=false;if(repairAckPending){sh->result=-7;sh->count=0;pendingAck=repairAckRequest;pendingAckReady=true;repairAckPending=false;}return;}
+ if(DWORD(now-repairCalculationStarted)>1000){
+  repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
+  repairCount=repairAt=repairDone=0;repairCalculationPending=false;
+  if(repairAckPending){sh->result=-7;sh->count=0;pendingAck=repairAckRequest;pendingAckReady=true;repairAckPending=false;}
+  return;
+ }
  const uint32_t completed=sh->repairComputed;
- if(compute::newer(completed,repairTaskSeen)){
-  const long seq=sh->repairResultSeq;if(!(seq&1)){MemoryBarrier();repairResultCopy=sh->repairResult;MemoryBarrier();
-   if(seq==sh->repairResultSeq&&completed==sh->repairComputed){repairTaskSeen=completed;const auto*input=repairFrames.find(completed);const auto&r=repairResultCopy;
-    if(input&&r.count>=0&&r.count<=8192&&r.match==input->match&&r.tick==input->tick&&r.frame==input->frame&&
-       freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&!get<bool>(0xA8BC60+25)){
-     repairCalculationPending=false;repairCount=repairAt=repairDone=0;
-     // Validate membership once against the retained request. Keep Host order
-     // and duplicates here; repairEvent owns pending-toggle deduplication.
-     static uint32_t knownIDs[8192];
-     for(int j=0;j<input->count;++j)knownIDs[j]=input->items[j].id;
-     std::sort(knownIDs,knownIDs+input->count);
-     for(int i=0;i<r.count;++i)if(std::binary_search(knownIDs,knownIDs+input->count,r.ids[i]))repairIDs[repairCount++]=r.ids[i];return;
+ if(!repairResultGate.running&&compute::newer(completed,repairTaskSeen)){
+  const long seq=sh->repairResultSeq;
+  if(!(seq&1)){
+   MemoryBarrier();repairResultCopy=sh->repairResult;MemoryBarrier();
+   if(seq==sh->repairResultSeq&&completed==sh->repairComputed){
+    repairTaskSeen=completed;
+    const auto*input=repairFrames.find(completed);const auto&r=repairResultCopy;
+    if(input&&input->count>=0&&input->count<=8192&&r.count>=0&&r.count<=8192&&
+       r.match==input->match&&r.tick==input->tick&&r.frame==input->frame&&
+       freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&
+       !get<bool>(0xA8BC60+25)){
+     repairCount=repairAt=repairDone=0;repairStagedCount=0;repairValidatedSerial=completed;
+     if(r.count==0){repairCalculationPending=false;return;}
+     // New proof epoch is O(1): no 8192-ID copy or sort.
+     if(!repairResultGate.begin(input->count,r.count))repairValidatedSerial=0;
     }
    }
+  }
+ }
+ if(repairResultGate.running){
+  // A refreshed Host input or a world change cannot promote partial proof.
+  const auto*input=repairFrames.find(repairValidatedSerial);
+  const auto&r=repairResultCopy;
+  if(!input||input->count<0||input->count>8192||r.count<0||r.count>8192||
+     r.match!=input->match||r.tick!=input->tick||r.frame!=input->frame||
+     !freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)||
+     get<bool>(0xA8BC60+25)){
+   repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
+  }else{
+   const bool finished=repairResultGate.step(unsigned(input->count),unsigned(r.count),
+    [&](unsigned i){return input->items[i].id;},
+    [&](unsigned i){return r.ids[i];},
+    [&](uint32_t id){repairIDs[repairStagedCount++]=id;});
+   if(repairResultGate.failed){
+    repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
+   }else if(finished){
+    repairCount=int(repairStagedCount);repairAt=repairDone=0;
+    repairResultGate.reset();repairValidatedSerial=0;repairCalculationPending=false;
+    return;
+   }else return;
   }
  }
  if(externalInputFrame&&!get<bool>(0xA8BC60+25))collectRepairs(lastHouse,now,true);
