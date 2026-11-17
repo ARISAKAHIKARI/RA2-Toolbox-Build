@@ -1,0 +1,106 @@
+name: Deliver 1.0.51-pre.13 Full using verified stable 1.0.51 support resources
+on:
+  push:
+    branches: [codex/async-command-capture-20261117]
+    paths:
+      - .github/workflows/finish-async-proof-full.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: ra2-proof-checked-full-pre13
+  cancel-in-progress: false
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COMPILED_RUN: "44120393794"
+      COMPILED_SHA: "9f09a1f261e54b055018ae006be5fa32a3f686ea"
+      TAG: "v1.0.51-pre.13"
+      BASE: "v1.0.51"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify immutable source build and both published GitHub releases
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$COMPILED_RUN" --jq '.head_sha')" = "$COMPILED_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$COMPILED_RUN/jobs?per_page=100" | jq -e '[.jobs[] | select((.name=="windows" or .name=="portable") and .conclusion=="success")] | length==2'
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,targetCommitish,assets > candidate.json
+          jq -e --arg sha "$COMPILED_SHA" '.isDraft==false and .isPrerelease==true and .targetCommitish==$sha and ([.assets[].name]|index("RA2Toolbox-1.0.51-pre.13-x64-Update.zip")!=null)' candidate.json
+          gh release view "$BASE" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,assets             | jq -e '.isDraft==false and .isPrerelease==false and ([.assets[].name]|index("RA2Toolbox-1.0.51-x64-Full.zip")!=null)'
+      - name: Assemble Full with approved stable support files and exact compiled binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/update dist/base dist/full
+          gh run download "$COMPILED_RUN" --repo "$GITHUB_REPOSITORY" --name proof-checked-windows-binaries --dir dist/update
+          gh release download "$BASE" --repo "$GITHUB_REPOSITORY" --pattern "RA2Toolbox-1.0.51-x64-Full.zip" --dir dist/base
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "dist/update/$n"
+          done
+          jq -e '.host=="x64" and .runtime=="x86" and .broker=="x86" and .assist_protocol==110 and .game_tested==false' dist/update/BUILD_TARGET.json
+          unzip -tq dist/base/RA2Toolbox-1.0.51-x64-Full.zip
+          unzip -q dist/base/RA2Toolbox-1.0.51-x64-Full.zip -d dist/full
+          test "$(find dist/full -type f -name RA2Toolbox.exe | wc -l)" -eq 1
+          root=$(dirname "$(find dist/full -type f -name RA2Toolbox.exe -print -quit)")
+          test -n "$root"
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do
+            cp "dist/update/$n" "$root/$n"
+            cmp "dist/update/$n" "$root/$n"
+          done
+          for n in BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json BUILD_SOURCE_MANIFEST.json; do
+            if test -s "dist/update/$n"; then cp "dist/update/$n" "$root/$n"; fi
+          done
+          if test -d dist/update/licenses; then
+            mkdir -p "$root/licenses"
+            cp -a dist/update/licenses/. "$root/licenses/"
+          fi
+          cat > "$root/BUILD_VALIDATION.txt" <<EOF
+          RA2 Toolbox 1.0.51-pre.13 Full candidate
+          Exact compiled commit: $COMPILED_SHA
+          CI paired Windows build: $COMPILED_RUN (x64 Host / x86 Runtime+Broker / Assist ABI 110)
+          Support files: verified stable $BASE Full release; all executables/DLLs replaced together
+          Offline regressions and PE/ABI compilation: passed
+          Real gameplay, JJ/CnCNet and FPS improvement: NOT tested
+          Generic async full-world worker: experimental and disabled by default
+          EOF
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.51-pre.13-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.13-x64-Full.zip
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "RA2Toolbox-1.0.51-pre.13-x64-Update.zip" --dir dist
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.13-x64-Update.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.51-pre.13-x64-{Update,Full}.zip > SHA256SUMS.txt)
+      - name: Upload Full and updated checksums and correct candidate notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber             dist/RA2Toolbox-1.0.51-pre.13-x64-Full.zip dist/SHA256SUMS.txt
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## RA2 Toolbox 1.0.51-pre.13 · 安全异步命令候选版
+          
+          来源提交：\`$COMPILED_SHA\`。x64 Host、x86 GameRuntime 和 x86 Broker 在 Actions \`$COMPILED_RUN\` 中同源构建；Assist ABI 升为 **110**，必须成套替换。该流水线通过可移植回归、Windows 原生编译、PE/ABI 检查。
+          
+          - Ctrl+D：首次 Deploy 暂时入队失败时保留一次按键的任务，不重复已经提交的原生事件；多乘员逐一跟进。
+          - 自动装车：原始单位身份、载具身份和人工版本进入最终提交关口；玩家改令后旧任务不再重试。
+          - 战术规划：保留原始采样世界中的单位、目标、目的地指针和人工版本；跨帧候选提交前逐个核对。磁电放下 Object Event 同样验证。
+          - 矿车自动恢复采矿和 Runtime 本地规划使用各自原始任务的时间及身份，不误用 Host 的结果时间戳。
+          - 异步工作请求限额与去重，降低重复目录采集及排序的主线程成本。
+          
+          **Full**：辅助资源取自现有正式稳定版 \`v1.0.51\` Full，所有配套的 EXE/DLL 替换为本次经过验证的候选二进制。**Update**：用于已有 Full 目录覆盖升级。关闭游戏和工具箱并备份配置；不能只更换 \`GameRuntime.dll\`。Full/Update 均随包附版本与验证记录，校验值见 \`SHA256SUMS.txt\`。
+          
+          **注意**：这仍是预发布候选，不是已实测的 Latest。真实游戏、JJ/CnCNet 联机、复杂场景 FPS 和实际命令成功率未验证。通用异步 CommandCaptureWorker 默认关闭，需要显式 \`RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=1\` 才会启用；保留完整世界图的严格同帧授权。
+          EOF
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file dist/RELEASE_NOTES.md
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,assets             | jq -e '.isDraft==false and .isPrerelease==true and ([.assets[].name]|index("RA2Toolbox-1.0.51-pre.13-x64-Full.zip")!=null) and ([.assets[].name]|index("RA2Toolbox-1.0.51-pre.13-x64-Update.zip")!=null)'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: proof-checked-pre13-full-evidence
+          retention-days: 30
+          path: |
+            candidate.json
+            dist/RELEASE_NOTES.md
+            dist/SHA256SUMS.txt
