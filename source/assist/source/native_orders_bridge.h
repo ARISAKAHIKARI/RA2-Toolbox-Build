@@ -139,18 +139,30 @@ static bool unloadPassengerEligible(uint32_t p,uint32_t house){
   // Enrollment must not be restricted to the first currently active exit.
   (get<uint32_t>(p+0x11C)||get<bool>(p+0x74)&&live(p));
 }
-struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1;};
+struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1,next=-1;};
 static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*2];static int unloadRosterCount;
+static unloadpolicy::CarrierGroups<nativeorders::MaxPassengers*2> unloadRosterGroups;
+static bool unloadRosterReady=false;
+static bool addUnloadRoster(uint32_t carrier,uint32_t pointer,uint32_t id,uint32_t token,int history){
+ if(!unloadRosterReady||unloadRosterCount>=nativeorders::MaxPassengers*2){unloadRosterReady=false;return false;}
+ const int n=unloadRosterCount;
+ unloadRoster[n]={carrier,pointer,id,token,history,-1};
+ if(!unloadRosterGroups.add(carrier,n,unloadRoster)){unloadRosterReady=false;return false;}
+ ++unloadRosterCount;return true;
+}
 static void buildUnloadAdmissionRoster(uint32_t house){
- unloadRosterCount=0;Vec inf=vec(0xA83DE8);
- for(int n=0;n<inf.count&&unloadRosterCount<nativeorders::MaxPassengers;++n){uint32_t p=item(inf,n),carrier=p?get<uint32_t>(p+0x11C):0;
+ unloadRosterCount=0;unloadRosterReady=true;unloadRosterGroups.clear();
+ Vec inf=vec(0xA83DE8);
+ for(int n=0;n<inf.count&&unloadRosterReady&&unloadRosterCount<nativeorders::MaxPassengers;++n){
+  uint32_t p=item(inf,n),carrier=p?get<uint32_t>(p+0x11C):0;
   if(!carrier||!worldObjects.contains(carrier)||queuedUnload.find(carrier,get<uint32_t>(carrier+0x10))<0||!unloadPassengerEligible(p,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
-  unloadRoster[unloadRosterCount++]={carrier,p,get<uint32_t>(p+0x10),manualVersions.get(get<uint32_t>(p+0x10)),-1};
+  const uint32_t id=get<uint32_t>(p+0x10);
+  if(!addUnloadRoster(carrier,p,id,manualVersions.get(id),-1))break;
  }
- for(int n=0;n<recentPassengerCount&&unloadRosterCount<nativeorders::MaxPassengers*2;++n){const auto&r=recentPassengers[n];
-  if(queuedUnload.find(r.carrier,r.carrierID)>=0)unloadRoster[unloadRosterCount++]={r.carrier,r.p,r.id,r.token,n};
+ for(int n=0;n<recentPassengerCount&&unloadRosterReady;++n){
+  const auto&r=recentPassengers[n];
+  if(queuedUnload.find(r.carrier,r.carrierID)>=0&&!addUnloadRoster(r.carrier,r.p,r.id,r.token,n))break;
  }
- std::sort(unloadRoster,unloadRoster+unloadRosterCount,[](const auto&a,const auto&b){if(a.carrier!=b.carrier)return a.carrier<b.carrier;if(a.pointer!=b.pointer)return a.pointer<b.pointer;return a.history<b.history;});
 }
 // A Ctrl+D command may arrive after the game's native D began deploying.
 // Reject stale/foreign carriers, not the transport's own unload-in-progress
@@ -158,18 +170,20 @@ static void buildUnloadAdmissionRoster(uint32_t house){
 static bool unloadCarrierEligible(uint32_t p,uint32_t house){return p&&worldObjects.contains(p)&&own(p,house)&&live(p)&&kind(p)==2&&featureObjectAllowed(featuretypes::UnloadTransport,p)&&!get<uint32_t>(p+0x11C);}
 static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
  if(!unloadCarrierEligible(p,house))return 0;
+ if(!unloadRosterReady)return -6; // Incomplete grouping never means empty cargo.
  const int frame=get<int>(0xA8ED84);const DWORD now=sampleClock(sh);
- static uint32_t roster[nativeorders::MaxPassengers];int count=0;uint32_t previous=0;
- auto*begin=std::lower_bound(unloadRoster,unloadRoster+unloadRosterCount,p,[](const UnloadRosterEntry&r,uint32_t carrier){return r.carrier<carrier;});
- for(auto*at=begin;at<unloadRoster+unloadRosterCount&&at->carrier==p;++at){uint32_t q=at->pointer;
-  if(q==previous)continue;
+ static uint32_t roster[nativeorders::MaxPassengers];static ObjectIndex accepted;
+ accepted.clear();int count=0;
+ for(int index=unloadRosterGroups.first(p);index>=0;index=unloadRoster[index].next){
+  const auto*at=&unloadRoster[index];uint32_t q=at->pointer;
+  if(accepted.contains(q))continue;
   if(!unloadPassengerEligible(q,house)||get<uint32_t>(q+0x10)!=at->id||manualVersions.get(at->id)!=at->token||!featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
   uint32_t carrier=get<uint32_t>(q+0x11C);
   if(at->history>=0){const auto&old=recentPassengers[at->history];
    if(old.carrierID!=get<uint32_t>(p+0x10)||old.carrierType!=typeOf(p,2)||DWORD(now-old.tick)>1500||frame<old.frame||frame-old.frame>90||carrier)continue;
   }else if(carrier!=p)continue;
   if(count==nativeorders::MaxPassengers)return -6;
-  previous=q;roster[count++]=q;
+  accepted.add(q,at->id);roster[count++]=q;
  }
  // Native cargo chain contains the entire load even while later occupants
  // remain inactive/limbo. Supplement the infantry inventory once per carrier
@@ -187,10 +201,14 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
     // An actor reused between roster snapshot and admission must never
     // inherit the prior passenger's Ctrl+D intent.
     const uint32_t id=get<uint32_t>(q+0x10),token=manualVersions.get(id);
-    for(auto*at=begin;at<unloadRoster+unloadRosterCount&&at->carrier==p;++at)
-     if(at->pointer==q&&(at->id!=id||at->token!=token))return -6;
-    bool enrolled=false;for(int k=0;k<count;++k)if(roster[k]==q){enrolled=true;break;}
-    if(!enrolled){if(count==nativeorders::MaxPassengers)return -6;roster[count++]=q;}
+    for(int index=unloadRosterGroups.first(p);index>=0;index=unloadRoster[index].next){
+     const auto&old=unloadRoster[index];
+     if(old.pointer==q&&(old.id!=id||old.token!=token))return -6;
+    }
+    if(!accepted.contains(q)){
+     if(count==nativeorders::MaxPassengers)return -6;
+     accepted.add(q,id);roster[count++]=q;
+    }
    }
    q=get<uint32_t>(q+0x30);
   }
