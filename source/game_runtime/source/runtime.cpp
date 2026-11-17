@@ -6,6 +6,7 @@
 #include "../../shared/source/game_entry_client.h"
 #include "../../shared/source/runtime_fp_scope.h"
 #include "frame_signal_runtime.h"
+#include "runtime_message_hotpath.h"
 #include "native_tooltip_runtime.h"
 #include "../../shared/source/debug_entry_policy.h"
 extern "C" void AssistRuntimeMessage(int,WPARAM,LPARAM);
@@ -168,6 +169,17 @@ static bool connect(DWORD owner,WakeTrace& trace){
  mapping=m;control=c;controller=p;controllerID=owner;ensureExceptionObserver();trace.report(runtime::Connected);return true;
 }
 extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARAM wp,LPARAM lp){
+ // The Windows hook runs for EVERY message, including paint/timer/idle UI.
+ // No game work is admitted for those without a queued work bit, our tagged
+ // wake or a relevant input event. Skip costly FP isolation, nested Capture,
+ // process liveness polling and diagnostic IPC entirely on this path.
+ const MSG*const input=code>=0&&wp==PM_REMOVE&&lp?(const MSG*)lp:nullptr;
+ const auto* c=control;
+ const uint32_t ready=c?uint32_t(c->ready):0;
+ const uint32_t enabled=c?uint32_t(c->enabled):0;
+ if(!runtimehot::needsGetMessage(code,wp,input,ready,enabled,
+       runtime::WakeTag,runtime::Tactical))
+  return CallNextHookEx(nullptr,code,wp,lp);
  // End isolation before chaining into any other module's Windows hook. SEH
  // finally also restores our infrastructure when a platform handler unwinds.
  RuntimeFPScope fp;bool dispatchOwned=false;
@@ -191,7 +203,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
         if(ready&runtime::Cursor)CursorRuntimeMessage(code,wp,lp);
         if(ready&runtime::Tactical)AssistRuntimeMessage(code,wp,lp);
         if(ready)NativeTooltipMaintain(true);
-        if((control->enabled&runtime::Tactical)&&(msg->message==WM_MOUSEMOVE||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP||msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONDBLCLK||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONDBLCLK||msg->message==WM_RBUTTONUP||msg->message==WM_MBUTTONDOWN||msg->message==WM_MBUTTONDBLCLK||msg->message==WM_MBUTTONUP||msg->message==WM_XBUTTONDOWN||msg->message==WM_XBUTTONDBLCLK||msg->message==WM_XBUTTONUP))AssistRuntimeFilter((void*)lp);
+        if((control->enabled&runtime::Tactical)&&runtimehot::filteredInput(msg->message))AssistRuntimeFilter((void*)lp);
         frameobserver::maintain(controllerID);
         if(ready)InterlockedIncrement(&control->dispatches);
        }else cleanup();
@@ -204,6 +216,12 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
  return CallNextHookEx(nullptr,code,wp,lp);
 }
 extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimePostHook(int code,WPARAM wp,LPARAM lp){
+ // CursorRuntimePost only processes WM_SETCURSOR, so unrelated post messages
+ // cannot justify an FXSAVE and another game-entry lease.
+ const auto* event=lp?(const CWPRETSTRUCT*)lp:nullptr;
+ const uint32_t cursorEnabled=control?uint32_t(control->enabled)&runtime::Cursor:0;
+ if(!runtimehot::needsCursorPost(code,event,cursorEnabled))
+  return CallNextHookEx(nullptr,code,wp,lp);
  RuntimeFPScope fp;bool dispatchOwned=false;
  runtimeunwind::run([&]{
   if(code>=0&&control&&(control->enabled&runtime::Cursor)&&!InterlockedCompareExchange(&dispatching,1,0)){

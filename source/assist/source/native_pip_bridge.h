@@ -97,9 +97,18 @@ static bool nativePipBlit(){
  NativeViewRect area=nativeViewActive?nativeViewA:get<NativeViewRect>(0x886FA0);
  const int x=area.x+area.w-nativepip::DisplayWidth-8,y=area.y+8;
  if(x<area.x||y<area.y||x<0||y<0||x+nativepip::DisplayWidth>cw||y+nativepip::DisplayHeight>ch||y+nativepip::DisplayHeight>area.y+area.h)return false;
- auto*source=nativeViewSurfaceLock(nativePipSurfaces[0]);if(!source)return false;nativePipLocks[0]=nativePipSurfaces[0];
- auto*target=nativeViewSurfaceLock(dst);if(!target)return false;nativePipLocks[1]=dst;
+ // A previous blit's underlay remains owned until the enclosing render
+ // lifetime restores it. Never lock either native surface just to discover
+ // that a second blit cannot run yet.
  auto&u=nativePipUnderlay;if(u.surface)return false;
+ auto*source=nativeViewSurfaceLock(nativePipSurfaces[0]);if(!source)return false;nativePipLocks[0]=nativePipSurfaces[0];
+ auto*target=nativeViewSurfaceLock(dst);
+ if(!target){
+  // The outer SEH finally is a second safety net. Release on the actual
+  // failure path as well, so a direct/native call cannot retain the lock.
+  AssistNativePipUnlock();return false;
+ }
+ nativePipLocks[1]=dst;
  u.scenario=nativePipScenario;u.tactical=nativePipTactical;u.epoch=nativePipEpoch;u.frame=nativePipLastFrame;u.x=x;u.y=y;u.width=cw;u.height=ch;u.pitch=dp;
  for(int row=0;row<nativepip::DisplayHeight;++row)memcpy(u.pixels.data()+size_t(row)*nativepip::DisplayWidth,target+size_t(y+row)*dp+x*2,nativepip::DisplayWidth*2);
  u.surface=dst;

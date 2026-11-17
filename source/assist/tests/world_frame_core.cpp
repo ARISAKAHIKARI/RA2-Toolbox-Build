@@ -234,6 +234,31 @@ void speculativeBatchFaultIsolation(){
  CHECK(saturated.calls.size()==64+32);
  CHECK(bounded.counters.calls==64+32&&bounded.counters.failedReads==64+32);
  CHECK(bounded.pages.size()==0&&bounded.seal());
+ // The production graph invokes prefetch twice on the actual game thread.
+ // Its explicit 4-probe PER-PHASE allowance caps the incremental critical
+ // path to 8 extra speculative calls per complete frame, not the old 64.
+ Memory gameFaults;
+ gameFaults.denied.push_back({base,64*16*worldframe::PageSize});
+ worldframe::Snapshot gameWarm;gameWarm.reset(key());
+ CHECK(gameWarm.prefetchPages(Read{&gameFaults},many,scratch.data(),scratch.size(),false,4));
+ CHECK(gameFaults.calls.size()==64+4&&gameWarm.counters.failedReads==64+4);
+ CHECK(gameWarm.pages.size()==0);
+ // One bad page still gets bounded salvage under 4 extra split probes.
+ Memory gamePartial;
+ for(uint32_t i=0;i<16;++i)gamePartial.put(addresses[i]+0x28,0xBEEF0000u+i);
+ gamePartial.partialPages.insert(addresses[10]);
+ worldframe::Snapshot gameSalvage;gameSalvage.reset(key());
+ CHECK(gameSalvage.prefetchPages(Read{&gamePartial},addresses,scratch.data(),scratch.size(),false,4));
+ CHECK(gamePartial.calls.size()==5&&gameSalvage.pages.size()==12);
+ // Required-page fallback still records failed ranges rather than inventing
+ // missing actors, even when the extra split budget has been exhausted.
+ Memory gameMissing;
+ for(uint32_t p:addresses)gameMissing.partialPages.insert(p);
+ worldframe::Snapshot gameRequired;gameRequired.reset(key());
+ CHECK(!gameRequired.prefetchPages(Read{&gameMissing},addresses,scratch.data(),scratch.size(),true,4));
+ CHECK(gameMissing.calls.size()==5+2*16);
+ CHECK(gameRequired.pages.size()==16&&gameRequired.seal());
+ CHECK(!gameRequired.read(addresses[0],&value,4));
  // Required page subscribers keep their original fallbacks. A bad page
  // remains missing, while other addresses may still be sealed successfully.
  Memory required;

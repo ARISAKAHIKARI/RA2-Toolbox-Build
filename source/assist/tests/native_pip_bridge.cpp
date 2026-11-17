@@ -57,7 +57,7 @@ static bool nativeViewExecutable(uint32_t){return true;}
 static bool nativeMapAcquire(bool){nativeMapPipLease=true;return true;}
 static bool nativeMapRelease(bool){nativeMapPipLease=false;return true;}
 struct Surface{int w=576,h=384;std::vector<uint16_t> pixels;};static std::map<uintptr_t,Surface> surfaces;
-static uintptr_t nextSurface=0xD00000;static unsigned locks=0,unlocks=0;static bool unlockFault=false;
+static uintptr_t nextSurface=0xD00000;static unsigned locks=0,unlocks=0;static bool unlockFault=false;static uintptr_t rejectLock=0;
 static void*surface(int w,int h){const auto p=nextSurface;nextSurface+=0x1000;surfaces[p]={w,h,std::vector<uint16_t>(size_t(w)*h,0xACE0)};return (void*)p;}
 static void*nativeViewNewSurface(int w,int h){return surface(w,h);}
 static void nativeViewFreeSurface(void*p){surfaces.erase(uintptr_t(p));}
@@ -65,7 +65,7 @@ static void*nativeViewNewBuffer(bool,NativeViewRect){return (void*)(nextSurface+
 static void nativeViewFreeBuffer(bool,void*){}
 static bool nativeViewBufferValid(void*,int,int){return true;}
 static int nativeViewSurfaceValue(void*p,unsigned member){auto it=surfaces.find(uintptr_t(p));if(it==surfaces.end())return 0;return member==0x7C?it->second.w:member==0x80?it->second.h:member==0x74?it->second.w*2:member==0x70?2:0;}
-static unsigned char*nativeViewSurfaceLock(void*p){auto it=surfaces.find(uintptr_t(p));if(it==surfaces.end())return nullptr;++locks;return (unsigned char*)it->second.pixels.data();}
+static unsigned char*nativeViewSurfaceLock(void*p){auto it=surfaces.find(uintptr_t(p));if(it==surfaces.end()||uintptr_t(p)==rejectLock)return nullptr;++locks;return (unsigned char*)it->second.pixels.data();}
 static void nativeViewSurfaceUnlock(void*){++unlocks;
 #ifdef _WIN32
  if(unlockFault){unlockFault=false;RaiseException(EXCEPTION_ACCESS_VIOLATION,0,0,nullptr);}
@@ -135,6 +135,19 @@ int main(){
 #endif
  std::puts("stage initial setup");setup();std::puts("stage initial render");const auto before=bytes();sidebarViewRenderDepth=1;assert(GuardedNativePipAction(1,0)==1);assert((phases==std::vector<int>{0,1,2}));assert(bytes()==before);assert(sh->nativePipFrames==1&&sh->nativePipMicros==900&&locks==unlocks);
  auto comp=get<void*>(0x88731C);auto&image=surfaces.at(uintptr_t(comp));assert(image.pixels[8*1280+984]==0x1232);assert(GuardedNativePipAction(3,0)==1&&image.pixels[8*1280+984]==0xACE0);
+ // A missing destination lock must release the successfully locked source
+ // at this failure site, not depend on the outer SEH wrapper's finalizer.
+ rejectLock=uintptr_t(comp);
+ unsigned beforeLocks=locks,beforeUnlocks=unlocks;
+ assert(!nativePipBlit()&&locks==beforeLocks+1&&unlocks==beforeUnlocks+1);
+ assert(locks==unlocks&&!nativePipUnderlayPending());
+ rejectLock=0;
+ // When the previous underlay has not yet been retired, a second blit must
+ // return without acquiring ANY surface lock.
+ assert(nativePipBlit()&&nativePipUnderlayPending()&&locks==unlocks);
+ beforeLocks=locks;
+ assert(!nativePipBlit()&&locks==beforeLocks&&unlocks==locks);
+ assert(nativePipRestoreUnderlay()&&!nativePipUnderlayPending()&&locks==unlocks);
  clockTick+=20;assert(GuardedNativePipAction(1,0)==1&&sh->nativePipFrames==1); // same logic frame, reuse pixels
  auto down=mouse(WM_LBUTTONDOWN);assert(nativePipMessage(&down)&&down.message==WM_NULL);auto up=mouse(WM_LBUTTONUP);assert(nativePipMessage(&up)&&nativePipJumpPending);sidebarViewRenderDepth=0;assert(GuardedNativePipAction(4,0)==1&&navigations==1);
  assert(GuardedNativePipAction(3,0)==1);put(0xA8EDA0,int32_t(1));sidebarViewRenderDepth=1;assert(!GuardedNativePipAction(1,0)&&!nativePipUnderlayPending());put(0xA8EDA0,int32_t(0));sidebarViewRenderDepth=0;

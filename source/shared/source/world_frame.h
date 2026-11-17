@@ -229,14 +229,14 @@ public:
  // invalid data. Up to two split levels salvage readable subranges without
  // allowing a bad page to discard a whole 16-page unit warmup.
  // Each 16-page batch uses at most 7 speculative calls, with no more than
- // 32 extra split calls across this invocation. Required fields still use
- // the original per-page and partial-range fallback.
- template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes,bool individualFallback=true){
+ // 32 extra split calls by default (production passes a smaller explicit
+ // game-thread allowance). Required fields keep their original fallback.
+ template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes,bool individualFallback=true,unsigned maxExtraSplitCalls=32){
   if(sealed_||overflow_)return false;
   const size_t limit=std::min<size_t>(16,scratchBytes/PageSize);bool ok=true;
   // Bound the TOTAL number of extra speculative RPM calls per invocation.
   // Thousands of inaccessible actors must not multiply the split cost.
-  unsigned splitBudget=32;
+  unsigned splitBudget=maxExtraSplitCalls;
   for(size_t first=0;first<addresses.size();){
    const uint32_t at=addresses[first];size_t end=first+1;
    if(scratch&&limit>1&&!(at&(PageSize-1))&&range(at,PageSize)&&!find(at)){
