@@ -14,11 +14,20 @@
 // live-reader fallback belongs in this type. The producer alone may fill pages.
 namespace worldframe {
 constexpr uint32_t Version=1,PageSize=4096,MaxPages=16384,IndexSize=32768;
-enum Demand:uint32_t {Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64};
-// Visual and Resources are Host-local collection lanes. Their extra pages
-// must never subscribe the game-thread producer to a display working set.
-inline bool visualDemand(uint32_t demand){return (demand&(Visual|Resources))!=0;}
-inline uint32_t runtimeDemand(uint32_t demand){return visualDemand(demand)?uint32_t(Base):(demand|Base);}
+enum Demand:uint32_t {
+ Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64,HostDisplayOnly=128,
+ HostVisualPassengers=256,HostVisualCombat=512,HostVisualOre=1024
+};
+// Explicit Host-only visual requirements never grant command authority.
+// Unknown or mixed native demand remains on the full authoritative path.
+inline bool visualDemand(uint32_t demand){
+ constexpr uint32_t displayFlags=uint32_t(Base|Visual|Resources|HostVisualPassengers|HostVisualCombat|HostVisualOre);
+ return (demand&uint32_t(Visual|Resources))!=0&&(demand&~displayFlags)==0;
+}
+inline uint32_t runtimeDemand(uint32_t demand){
+ return visualDemand(demand)?uint32_t(Base):
+ ((demand&~uint32_t(Visual|Resources|HostDisplayOnly|HostVisualPassengers|HostVisualCombat|HostVisualOre))|uint32_t(Base));
+}
 struct Key {
  uint32_t pid=0,owner=0,match=0,serial=0,tick=0,demand=0;
  uint32_t scenario=0,cells=0,house=0,cellCount=0;
@@ -28,6 +37,9 @@ struct Key {
  bool sameWorld(const Key&o)const{return pid==o.pid&&owner==o.owner&&match==o.match&&scenario==o.scenario&&cells==o.cells&&house==o.house&&cellCount==o.cellCount&&session==o.session&&generationLow==o.generationLow&&generationHigh==o.generationHigh&&connectionLow==o.connectionLow&&connectionHigh==o.connectionHigh;}
  bool sameFrame(const Key&o)const{return sameWorld(o)&&frame==o.frame;}
 };
+// High bit marks a display-only authoritative identity with no game pages.
+constexpr uint32_t BoundaryOnlyKeyBit=0x80000000u;
+inline bool boundaryOnlySource(const Key&key){return (key.demand&BoundaryOnlyKeyBit)!=0;}
 struct Counters {uint32_t calls=0,bytes=0,pageHits=0,pageAttempts=0,rangeAttempts=0,failedReads=0,rosterCaptures=0,overflows=0;};
 struct Page {
  uint32_t address=0,full=0;
