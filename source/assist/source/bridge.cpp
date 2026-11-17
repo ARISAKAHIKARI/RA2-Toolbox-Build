@@ -13,6 +13,7 @@
 #include "../../external_reader/source/catalogue_stamp.h"
 #include "clock_ms.h"
 #include "../../shared/source/precise_clock.h"
+#include "../../shared/source/critical_path_clock_win.h"
 #include "../../shared/source/runtime_fault.h"
 #include "signatures.h"
 #include "../../shared/source/debug_entry_policy.h"
@@ -53,6 +54,7 @@ using namespace assist;
 // installing a hook; the release verifier can inspect these exports offline.
 extern "C" __declspec(dllexport) const uint32_t AssistProtocolInfo[2]={Version,sizeof(Shared)};
 extern "C" __declspec(dllexport) const MappingPrefixValue AssistMappingPrefix{};
+static criticalpath::Recorder criticalProfiler;
 static Shared*sh;static HANDLE mapping;static bool checked,good,fault;static DWORD last,slow;static uint32_t lastHouse,match,pendingAck;static int lastFrame;
 static sessionepoch::Tracker sessionTracker;static Snapshot snap;
 static worldlife::Tracker hookWorld;static bool commandDormant=false,worldCleanupPending=false;
@@ -74,6 +76,21 @@ template<class Fn>static void withNativeQueueCallDepth(unsigned&depth,Fn&&work){
 static volatile LONG schedulerBusy;
 static volatile LONG hostWorkPending; // one coalesced grant from the Runtime host-message ingress
 static volatile LONG messageGameThread; // Thread confirmed by WH_GETMESSAGE for this game window.
+// Invoked only on the owning game-thread. Message and breakpoint producers
+// sample before calling these exports; no background work or allocation.
+extern "C" int __cdecl AssistCriticalTimingEnabled(){return sh&&sh->criticalTimingEnabled&&!sh->stop&&!fault?1:0;}
+extern "C" void __cdecl AssistCriticalTimingRecord(unsigned stage,uint32_t micros){
+ if(AssistCriticalTimingEnabled()&&stage<criticalpath::StageCount)criticalProfiler.add(stage,micros);
+}
+static void criticalTimingPublish(DWORD now){
+ if(!sh||!sh->criticalTimingEnabled)return;
+ criticalpath::Snapshot sample{};
+ if(!criticalProfiler.publish(now,match,sample))return;
+ InterlockedIncrement(&sh->criticalTimingSeq);
+ sh->criticalTiming=sample;MemoryBarrier();
+ InterlockedIncrement(&sh->criticalTimingSeq);
+}
+
 
 static bool playableHouse(uint32_t);static bool enemyBuildingSellAllowed(uint32_t);static bool playerContextChanged;static void playerMaintenance();static void restorePlayerContext();static void publishPlayers();
 enum class OrderAuthority { Local, PlayerTest, SellPlayerTest, DestructPlayerTest };
@@ -1502,7 +1519,7 @@ static void tick(){
  // command connection on the next callback.
  if(!sh||sh->magic!=Magic||sh->version!=Version||sh->pid!=GetCurrentProcessId()){disconnect();return;}
  syncDebugPolicy(GetTickCount()); // Before every cold feature/DR admission.
- DWORD now=sampleClock(sh);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){
+ DWORD now=sampleClock(sh);criticalTimingPublish(now);if(sh->stop||(DWORD(now-sh->heartbeat)>3000&&controllerExited(now))){
   maintainTechParameters();
   stickyTick(true);
   // Release our automatic attack/hold orders before acknowledging detach. No game
