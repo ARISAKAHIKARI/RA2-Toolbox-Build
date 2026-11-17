@@ -13,6 +13,9 @@ inline const wchar_t*label(int f){const wchar_t*k[]={L"高级移动攻击",L"磁
 inline uint32_t magnetronIntents(uint32_t mask,bool runtime){return (inside(mask,Magnetron)==runtime?1u:0u)|(inside(mask,MagnetronGlobal)==runtime?2u:0u);}
 inline uint32_t plannerFlags(uint32_t flags,uint32_t mask,bool runtime){
  const uint32_t bits[]={8192u,262144u,32768u,1073741824u};uint32_t out=0;
- for(int i=0;i<4;++i)if(i==1?magnetronIntents(mask,runtime)!=0:inside(mask,Feature(i))==runtime)out|=flags&bits[i];return out;
+ for(int i=0;i<4;++i){
+  if(i==1?magnetronIntents(mask,runtime)!=0:inside(mask,Feature(i))==runtime)out|=flags&bits[i];
+ }
+ return out;
 }
 } }
