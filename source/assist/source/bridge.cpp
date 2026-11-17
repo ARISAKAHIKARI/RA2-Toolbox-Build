@@ -1602,7 +1602,10 @@ static void tick(){
  // game thread may publish a small scene boundary only if ALL Host readers
  // are display-only and no local native command feature has any pending work.
  // A same-frame hotkey later upgrades this boundary to a full graph.
- const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&!capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)&&!sh->moFeatures&&
+ // A new match alone is not a reason to run an all-actor census. Pure
+ // display consumers may start with a boundary-only sample immediately;
+ // a real same-frame command demand still escalates to full authority.
+ const bool noCommandWork=!cmd&&!resultsDue&&!capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)&&!sh->moFeatures&&
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&!sh->bombBoardEnabled&&
   !sh->minerDefenseEnabled&&!minerDefensePending()&&!sh->superweaponGrant&&
   !sh->placementPreview.active&&!sh->runtimeTracking&&!sh->plannerTracking&&
