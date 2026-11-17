@@ -5,6 +5,7 @@
 // Included by the Host after pageControl() and settings persistence. The
 // renderer uses ordinary adapter-issued control tokens, never raw addresses.
 static constexpr int DebugEntryControlBase=12000;
+static HWND criticalTimingDetails=nullptr;
 static HWND debugEntryChecks[debugentries::Capacity]{},debugEntryDetails[debugentries::Capacity]{};
 static std::wstring debugEntryGroups[debugentries::Capacity];
 #ifdef RA2_CONSOLE_WEBVIEW2
@@ -63,6 +64,9 @@ static const char*debugSignature(debugentries::Signature signature){
 }
 static void createDebugEntryControls(){
  const int page=suite::categories::Debug;int y=createGameProcessSelectionControls(page,uilayout::BodyTop+12);y=createPlatformHookProbeControls(page,y);
+ criticalTimingDetails=pageControl(page,L"STATIC",
+   L"游戏线程耗时（调试页开启采样；每秒更新，P95/P99 为最近最多128次采样）\\r\\n等待运行组件发布数据…",
+   20,y,610,244,0);y+=256;
  pageControl(page,L"STATIC",L"入口调试：用途、影响特性与实时安装状态",20,y,610,26,0);y+=34;
 #ifdef RA2_CONSOLE_WEBVIEW2
  SetPropW(pageControls.back().hwnd,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));
@@ -103,6 +107,40 @@ static void updateDebugEntries(bool force){
  if(!force&&!debugPageActive)return;
  static DWORD lastAt=0;const DWORD now=GetTickCount();if(!force&&lastAt&&DWORD(now-lastAt)<250)return;lastAt=now;
  if(!ui||!debugEntryChecks[0])return;
+ // Game-thread publication is a fixed POD snapshot. Compute percentiles and
+ // format this text exclusively on the Host UI, never in an exception handler.
+ if(criticalTimingDetails){
+  criticalpath::Snapshot timing{};bool fresh=false;
+  if(shared){
+   for(int attempt=0;attempt<3;++attempt){
+    const LONG serial=shared->criticalTimingSeq;if(serial&1)continue;
+    MemoryBarrier();timing=shared->criticalTiming;MemoryBarrier();
+    if(serial==shared->criticalTimingSeq&&timing.version==criticalpath::Version&&
+       timing.serial&&DWORD(now-timing.tick)<=2500){fresh=true;break;}
+   }
+  }
+  static uint32_t previousSerial=0;static bool previousReady=false;
+  if(fresh!=previousReady||(fresh&&timing.serial!=previousSerial)){
+   previousReady=fresh;previousSerial=fresh?timing.serial:0;
+   std::wstring summary=L"游戏线程耗时（μs；每秒采样；P95/P99 取最近最多128个样本）";
+   if(!fresh)summary+=L"\\r\\n等待测量：请进入对局并保持调试页面打开";
+   else {
+    static const wchar_t*names[]={
+     L"消息 Hook",L"光标处理",L"战术调度",L"WorldFrame 采集",
+     L"单位索引",L"场景扫描",L"原生副相机",L"硬件断点命中",L"硬件断点维护"
+    };
+    for(unsigned i=0;i<criticalpath::StageCount;++i){
+     const auto metric=criticalpath::summarize(timing.rows[i]);
+     if(!metric.sampled)continue;
+     summary+=L"\\r\\n"+std::wstring(names[i])+L"  n="+std::to_wstring(metric.sampled)+
+      L"  平均="+std::to_wstring(uint32_t(metric.meanUs+0.5))+
+      L"  P95="+std::to_wstring(metric.p95Us)+L"  P99="+std::to_wstring(metric.p99Us)+
+      L"  最大="+std::to_wstring(metric.maxUs);
+    }
+   }
+   SetWindowTextW(criticalTimingDetails,summary.c_str());
+  }
+ }
  debugentries::Snapshot sampled{};bool valid=false,catalogMismatch=false;
  if(shared&&shared->magic==Magic&&shared->version==Version&&shared->pid==pid){
   shared->debugVisible=debugPageActive?1u:0u;
