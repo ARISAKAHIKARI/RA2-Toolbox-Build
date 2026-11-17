@@ -74,6 +74,9 @@ class CommandCaptureWorker {
    std::sort(job.pages.begin(),job.pages.end());
    job.pages.erase(std::unique(job.pages.begin(),job.pages.end()),job.pages.end());
    const DWORD began=GetTickCount();unsigned calls=0;size_t bytes=0;
+   // A graph already beyond its admission deadline cannot be command
+   // authority. Do not spend another 120ms scanning expired pages.
+   if(uint32_t(began-job.key.tick)>MaxHandoffMs){++self->rejected_;continue;}
    const Key before=currentKey(job.key);
    if(!before.pid||!before.sameFrame(job.key)){++self->rejected_;continue;}
    self->staging_.reset(job.key);
@@ -81,7 +84,8 @@ class CommandCaptureWorker {
     if(self->stopping_.load(std::memory_order_acquire)||
        job.epoch!=self->epoch_.load(std::memory_order_acquire)||
        job.ticket!=self->latestTicket_.load(std::memory_order_acquire)||
-       uint32_t(GetTickCount()-began)>MaxWorkMs||calls>=MaxCalls||
+       uint32_t(GetTickCount()-began)>MaxWorkMs||
+       uint32_t(GetTickCount()-job.key.tick)>MaxHandoffMs||calls>=MaxCalls||
        n>MaxBytes-bytes)return false;
     ++calls;bytes+=n;return live(at,out,n);
    };
@@ -99,7 +103,8 @@ class CommandCaptureWorker {
    // Build the full identity hash on this SAME worker. A missing UID or
    // unreadable roster is UNKNOWN, not an empty world or an owned actor.
    if(!self->stagingRoster_.build(self->staging_,job.globalVehicles,
-                                  self->scratch_.list)){
+                                  self->scratch_.list)||
+      uint32_t(GetTickCount()-job.key.tick)>MaxHandoffMs){
     ++self->rejected_;continue;
    }
    {
