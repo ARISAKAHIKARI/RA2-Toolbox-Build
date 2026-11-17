@@ -62,6 +62,25 @@ assert "while(rebuildAt<count&&work++<ReindexBudget)" in unload_policy
 assert "if(!worldFrameCommandWorker.enabled())indexWorld(frame);" in bridge
 
 
+# The original manual token/pointer must reach the native EventClass
+# gateway for delayed external, load and unload decisions.
+proof = (root / "execution_proof.h").read_text()
+autoload = (root / "autoload_bridge.h").read_text()
+unload = (root / "unload_compute_bridge.h").read_text()
+external = (root / "external_orders_bridge.h").read_text()
+assert 'executionproof::verify(*proof' in bridge
+assert 'executionproof::ordered(*proof' in bridge
+assert 'static bool submitProvenMission(' in bridge
+assert 'return nativeMission(house,id,mission,target,destination,destinationTag' in bridge
+assert 'submitProvenMission(house,infantry,7,0,vehicle,0x34' in autoload
+assert '{p.id,p.object,tokens[i]}' in autoload
+assert '{v.id,v.object}' in autoload
+assert 'submitProvenMission(house,r.id,decision.mission' in unload
+assert '{s.id,s.pointer,s.token}' in unload
+assert 'capturedTargetPointer=q.pointer;' in unload
+assert 'submitProvenMission(house,o.unit,o.mission' in external
+assert '{o.unit,worldByID(o.unit),o.token}' in external
+assert 'ManualTakeover' in proof and 'TargetChanged' in proof and 'WrongMatch' in proof
 assert 'THREAD_PRIORITY_BELOW_NORMAL' in worker
 assert 'WaitForSingleObject(thread_,0)' in worker
 assert 'latestTicket_.fetch_add(1' in worker
