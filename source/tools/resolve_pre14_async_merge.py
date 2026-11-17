@@ -38,6 +38,17 @@ def maybe_replace(content, old, new, name):
 def resolve(path, source):
     path = Path(path)
     text = path.read_text(encoding="utf-8")
+    # The pre14 Ctrl+D implementation has a complete missing-page tri-state
+    # admission protocol. Retain it as an atomic unit: mixing its sorted
+    # iterator with the async branch's chained-hash iterator produces broken
+    # roster walks and can dispatch incomplete passenger sets.
+    if str(path) == "source/assist/source/native_orders_bridge.h":
+        stable = git("show",":2:"+str(path)).replace("\r\n","\n")
+        if "unloadCarrierKnowledge" not in stable or "unloadPassengerKnowledge" not in stable:
+            raise RuntimeError("pre14 complete Ctrl+D knowledge state machine missing")
+        path.write_text(stable, encoding="utf-8", newline="\n")
+        print("RESOLVED_SAFE pre14 atomic Ctrl+D tri-state admission (defer async hash optimization)")
+        return
     blocks = PATTERN.findall(text)
     if not blocks:
         raise RuntimeError(f"{path}: missing conflict markers")
