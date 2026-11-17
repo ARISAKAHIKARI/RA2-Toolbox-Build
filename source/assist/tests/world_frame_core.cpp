@@ -438,8 +438,14 @@ void hostIsolation(){
 void runtime(){
  using namespace assist;currentPid=GamePid;clock=2000;retireWorldFrame();Memory memory;setup(memory);Read read{&memory};auto before=worldlife::capture(read);CHECK(before.valid());snap.frame=before.frame;
  CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base));CHECK(worldFrameReady&&worldFrame.key.frame==50);const auto firstSerial=worldFrame.key.serial;const auto firstCalls=memory.calls.size();
- memory.put(ActorA+0x6C,25);CHECK(captureWorldFrame(read,before,House,clock,worldframe::Combat));CHECK(memory.calls.size()==firstCalls&&worldFrame.key.serial==firstSerial);
- {SampleReadScope scope;int hp=0;CHECK(scope&&readWorldSample(ActorA+0x6C,&hp,4)&&hp==100&&scope.complete());}
+ memory.put(ActorA+0x6C,25);CHECK(captureWorldFrame(read,before,House,clock,worldframe::Combat));
+ CHECK(memory.calls.size()>firstCalls&&worldFrame.key.serial==firstSerial+1);
+ {SampleReadScope scope;int hp=0;CHECK(scope&&readWorldSample(ActorA+0x6C,&hp,4)&&hp==25&&scope.complete());}
+ // Same-frame reuse remains cheap when no demand changes, but a new Combat
+ // bit must not inherit the previous Base-only command sample.
+ const size_t upgradedCalls=memory.calls.size();const uint32_t upgradedSerial=worldFrame.key.serial;
+ CHECK(captureWorldFrame(read,before,House,clock,worldframe::Combat));
+ CHECK(memory.calls.size()==upgradedCalls&&worldFrame.key.serial==upgradedSerial);
  constexpr uint32_t extra=0x760100;memory.put(extra,0x12345678u);
  {SampleReadScope scope;uint32_t value=0;CHECK(scope&&!readWorldSample(extra,&value,4)&&!scope.complete());}
  CHECK(!runtimeWorldDemands.empty());
