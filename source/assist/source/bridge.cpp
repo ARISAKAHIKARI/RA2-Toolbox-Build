@@ -793,6 +793,16 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  }
  return true;
 }
+// Typed execution path for delayed planners. Native callers still use the
+// unchanged vanilla EventClass backend. Every proof is checked only inside
+// nativeMission before an event is constructed or enqueued.
+static bool submitProvenMission(uint32_t house,uint32_t id,int mission,uint32_t target,
+  uint32_t destination,int destinationTag,taskarbiter::Owner owner,
+  const executionproof::Ticket&proof,uint32_t*receipt=nullptr,
+  uint32_t nearest=0,int nearestTag=0){
+ return nativeMission(house,id,mission,target,destination,destinationTag,nearest,nearestTag,
+   owner,receipt,-1,OrderAuthority::Local,false,false,false,&proof);
+}
 static bool sellAllowed(uint32_t);
 #include "sell_direct_bridge.h"
 static bool nativeObjectEvent(int houseIndex,int eventType,uint32_t objectId,OrderAuthority authority=OrderAuthority::Local,gateway::Receipt* receipt=nullptr,bool hazardDrop=false){
