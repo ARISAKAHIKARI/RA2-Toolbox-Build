@@ -15,6 +15,17 @@ inline bool acceptCommandCapture(const Key&captured,const Key&current,
         capturedRevision==currentRevision&&
         uint32_t(now-captured.tick)<=maxAgeMs;
 }
+// Only suppress redundant *work submission*, not permission to reuse a
+// captured graph. A worker still busy on the same world/revision must not be
+// cancelled every 16ms when the Game frame advances. Exact-frame take() remains
+// strict; this can reduce background churn but cannot authorize late events.
+inline bool coalesceInFlightWorld(const Key&previous,const Key&current,
+ uint32_t previousDemand,uint32_t demand,uint64_t previousRevision,uint64_t revision,
+ bool previousGlobal,bool global,uint32_t elapsed,bool outstanding,uint32_t windowMs=80){
+ return outstanding&&previous.pid&&previous.sameWorld(current)&&
+        previousDemand==demand&&previousRevision==revision&&
+        previousGlobal==global&&elapsed<windowMs;
+}
 // Dispatcher-side throttling: skip a repeat before rebuilding a potentially
 // 16K-page request vector. This is only a request coalescer, not capture
 // authority. New frame/identity, demand, revision or global-candidate mode
