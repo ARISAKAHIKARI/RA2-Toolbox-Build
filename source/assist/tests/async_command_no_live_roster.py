@@ -75,6 +75,10 @@ assert 'return nativeMission(house,id,mission,target,destination,destinationTag'
 assert 'submitProvenMission(house,infantry,7,0,vehicle,0x34' in autoload
 assert '{p.id,p.object,tokens[i]}' in autoload
 assert '{v.id,v.object}' in autoload
+assert 'job.manualToken=tokens[i];' in autoload
+assert 'manualVersions.get(r.id)!=r.manualToken' in autoload
+assert '{r.id,r.object,r.manualToken}' in autoload
+assert 'enterEvent(house,r.id,r.vehicleID,proof,&ticket)' in autoload
 assert 'submitProvenMission(house,r.id,decision.mission' in unload
 assert '{s.id,s.pointer,s.token}' in unload
 assert 'capturedTargetPointer=q.pointer;' in unload
