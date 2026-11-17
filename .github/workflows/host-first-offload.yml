@@ -10,6 +10,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: host-first-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   policy-and-sampling:
     runs-on: ubuntu-latest
@@ -25,8 +28,9 @@ jobs:
           mkdir -p checks
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/host_frame_demand.cpp -o checks/host-frame-demand
           checks/host-frame-demand | tee checks/policy.log
-          python source/assist/tests/runtime_sampling_hotpath.py | tee checks/hotpath.log
+          python source/assist/tests/world_frame_retention.py --out checks/retention | tee checks/retention.log
           python source/assist/tests/world_frame_core_test.py | tee checks/world-frame.log
+          python source/assist/tests/tactical_frame_sampling.py --out checks/tactical | tee checks/tactical.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
