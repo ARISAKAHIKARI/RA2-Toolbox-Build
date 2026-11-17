@@ -109,18 +109,27 @@ static bool applyUnloadDecision(UnloadPassenger&r,const unloadcompute::Input&inp
  if(decision.done)return true;
  if(decision.mission<0||budget<=0||outgoingRoom()<=0)return false;
  // Runtime alone revalidates the chosen target and creates the event.
+ uint32_t capturedTargetPointer=0;
  if(decision.target){int targetIndex=-1;
   for(int i=0;i<input.targetCount;++i)if(input.targets[i].id==decision.target){targetIndex=i;break;}
   if(targetIndex<0)return false;const auto&q=input.targets[targetIndex];
   if(worldByID(q.id)!=q.pointer||get<uint32_t>(q.pointer+0x10)!=q.id)return false;
+  capturedTargetPointer=q.pointer;
   bool failed=false;planner::Actor source{};rawCombatInfo(r.p,s.type,1,source,true);
   uint8_t action=unloadTargetAction(r.p,s.type,s.view,q.pointer,house,source,failed);
   if(failed||!action||int(action&63)-1!=decision.mission)return false;
  }else if(decision.mission!=0&&decision.mission!=5&&decision.mission!=16)return false;
  if(decision.mission==16&&(!s.view.deployer||!call<bool>(get<uint32_t>(get<uint32_t>(r.p)+0x314),r.p)))return false;
  uint32_t ticket=0;const bool attack=decision.mission==1;
- if(!nativeMission(house,r.id,decision.mission,attack?decision.target:0,attack?0:decision.target,
-    !attack&&decision.target?0x34:0,0,0,taskarbiter::Owner::Unload,&ticket))return false;
+ // Capture-time source token and chosen target UID/pointer are independently
+ // rechecked at the common native game-thread event submission gateway.
+ const executionproof::Ticket proof{input.match,house,input.tick,
+    {s.id,s.pointer,s.token},
+    attack?executionproof::Identity{decision.target,capturedTargetPointer}:executionproof::Identity{},
+    !attack?executionproof::Identity{decision.target,capturedTargetPointer}:executionproof::Identity{}};
+ if(!submitProvenMission(house,r.id,decision.mission,attack?decision.target:0,
+    attack?0:decision.target,!attack&&decision.target?0x34:0,
+    taskarbiter::Owner::Unload,proof,&ticket))return false;
  --budget;state=decision.accepted;
  if(decision.mission!=5){state.sentFrame=frame;if(decision.mission==16||decision.target)++snap.unloadIssued;}
  if(decision.follow){
