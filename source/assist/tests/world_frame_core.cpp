@@ -412,7 +412,7 @@ void hostIsolation(){
  external::ProcessReader reader;CHECK(reader.open(GamePid));reader.setWorldDemand(worldframe::Resources);CHECK(!reader.beginWorldFrame(7));
  currentPid=GamePid;worldframe::Server server;CHECK(server.wanted(HostPid,clock));auto raw=std::make_shared<worldframe::Snapshot>();auto k=key();k.tick=clock;k.generationLow=777;k.connectionLow=uint32_t(reader.generation());k.connectionHigh=uint32_t(reader.generation()>>32);raw->reset(k);
  Read live{&m};worldframe::CaptureGraph<Read>graph(*raw,live);CHECK(graph.capture(worldframe::Base,{}));CHECK(raw->seal());server.observe(raw->key);server.publish(*raw);
- currentPid=HostPid;CHECK(reader.beginWorldFrame(7));auto derived=reader.worldFrameToken();CHECK(derived&&derived->controlSource);CHECK(channel()->demandMask==worldframe::Base);
+ currentPid=HostPid;CHECK(reader.beginWorldFrame(7));auto derived=reader.worldFrameToken();CHECK(derived&&derived->controlSource);CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  constexpr uint32_t extra=0x760100;m.put(extra,0x12345678u);uint32_t value=0;const auto before=rpmCalls;CHECK(!reader.read(extra,&value,4)&&rpmCalls==before&&!reader.worldFrameComplete());reader.endWorldFrame();
  CHECK(server.requests().empty());clock+=16;CHECK(reader.beginWorldFrame(7));derived=reader.worldFrameToken();CHECK(reader.read(extra,&value,4)&&value==0x12345678u);reader.endWorldFrame();CHECK(server.requests().empty());
  // A command scope unwraps the frozen authoritative source. It cannot read
