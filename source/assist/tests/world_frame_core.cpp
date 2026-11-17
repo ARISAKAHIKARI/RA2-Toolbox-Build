@@ -4,6 +4,7 @@
 #undef NDEBUG
 #endif
 #include "../../shared/source/world_frame_capture.h"
+#include "../../shared/source/world_frame_command_index.h"
 #include "../../shared/source/world_frame_visual.h"
 #include <cassert>
 #include <cstdio>
