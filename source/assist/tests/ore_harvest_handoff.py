@@ -59,7 +59,7 @@ def main():
     scope=write_scope(a.out)
     source=(SRC/'external_orders_bridge.h').read_text(encoding='utf-8')
     (a.out/'ore_eligibility_extract.h').write_text('\n'.join(function(source,n)for n in ('static bool oreTypeAllowed(','static bool oreMiner(','static bool rawOreCompatible(','static bool rawDockBusy(','static bool rawDockLinked('))+'\n',encoding='utf-8')
-    (a.out/'ore_admission_extract.h').write_text('\n'.join(function(source,n)for n in ('static bool externalOrderValid(','static int admitPlannerOrder('))+'\n',encoding='utf-8')
+    (a.out/'ore_admission_extract.h').write_text('\n'.join(function(source,n)for n in ('static bool externalOrderValid(','static int admitPlannerOrder('))+'\n'+function(source,'static int admitPlannerOrder(const planner::Order&o,uint32_t house){')+'\n',encoding='utf-8')
     report={'scope':__doc__,'architectures':{},'production_scope_extract_sha256':hashlib.sha256(scope.encode()).hexdigest(),'game_process_operated':False,'windows_executed':False}
     for arch in (('x86','x86_64') if a.zig else ('native',)):
         exe=a.out/(arch+('.exe' if a.zig else ''));compiler=[str(a.zig.resolve()),'c++','-target',arch+'-windows-gnu'] if a.zig else [a.cxx]

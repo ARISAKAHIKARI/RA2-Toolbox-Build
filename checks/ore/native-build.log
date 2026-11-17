@@ -1,0 +1,5 @@
+In file included from /home/runner/work/RA2-Toolbox-Build/RA2-Toolbox-Build/source/assist/tests/ore_harvest_handoff.cpp:122:
+/home/runner/work/RA2-Toolbox-Build/RA2-Toolbox-Build/checks/ore/ore_admission_extract.h: In function ‘bool externalOrderValid(const assist::planner::Order&, uint32_t)’:
+/home/runner/work/RA2-Toolbox-Build/RA2-Toolbox-Build/checks/ore/ore_admission_extract.h:24:35: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+   24 |   float storage[4];memcpy(storage,(void*)(unit+0x33C),sizeof storage);if(ore::storageAmount(storage)<=0)return false;
+      |                                   ^~~~~~~~~~~~~~~~~~~

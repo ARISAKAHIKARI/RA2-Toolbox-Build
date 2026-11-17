@@ -14,21 +14,19 @@
 // live-reader fallback belongs in this type. The producer alone may fill pages.
 namespace worldframe {
 constexpr uint32_t Version=1,PageSize=4096,MaxPages=16384,IndexSize=32768;
-// Non-wire-layout subscription classification: only Host visual readers are
-// alive. It permits a small authoritative scene boundary; the Host's own
-// VisualCache independently gathers non-command actor data off-game-thread.
-enum Demand:uint32_t {Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64,HostDisplayOnly=128};
-// Visual and Resources are Host-local ONLY for a purely display subscription.
-// A mixed Visual|Combat (or Resources|Passengers) reader is a command reader:
-// its native input pages must not disappear from the producer's demand mask.
-// Reject unknown/future flags from the display-only lane by default.
+enum Demand:uint32_t {
+ Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64,HostDisplayOnly=128,
+ HostVisualPassengers=256,HostVisualCombat=512,HostVisualOre=1024
+};
+// Explicit Host-only visual requirements never grant command authority.
+// Unknown or mixed native demand remains on the full authoritative path.
 inline bool visualDemand(uint32_t demand){
- constexpr uint32_t displayFlags=uint32_t(Base|Visual|Resources);
+ constexpr uint32_t displayFlags=uint32_t(Base|Visual|Resources|HostVisualPassengers|HostVisualCombat|HostVisualOre);
  return (demand&uint32_t(Visual|Resources))!=0&&(demand&~displayFlags)==0;
 }
 inline uint32_t runtimeDemand(uint32_t demand){
  return visualDemand(demand)?uint32_t(Base):
-        ((demand&~uint32_t(Visual|Resources|HostDisplayOnly))|uint32_t(Base));
+ ((demand&~uint32_t(Visual|Resources|HostDisplayOnly|HostVisualPassengers|HostVisualCombat|HostVisualOre))|uint32_t(Base));
 }
 struct Key {
  uint32_t pid=0,owner=0,match=0,serial=0,tick=0,demand=0;
@@ -162,6 +160,17 @@ public:
  int32_t visualFrame=-1;uint32_t visualTick=0;uint64_t visualSerial=0;
  explicit Snapshot(PageAllocator allocator={})noexcept:pages(allocator){}
  Snapshot(const Snapshot&)=delete;Snapshot&operator=(const Snapshot&)=delete;
+ // Transfer a completed worker-owned capture without allocating or copying any
+ // page payloads. Both Snapshot owners must be exclusive and quiescent here.
+ // The fixed 128 KiB lookup table is swapped, never rebuilt from game memory.
+ void swap(Snapshot&other)noexcept{
+  using std::swap;
+  swap(index_,other.index_);swap(sealed_,other.sealed_);swap(overflow_,other.overflow_);
+  swap(key,other.key);swap(counters,other.counters);pages.swap(other.pages);
+  controlSource.swap(other.controlSource);
+  swap(visualFrame,other.visualFrame);swap(visualTick,other.visualTick);
+  swap(visualSerial,other.visualSerial);
+ }
  void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};pages.clear();index_.fill(0);sealed_=overflow_=false;}
  bool sealed()const{return sealed_;}bool overflow()const{return overflow_;}
  bool seal(){sealed_=true;return !overflow_;}

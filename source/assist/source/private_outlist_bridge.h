@@ -30,7 +30,8 @@ static bool privateOutQueue(const Event&source,bool manual){
   if(!privateDestructHouse(int(p.event.house),p.stamp.targetHouse,p.stamp.targetID)){++sh->privateOutRejected;privateStatus(-7);return false;}
  }
  if(id&&p.event.payload[4]==0x34){
-  indexWorld(frame);const uint32_t actor=worldByID(id);
+  if(!prepareWorldIndex(frame)){++sh->privateOutRejected;privateStatus(-7);return false;}
+  const uint32_t actor=worldByID(id);
   if(!actor||!live(actor)){++sh->privateOutRejected;privateStatus(-7);return false;}
   p.stamp.actorPointer=actor;p.stamp.actorID=id;p.stamp.owner=get<uint32_t>(actor+0x21C);
   if(p.stamp.owner<0x10000){++sh->privateOutRejected;return false;}

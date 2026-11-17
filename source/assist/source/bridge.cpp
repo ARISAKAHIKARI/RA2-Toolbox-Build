@@ -22,6 +22,8 @@
 #include "autoload.h"
 #include "outgoing_batch.h"
 #include "object_index.h"
+#include "global_vehicle_scan_policy.h"
+#include "repair_result_filter.h"
 #include "hook_policy.h"
 #include "activation_diagnostic.h"
 #include "event_delivery.h"
@@ -34,12 +36,15 @@
 #include "repair_delivery.h"
 #include "session_epoch.h"
 #include "world_lifecycle.h"
+#include "../../shared/source/world_frame_command_worker_win.h"
+#include "world_capture_admission.h"
 #include "control_link.h"
 #include "control_mode_policy.h"
 #include "scheduler_policy.h"
 #include "dispatch_router.h"
 #include "order_policy.h"
 #include "unit_task_arbiter.h"
+#include "execution_proof.h"
 #include "../../external_reader/source/display_state.h"
 #include "../../shared/source/message_query.h"
 #include "../../shared/source/runtime_memory.h"
@@ -119,10 +124,13 @@ static bool repairCalculationPending;static DWORD repairCalculationStarted;stati
 static uint32_t lastIdle[3];static int prevBusy,prevPaused,prevCompleted;static bool productionBaseline;
 static uint8_t techAllowed[MaxTypes];static bool enhancementChangedCatalogue=false;
 static uint32_t typePointers[MaxTypes];
-static ManualVersions manualVersions;static ObjectIndex worldObjects;static int indexedFrame=-1,indexedCount=-1;static uint32_t indexedItems;
+static ManualVersions manualVersions;static ObjectIndexView worldObjects;static int indexedFrame=-1,indexedCount=-1;static uint32_t indexedItems;
 // Reuse the mandatory world-index traversal for global magnetron discovery.
 // Input and planning still revalidate identities and native eligibility.
 static uint32_t globalVehicleCandidates[16384];static int globalVehicleCandidateCount=0;static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
+// The candidate list itself is worker-owned in async mode, not copied into
+// another 64 KiB main-thread array on every accepted command snapshot.
+static globalvehicle::Cursor globalVehicleScan;
 static ObjectIndex advancedObjects;
 static int outgoingFrame=-1,outgoingBudget;
 static void recordReceipt(const gateway::Receipt&r){
@@ -208,8 +216,36 @@ static void indexWorld(int frame){
 // A sealed snapshot may still contain failed pages. An incomplete identity
 // projection is unknown, not an empty world. Execution guards may rebuild the
 // live identity index after leaving the sealed scope; pure observers must wait.
+// The worker-built identity projection is not a native EventClass grant.
+// Its only lifetime is the currently sealed exact game logic frame. Every
+// native operation still verifies live UID, House, mission and eligibility.
+static bool commandRosterReady(){
+ return worldFrameCommandWorker.enabled()&&worldFrameReady&&!worldFrameBoundaryOnly&&
+  worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
+  worldFrameCommandRoster.current(worldFrame.key)&&
+  worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal)&&
+  worldFrame.key.house==lastHouse;
+}
 static bool refreshWorldIndex(int frame,bool executionGuards){
  static uint32_t failedMatch=0,failedAt=0;static int failedFrame=-1;
+ if(worldFrameCommandWorker.enabled()){
+  if(!commandRosterReady()||frame!=worldFrame.key.frame){
+   indexedFrame=-1;globalVehicleCandidateCount=0;
+   return false; // no synchronous full-roster or hash construction
+  }
+  static uint32_t adoptedSerial=0;
+  if(indexedFrame!=frame||adoptedSerial!=worldFrame.key.serial){
+   worldObjects.bind(&worldFrameCommandRoster.objects,commandRosterReady);
+   indexedCount=worldFrameCommandRoster.count;indexedItems=worldFrameCommandRoster.items;
+   indexedGlobalVehicles=worldFrameCommandRoster.global;indexedVehicleHouse=lastHouse;
+   const auto&candidates=worldFrameCommandRoster.globalVehicles;
+   globalVehicleCandidateCount=int(std::min<size_t>(16384,candidates.size()));
+   // Ownership is already on the dispatcher, and the vector remains sealed
+   // until the next controlled Snapshot/roster swap. Never copy all entries.
+   indexedFrame=frame;adoptedSerial=worldFrame.key.serial;
+  }
+  return true;
+ }
  const uint32_t now=sampleClock(sh);
  if(failedMatch==match&&failedFrame==frame&&uint32_t(now-failedAt)<16)return false;
  if(worldFrameReady){
@@ -218,7 +254,11 @@ static bool refreshWorldIndex(int frame,bool executionGuards){
   if(complete&&indexedFrame==frame)return true;
  }
  worldObjects.clear();indexedFrame=-1;globalVehicleCandidateCount=0;
- if(!executionGuards)return false;
+ if(!executionGuards||worldFrameCommandWorker.enabled()){
+  // Do not fall through to a synchronous 16K-actor index scan when the
+  // latest worker observation is late or missing. Keep tasks pending.
+  return false;
+ }
  indexWorld(frame);if(indexedFrame==frame)return true;
  failedMatch=match;failedFrame=frame;failedAt=now;return false;
 }
@@ -238,11 +278,28 @@ static gateway::MissionState observeMissionReceipt(uint32_t id){
  if(!read(p+0x10,&currentID,sizeof currentID)||!read(p+0xAC,&mission,sizeof mission)||
     !read(p+0xB4,&queued,sizeof queued)||!read(p+0x11C,&carrier,sizeof carrier)||currentID!=id)return {};
  return {true,mission,queued,carrier};
+
+// Never dereference an old/stale worker roster from a native command path.
+static uint32_t globalVehicleCandidateAt(int index){
+ if(index<0||index>=globalVehicleCandidateCount)return 0;
+ if(worldFrameCommandWorker.enabled()){
+  if(!commandRosterReady()||size_t(index)>=worldFrameCommandRoster.globalVehicles.size())return 0;
+  return worldFrameCommandRoster.globalVehicles[size_t(index)];
+ }
+ return globalVehicleCandidates[index];
+}
+// Native hook maintenance is still permitted to use exact per-object
+// admission, but must never rebuild a 16K-object roster when the dedicated
+// command capture worker owns all graph reads. A missing worker index is
+// UNKNOWN: caller skips this observation; native game events stay untouched.
+static bool prepareWorldIndex(int frame){
+ if(worldFrameCommandWorker.enabled())return refreshWorldIndex(frame,false);
+ indexWorld(frame);return indexedFrame==frame;
 }
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
 static void reset(bool retireHooks=true,bool preserveMissile=false){retireWorldFrame();restorePrivateOut();minerDefenseReset();restoreTriggerInput();restoreSinglePlayerFPS();resetOwnGround();superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();nativePlacementReset();if(retireHooks)nativePlacementCompletionReset();restorePauseView();resetMoOrders();resetDirectAir();resetDirectSell();resetBombBoard();if(retireHooks){restoreSidebarView();resetHookReadiness();restoreCrcMapShadow();restoreBuildTimeTooltip();restorePrivateOut();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);restoreViewZoom();}stickyCount=0;runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
- snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;if(retireHooks)restoreClickHooks();resetCooperativeState();resetFormation();if(!preserveMissile)resetMissileControl();resetBurstControl();resetDodgeControl();if(retireHooks&&sh)sh->clickHookStatus=0;clearOreOrders();if(retireHooks)restorePlacement();indexedFrame=indexedCount=-1;outgoingFrame=-1;clearNativeOrders(retireHooks);snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.unloadIssued=0;if(retireHooks){snap.nativeHookStatus=0;snap.techOpen=0;restoreTech();restoreCSHook();}clearFlashes();resetProduction();if(retireHooks)snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;repairCalculationPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;if(retireHooks){snap.techVisible=snap.techUnavailable=0;snap.techError=techDataPending()?-44:0;}snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;if(retireHooks)snap.csHookStatus=0;snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;if(retireHooks)memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
+ snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;if(retireHooks)restoreClickHooks();resetCooperativeState();resetFormation();if(!preserveMissile)resetMissileControl();resetBurstControl();resetDodgeControl();if(retireHooks&&sh)sh->clickHookStatus=0;clearOreOrders();if(retireHooks)restorePlacement();indexedFrame=indexedCount=-1;globalVehicleScan.reset();outgoingFrame=-1;clearNativeOrders(retireHooks);snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.unloadIssued=0;if(retireHooks){snap.nativeHookStatus=0;snap.techOpen=0;restoreTech();restoreCSHook();}clearFlashes();resetProduction();if(retireHooks)snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;repairCalculationPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;if(retireHooks){snap.techVisible=snap.techUnavailable=0;snap.techError=techDataPending()?-44:0;}snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;if(retireHooks)snap.csHookStatus=0;snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;if(retireHooks)memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
 static void mapName(wchar_t*out,DWORD p){mappingName(out,p);}
 static HANDLE controllerProcess;static DWORD controllerPID,controllerCheckAt;
 static void disconnect(){
@@ -251,7 +308,7 @@ static void disconnect(){
  worldFrameServer.disconnect();restorePlayerContext();reset();
  // In particular, raw direct patches have no disabled callback to fall back
  // through. Do not acknowledge stop/unmap IPC while any feature still owns one.
- if(!featureRestorationComplete()||!worldFramePublication.stop()||!worldFrameShadow.stop())return;
+ if(!featureRestorationComplete()||!worldFramePublication.stop()||!worldFrameShadow.stop()||!worldFrameCommandWorker.stop())return;
  if(sh&&sh->magic==Magic&&sh->version==Version&&sh->pid==GetCurrentProcessId()&&sh->stop){MemoryBarrier();sh->stop=2;}
  InterlockedExchange(&hostWorkPending,0);if(controllerProcess)CloseHandle(controllerProcess);controllerProcess=nullptr;controllerPID=controllerCheckAt=0;restoreFrameDriver();InterlockedExchange(&messageGameThread,0);sessionTracker.update(false,0,-1,-1);hookWorld.reset();commandDormant=worldCleanupPending=false;readOnlyState={};commandComputeEpoch=0;if(sh)UnmapViewOfFile(sh);sh=nullptr;if(mapping)CloseHandle(mapping);mapping=nullptr;lastHouse=pendingAck=0;pendingAckReady=false;
  // The pinned DLL outlives a Host connection. Only completed retirement and
@@ -681,7 +738,8 @@ static void showOrderLines(uint32_t object){
 static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target,
                           uint32_t dest,int destTag,uint32_t nearest=0,int nearestTag=0,
                           taskarbiter::Owner owner=taskarbiter::Owner::Generic,uint32_t* receiptID=nullptr,
-                          int targetTag=-1,OrderAuthority authority=OrderAuthority::Local,bool appendWaypoint=false,bool cooperativeTakeover=false,bool forceConstructed=false){
+                          int targetTag=-1,OrderAuthority authority=OrderAuthority::Local,bool appendWaypoint=false,bool cooperativeTakeover=false,bool forceConstructed=false,
+                          const executionproof::Ticket* proof=nullptr){
  const bool foreign=authority==OrderAuthority::PlayerTest&&sh&&controlmode::proxyOrders(sh->controlAll)&&playableHouse(house);
  if(!id||!house||(house!=lastHouse&&!foreign)||!eventdelivery::mayQueue(get<int>(0xA8B238))||!loadInterfaces())return false;
  const uint8_t resolvedTargetTag=targetTag>=0?uint8_t(targetTag):(target?0x34:0);
@@ -701,6 +759,21 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  auto reject=orderpolicy::missionWithTargetTag(object!=0,object&&own(object,house),object&&live(object),
   mission,resolvedTargetTag,target,targetObject!=0,targetCellValid,destTag==0x34,destObject!=0);
  if(reject!=orderpolicy::Reject::None){++snap.commandRejected;return false;}
+ // The original planner's proof is optional on legacy/manual callers, but
+ // mandatory for migrated delayed planners. A candidate never grants authority.
+ // Verify UID->current pointer, original manual token, House, object-bound
+ // target identity and the actual requested event parameters on Game thread.
+ if(proof){
+  const auto orderFailure=executionproof::ordered(*proof,id,target,resolvedTargetTag,dest,uint8_t(destTag));
+  const auto liveFailure=orderFailure==executionproof::Failure::None?
+   executionproof::verify(*proof,{match,house,submittedAt},
+      [](uint32_t uid){return worldByID(uid);},
+      [](uint32_t uid){return manualVersions.get(uid);},
+      [](uint32_t p,uint32_t h){return own(p,h);}):orderFailure;
+  if(liveFailure!=executionproof::Failure::None){
+   snap.lastSubmitError=7;++snap.commandRejected;return false;
+  }
+ }
  const int frame=get<int>(0xA8ED84);
  actorFrameArbiter.begin(match,frame);
  // An explicitly captured limited aircraft click must leave failed/unused
@@ -736,6 +809,16 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
   queued.owner=owner;recordReceipt(queued);
  }
  return true;
+}
+// Typed execution path for delayed planners. Native callers still use the
+// unchanged vanilla EventClass backend. Every proof is checked only inside
+// nativeMission before an event is constructed or enqueued.
+static bool submitProvenMission(uint32_t house,uint32_t id,int mission,uint32_t target,
+  uint32_t destination,int destinationTag,taskarbiter::Owner owner,
+  const executionproof::Ticket&proof,uint32_t*receipt=nullptr,
+  uint32_t nearest=0,int nearestTag=0){
+ return nativeMission(house,id,mission,target,destination,destinationTag,nearest,nearestTag,
+   owner,receipt,-1,OrderAuthority::Local,false,false,false,&proof);
 }
 static bool sellAllowed(uint32_t);
 #include "sell_direct_bridge.h"
@@ -1014,12 +1097,16 @@ static DWORD clampedRepairInterval(uint32_t ms){
  return ms<500?500:ms>30000?30000:ms;
 }
 static compute::FrameHistory<compute::RepairInput> repairFrames;static compute::RepairResult repairResultCopy;
+// Input membership proof is staged across callbacks, never 8K-sort on Game.
+static repairfilter::Filter repairResultGate;
+static uint32_t repairValidatedSerial=0;static unsigned repairStagedCount=0;
 static void cancelAutomaticRepairWork(){
  // A manual Repair request owns its pending calculation and candidate list.
  // Keep queued toggle receipts: disabling automation cannot retract an event
  // already handed to the engine, nor make its next scan toggle it twice.
  if(repairAckPending||(!repairCalculationPending&&repairAt>=repairCount))return;
  repairCalculationPending=false;repairCalculationStarted=0;
+ repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
  repairCount=repairAt=repairDone=0;repairFrames.clear();
  repairTaskSeen=sh->repairComputed;
 }
@@ -1045,22 +1132,53 @@ static int collectRepairs(uint32_t house,DWORD now,bool refresh=false){
 }
 static void repairCalculationTick(DWORD now){
  if(!repairCalculationPending)return;
- if(DWORD(now-repairCalculationStarted)>1000){repairCalculationPending=false;if(repairAckPending){sh->result=-7;sh->count=0;pendingAck=repairAckRequest;pendingAckReady=true;repairAckPending=false;}return;}
+ if(DWORD(now-repairCalculationStarted)>1000){
+  repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
+  repairCount=repairAt=repairDone=0;repairCalculationPending=false;
+  if(repairAckPending){sh->result=-7;sh->count=0;pendingAck=repairAckRequest;pendingAckReady=true;repairAckPending=false;}
+  return;
+ }
  const uint32_t completed=sh->repairComputed;
- if(compute::newer(completed,repairTaskSeen)){
-  const long seq=sh->repairResultSeq;if(!(seq&1)){MemoryBarrier();repairResultCopy=sh->repairResult;MemoryBarrier();
-   if(seq==sh->repairResultSeq&&completed==sh->repairComputed){repairTaskSeen=completed;const auto*input=repairFrames.find(completed);const auto&r=repairResultCopy;
-    if(input&&r.count>=0&&r.count<=8192&&r.match==input->match&&r.tick==input->tick&&r.frame==input->frame&&
-       freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&!get<bool>(0xA8BC60+25)){
-     repairCalculationPending=false;repairCount=repairAt=repairDone=0;
-     // Validate membership once against the retained request. Keep Host order
-     // and duplicates here; repairEvent owns pending-toggle deduplication.
-     static uint32_t knownIDs[8192];
-     for(int j=0;j<input->count;++j)knownIDs[j]=input->items[j].id;
-     std::sort(knownIDs,knownIDs+input->count);
-     for(int i=0;i<r.count;++i)if(std::binary_search(knownIDs,knownIDs+input->count,r.ids[i]))repairIDs[repairCount++]=r.ids[i];return;
+ if(!repairResultGate.running&&compute::newer(completed,repairTaskSeen)){
+  const long seq=sh->repairResultSeq;
+  if(!(seq&1)){
+   MemoryBarrier();repairResultCopy=sh->repairResult;MemoryBarrier();
+   if(seq==sh->repairResultSeq&&completed==sh->repairComputed){
+    repairTaskSeen=completed;
+    const auto*input=repairFrames.find(completed);const auto&r=repairResultCopy;
+    if(input&&input->count>=0&&input->count<=8192&&r.count>=0&&r.count<=8192&&
+       r.match==input->match&&r.tick==input->tick&&r.frame==input->frame&&
+       freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&
+       !get<bool>(0xA8BC60+25)){
+     repairCount=repairAt=repairDone=0;repairStagedCount=0;repairValidatedSerial=completed;
+     if(r.count==0){repairCalculationPending=false;return;}
+     // New proof epoch is O(1): no 8192-ID copy or sort.
+     if(!repairResultGate.begin(input->count,r.count))repairValidatedSerial=0;
     }
    }
+  }
+ }
+ if(repairResultGate.running){
+  // A refreshed Host input or a world change cannot promote partial proof.
+  const auto*input=repairFrames.find(repairValidatedSerial);
+  const auto&r=repairResultCopy;
+  if(!input||input->count<0||input->count>8192||r.count<0||r.count>8192||
+     r.match!=input->match||r.tick!=input->tick||r.frame!=input->frame||
+     !freshness::valid(input->match,match,input->tick,input->frame,now,get<int>(0xA8ED84),freshness::Cooperative)||
+     get<bool>(0xA8BC60+25)){
+   repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
+  }else{
+   const bool finished=repairResultGate.step(unsigned(input->count),unsigned(r.count),
+    [&](unsigned i){return input->items[i].id;},
+    [&](unsigned i){return r.ids[i];},
+    [&](uint32_t id){repairIDs[repairStagedCount++]=id;});
+   if(repairResultGate.failed){
+    repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
+   }else if(finished){
+    repairCount=int(repairStagedCount);repairAt=repairDone=0;
+    repairResultGate.reset();repairValidatedSerial=0;repairCalculationPending=false;
+    return;
+   }else return;
   }
  }
  if(externalInputFrame&&!get<bool>(0xA8BC60+25))collectRepairs(lastHouse,now,true);
@@ -1256,10 +1374,11 @@ static void repairTick(uint32_t house,DWORD now){
  autoWas=automatic&&!deferred;snap.autoRepair=automatic;
  static int budgetFrame=-1,budget;static uint32_t budgetMatch;
  int frame=get<int>(0xA8ED84);if(budgetFrame!=frame||budgetMatch!=match){budgetFrame=frame;budgetMatch=match;budget=recurringBudget(EventLane::Repair);}
- if(repairAt<repairCount&&budget>0){
-  indexWorld(frame);
-  // Never retire queued candidates if a new UID roster could not be sealed.
-  if(indexedFrame==frame)while(repairAt<repairCount&&budget>0){
+ if(repairAt<repairCount&&budget>0&&
+    (!worldFrameCommandWorker.enabled()||commandRosterReady())){
+  if(!worldFrameCommandWorker.enabled())indexWorld(frame);
+  // Pre14's tri-state repair eligibility stays in place.
+  if(indexedFrame==frame||worldFrameCommandWorker.enabled())while(repairAt<repairCount&&budget>0){
    const uint32_t id=repairIDs[repairAt];uint32_t p=0;bool recent=false;
    const RepairAdmission status=checkedRepairAdmission(id,house,p,recent);
    if(status==RepairAdmission::Unknown)break;
@@ -1589,13 +1708,17 @@ static void tick(){
   external::catalogue::Stamp stamp;catalogueAt=now;
   if(external::catalogue::capture([](uint32_t a,void*p,size_t n){return read(a,p,n);},stamp)){
    if(!catalogueReady||catalogueHash!=stamp.hash)scanTypes();catalogueHash=stamp.hash;catalogueReady=true;
-  }else{catalogueReady=false;scanTypes();}
+  }else{
+   // A failed stamp read means UNKNOWN, not a changed type catalogue.
+   // Keep the last complete cache and retry the cheap stamp. Never trigger
+   // full type scanning every 100ms because of a transient missing page.
+  }
  }
  uint32_t worldDemand=worldframe::Base;
  if(sharedWorldWanted)worldDemand|=worldFrameServer.demandMask();
  if(sh->dodgeEnabled||dodgeCount)worldDemand|=worldframe::Bullets|worldframe::Combat;
  if(sh->missileEnabled||missileHoldCount||sh->minerDefenseEnabled||minerDefensePending()||sh->magnetronGlobal||sh->magnetronDrop||(sh->flags&(AdvancedInput|MagnetronInput|AircraftSpread|AdvancedEnter|AntiTheft))||nativeCount||runtimeCoopPending||unloadCount||queuedUnload.count)worldDemand|=worldframe::Combat;
- if(sh->flags&(Capacity|AutoOreReturn|AdvancedEnter|AircraftSpread|EjectAssist|SmartUnloadOrders)||sh->bombBoardEnabled||loadLedger.count||loadCalculationPending||unloadCount||queuedUnload.count||cooperativeEffectCount)worldDemand|=worldframe::Passengers;
+ if(capturepolicy::passengerGraphNeeded(sh->flags,sh->externalDisplay!=0)||sh->bombBoardEnabled||loadLedger.count||loadCalculationPending||unloadCount||queuedUnload.count||cooperativeEffectCount)worldDemand|=worldframe::Passengers;
  if((sh->flags&AutoOreReturn)||oreHarvestNeedsWork()||sh->minerDefenseEnabled||minerDefensePending())worldDemand|=worldframe::Ore;
  // The full display graph belongs to the separate Host VisualCache. The
  // game thread may publish a small scene boundary only if ALL Host readers

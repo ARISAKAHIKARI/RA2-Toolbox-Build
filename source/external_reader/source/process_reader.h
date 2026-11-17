@@ -130,6 +130,10 @@ public:
   if(!worldClient_)worldClient_=worldframe::acquireClient(pid(),generation());
   worldClient_->subscribe(uintptr_t(this),worldDemand_);
   if(!frame)frame=worldClient_->acquire(match);else if(!worldClient_->accepts(frame))return false;
+  // No command reader may promote a display-only zero-page marker to its
+  // authoritative input, even if it arrived during same-frame hotkey demand.
+  if(frame&&!worldframe::visualDemand(worldDemand_)&&
+     worldframe::boundaryOnlySource(worldframe::authoritative(frame)->key))return false;
   if(worldframe::visualDemand(worldDemand_)){
    if(frame&&!frame->controlSource)frame=worldClient_->visual(frame,worldDemand_,[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);});
   }else{

@@ -132,7 +132,7 @@ static bool publishPlanningWorld(uint32_t house,int frame,DWORD now){
   bool enemy=!ownActor&&(advanced||threat||spider)&&nativeEnemy(p,house);
   if(!tracked&&!harvester&&!oreDock&&!enemy&&!turret&&!dropSource&&!spiderSource)continue;
   auto&a=w.actors[w.count++];memset(&a,0,sizeof a);a.combatFirst=-1;oreParticipant[w.count-1]=harvester||defenseMiner;
-  a.id=get<uint32_t>(p+0x10);a.type=type;a.kind=k;a.x=get<int>(p+0x9C);a.y=get<int>(p+0xA0);a.z=get<int>(p+0xA4);
+  a.id=get<uint32_t>(p+0x10);a.sourcePointer=p;a.type=type;a.kind=k;a.x=get<int>(p+0x9C);a.y=get<int>(p+0xA0);a.z=get<int>(p+0xA4);
   a.mission=get<int>(p+0xAC);a.queued=get<int>(p+0xB4);a.cost=get<int>(type+0x610);a.veterancy=get<float>(p+0x150);a.manualVersion=manualVersions.get(a.id);
   if(ownActor)a.flags|=planner::Own;else if(enemy)a.flags|=planner::Enemy;
   if(get<bool>(p+0x83))a.flags|=planner::Selected;if(get<bool>(p+0x1C8))a.flags|=planner::Disabled;
@@ -283,7 +283,7 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
 static outgoing::Batch planBatch;
 // Shared admission for host and Runtime decisions. Neither planner owns a
 // constructor, RNG, mission write, private hook or alternative event channel.
-static int admitPlannerOrder(const planner::Order&o,uint32_t house){
+static int admitPlannerOrder(const planner::Order&o,uint32_t house,uint32_t sourceMatch,uint32_t sourceTick){
  // A fresh in-range target takes precedence over any delayed movement proposal.
  // Reject an obsolete movement proposal immediately so an external planner can
  // receive its receipt and use the next world; do not block its whole batch
@@ -298,15 +298,41 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  actorFrameArbiter.begin(match,get<int>(0xA8ED84));
  if(!actorFrameArbiter.canIssue(o.unit,o.token)){++snap.planDeferred;return 0;}
  if(!planningRoom(0)||!outgoingRoom()){++snap.planDeferred;return 0;}
- if(o.purpose==planner::MagnetronDropOrder){if(!nativeObjectEvent(get<int>(house+0x30),vanilla::EventType::Idle,o.unit,OrderAuthority::Local,nullptr,true))return 0;int index=orderIndex(worldByID(o.unit));if(index>=0)nativeOrders[index].attacking=false;consumePlanning(0);return 1;}
+ // Identity provenance comes from the original captured World, not a
+ // possibly recycled unit rebound after the Host finishes computing.
+ const uint32_t destinationID=o.destinationTag==0x34?o.destination:0;
+ const executionproof::Ticket proof{sourceMatch,house,sourceTick,
+   {o.unit,o.unitPointer,o.token},
+   {o.target,o.targetPointer},
+   {destinationID,o.destinationPointer}};
+ if(o.purpose==planner::MagnetronDropOrder){
+  // Drop uses an Object Event rather than a MegaMission, so apply the same
+  // original-identity guard explicitly before its native enqueue path.
+  if(executionproof::verify(proof,{match,house,sampleClock(sh)},
+      [](uint32_t uid){return worldByID(uid);},
+      [](uint32_t uid){return manualVersions.get(uid);},
+      [](uint32_t p,uint32_t h){return own(p,h);})!=executionproof::Failure::None)return -1;
+  if(!nativeObjectEvent(get<int>(house+0x30),vanilla::EventType::Idle,o.unit,
+                        OrderAuthority::Local,nullptr,true))return 0;
+  int index=orderIndex(worldByID(o.unit));
+  if(index>=0)nativeOrders[index].attacking=false;
+  consumePlanning(0);return 1;
+ }
  // Native Harvest click uses (10,nullptr,clickedCell,nullptr), not Move's
  // nearest-accessible override. Preserve that exact target packing.
  const bool nearest=o.purpose!=planner::OreHarvestOrder&&o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
- if(!nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,nearest?o.destination:0,nearest?11:0,
-    o.purpose==3?taskarbiter::Owner::Magnetron:(o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore))return -1;
+ if(!submitProvenMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,
+    o.purpose==3?taskarbiter::Owner::Magnetron:
+      (o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore,
+    proof,nullptr,nearest?o.destination:0,nearest?11:0))return -1;
  consumePlanning(0);minerDefenseRememberOre(o,house);
  if(o.purpose==1||o.purpose==3){int index=orderIndex(worldByID(o.unit));if(index>=0){auto&r=nativeOrders[index];r.stopped=o.mission==5;r.attacking=o.mission==1;r.target=o.target;r.sentFrame=get<int>(0xA8ED84);}}
  return 1;
+}
+// Legacy local Harvest orders retain their own episode identity and deadline.
+// Host and Runtime computed plans MUST pass their original capture timestamps.
+static int admitPlannerOrder(const planner::Order&o,uint32_t house){
+ return o.purpose==planner::OreHarvestOrder?admitPlannerOrder(o,house,match,0):-1;
 }
 static void externalOrdersTick(uint32_t house,int frame,DWORD now){
  uint32_t request=sh->planRequest;
@@ -329,7 +355,7 @@ static void externalOrdersTick(uint32_t house,int frame,DWORD now){
    compute::Feature family=o.purpose==planner::CombatOrder?compute::Advanced:o.purpose==planner::MagnetronDropOrder?compute::MagnetronDrop:o.purpose==planner::MagnetronOrder?(index>=0&&nativeOrders[index].global?compute::MagnetronGlobal:compute::Magnetron):o.purpose==planner::DefenseOrder?compute::Defense:compute::Ore;
    if(compute::inside(sh->computeApplied,family)){planBatch.reject();continue;}
    if(!fresh()){result=-7;break;}
-   int admitted=admitPlannerOrder(o,house);
+   int admitted=admitPlannerOrder(o,house,sh->planMatch,sh->planTick);
    if(!admitted)return;
    if(admitted<0)planBatch.reject();else planBatch.accept();
   }
