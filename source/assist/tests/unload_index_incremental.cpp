@@ -21,7 +21,7 @@ int main(){
  assert(q.find(freshP,freshId)>=0);
  // Every call is at most 128 inserts, regardless of 8192 live carriers.
  // Mutations made halfway through rebuilding must go into both hash owners.
- for(int frame=0;frame<100&&q.rebuilding==false||frame<64;++frame){
+ for(int frame=0;frame<100;++frame){
   const int before=q.rebuildAt;
   q.reindex();
   if(q.rebuilding)assert(q.rebuildAt-before<=q.ReindexBudget);
