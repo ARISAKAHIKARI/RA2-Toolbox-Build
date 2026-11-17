@@ -54,19 +54,21 @@ extern "C" bool NativeTooltipBuildTime(bool wanted){
  ++nativeCalls;nativeWanted=wanted;
  return !wanted||!nativeFailure;
 }
-static bool buildTimeTooltipActive=false,buildTimeTooltipFailed=false,buildTimeTooltipClaimed=false;
+static bool buildTimeTooltipActive=false,buildTimeTooltipFailed=false,buildTimeTooltipClaimed=false,buildTimeTooltipColdChecked=false;
 static uint32_t buildTimeTooltipFailedMatch=0;
 static void restoreBuildTimeTooltip();
 """
 code+="\n".join(functions)
 code+=r"""
 int main(){
- // Idle disabled feature stays on the fast path across 1,000 game wakes.
+ // One cold cleanup retires a possible stale claim left in pinned Runtime.
+ // Another 999 disabled ticks must never repeat it.
  for(unsigned i=0;i<1000;++i){now+=8;buildTimeTooltipTick();}
- if(nativeCalls||patternCalls||instance.buildTimeTooltipStatus){puts("idle calls regression");return 1;}
+ if(nativeCalls!=1||nativeWanted||!buildTimeTooltipColdChecked||
+    patternCalls||instance.buildTimeTooltipStatus){puts("idle calls regression");return 1;}
  instance.buildTimeTooltip=true;
  buildTimeTooltipTick();
- if(nativeCalls!=1||!nativeWanted||!buildTimeTooltipClaimed||!buildTimeTooltipActive){puts("enable regression");return 2;}
+ if(nativeCalls!=2||!nativeWanted||!buildTimeTooltipClaimed||!buildTimeTooltipActive){puts("enable regression");return 2;}
  unsigned measured=nativeCalls;
  for(unsigned i=0;i<30;++i){now+=8;buildTimeTooltipTick();}
  if(nativeCalls!=measured){puts("250ms throttle regression");return 3;}
@@ -88,7 +90,7 @@ int main(){
  if(nativeCalls!=oldNative+2||!buildTimeTooltipActive||!buildTimeTooltipClaimed){puts("policy change regression");return 10;}
  instance.buildTimeTooltip=false;buildTimeTooltipTick();
  if(buildTimeTooltipActive||buildTimeTooltipClaimed){puts("final cleanup regression");return 11;}
- std::printf("PASS build-time hot idle: zero native calls on 2000 disabled ticks, nonsticky failures, 250ms owner check, policy rebind (%u native calls)\n",nativeCalls);
+ std::printf("PASS build-time hot idle: one cold Runtime cleanup then zero repeated calls on 1999 disabled ticks, nonsticky failures, 250ms owner check, policy rebind (%u native calls)\n",nativeCalls);
 }
 """
 with tempfile.TemporaryDirectory(prefix="ra2-tooltip-idle-") as tmp:
