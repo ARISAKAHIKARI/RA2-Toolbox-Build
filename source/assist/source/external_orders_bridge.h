@@ -302,8 +302,19 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  // Native Harvest click uses (10,nullptr,clickedCell,nullptr), not Move's
  // nearest-accessible override. Preserve that exact target packing.
  const bool nearest=o.purpose!=planner::OreHarvestOrder&&o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
- if(!nativeMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,nearest?o.destination:0,nearest?11:0,
-    o.purpose==3?taskarbiter::Owner::Magnetron:(o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore))return -1;
+ // The planning wire format already carries the original manual token,
+ // but not the actor/target pointers. Bind the current identity at the shared
+ // planner admission, then recheck it inside nativeMission before enqueue.
+ // Do not pretend this pointer was observed in the original worker frame.
+ const uint32_t destinationID=o.destinationTag==0x34?o.destination:0;
+ const executionproof::Ticket proof{match,house,0,
+   {o.unit,worldByID(o.unit),o.token},
+   {o.target,o.target?worldByID(o.target):0},
+   {destinationID,destinationID?worldByID(destinationID):0}};
+ if(!submitProvenMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,
+    o.purpose==3?taskarbiter::Owner::Magnetron:
+      (o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore,
+    proof,nullptr,nearest?o.destination:0,nearest?11:0))return -1;
  consumePlanning(0);minerDefenseRememberOre(o,house);
  if(o.purpose==1||o.purpose==3){int index=orderIndex(worldByID(o.unit));if(index>=0){auto&r=nativeOrders[index];r.stopped=o.mission==5;r.attacking=o.mission==1;r.target=o.target;r.sentFrame=get<int>(0xA8ED84);}}
  return 1;
