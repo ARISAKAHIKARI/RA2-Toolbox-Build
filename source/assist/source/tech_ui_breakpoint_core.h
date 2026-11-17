@@ -4,6 +4,7 @@
 #include "../../shared/source/hardware_slot_budget.h"
 #include "../../shared/source/runtime_seh_scope.h"
 #include "tech_ui_breakpoint_hot.h"
+#include "../../shared/source/critical_path_clock_win.h"
 extern "C" int __cdecl RuntimeBreakpointCall(void*,void(__cdecl*)(void*),int(__cdecl*)(void*,void*));
 // Owner-thread exception CONTEXT transactions; no target-process code, virtual
 // table, rules, event queue or executable allocation is written here.
@@ -82,6 +83,9 @@ public:
  Lease lease{};Callback callback=nullptr;
  volatile LONG state=Off,lastError=0,exceptions=0,changed=0;
  volatile LONG confirmed=0;
+ bool timingEnabled=false;
+ void (*timingObserver)(unsigned,uint32_t)=nullptr;
+ uint32_t timingHits=0;
 private:
  HANDLE thread_=nullptr;DWORD owner_=0;PVOID handler_=nullptr;
  uint32_t requested_[SiteCount]{},wanted_=0,operationGroups_=0;
@@ -167,7 +171,11 @@ private:
   // Keep the same SEH finally, but pass the dispatch data directly instead of
   // chasing Invocation -> capturing lambda -> referenced local on every hit.
   DispatchInvocation call{s,p,&route};++s->handlerDepth_;
+  const bool sampled=route.kind==DispatchRoute::Feature&&s->timingEnabled&&
+                     s->timingObserver&&((++s->timingHits&63u)==0);
+  const uint64_t started=sampled?criticalpath::ticks():0;
   RuntimeScopedCall(&call,DispatchInvocation::invoke,DispatchInvocation::finish);
+  if(started)s->timingObserver(criticalpath::HardwareHit,criticalpath::elapsedUs(started));
   return call.result;
  }
  int localTrapFilter(EXCEPTION_POINTERS*p){return privateTrap(p)?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH;}
