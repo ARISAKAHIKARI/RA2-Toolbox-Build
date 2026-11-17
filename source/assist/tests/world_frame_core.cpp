@@ -131,7 +131,7 @@ void hostRichVisualFromBoundary(){
  CHECK(!raw->find(ActorA&~4095u));
  const uint32_t beforeReads=raw->counters.calls;
  const size_t beforePages=raw->pages.size();
- const uint32_t wanted=worldframe::Resources|worldframe::HostVisualPassengers|worldframe::HostVisualCombat;
+ const uint32_t wanted=worldframe::Resources|worldframe::HostVisualPassengers|worldframe::HostVisualCombat|worldframe::HostVisualOre;
  CHECK(worldframe::visualDemand(wanted));
  CHECK(worldframe::runtimeDemand(wanted)==worldframe::Base);
  CHECK(worldframe::visualDemand(worldframe::Visual|worldframe::HostVisualPassengers));
@@ -148,6 +148,8 @@ void hostRichVisualFromBoundary(){
  CHECK(!raw->read(ActorA+0x6C,&hp,4));
  CHECK(raw->counters.calls==beforeReads&&raw->pages.size()==beforePages);
  CHECK(graph->counters.rosterCaptures>raw->counters.rosterCaptures);
+ CHECK(graph->counters.rosterCaptures>=raw->counters.rosterCaptures+4); // ore roster is also Host-only
+ CHECK(worldframe::runtimeDemand(worldframe::Resources|worldframe::HostVisualOre)==worldframe::Base);
  std::printf("PASS rich Host visual graph: boundary %u calls/%zu pages; Host %u calls/%zu pages; passenger and combat actor refs off-game-thread\\n",
   beforeReads,beforePages,graph->counters.calls,graph->pages.size());
 }
@@ -651,7 +653,7 @@ void displayLeaseTransition(){
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  // Enriched Host visual demands still publish a scene boundary only.
  clock+=252;
- subscriber->subscribe(79,worldframe::Resources|worldframe::HostVisualPassengers|worldframe::HostVisualCombat);
+ subscriber->subscribe(79,worldframe::Resources|worldframe::HostVisualPassengers|worldframe::HostVisualCombat|worldframe::HostVisualOre);
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
  subscriber->subscribe(79,worldframe::Visual|worldframe::HostVisualPassengers);
  CHECK(channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
@@ -679,7 +681,7 @@ void hostBoundaryCommandGuard(){
  reader.endWorldFrame();
  // A rich display using this same real ProcessReader should still use the
  // tiny immutable boundary plus Host-only actor, passenger and weapon RPM.
- reader.setWorldDemand(worldframe::Resources|worldframe::HostVisualPassengers|worldframe::HostVisualCombat);
+ reader.setWorldDemand(worldframe::Resources|worldframe::HostVisualPassengers|worldframe::HostVisualCombat|worldframe::HostVisualOre);
  clock+=17;
  CHECK(reader.beginWorldFrame(7));
  CHECK(reader.worldFrameToken()->controlSource);
