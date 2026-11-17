@@ -32,6 +32,13 @@ assert runtime.index('commandRequestGate.defer(key,graphDemand') < runtime.index
 assert 'commandRequestGate.reset()' in runtime
 assert 'worldFrameCommandWorker.request(key,graphDemand' in runtime
 assert 'CaptureGraph<decltype(checkedRead)>' in worker
+# Native global magnetron admission must not scan 16K candidates on one frame.
+native_orders = (root / "native_orders_bridge.h").read_text()
+assert "globalVehicleScan.budget(total)" in native_orders
+assert "globalVehicleScan.advance(total,examined)" in native_orders
+assert "globalVehicleCandidateAt(n)" in native_orders
+assert "globalVehicleCandidates[n]" not in native_orders
+assert "memcpy(globalVehicleCandidates" not in bridge
 assert 'THREAD_PRIORITY_BELOW_NORMAL' in worker
 assert 'WaitForSingleObject(thread_,0)' in worker
 assert 'latestTicket_.fetch_add(1' in worker
