@@ -38,6 +38,10 @@ jobs:
               test -n "$file" || continue
               echo "===== CONFLICT FILE $file ====="
               awk '/^<<<<<<< HEAD/ {show=1} show {print} /^>>>>>>>/ {show=0}' "$file"
+              echo "===== SIDE DIFFERENCES $file ====="
+              git show ":2:$file" > /tmp/merge-stable
+              git show ":3:$file" > /tmp/merge-async
+              diff -u -U2 /tmp/merge-stable /tmp/merge-async | head -450 || true
             done < integration-evidence/conflict-paths.txt
           fi
       - uses: actions/upload-artifact@v4
