@@ -10,7 +10,7 @@ permissions:
   actions: read
 concurrency:
   group: ra2-proof-checked-full-pre13
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   deliver:
     runs-on: ubuntu-latest
@@ -22,7 +22,6 @@ jobs:
       TAG: "v1.0.51-pre.13"
       BASE: "v1.0.51"
     steps:
-      - uses: actions/checkout@v4
       - name: Verify immutable source build and both published GitHub releases
         shell: bash
         run: |
