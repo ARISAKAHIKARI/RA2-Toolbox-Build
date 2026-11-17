@@ -40,6 +40,25 @@ jobs:
             done < integration-evidence/conflict-paths.txt | tee integration-evidence/conflict-counts.txt
             echo '===== Conflict list ====='
             cat integration-evidence/conflict-paths.txt
+            python - <<'PY'
+          from pathlib import Path
+          import re
+          for file in Path('integration-evidence/conflict-paths.txt').read_text().splitlines():
+              text=Path(file).read_text(errors='replace')
+              matches=list(re.finditer(r'^<<<<<<< HEAD\\n(.*?)^=======\\n(.*?)^>>>>>>> .*?          fi
+          git diff --stat | tail -60 | tee integration-evidence/change-stat.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pre14-async-three-way-conflict-report
+          retention-days: 14
+          path: integration-evidence/
+,text,re.M|re.S))
+              for i,m in enumerate(matches,1):
+                  print(f'@@CONFLICT {file}#{i}')
+                  print('@@STABLE_BEGIN\\n'+m.group(1).rstrip()+'\\n@@STABLE_END')
+                  print('@@ASYNC_BEGIN\\n'+m.group(2).rstrip()+'\\n@@ASYNC_END')
+          PY
           fi
           git diff --stat | tail -60 | tee integration-evidence/change-stat.txt
       - uses: actions/upload-artifact@v4
