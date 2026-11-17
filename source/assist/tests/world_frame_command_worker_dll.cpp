@@ -50,6 +50,12 @@ extern "C" __declspec(dllexport) int PollGlobal(){
     onThreadReads.load()!=0||offThreadReads.load()==0)return -1;
  return 1;
 }
+extern "C" __declspec(dllexport) int StartExpired(){
+ // An obsolete request must be dropped before doing any CaptureGraph RPM.
+ job.tick=GetTickCount()-160u;
+ return worker.request(job,worldframe::Base,18,{})?1:0;
+}
+extern "C" __declspec(dllexport) int WorkerReadCount(){return int(offThreadReads.load());}
 extern "C" __declspec(dllexport) int Poll(){
  if(!worker.take(job,worldframe::Base,17,accepted,&acceptedRoster))return 0;
  int hp=0;uint32_t vt=0;
