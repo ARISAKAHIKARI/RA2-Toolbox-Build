@@ -23,6 +23,7 @@
 #include "outgoing_batch.h"
 #include "object_index.h"
 #include "hook_policy.h"
+#include "world_capture_admission.h"
 #include "activation_diagnostic.h"
 #include "event_delivery.h"
 #include "private_outlist.h"
@@ -1595,13 +1596,13 @@ static void tick(){
  if(sharedWorldWanted)worldDemand|=worldFrameServer.demandMask();
  if(sh->dodgeEnabled||dodgeCount)worldDemand|=worldframe::Bullets|worldframe::Combat;
  if(sh->missileEnabled||missileHoldCount||sh->minerDefenseEnabled||minerDefensePending()||sh->magnetronGlobal||sh->magnetronDrop||(sh->flags&(AdvancedInput|MagnetronInput|AircraftSpread|AdvancedEnter|AntiTheft))||nativeCount||runtimeCoopPending||unloadCount||queuedUnload.count)worldDemand|=worldframe::Combat;
- if(sh->flags&(Capacity|AutoOreReturn|AdvancedEnter|AircraftSpread|EjectAssist|SmartUnloadOrders)||sh->bombBoardEnabled||loadLedger.count||loadCalculationPending||unloadCount||queuedUnload.count||cooperativeEffectCount)worldDemand|=worldframe::Passengers;
+ if(capturepolicy::passengerGraphNeeded(sh->flags,sh->externalDisplay!=0)||sh->bombBoardEnabled||loadLedger.count||loadCalculationPending||unloadCount||queuedUnload.count||cooperativeEffectCount)worldDemand|=worldframe::Passengers;
  if((sh->flags&AutoOreReturn)||oreHarvestNeedsWork()||sh->minerDefenseEnabled||minerDefensePending())worldDemand|=worldframe::Ore;
  // The full display graph belongs to the separate Host VisualCache. The
  // game thread may publish a small scene boundary only if ALL Host readers
  // are display-only and no local native command feature has any pending work.
  // A same-frame hotkey later upgrades this boundary to a full graph.
- const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&!sh->flags&&!sh->moFeatures&&
+ const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&!capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)&&!sh->moFeatures&&
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&!sh->bombBoardEnabled&&
   !sh->minerDefenseEnabled&&!minerDefensePending()&&!sh->superweaponGrant&&
   !sh->placementPreview.active&&!sh->runtimeTracking&&!sh->plannerTracking&&
