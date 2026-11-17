@@ -37,7 +37,11 @@ struct Key {
  bool sameWorld(const Key&o)const{return pid==o.pid&&owner==o.owner&&match==o.match&&scenario==o.scenario&&cells==o.cells&&house==o.house&&cellCount==o.cellCount&&session==o.session&&generationLow==o.generationLow&&generationHigh==o.generationHigh&&connectionLow==o.connectionLow&&connectionHigh==o.connectionHigh;}
  bool sameFrame(const Key&o)const{return sameWorld(o)&&frame==o.frame;}
 };
-// High bit marks a display-only authoritative identity with no game pages.
+// Producer-local field request; not part of the serialized Key/Page layout.
+struct RequestedSpan {uint32_t address=0,bytes=0,tick=0;};
+// High bit of Key::demand marks a scene boundary that intentionally omitted
+// actor/type graph pages. Source-revision values occupy the lower 31 bits.
+// A Host command reader may not treat this as a full command sample.
 constexpr uint32_t BoundaryOnlyKeyBit=0x80000000u;
 inline bool boundaryOnlySource(const Key&key){return (key.demand&BoundaryOnlyKeyBit)!=0;}
 struct Counters {uint32_t calls=0,bytes=0,pageHits=0,pageAttempts=0,rangeAttempts=0,failedReads=0,rosterCaptures=0,overflows=0;};
@@ -156,6 +160,17 @@ public:
  int32_t visualFrame=-1;uint32_t visualTick=0;uint64_t visualSerial=0;
  explicit Snapshot(PageAllocator allocator={})noexcept:pages(allocator){}
  Snapshot(const Snapshot&)=delete;Snapshot&operator=(const Snapshot&)=delete;
+ // Transfer a completed worker-owned capture without allocating or copying any
+ // page payloads. Both Snapshot owners must be exclusive and quiescent here.
+ // The fixed 128 KiB lookup table is swapped, never rebuilt from game memory.
+ void swap(Snapshot&other)noexcept{
+  using std::swap;
+  swap(index_,other.index_);swap(sealed_,other.sealed_);swap(overflow_,other.overflow_);
+  swap(key,other.key);swap(counters,other.counters);pages.swap(other.pages);
+  controlSource.swap(other.controlSource);
+  swap(visualFrame,other.visualFrame);swap(visualTick,other.visualTick);
+  swap(visualSerial,other.visualSerial);
+ }
  void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};pages.clear();index_.fill(0);sealed_=overflow_=false;}
  bool sealed()const{return sealed_;}bool overflow()const{return overflow_;}
  bool seal(){sealed_=true;return !overflow_;}
@@ -167,9 +182,21 @@ public:
  }
  bool read(uint32_t address,void*out,size_t n)const{
   if(!sealed_||!out||!range(address,n))return false;
+  // A missing later page must not partly modify the caller's output.
+  // Check the sealed CPU index first; no extra game read or IPC is performed.
+  if(n<=PageSize-(address&(PageSize-1))){
+   const size_t offset=address&(PageSize-1);const auto*p=find(address&~(PageSize-1));
+   if(!p||!covered(*p,offset,n))return false;
+   std::memcpy(out,p->bytes.data()+offset,n);return true;
+  }
+  uint32_t verify=address;size_t remaining=n;
+  while(remaining){const size_t offset=verify&(PageSize-1),count=std::min<size_t>(remaining,PageSize-offset);
+   const auto*p=find(verify&~(PageSize-1));if(!p||!covered(*p,offset,count))return false;
+   verify+=uint32_t(count);remaining-=count;
+  }
   auto*dest=static_cast<uint8_t*>(out);
   while(n){const size_t offset=address&(PageSize-1),count=std::min<size_t>(n,PageSize-offset);
-   const auto*p=find(address&~(PageSize-1));if(!p||!covered(*p,offset,count))return false;
+   const auto*p=find(address&~(PageSize-1));
    std::memcpy(dest,p->bytes.data()+offset,count);dest+=count;address+=uint32_t(count);n-=count;}
   return true;
  }
@@ -207,14 +234,18 @@ public:
  template<class Read>bool prefetch(Read&&live,uint32_t address,size_t n){return capture(live,address,nullptr,n);}
  // The caller supplies retained scratch and a bounded page list. Coalesce
  // only adjacent, completely unobserved pages; existing/partial pages keep
- // their exact read-set semantics. A failed speculative span publishes no
- // bytes and falls back to the original per-page/partial-range path.
- // Speculative roster warming can suppress individual fallback: a failed
- // span then observes no bytes, leaving each original field/range read to
- // establish its own partial-page validity and failure masks.
+ // their exact read-set semantics. A failed speculative batch publishes no
+ // invalid data. Up to two split levels salvage readable subranges without
+ // allowing a bad page to discard a whole 16-page unit warmup.
+ // Each 16-page batch uses at most 7 speculative calls, with no more than
+ // 32 extra split calls across this invocation. Required fields still use
+ // the original per-page and partial-range fallback.
  template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes,bool individualFallback=true){
   if(sealed_||overflow_)return false;
   const size_t limit=std::min<size_t>(16,scratchBytes/PageSize);bool ok=true;
+  // Bound the TOTAL number of extra speculative RPM calls per invocation.
+  // Thousands of inaccessible actors must not multiply the split cost.
+  unsigned splitBudget=32;
   for(size_t first=0;first<addresses.size();){
    const uint32_t at=addresses[first];size_t end=first+1;
    if(scratch&&limit>1&&!(at&(PageSize-1))&&range(at,PageSize)&&!find(at)){
@@ -224,12 +255,28 @@ public:
    const size_t count=end-first;
    if(!individualFallback&&count==1){first=end;continue;}
    if(count>1&&pages.reserve(pages.size()+count)){
-    ++counters.calls;counters.pageAttempts+=uint32_t(count);counters.bytes+=uint32_t(count*PageSize);
-    if(live(at,scratch,count*PageSize)){
-     for(size_t n=0;n<count;++n){auto*p=add(addresses[first+n]);if(!p)return false;p->full=1;std::memcpy(p->bytes.data(),scratch+n*PageSize,PageSize);}
-     first=end;continue;
-    }
-    ++counters.failedReads;
+    // A failed live read may alter scratch, but never publishes its bytes.
+    // Successful subranges are copied before the next reuse of scratch.
+    const auto salvage=[&](auto&& self,size_t begin,size_t span,unsigned depth)->bool{
+     ++counters.calls;counters.pageAttempts+=uint32_t(span);counters.bytes+=uint32_t(span*PageSize);
+     if(live(addresses[begin],scratch,span*PageSize)){
+      for(size_t i=0;i<span;++i){
+       auto*p=add(addresses[begin+i]);if(!p)return false;
+       p->full=1;std::memcpy(p->bytes.data(),scratch+i*PageSize,PageSize);
+      }
+      return true;
+     }
+     ++counters.failedReads;
+     if(depth>=2||span<4||splitBudget<2)return false;
+     splitBudget-=2; // Reserve BOTH child calls before any recursive split.
+     const size_t left=span/2;
+     const bool leftOk=self(self,begin,left,depth+1);
+     if(overflow_)return false;
+     const bool rightOk=self(self,begin+left,span-left,depth+1);
+     return leftOk&&rightOk;
+    };
+    if(salvage(salvage,first,count,0)){first=end;continue;}
+    if(overflow_)return false;
    }
    if(!individualFallback){first=end;continue;}
    for(;first<end;++first){if(!prefetch(live,addresses[first],PageSize))ok=false;if(overflow_)return false;}

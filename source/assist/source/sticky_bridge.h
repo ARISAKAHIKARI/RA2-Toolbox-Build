@@ -21,7 +21,20 @@ static bool releaseSticky(uint32_t p){int i=stickyIndex(p);if(i<0)return true;co
  stickyHolds[i]=stickyHolds[--stickyCount];return true;
 }
 static void stickyTick(bool releaseAll=false){
- if(!stickyCount)return;int frame=get<int>(0xA8ED84);indexWorld(frame);
+ if(!stickyCount)return;int frame=get<int>(0xA8ED84);
+ if(!prepareWorldIndex(frame)){
+  // On retirement, preserve the original per-unit local native release
+  // without triggering the full synchronous world scan.
+  if(releaseAll){
+   for(int i=0;i<stickyCount;){
+    const auto h=stickyHolds[i];
+    if(h.network){stickyHolds[i]=stickyHolds[--stickyCount];continue;}
+    if(releaseSticky(h.pointer))continue;
+    ++i;
+   }
+  }
+  return;
+ }
  for(int i=0;i<stickyCount;){auto h=stickyHolds[i];
   if(h.epoch!=match||!worldObjects.contains(h.pointer)||get<uint32_t>(h.pointer+0x10)!=h.id||!own(h.pointer,h.house)){stickyHolds[i]=stickyHolds[--stickyCount];continue;}
   int current=get<int>(h.pointer+0xAC),queued=get<int>(h.pointer+0xB4);

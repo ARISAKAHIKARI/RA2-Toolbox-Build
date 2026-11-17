@@ -35,9 +35,23 @@ static void buildTimeTooltipTick(){
  // Focus controls callback work, never ownership of the installed slot.
  const bool wanted=sh&&!sh->stop&&sh->buildTimeTooltip&&!fault&&snap.status==1;
  if(!wanted){restoreBuildTimeTooltip();return;}
- if(buildTimeTooltipActive)return;
+ const uint32_t now=sampleClock(sh);
+ static uint32_t lastVerifyAt=0;
+ // An installed hook is not proof of a live vtable patch: a platform may
+ // restore the original pointer at any moment. Re-check the shared Runtime
+ // owner periodically, not on every 8 ms tactical update.
+ if(buildTimeTooltipActive){
+  if(lastVerifyAt&&uint32_t(now-lastVerifyAt)<250)return;
+  lastVerifyAt=now;
+  buildTimeTooltipActive=NativeTooltipBuildTime(true);
+  sh->buildTimeTooltipStatus=buildTimeTooltipActive?1:-2;
+  if(buildTimeTooltipActive)return;
+ }
+ // Inactive or explicitly re-enabled hooks still get an immediate attempt.
+ // Preserve the existing hook-admission retry cadence for compatibility.
  if(!buildTimeTooltipCompatible()){sh->buildTimeTooltipStatus=-2;return;}
  buildTimeTooltipActive=NativeTooltipBuildTime(true);
+ lastVerifyAt=now;
  sh->buildTimeTooltipStatus=buildTimeTooltipActive?1:-2;
 }
 static void restoreBuildTimeTooltip(){

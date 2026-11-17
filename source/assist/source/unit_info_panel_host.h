@@ -236,10 +236,11 @@ class Panel {
   return true;
  }
 public:
- template<class Read>void refreshCameos(const external::unitpanel::Model&model,Read read,
-        uint32_t pid,uint32_t match,DWORD now){
+ template<class Read,class Resolve>void refreshCameos(
+        const external::unitpanel::Model&model,Read read,Resolve resolve,
+        um::AssetLoad files,uint32_t pid,uint32_t match,DWORD now){
   const auto before=cameos_.revision();
-  cameos_.refresh(model,read,pid,match,now);
+  cameos_.refresh(model,read,resolve,files,pid,match,now);
   if(cameos_.revision()!=before&&window_)InvalidateRect(window_,nullptr,FALSE);
  }
  void hide(){lastGoodAt_=0;if(window_&&IsWindowVisible(window_))ShowWindow(window_,SW_HIDE);}

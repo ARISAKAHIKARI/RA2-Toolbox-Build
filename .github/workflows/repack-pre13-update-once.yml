@@ -1,0 +1,75 @@
+name: Slim pre.13 Update asset without rebuilding binaries
+on:
+  push:
+    branches: [feature/automatic-compute-atomic-sample-20261116]
+    paths:
+      - '.github/workflows/repack-pre13-update-once.yml'
+permissions:
+  contents: write
+concurrency:
+  group: ra2-toolbox-pre13-assets
+  cancel-in-progress: false
+jobs:
+  repack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.51-pre.13
+      FULL_SHA256: 5287c425a8806afedc8bf018ffd87874e375af94f4f20ad62beb342535ae0c44
+    steps:
+      - name: Fetch exactly the already verified pre.13 Full payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/full-archive dist/full-tree dist/update
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist/full-archive --pattern 'RA2Toolbox-1.0.51-pre.13-x64-Full.zip'
+          echo "$FULL_SHA256  dist/full-archive/RA2Toolbox-1.0.51-pre.13-x64-Full.zip" | sha256sum -c -
+          unzip -tq dist/full-archive/RA2Toolbox-1.0.51-pre.13-x64-Full.zip
+          unzip -q dist/full-archive/RA2Toolbox-1.0.51-pre.13-x64-Full.zip -d dist/full-tree
+          exe=$(find dist/full-tree -type f -name RA2Toolbox.exe -print -quit)
+          test -n "$exe"
+          echo "APPROOT=$(dirname "$exe")" >> "$GITHUB_ENV"
+      - name: Stage ONLY shippable runtime binaries, manifests and licenses
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do
+            test -s "$APPROOT/$f"
+            cp "$APPROOT/$f" "dist/update/$f"
+            cmp "$APPROOT/$f" "dist/update/$f"
+          done
+          for f in BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json WINDOWS_BUILD_ARTIFACTS.json CONSOLE_COMPILE.json; do
+            if test -f "$APPROOT/$f"; then cp "$APPROOT/$f" "dist/update/$f"; fi
+          done
+          if test -d "$APPROOT/licenses"; then cp -a "$APPROOT/licenses" dist/update/; fi
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.51-pre.13-x64-Update.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.13-x64-Update.zip
+          test "$(stat -c%s dist/RA2Toolbox-1.0.51-pre.13-x64-Update.zip)" -lt 10000000
+          cp dist/full-archive/RA2Toolbox-1.0.51-pre.13-x64-Full.zip dist/
+          (cd dist && sha256sum RA2Toolbox-1.0.51-pre.13-x64-Update.zip RA2Toolbox-1.0.51-pre.13-x64-Full.zip > SHA256SUMS.txt)
+          (cd dist && sha256sum -c SHA256SUMS.txt)
+      - name: Atomically replace only the oversized Update asset and checksum file
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.draft')" = false
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            RA2Toolbox-1.0.51-pre.13-x64-Update.zip SHA256SUMS.txt
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+            --jq '.assets[] | [.name, .size, .digest] | @tsv' | tee asset-receipt.txt
+          bytes=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+            --jq '.assets[] | select(.name=="RA2Toolbox-1.0.51-pre.13-x64-Update.zip") | .size')
+          test "$bytes" -lt 10000000
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+            --jq '.assets | length')" -eq 3
+          cat asset-receipt.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-pre13-compact-update-and-checksums
+          path: |
+            dist/RA2Toolbox-1.0.51-pre.13-x64-Update.zip
+            dist/SHA256SUMS.txt
+            dist/asset-receipt.txt
+          retention-days: 30

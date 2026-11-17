@@ -42,6 +42,8 @@ def production():
     add('#include "raw_combat.h"')
     add(function(source["bridge.cpp"], "static void indexWorld("))
     add(function(source["bridge.cpp"], "static bool refreshWorldIndex("))
+    add(function(source["bridge.cpp"], "static void sweepActiveLeases("))
+    add(function(source["bridge.cpp"], "static gateway::MissionState observeMissionReceipt("))
     add(function(source["harvester_defense_raw.h"], "static bool minerDefenseMiner("))
     add(function(source["harvester_defense_raw.h"], "static bool minerDefenseDock("))
     dodge = source["dodge_bridge.h"]
@@ -49,6 +51,9 @@ def production():
     for signature in ("static bool dodgeSource(", "static int dodgeThreat(", "static bool dodgeBusy(",
                       "static bool dodgeSeen(", "static void dodgeObserve(", "static bool collectDodgeInput("):
         add(function(dodge, signature))
+    add("static void cancelDodge(uint32_t);static void recordReceipt(const gateway::Receipt&);")
+    add(function(dodge, "static int dodgeSourceKnowledge("))
+    add(function(dodge, "static void updateDodgeJobs("))
     add('#include "combat_query_bridge.h"\n#include "combat_probe_bridge.h"')
     coop = source["cooperative_bridge.h"]
     add(function(coop, "struct CooperativeFrameRead") + ";")
@@ -56,13 +61,15 @@ def production():
     load = source["autoload_bridge.h"]
     add(load[load.index("static bool loadCalculationPending,"):load.index("static int submitLoading(")])
     for signature in ("static bool loadingObject(", "static uint32_t incomingVehicle(",
-                      "static loading::Observation loadingObservation(", "static int passengerSlots("):
+                      "static loading::Observation loadingObservation(", "static int loadingFilterStatus(",
+                      "static loading::ReservationView loadingReservationView(", "static int passengerSlots("):
         add(function(load, signature))
     add("static bool loadQueryFailed;")
     add(function(load, "static bool queryEnterAction("))
     add(function(load, "static bool canEnter("))
     for signature in ("static bool captureLoadSelection(", "static bool collectLoadFacts(",
-                      "static int autoLoad(uint32_t house,const compute::LoadInput*cohort){"):
+                      "static int autoLoad(uint32_t house,const compute::LoadInput*cohort){",
+                      "static void autoLoadTick("):
         add(function(load, signature))
     unload = source["unload_compute_bridge.h"]
     add(function(source["native_orders_bridge.h"], "struct UnloadPassenger") + ";")
@@ -85,7 +92,7 @@ def production():
     add(function(reverse, "static bool reverseVector("))
     add(reverse[reverse.index("struct ReverseTarget"):reverse.index("static bool reverseDodgeTick(")])
     scope = source["world_frame_runtime.h"]
-    scope_text = "static worldframe::DemandLeases runtimeDemandLeases;\n" + "\n".join(function(scope, signature) for signature in (
+    scope_text = "static worldframe::DemandLeases runtimeDemandLeases;\nstatic bool worldFrameBoundaryOnly=false;\nstatic void rememberMissingWorldSpan(uint32_t,size_t){}\n" + "\n".join(function(scope, signature) for signature in (
         "static void requestWorldRange(", "static bool readWorldSample(", "class SampleReadScope")) + ";\n"
     return "\n\n".join(parts) + "\n", scope_text, names
 

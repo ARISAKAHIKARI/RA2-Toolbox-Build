@@ -5,7 +5,9 @@
 using namespace assist;
 int main(){
  using namespace compute;
- static_assert(Default==0,"new installations should start with host-side pure computation");
+ // The stable 1.0.51 runtime-placement policy is fixed; this test must not
+ // silently change that production default during an integration merge.
+ static_assert(Fixed==Default,"stable fixed compute policy must be preserved");
  static_assert((All&(1u<<BurstRefresh))!=0,"retired burst slot is ABI-retained");
  HostFrameDemand d{};
  // The old computeApplied != All shortcut produced unconditional native

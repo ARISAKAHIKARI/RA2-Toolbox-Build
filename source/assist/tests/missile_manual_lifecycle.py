@@ -89,6 +89,12 @@ int main(){
  fresh=unit(2000);pauseMissileForManual(2000,fresh);
  check(missileManualCount==1024,"partial roster UID read does not retire valid manual records");
 
+ reset();fill();clockFrame=worldFrame.key.frame=101;roster.clear();rosterReadable=false;
+ pruneMissileManual();
+ check(missileManualCount==1024&&missileManualPruneFrame!=101,"failed roster must not commit the manual-prune frame stamp");
+ rosterReadable=true;pruneMissileManual();
+ check(missileManualCount==0&&missileManualPruneFrame==101,"a recovered same-frame roster can safely prune proven absences");
+
  reset();fill();roster.clear();clockFrame=101;worldFrame.key.frame=100;
  fresh=unit(2000);pauseMissileForManual(2000,fresh);
  check(missileManualCount==1024,"same-frame sealed roster cannot retire a later captured manual cohort");
@@ -101,6 +107,11 @@ int main(){
  reset();uint32_t p=unit(1);pauseMissileForManual(1,p);clockFrame=worldFrame.key.frame=112;
  check(missileManuallyOwned(p),"elapsed time alone does not cancel a moving manual order");
  memory[p+0xAC]=5;memory[p+0x2B4]=memory[p+0x5A4]=0;
+ for(uint32_t offset:{0x10u,0xACu,0xB4u,0x2B4u,0x5A4u}){
+  uint32_t original=memory[p+offset];memory.erase(p+offset);
+  check(missileManuallyOwned(p)&&missileManualCount==1,"missing manual mission/target/UID field cannot clear manual ownership");
+  memory[p+offset]=original;
+ }
  check(!missileManuallyOwned(p,false)&&missileManualCount==1,"read-only probe preserves the original observe=false contract");
  check(!missileManuallyOwned(p)&&missileManualCount==0,"observed idle terminal retires its record");
  shared.missileEnabled=false;pauseMissileForManual(1,p);check(!missileManualCount,"disabled feature does not create manual tracking");

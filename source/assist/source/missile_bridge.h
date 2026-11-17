@@ -26,7 +26,6 @@ static void pruneMissileManual(){
   SampleReadScope source;if(!source)return;
   // Every input in this captured frame sees the same immutable roster.
   if(missileManualPruneMatch==worldFrame.key.match&&missileManualPruneFrame==worldFrame.key.frame)return;
-  missileManualPruneMatch=worldFrame.key.match;missileManualPruneFrame=worldFrame.key.frame;
   Vec all{};if(!sampleRoster(0xA8EC78,all))return;int count=0;
   for(int n=0;n<all.count;++n){const uint32_t p=item(all,n);if(!p)continue;
    uint32_t id=0;if(!read(p+0x10,&id,sizeof id))return;if(id)identities[count++]=(uint64_t(id)<<32)|p;
@@ -43,6 +42,8 @@ static void pruneMissileManual(){
     (mission==5||mission==6||mission==11||mission==13)&&(queued==-1||queued==mission)&&frame-r.frame>=12;
   }
   if(!source.complete())return;
+  // A failed page can be recovered during the same frozen native frame.
+  missileManualPruneMatch=worldFrame.key.match;missileManualPruneFrame=worldFrame.key.frame;
  }
  int kept=0;for(int n=0;n<missileManualCount;++n)if(!retired[n])missileManual[kept++]=missileManual[n];missileManualCount=kept;
 }
@@ -61,9 +62,23 @@ static void pauseMissileForManual(uint32_t id,uint32_t pointer){
  // neither elapsed time nor a free slot proves that untracked work ended.
  else missileManualBlocked=true;
 }
-static bool missileManuallyOwned(uint32_t p,bool observe=true){uint32_t id=get<uint32_t>(p+0x10);for(int n=0;n<missileManualCount;++n)if(missileManual[n].id==id){auto&r=missileManual[n];int m=get<int>(p+0xAC),q=get<int>(p+0xB4);
- bool ended=p!=r.pointer||(!get<uint32_t>(p+0x2B4)&&!get<uint32_t>(p+0x5A4)&&(m==5||m==6||m==11||m==13)&&(q==-1||q==m)&&get<int>(0xA8ED84)-r.frame>=12);
- if(ended){if(observe)r=missileManual[--missileManualCount];return false;}return true;}return false;}
+static bool missileManuallyOwned(uint32_t p,bool observe=true){
+ // Missing live fields do not prove the player's manual Attack/Move ended.
+ // Fail closed for automatic fire, even when the UID itself is unreadable.
+ uint32_t id=0;if(!p||!read(p+0x10,&id,sizeof id))return true;
+ for(int n=0;n<missileManualCount;++n)if(missileManual[n].id==id){
+  auto&r=missileManual[n];
+  if(p!=r.pointer){if(observe)r=missileManual[--missileManualCount];return false;}
+  int mission=0,queued=0;uint32_t target=0,destination=0;
+  if(!read(p+0xAC,&mission,sizeof mission)||!read(p+0xB4,&queued,sizeof queued)||
+     !read(p+0x2B4,&target,sizeof target)||!read(p+0x5A4,&destination,sizeof destination))return true;
+  const bool ended=!target&&!destination&&(mission==5||mission==6||mission==11||mission==13)&&
+    (queued==-1||queued==mission)&&get<int>(0xA8ED84)-r.frame>=12;
+  if(ended){if(observe)r=missileManual[--missileManualCount];return false;}
+  return true;
+ }
+ return false;
+}
 static int missileRecord(uint32_t id){for(int n=0;n<missileSendCount;++n)if(missileSends[n].id==id)return n;return -1;}
 static void publishMissileHeld(){missileHoldCount=0;for(int n=0;n<missileSendCount;++n)missileHoldCount+=missileSends[n].held||missileSends[n].controlled;if(sh)sh->missileHeld=missileHoldCount;}
 static void resetMissileControl(){

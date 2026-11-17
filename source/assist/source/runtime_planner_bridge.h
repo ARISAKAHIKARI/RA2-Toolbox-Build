@@ -11,7 +11,7 @@ static void runtimePlanningTick(uint32_t house,int frame,DWORD now){
  auto orders=runtimePlanner.step(planningWorld,selected,int(sh->veteranPercent),int(sh->elitePercent),int(sh->pathTimeout),int(sh->advancedScanHz),int(sh->advancedPriority),int(sh->advancedRangeCells),drop,compute::magnetronIntents(sh->computeApplied,true),sh->magnetronDrop!=0);
  for(const auto&o:orders){
   if(!freshness::valid(planningWorld.match,match,planningWorld.tick,planningWorld.frame,sampleClock(sh),get<int>(0xA8ED84),freshness::Tactical)){runtimePlanner.expired(o);continue;}
-  int result=admitPlannerOrder(o,house);
+  int result=admitPlannerOrder(o,house,planningWorld.match,planningWorld.tick);
   if(result>0)runtimePlanner.accepted(o,frame);else if(result<0)runtimePlanner.rejected(o,frame);else runtimePlanner.expired(o);
  }
  sh->runtimeTracking=runtimePlanner.trackingFlags();

@@ -66,7 +66,6 @@ int main(){
  add(9608,0,500,26);add(440,0,540,26,9608,300);add(441,0,540,26,9608);add(467,0,580,26,9608);add(444,0,620,26,9608);add(445,0,660,26,9608);
  add(458,1,280,26);add(9606,1,280,26);add(450,1,320,26,9606);add(787,1,360,26,9606);add(818,1,400,26,9606);add(802,1,440,26,9606,240);
  add(470,2,200,26);add(9605,2,200,26);add(781,2,240,26,9605);add(783,2,280,26,9605);add(782,2,320,26,9605);add(784,2,360,26,9605);
- add(832,4,520,30);add(9609,4,520,26);for(int n=0;n<5;++n)add(9000+n,4,570+n*40,26,9609,240);add(833,4,790,192,9609);
  add(780,2,410,26);
  add(905,5,0,30);add(9610,5,0,26);for(int n=0;n<4;++n){add(9200+n*2,5,42+n*80,26,9610);add(9201+n*2,5,80+n*80,26,9610);}
  add(9611,1,500,26);add(109,1,540,26,9611);add(209,1,540,26,9611);add(410,1,580,26,9611);
@@ -85,7 +84,7 @@ int main(){
  const int automaticY=control(804).rect.y;openedSettingGroups.insert(9601);applySettingsFolds();check(!control(9195).foldHidden&&!control(710).foldHidden&&control(9051).foldHidden);check(control(804).rect.y==automaticY);check(pageBottom()==closedBottom+80);check(captions[9601]==L"收起设置");
  check(control(780).page==suite::categories::Rules);for(int id:{9253,9254,9185,9186})check(control(id).page==suite::categories::Experimental);
  for(int id:{9200,9201,9206,9207,109,209,410,9250,865,9197,9188})check(control(id).foldHidden);
- const std::set<int>allGroups={9601,9602,9603,9604,9605,9606,9607,9608,9609,9610,9611,9612,9613,9614,9615};
+ const std::set<int>allGroups={9601,9602,9603,9604,9605,9606,9607,9608,9610,9611,9612,9613,9614,9615};
  openedSettingGroups=allGroups;applySettingsFolds();for(const auto&c:pageControls){check(c.foldHidden==c.feedbackHidden);if(!c.feedbackHidden)check(c.rect.y<=c.fullRect.y);}check(control(9195).rect.h==240);
  for(int iteration=0;iteration<20;++iteration){openedSettingGroups.clear();applySettingsFolds();for(size_t n=0;n<pageControls.size();++n)check(pageControls[n].rect.y==closedY[n]);openedSettingGroups=allGroups;applySettingsFolds();}
  openedSettingGroups.clear();applySettingsFolds();check(pageBottom()==closedBottom&&captions[9602]==L"展开设置");

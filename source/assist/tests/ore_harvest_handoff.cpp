@@ -26,6 +26,7 @@ static void QueryPerformanceCounter(LARGE_INTEGER*out){out->QuadPart=std::chrono
 #include "../source/object_index.h"
 #include "../source/unit_task_arbiter.h"
 #include "../source/command_intent.h"
+#include "../source/execution_proof.h"
 #ifdef NDEBUG
 #error Ore handoff fixture requires active assertions (-UNDEBUG).
 #endif
@@ -37,7 +38,8 @@ constexpr uint32_t Overlay=0x20060000,Tiberium=0x20070000,OverlayItems=0x2008000
 constexpr uint32_t Cells=0x21000000,CellBase=0x30000000,Map=0x87F7E8;
 static Shared*sh;static Snapshot snap;static planner::World planningWorld;
 static uint32_t match=7,lastHouse=House;static bool fault=false,queueOkay=true,held=false,bursted=false,dodging=false;
-static DWORD clockNow=1000;static uint32_t failRead=0;static unsigned reads=0,cellReads=0,maxCellReads=0;static uint64_t observerCellReads=0;
+static DWORD clockNow=1000;
+static uint32_t sampleClock(Shared*){return clockNow;}static uint32_t failRead=0;static unsigned reads=0,cellReads=0,maxCellReads=0;static uint64_t observerCellReads=0;
 static bool kernelReads=false;
 static uint8_t globals[0x500000]{},objects[0x100000]{};
 static ManualVersions manualVersions;static ObjectIndex worldObjects;static taskarbiter::FrameArbiter<> actorFrameArbiter;
@@ -77,6 +79,7 @@ static bool minerDefenseOwns(uint32_t){return false;}
 static void minerDefenseRememberOre(const planner::Order&,uint32_t){}
 static bool rawMagnetronDrop(uint32_t,uint32_t,uint32_t){assert(false);return false;}
 static bool antiTheftBuilding(uint32_t){assert(false);return false;}static bool antiTheftThreat(uint32_t,uint32_t){assert(false);return false;}
+static bool antiTheftCurrentTargetUsable(uint32_t,uint32_t){assert(false);return false;} // Defense runs in a separate fixture.
 static bool rawMagnetron(uint32_t){assert(false);return false;}static bool featureObjectAllowed(int,uint32_t){assert(false);return false;}
 static bool nativeEnemy(uint32_t,uint32_t){assert(false);return false;}
 static void rawCombatInfo(uint32_t,uint32_t,int,planner::Actor&,bool){assert(false);}
@@ -93,6 +96,20 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  if(queueMutation)queueMutation();if(!queueOkay)return false;
  events.push_back(intent::mega(get<int>(House+0x30),id,mission,target,0,destination,uint8_t(tag),nearest,uint8_t(nearestTag)));
  actorFrameArbiter.record(id,manualVersions.get(id),owner);return true;
+}
+// Production typed native sender is a test seam here. Run the SAME pure
+// proof policy with the fixture's live lookup before the original event stub.
+static bool submitProvenMission(uint32_t house,uint32_t id,int mission,uint32_t target,
+ uint32_t dest,int tag,taskarbiter::Owner owner,const executionproof::Ticket&proof,
+ uint32_t* =nullptr,uint32_t nearest=0,int nearestTag=0){
+ const uint8_t targetTag=target?0x34:0;
+ if(executionproof::ordered(proof,id,target,targetTag,dest,uint8_t(tag))!=
+    executionproof::Failure::None)return false;
+ if(executionproof::verify(proof,{match,house,clockNow},
+     [](uint32_t uid){return worldByID(uid);},
+     [](uint32_t uid){return manualVersions.get(uid);},
+     [](uint32_t p,uint32_t h){return own(p,h);})!=executionproof::Failure::None)return false;
+ return nativeMission(house,id,mission,target,dest,tag,nearest,nearestTag,owner);
 }
 // The runner extracts these complete production functions, not a matching
 // decision model. Unused combat/device seams above fail if reached.
@@ -156,6 +173,18 @@ int main(){sh=new Shared{};unsigned checks=0;auto check=[&](bool b){if(!b)std::f
  reset();step();unloadDone();failRead=Miner+0x74;step();check(events.empty()&&pending()==1);failRead=0;finish();check(events.size()==1);
  reset();step();unloadDone();failRead=cellPointer(52,62)+0x44;step();check(events.empty());failRead=0;finish();check(events.size()==1);
  reset();step();unloadDone();queueOkay=false;for(int n=0;n<6;++n)step();check(events.empty()&&pending()==1);queueOkay=true;finish();check(events.size()==1);
+ // Completed nearest-search observation must survive repeated unreadable
+ // live miner and Cell data. Unknown reads are not three failed admissions.
+ for(uint32_t unreadable:{Miner+0x74,cellPointer(56,62)+0x44}){
+  reset();step();unloadDone();queueOkay=false;
+  for(int n=0;n<20&&!oreHarvestJobs[0].search.done;++n)step();
+  check(pending()==1&&oreHarvestJobs[0].search.done&&oreHarvestJobs[0].search.best==62056&&events.empty());
+  const auto before=oreHarvestJobs[0].search.best;
+  failRead=unreadable;
+  for(int n=0;n<6;++n){step();check(pending()==1&&events.empty()&&oreHarvestJobs[0].search.best==before&&oreHarvestJobs[0].retries==0);}
+  failRead=0;queueOkay=true;finish();check(events.size()==1&&!pending());
+ }
+
  reset();step();unloadDone();snap.chat=1;for(int n=0;n<6;++n)step();check(events.empty()&&pending()==1);snap.chat=0;finish();check(events.size()==1);
  reset();step();unloadDone();held=true;for(int n=0;n<4;++n)step();check(events.empty());
  // Explicit Harvest/Return also increments the native input version, but the

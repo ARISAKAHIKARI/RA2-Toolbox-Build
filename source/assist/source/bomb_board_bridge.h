@@ -4,7 +4,7 @@
 namespace bombboard {
 struct Fact {uint32_t p,id,bomb;int x,y;};
 struct Job {Fact unit{};uint32_t token=0,target=0;int sent=-1;bool cancelled=false;};
-static std::vector<Fact> armed,vehicles;static std::vector<Job> jobs;
+static std::vector<Fact> armed,vehicles;static std::vector<Fact> candidateArmed,candidateVehicles;static std::vector<Job> jobs;
 static uint32_t epoch=0,owner=0;static int sampled=-1;static size_t cursor=0;
 static const Job*submitting=nullptr;static uint32_t destination=0;static int destinationSlots=0;
 static void reset(){jobs.clear();armed.clear();vehicles.clear();epoch=owner=0;sampled=-1;cursor=0;submitting=nullptr;
@@ -36,15 +36,19 @@ static bool validate(const intent::EventOrder&o){
 }
 static bool collect(){
  SampleReadScope sample;if(!sample)return false;Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
- armed.clear();vehicles.clear();
+ // A partial page may describe a subset of the fleet. Stage its facts and
+ // publish them only after the whole sealed observation is complete.
+ candidateArmed.clear();candidateVehicles.clear();
  for(int i=0;i<all.count;++i){uint32_t p=item(all,i);if(!p||!own(p,lastHouse)||!live(p))continue;int k=kind(p);
   if(k!=1&&k!=2)continue;if(get<uint32_t>(p+0x11C)||get<bool>(p+0x1C8))continue;
   uint32_t bomb=k==1?get<uint32_t>(p+0x38):0;
   const uint32_t type=k==2?typeOf(p,k):0;
   if((k==1&&bomb>=0x10000)||(k==2&&type>=0x10000&&get<int>(type+0x5E0)>0)){
-   Fact f{p,get<uint32_t>(p+0x10),bomb,get<int>(p+0x9C),get<int>(p+0xA0)};(k==1?armed:vehicles).push_back(f);
+   Fact f{p,get<uint32_t>(p+0x10),bomb,get<int>(p+0x9C),get<int>(p+0xA0)};(k==1?candidateArmed:candidateVehicles).push_back(f);
   }
- }return sample.complete();
+ }
+ if(!sample.complete())return false;
+ armed.swap(candidateArmed);vehicles.swap(candidateVehicles);return true;
 }
 static void tick(uint32_t house,int frame){
  if(!sh||!sh->bombBoardEnabled){if(!jobs.empty()||epoch)reset();return;}

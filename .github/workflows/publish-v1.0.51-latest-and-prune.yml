@@ -1,0 +1,285 @@
+name: Publish v1.0.51 Latest and archive then prune all legacy drafts/prereleases
+on:
+  push:
+    branches: [release/1.0.51-latest-20261116]
+    paths:
+      - '.github/workflows/publish-v1.0.51-latest-and-prune.yml'
+      - 'source/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ra2-toolbox-v1.0.51-latest-one-time-cleanup
+  cancel-in-progress: false
+
+jobs:
+  regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production MIX Cameos, unit monitor and native tooltip
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in unit_monitor_mix_archive unit_info_panel_mix_cameos unit_info_panel_model debug_patch_policy; do
+            g++ -std=c++17 -O2 -Wall -Wextra -Wno-error=misleading-indentation -UNDEBUG "source/assist/tests/$name.cpp" -o "/tmp/ra2-$name"
+            "/tmp/ra2-$name"
+          done
+      - name: Recheck snapshot, recovery and Ctrl+D state machines
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/world_frame_core_test.py
+          python3 source/assist/tests/tactical_frame_sampling.py --out /tmp/stable-sample
+          python3 source/assist/tests/unload_loaded_admission.py --out /tmp/stable-unload --current-only
+          grep -q 'RA2_RELEASE_VERSION_W L"1.0.51"' source/shared/source/release_version.h
+
+  windows:
+    needs: regressions
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned build tools
+        shell: pwsh
+        run: |
+          python -m pip install Pillow==11.3.0
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if ((& $zig version) -ne '0.13.0') {throw 'Incorrect Zig compiler'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force dist/compiled,diagnostics | Out-Null
+      - name: Build exact stable version with paired x86 Runtime and x64 Host
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/dist/compiled"
+          bash source/build-zig-x64.sh > diagnostics/windows-build.log 2>&1 || { tail -140 diagnostics/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root dist/compiled --host-arch x64 --webview2
+          python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out diagnostics/async-recovery
+          grep -q 'RA2_RELEASE_VERSION "1.0.51.15"' source/shared/source/release_version.h
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json; do
+            test -s "dist/compiled/$f"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-stable-matched-binaries
+          path: dist/compiled/
+          retention-days: 30
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-v1.0.51-stable-build-diagnostics
+          path: diagnostics/
+          retention-days: 30
+
+  backup-legacy:
+    needs: regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download ALL draft/prerelease assets and validate SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/tools/backup_legacy_releases.py backup --repo "$GITHUB_REPOSITORY" --root legacy-release-backup
+          test -s legacy-release-backup/manifest.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open("legacy-release-backup/manifest.json",encoding="utf-8"))
+          assert x["release_count"]>=28, ("unexpected source inventory",x["release_count"])
+          assert x["original_asset_bytes"]>=2_400_000_000, "unexpected asset inventory"
+          print("ARCHIVE VERIFIED:",x["release_count"],"releases")
+          PY
+      - name: Upload independently verifiable release/asset manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-legacy-releases-manifest
+          path: legacy-release-backup/manifest.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Back up ALL archived assets and complete release metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-legacy-releases-full-backup
+          path: legacy-release-backup/
+          compression-level: 0
+          retention-days: 90
+          if-no-files-found: error
+      - name: Record legacy archive backup receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          x=json.load(open("legacy-release-backup/manifest.json",encoding="utf-8"))
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as f:
+            f.write(f"Backed up **{x['release_count']}** draft/pre-release records and all asset bytes, SHA-256 deduplicated. GitHub Actions artifacts retained for **90 days**.\n\n")
+            f.write("Cleanup may proceed only after the full backup upload step succeeded.\n")
+          PY
+
+  publish-stable:
+    needs: windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: v1.0.51
+      BASE_SHA256: b83093fc6895c9219c67d1bf039adeb76d4529389720612d3242e570ef9f7c7e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-stable-matched-binaries
+          path: dist/compiled
+      - name: Check stable source version and exact paired artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'RA2_RELEASE_VERSION_W L"1.0.51"' source/shared/source/release_version.h
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json; do
+            test -s "dist/compiled/$f"
+          done
+          python3 - <<'PY'
+          import json
+          j=json.load(open('dist/compiled/BUILD_TARGET.json',encoding='utf-8'))
+          assert j["host"]=="x64" and j["runtime"]=="x86" and j["broker"]=="x86"
+          assert j["console_ui"]=="webview2" and j["game_tested"] is False
+          PY
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "Refuse to overwrite existing stable release"
+            exit 1
+          fi
+      - name: Assemble full and compact update packages from verified resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/base dist/full dist/update
+          gh release download v1.0.51-pre.14 --repo "$GITHUB_REPOSITORY" \
+            --pattern 'RA2Toolbox-1.0.51-pre.14-x64-Full.zip' --dir dist/base
+          echo "$BASE_SHA256  dist/base/RA2Toolbox-1.0.51-pre.14-x64-Full.zip" | sha256sum -c -
+          unzip -q dist/base/RA2Toolbox-1.0.51-pre.14-x64-Full.zip -d dist/full
+          exe=$(find dist/full -type f -name RA2Toolbox.exe -print -quit)
+          test -n "$exe"
+          root=$(dirname "$exe")
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do
+            cp "dist/compiled/$f" "dist/update/$f"
+            cp "dist/compiled/$f" "$root/$f"
+            cmp "dist/update/$f" "$root/$f"
+          done
+          for f in BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json WINDOWS_BUILD_ARTIFACTS.json CONSOLE_COMPILE.json; do
+            if test -s "dist/compiled/$f"; then
+              cp "dist/compiled/$f" "dist/update/$f"
+              cp "dist/compiled/$f" "$root/$f"
+            fi
+          done
+          if test -d dist/compiled/licenses; then
+            mkdir -p "$root/licenses"
+            cp -a dist/compiled/licenses/. "$root/licenses/"
+            cp -a dist/compiled/licenses dist/update/
+          fi
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.51-x64-Update.zip .)
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.51-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.51-x64-Update.zip
+          unzip -tq dist/RA2Toolbox-1.0.51-x64-Full.zip
+          test "$(stat -c%s dist/RA2Toolbox-1.0.51-x64-Update.zip)" -lt 12000000
+          (cd dist && sha256sum RA2Toolbox-1.0.51-x64-{Full,Update}.zip > SHA256SUMS.txt)
+          (cd dist && sha256sum -c SHA256SUMS.txt)
+      - name: Publish v1.0.51 as the latest non-prerelease Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          # RA2 Toolbox v1.0.51 — Latest
+
+          由 **1.0.51-pre.14** 的已验证源码重新编译的正式发布，Build **1.0.51.15**。源提交 \`$GITHUB_SHA\`。
+
+          - 选中单位/载具/乘员面板：Cameo 图标优先通过游戏 Rules/Art 映射及 MIX/松散 SHP 加载；原生 SHP 作为回退
+          - 建造中与已拥有列表：使用 MOD MIX 优先的图标路径，验证 EXPANDMD 覆盖 CAMEOMD.MIX、CAMEO.PAL，限制缺失资源重复读取
+          - 原生提示文字与建造时间：修复共享 Hook 丢失控制权后的状态核实与安全恢复，不覆盖未知平台 Hook
+          - 保留异步缺页补采、Ctrl+D 首次响应和大量单位采样预算改进
+
+          **自动验证通过：** MIX/SHP 故障注入、Linux 功能与采样回归、Windows x64 Host / x86 Runtime 配套编译及异步恢复测试。
+          **尚未实机验证：** JJ/CnCNet、各 MOD 实际图标、真实战斗 FPS 与原生文字 Hook 的跨平台表现。
+
+          **Full**：完整安装；**Update**：已有 1.0.51-pre.14 / pre.13 用户可关闭游戏及工具箱后覆盖本次整套配套程序文件。建议备份设置。
+
+          Release 清理说明：以本版为唯一 Latest 正式版，其他旧 Draft/Pre-release 的发布记录将删除；已有正式版保留。旧发布的元数据与附件会先完整备份到仓库 GitHub Actions Artifacts（90 天）。
+          EOF
+          cd dist
+          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --latest \
+            --title 'RA2 Toolbox v1.0.51 · Latest' --notes-file RELEASE_NOTES.md \
+            RA2Toolbox-1.0.51-x64-Full.zip RA2Toolbox-1.0.51-x64-Update.zip SHA256SUMS.txt
+          gh api "/repos/$GITHUB_REPOSITORY/releases/latest" > LATEST_RECEIPT.json
+          python3 - <<'PY'
+          import json
+          j=json.load(open('LATEST_RECEIPT.json',encoding='utf-8'))
+          assert j["tag_name"]=="v1.0.51" and j["draft"] is False and j["prerelease"] is False
+          assert len(j["assets"])==3
+          for asset in j["assets"]:assert asset["size"]>0
+          print("STABLE LATEST PUBLISHED:",j["html_url"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-stable-release-receipt
+          path: |
+            dist/RELEASE_NOTES.md
+            dist/LATEST_RECEIPT.json
+            dist/SHA256SUMS.txt
+          retention-days: 90
+
+  prune-legacy:
+    needs: [backup-legacy, publish-stable]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-legacy-releases-manifest
+          path: legacy-release-backup
+      - name: Delete ONLY backed-up legacy Draft and Pre-release records
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s legacy-release-backup/manifest.json
+          python3 source/tools/backup_legacy_releases.py cleanup \
+            --repo "$GITHUB_REPOSITORY" --root legacy-release-backup
+          gh api "/repos/$GITHUB_REPOSITORY/releases/latest" | \
+            jq -e '.tag_name=="v1.0.51" and .draft==false and .prerelease==false'
+      - name: Record final cleanup receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "/repos/$GITHUB_REPOSITORY/releases?per_page=100" > verified-final-release-list.json
+          jq -e 'all(.[]; .draft==false and .prerelease==false)' verified-final-release-list.json
+          jq -r '.[].tag_name' verified-final-release-list.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-v1.0.51-final-cleanup-receipt
+          path: verified-final-release-list.json
+          retention-days: 90

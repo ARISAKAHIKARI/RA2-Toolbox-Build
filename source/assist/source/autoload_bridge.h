@@ -23,12 +23,31 @@ static uint32_t incomingVehicle(uint32_t p){
  uint32_t queued=get<uint32_t>(p+0x500);if(queued>=0x10000)return queued;
  uint32_t destination=get<uint32_t>(p+0x5A4);return destination?destination:get<uint32_t>(p+0x2B4);
 }
-static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,uint32_t* receiptID=nullptr){
- // Ordinary Enter is just a vanilla MegaMission with a destination object.
- // Use exactly the same constructor and enqueue entry as ore/attack/unload.
- return nativeMission(house,infantry,7,0,vehicle,0x34,0,0,taskarbiter::Owner::AutoLoad,receiptID);
+static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,
+ const executionproof::Ticket&proof,uint32_t* receiptID=nullptr){
+ // The original capture-time passenger and carrier pointers are not trusted
+ // until the native dispatcher confirms both UIDs and the manual revision.
+ return submitProvenMission(house,infantry,7,0,vehicle,0x34,
+   taskarbiter::Owner::AutoLoad,proof,receiptID);
 }
 static loading::Observation loadingObservation(uint32_t p){return {get<int>(p+0xAC),get<int>(p+0xB4),get<uint32_t>(p+0x2B4),get<uint32_t>(p+0x5A4)};}
+// Explicitly distinguish a configured exclusion from an unreadable type name
+// or an in-flight Host configuration publication.
+static int loadingFilterStatus(featuretypes::Feature feature,uint32_t p,int kind){
+ if(!refreshFeatureTypes())return -1;
+ if(!featureConfig.filters[feature].custom)return 1;
+ uint32_t type=0;char id[24]{};
+ if(!read(p+(kind==1?0x6C0u:0x6C4u),&type,sizeof type))return -1;
+ if(type<0x10000)return 0;
+ if(!read(type+0x24,id,23))return -1;
+ return featuretypes::allowed(featureConfig,feature,id)?1:0;
+}
+static loading::ReservationView loadingReservationView(const loading::Reservation&r,uint32_t house,int frame){
+ return loading::inspectReservation(r,house,frame,
+  [](uint32_t at,void*out,size_t n){return read(at,out,n);},
+  [](uint32_t p){return worldObjects.contains(p);},
+  [](uint32_t p,int kind,bool transport){return loadingFilterStatus(transport?featuretypes::LoadTransport:featuretypes::LoadPassenger,p,kind);});
+}
 extern "C" int GuardedEnterAction(unsigned,unsigned,unsigned,unsigned*);
 static bool loadQueryFailed;
 // Called only inside an already validated, non-pumping Runtime query batch.
@@ -83,8 +102,13 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
    ++snap.loadUnassigned;if(loadQueryFailed)return -15;continue;
   }
   room[j]-=p.slots;
-  cancelUnloadPassenger(p.object);uint32_t ticket=0;bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,&ticket);
-  Reservation job{p.object,p.id,v.object,v.id,p.slots,frame};job.lastSent=sent?frame:-1;job.lastAttempt=frame;job.attempts=sent?0:1;job.retryAfter=sent?frame+30:frame+8;job.x=p.x;job.y=p.y;job.progress=frame;job.initial=loadingObservation(p.object);job.kind=p.kind;job.ticket=ticket;job.queuedAt=sent?sampleClock(sh):0;loadLedger.add(job);
+  // Saved source/target identities come from the frozen LoadInput cohort.
+  // Never upgrade a delayed worker assignment to permission to Enter.
+  const executionproof::Ticket proof{match,house,sampleClock(sh),
+   {p.id,p.object,tokens[i]}, {},{v.id,v.object}};
+  cancelUnloadPassenger(p.object);uint32_t ticket=0;
+  bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,proof,&ticket);
+  Reservation job{p.object,p.id,v.object,v.id,p.slots,frame};job.lastSent=sent?frame:-1;job.lastAttempt=frame;job.attempts=sent?0:1;job.retryAfter=sent?frame+30:frame+8;job.x=p.x;job.y=p.y;job.progress=frame;job.initial=loadingObservation(p.object);job.kind=p.kind;job.manualToken=tokens[i];job.ticket=ticket;job.queuedAt=sent?sampleClock(sh):0;loadLedger.add(job);
   if(sent)++snap.loadIssued;else ++snap.loadWaiting;
  }
  return snap.loadWaiting?2:1;
@@ -179,11 +203,16 @@ static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
  using namespace loading;
  FaultPhase phase(runtimefault::LoadCollect);loadQueryFailed=false;
  if(!loadInterfaces())return -12;const int frame=get<int>(0xA8ED84);
- // Reservation completion/cancellation remains an immediate live observation.
+ // The native input cohort can be sampled again after an incomplete world.
+ // Only a complete live reservation observation is allowed to retire a ticket.
  for(int n=0;n<loadLedger.count;){auto&r=loadLedger.records[n];
-  bool remove=!worldObjects.contains(r.object)||!worldObjects.contains(r.vehicle)||!own(r.object,house)||!own(r.vehicle,house)||get<uint32_t>(r.object+0x10)!=r.id||get<uint32_t>(r.vehicle+0x10)!=r.vehicleID||get<uint32_t>(r.object+0x11C)!=0||int64_t(frame)-r.frame>900;
-  if(!remove)remove=takenOver(r,loadingObservation(r.object),incomingVehicle(r.object));
-  if(remove){bool boarded=worldObjects.contains(r.object)&&get<uint32_t>(r.object+0x10)==r.id&&get<uint32_t>(r.object+0x11C)==r.vehicle;finishLoadingReservation(r,match,frame,boarded);loadLedger.erase(n);}else ++n;
+  if(frame-r.frame>900){finishLoadingReservation(r,match,frame,false);loadLedger.erase(n);continue;}
+  const auto view=loadingReservationView(r,house,frame);
+  if(view.state==loading::ReservationState::Unknown){++n;continue;}
+  const bool boarded=view.state==loading::ReservationState::Boarded;
+  const bool remove=view.state==loading::ReservationState::Invalid||boarded||
+    (view.state==loading::ReservationState::Active&&takenOver(r,view.mission,view.incoming));
+  if(remove){finishLoadingReservation(r,match,frame,boarded);loadLedger.erase(n);}else ++n;
  }
  if(!cohort){loadFrames.clear();loadTaskSeen=sh->loadComputed;loadCalculationStarted=sampleClock(sh);loadCaptureWaiting=false;snap.loadIssued=0;}
  if(!loadCaptureWaiting&&!captureLoadSelection(cohort))return -4;
@@ -232,25 +261,37 @@ static void autoLoadTick(uint32_t house,int frame){
  static int processed=-1;static uint32_t processedMatch;if(frame==processed&&match==processedMatch)return;processed=frame;processedMatch=match;
  if(!loadLedger.count)return;
  if(!loadInterfaces()){
-  for(int i=0;i<loadLedger.count;++i)finishLoadingReservation(loadLedger.records[i],match,frame,false);
-  loadLedger.clear();snap.loadWaiting=0;return;
+  // A temporarily unreadable/hooked gateway is not proof of cancellation.
+  // The pre-existing 900-game-frame deadline remains an independent bound.
+  for(int i=0;i<loadLedger.count;){const auto&r=loadLedger.records[i];
+   if(frame-r.frame>900){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);}
+   else ++i;
+  }
+  snap.loadWaiting=loadLedger.count;return;
  }
- auto present=[&](uint32_t p){return worldObjects.contains(p);};int budget=outgoingRoom()?recurringBudget(EventLane::Boarding):0;
- for(int i=0;i<loadLedger.count;){auto&r=loadLedger.records[i];bool remove=!present(r.object)||!present(r.vehicle);
-  if(!remove)remove=!featureObjectAllowed(featuretypes::LoadPassenger,r.object)||!featureObjectAllowed(featuretypes::LoadTransport,r.vehicle)||get<uint32_t>(r.object+0x10)!=r.id||get<uint32_t>(r.vehicle+0x10)!=r.vehicleID||get<uint32_t>(r.object+0x11C)!=0||!own(r.object,house)||!own(r.vehicle,house)||frame-r.frame>900;
-  if(remove){
-   bool boarded=present(r.object)&&get<uint32_t>(r.object+0x10)==r.id&&get<uint32_t>(r.object+0x11C)==r.vehicle;
+ int budget=outgoingRoom()?recurringBudget(EventLane::Boarding):0;
+ for(int i=0;i<loadLedger.count;){auto&r=loadLedger.records[i];
+  // A player order cancels the original AutoLoad permission.
+  if(manualVersions.get(r.id)!=r.manualToken){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;}
+  if(frame-r.frame>900){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;}
+  const auto view=loadingReservationView(r,house,frame);
+  if(view.state==loading::ReservationState::Unknown){++i;continue;}
+  const bool boarded=view.state==loading::ReservationState::Boarded;
+  if(boarded||view.state==loading::ReservationState::Invalid||
+     loading::takenOver(r,view.mission,view.incoming)){
    finishLoadingReservation(r,match,frame,boarded);loadLedger.erase(i);continue;
   }
-  uint32_t incoming=incomingVehicle(r.object);if(loading::takenOver(r,loadingObservation(r.object),incoming)){
-   finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;
-  }
-  int x=get<int>(r.object+0x9C),y=get<int>(r.object+0xA0);if(x!=r.x||y!=r.y){r.x=x;r.y=y;r.progress=frame;}
+  const uint32_t incoming=view.incoming;
+  if(view.x!=r.x||view.y!=r.y){r.x=view.x;r.y=view.y;r.progress=frame;}
   bool due=r.lastSent<0||(frame-r.lastSent>=30&&(!incoming||frame-r.progress>=120));
   if(due&&frame>=r.retryAfter&&budget>0&&outgoingRoom()>0&&loadingObject(r.object,house,r.kind)&&loadingObject(r.vehicle,house,2)&&canEnter(r.object,r.vehicle)){
    r.lastAttempt=frame;
    uint32_t ticket=0;
-   if(enterEvent(house,r.id,r.vehicleID,&ticket)){
+   // Reissue the SAME job, not a newer permission after a player order.
+   // The existing 900-frame task timeout controls durable retry lifetime.
+   const executionproof::Ticket proof{match,house,0,
+      {r.id,r.object,r.manualToken}, {},{r.vehicleID,r.vehicle}};
+   if(enterEvent(house,r.id,r.vehicleID,proof,&ticket)){
     // End the superseded Enter receipt before recording the replacement.
     finishLoadingReservation(r,match,frame,false);
     r.ticket=ticket;r.queuedAt=sampleClock(sh);r.lastSent=frame;r.progress=frame;r.retryAfter=frame+30;r.attempts=0;--budget;

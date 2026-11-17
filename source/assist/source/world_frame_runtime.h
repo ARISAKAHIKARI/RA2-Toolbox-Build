@@ -1,35 +1,101 @@
 #pragma once
 #include "../../shared/source/world_frame_capture.h"
+#include "../../shared/source/world_frame_recovery.h"
 #include "../../shared/source/world_frame_transport.h"
-// Request preparation is kept here: this header is included inside namespace assist.
+#ifndef WORLD_FRAME_PLATFORM_FIXTURE
+#include "../../shared/source/world_frame_shadow_win.h"
+#endif
+#include <cstdio>
 
 static worldframe::Snapshot worldFrame;
 static worldframe::Server worldFrameServer;
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
 // Existing synchronous transport fixtures keep their explicit execution seam.
-struct WorldFramePublication {bool begin(worldframe::Snapshot&){return true;}void invalidate(){}bool stop(){return true;}bool publish(const worldframe::Snapshot&frame,const worldframe::Server&){return worldFrameServer.publish(frame);}};
+struct WorldFramePublication {
+ bool begin(worldframe::Snapshot&){return true;}
+ void invalidate(){}
+ bool stop(){return true;}
+ bool publish(const worldframe::Snapshot&frame,const worldframe::Server&){return worldFrameServer.publish(frame);}
+ bool requestRecovery(const worldframe::Key&,const worldframe::RequestedSpan*,size_t){return false;}
+ size_t recovered(const worldframe::Key&,worldframe::RequestedSpan*,size_t){return 0;}
+};
 #else
 #include "../../shared/source/world_frame_async_win.h"
 using WorldFramePublication=worldframe::AsyncPublisher<>;
 #endif
 static WorldFramePublication worldFramePublication;
-static uint32_t worldFrameSerial=0;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
+// The game frame keeps execution authority. The worker owns all command
+// CaptureGraph RPM and mutable traversal buffers until a strict same-frame
+// handoff; off-thread mode is deliberately pilot/opt-in.
+#ifdef WORLD_FRAME_PLATFORM_FIXTURE
+struct WorldFrameCommandFixture {
+ static bool enabled(){return false;}
+ void invalidate(){}
+ bool stop(){return true;}
+ bool deferBusy(const worldframe::Key&,uint32_t,uint64_t,bool=false){return false;}
+ bool request(const worldframe::Key&,uint32_t,uint64_t,const std::vector<uint32_t>&,bool=false){return false;}
+ bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&,worldframe::CommandRoster* =nullptr,bool=false){return false;}
+};
+using WorldFrameCommandWorker=WorldFrameCommandFixture;
+#else
+using WorldFrameCommandWorker=::worldframe::CommandCaptureWorker;
+#endif
+static WorldFrameCommandWorker worldFrameCommandWorker;
+static worldframe::CommandRoster worldFrameCommandRoster;
+// Coalesce identical in-flight requests before copying dependency pages.
+static worldframe::CommandRequestGate commandRequestGate;
+#ifdef WORLD_FRAME_PLATFORM_FIXTURE
+struct WorldFrameShadowFixture {
+ void invalidate(){}
+ bool stop(){return true;}
+};
+static WorldFrameShadowFixture worldFrameShadow;
+#else
+static worldframe::ShadowGraphWorker worldFrameShadow;
+// An explicit diagnostic opt-in: the normal build does NOT duplicate a full
+// game-world scan every second until shadow sampling is proven beneficial.
+static bool shadowGraphOptIn(){
+ static const bool enabled=[](){
+  char value[3]{};
+  return GetEnvironmentVariableA("RA2TOOLBOX_SHADOW_GRAPH",value,sizeof value)==1&&value[0]=='1';
+ }();
+ return enabled;
+}
+#endif
+static uint32_t worldFrameSerial=0;static uint32_t worldFrameCapturedDemand=0;static uint64_t worldFrameCapturedRevision=0;static uint32_t runtimeDemandRevision=1;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
 static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
+// Fixed-size, direct-mapped hints for fields actually MISSING in a sealed
+// sample. Keep only addresses/lengths; never retain the old values or read
+// game memory from a consumer after seal. No hot-path allocation.
+static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
+static uint32_t lastRecoverySubmitAt=0;
+static bool worldFrameReady=false;
+// Only a Host display-only subscription may use a boundary-only source.
+// Every command input must upgrade to a fresh complete graph, even if the
+// last view-only acquisition used the same game logic frame.
+static bool worldFrameBoundaryOnly=false;
+static void rememberMissingWorldSpan(uint32_t at,size_t bytes){
+ if(!worldFrameReady||!worldFrame.sealed()||!bytes||bytes>256||
+    !worldframe::range(at,bytes))return;
+ uint32_t key=at^(at>>13)^(uint32_t(bytes)*0x9E3779B9u);
+ runtimeMissingSpans[(key^(key>>16))&(runtimeMissingSpans.size()-1)]=
+     {at,uint32_t(bytes),GetTickCount()};
+}
 static worldframe::DemandLeases runtimeDemandLeases;
 static worldframe::CaptureScratch worldFrameCaptureScratch{};static std::vector<uint32_t>worldFrameCaptureRequests;
-static bool worldFrameReady=false;static bool worldFrameBoundaryOnly=false;
 static worldframe::Key lastCaptureAttempt{};static bool haveCaptureAttempt=false;
 static uint32_t failedCaptureAt=0,captureRetryDelay=0;
 static uint64_t worldProducerGeneration=0;
 static void requestWorldRange(uint32_t at,size_t n){
  if(!worldframe::range(at,n))return;
  for(uint32_t page=at&~4095u;uint64_t(page)<uint64_t(at)+n;page+=4096){const uint32_t index=page>>12;const uint64_t mask=uint64_t(1)<<(index&63);
-  if(!(runtimeDemandBits[index>>6]&mask)){runtimeDemandBits[index>>6]|=mask;runtimeWorldDemands.push_back(page);runtimeDemandLeases.retain(page,worldFrame.key.tick);}}
+  if(!(runtimeDemandBits[index>>6]&mask)){runtimeDemandBits[index>>6]|=mask;runtimeWorldDemands.push_back(page);if(!++runtimeDemandRevision)++runtimeDemandRevision;
+   runtimeDemandLeases.retain(page,worldFrame.key.tick);}}
 }
 static bool readWorldSample(uint32_t at,void*out,size_t n){
  requestWorldRange(at,n); // Keep successful consumer dependencies subscribed.
  const bool ok=worldFrameReady&&worldFrame.read(at,out,n);
- if(!ok)sampleReadComplete=false;return ok;
+ if(!ok){sampleReadComplete=false;rememberMissingWorldSpan(at,n);}return ok;
 }
 class SampleReadScope {
  unsigned previousDepth_;bool previousComplete_,ready_,finished_=false,result_=false;
@@ -41,11 +107,16 @@ public:
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
-static void retireWorldFrame(){worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);}
+static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
- // Only an explicitly admitted all-display subscription may skip the
- // game-thread CaptureGraph. Full command sampling has distinct authority.
  const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
+ const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled();
+ bool globalVehicles=false;
+#ifndef WORLD_FRAME_PLATFORM_FIXTURE
+ if(asyncCommand)globalVehicles=sh&&sh->magnetronGlobal;
+#endif
+ const uint32_t graphDemand=demand&~uint32_t(worldframe::HostDisplayOnly);
+ const uint32_t captureDemand=boundaryOnly?demand:(demand&~uint32_t(worldframe::HostDisplayOnly));
  worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,before.scenario,before.cells,house,uint32_t(before.count),before.frame,before.session};
  if(!worldProducerGeneration){LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);worldProducerGeneration=uint64_t(stamp.QuadPart);if(!worldProducerGeneration)worldProducerGeneration=1;}
  key.generationLow=uint32_t(worldProducerGeneration);key.generationHigh=uint32_t(worldProducerGeneration>>32);
@@ -59,38 +130,110 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)){
    worldFramePublication.publish(worldFrame,worldFrameServer);return true;
   }
-  // A command in this very frame upgrades the zero-page display token to a
-  // new full-graph serial, not a mixed or stale read of the old marker.
+  // A hotkey/manual order admitted in the same logic frame after a display
+  // boundary snapshot must not inherit that reduced read set. This one-way
+  // escalation is exceptional and publishes a new serial, never mixed bytes.
   // A failed attempt was never published. Retry transient failures even if
   // the game has paused, with bounded backoff rather than every worker wake.
-  if(uint32_t(key.tick-failedCaptureAt)<captureRetryDelay)return false;
+  if(!asyncCommand&&uint32_t(key.tick-failedCaptureAt)<captureRetryDelay)return false;
  }else captureRetryDelay=0;
- if(!worldFramePublication.begin(worldFrame))return false;
- lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
- auto&requests=worldFrameCaptureRequests;
- if(boundaryOnly){
-  // Do not even call Server::requests() on the game thread: Host display
-  // page queues may be huge and belong to the Host's own VisualCache.
-  requests.clear();
- }else{
+ if(asyncCommand){
+  // The native callback NEVER executes CaptureGraph in this mode. An
+  // incomplete/later-frame graph is *not* a license to scan all live actors.
+  // The existing 4ms Host pulse gives another same-frame opportunity to
+  // adopt a worker result without blocking the game's message pump.
+  const uint64_t requestRevision=(uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
+  if(worldFramePublication.begin(worldFrame)&&
+     worldFrameCommandWorker.take(key,graphDemand,requestRevision,worldFrame,&worldFrameCommandRoster,globalVehicles)){
+   // A background success still needs a NEW independent synchronous
+   // world/frame/House identity check immediately before command delivery.
+   const auto after=worldlife::capture(live);uint32_t afterHouse=0;
+   const bool stable=live(0xA83D4C,&afterHouse,4)&&after.readable&&after.valid()&&
+       before.same(after)&&before.frame==after.frame&&house==afterHouse&&
+       worldFrame.key.sameFrame(key)&&worldFrame.sealed()&&!worldFrame.overflow();
+   if(stable){
+    key.serial=++worldFrameSerial;
+    worldFrame.key.serial=key.serial;
+    worldFrame.key.demand=worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit;
+    lastCaptureAttempt=key;haveCaptureAttempt=true;captureRetryDelay=0;
+    runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+    if(!++runtimeDemandRevision)++runtimeDemandRevision;
+    worldFrameCapturedDemand=graphDemand;
+    worldFrameCapturedRevision=(uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
+    worldFrameBoundaryOnly=false;worldFrameReady=true;
+    worldFramePublication.publish(worldFrame,worldFrameServer);
+    if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;
+     sh->worldSamplePages=uint32_t(worldFrame.pages.size());
+     sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;
+     sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;
+     MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
+    return true;
+   }
+   worldFrameServer.retire();worldFrameCommandWorker.invalidate();
+   if(sh)++sh->worldSampleFailures;
+  }
+  worldFrameReady=false;worldFrameBoundaryOnly=false;
+  // Always poll take() first. An identical pending request skips expensive
+  // page-list assembly, but paused-frame recovery retries after 16ms.
+  if(commandRequestGate.defer(key,graphDemand,requestRevision,globalVehicles,key.tick))return false;
+  // A matching in-flight worker already owns this request; avoid rebuilding
+  // even the 16K-page dependency list on the Game callback.
+  // take() above still rejects every stale / previous-frame result.
+  if(worldFrameCommandWorker.deferBusy(key,graphDemand,requestRevision,globalVehicles))return false;
+  // Only address dependencies are copied on the game thread (bounded by
+  // MaxPages); sorting, page I/O and all unit graph traversal are background.
+  auto&requests=worldFrameCaptureRequests;
   const auto&hostRequests=worldFrameServer.requests();
   requests.assign(hostRequests.begin(),hostRequests.end());
   requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
   for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
   runtimeDemandLeases.append(key.tick,requests);
-  std::sort(requests.begin(),requests.end());
-  requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
+  if(worldFrameCommandWorker.request(key,graphDemand,requestRevision,requests,globalVehicles))
+   commandRequestGate.submitted(key,graphDemand,requestRevision,globalVehicles);
+  return false;
  }
+ if(!worldFramePublication.begin(worldFrame))return false;
+ lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
+ auto&requests=worldFrameCaptureRequests;const auto&hostRequests=worldFrameServer.requests();requests.assign(hostRequests.begin(),hostRequests.end());requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
+ // Pending consumption can predate a long pause or failed capture. Renew its
+ // addresses at this acquisition boundary and acknowledge only on success.
+ for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
+ runtimeDemandLeases.append(key.tick,requests);
+ std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
  key.serial=++worldFrameSerial;
  key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
-           (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
+            (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
  worldFrame.reset(key);
- // Metadata-only publication takes ZERO graph/page reads in the game tick.
- bool complete=true;
- if(!boundaryOnly){
-  worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
-  complete=capture.capture(demand&~uint32_t(worldframe::HostDisplayOnly),requests);
+ // Probe up to 64 fields on the worker but permit only 16 freshly
+ // verified fields to enter this logic frame. Both arrays are stack-bounded.
+ // Rotate the direct-mapped hint table so busy units are not permanently first.
+ std::array<worldframe::RequestedSpan,worldframe::RecoverySpans>candidates{};
+ std::array<worldframe::RequestedSpan,worldframe::RecoveryConfirmSpans>verified{};
+ size_t candidateCount=0,verifiedCount=0;
+ const size_t start=key.serial%runtimeMissingSpans.size();
+ for(size_t step=0;!boundaryOnly&&step<runtimeMissingSpans.size()&&candidateCount<candidates.size();++step){
+  const auto&f=runtimeMissingSpans[(start+step)%runtimeMissingSpans.size()];
+  if(f.bytes&&f.bytes<=256&&worldframe::range(f.address,f.bytes)&&
+     uint32_t(key.tick-f.tick)<=1000)candidates[candidateCount++]=f;
  }
+ // Background bytes are NEVER reused as same-frame command observations.
+ // Successful probes only choose which exact ranges the original producer
+ // reads under its existing before/after identity and frame validation.
+ std::array<worldframe::RequestedSpan,worldframe::RecoverySpans>background{};
+ const size_t readyCount=worldFramePublication.recovered(key,background.data(),background.size());
+ for(size_t i=0;i<readyCount&&verifiedCount<verified.size();++i)
+  for(size_t j=0;j<candidateCount;++j)
+   if(background[i].address==candidates[j].address&&background[i].bytes==candidates[j].bytes){
+    verified[verifiedCount++]=candidates[j];break;
+   }
+ // Do not turn a cold worker start or a dropped latest-work slot into total
+ // starvation. Two synchronous field retries are the strict fallback limit.
+ if(!verifiedCount)for(size_t i=0;i<std::min<size_t>(2,candidateCount);++i)verified[verifiedCount++]=candidates[i];
+ if(candidateCount&&(!lastRecoverySubmitAt||uint32_t(key.tick-lastRecoverySubmitAt)>=32)){
+  if(worldFramePublication.requestRecovery(key,candidates.data(),candidateCount))lastRecoverySubmitAt=key.tick;
+ }
+ worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
+ bool complete=capture.capture(captureDemand,requests,verified.data(),verifiedCount);
  // These checks deliberately bypass the read set. Cached self-comparison is
  // not evidence that the frame/world/House survived the acquisition boundary.
  const auto after=worldlife::capture(live);uint32_t afterHouse=0;
@@ -104,10 +247,38 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(sh)++sh->worldSampleFailures;return false;
  }
  captureRetryDelay=0;
- // Do not acknowledge command page leases from a display-only boundary.
- if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}
+ // Remove confirmed exact misses from the hint ring. Otherwise an old
+ // successful worker result would cause extra live reads on every frame.
+ for(size_t i=0;i<verifiedCount;++i){
+  uint8_t bytes[256]{};
+  const auto&f=verified[i];
+  if(!worldFrame.read(f.address,bytes,f.bytes))continue;
+  for(auto&hint:runtimeMissingSpans)
+   if(hint.address==f.address&&hint.bytes==f.bytes){hint={};break;}
+ }
+ runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
  worldFrameBoundaryOnly=boundaryOnly;
  worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
+#ifndef WORLD_FRAME_PLATFORM_FIXTURE
+ // Shadow graph is explicitly diagnostic and read-only. It never replaces
+ // worldFrame, alters command status, or changes the game-thread capture plan.
+ if(shadowGraphOptIn()){
+  worldframe::BackgroundTrialResult shadow{};
+  if(worldFrameShadow.poll(key,shadow)){
+   char diagnostic[384]{};
+   std::snprintf(diagnostic,sizeof diagnostic,
+     "RA2 read-only background graph frame=%d..%d actors=%u own=%u other=%u "
+     "alive=%u dead=%u uncertain=%u visited=%u pages=%u calls=%u bytes=%u "
+     "(approximate; never command authority)\n",
+     shadow.before.frame,shadow.after.frame,
+     shadow.facts.actors,shadow.facts.owned,shadow.facts.other,
+     shadow.facts.alive,shadow.facts.dead,shadow.facts.missingIdentity,
+     shadow.facts.visited,shadow.pages,shadow.counters.calls,shadow.counters.bytes);
+   OutputDebugStringA(diagnostic);
+  }
+  worldFrameShadow.request(key,worldframe::Base,key.tick);
+ }
+#endif
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;
 }

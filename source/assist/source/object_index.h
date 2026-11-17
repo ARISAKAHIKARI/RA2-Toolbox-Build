@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <memory>
 namespace assist {
 // Fixed storage: no allocator or OS reads in input hooks.
 struct ObjectIndex {
@@ -21,6 +22,34 @@ struct ObjectIndex {
  uint32_t byId(uint32_t id)const{
   if(!id)return 0;unsigned slot=hash(id);
   for(unsigned n=0;n<Size;++n,slot=(slot+1)&(Size-1)){if(idEpoch[slot]!=epoch)return 0;if(ids[slot]==id)return objects[slot];}return 0;
+ }
+};
+// Native index remains static and allocation-free. When a worker hands off
+// a sealed same-frame command roster, only this small observer binding changes;
+// the object itself lives in CommandRoster's unique owner and is never copied.
+// A missing/stale worker frame must NOT fall back to the old native roster.
+class ObjectIndexView {
+ ObjectIndex native_{};
+ const std::unique_ptr<ObjectIndex>*background_=nullptr;
+ bool(*valid_)()=nullptr;
+ ObjectIndex*current()const{
+  if(!background_)return const_cast<ObjectIndex*>(&native_);
+  return valid_&&valid_()?background_->get():nullptr;
+ }
+public:
+ void bind(const std::unique_ptr<ObjectIndex>*owner,bool(*valid)()){
+  background_=owner;valid_=valid;
+ }
+ void unbind(){background_=nullptr;valid_=nullptr;}
+ void clear(){if(auto*index=current())index->clear();}
+ void add(uint32_t pointer,uint32_t id,uint32_t value=0){
+  if(auto*index=current())index->add(pointer,id,value);
+ }
+ bool contains(uint32_t pointer)const{
+  auto*index=current();return index&&index->contains(pointer);
+ }
+ uint32_t byId(uint32_t id)const{
+  auto*index=current();return index?index->byId(id):0;
  }
 };
 struct ManualVersions {

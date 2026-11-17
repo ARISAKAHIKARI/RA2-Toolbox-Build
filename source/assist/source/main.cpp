@@ -108,7 +108,7 @@ extern "C" __declspec(dllexport) const MappingPrefixValue AssistHostMappingPrefi
 namespace renderupgrade {static void stop();static void shutdown();}
 namespace minimap {static void hide();static void clear();static void destroy();}
 namespace watchwindows {static void hide();}
-static uint32_t computeRequested=compute::Default;
+static uint32_t computeRequested=compute::Fixed;
 static bool revealCloakedUnits=false,revealMirageUnits=false,revealEnemySpies=false;
 static bool renderUpgradeEnabled=false,unifiedOverlayEnabled=false,renderPhysicalOutput=false,renderMaterialRefresh=true,renderHighRefresh=true,renderVulkanEnabled=true;static int renderUpgradeLayer=1,renderPaletteRange=1,renderPixelScale=3,renderSceneDetail=1,renderColorPrecision=1;
 static bool renderProcessing=false,renderXbrzEnabled=false;
@@ -1869,6 +1869,8 @@ static void paint(){
   const int available=std::max(0,int(r.right)-4);
   unitpanelhost::panel.refreshCameos(selectionModel,
    [](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);},
+   [](um::Type&t){gameassets::resolveCameo(t);},
+   &gameassets::cameo,
    pid,selectionModel.match,GetTickCount());
   unitpanelhost::panel.update(selectionModel,screenX,screenBottom,available);
  }else if(unitPanelEnabled)unitpanelhost::panel.miss();
@@ -2569,32 +2571,8 @@ static void tick(){
   DWORD wakePeriod=shared->foreground?16:(shared->bombBoardEnabled||shared->minerDefenseEnabled||shared->minerDefenseActive||shared->dodgeEnabled||shared->dodgeActive||shared->missileEnabled||shared->missileHeld||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();performanceDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
-  static renderpresentation::StatusCadence computeStatusCadence;
-  // Requested placement alone is not work. In particular, the host-first
-  // default must not force a game-frame notification with all features off.
-  // Already-running tasks keep the wake lease until their results/ACKs settle.
-  const compute::HostFrameDemand frameWork{
-   configured,shared->computeApplied,
-   (configured&AutoRepair)!=0,(configured&(EjectAssist|SmartUnloadOrders))!=0,
-   shared->dodgeEnabled||shared->dodgeActive,shared->missileEnabled||shared->missileHeld,
-   shared->magnetronGlobal!=0,shared->magnetronDrop!=0,
-   shared->plannerTracking||shared->runtimeTracking||
-    shared->planRequest!=shared->planAck||shared->cooperativePlan!=shared->cooperativeAck||
-    shared->loadTask!=shared->loadComputed||shared->repairTask!=shared->repairComputed||
-    shared->unloadTask!=shared->unloadComputed||shared->missileTask!=shared->missileComputed||
-    shared->dodgeTask!=shared->dodgeComputed
-  };
-  gameinput::setFrameSampling(hook,enabled&&(shared->superweaponGrant||shared->externalDisplay||
-   compute::needsFrameNotification(frameWork)));
-  const uint64_t computeStatusKey=uint64_t(shared->computeApplied)|(uint64_t(computeRequested)<<32)|(uint64_t(showDetails)<<63);
-  if(ready&&GetDlgItem(ui,833)&&computeStatusCadence.due(computeStatusKey,now)){
-  std::wstring text=L"当前生效：";for(int i=0;i<compute::Count;++i){if(i)text+=i%2?L" · ":L"\r\n";text+=compute::label(i);text+=compute::inside(shared->computeApplied,compute::Feature(i))?L"：游戏内":L"：工具箱";}
-  if(shared->computeApplied!=computeRequested)text+=L"\r\n配置已修改，下一局生效。";
-  if(showDetails)text+=L"\r\n游戏内计算耗时 "+std::to_wstring(shared->runtimePlannerMicros)+L" 微秒。";
-  if(showDetails){const long seq=shared->computeFrameSeq;if(!(seq&1)){const int frame=shared->computeFrame;const uint32_t stamp=shared->computeFrameTick,serial=shared->computeFrameSerial;MemoryBarrier();if(seq==shared->computeFrameSeq)text+=L"\r\n统一决策样本：游戏帧 "+std::to_wstring(frame)+L" · 批次 "+std::to_wstring(serial)+L" · 年龄 "+std::to_wstring(DWORD(GetTickCount()-stamp))+L" ms · "+(gameinput::nativeFrameSampling(hook)?L"原生帧通知":L"帧号检测");}}
-  static std::wstring previous;if(previous!=text){previous=text;SetDlgItemTextW(ui,833,text.c_str());}
- }
- now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
+  gameinput::setFrameSampling(hook,enabled&&(shared->superweaponGrant||shared->externalDisplay||shared->computeApplied!=compute::All));
+  now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
   if(uninitializedBridgeTimedOut()){
    critical(L"uninitialized command bridge timeout; retry before any match is authenticated");logBridgeHealth(true);logLoadedGameModules();releaseBridge();
   }else if(lastData&&DWORD(now-lastData)>8000){
@@ -2758,7 +2736,7 @@ static void finalizeTacticalLayout(){
 #ifdef RA2_CONSOLE_WEBVIEW2
 static void prepareConsoleSettingsModel(){
  struct Group {int fold;const wchar_t*name;};
- static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9609,L"计算模式"},{9610,L"单位类型清单"},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"全图 CRC 原值镜像"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻"}};
+ static constexpr Group groups[]={{9601,L"飞机分配攻击"},{9602,L"队形排列与快速占位"},{9603,L"防空火控"},{9604,L"喝彩与嘲讽快捷键"},{9605,L"矿车自动卸矿"},{9606,L"高级移动攻击"},{9607,L"科技设置"},{9608,L"组合选兵绑定"},{9610,L"单位类型清单"},{9611,L"超级武器目标选择"},{9612,L"跨玩家控制实现"},{9613,L"全图 CRC 原值镜像"},{9614,L"事件所属方保留"},{9615,L"下令与巡逻"}};
  constexpr size_t count=sizeof(groups)/sizeof(groups[0]);int groupPages[count],groupRows[count];
  std::fill(std::begin(groupPages),std::end(groupPages),-999);std::fill(std::begin(groupRows),std::end(groupRows),-999);
  for(const auto&c:pageControls)for(size_t i=0;i<count;++i)if(GetDlgCtrlID(c.hwnd)==groups[i].fold){groupPages[i]=c.page;groupRows[i]=c.fullRect.y;}

@@ -26,7 +26,7 @@ static int nativeMegaGatewayAction(unsigned op,uint32_t packetAddress,uint32_t e
  const int frame=get<int>(0xA8ED84),mission=local[0xC];
  if(local[0]!=4||local[0xB]!=0x34||!id||id!=expectedActor||
     eventFrame!=uint32_t(frame)||mission>=32)return skip();
- indexWorld(frame);
+ if(!prepareWorldIndex(frame))return skip();
  const uint32_t object=worldByID(id);
  if(!object||!live(object)||!manualVersions.trackable(id))return skip();
  const uint32_t owner=get<uint32_t>(object+0x21C);const int houseIndex=owner>=0x10000?get<int>(owner+0x30):-1;

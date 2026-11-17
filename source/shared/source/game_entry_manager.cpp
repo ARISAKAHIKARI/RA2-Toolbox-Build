@@ -76,7 +76,8 @@ static Result applyPatch(const Request&r){
  if(slot>=0&&patchModules[slot]&&patchModules[slot]!=r.module)return Result::WrongOwner;
  const auto transition=patches.proposal(r.address,r.before,r.after,r.length);
  if(transition==assist::hookregistry::Transition::Deny)return patchDenied(r.address,patches.conflict(r.address)?debugentries::Reason::Foreign:debugentries::Reason::None);
- if(transition==assist::hookregistry::Transition::Install){
+ if(transition==assist::hookregistry::Transition::Install||
+    transition==assist::hookregistry::Transition::Reapply){
   if(!multiplayerpatch::mayInstall([](uint32_t at,void*out,size_t n){
    SIZE_T got=0;return ReadProcessMemory(GetCurrentProcess(),(const void*)(uintptr_t)at,out,n,&got)&&got==n;
   }))return patchDenied(r.address,debugentries::Reason::Unsupported);
@@ -120,6 +121,20 @@ static Result applyPatch(const Request&r){
  if(!VirtualQuery(site,&info,sizeof info)||info.State!=MEM_COMMIT||info.AllocationBase!=GetModuleHandleW(nullptr)||
     (info.Protect&(PAGE_GUARD|PAGE_NOACCESS))||uintptr_t(site)+r.length>uintptr_t(info.BaseAddress)+info.RegionSize)return patchDenied(r.address,debugentries::Reason::Unreadable);
  if(memcmp(site,r.before,r.length)){
+  // A platform may have restored one of our two tooltip vtable slots to its
+  // verified original before the user disabled the feature. This is not a
+  // competing hook. Retire its journal without writing anything, so a future
+  // explicit enable can install cleanly. Never adopt any other mismatched
+  // bytes, or any pre-existing foreign/conflicted patch.
+  if(assist::hookregistry::tooltipSlot(r.address)&&
+     transition==assist::hookregistry::Transition::Restore&&
+     slot>=0&&!patches.conflict(r.address)&&
+     !memcmp(site,r.after,r.length)){
+   patches.commit(r.address,r.before,r.after,r.length,transition);
+   patchErrors[slot]=0;
+   observePatch(r.address);
+   return Result::Ok;
+  }
   // An install race before our first write creates no restoration debt.
   // Keep it retryable; only an active owner can lose bytes to another writer.
   if(patches.active(r.address))patches.markConflict(r.address);

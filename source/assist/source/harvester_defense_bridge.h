@@ -218,12 +218,21 @@ static bool minerDefenseRefreshSelector(int frame){
  if(!minerDefenseSelectorKnown||changed)minerDefenseSelector=next;
  minerDefenseSelectorKnown=true;minerDefenseWasEnabled=sh->minerDefenseEnabled!=0;return true;
 }
-static bool minerDefenseVictim(uint32_t id,uint32_t house,planner::Actor&a,uint32_t&pointer,uint32_t&type,uint32_t&typeID){
+static bool minerDefenseVictim(uint32_t id,uint32_t house,planner::Actor&a,uint32_t&pointer,uint32_t&type,uint32_t&typeID,bool*unknown=nullptr){
+ if(unknown)*unknown=false;
  pointer=worldByID(id);type=typeID=0;
- if(!pointer||!minerDefenseThreat(pointer,house,false)||!oreHarvestRead(pointer+0x6C4,type)||type<0x10000||
-    !oreHarvestRead(type+0x10,typeID)||!typeID)return false;
+ if(!pointer)return false; // A complete UID index proves the old object absent.
+ int hp=0;
+ if(!oreHarvestRead(pointer+0x6C4,type)||!oreHarvestRead(pointer+0x6C,hp)){
+  if(unknown)*unknown=true;return false;
+ }
+ if(type<0x10000||hp<=0)return false;
+ if(!oreHarvestRead(type+0x10,typeID)){if(unknown)*unknown=true;return false;}
+ if(!typeID||!minerDefenseThreat(pointer,house,false))return false;
  a={};a.id=id;a.type=type;a.kind=2;a.flags=planner::Enemy|planner::ParasiteThreat;
- if(!read(pointer+0x9C,&a.x,3*sizeof(int))||!oreHarvestRead(type+0x9C,a.armor))return false;
+ if(!read(pointer+0x9C,&a.x,3*sizeof(int))||!oreHarvestRead(type+0x9C,a.armor)){
+  if(unknown)*unknown=true;return false;
+ }
  rawCombatInfo(pointer,type,2,a,false,false);return minerdefense::threat(a);
 }
 static bool minerDefenseCapture(const planner::Actor&a,uint32_t house,MinerDefenseJob&j){
@@ -401,7 +410,8 @@ static bool minerDefenseTransition(const MinerDefenseJob&j,const OreHarvestState
 // Returns true only when this local job may release ownership. Queued events
 // increment the UI's "issued" counters, never an invented kill/completion count.
 static bool minerDefenseResume(MinerDefenseJob&j,uint32_t house,int frame,DWORD now,int&searchBudget){
- planner::Actor source{};OreHarvestState state{};if(!minerDefenseSource(j.identity,house,source,state))return true;
+ // Unknown live identity/mission must not complete restoration.
+ planner::Actor source{};OreHarvestState state{};if(!minerDefenseSource(j.identity,house,source,state))return false;
  if(j.restoreMission>=0&&minerDefenseRestored(j,state,house))return true;
  if(j.guarding){
   if(j.returningToGuard){
@@ -440,7 +450,13 @@ static bool minerDefenseResume(MinerDefenseJob&j,uint32_t house,int frame,DWORD 
   minerDefenseSend(j,house,frame,now,5,0,0,0);return false;
  }
  if(!j.mining&&state.cargo>0){
-  if(oreHarvestRefinery(j.identity,house)<0&&!minerDefenseFindRefinery(j.identity,house,true)){j.identity.refinery=0;j.identity.refineryPointer=0;}
+  // -2 means unreadable, not invalid. Keep the original dock reservation.
+  const int dock=j.identity.refinery?oreHarvestRefinery(j.identity,house):-1;
+  if(dock==-2)return false;
+  if(dock<0&&!minerDefenseFindRefinery(j.identity,house,true)){
+   if(minerDefenseRefineryIncomplete)return false;
+   j.identity.refinery=0;j.identity.refineryPointer=0;
+  }
   if(j.identity.refinery){minerDefenseSend(j,house,frame,now,7,0,j.identity.refinery,0x34);return false;}
  }
  if(!oreHarvestMapCurrent()&&!oreHarvestMapCapture())return false;
@@ -448,9 +464,13 @@ static bool minerDefenseResume(MinerDefenseJob&j,uint32_t house,int frame,DWORD 
  const int original=cell?oreHarvestCell(int(cell%1000),int(cell/1000),j.identity.speed):0;
  if(original<0)return false;
  if(!original){
-  auto&search=j.identity.search;if(!search.radius&&!search.at&&!search.done)search.begin(j.identity.originX,j.identity.originY);
-  int local=std::min(searchBudget,256),before=local;search.advance(local,[&](int x,int y){return oreHarvestCell(x,y,j.identity.speed);});searchBudget-=before-local;
-  if(!search.done)return false;cell=search.best;
+  // Commit ring progress only after all visited Cell reads are certain.
+  auto next=j.identity.search;if(!next.radius&&!next.at&&!next.done)next.begin(j.identity.originX,j.identity.originY);
+  int local=std::min(searchBudget,256),before=local;bool certain=true;
+  next.advance(local,[&](int x,int y){int value=oreHarvestCell(x,y,j.identity.speed);if(value<0)certain=false;return value;});
+  searchBudget-=before-local;
+  if(!certain)return false;j.identity.search=next;
+  if(!j.identity.search.done)return false;cell=j.identity.search.best;
  }
  if(cell){
   const int current=oreHarvestCell(int(cell%1000),int(cell/1000),j.identity.speed);
@@ -474,12 +494,15 @@ static bool minerDefenseTick(uint32_t house,int frame,DWORD now){
   if(worldByID(it->first)!=old.pointer||manualVersions.get(it->first)!=old.token)it=minerDefenseWork.erase(it);else ++it;
  }
  if(minerDefenseFrame==frame&&minerDefenseInput==inputSerial&&minerDefenseConfigRevision==featureConfigRevision)return false;
- minerDefenseFrame=frame;minerDefenseInput=inputSerial;minerDefenseConfigRevision=featureConfigRevision;
  if(!freshness::valid(planningWorld.match,match,planningWorld.tick,planningWorld.frame,now,frame,freshness::Tactical))return false;
  minerDefenseRosterAttempted=false;
  minerDefenseActors.clear();minerDefenseEnemies.clear();
  for(int n=0;n<planningWorld.count;++n){const auto&a=planningWorld.actors[n];minerDefenseActors.add(a);if(minerdefense::threat(a))minerDefenseEnemies.add(n,a);}
- minerDefenseIndexRefineries();
+ // Do not use previous refinery/radio cache if the current capture failed.
+ if(!minerDefenseIndexRefineries())return false;
+ // Mark the frame consumed only after all required lists were readable.
+ // An incomplete sample is not a completed scan (even during a paused frame).
+ minerDefenseFrame=frame;minerDefenseInput=inputSerial;minerDefenseConfigRevision=featureConfigRevision;
  const uint32_t before=sh->minerDefenseAttacks+sh->minerDefenseResumes;int searchBudget=2048,issued=0;
  // Rotate existing jobs as well as new miners. Six event slots and the bounded
  // resource search budget must not be monopolized by the same first jobs.
@@ -491,30 +514,34 @@ static bool minerDefenseTick(uint32_t house,int frame,DWORD now){
   if(found==minerDefenseJobs.end())continue;auto&j=found->second;
   OreHarvestState state{};const int valid=minerDefenseState(j.identity,house,state);
   if(valid<0||!manualVersions.trackable(id)){minerDefenseForget(id);continue;}
-  if(!valid){if(!j.uncertainAt)j.uncertainAt=now;if(DWORD(now-j.uncertainAt)>2000)minerDefenseDrop(id);continue;}
+  if(!valid){if(!j.uncertainAt)j.uncertainAt=now;continue;} // Unknown is not retirement.
   const int lease=actorLeaseArbiter.find(id);
   if(lease>=0&&actorLeaseArbiter.leases[lease].owner!=taskarbiter::Owner::HarvesterDefense&&
      taskarbiter::priority(actorLeaseArbiter.leases[lease].owner)>taskarbiter::priority(taskarbiter::Owner::HarvesterDefense)){minerDefenseDrop(id);continue;}
   planner::Actor source{};bool unknown=false;if(!minerDefenseSource(j.identity,house,source,state,&unknown)){
-   if(unknown){if(!j.uncertainAt)j.uncertainAt=now;if(DWORD(now-j.uncertainAt)>2000)minerDefenseDrop(id);}else minerDefenseDrop(id);continue;
+   if(unknown){if(!j.uncertainAt)j.uncertainAt=now;}else minerDefenseDrop(id);continue;
   }
   uint32_t targetPointer=0;if(!oreHarvestRead(j.identity.pointer+0x2B4,targetPointer)){
-   if(!j.uncertainAt)j.uncertainAt=now;if(DWORD(now-j.uncertainAt)>2000)minerDefenseDrop(id);continue;
+   if(!j.uncertainAt)j.uncertainAt=now;continue;
   }
   const uint32_t currentTarget=rawObjectID(targetPointer);bool ended=false;
   if(!minerDefenseTransition(j,state,targetPointer,house,&unknown,&ended)){
-   if(unknown){if(!j.uncertainAt)j.uncertainAt=now;if(DWORD(now-j.uncertainAt)>2000)minerDefenseDrop(id);}
+   if(unknown){if(!j.uncertainAt)j.uncertainAt=now;}
    else minerDefenseForget(id);continue;
-  }j.uncertainAt=0;
+  }
+  // Suspended observation does not consume the restoration timeout budget.
+  if(j.uncertainAt&&j.restoring){j.restoreStartedAt=now;j.restoreStartedFrame=frame;}
+  j.uncertainAt=0;
   if(state.mission==1&&currentTarget==j.target){j.observedAttack=true;j.previousTargetPointer=0;}
   if(!sh->minerDefenseEnabled||!minerDefenseType(j.identity.type,j.identity.actorKind))minerDefenseBeginRestore(j,frame,now);
   // Both clocks must advance: a paused match is not a failed restoration.
   // Failed admission/read attempts never consume the successful-send retries.
   if(j.restoring&&frame-j.restoreStartedFrame>=600&&DWORD(now-j.restoreStartedAt)>=15000){minerDefenseDrop(id);continue;}
   if(!j.restoring){
-   planner::Actor victim{};uint32_t p=0,t=0,tid=0;
-   const bool retain=!ended&&minerDefenseVictim(j.target,house,victim,p,t,tid)&&p==j.targetPointer&&t==j.targetType&&tid==j.targetTypeID&&
+   planner::Actor victim{};uint32_t p=0,t=0,tid=0;bool victimUnknown=false;
+   const bool retain=!ended&&minerDefenseVictim(j.target,house,victim,p,t,tid,&victimUnknown)&&p==j.targetPointer&&t==j.targetType&&tid==j.targetTypeID&&
     minerdefense::inRange(source,victim,int(sh->minerDefenseRangeCells),true);
+   if(victimUnknown){if(!j.uncertainAt)j.uncertainAt=now;continue;}
    if(retain){
     if((state.mission==1||state.queued==1)&&currentTarget==j.target)continue;
     if(frame-j.sentFrame<12||DWORD(now-j.sentAt)<350)continue;

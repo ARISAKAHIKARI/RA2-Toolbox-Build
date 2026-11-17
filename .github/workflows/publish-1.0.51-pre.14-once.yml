@@ -1,0 +1,194 @@
+name: Publish 1.0.51-pre.14 MIX Cameos and tooltip repair
+on:
+  push:
+    branches: [release/1.0.51-pre.14-mix-cameos-20261116]
+    paths:
+      - '.github/workflows/publish-1.0.51-pre.14-once.yml'
+      - 'source/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ra2-toolbox-1.0.51-pre.14-once
+  cancel-in-progress: false
+jobs:
+  regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run MIX and panel integration fixtures against production code
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in unit_monitor_mix_archive unit_info_panel_mix_cameos unit_info_panel_model debug_patch_policy; do
+            g++ -std=c++17 -O2 -Wall -Wextra -Wno-error=misleading-indentation -UNDEBUG "source/assist/tests/$name.cpp" -o "/tmp/ra2-$name"
+            "/tmp/ra2-$name"
+          done
+      - name: Verify all-world-frame missing-page states remain valid
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/world_frame_core_test.py
+          python3 source/assist/tests/tactical_frame_sampling.py --out /tmp/pre14-sample
+          python3 source/assist/tests/unload_loaded_admission.py --out /tmp/pre14-unload --current-only
+
+  windows:
+    needs: regressions
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned SDK tooling
+        shell: pwsh
+        run: |
+          python -m pip install Pillow==11.3.0
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if ((& $zig version) -ne '0.13.0') {throw 'Incorrect Zig compiler'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force artifacts/console,diagnostics | Out-Null
+      - name: Build x86 Runtime plus unified x64 Host including unit monitor
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/artifacts/console"
+          bash source/build-zig-x64.sh > diagnostics/windows-build.log 2>&1 || { tail -140 diagnostics/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+          python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out diagnostics/async-recovery
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json; do
+            test -s "artifacts/console/$f"
+          done
+          grep -q 'RA2_RELEASE_VERSION "1.0.51.14"' source/shared/source/release_version.h
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.51-pre.14-paired
+          path: artifacts/console/
+          retention-days: 30
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-1.0.51-pre.14-build-diagnostics
+          path: diagnostics/
+          retention-days: 30
+
+  publish:
+    needs: [regressions, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: v1.0.51-pre.14
+      BASE_FULL_SHA: 5287c425a8806afedc8bf018ffd87874e375af94f4f20ad62beb342535ae0c44
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.51-pre.14-paired
+          path: dist/compiled
+      - name: Verify exact paired artifacts and unique tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'RA2_RELEASE_VERSION_W L"1.0.51-pre.14"' source/shared/source/release_version.h
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json; do
+            test -s "dist/compiled/$f"
+          done
+          python3 - <<'PY'
+          import json
+          x=json.load(open('dist/compiled/BUILD_TARGET.json',encoding='utf-8'))
+          assert x['host']=='x64' and x['runtime']=='x86' and x['broker']=='x86'
+          assert x['console_ui']=='webview2' and x['game_tested'] is False
+          PY
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'pre.14 already exists; refuse destructive replacement'
+            exit 1
+          fi
+      - name: Stage compact Update and complete Full from verified pre.13 resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/base dist/update dist/full
+          gh release download v1.0.51-pre.13 --repo "$GITHUB_REPOSITORY" \
+            --pattern 'RA2Toolbox-1.0.51-pre.13-x64-Full.zip' --dir dist/base
+          echo "$BASE_FULL_SHA  dist/base/RA2Toolbox-1.0.51-pre.13-x64-Full.zip" | sha256sum -c -
+          unzip -q dist/base/RA2Toolbox-1.0.51-pre.13-x64-Full.zip -d dist/full
+          exe=$(find dist/full -type f -name RA2Toolbox.exe -print -quit)
+          test -n "$exe"
+          fullroot=$(dirname "$exe")
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do
+            cp "dist/compiled/$f" "dist/update/$f"
+            cp "dist/compiled/$f" "$fullroot/$f"
+            cmp "dist/update/$f" "$fullroot/$f"
+          done
+          for f in BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json WINDOWS_BUILD_ARTIFACTS.json CONSOLE_COMPILE.json; do
+            if test -f "dist/compiled/$f"; then
+              cp "dist/compiled/$f" "dist/update/$f"
+              cp "dist/compiled/$f" "$fullroot/$f"
+            fi
+          done
+          if test -d dist/compiled/licenses; then
+            mkdir -p "$fullroot/licenses"
+            cp -a dist/compiled/licenses/. "$fullroot/licenses/"
+            cp -a dist/compiled/licenses dist/update/
+          fi
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.51-pre.14-x64-Update.zip .)
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.51-pre.14-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.14-x64-Update.zip
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.14-x64-Full.zip
+          test "$(stat -c%s dist/RA2Toolbox-1.0.51-pre.14-x64-Update.zip)" -lt 12000000
+          (cd dist && sha256sum RA2Toolbox-1.0.51-pre.14-x64-{Full,Update}.zip > SHA256SUMS.txt)
+          (cd dist && sha256sum -c SHA256SUMS.txt)
+      - name: Create release with source, scope and verification disclaimer
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## 1.0.51-pre.14 — MIX Cameo / 提示框修复测试版
+
+          来源提交 \`$GITHUB_SHA\`。版本资源：**1.0.51.14**。
+
+          - 左下角选中单位、载具与乘员面板的 Cameo 现在优先通过游戏 Rules/Art 和 MIX/松散 SHP 加载（PR #38），不存在或损坏时回退原生 SHP
+          - **建造中 / 已拥有列表**的图标通过现有独立 unit monitor MIX 解码器加载；本次新增 EXPANDMD 覆盖 CAMEOMD.MIX 和 CAMEO.PAL 的实际 MIX 索引验证，并限制大量缺失素材的单次尝试数，防止异常读取放大
+          - 原生文字提示、建造时间共用的 Hook 改为检查真实 vtable 槽位所有权；已知原版指针被恢复时才安全重装，不覆盖平台第三方 Hook（PR #37）
+          - 延续缺页补采、单位大量时的采样预算、Ctrl+D 状态机保护与 pre.13 以后的开发改进
+
+          **已验证**：生产代码 MIX/SHP 解码故障注入测试、Linux 回归、Windows x64 Host/x86 Runtime 配套编译、异步线程检查。
+          **未验证**：真实游戏画面、JJ/CnCNet 平台、多 MOD 实际 Cameo 显示，以及 FPS 实测。本版为预发布测试版。
+
+          **Full**：独立安装资源沿用经 SHA-256 验证的 pre.13 Full，本次编译的程序文件全部替换。
+          **Update**：已有 pre.13 Full 用户可使用；先关闭游戏和工具箱并备份设置，再整体覆盖配套文件。
+          EOF
+          cd dist
+          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title 'RA2 Toolbox 1.0.51-pre.14 · MIX Cameo 与建造时间修复' \
+            --notes-file RELEASE_NOTES.md \
+            RA2Toolbox-1.0.51-pre.14-x64-Full.zip \
+            RA2Toolbox-1.0.51-pre.14-x64-Update.zip SHA256SUMS.txt
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json url,isDraft,isPrerelease,assets > RELEASE_RECEIPT.json
+          jq -e '.isDraft==false and .isPrerelease==true and (.assets|length)==3' RELEASE_RECEIPT.json
+          cat RELEASE_RECEIPT.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-1.0.51-pre.14-publication-receipt
+          path: |
+            dist/RELEASE_NOTES.md
+            dist/RELEASE_RECEIPT.json
+            dist/SHA256SUMS.txt
+          retention-days: 30

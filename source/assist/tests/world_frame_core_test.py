@@ -32,6 +32,30 @@ with tempfile.TemporaryDirectory(prefix="ra2_world_frame_") as tmp:
         str(root / "world_frame_core.cpp"), "-o", str(no_exceptions),
     ], check=True)
     subprocess.run([str(no_exceptions)], check=True)
+    precise = directory / "world_frame_exact_demand"
+    subprocess.run([
+        "g++", "-std=c++17", "-O2", "-fno-exceptions",
+        str(root / "world_frame_exact_demand.cpp"), "-o", str(precise),
+    ], check=True)
+    subprocess.run([str(precise)], check=True)
+    async_recovery = directory / "world_frame_async_recovery"
+    subprocess.run([
+        "g++", "-std=c++17", "-O2", "-pthread", "-UNDEBUG",
+        str(root / "world_frame_async_recovery.cpp"), "-o", str(async_recovery),
+    ], check=True)
+    subprocess.run([str(async_recovery)], check=True)
+    shadow = directory / "world_frame_background_trial"
+    subprocess.run([
+        "g++", "-std=c++17", "-O2", "-pthread", "-UNDEBUG",
+        str(root / "world_frame_background_trial.cpp"), "-o", str(shadow),
+    ], check=True)
+    subprocess.run([str(shadow)], check=True)
+    split = directory / "world_frame_display_split"
+    subprocess.run([
+        "g++", "-std=c++17", "-O2", "-UNDEBUG",
+        str(root / "world_frame_display_split.cpp"), "-o", str(split),
+    ], check=True)
+    subprocess.run([str(split)], check=True)
     binary = directory / "world_frame_core"
     subprocess.run([
         "g++", "-std=c++17", "-O2", "-pthread", "-DWORLD_FRAME_PLATFORM_FIXTURE",

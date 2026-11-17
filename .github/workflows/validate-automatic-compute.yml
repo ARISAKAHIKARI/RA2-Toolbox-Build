@@ -1,0 +1,150 @@
+name: Verify automatic compute and atomic sampling
+on:
+  push:
+    branches: [feature/automatic-compute-atomic-sample-20261116]
+    paths:
+      - 'source/**'
+      - '.github/workflows/validate-automatic-compute.yml'
+  pull_request:
+    paths:
+      - 'source/**'
+      - '.github/workflows/validate-automatic-compute.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: automatic-compute-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check sealed world pages and consumer recovery
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/world_frame_core_test.py
+          python3 source/assist/tests/tactical_frame_sampling.py --out /tmp/ra2-automatic-sampling
+      - name: Check settings migration and native UI
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/fixed_compute_settings.py
+  defense-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test spider-defense pending, unknown and restoration states
+        run: |
+          python3 source/assist/tests/harvester_defense_runtime.py --out /tmp/ra2-defense-state
+  ore-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test ore handoff and repeated missing-page recovery
+        run: |
+          python3 source/assist/tests/ore_harvest_handoff.py --out /tmp/ra2-ore-state
+  missile-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test bounded manual suppression and same-frame retry
+        run: |
+          python3 source/assist/tests/missile_manual_lifecycle.py --output /tmp/ra2-missile-state
+  boarding-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test exact production automatic-boarding four-state observer
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG source/assist/tests/autoload_reservation_state.cpp -o /tmp/ra2-autoload-reservation
+          /tmp/ra2-autoload-reservation
+  windows-target-build:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned icon encoder
+        shell: pwsh
+        run: python -m pip install Pillow==11.3.0
+      - name: Install pinned Zig 0.13.0
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV ('ZIG_EXE='+(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)
+          New-Item -ItemType Directory -Force diagnostics,artifacts/console | Out-Null
+      - name: Compile paired Windows x86 Runtime and x64 Host
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/artifacts/console"
+          bash source/build-zig-x64.sh > diagnostics/windows-build.log 2>&1 || { tail -120 diagnostics/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+      - name: Execute actual Win32 x86/x64 asynchronous recovery worker lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out diagnostics/async-recovery
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-MissingPageAudit-Windows-BuildLog
+          retention-days: 14
+          path: diagnostics/
+  repair-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify production repair pending-ticket unknown-state handling
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/auto_repair_runtime.py --out /tmp/ra2-repair-state
+  unload-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run production Ctrl+D carrier admission, retries and capacity checks
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/capacity_admission.py --out /tmp/ra2-unload-state --case unload
+      - name: Test post-ejection passenger history with missing live UID
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/unload_roster_runtime.py --out /tmp/ra2-unload-roster --before source/assist/source/native_orders_bridge.h
+      - name: Test production three-passenger native cargo handoff
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/unload_loaded_admission.py --out /tmp/ra2-unload-loaded --current-only
+      - name: Fault-inject production live passenger follow-up reads
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG source/assist/tests/unload_followup_live.cpp -o /tmp/ra2-unload-followup
+          /tmp/ra2-unload-followup
+      - name: Exercise source-extracted smartUnloadTick under missing native fields
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/unload_followup_tick_runtime.py --out /tmp/ra2-unload-followup-tick
+      - name: Exercise source-extracted EjectAssist enrollment under missing native fields
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/unload_ejection_runtime.py --out /tmp/ra2-unload-ejection

@@ -54,9 +54,6 @@ static bool autoSettingChanged(int id,int notification){
  }
  if(id==9420&&edit){extra.overlayKey=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
  if(id==9160&&notification==BN_CLICKED){infoAdaptive=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;syncInformationRate(true);changedSetting();return true;}
- if(id>=9000&&id<9000+compute::Count&&select){int mode=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));uint32_t bit=1u<<(id-9000);
-  if(mode==1)computeRequested|=bit;else computeRequested&=~bit;changedSetting();syncAdditional();notify(L"计算模式已自动保存，下一局生效；当前对局继续使用原设置。");return true;
- }
  if((id==860||id==722)&&notification==BN_CLICKED){
   bool on=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;
   if(id==860)extra.controlAll=on;else{extra.sellEnemy=playertest::SellAvailable&&on;if(!playertest::SellAvailable){SendMessageW(GetDlgItem(ui,id),BM_SETCHECK,BST_UNCHECKED,0);EnableWindow(GetDlgItem(ui,id),FALSE);}}

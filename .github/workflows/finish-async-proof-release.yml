@@ -1,0 +1,92 @@
+name: Deliver verified 1.0.51-pre.13 Update from pinned Windows binaries
+on:
+  push:
+    branches: [codex/async-command-capture-20261117]
+    paths:
+      - .github/workflows/finish-async-proof-release.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: ra2-proof-checked-final-update-pre13
+  cancel-in-progress: false
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COMPILED_RUN: "44120393794"
+      COMPILED_SHA: "9f09a1f261e54b055018ae006be5fa32a3f686ea"
+      TAG: "v1.0.51-pre.13"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the pinned exact-source portable and Windows build jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$COMPILED_RUN" --jq '.head_sha')
+          test "$run_sha" = "$COMPILED_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$COMPILED_RUN/jobs?per_page=100" > checks.json
+          jq -e '[.jobs[] | select(.name=="portable" or .name=="windows") | select(.conclusion=="success")] | length == 2' checks.json
+          jq -e '[.jobs[] | select(.name=="portable" or .name=="windows") | select(.conclusion!="success")] | length == 0' checks.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$COMPILED_RUN/artifacts?per_page=100" | jq -e '[.artifacts[] | select(.name=="proof-checked-windows-binaries" and .expired==false)] | length == 1'
+      - name: Download the tested paired binaries and package the Update
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/update
+          gh run download "$COMPILED_RUN" --repo "$GITHUB_REPOSITORY" --name proof-checked-windows-binaries --dir dist/update
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "dist/update/$n"
+          done
+          jq -e '.host=="x64" and .runtime=="x86" and .broker=="x86" and .assist_protocol==110 and .game_tested==false' dist/update/BUILD_TARGET.json
+          cat > dist/update/BUILD_VALIDATION.txt <<EOF
+          RA2 Toolbox 1.0.51-pre.13 - matched Update for an existing Full installation
+          Exact compiled commit: $COMPILED_SHA
+          Original paired Windows build: GitHub Actions run $COMPILED_RUN
+          x64 Host / x86 GameRuntime / x86 Broker; Assist protocol 110
+          Portable regressions, Windows source compilation and PE/ABI checks: passed
+          Actual Red Alert 2 / JJ / CnCNet gameplay: NOT tested
+          Generic async CommandCaptureWorker: experimental and off by default
+          Close the game and toolbox and back up Assist.ini before replacing
+          Always replace ALL EXE and DLL files together. Do not install a single DLL.
+          EOF
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.51-pre.13-x64-Update.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.13-x64-Update.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.51-pre.13-x64-Update.zip > SHA256SUMS.txt)
+      - name: Publish verified Update as a pre-release without pretending missing Full resources exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## RA2 Toolbox 1.0.51-pre.13 · 异步命令可靠性候选版
+
+          **来源：** \`$COMPILED_SHA\`（已通过 GitHub Actions $COMPILED_RUN 的 Linux 回归与 Windows x64 Host / x86 GameRuntime / x86 Broker 统一构建及 ABI 检查）。
+
+          - Ctrl+D 失败后保留首次 Deploy 命令，避免重复提交；多乘员持续跟进和队列限额索引。
+          - 自动装车重试持久保留原始人工命令版本；人工改令后旧任务退出。
+          - Host 战术规划携带原始采样世界的单位与目标指针；Runtime 原生提交前重查 ID、所属方、目标和人工命令版本，磁电 Object Event 亦受同一约束。
+          - Host 规划、Runtime 本地规划和矿车卸载后的持续采矿分别保留正确的任务身份及时间基准。
+          - 处理繁忙异步采样请求的无效跨帧重排，减少游戏主线程重复目录工作。
+
+          **仅提供 Update 包。** 仓库此前的 \`v1.0.51-pre.12\` Full 资源包当前无法通过 GitHub Release 下载，因此不能冒充资源完整的 Full 包。本 Update 已包含同时编译、ABI 匹配的 x64 Host、x86 Runtime、Broker、WebView2 Loader 和相关许可文件；请覆盖到现有完整安装目录中，备份配置，并关闭游戏和工具箱。**不得只替换 GameRuntime.dll。**
+
+          由于用户游戏环境中尚无实机测量证据，未承诺 JJ / CnCNet 联机成功率、具体 FPS 提升。通用 CommandCaptureWorker 仍须显式设置 \`RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=1\`，默认关闭，保持严格同帧世界图执行授权。这是测试候选版，不替换此前稳定 Latest。
+          EOF
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Tag already exists; refusing to mutate another release without source verification" >&2
+            exit 1
+          fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$COMPILED_SHA"             --prerelease --title "RA2 Toolbox 1.0.51-pre.13 · 异步命令安全交付候选"             --notes-file dist/RELEASE_NOTES.md             dist/RA2Toolbox-1.0.51-pre.13-x64-Update.zip dist/SHA256SUMS.txt
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,assets             | jq -e '.isDraft == false and .isPrerelease == true and ([.assets[].name] | index("RA2Toolbox-1.0.51-pre.13-x64-Update.zip") != null)'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: proof-checked-pre13-final-delivery-evidence
+          retention-days: 30
+          path: |
+            checks.json
+            dist/RELEASE_NOTES.md
+            dist/SHA256SUMS.txt
