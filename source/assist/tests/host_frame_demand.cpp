@@ -1,6 +1,7 @@
 #include "../source/host_frame_demand.h"
 #include <cassert>
 #include <cstdio>
+#include <initializer_list>
 using namespace assist;
 int main(){
  using namespace compute;
