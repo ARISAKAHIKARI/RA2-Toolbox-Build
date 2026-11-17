@@ -28,8 +28,9 @@
 #include "dodge_compute.h"
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
+#include "../../shared/source/critical_path_timing.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=109;
+constexpr uint32_t Magic=0x41533130, Version=110;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -289,6 +290,10 @@ struct Shared {
  volatile uint32_t nativePipVisible=1,nativePipEnabled=0,nativePipPinRequest=0,nativePipPinAck=0,nativePipPinMatch=0,nativePipPinTick=0;
  volatile int32_t nativePipStatus=0;
  volatile uint32_t nativePipFrames=0,nativePipMicros=0,nativePipMaxMicros=0;
+ // Explicit opt-in diagnostic. Only the attached game thread writes these
+ // fixed samples; the Host reads a sealed 1-second snapshot with seqlock.
+ volatile uint32_t criticalTimingEnabled=0;
+ volatile long criticalTimingSeq=0;criticalpath::Snapshot criticalTiming{};
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;
