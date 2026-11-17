@@ -40,6 +40,7 @@ int main(){
  // Raw Base requests never enter the boundary-only lane. Command readers
  // receive their own full actor and object type data in the native sample.
  worldframe::Snapshot full;
+ k.demand=0; // A command's ordinary Base graph must never inherit the display-only marker.
  full.reset(k);
  worldframe::CaptureScratch fullScratch;
  worldframe::CaptureGraph<Read> fullGraph(full,read,fullScratch);
