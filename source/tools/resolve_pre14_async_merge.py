@@ -77,17 +77,15 @@ def resolve(path, source):
 def upgrade_autoload(text):
     text = must_replace(
         text,
-        "static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,uint32_t* receiptID=nullptr){\n"
-        " // Ordinary Enter is just a vanilla MegaMission with a destination object.\n"
-        " // Use exactly the same constructor and enqueue entry as ore/attack/unload.\n"
-        " return nativeMission(house,infantry,7,0,vehicle,0x34,0,0,taskarbiter::Owner::AutoLoad,receiptID);\n}",
+        "static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,uint32_t* receiptID=nullptr){",
         "static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,\n"
-        " const executionproof::Ticket&proof,uint32_t* receiptID=nullptr){\n"
-        " // Capture-time passenger, carrier and manual revision are verified\n"
-        " // immediately before the original native event is queued.\n"
-        " return submitProvenMission(house,infantry,7,0,vehicle,0x34,\n"
-        "   taskarbiter::Owner::AutoLoad,proof,receiptID);\n}",
-        "autoload_enter")
+        " const executionproof::Ticket&proof,uint32_t* receiptID=nullptr){",
+        "autoload_enter_signature")
+    text = must_replace(
+        text,
+        "return nativeMission(house,infantry,7,0,vehicle,0x34,0,0,taskarbiter::Owner::AutoLoad,receiptID);",
+        "return submitProvenMission(house,infantry,7,0,vehicle,0x34,taskarbiter::Owner::AutoLoad,proof,receiptID);",
+        "autoload_enter_dispatch")
     text = must_replace(
         text,
         "  cancelUnloadPassenger(p.object);uint32_t ticket=0;bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,&ticket);",
