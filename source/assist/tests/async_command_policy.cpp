@@ -12,6 +12,26 @@ int main(){
  assert(acceptCommandCapture(a,a,demand,Base|Combat,revision,revision,110));
  assert(acceptCommandCapture(a,a,demand,demand,revision,revision,180));
  assert(!acceptCommandCapture(a,a,demand,demand,revision,revision,181));
+ // Runtime request admission: no repeated 16K-page merge for the same
+ // worker job, but never throttle a new frame, requirement or config.
+ CommandRequestGate gate;
+ assert(!gate.defer(a,demand,revision,false,110));
+ gate.submitted(a,demand,revision,false);
+ assert(gate.defer(a,demand,revision,false,115));
+ assert(!gate.defer(a,demand,revision,false,116));
+ assert(!gate.defer(a,demand,revision+1,false,110));
+ assert(!gate.defer(a,demand|Ore,revision,false,110));
+ assert(!gate.defer(a,demand,revision,true,110));
+ Key nextFrame=a;++nextFrame.frame;
+ assert(!gate.defer(nextFrame,demand,revision,false,110));
+ Key nextHouse=a;++nextHouse.house;
+ assert(!gate.defer(nextHouse,demand,revision,false,110));
+ Key wrapRequest=a;wrapRequest.tick=0xfffffff8u;
+ gate.submitted(wrapRequest,demand,revision,false);
+ assert(gate.defer(wrapRequest,demand,revision,false,0x02u));
+ assert(!gate.defer(wrapRequest,demand,revision,false,0x08u));
+ gate.reset();
+ assert(!gate.defer(a,demand,revision,false,110));
  assert(!acceptCommandCapture(a,a,Base,Base|Passengers,revision,revision,110));
  assert(!acceptCommandCapture(a,a,demand,demand,revision,revision+1,110));
  for(int change=0;change<11;++change){
@@ -47,5 +67,5 @@ int main(){
  assert(!worker.read(0x33000,&out,1));
  main.reset(a);assert(!main.read(0x33000,&out,1));
  assert(worker.read(0x21000,&out,1)&&out==0xA7);
- std::puts("PASS same-frame strict admission, demand/revision/age rejection, exact page-buffer ownership swap");
+ std::puts("PASS same-frame strict admission, request coalescing/retry/isolation, demand/revision/age rejection, exact page-buffer ownership swap");
 }
