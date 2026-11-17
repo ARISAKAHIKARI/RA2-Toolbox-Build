@@ -86,8 +86,11 @@ assert 'submitProvenMission(house,o.unit,o.mission' in external
 assert '{o.unit,o.unitPointer,o.token}' in external
 assert '{o.target,o.targetPointer}' in external
 assert 'a.sourcePointer=p;' in external
-assert 'localHarvest?0u:sh->planTick' in external
-assert 'localHarvest?match:sh->planMatch' in external
+assert 'int admitted=admitPlannerOrder(o,house,sh->planMatch,sh->planTick);' in external
+assert 'executionproof::Ticket proof{sourceMatch,house,sourceTick,' in external
+assert 'return o.purpose==planner::OreHarvestOrder?admitPlannerOrder(o,house,match,0):-1;' in external
+runtime_plan=(root / 'runtime_planner_bridge.h').read_text()
+assert 'admitPlannerOrder(o,house,planningWorld.match,planningWorld.tick)' in runtime_plan
 harvest=(root / 'ore_harvest_bridge.h').read_text()
 assert 'order.unitPointer=j.pointer;' in harvest
 planner_types=(root / 'planner_types.h').read_text()
