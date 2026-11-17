@@ -226,7 +226,33 @@ def main():
             raise RuntimeError("unexpected fixture worldFrameBoundaryOnly declarations")
         fixture.write_text(fixture_text.replace(state, ""), encoding="utf-8", newline="\n")
         print("FIXED fixture duplicate worldFrameBoundaryOnly")
-    subprocess.run(["git","add","--",*paths,str(fixture)], check=True)
+    # Contract must recognize either native event lane that is actually
+    # compiled: pre14's complete tri-state Ctrl+D admission remains authoritative;
+    # the experimental hash-roster path was intentionally NOT merged with it.
+    contract = Path("source/assist/tests/async_command_no_live_roster.py")
+    contract_text = contract.read_text(encoding="utf-8")
+    old = (
+      'assert "unloadretry::classify(result)" in native_orders\n'
+      'assert "unloadretry::committed(outcome)" in native_orders\n'
+      'assert "unloadRosterGroups.add(" in native_orders\n'
+      'assert "std::sort(unloadRoster" not in native_orders\n'
+    )
+    updated = (
+      'if "unloadCarrierKnowledge(task,house)" in native_orders:\n'
+      '    # pre14 missing-page state machine retains the same one-shot ticket.\n'
+      '    assert "if(!knowledge)continue;" in native_orders\n'
+      '    assert "if(result==2)" in native_orders and "if(result==1)" in native_orders\n'
+      '    assert "if(!task.attempted)" in native_orders\n'
+      '    assert "unloadPassengerKnowledge" in native_orders\n'
+      'else:\n'
+      '    assert "unloadretry::classify(result)" in native_orders\n'
+      '    assert "unloadretry::committed(outcome)" in native_orders\n'
+      '    assert "unloadRosterGroups.add(" in native_orders\n'
+      '    assert "std::sort(unloadRoster" not in native_orders\n'
+    )
+    contract_text = must_replace(contract_text,old,updated,"ctrl_d_dual_safe_contract")
+    contract.write_text(contract_text, encoding="utf-8", newline="\n")
+    subprocess.run(["git","add","--",*paths,str(fixture),str(contract)], check=True)
     if git("diff","--name-only","--diff-filter=U").strip():
         raise RuntimeError("Unmerged files remain")
     print(f"RESOLVED_ALL {len(paths)}")
