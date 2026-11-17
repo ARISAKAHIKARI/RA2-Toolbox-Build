@@ -32,6 +32,24 @@ extern "C" __declspec(dllexport) int Start(){
  job=fixture::key(50);job.tick=GetTickCount();job.serial=0;
  return worker.request(job,worldframe::Base,17,{})?1:0;
 }
+extern "C" __declspec(dllexport) int StartGlobal(){
+ gameThread=GetCurrentThreadId();fixture::setup(memory);offThreadReads=0;onThreadReads=0;
+ job=fixture::key(50);job.tick=GetTickCount();job.serial=0;
+ return worker.request(job,worldframe::Base,17,{},true)?1:0;
+}
+extern "C" __declspec(dllexport) int RejectedCount(){return int(worker.rejected());}
+extern "C" __declspec(dllexport) int PollWrongGlobal(){
+ // The worker may not have completed yet. An *accepted* wrong-mode
+ // snapshot is always an error, even if it is otherwise same-frame.
+ return worker.take(job,worldframe::Base,17,accepted,&acceptedRoster,false)?-1:0;
+}
+extern "C" __declspec(dllexport) int PollGlobal(){
+ if(!worker.take(job,worldframe::Base,17,accepted,&acceptedRoster,true))return 0;
+ if(!accepted.sealed()||!acceptedRoster.current(accepted.key)||
+    !acceptedRoster.global||acceptedRoster.globalVehicles.size()!=3||
+    onThreadReads.load()!=0||offThreadReads.load()==0)return -1;
+ return 1;
+}
 extern "C" __declspec(dllexport) int Poll(){
  if(!worker.take(job,worldframe::Base,17,accepted,&acceptedRoster))return 0;
  int hp=0;uint32_t vt=0;
