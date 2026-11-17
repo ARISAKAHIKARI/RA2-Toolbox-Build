@@ -7,6 +7,7 @@
 #include "unload_followup_state.h"
 #include "repair_delivery.h"
 #include "unit_task_arbiter.h"
+#include "execution_proof.h"
 #include "../../shared/source/world_frame.h"
 #include "../../shared/source/world_frame_command_index.h"
 #include "../../shared/source/runtime_fault.h"
@@ -37,7 +38,7 @@ static std::map<uint32_t,int> airOverride;
 static std::set<uint64_t> forbiddenEnter;
 static std::vector<std::pair<uint32_t,uint32_t>> assignments;
 static worldframe::Snapshot worldFrame;
-static bool worldFrameReady=false,worldFrameBoundaryOnly=false,sampleReadComplete=true;
+static bool worldFrameReady=false,sampleReadComplete=true; // boundary-only state comes from extracted production scope
 static unsigned sampleReadDepth=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};
 static std::vector<uint32_t> runtimeWorldDemands;
@@ -111,7 +112,7 @@ static bool loadInterfaces(){assert(!sampleReadDepth);return interfacesReady;}
 enum class EventLane {Boarding};
 static int recurringBudget(EventLane){return 4;}
 static bool outgoingRoom(){return true;}
-static bool enterEvent(uint32_t,uint32_t,uint32_t,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
+static bool enterEvent(uint32_t,uint32_t,uint32_t,const executionproof::Ticket&,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
 static loading::Ledger<> loadLedger;
 static repairdelivery::Pending<> pendingRepairs;
 static compute::FrameHistory<compute::RepairInput> repairFrames;
