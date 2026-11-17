@@ -5,6 +5,8 @@ on:
     paths:
       - "payload/**"
       - ".github/workflows/build-win32.yml"
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
