@@ -35,7 +35,7 @@ int main(){
  assert(unloadretry::classify(0)==Outcome::Finished);
  assert(unloadretry::classify(1)==Outcome::Enrolled);
  assert(unloadretry::classify(2)==Outcome::QueuedDeploy);
- Ticket t;
+ static Ticket t;
  // Game-side queue full or stale: the hotkey is saved, not consumed.
  for(int k=0;k<6;++k){assert(t.step(-6,1001+k));assert(t.accepted==0);
   assert(t.queue.count==1&&!t.queue.carriers[0].attempted);}
@@ -46,11 +46,11 @@ int main(){
  assert(!t.step(-6,1021));
  assert(!t.step(1,1022)&&t.queue.count==0);
  assert(!t.step(2,1023));
- Ticket nativeFirst;assert(nativeFirst.step(1,1002));
+ static Ticket nativeFirst;assert(nativeFirst.step(1,1002));
  assert(nativeFirst.queue.count==0&&nativeFirst.accepted==1);
- Ticket expired;expired.queue.clear();assert(!expired.step(2,5000));
+ static Ticket expired;expired.queue.clear();assert(!expired.step(2,5000));
  // Scene transitions retire pending requests; never revive them.
- Ticket changed;changed.queue.begin(102,0x20000,1005);
+ static Ticket changed;changed.queue.begin(102,0x20000,1005);
  assert(changed.queue.count==0);
  std::puts("PASS Ctrl+D durable one-shot native admission: failed enqueues retry; committed events do not duplicate; native-first and scene retirement safe");
 }
