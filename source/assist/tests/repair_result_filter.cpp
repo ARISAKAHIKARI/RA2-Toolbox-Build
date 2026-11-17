@@ -20,8 +20,8 @@ int main(){
    [&](unsigned i){return source[i];},
    [&](unsigned i){return results[i];},
    [&](uint32_t id){accepted.push_back(id);});
-  ++calls;assert(calls<=33&&!proof.failed);
-  if(calls<=16)assert(accepted.empty()); // build entire input before result membership
+  ++calls;assert(calls<=5&&!proof.failed);
+  if(calls<=2)assert(accepted.empty()); // build entire input before result membership
   if(complete)assert(!proof.running);
   assert(accepted.size()-before<=Filter::MaxOperationsPerTick);
  }
