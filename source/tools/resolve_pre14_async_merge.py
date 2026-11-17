@@ -118,11 +118,11 @@ def upgrade_autoload(text):
         "   const executionproof::Ticket proof{match,house,0,{r.id,r.object,r.manualToken},{},{r.vehicleID,r.vehicle}};\n"
         "   if(enterEvent(house,r.id,r.vehicleID,proof,&ticket)){",
         "autoload_retry")
-    text = maybe_replace(text,
-        "   if(view.state==loading::ReservationState::Unknown){++i;continue;}",
-        "   if(manualVersions.get(r.id)!=r.manualToken){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;}\n"
-        "   if(view.state==loading::ReservationState::Unknown){++i;continue;}",
-        "autoload_takeover")
+    if "manualVersions.get(r.id)!=r.manualToken" not in text:
+        anchor = "for(int i=0;i<loadLedger.count;){auto&r=loadLedger.records[i];"
+        insert = anchor + "\n  // A player order cancels the original AutoLoad permission.\n" \
+          "  if(manualVersions.get(r.id)!=r.manualToken){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;}"
+        text = must_replace(text, anchor, insert, "autoload_takeover")
     return text
 
 def upgrade_world_capture(text, async_source):
