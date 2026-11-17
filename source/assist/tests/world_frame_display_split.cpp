@@ -22,7 +22,7 @@ int main(){
  int hp=-1;uint32_t actorType=0;
  assert(!shallow->read(ActorA+0x6C,&hp,sizeof hp));
  assert(!shallow->read(Type,&actorType,sizeof actorType));
- assert(shallow->read(0x87F924,&actorType,sizeof actorType)&&actorType==Cells);
+ assert(!shallow->read(0x87F924,&actorType,sizeof actorType)); // Key has Cell identity, no raw pages
  assert(!shallow->read(0xA8B230,&actorType,sizeof actorType)); // Host owns scene globals, even Scenario
  // The source sample has already sealed; displaying the actor must not
  // mutate those bytes or create command authority from the Host's copy.
@@ -33,7 +33,8 @@ int main(){
  assert(display->read(ActorA+0x6C,&hp,sizeof hp)&&hp==100);
  assert(display->read(Type,&actorType,sizeof actorType));
  assert(display->read(0xA8B230,&actorType,sizeof actorType)&&actorType==Scenario);
- assert(shallowPages<=2&&shallowCalls<=2);
+ assert(shallowPages==0&&shallowCalls==0&&shallowBytes==0);
+ assert(display->read(0x87F924,&actorType,sizeof actorType)&&actorType==Cells);
  assert(!shallow->read(ActorA+0x6C,&hp,sizeof hp));
  assert(shallow->key.serial==baseSerial);
  // Raw Base requests never enter the boundary-only lane. Command readers
