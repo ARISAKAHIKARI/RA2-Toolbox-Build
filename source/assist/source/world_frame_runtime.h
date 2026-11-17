@@ -30,13 +30,8 @@ using WorldFrameCommandWorker=::worldframe::CommandCaptureWorker;
 #endif
 static WorldFrameCommandWorker worldFrameCommandWorker;
 static worldframe::CommandRoster worldFrameCommandRoster;
-// Coalesce identical in-flight requests before assembling the potentially
-// 16K-page dependency list on the game's callback thread. A changed frame,
-// demand, identity or candidate-mode bypasses the throttle immediately.
-static worldframe::Key lastAsyncCommandRequest{};
-static uint32_t lastAsyncCommandDemand=0,lastAsyncCommandRequestedAt=0;
-static uint64_t lastAsyncCommandRevision=0;
-static bool lastAsyncCommandGlobal=false;
+// Coalesce identical in-flight requests before copying dependency pages.
+static worldframe::CommandRequestGate commandRequestGate;
 static uint32_t worldFrameSerial=0;static uint32_t worldFrameCapturedDemand=0;
 static uint64_t worldFrameCapturedRevision=0;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
 static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
@@ -68,7 +63,7 @@ public:
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
-static void retireWorldFrame(){worldFrameCommandWorker.invalidate();lastAsyncCommandRequest={};lastAsyncCommandDemand=0;lastAsyncCommandRevision=0;lastAsyncCommandGlobal=false;lastAsyncCommandRequestedAt=0;worldFrameCommandRoster.invalidate();worldFramePublication.invalidate();worldFrameBoundaryOnly=false;worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);if(!++runtimeDemandRevision)++runtimeDemandRevision;}
+static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFramePublication.invalidate();worldFrameBoundaryOnly=false;worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);if(!++runtimeDemandRevision)++runtimeDemandRevision;}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
  // Only an explicitly admitted all-display subscription may skip the
  // game-thread CaptureGraph. Full command sampling has distinct authority.
@@ -138,14 +133,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    if(sh)++sh->worldSampleFailures;
   }
   worldFrameReady=false;worldFrameBoundaryOnly=false;
-  const bool samePending=lastAsyncCommandRequest.sameFrame(key)&&
-      lastAsyncCommandDemand==graphDemand&&
-      lastAsyncCommandRevision==requestRevision&&
-      lastAsyncCommandGlobal==globalVehicles;
-  // Keep polling take() at every callback, but skip full page-list assembly
-  // while an identical request is already enqueued/running. A paused-frame
-  // retry remains possible after 16ms; new requirements bypass this guard.
-  if(samePending&&uint32_t(key.tick-lastAsyncCommandRequestedAt)<16u)return false;
+  // Always poll take() first. An identical pending request skips expensive
+  // page-list assembly, but paused-frame recovery retries after 16ms.
+  if(commandRequestGate.defer(key,graphDemand,requestRevision,globalVehicles,key.tick))return false;
   // Only address dependencies are copied on the game thread (bounded by
   // MaxPages); sorting, page I/O and all unit graph traversal are background.
   auto&requests=worldFrameCaptureRequests;
@@ -154,11 +144,8 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
   for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
   runtimeDemandLeases.append(key.tick,requests);
-  if(worldFrameCommandWorker.request(key,graphDemand,requestRevision,requests,globalVehicles)){
-   lastAsyncCommandRequest=key;lastAsyncCommandDemand=graphDemand;
-   lastAsyncCommandRevision=requestRevision;lastAsyncCommandGlobal=globalVehicles;
-   lastAsyncCommandRequestedAt=key.tick;
-  }
+  if(worldFrameCommandWorker.request(key,graphDemand,requestRevision,requests,globalVehicles))
+   commandRequestGate.submitted(key,graphDemand,requestRevision,globalVehicles);
   return false;
  }
  if(!worldFramePublication.begin(worldFrame))return false;
