@@ -25,8 +25,7 @@ jobs:
           test -f source/assist/source/planner_provenance.h
           test -f source/assist/source/execution_proof.h
           mkdir -p checks
-          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/auto_repair_runtime.cpp -o checks/auto-repair
-          checks/auto-repair | tee checks/repair.log
+          python source/assist/tests/auto_repair_runtime.py --out checks/repair | tee checks/repair.log
           python source/assist/tests/world_frame_core_test.py
           python source/assist/tests/ore_harvest_handoff.py --out checks/ore
           python source/assist/tests/unload_loaded_admission.py --current-only --out checks/unload
