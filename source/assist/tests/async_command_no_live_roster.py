@@ -26,6 +26,10 @@ for path in ("sticky_bridge.h", "control_object_owner_bridge.h",
 assert 'worldFrameCommandWorker.take(key,graphDemand' in runtime
 assert 'if(asyncCommand)' in runtime
 assert runtime.index('if(asyncCommand)') < runtime.index('worldframe::CaptureGraph<Live>capture(')
+assert 'commandRequestGate.defer(key,graphDemand' in runtime
+assert 'commandRequestGate.submitted(key,graphDemand' in runtime
+assert runtime.index('commandRequestGate.defer(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
+assert 'commandRequestGate.reset()' in runtime
 assert 'worldFrameCommandWorker.request(key,graphDemand' in runtime
 assert 'CaptureGraph<decltype(checkedRead)>' in worker
 assert 'THREAD_PRIORITY_BELOW_NORMAL' in worker
