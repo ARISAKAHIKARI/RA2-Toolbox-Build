@@ -149,14 +149,10 @@ public:
   // Do not capture unit/Type/Weapon/House object graphs here: no command
   // admission can use a boundary-only sample as its full actor census.
   if(demand_==uint32_t(Base|HostDisplayOnly)){
-   // Only immutable map geometry is required from this game's producer:
-   // VisualCache::visualStamp compares bounds/dimensions against these
-   // 2 pages before and after its own entirely Host-side actor traversal.
-   // Current world/session/house/frame are already in the validated Key.
-   // Everything else (scene globals, actor/type/weapon/passenger graph,
-   // scenario tables and display subscriptions) is sampled off-game-thread.
-   // A future command may not consume this boundary as native authority.
-   block(0x87F7E8,0x1500);
+   // A display-only publication carries ONLY the already validated Key.
+   // Even geometry is acquired and double-checked by the Host VisualCache.
+   // No object graph, page, roster, or scene-global RPM in this game callback.
+   // Command consumers explicitly reject the BoundaryOnlyKeyBit token.
    return working();
   }
   // Global fields are one read per overlapping page, regardless of which
