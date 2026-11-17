@@ -1,0 +1,166 @@
+name: Publish 1.0.51-pre.13 proof-checked command candidate
+on:
+  push:
+    branches: [codex/async-command-capture-20261117]
+    paths:
+      - .github/workflows/publish-async-command-proof-candidate.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: ra2-command-proof-pre13-publish
+  cancel-in-progress: false
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Guard source-provenance, one-key Ctrl+D, and command admission
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checks
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/execution_proof.cpp -o checks/execution-proof
+          checks/execution-proof
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/planner_provenance.cpp -o checks/planner-provenance
+          checks/planner-provenance
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_retry_policy.cpp -o checks/unload-retry
+          checks/unload-retry
+          python source/assist/tests/unified_gateway_contract.py
+          python source/assist/tests/async_command_no_live_roster.py
+          python source/assist/tests/ore_harvest_handoff.py --out checks/ore
+          python source/assist/tests/unload_loaded_admission.py --current-only --out checks/unload
+
+  windows:
+    needs: portable
+    runs-on: windows-2022
+    timeout-minutes: 65
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install paired Zig 0.13 compiler
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Compile identical-source x64 Host + x86 Game Runtime, verify exports/ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/command-proof-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/build.log 2>&1 || { tail -120 checks/build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root command-proof-build --host-arch x64 --webview2 | tee checks/pe.log
+          test -s command-proof-build/RA2Toolbox.exe
+          test -s command-proof-build/GameRuntime.dll
+          test -s command-proof-build/GameRuntimeHost32.exe
+          test -s command-proof-build/WebView2Loader.dll
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: proof-checked-windows-binaries
+          retention-days: 30
+          path: |
+            command-proof-build/*.exe
+            command-proof-build/*.dll
+            command-proof-build/*.json
+            command-proof-build/licenses/**
+
+  publish:
+    needs: windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.51-pre.13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: proof-checked-windows-binaries
+          path: dist/update
+      - name: Package paired Update and Full with prior approved support resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "dist/update/$n"
+          done
+          mkdir -p dist/base dist/full
+          cat > dist/update/BUILD_VALIDATION.txt <<EOF
+          Source commit: $GITHUB_SHA
+          Release: 1.0.51-pre.13
+          Host: x64; Game Runtime and broker: x86; Assist protocol: 110
+          CI source checks and paired Windows compilation/ABI: passed
+          Real game / multiplayer execution: not tested
+          Async command graph worker remains opt-in: RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=1
+          EOF
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.51-pre.13-x64-Update.zip .)
+          gh release download v1.0.51-pre.12 --repo "$GITHUB_REPOSITORY" --pattern "RA2Toolbox-1.0.51-pre.12-x64-Full.zip" --dir dist/base
+          unzip -q dist/base/RA2Toolbox-1.0.51-pre.12-x64-Full.zip -d dist/full
+          exe=$(find dist/full -type f -name RA2Toolbox.exe -print -quit)
+          test -n "$exe"
+          root=$(dirname "$exe")
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do
+            cp "dist/update/$n" "$root/$n"
+            cmp "dist/update/$n" "$root/$n"
+          done
+          for n in BUILD_SOURCE_MANIFEST.json BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json BUILD_VALIDATION.txt; do
+            if test -f "dist/update/$n"; then cp "dist/update/$n" "$root/$n"; fi
+          done
+          if test -d dist/update/licenses; then
+            mkdir -p "$root/licenses"
+            cp -a dist/update/licenses/. "$root/licenses/"
+          fi
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.51-pre.13-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.13-x64-Full.zip
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.13-x64-Update.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.51-pre.13-x64-{Update,Full}.zip > SHA256SUMS.txt)
+      - name: Publish pre-release candidate only after verified source build
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## 1.0.51-pre.13 · 异步命令可靠性候选版
+
+          本版基于源提交 \`$GITHUB_SHA\`。x64 Host、x86 GameRuntime 与 GameRuntimeHost32 同源编译；协议升级至 110，**必须整体替换**。内部显示版本 1.0.51-pre.13。
+
+          - 修复 Ctrl+D 首次原生 Deploy 入队失败后任务被错误消耗；多名乘员逐一跟进，载员查找与任务索引改为限额处理
+          - 自动装车 Enter 重试保留原始人工操作版本，玩家改令后不会被旧任务接管
+          - Host 战术规划候选保留原始采样帧内的单位、攻击目标和目的对象指针，游戏线程以实时 UID、Owner、手动版本、目标和任务状态逐条验证
+          - 异步采样繁忙时去重同场景任务，减少高频页面列表重组及主线程对完整单位索引的重复计算
+
+          **安全限制**：Host 战术规划结果支持跨帧候选＋实时验证；通用 CommandCaptureWorker 的完整世界图仍保留严格同帧授权，试验功能默认关闭，不能把旧图当成命令授权。CI 仅证明离线回归与 Windows 编译通过，尚未验证游戏实测、JJ/CnCNet 联机或 FPS 提升。
+
+          Full 包包含以前版本辅助资源和全套匹配二进制；Update 包须覆盖于先前 Full 包目录。安装前退出游戏和工具箱，备份设置，不要只替换 DLL。
+          EOF
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            previous=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq '.targetCommitish')
+            test "$previous" = "$GITHUB_SHA"
+            gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber               dist/RA2Toolbox-1.0.51-pre.13-x64-Update.zip               dist/RA2Toolbox-1.0.51-pre.13-x64-Full.zip dist/SHA256SUMS.txt
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA"               --prerelease --title "RA2 Toolbox 1.0.51-pre.13 · 异步命令可靠性候选版"               --notes-file dist/RELEASE_NOTES.md               dist/RA2Toolbox-1.0.51-pre.13-x64-Update.zip               dist/RA2Toolbox-1.0.51-pre.13-x64-Full.zip dist/SHA256SUMS.txt
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: proof-checked-release-evidence
+          retention-days: 30
+          path: |
+            dist/SHA256SUMS.txt
+            dist/RELEASE_NOTES.md
