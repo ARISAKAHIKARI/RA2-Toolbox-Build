@@ -30,7 +30,7 @@ static HANDLE WINAPI delayedMapping(HANDLE file,LPSECURITY_ATTRIBUTES security,D
 #include "world_frame_core.cpp"
 #include "../source/world_lifecycle.h"
 namespace assist {
-struct FixtureShared {volatile LONG worldSampleSeq=0;uint32_t owner=0,worldSampleFailures=0,worldSamplePages=0,worldSampleReads=0,worldSampleBytes=0,worldSampleRosters=0,worldSampleSerial=0;int worldSampleFrame=-1;};
+struct FixtureShared {volatile LONG worldSampleSeq=0;uint32_t owner=0,magnetronGlobal=0,worldSampleFailures=0,worldSamplePages=0,worldSampleReads=0,worldSampleBytes=0,worldSampleRosters=0,worldSampleSerial=0;int worldSampleFrame=-1;};
 static FixtureShared shared;static FixtureShared*sh=&shared;static uint32_t match=7;
 static struct {int frame=50;}snap;
 // No WORLD_FRAME_PLATFORM_FIXTURE: execute the actual async Runtime path.
