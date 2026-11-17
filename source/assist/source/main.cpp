@@ -1421,7 +1421,12 @@ static void sampleExternal(DWORD now){
   if(externalWorldSource&&((commandMatch()&&externalWorldSource->key.match!=commandMatch())||externalWorldSource->key.pid!=externalReader.pid()||
     ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)!=externalReader.generation()))discardExternalWorld();
   const bool passengerOverlay=enabled&&(extra.passengerBubbles||extra.dangerPassengers);
-  externalReader.setWorldDemand(worldframe::Resources|(((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)?worldframe::Passengers:0)|(passengerOverlay?worldframe::Combat:0));
+  // An overlay/tooltip is not a command subscriber. Ask the Host's own
+   // VisualCache for passenger and combat references without turning a pure
+   // display session into an all-actors game-thread capture.
+   externalReader.setWorldDemand(worldframe::Resources|
+      (((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)?worldframe::HostVisualPassengers:0)|
+      (passengerOverlay?worldframe::HostVisualCombat:0));
   external::WorldFrameScope worldScope(externalReader,commandMatch());
   if(!worldScope){
    if(externalWorldSource){external::WorldFrameScope retained(externalReader,commandMatch(),externalWorldSource);if(!retained)discardExternalWorld();}
