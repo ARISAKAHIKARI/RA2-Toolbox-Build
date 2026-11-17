@@ -1,6 +1,7 @@
 #pragma once
 #include "world_frame_capture.h"
 #include "world_frame_command_policy.h"
+#include "world_frame_command_index.h"
 #include <windows.h>
 #include <atomic>
 #include <mutex>
@@ -16,7 +17,7 @@ class CommandCaptureWorker {
  static constexpr unsigned MaxCalls=8192;
  static constexpr size_t MaxBytes=64u*1024u*1024u;
  static constexpr DWORD MaxWorkMs=120,MaxHandoffMs=80;
- struct Work {Key key{};uint32_t demand=Base,epoch=0,ticket=0;uint64_t requestRevision=0;std::vector<uint32_t>pages;};
+ struct Work {Key key{};uint32_t demand=Base,epoch=0,ticket=0;uint64_t requestRevision=0;bool globalVehicles=false;std::vector<uint32_t>pages;};
  std::mutex gate_;
  std::atomic<uint32_t>epoch_{1},latestTicket_{1};
  std::atomic<bool>stopping_{false};
@@ -24,13 +25,14 @@ class CommandCaptureWorker {
  HMODULE module_=nullptr;
  Work queued_{};
  Snapshot staging_,completed_;
+ CommandRoster stagingRoster_,completedRoster_;
  CaptureScratch scratch_;
  Key completedKey_{};
  uint32_t completedDemand_=0,completedEpoch_=0;uint64_t completedRevision_=0;
  bool queuedReady_=false,completedReady_=false;
  DWORD lastRequestedAt_=0;
  Key lastRequestedKey_{};
- uint32_t lastRequestedDemand_=0;uint64_t lastRequestedRevision_=0;
+ uint32_t lastRequestedDemand_=0;uint64_t lastRequestedRevision_=0;bool lastRequestedGlobal_=false;
  std::atomic<uint32_t>accepted_{0},rejected_{0};
  static bool live(uint32_t address,void*out,size_t bytes){
   if(!out||!range(address,bytes))return false;
@@ -94,12 +96,19 @@ class CommandCaptureWorker {
       job.ticket!=self->latestTicket_.load(std::memory_order_acquire)){
     ++self->rejected_;continue;
    }
+   // Build the full identity hash on this SAME worker. A missing UID or
+   // unreadable roster is UNKNOWN, not an empty world or an owned actor.
+   if(!self->stagingRoster_.build(self->staging_,job.globalVehicles,
+                                  self->scratch_.list)){
+    ++self->rejected_;continue;
+   }
    {
     std::lock_guard<std::mutex>lock(self->gate_);
     if(job.epoch!=self->epoch_.load(std::memory_order_acquire)||
        job.ticket!=self->latestTicket_.load(std::memory_order_acquire)||
        self->stopping_.load(std::memory_order_acquire))continue;
     self->staging_.swap(self->completed_); // page ownership, not page copies
+    self->stagingRoster_.swap(self->completedRoster_); // hash owner swap, no 16K rehash
     self->completedKey_=job.key;self->completedDemand_=job.demand;
     self->completedEpoch_=job.epoch;self->completedRevision_=job.requestRevision;self->completedReady_=true;
    }
@@ -141,7 +150,7 @@ public:
   }();
   return value;
  }
- bool request(const Key&key,uint32_t demand,uint64_t revision,const std::vector<uint32_t>&pages){
+ bool request(const Key&key,uint32_t demand,uint64_t revision,const std::vector<uint32_t>&pages,bool globalVehicles=false){
   if(!key.pid||!key.owner||!key.match||key.house<0x10000||
      !key.scenario||!key.cells||key.frame<0||!demand||
      pages.size()>MaxPages)return false;
@@ -153,26 +162,26 @@ public:
    if(thread_)return false; // The old pinned worker has not exited yet.
    stopping_.store(false,std::memory_order_release);
   }
-  if(lastRequestedKey_.sameFrame(key)&&lastRequestedDemand_==demand&&lastRequestedRevision_==revision&&
+  if(lastRequestedKey_.sameFrame(key)&&lastRequestedDemand_==demand&&lastRequestedRevision_==revision&&lastRequestedGlobal_==globalVehicles&&
       uint32_t(now-lastRequestedAt_)<16)return true;
   if(!launch())return false;
   // Invalidate a different in-flight frame/House/demand immediately; do
   // not let a 120ms old graph monopolize the worker while a new frame waits.
   // Repeated requests for the SAME work retain its ticket to avoid starvation.
   const bool same=lastRequestedKey_.sameFrame(key)&&
-      lastRequestedDemand_==demand&&lastRequestedRevision_==revision;
+      lastRequestedDemand_==demand&&lastRequestedRevision_==revision&&lastRequestedGlobal_==globalVehicles;
   if(!same)latestTicket_.fetch_add(1,std::memory_order_acq_rel);
-  queued_.key=key;queued_.demand=demand;queued_.requestRevision=revision;
+  queued_.key=key;queued_.demand=demand;queued_.requestRevision=revision;queued_.globalVehicles=globalVehicles;
   queued_.ticket=latestTicket_.load(std::memory_order_acquire);
   // This O(N) address copy is at most 64 KiB. Sorting, graph traversal,
   // missing-page probing and ALL object bytes are worker-only.
   queued_.pages.assign(pages.begin(),pages.end());
   queued_.epoch=epoch_.load(std::memory_order_acquire);
   queuedReady_=true;lastRequestedAt_=now;lastRequestedKey_=key;
-  lastRequestedDemand_=demand;lastRequestedRevision_=revision;
+  lastRequestedDemand_=demand;lastRequestedRevision_=revision;lastRequestedGlobal_=globalVehicles;
   SetEvent(event_);return true;
  }
- bool take(const Key&current,uint32_t demand,uint64_t revision,Snapshot&into){
+ bool take(const Key&current,uint32_t demand,uint64_t revision,Snapshot&into,CommandRoster*roster=nullptr){
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
   if(!lock.owns_lock()||!completedReady_)return false;
   if(completedEpoch_!=epoch_.load(std::memory_order_acquire)||
@@ -182,12 +191,17 @@ public:
   }
   // A second same-frame request cannot reuse an already taken sample:
   // completed_ now holds only the previous game thread's owned storage.
-  into.swap(completed_);completedReady_=false;++accepted_;return true;
+  if(roster&&!completedRoster_.current(completedKey_)){
+   completedReady_=false;++rejected_;return false;
+  }
+  into.swap(completed_);
+  if(roster)roster->swap(completedRoster_);
+  completedReady_=false;++accepted_;return true;
  }
  void invalidate(){
   epoch_.fetch_add(1,std::memory_order_acq_rel);
   latestTicket_.fetch_add(1,std::memory_order_acq_rel);
-  lastRequestedAt_=0;lastRequestedKey_={};lastRequestedDemand_=lastRequestedRevision_=0;
+  lastRequestedAt_=0;lastRequestedKey_={};lastRequestedDemand_=lastRequestedRevision_=0;lastRequestedGlobal_=false;
   if(event_)SetEvent(event_);
  }
  uint32_t accepted()const{return accepted_.load(std::memory_order_relaxed);}
