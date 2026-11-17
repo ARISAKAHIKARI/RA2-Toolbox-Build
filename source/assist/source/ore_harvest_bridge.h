@@ -239,7 +239,10 @@ static void oreHarvestTick(uint32_t house,int frame,DWORD now){
   OreHarvestState state{};uint32_t target=0;
   if(oreHarvestState(j,house,state)==1&&state.mission==10&&oreHarvestCell(int(j.search.best%1000),int(j.search.best/1000),j.speed,&target)==1&&state.destination==target){j={};continue;}
   if(snap.chat)continue;
-  const planner::Order order{j.id,j.token,0,j.search.best,10,11,planner::OreHarvestOrder,j.refinery};
+  planner::Order order{j.id,j.token,0,j.search.best,10,11,planner::OreHarvestOrder,j.refinery};
+  // A Runtime-owned post-unload job retains its original actor pointer;
+  // this order never comes from Host World and therefore uses no Host stamp.
+  order.unitPointer=j.pointer;
   const int accepted=admitPlannerOrder(order,house);
   if(accepted>0)j={};
   else if(accepted<0){if(++j.retries>=3)j={};else j.search.begin(j.originX,j.originY);}
