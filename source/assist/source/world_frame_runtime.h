@@ -23,6 +23,7 @@ struct WorldFramePublication {
 #include "../../shared/source/world_frame_async_win.h"
 using WorldFramePublication=worldframe::AsyncPublisher<>;
 #endif
+#include "world_capture_requests.h"
 static WorldFramePublication worldFramePublication;
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
 struct WorldFrameShadowFixture {
@@ -112,12 +113,19 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  }else captureRetryDelay=0;
  if(!worldFramePublication.begin(worldFrame))return false;
  lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
- auto&requests=worldFrameCaptureRequests;const auto&hostRequests=worldFrameServer.requests();requests.assign(hostRequests.begin(),hostRequests.end());requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
- // Pending consumption can predate a long pause or failed capture. Renew its
- // addresses at this acquisition boundary and acknowledge only on success.
- for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
- runtimeDemandLeases.append(key.tick,requests);
- std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
+ auto&requests=worldFrameCaptureRequests;
+ // The Host's full visual page graph is produced off the game thread.
+ // On a display-only boundary, no command producer consumes these pages;
+ // do not copy/sort them or retire pending live command subscriptions.
+ if(boundaryOnly){
+  // A method's arguments execute even when it immediately returns.
+  // Never call Server::requests() here: it can scan/copy the Host's entire
+  // page-subscription list on the game thread just to discard the result.
+  requests.clear();
+ }else{
+  capturepolicy::prepareRequestedPages(false,key.tick,worldFrameServer.requests(),
+                                      runtimeWorldDemands,runtimeDemandLeases,requests);
+ }
  key.serial=++worldFrameSerial;
  key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
             (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
@@ -150,8 +158,14 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  if(candidateCount&&(!lastRecoverySubmitAt||uint32_t(key.tick-lastRecoverySubmitAt)>=32)){
   if(worldFramePublication.requestRecovery(key,candidates.data(),candidateCount))lastRecoverySubmitAt=key.tick;
  }
- worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
- bool complete=capture.capture(captureDemand,requests,verified.data(),verifiedCount);
+ // A display-only boundary is metadata, not a memory sample. Avoid even
+ // constructing/resetting the synchronous CaptureGraph or touching actor
+ // scratch in the game-message callback. Full command capture is unchanged.
+ bool complete=true;
+ if(!boundaryOnly){
+  worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
+  complete=capture.capture(captureDemand,requests,verified.data(),verifiedCount);
+ }
  // These checks deliberately bypass the read set. Cached self-comparison is
  // not evidence that the frame/world/House survived the acquisition boundary.
  const auto after=worldlife::capture(live);uint32_t afterHouse=0;
@@ -174,7 +188,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   for(auto&hint:runtimeMissingSpans)
    if(hint.address==f.address&&hint.bytes==f.bytes){hint={};break;}
  }
- runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ // Only a full command-authoritative acquisition can acknowledge the
+ // subscriptions it actually consumed. Keep them when a display-only producer
+ // publishes a boundary, so a later hotkey/full-graph escalation remains safe.
+ if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}
  worldFrameBoundaryOnly=boundaryOnly;
  worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
 #ifndef WORLD_FRAME_PLATFORM_FIXTURE

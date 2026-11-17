@@ -17,18 +17,24 @@ constexpr uint32_t Version=1,PageSize=4096,MaxPages=16384,IndexSize=32768;
 // Non-wire-layout subscription classification: only Host visual readers are
 // alive. It permits a small authoritative scene boundary; the Host's own
 // VisualCache independently gathers non-command actor data off-game-thread.
-enum Demand:uint32_t {Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64,HostDisplayOnly=128};
+enum Demand:uint32_t {
+ Base=1,Combat=2,Passengers=4,Ore=8,Bullets=16,Visual=32,Resources=64,HostDisplayOnly=128,
+ // Host-only projection requirements. Never request a command-authoritative
+ // Combat/Passengers snapshot merely to draw status bubbles or unit panels.
+ // Not stored in Key, Channel or game field subscriptions.
+ HostVisualPassengers=256,HostVisualCombat=512,HostVisualOre=1024
+};
 // Visual and Resources are Host-local ONLY for a purely display subscription.
 // A mixed Visual|Combat (or Resources|Passengers) reader is a command reader:
 // its native input pages must not disappear from the producer's demand mask.
 // Reject unknown/future flags from the display-only lane by default.
 inline bool visualDemand(uint32_t demand){
- constexpr uint32_t displayFlags=uint32_t(Base|Visual|Resources);
+ constexpr uint32_t displayFlags=uint32_t(Base|Visual|Resources|HostVisualPassengers|HostVisualCombat|HostVisualOre);
  return (demand&uint32_t(Visual|Resources))!=0&&(demand&~displayFlags)==0;
 }
 inline uint32_t runtimeDemand(uint32_t demand){
  return visualDemand(demand)?uint32_t(Base):
-        ((demand&~uint32_t(Visual|Resources|HostDisplayOnly))|uint32_t(Base));
+        ((demand&~uint32_t(Visual|Resources|HostDisplayOnly|HostVisualPassengers|HostVisualCombat|HostVisualOre))|uint32_t(Base));
 }
 struct Key {
  uint32_t pid=0,owner=0,match=0,serial=0,tick=0,demand=0;

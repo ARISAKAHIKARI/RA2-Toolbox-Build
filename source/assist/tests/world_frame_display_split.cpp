@@ -10,7 +10,7 @@ int main(){
  using namespace fixture;
  Memory memory;setup(memory);Read read{&memory};
  auto shallow=std::make_shared<worldframe::Snapshot>();
- auto k=key(50);k.tick=100;
+ auto k=key(50);k.tick=100;k.demand=worldframe::BoundaryOnlyKeyBit;
  shallow->reset(k);
  worldframe::CaptureScratch scratch;
  worldframe::CaptureGraph<Read> graph(*shallow,read,scratch);
@@ -22,8 +22,8 @@ int main(){
  int hp=-1;uint32_t actorType=0;
  assert(!shallow->read(ActorA+0x6C,&hp,sizeof hp));
  assert(!shallow->read(Type,&actorType,sizeof actorType));
- assert(shallow->read(0x87F924,&actorType,sizeof actorType)&&actorType==Cells);
- assert(shallow->read(0xA8B230,&actorType,sizeof actorType)&&actorType==Scenario);
+ assert(!shallow->read(0x87F924,&actorType,sizeof actorType)); // Key has Cell identity, no raw pages
+ assert(!shallow->read(0xA8B230,&actorType,sizeof actorType)); // Host owns scene globals, even Scenario
  // The source sample has already sealed; displaying the actor must not
  // mutate those bytes or create command authority from the Host's copy.
  const auto baseSerial=shallow->key.serial;
@@ -32,11 +32,15 @@ int main(){
  assert(display&&display->sealed()&&display->controlSource==shallow);
  assert(display->read(ActorA+0x6C,&hp,sizeof hp)&&hp==100);
  assert(display->read(Type,&actorType,sizeof actorType));
+ assert(display->read(0xA8B230,&actorType,sizeof actorType)&&actorType==Scenario);
+ assert(shallowPages==0&&shallowCalls==0&&shallowBytes==0);
+ assert(display->read(0x87F924,&actorType,sizeof actorType)&&actorType==Cells);
  assert(!shallow->read(ActorA+0x6C,&hp,sizeof hp));
  assert(shallow->key.serial==baseSerial);
  // Raw Base requests never enter the boundary-only lane. Command readers
  // receive their own full actor and object type data in the native sample.
  worldframe::Snapshot full;
+ k.demand=0; // A command's ordinary Base graph must never inherit the display-only marker.
  full.reset(k);
  worldframe::CaptureScratch fullScratch;
  worldframe::CaptureGraph<Read> fullGraph(full,read,fullScratch);
