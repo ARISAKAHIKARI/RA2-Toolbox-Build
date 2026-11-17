@@ -156,6 +156,17 @@ public:
  int32_t visualFrame=-1;uint32_t visualTick=0;uint64_t visualSerial=0;
  explicit Snapshot(PageAllocator allocator={})noexcept:pages(allocator){}
  Snapshot(const Snapshot&)=delete;Snapshot&operator=(const Snapshot&)=delete;
+ // Transfer a completed worker-owned capture without allocating or copying any
+ // page payloads. Both Snapshot owners must be exclusive and quiescent here.
+ // The fixed 128 KiB lookup table is swapped, never rebuilt from game memory.
+ void swap(Snapshot&other)noexcept{
+  using std::swap;
+  swap(index_,other.index_);swap(sealed_,other.sealed_);swap(overflow_,other.overflow_);
+  swap(key,other.key);swap(counters,other.counters);pages.swap(other.pages);
+  controlSource.swap(other.controlSource);
+  swap(visualFrame,other.visualFrame);swap(visualTick,other.visualTick);
+  swap(visualSerial,other.visualSerial);
+ }
  void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};pages.clear();index_.fill(0);sealed_=overflow_=false;}
  bool sealed()const{return sealed_;}bool overflow()const{return overflow_;}
  bool seal(){sealed_=true;return !overflow_;}
