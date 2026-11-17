@@ -271,6 +271,10 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
    result.value.ids[i]=id;if(!(id&1))expected.push_back(id);
   }
   deliver(result);repairCalculationTick(1008);
+  // Proof membership is deliberately sliced across frames to avoid a
+  // synchronous 8192-entry scan on the game's main thread.
+  for(unsigned step=1;repairCalculationPending&&step<128;++step)
+   repairCalculationTick(1008+step);
   expect(!repairCalculationPending&&repairCount==int(expected.size()),"full-capacity results filter unknown IDs");
   expect(std::equal(expected.begin(),expected.end(),repairIDs),"membership preserves result order, duplicates, zero and edge IDs");
   expect(sent.empty(),"membership acceptance does not itself issue game events");
