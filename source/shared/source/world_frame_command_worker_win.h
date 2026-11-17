@@ -16,9 +16,9 @@ class CommandCaptureWorker {
  static constexpr unsigned MaxCalls=8192;
  static constexpr size_t MaxBytes=64u*1024u*1024u;
  static constexpr DWORD MaxWorkMs=120,MaxHandoffMs=80;
- struct Work {Key key{};uint32_t demand=Base,epoch=0;uint64_t requestRevision=0;std::vector<uint32_t>pages;};
+ struct Work {Key key{};uint32_t demand=Base,epoch=0,ticket=0;uint64_t requestRevision=0;std::vector<uint32_t>pages;};
  std::mutex gate_;
- std::atomic<uint32_t>epoch_{1};
+ std::atomic<uint32_t>epoch_{1},latestTicket_{1};
  std::atomic<bool>stopping_{false};
  HANDLE thread_=nullptr,event_=nullptr;
  HMODULE module_=nullptr;
@@ -65,7 +65,8 @@ class CommandCaptureWorker {
     std::lock_guard<std::mutex>lock(self->gate_);
     if(self->queuedReady_){job=std::move(self->queued_);self->queuedReady_=false;found=true;}
    }
-   if(!found||job.epoch!=self->epoch_.load(std::memory_order_acquire))continue;
+   if(!found||job.epoch!=self->epoch_.load(std::memory_order_acquire)||
+      job.ticket!=self->latestTicket_.load(std::memory_order_acquire))continue;
    // All requested page sorting, dedup, real RPM and graph traversal happen
    // exclusively here. No worker ever reads Runtime Shared/House structures.
    std::sort(job.pages.begin(),job.pages.end());
@@ -77,6 +78,7 @@ class CommandCaptureWorker {
    const auto checkedRead=[&](uint32_t at,void*out,size_t n){
     if(self->stopping_.load(std::memory_order_acquire)||
        job.epoch!=self->epoch_.load(std::memory_order_acquire)||
+       job.ticket!=self->latestTicket_.load(std::memory_order_acquire)||
        uint32_t(GetTickCount()-began)>MaxWorkMs||calls>=MaxCalls||
        n>MaxBytes-bytes)return false;
     ++calls;bytes+=n;return live(at,out,n);
@@ -88,12 +90,14 @@ class CommandCaptureWorker {
        uint32_t(after.tick-began)<=MaxWorkMs;
    const bool sealed=self->staging_.seal();
    if(!complete||!stable||!sealed||self->staging_.overflow()||
-      job.epoch!=self->epoch_.load(std::memory_order_acquire)){
+      job.epoch!=self->epoch_.load(std::memory_order_acquire)||
+      job.ticket!=self->latestTicket_.load(std::memory_order_acquire)){
     ++self->rejected_;continue;
    }
    {
     std::lock_guard<std::mutex>lock(self->gate_);
     if(job.epoch!=self->epoch_.load(std::memory_order_acquire)||
+       job.ticket!=self->latestTicket_.load(std::memory_order_acquire)||
        self->stopping_.load(std::memory_order_acquire))continue;
     self->staging_.swap(self->completed_); // page ownership, not page copies
     self->completedKey_=job.key;self->completedDemand_=job.demand;
@@ -152,7 +156,14 @@ public:
   if(lastRequestedKey_.sameFrame(key)&&lastRequestedDemand_==demand&&lastRequestedRevision_==revision&&
       uint32_t(now-lastRequestedAt_)<16)return true;
   if(!launch())return false;
+  // Invalidate a different in-flight frame/House/demand immediately; do
+  // not let a 120ms old graph monopolize the worker while a new frame waits.
+  // Repeated requests for the SAME work retain its ticket to avoid starvation.
+  const bool same=lastRequestedKey_.sameFrame(key)&&
+      lastRequestedDemand_==demand&&lastRequestedRevision_==revision;
+  if(!same)latestTicket_.fetch_add(1,std::memory_order_acq_rel);
   queued_.key=key;queued_.demand=demand;queued_.requestRevision=revision;
+  queued_.ticket=latestTicket_.load(std::memory_order_acquire);
   // This O(N) address copy is at most 64 KiB. Sorting, graph traversal,
   // missing-page probing and ALL object bytes are worker-only.
   queued_.pages.assign(pages.begin(),pages.end());
@@ -175,6 +186,7 @@ public:
  }
  void invalidate(){
   epoch_.fetch_add(1,std::memory_order_acq_rel);
+  latestTicket_.fetch_add(1,std::memory_order_acq_rel);
   lastRequestedAt_=0;lastRequestedKey_={};lastRequestedDemand_=lastRequestedRevision_=0;
   if(event_)SetEvent(event_);
  }
