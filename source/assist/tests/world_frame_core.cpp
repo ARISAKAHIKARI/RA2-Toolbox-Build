@@ -459,7 +459,9 @@ void runtime(){
 void displayOnlyRuntime(){
  using namespace assist;
  CHECK(mappedBytes==0);clock=41000;currentPid=HostPid;
- auto client=worldframe::acquireClient(GamePid,183);
+ external::ProcessReader commandReader;
+ CHECK(commandReader.open(GamePid));
+ auto client=worldframe::acquireClient(GamePid,commandReader.generation());
  CHECK(!client->acquire(7));
  client->subscribe(1,worldframe::Visual|worldframe::HostVisualPassengers|worldframe::HostVisualCombat);
  CHECK(channel()&&channel()->demandMask==(worldframe::Base|worldframe::HostDisplayOnly));
@@ -485,7 +487,11 @@ void displayOnlyRuntime(){
  CHECK(visual->read(ActorA+0x6C4,&type,4)&&type==Type);
  CHECK(visual->read(Type+0x898,&weapon,4)&&weapon==Weapon);
  CHECK(!shallow->read(ActorA+0x6C,&hp,4));
- // Mixed command subscription revokes display-only classification immediately.
+ // A real ProcessReader command scope must reject the display marker,
+ // rather than importing it as a complete authoritative input.
+ commandReader.setWorldDemand(worldframe::Base);
+ CHECK(!commandReader.beginWorldFrame(7,shallow));
+ // Its subscription revokes display-only classification immediately.
  client->subscribe(2,worldframe::Base);
  CHECK(channel()->demandMask==worldframe::Base);
  currentPid=GamePid;CHECK(worldFrameServer.wanted(HostPid,clock));
@@ -501,7 +507,7 @@ void displayOnlyRuntime(){
  CHECK((channel()->demandMask&worldframe::Passengers)!=0&&
        !(channel()->demandMask&worldframe::HostDisplayOnly));
  currentPid=GamePid;retireWorldFrame();worldFrameServer.disconnect();
- currentPid=HostPid;client.reset();shallow.reset();visual.reset();full.reset();CHECK(mappedBytes==0);
+ currentPid=HostPid;commandReader.close();client.reset();shallow.reset();visual.reset();full.reset();CHECK(mappedBytes==0);
  std::puts("PASS zero-page Host boundary, enriched actor/weapon display, mixed demand fail-closed, same-frame command escalation");
 }
 void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavings();runtime();hostReads();hostIsolation();displayOnlyRuntime();std::puts("PASS production transport/ProcessReader/Runtime: pinned publication, independent pause observation, required/optional failures, no live fallback, sustained demand, same-frame single capture, independent world/frame/House rejection");}
