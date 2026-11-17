@@ -10,7 +10,10 @@ namespace criticalpath {
 inline uint64_t ticks(){LARGE_INTEGER q{};return QueryPerformanceCounter(&q)&&q.QuadPart>0?uint64_t(q.QuadPart):0;}
 inline uint32_t elapsedUs(uint64_t start){
  if(!start)return 0;const uint64_t stop=ticks();if(stop<start)return 0;
- static uint64_t frequency=[](){LARGE_INTEGER f{};return QueryPerformanceFrequency(&f)&&f.QuadPart>0?uint64_t(f.QuadPart):0;}();
+ // Zero-initialized scalar: no local-static guard, mutex or CRT lazy
+ // initialization inside the first sampled hardware exception callback.
+ static uint64_t frequency=0;
+ if(!frequency){LARGE_INTEGER f{};if(QueryPerformanceFrequency(&f)&&f.QuadPart>0)frequency=uint64_t(f.QuadPart);}
  if(!frequency)return 0;
  const uint64_t difference=stop-start;
  const uint64_t us=(difference/frequency)*1000000u+(difference%frequency)*1000000u/frequency;
