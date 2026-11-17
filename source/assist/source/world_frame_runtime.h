@@ -1,7 +1,7 @@
 #pragma once
 #include "../../shared/source/world_frame_capture.h"
 #include "../../shared/source/world_frame_transport.h"
-#include "world_capture_requests.h"
+// Request preparation is kept here: this header is included inside namespace assist.
 
 static worldframe::Snapshot worldFrame;
 static worldframe::Server worldFrameServer;
@@ -73,8 +73,13 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // page queues may be huge and belong to the Host's own VisualCache.
   requests.clear();
  }else{
-  capturepolicy::prepareRequestedPages(false,key.tick,worldFrameServer.requests(),
-                                       runtimeWorldDemands,runtimeDemandLeases,requests);
+  const auto&hostRequests=worldFrameServer.requests();
+  requests.assign(hostRequests.begin(),hostRequests.end());
+  requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
+  for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
+  runtimeDemandLeases.append(key.tick,requests);
+  std::sort(requests.begin(),requests.end());
+  requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
  }
  key.serial=++worldFrameSerial;
  key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
