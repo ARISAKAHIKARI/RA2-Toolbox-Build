@@ -81,6 +81,7 @@
 #include "native_viewport_host.h"
 #include "settings_fold_layout.h"
 #include "runtime_feature_demand.h"
+#include "host_frame_demand.h"
 #include "signatures.h"
 #include "startup_dependency_policy.h"
 #include "../../external_reader/source/watch_slots.h"
@@ -2567,7 +2568,22 @@ static void tick(){
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();performanceDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
   static renderpresentation::StatusCadence computeStatusCadence;
-  gameinput::setFrameSampling(hook,enabled&&(shared->superweaponGrant||shared->externalDisplay||shared->computeApplied!=compute::All));
+  // Requested placement alone is not work. In particular, the host-first
+  // default must not force a game-frame notification with all features off.
+  // Already-running tasks keep the wake lease until their results/ACKs settle.
+  const compute::HostFrameDemand frameWork{
+   configured,shared->computeApplied,
+   (configured&AutoRepair)!=0,(configured&(EjectAssist|SmartUnloadOrders))!=0,
+   shared->dodgeEnabled||shared->dodgeActive,shared->missileEnabled||shared->missileHeld,
+   shared->magnetronGlobal!=0,shared->magnetronDrop!=0,
+   shared->plannerTracking||shared->runtimeTracking||
+    shared->planRequest!=shared->planAck||shared->cooperativePlan!=shared->cooperativeAck||
+    shared->loadTask!=shared->loadComputed||shared->repairTask!=shared->repairComputed||
+    shared->unloadTask!=shared->unloadComputed||shared->missileTask!=shared->missileComputed||
+    shared->dodgeTask!=shared->dodgeComputed
+  };
+  gameinput::setFrameSampling(hook,enabled&&(shared->superweaponGrant||shared->externalDisplay||
+   compute::needsFrameNotification(frameWork)));
   const uint64_t computeStatusKey=uint64_t(shared->computeApplied)|(uint64_t(computeRequested)<<32)|(uint64_t(showDetails)<<63);
   if(ready&&GetDlgItem(ui,833)&&computeStatusCadence.due(computeStatusKey,now)){
   std::wstring text=L"当前生效：";for(int i=0;i<compute::Count;++i){if(i)text+=i%2?L" · ":L"\r\n";text+=compute::label(i);text+=compute::inside(shared->computeApplied,compute::Feature(i))?L"：游戏内":L"：工具箱";}

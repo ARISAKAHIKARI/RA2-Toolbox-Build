@@ -1,0 +1,75 @@
+name: Host-first compute and main-thread wake policy
+on:
+  pull_request:
+    paths:
+      - 'source/assist/source/compute_policy.h'
+      - 'source/assist/source/host_frame_demand.h'
+      - 'source/assist/source/main.cpp'
+      - 'source/assist/tests/host_frame_demand.cpp'
+      - '.github/workflows/host-first-offload.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: host-first-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  policy-and-sampling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check host-first policy and bounded sampling regressions
+        run: |
+          set -euo pipefail
+          mkdir -p checks
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/host_frame_demand.cpp -o checks/host-frame-demand
+          checks/host-frame-demand | tee checks/policy.log
+          python source/assist/tests/world_frame_retention.py --out checks/retention | tee checks/retention.log
+          python source/assist/tests/world_frame_core_test.py | tee checks/world-frame.log
+          python source/assist/tests/tactical_frame_sampling.py --out checks/tactical | tee checks/tactical.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: host-first-policy-evidence
+          path: checks/
+  native-build:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zig toolchain
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Compile paired x64 Host / x86 Runtime and verify ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/offload-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/build.log 2>&1 || { tail -120 checks/build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root offload-build --host-arch x64 --webview2 | tee checks/pe.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: host-first-windows-build-evidence
+          path: |
+            checks/
+            offload-build/*.exe
+            offload-build/*.dll
+            offload-build/*.json
