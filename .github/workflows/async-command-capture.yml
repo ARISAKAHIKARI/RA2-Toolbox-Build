@@ -9,6 +9,8 @@ on:
       - "source/assist/source/global_vehicle_scan_policy.h"
       - "source/assist/source/native_orders_bridge.h"
       - "source/assist/tests/global_vehicle_scan_policy.cpp"
+      - "source/assist/source/repair_result_filter.h"
+      - "source/assist/tests/repair_result_filter.cpp"
       - "source/assist/tests/world_frame_command_worker_*"
       - ".github/workflows/async-command-capture.yml"
   workflow_dispatch:
@@ -35,6 +37,8 @@ jobs:
           checks/command-policy | tee checks/command-policy.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/assist/tests/global_vehicle_scan_policy.cpp -o checks/global-vehicle-scan
           checks/global-vehicle-scan | tee checks/global-vehicle-scan.log
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/repair_result_filter.cpp -o checks/repair-result-filter
+          checks/repair-result-filter | tee checks/repair-result-filter.log
           g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/world_frame_command_index.cpp -o checks/command-index
           checks/command-index | tee checks/command-index.log
           python source/assist/tests/async_command_no_live_roster.py | tee checks/no-live-roster.log
