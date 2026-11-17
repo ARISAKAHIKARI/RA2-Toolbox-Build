@@ -305,7 +305,9 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  // Identity provenance comes from the original captured World, not a
  // possibly recycled unit rebound after the Host finishes computing.
  const uint32_t destinationID=o.destinationTag==0x34?o.destination:0;
- const executionproof::Ticket proof{sh->planMatch,house,sh->planTick,
+ const bool localHarvest=o.purpose==planner::OreHarvestOrder;
+ const executionproof::Ticket proof{localHarvest?match:sh->planMatch,house,
+   localHarvest?0u:sh->planTick,
    {o.unit,o.unitPointer,o.token},
    {o.target,o.targetPointer},
    {destinationID,o.destinationPointer}};
