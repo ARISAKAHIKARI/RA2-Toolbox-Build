@@ -10,7 +10,7 @@ int main(){
  using namespace fixture;
  Memory memory;setup(memory);Read read{&memory};
  auto shallow=std::make_shared<worldframe::Snapshot>();
- auto k=key(50);k.tick=100;
+ auto k=key(50);k.tick=100;k.demand=worldframe::BoundaryOnlyKeyBit;
  shallow->reset(k);
  worldframe::CaptureScratch scratch;
  worldframe::CaptureGraph<Read> graph(*shallow,read,scratch);
