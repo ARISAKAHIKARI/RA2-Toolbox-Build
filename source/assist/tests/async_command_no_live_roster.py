@@ -83,7 +83,16 @@ assert 'submitProvenMission(house,r.id,decision.mission' in unload
 assert '{s.id,s.pointer,s.token}' in unload
 assert 'capturedTargetPointer=q.pointer;' in unload
 assert 'submitProvenMission(house,o.unit,o.mission' in external
-assert '{o.unit,worldByID(o.unit),o.token}' in external
+assert '{o.unit,o.unitPointer,o.token}' in external
+assert '{o.target,o.targetPointer}' in external
+assert 'a.sourcePointer=p;' in external
+assert 'sh->planTick,' in external
+planner_types=(root / 'planner_types.h').read_text()
+planner_engine=(root / 'external_planner.h').read_text()
+assert 'sourcePointer=0;' in planner_types
+assert 'unitPointer=0,targetPointer=0,destinationPointer=0;' in planner_types
+assert 'o.unitPointer=source?source->sourcePointer:0;' in planner_engine
+assert 'o.targetPointer=target?target->sourcePointer:0;' in planner_engine
 assert 'ManualTakeover' in proof and 'TargetChanged' in proof and 'WrongMatch' in proof
 assert 'THREAD_PRIORITY_BELOW_NORMAL' in worker
 assert 'WaitForSingleObject(thread_,0)' in worker
