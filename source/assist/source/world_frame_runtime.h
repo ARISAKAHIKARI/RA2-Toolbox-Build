@@ -67,6 +67,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  // game-thread CaptureGraph. Full command sampling has distinct authority.
  const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
  const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled();
+ bool globalVehicles=false;
+#ifndef WORLD_FRAME_PLATFORM_FIXTURE
+ if(asyncCommand)globalVehicles=sh&&sh->magnetronGlobal;
+#endif
  const uint32_t graphDemand=demand&~uint32_t(worldframe::HostDisplayOnly);
  const uint64_t currentRevision=(uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
  worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,before.scenario,before.cells,house,uint32_t(before.count),before.frame,before.session};
@@ -81,7 +85,8 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // descriptor. Never recapture or invent a newer observation/acquisition tick.
   if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)&&
       (!asyncCommand||((graphDemand&~worldFrameCapturedDemand)==0&&
-                       worldFrameCapturedRevision==currentRevision))){
+                       worldFrameCapturedRevision==currentRevision&&
+                       worldFrameCommandRoster.global==globalVehicles))){
    worldFramePublication.publish(worldFrame,worldFrameServer);return true;
   }
   // A command in this very frame upgrades the zero-page display token to a
@@ -134,10 +139,6 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
   for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
   runtimeDemandLeases.append(key.tick,requests);
-  bool globalVehicles=false;
-#ifndef WORLD_FRAME_PLATFORM_FIXTURE
-  globalVehicles=sh&&sh->magnetronGlobal;
-#endif
   worldFrameCommandWorker.request(key,graphDemand,requestRevision,requests,globalVehicles);
   return false;
  }
