@@ -25,6 +25,7 @@ static BOOL WINAPI countedRPM(HANDLE,LPCVOID from,LPVOID out,SIZE_T n,SIZE_T*got
 #undef ReadProcessMemory
 static worldframe::CommandCaptureWorker worker;
 static worldframe::Snapshot accepted;
+static worldframe::CommandRoster acceptedRoster;
 static worldframe::Key job;
 extern "C" __declspec(dllexport) int Start(){
  gameThread=GetCurrentThreadId();fixture::setup(memory);offThreadReads=0;onThreadReads=0;
@@ -32,11 +33,14 @@ extern "C" __declspec(dllexport) int Start(){
  return worker.request(job,worldframe::Base,17,{})?1:0;
 }
 extern "C" __declspec(dllexport) int Poll(){
- if(!worker.take(job,worldframe::Base,17,accepted))return 0;
+ if(!worker.take(job,worldframe::Base,17,accepted,&acceptedRoster))return 0;
  int hp=0;uint32_t vt=0;
  if(!accepted.sealed()||accepted.overflow()||accepted.pages.size()<10||
     !accepted.read(fixture::ActorA+0x6C,&hp,4)||hp!=100||
     !accepted.read(fixture::ActorA,&vt,4)||vt!=0x7F5C70u||
+    !acceptedRoster.current(accepted.key)||
+    acceptedRoster.objects->byId(fixture::ActorA+5)!=fixture::ActorA||
+    acceptedRoster.objects->contains(fixture::Passenger)||
     onThreadReads.load()!=0||offThreadReads.load()==0)return -1;
  return 1;
 }
