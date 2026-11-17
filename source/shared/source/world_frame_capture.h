@@ -208,10 +208,17 @@ public:
   for(uint32_t p:scratch_->queue)if(range(p,0x800))
    for(uint32_t page=p&~4095u;uint64_t(page)<uint64_t(p)+0x800;page+=PageSize)warm.push_back(page);
   std::sort(warm.begin(),warm.end());warm.erase(std::unique(warm.begin(),warm.end()),warm.end());
-  frame_.prefetchPages(live_,warm,scratch_->pageScratch.data(),scratch_->pageScratch.size(),false);
+  // The graph is built on the game's main thread. The default 32 extra
+  // speculative split probes are for asynchronous/off-thread consumers,
+  // never for a hot command/visual frame. Per-phase cap 4 => at most 8
+  // added failed-batch probes across both phases in one producer capture.
+  constexpr unsigned GameThreadExtraSplitCalls=4;
+  frame_.prefetchPages(live_,warm,scratch_->pageScratch.data(),scratch_->pageScratch.size(),
+                       false,GameThreadExtraSplitCalls);
   for(size_t i=0;i<scratch_->queue.size();++i){if(!working())return false;actor(scratch_->queue[i]);}
   if(!working())return false;
-  frame_.prefetchPages(live_,requests,scratch_->pageScratch.data(),scratch_->pageScratch.size());
+  frame_.prefetchPages(live_,requests,scratch_->pageScratch.data(),scratch_->pageScratch.size(),
+                       true,GameThreadExtraSplitCalls);
   return working();
  }
 };
