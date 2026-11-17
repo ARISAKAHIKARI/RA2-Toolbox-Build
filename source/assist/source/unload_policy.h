@@ -23,6 +23,48 @@ template<unsigned Capacity=8192> struct RosterLookup {
   entries[at]={pointer,index};return true;
  }
 };
+// Carrier-keyed adjacency for candidate-only admission. Replaces sorting up
+// to 32K passengers on the game thread with O(N) fixed-storage insertions.
+// The mapping does not authorize a command; every passenger is still checked
+// live before its native EventClass is queued.
+template<unsigned Capacity=32768,unsigned Buckets=65536> struct CarrierGroups {
+ static_assert(Capacity&&Buckets>=Capacity&&!(Buckets&(Buckets-1)),"power-of-two buckets required");
+ static constexpr unsigned MaxProbe=64;
+ struct Bucket {uint32_t carrier=0,epoch=0;int first=-1,last=-1;};
+ Bucket buckets[Buckets]{};
+ uint32_t epoch=1;
+ bool valid=true;
+ static unsigned hash(uint32_t p){p^=p>>16;p*=0x7feb352du;p^=p>>15;return p&(Buckets-1);}
+ void clear(){
+  if(++epoch==0){for(auto&v:buckets)v.epoch=0;epoch=1;}
+  valid=true;
+ }
+ int first(uint32_t carrier)const{
+  if(!carrier||!valid)return -1;
+  unsigned at=hash(carrier);
+  for(unsigned probe=0;probe<MaxProbe;++probe,at=(at+1)&(Buckets-1)){
+   const auto&b=buckets[at];
+   if(b.epoch!=epoch)return -1;
+   if(b.carrier==carrier)return b.first;
+  }
+  return -1;
+ }
+ template<class Entry>bool add(uint32_t carrier,int index,Entry*entries){
+  if(!carrier||!valid||index<0||index>=int(Capacity)||!entries){valid=false;return false;}
+  unsigned at=hash(carrier);
+  for(unsigned probe=0;probe<MaxProbe;++probe,at=(at+1)&(Buckets-1)){
+   auto&b=buckets[at];
+   if(b.epoch!=epoch){b={carrier,epoch,index,index};entries[index].next=-1;return true;}
+   if(b.carrier==carrier){
+    entries[index].next=-1;
+    if(b.last>=0)entries[b.last].next=index;
+    else b.first=index;
+    b.last=index;return true;
+   }
+  }
+  valid=false;return false; // UNKNOWN: do not publish partial enrolment.
+ }
+};
 // An ejected passenger may briefly inherit an engine Move/Attack mission.
 // For automatic ejection only, allow a short grace after landing, but never
 // override explicit user Stop (13) or Enter (7).
