@@ -86,7 +86,10 @@ assert 'submitProvenMission(house,o.unit,o.mission' in external
 assert '{o.unit,o.unitPointer,o.token}' in external
 assert '{o.target,o.targetPointer}' in external
 assert 'a.sourcePointer=p;' in external
-assert 'sh->planTick,' in external
+assert 'localHarvest?0u:sh->planTick' in external
+assert 'localHarvest?match:sh->planMatch' in external
+harvest=(root / 'ore_harvest_bridge.h').read_text()
+assert 'order.unitPointer=j.pointer;' in harvest
 planner_types=(root / 'planner_types.h').read_text()
 planner_engine=(root / 'external_planner.h').read_text()
 assert 'sourcePointer=0;' in planner_types
