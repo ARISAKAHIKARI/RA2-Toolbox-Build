@@ -21,6 +21,20 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Regress irrelevant message fast path and original 17 input messages
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/runtime_message_hotpath.cpp -o /tmp/ra2-message-hotpath
+          /tmp/ra2-message-hotpath
+      - name: Validate native PiP Surface failure release and guarded restoration
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/native_pip_core.cpp -o /tmp/ra2-native-pip-core
+          /tmp/ra2-native-pip-core
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/native_pip_bridge.cpp -o /tmp/ra2-native-pip-bridge
+          /tmp/ra2-native-pip-bridge
       - name: Exercise production tooltip idle/enable/restore source
         shell: bash
         run: |
@@ -76,6 +90,7 @@ jobs:
           bash source/build-zig-x64.sh > diagnostics/windows-build.log 2>&1 || { tail -130 diagnostics/windows-build.log; exit 1; }
           python source/tools/verify_windows_outputs.py --root dist/compiled --host-arch x64 --webview2
           python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out diagnostics/async-recovery
+          python source/assist/tests/native_pip_windows.py --zig "$ZIG" --out diagnostics/native-pip
       - uses: actions/upload-artifact@v4
         if: always()
         with:
