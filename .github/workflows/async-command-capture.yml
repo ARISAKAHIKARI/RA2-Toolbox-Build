@@ -6,6 +6,9 @@ on:
       - "source/assist/source/world_frame_runtime.h"
       - "source/assist/source/bridge.cpp"
       - "source/assist/tests/async_command_policy.cpp"
+      - "source/assist/source/global_vehicle_scan_policy.h"
+      - "source/assist/source/native_orders_bridge.h"
+      - "source/assist/tests/global_vehicle_scan_policy.cpp"
       - "source/assist/tests/world_frame_command_worker_*"
       - ".github/workflows/async-command-capture.yml"
   workflow_dispatch:
@@ -30,6 +33,8 @@ jobs:
           mkdir -p checks
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/async_command_policy.cpp -o checks/command-policy
           checks/command-policy | tee checks/command-policy.log
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/assist/tests/global_vehicle_scan_policy.cpp -o checks/global-vehicle-scan
+          checks/global-vehicle-scan | tee checks/global-vehicle-scan.log
           g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/world_frame_command_index.cpp -o checks/command-index
           checks/command-index | tee checks/command-index.log
           python source/assist/tests/async_command_no_live_roster.py | tee checks/no-live-roster.log
