@@ -27,7 +27,7 @@ struct Row {
  uint64_t sumUs=0;
  uint32_t samples[Samples]{};
  void add(uint32_t us){
-  ++sampled;sumUs+=us;maxUs=std::max(maxUs,us);
+  ++sampled;sumUs+=us;maxUs=(std::max)(maxUs,us);
   samples[next]=us;next=(next+1)%Samples;
   if(filled<Samples)++filled;
  }
