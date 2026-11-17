@@ -48,7 +48,7 @@ def resolve(path, source):
         "source/assist/source/compute_policy.h": 1,
         "source/assist/source/main.cpp": 1,
         "source/assist/source/native_orders_bridge.h": 4,
-        "source/assist/source/world_frame_runtime.h": 1,
+        "source/assist/source/world_frame_runtime.h": 6,
         "source/assist/tests/ore_harvest_handoff.cpp": 1,
         "source/assist/tests/unload_loaded_admission.py": 1,
         "source/assist/tests/world_frame_async_dll.cpp": 1,
@@ -86,7 +86,15 @@ def resolve(path, source):
     if str(path).endswith("/autoload_bridge.h"):
         text = upgrade_autoload(text)
     if str(path).endswith("/world_frame_runtime.h"):
-        text = upgrade_world_capture(text, source)
+        print("WORLD_CAPTURE_FUSION",{
+            "worker":text.count("static WorldFrameCommandWorker worldFrameCommandWorker"),
+            "shadow":text.count("worldFrameShadow"),
+            "async_branch":text.count("if(asyncCommand)"),
+            "source_revision":text.count("runtimeDemandRevision"),
+            "capture_definition":text.count("template<class Live>static bool captureWorldFrame(")
+        })
+        if "static WorldFrameCommandWorker worldFrameCommandWorker;" not in text:
+            text = upgrade_world_capture(text, source)
     path.write_text(text, encoding="utf-8", newline="\n")
     print(f"RESOLVED {path} ({len(blocks)} conflict sections)")
 
