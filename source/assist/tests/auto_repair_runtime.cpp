@@ -40,8 +40,6 @@ struct Queued{uint32_t id;int frame;};static std::vector<Queued> sent;
 static uint32_t repairIDs[8192];static int repairCount,repairAt,repairDone;
 static bool pendingAckReady,repairAckPending;static uint32_t pendingAck,repairAckRequest;static DWORD repairAckStarted;
 static bool repairCalculationPending;static DWORD repairCalculationStarted;static uint32_t repairTaskSeen;
-static repairfilter::Filter repairResultGate;
-static uint32_t repairValidatedSerial=0;static unsigned repairStagedCount=0;
 static bool autoWas;static DWORD lastAuto;
 static repairdelivery::Pending<> pendingRepairs;
 static worldframe::Snapshot worldFrame;
