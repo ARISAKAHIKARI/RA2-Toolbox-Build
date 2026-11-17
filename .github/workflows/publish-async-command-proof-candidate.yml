@@ -29,6 +29,8 @@ jobs:
           grep -q 'Version=110' source/assist/source/protocol.h
           grep -q 'ASSIST_PROTOCOL = 110' source/tools/verify_windows_outputs.py
           grep -q '1.0.51.13' source/shared/source/release_version.h
+          grep -q 'admitPlannerOrder(o,house,planningWorld.match,planningWorld.tick)' source/assist/source/runtime_planner_bridge.h
+          grep -q 'admitPlannerOrder(o,house,sh->planMatch,sh->planTick)' source/assist/source/external_orders_bridge.h
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/execution_proof.cpp -o checks/execution-proof
           checks/execution-proof
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/planner_provenance.cpp -o checks/planner-provenance
