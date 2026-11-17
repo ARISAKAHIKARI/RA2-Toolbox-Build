@@ -34,6 +34,7 @@
 #include "repair_delivery.h"
 #include "session_epoch.h"
 #include "world_lifecycle.h"
+#include "../../shared/source/world_frame_command_worker_win.h"
 #include "world_capture_admission.h"
 #include "control_link.h"
 #include "control_mode_policy.h"
