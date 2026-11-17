@@ -117,8 +117,15 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  // The Host's full visual page graph is produced off the game thread.
  // On a display-only boundary, no command producer consumes these pages;
  // do not copy/sort them or retire pending live command subscriptions.
- capturepolicy::prepareRequestedPages(boundaryOnly,key.tick,worldFrameServer.requests(),
+ if(boundaryOnly){
+  // A method's arguments execute even when it immediately returns.
+  // Never call Server::requests() here: it can scan/copy the Host's entire
+  // page-subscription list on the game thread just to discard the result.
+  requests.clear();
+ }else{
+  capturepolicy::prepareRequestedPages(false,key.tick,worldFrameServer.requests(),
                                       runtimeWorldDemands,runtimeDemandLeases,requests);
+ }
  key.serial=++worldFrameSerial;
  key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
             (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
