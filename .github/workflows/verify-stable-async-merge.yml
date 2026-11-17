@@ -1,0 +1,33 @@
+name: Verify stable 1.0.51 plus async merge
+on:
+  push:
+    branches: [integrate/stable-async-20261118-v2]
+    paths:
+      - .github/workflows/verify-stable-async-merge.yml
+      - source/assist/tests/auto_repair_runtime.cpp
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate both parents and repair membership at full capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin refs/tags/v1.0.51:refs/tags/v1.0.51
+          git merge-base --is-ancestor v1.0.51 HEAD
+          test -f source/assist/source/planner_provenance.h
+          test -f source/assist/source/execution_proof.h
+          mkdir -p checks
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/auto_repair_runtime.cpp -o checks/auto-repair
+          checks/auto-repair | tee checks/repair.log
+          python source/assist/tests/world_frame_core_test.py
+          python source/assist/tests/ore_harvest_handoff.py --out checks/ore
+          python source/assist/tests/unload_loaded_admission.py --current-only --out checks/unload
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/planner_provenance.cpp -o checks/provenance
+          checks/provenance
+          python source/assist/tests/async_command_no_live_roster.py
