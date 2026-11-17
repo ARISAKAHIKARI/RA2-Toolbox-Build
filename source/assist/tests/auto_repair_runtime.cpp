@@ -273,7 +273,7 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
   WorkerResult result{sh->repairTask,{}};result.value.match=input.match;result.value.tick=input.tick;result.value.frame=input.frame;result.value.count=8192;
   std::vector<uint32_t> expected;
   for(int i=0;i<result.value.count;++i){uint32_t id=uint32_t((8191-i)*2);if(i%11==0)id+=1;if(i%37==0)id=2;
-   result.value.ids[i]=id;if(!(id&1))expected.push_back(id);
+   result.value.ids[i]=id;if(id&&!(id&1))expected.push_back(id);
   }
   deliver(result);repairCalculationTick(1008);
   // Proof membership is deliberately sliced across frames to avoid a
@@ -281,7 +281,7 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
   for(unsigned step=1;repairCalculationPending&&step<128;++step)
    repairCalculationTick(1008+step);
   expect(!repairCalculationPending&&repairCount==int(expected.size()),"full-capacity results filter unknown IDs");
-  expect(std::equal(expected.begin(),expected.end(),repairIDs),"membership preserves result order, duplicates, zero and edge IDs");
+  expect(std::equal(expected.begin(),expected.end(),repairIDs),"membership preserves result order, duplicates and edge IDs; zero is not an object");
   expect(sent.empty(),"membership acceptance does not itself issue game events");
  });
  run("retained_request_empty_membership",false,[]{
