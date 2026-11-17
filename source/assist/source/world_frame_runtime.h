@@ -87,7 +87,7 @@ public:
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
 static void retireWorldFrame(){worldFrameShadow.invalidate();worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
-template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
+template<class Live>static bool captureWorldFrameImpl(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary){
  const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
  const uint32_t captureDemand=boundaryOnly?demand:(demand&~uint32_t(worldframe::HostDisplayOnly));
  worldframe::Key key{GetCurrentProcessId(),sh?sh->owner:0,match,0,GetTickCount(),0,before.scenario,before.cells,house,uint32_t(before.count),before.frame,before.session};
@@ -199,4 +199,13 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
 #endif
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;
+}
+
+template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
+ static uint32_t criticalCaptureCalls=0;
+ const bool sampled=AssistCriticalTimingEnabled()&&((++criticalCaptureCalls&3u)==0);
+ const uint64_t start=sampled?criticalpath::ticks():0;
+ const bool complete=captureWorldFrameImpl(live,before,house,now,demand,permitDisplayBoundary);
+ if(start)AssistCriticalTimingRecord(criticalpath::WorldCapture,criticalpath::elapsedUs(start));
+ return complete;
 }
