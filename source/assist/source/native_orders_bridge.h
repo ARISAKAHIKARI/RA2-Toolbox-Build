@@ -1,6 +1,7 @@
 #include "native_orders.h"
 #include "unload_policy.h"
 #include "unload_admission.h"
+#include "unload_retry_policy.h"
 static unloadadmission::Queue queuedUnload;
 // All simulation commands go through EventClass constructors and the game's
 // outgoing queue. This file NEVER writes a unit's mission, target, or locomotor.
@@ -283,11 +284,24 @@ static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
   int at=queuedUnload.cursor++;auto task=queuedUnload.carriers[at];
   if(!unloadCarrierEligible(task.pointer,house)||get<uint32_t>(task.pointer+0x10)!=task.id||worldByID(task.id)!=task.pointer||!unloadadmission::retainAfterCarrierMove(task.token,manualVersions.get(task.id),get<int>(task.pointer+0x114))||
      (task.attempted&&DWORD(now-task.attemptedAt)>3500)){queuedUnload.remove(at);continue;}
-  if(!task.attempted){queuedUnload.carriers[at].attempted=true;queuedUnload.carriers[at].attemptedAt=now;}
-  int result=smartUnloadNow(house,task.pointer,!task.attempted);
-  if(result==2){ // Preserve the queued identity while the native unload runs.
+  // A failed enqueue is not a consumed Deploy. The durable command remains
+  // first-attempt eligible until the original EventClass has actually queued.
+  const int result=smartUnloadNow(house,task.pointer,unloadretry::maySendInitialDeploy(task.attempted));
+  const auto outcome=unloadretry::classify(result);
+  if(unloadretry::committed(outcome)){
+   // The carrier can still be moved/reused between callbacks. Re-find the
+   // saved UID rather than modifying a stale queue slot after a side effect.
+   const int index=queuedUnload.find(task.pointer,task.id);
+   if(index>=0){queuedUnload.carriers[index].attempted=true;queuedUnload.carriers[index].attemptedAt=now;}
+  }
+  if(outcome==unloadretry::Outcome::QueuedDeploy){
+   // A native Deploy was queued, but passengers may still be in Limbo.
+   // Retain the request and enroll them when they become observable.
    queuedUnload.lastProgress=now;--budget;--admissionBudget;
-  }else if(result>=0){queuedUnload.cancel(task.pointer,task.id);queuedUnload.lastProgress=now;if(result>0){--budget;--admissionBudget;}}
+  }else if(outcome==unloadretry::Outcome::Enrolled||outcome==unloadretry::Outcome::Finished){
+   queuedUnload.cancel(task.pointer,task.id);queuedUnload.lastProgress=now;
+   if(outcome==unloadretry::Outcome::Enrolled){--budget;--admissionBudget;}
+  }
  }
 }
 static void watchEjections(uint32_t house,int frame,Vec all){
