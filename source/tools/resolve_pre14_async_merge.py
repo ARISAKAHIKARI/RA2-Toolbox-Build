@@ -134,49 +134,45 @@ def upgrade_autoload(text):
     return text
 
 def upgrade_world_capture(text, async_source):
+    # Renormalized three-way merge retained both producer branches and the
+    # stable missing-page recovery. Only the declarations surrounding the
+    # worker were in an overlapping conflict section. Do NOT append a second
+    # captureWorldFrame implementation or remove the stable recovery.
+    if "if(asyncCommand)" not in text or "worldFramePublication.recovered(" not in text:
+        raise RuntimeError("world capture lost either async branch or stable field recovery")
+    if "worldFrameCommandWorker.take(" not in text:
+        raise RuntimeError("world capture lost worker handoff")
     worker = async_source.split("// The game frame keeps execution authority.",1)[1].split("static uint32_t worldFrameSerial",1)[0]
     worker = "// The game frame keeps execution authority." + worker
-    text = must_replace(text,
-        "static WorldFramePublication worldFramePublication;\n",
-        "static WorldFramePublication worldFramePublication;\n" + worker,
-        "capture_worker_defs")
-    text = must_replace(text,
-        "static uint32_t worldFrameSerial=0;static unsigned sampleReadDepth=0;",
-        "static uint32_t worldFrameSerial=0;static uint32_t worldFrameCapturedDemand=0;\n"
-        "static uint64_t worldFrameCapturedRevision=0;static uint32_t runtimeDemandRevision=1;\n"
-        "static unsigned sampleReadDepth=0;",
-        "capture_revisions")
-    text = must_replace(text,
-        "runtimeWorldDemands.push_back(page);runtimeDemandLeases.retain(page,worldFrame.key.tick);",
-        "runtimeWorldDemands.push_back(page);if(!++runtimeDemandRevision)++runtimeDemandRevision;runtimeDemandLeases.retain(page,worldFrame.key.tick);",
-        "capture_demand_revision")
-    text = must_replace(text,
-        "static void retireWorldFrame(){worldFrameShadow.invalidate();",
-        "static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();"
-        "worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFrameShadow.invalidate();",
-        "capture_retire")
-    text = must_replace(text,
-        "runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}",
-        "runtimeDemandBits.fill(0);if(!++runtimeDemandRevision)++runtimeDemandRevision;runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}",
-        "capture_retire_revision")
-    old = "template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){"
-    new = (
-        "template<class Live>static bool captureAsyncCommandWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary);\n"
-        + old + "\n"
-        " // The tested stable retry/recovery path remains the default. Only the\n"
-        " // explicitly enabled experimental worker uses the async acquisition.\n"
-        " if(worldFrameCommandWorker.enabled()&&\n"
-        "    !(permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)))\n"
-        "  return captureAsyncCommandWorldFrame(live,before,house,now,demand,permitDisplayBoundary);"
+    if "static WorldFrameCommandWorker worldFrameCommandWorker;" not in text:
+        text = must_replace(text,
+            "static WorldFramePublication worldFramePublication;\n",
+            "static WorldFramePublication worldFramePublication;\n" + worker,
+            "capture_worker_defs")
+    fields = (
+        ("static uint32_t worldFrameCapturedDemand=0;","static uint32_t worldFrameSerial=0;"),
+        ("static uint64_t worldFrameCapturedRevision=0;","static uint32_t worldFrameCapturedDemand=0;"),
+        ("static uint32_t runtimeDemandRevision=1;","static uint64_t worldFrameCapturedRevision=0;")
     )
-    text = must_replace(text,old,new,"capture_forwarding")
-    a = async_source.index("template<class Live>static bool captureWorldFrame(")
-    async_fn = async_source[a:]
-    async_fn = async_fn.replace("template<class Live>static bool captureWorldFrame(",
-                                "template<class Live>static bool captureAsyncCommandWorldFrame(",1)
-    text += "\n// Isolated experimental command capture lane; never replaces the stable\n"
-    text += "// verified missing-page recovery or read-only shadow diagnostics.\n"
-    text += async_fn
+    for definition, anchor in fields:
+        if definition not in text:
+            text = must_replace(text,anchor,anchor+definition,"capture_fields")
+    if "worldFrameCommandWorker.invalidate();" not in text:
+        text = must_replace(text,
+            "static void retireWorldFrame(){worldFrameShadow.invalidate();",
+            "static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameShadow.invalidate();",
+            "capture_retire")
+    if "worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;" not in text:
+        text = must_replace(text,
+            "worldFrameShadow.invalidate();worldFramePublication.invalidate();",
+            "worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();",
+            "capture_retire_revision")
+    print("WORLD_CAPTURE_FUSED",{
+        "worker":text.count("static WorldFrameCommandWorker worldFrameCommandWorker;"),
+        "asyncBranch":text.count("if(asyncCommand)"),
+        "stableRecovery":text.count("worldFramePublication.recovered("),
+        "stableShadow":text.count("worldFrameShadow")
+    })
     return text
 
 def main():
