@@ -228,6 +228,14 @@ static bool refreshWorldIndex(int frame,bool executionGuards){
  indexWorld(frame);if(indexedFrame==frame)return true;
  failedMatch=match;failedFrame=frame;failedAt=now;return false;
 }
+// Native hook maintenance is still permitted to use exact per-object
+// admission, but must never rebuild a 16K-object roster when the dedicated
+// command capture worker owns all graph reads. A missing worker index is
+// UNKNOWN: caller skips this observation; native game events stay untouched.
+static bool prepareWorldIndex(int frame){
+ if(worldFrameCommandWorker.enabled())return refreshWorldIndex(frame,false);
+ indexWorld(frame);return indexedFrame==frame;
+}
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
 static void reset(bool retireHooks=true,bool preserveMissile=false){retireWorldFrame();restorePrivateOut();minerDefenseReset();restoreTriggerInput();restoreSinglePlayerFPS();resetOwnGround();superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();nativePlacementReset();if(retireHooks)nativePlacementCompletionReset();restorePauseView();resetMoOrders();resetDirectAir();resetDirectSell();resetBombBoard();if(retireHooks){restoreSidebarView();resetHookReadiness();restoreCrcMapShadow();restoreBuildTimeTooltip();restorePrivateOut();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);restoreViewZoom();}stickyCount=0;runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
