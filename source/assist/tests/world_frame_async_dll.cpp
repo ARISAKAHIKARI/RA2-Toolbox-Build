@@ -149,7 +149,8 @@ extern "C" __declspec(dllexport) int Stop(){
  assist::retireWorldFrame();
  const bool published=assist::worldFramePublication.stop();
  const bool shadow=assist::worldFrameShadow.stop();
- return published&&shadow?1:0;
+ const bool command=assist::worldFrameCommandWorker.stop();
+ return published&&shadow&&command?1:0;
 }
 
 // The worker may disappear while the descriptor still advertises the last
@@ -165,4 +166,4 @@ extern "C" __declspec(dllexport) int RecoverPublisher(){
  if(worldFrame.key.serial!=key.serial||memory.calls.size()!=calls||threadStarts!=starts+1)return -1;
  return 1;
 }
-extern "C" __declspec(dllexport) int Stop(){assist::retireWorldFrame();return assist::worldFramePublication.stop()?1:0;}
+
