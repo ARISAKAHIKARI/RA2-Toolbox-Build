@@ -21,6 +21,7 @@ struct WorldFrameCommandFixture {
  static bool enabled(){return false;}
  void invalidate(){}
  bool stop(){return true;}
+ bool deferBusy(const worldframe::Key&,uint32_t,uint64_t,bool=false){return false;}
  bool request(const worldframe::Key&,uint32_t,uint64_t,const std::vector<uint32_t>&,bool=false){return false;}
  bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&,worldframe::CommandRoster* =nullptr,bool=false){return false;}
 };
@@ -136,6 +137,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // Always poll take() first. An identical pending request skips expensive
   // page-list assembly, but paused-frame recovery retries after 16ms.
   if(commandRequestGate.defer(key,graphDemand,requestRevision,globalVehicles,key.tick))return false;
+  // A matching in-flight worker already owns this request; avoid rebuilding
+  // even the 16K-page dependency list on the Game callback.
+  // take() above still rejects every stale / previous-frame result.
+  if(worldFrameCommandWorker.deferBusy(key,graphDemand,requestRevision,globalVehicles))return false;
   // Only address dependencies are copied on the game thread (bounded by
   // MaxPages); sorting, page I/O and all unit graph traversal are background.
   auto&requests=worldFrameCaptureRequests;
