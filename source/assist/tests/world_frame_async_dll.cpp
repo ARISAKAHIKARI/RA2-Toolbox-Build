@@ -21,9 +21,10 @@ static HANDLE WINAPI delayedMapping(HANDLE file,LPSECURITY_ATTRIBUTES security,D
 #define CreateFileMappingW delayedMapping
 #define CreateThread countedThread
 #include "../../shared/source/world_frame_async_win.h"
-#include "../../shared/source/world_frame_command_worker_win.h"
 #undef CreateFileMappingW
 #undef CreateThread
+// The publication's counted thread hook must not instrument command workers.
+#include "../../shared/source/world_frame_command_worker_win.h"
 #define WORLD_FRAME_FIXTURE_ONLY
 #define REAL_WINDOWS_RPM
 #include "world_frame_core.cpp"
