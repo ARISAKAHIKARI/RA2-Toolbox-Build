@@ -46,6 +46,18 @@ assert "A failed stamp read means UNKNOWN" in bridge
 # and authorized to issue native orders in one callback.
 assert "std::sort(knownIDs" not in bridge
 assert "repairResultGate.step(" in bridge
+# Command admission is persistent: transient queue failure cannot consume a
+# one-shot Ctrl+D Deploy. Carrier groups are hash linked, not 32K sorted.
+native_orders = (root / "native_orders_bridge.h").read_text()
+unload_policy = (root / "unload_admission.h").read_text()
+assert "unloadretry::classify(result)" in native_orders
+assert "unloadretry::committed(outcome)" in native_orders
+assert "unloadRosterGroups.add(" in native_orders
+assert "std::sort(unloadRoster" not in native_orders
+assert "ReindexBudget=128" in unload_policy
+assert "while(rebuildAt<count&&work++<ReindexBudget)" in unload_policy
+assert "if(!worldFrameCommandWorker.enabled())indexWorld(frame);" in bridge
+
 
 assert 'THREAD_PRIORITY_BELOW_NORMAL' in worker
 assert 'WaitForSingleObject(thread_,0)' in worker
