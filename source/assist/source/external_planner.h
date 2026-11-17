@@ -1,5 +1,6 @@
 #pragma once
 #include "protocol.h"
+#include "planner_provenance.h"
 #include "native_orders.h"
 #include "ore_queue.h"
 #include "business_effects.h"
@@ -160,12 +161,7 @@ public:
    // Host does not dereference these raw numbers. The final native gateway
    // must reject any changed/missing identity; it cannot rebind to a new UID.
    for(auto&o:orders){
-    const Actor*source=actor(o.unit);
-    const Actor*target=o.target?actor(o.target):nullptr;
-    const Actor*dest=o.destinationTag==0x34?actor(o.destination):nullptr;
-    o.unitPointer=source?source->sourcePointer:0;
-    o.targetPointer=target?target->sourcePointer:0;
-    o.destinationPointer=dest?dest->sourcePointer:0;
+    stampProvenance(o,[&](uint32_t id){return actor(id);});
     if(o.purpose==DefenseOrder)defenseSent_[o.unit]=world.tick;
    }
    return orders;
