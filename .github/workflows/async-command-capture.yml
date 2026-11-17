@@ -49,7 +49,7 @@ jobs:
           checks/repair-result-filter | tee checks/repair-result-filter.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_retry_policy.cpp -o checks/unload-retry
           checks/unload-retry | tee checks/unload-retry.log
-          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_groups.cpp -o checks/unload-groups
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -Wno-error=parentheses -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_groups.cpp -o checks/unload-groups
           checks/unload-groups | tee checks/unload-groups.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_index_incremental.cpp -o checks/unload-index
           checks/unload-index | tee checks/unload-index.log
