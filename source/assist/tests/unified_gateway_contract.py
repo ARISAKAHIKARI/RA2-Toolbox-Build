@@ -16,7 +16,10 @@ assert 'RA2Assist_v042_' in bridge and 'RA2Assist_v042_' in ui
 assert bridge.count('static bool nativeMission(')==1
 assert 'static bool nativeObjectEvent(' in bridge
 assert 'static bool nativeProduceEvent(' in bridge
-assert 'nativeMission(house,infantry,7,0,vehicle,0x34' in load
+assert 'submitProvenMission(house,infantry,7,0,vehicle,0x34' in load
+assert 'static bool submitProvenMission(' in bridge
+assert 'executionproof::verify(*proof' in bridge
+assert 'executionproof::ordered(*proof' in bridge
 assert 'static bool nativeMission(' not in native
 assert 'nativeObjectEvent(get<int>(lastHouse+0x30),0x16,' in (root/'pointer_bridge.h').read_text()
 assert '++snap.queuedEvents' in bridge and 'snap.observedEvents+=missionObserver.pollWithReceipts(' in bridge
