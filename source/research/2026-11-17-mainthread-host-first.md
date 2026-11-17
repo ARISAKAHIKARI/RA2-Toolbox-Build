@@ -22,6 +22,6 @@
 不得仅因为 frame/serial 相同便将可能混合多个模拟时刻的后台 RPM 作为联机执行输入。未来采样拆分须做生产者身份、序号、世界/House/对象世代双重验证、异常退役、不能同帧补页的状态机，以及实时下令前轻量复核，保证未知读取不被当作对象消失。
 
 ## 验证与范围
-`source/assist/tests/host_frame_demand.cpp` 使用生产头执行：无活跃功能的三种配置、4 类 planner、6 类自动任务、已有任务即使配置关掉仍唤醒，以及无关 UI flags 不应唤醒。CI `.github/workflows/host-first-offload.yml` 同时运行现有 Runtime 热路径和共享采样核心测试，配套 Windows x64 Host / x86 Runtime 成套编译和 ABI 核验。是否通过以对应 Actions 的真实结论为准；当前没有游戏/联机 FPS 证明。
+`source/assist/tests/host_frame_demand.cpp` 使用生产头执行：无活跃功能的三种配置、4 类 planner、6 类自动任务、已有任务即使配置关掉仍唤醒，以及无关 UI flags 不应唤醒。CI `.github/workflows/host-first-offload.yml` 同时运行当前仍维护的封口样本保留、战术采样和共享采样核心测试，配套 Windows x64 Host / x86 Runtime 成套编译和 ABI 核验。旧 `runtime_sampling_hotpath.py` 的独立抽取夹具因当前 `bridge.cpp` 已变更依赖，执行出现 `autoWas/lastAuto/sharedWorldWanted/queuedUnload/collectDodgeInput` 等未声明；这是夹具代码与当前入口脱节，不能当作本轮产品回归通过或失败的证据，也没有静默宣称已修复该旧夹具。是否通过以对应 Actions 的真实结论为准；当前没有游戏/联机 FPS 证明。
 
 此轮没有私有 EXE、反汇编、游戏函数地址、ABI 或字段偏移的新结论；沿用 INDEX 中既有支持样本范围。未将纯计算迁移的回归测试冒充 FPS 性能测试。若实际工作负载中 `shared->externalDisplay` 始终启用，保留原生帧通知是必要的，本轮不会宣称它已消失。
