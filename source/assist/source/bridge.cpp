@@ -22,6 +22,7 @@
 #include "autoload.h"
 #include "outgoing_batch.h"
 #include "object_index.h"
+#include "global_vehicle_scan_policy.h"
 #include "hook_policy.h"
 #include "activation_diagnostic.h"
 #include "event_delivery.h"
@@ -125,6 +126,9 @@ static ManualVersions manualVersions;static ObjectIndexView worldObjects;static 
 // Reuse the mandatory world-index traversal for global magnetron discovery.
 // Input and planning still revalidate identities and native eligibility.
 static uint32_t globalVehicleCandidates[16384];static int globalVehicleCandidateCount=0;static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
+// The candidate list itself is worker-owned in async mode, not copied into
+// another 64 KiB main-thread array on every accepted command snapshot.
+static globalvehicle::Cursor globalVehicleScan;
 static ObjectIndex advancedObjects;
 static int outgoingFrame=-1,outgoingBudget;
 static void recordReceipt(const gateway::Receipt&r){
@@ -234,8 +238,8 @@ static bool refreshWorldIndex(int frame,bool executionGuards){
    indexedGlobalVehicles=worldFrameCommandRoster.global;indexedVehicleHouse=lastHouse;
    const auto&candidates=worldFrameCommandRoster.globalVehicles;
    globalVehicleCandidateCount=int(std::min<size_t>(16384,candidates.size()));
-   if(globalVehicleCandidateCount)
-    std::memcpy(globalVehicleCandidates,candidates.data(),size_t(globalVehicleCandidateCount)*4);
+   // Ownership is already on the dispatcher, and the vector remains sealed
+   // until the next controlled Snapshot/roster swap. Never copy all entries.
    indexedFrame=frame;adoptedSerial=worldFrame.key.serial;
   }
   return true;
@@ -256,6 +260,15 @@ static bool refreshWorldIndex(int frame,bool executionGuards){
  indexWorld(frame);if(indexedFrame==frame)return true;
  failedMatch=match;failedFrame=frame;failedAt=now;return false;
 }
+// Never dereference an old/stale worker roster from a native command path.
+static uint32_t globalVehicleCandidateAt(int index){
+ if(index<0||index>=globalVehicleCandidateCount)return 0;
+ if(worldFrameCommandWorker.enabled()){
+  if(!commandRosterReady()||size_t(index)>=worldFrameCommandRoster.globalVehicles.size())return 0;
+  return worldFrameCommandRoster.globalVehicles[size_t(index)];
+ }
+ return globalVehicleCandidates[index];
+}
 // Native hook maintenance is still permitted to use exact per-object
 // admission, but must never rebuild a 16K-object roster when the dedicated
 // command capture worker owns all graph reads. A missing worker index is
@@ -267,7 +280,7 @@ static bool prepareWorldIndex(int frame){
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
 static void reset(bool retireHooks=true,bool preserveMissile=false){retireWorldFrame();restorePrivateOut();minerDefenseReset();restoreTriggerInput();restoreSinglePlayerFPS();resetOwnGround();superweaponGrantReset();restoreMapVisibilityParameters();restoreControlParameters();restoreTechEnhanceParameters();restoreTechParameters();nativePlacementReset();if(retireHooks)nativePlacementCompletionReset();restorePauseView();resetMoOrders();resetDirectAir();resetDirectSell();resetBombBoard();if(retireHooks){restoreSidebarView();resetHookReadiness();restoreCrcMapShadow();restoreBuildTimeTooltip();restorePrivateOut();restoreNativeSellCursor();restoreNativeMegaGateway();restoreControlObjectOwner();restoreControlCommandOwner();restoreNetworkSender();restoreTechEnhancement();enhancementChangedCatalogue=false;stickyTick(true);restoreViewZoom();}stickyCount=0;runtimeKeys.clear();resetLoadCalculation();resetRuntimePlanner();catalogueReady=false;catalogueHash=0;catalogueAt=0;catalogueDirty=true;resetFeatureTypes();resetPointerInput();if(sh&&sh->pointer.request!=sh->pointer.ack){sh->pointer.result=-7;sh->pointer.accepted=0;sh->pointer.rejected=sh->pointer.intent.count;MemoryBarrier();sh->pointer.ack=sh->pointer.request;}nativeMegaQueueCallDepth=nativeObjectQueueCallDepth=0;snap.lastSubmitError=0;missionObserver.clear();actorFrameArbiter.clear();actorLeaseArbiter.clear();snap.megaQueueStatus=0;snap.megaQueueAccepted=snap.megaQueueRejected=0;snap.objectQueueStatus=0;snap.objectQueueAccepted=snap.objectQueueRejected=0;
- snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;if(retireHooks)restoreClickHooks();resetCooperativeState();resetFormation();if(!preserveMissile)resetMissileControl();resetBurstControl();resetDodgeControl();if(retireHooks&&sh)sh->clickHookStatus=0;clearOreOrders();if(retireHooks)restorePlacement();indexedFrame=indexedCount=-1;outgoingFrame=-1;clearNativeOrders(retireHooks);snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.unloadIssued=0;if(retireHooks){snap.nativeHookStatus=0;snap.techOpen=0;restoreTech();restoreCSHook();}clearFlashes();resetProduction();if(retireHooks)snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;repairCalculationPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;if(retireHooks){snap.techVisible=snap.techUnavailable=0;snap.techError=techDataPending()?-44:0;}snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;if(retireHooks)snap.csHookStatus=0;snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;if(retireHooks)memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
+ snap.queueSent=snap.queueFull=snap.queueTimingFailure=snap.planDeferred=snap.queuedEvents=snap.observedEvents=snap.commandRejected=snap.receiptCancelled=snap.receiptExpired=snap.receiptDropped=0;snap.receiptWrite=snap.receiptCount=0;if(retireHooks)restoreClickHooks();resetCooperativeState();resetFormation();if(!preserveMissile)resetMissileControl();resetBurstControl();resetDodgeControl();if(retireHooks&&sh)sh->clickHookStatus=0;clearOreOrders();if(retireHooks)restorePlacement();indexedFrame=indexedCount=-1;globalVehicleScan.reset();outgoingFrame=-1;clearNativeOrders(retireHooks);snap.labels=snap.selected=snap.transports=snap.used=snap.capacity=snap.swCount=0;snap.unloadIssued=0;if(retireHooks){snap.nativeHookStatus=0;snap.techOpen=0;restoreTech();restoreCSHook();}clearFlashes();resetProduction();if(retireHooks)snap.inputPatchMask=0;repairCount=repairAt=repairDone=0;repairAckRequest=0;repairAckPending=false;repairCalculationPending=false;for(auto&v:lastIdle)v=0;productionBaseline=false;snap.typeCount=0;snap.threatCount=snap.crateCount=crateCount=0;cratesOn=false;autoWas=false;snap.autoRepair=0;snap.repairTotal=0;if(retireHooks){snap.techVisible=snap.techUnavailable=0;snap.techError=techDataPending()?-44:0;}snap.crateHookStatus=snap.crateResultCount=0;snap.crateResultSerial=0;sceneResultSerial=0;if(retireHooks)snap.csHookStatus=0;snap.csConverted=0;loadLedger.clear();snap.loadUnits=snap.loadVehicles=snap.loadIssued=snap.loadWaiting=snap.loadUnassigned=0;if(retireHooks)memset(techAllowed,0,sizeof techAllowed);pendingRepairs.clear();}
 static void mapName(wchar_t*out,DWORD p){mappingName(out,p);}
 static HANDLE controllerProcess;static DWORD controllerPID,controllerCheckAt;
 static void disconnect(){
