@@ -43,7 +43,8 @@ class Recorder {
  uint32_t since_=0,match_=0,serial_=0;
 public:
  void reset(uint32_t now,uint32_t match){
-  for(auto&row:rows_)row={};since_=now;match_=match;
+  for(auto&row:rows_)row={};
+  since_=now;match_=match;
  }
  void add(unsigned stage,uint32_t us){
   if(stage<StageCount)rows_[stage].add(us);
