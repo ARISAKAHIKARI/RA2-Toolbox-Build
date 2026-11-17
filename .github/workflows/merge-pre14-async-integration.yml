@@ -1,4 +1,5 @@
 name: Integrate stable pre14 lineage and async command fixes
+# Explicitly triggered to merge stable v1.0.51 (including pre.14) with async work.
 on:
   push:
     branches: [codex/async-command-capture-20261117]
