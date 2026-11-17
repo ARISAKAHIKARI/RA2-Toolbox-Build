@@ -16,51 +16,27 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Try exact two-parent three-way merge without writing to production
+      - name: Simulate stable pre.14 lineage plus async without changing any branch
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p integration-evidence
-          git config user.name 'RA2Toolbox Integration Audit'
-          git config user.email 'integration-audit@users.noreply.github.com'
           git fetch --no-tags origin 'refs/tags/v1.0.51:refs/tags/v1.0.51'
           git fetch --no-tags origin 'refs/heads/codex/async-command-capture-20261117:refs/remotes/origin/async-command-capture'
           git checkout -B integration-audit v1.0.51
-          echo "BASE_STABLE=$(git rev-parse HEAD)" | tee integration-evidence/merge-report.txt
-          echo "ASYNC_HEAD=$(git rev-parse refs/remotes/origin/async-command-capture)" | tee -a integration-evidence/merge-report.txt
+          echo "BASE_STABLE=$(git rev-parse HEAD)"
+          echo "ASYNC_HEAD=$(git rev-parse refs/remotes/origin/async-command-capture)"
           if git merge --no-commit --no-ff refs/remotes/origin/async-command-capture >integration-evidence/merge.log 2>&1; then
-            echo 'MERGE_RESULT=clean' | tee -a integration-evidence/merge-report.txt
+            echo 'MERGE_RESULT=clean'
           else
-            echo 'MERGE_RESULT=conflicts' | tee -a integration-evidence/merge-report.txt
+            echo 'MERGE_RESULT=conflicts'
             git diff --name-only --diff-filter=U | tee integration-evidence/conflict-paths.txt
             while IFS= read -r file; do
               test -n "$file" || continue
-              printf '%s: ' "$file"
-              grep -c '^<<<<<<<' "$file" || true
-            done < integration-evidence/conflict-paths.txt | tee integration-evidence/conflict-counts.txt
-            echo '===== Conflict list ====='
-            cat integration-evidence/conflict-paths.txt
-            python - <<'PY'
-          from pathlib import Path
-          import re
-          for file in Path('integration-evidence/conflict-paths.txt').read_text().splitlines():
-              text=Path(file).read_text(errors='replace')
-              matches=list(re.finditer(r'^<<<<<<< HEAD\\n(.*?)^=======\\n(.*?)^>>>>>>> .*?          fi
-          git diff --stat | tail -60 | tee integration-evidence/change-stat.txt
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: pre14-async-three-way-conflict-report
-          retention-days: 14
-          path: integration-evidence/
-,text,re.M|re.S))
-              for i,m in enumerate(matches,1):
-                  print(f'@@CONFLICT {file}#{i}')
-                  print('@@STABLE_BEGIN\\n'+m.group(1).rstrip()+'\\n@@STABLE_END')
-                  print('@@ASYNC_BEGIN\\n'+m.group(2).rstrip()+'\\n@@ASYNC_END')
-          PY
+              echo "===== CONFLICT FILE $file ====="
+              awk '/^<<<<<<< HEAD/ {show=1} show {print} /^>>>>>>>/ {show=0}' "$file"
+            done < integration-evidence/conflict-paths.txt
           fi
-          git diff --stat | tail -60 | tee integration-evidence/change-stat.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
