@@ -283,7 +283,7 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
 static outgoing::Batch planBatch;
 // Shared admission for host and Runtime decisions. Neither planner owns a
 // constructor, RNG, mission write, private hook or alternative event channel.
-static int admitPlannerOrder(const planner::Order&o,uint32_t house){
+static int admitPlannerOrder(const planner::Order&o,uint32_t house,uint32_t sourceMatch,uint32_t sourceTick){
  // A fresh in-range target takes precedence over any delayed movement proposal.
  // Reject an obsolete movement proposal immediately so an external planner can
  // receive its receipt and use the next world; do not block its whole batch
@@ -305,9 +305,7 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  // Identity provenance comes from the original captured World, not a
  // possibly recycled unit rebound after the Host finishes computing.
  const uint32_t destinationID=o.destinationTag==0x34?o.destination:0;
- const bool localHarvest=o.purpose==planner::OreHarvestOrder;
- const executionproof::Ticket proof{localHarvest?match:sh->planMatch,house,
-   localHarvest?0u:sh->planTick,
+ const executionproof::Ticket proof{sourceMatch,house,sourceTick,
    {o.unit,o.unitPointer,o.token},
    {o.target,o.targetPointer},
    {destinationID,o.destinationPointer}};
@@ -318,6 +316,11 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  consumePlanning(0);minerDefenseRememberOre(o,house);
  if(o.purpose==1||o.purpose==3){int index=orderIndex(worldByID(o.unit));if(index>=0){auto&r=nativeOrders[index];r.stopped=o.mission==5;r.attacking=o.mission==1;r.target=o.target;r.sentFrame=get<int>(0xA8ED84);}}
  return 1;
+}
+// Legacy local Harvest orders retain their own episode identity and deadline.
+// Host and Runtime computed plans MUST pass their original capture timestamps.
+static int admitPlannerOrder(const planner::Order&o,uint32_t house){
+ return o.purpose==planner::OreHarvestOrder?admitPlannerOrder(o,house,match,0):-1;
 }
 static void externalOrdersTick(uint32_t house,int frame,DWORD now){
  uint32_t request=sh->planRequest;
@@ -340,7 +343,7 @@ static void externalOrdersTick(uint32_t house,int frame,DWORD now){
    compute::Feature family=o.purpose==planner::CombatOrder?compute::Advanced:o.purpose==planner::MagnetronDropOrder?compute::MagnetronDrop:o.purpose==planner::MagnetronOrder?(index>=0&&nativeOrders[index].global?compute::MagnetronGlobal:compute::Magnetron):o.purpose==planner::DefenseOrder?compute::Defense:compute::Ore;
    if(compute::inside(sh->computeApplied,family)){planBatch.reject();continue;}
    if(!fresh()){result=-7;break;}
-   int admitted=admitPlannerOrder(o,house);
+   int admitted=admitPlannerOrder(o,house,sh->planMatch,sh->planTick);
    if(!admitted)return;
    if(admitted<0)planBatch.reject();else planBatch.accept();
   }
