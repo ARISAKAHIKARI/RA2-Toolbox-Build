@@ -117,6 +117,38 @@ void hostVisual(){
  std::printf("PASS Host visual isolation: control %u reads/%u bytes/%zu pages; 512 display pages stay external; frozen control, shared reuse, pause recovery, provenance and independent frame/world rejection\n",rawCalls,rawBytes,rawPages);
 }
 
+// A rich Host display (unit-panel passengers + threat bubbles) may build
+// its entire graph outside the game thread. The raw producer contributes
+// only its immutable scene boundary; a pure visual demand never changes
+// the authoritative command read-set or its source timestamp.
+void hostRichVisualFromBoundary(){
+ Memory m;setup(m);Read live{&m};auto raw=std::make_shared<worldframe::Snapshot>();
+ auto k=key();k.demand=worldframe::BoundaryOnlyKeyBit;raw->reset(k);
+ worldframe::CaptureGraph<Read>boundary(*raw,live);
+ CHECK(boundary.capture(worldframe::Base|worldframe::HostDisplayOnly,{}));
+ CHECK(raw->seal()&&raw->counters.rosterCaptures==0);
+ CHECK(!raw->find(ActorA&~4095u));
+ const auto beforeReads=raw->counters.calls,beforePages=raw->pages.size();
+ const uint32_t wanted=worldframe::Resources|worldframe::HostVisualPassengers|worldframe::HostVisualCombat;
+ CHECK(worldframe::visualDemand(wanted));
+ CHECK(worldframe::runtimeDemand(wanted)==worldframe::Base);
+ CHECK(worldframe::visualDemand(worldframe::Visual|worldframe::HostVisualPassengers));
+ CHECK(!worldframe::visualDemand(worldframe::Visual|worldframe::Combat));
+ CHECK(worldframe::runtimeDemand(worldframe::Visual|worldframe::Combat)==(worldframe::Base|worldframe::Combat));
+ worldframe::VisualCache host;
+ auto graph=host.acquire(raw,wanted,100,live);
+ CHECK(graph&&graph->controlSource==raw);
+ CHECK(graph->key.serial==raw->key.serial&&graph->key.tick==raw->key.tick);
+ int hp=0;
+ CHECK(graph->read(ActorA+0x6C,&hp,4)&&hp==100);
+ CHECK(graph->read(Passenger+0x6C,&hp,4)&&hp==100);
+ CHECK(graph->read(Weapon,&hp,4));
+ CHECK(!raw->read(ActorA+0x6C,&hp,4));
+ CHECK(raw->counters.calls==beforeReads&&raw->pages.size()==beforePages);
+ CHECK(graph->counters.rosterCaptures>raw->counters.rosterCaptures);
+ std::printf("PASS rich Host visual graph: boundary %u calls/%zu pages; Host %u calls/%zu pages; passenger and combat actor refs off-game-thread\\n",
+  beforeReads,beforePages,graph->counters.calls,graph->pages.size());
+}
 void overlap(){
  Memory m;for(uint32_t i=0x10000;i<0x13000;++i)m.bytes[i]=uint8_t(i);
  worldframe::Snapshot s;s.reset(key());Read read{&m};std::array<uint8_t,24> out{};
@@ -671,7 +703,7 @@ void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavi
 
 #ifndef WORLD_FRAME_FIXTURE_ONLY
 int main(){
- fixture::hostVisual();fixture::overlap();fixture::partial();fixture::graphs();fixture::speculativeBatchFaultIsolation();fixture::capacity();fixture::nothrowPages();
+ fixture::hostVisual();fixture::hostRichVisualFromBoundary();fixture::overlap();fixture::partial();fixture::graphs();fixture::speculativeBatchFaultIsolation();fixture::capacity();fixture::nothrowPages();
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
  fixture::platform();
 #endif
