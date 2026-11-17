@@ -50,7 +50,8 @@ struct Queue {
   if(at<0||at>=count)return;
   carriers[at]=carriers[--count];
   if(at<count)insertIndex(carriers[at],at);
-  if(at<cursor)cursor=at;if(cursor>=count)cursor=0;
+  if(at<cursor)cursor=at;
+  if(cursor>=count)cursor=0;
   // The removed UID may still hash to an old slot. find() rejects it by
   // checking the currently occupied carrier and the next rebuild reclaims it.
   ++changes;
