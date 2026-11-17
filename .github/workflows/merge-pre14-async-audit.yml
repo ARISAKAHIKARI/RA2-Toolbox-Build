@@ -21,6 +21,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p integration-evidence
+          git config user.name 'RA2Toolbox Merge Audit'
+          git config user.email 'merge-audit@users.noreply.github.com'
           git fetch --no-tags origin 'refs/tags/v1.0.51:refs/tags/v1.0.51'
           git fetch --no-tags origin 'refs/heads/codex/async-command-capture-20261117:refs/remotes/origin/async-command-capture'
           git checkout -B integration-audit v1.0.51
@@ -30,6 +32,7 @@ jobs:
             echo 'MERGE_RESULT=clean'
           else
             echo 'MERGE_RESULT=conflicts'
+            tail -50 integration-evidence/merge.log
             git diff --name-only --diff-filter=U | tee integration-evidence/conflict-paths.txt
             while IFS= read -r file; do
               test -n "$file" || continue
