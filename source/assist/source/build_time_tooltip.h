@@ -8,7 +8,7 @@
 // CCToolTip callback runs first; Process724AD0 measures/copies our text into
 // the same native box. Never extend Sidebar's 66-wchar static buffer in place.
 // Layout/ABI: YRpp d979554; synthetic query pattern: Phobos f06797e (GPL-3.0).
-static bool buildTimeTooltipActive,buildTimeTooltipFailed,buildTimeTooltipClaimed;
+static bool buildTimeTooltipActive,buildTimeTooltipFailed,buildTimeTooltipClaimed,buildTimeTooltipColdChecked;
 static uint32_t buildTimeTooltipFailedMatch;
 extern "C" void AssistBuildTimeTooltipFailed(){buildTimeTooltipFailed=true;buildTimeTooltipFailedMatch=match;}
 static void restoreBuildTimeTooltip();
@@ -58,9 +58,10 @@ static void buildTimeTooltipTick(){
  sh->buildTimeTooltipStatus=buildTimeTooltipActive?1:-2;
 }
 static void restoreBuildTimeTooltip(){
- // When this feature has never claimed the Runtime slot, calling the
- // cross-module owner on every 8 ms game-thread tick is pure overhead.
- if(!buildTimeTooltipActive&&!buildTimeTooltipClaimed){
+ // A reconnected Assist DLL may inherit an old pinned Runtime owner from
+ // an interrupted shutdown. Retire it ONCE on the first disabled tick.
+ // Afterwards, the idle 8 ms game-thread path never crosses into Runtime.
+ if(!buildTimeTooltipActive&&!buildTimeTooltipClaimed&&buildTimeTooltipColdChecked){
   if(sh)sh->buildTimeTooltipStatus=0;
   return;
  }
@@ -69,7 +70,7 @@ static void restoreBuildTimeTooltip(){
  if(!NativeTooltipBuildTime(false)){
   buildTimeTooltipActive=true;if(sh)sh->buildTimeTooltipStatus=-2;return;
  }
- buildTimeTooltipActive=false;buildTimeTooltipClaimed=false;
+ buildTimeTooltipActive=false;buildTimeTooltipClaimed=false;buildTimeTooltipColdChecked=true;
  if(sh)sh->buildTimeTooltipStatus=0;
 }
 // No gameplay object is constructed, registered, charged or ticked. Only the
