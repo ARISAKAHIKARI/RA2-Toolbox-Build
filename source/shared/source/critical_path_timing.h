@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <type_traits>
+#include <cstddef>
 
 // Diagnostic-only, one game-thread writer. The hot path performs no allocations,
 // locks, file I/O, printf, sorting or extra game-memory reads. Quantile sorting
@@ -32,10 +33,11 @@ struct Row {
  }
 };
 struct Snapshot {
- uint32_t version=Version,serial=0,match=0,tick=0,intervalMs=0;
+ uint32_t version=Version,serial=0,match=0,tick=0,intervalMs=0,pad=0;
  Row rows[StageCount]{};
 };
 static_assert(std::is_standard_layout<Snapshot>::value&&std::is_trivially_copyable<Snapshot>::value,"critical path IPC payload must be a POD");
+static_assert(offsetof(Row,sumUs)==16&&offsetof(Row,samples)==24&&sizeof(Row)==536&&offsetof(Snapshot,rows)==24&&sizeof(Snapshot)==4848,"Critical timing layout differs between x86 and x64");
 class Recorder {
  Row rows_[StageCount]{};
  uint32_t since_=0,match_=0,serial_=0;
