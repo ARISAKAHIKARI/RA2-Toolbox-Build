@@ -44,9 +44,7 @@ static bool autoWas;static DWORD lastAuto;
 static repairdelivery::Pending<> pendingRepairs;
 // The extracted production repair gate and command-worker admission retain
 // their pure in-process fixtures, not real game thread or process objects.
-static repairfilter::Filter repairResultGate;
-static uint32_t repairValidatedSerial=0;
-static unsigned repairStagedCount=0;
+// repairResultGate and staging counters come from extracted production source.
 struct FixtureCommandWorker {bool enabled()const{return false;}};
 static FixtureCommandWorker worldFrameCommandWorker;
 static bool commandRosterReady(){return false;}
