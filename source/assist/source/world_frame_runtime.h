@@ -79,8 +79,8 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // Re-export the existing immutable sample; publish() deduplicates its exact
   // descriptor. Never recapture or invent a newer observation/acquisition tick.
   if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)&&
-      (graphDemand&~worldFrameCapturedDemand)==0&&
-      (!asyncCommand||worldFrameCapturedRevision==currentRevision)){
+      (!asyncCommand||((graphDemand&~worldFrameCapturedDemand)==0&&
+                       worldFrameCapturedRevision==currentRevision))){
    worldFramePublication.publish(worldFrame,worldFrameServer);return true;
   }
   // A command in this very frame upgrades the zero-page display token to a
