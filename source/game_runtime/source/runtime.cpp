@@ -6,9 +6,12 @@
 #include "../../shared/source/game_entry_client.h"
 #include "../../shared/source/runtime_fp_scope.h"
 #include "frame_signal_runtime.h"
+#include "../../shared/source/critical_path_clock_win.h"
 #include "native_tooltip_runtime.h"
 #include "../../shared/source/debug_entry_policy.h"
 extern "C" void AssistRuntimeMessage(int,WPARAM,LPARAM);
+extern "C" int __cdecl AssistCriticalTimingEnabled();
+extern "C" void __cdecl AssistCriticalTimingRecord(unsigned,uint32_t);
 extern "C" void CursorRuntimeMessage(int,WPARAM,LPARAM);
 extern "C" void CursorRuntimePost(int,WPARAM,LPARAM);
 extern "C" void AssistRuntimeWatchdog();
@@ -168,6 +171,9 @@ static bool connect(DWORD owner,WakeTrace& trace){
  mapping=m;control=c;controller=p;controllerID=owner;ensureExceptionObserver();trace.report(runtime::Connected);return true;
 }
 extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARAM wp,LPARAM lp){
+ static uint32_t timingCalls=0;
+ const bool sampled=code>=0&&wp==PM_REMOVE&&((++timingCalls&15u)==0)&&AssistCriticalTimingEnabled();
+ const uint64_t timingStart=sampled?criticalpath::ticks():0;
  // End isolation before chaining into any other module's Windows hook. SEH
  // finally also restores our infrastructure when a platform handler unwinds.
  RuntimeFPScope fp;bool dispatchOwned=false;
@@ -188,7 +194,13 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
        LONG ready=InterlockedExchange(&control->ready,0)&InterlockedCompareExchange(&control->enabled,0,0);
        if(controller&&WaitForSingleObject(controller,0)==WAIT_TIMEOUT){
         // Cursor work cannot be starved by a stream of tactical commands.
-        if(ready&runtime::Cursor)CursorRuntimeMessage(code,wp,lp);
+        if(ready&runtime::Cursor){
+         static uint32_t cursorCalls=0;
+         const bool timeCursor=((++cursorCalls&15u)==0)&&AssistCriticalTimingEnabled();
+         const uint64_t cursorStart=timeCursor?criticalpath::ticks():0;
+         CursorRuntimeMessage(code,wp,lp);
+         if(cursorStart)AssistCriticalTimingRecord(criticalpath::CursorWork,criticalpath::elapsedUs(cursorStart));
+        }
         if(ready&runtime::Tactical)AssistRuntimeMessage(code,wp,lp);
         if(ready)NativeTooltipMaintain(true);
         if((control->enabled&runtime::Tactical)&&(msg->message==WM_MOUSEMOVE||msg->message==WM_KEYDOWN||msg->message==WM_KEYUP||msg->message==WM_SYSKEYDOWN||msg->message==WM_SYSKEYUP||msg->message==WM_LBUTTONDOWN||msg->message==WM_LBUTTONDBLCLK||msg->message==WM_LBUTTONUP||msg->message==WM_RBUTTONDOWN||msg->message==WM_RBUTTONDBLCLK||msg->message==WM_RBUTTONUP||msg->message==WM_MBUTTONDOWN||msg->message==WM_MBUTTONDBLCLK||msg->message==WM_MBUTTONUP||msg->message==WM_XBUTTONDOWN||msg->message==WM_XBUTTONDBLCLK||msg->message==WM_XBUTTONUP))AssistRuntimeFilter((void*)lp);
@@ -201,6 +213,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimeHook(int code,WPARA
    }else if(control)InterlockedIncrement(&control->reentrant);
   }
  },[&]{if(dispatchOwned)InterlockedExchange(&dispatching,0);fp.restore();});
+ if(timingStart)AssistCriticalTimingRecord(criticalpath::MessageHook,criticalpath::elapsedUs(timingStart));
  return CallNextHookEx(nullptr,code,wp,lp);
 }
 extern "C" __declspec(dllexport) LRESULT CALLBACK GameRuntimePostHook(int code,WPARAM wp,LPARAM lp){

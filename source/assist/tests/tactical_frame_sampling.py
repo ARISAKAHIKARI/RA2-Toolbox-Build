@@ -40,7 +40,11 @@ def production():
                       "static bool rawOreCompatible(", "static bool rawDockBusy(", "static bool rawDockLinked("):
         add(function(orders, signature))
     add('#include "raw_combat.h"')
-    add(function(source["bridge.cpp"], "static void indexWorld("))
+    # Inspect the actual synchronous roster collector, not its new optional
+    # QPC timing adapter. The production body is unchanged; only its local
+    # function name is restored in this portable fixture.
+    collector = function(source["bridge.cpp"], "static void indexWorldImpl(")
+    add(collector.replace("static void indexWorldImpl(", "static void indexWorld(", 1))
     add(function(source["bridge.cpp"], "static bool refreshWorldIndex("))
     add(function(source["bridge.cpp"], "static void sweepActiveLeases("))
     add(function(source["bridge.cpp"], "static gateway::MissionState observeMissionReceipt("))

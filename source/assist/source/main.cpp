@@ -1246,7 +1246,7 @@ static bool ensureBridge(){
  shared=(Shared*)MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared));if(!shared){DWORD error=GetLastError();releaseBridge();return bridgeConnectFailed(L"映射命令共享内存失败",error);}
  uint32_t hostWindow=gameinput::windowToken(ui);if(!hostWindow){releaseBridge();return bridgeConnectFailed(L"工具箱窗口句柄无法与 32 位运行组件互通",ERROR_INVALID_WINDOW_HANDLE);}
  memset(shared,0,sizeof *shared);shared->viewportHostCapabilities=nativeviewportprojection::HostHandshake;
- shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=hostWindow;shared->heartbeat=now;shared->readOnly=enabled?0u:1u;shared->readOnlyRequest=enabled?0u:1u;shared->flags=enabled?flags():0u;shared->scanMs=8;shared->repairMs=repairMs;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
+ shared->magic=Magic;shared->version=Version;shared->pid=pid;shared->owner=GetCurrentProcessId();shared->hostWindow=hostWindow;shared->heartbeat=now;shared->readOnly=enabled?0u:1u;shared->readOnlyRequest=enabled?0u:1u;shared->flags=enabled?flags():0u;shared->scanMs=8;shared->repairMs=repairMs;shared->criticalTimingEnabled=(diagEnabled||debugPageActive)?1u:0u;shared->externalDisplay=1;shared->driverMode=schedulerMode;shared->driverTarget=schedulerTarget;
  shared->megaQueueMode=megaQueueMode;shared->objectQueueMode=objectQueueMode;shared->driverStatus=0;if(enabled){syncAdditional();syncTypeConfig();}
  shared->clockTick=now;shared->clockStart=0;shared->clockFrequency=0;
  module=candidateModule;
@@ -1525,6 +1525,26 @@ static void performanceDiagnostic(){
    L" ownedExceptionsPerSecond="+std::to_wstring(hitsPerSecond)+L" controlCallbacks="+std::to_wstring(hardware.delta.control)+L" changed="+std::to_wstring(hardware.delta.changed)+
    L" admissionChecks="+std::to_wstring(hardware.delta.admissionChecks)+L" guardWorldCaptures="+std::to_wstring(hardware.delta.worldCaptures)+
    L" observedLogicFrames="+std::to_wstring(hardware.observedLogicFrames)+L" firstFrame="+std::to_wstring(hardware.firstLogicFrame)+L" lastFrame="+std::to_wstring(hardware.lastLogicFrame));
+ }
+ // Quantiles are computed only by the Host; the hooked thread writes values.
+ criticalpath::Snapshot timings{};bool validTiming=false;
+ for(unsigned attempt=0;attempt<2;++attempt){
+  const long seq=shared->criticalTimingSeq;if(seq&1)continue;
+  MemoryBarrier();timings=shared->criticalTiming;MemoryBarrier();
+  if(seq==shared->criticalTimingSeq&&timings.version==criticalpath::Version&&timings.serial){validTiming=true;break;}
+ }
+ if(validTiming&&timings.intervalMs&&DWORD(now-timings.tick)<3000){
+  for(unsigned stage=0;stage<criticalpath::StageCount;++stage){
+   const auto&row=timings.rows[stage];if(!row.sampled)continue;
+   const auto metric=criticalpath::summarize(row);
+   const std::string narrow=criticalpath::Names[stage];
+   diag(L"critical-path stage="+std::wstring(narrow.begin(),narrow.end())+
+    L" intervalMs="+std::to_wstring(timings.intervalMs)+L" samples="+std::to_wstring(metric.sampled)+
+    L" retained="+std::to_wstring(metric.stored)+L" stride="+std::to_wstring(criticalpath::Stride[stage])+
+    L" meanUs="+std::to_wstring(uint32_t(metric.meanUs+0.5))+
+    L" p95Us="+std::to_wstring(metric.p95Us)+L" p99Us="+std::to_wstring(metric.p99Us)+
+    L" maxUs="+std::to_wstring(metric.maxUs));
+  }
  }
  for(unsigned i=0;i<2;++i){const long seq=shared->worldSampleSeq;if(seq&1)continue;MemoryBarrier();
   const uint32_t serial=shared->worldSampleSerial,pages=shared->worldSamplePages,reads=shared->worldSampleReads,bytes=shared->worldSampleBytes,rosters=shared->worldSampleRosters,failures=shared->worldSampleFailures;const int frame=shared->worldSampleFrame;
@@ -2558,7 +2578,7 @@ static void tick(){
  if(needsBridge&&!shared)ensureBridge();
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
  if(shared){
-  shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;
+  shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;shared->criticalTimingEnabled=(diagEnabled||debugPageActive)?1u:0u;
   // Settings are published while the Runtime fence is still closed.
   MemoryBarrier();shared->readOnly=0;
   // The high marker announces this Host's handshake; low capability bits are

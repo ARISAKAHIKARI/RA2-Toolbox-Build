@@ -208,7 +208,11 @@ static void publishHardwarePerformance(){
  InterlockedIncrement(&sh->hardwarePerfSeq);sh->hardwarePerf=next;MemoryBarrier();InterlockedIncrement(&sh->hardwarePerfSeq);
 }
 static void publish(){
- if(!sh)return;inspectDebugBreakpointSignatures();publishDebugBreakpointStates();publishHardwarePerformance();const uint32_t active=service.activeTags();
+ if(!sh)return;
+ // Published only on the bound game thread; exception hot path only reads it.
+ service.timingEnabled=sh->criticalTimingEnabled!=0;
+ service.timingObserver=AssistCriticalTimingRecord;
+ inspectDebugBreakpointSignatures();publishDebugBreakpointStates();publishHardwarePerformance();const uint32_t active=service.activeTags();
  sh->hardwareSlotBudget=service.slotBudget();
  sh->triggerInputStatus=triggerFailure?triggerFailure:triggerDesired?(ready(triggerinput::Tag)?techbp::Ready:(refusedGroups&triggerinput::Tag)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(triggerinput::Tag)?techbp::Off:techbp::Waiting;
  sh->singlePlayerFPSStatus=singlefps::failure?singlefps::failure:singlefps::desired?(ready(singlefps::Tag)&&sh->singlePlayerFPSActive?techbp::Ready:(refusedGroups&singlefps::Tag)?techbp::Slots:service.state<0?service.state:techbp::Waiting):groupOff(singlefps::Tag)?techbp::Off:techbp::Waiting;
@@ -263,8 +267,14 @@ static bool configure(){
  const DWORD now=sh?sampleClock(sh):GetTickCount();
  if(!wanted){service.retire();attempted=0;retryAt=0;refusedGroups=0;}
  else if(service.activeTags()!=wanted){
-  if(attempted!=wanted||!retryAt||DWORD(now-retryAt)>=500){attempted=wanted;retryAt=now;resourceGroups|=wanted;service.configure(sites,wanted,callback);}
- }else if(!auditAt||DWORD(now-auditAt)>=500){auditAt=now;service.audit();}
+  if(attempted!=wanted||!retryAt||DWORD(now-retryAt)>=500){attempted=wanted;retryAt=now;resourceGroups|=wanted;{const uint64_t start=AssistCriticalTimingEnabled()?criticalpath::ticks():0;
+     service.configure(sites,wanted,callback);
+     if(start)AssistCriticalTimingRecord(criticalpath::HardwareAudit,criticalpath::elapsedUs(start));
+    }}
+ }else if(!auditAt||DWORD(now-auditAt)>=500){auditAt=now;
+   const uint64_t start=AssistCriticalTimingEnabled()?criticalpath::ticks():0;
+   service.audit();
+   if(start)AssistCriticalTimingRecord(criticalpath::HardwareAudit,criticalpath::elapsedUs(start));}
  // Slot exhaustion leaves the verified existing subset untouched.
  if(desired&&!failure)InterlockedExchange(&policy.enabled,ready(FullGroup)?1:0);
  if(enhancementDesired&&(!enhancementFailure||enhancementFailure==-7))InterlockedExchange(&policy.enhanced,ready(4)?1:0);

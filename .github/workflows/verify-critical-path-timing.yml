@@ -1,0 +1,95 @@
+name: Verify game-thread critical-path latency measurement
+on:
+  push:
+    branches: [feature/critical-path-timing-20261117]
+    paths:
+      - 'source/**'
+      - '.github/workflows/verify-critical-path-timing.yml'
+  pull_request:
+    paths:
+      - 'source/**'
+      - '.github/workflows/verify-critical-path-timing.yml'
+permissions:
+  contents: read
+concurrency:
+  group: critical-timing-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  critical-path-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile critical-path histogram fixture and check exact quantiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -UNDEBUG source/assist/tests/critical_path_timing.cpp -o /tmp/critical_path_timing
+          /tmp/critical_path_timing
+      - name: Exercise production tooltip idle/enable/restore source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/build_time_tick_idle.py
+      - name: Validate production hardware exception owner with portable Win32 boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/breakpoint_owner_rendezvous.py --out /tmp/critical-bp-owner
+      - name: Run full exact-page failure and asynchronous recovery fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/world_frame_core_test.py
+          python3 source/assist/tests/tactical_frame_sampling.py --out /tmp/game-budget-sampling
+          python3 source/assist/tests/unload_loaded_admission.py --out /tmp/game-budget-unload --current-only
+      - name: Check native hook ownership and MIX compatibility remain intact
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/debug_patch_policy.cpp -o /tmp/critical-owner
+          /tmp/critical-owner
+          for name in unit_monitor_mix_archive unit_info_panel_mix_cameos; do
+            g++ -std=c++17 -O2 -Wno-error=misleading-indentation -UNDEBUG "source/assist/tests/$name.cpp" -o "/tmp/$name"
+            "/tmp/$name"
+          done
+
+  windows-paired-compile:
+    needs: critical-path-regression
+    runs-on: windows-2022
+    timeout-minutes: 55
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Zig 0.13 and icon packaging dependencies
+        shell: pwsh
+        run: |
+          python -m pip install Pillow==11.3.0
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if ((& $zig version) -ne '0.13.0') {throw 'Incorrect Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force diagnostics,dist/compiled | Out-Null
+      - name: Compile x86 GameRuntime, critical timing ABI, and x64 WebView2 Host
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/dist/compiled"
+          bash source/build-zig-x64.sh > diagnostics/windows-build.log 2>&1 || { tail -130 diagnostics/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root dist/compiled --host-arch x64 --webview2
+          python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out diagnostics/async-recovery
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-critical-timing-windows-diagnostics
+          path: diagnostics/
+          retention-days: 14
