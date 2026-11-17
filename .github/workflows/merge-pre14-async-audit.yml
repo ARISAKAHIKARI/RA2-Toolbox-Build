@@ -28,7 +28,8 @@ jobs:
           git checkout -B integration-audit v1.0.51
           echo "BASE_STABLE=$(git rev-parse HEAD)"
           echo "ASYNC_HEAD=$(git rev-parse refs/remotes/origin/async-command-capture)"
-          if git merge --no-commit --no-ff refs/remotes/origin/async-command-capture >integration-evidence/merge.log 2>&1; then
+          git config core.autocrlf input
+          if git -c merge.renormalize=true merge -s ort -X renormalize -X diff-algorithm=histogram --no-commit --no-ff refs/remotes/origin/async-command-capture >integration-evidence/merge.log 2>&1; then
             echo 'MERGE_RESULT=clean'
           else
             echo 'MERGE_RESULT=conflicts'
