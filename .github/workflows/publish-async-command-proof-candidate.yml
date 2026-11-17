@@ -10,7 +10,7 @@ permissions:
   actions: read
 concurrency:
   group: ra2-command-proof-pre13-publish
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   portable:
@@ -146,6 +146,7 @@ jobs:
           - 修复 Ctrl+D 首次原生 Deploy 入队失败后任务被错误消耗；多名乘员逐一跟进，载员查找与任务索引改为限额处理
           - 自动装车 Enter 重试保留原始人工操作版本，玩家改令后不会被旧任务接管
           - Host 战术规划候选保留原始采样帧内的单位、攻击目标和目的对象指针，游戏线程以实时 UID、Owner、手动版本、目标和任务状态逐条验证
+          - Host 与 Runtime 本地规划分别传递其原始采样帧时间戳，矿车卸载后恢复采矿使用持续任务自己的身份；磁电 Object Event 也经过相同的原始身份验证
           - 异步采样繁忙时去重同场景任务，减少高频页面列表重组及主线程对完整单位索引的重复计算
 
           **安全限制**：Host 战术规划结果支持跨帧候选＋实时验证；通用 CommandCaptureWorker 的完整世界图仍保留严格同帧授权，试验功能默认关闭，不能把旧图当成命令授权。CI 仅证明离线回归与 Windows 编译通过，尚未验证游戏实测、JJ/CnCNet 联机或 FPS 提升。
