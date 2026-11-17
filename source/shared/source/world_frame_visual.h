@@ -31,7 +31,7 @@ template<class Live>VisualStamp visualStamp(Live live,const Snapshot&base){
     base.read(0x87F7E8+0x1244,&rh,4)&&
     bounds==out.bounds&&rw==out.rawWidth&&rh==out.rawHeight;
  }
- out.valid=ok&&sourceGeometry&&out.rawWidth>0&&out.rawHeight>0&&
+ out.valid=ok&&sourceGeometry&&
   active==1&&out.scenario==key.scenario&&out.cells==key.cells&&
   out.house==key.house&&out.count==key.cellCount&&
   out.session==key.session&&out.frame>=key.frame;
