@@ -168,16 +168,7 @@ public:
  int32_t visualFrame=-1;uint32_t visualTick=0;uint64_t visualSerial=0;
  explicit Snapshot(PageAllocator allocator={})noexcept:pages(allocator){}
  Snapshot(const Snapshot&)=delete;Snapshot&operator=(const Snapshot&)=delete;
- void reset(const Key&next){
-  controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;
-  key=next;counters={};
-  // A metadata-only boundary has no pages and therefore no populated
-  // index entries. Preserve that invariant and avoid clearing 128 KiB of
-  // buckets every display frame on the injected game thread.
-  const bool hadPages=pages.size()!=0;
-  pages.clear();if(hadPages)index_.fill(0);
-  sealed_=overflow_=false;
- }
+ void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};pages.clear();index_.fill(0);sealed_=overflow_=false;}
  bool sealed()const{return sealed_;}bool overflow()const{return overflow_;}
  bool seal(){sealed_=true;return !overflow_;}
  const Page*find(uint32_t address)const{
