@@ -24,6 +24,17 @@ int main(){
  assert(!gate.defer(a,demand,revision,true,110));
  Key nextFrame=a;++nextFrame.frame;
  assert(!gate.defer(nextFrame,demand,revision,false,110));
+ // A new simulation frame can coalesce the same *running request*
+ // without ever making the old frame's snapshot native command authority.
+ assert(coalesceInFlightWorld(a,nextFrame,demand,demand,revision,revision,false,false,25,true));
+ assert(!acceptCommandCapture(a,nextFrame,demand,demand,revision,revision,125));
+ assert(!coalesceInFlightWorld(a,nextFrame,demand,demand,revision,revision,false,false,80,true));
+ assert(!coalesceInFlightWorld(a,nextFrame,demand,demand,revision,revision,false,false,20,false));
+ assert(!coalesceInFlightWorld(a,nextFrame,demand,demand|Ore,revision,revision,false,false,20,true));
+ assert(!coalesceInFlightWorld(a,nextFrame,demand,demand,revision,revision+1,false,false,20,true));
+ assert(!coalesceInFlightWorld(a,nextFrame,demand,demand,revision,revision,false,true,20,true));
+ Key foreignWorld=nextFrame;++foreignWorld.connectionLow;
+ assert(!coalesceInFlightWorld(a,foreignWorld,demand,demand,revision,revision,false,false,20,true));
  Key nextHouse=a;++nextHouse.house;
  assert(!gate.defer(nextHouse,demand,revision,false,110));
  Key wrapRequest=a;wrapRequest.tick=0xfffffff8u;
@@ -67,5 +78,5 @@ int main(){
  assert(!worker.read(0x33000,&out,1));
  main.reset(a);assert(!main.read(0x33000,&out,1));
  assert(worker.read(0x21000,&out,1)&&out==0xA7);
- std::puts("PASS same-frame strict admission, request coalescing/retry/isolation, demand/revision/age rejection, exact page-buffer ownership swap");
+ std::puts("PASS exact-frame event authority, cross-frame busy work coalescing only, demand/revision/age isolation, exact page-buffer ownership swap");
 }
