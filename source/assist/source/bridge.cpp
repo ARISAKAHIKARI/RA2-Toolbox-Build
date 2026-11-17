@@ -1082,8 +1082,7 @@ static int collectRepairs(uint32_t house,DWORD now,bool refresh=false){
  if(!source.complete())return -6;source.finish();
  repairCount=repairAt=repairDone=0;
  if(internal){repairCount=count;std::copy_n(candidates.begin(),count,repairIDs);return count;}
- if(!refresh){repairResultGate.reset();repairStagedCount=0;repairValidatedSerial=0;
-  repairFrames.clear();repairTaskSeen=sh->repairComputed;}
+ if(!refresh){repairFrames.clear();repairTaskSeen=sh->repairComputed;}
  auto&in=sh->repairInput;in=candidate;
  repairCalculationPending=true;if(!refresh)repairCalculationStarted=now;const uint32_t serial=compute::nextTask(sh->repairTask);repairFrames.retain(serial,in);MemoryBarrier();sh->repairTask=serial;notifyHost();return -30;
 }
