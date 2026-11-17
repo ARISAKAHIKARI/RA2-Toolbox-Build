@@ -22,7 +22,7 @@ struct WorldFrameCommandFixture {
  void invalidate(){}
  bool stop(){return true;}
  bool request(const worldframe::Key&,uint32_t,uint64_t,const std::vector<uint32_t>&,bool=false){return false;}
- bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&,worldframe::CommandRoster* =nullptr){return false;}
+ bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&,worldframe::CommandRoster* =nullptr,bool=false){return false;}
 };
 using WorldFrameCommandWorker=WorldFrameCommandFixture;
 #else
@@ -102,7 +102,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // adopt a worker result without blocking the game's message pump.
   const uint64_t requestRevision=(uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
   if(worldFramePublication.begin(worldFrame)&&
-     worldFrameCommandWorker.take(key,graphDemand,requestRevision,worldFrame,&worldFrameCommandRoster)){
+     worldFrameCommandWorker.take(key,graphDemand,requestRevision,worldFrame,&worldFrameCommandRoster,globalVehicles)){
    // A background success still needs a NEW independent synchronous
    // world/frame/House identity check immediately before command delivery.
    const auto after=worldlife::capture(live);uint32_t afterHouse=0;
