@@ -26,6 +26,7 @@ static void QueryPerformanceCounter(LARGE_INTEGER*out){out->QuadPart=std::chrono
 #include "../source/object_index.h"
 #include "../source/unit_task_arbiter.h"
 #include "../source/command_intent.h"
+#include "../source/execution_proof.h"
 #ifdef NDEBUG
 #error Ore handoff fixture requires active assertions (-UNDEBUG).
 #endif
@@ -93,6 +94,20 @@ static bool nativeMission(uint32_t house,uint32_t id,int mission,uint32_t target
  if(queueMutation)queueMutation();if(!queueOkay)return false;
  events.push_back(intent::mega(get<int>(House+0x30),id,mission,target,0,destination,uint8_t(tag),nearest,uint8_t(nearestTag)));
  actorFrameArbiter.record(id,manualVersions.get(id),owner);return true;
+}
+// Production typed native sender is a test seam here. Run the SAME pure
+// proof policy with the fixture's live lookup before the original event stub.
+static bool submitProvenMission(uint32_t house,uint32_t id,int mission,uint32_t target,
+ uint32_t dest,int tag,taskarbiter::Owner owner,const executionproof::Ticket&proof,
+ uint32_t* =nullptr,uint32_t nearest=0,int nearestTag=0){
+ const uint8_t targetTag=target?0x34:0;
+ if(executionproof::ordered(proof,id,target,targetTag,dest,uint8_t(tag))!=
+    executionproof::Failure::None)return false;
+ if(executionproof::verify(proof,{match,house,clockNow},
+     [](uint32_t uid){return worldByID(uid);},
+     [](uint32_t uid){return manualVersions.get(uid);},
+     [](uint32_t p,uint32_t h){return own(p,h);})!=executionproof::Failure::None)return false;
+ return nativeMission(house,id,mission,target,dest,tag,nearest,nearestTag,owner);
 }
 // The runner extracts these complete production functions, not a matching
 // decision model. Unused combat/device seams above fail if reached.
