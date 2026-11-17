@@ -15,7 +15,7 @@ class CommandCaptureWorker {
  static constexpr unsigned MaxCalls=8192;
  static constexpr size_t MaxBytes=64u*1024u*1024u;
  static constexpr DWORD MaxWorkMs=120,MaxHandoffMs=80;
- struct Work {Key key{};uint32_t demand=Base,epoch=0;std::vector<uint32_t>pages;};
+ struct Work {Key key{};uint32_t demand=Base,epoch=0,requestRevision=0;std::vector<uint32_t>pages;};
  std::mutex gate_;
  std::atomic<uint32_t>epoch_{1};
  std::atomic<bool>stopping_{false};
@@ -25,11 +25,11 @@ class CommandCaptureWorker {
  Snapshot staging_,completed_;
  CaptureScratch scratch_;
  Key completedKey_{};
- uint32_t completedDemand_=0,completedEpoch_=0;
+ uint32_t completedDemand_=0,completedEpoch_=0,completedRevision_=0;
  bool queuedReady_=false,completedReady_=false;
  DWORD lastRequestedAt_=0;
  Key lastRequestedKey_{};
- uint32_t lastRequestedDemand_=0;
+ uint32_t lastRequestedDemand_=0,lastRequestedRevision_=0;
  std::atomic<uint32_t>accepted_{0},rejected_{0};
  static bool live(uint32_t address,void*out,size_t bytes){
   if(!out||!range(address,bytes))return false;
@@ -96,7 +96,7 @@ class CommandCaptureWorker {
        self->stopping_.load(std::memory_order_acquire))continue;
     self->staging_.swap(self->completed_); // page ownership, not page copies
     self->completedKey_=job.key;self->completedDemand_=job.demand;
-    self->completedEpoch_=job.epoch;self->completedReady_=true;
+    self->completedEpoch_=job.epoch;self->completedRevision_=job.requestRevision;self->completedReady_=true;
    }
   }
   // Every Snapshot/worker field lives until the Runtime acknowledges exit.
@@ -136,31 +136,31 @@ public:
   }();
   return value;
  }
- bool request(const Key&key,uint32_t demand,const std::vector<uint32_t>&pages){
+ bool request(const Key&key,uint32_t demand,uint32_t revision,const std::vector<uint32_t>&pages){
   if(!key.pid||!key.owner||!key.match||key.house<0x10000||
      !key.scenario||!key.cells||key.frame<0||!demand||
      pages.size()>MaxPages)return false;
   const DWORD now=GetTickCount();
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
   if(!lock.owns_lock()||stopping_.load(std::memory_order_acquire))return false;
-  if(lastRequestedKey_.sameFrame(key)&&lastRequestedDemand_==demand&&
+  if(lastRequestedKey_.sameFrame(key)&&lastRequestedDemand_==demand&&lastRequestedRevision_==revision&&
       uint32_t(now-lastRequestedAt_)<16)return true;
   if(!launch())return false;
-  queued_.key=key;queued_.demand=demand;
+  queued_.key=key;queued_.demand=demand;queued_.requestRevision=revision;
   // This O(N) address copy is at most 64 KiB. Sorting, graph traversal,
   // missing-page probing and ALL object bytes are worker-only.
   queued_.pages.assign(pages.begin(),pages.end());
   queued_.epoch=epoch_.load(std::memory_order_acquire);
   queuedReady_=true;lastRequestedAt_=now;lastRequestedKey_=key;
-  lastRequestedDemand_=demand;
+  lastRequestedDemand_=demand;lastRequestedRevision_=revision;
   SetEvent(event_);return true;
  }
- bool take(const Key&current,uint32_t demand,Snapshot&into){
+ bool take(const Key&current,uint32_t demand,uint32_t revision,Snapshot&into){
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
   if(!lock.owns_lock()||!completedReady_)return false;
   if(completedEpoch_!=epoch_.load(std::memory_order_acquire)||
      !completedKey_.sameFrame(current)||
-     (demand&~completedDemand_)||
+     completedRevision_!=revision||(demand&~completedDemand_)||
      uint32_t(GetTickCount()-completedKey_.tick)>MaxHandoffMs){
    completedReady_=false;++rejected_;return false;
   }
@@ -170,7 +170,7 @@ public:
  }
  void invalidate(){
   epoch_.fetch_add(1,std::memory_order_acq_rel);
-  lastRequestedAt_=0;lastRequestedKey_={};lastRequestedDemand_=0;
+  lastRequestedAt_=0;lastRequestedKey_={};lastRequestedDemand_=lastRequestedRevision_=0;
   if(event_)SetEvent(event_);
  }
  uint32_t accepted()const{return accepted_.load(std::memory_order_relaxed);}
