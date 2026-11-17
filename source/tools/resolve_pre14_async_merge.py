@@ -19,6 +19,12 @@ def must_replace(content, old, new, name):
         raise RuntimeError(f"{name}: expected one anchor, got {content.count(old)}: {old[:120]!r}")
     return content.replace(old, new, 1)
 
+def maybe_replace(content, old, new, name):
+    if new in content:
+        print(f"PRESERVED_MERGED {name}")
+        return content
+    return must_replace(content,old,new,name)
+
 def resolve(path, source):
     path = Path(path)
     text = path.read_text(encoding="utf-8")
@@ -75,35 +81,34 @@ def resolve(path, source):
     print(f"RESOLVED {path} ({len(blocks)} conflict sections)")
 
 def upgrade_autoload(text):
-    print('AUTOLOAD_ENTER_DEBUG',len(text),repr(text[max(0,text.find('enterEvent')-70):text.find('enterEvent')+320]),repr(text[:140]))
-    text = must_replace(
+    text = maybe_replace(
         text,
         "static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,uint32_t* receiptID=nullptr){",
         "static bool enterEvent(uint32_t house,uint32_t infantry,uint32_t vehicle,\n"
         " const executionproof::Ticket&proof,uint32_t* receiptID=nullptr){",
         "autoload_enter_signature")
-    text = must_replace(
+    text = maybe_replace(
         text,
         "return nativeMission(house,infantry,7,0,vehicle,0x34,0,0,taskarbiter::Owner::AutoLoad,receiptID);",
         "return submitProvenMission(house,infantry,7,0,vehicle,0x34,taskarbiter::Owner::AutoLoad,proof,receiptID);",
         "autoload_enter_dispatch")
-    text = must_replace(
+    text = maybe_replace(
         text,
         "  cancelUnloadPassenger(p.object);uint32_t ticket=0;bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,&ticket);",
         "  const executionproof::Ticket proof{match,house,sampleClock(sh),{p.id,p.object,tokens[i]}, {},{v.id,v.object}};\n"
         "  cancelUnloadPassenger(p.object);uint32_t ticket=0;bool sent=outgoingRoom()>0&&enterEvent(house,p.id,v.id,proof,&ticket);",
         "autoload_initial")
-    text = must_replace(text,
+    text = maybe_replace(text,
         "job.kind=p.kind;job.ticket=ticket;",
         "job.kind=p.kind;job.manualToken=tokens[i];job.ticket=ticket;",
         "autoload_token")
-    text = must_replace(text,
+    text = maybe_replace(text,
         "   if(enterEvent(house,r.id,r.vehicleID,&ticket)){",
         "   // Persist original human-order token across native retries.\n"
         "   const executionproof::Ticket proof{match,house,0,{r.id,r.object,r.manualToken},{},{r.vehicleID,r.vehicle}};\n"
         "   if(enterEvent(house,r.id,r.vehicleID,proof,&ticket)){",
         "autoload_retry")
-    text = must_replace(text,
+    text = maybe_replace(text,
         "   if(view.state==loading::ReservationState::Unknown){++i;continue;}",
         "   if(manualVersions.get(r.id)!=r.manualToken){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;}\n"
         "   if(view.state==loading::ReservationState::Unknown){++i;continue;}",
