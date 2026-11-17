@@ -180,7 +180,7 @@ def upgrade_world_capture(text, async_source):
     for definition, anchor in fields:
         if definition not in text:
             text = must_replace(text,anchor,anchor+definition,"capture_fields")
-    if "worldFrameCommandWorker.invalidate();" not in text:
+    if "static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();" not in text:
         text = must_replace(text,
             "static void retireWorldFrame(){worldFrameShadow.invalidate();",
             "static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameShadow.invalidate();",
