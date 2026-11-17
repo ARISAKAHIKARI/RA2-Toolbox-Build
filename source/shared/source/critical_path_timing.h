@@ -64,7 +64,7 @@ struct Statistics {
  double meanUs=0;
 };
 inline Statistics summarize(const Row&row){
- Statistics s{};s.sampled=row.sampled;s.stored=std::min(row.filled,Samples);
+ Statistics s{};s.sampled=row.sampled;s.stored=(std::min)(row.filled,Samples);
  s.sumUs=row.sumUs;s.maxUs=row.maxUs;
  s.meanUs=row.sampled?double(row.sumUs)/row.sampled:0;
  if(!s.stored)return s;
