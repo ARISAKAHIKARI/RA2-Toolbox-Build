@@ -298,10 +298,6 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house,uint32_t sour
  actorFrameArbiter.begin(match,get<int>(0xA8ED84));
  if(!actorFrameArbiter.canIssue(o.unit,o.token)){++snap.planDeferred;return 0;}
  if(!planningRoom(0)||!outgoingRoom()){++snap.planDeferred;return 0;}
- if(o.purpose==planner::MagnetronDropOrder){if(!nativeObjectEvent(get<int>(house+0x30),vanilla::EventType::Idle,o.unit,OrderAuthority::Local,nullptr,true))return 0;int index=orderIndex(worldByID(o.unit));if(index>=0)nativeOrders[index].attacking=false;consumePlanning(0);return 1;}
- // Native Harvest click uses (10,nullptr,clickedCell,nullptr), not Move's
- // nearest-accessible override. Preserve that exact target packing.
- const bool nearest=o.purpose!=planner::OreHarvestOrder&&o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
  // Identity provenance comes from the original captured World, not a
  // possibly recycled unit rebound after the Host finishes computing.
  const uint32_t destinationID=o.destinationTag==0x34?o.destination:0;
@@ -309,6 +305,22 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house,uint32_t sour
    {o.unit,o.unitPointer,o.token},
    {o.target,o.targetPointer},
    {destinationID,o.destinationPointer}};
+ if(o.purpose==planner::MagnetronDropOrder){
+  // Drop uses an Object Event rather than a MegaMission, so apply the same
+  // original-identity guard explicitly before its native enqueue path.
+  if(executionproof::verify(proof,{match,house,sampleClock(sh)},
+      [](uint32_t uid){return worldByID(uid);},
+      [](uint32_t uid){return manualVersions.get(uid);},
+      [](uint32_t p,uint32_t h){return own(p,h);})!=executionproof::Failure::None)return -1;
+  if(!nativeObjectEvent(get<int>(house+0x30),vanilla::EventType::Idle,o.unit,
+                        OrderAuthority::Local,nullptr,true))return 0;
+  int index=orderIndex(worldByID(o.unit));
+  if(index>=0)nativeOrders[index].attacking=false;
+  consumePlanning(0);return 1;
+ }
+ // Native Harvest click uses (10,nullptr,clickedCell,nullptr), not Move's
+ // nearest-accessible override. Preserve that exact target packing.
+ const bool nearest=o.purpose!=planner::OreHarvestOrder&&o.destinationTag==11&&(!sh||sh->megaQueueMode==0);
  if(!submitProvenMission(house,o.unit,o.mission,o.target,o.destination,o.destinationTag,
     o.purpose==3?taskarbiter::Owner::Magnetron:
       (o.purpose==1||o.purpose==planner::DefenseOrder)?taskarbiter::Owner::Combat:taskarbiter::Owner::Ore,
