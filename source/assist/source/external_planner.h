@@ -156,9 +156,18 @@ public:
   if(world.match!=match_){reset();match_=world.match;}
   std::vector<Order> combat,out;combat.reserve(16);out.reserve(MaxOrders);
   auto finishBatch=[&](std::vector<Order> orders){
-   // A candidate clipped by the final ore/combat merge has no delivery or
-   // receipt. Start the defense cooldown only for orders actually returned.
-   for(const auto&o:orders)if(o.purpose==DefenseOrder)defenseSent_[o.unit]=world.tick;
+   // Carry the exact source-snapshot identity through asynchronous planning.
+   // Host does not dereference these raw numbers. The final native gateway
+   // must reject any changed/missing identity; it cannot rebind to a new UID.
+   for(auto&o:orders){
+    const Actor*source=actor(o.unit);
+    const Actor*target=o.target?actor(o.target):nullptr;
+    const Actor*dest=o.destinationTag==0x34?actor(o.destination):nullptr;
+    o.unitPointer=source?source->sourcePointer:0;
+    o.targetPointer=target?target->sourcePointer:0;
+    o.destinationPointer=dest?dest->sourcePointer:0;
+    if(o.purpose==DefenseOrder)defenseSent_[o.unit]=world.tick;
+   }
    return orders;
   };
   observeDrop|=autoDrop;
