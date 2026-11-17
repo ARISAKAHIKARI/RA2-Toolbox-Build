@@ -32,6 +32,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/build_time_tick_idle.py
+      - name: Validate production hardware exception owner with portable Win32 boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/breakpoint_owner_rendezvous.py --out /tmp/critical-bp-owner
       - name: Run full exact-page failure and asynchronous recovery fixtures
         shell: bash
         run: |
