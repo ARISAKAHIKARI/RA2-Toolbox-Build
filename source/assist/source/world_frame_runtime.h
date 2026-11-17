@@ -203,9 +203,15 @@ template<class Live>static bool captureWorldFrameImpl(Live live,const worldlife:
 
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
  static uint32_t criticalCaptureCalls=0;
+#ifdef WORLD_FRAME_PLATFORM_FIXTURE
+ // Portable WorldFrame tests compile this header without Win32 game-time
+ // profiling dependencies; the actual graph and read semantics are identical.
+ return captureWorldFrameImpl(live,before,house,now,demand,permitDisplayBoundary);
+#else
  const bool sampled=AssistCriticalTimingEnabled()&&((++criticalCaptureCalls&3u)==0);
  const uint64_t start=sampled?criticalpath::ticks():0;
  const bool complete=captureWorldFrameImpl(live,before,house,now,demand,permitDisplayBoundary);
  if(start)AssistCriticalTimingRecord(criticalpath::WorldCapture,criticalpath::elapsedUs(start));
  return complete;
+#endif
 }
