@@ -112,7 +112,7 @@ static bool loadInterfaces(){assert(!sampleReadDepth);return interfacesReady;}
 enum class EventLane {Boarding};
 static int recurringBudget(EventLane){return 4;}
 static bool outgoingRoom(){return true;}
-static bool enterEvent(uint32_t,uint32_t,uint32_t,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
+static bool enterEvent(uint32_t,uint32_t,uint32_t,const executionproof::Ticket&,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
 static loading::Ledger<> loadLedger;
 static repairdelivery::Pending<> pendingRepairs;
 static compute::FrameHistory<compute::RepairInput> repairFrames;
