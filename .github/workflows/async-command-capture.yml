@@ -5,6 +5,12 @@ on:
       - "source/shared/source/world_frame*.h"
       - "source/assist/source/world_frame_runtime.h"
       - "source/assist/source/bridge.cpp"
+      - "source/assist/source/planner_types.h"
+      - "source/assist/source/planner_provenance.h"
+      - "source/assist/source/external_planner.h"
+      - "source/assist/source/protocol.h"
+      - "source/tools/verify_windows_outputs.py"
+      - "source/assist/tests/planner_provenance.cpp"
       - "source/assist/source/execution_proof.h"
       - "source/assist/source/autoload_bridge.h"
       - "source/assist/source/unload_compute_bridge.h"
@@ -54,6 +60,8 @@ jobs:
           checks/command-policy | tee checks/command-policy.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/execution_proof.cpp -o checks/execution-proof
           checks/execution-proof | tee checks/execution-proof.log
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/planner_provenance.cpp -o checks/planner-provenance
+          checks/planner-provenance | tee checks/planner-provenance.log
           python source/assist/tests/unified_gateway_contract.py | tee checks/gateway-contract.log
           python source/assist/tests/ore_harvest_handoff.py --out checks/ore-proof | tee checks/ore-proof.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/assist/tests/global_vehicle_scan_policy.cpp -o checks/global-vehicle-scan
