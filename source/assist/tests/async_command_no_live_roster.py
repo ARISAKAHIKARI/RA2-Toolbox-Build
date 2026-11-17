@@ -39,6 +39,14 @@ assert "globalVehicleScan.advance(total,examined)" in native_orders
 assert "globalVehicleCandidateAt(n)" in native_orders
 assert "globalVehicleCandidates[n]" not in native_orders
 assert "memcpy(globalVehicleCandidates" not in bridge
+# Unknown catalogue stamps cannot trigger an unbounded main-thread rescan.
+assert "catalogueReady=false;scanTypes();" not in bridge
+assert "A failed stamp read means UNKNOWN" in bridge
+# Large Host repair results are staged in a bounded verifier, not sorted
+# and authorized to issue native orders in one callback.
+assert "std::sort(knownIDs" not in bridge
+assert "repairResultGate.step(" in bridge
+
 assert 'THREAD_PRIORITY_BELOW_NORMAL' in worker
 assert 'WaitForSingleObject(thread_,0)' in worker
 assert 'latestTicket_.fetch_add(1' in worker
