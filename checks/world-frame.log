@@ -1,0 +1,28 @@
+PASS Host visual isolation: control 27 reads/114688 bytes/28 pages; 512 display pages stay external; frozen control, shared reuse, pause recovery, provenance and independent frame/world rejection
+GRAPH Base 27 reads/114688 bytes/3 rosters; Combat 33/139264/3; Passengers 29/122880/3; Ore 33/139264/8; Visual 38/159744/24
+PASS bounded speculative split: 12/16 pages salvaged, no duplicate bytes, 7-call worst-case cap
+PASS nothrow pages: zero initial page allocation, bounded geometric growth, injected initial/growth/import failure, retained bytes/capacity, reset reuse, no repeated allocation after failure and successful recovery
+PASS production world frame core: 190042 checks; overlap/immutable/failed/missing/roster/demand/queue/page-capacity
+PASS sealed world exact-demand prewarm: page miss -> 4-byte recovery, stale/budget skip, no second capture
+PASS async recovery: 128-probe/16-KiB background ceiling, 16-field producer cap, source-only read, stale-world rejection, nonblocking producer and epoch rewind
+PASS background full graph: 28 pages, 27 native reads, 114688 bytes, zero main-thread graph calls
+PASS approximate Graph: cross-frame allowed, same-game/age/order enforced, worker isolation, no command adoption
+PASS display/control separation: game-thread 13 reads/53248 bytes/13 pages vs full 27 reads/114688 bytes/28 pages; Host recovered actor and Type without mutating command source
+PASS Host visual isolation: control 27 reads/114688 bytes/28 pages; 512 display pages stay external; frozen control, shared reuse, pause recovery, provenance and independent frame/world rejection
+GRAPH Base 27 reads/114688 bytes/3 rosters; Combat 33/139264/3; Passengers 29/122880/3; Ore 33/139264/8; Visual 38/159744/24
+PASS bounded speculative split: 12/16 pages salvaged, no duplicate bytes, 7-call worst-case cap
+PASS nothrow pages: zero initial page allocation, bounded geometric growth, injected initial/growth/import failure, retained bytes/capacity, reset reuse, no repeated allocation after failure and successful recovery
+MAPPING pages=0 capacity=0 control=65900 payload=0 total=65900
+MAPPING pages=1 capacity=1 control=65900 payload=10384 total=76284
+MAPPING pages=28 capacity=32 control=65900 payload=328320 total=394220
+MAPPING pages=33 capacity=64 control=65900 payload=656512 total=722412
+MAPPING pages=512 capacity=512 control=65900 payload=5251200 total=5317100
+MAPPING pages=513 capacity=1024 control=65900 payload=10502272 total=10568172
+MAPPING pages=4096 capacity=4096 control=65900 payload=42008704 total=42074604
+MAPPING pages=16384 capacity=16384 control=65900 payload=168034432 total=168100332
+PASS dynamic mappings: bounded geometric growth, no per-frame create/open/map, producer create/map failure preserves publication, consumer open/map failure defers, header/descriptor identity, retire/reconnect and pinned tokens
+PASS mapping interleavings: double publication during open rejects mixed bytes; retire during open keeps mapped handle alive and rejects retired token
+PASS Host transport isolation: visual requests remain local, command scopes unwrap authoritative bytes, derived wire publication rejected; a blocked display reader does not block producer publication or control acquisition
+PASS Host first-command guard: display-only source rejected, live fallbacks forbidden, full next publication accepted
+PASS production transport/ProcessReader/Runtime: pinned publication, independent pause observation, required/optional failures, no live fallback, sustained demand, same-frame single capture, independent world/frame/House rejection
+PASS production world frame core: 191075 checks; overlap/immutable/failed/missing/roster/demand/queue/page-capacity

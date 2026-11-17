@@ -1,0 +1,23 @@
+RESOLVED source/assist/source/autoload.h (1 conflict sections)
+PRESERVED_MERGED autoload_enter_signature
+PRESERVED_MERGED autoload_enter_dispatch
+PRESERVED_MERGED autoload_initial
+PRESERVED_MERGED autoload_token
+PRESERVED_MERGED autoload_retry
+RESOLVED source/assist/source/autoload_bridge.h (1 conflict sections)
+RESOLVED source/assist/source/bridge.cpp (4 conflict sections)
+RESOLVED source/assist/source/compute_policy.h (1 conflict sections)
+RESOLVED source/assist/source/main.cpp (1 conflict sections)
+RESOLVED_SAFE pre14 Ctrl+D tri-state plus bounded 64 global candidate cursor
+WORLD_CAPTURE_FUSION {'worker': 0, 'shadow': 5, 'async_branch': 1, 'source_revision': 6, 'capture_definition': 1}
+WORLD_CAPTURE_FUSED {'worker': 1, 'asyncBranch': 2, 'stableRecovery': 1, 'stableShadow': 5}
+RESOLVED source/assist/source/world_frame_runtime.h (6 conflict sections)
+RESOLVED source/assist/tests/ore_harvest_handoff.cpp (1 conflict sections)
+RESOLVED source/assist/tests/unload_loaded_admission.py (1 conflict sections)
+RESOLVED source/assist/tests/world_frame_async_dll.cpp (1 conflict sections)
+RESOLVED source/assist/tests/world_frame_async_host.cpp (1 conflict sections)
+RESOLVED source/assist/tests/world_frame_core.cpp (3 conflict sections)
+RESOLVED source/shared/source/release_version.h (1 conflict sections)
+RESOLVED source/shared/source/world_frame.h (3 conflict sections)
+FIXED fixture duplicate worldFrameBoundaryOnly
+RESOLVED_ALL 14

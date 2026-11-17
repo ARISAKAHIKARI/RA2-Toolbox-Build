@@ -1,0 +1,77 @@
+name: Integrate stable pre14 lineage and async command fixes
+on:
+  push:
+    branches: [codex/async-command-capture-20261117]
+    paths:
+      - source/tools/resolve_pre14_async_merge.py
+      - .github/workflows/merge-pre14-async-integration.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: ra2-pre14-async-integration
+  cancel-in-progress: true
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Three-way merge with explicit typed conflict resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checks
+          git config user.name 'RA2Toolbox Integration CI'
+          git config user.email 'integration-ci@users.noreply.github.com'
+          git fetch --no-tags origin 'refs/tags/v1.0.51:refs/tags/v1.0.51'
+          git fetch --no-tags origin 'refs/heads/codex/async-command-capture-20261117:refs/remotes/origin/async-command-capture'
+          git checkout -B integrate/pre14-async-20261118 v1.0.51
+          git config core.autocrlf input
+          if git -c merge.renormalize=true merge -s ort -X renormalize -X diff-algorithm=histogram --no-commit --no-ff refs/remotes/origin/async-command-capture >checks/merge.log 2>&1; then
+            echo 'Auto-merge: no remaining conflicts'
+          else
+            python source/tools/resolve_pre14_async_merge.py | tee checks/merge-resolutions.log
+          fi
+          if git ls-files -u | grep .; then echo 'Unresolved merge index' >&2; exit 1; fi
+          if git grep -nE '^(<<<<<<<|=======|>>>>>>>)' -- source/assist/source source/shared/source; then
+            echo 'Conflict marker in production file' >&2
+            exit 1
+          fi
+          test -f source/assist/source/execution_proof.h
+          test -f source/assist/source/planner_provenance.h
+          test -f source/assist/source/unit_info_panel_cameos.h
+          test -f source/assist/source/unit_info_panel_host.h
+          grep -q 'manualToken' source/assist/source/autoload_bridge.h
+          grep -q 'inspectReservation' source/assist/source/autoload_bridge.h
+          grep -q 'worldFrameCommandWorker' source/assist/source/world_frame_runtime.h
+          grep -q 'worldFrameShadow' source/assist/source/world_frame_runtime.h
+      - name: Portable safety gates before publishing integration branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checks
+          python source/assist/tests/world_frame_core_test.py >checks/world-frame.log 2>&1 || { tail -65 checks/world-frame.log; exit 1; }
+          python source/assist/tests/ore_harvest_handoff.py --out checks/ore >checks/ore.log 2>&1 || { tail -65 checks/ore.log; exit 1; }
+          python source/assist/tests/unload_loaded_admission.py --current-only --out checks/unload >checks/unload.log 2>&1 || { tail -65 checks/unload.log; exit 1; }
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/planner_provenance.cpp -o checks/provenance
+          checks/provenance | tee checks/provenance.log
+          python source/assist/tests/async_command_no_live_roster.py | tee checks/async-structure.log
+      - name: Save two-parent merge on isolated integration branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          git commit -m "merge: retain stable 1.0.51/pre14 fixes and integrate async command proof"
+          git push origin HEAD:refs/heads/integrate/pre14-async-20261118
+          echo "INTEGRATED_SHA=$(git rev-parse HEAD)"
+          git log -1 --format='PARENTS=%P'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pre14-async-integration-evidence
+          retention-days: 30
+          path: checks/

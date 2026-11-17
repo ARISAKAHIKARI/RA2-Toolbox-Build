@@ -1,0 +1,1 @@
+PASS async command graph and four native Hook paths never sync-scan the full live roster; worker expiration is nonblocking

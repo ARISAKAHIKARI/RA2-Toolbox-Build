@@ -98,9 +98,8 @@ static void loadAdditionalSettings(){
  extra.watchEnabled=!extra.nativePip&&value(L"Watch",L"Enabled",0)!=0;extra.watchDanger=value(L"Watch",L"DangerCarriers",0)!=0;for(int n=0;n<3;++n){const wchar_t* keys[]={L"PinKey",L"PinKey2",L"PinKey3"};extra.watchKeys[n]=value(L"Watch",keys[n],n?extra.watchKeys[0]:extra.watchKeys[n])&65535;}
  extra.formationEnabled=value(L"Formation",L"Enabled",0)!=0;extra.formationHold=value(L"Formation",L"HoldKey",18)&65535;extra.formationMouse=value(L"Formation",L"MouseButton",2)==1?1:2;
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey",L"SquareKey",L"FrameKey"};for(int n=0;n<6;++n)extra.formationKeys[n]=value(L"Formation",shapeKeys[n],extra.formationKeys[n])&65535;
- for(int i=0;i<compute::Count;++i){int fallback=compute::inside(compute::Default,compute::Feature(i));
-  if(i==compute::MagnetronGlobal||i==compute::MagnetronDrop)fallback=compute::inside(computeRequested,compute::Magnetron);
-  bool mode=value(L"Compute",compute::key(i),fallback)!=0;if(mode)computeRequested|=1u<<i;else computeRequested&=~(1u<<i);}
+ // The internal compute split is fixed, not loaded from legacy INI choices.
+ computeRequested=compute::Fixed;
  idleAircraftKey=WORD(value(L"Hotkeys",L"IdleAircraft",MAKEWORD('P',HOTKEYF_CONTROL|HOTKEYF_ALT))&65535);
  minimapPosition=std::clamp(value(L"Display",L"MinimapPosition",0),0,3);minimapX=std::clamp(value(L"Display",L"MinimapX",20),0,32768);minimapY=std::clamp(value(L"Display",L"MinimapY",60),0,32768);
  minimapAlignX=std::clamp(value(L"Display",L"MinimapAlignX",0),0,2);minimapAlignY=std::clamp(value(L"Display",L"MinimapAlignY",0),0,2);
@@ -209,7 +208,7 @@ static bool saveAdditionalSettings(){
  write(L"Formation",L"Enabled",extra.formationEnabled);write(L"Formation",L"HoldKey",extra.formationHold);write(L"Formation",L"MouseButton",extra.formationMouse);
  const wchar_t* shapeKeys[]={L"RectangleKey",L"DispersedKey",L"CircleKey",L"FanKey",L"SquareKey",L"FrameKey"};for(int n=0;n<6;++n)write(L"Formation",shapeKeys[n],extra.formationKeys[n]);
  write(L"Display",L"PassengerBubbles",extra.passengerBubbles);write(L"Display",L"DangerPassengers",extra.dangerPassengers);write(L"Display",L"PassengerOwn",extra.passengerOwn);write(L"Display",L"PassengerAlways",extra.passengerAlways);write(L"Magnetron",L"AutoDrop",extra.magnetronDrop);
- for(int i=0;i<compute::Count;++i)write(L"Compute",compute::key(i),(computeRequested>>i)&1u);
+ // Keep obsolete [Compute] entries unchanged; they no longer control runtime.
  write(L"Hotkeys",L"IdleAircraft",idleAircraftKey);
  for(int i=0;i<9;++i)write(L"Hotkeys",i?(L"Taunt"+std::to_wstring(i)).c_str():L"Cheer",socialKeys[i]);
  write(L"Display",L"ShroudStrategy",extra.mapStrategy);
@@ -325,7 +324,7 @@ static void syncAdditional(){
  shared->nativeCombatQueries=extra.nativeCombatQueries;
  shared->controlCommandOwner=extra.commandOwnerRequested();
  InterlockedIncrement(&shared->formationPolicySeq);shared->formationPolicy.enabled=extra.formationEnabled;shared->formationPolicy.hold=extra.formationHold;shared->formationPolicy.mouse=extra.formationMouse;memcpy(shared->formationPolicy.keys,extra.formationKeys,sizeof extra.formationKeys);MemoryBarrier();InterlockedIncrement(&shared->formationPolicySeq);
- shared->missileReserve=extra.missileDefense&&extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageFilter&&extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlRequest();shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=computeRequested;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=featureavailability::InfantryForcedEntry&&extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;shared->aircraftAllocationPolicy=extra.aircraftAllocationPolicy;
+ shared->missileReserve=extra.missileDefense&&extra.missileReserve;shared->lowDamageFilter=extra.lowDamageFilter;shared->lowDamageNetwork=extra.lowDamageFilter&&extra.lowDamageNetwork;syncRefreshRate();shared->magnetronDrop=extra.magnetronDrop;shared->dodgeEnabled=extra.dodgeEnabled;shared->dodgeMode=extra.dodgeMode;shared->burstEnabled=shared->burstHoldEnabled=shared->burstHeld=0;shared->missileScope=extra.missileScope;shared->missileAllocation=extra.missileAllocation;shared->magnetronGlobal=extra.magnetronGlobal;shared->missileEnabled=extra.missileDefense;shared->missileScanHz=extra.missileScanHz;shared->controlAll=extra.controlRequest();shared->switchPlayerEnabled=extra.switchPlayerEnabled;shared->computeRequested=compute::Fixed;shared->advancedScanHz=advancedScanHz;shared->advancedPriority=advancedTargetPriority;shared->c4Test=featureavailability::InfantryForcedEntry&&extra.c4Test;shared->renderReveal=extra.renderReveal;shared->loadMode=extra.loadMode;shared->loadRadius=extra.loadRadius;shared->enterKey=extra.enterKey;shared->airKey1=extra.airKey1;shared->airKey2=extra.airKey2;shared->aircraftAllocationPolicy=extra.aircraftAllocationPolicy;
  static uint32_t publishedSettings=~0u;
  if(!shared->quotaConfigSeq||publishedSettings!=settingsRevision){publishedSettings=settingsRevision;
   InterlockedIncrement(&shared->quotaConfigSeq);auto&c=shared->quotaConfig;c.defaults=extra.defaults;c.count=0;

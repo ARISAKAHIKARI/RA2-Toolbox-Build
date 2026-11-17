@@ -10,6 +10,8 @@ struct Actor {
  int kind,x,y,z,mission,queued,cost,storageLimit,range;
  float veterancy,storage[4];uint32_t dockTypes[8],radioIDs[4];
  int armor,rearmStart,rearmDuration,airRangeBonus;uint32_t liftTarget;Weapon weapons[2];int combatFirst=-1,combatCount=0;
+ // Capture-time game object pointer. Metadata only, never dereference on Host.
+ uint32_t sourcePointer=0;
 };
 enum IntentMode { OrdinaryMove=0,MagnetronMove=1 };
 struct Intent {uint32_t id,cell,token,mode;uint32_t global=0;};
@@ -27,5 +29,8 @@ inline bool validWorld(const World&w){if(w.combatCount<0||w.combatCount>MaxComba
 enum OrderPurpose { OreOrder=0, CombatOrder=1, OreRelease=2, MagnetronOrder=3, OreYield=4, DefenseOrder=5, MagnetronDropOrder=6, OreHarvestOrder=7 };
 struct Order {
  uint32_t unit,token,target,destination;int mission,destinationTag,purpose;uint32_t refinery;uint32_t pursuit=0;
+ // From the exact World used by the planner. Final native submission MUST
+ // compare these with fresh live IDs; never trust them for direct reads.
+ uint32_t unitPointer=0,targetPointer=0,destinationPointer=0;
 };
 }}

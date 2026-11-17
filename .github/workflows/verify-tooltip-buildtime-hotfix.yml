@@ -1,0 +1,70 @@
+name: Verify native tooltip text and build-time hook recovery
+on:
+  push:
+    branches: [fix/tooltip-buildtime-ownership-pre13-20261116]
+    paths:
+      - 'source/**'
+      - '.github/workflows/verify-tooltip-buildtime-hotfix.yml'
+  pull_request:
+    paths:
+      - 'source/**'
+      - '.github/workflows/verify-tooltip-buildtime-hotfix.yml'
+permissions:
+  contents: read
+concurrency:
+  group: tooltip-buildtime-recovery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ownership-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute exact production patch registry policy under 82 sites
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/debug_patch_policy.cpp -o /tmp/tooltip-patch-policy
+          /tmp/tooltip-patch-policy
+      # The legacy hook_recovery_policy.py extracts the pre-1.0.51
+      # 'if(fault){reset();snap...' branch and cannot run against the current
+      # bridge scheduler. Do not mistake that obsolete extraction for a
+      # negative result on the shared tooltip-slot fix. The matching
+      # production registry and Windows-linked binaries remain mandatory.
+  windows-paired-compile:
+    needs: ownership-regression
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned icon encoder and Zig compiler
+        shell: pwsh
+        run: |
+          python -m pip install Pillow==11.3.0
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if ((& $zig version) -ne '0.13.0') {throw 'Unexpected Zig version'}
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force diagnostics,artifacts/console | Out-Null
+      - name: Compile exact hotfix as paired x86 DLL and x64 WebView2 Host
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/artifacts/console"
+          bash source/build-zig-x64.sh > diagnostics/windows-build.log 2>&1 || { tail -120 diagnostics/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-pre13-tooltip-hotfix-windows-diagnostics
+          retention-days: 14
+          path: diagnostics/

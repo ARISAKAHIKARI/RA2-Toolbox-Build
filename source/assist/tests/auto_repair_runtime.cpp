@@ -15,10 +15,16 @@
 #include "../source/compute_policy.h"
 #include "../source/plan_freshness.h"
 #include "../source/repair_delivery.h"
+#include "../source/repair_result_filter.h"
 using namespace assist;
 using DWORD=uint32_t;
 constexpr uint32_t AutoRepair=64,RepairUnrepairable=134217728;
 namespace featuretypes {constexpr int RepairBuilding=1;}
+struct StubFeatureFilter {bool custom=false;};
+struct StubFeatureConfig {StubFeatureFilter filters[3];};
+static StubFeatureConfig featureConfig;
+static bool repairFilterKnown=true;
+static bool refreshFeatureTypes(){return repairFilterKnown;}
 struct Shared {
  uint32_t flags=0,repairMs=2000,computeApplied=compute::Default,repairTask=0,repairComputed=0;
  int32_t repairResultSeq=0;compute::RepairInput repairInput;compute::RepairResult repairResult;int result=0,count=0;
@@ -36,19 +42,50 @@ static bool pendingAckReady,repairAckPending;static uint32_t pendingAck,repairAc
 static bool repairCalculationPending;static DWORD repairCalculationStarted;static uint32_t repairTaskSeen;
 static bool autoWas;static DWORD lastAuto;
 static repairdelivery::Pending<> pendingRepairs;
+// The extracted production repair gate and command-worker admission retain
+// their pure in-process fixtures, not real game thread or process objects.
+// repairResultGate and staging counters come from extracted production source.
+struct FixtureCommandWorker {bool enabled()const{return false;}};
+static FixtureCommandWorker worldFrameCommandWorker;
+static bool commandRosterReady(){return false;}
 static worldframe::Snapshot worldFrame;
 static bool worldFrameReady=false,sampleReadComplete=true,sampleAvailable=true;
 static unsigned sampleReadDepth=0;static uint32_t missingSamplePage=0;
+static uint32_t runtimeDemandRevision=1;
 static std::array<uint64_t,8192> runtimeDemandBits{};static std::vector<uint32_t> runtimeWorldDemands;
 #include SAMPLE_SCOPE
 struct Vec{uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
-static bool read(uint32_t at,void*out,size_t n){if(at==0xA8EB40)++buildingScans;if(!sampleReadDepth)throw std::runtime_error("collector read escaped scope");return readWorldSample(at,out,n);}
+static uint32_t missingLiveRead=0;
+static bool read(uint32_t at,void*out,size_t n){
+ if(!sampleReadDepth){
+  if(missingLiveRead&&uint64_t(at)<=missingLiveRead&&uint64_t(at)+n>missingLiveRead)return false;
+  auto copy=[&](const auto&value){if(n!=sizeof value)return false;std::memcpy(out,&value,n);return true;};
+  for(const auto&b:buildings){
+   if(at==b.pointer)return copy(uint32_t(0x7E3EBC));
+   if(at==b.pointer+0x10)return copy(b.id);
+   if(at==b.pointer+0x21C)return copy(b.house);
+   if(at==b.pointer+0x6C)return copy(b.hp);
+   if(at==b.pointer+0x90)return copy(uint8_t(b.alive));
+   if(at==b.pointer+0x74)return copy(uint8_t(b.alive));
+   if(at==b.pointer+0x81)return copy(uint8_t(!b.alive));
+   if(at==b.pointer+0x520)return copy(b.type);
+   if(at==b.pointer+0x6E8)return copy(uint8_t(b.repairing));
+   if(at==b.type+0xA0)return copy(b.maximum);
+   if(at==b.type+0x157A)return copy(uint8_t(b.repairable));
+  }
+  return false;
+ }
+ if(at==0xA8EB40)++buildingScans;
+ return readWorldSample(at,out,n);
+}
 #include "../source/tactical_frame_read.h"
 template<class T>static T get(uint32_t at);
 static Vec vec(uint32_t at){Vec out{};read(at,&out,sizeof out);return out;}
 static uint32_t item(Vec v,int i){return get<uint32_t>(v.items+uint32_t(i)*4);}
 static Building* byPointer(uint32_t p){for(auto&b:buildings)if(b.pointer==p)return &b;return nullptr;}
 static uint32_t worldByID(uint32_t id){for(const auto&b:buildings)if(b.alive&&b.id==id)return b.pointer;return 0;}
+struct BuildingIndex {uint32_t byId(uint32_t id)const{return worldByID(id);}};
+static BuildingIndex worldObjects;
 static bool own(uint32_t p,uint32_t house){if(sampleReadDepth)return get<bool>(p+0x74)&&get<uint32_t>(p+0x21C)==house;auto*b=byPointer(p);return b&&b->alive&&b->house==house;}
 static int kind(uint32_t p){if(sampleReadDepth)return get<bool>(p+0x74)?3:-1;auto*b=byPointer(p);return b&&b->alive?3:-1;}
 static uint32_t typeOf(uint32_t p,int){if(sampleReadDepth)return get<uint32_t>(p+0x520);auto*b=byPointer(p);return b?b->type:0;}
@@ -74,11 +111,14 @@ static void prepareSample(){
 }
 static void MemoryBarrier(){}
 static void notifyHost(){if(sampleReadDepth)throw std::runtime_error("publication inside sample scope");++notifications;}
-static void indexWorld(int){++indexCalls;}
+static int indexedFrame=-1;
+static void indexWorld(int frame){indexedFrame=frame;++indexCalls;}
 enum class EventLane{Repair};static int recurringBudget(EventLane){return perFrameBudget;}
 static bool nativeObjectEvent(int player,int event,uint32_t id){if(sampleReadDepth)throw std::runtime_error("native event inside sample scope");if(player!=0||event!=0x15)throw std::runtime_error("wrong event");++queueAttempts;if(!queueAvailable)return false;sent.push_back({id,currentFrame});return true;}
 #include REPAIR_EVENT
 #include REPAIR_CALCULATION
+#include REPAIR_OBSERVE
+#include REPAIR_ADMISSION
 #include REPAIR_TICK
 // Exactly the manual Repair branch and terminal publication from command().
 static void manualRepair(uint32_t req,DWORD now){prepareSample();uint32_t house=lastHouse;int result=1,n=0;
@@ -95,7 +135,7 @@ static void setup(bool automatic=true,bool internal=true,unsigned count=1){
  ++match;lastHouse=0x200000;currentFrame=0;chat=externalInputFrame=false;queueAvailable=true;perFrameBudget=64;buildingScans=notifications=queueAttempts=indexCalls=0;sent.clear();buildings.clear();
  for(unsigned i=0;i<count;++i)buildings.push_back({0x300000+i*0x10000,0x800000+i*0x10000,100+i,lastHouse});
  repairCount=repairAt=repairDone=0;repairAckRequest=repairAckStarted=pendingAck=0;repairAckPending=pendingAckReady=false;repairCalculationPending=false;repairCalculationStarted=repairTaskSeen=0;autoWas=false;lastAuto=0;pendingRepairs.clear();repairFrames.clear();
- worldFrameReady=false;sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=0;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
+ worldFrameReady=false;sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;indexedFrame=-1;featureConfig={};repairFilterKnown=true;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();repairResultGate.reset();repairValidatedSerial=repairStagedCount=0;runtimeDemandRevision=1;
 }
 static void tick(DWORD now,int frame,bool input=false){currentFrame=frame;externalInputFrame=input;prepareSample();repairTick(lastHouse,now);}
 struct WorkerResult{uint32_t task;compute::RepairResult value;};
@@ -108,6 +148,27 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
  });
  run("missing_page_preserves_due_retry",false,[]{
   setup(true,true,0);tick(1000,1);buildings.push_back({0x300000,0x800000,100,lastHouse});missingSamplePage=0x300000;tick(3000,2);expect(!autoWas&&lastAuto==1000&&sent.empty(),"incomplete collector must not advance timer or publish empty candidates");missingSamplePage=0;tick(3016,3);expect(sent.size()==1&&lastAuto==3016,"page recovery retries on next admitted frame");
+ });
+ run("unknown_live_repair_admission_preserves_unsent_cursor",false,[]{
+  setup(true,true,1);missingLiveRead=buildings[0].pointer+0x10;tick(1000,1);
+  expect(repairAt==0&&repairCount==1&&sent.empty(),"missing candidate UID advanced repair cursor");
+  missingLiveRead=buildings[0].type+0xA0;tick(1016,2);
+  expect(repairAt==0&&sent.empty(),"missing maximum HP advanced repair cursor");
+  missingLiveRead=0;repairFilterKnown=false;tick(1032,3);
+  expect(repairAt==0&&sent.empty(),"incomplete feature filter advanced repair cursor");
+  repairFilterKnown=true;tick(1048,4);
+  expect(repairAt==1&&sent.size()==1&&sent[0].id==100,"repair admission recovery failed to send original candidate");
+ });
+ run("unknown_live_repair_receipt_does_not_retire_pending_toggle",false,[]{
+  setup(true,true,1);tick(1000,1);
+  expect(sent.size()==1&&pendingRepairs.count==1,"repair toggle not queued");
+  missingLiveRead=buildings[0].pointer+0x10;
+  tick(1016,2);
+  expect(pendingRepairs.count==1,"unreadable UID erroneously cleared pending repair");
+  missingLiveRead=buildings[0].pointer+0x6E8;tick(1032,3);
+  expect(pendingRepairs.count==1,"unreadable repair flag erroneously cleared pending");
+  missingLiveRead=0;buildings[0].repairing=true;tick(1048,4);
+  expect(pendingRepairs.count==0,"confirmed repair native flag must retire ticket");
  });
  run("late_automatic_result_after_off",true,[]{
   setup(true,false);tick(1000,1);auto old=calculate();expect(repairCalculationPending,"automatic calculation started");
@@ -217,7 +278,10 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
   for(int i=0;i<result.value.count;++i){uint32_t id=uint32_t((8191-i)*2);if(i%11==0)id+=1;if(i%37==0)id=2;
    result.value.ids[i]=id;if(!(id&1))expected.push_back(id);
   }
-  deliver(result);repairCalculationTick(1008);
+  deliver(result);
+  repairCalculationTick(1008);
+  expect(repairCalculationPending&&repairCount==0,"bounded result verification never publishes a partial batch");
+  for(int step=1;step<=8&&repairCalculationPending;++step)repairCalculationTick(1008+step*8);
   expect(!repairCalculationPending&&repairCount==int(expected.size()),"full-capacity results filter unknown IDs");
   expect(std::equal(expected.begin(),expected.end(),repairIDs),"membership preserves result order, duplicates, zero and edge IDs");
   expect(sent.empty(),"membership acceptance does not itself issue game events");

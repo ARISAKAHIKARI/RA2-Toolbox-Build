@@ -173,7 +173,11 @@ struct Slot {
  uint32_t address=0;Owner owner=Owner::Unknown;uint8_t original[16]{},patch[16]{};
  uint8_t size=0;bool active=false,conflict=false;
 };
-enum class Transition : uint8_t { Deny, Install, Restore };
+// Reapply is restricted to the two shared native tooltip vtable slots.
+ // The journal already owns that exact target and the slot must have been
+ // reverted to its exact original bytes; never seize an unknown third-party hook.
+enum class Transition : uint8_t { Deny, Install, Restore, Reapply };
+inline bool tooltipSlot(uint32_t address){return address==0x7F74D8u||address==0x7F74C8u;}
 template<unsigned Capacity=512> struct Registry {
  static constexpr unsigned CapacityLimit=Capacity;
  Slot slots[Capacity]{};unsigned used=0;
@@ -198,7 +202,11 @@ template<unsigned Capacity=512> struct Registry {
   }
   int i=find(address);if(i<0)return used<Capacity&&admissibleOriginal(address,before,n)?Transition::Install:Transition::Deny;
   const Slot&s=slots[i];if(s.conflict||s.owner!=ownerAt(address)||s.size!=n)return Transition::Deny;
-  if(s.active)return !memcmp(before,s.patch,n)&&!memcmp(after,s.original,n)?Transition::Restore:Transition::Deny;
+  if(s.active){
+   if(!memcmp(before,s.patch,n)&&!memcmp(after,s.original,n))return Transition::Restore;
+   if(tooltipSlot(address)&&!memcmp(before,s.original,n)&&!memcmp(after,s.patch,n))return Transition::Reapply;
+   return Transition::Deny;
+  }
   // After a confirmed restore there is no active byte ownership. A platform
   // may legitimately change an admissible operand before our next install.
   // Re-admit the ACTUAL new original; only an active/conflicted journal is
@@ -211,6 +219,8 @@ template<unsigned Capacity=512> struct Registry {
    }
    memcpy(slots[i].original,before,n);memcpy(slots[i].patch,after,n);slots[i].active=true;
   }else if(t==Transition::Restore){int i=find(address);if(i>=0)slots[i].active=false;}
+  // Reapply leaves the original bytes, owner and active restoration journal
+  // unchanged; the manager updates only its physical patch/error status.
  }
  // No reset: a foreign patch survives match changes and failed restores.
 };

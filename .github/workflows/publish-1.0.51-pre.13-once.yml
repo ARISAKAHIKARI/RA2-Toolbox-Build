@@ -1,0 +1,183 @@
+name: Publish 1.0.51-pre.13 sampling reliability preview
+on:
+  push:
+    branches: [feature/automatic-compute-atomic-sample-20261116]
+    paths:
+      - '.github/workflows/publish-1.0.51-pre.13-once.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ra2-toolbox-pre13-once
+  cancel-in-progress: false
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Recheck production sampling and missing-page behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/world_frame_core_test.py
+          python3 source/assist/tests/tactical_frame_sampling.py --out /tmp/ra2-pre13-tactical
+          python3 source/assist/tests/fixed_compute_settings.py
+          python3 source/assist/tests/unload_loaded_admission.py --out /tmp/ra2-pre13-unload --current-only
+          python3 source/assist/tests/unload_followup_tick_runtime.py --out /tmp/ra2-pre13-followup
+          python3 source/assist/tests/unload_ejection_runtime.py --out /tmp/ra2-pre13-ejection
+
+  windows:
+    needs: regression
+    runs-on: windows-2022
+    timeout-minutes: 55
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned dependencies
+        shell: pwsh
+        run: |
+          python -m pip install Pillow==11.3.0
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          $zig=(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path
+          if ((& $zig version) -ne '0.13.0') { throw 'Incorrect Zig version' }
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$zig"
+          New-Item -ItemType Directory -Force artifacts/console,diagnostics | Out-Null
+      - name: Build and inspect all paired binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/artifacts/console"
+          bash source/build-zig-x64.sh > diagnostics/windows-build.log 2>&1 || { tail -100 diagnostics/windows-build.log; exit 1; }
+          python3 source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+          python3 source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out diagnostics/async-recovery
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json; do
+            test -s "artifacts/console/$n"
+          done
+          grep -q '1.0.51-pre.13' source/shared/source/release_version.h
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.51-pre.13-paired-binaries
+          path: artifacts/console/
+          retention-days: 30
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-1.0.51-pre.13-build-diagnostics
+          path: diagnostics/
+          retention-days: 30
+
+  publish:
+    needs: [regression, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: 'v1.0.51-pre.13'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: RA2Toolbox-1.0.51-pre.13-paired-binaries
+          path: dist/Update
+      - name: Check exact source identity, version and package files
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'RA2_RELEASE_VERSION "1.0.51.13"' source/shared/source/release_version.h
+          grep -q 'RA2_RELEASE_VERSION_W L"1.0.51-pre.13"' source/shared/source/release_version.h
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json; do
+            test -s "dist/Update/$f"
+          done
+          python3 - <<'PY'
+          import json
+          x=json.load(open('dist/Update/BUILD_TARGET.json',encoding='utf-8'))
+          assert x['host']=='x64' and x['runtime']=='x86' and x['broker']=='x86'
+          assert x['console_ui']=='webview2' and x['game_tested'] is False
+          PY
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release tag already exists; refuse to overwrite an earlier publication'
+            exit 1
+          fi
+      - name: Assemble Full from pre.12 resources and exact paired binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/base dist/Full
+          gh release download v1.0.51-pre.12 --repo "$GITHUB_REPOSITORY" --pattern 'RA2Toolbox-1.0.51-pre.12-x64-Full.zip' --dir dist/base
+          unzip -q dist/base/RA2Toolbox-1.0.51-pre.12-x64-Full.zip -d dist/Full
+          exe=$(find dist/Full -type f -name RA2Toolbox.exe -print -quit)
+          test -n "$exe"
+          root=$(dirname "$exe")
+          for f in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do
+            test -f "$root/$f"
+            cp "dist/Update/$f" "$root/$f"
+            cmp "dist/Update/$f" "$root/$f"
+          done
+          for f in BUILD_TARGET.json BUILD_SOURCE_MANIFEST.json WINDOWS_BUILD_ARTIFACTS.json; do
+            if test -f "dist/Update/$f"; then cp "dist/Update/$f" "$root/$f"; fi
+          done
+          if test -d dist/Update/licenses; then
+            mkdir -p "$root/licenses"
+            cp -a dist/Update/licenses/. "$root/licenses/"
+          fi
+          (cd dist/Update && zip -q -r ../RA2Toolbox-1.0.51-pre.13-x64-Update.zip .)
+          (cd dist/Full && zip -q -r ../RA2Toolbox-1.0.51-pre.13-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.13-x64-Update.zip
+          unzip -tq dist/RA2Toolbox-1.0.51-pre.13-x64-Full.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.51-pre.13-x64-Update.zip RA2Toolbox-1.0.51-pre.13-x64-Full.zip > SHA256SUMS.txt)
+      - name: Publish pre.13 as explicitly unverified-in-game prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## 采样可靠性 / 缺页状态机修复测试版
+
+          来源：PR #36，源码提交 \`$GITHUB_SHA\`。程序版本已更新为 **1.0.51.13**。
+
+          - 共享世界样本跨页读取采用原子提交，缺页不能产生部分填充的命令输入
+          - Ctrl+D 多载员后续指令、自动装车、矿车/蜘蛛防御、维修、手动指令等不再把读取失败误判为对象消失或任务完成
+          - 缺失字段采用后台只读探测、游戏线程限额确认，失败不得借用过期值下令
+          - Host 纯显示请求可从独立的 VisualCache 获取对象图；原生命令仍使用完整权威帧
+          - 修复混合 Visual/Combat/Passengers 订阅被错误降级为纯显示，首次命令拒绝简化样本并等待完整采集
+          - 保留可选后台 Graph 诊断，不默认增加一份全量采样负担
+
+          已有源码回归、Windows x64 Host / x86 Runtime 配对编译、Win32 异步 worker 生命周期检查通过。**尚未进行实际游戏、JJ/CnCNet 联机、Ctrl+D 实际首次响应或 FPS 实测**。此版本仅作测试，不代表这些问题已在实机环境完全解决。
+
+          **Full**：独立安装；资源沿用 pre.12，二进制全部使用本次同一编译产物。
+          **Update**：建议用于已有 pre.12 Full 安装；关闭游戏与工具箱，备份设置，并整体替换配套文件，不要只更新单个 DLL。
+          EOF
+          cd dist
+          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title 'RA2 Toolbox 1.0.51-pre.13 · 采样与缺页可靠性测试版' \
+            --notes-file RELEASE_NOTES.md \
+            RA2Toolbox-1.0.51-pre.13-x64-Update.zip \
+            RA2Toolbox-1.0.51-pre.13-x64-Full.zip SHA256SUMS.txt
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,isDraft,isPrerelease,assets > RELEASE_RECEIPT.json
+          jq -e '.isDraft==false and .isPrerelease==true and (.assets|length)==3' RELEASE_RECEIPT.json
+          cat RELEASE_RECEIPT.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-1.0.51-pre.13-publication-record
+          retention-days: 30
+          path: |
+            dist/SHA256SUMS.txt
+            dist/RELEASE_NOTES.md
+            dist/RELEASE_RECEIPT.json

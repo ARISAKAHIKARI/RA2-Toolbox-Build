@@ -17,21 +17,48 @@ static unloadcompute::View unloadView(const UnloadPassenger&r,int frame,bool que
 }
 static bool unloadSourceCurrent(const UnloadPassenger&r,const unloadcompute::Source&s,uint32_t house,int frame){
  if(r.job!=s.job||r.id!=s.id||r.p!=s.pointer||r.cancelled||frame-r.frame>900||
-    !worldObjects.contains(r.p)||get<uint32_t>(r.p+0x10)!=r.id||kind(r.p)!=1||!own(r.p,house)||get<uint32_t>(r.p+0x11C)||
-    manualVersions.get(r.id)!=s.token||typeOf(r.p,1)!=s.type||
+    !worldObjects.contains(r.p)||manualVersions.get(r.id)!=s.token||
     !(sh->flags&(r.mode==0?SmartUnloadOrders:EjectAssist))||
-    !featureTypeAllowed(r.mode==0?featuretypes::UnloadPassenger:featuretypes::EscapePassenger,s.type)||
-    !featureTypeAllowed(r.mode==0?featuretypes::UnloadTransport:featuretypes::EscapeTransport,r.carrierType)||
     memcmp(static_cast<const unloadcompute::State*>(&r),&s.state,sizeof(s.state)))return false;
- auto current=unloadView(r,frame);current.frame=s.view.frame;current.queryFailed=s.view.queryFailed;
- // A specialist can receive Capture/Enter while walking away from its carrier.
- // Preserve every identity, token, mission and animation check; only tolerate
- // the coordinate drift of that same native Move during host calculation.
+ // A second live read may fail even after a complete sealed world capture.
+ // Do not build a current mission=0 / queued=0 from unchecked get<T>().
+ unloadfollowup::Observation native{};
+ if(unloadfollowup::observe(r.p,r.id,house,
+     [](uint32_t at,void*out,size_t n){return read(at,out,n);},native)!=unloadfollowup::Knowledge::Current||
+    !native.live()||native.carrier||native.type!=s.type)return false;
+ if(!refreshFeatureTypes())return false;
+ const auto passengerFeature=r.mode==0?featuretypes::UnloadPassenger:featuretypes::EscapePassenger;
+ const auto transportFeature=r.mode==0?featuretypes::UnloadTransport:featuretypes::EscapeTransport;
+ if(featureConfig.filters[passengerFeature].custom){
+  char typeName[24]{};
+  if(!read(native.type+0x24,typeName,23))return false;
+ }
+ if(featureConfig.filters[transportFeature].custom){
+  char typeName[24]{};
+  if(r.carrierType<0x10000||!read(r.carrierType+0x24,typeName,23))return false;
+ }
+ if(!featureTypeAllowed(passengerFeature,native.type)||
+    !featureTypeAllowed(transportFeature,r.carrierType))return false;
+ int sequence=0;uint8_t c4=0;
+ if(!read(r.p+0x6C4,&sequence,sizeof sequence)||
+    !read(native.type+0xEC2,&c4,sizeof c4))return false;
+ unloadcompute::View current{};
+ current.frame=s.view.frame;current.mode=r.mode;current.landedFrame=r.landedFrame;
+ current.mission=native.mission;current.queued=native.queued;current.sequence=sequence;
+ current.x=native.x;current.y=native.y;
+ current.deployer=native.deployer;current.engineer=native.engineer;current.spy=native.spy;current.c4=c4;
+ if(current.deployer){
+  uint32_t vt=0,method=0;
+  if(!read(r.p,&vt,sizeof vt)||vt<0x10000||!read(vt+0x314,&method,sizeof method))return false;
+  current.ready=call<bool>(method,r.p);
+ }
+ current.queryFailed=s.view.queryFailed;
+ // Native Move may change a specialist's coordinates between capture and
+ // admission; not mission, queued status, animation, identity or target.
  if(!current.deployer&&(current.engineer||current.spy)&&current.mission==2&&s.view.mission==2){
   current.x=s.view.x;current.y=s.view.y;
  }
- // Never deploy from a pre-scatter observation or replace a newer mission.
- return !memcmp(&current,&s.view,sizeof(current));
+ return !memcmp(&current,&s.view,sizeof current);
 }
 static uint8_t unloadTargetAction(uint32_t p,uint32_t t,const unloadcompute::View&v,uint32_t q,uint32_t house,planner::Actor&source,bool&queryFailed){
  if(!q||!live(q)||get<uint32_t>(q+0x11C)||get<int>(q+0x220))return 0;
@@ -109,18 +136,27 @@ static bool applyUnloadDecision(UnloadPassenger&r,const unloadcompute::Input&inp
  if(decision.done)return true;
  if(decision.mission<0||budget<=0||outgoingRoom()<=0)return false;
  // Runtime alone revalidates the chosen target and creates the event.
+ uint32_t capturedTargetPointer=0;
  if(decision.target){int targetIndex=-1;
   for(int i=0;i<input.targetCount;++i)if(input.targets[i].id==decision.target){targetIndex=i;break;}
   if(targetIndex<0)return false;const auto&q=input.targets[targetIndex];
   if(worldByID(q.id)!=q.pointer||get<uint32_t>(q.pointer+0x10)!=q.id)return false;
+  capturedTargetPointer=q.pointer;
   bool failed=false;planner::Actor source{};rawCombatInfo(r.p,s.type,1,source,true);
   uint8_t action=unloadTargetAction(r.p,s.type,s.view,q.pointer,house,source,failed);
   if(failed||!action||int(action&63)-1!=decision.mission)return false;
  }else if(decision.mission!=0&&decision.mission!=5&&decision.mission!=16)return false;
  if(decision.mission==16&&(!s.view.deployer||!call<bool>(get<uint32_t>(get<uint32_t>(r.p)+0x314),r.p)))return false;
  uint32_t ticket=0;const bool attack=decision.mission==1;
- if(!nativeMission(house,r.id,decision.mission,attack?decision.target:0,attack?0:decision.target,
-    !attack&&decision.target?0x34:0,0,0,taskarbiter::Owner::Unload,&ticket))return false;
+ // Capture-time source token and chosen target UID/pointer are independently
+ // rechecked at the common native game-thread event submission gateway.
+ const executionproof::Ticket proof{input.match,house,input.tick,
+    {s.id,s.pointer,s.token},
+    attack?executionproof::Identity{decision.target,capturedTargetPointer}:executionproof::Identity{},
+    !attack?executionproof::Identity{decision.target,capturedTargetPointer}:executionproof::Identity{}};
+ if(!submitProvenMission(house,r.id,decision.mission,attack?decision.target:0,
+    attack?0:decision.target,!attack&&decision.target?0x34:0,
+    taskarbiter::Owner::Unload,proof,&ticket))return false;
  --budget;state=decision.accepted;
  if(decision.mission!=5){state.sentFrame=frame;if(decision.mission==16||decision.target)++snap.unloadIssued;}
  if(decision.follow){

@@ -237,9 +237,18 @@ static void oreHarvestTick(uint32_t house,int frame,DWORD now){
   if(!j.search.done||j.attemptedFrame==frame)continue;j.attemptedFrame=frame;
   if(!j.search.best){j={};continue;}
   OreHarvestState state{};uint32_t target=0;
-  if(oreHarvestState(j,house,state)==1&&state.mission==10&&oreHarvestCell(int(j.search.best%1000),int(j.search.best/1000),j.speed,&target)==1&&state.destination==target){j={};continue;}
+  const int status=oreHarvestState(j,house,state);
+  if(status==0)continue; // Unreadable is not a failed automatic command.
+  if(status<0){j={};continue;} // Proven identity/owner/manual invalidation.
+  const int cell=oreHarvestCell(int(j.search.best%1000),int(j.search.best/1000),j.speed,&target);
+  if(cell<0)continue; // Keep nearest-resource proof while this Cell is unknown.
+  if(!cell){j.search.begin(j.originX,j.originY);continue;}
+  if(state.mission==10&&state.destination==target){j={};continue;}
   if(snap.chat)continue;
-  const planner::Order order{j.id,j.token,0,j.search.best,10,11,planner::OreHarvestOrder,j.refinery};
+  planner::Order order{j.id,j.token,0,j.search.best,10,11,planner::OreHarvestOrder,j.refinery};
+  // A Runtime-owned post-unload job retains its original actor pointer;
+  // this order never comes from Host World and therefore uses no Host stamp.
+  order.unitPointer=j.pointer;
   const int accepted=admitPlannerOrder(order,house);
   if(accepted>0)j={};
   else if(accepted<0){if(++j.retries>=3)j={};else j.search.begin(j.originX,j.originY);}

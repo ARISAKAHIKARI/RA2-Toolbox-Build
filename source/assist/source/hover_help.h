@@ -2,7 +2,6 @@
 static std::wstring controlHelp(int id,const std::wstring& label){
  if(const auto*entry=autofeatures::byKeyControl(id))return std::wstring(entry->name)+L"开关快捷键：与点击功能开关相同。留空不绑定；支持按下、松开或双按。只在游戏前台且未聊天时触发。";
  if(id>=200&&id<212)id-=100;
- if(id>=9000&&id<9000+compute::Count)return L"计算模式：工具箱计算便于分担游戏负载；游戏内计算可减少数据传递等待。修改后从下一局生效。";
  if(id>=729&&id<=738){const int feature[]={450,478,474,702,705,708,719,736,720,721};if(id!=736)id=feature[id-729];}
  switch(id){
  case 9760:return L"此主画面补绘入口已停用。需要识别隐形单位时，开启敌方标记并选择特殊单位的不透明叠加模式。";

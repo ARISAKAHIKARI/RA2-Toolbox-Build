@@ -1,5 +1,6 @@
 #pragma once
 #include "protocol.h"
+#include "planner_provenance.h"
 #include "native_orders.h"
 #include "ore_queue.h"
 #include "business_effects.h"
@@ -156,9 +157,13 @@ public:
   if(world.match!=match_){reset();match_=world.match;}
   std::vector<Order> combat,out;combat.reserve(16);out.reserve(MaxOrders);
   auto finishBatch=[&](std::vector<Order> orders){
-   // A candidate clipped by the final ore/combat merge has no delivery or
-   // receipt. Start the defense cooldown only for orders actually returned.
-   for(const auto&o:orders)if(o.purpose==DefenseOrder)defenseSent_[o.unit]=world.tick;
+   // Carry the exact source-snapshot identity through asynchronous planning.
+   // Host does not dereference these raw numbers. The final native gateway
+   // must reject any changed/missing identity; it cannot rebind to a new UID.
+   for(auto&o:orders){
+    stampProvenance(o,[&](uint32_t id){return actor(id);});
+    if(o.purpose==DefenseOrder)defenseSent_[o.unit]=world.tick;
+   }
    return orders;
   };
   observeDrop|=autoDrop;

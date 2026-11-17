@@ -4,8 +4,12 @@
 #include "object_index.h"
 #include "ore_queue.h"
 #include "native_orders.h"
+#include "unload_followup_state.h"
 #include "repair_delivery.h"
+#include "unit_task_arbiter.h"
+#include "execution_proof.h"
 #include "../../shared/source/world_frame.h"
+#include "../../shared/source/world_frame_command_index.h"
 #include "../../shared/source/runtime_fault.h"
 #include "../../external_reader/source/cooperative_reader.h"
 #include <cassert>
@@ -34,10 +38,14 @@ static std::map<uint32_t,int> airOverride;
 static std::set<uint64_t> forbiddenEnter;
 static std::vector<std::pair<uint32_t,uint32_t>> assignments;
 static worldframe::Snapshot worldFrame;
-static bool worldFrameReady=false,worldFrameBoundaryOnly=false,sampleReadComplete=true;
+static bool worldFrameReady=false,sampleReadComplete=true; // boundary-only state comes from extracted production scope
 static unsigned sampleReadDepth=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};
 static std::vector<uint32_t> runtimeWorldDemands;
+static uint32_t runtimeDemandRevision=1;
+struct CommandWorkerFixture {static bool enabled(){return false;}};static CommandWorkerFixture worldFrameCommandWorker;
+static worldframe::CommandRoster worldFrameCommandRoster;
+static bool commandRosterReady(){return false;}
 #include "sample_scope_production.h"
 static bool liveRead(uint32_t at,void*out,size_t n){
  ++liveReads;if(at==0xA8EC78||(at>=0x800000&&at<0x810000))++liveRosterReads;
@@ -53,7 +61,7 @@ struct Vec {uint32_t vt,items;int capacity;uint32_t flags;int count,step;};
 static Vec vec(uint32_t at,int limit=16384){Vec v{};if(!read(at,&v,sizeof v)||v.count<0||v.count>limit||v.count>v.capacity||v.items<0x10000)return {};return v;}
 static uint32_t item(Vec v,int n){return n>=0&&n<v.count?get<uint32_t>(v.items+uint32_t(n)*4):0;}
 #include "tactical_frame_read.h"
-static ObjectIndex worldObjects;static ManualVersions manualVersions;
+static ObjectIndexView worldObjects;static ManualVersions manualVersions;
 static int kind(uint32_t p){const uint32_t vt=get<uint32_t>(p);return vt==0x7F5C70?2:vt==0x7EB058?1:vt==0x7E3EBC?3:vt==0x7E22A4?0:-1;}
 static uint32_t typeOf(uint32_t p,int k){return k>=0?get<uint32_t>(p+(k==3?0x520:k==1?0x6C0:0x6C4)):0;}
 static bool live(uint32_t p){return p>=0x10000&&get<int>(p+0x6C)>0&&get<bool>(p+0x74)&&!get<bool>(p+0x81)&&get<bool>(p+0x90);}
@@ -68,6 +76,7 @@ static bool nativeEnemy(uint32_t p,uint32_t h){
 static bool unloadBuildingCandidate(uint32_t p,uint32_t h,bool){return nativeEnemy(p,h);}
 static uint32_t readMapCell(int x,int y){if(x<=0||y<=0||x>=512||y>=512)return 0;const int index=y*512+x,count=get<int>(0x87F7E8+320);uint32_t cells=get<uint32_t>(0x87F7E8+316);return cells>=0x10000&&count>index&&count<=512*512?get<uint32_t>(cells+uint32_t(index)*4):0;}
 static bool sameid(const char*a,const char*b){for(int i=0;i<24;++i){if(a[i]!=b[i])return false;if(!a[i])return true;}return true;}
+static featuretypes::Config featureConfig{};
 static bool refreshFeatureTypes(){return true;}static long featureConfigRevision=0;
 static bool featureTypeAllowed(featuretypes::Feature,uint32_t type){return type>=0x10000;}
 static bool featureObjectAllowed(featuretypes::Feature f,uint32_t p){return p&&featureTypeAllowed(f,typeOf(p,kind(p)));}
@@ -77,7 +86,8 @@ static bool antiTheftBuilding(uint32_t){return false;}static bool antiTheftThrea
 struct NativeOrder {uint32_t id=0,cell=0,token=0,mode=0;bool global=false;uint32_t pointer=0;};
 static NativeOrder nativeOrders[128];static int nativeCount=0;
 static int orderIndex(uint32_t p){for(int n=0;n<nativeCount;++n)if(nativeOrders[n].pointer==p)return n;return -1;}
-static int dodgeCount=0,missileHoldCount=0;
+static int dodgeCount=0,missileHoldCount=0,dodgeCancelled=0,dodgeObserved=0;
+static taskarbiter::LeaseArbiter<64> actorLeaseArbiter;
 static oreconfig::Config oreConfig{};static long oreConfigRevision=0;
 static bool refreshOreConfig(){return true;}
 static DWORD sampleClock(Shared*){return clockNow;}
@@ -96,13 +106,19 @@ extern "C" int GuardedEnterAction(unsigned,unsigned p,unsigned target,unsigned*o
 }
 extern "C" int GuardedObjectAir(unsigned p,int*out){nativeBoundary();auto found=airOverride.find(p);*out=found==airOverride.end()?(kind(p)==0||get<bool>(p+0x134)):found->second;return 1;}
 extern "C" int GuardedCombatWeapon(unsigned p,unsigned q,unsigned*weapon,int*slot,int*close,int*air){nativeBoundary();*weapon=get<uint32_t>(typeOf(p,kind(p))+0x898);*slot=0;*close=1;auto found=airOverride.find(q);*air=found==airOverride.end()?(kind(q)==0||get<bool>(q+0x134)):found->second;return *weapon?1:0;}
-static bool loadInterfaces(){assert(!sampleReadDepth);return true;}
+static bool interfacesReady=true;
+static unsigned loadingFinished=0,loadingBoarded=0,loadingResends=0;
+static bool loadInterfaces(){assert(!sampleReadDepth);return interfacesReady;}
+enum class EventLane {Boarding};
+static int recurringBudget(EventLane){return 4;}
+static bool outgoingRoom(){return true;}
+static bool enterEvent(uint32_t,uint32_t,uint32_t,const executionproof::Ticket&,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
 static loading::Ledger<> loadLedger;
 static repairdelivery::Pending<> pendingRepairs;
 static compute::FrameHistory<compute::RepairInput> repairFrames;
 static uint32_t repairIDs[8192],repairTaskSeen;static int repairCount,repairAt,repairDone;
 static bool repairCalculationPending;static DWORD repairCalculationStarted;
-static void finishLoadingReservation(const loading::Reservation&,uint32_t,int,bool){assert(!sampleReadDepth);}
+static void finishLoadingReservation(const loading::Reservation&,uint32_t,int,bool boarded){assert(!sampleReadDepth);++loadingFinished;if(boarded)++loadingBoarded;}
 static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens){
  assert(!sampleReadDepth);++submissions;assignments.clear();
  for(int n=0;n<ns;++n){const int target=assignment[n];if(target>=0&&target<nv&&worldByID(soldiers[n].id)==soldiers[n].object&&manualVersions.get(soldiers[n].id)==tokens[n])assignments.emplace_back(soldiers[n].id,vehicles[target].id);}
@@ -112,6 +128,8 @@ static int indexedFrame=-1,indexedCount=-1,globalVehicleCandidateCount=0;
 static uint32_t indexedItems=0,indexedVehicleHouse=0,globalVehicleCandidates[16384]{};static bool indexedGlobalVehicles=false;
 static void minerDefenseReindexManual(ManualVersions&){}
 #include "tactical_frame_production.h"
+static void cancelDodge(uint32_t id){for(int i=0;i<dodgeCount;++i)if(dodgeJobs[i].id==id){dodgeJobs[i]=dodgeJobs[--dodgeCount];++dodgeCancelled;return;}}
+static void recordReceipt(const gateway::Receipt&){++dodgeObserved;}
 #include "fixtures/tactical_frame/missile_edge_pre1513.h"
 static compute::FrameHistory<compute::LoadInput>legacyLoadFrames;
 #define loadFrames legacyLoadFrames
@@ -140,7 +158,7 @@ static void seal(uint32_t omit=0,bool knownFailure=false){
 static void advance(uint32_t omit=0,bool failure=false){++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);seal(omit,failure);}
 static void reset(){
  check(!sampleReadDepth,"scope leaked between tests");memory.assign(memory.size(),0);::new(static_cast<void*>(sh)) Shared{};std::memset(&snap,0,sizeof snap);
- leaseChecks=0;leaseAllowed=true;worldObjects.clear();manualVersions.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
+ leaseChecks=0;leaseAllowed=true;worldObjects.clear();manualVersions.clear();actorLeaseArbiter.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
  worldFrameReady=false;nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;denyLivePage=false;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
  loadCalculationPending=loadCaptureWaiting=loadAckPending=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
  missileSendCount=missileManualCount=missileMotionCursor=missileSourceCursor=missileTargetCursor=missileManagedCursor=0;for(auto&m:missileMotion)m={};
@@ -185,6 +203,48 @@ static void testLoad(){
  setupLoad(0);leaseAllowed=false;const auto beforeQueries=nativeCalls;check(autoLoad(lastHouse)==-12&&nativeCalls==beforeQueries&&!submissions,"load queried native engine without a lease");leaseAllowed=true;
  std::puts("PASS 32 load assignment variants, shared roster, native matrix boundary and frozen-cohort retry");
 }
+static void testBoardingLedgerUnknown(){
+ setupLoad(0);const uint32_t passenger=get<uint32_t>(0x820000),carrier=get<uint32_t>(0x800000),passengerID=get<uint32_t>(passenger+0x10),carrierID=get<uint32_t>(carrier+0x10);
+ const int sourceKind=kind(passenger);
+ loading::Reservation r{passenger,passengerID,carrier,carrierID,1,snap.frame};
+ r.kind=sourceKind;r.initial=loadingObservation(passenger);r.lastSent=snap.frame;r.progress=snap.frame;r.retryAfter=snap.frame+30;
+ check(loadLedger.add(r),"boarding ledger fixture did not reserve");
+ interfacesReady=true;loadingFinished=loadingBoarded=loadingResends=0;
+ // Unknown live UID/owner/motion must not cancel, send, or change the ledger.
+ for(uint32_t offset:{0x10u,0x21Cu,0x9Cu,0xACu}){
+  advance();missingPage=(passenger+offset)&~4095u;denyLivePage=true;
+  const int previousProgress=loadLedger.records[0].progress;
+  autoLoadTick(lastHouse,snap.frame);
+  check(loadLedger.count==1&&!loadingFinished&&!loadingResends&&loadLedger.records[0].progress==previousProgress,"missing live boarding field changed ledger");
+  denyLivePage=false;missingPage=0;
+ }
+ // A temporary query-interface outage does not discard accepted native tickets.
+ advance();interfacesReady=false;autoLoadTick(lastHouse,snap.frame);
+ check(loadLedger.count==1&&!loadingFinished&&!loadingResends,"interface outage erased pending boarding ticket");
+ interfacesReady=true;
+ // Confirm the transport pointer even when the passenger has left the roster.
+ set<uint32_t>(passenger+0x11C,carrier);worldObjects.clear();worldObjects.add(carrier,carrierID);
+ advance();autoLoadTick(lastHouse,snap.frame);
+ check(!loadLedger.count&&loadingFinished==1&&loadingBoarded==1&&!loadingResends,"confirmed boarding did not complete native ticket");
+ // A UID replacement cannot retain or complete the predecessor's reservation.
+ setupLoad(0);const uint32_t p2=get<uint32_t>(0x820000),v2=get<uint32_t>(0x800000);
+ loading::Reservation old{p2,get<uint32_t>(p2+0x10),v2,get<uint32_t>(v2+0x10),1,snap.frame};
+ old.kind=kind(p2);old.initial=loadingObservation(p2);old.lastSent=snap.frame;old.retryAfter=snap.frame+30;
+ check(loadLedger.add(old),"replacement fixture ledger missing");
+ loadingFinished=loadingBoarded=loadingResends=0;
+ set<uint32_t>(p2+0x10,old.id+1000);advance();autoLoadTick(lastHouse,snap.frame);
+ check(!loadLedger.count&&loadingFinished==1&&!loadingBoarded&&!loadingResends,"recycled source UID was not retired");
+ // Native gateway stays unavailable: only the independent 900-frame expiry applies.
+ setupLoad(0);const uint32_t p3=get<uint32_t>(0x820000),v3=get<uint32_t>(0x800000);
+ loading::Reservation expires{p3,get<uint32_t>(p3+0x10),v3,get<uint32_t>(v3+0x10),1,snap.frame};
+ expires.kind=kind(p3);expires.initial=loadingObservation(p3);check(loadLedger.add(expires),"expiry fixture ledger missing");
+ loadingFinished=loadingBoarded=loadingResends=0;interfacesReady=false;
+ snap.frame+=901;clockNow+=901*16;set<int>(0xA8ED84,snap.frame);
+ autoLoadTick(lastHouse,snap.frame);
+ check(!loadLedger.count&&loadingFinished==1&&!loadingBoarded&&!loadingResends,"unavailable gateway removed bounded expiry");
+ interfacesReady=true;
+ std::puts("PASS automatic boarding ledger: missing live reads retain, boarding confirms, identity replacement and expiry retire");
+}
 static void testDodge(){
  reset();sh->dodgeEnabled=1;uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),owner=object(airType,0,21,0x30000),bullet=alloc();
  set<uint32_t>(bullet,0x7E46E4);set<uint32_t>(bullet+0x10,30);set<int>(bullet+0x6C,25);set<bool>(bullet+0x90,true);set<uint32_t>(bullet+0xB0,owner);set<uint32_t>(bullet+0x10C,p);set<int>(bullet+0x140,1000);set<int>(bullet+0x144,1000);set<double>(bullet+0xE8,5.);
@@ -196,6 +256,31 @@ static void testDodge(){
  // A genuinely empty bullet array is complete, including a null item buffer.
  set<uint32_t>(bullet+0x10,30);vectorAt(0xA8ED40,0,{});advance();check(collectDodgeThreats()&&dodgeThreatCount==0,"empty bullet roster rejected");
  std::puts("PASS dodge shared Bullet/Techno input, live reuse guard and failed/empty roster distinction");
+}
+static void testDodgeLeaseMissing(){
+ reset();sh->dodgeEnabled=1;uint32_t type=makeType(),p=object(type,2,20);
+ vectorAt(0xA8EC78,0x800000,{p});seal();
+ dodgeJobs[0]={};dodgeCount=1;dodgeCancelled=dodgeObserved=0;
+ auto&job=dodgeJobs[0];job.id=20;job.pointer=p;job.token=manualVersions.get(20);job.active=true;
+ job.x=1000;job.y=1000;job.quietFrame=snap.frame;
+ check(dodgeSourceKnowledge(p,lastHouse)==1,"complete same-frame dodge source should be eligible");
+ // A live read can fail AFTER the sealed source was captured. That must not
+ // synthesize movement, observe Scatter, or mutate the lease checkpoint.
+ set<int>(p+0x9C,0);missingPage=p&~4095u;denyLivePage=true;
+ updateDodgeJobs(lastHouse,snap.frame,clockNow);
+ check(dodgeCount==1&&dodgeCancelled==0&&!dodgeObserved&&job.x==1000&&job.quietFrame==snap.frame,"missing motion page changed active dodge state");
+ denyLivePage=false;missingPage=0;
+ updateDodgeJobs(lastHouse,snap.frame,clockNow);
+ check(dodgeCount==1&&dodgeCancelled==0&&job.x==0&&job.observed&&dodgeObserved==1,"recovered movement not observed");
+ // Incomplete sealed source is unknown, not verified ineligible.
+ advance(p);check(dodgeSourceKnowledge(p,lastHouse)==0,"missing dodge source did not report unknown");
+ updateDodgeJobs(lastHouse,snap.frame,clockNow);
+ check(dodgeCount==1&&!dodgeCancelled,"missing source retired active dodge owner");
+ // Proven native mission loss still retires the old dodge task.
+ set<int>(p+0xAC,0);advance();check(dodgeSourceKnowledge(p,lastHouse)==-1,"complete invalid native mission did not prove retirement");
+ updateDodgeJobs(lastHouse,snap.frame,clockNow);
+ check(dodgeCount==0&&dodgeCancelled==1,"confirmed ineligible dodge owner not retired");
+ std::puts("PASS dodge lease state-machine: sealed unknown and live motion failures cannot cancel or advance job");
 }
 static void testReverse(){
  reset();sh->dodgeEnabled=1;uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),owner=object(airType,0,21,0x30000),bullet=alloc(),cell=alloc();
@@ -253,10 +338,62 @@ static void testIdentitySampleFailure(){
  advance();check(refreshWorldIndex(snap.frame,false)&&worldObjects.contains(carrier)&&worldObjects.contains(passenger),"complete next sample failed to recover index");
  std::puts("PASS identity-sample recovery: partial UID sample retries execution identity guard after scope exit; pure observation waits; complete next frame recovers");
 }
+static void testMissionReceiptIncomplete(){
+ reset();uint32_t t=makeType(),p=object(t,2,20);set<int>(p+0xAC,0);set<int>(p+0xB4,-1);
+ auto observed=observeMissionReceipt(20);
+ check(observed.valid&&observed.mission==0&&observed.queued==-1,"complete mission 0 observation rejected");
+ // Native receipt must not treat an unreadable mission as a zero-value mission.
+ for(uint32_t off:{0x10u,0xACu,0xB4u,0x11Cu}){
+  missingPage=(p+off)&~4095u;denyLivePage=true;
+  check(!observeMissionReceipt(20).valid,"missing UID/mission/queue/carrier yielded a valid native receipt");
+  denyLivePage=false;missingPage=0;
+ }
+ gateway::MissionObserver<4> observer;
+ gateway::MissionState before{true,2,-1,0};
+ const uint32_t ticket=observer.record(match,20,0,0,snap.frame,clockNow,before,taskarbiter::Owner::Dodge);
+ check(ticket&&observer.pending(),"cannot start receipt observer");
+ missingPage=p&~4095u;denyLivePage=true;
+ unsigned received=0;
+ check(observer.pollWithReceipts(match,snap.frame+1,clockNow+16,[](uint32_t id){return observeMissionReceipt(id);},
+    [&](const gateway::Receipt&){++received;})==0&&observer.pending()&&!received,"missing page acknowledged native order");
+ denyLivePage=false;missingPage=0;
+ check(observer.pollWithReceipts(match,snap.frame+2,clockNow+32,[](uint32_t id){return observeMissionReceipt(id);},
+    [&](const gateway::Receipt&){++received;})==1&&!observer.pending()&&received==1,"complete native mission did not resolve receipt");
+ std::puts("PASS native mission receipts: missing UID/mission/queue/carrier never acknowledges default-zero mission");
+}
+static void testLeasesNeedCompleteIdentityNotSecondLiveRead(){
+ reset();const uint32_t type=makeType(),p=object(type,2,20);
+ check(actorLeaseArbiter.record(match,snap.frame,20,p,manualVersions.get(20),taskarbiter::Owner::Dodge,77),"cannot seed original automatic lease");
+ // The live roster has already produced a complete indexed UID. A second
+ // readWorldByID may nevertheless fail between the producer and sweep.
+ missingPage=p&~4095u;denyLivePage=true;
+ check(!worldByID(20),"fixture did not reproduce double live UID failure");
+ const unsigned attempted=liveReads;
+ sweepActiveLeases(snap.frame);
+ check(actorLeaseArbiter.find(20)>=0&&liveReads==attempted,"secondary UID failure released valid automatic lease or read live again");
+ denyLivePage=false;missingPage=0;
+ manualVersions.change(20,p,false);sweepActiveLeases(snap.frame);
+ check(actorLeaseArbiter.find(20)<0,"explicit manual revision must still release lease");
+ manualVersions.clear();check(actorLeaseArbiter.record(match,snap.frame,20,p,0,taskarbiter::Owner::Dodge,79),"cannot seed replacement lease");
+ worldObjects.clear();sweepActiveLeases(snap.frame);
+ check(actorLeaseArbiter.find(20)<0,"complete index absence must retire old lease");
+ std::puts("PASS shared automatic lease sweep: unknown second UID does not retire ownership; manual and complete absence do");
+}
 static void testUnload(){
  reset();uint32_t type=makeType(),bt=makeType(),p=object(type,1,20),target=object(bt,3,30,0x30000);set<bool>(type+0xEC3,true);sh->flags=SmartUnloadOrders;enterResult=9;vectorAt(0xA8EC78,0x800000,{p,target});seal();
  UnloadPassenger r{};r.p=p;r.id=20;r.job=1;r.mode=0;r.carrierType=bt;r.frame=r.landedFrame=snap.frame;r.x=r.y=1000;static unloadcompute::Input input;input.count=input.targetCount=0;
  check(collectUnloadSource(input,r,lastHouse,snap.frame)&&input.count==1&&input.targetCount==1&&input.actions[0][0]==uint8_t(9|64),"unload specialist query capture");check(nativeCalls==1,"unload native query lost");check(unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),"unload valid live source rejected");
+ // A completed sealed sample does not imply later native fields remain
+ // readable. Failed live source or specialist type reads cannot admit orders.
+ missingPage=p&~4095u;denyLivePage=true;
+ check(!unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),
+       "unload accepted a missing live mission/owner/UID page at final admission");
+ denyLivePage=false;missingPage=type&~4095u;denyLivePage=true;
+ check(!unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),
+       "unload accepted unreadable specialist flags at final admission");
+ denyLivePage=false;missingPage=missingLiveReads=0;
+ check(unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),
+       "unload final admission did not recover after missing live pages");
  set<int>(p+0xAC,2);check(!unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),"unload local apply would accept later mission");
  const auto queries=nativeCalls;set<uint32_t>(p+0x10,44);worldObjects.add(p,44);r.id=44;check(!collectUnloadSource(input,r,lastHouse,snap.frame)&&input.count==1&&nativeCalls==queries,"unload combined a new job identity with old sampled fields");r.id=20;set<uint32_t>(p+0x10,20);
  advance(target);const int before=input.count;check(!collectUnloadSource(input,r,lastHouse,snap.frame)&&input.count==before,"unload missing target published partial source");check(!missingLiveReads,"unload missing target fell back live");
@@ -319,5 +456,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testDodge();testReverse();testMissile();testIdentitySampleFailure();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif

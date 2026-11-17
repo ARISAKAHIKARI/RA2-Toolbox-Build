@@ -1,0 +1,53 @@
+name: Audit integration of pre.14 lineage with async command fixes
+on:
+  push:
+    branches: [codex/async-command-capture-20261117]
+    paths:
+      - .github/workflows/merge-pre14-async-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  merge-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Simulate stable pre.14 lineage plus async without changing any branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p integration-evidence
+          git config user.name 'RA2Toolbox Merge Audit'
+          git config user.email 'merge-audit@users.noreply.github.com'
+          git fetch --no-tags origin 'refs/tags/v1.0.51:refs/tags/v1.0.51'
+          git fetch --no-tags origin 'refs/heads/codex/async-command-capture-20261117:refs/remotes/origin/async-command-capture'
+          git checkout -B integration-audit v1.0.51
+          echo "BASE_STABLE=$(git rev-parse HEAD)"
+          echo "ASYNC_HEAD=$(git rev-parse refs/remotes/origin/async-command-capture)"
+          git config core.autocrlf input
+          if git -c merge.renormalize=true merge -s ort -X renormalize -X diff-algorithm=histogram --no-commit --no-ff refs/remotes/origin/async-command-capture >integration-evidence/merge.log 2>&1; then
+            echo 'MERGE_RESULT=clean'
+          else
+            echo 'MERGE_RESULT=conflicts'
+            tail -50 integration-evidence/merge.log
+            git diff --name-only --diff-filter=U | tee integration-evidence/conflict-paths.txt
+            while IFS= read -r file; do
+              test -n "$file" || continue
+              echo "===== CONFLICT FILE $file ====="
+              awk '/^<<<<<<< HEAD/ {show=1} show {print} /^>>>>>>>/ {show=0}' "$file"
+              echo "===== SIDE DIFFERENCES $file ====="
+              git show ":2:$file" > /tmp/merge-stable
+              git show ":3:$file" > /tmp/merge-async
+              diff -u -U2 /tmp/merge-stable /tmp/merge-async | head -450 || true
+            done < integration-evidence/conflict-paths.txt
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pre14-async-three-way-conflict-report
+          retention-days: 14
+          path: integration-evidence/

@@ -7,6 +7,8 @@ static bool worldFrameReady=false,sampleReadComplete=true,fixtureCaptureAttempte
 static unsigned sampleReadDepth=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};
 static std::vector<uint32_t> runtimeWorldDemands;
+// Match production SampleReadScope/requestWorldRange dependencies.
+static uint32_t runtimeDemandRevision=1;
 static worldframe::Key fixtureLastAttempt{};
 static uint64_t fixtureCaptureCount=0,fixtureCaptureReads=0,fixtureCaptureBytes=0,fixtureSampleReads=0,fixtureLiveReads=0,fixtureCaptureCellReads=0,fixtureSampleCellReads=0;
 static bool readFixtureLive(uint32_t,void*,size_t);
@@ -17,7 +19,7 @@ static bool read(uint32_t at,void*out,size_t n){
 }
 static void fixtureResetWorld(){
  assert(!sampleReadDepth);worldFrameReady=fixtureCaptureAttempted=false;sampleReadComplete=true;
- runtimeWorldDemands.clear();runtimeDemandLeases.clear();runtimeDemandBits.fill(0);
+ runtimeWorldDemands.clear();runtimeDemandLeases.clear();runtimeDemandBits.fill(0);runtimeDemandRevision=1;worldFrameBoundaryOnly=false;
  fixtureCaptureCount=fixtureCaptureReads=fixtureCaptureBytes=fixtureSampleReads=fixtureLiveReads=fixtureCaptureCellReads=fixtureSampleCellReads=0;
 }
 static bool fixtureCaptureWorld(uint32_t now){

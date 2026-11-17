@@ -1,5 +1,6 @@
 #pragma once
 #include "world_frame.h"
+#include "world_frame_recovery.h"
 #include <limits>
 
 namespace worldframe {
@@ -33,6 +34,9 @@ public:
   if((!capacity_||size_>=capacity_/2)&&!grow())return {false};entries_[slot(address)]={address,generation_};++size_;return {true};
  }
 };
+// Recently missed exact consumer field, not stale data. The acquisition
+// boundary can fill this range before broad page subscriptions. A caller may
+// store its last observed tick to bound the hint's lifetime.
 struct CaptureScratch {
  CaptureSet actors,types,small,houses;
  std::vector<uint32_t>queue,list,docks,warmPages;
@@ -117,9 +121,44 @@ public:
   out.resize(size_t(v.count));if(!v.count)return true;
   return frame_.capture(live_,v.items,out.data(),out.size()*4);
  }
- bool capture(uint32_t demand,const std::vector<uint32_t>&requests){
+ bool capture(uint32_t demand,const std::vector<uint32_t>&requests,
+              const RequestedSpan*exact=nullptr,size_t exactCount=0){
   if(!working())return false;
   demand_=demand|Base;const bool visuals=(demand_&Visual)!=0;
+  // Only a confirmed miss records exact bytes. A full-page read may fail on a
+  // transient allocation boundary even when a specific field is readable.
+  // Try bounded exact ranges BEFORE normal graph discovery and broad
+  // page demands, so neither can mark their bytes failed first.
+  // This remains the same single unsealed acquisition: no live fallback in
+  // an already sealed consumer or a second capture of the game frame.
+  size_t exactBytes=0,exactReads=0;
+  constexpr size_t ExactBudget=RecoveryConfirmBytes,ExactMaxReads=RecoveryConfirmSpans;
+  // Rotate the ring start across frames so persistent misses do not starve
+  // other active fields under a strict maximum number of live calls.
+  for(size_t step=0;exact&&step<exactCount&&exactReads<ExactMaxReads;++step){
+   const auto&span=exact[(step+(frame_.key.serial%exactCount))%exactCount];
+   if(!span.bytes||span.bytes>256||!range(span.address,span.bytes)||
+      uint32_t(frame_.key.tick-span.tick)>1000||exactBytes+span.bytes>ExactBudget)continue;
+   exactBytes+=span.bytes;++exactReads;
+   frame_.prefetch(live_,span.address,span.bytes);
+   if(!working())return false;
+  }
+  // Only a non-command Host display consumer, AND an explicit producer
+  // admission check, may request this boundary-only read set. The external
+  // VisualCache performs its own full Graph discovery on the Host thread.
+  // Do not capture unit/Type/Weapon/House object graphs here: no command
+  // admission can use a boundary-only sample as its full actor census.
+  if(demand_==uint32_t(Base|HostDisplayOnly)){
+   for(uint32_t p:{0xA80208u,0xA83CE0u,0xA8B230u,0xA8BC60u,0xA8E348u,
+                   0xA8ED84u,0x8871E0u,0x887324u,0x8A00A4u,0x8B4108u,
+                   0xAC1198u,0xB0CD48u})block(p,128);
+   block(0x87F7E8,0x1500);
+   block(frame_.key.scenario,0x1300);
+   // A game-thread read-only scene has no native commands. The Host already
+   // owns lazy display page subscriptions: don't pull these page ranges
+   // back onto the game's producer solely to paint an overlay.
+   return working();
+  }
   // Global fields are one read per overlapping page, regardless of which
   // collector originally owned them. No Selected object list is frozen here.
   for(uint32_t p:{0xA80208u,0xA83CE0u,0xA8B230u,0xA8BC60u,0xA8E348u,0xA8ED84u,0x8871E0u,0x887324u,0x8A00A4u,0x8B4108u,0xAC1198u,0xB0CD48u})block(p,128);
