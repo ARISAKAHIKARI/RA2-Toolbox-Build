@@ -22,7 +22,7 @@ struct WorldFrameCommandFixture {
  void invalidate(){}
  bool stop(){return true;}
  bool request(const worldframe::Key&,uint32_t,uint64_t,const std::vector<uint32_t>&,bool=false){return false;}
- bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&,worldframe::CommandRoster*=nullptr){return false;}
+ bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&,worldframe::CommandRoster* =nullptr){return false;}
 };
 using WorldFrameCommandWorker=WorldFrameCommandFixture;
 #else
