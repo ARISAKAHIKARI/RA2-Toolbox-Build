@@ -142,6 +142,7 @@ extern "C" int __cdecl AssistNativePipAction(unsigned action,unsigned){
   nativePipRendering=false;nativePipContent=true;
   QueryPerformanceCounter(&end);const uint32_t us=frequency.QuadPart>0?uint32_t(std::max<LONGLONG>(0,(end.QuadPart-start.QuadPart)*1000000/frequency.QuadPart)):0;
   sh->nativePipMicros=us;sh->nativePipMaxMicros=std::max(uint32_t(sh->nativePipMaxMicros),us);++sh->nativePipFrames;
+  AssistCriticalTimingRecord(criticalpath::NativePip,us);
   nativePipCadence.completed(GetTickCount(),frame,us);
  }
  sh->nativePipStatus=nativePipObject?3:2;
