@@ -20,7 +20,7 @@ class CommandCaptureWorker {
  struct Work {Key key{};uint32_t demand=Base,epoch=0,ticket=0;uint64_t requestRevision=0;bool globalVehicles=false;std::vector<uint32_t>pages;};
  std::mutex gate_;
  std::atomic<uint32_t>epoch_{1},latestTicket_{1};
- std::atomic<bool>stopping_{false};
+ std::atomic<bool>stopping_{false},capturing_{false};
  HANDLE thread_=nullptr,event_=nullptr;
  HMODULE module_=nullptr;
  Work queued_{};
@@ -65,8 +65,16 @@ class CommandCaptureWorker {
    Work job;bool found=false;
    {
     std::lock_guard<std::mutex>lock(self->gate_);
-    if(self->queuedReady_){job=std::move(self->queued_);self->queuedReady_=false;found=true;}
+    if(self->queuedReady_){
+     job=std::move(self->queued_);self->queuedReady_=false;
+     self->capturing_.store(true,std::memory_order_release);found=true;
+    }
    }
+   // Every aborted job releases its busy latch.
+   struct CaptureGuard {
+    CommandCaptureWorker*worker;bool engaged;
+    ~CaptureGuard(){if(engaged)worker->capturing_.store(false,std::memory_order_release);}
+   } running{self,found};
    if(!found||job.epoch!=self->epoch_.load(std::memory_order_acquire)||
       job.ticket!=self->latestTicket_.load(std::memory_order_acquire))continue;
    // All requested page sorting, dedup, real RPM and graph traversal happen
@@ -169,10 +177,14 @@ public:
   }
   if(lastRequestedKey_.sameFrame(key)&&lastRequestedDemand_==demand&&lastRequestedRevision_==revision&&lastRequestedGlobal_==globalVehicles&&
       uint32_t(now-lastRequestedAt_)<16)return true;
+  // Coalesce only busy same-world work, NEVER the completed graph's authority.
+  // take() still checks matching simulation frame before any native EventClass.
+  const bool outstanding=queuedReady_||capturing_.load(std::memory_order_acquire);
+  if(coalesceInFlightWorld(lastRequestedKey_,key,lastRequestedDemand_,demand,
+     lastRequestedRevision_,revision,lastRequestedGlobal_,globalVehicles,
+     uint32_t(now-lastRequestedAt_),outstanding,MaxHandoffMs))return true;
   if(!launch())return false;
-  // Invalidate a different in-flight frame/House/demand immediately; do
-  // not let a 120ms old graph monopolize the worker while a new frame waits.
-  // Repeated requests for the SAME work retain its ticket to avoid starvation.
+  // A changed world/demand/revision/global bit supersedes the running ticket.
   const bool same=lastRequestedKey_.sameFrame(key)&&
       lastRequestedDemand_==demand&&lastRequestedRevision_==revision&&lastRequestedGlobal_==globalVehicles;
   if(!same)latestTicket_.fetch_add(1,std::memory_order_acq_rel);
