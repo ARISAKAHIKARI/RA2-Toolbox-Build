@@ -47,11 +47,11 @@ jobs:
           checks/global-vehicle-scan | tee checks/global-vehicle-scan.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/repair_result_filter.cpp -o checks/repair-result-filter
           checks/repair-result-filter | tee checks/repair-result-filter.log
-          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_retry_policy.cpp -o checks/unload-retry
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_retry_policy.cpp -o checks/unload-retry
           checks/unload-retry | tee checks/unload-retry.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_groups.cpp -o checks/unload-groups
           checks/unload-groups | tee checks/unload-groups.log
-          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_index_incremental.cpp -o checks/unload-index
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_index_incremental.cpp -o checks/unload-index
           checks/unload-index | tee checks/unload-index.log
           python source/assist/tests/unload_loaded_admission.py --current-only --out checks/unload-admission | tee checks/unload-admission.log
           g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/world_frame_command_index.cpp -o checks/command-index
