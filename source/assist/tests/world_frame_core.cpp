@@ -5,6 +5,7 @@
 #endif
 #include "../../shared/source/world_frame_capture.h"
 #include "../../shared/source/world_frame_visual.h"
+#include "../source/world_capture_requests.h" // Host fixture includes Runtime inside namespace assist later.
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
