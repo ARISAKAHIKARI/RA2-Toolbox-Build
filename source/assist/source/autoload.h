@@ -4,10 +4,10 @@
 
 namespace assist { namespace loading {
 constexpr int MaxInfantry=1024, MaxVehicles=256, GraceFrames=90;
-struct Infantry {uint32_t object=0,id=0;int x=0,y=0,slots=0;uint32_t type=0;int kind=1;uint32_t ticket=0,queuedAt=0,manualToken=0;};
+struct Infantry {uint32_t object=0,id=0;int x=0,y=0,slots=0;uint32_t type=0;int kind=1;uint32_t ticket=0,queuedAt=0;};
 struct Vehicle {uint32_t object=0,id=0;int x=0,y=0,capacity=0,used=0,reserved=0;double sizeLimit=128;int passengers=0;};
 struct Observation {int mission=0,queued=-1;uint32_t target=0,destination=0;};
-struct Reservation {uint32_t object,id,vehicle,vehicleID;int slots,frame;int lastSent=-1,x=0,y=0,progress=0,lastAttempt=-1,retryAfter=0,attempts=0;Observation initial{};bool enterObserved=false;int kind=1;uint32_t ticket=0,queuedAt=0;};
+struct Reservation {uint32_t object,id,vehicle,vehicleID;int slots,frame;int lastSent=-1,x=0,y=0,progress=0,lastAttempt=-1,retryAfter=0,attempts=0;Observation initial{};bool enterObserved=false;int kind=1;uint32_t ticket=0,queuedAt=0,manualToken=0;};
 inline bool takenOver(Reservation&r,const Observation&now,uint32_t incoming){
  if(incoming&&incoming!=r.vehicle)return true;
  if(now.queued>=0&&now.queued!=7&&now.queued!=r.initial.queued)return true;
