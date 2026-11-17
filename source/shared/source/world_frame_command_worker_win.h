@@ -181,7 +181,7 @@ public:
   lastRequestedDemand_=demand;lastRequestedRevision_=revision;lastRequestedGlobal_=globalVehicles;
   SetEvent(event_);return true;
  }
- bool take(const Key&current,uint32_t demand,uint64_t revision,Snapshot&into,CommandRoster*roster=nullptr){
+ bool take(const Key&current,uint32_t demand,uint64_t revision,Snapshot&into,CommandRoster*roster=nullptr,bool globalVehicles=false){
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
   if(!lock.owns_lock()||!completedReady_)return false;
   if(completedEpoch_!=epoch_.load(std::memory_order_acquire)||
@@ -191,7 +191,10 @@ public:
   }
   // A second same-frame request cannot reuse an already taken sample:
   // completed_ now holds only the previous game thread's owned storage.
-  if(roster&&!completedRoster_.current(completedKey_)){
+  // Global candidate demand is an independent, same-frame configuration bit.
+  // A mode switch cannot adopt a graph indexed under the previous setting.
+  if(completedRoster_.global!=globalVehicles||
+     (roster&&!completedRoster_.current(completedKey_))){
    completedReady_=false;++rejected_;return false;
   }
   into.swap(completed_);
