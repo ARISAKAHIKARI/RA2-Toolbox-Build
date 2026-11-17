@@ -6,6 +6,7 @@
 
 | 主题 | 新笔记 | 关键词 |
 | --- | --- | --- |
+| 显示图零页边界与后台采样 | [纯显示不再触发主线程全图采集](2026-11-17-display-capture-offthread.md) | HostDisplayOnly VisualCache zero-page stamp same-frame command-escalation |
 | 游戏线程 Host-first 计算与按需帧通知 | [计算位置、空转唤醒和剩余采样边界](2026-11-17-mainthread-host-first.md) | host-first native-frame-notices active-work demand CaptureGraph not-migrated |
 | 异步发布线程退出后的同帧恢复 | [残留描述符不阻止重启发布者](2026-11-17-async-publisher-restart.md) | async-publisher stale-descriptor stopped-worker paused-frame recovery no-live-recapture |
 | 封口样本后台发布与安全卸载 | [三缓冲所有权、独立发布者和暂停恢复](2026-11-15-async-world-publication.md) | AsyncPublisher PublicationOnly epoch observation retire pinned-DLL zero-copy-handoff Assist109 transport3 |
