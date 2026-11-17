@@ -165,4 +165,4 @@ extern "C" __declspec(dllexport) int RecoverPublisher(){
  if(worldFrame.key.serial!=key.serial||memory.calls.size()!=calls||threadStarts!=starts+1)return -1;
  return 1;
 }
-extern "C" __declspec(dllexport) int Stop(){assist::retireWorldFrame();return assist::worldFramePublication.stop()?1:0;}
+
