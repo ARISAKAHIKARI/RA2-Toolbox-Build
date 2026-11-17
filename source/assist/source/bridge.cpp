@@ -83,7 +83,13 @@ extern "C" void __cdecl AssistCriticalTimingRecord(unsigned stage,uint32_t micro
  if(AssistCriticalTimingEnabled()&&stage<criticalpath::StageCount)criticalProfiler.add(stage,micros);
 }
 static void criticalTimingPublish(DWORD now){
- if(!sh||!sh->criticalTimingEnabled)return;
+ static bool previouslyEnabled=false;
+ const bool enabled=sh&&sh->criticalTimingEnabled&&!sh->stop;
+ if(!enabled){
+  if(previouslyEnabled){criticalProfiler.reset(now,match);previouslyEnabled=false;}
+  return; // No memset, sorting, lock or game read during disabled ticks.
+ }
+ if(!previouslyEnabled){criticalProfiler.reset(now,match);previouslyEnabled=true;return;}
  criticalpath::Snapshot sample{};
  if(!criticalProfiler.publish(now,match,sample))return;
  InterlockedIncrement(&sh->criticalTimingSeq);
