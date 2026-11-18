@@ -58,9 +58,20 @@ inline int priority(Owner o){
 }
 template<int Capacity=8192> struct LeaseArbiter {
  Lease leases[Capacity]{};int count=0;
- void clear(){count=0;}
+ // Cleanup is bookkeeping; command admission independently checks live
+ // actor/pointer/manual token and TTL. Never scan all 8K leases in one frame.
+ static constexpr unsigned MaxSweepPerFrame=256;
+ int sweepCursor=0,lastSweepFrame=0;
+ uint32_t lastSweepMatch=0;
+ bool sweepStamped=false;
+ void clear(){count=0;sweepCursor=0;sweepStamped=false;}
  int find(uint32_t actor)const{for(int i=0;i<count;++i)if(leases[i].actor==actor)return i;return -1;}
- void remove(int i){if(i>=0&&i<count)leases[i]=leases[--count];}
+ void remove(int i){
+  if(i>=0&&i<count){
+   leases[i]=leases[--count];
+   if(sweepCursor>=count)sweepCursor=0;
+  }
+ }
  bool current(const Lease& l,uint32_t m,int frame,uint32_t object,uint32_t revision)const{
   return l.match==m&&l.object==object&&l.manualVersion==revision&&
    frame>=l.issuedFrame&&frame-l.issuedFrame<=LeaseDurationFrames;
@@ -90,6 +101,24 @@ template<int Capacity=8192> struct LeaseArbiter {
    // pointer when the actor is no longer valid in this world snapshot.
    auto state=observation(l.actor);
    if(!current(l,match,frame,state.first,state.second))remove(i);else ++i;
+  }
+ }
+ // One bounded pass per unique simulation frame. Timed-out or manually
+ // superseded leases are also rejected directly by canIssue()/record(), so
+ // deferring cleanup cannot authorize a stale order or steal manual control.
+ // 8,192 slots are covered within 32 frames at the default 256-check budget,
+ // shorter than the 45-frame lease lifetime.
+ template<class Observe> void sweepBudgeted(uint32_t match,int frame,Observe observation,
+                                             unsigned budget=MaxSweepPerFrame){
+  if(sweepStamped&&lastSweepMatch==match&&lastSweepFrame==frame)return;
+  sweepStamped=true;lastSweepMatch=match;lastSweepFrame=frame;
+  const unsigned limit=budget<unsigned(count)?budget:unsigned(count);
+  for(unsigned visited=0;count&&visited<limit;++visited){
+   if(sweepCursor>=count)sweepCursor=0;
+   const int i=sweepCursor;
+   const auto state=observation(leases[i].actor);
+   if(!current(leases[i],match,frame,state.first,state.second))remove(i);
+   else if(++sweepCursor>=count)sweepCursor=0;
   }
  }
 };
