@@ -250,12 +250,25 @@ def main():
         'neuralframe::Version': 1,
         'sizeof(neuralframe::Header)': 256,
     }
-    baseline_matches = all(records['x86'].get(name) == value for name, value in baseline.items())
+    # Source-bound Protocol 110 contract measured from the real 2026-11-18
+    # Windows x86/x64 fixture artifact (run 44216792429, artifact 14389226579).
+    # Hash *all* field offsets, size and alignment entries; a same-size
+    # relocation must not silently masquerade as a compatible shared wire.
+    baseline_entries = 938
+    baseline_layout_sha256 = '33e5834916ad468ac386f19e232dc2ee92bfbb736afa744cb2b4d803d79a6472'
+    canonical_x86 = json.dumps(records['x86'], sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode('utf-8')
+    layout_sha256 = hashlib.sha256(canonical_x86).hexdigest()
+    baseline_matches = (all(records['x86'].get(name) == value for name, value in baseline.items())
+                        and len(records['x86']) == baseline_entries
+                        and layout_sha256 == baseline_layout_sha256)
     result = {'protocol': records['x86']['assist::Version'],
               'native_pointer_bytes': {'x86': 4, 'x64': 8},
               'layout_entries': len(records['x86']), 'differences': differences,
               'layouts': records, 'pe_parser_negative_checks': 'pass',
               'wire_baseline': baseline, 'wire_baseline_matches': baseline_matches,
+              'wire_layout_entries_expected': baseline_entries,
+              'wire_layout_sha256': layout_sha256,
+              'wire_layout_sha256_expected': baseline_layout_sha256,
               'passed': not differences and baseline_matches,
               'executed_windows_images': False,
               'fixture_sha256': hashlib.sha256(source.encode()).hexdigest()}
