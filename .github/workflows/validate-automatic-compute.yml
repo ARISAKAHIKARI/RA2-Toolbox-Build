@@ -28,6 +28,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/world_frame_core_test.py
+          # Reservation catalogue and native-sidebar visibility are Host-only.
+          # Check the real 128-FIFO Host service; keep source CI separate from
+          # x86 Runtime command admission, which must remain unmodified.
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/construction_choice_filter.cpp -o /tmp/ra2-construction-choices
+          /tmp/ra2-construction-choices
+          python3 source/assist/tests/reservation_unit_filter_settings.py
+          python3 source/assist/tests/construction_host_test.py
           python3 source/assist/tests/tactical_frame_sampling.py --out /tmp/ra2-automatic-sampling
           python3 source/assist/tests/captured_techno_roster_wiring.py
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Wno-misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/captured_techno_roster.cpp -o /tmp/ra2-techno-roster
