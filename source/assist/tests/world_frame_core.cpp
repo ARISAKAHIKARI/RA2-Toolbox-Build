@@ -564,6 +564,19 @@ void runtime(){
   {SampleReadScope blocked;CHECK(!blocked&&!blocked.complete());}
   int hp=0;CHECK(!worldFrame.read(ActorA+0x6C,&hp,sizeof hp));
   const auto shallowSerial=worldFrame.key.serial;
+  // Direct Snapshot misuse/reuse is also fail-closed: a prior complete page
+  // remains invisible after O(1) reset, and a subsequent real page lazily
+  // clears the stale index before admission.
+  {
+   worldframe::Snapshot reused;
+   reused.reset(worldFrame.key);
+   uint32_t firstID=0,newID=0;
+   CHECK(reused.capture(read,ActorA+0x10,&firstID,4)&&firstID==ActorA+5);
+   reused.resetBoundary(worldFrame.key);
+   CHECK(reused.pages.empty()&&!reused.find(ActorA&~4095u));
+   CHECK(reused.capture(read,ActorA+0x10,&newID,4)&&newID==firstID);
+   CHECK(reused.seal()&&reused.read(ActorA+0x10,&newID,4)&&newID==firstID);
+  }
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base));
   CHECK(worldFrameReady&&!worldFrameBoundaryOnly&&!worldframe::boundaryOnlySource(worldFrame.key)&&worldFrame.key.serial>shallowSerial);
   {SampleReadScope upgraded;CHECK(upgraded&&upgraded.complete());}
