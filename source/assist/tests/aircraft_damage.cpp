@@ -31,6 +31,22 @@ int main(){
  assert(orders.size()==3&&targetOf(orders,1)==100&&targetOf(orders,2)==100&&targetOf(orders,3)==101);
  assert(orders[0].expectedDamage==70&&orders[1].expectedDamage==50&&orders[2].expectedDamage==80);
 
+ // Configurable range coverage changes only the vehicle-radius strategy.
+ w=scene(3,2);w.coveragePercent=50;orders=allocate(w);
+ assert(targetOf(orders,1)==100&&targetOf(orders,2)==101);
+ w=scene(3,2);w.coveragePercent=150;orders=allocate(w);
+ assert(targetOf(orders,1)==100&&targetOf(orders,2)==100&&targetOf(orders,3)==100);
+ w=scene(1,1);w.targets[0].x=3*256;w.radiusCells=2;
+ assert(allocate(w).empty());w.radiusCells=3;assert(allocate(w).size()==1);
+ w.radiusCells=0;assert(allocate(w).empty());w.radiusCells=65;assert(allocate(w).empty());
+ w=scene(1,1);w.coveragePercent=0;assert(allocate(w).empty());
+ w.coveragePercent=501;assert(allocate(w).empty());
+ // Invalid extras do not disable the legacy quota or single-target modes.
+ w=scene(2,1,AirSingle);w.radiusCells=0;w.coveragePercent=501;
+ assert(allocate(w).size()==2);
+ w=scene(1,1,AirFirst);w.expectedDamage.clear();w.coveragePercent=501;
+ assert(allocate(w).size()==1);
+
  // Covered fallback is per aircraft: an uncovered target it cannot attack
  // cannot strand this aircraft, while any attackable uncovered option wins.
  w=scene(1,2);w.targets[0].priorDamage=120;w.compatible={1,0};assert(targetOf(allocate(w),1)==100);
