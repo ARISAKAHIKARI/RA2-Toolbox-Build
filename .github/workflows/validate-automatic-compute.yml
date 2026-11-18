@@ -141,6 +141,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/unload_roster_runtime.py --out /tmp/ra2-unload-roster --before source/assist/source/native_orders_bridge.h
+      - name: Compare full-capacity Ctrl+D radix candidate order with baseline
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unload_radix_sort.cpp -o /tmp/ra2-unload-radix
+          /tmp/ra2-unload-radix
       - name: Test production three-passenger native cargo handoff
         run: |
           set -euo pipefail
