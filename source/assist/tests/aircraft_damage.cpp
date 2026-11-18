@@ -1,4 +1,6 @@
 #include "../source/cooperative_plan.h"
+#include "../source/cooperative_frame.h"
+#include <memory>
 #include <cassert>
 #include <climits>
 #include <cmath>
@@ -109,6 +111,29 @@ int main(){
  assert(remaining.serial==original.serial&&remaining.tick==original.tick&&remaining.centerObject==original.centerObject);
  assert(retrySourcePool(remaining,original,{{1,999,100,1000,60}})&&remaining.count==4&&"a different manual token is a different source identity");
  assert(!retrySourcePool(remaining,original,{{1,20,0,0},{2,21,0,0},{3,22,0,0},{4,23,0,0}})&&remaining.count==0);
+
+ // The shared FrameInput path must carry the click-time parameters on every
+ // cross-process publication, restriction, retry and unpack, independently of
+ // the current Host UI values.
+ Request frozen{};frozen.serial=1;frozen.match=2;frozen.mode=AirDamage;
+ frozen.target=100;frozen.type=1000;frozen.centerObject=0x123400;
+ frozen.count=1;frozen.viewWidth=640;frozen.viewHeight=480;
+ frozen.airRadiusCells=7;frozen.airDamagePercent=175;
+ frozen.sources[0]={1,20};
+ assert(valid(frozen));
+ auto captured=std::make_unique<FrameInput>();w=scene(1,1);
+ w.radiusCells=7;w.coveragePercent=175;
+ assert(pack(*captured,w,frozen,100,4));
+ auto recovered=unpack(*captured);
+ assert(recovered.radiusCells==7&&recovered.coveragePercent==175);
+ restrictSources(recovered,frozen);
+ assert(recovered.radiusCells==7&&recovered.coveragePercent==175);
+ Request replay{};assert(retrySourcePool(replay,frozen,{})&&replay.airRadiusCells==7&&replay.airDamagePercent==175);
+ frozen.airRadiusCells=65;assert(!valid(frozen));frozen.airRadiusCells=7;
+ frozen.airDamagePercent=501;assert(!valid(frozen));frozen.airDamagePercent=175;
+ // Legacy/unset requests still decode to 5 cells and 120 percent.
+ frozen.airRadiusCells=frozen.airDamagePercent=0;assert(valid(frozen));
+ assert(radiusCells(frozen.airRadiusCells)==5&&damagePercent(frozen.airDamagePercent)==120);
 
  // Existing count-quota and entry allocation do not consume damage-only
  // metadata, and still obey their original counts and capacity behavior.
