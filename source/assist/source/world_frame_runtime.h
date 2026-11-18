@@ -205,6 +205,36 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
             (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
  worldFrame.reset(key);
+ if(boundaryOnly){
+  // Truly zero-page Host display boundary. The independent Host VisualCache
+  // acquires its own image, unit/Type graph and map geometry. No CaptureGraph,
+  // page discovery, page requests, UID scan or native EventClass authority
+  // belongs in this display-only game callback.
+  // Publication is still gated by TWO independent live world/House reads;
+  // a mixed or changed game frame is never advertised as a display source.
+  const auto after=worldlife::capture(live);uint32_t afterHouse=0;
+  const bool stable=live(0xA83D4C,&afterHouse,4)&&after.readable&&after.valid()&&
+    before.same(after)&&before.frame==after.frame&&house==afterHouse;
+  if(!stable||!worldFrame.seal()){
+   worldFrameBoundaryOnly=false;
+   if(!stable)worldFrameServer.retire();
+   failedCaptureAt=key.tick;
+   captureRetryDelay=captureRetryDelay?std::min<uint32_t>(250,captureRetryDelay*2):16;
+   if(sh)++sh->worldSampleFailures;
+   return false;
+  }
+  captureRetryDelay=0;worldFrameBoundaryOnly=true;worldFrameReady=true;
+  // A later native command in this same logic frame must bypass the reuse
+  // path above and build a separate fully sealed sample with a new serial.
+  worldFramePublication.publish(worldFrame,worldFrameServer);
+  if(sh){
+   InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;
+   sh->worldSamplePages=0;sh->worldSampleReads=0;sh->worldSampleBytes=0;
+   sh->worldSampleRosters=0;sh->worldSampleSerial=key.serial;
+   MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);
+  }
+  return true;
+ }
  // Probe up to 64 fields on the worker but permit only 16 freshly
  // verified fields to enter this logic frame. Both arrays are stack-bounded.
  // Rotate the direct-mapped hint table so busy units are not permanently first.
