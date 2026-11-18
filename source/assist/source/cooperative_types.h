@@ -4,12 +4,17 @@
 namespace assist { namespace cooperative {
 constexpr int MaxSources=1024,MaxTargets=1024;
 enum Mode { Enter=1,AirFirst=2,AirSecond=3,AirDamage=4,AirSingle=5 };
-constexpr int DamageRadius=5*256;
+constexpr int DefaultDamageRadiusCells=5,DefaultDamagePercent=120;
+constexpr int MinDamageRadiusCells=1,MaxDamageRadiusCells=64,MinDamagePercent=1,MaxDamagePercent=500;
+constexpr int DamageRadius=DefaultDamageRadiusCells*256; // legacy test/default boundary
+inline int radiusCells(uint32_t value){return value?int(value):DefaultDamageRadiusCells;}
+inline int damagePercent(uint32_t value){return value?int(value):DefaultDamagePercent;}
+inline bool validRange(uint32_t radius,uint32_t percent){return radiusCells(radius)>=MinDamageRadiusCells&&radiusCells(radius)<=MaxDamageRadiusCells&&damagePercent(percent)>=MinDamagePercent&&damagePercent(percent)<=MaxDamagePercent;}
 constexpr double MaximumExpectedDamage=1000000000.0;
 struct Source {uint32_t id,token;};
 // AirDamage freezes the clicked target's WORLD XY in cameraX/Y. Other modes
 // retain their original click-time screen projection and viewport bounds.
-struct Request {uint32_t serial,match,tick,target,type;int frame,mode,count,cameraX,cameraY,viewWidth,viewHeight;Source sources[MaxSources];uint32_t centerObject=0;};
+struct Request {uint32_t serial,match,tick,target,type;int frame,mode,count,cameraX,cameraY,viewWidth,viewHeight;Source sources[MaxSources];uint32_t centerObject=0;uint32_t airRadiusCells=0,airDamagePercent=0; // frozen at click; zero decodes as legacy 5/120 for older tests};
 struct Assignment {uint32_t id,token,target,type;double expectedDamage=0;};
 struct Quota {int first=1,second=2,maximum=0;}; // zero maximum = no limit
 // Keep only the unprocessed suffix, preserving the original click timestamp,
@@ -29,5 +34,5 @@ inline bool retrySourcePool(Request&r,const Request&original,const std::vector<A
 }
 inline Quota bounded(Quota q){if(q.first<0)q.first=0;if(q.first>512)q.first=512;if(q.second<0)q.second=0;if(q.second>512)q.second=512;if(q.maximum<0)q.maximum=0;if(q.maximum>512)q.maximum=512;return q;}
 inline bool damageMode(int mode){return mode==AirDamage||mode==AirSingle;}
-inline bool valid(const Request&r){return r.serial&&r.match&&r.count>=0&&r.count<=MaxSources&&r.mode>=Enter&&r.mode<=AirSingle&&(!damageMode(r.mode)||r.centerObject>=0x10000)&&r.viewWidth>0&&r.viewWidth<=32768&&r.viewHeight>0&&r.viewHeight<=32768&&r.cameraX>=-1048576&&r.cameraX<=1048576&&r.cameraY>=-1048576&&r.cameraY<=1048576;}
+inline bool valid(const Request&r){return r.serial&&r.match&&r.count>=0&&r.count<=MaxSources&&r.mode>=Enter&&r.mode<=AirSingle&&(!damageMode(r.mode)||r.centerObject>=0x10000)&&(r.mode!=AirDamage||validRange(r.airRadiusCells,r.airDamagePercent))&&r.viewWidth>0&&r.viewWidth<=32768&&r.viewHeight>0&&r.viewHeight<=32768&&r.cameraX>=-1048576&&r.cameraX<=1048576&&r.cameraY>=-1048576&&r.cameraY<=1048576;}
 } }
