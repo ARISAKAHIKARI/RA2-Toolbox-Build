@@ -45,6 +45,7 @@ struct AdditionalSettings {
  uint32_t renderReveal=0;int mapStrategy=0;bool manualReveal=false,experimentalReveal=false,antiTheft=false,nativeAirWaypoints=false;
  int enemySpecialMode=0; // 0=markers, 1=opaque additive units; only when special-only is enabled.
  bool enemyMarkers=false,enemySpecialOnly=false,idleAircraft=false,constructionQueue=false,airWaypoints=false;
+ bool constructionShowNativeUnits=false; // Optional mass queue for units already in native sidebar.
  uint32_t productionReminderMask=0; // buildings, defenses, infantry, vehicles, ships, aircraft
  uint32_t airPathKey=0;
  uint32_t nativeAirNetwork=0; // 0=native events, 1=UI gate experiment, 2=full native experiment

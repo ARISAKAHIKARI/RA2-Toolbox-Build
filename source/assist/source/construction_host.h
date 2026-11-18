@@ -116,7 +116,9 @@ static void collectChoices(){
   if(tab!=activeTab)continue;bool native=nativeHere(t.kind,t.index);
   bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
   bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,technologyRequested(index))&&!catalogue.possible(type,t.kind,t.naval!=0,false,technologyRequested(index));
-  if(queued||(!native&&future)||(native&&(tab>=2||(current[tab]&&get<int>(factory(tab)+0x24)==54))))choices.push_back({slot,index,tab,type,!native});
+  const bool busyBuilding=tab<2&&current[tab]&&get<int>(factory(tab)+0x24)==54;
+  if(construction::showReservationChoice(tab,native,queued,future,busyBuilding,extra.constructionShowNativeUnits))
+   choices.push_back({slot,index,tab,type,!native});
  }
  if(!source.complete())choices=std::move(previous);
 }

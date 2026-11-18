@@ -6,6 +6,16 @@
 namespace assist { namespace construction {
 constexpr int Capacity=32,VisibleCapacity=5,UnitCapacity=30,UnitReservationCapacity=128,PanelWidth=144,MaxHeaderHeight=178,SectionGap=10,RowHeight=66,PanelOpacity=236;
 constexpr int StackTop=24,StackStep=24,StackHeight=48;
+// The supplemental panel should mainly offer future/unavailable production.
+// Already available infantry/vehicles are normally in the native sidebar.
+// Optional unit mass-queue mode restores the previous behavior. An existing
+// reservation must stay visible in either mode so it can always be canceled.
+inline bool showReservationChoice(int tab,bool native,bool queued,bool future,
+                                   bool buildingFactoryBusy,bool showNativeUnits){
+ if(queued)return true;
+ if(!native)return future;
+ return tab>=2?showNativeUnits:buildingFactoryBusy;
+}
 constexpr int EmptyHeaderHeight=StackTop+32+SectionGap;
 inline bool prerequisite(int index,const std::vector<int>&owned,const std::vector<int>*groups,int future=-1){
  auto has=[&](int n){return n>=0&&n<int(owned.size())&&(owned[n]>0||n==future);};
