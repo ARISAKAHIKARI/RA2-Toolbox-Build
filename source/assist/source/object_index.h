@@ -56,13 +56,23 @@ struct ManualVersions {
  static constexpr unsigned Size=32768;
  uint32_t ids[Size]{},versions[Size]{},orePointers[Size]{};
  uint8_t oreState[Size]{},oreExpected[Size]{};
- uint16_t pausedSlots[Size]{},pausedPosition[Size]{};unsigned used=0,pausedCount=0;
+ uint16_t pausedSlots[Size]{},pausedPosition[Size]{};
+ // Dense occupied hash slots: actor revision state does not need to scan or
+ // zero all 32K entries after a short mission, reconnection or reset.
+ // The hash and paused-slot layout remain unchanged for native consumers.
+ uint16_t occupiedSlots[Size]{};unsigned used=0,pausedCount=0;
  unsigned slot(uint32_t id)const{unsigned s=ObjectIndex::hash(id)&(Size-1);for(unsigned n=0;n<Size;++n,s=(s+1)&(Size-1))if(!ids[s]||ids[s]==id)return s;return Size;}
  uint32_t get(uint32_t id)const{unsigned s=slot(id);return s<Size&&ids[s]==id?versions[s]:0;}
+ unsigned reserve(uint32_t id){
+  if(!id)return Size;
+  const unsigned s=slot(id);
+  if(s<Size&&!ids[s]){ids[s]=id;occupiedSlots[used++]=uint16_t(s);}
+  return s;
+ }
  bool trackable(uint32_t id)const{return slot(id)<Size;}
  void removePaused(unsigned s){if(!pausedPosition[s])return;unsigned at=pausedPosition[s]-1,last=pausedSlots[--pausedCount];pausedSlots[at]=uint16_t(last);if(at<pausedCount)pausedPosition[last]=uint16_t(at+1);pausedPosition[s]=0;}
  void addPaused(unsigned s){if(!orePointers[s]||!(oreState[s]&1)||pausedPosition[s])return;pausedSlots[pausedCount]=uint16_t(s);pausedPosition[s]=uint16_t(++pausedCount);}
- void change(uint32_t id,uint32_t pointer=0,bool miner=true){unsigned s=slot(id);if(s<Size){if(!ids[s])++used;removePaused(s);ids[s]=id;if(++versions[s]==0)++versions[s];oreState[s]=miner?1:0;oreExpected[s]=0;orePointers[s]=miner?pointer:0;addPaused(s);}}
+ void change(uint32_t id,uint32_t pointer=0,bool miner=true){unsigned s=reserve(id);if(s<Size){removePaused(s);if(++versions[s]==0)++versions[s];oreState[s]=miner?1:0;oreExpected[s]=0;orePointers[s]=miner?pointer:0;addPaused(s);}}
  void expectOreMission(uint32_t id,int mission){unsigned s=slot(id);if(s<Size&&ids[s]==id)oreExpected[s]=mission>=0&&mission<32?uint8_t(mission+1):0;}
  void resumeOre(uint32_t id){unsigned s=slot(id);if(s<Size&&ids[s]==id){oreState[s]=0;removePaused(s);}}
  bool watchingOre(uint32_t id)const{unsigned s=slot(id);return s<Size&&ids[s]==id&&orePointers[s]&&(oreState[s]&1);}
@@ -80,10 +90,26 @@ struct ManualVersions {
   return (oreState[s]&1)!=0;
  }
  template<class Keep> void copyLive(const ManualVersions& source,Keep keep){
-  clear();for(unsigned i=0;i<Size;++i)if(source.ids[i]&&keep(source.ids[i])){unsigned s=slot(source.ids[i]);if(s>=Size)break;
-   ids[s]=source.ids[i];versions[s]=source.versions[i];oreState[s]=source.oreState[i];oreExpected[s]=source.oreExpected[i];orePointers[s]=source.orePointers[i];++used;addPaused(s);
+  clear();
+  for(unsigned n=0;n<source.used;++n){
+   const unsigned i=source.occupiedSlots[n];
+   if(!source.ids[i]||!keep(source.ids[i]))continue;
+   const unsigned s=reserve(source.ids[i]);if(s>=Size)break;
+   versions[s]=source.versions[i];oreState[s]=source.oreState[i];
+   oreExpected[s]=source.oreExpected[i];orePointers[s]=source.orePointers[i];addPaused(s);
   }
  }
- void clear(){used=pausedCount=0;for(unsigned i=0;i<Size;++i){ids[i]=versions[i]=orePointers[i]=0;oreState[i]=oreExpected[i]=0;pausedSlots[i]=pausedPosition[i]=0;}}
+ void clear(){
+  // Every live entry was registered exactly once by reserve(); zero precisely
+  // those fields. No stale ID can survive into the next match.
+  for(unsigned n=0;n<used;++n){
+   const unsigned s=occupiedSlots[n];
+   ids[s]=versions[s]=orePointers[s]=0;
+   oreState[s]=oreExpected[s]=0;pausedPosition[s]=0;
+   occupiedSlots[n]=0;
+  }
+  for(unsigned n=0;n<pausedCount;++n)pausedSlots[n]=0;
+  used=pausedCount=0;
+ }
 };
 }
