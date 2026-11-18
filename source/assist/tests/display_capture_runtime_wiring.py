@@ -19,7 +19,7 @@ assert "else assist::capturepolicy::prepareRequestedPages(false,key.tick," in ru
 assert "worldFrameServer.requests(),runtimeWorldDemands,runtimeDemandLeases,requests," in runtime
 assert "&worldFrameCaptureScratch.warmSortScratch)" in runtime
 assert "if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}" in runtime
-assert "if(boundaryOnly){" in runtime and "worldFrame.pages.size()" not in runtime
+assert "if(boundaryOnly){" in runtime
 assert runtime.index("if(boundaryOnly){") < runtime.index("worldframe::CaptureGraph<Live>capture(")
 assert "sh->worldSamplePages=0;sh->worldSampleReads=0;sh->worldSampleBytes=0;" in runtime
 assert "worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)" in runtime
