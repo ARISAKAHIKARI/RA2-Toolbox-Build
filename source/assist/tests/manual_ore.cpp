@@ -44,8 +44,9 @@ int main(){
  manual.change(1+8192);assert(manual.orePaused(1+8192)&&!manual.orePaused(1));
  manual.clear();assert(!manual.orePaused(1+8192)&&manual.get(1)==0);
  for(unsigned id=1;id<=ManualVersions::Size;++id)manual.change(id);
- assert(!manual.trackable(9000)&&manual.orePaused(9000)&&manual.observeOre(9000,10,-1));
- manual.resumeOre(9000);assert(manual.orePaused(9000));manual.clear();assert(manual.trackable(9000)&&!manual.orePaused(9000));
+ const uint32_t absentFullID=ManualVersions::Size+9000;
+ assert(!manual.trackable(absentFullID)&&manual.orePaused(absentFullID)&&manual.observeOre(absentFullID,10,-1));
+ manual.resumeOre(absentFullID);assert(manual.orePaused(absentFullID));manual.clear();assert(manual.trackable(9000)&&!manual.orePaused(9000));
  // The off-switch observer follows only known paused miners, and its dense
  // list must survive arbitrary removals, pointer updates and live-ID pruning.
  manual.change(11,101);manual.expectOreMission(11,2);
@@ -81,7 +82,7 @@ int main(){
  assert(compact->get(1)==0&&compact->used==257);
  for(uint32_t i=1;i<=513;++i){
   const uint32_t id=1+i*ManualVersions::Size;
-  assert(compact->get(id)==(i%2==0?(i==1?2u:1u):0u));
+  assert(compact->get(id)==(i%2==0?1u:0u));
  }
  sparse->clear();assert(sparse->used==0&&sparse->pausedCount==0);
  for(uint32_t i=0;i<=513;++i)
