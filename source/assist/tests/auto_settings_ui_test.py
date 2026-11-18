@@ -106,6 +106,9 @@ static std::map<std::wstring,int> burstWrites;
 static void write(const wchar_t* section,const wchar_t* key,int v){profile[key]=v;if(std::wstring(section)==L"BurstRefresh")burstWrites[key]=v;}
 '''+"\nstatic void loadMouse(){"+load_mouse+"}\nstatic void saveMouse(){"+save_mouse+"}\n"
 prefix+="\nstatic void loadAircraftPolicy(){"+aircraft_load+radius_load+percent_load+"}\nstatic void saveAircraftPolicy(){"+aircraft_save+radius_save+percent_save+"}\n"
+reserve_units_load='extra.constructionShowNativeUnits='+io.split('extra.constructionShowNativeUnits=',1)[1].split(';',1)[0]+';'
+reserve_units_save='write(L"Production",L"ReserveShowAvailableUnits",'+io.split('write(L"Production",L"ReserveShowAvailableUnits",',1)[1].split(';',1)[0]+';'
+prefix+="\\nstatic void loadReservationUnitMode(){"+reserve_units_load+"}\\nstatic void saveReservationUnitMode(){"+reserve_units_save+"}\\n"
 gesture_load=''.join('extra.'+field+'='+io.split('extra.'+field+'=',1)[1].split(';',1)[0]+';' for field in ('enterKey','airKey1','airKey2','diskKey','sellKey'))
 gesture_save=''.join('write('+marker+io.split('write('+marker,1)[1].split(';',1)[0]+';' for marker in (
  'L"Cooperative",L"EnterHoldKey",','L"Cooperative",L"AirHoldKey1",','L"Cooperative",L"AirHoldKey2",',
@@ -119,6 +122,20 @@ int main(){
  assert(minimapScale==10);
  assert(!extra.viewZoomEnabled&&extra.viewZoomPercent==100);
  assert(extra.dodgeMode==0);
+ // Production INI persistence + the ACTUAL checkbox BN_CLICKED handler.
+ assert(!extra.constructionShowNativeUnits);
+ fields[9796]=1;
+ const unsigned revisionBefore= settingsRevision;
+ assert(autoSettingChanged(9796,BN_CLICKED)&&extra.constructionShowNativeUnits);
+ assert(settingsRevision==revisionBefore+1&&timerMs==300);
+ saveReservationUnitMode();assert(profile[L"ReserveShowAvailableUnits"]==1);
+ extra.constructionShowNativeUnits=false;loadReservationUnitMode();
+ assert(extra.constructionShowNativeUnits);
+ fields[9796]=0;assert(autoSettingChanged(9796,BN_CLICKED)&&!extra.constructionShowNativeUnits);
+ saveReservationUnitMode();assert(profile[L"ReserveShowAvailableUnits"]==0);
+ profile.erase(L"ReserveShowAvailableUnits");extra.constructionShowNativeUnits=true;
+ loadReservationUnitMode();assert(!extra.constructionShowNativeUnits);
+ std::puts("PASS production unit native cameo toggle: live UI application, 300ms autosave, INI 0/1 and missing-key default");
  profile[L"Enabled"]=profile[L"HoldEnabled"]=1;profile[L"HoldKey"]='B';
  extra.burstEnabled=extra.burstHoldEnabled=true;extra.burstKey='B';loadFeatureTypes();
  assert(minimapScale==10); // an INI without MinimapScale takes the new default
