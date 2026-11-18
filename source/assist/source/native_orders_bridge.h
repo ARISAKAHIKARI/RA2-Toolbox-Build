@@ -163,7 +163,7 @@ static int unloadPassengerKnowledge(uint32_t p,uint32_t house,uint32_t&id,uint32
  return 1;
 }
 struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1;};
-static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*2];static int unloadRosterCount;
+static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*2];static UnloadRosterEntry unloadRosterScratch[nativeorders::MaxPassengers*2];static int unloadRosterCount;
 static void buildUnloadAdmissionRoster(uint32_t house){
  unloadRosterCount=0;Vec inf=vec(0xA83DE8);
  for(int n=0;n<inf.count&&unloadRosterCount<nativeorders::MaxPassengers;++n){uint32_t p=item(inf,n),carrier=p?get<uint32_t>(p+0x11C):0;
@@ -173,7 +173,7 @@ static void buildUnloadAdmissionRoster(uint32_t house){
  for(int n=0;n<recentPassengerCount&&unloadRosterCount<nativeorders::MaxPassengers*2;++n){const auto&r=recentPassengers[n];
   if(queuedUnload.find(r.carrier,r.carrierID)>=0)unloadRoster[unloadRosterCount++]={r.carrier,r.p,r.id,r.token,n};
  }
- std::sort(unloadRoster,unloadRoster+unloadRosterCount,[](const auto&a,const auto&b){if(a.carrier!=b.carrier)return a.carrier<b.carrier;if(a.pointer!=b.pointer)return a.pointer<b.pointer;return a.history<b.history;});
+ if(!unloadpolicy::radixSortRoster(unloadRoster,unloadRosterScratch,unloadRosterCount))unloadRosterCount=0; // Invalid candidate batch is UNKNOWN, never partially admitted.
 }
 // A Ctrl+D command may arrive after the game's native D began deploying.
 // Reject stale/foreign carriers, not the transport's own unload-in-progress
