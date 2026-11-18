@@ -266,9 +266,14 @@ static bool refreshWorldIndex(int frame,bool executionGuards){
 // fallible live UID read when deciding whether an automatic lease still exists.
 static void sweepActiveLeases(int frame){
  if(!actorLeaseArbiter.count)return;
- actorLeaseArbiter.sweepBudgeted(match,frame,[](uint32_t id){
+ // Tiny cohorts are deliberately rechecked on each callback: a manual
+ // revision or a newly complete identity index can change within the SAME
+ // game frame. The large-cohort budget must not regress that native priority.
+ const auto liveLease=[&](uint32_t id){
   return std::pair<uint32_t,uint32_t>{worldObjects.byId(id),manualVersions.get(id)};
- });
+ };
+ if(actorLeaseArbiter.count<=8)actorLeaseArbiter.sweep(match,frame,liveLease);
+ else actorLeaseArbiter.sweepBudgeted(match,frame,liveLease);
 }
 // Mission receipts must not turn a failed mission/queue read into a valid
 // default-zero observation (e.g. a spurious mission 0 acknowledgement).
