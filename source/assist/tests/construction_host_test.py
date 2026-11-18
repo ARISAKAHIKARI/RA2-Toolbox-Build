@@ -95,6 +95,23 @@ static void place(){byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+
 int main(){
  using namespace buildreserve;
  setup();w(F+0x24,54);tick();assert(choice(0)>=0);reserve(choice(0));assert(books[0].items==std::vector<int>({0})&&commandQueue.size==0);
+ // UI responsiveness: native page switch and changing the complete
+ // sidebar cameo count must bypass the 100ms stable-catalogue throttle.
+ setup();assert(activeTab==0&&choice(1)>=0);
+ w(0x87F7E8+0x539C,1);tick(1);assert(activeTab==1);
+ w(0x87F7E8+0x539C,0);tick(1);assert(activeTab==0&&choice(1)>=0);
+ const uint32_t strip=0x87F7E8+0x1544;
+ w(strip+84,2);w(strip+88+52,1);w(strip+92+52,7);
+ tick(1);assert(choice(1)<0); // Tech now in original sidebar: hide immediately.
+ w(strip+84,1);tick(1);assert(choice(1)>=0); // Tech became future again.
+ // An incomplete sample keeps the SAME tab's previous valid preview, and
+ // retry cadence is 32ms rather than another 100ms per missing-page round.
+ externalReader.fail=T+0x2000+0x638+16;
+ w(strip+84,2);w(strip+88+52,1);w(strip+92+52,7);
+ tick(1);assert(choicesIncomplete&&choice(1)>=0);
+ externalReader.fail=0;tick(31);assert(choicesIncomplete&&choice(1)>=0);
+ tick(1);assert(!choicesIncomplete&&choice(1)<0);
+ std::cout<<"PASS native tab switch and live tech sidebar add/remove within 1ms simulation, missing-page retention and 32ms retry\n";
  setup();nativekeyhost::bindings.keys[nativekeys::Infantry][0]='I';nativekeyhost::keys['I']=1;tick();assert(activeTab==2&&get<int>(0x87F7E8+0x539C)==0);nativekeyhost::keys['I']=0;tick();assert(activeTab==2);snap.chat=1;nativekeyhost::keys['I']=1;tick();snap.chat=0;nativekeyhost::keys['I']=0;nativekeyhost::bindings={};
 
  setup();assert(choice(0)<0&&choice(1)>=0&&choice(2)<0);assert(choices[choice(1)].future);assert(layout.width()==216&&layout.x(60)==90&&layout.y(48)==72);
