@@ -14,8 +14,9 @@ int main(){
  assert(!leases->retain(0,100)&&!leases->retain(0x12345,100));
  // 4,096 new subscriber pages arrive in 32 bursts across 256 ms, with
  // frequent append() calls. Their first expiry cannot be before t=1101.
- // The previous implementation scanned the entire growing set after
- // every new insert, even while ALL entries remained unexpired.
+ // The old implementation scanned the growing set after EACH 128-page
+ // burst's append(), even while ALL entries remained unexpired. Its exact
+ // redundant visit count for this fixture is 128*(1+...+32)=67,584.
  for(uint32_t i=0;i<4096;++i){
   const uint32_t now=100+i/16;
   assert(leases->retain(base+i*4096u,now));
@@ -71,6 +72,6 @@ int main(){
  assert(pages.size()==1&&pages[0]==0x60000u);
  wrapped->clear();pages.clear();wrapped->append(42,pages);
  assert(pages.empty()&&wrapped->size()==0);
- std::printf("PASS deadline-aware leases: 4096 pages, 16K full-table rejections, exact 1000ms expiry, renewal, wrap, and clear; %llu unnecessary prune visits avoided in growing cohort\\n",
-             static_cast<unsigned long long>(4096ull*4095ull/2));
+ std::printf("PASS deadline-aware leases: 4096 pages, 16K full-table rejections, exact 1000ms expiry, renewal, wrap, and clear; %llu unnecessary prune visits avoided in growing cohort\n",
+             static_cast<unsigned long long>(128ull*32ull*33ull/2));
 }
