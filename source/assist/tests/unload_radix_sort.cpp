@@ -27,7 +27,7 @@ static void verify(int n,bool collide=false){
  // Base implementation is std::sort by (carrier,pointer,history). Stable
  // radix may reorder equal-key records; compare sorted keys and the multiset.
  std::sort(reference,reference+n,less);
- assert(unloadpolicy::radixSortRoster(actual,scratch,n));
+ assert(assist::unloadpolicy::radixSortRoster(actual,scratch,n));
  for(int i=0;i<n;++i){
   assert(actual[i].carrier==reference[i].carrier);
   assert(actual[i].pointer==reference[i].pointer);
@@ -40,15 +40,15 @@ static void verify(int n,bool collide=false){
  assert(before==after);
 }
 int main(){
- assert(!unloadpolicy::radixSortRoster(actual,scratch,-1));
- assert(!unloadpolicy::radixSortRoster(actual,scratch,int(Capacity)+1));
+ assert(!assist::unloadpolicy::radixSortRoster(actual,scratch,-1));
+ assert(!assist::unloadpolicy::radixSortRoster(actual,scratch,int(Capacity)+1));
  for(int n:{0,1,2,3,9,32,255,256,2048,8192,16384}){
   for(int trial=0;trial<(n>=8192?3:16);++trial)verify(n,trial%2==0);
  }
  // Explicit signed history ordering: original -1 must precede history 0.
  actual[0]={10,20,0,1};actual[1]={10,20,-1,2};
  actual[2]={10,20,2,3};actual[3]={10,20,1,4};
- assert(unloadpolicy::radixSortRoster(actual,scratch,4));
+ assert(assist::unloadpolicy::radixSortRoster(actual,scratch,4));
  for(int i=0;i<4;++i)assert(actual[i].history==i-1);
  using Clock=std::chrono::steady_clock;
  for(unsigned i=0;i<Capacity;++i)reference[i]=actual[i]={uint32_t(0x10000+((i*13)%4096)*16),uint32_t(0x20000+((i*59)%8192)*16),i%2?-1:int(i),i};
@@ -56,7 +56,7 @@ int main(){
  for(int k=0;k<10;++k){std::copy(reference,reference+Capacity,actual);std::sort(actual,actual+Capacity,less);}
  const double baseline=std::chrono::duration<double,std::milli>(Clock::now()-started).count();
  started=Clock::now();
- for(int k=0;k<10;++k){std::copy(reference,reference+Capacity,actual);assert(unloadpolicy::radixSortRoster(actual,scratch,Capacity));}
+ for(int k=0;k<10;++k){std::copy(reference,reference+Capacity,actual);assert(assist::unloadpolicy::radixSortRoster(actual,scratch,Capacity));}
  const double radix=std::chrono::duration<double,std::milli>(Clock::now()-started).count();
  std::printf("PASS Ctrl+D exact-key radix sort: 16K candidates, 12 linear passes, unsigned pointer and signed history, collision / hash-independent equivalence\n");
  std::printf("SYNTHETIC_MS comparator=%.3f radix=%.3f (not game FPS)\n",baseline,radix);
