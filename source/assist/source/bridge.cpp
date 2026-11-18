@@ -1730,7 +1730,8 @@ static void tick(){
  // game thread may publish a small scene boundary only if ALL Host readers
  // are display-only and no local native command feature has any pending work.
  // A same-frame hotkey later upgrades this boundary to a full graph.
- const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&!sh->flags&&!sh->moFeatures&&
+ const bool noCommandWork=!cmd&&!resultsDue&&!newMatch&&
+   !capturepolicy::needsNativeFlagWork(sh->flags,sh->externalDisplay!=0)&&!sh->moFeatures&&
   !sh->keepInputUnlocked&&!sh->blockTriggerCamera&&!sh->bombBoardEnabled&&
   !sh->minerDefenseEnabled&&!minerDefensePending()&&!sh->superweaponGrant&&
   !sh->placementPreview.active&&!sh->runtimeTracking&&!sh->plannerTracking&&

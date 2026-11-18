@@ -543,26 +543,60 @@ void runtime(){
  };
  rejectChange(0xA8ED84,51);rejectChange(0xA8B230,Scenario+0x10000);rejectChange(0x87F924,Cells+0x10000);rejectChange(0xA83D4C,House+0x10000);
  retireWorldFrame();CHECK(!worldFrameReady&&runtimeWorldDemands.empty());{SampleReadScope retired;CHECK(!retired&&!retired.complete());}
-  // Display-only captured a small scene boundary. The first Ctrl+D or
+  // Display-only captured a zero-page Key boundary (no CaptureGraph). The
+  // first Ctrl+D or
   // native read arriving in this SAME frame must upgrade it atomically to a
   // new full graph; merely re-exporting the sealed boundary would lose input.
   setup(memory);before=worldlife::capture(read);snap.frame=before.frame;
+  // A command dependency requested before the display pulse must survive the
+  // zero-page marker and be included in the later full capture.
+  requestWorldRange(ActorA+0x6C,4);
+  CHECK(runtimeWorldDemands.size()==1);
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
+  CHECK(runtimeWorldDemands.size()==1);
   CHECK(worldFrameBoundaryOnly&&worldFrameReady&&worldframe::boundaryOnlySource(worldFrame.key));
+  CHECK(worldFrame.pages.size()==0&&worldFrame.counters.calls==0&&worldFrame.counters.bytes==0);
+  // The previous complete frame may have left tens of thousands of hash
+  // indices; resetBoundary never exposes them as new observations.
+  CHECK(!worldFrame.find(ActorA&~4095u));
   // Display-only boundaries cannot admit a native command, even if a
   // particular required scalar happens to be present.
   {SampleReadScope blocked;CHECK(!blocked&&!blocked.complete());}
   int hp=0;CHECK(!worldFrame.read(ActorA+0x6C,&hp,sizeof hp));
   const auto shallowSerial=worldFrame.key.serial;
+  // Direct Snapshot misuse/reuse is also fail-closed: a prior complete page
+  // remains invisible after O(1) reset, and a subsequent real page lazily
+  // clears the stale index before admission.
+  {
+   worldframe::Snapshot reused;
+   reused.reset(worldFrame.key);
+   uint32_t firstID=0,newID=0;
+   CHECK(reused.capture(read,ActorA+0x10,&firstID,4)&&firstID==ActorA+5);
+   reused.resetBoundary(worldFrame.key);
+   CHECK(reused.pages.size()==0&&!reused.find(ActorA&~4095u));
+   CHECK(reused.capture(read,ActorA+0x10,&newID,4)&&newID==firstID);
+   CHECK(reused.seal()&&reused.read(ActorA+0x10,&newID,4)&&newID==firstID);
+  }
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base));
   CHECK(worldFrameReady&&!worldFrameBoundaryOnly&&!worldframe::boundaryOnlySource(worldFrame.key)&&worldFrame.key.serial>shallowSerial);
   {SampleReadScope upgraded;CHECK(upgraded&&upgraded.complete());}
   CHECK(worldFrame.read(ActorA+0x6C,&hp,sizeof hp)&&hp==100);
+  CHECK(runtimeWorldDemands.empty()); // Full command source consumed it.
   // A second command read in the same logic frame is still exactly one
   // complete acquisition. No stale previous visual bytes are borrowed.
   const auto upgradeReads=memory.calls.size();
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base));
   CHECK(memory.calls.size()==upgradeReads);
+  // Even a zero-page display Key cannot be published if the world/House
+  // changes during its TWO independent live checks.
+  retireWorldFrame();setup(memory);before=worldlife::capture(read);
+  snap.frame=before.frame;bool changed=false;
+  memory.beforeRead=[&](uint32_t at,size_t){
+   if(!changed&&at==0xA8ED84){changed=true;memory.put(0xA83D4C,House+0x10000);}
+  };
+  CHECK(!captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
+  CHECK(changed&&!worldFrameReady&&!worldFrameBoundaryOnly);
+  memory.beforeRead={};
   retireWorldFrame();
 }
 void displayLeaseTransition(){
@@ -608,9 +642,10 @@ void hostBoundaryCommandGuard(){
  k.connectionLow=uint32_t(reader.generation());k.connectionHigh=uint32_t(reader.generation()>>32);
  k.demand=worldframe::BoundaryOnlyKeyBit;
  shallow->reset(k);Read read{&memory};
- worldframe::CaptureGraph<Read> boundary(*shallow,read);
- CHECK(boundary.capture(worldframe::Base|worldframe::HostDisplayOnly,{}));
- CHECK(shallow->seal());server.observe(shallow->key);CHECK(server.publish(*shallow));
+ // The real Runtime publishes ZERO source pages, not a second miniature
+ // CaptureGraph. Host VisualCache must still decode its independent view.
+ CHECK(shallow->seal()&&shallow->pages.size()==0&&shallow->counters.calls==0);
+ server.observe(shallow->key);CHECK(server.publish(*shallow));
  currentPid=HostPid;CHECK(reader.beginWorldFrame(7));
  CHECK(reader.worldFrameToken()->controlSource);
  reader.endWorldFrame();reader.setWorldDemand(worldframe::Base);

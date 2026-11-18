@@ -136,9 +136,12 @@ inline void mark(std::array<uint64_t,64>&bits,size_t at,size_t n){
 }
 class Snapshot {
  std::array<uint32_t,IndexSize> index_{};
- bool sealed_=false,overflow_=false;
+ bool sealed_=false,overflow_=false,indexFresh_=true;
  bool capacityFailure(){overflow_=true;++counters.overflows;return false;}
  Page* add(uint32_t address){
+  // A zero-page Host boundary does not touch the 128-KiB lookup array.
+  // The first later full page reinitializes it before reading old indices.
+  if(!indexFresh_){index_.fill(0);indexFresh_=true;}
   uint32_t slot=bucket(address);
   while(index_[slot]){auto&p=pages[index_[slot]-1];if(p.address==address)return &p;slot=(slot+1)&(IndexSize-1);}
   if(overflow_)return nullptr;
@@ -166,15 +169,23 @@ public:
  void swap(Snapshot&other)noexcept{
   using std::swap;
   swap(index_,other.index_);swap(sealed_,other.sealed_);swap(overflow_,other.overflow_);
+  swap(indexFresh_,other.indexFresh_);
   swap(key,other.key);swap(counters,other.counters);pages.swap(other.pages);
   controlSource.swap(other.controlSource);
   swap(visualFrame,other.visualFrame);swap(visualTick,other.visualTick);
   swap(visualSerial,other.visualSerial);
  }
- void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};pages.clear();index_.fill(0);sealed_=overflow_=false;}
+ void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};pages.clear();index_.fill(0);indexFresh_=true;sealed_=overflow_=false;}
+ // No page buffer or key-index contents can become command authority on a
+ // HostDisplayOnly Key. Defer clearing the large lookup until the next page add.
+ void resetBoundary(const Key&next){
+  controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;
+  key=next;counters={};pages.clear();indexFresh_=false;sealed_=overflow_=false;
+ }
  bool sealed()const{return sealed_;}bool overflow()const{return overflow_;}
  bool seal(){sealed_=true;return !overflow_;}
  const Page*find(uint32_t address)const{
+  if(!indexFresh_)return nullptr; // Never examine stale page indices after zero reset.
   uint32_t slot=bucket(address);
   for(uint32_t count=0;count<IndexSize;++count,slot=(slot+1)&(IndexSize-1)){
    const uint32_t i=index_[slot];if(!i)return nullptr;if(pages[i-1].address==address)return &pages[i-1];}

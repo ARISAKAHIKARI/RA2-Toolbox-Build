@@ -79,8 +79,8 @@ class CommandCaptureWorker {
       job.ticket!=self->latestTicket_.load(std::memory_order_acquire))continue;
    // All requested page sorting, dedup, real RPM and graph traversal happen
    // exclusively here. No worker ever reads Runtime Shared/House structures.
-   std::sort(job.pages.begin(),job.pages.end());
-   job.pages.erase(std::unique(job.pages.begin(),job.pages.end()),job.pages.end());
+   // Equivalent ascending page set, O(4N), retained worker-only buffer.
+   sortUniquePageAddresses(job.pages,self->scratch_.warmSortScratch);
    const DWORD began=GetTickCount();unsigned calls=0;size_t bytes=0;
    // A graph already beyond its admission deadline cannot be command
    // authority. Do not spend another 120ms scanning expired pages.
