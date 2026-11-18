@@ -88,6 +88,10 @@ static void bindType(bool){++binds;}
 io=(root/'assist/source/extra_settings_io.h').read_text()
 aircraft_load='extra.aircraftAllocationPolicy='+io.split('extra.aircraftAllocationPolicy=',1)[1].split(';',1)[0]+';'
 aircraft_save='write(L"Cooperative",L"AircraftAllocationPolicy",'+io.split('write(L"Cooperative",L"AircraftAllocationPolicy",',1)[1].split(';',1)[0]+';'
+radius_load='extra.aircraftDamageRadiusCells='+io.split('extra.aircraftDamageRadiusCells=',1)[1].split(';',1)[0]+';'
+percent_load='extra.aircraftDamageCoveragePercent='+io.split('extra.aircraftDamageCoveragePercent=',1)[1].split(';',1)[0]+';'
+radius_save='write(L"Cooperative",L"AirDamageRadiusCells",'+io.split('write(L"Cooperative",L"AirDamageRadiusCells",',1)[1].split(';',1)[0]+';'
+percent_save='write(L"Cooperative",L"AirDamagePercent",'+io.split('write(L"Cooperative",L"AirDamagePercent",',1)[1].split(';',1)[0]+';'
 load_mouse=' extra.antiTheft='+io.split(' extra.antiTheft=',1)[1].split(' extra.loadMode=',1)[0]
 save_mouse=' write(L"Modes",L"AntiTheft"'+io.split(' write(L"Modes",L"AntiTheft"',1)[1].split(' write(L"AutoLoad"',1)[0]
 prefix+=r'''
@@ -101,7 +105,7 @@ static int value(const wchar_t*,const wchar_t* key,int fallback){auto it=profile
 static std::map<std::wstring,int> burstWrites;
 static void write(const wchar_t* section,const wchar_t* key,int v){profile[key]=v;if(std::wstring(section)==L"BurstRefresh")burstWrites[key]=v;}
 '''+"\nstatic void loadMouse(){"+load_mouse+"}\nstatic void saveMouse(){"+save_mouse+"}\n"
-prefix+="\nstatic void loadAircraftPolicy(){"+aircraft_load+"}\nstatic void saveAircraftPolicy(){"+aircraft_save+"}\n"
+prefix+="\nstatic void loadAircraftPolicy(){"+aircraft_load+radius_load+percent_load+"}\nstatic void saveAircraftPolicy(){"+aircraft_save+radius_save+percent_save+"}\n"
 gesture_load=''.join('extra.'+field+'='+io.split('extra.'+field+'=',1)[1].split(';',1)[0]+';' for field in ('enterKey','airKey1','airKey2','diskKey','sellKey'))
 gesture_save=''.join('write('+marker+io.split('write('+marker,1)[1].split(';',1)[0]+';' for marker in (
  'L"Cooperative",L"EnterHoldKey",','L"Cooperative",L"AirHoldKey1",','L"Cooperative",L"AirHoldKey2",',
@@ -200,6 +204,26 @@ int main(){
  }
  for(int invalid:{-1,3}){autoSavePending=false;unsigned beforeRevision=settingsRevision,beforeSync=additionalSyncs;fields[9195]=invalid;assert(autoSettingChanged(9195,CBN_SELCHANGE));assert(extra.aircraftAllocationPolicy==0&&!autoSavePending&&settingsRevision==beforeRevision&&additionalSyncs==beforeSync);}
  profile[L"AircraftAllocationPolicy"]=9;loadAircraftPolicy();assert(extra.aircraftAllocationPolicy==2);profile[L"AircraftAllocationPolicy"]=-9;loadAircraftPolicy();assert(extra.aircraftAllocationPolicy==0);saveAircraftPolicy();
+ // Live change, persistence and invalid edit isolation for both parameters.
+ profile.erase(L"AirDamageRadiusCells");profile.erase(L"AirDamagePercent");
+ loadAircraftPolicy();assert(extra.aircraftDamageRadiusCells==5&&extra.aircraftDamageCoveragePercent==120);
+ for(auto setting:{std::pair<int,int>{9794,7},{9795,175}}){
+  fields[setting.first]=setting.second;const unsigned rev=settingsRevision,sync=additionalSyncs;
+  assert(autoSettingChanged(setting.first,EN_CHANGE));
+  assert(settingsRevision==rev+1&&additionalSyncs==sync+1);
+ }
+ assert(extra.aircraftDamageRadiusCells==7&&extra.aircraftDamageCoveragePercent==175);
+ saveAircraftPolicy();extra.aircraftDamageRadiusCells=extra.aircraftDamageCoveragePercent=1;
+ loadAircraftPolicy();assert(extra.aircraftDamageRadiusCells==7&&extra.aircraftDamageCoveragePercent==175);
+ for(auto bad:{std::pair<int,int>{9794,0},{9794,65},{9795,0},{9795,501}}){
+  fields[bad.first]=bad.second;const unsigned rev=settingsRevision,sync=additionalSyncs;
+  assert(autoSettingChanged(bad.first,EN_CHANGE));
+  assert(settingsRevision==rev&&additionalSyncs==sync);
+ }
+ profile[L"AirDamageRadiusCells"]=-3;profile[L"AirDamagePercent"]=900;
+ loadAircraftPolicy();assert(extra.aircraftDamageRadiusCells==1&&extra.aircraftDamageCoveragePercent==500);
+ profile.erase(L"AirDamageRadiusCells");profile.erase(L"AirDamagePercent");
+ loadAircraftPolicy();assert(extra.aircraftDamageRadiusCells==5&&extra.aircraftDamageCoveragePercent==120);
  pointerMatches.clears=0;
  autoSavePending=false;timers=saves=syncs=0;timerMs=0;settingsRevision=1;paintRevision=0;
 
@@ -439,7 +463,7 @@ print("PASS reverse-dodge default, both live choices, invalid selection and pers
 
 tactical=(root/'assist/source/tactical_controls.h').read_text()
 assert 'extraControls[AircraftPolicy]=combo(9195)' in tactical
-assert 'L"按数量配额（原模式 1 / 2）",L"5格战车 · 预计伤害 120%",L"单目标 120% · 派出后取消选中"' in tactical
+assert 'L"按数量配额（原模式 1 / 2）",L"范围战车 · 伤害覆盖",L"单目标 120% · 派出后取消选中"' in tactical
 assert 'AircraftAllocationPolicy=0' in (root/'defaults/Assist.ini').read_text()
 assert 'AircraftAllocationPolicy=0' in (root/'shared/source/initial_profiles.h').read_text()
 print('PASS aircraft allocation strategies: legacy default, all three choices, immediate sync, autosave, invalid-selection isolation and production INI roundtrips')

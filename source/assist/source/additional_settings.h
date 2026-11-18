@@ -60,7 +60,9 @@ struct AdditionalSettings {
  int loadMode=0,loadRadius=30;
  uint32_t mouseButtons[pointerinput::MouseCount]={1,1,1,1,1,1,1,2,3,3}; // 0=off, 1=middle, 2/3=side, 4=right
  bool enter=false,air=false,disk=false,sellDrained=false,sellVehicles=false,sellEnemy=false,frozen=false;
- int aircraftAllocationPolicy=0; // 0=quotas, 1=5-cell vehicle coverage, 2=single target + deselect sent
+ int aircraftAllocationPolicy=0; // 0=quotas, 1=variable-radius vehicle coverage, 2=single target + deselect sent
+ int aircraftDamageRadiusCells=cooperative::DefaultDamageRadiusCells;
+ int aircraftDamageCoveragePercent=cooperative::DefaultDamagePercent;
  uint32_t diskKey=17,sellKey=17;
  uint32_t enterKey=18,airKey1=17,airKey2=0,variantKey='T'|(2<<8);
  cooperative::Quota defaults{};

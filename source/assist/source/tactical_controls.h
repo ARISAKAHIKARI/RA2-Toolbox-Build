@@ -63,8 +63,10 @@ extraControls[AirEnabled]=toggle(705,L"飞机分配攻击",extra.air,20,455);but
 activeFoldGroup=9601;
 label(L"飞机分配攻击 · 1",20,210);holdPresetControl(AirPreset1,AirCustom1,extra.airKey1);mouse(pointerinput::MouseAirFirst);next();
 label(L"飞机分配攻击 · 2",20,210);holdPresetControl(AirPreset2,AirCustom2,extra.airKey2);mouse(pointerinput::MouseAirSecond);next();
-label(L"飞机分配策略（1 / 2 共用）",20,260);extraControls[AircraftPolicy]=combo(9195);choices(extraControls[AircraftPolicy],{L"按数量配额（原模式 1 / 2）",L"5格战车 · 预计伤害 120%",L"单目标 120% · 派出后取消选中"},extra.aircraftAllocationPolicy);next();
-note(L"5格策略只选点选中心5格圆形内敌方战车（含边界），预计有效伤害足额后改分；没有其他未覆盖的可攻击目标时才追加。单目标策略达到生命值120%即停，仅成功提交的飞机取消选中，未派出飞机保持任务和选中；左/右键须开启“优先执行增强指令”接管原点击，独占中键/侧键可用。单目标不支持Shift排队（按住Shift时不派出）。",76);
+label(L"飞机分配策略（1 / 2 共用）",20,260);extraControls[AircraftPolicy]=combo(9195);choices(extraControls[AircraftPolicy],{L"按数量配额（原模式 1 / 2）",L"范围战车 · 伤害覆盖",L"单目标 120% · 派出后取消选中"},extra.aircraftAllocationPolicy);next();
+number(9794,L"范围战车 · 搜索半径 / 格",extra.aircraftDamageRadiusCells,L"1–64 · 默认 5");
+ number(9795,L"范围战车 · 伤害覆盖 / %",extra.aircraftDamageCoveragePercent,L"1–500 · 默认 120");
+ note(L"范围战车只选点击中心 X 格圆形内敌方战车（含边界）；预计伤害达到目标当前血量的 Y% 后优先改分其他可攻击战车，找不到未覆盖目标才允许追加。单目标策略仍固定为 120%，仅成功提交的飞机取消选中；数量配额模式不受这两个参数影响。左/右键需开启增强指令接管，单目标不支持 Shift 排队。",84);
 label(L"飞机分配攻击数量");next();
 extraControls[DefaultFirst]=number(710,L"攻击模式 1 / 架每目标",extra.defaults.first,L"0–512 · 0 为不优先");
 extraControls[DefaultSecond]=number(711,L"攻击模式 2 / 架每目标",extra.defaults.second,L"0–512 · 0 为不优先");

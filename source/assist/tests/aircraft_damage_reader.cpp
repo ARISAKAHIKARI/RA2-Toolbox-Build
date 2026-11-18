@@ -35,6 +35,12 @@ int main(){
  auto w=input();std::set<uint32_t> candidates;for(auto&t:w.targets)candidates.insert(t.id);assert(candidates==std::set<uint32_t>({100,101,110,111,112,113}));
  auto orders=cooperative::allocate(w);assert(orders.size()==1&&orders[0].target==100&&orders[0].expectedDamage==40);
  assert(w.expectedDamage.size()==w.compatible.size());for(size_t j=0;j<w.targets.size();++j)if(w.targets[j].id==110||w.targets[j].id==111||w.targets[j].id==112)assert(!w.compatible[j]&&w.expectedDamage[j]==0);
+ // Decreasing the radius excludes the old five-cell boundary and settings
+ // reach the reader before any target is considered for a damage volley.
+ r.airRadiusCells=4;r.airDamagePercent=90;w=input();
+ assert(w.radiusCells==4&&w.coveragePercent==90);
+ assert(std::none_of(w.targets.begin(),w.targets.end(),[](const auto&t){return t.id==101;}));
+ r.airRadiusCells=5;r.airDamagePercent=120;
  // The original point remains the circle centre after the clicked object moves.
  m.put<int>(clicked+0x9c,center+1000);w=input();assert(std::any_of(w.targets.begin(),w.targets.end(),[](auto&t){return t.id==113;}));m.put<int>(clicked+0x9c,center);
  m.put<uint32_t>(boundary+0x21c,house);w=input();assert(std::none_of(w.targets.begin(),w.targets.end(),[](auto&t){return t.id==101;}));m.put(boundary+0x21c,enemy);

@@ -102,13 +102,15 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
  if(get<int>(0xA8ECB8+16)>cooperative::MaxSources){
   if(r.count<=cooperative::MaxSources||r.frame!=frame||r.target!=targetID||r.mode!=mode){InterlockedIncrement(&sh->cooperativeSeq);memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.mode=mode;r.frame=frame;r.tick=now;r.count=cooperative::MaxSources+1;MemoryBarrier();InterlockedIncrement(&sh->cooperativeSeq);notifyHost();}return false;
  }
- bool same=r.serial&&r.match==match&&r.target==targetID&&r.mode==mode&&r.frame==frame&&r.count>=0&&r.count<=cooperative::MaxSources&&DWORD(now-r.tick)<100;
+ bool same=r.serial&&r.match==match&&r.target==targetID&&r.mode==mode&&r.frame==frame&&(mode!=cooperative::AirDamage||(r.airRadiusCells==sh->aircraftDamageRadiusCells&&r.airDamagePercent==sh->aircraftDamageCoveragePercent))&&r.count>=0&&r.count<=cooperative::MaxSources&&DWORD(now-r.tick)<100;
  if(same)for(int i=0;i<r.count;++i)if(r.sources[i].id==id){same=false;break;}
  if(same&&r.count>=cooperative::MaxSources)return false;
  if(!manualVersions.trackable(id))return false;
  if(mode!=cooperative::AirSingle)cancelNative(p);InterlockedIncrement(&sh->cooperativeSeq);
  if(!same){memset(&r,0,sizeof r);r.serial=++clickSerial;if(!r.serial)r.serial=++clickSerial;r.match=match;r.target=targetID;r.type=typeOf(target,kind(target));r.mode=mode;r.frame=frame;
   r.centerObject=target;
+  if(mode==cooperative::AirDamage){r.airRadiusCells=sh->aircraftDamageRadiusCells;r.airDamagePercent=sh->aircraftDamageCoveragePercent;}
+  else {r.airRadiusCells=0;r.airDamagePercent=0;}
   if(cooperative::damageMode(mode)){r.cameraX=get<int>(target+0x9C);r.cameraY=get<int>(target+0xA0);}
   else {uint32_t tactical=get<uint32_t>(0x887324);if(tactical>=0x10000){r.cameraX=get<int>(tactical+0xB0);r.cameraY=get<int>(tactical+0xB4);}}
   int width=get<int>(0xB0CE30),height=get<int>(0xB0CE34);r.viewWidth=width>0&&width<=32768?width:get<int>(0x8A00A4);r.viewHeight=height>0&&height<=32768?height:get<int>(0x8A00A8);
@@ -173,8 +175,8 @@ uint32_t p=worldByID(o.id),t=worldByID(o.target);bool valid=p&&t&&own(p,house)&&
     if(!bunker&&action==11)mission=9;}
   }else if(valid){valid=airUnit(p)&&nativeEnemy(t,house);if(valid){planner::Actor source{},target{};rawCombatInfo(p,typeOf(p,kind(p)),kind(p),source,true);rawCombatInfo(t,o.type,kind(t),target,false);valid=planner::compatibleTarget(source,target,false);
     if(valid&&cooperative::damageMode(mode)){const auto&r=sh->cooperativeRequest;uint32_t center=worldByID(r.target);
-     valid=cooperative::validDamage(o.expectedDamage)&&center&&center==r.centerObject&&typeOf(center,kind(center))==r.type;
-     if(valid&&mode==cooperative::AirDamage)valid=kind(t)==2&&!(target.flags&(planner::Airborne|planner::Manipulated))&&cooperative::distance(r.cameraX,r.cameraY,get<int>(t+0x9C),get<int>(t+0xA0))<=int64_t(cooperative::DamageRadius)*cooperative::DamageRadius;
+     valid=cooperative::validDamage(o.expectedDamage)&&(mode!=cooperative::AirDamage||cooperative::validRange(r.airRadiusCells,r.airDamagePercent))&&center&&center==r.centerObject&&typeOf(center,kind(center))==r.type;
+     if(valid&&mode==cooperative::AirDamage)valid=kind(t)==2&&!(target.flags&(planner::Airborne|planner::Manipulated))&&cooperative::distance(r.cameraX,r.cameraY,get<int>(t+0x9C),get<int>(t+0xA0))<=int64_t(cooperative::radiusCells(r.airRadiusCells)*256)*(cooperative::radiusCells(r.airRadiusCells)*256);
      if(valid&&mode==cooperative::AirSingle){
       if(singleDamageSerial!=r.serial||singleDamageMatch!=r.match){singleDamageSerial=r.serial;singleDamageMatch=r.match;singleDamageCommitted=0;}
       valid=o.target==r.target&&!stickyOwns(p)&&singleDamageCommitted*5<double(get<int>(t+0x6C))*6&&dispatchedAircraftSelectionReady(p);

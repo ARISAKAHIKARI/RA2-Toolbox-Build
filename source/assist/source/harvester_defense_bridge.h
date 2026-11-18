@@ -80,7 +80,7 @@ static void minerDefenseForget(uint32_t id){
   if(passive){
    // A native input can first be noticed by transition checks, without a
    // revision-changing hook. Reserve its zero-token slot against collisions.
-   if(!manualVersions.ids[slot]){manualVersions.ids[slot]=id;++manualVersions.used;}
+   if(!manualVersions.ids[slot])manualVersions.reserve(id); // zero-token protection must join the occupied-slot index
    auto&hold=minerDefenseManual[slot];hold={};hold.id=id;hold.pointer=p;hold.type=type;hold.typeID=typeID;
    hold.actorKind=k;hold.token=manualVersions.get(id);hold.frame=get<int>(0xA8ED84);
    if(old!=minerDefenseJobs.end()){

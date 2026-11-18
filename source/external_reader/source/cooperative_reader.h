@@ -7,7 +7,7 @@
 #include <unordered_set>
 namespace external {
 template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Read read,const assist::cooperative::Request&r,Quotas quota){
- using namespace assist;cooperative::Input out;out.mode=r.mode;out.clicked=r.target;out.centerX=r.cameraX;out.centerY=r.cameraY;if(!cooperative::valid(r))return out;
+ using namespace assist;cooperative::Input out;out.mode=r.mode;out.clicked=r.target;out.centerX=r.cameraX;out.centerY=r.cameraY;out.radiusCells=cooperative::radiusCells(r.airRadiusCells);out.coveragePercent=cooperative::damagePercent(r.airDamagePercent);if(!cooperative::valid(r))return out;
  GameView<Read> game(read);uint32_t house=game.template get<uint32_t>(0xA83D4C);int frame=game.template get<int>(0xA8ED84,-1);
  if(house<0x10000||frame<0||!game.template get<uint8_t>(0xA8E9A0))return out;
  auto all=game.vec(0xA8EC78);std::unordered_map<uint32_t,uint32_t> byID;byID.reserve(all.size());for(uint32_t p:all){uint32_t id=game.template get<uint32_t>(p+0x10);if(id)byID.emplace(id,p);}
@@ -32,7 +32,7 @@ template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Re
   else if(!game.enemy(p,house))continue;
   if(r.mode==cooperative::AirSingle){if(p!=clicked->second)continue;}
   else if(r.mode==cooperative::AirDamage){auto combat=game.combat(p,frame,false);
-   if(k!=2||(combat.flags&(planner::Airborne|planner::Manipulated))||cooperative::distance(r.cameraX,r.cameraY,combat.x,combat.y)>int64_t(cooperative::DamageRadius)*cooperative::DamageRadius)continue;
+   if(k!=2||(combat.flags&(planner::Airborne|planner::Manipulated))||cooperative::distance(r.cameraX,r.cameraY,combat.x,combat.y)>int64_t(cooperative::radiusCells(r.airRadiusCells)*256)*(cooperative::radiusCells(r.airRadiusCells)*256))continue;
   }else {int sx,sy;if(!project(projection,game.template get<int>(p+0x9C),game.template get<int>(p+0xA0),game.template get<int>(p+0xA4),sx,sy)||sx<0||sy<0||sx>=projection.width||sy>=projection.height)continue;}
   candidates.push_back({p,game.template get<uint32_t>(p+0x10),cooperative::distance(out.units[0].x,out.units[0].y,game.template get<int>(p+0x9C),game.template get<int>(p+0xA0))});
  }

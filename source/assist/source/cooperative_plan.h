@@ -7,7 +7,7 @@
 namespace assist { namespace cooperative {
 struct Unit {Source source;uint32_t type;int x,y,slots;uint32_t reservedTarget=0;};
 struct Target {uint32_t id,type;int x,y,free,used;Quota quota;int prior=0,hp=0;double priorDamage=0;int kind=-1;bool enemy=false,airborne=false;};
-struct Input {int mode=Enter;uint32_t clicked=0;std::vector<Unit> units;std::vector<Target> targets;std::vector<uint8_t> compatible;std::vector<double> expectedDamage;int centerX=0,centerY=0;};
+struct Input {int mode=Enter;uint32_t clicked=0;std::vector<Unit> units;std::vector<Target> targets;std::vector<uint8_t> compatible;std::vector<double> expectedDamage;int centerX=0,centerY=0;int radiusCells=DefaultDamageRadiusCells,coveragePercent=DefaultDamagePercent;};
 inline int64_t distance(int x,int y,int a,int b){int64_t dx=int64_t(x)-a,dy=int64_t(y)-b;if(dx< -2097152||dx>2097152||dy< -2097152||dy>2097152)return INT64_MAX;return dx*dx+dy*dy;}
 inline bool validDamage(double value){return std::isfinite(value)&&value>0&&value<=MaximumExpectedDamage;}
 // Both host and Runtime replan only the unprocessed suffix. Already accepted
@@ -29,9 +29,10 @@ inline std::vector<Assignment> allocate(const Input&w){
  for(size_t i=0;i<ns;++i)for(size_t k=0;k<i;++k)if(w.units[i].source.id&&w.units[i].source.id==w.units[k].source.id)return out;
  for(size_t j=0;j<nt;++j)for(size_t k=0;k<j;++k)if(w.targets[j].id&&w.targets[j].id==w.targets[k].id)return out;
  if(damageMode(w.mode)){
+  if(w.mode==AirDamage&&(w.radiusCells<MinDamageRadiusCells||w.radiusCells>MaxDamageRadiusCells||w.coveragePercent<MinDamagePercent||w.coveragePercent>MaxDamagePercent))return out;
   if(w.expectedDamage.size()!=ns*nt||w.centerX< -1048576||w.centerX>1048576||w.centerY< -1048576||w.centerY>1048576)return out;
   std::vector<double> committed(nt);std::vector<int> degree(ns),order(ns);std::iota(order.begin(),order.end(),0);
-  auto targetValid=[&](size_t j){const auto&t=w.targets[j];return t.id&&t.type&&t.hp>0&&t.enemy&&t.x>=-1048576&&t.x<=1048576&&t.y>=-1048576&&t.y<=1048576&&(w.mode==AirSingle?t.id==w.clicked:t.kind==2&&!t.airborne&&distance(w.centerX,w.centerY,t.x,t.y)<=int64_t(DamageRadius)*DamageRadius);};
+  auto targetValid=[&](size_t j){const auto&t=w.targets[j];return t.id&&t.type&&t.hp>0&&t.enemy&&t.x>=-1048576&&t.x<=1048576&&t.y>=-1048576&&t.y<=1048576&&(w.mode==AirSingle?t.id==w.clicked:t.kind==2&&!t.airborne&&distance(w.centerX,w.centerY,t.x,t.y)<=int64_t(w.radiusCells*256)*(w.radiusCells*256));};
   auto edgeValid=[&](size_t i,size_t j){return targetValid(j)&&w.compatible[i*nt+j]&&validDamage(w.expectedDamage[i*nt+j]);};
   for(size_t j=0;j<nt;++j){double prior=w.targets[j].priorDamage;if(!std::isfinite(prior)||prior<0||prior>MaximumExpectedDamage*MaxSources)return out;committed[j]=prior;}
   for(size_t i=0;i<ns;++i)for(size_t j=0;j<nt;++j)degree[i]+=edgeValid(i,j);
@@ -43,7 +44,8 @@ inline std::vector<Assignment> allocate(const Input&w){
    for(size_t j=0;j<nt;++j){if(!edgeValid(i,j))continue;const auto&t=w.targets[j];
     // Allow the shot that crosses 120%; only later aircraft prefer another
     // attackable uncovered target. Covered targets remain a final fallback.
-    bool covered=committed[j]*5>=double(t.hp)*6;if(covered&&w.mode==AirSingle)continue;double coverage=committed[j]/t.hp;int64_t d=distance(u.x,u.y,t.x,t.y);
+    const int percent=w.mode==AirDamage?w.coveragePercent:DefaultDamagePercent;
+    bool covered=committed[j]*100>=double(t.hp)*percent;if(covered&&w.mode==AirSingle)continue;double coverage=committed[j]/t.hp;int64_t d=distance(u.x,u.y,t.x,t.y);
     bool clicked=t.id==w.clicked,oldClicked=best>=0&&w.targets[best].id==w.clicked;
     bool betterTie=(clicked&&!oldClicked)||(clicked==oldClicked&&(d<bestDistance||(d==bestDistance&&t.id<(best>=0?w.targets[best].id:UINT32_MAX))));
     if(best<0||(!covered&&bestCovered)||(covered==bestCovered&&((covered&&coverage<bestCoverage)||((!covered||coverage==bestCoverage)&&betterTie)))){best=int(j);bestCovered=covered;bestCoverage=coverage;bestDistance=d;}
