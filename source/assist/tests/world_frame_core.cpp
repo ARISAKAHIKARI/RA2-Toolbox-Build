@@ -626,9 +626,10 @@ void hostBoundaryCommandGuard(){
  k.connectionLow=uint32_t(reader.generation());k.connectionHigh=uint32_t(reader.generation()>>32);
  k.demand=worldframe::BoundaryOnlyKeyBit;
  shallow->reset(k);Read read{&memory};
- worldframe::CaptureGraph<Read> boundary(*shallow,read);
- CHECK(boundary.capture(worldframe::Base|worldframe::HostDisplayOnly,{}));
- CHECK(shallow->seal());server.observe(shallow->key);CHECK(server.publish(*shallow));
+ // The real Runtime publishes ZERO source pages, not a second miniature
+ // CaptureGraph. Host VisualCache must still decode its independent view.
+ CHECK(shallow->seal()&&shallow->pages.size()==0&&shallow->counters.calls==0);
+ server.observe(shallow->key);CHECK(server.publish(*shallow));
  currentPid=HostPid;CHECK(reader.beginWorldFrame(7));
  CHECK(reader.worldFrameToken()->controlSource);
  reader.endWorldFrame();reader.setWorldDemand(worldframe::Base);
