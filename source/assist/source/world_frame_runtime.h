@@ -206,7 +206,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  key.serial=++worldFrameSerial;
  key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
             (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
- worldFrame.reset(key);
+ if(boundaryOnly)worldFrame.resetBoundary(key);else worldFrame.reset(key);
  if(boundaryOnly){
   // Truly zero-page Host display boundary. The independent Host VisualCache
   // acquires its own image, unit/Type graph and map geometry. No CaptureGraph,
