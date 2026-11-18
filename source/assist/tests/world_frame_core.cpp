@@ -543,12 +543,14 @@ void runtime(){
  };
  rejectChange(0xA8ED84,51);rejectChange(0xA8B230,Scenario+0x10000);rejectChange(0x87F924,Cells+0x10000);rejectChange(0xA83D4C,House+0x10000);
  retireWorldFrame();CHECK(!worldFrameReady&&runtimeWorldDemands.empty());{SampleReadScope retired;CHECK(!retired&&!retired.complete());}
-  // Display-only captured a small scene boundary. The first Ctrl+D or
+  // Display-only captured a zero-page Key boundary (no CaptureGraph). The
+  // first Ctrl+D or
   // native read arriving in this SAME frame must upgrade it atomically to a
   // new full graph; merely re-exporting the sealed boundary would lose input.
   setup(memory);before=worldlife::capture(read);snap.frame=before.frame;
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
   CHECK(worldFrameBoundaryOnly&&worldFrameReady&&worldframe::boundaryOnlySource(worldFrame.key));
+  CHECK(worldFrame.pages.size()==0&&worldFrame.counters.calls==0&&worldFrame.counters.bytes==0);
   // Display-only boundaries cannot admit a native command, even if a
   // particular required scalar happens to be present.
   {SampleReadScope blocked;CHECK(!blocked&&!blocked.complete());}
