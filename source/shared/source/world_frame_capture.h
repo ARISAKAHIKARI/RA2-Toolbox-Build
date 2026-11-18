@@ -1,34 +1,10 @@
 #pragma once
 #include "world_frame.h"
 #include "world_frame_recovery.h"
+#include "world_frame_page_sort.h"
 #include <limits>
 
 namespace worldframe {
-// The capture worker and synchronous producer need exactly the same sorted,
-// deduplicated page sequence. Keep radix scratch across frames: no per-object
-// comparison tree and no repeated allocation after the first large scene.
-// A small page set stays on std::sort to avoid four histogram initializations.
-inline void sortUniquePageAddresses(std::vector<uint32_t>&pages,
-                                    std::vector<uint32_t>&scratch){
- if(pages.size()<128)std::sort(pages.begin(),pages.end());
- else {
-  scratch.resize(pages.size());
-  uint32_t*src=pages.data(),*dst=scratch.data();
-  const size_t n=pages.size();
-  for(unsigned shift=0;shift<32;shift+=8){
-   size_t offsets[256]{};
-   for(size_t i=0;i<n;++i)++offsets[(src[i]>>shift)&255u];
-   size_t sum=0;
-   for(unsigned bucket=0;bucket<256;++bucket){
-    const size_t count=offsets[bucket];offsets[bucket]=sum;sum+=count;
-   }
-   for(size_t i=0;i<n;++i)dst[offsets[(src[i]>>shift)&255u]++]=src[i];
-   uint32_t*previous=src;src=dst;dst=previous;
-  }
-  // Four passes are even. The data finishes in pages, not in scratch.
- }
- pages.erase(std::unique(pages.begin(),pages.end()),pages.end());
-}
 // Capture membership is temporary, but the game-thread allocator is shared
 // with the engine. Reusing flat buckets avoids allocating and freeing one
 // unordered_set node per object on every logic frame. Generations clear only
