@@ -28,7 +28,6 @@ assert "construction::showReservationChoice(tab,native,queued,future,busyBuildin
 assert "if(!source.complete()){choices=std::move(previous);choicesIncomplete=true;}" in host
 assert "choiceSourceTab==activeTab?std::move(choices)" in host
 assert "if(!nativeReady){choices=std::move(previous);choicesIncomplete=true;return;}" in host
-assert "if(!nativeReady){choices=std::move(previous);return;}" in host
 
 def branch(source, token):
     start = source.index(token)
