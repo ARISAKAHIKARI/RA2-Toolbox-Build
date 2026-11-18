@@ -82,7 +82,7 @@ static unsigned invalidations=0;static void InvalidateRect(HWND,void*,int){++inv
 #include "construction_buffer.h"
 static Window gameObject,panelObject;static HWND game=&gameObject,window=&panelObject;
 static construction::Layout layout;static construction::PanelBuffer panelBuffer,panelSpare;static construction::Layout paintedLayout;static bool paintReady=false;
-static bool geometryReady=true;static int activeTab=0,selectedTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static HFONT panelFont=&testFont,font=&testFont;
+static bool geometryReady=true;static int activeTab=0,selectedTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static uint32_t refreshed=0;static HFONT panelFont=&testFont,font=&testFont;
 static construction::Book books[4];struct Choice{int slot,index,tab;uint32_t type;bool future;};static std::vector<Choice> choices;
 namespace assist{struct Type{char id[24]{};uint16_t name[40]{};int kind=7,index=0,naval=0,cost=0;};}
 static struct{int typeCount=8;assist::Type types[8];}snap;
