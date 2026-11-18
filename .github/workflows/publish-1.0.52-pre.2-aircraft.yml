@@ -1,0 +1,195 @@
+name: Publish 1.0.52-pre.2 configurable aircraft allocation
+on:
+  push:
+    branches: [feature/configurable-air-damage-radius-percent-20261118]
+    paths:
+      - .github/workflows/publish-1.0.52-pre.2-aircraft.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: ra2-1.0.52-pre.2-aircraft-publish
+  cancel-in-progress: false
+
+jobs:
+  source-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Confirm release and immutable Assist ABI contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'RA2_RELEASE_VERSION "1.0.52.2"' source/shared/source/release_version.h
+          grep -q '1.0.52-pre.2' source/shared/source/release_version.h
+          grep -q 'Version=111' source/assist/source/protocol.h
+          grep -q 'ASSIST_PROTOCOL = 111' source/tools/verify_windows_outputs.py
+          grep -q 'ASSIST_SHARED_BYTES = 23228664' source/tools/verify_windows_outputs.py
+          grep -q 'AirDamageRadiusCells=5' source/defaults/Assist.ini
+          grep -q 'AirDamagePercent=120' source/defaults/Assist.ini
+      - name: Compile and execute aircraft allocation, game-reader and UI-settings tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checks
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/aircraft_damage.cpp -o checks/aircraft-plan
+          checks/aircraft-plan
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/aircraft_damage_reader.cpp -o checks/aircraft-reader
+          checks/aircraft-reader
+          python3 source/assist/tests/aircraft_damage_settings.py
+      - name: Verify baseline asynchronous commands and submission semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/async_command_no_live_roster.py
+          python3 source/assist/tests/unified_gateway_contract.py
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: air-1.0.52-pre.2-source-proof
+          retention-days: 30
+          path: checks/
+
+  windows:
+    needs: source-gates
+    runs-on: windows-2022
+    timeout-minutes: 70
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned Zig and icon encoder
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Build paired x64 Host x86 Runtime/Broker; verify PE exports and ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/pre-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/windows-build.log 2>&1 || { tail -150 checks/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root pre-build --host-arch x64 --webview2 | tee checks/pe-abi.log
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "pre-build/$n"
+          done
+          python -c "import json; p=json.load(open('pre-build/BUILD_TARGET.json')); assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',111,False),p"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: air-1.0.52-pre.2-paired-windows
+          retention-days: 30
+          path: |
+            pre-build/*.exe
+            pre-build/*.dll
+            pre-build/*.json
+            pre-build/licenses/**
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: air-1.0.52-pre.2-windows-proof
+          retention-days: 30
+          path: checks/
+
+  publish:
+    needs: windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.52-pre.2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: air-1.0.52-pre.2-paired-windows
+          path: dist/update
+      - name: Verify identity; make paired Update and Full bundles; compute SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = feature/configurable-air-damage-radius-percent-20261118
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists: refusing to silently overwrite" >&2
+            exit 1
+          fi
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "dist/update/$n"
+          done
+          python -c "import json; p=json.load(open('dist/update/BUILD_TARGET.json')); assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',111,False),p"
+          cat > dist/update/BUILD_VALIDATION.txt <<EOF
+          Release: RA2 Toolbox 1.0.52-pre.2
+          Exact source commit: $GITHUB_SHA
+          Host x64; Runtime and Broker x86; Assist ABI 111
+          Verified by portable tests, paired Windows compilation and PE/ABI checks
+          Native gameplay, JJ and CnCNet multiplayer: NOT tested
+          Change: vehicle aircraft allocation configurable 1-64 cells, 1-500% estimated damage; default 5/120
+          Close the game and toolbox; back up Assist.ini; replace ALL matching binaries together.
+          EOF
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.52-pre.2-x64-Update.zip .)
+          mkdir -p dist/base dist/full
+          gh release download v1.0.52-pre.1 --repo "$GITHUB_REPOSITORY" --pattern RA2Toolbox-1.0.52-pre.1-x64-Full.zip --dir dist/base
+          unzip -tq dist/base/RA2Toolbox-1.0.52-pre.1-x64-Full.zip
+          unzip -q dist/base/RA2Toolbox-1.0.52-pre.1-x64-Full.zip -d dist/full
+          test "$(find dist/full -type f -name RA2Toolbox.exe | wc -l)" -eq 1
+          root="$(dirname "$(find dist/full -type f -name RA2Toolbox.exe -print -quit)")"
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do
+            cp "dist/update/$n" "$root/$n"
+            cmp "dist/update/$n" "$root/$n"
+          done
+          for n in BUILD_SOURCE_MANIFEST.json BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json BUILD_VALIDATION.txt; do
+            if test -f "dist/update/$n"; then cp "dist/update/$n" "$root/$n"; fi
+          done
+          if test -d dist/update/licenses; then
+            mkdir -p "$root/licenses"
+            cp -a dist/update/licenses/. "$root/licenses/"
+          fi
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.52-pre.2-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.2-x64-Full.zip
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.2-x64-Update.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.52-pre.2-x64-Update.zip RA2Toolbox-1.0.52-pre.2-x64-Full.zip > SHA256SUMS.txt)
+      - name: Publish pre-release only; do not change Latest stable
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## RA2 Toolbox 1.0.52-pre.2 — 飞机范围战车智能分配自定义
+          
+          基于 1.0.52-pre.1，新增飞机分配攻击「范围战车 · 伤害覆盖」的可配置搜索半径和预计伤害覆盖率：
+          - 范围 X 格：1–64 格，默认 5 格；以点击目标世界坐标为中心、含边界的圆形范围寻找敌方地面战车。
+          - 预计伤害 Y%：1–500%，默认 120%；按预计累计普通连发伤害 / 目标当前生命值做覆盖分配，达到阈值优先选未覆盖目标。这不提高武器实际伤害，也不保证必杀。
+          - 配置即时同步并保存 Assist.ini；每次点击的参数冻结在指令快照中，Host、Runtime、重试与最后原生命令校验使用同一值，避免改设置时跨帧漂移。
+          - 原数量配额和单目标 120% + 派出后取消选中不变；离线专项算法、生产读取器、参数边界与设置持久化回归通过。
+          
+          构建提交：$GITHUB_SHA。Host x64 / GameRuntime x86 / Broker x86 同源编译，Assist ABI 升级至 111，禁止与旧组件混装。Full 基于先前 pre.1 Full 资源，Update 覆盖已有完整安装目录；替换前关闭游戏和工具箱并备份 Assist.ini。
+          
+          这是 **Pre-release**，不会变更正式 Latest。离线测试和 Windows 配套 PE/ABI 已验证；实际游戏、JJ/CnCNet 联机和极端战场性能尚未实测，存在兼容风险。
+          EOF
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --prerelease --title "RA2 Toolbox 1.0.52-pre.2 · 飞机分配参数可配置" \
+            --notes-file dist/RELEASE_NOTES.md \
+            dist/RA2Toolbox-1.0.52-pre.2-x64-Update.zip dist/RA2Toolbox-1.0.52-pre.2-x64-Full.zip dist/SHA256SUMS.txt
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,assets,targetCommitish \
+            | jq -e --arg sha "$GITHUB_SHA" '.isDraft==false and .isPrerelease==true and .targetCommitish==$sha and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.2-x64-Full.zip")!=null) and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.2-x64-Update.zip")!=null)'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: air-1.0.52-pre.2-delivery-proof
+          retention-days: 30
+          path: |
+            dist/RELEASE_NOTES.md
+            dist/SHA256SUMS.txt

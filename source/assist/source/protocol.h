@@ -29,7 +29,7 @@
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=110;
+constexpr uint32_t Magic=0x41533130, Version=111;
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -289,6 +289,9 @@ struct Shared {
  volatile uint32_t nativePipVisible=1,nativePipEnabled=0,nativePipPinRequest=0,nativePipPinAck=0,nativePipPinMatch=0,nativePipPinTick=0;
  volatile int32_t nativePipStatus=0;
  volatile uint32_t nativePipFrames=0,nativePipMicros=0,nativePipMaxMicros=0;
+ // Host preferences only: a click snapshots these into cooperative::Request.
+ volatile uint32_t aircraftDamageRadiusCells=cooperative::DefaultDamageRadiusCells;
+ volatile uint32_t aircraftDamageCoveragePercent=cooperative::DefaultDamagePercent;
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

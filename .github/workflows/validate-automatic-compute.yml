@@ -109,6 +109,23 @@ jobs:
           name: RA2Toolbox-MissingPageAudit-Windows-BuildLog
           retention-days: 14
           path: diagnostics/
+  aircraft-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify configurable aircraft allocation and frozen click snapshot
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/aircraft_damage.cpp -o /tmp/ra2-aircraft-allocation
+          /tmp/ra2-aircraft-allocation
+          g++ -std=c++17 -O2 -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/aircraft_damage_reader.cpp -o /tmp/ra2-aircraft-reader
+          /tmp/ra2-aircraft-reader
+      - name: Exercise production aircraft settings controls and persistence
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/aircraft_damage_settings.py
+
   repair-state:
     runs-on: ubuntu-latest
     timeout-minutes: 15
