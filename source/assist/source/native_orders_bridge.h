@@ -208,7 +208,8 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
  if(cargoCount<0||cargoCount>256||!nativeCarrierID)return -6;
  static uint32_t roster[nativeorders::MaxPassengers];int count=0;uint32_t previous=0;
  auto*begin=std::lower_bound(unloadRoster,unloadRoster+unloadRosterCount,p,[](const UnloadRosterEntry&r,uint32_t carrier){return r.carrier<carrier;});
- for(auto*at=begin;at<unloadRoster+unloadRosterCount&&at->carrier==p;++at){uint32_t q=at->pointer;
+ auto*rosterEnd=std::upper_bound(begin,unloadRoster+unloadRosterCount,p,[](uint32_t carrier,const UnloadRosterEntry&r){return carrier<r.carrier;});
+ for(auto*at=begin;at<rosterEnd;++at){uint32_t q=at->pointer;
   if(q==previous)continue;
   uint32_t uid=0,carrier=0;const int known=unloadPassengerKnowledge(q,house,uid,carrier);
   if(!known)return -6; // Unknown later passenger must not be dropped.
@@ -249,8 +250,12 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
    seen[scanned++]=q;
    if(known>0&&featureObjectAllowed(featuretypes::UnloadPassenger,q)){
     const uint32_t token=manualVersions.get(id);
-    for(auto*at=begin;at<unloadRoster+unloadRosterCount&&at->carrier==p;++at)
-     if(at->pointer==q&&(at->id!=id||at->token!=token))return -6;
+    // The roster is ordered by (carrier,pointer,history). Never walk all
+    // passengers again for every native cargo link; check *all* duplicate
+    // records for the same pointer to preserve mismatched-token rejection.
+    auto*same=unloadpolicy::firstRosterPointer(begin,rosterEnd,q);
+    for(auto*at=same;at<rosterEnd&&at->pointer==q;++at)
+     if(at->id!=id||at->token!=token)return -6;
     bool enrolled=false;for(int k=0;k<count;++k)if(roster[k]==q){enrolled=true;break;}
     if(!enrolled){if(count==nativeorders::MaxPassengers)return -6;roster[count++]=q;}
    }
