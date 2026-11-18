@@ -45,6 +45,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p diagnostics/automation
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/world_frame_page_union.cpp -o diagnostics/automation/page-union
+          diagnostics/automation/page-union | tee diagnostics/automation/page-union.log
           python source/assist/tests/defense_admission.py --out diagnostics/automation/defense --sanitize
           python source/assist/tests/world_frame_capture_performance.py --out diagnostics/automation/capture
           python source/assist/tests/world_frame_retention.py --out diagnostics/automation/retention

@@ -2,11 +2,13 @@
 #include "../../shared/source/world_frame_capture.h"
 #include "../../shared/source/world_frame_recovery.h"
 #include "../../shared/source/world_frame_transport.h"
+#include "../../shared/source/world_frame_page_union.h"
 #ifndef WORLD_FRAME_PLATFORM_FIXTURE
 #include "../../shared/source/world_frame_shadow_win.h"
 #endif
 #include <cstdio>
 
+static worldframe::PageRequestUnion worldFramePageUnion;
 static worldframe::Snapshot worldFrame;
 static worldframe::Server worldFrameServer;
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
@@ -199,7 +201,13 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  // addresses at this acquisition boundary and acknowledge only on success.
  for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
  runtimeDemandLeases.append(key.tick,requests);
- std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
+ // Preserve ascending, unique pages without N log N sorting a large
+ // union of Host, live control and retained missing-page subscriptions.
+ // Invalid addresses still go through the original strict capture path.
+ if(requests.size()<256||!worldFramePageUnion.sortedUnique(requests)){
+  std::sort(requests.begin(),requests.end());
+  requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
+ }
  key.serial=++worldFrameSerial;
  key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
             (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
