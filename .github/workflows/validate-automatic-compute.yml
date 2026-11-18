@@ -33,6 +33,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/fixed_compute_settings.py
+      - name: Verify bounded native lease lifecycle and manual priority
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Werror -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/lease_arbiter.cpp -o /tmp/ra2-lease-arbiter
+          /tmp/ra2-lease-arbiter
   defense-state:
     runs-on: ubuntu-latest
     timeout-minutes: 15
