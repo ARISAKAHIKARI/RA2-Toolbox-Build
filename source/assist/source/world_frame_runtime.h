@@ -199,7 +199,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  // dependency queue. The Host VisualCache owns its own page discovery, and
  // a later same-frame hotkey must still see every pending command lease.
  auto&requests=worldFrameCaptureRequests;
- capturepolicy::prepareRequestedPages(boundaryOnly,key.tick,
+ assist::capturepolicy::prepareRequestedPages(boundaryOnly,key.tick,
   worldFrameServer.requests(),runtimeWorldDemands,runtimeDemandLeases,requests);
  key.serial=++worldFrameSerial;
  key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
