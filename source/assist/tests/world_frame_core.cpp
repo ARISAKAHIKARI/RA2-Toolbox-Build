@@ -573,7 +573,7 @@ void runtime(){
    uint32_t firstID=0,newID=0;
    CHECK(reused.capture(read,ActorA+0x10,&firstID,4)&&firstID==ActorA+5);
    reused.resetBoundary(worldFrame.key);
-   CHECK(reused.pages.empty()&&!reused.find(ActorA&~4095u));
+   CHECK(reused.pages.size()==0&&!reused.find(ActorA&~4095u));
    CHECK(reused.capture(read,ActorA+0x10,&newID,4)&&newID==firstID);
    CHECK(reused.seal()&&reused.read(ActorA+0x10,&newID,4)&&newID==firstID);
   }
