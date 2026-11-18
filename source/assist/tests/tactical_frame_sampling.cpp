@@ -331,6 +331,35 @@ static void testMissile(){
  }
  std::puts("PASS missile raw/fresh selector facts, missing retention, manual generations and native query boundaries");
 }
+static void testCapturedRosterIndex(){
+ reset();const auto type=makeType(),p=object(type,2,20),q=object(type,2,21);
+ vectorAt(0xA8EC78,0x800000,{p,q});seal();indexedFrame=-1;
+ // Simulate the exact immutable roster already exported by CaptureGraph.
+ worldFrameCaptureScratch.technoKey=worldFrame.key;
+ worldFrameCaptureScratch.technoItems=0x800000;
+ worldFrameCaptureScratch.technoCount=2;
+ worldFrameCaptureScratch.technoRoster={p,q};
+ readRequests=0;const auto beforeLive=liveReads;
+ {
+  SampleReadScope sample;indexWorld(snap.frame);
+  check(sample.complete()&&indexedFrame==snap.frame,"sealed roster index marked incomplete");
+ }
+ const uint64_t fast=readRequests;
+ check(worldObjects.byId(20)==p&&worldObjects.byId(21)==q,"sealed roster lost native UIDs");
+ check(liveReads==beforeLive,"sealed roster fast path read live memory");
+ // Invalidate only the captured serial. The production index must fall
+ // back to its original roster read, with identical identities but one
+ // additional sampled read() call. No stale/cross-frame borrow is allowed.
+ ++worldFrameCaptureScratch.technoKey.serial;indexedFrame=-1;readRequests=0;
+ {
+  SampleReadScope sample;indexWorld(snap.frame);
+  check(sample.complete()&&indexedFrame==snap.frame,"stale roster fallback failed");
+ }
+ check(readRequests==fast+1,"fast roster did not avoid exactly one full pointer read");
+ check(worldObjects.byId(20)==p&&worldObjects.byId(21)==q,"stale roster fallback lost native IDs");
+ check(liveReads==beforeLive,"sampled native roster unexpectedly read live");
+ std::puts("PASS production native index: frozen roster saves full pointer read; stale serial fallback retains identities and no live reads");
+}
 static void testIdentitySampleFailure(){
  reset();const auto t=makeType(),carrier=object(t,2,20),passenger=object(t,1,21);vectorAt(0xA8EC78,0x800000,{carrier,passenger});
  sh->magnetronGlobal=1;manualVersions.change(21,passenger,false);manualVersions.change(21,passenger,false);for(unsigned id=100;id<100+ManualVersions::Size/2;++id)manualVersions.change(id,0,false);
@@ -460,5 +489,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif
