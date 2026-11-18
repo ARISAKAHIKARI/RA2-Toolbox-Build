@@ -9,6 +9,7 @@
 #include "unit_task_arbiter.h"
 #include "execution_proof.h"
 #include "../../shared/source/world_frame.h"
+#include "../../shared/source/world_frame_capture.h"
 #include "../../shared/source/world_frame_command_index.h"
 #include "../../shared/source/runtime_fault.h"
 #include "../../external_reader/source/cooperative_reader.h"
@@ -38,6 +39,9 @@ static std::map<uint32_t,int> airOverride;
 static std::set<uint64_t> forbiddenEnter;
 static std::vector<std::pair<uint32_t,uint32_t>> assignments;
 static worldframe::Snapshot worldFrame;
+// This fixture seals raw synthetic bytes rather than running CaptureGraph.
+// The empty retained scratch exercises indexWorld's original read fallback.
+static worldframe::CaptureScratch worldFrameCaptureScratch;
 static bool worldFrameReady=false,sampleReadComplete=true;
 static unsigned sampleReadDepth=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};
@@ -159,7 +163,7 @@ static void advance(uint32_t omit=0,bool failure=false){++snap.frame;clockNow+=1
 static void reset(){
  check(!sampleReadDepth,"scope leaked between tests");memory.assign(memory.size(),0);::new(static_cast<void*>(sh)) Shared{};std::memset(&snap,0,sizeof snap);
  leaseChecks=0;leaseAllowed=true;worldObjects.clear();manualVersions.clear();actorLeaseArbiter.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
- worldFrameReady=false;nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;denyLivePage=false;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
+ worldFrameReady=false;worldFrameCaptureScratch.reset();nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;denyLivePage=false;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
  loadCalculationPending=loadCaptureWaiting=loadAckPending=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
  missileSendCount=missileManualCount=missileMotionCursor=missileSourceCursor=missileTargetCursor=missileManagedCursor=0;for(auto&m:missileMotion)m={};
  dodgeThreatCount=dodgeCursor=dodgeJobCursor=0;unloadSampleTargetFrame=-1;unloadSampleTargetCount=0;planningFrame=-1;planningWorld.count=planningWorld.intentCount=0;planningSerial=inputSerial=0;std::memset(weaponCache,0,sizeof weaponCache);oreHarvestReset();harvestEvents=0;
