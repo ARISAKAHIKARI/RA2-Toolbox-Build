@@ -49,9 +49,9 @@ static void verifyNativeCargoLookup(){
  assert(assist::unloadpolicy::radixSortRoster(actual,scratch,int(Capacity)));
  unsigned queries=0;
  for(uint32_t c=0x10000u;c<=0x20000u;c+=0x1000u){
-  const auto*begin=std::lower_bound(actual,actual+Capacity,c,
+  auto*begin=std::lower_bound(actual,actual+Capacity,c,
     [](const Entry&e,uint32_t carrier){return e.carrier<carrier;});
-  const auto*end=std::upper_bound(begin,actual+Capacity,c,
+  auto*end=std::upper_bound(begin,actual+Capacity,c,
     [](uint32_t carrier,const Entry&e){return carrier<e.carrier;});
   for(unsigned p=0;p<140;++p){
    const uint32_t pointer=0x80000u+p*16u;
