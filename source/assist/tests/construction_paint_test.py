@@ -132,7 +132,19 @@ int main(){
  // A changed tab/scroll/queue cannot erase the old frame; input closes until
  // the new complete pixels and geometry have both been promoted.
  activeTab=1;books[1].items={2};layout.content(1,8);requestPaint();assert(!panelInputReady());paint();assert(visible.pixels==first&&positions==1);
- complete(0xff654321);pumpPaint();assert(panelInputReady()&&positions==2);paint();assert(visible.pixels!=first);
+ // Header clicks navigate using the LAST committed layout while candidate
+ // raster for the previous tab is pending. Neither pending tab can accept a
+ // production-icon click before its new pixels and hit map are promoted.
+ const unsigned beforeReservations=reservationCalls;
+ const int headerX=paintedLayout.width()*5/8,headerY=paintedLayout.pointY(12);
+ proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(headerX)|(uint32_t(headerY)<<16)));
+ assert(activeTab==2&&selectedTab==2&&!panelInputReady());
+ proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(layout.x(36))|(uint32_t(layout.pointY(layout.headerHeight()+33))<<16)));
+ assert(reservationCalls==beforeReservations);
+ // Rapid superseding navigation is also legal before the old raster finishes.
+ proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(paintedLayout.width()*3/8)|(uint32_t(headerY)<<16)));
+ assert(activeTab==1&&selectedTab==1);
+ requestPaint();complete(0xff654321);pumpPaint();assert(panelInputReady()&&positions==2);paint();assert(visible.pixels!=first);
  fail=9;assert(!panelInputReady());fail=0;assert(panelInputReady());
  auto before=visible.pixels;int beforePositions=positions;scroll=2;requestPaint();paint();assert(visible.pixels==before&&!panelInputReady());
  // GDI target/DC/bitmap/selection/upload/flush failures are transactional.
