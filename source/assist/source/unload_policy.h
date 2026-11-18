@@ -32,6 +32,21 @@ template<class Entry,unsigned Capacity>bool radixSortRoster(Entry (&entries)[Cap
  Entry (&scratch)[Capacity],int count){
  if(count<0||unsigned(count)>Capacity)return false;
  if(count<2)return true;
+ // Ordinary Ctrl+D has only a handful of passengers. Avoid 12 radix
+ // histograms for 2..32 candidates; stable insertion costs <=496 compares.
+ if(count<=32){
+  for(int i=1;i<count;++i){
+   const Entry entry=entries[i];int j=i;
+   while(j>0&&(entry.carrier<entries[j-1].carrier||
+         (entry.carrier==entries[j-1].carrier&&
+           (entry.pointer<entries[j-1].pointer||
+            (entry.pointer==entries[j-1].pointer&&entry.history<entries[j-1].history))))){
+    entries[j]=entries[j-1];--j;
+   }
+   entries[j]=entry;
+  }
+  return true;
+ }
  Entry*src=entries;Entry*dst=scratch;
  for(unsigned pass=0;pass<12;++pass){
   unsigned positions[256]{};
