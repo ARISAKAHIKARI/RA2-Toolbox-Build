@@ -39,7 +39,7 @@ static construction::InputPolicy reservationPolicy;static construction::InputCli
 static void publishReservationPolicy(const construction::InputPolicy&p){reservationPolicy=p;}
 static bool takeReservationClick(construction::InputClick&out){if(!inputPending)return false;inputPending=false;out=inputClick;reservationPolicy={};return true;}
 static bool SetLayeredWindowAttributes(HWND,int,int alpha,int flags){assert(flags==LWA_ALPHA);panelAlpha=alpha;return true;}
-static struct{bool constructionQueue=true,techEnhance=false,techEnhanceCompareLevel=false;int techEnhanceImplementation=0;}extra;
+static struct{bool constructionQueue=true,constructionShowNativeUnits=false,techEnhance=false,techEnhanceCompareLevel=false;int techEnhanceImplementation=0;}extra;
 static struct{int typeCount=3,chat=0,renderStatus=1,width=2560,height=1440;struct{int kind=7,index=0,naval=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
 static bool techAllowed(const decltype(snap.types[0])&){return techWhitelist;}
 static delivery::Queue commandQueue;
@@ -81,7 +81,7 @@ static constexpr uint32_t H=0x500000,C=0x510000,R=0x520000,T=0x600000,P=0x700000
 static void w(uint32_t p,int v){externalReader.put(p,v);}static void byte(uint32_t p,uint8_t v){externalReader.put(p,v);}
 static void list(uint32_t p,std::initializer_list<int> v){static uint32_t items=0x900000;w(p+4,items);w(p+8,v.size());w(p+16,v.size());for(int i:v){w(items,i);items+=4;}items+=32;}
 static void setup(){
- techMode=false;techWhitelist=true;extra.techEnhance=false;extra.techEnhanceCompareLevel=false;extra.techEnhanceImplementation=0;buildreserve::reset();commandQueue.clear();soundRequests=0;externalReader.bytes.assign(0x1000000,0);externalReader.pages.clear();externalReader.available.reset();externalReader.fail=0;extra.constructionQueue=true;focused=fresh=enabled=queueAccept=true;++match;++now;
+ techMode=false;techWhitelist=true;extra.techEnhance=false;extra.techEnhanceCompareLevel=false;extra.techEnhanceImplementation=0;buildreserve::reset();commandQueue.clear();soundRequests=0;externalReader.bytes.assign(0x1000000,0);externalReader.pages.clear();externalReader.available.reset();externalReader.fail=0;extra.constructionQueue=true;extra.constructionShowNativeUnits=false;focused=fresh=enabled=queueAccept=true;++match;++now;
  w(0xA8ED84,10);w(0xA83D4C,H);w(H+0x34,C);w(C+0xB4,0);w(C+0xB8,0);w(H+0x1D4,10);w(0x8871E0,R);
  list(0xA83C68,{T,T+0x2000,T+0x4000});list(R+0x358,{0});for(int g=1;g<6;++g)list(R+0x358+g*28,{});
  for(int i=0;i<3;++i){auto t=T+i*0x2000;snap.types[i].index=i;w(t+0x634,1);w(t+0x6CC,1);w(t+0xDA0,-1);w(t+0xDA4,-1);w(t+0xDF8,i);list(t+0x638,i==1?std::initializer_list<int>{-1}:i==2?std::initializer_list<int>{1}:std::initializer_list<int>{});list(t+0x654,{});}
@@ -225,18 +225,25 @@ int main(){
  tick();assert(commandQueue.size==1&&commandQueue.slots[0].command==ProduceDeferred);
  auto deferredToken=books[2].token;result(1,1,0,deferredToken);assert(books[2].items.empty());result(1,1,0,deferredToken);assert(books[2].items.empty());
  std::cout<<"PASS: missing-barracks infantry, cross-tab defense, canceled prerequisite cascade, native-cameo wait and exactly-once unit ACK\n";
- // The original unit sidebar works even when no building is producing. Its
- // first native cameo must open an empty reservation panel and allow a click.
+ // By default native-available units are hidden; opt-in brings back 128
+ // mass reservations. An already queued unit remains visible for cancel.
  setup();snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
  list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{});list(I+0x654,{});
  w(F+0x58,0);selectedTab=activeTab=2;w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);
- tick();assert(geometryReady&&choice(encode(16,0))>=0&&books[2].items.empty());reserve(choice(encode(16,0)));assert(books[2].items.size()==1);
+ tick();assert(geometryReady&&choice(encode(16,0))<0&&books[2].items.empty());
+ extra.constructionShowNativeUnits=true;refreshChoices();assert(choice(encode(16,0))>=0);
+ reserve(choice(encode(16,0)));assert(books[2].items.size()==1);
+ extra.constructionShowNativeUnits=false;refreshChoices();
+ assert(choice(encode(16,0))>=0&&books[2].items.size()==1); // Cancel stays available.
+ removeTop();assert(books[2].items.empty()&&choice(encode(16,0))<0);
+ extra.constructionShowNativeUnits=true;refreshChoices();
+ reserve(choice(encode(16,0)));assert(books[2].items.size()==1);
  // A larger host FIFO preserves the native 30-item factory window; remaining
  // reservations stay pending until the game consumes native entries.
  setup();snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
  list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{});list(I+0x654,{});
  w(H+0x53B0,F);w(F+0x6C,H);w(F+0x58,0);w(F+0x50,0);
- w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);selectedTab=activeTab=2;refreshChoices();
+ extra.constructionShowNativeUnits=true;w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);selectedTab=activeTab=2;refreshChoices();
  assert(choice(encode(16,0))>=0);for(int i=0;i<construction::UnitReservationCapacity;++i)reserve(choice(encode(16,0)));
  assert(books[2].items.size()==construction::UnitReservationCapacity&&books[2].visibleStart()==construction::UnitReservationCapacity-construction::VisibleCapacity&&layout.queueCount==5);
  int sounds=soundRequests;reserve(choice(encode(16,0)));assert(books[2].items.size()==construction::UnitReservationCapacity&&sounds==soundRequests);
@@ -257,7 +264,7 @@ int main(){
  // reconciles the ACK shadow instead of consuming two slots in the budget.
  setup();snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
  list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{});list(I+0x654,{});
- w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);selectedTab=activeTab=2;refreshChoices();
+ extra.constructionShowNativeUnits=true;w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);selectedTab=activeTab=2;refreshChoices();
  reserve(choice(encode(16,0)));reserve(choice(encode(16,0)));tick();assert(commandQueue.size==1);
  deferredToken=books[2].token;commandQueue.clear();result(1,1,0,deferredToken);assert(unitBudgets[0].pending==1);
  w(H+0x53B0,F);w(F+0x6C,H);w(F+0x58,P);w(F+0x50,0);tick(20);assert(commandQueue.size==1&&unitBudgets[0].pending==0);
@@ -267,7 +274,7 @@ int main(){
  setup();snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;
  list(0xA8E348,{int(I)});w(I+0x634,1);w(I+0x6CC,1);w(I+0xDA0,-1);w(I+0xDA4,-1);list(I+0x638,{});list(I+0x654,{});
  w(H+0x53B0,F);w(F+0x6C,H);w(F+0x58,P);w(F+0x50,29);
- w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);selectedTab=activeTab=2;refreshChoices();
+ extra.constructionShowNativeUnits=true;w(infantryStrip+84,1);w(infantryStrip+88,0);w(infantryStrip+92,16);selectedTab=activeTab=2;refreshChoices();
  reserve(choice(encode(16,0)));reserve(choice(encode(16,0)));tick();assert(commandQueue.size==0&&books[2].items.size()==2);
  w(F+0x50,28);tick();assert(commandQueue.size==1);deferredToken=books[2].token;commandQueue.clear();result(1,1,0,deferredToken);
  tick(20);assert(commandQueue.size==0&&books[2].items.size()==1);w(F+0x50,29);tick();assert(commandQueue.size==0);
@@ -282,7 +289,10 @@ int main(){
  uint32_t vehicleStrip=0x87F7E8+0x1544+3*3988;w(vehicleStrip+84,3);w(vehicleStrip+88,0);w(vehicleStrip+92,40);w(vehicleStrip+88+52,0);w(vehicleStrip+92+52,3);w(vehicleStrip+88+104,1);w(vehicleStrip+92+104,40);
  uint32_t groundF=F,airF=F+0x100,seaF=F+0x200;w(H+0x53B4,groundF);w(H+0x53AC,airF);w(H+0x53B8,seaF);
  for(uint32_t f:{groundF,airF,seaF}){w(f+0x6C,H);w(f+0x58,P);w(f+0x50,0);}
- selectedTab=activeTab=3;refreshChoices();for(int index:{encode(40,0),encode(3,0),encode(40,1)}){int c=choice(index);assert(c>=0);reserve(c);}
+ selectedTab=activeTab=3;refreshChoices();
+ for(int index:{encode(40,0),encode(3,0),encode(40,1)})assert(choice(index)<0);
+ extra.constructionShowNativeUnits=true;refreshChoices();
+ for(int index:{encode(40,0),encode(3,0),encode(40,1)}){int c=choice(index);assert(c>=0);reserve(c);}
  assert(books[3].items.size()==3);for(int slot:{3,4,5}){tick();assert(commandQueue.size==1&&commandQueue.slots[0].arg==slot);
   uint32_t token=books[3].token;commandQueue.clear();result(1,1,0,token);assert(books[3].items.size()==size_t(5-slot));}
  std::cout<<"PASS: visible first unit cameo, 128-item FIFO with a native 30-item window, native full queue and ACK shadow, separate ground/air/naval factories\n";
