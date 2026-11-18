@@ -106,9 +106,15 @@ class DemandLeases {
  std::array<Entry,MaxPages> entries_{};
  std::array<uint16_t,IndexSize> index_{};
  uint32_t count_=0,checkedAt_=0,checkAfter_=0;
+#ifdef WORLD_FRAME_LEASE_DIAGNOSTICS
+ uint64_t pruneVisits_=0; // Instrument only the regression fixture, never production.
+#endif
  void prune(uint32_t now){
   if(uint32_t(now-checkedAt_)<checkAfter_)return;
   uint32_t kept=0,next=Lifetime+1;
+#ifdef WORLD_FRAME_LEASE_DIAGNOSTICS
+  pruneVisits_+=count_;
+#endif
   for(uint32_t i=0;i<count_;++i){const auto entry=entries_[i];const uint32_t age=uint32_t(now-entry.tick);
    if(age<=Lifetime){entries_[kept++]=entry;next=std::min(next,Lifetime+1-age);}}
   if(kept!=count_){count_=kept;index_.fill(0);
@@ -117,14 +123,29 @@ class DemandLeases {
  }
 public:
  static constexpr uint32_t Lifetime=1000;
+#ifdef WORLD_FRAME_LEASE_DIAGNOSTICS
+ uint64_t pruneVisits()const{return pruneVisits_;}
+#endif
  void clear(){count_=0;index_.fill(0);checkAfter_=0;}
  size_t size()const{return count_;}
  bool retain(uint32_t page,uint32_t now){
   if((page&(PageSize-1))||!range(page,PageSize))return false;
   uint32_t slot=bucket(page);
   while(index_[slot]){auto&entry=entries_[index_[slot]-1];if(entry.page==page){entry.tick=now;return true;}slot=(slot+1)&(IndexSize-1);}
-  if(count_==MaxPages){prune(now);if(count_==MaxPages)return false;slot=bucket(page);while(index_[slot])slot=(slot+1)&(IndexSize-1);}
-  entries_[count_]={page,now};index_[slot]=uint16_t(++count_);checkAfter_=0;return true;
+  if(count_==MaxPages){
+   // The earliest existing lease cannot have expired yet. Do not scan all
+   // 16K entries simply because an unknown page appeared at capacity.
+   if(uint32_t(now-checkedAt_)<checkAfter_)return false;
+   prune(now);if(count_==MaxPages)return false;
+   slot=bucket(page);while(index_[slot])slot=(slot+1)&(IndexSize-1);
+  }
+  const bool wasEmpty=count_==0;
+  entries_[count_]={page,now};index_[slot]=uint16_t(++count_);
+  if(wasEmpty){checkedAt_=now;checkAfter_=Lifetime+1;}
+  // New leases expire no earlier than a previously scheduled deadline:
+  // NEVER force an immediate O(active) prune after each insertion. Existing
+  // lease renewals also only extend their deadline and need no reschedule.
+  return true;
  }
  void append(uint32_t now,std::vector<uint32_t>&out){prune(now);for(uint32_t i=0;i<count_;++i)out.push_back(entries_[i].page);}
 };
