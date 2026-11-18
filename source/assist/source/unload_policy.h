@@ -67,6 +67,18 @@ template<class Entry,unsigned Capacity>bool radixSortRoster(Entry (&entries)[Cap
  // Twelve passes are even, so src is the original fixed array.
  return src==entries;
 }
+// Locate a passenger by pointer inside ONE carrier's already-sorted roster.
+// Only those entries whose pointer equals the native cargo link need their
+// saved UID/manual-token checked. O(log N + duplicates), with no cache,
+// allocation, new game read or change to UNKNOWN/invalid admission semantics.
+template<class Entry>Entry* firstRosterPointer(Entry*first,Entry*last,uint32_t pointer){
+ while(first<last){
+  Entry*mid=first+(last-first)/2;
+  if(mid->pointer<pointer)first=mid+1;
+  else last=mid;
+ }
+ return first;
+}
 // Carrier-keyed adjacency for candidate-only admission. Replaces sorting up
 // to 32K passengers on the game thread with O(N) fixed-storage insertions.
 // The mapping does not authorize a command; every passenger is still checked
