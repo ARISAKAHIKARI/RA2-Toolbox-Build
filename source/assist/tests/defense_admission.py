@@ -11,14 +11,14 @@ a=p.parse_args();out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
 here=Path(__file__).resolve().parent;repo=here.parents[2];src=here.parent/'source'
 prefix=(here/'tactical_frame_sampling.cpp').read_text().split('#include "tactical_frame_production.h"')[0]
 prefix=prefix.replace('static bool antiTheftBuilding(uint32_t){return false;}static bool antiTheftThreat(uint32_t,uint32_t){return false;}',
- 'static bool antiTheftBuilding(uint32_t);static bool antiTheftThreat(uint32_t,uint32_t);static featuretypes::Config featureConfig{};')
+ 'static bool antiTheftBuilding(uint32_t);static bool antiTheftThreat(uint32_t,uint32_t);')
 routes,scope,names=production();(out/'sample_scope_production.h').write_text(scope)
 current=(src/'external_orders_bridge.h').read_text()
 base=subprocess.check_output(['git','show',a.baseline+':source/assist/source/external_orders_bridge.h'],cwd=repo,text=True)
 helper=function(current,'static bool antiTheftCurrentTargetUsable(')
 bridge=(src/'bridge.cpp').read_text()
 combat_demand=next(line.strip() for line in bridge.splitlines() if line.strip().endswith('worldDemand|=worldframe::Combat;') and 'AircraftSpread' in line)
-runtime_demand='static bool runtimeCoopPending=false;static uint32_t productionCombatDemand(){uint32_t worldDemand=worldframe::Base;'+combat_demand+'return worldDemand;}\n'
+runtime_demand='static bool runtimeCoopPending=false;static int unloadCount=0;static struct {int count=0;} queuedUnload;static uint32_t productionCombatDemand(){uint32_t worldDemand=worldframe::Base;'+combat_demand+'return worldDemand;}\n'
 results={}
 for phase,text in [('baseline',base),('current',current)]:
  code=prefix+'\n'+routes+'\n#include "anti_theft_bridge.h"\n'+runtime_demand+helper+'\n'+function(text,'static bool externalOrderValid(')+'\n#include "defense_admission.cpp"\n'

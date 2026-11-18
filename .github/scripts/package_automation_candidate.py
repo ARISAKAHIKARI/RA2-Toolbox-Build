@@ -1,5 +1,5 @@
 """Package an unpublished, paired update candidate without user configuration."""
-import argparse, hashlib, json, os, zipfile
+import argparse, hashlib, json, os, zipfile, re
 from pathlib import Path
 
 p=argparse.ArgumentParser(description=__doc__)
@@ -12,10 +12,15 @@ for name in names:
  path=a.root/name
  if not path.is_file():raise SystemExit('Missing paired update file: '+name)
  files.append({'name':name,'bytes':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
-manifest={'version':'1.0.50','candidate':'SamplingFix-20261113','source_commit':os.environ['GITHUB_SHA'],
+release_header = (Path(__file__).resolve().parents[2] / 'source/shared/source/release_version.h').read_text(encoding='utf-8')
+label = re.search(r'^#define\\s+RA2_RELEASE_VERSION_W\\s+L"([^"\\r\\n]+)"', release_header, re.M)
+if not label: raise SystemExit('Unrecognized production release version')
+version=label.group(1)
+if not re.fullmatch(r'1\\.0\\.\\d+(?:-pre\\.\\d+)?',version): raise SystemExit('Unsafe version label: '+version)
+manifest={'version':version,'candidate':'AutomationCI-not-published','source_commit':os.environ['GITHUB_SHA'],
  'host':'x64','runtime':'x86','public_release_replaced':False,'game_tested':False,'files':files}
 raw=(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n').encode()
-archive=a.out/'RA2Toolbox-1.0.50-SamplingFix-x64-Update.zip'
+archive=a.out/f'RA2Toolbox-{version}-AutomationCI-x64-Update.zip'
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
  for name in names:z.write(a.root/name,name)
  z.writestr('SAMPLING_FIX_BUILD.json',raw)
