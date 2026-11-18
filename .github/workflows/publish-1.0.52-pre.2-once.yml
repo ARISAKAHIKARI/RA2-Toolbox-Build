@@ -1,0 +1,193 @@
+name: Publish 1.0.52-pre.2 after verified stable + async merge
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-1.0.52-pre.2-once.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: ra2-merged-1.0.52-pre.2-release
+  cancel-in-progress: false
+
+jobs:
+  source-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify merged source lineage, version and delayed event proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin 'refs/tags/v1.0.51:refs/tags/v1.0.51'
+          git merge-base --is-ancestor v1.0.51 HEAD
+          grep -q '1.0.52.2' source/shared/source/release_version.h
+          grep -q '1.0.52-pre.2' source/shared/source/release_version.h
+          grep -q 'ASSIST_PROTOCOL = 110' source/tools/verify_windows_outputs.py
+          test -f source/assist/source/execution_proof.h
+          test -f source/assist/source/planner_provenance.h
+          test -f source/assist/source/unit_info_panel_cameos.h
+          mkdir -p checks
+          g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/world_frame_page_union.cpp -o checks/page-union
+          checks/page-union
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/execution_proof.cpp -o checks/proof
+          checks/proof
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/planner_provenance.cpp -o checks/provenance
+          checks/provenance
+          python source/assist/tests/auto_repair_runtime.py --out checks/repair
+          python source/assist/tests/ore_harvest_handoff.py --out checks/ore
+          python source/assist/tests/unload_loaded_admission.py --current-only --out checks/unload
+          python source/assist/tests/async_command_no_live_roster.py
+          python source/assist/tests/defense_admission.py --out checks/defense --sanitize
+          python source/assist/tests/passenger_frame_sampling.py --out checks/passengers
+          python source/assist/tests/unified_gateway_contract.py
+          python source/assist/tests/tactical_frame_sampling.py --out checks/tactical
+
+  native:
+    needs: source-gates
+    runs-on: windows-2022
+    timeout-minutes: 70
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Prepare pinned Zig and WebView2 dependencies
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Compile paired x64 Host and x86 GameRuntime and validate PE ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/pre-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/native-build.log 2>&1 || { tail -150 checks/native-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root pre-build --host-arch x64 --webview2 | tee checks/pe-abi.log
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "pre-build/$n"
+          done
+          python -c "import json; p=json.load(open('pre-build/BUILD_TARGET.json')); assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',110,False),p"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: ra2toolbox-1.0.52-pre.2-paired-windows
+          retention-days: 30
+          path: |
+            pre-build/*.exe
+            pre-build/*.dll
+            pre-build/*.json
+            pre-build/licenses/**
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra2toolbox-1.0.52-pre.2-abi-evidence
+          retention-days: 30
+          path: checks/
+
+  publish:
+    needs: native
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.52-pre.2
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ra2toolbox-1.0.52-pre.2-paired-windows
+          path: dist/update
+      - name: Verify exact source and package Update/Full atomically
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = main
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag already exists; refusing to overwrite source provenance"
+            exit 1
+          fi
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do
+            test -s "dist/update/$n"
+          done
+          python -c "import json; p=json.load(open('dist/update/BUILD_TARGET.json')); assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',110,False),p"
+          cat > dist/update/BUILD_VALIDATION.txt <<EOF
+          Version: 1.0.52-pre.2
+          Merged source commit: $GITHUB_SHA
+          Host x64 / GameRuntime x86 / Broker x86; Assist ABI 110
+          Linux provenance tests and paired Windows PE verification passed
+          Real game, JJ/CnCNet multiplayer, FPS metrics: NOT tested
+          Generic async command capture remains opt-in and disabled by default
+          EOF
+          mkdir -p dist/base dist/full
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.52-pre.2-x64-Update.zip .)
+          gh release download v1.0.51 --repo "$GITHUB_REPOSITORY" --pattern RA2Toolbox-1.0.51-x64-Full.zip --dir dist/base
+          unzip -tq dist/base/RA2Toolbox-1.0.51-x64-Full.zip
+          unzip -q dist/base/RA2Toolbox-1.0.51-x64-Full.zip -d dist/full
+          test "$(find dist/full -type f -name RA2Toolbox.exe | wc -l)" -eq 1
+          root="$(dirname "$(find dist/full -type f -name RA2Toolbox.exe -print -quit)")"
+          test -n "$root"
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do
+            cp "dist/update/$n" "$root/$n"
+            cmp "dist/update/$n" "$root/$n"
+          done
+          for n in BUILD_SOURCE_MANIFEST.json BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json BUILD_VALIDATION.txt; do
+            if test -f "dist/update/$n"; then cp "dist/update/$n" "$root/$n"; fi
+          done
+          if test -d dist/update/licenses; then
+            mkdir -p "$root/licenses"
+            cp -a dist/update/licenses/. "$root/licenses/"
+          fi
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.52-pre.2-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.2-x64-Full.zip
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.2-x64-Update.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.52-pre.2-x64-Update.zip RA2Toolbox-1.0.52-pre.2-x64-Full.zip > SHA256SUMS.txt)
+      - name: Publish checked pre-release without touching stable Latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## RA2 Toolbox 1.0.52-pre.2 — 正式版整合与异步命令可靠性候选
+          
+          本次 Pre-release 基于 v1.0.51 正式版，保留 pre.14 的 MIX Cameo、单位面板和 Ctrl+D 缺页状态机，整合异步命令工作线程、采样和主线程限额优化。
+          
+          - 修复 Ctrl+D 一次按键失败后丢弃跟进任务的情况；延迟任务不重复已确认入队的事件
+          - 自动装车重试使用原始人工版本，用户手动改令后自动任务不能覆盖
+          - Host 战术规划保留原始单位、目标、目的地 UID/指针，最终游戏线程复核对局、身份、人工版本和时效
+          - Host 本地规划及矿车卸载任务分别沿用各自采样时间；磁电 Object Event 也走原始身份校验
+          - 采样结果仅当来源和有效性足够明确时发布；处理大军团场景无效主线程目录重建和跨帧请求去重
+          - 大量页面请求的游戏线程排序去重改为固定内存位图 O(N) 等价去重；小请求维持原流程，非法地址仍走原来的严格校验
+          - 恢复防御、车载气泡、协议 110 跨位数 ABI 以及原生控制台验证；修复历史 1.0.43 发版流程误触发
+          - 独立页面去重合成基准曾测得 128 轮排序 86.39ms、位图 4.15ms；**不是**游戏 FPS 或完整采样提速
+          
+          编译提交：$GITHUB_SHA。Windows x64 Host、x86 GameRuntime、x86 Broker 同源编译；Assist ABI=110，必须整套替换，不可只覆盖单个 DLL。
+          
+          Full 包保留 v1.0.51 稳定版辅助资源，替换整套匹配二进制；Update 包用于覆盖已有 Full 安装目录。退出游戏及工具箱、备份配置后更新。
+          
+          **测试边界：** 已通过离线页面去重、自动防御、乘员气泡、命令来源校验与 Windows PE/ABI 编译；未完成真实游戏、JJ/CnCNet 联机或复杂场景 FPS 实测。通用 CommandCaptureWorker 默认关闭，仅在显式设置 RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=1 时启用。本版本仍是测试预发布，不改变正式版 Latest。
+          EOF
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA"             --prerelease --title "RA2 Toolbox 1.0.52-pre.2 · 稳定版合并及异步命令修复"             --notes-file dist/RELEASE_NOTES.md             dist/RA2Toolbox-1.0.52-pre.2-x64-Update.zip dist/RA2Toolbox-1.0.52-pre.2-x64-Full.zip dist/SHA256SUMS.txt
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,assets             | jq -e '.isDraft==false and .isPrerelease==true and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.2-x64-Full.zip")!=null) and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.2-x64-Update.zip")!=null)'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra2toolbox-1.0.52-pre.2-delivery-evidence
+          retention-days: 30
+          path: |
+            dist/RELEASE_NOTES.md
+            dist/SHA256SUMS.txt
