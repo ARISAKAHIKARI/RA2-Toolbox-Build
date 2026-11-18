@@ -23,6 +23,35 @@ template<unsigned Capacity=8192> struct RosterLookup {
   entries[at]={pointer,index};return true;
  }
 };
+// Stable fixed-storage LSD radix ordering for the native Ctrl+D candidate
+// list. Equivalent key order to the former std::sort(carrier,pointer,history),
+// with bounded 12 * N copies, no heap allocations and no comparisons that
+// grow as N log N. This only orders candidate records; final native eligibility
+// and manual-token checks remain in the game dispatcher.
+template<class Entry,unsigned Capacity>bool radixSortRoster(Entry (&entries)[Capacity],
+ Entry (&scratch)[Capacity],int count){
+ if(count<0||unsigned(count)>Capacity)return false;
+ if(count<2)return true;
+ Entry*src=entries;Entry*dst=scratch;
+ for(unsigned pass=0;pass<12;++pass){
+  unsigned positions[256]{};
+  for(int i=0;i<count;++i){
+   const uint32_t key=pass<4?(uint32_t(src[i].history)^0x80000000u):
+                      pass<8?src[i].pointer:src[i].carrier;
+   ++positions[(key>>((pass%4)*8))&255u];
+  }
+  unsigned position=0;
+  for(unsigned b=0;b<256;++b){const unsigned n=positions[b];positions[b]=position;position+=n;}
+  for(int i=0;i<count;++i){
+   const uint32_t key=pass<4?(uint32_t(src[i].history)^0x80000000u):
+                      pass<8?src[i].pointer:src[i].carrier;
+   dst[positions[(key>>((pass%4)*8))&255u]++]=src[i];
+  }
+  Entry*previous=src;src=dst;dst=previous;
+ }
+ // Twelve passes are even, so src is the original fixed array.
+ return src==entries;
+}
 // Carrier-keyed adjacency for candidate-only admission. Replaces sorting up
 // to 32K passengers on the game thread with O(N) fixed-storage insertions.
 // The mapping does not authorize a command; every passenger is still checked
