@@ -14,6 +14,7 @@ static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;
 // 100ms catalogue cadence. Never treat missing pages as unavailable tech.
 static bool choicesIncomplete=false;
 static int choiceSourceTab=-1;
+static int nativeSidebarCount[4]={-1,-1,-1,-1};
 static int activeTab=-1,selectedTab=-1,lastNativeTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
 static construction::NativeFrame nativeFrame;static uint32_t nativeAt=0;
 static construction::NativeDisplay nativeDisplay;
@@ -69,7 +70,9 @@ static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];criti
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
 static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;nativeDisplay.clear();resetPaint();if(window)ShowWindow(window,SW_HIDE);}
 static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
-static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();activeTab=selectedTab=lastNativeTab=choiceSourceTab=-1;choicesIncomplete=false;refreshed=0;hide();}
+static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();activeTab=selectedTab=lastNativeTab=choiceSourceTab=-1;choicesIncomplete=false;
+ for(auto&count:nativeSidebarCount)count=-1;
+ refreshed=0;hide();}
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
 // A requested full-technology whitelist also protects a reservation while the
 // Runtime is installing/restoring that mode. Only Runtime authorizes production.
@@ -105,7 +108,10 @@ static void collectChoices(){
  if(activeTab<0||activeTab>3){choices.clear();return;}
  externalReader.setWorldDemand(worldframe::Base);
  external::WorldFrameScope source(externalReader,commandMatch());
- if(!source){choicesIncomplete=true;return;}
+ if(!source){
+  if(choiceSourceTab!=activeTab)choices.clear();
+  choicesIncomplete=true;return;
+ }
  // Never reuse a stale different-tab candidate list while this tab awaits
  // its own sealed sample. The current tab's old complete list stays visible.
  auto previous=choiceSourceTab==activeTab?std::move(choices):std::vector<Choice>{};
@@ -400,6 +406,17 @@ static void service(){
   lastNativeTab=observedNativeTab;selectedTab=-1;refreshed=0;
  }
  if(requested>=0){selectedTab=requested;activeTab=requested;}
+ // The native sidebar can add/remove cameos immediately when a prerequisite
+ // completes. Observe its cheap count even during the ordinary 100ms guard.
+ // A count change may also reflect other native changes: it is just a hint
+ // to recheck the COMPLETE sealed tech catalogue, never a build permission.
+ const int watchTab=selectedTab>=0?selectedTab:observedNativeTab;
+ if(watchTab>=0&&watchTab<4){
+  const int count=get<int>(0x87F7E8+0x1544+watchTab*3988+84,-1);
+  if(count>=0&&count<=75&&nativeSidebarCount[watchTab]!=count){
+   nativeSidebarCount[watchTab]=count;refreshed=0;
+  }
+ }
  bool streaming=false;
  for(int tab=2;tab<4;++tab){const auto&b=books[tab];if(b.streaming&&!b.items.empty()&&!b.stage&&int32_t(now-b.retry)>=0)streaming=true;}
  // A failed sealed candidate read may need several fresh page publications.
