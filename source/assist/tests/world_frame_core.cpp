@@ -556,6 +556,9 @@ void runtime(){
   CHECK(runtimeWorldDemands.size()==1);
   CHECK(worldFrameBoundaryOnly&&worldFrameReady&&worldframe::boundaryOnlySource(worldFrame.key));
   CHECK(worldFrame.pages.size()==0&&worldFrame.counters.calls==0&&worldFrame.counters.bytes==0);
+  // The previous complete frame may have left tens of thousands of hash
+  // indices; resetBoundary never exposes them as new observations.
+  CHECK(!worldFrame.find(ActorA&~4095u));
   // Display-only boundaries cannot admit a native command, even if a
   // particular required scalar happens to be present.
   {SampleReadScope blocked;CHECK(!blocked&&!blocked.complete());}
