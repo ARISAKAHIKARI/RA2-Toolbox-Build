@@ -39,6 +39,45 @@ static void verify(int n,bool collide=false){
  std::sort(before.begin(),before.end());std::sort(after.begin(),after.end());
  assert(before==after);
 }
+static void verifyNativeCargoLookup(){
+ // Synthetic cargo links include many passengers with repeated pointer and
+ // different manual tokens/history. Every conflicting entry must be checked.
+ for(unsigned i=0;i<Capacity;++i)
+  actual[i]={0x10000u+uint32_t(i%17u)*0x1000u,
+             0x80000u+uint32_t((i*37u)%127u)*16u,
+             i%3?int(i):-1, i%11?7u:8u};
+ assert(assist::unloadpolicy::radixSortRoster(actual,scratch,int(Capacity)));
+ unsigned queries=0;
+ for(uint32_t c=0x10000u;c<=0x20000u;c+=0x1000u){
+  const auto*begin=std::lower_bound(actual,actual+Capacity,c,
+    [](const Entry&e,uint32_t carrier){return e.carrier<carrier;});
+  const auto*end=std::upper_bound(begin,actual+Capacity,c,
+    [](uint32_t carrier,const Entry&e){return carrier<e.carrier;});
+  for(unsigned p=0;p<140;++p){
+   const uint32_t pointer=0x80000u+p*16u;
+   const auto*at=assist::unloadpolicy::firstRosterPointer(begin,end,pointer);
+   const auto*expected=std::lower_bound(begin,end,pointer,
+    [](const Entry&e,uint32_t v){return e.pointer<v;});
+   assert(at==expected);
+   for(uint32_t token:{7u,8u,9u}){
+    bool oldReject=false,newReject=false;
+    for(const auto*v=begin;v<end;++v)if(v->pointer==pointer&&v->stamp!=token)oldReject=true;
+    for(const auto*v=at;v<end&&v->pointer==pointer;++v)
+     if(v->stamp!=token)newReject=true;
+    assert(oldReject==newReject);
+    ++queries;
+   }
+  }
+ }
+ // The old linear scan found every mismatching duplicate, not just the first
+ // entry. A one-person roster must not shortcut this identity validation.
+ Entry duplicated[4]={{10,20,-1,7},{10,20,0,8},{10,30,-1,7},{11,20,-1,7}};
+ const Entry*first=assist::unloadpolicy::firstRosterPointer(duplicated,duplicated+3,20);
+ assert(first==duplicated&&first[1].pointer==20&&first[1].stamp!=7);
+ assert(assist::unloadpolicy::firstRosterPointer(duplicated+2,duplicated+3,20)==duplicated+2);
+ assert(assist::unloadpolicy::firstRosterPointer(duplicated,duplicated+3,99)==duplicated+3);
+ std::printf("PASS native cargo binary search: %u old/new equivalent token and duplicate checks across 16K candidate roster\n",queries);
+}
 int main(){
  assert(!assist::unloadpolicy::radixSortRoster(actual,scratch,-1));
  assert(!assist::unloadpolicy::radixSortRoster(actual,scratch,int(Capacity)+1));
@@ -50,6 +89,7 @@ int main(){
  actual[2]={10,20,2,3};actual[3]={10,20,1,4};
  assert(assist::unloadpolicy::radixSortRoster(actual,scratch,4));
  for(int i=0;i<4;++i)assert(actual[i].history==i-1);
+ verifyNativeCargoLookup();
  using Clock=std::chrono::steady_clock;
  for(unsigned i=0;i<Capacity;++i)reference[i]=actual[i]={uint32_t(0x10000+((i*13)%4096)*16),uint32_t(0x20000+((i*59)%8192)*16),i%2?-1:int(i),i};
  auto started=Clock::now();
