@@ -1,8 +1,7 @@
 name: Build and publish RA2 Toolbox 1.0.43-pre.1
 on:
-  push:
-    branches: [main]
-    paths: [source/**, packages/v1.0.43-pre.1/**, .github/workflows/publish-v143-pre1.yml, .gitattributes]
+  # Archived historical publisher: manual workflow_dispatch only.
+  # A new main commit must never rebuild or republish pre.1 of 1.0.43.
   workflow_dispatch:
 permissions:
   contents: read

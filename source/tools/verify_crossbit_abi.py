@@ -225,74 +225,50 @@ def main():
     differences = {name: {'x86': records['x86'].get(name), 'x64': records['x64'].get(name)}
                    for name in sorted(set(records['x86']) | set(records['x64']))
                    if records['x86'].get(name) != records['x64'].get(name)}
-    baseline = {'assist::Version': 109, 'runtime::Version': 4, 'gameentry::Version': 3,
-                'runtimebroker::Version': 1, 'sizeof(assist::Shared)': 23162720,
-                'assist::Shared.aircraftAllocationPolicy': 23125936,
-                'assist::Shared.nativeCombatQueries': 23125940,
-                'assist::Shared.singlePlayerFPS': 23154136,
-                'assist::Shared.singlePlayerFPSHits': 23154148,
-                'assist::Shared.minerDefenseEnabled': 23154152,
-                'assist::Shared.minerDefenseRangeCells': 23154156,
-                'assist::Shared.minerDefenseActive': 23154160,
-                'assist::Shared.minerDefenseAttacks': 23154164,
-                'assist::Shared.minerDefenseResumes': 23154168,
-                'assist::Shared.debugPolicySeq': 23154172,
-                'assist::Shared.debugPolicy': 23154176,
-                'assist::Shared.debugSnapshotSeq': 23155208,
-                'assist::Shared.debugSnapshot': 23155212,
-                'assist::Shared.debugVisible': 23162392,
-                'assist::Shared.hardwarePerfSeq': 23162396,
-                'assist::Shared.hardwarePerf': 23162400,
-                'assist::Shared.worldSampleSeq': 23162496,
-                'assist::Shared.worldSampleSerial': 23162500,
-                'assist::Shared.worldSampleFrame': 23162524,
-                'assist::Shared.selectTypeHash': 23162528,
-                'assist::Shared.missileManualOverflow': 23162536,
-                'assist::Shared.readOnly': 23162540,
-                'assist::Shared.readOnlyRequest': 23162544,
-                'assist::Shared.readOnlyAck': 23162548,
-                'assist::Shared.airEventSeq': 23162552,
-                'assist::Shared.airEventReport': 23162556,
-                'assist::Shared.bombBoardEnabled': 23162576,
-                'assist::Shared.bombBoardRangeCells': 23162580,
-                'assist::Shared.bombBoardActive': 23162584,
-                'assist::Shared.bombBoardIssued': 23162588,
-                'assist::Shared.bombBoardWaiting': 23162592,
-                'assist::Shared.keepInputUnlocked': 23162596,
-                'assist::Shared.inputUnlockCount': 23162600,
-                'assist::Shared.inputUnlockStatus': 23162604,
-                'assist::Shared.blockTriggerCamera': 23162608,
-                'assist::Shared.triggerInputBlocked': 23162612,
-                'assist::Shared.triggerCameraBlocked': 23162616,
-                'assist::Shared.triggerInputStatus': 23162620,
-                'assist::Shared.privateOutMode': 23162624,
-                'assist::Shared.privateOutPending': 23162628,
-                'assist::Shared.privateOutAccepted': 23162632,
-                'assist::Shared.privateOutSent': 23162636,
-                'assist::Shared.privateOutRejected': 23162640,
-                'assist::Shared.privateOutCancelled': 23162644,
-                'assist::Shared.privateOutStatus': 23162648,
-                'assist::Shared.sellDirectPending': 23162652,
-                'assist::Shared.sellDirectSent': 23162656,
-                'assist::Shared.sellDirectRejected': 23162660,
-                'assist::Shared.sellDirectStatus': 23162664,
-                'assist::Shared.techProductionCompatibility': 23162668,
-                'assist::Shared.techProductionFullPasses': 23162672,
-                'assist::Shared.techProductionEnhancePasses': 23162676,
-                'sizeof(assist::hardwareperf::Snapshot)': 96,
-                'sizeof(worldframe::Key)': 64, 'sizeof(worldframe::Page)': 5128,
-                'sizeof(worldframe::DataHeader)': 64, 'sizeof(worldframe::DataRef)': 8,
-                'sizeof(debugentries::Config)': 1032, 'sizeof(debugentries::Observation)': 28,
-                'sizeof(debugentries::Snapshot)': 7180,
-                'sizeof(runtime::Control)': 176, 'sizeof(gameentry::Request)': 108,
-                'sizeof(runtimebroker::Packet)': 148,
-                'neuralframe::Version': 1, 'sizeof(neuralframe::Header)': 256}
-    baseline_matches = all(records['x86'].get(name) == value for name, value in baseline.items())
+    # Protocol 110 is the current paired Host/Runtime ABI. The former
+    # Protocol 109 field-offset snapshot was stale after the immutable
+    # source-pointer and execution-proof additions. Keep immutable wire
+    # sizes and versions pinned here; every declared field offset is still
+    # compared exactly across real Windows x86 and x64 compilation above.
+    # This is NOT a blanket acceptance of arbitrary ABI drift.
+    baseline = {
+        'assist::Version': 110,
+        'runtime::Version': 4,
+        'gameentry::Version': 3,
+        'runtimebroker::Version': 1,
+        'sizeof(assist::Shared)': 23228640,
+        'sizeof(runtime::Control)': 176,
+        'sizeof(gameentry::Request)': 108,
+        'sizeof(runtimebroker::Packet)': 148,
+        'sizeof(worldframe::Key)': 64,
+        'sizeof(worldframe::Page)': 5128,
+        'sizeof(worldframe::DataHeader)': 64,
+        'sizeof(worldframe::DataRef)': 8,
+        'sizeof(debugentries::Config)': 1032,
+        'sizeof(debugentries::Observation)': 28,
+        'sizeof(debugentries::Snapshot)': 7180,
+        'neuralframe::Version': 1,
+        'sizeof(neuralframe::Header)': 256,
+    }
+    # Source-bound Protocol 110 contract measured from the real 2026-11-18
+    # Windows x86/x64 fixture artifact (run 44216792429, artifact 14389226579).
+    # Hash *all* field offsets, size and alignment entries; a same-size
+    # relocation must not silently masquerade as a compatible shared wire.
+    baseline_entries = 938
+    baseline_layout_sha256 = '33e5834916ad468ac386f19e232dc2ee92bfbb736afa744cb2b4d803d79a6472'
+    canonical_x86 = json.dumps(records['x86'], sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode('utf-8')
+    layout_sha256 = hashlib.sha256(canonical_x86).hexdigest()
+    baseline_matches = (all(records['x86'].get(name) == value for name, value in baseline.items())
+                        and len(records['x86']) == baseline_entries
+                        and layout_sha256 == baseline_layout_sha256)
     result = {'protocol': records['x86']['assist::Version'],
               'native_pointer_bytes': {'x86': 4, 'x64': 8},
               'layout_entries': len(records['x86']), 'differences': differences,
               'layouts': records, 'pe_parser_negative_checks': 'pass',
               'wire_baseline': baseline, 'wire_baseline_matches': baseline_matches,
+              'wire_layout_entries_expected': baseline_entries,
+              'wire_layout_sha256': layout_sha256,
+              'wire_layout_sha256_expected': baseline_layout_sha256,
               'passed': not differences and baseline_matches,
               'executed_windows_images': False,
               'fixture_sha256': hashlib.sha256(source.encode()).hexdigest()}
@@ -309,7 +285,7 @@ def main():
     # Protocol105-107 append trigger policy, private queue and production diagnostics.
     # Lock the measured x86/x64 layout instead of accepting arbitrary growth.
     assert baseline_matches, 'Protocol/version or deployed x86 wire baseline changed'
-    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol107 Shared23162680, Runtime176, manager108')
+    print(f'PASS: {len(records["x86"])} Windows x86/x64 wire size/alignment/field offsets match; protocol110 Shared23228640, Runtime176, manager108')
     print('PASS: real PE32+/64-bit imports, ordinal bit, bounds and strict default x86 parser checks; no Windows image executed')
 
 
