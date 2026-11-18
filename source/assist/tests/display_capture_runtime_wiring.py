@@ -15,11 +15,15 @@ assert "sharedWorldWanted&&noCommandWork" in bridge
 
 assert '#include "world_capture_requests.h"' in runtime
 assert "assist::capturepolicy::prepareRequestedPages(boundaryOnly,key.tick," in runtime
-assert "worldFrameServer.requests(),runtimeWorldDemands,runtimeDemandLeases,requests)" in runtime
+assert "worldFrameServer.requests(),runtimeWorldDemands,runtimeDemandLeases,requests," in runtime
+assert "&worldFrameCaptureScratch.warmSortScratch)" in runtime
 assert "if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}" in runtime
+assert "if(boundaryOnly){" in runtime and "worldFrame.pages.size()" not in runtime
+assert runtime.index("if(boundaryOnly){") < runtime.index("worldframe::CaptureGraph<Live>capture(")
+assert "sh->worldSamplePages=0;sh->worldSampleReads=0;sh->worldSampleBytes=0;" in runtime
 assert "worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)" in runtime
 assert "const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled()" in runtime
 assert "const bool stable=" in runtime and "before.same(after)" in runtime
 assert "worldFrameServer.retire()" in runtime
 
-print("PASS production capture gate: passive external overlays skip game-thread full graphs, Host requests not copied/sorted, command leases survive boundary and same-frame escalation stays mandatory")
+print("PASS production capture gate: passive overlays and zero-page Host capture avoid Game-thread graph and request sorts; command leases and same-frame escalation remain strict")
