@@ -33,6 +33,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/fixed_compute_settings.py
+      - name: Verify passive Host display avoids full producer graph and command leases survive escalation
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Werror -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/display_capture_offthread.cpp -o /tmp/ra2-display-admission
+          /tmp/ra2-display-admission
+          python3 source/assist/tests/display_capture_runtime_wiring.py
       - name: Verify indexed same-frame actor claim admission and manual takeover
         run: |
           set -euo pipefail
