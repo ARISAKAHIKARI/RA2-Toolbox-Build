@@ -13,10 +13,10 @@ for name in names:
  if not path.is_file():raise SystemExit('Missing paired update file: '+name)
  files.append({'name':name,'bytes':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
 release_header = (Path(__file__).resolve().parents[2] / 'source/shared/source/release_version.h').read_text(encoding='utf-8')
-label = re.search(r'^#define\\s+RA2_RELEASE_VERSION_W\\s+L"([^"\\r\\n]+)"', release_header, re.M)
+label = re.search(r'^#define\s+RA2_RELEASE_VERSION_W\s+L"([^"\r\n]+)"', release_header, re.M)
 if not label: raise SystemExit('Unrecognized production release version')
 version=label.group(1)
-if not re.fullmatch(r'1\\.0\\.\\d+(?:-pre\\.\\d+)?',version): raise SystemExit('Unsafe version label: '+version)
+if not re.fullmatch(r'1\.0\.\d+(?:-pre\.\d+)?',version): raise SystemExit('Unsafe version label: '+version)
 manifest={'version':version,'candidate':'AutomationCI-not-published','source_commit':os.environ['GITHUB_SHA'],
  'host':'x64','runtime':'x86','public_release_replaced':False,'game_tested':False,'files':files}
 raw=(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n').encode()
