@@ -526,6 +526,22 @@ void hostIsolation(){
 void runtime(){
  using namespace assist;currentPid=GamePid;clock=2000;retireWorldFrame();Memory memory;setup(memory);Read read{&memory};auto before=worldlife::capture(read);CHECK(before.valid());snap.frame=before.frame;
  CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base));CHECK(worldFrameReady&&worldFrame.key.frame==50);const auto firstSerial=worldFrame.key.serial;const auto firstCalls=memory.calls.size();
+ // The native UID index may borrow ONLY the Techno pointer roster sealed by
+ // this exact acquisition. This reuse does not perform another page read.
+ auto*roster=worldFrameCaptureScratch.capturedTechnoRoster(worldFrame.key,TechnoList,3);
+ CHECK(roster&&roster[0]==ActorA&&roster[1]==ActorB&&roster[2]==ActorA);
+ CHECK(worldFrameCaptureScratch.technoCount==3&&worldFrameCaptureScratch.technoItems==TechnoList);
+ CHECK(memory.calls.size()==firstCalls);
+ auto stale=worldFrame.key;++stale.serial;
+ CHECK(!worldFrameCaptureScratch.capturedTechnoRoster(stale,TechnoList,3));
+ stale=worldFrame.key;++stale.frame;
+ CHECK(!worldFrameCaptureScratch.capturedTechnoRoster(stale,TechnoList,3));
+ stale=worldFrame.key;++stale.match;
+ CHECK(!worldFrameCaptureScratch.capturedTechnoRoster(stale,TechnoList,3));
+ stale=worldFrame.key;++stale.house;
+ CHECK(!worldFrameCaptureScratch.capturedTechnoRoster(stale,TechnoList,3));
+ CHECK(!worldFrameCaptureScratch.capturedTechnoRoster(worldFrame.key,TechnoList+4,3));
+ CHECK(!worldFrameCaptureScratch.capturedTechnoRoster(worldFrame.key,TechnoList,2));
  memory.put(ActorA+0x6C,25);CHECK(captureWorldFrame(read,before,House,clock,worldframe::Combat));CHECK(memory.calls.size()==firstCalls&&worldFrame.key.serial==firstSerial);
  {SampleReadScope scope;int hp=0;CHECK(scope&&readWorldSample(ActorA+0x6C,&hp,4)&&hp==100&&scope.complete());}
  constexpr uint32_t extra=0x760100;memory.put(extra,0x12345678u);
