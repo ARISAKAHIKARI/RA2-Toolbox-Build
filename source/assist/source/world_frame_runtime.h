@@ -200,7 +200,8 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  // a later same-frame hotkey must still see every pending command lease.
  auto&requests=worldFrameCaptureRequests;
  assist::capturepolicy::prepareRequestedPages(boundaryOnly,key.tick,
-  worldFrameServer.requests(),runtimeWorldDemands,runtimeDemandLeases,requests);
+  worldFrameServer.requests(),runtimeWorldDemands,runtimeDemandLeases,requests,
+  &worldFrameCaptureScratch.warmSortScratch);
  key.serial=++worldFrameSerial;
  key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
             (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
