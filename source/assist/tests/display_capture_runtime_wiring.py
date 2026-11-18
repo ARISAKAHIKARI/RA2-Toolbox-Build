@@ -14,7 +14,8 @@ assert "worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)" in 
 assert "sharedWorldWanted&&noCommandWork" in bridge
 
 assert '#include "world_capture_requests.h"' in runtime
-assert "assist::capturepolicy::prepareRequestedPages(boundaryOnly,key.tick," in runtime
+assert "if(boundaryOnly)requests.clear(); // Do not even EVALUATE Server::requests()." in runtime
+assert "else assist::capturepolicy::prepareRequestedPages(false,key.tick," in runtime
 assert "worldFrameServer.requests(),runtimeWorldDemands,runtimeDemandLeases,requests," in runtime
 assert "&worldFrameCaptureScratch.warmSortScratch)" in runtime
 assert "if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}" in runtime
