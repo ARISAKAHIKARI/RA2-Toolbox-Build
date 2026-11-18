@@ -100,14 +100,14 @@ int main(){
  setup();assert(activeTab==0&&choice(1)>=0);
  w(0x87F7E8+0x539C,1);tick(1);assert(activeTab==1);
  w(0x87F7E8+0x539C,0);tick(1);assert(activeTab==0&&choice(1)>=0);
- const uint32_t strip=0x87F7E8+0x1544;
- w(strip+84,2);w(strip+88+52,1);w(strip+92+52,7);
+ const uint32_t freshStrip=0x87F7E8+0x1544;
+ w(freshStrip+84,2);w(freshStrip+88+52,1);w(freshStrip+92+52,7);
  tick(1);assert(choice(1)<0); // Tech now in original sidebar: hide immediately.
- w(strip+84,1);tick(1);assert(choice(1)>=0); // Tech became future again.
+ w(freshStrip+84,1);tick(1);assert(choice(1)>=0); // Tech became future again.
  // An incomplete sample keeps the SAME tab's previous valid preview, and
  // retry cadence is 32ms rather than another 100ms per missing-page round.
  externalReader.fail=T+0x2000+0x638+16;
- w(strip+84,2);w(strip+88+52,1);w(strip+92+52,7);
+ w(freshStrip+84,2);w(freshStrip+88+52,1);w(freshStrip+92+52,7);
  tick(1);assert(choicesIncomplete&&choice(1)>=0);
  externalReader.fail=0;tick(31);assert(choicesIncomplete&&choice(1)>=0);
  tick(1);assert(!choicesIncomplete&&choice(1)<0);
