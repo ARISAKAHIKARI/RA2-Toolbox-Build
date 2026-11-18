@@ -34,6 +34,7 @@ jobs:
           g++ -std=c++17 -O2 -UNDEBUG source/assist/tests/construction_choice_filter.cpp -o /tmp/ra2-construction-choices
           /tmp/ra2-construction-choices
           python3 source/assist/tests/reservation_unit_filter_settings.py
+          python3 source/assist/tests/auto_settings_ui_test.py
           python3 source/assist/tests/construction_host_test.py
           python3 source/assist/tests/tactical_frame_sampling.py --out /tmp/ra2-automatic-sampling
           python3 source/assist/tests/captured_techno_roster_wiring.py
