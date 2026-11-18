@@ -2,6 +2,7 @@
 #include "../../shared/source/world_frame_capture.h"
 #include "../../shared/source/world_frame_recovery.h"
 #include "../../shared/source/world_frame_transport.h"
+#include "world_capture_requests.h"
 #ifndef WORLD_FRAME_PLATFORM_FIXTURE
 #include "../../shared/source/world_frame_shadow_win.h"
 #endif
@@ -194,12 +195,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  }
  if(!worldFramePublication.begin(worldFrame))return false;
  lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
- auto&requests=worldFrameCaptureRequests;const auto&hostRequests=worldFrameServer.requests();requests.assign(hostRequests.begin(),hostRequests.end());requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
- // Pending consumption can predate a long pause or failed capture. Renew its
- // addresses at this acquisition boundary and acknowledge only on success.
- for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
- runtimeDemandLeases.append(key.tick,requests);
- std::sort(requests.begin(),requests.end());requests.erase(std::unique(requests.begin(),requests.end()),requests.end());
+ // A Host-only display acquisition never consumes or sorts the command
+ // dependency queue. The Host VisualCache owns its own page discovery, and
+ // a later same-frame hotkey must still see every pending command lease.
+ auto&requests=worldFrameCaptureRequests;
+ capturepolicy::prepareRequestedPages(boundaryOnly,key.tick,
+  worldFrameServer.requests(),runtimeWorldDemands,runtimeDemandLeases,requests);
  key.serial=++worldFrameSerial;
  key.demand=(worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit)|
             (boundaryOnly?worldframe::BoundaryOnlyKeyBit:0u);
@@ -256,7 +257,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   for(auto&hint:runtimeMissingSpans)
    if(hint.address==f.address&&hint.bytes==f.bytes){hint={};break;}
  }
- runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+ // A display boundary is not a command sample. Do not lose command ranges
+ // that would be required by a later same-frame escalation.
+ if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}
  worldFrameBoundaryOnly=boundaryOnly;
  worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
 #ifndef WORLD_FRAME_PLATFORM_FIXTURE
