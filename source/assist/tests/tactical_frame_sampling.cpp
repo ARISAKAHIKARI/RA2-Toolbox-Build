@@ -9,6 +9,7 @@
 #include "unit_task_arbiter.h"
 #include "execution_proof.h"
 #include "../../shared/source/world_frame.h"
+#include "../../shared/source/world_frame_capture.h"
 #include "../../shared/source/world_frame_command_index.h"
 #include "../../shared/source/runtime_fault.h"
 #include "../../external_reader/source/cooperative_reader.h"
@@ -38,6 +39,9 @@ static std::map<uint32_t,int> airOverride;
 static std::set<uint64_t> forbiddenEnter;
 static std::vector<std::pair<uint32_t,uint32_t>> assignments;
 static worldframe::Snapshot worldFrame;
+// This fixture seals raw synthetic bytes rather than running CaptureGraph.
+// The empty retained scratch exercises indexWorld's original read fallback.
+static worldframe::CaptureScratch worldFrameCaptureScratch;
 static bool worldFrameReady=false,sampleReadComplete=true;
 static unsigned sampleReadDepth=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};
@@ -159,7 +163,7 @@ static void advance(uint32_t omit=0,bool failure=false){++snap.frame;clockNow+=1
 static void reset(){
  check(!sampleReadDepth,"scope leaked between tests");memory.assign(memory.size(),0);::new(static_cast<void*>(sh)) Shared{};std::memset(&snap,0,sizeof snap);
  leaseChecks=0;leaseAllowed=true;worldObjects.clear();manualVersions.clear();actorLeaseArbiter.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
- worldFrameReady=false;nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;denyLivePage=false;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
+ worldFrameReady=false;worldFrameCaptureScratch.reset();nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;denyLivePage=false;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
  loadCalculationPending=loadCaptureWaiting=loadAckPending=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
  missileSendCount=missileManualCount=missileMotionCursor=missileSourceCursor=missileTargetCursor=missileManagedCursor=0;for(auto&m:missileMotion)m={};
  dodgeThreatCount=dodgeCursor=dodgeJobCursor=0;unloadSampleTargetFrame=-1;unloadSampleTargetCount=0;planningFrame=-1;planningWorld.count=planningWorld.intentCount=0;planningSerial=inputSerial=0;std::memset(weaponCache,0,sizeof weaponCache);oreHarvestReset();harvestEvents=0;
@@ -327,6 +331,35 @@ static void testMissile(){
  }
  std::puts("PASS missile raw/fresh selector facts, missing retention, manual generations and native query boundaries");
 }
+static void testCapturedRosterIndex(){
+ reset();const auto type=makeType(),p=object(type,2,20),q=object(type,2,21);
+ vectorAt(0xA8EC78,0x800000,{p,q});seal();indexedFrame=-1;
+ // Simulate the exact immutable roster already exported by CaptureGraph.
+ worldFrameCaptureScratch.technoKey=worldFrame.key;
+ worldFrameCaptureScratch.technoItems=0x800000;
+ worldFrameCaptureScratch.technoCount=2;
+ worldFrameCaptureScratch.technoRoster={p,q};
+ readRequests=0;const auto beforeLive=liveReads;
+ {
+  SampleReadScope sample;indexWorld(snap.frame);
+  check(sample.complete()&&indexedFrame==snap.frame,"sealed roster index marked incomplete");
+ }
+ const uint64_t fast=readRequests;
+ check(worldObjects.byId(20)==p&&worldObjects.byId(21)==q,"sealed roster lost native UIDs");
+ check(liveReads==beforeLive,"sealed roster fast path read live memory");
+ // Invalidate only the captured serial. The production index must fall
+ // back to its original roster read, with identical identities but one
+ // additional sampled read() call. No stale/cross-frame borrow is allowed.
+ ++worldFrameCaptureScratch.technoKey.serial;indexedFrame=-1;readRequests=0;
+ {
+  SampleReadScope sample;indexWorld(snap.frame);
+  check(sample.complete()&&indexedFrame==snap.frame,"stale roster fallback failed");
+ }
+ check(readRequests==fast+1,"fast roster did not avoid exactly one full pointer read");
+ check(worldObjects.byId(20)==p&&worldObjects.byId(21)==q,"stale roster fallback lost native IDs");
+ check(liveReads==beforeLive,"sampled native roster unexpectedly read live");
+ std::puts("PASS production native index: frozen roster saves full pointer read; stale serial fallback retains identities and no live reads");
+}
 static void testIdentitySampleFailure(){
  reset();const auto t=makeType(),carrier=object(t,2,20),passenger=object(t,1,21);vectorAt(0xA8EC78,0x800000,{carrier,passenger});
  sh->magnetronGlobal=1;manualVersions.change(21,passenger,false);manualVersions.change(21,passenger,false);for(unsigned id=100;id<100+ManualVersions::Size/2;++id)manualVersions.change(id,0,false);
@@ -456,5 +489,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif

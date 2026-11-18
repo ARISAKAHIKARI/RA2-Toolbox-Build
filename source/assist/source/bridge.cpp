@@ -199,9 +199,19 @@ static void indexWorld(int frame){
  if(indexedFrame==frame&&indexedCount==all.count&&indexedItems==all.items&&indexedGlobalVehicles==bool(sh&&sh->magnetronGlobal)&&indexedVehicleHouse==lastHouse)return;
  // One bounded roster read. In particular a live retry must not reinterpret
  // a failed header, item span or UID read as an absent unit.
- static uint32_t pointers[16384];if(all.count&&!read(all.items,pointers,size_t(all.count)*4)){unknown();return;}
+ // The complete CaptureGraph owns the exact first-stage Techno roster.
+ // Reuse ONLY when the frozen frame, serial, match and header all agree.
+ // Any live/missing/changed observation retains the original roster read.
+ const uint32_t* roster=nullptr;
+ if(sampleReadDepth&&worldFrameReady&&!worldFrameBoundaryOnly)
+  roster=worldFrameCaptureScratch.capturedTechnoRoster(worldFrame.key,all.items,all.count);
+ static uint32_t pointers[16384];
+ if(!roster){
+  if(all.count&&!read(all.items,pointers,size_t(all.count)*4)){unknown();return;}
+  roster=pointers;
+ }
  globalVehicleCandidateCount=0;indexedGlobalVehicles=sh&&sh->magnetronGlobal;indexedVehicleHouse=lastHouse;worldObjects.clear();bool complete=true;
- for(int i=0;i<all.count;++i){const uint32_t p=pointers[i];if(p<0x10000)continue;uint32_t id=0;
+ for(int i=0;i<all.count;++i){const uint32_t p=roster[i];if(p<0x10000)continue;uint32_t id=0;
   if(!read(p+0x10,&id,4)){complete=false;continue;}if(id)worldObjects.add(p,id);
   if(id&&indexedGlobalVehicles&&kind(p)==2&&get<uint32_t>(p+0x21C)==lastHouse)globalVehicleCandidates[globalVehicleCandidateCount++]=p;
  }

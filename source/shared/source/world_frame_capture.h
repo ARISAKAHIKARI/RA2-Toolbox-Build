@@ -40,10 +40,19 @@ public:
 // store its last observed tick to bound the hint's lifetime.
 struct CaptureScratch {
  CaptureSet actors,types,small,houses;
- std::vector<uint32_t>queue,list,docks,warmPages,warmSortScratch;
+ std::vector<uint32_t>queue,list,docks,warmPages,warmSortScratch,technoRoster;
+ Key technoKey{};uint32_t technoItems=0;int technoCount=-1;
+ // A saved roster is only a pointer LIST, never a native command grant.
+ // Match every source identity dimension before reusing its bytes.
+ const uint32_t* capturedTechnoRoster(const Key&key,uint32_t items,int count)const{
+  if(count<0||count>16384||count!=technoCount||items!=technoItems||
+     !technoKey.sameFrame(key)||technoKey.serial!=key.serial||
+     technoKey.tick!=key.tick||technoRoster.size()!=size_t(count))return nullptr;
+  return technoRoster.data();
+ }
  std::array<uint8_t,16*PageSize>pageScratch{};
  explicit CaptureScratch(PageAllocator allocator={}):actors(allocator),types(allocator),small(allocator),houses(allocator){}
- void reset(){actors.clear();types.clear();small.clear();houses.clear();queue.clear();list.clear();docks.clear();warmPages.clear();warmSortScratch.clear();}
+ void reset(){actors.clear();types.clear();small.clear();houses.clear();queue.clear();list.clear();docks.clear();warmPages.clear();warmSortScratch.clear();technoRoster.clear();technoKey={};technoItems=0;technoCount=-1;}
  bool valid()const{return actors.valid()&&types.valid()&&small.valid()&&houses.valid();}
 };
 // These layouts are inherited from the supported YR readers, not new native
@@ -115,12 +124,14 @@ public:
  CaptureGraph(Snapshot&frame,Read live):frame_(frame),live_(live){
   if(void*p=std::malloc(sizeof(CaptureScratch))){scratch_=::new(p)CaptureScratch;owned_.reset(scratch_);}
  }
- bool vector(uint32_t address,int limit,std::vector<uint32_t>&out){
+ bool vector(uint32_t address,int limit,std::vector<uint32_t>&out,uint32_t*itemsOut=nullptr){
   struct Vector {uint32_t vt,items;int capacity;uint32_t flags;int count,step;}v{};
   out.clear();++frame_.counters.rosterCaptures;
   if(!frame_.capture(live_,address,&v,sizeof v)||v.count<0||v.count>limit||v.capacity<v.count||v.capacity>262144||(v.count&&v.items<0x10000))return false;
-  out.resize(size_t(v.count));if(!v.count)return true;
-  return frame_.capture(live_,v.items,out.data(),out.size()*4);
+  out.resize(size_t(v.count));
+  if(v.count&&!frame_.capture(live_,v.items,out.data(),out.size()*4))return false;
+  if(itemsOut)*itemsOut=v.items; // Publish only after complete, immutable roster.
+  return true;
  }
  bool capture(uint32_t demand,const std::vector<uint32_t>&requests,
               const RequestedSpan*exact=nullptr,size_t exactCount=0){
@@ -168,7 +179,18 @@ public:
   if(!working())return false;auto&list=scratch_->list;
   for(uint32_t table:{0xA8EC78u,0xA8EB40u,0x8B4108u}){
    if(table==0x8B4108&&!(demand_&Ore))continue;
-   if(!vector(table,16384,list))return false;for(uint32_t p:list)enqueue(p);
+   uint32_t capturedItems=0;
+   if(!vector(table,16384,list,table==0xA8EC78u?&capturedItems:nullptr))return false;
+   if(table==0xA8EC78u){
+    // Retain the exact first-stage inventory for the later game-thread
+    // identity index. std::vector::swap moves ownership in O(1): no second
+    // 16K-pointer copy, no extra game read, no stale bytes after reset().
+    scratch_->technoRoster.swap(list);
+    scratch_->technoKey=frame_.key;
+    scratch_->technoItems=capturedItems;
+    scratch_->technoCount=int(scratch_->technoRoster.size());
+    for(uint32_t p:scratch_->technoRoster)enqueue(p);
+   }else for(uint32_t p:list)enqueue(p);
   }
   if(!vector(0xA80228,32,list))return false;for(uint32_t p:list)house(p);
   if(demand_&(Bullets|Visual)){
