@@ -20,17 +20,54 @@ constexpr uint32_t syntheticSuperWeaponActor(int swIndex){
 }
 struct Claim {uint32_t actor=0,manualVersion=0;Owner owner=Owner::Generic;};
 template<int Capacity=8192> struct FrameArbiter {
+ static_assert(Capacity>0,"positive frame-claim capacity required");
+ static constexpr unsigned slotCapacity(){
+  unsigned n=1;while(n<2u*unsigned(Capacity))n*=2;return n;
+ }
+ static constexpr unsigned Slots=slotCapacity();
  Claim actors[Capacity]{};int count=0,frame=-1;uint32_t match=0;
- void clear(){count=0;frame=-1;match=0;}
- void begin(uint32_t m,int f){if(match!=m||frame!=f){count=0;match=m;frame=f;}}
+ // Claims cannot be removed during a frame. Generation-tagged open addressing
+ // avoids a 32K actor scan on every native event and a hash memset per frame.
+ uint32_t keys[Slots]{},stamps[Slots]{},generation=1;
+ unsigned indices[Slots]{};
+ static unsigned hash(uint32_t id){
+  id^=id>>16;id*=0x7feb352du;id^=id>>15;
+  id*=0x846ca68bu;id^=id>>16;return id&(Slots-1);
+ }
+ void invalidateIndex(){
+  if(++generation==0){for(unsigned i=0;i<Slots;++i)stamps[i]=0;generation=1;}
+ }
+ void clear(){count=0;frame=-1;match=0;invalidateIndex();}
+ void begin(uint32_t m,int f){
+  if(match!=m||frame!=f){count=0;match=m;frame=f;invalidateIndex();}
+ }
+ unsigned slot(uint32_t actor)const{
+  if(!actor)return Slots;
+  unsigned s=hash(actor);
+  for(unsigned i=0;i<Slots;++i,s=(s+1)&(Slots-1))
+   if(stamps[s]!=generation||keys[s]==actor)return s;
+  return Slots; // Fail closed on pathological hash exhaustion.
+ }
+ int find(uint32_t actor)const{
+  const unsigned s=slot(actor);
+  return s<Slots&&stamps[s]==generation&&keys[s]==actor?int(indices[s]):-1;
+ }
  bool canIssue(uint32_t actor,uint32_t revision)const{
-  if(!actor||count>=Capacity)return false;
-  for(int i=0;i<count;++i)if(actors[i].actor==actor)return false;
-  return true;
+  (void)revision;
+  return actor&&count<Capacity&&find(actor)<0;
  }
  bool record(uint32_t actor,uint32_t revision,Owner owner){
-  if(!canIssue(actor,revision))return false;
+  if(!actor||count>=Capacity)return false;
+  const unsigned s=slot(actor);
+  if(s>=Slots||stamps[s]==generation)return false;
+  keys[s]=actor;indices[s]=unsigned(count);stamps[s]=generation;
   actors[count++]={actor,revision,owner};return true;
+ }
+ // A player command has *already* passed vanilla input admission. Update
+ // the same-frame claim even when full; never turn this into a new event.
+ bool replaceExisting(uint32_t actor,uint32_t revision,Owner owner){
+  const int i=find(actor);if(i<0)return false;
+  actors[i]={actor,revision,owner};return true;
  }
 };
 // Game-thread only. Lease prevents competing autonomous planners from stealing

@@ -33,6 +33,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 source/assist/tests/fixed_compute_settings.py
+      - name: Verify indexed same-frame actor claim admission and manual takeover
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -Werror -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/unit_task_arbiter.cpp -o /tmp/ra2-frame-index
+          /tmp/ra2-frame-index
   defense-state:
     runs-on: ubuntu-latest
     timeout-minutes: 15

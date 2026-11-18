@@ -50,11 +50,8 @@ static int nativeMegaGatewayAction(unsigned op,uint32_t packetAddress,uint32_t e
  // automatic claim in this frame, without consulting automation's budget or
  // rejection rules. A full table can drop metadata only, never the event.
  actorFrameArbiter.begin(match,frame);
- bool replaced=false;
- for(int n=0;n<actorFrameArbiter.count;++n)if(actorFrameArbiter.actors[n].actor==id){
-  actorFrameArbiter.actors[n]={id,revision,taskarbiter::Owner::Generic};replaced=true;break;
- }
- if(!replaced)actorFrameArbiter.record(id,revision,taskarbiter::Owner::Generic);
+ if(!actorFrameArbiter.replaceExisting(id,revision,taskarbiter::Owner::Generic))
+  actorFrameArbiter.record(id,revision,taskarbiter::Owner::Generic);
  const uint32_t now=sampleClock(sh);
  // Only object targets are useful to the read-only mission observer. A cell
  // value must never be interpreted as an object ID for Enter confirmation.
