@@ -1366,7 +1366,7 @@ static void repairTick(uint32_t house,DWORD now){
  // Cancel before polling: a late host result must not resurrect disabled work.
  if(!automatic)cancelAutomaticRepairWork();
  repairCalculationTick(now);
- pendingRepairs.observe([&](uint32_t id,uint32_t pointer){
+ pendingRepairs.observeBudgeted([&](uint32_t id,uint32_t pointer){
   return observePendingRepair(id,pointer,house);
  });
  const DWORD interval=clampedRepairInterval(sh->repairMs);
