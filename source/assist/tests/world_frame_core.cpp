@@ -548,7 +548,12 @@ void runtime(){
   // native read arriving in this SAME frame must upgrade it atomically to a
   // new full graph; merely re-exporting the sealed boundary would lose input.
   setup(memory);before=worldlife::capture(read);snap.frame=before.frame;
+  // A command dependency requested before the display pulse must survive the
+  // zero-page marker and be included in the later full capture.
+  requestWorldRange(ActorA+0x6C,4);
+  CHECK(runtimeWorldDemands.size()==1);
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
+  CHECK(runtimeWorldDemands.size()==1);
   CHECK(worldFrameBoundaryOnly&&worldFrameReady&&worldframe::boundaryOnlySource(worldFrame.key));
   CHECK(worldFrame.pages.size()==0&&worldFrame.counters.calls==0&&worldFrame.counters.bytes==0);
   // Display-only boundaries cannot admit a native command, even if a
@@ -560,11 +565,22 @@ void runtime(){
   CHECK(worldFrameReady&&!worldFrameBoundaryOnly&&!worldframe::boundaryOnlySource(worldFrame.key)&&worldFrame.key.serial>shallowSerial);
   {SampleReadScope upgraded;CHECK(upgraded&&upgraded.complete());}
   CHECK(worldFrame.read(ActorA+0x6C,&hp,sizeof hp)&&hp==100);
+  CHECK(runtimeWorldDemands.empty()); // Full command source consumed it.
   // A second command read in the same logic frame is still exactly one
   // complete acquisition. No stale previous visual bytes are borrowed.
   const auto upgradeReads=memory.calls.size();
   CHECK(captureWorldFrame(read,before,House,clock,worldframe::Base));
   CHECK(memory.calls.size()==upgradeReads);
+  // Even a zero-page display Key cannot be published if the world/House
+  // changes during its TWO independent live checks.
+  retireWorldFrame();setup(memory);before=worldlife::capture(read);
+  snap.frame=before.frame;bool changed=false;
+  memory.beforeRead=[&](uint32_t at,size_t){
+   if(!changed&&at==0xA8ED84){changed=true;memory.put(0xA83D4C,House+0x10000);}
+  };
+  CHECK(!captureWorldFrame(read,before,House,clock,worldframe::Base|worldframe::HostDisplayOnly,true));
+  CHECK(changed&&!worldFrameReady&&!worldFrameBoundaryOnly);
+  memory.beforeRead={};
   retireWorldFrame();
 }
 void displayLeaseTransition(){
