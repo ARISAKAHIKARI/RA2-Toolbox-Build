@@ -4,6 +4,31 @@
 #include <limits>
 
 namespace worldframe {
+// The capture worker and synchronous producer need exactly the same sorted,
+// deduplicated page sequence. Keep radix scratch across frames: no per-object
+// comparison tree and no repeated allocation after the first large scene.
+// A small page set stays on std::sort to avoid four histogram initializations.
+inline void sortUniquePageAddresses(std::vector<uint32_t>&pages,
+                                    std::vector<uint32_t>&scratch){
+ if(pages.size()<128)std::sort(pages.begin(),pages.end());
+ else {
+  scratch.resize(pages.size());
+  uint32_t*src=pages.data(),*dst=scratch.data();
+  const size_t n=pages.size();
+  for(unsigned shift=0;shift<32;shift+=8){
+   size_t offsets[256]{};
+   for(size_t i=0;i<n;++i)++offsets[(src[i]>>shift)&255u];
+   size_t sum=0;
+   for(unsigned bucket=0;bucket<256;++bucket){
+    const size_t count=offsets[bucket];offsets[bucket]=sum;sum+=count;
+   }
+   for(size_t i=0;i<n;++i)dst[offsets[(src[i]>>shift)&255u]++]=src[i];
+   uint32_t*previous=src;src=dst;dst=previous;
+  }
+  // Four passes are even. The data finishes in pages, not in scratch.
+ }
+ pages.erase(std::unique(pages.begin(),pages.end()),pages.end());
+}
 // Capture membership is temporary, but the game-thread allocator is shared
 // with the engine. Reusing flat buckets avoids allocating and freeing one
 // unordered_set node per object on every logic frame. Generations clear only
@@ -39,10 +64,10 @@ public:
 // store its last observed tick to bound the hint's lifetime.
 struct CaptureScratch {
  CaptureSet actors,types,small,houses;
- std::vector<uint32_t>queue,list,docks,warmPages;
+ std::vector<uint32_t>queue,list,docks,warmPages,warmSortScratch;
  std::array<uint8_t,16*PageSize>pageScratch{};
  explicit CaptureScratch(PageAllocator allocator={}):actors(allocator),types(allocator),small(allocator),houses(allocator){}
- void reset(){actors.clear();types.clear();small.clear();houses.clear();queue.clear();list.clear();docks.clear();warmPages.clear();}
+ void reset(){actors.clear();types.clear();small.clear();houses.clear();queue.clear();list.clear();docks.clear();warmPages.clear();warmSortScratch.clear();}
  bool valid()const{return actors.valid()&&types.valid()&&small.valid()&&houses.valid();}
 };
 // These layouts are inherited from the supported YR readers, not new native
@@ -207,7 +232,7 @@ public:
   auto&warm=scratch_->warmPages;
   for(uint32_t p:scratch_->queue)if(range(p,0x800))
    for(uint32_t page=p&~4095u;uint64_t(page)<uint64_t(p)+0x800;page+=PageSize)warm.push_back(page);
-  std::sort(warm.begin(),warm.end());warm.erase(std::unique(warm.begin(),warm.end()),warm.end());
+  sortUniquePageAddresses(warm,scratch_->warmSortScratch);
   frame_.prefetchPages(live_,warm,scratch_->pageScratch.data(),scratch_->pageScratch.size(),false);
   for(size_t i=0;i<scratch_->queue.size();++i){if(!working())return false;actor(scratch_->queue[i]);}
   if(!working())return false;
