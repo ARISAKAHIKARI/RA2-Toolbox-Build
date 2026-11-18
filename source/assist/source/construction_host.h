@@ -10,6 +10,10 @@ namespace buildreserve {
 struct Choice {int slot=0,index=0,tab=0;uint32_t type=0;bool future=false;};
 static construction::Book books[4];static std::vector<Choice> choices;static HWND window;
 static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;
+// An incomplete Host candidate sample must retry earlier than the ordinary
+// 100ms catalogue cadence. Never treat missing pages as unavailable tech.
+static bool choicesIncomplete=false;
+static int choiceSourceTab=-1;
 static int activeTab=-1,selectedTab=-1,lastNativeTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
 static construction::NativeFrame nativeFrame;static uint32_t nativeAt=0;
 static construction::NativeDisplay nativeDisplay;
@@ -65,7 +69,7 @@ static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];criti
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
 static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;nativeDisplay.clear();resetPaint();if(window)ShowWindow(window,SW_HIDE);}
 static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
-static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
+static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();activeTab=selectedTab=lastNativeTab=choiceSourceTab=-1;choicesIncomplete=false;refreshed=0;hide();}
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
 // A requested full-technology whitelist also protects a reservation while the
 // Runtime is installing/restoring that mode. Only Runtime authorizes production.
@@ -100,14 +104,18 @@ template<class C>static bool loadForecast(C&catalogue){
 static void collectChoices(){
  if(activeTab<0||activeTab>3){choices.clear();return;}
  externalReader.setWorldDemand(worldframe::Base);
- external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
- auto previous=std::move(choices);choices.clear();
+ external::WorldFrameScope source(externalReader,commandMatch());
+ if(!source){choicesIncomplete=true;return;}
+ // Never reuse a stale different-tab candidate list while this tab awaits
+ // its own sealed sample. The current tab's old complete list stays visible.
+ auto previous=choiceSourceTab==activeTab?std::move(choices):std::vector<Choice>{};
+ choices.clear();
  auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
  auto uiRead=[](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);};
  bool previewReady=loadForecast(catalogue);auto&b=books[activeTab];
  uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=-1,after=-1,cameos[75*13]{};
  bool nativeReady=uiRead(strip+84,&count,4)&&count>=0&&count<=75&&(!count||uiRead(strip+88,cameos,size_t(count)*52))&&uiRead(strip+84,&after,4)&&after==count;
- if(!nativeReady){choices=std::move(previous);return;}
+ if(!nativeReady){choices=std::move(previous);choicesIncomplete=true;return;}
  auto nativeHere=[&](int kind,int index){for(int i=0;i<count;++i)if(cameos[i*13]==index&&cameos[i*13+1]==kind)return true;return false;};
  for(int slot=0;slot<snap.typeCount;++slot){const auto&t=snap.types[slot];
   if((activeTab<2&&t.kind!=7)||(activeTab==2&&t.kind!=16)||(activeTab==3&&t.kind!=3&&t.kind!=40))continue;
@@ -120,7 +128,8 @@ static void collectChoices(){
   if(construction::showReservationChoice(tab,native,queued,future,busyBuilding,extra.constructionShowNativeUnits))
    choices.push_back({slot,index,tab,type,!native});
  }
- if(!source.complete())choices=std::move(previous);
+ if(!source.complete()){choices=std::move(previous);choicesIncomplete=true;}
+ else {choicesIncomplete=false;choiceSourceTab=activeTab;}
 }
 static void resizePanel(){
  if(!window||!geometryReady||!paintReady)return;POINT origin{};RECT previous{};
@@ -353,9 +362,19 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  }
  if(msg==WM_MOUSELEAVE){hoverChoice=hoverQueue=-1;requestPaint();return 0;}
  if(msg==WM_MOUSEWHEEL){if(!geometryReady||!panelInputReady())return 0;int delta=short(HIWORD(wp)),maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll+(delta<0?2:-2),0,maximum);requestPaint();return 0;}
- if(msg==WM_LBUTTONUP||msg==WM_RBUTTONUP){if(!geometryReady||!panelInputReady()||!usable())return 0;int x=short(LOWORD(lp)),y=short(HIWORD(lp));
-  if(msg==WM_LBUTTONUP&&y>=0&&y<layout.pointY(24)&&x>=0&&x<layout.width()){
-   selectedTab=std::min(3,int(int64_t(x)*4/layout.width()));activeTab=selectedTab;scroll=0;refreshChoices();requestPaint();return 0;}
+ if(msg==WM_LBUTTONUP||msg==WM_RBUTTONUP){
+  if(!geometryReady||!usable())return 0;
+  const int x=short(LOWORD(lp)),y=short(HIWORD(lp));
+  // Header navigation reads the last *committed* geometry and never needs
+  // an in-flight candidate raster. Below-header production interactions
+  // retain the strict panelInputReady() hit-map authorization.
+  if(msg==WM_LBUTTONUP&&paintReady&&paintedFrame&&samePaintWorld(paintedFrame->request)&&
+     y>=0&&y<paintedLayout.pointY(24)&&x>=0&&x<paintedLayout.width()){
+   selectedTab=std::min(3,int(int64_t(x)*4/paintedLayout.width()));
+   activeTab=selectedTab;scroll=0;refreshed=0;
+   refreshChoices();requestPaint();return 0;
+  }
+  if(!panelInputReady())return 0;
   if(msg==WM_RBUTTONUP){if(activeTab<0||activeTab>3)return 0;bool all=(wp&MK_SHIFT)!=0;int slot=layout.queueAt(x,y,int(books[activeTab].items.size()));if(slot>=0)removeTop(all);else{int n=layout.choiceAt(x,y,scroll,int(choices.size()));if(n>=0){auto&items=books[activeTab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==choices[n].index){removeItem(activeTab,i,all);break;}}}}
   else reserve(layout.choiceAt(x,y,scroll,int(choices.size())));return 0;
  }
@@ -373,10 +392,20 @@ static void service(){
  static bool previous[4]{};uint8_t keys[256]{};nativekeyhost::down(keys);int requested=-1;
  const auto&bindings=nativekeyhost::current();
  for(int tab=0;tab<4;++tab){bool down=bindings.held(nativekeys::Command(tab),keys);if(extra.constructionQueue&&usable()&&down&&!previous[tab])requested=tab;previous[tab]=down;}
- if(requested>=0){selectedTab=requested;activeTab=requested;lastNativeTab=get<int>(0x87F7E8+0x539C,-1);scroll=0;refreshed=0;}
- consumeNativeClick();uint32_t now=GetTickCount();bool streaming=false;
+ if(requested>=0){selectedTab=requested;activeTab=requested;scroll=0;refreshed=0;}
+ consumeNativeClick();uint32_t now=GetTickCount();
+ // Detect native page changes before throttling the costly catalogue.
+ const int observedNativeTab=extra.constructionQueue?get<int>(0x87F7E8+0x539C,-1):-1;
+ if(observedNativeTab>=0&&observedNativeTab<4&&observedNativeTab!=lastNativeTab){
+  lastNativeTab=observedNativeTab;selectedTab=-1;refreshed=0;
+ }
+ if(requested>=0){selectedTab=requested;activeTab=requested;}
+ bool streaming=false;
  for(int tab=2;tab<4;++tab){const auto&b=books[tab];if(b.streaming&&!b.items.empty()&&!b.stage&&int32_t(now-b.retry)>=0)streaming=true;}
- if(refreshed&&uint32_t(now-refreshed)<100&&!streaming)return;refreshed=now;
+ // A failed sealed candidate read may need several fresh page publications.
+ // Use bounded 32ms retry only while incomplete; stable frames stay at 100ms.
+ if(refreshed&&uint32_t(now-refreshed)<(choicesIncomplete?32u:100u)&&!streaming)return;
+ refreshed=now;
  if(!extra.constructionQueue){reset();return;}if(!displayReady()){hide();return;}
  if(!constructionDisplayFresh()||snap.renderStatus!=1){publishReservationPolicy({});return;}
  house=get<uint32_t>(0xA83D4C);if(house<0x10000){hide();return;}
@@ -429,19 +458,28 @@ static void service(){
   if(!b.token){if(!++nextToken)++nextToken;b.token=nextToken;}
   if(queueCommand(ProduceReserved,slot,int(b.id),b.match,0,0,b.token)){b.stage=1;b.sent=now;b.attempts=std::min(b.attempts+1,1000000);queueLog(tab,L"submitted-after-parent-placement");}
  }
- auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> forecast(read);
- if(usable()&&loadForecast(forecast))for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.items.empty()||b.stage||b.source)continue;
+ // This live-memory forecast is used ONLY for validating an active future
+ // queue. Idle panels use the sealed catalogue below: skip duplicate reads.
+ bool pendingHead=false;
+ for(const auto&b:books)if(!b.items.empty()&&!b.stage&&!b.source){pendingHead=true;break;}
+ auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};
+ if(usable()&&pendingHead){
+  construction::Catalogue<decltype(read)> forecast(read);
+  if(loadForecast(forecast))for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.items.empty()||b.stage||b.source)continue;
   // A native cameo can carry permissions our read-only forecast cannot model
   // (including a pending technology-mode handoff). Do not cancel such a FIFO
   // from the preview; Runtime still checks current CanBuild and its factory.
   int slot=typeSlot(b.head());if(slot<0||(!nativeCameo(b.head(),tab)&&!forecast.possible(typePointer(b.head()),absKind(b.head()),get<uint8_t>(typePointer(b.head())+0xCCE)!=0,true,technologyRequested(b.head())))){
    if(!b.missing)b.missing=now;else if(uint32_t(now-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
   }else b.missing=0;
+  }
  }
  // A hidden overlay closes only its click surface. The production FIFO above
  // continues to submit and acknowledge native orders while displays are off.
  if(!overlayvisibility::visible()){hide();return;}
- int nativeTab=get<int>(0x87F7E8+0x539C,-1);if(nativeTab!=lastNativeTab){lastNativeTab=nativeTab;selectedTab=-1;}
+ int nativeTab=observedNativeTab;
+ if(nativeTab<0)nativeTab=get<int>(0x87F7E8+0x539C,-1);
+ if(nativeTab!=lastNativeTab){lastNativeTab=nativeTab;selectedTab=-1;}
  activeTab=selectedTab>=0?selectedTab:nativeTab;
  if(activeTab<0||activeTab>3){hide();return;}
  bool context=current[0]||current[1];for(const auto&b:books)context=context||!b.items.empty();
