@@ -266,7 +266,7 @@ static bool refreshWorldIndex(int frame,bool executionGuards){
 // fallible live UID read when deciding whether an automatic lease still exists.
 static void sweepActiveLeases(int frame){
  if(!actorLeaseArbiter.count)return;
- actorLeaseArbiter.sweep(match,frame,[](uint32_t id){
+ actorLeaseArbiter.sweepBudgeted(match,frame,[](uint32_t id){
   return std::pair<uint32_t,uint32_t>{worldObjects.byId(id),manualVersions.get(id)};
  });
 }
