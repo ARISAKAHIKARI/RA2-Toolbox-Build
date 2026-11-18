@@ -172,6 +172,19 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
   bool queued=true;
   for(uint32_t id=1;id<=4096;++id)queued&=pendingRepairs.queued(id,0x100000+id);
   expect(queued&&pendingRepairs.count==4096,"4K outstanding receipts accepted");
+  // Low cardinality is the common case: do not repeat the same live RPM
+  // 64 times merely because the default per-frame budget is 64.
+  pendingRepairs.clear();
+  expect(pendingRepairs.queued(37,0x200037),"single receipt accepted");
+  unsigned singleReads=0;
+  pendingRepairs.observeBudgeted([&](uint32_t,uint32_t){
+   ++singleReads;return repairdelivery::Observation{false,false,false,true};
+  });
+  expect(singleReads==1&&pendingRepairs.count==1,"single unknown receipt read at most once");
+  pendingRepairs.clear();
+  for(uint32_t id=1;id<=4096;++id)expect(pendingRepairs.queued(id,0x100000+id),
+   "restored large receipt cohort");
+
   unsigned observed=0;
   pendingRepairs.observeBudgeted([&](uint32_t id,uint32_t){
    ++observed;return repairdelivery::Observation{true,(id%2)==0,false,false};
