@@ -38,7 +38,10 @@ template<unsigned Size=16384> struct Pending {
  // the cursor. This preserves fairness and keeps UNKNOWN tickets pending.
  template<class Read>void observeBudgeted(Read read,unsigned budget=MaxObservationsPerTick){
   if(!count)return;
-  while(count&&budget--){
+  // A single pending repair gets one live check, not 64 duplicate reads.
+  // Cap each pass to the number of tickets present when it began.
+  const unsigned limit=budget<count?budget:count;
+  for(unsigned visited=0;count&&visited<limit;++visited){
    if(cursor>=count)cursor=0;
    const unsigned index=active[cursor];auto&r=slots[index];
    const Observation o=read(r.id,r.pointer);
