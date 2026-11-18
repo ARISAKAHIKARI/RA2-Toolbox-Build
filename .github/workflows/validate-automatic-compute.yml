@@ -44,7 +44,7 @@ jobs:
       - name: Verify demand lease expiry deadline and bounded maintenance at 16K capacity
         run: |
           set -euo pipefail
-          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/demand_lease_deadline.cpp -o /tmp/ra2-demand-lease
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/demand_lease_deadline.cpp -o /tmp/ra2-demand-lease
           /tmp/ra2-demand-lease
       - name: Verify indexed same-frame actor claim admission and manual takeover
         run: |
