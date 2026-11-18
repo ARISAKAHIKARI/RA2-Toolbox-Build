@@ -130,7 +130,8 @@ ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(4
 automaticToggle(899,L"磁电全局自动摔落",extra.magnetronDrop);next();
 note(L"检测己方磁电吸起的载具，在建筑、地面单位、树木、矿柱、悬崖或不适合的水陆落点上方自动松开。包含手动强制吸起的己方、盟友与敌方载具；两栖和悬浮按各自通行类型处理，桥面和空中单位不计作障碍。",76);
 automaticToggle(799,L"生产预定",extra.constructionQueue);next();
-note(L"建筑/防御各可预定 32 项，步兵/载具各 128 项；按原生队列可用容量接续提交。",44);
+toggle(9796,L"显示已可生产单位（批量预定）",extra.constructionShowNativeUnits);next();
+note(L"默认仅显示未来可造的步兵/载具和已有预定，隐藏原生生产栏已经能造的单位；勾选后可把已可生产单位加入工具箱 128 项批量队列。已预定项目始终可见。建筑/防御保留原逻辑。",60);
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
 toggle(780,L"允许维修通常不可维修的建筑",repairUnrepairable);next();
 oreCheck=toggle(470,L"矿车自动卸矿",oreMode,20,245);key(9504,extra.automaticKeys[autofeatures::OreReturn],280,205);button(9605,L"展开设置",500,125);next();
