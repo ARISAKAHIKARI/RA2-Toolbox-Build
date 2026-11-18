@@ -2,7 +2,6 @@
 #include "../../shared/source/world_frame_capture.h"
 #include "../../shared/source/world_frame_recovery.h"
 #include "../../shared/source/world_frame_transport.h"
-#include "../../shared/source/world_frame_page_union.h"
 #ifndef WORLD_FRAME_PLATFORM_FIXTURE
 #include "../../shared/source/world_frame_shadow_win.h"
 #endif

@@ -1,4 +1,4 @@
-#include "../../shared/source/world_frame_page_union.h"
+#include "../../shared/source/world_frame.h"
 #include <algorithm>
 #include <cassert>
 #include <chrono>
@@ -24,7 +24,7 @@ int main(){
   large.clear();
   for(int n=0;n<32768;++n){
    // Distinct sources can repeat the same demands thousands of times.
-   uint32_t page=0x10000u+(next()%65536u)*PageSize;
+   uint32_t page=0x10000u+(next()%65536u)*worldframe::PageSize;
    large.push_back(page);
   }
   exact(large);
@@ -39,7 +39,7 @@ int main(){
  // Measure this operation only. It does not measure game-thread FPS or
  // CaptureGraph I/O, and is not used as a flaky wall-clock CI assertion.
  large.clear();
- for(int n=0;n<16384;++n)large.push_back(0x10000u+(next()%16384u)*PageSize);
+ for(int n=0;n<16384;++n)large.push_back(0x10000u+(next()%16384u)*worldframe::PageSize);
  const int rounds=128;
  auto start=std::chrono::steady_clock::now();
  for(int n=0;n<rounds;++n){auto items=large;std::sort(items.begin(),items.end());items.erase(std::unique(items.begin(),items.end()),items.end());}
