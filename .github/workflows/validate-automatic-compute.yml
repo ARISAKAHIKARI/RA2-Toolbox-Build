@@ -124,7 +124,7 @@ jobs:
       - name: Exercise production aircraft settings controls and persistence
         run: |
           set -euo pipefail
-          python3 source/assist/tests/auto_settings_ui_test.py
+          python3 source/assist/tests/aircraft_damage_settings.py
 
   repair-state:
     runs-on: ubuntu-latest
