@@ -131,7 +131,13 @@ static bool autoSettingChanged(int id,int notification){
   notify(mode==0?L"已选择不改指令的控制实现；断点不足时会显示错误，不自动切回代码补丁。":mode==2?L"已选择 Master 基本指令修改；开启后直接修改三处游戏指令，不启用命令所属方或事件所属方保留。旧状态还原完成后生效，高危，仍有联机风险。":L"已选择原生判定 Hook；开启后会修改游戏代码，仍有联机风险。");return true;
  }
  if(id==9196&&notification==BN_CLICKED){extra.crcMapShadow=SendMessageW(GetDlgItem(ui,id),BM_GETCHECK,0,0)==BST_CHECKED;changedSetting();syncAdditional();return true;}
- if(id==9195&&select){int policy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(policy>=0&&policy<=2){extra.aircraftAllocationPolicy=policy;pointerMatches.clear();changedSetting();syncAdditional();}return true;}
+ if((id==9794||id==9795)&&edit){BOOL valid=FALSE;const int value=int(GetDlgItemInt(ui,id,&valid,FALSE));
+   const int minimum=1,maximum=id==9794?64:500;
+   if(!valid||value<minimum||value>maximum){setStatus(L"飞机分配参数有效范围："+std::to_wstring(minimum)+L"–"+std::to_wstring(maximum));return true;}
+   int&setting=id==9794?extra.aircraftDamageRadiusCells:extra.aircraftDamageCoveragePercent;
+   if(setting!=value){setting=value;changedSetting();syncAdditional();}return true;
+  }
+  if(id==9195&&select){int policy=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(policy>=0&&policy<=2){extra.aircraftAllocationPolicy=policy;pointerMatches.clear();changedSetting();syncAdditional();}return true;}
  if(id==811&&edit){extra.c4Key=uint32_t(SendMessageW(GetDlgItem(ui,id),HKM_GETHOTKEY,0,0));changedSetting();return true;}
  if(id==812&&select){int selected=int(SendMessageW(GetDlgItem(ui,id),CB_GETCURSEL,0,0));if(selected>=0&&selected<=5){extra.c4Mouse=selected==5?6:selected;changedSetting();}return true;}
  // Reject disabled material choices before any setting, hook or reveal action.
