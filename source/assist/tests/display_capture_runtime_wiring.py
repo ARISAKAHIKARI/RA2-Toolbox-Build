@@ -14,7 +14,7 @@ assert "worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly)" in 
 assert "sharedWorldWanted&&noCommandWork" in bridge
 
 assert '#include "world_capture_requests.h"' in runtime
-assert "capturepolicy::prepareRequestedPages(boundaryOnly,key.tick," in runtime
+assert "assist::capturepolicy::prepareRequestedPages(boundaryOnly,key.tick," in runtime
 assert "worldFrameServer.requests(),runtimeWorldDemands,runtimeDemandLeases,requests)" in runtime
 assert "if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}" in runtime
 assert "worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)" in runtime
