@@ -167,6 +167,45 @@ int main(int argc,char**argv){regressionOnly=argc>1&&std::string(argv[1])=="--re
   missingLiveRead=0;buildings[0].repairing=true;tick(1048,4);
   expect(pendingRepairs.count==0,"confirmed repair native flag must retire ticket");
  });
+ run("pending_repair_receipts_bounded_active_and_unknown",true,[]{
+  setup(false,true,0);
+  bool queued=true;
+  for(uint32_t id=1;id<=4096;++id)queued&=pendingRepairs.queued(id,0x100000+id);
+  expect(queued&&pendingRepairs.count==4096,"4K outstanding receipts accepted");
+  unsigned observed=0;
+  pendingRepairs.observeBudgeted([&](uint32_t id,uint32_t){
+   ++observed;return repairdelivery::Observation{true,(id%2)==0,false,false};
+  });
+  expect(observed==64&&pendingRepairs.count==4064,"first tick bounded to 64 identity reads");
+  for(unsigned n=1;n<64;++n){
+   observed=0;
+   pendingRepairs.observeBudgeted([&](uint32_t id,uint32_t){
+    ++observed;return repairdelivery::Observation{true,(id%2)==0,false,false};
+   });
+   expect(observed==64,"no game callback may scan more than 64 receipts");
+  }
+  expect(pendingRepairs.count==2048,"round-robin covers all 4K identities");
+  for(uint32_t id=1;id<=4096;++id)
+   expect(pendingRepairs.contains(id,0x100000+id)==((id%2)!=0),
+          "only confirmed repairing tickets retired");
+  observed=0;
+  pendingRepairs.observeBudgeted([&](uint32_t,uint32_t){
+   ++observed;return repairdelivery::Observation{false,false,false,true};
+  });
+  expect(observed==64&&pendingRepairs.count==2048,"unknown page retains all tickets");
+  for(unsigned n=0;n<32;++n)pendingRepairs.observeBudgeted(
+   [&](uint32_t,uint32_t){return repairdelivery::Observation{true,false,true,false};});
+  expect(pendingRepairs.count==0,"confirmed healthy tickets retire after bounded cycles");
+  expect(pendingRepairs.queued(99,0x200099),"generational empty reuse");
+  expect(pendingRepairs.queued(99,0x200199)&&pendingRepairs.count==1,
+         "requeued identical UID changes pointer without duplicate");
+  expect(!pendingRepairs.contains(99,0x200099)&&pendingRepairs.contains(99,0x200199),
+         "identity pointer update remains accurate");
+  pendingRepairs.observeBudgeted([&](uint32_t,uint32_t){
+   return repairdelivery::Observation{true,true,false,false};
+  });
+  expect(pendingRepairs.count==0,"single ticket is checked immediately");
+ });
  run("late_automatic_result_after_off",true,[]{
   setup(true,false);tick(1000,1);auto old=calculate();expect(repairCalculationPending,"automatic calculation started");
   sh->flags=0;tick(1008,2);deliver(old);tick(1016,3);
