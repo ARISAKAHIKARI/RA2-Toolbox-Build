@@ -59,6 +59,11 @@ jobs:
       - name: Test ore handoff and repeated missing-page recovery
         run: |
           python3 source/assist/tests/ore_harvest_handoff.py --out /tmp/ra2-ore-state
+      - name: Validate dense manual-version clears, collision pruning and zero-token holds
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Wno-unused-parameter -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/manual_ore.cpp -o /tmp/ra2-manual-ore
+          /tmp/ra2-manual-ore
   missile-state:
     runs-on: ubuntu-latest
     timeout-minutes: 15
