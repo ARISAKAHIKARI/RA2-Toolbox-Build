@@ -6,7 +6,7 @@
 #include <cwchar>
 #include <cstring>
 using Start=int(__cdecl*)(HANDLE);using Fn=int(__cdecl*)();
-static void until(Fn fn,int expected){const DWORD begin=GetTickCount();for(;;){const int value=fn();assert(value>=0);if(value==expected)return;assert(GetTickCount()-begin<5000);Sleep(1);}}
+static void until(Fn fn,int expected){const DWORD begin=GetTickCount();for(;;){const int value=fn();if(value<0){std::fprintf(stderr,"native fixture ERROR: poll returned %d, expected %d\\n",value,expected);std::fflush(stderr);}assert(value>=0);if(value==expected)return;assert(GetTickCount()-begin<5000);Sleep(1);}}
 int main(int argc,char**argv){
  assert(argc==2||(argc==3&&(!std::strcmp(argv[2],"async")||!std::strcmp(argv[2],"async-candidate"))));
  SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);std::setvbuf(stdout,nullptr,_IONBF,0);

@@ -176,7 +176,7 @@ public: ObservationReadScope():SampleReadScope(true){}
  // allocations, locks, file I/O or world traversal occur here.
 #if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
 static void publishSamplingWorkerDiagnostics(uint32_t now){
- static uint32_t publishedAt=0;
+ static uint32_t publishedAt=0,lastHostPublicationSerial=0;
  if(!sh||!worldFrameCommandWorker.enabled()||
     (publishedAt&&uint32_t(now-publishedAt)<250))return;
  publishedAt=now;
@@ -191,6 +191,22 @@ static void publishSamplingWorkerDiagnostics(uint32_t now){
  v.workerLastCalls=d.lastCalls;v.workerLastBytes=d.lastBytes;
  v.workerLastPages=d.lastPages;
  v.workerFirstFrame=d.firstFrame;v.workerLastFrame=d.lastFrame;
+ // pre.6 counted successfully built worker snapshots but hid Host starvation:
+ // only rare same-frame take() updated worldSample*. The worker now directly
+ // publishes sealed read-only graphs to Host IPC. Reflect the *actual*
+ // successful transport publications in the existing seqlocked diagnostics.
+ const auto host=worldFrameCommandWorker.hostPublication();
+ if(host.serial&&host.serial!=lastHostPublicationSerial&&host.match==match){
+  lastHostPublicationSerial=host.serial;
+  InterlockedIncrement(&sh->worldSampleSeq);
+  sh->worldSampleFrame=host.frame;
+  sh->worldSamplePages=host.pages;
+  sh->worldSampleReads=host.calls;
+  sh->worldSampleBytes=host.bytes;
+  sh->worldSampleRosters=1;
+  sh->worldSampleSerial=host.serial;
+  MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);
+ }
 }
 #endif
 static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
@@ -235,7 +251,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // Re-export the existing immutable sample; publish() deduplicates its exact
   // descriptor. Never recapture or invent a newer observation/acquisition tick.
   if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)){
-   worldFramePublication.publish(worldFrame,worldFrameServer);return true;
+   // The async worker owns Host-only transport, including same-frame
+   // republishing; never interleave the older strict publisher in its slot.
+   if(!asyncCommand)worldFramePublication.publish(worldFrame,worldFrameServer);
+   return true;
   }
   // A hotkey/manual order admitted in the same logic frame after a display
   // boundary snapshot must not inherit that reduced read set. This one-way
@@ -250,8 +269,11 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // The existing 4ms Host pulse gives another same-frame opportunity to
   // adopt a worker result without blocking the game's message pump.
   const uint64_t requestRevision=(uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
-  if(worldFramePublication.begin(worldFrame)&&
-     worldFrameCommandWorker.take(key,graphDemand,requestRevision,worldFrame,&worldFrameCommandRoster,globalVehicles)){
+  // The command worker already publishes complete *read-only* world graphs
+  // to Host IPC. Keep native exact-frame acceptance separate and avoid a
+  // second publisher racing to overwrite the Host observation channel.
+  if(worldFrameCommandWorker.take(key,graphDemand,requestRevision,worldFrame,
+                                  &worldFrameCommandRoster,globalVehicles)){
    // A background success still needs a NEW independent synchronous
    // world/frame/House identity check immediately before command delivery.
    const auto after=worldlife::capture(live);uint32_t afterHouse=0;
@@ -268,15 +290,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
     worldFrameCapturedDemand=graphDemand;
     worldFrameCapturedRevision=(uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
     worldFrameBoundaryOnly=false;worldFrameReady=true;
-    worldFramePublication.publish(worldFrame,worldFrameServer);
+    // The authoritative native sample stays local; Host receives only
+    // worker-tagged observation-only publications, never strict EventClass
+    // permission. Mixing both writers caused stale/oscillating Host serials.
 #if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
     if(sh)++sh->sampling.strictAdopted;
 #endif
-    if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;
-     sh->worldSamplePages=uint32_t(worldFrame.pages.size());
-     sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;
-     sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;
-     MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
     return true;
    }
    worldFrameServer.retire();worldFrameCommandWorker.invalidate();

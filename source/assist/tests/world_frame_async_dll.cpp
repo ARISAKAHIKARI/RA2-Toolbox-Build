@@ -197,6 +197,12 @@ extern "C" __declspec(dllexport) int AsyncStart(){
  asyncStopStarted=false;
  using namespace assist;
  if(!worldFrameCommandWorker.enabled())return -1;
+ // Sync publisher tests deliberately intercept the first named data
+ // mapping. Async Runtime tests must not inherit that unrelated hold:
+ // they pause ONLY the command worker's first payload RPM when requested.
+ // Otherwise the new worker-to-Host publication fails its mapping setup
+ // even though the production publisher works.
+ blockNext.store(false,std::memory_order_release);
  gameThread=GetCurrentThreadId();
  retireWorldFrame();worldFrameSerial=0;shared.owner=GetCurrentProcessId();
  fixture::setup(memory);
@@ -226,6 +232,13 @@ extern "C" __declspec(dllexport) int AsyncPoll(){
     !backgroundReadThread.load(std::memory_order_acquire)||
     backgroundReadThread.load(std::memory_order_acquire)==gameThread)
    return -1;
+ const auto host=client->acquire(match);
+ int hostHP=0;
+ if(!host||!worldframe::observationOnlySource(host->key)||
+    worldframe::boundaryOnlySource(host->key)||
+    !host->sealed()||host->pages.size()<10||
+    !host->read(fixture::ActorA+0x6C,&hostHP,sizeof hostHP)||
+    hostHP!=100)return -6;
  return 1;
 }
 extern "C" __declspec(dllexport) int AsyncStop(){
@@ -288,6 +301,16 @@ extern "C" __declspec(dllexport) int AsyncCandidatePoll(){
      hp!=100||!observation.complete()||
      sampleWorldSource!=&worldFrameCandidate)return -4;
  }
+ // Cross-frame worker bytes must ALSO be visible in the Host's actual
+ // double-buffer world transport. pre.6 missed this even though its local
+ // candidate and every original native worker test passed.
+ const auto host=client->acquire(match);
+ if(!host)return -6;
+ if(!worldframe::observationOnlySource(host->key)||
+    worldframe::boundaryOnlySource(host->key)||
+    host->key.frame!=50||host->key.serial==0||
+    !host->sealed()||host->pages.size()<10||
+    !host->read(fixture::ActorA+0x6C,&hp,sizeof hp)||hp!=100)return -7;
  // No old-frame result is allowed to become exact-frame event authority.
  if(worldFrameReady&&worldFrame.key.frame!=snap.frame)return -5;
  return 1;
