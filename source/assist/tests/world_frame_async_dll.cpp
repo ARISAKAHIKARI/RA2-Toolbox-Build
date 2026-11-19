@@ -175,7 +175,9 @@ extern "C" __declspec(dllexport) int RecoverPublisher(){
 }
 
 
+static bool asyncStopStarted=false;
 extern "C" __declspec(dllexport) int AsyncStart(){
+ asyncStopStarted=false;
  using namespace assist;
  if(!worldFrameCommandWorker.enabled())return -1;
  gameThread=GetCurrentThreadId();
@@ -211,9 +213,11 @@ extern "C" __declspec(dllexport) int AsyncPoll(){
 }
 extern "C" __declspec(dllexport) int AsyncStop(){
  using namespace assist;
- // Stop must be polled, never waited on inside the game's message callback.
- if(worldFrameReady)retireWorldFrame();
- else if(!worldFrameCapturedDemand&&!worldFrameCommandWorker.rejected()&&!worldFrameCommandWorker.accepted())
-  retireWorldFrame();
- return worldFrameCommandWorker.stop()&&worldFramePublication.stop()&&worldFrameShadow.stop()?1:0;
+ // Trigger retirement only once; subsequent checks must not restart/cancel
+ // workers while their pinned Win32 threads complete an orderly exit.
+ if(!asyncStopStarted){retireWorldFrame();asyncStopStarted=true;}
+ const bool command=worldFrameCommandWorker.stop();
+ const bool published=worldFramePublication.stop();
+ const bool shadow=worldFrameShadow.stop();
+ return command&&published&&shadow?1:0;
 }
