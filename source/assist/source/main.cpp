@@ -43,6 +43,7 @@
 #include "../../shared/source/host_game_input.h"
 #include "../../shared/source/command_cursor_hint.h"
 #include "../../shared/source/automatic_log.h"
+#include "sample_health_log.h"
 #include "../../shared/source/game_build_diagnostics.h"
 #include <tlhelp32.h>
 #include "../../shared/source/message_query.h"
@@ -386,7 +387,64 @@ static void logLoadedGameModules(){
   line+=std::wstring(entry.szModule)+L"@"+hex32(DWORD(uintptr_t(entry.modBaseAddr)))+L";";
  }while(Module32NextW(snapshot,&entry));CloseHandle(snapshot);autolog::write(line);
 }
+static void logSamplingHealth(DWORD now){
+ // Host only: no game-memory I/O, no file write on the native callback,
+ // no per-frame strings or sampling-thread mutex. Seqlock ensures the
+ // sampleFrame/pages/reads/bytes/serial fields describe one publication.
+ static samplinglog::Monitor monitor;
+ if(!shared||incoming.status!=1||!pid){monitor.reset();return;}
+ samplinglog::Input input{};
+ input.pid=pid;input.match=incoming.match;input.tick=now;
+ input.controlFrame=incoming.frame;input.controlUs=incoming.controlMicros;
+ input.scanUs=incoming.scanMicros;input.worldUs=incoming.worldMicros;
+ bool coherent=false;
+ for(unsigned n=0;n<3;++n){
+  const LONG before=shared->worldSampleSeq;
+  if(before&1)continue;
+  MemoryBarrier();
+  input.serial=shared->worldSampleSerial;
+  input.sampleFrame=shared->worldSampleFrame;
+  input.pages=shared->worldSamplePages;
+  input.reads=shared->worldSampleReads;
+  input.bytes=shared->worldSampleBytes;
+  MemoryBarrier();
+  const LONG after=shared->worldSampleSeq;
+  if(before==after&&!(after&1)){coherent=true;break;}
+ }
+ if(!coherent)return; // IPC publication is currently incomplete; retry later.
+ input.failures=shared->worldSampleFailures;
+ samplinglog::Summary summary{};
+ if(!monitor.observe(input,summary))return;
+ const uint64_t rateMilliHz=summary.periodMs?
+   uint64_t(summary.publications)*1000000ull/summary.periodMs:0;
+ autolog::write(L"sampling-health pid="+std::to_wstring(pid)+
+  L" match="+std::to_wstring(incoming.match)+
+  L" windowMs="+std::to_wstring(summary.periodMs)+
+  L" logicFrames="+std::to_wstring(summary.logicFrames)+
+  L" publications="+std::to_wstring(summary.publications)+
+  L" publicationsMilliHz="+std::to_wstring(rateMilliHz)+
+  L" failuresDelta="+std::to_wstring(summary.failures)+
+  L" controlFrame="+std::to_wstring(input.controlFrame)+
+  L" sampleFrame="+std::to_wstring(input.sampleFrame)+
+  L" frameLag="+std::to_wstring(summary.lastFrameLag)+
+  L" maxFrameLag="+std::to_wstring(summary.maxFrameLag)+
+  L" publishObservedAgoMs="+std::to_wstring(summary.lastPublicationObservedAgoMs)+
+  L" lastPages="+std::to_wstring(summary.lastPages)+
+  L" lastReads="+std::to_wstring(summary.lastReads)+
+  L" lastBytes="+std::to_wstring(summary.lastBytes)+
+  L" lastIsBoundaryOnly="+std::to_wstring(summary.sampleEverSeen&&summary.lastPages==0)+
+  L" observedCallbacks="+std::to_wstring(summary.observations)+
+  L" controlPeakUs="+std::to_wstring(summary.controlPeakUs)+
+  L" scanPeakUs="+std::to_wstring(summary.scanPeakUs)+
+  L" worldPeakUs="+std::to_wstring(summary.worldPeakUs)+
+  L" controlOver16667Us="+std::to_wstring(summary.controlOver16msSamples)+
+  L" starved="+std::to_wstring(summary.starved)+
+  L" failureReason=not-exposed-by-current-ipc");
+}
 static void logBridgeHealth(bool force=false){
+ // Independent five-second interval, even when bridge-health logs more often
+ // for command changes. File I/O happens on this Host caller only.
+ logSamplingHealth(GetTickCount());
  static DWORD loggedAt=0,previousPid=0;static LONG previousStage=0;static DWORD previousError=0,previousFault=0;static int previousStatus=0;
  static bool previousData=false,previousSubscribed=false,previousHostEnabled=false;static uint32_t previousMatch=0;
  static int previousCS=0;static uint32_t previousQueued=0,previousRejected=0;
