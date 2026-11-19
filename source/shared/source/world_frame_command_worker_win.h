@@ -16,7 +16,7 @@ namespace worldframe {
 class CommandCaptureWorker {
  static constexpr unsigned MaxCalls=8192;
  static constexpr size_t MaxBytes=64u*1024u*1024u;
- static constexpr DWORD MaxWorkMs=120,MaxHandoffMs=80;
+ static constexpr DWORD MaxWorkMs=120,MaxHandoffMs=80,MaxCandidateAgeMs=500;
  struct Work {Key key{};uint32_t demand=Base,epoch=0,ticket=0;uint64_t requestRevision=0;bool globalVehicles=false;std::vector<uint32_t>pages;};
  std::mutex gate_;
  std::atomic<uint32_t>epoch_{1},latestTicket_{1};
@@ -29,7 +29,7 @@ class CommandCaptureWorker {
  CaptureScratch scratch_;
  Key completedKey_{};
  uint32_t completedDemand_=0,completedEpoch_=0;uint64_t completedRevision_=0;
- bool queuedReady_=false,completedReady_=false;
+ bool queuedReady_=false,completedReady_=false,completedExact_=false;
  DWORD lastRequestedAt_=0;
  Key lastRequestedKey_{};
  uint32_t lastRequestedDemand_=0;uint64_t lastRequestedRevision_=0;bool lastRequestedGlobal_=false;
@@ -82,26 +82,29 @@ class CommandCaptureWorker {
    // Equivalent ascending page set, O(4N), retained worker-only buffer.
    sortUniquePageAddresses(job.pages,self->scratch_.warmSortScratch);
    const DWORD began=GetTickCount();unsigned calls=0;size_t bytes=0;
-   // A graph already beyond its admission deadline cannot be command
-   // authority. Do not spend another 120ms scanning expired pages.
-   if(uint32_t(began-job.key.tick)>MaxHandoffMs){++self->rejected_;continue;}
+   // A worker started after its 80ms strict command deadline may still
+   // produce a useful *candidate* world index. Do not throw the whole graph
+   // away merely because the game frame advanced while the worker was busy.
+   if(uint32_t(began-job.key.tick)>MaxCandidateAgeMs){++self->rejected_;continue;}
    const Key before=currentKey(job.key);
-   if(!before.pid||!before.sameFrame(job.key)){++self->rejected_;continue;}
-   self->staging_.reset(job.key);
+   if(!before.pid||!before.sameWorld(job.key)){++self->rejected_;continue;}
+   self->staging_.reset(before);
    const auto checkedRead=[&](uint32_t at,void*out,size_t n){
     if(self->stopping_.load(std::memory_order_acquire)||
        job.epoch!=self->epoch_.load(std::memory_order_acquire)||
        job.ticket!=self->latestTicket_.load(std::memory_order_acquire)||
        uint32_t(GetTickCount()-began)>MaxWorkMs||
-       uint32_t(GetTickCount()-job.key.tick)>MaxHandoffMs||calls>=MaxCalls||
+       calls>=MaxCalls||
        n>MaxBytes-bytes)return false;
     ++calls;bytes+=n;return live(at,out,n);
    };
    CaptureGraph<decltype(checkedRead)>graph(self->staging_,checkedRead,self->scratch_);
    const bool complete=graph.capture(job.demand,job.pages);
    const Key after=currentKey(job.key);
-   const bool stable=before.sameFrame(after)&&after.sameFrame(job.key)&&
+   const bool stable=before.sameWorld(after)&&before.frame<=after.frame&&
        uint32_t(after.tick-began)<=MaxWorkMs;
+   const bool exact=stable&&before.sameFrame(job.key)&&before.sameFrame(after)&&
+       uint32_t(after.tick-job.key.tick)<=MaxHandoffMs;
    const bool sealed=self->staging_.seal();
    if(!complete||!stable||!sealed||self->staging_.overflow()||
       job.epoch!=self->epoch_.load(std::memory_order_acquire)||
@@ -112,7 +115,7 @@ class CommandCaptureWorker {
    // unreadable roster is UNKNOWN, not an empty world or an owned actor.
    if(!self->stagingRoster_.build(self->staging_,job.globalVehicles,
                                   self->scratch_.list)||
-      uint32_t(GetTickCount()-job.key.tick)>MaxHandoffMs){
+      uint32_t(GetTickCount()-before.tick)>MaxWorkMs){
     ++self->rejected_;continue;
    }
    {
@@ -122,8 +125,9 @@ class CommandCaptureWorker {
        self->stopping_.load(std::memory_order_acquire))continue;
     self->staging_.swap(self->completed_); // page ownership, not page copies
     self->stagingRoster_.swap(self->completedRoster_); // hash owner swap, no 16K rehash
-    self->completedKey_=job.key;self->completedDemand_=job.demand;
-    self->completedEpoch_=job.epoch;self->completedRevision_=job.requestRevision;self->completedReady_=true;
+    self->completedKey_=before;self->completedDemand_=job.demand;
+    self->completedEpoch_=job.epoch;self->completedRevision_=job.requestRevision;
+    self->completedExact_=exact;self->completedReady_=true;
    }
   }
   // Every Snapshot/worker field lives until the Runtime acknowledges exit.
@@ -176,7 +180,7 @@ public:
   const bool outstanding=queuedReady_||capturing_.load(std::memory_order_acquire);
   return coalesceInFlightWorld(lastRequestedKey_,key,lastRequestedDemand_,demand,
       lastRequestedRevision_,revision,lastRequestedGlobal_,globalVehicles,
-      uint32_t(GetTickCount()-lastRequestedAt_),outstanding,MaxHandoffMs);
+      uint32_t(GetTickCount()-lastRequestedAt_),outstanding,MaxWorkMs);
  }
  bool request(const Key&key,uint32_t demand,uint64_t revision,const std::vector<uint32_t>&pages,bool globalVehicles=false){
   if(!key.pid||!key.owner||!key.match||key.house<0x10000||
@@ -197,7 +201,12 @@ public:
   const bool outstanding=queuedReady_||capturing_.load(std::memory_order_acquire);
   if(coalesceInFlightWorld(lastRequestedKey_,key,lastRequestedDemand_,demand,
      lastRequestedRevision_,revision,lastRequestedGlobal_,globalVehicles,
-     uint32_t(now-lastRequestedAt_),outstanding,MaxHandoffMs))return true;
+     uint32_t(now-lastRequestedAt_),outstanding,MaxWorkMs))return true;
+  // Do not continuously cancel a full-world read after each 16ms game tick.
+  // A same-world in-flight scan is allowed to finish into a candidate.
+  if(capturing_.load(std::memory_order_acquire)&&
+     lastRequestedKey_.sameWorld(key)&&lastRequestedDemand_==demand&&
+     lastRequestedRevision_==revision&&lastRequestedGlobal_==globalVehicles)return true;
   if(!launch())return false;
   // A changed world/demand/revision/global bit supersedes the running ticket.
   const bool same=lastRequestedKey_.sameFrame(key)&&
@@ -217,9 +226,12 @@ public:
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
   if(!lock.owns_lock()||!completedReady_)return false;
   if(completedEpoch_!=epoch_.load(std::memory_order_acquire)||
+     !completedExact_||
      !acceptCommandCapture(completedKey_,current,completedDemand_,demand,
                            completedRevision_,revision,GetTickCount(),MaxHandoffMs)){
-   completedReady_=false;++rejected_;return false;
+   // The completed immutable graph may still be an observational candidate.
+   // Do not discard it here; takeObservation() has its own provenance test.
+   return false;
   }
   // A second same-frame request cannot reuse an already taken sample:
   // completed_ now holds only the previous game thread's owned storage.
@@ -231,6 +243,25 @@ public:
   }
   into.swap(completed_);
   if(roster)roster->swap(completedRoster_);
+  completedReady_=false;++accepted_;return true;
+ }
+ // Returns a candidate only; this API MUST NOT be used as EventClass
+ // authority. A candidate can contain pages sampled across frame boundaries.
+ // The dispatcher may use its UID index for discovery, with mandatory live
+ // per-object validation at the native submission gateway.
+ bool takeObservation(const Key&current,uint32_t requiredDemand,
+                      Snapshot&into,CommandRoster&roster,bool globalVehicles=false){
+  std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
+  if(!lock.owns_lock()||!completedReady_)return false;
+  if(completedEpoch_!=epoch_.load(std::memory_order_acquire)||
+     !acceptObservationCandidate(completedKey_,current,completedDemand_,
+                                  requiredDemand,GetTickCount(),MaxCandidateAgeMs)||
+     completedRoster_.global!=globalVehicles||
+     !completedRoster_.current(completedKey_)){
+   completedReady_=false;++rejected_;return false;
+  }
+  into.swap(completed_);
+  roster.swap(completedRoster_);
   completedReady_=false;++accepted_;return true;
  }
  void invalidate(){
