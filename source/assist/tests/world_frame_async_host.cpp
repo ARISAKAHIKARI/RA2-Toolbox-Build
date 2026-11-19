@@ -4,11 +4,26 @@
 #include <cassert>
 #include <cstdio>
 #include <cwchar>
+#include <cstring>
 using Start=int(__cdecl*)(HANDLE);using Fn=int(__cdecl*)();
 static void until(Fn fn,int expected){const DWORD begin=GetTickCount();for(;;){const int value=fn();assert(value>=0);if(value==expected)return;assert(GetTickCount()-begin<5000);Sleep(1);}}
 int main(int argc,char**argv){
- assert(argc==2);SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);std::setvbuf(stdout,nullptr,_IONBF,0);
+ assert(argc==2||(argc==3&&!std::strcmp(argv[2],"async")));
+ SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);std::setvbuf(stdout,nullptr,_IONBF,0);
  HANDLE gate=CreateEventW(nullptr,TRUE,FALSE,nullptr);assert(gate);HMODULE module=LoadLibraryA(argv[1]);assert(module);
+ if(argc==3){
+  // This is the real production captureWorldFrame entry with the default-on
+  // Win32 command worker. The separate no-async mode still tests the pinned
+  // publisher and read-only recovery contracts below.
+  auto workerStart=(Fn)GetProcAddress(module,"AsyncStart");
+  auto workerPoll=(Fn)GetProcAddress(module,"AsyncPoll");
+  auto workerStop=(Fn)GetProcAddress(module,"AsyncStop");
+  assert(workerStart&&workerPoll&&workerStop);
+  assert(workerStart()==1);until(workerPoll,1);until(workerStop,1);
+  assert(FreeLibrary(module));CloseHandle(gate);
+  std::puts("PASS default-on Win32 Runtime captureWorldFrame x86/x64: nonblocking request, sealed same-frame worker adoption, native roster and pinned shutdown");
+  return 0;
+ }
  auto start=(Start)GetProcAddress(module,"Start");auto entered=(Fn)GetProcAddress(module,"Entered");auto advance=(Fn)GetProcAddress(module,"Advance");auto latest=(Fn)GetProcAddress(module,"ReadLatest");auto stop=(Fn)GetProcAddress(module,"Stop");auto resume=(Fn)GetProcAddress(module,"Resume");auto idle=(Fn)GetProcAddress(module,"Idle");
  auto probeBegin=(Fn)GetProcAddress(module,"ProbeBegin");
  auto probeReady=(Fn)GetProcAddress(module,"ProbeReady");
