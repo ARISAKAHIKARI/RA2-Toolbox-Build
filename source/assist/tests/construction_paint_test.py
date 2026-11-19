@@ -82,11 +82,13 @@ static unsigned invalidations=0;static void InvalidateRect(HWND,void*,int){++inv
 #include "construction_buffer.h"
 static Window gameObject,panelObject;static HWND game=&gameObject,window=&panelObject;
 static construction::Layout layout;static construction::PanelBuffer panelBuffer,panelSpare;static construction::Layout paintedLayout;static bool paintReady=false;
-static bool geometryReady=true;static int activeTab=0,selectedTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static HFONT panelFont=&testFont,font=&testFont;
+static bool geometryReady=true;static int activeTab=0,selectedTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1,choiceSourceTab=0;static uint32_t refreshed=0;static HFONT panelFont=&testFont,font=&testFont;
 static construction::Book books[4];struct Choice{int slot,index,tab;uint32_t type;bool future;};static std::vector<Choice> choices;
 namespace assist{struct Type{char id[24]{};uint16_t name[40]{};int kind=7,index=0,naval=0,cost=0;};}
 static struct{int typeCount=8;assist::Type types[8];}snap;
-static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}static void refreshChoices(){}
+static int encode(int kind,int index){return kind==7?index:(kind<<16)|index;}
+static unsigned refreshCalls=0,policyClears=0;static void refreshChoices(){++refreshCalls;}
+static void publishReservationPolicy(std::initializer_list<int>){++policyClears;}
 static int lastReservation=-1;static unsigned reservationCalls=0;
 static bool usable(){return true;}static void removeTop(bool){}static void removeItem(int,int,bool){}static void reserve(int index){lastReservation=index;++reservationCalls;}
 
@@ -129,10 +131,36 @@ int main(){
  // raster, bitmap allocation or layer reordering while the content is stable.
  for(int i=0;i<1000;++i){now+=100;requestPaint();pumpPaint();resizePanel();paint();}
  assert(paintWorker.submitted==submissions&&positions==1&&allocations==1&&visible.pixels==first);
+ // A header click cannot make hundreds of synchronous catalogue/reader
+ // calls on the window thread. It only marks a refresh for the next service
+ // tick, invalidates native policy, and closes the old hit-map immediately.
+ const unsigned stableRefresh=refreshCalls,stablePolicy=policyClears;
+ const int navY=paintedLayout.pointY(12);
+ proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(paintedLayout.width()*5/8)|(uint32_t(navY)<<16)));
+ assert(activeTab==2&&selectedTab==2&&refreshed==0&&refreshCalls==stableRefresh);
+ assert(policyClears==stablePolicy+1&&paintWorker.submitted==submissions&&!panelInputReady());
+ requestPaint();assert(paintWorker.submitted==submissions); // no stale-tab raster
+ const unsigned blockedReservations=reservationCalls;
+ proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(layout.x(36))|(uint32_t(layout.pointY(layout.headerHeight()+33))<<16)));
+ assert(reservationCalls==blockedReservations);
+ proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(paintedLayout.width()/8)|(uint32_t(navY)<<16)));
+ assert(activeTab==0&&panelInputReady()&&refreshCalls==stableRefresh);
  // A changed tab/scroll/queue cannot erase the old frame; input closes until
  // the new complete pixels and geometry have both been promoted.
- activeTab=1;books[1].items={2};layout.content(1,8);requestPaint();assert(!panelInputReady());paint();assert(visible.pixels==first&&positions==1);
- complete(0xff654321);pumpPaint();assert(panelInputReady()&&positions==2);paint();assert(visible.pixels!=first);
+ activeTab=1;choiceSourceTab=1;books[1].items={2};layout.content(1,8);requestPaint();assert(!panelInputReady());paint();assert(visible.pixels==first&&positions==1);
+ // Header clicks navigate using the LAST committed layout while candidate
+ // raster for the previous tab is pending. Neither pending tab can accept a
+ // production-icon click before its new pixels and hit map are promoted.
+ const unsigned beforeReservations=reservationCalls;
+ const int headerX=paintedLayout.width()*5/8,headerY=paintedLayout.pointY(12);
+ proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(headerX)|(uint32_t(headerY)<<16)));
+ assert(activeTab==2&&selectedTab==2&&!panelInputReady());
+ proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(layout.x(36))|(uint32_t(layout.pointY(layout.headerHeight()+33))<<16)));
+ assert(reservationCalls==beforeReservations);
+ // Rapid superseding navigation is also legal before the old raster finishes.
+ proc(window,WM_LBUTTONUP,0,LPARAM(uint32_t(paintedLayout.width()*3/8)|(uint32_t(headerY)<<16)));
+ assert(activeTab==1&&selectedTab==1);
+ requestPaint();complete(0xff654321);pumpPaint();assert(panelInputReady()&&positions==2);paint();assert(visible.pixels!=first);
  fail=9;assert(!panelInputReady());fail=0;assert(panelInputReady());
  auto before=visible.pixels;int beforePositions=positions;scroll=2;requestPaint();paint();assert(visible.pixels==before&&!panelInputReady());
  // GDI target/DC/bitmap/selection/upload/flush failures are transactional.
@@ -153,7 +181,7 @@ int main(){
 
  // A stationary screen point keeps selecting the first choice after every
  // complete queue promotion. Pending pixels never admit the new input map.
- activeTab=selectedTab=scroll=0;POINT fixed{};bool firstQueue=true;
+ activeTab=selectedTab=scroll=choiceSourceTab=0;POINT fixed{};bool firstQueue=true;
  for(int count:{0,1,2,3,4,5,32,128,4,1,0}){
   books[0].items.assign(count,0);layout.content(count,int(choices.size()));requestPaint();
   assert(!panelInputReady());unsigned calls=reservationCalls;

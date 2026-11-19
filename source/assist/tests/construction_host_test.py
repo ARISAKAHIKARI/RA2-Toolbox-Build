@@ -94,7 +94,75 @@ static void tick(int ms=110,bool advance=true){now+=ms;if(advance)w(0xA8ED84,bui
 static void place(){byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,3);for(int i=0;i<3;++i){w(0x87F7E8+0x1544+88+i*52,i);w(0x87F7E8+0x1544+92+i*52,7);}tick();assert(commandQueue.size==0);tick();}
 int main(){
  using namespace buildreserve;
+ // Candidate slot reuse must be equivalent to the original index lookup,
+ // including a mismatching/stale supplied slot (which must fall back).
+ setup();techMode=true;extra.techEnhance=true;extra.techEnhanceImplementation=1;
+ for(int slot=0;slot<snap.typeCount;++slot){
+  const int index=encode(snap.types[slot].kind,snap.types[slot].index);
+  const auto original=technologyRequested(index),known=technologyRequested(index,slot);
+  assert(original.full==known.full&&original.exact==known.exact&&
+         original.compareLevel==known.compareLevel&&original.index==known.index);
+  const auto stale=technologyRequested(index,(slot+1)%snap.typeCount);
+  assert(stale.full==original.full&&stale.exact==original.exact&&
+         stale.compareLevel==original.compareLevel&&stale.index==original.index);
+ }
+ // The real Catalogue producer check must scan owned buildings only once per
+ // phase, even when 100+ unit candidates ask the same eligibility question.
+ // Forecast append changes the producer set; native ownership does not.
+ setup();
+ const uint32_t unitType=T+0x6000,ownedItems=0x940000;
+ list(0xA8E348,{int(unitType)});
+ w(unitType+0x634,1);w(unitType+0x6CC,1);w(unitType+0xDA0,-1);w(unitType+0xDA4,-1);
+ list(unitType+0x638,{});list(unitType+0x654,{});
+ w(H+0x5550+4,ownedItems);w(H+0x5550+8,3);w(ownedItems,1);
+ w(T+0xEB8,16);w(T+0x2000+0xEB8,40);
+ int producerProbes=0;
+ auto producerRead=[&](uint32_t address,void*out,size_t size){
+  if(size==4&&(address==T+0xEB8||address==T+0x2000+0xEB8))++producerProbes;
+  return externalReader.readLive(address,out,size);
+ };
+ construction::Catalogue<decltype(producerRead)> producerCat(producerRead,true);
+ assert(producerCat.load(H,{}));
+ assert(producerCat.possible(unitType,16,false,true));
+ const int firstProducerScan=producerProbes;
+ assert(firstProducerScan>=1);
+ for(int n=0;n<128;++n)assert(producerCat.possible(unitType,16,false,true));
+ assert(producerProbes==firstProducerScan);
+ assert(!producerCat.possible(unitType,16,true,true));
+ assert(!producerCat.possible(unitType,40,false,true));
+ assert(producerCat.append(1));
+ assert(producerCat.possible(unitType,40,false,true));
+ assert(!producerCat.possible(unitType,40,false,false));
+ const int refreshedProducerScan=producerProbes;
+ for(int n=0;n<128;++n)assert(producerCat.possible(unitType,40,false,true));
+ assert(producerProbes==refreshedProducerScan);
+ w(ownedItems+4,1);assert(producerCat.load(H,{}));
+ assert(producerCat.possible(unitType,40,false,false));
+ // A live catalogue is intentionally not memoized. Its producer definition
+ // may change between successive reads without a new catalogue.load().
+ construction::Catalogue<decltype(producerRead)> mutableCat(producerRead);
+ assert(mutableCat.load(H,{}));assert(mutableCat.possible(unitType,16,false,true));
+ w(T+0xEB8,99);assert(!mutableCat.possible(unitType,16,false,true));
+ w(T+0xEB8,16);assert(mutableCat.possible(unitType,16,false,true));
+ std::cout<<"PASS producer mask: cached sealed candidate checks, forecast/ownership reload; mutable live producer change is always visible\\n";
  setup();w(F+0x24,54);tick();assert(choice(0)>=0);reserve(choice(0));assert(books[0].items==std::vector<int>({0})&&commandQueue.size==0);
+ // UI responsiveness: native page switch and changing the complete
+ // sidebar cameo count must bypass the 100ms stable-catalogue throttle.
+ setup();assert(activeTab==0&&choice(1)>=0);
+ w(0x87F7E8+0x539C,1);tick(1);assert(activeTab==1);
+ w(0x87F7E8+0x539C,0);tick(1);assert(activeTab==0&&choice(1)>=0);
+ const uint32_t freshStrip=0x87F7E8+0x1544;
+ w(freshStrip+84,2);w(freshStrip+88+52,1);w(freshStrip+92+52,7);
+ tick(1);assert(choice(1)<0); // Tech now in original sidebar: hide immediately.
+ w(freshStrip+84,1);tick(1);assert(choice(1)>=0); // Tech became future again.
+ // An incomplete sample keeps the SAME tab's previous valid preview, and
+ // retry cadence is 32ms rather than another 100ms per missing-page round.
+ externalReader.fail=T+0x2000+0x638+16;
+ w(freshStrip+84,2);w(freshStrip+88+52,1);w(freshStrip+92+52,7);
+ tick(1);assert(choicesIncomplete&&choice(1)>=0);
+ externalReader.fail=0;tick(31);assert(choicesIncomplete&&choice(1)>=0);
+ tick(1);assert(!choicesIncomplete&&choice(1)<0);
+ std::cout<<"PASS native tab switch and live tech sidebar add/remove within 1ms simulation, missing-page retention and 32ms retry\n";
  setup();nativekeyhost::bindings.keys[nativekeys::Infantry][0]='I';nativekeyhost::keys['I']=1;tick();assert(activeTab==2&&get<int>(0x87F7E8+0x539C)==0);nativekeyhost::keys['I']=0;tick();assert(activeTab==2);snap.chat=1;nativekeyhost::keys['I']=1;tick();snap.chat=0;nativekeyhost::keys['I']=0;nativekeyhost::bindings={};
 
  setup();assert(choice(0)<0&&choice(1)>=0&&choice(2)<0);assert(choices[choice(1)].future);assert(layout.width()==216&&layout.x(60)==90&&layout.y(48)==72);
