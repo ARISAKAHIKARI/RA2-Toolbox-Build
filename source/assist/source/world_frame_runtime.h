@@ -109,7 +109,7 @@ static void requestWorldRange(uint32_t at,size_t n){
 // The worker can deliver a complete observational graph after the game
 // frame advanced. Only read-only planners explicitly opting in may consume
 // its sealed bytes, and no native EventClass is ever issued within a scope.
-#if defined(WORLD_FRAME_PLATFORM_FIXTURE) || defined(WORLD_FRAME_FIXTURE_ONLY)
+#if defined(WORLD_FRAME_PLATFORM_FIXTURE) || (defined(WORLD_FRAME_FIXTURE_ONLY) && !defined(WORLD_FRAME_TEST_CANDIDATES))
 // Legacy transport fixtures have no background command worker and no
 // Host/House runtime metadata. Their original strict-snapshot behavior is
 // intentionally unchanged; native Win32 tests cover real worker candidates.
