@@ -1171,9 +1171,12 @@ static int collectRepairs(uint32_t house,DWORD now,bool refresh=false){
  if(repairCalculationPending&&!refresh)return -6;
  bool internal=compute::inside(sh->computeApplied,compute::Repair);
  static compute::RepairInput candidate;static std::array<uint32_t,8192> candidates;int count=0;
- SampleReadScope source;if(!source)return -6;
+ // Pure repair candidate collection can use an already sealed background
+ // observation; the later checkedRepairAdmission still verifies native UID,
+ // owner, health, repairability and repair mission in the game thread.
+ ObservationReadScope source;if(!source)return -6;
  Vec v{};if(!sampleRoster(0xA8EB40,v))return -6;
- candidate.match=match;candidate.tick=now;candidate.frame=worldFrame.key.frame;candidate.count=0;
+ candidate.match=match;candidate.tick=now;candidate.frame=(sampleWorldSource?sampleWorldSource:&worldFrame)->key.frame;candidate.count=0;
  for(int i=0;i<v.count&&count<8192;++i){uint32_t p=item(v,i);if(!p||!own(p,house))continue;uint32_t t=typeOf(p,3),id=get<uint32_t>(p+0x10);
   if(!t||!featureTypeAllowed(featuretypes::RepairBuilding,t)||(!(sh->flags&RepairUnrepairable)&&!get<uint8_t>(t+0x157A)))continue;
   decisions::RepairView view{get<int>(p+0x6C),get<int>(t+0xA0),true,get<bool>(p+0x6E8),pendingRepairs.contains(id,p)};
