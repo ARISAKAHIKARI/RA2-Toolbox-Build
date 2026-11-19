@@ -172,10 +172,37 @@ public:
 class ObservationReadScope:public SampleReadScope {
 public: ObservationReadScope():SampleReadScope(true){}
 };
+// Copy worker atomics to fixed-size IPC at 4 Hz. No native memory reads,
+ // allocations, locks, file I/O or world traversal occur here.
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+static void publishSamplingWorkerDiagnostics(uint32_t now){
+ static uint32_t publishedAt=0;
+ if(!sh||!worldFrameCommandWorker.enabled()||
+    (publishedAt&&uint32_t(now-publishedAt)<250))return;
+ publishedAt=now;
+ const auto d=worldFrameCommandWorker.diagnostics();
+ auto&v=sh->sampling;
+ v.workerStarted=d.started;v.workerPublished=d.published;
+ v.workerExact=d.exact;v.workerCandidate=d.candidate;
+ v.workerStale=d.stale;v.workerWorldChanged=d.worldChanged;
+ v.workerBudget=d.budget;v.workerRosterFailed=d.rosterFailed;
+ v.workerGraphIncomplete=d.incomplete;v.workerRejected=d.rejected;
+ v.workerLastDurationMs=d.lastDurationMs;v.workerMaxDurationMs=d.maxDurationMs;
+ v.workerLastCalls=d.lastCalls;v.workerLastBytes=d.lastBytes;
+ v.workerLastPages=d.lastPages;
+ v.workerFirstFrame=d.firstFrame;v.workerLastFrame=d.lastFrame;
+}
+#endif
 static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
  const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
  const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled();
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+ if(sh){
+  ++sh->sampling.captureCalls;
+  if(asyncCommand)publishSamplingWorkerDiagnostics(GetTickCount());
+ }
+#endif
  bool globalVehicles=false;
 #ifndef WORLD_FRAME_PLATFORM_FIXTURE
  if(asyncCommand)globalVehicles=sh&&sh->magnetronGlobal;
@@ -242,6 +269,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
     worldFrameCapturedRevision=(uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
     worldFrameBoundaryOnly=false;worldFrameReady=true;
     worldFramePublication.publish(worldFrame,worldFrameServer);
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+    if(sh)++sh->sampling.strictAdopted;
+#endif
     if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;
      sh->worldSamplePages=uint32_t(worldFrame.pages.size());
      sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;
@@ -250,6 +280,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
     return true;
    }
    worldFrameServer.retire();worldFrameCommandWorker.invalidate();
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+   if(sh)++sh->sampling.strictWorldRejected;
+#endif
    if(sh)++sh->worldSampleFailures;
   }
   // A worker may have completed after the simulation frame advanced.
@@ -259,15 +292,28 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
                                              worldFrameCandidateRoster,globalVehicles)){
    worldFrameCandidateAvailable=true;
    if(!++worldFrameCandidateVersion)++worldFrameCandidateVersion;
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+   if(sh)++sh->sampling.candidateAdopted;
+#endif
   }
   worldFrameReady=false;worldFrameBoundaryOnly=false;
   // Always poll take() first. An identical pending request skips expensive
   // page-list assembly, but paused-frame recovery retries after 16ms.
-  if(commandRequestGate.defer(key,graphDemand,requestRevision,globalVehicles,key.tick))return false;
+  if(commandRequestGate.defer(key,graphDemand,requestRevision,globalVehicles,key.tick)){
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+   if(sh)++sh->sampling.gateDeferred;
+#endif
+   return false;
+  }
   // A matching in-flight worker already owns this request; avoid rebuilding
   // even the 16K-page dependency list on the Game callback.
   // take() above still rejects every stale / previous-frame result.
-  if(worldFrameCommandWorker.deferBusy(key,graphDemand,requestRevision,globalVehicles))return false;
+  if(worldFrameCommandWorker.deferBusy(key,graphDemand,requestRevision,globalVehicles)){
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+   if(sh)++sh->sampling.workerDeferred;
+#endif
+   return false;
+  }
   // Only address dependencies are copied on the game thread (bounded by
   // MaxPages); sorting, page I/O and all unit graph traversal are background.
   auto&requests=worldFrameCaptureRequests;
@@ -282,8 +328,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // take() will still reject the result if the demand changes again.
   const uint64_t assembledRevision=
       (uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
-  if(worldFrameCommandWorker.request(key,graphDemand,assembledRevision,requests,globalVehicles))
+  if(worldFrameCommandWorker.request(key,graphDemand,assembledRevision,requests,globalVehicles)){
    commandRequestGate.submitted(key,graphDemand,assembledRevision,globalVehicles);
+#if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
+   if(sh)++sh->sampling.requestsQueued;
+#endif
+  }
   return false;
  }
  if(!worldFramePublication.begin(worldFrame))return false;
