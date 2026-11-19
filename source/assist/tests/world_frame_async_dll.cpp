@@ -8,6 +8,8 @@
 static HANDLE gate=nullptr;static DWORD gameThread=0;
 static std::atomic<bool>blockNext{true},entered{false};
 static std::atomic<DWORD>backgroundReadThread{0};
+static HANDLE commandGate=nullptr;
+static std::atomic<bool>holdCommandRead{false},enteredCommandRead{false};
 static unsigned threadStarts=0;
 static void*recoveryMemory=nullptr;
 // Shadow test models native game memory by its x86 addresses; the callback
@@ -25,7 +27,16 @@ static HANDLE WINAPI delayedMapping(HANDLE file,LPSECURITY_ATTRIBUTES security,D
  return CreateFileMappingW(file,security,protect,high,low,name);
 }
 static BOOL WINAPI auditedNativeRead(HANDLE proc,LPCVOID address,LPVOID output,SIZE_T size,SIZE_T*got){
- if(GetCurrentThreadId()!=gameThread)backgroundReadThread.store(GetCurrentThreadId(),std::memory_order_release);
+ if(GetCurrentThreadId()!=gameThread){
+  backgroundReadThread.store(GetCurrentThreadId(),std::memory_order_release);
+  if(holdCommandRead.exchange(false,std::memory_order_acq_rel)){
+   enteredCommandRead.store(true,std::memory_order_release);
+   if(!commandGate||WaitForSingleObject(commandGate,5000)!=WAIT_OBJECT_0){
+    if(got)*got=0;
+    return FALSE;
+   }
+  }
+ }
  const uintptr_t at=uintptr_t(address);
  if(shadowImage&&at>=0x10000&&at<=shadowImageSize&&size<=shadowImageSize-at){
   std::memcpy(output,shadowImage+at,size);if(got)*got=size;return TRUE;
@@ -220,4 +231,47 @@ extern "C" __declspec(dllexport) int AsyncStop(){
  const bool published=worldFramePublication.stop();
  const bool shadow=worldFrameShadow.stop();
  return command&&published&&shadow?1:0;
+}
+
+extern "C" __declspec(dllexport) int AsyncCandidateStart(HANDLE waitGate){
+ if(!waitGate)return -1;
+ commandGate=waitGate;
+ ResetEvent(commandGate);
+ enteredCommandRead.store(false,std::memory_order_release);
+ holdCommandRead.store(true,std::memory_order_release);
+ const int started=AsyncStart();
+ if(started!=1)holdCommandRead.store(false,std::memory_order_release);
+ return started;
+}
+extern "C" __declspec(dllexport) int AsyncCandidateEntered(){
+ return enteredCommandRead.load(std::memory_order_acquire)?1:0;
+}
+extern "C" __declspec(dllexport) int AsyncCandidateAdvance(){
+ using namespace assist;
+ if(!enteredCommandRead.load(std::memory_order_acquire))return -1;
+ if(worldFrameReady||worldFrameCandidateAvailable)return -2;
+ // Game continues while the 1st full-graph RPM is deliberately suspended.
+ // All mutating writes here are in the synthetic game process, never Host.
+ memory.put(0xA8ED84,int(51));
+ snap.frame=51;
+ return 1;
+}
+extern "C" __declspec(dllexport) int AsyncCandidatePoll(){
+ using namespace assist;
+ fixture::Read live{&memory};
+ if(snap.frame!=51)return -1;
+ captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base);
+ if(!worldFrameCandidateAvailable)return 0;
+ int hp=0;
+ // The frame-50 ticket cannot become frame-51 native EventClass authority.
+ // Candidate bytes are sealed and identity roster owns the matching key.
+ if(!worldFrameCandidate.sealed()||worldFrameCandidate.overflow()||
+    !worldFrameCandidateRoster.current(worldFrameCandidate.key)||
+    !worldFrameCandidateRoster.objects||
+    worldFrameCandidateRoster.objects->byId(fixture::ActorA+5)!=fixture::ActorA||
+    !worldFrameCandidate.read(fixture::ActorA+0x6C,&hp,4)||hp!=100||
+    !worldFrameCommandWorker.enabled()||
+    !backgroundReadThread.load(std::memory_order_acquire)||
+    backgroundReadThread.load(std::memory_order_acquire)==gameThread)return -2;
+ return 1;
 }
