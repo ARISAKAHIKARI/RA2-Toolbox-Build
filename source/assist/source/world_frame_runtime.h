@@ -109,6 +109,12 @@ static void requestWorldRange(uint32_t at,size_t n){
 // The worker can deliver a complete observational graph after the game
 // frame advanced. Only read-only planners explicitly opting in may consume
 // its sealed bytes, and no native EventClass is ever issued within a scope.
+#ifdef WORLD_FRAME_PLATFORM_FIXTURE
+// Legacy transport fixtures have no background command worker and no
+// Host/House runtime metadata. Their original strict-snapshot behavior is
+// intentionally unchanged; native Win32 tests cover real worker candidates.
+static bool observationalFrameReady(){return false;}
+#else
 static bool observationalFrameReady(){
  if(!worldFrameCandidateAvailable||!sh||!worldFrameCandidate.sealed()||
     worldFrameCandidate.overflow()||!worldFrameCandidateRoster.objects||
@@ -126,6 +132,7 @@ static bool observationalFrameReady(){
  return worldframe::acceptObservationCandidate(worldFrameCandidate.key,now,
           worldframe::Base,worldframe::Base,GetTickCount(),150);
 }
+#endif
 static bool readWorldSample(uint32_t at,void*out,size_t n){
  requestWorldRange(at,n); // Keep successful consumer dependencies subscribed.
  const auto*source=sampleWorldSource?sampleWorldSource:&worldFrame;
