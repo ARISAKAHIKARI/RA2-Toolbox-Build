@@ -2,6 +2,8 @@
 #include "world_frame_capture.h"
 #include "world_frame_command_policy.h"
 #include "world_frame_command_index.h"
+#include "world_frame_publication.h"
+#include "world_frame_transport.h"
 #include <windows.h>
 #include <atomic>
 #include <mutex>
@@ -40,6 +42,14 @@ class CommandCaptureWorker {
  std::atomic<uint32_t>stale_{0},worldChanged_{0},budget_{0},rosterFailed_{0},incomplete_{0};
  std::atomic<uint32_t>lastDurationMs_{0},maxDurationMs_{0},lastCalls_{0},lastBytes_{0},lastPages_{0};
  std::atomic<int32_t>lastFirstFrame_{-1},lastLastFrame_{-1};
+ // One worker also publishes sealed full graphs directly into the existing
+ // Host shared-memory transport. No 3MB copy, RPM, or page traversal occurs
+ // on the game callback. This diagnostic snapshot is acquire/release stable:
+ // publish serial is stored last, after all corresponding counters.
+ uint32_t hostSequence_=0; // worker-thread only
+ std::atomic<uint32_t>hostPublishedSerial_{0},hostPublishedPages_{0},
+                       hostPublishedCalls_{0},hostPublishedBytes_{0};
+ std::atomic<int32_t>hostPublishedFrame_{-1};
  static bool live(uint32_t address,void*out,size_t bytes){
   if(!out||!range(address,bytes))return false;
   SIZE_T got=0;
@@ -64,6 +74,10 @@ class CommandCaptureWorker {
  static DWORD WINAPI run(void*opaque){
   auto*self=static_cast<CommandCaptureWorker*>(opaque);
   SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);
+  // PublicationOnly never retires the control-side observed identity. It
+  // shares the existing double-buffer data channel with Host readers.
+  // In async mode the old exact-frame publisher does not write this channel.
+  Server hostWriter(Server::Role::PublicationOnly);
   for(;;){
    if(self->stopping_.load(std::memory_order_acquire))break;
    if(WaitForSingleObject(self->event_,50)==WAIT_FAILED)break;
@@ -138,6 +152,41 @@ class CommandCaptureWorker {
     if(!rosterBuilt)++self->rosterFailed_;
     if(overtime)++self->budget_;
     ++self->rejected_;continue;
+   }
+   // The worker has the *only* mutable ownership of staging_.pages here.
+   // Copy the already sealed, fully indexed graph directly into shared IPC
+   // on this worker. This fixes pre.6 where ~60 completed worker graphs/sec
+   // produced almost zero Host publications and starved reservation panels.
+   // The original source frame/tick is preserved; NO newer game identity is
+   // fabricated, and the observational bit cannot become native authority.
+   if(complete&&uint32_t(GetTickCount()-before.tick)<=250&&
+      !self->stopping_.load(std::memory_order_acquire)&&
+      job.epoch==self->epoch_.load(std::memory_order_acquire)&&
+      job.ticket==self->latestTicket_.load(std::memory_order_acquire)&&
+      hostWriter.wanted(job.key.owner,GetTickCount())&&
+      hostWriter.observes(before)){
+    Publication publication{};
+    publication.key=before;
+    if(!++self->hostSequence_)++self->hostSequence_;
+    publication.key.serial=self->hostSequence_;
+    publication.key.demand=ObservationOnlyKeyBit|
+       (uint32_t(job.requestRevision>>32)&~(BoundaryOnlyKeyBit|ObservationOnlyKeyBit));
+    publication.counters=self->staging_.counters;
+    publication.pages={self->staging_.pages.data(),
+                       uint32_t(self->staging_.pages.size())};
+    const bool copied=hostWriter.publish(publication,[&]{
+      return !self->stopping_.load(std::memory_order_acquire)&&
+        job.epoch==self->epoch_.load(std::memory_order_acquire)&&
+        job.ticket==self->latestTicket_.load(std::memory_order_acquire)&&
+        hostWriter.observes(before);
+    });
+    if(copied){
+     self->hostPublishedPages_.store(publication.pages.count,std::memory_order_relaxed);
+     self->hostPublishedCalls_.store(calls,std::memory_order_relaxed);
+     self->hostPublishedBytes_.store(uint32_t(bytes),std::memory_order_relaxed);
+     self->hostPublishedFrame_.store(before.frame,std::memory_order_relaxed);
+     self->hostPublishedSerial_.store(publication.key.serial,std::memory_order_release);
+    }
    }
    {
     std::lock_guard<std::mutex>lock(self->gate_);
@@ -320,6 +369,23 @@ public:
   latestTicket_.fetch_add(1,std::memory_order_acq_rel);
   lastRequestedAt_=0;lastRequestedKey_={};lastRequestedDemand_=lastRequestedRevision_=0;lastRequestedGlobal_=false;
   if(event_)SetEvent(event_);
+ }
+ struct HostPublication {
+  uint32_t serial=0,pages=0,calls=0,bytes=0;
+  int32_t frame=-1;
+ };
+ HostPublication hostPublication()const{
+  HostPublication data{};
+  for(unsigned n=0;n<2;++n){
+   const uint32_t before=hostPublishedSerial_.load(std::memory_order_acquire);
+   data.pages=hostPublishedPages_.load(std::memory_order_relaxed);
+   data.calls=hostPublishedCalls_.load(std::memory_order_relaxed);
+   data.bytes=hostPublishedBytes_.load(std::memory_order_relaxed);
+   data.frame=hostPublishedFrame_.load(std::memory_order_relaxed);
+   const uint32_t after=hostPublishedSerial_.load(std::memory_order_acquire);
+   if(before==after){data.serial=after;return data;}
+  }
+  return {};
  }
  struct Diagnostics {
   uint32_t started=0,published=0,exact=0,candidate=0;
