@@ -288,6 +288,16 @@ extern "C" __declspec(dllexport) int AsyncCandidatePoll(){
      hp!=100||!observation.complete()||
      sampleWorldSource!=&worldFrameCandidate)return -4;
  }
+ // Cross-frame worker bytes must ALSO be visible in the Host's actual
+ // double-buffer world transport. pre.6 missed this even though its local
+ // candidate and every original native worker test passed.
+ const auto host=client->acquire(match);
+ if(!host)return -6;
+ if(!worldframe::observationOnlySource(host->key)||
+    worldframe::boundaryOnlySource(host->key)||
+    host->key.frame!=50||host->key.serial==0||
+    !host->sealed()||host->pages.size()<10||
+    !host->read(fixture::ActorA+0x6C,&hp,sizeof hp)||hp!=100)return -7;
  // No old-frame result is allowed to become exact-frame event authority.
  if(worldFrameReady&&worldFrame.key.frame!=snap.frame)return -5;
  return 1;
