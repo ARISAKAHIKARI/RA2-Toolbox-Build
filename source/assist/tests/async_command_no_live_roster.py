@@ -35,7 +35,10 @@ assert runtime.index('worldFrameCommandWorker.deferBusy(key,graphDemand') < runt
 # scanning 16K dependencies and attempting a second try-lock submission.
 busy = between(worker, 'bool deferBusy(const Key&key,', '\n bool request(const Key&key,')
 assert 'std::try_to_lock' in busy
-assert 'if(!lock.owns_lock()||stopping_.load(std::memory_order_acquire))return true;' in busy
+assert 'if(!lock.owns_lock())return true;' in busy
+assert 'if(stopping_.load(std::memory_order_acquire))' in busy
+assert 'return thread_&&WaitForSingleObject(thread_,0)!=WAIT_OBJECT_0;' in busy
+assert 'if(!launch())return false;' in worker  # exited worker can relaunch
 # Candidate index is allowed across frames, but each native UID lookup
 # *outside* a sealed pure planner still checks live identity.
 candidate_gate = between(bridge, 'static bool verifyCandidateID(', 'static bool refreshWorldIndex(')
