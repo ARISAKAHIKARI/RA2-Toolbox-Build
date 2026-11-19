@@ -100,5 +100,16 @@ extern "C" __declspec(dllexport) int NeverAdmitStale(){
  if(worker.take(job,worldframe::Base,18,accepted))return -1;
  return 1;
 }
+extern "C" __declspec(dllexport) int RestartAfterStop(){
+ // Reproduce a new match after a fully joined worker. The game dispatcher
+ // probes deferBusy BEFORE assembling the next graph/request list; it must
+ // now allow relaunch rather than remaining permanently "busy/stopping".
+ gameThread=GetCurrentThreadId();fixture::setup(memory);
+ offThreadReads=0;onThreadReads=0;
+ job=fixture::key(50);job.tick=GetTickCount();job.serial=0;
+ if(worker.deferBusy(job,worldframe::Base,17))return -1;
+ if(!worker.request(job,worldframe::Base,17,{}))return -2;
+ return 1;
+}
 extern "C" __declspec(dllexport) int Stop(){return worker.stop()?1:0;}
 extern "C" __declspec(dllexport) int GameReadCount(){return int(onThreadReads.load());}
