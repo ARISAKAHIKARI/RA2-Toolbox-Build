@@ -39,6 +39,13 @@ assert "return !(length==1&&setting[0]=='0');" in worker
 assert 'worldFrameCommandWorker.enabled()' in runtime
 assert 'commandRequestGate.reset()' in runtime
 assert 'worldFrameCommandWorker.request(key,graphDemand' in runtime
+# The Host demand list is loaded with Server::requests(); that call can update
+# demandRevision. A job stamped with the earlier revision can never be taken,
+# even with identical bytes and a matching game frame.
+assert runtime.index('const auto&hostRequests=worldFrameServer.requests();') < runtime.index('const uint64_t assembledRevision=')
+assert runtime.index('const uint64_t assembledRevision=') < runtime.index('worldFrameCommandWorker.request(key,graphDemand,assembledRevision')
+assert 'commandRequestGate.submitted(key,graphDemand,assembledRevision,globalVehicles)' in runtime
+assert 'worldFrameCommandWorker.take(key,graphDemand,requestRevision' in runtime
 assert 'CaptureGraph<decltype(checkedRead)>' in worker
 # Native global magnetron admission must not scan 16K candidates on one frame.
 native_orders = (root / "native_orders_bridge.h").read_text()
