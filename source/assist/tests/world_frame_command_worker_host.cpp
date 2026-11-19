@@ -13,6 +13,7 @@ int main(int argc,char**argv){
  const Fn startGlobal=fn("StartGlobal"),pollGlobal=fn("PollGlobal");
  const Fn wrongGlobal=fn("PollWrongGlobal"),rejected=fn("RejectedCount");
  const Fn startExpired=fn("StartExpired"),workerReads=fn("WorkerReadCount");
+ const Fn startCrossFrame=fn("StartCrossFrame"),pollCrossFrame=fn("PollCrossFrame");
  const Fn stop=fn("Stop"),reads=fn("GameReadCount");
  const Fn asyncEnabled=fn("AsyncEnabled");
  // The launch-time switch is a real worker-library policy, not a mock.
@@ -46,6 +47,11 @@ int main(int argc,char**argv){
  result=0;
  for(int attempt=0;attempt<150&&!result;++attempt){Sleep(10);result=pollGlobal();}
  assert(result==1&&reads()==0);
+ assert(startCrossFrame()==1);
+ result=0;
+ for(int attempt=0;attempt<150&&!result;++attempt){Sleep(10);result=pollCrossFrame();}
+ assert(result==1&&reads()==0);
+ std::puts("PASS background graph spanning frame 50->51: candidate usable, strict current-frame order denied");
  assert(stale()==1);
  // An expired same-frame request must not waste worker CPU on a graph.
  const int priorRejected=rejected(),priorWorkerReads=workerReads();
