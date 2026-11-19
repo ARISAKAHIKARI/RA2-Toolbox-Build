@@ -103,10 +103,13 @@ class CommandCaptureWorker {
    const Key after=currentKey(job.key);
    const bool stable=before.sameWorld(after)&&before.frame<=after.frame&&
        uint32_t(after.tick-began)<=MaxWorkMs;
-   const bool exact=stable&&before.sameFrame(job.key)&&before.sameFrame(after)&&
+   // An optional combat/Host page can fail while the complete Techno UID
+   // index is still readable. Keep such a graph ONLY as an observation;
+   // incomplete graphs never pass strict native command authority.
+   const bool exact=complete&&stable&&before.sameFrame(job.key)&&before.sameFrame(after)&&
        uint32_t(after.tick-job.key.tick)<=MaxHandoffMs;
    const bool sealed=self->staging_.seal();
-   if(!complete||!stable||!sealed||self->staging_.overflow()||
+   if(!stable||!sealed||self->staging_.overflow()||
       job.epoch!=self->epoch_.load(std::memory_order_acquire)||
       job.ticket!=self->latestTicket_.load(std::memory_order_acquire)){
     ++self->rejected_;continue;
