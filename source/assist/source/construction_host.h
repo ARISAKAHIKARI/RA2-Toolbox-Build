@@ -76,8 +76,12 @@ static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentI
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
 // A requested full-technology whitelist also protects a reservation while the
 // Runtime is installing/restoring that mode. Only Runtime authorizes production.
-static construction::Technology technologyRequested(int index){
- const int slot=typeSlot(index);
+static construction::Technology technologyRequested(int index,int knownSlot=-1){
+ // The candidate loop already knows its exact type slot. Avoid a second
+ // linear scan of snap.types for every current/future eligibility check.
+ const int slot=knownSlot>=0&&knownSlot<snap.typeCount&&
+  snap.types[knownSlot].kind==absKind(index)&&snap.types[knownSlot].index==typeIndex(index)
+  ?knownSlot:typeSlot(index);
  return {techMode&&slot>=0&&slot<snap.typeCount&&techAllowed(snap.types[slot]),
   extra.techEnhance&&extra.techEnhanceImplementation==1,extra.techEnhanceCompareLevel,typeIndex(index)};
 }
@@ -129,7 +133,8 @@ static void collectChoices(){
   int tab=t.kind==7?(get<int>(type+0xE08,-1)==5?1:0):t.kind==16?2:(t.kind==40||t.kind==3)?3:-1;
   if(tab!=activeTab)continue;bool native=nativeHere(t.kind,t.index);
   bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
-  bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,technologyRequested(index))&&!catalogue.possible(type,t.kind,t.naval!=0,false,technologyRequested(index));
+  const auto tech=technologyRequested(index,slot);
+  bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,tech)&&!catalogue.possible(type,t.kind,t.naval!=0,false,tech);
   const bool busyBuilding=tab<2&&current[tab]&&get<int>(factory(tab)+0x24)==54;
   if(construction::showReservationChoice(tab,native,queued,future,busyBuilding,extra.constructionShowNativeUnits))
    choices.push_back({slot,index,tab,type,!native});
