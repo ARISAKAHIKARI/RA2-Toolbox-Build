@@ -31,6 +31,17 @@ assert 'commandRequestGate.submitted(key,graphDemand' in runtime
 assert runtime.index('commandRequestGate.defer(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
 assert 'worldFrameCommandWorker.deferBusy(key,graphDemand,requestRevision,globalVehicles)' in runtime
 assert runtime.index('worldFrameCommandWorker.deferBusy(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
+# Game-thread lock contention must defer request assembly instead of
+# scanning 16K dependencies and attempting a second try-lock submission.
+busy = between(worker, 'bool deferBusy(const Key&key,', '\n bool request(const Key&key,')
+assert 'std::try_to_lock' in busy
+assert 'if(!lock.owns_lock()||stopping_.load(std::memory_order_acquire))return true;' in busy
+# Candidate index is allowed across frames, but each native UID lookup
+# *outside* a sealed pure planner still checks live identity.
+candidate_gate = between(bridge, 'static bool verifyCandidateID(', 'static bool refreshWorldIndex(')
+assert 'readLiveWorld(pointer+0x10' in candidate_gate
+assert 'if(sampleReadDepth)' in candidate_gate
+
 assert 'coalesceInFlightWorld(lastRequestedKey_,key' in worker
 # Production defaults to nonblocking worker capture, but a launch-time
 # opt-out can restore synchronous behavior if exact-frame handoff starves.
