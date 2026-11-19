@@ -94,6 +94,18 @@ static void tick(int ms=110,bool advance=true){now+=ms;if(advance)w(0xA8ED84,bui
 static void place(){byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,3);for(int i=0;i<3;++i){w(0x87F7E8+0x1544+88+i*52,i);w(0x87F7E8+0x1544+92+i*52,7);}tick();assert(commandQueue.size==0);tick();}
 int main(){
  using namespace buildreserve;
+ // Candidate slot reuse must be equivalent to the original index lookup,
+ // including a mismatching/stale supplied slot (which must fall back).
+ setup();techMode=true;extra.techEnhance=true;extra.techEnhanceImplementation=1;
+ for(int slot=0;slot<snap.typeCount;++slot){
+  const int index=encode(snap.types[slot].kind,snap.types[slot].index);
+  const auto original=technologyRequested(index),known=technologyRequested(index,slot);
+  assert(original.full==known.full&&original.exact==known.exact&&
+         original.compareLevel==known.compareLevel&&original.index==known.index);
+  const auto stale=technologyRequested(index,(slot+1)%snap.typeCount);
+  assert(stale.full==original.full&&stale.exact==original.exact&&
+         stale.compareLevel==original.compareLevel&&stale.index==original.index);
+ }
  setup();w(F+0x24,54);tick();assert(choice(0)>=0);reserve(choice(0));assert(books[0].items==std::vector<int>({0})&&commandQueue.size==0);
  // UI responsiveness: native page switch and changing the complete
  // sidebar cameo count must bypass the 100ms stable-catalogue throttle.
