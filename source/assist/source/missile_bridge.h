@@ -255,7 +255,9 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
  struct Candidate {missilecompute::Target target;int after;};
  static Candidate candidates[16384]{};int candidateCount=0,allCount=0,visited=0;
  {
-  SampleReadScope frameRead;if(!frameRead)return false;
+  ObservationReadScope frameRead;if(!frameRead)return false;
+  // Retain the real observation age across the deferred native query phase.
+  i.tick=sampleWorldSource&&sampleWorldSource->key.tick?sampleWorldSource->key.tick:now;
   Vec all{};if(!sampleRoster(0xA8EC78,all))return false;allCount=all.count;
   for(;visited<all.count&&candidateCount<(deferredAir?16384:missilecompute::MaxTargets);++visited){uint32_t q=item(all,(missileTargetCursor+visited)%all.count);if(!missileTarget(q,house,true,deferredAir))continue;
    uint32_t victim=get<uint32_t>(q+0x2B4);if(!worldObjects.contains(victim))victim=0;
@@ -278,7 +280,7 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
  static bool eligible[missilecompute::MaxSources];
  static int motionIndices[missilecompute::MaxTargets];std::fill_n(motionIndices,missilecompute::MaxTargets,-2);
  {
-  SampleReadScope frameRead;if(!frameRead)return failed();
+  ObservationReadScope frameRead;if(!frameRead)return failed();
   Vec all{};if(!sampleRoster(0xA8EC78,all))return failed();
   for(int t=0;t<i.targetCount;++t)sampleMissileMotion(i.targets[t].pointer,frame);
   static CombatProbeTargetSample targetSamples[missilecompute::MaxTargets];
@@ -311,7 +313,7 @@ static bool collectMissileInput(uint32_t house,int frame,DWORD now,int&nextSourc
     int slot=0;q.status=combatWeaponQuery(s.pointer,target.pointer,&q.weapon,&slot,&q.close,&q.airborne);
    }
   }
-  SampleReadScope frameRead;if(!frameRead)return failed();
+  ObservationReadScope frameRead;if(!frameRead)return failed();
   for(int n=0;n<i.count;++n){const int record=missileRecord(i.sources[n].id);for(int t=0;t<i.targetCount;++t){const auto&q=queries[n][t];if(q.status>0)i.edges[n][t]=missileEdgeFacts(i.sources[n].pointer,i.targets[t].pointer,q.weapon,q.close,q.airborne,record,&motionIndices[t]);}}
   if(!frameRead.complete())return failed();
  }
