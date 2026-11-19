@@ -121,7 +121,7 @@ int main(){
   if(size==4&&(address==T+0xEB8||address==T+0x2000+0xEB8))++producerProbes;
   return externalReader.readLive(address,out,size);
  };
- construction::Catalogue<decltype(producerRead)> producerCat(producerRead);
+ construction::Catalogue<decltype(producerRead)> producerCat(producerRead,true);
  assert(producerCat.load(H,{}));
  assert(producerCat.possible(unitType,16,false,true));
  const int firstProducerScan=producerProbes;
@@ -138,7 +138,13 @@ int main(){
  assert(producerProbes==refreshedProducerScan);
  w(ownedItems+4,1);assert(producerCat.load(H,{}));
  assert(producerCat.possible(unitType,40,false,false));
- std::cout<<"PASS producer mask: cached across 128 candidates, naval separation, forecast append invalidation, native ownership reload\\n";
+ // A live catalogue is intentionally not memoized. Its producer definition
+ // may change between successive reads without a new catalogue.load().
+ construction::Catalogue<decltype(producerRead)> mutableCat(producerRead);
+ assert(mutableCat.load(H,{}));assert(mutableCat.possible(unitType,16,false,true));
+ w(T+0xEB8,99);assert(!mutableCat.possible(unitType,16,false,true));
+ w(T+0xEB8,16);assert(mutableCat.possible(unitType,16,false,true));
+ std::cout<<"PASS producer mask: cached sealed candidate checks, forecast/ownership reload; mutable live producer change is always visible\\n";
  setup();w(F+0x24,54);tick();assert(choice(0)>=0);reserve(choice(0));assert(books[0].items==std::vector<int>({0})&&commandQueue.size==0);
  // UI responsiveness: native page switch and changing the complete
  // sidebar cameo count must bypass the 100ms stable-catalogue throttle.
