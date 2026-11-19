@@ -128,9 +128,12 @@ static bool observationalFrameReady(){
  now.connectionHigh=uint32_t(worldFrameServer.connection()>>32);
  now.generationLow=uint32_t(worldProducerGeneration);
  now.generationHigh=uint32_t(worldProducerGeneration>>32);
- // Conservative observer bound: shorter than the UID candidate's 500ms.
+ // One full 2.8MB graph can consume most of the worker's 120ms budget.
+ // 150ms would leave a 90ms feature black-out between successive 120ms
+ // scans. Allow two worker cycles plus margin for pure observation only.
+ // Native EventClass still requires current live identity/mission proof.
  return worldframe::acceptObservationCandidate(worldFrameCandidate.key,now,
-          worldframe::Base,worldframe::Base,GetTickCount(),150);
+          worldframe::Base,worldframe::Base,GetTickCount(),280);
 }
 #endif
 static bool readWorldSample(uint32_t at,void*out,size_t n){
