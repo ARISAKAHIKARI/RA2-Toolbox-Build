@@ -78,7 +78,7 @@ extern "C" __declspec(dllexport) int PollCrossFrame(){
 }
 extern "C" __declspec(dllexport) int StartExpired(){
  // An obsolete request must be dropped before doing any CaptureGraph RPM.
- job.tick=GetTickCount()-160u;
+ job.tick=GetTickCount()-600u;
  return worker.request(job,worldframe::Base,18,{})?1:0;
 }
 extern "C" __declspec(dllexport) int WorkerReadCount(){return int(offThreadReads.load());}
