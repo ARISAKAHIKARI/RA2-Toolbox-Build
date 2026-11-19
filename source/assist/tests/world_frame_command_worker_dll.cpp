@@ -27,6 +27,7 @@ static worldframe::CommandCaptureWorker worker;
 static worldframe::Snapshot accepted;
 static worldframe::CommandRoster acceptedRoster;
 static worldframe::Key job;
+extern "C" __declspec(dllexport) int AsyncEnabled(){return worker.enabled()?1:0;}
 extern "C" __declspec(dllexport) int Start(){
  gameThread=GetCurrentThreadId();fixture::setup(memory);offThreadReads=0;onThreadReads=0;
  job=fixture::key(50);job.tick=GetTickCount();job.serial=0;
