@@ -4,6 +4,7 @@ import argparse
 import subprocess
 import hashlib
 import json
+import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--zig", required=True, type=Path)
@@ -28,17 +29,29 @@ for arch in ("x86", "x86_64"):
         if completed.returncode:
             print(completed.stdout + completed.stderr)
             raise SystemExit(completed.returncode)
-    for iteration in range(3):
-        completed = subprocess.run([str(exe), str(dll)], text=True,
-                                   capture_output=True, timeout=35)
-        (dest / f"run-{iteration}.log").write_text(completed.stdout + completed.stderr)
-        print(arch, iteration, completed.returncode, completed.stdout, completed.stderr)
-        runs.append({"arch": arch, "iteration": iteration,
-                     "exit": completed.returncode, "pass": completed.returncode == 0})
-        if completed.returncode:
-            break
-passed = len(runs) == 6 and all(item["pass"] for item in runs)
-src = [here / "world_frame_command_worker_dll.cpp",
+    # Test the real native policy in fresh processes: absent => enabled,
+    # explicit 0 => disabled, explicit 1 => enabled.
+    for mode in ("default", "0", "1"):
+        for iteration in range(2):
+            env = os.environ.copy()
+            env.pop("RA2TOOLBOX_ASYNC_COMMAND_CAPTURE", None)
+            if mode != "default":
+                env["RA2TOOLBOX_ASYNC_COMMAND_CAPTURE"] = mode
+            expected = "0" if mode == "0" else "1"
+            completed = subprocess.run([str(exe), str(dll), expected], env=env,
+                                       text=True, capture_output=True, timeout=35)
+            (dest / f"run-{mode}-{iteration}.log").write_text(
+                completed.stdout + completed.stderr)
+            print(arch, mode, iteration, completed.returncode,
+                  completed.stdout, completed.stderr)
+            runs.append({"arch": arch, "mode": mode, "iteration": iteration,
+                         "exit": completed.returncode,
+                         "pass": completed.returncode == 0})
+            if completed.returncode:
+                break
+passed = len(runs) == 12 and all(item["pass"] for item in runs)
+src = [here / "world_frame_command_worker_windows.py",
+       here / "world_frame_command_worker_dll.cpp",
        here / "world_frame_command_worker_host.cpp",
        here.parent.parent / "shared/source/world_frame_command_worker_win.h",
        here.parent.parent / "shared/source/world_frame_command_policy.h"]
