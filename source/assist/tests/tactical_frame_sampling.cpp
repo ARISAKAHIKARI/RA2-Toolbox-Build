@@ -39,6 +39,12 @@ static std::map<uint32_t,int> airOverride;
 static std::set<uint64_t> forbiddenEnter;
 static std::vector<std::pair<uint32_t,uint32_t>> assignments;
 static worldframe::Snapshot worldFrame;
+static worldframe::Snapshot worldFrameCandidate;
+static bool worldFrameCandidateAvailable=false;
+static const worldframe::Snapshot*sampleWorldSource=nullptr;
+static uint32_t sampleScopeTick=0;
+static bool observationalFrameReady(){return false;}
+static uint32_t GetTickCount(){return clockNow;}
 // This fixture seals raw synthetic bytes rather than running CaptureGraph.
 // The empty retained scratch exercises indexWorld's original read fallback.
 static worldframe::CaptureScratch worldFrameCaptureScratch;
