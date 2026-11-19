@@ -48,7 +48,8 @@ class CommandCaptureWorker {
  // publish serial is stored last, after all corresponding counters.
  uint32_t hostSequence_=0; // worker-thread only
  std::atomic<uint32_t>hostPublishedSerial_{0},hostPublishedPages_{0},
-                       hostPublishedCalls_{0},hostPublishedBytes_{0};
+                       hostPublishedCalls_{0},hostPublishedBytes_{0},
+                       hostPublishedMatch_{0};
  std::atomic<int32_t>hostPublishedFrame_{-1};
  static bool live(uint32_t address,void*out,size_t bytes){
   if(!out||!range(address,bytes))return false;
@@ -186,6 +187,7 @@ class CommandCaptureWorker {
      self->hostPublishedCalls_.store(calls,std::memory_order_relaxed);
      self->hostPublishedBytes_.store(uint32_t(bytes),std::memory_order_relaxed);
      self->hostPublishedFrame_.store(before.frame,std::memory_order_relaxed);
+     self->hostPublishedMatch_.store(before.match,std::memory_order_relaxed);
      self->hostPublishedSerial_.store(publication.key.serial,std::memory_order_release);
     }
    }
@@ -373,7 +375,7 @@ public:
   if(event_)SetEvent(event_);
  }
  struct HostPublication {
-  uint32_t serial=0,pages=0,calls=0,bytes=0;
+  uint32_t serial=0,pages=0,calls=0,bytes=0,match=0;
   int32_t frame=-1;
  };
  HostPublication hostPublication()const{
@@ -384,6 +386,7 @@ public:
    data.calls=hostPublishedCalls_.load(std::memory_order_relaxed);
    data.bytes=hostPublishedBytes_.load(std::memory_order_relaxed);
    data.frame=hostPublishedFrame_.load(std::memory_order_relaxed);
+   data.match=hostPublishedMatch_.load(std::memory_order_relaxed);
    const uint32_t after=hostPublishedSerial_.load(std::memory_order_acquire);
    if(before==after){data.serial=after;return data;}
   }
