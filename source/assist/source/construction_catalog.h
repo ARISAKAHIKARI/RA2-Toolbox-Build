@@ -17,6 +17,7 @@ template<class Read> class Catalogue {
  // Sealed read-only catalogues are short-lived: a single set of producers
  // should serve every candidate in this calculation, not one full building
  // scan per infantry/vehicle choice. Native CanBuild remains authoritative.
+ bool sealedProducerRead=false;
  mutable bool producerCached[2]{false,false};
  mutable uint64_t producerKinds[2][2]{}; // [owned/forecast][land/naval], 0..63
  template<class T>T get(uint32_t at,T fallback={})const{T v{};return read(at,&v,sizeof v)?v:fallback;}
@@ -27,9 +28,11 @@ template<class Read> class Catalogue {
  }
  bool hasProducer(int kind,bool naval,bool forecast)const{
   const auto&counts=forecast?predicted:owned;
-  // Keep original generic behavior for unrecognized producer kinds. All
-  // supported unit categories (3, 16, 40) use the fast mask.
-  if(kind<0||kind>=64){
+  // A live or mutable reader can change a producer's type without changing
+  // predicted counts. Its original semantics must recheck every call.
+  // Only a caller inside an immutable sealed WorldFrameScope may opt in.
+  // Keep original generic behavior for unrecognized producer kinds.
+  if(!sealedProducerRead||kind<0||kind>=64){
    for(int n=0;n<count;++n)if(counts[n]>0){uint32_t b=type(n);
     if(b&&get<int>(b+0xEB8,-1)==kind&&bool(get<uint8_t>(b+0xCCE))==naval)return true;
    }
@@ -61,7 +64,7 @@ template<class Read> class Catalogue {
   return false;
  }
 public:
- explicit Catalogue(Read r):read(r){}
+ explicit Catalogue(Read r,bool sealed=false):read(r),sealedProducerRead(sealed){}
  bool load(uint32_t h,const std::vector<int>&future){
   producerCached[0]=producerCached[1]=false;
   house=h;uint32_t c=get<uint32_t>(h+0x34),rules=get<uint32_t>(0x8871E0);
