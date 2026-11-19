@@ -1835,7 +1835,9 @@ static void tick(){
   if(!refreshWorldIndex(frame,liveGuards)){
    // Leave requests, passenger history, manual revisions and all active jobs
    // untouched. Missing live guards are unknown too; retry on the next wake.
-   ++sh->worldSampleFailures;publishSnapshot(now);return;
+   ++sh->worldSampleFailures;
+   ++sh->sampling.indexUnavailable; // Diagnostic only; keep pending jobs.
+   publishSnapshot(now);return;
   }
  }
  privateOutTick();servicePrivateOut();serviceDirectSell();
