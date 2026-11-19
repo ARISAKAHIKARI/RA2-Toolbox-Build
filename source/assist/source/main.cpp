@@ -415,6 +415,26 @@ static void logSamplingHealth(DWORD now){
  input.failures=shared->worldSampleFailures;
  samplinglog::Summary summary{};
  if(!monitor.observe(input,summary))return;
+ // These are cumulative counters of this one Host ProcessReader session.
+ // Other independent Host tasks have their own sessions and are not counted.
+ static DWORD externalCountPid=0;
+ static uint32_t externalCountMatch=0;
+ static uint64_t previousRemoteCalls=0,previousRemoteBytes=0,
+                 previousRemoteFailures=0,previousSealedHits=0;
+ const bool externalReset=externalCountPid!=pid||externalCountMatch!=input.match;
+ const uint64_t hostRPMCalls=externalReset?0:
+       externalReader.totalRemoteCalls-previousRemoteCalls;
+ const uint64_t hostRPMBytes=externalReset?0:
+       externalReader.totalRemoteRequestedBytes-previousRemoteBytes;
+ const uint64_t hostRPMFailures=externalReset?0:
+       externalReader.totalRemoteFailures-previousRemoteFailures;
+ const uint64_t hostSealedHits=externalReset?0:
+       externalReader.totalSealedHits-previousSealedHits;
+ externalCountPid=pid;externalCountMatch=input.match;
+ previousRemoteCalls=externalReader.totalRemoteCalls;
+ previousRemoteBytes=externalReader.totalRemoteRequestedBytes;
+ previousRemoteFailures=externalReader.totalRemoteFailures;
+ previousSealedHits=externalReader.totalSealedHits;
  const uint64_t rateMilliHz=summary.periodMs?
    uint64_t(summary.publications)*1000000ull/summary.periodMs:0;
  autolog::write(L"sampling-health pid="+std::to_wstring(pid)+
@@ -438,6 +458,11 @@ static void logSamplingHealth(DWORD now){
   L" scanPeakUs="+std::to_wstring(summary.scanPeakUs)+
   L" worldPeakUs="+std::to_wstring(summary.worldPeakUs)+
   L" controlOver16667Us="+std::to_wstring(summary.controlOver16msSamples)+
+  L" hostReaderRPMCalls="+std::to_wstring(hostRPMCalls)+
+  L" hostReaderRPMRequestedBytes="+std::to_wstring(hostRPMBytes)+
+  L" hostReaderRPMFailures="+std::to_wstring(hostRPMFailures)+
+  L" hostReaderSealedHits="+std::to_wstring(hostSealedHits)+
+  L" hostReaderScope=externalReader-only"+ 
   L" starved="+std::to_wstring(summary.starved)+
   L" reasonBreakdown=sampling-work");
  // Version 112: detailed failure reasons and worker throughput, again only
