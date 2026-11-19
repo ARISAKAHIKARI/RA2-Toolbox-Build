@@ -289,7 +289,7 @@ void contiguousWarmBatch32(){
  worldframe::Snapshot skipped;skipped.reset(key());
  CHECK(skipped.prefetchPages(Read{&sparse},gapped,largeScratch.data(),
                              largeScratch.size(),false,32));
- CHECK(sparse.calls.empty()&&skipped.pages.empty()&&skipped.seal());
+ CHECK(sparse.calls.empty()&&skipped.pages.size()==0&&skipped.seal());
  // Fault isolation is still bounded even when using the wider buffer.
  Memory fault;
  for(uint32_t i=0;i<32;++i)fault.put(addresses[i]+0x28,0xAB000000u+i);
