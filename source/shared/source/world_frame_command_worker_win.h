@@ -154,12 +154,16 @@ public:
  CommandCaptureWorker(const CommandCaptureWorker&)=delete;
  CommandCaptureWorker&operator=(const CommandCaptureWorker&)=delete;
  ~CommandCaptureWorker(){if(thread_)CloseHandle(thread_);if(event_)CloseHandle(event_);}
- // Experimental admission deliberately requires an explicit opt-in while
- // the x86 native and live multiplayer latency/command-success probes run.
+ // Async command-world capture is the production default. Explicitly set
+ // RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=0 before launching to restore the prior
+ // synchronous capture route on platforms with poor exact-frame handoff.
+ // Late/stale results are never native EventClass authorization.
  static bool enabled(){
   static const bool value=[]{
-   char name[3]{};
-   return GetEnvironmentVariableA("RA2TOOLBOX_ASYNC_COMMAND_CAPTURE",name,sizeof name)==1&&name[0]=='1';
+   char setting[8]{};
+   const DWORD length=GetEnvironmentVariableA(
+       "RA2TOOLBOX_ASYNC_COMMAND_CAPTURE",setting,sizeof setting);
+   return !(length==1&&setting[0]=='0');
   }();
   return value;
  }
