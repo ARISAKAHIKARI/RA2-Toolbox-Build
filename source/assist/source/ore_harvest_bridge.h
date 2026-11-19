@@ -36,7 +36,7 @@ static bool oreHarvestContext(uint32_t house,int frame,OreHarvestWorld&out,bool 
 }
 static bool oreHarvestSameWorld(const OreHarvestWorld&a,const OreHarvestWorld&b){return a.match==b.match&&a.scenario==b.scenario&&a.house==b.house&&a.houseID==b.houseID&&a.session==b.session;}
 static bool oreHarvestInventory(int frame,DWORD now){
- SampleReadScope frameRead;if(!frameRead||!refreshOreConfig())return false;
+ ObservationReadScope frameRead;if(!frameRead||!refreshOreConfig())return false;
  Vec units{};static uint32_t pointers[16384];
  if(!read(0x8B4108,&units,sizeof units)||units.count<0||units.count>16384||units.capacity<units.count||
     (units.count&&(units.items<0x10000||!read(units.items,pointers,size_t(units.count)*4))))return false;
@@ -65,7 +65,7 @@ static bool oreHarvestInventory(int frame,DWORD now){
  oreHarvestUnitsHash=hash;oreHarvestConfigRevision=oreConfigRevision;oreHarvestInventoryAt=now;oreHarvestInventoryFrame=frame;return true;
 }
 static bool oreHarvestMapCapture(){
- SampleReadScope frameRead;if(!frameRead)return false;
+ ObservationReadScope frameRead;if(!frameRead)return false;
  OreHarvestMap next{};next.bounds=external::mapbounds::sample([](uint32_t at,void*out,size_t n){return read(at,out,n);});
  Vec overlays=vec(0xA83D80,4096),tiberiums=vec(0xB0F4E8,64);
  if(!next.bounds.valid()||!oreHarvestRead(0x87F924,next.cells)||next.cells<0x10000||!oreHarvestRead(0x87F928,next.count)||next.count<=0||next.count>512*512||
