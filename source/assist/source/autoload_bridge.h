@@ -158,9 +158,10 @@ static bool collectLoadFacts(uint32_t house,int frame){
  for(int n=0;n<loadCarrierSelectionCount;++n){const auto&v=loadCarrierSelection[n];uint32_t id=0;if(!read(v.pointer+0x10,&id,sizeof id))return false;
   carriers[n]=id==v.id?v.pointer:0;if(carriers[n]&&worldObjects.byId(v.id)!=v.pointer)return false;
  }
- SampleReadScope frameRead;if(!frameRead)return false;
- // A click can follow this frame's capture. Wait for its exact identities;
- // never pair a new cohort/token with a previous allocation's raw fields.
+ ObservationReadScope frameRead;if(!frameRead)return false;
+ // Background snapshot is a candidate only. Keep the original click cohort,
+ // match exact UIDs in the frozen pages, and revalidate live UID/manual
+ // versions before any native Enter action. No sampled command authority.
  for(int n=0;n<loadSelectionCount;++n)if(selected[n]&&get<uint32_t>(selected[n]+0x10)!=loadSelection[n].id)return false;
  for(int n=0;n<loadCarrierSelectionCount;++n)if(carriers[n]&&get<uint32_t>(carriers[n]+0x10)!=loadCarrierSelection[n].id)return false;
  auto&in=loadSample;in.match=match;in.tick=sampleClock(sh);in.frame=frame;in.ns=in.nv=0;in.mode=sh->loadMode==1;in.radius=std::clamp(sh->loadRadius,1,512);in.composition.clear();
