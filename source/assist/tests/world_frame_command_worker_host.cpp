@@ -15,6 +15,7 @@ int main(int argc,char**argv){
  const Fn startExpired=fn("StartExpired"),workerReads=fn("WorkerReadCount");
  const Fn startCrossFrame=fn("StartCrossFrame"),pollCrossFrame=fn("PollCrossFrame");
  const Fn stop=fn("Stop"),reads=fn("GameReadCount");
+ const Fn restart=fn("RestartAfterStop");
  const Fn asyncEnabled=fn("AsyncEnabled");
  // The launch-time switch is a real worker-library policy, not a mock.
  // A disabled worker must not be started by the caller.
@@ -59,6 +60,18 @@ int main(int argc,char**argv){
  for(int attempt=0;attempt<150&&rejected()==priorRejected;++attempt)Sleep(10);
  assert(rejected()>priorRejected&&workerReads()==priorWorkerReads&&reads()==0);
  bool stopped=false;
+ for(int attempt=0;attempt<150;++attempt){
+  if(stop()==1){stopped=true;break;}
+  Sleep(10);
+ }
+ assert(stopped&&reads()==0);
+ // A prior stopping flag must never swallow all future requests after a new
+ // game has begun. Relaunch, accept a new exact-frame graph, stop again.
+ assert(restart()==1);
+ result=0;
+ for(int attempt=0;attempt<150&&!result;++attempt){Sleep(10);result=poll();}
+ assert(result==1&&reads()==0);
+ stopped=false;
  for(int attempt=0;attempt<150;++attempt){
   if(stop()==1){stopped=true;break;}
   Sleep(10);
