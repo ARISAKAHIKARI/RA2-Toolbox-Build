@@ -50,7 +50,9 @@ struct CaptureScratch {
      technoKey.tick!=key.tick||technoRoster.size()!=size_t(count))return nullptr;
   return technoRoster.data();
  }
- std::array<uint8_t,16*PageSize>pageScratch{};
+ // Retained worker-owned buffer: enough to read 32 contiguous actor pages
+ // with one OS call. No allocation, sort, or page scan on game callbacks.
+ std::array<uint8_t,32*PageSize>pageScratch{};
  explicit CaptureScratch(PageAllocator allocator={}):actors(allocator),types(allocator),small(allocator),houses(allocator){}
  void reset(){actors.clear();types.clear();small.clear();houses.clear();queue.clear();list.clear();docks.clear();warmPages.clear();warmSortScratch.clear();technoRoster.clear();technoKey={};technoItems=0;technoCount=-1;}
  bool valid()const{return actors.valid()&&types.valid()&&small.valid()&&houses.valid();}
@@ -231,10 +233,11 @@ public:
   for(uint32_t p:scratch_->queue)if(range(p,0x800))
    for(uint32_t page=p&~4095u;uint64_t(page)<uint64_t(p)+0x800;page+=PageSize)warm.push_back(page);
   sortUniquePageAddresses(warm,scratch_->warmSortScratch);
-  frame_.prefetchPages(live_,warm,scratch_->pageScratch.data(),scratch_->pageScratch.size(),false);
+  frame_.prefetchPages(live_,warm,scratch_->pageScratch.data(),scratch_->pageScratch.size(),false,32);
   for(size_t i=0;i<scratch_->queue.size();++i){if(!working())return false;actor(scratch_->queue[i]);}
   if(!working())return false;
-  frame_.prefetchPages(live_,requests,scratch_->pageScratch.data(),scratch_->pageScratch.size());
+  // Required Host pages keep tighter 16-page fault isolation.
+  frame_.prefetchPages(live_,requests,scratch_->pageScratch.data(),scratch_->pageScratch.size(),true,16);
   return working();
  }
 };
