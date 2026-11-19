@@ -43,7 +43,12 @@ struct RequestedSpan {uint32_t address=0,bytes=0,tick=0;};
 // actor/type graph pages. Source-revision values occupy the lower 31 bits.
 // A Host command reader may not treat this as a full command sample.
 constexpr uint32_t BoundaryOnlyKeyBit=0x80000000u;
+// World bytes copied by the GameRuntime background worker may have crossed
+// simulation frames. This marker authorizes Host *observation* only, never a
+// native EventClass. Runtime has a separate exact-frame admission check.
+constexpr uint32_t ObservationOnlyKeyBit=0x40000000u;
 inline bool boundaryOnlySource(const Key&key){return (key.demand&BoundaryOnlyKeyBit)!=0;}
+inline bool observationOnlySource(const Key&key){return (key.demand&ObservationOnlyKeyBit)!=0;}
 struct Counters {uint32_t calls=0,bytes=0,pageHits=0,pageAttempts=0,rangeAttempts=0,failedReads=0,rosterCaptures=0,overflows=0;};
 struct Page {
  uint32_t address=0,full=0;
