@@ -482,6 +482,14 @@ static void logSamplingHealth(DWORD now){
  const bool reset=previousPID!=pid||previousMatch!=incoming.match;
  if(reset){prior=values;previousPID=pid;previousMatch=incoming.match;}
  const auto delta=[&](size_t i){return reset?0u:uint32_t(values[i]-prior[i]);};
+ // The published count is worker completions, including cross-frame
+ // observation-only graphs. It is NOT the number of strict native authorizations.
+ const uint64_t workerCompletedMilliHz=summary.periodMs?
+   uint64_t(delta(9))*1000000ull/summary.periodMs:0;
+ const uint32_t lastWorkerMeanBytesPerCall=d.workerLastCalls?
+   d.workerLastBytes/d.workerLastCalls:0;
+ const uint64_t hostReaderMeanBytesPerCall=hostRPMCalls?
+   hostRPMBytes/hostRPMCalls:0;
  autolog::write(L"sampling-work pid="+std::to_wstring(pid)+
   L" match="+std::to_wstring(incoming.match)+
   L" warmup="+std::to_wstring(reset)+
@@ -495,6 +503,7 @@ static void logSamplingHealth(DWORD now){
   L" strictWorldReject="+std::to_wstring(delta(7))+
   L" workerStarted="+std::to_wstring(delta(8))+
   L" workerPublished="+std::to_wstring(delta(9))+
+  L" workerCompletedMilliHz="+std::to_wstring(workerCompletedMilliHz)+
   L" workerExact="+std::to_wstring(delta(10))+
   L" workerCandidate="+std::to_wstring(delta(11))+
   L" workerStale="+std::to_wstring(delta(12))+
@@ -507,6 +516,8 @@ static void logSamplingHealth(DWORD now){
   L" maxWorkerMs="+std::to_wstring(d.workerMaxDurationMs)+
   L" lastWorkerCalls="+std::to_wstring(d.workerLastCalls)+
   L" lastWorkerBytes="+std::to_wstring(d.workerLastBytes)+
+  L" lastWorkerMeanBytesPerCall="+std::to_wstring(lastWorkerMeanBytesPerCall)+
+  L" hostReaderMeanBytesPerRPM="+std::to_wstring(hostReaderMeanBytesPerCall)+
   L" lastWorkerPages="+std::to_wstring(d.workerLastPages)+
   L" capturedFromFrame="+std::to_wstring(d.workerFirstFrame)+
   L" capturedThroughFrame="+std::to_wstring(d.workerLastFrame)+
