@@ -258,11 +258,27 @@ static bool candidateRosterReady(){
         worldFrameCandidateRoster.global==bool(sh->magnetronGlobal);
 }
 static bool verifyCandidateID(uint32_t id,uint32_t pointer){
+ if(sampleReadDepth){
+  // Pure candidate conversion never calls the original native executor.
+  // Avoid one live game-thread RPM for every lookup during large-world scans.
+  return sampleWorldSource==&worldFrameCandidate&&
+         worldFrameCandidateRoster.objects&&
+         worldFrameCandidateRoster.objects->byId(id)==pointer;
+ }
  uint32_t observed=0;
+ // Outside the sealed read scope, including every final native order path,
+ // re-read the live UID to reject despawn/reuse of a stale candidate address.
  return pointer>=0x10000&&readLiveWorld(pointer+0x10,&observed,sizeof observed)&&
         id&&observed==id;
 }
 static bool verifyCandidatePointer(uint32_t pointer){
+ if(sampleReadDepth){
+  // A sealed observation is not command authority. Preserve its immutable
+  // membership without triggering an O(N) stream of live UID probes.
+  return sampleWorldSource==&worldFrameCandidate&&
+         worldFrameCandidateRoster.objects&&
+         worldFrameCandidateRoster.objects->contains(pointer);
+ }
  uint32_t observed=0;
  return pointer>=0x10000&&readLiveWorld(pointer+0x10,&observed,sizeof observed)&&
         observed&&worldFrameCandidateRoster.objects&&
