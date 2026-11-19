@@ -1,5 +1,6 @@
 #include "../../shared/source/world_frame_command_policy.h"
 #include "../source/object_index.h"
+#include "../source/sample_health_log.h"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -118,5 +119,30 @@ int main(){
  assert(!worker.read(0x33000,&out,1));
  main.reset(a);assert(!main.read(0x33000,&out,1));
  assert(worker.read(0x21000,&out,1)&&out==0xA7);
+ // Host-side sampling logs must detect delayed publication and missing
+ // output without logging on the game-thread callback.
+ assist::samplinglog::Monitor monitor;
+ assist::samplinglog::Summary health{};
+ assist::samplinglog::Input input{};
+ input.pid=12;input.match=4;input.tick=1000;input.serial=1;
+ input.controlFrame=100;input.sampleFrame=100;input.pages=640;
+ assert(!monitor.observe(input,health));
+ input.tick=6000;input.controlFrame=130;input.sampleFrame=120;
+ input.serial=6;input.failures=2;input.controlUs=20000;
+ assert(monitor.observe(input,health));
+ assert(health.periodMs==5000&&health.logicFrames==30&&health.publications==5);
+ assert(health.failures==2&&health.lastFrameLag==10&&health.starved);
+ assert(health.controlPeakUs==20000&&health.controlOver16msSamples==1);
+ input.tick=7000;input.controlFrame=140;input.sampleFrame=140;
+ input.serial=7;input.controlUs=1000;
+ assert(!monitor.observe(input,health));
+ input.tick=11000;input.controlFrame=200;input.sampleFrame=198;
+ input.serial=16;input.failures=6;
+ assert(monitor.observe(input,health));
+ assert(health.publications==10&&health.failures==4);
+ assert(health.lastFrameLag==2&&!health.starved);
+ input.match=5;input.tick=12000;
+ assert(!monitor.observe(input,health)); // match change resets baselines
+ std::puts("PASS Host sampling-health aggregation, spike/stall metrics, safe reset");
  std::puts("PASS exact-frame event authority, cross-frame busy work coalescing only, demand/revision/age isolation, exact page-buffer ownership swap");
 }
