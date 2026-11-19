@@ -62,6 +62,10 @@ static bool capture(){
  fixture::Read live{&memory};return captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base);
 }
 extern "C" __declspec(dllexport) int Idle(){
+ // This fixture validates synchronous command acquisition plus the independent
+ // background publication/recovery workers. Default async command capture has
+ // its own real Win32 x86/x64 worker harness and is not silently tested here.
+ assert(!assist::worldFrameCommandWorker.enabled());
  using namespace assist;gameThread=GetCurrentThreadId();shared.owner=GetCurrentProcessId();fixture::setup(memory);
  memory.beforeRead=[](uint32_t,size_t){assert(GetCurrentThreadId()==gameThread);};
  assert(!worldFrameServer.wanted(shared.owner,GetTickCount()));assert(threadStarts==0);
