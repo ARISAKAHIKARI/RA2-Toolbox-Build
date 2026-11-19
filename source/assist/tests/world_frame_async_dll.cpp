@@ -232,6 +232,13 @@ extern "C" __declspec(dllexport) int AsyncPoll(){
     !backgroundReadThread.load(std::memory_order_acquire)||
     backgroundReadThread.load(std::memory_order_acquire)==gameThread)
    return -1;
+ const auto host=client->acquire(match);
+ int hostHP=0;
+ if(!host||!worldframe::observationOnlySource(host->key)||
+    worldframe::boundaryOnlySource(host->key)||
+    !host->sealed()||host->pages.size()<10||
+    !host->read(fixture::ActorA+0x6C,&hostHP,sizeof hostHP)||
+    hostHP!=100)return -6;
  return 1;
 }
 extern "C" __declspec(dllexport) int AsyncStop(){
