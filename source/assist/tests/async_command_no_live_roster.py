@@ -32,6 +32,11 @@ assert runtime.index('commandRequestGate.defer(key,graphDemand') < runtime.index
 assert 'worldFrameCommandWorker.deferBusy(key,graphDemand,requestRevision,globalVehicles)' in runtime
 assert runtime.index('worldFrameCommandWorker.deferBusy(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
 assert 'coalesceInFlightWorld(lastRequestedKey_,key' in worker
+# Production defaults to nonblocking worker capture, but a launch-time
+# opt-out can restore synchronous behavior if exact-frame handoff starves.
+assert 'RA2TOOLBOX_ASYNC_COMMAND_CAPTURE' in worker
+assert "return !(length==1&&setting[0]=='0');" in worker
+assert 'worldFrameCommandWorker.enabled()' in runtime
 assert 'commandRequestGate.reset()' in runtime
 assert 'worldFrameCommandWorker.request(key,graphDemand' in runtime
 assert 'CaptureGraph<decltype(checkedRead)>' in worker
