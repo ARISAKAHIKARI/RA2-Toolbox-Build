@@ -33,13 +33,14 @@ int main(){
    }
    // Consume output to prevent eliminating memcpy in optimized builds.
    check+=dst[0]+dst[Bytes-1]+dst[Bytes/2];
-   return dst==src;
+   return true;
   };
   for(unsigned warm=0;warm<4;++warm)assert(run(false));
   const auto start=std::chrono::steady_clock::now();
   for(size_t sample=0;sample<Passes;++sample)assert(run(true));
   const auto stop=std::chrono::steady_clock::now();
   result.ms=std::chrono::duration<double,std::milli>(stop-start).count()/Passes;
+  assert(dst==src); // Validate outside timed loop, not 64 extra full scans.
   return result;
  };
  const Result copy=measure(Bytes,true);
