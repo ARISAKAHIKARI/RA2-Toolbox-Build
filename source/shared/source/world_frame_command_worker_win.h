@@ -183,9 +183,12 @@ public:
       uint32_t(GetTickCount()-lastRequestedAt_),outstanding,MaxWorkMs))return true;
   // Even after the coalescing deadline, do not rebuild 16K dependencies
   // while a still-running same-world scan is exhausting its own budget.
+  // Demand revisions and optional global-vehicle mode can change while the
+  // old worker is already copying pages. Keep that *candidate* read alive;
+  // the next request after completion will include the new requirements.
+  // Strict native take() still checks demand, revision and global mode.
   return capturing_.load(std::memory_order_acquire)&&
-      lastRequestedKey_.sameWorld(key)&&lastRequestedDemand_==demand&&
-      lastRequestedRevision_==revision&&lastRequestedGlobal_==globalVehicles;
+      lastRequestedKey_.sameWorld(key);
  }
  bool request(const Key&key,uint32_t demand,uint64_t revision,const std::vector<uint32_t>&pages,bool globalVehicles=false){
   if(!key.pid||!key.owner||!key.match||key.house<0x10000||
@@ -210,8 +213,7 @@ public:
   // Do not continuously cancel a full-world read after each 16ms game tick.
   // A same-world in-flight scan is allowed to finish into a candidate.
   if(capturing_.load(std::memory_order_acquire)&&
-     lastRequestedKey_.sameWorld(key)&&lastRequestedDemand_==demand&&
-     lastRequestedRevision_==revision&&lastRequestedGlobal_==globalVehicles)return true;
+     lastRequestedKey_.sameWorld(key))return true;
   if(!launch())return false;
   // A changed world/demand/revision/global bit supersedes the running ticket.
   const bool same=lastRequestedKey_.sameFrame(key)&&
