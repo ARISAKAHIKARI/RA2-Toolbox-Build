@@ -78,7 +78,7 @@ static unloadcompute::Target unloadSampleTargets[unloadcompute::MaxTargets];
 static int unloadSampleTargetCount,unloadSampleTargetFrame=-1;static uint32_t unloadSampleTargetMatch,unloadSampleTargetHouse;
 static bool collectUnloadTargets(uint32_t house,int frame){
  if(unloadSampleTargetFrame==frame&&unloadSampleTargetMatch==match&&unloadSampleTargetHouse==house)return true;
- SampleReadScope frameRead;if(!frameRead)return false;
+ ObservationReadScope frameRead;if(!frameRead)return false;
  static unloadcompute::Target next[unloadcompute::MaxTargets];int count=0;
  Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
  for(int n=0;n<all.count&&count<unloadcompute::MaxTargets;++n){uint32_t p=item(all,n);
@@ -94,7 +94,7 @@ static bool collectUnloadSource(unloadcompute::Input&input,const UnloadPassenger
  unloadcompute::Source next{};static uint8_t actions[unloadcompute::MaxTargets],queries[unloadcompute::MaxTargets];
  memset(actions,0,sizeof actions);memset(queries,0,sizeof queries);bool targets=false;
  {
-  SampleReadScope frameRead;if(!frameRead)return false;
+  ObservationReadScope frameRead;if(!frameRead)return false;
   if(get<uint32_t>(r.p+0x10)!=r.id||kind(r.p)!=1)return false;
   next.job=r.job;next.id=r.id;next.pointer=r.p;next.type=typeOf(r.p,1);next.token=manualVersions.get(r.id);
   next.state=static_cast<const unloadcompute::State&>(r);next.view=unloadView(r,frame,false);
