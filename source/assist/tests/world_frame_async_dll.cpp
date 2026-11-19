@@ -41,7 +41,11 @@ static BOOL WINAPI auditedNativeRead(HANDLE proc,LPCVOID address,LPVOID output,S
 #undef CreateFileMappingW
 #undef CreateThread
 // The publication's counted thread hook must not instrument command workers.
+// But the command worker's production RPM path uses the same simulated
+// 1.001 game-memory image. Its actual Win32 thread/lock/DLL pin remain real.
+#define ReadProcessMemory auditedNativeRead
 #include "../../shared/source/world_frame_command_worker_win.h"
+#undef ReadProcessMemory
 #define WORLD_FRAME_FIXTURE_ONLY
 #define REAL_WINDOWS_RPM
 #include "world_frame_core.cpp"
@@ -170,3 +174,46 @@ extern "C" __declspec(dllexport) int RecoverPublisher(){
  return 1;
 }
 
+
+extern "C" __declspec(dllexport) int AsyncStart(){
+ using namespace assist;
+ if(!worldFrameCommandWorker.enabled())return -1;
+ gameThread=GetCurrentThreadId();
+ retireWorldFrame();worldFrameSerial=0;shared.owner=GetCurrentProcessId();
+ fixture::setup(memory);
+ snap.frame=50;
+ memory.beforeRead=[](uint32_t,size_t){assert(GetCurrentThreadId()==gameThread);};
+ shadowImage=memory.bytes.data();shadowImageSize=memory.bytes.size();
+ backgroundReadThread.store(0,std::memory_order_release);
+ client=worldframe::acquireClient(GetCurrentProcessId(),721);
+ client->subscribe(1,worldframe::Base);
+ fixture::Read live{&memory};
+ if(!worldFrameServer.wanted(shared.owner,GetTickCount()))return -2;
+ // The first command callback requests a new worker graph and MUST return
+ // without an inline CaptureGraph, an old result or synchronous 16K scan.
+ if(captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base))return -3;
+ return 1;
+}
+extern "C" __declspec(dllexport) int AsyncPoll(){
+ using namespace assist;
+ fixture::Read live{&memory};
+ if(!captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base))return 0;
+ int hp=0;
+ if(!worldFrameReady||worldFrameBoundaryOnly||!worldFrame.sealed()||
+    !worldFrameCommandRoster.current(worldFrame.key)||
+    !worldFrameCommandRoster.objects||
+    worldFrameCommandRoster.objects->byId(fixture::ActorA+5)!=fixture::ActorA||
+    !worldFrame.read(fixture::ActorA+0x6C,&hp,4)||hp!=100||
+    !backgroundReadThread.load(std::memory_order_acquire)||
+    backgroundReadThread.load(std::memory_order_acquire)==gameThread)
+   return -1;
+ return 1;
+}
+extern "C" __declspec(dllexport) int AsyncStop(){
+ using namespace assist;
+ // Stop must be polled, never waited on inside the game's message callback.
+ if(worldFrameReady)retireWorldFrame();
+ else if(!worldFrameCapturedDemand&&!worldFrameCommandWorker.rejected()&&!worldFrameCommandWorker.accepted())
+  retireWorldFrame();
+ return worldFrameCommandWorker.stop()&&worldFramePublication.stop()&&worldFrameShadow.stop()?1:0;
+}
