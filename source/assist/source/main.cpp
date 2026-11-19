@@ -439,7 +439,54 @@ static void logSamplingHealth(DWORD now){
   L" worldPeakUs="+std::to_wstring(summary.worldPeakUs)+
   L" controlOver16667Us="+std::to_wstring(summary.controlOver16msSamples)+
   L" starved="+std::to_wstring(summary.starved)+
-  L" failureReason=not-exposed-by-current-ipc");
+  L" reasonBreakdown=sampling-work");
+ // Version 112: detailed failure reasons and worker throughput, again only
+ // in the five-second Host summary. Counters can change independently while
+ // the x86 worker is running, so deltas are approximate diagnostic evidence.
+ if(!shared)return;
+ const auto&d=shared->sampling;
+ const std::array<uint32_t,18> values={
+  d.captureCalls,d.gateDeferred,d.workerDeferred,d.requestsQueued,
+  d.strictAdopted,d.candidateAdopted,d.indexUnavailable,d.strictWorldRejected,
+  d.workerStarted,d.workerPublished,d.workerExact,d.workerCandidate,
+  d.workerStale,d.workerWorldChanged,d.workerBudget,d.workerRosterFailed,
+  d.workerGraphIncomplete,d.workerRejected
+ };
+ static std::array<uint32_t,18> prior{};
+ static uint32_t previousPID=0,previousMatch=0;
+ const bool reset=previousPID!=pid||previousMatch!=incoming.match;
+ if(reset){prior=values;previousPID=pid;previousMatch=incoming.match;}
+ const auto delta=[&](size_t i){return reset?0u:uint32_t(values[i]-prior[i]);};
+ autolog::write(L"sampling-work pid="+std::to_wstring(pid)+
+  L" match="+std::to_wstring(incoming.match)+
+  L" warmup="+std::to_wstring(reset)+
+  L" captureInvoked="+std::to_wstring(delta(0))+
+  L" coalescedGate="+std::to_wstring(delta(1))+
+  L" workerBusy="+std::to_wstring(delta(2))+
+  L" jobsQueued="+std::to_wstring(delta(3))+
+  L" strictAdopted="+std::to_wstring(delta(4))+
+  L" candidateAdopted="+std::to_wstring(delta(5))+
+  L" indexUnavailable="+std::to_wstring(delta(6))+
+  L" strictWorldReject="+std::to_wstring(delta(7))+
+  L" workerStarted="+std::to_wstring(delta(8))+
+  L" workerPublished="+std::to_wstring(delta(9))+
+  L" workerExact="+std::to_wstring(delta(10))+
+  L" workerCandidate="+std::to_wstring(delta(11))+
+  L" workerStale="+std::to_wstring(delta(12))+
+  L" workerWorldChanged="+std::to_wstring(delta(13))+
+  L" workerBudget="+std::to_wstring(delta(14))+
+  L" workerRosterFailed="+std::to_wstring(delta(15))+
+  L" workerGraphIncomplete="+std::to_wstring(delta(16))+
+  L" workerRejected="+std::to_wstring(delta(17))+
+  L" lastWorkerMs="+std::to_wstring(d.workerLastDurationMs)+
+  L" maxWorkerMs="+std::to_wstring(d.workerMaxDurationMs)+
+  L" lastWorkerCalls="+std::to_wstring(d.workerLastCalls)+
+  L" lastWorkerBytes="+std::to_wstring(d.workerLastBytes)+
+  L" lastWorkerPages="+std::to_wstring(d.workerLastPages)+
+  L" capturedFromFrame="+std::to_wstring(d.workerFirstFrame)+
+  L" capturedThroughFrame="+std::to_wstring(d.workerLastFrame)+
+  L" scope=worker-aggregates;not-per-frame-atomic");
+ prior=values;
 }
 static void logBridgeHealth(bool force=false){
  // Independent five-second interval, even when bridge-health logs more often
