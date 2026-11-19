@@ -77,8 +77,9 @@ class CommandCaptureWorker {
   // PublicationOnly never retires the control-side observed identity. It
   // shares the existing double-buffer data channel with Host readers.
   // In async mode the old exact-frame publisher does not write this channel.
-  Server hostWriter(Server::Role::PublicationOnly);
-  for(;;){
+  {
+   Server hostWriter(Server::Role::PublicationOnly);
+   for(;;){
    if(self->stopping_.load(std::memory_order_acquire))break;
    if(WaitForSingleObject(self->event_,50)==WAIT_FAILED)break;
    if(self->stopping_.load(std::memory_order_acquire))break;
@@ -210,7 +211,8 @@ class CommandCaptureWorker {
     self->lastFirstFrame_.store(before.frame,std::memory_order_relaxed);
     self->lastLastFrame_.store(after.frame,std::memory_order_relaxed);
    }
-  }
+   }
+  } // Close publication-only mappings BEFORE releasing our pinned DLL.
   // Every Snapshot/worker field lives until the Runtime acknowledges exit.
   const HMODULE pin=self->module_;
   FreeLibraryAndExitThread(pin,0);return 0;
