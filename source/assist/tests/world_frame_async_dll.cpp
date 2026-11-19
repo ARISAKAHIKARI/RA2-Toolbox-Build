@@ -197,6 +197,12 @@ extern "C" __declspec(dllexport) int AsyncStart(){
  asyncStopStarted=false;
  using namespace assist;
  if(!worldFrameCommandWorker.enabled())return -1;
+ // Sync publisher tests deliberately intercept the first named data
+ // mapping. Async Runtime tests must not inherit that unrelated hold:
+ // they pause ONLY the command worker's first payload RPM when requested.
+ // Otherwise the new worker-to-Host publication fails its mapping setup
+ // even though the production publisher works.
+ blockNext.store(false,std::memory_order_release);
  gameThread=GetCurrentThreadId();
  retireWorldFrame();worldFrameSerial=0;shared.owner=GetCurrentProcessId();
  fixture::setup(memory);
