@@ -106,6 +106,39 @@ int main(){
   assert(stale.full==original.full&&stale.exact==original.exact&&
          stale.compareLevel==original.compareLevel&&stale.index==original.index);
  }
+ // The real Catalogue producer check must scan owned buildings only once per
+ // phase, even when 100+ unit candidates ask the same eligibility question.
+ // Forecast append changes the producer set; native ownership does not.
+ setup();
+ const uint32_t unitType=T+0x6000,ownedItems=0x940000;
+ list(0xA8E348,{int(unitType)});
+ w(unitType+0x634,1);w(unitType+0x6CC,1);w(unitType+0xDA0,-1);w(unitType+0xDA4,-1);
+ list(unitType+0x638,{});list(unitType+0x654,{});
+ w(H+0x5550+4,ownedItems);w(H+0x5550+8,3);w(ownedItems,1);
+ w(T+0xEB8,16);w(T+0x2000+0xEB8,40);
+ int producerProbes=0;
+ auto producerRead=[&](uint32_t address,void*out,size_t size){
+  if(size==4&&(address==T+0xEB8||address==T+0x2000+0xEB8))++producerProbes;
+  return externalReader.readLive(address,out,size);
+ };
+ construction::Catalogue<decltype(producerRead)> producerCat(producerRead);
+ assert(producerCat.load(H,{}));
+ assert(producerCat.possible(unitType,16,false,true));
+ const int firstProducerScan=producerProbes;
+ assert(firstProducerScan>=1);
+ for(int n=0;n<128;++n)assert(producerCat.possible(unitType,16,false,true));
+ assert(producerProbes==firstProducerScan);
+ assert(!producerCat.possible(unitType,16,true,true));
+ assert(!producerCat.possible(unitType,40,false,true));
+ assert(producerCat.append(1));
+ assert(producerCat.possible(unitType,40,false,true));
+ assert(!producerCat.possible(unitType,40,false,false));
+ const int refreshedProducerScan=producerProbes;
+ for(int n=0;n<128;++n)assert(producerCat.possible(unitType,40,false,true));
+ assert(producerProbes==refreshedProducerScan);
+ w(ownedItems+4,1);assert(producerCat.load(H,{}));
+ assert(producerCat.possible(unitType,40,false,false));
+ std::cout<<"PASS producer mask: cached across 128 candidates, naval separation, forecast append invalidation, native ownership reload\\n";
  setup();w(F+0x24,54);tick();assert(choice(0)>=0);reserve(choice(0));assert(books[0].items==std::vector<int>({0})&&commandQueue.size==0);
  // UI responsiveness: native page switch and changing the complete
  // sidebar cameo count must bypass the 100ms stable-catalogue throttle.
