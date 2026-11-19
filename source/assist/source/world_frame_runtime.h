@@ -189,8 +189,14 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
   for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
   runtimeDemandLeases.append(key.tick,requests);
-  if(worldFrameCommandWorker.request(key,graphDemand,requestRevision,requests,globalVehicles))
-   commandRequestGate.submitted(key,graphDemand,requestRevision,globalVehicles);
+  // Server::requests() may publish a newer Host demandRevision than the
+  // version sampled before assembling the request list. Stamp the exact
+  // version that supplied these pages, not the obsolete pre-read version.
+  // take() will still reject the result if the demand changes again.
+  const uint64_t assembledRevision=
+      (uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
+  if(worldFrameCommandWorker.request(key,graphDemand,assembledRevision,requests,globalVehicles))
+   commandRequestGate.submitted(key,graphDemand,assembledRevision,globalVehicles);
   return false;
  }
  if(!worldFramePublication.begin(worldFrame))return false;
