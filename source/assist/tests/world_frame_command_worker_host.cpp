@@ -14,6 +14,16 @@ int main(int argc,char**argv){
  const Fn wrongGlobal=fn("PollWrongGlobal"),rejected=fn("RejectedCount");
  const Fn startExpired=fn("StartExpired"),workerReads=fn("WorkerReadCount");
  const Fn stop=fn("Stop"),reads=fn("GameReadCount");
+ const Fn asyncEnabled=fn("AsyncEnabled");
+ // The launch-time switch is a real worker-library policy, not a mock.
+ // A disabled worker must not be started by the caller.
+ const int expected=argc>=3&&argv[2][0]=='0'?0:1;
+ assert(asyncEnabled()==expected);
+ if(!expected){
+  assert(FreeLibrary(dll));
+  std::puts("PASS Win32 async graph capture rollback mode (disabled at launch)");
+  return 0;
+ }
  // Read a sealed global-vehicle roster but refuse to adopt it when the
  // live setting was switched off before the exact-frame handoff.
  const int rejectedBefore=rejected();
