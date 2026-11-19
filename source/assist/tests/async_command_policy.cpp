@@ -3,6 +3,11 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+static bool candidateReady=true;
+static uint32_t candidateUID=77;
+static bool candidateAvailable(){return candidateReady;}
+static bool candidateCheckID(uint32_t id,uint32_t pointer){return pointer==0x200000&&id==candidateUID;}
+static bool candidateCheckPtr(uint32_t pointer){return pointer==0x200000&&candidateUID==77;}
 int main(){
  using namespace worldframe;
  Key a{};a.pid=100;a.owner=250;a.match=7;a.scenario=0x110000;
@@ -27,23 +32,14 @@ int main(){
  // A candidate UID hash needs an independent live identity check at lookup.
  auto owner=std::make_unique<assist::ObjectIndex>();
  owner->add(0x200000,77);
- bool candidateReady=true;
- uint32_t currentUID=77;
- // Stateless C function pointers emulate the production native UID validators.
+ // Stateless function pointers emulate the production native UID checks.
  // A stale candidate is never allowed to authorize the wrong in-place actor.
- struct Check {
-  static inline bool*ready=nullptr;
-  static inline uint32_t*uid=nullptr;
-  static bool available(){return *ready;}
-  static bool byId(uint32_t id,uint32_t pointer){return pointer==0x200000&&id==*uid;}
-  static bool byPtr(uint32_t pointer){return pointer==0x200000&&*uid==77;}
- };
- Check::ready=&candidateReady;Check::uid=&currentUID;
+ candidateReady=true;candidateUID=77;
  assist::ObjectIndexView view;
- view.bindCandidate(&owner,Check::available,Check::byId,Check::byPtr);
+ view.bindCandidate(&owner,candidateAvailable,candidateCheckID,candidateCheckPtr);
  assert(view.byId(77)==0x200000&&view.contains(0x200000));
- currentUID=88;assert(!view.byId(77)&&!view.contains(0x200000));
- candidateReady=false;currentUID=77;assert(!view.byId(77)&&!view.contains(0x200000));
+ candidateUID=88;assert(!view.byId(77)&&!view.contains(0x200000));
+ candidateReady=false;candidateUID=77;assert(!view.byId(77)&&!view.contains(0x200000));
  view.unbind();
  
  // A cold Host demand read can move its revision from 54 to 55 while
