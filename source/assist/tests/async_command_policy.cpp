@@ -1,4 +1,5 @@
 #include "../../shared/source/world_frame_command_policy.h"
+#include "../source/object_index.h"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -12,6 +13,39 @@ int main(){
  assert(acceptCommandCapture(a,a,demand,Base|Combat,revision,revision,110));
  assert(acceptCommandCapture(a,a,demand,demand,revision,revision,180));
  assert(!acceptCommandCapture(a,a,demand,demand,revision,revision,181));
+ // A real full graph can finish after the game's frame boundary. It is
+ // observational data only, never a permit to submit an old EventClass.
+ Key candidateNext=a;++candidateNext.frame;
+ assert(acceptObservationCandidate(a,candidateNext,demand,Base,160));
+ assert(!acceptCommandCapture(a,candidateNext,demand,Base,revision,revision,160));
+ assert(!acceptObservationCandidate(a,candidateNext,demand,Base|Ore,160));
+ assert(!acceptObservationCandidate(a,candidateNext,demand,Base,601));
+ Key candidateOld=a;--candidateOld.frame;
+ assert(!acceptObservationCandidate(a,candidateOld,demand,Base,160));
+ Key candidateOther=a;++candidateOther.connectionHigh;
+ assert(!acceptObservationCandidate(a,candidateOther,demand,Base,160));
+ // A candidate UID hash needs an independent live identity check at lookup.
+ auto owner=std::make_unique<assist::ObjectIndex>();
+ owner->add(0x200000,77);
+ bool candidateReady=true;
+ uint32_t currentUID=77;
+ // Stateless C function pointers emulate the production native UID validators.
+ // A stale candidate is never allowed to authorize the wrong in-place actor.
+ struct Check {
+  static inline bool*ready=nullptr;
+  static inline uint32_t*uid=nullptr;
+  static bool available(){return *ready;}
+  static bool byId(uint32_t id,uint32_t pointer){return pointer==0x200000&&id==*uid;}
+  static bool byPtr(uint32_t pointer){return pointer==0x200000&&*uid==77;}
+ };
+ Check::ready=&candidateReady;Check::uid=&currentUID;
+ assist::ObjectIndexView view;
+ view.bindCandidate(&owner,Check::available,Check::byId,Check::byPtr);
+ assert(view.byId(77)==0x200000&&view.contains(0x200000));
+ currentUID=88;assert(!view.byId(77)&&!view.contains(0x200000));
+ candidateReady=false;currentUID=77;assert(!view.byId(77)&&!view.contains(0x200000));
+ view.unbind();
+ 
  // A cold Host demand read can move its revision from 54 to 55 while
  // assembling the requested pages. The worker ticket must carry 55, and
  // subsequent exact-frame admission rejects the obsolete pre-read 54.
