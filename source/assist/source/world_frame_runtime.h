@@ -27,7 +27,7 @@ using WorldFramePublication=worldframe::AsyncPublisher<>;
 static WorldFramePublication worldFramePublication;
 // The game frame keeps execution authority. The worker owns all command
 // CaptureGraph RPM and mutable traversal buffers until a strict same-frame
-// handoff; off-thread mode is deliberately pilot/opt-in.
+// handoff; production uses async by default, with explicit launch rollback.
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
 struct WorldFrameCommandFixture {
  static bool enabled(){return false;}
