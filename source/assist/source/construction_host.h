@@ -120,7 +120,10 @@ static void collectChoices(){
  // its own sealed sample. The current tab's old complete list stays visible.
  auto previous=choiceSourceTab==activeTab?std::move(choices):std::vector<Choice>{};
  choices.clear();
- auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
+ auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};
+// WorldFrameScope pins one immutable publication, so producer lookups may
+// be shared across candidate checks. The live FIFO forecast stays uncached.
+construction::Catalogue<decltype(read)> catalogue(read,true);
  auto uiRead=[](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);};
  bool previewReady=loadForecast(catalogue);auto&b=books[activeTab];
  uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=-1,after=-1,cameos[75*13]{};
