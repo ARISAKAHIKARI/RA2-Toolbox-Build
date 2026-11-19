@@ -14,6 +14,7 @@ args.out = args.out.resolve()
 args.out.mkdir(parents=True, exist_ok=True)
 here = Path(__file__).resolve().parent
 runs = []
+benchmarks = []
 for arch in ("x86", "x86_64"):
     dest = args.out / arch
     dest.mkdir(exist_ok=True)
@@ -49,14 +50,37 @@ for arch in ("x86", "x86_64"):
                          "pass": completed.returncode == 0})
             if completed.returncode:
                 break
-passed = len(runs) == 12 and all(item["pass"] for item in runs)
+    # Synthetic native benchmark; its timings are logged, never a
+    # pass/fail performance threshold on noisy hosted CI machines.
+    benchmark_source = here / "world_frame_copy_microbench.cpp"
+    benchmark_exe = dest / "world-frame-copy-bench.exe"
+    build = subprocess.run([
+        str(args.zig), "c++", "-target", arch + "-windows-gnu",
+        "-std=c++17", "-O2", "-UNDEBUG", str(benchmark_source),
+        "-o", str(benchmark_exe)
+    ], text=True, capture_output=True)
+    (dest / "copy-bench.build.log").write_text(build.stdout + build.stderr)
+    if build.returncode:
+        print(build.stdout + build.stderr)
+        raise SystemExit(build.returncode)
+    result = subprocess.run([str(benchmark_exe)], text=True,
+                            capture_output=True, timeout=40)
+    (dest / "copy-bench.run.log").write_text(result.stdout + result.stderr)
+    print(arch, "copy-bench", result.returncode, result.stdout, result.stderr)
+    benchmarks.append({"arch": arch, "exit": result.returncode,
+                       "pass": result.returncode == 0,
+                       "result": result.stdout.strip(),
+                       "synthetic": True, "real_game": False})
+passed = (len(runs) == 12 and all(item["pass"] for item in runs)
+          and len(benchmarks) == 2 and all(item["pass"] for item in benchmarks))
 src = [here / "world_frame_command_worker_windows.py",
        here / "world_frame_command_worker_dll.cpp",
        here / "world_frame_command_worker_host.cpp",
+       here / "world_frame_copy_microbench.cpp",
        here.parent.parent / "shared/source/world_frame_command_worker_win.h",
        here.parent.parent / "shared/source/world_frame_command_policy.h"]
 (args.out / "result.json").write_text(json.dumps({
-    "pass": passed, "runs": runs, "native_windows": True,
+    "pass": passed, "runs": runs, "benchmarks": benchmarks, "native_windows": True,
     "real_game": False, "multiplayer": False,
     "source_sha256": {str(x): hashlib.sha256(x.read_bytes()).hexdigest() for x in src}
 }, indent=2) + "\n")
