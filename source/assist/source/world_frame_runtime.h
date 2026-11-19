@@ -190,7 +190,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  if(asyncCommand&&worldFrameReady&&!worldFrameBoundaryOnly&&
     worldFrame.key.sameWorld(key)&&worldFrame.key.frame!=key.frame&&
     worldFrameCommandRoster.current(worldFrame.key)){
+  // Snapshot and UID roster must always travel as a single immutable
+  // source pair. Moving only the roster would break provenance and cause
+  // observational planners to reject every otherwise valid candidate.
+  worldFrameCandidate.swap(worldFrame);
   worldFrameCandidateRoster.swap(worldFrameCommandRoster);
+  worldFrameReady=false;
   worldFrameCandidateAvailable=true;
   if(!++worldFrameCandidateVersion)++worldFrameCandidateVersion;
  }
