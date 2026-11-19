@@ -249,6 +249,64 @@ void speculativeBatchFaultIsolation(){
  required.uniqueSuccessfulBytes();
  std::puts("PASS bounded speculative split: 12/16 pages salvaged, no duplicate bytes, 7-call worst-case cap");
 }
+void contiguousWarmBatch32(){
+ // Physical 64-page span: the exact same 256KiB of game bytes can be
+ // acquired with two 128KiB RPM calls instead of four 64KiB RPM calls.
+ // This is a deterministic *call count*, not a wall-time FPS claim.
+ constexpr uint32_t base=0x900000;
+ std::vector<uint32_t>addresses;addresses.reserve(64);
+ Memory small,large;
+ for(uint32_t i=0;i<64;++i){
+  const uint32_t page=base+i*worldframe::PageSize;
+  addresses.push_back(page);
+  small.put(page+0x28,0xF00D0000u+i);
+  large.put(page+0x28,0xF00D0000u+i);
+ }
+ std::array<uint8_t,16*worldframe::PageSize>smallScratch{};
+ std::array<uint8_t,32*worldframe::PageSize>largeScratch{};
+ worldframe::Snapshot traditional;traditional.reset(key());
+ worldframe::Snapshot batched;batched.reset(key());
+ CHECK(traditional.prefetchPages(Read{&small},addresses,smallScratch.data(),
+                                 smallScratch.size(),false));
+ CHECK(batched.prefetchPages(Read{&large},addresses,largeScratch.data(),
+                             largeScratch.size(),false,32));
+ CHECK(small.calls.size()==4&&large.calls.size()==2);
+ CHECK(traditional.counters.bytes==64*worldframe::PageSize);
+ CHECK(batched.counters.bytes==traditional.counters.bytes);
+ CHECK(traditional.pages.size()==64&&batched.pages.size()==64);
+ CHECK(traditional.seal()&&batched.seal());
+ for(uint32_t i=0;i<64;++i){
+  uint32_t a=0,b=0;
+  CHECK(traditional.read(addresses[i]+0x28,&a,4));
+  CHECK(batched.read(addresses[i]+0x28,&b,4));
+  CHECK(a==0xF00D0000u+i&&a==b);
+ }
+ small.uniqueSuccessfulBytes();large.uniqueSuccessfulBytes();
+ // Never speculate across disjoint addresses or invent a readable page.
+ Memory sparse;
+ std::vector<uint32_t>gapped;
+ for(uint32_t i=0;i<32;++i)gapped.push_back(base+i*2*worldframe::PageSize);
+ worldframe::Snapshot skipped;skipped.reset(key());
+ CHECK(skipped.prefetchPages(Read{&sparse},gapped,largeScratch.data(),
+                             largeScratch.size(),false,32));
+ CHECK(sparse.calls.empty()&&skipped.pages.empty()&&skipped.seal());
+ // Fault isolation is still bounded even when using the wider buffer.
+ Memory fault;
+ for(uint32_t i=0;i<32;++i)fault.put(addresses[i]+0x28,0xAB000000u+i);
+ fault.partialPages.insert(addresses[17]);
+ worldframe::Snapshot candidate;candidate.reset(key());
+ CHECK(candidate.prefetchPages(Read{&fault},addresses,largeScratch.data(),
+                               largeScratch.size(),false,32));
+ // The 32-page affected run salvages the valid left 16 and right 8.
+ // The untouched second 32-page run is copied in one OS read.
+ CHECK(candidate.pages.size()==56&&candidate.counters.failedReads==3);
+ CHECK(candidate.seal());
+ uint32_t sample=0;
+ CHECK(candidate.read(addresses[1]+0x28,&sample,4)&&sample==0xAB000001u);
+ CHECK(!candidate.read(addresses[17]+0x28,&sample,4));
+ CHECK(candidate.read(addresses[33]+0x28,&sample,4));
+ std::printf("PASS contiguous warmup: 64 pages, 16-page=4 RPM calls, 32-page=2 calls, exact bytes and fault isolation retained\\n");
+}
 void capacity(){
  worldframe::Snapshot s;s.reset(key());size_t calls=0;
  auto live=[&](uint32_t p,void*out,size_t n){++calls;std::memset(out,int(p>>12)&255,n);return true;};
@@ -699,7 +757,7 @@ void platform(){transport();mappingBudgets();mappingFailures();mappingInterleavi
 
 #ifndef WORLD_FRAME_FIXTURE_ONLY
 int main(){
- fixture::hostVisual();fixture::overlap();fixture::partial();fixture::graphs();fixture::speculativeBatchFaultIsolation();fixture::capacity();fixture::nothrowPages();
+ fixture::hostVisual();fixture::overlap();fixture::partial();fixture::graphs();fixture::speculativeBatchFaultIsolation();fixture::contiguousWarmBatch32();fixture::capacity();fixture::nothrowPages();
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
  fixture::platform();
 #endif
