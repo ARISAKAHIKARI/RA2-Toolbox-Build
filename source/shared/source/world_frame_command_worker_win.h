@@ -34,6 +34,12 @@ class CommandCaptureWorker {
  Key lastRequestedKey_{};
  uint32_t lastRequestedDemand_=0;uint64_t lastRequestedRevision_=0;bool lastRequestedGlobal_=false;
  std::atomic<uint32_t>accepted_{0},rejected_{0};
+ // Diagnostic counters are written only by the worker. The Game callback
+ // loads atomics at most 4x/s, never locks gate_, waits, or touches RPM.
+ std::atomic<uint32_t>jobsStarted_{0},jobsPublished_{0},jobsExact_{0},jobsCandidate_{0};
+ std::atomic<uint32_t>stale_{0},worldChanged_{0},budget_{0},rosterFailed_{0},incomplete_{0};
+ std::atomic<uint32_t>lastDurationMs_{0},maxDurationMs_{0},lastCalls_{0},lastBytes_{0},lastPages_{0};
+ std::atomic<int32_t>lastFirstFrame_{-1},lastLastFrame_{-1};
  static bool live(uint32_t address,void*out,size_t bytes){
   if(!out||!range(address,bytes))return false;
   SIZE_T got=0;
@@ -82,12 +88,17 @@ class CommandCaptureWorker {
    // Equivalent ascending page set, O(4N), retained worker-only buffer.
    sortUniquePageAddresses(job.pages,self->scratch_.warmSortScratch);
    const DWORD began=GetTickCount();unsigned calls=0;size_t bytes=0;
+   ++self->jobsStarted_;
    // A worker started after its 80ms strict command deadline may still
    // produce a useful *candidate* world index. Do not throw the whole graph
    // away merely because the game frame advanced while the worker was busy.
-   if(uint32_t(began-job.key.tick)>MaxCandidateAgeMs){++self->rejected_;continue;}
+   if(uint32_t(began-job.key.tick)>MaxCandidateAgeMs){
+    ++self->stale_;++self->rejected_;continue;
+   }
    const Key before=currentKey(job.key);
-   if(!before.pid||!before.sameWorld(job.key)){++self->rejected_;continue;}
+   if(!before.pid||!before.sameWorld(job.key)){
+    ++self->worldChanged_;++self->rejected_;continue;
+   }
    self->staging_.reset(before);
    const auto checkedRead=[&](uint32_t at,void*out,size_t n){
     if(self->stopping_.load(std::memory_order_acquire)||
@@ -100,6 +111,7 @@ class CommandCaptureWorker {
    };
    CaptureGraph<decltype(checkedRead)>graph(self->staging_,checkedRead,self->scratch_);
    const bool complete=graph.capture(job.demand,job.pages);
+   if(!complete)++self->incomplete_;
    const Key after=currentKey(job.key);
    const bool stable=before.sameWorld(after)&&before.frame<=after.frame&&
        uint32_t(after.tick-began)<=MaxWorkMs;
@@ -112,13 +124,19 @@ class CommandCaptureWorker {
    if(!stable||!sealed||self->staging_.overflow()||
       job.epoch!=self->epoch_.load(std::memory_order_acquire)||
       job.ticket!=self->latestTicket_.load(std::memory_order_acquire)){
+    if(uint32_t(GetTickCount()-began)>MaxWorkMs||self->staging_.overflow())
+     ++self->budget_;
+    else if(!before.sameWorld(after))++self->worldChanged_;
     ++self->rejected_;continue;
    }
    // Build the full identity hash on this SAME worker. A missing UID or
    // unreadable roster is UNKNOWN, not an empty world or an owned actor.
-   if(!self->stagingRoster_.build(self->staging_,job.globalVehicles,
-                                  self->scratch_.list)||
-      uint32_t(GetTickCount()-before.tick)>MaxWorkMs){
+   const bool rosterBuilt=self->stagingRoster_.build(self->staging_,
+                           job.globalVehicles,self->scratch_.list);
+   const bool overtime=uint32_t(GetTickCount()-before.tick)>MaxWorkMs;
+   if(!rosterBuilt||overtime){
+    if(!rosterBuilt)++self->rosterFailed_;
+    if(overtime)++self->budget_;
     ++self->rejected_;continue;
    }
    {
@@ -131,6 +149,17 @@ class CommandCaptureWorker {
     self->completedKey_=before;self->completedDemand_=job.demand;
     self->completedEpoch_=job.epoch;self->completedRevision_=job.requestRevision;
     self->completedExact_=exact;self->completedReady_=true;
+    ++self->jobsPublished_;
+    if(exact)++self->jobsExact_;else ++self->jobsCandidate_;
+    const uint32_t ms=uint32_t(GetTickCount()-began);
+    self->lastDurationMs_.store(ms,std::memory_order_relaxed);
+    self->maxDurationMs_.store(std::max(ms,self->maxDurationMs_.load(std::memory_order_relaxed)),
+                               std::memory_order_relaxed);
+    self->lastCalls_.store(calls,std::memory_order_relaxed);
+    self->lastBytes_.store(uint32_t(bytes),std::memory_order_relaxed);
+    self->lastPages_.store(uint32_t(self->completed_.pages.size()),std::memory_order_relaxed);
+    self->lastFirstFrame_.store(before.frame,std::memory_order_relaxed);
+    self->lastLastFrame_.store(after.frame,std::memory_order_relaxed);
    }
   }
   // Every Snapshot/worker field lives until the Runtime acknowledges exit.
@@ -279,6 +308,21 @@ public:
   latestTicket_.fetch_add(1,std::memory_order_acq_rel);
   lastRequestedAt_=0;lastRequestedKey_={};lastRequestedDemand_=lastRequestedRevision_=0;lastRequestedGlobal_=false;
   if(event_)SetEvent(event_);
+ }
+ struct Diagnostics {
+  uint32_t started=0,published=0,exact=0,candidate=0;
+  uint32_t stale=0,worldChanged=0,budget=0,rosterFailed=0,incomplete=0,rejected=0;
+  uint32_t lastDurationMs=0,maxDurationMs=0,lastCalls=0,lastBytes=0,lastPages=0;
+  int32_t firstFrame=-1,lastFrame=-1;
+ };
+ Diagnostics diagnostics()const{
+  const auto order=std::memory_order_relaxed;
+  return {jobsStarted_.load(order),jobsPublished_.load(order),jobsExact_.load(order),
+   jobsCandidate_.load(order),stale_.load(order),worldChanged_.load(order),
+   budget_.load(order),rosterFailed_.load(order),incomplete_.load(order),
+   rejected_.load(order),lastDurationMs_.load(order),maxDurationMs_.load(order),
+   lastCalls_.load(order),lastBytes_.load(order),lastPages_.load(order),
+   lastFirstFrame_.load(order),lastLastFrame_.load(order)};
  }
  uint32_t accepted()const{return accepted_.load(std::memory_order_relaxed);}
  uint32_t rejected()const{return rejected_.load(std::memory_order_relaxed);}
