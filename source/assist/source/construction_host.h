@@ -326,7 +326,7 @@ static PaintRequest capturePaint(){
  return request;
 }
 static void requestPaint(){
- if(!geometryReady||!window||activeTab<0||activeTab>3||!constructionDisplayFresh())return;
+ if(!geometryReady||!window||activeTab<0||activeTab>3||choiceSourceTab!=activeTab||!constructionDisplayFresh())return;
  std::shared_ptr<PaintRequest> request;
  {externalReader.setWorldDemand(worldframe::Base);external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
   request=std::make_shared<PaintRequest>(capturePaint());request->sourceFrame=externalReader.worldFrameToken();if(!source.complete())return;}
@@ -340,7 +340,8 @@ static void requestPaint(){
  requestedAt=request->tick;requestedPaint=request;paintWorker.submit(*request);
 }
 static bool panelInputReady(){
- RECT client{};return paintReady&&paintedFrame&&requestedPaint&&samePaintWorld(paintedFrame->request)&&
+ RECT client{};return paintReady&&paintedFrame&&requestedPaint&&choiceSourceTab==activeTab&&
+  paintedFrame->request.activeTab==activeTab&&requestedPaint->activeTab==activeTab&&samePaintWorld(paintedFrame->request)&&
   paintedFrame->request.input==requestedPaint->input&&GetClientRect(window,&client)&&
   client.right-client.left==paintedFrame->request.width&&client.bottom-client.top==paintedFrame->request.height;
 }
@@ -377,8 +378,12 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
   if(msg==WM_LBUTTONUP&&paintReady&&paintedFrame&&samePaintWorld(paintedFrame->request)&&
      y>=0&&y<paintedLayout.pointY(24)&&x>=0&&x<paintedLayout.width()){
    selectedTab=std::min(3,int(int64_t(x)*4/paintedLayout.width()));
-   activeTab=selectedTab;scroll=0;refreshed=0;
-   refreshChoices();requestPaint();return 0;
+   activeTab=selectedTab;scroll=0;hoverChoice=hoverQueue=-1;refreshed=0;
+   // Do not synchronously rebuild the entire technology catalogue or
+   // capture a potentially stale previous-tab paint from a mouse callback.
+   // service() runs the sealed read on its next tick; close command policy
+   // immediately and let only a complete matching-tab frame admit clicks.
+   publishReservationPolicy({});return 0;
   }
   if(!panelInputReady())return 0;
   if(msg==WM_RBUTTONUP){if(activeTab<0||activeTab>3)return 0;bool all=(wp&MK_SHIFT)!=0;int slot=layout.queueAt(x,y,int(books[activeTab].items.size()));if(slot>=0)removeTop(all);else{int n=layout.choiceAt(x,y,scroll,int(choices.size()));if(n>=0){auto&items=books[activeTab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==choices[n].index){removeItem(activeTab,i,all);break;}}}}
