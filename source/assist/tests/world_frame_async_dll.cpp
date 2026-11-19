@@ -58,13 +58,15 @@ static BOOL WINAPI auditedNativeRead(HANDLE proc,LPCVOID address,LPVOID output,S
 #include "../../shared/source/world_frame_command_worker_win.h"
 #undef ReadProcessMemory
 #define WORLD_FRAME_FIXTURE_ONLY
+#define WORLD_FRAME_TEST_CANDIDATES
 #define REAL_WINDOWS_RPM
 #include "world_frame_core.cpp"
 #include "../source/world_lifecycle.h"
 namespace assist {
 struct FixtureShared {volatile LONG worldSampleSeq=0;uint32_t owner=0,magnetronGlobal=0,worldSampleFailures=0,worldSamplePages=0,worldSampleReads=0,worldSampleBytes=0,worldSampleRosters=0,worldSampleSerial=0;int worldSampleFrame=-1;};
 static FixtureShared shared;static FixtureShared*sh=&shared;static uint32_t match=7;
-static struct {int frame=50;}snap;
+static struct {int frame=50,session=0;}snap;
+static uint32_t lastHouse=fixture::House;
 // No WORLD_FRAME_PLATFORM_FIXTURE: execute the actual async Runtime path.
 #include "../source/world_frame_runtime.h"
 }
@@ -273,5 +275,16 @@ extern "C" __declspec(dllexport) int AsyncCandidatePoll(){
     !worldFrameCommandWorker.enabled()||
     !backgroundReadThread.load(std::memory_order_acquire)||
     backgroundReadThread.load(std::memory_order_acquire)==gameThread)return -2;
+ // A published candidate must actually be readable by the production
+ // read-only planner scope, not just have a non-empty UID roster.
+ {
+  ObservationReadScope observation;
+  if(!observation)return -3;
+  if(!readWorldSample(fixture::ActorA+0x6C,&hp,sizeof hp)||
+     hp!=100||!observation.complete()||
+     sampleWorldSource!=&worldFrameCandidate)return -4;
+ }
+ // No old-frame result is allowed to become exact-frame event authority.
+ if(worldFrameReady&&worldFrame.key.frame!=snap.frame)return -5;
  return 1;
 }
