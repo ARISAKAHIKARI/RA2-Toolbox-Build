@@ -12,6 +12,16 @@ int main(){
  assert(acceptCommandCapture(a,a,demand,Base|Combat,revision,revision,110));
  assert(acceptCommandCapture(a,a,demand,demand,revision,revision,180));
  assert(!acceptCommandCapture(a,a,demand,demand,revision,revision,181));
+ // A cold Host demand read can move its revision from 54 to 55 while
+ // assembling the requested pages. The worker ticket must carry 55, and
+ // subsequent exact-frame admission rejects the obsolete pre-read 54.
+ const uint64_t priorHostRevision=(uint64_t(54)<<32)|17u;
+ CommandRequestGate assembledGate;
+ assembledGate.submitted(a,demand,revision,false);
+ assert(assembledGate.defer(a,demand,revision,false,110));
+ assert(!assembledGate.defer(a,demand,priorHostRevision,false,110));
+ assert(!acceptCommandCapture(a,a,demand,demand,priorHostRevision,revision,110));
+ assert(acceptCommandCapture(a,a,demand,demand,revision,revision,110));
  // Runtime request admission: no repeated 16K-page merge for the same
  // worker job, but never throttle a new frame, requirement or config.
  CommandRequestGate gate;
