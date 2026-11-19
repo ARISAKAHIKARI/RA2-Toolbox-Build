@@ -195,7 +195,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // A worker may have completed after the simulation frame advanced.
   // Keep its *complete* UID graph as a bounded discovery candidate without
   // marking it as a current command sample or publishing mixed-frame bytes.
-  if(worldFrameCommandWorker.takeObservation(key,graphDemand,worldFrameCandidate,
+  if(worldFrameCommandWorker.takeObservation(key,worldframe::Base,worldFrameCandidate,
                                              worldFrameCandidateRoster,globalVehicles)){
    worldFrameCandidateAvailable=true;
    if(!++worldFrameCandidateVersion)++worldFrameCandidateVersion;
