@@ -36,6 +36,7 @@ struct WorldFrameCommandFixture {
  bool deferBusy(const worldframe::Key&,uint32_t,uint64_t,bool=false){return false;}
  bool request(const worldframe::Key&,uint32_t,uint64_t,const std::vector<uint32_t>&,bool=false){return false;}
  bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&,worldframe::CommandRoster* =nullptr,bool=false){return false;}
+ bool takeObservation(const worldframe::Key&,uint32_t,worldframe::Snapshot&,worldframe::CommandRoster&,bool=false){return false;}
 };
 using WorldFrameCommandWorker=WorldFrameCommandFixture;
 #else
@@ -43,6 +44,14 @@ using WorldFrameCommandWorker=::worldframe::CommandCaptureWorker;
 #endif
 static WorldFrameCommandWorker worldFrameCommandWorker;
 static worldframe::CommandRoster worldFrameCommandRoster;
+// Cross-frame observation is never the native command-sample authority.
+// Own separately: the strict worldFrame/SampleReadScope can only expose
+// same-frame sealed bytes, while this candidate index is bounded in age
+// and every actual game order must check the live object's UID and House.
+static worldframe::Snapshot worldFrameCandidate;
+static worldframe::CommandRoster worldFrameCandidateRoster;
+static bool worldFrameCandidateAvailable=false;
+static uint32_t worldFrameCandidateVersion=0;
 // Coalesce identical in-flight requests before copying dependency pages.
 static worldframe::CommandRequestGate commandRequestGate;
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
@@ -108,7 +117,7 @@ public:
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
 };
-static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
+static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
  const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
  const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled();
@@ -123,6 +132,16 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  key.generationLow=uint32_t(worldProducerGeneration);key.generationHigh=uint32_t(worldProducerGeneration>>32);
  key.connectionLow=uint32_t(worldFrameServer.connection());key.connectionHigh=uint32_t(worldFrameServer.connection()>>32);
  worldFrameServer.observe(key);
+ // A successful strict sample becomes a read-only candidate on the NEXT
+ // simulation frame. Its hash can be reused without any 16K-game-roster scan;
+ // the native admission path still requires live per-object validation.
+ if(asyncCommand&&worldFrameReady&&!worldFrameBoundaryOnly&&
+    worldFrame.key.sameWorld(key)&&worldFrame.key.frame!=key.frame&&
+    worldFrameCommandRoster.current(worldFrame.key)){
+  worldFrameCandidateRoster.swap(worldFrameCommandRoster);
+  worldFrameCandidateAvailable=true;
+  if(!++worldFrameCandidateVersion)++worldFrameCandidateVersion;
+ }
  if(haveCaptureAttempt&&lastCaptureAttempt.sameFrame(key)){
   // A consumer can resume while the game is paused, after its old transport
   // was retired or local automatic work advanced without a live Host reader.
@@ -172,6 +191,14 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    }
    worldFrameServer.retire();worldFrameCommandWorker.invalidate();
    if(sh)++sh->worldSampleFailures;
+  }
+  // A worker may have completed after the simulation frame advanced.
+  // Keep its *complete* UID graph as a bounded discovery candidate without
+  // marking it as a current command sample or publishing mixed-frame bytes.
+  if(worldFrameCommandWorker.takeObservation(key,graphDemand,worldFrameCandidate,
+                                             worldFrameCandidateRoster,globalVehicles)){
+   worldFrameCandidateAvailable=true;
+   if(!++worldFrameCandidateVersion)++worldFrameCandidateVersion;
   }
   worldFrameReady=false;worldFrameBoundaryOnly=false;
   // Always poll take() first. An identical pending request skips expensive
