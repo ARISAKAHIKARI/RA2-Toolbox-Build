@@ -39,6 +39,12 @@ static std::map<uint32_t,int> airOverride;
 static std::set<uint64_t> forbiddenEnter;
 static std::vector<std::pair<uint32_t,uint32_t>> assignments;
 static worldframe::Snapshot worldFrame;
+static worldframe::Snapshot worldFrameCandidate;
+static bool worldFrameCandidateAvailable=false;
+static const worldframe::Snapshot*sampleWorldSource=nullptr;
+static uint32_t sampleScopeTick=0;
+static bool observationalFrameReady(){return false;}
+static uint32_t GetTickCount(){return clockNow;}
 // This fixture seals raw synthetic bytes rather than running CaptureGraph.
 // The empty retained scratch exercises indexWorld's original read fallback.
 static worldframe::CaptureScratch worldFrameCaptureScratch;
@@ -49,6 +55,14 @@ static std::vector<uint32_t> runtimeWorldDemands;
 static uint32_t runtimeDemandRevision=1;
 struct CommandWorkerFixture {static bool enabled(){return false;}};static CommandWorkerFixture worldFrameCommandWorker;
 static worldframe::CommandRoster worldFrameCommandRoster;
+// The extracted runtime fixture intentionally runs with the command worker
+// disabled. Keep the new observation-only symbols linked, without treating
+// a synthetic previous-frame candidate as current command authority.
+static worldframe::CommandRoster worldFrameCandidateRoster;
+static uint32_t worldFrameCandidateVersion=0;
+static bool candidateRosterReady(){return false;}
+static bool verifyCandidateID(uint32_t,uint32_t){return false;}
+static bool verifyCandidatePointer(uint32_t){return false;}
 static bool commandRosterReady(){return false;}
 #include "sample_scope_production.h"
 static bool liveRead(uint32_t at,void*out,size_t n){

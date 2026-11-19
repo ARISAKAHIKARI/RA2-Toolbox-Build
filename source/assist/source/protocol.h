@@ -29,7 +29,7 @@
 #include "native_placement_policy.h"
 #include "../../shared/source/hardware_performance.h"
 namespace assist {
-constexpr uint32_t Magic=0x41533130, Version=111;
+constexpr uint32_t Magic=0x41533130, Version=112; // appended sampling diagnostics, both components must match
 // Both binaries derive the namespace from the protocol version. Do not maintain
 // a separate literal in the host: a valid ABI with a different name never connects.
 struct MappingPrefixValue {
@@ -292,6 +292,19 @@ struct Shared {
  // Host preferences only: a click snapshots these into cooperative::Request.
  volatile uint32_t aircraftDamageRadiusCells=cooperative::DefaultDamageRadiusCells;
  volatile uint32_t aircraftDamageCoveragePercent=cooperative::DefaultDamagePercent;
+ // ABI v112, append-only. All values are fixed-width counters copied into
+ // shared IPC by Runtime; Host logs them at most once per five seconds.
+ // A stale/absent diagnostic is never permission to execute a native order.
+ struct SamplingDiagnostic {
+  volatile uint32_t captureCalls=0,gateDeferred=0,workerDeferred=0,requestsQueued=0;
+  volatile uint32_t strictAdopted=0,candidateAdopted=0,strictWorldRejected=0,indexUnavailable=0;
+  volatile uint32_t workerStarted=0,workerPublished=0,workerExact=0,workerCandidate=0;
+  volatile uint32_t workerStale=0,workerWorldChanged=0,workerBudget=0,workerRosterFailed=0;
+  volatile uint32_t workerGraphIncomplete=0,workerRejected=0;
+  volatile uint32_t workerLastDurationMs=0,workerMaxDurationMs=0;
+  volatile uint32_t workerLastCalls=0,workerLastBytes=0,workerLastPages=0;
+  volatile int32_t workerFirstFrame=-1,workerLastFrame=-1;
+ } sampling{};
 };
 inline int remaining(int start,int duration,int frame){
  if(duration<=0)return 0; if(start==-1)return duration;

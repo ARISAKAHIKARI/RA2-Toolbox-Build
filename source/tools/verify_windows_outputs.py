@@ -39,12 +39,12 @@ SYSTEM = {'kernel32.dll', 'user32.dll', 'gdi32.dll', 'winmm.dll', 'gdiplus.dll',
           'msvcrt.dll', 'ucrtbase.dll', 'ntdll.dll', 'version.dll', 'ws2_32.dll',
           'shlwapi.dll', 'oleaut32.dll', 'imm32.dll'}
 NEURAL_SYSTEM = SYSTEM | {'d3d12.dll', 'dxgi.dll', 'wintrust.dll', 'crypt32.dll'}
-ASSIST_PROTOCOL = 111
+ASSIST_PROTOCOL = 112
 # Actor.sourcePointer adds 16384*4 bytes to World; 32 order proofs add
 # 32*(3*4) bytes. Aircraft per-click settings add 8 bytes to Request,
 # 8 more to its embedded FrameInput request, and 8 to Shared settings.
 # Both Host and Game Runtime must agree on the same ABI.
-ASSIST_SHARED_BYTES = 23228664
+ASSIST_SHARED_BYTES = 23228768  # v112: append 100B diagnostic tail + 4B alignment padding
 ASSIST_MAPPING = f'Local\\RA2Assist_v{ASSIST_PROTOCOL}_'
 ENTRY_PROTOCOL = 3
 ENTRY_REQUEST_BYTES = 108

@@ -32,6 +32,8 @@ class ObjectIndexView {
  ObjectIndex native_{};
  const std::unique_ptr<ObjectIndex>*background_=nullptr;
  bool(*valid_)()=nullptr;
+ bool(*validateCandidateID_)(uint32_t,uint32_t)=nullptr;
+ bool(*validateCandidatePointer_)(uint32_t)=nullptr;
  ObjectIndex*current()const{
   if(!background_)return const_cast<ObjectIndex*>(&native_);
   return valid_&&valid_()?background_->get():nullptr;
@@ -39,17 +41,36 @@ class ObjectIndexView {
 public:
  void bind(const std::unique_ptr<ObjectIndex>*owner,bool(*valid)()){
   background_=owner;valid_=valid;
+  validateCandidateID_=nullptr;validateCandidatePointer_=nullptr;
  }
- void unbind(){background_=nullptr;valid_=nullptr;}
+ // Candidates may have been captured in an earlier game frame. Every lookup
+ // must validate the tiny UID or pointer identity in current native memory.
+ // They cannot be trusted as execution authority merely because the table
+ // contains an ID. No full roster scan ever runs on the game thread here.
+ void bindCandidate(const std::unique_ptr<ObjectIndex>*owner,bool(*valid)(),
+                    bool(*validateID)(uint32_t,uint32_t),
+                    bool(*validatePointer)(uint32_t)){
+  background_=owner;valid_=valid;
+  validateCandidateID_=validateID;validateCandidatePointer_=validatePointer;
+ }
+ void unbind(){
+  background_=nullptr;valid_=nullptr;
+  validateCandidateID_=nullptr;validateCandidatePointer_=nullptr;
+ }
  void clear(){if(auto*index=current())index->clear();}
  void add(uint32_t pointer,uint32_t id,uint32_t value=0){
   if(auto*index=current())index->add(pointer,id,value);
  }
  bool contains(uint32_t pointer)const{
-  auto*index=current();return index&&index->contains(pointer);
+  auto*index=current();
+  return index&&index->contains(pointer)&&
+         (!validateCandidatePointer_||validateCandidatePointer_(pointer));
  }
  uint32_t byId(uint32_t id)const{
-  auto*index=current();return index?index->byId(id):0;
+  auto*index=current();
+  const uint32_t pointer=index?index->byId(id):0;
+  return pointer&&(!validateCandidateID_||validateCandidateID_(id,pointer))
+         ?pointer:0;
  }
 };
 struct ManualVersions {

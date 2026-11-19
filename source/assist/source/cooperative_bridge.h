@@ -10,7 +10,7 @@ static external::GameView<LocalRawRead> clickView(LocalRawRead{});
 // conversion consumes only the manager's already sealed world sample.
 struct CooperativeFrameRead {bool operator()(uint32_t a,void*out,size_t n)const{return read(a,out,n);}};
 static bool collectCooperativeInput(const cooperative::Request&r,const compute::QuotaConfig& quotas,cooperative::Input&out){
- SampleReadScope frameRead;if(!frameRead)return false;
+ ObservationReadScope frameRead;if(!frameRead)return false;
  auto input=external::cooperativeInput(CooperativeFrameRead{},r,[&](uint32_t type){
   char id[24]{};if(!read(type+0x24,id,23))return quotas.defaults;
   for(int i=0;i<quotas.count;++i)if(sameid(id,quotas.entries[i].id))return quotas.entries[i].quota;return quotas.defaults;

@@ -36,7 +36,7 @@ static bool oreHarvestContext(uint32_t house,int frame,OreHarvestWorld&out,bool 
 }
 static bool oreHarvestSameWorld(const OreHarvestWorld&a,const OreHarvestWorld&b){return a.match==b.match&&a.scenario==b.scenario&&a.house==b.house&&a.houseID==b.houseID&&a.session==b.session;}
 static bool oreHarvestInventory(int frame,DWORD now){
- SampleReadScope frameRead;if(!frameRead||!refreshOreConfig())return false;
+ ObservationReadScope frameRead;if(!frameRead||!refreshOreConfig())return false;
  Vec units{};static uint32_t pointers[16384];
  if(!read(0x8B4108,&units,sizeof units)||units.count<0||units.count>16384||units.capacity<units.count||
     (units.count&&(units.items<0x10000||!read(units.items,pointers,size_t(units.count)*4))))return false;
@@ -65,7 +65,7 @@ static bool oreHarvestInventory(int frame,DWORD now){
  oreHarvestUnitsHash=hash;oreHarvestConfigRevision=oreConfigRevision;oreHarvestInventoryAt=now;oreHarvestInventoryFrame=frame;return true;
 }
 static bool oreHarvestMapCapture(){
- SampleReadScope frameRead;if(!frameRead)return false;
+ ObservationReadScope frameRead;if(!frameRead)return false;
  OreHarvestMap next{};next.bounds=external::mapbounds::sample([](uint32_t at,void*out,size_t n){return read(at,out,n);});
  Vec overlays=vec(0xA83D80,4096),tiberiums=vec(0xB0F4E8,64);
  if(!next.bounds.valid()||!oreHarvestRead(0x87F924,next.cells)||next.cells<0x10000||!oreHarvestRead(0x87F928,next.count)||next.count<=0||next.count>512*512||
@@ -183,7 +183,10 @@ static void oreHarvestObserve(uint32_t house,int frame,DWORD now){
  OreHarvestWorld world{};if(!oreHarvestContext(house,frame,world,true))return;
  if(!oreHarvestSameWorld(world,oreHarvestWorld)||world.frame<oreHarvestWorld.frame){oreHarvestReset();oreHarvestWorld=world;}else oreHarvestWorld.frame=world.frame;
  if(oreHarvestObservedFrame==frame||oreHarvestAttemptFrame==frame)return;
- SampleReadScope frameRead;if(!frameRead)return;oreHarvestAttemptFrame=frame;
+ ObservationReadScope frameRead;if(!frameRead)return;oreHarvestAttemptFrame=frame;
+ // Delayed observations may establish new candidates, never conclusively
+ // remove an existing work item merely because an old frame says absent.
+ const bool oldObservation=sampleWorldSource==&worldFrameCandidate;
  static OreHarvestJob previousJobs[ore::MaxJobs];static OreHarvestMiner previousMiners[ore::MaxJobs*8];
  memcpy(previousJobs,oreHarvestJobs,sizeof oreHarvestJobs);memcpy(previousMiners,oreHarvestMiners,sizeof oreHarvestMiners);
  const int previousCount=oreHarvestMinerCount,previousInventoryFrame=oreHarvestInventoryFrame;
@@ -198,7 +201,11 @@ static void oreHarvestObserve(uint32_t house,int frame,DWORD now){
  for(auto&j:oreHarvestJobs)if(j.id){
   if(DWORD(now-j.observedAt)>=15000||(j.ready&&DWORD(now-j.readyAt)>=8000)){j={};continue;}
   OreHarvestState state{};const int valid=oreHarvestState(j,house,state),refinery=oreHarvestRefinery(j,house);
-  if(valid<0||refinery==-1){j={};continue;}if(!valid||refinery==-2)continue;
+  if(valid<0||refinery==-1){
+   if(!oldObservation)j={};
+   continue;
+  }
+  if(!valid||refinery==-2)continue;
   if(state.unloading){j.observedAt=now;j.ready=false;j.search={};continue;}
   if(!oreHarvestAutomatic(state)){j={};continue;}
   if(state.cargo>0.01){if(j.ready)j={};continue;}
@@ -217,7 +224,7 @@ static void oreHarvestTick(uint32_t house,int frame,DWORD now){
  if(!oreHarvestNeedsWork())return;
  OreHarvestWorld world{};if(!oreHarvestContext(house,frame,world)||!oreHarvestSameWorld(world,oreHarvestWorld))return;
  bool current=false;
- {SampleReadScope frameRead;if(!frameRead)return;current=oreHarvestMapCurrent();if(!frameRead.complete())return;}
+ {ObservationReadScope frameRead;if(!frameRead)return;current=oreHarvestMapCurrent();if(!frameRead.complete())return;}
  if(!current){
   if(!oreHarvestMapCapture())return;
   for(auto&j:oreHarvestJobs)if(j.id&&j.ready)j.search.begin(j.originX,j.originY);
@@ -227,7 +234,7 @@ static void oreHarvestTick(uint32_t house,int frame,DWORD now){
  int budget=2048;for(unsigned n=0;n<ore::MaxJobs*8&&budget>0;++n){unsigned index=(oreHarvestCursor+n)%ore::MaxJobs;auto&j=oreHarvestJobs[index];if(!j.id||!j.ready)continue;
   int local=std::min(budget,256),before=local;
   {
-   SampleReadScope frameRead;if(!frameRead)return;
+   ObservationReadScope frameRead;if(!frameRead)return;
    auto next=j.search;bool certain=true;
    next.advance(local,[&](int x,int y){const int result=oreHarvestCell(x,y,j.speed);if(result<0)certain=false;return result<0?0:result;});budget-=before-local;
    // Visit the bounded batch to subscribe all missing Cell pages, then retry

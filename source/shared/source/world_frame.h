@@ -272,9 +272,12 @@ public:
  // Each 16-page batch uses at most 7 speculative calls, with no more than
  // 32 extra split calls across this invocation. Required fields still use
  // the original per-page and partial-range fallback.
- template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes,bool individualFallback=true){
+ template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes,bool individualFallback=true,size_t maxBatchPages=16){
   if(sealed_||overflow_)return false;
-  const size_t limit=std::min<size_t>(16,scratchBytes/PageSize);bool ok=true;
+  // Mandatory/unknown pages retain the 16-page default. An explicitly
+  // prefiltered actor warmup can batch 32 adjacent pages in one live read.
+  // Clamp to the caller's retained scratch and never read outside a run.
+  const size_t limit=std::min({size_t(32),maxBatchPages,scratchBytes/PageSize});bool ok=true;
   // Bound the TOTAL number of extra speculative RPM calls per invocation.
   // Thousands of inaccessible actors must not multiply the split cost.
   unsigned splitBudget=32;

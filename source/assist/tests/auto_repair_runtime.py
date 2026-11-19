@@ -28,7 +28,16 @@ def main():
    'REPAIR_MANUAL':manual,
    'REPAIR_RESET':reset[resetStart:resetEnd]+reset[autoStart:autoEnd]+'pendingRepairs.clear();',
   }
-  sections['SAMPLE_SCOPE']='static worldframe::DemandLeases runtimeDemandLeases;\nstatic bool worldFrameBoundaryOnly=false;\nstatic void rememberMissingWorldSpan(uint32_t,size_t){}\nstatic void requestWorldRange('+sections['SAMPLE_SCOPE']
+  sections['SAMPLE_SCOPE']=(
+   '#define WORLD_FRAME_PLATFORM_FIXTURE 1\n'
+   'static worldframe::DemandLeases runtimeDemandLeases;\n'
+   'static bool worldFrameBoundaryOnly=false;\n'
+   'static worldframe::Snapshot worldFrameCandidate;\n'
+   'static const worldframe::Snapshot*sampleWorldSource=nullptr;\n'
+   'static uint32_t sampleScopeTick=0;\n'
+   'static uint32_t GetTickCount(){return uint32_t(currentFrame*16);}\n'
+   'static void rememberMissingWorldSpan(uint32_t,size_t){}\n'
+   'static void requestWorldRange('+sections['SAMPLE_SCOPE'])
   defines=[]
   for name,value in sections.items():
    target=dest/(name.lower()+'.inc');target.write_text(value+'\n');defines.append('-D'+name+'="'+str(target)+'"')
