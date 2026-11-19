@@ -12,7 +12,7 @@ struct DodgeJob {
 static DodgeJob dodgeJobs[512];static int dodgeCursor,dodgeJobCursor;static uint32_t dodgeSerial,dodgeTask;static bool dodgePending;
 struct DodgeThreatRef {uint32_t pointer,target;bool projectile;uint32_t id;};static DodgeThreatRef dodgeThreatRefs[8192];static int dodgeThreatCount;
 static bool collectDodgeThreats(){
- SampleReadScope frameRead;if(!frameRead)return false;
+ ObservationReadScope frameRead;if(!frameRead)return false;
  static DodgeThreatRef next[8192];int count=0;
  // BulletClass::Array and fields are checked against YRpp and native
  // Construct 4664C0: owner B0, target 10C, damage 6C, type AC.
@@ -189,8 +189,11 @@ static void dispatchDodgeCalculation(uint32_t house,int frame,DWORD now,int next
 // Capture only facts. Native events, identity/lease checks and receipt changes
 // run after this scope has restored live reads.
 static bool collectDodgeInput(uint32_t house,int frame,DWORD now,int&nextCursor,int&nextJobCursor){
- SampleReadScope frameRead;if(!frameRead)return false;
- auto&i=dodgeCapture;memset(&i,0,sizeof i);i.match=match;i.tick=now;i.frame=frame;
+ ObservationReadScope frameRead;if(!frameRead)return false;
+ auto&i=dodgeCapture;memset(&i,0,sizeof i);i.match=match;
+ // Preserve the real acquisition age of an off-thread observation.
+ i.tick=sampleWorldSource&&sampleWorldSource->key.tick?sampleWorldSource->key.tick:now;
+ i.frame=frame;
  int checkedJobs=0;
  for(;checkedJobs<dodgeCount&&i.count<dodgecompute::MaxSources/2;++checkedJobs){const auto&j=dodgeJobs[(dodgeJobCursor+checkedJobs)%dodgeCount];
   if(j.active&&get<uint32_t>(j.pointer+0x10)==j.id)dodgeObserve(j.pointer,house,i.sources[i.count++]);
