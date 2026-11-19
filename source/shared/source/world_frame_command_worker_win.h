@@ -212,7 +212,15 @@ public:
   // dependency-list assembly on the game callback. A request cannot be
   // submitted under this gate anyway: postpone it and try again next wake.
   // This is ONLY request admission; take() remains strictly exact-frame.
-  if(!lock.owns_lock()||stopping_.load(std::memory_order_acquire))return true;
+  if(!lock.owns_lock())return true;
+  if(stopping_.load(std::memory_order_acquire)){
+   // Critical lifecycle boundary: a stopped worker MUST be restartable.
+   // If the pinned old DLL thread is still draining, do not rebuild a huge
+   // page list just to fail request(). Once it exits (or was never created),
+   // allow request() to perform its zero-wait reap()/launch() instead of
+   // coalescing forever after a new game/session begins.
+   return thread_&&WaitForSingleObject(thread_,0)!=WAIT_OBJECT_0;
+  }
   const bool outstanding=queuedReady_||capturing_.load(std::memory_order_acquire);
   if(coalesceInFlightWorld(lastRequestedKey_,key,lastRequestedDemand_,demand,
       lastRequestedRevision_,revision,lastRequestedGlobal_,globalVehicles,
