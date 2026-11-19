@@ -29,7 +29,11 @@ static HANDLE WINAPI delayedMapping(HANDLE file,LPSECURITY_ATTRIBUTES security,D
 static BOOL WINAPI auditedNativeRead(HANDLE proc,LPCVOID address,LPVOID output,SIZE_T size,SIZE_T*got){
  if(GetCurrentThreadId()!=gameThread){
   backgroundReadThread.store(GetCurrentThreadId(),std::memory_order_release);
-  if(holdCommandRead.exchange(false,std::memory_order_acq_rel)){
+  // Wait at the first full-page graph read, AFTER currentKey has taken
+  // its scalar frame-50 identity. The worker therefore really spans the
+  // frame change, rather than simply starting a fresh graph in frame 51.
+  if(size>=4096&&
+     holdCommandRead.exchange(false,std::memory_order_acq_rel)){
    enteredCommandRead.store(true,std::memory_order_release);
    if(!commandGate||WaitForSingleObject(commandGate,5000)!=WAIT_OBJECT_0){
     if(got)*got=0;
