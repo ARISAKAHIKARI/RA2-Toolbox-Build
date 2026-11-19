@@ -24,11 +24,13 @@ def write_scope(out):
              "static worldframe::Snapshot worldFrameCandidate;\n"
              "static const worldframe::Snapshot* sampleWorldSource=nullptr;\n"
              "static uint32_t sampleScopeTick=0;\n"
-             "static uint32_t GetTickCount(){return sampleClock(sh);}\n"
+             "static uint32_t GetTickCount(){return clockNow;}\n"
              "static bool observationalFrameReady(){return false;}\n"
              "static void rememberMissingWorldSpan(uint32_t,size_t){}\n"
-             + "\n".join(function(raw, name) for name in (
+             + "\n".join(function(raw, name) +
+                 (";" if name.startswith("class ") else "")
+                 for name in (
         "static void requestWorldRange(", "static bool readWorldSample(",
-        "class SampleReadScope", "class ObservationReadScope")) + ";\n")
+        "class SampleReadScope", "class ObservationReadScope")) + "\n")
     (out / "fixture_sample_scope_production.h").write_text(scope, encoding="utf-8")
     return scope
