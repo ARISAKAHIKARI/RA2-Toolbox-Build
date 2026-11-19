@@ -251,7 +251,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // Re-export the existing immutable sample; publish() deduplicates its exact
   // descriptor. Never recapture or invent a newer observation/acquisition tick.
   if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)){
-   worldFramePublication.publish(worldFrame,worldFrameServer);return true;
+   // The async worker owns Host-only transport, including same-frame
+   // republishing; never interleave the older strict publisher in its slot.
+   if(!asyncCommand)worldFramePublication.publish(worldFrame,worldFrameServer);
+   return true;
   }
   // A hotkey/manual order admitted in the same logic frame after a display
   // boundary snapshot must not inherit that reduced read set. This one-way
