@@ -52,6 +52,10 @@ static worldframe::Snapshot worldFrameCandidate;
 static worldframe::CommandRoster worldFrameCandidateRoster;
 static bool worldFrameCandidateAvailable=false;
 static uint32_t worldFrameCandidateVersion=0;
+// Only an explicitly observational scope may read the cross-frame candidate.
+// Never alias the strict worldFrame key or grant it native command authority.
+static const worldframe::Snapshot* sampleWorldSource=nullptr;
+static uint32_t sampleScopeTick=0;
 // Coalesce identical in-flight requests before copying dependency pages.
 static worldframe::CommandRequestGate commandRequestGate;
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
@@ -100,22 +104,63 @@ static void requestWorldRange(uint32_t at,size_t n){
  if(!worldframe::range(at,n))return;
  for(uint32_t page=at&~4095u;uint64_t(page)<uint64_t(at)+n;page+=4096){const uint32_t index=page>>12;const uint64_t mask=uint64_t(1)<<(index&63);
   if(!(runtimeDemandBits[index>>6]&mask)){runtimeDemandBits[index>>6]|=mask;runtimeWorldDemands.push_back(page);if(!++runtimeDemandRevision)++runtimeDemandRevision;
-   runtimeDemandLeases.retain(page,worldFrame.key.tick);}}
+   runtimeDemandLeases.retain(page,sampleReadDepth?sampleScopeTick:worldFrame.key.tick);}}
+}
+// The worker can deliver a complete observational graph after the game
+// frame advanced. Only read-only planners explicitly opting in may consume
+// its sealed bytes, and no native EventClass is ever issued within a scope.
+static bool observationalFrameReady(){
+ if(!worldFrameCandidateAvailable||!sh||!worldFrameCandidate.sealed()||
+    worldFrameCandidate.overflow()||!worldFrameCandidateRoster.objects||
+    !worldFrameCandidate.key.sameFrame(worldFrameCandidateRoster.key)||
+    !worldFrameCandidateRoster.current(worldFrameCandidate.key)||
+    worldFrameCandidateRoster.global!=bool(sh->magnetronGlobal))return false;
+ auto now=worldFrameCandidate.key;
+ now.pid=GetCurrentProcessId();now.owner=sh->owner;
+ now.match=match;now.house=lastHouse;now.frame=snap.frame;now.session=snap.session;
+ now.connectionLow=uint32_t(worldFrameServer.connection());
+ now.connectionHigh=uint32_t(worldFrameServer.connection()>>32);
+ now.generationLow=uint32_t(worldProducerGeneration);
+ now.generationHigh=uint32_t(worldProducerGeneration>>32);
+ // Conservative observer bound: shorter than the UID candidate's 500ms.
+ return worldframe::acceptObservationCandidate(worldFrameCandidate.key,now,
+          worldframe::Base,worldframe::Base,GetTickCount(),150);
 }
 static bool readWorldSample(uint32_t at,void*out,size_t n){
  requestWorldRange(at,n); // Keep successful consumer dependencies subscribed.
- const bool ok=worldFrameReady&&worldFrame.read(at,out,n);
+ const auto*source=sampleWorldSource?sampleWorldSource:&worldFrame;
+ const bool ok=source&&source->sealed()&&source->read(at,out,n);
  if(!ok){sampleReadComplete=false;rememberMissingWorldSpan(at,n);}return ok;
 }
 class SampleReadScope {
  unsigned previousDepth_;bool previousComplete_,ready_,finished_=false,result_=false;
+ const worldframe::Snapshot* previousSource_;
+ uint32_t previousTick_;
 public:
- SampleReadScope():previousDepth_(sampleReadDepth),previousComplete_(sampleReadComplete),ready_(worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.sealed()&&worldFrame.key.match==match&&worldFrame.key.frame==snap.frame){++sampleReadDepth;sampleReadComplete=ready_;}
+ explicit SampleReadScope(bool allowObservation=false):
+    previousDepth_(sampleReadDepth),previousComplete_(sampleReadComplete),
+    ready_(false),previousSource_(sampleWorldSource),previousTick_(sampleScopeTick){
+  const bool strict=worldFrameReady&&!worldFrameBoundaryOnly&&worldFrame.sealed()&&
+       worldFrame.key.match==match&&worldFrame.key.frame==snap.frame;
+  const bool observation=allowObservation&&!strict&&observationalFrameReady();
+  ready_=strict||observation;
+  sampleWorldSource=strict?&worldFrame:(observation?&worldFrameCandidate:nullptr);
+  sampleScopeTick=GetTickCount();
+  ++sampleReadDepth;sampleReadComplete=ready_;
+ }
  explicit operator bool()const{return ready_;}
  bool complete()const{return finished_?result_:ready_&&sampleReadComplete;}
- void finish(){if(finished_)return;result_=complete();sampleReadDepth=previousDepth_;sampleReadComplete=previousComplete_&&(!previousDepth_||result_);finished_=true;}
+ void finish(){if(finished_)return;result_=complete();sampleReadDepth=previousDepth_;
+  sampleReadComplete=previousComplete_&&(!previousDepth_||result_);
+  sampleWorldSource=previousSource_;sampleScopeTick=previousTick_;finished_=true;
+ }
  ~SampleReadScope(){finish();}
  SampleReadScope(const SampleReadScope&)=delete;SampleReadScope&operator=(const SampleReadScope&)=delete;
+};
+// Opt-in ONLY for pure observation/forecasting; keep the default
+// SampleReadScope strict for destructive state pruning and native authority.
+class ObservationReadScope:public SampleReadScope {
+public: ObservationReadScope():SampleReadScope(true){}
 };
 static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
