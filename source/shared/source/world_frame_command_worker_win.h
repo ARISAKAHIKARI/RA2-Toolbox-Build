@@ -208,7 +208,11 @@ public:
  // authoritative. Both the lock and read-only check are nonblocking.
  bool deferBusy(const Key&key,uint32_t demand,uint64_t revision,bool globalVehicles=false){
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
-  if(!lock.owns_lock()||stopping_.load(std::memory_order_acquire))return false;
+  // A contended worker gate is not permission to do another 16K-page
+  // dependency-list assembly on the game callback. A request cannot be
+  // submitted under this gate anyway: postpone it and try again next wake.
+  // This is ONLY request admission; take() remains strictly exact-frame.
+  if(!lock.owns_lock()||stopping_.load(std::memory_order_acquire))return true;
   const bool outstanding=queuedReady_||capturing_.load(std::memory_order_acquire);
   if(coalesceInFlightWorld(lastRequestedKey_,key,lastRequestedDemand_,demand,
       lastRequestedRevision_,revision,lastRequestedGlobal_,globalVehicles,
