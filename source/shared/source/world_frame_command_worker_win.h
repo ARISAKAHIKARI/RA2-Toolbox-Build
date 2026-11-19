@@ -178,9 +178,14 @@ public:
   std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
   if(!lock.owns_lock()||stopping_.load(std::memory_order_acquire))return false;
   const bool outstanding=queuedReady_||capturing_.load(std::memory_order_acquire);
-  return coalesceInFlightWorld(lastRequestedKey_,key,lastRequestedDemand_,demand,
+  if(coalesceInFlightWorld(lastRequestedKey_,key,lastRequestedDemand_,demand,
       lastRequestedRevision_,revision,lastRequestedGlobal_,globalVehicles,
-      uint32_t(GetTickCount()-lastRequestedAt_),outstanding,MaxWorkMs);
+      uint32_t(GetTickCount()-lastRequestedAt_),outstanding,MaxWorkMs))return true;
+  // Even after the coalescing deadline, do not rebuild 16K dependencies
+  // while a still-running same-world scan is exhausting its own budget.
+  return capturing_.load(std::memory_order_acquire)&&
+      lastRequestedKey_.sameWorld(key)&&lastRequestedDemand_==demand&&
+      lastRequestedRevision_==revision&&lastRequestedGlobal_==globalVehicles;
  }
  bool request(const Key&key,uint32_t demand,uint64_t revision,const std::vector<uint32_t>&pages,bool globalVehicles=false){
   if(!key.pid||!key.owner||!key.match||key.house<0x10000||
