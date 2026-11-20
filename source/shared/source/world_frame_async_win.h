@@ -7,6 +7,7 @@
 #include <windows.h>
 
 namespace worldframe {
+struct RequestedSpan;
 // Persistent, independent writer. Thread/data/mapping ownership never enters
 // the game-entry lock; the game thread only exchanges bounded buffer leases.
 template<class Writer=Server>class AsyncPublisher {
