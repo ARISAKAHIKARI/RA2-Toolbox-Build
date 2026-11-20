@@ -14,6 +14,16 @@ struct Technology {
 template<class Read> class Catalogue {
  Read read;uint32_t house=0,types=0;int count=0,parent=-1,country=-1,tech=-1;
  std::vector<int> owned,predicted,limits;std::vector<int> groups[6];
+ struct Producer {int index,kind;bool naval;};
+ std::vector<Producer> producers;
+ void recordProducer(int index,uint32_t type){
+  if(type<0x10000)return;
+  int kind=get<int>(type+0xEB8,-1);
+  if(kind!=16&&kind!=3&&kind!=40)return;
+  const bool naval=get<uint8_t>(type+0xCCE)!=0;
+  for(const auto&p:producers)if(p.index==index)return;
+  producers.push_back({index,kind,naval});
+ }
  template<class T>T get(uint32_t at,T fallback={})const{T v{};return read(at,&v,sizeof v)?v:fallback;}
  bool list(uint32_t at,std::vector<int>&out)const{
   uint32_t p=get<uint32_t>(at+4);int n=get<int>(at+16,-1),cap=get<int>(at+8,-1);
@@ -50,7 +60,12 @@ public:
   um::readCounterPrefix(read,h+0x5550,count,owned.data(),errors);
   um::readCounterPrefix(read,h+0x5500,count,limits.data(),errors);if(errors)return false;
   for(int g=0;g<6;++g)if(!list(rules+0x358+g*28,groups[g]))return false;
-  predicted=owned;for(int i:future)if(i>=0&&i<count)++predicted[i];return true;
+  producers.clear();predicted=owned;
+  // Most rulesets have many types but only a few owned producer buildings.
+  // The former possible() scan re-read EVERY building type for each unit.
+  for(int i=0;i<count;++i)if(owned[i]>0)recordProducer(i,type(i));
+  for(int i:future)if(i>=0&&i<count){if(predicted[i]++==0)recordProducer(i,type(i));}
+  return true;
  }
  uint32_t type(int index)const{return index>=0&&index<count?get<uint32_t>(types+index*4):0;}
  bool possible(uint32_t t,int kind=7,bool naval=false,bool forecast=true,Technology technology={})const{
@@ -70,8 +85,9 @@ public:
   std::vector<int> needs,overrides;if(!list(t+0x638,needs)||!list(t+0x654,overrides))return false;
   if(!available(needs,overrides,counts,groups))return false;
   }
-  if(kind!=7){bool producer=false;for(int n=0;n<count;++n)if(counts[n]>0){uint32_t b=type(n);
-   if(b&&get<int>(b+0xEB8,-1)==kind&&bool(get<uint8_t>(b+0xCCE))==naval){producer=true;break;}}
+  if(kind!=7){
+   bool producer=false;
+   for(const auto&p:producers)if(counts[p.index]>0&&p.kind==kind&&p.naval==naval){producer=true;break;}
    if(!producer)return false;
   }
   // This is a preview, never authorization. Runtime rechecks the actual cameo
@@ -81,6 +97,7 @@ public:
  bool preview(int index)const{uint32_t t=type(index);if(!possible(t)||possible(t,7,false,false))return false;
   int limit=get<int>(t+0x3B8);return limit<=0||int64_t(limits[index])+predicted[index]-owned[index]<limit;
  }
- bool append(int index,Technology technology={}){uint32_t t=type(index);if(!possible(t,7,false,true,technology))return false;++predicted[index];return true;}
+ bool append(int index,Technology technology={}){uint32_t t=type(index);if(!possible(t,7,false,true,technology))return false;
+  if(predicted[index]++==0)recordProducer(index,t);return true;}
 };
 }}

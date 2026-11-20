@@ -9,7 +9,7 @@
 namespace buildreserve {
 struct Choice {int slot=0,index=0,tab=0;uint32_t type=0;bool future=false;};
 static construction::Book books[4];static std::vector<Choice> choices;static HWND window;
-static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;
+static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;static int choicesTab=-1;
 static int activeTab=-1,selectedTab=-1,lastNativeTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
 static construction::NativeFrame nativeFrame;static uint32_t nativeAt=0;
 static construction::NativeDisplay nativeDisplay;
@@ -65,7 +65,7 @@ static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];criti
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
 static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;nativeDisplay.clear();resetPaint();if(window)ShowWindow(window,SW_HIDE);}
 static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
-static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
+static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();choicesTab=-1;activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
 // A requested full-technology whitelist also protects a reservation while the
 // Runtime is installing/restoring that mode. Only Runtime authorizes production.
@@ -99,26 +99,46 @@ template<class C>static bool loadForecast(C&catalogue){
 }
 static void collectChoices(){
  if(activeTab<0||activeTab>3){choices.clear();return;}
- externalReader.setWorldDemand(worldframe::Base);
- external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
- auto previous=std::move(choices);choices.clear();
- auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
+ // The native sidebar is a read-only display source, not authority for a
+ // Produce command. Read it first: a transient forecast miss must not keep
+ // already-buildable unit cameos in the reservation panel.
  auto uiRead=[](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);};
- bool previewReady=loadForecast(catalogue);auto&b=books[activeTab];
  uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=-1,after=-1,cameos[75*13]{};
  bool nativeReady=uiRead(strip+84,&count,4)&&count>=0&&count<=75&&(!count||uiRead(strip+88,cameos,size_t(count)*52))&&uiRead(strip+84,&after,4)&&after==count;
- if(!nativeReady){choices=std::move(previous);return;}
  auto nativeHere=[&](int kind,int index){for(int i=0;i<count;++i)if(cameos[i*13]==index&&cameos[i*13+1]==kind)return true;return false;};
+ if(choicesTab!=activeTab)choices.clear();
+ if(nativeReady&&activeTab>=2){
+  // Never suppress a user's queued reservation, even after its native cameo appears.
+  const auto&book=books[activeTab];
+  choices.erase(std::remove_if(choices.begin(),choices.end(),[&](const Choice&c){
+   return nativeHere(absKind(c.index),typeIndex(c.index))&&
+    std::find(book.items.begin(),book.items.end(),c.index)==book.items.end();
+  }),choices.end());
+ }
+ externalReader.setWorldDemand(worldframe::Resources);
+ external::WorldFrameScope source(externalReader,commandMatch());if(!source||!nativeReady)return;
+ auto previous=std::move(choices);choices.clear();
+ auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
+ bool forecastAttempted=false,previewReady=false;auto&b=books[activeTab];
+ const bool completedBuilding=activeTab<2&&current[activeTab]&&get<int>(factory(activeTab)+0x24)==54;
  for(int slot=0;slot<snap.typeCount;++slot){const auto&t=snap.types[slot];
   if((activeTab<2&&t.kind!=7)||(activeTab==2&&t.kind!=16)||(activeTab==3&&t.kind!=3&&t.kind!=40))continue;
   int index=encode(t.kind,t.index);uint32_t type=typePointer(index);if(type<0x10000)continue;
   int tab=t.kind==7?(get<int>(type+0xE08,-1)==5?1:0):t.kind==16?2:(t.kind==40||t.kind==3)?3:-1;
-  if(tab!=activeTab)continue;bool native=nativeHere(t.kind,t.index);
-  bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
-  bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,technologyRequested(index))&&!catalogue.possible(type,t.kind,t.naval!=0,false,technologyRequested(index));
-  if(queued||(!native&&future)||(native&&(tab>=2||(current[tab]&&get<int>(factory(tab)+0x24)==54))))choices.push_back({slot,index,tab,type,!native});
+  if(tab!=activeTab)continue;
+  const bool native=nativeHere(t.kind,t.index);
+  const bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
+  // Native infantry/vehicle choices belong only in the game's sidebar.
+  // A previously queued reservation stays visible for cancellation.
+  if(native){if(queued||(tab<2&&completedBuilding))choices.push_back({slot,index,tab,type,false});continue;}
+  if(queued){choices.push_back({slot,index,tab,type,true});continue;}
+  // Defer the costly read-only forecast until the first non-native candidate.
+  if(!forecastAttempted){previewReady=loadForecast(catalogue);forecastAttempted=true;}
+  if(previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,technologyRequested(index))&&
+     !catalogue.possible(type,t.kind,t.naval!=0,false,technologyRequested(index)))
+   choices.push_back({slot,index,tab,type,true});
  }
- if(!source.complete())choices=std::move(previous);
+ if(!source.complete())choices=std::move(previous);else choicesTab=activeTab;
 }
 static void resizePanel(){
  if(!window||!geometryReady||!paintReady)return;POINT origin{};RECT previous{};
