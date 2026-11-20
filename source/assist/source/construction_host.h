@@ -226,7 +226,7 @@ static std::vector<construction::NativeBadge> nativeBadges(){
 }
 static external::ReadSession paintReader;static external::cameraassets::Context<external::ReadSession> paintAssets(paintReader);
 static bool loadPanelAsset(const char*n,std::vector<uint8_t>&b){return paintAssets.cameo(n,b);}
-struct PaintRequest {uint32_t pid,match,tick,house;int activeTab,scroll,hoverChoice,hoverQueue,width,height;construction::Layout layout;construction::Book book;std::vector<Choice> choices;std::map<int,assist::Type> types;std::map<int,uint32_t> pointers;LOGFONTW font{};std::vector<uint8_t> visual,input;worldframe::Token sourceFrame;};
+struct PaintRequest {uint32_t pid,match,tick,house;int activeTab,scroll,hoverChoice,hoverQueue,width,height;construction::Layout layout;construction::Book book;std::vector<Choice> choices;std::map<int,assist::Type> types;std::map<int,uint32_t> pointers;LOGFONTW font{};std::vector<uint8_t> visual,input;};
 struct Painted {PaintRequest request;std::vector<uint32_t> pixels;bool incomplete=false;};
 struct PanelPainter {
  const PaintRequest&request;construction::Layout layout;external::ReadSession&externalReader;external::cameraassets::Context<external::ReadSession>&assets;bool&incomplete;
@@ -252,8 +252,11 @@ void panelBox(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius=4){
 };
 static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest&request)->std::shared_ptr<const Painted>{
  if(!paintReader.open(request.pid))return {};paintReader.begin();paintAssets.identity(request.pid,request.match);
- if(!request.sourceFrame)return {};paintReader.setWorldDemand(worldframe::Resources);
- external::WorldFrameScope source(paintReader,request.match,request.sourceFrame);if(!source)return {};
+ // This worker paints only immutable Host-selected choices, names and icon
+ // assets. It never authorizes production. A missing WorldFrame must not
+ // block painting newly available technology or a changed reservation FIFO.
+ uint32_t observedHouse=0;
+ if(!paintReader.readLive(0xA83D4C,&observedHouse,4)||observedHouse!=request.house)return {};
  int width=request.width,height=request.height;if(width<1||height<1||uint64_t(width)*height>4*1024*1024)return {};
  auto out=std::make_shared<Painted>();out->request=request;out->pixels.resize(size_t(width)*height);
  BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=width;info.bmiHeader.biHeight=-height;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
@@ -299,7 +302,10 @@ static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest
    if((activeTab>=2||occurrences>construction::VisibleCapacity)&&occurrences)numbers=L"×"+std::to_wstring(occurrences);
    if(!numbers.empty()){RECT badge=painter.rect(x,y+30,x+60,y+48);HBRUSH tag=CreateSolidBrush(RGB(77,88,55));FillRect(dc,&badge,tag);DeleteObject(tag);SetTextColor(dc,RGB(228,238,185));DrawTextW(dc,numbers.c_str(),-1,&badge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
   }SelectObject(dc,previous);const bool ready=GdiFlush()!=FALSE;
- if(ready)memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);return ready&&source.complete()?out:std::shared_ptr<const Painted>{};
+ if(ready)memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);
+ uint32_t finishedHouse=0;
+ return ready&&paintReader.readLive(0xA83D4C,&finishedHouse,4)&&finishedHouse==request.house?
+  out:std::shared_ptr<const Painted>{};
 });
 // A complete frame and its matching geometry are promoted together. Pending
 // worker results never clear the visible HWND, and no active hit test can use
@@ -330,9 +336,14 @@ static PaintRequest capturePaint(){
 }
 static void requestPaint(){
  if(!geometryReady||!window||activeTab<0||activeTab>3||!constructionDisplayFresh())return;
- std::shared_ptr<PaintRequest> request;
- {externalReader.setWorldDemand(worldframe::Base);external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
-  request=std::make_shared<PaintRequest>(capturePaint());request->sourceFrame=externalReader.worldFrameToken();if(!source.complete())return;}
+ // Read-only panel composition can proceed from the already verified Host
+ // choices even while an unrelated command snapshot is being rebuilt.
+ // Verify the live house on both sides; the UI publication also checks match.
+ uint32_t owner=0,ownerAfter=0;
+ if(!externalReader.readLive(0xA83D4C,&owner,4)||owner!=house)return;
+ auto request=std::make_shared<PaintRequest>(capturePaint());
+ if(!externalReader.readLive(0xA83D4C,&ownerAfter,4)||ownerAfter!=owner||
+    request->pid!=pid||request->match!=commandMatch()||request->house!=house)return;
  if((paintedFrame&&!samePaintWorld(paintedFrame->request))||(requestedPaint&&!samePaintWorld(*requestedPaint))){resetPaint();ShowWindow(window,SW_HIDE);}
  if(requestedPaint&&samePaintWorld(*requestedPaint)&&requestedPaint->visual==request->visual){
   // Failed/missing icons retry without making the ordinary stable panel a
