@@ -41,7 +41,7 @@ assert 'commandRequestGate.defer(key,graphDemand' in runtime
 assert 'commandRequestGate.submitted(key,graphDemand' in runtime
 assert runtime.index('commandRequestGate.defer(key,graphDemand') < runtime.index('auto&requests=worldFrameCaptureRequests;')
 assert 'worldFrameCommandWorker.deferBusy(key,graphDemand,requestRevision,globalVehicles)' in runtime
-assert runtime.index('worldFrameCommandWorker.deferBusy(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
+assert runtime.index('worldFrameCommandWorker.deferBusy(key,graphDemand') < runtime.index('auto&requests=worldFrameCaptureRequests;')
 # Game-thread lock contention must defer request assembly instead of
 # scanning 16K dependencies and attempting a second try-lock submission.
 busy = between(worker, 'bool deferBusy(const Key&key,', '\n bool request(const Key&key,')
