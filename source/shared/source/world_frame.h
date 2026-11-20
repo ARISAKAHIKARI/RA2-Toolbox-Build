@@ -153,6 +153,10 @@ public:
   return true;
  }
  void append(uint32_t now,std::vector<uint32_t>&out){prune(now);for(uint32_t i=0;i<count_;++i)out.push_back(entries_[i].page);}
+ template<class F> bool visit(uint32_t now,F visitor){
+  prune(now);for(uint32_t i=0;i<count_;++i)if(!visitor(entries_[i].page))return false;
+  return true;
+ }
 };
 inline bool bit(const std::array<uint64_t,64>&bits,size_t n){return (bits[n>>6]>>(n&63))&1u;}
 inline void mark(std::array<uint64_t,64>&bits,size_t at,size_t n){
