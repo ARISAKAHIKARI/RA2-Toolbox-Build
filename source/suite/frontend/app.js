@@ -234,10 +234,30 @@
       if(!groups.has(name))groups.set(name,[]);groups.get(name).push(control);
     }
     if(needle)for(const [name,items] of groups) {
-      const matches=settingLines(items).filter(line=>line.some(control=>[control.label,control.text,control.hint,name,...control.options,...control.optionDescriptions].join(' ').toLocaleLowerCase().includes(needle))).flat();
+      const matches=featureBlocks(items).filter(block=>block.controls.some(control=>
+        [control.label,control.text,control.hint,name,...control.options,...control.optionDescriptions].join(' ').toLocaleLowerCase().includes(needle)
+      )).flatMap(block=>block.controls);
       if(matches.length)groups.set(name,matches);else groups.delete(name);
     }
     return groups;
+  }
+  // A feature switch owns the settings and shortcuts that follow it, up to the
+  // next feature switch. Searching a child keeps its parent switch visible.
+  function featureBlocks(controls) {
+    const blocks=[];let current=null,common=[];
+    for(const control of controls) {
+      if(control.groupHeader && !['label','heading'].includes(control.type)) {
+        if(current)blocks.push(current);
+        else if(common.length)blocks.push({key:'common',headers:[],details:common,controls:common});
+        current={key:'feature:'+control.id,headers:[control],details:[],controls:[control]};
+      } else {
+        if(current){current.details.push(control);current.controls.push(control);}
+        else common.push(control);
+      }
+    }
+    if(current)blocks.push(current);
+    if(common.length && !blocks.some(block=>block.key==='common'))blocks.unshift({key:'common',headers:[],details:common,controls:common});
+    return blocks;
   }
   // The adapter already exports the original logical row. Keep its related
   // editors together instead of turning every native widget into a full row.
@@ -266,30 +286,46 @@
       headers:controls.filter(control=>control.groupHeader && !['label','heading'].includes(control.type)),
       details:controls.filter(control=>!control.groupHeader)};
   }
-  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, groupPresentation, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
+  global.RA2ConsoleCore = Object.freeze({ ConsoleStore, pageKey, canonical, groupControls, settingLines, featureBlocks, groupPresentation, keyName, encodeHotkey, virtualKey, validText, placeAfter, canonicalDebug, debugAddress, debugStatus, debugKindLabel, debugToggleLabel, filterDebugControls, debugToolControls, DEBUG_STALE_MS, MODES });
   if (typeof document === 'undefined') return;
 
   const $ = id => document.getElementById(id);
-  const CATEGORIES = [ ['视频','DISPLAY & VIDEO','调整画面、光标与监控视图。','<rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path>'], ['控制','INPUT & CONTROL','设置操作方式、快捷键与单位命令。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'], ['自动功能','AUTOMATION','按需开启战术辅助与自动处理。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'], ['游戏规则','GAME RULES','管理游戏规则与相关功能选项。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'], ['实验性功能','EXPERIMENTAL','查看实验性选项及当前可用状态。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'], ['调试','RUNTIME DIAGNOSTICS','只读探测平台改写，查看入口用途、实时状态与签名校验。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect><path d="M9 10h6m-6 4h4"></path>'] ];
-  let selectedCategory = 0, videoModule = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, nextGroupId = 0, userNavigated = false, restoredNavigation = false;
+  const CATEGORIES = [ ['显示','DISPLAY','管理光标、渲染与监控视图。','<rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path>'], ['控制','CONTROL','自定义快捷键与单位操作。','<circle cx="12" cy="12" r="7"></circle><path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>'], ['自动功能','AUTOMATION','按需开启自动操作与战术辅助。','<path d="m13 2-8 12h6l-1 8 9-13h-6l1-7Z"></path>'], ['游戏规则','GAME RULES','管理科技、地图与游戏规则。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'], ['实验功能','EXPERIMENTAL','体验尚在完善的功能。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'], ['调试','DIAGNOSTICS','查看运行状态与兼容性信息。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect><path d="M9 10h6m-6 4h4"></path>'] ];
+  let selectedCategory = 0, videoModule = 0, videoView = 'cursor', search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, nextGroupId = 0, userNavigated = false, restoredNavigation = false;
   let debugGroup = '', debugFilter = '', debugGroupSignature = '';
   const debugRows = new Map();
-  const groupNodes = new Map(), collapsed = new Set(), foldPreferencesSeen = new Set(), searchFolds = new Map();
+  const groupNodes = new Map(), collapsed = new Set(), foldPreferencesSeen = new Set(), searchFolds = new Map(), expandedFeatures = new Set(), searchFeatureFolds = new Map();
   const bridge = global.chrome?.webview;
   const store = new ConsoleStore(message => { if (bridge?.postMessage) bridge.postMessage(message); }, schedule);
   global.RA2Console = Object.freeze({ store, receive: message => store.receive(message) });
   function schedule() { if (scheduled) return; scheduled = true; requestAnimationFrame(() => { scheduled = false; render(); }); }
   function notify(text) { const element = $('toast'); element.textContent = text; element.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { element.hidden = true; }, 6000); }
-  function setSearch(value) { if(search!==value)searchFolds.clear();search=value; }
-  function navigate(category, module = videoModule, restored = false) { if (!restored) userNavigated = true; selectedCategory = category; if (category === 0) videoModule = module; setSearch(''); $('search').value = ''; capture = null; if (restored) { store.current = {module: category === 0 ? videoModule : 2,category}; schedule(); } else store.navigate(category === 0 ? videoModule : 2, category); $('contentScroll').scrollTop = 0; }
+  function setSearch(value) { if(search!==value){searchFolds.clear();searchFeatureFolds.clear();}search=value; }
+  function navigate(category, module = videoModule, restored = false) {
+    if (!restored) userNavigated = true;
+    selectedCategory = category;
+    if (category === 0) { videoModule = module; if(module===1)videoView='monitor'; else if(videoView==='monitor')videoView='cursor'; }
+    setSearch(''); $('search').value = ''; capture = null;
+    if (restored) { store.current = {module: category === 0 ? videoModule : 2,category}; schedule(); }
+    else store.navigate(category === 0 ? videoModule : 2, category);
+    $('contentScroll').scrollTop = 0;
+  }
+  function navigateVideoView(view) {
+    if(!['cursor','render','monitor'].includes(view))return;
+    userNavigated=true;
+    const module=view==='monitor'?1:0, changed=module!==videoModule;
+    videoView=view;videoModule=module;setSearch('');$('search').value='';capture=null;
+    if(changed)store.navigate(0,module);else schedule();
+    $('contentScroll').scrollTop=0;
+  }
   for (let index = 0; index < CATEGORIES.length; index++) { const button = document.createElement('button'); button.className = 'nav-button'; button.type = 'button'; button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${CATEGORIES[index][3]}</svg><span></span>`; button.querySelector('span').textContent = CATEGORIES[index][0]; button.title = CATEGORIES[index][0]; button.addEventListener('click', () => navigate(index)); $('navigation').append(button); }
-  $('videoTabs').addEventListener('click', event => { const button = event.target.closest('button[data-module]'); if (button) navigate(0, Number(button.dataset.module)); });
+  $('videoTabs').addEventListener('click', event => { const button = event.target.closest('button[data-view]'); if (button) navigateVideoView(button.dataset.view); });
   $('videoTabs').addEventListener('keydown', event => {
     if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
     event.preventDefault();
     const buttons = [...$('videoTabs').children], current = buttons.indexOf(document.activeElement);
     const index = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (Math.max(0,current) + (event.key === 'ArrowRight' ? 1 : buttons.length - 1)) % buttons.length;
-    navigate(0,Number(buttons[index].dataset.module)); buttons[index].focus();
+    navigateVideoView(buttons[index].dataset.view); buttons[index].focus();
   });
   $('search').setAttribute('aria-keyshortcuts','Control+f');
   $('search').addEventListener('input', event => { setSearch(event.target.value); schedule(); });
@@ -300,36 +336,96 @@
   $('moduleToggle').addEventListener('change', event => store.enable(videoModule, event.target.checked));
   $('retrySave').addEventListener('click', () => store.retryConfig());
   $('foldAll').addEventListener('click', () => {
-    const groups = [...groupNodes.values()].filter(group => group.hasDetails);
-    const shouldCollapse = groups.some(group => !group.body.hidden);
-    for (const group of groups) setGroupCollapsed(group,shouldCollapse);
+    const groups=[...groupNodes.values()].filter(group=>group.hasDetails);
+    const shouldCollapse=groups.some(group=>!group.body.hidden || featureBlocks(group.controls).some(block=>block.headers.length&&block.details.length&&featureExpanded(group,block.key)));
+    for(const group of groups){
+      setGroupCollapsed(group,shouldCollapse);
+      for(const block of featureBlocks(group.controls))if(block.headers.length&&block.details.length)setFeatureExpanded(group,block.key,!shouldCollapse);
+    }
     schedule();
   });
   document.addEventListener('keydown', event => { if (!capture && !composingKey(event) && event.ctrlKey && event.key.toLowerCase() === 'f') { event.preventDefault(); $('search').focus(); $('search').select(); } });
   const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const group = entry.target._group; if (!group) continue; group.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateGroup(group); else if (!group.body.contains(document.activeElement)) unmountGroup(group); } }, { root: $('contentScroll'), rootMargin: '600px' }) : null;
-  function clearGroups() { for (const group of groupNodes.values()) { observer?.unobserve(group.section); releaseChunks(group); group.section.remove(); } groupNodes.clear(); }
-  const estimateRows = controls => settingLines(controls).reduce((height,line) => height + (line.some(control=>control.type==='hotkey') ? 72 : 44),0);
-  const chunkObserver = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const chunk = entry.target._chunk; if (!chunk) continue; chunk.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateChunk(chunk); else unmountChunk(chunk); } }, {root:$('contentScroll'),rootMargin:'500px'}) : null;
+  function clearGroups() { for (const group of groupNodes.values()) { observer?.unobserve(group.section); group.section.remove(); } groupNodes.clear(); }
   // A search can reveal and fold matches without overwriting the page's saved folds.
   function setGroupCollapsed(group,value) {
     const key=`${renderedPage}/${group.name}`;
     if(group.searching){searchFolds.set(key,value);return;}
     foldPreferencesSeen.add(key);if(value)collapsed.add(key);else collapsed.delete(key);
   }
+  function featureFoldKey(group,key){return renderedPage+'/'+group.name+'/'+key;}
+  function featureExpanded(group,key){const foldKey=featureFoldKey(group,key);return group.searching?!searchFeatureFolds.get(foldKey):expandedFeatures.has(foldKey);}
+  function setFeatureExpanded(group,key,value){const foldKey=featureFoldKey(group,key);if(group.searching)searchFeatureFolds.set(foldKey,!value);else if(value)expandedFeatures.add(foldKey);else expandedFeatures.delete(foldKey);}
   function makeGroup(name) {
     const section=document.createElement('section'),summary=document.createElement('button'),title=document.createElement('span'),count=document.createElement('span'),header=document.createElement('div'),status=document.createElement('div'),body=document.createElement('div');
     section.className='settings-group';summary.className='group-summary';summary.type='button';title.className='group-title';title.textContent=name;count.className='group-count';header.className='group-header-controls';
     const arrow=document.createElementNS('http://www.w3.org/2000/svg','svg');arrow.setAttribute('viewBox','0 0 12 12');arrow.setAttribute('class','chevron');arrow.innerHTML='<path d="m3 4 3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5"/>';
-    summary.append(title,count,arrow);body.className='group-body';body.id=`settings-group-${++nextGroupId}`;summary.setAttribute('aria-controls',body.id);
-    // Keep current failures outside the body, so closing parameters never hides them.
+    summary.append(title,count,arrow);body.className='group-body';body.id='settings-group-'+(++nextGroupId);summary.setAttribute('aria-controls',body.id);
     status.className='group-status';status.dataset.tone='error';status.hidden=true;status.setAttribute('role','alert');section.append(summary,header,body,status);
-    const group={name,section,summary,count,header,status,headerRows:new Map(),body,controls:[],rows:new Map(),chunks:[],intersecting:!observer};section._group=group;
+    const group={name,section,summary,count,header,status,body,controls:[],headerFeatures:new Map(),bodyFeatures:new Map(),intersecting:!observer};section._group=group;
     summary.addEventListener('click',()=>{setGroupCollapsed(group,!group.body.hidden);updateGroup(group);updateFoldAction();});
     observer?.observe(section);return group;
   }
-  function releaseChunks(group) { for (const chunk of group.chunks) { chunkObserver?.unobserve(chunk.element); chunk.element.remove(); } group.chunks=[]; group.chunkSignature=''; }
-  function unmountGroup(group) { if (group.body.contains(document.activeElement)) return; const measured=group.body.getBoundingClientRect().height; group.body.style.minHeight = `${measured || estimateRows(group.controls)}px`; releaseChunks(group); group.body.replaceChildren();group.body._settingLines?.clear(); group.rows.clear(); }
-  function unmountChunk(chunk) { if (chunk.element.contains(document.activeElement)) return; const measured=chunk.element.getBoundingClientRect().height; chunk.element.style.minHeight=`${measured || estimateRows(chunk.controls)}px`; chunk.element.replaceChildren();chunk.element._settingLines?.clear(); chunk.rows.clear(); }
+  function unmountGroup(group) {
+    if(group.body.contains(document.activeElement))return;
+    const measured=group.body.getBoundingClientRect().height;
+    group.body.style.minHeight=(measured||40*group.controls.length)+'px';
+    for(const feature of group.bodyFeatures.values())feature.element.remove();
+    group.bodyFeatures.clear();group.body.replaceChildren();
+  }
+  function makeFeatureSection(titleText,className){
+    const section=document.createElement('section'),title=document.createElement('div'),rows=document.createElement('div');
+    section.className=className;title.className='feature-subheading';title.textContent=titleText;rows.className='feature-rows';section.append(title,rows);
+    return {section,title,rows,controls:new Map()};
+  }
+  function updateFeatureHeaders(group,blocks){
+    const wanted=new Set();let after=null;
+    for(const block of blocks){
+      if(!block.headers.length)continue;
+      const key=block.key;wanted.add(key);let feature=group.headerFeatures.get(key);
+      if(!feature){
+        const element=document.createElement('div'),main=document.createElement('div'),button=document.createElement('button');
+        element.className='feature-header';main.className='feature-main-control';button.className='feature-config-toggle';button.type='button';
+        feature={key,element,main,button,rows:new Map(),details:[]};element.append(main,button);group.headerFeatures.set(key,feature);
+        button.addEventListener('click',()=>{
+          const expanded=featureExpanded(group,feature.key);setFeatureExpanded(group,feature.key,!expanded);
+          if(!expanded)setGroupCollapsed(group,false);
+          updateGroup(group);updateFoldAction();
+        });
+      }
+      feature.details=block.details;updateRows(feature.main,feature.rows,block.headers,group.name,false);
+      const hasDetails=block.details.length>0,expanded=hasDetails&&featureExpanded(group,key);
+      feature.button.hidden=!hasDetails;feature.button.textContent=expanded?'收起':'配置';
+      feature.button.setAttribute('aria-expanded',String(expanded));
+      feature.button.setAttribute('aria-label',(expanded?'收起 ':'展开 ')+(block.headers[0].label||block.headers[0].text||'功能')+' 的配置');
+      feature.element.classList.toggle('is-expanded',expanded);
+      placeAfter(group.header,feature.element,after);after=feature.element;
+    }
+    for(const [key,feature]of group.headerFeatures)if(!wanted.has(key)){feature.element.remove();group.headerFeatures.delete(key);}
+    group.header.hidden=!wanted.size;
+  }
+  function updateFeatureBodies(group,blocks){
+    const wanted=new Set();let after=null;
+    for(const block of blocks){
+      if(!block.details.length)continue;
+      const key=block.key;wanted.add(key);let feature=group.bodyFeatures.get(key);
+      if(!feature){
+        const element=document.createElement('div');element.className=block.headers.length?'feature-config-block':'feature-common';
+        const params=makeFeatureSection(block.headers.length?'子配置':'','feature-config');
+        const hotkeys=makeFeatureSection('快捷键','feature-hotkeys');
+        element.append(params.section,hotkeys.section);
+        feature={key,element,params,hotkeys};group.bodyFeatures.set(key,feature);
+      }
+      const params=block.details.filter(control=>control.type!=='hotkey');
+      const hotkeys=block.details.filter(control=>control.type==='hotkey');
+      feature.params.section.hidden=!params.length;feature.hotkeys.section.hidden=!hotkeys.length;
+      updateRows(feature.params.rows,feature.params.controls,params,'',true);
+      updateRows(feature.hotkeys.rows,feature.hotkeys.controls,hotkeys,'',true);
+      feature.element.hidden=block.headers.length&&!featureExpanded(group,key);
+      placeAfter(group.body,feature.element,after);after=feature.element;
+    }
+    for(const [key,feature]of group.bodyFeatures)if(!wanted.has(key)){feature.element.remove();group.bodyFeatures.delete(key);}
+  }
   function updateRows(container,rows,controls,groupTitle='',subsettings=false) {
     const ids=new Set(controls.map(control=>control.id));
     for(const [id,row] of rows)if(!ids.has(id)){row.element.remove();rows.delete(id);}
@@ -359,40 +455,35 @@
     }
     for(const [key,line] of lines)if(!wanted.has(key)){line.remove();lines.delete(key);}
   }
-  function updateChunk(chunk) { if (!chunk.intersecting && chunkObserver && !chunk.element.contains(document.activeElement)) { unmountChunk(chunk); return; } chunk.element.style.minHeight=''; updateRows(chunk.element,chunk.rows,chunk.controls,'',chunk.subsettings); }
   function updateGroup(group) {
-    const key=`${renderedPage}/${group.name}`;
+    const key=renderedPage+'/'+group.name;
     if(!foldPreferencesSeen.has(key)){foldPreferencesSeen.add(key);if(group.controls.some(control=>control.collapsible&&control.collapsedDefault))collapsed.add(key);}
     const ackErrors=new Set(group.controls.filter(control=>store.error(control.id)).map(control=>control.id));
     const state=groupPresentation(group.controls,collapsed.has(key),group.searching,ackErrors,searchFolds.get(key));
+    const blocks=featureBlocks(group.controls);
     group.section.classList.toggle('collapsed',state.collapsed);group.section.classList.toggle('has-runtime-error',state.hasError);
     group.hasDetails=state.details.length>0;group.summary.disabled=!group.hasDetails;
     group.summary.querySelector('.chevron').toggleAttribute('hidden',!group.hasDetails);
     group.summary.setAttribute('aria-expanded',String(!state.collapsed));
-    const countText=`${group.controls.length} 项${state.hasError?' · 需要处理':''}`;if(group.count.textContent!==countText)group.count.textContent=countText;
+    const countText=group.controls.length+' 项'+(state.hasError?' · 需要处理':'');if(group.count.textContent!==countText)group.count.textContent=countText;
     const errors=state.hasError?group.controls.flatMap(control=>{
       const error=store.error(control.id),label=control.label || control.text || '设置';
-      if(error)return [`${label}：${error}`];
+      if(error)return [label+'：'+error];
       if(!control.runtimeError)return [];
-      return [control.type==='label'?label:`${label}${control.text&&control.text!==label?'：'+control.text:'：运行异常'}`];
+      return [control.type==='label'?label:label+(control.text&&control.text!==label?'：'+control.text:'：运行异常')];
     }):[];
     const statusText=[...new Set(errors)].join('\n');if(group.status.textContent!==statusText)group.status.textContent=statusText;group.status.hidden=!state.hasError;
-    updateRows(group.header,group.headerRows,state.headers,group.name);group.header.hidden=!state.headers.length;group.section.classList.toggle('has-header-controls',Boolean(state.headers.length));group.section.classList.toggle('multiple-header-rows',settingLines(state.headers).length>1);
+    updateFeatureHeaders(group,blocks.filter(block=>block.headers.length));
+    group.section.classList.toggle('has-header-controls',Boolean(state.headers.length));
+    group.section.classList.toggle('multiple-header-rows',state.headers.length>1);
     group.body.hidden=state.collapsed;if(state.collapsed)return;
     if(!group.intersecting&&observer&&!group.body.contains(document.activeElement)){unmountGroup(group);return;}
-    group.body.style.minHeight='';const details=state.details;
-    if(details.length>48&&chunkObserver){
-      const signature=details.map(control=>`${control.id}:${control.row}:${control.column}`).join(',');
-      const lines=settingLines(details),chunks=[];let batch=[];
-      for(const line of lines){if(batch.length && batch.length+line.length>24){chunks.push(batch);batch=[];}batch.push(...line);}if(batch.length)chunks.push(batch);
-      if(group.chunkSignature!==signature){releaseChunks(group);group.body.replaceChildren();group.rows.clear();group.body._settingLines?.clear();group.chunkSignature=signature;for(const controls of chunks){const element=document.createElement('div'),chunk={element,controls,rows:new Map(),intersecting:false,subsettings:Boolean(state.headers.length)};element.className='rows-chunk';element.style.minHeight=`${estimateRows(controls)}px`;element._chunk=chunk;group.chunks.push(chunk);group.body.append(element);chunkObserver.observe(element);}}
-      group.chunks.forEach((chunk,index)=>{chunk.controls=chunks[index];chunk.subsettings=Boolean(state.headers.length);updateChunk(chunk);});
-    }else{if(group.chunks.length){releaseChunks(group);group.body.replaceChildren();}updateRows(group.body,group.rows,details,'',Boolean(state.headers.length));}
+    group.body.style.minHeight='';updateFeatureBodies(group,blocks);
   }
   function updateFoldAction() {
     const groups=[...groupNodes.values()].filter(group=>group.hasDetails);
-    $('foldAll').hidden=!groups.length;
-    $('foldAll').textContent=groups.every(group=>group.body.hidden)?'全部展开':'全部收起';
+    const expanded=groups.some(group=>!group.body.hidden||featureBlocks(group.controls).some(block=>block.headers.length&&block.details.length&&featureExpanded(group,block.key)));
+    $('foldAll').hidden=!groups.length;$('foldAll').textContent=expanded?'全部收起':'全部展开';
   }
   function makeRow(control) {
     const element = document.createElement('div'), copy = document.createElement('div'), label = document.createElement('label'), description = document.createElement('p'), editor = document.createElement('div'); element.className = 'setting-row'; copy.className = 'setting-copy'; label.className = 'setting-label'; description.className = 'setting-description'; editor.className = 'setting-editor'; copy.append(label,description); element.append(copy,editor);
@@ -503,11 +594,11 @@
     const category = CATEGORIES[selectedCategory], state = store.state, currentPage = pageKey(store.current.module,store.current.category);
     if (renderedPage !== currentPage) { clearGroups();searchFolds.clear(); for(const row of debugRows.values())row.element.remove();debugRows.clear(); renderedPage = currentPage; }
     [...$('navigation').children].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
-    $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = category[2]; $('version').textContent = store.shell.version || '正在连接…';
+    $('breadcrumb').textContent = category[0]; $('pageTitle').textContent = category[0]; $('eyebrow').textContent = category[1]; $('pageDescription').textContent = selectedCategory===0?(videoView==='cursor'?'调整光标样式、定位与交互。':videoView==='render'?'管理画面渲染与视觉效果。':'管理副相机、小地图与战场信息。'):category[2]; $('version').textContent = store.shell.version || '正在连接…';
     $('videoTabs').hidden = selectedCategory !== 0; $('categoryNote').hidden = selectedCategory === 0;
     const debugging=selectedCategory===5;$('settings').hidden=!state;$('debugTools').hidden=!debugging;$('debugPanel').hidden=!debugging || !state;$('categoryNote').textContent=debugging?'平台探测与入口状态':'每项功能独立启用';$('search').placeholder=debugging?'搜索入口、地址或影响功能…':'搜索当前页面…';$('contentScroll').setAttribute('aria-label',debugging?'平台 Hook 探测与入口调试':'功能设置');
     $('emptyState').querySelector('h2').textContent=debugging?'没有匹配的入口':'没有匹配的设置';$('clearSearch').textContent=debugging?'清除搜索与筛选':'清除搜索';
-    [...$('videoTabs').children].forEach(button => { const selected=Number(button.dataset.module) === videoModule;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;button.setAttribute('aria-controls','settings'); });
+    [...$('videoTabs').children].forEach(button => { const selected=button.dataset.view===videoView;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;button.setAttribute('aria-controls','settings'); });
     const moduleState = store.shell.modules.find(module => module.module === videoModule); $('moduleToggleWrap').hidden = selectedCategory !== 0 || !moduleState; if (moduleState) { $('moduleToggle').checked = Boolean(moduleState.enabled); $('moduleToggle').disabled = store.closed || !moduleState.ready; $('moduleToggleLabel').textContent=moduleState.enabled?'模块已启用':'启用此模块'; }
     const serviceReady=store.connected && store.shell.servicesReady && store.shell.modules.some(module=>module.ready); $('connectionDot').classList.toggle('ready',serviceReady && !store.closed); $('connectionText').textContent = store.closed ? '正在退出' : serviceReady ? '控制台就绪' : store.connected ? '模块初始化中' : '正在连接';
     const config = store.shell.config || {};
@@ -523,14 +614,15 @@
     if (config.failed && config.error && config.error !== render.lastConfigError) { render.lastConfigError = config.error; notify(config.error); }
     if (!state) { $('resultCount').textContent = debugging?'正在载入入口目录':'正在载入设置'; $('emptyState').hidden = true; $('foldAll').hidden = true; return; }
     if(debugging)renderDebug(state);else {
-    const {groups,count}=renderSettingsGroups(state.controls,search);
+    const visibleControls=selectedCategory!==0?state.controls:videoView==='render'?state.controls.filter(control=>control.group==='渲染'):videoView==='cursor'?state.controls.filter(control=>control.group!=='渲染'):state.controls;
+    const {groups,count}=renderSettingsGroups(visibleControls,search);
     $('resultCount').textContent = search ? `找到 ${count} 项设置` : `${count} 项设置 · ${groups.size} 个分组`; $('emptyState').hidden = count > 0;
     updateFoldAction();
     }
     if (store.errors.size) { const latest = [...store.errors.values()].at(-1); if (latest !== render.lastError) { render.lastError = latest; notify(latest); } }
 
   }
-  bridge?.addEventListener('message',event => { let message = event.data; if (typeof message === 'string') { try { message = JSON.parse(message); } catch { return; } } if (!store.receive(message)) return; if (message.kind === 'shell' && message.servicesReady && !restoredNavigation) { restoredNavigation = true; if (!userNavigated) { const category = Number.isInteger(message.selectedCategory) ? Math.max(0,Math.min(5,message.selectedCategory)) : 0, module = message.videoSection === 1 ? 1 : 0; videoModule = module; navigate(category,module,true); } } });
+  bridge?.addEventListener('message',event => { let message = event.data; if (typeof message === 'string') { try { message = JSON.parse(message); } catch { return; } } if (!store.receive(message)) return; if (message.kind === 'shell' && message.servicesReady && !restoredNavigation) { restoredNavigation = true; if (!userNavigated) { const category = Number.isInteger(message.selectedCategory) ? Math.max(0,Math.min(5,message.selectedCategory)) : 0, module = message.videoSection === 1 ? 1 : 0; videoModule = module; videoView = module===1?'monitor':'cursor'; navigate(category,module,true); } } });
   global.addEventListener('beforeunload',() => stopCapture());
   // Relative sample age keeps advancing if the owner/game stops publishing.
   global.setInterval(()=>{if(selectedCategory===5 && store.state)schedule();},1000);
