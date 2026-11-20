@@ -85,13 +85,6 @@ static bool worldFrameReady=false;
 // Every command input must upgrade to a fresh complete graph, even if the
 // last view-only acquisition used the same game logic frame.
 static bool worldFrameBoundaryOnly=false;
-static void rememberMissingWorldSpan(uint32_t at,size_t bytes){
- if(!worldFrameReady||!worldFrame.sealed()||!bytes||bytes>256||
-    !worldframe::range(at,bytes))return;
- uint32_t key=at^(at>>13)^(uint32_t(bytes)*0x9E3779B9u);
- runtimeMissingSpans[(key^(key>>16))&(runtimeMissingSpans.size()-1)]=
-     {at,uint32_t(bytes),GetTickCount()};
-}
 static worldframe::DemandLeases runtimeDemandLeases;
 static worldframe::CaptureScratch worldFrameCaptureScratch{};static std::vector<uint32_t>worldFrameCaptureRequests;
 static worldframe::Key lastCaptureAttempt{};static bool haveCaptureAttempt=false;
