@@ -116,7 +116,7 @@ public:
   // All identities and geometry are verified again by the view publisher.
   if(bank&&bank->markerScanValid&&bank->revealOptions==key.revealOptions&&
      bank->sourceFrame&&(!token||bank->sourceFrame->key.sameWorld(token->key))&&
-     sameWorld(*bank,key.world)&&supportsEffects(*bank,particles,lasers)&&
+     key.world.frame>bank->frame&&sameWorld(*bank,key.world)&&supportsEffects(*bank,particles,lasers)&&
      uint32_t(now-bank->publishedTick)<33){
    ++statistics_.reused;return bank;
   }

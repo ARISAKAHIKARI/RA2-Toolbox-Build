@@ -79,6 +79,19 @@ int main(){
  std::array<watch::Anchor,3>anchors{};anchors[0].located=true;anchors[0].target={Body,7};anchors[0].x=40*256;anchors[0].y=41*256;anchors[0].kind=2;
  assert(watchscene::sampledAnchors(frame,anchors)&&anchors[0].located&&anchors[0].x==frame.markers[0].x&&anchors[0].y==frame.markers[0].y);
  anchors[0].target.id=8;assert(watchscene::sampledAnchors(frame,anchors)&&!anchors[0].located);
+ // At high game FPS, a new logic frame can arrive in just 1-2 ms.
+ // A displayed complete world can be reused for <33 actual milliseconds
+ // (never as authoritative command input), then the new source is rendered.
+ radar::SceneBank fastBank;radar::SharedSceneProvider<Reader>fastProvider(fastBank);
+ Reader start(first);auto fastA=acquire(fastProvider,start,radar::SceneConsumer::Main,100);
+ assert(fastA&&fastA->frame==10&&fastA->publishedTick==100);
+ auto fastSource=token(88,21,111);Reader fastReader(fastSource);
+ auto fastB=acquire(fastProvider,fastReader,radar::SceneConsumer::Watch,111);
+ assert(fastB==fastA&&fastProvider.statistics().attempts==1);
+ auto fastC=acquire(fastProvider,fastReader,radar::SceneConsumer::Watch,133);
+ assert(fastC&&fastC!=fastA&&fastC->frame==21);
+ assert(fastProvider.statistics().attempts==2);
+ assert(fastReader.liveReads==0);
  // Pause retains the acquisition timestamp; only the exact confirmed token
  // bypasses the ordinary age bound. UI projection may run at a higher cadence.
  assert(acquire(provider,readers[0],radar::SceneConsumer::Main,5100)==frames[0]);
