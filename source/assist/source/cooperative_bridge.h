@@ -120,7 +120,7 @@ static bool newCooperative(uint32_t p,uint32_t target,int mode){
 static int cooperativeInput(uint32_t p,uint32_t target,uint32_t bindings){
  if(!nativeReady()||!p||!target||!own(p,lastHouse)||!get<bool>(p+0x83)||get<bool>(p+0x1C8)||get<uint32_t>(p+0x11C))return 0;
  if(((bindings&pointerinput::Shift)&&!(bindings&(pointerinput::Enter|pointerinput::AirFirst|pointerinput::AirSecond)))||get<bool>(0x87F7E8+0x11B3)||get<bool>(0x87F7E8+0x11B1))return 0;
- indexWorld(get<int>(0xA8ED84));if(!worldObjects.contains(p)||!worldObjects.contains(target)||!live(target))return 0;
+ if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady())return 0;if(!worldObjects.contains(p)||!worldObjects.contains(target)||!live(target))return 0;
  if((sh->flags&AdvancedEnter)&&(bindings&pointerinput::Enter)&&featureObjectAllowed(featuretypes::EnterSource,p)&&featureObjectAllowed(featuretypes::EnterTarget,target)&&clickView.entryCompatible(p,target,lastHouse))return newCooperative(p,target,cooperative::Enter)?1:0;
 
  if((sh->flags&DiskPrimary)&&kind(p)==2&&kind(target)==3&&(bindings&pointerinput::Control)){
