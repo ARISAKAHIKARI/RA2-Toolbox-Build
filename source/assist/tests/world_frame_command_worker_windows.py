@@ -101,7 +101,11 @@ src = [here / "world_frame_command_worker_windows.py",
        here / "world_frame_copy_microbench.cpp",
        here / "world_frame_command_worker_graph_benchmark.cpp",
        here.parent.parent / "shared/source/world_frame_command_worker_win.h",
-       here.parent.parent / "shared/source/world_frame_command_policy.h"]
+       here.parent.parent / "shared/source/world_frame_command_policy.h",
+       here.parent.parent / "shared/source/world_frame_capture.h",
+       here.parent.parent / "shared/source/world_frame_command_index.h",
+       here.parent.parent / "shared/source/world_frame.h",
+       here.parent.parent / "assist/source/object_index.h"]
 (args.out / "result.json").write_text(json.dumps({
     "pass": passed, "runs": runs, "benchmarks": benchmarks,
     "graph_benchmarks": graph_benchmarks, "native_windows": True,
