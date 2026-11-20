@@ -53,7 +53,11 @@ template<class Writer=Server>class AsyncPublisher {
  void reap(){
   if(thread_&&WaitForSingleObject(thread_,0)==WAIT_OBJECT_0){
    CloseHandle(thread_);CloseHandle(event_);thread_=event_=nullptr;module_=nullptr;pool_.invalidate();
-   attemptSerial_.store(0,std::memory_order_relaxed);recovery_.invalidate();launchTried_=false;
+   attemptSerial_.store(0,std::memory_order_relaxed);
+#if defined(WORLD_FRAME_TEST_RECOVERY)
+   recovery_.invalidate();
+#endif
+   launchTried_=false;
   }
  }
  bool launch(){
