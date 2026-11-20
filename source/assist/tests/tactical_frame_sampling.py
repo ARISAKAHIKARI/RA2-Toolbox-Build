@@ -135,7 +135,7 @@ def main():
         assert negative["passed"], negative
     paths = [SRC / n for n in names] + [SRC / "planner_world_copy.h", SRC / "anti_theft_sample_bridge.h", SRC / "tactical_frame_read.h", SRC / "raw_combat.h",
             SRC / "combat_probe_bridge.h", SRC / "ore_harvest_bridge.h", SHARED / "world_frame.h",
-            HERE / "tactical_frame_sampling.cpp", Path(__file__).resolve(),
+            HERE / "tactical_frame_sampling.cpp", SHARED / "world_frame_command_index.h", Path(__file__).resolve(),
             HERE / "fixtures/tactical_frame/autoload_before.h"]
     report = {"pass": True, "identity_negative_control": negative, "scope": __doc__, "flags": flags, "output": run.stdout,
               "windows_executed": False, "game_process_tested": False, "multiplayer_tested": False,
