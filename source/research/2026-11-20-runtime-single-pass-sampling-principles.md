@@ -41,17 +41,20 @@ A full graph is captured once per accepted world sample, not once per feature. T
 - Command-maintenance managers now require a strict same-frame worker roster. Candidate-only indexes remain usable for discovery paths that perform explicit live proof, but they cannot sweep leases, retire dodge/unload state, prune manual revisions, or admit native planner orders. When the strict roster is missing, those jobs pause instead of interpreting an unavailable UID as a destroyed object.
 - The game callback now builds a deduplicated page-address union capped at MaxPages (16,384), fails closed on invalid/oversized requests, and transfers the vector by ownership swap. The worker returns its previous Work buffer through the queue slot; Runtime reclaims it before assembling the next request, avoiding repeated vector growth after warm-up. Remaining P0 cost: first worker startup still creates its event/thread from request() on the gameplay callback, and the bounded union/bitset work still needs real callback timing.
 - The async path does not start the command worker unless the Host heartbeat/subscription is live. Retained leases survive disconnect for later retry but do not start an idle worker.
+- Full Techno-list reads in selection filters, idle-unit selection, type selection, autoload capacity accounting, burst discovery, advanced-range discovery, cooperative entry capacity and Ctrl+D ejection watching now consume the sealed Runtime roster/sample. The selected-unit overlay also reads its selection vector from the sealed sample; global overlay projections remain suspended.
 - Final live identity/permission/mission checks and native EventClass/engine calls remain on their required game thread. They are not a compatibility sampler and must not be moved to the worker.
 
 ## Temporarily suspended feature domains
 
 | Domain | Current decision | Re-enable condition |
 | --- | --- | --- |
-| Host overlays depending on VisualCache (unit/passenger/combat/resource visual graph) | Suspended; no Host-side game graph reads | Runtime snapshot contains required display fields and Host consumes the same immutable token |
+| Host overlays depending on VisualCache (resource-only and old HostVisual passenger/combat graph) | Suspended; product ProcessReader cannot create a second RPM-derived graph. Main Host demand now requests Base/Combat/Passengers from Runtime only | Runtime snapshot contains the remaining display fields and Host consumes the same immutable token |
+| Global Iron/Psychic/AllTransports/advanced-order label projection | Suspended; selected-unit projection remains, sourced from the sealed Runtime sample | Worker publishes a dedicated display projection; Host/game thread does not rescan the full Techno list |
+| Variant-key type selection | Temporarily returns pending/unsupported (-12); ordinary type selection uses the sealed worker roster | Variant weapon keys are projected by the Worker and live CanSelect proof remains on the game thread |
 | Host-only zero-page display boundary | Suspended | Display demand is represented as a normal Runtime snapshot demand |
 | Targeted RecoveryMailbox page probes | Suspended in production | Recovery is integrated into the same complete-sample scheduler and cannot publish a second source |
 | Shadow full-graph diagnostic reader | Test-only | Only if a future diagnostic build is isolated from normal production and cannot compete with the canonical worker |
-| Any legacy feature that performs its own full roster/world enumeration outside the sealed sample | Suspend that feature at its admission boundary | Collector migrated to snapshot; unknown/incomplete behavior and live command proof covered by tests |
+| Any legacy feature that performs its own full roster/world enumeration outside the sealed sample | Migrate to SampleReadScope/worker roster or suspend at its admission boundary | Collector migrated to snapshot; unknown/incomplete behavior and live command proof covered by tests |
 
 This is an intentional temporary loss of affected read-only displays or features. It is preferable to silently running multiple incompatible sampling systems. Do not re-enable them by restoring the old path.
 
