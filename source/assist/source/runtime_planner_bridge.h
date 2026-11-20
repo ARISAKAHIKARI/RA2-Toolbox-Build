@@ -3,6 +3,9 @@
 static planner::Planner runtimePlanner;
 static void resetRuntimePlanner(){runtimePlanner.reset();if(sh){sh->runtimeTracking=0;sh->runtimePlannerMicros=0;}}
 static void runtimePlanningTick(uint32_t house,int frame,DWORD now){
+ // Do not advance planner state or expire proposals while the strict
+ // same-frame Runtime UID index is unavailable.
+ if(indexedFrame!=frame||!commandRosterReady())return;
  uint32_t selected=compute::plannerFlags(sh->flags,sh->computeApplied,true);
  bool drop=sh->magnetronDrop&&compute::inside(sh->computeApplied,compute::MagnetronDrop);
  if(!selected&&!drop&&!runtimePlanner.hasJobs()){sh->runtimeTracking=0;return;}
