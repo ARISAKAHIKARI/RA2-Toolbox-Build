@@ -1563,9 +1563,16 @@ static void sampleExternal(DWORD now){
   if(externalWorldSource&&((commandMatch()&&externalWorldSource->key.match!=commandMatch())||externalWorldSource->key.pid!=externalReader.pid()||
     ((uint64_t(externalWorldSource->key.connectionHigh)<<32)|externalWorldSource->key.connectionLow)!=externalReader.generation()))discardExternalWorld();
   const bool passengerOverlay=enabled&&(extra.passengerBubbles||extra.dangerPassengers);
-  externalReader.setWorldDemand(worldframe::Resources|
-   (((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)?worldframe::HostVisualPassengers:0)|
-   (passengerOverlay?worldframe::HostVisualCombat:0));
+  // Host no longer creates an independent VisualCache/readLive world sample.
+  // These are native Runtime demands and are fulfilled by the one sealed
+  // CommandCaptureWorker graph; resource-only legacy display projections stay
+  // suspended until they are produced by that Worker.
+  uint32_t displayDemand=worldframe::Base;
+  if((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)
+   displayDemand|=worldframe::Passengers;
+  if(passengerOverlay||extra.enemyMarkers||extra.enemySpecialOnly)
+   displayDemand|=worldframe::Combat;
+  externalReader.setWorldDemand(displayDemand);
   external::WorldFrameScope worldScope(externalReader,commandMatch());
   if(!worldScope){
    if(externalWorldSource){external::WorldFrameScope retained(externalReader,commandMatch(),externalWorldSource);if(!retained)discardExternalWorld();}

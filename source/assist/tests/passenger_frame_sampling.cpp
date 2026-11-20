@@ -1,4 +1,5 @@
 // Production display/collector/ProcessReader/IPC with synthetic game bytes.
+#define WORLD_FRAME_TEST_VISUAL_CACHE
 #include "protocol.h"
 #include "../../shared/source/world_frame_capture.h"
 #include "../../shared/source/world_frame_visual.h"

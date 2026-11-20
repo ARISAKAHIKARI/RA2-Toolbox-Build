@@ -13,24 +13,69 @@ def between(s, left, right):
     return s.split(left, 1)[1].split(right, 1)[0]
 assert 'static bool prepareWorldIndex(int frame)' in bridge
 gate = between(bridge, "static bool prepareWorldIndex(int frame){", '\n#include "../../shared/source/key_gesture.h"')
-assert gate.index('worldFrameCommandWorker.enabled()') < gate.index('indexWorld(frame)')
-assert 'return refreshWorldIndex(frame,false)' in gate
-fallback = between(bridge, "static bool refreshWorldIndex(int frame,bool executionGuards){", "static bool prepareWorldIndex(")
-assert 'if(!executionGuards||worldFrameCommandWorker.enabled())' in fallback
-assert fallback.index('if(!executionGuards||worldFrameCommandWorker.enabled())') < fallback.rindex('indexWorld(frame)')
+assert 'indexWorld(' not in gate
+assert 'return refreshWorldIndex(frame)' in gate
+fallback = between(bridge, "static bool refreshWorldIndex(int frame){", "// Identity-index publication")
+assert 'indexWorld(' not in fallback
+# No active feature may rediscover the full Techno list through a live Vec.
+for path in ("bridge.cpp", "type_select_bridge.h", "autoload_bridge.h",
+             "burst_bridge.h", "combat_probe_bridge.h",
+             "cooperative_bridge.h", "native_orders_bridge.h"):
+    body = (root / path).read_text()
+    assert "vec(0xA8EC78" not in body, path
+main = (root / "main.cpp").read_text()
+process_reader = (root.parent.parent / "external_reader/source/process_reader.h").read_text()
+display_demand = between(main, "const bool passengerOverlay=", "external::WorldFrameScope worldScope")
+assert "worldframe::Resources" not in display_demand
+assert "HostVisual" not in display_demand
+assert "worldframe::Passengers" in display_demand
+assert "worldframe::Combat" in display_demand
+# Product ProcessReader cannot promote a non-control frame with its own RPM
+# VisualCache. The old path exists only in the dedicated test fixture.
+test_visual = process_reader.index("#ifdef WORLD_FRAME_TEST_VISUAL_CACHE")
+visual_call = process_reader.index("worldClient_->visual", test_visual)
+product_else = process_reader.index("#else", test_visual)
+assert visual_call < product_else
+assert "if(!frame||!frame->controlSource)return false;" in process_reader[product_else:]
+assert "if(worldframe::visualDemand(worldDemand_))" in process_reader
+assert "else worldClient_->request(worldDemands_,!worldComplete_);" in process_reader
+assert "Product has no Host VisualCache" in process_reader
+
+assert 'CaptureGraph' not in fallback
+assert 'static void indexWorld(int frame)' not in bridge
 for path in ("sticky_bridge.h", "control_object_owner_bridge.h",
              "native_mega_gateway_bridge.h", "private_outlist_bridge.h"):
     body = (root / path).read_text()
     assert "prepareWorldIndex(frame)" in body, path
     assert "indexWorld(frame)" not in body, path
+# Page requests are bounded, deduplicated and ownership-transferred. A partial
+# or oversized dependency set must never be submitted as a complete graph.
+assert "requests.assign(hostRequests.begin()" not in runtime
+assert "requests.insert(requests.end()" not in runtime
+assert "runtimeDemandLeases.visit(key.tick,appendPage)" in runtime
+assert "requests.size()>=worldframe::MaxPages" in runtime
+assert "runtimeWorldDemands.size()>=worldframe::MaxPages" in runtime
+assert "runtimeDemandOverflow" in runtime
+assert "queued_.pages.swap(pages)" in worker
+assert "job.pages.swap(self->queued_.pages)" in worker
+assert "bool reclaimRequestBuffer(std::vector<uint32_t>&pages)" in worker
+assert "worldFrameCommandWorker.reclaimRequestBuffer(requests)" in runtime
+assert runtime.index("worldFrameCommandWorker.reclaimRequestBuffer(requests)") < runtime.index("const auto&hostRequests=worldFrameServer.requests();")
+# The product has one command-capture worker. The older publisher/recovery
+# worker is compiled only into the isolated synchronous regression DLL.
+assert '#elif defined(WORLD_FRAME_TEST_SYNC_CAPTURE)' in runtime
+assert runtime.count('world_frame_async_win.h') == 1
+assert 'The old AsyncPublisher is not a dormant compatibility path in the product.' in runtime
+assert 'if(!worldFrameServer.wanted(key.owner,key.tick))' in runtime
+assert 'candidateCount&&worldFrameServer.wanted(key.owner,key.tick)' in runtime
 assert 'worldFrameCommandWorker.take(key,graphDemand' in runtime
 assert 'if(asyncCommand)' in runtime
 assert runtime.index('if(asyncCommand)') < runtime.index('worldframe::CaptureGraph<Live>capture(')
 assert 'commandRequestGate.defer(key,graphDemand' in runtime
 assert 'commandRequestGate.submitted(key,graphDemand' in runtime
-assert runtime.index('commandRequestGate.defer(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
+assert runtime.index('commandRequestGate.defer(key,graphDemand') < runtime.index('auto&requests=worldFrameCaptureRequests;')
 assert 'worldFrameCommandWorker.deferBusy(key,graphDemand,requestRevision,globalVehicles)' in runtime
-assert runtime.index('worldFrameCommandWorker.deferBusy(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
+assert runtime.index('worldFrameCommandWorker.deferBusy(key,graphDemand') < runtime.index('auto&requests=worldFrameCaptureRequests;')
 # Game-thread lock contention must defer request assembly instead of
 # scanning 16K dependencies and attempting a second try-lock submission.
 busy = between(worker, 'bool deferBusy(const Key&key,', '\n bool request(const Key&key,')
@@ -46,10 +91,11 @@ assert 'readLiveWorld(pointer+0x10' in candidate_gate
 assert 'if(sampleReadDepth)' in candidate_gate
 
 assert 'coalesceInFlightWorld(lastRequestedKey_,key' in worker
-# Production defaults to nonblocking worker capture, but a launch-time
-# opt-out can restore synchronous behavior if exact-frame handoff starves.
-assert 'RA2TOOLBOX_ASYNC_COMMAND_CAPTURE' in worker
-assert "return !(length==1&&setting[0]=='0');" in worker
+# Production has no synchronous capture opt-out. Only a separately compiled
+# test fixture can exercise the old synchronous implementation.
+assert 'RA2TOOLBOX_ASYNC_COMMAND_CAPTURE' not in worker
+assert 'WORLD_FRAME_TEST_SYNC_CAPTURE' in worker
+assert 'return true;' in worker
 assert 'worldFrameCommandWorker.enabled()' in runtime
 assert 'commandRequestGate.reset()' in runtime
 assert 'worldFrameCommandWorker.request(key,graphDemand' in runtime
@@ -92,7 +138,8 @@ else:
     assert "std::sort(unloadRoster" not in native_orders
 assert "ReindexBudget=128" in unload_policy
 assert "while(rebuildAt<count&&work++<ReindexBudget)" in unload_policy
-assert "if(!worldFrameCommandWorker.enabled())indexWorld(frame);" in bridge
+assert "if(!worldFrameCommandWorker.enabled())indexWorld(frame);" not in bridge
+assert "indexWorld(" not in bridge
 
 
 # The original manual token/pointer must reach the native EventClass

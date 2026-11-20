@@ -45,25 +45,32 @@ static const worldframe::Snapshot*sampleWorldSource=nullptr;
 static uint32_t sampleScopeTick=0;
 static bool observationalFrameReady(){return false;}
 static uint32_t GetTickCount(){return clockNow;}
-// This fixture seals raw synthetic bytes rather than running CaptureGraph.
-// The empty retained scratch exercises indexWorld's original read fallback.
+// This fixture seals raw synthetic bytes, then builds the same worker-owned
+// CommandRoster used by production before exposing the immutable index.
 static worldframe::CaptureScratch worldFrameCaptureScratch;
 static bool worldFrameReady=false,sampleReadComplete=true;
 static unsigned sampleReadDepth=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};
 static std::vector<uint32_t> runtimeWorldDemands;
+static bool runtimeDemandOverflow=false,runtimeDemandBufferPrepared=false;
 static uint32_t runtimeDemandRevision=1;
-struct CommandWorkerFixture {static bool enabled(){return false;}};static CommandWorkerFixture worldFrameCommandWorker;
+struct CommandWorkerFixture {static bool enabled(){return true;}};static CommandWorkerFixture worldFrameCommandWorker;
 static worldframe::CommandRoster worldFrameCommandRoster;
-// The extracted runtime fixture intentionally runs with the command worker
-// disabled. Keep the new observation-only symbols linked, without treating
-// a synthetic previous-frame candidate as current command authority.
+// The fixture models the canonical worker as already completed for each
+// sealed synthetic frame. Observation-only candidates remain a separate type
+// and are never treated as current command authority.
 static worldframe::CommandRoster worldFrameCandidateRoster;
 static uint32_t worldFrameCandidateVersion=0;
 static bool candidateRosterReady(){return false;}
 static bool verifyCandidateID(uint32_t,uint32_t){return false;}
 static bool verifyCandidatePointer(uint32_t){return false;}
-static bool commandRosterReady(){return false;}
+static bool commandRosterReady(){
+ return worldFrameReady&&worldFrameCommandWorker.enabled()&&
+        worldFrameCommandRoster.current(worldFrame.key)&&
+        worldFrame.key.match==match&&worldFrame.key.frame==snap.frame&&
+        worldFrame.key.house==lastHouse&&
+        worldFrameCommandRoster.global==bool(sh&&sh->magnetronGlobal);
+}
 #include "sample_scope_production.h"
 static bool liveRead(uint32_t at,void*out,size_t n){
  ++liveReads;if(at==0xA8EC78||(at>=0x800000&&at<0x810000))++liveRosterReads;
@@ -165,18 +172,25 @@ static uint32_t object(uint32_t type,int k,uint32_t id,uint32_t owner=0x20000,in
 }
 static uint32_t makeWeapon(uint32_t type,bool air=true,bool ground=true){uint32_t w=alloc(),projectile=alloc(),warhead=alloc();set<uint32_t>(type+0x898,w);set<int>(w+0xB4,4096);set<int>(w+0xA4,40);set<uint32_t>(w+0xA0,projectile);set<uint32_t>(w+0xAC,warhead);set<bool>(projectile+0x2A4,air);set<bool>(projectile+0x2A5,ground);for(int n=0;n<11;++n)set<double>(warhead+0xA0+n*8,1.);return w;}
 static void seal(uint32_t omit=0,bool knownFailure=false){
- check(!sampleReadDepth,"scope leaked into next capture");worldFrameReady=false;worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;worldFrame.reset(key);
+ check(!sampleReadDepth,"scope leaked into next capture");worldFrameReady=false;
+ worldObjects.unbind();worldObjects.clear();worldFrameCommandRoster.invalidate();
+ indexedFrame=indexedCount=-1;indexedItems=0;globalVehicleCandidateCount=0;
+ indexedGlobalVehicles=false;indexedVehicleHouse=0;
+ worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;worldFrame.reset(key);
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);missingPage=omit&~4095u;
  for(uint32_t page=0x10000;page<memory.size();page+=4096){if(page==missingPage&&!knownFailure)continue;
   auto acquire=[&](uint32_t at,void*out,size_t n){if(missingPage&&at<missingPage+4096&&uint64_t(at)+n>missingPage)return false;return liveRead(at,out,n);};
   worldFrame.prefetch(acquire,page,4096);
  }
- check(worldFrame.seal(),"seal failed");worldFrameReady=true;liveReads=liveRosterReads=missingLiveReads=0;
+ check(worldFrame.seal(),"seal failed");
+ worldFrameReady=worldFrameCommandRoster.build(worldFrame,bool(sh&&sh->magnetronGlobal),worldFrameCaptureScratch.list);
+ if(worldFrameReady)check(refreshWorldIndex(snap.frame),"worker roster failed to bind");
+ liveReads=liveRosterReads=missingLiveReads=0;
 }
 static void advance(uint32_t omit=0,bool failure=false){++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);seal(omit,failure);}
 static void reset(){
  check(!sampleReadDepth,"scope leaked between tests");memory.assign(memory.size(),0);::new(static_cast<void*>(sh)) Shared{};std::memset(&snap,0,sizeof snap);
- leaseChecks=0;leaseAllowed=true;worldObjects.clear();manualVersions.clear();actorLeaseArbiter.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
+ leaseChecks=0;leaseAllowed=true;worldObjects.unbind();worldObjects.clear();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;indexedFrame=indexedCount=-1;indexedItems=0;globalVehicleCandidateCount=0;indexedGlobalVehicles=false;indexedVehicleHouse=0;manualVersions.clear();actorLeaseArbiter.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
  worldFrameReady=false;worldFrameCaptureScratch.reset();nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;denyLivePage=false;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
  loadCalculationPending=loadCaptureWaiting=loadAckPending=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
  missileSendCount=missileManualCount=missileMotionCursor=missileSourceCursor=missileTargetCursor=missileManagedCursor=0;for(auto&m:missileMotion)m={};
@@ -215,7 +229,7 @@ static void testLoad(){
  setupLoad(0);uint32_t passenger=get<uint32_t>(0x820000),carrier=get<uint32_t>(0x800000);seal(carrier);const uint32_t task=sh->loadTask;
  check(autoLoad(lastHouse)==-30&&loadCaptureWaiting&&sh->loadTask==task&&!submissions,"load missing page published or executed");check(!missingLiveReads,"load missing raw page fell back live");
  vectorAt(0xA8ECB8,0x820000,{});advance();compute::LoadInput cohort{};check(autoLoad(lastHouse,&cohort)==1&&submissions==1&&!assignments.empty()&&assignments[0].first==get<uint32_t>(passenger+0x10),"load retry lost original click cohort");
- setupLoad(0);passenger=get<uint32_t>(0x820000);const uint32_t replacement=get<uint32_t>(passenger+0x10)+1000;set<uint32_t>(passenger+0x10,replacement);worldObjects.add(passenger,replacement);
+ setupLoad(0);passenger=get<uint32_t>(0x820000);const uint32_t replacement=get<uint32_t>(passenger+0x10)+1000;set<uint32_t>(passenger+0x10,replacement);
  check(autoLoad(lastHouse)==-30&&loadCaptureWaiting&&!submissions,"load combined a new click identity with old sealed facts");
  advance();check(autoLoad(lastHouse,&cohort)==1&&submissions==1&&!assignments.empty()&&assignments[0].first==replacement,"load replacement identity did not retry on its own frame");
  setupLoad(0);leaseAllowed=false;const auto beforeQueries=nativeCalls;check(autoLoad(lastHouse)==-12&&nativeCalls==beforeQueries&&!submissions,"load queried native engine without a lease");leaseAllowed=true;
@@ -241,7 +255,7 @@ static void testBoardingLedgerUnknown(){
  check(loadLedger.count==1&&!loadingFinished&&!loadingResends,"interface outage erased pending boarding ticket");
  interfacesReady=true;
  // Confirm the transport pointer even when the passenger has left the roster.
- set<uint32_t>(passenger+0x11C,carrier);worldObjects.clear();worldObjects.add(carrier,carrierID);
+ set<uint32_t>(passenger+0x11C,carrier);vectorAt(0xA8EC78,0x800000,{carrier});
  advance();autoLoadTick(lastHouse,snap.frame);
  check(!loadLedger.count&&loadingFinished==1&&loadingBoarded==1&&!loadingResends,"confirmed boarding did not complete native ticket");
  // A UID replacement cannot retain or complete the predecessor's reservation.
@@ -348,45 +362,43 @@ static void testMissile(){
 static void testCapturedRosterIndex(){
  reset();const auto type=makeType(),p=object(type,2,20),q=object(type,2,21);
  vectorAt(0xA8EC78,0x800000,{p,q});seal();indexedFrame=-1;
- // Simulate the exact immutable roster already exported by CaptureGraph.
- worldFrameCaptureScratch.technoKey=worldFrame.key;
- worldFrameCaptureScratch.technoItems=0x800000;
- worldFrameCaptureScratch.technoCount=2;
- worldFrameCaptureScratch.technoRoster={p,q};
+ // seal() has already built and bound the exact worker-owned UID roster.
  readRequests=0;const auto beforeLive=liveReads;
- {
-  SampleReadScope sample;indexWorld(snap.frame);
-  check(sample.complete()&&indexedFrame==snap.frame,"sealed roster index marked incomplete");
- }
- const uint64_t fast=readRequests;
- check(worldObjects.byId(20)==p&&worldObjects.byId(21)==q,"sealed roster lost native UIDs");
- check(liveReads==beforeLive,"sealed roster fast path read live memory");
- // Invalidate only the captured serial. The production index must fall
- // back to its original roster read, with identical identities but one
- // additional sampled read() call. No stale/cross-frame borrow is allowed.
- ++worldFrameCaptureScratch.technoKey.serial;indexedFrame=-1;readRequests=0;
- {
-  SampleReadScope sample;indexWorld(snap.frame);
-  check(sample.complete()&&indexedFrame==snap.frame,"stale roster fallback failed");
- }
- check(readRequests==fast+1,"fast roster did not avoid exactly one full pointer read");
- check(worldObjects.byId(20)==p&&worldObjects.byId(21)==q,"stale roster fallback lost native IDs");
- check(liveReads==beforeLive,"sampled native roster unexpectedly read live");
- std::puts("PASS production native index: frozen roster saves full pointer read; stale serial fallback retains identities and no live reads");
+ check(refreshWorldIndex(snap.frame)&&indexedFrame==snap.frame,"worker roster index marked incomplete");
+ check(worldObjects.byId(20)==p&&worldObjects.byId(21)==q,"sealed worker roster lost native UIDs");
+ check(liveReads==beforeLive&&readRequests==0,"worker index binding reacquired the live Techno roster");
+ ++worldFrame.key.frame;indexedFrame=-1;readRequests=0;
+ check(!refreshWorldIndex(snap.frame)&&indexedFrame==-1&&!worldObjects.byId(20),
+       "stale worker frame remained visible");
+ check(liveReads==beforeLive&&readRequests==0,"stale worker index fell back to a live roster scan");
+ advance();
+ check(refreshWorldIndex(snap.frame)&&worldObjects.byId(20)==p&&worldObjects.byId(21)==q,
+       "next complete worker sample did not restore UID index");
+ std::puts("PASS worker-owned native index: immutable UID handoff, stale serial fail-close and no live roster reads");
 }
 static void testIdentitySampleFailure(){
- reset();const auto t=makeType(),carrier=object(t,2,20),passenger=object(t,1,21);vectorAt(0xA8EC78,0x800000,{carrier,passenger});
- sh->magnetronGlobal=1;manualVersions.change(21,passenger,false);manualVersions.change(21,passenger,false);for(unsigned id=100;id<100+ManualVersions::Size/2;++id)manualVersions.change(id,0,false);
- indexedFrame=-1;seal(passenger);check(refreshWorldIndex(snap.frame,true)&&worldObjects.contains(carrier)&&worldObjects.contains(passenger),"partial sampled UID page erased active identities");check(missingLiveReads>0&&!sampleReadDepth,"execution identity retry must run outside sampled scope");check(manualVersions.get(21)==2,"partial UID sample erased manual revision");
- advance(passenger);indexedFrame=-1;denyLivePage=true;check(!refreshWorldIndex(snap.frame,true)&&indexedFrame==-1&&!worldObjects.contains(passenger)&&globalVehicleCandidateCount==0&&manualVersions.get(21)==2,"failed live UID retry published an empty/partial authoritative world");
- const auto failedReads=liveReads;denyLivePage=false;check(!refreshWorldIndex(snap.frame,true)&&liveReads==failedReads,"same-frame identity retry busy-looped");clockNow+=16;check(refreshWorldIndex(snap.frame,true)&&worldObjects.contains(passenger)&&manualVersions.get(21)==2,"same-frame identity retry did not recover");
- for(uint32_t missing:{0xA8EC78u,0x800000u}){advance(missing);indexedFrame=-1;denyLivePage=true;check(!refreshWorldIndex(snap.frame,true)&&indexedFrame==-1&&manualVersions.get(21)==2,"failed live roster/header became authoritative empty index");denyLivePage=false;clockNow+=16;check(refreshWorldIndex(snap.frame,true)&&worldObjects.contains(passenger),"roster/header identity retry did not recover");}
- advance(passenger);indexedFrame=-1;check(!refreshWorldIndex(snap.frame,false)&&!worldObjects.contains(carrier)&&indexedFrame==-1&&globalVehicleCandidateCount==0,"pure observer must not live-rescan or use partial index");check(!missingLiveReads,"pure observer retried missing identity live");
- advance();check(refreshWorldIndex(snap.frame,false)&&worldObjects.contains(carrier)&&worldObjects.contains(passenger),"complete next sample failed to recover index");
- std::puts("PASS identity-sample recovery: partial UID sample retries execution identity guard after scope exit; pure observation waits; complete next frame recovers");
+ reset();const auto t=makeType(),carrier=object(t,2,20),passenger=object(t,1,21);
+ vectorAt(0xA8EC78,0x800000,{carrier,passenger});
+ sh->magnetronGlobal=1;manualVersions.change(21,passenger,false);manualVersions.change(21,passenger,false);
+ for(unsigned id=100;id<100+ManualVersions::Size/2;++id)manualVersions.change(id,0,false);
+ seal(passenger);
+ check(!worldFrameReady&&!refreshWorldIndex(snap.frame)&&!worldObjects.contains(carrier)&&
+       !worldObjects.contains(passenger)&&!missingLiveReads&&manualVersions.get(21)==2,
+       "incomplete worker UID graph was published or triggered a live roster fallback");
+ advance(passenger);
+ check(!worldFrameReady&&!refreshWorldIndex(snap.frame)&&!worldObjects.contains(passenger)&&
+       !missingLiveReads&&manualVersions.get(21)==2,
+       "repeated incomplete graph changed identity/manual state");
+ advance();
+ check(worldFrameReady&&refreshWorldIndex(snap.frame)&&worldObjects.contains(carrier)&&
+       worldObjects.contains(passenger)&&manualVersions.get(21)==2&&!missingLiveReads,
+       "complete next worker graph failed to restore index/manual state");
+ std::puts("PASS identity sample fail-closed: incomplete graph stays UNKNOWN, no live roster fallback, next complete worker graph recovers");
 }
+
 static void testMissionReceiptIncomplete(){
  reset();uint32_t t=makeType(),p=object(t,2,20);set<int>(p+0xAC,0);set<int>(p+0xB4,-1);
+ vectorAt(0xA8EC78,0x800000,{p});seal();
  auto observed=observeMissionReceipt(20);
  check(observed.valid&&observed.mission==0&&observed.queued==-1,"complete mission 0 observation rejected");
  // Native receipt must not treat an unreadable mission as a zero-value mission.
@@ -409,7 +421,7 @@ static void testMissionReceiptIncomplete(){
  std::puts("PASS native mission receipts: missing UID/mission/queue/carrier never acknowledges default-zero mission");
 }
 static void testLeasesNeedCompleteIdentityNotSecondLiveRead(){
- reset();const uint32_t type=makeType(),p=object(type,2,20);
+ reset();const uint32_t type=makeType(),p=object(type,2,20);vectorAt(0xA8EC78,0x800000,{p});seal();
  check(actorLeaseArbiter.record(match,snap.frame,20,p,manualVersions.get(20),taskarbiter::Owner::Dodge,77),"cannot seed original automatic lease");
  // The live roster has already produced a complete indexed UID. A second
  // readWorldByID may nevertheless fail between the producer and sweep.
@@ -422,7 +434,7 @@ static void testLeasesNeedCompleteIdentityNotSecondLiveRead(){
  manualVersions.change(20,p,false);sweepActiveLeases(snap.frame);
  check(actorLeaseArbiter.find(20)<0,"explicit manual revision must still release lease");
  manualVersions.clear();check(actorLeaseArbiter.record(match,snap.frame,20,p,0,taskarbiter::Owner::Dodge,79),"cannot seed replacement lease");
- worldObjects.clear();sweepActiveLeases(snap.frame);
+ vectorAt(0xA8EC78,0x800000,{});advance();sweepActiveLeases(snap.frame);
  check(actorLeaseArbiter.find(20)<0,"complete index absence must retire old lease");
  std::puts("PASS shared automatic lease sweep: unknown second UID does not retire ownership; manual and complete absence do");
 }
@@ -442,7 +454,7 @@ static void testUnload(){
  check(unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),
        "unload final admission did not recover after missing live pages");
  set<int>(p+0xAC,2);check(!unloadSourceCurrent(r,input.sources[0],lastHouse,snap.frame),"unload local apply would accept later mission");
- const auto queries=nativeCalls;set<uint32_t>(p+0x10,44);worldObjects.add(p,44);r.id=44;check(!collectUnloadSource(input,r,lastHouse,snap.frame)&&input.count==1&&nativeCalls==queries,"unload combined a new job identity with old sampled fields");r.id=20;set<uint32_t>(p+0x10,20);
+ const auto queries=nativeCalls;set<uint32_t>(p+0x10,44);r.id=44;check(!collectUnloadSource(input,r,lastHouse,snap.frame)&&input.count==1&&nativeCalls==queries,"unload combined a new job identity with old sampled fields");r.id=20;set<uint32_t>(p+0x10,20);
  advance(target);const int before=input.count;check(!collectUnloadSource(input,r,lastHouse,snap.frame)&&input.count==before,"unload missing target published partial source");check(!missingLiveReads,"unload missing target fell back live");
  std::puts("PASS unload raw facts/native legality split, source-current guard and failed-source retention");
 }

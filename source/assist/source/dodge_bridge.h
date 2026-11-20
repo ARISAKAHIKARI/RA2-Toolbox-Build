@@ -113,6 +113,10 @@ static int dodgeSourceKnowledge(uint32_t p,uint32_t house){
  return sample.complete()?(eligible?1:-1):0;
 }
 static void updateDodgeJobs(uint32_t house,int frame,DWORD now){
+ // An unavailable/stale worker roster is UNKNOWN, not proof that every
+ // active dodge owner disappeared. Only a complete same-frame index can
+ // authorize membership-based retirement.
+ if(indexedFrame!=frame||!commandRosterReady())return;
  for(int n=0;n<dodgeCount;){auto&j=dodgeJobs[n];
   // A complete index can prove absence. worldByID adds another fallible
   // live UID read; its failure cannot retire an otherwise owned job.
@@ -150,6 +154,9 @@ static void updateDodgeJobs(uint32_t house,int frame,DWORD now){
  }
 }
 static void applyDodgeResult(const dodgecompute::Result&r,uint32_t house,int frame,DWORD now,const dodgecompute::Input*source=nullptr){
+ // A delayed compute result cannot retire owners while the canonical index is
+ // unavailable. Re-admit only after the same-frame worker roster is ready.
+ if(indexedFrame!=frame||!commandRosterReady())return;
  const auto&input=source?*source:dodgeInput;
  if(r.match!=input.match||r.tick!=input.tick||r.frame!=input.frame||r.count!=input.count||r.count<0||r.count>dodgecompute::MaxSources)return;
  for(int n=0;n<r.count;++n){if(!freshness::valid(r.match,match,r.tick,r.frame,now,frame,freshness::Tactical)||snap.chat)break;

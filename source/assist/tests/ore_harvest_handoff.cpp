@@ -42,7 +42,9 @@ static DWORD clockNow=1000;
 static uint32_t sampleClock(Shared*){return clockNow;}static uint32_t failRead=0;static unsigned reads=0,cellReads=0,maxCellReads=0;static uint64_t observerCellReads=0;
 static bool kernelReads=false;
 static uint8_t globals[0x500000]{},objects[0x100000]{};
-static ManualVersions manualVersions;static ObjectIndex worldObjects;static taskarbiter::FrameArbiter<> actorFrameArbiter;
+static ManualVersions manualVersions;static ObjectIndex worldObjects;static int indexedFrame=-1;
+static bool commandRosterReady(){return indexedFrame==snap.frame;}
+static taskarbiter::FrameArbiter<> actorFrameArbiter;
 static oreconfig::Config oreConfig;
 static long oreConfigRevision=0;
 static std::vector<intent::EventOrder>events;static std::function<void()>queueMutation;
@@ -125,7 +127,7 @@ static void vectorAt(uint32_t at,uint32_t items,int count){Vec v{0,items,count,0
 static void resource(int x,int y,int land=0,uint32_t occupation=0){cells[uint32_t(y*1000+x)]={0,land,occupation,0,0,0};}
 static void reset(){
  memset(globals,0,sizeof globals);memset(objects,0,sizeof objects);sh->~Shared();new(sh)Shared{};snap={};planningWorld.~World();new(&planningWorld)planner::World{};oreConfig={};manualVersions.clear();worldObjects.clear();actorFrameArbiter.clear();oreHarvestReset();events.clear();cells.clear();nullCells.clear();failRead=0;fixtureResetWorld();queueMutation={};fault=held=bursted=dodging=false;queueOkay=true;kernelReads=false;reads=cellReads=maxCellReads=0;observerCellReads=0;
- match=7;lastHouse=House;clockNow=1000;sh->flags=AutoOreReturn;sh->computeApplied=compute::All;snap.status=snap.commandStatus=1;snap.session=3;snap.match=7;snap.frame=300;
+ match=7;lastHouse=House;clockNow=1000;indexedFrame=-1;sh->flags=AutoOreReturn;sh->computeApplied=compute::All;snap.status=snap.commandStatus=1;snap.session=3;snap.match=7;snap.frame=300;
  set<uint32_t>(0xA83D4C,House);set<uint32_t>(House+0x10,101);set<int>(House+0x30,3);set<uint32_t>(0xA8B230,0x20090000);set<int>(0xA8B238,3);set<int>(0xA8ED84,300);
  set<uint32_t>(MinerType+0x10,301);set<uint8_t>(MinerType+0xE0E,1);set<int>(MinerType+0x800,20);set<int>(MinerType+0x67C,1);set<uint32_t>(RefineryType+0x10,501);vectorAt(MinerType+0x3E8,Docks,1);set<uint32_t>(Docks,RefineryType);
  object(Miner,0x7F5C70,11,MinerType);object(Refinery,0x7E3EBC,21,RefineryType);set<float>(Miner+0x33C,20);set<uint8_t>(Miner+0x6D1,1);set<int>(Miner+0xAC,16);set<int>(Miner+0xB4,-1);set<uint32_t>(Miner+0x5A4,Refinery);
@@ -142,10 +144,12 @@ static void reset(){
  auto&r=planningWorld.actors[1];r.id=21;r.type=RefineryType;r.kind=3;r.flags=planner::Own;r.x=50*256;r.y=60*256;r.radioIDs[0]=11;
  auto&area=planningWorld.refineries[0];area.id=21;area.cellX=50;area.cellY=60;
  resource(56,62);resource(80,62);
+ // object() above populated the fixture's worker-owned immutable UID index.
+ indexedFrame=snap.frame;
 }
 static int pending(){int n=0;for(const auto&j:oreHarvestJobs)n+=j.id!=0;return n;}
-static void step(){++snap.frame;set<int>(0xA8ED84,snap.frame);clockNow+=16;planningWorld.frame=snap.frame;planningWorld.tick=clockNow;unsigned before=cellReads;fixtureCaptureWorld(clockNow);oreHarvestTick(House,snap.frame,clockNow);maxCellReads=std::max(maxCellReads,cellReads-before);}
-static void observeFrame(uint32_t house,int frame,DWORD now){snap.frame=frame;fixtureCaptureWorld(now);const uint64_t before=cellReads+fixtureSampleCellReads;oreHarvestObserve(house,frame,now);observerCellReads+=cellReads+fixtureSampleCellReads-before;}
+static void step(){++snap.frame;set<int>(0xA8ED84,snap.frame);clockNow+=16;planningWorld.frame=snap.frame;planningWorld.tick=clockNow;unsigned before=cellReads;fixtureCaptureWorld(clockNow);indexedFrame=snap.frame;oreHarvestTick(House,snap.frame,clockNow);maxCellReads=std::max(maxCellReads,cellReads-before);}
+static void observeFrame(uint32_t house,int frame,DWORD now){snap.frame=frame;fixtureCaptureWorld(now);indexedFrame=snap.frame;const uint64_t before=cellReads+fixtureSampleCellReads;oreHarvestObserve(house,frame,now);observerCellReads+=cellReads+fixtureSampleCellReads-before;}
 static void unloadDone(){set<float>(Miner+0x33C,0);set<uint8_t>(Miner+0x6D1,0);set<int>(Miner+0xAC,10);set<int>(Refinery+0xE8,0);set<uint32_t>(Miner+0x5A4,cellPointer(80,62));planningWorld.actors[0].flags&=~planner::Unloading;planningWorld.actors[0].storage[0]=0;planningWorld.actors[0].mission=10;planningWorld.actors[1].radioIDs[0]=0;}
 static void finish(int frames=80){for(int n=0;n<frames&&events.empty()&&pending();++n)step();}
 int main(){sh=new Shared{};unsigned checks=0;auto check=[&](bool b){if(!b)std::fprintf(stderr,"check ordinal=%u pending=%d events=%zu miners=%d frame=%d\n",checks+1,pending(),events.size(),oreHarvestMinerCount,snap.frame);assert(b);++checks;};

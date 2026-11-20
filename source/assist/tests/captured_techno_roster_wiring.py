@@ -14,10 +14,17 @@ assert "scratch_->technoCount=int(scratch_->technoRoster.size())" in capture
 assert "technoKey.sameFrame(key)" in capture
 assert "technoKey.serial!=key.serial" in capture
 assert "technoKey.tick!=key.tick" in capture
-assert "sampleReadDepth&&worldFrameReady&&!worldFrameBoundaryOnly" in bridge
-assert "worldFrameCaptureScratch.capturedTechnoRoster(worldFrame.key,all.items,all.count)" in bridge
-assert "if(all.count&&!read(all.items,pointers,size_t(all.count)*4))" in bridge, "Missing fallback"
-assert "for(int i=0;i<all.count;++i){const uint32_t p=roster[i]" in bridge
-assert "if(!read(p+0x10,&id,4)){complete=false;continue;}" in bridge
-assert "if(!complete||(sampleReadDepth&&!sampleReadComplete)){unknown();return;}" in bridge
-print("PASS native identity projection: same-frame sealed roster reused, stale/incomplete samples fall back, all per-UID checks unchanged")
+worker=(root.parent.parent/"shared"/"source"/"world_frame_command_worker_win.h").read_text()
+index=(root.parent.parent/"shared"/"source"/"world_frame_command_index.h").read_text()
+refresh=bridge.split("static bool refreshWorldIndex(int frame){",1)[1].split("// Identity-index publication",1)[0]
+assert "self->stagingRoster_.build(self->staging_" in worker
+assert "snapshot.read(pointer+0x10,&id,4)" in index
+assert "objects->add(pointer,id)" in index
+assert "commandRosterReady()" in refresh
+assert "worldFrameCommandRoster.objects" in refresh
+assert "worldObjects.bind(&worldFrameCommandRoster.objects,commandRosterReady)" in refresh
+assert "indexWorld(" not in refresh and "CaptureGraph" not in refresh
+assert "static void indexWorld(" not in bridge
+assert "readLiveWorld(pointer+0x10" in bridge, "Candidate UID must be checked against live identity"
+assert "manualVersions.get(id)" in bridge
+print("PASS native identity projection: Worker builds immutable UID index; Runtime binds strict/candidate provenance and performs live candidate UID proof; no game-thread roster scan")

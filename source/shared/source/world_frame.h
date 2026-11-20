@@ -133,26 +133,32 @@ public:
 #endif
  void clear(){count_=0;index_.fill(0);checkAfter_=0;}
  size_t size()const{return count_;}
- bool retain(uint32_t page,uint32_t now){
-  if((page&(PageSize-1))||!range(page,PageSize))return false;
+ enum class RetainResult:uint8_t { Invalid,Existing,Added,Full };
+ RetainResult retainStatus(uint32_t page,uint32_t now){
+  if((page&(PageSize-1))||!range(page,PageSize))return RetainResult::Invalid;
   uint32_t slot=bucket(page);
-  while(index_[slot]){auto&entry=entries_[index_[slot]-1];if(entry.page==page){entry.tick=now;return true;}slot=(slot+1)&(IndexSize-1);}
+  while(index_[slot]){auto&entry=entries_[index_[slot]-1];if(entry.page==page){entry.tick=now;return RetainResult::Existing;}slot=(slot+1)&(IndexSize-1);}
   if(count_==MaxPages){
    // The earliest existing lease cannot have expired yet. Do not scan all
    // 16K entries simply because an unknown page appeared at capacity.
-   if(uint32_t(now-checkedAt_)<checkAfter_)return false;
-   prune(now);if(count_==MaxPages)return false;
+   if(uint32_t(now-checkedAt_)<checkAfter_)return RetainResult::Full;
+   prune(now);if(count_==MaxPages)return RetainResult::Full;
    slot=bucket(page);while(index_[slot])slot=(slot+1)&(IndexSize-1);
   }
   const bool wasEmpty=count_==0;
   entries_[count_]={page,now};index_[slot]=uint16_t(++count_);
   if(wasEmpty){checkedAt_=now;checkAfter_=Lifetime+1;}
-  // New leases expire no earlier than a previously scheduled deadline:
-  // NEVER force an immediate O(active) prune after each insertion. Existing
-  // lease renewals also only extend their deadline and need no reschedule.
-  return true;
+  return RetainResult::Added;
+ }
+ bool retain(uint32_t page,uint32_t now){
+  const auto result=retainStatus(page,now);
+  return result==RetainResult::Existing||result==RetainResult::Added;
  }
  void append(uint32_t now,std::vector<uint32_t>&out){prune(now);for(uint32_t i=0;i<count_;++i)out.push_back(entries_[i].page);}
+ template<class F> bool visit(uint32_t now,F visitor){
+  prune(now);for(uint32_t i=0;i<count_;++i)if(!visitor(entries_[i].page))return false;
+  return true;
+ }
 };
 inline bool bit(const std::array<uint64_t,64>&bits,size_t n){return (bits[n>>6]>>(n&63))&1u;}
 inline void mark(std::array<uint64_t,64>&bits,size_t at,size_t n){

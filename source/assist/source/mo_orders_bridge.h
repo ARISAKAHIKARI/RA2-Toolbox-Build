@@ -315,7 +315,7 @@ static bool moOrdersMessage(MSG*msg){
  if(resolved.mode==moorders::QuickFormation)return false;
  if(formationView.active)formationCancel();
  moorders::Point point;uint32_t hover=0;if(!moPoint(msg,point,&hover))return false;
- indexWorld(get<int>(0xA8ED84));if(!moCapture()){sh->moOrderStatus=uint32_t(-4);moSuppressedButton=edge.button;return swallow();}
+ if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady()){sh->moOrderStatus=uint32_t(-4);moSuppressedButton=edge.button;return swallow();}if(!moCapture()){sh->moOrderStatus=uint32_t(-4);moSuppressedButton=edge.button;return swallow();}
  // The configured keyboard authorizes this capture, but never substitutes for
  // the game's own PlanningMode binding or mutates its local editor state.
  moPlanningReset();moEpoch=match;moHouse=lastHouse;

@@ -1,16 +1,18 @@
 #pragma once
 #include "../../shared/source/world_frame_capture.h"
+#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
 #include "../../shared/source/world_frame_recovery.h"
+#endif
 #include "../../shared/source/world_frame_transport.h"
 #include "world_capture_requests.h"
-#ifndef WORLD_FRAME_PLATFORM_FIXTURE
+#if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
 #include "../../shared/source/world_frame_shadow_win.h"
 #endif
 #include <cstdio>
 
 static worldframe::Snapshot worldFrame;
 static worldframe::Server worldFrameServer;
-#ifdef WORLD_FRAME_PLATFORM_FIXTURE
+#if defined(WORLD_FRAME_PLATFORM_FIXTURE)
 // Existing synchronous transport fixtures keep their explicit execution seam.
 struct WorldFramePublication {
  bool begin(worldframe::Snapshot&){return true;}
@@ -20,21 +22,35 @@ struct WorldFramePublication {
  bool requestRecovery(const worldframe::Key&,const worldframe::RequestedSpan*,size_t){return false;}
  size_t recovered(const worldframe::Key&,worldframe::RequestedSpan*,size_t){return 0;}
 };
-#else
+#elif defined(WORLD_FRAME_TEST_SYNC_CAPTURE)
+// The former independent publisher/recovery worker exists only in the
+// isolated synchronous regression DLL. Product Runtime never compiles it.
 #include "../../shared/source/world_frame_async_win.h"
 using WorldFramePublication=worldframe::AsyncPublisher<>;
+#else
+// Production has exactly one world-capture worker: CommandCaptureWorker.
+// The old AsyncPublisher is not a dormant compatibility path in the product.
+struct WorldFramePublication {
+ bool begin(worldframe::Snapshot&){return false;}
+ void invalidate(){}
+ bool stop(){return true;}
+ bool publish(const worldframe::Snapshot&,const worldframe::Server&){return false;}
+ template<class...Args>bool requestRecovery(Args&&...){return false;}
+ template<class...Args>size_t recovered(Args&&...){return 0;}
+};
 #endif
 static WorldFramePublication worldFramePublication;
-// The game frame keeps execution authority. The worker owns all command
-// CaptureGraph RPM and mutable traversal buffers until a strict same-frame
-// handoff; production uses async by default, with explicit launch rollback.
+// The game frame keeps execution authority. The worker is the only production
+// CaptureGraph owner; a strict same-frame handoff is required before native
+// command use. No production synchronous fallback is compiled.
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
 struct WorldFrameCommandFixture {
  static bool enabled(){return false;}
  void invalidate(){}
  bool stop(){return true;}
  bool deferBusy(const worldframe::Key&,uint32_t,uint64_t,bool=false){return false;}
- bool request(const worldframe::Key&,uint32_t,uint64_t,const std::vector<uint32_t>&,bool=false){return false;}
+ bool reclaimRequestBuffer(std::vector<uint32_t>&){return false;}
+ bool request(const worldframe::Key&,uint32_t,uint64_t,std::vector<uint32_t>&,bool=false){return false;}
  bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&,worldframe::CommandRoster* =nullptr,bool=false){return false;}
  bool takeObservation(const worldframe::Key&,uint32_t,worldframe::Snapshot&,worldframe::CommandRoster&,bool=false){return false;}
 };
@@ -58,53 +74,74 @@ static const worldframe::Snapshot* sampleWorldSource=nullptr;
 static uint32_t sampleScopeTick=0;
 // Coalesce identical in-flight requests before copying dependency pages.
 static worldframe::CommandRequestGate commandRequestGate;
-#ifdef WORLD_FRAME_PLATFORM_FIXTURE
-struct WorldFrameShadowFixture {
+#if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
+static worldframe::ShadowGraphWorker worldFrameShadow;
+static bool shadowGraphOptIn(){return true;}
+#else
+// The second full-graph reader is deliberately absent from production.
+// Keep only a zero-cost seam for shutdown and test code that shares headers.
+struct WorldFrameShadowDisabled {
  void invalidate(){}
  bool stop(){return true;}
+ template<class...Args>bool request(Args&&...){return false;}
+ template<class...Args>bool poll(Args&&...){return false;}
 };
-static WorldFrameShadowFixture worldFrameShadow;
-#else
-static worldframe::ShadowGraphWorker worldFrameShadow;
-// An explicit diagnostic opt-in: the normal build does NOT duplicate a full
-// game-world scan every second until shadow sampling is proven beneficial.
-static bool shadowGraphOptIn(){
- static const bool enabled=[](){
-  char value[3]{};
-  return GetEnvironmentVariableA("RA2TOOLBOX_SHADOW_GRAPH",value,sizeof value)==1&&value[0]=='1';
- }();
- return enabled;
-}
+static WorldFrameShadowDisabled worldFrameShadow;
 #endif
 static uint32_t worldFrameSerial=0;static uint32_t worldFrameCapturedDemand=0;static uint64_t worldFrameCapturedRevision=0;static uint32_t runtimeDemandRevision=1;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
-static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
-// Fixed-size, direct-mapped hints for fields actually MISSING in a sealed
-// sample. Keep only addresses/lengths; never retain the old values or read
-// game memory from a consumer after seal. No hot-path allocation.
+static std::array<uint64_t,8192>runtimeDemandBits{},worldFrameRequestBits{};
+static std::vector<uint32_t>runtimeWorldDemands;
+static bool runtimeDemandOverflow=false,runtimeDemandBufferPrepared=false,worldFrameRequestBufferPrepared=false;
+// The legacy targeted-recovery ring exists only in the synchronous test
+// fixture. Production retries missing pages through the next complete graph.
+#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
 static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
 static uint32_t lastRecoverySubmitAt=0;
+#endif
 static bool worldFrameReady=false;
-// Only a Host display-only subscription may use a boundary-only source.
-// Every command input must upgrade to a fresh complete graph, even if the
-// last view-only acquisition used the same game logic frame.
+// Boundary-only sources are retained for isolated regression fixtures only.
+// Product builds suspend HostDisplayOnly until its fields join the canonical
+// complete Runtime snapshot.
 static bool worldFrameBoundaryOnly=false;
-static void rememberMissingWorldSpan(uint32_t at,size_t bytes){
- if(!worldFrameReady||!worldFrame.sealed()||!bytes||bytes>256||
-    !worldframe::range(at,bytes))return;
- uint32_t key=at^(at>>13)^(uint32_t(bytes)*0x9E3779B9u);
- runtimeMissingSpans[(key^(key>>16))&(runtimeMissingSpans.size()-1)]=
-     {at,uint32_t(bytes),GetTickCount()};
-}
 static worldframe::DemandLeases runtimeDemandLeases;
 static worldframe::CaptureScratch worldFrameCaptureScratch{};static std::vector<uint32_t>worldFrameCaptureRequests;
 static worldframe::Key lastCaptureAttempt{};static bool haveCaptureAttempt=false;
 static uint32_t failedCaptureAt=0,captureRetryDelay=0;
 static uint64_t worldProducerGeneration=0;
 static void requestWorldRange(uint32_t at,size_t n){
- if(!worldframe::range(at,n))return;
- for(uint32_t page=at&~4095u;uint64_t(page)<uint64_t(at)+n;page+=4096){const uint32_t index=page>>12;const uint64_t mask=uint64_t(1)<<(index&63);
-  if(!(runtimeDemandBits[index>>6]&mask)){runtimeDemandBits[index>>6]|=mask;runtimeWorldDemands.push_back(page);if(!++runtimeDemandRevision)++runtimeDemandRevision;
-   runtimeDemandLeases.retain(page,sampleReadDepth?sampleScopeTick:worldFrame.key.tick);}}
+ if(!worldframe::range(at,n)||runtimeDemandOverflow)return;
+ if(!runtimeDemandBufferPrepared){
+  runtimeWorldDemands.reserve(worldframe::MaxPages);
+  runtimeDemandBufferPrepared=true;
+ }
+ const uint32_t tick=sampleReadDepth?sampleScopeTick:worldFrame.key.tick;
+ for(uint32_t page=at&~4095u;uint64_t(page)<uint64_t(at)+n;page+=4096){
+  const uint32_t index=page>>12;
+  if((index>>6)>=runtimeDemandBits.size()){runtimeDemandOverflow=true;break;}
+  const uint64_t mask=uint64_t(1)<<(index&63);
+  const auto retained=runtimeDemandLeases.retainStatus(page,tick);
+  if(retained==worldframe::DemandLeases::RetainResult::Full||
+     retained==worldframe::DemandLeases::RetainResult::Invalid){
+   runtimeDemandOverflow=true;break;
+  }
+  const bool known=(runtimeDemandBits[index>>6]&mask)!=0;
+  if(retained==worldframe::DemandLeases::RetainResult::Added&&known)
+   if(!++runtimeDemandRevision)++runtimeDemandRevision; // an expired lease was re-added
+  if(!known){
+   // Keep the lease even if the per-sample vector is full. Overflow is
+   // reported and no partial graph is submitted; later lease expiry or a
+   // reduced demand set can make a complete request possible again.
+   if(runtimeWorldDemands.size()>=worldframe::MaxPages){
+    runtimeDemandOverflow=true;
+    if(retained==worldframe::DemandLeases::RetainResult::Added)
+     if(!++runtimeDemandRevision)++runtimeDemandRevision;
+    break;
+   }
+   runtimeDemandBits[index>>6]|=mask;runtimeWorldDemands.push_back(page);
+   if(retained==worldframe::DemandLeases::RetainResult::Added)
+    if(!++runtimeDemandRevision)++runtimeDemandRevision;
+  }
+ }
 }
 // The worker can deliver a complete observational graph after the game
 // frame advanced. Only read-only planners explicitly opting in may consume
@@ -140,7 +177,8 @@ static bool readWorldSample(uint32_t at,void*out,size_t n){
  requestWorldRange(at,n); // Keep successful consumer dependencies subscribed.
  const auto*source=sampleWorldSource?sampleWorldSource:&worldFrame;
  const bool ok=source&&source->sealed()&&source->read(at,out,n);
- if(!ok){sampleReadComplete=false;rememberMissingWorldSpan(at,n);}return ok;
+ if(!ok)sampleReadComplete=false;
+ return ok;
 }
 class SampleReadScope {
  unsigned previousDepth_;bool previousComplete_,ready_,finished_=false,result_=false;
@@ -209,7 +247,11 @@ static void publishSamplingWorkerDiagnostics(uint32_t now){
  }
 }
 #endif
-static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
+static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
+#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
+ runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;
+#endif
+}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
  const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
  const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled();
@@ -229,7 +271,21 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  if(!worldProducerGeneration){LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);worldProducerGeneration=uint64_t(stamp.QuadPart);if(!worldProducerGeneration)worldProducerGeneration=1;}
  key.generationLow=uint32_t(worldProducerGeneration);key.generationHigh=uint32_t(worldProducerGeneration>>32);
  key.connectionLow=uint32_t(worldFrameServer.connection());key.connectionHigh=uint32_t(worldFrameServer.connection()>>32);
+ if(asyncCommand){
+  // The worker exists to serve the live Host session. Retained page leases are
+  // preserved across a disconnect, but cannot justify starting a new worker
+  // while the Host heartbeat/subscription is absent.
+  if(!worldFrameServer.wanted(key.owner,key.tick)){
+   worldFrameReady=false;worldFrameBoundaryOnly=false;return false;
+  }
+ }
  worldFrameServer.observe(key);
+#if !defined(WORLD_FRAME_TEST_SYNC_CAPTURE) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
+ // Host VisualCache used a second independent CaptureGraph and a zero-page
+ // boundary source. Both are quarantined until display data is part of the
+ // same Runtime-owned immutable publication as command/automatic data.
+ if(boundaryOnly){worldFrameReady=false;worldFrameBoundaryOnly=false;return false;}
+#endif
  // A successful strict sample becomes a read-only candidate on the NEXT
  // simulation frame. Its hash can be reused without any 16K-game-roster scan;
  // the native admission path still requires live per-object validation.
@@ -333,14 +389,49 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
 #endif
    return false;
   }
-  // Only address dependencies are copied on the game thread (bounded by
-  // MaxPages); sorting, page I/O and all unit graph traversal are background.
+  // Only a deduplicated, bounded address list is assembled on the game
+  // thread. Overflow invalidates the whole request; the vector is ownership-
+  // swapped to the worker. Sorting, page I/O and graph traversal stay off-thread.
+  if(runtimeDemandOverflow){
+   // The per-feature demand set exceeded the single-sample page budget.
+   // Preserve leases, drop only this oversized transient list, and retry
+   // after the active demand set changes. Never submit a truncated graph.
+   runtimeDemandOverflow=false;runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+   worldFrameCaptureRequests.clear();
+   if(!++runtimeDemandRevision)++runtimeDemandRevision;
+   ++sh->worldSampleFailures;return false;
+  }
   auto&requests=worldFrameCaptureRequests;
+  // The worker returns its previous vector through the queue slot when it
+  // dequeues a newer job. Reclaim it before building, never after submission.
+  worldFrameCommandWorker.reclaimRequestBuffer(requests);
   const auto&hostRequests=worldFrameServer.requests();
-  requests.assign(hostRequests.begin(),hostRequests.end());
-  requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
-  for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
-  runtimeDemandLeases.append(key.tick,requests);
+  if(!worldFrameRequestBufferPrepared){
+   requests.reserve(worldframe::MaxPages);
+   worldFrameRequestBufferPrepared=true;
+  }
+  requests.clear();worldFrameRequestBits.fill(0);
+  bool requestOverflow=false;
+  auto appendPage=[&](uint32_t page)->bool{
+   if((page&4095u)||!worldframe::range(page,4096)){requestOverflow=true;return false;}
+   const uint32_t index=page>>12;
+   if((index>>6)>=worldFrameRequestBits.size()){requestOverflow=true;return false;}
+   const uint64_t mask=uint64_t(1)<<(index&63);
+   if(worldFrameRequestBits[index>>6]&mask)return true;
+   if(requests.size()>=worldframe::MaxPages){requestOverflow=true;return false;}
+   worldFrameRequestBits[index>>6]|=mask;requests.push_back(page);return true;
+  };
+  bool complete=true;
+  for(uint32_t page:hostRequests)if(!appendPage(page)){complete=false;break;}
+  if(complete)for(uint32_t page:runtimeWorldDemands)if(!appendPage(page)){complete=false;break;}
+  if(complete)complete=runtimeDemandLeases.visit(key.tick,appendPage);
+  if(!complete||requestOverflow){
+   // This sample is not complete. Keep the bounded lease set for retry, but
+   // discard the transient list so expired/removed demands can be reconsidered.
+   runtimeWorldDemands.clear();runtimeDemandBits.fill(0);requests.clear();
+   if(!++runtimeDemandRevision)++runtimeDemandRevision;
+   ++sh->worldSampleFailures;return false;
+  }
   // Server::requests() may publish a newer Host demandRevision than the
   // version sampled before assembling the request list. Stamp the exact
   // version that supplied these pages, not the obsolete pre-read version.
@@ -355,6 +446,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   }
   return false;
  }
+#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
  if(!worldFramePublication.begin(worldFrame))return false;
  lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
  // A Host-only display acquisition never consumes or sorts the command
@@ -424,7 +516,8 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  // Do not turn a cold worker start or a dropped latest-work slot into total
  // starvation. Two synchronous field retries are the strict fallback limit.
  if(!verifiedCount)for(size_t i=0;i<std::min<size_t>(2,candidateCount);++i)verified[verifiedCount++]=candidates[i];
- if(candidateCount&&(!lastRecoverySubmitAt||uint32_t(key.tick-lastRecoverySubmitAt)>=32)){
+ if(candidateCount&&worldFrameServer.wanted(key.owner,key.tick)&&
+    (!lastRecoverySubmitAt||uint32_t(key.tick-lastRecoverySubmitAt)>=32)){
   if(worldFramePublication.requestRecovery(key,candidates.data(),candidateCount))lastRecoverySubmitAt=key.tick;
  }
  worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
@@ -456,9 +549,8 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}
  worldFrameBoundaryOnly=boundaryOnly;
  worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
-#ifndef WORLD_FRAME_PLATFORM_FIXTURE
- // Shadow graph is explicitly diagnostic and read-only. It never replaces
- // worldFrame, alters command status, or changes the game-thread capture plan.
+#if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
+ // Test-only duplicate graph reader. Production builds do not compile it.
  if(shadowGraphOptIn()){
   worldframe::BackgroundTrialResult shadow{};
   if(worldFrameShadow.poll(key,shadow)){
@@ -478,4 +570,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
 #endif
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;
+#else
+ // No production synchronous full-graph path exists. If the worker did not
+ // adopt or queue a sample, consumers remain unavailable until it can.
+ worldFrameReady=false;worldFrameBoundaryOnly=false;
+ return false;
+#endif
 }

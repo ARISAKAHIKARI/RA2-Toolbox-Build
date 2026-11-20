@@ -305,6 +305,9 @@ static outgoing::Batch planBatch;
 // Shared admission for host and Runtime decisions. Neither planner owns a
 // constructor, RNG, mission write, private hook or alternative event channel.
 static int admitPlannerOrder(const planner::Order&o,uint32_t house,uint32_t sourceMatch,uint32_t sourceTick){
+ // Native orders require a strict same-frame worker roster. A candidate or
+ // unavailable index is not evidence that a unit/target/refinery disappeared.
+ if(indexedFrame!=snap.frame||!commandRosterReady())return 0;
  // A fresh in-range target takes precedence over any delayed movement proposal.
  // Reject an obsolete movement proposal immediately so an external planner can
  // receive its receipt and use the next world; do not block its whole batch
