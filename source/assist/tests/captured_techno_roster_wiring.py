@@ -20,9 +20,9 @@ refresh=bridge.split("static bool refreshWorldIndex(int frame){",1)[1].split("//
 assert "self->stagingRoster_.build(self->staging_" in worker
 assert "snapshot.read(pointer+0x10,&id,4)" in index
 assert "objects->add(pointer,id)" in index
-assert "worldFrameCommandRoster.current(worldFrame.key)" in refresh
+assert "commandRosterReady()" in refresh
 assert "worldFrameCommandRoster.objects" in refresh
-assert "worldObjects.bind(worldFrameCommandRoster.objects.get()" in refresh
+assert "worldObjects.bind(&worldFrameCommandRoster.objects,commandRosterReady)" in refresh
 assert "indexWorld(" not in refresh and "CaptureGraph" not in refresh
 assert "static void indexWorld(" not in bridge
 assert "readLiveWorld(pointer+0x10" in bridge, "Candidate UID must be checked against live identity"
