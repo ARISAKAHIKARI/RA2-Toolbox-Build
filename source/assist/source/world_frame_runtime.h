@@ -368,8 +368,8 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    return false;
   }
   // Only a deduplicated, bounded address list is assembled on the game
-  // thread. The vector is ownership-swapped to the worker; sorting, page I/O
-  // and all unit graph traversal remain background-only.
+  // thread. Overflow invalidates the whole request; the vector is ownership-
+  // swapped to the worker. Sorting, page I/O and graph traversal stay off-thread.
   if(runtimeDemandOverflow){
    // The per-feature demand set exceeded the single-sample page budget.
    // Preserve leases, drop only this oversized transient list, and retry
