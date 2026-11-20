@@ -290,6 +290,15 @@ public:
   return capturing_.load(std::memory_order_acquire)&&
       lastRequestedKey_.sameWorld(key);
  }
+ // Reclaim the worker's previous page-vector allocation before the
+ // Runtime assembles the next bounded request. This is a try-lock only; a
+ // queued request keeps ownership until the worker has dequeued it.
+ bool reclaimRequestBuffer(std::vector<uint32_t>&pages){
+  std::unique_lock<std::mutex>lock(gate_,std::try_to_lock);
+  if(!lock.owns_lock()||queuedReady_||stopping_.load(std::memory_order_acquire))return false;
+  if(queued_.pages.capacity()<=pages.capacity())return false;
+  pages.swap(queued_.pages);return true;
+ }
  bool request(const Key&key,uint32_t demand,uint64_t revision,std::vector<uint32_t>&pages,bool globalVehicles=false){
   if(!key.pid||!key.owner||!key.match||key.house<0x10000||
      !key.scenario||!key.cells||key.frame<0||!demand||
