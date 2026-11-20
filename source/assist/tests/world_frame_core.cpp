@@ -804,8 +804,11 @@ void canonicalDisplayTransport(){
  constexpr uint32_t missing=0xED0000;
  CHECK(!reader.read(missing,&hp,4)&&!reader.worldFrameComplete()&&rpmCalls==oldReads);
  reader.endWorldFrame();currentPid=GamePid;
+ CHECK(server.hasPublication()&&server.requestedRevision()!=server.demandRevision());
  const auto&requests=server.requests();
  CHECK(std::find(requests.begin(),requests.end(),missing)!=requests.end());
+ CHECK(server.requestedRevision()==server.demandRevision());
+ server.retire();CHECK(!server.hasPublication());
  server.disconnect();currentPid=HostPid;reader.close();gameMemory=nullptr;
  std::puts("PASS canonical display: one Runtime source, explicit scene coverage, missing pages routed to Runtime, zero Host RPM");
 }

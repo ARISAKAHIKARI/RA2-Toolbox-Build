@@ -301,12 +301,14 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   worldFrameCandidateAvailable=true;
   if(!++worldFrameCandidateVersion)++worldFrameCandidateVersion;
  }
+ const uint64_t requestRevision=(uint64_t(worldFrameServer.requestedRevision())<<32)|runtimeDemandRevision;
  if(haveCaptureAttempt&&lastCaptureAttempt.sameFrame(key)){
-  // A consumer can resume while the game is paused, after its old transport
-  // was retired or local automatic work advanced without a live Host reader.
-  // Re-export the existing immutable sample; publish() deduplicates its exact
-  // descriptor. Never recapture or invent a newer observation/acquisition tick.
-  if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)){
+  // A paused frame still needs a new worker request when a display is opened,
+  // a dependency is missing, or the previous Host publication was retired.
+  const bool reuseAsync=asyncCommand&&worldFrameServer.hasPublication()&&
+      (graphDemand&~worldFrameCapturedDemand)==0&&requestRevision==worldFrameCapturedRevision&&
+      worldFrameCommandRoster.global==globalVehicles;
+  if(worldFrameReady&&!(worldFrameBoundaryOnly&&!boundaryOnly)&&(!asyncCommand||reuseAsync)){
    // The async worker owns Host-only transport, including same-frame
    // republishing; never interleave the older strict publisher in its slot.
    if(!asyncCommand)worldFramePublication.publish(worldFrame,worldFrameServer);
@@ -324,7 +326,6 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   // incomplete/later-frame graph is *not* a license to scan all live actors.
   // The existing 4ms Host pulse gives another same-frame opportunity to
   // adopt a worker result without blocking the game's message pump.
-  const uint64_t requestRevision=(uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
   // The command worker already publishes complete *read-only* world graphs
   // to Host IPC. Keep native exact-frame acceptance separate and avoid a
   // second publisher racing to overwrite the Host observation channel.
@@ -339,12 +340,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    if(stable){
     key.serial=++worldFrameSerial;
     worldFrame.key.serial=key.serial;
-    worldFrame.key.demand=worldFrameServer.demandRevision()&~worldframe::BoundaryOnlyKeyBit;
+    worldFrame.key.demand=uint32_t(requestRevision>>32)&~worldframe::PublicationKeyFlags;
     lastCaptureAttempt=key;haveCaptureAttempt=true;captureRetryDelay=0;
     runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
     if(!++runtimeDemandRevision)++runtimeDemandRevision;
     worldFrameCapturedDemand=graphDemand;
-    worldFrameCapturedRevision=(uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
+    worldFrameCapturedRevision=(requestRevision&0xffffffff00000000ull)|runtimeDemandRevision;
     worldFrameBoundaryOnly=false;worldFrameReady=true;
     // The authoritative native sample stays local; Host receives only
     // worker-tagged observation-only publications, never strict EventClass

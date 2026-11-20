@@ -407,6 +407,15 @@ public:
   requests_=std::move(next);requestRevision_=revision;return requests_;
  }
  uint32_t demandRevision()const{return requestRevision_;}
+ // A paused world can receive a new page request while its last exact
+ // sample is still usable. Check the descriptor without importing its pages.
+ uint32_t requestedRevision()const{
+  if(!channel_)return requestRevision_;
+  const LONG seq=channel_->demandSeq;if(seq&1)return requestRevision_;
+  MemoryBarrier();const uint32_t revision=channel_->demandRevision;MemoryBarrier();
+  return seq==channel_->demandSeq?revision:requestRevision_;
+ }
+ bool hasPublication()const{const LONG active=channel_?channel_->active:-1;return active>=0&&active<2;}
  uint32_t demandMask()const{return clientAlive(GetTickCount())?uint32_t(channel_->demandMask):0;}
  uint64_t connection()const{return connection_;}
  bool observes(const Key&key)const{
