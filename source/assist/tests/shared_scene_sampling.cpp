@@ -84,7 +84,15 @@ int main(){
  assert(acquire(provider,readers[0],radar::SceneConsumer::Main,5100)==frames[0]);
  assert(frame.tick==100&&first->key.tick==100&&!bank.get(1,3,1,5100,true)&&bank.get(1,3,1,5100,true,first)==frames[0]);
  auto current=radar::publicationContext([&](uint32_t p,void*out,size_t n){return readers[0].read(p,out,n);});
- assert(radar::recentMarkers(frame,current,5100));++current.frame;assert(!radar::recentMarkers(frame,current,5100));
+ assert(radar::recentMarkers(frame,current,5100));
+ // At 400-700 game frames/s the same world can advance hundreds of logic
+ // frames while only 200ms of wall time has elapsed. Visuals are bounded by
+ // wall time and identity, not an arbitrary two-tick limit.
+ current.frame=frame.frame+180;
+ assert(radar::recentMarkers(frame,current,300));
+ assert(!radar::recentMarkers(frame,current,451));
+ current.frame=frame.frame; ++current.frame;
+ assert(!radar::recentMarkers(frame,current,5100));
  // A late consumer can request more coverage, but must wait for the next
  // world publication rather than triggering a second scan of this one.
  assert(!acquire(provider,readers[1],radar::SceneConsumer::Minimap,5101,true,true));

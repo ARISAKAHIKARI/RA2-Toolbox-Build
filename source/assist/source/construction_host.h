@@ -9,7 +9,7 @@
 namespace buildreserve {
 struct Choice {int slot=0,index=0,tab=0;uint32_t type=0;bool future=false;};
 static construction::Book books[4];static std::vector<Choice> choices;static HWND window;
-static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;
+static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;static int choicesTab=-1;
 static int activeTab=-1,selectedTab=-1,lastNativeTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
 static construction::NativeFrame nativeFrame;static uint32_t nativeAt=0;
 static construction::NativeDisplay nativeDisplay;
@@ -65,7 +65,7 @@ static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];criti
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
 static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;nativeDisplay.clear();resetPaint();if(window)ShowWindow(window,SW_HIDE);}
 static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
-static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
+static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();choicesTab=-1;activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
 // A requested full-technology whitelist also protects a reservation while the
 // Runtime is installing/restoring that mode. Only Runtime authorizes production.
@@ -99,26 +99,46 @@ template<class C>static bool loadForecast(C&catalogue){
 }
 static void collectChoices(){
  if(activeTab<0||activeTab>3){choices.clear();return;}
- externalReader.setWorldDemand(worldframe::Base);
- external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
- auto previous=std::move(choices);choices.clear();
- auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
+ // The native sidebar is a read-only display source, not authority for a
+ // Produce command. Read it first: a transient forecast miss must not keep
+ // already-buildable unit cameos in the reservation panel.
  auto uiRead=[](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);};
- bool previewReady=loadForecast(catalogue);auto&b=books[activeTab];
  uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=-1,after=-1,cameos[75*13]{};
  bool nativeReady=uiRead(strip+84,&count,4)&&count>=0&&count<=75&&(!count||uiRead(strip+88,cameos,size_t(count)*52))&&uiRead(strip+84,&after,4)&&after==count;
- if(!nativeReady){choices=std::move(previous);return;}
  auto nativeHere=[&](int kind,int index){for(int i=0;i<count;++i)if(cameos[i*13]==index&&cameos[i*13+1]==kind)return true;return false;};
+ if(choicesTab!=activeTab)choices.clear();
+ if(nativeReady&&activeTab>=2){
+  // Never suppress a user's queued reservation, even after its native cameo appears.
+  const auto&book=books[activeTab];
+  choices.erase(std::remove_if(choices.begin(),choices.end(),[&](const Choice&c){
+   return nativeHere(absKind(c.index),typeIndex(c.index))&&
+    std::find(book.items.begin(),book.items.end(),c.index)==book.items.end();
+  }),choices.end());
+ }
+ externalReader.setWorldDemand(worldframe::Resources);
+ external::WorldFrameScope source(externalReader,commandMatch());if(!source||!nativeReady)return;
+ auto previous=std::move(choices);choices.clear();
+ auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
+ bool forecastAttempted=false,previewReady=false;auto&b=books[activeTab];
+ const bool completedBuilding=activeTab<2&&current[activeTab]&&get<int>(factory(activeTab)+0x24)==54;
  for(int slot=0;slot<snap.typeCount;++slot){const auto&t=snap.types[slot];
   if((activeTab<2&&t.kind!=7)||(activeTab==2&&t.kind!=16)||(activeTab==3&&t.kind!=3&&t.kind!=40))continue;
   int index=encode(t.kind,t.index);uint32_t type=typePointer(index);if(type<0x10000)continue;
   int tab=t.kind==7?(get<int>(type+0xE08,-1)==5?1:0):t.kind==16?2:(t.kind==40||t.kind==3)?3:-1;
-  if(tab!=activeTab)continue;bool native=nativeHere(t.kind,t.index);
-  bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
-  bool future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,technologyRequested(index))&&!catalogue.possible(type,t.kind,t.naval!=0,false,technologyRequested(index));
-  if(queued||(!native&&future)||(native&&(tab>=2||(current[tab]&&get<int>(factory(tab)+0x24)==54))))choices.push_back({slot,index,tab,type,!native});
+  if(tab!=activeTab)continue;
+  const bool native=nativeHere(t.kind,t.index);
+  const bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
+  // Native infantry/vehicle choices belong only in the game's sidebar.
+  // A previously queued reservation stays visible for cancellation.
+  if(native){if(queued||(tab<2&&completedBuilding))choices.push_back({slot,index,tab,type,false});continue;}
+  if(queued){choices.push_back({slot,index,tab,type,true});continue;}
+  // Defer the costly read-only forecast until the first non-native candidate.
+  if(!forecastAttempted){previewReady=loadForecast(catalogue);forecastAttempted=true;}
+  if(previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,technologyRequested(index))&&
+     !catalogue.possible(type,t.kind,t.naval!=0,false,technologyRequested(index)))
+   choices.push_back({slot,index,tab,type,true});
  }
- if(!source.complete())choices=std::move(previous);
+ if(!source.complete())choices=std::move(previous);else choicesTab=activeTab;
 }
 static void resizePanel(){
  if(!window||!geometryReady||!paintReady)return;POINT origin{};RECT previous{};
@@ -206,7 +226,7 @@ static std::vector<construction::NativeBadge> nativeBadges(){
 }
 static external::ReadSession paintReader;static external::cameraassets::Context<external::ReadSession> paintAssets(paintReader);
 static bool loadPanelAsset(const char*n,std::vector<uint8_t>&b){return paintAssets.cameo(n,b);}
-struct PaintRequest {uint32_t pid,match,tick,house;int activeTab,scroll,hoverChoice,hoverQueue,width,height;construction::Layout layout;construction::Book book;std::vector<Choice> choices;std::map<int,assist::Type> types;std::map<int,uint32_t> pointers;LOGFONTW font{};std::vector<uint8_t> visual,input;worldframe::Token sourceFrame;};
+struct PaintRequest {uint32_t pid,match,tick,house;int activeTab,scroll,hoverChoice,hoverQueue,width,height;construction::Layout layout;construction::Book book;std::vector<Choice> choices;std::map<int,assist::Type> types;std::map<int,uint32_t> pointers;LOGFONTW font{};std::vector<uint8_t> visual,input;};
 struct Painted {PaintRequest request;std::vector<uint32_t> pixels;bool incomplete=false;};
 struct PanelPainter {
  const PaintRequest&request;construction::Layout layout;external::ReadSession&externalReader;external::cameraassets::Context<external::ReadSession>&assets;bool&incomplete;
@@ -232,8 +252,11 @@ void panelBox(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius=4){
 };
 static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest&request)->std::shared_ptr<const Painted>{
  if(!paintReader.open(request.pid))return {};paintReader.begin();paintAssets.identity(request.pid,request.match);
- if(!request.sourceFrame)return {};paintReader.setWorldDemand(worldframe::Resources);
- external::WorldFrameScope source(paintReader,request.match,request.sourceFrame);if(!source)return {};
+ // This worker paints only immutable Host-selected choices, names and icon
+ // assets. It never authorizes production. A missing WorldFrame must not
+ // block painting newly available technology or a changed reservation FIFO.
+ uint32_t observedHouse=0;
+ if(!paintReader.readLive(0xA83D4C,&observedHouse,4)||observedHouse!=request.house)return {};
  int width=request.width,height=request.height;if(width<1||height<1||uint64_t(width)*height>4*1024*1024)return {};
  auto out=std::make_shared<Painted>();out->request=request;out->pixels.resize(size_t(width)*height);
  BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=width;info.bmiHeader.biHeight=-height;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
@@ -279,7 +302,10 @@ static asyncwork::Latest<PaintRequest,Painted> paintWorker([](const PaintRequest
    if((activeTab>=2||occurrences>construction::VisibleCapacity)&&occurrences)numbers=L"×"+std::to_wstring(occurrences);
    if(!numbers.empty()){RECT badge=painter.rect(x,y+30,x+60,y+48);HBRUSH tag=CreateSolidBrush(RGB(77,88,55));FillRect(dc,&badge,tag);DeleteObject(tag);SetTextColor(dc,RGB(228,238,185));DrawTextW(dc,numbers.c_str(),-1,&badge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
   }SelectObject(dc,previous);const bool ready=GdiFlush()!=FALSE;
- if(ready)memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);return ready&&source.complete()?out:std::shared_ptr<const Painted>{};
+ if(ready)memcpy(out->pixels.data(),bits,out->pixels.size()*4);SelectObject(dc,old);DeleteObject(font);DeleteObject(bitmap);DeleteDC(dc);
+ uint32_t finishedHouse=0;
+ return ready&&paintReader.readLive(0xA83D4C,&finishedHouse,4)&&finishedHouse==request.house?
+  out:std::shared_ptr<const Painted>{};
 });
 // A complete frame and its matching geometry are promoted together. Pending
 // worker results never clear the visible HWND, and no active hit test can use
@@ -310,9 +336,14 @@ static PaintRequest capturePaint(){
 }
 static void requestPaint(){
  if(!geometryReady||!window||activeTab<0||activeTab>3||!constructionDisplayFresh())return;
- std::shared_ptr<PaintRequest> request;
- {externalReader.setWorldDemand(worldframe::Base);external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
-  request=std::make_shared<PaintRequest>(capturePaint());request->sourceFrame=externalReader.worldFrameToken();if(!source.complete())return;}
+ // Read-only panel composition can proceed from the already verified Host
+ // choices even while an unrelated command snapshot is being rebuilt.
+ // Verify the live house on both sides; the UI publication also checks match.
+ uint32_t owner=0,ownerAfter=0;
+ if(!externalReader.readLive(0xA83D4C,&owner,4)||owner!=house)return;
+ auto request=std::make_shared<PaintRequest>(capturePaint());
+ if(!externalReader.readLive(0xA83D4C,&ownerAfter,4)||ownerAfter!=owner||
+    request->pid!=pid||request->match!=commandMatch()||request->house!=house)return;
  if((paintedFrame&&!samePaintWorld(paintedFrame->request))||(requestedPaint&&!samePaintWorld(*requestedPaint))){resetPaint();ShowWindow(window,SW_HIDE);}
  if(requestedPaint&&samePaintWorld(*requestedPaint)&&requestedPaint->visual==request->visual){
   // Failed/missing icons retry without making the ordinary stable panel a
