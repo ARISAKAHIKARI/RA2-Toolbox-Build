@@ -19,7 +19,7 @@
 namespace {
 constexpr uint32_t PageSize = 4096;
 constexpr uint32_t ActorCount = 700;
-constexpr uint32_t SparseSpanPages = 16384;
+constexpr uint32_t SparseSpanPages = 8192;
 constexpr uint32_t Scenario = 0x100000;
 constexpr uint32_t Cells = 0x140000;
 constexpr uint32_t House = 0x700000;
@@ -27,7 +27,7 @@ constexpr uint32_t Type = 0x800000;
 constexpr uint32_t TechnoItems = 0x600000;
 constexpr uint32_t HouseItems = 0x610000;
 constexpr uint32_t ActorBase = 0x1200000;
-constexpr size_t ImageBytes = 0x5400000;
+constexpr size_t ImageBytes = 0x3400000;
 
 enum class Mode : unsigned { Memcpy, QueryMemcpy, ReadProcessMemory };
 const char* name(Mode mode) {
@@ -120,7 +120,7 @@ Image makeImage(bool scattered) {
  image.put(0xA83D4C,House);
  for(uint32_t i=0;i<ActorCount;++i) {
   // Dense layout touches one contiguous run. Sparse layout spreads the same
-  // actor count over a 16K-page address window in a deterministic permutation.
+  // actor count over an 8K-page address window in a deterministic permutation.
   const uint32_t page=scattered?(i*7919u)%SparseSpanPages:i;
   const uint32_t actor=ActorBase+page*PageSize;
   actors.push_back(actor);
