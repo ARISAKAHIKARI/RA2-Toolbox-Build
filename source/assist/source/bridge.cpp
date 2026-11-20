@@ -272,6 +272,8 @@ static bool refreshWorldIndex(int frame){
   indexedGlobalVehicles=roster.global;indexedVehicleHouse=lastHouse;
   globalVehicleCandidateCount=int(std::min<size_t>(16384,roster.globalVehicles.size()));
   // A full UID hash is already worker-owned. Only its view is rebound here.
+ // If strict same-frame authority is unavailable, command managers are paused
+ // rather than falling back to a game-thread roster walk or stale membership.
   indexedFrame=frame;adoptedSerial=version;previouslyCandidate=candidate;
  }
  // Periodic pruning is an index lookup over the immutable worker roster, not
