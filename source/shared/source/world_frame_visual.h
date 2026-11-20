@@ -1,6 +1,7 @@
 #pragma once
 #include "world_frame_capture.h"
 #include "world_frame_pool.h"
+#include <chrono>
 
 namespace worldframe {
 // This cache runs in the external Host. Game-thread bytes are copied first
@@ -71,14 +72,14 @@ public:
   if(latest_&&base_==source&&builtRevision_==revision_&&(demand&~builtDemand_)==0){++statistics.reused;return latest_;}
   if(attempted_==source&&uint32_t(now-attemptedAt_)<16)return {};
   attempted_=source;attemptedAt_=now;
-  const uint32_t started=GetTickCount();
+  const auto started=std::chrono::steady_clock::now();
   const auto before=visualStamp(live,*source);if(!before.valid){++statistics.failed;return {};}
   auto next=SnapshotPool::acquire(pool_);if(!next->extendVisual(source)){++statistics.failed;return {};}
   requests_.clear();leases_.append(now,requests_);std::sort(requests_.begin(),requests_.end());
   CaptureGraph<Live>capture(*next,live,scratch_);
   const bool collected=capture.capture(combined,requests_);
   const auto after=visualStamp(live,*source);
-  if(!collected||!coherentVisualCapture(before,after,uint32_t(GetTickCount()-started))||!next->seal()){++statistics.failed;return {};}
+  if(!collected||!coherentVisualCapture(before,after,uint32_t(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-started).count()))||!next->seal()){++statistics.failed;return {};}
   next->visualFrame=after.frame;next->visualTick=now;next->visualSerial=++serial_;
   base_=source;latest_=std::move(next);builtRevision_=revision_;builtDemand_=combined;++statistics.captures;return latest_;
  }
