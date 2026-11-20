@@ -74,11 +74,12 @@ static WorldFrameShadowDisabled worldFrameShadow;
 #endif
 static uint32_t worldFrameSerial=0;static uint32_t worldFrameCapturedDemand=0;static uint64_t worldFrameCapturedRevision=0;static uint32_t runtimeDemandRevision=1;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
 static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
-// Fixed-size, direct-mapped hints for fields actually MISSING in a sealed
-// sample. Keep only addresses/lengths; never retain the old values or read
-// game memory from a consumer after seal. No hot-path allocation.
+// The legacy targeted-recovery ring exists only in the synchronous test
+// fixture. Production retries missing pages through the next complete graph.
+#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
 static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
 static uint32_t lastRecoverySubmitAt=0;
+#endif
 static bool worldFrameReady=false;
 // Only a Host display-only subscription may use a boundary-only source.
 // Every command input must upgrade to a fresh complete graph, even if the
