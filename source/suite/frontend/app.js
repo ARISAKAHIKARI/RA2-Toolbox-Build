@@ -473,7 +473,7 @@
       const params=block.headers.length?block.details.filter(control=>control.type!=='hotkey'):block.details;
       const hotkeys=block.headers.length?block.details.filter(control=>control.type==='hotkey'):[];
       feature.params.section.hidden=!params.length;feature.hotkeys.section.hidden=!hotkeys.length;
-      updateFeatureRows(feature.params.rows,feature.params.controls,params,true,feature.paramsChunks);
+      updateFeatureRows(feature.params.rows,feature.params.controls,params,Boolean(block.headers.length),feature.paramsChunks);
       updateFeatureRows(feature.hotkeys.rows,feature.hotkeys.controls,hotkeys,true,feature.hotkeysChunks);
       feature.element.hidden=block.headers.length&&!featureExpanded(group,key);
       placeAfter(group.body,feature.element,after);after=feature.element;
