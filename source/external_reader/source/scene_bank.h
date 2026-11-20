@@ -37,7 +37,7 @@ public:
   // caller pinned to those exact bytes can keep drawing without recapture.
   const bool exact=worldframe::sameObservation(source,frame_?frame_->sourceFrame:worldframe::Token{});
   return frame_&&pid_==pid&&match_==match&&frame_->terrain->reveal==bool(reveal)&&
-   (exact||uint32_t(now-frame_->publishedTick)<=500)&&(!worldOnly||world_)?frame_:nullptr;
+   (exact||uint32_t(now-(frame_->observationTick?frame_->observationTick:frame_->tick))<=500)&&(!worldOnly||world_)?frame_:nullptr;
  }
 };
 inline SceneBank&sceneBank(){static SceneBank bank;return bank;}

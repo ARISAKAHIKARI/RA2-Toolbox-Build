@@ -117,7 +117,8 @@ public:
   if(bank&&bank->markerScanValid&&bank->revealOptions==key.revealOptions&&
      bank->sourceFrame&&(!token||bank->sourceFrame->key.sameWorld(token->key))&&
      key.world.frame>bank->frame&&sameWorld(*bank,key.world)&&supportsEffects(*bank,particles,lasers)&&
-     uint32_t(now-bank->publishedTick)<33){
+     uint32_t(now-bank->publishedTick)<33&&
+     uint32_t(now-(bank->observationTick?bank->observationTick:bank->tick))<=350){
    ++statistics_.reused;return bank;
   }
   // Presentation policy changes may decode the SAME sealed bytes again.
@@ -139,7 +140,10 @@ public:
   }
   if(!sampler_.hasTerrain()){++statistics_.deferred;return {};}
   auto frame=sampler_.snapshot(token?token->key.tick:now,key.world.frame,key.revealOptions);
+  // Source observation is immutable: a repeated scene render must never
+  // renew the age of the underlying actor/terrain bytes.
   frame.sourceFrame=token;frame.publishedTick=now;
+  frame.observationTick=token?(token->visualTick?token->visualTick:token->key.tick):now;
   frame.observedMs=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
   preparePoses(frame,read_);
   if(!frame.markerScanValid||!completeFrame(reader)||!sameWorld(frame,key.world)){

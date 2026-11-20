@@ -32,6 +32,7 @@ inline bool freshMarkers(const Frame&sample,const PublicationContext&sampled){
 // wall time: two game ticks can be only a few milliseconds at fast game speed.
 inline bool recentMarkers(const Frame&sample,const PublicationContext&current,uint32_t now,uint32_t maximumAge=350){
  return sample.markerScanValid&&sameWorld(sample,current)&&
-  ((sample.sourceFrame&&sample.frame==current.frame)||uint32_t(now-sample.publishedTick)<=maximumAge);
+  ((sample.sourceFrame&&sample.frame==current.frame)||
+   uint32_t(now-(sample.observationTick?sample.observationTick:sample.tick))<=maximumAge);
 }
 }}

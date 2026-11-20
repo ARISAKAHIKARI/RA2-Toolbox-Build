@@ -134,7 +134,7 @@ struct Terrain {Geometry geo;std::vector<uint32_t> colors,baseColors;std::vector
  bool wholeWorld=false;
 };
 struct EffectSnapshot {std::vector<nativefeedback::Bolt> bolts;bool boltsValid=false;std::shared_ptr<const worldfx::Snapshot>world;};
-struct Frame {uint8_t revealOptions=0;std::vector<Revealed> revealed;std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0,publishedTick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;std::shared_ptr<const sceneextras::Snapshot> extras;std::shared_ptr<const EffectSnapshot> effects;uint8_t effectMask=3;double observedMs=0;
+struct Frame {uint8_t revealOptions=0;std::vector<Revealed> revealed;std::shared_ptr<const Terrain> terrain;std::vector<Marker> markers;std::shared_ptr<const Scene> scene,map;uint32_t tick=0,publishedTick=0,observationTick=0;int frame=-1;bool markerScanValid=false,posesPrepared=false;std::vector<repairvisuals::Sprite> repairs;std::shared_ptr<const sceneextras::Snapshot> extras;std::shared_ptr<const EffectSnapshot> effects;uint8_t effectMask=3;double observedMs=0;
  // Retain the actual immutable raw publication, not only its frame number.
  // A later renderer pins this token for lighting/visibility/material queries.
  worldframe::Token sourceFrame;

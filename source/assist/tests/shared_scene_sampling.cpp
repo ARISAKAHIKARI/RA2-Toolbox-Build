@@ -95,8 +95,13 @@ int main(){
  // Publication age uses the real scan completion, not that older game tick.
  auto freshContext=radar::publicationContext([&](uint32_t p,void*out,size_t n){return fastReader.read(p,out,n);});
  freshContext.frame=fastC->frame+20;
- assert(radar::recentMarkers(*fastC,freshContext,470));
- assert(!radar::recentMarkers(*fastC,freshContext,484));
+ // Repainting a scene at t=133 cannot renew the original raw t=111 bytes.
+ assert(!radar::recentMarkers(*fastC,freshContext,470));
+ // A Host-derived visual observation legitimately captured at t=133 has
+ // its own acquisition timestamp, independent of the producer's old tick.
+ auto rescanned=*fastC;rescanned.observationTick=133;
+ assert(radar::recentMarkers(rescanned,freshContext,470));
+ assert(!radar::recentMarkers(rescanned,freshContext,484));
  assert(fastReader.liveReads==0);
  // Pause retains the acquisition timestamp; only the exact confirmed token
  // bypasses the ordinary age bound. UI projection may run at a higher cadence.
