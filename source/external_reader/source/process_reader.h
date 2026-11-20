@@ -170,8 +170,15 @@ public:
  std::shared_ptr<void> worldPublicationSignal(){return worldClient_?worldClient_->publicationSignal():std::shared_ptr<void>{};}
  void endWorldFrame(){
   if(worldClient_&&!worldDemands_.empty()){
-   if(worldFrame_&&worldFrame_->controlSource)worldClient_->requestVisual(worldDemands_,!worldComplete_);
-   else worldClient_->request(worldDemands_,!worldComplete_);
+   if(worldframe::visualDemand(worldDemand_)){
+#ifdef WORLD_FRAME_TEST_VISUAL_CACHE
+    if(worldFrame_&&worldFrame_->controlSource)worldClient_->requestVisual(worldDemands_,!worldComplete_);
+    else worldClient_->request(worldDemands_,!worldComplete_);
+#else
+    // Product has no Host VisualCache. Resource-only misses remain suspended;
+    // native Base/Combat/Passengers misses use the authoritative Runtime queue.
+#endif
+   }else worldClient_->request(worldDemands_,!worldComplete_);
   }
   for(uint32_t page:worldDemands_){const uint32_t index=page>>12;worldDemandBits_[index>>6]=0;}
   worldDemands_.clear();worldFrame_.reset();worldComplete_=true;
