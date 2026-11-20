@@ -105,7 +105,7 @@ public:
   (void)key;(void)out;(void)limit;return 0;
 #endif
  }
- bool publish(const Snapshot&frame,const Server&control){
+ bool publish(const Snapshot&frame,Server&control){
   reap();
   // Local automatic consumers may need a sample without any Host subscriber.
   // Keep their capture buffer local and do not launch/wake a transport worker.
