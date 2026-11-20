@@ -458,14 +458,25 @@ static void service(){
   if(!b.token){if(!++nextToken)++nextToken;b.token=nextToken;}
   if(queueCommand(ProduceReserved,slot,int(b.id),b.match,0,0,b.token)){b.stage=1;b.sent=now;b.attempts=std::min(b.attempts+1,1000000);queueLog(tab,L"submitted-after-parent-placement");}
  }
+ // Native sidebar already proves a queued item is buildable. There is no
+ // reason to scan every technology rule/type each 100ms when the user has
+ // no reservations, or when all queued heads are native.
+ bool forecastNeeded=false;
+ if(usable())for(int tab=0;tab<4;++tab){
+  auto&b=books[tab];if(b.items.empty()||b.stage||b.source)continue;
+  if(nativeCameo(b.head(),tab)){b.missing=0;continue;}
+  forecastNeeded=true;
+ }
+ if(forecastNeeded){
  auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> forecast(read);
- if(usable()&&loadForecast(forecast))for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.items.empty()||b.stage||b.source)continue;
+ if(loadForecast(forecast))for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.items.empty()||b.stage||b.source||nativeCameo(b.head(),tab))continue;
   // A native cameo can carry permissions our read-only forecast cannot model
   // (including a pending technology-mode handoff). Do not cancel such a FIFO
   // from the preview; Runtime still checks current CanBuild and its factory.
   int slot=typeSlot(b.head());if(slot<0||(!nativeCameo(b.head(),tab)&&!forecast.possible(typePointer(b.head()),absKind(b.head()),get<uint8_t>(typePointer(b.head())+0xCCE)!=0,true,technologyRequested(b.head())))){
    if(!b.missing)b.missing=now;else if(uint32_t(now-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
   }else b.missing=0;
+ }
  }
  // A hidden overlay closes only its click surface. The production FIFO above
  // continues to submit and acknowledge native orders while displays are off.
