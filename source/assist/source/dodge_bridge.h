@@ -113,6 +113,10 @@ static int dodgeSourceKnowledge(uint32_t p,uint32_t house){
  return sample.complete()?(eligible?1:-1):0;
 }
 static void updateDodgeJobs(uint32_t house,int frame,DWORD now){
+ // An unavailable/stale worker roster is UNKNOWN, not proof that every
+ // active dodge owner disappeared. Only a complete same-frame index can
+ // authorize membership-based retirement.
+ if(indexedFrame!=frame||!commandRosterReady())return;
  for(int n=0;n<dodgeCount;){auto&j=dodgeJobs[n];
   // A complete index can prove absence. worldByID adds another fallible
   // live UID read; its failure cannot retire an otherwise owned job.
