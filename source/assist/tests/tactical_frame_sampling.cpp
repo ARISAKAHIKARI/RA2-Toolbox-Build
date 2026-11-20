@@ -52,6 +52,7 @@ static bool worldFrameReady=false,sampleReadComplete=true;
 static unsigned sampleReadDepth=0;
 static std::array<uint64_t,8192> runtimeDemandBits{};
 static std::vector<uint32_t> runtimeWorldDemands;
+static bool runtimeDemandOverflow=false,runtimeDemandBufferPrepared=false;
 static uint32_t runtimeDemandRevision=1;
 struct CommandWorkerFixture {static bool enabled(){return true;}};static CommandWorkerFixture worldFrameCommandWorker;
 static worldframe::CommandRoster worldFrameCommandRoster;
