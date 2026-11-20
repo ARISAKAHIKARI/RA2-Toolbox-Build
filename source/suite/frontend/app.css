@@ -522,3 +522,23 @@ h1 { color: #2b4d54; }
   .group-body { padding-inline: 9px; }
   .feature-header { padding: 5px 6px; }
 }
+
+/* Consistent light-theme hover and focus states */
+.setting-button:hover:not(:disabled), .subtle-button:hover:not(:disabled), .hotkey-capture:hover:not(:disabled), .icon-button:hover:not(:disabled) {
+  background: #e5f5f6;
+  border-color: #b4dce0;
+  color: #356a72;
+}
+.setting-button.action-primary:hover:not(:disabled), .setting-button.primary:hover:not(:disabled) {
+  background: #4daab8;
+  border-color: #65bdc7;
+  color: #fff;
+}
+.setting-button.action-danger:hover:not(:disabled) {
+  background: #ffe7ec;
+  border-color: #e4b8c3;
+  color: #a64f63;
+}
+.field:hover:not(:disabled), .setting-editor select:hover:not(:disabled), .setting-editor textarea:hover:not(:disabled) {
+  border-color: #a9d5da;
+}

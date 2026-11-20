@@ -19,7 +19,7 @@ inline const wchar_t* videoSectionName(VideoSection section){
 // their parameters are folded. The names point to static string literals.
 struct VideoEntry {DisplayOption option;VideoGroup group;const wchar_t*label;const wchar_t*choices;VideoSection section;bool groupHeader=false;};
 inline constexpr VideoEntry videoEntries[]={
- {OverlayToggleKey,VideoGroup::Render,L"覆盖层显示快捷键",L"",VideoSection::Render},
+ {OverlayToggleKey,VideoGroup::Render,L"覆盖层显示快捷键",L"",VideoSection::Render,true},
  {RenderUpgrade,VideoGroup::Render,L"增强渲染",L"",VideoSection::Render,true},
  {SinglePlayerFPS,VideoGroup::Render,L"单机帧率",L"",VideoSection::Render,true},
  {RenderHighRefresh,VideoGroup::Render,L"高刷新率补帧",L"",VideoSection::Render,true},
@@ -32,12 +32,12 @@ inline constexpr VideoEntry videoEntries[]={
  {RenderSpriteLighting,VideoGroup::Render,L"SHP 光影增强",L"",VideoSection::Render,true},
  {WatchPrimary,VideoGroup::Monitor,L"在游戏内显示副相机",L"",VideoSection::Camera,true},
  {WatchSecondary,VideoGroup::Monitor,L"在第二显示器显示副相机",L"",VideoSection::Camera,true},
- {WatchDanger,VideoGroup::Monitor,L"危险载员自动跟踪",L"",VideoSection::Camera},
  {WatchKey1,VideoGroup::Monitor,L"副相机 1 快捷键",L"",VideoSection::Camera},
  {WatchKey2,VideoGroup::Monitor,L"副相机 2 快捷键",L"",VideoSection::Camera},
  {WatchKey3,VideoGroup::Monitor,L"副相机 3 快捷键",L"",VideoSection::Camera},
  {WatchX,VideoGroup::Monitor,L"副屏相机组水平位置",L"",VideoSection::Camera},
  {WatchY,VideoGroup::Monitor,L"副屏相机组垂直位置",L"",VideoSection::Camera},
+ {WatchDanger,VideoGroup::Monitor,L"危险载员自动跟踪",L"",VideoSection::Camera,true},
  {MapPrimary,VideoGroup::Monitor,L"在游戏内显示小地图",L"",VideoSection::Map,true},
  {MapMode,VideoGroup::Monitor,L"小地图样式",L"示意|实景",VideoSection::Map},
  {MapScale,VideoGroup::Monitor,L"小地图缩放",L"",VideoSection::Map},
