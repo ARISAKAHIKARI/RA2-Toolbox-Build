@@ -79,6 +79,36 @@ int main(){
  std::array<watch::Anchor,3>anchors{};anchors[0].located=true;anchors[0].target={Body,7};anchors[0].x=40*256;anchors[0].y=41*256;anchors[0].kind=2;
  assert(watchscene::sampledAnchors(frame,anchors)&&anchors[0].located&&anchors[0].x==frame.markers[0].x&&anchors[0].y==frame.markers[0].y);
  anchors[0].target.id=8;assert(watchscene::sampledAnchors(frame,anchors)&&!anchors[0].located);
+ // At high game FPS, a new logic frame can arrive in just 1-2 ms.
+ // A displayed complete world can be reused for <33 actual milliseconds
+ // (never as authoritative command input), then the new source is rendered.
+ radar::SceneBank fastBank;radar::SharedSceneProvider<Reader>fastProvider(fastBank);
+ Reader start(first);auto fastA=acquire(fastProvider,start,radar::SceneConsumer::Main,100);
+ assert(fastA&&fastA->frame==10&&fastA->publishedTick==100);
+ auto fastSource=token(88,21,111);Reader fastReader(fastSource);
+ auto fastB=acquire(fastProvider,fastReader,radar::SceneConsumer::Watch,111);
+ assert(fastB==fastA&&fastProvider.statistics().attempts==1);
+ {radar::FrameScope draw(fastReader,3,fastB->sourceFrame);int x=0;
+  assert(draw&&fastReader.read(Body+0x9C,&x,4)&&x==32*256);}
+ assert(fastReader.current==fastSource);
+ auto fastC=acquire(fastProvider,fastReader,radar::SceneConsumer::Watch,133);
+ assert(fastC&&fastC!=fastA&&fastC->frame==21);
+ assert(fastProvider.statistics().attempts==2);
+ // The source raw Runtime frame can predate the *completed* Host visual scan.
+ // Publication age uses the real scan completion, not that older game tick.
+ auto freshContext=radar::publicationContext([&](uint32_t p,void*out,size_t n){return fastReader.read(p,out,n);});
+ freshContext.frame=fastC->frame+20;
+ // Repainting a scene at t=133 cannot renew the original raw t=111 bytes.
+ assert(!radar::recentMarkers(*fastC,freshContext,470));
+ // A Host-derived visual observation legitimately captured at t=133 has
+ // its own acquisition timestamp, independent of the producer's old tick.
+ auto rescanned=*fastC;rescanned.observationTick=133;
+ assert(radar::recentMarkers(rescanned,freshContext,470));
+ assert(!radar::recentMarkers(rescanned,freshContext,484));
+ auto standalone=*fastC;standalone.sourceFrame.reset();standalone.observationTick=0;standalone.tick=500;
+ assert(radar::recentMarkers(standalone,freshContext,850));
+ assert(!radar::recentMarkers(standalone,freshContext,851));
+ assert(fastReader.liveReads==0);
  // Pause retains the acquisition timestamp; only the exact confirmed token
  // bypasses the ordinary age bound. UI projection may run at a higher cadence.
  assert(acquire(provider,readers[0],radar::SceneConsumer::Main,5100)==frames[0]);
@@ -111,8 +141,8 @@ int main(){
  // known failed object bytes remain mandatory even though both were observed.
  radar::SceneBank optionalBank;radar::SharedSceneProvider<Reader>optional(optionalBank);auto probeFailed=token(6,14,5240,0,0x703000);Reader optionalReader(probeFailed);
  assert(acquire(optional,optionalReader,radar::SceneConsumer::Watch,5240)&&optionalReader.complete);
- auto bodyFailed=token(7,15,5260,0,Body);Reader requiredReader(bodyFailed);assert(!acquire(optional,requiredReader,radar::SceneConsumer::Watch,5260)&&!requiredReader.complete);
- auto probeMissing=token(8,16,5280,0x703000);Reader missingProbe(probeMissing);assert(!acquire(optional,missingProbe,radar::SceneConsumer::Watch,5280)&&!missingProbe.complete);
+ auto bodyFailed=token(7,15,5273,0,Body);Reader requiredReader(bodyFailed);assert(!acquire(optional,requiredReader,radar::SceneConsumer::Watch,5273)&&!requiredReader.complete);
+ auto probeMissing=token(8,16,5290,0x703000);Reader missingProbe(probeMissing);assert(!acquire(optional,missingProbe,radar::SceneConsumer::Watch,5290)&&!missingProbe.complete);
  assert(optionalReader.liveReads+requiredReader.liveReads+missingProbe.liveReads==0);
  // Reusing a PID and the same heap addresses does not reuse the old scene
  // after either Runtime incarnation or Host connection identity changes.
@@ -120,7 +150,7 @@ int main(){
  assert(restarted->import(identity,first->counters,first->pages.data(),first->pages.size()));Reader restartedReader(restarted);
  auto restartedFrame=acquire(provider,restartedReader,radar::SceneConsumer::Watch,5300);assert(restartedFrame&&restartedFrame->sourceFrame==restarted&&restartedFrame!=frames[0]);
  Reader nested(first);nested.markWorldIncomplete();
- {radar::FrameScope inner(nested,3,next);assert(inner&&nested.current==next&&nested.complete&&nested.demand==(worldframe::Base|worldframe::Visual|worldframe::Passengers));}
+ {radar::FrameScope inner(nested,3,next);assert(inner&&nested.current==next&&nested.complete&&nested.demand==(worldframe::Base|worldframe::Visual|worldframe::HostVisualPassengers));}
  assert(nested.current==first&&!nested.complete&&nested.demand==worldframe::Base);
  {radar::FrameScope same(nested,3,first);assert(same&&nested.current==first&&!nested.complete);}
  assert(nested.current==first&&!nested.complete);

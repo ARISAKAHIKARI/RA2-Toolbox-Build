@@ -110,12 +110,34 @@ void hostVisual(){
  // Independent world/frame guards, including a mutation during collection.
  cache.request({0xE01000},133,true);bool changed=false;
  m.beforeRead=[&](uint32_t p,size_t n){if(!changed&&p<=0xE01000&&uint64_t(p)+n>0xE01000){changed=true;m.put(0xA8ED84,52);}};
- CHECK(!cache.acquire(raw,worldframe::Resources,133,live)&&changed);m.beforeRead={};
+ // Host display-only data may span logic ticks when the immutable world
+ // identity stays fixed; the control source remains unchanged and cannot
+ // authorize commands from the later visual timestamp.
+ auto crossed=cache.acquire(raw,worldframe::Resources,133,live);
+ CHECK(crossed&&changed&&crossed->visualFrame==52&&worldframe::authoritative(crossed)==raw);
+ CHECK(raw->key.frame==50&&crossed->key.frame==50);m.beforeRead={};
  for(auto bad:std::vector<std::pair<uint32_t,uint32_t>>{{0xA8B230,Scenario+4096},{0xA83D4C,House+4096},{0x87F924,Cells+4096},{0xA8ED84,49},{0x87F7E8+0x1240,1},{0xA8B238,3}}){
   const auto old=*reinterpret_cast<uint32_t*>(m.bytes.data()+bad.first);m.put(bad.first,bad.second);cache.request({},150,true);CHECK(!cache.acquire(raw,worldframe::Resources,150,live));m.put(bad.first,old);
   // Retry a different immutable token so the per-source attempt throttle does not hide a guard failure.
   auto replacement=std::make_shared<worldframe::Snapshot>();CHECK(replacement->import(raw->key,raw->counters,raw->pages.data(),raw->pages.size()));raw=replacement;
  }
+ auto boundary=[](int frame,uint32_t tick){
+  auto source=std::make_shared<worldframe::Snapshot>();auto k=key(frame);k.tick=tick;k.serial=uint32_t(frame);k.demand=worldframe::BoundaryOnlyKeyBit;
+  source->reset(k);CHECK(source->seal());return source;
+ };
+ worldframe::VisualCache fast;
+ m.put(0xA8ED84,52);auto first=boundary(52,200);
+ auto original=fast.acquire(first,worldframe::Resources,200,live);CHECK(original);
+ m.put(0xA8ED84,60);auto next=boundary(60,208);
+ CHECK(fast.acquire(next,worldframe::Resources,208,live)==original&&fast.statistics.captures==1);
+ CHECK(original->controlSource==first&&original->visualTick==200);
+ auto refreshed=fast.acquire(next,worldframe::Resources,216,live);CHECK(refreshed&&refreshed!=original&&refreshed->controlSource==next);
+ m.put(0xA8ED84,61);m.put(0x87F7E8+0x1240,64);
+ auto resized=boundary(61,217);auto resizedCapture=fast.acquire(resized,worldframe::Resources,217,live);
+ CHECK(resizedCapture&&resizedCapture->controlSource==resized&&fast.statistics.captures==3);
+ m.put(0xA8ED84,59);auto rewound=boundary(59,218);
+ auto rewindCapture=fast.acquire(rewound,worldframe::Resources,218,live);
+ CHECK(rewindCapture&&rewindCapture->controlSource==rewound&&fast.statistics.captures==4);
  std::printf("PASS Host visual isolation: control %u reads/%u bytes/%zu pages; 512 display pages stay external; frozen control, shared reuse, pause recovery, provenance and independent frame/world rejection\n",rawCalls,rawBytes,rawPages);
 }
 

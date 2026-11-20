@@ -51,10 +51,12 @@ public:
   // With automatic tracking explicitly off/suppressed and no pinned target,
   // there is no camera to draw. Do not sample/decode a world for empty panels.
   if(!manual&&(!danger||autoSuppressed)){for(auto&v:views)v={};sourceTick=now;sharedSource=gpuAttempted=gpuUsed=false;return true;}
-  auto current=external::radar::publicationContext(fresh);
   auto bank=external::radar::sharedScene(reader_,process,epoch,revealMap,now,external::radar::SceneConsumer::Watch,true,profile_.particles,profile_.lasers);
   if(!bank)return failed(Timings::SceneUnavailable);
-  if(!external::radar::recentMarkers(*bank,current,now))return failed(Timings::SceneStale);sharedSource=true;
+  if(!external::radar::recentMarkers(*bank,external::radar::publicationContext(fresh),now+uint32_t(clock()-started)))return failed(Timings::SceneStale);
+  external::radar::FrameScope sceneScope(reader_,epoch,bank->sourceFrame);
+  if(!sceneScope)return failed(Timings::FrameUnavailable);
+  sharedSource=true;
   if(reveal_!=revealMap||bank->frame<sourceFrame_){motion_.reset();preparer_.reset();sourceFrame_=-1;for(auto&s:scenes_)s.reset();for(auto&v:views)v.scene.reset();}reveal_=revealMap;
   sourceFrame_=bank->frame;
   motion_.observe(bank,clock());auto data=motion_.sampleLatest(clock(),profile_.motion,profile_.detail!=0);if(!data.terrain)return failed(Timings::TerrainUnavailable);
@@ -72,7 +74,7 @@ public:
   }
   if(data.sourceFrame){if(!sampledAnchors(data,centers))return failed(Timings::AnchorUnavailable);}
   else if(!currentAnchors(data,centers,fresh,profile_.detail!=0))return failed(Timings::AnchorUnavailable);
-  sourceTick=bank->tick;data.tick=now;assets_.identity(process,epoch);
+  sourceTick=bank->observationTick?bank->observationTick:bank->tick;data.tick=now;assets_.identity(process,epoch);
   int rasterW=1,rasterH=1;for(const auto&size:outputSizes){rasterW=std::max(rasterW,size[0]);rasterH=std::max(rasterH,size[1]);}
   external::xbrzadapter::gpuPresentation(profile_.gpu);external::presentation::apply(profile_,assets_,Width,Height,rasterW,rasterH);
   const double zscale=external::projectionZScale(read_);

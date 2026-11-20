@@ -1,6 +1,7 @@
 #pragma once
 #include "world_frame_capture.h"
 #include "world_frame_pool.h"
+#include <chrono>
 
 namespace worldframe {
 // This cache runs in the external Host. Game-thread bytes are copied first
@@ -10,7 +11,8 @@ namespace worldframe {
 struct VisualStamp {
  uint32_t scenario=0,cells=0,house=0,count=0;int frame=-1,session=-1;
  std::array<int,6>bounds{};int rawWidth=0,rawHeight=0;bool valid=false;
- bool same(const VisualStamp&o)const{return valid&&o.valid&&scenario==o.scenario&&cells==o.cells&&house==o.house&&count==o.count&&frame==o.frame&&session==o.session&&bounds==o.bounds&&rawWidth==o.rawWidth&&rawHeight==o.rawHeight;}
+ bool sameWorld(const VisualStamp&o)const{return valid&&o.valid&&scenario==o.scenario&&cells==o.cells&&house==o.house&&count==o.count&&session==o.session&&bounds==o.bounds&&rawWidth==o.rawWidth&&rawHeight==o.rawHeight;}
+ bool same(const VisualStamp&o)const{return sameWorld(o)&&frame==o.frame;}
 };
 template<class Live>VisualStamp visualStamp(Live live,const Snapshot&base){
  VisualStamp out;uint8_t active=0;bool ok=true;
@@ -37,9 +39,17 @@ template<class Live>VisualStamp visualStamp(Live live,const Snapshot&base){
   out.session==key.session&&out.frame>=key.frame;
  return out;
 }
+// Only a Host display capture may span logic frames. At hundreds of game
+// ticks per second a multi-page RPM read cannot fit inside one tick.
+// This does NOT relax command snapshots, object identities or world changes.
+// Reject any rewind/identity change or an excessively long mixed observation.
+inline bool coherentVisualCapture(const VisualStamp&before,const VisualStamp&after,uint32_t durationMs,uint32_t maxDurationMs=150){
+ return before.same(after)||(before.sameWorld(after)&&after.frame>=before.frame&&durationMs<=maxDurationMs);
+}
 class VisualCache {
  Token base_,latest_;std::shared_ptr<SnapshotPool>pool_=std::make_shared<SnapshotPool>();
  CaptureScratch scratch_;DemandLeases leases_;std::vector<uint32_t>requests_;
+ VisualStamp latestStamp_;
  uint64_t revision_=0,builtRevision_=0,serial_=0;uint32_t builtDemand_=0,attemptedAt_=0;Token attempted_;
  std::array<uint32_t,6>demandTicks_{};uint32_t demanded_=0;
 public:
@@ -60,18 +70,29 @@ public:
   if(visualDetails&HostVisualCombat)demand|=Combat;
   if(visualDetails&HostVisualOre)demand|=Ore;
   uint32_t combined=0;for(unsigned bit=0;bit<6;++bit){const uint32_t flag=1u<<bit;if(demand&flag){demanded_|=flag;demandTicks_[bit]=now;}if((demanded_&flag)&&uint32_t(now-demandTicks_[bit])<=250)combined|=flag;}
-  if(latest_&&base_==source&&builtRevision_==revision_&&(demand&~builtDemand_)==0){++statistics.reused;return latest_;}
+  const bool compatible=latest_&&builtRevision_==revision_&&(demand&~builtDemand_)==0;
+  if(compatible&&base_==source){++statistics.reused;return latest_;}
   if(attempted_==source&&uint32_t(now-attemptedAt_)<16)return {};
+  const auto started=std::chrono::steady_clock::now();
+  const auto before=visualStamp(live,*source);
+  if(!before.valid){attempted_=source;attemptedAt_=now;++statistics.failed;return {};}
+  // Soon after a full display capture, a high-FPS game may publish several
+  // new empty boundaries. Reuse the original sealed bytes after checking
+  // current geometry and frame order, without retagging their provenance.
+  if(compatible&&boundaryOnlySource(base_->key)&&boundaryOnlySource(source->key)&&
+     source->key.frame>=base_->key.frame&&before.frame>=latestStamp_.frame&&
+     uint32_t(now-latest_->visualTick)<16&&latestStamp_.sameWorld(before)){
+   ++statistics.reused;return latest_;
+  }
   attempted_=source;attemptedAt_=now;
-  const auto before=visualStamp(live,*source);if(!before.valid){++statistics.failed;return {};}
   auto next=SnapshotPool::acquire(pool_);if(!next->extendVisual(source)){++statistics.failed;return {};}
   requests_.clear();leases_.append(now,requests_);std::sort(requests_.begin(),requests_.end());
   CaptureGraph<Live>capture(*next,live,scratch_);
   const bool collected=capture.capture(combined,requests_);
   const auto after=visualStamp(live,*source);
-  if(!collected||!before.same(after)||!next->seal()){++statistics.failed;return {};}
+  if(!collected||!coherentVisualCapture(before,after,uint32_t(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-started).count()))||!next->seal()){++statistics.failed;return {};}
   next->visualFrame=after.frame;next->visualTick=now;next->visualSerial=++serial_;
-  base_=source;latest_=std::move(next);builtRevision_=revision_;builtDemand_=combined;++statistics.captures;return latest_;
+  base_=source;latest_=std::move(next);latestStamp_=after;builtRevision_=revision_;builtDemand_=combined;++statistics.captures;return latest_;
  }
 };
 }

@@ -89,6 +89,21 @@ static void observed(){
 }
 static void zeroLiveReads(){CHECK(fixture::rpmCalls==0&&memory.calls.empty());}
 int main(){
+ // Fast game: one display-only capture may span many logic frames in a
+ // bounded wall-time window, while rollback/house/geometry remain strict.
+ worldframe::VisualStamp a{},b{};a.valid=b.valid=true;a.scenario=b.scenario=10;
+ a.cells=b.cells=0x180000;a.house=b.house=0x300000;
+ a.count=b.count=100;a.session=b.session=2;a.bounds=b.bounds={0,0,64,64,128,128};
+ a.rawWidth=b.rawWidth=128;a.rawHeight=b.rawHeight=128;
+ a.frame=100;b.frame=190;
+ CHECK(worldframe::coherentVisualCapture(a,b,20));
+ CHECK(worldframe::coherentVisualCapture(a,b,150));
+ CHECK(!worldframe::coherentVisualCapture(a,b,151));
+ b.frame=99;CHECK(!worldframe::coherentVisualCapture(a,b,1));
+ b.frame=190;++b.house;CHECK(!worldframe::coherentVisualCapture(a,b,1));--b.house;
+ b.bounds[0]++;CHECK(!worldframe::coherentVisualCapture(a,b,1));--b.bounds[0];
+ b.frame=a.frame;CHECK(worldframe::coherentVisualCapture(a,b,200));
+
  std::setvbuf(stdout,nullptr,_IONBF,0);
  setup();publish();CHECK(externalReader.worldDemand()==(worldframe::Resources|worldframe::Base|worldframe::Passengers|worldframe::Combat));CHECK(worldframe::runtimeDemand(externalReader.worldDemand())==worldframe::Base);
  auto first=passengerSample(fixture::clock,token);std::printf("first passenger paint: bubbles=%zu live_RPM=%zu\n",first.size(),fixture::rpmCalls);std::fflush(stdout);
