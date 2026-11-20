@@ -10,7 +10,8 @@ namespace worldframe {
 struct VisualStamp {
  uint32_t scenario=0,cells=0,house=0,count=0;int frame=-1,session=-1;
  std::array<int,6>bounds{};int rawWidth=0,rawHeight=0;bool valid=false;
- bool same(const VisualStamp&o)const{return valid&&o.valid&&scenario==o.scenario&&cells==o.cells&&house==o.house&&count==o.count&&frame==o.frame&&session==o.session&&bounds==o.bounds&&rawWidth==o.rawWidth&&rawHeight==o.rawHeight;}
+ bool sameWorld(const VisualStamp&o)const{return valid&&o.valid&&scenario==o.scenario&&cells==o.cells&&house==o.house&&count==o.count&&session==o.session&&bounds==o.bounds&&rawWidth==o.rawWidth&&rawHeight==o.rawHeight;}
+ bool same(const VisualStamp&o)const{return sameWorld(o)&&frame==o.frame;}
 };
 template<class Live>VisualStamp visualStamp(Live live,const Snapshot&base){
  VisualStamp out;uint8_t active=0;bool ok=true;
@@ -36,6 +37,13 @@ template<class Live>VisualStamp visualStamp(Live live,const Snapshot&base){
   out.house==key.house&&out.count==key.cellCount&&
   out.session==key.session&&out.frame>=key.frame;
  return out;
+}
+// Only a Host display capture may span logic frames. At hundreds of game
+// ticks per second a multi-page RPM read cannot fit inside one tick.
+// This does NOT relax command snapshots, object identities or world changes.
+// Reject any rewind/identity change or an excessively long mixed observation.
+inline bool coherentVisualCapture(const VisualStamp&before,const VisualStamp&after,uint32_t durationMs,uint32_t maxDurationMs=150){
+ return before.same(after)||(before.sameWorld(after)&&after.frame>=before.frame&&durationMs<=maxDurationMs);
 }
 class VisualCache {
  Token base_,latest_;std::shared_ptr<SnapshotPool>pool_=std::make_shared<SnapshotPool>();
@@ -63,13 +71,14 @@ public:
   if(latest_&&base_==source&&builtRevision_==revision_&&(demand&~builtDemand_)==0){++statistics.reused;return latest_;}
   if(attempted_==source&&uint32_t(now-attemptedAt_)<16)return {};
   attempted_=source;attemptedAt_=now;
+  const uint32_t started=GetTickCount();
   const auto before=visualStamp(live,*source);if(!before.valid){++statistics.failed;return {};}
   auto next=SnapshotPool::acquire(pool_);if(!next->extendVisual(source)){++statistics.failed;return {};}
   requests_.clear();leases_.append(now,requests_);std::sort(requests_.begin(),requests_.end());
   CaptureGraph<Live>capture(*next,live,scratch_);
   const bool collected=capture.capture(combined,requests_);
   const auto after=visualStamp(live,*source);
-  if(!collected||!before.same(after)||!next->seal()){++statistics.failed;return {};}
+  if(!collected||!coherentVisualCapture(before,after,uint32_t(GetTickCount()-started))||!next->seal()){++statistics.failed;return {};}
   next->visualFrame=after.frame;next->visualTick=now;next->visualSerial=++serial_;
   base_=source;latest_=std::move(next);builtRevision_=revision_;builtDemand_=combined;++statistics.captures;return latest_;
  }
