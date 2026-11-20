@@ -1449,30 +1449,44 @@ static void scanCrates(uint32_t tactical,int frame,DWORD now,uint32_t flags){
  if(tactical)for(int i=0;i<crateCount;++i){auto&c=crateCache[i];POINT pt{};if(!call<bool>(0x6D2140,tactical,c.coords,&pt))continue;snap.crates[snap.crateCount++]={c.cellX,c.cellY,pt.x,pt.y,c.preview};}
 }
 static void scan(uint32_t house,int frame,DWORD now){
- snap.labels=0;snap.selected=0;snap.transports=snap.used=snap.capacity=0;
- uint32_t tactical=get<uint32_t>(0x887324),flags=sh->flags;
+ snap.labels=0;snap.selected=0;snap.transports=snap.used=snap.capacity=0;snap.threatCount=0;
+ const uint32_t tactical=get<uint32_t>(0x887324),flags=sh->flags;
  const bool capacityReady=(flags&Capacity)&&nativeDependencyReady(0x473460);
  const bool projectionReady=tactical&&nativeDependencyReady(0x6D2140);
- bool global=(flags&(Iron|Psychic))||((flags&Capacity)&&(flags&AllTransports))||nativeCount;
- Vec v=vec(global?0xA8EC78:0xA8ECB8);
- snap.threatCount=0;uint32_t allies=get<uint32_t>(house+0x5788);
- for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(!p||!live(p))continue;int k=kind(p);if(k<0)continue;
- bool local=get<uint32_t>(p+0x21C)==house;
- if(!local){
-  if((flags&Psychic)&&projectionReady&&snap.threatCount<MaxThreats){uint32_t owner=get<uint32_t>(p+0x21C),target=get<uint32_t>(p+0x2B4);
-   int ownerIndex=owner>=0x10000?get<int>(owner+0x30):-1;
-   if(ownerIndex>=0&&ownerIndex<32&&!(allies&(1u<<ownerIndex))&&target>=0x10000&&kind(target)>=0&&own(target,house)){
-    POINT a{},b{};if(call<bool>(0x6D2140,tactical,(const void*)(p+0x9C),&a)&&call<bool>(0x6D2140,tactical,(const void*)(target+0x9C),&b))snap.threats[snap.threatCount++]={get<uint32_t>(p+0x10),get<uint32_t>(target+0x10),a.x,a.y,b.x,b.y};
-   }
+ // Global Iron/Psychic/AllTransports projections are suspended until the
+ // Worker produces a dedicated display projection. Only the bounded current
+ // selection is read from the sealed Runtime sample in this phase.
+ static uint32_t selectedPointers[4096],selectedIDs[4096];int selectedCount=0;
+ {
+  SampleReadScope sample;
+  Vec selected{};
+  if(!sample||!sampleRoster(0xA8ECB8,selected,4096)){
+   snap.frame=frame;snap.width=get<int>(0x8A00A4);snap.height=get<int>(0x8A00A8);
+   snap.credits=get<int>(house+0x30C);scanCrates(tactical,frame,now,flags);return;
   }
+  for(int i=0;i<selected.count&&selectedCount<4096;++i){
+   const uint32_t p=item(selected,i);if(!p)continue;
+   const uint32_t id=get<uint32_t>(p+0x10);if(!id)continue;
+   selectedPointers[selectedCount]=p;selectedIDs[selectedCount++]=id;
+  }
+  if(!sample.complete())selectedCount=0;
  }
- bool selected=local&&get<bool>(p+0x83);if(selected)++snap.selected;
- int iron=(flags&Iron)?remaining(get<int>(p+0x18C),get<int>(p+0x194),frame):0;uint32_t t=typeOf(p,k);int capacity=local&&t&&k!=3&&capacityReady?get<int>(t+0x5E0):0;bool capacityShow=capacity>0&&(selected||(flags&AllTransports));
- int used=0;if(capacityShow){used=call<int>(0x473460,p+0x114);if(selected){++snap.transports;snap.used+=used;snap.capacity+=capacity;}}
- int advancedIndex=local&&nativeCount?orderIndex(p):-1;int advanced=local&&get<int>(p+0xAC)==6?2:advancedIndex>=0&&nativeOrders[advancedIndex].stopped;
- if((!capacityShow&&!iron&&!advanced)||!projectionReady||snap.labels>=MaxLabels)continue;
- POINT pt{};if(!call<bool>(0x6D2140,tactical,(const void*)(p+0x9C),&pt))continue;
- auto&l=snap.label[snap.labels++];l={get<uint32_t>(p+0x10),pt.x,pt.y,used,capacityShow?capacity:0,iron,get<int>(p+0x1C4)!=0,advanced};
+ for(int i=0;i<selectedCount;++i){
+  const uint32_t p=selectedPointers[i];uint32_t liveID=0;
+  if(!readLiveWorld(p+0x10,&liveID,sizeof liveID)||liveID!=selectedIDs[i]||!own(p,house)||!live(p))continue;
+  const int k=kind(p);if(k<0)continue;
+  const bool selected=get<bool>(p+0x83);if(selected)++snap.selected;
+  const int iron=(flags&Iron)?remaining(get<int>(p+0x18C),get<int>(p+0x194),frame):0;
+  const uint32_t t=typeOf(p,k);
+  const int capacity=local&&t&&k!=3&&capacityReady?get<int>(t+0x5E0):0;
+  const bool capacityShow=capacity>0&&(selected||(flags&AllTransports));
+  int used=0;
+  if(capacityShow){used=call<int>(0x473460,p+0x114);if(selected){++snap.transports;snap.used+=used;snap.capacity+=capacity;}}
+  const int advancedIndex=nativeCount?orderIndex(p):-1;
+  const int advanced=get<int>(p+0xAC)==6?2:advancedIndex>=0&&nativeOrders[advancedIndex].stopped;
+  if((!capacityShow&&!iron&&!advanced)||!projectionReady||snap.labels>=MaxLabels)continue;
+  POINT pt{};if(!call<bool>(0x6D2140,tactical,(const void*)(p+0x9C),&pt))continue;
+  auto&l=snap.label[snap.labels++];l={liveID,pt.x,pt.y,used,capacityShow?capacity:0,iron,get<int>(p+0x1C4)!=0,advanced};
  }
  snap.frame=frame;snap.width=get<int>(0x8A00A4);snap.height=get<int>(0x8A00A8);snap.credits=get<int>(house+0x30C);
  scanCrates(tactical,frame,now,flags);
