@@ -1565,7 +1565,7 @@ static void sampleExternal(DWORD now){
   const bool passengerOverlay=enabled&&(extra.passengerBubbles||extra.dangerPassengers);
   // Host no longer creates an independent VisualCache/readLive world sample.
   // These are native Runtime demands and are fulfilled by the one sealed
-  // CommandCaptureWorker graph; resource-only and HostVisual projections stay
+  // CommandCaptureWorker graph; resource-only legacy display projections stay
   // suspended until they are produced by that Worker.
   uint32_t displayDemand=worldframe::Base;
   if((flags()&(Capacity|AllTransports))||passengerOverlay||unitPanelEnabled)
