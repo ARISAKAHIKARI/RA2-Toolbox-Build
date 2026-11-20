@@ -60,6 +60,8 @@ This is an intentional temporary loss of affected read-only displays or features
 
 ## Remaining implementation stages
 
+The [PR #71 feature audit](2026-11-20-pr71-feature-sampling-audit.md) records production entry points, live discovery and display exceptions, and work that still runs on the gameplay callback while reading sealed bytes.
+
 ### P0 — Finish the canonical worker path
 
 - Prestart the command worker from a safe Runtime initialization point, outside DllMain and before gameplay callbacks. The first request must not create a thread/event while holding the request gate.
