@@ -1,5 +1,5 @@
 name: Console UI regression
-# Run focused browser checks for settings hierarchy, compound rows, and display-view navigation.
+# Run focused browser checks for settings hierarchy, compound rows, feature nesting, and display-view navigation.
 on:
   pull_request:
     paths:
