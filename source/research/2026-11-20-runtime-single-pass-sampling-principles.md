@@ -38,7 +38,7 @@ A full graph is captured once per accepted world sample, not once per feature. T
 - Existing SampleReadScope consumers continue to read the strict sealed Runtime snapshot. Observation-only candidates remain separate and cannot issue EventClass/native commands.
 - The former bridge.cpp indexWorld full-roster fallback is removed from production. Command consumers bind only the worker-built strict/candidate UID index; if neither is admissible, the affected task stays pending. Missile hold cleanup uses the previously owned object pointer plus a fresh live UID/House/life check rather than rebuilding the entire roster.
 - Command-maintenance managers now require a strict same-frame worker roster. Candidate-only indexes remain usable for discovery paths that perform explicit live proof, but they cannot sweep leases, retire dodge/unload state, prune manual revisions, or admit native planner orders. When the strict roster is missing, those jobs pause instead of interpreting an unavailable UID as a destroyed object.
-- The game callback still performs small world/session identity checks and builds a page-demand list. This is not yet the desired final cost: explicit request caps, overflow accounting, reusable ownership-swapped buffers, and worker prestart remain the next P0 engineering tasks.
+- The game callback now builds a deduplicated page-address union capped at MaxPages (16,384), fails closed on invalid/oversized requests, and transfers the vector by ownership swap. The worker retains/recycles its Work page buffer across jobs, removing the second O(N) page copy. Remaining P0 cost: first worker startup still creates its event/thread from request() on the gameplay callback, and the bounded union/bitset work still needs real callback timing.
 - Final live identity/permission/mission checks and native EventClass/engine calls remain on their required game thread. They are not a compatibility sampler and must not be moved to the worker.
 
 ## Temporarily suspended feature domains
@@ -58,9 +58,9 @@ This is an intentional temporary loss of affected read-only displays or features
 ### P0 — Finish the canonical worker path
 
 - Prestart the command worker from a safe Runtime initialization point, outside DllMain and before gameplay callbacks. The first request must not create a thread/event while holding the request gate.
-- Explicitly cap runtimeWorldDemands before merge. Deduplicate and validate the union of Host/runtime/lease pages before expensive work. Report overflow as a first-class diagnostic; never build an unbounded list only to reject it at the worker.
-- Replace queued_.pages.assign(...) with reusable request-buffer ownership transfer. The game callback should submit a bounded descriptor/lease, not copy a second large vector.
-- Remove remaining production code for synchronous CaptureGraph, HostDisplayOnly, and legacy recovery. Test-only fixtures must be clearly compile-time isolated.
+- [x] Cap runtimeWorldDemands and the Host/runtime/lease union at MaxPages. Deduplicate and validate before submission; overflow fails closed and never publishes a truncated graph. Overflow currently increments worldSampleFailures; a dedicated diagnostic can be added without changing the shared IPC ABI.
+- [x] Replace queued_.pages.assign(...) with vector ownership swaps. The worker keeps the in-flight Work buffer across jobs and returns the previous allocation to the producer queue.
+- [x] Remove the production synchronous CaptureGraph fallback, HostDisplayOnly boundary capture, and RecoveryMailbox side channel. Their regression fixtures are compile-time isolated.
 - Audit every feature entry: identify any live read used for discovery/planning and either migrate it to the canonical snapshot or suspend the feature. Keep only small world identity reads and final command validation on the game thread.
 
 ### P1 — Decide the production read backend
