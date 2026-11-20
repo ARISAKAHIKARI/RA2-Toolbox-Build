@@ -400,7 +400,7 @@ if (!failed && process.argv.includes('--browser')) {
       {id:11,type:'toggle',label:'未连接时的功能',group:'光标',checked:false,enabled:false,hint:'连接游戏后可用。'}
     ];
     let revision=1;
-    const snapshot=(patch={})=>({kind:'state',protocol:1,module:0,generation:1,revision:revision++,page:'cursor',title:'光标与渲染',status:'已连接 · 170 Hz',controls,...patch});
+    const snapshot=(patch={})=>({kind:'state',protocol:1,module:0,generation:1,revision:revision++,page:'cursor',title:'显示',status:'已连接 · 170 Hz',controls,...patch});
     const receive=async message=>page.evaluate(message=>window.__receive(message),message);
     await receive({kind:'shell',protocol:1,version:'1.0.46 UI fixture',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
     await receive(snapshot());
@@ -486,7 +486,7 @@ if (!failed && process.argv.includes('--browser')) {
     await page.getByLabel('自动维修',{exact:true}).waitFor();
     await page.getByRole('button',{name:'显示',exact:true}).click();
     const large=Array.from({length:3000},(_,index)=>({id:index+1,type:'text',label:`设置 ${index+1}`,text:String(index),group:'全部设置'}));
-    await receive({kind:'state',protocol:1,module:0,generation:2,revision:1,page:'cursor',title:'光标与渲染',controls:large,status:'受控虚拟化检查'});
+    await receive({kind:'state',protocol:1,module:0,generation:2,revision:1,page:'cursor',title:'显示',controls:large,status:'受控虚拟化检查'});
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
     await page.getByLabel('设置 1',{exact:true}).waitFor();
     assert.ok(await page.locator('.setting-row').count()<170,'3000-setting state must not mount all controls');
