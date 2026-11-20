@@ -119,6 +119,7 @@ extern "C" __declspec(dllexport) int Resume(){
  assert(captureWorldFrame(live,before,fixture::House,GetTickCount(),worldframe::Base));
  assert(memory.calls.size()==calls&&!std::memcmp(&worldFrame.key,&key,sizeof key));return 1;
 }
+#ifdef WORLD_FRAME_TEST_RECOVERY
 static worldframe::Key lastRecoveryKey{};
 extern "C" __declspec(dllexport) int ProbeBegin(){
  using namespace assist;
@@ -152,6 +153,9 @@ extern "C" __declspec(dllexport) int ProbeReady(){
  if(worldFrame.find(hints[0].address&~4095u))return -3;
  return 1;
 }
+#endif
+
+#ifdef WORLD_FRAME_TEST_SHADOW
 extern "C" __declspec(dllexport) int ShadowBegin(){
  using namespace assist;
  shadowImage=memory.bytes.data();shadowImageSize=memory.bytes.size();
@@ -173,6 +177,8 @@ extern "C" __declspec(dllexport) int ShadowReady(){
  if(!worldFrameReady||!worldFrame.sealed())return -3;
  return 1;
 }
+#endif
+
 extern "C" __declspec(dllexport) int Stop(){
  assist::retireWorldFrame();
  const bool published=assist::worldFramePublication.stop();
