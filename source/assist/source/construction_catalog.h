@@ -14,15 +14,12 @@ struct Technology {
 template<class Read> class Catalogue {
  Read read;uint32_t house=0,types=0;int count=0,parent=-1,country=-1,tech=-1;
  std::vector<int> owned,predicted,limits;std::vector<int> groups[6];
- struct Producer {int index,kind;bool naval;};
+ struct Producer {int index;uint32_t pointer;};
  std::vector<Producer> producers;
  void recordProducer(int index,uint32_t type){
   if(type<0x10000)return;
-  int kind=get<int>(type+0xEB8,-1);
-  if(kind!=16&&kind!=3&&kind!=40)return;
-  const bool naval=get<uint8_t>(type+0xCCE)!=0;
   for(const auto&p:producers)if(p.index==index)return;
-  producers.push_back({index,kind,naval});
+  producers.push_back({index,type});
  }
  template<class T>T get(uint32_t at,T fallback={})const{T v{};return read(at,&v,sizeof v)?v:fallback;}
  bool list(uint32_t at,std::vector<int>&out)const{
@@ -87,7 +84,8 @@ public:
   }
   if(kind!=7){
    bool producer=false;
-   for(const auto&p:producers)if(counts[p.index]>0&&p.kind==kind&&p.naval==naval){producer=true;break;}
+   for(const auto&p:producers)if(counts[p.index]>0&&
+      get<int>(p.pointer+0xEB8,-1)==kind&&bool(get<uint8_t>(p.pointer+0xCCE))==naval){producer=true;break;}
    if(!producer)return false;
   }
   // This is a preview, never authorization. Runtime rechecks the actual cameo
