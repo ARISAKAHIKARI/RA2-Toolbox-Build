@@ -110,6 +110,16 @@ public:
   if(matches&&supportsEffects(*bank,particles,lasers)){
    ++statistics_.reused;return bank;
   }
+  // Display presentation may reuse one *complete* immutable visual bank
+  // for 32 real milliseconds even when the game has advanced many logic
+  // frames. Never mislabel it as the new frame or use it for commands.
+  // All identities and geometry are verified again by the view publisher.
+  if(bank&&bank->markerScanValid&&bank->revealOptions==key.revealOptions&&
+     bank->sourceFrame&&(!token||bank->sourceFrame->key.sameWorld(token->key))&&
+     sameWorld(*bank,key.world)&&supportsEffects(*bank,particles,lasers)&&
+     uint32_t(now-bank->publishedTick)<33){
+   ++statistics_.reused;return bank;
+  }
   // Presentation policy changes may decode the SAME sealed bytes again.
   // Ordinary config/view changes may not silently
   // add a second capture when a late consumer requests more effect coverage.
@@ -129,7 +139,7 @@ public:
   }
   if(!sampler_.hasTerrain()){++statistics_.deferred;return {};}
   auto frame=sampler_.snapshot(token?token->key.tick:now,key.world.frame,key.revealOptions);
-  frame.sourceFrame=token;
+  frame.sourceFrame=token;frame.publishedTick=now;
   frame.observedMs=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
   preparePoses(frame,read_);
   if(!frame.markerScanValid||!completeFrame(reader)||!sameWorld(frame,key.world)){
