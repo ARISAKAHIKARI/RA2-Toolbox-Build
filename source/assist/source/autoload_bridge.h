@@ -91,8 +91,15 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
   uint32_t type=typeOf(v.object,2),q=get<uint32_t>(v.object+0x118);room[j]=type?get<int>(type+0x5E0):0;int steps=0;
   while(q>=0x10000&&steps++<256){int size=passengerSlots(q);if(!size){room[j]=0;break;}room[j]-=size;uint32_t next=get<uint32_t>(q+0x30);if(next==q){room[j]=0;break;}q=next;}if(q>=0x10000)room[j]=0;
  }
- Vec all=vec(0xA8EC78);for(int n=0;n<all.count;++n){uint32_t other=item(all,n);int k=other?kind(other):-1;if((k!=1&&k!=2)||!own(other,house))continue;uint32_t target=incomingVehicle(other);if(!target)continue;
-  for(int j=0;j<nv;++j)if(vehicles[j].object==target){int size=passengerSlots(other);room[j]-=size?size:1024;break;}
+ {
+  // Capacity reservations are derived from the canonical sealed Runtime
+  // graph. Never enumerate the live Techno vector during a delayed load submit.
+  SampleReadScope frameRead;if(!frameRead)return -30;
+  Vec all{};if(!sampleRoster(0xA8EC78,all))return -30;
+  for(int n=0;n<all.count;++n){uint32_t other=item(all,n);int k=other?kind(other):-1;if((k!=1&&k!=2)||!own(other,house))continue;uint32_t target=incomingVehicle(other);if(!target)continue;
+   for(int j=0;j<nv;++j)if(vehicles[j].object==target){int size=passengerSlots(other);room[j]-=size?size:1024;break;}
+  }
+  if(!frameRead.complete())return -30;
  }
  for(int n=0;n<loadLedger.count;++n){auto&r=loadLedger.records[n];if(!worldObjects.contains(r.object)||incomingVehicle(r.object))continue;for(int j=0;j<nv;++j)if(r.vehicleID==vehicles[j].id){room[j]-=r.slots;break;}}
  for(int i=0;i<ns;++i){const auto&p=soldiers[i];int j=assignment[i];
