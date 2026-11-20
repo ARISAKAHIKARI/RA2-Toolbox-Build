@@ -1,0 +1,49 @@
+name: Console UI regression
+on:
+  pull_request:
+    paths:
+      - source/suite/frontend/**
+      - source/suite/source/console_adapter.h
+      - source/suite/source/console_model.h
+      - source/suite/source/video_settings_ui.h
+      - source/suite/tests/console_*.mjs
+      - source/suite/tests/choice_help_test.mjs
+      - .github/workflows/console-ui-regression.yml
+permissions:
+  contents: read
+concurrency:
+  group: console-ui-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  console-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check frontend syntax
+        run: node --check source/suite/frontend/app.js
+      - name: Run console state and composition tests
+        run: |
+          node source/suite/tests/console_store_test.mjs
+          node source/suite/tests/console_composition_test.mjs
+          node source/suite/tests/console_hotkey_presentation_test.mjs
+          node source/suite/tests/choice_help_test.mjs
+      - name: Install Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx --no-install playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Exercise the real WebView page in Chromium
+        run: |
+          mkdir -p artifacts
+          CONSOLE_SCREENSHOT=artifacts/console-desktop.png node source/suite/tests/console_store_test.mjs --browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: console-ui-browser-evidence
+          path: artifacts/
+          if-no-files-found: ignore
