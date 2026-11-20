@@ -1,7 +1,7 @@
 name: Publish RA2 Toolbox 1.0.52-pre.7 checked async candidate
 on:
   push:
-    branches: [release/1.0.52-pre.7-full-candidate-20261120]
+    branches: [release/1.0.52-pre.7-host-world-fix-20261120]
     paths:
       - .github/workflows/publish-1.0.52-pre.7-candidate-once.yml
   workflow_dispatch:
@@ -115,7 +115,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_REF_NAME" = release/1.0.52-pre.7-full-candidate-20261120
+          test "$GITHUB_REF_NAME" = release/1.0.52-pre.7-host-world-fix-20261120
           if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
             echo "Refusing to overwrite an existing pre-release tag" >&2
             exit 1
