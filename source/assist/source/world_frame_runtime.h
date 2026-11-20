@@ -12,7 +12,7 @@
 
 static worldframe::Snapshot worldFrame;
 static worldframe::Server worldFrameServer;
-#ifdef WORLD_FRAME_PLATFORM_FIXTURE
+#if defined(WORLD_FRAME_PLATFORM_FIXTURE)
 // Existing synchronous transport fixtures keep their explicit execution seam.
 struct WorldFramePublication {
  bool begin(worldframe::Snapshot&){return true;}
@@ -22,9 +22,22 @@ struct WorldFramePublication {
  bool requestRecovery(const worldframe::Key&,const worldframe::RequestedSpan*,size_t){return false;}
  size_t recovered(const worldframe::Key&,worldframe::RequestedSpan*,size_t){return 0;}
 };
-#else
+#elif defined(WORLD_FRAME_TEST_SYNC_CAPTURE)
+// The former independent publisher/recovery worker exists only in the
+// isolated synchronous regression DLL. Product Runtime never compiles it.
 #include "../../shared/source/world_frame_async_win.h"
 using WorldFramePublication=worldframe::AsyncPublisher<>;
+#else
+// Production has exactly one world-capture worker: CommandCaptureWorker.
+// The old AsyncPublisher is not a dormant compatibility path in the product.
+struct WorldFramePublication {
+ bool begin(worldframe::Snapshot&){return false;}
+ void invalidate(){}
+ bool stop(){return true;}
+ bool publish(const worldframe::Snapshot&,const worldframe::Server&){return false;}
+ bool requestRecovery(const worldframe::Key&,const worldframe::RequestedSpan*,size_t){return false;}
+ size_t recovered(const worldframe::Key&,worldframe::RequestedSpan*,size_t){return 0;}
+};
 #endif
 static WorldFramePublication worldFramePublication;
 // The game frame keeps execution authority. The worker is the only production
