@@ -15,6 +15,7 @@ using namespace assist;
 static std::unordered_map<uint32_t,uint8_t> memory;
 static uint32_t bad=0,match=1,House=0x770000,Type=0x440000;
 static int checked=0,doneCount=0,observedCount=0,frameNow=100,indexedFrame=100,unloadCursor=0;
+static bool commandRosterReady(){return indexedFrame==frameNow;}
 static int unloadCount=0;
 static unsigned rawCalls=0;
 constexpr uint32_t SmartUnloadOrders=1, EjectAssist=2;
