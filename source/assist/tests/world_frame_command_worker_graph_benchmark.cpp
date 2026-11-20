@@ -121,7 +121,7 @@ Image makeImage(bool scattered) {
   const uint32_t actor=ActorBase+page*PageSize;
   actors.push_back(actor);
   image.put(actor,uint32_t(0x7F5C70)); // infantry/vehicle Techno vtable
-  image.put(actor+0x10,i+5u);          // stable nonzero UID
+  image.put(actor+0x10,actor+5u);      // stable native-style UID
   image.put(actor+0x6C,int32_t(100));  // health
   image.put(actor+0x21C,House);
   image.put(actor+0x6C4,Type);
@@ -167,7 +167,7 @@ bool one(RunState&state,const Image&image,Mode mode,Metrics&metrics) {
     metrics.failedReads!=0||!state.roster.objects)return false;
  uint32_t hp=0;
  return state.sample.read(ActorBase+0x6C,&hp,sizeof hp)&&hp==100&&
-        state.roster.objects->byId(5)==ActorBase;
+        state.roster.objects->byId(ActorBase+5)==ActorBase;
 }
 double percentile(std::vector<double> values,double p) {
  std::sort(values.begin(),values.end());
