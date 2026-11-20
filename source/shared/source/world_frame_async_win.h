@@ -109,7 +109,9 @@ public:
   reap();
   // Local automatic consumers may need a sample without any Host subscriber.
   // Keep their capture buffer local and do not launch/wake a transport worker.
-  if(!control.observes(frame.key))return false;
+  // A stale descriptor/subscription is not a live consumer. In particular,
+  // never start the publisher merely because an old mapping still exists.
+  if(!control.wanted(frame.key.owner,GetTickCount())||!control.observes(frame.key))return false;
   const uint32_t epoch=pool_.epoch();
   // A prior success is not sufficient: heartbeat expiry/retirement can remove
   // the advertised descriptor while this immutable game frame stays paused.
