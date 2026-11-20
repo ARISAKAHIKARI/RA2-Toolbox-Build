@@ -1790,19 +1790,20 @@ static void tick(){
  bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||runtimeCoopPending||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
   sh->flags|sh->plannerTracking|((sh->cooperativePlan!=sh->cooperativeAck)?AutoOreReturn:0),(sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)));
  if(needsIndex){
-
-  if(!refreshWorldIndex(frame)){
+  if(!refreshWorldIndex(frame)||!commandRosterReady()){
    // Leave requests, passenger history, manual revisions and all active jobs
-   // untouched. Missing live guards are unknown too; retry on the next wake.
+   // untouched. A candidate or missing index is UNKNOWN for command work.
    ++sh->worldSampleFailures;
-   ++sh->sampling.indexUnavailable; // Diagnostic only; keep pending jobs.
+   ++sh->sampling.indexUnavailable;
    publishSnapshot(now);return;
   }
+  // These managers consult the canonical worker-owned UID index. Do not run
+  // them at all when no command index is required or when only a candidate
+  // snapshot exists.
+  privateOutTick();servicePrivateOut();serviceDirectSell();
+  // Release stale leases before any feature sends a new game order.
+  sweepActiveLeases(frame);
  }
- privateOutTick();servicePrivateOut();serviceDirectSell();
- // Release stale leases before any feature sends a new game order. No game
- // state mutation occurs here: only indexed actor identities are inspected.
- sweepActiveLeases(frame);
  stickyTick(false);
  observePausedOre(house,frame);
  observeUnloadRoster(house,frame,now);
