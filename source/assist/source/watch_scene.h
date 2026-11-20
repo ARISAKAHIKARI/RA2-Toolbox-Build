@@ -72,7 +72,7 @@ public:
   }
   if(data.sourceFrame){if(!sampledAnchors(data,centers))return failed(Timings::AnchorUnavailable);}
   else if(!currentAnchors(data,centers,fresh,profile_.detail!=0))return failed(Timings::AnchorUnavailable);
-  sourceTick=bank->tick;data.tick=now;assets_.identity(process,epoch);
+  sourceTick=bank->publishedTick;data.tick=now;assets_.identity(process,epoch);
   int rasterW=1,rasterH=1;for(const auto&size:outputSizes){rasterW=std::max(rasterW,size[0]);rasterH=std::max(rasterH,size[1]);}
   external::xbrzadapter::gpuPresentation(profile_.gpu);external::presentation::apply(profile_,assets_,Width,Height,rasterW,rasterH);
   const double zscale=external::projectionZScale(read_);

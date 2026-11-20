@@ -91,6 +91,12 @@ int main(){
  auto fastC=acquire(fastProvider,fastReader,radar::SceneConsumer::Watch,133);
  assert(fastC&&fastC!=fastA&&fastC->frame==21);
  assert(fastProvider.statistics().attempts==2);
+ // The source raw Runtime frame can predate the *completed* Host visual scan.
+ // Publication age uses the real scan completion, not that older game tick.
+ auto freshContext=radar::publicationContext([&](uint32_t p,void*out,size_t n){return fastReader.read(p,out,n);});
+ freshContext.frame=fastC->frame+20;
+ assert(radar::recentMarkers(*fastC,freshContext,470));
+ assert(!radar::recentMarkers(*fastC,freshContext,484));
  assert(fastReader.liveReads==0);
  // Pause retains the acquisition timestamp; only the exact confirmed token
  // bypasses the ordinary age bound. UI projection may run at a higher cadence.
