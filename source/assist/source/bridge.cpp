@@ -288,7 +288,7 @@ static bool refreshWorldIndex(int frame){
 // Identity-index publication already checked every UID. Avoid a second
 // fallible live UID read when deciding whether an automatic lease still exists.
 static void sweepActiveLeases(int frame){
- if(!actorLeaseArbiter.count)return;
+ if(indexedFrame!=frame||!commandRosterReady()||!actorLeaseArbiter.count)return;
  // Tiny cohorts are deliberately rechecked on each callback: a manual
  // revision or a newly complete identity index can change within the SAME
  // game frame. The large-cohort budget must not regress that native priority.
@@ -301,6 +301,7 @@ static void sweepActiveLeases(int frame){
 // Mission receipts must not turn a failed mission/queue read into a valid
 // default-zero observation (e.g. a spurious mission 0 acknowledgement).
 static gateway::MissionState observeMissionReceipt(uint32_t id){
+ if(indexedFrame!=snap.frame||!commandRosterReady())return {};
  const uint32_t p=worldObjects.byId(id);if(!p)return {};
  uint32_t currentID=0,carrier=0;int mission=-1,queued=-1;
  if(!read(p+0x10,&currentID,sizeof currentID)||!read(p+0xAC,&mission,sizeof mission)||
@@ -1408,7 +1409,7 @@ static void repairTick(uint32_t house,DWORD now){
  autoWas=automatic&&!deferred;snap.autoRepair=automatic;
  static int budgetFrame=-1,budget;static uint32_t budgetMatch;
  int frame=get<int>(0xA8ED84);if(budgetFrame!=frame||budgetMatch!=match){budgetFrame=frame;budgetMatch=match;budget=recurringBudget(EventLane::Repair);}
- if(repairAt<repairCount&&budget>0&&indexedFrame==frame){
+ if(repairAt<repairCount&&budget>0&&indexedFrame==frame&&commandRosterReady()){
   // Pre14's tri-state repair eligibility stays in place. A missing worker
   // index leaves the repair candidates pending; never scan the live roster. 
   while(repairAt<repairCount&&budget>0){
