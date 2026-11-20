@@ -978,23 +978,54 @@ static bool repairEvent(uint32_t house,uint32_t id){return nativeObjectEvent(get
 static bool selection(uint32_t p){return nativeDependencyReady(0x6FBFA0)&&call<bool>(0x6FBFA0,p);}
 static void unselect(){if(gameentry::active(gameentry::Client::Assist)&&nativeDependencyReady(0x48DC90))((void(__cdecl*)())0x48DC90)();}
 static int selectFilter(uint32_t house,int action){
- static uint32_t chosen[4096];int n=0;Vec v=vec(action==EmptyTransports?0xA8EC78:0xA8ECB8);
- for(int i=0;i<v.count&&n<4096;++i){uint32_t p=item(v,i);if(!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k);if(!t)continue;
- bool harv=k==2&&(get<bool>(t+0xE0E)||get<bool>(t+0xE0F)),eng=k==1&&get<bool>(t+0xEC3);
- bool ok=action==CombatSelection?(!harv&&!eng&&get<bool>(t+0xDBC)):action==EmptyTransports?(get<int>(t+0x5E0)>0&&get<int>(p+0x114)==0):get<int>(p+0x6c)<get<int>(t+0xA0);
- if(ok)chosen[n++]=p;
- }if(!n)return 0;if(!nativeDependenciesReady(0x48DC90,0x6FBFA0))return -12;
- unselect();int selected=0;for(int i=0;i<n;++i)if(selection(chosen[i]))++selected;return selected;
+ static uint32_t chosen[4096],ids[4096];int n=0;
+ SampleReadScope sample;if(!sample||!commandRosterReady())return -12;
+ Vec v{};const uint32_t source=action==EmptyTransports?0xA8EC78:0xA8ECB8;
+ if(!sampleRoster(source,v,source==0xA8EC78?16384:4096))return -12;
+ for(int i=0;i<v.count&&n<4096;++i){
+  const uint32_t p=item(v,i);if(!p||!own(p,house))continue;
+  const int k=kind(p);if(k<0||k==3)continue;const uint32_t t=typeOf(p,k);if(!t)continue;
+  const bool harv=k==2&&(get<bool>(t+0xE0E)||get<bool>(t+0xE0F));
+  const bool eng=k==1&&get<bool>(t+0xEC3);
+  const bool ok=action==CombatSelection?(!harv&&!eng&&get<bool>(t+0xDBC)):
+   action==EmptyTransports?(get<int>(t+0x5E0)>0&&get<int>(p+0x114)==0):
+   get<int>(p+0x6c)<get<int>(t+0xA0);
+  if(ok){const uint32_t id=get<uint32_t>(p+0x10);if(id){chosen[n]=p;ids[n++]=id;}}
+ }
+ if(!sample.complete())return -12;
+ sample.finish();
+ if(!n)return 0;if(!nativeDependenciesReady(0x48DC90,0x6FBFA0))return -12;
+ unselect();int selected=0;
+ for(int i=0;i<n;++i)if(worldByID(ids[i])==chosen[i]&&own(chosen[i],house)&&selection(chosen[i]))++selected;
+ return selected;
 }
-static int findIdle(uint32_t house,int mode){Vec v=vec(0xA8EC78);uint32_t next=0,first=0,nextid=0xffffffff,firstid=0xffffffff;int slot=mode-IdleHarvester;
- for(int i=0;i<v.count;++i){uint32_t p=item(v,i);if(!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k);if(!t)continue;
- bool category=slot==0?(k==2&&(get<bool>(t+0xE0E)||get<bool>(t+0xE0F))):slot==1?(k==1&&get<bool>(t+0xEC3)):(get<int>(t+0x5E0)>0&&get<int>(p+0x114)==0);
- if(!category||!idleMission(get<int>(p+0xAC),get<int>(p+0xB4),get<uint32_t>(p+0x2B4)!=0,get<bool>(p+0x1C8)))continue;
- uint32_t id=get<uint32_t>(p+0x10);if(id<firstid){firstid=id;first=p;}if(id>lastIdle[slot]&&id<nextid){nextid=id;next=p;}
- }if(!next){next=first;nextid=firstid;}if(!next)return 0;
- uint32_t tactical=get<uint32_t>(0x887324);
+static int findIdle(uint32_t house,int mode){
+ static uint32_t lastIdle[3],firstPointer[3],firstID[3],nextPointer[3],nextID[3];
+ const int slot=mode-IdleHarvester;if(slot<0||slot>=3)return -4;
+ firstPointer[slot]=nextPointer[slot]=0;firstID[slot]=0xffffffffu;nextID[slot]=0xffffffffu;
+ SampleReadScope sample;if(!sample||!commandRosterReady())return -12;
+ Vec all{};if(!sampleRoster(0xA8EC78,all))return -12;
+ for(int i=0;i<all.count;++i){
+  const uint32_t p=item(all,i);if(!p||!own(p,house))continue;
+  const int k=kind(p);if(k<0||k==3)continue;const uint32_t t=typeOf(p,k);if(!t)continue;
+  const bool category=slot==0?(k==2&&(get<bool>(t+0xE0E)||get<bool>(t+0xE0F))):
+   slot==1?(k==1&&get<bool>(t+0xEC3)):(get<int>(t+0x5E0)>0&&get<int>(p+0x114)==0);
+  if(!category||!idleMission(get<int>(p+0xAC),get<int>(p+0xB4),get<uint32_t>(p+0x2B4)!=0,get<bool>(p+0x1C8)))continue;
+  const uint32_t id=get<uint32_t>(p+0x10);if(!id)continue;
+  if(id<firstID[slot]){firstID[slot]=id;firstPointer[slot]=p;}
+  if(id>lastIdle[slot]&&id<nextID[slot]){nextID[slot]=id;nextPointer[slot]=p;}
+ }
+ if(!sample.complete())return -12;
+ sample.finish();
+ uint32_t next=nextPointer[slot],nextid=nextID[slot];
+ auto stillIdle=[&](uint32_t p,uint32_t id){
+  if(!p||worldByID(id)!=p||!own(p,house))return false;
+  return idleMission(get<int>(p+0xAC),get<int>(p+0xB4),get<uint32_t>(p+0x2B4)!=0,get<bool>(p+0x1C8));
+ };
+ if(!stillIdle(next,nextid)){next=firstPointer[slot];nextid=firstID[slot];if(!stillIdle(next,nextid))return 0;}
+ const uint32_t tactical=get<uint32_t>(0x887324);
  if(!nativeDependenciesReady(0x48DC90,0x6FBFA0)||(tactical&&!nativeDependencyReady(0x6D2420)))return -12;
- lastIdle[slot]=nextid;unselect();if(!selection(next))return 0;
+ unselect();if(!selection(next))return 0;lastIdle[slot]=nextid;
  if(tactical)call<void>(0x6D2420,tactical,(void*)(next+0x9C),0);return 1;
 }
 static void scanTypes(){catalogueDirty=true;
