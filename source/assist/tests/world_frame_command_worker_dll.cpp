@@ -56,7 +56,8 @@ extern "C" __declspec(dllexport) int StartBufferRecycle(){
 }
 extern "C" __declspec(dllexport) int PollBufferRecycle(){
  if(worker.diagnostics().started<2)return 0;
- if(!worker.reclaimRequestBuffer(emptyPages))return -1;
+ if(emptyPages.capacity()>=worldframe::MaxPages)return 1;
+ if(!worker.reclaimRequestBuffer(emptyPages))return 0; // retry lock contention
  return emptyPages.capacity()>=worldframe::MaxPages?1:-2;
 }
 extern "C" __declspec(dllexport) int RejectedCount(){return int(worker.rejected());}
