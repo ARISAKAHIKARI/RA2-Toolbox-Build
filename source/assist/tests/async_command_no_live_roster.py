@@ -34,6 +34,16 @@ assert "runtimeWorldDemands.size()>=worldframe::MaxPages" in runtime
 assert "runtimeDemandOverflow" in runtime
 assert "queued_.pages.swap(pages)" in worker
 assert "job.pages.swap(self->queued_.pages)" in worker
+assert "bool reclaimRequestBuffer(std::vector<uint32_t>&pages)" in worker
+assert "worldFrameCommandWorker.reclaimRequestBuffer(requests)" in runtime
+assert runtime.index("worldFrameCommandWorker.reclaimRequestBuffer(requests)") < runtime.index("const auto&hostRequests=worldFrameServer.requests();")
+# The product has one command-capture worker. The older publisher/recovery
+# worker is compiled only into the isolated synchronous regression DLL.
+assert '#elif defined(WORLD_FRAME_TEST_SYNC_CAPTURE)' in runtime
+assert runtime.count('world_frame_async_win.h') == 1
+assert 'The old AsyncPublisher is not a dormant compatibility path in the product.' in runtime
+assert 'if(!worldFrameServer.wanted(key.owner,key.tick))' in runtime
+assert 'candidateCount&&worldFrameServer.wanted(key.owner,key.tick)' in runtime
 assert 'worldFrameCommandWorker.take(key,graphDemand' in runtime
 assert 'if(asyncCommand)' in runtime
 assert runtime.index('if(asyncCommand)') < runtime.index('worldframe::CaptureGraph<Live>capture(')
