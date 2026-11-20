@@ -10,6 +10,7 @@
 #include <array>
 #include <algorithm>
 #include "../../shared/source/world_frame.h"
+#include "../../shared/source/world_frame_command_index.h"
 #include "../source/compute_tasks.h"
 #include "../source/compute_frame.h"
 #include "../source/compute_policy.h"
@@ -35,7 +36,7 @@ struct Building{uint32_t pointer,type,id,house;int hp=50,maximum=100;bool repair
 static std::vector<Building> buildings;
 static uint32_t match=1,lastHouse=0x200000;
 static int currentFrame=0;static bool chat=false,externalInputFrame=false,queueAvailable=true;
-static unsigned buildingScans=0,notifications=0,queueAttempts=0,indexCalls=0;static int perFrameBudget=64;
+static unsigned buildingScans=0,notifications=0,queueAttempts=0;static int perFrameBudget=64;
 struct Queued{uint32_t id;int frame;};static std::vector<Queued> sent;
 static uint32_t repairIDs[8192];static int repairCount,repairAt,repairDone;
 static bool pendingAckReady,repairAckPending;static uint32_t pendingAck,repairAckRequest;static DWORD repairAckStarted;
@@ -77,8 +78,16 @@ template<class T>static T get(uint32_t at);
 static Vec vec(uint32_t at){Vec out{};read(at,&out,sizeof out);return out;}
 static uint32_t item(Vec v,int i){return get<uint32_t>(v.items+uint32_t(i)*4);}
 static Building* byPointer(uint32_t p){for(auto&b:buildings)if(b.pointer==p)return &b;return nullptr;}
-static uint32_t worldByID(uint32_t id){for(const auto&b:buildings)if(b.alive&&b.id==id)return b.pointer;return 0;}
-struct BuildingIndex {uint32_t byId(uint32_t id)const{return worldByID(id);}};
+static uint32_t worldByID(uint32_t id){
+ const uint32_t p=worldObjects.byId(id);if(!p)return 0;
+ for(const auto&b:buildings)if(b.pointer==p&&b.alive&&b.id==id){
+  uint32_t liveID=0;return read(p+0x10,&liveID,4)&&liveID==id?p:0;
+ }
+ return 0;
+}
+static worldframe::CommandRoster workerRoster;
+static std::vector<uint32_t> workerRosterScratch;
+struct BuildingIndex {uint32_t byId(uint32_t id)const{return workerRoster.objects?workerRoster.objects->byId(id):0;}};
 static BuildingIndex worldObjects;
 static bool own(uint32_t p,uint32_t house){if(sampleReadDepth)return get<bool>(p+0x74)&&get<uint32_t>(p+0x21C)==house;auto*b=byPointer(p);return b&&b->alive&&b->house==house;}
 static int kind(uint32_t p){if(sampleReadDepth)return get<bool>(p+0x74)?3:-1;auto*b=byPointer(p);return b&&b->alive?3:-1;}
@@ -92,21 +101,22 @@ template<class T>static T get(uint32_t at){
 }
 static void prepareSample(){
  snap.frame=currentFrame;if(worldFrameReady&&worldFrame.key.match==match&&worldFrame.key.frame==currentFrame)return;
- worldFrameReady=false;if(!sampleAvailable)return;
+ worldFrameReady=false;indexedFrame=-1;workerRoster.invalidate();if(!sampleAvailable)return;
  static std::vector<uint8_t> bytes(0xC00000);std::fill(bytes.begin(),bytes.end(),0);
  auto set=[&](uint32_t at,const auto&value){std::memcpy(bytes.data()+at,&value,sizeof value);};
- Vec list{0,0x100000,int(buildings.size()),0,int(buildings.size()),0};set(0xA8EB40,list);set(0xA8ED84,currentFrame);
- for(size_t i=0;i<buildings.size();++i){const auto&b=buildings[i];set(list.items+uint32_t(i)*4,b.pointer);set(b.pointer+0x10,b.id);set(b.pointer+0x6C,b.hp);set(b.pointer+0x74,b.alive);set(b.pointer+0x21C,b.house);set(b.pointer+0x520,b.type);set(b.pointer+0x6E8,b.repairing);set(b.type+0xA0,b.maximum);set(b.type+0x157A,b.repairable);}
+ Vec list{0,0x100000,int(buildings.size()),0,int(buildings.size()),0};
+ set(0xA8EB40,list);set(0xA8EC78,list);set(0xA8ED84,currentFrame);
+ for(size_t i=0;i<buildings.size();++i){const auto&b=buildings[i];set(list.items+uint32_t(i)*4,b.pointer);set(b.pointer,uint32_t(0x7E3EBC));set(b.pointer+0x10,b.id);set(b.pointer+0x6C,b.hp);set(b.pointer+0x74,b.alive);set(b.pointer+0x90,b.alive);set(b.pointer+0x81,uint8_t(!b.alive));set(b.pointer+0x21C,b.house);set(b.pointer+0x520,b.type);set(b.pointer+0x6E8,b.repairing);set(b.type+0xA0,b.maximum);set(b.type+0x157A,b.repairable);}
  worldframe::Key key{};key.match=match;key.frame=currentFrame;key.house=lastHouse;worldFrame.reset(key);
  auto acquire=[&](uint32_t at,void*out,size_t n){if(missingSamplePage&&at<missingSamplePage+4096&&uint64_t(at)+n>missingSamplePage)return false;std::memcpy(out,bytes.data()+at,n);return true;};
  worldFrame.prefetch(acquire,0xA8EB40,sizeof list);worldFrame.prefetch(acquire,list.items,buildings.size()*4);
  for(const auto&b:buildings){worldFrame.prefetch(acquire,b.pointer,0x800);worldFrame.prefetch(acquire,b.type,0x1600);}
- worldFrameReady=worldFrame.seal();
+ worldFrameReady=worldFrame.seal()&&workerRoster.build(worldFrame,false,workerRosterScratch);
+ if(worldFrameReady)indexedFrame=currentFrame;
 }
 static void MemoryBarrier(){}
 static void notifyHost(){if(sampleReadDepth)throw std::runtime_error("publication inside sample scope");++notifications;}
 static int indexedFrame=-1;
-static void indexWorld(int frame){indexedFrame=frame;++indexCalls;}
 struct StubCommandWorker {bool enabled()const{return false;}};
 static StubCommandWorker worldFrameCommandWorker;
 static bool commandRosterReady(){return false;}
@@ -129,10 +139,10 @@ static unsigned checks=0,failed=0,cases=0;static bool regressionOnly=false;
 static void expect(bool condition,const char*name){++checks;if(!condition)throw std::runtime_error(name);}
 static void setup(bool automatic=true,bool internal=true,unsigned count=1){
  shared={};snap={};sh=&shared;sh->flags=automatic?AutoRepair:0;sh->computeApplied=internal?compute::Default:0;
- ++match;lastHouse=0x200000;currentFrame=0;chat=externalInputFrame=false;queueAvailable=true;perFrameBudget=64;buildingScans=notifications=queueAttempts=indexCalls=0;sent.clear();buildings.clear();
+ ++match;lastHouse=0x200000;currentFrame=0;chat=externalInputFrame=false;queueAvailable=true;perFrameBudget=64;buildingScans=notifications=queueAttempts=0;sent.clear();buildings.clear();
  for(unsigned i=0;i<count;++i)buildings.push_back({0x300000+i*0x10000,0x800000+i*0x10000,100+i,lastHouse});
  repairCount=repairAt=repairDone=0;repairAckRequest=repairAckStarted=pendingAck=0;repairAckPending=pendingAckReady=false;repairCalculationPending=false;repairCalculationStarted=repairTaskSeen=0;autoWas=false;lastAuto=0;pendingRepairs.clear();repairFrames.clear();
- worldFrameReady=false;sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;indexedFrame=-1;featureConfig={};repairFilterKnown=true;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
+ worldFrameReady=false;workerRoster.invalidate();workerRosterScratch.clear();sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;indexedFrame=-1;featureConfig={};repairFilterKnown=true;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
 }
 static void tick(DWORD now,int frame,bool input=false){currentFrame=frame;externalInputFrame=input;prepareSample();repairTick(lastHouse,now);}
 struct WorkerResult{uint32_t task;compute::RepairResult value;};
