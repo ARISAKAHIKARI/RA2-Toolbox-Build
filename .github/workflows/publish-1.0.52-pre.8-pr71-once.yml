@@ -38,7 +38,7 @@ jobs:
           grep -q 'sampling-health pid=' source/assist/source/main.cpp
           grep -q 'runtime-async-candidate' source/assist/tests/world_frame_async_windows.py
           grep -q 'RestartAfterStop' source/assist/tests/world_frame_command_worker_host.cpp
-          grep -q 'return !(length==1&&setting\[0\]==.0.);' source/shared/source/world_frame_command_worker_win.h
+          grep -q 'Async command-world capture is the only production route' source/shared/source/world_frame_command_worker_win.h
           python3 source/assist/tests/async_command_no_live_roster.py
           python3 source/assist/tests/world_frame_core_test.py
           python3 source/assist/tests/construction_host_test.py
@@ -137,7 +137,7 @@ jobs:
           Paired x64 Host / x86 Runtime and x86 broker | Assist ABI 112
           Runtime unified sampling + bounded display-only cross-frame observation; command commit authority remains strict.
           Exact-frame native command authority remains strict; game-tested=false.
-          To switch to old synchronous mode before launch: RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=0
+          Async command-world capture is the only production route in PR71. For rollback, restore an older complete release.
           Portable, Windows x86/x64 and command/visual worker tests passed in this release workflow.
           Actual game, JJ/CnCNet multiplayer and in-game FPS: NOT TESTED.
           Back up settings; close game and toolbox; replace all paired EXE and DLL files together.
