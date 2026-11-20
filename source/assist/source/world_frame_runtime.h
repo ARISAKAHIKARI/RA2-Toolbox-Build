@@ -367,8 +367,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
 #endif
    return false;
   }
-  // Only address dependencies are copied on the game thread (bounded by
-  // MaxPages); sorting, page I/O and all unit graph traversal are background.
+  // Only a deduplicated, bounded address list is assembled on the game
+  // thread. The vector is ownership-swapped to the worker; sorting, page I/O
+  // and all unit graph traversal remain background-only.
   if(runtimeDemandOverflow){
    // The per-feature demand set exceeded the single-sample page budget.
    // Preserve leases, drop only this oversized transient list, and retry
