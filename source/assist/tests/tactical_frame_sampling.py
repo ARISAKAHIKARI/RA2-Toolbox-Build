@@ -124,9 +124,10 @@ def main():
     if args.negative_control:
         old = subprocess.check_output(["git", "show", "418347c5d753f5acb72026fcaf3c45935a65769d:source/assist/source/bridge.cpp"], cwd=SRC.parents[2], text=True)
         sampled = function(old, "  if(worldFrameReady){SampleReadScope sample;indexWorld(frame);")
+        legacy_index = function(old, "static void indexWorld(int frame){")
         legacy = "static bool refreshWorldIndex(int frame,bool executionGuards){\n" + sampled + "\nelse if(executionGuards)indexWorld(frame);else{worldObjects.clear();indexedFrame=-1;}\nreturn indexedFrame==frame;\n}"
         current = function(content, "static bool refreshWorldIndex(")
-        legacy_content = content.replace(current, legacy)
+        legacy_content = content.replace(current, legacy_index + "\n" + legacy)
         (out / "tactical_frame_production.h").write_text(legacy_content)
         negative_exe = out / "identity-before"
         subprocess.run([args.cxx, *flags, str(HERE / "tactical_frame_sampling.cpp"), "-o", str(negative_exe)], check=True, capture_output=True, text=True)
