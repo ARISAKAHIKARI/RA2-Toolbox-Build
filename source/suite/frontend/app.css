@@ -547,3 +547,31 @@ h1 { color: #2b4d54; }
 .feature-common .compound-row > .setting-row:first-child { min-width: 0; padding-right: 0; }
 .feature-common .compound-row > .setting-row:first-child .setting-copy { flex: 0 0 auto; }
 .feature-common .compound-row > .setting-row:first-child .setting-editor { flex: 0 0 auto; }
+
+/* One master switch belongs on the same compact line as its group title. */
+.settings-group.has-header-controls:not(.multiple-header-rows) {
+  display: grid;
+  grid-template-columns: max-content minmax(0,1fr);
+}
+.settings-group.has-header-controls:not(.multiple-header-rows) .group-summary {
+  width: auto;
+  min-width: 0;
+  padding-right: 0;
+}
+.settings-group.has-header-controls:not(.multiple-header-rows) .group-header-controls {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.settings-group.has-header-controls:not(.multiple-header-rows) .feature-header {
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.settings-group.has-header-controls:not(.multiple-header-rows) .group-body { grid-column: 1 / -1; }
