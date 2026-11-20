@@ -354,7 +354,16 @@
   });
   document.addEventListener('keydown', event => { if (!capture && !composingKey(event) && event.ctrlKey && event.key.toLowerCase() === 'f') { event.preventDefault(); $('search').focus(); $('search').select(); } });
   const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => { for (const entry of entries) { const group = entry.target._group; if (!group) continue; group.intersecting = entry.isIntersecting; if (entry.isIntersecting) updateGroup(group); else if (!group.body.contains(document.activeElement)) unmountGroup(group); } }, { root: $('contentScroll'), rootMargin: '600px' }) : null;
-  function clearGroups() { for (const group of groupNodes.values()) { observer?.unobserve(group.section); group.section.remove(); } groupNodes.clear(); }
+  const estimateRows=controls=>settingLines(controls).reduce((height,line)=>height+(line.some(control=>control.type==='hotkey')?72:44),0);
+  const chunkObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{for(const entry of entries){const chunk=entry.target._chunk;if(!chunk)continue;chunk.intersecting=entry.isIntersecting;if(entry.isIntersecting)updateChunk(chunk);else unmountChunk(chunk);}},{root:$('contentScroll'),rootMargin:'500px'}):null;
+  function clearGroups() {
+    for(const group of groupNodes.values()){
+      observer?.unobserve(group.section);
+      for(const feature of group.bodyFeatures.values()){releaseFeatureChunks(feature.paramsChunks);releaseFeatureChunks(feature.hotkeysChunks);}
+      group.section.remove();
+    }
+    groupNodes.clear();
+  }
   // A search can reveal and fold matches without overwriting the page's saved folds.
   function setGroupCollapsed(group,value) {
     const key=`${renderedPage}/${group.name}`;
@@ -374,11 +383,48 @@
     summary.addEventListener('click',()=>{setGroupCollapsed(group,!group.body.hidden);updateGroup(group);updateFoldAction();});
     observer?.observe(section);return group;
   }
+  function releaseFeatureChunks(state){
+    if(!state)return;
+    for(const chunk of state.items){chunkObserver?.unobserve(chunk.element);chunk.element.remove();}
+    state.items=[];state.signature='';
+  }
+  function updateChunk(chunk){
+    if(!chunk.intersecting&&chunkObserver&&!chunk.element.contains(document.activeElement)){unmountChunk(chunk);return;}
+    chunk.element.style.minHeight='';updateRows(chunk.element,chunk.rows,chunk.controls,'',chunk.subsettings);
+  }
+  function unmountChunk(chunk){
+    if(chunk.element.contains(document.activeElement))return;
+    const measured=chunk.element.getBoundingClientRect().height;
+    chunk.element.style.minHeight=(measured||estimateRows(chunk.controls))+'px';
+    chunk.element.replaceChildren();chunk.rows.clear();
+  }
+  function updateFeatureRows(container,rowMap,controls,subsettings,chunkState){
+    if(controls.length>48&&chunkObserver){
+      const lines=settingLines(controls),batches=[];let batch=[],size=0;
+      for(const line of lines){if(size&&size+line.length>24){batches.push(batch);batch=[];size=0;}batch.push(...line);size+=line.length;}
+      if(batch.length)batches.push(batch);
+      const signature=controls.map(control=>control.id+':'+control.row+':'+control.column).join(',');
+      if(chunkState.signature!==signature){
+        releaseFeatureChunks(chunkState);container.replaceChildren();rowMap.clear();chunkState.signature=signature;
+        for(const controlsInChunk of batches){
+          const element=document.createElement('div'),chunk={element,controls:controlsInChunk,rows:new Map(),subsettings,intersecting:false};
+          element.className='rows-chunk';element.style.minHeight=estimateRows(controlsInChunk)+'px';element._chunk=chunk;
+          chunkState.items.push(chunk);container.append(element);chunkObserver.observe(element);
+        }
+      }
+      chunkState.items.forEach((chunk,index)=>{chunk.controls=batches[index]||[];chunk.subsettings=subsettings;updateChunk(chunk);});
+      return;
+    }
+    if(chunkState.items.length)releaseFeatureChunks(chunkState);
+    updateRows(container,rowMap,controls,'',subsettings);
+  }
   function unmountGroup(group) {
     if(group.body.contains(document.activeElement))return;
     const measured=group.body.getBoundingClientRect().height;
     group.body.style.minHeight=(measured||40*group.controls.length)+'px';
-    for(const feature of group.bodyFeatures.values())feature.element.remove();
+    for(const feature of group.bodyFeatures.values()){
+      releaseFeatureChunks(feature.paramsChunks);releaseFeatureChunks(feature.hotkeysChunks);feature.element.remove();
+    }
     group.bodyFeatures.clear();group.body.replaceChildren();
   }
   function makeFeatureSection(titleText,className){
@@ -422,13 +468,13 @@
         const params=makeFeatureSection(block.headers.length?'子配置':'','feature-config');
         const hotkeys=makeFeatureSection('快捷键','feature-hotkeys');
         element.append(params.section,hotkeys.section);
-        feature={key,element,params,hotkeys};group.bodyFeatures.set(key,feature);
+        feature={key,element,params,hotkeys,paramsChunks:{items:[],signature:''},hotkeysChunks:{items:[],signature:''}};group.bodyFeatures.set(key,feature);
       }
       const params=block.details.filter(control=>control.type!=='hotkey');
       const hotkeys=block.details.filter(control=>control.type==='hotkey');
       feature.params.section.hidden=!params.length;feature.hotkeys.section.hidden=!hotkeys.length;
-      updateRows(feature.params.rows,feature.params.controls,params,'',true);
-      updateRows(feature.hotkeys.rows,feature.hotkeys.controls,hotkeys,'',true);
+      updateFeatureRows(feature.params.rows,feature.params.controls,params,true,feature.paramsChunks);
+      updateFeatureRows(feature.hotkeys.rows,feature.hotkeys.controls,hotkeys,true,feature.hotkeysChunks);
       feature.element.hidden=block.headers.length&&!featureExpanded(group,key);
       placeAfter(group.body,feature.element,after);after=feature.element;
     }
