@@ -32,6 +32,7 @@ static BOOL WINAPI countedRPM(HANDLE,LPCVOID from,LPVOID out,SIZE_T n,SIZE_T*got
 #include "../../shared/source/world_frame_command_worker_win.h"
 #undef ReadProcessMemory
 static worldframe::CommandCaptureWorker worker;
+static std::vector<uint32_t> emptyPages;
 static worldframe::Snapshot accepted;
 static worldframe::CommandRoster acceptedRoster;
 static worldframe::Key job;
@@ -39,12 +40,12 @@ extern "C" __declspec(dllexport) int AsyncEnabled(){return worker.enabled()?1:0;
 extern "C" __declspec(dllexport) int Start(){
  gameThread=GetCurrentThreadId();fixture::setup(memory);offThreadReads=0;onThreadReads=0;
  job=fixture::key(50);job.tick=GetTickCount();job.serial=0;
- return worker.request(job,worldframe::Base,17,{})?1:0;
+ return worker.request(job,worldframe::Base,17,emptyPages)?1:0;
 }
 extern "C" __declspec(dllexport) int StartGlobal(){
  gameThread=GetCurrentThreadId();fixture::setup(memory);offThreadReads=0;onThreadReads=0;
  job=fixture::key(50);job.tick=GetTickCount();job.serial=0;
- return worker.request(job,worldframe::Base,17,{},true)?1:0;
+ return worker.request(job,worldframe::Base,17,emptyPages,true)?1:0;
 }
 extern "C" __declspec(dllexport) int RejectedCount(){return int(worker.rejected());}
 extern "C" __declspec(dllexport) int PollWrongGlobal(){
@@ -63,7 +64,7 @@ extern "C" __declspec(dllexport) int StartCrossFrame(){
  gameThread=GetCurrentThreadId();fixture::setup(memory);offThreadReads=0;onThreadReads=0;
  job=fixture::key(50);job.tick=GetTickCount();job.serial=0;
  advanceMidGraph.store(true,std::memory_order_release);
- return worker.request(job,worldframe::Base,19,{})?1:0;
+ return worker.request(job,worldframe::Base,19,emptyPages)?1:0;
 }
 extern "C" __declspec(dllexport) int PollCrossFrame(){
  auto next=job;next.frame=51;next.tick=GetTickCount();
@@ -79,7 +80,7 @@ extern "C" __declspec(dllexport) int PollCrossFrame(){
 extern "C" __declspec(dllexport) int StartExpired(){
  // An obsolete request must be dropped before doing any CaptureGraph RPM.
  job.tick=GetTickCount()-600u;
- return worker.request(job,worldframe::Base,18,{})?1:0;
+ return worker.request(job,worldframe::Base,18,emptyPages)?1:0;
 }
 extern "C" __declspec(dllexport) int WorkerReadCount(){return int(offThreadReads.load());}
 extern "C" __declspec(dllexport) int Poll(){
@@ -108,7 +109,7 @@ extern "C" __declspec(dllexport) int RestartAfterStop(){
  offThreadReads=0;onThreadReads=0;
  job=fixture::key(50);job.tick=GetTickCount();job.serial=0;
  if(worker.deferBusy(job,worldframe::Base,17))return -1;
- if(!worker.request(job,worldframe::Base,17,{}))return -2;
+ if(!worker.request(job,worldframe::Base,17,emptyPages))return -2;
  return 1;
 }
 extern "C" __declspec(dllexport) int Stop(){return worker.stop()?1:0;}
