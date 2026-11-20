@@ -17,7 +17,7 @@ function test(name, run) { tests.push({ name, run }); }
 function setup(controls = []) {
   const messages = [], changes = [];
   const store = new ConsoleStore(message => messages.push(message), reason => changes.push(reason), { initialSeq: 0 });
-  const state = (patch = {}) => ({kind:'state',protocol:1,module:0,generation:1,revision:1,page:'cursor',title:'光标与渲染',status:'已连接',controls,...patch});
+  const state = (patch = {}) => ({kind:'state',protocol:1,module:0,generation:1,revision:1,page:'cursor',title:'显示',status:'已连接',controls,...patch});
   store.receive(state());
   return {store,messages,changes,state};
 }
@@ -386,25 +386,30 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>window.__sent.length),1,'initial ready must not navigate before saved preferences arrive');
     const controls=[
       {id:100,type:'heading',label:'画面与性能'},
-      {id:1,type:'toggle',label:'渲染升级',hint:'使用独立画面输出，保留原有游戏节奏。',checked:true},
-      {id:2,type:'choice',label:'绘制方式',hint:'按设备与画面负载选择输出方式。',selected:0,options:['GPU 优先','CPU 绘制'],readonly:true},
-      {id:3,type:'choice',label:'目标刷新率',hint:'选择预设，或输入自定义刷新率。',text:'170',selected:2,options:['60','120','170','240','500'],readonly:false,presentation:'editable'},
-      {id:4,type:'number',label:'内存预算（MB）',hint:'限制渲染缓存的最大内存使用量。',text:'8192'},
-      {id:5,type:'range',label:'覆盖层透明度',text:'80',selected:80,min:0,max:100,step:1},
-      {id:6,type:'button',label:'显示设备',hint:'重新读取可用设备与刷新率。',text:'重新检测'},
+      {id:1,type:'toggle',label:'增强渲染',group:'渲染',groupHeader:true,hint:'使用独立画面输出，保留原有游戏节奏。',checked:true},
+      {id:2,type:'choice',label:'绘制方式',group:'渲染',hint:'按设备与画面负载选择输出方式。',selected:0,options:['GPU 优先','CPU 绘制'],readonly:true},
+      {id:3,type:'choice',label:'目标刷新率',group:'渲染',hint:'选择预设，或输入自定义刷新率。',text:'170',selected:2,options:['60','120','170','240','500'],readonly:false,presentation:'editable'},
+      {id:4,type:'number',label:'内存预算（MB）',group:'渲染',hint:'限制渲染缓存的最大内存使用量。',text:'8192'},
+      {id:5,type:'range',label:'覆盖层透明度',group:'渲染',text:'80',selected:80,min:0,max:100,step:1},
+      {id:6,type:'button',label:'显示设备',group:'渲染',hint:'重新读取可用设备与刷新率。',text:'重新检测'},
       {id:101,type:'heading',label:'操作与资源'},
-      {id:7,type:'text',label:'游戏目录',text:'C:\\Games\\Red Alert 2',hint:'素材与地图将从此目录读取。'},
-      {id:8,type:'choice',label:'常驻单位类型',selected:0,options:['步兵','坦克','矿车','基地车'],presentation:'list',readonly:true,hint:'双击列表项可执行原有对应操作。'},
-      {id:9,type:'hotkey',label:'队形预览快捷键',selected:0xb34a,options:['hold'],hint:'支持 Ctrl、Shift、Alt 与双击按住。'},
-      {id:10,type:'label',label:'设置会自动保存；每项功能独立启用。'},
-      {id:11,type:'toggle',label:'未连接时的功能',checked:false,enabled:false,hint:'连接游戏后可用。'}
+      {id:7,type:'text',label:'游戏目录',group:'光标',text:'C:\\Games\\Red Alert 2',hint:'素材与地图将从此目录读取。'},
+      {id:8,type:'choice',label:'常驻单位类型',group:'光标',selected:0,options:['步兵','坦克','矿车','基地车'],presentation:'list',readonly:true,hint:'双击列表项可执行原有对应操作。'},
+      {id:9,type:'hotkey',label:'队形预览快捷键',group:'光标',selected:0xb34a,options:['hold'],hint:'支持 Ctrl、Shift、Alt 与双击按住。'},
+      {id:10,type:'label',label:'设置会自动保存；每项功能独立启用。',group:'光标'},
+      {id:11,type:'toggle',label:'未连接时的功能',group:'光标',checked:false,enabled:false,hint:'连接游戏后可用。'}
     ];
     let revision=1;
-    const snapshot=(patch={})=>({kind:'state',protocol:1,module:0,generation:1,revision:revision++,page:'cursor',title:'光标与渲染',status:'已连接 · 170 Hz',controls,...patch});
+    const snapshot=(patch={})=>({kind:'state',protocol:1,module:0,generation:1,revision:revision++,page:'cursor',title:'显示',status:'已连接 · 170 Hz',controls,...patch});
     const receive=async message=>page.evaluate(message=>window.__receive(message),message);
     await receive({kind:'shell',protocol:1,version:'1.0.46 UI fixture',selectedCategory:0,videoSection:0,servicesReady:true,modules:[{module:0,ready:true,enabled:true},{module:1,ready:true,enabled:false}],config:{pending:0,busy:false,failed:false}});
-    await receive(snapshot()); await page.getByLabel('渲染升级',{exact:true}).waitFor();
-    assert.equal(await page.getByLabel('绘制方式',{exact:true}).evaluate(element=>element.closest('.setting-row').dataset.settingLevel),'secondary','ordinary parameter rows must read below feature switches');
+    await receive(snapshot());
+    const tabs=page.getByRole('tab');await tabs.nth(1).click();
+    await page.waitForFunction(()=>document.querySelector('[data-view="render"]').getAttribute('aria-selected')==='true');
+    await page.getByLabel('增强渲染',{exact:true}).waitFor();
+    await page.locator('.feature-config-toggle').first().click();
+    await page.getByLabel('绘制方式',{exact:true}).waitFor();
+    assert.equal(await page.getByLabel('绘制方式',{exact:true}).evaluate(element=>element.closest('.setting-row').dataset.settingLevel),'secondary','feature parameters must read below their master switch');
     await page.screenshot({path:screenshotPath,fullPage:false});
     const assertFits = async () => {
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'the shell must fit the viewport');
@@ -412,19 +417,22 @@ if (!failed && process.argv.includes('--browser')) {
     };
     await assertFits();
     assert.equal(await page.locator('#saveState').getAttribute('data-state'),'saved');
-    const tabs=page.getByRole('tab');await tabs.nth(0).focus();await page.keyboard.press('ArrowRight');
-    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),1);
-    await page.waitForFunction(()=>document.querySelector('[data-module="1"]').tabIndex===0);
+    await tabs.nth(1).focus();await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(()=>document.querySelector('[data-view="monitor"]').getAttribute('aria-selected')==='true');
+    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),1,'Monitor remains the separate native service module');
     await page.keyboard.press('Home');
-    await page.waitForFunction(()=>document.querySelector('[data-module="0"]').getAttribute('aria-selected')==='true');
-    await page.keyboard.press('Control+f');await page.keyboard.type('渲染升级');
-    await page.waitForFunction(()=>document.getElementById('resultCount').textContent==='找到 1 项设置');
+    await page.waitForFunction(()=>document.querySelector('[data-view="cursor"]').getAttribute('aria-selected')==='true');
+    assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),0);
+    await tabs.nth(1).click();await page.waitForFunction(()=>document.querySelector('[data-view="render"]').getAttribute('aria-selected')==='true');
+    await page.keyboard.press('Control+f');await page.keyboard.type('绘制方式');
+    await page.waitForFunction(()=>document.getElementById('resultCount').textContent==='找到 2 项设置');
     assert.equal(await page.locator('#foldAll').isVisible(),true,'search results retain their bulk fold action');
     await page.locator('#foldAll').click();await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===1);assert.equal(await page.locator('.settings-group.collapsed').count(),1,'search matches can be manually folded');
     await page.locator('#foldAll').click();await page.waitForFunction(()=>document.querySelectorAll('.settings-group.collapsed').length===0);assert.equal(await page.locator('.settings-group.collapsed').count(),0);
     await page.locator('#search').focus();await page.keyboard.press('Escape');
     await page.waitForFunction(()=>document.getElementById('search').value==='');
     await page.getByLabel('绘制方式',{exact:true}).waitFor();
+    await tabs.nth(0).click();await page.waitForFunction(()=>document.querySelector('[data-view="cursor"]').getAttribute('aria-selected')==='true');
     for(const viewport of [{width:720,height:780},{width:540,height:720},{width:390,height:720}]){
       await page.setViewportSize(viewport);await page.getByRole('button',{name:'队形预览快捷键',exact:true}).scrollIntoViewIfNeeded();await assertFits();
       await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
@@ -432,10 +440,11 @@ if (!failed && process.argv.includes('--browser')) {
     }
     await page.setViewportSize({width:1240,height:880});
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
-    assert.equal(await page.getByRole('heading',{name:'视频',exact:true}).count(),1);
+    assert.equal(await page.getByRole('heading',{name:'显示',exact:true}).count(),1);
     assert.equal(await page.getByLabel('未连接时的功能',{exact:true}).isDisabled(),true);
-    const switchBox=await page.getByLabel('渲染升级',{exact:true}).boundingBox();assert.ok(switchBox.width>=24 && switchBox.height>=24,'accessible switch owns a full pointer target');
-    await page.getByLabel('渲染升级',{exact:true}).click();
+    await tabs.nth(1).click();await page.waitForFunction(()=>document.querySelector('[data-view="render"]').getAttribute('aria-selected')==='true');
+    const switchBox=await page.getByLabel('增强渲染',{exact:true}).boundingBox();assert.ok(switchBox.width>=24 && switchBox.height>=24,'accessible switch owns a full pointer target');
+    await page.getByLabel('增强渲染',{exact:true}).click();
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).action),'toggle');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),false);
     let action=await page.evaluate(()=>window.__sent.at(-1));
@@ -453,6 +462,7 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).value),33);
     await page.getByRole('button',{name:'显示设备',exact:true}).click();
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).action),'press');
+    await tabs.nth(0).click();await page.waitForFunction(()=>document.querySelector('[data-view="cursor"]').getAttribute('aria-selected')==='true');
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=700;});
     const directory=page.getByLabel('游戏目录',{exact:true}); await directory.waitFor();
     await directory.fill('C:\\RA2');
@@ -474,9 +484,9 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),2); assert.equal(await page.evaluate(()=>window.__sent.at(-1).category),2);
     await receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/2',title:'自动功能',controls:[{id:1,type:'toggle',label:'自动维修',checked:true}],status:''});
     await page.getByLabel('自动维修',{exact:true}).waitFor();
-    await page.getByRole('button',{name:'视频',exact:true}).click();
+    await page.getByRole('button',{name:'显示',exact:true}).click();
     const large=Array.from({length:3000},(_,index)=>({id:index+1,type:'text',label:`设置 ${index+1}`,text:String(index),group:'全部设置'}));
-    await receive({kind:'state',protocol:1,module:0,generation:2,revision:1,page:'cursor',title:'光标与渲染',controls:large,status:'受控虚拟化检查'});
+    await receive({kind:'state',protocol:1,module:0,generation:2,revision:1,page:'cursor',title:'显示',controls:large,status:'受控虚拟化检查'});
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
     await page.getByLabel('设置 1',{exact:true}).waitFor();
     assert.ok(await page.locator('.setting-row').count()<170,'3000-setting state must not mount all controls');
@@ -544,6 +554,7 @@ if (!failed && process.argv.includes('--browser')) {
     const hierarchy=await line.evaluate(element=>{const labels=[...element.querySelectorAll('.setting-label')],main=getComputedStyle(labels[0]),sub=getComputedStyle(labels[1]),name=labels[0].getBoundingClientRect(),toggle=element.querySelector('.toggle').getBoundingClientRect();return{mainSize:parseFloat(main.fontSize),subSize:parseFloat(sub.fontSize),mainWeight:Number(main.fontWeight),subWeight:Number(sub.fontWeight),mainColor:main.color,subColor:sub.color,switchGap:toggle.left-name.right};});
     assert.ok(hierarchy.mainSize>hierarchy.subSize && hierarchy.mainWeight>hierarchy.subWeight,'feature names must read above their smaller subsettings');
     assert.notEqual(hierarchy.mainColor,hierarchy.subColor,'secondary captions must use their quieter color');
+    console.log('COMPOUND_HIERARCHY',JSON.stringify(hierarchy));
     assert.ok(hierarchy.switchGap>=0 && hierarchy.switchGap<=16,'the feature switch must stay beside its name');
     assert.ok((await line.boundingBox()).height<=96,'the complete feature must fit in at most two compact lines on desktop');
     await page.getByLabel('高级进驻 · 鼠标',{exact:true}).selectOption('1');
@@ -566,7 +577,7 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.locator('.group-header-controls .setting-label:visible').count(),0,'a pinned switch shares the group title');
     const pinnedGap=await page.locator('.settings-group').evaluate(element=>element.querySelector('.toggle').getBoundingClientRect().left-element.querySelector('.group-title').getBoundingClientRect().right);
     assert.ok(pinnedGap>=0 && pinnedGap<=16,'the pinned master switch must sit beside the shared title');
-    await page.locator('.group-summary').click();await page.getByLabel('科技等级',{exact:true}).waitFor();
+    await page.locator('.group-summary').click();await page.locator('.feature-config-toggle').first().click();await page.getByLabel('科技等级',{exact:true}).waitFor();
     assert.equal(await page.locator('.group-body .setting-row').getAttribute('data-setting-level'),'secondary','details inherit the main switch hierarchy');
     await assertFits();
     await page.getByLabel('科技设置',{exact:true}).click();action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,880);
@@ -595,6 +606,7 @@ if (!failed && process.argv.includes('--browser')) {
     await page.waitForFunction(()=>!window.RA2Console.store.pending.size && !window.RA2Console.store.drafts.size && document.getElementById('saveState').dataset.state==='saved' && document.getElementById('globalNotice').hidden);
     await page.locator('#toast').waitFor({state:'hidden',timeout:10000});
     assert.equal(await page.getByRole('button',{name:'控制',exact:true}).getAttribute('aria-current'),'page');
+    await page.locator('.settings-group').filter({hasText:'飞机分配攻击'}).locator('.feature-config-toggle').first().click();
     await page.getByLabel('每个目标分配上限',{exact:true}).waitFor();await page.mouse.move(0,0);
     for(const viewport of [{width:1240,height:880},{width:720,height:780},{width:390,height:720}]) {
       await page.setViewportSize(viewport);await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});await assertFits();

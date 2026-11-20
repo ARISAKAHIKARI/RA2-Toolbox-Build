@@ -391,3 +391,187 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 
 .brand-mark { background: transparent; border: 0; }
 .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+
+ 
+/* Soft aqua desktop theme */
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+  --bg: #f1fafb;
+  --sidebar: #e6f5f6;
+  --surface: #ffffff;
+  --surface-hover: #eaf7f8;
+  --field: #f8fcfd;
+  --border: #c9e3e7;
+  --divider: #e0edef;
+  --text: #29464c;
+  --soft: #4d6c72;
+  --muted: #78949a;
+  --disabled: #a1b8bc;
+  --accent: #54b7c5;
+  --accent-dark: #dff3f5;
+  --primary: #62bdc9;
+  --primary-hover: #48aab8;
+  --primary-border: #9bd8df;
+  --success: #398b7b;
+  --success-bg: #e2f4ee;
+  --warning: #a97839;
+  --warning-bg: #fff5e3;
+  --error: #b85d70;
+  --error-bg: #fff0f3;
+  --error-border: #e8bec8;
+  --radius: 12px;
+  --control-radius: 9px;
+  --control-height: 30px;
+  --gutter: 18px;
+}
+body { background: var(--bg); color: var(--text); }
+.app-shell { background: var(--bg); }
+.sidebar { background: linear-gradient(180deg,#e9f8f8 0%,#e5f2f7 100%); border-right-color: #cfe5e8; }
+.brand-mark { background: linear-gradient(145deg,#d5f3f0,#e7efff); border-color: #b8dfe3; color: #438f9a; }
+.nav-label { color: #7c9ca1; }
+.nav-button { color: #56777d; }
+.nav-button:hover { background: #dff1f3; color: #315b63; }
+.nav-button[aria-current="page"] { color: #287e8b; background: #d8f1f3; border-color: #b8e2e6; }
+.nav-button[aria-current="page"]::before { background: #75cbd3; }
+.sidebar-bottom { border-top-color: #cfe5e8; }
+.workspace { background: #f3fafb; }
+.topbar { background: #f8fdfd; border-bottom-color: #d8e9eb; }
+.save-state[data-state="saved"] { color: #3b9584; }
+.save-state[data-state="busy"] { color: #b18143; }
+.quiet-pill { background: #f1f9fa; border-color: #d2e8ea; color: #78949a; }
+h1 { color: #2b4d54; }
+.page-description { color: #78949a; }
+.module-toggle { background: #f9fdfd; border-color: #cde5e8; color: #55767c; }
+.module-toggle:has(input:checked) { background: #def4f5; border-color: #a9dce1; color: #318a96; }
+.tabs { background: #eaf5f6; border-color: #cfe5e8; }
+.tabs button { color: #78949a; }
+.tabs button[aria-selected="true"] { background: #fff; border-color: #b9e0e4; color: #318b97; box-shadow: 0 1px 2px #4c9ca70d; }
+.search-wrap input { background: #fff; border-color: #cfe4e7; color: #29464c; }
+.search-wrap input:focus { border-color: #78c7d0; box-shadow: 0 0 0 3px #8ad4dc26; }
+.content-scroll { scrollbar-color: #b6d8dc transparent; }
+.settings { gap: 9px; }
+.settings-group { background: #fff; border-color: #cfe5e8; border-radius: 13px; box-shadow: 0 2px 8px #397e880b; }
+.group-summary { min-height: 39px; padding: 5px 12px; }
+.group-summary:hover:not(:disabled) { background: #f5fbfc; }
+.group-title { color: #31555c; font-size: 13px; font-weight: 700; }
+.group-count { color: #8aa3a8; }
+.chevron { color: #75a7ad; }
+.group-header-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px 10px; padding: 9px 12px 10px; border-top: 1px solid #e4f0f1; background: #f8fcfc; }
+.settings-group.has-header-controls { display: block; }
+.settings-group.has-header-controls .group-summary { width: 100%; }
+.settings-group.has-header-controls .group-header-controls { grid-column: auto; grid-row: auto; width: 100%; padding-inline: 12px; border-top: 1px solid #e4f0f1; }
+.settings-group.has-header-controls.multiple-header-rows { display: block; }
+.multiple-header-rows .group-header-controls { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.feature-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px; min-width: 0; padding: 5px 8px; border: 1px solid #deedef; border-radius: 10px; background: #fff; }
+.feature-header.is-expanded { border-color: #b8dfe3; background: #f7fcfc; }
+.feature-main-control { min-width: 0; }
+.feature-main-control .settings-line { border: 0; }
+.feature-main-control .setting-row { min-height: 32px; padding: 1px 0; }
+.feature-main-control .setting-label { color: #355d64; font-size: 12px; font-weight: 650; }
+.feature-main-control .setting-editor { max-width: 100%; }
+.feature-config-toggle { min-height: 25px; padding: 3px 9px; border: 1px solid #cce6e9; border-radius: 8px; background: #eff9fa; color: #4a929c; font-size: 11px; line-height: 1.4; white-space: nowrap; }
+.feature-config-toggle:hover { border-color: #9fd4da; background: #e2f4f5; color: #287f8b; }
+.feature-config-toggle[aria-expanded="true"] { background: #dff2f4; color: #287f8b; }
+.group-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-top-color: #e5f0f1; background: #fcfefe; }
+.feature-config-block, .feature-common { min-width: 0; }
+.feature-config { padding: 7px 12px 9px 16px; border-left: 2px solid #a8dce1; border-radius: 0 9px 9px 0; background: #f6fbfc; }
+.feature-subheading { margin: 0 0 3px; color: #579aa3; font-size: 11px; font-weight: 700; line-height: 1.5; }
+.feature-hotkeys { margin-top: 7px; padding: 8px 12px 4px 16px; border-top: 1px dashed #d6e9eb; border-left: 2px solid #e7c8d9; border-radius: 0 9px 9px 0; background: #fdf9fc; }
+.feature-hotkeys .feature-subheading { color: #aa7d99; }
+.feature-rows .setting-row { min-height: 33px; padding: 3px 0; }
+.feature-rows .setting-label { color: #59767c; font-size: 12px; font-weight: 500; }
+.feature-rows .setting-description { color: #8aa0a5; }
+.feature-rows .subsettings-line { padding-left: 8px; }
+.group-status { background: #fff5f6; border-top-color: #f0d8de; }
+.setting-row { min-height: 36px; padding: 4px 0; }
+.setting-label { color: #35565d; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.setting-description { color: #81999e; font-size: 10px; line-height: 1.45; }
+.setting-editor select, .field, .setting-editor textarea, .debug-tools select { background: #fbfefe; border-color: #d1e5e8; color: #315159; }
+.field:disabled, .setting-editor select:disabled, .setting-editor textarea:disabled { background: #f0f6f7; border-color: #e0eaec; color: #9bb0b4; }
+.setting-button, .subtle-button, .hotkey-capture, .icon-button { background: #eff8f9; border-color: #cfe5e8; color: #4e737a; }
+.setting-button.action-primary, .setting-button.primary { background: #68bdc9; border-color: #82ccd4; color: #fff; }
+.setting-button.action-primary:hover:not(:disabled), .setting-button.primary:hover:not(:disabled) { background: #4daab8; border-color: #65bdc7; }
+.switch-track { border-color: #bfd7da; background: #dcebed; }
+.switch-track::after { background: #fff; box-shadow: 0 1px 2px #365f6624; }
+.toggle input:checked ~ .switch-track, .module-toggle input:checked + .switch-track { background: #6bc4ce; border-color: #62bac5; }
+.toggle input:checked ~ .switch-track::after, .module-toggle input:checked + .switch-track::after { background: #fff; }
+.range-value { background: #f7fcfc; border-color: #d5e8ea; color: #53777d; }
+.statusbar { background: #f7fcfc; border-top-color: #d8e9eb; color: #81999e; }
+.statusbar #pendingCount { color: #ad874d; }
+.toast { box-shadow: 0 5px 18px #467f861a; }
+.global-notice { background: #fff3f5; }
+.debug-panel, .empty-state, .loading-state { background: #fff; border-color: #cfe5e8; }
+.debug-columns { background: #f1f8f9; border-bottom-color: #dbeaec; }
+.debug-row { border-bottom-color: #e5eff0; }
+.debug-row.has-action-error { background: #fff2f3; }
+.debug-address { color: #459aa6; }
+.debug-badge { background: #eef7f8; color: #5c7c82; }
+.debug-badge[data-tone="ready"] { background: #e2f4ee; color: #398b7b; }
+.debug-badge[data-tone="blocked"], .debug-badge[data-tone="conflict"] { background: #fff0f3; color: #b85d70; }
+.debug-badge[data-tone="pending"] { background: #fff5e3; color: #a97839; }
+@media (max-width: 1000px) {
+  .group-header-controls, .multiple-header-rows .group-header-controls { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 760px) {
+  .feature-header { grid-template-columns: minmax(0,1fr) auto; }
+  .group-header-controls { gap: 6px; }
+}
+@media (max-width: 650px) {
+  .group-header-controls { padding-inline: 9px; }
+  .group-body { padding-inline: 9px; }
+  .feature-header { padding: 5px 6px; }
+}
+
+/* Consistent light-theme hover and focus states */
+.setting-button:hover:not(:disabled), .subtle-button:hover:not(:disabled), .hotkey-capture:hover:not(:disabled), .icon-button:hover:not(:disabled) {
+  background: #e5f5f6;
+  border-color: #b4dce0;
+  color: #356a72;
+}
+.setting-button.action-primary:hover:not(:disabled), .setting-button.primary:hover:not(:disabled) {
+  background: #4daab8;
+  border-color: #65bdc7;
+  color: #fff;
+}
+.setting-button.action-danger:hover:not(:disabled) {
+  background: #ffe7ec;
+  border-color: #e4b8c3;
+  color: #a64f63;
+}
+.field:hover:not(:disabled), .setting-editor select:hover:not(:disabled), .setting-editor textarea:hover:not(:disabled) {
+  border-color: #a9d5da;
+}
+
+/* Keep a legacy compound feature's name and switch adjacent. */
+.feature-common .compound-row > .setting-row:first-child { min-width: 0; padding-right: 0; }
+.feature-common .compound-row > .setting-row:first-child .setting-copy { flex: 0 0 auto; }
+.feature-common .compound-row > .setting-row:first-child .setting-editor { flex: 0 0 auto; }
+
+/* One master switch belongs on the same compact line as its group title. */
+.settings-group.has-header-controls:not(.multiple-header-rows) {
+  display: grid;
+  grid-template-columns: max-content minmax(0,1fr);
+}
+.settings-group.has-header-controls:not(.multiple-header-rows) .group-summary {
+  width: auto;
+  min-width: 0;
+  padding-right: 0;
+}
+.settings-group.has-header-controls:not(.multiple-header-rows) .group-header-controls {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.settings-group.has-header-controls:not(.multiple-header-rows) .feature-header {
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.settings-group.has-header-controls:not(.multiple-header-rows) .group-body { grid-column: 1 / -1; }

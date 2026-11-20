@@ -71,6 +71,25 @@ function setup(){
 const cases=[];
 const test=(name,run)=>cases.push({name,run});
 
+test('feature settings and shortcuts stay attached to their master switch',()=>{
+ const core=setup().context.RA2ConsoleCore;
+ const controls=[
+  {id:11,type:'toggle',label:'自动维修',group:'自动功能',groupHeader:true},
+  {id:12,type:'number',label:'血量阈值',group:'自动功能'},
+  {id:13,type:'hotkey',label:'快捷键',group:'自动功能'},
+  {id:14,type:'toggle',label:'自动装车',group:'自动功能',groupHeader:true},
+  {id:15,type:'number',label:'装载范围',group:'自动功能'}
+ ].map(control=>core.canonical(control));
+ const blocks=core.featureBlocks(controls);
+ assert.equal(blocks.length,2);
+ assert.equal(blocks[0].headers[0].id,11);
+ assert.deepEqual(JSON.parse(JSON.stringify(blocks[0].details.map(c=>c.id))),[12,13]);
+ assert.equal(blocks[1].headers[0].id,14);
+ assert.deepEqual(JSON.parse(JSON.stringify(blocks[1].details.map(c=>c.id))),[15]);
+ const filtered=core.groupControls(controls,'血量阈值').get('自动功能');
+ assert.deepEqual(JSON.parse(JSON.stringify(filtered.map(c=>c.id))),[11,12]);
+});
+
 for(const id of [1,2])for(const key of ['Enter','Escape'])for(const composition of [{isComposing:true},{keyCode:229}]){
  test(`${id===1?'text':'editable choice'} keeps composition ${key} (${Object.keys(composition)[0]})`,()=>{
   const fixture=setup(),input=fixture.edit(id,'中文候选');

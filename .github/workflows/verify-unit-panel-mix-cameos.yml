@@ -58,6 +58,21 @@ jobs:
           export RA2_OUTPUT_DIR="$PWD/artifacts/console"
           bash source/build-zig-x64.sh > diagnostics/unit-panel-mix-build.log 2>&1 || { tail -120 diagnostics/unit-panel-mix-build.log; exit 1; }
           python source/tools/verify_windows_outputs.py --root artifacts/console --host-arch x64 --webview2
+      - name: Deliver Windows UI update package (x64 host + x86 runtime)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-PR68-UI-Windows-update
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/console/RA2Toolbox.exe
+            artifacts/console/GameRuntime.dll
+            artifacts/console/GameRuntimeHost32.exe
+            artifacts/console/WebView2Loader.dll
+            artifacts/console/BUILD_TARGET.json
+            artifacts/console/BUILD_SOURCE_MANIFEST.json
+            artifacts/console/licenses/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
