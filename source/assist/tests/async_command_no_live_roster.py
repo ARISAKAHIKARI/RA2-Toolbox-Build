@@ -24,12 +24,22 @@ for path in ("sticky_bridge.h", "control_object_owner_bridge.h",
     body = (root / path).read_text()
     assert "prepareWorldIndex(frame)" in body, path
     assert "indexWorld(frame)" not in body, path
+# Page requests are bounded, deduplicated and ownership-transferred. A partial
+# or oversized dependency set must never be submitted as a complete graph.
+assert "requests.assign(hostRequests.begin()" not in runtime
+assert "requests.insert(requests.end()" not in runtime
+assert "runtimeDemandLeases.visit(key.tick,appendPage)" in runtime
+assert "requests.size()>=worldframe::MaxPages" in runtime
+assert "runtimeWorldDemands.size()>=worldframe::MaxPages" in runtime
+assert "runtimeDemandOverflow" in runtime
+assert "queued_.pages.swap(pages)" in worker
+assert "job.pages.swap(self->queued_.pages)" in worker
 assert 'worldFrameCommandWorker.take(key,graphDemand' in runtime
 assert 'if(asyncCommand)' in runtime
 assert runtime.index('if(asyncCommand)') < runtime.index('worldframe::CaptureGraph<Live>capture(')
 assert 'commandRequestGate.defer(key,graphDemand' in runtime
 assert 'commandRequestGate.submitted(key,graphDemand' in runtime
-assert runtime.index('commandRequestGate.defer(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
+assert runtime.index('commandRequestGate.defer(key,graphDemand') < runtime.index('auto&requests=worldFrameCaptureRequests;')
 assert 'worldFrameCommandWorker.deferBusy(key,graphDemand,requestRevision,globalVehicles)' in runtime
 assert runtime.index('worldFrameCommandWorker.deferBusy(key,graphDemand') < runtime.index('requests.assign(hostRequests.begin()')
 # Game-thread lock contention must defer request assembly instead of
