@@ -1,5 +1,6 @@
 // Executes the production capture, immutable read-set and (with the driver)
 // Runtime/Host transport. Only operating-system calls and game bytes are fake.
+#define WORLD_FRAME_TEST_VISUAL_CACHE
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
