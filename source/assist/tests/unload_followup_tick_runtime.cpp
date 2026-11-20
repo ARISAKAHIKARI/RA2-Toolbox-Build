@@ -73,8 +73,8 @@ static unloadcompute::Input unloadExternalInput,unloadLocalInput;
 namespace compute{enum Lane{Unload,Escape};static bool inside(int,Lane){return false;}}
 struct Vec {};
 static Vec vec(uint32_t){return {};}
-static bool nativeMember(Vec,uint32_t p){return worldObjects.contains(p);}
-static void watchEjections(uint32_t,int,Vec){}
+static bool nativeMember(uint32_t p){return worldObjects.contains(p);}
+static void watchEjections(uint32_t,int){}
 static void serviceUnloadCalculation(uint32_t,int,int&){}
 static void publishUnloadCalculation(){}
 static bool collectUnloadSource(unloadcompute::Input&,const UnloadPassenger&,uint32_t,int){return false;}
