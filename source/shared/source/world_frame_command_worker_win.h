@@ -80,15 +80,21 @@ class CommandCaptureWorker {
   // In async mode the old exact-frame publisher does not write this channel.
   {
    Server hostWriter(Server::Role::PublicationOnly);
+   Work job; // Retain the previous page-vector allocation across jobs.
    for(;;){
    if(self->stopping_.load(std::memory_order_acquire))break;
    if(WaitForSingleObject(self->event_,50)==WAIT_FAILED)break;
    if(self->stopping_.load(std::memory_order_acquire))break;
-   Work job;bool found=false;
+   bool found=false;
    {
     std::lock_guard<std::mutex>lock(self->gate_);
     if(self->queuedReady_){
-     job=std::move(self->queued_);self->queuedReady_=false;
+     job.key=self->queued_.key;job.demand=self->queued_.demand;
+     job.requestRevision=self->queued_.requestRevision;
+     job.globalVehicles=self->queued_.globalVehicles;
+     job.ticket=self->queued_.ticket;job.epoch=self->queued_.epoch;
+     job.pages.swap(self->queued_.pages); // recycle the old worker buffer to the producer
+     self->queuedReady_=false;
      self->capturing_.store(true,std::memory_order_release);found=true;
     }
    }
@@ -284,7 +290,7 @@ public:
   return capturing_.load(std::memory_order_acquire)&&
       lastRequestedKey_.sameWorld(key);
  }
- bool request(const Key&key,uint32_t demand,uint64_t revision,const std::vector<uint32_t>&pages,bool globalVehicles=false){
+ bool request(const Key&key,uint32_t demand,uint64_t revision,std::vector<uint32_t>&pages,bool globalVehicles=false){
   if(!key.pid||!key.owner||!key.match||key.house<0x10000||
      !key.scenario||!key.cells||key.frame<0||!demand||
      pages.size()>MaxPages)return false;
@@ -315,9 +321,9 @@ public:
   if(!same)latestTicket_.fetch_add(1,std::memory_order_acq_rel);
   queued_.key=key;queued_.demand=demand;queued_.requestRevision=revision;queued_.globalVehicles=globalVehicles;
   queued_.ticket=latestTicket_.load(std::memory_order_acquire);
-  // This O(N) address copy is at most 64 KiB. Sorting, graph traversal,
-  // missing-page probing and ALL object bytes are worker-only.
-  queued_.pages.assign(pages.begin(),pages.end());
+  // Transfer the bounded page-list buffer by ownership swap. No O(N) page
+  // copy or vector allocation occurs on the game callback.
+  queued_.pages.swap(pages);
   queued_.epoch=epoch_.load(std::memory_order_acquire);
   queuedReady_=true;lastRequestedAt_=now;lastRequestedKey_=key;
   lastRequestedDemand_=demand;lastRequestedRevision_=revision;lastRequestedGlobal_=globalVehicles;
