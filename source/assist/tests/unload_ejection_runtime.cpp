@@ -95,10 +95,10 @@ int main(){
        "restored carrier type did not preserve typed ejections");
 
  setup();bad=P1+0x21C;watchEjections(House,10);
- check(unloadCount==1&&unloadPassengers[0].id==102,
-       "missing first owner should not cancel second passenger enrollment");
+ check(unloadCount==0,"incomplete owner sample must not partially enroll passengers");
  bad=0;watchEjections(House,11);
- check(unloadCount==2,"recovered first owner did not join ejection watcher");
+ check(unloadCount==2&&unloadPassengers[0].id==101&&unloadPassengers[1].id==102,
+       "recovered complete owner sample did not atomically enroll passengers");
 
  setup();sh->flags=0;watchEjections(House,10);
  check(unloadCount==0,"explicitly disabled EjectAssist must not enroll");
