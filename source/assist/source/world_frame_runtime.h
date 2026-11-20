@@ -75,7 +75,9 @@ struct WorldFrameShadowDisabled {
 static WorldFrameShadowDisabled worldFrameShadow;
 #endif
 static uint32_t worldFrameSerial=0;static uint32_t worldFrameCapturedDemand=0;static uint64_t worldFrameCapturedRevision=0;static uint32_t runtimeDemandRevision=1;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
-static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
+static std::array<uint64_t,8192>runtimeDemandBits{},worldFrameRequestBits{};
+static std::vector<uint32_t>runtimeWorldDemands;
+static bool runtimeDemandOverflow=false,runtimeDemandBufferPrepared=false,worldFrameRequestBufferPrepared=false;
 // The legacy targeted-recovery ring exists only in the synchronous test
 // fixture. Production retries missing pages through the next complete graph.
 #if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
@@ -93,10 +95,31 @@ static worldframe::Key lastCaptureAttempt{};static bool haveCaptureAttempt=false
 static uint32_t failedCaptureAt=0,captureRetryDelay=0;
 static uint64_t worldProducerGeneration=0;
 static void requestWorldRange(uint32_t at,size_t n){
- if(!worldframe::range(at,n))return;
- for(uint32_t page=at&~4095u;uint64_t(page)<uint64_t(at)+n;page+=4096){const uint32_t index=page>>12;const uint64_t mask=uint64_t(1)<<(index&63);
-  if(!(runtimeDemandBits[index>>6]&mask)){runtimeDemandBits[index>>6]|=mask;runtimeWorldDemands.push_back(page);if(!++runtimeDemandRevision)++runtimeDemandRevision;
-   runtimeDemandLeases.retain(page,sampleReadDepth?sampleScopeTick:worldFrame.key.tick);}}
+ if(!worldframe::range(at,n)||runtimeDemandOverflow)return;
+ if(!runtimeDemandBufferPrepared){
+  runtimeWorldDemands.reserve(worldframe::MaxPages);
+  runtimeDemandBufferPrepared=true;
+ }
+ const uint32_t tick=sampleReadDepth?sampleScopeTick:worldFrame.key.tick;
+ for(uint32_t page=at&~4095u;uint64_t(page)<uint64_t(at)+n;page+=4096){
+  const uint32_t index=page>>12;
+  if((index>>6)>=runtimeDemandBits.size()){runtimeDemandOverflow=true;break;}
+  const uint64_t mask=uint64_t(1)<<(index&63);
+  if(!(runtimeDemandBits[index>>6]&mask)){
+   // Keep the lease even if the per-sample vector is full. Overflow is
+   // reported and no partial graph is submitted; later lease expiry or a
+   // reduced demand set can make a complete request possible again.
+   runtimeDemandLeases.retain(page,tick);
+   if(runtimeWorldDemands.size()>=worldframe::MaxPages){
+    runtimeDemandOverflow=true;
+    if(!++runtimeDemandRevision)++runtimeDemandRevision;
+    break;
+   }
+   runtimeDemandBits[index>>6]|=mask;
+   runtimeWorldDemands.push_back(page);
+   if(!++runtimeDemandRevision)++runtimeDemandRevision;
+  }else runtimeDemandLeases.retain(page,tick);
+ }
 }
 // The worker can deliver a complete observational graph after the game
 // frame advanced. Only read-only planners explicitly opting in may consume
