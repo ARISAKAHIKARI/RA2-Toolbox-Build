@@ -199,19 +199,33 @@ static bool submitMissile(uint32_t p,int action,uint32_t target,uint32_t house,i
  publishMissileHeld();return true;
 }
 static bool releaseMissileHolds(uint32_t house,int frame,DWORD now){
- pruneMissileSends(now);
+ pruneMissileSends(now);bool unknown=false;
  for(int n=0;n<missileSendCount;++n){auto&s=missileSends[n];if((!s.held&&!s.controlled)||s.mission==5)continue;
   // Cleanup owns an exact object locator from the accepted missile order.
   // Revalidate only that object; never rebuild the entire world roster to
   // release a small set of already-known holds during pause/exit.
-  const uint32_t p=s.pointer;uint32_t id=0;
-  if(p<0x10000||!readLiveWorld(p+0x10,&id,sizeof id)||id!=s.id||!own(p,house))continue;
+  const uint32_t p=s.pointer;uint32_t id=0,owner=0;int health=0;
+  uint8_t active=0,deactivated=0,alive=0;
+  if(p<0x10000||!readLiveWorld(p+0x10,&id,sizeof id)||
+     !readLiveWorld(p+0x21C,&owner,sizeof owner)||
+     !readLiveWorld(p+0x6C,&health,sizeof health)||
+     !readLiveWorld(p+0x74,&active,sizeof active)||
+     !readLiveWorld(p+0x81,&deactivated,sizeof deactivated)||
+     !readLiveWorld(p+0x90,&alive,sizeof alive)){
+   unknown=true;continue;
+  }
+  if(id!=s.id||owner!=house||health<=0||!active||deactivated||!alive){
+   // The original object is gone, dead or no longer ours. Do not issue an
+   // order to a reused address; retire only this stale local hold receipt.
+   s.held=s.controlled=false;s.mission=-1;s.releasedAt=frame;continue;
+  }
   // Explicit disable/exit also interrupts a burst: the user asked to stop
   // automation. Normal automatic releases below wait for burst completion.
   // Queue Guard after a pending Attack too, so disable ends automatic pursuit.
-  if(!submitMissile(p,5,0,house,frame,now))break;
+  if(!submitMissile(p,5,0,house,frame,now)){unknown=true;break;}
  }
- return missileHoldCount==0;
+ publishMissileHeld();
+ return !unknown&&missileHoldCount==0;
 }
 static void applyMissileResult(const missilecompute::Result&r,uint32_t house,int frame,DWORD now,const missilecompute::Observation*source=nullptr){
  if(missileManualOverflowed())return;
