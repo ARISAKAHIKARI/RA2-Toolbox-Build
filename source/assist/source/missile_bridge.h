@@ -201,7 +201,11 @@ static bool submitMissile(uint32_t p,int action,uint32_t target,uint32_t house,i
 static bool releaseMissileHolds(uint32_t house,int frame,DWORD now){
  pruneMissileSends(now);
  for(int n=0;n<missileSendCount;++n){auto&s=missileSends[n];if((!s.held&&!s.controlled)||s.mission==5)continue;
-  uint32_t p=worldByID(s.id);if(!p)continue;
+  // Cleanup owns an exact object locator from the accepted missile order.
+  // Revalidate only that object; never rebuild the entire world roster to
+  // release a small set of already-known holds during pause/exit.
+  const uint32_t p=s.pointer;uint32_t id=0;
+  if(p<0x10000||!readLiveWorld(p+0x10,&id,sizeof id)||id!=s.id||!own(p,house))continue;
   // Explicit disable/exit also interrupts a burst: the user asked to stop
   // automation. Normal automatic releases below wait for burst completion.
   // Queue Guard after a pending Attack too, so disable ends automatic pursuit.
