@@ -13,11 +13,12 @@ def between(s, left, right):
     return s.split(left, 1)[1].split(right, 1)[0]
 assert 'static bool prepareWorldIndex(int frame)' in bridge
 gate = between(bridge, "static bool prepareWorldIndex(int frame){", '\n#include "../../shared/source/key_gesture.h"')
-assert gate.index('worldFrameCommandWorker.enabled()') < gate.index('indexWorld(frame)')
+assert 'indexWorld(' not in gate
 assert 'return refreshWorldIndex(frame,false)' in gate
-fallback = between(bridge, "static bool refreshWorldIndex(int frame,bool executionGuards){", "static bool prepareWorldIndex(")
-assert 'if(!executionGuards||worldFrameCommandWorker.enabled())' in fallback
-assert fallback.index('if(!executionGuards||worldFrameCommandWorker.enabled())') < fallback.rindex('indexWorld(frame)')
+fallback = between(bridge, "static bool refreshWorldIndex(int frame,bool executionGuards){", "// Identity-index publication")
+assert 'indexWorld(' not in fallback
+assert 'CaptureGraph' not in fallback
+assert 'static void indexWorld(int frame)' not in bridge
 for path in ("sticky_bridge.h", "control_object_owner_bridge.h",
              "native_mega_gateway_bridge.h", "private_outlist_bridge.h"):
     body = (root / path).read_text()
@@ -46,10 +47,11 @@ assert 'readLiveWorld(pointer+0x10' in candidate_gate
 assert 'if(sampleReadDepth)' in candidate_gate
 
 assert 'coalesceInFlightWorld(lastRequestedKey_,key' in worker
-# Production defaults to nonblocking worker capture, but a launch-time
-# opt-out can restore synchronous behavior if exact-frame handoff starves.
-assert 'RA2TOOLBOX_ASYNC_COMMAND_CAPTURE' in worker
-assert "return !(length==1&&setting[0]=='0');" in worker
+# Production has no synchronous capture opt-out. Only a separately compiled
+# test fixture can exercise the old synchronous implementation.
+assert 'RA2TOOLBOX_ASYNC_COMMAND_CAPTURE' not in worker
+assert 'WORLD_FRAME_TEST_SYNC_CAPTURE' in worker
+assert 'return true;' in worker
 assert 'worldFrameCommandWorker.enabled()' in runtime
 assert 'commandRequestGate.reset()' in runtime
 assert 'worldFrameCommandWorker.request(key,graphDemand' in runtime
@@ -92,7 +94,8 @@ else:
     assert "std::sort(unloadRoster" not in native_orders
 assert "ReindexBudget=128" in unload_policy
 assert "while(rebuildAt<count&&work++<ReindexBudget)" in unload_policy
-assert "if(!worldFrameCommandWorker.enabled())indexWorld(frame);" in bridge
+assert "if(!worldFrameCommandWorker.enabled())indexWorld(frame);" not in bridge
+assert "indexWorld(" not in bridge
 
 
 # The original manual token/pointer must reach the native EventClass
