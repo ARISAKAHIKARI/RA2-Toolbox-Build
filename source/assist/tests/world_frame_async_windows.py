@@ -1,6 +1,6 @@
 """Execute production Win32 publication worker inside an actual loadable DLL."""
 from pathlib import Path
-import argparse,subprocess,json,hashlib,os
+import argparse,subprocess,json,hashlib
 p=argparse.ArgumentParser();p.add_argument('--zig',required=True,type=Path);p.add_argument('--out',required=True,type=Path);a=p.parse_args();a.out=a.out.resolve();a.out.mkdir(parents=True,exist_ok=True);here=Path(__file__).resolve().parent;rows=[]
 for arch in ['x86','x86_64']:
  out=a.out/arch;out.mkdir(exist_ok=True);dll=out/'async-publication.dll';sync_dll=out/'async-publication-sync-fixture.dll';exe=out/'async-host.exe'
@@ -25,5 +25,5 @@ for arch in ['x86','x86_64']:
    print(arch,mode,attempt,r.returncode,r.stdout+r.stderr)
    rows.append(dict(arch=arch,mode=mode,attempt=attempt,exit=r.returncode,passed=r.returncode==0))
    if r.returncode:break
-sources={str(x):hashlib.sha256(x.read_bytes()).hexdigest() for x in [here/'world_frame_async_dll.cpp',here/'world_frame_async_host.cpp',here.parent/'source/world_frame_runtime.h',here.parent/'source/world_lifecycle.h',here/'world_frame_core.cpp',here.parents[1]/'shared/source/world_frame_capture.h',here.parents[1]/'shared/source/world_frame_async_win.h',here.parents[1]/'shared/source/world_frame_publication.h',here.parents[1]/'shared/source/world_frame_transport.h']}
+sources={str(x):hashlib.sha256(x.read_bytes()).hexdigest() for x in [here/'world_frame_async_dll.cpp',here/'world_frame_async_host.cpp',here/'world_frame_async_windows.py',here.parent/'source/world_frame_runtime.h',here.parent/'source/world_lifecycle.h',here/'world_frame_core.cpp',here.parents[1]/'shared/source/world_frame_capture.h',here.parents[1]/'shared/source/world_frame_async_win.h',here.parents[1]/'shared/source/world_frame_command_worker_win.h',here.parents[1]/'shared/source/world_frame_shadow_win.h',here.parents[1]/'shared/source/world_frame_recovery.h',here.parents[1]/'shared/source/world_frame_publication.h',here.parents[1]/'shared/source/world_frame_transport.h']}
 passed=len(rows)==18 and all(r['passed']for r in rows);(a.out/'result.json').write_text(json.dumps(dict(passed=passed,windows_dll_executed=True,game_tested=False,runs=rows,sources=sources),indent=2)+'\n');assert passed
