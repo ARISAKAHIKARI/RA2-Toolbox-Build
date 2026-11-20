@@ -206,7 +206,8 @@ static bool releaseMissileHolds(uint32_t house,int frame,DWORD now){
   // release a small set of already-known holds during pause/exit.
   const uint32_t p=s.pointer;uint32_t id=0,owner=0;int health=0;
   uint8_t active=0,deactivated=0,alive=0;
-  if(p<0x10000||!readLiveWorld(p+0x10,&id,sizeof id)||
+  if(p<0x10000){s.held=s.controlled=false;s.mission=-1;s.releasedAt=frame;continue;}
+  if(!readLiveWorld(p+0x10,&id,sizeof id)||
      !readLiveWorld(p+0x21C,&owner,sizeof owner)||
      !readLiveWorld(p+0x6C,&health,sizeof health)||
      !readLiveWorld(p+0x74,&active,sizeof active)||
