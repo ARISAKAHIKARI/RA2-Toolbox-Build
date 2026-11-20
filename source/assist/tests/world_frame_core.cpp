@@ -121,6 +121,23 @@ void hostVisual(){
   // Retry a different immutable token so the per-source attempt throttle does not hide a guard failure.
   auto replacement=std::make_shared<worldframe::Snapshot>();CHECK(replacement->import(raw->key,raw->counters,raw->pages.data(),raw->pages.size()));raw=replacement;
  }
+ auto boundary=[](int frame,uint32_t tick){
+  auto source=std::make_shared<worldframe::Snapshot>();auto k=key(frame);k.tick=tick;k.serial=uint32_t(frame);k.demand=worldframe::BoundaryOnlyKeyBit;
+  source->reset(k);CHECK(source->seal());return source;
+ };
+ worldframe::VisualCache fast;
+ m.put(0xA8ED84,52);auto first=boundary(52,200);
+ auto original=fast.acquire(first,worldframe::Resources,200,live);CHECK(original);
+ m.put(0xA8ED84,60);auto next=boundary(60,208);
+ CHECK(fast.acquire(next,worldframe::Resources,208,live)==original&&fast.statistics.captures==1);
+ CHECK(original->controlSource==first&&original->visualTick==200);
+ auto refreshed=fast.acquire(next,worldframe::Resources,216,live);CHECK(refreshed&&refreshed!=original&&refreshed->controlSource==next);
+ m.put(0xA8ED84,61);m.put(0x87F7E8+0x1240,64);
+ auto resized=boundary(61,217);auto resizedCapture=fast.acquire(resized,worldframe::Resources,217,live);
+ CHECK(resizedCapture&&resizedCapture->controlSource==resized&&fast.statistics.captures==3);
+ m.put(0xA8ED84,59);auto rewound=boundary(59,218);
+ auto rewindCapture=fast.acquire(rewound,worldframe::Resources,218,live);
+ CHECK(rewindCapture&&rewindCapture->controlSource==rewound&&fast.statistics.captures==4);
  std::printf("PASS Host visual isolation: control %u reads/%u bytes/%zu pages; 512 display pages stay external; frozen control, shared reuse, pause recovery, provenance and independent frame/world rejection\n",rawCalls,rawBytes,rawPages);
 }
 

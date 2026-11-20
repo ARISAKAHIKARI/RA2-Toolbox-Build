@@ -29,24 +29,26 @@ class Worker {
  std::mutex mutex;std::condition_variable cv;std::thread thread;bool stop=false,paused=false;Request request{};uint64_t generation=0;
  std::shared_ptr<const external::radar::Frame> latest;
  void run(){
-  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::sceneextras::Layers radarLayers;external::materialmotion::Timeline motion;uint64_t active=~uint64_t(0);int previousFrame=-1;uint32_t previousSerial=0;Request activeRequest{};
+  external::ReadSession reader;external::cameraassets::Context<external::ReadSession> assets(reader);external::radar::SceneRenderer<decltype(assets)> renderer;external::radar::DiagramRenderer diagram;external::sceneextras::Layers radarLayers;external::materialmotion::Timeline motion;uint64_t active=~uint64_t(0);Request activeRequest{};
+  std::weak_ptr<const external::radar::Frame> previousScene;
   DWORD diagnosticAt=0;pipelineperf::Window timings(L"minimap-worker",{L"total",L"sample",L"snapshot",L"diagram",L"render",L"publish"});
   for(;;){Request r;uint64_t token;{std::unique_lock<std::mutex> lock(mutex);cv.wait(lock,[&]{return stop||(!paused&&request.pid);});if(stop)return;r=request;token=generation;}
    const auto iterationStarted=std::chrono::steady_clock::now();
    pipelineperf::Scope total(timings,0,critical);
-   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();renderer.reset();diagram.reset();radarLayers.reset();motion.reset();}else {if(r.mode!=activeRequest.mode)renderer.reset();if(r.gpu!=activeRequest.gpu||r.selection.revision!=activeRequest.selection.revision)renderer.reset();}activeRequest=r;active=token;previousFrame=-1;previousSerial=0;}
+   if(token!=active){if(r.pid!=activeRequest.pid||r.match!=activeRequest.match){reader.close();renderer.reset();diagram.reset();radarLayers.reset();motion.reset();}else {if(r.mode!=activeRequest.mode)renderer.reset();if(r.gpu!=activeRequest.gpu||r.selection.revision!=activeRequest.selection.revision)renderer.reset();}activeRequest=r;active=token;previousScene.reset();}
    external::xbrzadapter::gpuPresentation(r.gpu); // this worker owns its GPU state; native assets stay CPU-prepared
-   std::shared_ptr<const external::radar::Frame> next,retired;
+   std::shared_ptr<const external::radar::Frame> next,retired,renderedScene;
    if(reader.open(r.pid)){reader.begin();
     external::radar::FrameScope worldScope(reader,r.match);
     if(worldScope){
     pipelineperf::Scope sample(timings,1);
     auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readLive(p,out,n);};
     auto shared=external::radar::sharedScene(reader,r.pid,r.match,r.reveal,GetTickCount(),external::radar::SceneConsumer::Minimap,r.mode==1,r.selection.profile.particles,r.selection.profile.lasers);
-    const bool ok=shared&&external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount());
+    external::radar::FrameScope sceneScope(reader,r.match,shared?shared->sourceFrame:worldframe::Token{});
+    const bool ok=shared&&sceneScope&&external::radar::recentMarkers(*shared,external::radar::publicationContext(fresh),GetTickCount());
     const auto sampleReads=reader.reads,samplePages=reader.prefetchedPages;
-    const int frame=shared?shared->frame:-1;const uint32_t serial=reader.worldFrameSerial();sample.finish();
-    if(ok&&(r.mode==1||frame!=previousFrame||serial!=previousSerial)){
+    sample.finish();
+    if(ok&&(r.mode==1||previousScene.lock()!=shared)){
      pipelineperf::Scope snapshot(timings,2);auto data=*shared;assets.identity(r.pid,r.match);snapshot.finish();
      bool reusedDiagram=false;
      if(r.mode==1){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&external::radar::reusableRealScene(*latest,data,r.width,r.height)){data.map=latest->map;data.scene=latest->scene;reusedDiagram=true;}}
@@ -88,16 +90,15 @@ class Worker {
        }}
        if(scene)data.scene=std::move(scene);
       }
-      if(reader.worldFrameComplete())next=std::make_shared<external::radar::Frame>(std::move(data));
+      if(reader.worldFrameComplete()){next=std::make_shared<external::radar::Frame>(std::move(data));renderedScene=shared;}
      }else if(!same&&sampled.readable){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&!external::radar::sameWorld(*latest,sampled))retired=std::move(latest);}
-     previousFrame=frame;previousSerial=serial;
     }
     if(!ok){auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readLive(p,out,n);};auto observed=external::radar::publicationContext(fresh);
      if(observed.readable){std::lock_guard<std::mutex> lock(mutex);if(token==generation&&latest&&!external::radar::sameWorld(*latest,observed))retired=std::move(latest);}}
     }
    }else{std::lock_guard<std::mutex> lock(mutex);if(token==generation)retired=std::move(latest);}
    auto fresh=[&](uint32_t p,void*out,size_t n){return reader.readLive(p,out,n);};auto completed=external::radar::publicationContext(fresh);
-   {pipelineperf::Scope publish(timings,5);std::lock_guard<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed))latest.swap(next);else if(completed.readable&&latest&&!external::radar::sameWorld(*latest,completed))retired=std::move(latest);}}
+   {pipelineperf::Scope publish(timings,5);std::lock_guard<std::mutex> lock(mutex);if(token==generation&&next){if(external::radar::sameWorld(*next,completed)){latest.swap(next);previousScene=renderedScene;}else if(completed.readable&&latest&&!external::radar::sameWorld(*latest,completed))retired=std::move(latest);}}
    next.reset();retired.reset();total.finish();
    {std::unique_lock<std::mutex> lock(mutex);cv.wait_until(lock,iterationStarted+std::chrono::microseconds(monitorrefresh::periodMicros(r.rate)),[&]{return stop||paused||generation!=token||request.rate!=r.rate;});if(stop)return;}
   }

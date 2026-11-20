@@ -10,6 +10,8 @@ namespace buildreserve {
 struct Choice {int slot=0,index=0,tab=0;uint32_t type=0;bool future=false;};
 static construction::Book books[4];static std::vector<Choice> choices;static HWND window;
 static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;static int choicesTab=-1;
+static uint32_t choicesMatch=0,choicesHouse=0;static bool choicesIncomplete=false;
+static int nativeSidebarCount[4]={-1,-1,-1,-1};
 static int activeTab=-1,selectedTab=-1,lastNativeTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
 static construction::NativeFrame nativeFrame;static uint32_t nativeAt=0;
 static construction::NativeDisplay nativeDisplay;
@@ -65,7 +67,9 @@ static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];criti
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
 static void hide(){publishReservationPolicy({});geometryReady=false;nativeFrame={};nativeAt=0;nativeDisplay.clear();resetPaint();if(window)ShowWindow(window,SW_HIDE);}
 static void cancel(int tab){auto&b=books[tab];for(int i=0;i<commandQueue.size;)if((commandQueue.slots[i].command==ProduceReserved||commandQueue.slots[i].command==ProduceDeferred)&&commandQueue.slots[i].token==b.token)commandQueue.discard(i);else ++i;b={};}
-static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();choicesTab=-1;activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
+static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentID[tab]=0;}resetUnitBudgets();choices.clear();choicesTab=-1;choicesIncomplete=false;
+ for(auto&count:nativeSidebarCount)count=-1;
+ activeTab=selectedTab=lastNativeTab=-1;refreshed=0;hide();}
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
 // A requested full-technology whitelist also protects a reservation while the
 // Runtime is installing/restoring that mode. Only Runtime authorizes production.
@@ -98,7 +102,9 @@ template<class C>static bool loadForecast(C&catalogue){
  }return true;
 }
 static void collectChoices(){
- if(activeTab<0||activeTab>3){choices.clear();return;}
+ if(choicesMatch!=commandMatch()||choicesHouse!=house||choicesTab!=activeTab){choices.clear();choicesTab=-1;}
+ choicesIncomplete=true;
+ if(activeTab<0||activeTab>3)return;
  // The native sidebar is a read-only display source, not authority for a
  // Produce command. Read it first: a transient forecast miss must not keep
  // already-buildable unit cameos in the reservation panel.
@@ -106,7 +112,6 @@ static void collectChoices(){
  uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=-1,after=-1,cameos[75*13]{};
  bool nativeReady=uiRead(strip+84,&count,4)&&count>=0&&count<=75&&(!count||uiRead(strip+88,cameos,size_t(count)*52))&&uiRead(strip+84,&after,4)&&after==count;
  auto nativeHere=[&](int kind,int index){for(int i=0;i<count;++i)if(cameos[i*13]==index&&cameos[i*13+1]==kind)return true;return false;};
- if(choicesTab!=activeTab)choices.clear();
  if(nativeReady&&activeTab>=2){
   // Never suppress a user's queued reservation, even after its native cameo appears.
   const auto&book=books[activeTab];
@@ -115,8 +120,9 @@ static void collectChoices(){
     std::find(book.items.begin(),book.items.end(),c.index)==book.items.end();
   }),choices.end());
  }
+ if(!nativeReady)return;
  externalReader.setWorldDemand(worldframe::Resources);
- external::WorldFrameScope source(externalReader,commandMatch());if(!source||!nativeReady)return;
+ external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
  auto previous=std::move(choices);choices.clear();
  auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
  bool forecastAttempted=false,previewReady=false;auto&b=books[activeTab];
@@ -138,7 +144,8 @@ static void collectChoices(){
      !catalogue.possible(type,t.kind,t.naval!=0,false,technologyRequested(index)))
    choices.push_back({slot,index,tab,type,true});
  }
- if(!source.complete())choices=std::move(previous);else choicesTab=activeTab;
+ if(!source.complete()||(forecastAttempted&&!previewReady)){choices=std::move(previous);return;}
+ choicesTab=activeTab;choicesMatch=commandMatch();choicesHouse=house;choicesIncomplete=false;
 }
 static void resizePanel(){
  if(!window||!geometryReady||!paintReady)return;POINT origin{};RECT previous{};
@@ -336,6 +343,8 @@ static PaintRequest capturePaint(){
 }
 static void requestPaint(){
  if(!geometryReady||!window||activeTab<0||activeTab>3||!constructionDisplayFresh())return;
+ if((paintedFrame&&!samePaintWorld(paintedFrame->request))||(requestedPaint&&!samePaintWorld(*requestedPaint))){resetPaint();ShowWindow(window,SW_HIDE);}
+ if(choicesTab!=activeTab||choicesMatch!=commandMatch()||choicesHouse!=house)return;
  // Read-only panel composition can proceed from the already verified Host
  // choices even while an unrelated command snapshot is being rebuilt.
  // Verify the live house on both sides; the UI publication also checks match.
@@ -344,7 +353,6 @@ static void requestPaint(){
  auto request=std::make_shared<PaintRequest>(capturePaint());
  if(!externalReader.readLive(0xA83D4C,&ownerAfter,4)||ownerAfter!=owner||
     request->pid!=pid||request->match!=commandMatch()||request->house!=house)return;
- if((paintedFrame&&!samePaintWorld(paintedFrame->request))||(requestedPaint&&!samePaintWorld(*requestedPaint))){resetPaint();ShowWindow(window,SW_HIDE);}
  if(requestedPaint&&samePaintWorld(*requestedPaint)&&requestedPaint->visual==request->visual){
   // Failed/missing icons retry without making the ordinary stable panel a
   // permanent 10Hz raster job. A failed worker gets the same bounded retry.
@@ -354,7 +362,8 @@ static void requestPaint(){
  requestedAt=request->tick;requestedPaint=request;paintWorker.submit(*request);
 }
 static bool panelInputReady(){
- RECT client{};return paintReady&&paintedFrame&&requestedPaint&&samePaintWorld(paintedFrame->request)&&
+ RECT client{};return paintReady&&paintedFrame&&requestedPaint&&choicesTab==activeTab&&
+  paintedFrame->request.activeTab==activeTab&&requestedPaint->activeTab==activeTab&&samePaintWorld(paintedFrame->request)&&
   paintedFrame->request.input==requestedPaint->input&&GetClientRect(window,&client)&&
   client.right-client.left==paintedFrame->request.width&&client.bottom-client.top==paintedFrame->request.height;
 }
@@ -362,7 +371,7 @@ static void pumpPaint(){
  if(!geometryReady||!window||!requestedPaint||!constructionDisplayFresh())return;
  if(paintRetryAt&&int32_t(GetTickCount()-paintRetryAt)>=0){paintRetryAt=0;InvalidateRect(window,nullptr,FALSE);}
  auto completed=paintWorker.get();
- if(!completed||completed==paintedFrame||!samePaintWorld(completed->request)||completed->request.input!=requestedPaint->input||
+ if(!completed||completed==paintedFrame||completed->request.activeTab!=activeTab||!samePaintWorld(completed->request)||completed->request.input!=requestedPaint->input||
     completed->request.width<1||completed->request.height<1||completed->pixels.size()!=size_t(completed->request.width)*completed->request.height)return;
  HDC target=GetDC(window);if(!target)return;
  HDC next=panelSpare.acquire(target,completed->request.width,completed->request.height);
@@ -382,9 +391,13 @@ static LRESULT CALLBACK proc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  }
  if(msg==WM_MOUSELEAVE){hoverChoice=hoverQueue=-1;requestPaint();return 0;}
  if(msg==WM_MOUSEWHEEL){if(!geometryReady||!panelInputReady())return 0;int delta=short(HIWORD(wp)),maximum=std::max(0,(int(choices.size())+1)/2-layout.rows)*2;scroll=std::clamp(scroll+(delta<0?2:-2),0,maximum);requestPaint();return 0;}
- if(msg==WM_LBUTTONUP||msg==WM_RBUTTONUP){if(!geometryReady||!panelInputReady()||!usable())return 0;int x=short(LOWORD(lp)),y=short(HIWORD(lp));
-  if(msg==WM_LBUTTONUP&&y>=0&&y<layout.pointY(24)&&x>=0&&x<layout.width()){
-   selectedTab=std::min(3,int(int64_t(x)*4/layout.width()));activeTab=selectedTab;scroll=0;refreshChoices();requestPaint();return 0;}
+ if(msg==WM_LBUTTONUP||msg==WM_RBUTTONUP){if(!geometryReady||!usable())return 0;int x=short(LOWORD(lp)),y=short(HIWORD(lp));
+  if(msg==WM_LBUTTONUP&&paintReady&&paintedFrame&&samePaintWorld(paintedFrame->request)&&
+     y>=0&&y<paintedLayout.pointY(24)&&x>=0&&x<paintedLayout.width()){
+   selectedTab=std::min(3,int(int64_t(x)*4/paintedLayout.width()));activeTab=selectedTab;scroll=0;hoverChoice=hoverQueue=-1;
+   refreshed=0;publishReservationPolicy({});return 0;
+  }
+  if(!panelInputReady())return 0;
   if(msg==WM_RBUTTONUP){if(activeTab<0||activeTab>3)return 0;bool all=(wp&MK_SHIFT)!=0;int slot=layout.queueAt(x,y,int(books[activeTab].items.size()));if(slot>=0)removeTop(all);else{int n=layout.choiceAt(x,y,scroll,int(choices.size()));if(n>=0){auto&items=books[activeTab].items;for(int i=int(items.size())-1;i>=0;--i)if(items[i]==choices[n].index){removeItem(activeTab,i,all);break;}}}}
   else reserve(layout.choiceAt(x,y,scroll,int(choices.size())));return 0;
  }
@@ -402,10 +415,17 @@ static void service(){
  static bool previous[4]{};uint8_t keys[256]{};nativekeyhost::down(keys);int requested=-1;
  const auto&bindings=nativekeyhost::current();
  for(int tab=0;tab<4;++tab){bool down=bindings.held(nativekeys::Command(tab),keys);if(extra.constructionQueue&&usable()&&down&&!previous[tab])requested=tab;previous[tab]=down;}
- if(requested>=0){selectedTab=requested;activeTab=requested;lastNativeTab=get<int>(0x87F7E8+0x539C,-1);scroll=0;refreshed=0;}
+ const int nativeTab=displayReady()?get<int>(0x87F7E8+0x539C,-1):-1;
+ if(nativeTab>=0&&nativeTab<4&&nativeTab!=lastNativeTab){lastNativeTab=nativeTab;selectedTab=-1;refreshed=0;}
+ if(requested>=0){selectedTab=requested;activeTab=requested;scroll=0;refreshed=0;}
+ const int watchTab=selectedTab>=0?selectedTab:nativeTab;
+ if(geometryReady&&watchTab>=0&&watchTab<4){
+  const int count=get<int>(0x87F7E8+0x1544+watchTab*3988+84,-1);
+  if(count>=0&&count<=75&&nativeSidebarCount[watchTab]!=count){nativeSidebarCount[watchTab]=count;refreshed=0;}
+ }
  consumeNativeClick();uint32_t now=GetTickCount();bool streaming=false;
  for(int tab=2;tab<4;++tab){const auto&b=books[tab];if(b.streaming&&!b.items.empty()&&!b.stage&&int32_t(now-b.retry)>=0)streaming=true;}
- if(refreshed&&uint32_t(now-refreshed)<100&&!streaming)return;refreshed=now;
+ if(refreshed&&uint32_t(now-refreshed)<(choicesIncomplete?32u:100u)&&!streaming)return;refreshed=now;
  if(!extra.constructionQueue){reset();return;}if(!displayReady()){hide();return;}
  if(!constructionDisplayFresh()||snap.renderStatus!=1){publishReservationPolicy({});return;}
  house=get<uint32_t>(0xA83D4C);if(house<0x10000){hide();return;}
@@ -481,7 +501,6 @@ static void service(){
  // A hidden overlay closes only its click surface. The production FIFO above
  // continues to submit and acknowledge native orders while displays are off.
  if(!overlayvisibility::visible()){hide();return;}
- int nativeTab=get<int>(0x87F7E8+0x539C,-1);if(nativeTab!=lastNativeTab){lastNativeTab=nativeTab;selectedTab=-1;}
  activeTab=selectedTab>=0?selectedTab:nativeTab;
  if(activeTab<0||activeTab>3){hide();return;}
  bool context=current[0]||current[1];for(const auto&b:books)context=context||!b.items.empty();

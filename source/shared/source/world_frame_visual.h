@@ -49,6 +49,7 @@ inline bool coherentVisualCapture(const VisualStamp&before,const VisualStamp&aft
 class VisualCache {
  Token base_,latest_;std::shared_ptr<SnapshotPool>pool_=std::make_shared<SnapshotPool>();
  CaptureScratch scratch_;DemandLeases leases_;std::vector<uint32_t>requests_;
+ VisualStamp latestStamp_;
  uint64_t revision_=0,builtRevision_=0,serial_=0;uint32_t builtDemand_=0,attemptedAt_=0;Token attempted_;
  std::array<uint32_t,6>demandTicks_{};uint32_t demanded_=0;
 public:
@@ -69,11 +70,21 @@ public:
   if(visualDetails&HostVisualCombat)demand|=Combat;
   if(visualDetails&HostVisualOre)demand|=Ore;
   uint32_t combined=0;for(unsigned bit=0;bit<6;++bit){const uint32_t flag=1u<<bit;if(demand&flag){demanded_|=flag;demandTicks_[bit]=now;}if((demanded_&flag)&&uint32_t(now-demandTicks_[bit])<=250)combined|=flag;}
-  if(latest_&&base_==source&&builtRevision_==revision_&&(demand&~builtDemand_)==0){++statistics.reused;return latest_;}
+  const bool compatible=latest_&&builtRevision_==revision_&&(demand&~builtDemand_)==0;
+  if(compatible&&base_==source){++statistics.reused;return latest_;}
   if(attempted_==source&&uint32_t(now-attemptedAt_)<16)return {};
-  attempted_=source;attemptedAt_=now;
   const auto started=std::chrono::steady_clock::now();
-  const auto before=visualStamp(live,*source);if(!before.valid){++statistics.failed;return {};}
+  const auto before=visualStamp(live,*source);
+  if(!before.valid){attempted_=source;attemptedAt_=now;++statistics.failed;return {};}
+  // Soon after a full display capture, a high-FPS game may publish several
+  // new empty boundaries. Reuse the original sealed bytes after checking
+  // current geometry and frame order, without retagging their provenance.
+  if(compatible&&boundaryOnlySource(base_->key)&&boundaryOnlySource(source->key)&&
+     source->key.frame>=base_->key.frame&&before.frame>=latestStamp_.frame&&
+     uint32_t(now-latest_->visualTick)<16&&latestStamp_.sameWorld(before)){
+   ++statistics.reused;return latest_;
+  }
+  attempted_=source;attemptedAt_=now;
   auto next=SnapshotPool::acquire(pool_);if(!next->extendVisual(source)){++statistics.failed;return {};}
   requests_.clear();leases_.append(now,requests_);std::sort(requests_.begin(),requests_.end());
   CaptureGraph<Live>capture(*next,live,scratch_);
@@ -81,7 +92,7 @@ public:
   const auto after=visualStamp(live,*source);
   if(!collected||!coherentVisualCapture(before,after,uint32_t(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-started).count()))||!next->seal()){++statistics.failed;return {};}
   next->visualFrame=after.frame;next->visualTick=now;next->visualSerial=++serial_;
-  base_=source;latest_=std::move(next);builtRevision_=revision_;builtDemand_=combined;++statistics.captures;return latest_;
+  base_=source;latest_=std::move(next);latestStamp_=after;builtRevision_=revision_;builtDemand_=combined;++statistics.captures;return latest_;
  }
 };
 }
