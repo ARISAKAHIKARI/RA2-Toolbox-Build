@@ -17,6 +17,27 @@ assert 'indexWorld(' not in gate
 assert 'return refreshWorldIndex(frame)' in gate
 fallback = between(bridge, "static bool refreshWorldIndex(int frame){", "// Identity-index publication")
 assert 'indexWorld(' not in fallback
+# No active feature may rediscover the full Techno list through a live Vec.
+for path in ("bridge.cpp", "type_select_bridge.h", "autoload_bridge.h",
+             "burst_bridge.h", "combat_probe_bridge.h",
+             "cooperative_bridge.h", "native_orders_bridge.h"):
+    body = (root / path).read_text()
+    assert "vec(0xA8EC78" not in body, path
+main = (root / "main.cpp").read_text()
+process_reader = (root.parent.parent / "external_reader/source/process_reader.h").read_text()
+display_demand = between(main, "const bool passengerOverlay=", "external::WorldFrameScope worldScope")
+assert "worldframe::Resources" not in display_demand
+assert "HostVisual" not in display_demand
+assert "worldframe::Passengers" in display_demand
+assert "worldframe::Combat" in display_demand
+# Product ProcessReader cannot promote a non-control frame with its own RPM
+# VisualCache. The old path exists only in the dedicated test fixture.
+test_visual = process_reader.index("#ifdef WORLD_FRAME_TEST_VISUAL_CACHE")
+visual_call = process_reader.index("worldClient_->visual", test_visual)
+product_else = process_reader.index("#else", test_visual)
+assert visual_call < product_else
+assert "if(!frame||!frame->controlSource)return false;" in process_reader[product_else:]
+
 assert 'CaptureGraph' not in fallback
 assert 'static void indexWorld(int frame)' not in bridge
 for path in ("sticky_bridge.h", "control_object_owner_bridge.h",
