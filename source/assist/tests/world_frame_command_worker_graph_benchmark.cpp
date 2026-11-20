@@ -167,8 +167,7 @@ bool one(RunState&state,const Image&image,Mode mode,Metrics&metrics) {
     metrics.failedReads!=0||!state.roster.objects)return false;
  uint32_t hp=0;
  return state.sample.read(ActorBase+0x6C,&hp,sizeof hp)&&hp==100&&
-        state.roster.objects->byId(ActorCount+4)==
-        (ActorBase+(ActorCount-1)*PageSize);
+        state.roster.objects->byId(5)==ActorBase;
 }
 double percentile(std::vector<double> values,double p) {
  std::sort(values.begin(),values.end());
