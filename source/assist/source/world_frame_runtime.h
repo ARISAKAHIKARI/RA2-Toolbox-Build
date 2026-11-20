@@ -499,7 +499,8 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  // Do not turn a cold worker start or a dropped latest-work slot into total
  // starvation. Two synchronous field retries are the strict fallback limit.
  if(!verifiedCount)for(size_t i=0;i<std::min<size_t>(2,candidateCount);++i)verified[verifiedCount++]=candidates[i];
- if(candidateCount&&(!lastRecoverySubmitAt||uint32_t(key.tick-lastRecoverySubmitAt)>=32)){
+ if(candidateCount&&worldFrameServer.wanted(key.owner,key.tick)&&
+    (!lastRecoverySubmitAt||uint32_t(key.tick-lastRecoverySubmitAt)>=32)){
   if(worldFramePublication.requestRecovery(key,candidates.data(),candidateCount))lastRecoverySubmitAt=key.tick;
  }
  worldframe::CaptureGraph<Live>capture(worldFrame,live,worldFrameCaptureScratch);
