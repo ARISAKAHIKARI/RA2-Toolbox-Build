@@ -464,9 +464,8 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}
  worldFrameBoundaryOnly=boundaryOnly;
  worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
-#ifndef WORLD_FRAME_PLATFORM_FIXTURE
- // Shadow graph is explicitly diagnostic and read-only. It never replaces
- // worldFrame, alters command status, or changes the game-thread capture plan.
+#if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
+ // Test-only duplicate graph reader. Production builds do not compile it.
  if(shadowGraphOptIn()){
   worldframe::BackgroundTrialResult shadow{};
   if(worldFrameShadow.poll(key,shadow)){
