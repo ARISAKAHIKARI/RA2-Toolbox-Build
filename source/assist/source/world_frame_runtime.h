@@ -1,6 +1,8 @@
 #pragma once
 #include "../../shared/source/world_frame_capture.h"
+#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
 #include "../../shared/source/world_frame_recovery.h"
+#endif
 #include "../../shared/source/world_frame_transport.h"
 #include "world_capture_requests.h"
 #if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
@@ -25,9 +27,9 @@ struct WorldFramePublication {
 using WorldFramePublication=worldframe::AsyncPublisher<>;
 #endif
 static WorldFramePublication worldFramePublication;
-// The game frame keeps execution authority. The worker owns all command
-// CaptureGraph RPM and mutable traversal buffers until a strict same-frame
-// handoff; production uses async by default, with explicit launch rollback.
+// The game frame keeps execution authority. The worker is the only production
+// CaptureGraph owner; a strict same-frame handoff is required before native
+// command use. No production synchronous fallback is compiled.
 #ifdef WORLD_FRAME_PLATFORM_FIXTURE
 struct WorldFrameCommandFixture {
  static bool enabled(){return false;}
