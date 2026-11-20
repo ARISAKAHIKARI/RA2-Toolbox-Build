@@ -87,7 +87,7 @@ test('feature settings and shortcuts stay attached to their master switch',()=>{
  assert.equal(blocks[1].headers[0].id,14);
  assert.deepEqual(JSON.parse(JSON.stringify(blocks[1].details.map(c=>c.id))),[15]);
  const filtered=core.groupControls(controls,'血量阈值').get('自动功能');
- assert.deepEqual(JSON.parse(JSON.stringify(filtered.map(c=>c.id))),[11,12,13]);
+ assert.deepEqual(JSON.parse(JSON.stringify(filtered.map(c=>c.id))),[11,12]);
 });
 
 for(const id of [1,2])for(const key of ['Enter','Escape'])for(const composition of [{isComposing:true},{keyCode:229}]){

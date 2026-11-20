@@ -234,10 +234,18 @@
       if(!groups.has(name))groups.set(name,[]);groups.get(name).push(control);
     }
     if(needle)for(const [name,items] of groups) {
-      const matches=featureBlocks(items).filter(block=>block.controls.some(control=>
-        [control.label,control.text,control.hint,name,...control.options,...control.optionDescriptions].join(' ').toLocaleLowerCase().includes(needle)
-      )).flatMap(block=>block.controls);
-      if(matches.length)groups.set(name,matches);else groups.delete(name);
+      const matches=[];
+      for(const block of featureBlocks(items)){
+        const matchingLines=settingLines(block.controls).filter(line=>line.some(control=>
+          [control.label,control.text,control.hint,name,...control.options,...control.optionDescriptions].join(' ').toLocaleLowerCase().includes(needle)
+        ));
+        if(matchingLines.length){
+          if(block.headers.length)matches.push(...block.headers);
+          matches.push(...matchingLines.flat());
+        }
+      }
+      const unique=[...new Map(matches.map(control=>[control.id,control])).values()];
+      if(unique.length)groups.set(name,unique);else groups.delete(name);
     }
     return groups;
   }
