@@ -105,20 +105,28 @@ static void requestWorldRange(uint32_t at,size_t n){
   const uint32_t index=page>>12;
   if((index>>6)>=runtimeDemandBits.size()){runtimeDemandOverflow=true;break;}
   const uint64_t mask=uint64_t(1)<<(index&63);
-  if(!(runtimeDemandBits[index>>6]&mask)){
+  const auto retained=runtimeDemandLeases.retainStatus(page,tick);
+  if(retained==worldframe::DemandLeases::RetainResult::Full||
+     retained==worldframe::DemandLeases::RetainResult::Invalid){
+   runtimeDemandOverflow=true;break;
+  }
+  const bool known=(runtimeDemandBits[index>>6]&mask)!=0;
+  if(retained==worldframe::DemandLeases::RetainResult::Added&&known)
+   if(!++runtimeDemandRevision)++runtimeDemandRevision; // an expired lease was re-added
+  if(!known){
    // Keep the lease even if the per-sample vector is full. Overflow is
    // reported and no partial graph is submitted; later lease expiry or a
    // reduced demand set can make a complete request possible again.
-   runtimeDemandLeases.retain(page,tick);
    if(runtimeWorldDemands.size()>=worldframe::MaxPages){
     runtimeDemandOverflow=true;
-    if(!++runtimeDemandRevision)++runtimeDemandRevision;
+    if(retained==worldframe::DemandLeases::RetainResult::Added)
+     if(!++runtimeDemandRevision)++runtimeDemandRevision;
     break;
    }
-   runtimeDemandBits[index>>6]|=mask;
-   runtimeWorldDemands.push_back(page);
-   if(!++runtimeDemandRevision)++runtimeDemandRevision;
-  }else runtimeDemandLeases.retain(page,tick);
+   runtimeDemandBits[index>>6]|=mask;runtimeWorldDemands.push_back(page);
+   if(retained==worldframe::DemandLeases::RetainResult::Added)
+    if(!++runtimeDemandRevision)++runtimeDemandRevision;
+  }
  }
 }
 // The worker can deliver a complete observational graph after the game
