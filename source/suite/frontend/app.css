@@ -542,3 +542,8 @@ h1 { color: #2b4d54; }
 .field:hover:not(:disabled), .setting-editor select:hover:not(:disabled), .setting-editor textarea:hover:not(:disabled) {
   border-color: #a9d5da;
 }
+
+/* Keep a legacy compound feature's name and switch adjacent. */
+.feature-common .compound-row > .setting-row:first-child { min-width: 0; padding-right: 0; }
+.feature-common .compound-row > .setting-row:first-child .setting-copy { flex: 0 0 auto; }
+.feature-common .compound-row > .setting-row:first-child .setting-editor { flex: 0 0 auto; }
