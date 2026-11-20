@@ -18,32 +18,29 @@ static bool missileManualBlocked;
 static uint32_t missileManualPruneMatch;static int missileManualPruneFrame=-1;
 static bool missileManualOverflowed(){return missileManualBlocked;}
 static void pruneMissileManual(){
- // Historical dead/noncandidate actors cannot consume this bounded table
- // forever. Only a complete sealed roster proves absence; a missing live
- // index entry or an unreadable field must not evict an active manual order.
- static uint64_t identities[16384];static bool retired[1024];
+ // Reuse the canonical worker-built UID index. Rebuilding a 16K-entry
+ // identity array and sorting it on the Game callback duplicated work
+ // already completed by CommandRoster::build on the capture worker.
+ static bool retired[1024];
  {
   SampleReadScope source;if(!source)return;
-  // Every input in this captured frame sees the same immutable roster.
-  if(missileManualPruneMatch==worldFrame.key.match&&missileManualPruneFrame==worldFrame.key.frame)return;
-  Vec all{};if(!sampleRoster(0xA8EC78,all))return;int count=0;
-  for(int n=0;n<all.count;++n){const uint32_t p=item(all,n);if(!p)continue;
-   uint32_t id=0;if(!read(p+0x10,&id,sizeof id))return;if(id)identities[count++]=(uint64_t(id)<<32)|p;
-  }
-  std::sort(identities,identities+count);
   const int frame=worldFrame.key.frame;
+  if(missileManualPruneMatch==worldFrame.key.match&&missileManualPruneFrame==frame)return;
+  // A candidate/stale index is not proof of absence. Bind the strict
+  // current-frame roster and fail closed if that exact index is unavailable.
+  if(!prepareWorldIndex(frame)||indexedFrame!=frame||!commandRosterReady())return;
   for(int n=0;n<missileManualCount;++n){const auto&r=missileManual[n];retired[n]=false;
-   // An input can have followed this frame's capture. Do not retire it from
-   // older raw facts, even when the newly selected actor is absent there.
+   // An input can follow this frame's capture; older raw facts cannot
+   // retire an intent that was created later in the same logic frame.
    if(frame<=r.frame)continue;
-   if(!std::binary_search(identities,identities+count,(uint64_t(r.id)<<32)|r.pointer)){retired[n]=true;continue;}
+   if(worldObjects.byId(r.id)!=r.pointer){retired[n]=true;continue;}
    const int mission=get<int>(r.pointer+0xAC),queued=get<int>(r.pointer+0xB4);
    retired[n]=!get<uint32_t>(r.pointer+0x2B4)&&!get<uint32_t>(r.pointer+0x5A4)&&
     (mission==5||mission==6||mission==11||mission==13)&&(queued==-1||queued==mission)&&frame-r.frame>=12;
   }
   if(!source.complete())return;
-  // A failed page can be recovered during the same frozen native frame.
-  missileManualPruneMatch=worldFrame.key.match;missileManualPruneFrame=worldFrame.key.frame;
+  // Failed/missing fields never consume this frame's retry opportunity.
+  missileManualPruneMatch=worldFrame.key.match;missileManualPruneFrame=frame;
  }
  int kept=0;for(int n=0;n<missileManualCount;++n)if(!retired[n])missileManual[kept++]=missileManual[n];missileManualCount=kept;
 }
