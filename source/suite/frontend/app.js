@@ -323,7 +323,7 @@
     userNavigated=true;
     const module=view==='monitor'?1:0, changed=module!==videoModule;
     videoView=view;videoModule=module;setSearch('');$('search').value='';capture=null;
-    if(changed)store.navigate(0,module);else schedule();
+    if(changed)store.navigate(module,0);else schedule();
     $('contentScroll').scrollTop=0;
   }
   for (let index = 0; index < CATEGORIES.length; index++) { const button = document.createElement('button'); button.className = 'nav-button'; button.type = 'button'; button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${CATEGORIES[index][3]}</svg><span></span>`; button.querySelector('span').textContent = CATEGORIES[index][0]; button.title = CATEGORIES[index][0]; button.addEventListener('click', () => navigate(index)); $('navigation').append(button); }
