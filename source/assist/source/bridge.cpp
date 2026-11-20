@@ -127,7 +127,7 @@ static uint32_t typePointers[MaxTypes];
 static ManualVersions manualVersions;static ObjectIndexView worldObjects;static int indexedFrame=-1,indexedCount=-1;static uint32_t indexedItems;
 // Reuse the mandatory world-index traversal for global magnetron discovery.
 // Input and planning still revalidate identities and native eligibility.
-static uint32_t globalVehicleCandidates[16384];static int globalVehicleCandidateCount=0;static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
+static int globalVehicleCandidateCount=0;static bool indexedGlobalVehicles=false;static uint32_t indexedVehicleHouse=0;
 // The candidate list itself is worker-owned in async mode, not copied into
 // another 64 KiB main-thread array on every accepted command snapshot.
 static globalvehicle::Cursor globalVehicleScan;
@@ -313,16 +313,14 @@ static gateway::MissionState observeMissionReceipt(uint32_t id){
 // Never dereference an old/stale worker roster from a native command path.
 static uint32_t globalVehicleCandidateAt(int index){
  if(index<0||index>=globalVehicleCandidateCount)return 0;
- if(worldFrameCommandWorker.enabled()){
-  const bool strict=commandRosterReady();
-  if(!strict&&!candidateRosterReady())return 0;
-  const auto&roster=strict?worldFrameCommandRoster:worldFrameCandidateRoster;
-  if(size_t(index)>=roster.globalVehicles.size())return 0;
-  const uint32_t pointer=roster.globalVehicles[size_t(index)];
-  return !strict&&(!worldObjects.contains(pointer))?0:pointer;
- }
- return globalVehicleCandidates[index];
+ const bool strict=commandRosterReady();
+ if(!strict&&!candidateRosterReady())return 0;
+ const auto&roster=strict?worldFrameCommandRoster:worldFrameCandidateRoster;
+ if(size_t(index)>=roster.globalVehicles.size())return 0;
+ const uint32_t pointer=roster.globalVehicles[size_t(index)];
+ return !strict&&!worldObjects.contains(pointer)?0:pointer;
 }
+
 // Native hook maintenance is still permitted to use exact per-object
 // admission, but must never rebuild a 16K-object roster when the dedicated
 // command capture worker owns all graph reads. A missing worker index is
