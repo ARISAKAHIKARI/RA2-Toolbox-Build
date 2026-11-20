@@ -32,9 +32,16 @@ struct Watched{
 struct Versions{uint32_t get(uint32_t)const{return 9;}}manualVersions;
 struct Vec{int count=0;};
 static std::vector<uint32_t> infantry;
-static Vec vec(uint32_t){return {int(infantry.size())};}
+static bool sampleComplete=true;
+struct SampleReadScope {
+ SampleReadScope(){sampleComplete=true;}
+ explicit operator bool()const{return true;}
+ bool complete()const{return sampleComplete;}
+ void finish(){}
+};
+static bool sampleRoster(uint32_t,Vec&out){out.count=int(infantry.size());return true;}
 static uint32_t item(Vec,int at){return infantry.at(size_t(at));}
-static bool nativeMember(Vec,uint32_t p){return worldObjects.contains(p);}
+static bool nativeMember(uint32_t p){return worldObjects.contains(p);}
 namespace featuretypes{enum Feature{EscapePassenger,EscapeTransport};}
 static bool featureObjectAllowed(featuretypes::Feature,uint32_t){return true;}
 template<class T>static void put(uint32_t at,T value){
@@ -81,19 +88,19 @@ int main(){
  bad=0;watchEjections(House,11);
  check(unloadCount==2,"restored carrier ID did not resume valid ejections");
 
- setup();bad=Transport+0x6C4;watchEjections(House,10,{});
+ setup();bad=Transport+0x6C4;watchEjections(House,10);
  check(unloadCount==0,"missing carrier type created a task without type identity");
- bad=0;watchEjections(House,11,{});
+ bad=0;watchEjections(House,11);
  check(unloadCount==2&&unloadPassengers[0].carrierType==Type,
        "restored carrier type did not preserve typed ejections");
 
- setup();bad=P1+0x21C;watchEjections(House,10,{});
+ setup();bad=P1+0x21C;watchEjections(House,10);
  check(unloadCount==1&&unloadPassengers[0].id==102,
        "missing first owner should not cancel second passenger enrollment");
- bad=0;watchEjections(House,11,{});
+ bad=0;watchEjections(House,11);
  check(unloadCount==2,"recovered first owner did not join ejection watcher");
 
- setup();sh->flags=0;watchEjections(House,10,{});
+ setup();sh->flags=0;watchEjections(House,10);
  check(unloadCount==0,"explicitly disabled EjectAssist must not enroll");
  std::printf("PASS %d exact EjectAssist native enrollment assertions\n",assertions);
 }
