@@ -28,7 +28,7 @@ static void pruneMissileManual(){
   if(missileManualPruneMatch==worldFrame.key.match&&missileManualPruneFrame==frame)return;
   // A candidate/stale index is not proof of absence. Bind the strict
   // current-frame roster and fail closed if that exact index is unavailable.
-  if(!prepareWorldIndex(frame)||indexedFrame!=frame||!commandRosterReady())return;
+  if(!refreshWorldIndex(frame)||indexedFrame!=frame||!commandRosterReady())return;
   for(int n=0;n<missileManualCount;++n){const auto&r=missileManual[n];retired[n]=false;
    // An input can follow this frame's capture; older raw facts cannot
    // retire an intent that was created later in the same logic frame.

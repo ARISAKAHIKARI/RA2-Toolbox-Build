@@ -79,7 +79,7 @@ struct TestObjectIndex {
 static TestObjectIndex worldObjects;
 static int indexedFrame=-1,indexBuilds=0;
 static bool commandRosterReady(){return sampleReady&&rosterReadable&&indexedFrame==worldFrame.key.frame;}
-static bool prepareWorldIndex(int frame){
+static bool refreshWorldIndex(int frame){
  if(!sampleReady||!rosterReadable){sampleComplete=false;return false;}
  if(indexedFrame==frame)return true;
  worldObjects.ids.clear();
