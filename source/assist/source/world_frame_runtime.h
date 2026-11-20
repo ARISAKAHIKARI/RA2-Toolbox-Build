@@ -361,12 +361,43 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   }
   // Only address dependencies are copied on the game thread (bounded by
   // MaxPages); sorting, page I/O and all unit graph traversal are background.
+  if(runtimeDemandOverflow){
+   // The per-feature demand set exceeded the single-sample page budget.
+   // Preserve leases, drop only this oversized transient list, and retry
+   // after the active demand set changes. Never submit a truncated graph.
+   runtimeDemandOverflow=false;runtimeWorldDemands.clear();runtimeDemandBits.fill(0);
+   worldFrameCaptureRequests.clear();
+   if(!++runtimeDemandRevision)++runtimeDemandRevision;
+   ++sh->worldSampleFailures;return false;
+  }
   auto&requests=worldFrameCaptureRequests;
   const auto&hostRequests=worldFrameServer.requests();
-  requests.assign(hostRequests.begin(),hostRequests.end());
-  requests.insert(requests.end(),runtimeWorldDemands.begin(),runtimeWorldDemands.end());
-  for(uint32_t page:runtimeWorldDemands)runtimeDemandLeases.retain(page,key.tick);
-  runtimeDemandLeases.append(key.tick,requests);
+  if(!worldFrameRequestBufferPrepared){
+   requests.reserve(worldframe::MaxPages);
+   worldFrameRequestBufferPrepared=true;
+  }
+  requests.clear();worldFrameRequestBits.fill(0);
+  bool requestOverflow=false;
+  auto appendPage=[&](uint32_t page)->bool{
+   if((page&4095u)||!worldframe::range(page,4096)){requestOverflow=true;return false;}
+   const uint32_t index=page>>12;
+   if((index>>6)>=worldFrameRequestBits.size()){requestOverflow=true;return false;}
+   const uint64_t mask=uint64_t(1)<<(index&63);
+   if(worldFrameRequestBits[index>>6]&mask)return true;
+   if(requests.size()>=worldframe::MaxPages){requestOverflow=true;return false;}
+   worldFrameRequestBits[index>>6]|=mask;requests.push_back(page);return true;
+  };
+  bool complete=true;
+  for(uint32_t page:hostRequests)if(!appendPage(page)){complete=false;break;}
+  if(complete)for(uint32_t page:runtimeWorldDemands)if(!appendPage(page)){complete=false;break;}
+  if(complete)complete=runtimeDemandLeases.visit(key.tick,appendPage);
+  if(!complete||requestOverflow){
+   // This sample is not complete. Keep the bounded lease set for retry, but
+   // discard the transient list so expired/removed demands can be reconsidered.
+   runtimeWorldDemands.clear();runtimeDemandBits.fill(0);requests.clear();
+   if(!++runtimeDemandRevision)++runtimeDemandRevision;
+   ++sh->worldSampleFailures;return false;
+  }
   // Server::requests() may publish a newer Host demandRevision than the
   // version sampled before assembling the request list. Stamp the exact
   // version that supplied these pages, not the obsolete pre-read version.
