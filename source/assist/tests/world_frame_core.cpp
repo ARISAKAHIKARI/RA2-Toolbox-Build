@@ -110,7 +110,12 @@ void hostVisual(){
  // Independent world/frame guards, including a mutation during collection.
  cache.request({0xE01000},133,true);bool changed=false;
  m.beforeRead=[&](uint32_t p,size_t n){if(!changed&&p<=0xE01000&&uint64_t(p)+n>0xE01000){changed=true;m.put(0xA8ED84,52);}};
- CHECK(!cache.acquire(raw,worldframe::Resources,133,live)&&changed);m.beforeRead={};
+ // Host display-only data may span logic ticks when the immutable world
+ // identity stays fixed; the control source remains unchanged and cannot
+ // authorize commands from the later visual timestamp.
+ auto crossed=cache.acquire(raw,worldframe::Resources,133,live);
+ CHECK(crossed&&changed&&crossed->visualFrame==52&&worldframe::authoritative(crossed)==raw);
+ CHECK(raw->key.frame==50&&crossed->key.frame==50);m.beforeRead={};
  for(auto bad:std::vector<std::pair<uint32_t,uint32_t>>{{0xA8B230,Scenario+4096},{0xA83D4C,House+4096},{0x87F924,Cells+4096},{0xA8ED84,49},{0x87F7E8+0x1240,1},{0xA8B238,3}}){
   const auto old=*reinterpret_cast<uint32_t*>(m.bytes.data()+bad.first);m.put(bad.first,bad.second);cache.request({},150,true);CHECK(!cache.acquire(raw,worldframe::Resources,150,live));m.put(bad.first,old);
   // Retry a different immutable token so the per-source attempt throttle does not hide a guard failure.
