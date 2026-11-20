@@ -3,7 +3,7 @@
 #include "../../shared/source/world_frame_recovery.h"
 #include "../../shared/source/world_frame_transport.h"
 #include "world_capture_requests.h"
-#ifndef WORLD_FRAME_PLATFORM_FIXTURE
+#if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
 #include "../../shared/source/world_frame_shadow_win.h"
 #endif
 #include <cstdio>
@@ -58,23 +58,19 @@ static const worldframe::Snapshot* sampleWorldSource=nullptr;
 static uint32_t sampleScopeTick=0;
 // Coalesce identical in-flight requests before copying dependency pages.
 static worldframe::CommandRequestGate commandRequestGate;
-#ifdef WORLD_FRAME_PLATFORM_FIXTURE
-struct WorldFrameShadowFixture {
+#if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
+static worldframe::ShadowGraphWorker worldFrameShadow;
+static bool shadowGraphOptIn(){return true;}
+#else
+// The second full-graph reader is deliberately absent from production.
+// Keep only a zero-cost seam for shutdown and test code that shares headers.
+struct WorldFrameShadowDisabled {
  void invalidate(){}
  bool stop(){return true;}
+ template<class...Args>bool request(Args&&...){return false;}
+ template<class...Args>bool poll(Args&&...){return false;}
 };
-static WorldFrameShadowFixture worldFrameShadow;
-#else
-static worldframe::ShadowGraphWorker worldFrameShadow;
-// An explicit diagnostic opt-in: the normal build does NOT duplicate a full
-// game-world scan every second until shadow sampling is proven beneficial.
-static bool shadowGraphOptIn(){
- static const bool enabled=[](){
-  char value[3]{};
-  return GetEnvironmentVariableA("RA2TOOLBOX_SHADOW_GRAPH",value,sizeof value)==1&&value[0]=='1';
- }();
- return enabled;
-}
+static WorldFrameShadowDisabled worldFrameShadow;
 #endif
 static uint32_t worldFrameSerial=0;static uint32_t worldFrameCapturedDemand=0;static uint64_t worldFrameCapturedRevision=0;static uint32_t runtimeDemandRevision=1;static unsigned sampleReadDepth=0;static bool sampleReadComplete=true;
 static std::array<uint64_t,8192>runtimeDemandBits{};static std::vector<uint32_t>runtimeWorldDemands;
@@ -140,7 +136,8 @@ static bool readWorldSample(uint32_t at,void*out,size_t n){
  requestWorldRange(at,n); // Keep successful consumer dependencies subscribed.
  const auto*source=sampleWorldSource?sampleWorldSource:&worldFrame;
  const bool ok=source&&source->sealed()&&source->read(at,out,n);
- if(!ok){sampleReadComplete=false;rememberMissingWorldSpan(at,n);}return ok;
+ if(!ok)sampleReadComplete=false;
+ return ok;
 }
 class SampleReadScope {
  unsigned previousDepth_;bool previousComplete_,ready_,finished_=false,result_=false;
@@ -209,7 +206,11 @@ static void publishSamplingWorkerDiagnostics(uint32_t now){
  }
 }
 #endif
-static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;}
+static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);
+#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
+ runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;
+#endif
+}
 template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sample&before,uint32_t house,DWORD now,uint32_t demand,bool permitDisplayBoundary=false){
  const bool boundaryOnly=permitDisplayBoundary&&demand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
  const bool asyncCommand=!boundaryOnly&&worldFrameCommandWorker.enabled();
@@ -230,6 +231,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  key.generationLow=uint32_t(worldProducerGeneration);key.generationHigh=uint32_t(worldProducerGeneration>>32);
  key.connectionLow=uint32_t(worldFrameServer.connection());key.connectionHigh=uint32_t(worldFrameServer.connection()>>32);
  worldFrameServer.observe(key);
+#if !defined(WORLD_FRAME_TEST_SYNC_CAPTURE) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
+ // Host VisualCache used a second independent CaptureGraph and a zero-page
+ // boundary source. Both are quarantined until display data is part of the
+ // same Runtime-owned immutable publication as command/automatic data.
+ if(boundaryOnly){worldFrameReady=false;worldFrameBoundaryOnly=false;return false;}
+#endif
  // A successful strict sample becomes a read-only candidate on the NEXT
  // simulation frame. Its hash can be reused without any 16K-game-roster scan;
  // the native admission path still requires live per-object validation.
@@ -355,6 +362,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   }
   return false;
  }
+#if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
  if(!worldFramePublication.begin(worldFrame))return false;
  lastCaptureAttempt=key;haveCaptureAttempt=true;worldFrameReady=false;
  // A Host-only display acquisition never consumes or sorts the command
@@ -478,4 +486,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
 #endif
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;
+#else
+ // No production synchronous full-graph path exists. If the worker did not
+ // adopt or queue a sample, consumers remain unavailable until it can.
+ worldFrameReady=false;worldFrameBoundaryOnly=false;
+ return false;
+#endif
 }
