@@ -36,7 +36,7 @@ struct WorldFrameCommandFixture {
  void invalidate(){}
  bool stop(){return true;}
  bool deferBusy(const worldframe::Key&,uint32_t,uint64_t,bool=false){return false;}
- bool request(const worldframe::Key&,uint32_t,uint64_t,const std::vector<uint32_t>&,bool=false){return false;}
+ bool request(const worldframe::Key&,uint32_t,uint64_t,std::vector<uint32_t>&,bool=false){return false;}
  bool take(const worldframe::Key&,uint32_t,uint64_t,worldframe::Snapshot&,worldframe::CommandRoster* =nullptr,bool=false){return false;}
  bool takeObservation(const worldframe::Key&,uint32_t,worldframe::Snapshot&,worldframe::CommandRoster&,bool=false){return false;}
 };
