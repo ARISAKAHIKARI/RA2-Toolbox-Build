@@ -261,7 +261,9 @@ static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
 static void captureCooperativeFrame(DWORD now,bool observationFrame,bool indexedWorkReady){
  const auto&r=sh->cooperativeRequest;auto&out=sh->cooperativeInputFrame;
  if(!cooperative::valid(r)||r.match!=match||!freshness::intentAlive(r.tick,now)||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
- if((!observationFrame&&out.request.serial==r.serial)||(out.request.serial==r.serial&&sh->cooperativeFrameWanted!=r.serial))return;
+ const bool newerStrictSource=indexedWorkReady&&out.frame<snap.frame;
+ if(out.request.serial==r.serial&&
+    (sh->cooperativeFrameWanted!=r.serial||(!observationFrame&&!newerStrictSource)))return;
  static compute::QuotaConfig quotas;long seq=sh->quotaConfigSeq;if(seq&1)return;MemoryBarrier();memcpy(&quotas,&sh->quotaConfig,sizeof quotas);MemoryBarrier();if(seq!=sh->quotaConfigSeq||quotas.count<0||quotas.count>512)return;
  cooperative::Input input;worldframe::Key source{};
  if(!collectCooperativeInput(r,quotas,input,&source)||

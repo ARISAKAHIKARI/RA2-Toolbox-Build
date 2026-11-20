@@ -213,6 +213,17 @@ static void testCooperative(){
  cooperative::Input input;check(collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets.size()==1,"cooperative complete capture");
  set<int>(p+0x6C,0);std::memcpy(memory.data()+bt+0x24,"LIVE",5);check(collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets[0].quota.first==7,"cooperative shares frozen objects and quota type bytes");check(liveReads==0,"cooperative pure converter made a live read");
  set<int>(p+0x6C,100);advance(bt);check(!collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets[0].quota.first==7,"cooperative missing page must preserve input");check(!missingLiveReads,"cooperative missing page fell back live");
+ seal();request.tick=clockNow;sh->cooperativeRequest=request;sh->quotaConfig=quotas;
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateAvailable=true;worldFrameReady=false;
+ ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
+ captureCooperativeFrame(clockNow,true,false);
+ auto&frame=sh->cooperativeInputFrame;
+ check(frame.request.serial==request.serial&&frame.frame==snap.frame-1&&frame.tick==request.tick,
+       "cooperative candidate lost its source age during publication");
+ seal();sh->cooperativeFrameWanted=request.serial;
+ captureCooperativeFrame(clockNow,false,true);
+ check(frame.frame==snap.frame&&frame.tick==clockNow,
+       "same-frame strict capture could not replace the pending cooperative observation");
  std::puts("PASS cooperative sealed fields, quota bytes and missing-frame retention");
 }
 static void setupLoad(int variant){

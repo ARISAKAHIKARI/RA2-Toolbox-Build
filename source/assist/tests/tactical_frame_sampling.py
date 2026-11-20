@@ -57,6 +57,7 @@ def production():
     coop = source["cooperative_bridge.h"]
     add(function(coop, "struct CooperativeFrameRead") + ";")
     add(function(coop, "static bool collectCooperativeInput("))
+    add(function(coop, "static void captureCooperativeFrame("))
     load = source["autoload_bridge.h"]
     add(load[load.index("static bool loadCalculationPending,"):load.index("static int submitLoading(")])
     for signature in ("static bool loadingObject(", "static uint32_t incomingVehicle(",
