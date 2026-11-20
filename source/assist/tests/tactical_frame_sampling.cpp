@@ -55,9 +55,9 @@ static std::vector<uint32_t> runtimeWorldDemands;
 static uint32_t runtimeDemandRevision=1;
 struct CommandWorkerFixture {static bool enabled(){return true;}};static CommandWorkerFixture worldFrameCommandWorker;
 static worldframe::CommandRoster worldFrameCommandRoster;
-// The extracted runtime fixture intentionally runs with the command worker
-// disabled. Keep the new observation-only symbols linked, without treating
-// a synthetic previous-frame candidate as current command authority.
+// The fixture models the canonical worker as already completed for each
+// sealed synthetic frame. Observation-only candidates remain a separate type
+// and are never treated as current command authority.
 static worldframe::CommandRoster worldFrameCandidateRoster;
 static uint32_t worldFrameCandidateVersion=0;
 static bool candidateRosterReady(){return false;}
@@ -173,6 +173,8 @@ static uint32_t makeWeapon(uint32_t type,bool air=true,bool ground=true){uint32_
 static void seal(uint32_t omit=0,bool knownFailure=false){
  check(!sampleReadDepth,"scope leaked into next capture");worldFrameReady=false;
  worldObjects.unbind();worldObjects.clear();worldFrameCommandRoster.invalidate();
+ indexedFrame=indexedCount=-1;indexedItems=0;globalVehicleCandidateCount=0;
+ indexedGlobalVehicles=false;indexedVehicleHouse=0;
  worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;worldFrame.reset(key);
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);missingPage=omit&~4095u;
  for(uint32_t page=0x10000;page<memory.size();page+=4096){if(page==missingPage&&!knownFailure)continue;
@@ -187,7 +189,7 @@ static void seal(uint32_t omit=0,bool knownFailure=false){
 static void advance(uint32_t omit=0,bool failure=false){++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);seal(omit,failure);}
 static void reset(){
  check(!sampleReadDepth,"scope leaked between tests");memory.assign(memory.size(),0);::new(static_cast<void*>(sh)) Shared{};std::memset(&snap,0,sizeof snap);
- leaseChecks=0;leaseAllowed=true;worldObjects.unbind();worldObjects.clear();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;manualVersions.clear();actorLeaseArbiter.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
+ leaseChecks=0;leaseAllowed=true;worldObjects.unbind();worldObjects.clear();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;indexedFrame=indexedCount=-1;indexedItems=0;globalVehicleCandidateCount=0;indexedGlobalVehicles=false;indexedVehicleHouse=0;manualVersions.clear();actorLeaseArbiter.clear();loadLedger.clear();nextAddress=0x100000;lastHouse=0x20000;++match;clockNow=1000;snap.status=snap.commandStatus=1;snap.frame=100;snap.session=3;snap.match=match;
  worldFrameReady=false;worldFrameCaptureScratch.reset();nativeCalls=hostNotifies=submissions=liveReads=liveRosterReads=0;missingPage=missingLiveReads=0;denyLivePage=false;nativeMutation={};airOverride.clear();forbiddenEnter.clear();assignments.clear();enterResult=3;nativeCount=dodgeCount=missileHoldCount=0;oreConfig={};oreConfigRevision=0;fault=false;
  loadCalculationPending=loadCaptureWaiting=loadAckPending=false;loadSelectionCount=0;loadCarrierSelectionCount=-1;loadFrames.clear();loadTaskSeen=0;
  missileSendCount=missileManualCount=missileMotionCursor=missileSourceCursor=missileTargetCursor=missileManagedCursor=0;for(auto&m:missileMotion)m={};
