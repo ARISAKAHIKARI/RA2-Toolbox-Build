@@ -243,9 +243,8 @@ public:
  CommandCaptureWorker(const CommandCaptureWorker&)=delete;
  CommandCaptureWorker&operator=(const CommandCaptureWorker&)=delete;
  ~CommandCaptureWorker(){if(thread_)CloseHandle(thread_);if(event_)CloseHandle(event_);}
- // Async command-world capture is the production default. Explicitly set
- // RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=0 before launching to restore the prior
- // synchronous capture route on platforms with poor exact-frame handoff.
+ // Async command-world capture is the only production route. A synchronous
+ // implementation exists only in a separately compiled test fixture.
  // Late/stale results are never native EventClass authorization.
  static bool enabled(){
 #ifdef WORLD_FRAME_TEST_SYNC_CAPTURE
