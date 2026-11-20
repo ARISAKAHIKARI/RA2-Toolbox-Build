@@ -76,7 +76,6 @@ static uint32_t sampleScopeTick=0;
 static worldframe::CommandRequestGate commandRequestGate;
 #if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
 static worldframe::ShadowGraphWorker worldFrameShadow;
-static bool shadowGraphOptIn(){return true;}
 #else
 // The second full-graph reader is deliberately absent from production.
 // Keep only a zero-cost seam for shutdown and test code that shares headers.
@@ -550,25 +549,6 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  if(!boundaryOnly){runtimeWorldDemands.clear();runtimeDemandBits.fill(0);}
  worldFrameBoundaryOnly=boundaryOnly;
  worldFrameReady=true;worldFramePublication.publish(worldFrame,worldFrameServer);
-#if defined(WORLD_FRAME_TEST_SHADOW) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
- // Test-only duplicate graph reader. Production builds do not compile it.
- if(shadowGraphOptIn()&&worldFrameServer.wanted(key.owner,key.tick)){
-  worldframe::BackgroundTrialResult shadow{};
-  if(worldFrameShadow.poll(key,shadow)){
-   char diagnostic[384]{};
-   std::snprintf(diagnostic,sizeof diagnostic,
-     "RA2 read-only background graph frame=%d..%d actors=%u own=%u other=%u "
-     "alive=%u dead=%u uncertain=%u visited=%u pages=%u calls=%u bytes=%u "
-     "(approximate; never command authority)\n",
-     shadow.before.frame,shadow.after.frame,
-     shadow.facts.actors,shadow.facts.owned,shadow.facts.other,
-     shadow.facts.alive,shadow.facts.dead,shadow.facts.missingIdentity,
-     shadow.facts.visited,shadow.pages,shadow.counters.calls,shadow.counters.bytes);
-   OutputDebugStringA(diagnostic);
-  }
-  worldFrameShadow.request(key,worldframe::Base,key.tick);
- }
-#endif
  if(sh){InterlockedIncrement(&sh->worldSampleSeq);sh->worldSampleFrame=key.frame;sh->worldSamplePages=uint32_t(worldFrame.pages.size());sh->worldSampleReads=worldFrame.counters.calls;sh->worldSampleBytes=worldFrame.counters.bytes;sh->worldSampleRosters=worldFrame.counters.rosterCaptures;sh->worldSampleSerial=key.serial;MemoryBarrier();InterlockedIncrement(&sh->worldSampleSeq);}
  return true;
 #else

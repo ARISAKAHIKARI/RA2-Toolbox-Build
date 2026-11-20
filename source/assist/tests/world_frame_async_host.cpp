@@ -61,7 +61,9 @@ int main(int argc,char**argv){
  // A disconnected and fully retired shadow worker must restart in a new
  // connection, even while the separate publication worker is blocked.
  assert(shadowBegin()==1);until(shadowReady,1);
- assert(stop()==0);assert(FreeLibrary(module));assert(GetModuleHandleW(L"async-publication.dll"));assert(SetEvent(gate));
- const DWORD deadline=GetTickCount();while(GetModuleHandleW(L"async-publication.dll")){assert(GetTickCount()-deadline<5000);Sleep(1);}CloseHandle(gate);
+ const char*dllName=argv[1];
+ for(const char*p=dllName;*p;++p)if(*p=='\\'||*p=='/')dllName=p+1;
+ assert(stop()==0);assert(FreeLibrary(module));assert(GetModuleHandleA(dllName));assert(SetEvent(gate));
+ const DWORD deadline=GetTickCount();while(GetModuleHandleA(dllName)){assert(GetTickCount()-deadline<5000);Sleep(1);}CloseHandle(gate);
  std::puts("PASS real Windows DLL: no idle worker without subscriber, background named-mapping publication, pinned source bytes, latest pending state, paused same-frame re-export without live reads/restamp, nonblocking retire/stop, restart, module reference while copying and automatic safe unload; no game process loaded");
 }
