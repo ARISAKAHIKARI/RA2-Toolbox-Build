@@ -19,15 +19,18 @@ It runs the same production CaptureGraph, page cache, warm-page coalescing and C
 - The 2026-11-19 real-game log summarized in 2026-11-19-continuous-offthread-candidates.md reported roughly 671–683 pages, 2.75–2.80 MB and 644–655 RPM operations for a completed graph. The estimate 650 × 60 = 39,000 is a hypothetical upper workload, not a measured call rate.
 - The worker publishes one sealed graph through the existing shared-memory double-buffer. The producer bulk-copies the page array into the inactive slot; the Host imports a new publication into its local immutable snapshot pool. Consumers reuse that token. This is not a per-field cross-process RPM loop.
 - PR #65 also publishes complete observation-only candidates from the worker so Host display/reservation consumers are not starved by strict exact-frame command admission. Observation-only data never becomes native command authority.
-- The game callback still assembles/submits a bounded page-demand list. That is not a full graph traversal; its allocation/copy cost should be measured separately, not conflated with the worker's native reads.
+- The game callback still assembles the page-demand list. This is not a full graph traversal, but it is not yet proven bounded by MaxPages: runtimeDemandBits covers 8192 × 64 = 524,288 page addresses, while the worker accepts at most 16,384 raw page entries. The merge of Host requests, runtimeWorldDemands and leases occurs before that worker-side size rejection; duplicates can also make the raw count exceed the unique count. This is a concrete game-thread audit item, not something to hand-wave as a 64 KiB copy.
+- Worker admission and take/defer paths use try_to_lock on the game callback, so they do not wait for the worker mutex. However, request() still copies the assembled vector into queued_.pages (up to 64 KiB when accepted) and may allocate; the next stage should bound the producer list explicitly and use a reusable ownership-swapped request-buffer pair to remove the second copy.
+- Production defaults to async capture, but RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=0 still restores the legacy synchronous CaptureGraph path on the game callback. That override is outside the target architecture and must be removed or isolated before claiming an unconditional no-main-thread-capture guarantee.
+- RA2TOOLBOX_SHADOW_GRAPH=1 enables a separate diagnostic background graph reader. It must remain off during normal performance measurements so it cannot double the sampling load.
 
 ## Non-negotiable rules
 
 1. Runtime is the only owner of game-memory acquisition. No feature gets its own independent native-memory sampler.
-2. Prefer a complete sample in one worker job. Coalesce adjacent pages; read each required page/range once per sample; do not turn this into many independent per-feature reads.
+2. Prefer a complete sample in one worker job; this means one complete graph per accepted sample, not an unconditional 60 Hz full scan. Coalesce adjacent pages; read each required page/range once per sample; do not turn this into many independent per-feature reads.
 3. Convert native data into a compact immutable snapshot. Features consume the snapshot/local cache, not raw game pointers.
 4. Keep graph traversal, page sorting, roster hashing, snapshot packing and publication off the game main thread.
-5. The game main thread never waits for the sampler, takes a sampler mutex, or performs a full-graph fallback. If the worker is busy, coalesce/drop intermediate work and keep the last valid observation only within its explicit age/world bounds.
+5. The game main thread never waits for the sampler, takes a blocking sampler mutex, or performs a full-graph fallback. If the worker is busy, coalesce/drop intermediate work and keep the last valid observation only within its explicit age/world bounds. The legacy async=0 override is not an accepted production mode.
 6. Never retain an unprotected native pointer as a long-lived object handle. Treat address as a locator, not identity; pair it with the native UID/generation where available.
 7. A candidate or previous-frame snapshot is for observation/discovery only. Before any command is submitted, revalidate current object identity, owner/House, life state and mission eligibility on the native command path.
 8. Handle destruction, reuse, partial reads and world changes fail-closed. SEH/access checks can contain an access fault but do not prove an object was alive or make a multi-field read atomic.
@@ -54,6 +57,6 @@ If the safe direct reader does not materially outperform the current batched RPM
 
 - Stage 1 (this branch): document the architecture contract and add a full-graph reader A/B benchmark to the existing x86/x64 native worker CI.
 - Stage 2: use the results to decide whether a guarded direct-read backend is worth prototyping. Keep it opt-in and keep RPM fallback/default.
-- Stage 3: audit request-list assembly and game-thread callback timing; remove avoidable allocation/copies without moving the full graph back to the game thread.
+- Stage 3 (priority): explicitly cap runtimeWorldDemands before merge, surface overflow instead of silently dropping or repeatedly rejecting, deduplicate/limit before expensive game-thread work, and hand request-vector ownership to the worker through reusable buffers. Remove the async=0 synchronous fallback from the production path. Measure the full game-thread callback P50/P95/P99.
 - Stage 4: collect 30–60 seconds of real-game sampling logs in a busy scenario; inspect worker P50/P95/P99, exact/candidate ratio, page/call counts, frame lag, incomplete/faults and main-thread P95/P99.
 - Stage 5: only after correctness and platform testing, promote a proven backend. No release is implied by this research branch.
