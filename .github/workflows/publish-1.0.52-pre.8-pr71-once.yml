@@ -1,9 +1,9 @@
 name: Publish RA2 Toolbox 1.0.52-pre.8 PR71 integrated Runtime candidate
 on:
   push:
-    branches: [release/1.0.52-pre.8-full-candidate-20261120]
+    branches: [release/1.0.52-pre.8-pr71-20261120]
     paths:
-      - .github/workflows/publish-1.0.52-pre.8-candidate-once.yml
+      - .github/workflows/publish-1.0.52-pre.8-pr71-once.yml
   workflow_dispatch:
 permissions:
   contents: write
@@ -118,7 +118,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_REF_NAME" = release/1.0.52-pre.8-full-candidate-20261120
+          test "$GITHUB_REF_NAME" = release/1.0.52-pre.8-pr71-20261120
           if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
             echo "Refusing to overwrite an existing pre-release tag" >&2
             exit 1
@@ -175,7 +175,7 @@ jobs:
 
           **验证限制**：这些是自动化/合成数据检查；尚未在真实红警单机、JJ/CnCNet 联机中完成验证，高速模式下的实际 FPS、启动卡顿、画中画丢帧与所有预定科技场景仍需实测。本版仅为 Pre-release，正式版 Latest 不变。
           EOF
-                    gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'RA2 Toolbox 1.0.52-pre.8 · PR71 统一采样与高帧率显示候选' --notes-file dist/RELEASE_NOTES.md dist/RA2Toolbox-1.0.52-pre.8-x64-Update.zip dist/RA2Toolbox-1.0.52-pre.8-x64-Full.zip dist/SHA256SUMS.txt
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'RA2 Toolbox 1.0.52-pre.8 · PR71 统一采样与高帧率显示候选' --notes-file dist/RELEASE_NOTES.md dist/RA2Toolbox-1.0.52-pre.8-x64-Update.zip dist/RA2Toolbox-1.0.52-pre.8-x64-Full.zip dist/SHA256SUMS.txt
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,targetCommitish,assets | jq -e --arg sha "$GITHUB_SHA" '.isDraft==false and .isPrerelease==true and .targetCommitish==$sha and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.8-x64-Update.zip")!=null) and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.8-x64-Full.zip")!=null)'
       - uses: actions/upload-artifact@v4
         if: always()
