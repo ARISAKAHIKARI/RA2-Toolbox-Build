@@ -7,6 +7,7 @@
 #include <vector>
 #include "../source/unload_compute.h"
 #include "../source/native_orders.h"
+#include "../source/object_index.h"
 using namespace assist;
 constexpr uint32_t House=0x310000,Transport=0x440000,P1=0x550000,P2=0x560000,Type=0x770000;
 constexpr uint32_t EjectAssist=1;
@@ -21,12 +22,7 @@ static UnloadPassenger unloadPassengers[32];
 static int unloadCount=0;static uint32_t unloadJobSerial=0;
 static std::unordered_map<uint32_t,uint8_t> memory;
 static uint32_t bad=0;static int assertions=0;
-struct Index {
- std::unordered_map<uint32_t,uint32_t> values;
- void clear(){values.clear();}
- void add(uint32_t p,uint32_t id){values[p]=id;}
- bool contains(uint32_t p)const{return values.find(p)!=values.end();}
-}worldObjects;
+static ObjectIndex worldObjects;
 struct Watched{
  std::unordered_map<uint32_t,uint32_t> values;
  void clear(){values.clear();}
@@ -46,7 +42,7 @@ template<class T>static void put(uint32_t at,T value){
  for(size_t i=0;i<sizeof value;++i)memory[at+uint32_t(i)]=bytes[i];
 }
 static bool read(uint32_t at,void*out,size_t n){
- if(bad&&uint64_t(at)<=bad&&uint64_t(at)+n>bad){std::memset(out,0xCC,n);return false;}
+ if(bad&&uint64_t(at)<=bad&&uint64_t(at)+n>bad){sampleComplete=false;std::memset(out,0xCC,n);return false;}
  auto*bytes=static_cast<uint8_t*>(out);
  for(size_t i=0;i<n;++i){const auto it=memory.find(at+uint32_t(i));if(it==memory.end())return false;bytes[i]=it->second;}
  return true;
@@ -72,18 +68,17 @@ static void setup(){
  for(uint32_t p:{P1,P2}){put<uint32_t>(p,0x7EB058);put<uint32_t>(p+0x10,p==P1?101:102);}
 }
 int main(){
- setup();bad=P2+0x10;watchEjections(House,10,{});
- check(unloadCount==1&&unloadPassengers[0].id==101&&unloadPassengers[0].p==P1,
-       "missing second UID created phantom EjectAssist ticket or lost first");
- bad=0;watchEjections(House,11,{});
- check(unloadCount==2&&unloadPassengers[1].id==102&&unloadPassengers[1].p==P2,
-       "read recovery did not enroll second passenger independently");
- watchEjections(House,12,{});
+ setup();bad=P2+0x10;watchEjections(House,10);
+ check(unloadCount==0,"incomplete ejection sample must not partially enroll a passenger");
+ bad=0;watchEjections(House,11);
+ check(unloadCount==2&&unloadPassengers[0].id==101&&unloadPassengers[1].id==102,
+       "complete recovered sample did not enroll both passengers atomically");
+ watchEjections(House,12);
  check(unloadCount==2,"repeated watcher duplicated passenger jobs");
 
- setup();bad=Transport+0x10;watchEjections(House,10,{});
+ setup();bad=Transport+0x10;watchEjections(House,10);
  check(unloadCount==0,"missing carrier UID created an invalid ejection ticket");
- bad=0;watchEjections(House,11,{});
+ bad=0;watchEjections(House,11);
  check(unloadCount==2,"restored carrier ID did not resume valid ejections");
 
  setup();bad=Transport+0x6C4;watchEjections(House,10,{});
