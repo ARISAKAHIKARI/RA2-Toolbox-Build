@@ -248,13 +248,11 @@ public:
  // synchronous capture route on platforms with poor exact-frame handoff.
  // Late/stale results are never native EventClass authorization.
  static bool enabled(){
-  static const bool value=[]{
-   char setting[8]{};
-   const DWORD length=GetEnvironmentVariableA(
-       "RA2TOOLBOX_ASYNC_COMMAND_CAPTURE",setting,sizeof setting);
-   return !(length==1&&setting[0]=='0');
-  }();
-  return value;
+#ifdef WORLD_FRAME_TEST_SYNC_CAPTURE
+  return false;
+#else
+  return true;
+#endif
  }
  // The dispatcher calls this BEFORE assembling up to 16K page addresses.
  // A busy same-world request can be retained without making any stale result
