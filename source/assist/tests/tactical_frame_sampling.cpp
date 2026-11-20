@@ -397,6 +397,7 @@ static void testIdentitySampleFailure(){
 
 static void testMissionReceiptIncomplete(){
  reset();uint32_t t=makeType(),p=object(t,2,20);set<int>(p+0xAC,0);set<int>(p+0xB4,-1);
+ vectorAt(0xA8EC78,0x800000,{p});seal();
  auto observed=observeMissionReceipt(20);
  check(observed.valid&&observed.mission==0&&observed.queued==-1,"complete mission 0 observation rejected");
  // Native receipt must not treat an unreadable mission as a zero-value mission.
