@@ -464,6 +464,9 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
   bool release=!done&&(r.cancelled||(r.mode==0&&!(sh->flags&SmartUnloadOrders))||
       (r.mode!=0&&!(sh->flags&EjectAssist))||(r.mode!=1&&frame-r.frame>900));
   if(!done&&!release&&r.stage==3&&onFoot){
+   // Missing worker roster is UNKNOWN; keep the follow task pending rather
+   // than interpreting an unavailable target index as target destruction.
+   if(indexedFrame!=frame||!commandRosterReady())continue;
    uint32_t target=worldObjects.byId(r.followTarget);
    if(target!=r.followTargetPointer)target=0;
    uint32_t targetHouse=0;
