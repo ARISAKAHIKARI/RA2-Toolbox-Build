@@ -4,11 +4,43 @@
 #include <cassert>
 #include <cstdio>
 #include <cwchar>
+#include <cstring>
 using Start=int(__cdecl*)(HANDLE);using Fn=int(__cdecl*)();
-static void until(Fn fn,int expected){const DWORD begin=GetTickCount();for(;;){const int value=fn();assert(value>=0);if(value==expected)return;assert(GetTickCount()-begin<5000);Sleep(1);}}
+static void until(Fn fn,int expected){const DWORD begin=GetTickCount();for(;;){const int value=fn();if(value<0){std::fprintf(stderr,"native fixture ERROR: poll returned %d, expected %d\\n",value,expected);std::fflush(stderr);}assert(value>=0);if(value==expected)return;assert(GetTickCount()-begin<5000);Sleep(1);}}
 int main(int argc,char**argv){
- assert(argc==2);SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);std::setvbuf(stdout,nullptr,_IONBF,0);
+ assert(argc==2||(argc==3&&(!std::strcmp(argv[2],"async")||!std::strcmp(argv[2],"async-candidate"))));
+ SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);std::setvbuf(stdout,nullptr,_IONBF,0);
  HANDLE gate=CreateEventW(nullptr,TRUE,FALSE,nullptr);assert(gate);HMODULE module=LoadLibraryA(argv[1]);assert(module);
+ if(argc==3&&!std::strcmp(argv[2],"async-candidate")){
+  auto startCandidate=(Start)GetProcAddress(module,"AsyncCandidateStart");
+  auto enteredCandidate=(Fn)GetProcAddress(module,"AsyncCandidateEntered");
+  auto advanceCandidate=(Fn)GetProcAddress(module,"AsyncCandidateAdvance");
+  auto pollCandidate=(Fn)GetProcAddress(module,"AsyncCandidatePoll");
+  auto stopWorker=(Fn)GetProcAddress(module,"AsyncStop");
+  assert(startCandidate&&enteredCandidate&&advanceCandidate&&pollCandidate&&stopWorker);
+  assert(startCandidate(gate)==1);
+  until(enteredCandidate,1);
+  assert(advanceCandidate()==1);
+  assert(SetEvent(gate));
+  until(pollCandidate,1);
+  until(stopWorker,1);
+  assert(FreeLibrary(module));CloseHandle(gate);
+  std::puts("PASS native Win32 Runtime late graph: paused frame-50 worker resumes after frame-51 advance; candidate sealed/UID matched, no stale native authorization");
+  return 0;
+ }
+ if(argc==3){
+  // This is the real production captureWorldFrame entry with the default-on
+  // Win32 command worker. The separate no-async mode still tests the pinned
+  // publisher and read-only recovery contracts below.
+  auto workerStart=(Fn)GetProcAddress(module,"AsyncStart");
+  auto workerPoll=(Fn)GetProcAddress(module,"AsyncPoll");
+  auto workerStop=(Fn)GetProcAddress(module,"AsyncStop");
+  assert(workerStart&&workerPoll&&workerStop);
+  assert(workerStart()==1);until(workerPoll,1);until(workerStop,1);
+  assert(FreeLibrary(module));CloseHandle(gate);
+  std::puts("PASS default-on Win32 Runtime captureWorldFrame x86/x64: nonblocking request, sealed same-frame worker adoption, native roster and pinned shutdown");
+  return 0;
+ }
  auto start=(Start)GetProcAddress(module,"Start");auto entered=(Fn)GetProcAddress(module,"Entered");auto advance=(Fn)GetProcAddress(module,"Advance");auto latest=(Fn)GetProcAddress(module,"ReadLatest");auto stop=(Fn)GetProcAddress(module,"Stop");auto resume=(Fn)GetProcAddress(module,"Resume");auto idle=(Fn)GetProcAddress(module,"Idle");
  auto probeBegin=(Fn)GetProcAddress(module,"ProbeBegin");
  auto probeReady=(Fn)GetProcAddress(module,"ProbeReady");

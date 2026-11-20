@@ -16,6 +16,10 @@
 namespace external {
 // Read-only handle. No allocation, injection, protection or write API for the game.
 struct ReaderDiagnostics {
+ // Lifetime totals are not reset by begin(). Distinguish Host external RPM
+ // from GameRuntime's in-process worker graph and sealed-memory page hits.
+ // Per-session only: never claim these represent other Host task sessions.
+ uint64_t totalRemoteCalls=0,totalRemoteRequestedBytes=0,totalRemoteFailures=0,totalSealedHits=0;
  uint32_t reads=0,errors=0,pageHits=0,pageMisses=0,pageFallbacks=0,prefetchedPages=0,prefetchMisses=0,pageEvictions=0,pageCurrentEvictions=0,pageBudgetDenials=0,pageAllocationFailures=0,emergencyPageReads=0,pagePressureRetired=0;
  // Read-only diagnostics: do not change access rights or game memory.
  uint32_t worldMissingReads=0,worldUnreadableReads=0,worldInvalidReads=0,worldFirstMissingAddress=0,worldLastMissingAddress=0;
@@ -41,7 +45,7 @@ class ProcessReader : public ReaderDiagnostics {
  bool frameRead(uint32_t address,void*out,size_t size,bool optional=false){
   if(!out||!worldframe::range(address,size)){++errors;if(!optional){worldComplete_=false;++worldInvalidReads;}return false;}
   for(uint32_t page=address&~4095u;uint64_t(page)<uint64_t(address)+size;page+=4096)requestWorldPage(page);
-  if(worldFrame_->read(address,out,size)){++pageHits;return true;}
+  if(worldFrame_->read(address,out,size)){++pageHits;++totalSealedHits;return true;}
   ++errors;const bool observed=worldFrame_->observed(address,size);if(!optional||!observed){worldComplete_=false;if(observed)++worldUnreadableReads;else ++worldMissingReads;
    if(!worldFirstMissingAddress)worldFirstMissingAddress=address;worldLastMissingAddress=address;}return false;
  }
@@ -100,10 +104,12 @@ class ProcessReader : public ReaderDiagnostics {
   if(emergency_.epoch==epoch_&&emergencyAddress_==page){++pageHits;return &emergency_;}
   ++pageMisses;if(failedPages_.count(page))return nullptr;
   if(it==pages_.end())it=storage(page);
-  const bool pooled=it!=pages_.end();auto&cached=pooled?it->second:emergency_;cached.epoch=0;SIZE_T got=0;++reads;if(!pooled)++emergencyPageReads;
+  const bool pooled=it!=pages_.end();auto&cached=pooled?it->second:emergency_;cached.epoch=0;SIZE_T got=0;++reads;++totalRemoteCalls;totalRemoteRequestedBytes+=cached.bytes.size();
+  if(!pooled)++emergencyPageReads;
   if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)page,cached.bytes.data(),cached.bytes.size(),&got)&&got==cached.bytes.size()){
    if(pooled)current(cached);else{cached.epoch=epoch_;emergencyAddress_=page;}return &cached;
   }
+  ++totalRemoteFailures;
   if(!failedTrackingBlocked_&&failedPages_.size()<readpages::SessionPages)try{failedPages_.insert(page);}catch(const std::bad_alloc&){failedTrackingBlocked_=true;}
   return nullptr;
  }
@@ -135,13 +141,18 @@ public:
   if(frame&&!worldframe::visualDemand(worldDemand_)&&
      worldframe::boundaryOnlySource(worldframe::authoritative(frame)->key))return false;
   if(worldframe::visualDemand(worldDemand_)){
+#ifdef WORLD_FRAME_TEST_VISUAL_CACHE
+   // Legacy display-cache behavior is retained only by isolated regression
+   // fixtures. Product Host never performs a second game-memory world read.
    if(frame&&!frame->controlSource)frame=worldClient_->visual(frame,worldDemand_,[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);});
+#else
+   // Observational display tokens come straight from the Runtime publisher.
+   // A scene reader waits for a publication that includes its graph demand.
+   if(!frame||frame->controlSource||!worldframe::canonicalDisplaySource(frame->key,worldDemand_))return false;
+#endif
   }else{
    frame=worldframe::authoritative(frame);
-   // A producer scene boundary is sufficient for Host-only visual decoding,
-   // but never a command input. This explicitly prevents a stale display
-   // publication being accepted during the first Base/Combat/Passengers
-   // subscription after a control hotkey or user-mode transition.
+   // A producer scene boundary is never a command input.
    if(frame&&worldframe::boundaryOnlySource(frame->key))return false;
   }
   if(!frame||!frame->sealed()||frame->key.pid!=pid()||frame->key.owner!=GetCurrentProcessId()||(match&&frame->key.match!=match))return false;
@@ -157,8 +168,14 @@ public:
  std::shared_ptr<void> worldPublicationSignal(){return worldClient_?worldClient_->publicationSignal():std::shared_ptr<void>{};}
  void endWorldFrame(){
   if(worldClient_&&!worldDemands_.empty()){
-   if(worldFrame_&&worldFrame_->controlSource)worldClient_->requestVisual(worldDemands_,!worldComplete_);
-   else worldClient_->request(worldDemands_,!worldComplete_);
+#ifdef WORLD_FRAME_TEST_VISUAL_CACHE
+   if(worldframe::visualDemand(worldDemand_)){
+    if(worldFrame_&&worldFrame_->controlSource)worldClient_->requestVisual(worldDemands_,!worldComplete_);
+    else worldClient_->request(worldDemands_,!worldComplete_);
+   }else worldClient_->request(worldDemands_,!worldComplete_);
+#else
+   worldClient_->request(worldDemands_,!worldComplete_);
+#endif
   }
   for(uint32_t page:worldDemands_){const uint32_t index=page>>12;worldDemandBits_[index>>6]=0;}
   worldDemands_.clear();worldFrame_.reset();worldComplete_=true;
@@ -204,9 +221,10 @@ public:
    if(growthBlocked_&&end-first>pages_.size())end=first+pages_.size();
    // Isolated pages are already optimal in the ordinary lazy reader.
    if(end-first>1){SIZE_T got=0;++reads;size_t n=(end-first)*4096;
+    ++totalRemoteCalls;totalRemoteRequestedBytes+=n;
     if(ReadProcessMemory(connection_->handle,(void*)(uintptr_t)wanted[first],bytes.data(),n,&got)&&got==n){
      for(size_t i=first;i<end;++i){auto found=storage(wanted[i]);if(found==pages_.end())continue;auto&cached=found->second;std::memcpy(cached.bytes.data(),bytes.data()+(i-first)*4096,4096);current(cached);++prefetchedPages;}
-    }else ++prefetchMisses;
+    }else{++prefetchMisses;++totalRemoteFailures;}
    }first=end;
   }
  }
@@ -246,11 +264,12 @@ public:
    ++errors;lastReadError=!valid()?ERROR_INVALID_HANDLE:!canRead()?ERROR_ACCESS_DENIED:ERROR_INVALID_PARAMETER;
    lastFailedAddress=address;lastFailedSize=size;lastBytesRead=0;lastRegionQueried=false;return false;
   }
-  SIZE_T got=0;++reads;BOOL success=ReadProcessMemory(connection_->handle,(void*)(uintptr_t)address,out,size,&got);
+  SIZE_T got=0;++reads;++totalRemoteCalls;totalRemoteRequestedBytes+=size;
+  BOOL success=ReadProcessMemory(connection_->handle,(void*)(uintptr_t)address,out,size,&got);
   DWORD error=success?ERROR_SUCCESS:GetLastError();
   bool ok=success&&got==size;
   if(!ok){
-   ++errors;lastReadError=error?error:ERROR_PARTIAL_COPY;
+   ++errors;++totalRemoteFailures;lastReadError=error?error:ERROR_PARTIAL_COPY;
    lastFailedAddress=address;lastFailedSize=size;lastBytesRead=got;
    MEMORY_BASIC_INFORMATION mbi{};
    // The region-query privilege is optional, acquired only after a failed

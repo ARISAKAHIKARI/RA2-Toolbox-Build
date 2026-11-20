@@ -1,0 +1,174 @@
+name: Publish RA2 Toolbox 1.0.52-pre.5 checked async candidate
+on:
+  push:
+    branches: [release/1.0.52-pre.5-async-20261119]
+    paths:
+      - .github/workflows/publish-1.0.52-pre.5-async-once.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: ra2toolbox-1.0.52-pre.5-release-once
+  cancel-in-progress: false
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify source lineage, pre5 version, async default and core regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 08d7ae073fa1b42d011f0c36e04d98cc5f6eb395 HEAD
+          grep -q '^#define RA2_RELEASE_VERSION "1.0.52.5"$' source/shared/source/release_version.h
+          grep -q '^#define RA2_RELEASE_VERSION_W L"1.0.52-pre.5"$' source/shared/source/release_version.h
+          grep -q 'ASSIST_PROTOCOL = 111' source/tools/verify_windows_outputs.py
+          grep -q 'return !(length==1&&setting\[0\]==.0.);' source/shared/source/world_frame_command_worker_win.h
+          python3 source/assist/tests/async_command_no_live_roster.py
+          python3 source/assist/tests/world_frame_core_test.py
+          python3 source/assist/tests/construction_host_test.py
+          python3 source/assist/tests/construction_paint_test.py
+          python3 source/assist/tests/ore_harvest_handoff.py --out /tmp/pre5-ore
+          python3 source/assist/tests/unload_loaded_admission.py --out /tmp/pre5-unload --current-only
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/async_command_policy.cpp -o /tmp/pre5-policy
+          /tmp/pre5-policy
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/execution_proof.cpp -o /tmp/pre5-proof
+          /tmp/pre5-proof
+  native:
+    needs: portable
+    runs-on: windows-2022
+    timeout-minutes: 70
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Zig 0.13.0 and icon encoder
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV ('ZIG_EXE='+(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)
+          python -m pip install Pillow==11.3.0
+      - name: Build paired x64 Host and x86 Runtime with matching ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/pre5-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/windows-build.log 2>&1 || { tail -120 checks/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root pre5-build --host-arch x64 --webview2
+          python -c "import json; p=json.load(open('pre5-build/BUILD_TARGET.json')); assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',111,False),p"
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do test -s "pre5-build/$n"; done
+      - name: Test native x86/x64 default-on command and publication worker lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/world_frame_command_worker_windows.py --zig "$ZIG" --out checks/command
+          python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out checks/publication
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: ra2toolbox-pre5-paired-windows
+          retention-days: 30
+          path: |
+            pre5-build/*.exe
+            pre5-build/*.dll
+            pre5-build/*.json
+            pre5-build/licenses/**
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra2toolbox-pre5-build-evidence
+          retention-days: 30
+          path: checks/
+  publish:
+    needs: native
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.52-pre.5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ra2toolbox-pre5-paired-windows
+          path: dist/update
+      - name: Assemble checked Update and optional Full with complete resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = release/1.0.52-pre.5-async-20261119
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "Refusing to overwrite an existing pre-release tag" >&2
+            exit 1
+          fi
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do test -s "dist/update/$n"; done
+          python3 - <<'PY'
+          import json
+          p=json.load(open('dist/update/BUILD_TARGET.json'))
+          assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',111,False),p
+          PY
+          cat > dist/update/BUILD_VALIDATION.txt <<EOF
+          RA2 Toolbox 1.0.52-pre.5 | source $GITHUB_SHA
+          Paired x64 Host / x86 Runtime and x86 broker | Assist ABI 111
+          Async command-world capture enabled by default
+          To restore previous synchronous mode before game launch: RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=0
+          Offline and Win32 x86/x64 worker lifecycle tests passed in this release workflow.
+          Actual gameplay, JJ/CnCNet multiplayer success and FPS: NOT TESTED.
+          Back up settings; close game and toolbox; replace all paired EXE and DLL files together.
+          EOF
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.52-pre.5-x64-Update.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.5-x64-Update.zip
+          mkdir -p dist/base dist/full
+          gh release download v1.0.52-pre.2 --repo "$GITHUB_REPOSITORY" --pattern 'RA2Toolbox-1.0.52-pre.2-x64-Full.zip' --dir dist/base
+          unzip -tq dist/base/RA2Toolbox-1.0.52-pre.2-x64-Full.zip
+          unzip -q dist/base/RA2Toolbox-1.0.52-pre.2-x64-Full.zip -d dist/full
+          test "$(find dist/full -type f -name RA2Toolbox.exe | wc -l)" -eq 1
+          root="$(dirname "$(find dist/full -type f -name RA2Toolbox.exe -print -quit)")"
+          test -n "$root"
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do cp "dist/update/$n" "$root/$n"; cmp "dist/update/$n" "$root/$n"; done
+          for n in BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json BUILD_SOURCE_MANIFEST.json BUILD_VALIDATION.txt; do test ! -f "dist/update/$n" || cp "dist/update/$n" "$root/$n"; done
+          if test -d dist/update/licenses; then mkdir -p "$root/licenses"; cp -a dist/update/licenses/. "$root/licenses/"; fi
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.52-pre.5-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.5-x64-Full.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.52-pre.5-x64-Update.zip RA2Toolbox-1.0.52-pre.5-x64-Full.zip > SHA256SUMS.txt)
+      - name: Create verified prerelease (leave Latest untouched)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## RA2 Toolbox v1.0.52-pre.5 · 异步世界采样默认启用与预定栏优化
+
+          **源码提交**：\`$GITHUB_SHA\`。本次 x64 Host、x86 GameRuntime、x86 Broker 为同一源码/协议 111 的配套编译，已通过离线回归和 Windows x86/x64 原生 worker/发布测试。
+
+          - 命令世界图异步采样默认开启；原生线程不再同步构建完整的 CommandCaptureGraph/单位 UID 索引。
+          - 工具箱的 Ctrl+D 等命令仍必须同帧样本与原生身份、House、人工版本检查；失败时不把旧样本作为授权。
+          - 修复 Host 页列表读取后需求修订不同步导致后台完成结果被拒绝的问题。
+          - 预定栏切页不再直接触发耗时的科技刷新，修复旧页面命中映射、减少技术候选查找和生产工厂重复扫描。
+          - 可在启动游戏前设置环境变量 \`RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=0\` 回退同步命令采样；重启游戏生效。
+
+          **Full** 包包含 v1.0.52-pre.2 的基础资源以及本次全部匹配的程序和 DLL；**Update** 用于覆盖已有完整安装目录。先退出游戏和工具箱、备份配置；不要单独替换 GameRuntime.dll。
+
+          **测试限制**：未在实际红警游戏、JJ / CnCNet 联机环境测量命令成功率、FPS 或 P95/P99。严格同帧机制在大量单位下仍可能等待后台结果；此版本为预发布测试版，不是 Latest。
+          EOF
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'RA2 Toolbox 1.0.52-pre.5 · 默认异步世界采样' --notes-file dist/RELEASE_NOTES.md dist/RA2Toolbox-1.0.52-pre.5-x64-Update.zip dist/RA2Toolbox-1.0.52-pre.5-x64-Full.zip dist/SHA256SUMS.txt
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,assets | jq -e '.isDraft==false and .isPrerelease==true and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.5-x64-Update.zip")!=null) and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.5-x64-Full.zip")!=null)'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra2toolbox-pre5-release-evidence
+          retention-days: 30
+          path: |
+            dist/RELEASE_NOTES.md
+            dist/SHA256SUMS.txt

@@ -9,22 +9,10 @@ static uint32_t normalVariantWeapon(uint32_t p,uint32_t type){
  uint32_t weapon=call<uint32_t>(0x7177C0,type,slot);
  return weapon>=0x10000?get<uint32_t>(weapon):1;
 }
-static int selectVariant(uint32_t house,bool global){
- if(!nativeDependenciesReady(0x48DC90,0x6FBFA0)||(!global&&!nativeDependencyReady(0x6D2140)))return -12;
- // Selection keys are not the 512-entry UI type catalogue. A modded live
- // selection can contain more variants; keep all keys in the world bound.
- static typekeys::VariantKeys keys;keys.clear();
- Vec selected=vec(0xA8ECB8,16384);
- for(int i=0;i<selected.count;++i){uint32_t p=item(selected,i);if(!p||!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k),weapon=t?normalVariantWeapon(p,t):1;if(!t||weapon==1)continue;
-  keys.add(t,weapon);
- }
- if(keys.empty())return 0;uint32_t tactical=get<uint32_t>(0x887324);if(!global&&!tactical)return -4;
- static uint32_t chosen[16384];int count=0;Vec all=vec(0xA8EC78);for(int i=0;i<all.count&&count<16384;++i){uint32_t p=item(all,i);if(!p||!own(p,house))continue;int k=kind(p);if(k<0||k==3)continue;uint32_t t=typeOf(p,k);if(!t||!keys.hasType(t))continue;
-  uint32_t weapon=normalVariantWeapon(p,t);if(weapon==1||!keys.contains(t,weapon)||!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x13C),p))continue;
-  if(!global){POINT point{};if(!call<bool>(0x6D2140,tactical,(const void*)(p+0x9C),&point))continue;}chosen[count++]=p;
- }
- if(!count)return 0;unselect();int n=0;for(int i=0;i<count;++i)if(selection(chosen[i]))++n;return n;
-}
+// Variant-key selection remains suspended until its weapon-variant
+// projection is produced by the canonical worker. Do not rediscover variants
+// by walking the live Techno vector in this command callback.
+static int selectVariant(uint32_t,bool){return -12;}
 // Select owned, live, selectable instances of a registered mobile type.
 // TacticalClass::CoordsToClient already returns whether the world coordinate
 // is visible in the tactical viewport. Do not test its output against a
@@ -37,15 +25,27 @@ static int selectTypes(uint32_t house,const uint8_t* mask,bool global){
   wanted.add(typePointers[i]);++types;
  }
  if(!types)return -4;
- uint32_t tactical=get<uint32_t>(0x887324);if(!global&&!tactical)return -4;
- static uint32_t chosen[16384];int n=0;Vec v=vec(0xA8EC78);
- for(int i=0;i<v.count&&n<16384;++i){uint32_t p=item(v,i);if(!own(p,house))continue;
-  int k=kind(p);if(k<0||k==3||!wanted.contains(typeOf(p,k)))continue;
+ static uint32_t candidates[16384],ids[16384];int count=0;
+ SampleReadScope sample;if(!sample||!commandRosterReady())return -12;
+ Vec all{};if(!sampleRoster(0xA8EC78,all))return -12;
+ for(int i=0;i<all.count&&count<16384;++i){
+  const uint32_t p=item(all,i);if(!p||!own(p,house))continue;
+  const int k=kind(p);if(k<0||k==3||!wanted.contains(typeOf(p,k)))continue;
+  const uint32_t id=get<uint32_t>(p+0x10);if(!id)continue;
+  candidates[count]=p;ids[count++]=id;
+ }
+ if(!sample.complete())return -12;
+ sample.finish();
+ if(!count)return 0;
+ const uint32_t tactical=get<uint32_t>(0x887324);if(!global&&!tactical)return -4;
+ unselect();int selected=0;
+ for(int i=0;i<count;++i){
+  const uint32_t p=candidates[i];if(worldByID(ids[i])!=p||!own(p,house))continue;
   if(!call<bool>(get<uint32_t>(get<uint32_t>(p)+0x13C),p))continue;
   if(!global){POINT pt{};if(!call<bool>(0x6D2140,tactical,(const void*)(p+0x9C),&pt))continue;}
-  chosen[n++]=p;
+  if(selection(p))++selected;
  }
- if(!n)return 0;unselect();int selected=0;for(int i=0;i<n;++i)if(selection(chosen[i]))++selected;return selected;
+ return selected;
 }
 static int selectType(uint32_t house,int index,bool global){
  if(index<0||index>=snap.typeCount||index>=MaxTypes||snap.types[index].kind==7)return -4;

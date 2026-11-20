@@ -14,18 +14,42 @@ struct Technology {
 template<class Read> class Catalogue {
  Read read;uint32_t house=0,types=0;int count=0,parent=-1,country=-1,tech=-1;
  std::vector<int> owned,predicted,limits;std::vector<int> groups[6];
- struct Producer {int index;uint32_t pointer;};
- std::vector<Producer> producers;
- void recordProducer(int index,uint32_t type){
-  if(type<0x10000)return;
-  for(const auto&p:producers)if(p.index==index)return;
-  producers.push_back({index,type});
- }
+ // Sealed read-only catalogues are short-lived: a single set of producers
+ // should serve every candidate in this calculation, not one full building
+ // scan per infantry/vehicle choice. Native CanBuild remains authoritative.
+ bool sealedProducerRead=false;
+ mutable bool producerCached[2]{false,false};
+ mutable uint64_t producerKinds[2][2]{}; // [owned/forecast][land/naval], 0..63
  template<class T>T get(uint32_t at,T fallback={})const{T v{};return read(at,&v,sizeof v)?v:fallback;}
  bool list(uint32_t at,std::vector<int>&out)const{
   uint32_t p=get<uint32_t>(at+4);int n=get<int>(at+16,-1),cap=get<int>(at+8,-1);
   if(n<0||n>256||cap<n||cap>65536||(n&&p<0x10000))return false;
   out.assign(size_t(n),0);return !n||read(p,out.data(),size_t(n)*4);
+ }
+ bool hasProducer(int kind,bool naval,bool forecast)const{
+  const auto&counts=forecast?predicted:owned;
+  // A live or mutable reader can change a producer's type without changing
+  // predicted counts. Its original semantics must recheck every call.
+  // Only a caller inside an immutable sealed WorldFrameScope may opt in.
+  // Keep original generic behavior for unrecognized producer kinds.
+  if(!sealedProducerRead||kind<0||kind>=64){
+   for(int n=0;n<count;++n)if(counts[n]>0){uint32_t b=type(n);
+    if(b&&get<int>(b+0xEB8,-1)==kind&&bool(get<uint8_t>(b+0xCCE))==naval)return true;
+   }
+   return false;
+  }
+  const int phase=forecast?1:0;
+  if(!producerCached[phase]){
+   producerKinds[phase][0]=producerKinds[phase][1]=0;
+   for(int n=0;n<count;++n)if(counts[n]>0){uint32_t b=type(n);
+    if(!b)continue;
+    const int produced=get<int>(b+0xEB8,-1);
+    if(produced>=0&&produced<64)
+     producerKinds[phase][bool(get<uint8_t>(b+0xCCE))]|=uint64_t(1)<<produced;
+   }
+   producerCached[phase]=true;
+  }
+  return (producerKinds[phase][naval]&(uint64_t(1)<<kind))!=0;
  }
  static bool sameID(const char*a,const char*b){for(int i=0;i<25;++i){unsigned x=(unsigned char)a[i],y=(unsigned char)b[i];if(x>='a'&&x<='z')x-=32;if(y>='a'&&y<='z')y-=32;if(x!=y)return false;if(!x)return true;}return false;}
  bool exactLevel(uint32_t t,int kind,int level,int index)const{
@@ -40,8 +64,9 @@ template<class Read> class Catalogue {
   return false;
  }
 public:
- explicit Catalogue(Read r):read(r){}
+ explicit Catalogue(Read r,bool sealed=false):read(r),sealedProducerRead(sealed){}
  bool load(uint32_t h,const std::vector<int>&future){
+  producerCached[0]=producerCached[1]=false;
   house=h;uint32_t c=get<uint32_t>(h+0x34),rules=get<uint32_t>(0x8871E0);
   country=get<int>(c+0xB8,-1);parent=get<int>(c+0xB4,-1);tech=get<int>(h+0x1D4,-1);
   // Spawned/player countries can have a different ArrayIndex2 than Owner's
@@ -57,12 +82,7 @@ public:
   um::readCounterPrefix(read,h+0x5550,count,owned.data(),errors);
   um::readCounterPrefix(read,h+0x5500,count,limits.data(),errors);if(errors)return false;
   for(int g=0;g<6;++g)if(!list(rules+0x358+g*28,groups[g]))return false;
-  producers.clear();predicted=owned;
-  // Most rulesets have many types but only a few owned producer buildings.
-  // The former possible() scan re-read EVERY building type for each unit.
-  for(int i=0;i<count;++i)if(owned[i]>0)recordProducer(i,type(i));
-  for(int i:future)if(i>=0&&i<count){if(predicted[i]++==0)recordProducer(i,type(i));}
-  return true;
+  predicted=owned;for(int i:future)if(i>=0&&i<count)++predicted[i];return true;
  }
  uint32_t type(int index)const{return index>=0&&index<count?get<uint32_t>(types+index*4):0;}
  bool possible(uint32_t t,int kind=7,bool naval=false,bool forecast=true,Technology technology={})const{
@@ -82,12 +102,7 @@ public:
   std::vector<int> needs,overrides;if(!list(t+0x638,needs)||!list(t+0x654,overrides))return false;
   if(!available(needs,overrides,counts,groups))return false;
   }
-  if(kind!=7){
-   bool producer=false;
-   for(const auto&p:producers)if(counts[p.index]>0&&
-      get<int>(p.pointer+0xEB8,-1)==kind&&bool(get<uint8_t>(p.pointer+0xCCE))==naval){producer=true;break;}
-   if(!producer)return false;
-  }
+  if(kind!=7&&!hasProducer(kind,naval,forecast))return false;
   // This is a preview, never authorization. Runtime rechecks the actual cameo
   // and original CanBuild before constructing a native production event.
   return true;
@@ -96,6 +111,6 @@ public:
   int limit=get<int>(t+0x3B8);return limit<=0||int64_t(limits[index])+predicted[index]-owned[index]<limit;
  }
  bool append(int index,Technology technology={}){uint32_t t=type(index);if(!possible(t,7,false,true,technology))return false;
-  if(predicted[index]++==0)recordProducer(index,t);return true;}
+  ++predicted[index];producerCached[1]=false;return true;}
 };
 }}

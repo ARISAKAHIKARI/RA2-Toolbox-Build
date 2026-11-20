@@ -28,6 +28,16 @@ inline uint32_t runtimeDemand(uint32_t demand){
  return visualDemand(demand)?uint32_t(Base):
  ((demand&~uint32_t(Visual|Resources|HostDisplayOnly|HostVisualPassengers|HostVisualCombat|HostVisualOre))|uint32_t(Base));
 }
+inline uint32_t canonicalHostDemand(uint32_t demand){
+ uint32_t capture=runtimeDemand(demand);
+ if(visualDemand(demand)){
+  capture|=demand&uint32_t(Visual|Resources);
+  if(demand&HostVisualPassengers)capture|=Passengers;
+  if(demand&HostVisualCombat)capture|=Combat;
+  if(demand&HostVisualOre)capture|=Ore;
+ }
+ return capture;
+}
 struct Key {
  uint32_t pid=0,owner=0,match=0,serial=0,tick=0,demand=0;
  uint32_t scenario=0,cells=0,house=0,cellCount=0;
@@ -43,7 +53,17 @@ struct RequestedSpan {uint32_t address=0,bytes=0,tick=0;};
 // actor/type graph pages. Source-revision values occupy the lower 31 bits.
 // A Host command reader may not treat this as a full command sample.
 constexpr uint32_t BoundaryOnlyKeyBit=0x80000000u;
+// World bytes copied by the GameRuntime background worker may have crossed
+// simulation frames. This marker authorizes Host *observation* only, never a
+// native EventClass. Runtime has a separate exact-frame admission check.
+constexpr uint32_t ObservationOnlyKeyBit=0x40000000u;
+constexpr uint32_t SceneKeyBit=0x20000000u;
+constexpr uint32_t PublicationKeyFlags=BoundaryOnlyKeyBit|ObservationOnlyKeyBit|SceneKeyBit;
 inline bool boundaryOnlySource(const Key&key){return (key.demand&BoundaryOnlyKeyBit)!=0;}
+inline bool observationOnlySource(const Key&key){return (key.demand&ObservationOnlyKeyBit)!=0;}
+inline bool canonicalDisplaySource(const Key&key,uint32_t demand){
+ return observationOnlySource(key)&&!boundaryOnlySource(key)&&(!(demand&Visual)||(key.demand&SceneKeyBit));
+}
 struct Counters {uint32_t calls=0,bytes=0,pageHits=0,pageAttempts=0,rangeAttempts=0,failedReads=0,rosterCaptures=0,overflows=0;};
 struct Page {
  uint32_t address=0,full=0;
@@ -106,9 +126,15 @@ class DemandLeases {
  std::array<Entry,MaxPages> entries_{};
  std::array<uint16_t,IndexSize> index_{};
  uint32_t count_=0,checkedAt_=0,checkAfter_=0;
+#ifdef WORLD_FRAME_LEASE_DIAGNOSTICS
+ uint64_t pruneVisits_=0; // Instrument only the regression fixture, never production.
+#endif
  void prune(uint32_t now){
   if(uint32_t(now-checkedAt_)<checkAfter_)return;
   uint32_t kept=0,next=Lifetime+1;
+#ifdef WORLD_FRAME_LEASE_DIAGNOSTICS
+  pruneVisits_+=count_;
+#endif
   for(uint32_t i=0;i<count_;++i){const auto entry=entries_[i];const uint32_t age=uint32_t(now-entry.tick);
    if(age<=Lifetime){entries_[kept++]=entry;next=std::min(next,Lifetime+1-age);}}
   if(kept!=count_){count_=kept;index_.fill(0);
@@ -117,16 +143,37 @@ class DemandLeases {
  }
 public:
  static constexpr uint32_t Lifetime=1000;
+#ifdef WORLD_FRAME_LEASE_DIAGNOSTICS
+ uint64_t pruneVisits()const{return pruneVisits_;}
+#endif
  void clear(){count_=0;index_.fill(0);checkAfter_=0;}
  size_t size()const{return count_;}
- bool retain(uint32_t page,uint32_t now){
-  if((page&(PageSize-1))||!range(page,PageSize))return false;
+ enum class RetainResult:uint8_t { Invalid,Existing,Added,Full };
+ RetainResult retainStatus(uint32_t page,uint32_t now){
+  if((page&(PageSize-1))||!range(page,PageSize))return RetainResult::Invalid;
   uint32_t slot=bucket(page);
-  while(index_[slot]){auto&entry=entries_[index_[slot]-1];if(entry.page==page){entry.tick=now;return true;}slot=(slot+1)&(IndexSize-1);}
-  if(count_==MaxPages){prune(now);if(count_==MaxPages)return false;slot=bucket(page);while(index_[slot])slot=(slot+1)&(IndexSize-1);}
-  entries_[count_]={page,now};index_[slot]=uint16_t(++count_);checkAfter_=0;return true;
+  while(index_[slot]){auto&entry=entries_[index_[slot]-1];if(entry.page==page){entry.tick=now;return RetainResult::Existing;}slot=(slot+1)&(IndexSize-1);}
+  if(count_==MaxPages){
+   // The earliest existing lease cannot have expired yet. Do not scan all
+   // 16K entries simply because an unknown page appeared at capacity.
+   if(uint32_t(now-checkedAt_)<checkAfter_)return RetainResult::Full;
+   prune(now);if(count_==MaxPages)return RetainResult::Full;
+   slot=bucket(page);while(index_[slot])slot=(slot+1)&(IndexSize-1);
+  }
+  const bool wasEmpty=count_==0;
+  entries_[count_]={page,now};index_[slot]=uint16_t(++count_);
+  if(wasEmpty){checkedAt_=now;checkAfter_=Lifetime+1;}
+  return RetainResult::Added;
+ }
+ bool retain(uint32_t page,uint32_t now){
+  const auto result=retainStatus(page,now);
+  return result==RetainResult::Existing||result==RetainResult::Added;
  }
  void append(uint32_t now,std::vector<uint32_t>&out){prune(now);for(uint32_t i=0;i<count_;++i)out.push_back(entries_[i].page);}
+ template<class F> bool visit(uint32_t now,F visitor){
+  prune(now);for(uint32_t i=0;i<count_;++i)if(!visitor(entries_[i].page))return false;
+  return true;
+ }
 };
 inline bool bit(const std::array<uint64_t,64>&bits,size_t n){return (bits[n>>6]>>(n&63))&1u;}
 inline void mark(std::array<uint64_t,64>&bits,size_t at,size_t n){
@@ -136,9 +183,12 @@ inline void mark(std::array<uint64_t,64>&bits,size_t at,size_t n){
 }
 class Snapshot {
  std::array<uint32_t,IndexSize> index_{};
- bool sealed_=false,overflow_=false;
+ bool sealed_=false,overflow_=false,indexFresh_=true;
  bool capacityFailure(){overflow_=true;++counters.overflows;return false;}
  Page* add(uint32_t address){
+  // A zero-page Host boundary does not touch the 128-KiB lookup array.
+  // The first later full page reinitializes it before reading old indices.
+  if(!indexFresh_){index_.fill(0);indexFresh_=true;}
   uint32_t slot=bucket(address);
   while(index_[slot]){auto&p=pages[index_[slot]-1];if(p.address==address)return &p;slot=(slot+1)&(IndexSize-1);}
   if(overflow_)return nullptr;
@@ -166,15 +216,23 @@ public:
  void swap(Snapshot&other)noexcept{
   using std::swap;
   swap(index_,other.index_);swap(sealed_,other.sealed_);swap(overflow_,other.overflow_);
+  swap(indexFresh_,other.indexFresh_);
   swap(key,other.key);swap(counters,other.counters);pages.swap(other.pages);
   controlSource.swap(other.controlSource);
   swap(visualFrame,other.visualFrame);swap(visualTick,other.visualTick);
   swap(visualSerial,other.visualSerial);
  }
- void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};pages.clear();index_.fill(0);sealed_=overflow_=false;}
+ void reset(const Key&next){controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;key=next;counters={};pages.clear();index_.fill(0);indexFresh_=true;sealed_=overflow_=false;}
+ // No page buffer or key-index contents can become command authority on a
+ // HostDisplayOnly Key. Defer clearing the large lookup until the next page add.
+ void resetBoundary(const Key&next){
+  controlSource.reset();visualFrame=-1;visualTick=0;visualSerial=0;
+  key=next;counters={};pages.clear();indexFresh_=false;sealed_=overflow_=false;
+ }
  bool sealed()const{return sealed_;}bool overflow()const{return overflow_;}
  bool seal(){sealed_=true;return !overflow_;}
  const Page*find(uint32_t address)const{
+  if(!indexFresh_)return nullptr; // Never examine stale page indices after zero reset.
   uint32_t slot=bucket(address);
   for(uint32_t count=0;count<IndexSize;++count,slot=(slot+1)&(IndexSize-1)){
    const uint32_t i=index_[slot];if(!i)return nullptr;if(pages[i-1].address==address)return &pages[i-1];}
@@ -240,9 +298,12 @@ public:
  // Each 16-page batch uses at most 7 speculative calls, with no more than
  // 32 extra split calls across this invocation. Required fields still use
  // the original per-page and partial-range fallback.
- template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes,bool individualFallback=true){
+ template<class Read>bool prefetchPages(Read&&live,const std::vector<uint32_t>&addresses,uint8_t*scratch,size_t scratchBytes,bool individualFallback=true,size_t maxBatchPages=16){
   if(sealed_||overflow_)return false;
-  const size_t limit=std::min<size_t>(16,scratchBytes/PageSize);bool ok=true;
+  // Mandatory/unknown pages retain the 16-page default. An explicitly
+  // prefiltered actor warmup can batch 32 adjacent pages in one live read.
+  // Clamp to the caller's retained scratch and never read outside a run.
+  const size_t limit=std::min({size_t(32),maxBatchPages,scratchBytes/PageSize});bool ok=true;
   // Bound the TOTAL number of extra speculative RPM calls per invocation.
   // Thousands of inaccessible actors must not multiply the split cost.
   unsigned splitBudget=32;

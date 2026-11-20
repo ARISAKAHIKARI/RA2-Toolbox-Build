@@ -11,7 +11,7 @@ def block(text,marker):
 def main():
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path,required=True);p.add_argument('--before',type=Path);a=p.parse_args()
  r=Path(__file__).resolve().parents[3];here=Path(__file__).resolve().parent;out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
- paths=[r/'source/assist/source'/name for name in ['bridge.cpp','repair_delivery.h','compute_tasks.h','compute_frame.h','compute_policy.h','plan_freshness.h','tactical_decisions.h','world_frame_runtime.h','tactical_frame_read.h']]+[r/'source/shared/source/world_frame.h',here/'auto_repair_runtime.cpp',Path(__file__).resolve()]
+ paths=[r/'source/assist/source'/name for name in ['bridge.cpp','repair_delivery.h','compute_tasks.h','compute_frame.h','compute_policy.h','plan_freshness.h','tactical_decisions.h','world_frame_runtime.h','tactical_frame_read.h']]+[r/'source/shared/source/world_frame.h',r/'source/shared/source/world_frame_command_index.h',here/'auto_repair_runtime.cpp',Path(__file__).resolve()]
  digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();hashes={str(p.relative_to(r)):digest(p) for p in paths}
  def run(source,dest,before=False):
   dest.mkdir(parents=True,exist_ok=True);text=source.read_text();reset=block(text,'static void reset(bool retireHooks=true,bool preserveMissile=false)')
@@ -28,7 +28,16 @@ def main():
    'REPAIR_MANUAL':manual,
    'REPAIR_RESET':reset[resetStart:resetEnd]+reset[autoStart:autoEnd]+'pendingRepairs.clear();',
   }
-  sections['SAMPLE_SCOPE']='static worldframe::DemandLeases runtimeDemandLeases;\nstatic bool worldFrameBoundaryOnly=false;\nstatic void rememberMissingWorldSpan(uint32_t,size_t){}\nstatic void requestWorldRange('+sections['SAMPLE_SCOPE']
+  sections['SAMPLE_SCOPE']=(
+   '#define WORLD_FRAME_PLATFORM_FIXTURE 1\n'
+   'static worldframe::DemandLeases runtimeDemandLeases;\n'
+   'static bool worldFrameBoundaryOnly=false;\n'
+   'static worldframe::Snapshot worldFrameCandidate;\n'
+   'static const worldframe::Snapshot*sampleWorldSource=nullptr;\n'
+   'static uint32_t sampleScopeTick=0;\n'
+   'static uint32_t GetTickCount(){return uint32_t(currentFrame*16);}\n'
+   'static void rememberMissingWorldSpan(uint32_t,size_t){}\n'
+   'static void requestWorldRange('+sections['SAMPLE_SCOPE'])
   defines=[]
   for name,value in sections.items():
    target=dest/(name.lower()+'.inc');target.write_text(value+'\n');defines.append('-D'+name+'="'+str(target)+'"')

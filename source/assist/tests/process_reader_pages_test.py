@@ -62,10 +62,17 @@ int main(){
  }
  assert(pageAttempts==1&&fieldAttempts==10);
  assert(reader.pageMisses==10&&reader.pageFallbacks==10&&reader.pageHits==0&&reader.reads==11&&reader.errors==0);
+ // Lifetime telemetry must count actual RPM calls, including the single
+ // failed 4KB speculative page read, without inventing per-field IPC reads.
+ assert(reader.totalRemoteCalls==11&&reader.totalRemoteRequestedBytes==4096+10*4);
+ assert(reader.totalRemoteFailures==1&&reader.totalSealedHits==0);
  // A full-page failure cannot poison later direct field reads in this sample.
  completePage=true;assert(reader.read(0x12080,value,sizeof value));
  assert(pageAttempts==1&&fieldAttempts==11);
- reader.begin();assert(reader.read(0x12080,value,sizeof value));
+ const auto lifetimeBeforeBegin=reader.totalRemoteCalls;
+ reader.begin();assert(reader.totalRemoteCalls==lifetimeBeforeBegin);
+ assert(reader.read(0x12080,value,sizeof value));
+ assert(reader.totalRemoteCalls==lifetimeBeforeBegin+1);
  assert(pageAttempts==2&&reader.pageMisses==1&&reader.pageHits==0);
  assert(reader.read(0x120a0,value,sizeof value));
  assert(pageAttempts==2&&reader.pageHits==1&&reader.reads==1);

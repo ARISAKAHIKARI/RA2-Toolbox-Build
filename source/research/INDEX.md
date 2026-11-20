@@ -1,5 +1,7 @@
 # 逆向研究索引
 
+| Runtime 单采样架构与功能暂挂切换 | [架构原则与迁移门槛](2026-11-20-runtime-single-pass-sampling-principles.md) | single-owner Runtime snapshot suspend legacy readers no compatibility branch Host VisualCache RecoveryMailbox ShadowGraphWorker |
+
 从 2026-10-21 起记录新研究，不补录旧工作。
 
 持久笔记：`RA2-Reverse-Engineering-Notes.sqlite`。表 `notes` 保存结论、依据和未决问题；`notes_fts` 可按英文关键词检索，中文可用 `LIKE`。后续更新同一文件，避免每版另建副本。

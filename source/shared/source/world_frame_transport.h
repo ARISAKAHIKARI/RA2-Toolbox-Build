@@ -1,7 +1,9 @@
 #pragma once
 #include "world_frame.h"
 #include "world_frame_pool.h"
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
 #include "world_frame_visual.h"
+#endif
 #include <windows.h>
 #include <mutex>
 #include <map>
@@ -106,7 +108,9 @@ public:
 // already producing later frames. Neither process waits for a reader lease.
 class Client {
  std::mutex mutex_;HANDLE mapping_=nullptr;Channel*channel_=nullptr;
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
  std::mutex visualMutex_;VisualCache visuals_;
+#endif
  std::shared_ptr<void> notification_;
  uint32_t pid_=0,owner_=0;Token latest_;uint32_t copiedSerial_=0;
  // Pool only dead publications' storage, never their shared/weak identity.
@@ -115,9 +119,11 @@ class Client {
  std::array<DataView,2>data_;DataRef copiedData_{};LONG copiedSlot_=-1;
  uint64_t generation_=0;
  struct Lease {
-  std::array<uint32_t,6>ticks{};uint32_t used=0;
+  std::array<uint32_t,7>ticks{};uint32_t used=0;
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
   uint32_t displayAt=0,controlAt=0;
   bool everDisplay=false,everControl=false;
+#endif
  };std::unordered_map<uintptr_t,Lease>leases_;
  std::unordered_map<uint32_t,uint32_t> wanted_;uint32_t publishedAt_=0,prunedAt_=0;
  uint32_t expiryCheckedAt_=0,expiryAfter_=0;
@@ -150,27 +156,37 @@ class Client {
   // Renewals only postpone an expiry. Until the earliest possible expiry,
   // an unchanged set of requested bits cannot change the aggregate mask.
   if(!demandDirty_&&uint32_t(now-demandCheckedAt_)<demandAfter_)return;
-  uint32_t combined=0,next=251;bool displayActive=false,controlActive=false;
+  uint32_t combined=0,next=251;
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
+  bool displayActive=false,controlActive=false;
+#endif
   for(auto it=leases_.begin();it!=leases_.end();){uint32_t mask=0;
-   for(unsigned bit=0;bit<6;++bit)if(it->second.used&(1u<<bit)){
+   for(unsigned bit=0;bit<it->second.ticks.size();++bit)if(it->second.used&(1u<<bit)){
     const uint32_t age=uint32_t(now-it->second.ticks[bit]);
     if(age<=250){mask|=1u<<bit;next=std::min(next,251-age);}
    }
    if(!mask)it=leases_.erase(it);
    else{
-    combined|=mask;const auto&lease=it->second;
+    combined|=mask;
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
+    const auto&lease=it->second;
     if(lease.everDisplay&&uint32_t(now-lease.displayAt)<=250){
      displayActive=true;next=std::min(next,251-uint32_t(now-lease.displayAt));
     }
     if(lease.everControl&&uint32_t(now-lease.controlAt)<=250){
      controlActive=true;next=std::min(next,251-uint32_t(now-lease.controlAt));
     }
+#endif
     ++it;
    }
   }
-  // A single live command reader disables the fast display-only path.
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
+  // The boundary-only source is solely a legacy fixture.
   channel_->demandMask=combined|
     ((combined==Base&&displayActive&&!controlActive)?HostDisplayOnly:0u);
+#else
+  channel_->demandMask=combined;
+#endif
   demandCheckedAt_=now;demandAfter_=next;demandDirty_=false;
  }
  void heartbeat(uint32_t now){
@@ -274,22 +290,37 @@ public:
   std::lock_guard<std::mutex>lock(mutex_);const auto source=authoritative(token);return source&&open()&&acceptsObserved(source,GetTickCount());
  }
  template<class Live>Token visual(const Token&source,uint32_t demand,Live live){
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
   std::lock_guard<std::mutex>lock(visualMutex_);return visuals_.acquire(source,demand,GetTickCount(),live);
+#else
+  // Host-side graph acquisition is quarantined until display fields are
+  // carried by the Runtime-owned immutable sample.
+  (void)source;(void)demand;(void)live;return {};
+#endif
  }
  void requestVisual(const std::vector<uint32_t>&pages,bool retry){
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
   std::lock_guard<std::mutex>lock(visualMutex_);visuals_.request(pages,GetTickCount(),retry);
+#else
+  (void)pages;(void)retry;
+#endif
  }
  void subscribe(uintptr_t reader,uint32_t demand){
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
   const bool display=visualDemand(demand);
   demand=runtimeDemand(demand);
+#else
+  demand=canonicalHostDemand(demand);
+#endif
   std::lock_guard<std::mutex>lock(mutex_);if(!open())return;const uint32_t now=GetTickCount();
   if((demand|Base)&~uint32_t(channel_->demandMask))demandDirty_=true;
+  auto&lease=leases_[reader];lease.used|=demand|Base;
+  for(unsigned bit=0;bit<lease.ticks.size();++bit)if((demand|Base)&(1u<<bit))lease.ticks[bit]=now;
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
   // A previously active command lease may have aged out while its reader
   // continued subscribing display data. Resuming command mode must revoke
   // HostDisplayOnly IMMEDIATELY, even when everControl was already true.
   if(!display&&(channel_->demandMask&HostDisplayOnly))demandDirty_=true;
-  auto&lease=leases_[reader];lease.used|=demand|Base;
-  for(unsigned bit=0;bit<6;++bit)if((demand|Base)&(1u<<bit))lease.ticks[bit]=now;
   if(display){
    if(!lease.everDisplay)demandDirty_=true;
    lease.everDisplay=true;lease.displayAt=now;
@@ -297,6 +328,7 @@ public:
    if(!lease.everControl)demandDirty_=true;
    lease.everControl=true;lease.controlAt=now;
   }
+#endif
   heartbeat(now);
  }
  void request(const std::vector<uint32_t>&pages,bool incomplete=false){

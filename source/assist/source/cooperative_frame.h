@@ -15,14 +15,14 @@ inline bool pack(FrameInput&out,const Input&i,const Request&r,uint32_t tick,int 
  if(out.unitCount)memcpy(out.units,i.units.data(),i.units.size()*sizeof(Unit));if(out.targetCount)memcpy(out.targets,i.targets.data(),i.targets.size()*sizeof(Target));
  if(!i.compatible.empty())memcpy(out.compatible,i.compatible.data(),i.compatible.size());if(out.damageCount)memcpy(out.expectedDamage,i.expectedDamage.data(),i.expectedDamage.size()*sizeof(double));return true;
 }
-inline Input unpack(const FrameInput&i){Input out;if(!validFrame(i))return out;out.mode=i.mode;out.clicked=i.request.target;out.centerX=i.centerX;out.centerY=i.centerY;out.units.assign(i.units,i.units+i.unitCount);out.targets.assign(i.targets,i.targets+i.targetCount);out.compatible.assign(i.compatible,i.compatible+size_t(i.unitCount)*i.targetCount);if(i.damageCount)out.expectedDamage.assign(i.expectedDamage,i.expectedDamage+i.damageCount);return out;}
+inline Input unpack(const FrameInput&i){Input out;if(!validFrame(i))return out;out.mode=i.mode;out.clicked=i.request.target;out.centerX=i.centerX;out.centerY=i.centerY;out.radiusCells=radiusCells(i.request.airRadiusCells);out.coveragePercent=damagePercent(i.request.airDamagePercent);out.units.assign(i.units,i.units+i.unitCount);out.targets.assign(i.targets,i.targets+i.targetCount);out.compatible.assign(i.compatible,i.compatible+size_t(i.unitCount)*i.targetCount);if(i.damageCount)out.expectedDamage.assign(i.expectedDamage,i.expectedDamage+i.damageCount);return out;}
 inline bool copyFrame(FrameInput&out,const FrameInput&i){
  out.request=i.request;out.match=i.match;out.tick=i.tick;out.frame=i.frame;out.mode=i.mode;out.unitCount=i.unitCount;out.targetCount=i.targetCount;out.centerX=i.centerX;out.centerY=i.centerY;out.damageCount=i.damageCount;
  if(!validFrame(out))return false;const size_t cells=size_t(out.unitCount)*out.targetCount;
  if(out.unitCount)memcpy(out.units,i.units,size_t(out.unitCount)*sizeof(Unit));if(out.targetCount)memcpy(out.targets,i.targets,size_t(out.targetCount)*sizeof(Target));if(cells)memcpy(out.compatible,i.compatible,cells);if(out.damageCount)memcpy(out.expectedDamage,i.expectedDamage,size_t(out.damageCount)*sizeof(double));return true;
 }
 inline void restrictSources(Input&input,const Request&r){
- Input out;out.mode=input.mode;out.clicked=input.clicked;out.centerX=input.centerX;out.centerY=input.centerY;out.targets=std::move(input.targets);const size_t columns=out.targets.size();
+ Input out;out.mode=input.mode;out.clicked=input.clicked;out.centerX=input.centerX;out.centerY=input.centerY;out.radiusCells=input.radiusCells;out.coveragePercent=input.coveragePercent;out.targets=std::move(input.targets);const size_t columns=out.targets.size();
  for(int n=0;n<r.count;++n)for(size_t i=0;i<input.units.size();++i)if(input.units[i].source.id==r.sources[n].id&&input.units[i].source.token==r.sources[n].token){out.units.push_back(input.units[i]);out.compatible.insert(out.compatible.end(),input.compatible.begin()+i*columns,input.compatible.begin()+(i+1)*columns);if(!input.expectedDamage.empty())out.expectedDamage.insert(out.expectedDamage.end(),input.expectedDamage.begin()+i*columns,input.expectedDamage.begin()+(i+1)*columns);break;}input=std::move(out);
 }
 }

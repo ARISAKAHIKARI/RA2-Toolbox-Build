@@ -1,3 +1,4 @@
+#define WORLD_FRAME_TEST_VISUAL_CACHE
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -8,6 +9,8 @@
 static HANDLE gate=nullptr;static DWORD gameThread=0;
 static std::atomic<bool>blockNext{true},entered{false};
 static std::atomic<DWORD>backgroundReadThread{0};
+static HANDLE commandGate=nullptr;
+static std::atomic<bool>holdCommandRead{false},enteredCommandRead{false};
 static unsigned threadStarts=0;
 static void*recoveryMemory=nullptr;
 // Shadow test models native game memory by its x86 addresses; the callback
@@ -25,7 +28,20 @@ static HANDLE WINAPI delayedMapping(HANDLE file,LPSECURITY_ATTRIBUTES security,D
  return CreateFileMappingW(file,security,protect,high,low,name);
 }
 static BOOL WINAPI auditedNativeRead(HANDLE proc,LPCVOID address,LPVOID output,SIZE_T size,SIZE_T*got){
- if(GetCurrentThreadId()!=gameThread)backgroundReadThread.store(GetCurrentThreadId(),std::memory_order_release);
+ if(GetCurrentThreadId()!=gameThread){
+  backgroundReadThread.store(GetCurrentThreadId(),std::memory_order_release);
+  // Wait at the first full-page graph read, AFTER currentKey has taken
+  // its scalar frame-50 identity. The worker therefore really spans the
+  // frame change, rather than simply starting a fresh graph in frame 51.
+  if(size>=4096&&
+     holdCommandRead.exchange(false,std::memory_order_acq_rel)){
+   enteredCommandRead.store(true,std::memory_order_release);
+   if(!commandGate||WaitForSingleObject(commandGate,5000)!=WAIT_OBJECT_0){
+    if(got)*got=0;
+    return FALSE;
+   }
+  }
+ }
  const uintptr_t at=uintptr_t(address);
  if(shadowImage&&at>=0x10000&&at<=shadowImageSize&&size<=shadowImageSize-at){
   std::memcpy(output,shadowImage+at,size);if(got)*got=size;return TRUE;
@@ -41,15 +57,21 @@ static BOOL WINAPI auditedNativeRead(HANDLE proc,LPCVOID address,LPVOID output,S
 #undef CreateFileMappingW
 #undef CreateThread
 // The publication's counted thread hook must not instrument command workers.
+// But the command worker's production RPM path uses the same simulated
+// 1.001 game-memory image. Its actual Win32 thread/lock/DLL pin remain real.
+#define ReadProcessMemory auditedNativeRead
 #include "../../shared/source/world_frame_command_worker_win.h"
+#undef ReadProcessMemory
 #define WORLD_FRAME_FIXTURE_ONLY
+#define WORLD_FRAME_TEST_CANDIDATES
 #define REAL_WINDOWS_RPM
 #include "world_frame_core.cpp"
 #include "../source/world_lifecycle.h"
 namespace assist {
 struct FixtureShared {volatile LONG worldSampleSeq=0;uint32_t owner=0,magnetronGlobal=0,worldSampleFailures=0,worldSamplePages=0,worldSampleReads=0,worldSampleBytes=0,worldSampleRosters=0,worldSampleSerial=0;int worldSampleFrame=-1;};
 static FixtureShared shared;static FixtureShared*sh=&shared;static uint32_t match=7;
-static struct {int frame=50;}snap;
+static struct {int frame=50,session=0;}snap;
+static uint32_t lastHouse=fixture::House;
 // No WORLD_FRAME_PLATFORM_FIXTURE: execute the actual async Runtime path.
 #include "../source/world_frame_runtime.h"
 }
@@ -62,6 +84,13 @@ static bool capture(){
  fixture::Read live{&memory};return captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base);
 }
 extern "C" __declspec(dllexport) int Idle(){
+ // The synchronous acquisition branch is reachable only in a dedicated
+ // test-only DLL. Production always uses CommandCaptureWorker.
+#ifdef WORLD_FRAME_TEST_SYNC_CAPTURE
+ assert(!assist::worldFrameCommandWorker.enabled());
+#else
+ assert(assist::worldFrameCommandWorker.enabled());
+#endif
  using namespace assist;gameThread=GetCurrentThreadId();shared.owner=GetCurrentProcessId();fixture::setup(memory);
  memory.beforeRead=[](uint32_t,size_t){assert(GetCurrentThreadId()==gameThread);};
  assert(!worldFrameServer.wanted(shared.owner,GetTickCount()));assert(threadStarts==0);
@@ -91,6 +120,7 @@ extern "C" __declspec(dllexport) int Resume(){
  assert(captureWorldFrame(live,before,fixture::House,GetTickCount(),worldframe::Base));
  assert(memory.calls.size()==calls&&!std::memcmp(&worldFrame.key,&key,sizeof key));return 1;
 }
+#ifdef WORLD_FRAME_TEST_RECOVERY
 static worldframe::Key lastRecoveryKey{};
 extern "C" __declspec(dllexport) int ProbeBegin(){
  using namespace assist;
@@ -124,6 +154,9 @@ extern "C" __declspec(dllexport) int ProbeReady(){
  if(worldFrame.find(hints[0].address&~4095u))return -3;
  return 1;
 }
+#endif
+
+#ifdef WORLD_FRAME_TEST_SHADOW
 extern "C" __declspec(dllexport) int ShadowBegin(){
  using namespace assist;
  shadowImage=memory.bytes.data();shadowImageSize=memory.bytes.size();
@@ -145,6 +178,8 @@ extern "C" __declspec(dllexport) int ShadowReady(){
  if(!worldFrameReady||!worldFrame.sealed())return -3;
  return 1;
 }
+#endif
+
 extern "C" __declspec(dllexport) int Stop(){
  assist::retireWorldFrame();
  const bool published=assist::worldFramePublication.stop();
@@ -166,3 +201,127 @@ extern "C" __declspec(dllexport) int RecoverPublisher(){
  return 1;
 }
 
+
+static bool asyncStopStarted=false;
+extern "C" __declspec(dllexport) int AsyncStart(){
+ asyncStopStarted=false;
+ using namespace assist;
+ if(!worldFrameCommandWorker.enabled())return -1;
+ // Sync publisher tests deliberately intercept the first named data
+ // mapping. Async Runtime tests must not inherit that unrelated hold:
+ // they pause ONLY the command worker's first payload RPM when requested.
+ // Otherwise the new worker-to-Host publication fails its mapping setup
+ // even though the production publisher works.
+ blockNext.store(false,std::memory_order_release);
+ gameThread=GetCurrentThreadId();
+ retireWorldFrame();worldFrameSerial=0;shared.owner=GetCurrentProcessId();
+ fixture::setup(memory);
+ snap.frame=50;
+ memory.beforeRead=[](uint32_t,size_t){assert(GetCurrentThreadId()==gameThread);};
+ shadowImage=memory.bytes.data();shadowImageSize=memory.bytes.size();
+ backgroundReadThread.store(0,std::memory_order_release);
+ client=worldframe::acquireClient(GetCurrentProcessId(),721);
+ client->subscribe(1,worldframe::Base);
+ fixture::Read live{&memory};
+ if(!worldFrameServer.wanted(shared.owner,GetTickCount()))return -2;
+ // The first command callback requests a new worker graph and MUST return
+ // without an inline CaptureGraph, an old result or synchronous 16K scan.
+ if(captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base))return -3;
+ return 1;
+}
+extern "C" __declspec(dllexport) int AsyncPoll(){
+ using namespace assist;
+ fixture::Read live{&memory};
+ if(!captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base))return 0;
+ int hp=0;
+ if(!worldFrameReady||worldFrameBoundaryOnly||!worldFrame.sealed()||
+    !worldFrameCommandRoster.current(worldFrame.key)||
+    !worldFrameCommandRoster.objects||
+    worldFrameCommandRoster.objects->byId(fixture::ActorA+5)!=fixture::ActorA||
+    !worldFrame.read(fixture::ActorA+0x6C,&hp,4)||hp!=100||
+    !backgroundReadThread.load(std::memory_order_acquire)||
+    backgroundReadThread.load(std::memory_order_acquire)==gameThread)
+   return -1;
+ const auto host=client->acquire(match);
+ int hostHP=0;
+ if(!host||!worldframe::observationOnlySource(host->key)||
+    worldframe::boundaryOnlySource(host->key)||
+    !host->sealed()||host->pages.size()<10||
+    !host->read(fixture::ActorA+0x6C,&hostHP,sizeof hostHP)||
+    hostHP!=100)return -6;
+ return 1;
+}
+extern "C" __declspec(dllexport) int AsyncStop(){
+ using namespace assist;
+ // Trigger retirement only once; subsequent checks must not restart/cancel
+ // workers while their pinned Win32 threads complete an orderly exit.
+ if(!asyncStopStarted){retireWorldFrame();asyncStopStarted=true;}
+ const bool command=worldFrameCommandWorker.stop();
+ const bool published=worldFramePublication.stop();
+ const bool shadow=worldFrameShadow.stop();
+ return command&&published&&shadow?1:0;
+}
+
+extern "C" __declspec(dllexport) int AsyncCandidateStart(HANDLE waitGate){
+ if(!waitGate)return -1;
+ commandGate=waitGate;
+ ResetEvent(commandGate);
+ enteredCommandRead.store(false,std::memory_order_release);
+ holdCommandRead.store(true,std::memory_order_release);
+ const int started=AsyncStart();
+ if(started!=1)holdCommandRead.store(false,std::memory_order_release);
+ return started;
+}
+extern "C" __declspec(dllexport) int AsyncCandidateEntered(){
+ return enteredCommandRead.load(std::memory_order_acquire)?1:0;
+}
+extern "C" __declspec(dllexport) int AsyncCandidateAdvance(){
+ using namespace assist;
+ if(!enteredCommandRead.load(std::memory_order_acquire))return -1;
+ if(worldFrameReady||worldFrameCandidateAvailable)return -2;
+ // Game continues while the 1st full-graph RPM is deliberately suspended.
+ // All mutating writes here are in the synthetic game process, never Host.
+ memory.put(0xA8ED84,int(51));
+ snap.frame=51;
+ return 1;
+}
+extern "C" __declspec(dllexport) int AsyncCandidatePoll(){
+ using namespace assist;
+ fixture::Read live{&memory};
+ if(snap.frame!=51)return -1;
+ captureWorldFrame(live,worldlife::capture(live),fixture::House,GetTickCount(),worldframe::Base);
+ if(!worldFrameCandidateAvailable)return 0;
+ int hp=0;
+ // The frame-50 ticket cannot become frame-51 native EventClass authority.
+ // Candidate bytes are sealed and identity roster owns the matching key.
+ if(!worldFrameCandidate.sealed()||worldFrameCandidate.overflow()||
+    !worldFrameCandidateRoster.current(worldFrameCandidate.key)||
+    !worldFrameCandidateRoster.objects||
+    worldFrameCandidateRoster.objects->byId(fixture::ActorA+5)!=fixture::ActorA||
+    !worldFrameCandidate.read(fixture::ActorA+0x6C,&hp,4)||hp!=100||
+    !worldFrameCommandWorker.enabled()||
+    !backgroundReadThread.load(std::memory_order_acquire)||
+    backgroundReadThread.load(std::memory_order_acquire)==gameThread)return -2;
+ // A published candidate must actually be readable by the production
+ // read-only planner scope, not just have a non-empty UID roster.
+ {
+  ObservationReadScope observation;
+  if(!observation)return -3;
+  if(!readWorldSample(fixture::ActorA+0x6C,&hp,sizeof hp)||
+     hp!=100||!observation.complete()||
+     sampleWorldSource!=&worldFrameCandidate)return -4;
+ }
+ // Cross-frame worker bytes must ALSO be visible in the Host's actual
+ // double-buffer world transport. pre.6 missed this even though its local
+ // candidate and every original native worker test passed.
+ const auto host=client->acquire(match);
+ if(!host)return -6;
+ if(!worldframe::observationOnlySource(host->key)||
+    worldframe::boundaryOnlySource(host->key)||
+    host->key.frame!=50||host->key.serial==0||
+    !host->sealed()||host->pages.size()<10||
+    !host->read(fixture::ActorA+0x6C,&hp,sizeof hp)||hp!=100)return -7;
+ // No old-frame result is allowed to become exact-frame event authority.
+ if(worldFrameReady&&worldFrame.key.frame!=snap.frame)return -5;
+ return 1;
+}

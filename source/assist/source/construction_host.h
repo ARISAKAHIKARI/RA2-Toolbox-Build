@@ -73,8 +73,8 @@ static void reset(){for(int tab=0;tab<4;++tab){cancel(tab);current[tab]=currentI
 static int typeSlot(int index){for(int i=0;i<snap.typeCount;++i)if(snap.types[i].kind==absKind(index)&&snap.types[i].index==typeIndex(index))return i;return -1;}
 // A requested full-technology whitelist also protects a reservation while the
 // Runtime is installing/restoring that mode. Only Runtime authorizes production.
-static construction::Technology technologyRequested(int index){
- const int slot=typeSlot(index);
+static construction::Technology technologyRequested(int index,int knownSlot=-1){
+ const int slot=knownSlot>=0?knownSlot:typeSlot(index);
  return {techMode&&slot>=0&&slot<snap.typeCount&&techAllowed(snap.types[slot]),
   extra.techEnhance&&extra.techEnhanceImplementation==1,extra.techEnhanceCompareLevel,typeIndex(index)};
 }
@@ -105,14 +105,16 @@ static void collectChoices(){
  if(choicesMatch!=commandMatch()||choicesHouse!=house||choicesTab!=activeTab){choices.clear();choicesTab=-1;}
  choicesIncomplete=true;
  if(activeTab<0||activeTab>3)return;
- // The native sidebar is a read-only display source, not authority for a
- // Produce command. Read it first: a transient forecast miss must not keep
- // already-buildable unit cameos in the reservation panel.
- auto uiRead=[](uint32_t at,void*out,size_t n){return externalReader.readLive(at,out,n);};
- uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=-1,after=-1,cameos[75*13]{};
- bool nativeReady=uiRead(strip+84,&count,4)&&count>=0&&count<=75&&(!count||uiRead(strip+88,cameos,size_t(count)*52))&&uiRead(strip+84,&after,4)&&after==count;
+ externalReader.setWorldDemand(worldframe::Resources);
+ external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
+ if(externalReader.worldFrameToken()->key.house!=house)return;
+ auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};
+ // Read the sidebar first so a forecast miss can still retire duplicate icons.
+ uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=-1,cameos[75*13]{};
+ const bool nativeReady=read(strip+84,&count,4)&&count>=0&&count<=75&&(!count||read(strip+88,cameos,size_t(count)*52));
+ if(!nativeReady)return;
  auto nativeHere=[&](int kind,int index){for(int i=0;i<count;++i)if(cameos[i*13]==index&&cameos[i*13+1]==kind)return true;return false;};
- if(nativeReady&&activeTab>=2){
+ if(activeTab>=2&&!extra.constructionShowNativeUnits){
   // Never suppress a user's queued reservation, even after its native cameo appears.
   const auto&book=books[activeTab];
   choices.erase(std::remove_if(choices.begin(),choices.end(),[&](const Choice&c){
@@ -120,13 +122,10 @@ static void collectChoices(){
     std::find(book.items.begin(),book.items.end(),c.index)==book.items.end();
   }),choices.end());
  }
- if(!nativeReady)return;
- externalReader.setWorldDemand(worldframe::Resources);
- external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
  auto previous=std::move(choices);choices.clear();
- auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> catalogue(read);
+ construction::Catalogue<decltype(read)> catalogue(read,true);
  bool forecastAttempted=false,previewReady=false;auto&b=books[activeTab];
- const bool completedBuilding=activeTab<2&&current[activeTab]&&get<int>(factory(activeTab)+0x24)==54;
+ const bool busyBuilding=activeTab<2&&current[activeTab]&&get<int>(factory(activeTab)+0x24)==54;
  for(int slot=0;slot<snap.typeCount;++slot){const auto&t=snap.types[slot];
   if((activeTab<2&&t.kind!=7)||(activeTab==2&&t.kind!=16)||(activeTab==3&&t.kind!=3&&t.kind!=40))continue;
   int index=encode(t.kind,t.index);uint32_t type=typePointer(index);if(type<0x10000)continue;
@@ -134,15 +133,15 @@ static void collectChoices(){
   if(tab!=activeTab)continue;
   const bool native=nativeHere(t.kind,t.index);
   const bool queued=std::find(b.items.begin(),b.items.end(),index)!=b.items.end();
-  // Native infantry/vehicle choices belong only in the game's sidebar.
-  // A previously queued reservation stays visible for cancellation.
-  if(native){if(queued||(tab<2&&completedBuilding))choices.push_back({slot,index,tab,type,false});continue;}
-  if(queued){choices.push_back({slot,index,tab,type,true});continue;}
-  // Defer the costly read-only forecast until the first non-native candidate.
-  if(!forecastAttempted){previewReady=loadForecast(catalogue);forecastAttempted=true;}
-  if(previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,technologyRequested(index))&&
-     !catalogue.possible(type,t.kind,t.naval!=0,false,technologyRequested(index)))
-   choices.push_back({slot,index,tab,type,true});
+  bool future=false;
+  if(!native&&!queued){
+   if(!forecastAttempted){previewReady=loadForecast(catalogue);forecastAttempted=true;}
+   const auto tech=technologyRequested(index,slot);
+   future=previewReady&&catalogue.possible(type,t.kind,t.naval!=0,true,tech)&&
+    !catalogue.possible(type,t.kind,t.naval!=0,false,tech);
+  }
+  if(construction::showReservationChoice(tab,native,queued,future,busyBuilding,extra.constructionShowNativeUnits))
+   choices.push_back({slot,index,tab,type,!native});
  }
  if(!source.complete()||(forecastAttempted&&!previewReady)){choices=std::move(previous);return;}
  choicesTab=activeTab;choicesMatch=commandMatch();choicesHouse=house;choicesIncomplete=false;
@@ -230,6 +229,34 @@ static std::vector<construction::NativeBadge> nativeBadges(){
  for(const auto&c:frame->cells){uint32_t mask=0;for(int i=0;i<int(b.items.size())&&i<32;++i)if(b.items[i]==c.index)mask|=1u<<i;
   if(mask)out.push_back({c.x,c.y+c.h-16,c.w,16,mask});}
  return out;
+}
+static void validatePendingForecast(uint32_t now){
+ if(!usable())return;
+ std::array<bool,4> pending{},possible{};
+ for(int tab=0;tab<4;++tab){
+  auto&b=books[tab];if(b.items.empty()||b.stage||b.source)continue;
+  if(nativeCameo(b.head(),tab)){b.missing=0;continue;}
+  pending[tab]=true;
+ }
+ if(std::none_of(pending.begin(),pending.end(),[](bool item){return item;}))return;
+ externalReader.setWorldDemand(worldframe::Resources);
+ external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
+ if(externalReader.worldFrameToken()->key.house!=house)return;
+ auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};
+ construction::Catalogue<decltype(read)> forecast(read,true);
+ if(!loadForecast(forecast))return;
+ for(int tab=0;tab<4;++tab)if(pending[tab]){
+  const int head=books[tab].head(),slot=typeSlot(head);const uint32_t type=typePointer(head);
+  possible[tab]=slot>=0&&(nativeCameo(head,tab)||(type>=0x10000&&
+   forecast.possible(type,absKind(head),get<uint8_t>(type+0xCCE)!=0,true,technologyRequested(head,slot))));
+ }
+ if(!source.complete())return;
+ for(int tab=0;tab<4;++tab)if(pending[tab]){
+  auto&b=books[tab];
+  if(possible[tab])b.missing=0;
+  else if(!b.missing)b.missing=now;
+  else if(uint32_t(now-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
+ }
 }
 static external::ReadSession paintReader;static external::cameraassets::Context<external::ReadSession> paintAssets(paintReader);
 static bool loadPanelAsset(const char*n,std::vector<uint8_t>&b){return paintAssets.cameo(n,b);}
@@ -328,7 +355,10 @@ static void resetPaint(){
 static PaintRequest capturePaint(){
  PaintRequest request{pid,commandMatch(),GetTickCount(),house,activeTab,scroll,hoverChoice,hoverQueue,layout.width(),layout.height(),layout,books[activeTab],choices,{},{},{},{},{}};
  GetObjectW(panelFont?panelFont:font,sizeof request.font,&request.font);
- auto add=[&](int index){int slot=typeSlot(index);if(slot>=0){request.types[index]=snap.types[slot];request.pointers[index]=typePointer(index);}};
+ auto add=[&](int index){int slot=typeSlot(index);if(slot>=0){
+  const auto choice=std::find_if(choices.begin(),choices.end(),[&](const Choice&c){return c.index==index;});
+  request.types[index]=snap.types[slot];request.pointers[index]=choice!=choices.end()?choice->type:0;
+ }};
  for(int i=request.book.visibleStart();i<int(request.book.items.size());++i)add(request.book.items[i]);
  for(int n=scroll;n<int(choices.size())&&n<scroll+layout.rows*2;++n)add(choices[n].index);
  auto bytes=[&](const void*at,size_t n){const auto*b=static_cast<const uint8_t*>(at);request.input.insert(request.input.end(),b,b+n);};
@@ -478,26 +508,7 @@ static void service(){
   if(!b.token){if(!++nextToken)++nextToken;b.token=nextToken;}
   if(queueCommand(ProduceReserved,slot,int(b.id),b.match,0,0,b.token)){b.stage=1;b.sent=now;b.attempts=std::min(b.attempts+1,1000000);queueLog(tab,L"submitted-after-parent-placement");}
  }
- // Native sidebar already proves a queued item is buildable. There is no
- // reason to scan every technology rule/type each 100ms when the user has
- // no reservations, or when all queued heads are native.
- bool forecastNeeded=false;
- if(usable())for(int tab=0;tab<4;++tab){
-  auto&b=books[tab];if(b.items.empty()||b.stage||b.source)continue;
-  if(nativeCameo(b.head(),tab)){b.missing=0;continue;}
-  forecastNeeded=true;
- }
- if(forecastNeeded){
- auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};construction::Catalogue<decltype(read)> forecast(read);
- if(loadForecast(forecast))for(int tab=0;tab<4;++tab){auto&b=books[tab];if(b.items.empty()||b.stage||b.source||nativeCameo(b.head(),tab))continue;
-  // A native cameo can carry permissions our read-only forecast cannot model
-  // (including a pending technology-mode handoff). Do not cancel such a FIFO
-  // from the preview; Runtime still checks current CanBuild and its factory.
-  int slot=typeSlot(b.head());if(slot<0||(!nativeCameo(b.head(),tab)&&!forecast.possible(typePointer(b.head()),absKind(b.head()),get<uint8_t>(typePointer(b.head())+0xCCE)!=0,true,technologyRequested(b.head())))){
-   if(!b.missing)b.missing=now;else if(uint32_t(now-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
-  }else b.missing=0;
- }
- }
+ validatePendingForecast(now);
  // A hidden overlay closes only its click surface. The production FIFO above
  // continues to submit and acknowledge native orders while displays are off.
  if(!overlayvisibility::visible()){hide();return;}

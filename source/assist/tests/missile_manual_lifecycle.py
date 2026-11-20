@@ -49,6 +49,20 @@ struct SampleReadScope{
 static bool sampleRoster(uint32_t,Vec&v,int=16384){if(!rosterReadable){sampleComplete=false;return false;}v.count=int(roster.size());return true;}
 static uint32_t item(const Vec&,int i){return roster[size_t(i)];}
 static uint32_t worldByID(uint32_t id){for(uint32_t p:roster)if(get<uint32_t>(p+0x10)==id)return p;return 0;}
+struct TestObjectIndex {
+ std::unordered_map<uint32_t,uint32_t> ids;
+ uint32_t byId(uint32_t id)const{auto it=ids.find(id);return it==ids.end()?0:it->second;}
+};
+static TestObjectIndex worldObjects;
+static int indexedFrame=-1,indexBuilds=0;
+static bool commandRosterReady(){return sampleReady&&rosterReadable&&indexedFrame==worldFrame.key.frame;}
+static bool refreshWorldIndex(int frame){
+ if(!sampleReady||!rosterReadable){sampleComplete=false;return false;}
+ if(indexedFrame==frame)return true;
+ worldObjects.ids.clear();
+ for(uint32_t p:roster){uint32_t id=0;if(!read(p+0x10,&id,4))return false;if(id)worldObjects.ids[id]=p;}
+ indexedFrame=frame;++indexBuilds;return true;
+}
 '''
 cases = r'''
 static int checks=0,failures=0;
@@ -58,7 +72,7 @@ static uint32_t unit(uint32_t id,int mission=2,uint32_t target=90000){
  memory[p+0xAC]=uint32_t(mission);memory[p+0xB4]=uint32_t(-1);memory[p+0x2B4]=target;memory[p+0x5A4]=mission==2?91000:0;
  roster.push_back(p);return p;
 }
-static void reset(){memory.clear();roster.clear();missileManualCount=missileSendCount=0;missileManualBlocked=false;missileManualPruneMatch=0;missileManualPruneFrame=-1;++worldFrame.key.match;clockFrame=worldFrame.key.frame=100;sampleReady=sampleComplete=rosterReadable=true;shared.missileEnabled=true;}
+static void reset(){memory.clear();roster.clear();worldObjects.ids.clear();indexedFrame=-1;indexBuilds=0;missileManualCount=missileSendCount=0;missileManualBlocked=false;missileManualPruneMatch=0;missileManualPruneFrame=-1;++worldFrame.key.match;clockFrame=worldFrame.key.frame=100;sampleReady=sampleComplete=rosterReadable=true;shared.missileEnabled=true;}
 static void fill(){for(uint32_t id=1;id<=1024;++id)pauseMissileForManual(id,unit(id));}
 int main(){
  reset();fill();check(missileManualCount==1024,"fill reaches existing bounded capacity");

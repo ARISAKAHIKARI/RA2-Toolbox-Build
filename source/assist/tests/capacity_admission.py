@@ -12,10 +12,11 @@ def block(text,signature):
 paths=[src/n for n in ('native_orders_bridge.h','native_orders.h','unload_policy.h','unload_admission.h','object_index.h','type_select_bridge.h','variant_keys.h','type_hotkey.h')]+[tests/'capacity_admission.cpp',Path(__file__).resolve()]
 hashes={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
 text=(src/'native_orders_bridge.h').read_text();unload=text[text.index('// Build one carrier-keyed roster'):text.index('static void watchEjections(')]
-variant=(src/'type_select_bridge.h').read_text();variant='#include <unordered_set>\n'+block(variant,'static uint32_t normalVariantWeapon(')+'\n'+block(variant,'static int selectVariant(')
+variant=(src/'type_select_bridge.h').read_text();variant=block(variant,'static int selectVariant(')
 if a.baseline:
  old=(a.baseline/'native_orders_bridge.h').read_text();unload=unload.replace(block(unload,'static int smartUnload('),block(old,'static int smartUnload('))
- old=(a.baseline/'type_select_bridge.h').read_text();variant=block(old,'static uint32_t normalVariantWeapon(')+'\n'+block(old,'static int selectVariant(')
+ # Variant-key selection is intentionally suspended in the new Runtime
+ # architecture; do not substitute a baseline live-roster implementation.
 (a.out/'unload.inc').write_text(unload);(a.out/'variant.inc').write_text(variant)
 commands=[['g++','-std=c++17','-O2','-UNDEBUG','-DCAPACITY_UNLOAD_FUNCTIONS="'+str(a.out/'unload.inc')+'"','-DCAPACITY_VARIANT_FUNCTIONS="'+str(a.out/'variant.inc')+'"',str(tests/'capacity_admission.cpp'),'-o',str(a.out/'fixture')],[str(a.out/'fixture'),a.case]];runs=[]
 for i,cmd in enumerate(commands):

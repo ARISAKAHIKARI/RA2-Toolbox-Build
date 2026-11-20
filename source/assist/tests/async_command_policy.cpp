@@ -1,7 +1,14 @@
 #include "../../shared/source/world_frame_command_policy.h"
+#include "../source/object_index.h"
+#include "../source/sample_health_log.h"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+static bool candidateReady=true;
+static uint32_t candidateUID=77;
+static bool candidateAvailable(){return candidateReady;}
+static bool candidateCheckID(uint32_t id,uint32_t pointer){return pointer==0x200000&&id==candidateUID;}
+static bool candidateCheckPtr(uint32_t pointer){return pointer==0x200000&&candidateUID==77;}
 int main(){
  using namespace worldframe;
  Key a{};a.pid=100;a.owner=250;a.match=7;a.scenario=0x110000;
@@ -12,6 +19,40 @@ int main(){
  assert(acceptCommandCapture(a,a,demand,Base|Combat,revision,revision,110));
  assert(acceptCommandCapture(a,a,demand,demand,revision,revision,180));
  assert(!acceptCommandCapture(a,a,demand,demand,revision,revision,181));
+ // A real full graph can finish after the game's frame boundary. It is
+ // observational data only, never a permit to submit an old EventClass.
+ Key candidateNext=a;++candidateNext.frame;
+ assert(acceptObservationCandidate(a,candidateNext,demand,Base,160));
+ assert(!acceptCommandCapture(a,candidateNext,demand,Base,revision,revision,160));
+ assert(!acceptObservationCandidate(a,candidateNext,demand,Base|Ore,160));
+ assert(!acceptObservationCandidate(a,candidateNext,demand,Base,601));
+ Key candidateOld=a;--candidateOld.frame;
+ assert(!acceptObservationCandidate(a,candidateOld,demand,Base,160));
+ Key candidateOther=a;++candidateOther.connectionHigh;
+ assert(!acceptObservationCandidate(a,candidateOther,demand,Base,160));
+ // A candidate UID hash needs an independent live identity check at lookup.
+ auto owner=std::make_unique<assist::ObjectIndex>();
+ owner->add(0x200000,77);
+ // Stateless function pointers emulate the production native UID checks.
+ // A stale candidate is never allowed to authorize the wrong in-place actor.
+ candidateReady=true;candidateUID=77;
+ assist::ObjectIndexView view;
+ view.bindCandidate(&owner,candidateAvailable,candidateCheckID,candidateCheckPtr);
+ assert(view.byId(77)==0x200000&&view.contains(0x200000));
+ candidateUID=88;assert(!view.byId(77)&&!view.contains(0x200000));
+ candidateReady=false;candidateUID=77;assert(!view.byId(77)&&!view.contains(0x200000));
+ view.unbind();
+ 
+ // A cold Host demand read can move its revision from 54 to 55 while
+ // assembling the requested pages. The worker ticket must carry 55, and
+ // subsequent exact-frame admission rejects the obsolete pre-read 54.
+ const uint64_t priorHostRevision=(uint64_t(54)<<32)|17u;
+ CommandRequestGate assembledGate;
+ assembledGate.submitted(a,demand,revision,false);
+ assert(assembledGate.defer(a,demand,revision,false,110));
+ assert(!assembledGate.defer(a,demand,priorHostRevision,false,110));
+ assert(!acceptCommandCapture(a,a,demand,demand,priorHostRevision,revision,110));
+ assert(acceptCommandCapture(a,a,demand,demand,revision,revision,110));
  // Runtime request admission: no repeated 16K-page merge for the same
  // worker job, but never throttle a new frame, requirement or config.
  CommandRequestGate gate;
@@ -78,5 +119,30 @@ int main(){
  assert(!worker.read(0x33000,&out,1));
  main.reset(a);assert(!main.read(0x33000,&out,1));
  assert(worker.read(0x21000,&out,1)&&out==0xA7);
+ // Host-side sampling logs must detect delayed publication and missing
+ // output without logging on the game-thread callback.
+ assist::samplinglog::Monitor monitor;
+ assist::samplinglog::Summary health{};
+ assist::samplinglog::Input input{};
+ input.pid=12;input.match=4;input.tick=1000;input.serial=1;
+ input.controlFrame=100;input.sampleFrame=100;input.pages=640;
+ assert(!monitor.observe(input,health));
+ input.tick=6000;input.controlFrame=130;input.sampleFrame=120;
+ input.serial=6;input.failures=2;input.controlUs=20000;
+ assert(monitor.observe(input,health));
+ assert(health.periodMs==5000&&health.logicFrames==30&&health.publications==5);
+ assert(health.failures==2&&health.lastFrameLag==10&&health.starved);
+ assert(health.controlPeakUs==20000&&health.controlOver16msSamples==1);
+ input.tick=7000;input.controlFrame=140;input.sampleFrame=140;
+ input.serial=7;input.controlUs=1000;
+ assert(!monitor.observe(input,health));
+ input.tick=11000;input.controlFrame=200;input.sampleFrame=198;
+ input.serial=16;input.failures=6;
+ assert(monitor.observe(input,health));
+ assert(health.publications==10&&health.failures==4);
+ assert(health.lastFrameLag==2&&!health.starved);
+ input.match=5;input.tick=12000;
+ assert(!monitor.observe(input,health)); // match change resets baselines
+ std::puts("PASS Host sampling-health aggregation, spike/stall metrics, safe reset");
  std::puts("PASS exact-frame event authority, cross-frame busy work coalescing only, demand/revision/age isolation, exact page-buffer ownership swap");
 }

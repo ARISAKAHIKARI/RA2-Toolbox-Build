@@ -39,7 +39,7 @@ static construction::InputPolicy reservationPolicy;static construction::InputCli
 static void publishReservationPolicy(const construction::InputPolicy&p){reservationPolicy=p;}
 static bool takeReservationClick(construction::InputClick&out){if(!inputPending)return false;inputPending=false;out=inputClick;reservationPolicy={};return true;}
 static bool SetLayeredWindowAttributes(HWND,int,int alpha,int flags){assert(flags==LWA_ALPHA);panelAlpha=alpha;return true;}
-static struct{bool constructionQueue=true,techEnhance=false,techEnhanceCompareLevel=false;int techEnhanceImplementation=0;}extra;
+static struct{bool constructionQueue=true,constructionShowNativeUnits=false,techEnhance=false,techEnhanceCompareLevel=false;int techEnhanceImplementation=0;}extra;
 static struct{int typeCount=3,chat=0,renderStatus=1,width=2560,height=1440;struct{int kind=7,index=0,naval=0;char id[24]{};wchar_t name[40]{};}types[8];}snap;
 static bool techAllowed(const decltype(snap.types[0])&){return techWhitelist;}
 static delivery::Queue commandQueue;
@@ -50,7 +50,8 @@ struct Reader:fixtureframe::SealedHostReader<Reader>{std::vector<uint8_t>bytes=s
  void capture(uint32_t epoch){
   int frame=-1;uint32_t owner=0;if(!readLive(0xA8ED84,&frame,4)||frame<0){available.reset();return;}
   if(available&&available->key.match==epoch&&available->key.frame==frame)return;
-  auto next=std::make_shared<worldframe::Snapshot>();worldframe::Key key{};key.match=epoch;key.frame=frame;next->reset(key);
+  auto next=std::make_shared<worldframe::Snapshot>();worldframe::Key key{};key.match=epoch;key.frame=frame;
+  readLive(0xA83D4C,&owner,4);key.house=owner;next->reset(key);
   auto read=[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);};for(uint32_t page:pages)next->prefetch(read,page,4096);
   if(readLive(0xA83D4C,&owner,4)&&owner>=0x10000)next->prefetch(read,owner,0x5800);
   assert(next->seal());available=std::move(next);
@@ -87,6 +88,7 @@ static void setup(){
  for(int i=0;i<3;++i){auto t=T+i*0x2000;snap.types[i].index=i;w(t+0x634,1);w(t+0x6CC,1);w(t+0xDA0,-1);w(t+0xDA4,-1);w(t+0xDF8,i);list(t+0x638,i==1?std::initializer_list<int>{-1}:i==2?std::initializer_list<int>{1}:std::initializer_list<int>{});list(t+0x654,{});}
  w(P+0x10,100);w(P+0x21C,H);w(P+0x6C,100);byte(P+0x74,1);byte(P+0x81,1);w(P+0x520,T);w(H+0x53BC,F);w(F+0x6C,H);w(F+0x58,P);
  w(0x87F7E8+0x539C,0);w(0x8A00A4,2560);w(0x8A00A8,1440);w(0x87F7E8+0x1544+84,1);w(0x87F7E8+0x1544+88,0);w(0x87F7E8+0x1544+92,7);
+ for(int tab=1;tab<4;++tab)w(0x87F7E8+0x1544+tab*3988+84,0);
  now+=300;externalReader.capture(match);buildreserve::service();
 }
 static int choice(int index){for(int i=0;i<int(buildreserve::choices.size());++i)if(buildreserve::choices[i].index==index)return i;return -1;}
@@ -236,6 +238,8 @@ int main(){
  auto reserveNativeInfantry=[&]{reserveChoice({3,encode(16,0),2,I,false},true,true);};
  reserveNativeInfantry();assert(books[2].items.size()==1&&choice(encode(16,0))>=0);
  removeTop(true);assert(choice(encode(16,0))<0);
+ extra.constructionShowNativeUnits=true;refreshChoices();assert(choice(encode(16,0))>=0);
+ extra.constructionShowNativeUnits=false;refreshChoices();assert(choice(encode(16,0))<0);
  // A larger host FIFO preserves the native 30-item factory window; remaining
  // reservations stay pending until the game consumes native entries.
  setup();snap.typeCount=4;snap.types[3].kind=16;snap.types[3].index=0;

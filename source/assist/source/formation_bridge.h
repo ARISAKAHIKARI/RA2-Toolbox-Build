@@ -58,7 +58,7 @@ static bool formationSelectionMatchesPreview(){
  }return count==formationView.count&&count>0;
 }
 static void formationSelect(){
- indexWorld(get<int>(0xA8ED84));formationView.count=0;Vec selected=vec(0xA8ECB8);
+ if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady()){formationView.count=0;return;}formationView.count=0;Vec selected=vec(0xA8ECB8);
  for(int n=0;n<selected.count&&formationView.count<formation::Maximum;++n){uint32_t p=item(selected,n);if(!formationActor(p,formationQuick))continue;
   auto&u=formationView.units[formationView.count++];u={};u.pointer=p;u.id=get<uint32_t>(p+0x10);u.type=typeOf(p,kind(p));u.token=manualVersions.get(u.id);u.x=get<int>(p+0x9C);u.y=get<int>(p+0xA0);u.z=get<int>(p+0xA4);u.kind=kind(p);
  }

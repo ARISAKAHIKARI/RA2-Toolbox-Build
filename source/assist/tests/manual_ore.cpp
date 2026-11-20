@@ -44,8 +44,9 @@ int main(){
  manual.change(1+8192);assert(manual.orePaused(1+8192)&&!manual.orePaused(1));
  manual.clear();assert(!manual.orePaused(1+8192)&&manual.get(1)==0);
  for(unsigned id=1;id<=ManualVersions::Size;++id)manual.change(id);
- assert(!manual.trackable(9000)&&manual.orePaused(9000)&&manual.observeOre(9000,10,-1));
- manual.resumeOre(9000);assert(manual.orePaused(9000));manual.clear();assert(manual.trackable(9000)&&!manual.orePaused(9000));
+ const uint32_t absentFullID=ManualVersions::Size+9000;
+ assert(!manual.trackable(absentFullID)&&manual.orePaused(absentFullID)&&manual.observeOre(absentFullID,10,-1));
+ manual.resumeOre(absentFullID);assert(manual.orePaused(absentFullID));manual.clear();assert(manual.trackable(9000)&&!manual.orePaused(9000));
  // The off-switch observer follows only known paused miners, and its dense
  // list must survive arbitrary removals, pointer updates and live-ID pruning.
  manual.change(11,101);manual.expectOreMission(11,2);
@@ -63,6 +64,31 @@ int main(){
  live.change(18,108);live.change(18,0,false);assert(live.pausedCount==0&&!live.watchingOre(18));
  for(unsigned id=100;id<100+ManualVersions::Size;++id)manual.change(id,10000+id);
  live.copyLive(manual,[](uint32_t id){return id==11;});assert(live.used==1&&live.trackable(999999));
+ // Dense occupied-slot compaction must preserve all token/ore state and
+ // zero-token miner-defense reservations. Repeat clear with hash collisions,
+ // then insert a new match without reviving a previous actor.
+ auto sparse=std::make_unique<ManualVersions>();
+ auto compact=std::make_unique<ManualVersions>();
+ assert(sparse->reserve(0)==ManualVersions::Size&&sparse->used==0);
+ assert(sparse->reserve(1)==sparse->slot(1)&&sparse->get(1)==0&&sparse->used==1);
+ for(uint32_t i=1;i<=513;++i){
+  const uint32_t id=1+i*ManualVersions::Size;
+  sparse->change(id,0xA0000+id);
+  sparse->expectOreMission(id,2);
+ }
+ assert(sparse->used==514&&sparse->pausedCount==513);
+ sparse->change(1+ManualVersions::Size);assert(sparse->used==514);
+ compact->copyLive(*sparse,[](uint32_t id){return id==1||((id-1)/ManualVersions::Size)%2==0;});
+ assert(compact->get(1)==0&&compact->used==257);
+ for(uint32_t i=1;i<=513;++i){
+  const uint32_t id=1+i*ManualVersions::Size;
+  assert(compact->get(id)==(i%2==0?1u:0u));
+ }
+ sparse->clear();assert(sparse->used==0&&sparse->pausedCount==0);
+ for(uint32_t i=0;i<=513;++i)
+  assert(sparse->get(1+i*ManualVersions::Size)==0);
+ assert(sparse->reserve(1+ManualVersions::Size)<ManualVersions::Size&&sparse->used==1);
+ sparse->clear();assert(sparse->slot(1+ManualVersions::Size)<ManualVersions::Size);
  std::cout<<"PASS: manual Move/Attack/Stop priority, no empty/full or toggle resume, fresh mining hand-back, in-flight input lag and tool waiting Move distinction\n";
  std::cout<<"PASS: paused-miner dense list, swap removal, repeated pointer replacement, non-miner exclusion and live-ID compaction preserve tokens and hand-back stage\n";
 }

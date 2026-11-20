@@ -67,7 +67,7 @@ static bool message(MSG*msg){
  if(!edge.down||(edge.button!=4&&edge.button!=6)||!enabled()||!moOrdersContext()||!held())return false;
  if(moOrdersPending()||formationView.active)return false;
  int x=0,y=0,px=0,py=0;uint32_t hover=0;if(!formationPoint(msg,x,y,px,py,nullptr,&hover)||hover){if(count)reset();return false;}
- indexWorld(get<int>(0xA8ED84));
+ if(indexedFrame!=get<int>(0xA8ED84)||!commandRosterReady()){report(airevents::Invalid);return false;}
  if(count?!sameSelection():!capture(msg)){report(airevents::Invalid);return false;}
  down=true;button=edge.button;return swallow();
 }

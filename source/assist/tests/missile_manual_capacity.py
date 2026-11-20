@@ -72,6 +72,20 @@ struct SampleReadScope {
 static bool sampleRoster(uint32_t,Vec&v,int=16384){++rosterReads;if(!rosterReadable){sampleComplete=false;return false;}v.count=int(roster.size());return true;}
 static uint32_t item(const Vec&,int i){return roster[size_t(i)];}
 static uint32_t worldByID(uint32_t id){for(uint32_t p:roster)if(get<uint32_t>(p+0x10)==id)return p;return 0;}
+struct TestObjectIndex {
+ std::unordered_map<uint32_t,uint32_t> ids;
+ uint32_t byId(uint32_t id)const{auto it=ids.find(id);return it==ids.end()?0:it->second;}
+};
+static TestObjectIndex worldObjects;
+static int indexedFrame=-1,indexBuilds=0;
+static bool commandRosterReady(){return sampleReady&&rosterReadable&&indexedFrame==worldFrame.key.frame;}
+static bool refreshWorldIndex(int frame){
+ if(!sampleReady||!rosterReadable){sampleComplete=false;return false;}
+ if(indexedFrame==frame)return true;
+ worldObjects.ids.clear();
+ for(uint32_t p:roster){uint32_t id=0;if(!read(p+0x10,&id,4))return false;if(id)worldObjects.ids[id]=p;}
+ indexedFrame=frame;++indexBuilds;return true;
+}
 static bool live(uint32_t p){return get<int>(p+0x6C)>0;}
 static bool own(uint32_t p,uint32_t house){return live(p)&&get<uint32_t>(p+0x21C)==house;}
 static int kind(uint32_t){return 2;}
@@ -106,7 +120,7 @@ static uint32_t unit(uint32_t id,int mission=2,uint32_t target=90000){
  memory[p+0x2EC]=memory[p+0x2F4]=0;memory[p+0x9C]=memory[p+0xA0]=0;roster.push_back(p);return p;
 }
 static void reset(){
- memory.clear();roster.clear();events.clear();manualVersions.clear();++match;
+ memory.clear();roster.clear();worldObjects.ids.clear();indexedFrame=-1;indexBuilds=0;events.clear();manualVersions.clear();++match;
  clockFrame=worldFrame.key.frame=100;worldFrame.key.match=match;clockTick=1000;
  sampleReady=sampleComplete=rosterReadable=queueAllowed=externalInputFrame=true;
  snap.chat=false;shared.missileEnabled=true;shared.missileComputed=shared.missileTask=0;
@@ -160,7 +174,7 @@ int main(){
 
  reset();fill();advance();rosterReads=0;
  for(uint32_t id=2000;id<2020;++id)pauseMissileForManual(id,unit(id));
- check(rosterReads==1,"a same-frame full-cohort input attempts sealed-roster cleanup only once");
+ check(indexBuilds==1&&rosterReads==0,"same-frame cleanup reuses one canonical UID index without a duplicate roster scan");
  check(missileManualOverflowed(),"further manual input preserves the paused state");
  ++match;worldFrame.key.match=match;resetMissileControl();
  check(!missileManualOverflowed()&&!missileManualCount,"world reset has no previous-match overflow state");

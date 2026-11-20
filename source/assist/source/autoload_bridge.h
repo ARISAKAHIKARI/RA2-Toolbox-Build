@@ -91,8 +91,15 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
   uint32_t type=typeOf(v.object,2),q=get<uint32_t>(v.object+0x118);room[j]=type?get<int>(type+0x5E0):0;int steps=0;
   while(q>=0x10000&&steps++<256){int size=passengerSlots(q);if(!size){room[j]=0;break;}room[j]-=size;uint32_t next=get<uint32_t>(q+0x30);if(next==q){room[j]=0;break;}q=next;}if(q>=0x10000)room[j]=0;
  }
- Vec all=vec(0xA8EC78);for(int n=0;n<all.count;++n){uint32_t other=item(all,n);int k=other?kind(other):-1;if((k!=1&&k!=2)||!own(other,house))continue;uint32_t target=incomingVehicle(other);if(!target)continue;
-  for(int j=0;j<nv;++j)if(vehicles[j].object==target){int size=passengerSlots(other);room[j]-=size?size:1024;break;}
+ {
+  // Capacity reservations are derived from the canonical sealed Runtime
+  // graph. Never enumerate the live Techno vector during a delayed load submit.
+  SampleReadScope frameRead;if(!frameRead)return -30;
+  Vec all{};if(!sampleRoster(0xA8EC78,all))return -30;
+  for(int n=0;n<all.count;++n){uint32_t other=item(all,n);int k=other?kind(other):-1;if((k!=1&&k!=2)||!own(other,house))continue;uint32_t target=incomingVehicle(other);if(!target)continue;
+   for(int j=0;j<nv;++j)if(vehicles[j].object==target){int size=passengerSlots(other);room[j]-=size?size:1024;break;}
+  }
+  if(!frameRead.complete())return -30;
  }
  for(int n=0;n<loadLedger.count;++n){auto&r=loadLedger.records[n];if(!worldObjects.contains(r.object)||incomingVehicle(r.object))continue;for(int j=0;j<nv;++j)if(r.vehicleID==vehicles[j].id){room[j]-=r.slots;break;}}
  for(int i=0;i<ns;++i){const auto&p=soldiers[i];int j=assignment[i];
@@ -158,9 +165,10 @@ static bool collectLoadFacts(uint32_t house,int frame){
  for(int n=0;n<loadCarrierSelectionCount;++n){const auto&v=loadCarrierSelection[n];uint32_t id=0;if(!read(v.pointer+0x10,&id,sizeof id))return false;
   carriers[n]=id==v.id?v.pointer:0;if(carriers[n]&&worldObjects.byId(v.id)!=v.pointer)return false;
  }
- SampleReadScope frameRead;if(!frameRead)return false;
- // A click can follow this frame's capture. Wait for its exact identities;
- // never pair a new cohort/token with a previous allocation's raw fields.
+ ObservationReadScope frameRead;if(!frameRead)return false;
+ // Background snapshot is a candidate only. Keep the original click cohort,
+ // match exact UIDs in the frozen pages, and revalidate live UID/manual
+ // versions before any native Enter action. No sampled command authority.
  for(int n=0;n<loadSelectionCount;++n)if(selected[n]&&get<uint32_t>(selected[n]+0x10)!=loadSelection[n].id)return false;
  for(int n=0;n<loadCarrierSelectionCount;++n)if(carriers[n]&&get<uint32_t>(carriers[n]+0x10)!=loadCarrierSelection[n].id)return false;
  auto&in=loadSample;in.match=match;in.tick=sampleClock(sh);in.frame=frame;in.ns=in.nv=0;in.mode=sh->loadMode==1;in.radius=std::clamp(sh->loadRadius,1,512);in.composition.clear();

@@ -41,7 +41,7 @@ static sessionepoch::Tracker sessionTracker;static worldlife::Tracker hookWorld;
 static bool commandDormant=false,worldCleanupPending=false,fault=false;
 static uint32_t commandComputeEpoch=0,match=0,lastHouse=0,pendingAck=0;
 static int lastFrame=-1,sceneFrame=-1;static DWORD now=10000,slow=0,sceneTick=0;
-static unsigned snapshots=0,worldCaptures=0,worldRetires=0,offers=0,normalActions=0,holdReleases=0,indexCalls=0;
+static unsigned snapshots=0,worldCaptures=0,worldRetires=0,offers=0,normalActions=0,holdReleases=0;
 static bool restoreReady=true,holdReleaseReady=true,activeFeatures=false,wanted=true,worldReady=false,entryActive=true;
 static bool pendingAckReady=false;static int repairAckPending=0;
 static uint32_t capturedMatch=0,capturedHouse=0;static int capturedFrame=-1;
@@ -60,11 +60,10 @@ static void retireWorldFrame(){++worldRetires;worldReady=false;}
 static void resetMissileControl(){missileHoldCount=0;missilePending=missileScanned=false;sh->missileHeld=0;}
 static void stickyTick(bool){activeFeatures=false;}static void clearNativeOrders(bool){activeFeatures=false;}
 static void maintainTechParameters(){}static void restorePlayerContext(){}static bool featureRestorationComplete(){return restoreReady;}
-static void indexWorld(int frame){++indexCalls;indexedFrame=frame;}
 static bool simulationReady(bool allowNewerFrame);
 static bool releaseMissileHolds(uint32_t house,int frame,DWORD){
  ++holdReleases;
- if(activeFeatures||!missileCleanup||!simulationReady(false)||house!=lastHouse||frame!=snap.frame||indexedFrame!=frame)return false;
+ if(activeFeatures||!missileCleanup||!simulationReady(false)||house!=lastHouse||frame!=snap.frame)return false;
  if(!holdReleaseReady)return false;missileHoldCount=0;return true;
 }
 namespace gameentry{enum class Client{Assist};static bool active(Client){return entryActive;}
@@ -88,7 +87,7 @@ static void world(int frame=100,uint32_t scenario=0x100000,bool running=true){
 static void fresh(){
  storage=std::make_unique<Shared>();sh=storage.get();snap={};readOnlyState={};sessionTracker={};hookWorld={};
  commandComputeEpoch=match=lastHouse=0;lastFrame=-1;sceneFrame=-1;commandDormant=worldCleanupPending=fault=false;
- snapshots=worldCaptures=worldRetires=offers=normalActions=holdReleases=indexCalls=0;
+ snapshots=worldCaptures=worldRetires=offers=normalActions=holdReleases=0;
  restoreReady=holdReleaseReady=entryActive=wanted=true;activeFeatures=worldReady=false;
  pendingAckReady=false;repairAckPending=0;pendingAck=0;missileHoldCount=0;missilePending=missileScanned=false;
  now+=1000;sh->owner=77;sh->heartbeat=now;sh->computeRequested=sh->computeApplied=0;
@@ -129,7 +128,7 @@ int main(){
  missileHoldCount=1;missilePending=missileScanned=true;holdReleaseReady=false;activeFeatures=true;pause();
  check(serviceReadOnlyRuntime(now)&&readOnlyState.pending,"held order retirement can defer");
  check(!activeFeatures&&!missilePending&&!missileScanned&&missileHoldCount==1,"only previously owned hold identity survives");
- check(indexCalls==1&&holdReleases==1&&sh->readOnlyAck==0,"release reindexes current world without acknowledging too soon");
+ check(holdReleases==1&&sh->readOnlyAck==0,"release uses the previously owned missile identity without a full roster rebuild");
  now+=16;world(101);sh->heartbeat=now;holdReleaseReady=true;
  check(serviceReadOnlyRuntime(now)&&sh->readOnlyAck==1&&!readOnlyState.pending,"hold release can finish after pending gate was published");
  check(missileHoldCount==0&&!missilePending&&!missileScanned&&worldCaptures==1,"retired holds cannot restart automation");finish("held_order_retirement_recovery");
