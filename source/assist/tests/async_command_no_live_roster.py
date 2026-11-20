@@ -37,6 +37,9 @@ visual_call = process_reader.index("worldClient_->visual", test_visual)
 product_else = process_reader.index("#else", test_visual)
 assert visual_call < product_else
 assert "if(!frame||!frame->controlSource)return false;" in process_reader[product_else:]
+assert "if(worldframe::visualDemand(worldDemand_))" in process_reader
+assert "else worldClient_->request(worldDemands_,!worldComplete_);" in process_reader
+assert "Product has no Host VisualCache" in process_reader
 
 assert 'CaptureGraph' not in fallback
 assert 'static void indexWorld(int frame)' not in bridge
