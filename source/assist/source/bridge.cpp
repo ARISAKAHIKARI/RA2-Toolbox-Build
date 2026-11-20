@@ -254,8 +254,7 @@ static bool verifyCandidatePointer(uint32_t pointer){
         observed&&worldFrameCandidateRoster.objects&&
         worldFrameCandidateRoster.objects->byId(observed)==pointer;
 }
-static bool refreshWorldIndex(int frame,bool executionGuards){
- (void)executionGuards;
+static bool refreshWorldIndex(int frame){
  const bool strict=commandRosterReady()&&frame==worldFrame.key.frame;
  const bool candidate=!strict&&candidateRosterReady();
  if(!strict&&!candidate){
@@ -327,7 +326,7 @@ static uint32_t globalVehicleCandidateAt(int index){
 // UNKNOWN: caller skips this observation; native game events stay untouched.
 static bool prepareWorldIndex(int frame){
  // No production live-roster fallback. A missing worker index is UNKNOWN.
- return refreshWorldIndex(frame,false);
+ return refreshWorldIndex(frame);
 }
 #include "../../shared/source/key_gesture.h"
 static keygesture::Tracker runtimeKeys;
@@ -1692,7 +1691,7 @@ static void tick(){
  bool selectionPending=sh->selectRequest!=sh->selectAck;bool planPending=sh->planRequest!=sh->planAck;bool cooperativePending=sh->cooperativePlan!=sh->cooperativeAck;bool cmd=sh->request!=sh->ack||selectionPending||planPending||cooperativePending||sh->pointer.request!=sh->pointer.ack;// A message wake observes the current simulation frame; pending work bypasses
  // display cadence. This is not a frame hook and does not advance the game.
  bool frameDue=worldSample.frame!=lastFrame&&
-   (worldFrameCommandWorker.enabled()||sharedWorldWanted||(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->keepInputUnlocked||sh->blockTriggerCamera||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||sh->superweaponGrant||sh->placementPreview.active||nativePlacementCompletionPending()||snap.techOpen||techPending||techDataPending()||hostFrameCaptureWanted(now)||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||queuedUnload.count||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||loadLedger.count||repairAt<repairCount||repairAckPending||pendingRepairs.count||entryReservationCount||cooperativeEffectCount||missionObserver.pending()||actorLeaseArbiter.count||ownground::job.pending||(sh->flags&(EjectAssist|AntiTheft))||oreHarvestNeedsWork()||
+   (sharedWorldWanted||(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->keepInputUnlocked||sh->blockTriggerCamera||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||sh->superweaponGrant||sh->placementPreview.active||nativePlacementCompletionPending()||snap.techOpen||techPending||techDataPending()||hostFrameCaptureWanted(now)||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||nativeCount||unloadCount||queuedUnload.count||sh->runtimeTracking||runtimeCoopPending||loadCalculationPending||repairCalculationPending||loadLedger.count||repairAt<repairCount||repairAckPending||pendingRepairs.count||entryReservationCount||cooperativeEffectCount||missionObserver.pending()||actorLeaseArbiter.count||ownground::job.pending||(sh->flags&(EjectAssist|AntiTheft))||oreHarvestNeedsWork()||
     (sh->plannerTracking&&(sh->flags&(AdvancedInput|MagnetronInput|AutoOreReturn)))||
     sh->planRequest!=sh->planAck||sh->cooperativePlan!=sh->cooperativeAck);
  bool resultsDue=(loadCalculationPending&&compute::newer(sh->loadComputed,loadTaskSeen))||(repairCalculationPending&&compute::newer(sh->repairComputed,repairTaskSeen))||((sh->missileEnabled||missileHoldCount)&&compute::newer(sh->missileComputed,missileApplied))||((sh->dodgeEnabled||dodgeCount)&&compute::newer(sh->dodgeComputed,dodgeApplied))||(unloadCount&&compute::newer(sh->unloadComputed,unloadApplied));
@@ -1775,11 +1774,12 @@ static void tick(){
   !runtimeCoopPending&&!oreHarvestNeedsWork()&&!moOrdersPending()&&
   !directAirPending()&&!directSellPending()&&!privateOutPending()&&
   !sh->privateOutMode&&!techPending&&!techDataPending()&&!snap.techOpen;
- const bool hostDisplayOnly=!worldFrameCommandWorker.enabled()&&
-  sharedWorldWanted&&noCommandWork&&
+ const bool hostDisplayOnly=sharedWorldWanted&&noCommandWork&&
   worldDemand==uint32_t(worldframe::Base|worldframe::HostDisplayOnly);
- if(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now))
-  captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,hostDisplayOnly);
+ // Pure Host display subscriptions are suspended until their fields are
+ // carried by the canonical Runtime snapshot; do not spend a full graph read.
+ if(!hostDisplayOnly&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))
+  captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
  externalInputFrame=inputMatch!=match||inputFrame!=frame;if(externalInputFrame){inputMatch=match;inputFrame=frame;}
  bool finishSnapshot=false;
  withInputPublication(sh,match,now,frame,externalInputFrame,[&]{
@@ -1790,8 +1790,8 @@ static void tick(){
  bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||runtimeCoopPending||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
   sh->flags|sh->plannerTracking|((sh->cooperativePlan!=sh->cooperativeAck)?AutoOreReturn:0),(sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)));
  if(needsIndex){
-  const bool liveGuards=(directSellPending()||privateOutPending()||sh->privateOutMode)||cmd||resultsDue||actorLeaseArbiter.count||missionObserver.pending()||pendingRepairs.count||loadLedger.count||repairAt<repairCount||repairCalculationPending||loadCalculationPending||runtimeCoopPending||entryReservationCount||cooperativeEffectCount||nativeCount||unloadCount||queuedUnload.count||missileHoldCount||dodgeCount||stickyCount||formationJobCount||moOrdersPending()||directAirPending()||minerDefensePending()||ownground::job.pending||oreHarvestNeedsWork();
-  if(!refreshWorldIndex(frame,liveGuards)){
+
+  if(!refreshWorldIndex(frame)){
    // Leave requests, passenger history, manual revisions and all active jobs
    // untouched. Missing live guards are unknown too; retry on the next wake.
    ++sh->worldSampleFailures;
