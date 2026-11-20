@@ -219,7 +219,7 @@ static void oreHarvestObserve(uint32_t house,int frame,DWORD now){
  }
  oreHarvestObservedFrame=frame;
 }
-static void oreHarvestTick(uint32_t house,int frame,DWORD now){
+static void oreHarvestTick(uint32_t house,int frame,DWORD now,bool indexedWorkReady=true){
  oreHarvestObserve(house,frame,now);
  if(!oreHarvestNeedsWork())return;
  OreHarvestWorld world{};if(!oreHarvestContext(house,frame,world)||!oreHarvestSameWorld(world,oreHarvestWorld))return;
@@ -241,7 +241,7 @@ static void oreHarvestTick(uint32_t house,int frame,DWORD now){
    // that same search checkpoint next frame. Failed bytes never prove no ore.
    if(!certain||!frameRead.complete())continue;j.search=next;
   }
-  if(!j.search.done||j.attemptedFrame==frame)continue;j.attemptedFrame=frame;
+  if(!indexedWorkReady||!j.search.done||j.attemptedFrame==frame)continue;j.attemptedFrame=frame;
   if(!j.search.best){j={};continue;}
   OreHarvestState state{};uint32_t target=0;
   const int status=oreHarvestState(j,house,state);

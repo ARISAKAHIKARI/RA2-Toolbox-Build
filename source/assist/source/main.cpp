@@ -1219,7 +1219,7 @@ static void servicePlanner(){
  w.match=shared->world.match;w.tick=shared->world.tick;w.frame=shared->world.frame;w.count=shared->world.count;w.intentCount=shared->world.intentCount;w.refineryCount=shared->world.refineryCount;w.inputSerial=shared->world.inputSerial;w.combatCount=shared->world.combatCount;
  if(!planner::validWorldCounts(w.count,w.intentCount,w.refineryCount)||w.combatCount<0||w.combatCount>planner::MaxCombatProbes)return;
  memcpy(w.combat,shared->world.combat,size_t(w.combatCount)*sizeof(planner::CombatProbe));memcpy(w.actors,shared->world.actors,size_t(w.count)*sizeof(planner::Actor));memcpy(w.intents,shared->world.intents,size_t(w.intentCount)*sizeof(planner::Intent));memcpy(w.refineries,shared->world.refineries,size_t(w.refineryCount)*sizeof(planner::Refinery));MemoryBarrier();
- if(seq!=shared->worldSeq||batch!=shared->computeFrameSeq||w.frame!=shared->computeFrame||w.match!=shared->computeFrameMatch)return;
+ if(seq!=shared->worldSeq||batch!=shared->computeFrameSeq||w.frame>shared->computeFrame||w.match!=shared->computeFrameMatch)return;
  if(w.match==uint32_t(snap.match)&&w.frame>snap.frame){wakeGame();return;}
  worldRevision=seq;
  if(!freshness::valid(w.match,snap.match,w.tick,w.frame,GetTickCount(),snap.frame,freshness::Tactical)){logPlanning(w,L"stale-source");wakeGame();return;}

@@ -44,7 +44,10 @@ static bool IsWindow(HWND h){return h==1;}static int posted=0;static bool PostMe
 #include "mo_orders_bridge.h"
 static int checks=0;static void check(bool b){++checks;assert(b);}
 static void begin(){setup();resetMoOrders();events.clear();commands.clear();failAt=0;posted=0;actors.resize(1);selected=actors;sh->moFeatures=4;held['Z']=true;actorFrameArbiter.frame=-1;actorLeaseArbiter.allowed=true;moEpoch=match;moHouse=lastHouse;moWaypointSubmitted=false;}
-static bool messageMo(UINT m,unsigned vk=0){MSG msg;msg.message=m;msg.wParam=vk;msg.lParam=MAKELPARAM(100,100);return moOrdersMessage(&msg);}
+static bool messageMo(UINT m,unsigned vk=0){
+ if(m==WM_MBUTTONDOWN||m==WM_MBUTTONUP)held[VK_MBUTTON]=m==WM_MBUTTONDOWN;
+ MSG msg;msg.message=m;msg.wParam=vk;msg.lParam=MAKELPARAM(100,100);return moOrdersMessage(&msg);
+}
 static void step(){++snap.frame;put(0xA8ED84,snap.frame);clockValue+=30;shared.heartbeat=clockValue;moOrdersTick(lastHouse,snap.frame,clockValue);}
 static void graph(bool closed=false){uint32_t actor=actors[0],token=0x400000;put(actor+0x514,token);put(token,actor);put(token+8,0x410000u);put(token+12,moRouteCount);put(token+20,moRouteCount);put(token+0x8C,0);put(token+0x90,closed?moRouteCount:-1);put(token+0x94,closed?0:-1);
  put(0xAC4C78+4,0x420000u);put(0xAC4C78+8,1);put(0xAC4C78+16,1);put(0x420000,token);
@@ -52,6 +55,15 @@ static void graph(bool closed=false){uint32_t actor=actors[0],token=0x400000;put
 }
 static void submitRoute(){check(messageMo(WM_MBUTTONDOWN)&&moHolding);check(messageMo(WM_MBUTTONUP)&&moStage==1);for(int i=0;i<4;++i)step();check(moStage==2&&events.size()==4);}
 int main(){
+ begin();check(messageMo(WM_MBUTTONDOWN)&&moHolding);
+ clockValue+=410;shared.heartbeat=clockValue;
+ moOrdersTick(lastHouse,snap.frame,clockValue,false);
+ check(moPreview.active&&moPreview.tick==clockValue&&events.empty());
+ check(messageMo(WM_MBUTTONUP)&&moStage==1);
+ moOrdersTick(lastHouse,snap.frame,clockValue,false);
+ check(moStage==1&&moNodeAt==0&&events.empty());
+ moOrdersTick(lastHouse,snap.frame,clockValue,true);
+ check(events.size()==1);
  // A host seqlock collision during drag is unavailable policy, not cancel.
  for(int mode:{1,2,4}){begin();held.fill(false);held[mode==1?17:mode==2?16:'Z']=true;sh->moFeatures=mode;
   check(messageMo(WM_MBUTTONDOWN)&&moHolding);++sh->moGesturePolicySeq;

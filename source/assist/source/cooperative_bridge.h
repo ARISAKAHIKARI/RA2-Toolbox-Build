@@ -9,7 +9,7 @@ static external::GameView<LocalRawRead> clickView(LocalRawRead{});
 // UI click capture keeps its independent live input generation. Tactical
 // conversion consumes only the manager's already sealed world sample.
 struct CooperativeFrameRead {bool operator()(uint32_t a,void*out,size_t n)const{return read(a,out,n);}};
-static bool collectCooperativeInput(const cooperative::Request&r,const compute::QuotaConfig& quotas,cooperative::Input&out){
+static bool collectCooperativeInput(const cooperative::Request&r,const compute::QuotaConfig& quotas,cooperative::Input&out,worldframe::Key*source=nullptr){
  ObservationReadScope frameRead;if(!frameRead)return false;
  auto input=external::cooperativeInput(CooperativeFrameRead{},r,[&](uint32_t type){
   char id[24]{};if(!read(type+0x24,id,23))return quotas.defaults;
@@ -19,6 +19,7 @@ static bool collectCooperativeInput(const cooperative::Request&r,const compute::
  for(size_t i=0;i<input.units.size();++i)for(size_t j=0;j<input.targets.size();++j)
   if(!featureTypeAllowed(feature,input.units[i].type)||(r.mode==cooperative::Enter&&!featureTypeAllowed(featuretypes::EnterTarget,input.targets[j].type)))input.compatible[i*input.targets.size()+j]=0;
  if(!frameRead.complete())return false;
+ if(source)*source=sampleWorldSource->key;
  out=std::move(input);return true;
 }
 static uint32_t clickSerial,cooperativePlanSeen;static int cooperativeAt;
@@ -257,13 +258,18 @@ static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
  }
 }
 // Only the common game-thread capture epoch produces host cooperative input.
-static void captureCooperativeFrame(uint32_t house,int frame,DWORD now){
+static void captureCooperativeFrame(DWORD now,bool observationFrame,bool indexedWorkReady){
  const auto&r=sh->cooperativeRequest;auto&out=sh->cooperativeInputFrame;
  if(!cooperative::valid(r)||r.match!=match||!freshness::intentAlive(r.tick,now)||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
- if((!externalInputFrame&&out.request.serial==r.serial)||(out.request.serial==r.serial&&sh->cooperativeFrameWanted!=r.serial))return;
+ if((!observationFrame&&out.request.serial==r.serial)||(out.request.serial==r.serial&&sh->cooperativeFrameWanted!=r.serial))return;
  static compute::QuotaConfig quotas;long seq=sh->quotaConfigSeq;if(seq&1)return;MemoryBarrier();memcpy(&quotas,&sh->quotaConfig,sizeof quotas);MemoryBarrier();if(seq!=sh->quotaConfigSeq||quotas.count<0||quotas.count>512)return;
- cooperative::Input input;if(!collectCooperativeInput(r,quotas,input))return;
- cooperative::pack(out,input,r,now,frame);
+ cooperative::Input input;worldframe::Key source{};
+ if(!collectCooperativeInput(r,quotas,input,&source)||
+    !freshness::valid(source.match,match,source.tick,source.frame,now,snap.frame,freshness::Cooperative))return;
+ // The Host distinguishes an observation-only plan by its earlier frame.
+ // A candidate stamped with this frame must not look like exact authority.
+ if(!indexedWorkReady&&source.frame==snap.frame)return;
+ cooperative::pack(out,input,r,source.tick,source.frame);
 }
 static void cooperativeTick(uint32_t house,int frame,DWORD now){
  observeCooperativeEffects(house,frame);

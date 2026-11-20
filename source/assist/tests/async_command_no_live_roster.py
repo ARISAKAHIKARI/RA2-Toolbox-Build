@@ -142,6 +142,16 @@ assert "while(rebuildAt<count&&work++<ReindexBudget)" in unload_policy
 assert "if(!worldFrameCommandWorker.enabled())indexWorld(frame);" not in bridge
 assert "indexWorld(" not in bridge
 
+# A missed strict capture must pause indexed work without aborting the
+# observation publication or consuming that frame's indexed input refresh.
+dispatcher = bridge.split("withInputPublication(sh,match,now,frame,observationFrame,[&]{", 1)[1]
+assert "if(deferIndexedWork){++sh->worldSampleFailures;++sh->sampling.indexUnavailable;}" in dispatcher
+assert "externalInputFrame=!deferIndexedWork&&" in dispatcher
+assert "if(externalInputFrame){indexedInputMatch=match;indexedInputFrame=frame;}" in dispatcher
+assert "if(!deferIndexedWork){superweaponGrantTick(house,frame,now);consumeSubmittedIntents(house,frame,now);}" in dispatcher
+assert "captureCooperativeFrame(now,observationFrame,!deferIndexedWork);" in dispatcher
+assert "publishPlanningWorld(house,frame,now,!deferIndexedWork);" in dispatcher
+
 
 # The original manual token/pointer must reach the native EventClass
 # gateway for delayed external, load and unload decisions.

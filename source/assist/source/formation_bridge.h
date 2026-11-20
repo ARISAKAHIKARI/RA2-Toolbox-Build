@@ -43,16 +43,16 @@ static bool formationContext(bool preview=false){
  if(!external::display::inspect([](uint32_t at,void*out,size_t n){return read(at,out,n);}).visible())return false;
  long seq=sh->formationPolicySeq;if(seq&1)return formationPolicy.enabled!=0;MemoryBarrier();auto p=sh->formationPolicy;MemoryBarrier();if(seq!=sh->formationPolicySeq)return formationPolicy.enabled!=0;formationPolicy=p;return p.enabled!=0;
 }
-static bool formationActor(uint32_t p,bool quick=false){int air=0,k=kind(p);return p&&worldObjects.contains(p)&&own(p,lastHouse)&&(k==1||k==2||(quick&&k==0))&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&!get<bool>(p+0x427)&&(quick||(objectAirQuery(p,&air)&&!air));}
+static bool formationActor(uint32_t p,bool quick=false,bool requireRoster=true){int air=0,k=kind(p);return p&&(!requireRoster||worldObjects.contains(p))&&own(p,lastHouse)&&(k==1||k==2||(quick&&k==0))&&!get<bool>(p+0x1C8)&&!get<uint32_t>(p+0x11C)&&!get<uint32_t>(p+0x2B0)&&!get<bool>(p+0x427)&&(quick||(objectAirQuery(p,&air)&&!air));}
 static bool formationAerial(const formation::Unit&u){
  // Aircraft are always in the air placement group, including while landed.
  // Existing type definitions identify jumpjet/flying infantry and vehicles.
  if(u.kind==0)return true;
  return u.type&&(get<int>(u.type+0x5B4)==9||get<int>(u.type+0x67C)==4);
 }
-static bool formationSelectionMatchesPreview(){
+static bool formationSelectionMatchesPreview(bool requireRoster=true){
  Vec selected=vec(0xA8ECB8);bool found[formation::Maximum]{};int count=0;
- for(int n=0;n<selected.count;++n){uint32_t p=item(selected,n);if(!formationActor(p,formationQuick))continue;++count;int j=0;
+ for(int n=0;n<selected.count;++n){uint32_t p=item(selected,n);if(!formationActor(p,formationQuick,requireRoster))continue;++count;int j=0;
   for(;j<formationView.count;++j)if(!found[j]&&p==formationView.units[j].pointer&&get<uint32_t>(p+0x10)==formationView.units[j].id)break;
   if(j==formationView.count)return false;found[j]=true;
  }return count==formationView.count&&count>0;
@@ -259,7 +259,7 @@ static bool formationMessage(MSG*msg){
   }if(formationButton)return swallow();}
  return false;
 }
-static void formationTick(uint32_t house,int frame,DWORD now){
+static void formationTick(uint32_t house,int frame,DWORD now,bool indexedWorkReady=true){
  if(formationEpoch!=match){resetFormation();formationEpoch=match;}
  if(!formationContext(formationQuick&&formationButton)){if(formationView.active)formationCancel();formationFollow={};if(!sh->formationPolicy.enabled){formationJobCount=0;formationForget();}}
  // The native mouse-up can be lost when focus/capture changes. Do not
@@ -273,10 +273,10 @@ static void formationTick(uint32_t house,int frame,DWORD now){
  }
  formationRefreshHold();if(formationQuick&&!formationQuickAuthorized(true))formationCancel();
  if(formationQuick&&formationQuickPending&&DWORD(now-formationLayoutTick)>=16){
-  if(formationSelectionMatchesPreview())formationQuickLayout(formationQuickX,formationQuickY,formationQuickPX,formationQuickPY);else formationCancel();
+  if(formationSelectionMatchesPreview(indexedWorkReady))formationQuickLayout(formationQuickX,formationQuickY,formationQuickPX,formationQuickPY);else formationCancel();
  }
  if(sh->formationKey!=sh->formationKeyAck){if(formationView.active)formationSwitch(sh->formationKeyCode);sh->formationKeyAck=sh->formationKey;formationPublish();}
- if(!simulationReady()||snap.chat)return;
+ if(!indexedWorkReady||!simulationReady()||snap.chat)return;
  if(formationFollow.down&&!formationFollow.dragged&&int32_t(sh->formationConsumedUntil-now)>0)sh->formationConsumedUntil=inputownership::afterGesture(now);
  formationContinue(now);
  int visited=0;while(formationJobCount&&visited++<32){if(formationJobCursor>=formationJobCount)formationJobCursor=0;int at=formationJobCursor++;auto&j=formationJobs[at];uint32_t p=worldByID(j.unit.id);

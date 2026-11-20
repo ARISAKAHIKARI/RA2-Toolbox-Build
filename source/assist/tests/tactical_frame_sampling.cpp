@@ -43,7 +43,10 @@ static worldframe::Snapshot worldFrameCandidate;
 static bool worldFrameCandidateAvailable=false;
 static const worldframe::Snapshot*sampleWorldSource=nullptr;
 static uint32_t sampleScopeTick=0;
-static bool observationalFrameReady(){return false;}
+static bool observationalFrameReady(){
+ return worldFrameCandidateAvailable&&worldFrameCandidate.sealed()&&
+        worldFrameCandidate.key.match==match&&worldFrameCandidate.key.frame<=snap.frame;
+}
 static uint32_t GetTickCount(){return clockNow;}
 // This fixture seals raw synthetic bytes, then builds the same worker-owned
 // CommandRoster used by production before exposing the immutable index.
@@ -176,7 +179,7 @@ static void seal(uint32_t omit=0,bool knownFailure=false){
  worldObjects.unbind();worldObjects.clear();worldFrameCommandRoster.invalidate();
  indexedFrame=indexedCount=-1;indexedItems=0;globalVehicleCandidateCount=0;
  indexedGlobalVehicles=false;indexedVehicleHouse=0;
- worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;worldFrame.reset(key);
+ worldframe::Key key{};key.match=match;key.frame=snap.frame;key.house=lastHouse;key.tick=clockNow;worldFrame.reset(key);
  runtimeWorldDemands.clear();runtimeDemandBits.fill(0);missingPage=omit&~4095u;
  for(uint32_t page=0x10000;page<memory.size();page+=4096){if(page==missingPage&&!knownFailure)continue;
   auto acquire=[&](uint32_t at,void*out,size_t n){if(missingPage&&at<missingPage+4096&&uint64_t(at)+n>missingPage)return false;return liveRead(at,out,n);};
@@ -503,9 +506,32 @@ static void testOre(){
  unloaded(f);advance(f.refinery);oreHarvestObserve(lastHouse,snap.frame,clockNow);check(oreHarvestPending()&&!oreHarvestNeedsWork()&&oreHarvestObservedFrame==100,"ore failed observer committed partial state");check(!missingLiveReads,"ore observer read missing refinery live");
  advance(f.resource);oreHarvestTick(lastHouse,snap.frame,clockNow);check(oreHarvestNeedsWork()&&!harvestEvents,"ore missing search page submitted");
  const auto before=oreHarvestJobs[0].search;check(before.radius==0&&before.at==0&&!before.done,"ore incomplete search advanced checkpoint");
- advance();oreHarvestTick(lastHouse,snap.frame,clockNow);check(harvestEvents==1&&harvestLast.destination==62056&&!oreHarvestPending(),"ore retry failed to find/send exact nearest cell");
+ advance();oreHarvestTick(lastHouse,snap.frame,clockNow,false);
+ check(oreHarvestJobs[0].search.done&&oreHarvestJobs[0].attemptedFrame!=snap.frame&&!harvestEvents,
+       "deferred ore search failed to prepare the destination without consuming its submit turn");
+ oreHarvestTick(lastHouse,snap.frame,clockNow);check(harvestEvents==1&&harvestLast.destination==62056&&!oreHarvestPending(),"ore retry failed to find/send exact nearest cell");
  f=setupOre();oreHarvestObserve(lastHouse,snap.frame,clockNow);unloaded(f);advance();set<int>(f.resource+0x44,-1);oreHarvestTick(lastHouse,snap.frame,clockNow);check(!harvestEvents,"ore execution guard used stale sampled resource");
  std::puts("PASS ore Unit/Building observation, failed transaction/search retry and live admission guard");
+}
+static void testDelayedPlanning(){
+ auto f=setupOre();const auto sourceFrame=snap.frame;const auto sourceTick=clockNow;
+ worldFrameCandidate.swap(worldFrame);worldFrameCandidateAvailable=true;worldFrameReady=false;
+ ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
+ set<int>(f.miner+0x9C,52*256);
+ check(!commandRosterReady()&&publishPlanningWorld(lastHouse,snap.frame,clockNow,false),
+       "a late complete observation should publish without strict index authority");
+ check(planningWorld.frame==sourceFrame&&planningWorld.tick==sourceTick&&
+       planningWorld.actors[0].x==51*256&&!liveReads&&!nativeCalls&&!submissions,
+       "delayed planning substituted current live data or advanced its source age");
+ const auto seq=sh->worldSeq;
+ ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
+ check(!publishPlanningWorld(lastHouse,snap.frame,clockNow,false)&&sh->worldSeq==seq,
+       "the same candidate was republished as a new world frame");
+ seal();
+ check(commandRosterReady()&&publishPlanningWorld(lastHouse,snap.frame,clockNow,true)&&
+       planningWorld.frame==snap.frame&&planningWorld.actors[0].x==52*256,
+       "strict data arriving in the same dispatcher frame did not replace the candidate");
+ std::puts("PASS delayed planner observations keep source age and never use native enrichment before strict admission");
 }
 static void testDefenseIndex(){
  auto f=setupOre();check(publishPlanningWorld(lastHouse,snap.frame,clockNow)&&minerDefenseIndexRefineries()&&minerDefenseRefineryCount==1&&minerDefenseLinkedRefinery.at(20)==30&&!minerDefenseRefineryIncomplete,"defense shared radio index");
@@ -515,5 +541,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif

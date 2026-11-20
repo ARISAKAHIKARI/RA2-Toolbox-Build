@@ -142,6 +142,8 @@ static void recordReceipt(const gateway::Receipt&r){
 }
 static gateway::MissionObserver<1024> missionObserver;
 static bool externalInputFrame=false;static int inputFrame=-1;static uint32_t inputMatch=0;
+static int indexedInputFrame=-1;static uint32_t indexedInputMatch=0;
+static bool indexedWorkDeferred=false;
 static taskarbiter::FrameArbiter<8192> actorFrameArbiter;
 static taskarbiter::LeaseArbiter<8192> actorLeaseArbiter;
 static bool bridgePinned,autoWas;static DWORD lastAuto,techRefresh;
@@ -1429,11 +1431,13 @@ static RepairAdmission checkedRepairAdmission(uint32_t id,uint32_t house,uint32_
    RepairAdmission::Issue:RepairAdmission::Skip;
 }
 static void repairTick(uint32_t house,DWORD now){
+ const int frame=get<int>(0xA8ED84);
+ const bool currentRoster=indexedFrame==frame&&commandRosterReady();
  const bool automatic=(sh->flags&AutoRepair)!=0;
  // Cancel before polling: a late host result must not resurrect disabled work.
  if(!automatic)cancelAutomaticRepairWork();
  repairCalculationTick(now);
- pendingRepairs.observeBudgeted([&](uint32_t id,uint32_t pointer){
+ if(currentRoster)pendingRepairs.observeBudgeted([&](uint32_t id,uint32_t pointer){
   return observePendingRepair(id,pointer,house);
  });
  const DWORD interval=clampedRepairInterval(sh->repairMs);
@@ -1441,8 +1445,8 @@ static void repairTick(uint32_t house,DWORD now){
  if(!repairCalculationPending&&!repairAckPending&&automatic&&(!autoWas||(DWORD(now-lastAuto)>=interval&&repairAt>=repairCount))){const int captured=collectRepairs(house,now);deferred=captured==-6;if(!deferred)lastAuto=now;}
  autoWas=automatic&&!deferred;snap.autoRepair=automatic;
  static int budgetFrame=-1,budget;static uint32_t budgetMatch;
- int frame=get<int>(0xA8ED84);if(budgetFrame!=frame||budgetMatch!=match){budgetFrame=frame;budgetMatch=match;budget=recurringBudget(EventLane::Repair);}
- if(repairAt<repairCount&&budget>0&&indexedFrame==frame&&commandRosterReady()){
+ if(budgetFrame!=frame||budgetMatch!=match){budgetFrame=frame;budgetMatch=match;budget=recurringBudget(EventLane::Repair);}
+ if(repairAt<repairCount&&budget>0&&currentRoster){
   // Pre14's tri-state repair eligibility stays in place. A missing worker
   // index leaves the repair candidates pending; never scan the live roster. 
   while(repairAt<repairCount&&budget>0){
@@ -1458,7 +1462,7 @@ static void repairTick(uint32_t house,DWORD now){
  }
  // Completion reports events actually queued, not the number of candidates.
  // A congested native queue must also produce a terminal ACK, not wait forever.
- if(repairAckPending&&!repairCalculationPending&&(repairAt>=repairCount||DWORD(now-repairAckStarted)>3000)){
+ if(currentRoster&&repairAckPending&&!repairCalculationPending&&(repairAt>=repairCount||DWORD(now-repairAckStarted)>3000)){
   sh->result=repairDone?1:-6;sh->count=repairDone;
   pendingAck=repairAckRequest;pendingAckReady=true;repairAckPending=false;repairAckRequest=0;
   repairAt=repairCount; // Drop unsent candidates on timeout; no surprise later repair.
@@ -1629,7 +1633,7 @@ template<class Fn>static void withInputPublication(Shared*value,uint32_t session
    // partial sample as complete. Recapture on the next admitted tick; events
    // and their request/ack state are left to the existing delivery guards.
    value->computeFrameMatch=value->computeFrameTick=0;value->computeFrame=-1;
-   inputMatch=0;inputFrame=-1;externalInputFrame=false;
+   inputMatch=indexedInputMatch=0;inputFrame=indexedInputFrame=-1;externalInputFrame=false;
   }
   MemoryBarrier();InterlockedIncrement(&value->computeFrameSeq);notifyHost();
  });
@@ -1747,7 +1751,11 @@ static void tick(){
  bool refreshDue=(featureavailability::SceneRefresh&&sh->foreground&&sh->scrollRefreshMode&&sh->scrollRefreshHz&&scrollCadence.ready(preciseNow,sh->scrollRefreshHz))||
    (scrollRefreshActive&&(!sh->scrollRefreshMode||!sh->scrollRefreshHz));
  bool fastDue=sh->foreground&&(sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHeld||burstCount)&&preciseNow-fastSampleAt>=2000;
- if(worldChange==worldlife::Change::Same&&!cmd&&!resultsDue&&!soundPending&&!frameDue&&!refreshDue&&!fastDue&&DWORD(now-last)<period)return;last=now;fastSampleAt=preciseNow;
+ // Updating the display consumes its frame wake. Continue polling for a
+ // pending strict capture on the existing 4 ms Host pulse.
+ const bool indexRetryDue=indexedWorkDeferred&&DWORD(now-last)>=4;
+ if(worldChange==worldlife::Change::Same&&!cmd&&!resultsDue&&!soundPending&&!frameDue&&!refreshDue&&!fastDue&&!indexRetryDue&&DWORD(now-last)<period)return;last=now;fastSampleAt=preciseNow;
+ indexedWorkDeferred=false;
  // Include admission and maintenance in game-thread timing.
  uint32_t house=0;const auto authority=worldlife::authority(read,house);const int frame=worldSample.frame,sessionMode=worldSample.session;
  const bool worldGone=worldChange==worldlife::Change::Absent;
@@ -1827,46 +1835,46 @@ static void tick(){
  // carried by the canonical Runtime snapshot; do not spend a full graph read.
  if(!hostDisplayOnly&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
- externalInputFrame=inputMatch!=match||inputFrame!=frame;if(externalInputFrame){inputMatch=match;inputFrame=frame;}
+ const bool observationFrame=inputMatch!=match||inputFrame!=frame;
+ if(observationFrame){inputMatch=match;inputFrame=frame;}
  bool finishSnapshot=false;
- withInputPublication(sh,match,now,frame,externalInputFrame,[&]{
+ withInputPublication(sh,match,now,frame,observationFrame,[&]{
  // Control time belongs to the dispatcher, never to the optional display scan.
  rebuildPlayerSidebar(house);lastFrame=frame;snap.frame=frame;snap.match=match;snap.session=sessionMode;snap.status=1;snap.bridgeStatus=1;snap.commandStatus=1;pauseViewTick();buildTimeTooltipTick();
  snap.chat=get<bool>(0xA8BC60+25);if(!sh->foreground||snap.chat)runtimeKeys.clear();inputLockTick();
  if(worldChange==worldlife::Change::Same&&lastHouse)oreHarvestObserve(lastHouse,frame,now);
  bool needsIndex=hookpolicy::needsWorldIndex(cmd,(directSellPending()||privateOutPending()||sh->privateOutMode)||sh->bombBoardEnabled||sh->minerDefenseEnabled||minerDefensePending()||(sh->moFeatures&7u)||moOrdersPending()||directAirPending()||sh->formationPolicy.enabled||formationJobCount||stickyCount||sh->magnetronGlobal||sh->magnetronDrop||sh->planRequest!=sh->planAck||sh->dodgeEnabled||dodgeCount||sh->burstEnabled||sh->burstHoldEnabled||burstCount||sh->missileEnabled||missileHoldCount||missionObserver.pending()||pendingRepairs.count||actorLeaseArbiter.count||loadLedger.count||loadCalculationPending||repairCalculationPending||runtimeCoopPending||nativeCount||unloadCount||queuedUnload.count||repairAt<repairCount||entryReservationCount||cooperativeEffectCount||sh->cooperativePlan!=sh->cooperativeAck,
   sh->flags|sh->plannerTracking|((sh->cooperativePlan!=sh->cooperativeAck)?AutoOreReturn:0),(sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)));
- if(needsIndex){
-  if(!refreshWorldIndex(frame)||!commandRosterReady()){
-   // Leave requests, passenger history, manual revisions and all active jobs
-   // untouched. A candidate or missing index is UNKNOWN for command work.
-   ++sh->worldSampleFailures;
-   ++sh->sampling.indexUnavailable;
-   publishSnapshot(now);return;
-  }
-  // These managers consult the canonical worker-owned UID index. Do not run
-  // them at all when no command index is required or when only a candidate
-  // snapshot exists.
+ const bool deferIndexedWork=needsIndex&&(!refreshWorldIndex(frame)||!commandRosterReady());
+ indexedWorkDeferred=deferIndexedWork;
+ if(deferIndexedWork){++sh->worldSampleFailures;++sh->sampling.indexUnavailable;}
+ // The first strict pass may follow an observation in the same game frame.
+ // Keep the frame-driven command inputs pending until that pass can run.
+ externalInputFrame=!deferIndexedWork&&(indexedInputMatch!=match||indexedInputFrame!=frame);
+ if(externalInputFrame){indexedInputMatch=match;indexedInputFrame=frame;}
+ if(needsIndex&&!deferIndexedWork){
   privateOutTick();servicePrivateOut();serviceDirectSell();
   // Release stale leases before any feature sends a new game order.
   sweepActiveLeases(frame);
  }
- stickyTick(false);
- observePausedOre(house,frame);
- observeUnloadRoster(house,frame,now);
+ if(!deferIndexedWork){stickyTick(false);observePausedOre(house,frame);observeUnloadRoster(house,frame,now);}
  viewZoomTick();sidebarViewTick();smallMapCameraTick();radarNavigationTick(now);if(nativePipJumpPending&&nativePipDemand())GuardedNativePipAction(4,0);highScrollTick(preciseNow);
  // Only tick consumes feature requests; neither Hook callback can bypass
  // the shared game-thread intent/validation/event pipeline.
- superweaponGrantTick(house,frame,now);
- consumeSubmittedIntents(house,frame,now);nativePlacementTick(now);
+ if(!deferIndexedWork){superweaponGrantTick(house,frame,now);consumeSubmittedIntents(house,frame,now);}
+ else uiSoundCommand(now);
+ nativePlacementTick(now);
  if(playerContextChanged){playerContextChanged=false;snap.commandStatus=activation::HouseChanged;publishSnapshot(now);return;}
  QueryPerformanceCounter(&controlEnd);snap.controlMicros=micros(start,controlEnd,frequency);
  // Release receipts before any recurring work or overlay projection. In a busy
  // scene the next user command can now be staged while rendering catches up.
- if(cmd){snap.scanMicros=snap.controlMicros;publishSnapshot(now);}
- formationTick(house,frame,now);moOrdersTick(house,frame,now);directair::tick(house,frame,now);bombboard::tick(house,frame);loadingCalculationTick(house,now);repairTick(house,now);autoLoadTick(house,frame);nativeOrdersTick(house,frame);
- // Read-only observation, bounded to 32 outstanding orders per game frame.
- if(missionObserver.pending())snap.observedEvents+=missionObserver.pollWithReceipts(match,frame,now,[](uint32_t id){
+ if(cmd&&!deferIndexedWork){snap.scanMicros=snap.controlMicros;publishSnapshot(now);}
+ formationTick(house,frame,now,!deferIndexedWork);moOrdersTick(house,frame,now,!deferIndexedWork);
+ if(!deferIndexedWork){directair::tick(house,frame,now);bombboard::tick(house,frame);loadingCalculationTick(house,now);}
+ repairTick(house,now);
+ if(!deferIndexedWork){autoLoadTick(house,frame);nativeOrdersTick(house,frame);}
+ // Terminal receipts also release ownership. Observe only with a strict roster.
+ if(!deferIndexedWork&&missionObserver.pending())snap.observedEvents+=missionObserver.pollWithReceipts(match,frame,now,[](uint32_t id){
   return observeMissionReceipt(id);
  },[](const gateway::Receipt& receipt){
   recordReceipt(receipt);
@@ -1874,31 +1882,36 @@ static void tick(){
   if(receipt.phase==gateway::Phase::Cancelled)++snap.receiptCancelled;
   else if(receipt.phase==gateway::Phase::Expired)++snap.receiptExpired;
  });
- const bool dodgeChanged=dodgeControlTick(house,frame,now);
+ const bool dodgeChanged=!deferIndexedWork&&dodgeControlTick(house,frame,now);
  resetBurstControl(); // Removed feature: old shared flags never produce commands.
  const bool burstChanged=false;
- captureCooperativeFrame(house,frame,now);
- const bool planningChanged=publishPlanningWorld(house,frame,now);
- const bool minerDefenseChanged=minerDefenseTick(house,frame,now);
- oreHarvestTick(house,frame,now);
- runtimePlanningTick(house,frame,now);
- const bool missileChanged=missileControlTick(house,frame,now);
+ captureCooperativeFrame(now,observationFrame,!deferIndexedWork);
+ const bool planningChanged=publishPlanningWorld(house,frame,now,!deferIndexedWork);
+ const bool minerDefenseChanged=!deferIndexedWork&&minerDefenseTick(house,frame,now);
+ oreHarvestTick(house,frame,now,!deferIndexedWork);
+ if(!deferIndexedWork)runtimePlanningTick(house,frame,now);
+ const bool missileChanged=!deferIndexedWork&&missileControlTick(house,frame,now);
  QueryPerformanceCounter(&worldEnd);snap.worldMicros=micros(controlEnd,worldEnd,frequency);
  uint32_t tactical=get<uint32_t>(0x887324),flags=sh->flags;int cx=tactical?get<int>(tactical+0xB0):0,cy=tactical?get<int>(tactical+0xB4):0;
  double zoom=tactical?get<double>(tactical+0xB8):0;int width=get<int>(0x8A00A4),height=get<int>(0x8A00A8);
  bool cameraMoved=cx!=cameraX||cy!=cameraY;
  // Render cadence is independent of world scans. Scan at most about 60 Hz;
  // unchanged frames reuse their scene, and camera-only changes shift it.
- static uint32_t selectedStamp;uint32_t stamp=2166136261u;Vec selected=vec(0xA8ECB8);for(int i=0;i<selected.count;++i)stamp=(stamp^item(selected,i))*16777619u;
- bool selectionChanged=stamp!=selectedStamp;selectedStamp=stamp;
+ static uint32_t selectedStamp;bool selectionChanged=false;
+ if(!deferIndexedWork){
+  uint32_t stamp=2166136261u;Vec selected=vec(0xA8ECB8);for(int i=0;i<selected.count;++i)stamp=(stamp^item(selected,i))*16777619u;
+  selectionChanged=stamp!=selectedStamp;selectedStamp=stamp;
+ }
  bool force=newMatch||selectionPending||selectionChanged||flags!=sceneFlags||tactical!=sceneTactical||width!=sceneWidth||height!=sceneHeight||zoom!=sceneZoom||snap.crateResultSerial!=sceneResultSerial;
  bool full=force||(DWORD(now-sceneTick)>=16&&(frame!=sceneFrame||(cameraMoved&&DWORD(now-sceneTick)>=32)||DWORD(now-sceneTick)>=100));
- bool summaryChanged=scanSummary(house,frame,now,flags);
- if((snap.techOpen||techPending)&&((techPending&&DWORD(now-techRefresh)>=16)||DWORD(now-techRefresh)>=1000))refreshTech(house,now);
- maintainTechCameos(house,frame,now);
- if(full){if(!sh->externalDisplay)scan(house,frame,now);sceneFrame=frame;sceneTick=now;sceneFlags=flags;sceneTactical=tactical;sceneWidth=width;sceneHeight=height;sceneZoom=zoom;sceneResultSerial=snap.crateResultSerial;}
+ bool summaryChanged=(sh->externalDisplay||!deferIndexedWork)&&scanSummary(house,frame,now,flags);
+ if(!deferIndexedWork){
+  if((snap.techOpen||techPending)&&((techPending&&DWORD(now-techRefresh)>=16)||DWORD(now-techRefresh)>=1000))refreshTech(house,now);
+  maintainTechCameos(house,frame,now);
+ }
+ if(full&&(sh->externalDisplay||!deferIndexedWork)){if(!sh->externalDisplay)scan(house,frame,now);sceneFrame=frame;sceneTick=now;sceneFlags=flags;sceneTactical=tactical;sceneWidth=width;sceneHeight=height;sceneZoom=zoom;sceneResultSerial=snap.crateResultSerial;}
  else if(cameraMoved)shiftScene(cx-cameraX,cy-cameraY);
- else if(!externalInputFrame&&!cmd&&!summaryChanged&&!planningChanged&&!minerDefenseChanged&&!missileChanged&&!burstChanged&&!dodgeChanged&&DWORD(now-snap.sampledTick)<250)return;
+ else if(!observationFrame&&!deferIndexedWork&&!cmd&&!summaryChanged&&!planningChanged&&!minerDefenseChanged&&!missileChanged&&!burstChanged&&!dodgeChanged&&DWORD(now-snap.sampledTick)<250)return;
  cameraX=cx;cameraY=cy;snap.cameraX=cx;snap.cameraY=cy;
  finishSnapshot=true;
  });

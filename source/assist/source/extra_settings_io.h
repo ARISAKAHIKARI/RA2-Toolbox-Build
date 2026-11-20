@@ -379,14 +379,16 @@ static void serviceCooperative(){
  const long batch=shared->computeFrameSeq;if(batch&1)return;
  static auto captured=std::make_unique<cooperative::FrameInput>();MemoryBarrier();
  if(!cooperative::copyFrame(*captured,shared->cooperativeInputFrame))return;MemoryBarrier();
- if(batch!=shared->computeFrameSeq||captured->request.serial!=request.serial||captured->match!=uint32_t(snap.match)||captured->frame!=shared->computeFrame){wakeGame();return;}
- const DWORD acquired=captured->tick;const int frameBefore=captured->frame;
+ if(batch!=shared->computeFrameSeq||captured->request.serial!=request.serial||captured->match!=uint32_t(snap.match)||captured->match!=shared->computeFrameMatch||captured->frame>shared->computeFrame){wakeGame();return;}
+ const DWORD acquired=captured->tick;const int frameBefore=captured->frame;const bool candidate=frameBefore<shared->computeFrame;
  if(!freshness::valid(captured->match,snap.match,acquired,frameBefore,now,shared->computeFrame,freshness::Cooperative)){wakeGame();return;}
  auto input=cooperative::unpack(*captured);cooperative::restrictSources(input,request);
  if(retry)cooperative::reserveAccepted(input,acceptedCooperative);
  auto assignments=cooperative::allocate(input);
  if(!freshness::valid(request.match,shared->computeFrameMatch,acquired,frameBefore,GetTickCount(),shared->computeFrame,freshness::Cooperative)||
     !freshness::intentAlive(request.tick,GetTickCount())||shared->cooperativeRequest.serial!=request.serial||shared->cooperativeSeq!=seq){wakeGame();return;}
+ // An older sample can propose a target, but cannot prove there are none now.
+ if(candidate&&assignments.empty()){wakeGame();return;}
  shared->cooperativeFrameWanted=0;
  cooperativeDelivered=request.serial;retryCooperative=false;
  if(assignments.empty()){notify(cooperative::damageMode(request.mode)?L"预计伤害已足额，或没有有效的可分配目标。":L"屏幕内没有可分配的同类空位或有效敌方目标。");return;}

@@ -2,6 +2,8 @@
 
 审计基线为 [PR #71](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/pull/71) 的 [937d91d8](https://github.com/ARISAKAHIKARI/RA2-Toolbox-Build/commit/937d91d844ebf2e1a6f1a74cb3623edd40119dad)。覆盖常规控制、自动化、显示与监控、预定、光标和直接操作原生界面的模式。这里记录源码调用路径及合成测试结果。
 
+E07 的全局提前返回已在后续修复。缺严格索引时继续更新局部预览、发布带原始帧号和时间的候选、准备维修与找矿计算。依赖同帧名单的准入、原生提交和所有权清理等待严格索引。同一模拟帧可先发布观察结果，再处理随后就绪的命令输入。 [派发](../assist/source/bridge.cpp) · [候选规划发布](../assist/source/external_orders_bridge.h)
+
 ## 采样与执行边界
 
 - 生产环境由 Runtime 的 `CommandCaptureWorker` 读取世界、建立 UID 索引并发布不可变样本。Host 经共享内存取得同源样本。旧同步全图、Host VisualCache、补采旁路和影子采样器仅在显式测试配置保留。页需求受上限约束，提交和取得结果走非阻塞尝试。首启仍有游戏回调内创建事件和线程的成本，见 E07。 [架构原则](2026-11-20-runtime-single-pass-sampling-principles.md) · [Runtime 交接](../assist/source/world_frame_runtime.h#L254) · [采集线程](../shared/source/world_frame_command_worker_win.h#L238)
