@@ -123,7 +123,7 @@ def main():
     if args.negative_control:
         old = subprocess.check_output(["git", "show", "418347c5d753f5acb72026fcaf3c45935a65769d:source/assist/source/bridge.cpp"], cwd=SRC.parents[2], text=True)
         legacy_index = function(old, "static void indexWorld(int frame){")
-        current_bridge = source["bridge.cpp"]
+        current_bridge = (SRC / "bridge.cpp").read_text()
         negative = {
             "source_commit": "418347c5d753f5acb72026fcaf3c45935a65769d",
             "legacy_index_sha256": hashlib.sha256(legacy_index.encode()).hexdigest(),
