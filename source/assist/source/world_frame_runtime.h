@@ -258,12 +258,12 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
  key.generationLow=uint32_t(worldProducerGeneration);key.generationHigh=uint32_t(worldProducerGeneration>>32);
  key.connectionLow=uint32_t(worldFrameServer.connection());key.connectionHigh=uint32_t(worldFrameServer.connection()>>32);
  if(asyncCommand){
-  // Do not lazily create the background thread for an empty Base-only tick.
-  // A live Host subscription or an actual Runtime page lease must exist first.
-  // wanted() also opens/revalidates the Host channel before observe() writes it.
-  const bool hostWanted=worldFrameServer.wanted(key.owner,key.tick);
-  const bool runtimeWanted=!runtimeWorldDemands.empty()||runtimeDemandLeases.size()!=0;
-  if(!hostWanted&&!runtimeWanted){worldFrameReady=false;worldFrameBoundaryOnly=false;return false;}
+  // The worker exists to serve the live Host session. Retained page leases are
+  // preserved across a disconnect, but cannot justify starting a new worker
+  // while the Host heartbeat/subscription is absent.
+  if(!worldFrameServer.wanted(key.owner,key.tick)){
+   worldFrameReady=false;worldFrameBoundaryOnly=false;return false;
+  }
  }
  worldFrameServer.observe(key);
 #if !defined(WORLD_FRAME_TEST_SYNC_CAPTURE) && !defined(WORLD_FRAME_PLATFORM_FIXTURE)
