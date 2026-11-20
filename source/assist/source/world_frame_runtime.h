@@ -401,6 +401,9 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
    ++sh->worldSampleFailures;return false;
   }
   auto&requests=worldFrameCaptureRequests;
+  // The worker returns its previous vector through the queue slot when it
+  // dequeues a newer job. Reclaim it before building, never after submission.
+  worldFrameCommandWorker.reclaimRequestBuffer(requests);
   const auto&hostRequests=worldFrameServer.requests();
   if(!worldFrameRequestBufferPrepared){
    requests.reserve(worldframe::MaxPages);
