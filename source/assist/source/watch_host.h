@@ -60,14 +60,15 @@ static void arrange(){bool visible[3]{};external::watch::Box boxes[3]{};shown=fa
 // changes as controls, so neither an in-flight result nor a queued old
 // request can overwrite the confirmed decision. Spatial movement alone
 // does not invalidate the asynchronous renderer or its asset caches.
-template<class Read>static bool followTracks(Read read,int slot=-1){
+template<class Read,class Proof>static bool followTracks(Read read,Proof proof,int slot){
  bool changed=false;
- for(int i=0;i<3;++i){if(slot>=0&&i!=slot)continue;auto&track=tracks[i];auto before=track.target;external::watch::follow(read,track);
+ for(int i=0;i<3;++i){if(slot>=0&&i!=slot)continue;auto&track=tracks[i];auto before=track.target;external::watch::follow(read,track,proof);
   if(!(before==track.target)){changed=true;views[i]={};if(!track)autoSuppressed=true;}
  }
  if(changed){worker.invalidate();++controls;applied.reset();arrange();++paintRevision;}
  return changed;
 }
+template<class Read>static bool followTracks(Read read,int slot=-1){return followTracks(read,read,slot);}
 static void reset(){suspended=false;worker.invalidate();applied.reset();++controls;for(auto&t:tracks)t={};for(auto&v:views)v={};autoSuppressed=false;shown=false;lifetime.reset();lifetimeSample=0;lifetimeReady=false;}
 static void suspend(){if(suspended)return;suspended=true;worker.invalidate();applied.reset();++controls;for(auto&v:views)v.shown=false;shown=false;}
 static bool synchronizeWorld(){
@@ -86,8 +87,11 @@ static void pin(uint32_t key){
  if((!enabled||!extra.watchEnabled)&&!extra.watchSecondary)return;
  if(!foregroundGame()||snap.chat||formationInputOwns())return;
  if(!synchronizeWorld())return;
- auto read=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};followTracks(read);
- int slot=-1;auto result=external::watch::add(tracks,extra.watchKeys,key,external::watch::capture(read),slot);using R=external::watch::AddResult;
+ external::radar::FrameScope source(externalReader,epoch,{},worldframe::Resources|worldframe::HostVisualPassengers);
+ auto sampled=[&](uint32_t p,void*out,size_t n){return source&&externalReader.readFresh(p,out,n);};
+ auto live=[](uint32_t p,void*out,size_t n){return externalReader.readLive(p,out,n);};
+ if(source)followTracks(sampled,[&](uint32_t p,void*out,size_t n){return externalReader.worldFrameComplete()&&live(p,out,n);},-1);
+ int slot=-1;auto result=external::watch::add(tracks,extra.watchKeys,key,external::watch::capture(live,sampled),slot);using R=external::watch::AddResult;
  if(result==R::NoTarget){notify(L"请先选中单位，或将鼠标放到单位上。");return;}
  if(result==R::Full){notify(L"此快捷键绑定的跟踪窗口已满；Shift＋右击窗口可关闭。");return;}
  if(result==R::AlreadyTracked){notify(L"此单位已在该快捷键的窗口中跟踪。");return;}

@@ -13,26 +13,27 @@ template<class Read> bool locate(GameView<Read>&g,Target t,int&x,int&y,int&z){
  int xx=g.template get<int>(t.pointer+0x9C,-1),yy=g.template get<int>(t.pointer+0xA0,-1),zz=g.template get<int>(t.pointer+0xA4,-1);
  if(xx<0||yy<0||xx>=512*256||yy>=512*256||zz<0||zz>100000)return false;x=xx;y=yy;z=zz;return true;
 }
-template<class Read> Track capture(Read read){
- GameView<Read> g(read);Track out;Target hover;
+template<class InputRead,class Read> Track capture(InputRead input,Read read){
+ GameView<InputRead> g(input);GameView<Read> world(read);Track out;Target hover;
  for(auto p:g.vec(0xA8ECB8)){Target t{p,g.template get<uint32_t>(p+0x10)};if(valid(g,t)&&std::find(out.members.begin(),out.members.end(),t)==out.members.end())out.members.push_back(t);}
- for(auto p:g.vec(0xA8EC78))if(g.template get<uint8_t>(p+0x431)){Target t{p,g.template get<uint32_t>(p+0x10)};if(valid(g,t)){hover=t;break;}}
+ for(auto p:world.vec(0xA8EC78))if(world.template get<uint8_t>(p+0x431)){Target t{p,world.template get<uint32_t>(p+0x10)};if(valid(g,t)){hover=t;break;}}
  if(!out.members.empty())out.target=hover&&std::find(out.members.begin(),out.members.end(),hover)!=out.members.end()?hover:out.members.front();
  else if(hover){out.target=hover;out.members.push_back(hover);}
  out.located=locate(g,out.target,out.x,out.y,out.z);out.spatial=out.target;observeTransition(read,out.target,out.transition);return out;
 }
+template<class Read> Track capture(Read read){return capture(read,read);}
 // Only the original group can inherit a dead focus. Transport/limbo is not
 // death, and pointer reuse must never follow the unrelated replacement object.
-template<class Read> void follow(Read read,Track&track){
+template<class Read,class Proof> void follow(Read read,Track&track,Proof proof){
  if(!track||track.fixed)return;GameView<Read> g(read);Target t=track.target;
  auto observed=life(read,t);if(observed.state==Life::Unknown)return;
  if(observed.state==Life::Present){observeTransition(read,t,track.transition);auto center=anchor(read,t,{track.spatial,track.x,track.y,track.z,track.located,track.spatialKind,track.discoveryFrame,track.searched,track.discoveryCursor,track.garrison});if(center.located){track.x=center.x;track.y=center.y;track.z=center.z;track.located=true;track.spatial=center.target;track.spatialKind=center.kind;track.discoveryFrame=center.discoveryFrame;track.searched=center.searched;track.discoveryCursor=center.discoveryCursor;track.garrison=center.garrison;}return;}
- // Permanent removal/succession needs a second independent, agreeing sample.
- // Production callers use readFresh here, not the renderer's 4 KiB cache.
- if(!(life(read,t)==observed))return;bool identity=observed.state==Life::Dead;
+ // The inventory comes from the published world. Permanent identity changes
+ // also require the individual object's live state to agree.
+ if(!(life(proof,t)==observed))return;bool identity=observed.state==Life::Dead;
  if((track.transition.armed||track.transition.fallbackEligible)&&track.located){
   auto next=transitionSuccessor(read,t,track.transition);
-  if(!(life(read,t)==observed))return;
+  if(!(life(proof,t)==observed)|| (next&&!life(proof,next).drawable()))return;
   // Neither an ambiguous birth nor missing conversion evidence licenses a
   // nearby-object search. Keep drawing the live world at the verified point.
   if(!next){track.target={};track.spatial={};track.fixed=true;track.transition={};track.garrison={};return;}
@@ -46,8 +47,10 @@ template<class Read> void follow(Read read,Track&track){
   int64_t dx=int64_t(x)-track.x,dy=int64_t(y)-track.y,d=dx*dx+dy*dy;
   if(d<=best&&(!nearest||d<best||candidate.id<nearest.id)){nearest=candidate;best=d;nx=x;ny=y;nz=z;}
  }
- if(!nearest){track={};return;}track.target=nearest;track.x=nx;track.y=ny;track.z=nz;track.located=true;track.spatial=nearest;track.spatialKind=g.kind(nearest.pointer);track.searched=false;track.transition={};
+ if(!nearest){track={};return;}if(!life(proof,nearest).drawable())return;
+ track.target=nearest;track.x=nx;track.y=ny;track.z=nz;track.located=true;track.spatial=nearest;track.spatialKind=g.kind(nearest.pointer);track.searched=false;track.transition={};
 }
+template<class Read> void follow(Read read,Track&track){follow(read,track,read);}
 // Same-key slots are one group action, independent of global hotkey fan-out.
 inline bool firstBinding(const uint32_t*keys,int slot){if(slot<0||slot>=MaximumWindows||!(keys[slot]&255))return false;for(int i=0;i<slot;++i)if(keys[i]==keys[slot])return false;return true;}
 enum class AddResult {Added,AlreadyTracked,Full,NoTarget};

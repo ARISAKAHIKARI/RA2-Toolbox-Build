@@ -61,12 +61,16 @@ static void occlude(Graphics&g){
 }
 static void navigate(int slot){
  if(slot<0||slot>=3||!enabled||!foregroundGame()||snap.chat||(!extra.watchEnabled&&!extra.watchSecondary)||!battlefield()||!shared||!commandFresh(GetTickCount()))return;
- auto fresh=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};
+ external::radar::FrameScope source(externalReader,watchhost::epoch,{},worldframe::Resources|worldframe::HostVisualPassengers);
+ if(!source)return;
+ auto sampled=[](uint32_t p,void*out,size_t n){return externalReader.readFresh(p,out,n);};
+ auto fresh=[](uint32_t p,void*out,size_t n){return externalReader.readLive(p,out,n);};
+ auto proof=[&](uint32_t p,void*out,size_t n){return externalReader.worldFrameComplete()&&fresh(p,out,n);};
  auto&track=watchhost::tracks[slot];external::watch::Target target;
- if(track){watchhost::followTracks(fresh,slot);target=track.target;}else target=watchhost::views[slot].frame.focus;
+ if(track){watchhost::followTracks(sampled,proof,slot);target=track.target;}else target=watchhost::views[slot].frame.focus;
  auto center=track?external::watch::Anchor{track.spatial,track.x,track.y,track.z,track.located,track.spatialKind,track.discoveryFrame,track.searched,track.discoveryCursor,track.garrison}:watchhost::views[slot].frame.center;
- if(track&&(track.transition.armed||track.transition.fallbackEligible)&&external::watch::life(fresh,target).state==external::watch::Life::Unknown){target={};center.target={};}
- int x,y;if(!external::watch::camera(fresh,target,snap.width,snap.height,x,y,center))return;
+ if(target&&external::watch::life(fresh,target).state!=external::watch::Life::Present){target={};center.target={};}
+ int x,y;if(!external::watch::camera(sampled,target,snap.width,snap.height,x,y,center)||!externalReader.worldFrameComplete())return;
  InterlockedIncrement(&shared->cameraSeq);shared->cameraMatch=commandMatch();shared->cameraTick=sampleClock(shared);shared->cameraTargetX=x;shared->cameraTargetY=y;MemoryBarrier();InterlockedIncrement(&shared->cameraSeq);wakeGame();
 }
 static bool beginDrag(HWND w){

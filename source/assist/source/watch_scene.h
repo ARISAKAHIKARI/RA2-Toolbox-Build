@@ -43,7 +43,8 @@ public:
   if(!wanted&&(!danger||autoSuppressed)){for(auto&v:views)v={};sourceTick=now;sharedSource=gpuAttempted=gpuUsed=false;return true;}
   external::radar::FrameScope worldScope(reader_,epoch);if(!worldScope)return failed(Timings::FrameUnavailable);
   auto fresh=[this](uint32_t p,void*out,size_t n){return external::radar::liveRead(reader_,p,out,n);};
-  bool manual=false;for(auto&t:tracks){bool had=bool(t);external::watch::follow(fresh,t);if(had&&!t)autoSuppressed=true;manual|=bool(t);}
+  auto proof=[&](uint32_t p,void*out,size_t n){return external::radar::completeFrame(reader_)&&fresh(p,out,n);};
+  bool manual=false;for(auto&t:tracks){bool had=bool(t);external::watch::follow(read_,t,proof);if(had&&!t)autoSuppressed=true;manual|=bool(t);}
   if(!manual&&!autoSuppressed){
    const auto source=external::radar::sourceFrame(reader_);int frame=-1;read_(0xA8ED84,&frame,4);
    if(!source||source!=automaticSource_||frame!=automaticFrame_||danger!=automaticDanger_){automatic=external::watch::choose(read_,{},automatic,danger);automaticSource_=source;automaticFrame_=frame;automaticDanger_=danger;}
