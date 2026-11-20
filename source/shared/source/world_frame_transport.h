@@ -1,7 +1,9 @@
 #pragma once
 #include "world_frame.h"
 #include "world_frame_pool.h"
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
 #include "world_frame_visual.h"
+#endif
 #include <windows.h>
 #include <mutex>
 #include <map>
@@ -106,7 +108,9 @@ public:
 // already producing later frames. Neither process waits for a reader lease.
 class Client {
  std::mutex mutex_;HANDLE mapping_=nullptr;Channel*channel_=nullptr;
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
  std::mutex visualMutex_;VisualCache visuals_;
+#endif
  std::shared_ptr<void> notification_;
  uint32_t pid_=0,owner_=0;Token latest_;uint32_t copiedSerial_=0;
  // Pool only dead publications' storage, never their shared/weak identity.
@@ -274,10 +278,20 @@ public:
   std::lock_guard<std::mutex>lock(mutex_);const auto source=authoritative(token);return source&&open()&&acceptsObserved(source,GetTickCount());
  }
  template<class Live>Token visual(const Token&source,uint32_t demand,Live live){
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
   std::lock_guard<std::mutex>lock(visualMutex_);return visuals_.acquire(source,demand,GetTickCount(),live);
+#else
+  // Host-side graph acquisition is quarantined until display fields are
+  // carried by the Runtime-owned immutable sample.
+  (void)source;(void)demand;(void)live;return {};
+#endif
  }
  void requestVisual(const std::vector<uint32_t>&pages,bool retry){
+#if defined(WORLD_FRAME_TEST_VISUAL_CACHE)
   std::lock_guard<std::mutex>lock(visualMutex_);visuals_.request(pages,GetTickCount(),retry);
+#else
+  (void)pages;(void)retry;
+#endif
  }
  void subscribe(uintptr_t reader,uint32_t demand){
   const bool display=visualDemand(demand);
