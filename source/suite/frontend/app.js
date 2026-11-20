@@ -559,7 +559,7 @@
   }
   function renderSettingsGroups(controls,query='') {
     const groups=groupControls(controls,query),count=[...groups.values()].reduce((sum,items)=>sum+items.length,0);
-    for(const [name,group]of groupNodes)if(!groups.has(name)){observer?.unobserve(group.section);releaseChunks(group);group.section.remove();groupNodes.delete(name);}
+    for(const [name,group]of groupNodes)if(!groups.has(name)){observer?.unobserve(group.section);group.section.remove();groupNodes.delete(name);}
     let after=null;for(const [name,items]of groups){let group=groupNodes.get(name);if(!group){group=makeGroup(name);groupNodes.set(name,group);}group.controls=items;group.searching=Boolean(query.trim());placeAfter($('settings'),group.section,after);after=group.section;updateGroup(group);}
     return {groups,count};
   }
