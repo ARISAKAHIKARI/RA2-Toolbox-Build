@@ -83,9 +83,9 @@ static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
 static uint32_t lastRecoverySubmitAt=0;
 #endif
 static bool worldFrameReady=false;
-// Only a Host display-only subscription may use a boundary-only source.
-// Every command input must upgrade to a fresh complete graph, even if the
-// last view-only acquisition used the same game logic frame.
+// Boundary-only sources are retained for isolated regression fixtures only.
+// Product builds suspend HostDisplayOnly until its fields join the canonical
+// complete Runtime snapshot.
 static bool worldFrameBoundaryOnly=false;
 static worldframe::DemandLeases runtimeDemandLeases;
 static worldframe::CaptureScratch worldFrameCaptureScratch{};static std::vector<uint32_t>worldFrameCaptureRequests;
