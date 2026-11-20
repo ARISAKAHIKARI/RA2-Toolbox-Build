@@ -35,8 +35,8 @@ struct WorldFramePublication {
  void invalidate(){}
  bool stop(){return true;}
  bool publish(const worldframe::Snapshot&,const worldframe::Server&){return false;}
- bool requestRecovery(const worldframe::Key&,const worldframe::RequestedSpan*,size_t){return false;}
- size_t recovered(const worldframe::Key&,worldframe::RequestedSpan*,size_t){return 0;}
+ template<class...Args>bool requestRecovery(Args&&...){return false;}
+ template<class...Args>size_t recovered(Args&&...){return 0;}
 };
 #endif
 static WorldFramePublication worldFramePublication;
