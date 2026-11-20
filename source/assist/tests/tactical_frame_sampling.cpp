@@ -366,9 +366,9 @@ static void testCapturedRosterIndex(){
  check(refreshWorldIndex(snap.frame)&&indexedFrame==snap.frame,"worker roster index marked incomplete");
  check(worldObjects.byId(20)==p&&worldObjects.byId(21)==q,"sealed worker roster lost native UIDs");
  check(liveReads==beforeLive&&readRequests==0,"worker index binding reacquired the live Techno roster");
- ++worldFrame.key.serial;indexedFrame=-1;readRequests=0;
+ ++worldFrame.key.frame;indexedFrame=-1;readRequests=0;
  check(!refreshWorldIndex(snap.frame)&&indexedFrame==-1&&!worldObjects.byId(20),
-       "stale worker serial remained visible");
+       "stale worker frame remained visible");
  check(liveReads==beforeLive&&readRequests==0,"stale worker index fell back to a live roster scan");
  advance();
  check(refreshWorldIndex(snap.frame)&&worldObjects.byId(20)==p&&worldObjects.byId(21)==q,
