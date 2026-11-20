@@ -36,6 +36,7 @@ A full graph is captured once per accepted world sample, not once per feature. T
 - RecoveryMailbox targeted side-channel reads are compiled only into a test fixture (WORLD_FRAME_TEST_RECOVERY). Production missing-page retries flow back into the next complete Runtime graph request; a second background sampler does not probe individual fields.
 - ShadowGraphWorker is compiled only into a test fixture (WORLD_FRAME_TEST_SHADOW). It is not a second production graph reader.
 - Existing SampleReadScope consumers continue to read the strict sealed Runtime snapshot. Observation-only candidates remain separate and cannot issue EventClass/native commands.
+- The former bridge.cpp indexWorld full-roster fallback is removed from production. Command consumers bind only the worker-built strict/candidate UID index; if neither is admissible, the affected task stays pending. Missile hold cleanup uses the previously owned object pointer plus a fresh live UID/House/life check rather than rebuilding the entire roster.
 - The game callback still performs small world/session identity checks and builds a page-demand list. This is not yet the desired final cost: explicit request caps, overflow accounting, reusable ownership-swapped buffers, and worker prestart remain the next P0 engineering tasks.
 - Final live identity/permission/mission checks and native EventClass/engine calls remain on their required game thread. They are not a compatibility sampler and must not be moved to the worker.
 
