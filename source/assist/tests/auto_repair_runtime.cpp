@@ -80,7 +80,7 @@ static uint32_t item(Vec v,int i){return get<uint32_t>(v.items+uint32_t(i)*4);}
 static Building* byPointer(uint32_t p){for(auto&b:buildings)if(b.pointer==p)return &b;return nullptr;}
 static worldframe::CommandRoster workerRoster;
 static std::vector<uint32_t> workerRosterScratch;
-struct BuildingIndex {uint32_t byId(uint32_t id)const{return workerRoster.objects?workerRoster.objects->byId(id):0;}};
+struct BuildingIndex {uint32_t byId(uint32_t id)const{return worldFrameReady&&workerRoster.current(worldFrame.key)&&workerRoster.objects?workerRoster.objects->byId(id):0;}};
 static BuildingIndex worldObjects;
 static uint32_t worldByID(uint32_t id){
  const uint32_t p=worldObjects.byId(id);if(!p)return 0;
