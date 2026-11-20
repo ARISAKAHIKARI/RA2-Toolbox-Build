@@ -78,6 +78,7 @@ template<class T>static T get(uint32_t at);
 static Vec vec(uint32_t at){Vec out{};read(at,&out,sizeof out);return out;}
 static uint32_t item(Vec v,int i){return get<uint32_t>(v.items+uint32_t(i)*4);}
 static Building* byPointer(uint32_t p){for(auto&b:buildings)if(b.pointer==p)return &b;return nullptr;}
+static int indexedFrame=-1;
 static worldframe::CommandRoster workerRoster;
 static std::vector<uint32_t> workerRosterScratch;
 struct BuildingIndex {uint32_t byId(uint32_t id)const{return worldFrameReady&&workerRoster.current(worldFrame.key)&&workerRoster.objects?workerRoster.objects->byId(id):0;}};
@@ -116,10 +117,9 @@ static void prepareSample(){
 }
 static void MemoryBarrier(){}
 static void notifyHost(){if(sampleReadDepth)throw std::runtime_error("publication inside sample scope");++notifications;}
-static int indexedFrame=-1;
-struct StubCommandWorker {bool enabled()const{return false;}};
+struct StubCommandWorker {bool enabled()const{return true;}};
 static StubCommandWorker worldFrameCommandWorker;
-static bool commandRosterReady(){return false;}
+static bool commandRosterReady(){return worldFrameReady&&workerRoster.current(worldFrame.key);}
 enum class EventLane{Repair};static int recurringBudget(EventLane){return perFrameBudget;}
 static bool nativeObjectEvent(int player,int event,uint32_t id){if(sampleReadDepth)throw std::runtime_error("native event inside sample scope");if(player!=0||event!=0x15)throw std::runtime_error("wrong event");++queueAttempts;if(!queueAvailable)return false;sent.push_back({id,currentFrame});return true;}
 #include REPAIR_EVENT
@@ -142,7 +142,7 @@ static void setup(bool automatic=true,bool internal=true,unsigned count=1){
  ++match;lastHouse=0x200000;currentFrame=0;chat=externalInputFrame=false;queueAvailable=true;perFrameBudget=64;buildingScans=notifications=queueAttempts=0;sent.clear();buildings.clear();
  for(unsigned i=0;i<count;++i)buildings.push_back({0x300000+i*0x10000,0x800000+i*0x10000,100+i,lastHouse});
  repairCount=repairAt=repairDone=0;repairAckRequest=repairAckStarted=pendingAck=0;repairAckPending=pendingAckReady=false;repairCalculationPending=false;repairCalculationStarted=repairTaskSeen=0;autoWas=false;lastAuto=0;pendingRepairs.clear();repairFrames.clear();
- worldFrameReady=false;workerRoster.invalidate();workerRosterScratch.clear();sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;indexedFrame=-1;featureConfig={};repairFilterKnown=true;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
+ worldFrameReady=false;indexedFrame=-1;workerRoster.invalidate();workerRosterScratch.clear();sampleAvailable=true;sampleReadDepth=0;sampleReadComplete=true;missingSamplePage=missingLiveRead=0;indexedFrame=-1;featureConfig={};repairFilterKnown=true;runtimeDemandBits.fill(0);runtimeWorldDemands.clear();
 }
 static void tick(DWORD now,int frame,bool input=false){currentFrame=frame;externalInputFrame=input;prepareSample();repairTick(lastHouse,now);}
 struct WorkerResult{uint32_t task;compute::RepairResult value;};
