@@ -85,8 +85,8 @@ public:
   recovery_.invalidate();
 #endif
   if(event_)SetEvent(event_);}
- // This uses the existing pinned publication worker; no new thread is
- // launched for every missed page and the producer does not wait for a result.
+ // Retained only for the isolated recovery regression DLL. Product builds
+ // return false and never schedule independent game-memory reads.
  bool requestRecovery(const Key&key,const RequestedSpan*fields,size_t count){
 #if defined(WORLD_FRAME_TEST_RECOVERY)
   if(stopping_.load(std::memory_order_acquire))return false;
