@@ -577,7 +577,7 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.locator('.group-header-controls .setting-label:visible').count(),0,'a pinned switch shares the group title');
     const pinnedGap=await page.locator('.settings-group').evaluate(element=>element.querySelector('.toggle').getBoundingClientRect().left-element.querySelector('.group-title').getBoundingClientRect().right);
     assert.ok(pinnedGap>=0 && pinnedGap<=16,'the pinned master switch must sit beside the shared title');
-    await page.locator('.group-summary').click();await page.getByLabel('科技等级',{exact:true}).waitFor();
+    await page.locator('.group-summary').click();await page.locator('.feature-config-toggle').first().click();await page.getByLabel('科技等级',{exact:true}).waitFor();
     assert.equal(await page.locator('.group-body .setting-row').getAttribute('data-setting-level'),'secondary','details inherit the main switch hierarchy');
     await assertFits();
     await page.getByLabel('科技设置',{exact:true}).click();action=await page.evaluate(()=>window.__sent.at(-1));assert.equal(action.id,880);
@@ -606,6 +606,7 @@ if (!failed && process.argv.includes('--browser')) {
     await page.waitForFunction(()=>!window.RA2Console.store.pending.size && !window.RA2Console.store.drafts.size && document.getElementById('saveState').dataset.state==='saved' && document.getElementById('globalNotice').hidden);
     await page.locator('#toast').waitFor({state:'hidden',timeout:10000});
     assert.equal(await page.getByRole('button',{name:'控制',exact:true}).getAttribute('aria-current'),'page');
+    await page.locator('.settings-group').filter({hasText:'飞机分配攻击'}).locator('.feature-config-toggle').first().click();
     await page.getByLabel('每个目标分配上限',{exact:true}).waitFor();await page.mouse.move(0,0);
     for(const viewport of [{width:1240,height:880},{width:720,height:780},{width:390,height:720}]) {
       await page.setViewportSize(viewport);await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});await assertFits();
