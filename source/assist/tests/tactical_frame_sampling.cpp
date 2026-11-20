@@ -420,7 +420,7 @@ static void testMissionReceiptIncomplete(){
  std::puts("PASS native mission receipts: missing UID/mission/queue/carrier never acknowledges default-zero mission");
 }
 static void testLeasesNeedCompleteIdentityNotSecondLiveRead(){
- reset();const uint32_t type=makeType(),p=object(type,2,20);
+ reset();const uint32_t type=makeType(),p=object(type,2,20);vectorAt(0xA8EC78,0x800000,{p});seal();
  check(actorLeaseArbiter.record(match,snap.frame,20,p,manualVersions.get(20),taskarbiter::Owner::Dodge,77),"cannot seed original automatic lease");
  // The live roster has already produced a complete indexed UID. A second
  // readWorldByID may nevertheless fail between the producer and sweep.
@@ -433,7 +433,7 @@ static void testLeasesNeedCompleteIdentityNotSecondLiveRead(){
  manualVersions.change(20,p,false);sweepActiveLeases(snap.frame);
  check(actorLeaseArbiter.find(20)<0,"explicit manual revision must still release lease");
  manualVersions.clear();check(actorLeaseArbiter.record(match,snap.frame,20,p,0,taskarbiter::Owner::Dodge,79),"cannot seed replacement lease");
- worldObjects.unbind();worldObjects.clear();sweepActiveLeases(snap.frame);
+ vectorAt(0xA8EC78,0x800000,{});advance();sweepActiveLeases(snap.frame);
  check(actorLeaseArbiter.find(20)<0,"complete index absence must retire old lease");
  std::puts("PASS shared automatic lease sweep: unknown second UID does not retire ownership; manual and complete absence do");
 }
