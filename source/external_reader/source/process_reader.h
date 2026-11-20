@@ -141,13 +141,20 @@ public:
   if(frame&&!worldframe::visualDemand(worldDemand_)&&
      worldframe::boundaryOnlySource(worldframe::authoritative(frame)->key))return false;
   if(worldframe::visualDemand(worldDemand_)){
+#ifdef WORLD_FRAME_TEST_VISUAL_CACHE
+   // Legacy display-cache behavior is retained only by isolated regression
+   // fixtures. Product Host never performs a second game-memory world read.
    if(frame&&!frame->controlSource)frame=worldClient_->visual(frame,worldDemand_,[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);});
+#else
+   // Product Host may consume a display demand only when Runtime already
+   // supplied an authoritative control graph. Never synthesize one with RPM.
+   if(!frame||!frame->controlSource)return false;
+   frame=worldframe::authoritative(frame);
+   if(worldframe::boundaryOnlySource(frame->key))return false;
+#endif
   }else{
    frame=worldframe::authoritative(frame);
-   // A producer scene boundary is sufficient for Host-only visual decoding,
-   // but never a command input. This explicitly prevents a stale display
-   // publication being accepted during the first Base/Combat/Passengers
-   // subscription after a control hotkey or user-mode transition.
+   // A producer scene boundary is never a command input.
    if(frame&&worldframe::boundaryOnlySource(frame->key))return false;
   }
   if(!frame||!frame->sealed()||frame->key.pid!=pid()||frame->key.owner!=GetCurrentProcessId()||(match&&frame->key.match!=match))return false;
