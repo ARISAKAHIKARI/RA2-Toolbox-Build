@@ -111,11 +111,9 @@ def resolve(path, source):
           "  // Never retire queued candidates if a new UID roster could not be sealed.\n"
           "  if(indexedFrame==frame)while(repairAt<repairCount&&budget>0){")
         guarded = (
-          " if(repairAt<repairCount&&budget>0&&\n"
-          "    (!worldFrameCommandWorker.enabled()||commandRosterReady())){\n"
-          "  if(!worldFrameCommandWorker.enabled())indexWorld(frame);\n"
+          " if(repairAt<repairCount&&budget>0&&commandRosterReady()){\n"
           "  // Pre14's tri-state repair eligibility stays in place.\n"
-          "  if(indexedFrame==frame||worldFrameCommandWorker.enabled())while(repairAt<repairCount&&budget>0){")
+          "  while(repairAt<repairCount&&budget>0){")
         if original in text:
             text = must_replace(text,original,guarded,"repair_index_worker_handoff")
         elif guarded not in text:
