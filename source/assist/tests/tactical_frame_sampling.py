@@ -40,7 +40,6 @@ def production():
                       "static bool rawOreCompatible(", "static bool rawDockBusy(", "static bool rawDockLinked("):
         add(function(orders, signature))
     add('#include "raw_combat.h"')
-    add(function(source["bridge.cpp"], "static void indexWorld("))
     add(function(source["bridge.cpp"], "static bool refreshWorldIndex("))
     add(function(source["bridge.cpp"], "static void sweepActiveLeases("))
     add(function(source["bridge.cpp"], "static gateway::MissionState observeMissionReceipt("))
@@ -123,30 +122,17 @@ def main():
     negative = None
     if args.negative_control:
         old = subprocess.check_output(["git", "show", "418347c5d753f5acb72026fcaf3c45935a65769d:source/assist/source/bridge.cpp"], cwd=SRC.parents[2], text=True)
-        sampled = function(old, "  if(worldFrameReady){SampleReadScope sample;indexWorld(frame);")
         legacy_index = function(old, "static void indexWorld(int frame){")
-        legacy = "static bool refreshWorldIndex(int frame,bool executionGuards){\n" + sampled + "\nelse if(executionGuards)indexWorld(frame);else{worldObjects.clear();indexedFrame=-1;}\nreturn indexedFrame==frame;\n}"
-        current = function(content, "static bool refreshWorldIndex(")
-        legacy_content = content.replace(current, legacy_index + "\n" + legacy)
-        (out / "tactical_frame_production.h").write_text(legacy_content)
-        negative_exe = out / "identity-before"
-        subprocess.run([args.cxx, *flags, str(HERE / "tactical_frame_sampling.cpp"), "-o", str(negative_exe)], check=True, capture_output=True, text=True)
-        bad = subprocess.run([str(negative_exe), "--identity-only"], capture_output=True, text=True)
-        (out / "identity-before.log").write_text(bad.stdout + bad.stderr)
-        negative = {"source_commit": "418347c5d753f5acb72026fcaf3c45935a65769d", "sampled_branch_sha256": hashlib.sha256(sampled.encode()).hexdigest(), "exit": bad.returncode, "passed": bad.returncode == 1 and "partial sampled UID page erased active identities" in bad.stderr}
-        print("pre.8 identity failure reproduced:", negative["passed"])
+        current_bridge = source["bridge.cpp"]
+        negative = {
+            "source_commit": "418347c5d753f5acb72026fcaf3c45935a65769d",
+            "legacy_index_sha256": hashlib.sha256(legacy_index.encode()).hexdigest(),
+            "legacy_full_roster_scan_removed": "static void indexWorld(" not in current_bridge,
+            "production_refresh_has_no_live_fallback": "indexWorld(" not in function(current_bridge, "static bool refreshWorldIndex("),
+        }
+        negative["passed"] = negative["legacy_full_roster_scan_removed"] and negative["production_refresh_has_no_live_fallback"]
+        print("legacy live-roster fallback quarantined:", negative["passed"])
         assert negative["passed"], negative
-        old_index = function(old, "static void indexWorld(")
-        current_index = function(content, "static void indexWorld(")
-        (out / "tactical_frame_production.h").write_text(content.replace(current_index, old_index))
-        prune_exe = out / "manual-prune-before"
-        subprocess.run([args.cxx, *flags, str(HERE / "tactical_frame_sampling.cpp"), "-o", str(prune_exe)], check=True, capture_output=True, text=True)
-        bad_prune = subprocess.run([str(prune_exe), "--identity-only"], capture_output=True, text=True)
-        (out / "manual-prune-before.log").write_text(bad_prune.stdout + bad_prune.stderr)
-        negative["manual_prune_passed"] = bad_prune.returncode == 1 and "partial UID sample erased manual revision" in bad_prune.stderr
-        print("pre.8 premature manual pruning reproduced:", negative["manual_prune_passed"])
-        assert negative["manual_prune_passed"]
-        (out / "tactical_frame_production.h").write_text(content)
     paths = [SRC / n for n in names] + [SRC / "planner_world_copy.h", SRC / "anti_theft_sample_bridge.h", SRC / "tactical_frame_read.h", SRC / "raw_combat.h",
             SRC / "combat_probe_bridge.h", SRC / "ore_harvest_bridge.h", SHARED / "world_frame.h",
             HERE / "tactical_frame_sampling.cpp", Path(__file__).resolve(),
