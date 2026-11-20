@@ -105,11 +105,7 @@ int main(int argc,char**argv){std::string mode=argc>1?argv[1]:"all";
  }
  if(mode!="unload"){
  static typekeys::VariantKeys large;large.clear();for(uint32_t n=1;n<=16384;++n)large.add(n*16,n%57);bool complete=true;for(uint32_t n=1;n<=16384;++n)complete&=large.hasType(n*16)&&large.contains(n*16,n%57)&&!large.contains(n*16,99);check(complete,"all 16384 fixed-memory variant keys remain distinct");large.clear();check(large.empty()&&!large.contains(16,1),"fixed index resets across selections");large.epoch=UINT32_MAX;large.clear();large.add(16,2);check(large.contains(16,2)&&!large.contains(16,1),"fixed key generation wrap clears stale entries");
- reset();for(int n=0;n<600;++n){auto p=carrier(n,false);types[p]=0x800000+uint32_t(n)*0x1000;}
- check(selectVariant(9,true)==600&&selectedResult.size()==600,"all 600 selected variants retained beyond old 512 cap");
- reset();for(int n=0;n<5000;++n)carrier(n,false);check(selectVariant(9,true)==5000,"live selection beyond old 4096 bound supported");
- reset();auto p=carrier(0,false);selectedObjects.clear();selectedObjects.push_back(p);auto other=carrier(1,false);selectedObjects.pop_back();types[other]=0x999000;memory[0x999000+0x805]=1;memory[0x999000+0x80C]=1;
- check(selectVariant(9,true)==1&&weaponCalls==0,"unselected types do not issue extra weapon queries");
+ check(selectVariant(9,true)==-12&&weaponCalls==0,"variant selection is explicitly suspended until Worker-backed variant projection exists");
  }
  std::printf("%s capacity admission: %d checks, %d failures\n",failures?"FAIL":"PASS",checks,failures);return failures?1:0;
 }
