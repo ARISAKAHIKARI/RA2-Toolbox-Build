@@ -79,7 +79,7 @@ test('feature settings and shortcuts stay attached to their master switch',()=>{
   {id:13,type:'hotkey',label:'快捷键',group:'自动功能'},
   {id:14,type:'toggle',label:'自动装车',group:'自动功能',groupHeader:true},
   {id:15,type:'number',label:'装载范围',group:'自动功能'}
- ];
+ ].map(control=>core.canonical(control));
  const blocks=core.featureBlocks(controls);
  assert.equal(blocks.length,2);
  assert.equal(blocks[0].headers[0].id,11);
