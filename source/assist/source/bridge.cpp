@@ -1478,7 +1478,7 @@ static void scan(uint32_t house,int frame,DWORD now){
   const bool selected=get<bool>(p+0x83);if(selected)++snap.selected;
   const int iron=(flags&Iron)?remaining(get<int>(p+0x18C),get<int>(p+0x194),frame):0;
   const uint32_t t=typeOf(p,k);
-  const int capacity=local&&t&&k!=3&&capacityReady?get<int>(t+0x5E0):0;
+  const int capacity=t&&k!=3&&capacityReady?get<int>(t+0x5E0):0;
   const bool capacityShow=capacity>0&&(selected||(flags&AllTransports));
   int used=0;
   if(capacityShow){used=call<int>(0x473460,p+0x114);if(selected){++snap.transports;snap.used+=used;snap.capacity+=capacity;}}
