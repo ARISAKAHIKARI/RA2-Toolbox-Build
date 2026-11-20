@@ -71,17 +71,21 @@ struct Reader {
   if(mode==Mode::QueryMemcpy) {
    // Stable synthetic pages only. A production version also needs an SEH
    // fault boundary; VirtualQuery alone cannot close a concurrent-free race.
-   MEMORY_BASIC_INFORMATION info{};
-   if(VirtualQuery(source,&info,sizeof info)!=sizeof info||
-      info.State!=MEM_COMMIT||(info.Protect&(PAGE_GUARD|PAGE_NOACCESS)))return false;
-   const DWORD protection=info.Protect&0xFFu;
-   const bool readable=protection==PAGE_READONLY||protection==PAGE_READWRITE||
-      protection==PAGE_WRITECOPY||protection==PAGE_EXECUTE_READ||
-      protection==PAGE_EXECUTE_READWRITE||protection==PAGE_EXECUTE_WRITECOPY;
    const uintptr_t begin=reinterpret_cast<uintptr_t>(source);
    const uintptr_t end=begin+size;
-   const uintptr_t regionEnd=reinterpret_cast<uintptr_t>(info.BaseAddress)+info.RegionSize;
-   if(!readable||end<begin||end>regionEnd)return false;
+   if(end<begin)return false;
+   for(uintptr_t cursor=begin;cursor<end;) {
+    MEMORY_BASIC_INFORMATION info{};
+    if(VirtualQuery(reinterpret_cast<const void*>(cursor),&info,sizeof info)!=sizeof info||
+       info.State!=MEM_COMMIT||(info.Protect&(PAGE_GUARD|PAGE_NOACCESS)))return false;
+    const DWORD protection=info.Protect&0xFFu;
+    const bool readable=protection==PAGE_READONLY||protection==PAGE_READWRITE||
+       protection==PAGE_WRITECOPY||protection==PAGE_EXECUTE_READ||
+       protection==PAGE_EXECUTE_READWRITE||protection==PAGE_EXECUTE_WRITECOPY;
+    const uintptr_t regionEnd=reinterpret_cast<uintptr_t>(info.BaseAddress)+info.RegionSize;
+    if(!readable||regionEnd<=cursor)return false;
+    cursor=std::min(end,regionEnd);
+   }
   }
   std::memcpy(out,source,size);
   return true;
