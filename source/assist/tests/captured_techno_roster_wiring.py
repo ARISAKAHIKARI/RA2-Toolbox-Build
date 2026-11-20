@@ -17,8 +17,9 @@ assert "technoKey.tick!=key.tick" in capture
 worker=(root.parent.parent/"shared"/"source"/"world_frame_command_worker_win.h").read_text()
 index=(root.parent.parent/"shared"/"source"/"world_frame_command_index.h").read_text()
 refresh=bridge.split("static bool refreshWorldIndex(int frame){",1)[1].split("// Identity-index publication",1)[0]
-assert "self->roster_.build(sample,job.globalVehicles,scratch.list)" in worker
-assert "objects->build(sample,globalVehicles,scratch)" in index
+assert "self->stagingRoster_.build(self->staging_" in worker
+assert "snapshot.read(pointer+0x10,&id,4)" in index
+assert "objects->add(pointer,id)" in index
 assert "worldFrameCommandRoster.current(worldFrame.key)" in refresh
 assert "worldFrameCommandRoster.objects" in refresh
 assert "worldObjects.bind(worldFrameCommandRoster.objects.get()" in refresh
