@@ -1,0 +1,187 @@
+name: Publish RA2 Toolbox 1.0.52-pre.8 PR71 integrated Runtime candidate
+on:
+  push:
+    branches: [release/1.0.52-pre.8-full-candidate-20261120]
+    paths:
+      - .github/workflows/publish-1.0.52-pre.8-candidate-once.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: ra2toolbox-1.0.52-pre.8-release-once
+  cancel-in-progress: false
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify source lineage, pre8 version, async default and core regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 0185c2a9f1d8719717a6f0737e989b770fb48a0c HEAD
+          test "$(git rev-parse HEAD~2)" = 0185c2a9f1d8719717a6f0737e989b770fb48a0c
+          test "$(git rev-parse --show-toplevel)" = "$PWD"
+          test "$GITHUB_REF_NAME" = release/1.0.52-pre.8-pr71-20261120
+          grep -q '^#define RA2_RELEASE_VERSION "1.0.52.8"$' source/shared/source/release_version.h
+          grep -q '^#define RA2_RELEASE_VERSION_W L"1.0.52-pre.8"$' source/shared/source/release_version.h
+          grep -q 'ASSIST_PROTOCOL = 112' source/tools/verify_windows_outputs.py
+          grep -q 'ASSIST_SHARED_BYTES = 23228768' source/tools/verify_windows_outputs.py
+          grep -q 'ObservationReadScope' source/assist/source/world_frame_runtime.h
+          grep -q 'sampling-health pid=' source/assist/source/main.cpp
+          grep -q 'runtime-async-candidate' source/assist/tests/world_frame_async_windows.py
+          grep -q 'RestartAfterStop' source/assist/tests/world_frame_command_worker_host.cpp
+          grep -q 'return !(length==1&&setting\[0\]==.0.);' source/shared/source/world_frame_command_worker_win.h
+          python3 source/assist/tests/async_command_no_live_roster.py
+          python3 source/assist/tests/world_frame_core_test.py
+          python3 source/assist/tests/construction_host_test.py
+          python3 source/assist/tests/construction_paint_test.py
+          python3 source/assist/tests/reservation_unit_filter_settings.py
+          python3 source/assist/tests/display_capture_runtime_wiring.py
+          python3 source/assist/tests/ore_harvest_handoff.py --out /tmp/pre8-ore
+          python3 source/assist/tests/unload_loaded_admission.py --out /tmp/pre8-unload --current-only
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/async_command_policy.cpp -o /tmp/pre8-policy
+          /tmp/pre8-policy
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/execution_proof.cpp -o /tmp/pre8-proof
+          /tmp/pre8-proof
+  native:
+    needs: portable
+    runs-on: windows-2022
+    timeout-minutes: 70
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Zig 0.13.0 and icon encoder
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV ('ZIG_EXE='+(Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)
+          python -m pip install Pillow==11.3.0
+      - name: Build paired x64 Host and x86 Runtime with matching ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/pre8-build"
+          mkdir -p checks
+          bash source/build-zig-x64.sh > checks/windows-build.log 2>&1 || { tail -120 checks/windows-build.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root pre8-build --host-arch x64 --webview2
+          python -c "import json; p=json.load(open('pre8-build/BUILD_TARGET.json')); assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',112,False),p"
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do test -s "pre8-build/$n"; done
+      - name: Test native x86/x64 default-on command and publication worker lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          python source/assist/tests/world_frame_command_worker_windows.py --zig "$ZIG" --out checks/command
+          python source/assist/tests/world_frame_async_windows.py --zig "$ZIG" --out checks/publication
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: ra2toolbox-pre8-paired-windows
+          retention-days: 30
+          path: |
+            pre8-build/*.exe
+            pre8-build/*.dll
+            pre8-build/*.json
+            pre8-build/licenses/**
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra2toolbox-pre8-build-evidence
+          retention-days: 30
+          path: checks/
+  publish:
+    needs: native
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.52-pre.8
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ra2toolbox-pre8-paired-windows
+          path: dist/update
+      - name: Assemble checked Update and optional Full with complete resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = release/1.0.52-pre.8-full-candidate-20261120
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "Refusing to overwrite an existing pre-release tag" >&2
+            exit 1
+          fi
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json; do test -s "dist/update/$n"; done
+          python3 - <<'PY'
+          import json
+          p=json.load(open('dist/update/BUILD_TARGET.json'))
+          assert (p['host'],p['runtime'],p['broker'],p['assist_protocol'],p['game_tested'])==('x64','x86','x86',112,False),p
+          PY
+          cat > dist/update/BUILD_VALIDATION.txt <<EOF
+          RA2 Toolbox 1.0.52-pre.8 | packaged source $GITHUB_SHA | PR71 0185c2a9f1d8719717a6f0737e989b770fb48a0c
+          Paired x64 Host / x86 Runtime and x86 broker | Assist ABI 112
+          Runtime unified sampling + bounded display-only cross-frame observation; command commit authority remains strict.
+          Exact-frame native command authority remains strict; game-tested=false.
+          To switch to old synchronous mode before launch: RA2TOOLBOX_ASYNC_COMMAND_CAPTURE=0
+          Portable, Windows x86/x64 and command/visual worker tests passed in this release workflow.
+          Actual game, JJ/CnCNet multiplayer and in-game FPS: NOT TESTED.
+          Back up settings; close game and toolbox; replace all paired EXE and DLL files together.
+          EOF
+          (cd dist/update && zip -q -r ../RA2Toolbox-1.0.52-pre.8-x64-Update.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.8-x64-Update.zip
+          mkdir -p dist/base dist/full
+          gh release download v1.0.52-pre.7 --repo "$GITHUB_REPOSITORY" --pattern 'RA2Toolbox-1.0.52-pre.7-x64-Full.zip' --dir dist/base
+          unzip -tq dist/base/RA2Toolbox-1.0.52-pre.7-x64-Full.zip
+          unzip -q dist/base/RA2Toolbox-1.0.52-pre.7-x64-Full.zip -d dist/full
+          test "$(find dist/full -type f -name RA2Toolbox.exe | wc -l)" -eq 1
+          root="$(dirname "$(find dist/full -type f -name RA2Toolbox.exe -print -quit)")"
+          test -n "$root"
+          for n in RA2Toolbox.exe GameRuntime.dll GameRuntimeHost32.exe WebView2Loader.dll; do cp "dist/update/$n" "$root/$n"; cmp "dist/update/$n" "$root/$n"; done
+          for n in BUILD_TARGET.json WINDOWS_BUILD_ARTIFACTS.json BUILD_SOURCE_MANIFEST.json BUILD_VALIDATION.txt; do test ! -f "dist/update/$n" || cp "dist/update/$n" "$root/$n"; done
+          if test -d dist/update/licenses; then mkdir -p "$root/licenses"; cp -a dist/update/licenses/. "$root/licenses/"; fi
+          (cd dist/full && zip -q -r ../RA2Toolbox-1.0.52-pre.8-x64-Full.zip .)
+          unzip -tq dist/RA2Toolbox-1.0.52-pre.8-x64-Full.zip
+          (cd dist && sha256sum RA2Toolbox-1.0.52-pre.8-x64-Update.zip RA2Toolbox-1.0.52-pre.8-x64-Full.zip > SHA256SUMS.txt)
+      - name: Create verified prerelease (leave Latest untouched)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/RELEASE_NOTES.md <<EOF
+          ## RA2 Toolbox v1.0.52-pre.8 · PR #71 统一采样与高速视图测试版
+
+          **代码基线**：PR #71 的 0185c2a9f1d8719717a6f0737e989b770fb48a0c。**打包提交**：\`$GITHUB_SHA\`（仅增加 pre.8 版本号和发布流水线）。
+          **架构/协议**：x64 Host + x86 GameRuntime + x86 Broker，同源编译，Assist IPC v112。
+
+          - 将 PR #67 的 Runtime 统一世界采样与 PR #70 的高帧率小地图、副相机及预定面板修复整合在同一版本中。显示采用只读、带原始观测时间的有界后台样本，不让高逻辑帧率直接使显示过期。
+          - 对后台显示源、缺页请求、主线程唤醒及异步发布继续执行同世界身份校验；采集与指令提交分离，原生下令前继续检查实时 UID、归属、存活、目标和合法性。
+          - 预定面板依据原生建造栏过滤已经可造的步兵和载具，保留已预定项；科技变化触发候选刷新，界面绘制与下令权威来源分离。
+          - Ctrl+D、自动操作、阵型、协同规划、找矿与维修的回归纳入主采样/命令链路检查。
+          - 发布任务重新运行源码回归、Windows 双位宽配对构建、原生采样工作线程、PE/ABI、完整包 ZIP 与 SHA-256 校验。
+
+          **Full**：独立安装，基础资源来自已发布的 pre.7 Full，核心 EXE/DLL 均被本次同源编译产物替换。
+          **Update**：覆盖已有完整安装目录。升级前关闭游戏和工具箱，备份 Assist.ini 等配置；所有 EXE/DLL 成套替换，不得混用旧 ABI。
+
+          **验证限制**：这些是自动化/合成数据检查；尚未在真实红警单机、JJ/CnCNet 联机中完成验证，高速模式下的实际 FPS、启动卡顿、画中画丢帧与所有预定科技场景仍需实测。本版仅为 Pre-release，正式版 Latest 不变。
+          EOF
+                    gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'RA2 Toolbox 1.0.52-pre.8 · PR71 统一采样与高帧率显示候选' --notes-file dist/RELEASE_NOTES.md dist/RA2Toolbox-1.0.52-pre.8-x64-Update.zip dist/RA2Toolbox-1.0.52-pre.8-x64-Full.zip dist/SHA256SUMS.txt
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,targetCommitish,assets | jq -e --arg sha "$GITHUB_SHA" '.isDraft==false and .isPrerelease==true and .targetCommitish==$sha and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.8-x64-Update.zip")!=null) and ([.assets[].name]|index("RA2Toolbox-1.0.52-pre.8-x64-Full.zip")!=null)'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ra2toolbox-pre8-release-evidence
+          retention-days: 30
+          path: |
+            dist/RELEASE_NOTES.md
+            dist/SHA256SUMS.txt
