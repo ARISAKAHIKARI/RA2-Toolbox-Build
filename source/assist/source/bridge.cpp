@@ -193,9 +193,8 @@ static void name(uint32_t t,uint16_t*out,int n){uint32_t p=get<uint32_t>(t+0x60)
 #include "build_time_tooltip.h"
 static bool sameid(const char*a,const char*b){for(int i=0;i<24;++i){if(a[i]!=b[i])return false;if(!a[i])return true;}return true;}
 static bool own(uint32_t p,uint32_t house){return live(p)&&get<uint32_t>(p+0x21c)==house;}
-// A sealed snapshot may still contain failed pages. An incomplete identity
-// projection is unknown, not an empty world. Execution guards may rebuild the
-// live identity index after leaving the sealed scope; pure observers must wait.
+// An incomplete worker identity projection is UNKNOWN, not an empty world.
+// No execution guard may rebuild the full live roster as a fallback.
 // The worker-built identity projection is not a native EventClass grant.
 // Its only lifetime is the currently sealed exact game logic frame. Every
 // native operation still verifies live UID, House, mission and eligibility.
