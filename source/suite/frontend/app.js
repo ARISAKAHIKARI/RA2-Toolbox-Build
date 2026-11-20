@@ -470,8 +470,8 @@
         element.append(params.section,hotkeys.section);
         feature={key,element,params,hotkeys,paramsChunks:{items:[],signature:''},hotkeysChunks:{items:[],signature:''}};group.bodyFeatures.set(key,feature);
       }
-      const params=block.details.filter(control=>control.type!=='hotkey');
-      const hotkeys=block.details.filter(control=>control.type==='hotkey');
+      const params=block.headers.length?block.details.filter(control=>control.type!=='hotkey'):block.details;
+      const hotkeys=block.headers.length?block.details.filter(control=>control.type==='hotkey'):[];
       feature.params.section.hidden=!params.length;feature.hotkeys.section.hidden=!hotkeys.length;
       updateFeatureRows(feature.params.rows,feature.params.controls,params,true,feature.paramsChunks);
       updateFeatureRows(feature.hotkeys.rows,feature.hotkeys.controls,hotkeys,true,feature.hotkeysChunks);
