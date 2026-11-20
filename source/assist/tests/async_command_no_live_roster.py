@@ -14,8 +14,8 @@ def between(s, left, right):
 assert 'static bool prepareWorldIndex(int frame)' in bridge
 gate = between(bridge, "static bool prepareWorldIndex(int frame){", '\n#include "../../shared/source/key_gesture.h"')
 assert 'indexWorld(' not in gate
-assert 'return refreshWorldIndex(frame,false)' in gate
-fallback = between(bridge, "static bool refreshWorldIndex(int frame,bool executionGuards){", "// Identity-index publication")
+assert 'return refreshWorldIndex(frame)' in gate
+fallback = between(bridge, "static bool refreshWorldIndex(int frame){", "// Identity-index publication")
 assert 'indexWorld(' not in fallback
 assert 'CaptureGraph' not in fallback
 assert 'static void indexWorld(int frame)' not in bridge
