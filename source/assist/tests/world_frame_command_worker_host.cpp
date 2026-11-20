@@ -10,6 +10,7 @@ int main(int argc,char**argv){
   auto result=reinterpret_cast<Fn>(GetProcAddress(dll,name));assert(result);return result;
  };
  const Fn start=fn("Start"),poll=fn("Poll"),stale=fn("NeverAdmitStale");
+ const Fn startBufferRecycle=fn("StartBufferRecycle"),pollBufferRecycle=fn("PollBufferRecycle");
  const Fn startGlobal=fn("StartGlobal"),pollGlobal=fn("PollGlobal");
  const Fn wrongGlobal=fn("PollWrongGlobal"),rejected=fn("RejectedCount");
  const Fn startExpired=fn("StartExpired"),workerReads=fn("WorkerReadCount");
@@ -38,6 +39,12 @@ int main(int argc,char**argv){
  int result=0;
  for(int attempt=0;attempt<150&&!result;++attempt){Sleep(10);result=poll();}
  assert(result==1&&reads()==0);
+ // The producer must reclaim the previous worker vector before building its
+ // next page list; after warm-up this keeps the 16K-page capacity reusable.
+ assert(startBufferRecycle()==1);
+ result=0;
+ for(int attempt=0;attempt<150&&!result;++attempt){Sleep(10);result=pollBufferRecycle();}
+ assert(result==1);
  // A new worker result with the matching setting still adopts correctly.
  assert(startGlobal()==1);
  result=0;
