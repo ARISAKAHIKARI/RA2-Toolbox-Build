@@ -77,13 +77,28 @@ static bool burstControlTick(uint32_t house,int frame,DWORD now){
  while(checked<burstCount&&i.count<burstcompute::MaxSources/2){int n=(burstJobCursor+checked)%burstCount;auto&j=burstJobs[n];burstcompute::Source s{};
   if(!burstObserve(j.pointer,j.targetPointer,house,s)){burstJobs[n]=burstJobs[--burstCount];continue;}s.job=j.serial;s.phase=j.phase;s.sentFrame=j.sentFrame;s.previousFire=j.fireStamp;i.sources[i.count++]=s;++checked;}
  if(burstCount)burstJobCursor=(burstJobCursor+checked)%burstCount;
- Vec all=vec(0xA8EC78);int visited=0;
- for(;visited<all.count&&i.count<burstcompute::MaxSources;++visited){uint32_t p=item(all,(burstCursor+visited)%all.count);
-  if(!p||get<int>(p+0xAC)!=1||!get<uint32_t>(p+0x2B4)||!own(p,house)||burstOwns(get<uint32_t>(p+0x10))||!burstEnabled(p))continue;
-  burstcompute::Source s{};if(!burstObserve(p,worldObjects.contains(get<uint32_t>(p+0x2B4))?get<uint32_t>(p+0x2B4):0,house,s)||!s.eligible||!s.inRange||s.moving||s.burst<2||burstCount>=1024)continue;
+ struct BurstCandidate {uint32_t pointer,id,target;};
+ static BurstCandidate candidates[burstcompute::MaxSources];
+ SampleReadScope frameRead;if(!frameRead)return false;
+ Vec all{};if(!sampleRoster(0xA8EC78,all))return false;
+ int visited=0,candidateCount=0;
+ for(;visited<all.count&&i.count+candidateCount<burstcompute::MaxSources;++visited){
+  const uint32_t p=item(all,(burstCursor+visited)%all.count);if(!p)continue;
+  const uint32_t id=get<uint32_t>(p+0x10),target=get<uint32_t>(p+0x2B4);
+  if(get<int>(p+0xAC)!=1||!target||get<uint32_t>(p+0x21C)!=house||!id||burstOwns(id))continue;
+  candidates[candidateCount++]={p,id,target};
+ }
+ if(!frameRead.complete())return false;
+ frameRead.finish(); // native weapon selectors and mission checks stay on the game thread
+ for(int n=0;n<candidateCount&&i.count<burstcompute::MaxSources;++n){
+  const auto&candidate=candidates[n];const uint32_t p=candidate.pointer;
+  if(worldByID(candidate.id)!=p||!own(p,house)||burstOwns(candidate.id)||!burstEnabled(p))continue;
+  const uint32_t target=worldObjects.contains(candidate.target)?candidate.target:0;
+  burstcompute::Source s{};if(!burstObserve(p,target,house,s)||!s.eligible||!s.inRange||s.moving||s.burst<2||burstCount>=1024)continue;
   auto&job=burstJobs[burstCount++];job={++burstSerial,s.id,p,s.token,s.target,s.targetPointer,-1,frame,s.fireStamp};
   s.job=job.serial;s.phase=-1;s.sentFrame=frame;s.previousFire=s.fireStamp;i.sources[i.count++]=s;
- }if(all.count)burstCursor=(burstCursor+visited)%all.count;
+ }
+ if(all.count)burstCursor=(burstCursor+visited)%all.count;
  sh->burstActive=burstCount;if(!i.count)return true;
  applyBurstResult(burstcompute::calculate(i),house,frame,now,true);
  return true;
