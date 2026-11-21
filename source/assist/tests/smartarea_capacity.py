@@ -53,7 +53,7 @@ static gateway::MissionObserver<> missionObserver;static void showOrderLines(uin
  entry=game[game.index('struct EntryCapacity'):game.index('template<class Read>')]
  generated='#include "autoload.h"\nstruct FixtureRead{bool operator()(uint32_t at,void*out,size_t n)const{return read(at,out,n);}};\n'+entry+'\nclass EntryView{FixtureRead read_;public:\n'
  for needle in ['template<class T>T get(','bool bytes(','int kind(','uint32_t type(','bool live(','bool neutral(','bool allied(','int radioContacts(','bool radioLinked(','EntryCapacity capacity(','int entrySlots(','uint32_t entryDestination(','bool entered(','bool entryCompatible(']:generated+=block(game,needle)+'\n'
- generated+='};static EntryView clickView;\n'
+ generated+='};static EntryView clickView;\nstatic loading::Ledger<> loadLedger;\n'
  text=text[:start]+generated+text[end:]
  coop=(SOURCE/'cooperative_bridge.h').read_text(encoding='utf-8-sig')
  text=text.replace('static int entryReserved(uint32_t,uint32_t,uint32_t){return 0;}',block(coop,'static int entryReserved('))

@@ -154,6 +154,24 @@ static void resetRuntimeCooperative();
 static void resetCooperativeState(){resetRuntimeCooperative();cooperativeCaptures={};cooperativeCandidateAt=0;singleDamageSerial=singleDamageMatch=0;singleDamageCommitted=0;entryReservationCount=cooperativeEffectCount=0;cooperativeAt=0;cooperativePlanSeen=0;}
 static void restoreClickHooks(){}
 static void clickHooksTick(uint32_t flags){sh->clickHookStatus=(flags&SpecialClickFlags)?1:0;}
+// Cross-feature seat reservations are read-only and never grant permission
+// to issue a native order: live UID, token and capacity are checked again.
+static bool cooperativePendingActor(uint32_t id){
+ for(int i=0;i<entryReservationCount;++i)
+  if(entryReservations[i].id==id&&manualVersions.get(id)==entryReservations[i].token)return true;
+ return false;
+}
+static int cooperativePendingSlots(uint32_t targetID,uint32_t targetPointer){
+ if(!targetID||!targetPointer||worldByID(targetID)!=targetPointer)return 1024;
+ int reserved=0;
+ for(int i=0;i<entryReservationCount;++i){const auto&r=entryReservations[i];
+  if(r.target!=targetID||r.slots<=0||manualVersions.get(r.id)!=r.token)continue;
+  uint32_t actor=worldByID(r.id);
+  if(actor&&(get<uint32_t>(actor+0x11C)==targetPointer||clickView.entryDestination(actor)==targetPointer))continue;
+  reserved+=r.slots;if(reserved>=1024)return 1024;
+ }
+ return reserved;
+}
 static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house,bool* evidenceReady=nullptr){
  // An incomplete frame is UNKNOWN, not a permanent capacity denial.
  if(evidenceReady)*evidenceReady=false;
@@ -180,8 +198,20 @@ static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house,bool* ev
   int slots=clickView.entrySlots(p,target);if(!slots)return 1024;
   reserved+=slots;if(reserved>=1024)return 1024;
  }
- for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];uint32_t p=worldByID(r.id);if(r.target==get<uint32_t>(target+0x10)&&r.id!=ignore&&p&&clickView.entryDestination(p)!=target&&!(facility&&clickView.radioLinked(target,p)))reserved+=r.slots;}
- return reserved;
+ const uint32_t targetID=get<uint32_t>(target+0x10);
+ for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];uint32_t p=worldByID(r.id);if(r.target==targetID&&r.id!=ignore&&p&&clickView.entryDestination(p)!=target&&!(facility&&clickView.radioLinked(target,p)))reserved+=r.slots;}
+ // AutoLoad's pending EventClass may not yet be represented by a native
+ // destination. Avoid re-counting actors already in a cooperative reservation.
+ for(int i=0;i<loadLedger.count;++i){const auto&r=loadLedger.records[i];
+  if(r.id==ignore||r.vehicleID!=targetID||r.vehicle!=target||r.slots<=0||
+     manualVersions.get(r.id)!=r.manualToken)continue;
+  uint32_t p=worldByID(r.id);
+  if(!p||p!=r.object||clickView.entryDestination(p)==target)continue;
+  bool counted=false;
+  for(int k=0;k<entryReservationCount;++k)if(entryReservations[k].id==r.id){counted=true;break;}
+  if(!counted)reserved+=r.slots;
+ }
+ return std::min(reserved,1024);
 }
 static int admitCooperative(const cooperative::Assignment&o,int mode,uint32_t house,int frame,DWORD now,
  const executionproof::Ticket*proof=nullptr){

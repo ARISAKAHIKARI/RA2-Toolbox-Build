@@ -12,14 +12,8 @@ static void reset(){jobs.clear();armed.clear();vehicles.clear();epoch=owner=0;sa
 static bool sourceValid(const Job&j){return sh&&sh->bombBoardEnabled&&worldByID(j.unit.id)==j.unit.p&&own(j.unit.p,lastHouse)&&kind(j.unit.p)==1&&live(j.unit.p)&&
  get<uint32_t>(j.unit.p+0x38)==j.unit.bomb&&j.unit.bomb>=0x10000&&!get<uint32_t>(j.unit.p+0x11C)&&!get<bool>(j.unit.p+0x1C8)&&manualVersions.get(j.unit.id)==j.token&&!j.cancelled;}
 static int reserved(uint32_t target,uint32_t ignore){
- int n=entryReserved(target,ignore,lastHouse);
- // Ordinary AutoBoard's pending events also own seats before the receiver
- // makes them visible as incoming passengers. Count each actor only once.
- for(int i=0;i<loadLedger.count;++i){const auto&r=loadLedger.records[i];
-  if(r.id==ignore||r.vehicle!=target||!worldByID(r.id)||incomingVehicle(r.object))continue;
-  bool covered=false;for(int k=0;k<entryReservationCount;++k)covered|=entryReservations[k].id==r.id;
-  if(!covered)n+=r.slots;
- }return n;
+ // entryReserved now includes both producer ledgers. No duplicate sum.
+ return entryReserved(target,ignore,lastHouse);
 }
 static bool targetValid(const Job&j,uint32_t target,int slots){
  if(!sourceValid(j)||!target||!worldObjects.contains(target)||!own(target,lastHouse)||kind(target)!=2||!live(target)||get<bool>(target+0x1C8)||get<uint32_t>(target+0x11C))return false;
