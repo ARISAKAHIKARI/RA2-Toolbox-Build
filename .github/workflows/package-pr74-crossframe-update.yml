@@ -2,7 +2,7 @@ name: Package PR74 Update candidate (paired Windows build)
 on:
   pull_request:
     paths:
-      - '.github/workflows/package-pr74-update-candidate.yml'
+      - '.github/workflows/package-pr74-crossframe-update.yml'
       - 'source/**'
   workflow_dispatch:
 permissions:
