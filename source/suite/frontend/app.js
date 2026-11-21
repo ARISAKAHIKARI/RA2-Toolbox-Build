@@ -277,13 +277,13 @@
   const CONTROL_SECTIONS=['选兵与编组','移动、攻击与操作手势','队形、巡逻与飞机路径','进驻、装卸与超武目标选择','其他快捷操作'];
   const AUTOMATIC_SECTIONS=['采矿、倒矿与防蜘蛛','维修与自动救援','自动战斗与防空','适用单位清单','其他自动功能'];
   function semanticSection(name,controls,navigationIndex){
-    const hint=String(name||'').toLocaleLowerCase();
+    const hint=[name,...controls.map(c=>c.label||c.text||'')].join(' ').toLocaleLowerCase();
     const ids=new Set(controls.map(item=>item.id));
     const has=(...values)=>values.some(v=>ids.has(v));
     if(navigationIndex===3){
-      if(/选兵|编组|快捷操作|轮选|同类/.test(hint)||has(9608,441,443,444,445,449,467,724,853))return 0;
+      if(/选兵|编组|轮选|同类/.test(hint)||has(9608,441,443,444,445,449,467,724,853))return 0;
       if(/队形|巡逻|路径|模糊下令|区域目标|快速占位/.test(hint)||has(9602,9615,9400,9401,9402))return 2;
-      if(/进驻|卸载|装车|超武目标/.test(hint)||has(9604+7,453,459,451))return 3;
+      if(/进驻|卸载|装车|超武目标/.test(hint)||has(9611,453,459,451,700,701))return 3;
       if(/键鼠|高级移动|磁电|飞机分配|操作手势|攻击/.test(hint)||has(9601,9606,458,477,478,705))return 1;
       return 4;
     }
@@ -299,9 +299,16 @@
     const names=navigationIndex===3?CONTROL_SECTIONS:AUTOMATIC_SECTIONS;
     const combined=new Map();
     for(const [name,items] of groups){
-      const section=names[semanticSection(name,items,navigationIndex)];
-      if(!combined.has(section))combined.set(section,[]);
-      combined.get(section).push(...items.map((control,i)=>({...control,layoutBreak:i===0})));
+      // A feature header owns its params; unheaded keyboard controls are
+      // independent action rows. Preserve compound shortcut rows as a unit.
+      for(const block of featureBlocks(items)){
+        const pieces=block.headers.length?[block.controls]:settingLines(block.controls);
+        for(const piece of pieces){
+          const section=names[semanticSection(name,piece,navigationIndex)];
+          if(!combined.has(section))combined.set(section,[]);
+          combined.get(section).push(...piece.map((control,i)=>({...control,layoutBreak:i===0})));
+        }
+      }
     }
     return new Map(names.filter(name=>combined.has(name)).map(name=>[name,combined.get(name)]));
   }
@@ -370,9 +377,11 @@
     $('contentScroll').scrollTop=0;
   }
   const navGroups={0:'显示',3:'对局工具',5:'高级'};
-  for(let index=0;index<CATEGORIES.length;index++){
+  // Product-first ordering without changing the backend module/category IDs.
+  const navOrder=[3,4,0,1,2,5,6,7];
+  for(const index of navOrder){
     if(navGroups[index]){const group=document.createElement('div');group.className='nav-group-label';group.textContent=navGroups[index];$('navigation').append(group);}
-    const button=document.createElement('button');button.className='nav-button';button.type='button';
+    const button=document.createElement('button');button.className='nav-button';button.type='button';button.dataset.pageIndex=String(index);
     button.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true">${CATEGORIES[index][2]}</svg><span></span>`;
     button.querySelector('span').textContent=CATEGORIES[index][0];button.setAttribute('aria-label',CATEGORIES[index][0]);button.title=CATEGORIES[index][0];
     button.addEventListener('click',()=>navigate(index));$('navigation').append(button);
@@ -726,7 +735,7 @@
       for(const row of debugRows.values())row.element.remove();
       debugRows.clear();renderedPage=currentPage;
     }
-    [...$('navigation').querySelectorAll('.nav-button')].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
+    [...$('navigation').querySelectorAll('.nav-button')].forEach(button => { if (Number(button.dataset.pageIndex) === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
     $('breadcrumb').textContent=category[0];$('pageTitle').textContent=category[0];
     $('pageDescription').textContent=category[1];
     $('version').textContent=store.shell.version||'正在连接…';

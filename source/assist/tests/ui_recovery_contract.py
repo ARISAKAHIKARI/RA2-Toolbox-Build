@@ -15,6 +15,6 @@ assert "registerKey(1700" not in (root/"assist/source/main.cpp").read_text()
 assert "if(wp==1700)return" in (root/"assist/source/hotkey_host.h").read_text()
 assert "extra.variantKey" not in (root/"assist/source/type_bindings_ui.h").read_text()
 app=(root/"suite/frontend/app.js").read_text()
-for s in ["navGroups={0:'显示',3:'对局工具',5:'高级'}","pageStorageKey","rememberedPage()","rememberPage(index)","querySelectorAll('.nav-button')"]:
+for s in ["navGroups={0:'显示',3:'对局工具',5:'高级'}","pageStorageKey","rememberedPage()","rememberPage(index)","querySelectorAll('.nav-button')","const navOrder=[3,4,0,1,2,5,6,7]"]:
  assert s in app,s
 print("PASS UI entrance recovery, unique passengers, disabled variant hotkey, persisted navigation")

@@ -291,13 +291,15 @@ test('compound manual commands and shared parameters retain their own boundaries
     {id:17,type:'number',label:'巡逻范围',row:184,column:20,group:'键鼠操作'}
   ].map(canonical);
   const groups=layoutGroups(controls,'',3);
-  assert.deepEqual([...groups.keys()],['移动、攻击与操作手势']);
-  const blocks=featureBlocks(groups.get('移动、攻击与操作手势'));
-  assert.deepEqual(Array.from(blocks,hasFeatureConfig),[true,false,false]);
-  assert.deepEqual(Array.from(blocks,block=>Array.from(block.controls,c=>c.id)),[[11,12,13],[14,15],[16,17]]);
+  assert.deepEqual([...groups.keys()],['移动、攻击与操作手势','队形、巡逻与飞机路径']);
+  const action=featureBlocks(groups.get('移动、攻击与操作手势'));
+  const formation=featureBlocks(groups.get('队形、巡逻与飞机路径'));
+  assert.deepEqual(Array.from(action,hasFeatureConfig),[true,false]);
+  assert.deepEqual(Array.from(action,block=>Array.from(block.controls,c=>c.id)),[[11,12,13],[16,17]]);
+  assert.deepEqual(Array.from(formation,block=>Array.from(block.controls,c=>c.id)),[[14,15]]);
   assert.deepEqual(Array.from(groupControls(controls,'检测频率').values()).flat().map(c=>c.id),[11,12,13]);
   const filtered=layoutGroups(controls,'模糊下令',3);
-  assert.deepEqual(Array.from(filtered.get('移动、攻击与操作手势'),c=>c.id),[14,15]);
+  assert.deepEqual(Array.from(filtered.get('队形、巡逻与飞机路径'),c=>c.id),[14,15]);
 });
 
 test('named semantic sections retain stable feature boundaries and do not depend on row ordering',()=>{
