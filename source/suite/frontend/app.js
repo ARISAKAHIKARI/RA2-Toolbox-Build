@@ -515,9 +515,10 @@
       if(hasHeader){
         const head=block.headers.find(isFeatureHeader);
         const label=head.label||head.text||'功能';
-        feature.button.textContent=expanded?'收起':'配置';
+        feature.button.textContent=expanded?'收起':'展开';
         feature.button.setAttribute('aria-expanded',String(expanded));
-        feature.button.setAttribute('aria-label',(expanded?'收起 ':'展开 ')+label+' 的配置');
+        feature.button.setAttribute('aria-label',(expanded?'收起 ':'展开 ')+label+' 的设置');
+        feature.button.title=(expanded?'收起 ':'展开 ')+label+' 的设置';
       }
       const lines=settingLines(block.details);
       const hotkeys=hasHeader?lines.filter(line=>line.every(c=>c.type==='hotkey')).flat():[];
@@ -605,32 +606,46 @@
       const select = document.createElement('select'); select.addEventListener('change',event => { if (Number(event.target.value) >= 0) send('select',Number(event.target.value)); patchChoiceHelp(row,Number(store.value(row.control,'select'))); });
       if (control.presentation === 'list') { select.className = 'list-field'; select.size = 5; select.addEventListener('dblclick',() => { if (select.selectedIndex >= 0) send('activate',select.selectedIndex); }); select.addEventListener('keydown',event => { if (event.key === 'Enter' && select.selectedIndex >= 0) { event.preventDefault(); send('activate',select.selectedIndex); } }); }
       editor.append(select); row.input = select;
-      const help=document.createElement('div'), current=document.createElement('p'), compare=document.createElement('details'), summary=document.createElement('summary'), entries=document.createElement('div');
-      help.className='choice-help'; current.className='choice-current'; current.setAttribute('aria-live','polite'); summary.textContent='比较所有模式'; compare.append(summary,entries); help.append(current,compare); element.append(help);
-      help.id=`choice-help-${store.current.module}-${control.id}`; select.setAttribute('aria-describedby',help.id); row.choiceHelp=help;row.choiceCurrent=current;row.choiceEntries=entries;
+      const help=document.createElement('details'), summary=document.createElement('summary'), intro=document.createElement('p'), entries=document.createElement('div');
+      help.className='choice-help';help.open=false;summary.className='info-summary';summary.textContent='ⓘ';summary.title='查看模式说明';summary.setAttribute('aria-label','查看模式说明');intro.className='choice-help-hint';entries.className='choice-help-entries';help.append(summary,intro,entries);editor.append(help);
+      help.id=`choice-help-${store.current.module}-${control.id}`;row.choiceHelp=help;row.choiceSummary=summary;row.choiceIntro=intro;row.choiceEntries=entries;
       if (!control.readonly && control.presentation !== 'list') { const input = document.createElement('input'); input.className = 'field choice-text'; input.type = 'text'; input.setAttribute('aria-label',`${control.label}（自定义值）`); bindText(row,input); editor.prepend(input); row.textInput = input; select.style.minWidth = '55px'; select.style.maxWidth = '85px'; }
     }
     else if (control.type === 'text' || control.type === 'number') { const input = document.createElement('input'); input.className = 'field'; input.type = control.type === 'number' ? 'number' : 'text'; bindText(row,input); editor.append(input); row.input = input; }
     else if (control.type === 'range') { editor.classList.add('range-editor'); const input = document.createElement('input'), output = document.createElement('output'); input.type = 'range'; output.className = 'range-value'; input.addEventListener('input',event => { store.draft(row.control.id,Number(event.target.value)); output.textContent = event.target.value; }); input.addEventListener('change',event => { store.drafts.delete(controlKey(store.current.module,row.control.id)); send('range',Number(event.target.value)); }); editor.append(input,output); row.input = input; row.output = output; }
     else if (control.type === 'hotkey') { editor.classList.add('hotkey-editor'); const button = document.createElement('button'), mode = document.createElement('select'), double = document.createElement('label'), check = document.createElement('input'), clear = document.createElement('button'), special = document.createElement('select'); button.type = 'button'; button.className = 'hotkey-capture'; button.addEventListener('click',() => { if (capture?.row === row) stopCapture(); else startCapture(row); }); check.type = 'checkbox'; double.className = 'hotkey-double'; double.append(check,document.createTextNode('双击')); clear.type = 'button'; clear.className = 'icon-button'; clear.textContent = '×'; clear.title = '清除快捷键'; clear.setAttribute('aria-label','清除快捷键'); clear.addEventListener('click',() => send('hotkey',0)); mode.setAttribute('aria-label','触发方式'); mode.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x3000) | Number(mode.value))); check.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x8000) | (check.checked ? 0x8000 : 0))); special.setAttribute('aria-label','选择特殊按键'); special.addEventListener('change',() => { const vk = Number(special.value); if (vk) send('hotkey',(Number(store.value(row.control,'hotkey')) & 0xb700) | vk); special.value = '0'; }); editor.append(button,mode,double,clear,special); row.input = button; row.mode = mode; row.double = check; row.doubleLabel = double; row.clear = clear; row.special = special; }
-    else { element.classList.add('label-row'); editor.remove(); }
+    else {
+      element.classList.add('label-row'); editor.remove();
+      const help=document.createElement('details'),summary=document.createElement('summary'),body=document.createElement('div'),text=document.createElement('p');
+      help.className='label-help';help.open=false;summary.className='info-summary';summary.textContent='ⓘ';summary.title='查看说明';summary.setAttribute('aria-label','查看说明');body.className='label-help-content';text.className='label-help-text';body.append(text);help.append(summary,body);copy.append(help);row.noteHelp=help;row.noteText=text;
+    }
     const inputId = `control-${store.current.module}-${control.id}`; if (row.input) { row.input.id = inputId; label.htmlFor = inputId; } return row;
   }
   function bindText(row,input) { input.autocomplete = 'off'; input.spellcheck = false; input.addEventListener('focus',() => { store.beginEdit(row.control.id); store.draft(row.control.id,input.value); }); input.addEventListener('input',() => store.draft(row.control.id,input.value)); input.addEventListener('blur',() => store.commit(row.control.id)); input.addEventListener('keydown',event => { if (composingKey(event)) return; if (event.key === 'Enter') { event.preventDefault(); store.commit(row.control.id); input.blur(); } else if (event.key === 'Escape') { event.preventDefault(); store.cancelEdit(row.control.id); input.blur(); } }); }
-  function patchChoiceHelp(row,index) {
+  function patchChoiceHelp(row) {
     const c=row.control, descriptions=c.optionDescriptions || [];
     const available=descriptions.length===c.options.length && descriptions.some(Boolean);
     row.choiceHelp.hidden=!available;row.element.classList.toggle('has-choice-help',available);
     if(!available)return;
-    const selected=Number.isInteger(index)&&index>=0&&index<c.options.length;
-    const message=selected&&descriptions[index]?`${c.options[index]}${c.optionEnabled[index]===false?'（当前不可用）':''}：${descriptions[index]}`:'选择模式前可展开下方说明进行比较。';
-    if(row.choiceCurrent.textContent!==message)row.choiceCurrent.textContent=message;
+    const hint=String(c.hint||'');
+    row.choiceIntro.textContent=hint;row.choiceIntro.hidden=!hint;
     const signature=JSON.stringify([c.options,descriptions,c.optionEnabled]);
     if(row.helpSignature!==signature){row.helpSignature=signature;row.choiceEntries.replaceChildren(...c.options.map((label,i)=>{const item=document.createElement('section'),title=document.createElement('strong'),text=document.createElement('p');title.textContent=label+(c.optionEnabled[i]===false?'（当前不可用）':'');text.textContent=descriptions[i]||'此选项暂无额外说明。';item.append(title,text);return item;}));}
   }
   function patchRow(row) {
     const control = row.control, error = store.error(control.id); row.element.dataset.pending = String(store.isPending(control.id)); row.element.classList.toggle('is-disabled',!control.enabled); row.element.classList.toggle('has-error',Boolean(error)||control.runtimeError);
-    let labelText=row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置')); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText; row.element.title = control.hint;
+    let labelText=row.inlineLabel ?? (control.label || (control.type === 'label' ? control.text : '设置')); const hintText=error || (control.runtimeError&&control.type!=='label'?(control.text||control.label):''); if(control.type==='button' && labelText===(control.text || control.label || '执行'))labelText=''; if(row.label.textContent!==labelText) row.label.textContent=labelText;row.label.hidden=!labelText; if(row.description.textContent!==hintText) row.description.textContent=hintText; row.description.hidden = !row.description.textContent;row.copy.hidden=!labelText&&!hintText;
+    const optionHelp=control.type==='choice'&&(control.optionDescriptions||[]).some(Boolean);
+    row.element.title=control.type==='label'||optionHelp?'':control.hint;
+    if(control.type==='label'){
+      row.label.hidden=true;row.description.hidden=true;
+      const note=String(control.text||control.label||'');
+      row.noteText.textContent=[note,control.hint].filter(Boolean).join('\n');
+      row.noteHelp.hidden=!note||Boolean(control.runtimeError);
+      row.copy.hidden=row.noteHelp.hidden;row.element.hidden=row.noteHelp.hidden;
+      return;
+    }
+    row.element.hidden=false;
     if (!row.input) return;
     const disabled = !control.enabled || store.closed || store.state?.generation!==store.generation.get(store.current.module);
     row.element.classList.toggle('is-disabled',disabled);
