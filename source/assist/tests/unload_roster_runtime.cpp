@@ -82,7 +82,7 @@ int main(){try{
   expect(recentPassengerCount==2,"transient UID read erased the second passenger's Ctrl+D history");
   unknownField=0;indexedFrame=12;observeUnloadRoster(1,12,1040);
   expect(recentPassengerCount==2,"recovered UID should retain the ejected second passenger");
-  objects[p].id=900;indexedFrame=13;observeUnloadRoster(1,13,1060);
+  objects[p].id=900;indexedFrame=13;observeUnloadRoster(1,13,1080); // 40ms since last complete sweep; force a fresh identity scan
   expect(recentPassengerCount==1,"proven UID reuse should retire old passenger history");
  });
  run("unknown_new_uid_does_not_allocate_phantom_history_slot",[]{
