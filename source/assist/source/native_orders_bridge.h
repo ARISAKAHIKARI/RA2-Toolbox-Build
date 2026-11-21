@@ -49,11 +49,11 @@ static bool nativeReady(){return simulationReady()&&sh->foreground&&!get<bool>(0
 static int orderIndex(uint32_t p){uint32_t slot=advancedObjects.byId(get<uint32_t>(p+0x10));if(!slot||slot>uint32_t(nativeCount))return -1;int i=int(slot-1);return nativeOrders[i].p==p&&nativeOrders[i].id==get<uint32_t>(p+0x10)?i:-1;}
 static void removeOrder(int i){nativeOrders[i]=nativeOrders[--nativeCount];if(i<nativeCount)advancedObjects.add(nativeOrders[i].p,nativeOrders[i].id,uint32_t(i+1));}
 static void finishUnloadFollowup(const UnloadPassenger&r,int frame){
+ (void)frame; // Receipt cancellation is state-driven, not frame-age-driven.
  if(!r.followTicket)return;
  gateway::Receipt rec{};gateway::Intent intent{match,r.followQueuedAt,r.id,r.followTarget,0};
  gateway::planned(rec,r.followTicket,intent);rec.queuedAt=r.followQueuedAt;rec.owner=taskarbiter::Owner::Unload;
  if(r.followObserved){rec.phase=gateway::Phase::Observed;rec.observedAt=sampleClock(sh);}
- else if(frame>=r.frame&&frame-r.frame>900){rec.phase=gateway::Phase::Expired;rec.failure=gateway::Failure::Stale;++snap.receiptExpired;}
  else {rec.phase=gateway::Phase::Cancelled;rec.failure=gateway::Failure::Superseded;++snap.receiptCancelled;}
  missionObserver.dismissTicket(match,r.followTicket);recordReceipt(rec);
  actorLeaseArbiter.release(match,r.id,r.followTicket);
@@ -334,7 +334,7 @@ static int smartUnload(uint32_t house){
 }
 static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
  const DWORD now=sampleClock(sh);
- if(!(sh->flags&SmartUnloadOrders)||queuedUnload.epoch!=match||queuedUnload.house!=house||DWORD(now-queuedUnload.lastProgress)>12000){queuedUnload.clear();return;}
+ if(!(sh->flags&SmartUnloadOrders)||queuedUnload.epoch!=match||queuedUnload.house!=house){queuedUnload.clear();return;}
  // Failed UID/page capture means unknown, never an empty cargo roster.
  if(!unloadpolicy::completeIdentityIndex(indexedFrame,frame))return;
  if(!queuedUnload.count||queuedUnload.frame==frame||!loadInterfaces()||!simulationReady()||get<bool>(0xA8BC60+25))return;
@@ -349,7 +349,6 @@ static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
  while(todo--&&queuedUnload.count&&budget>0&&admissionBudget>0&&outgoingRoom()){
   if(queuedUnload.cursor>=queuedUnload.count)queuedUnload.cursor=0;
   int at=queuedUnload.cursor++;auto task=queuedUnload.carriers[at];
-  if(task.attempted&&DWORD(now-task.attemptedAt)>3500){queuedUnload.remove(at);continue;}
   const int knowledge=unloadCarrierKnowledge(task,house);
   if(knowledge<0){queuedUnload.remove(at);continue;}
   if(!knowledge)continue; // Missing page is not a completed Ctrl+D.
@@ -478,7 +477,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    else if(r.stage==1&&mission==0)r.sleepObserved=true;
   }
   bool release=!done&&(r.cancelled||(r.mode==0&&!(sh->flags&SmartUnloadOrders))||
-      (r.mode!=0&&!(sh->flags&EjectAssist))||(r.mode!=1&&frame-r.frame>900));
+      (r.mode!=0&&!(sh->flags&EjectAssist)));
   if(!done&&!release&&r.stage==3&&onFoot){
    // Missing worker roster is UNKNOWN; keep the follow task pending rather
    // than interpreting an unavailable target index as target destruction.
@@ -506,7 +505,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    else if(carrierValid&&carrierOwner!=house)done=true;
    else {r.mode=2;r.frame=frame;}
   }
-  release=!done&&(release||((r.mode!=0&&!(sh->flags&EjectAssist))||(r.mode!=1&&frame-r.frame>900)));
+  release=!done&&(release||((r.mode!=0&&!(sh->flags&EjectAssist))));
   if(release){
    // Repair a genuine idle Sleep, not a fabricated mission=0 from a bad page.
    if((r.stage==1||r.stage==2||r.stage==3)&&live.mission==0&&onFoot){
@@ -521,7 +520,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    const int currentMission=live.mission;
    if(r.mode==0&&currentMission==7&&unloadfollowup::unloadExit(live,r.carrier,r.mode,r.landedFrame,frame))continue;
    const bool earlySpecialist=!ejectDeployer&&(live.engineer||live.spy);
-   if(r.mode==0&&!earlySpecialist&&(currentMission==2||live.queued==2)&&frame-r.frame<=900){
+   if(r.mode==0&&!earlySpecialist&&(currentMission==2||live.queued==2)){
     r.x=live.x;r.y=live.y;r.stableSince=frame;continue;
    }
    if(!r.landedFrame)r.landedFrame=frame;

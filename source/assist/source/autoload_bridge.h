@@ -61,12 +61,12 @@ static bool queryEnterAction(uint32_t p,uint32_t target){
 static bool canEnter(uint32_t p,uint32_t target){return gameentry::active(gameentry::Client::Assist)&&queryEnterAction(p,target);}
 static int passengerSlots(uint32_t p){int k=kind(p);uint32_t type=typeOf(p,k);return type?loading::slots(get<double>(type+0x380)):0;}
 static void finishLoadingReservation(const loading::Reservation&r,uint32_t session,int frame,bool boarded){
+ (void)frame; // Age alone is not a terminal reservation state.
  if(!r.ticket)return;gateway::Receipt outcome{};
  gateway::Intent intent{session,0,r.id,r.vehicleID,0};
  gateway::planned(outcome,r.ticket,intent);outcome.owner=taskarbiter::Owner::AutoLoad;outcome.queuedAt=r.queuedAt;
  if(boarded){outcome.phase=gateway::Phase::Completed;outcome.observedAt=sampleClock(sh);}
- else{outcome.phase=frame-r.frame>900?gateway::Phase::Expired:gateway::Phase::Cancelled;
-      outcome.failure=frame-r.frame>900?gateway::Failure::Stale:gateway::Failure::Superseded;}
+ else{outcome.phase=gateway::Phase::Cancelled;outcome.failure=gateway::Failure::Superseded;}
  // Business terminal supersedes the generic task-change observer for this
  // specific send; otherwise a late generic Expired would contradict Completed.
  missionObserver.dismissTicket(session,r.ticket);
@@ -123,7 +123,8 @@ static int submitLoading(uint32_t house,const loading::Infantry*soldiers,int ns,
 static void loadingCalculationTick(uint32_t house,DWORD now){
  if(!loadCalculationPending)return;
  auto finish=[&](int result){loadCalculationPending=false;loadCaptureWaiting=false;if(loadAckPending){sh->result=result;sh->count=snap.loadIssued;pendingAck=loadAckRequest;pendingAckReady=true;loadAckPending=false;}};
- if(DWORD(now-loadCalculationStarted)>1000){finish(-7);return;}
+ // The watchdog re-arms collection/retry; it must not kill the click cohort.
+ if(DWORD(now-loadCalculationStarted)>1000)loadCalculationStarted=now;
  const uint32_t completed=sh->loadComputed;
  if(compute::newer(completed,loadTaskSeen)){
   long seq=sh->loadResultSeq;if(!(seq&1)){MemoryBarrier();loadResultCopy=sh->loadResult;MemoryBarrier();
@@ -214,7 +215,6 @@ static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
  // The native input cohort can be sampled again after an incomplete world.
  // Only a complete live reservation observation is allowed to retire a ticket.
  for(int n=0;n<loadLedger.count;){auto&r=loadLedger.records[n];
-  if(frame-r.frame>900){finishLoadingReservation(r,match,frame,false);loadLedger.erase(n);continue;}
   const auto view=loadingReservationView(r,house,frame);
   if(view.state==loading::ReservationState::Unknown){++n;continue;}
   const bool boarded=view.state==loading::ReservationState::Boarded;
@@ -269,19 +269,13 @@ static void autoLoadTick(uint32_t house,int frame){
  static int processed=-1;static uint32_t processedMatch;if(frame==processed&&match==processedMatch)return;processed=frame;processedMatch=match;
  if(!loadLedger.count)return;
  if(!loadInterfaces()){
-  // A temporarily unreadable/hooked gateway is not proof of cancellation.
-  // The pre-existing 900-game-frame deadline remains an independent bound.
-  for(int i=0;i<loadLedger.count;){const auto&r=loadLedger.records[i];
-   if(frame-r.frame>900){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);}
-   else ++i;
-  }
+  // Missing gateway evidence is UNKNOWN. Keep same selected UID/manual token.
   snap.loadWaiting=loadLedger.count;return;
  }
  int budget=outgoingRoom()?recurringBudget(EventLane::Boarding):0;
  for(int i=0;i<loadLedger.count;){auto&r=loadLedger.records[i];
   // A player order cancels the original AutoLoad permission.
   if(manualVersions.get(r.id)!=r.manualToken){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;}
-  if(frame-r.frame>900){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;}
   const auto view=loadingReservationView(r,house,frame);
   if(view.state==loading::ReservationState::Unknown){++i;continue;}
   const bool boarded=view.state==loading::ReservationState::Boarded;
@@ -296,7 +290,7 @@ static void autoLoadTick(uint32_t house,int frame){
    r.lastAttempt=frame;
    uint32_t ticket=0;
    // Reissue the SAME job, not a newer permission after a player order.
-   // The existing 900-frame task timeout controls durable retry lifetime.
+   // Live identity and the original manual token control retry lifetime.
    const executionproof::Ticket proof{match,house,0,
       {r.id,r.object,r.manualToken}, {},{r.vehicleID,r.vehicle}};
    if(enterEvent(house,r.id,r.vehicleID,proof,&ticket)){

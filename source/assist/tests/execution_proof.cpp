@@ -35,7 +35,7 @@ int main(){
  assert(test(t,{8,house,1150})==Failure::WrongMatch);
  assert(reads==0); // Never even look up memory across match generations.
  assert(test(t,{7,house+4,1150})==Failure::WrongHouse);
- assert(test(t,{7,house,1100+MaxAgeMs+1})==Failure::Expired);
+ assert(test(t,{7,house,60000})==Failure::None); // late candidate still validates live actors
  // UID reused with another pointer: the old worker result MUST be rejected.
  world[101].pointer=0x440000;
  assert(test(t,ctx)==Failure::InvalidActor);
@@ -63,6 +63,6 @@ int main(){
  // TickCount wraps, without interpreting a wrapped recent plan as expired.
  Ticket wrap{7,house,0xfffffff0u,{101,0x110000,5}};
  assert(test(wrap,{7,house,0x20})==Failure::None);
- assert(test(wrap,{7,house,0x1000})==Failure::Expired);
- std::puts("PASS immutable native execution proofs: identity, target/dest, owner, original manual revision, match, expiry, bounded reads");
+ assert(test(wrap,{7,house,0x1000})==Failure::None);
+ std::puts("PASS immutable native execution proofs: identity, target/dest, owner, original manual revision, match, no time expiry, bounded reads");
 }
