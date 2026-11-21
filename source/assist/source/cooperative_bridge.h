@@ -206,7 +206,7 @@ static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house,bool* ev
   if(r.id==ignore||r.vehicleID!=targetID||r.vehicle!=target||r.slots<=0||
      manualVersions.get(r.id)!=r.manualToken)continue;
   uint32_t p=worldByID(r.id);
-  if(!p||p!=r.object||clickView.entryDestination(p)==target)continue;
+  if(!p||p!=r.object||get<uint32_t>(p+0x11C)==target||clickView.entryDestination(p)==target)continue;
   bool counted=false;
   for(int k=0;k<entryReservationCount;++k)if(entryReservations[k].id==r.id){counted=true;break;}
   if(!counted)reserved+=r.slots;

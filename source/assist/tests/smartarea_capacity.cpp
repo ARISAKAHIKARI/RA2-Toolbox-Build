@@ -73,6 +73,13 @@ int main(){
  put(loadingActor+0xAC,7);put(loadingActor+0x500,targetA);
  selected={actorAt(0),actorAt(1)};check(moCapture());allocate();
  check(moQueueCount==1&&count(targetA)==1);
+ // Once native cargo is confirmed, the same unretired AutoLoad ticket
+ // must NOT consume a second seat while the observer catches up.
+ start(2,2,0);actor(loadingActor,50,1,1);actors.push_back(loadingActor);
+ loading::Reservation boarded{loadingActor,50,targetA,900,1,snap.frame};
+ boarded.manualToken=0;check(loadLedger.add(boarded));
+ used(targetA,1);put(loadingActor+0x11C,targetA);
+ allocate();check(moQueueCount==1&&count(targetA)==1);
  // A duplicate cooperative reservation for that UID still consumes one seat.
  start(2,2,0);actor(loadingActor,50,1,1);actors.push_back(loadingActor);
  loading::Reservation duplicate{loadingActor,50,targetA,900,1,snap.frame};
