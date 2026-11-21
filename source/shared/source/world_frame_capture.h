@@ -2,9 +2,16 @@
 #include "world_frame.h"
 #include "world_frame_recovery.h"
 #include "world_frame_page_sort.h"
+#include "../../external_reader/source/catalogue_stamp.h"
 #include <limits>
 
 namespace worldframe {
+inline void stampTypeCatalogue(Snapshot& snapshot){
+ external::catalogue::Stamp stamp;
+ const bool complete=snapshot.sealed()&&!snapshot.overflow()&&external::catalogue::capture(
+   [&](uint32_t address,void*out,size_t bytes){return snapshot.read(address,out,bytes);},stamp);
+ snapshot.catalogue={complete?stamp.hash:0,true,complete};
+}
 struct SceneGeometry {
  std::array<int,6> bounds{};int width=0,height=0;bool readable=false;
  bool same(const SceneGeometry&other)const{
@@ -92,18 +99,21 @@ template<class Read>class CaptureGraph {
   auxiliary(value<uint32_t>(p+0x34),0x400);
   for(uint32_t offset:{0x53ACu,0x53B0u,0x53B4u,0x53B8u,0x53BCu,0x53CCu})auxiliary(value<uint32_t>(p+offset),0x80);
  }
- // Unit Monitor's existing read-only layouts. Warm their pointer-dependent
- // ranges here so a cold consumer need not discover one missing type per tick.
+ static constexpr uint32_t CatalogueTables[]={0xA8E348u,0xA83CE0u,0xA8B218u,0xA83C68u};
+ bool catalogueTypes(uint32_t table,std::vector<uint32_t>&list){
+  if(!vector(table,4096,list))return false;
+  for(uint32_t p:list){
+   if(!range(p,0xD55))continue;
+   block(p+0x24,24);block(p+0x232,1);block(p+0x634,0xBA);block(p+0xD54,1);
+  }
+  return true;
+ }
+ // Unit Monitor shares the type metadata used by the Runtime catalogue.
  void monitorStats(const std::vector<uint32_t>&houses){
-  constexpr uint32_t tables[]={0xA8E348u,0xA83CE0u,0xA8B218u,0xA83C68u};
   constexpr uint32_t counters[]={0x5528u,0x5514u,0x553Cu,0x5500u};
   auto&list=scratch_->docks;
   for(size_t i=0;i<4;++i){
-   if(!vector(tables[i],4096,list))continue;
-   for(uint32_t p:list){
-    if(!range(p,0xD55))continue;
-    block(p+0x24,24);block(p+0x232,1);block(p+0x634,0xBA);block(p+0xD54,1);
-   }
+   if(!catalogueTypes(CatalogueTables[i],list))continue;
    for(uint32_t h:houses){
     if(!range(h,0x5800))continue;
     const int capacity=value<int>(h+counters[i]+8);
@@ -262,6 +272,7 @@ public:
    for(uint32_t p:list)enqueue(p);
   if(!vector(0xA80228,32,list))return false;for(uint32_t p:list)house(p);
   if(demand_&MonitorStats)monitorStats(list);
+  else if(demand_&TypeCatalogue)for(uint32_t table:CatalogueTables)catalogueTypes(table,scratch_->docks);
   if(demand_&(Bullets|Visual)){
    if(!vector(0xA8ED40,16384,list))return false;
    for(uint32_t p:list){if(!working())return false;block(p,0x200);auxiliary(value<uint32_t>(p+0xAC),0x400);enqueue(value<uint32_t>(p+0xB0));enqueue(value<uint32_t>(p+0x10C));}

@@ -1618,9 +1618,11 @@ static bool hostFrameCaptureWanted(DWORD now){
  if((sh->flags&AutoRepair)&&(!autoWas||DWORD(now-lastAuto)>=clampedRepairInterval(sh->repairMs)))return true;
  if(sh->flags&AutoOreReturn)return true;
  const auto&r=sh->cooperativeRequest;
+ const auto&captured=sh->cooperativeInputFrame;
+ const bool admitted=captured.frame>=0&&captured.request.serial==r.serial&&captured.match==r.match;
  if(compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)||
-    !cooperative::valid(r)||r.match!=match||!freshness::intentAlive(r.tick,now))return false;
- return sh->cooperativeInputFrame.request.serial!=r.serial||sh->cooperativeFrameWanted==r.serial;
+    !cooperative::valid(r)||r.match!=match||(!admitted&&!freshness::intentAlive(r.tick,now)))return false;
+ return !admitted||sh->cooperativeFrameWanted==r.serial;
 }
 template<class Fn>static void withInputPublication(Shared*value,uint32_t session,DWORD now,int frame,bool advanced,Fn&&tailWork){
  const unsigned priorReadDepth=sampleReadDepth;const bool priorReadComplete=sampleReadComplete;
@@ -1794,17 +1796,9 @@ static void tick(){
  }
  commandDormant=false;
  techEnhancementTick(now);techEnhanceParametersTick(house,now);mapVisibilityParametersTick(house);
- if(newMatch||DWORD(now-catalogueAt)>=DWORD(catalogueReady?500:100)){
-  external::catalogue::Stamp stamp;catalogueAt=now;
-  if(external::catalogue::capture([](uint32_t a,void*p,size_t n){return read(a,p,n);},stamp)){
-   if(!catalogueReady||catalogueHash!=stamp.hash)scanTypes();catalogueHash=stamp.hash;catalogueReady=true;
-  }else{
-   // A failed stamp read means UNKNOWN, not a changed type catalogue.
-   // Keep the last complete cache and retry the cheap stamp. Never trigger
-   // full type scanning every 100ms because of a transient missing page.
-  }
- }
+ const bool catalogueDue=newMatch||!catalogueAt||DWORD(now-catalogueAt)>=DWORD(catalogueReady?500:100);
  uint32_t worldDemand=worldframe::Base;
+ if(catalogueDue)worldDemand|=worldframe::TypeCatalogue;
  if(sharedWorldWanted)worldDemand|=worldFrameServer.demandMask();
  if(sh->dodgeEnabled||dodgeCount)worldDemand|=worldframe::Bullets|worldframe::Combat;
  if(sh->missileEnabled||missileHoldCount||sh->minerDefenseEnabled||minerDefensePending()||sh->magnetronGlobal||sh->magnetronDrop||(sh->flags&(AdvancedInput|MagnetronInput|AircraftSpread|AdvancedEnter|AntiTheft))||nativeCount||runtimeCoopPending||unloadCount||queuedUnload.count)worldDemand|=worldframe::Combat;
@@ -1836,6 +1830,21 @@ static void tick(){
  // carried by the canonical Runtime snapshot; do not spend a full graph read.
  if(!hostDisplayOnly&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
+ if(catalogueDue){
+  ObservationReadScope sample;
+  if(sample&&sampleWorldSource->catalogue.attempted){
+   const auto sourceTick=sampleWorldSource->key.tick;
+   const auto observed=sampleWorldSource->catalogue;
+   sample.finish();
+   if(!catalogueAt||int32_t(sourceTick-catalogueAt)>0){
+    catalogueAt=sourceTick;
+    if(observed.complete){
+     if(!catalogueReady||catalogueHash!=observed.hash)scanTypes();
+     catalogueHash=observed.hash;catalogueReady=true;
+    }
+   }
+  }
+ }
  const bool observationFrame=inputMatch!=match||inputFrame!=frame;
  if(observationFrame){inputMatch=match;inputFrame=frame;}
  bool finishSnapshot=false;

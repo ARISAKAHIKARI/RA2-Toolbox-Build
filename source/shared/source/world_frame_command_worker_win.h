@@ -159,6 +159,9 @@ class CommandCaptureWorker {
     else if(!before.sameWorld(after))++self->worldChanged_;
     ++self->rejected_;continue;
    }
+   // The periodic type stamp is read from these sealed pages on this worker.
+   // Missing metadata stays independent of the actor roster and permissions.
+   if(job.demand&TypeCatalogue)stampTypeCatalogue(self->staging_);
    // Build the full identity hash on this SAME worker. A missing UID or
    // unreadable roster is UNKNOWN, not an empty world or an owned actor.
    const bool rosterBuilt=self->stagingRoster_.build(self->staging_,

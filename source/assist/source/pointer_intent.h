@@ -5,6 +5,13 @@ namespace assist { namespace pointerinput {
 constexpr int MaxSources=1024;
 enum Operation { Enhanced=1, AttackMove=2, Sell=3, FollowNative=4, Cancel=5, AirWaypoint=6, C4Test=7, PlayerSelect=8, PlayerOrder=9 };
 enum Binding { Advanced=1, Magnetron=2, CS=4, Enter=8, AirFirst=16, AirSecond=32, Control=64, Shift=128, RightClick=1024, SellDrainedInput=2048, SellVehicleInput=4096, PerFeatureMouse=8192, BatchStart=16384, BatchNext=32768, LeftClick=65536, NativeForced=131072, EntrySabotage=262144 };
+inline bool clickFresh(int operation,uint32_t bindings,bool local,bool extended,
+                       uint32_t created,uint32_t now,int sourceFrame,int frame){
+ const uint32_t modifiers=Shift|RightClick|LeftClick|PerFeatureMouse|BatchStart|BatchNext;
+ const bool localEntry=local&&operation==Enhanced&&(bindings&~modifiers)==Enter;
+ return sourceFrame>=0&&frame>=sourceFrame&&uint32_t(now-created)<=(extended?1500u:150u)&&
+  (localEntry||frame-sourceFrame<=(extended?90:8));
+}
 inline int entryMission(uint32_t bindings){return bindings&EntrySabotage?17:8;}
 inline const wchar_t* entryLabel(uint32_t mode){return mode==1?L"爆破任务＋建筑格":L"占领任务＋建筑格";}
 // Physical mouse capture uses 1=middle, 2/3=side buttons, 4=right release.

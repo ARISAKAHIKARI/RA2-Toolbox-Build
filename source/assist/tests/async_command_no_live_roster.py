@@ -117,7 +117,9 @@ assert "globalVehicleCandidates[n]" not in native_orders
 assert "memcpy(globalVehicleCandidates" not in bridge
 # Unknown catalogue stamps cannot trigger an unbounded main-thread rescan.
 assert "catalogueReady=false;scanTypes();" not in bridge
-assert "A failed stamp read means UNKNOWN" in bridge
+assert "external::catalogue::capture(" not in bridge
+assert "if(observed.complete)" in bridge
+assert "stampTypeCatalogue(self->staging_)" in worker
 # Large Host repair results are staged in a bounded verifier, not sorted
 # and authorized to issue native orders in one callback.
 assert "std::sort(knownIDs" not in bridge

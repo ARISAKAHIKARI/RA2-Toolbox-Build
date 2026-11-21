@@ -95,6 +95,7 @@ static void pointerTick(){
  nativeviewportprojection::Transform viewport{};
  if(!nativeviewportprojection::sample(sh,viewport)||viewport.generation!=sh->pointerViewportGeneration){pointerFinish(-7);return;}
  const auto&i=b.intent;DWORD now=sampleClock(sh);int frame=get<int>(0xA8ED84);
+ const bool local=eventdelivery::isSingleplayer(snap.session);
  // Reject this feature before cancelling prior work or clearing selection.
  if((i.operation==pointerinput::PlayerSelect&&(!nativeDependencyReady(0x6FBFA0)||(!(i.bindings&pointerinput::Shift)&&!nativeDependencyReady(0x48DC90))))||
     (i.operation==pointerinput::AirWaypoint&&!nativeDependencyReady(0x578080))){b.accepted=0;pointerFinish(-12);return;}
@@ -102,7 +103,7 @@ static void pointerTick(){
   const bool next=(i.bindings&pointerinput::BatchNext)!=0,start=(i.bindings&pointerinput::BatchStart)!=0;
   const bool continuation=next&&!start&&pointerBatchValid&&request==pointerBatchRequest+1&&pointerinput::sameCapture(i,pointerBatchCapture);
   if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||
-     (next&&!continuation)||(next&&start)||DWORD(now-i.tick)>((continuation||i.operation==pointerinput::C4Test)?1500u:150u)||frame<i.frame||frame-i.frame>((continuation||i.operation==pointerinput::C4Test)?90:8)||
+     (next&&!continuation)||(next&&start)||!pointerinput::clickFresh(i.operation,i.bindings,local,continuation||i.operation==pointerinput::C4Test,i.tick,now,i.frame,frame)||
      i.count<0||i.count>pointerinput::MaxSources||i.operation<1||i.operation>9){pointerFinish(-7);return;}
   if(!continuation)pointerBatchValid=false;
   if(cooperativeSingleInput(i.bindings)&&(i.bindings&pointerinput::Shift)){pointerFinish(-4);return;}
@@ -136,7 +137,7 @@ static void pointerTick(){
   // both object and ground orders; never convert this observer into AttackMove.
   if(i.operation==pointerinput::FollowNative&&(pointerTarget||(i.bindings&pointerinput::LeftClick))){pointerFinish(1);return;}
  }
- if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||DWORD(now-i.tick)>1500||frame<i.frame||frame-i.frame>90){pointerFinish(-7);return;}
+ if(!nativeReady()||i.inputSerial!=b.cancelSerial||i.match!=match||i.house!=lastHouse||!pointerinput::clickFresh(i.operation,i.bindings,local,true,i.tick,now,i.frame,frame)){pointerFinish(-7);return;}
  // A configured right click is observed on release and never swallowed.
  // Give the original input at least one simulation turn before appending.
  if((i.bindings&(pointerinput::RightClick|pointerinput::LeftClick))&&frame==i.frame)return;

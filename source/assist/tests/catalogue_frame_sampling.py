@@ -18,6 +18,7 @@ with tempfile.TemporaryDirectory(prefix='ra2_catalogue_frame_') as tmp:
     scope={'__file__':str(source/'assist/tests/world_frame_core_test.py')};exec(driver,scope)
     (tmp/'windows.h').write_text(scope['windows'])
     exe=tmp/'catalogue-frame';cmd=['g++','-std=c++17','-O2','-pthread','-DWORLD_FRAME_PLATFORM_FIXTURE','-I'+str(tmp),str(source/'assist/tests/catalogue_frame_sampling.cpp'),'-o',str(exe)]
+    if args.baseline_ref:cmd.insert(1,'-DCATALOGUE_FRAME_NEGATIVE_CONTROL')
     compiled=subprocess.run(cmd,capture_output=True,text=True)
     (args.out/'compile.log').write_text(compiled.stdout+compiled.stderr);compiled.check_returncode()
     run=[str(exe)]+(['--expect-periodic-miss'] if args.baseline_ref else [])

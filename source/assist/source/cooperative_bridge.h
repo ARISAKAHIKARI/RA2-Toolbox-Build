@@ -283,10 +283,11 @@ static void resetRuntimeCooperative(){runtimeCoopOrders.clear();runtimeCoopAccep
 static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
  const auto&request=sh->cooperativeRequest;
  bool internal=compute::inside(sh->computeApplied,request.mode==cooperative::Enter?compute::Enter:compute::Aircraft);
- if(!internal||!cooperative::valid(request)||request.match!=match||!freshness::intentAlive(request.tick,now)||get<bool>(0xA8BC60+25)){
+ const bool newRequest=request.serial!=runtimeCoopRequest.serial;
+ if(!internal||!cooperative::valid(request)||request.match!=match||(newRequest&&!freshness::intentAlive(request.tick,now))||get<bool>(0xA8BC60+25)){
   if(runtimeCoopPending)sh->runtimeCoopDone=runtimeCoopRequest.serial;resetRuntimeCooperative();return;
  }
- if(request.serial!=runtimeCoopRequest.serial){resetRuntimeCooperative();runtimeCoopRequest=request;sh->runtimeCoopAccepted=sh->runtimeCoopRejected=0;runtimeCoopPending=true;}
+ if(newRequest){resetRuntimeCooperative();runtimeCoopRequest=request;sh->runtimeCoopAccepted=sh->runtimeCoopRejected=0;runtimeCoopPending=true;}
  if(!runtimeCoopPending)return;
  bool recalc=runtimeCoopOrders.empty()||(cooperative::damageMode(request.mode)&&frame!=runtimeCoopFrame)||!freshness::valid(runtimeCoopRequest.match,match,runtimeCoopTick,runtimeCoopFrame,now,frame,freshness::Cooperative);
  if(recalc){
@@ -312,7 +313,8 @@ static void runtimeCooperativeTick(uint32_t house,int frame,DWORD now){
 // Only the common game-thread capture epoch produces host cooperative input.
 static void captureCooperativeFrame(DWORD now,bool indexedWorkReady){
  const auto&r=sh->cooperativeRequest;auto&out=sh->cooperativeInputFrame;
- if(!cooperative::valid(r)||r.match!=match||!freshness::intentAlive(r.tick,now)||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
+ const bool captured=out.frame>=0&&out.request.serial==r.serial&&out.match==r.match;
+ if(!cooperative::valid(r)||r.match!=match||(!captured&&!freshness::intentAlive(r.tick,now))||snap.chat||compute::inside(sh->computeApplied,r.mode==cooperative::Enter?compute::Enter:compute::Aircraft)){out.frame=-1;return;}
  if(out.request.serial==r.serial&&sh->cooperativeFrameWanted!=r.serial)return;
  // A worker may finish between two callbacks in the same game frame. Use
  // its original stamp, and avoid rebuilding the graph when several game
@@ -355,7 +357,7 @@ static void serviceCooperativePlan(uint32_t house,int frame,DWORD now,bool candi
  bool enter=sh->cooperativeMode==cooperative::Enter;
  auto fresh=[&](){return freshness::valid(sh->cooperativeMatch,match,sh->cooperativeTick,sh->cooperativeFrame,sampleClock(sh),get<int>(0xA8ED84),freshness::Cooperative);};
  auto expire=[&](){sh->cooperativeResult=-7;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;};
- if(compute::inside(sh->computeApplied,enter?compute::Enter:compute::Aircraft)||!nativeReady()||sh->cooperativeSerial!=sh->cooperativeRequest.serial||sh->cooperativeMode!=sh->cooperativeRequest.mode||sh->cooperativeMode<cooperative::Enter||sh->cooperativeMode>cooperative::AirSingle||sh->cooperativeRequest.match!=match||!freshness::intentAlive(sh->cooperativeRequest.tick,now)||sh->cooperativeCount<0||sh->cooperativeCount>cooperative::MaxSources||!(sh->flags&(enter?AdvancedEnter:AircraftSpread))){sh->cooperativeResult=-4;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;}
+ if(compute::inside(sh->computeApplied,enter?compute::Enter:compute::Aircraft)||!nativeReady()||sh->cooperativeSerial!=sh->cooperativeRequest.serial||sh->cooperativeMode!=sh->cooperativeRequest.mode||sh->cooperativeMode<cooperative::Enter||sh->cooperativeMode>cooperative::AirSingle||sh->cooperativeRequest.match!=match||sh->cooperativeCount<0||sh->cooperativeCount>cooperative::MaxSources||!(sh->flags&(enter?AdvancedEnter:AircraftSpread))){sh->cooperativeResult=-4;sh->cooperativeRejected+=sh->cooperativeCount-cooperativeAt;cooperativeAt=sh->cooperativeCount;}
  if(cooperativeAt<sh->cooperativeCount&&!fresh())expire();
  const auto*identities=enter?nullptr:cooperativeCaptures.find({sh->cooperativeSerial,sh->cooperativeMatch,sh->cooperativeTick,sh->cooperativeFrame});
  if(!enter&&cooperativeAt<sh->cooperativeCount&&!identities)expire();
