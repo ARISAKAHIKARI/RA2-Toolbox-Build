@@ -614,6 +614,7 @@
     else if (control.type === 'text' || control.type === 'number') { const input = document.createElement('input'); input.className = 'field'; input.type = control.type === 'number' ? 'number' : 'text'; bindText(row,input); editor.append(input); row.input = input; }
     else if (control.type === 'range') { editor.classList.add('range-editor'); const input = document.createElement('input'), output = document.createElement('output'); input.type = 'range'; output.className = 'range-value'; input.addEventListener('input',event => { store.draft(row.control.id,Number(event.target.value)); output.textContent = event.target.value; }); input.addEventListener('change',event => { store.drafts.delete(controlKey(store.current.module,row.control.id)); send('range',Number(event.target.value)); }); editor.append(input,output); row.input = input; row.output = output; }
     else if (control.type === 'hotkey') { editor.classList.add('hotkey-editor'); const button = document.createElement('button'), mode = document.createElement('select'), double = document.createElement('label'), check = document.createElement('input'), clear = document.createElement('button'), special = document.createElement('select'); button.type = 'button'; button.className = 'hotkey-capture'; button.addEventListener('click',() => { if (capture?.row === row) stopCapture(); else startCapture(row); }); check.type = 'checkbox'; double.className = 'hotkey-double'; double.append(check,document.createTextNode('双击')); clear.type = 'button'; clear.className = 'icon-button'; clear.textContent = '×'; clear.title = '清除快捷键'; clear.setAttribute('aria-label','清除快捷键'); clear.addEventListener('click',() => send('hotkey',0)); mode.setAttribute('aria-label','触发方式'); mode.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x3000) | Number(mode.value))); check.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x8000) | (check.checked ? 0x8000 : 0))); special.setAttribute('aria-label','选择特殊按键'); special.addEventListener('change',() => { const vk = Number(special.value); if (vk) send('hotkey',(Number(store.value(row.control,'hotkey')) & 0xb700) | vk); special.value = '0'; }); editor.append(button,mode,double,clear,special); row.input = button; row.mode = mode; row.double = check; row.doubleLabel = double; row.clear = clear; row.special = special; }
+    else if(control.type==='label'&&control.groupHeader){ element.classList.add('label-row','label-heading'); editor.remove(); }
     else {
       element.classList.add('label-row'); editor.remove();
       const help=document.createElement('details'),summary=document.createElement('summary'),body=document.createElement('div'),text=document.createElement('p');
@@ -638,7 +639,12 @@
     const optionHelp=control.type==='choice'&&(control.optionDescriptions||[]).some(Boolean);
     row.element.title=control.type==='label'||optionHelp?'':control.hint;
     if(control.type==='label'){
-      row.label.hidden=true;row.description.hidden=true;
+      row.description.hidden=true;
+      if(control.groupHeader){
+        row.label.hidden=!labelText;row.copy.hidden=!labelText;row.element.hidden=!labelText;
+        return;
+      }
+      row.label.hidden=true;
       const note=String(control.text||control.label||'');
       row.noteText.textContent=[note,control.hint].filter(Boolean).join('\n');
       row.noteHelp.hidden=!note||Boolean(control.runtimeError);
