@@ -197,7 +197,8 @@ test('native shared rows and status notes have no redundant configuration title'
   {id:1,type:'toggle',group:'自动功能',label:'磁电全局无限吸',row:80,column:20},
   {id:2,type:'hotkey',group:'自动功能',label:'磁电全局无限吸',row:80,column:345},
   {id:3,type:'toggle',group:'防御',label:'防御状态',groupHeader:true},
-  {id:4,type:'label',group:'防御',label:'等待对局'}
+  {id:4,type:'label',group:'防御',label:'等待对局'},
+  {id:5,type:'label',group:'防御',label:'防御选项',groupHeader:true}
  ]});
  f.render();
  assert.ok(f.find('feature-subheading').every(title=>title.hidden));
@@ -208,6 +209,8 @@ test('native shared rows and status notes have no redundant configuration title'
  assert.equal(f.find('label-help')[0].open,false);
  assert.equal(f.find('label-help')[0].children[0].textContent,'ⓘ');
  assert.ok(f.find('label-help')[0].children[1].children[0].textContent.includes('等待对局'));
+ const groupLabel=f.find('setting-label').find(label=>label.textContent==='防御选项');
+ assert.ok(groupLabel&&!groupLabel.hidden,'semantic group labels remain visible; only explanatory notes are tucked away');
 });
 test('unbound shortcuts show the capture and special-key picker only',()=>{
  const f=setup(),row=f.row(3);
