@@ -42,10 +42,13 @@ static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int 
 // It never creates a task without the explicit original Ctrl+D.
 struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;int frame;};
 static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;
+// Explicit Ctrl+D owns this frozen click cohort, separate from transient 1500ms
+// read-only history. It is never an authorization to bypass native admission.
+static RecentPassenger frozenUnloadPassengers[nativeorders::MaxPassengers];static int frozenUnloadCount;
 static DWORD lastUnloadHistoryTick=0; // wall-clock cadence independent of game FPS
 static ObjectIndex watchedPassengers;
 static void restoreNativeHooks();
-static void clearNativeOrders(bool retireHooks){queuedUnload.clear();globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;lastUnloadHistoryTick=0;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;if(retireHooks)restoreNativeHooks();resetUnloadCalculation();}
+static void clearNativeOrders(bool retireHooks){queuedUnload.clear();globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=frozenUnloadCount=0;nativeFrame=-1;lastUnloadHistoryTick=0;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;if(retireHooks)restoreNativeHooks();resetUnloadCalculation();}
 static bool nativeMember(uint32_t p){return worldObjects.contains(p);}
 static bool nativeReady(){return simulationReady()&&sh->foreground&&!get<bool>(0xA8BC60+25);}
 
@@ -177,7 +180,7 @@ static int unloadPassengerKnowledge(uint32_t p,uint32_t house,uint32_t&id,uint32
  return 1;
 }
 struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1;};
-static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*2];static UnloadRosterEntry unloadRosterScratch[nativeorders::MaxPassengers*2];static int unloadRosterCount;
+static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*3];static UnloadRosterEntry unloadRosterScratch[nativeorders::MaxPassengers*3];static int unloadRosterCount;
 static bool buildUnloadAdmissionRoster(uint32_t house){
  unloadRosterCount=0;
  SampleReadScope sample;if(!sample)return false;
@@ -186,8 +189,24 @@ static bool buildUnloadAdmissionRoster(uint32_t house){
   if(!carrier||!worldObjects.contains(carrier)||queuedUnload.find(carrier,get<uint32_t>(carrier+0x10))<0||!unloadPassengerEligible(p,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
   unloadRoster[unloadRosterCount++]={carrier,p,get<uint32_t>(p+0x10),manualVersions.get(get<uint32_t>(p+0x10)),-1};
  }
- for(int n=0;n<recentPassengerCount&&unloadRosterCount<nativeorders::MaxPassengers*2;++n){const auto&r=recentPassengers[n];
-  if(queuedUnload.find(r.carrier,r.carrierID)>=0)unloadRoster[unloadRosterCount++]={r.carrier,r.p,r.id,r.token,n};
+ // A click-scoped frozen cohort owns this carrier's initial passengers.
+ // Do not enroll other occupants that arrived AFTER Ctrl+D was accepted.
+ static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> frozenCarriers;frozenCarriers.clear();
+ for(int n=0;n<frozenUnloadCount;++n){const auto&r=frozenUnloadPassengers[n];
+  if(queuedUnload.find(r.carrier,r.carrierID)>=0)frozenCarriers.add(r.carrier,n);
+ }
+ int kept=0;
+ for(int n=0;n<unloadRosterCount;++n)if(frozenCarriers.find(unloadRoster[n].carrier)<0)
+  unloadRoster[kept++]=unloadRoster[n];
+ unloadRosterCount=kept;
+ for(int n=0;n<recentPassengerCount&&unloadRosterCount<nativeorders::MaxPassengers*3;++n){const auto&r=recentPassengers[n];
+  if(frozenCarriers.find(r.carrier)<0&&queuedUnload.find(r.carrier,r.carrierID)>=0)
+   unloadRoster[unloadRosterCount++]={r.carrier,r.p,r.id,r.token,n};
+ }
+ // Negative index -2-n is a frozen record, never subject to 1500ms expiry.
+ for(int n=0;n<frozenUnloadCount&&unloadRosterCount<nativeorders::MaxPassengers*3;++n){const auto&r=frozenUnloadPassengers[n];
+  if(queuedUnload.find(r.carrier,r.carrierID)>=0)
+   unloadRoster[unloadRosterCount++]={r.carrier,r.p,r.id,r.token,-n-2};
  }
  if(!sample.complete()||!unloadpolicy::radixSortRoster(unloadRoster,unloadRosterScratch,unloadRosterCount)){
   unloadRosterCount=0;
@@ -245,6 +264,12 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true,bool 
      !featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
   if(at->history>=0){const auto&old=recentPassengers[at->history];
    if(old.carrierID!=nativeCarrierID||old.carrierType!=typeOf(p,2)||DWORD(now-old.tick)>1500||frame<old.frame||carrier)continue;
+  }else if(at->history<=-2){
+   int index=-at->history-2;
+   if(index>=frozenUnloadCount)continue;
+   const auto&saved=frozenUnloadPassengers[index];
+   if(saved.id!=uid||saved.carrierID!=nativeCarrierID||saved.carrierType!=typeOf(p,2)||
+      saved.token!=manualVersions.get(uid)||frame<saved.frame||carrier)continue;
   }else if(carrier!=p)continue;
   if(count==nativeorders::MaxPassengers)return -6;
   previous=q;roster[count++]=q;
@@ -377,8 +402,40 @@ static int smartUnload(uint32_t house,bool candidateOnly=false){
    staged[at]={q,id,carrier,carrierID,typeOf(carrier,2),manualVersions.get(id),now,frame};
    }
    if(sample.complete()){
-    recentPassengerCount=stagedCount;
-    std::memcpy(recentPassengers,staged,sizeof(RecentPassenger)*stagedCount);
+    // Publish only an all-or-nothing click cohort. Keep still-pending other
+    // carriers; a fresh Ctrl+D supersedes only its selected carrier identities.
+    static RecentPassenger cohort[nativeorders::MaxPassengers];
+    static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> seen;
+    seen.clear();int cohortCount=0;bool complete=true;
+    auto append=[&](const RecentPassenger&r)->bool{
+     int old=seen.find(r.p);
+     if(old>=0){const auto&prior=cohort[old];
+      return prior.id==r.id&&prior.carrier==r.carrier&&prior.token==r.token;
+     }
+     if(cohortCount>=nativeorders::MaxPassengers||!seen.add(r.p,cohortCount))return false;
+     cohort[cohortCount++]=r;return true;
+    };
+    for(int n=0;n<frozenUnloadCount;++n){const auto&r=frozenUnloadPassengers[n];
+     if(queuedUnload.find(r.carrier,r.carrierID)>=0&&selected.find(r.carrier)<0&&!append(r)){complete=false;break;}
+    }
+    // Staged history includes already-ejected passengers, while the sealed
+    // infantry roster contributes everyone still aboard at the click boundary.
+    for(int n=0;complete&&n<stagedCount;++n){const auto&r=staged[n];
+     if(selected.find(r.carrier)<0)continue;
+     uint32_t uid=0,carrier=0;
+     int known=unloadPassengerKnowledge(r.p,house,uid,carrier);
+     if(!known){complete=false;break;}
+     if(known<0||uid!=r.id||(carrier&&carrier!=r.carrier)||
+        manualVersions.get(uid)!=r.token||
+        get<uint32_t>(r.carrier+0x10)!=r.carrierID)continue;
+     if(!append(r)){complete=false;break;}
+    }
+    if(complete){
+     frozenUnloadCount=cohortCount;
+     std::memcpy(frozenUnloadPassengers,cohort,sizeof(RecentPassenger)*cohortCount);
+     recentPassengerCount=stagedCount;
+     std::memcpy(recentPassengers,staged,sizeof(RecentPassenger)*stagedCount);
+    }
    }
   }
  }

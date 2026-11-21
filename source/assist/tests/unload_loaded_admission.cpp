@@ -55,6 +55,7 @@ static bool sampleRoster(uint32_t address,Vec&out){out=vec(address);return out.c
 static unloadadmission::Queue queuedUnload;
 struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;int frame;};
 static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;static DWORD lastUnloadHistoryTick;
+static RecentPassenger frozenUnloadPassengers[nativeorders::MaxPassengers];static int frozenUnloadCount;
 struct UnloadPassenger {uint32_t job,p,id,carrier,carrierID,carrierType;int frame;uint32_t manualToken;};
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount;static uint32_t unloadJobSerial;
 namespace taskarbiter {enum class Owner {Unload};}
@@ -78,7 +79,7 @@ static bool unloadCarrierEligible(uint32_t p,uint32_t house);
 static bool unloadCarrierEligible(uint32_t p,uint32_t house){return worldObjects.contains(p)&&own(p,house)&&kind(p)==2;}
 #endif
 static void check(bool v,const char*why){if(!v)throw std::runtime_error(why);}
-static void reset(){lastUnloadHistoryTick=0;objects.clear();infantry={passenger};selectedCarriers={transport};objects[transport]={10,1,0,44,2};objects[transport].passengers=1;objects[transport].head=passenger;objects[passenger]={11,1,transport};objects[passenger].limbo=true;objects[passenger].onMap=false;queuedUnload.clear();queuedUnload.begin(1,1,1000);queuedUnload.add({transport,10,0});recentPassengerCount=unloadCount=0;deployments=cancellations=0;manualVersions.token=manualVersions.carrierMove=0;}
+static void reset(){lastUnloadHistoryTick=0;objects.clear();infantry={passenger};selectedCarriers={transport};objects[transport]={10,1,0,44,2};objects[transport].passengers=1;objects[transport].head=passenger;objects[passenger]={11,1,transport};objects[passenger].limbo=true;objects[passenger].onMap=false;queuedUnload.clear();queuedUnload.begin(1,1,1000);queuedUnload.add({transport,10,0});recentPassengerCount=frozenUnloadCount=unloadCount=0;deployments=cancellations=0;manualVersions.token=manualVersions.carrierMove=0;}
 int main(){try{
 #ifdef USE_PRODUCTION_CARRIER_AND_COMMAND
  reset();sampleComplete=false;

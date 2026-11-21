@@ -22,6 +22,7 @@ struct Objects{bool contains(uint32_t p){return ids.count(p)!=0;}}worldObjects;
 static unloadadmission::Queue queuedUnload;
 struct RecentPassenger{uint32_t p,id,carrier,carrierID,carrierType,token,tick;int frame;};
 static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;
+static RecentPassenger frozenUnloadPassengers[nativeorders::MaxPassengers];static int frozenUnloadCount;
 struct UnloadPassenger{uint32_t job,p,id,carrier,carrierID,carrierType;int frame;uint32_t manualToken;};
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount;static uint32_t unloadJobSerial;
 static void finishUnloadFollowup(const UnloadPassenger&,int){}
@@ -67,7 +68,7 @@ static void unselect(){selectedResult.clear();}static bool selection(uint32_t p)
 #include CAPACITY_VARIANT_FUNCTIONS
 static int checks=0,failures=0;
 static void check(bool v,const char*label){++checks;if(!v){++failures;std::fprintf(stderr,"FAIL %s\n",label);}}
-static void reset(){queuedUnload.clear();queuedUnload.epoch=queuedUnload.house=queuedUnload.lastProgress=0;memory.clear();ids.clear();kinds.clear();types.clear();byID.clear();manualVersions.values.clear();selectedObjects.clear();infantry.clear();allObjects.clear();selectedResult.clear();sent.clear();recentPassengerCount=unloadCount=0;match=1;clockNow=100;shared={};ready=interfaces=true;eventRoom=24;cancelled=weaponCalls=0;unreadableField=0;indexedFrame=-1;memory[0xA8ED84]=1;}
+static void reset(){queuedUnload.clear();queuedUnload.epoch=queuedUnload.house=queuedUnload.lastProgress=0;memory.clear();ids.clear();kinds.clear();types.clear();byID.clear();manualVersions.values.clear();selectedObjects.clear();infantry.clear();allObjects.clear();selectedResult.clear();sent.clear();recentPassengerCount=frozenUnloadCount=unloadCount=0;match=1;clockNow=100;shared={};ready=interfaces=true;eventRoom=24;cancelled=weaponCalls=0;unreadableField=0;indexedFrame=-1;memory[0xA8ED84]=1;}
 static uint32_t carrier(int n,bool passenger=true){uint32_t p=0x100000+n*0x1000,id=n+1;ids[p]=id;byID[id]=p;kinds[p]=2;types[p]=0x80000;memory[p]=0x7F5C70;memory[p+0x10]=id;memory[p+0x21C]=9;memory[p+0x6C]=100;memory[p+0x74]=1;memory[p+0x90]=1;memory[p+0x81]=0;memory[p+0x1C8]=0;memory[p+0x114]=passenger?1:0;selectedObjects.push_back(p);allObjects.push_back(p);
  if(passenger){uint32_t q=0x5000000+n*0x1000,qid=100000+n;ids[q]=qid;byID[qid]=q;kinds[q]=1;types[q]=0x90000;memory[q]=0x7EB058;memory[q+0x10]=qid;memory[q+0x21C]=9;memory[q+0x6C]=100;memory[q+0x74]=1;memory[q+0x90]=1;memory[q+0x81]=0;memory[q+0x11C]=p;memory[p+0x118]=q;memory[q+0x30]=0;infantry.push_back(q);allObjects.push_back(q);}return p;}
 static void tick(int frame,int room=24,bool candidate=false){indexedFrame=frame;memory[0xA8ED84]=frame;clockNow=100+uint32_t(frame)*16;eventRoom=room;int budget=64;smartUnloadAdmissionTick(9,frame,budget,candidate);}
