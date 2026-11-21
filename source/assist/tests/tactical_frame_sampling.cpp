@@ -280,16 +280,17 @@ static void testBoardingLedgerUnknown(){
  loadingFinished=loadingBoarded=loadingResends=0;
  set<uint32_t>(p2+0x10,old.id+1000);advance();autoLoadTick(lastHouse,snap.frame);
  check(!loadLedger.count&&loadingFinished==1&&!loadingBoarded&&!loadingResends,"recycled source UID was not retired");
- // Native gateway stays unavailable: only the independent 900-frame expiry applies.
+ // Native gateway unavailable is UNKNOWN, not a reason to expire a still-valid
+ // reservation. The original UID and manual-version proof remains required.
  setupLoad(0);const uint32_t p3=get<uint32_t>(0x820000),v3=get<uint32_t>(0x800000);
  loading::Reservation expires{p3,get<uint32_t>(p3+0x10),v3,get<uint32_t>(v3+0x10),1,snap.frame};
  expires.kind=kind(p3);expires.initial=loadingObservation(p3);check(loadLedger.add(expires),"expiry fixture ledger missing");
  loadingFinished=loadingBoarded=loadingResends=0;interfacesReady=false;
  snap.frame+=901;clockNow+=901*16;set<int>(0xA8ED84,snap.frame);
  autoLoadTick(lastHouse,snap.frame);
- check(!loadLedger.count&&loadingFinished==1&&!loadingBoarded&&!loadingResends,"unavailable gateway removed bounded expiry");
+ check(loadLedger.count==1&&!loadingFinished&&!loadingBoarded&&!loadingResends,"unavailable gateway must retain valid booking despite 900 game frames");
  interfacesReady=true;
- std::puts("PASS automatic boarding ledger: missing live reads retain, boarding confirms, identity replacement and expiry retire");
+ std::puts("PASS automatic boarding ledger: missing live reads retain, boarding confirms, identity replacement retires, age alone cannot expire");
 }
 static void testDodge(){
  reset();sh->dodgeEnabled=1;uint32_t type=makeType(),airType=makeType(),p=object(type,2,20),owner=object(airType,0,21,0x30000),bullet=alloc();
