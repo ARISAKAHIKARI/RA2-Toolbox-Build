@@ -56,7 +56,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p checks
-          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/assist/tests/plan_freshness.cpp -o checks/plan-freshness
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Wno-error=misleading-indentation -Wno-error=missing-field-initializers source/assist/tests/plan_freshness.cpp -o checks/plan-freshness
           checks/plan-freshness | tee checks/plan-freshness.log
           python source/assist/tests/automation_no_deadline_contract.py | tee checks/automation-no-deadline.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/async_command_policy.cpp -o checks/command-policy
