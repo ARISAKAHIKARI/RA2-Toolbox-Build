@@ -1,0 +1,54 @@
+name: Validate console UI consistency
+on:
+  pull_request:
+    paths:
+      - 'source/suite/frontend/**'
+      - 'source/suite/source/console_adapter.h'
+      - 'source/suite/source/choice_descriptions.h'
+      - 'source/suite/tests/console_*'
+      - 'source/suite/tests/choice_help_test.mjs'
+      - '.github/workflows/validate-console-ui.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Chromium fixture
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx --no-install playwright install --with-deps chromium
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Verify mode descriptions and UI composition
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics/console-ui
+          g++ -std=c++17 -O1 -UNDEBUG source/suite/tests/choice_descriptions.cpp -o diagnostics/console-ui/choice_descriptions
+          diagnostics/console-ui/choice_descriptions
+          node source/suite/tests/choice_help_test.mjs
+          node source/suite/tests/console_composition_test.mjs
+          python3 source/suite/tests/console_review_fixture.py --out diagnostics/console-ui/review
+      - name: Verify responsive layout and capture actual Chromium screenshots
+        env:
+          CONSOLE_SCREENSHOT: diagnostics/console-ui/console-desktop.png
+        run: |
+          set -euo pipefail
+          node source/suite/tests/console_store_test.mjs --browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RA2Toolbox-Console-UI-Review
+          retention-days: 14
+          if-no-files-found: warn
+          path: diagnostics/console-ui/
