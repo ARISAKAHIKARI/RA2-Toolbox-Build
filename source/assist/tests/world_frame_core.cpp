@@ -69,13 +69,16 @@ constexpr uint32_t Scenario=0x100000,House=0x120000,Cells=0x140000;
 constexpr uint32_t ActorA=0x200100,ActorB=0x201100,Passenger=0x210100,Type=0x300100;
 constexpr uint32_t Weapon=0x400100,Warhead=0x410100,Projectile=0x420100,Temporal=0x430100,Radio=0x450100;
 constexpr uint32_t Bullet=0x500100,BulletType=0x510100;
-constexpr uint32_t TechnoList=0x600000,BuildingList=0x601000,UnitList=0x602000,HouseList=0x603000,BulletList=0x604000;
+constexpr uint32_t TechnoList=0x600000,BuildingList=0x601000,UnitList=0x602000,HouseList=0x603000,BulletList=0x604000,InfantryList=0x605000,InactiveInfantry=0x211100;
 constexpr uint32_t HostPid=900,GamePid=1000;
 worldframe::Key key(int frame=50){worldframe::Key k;k.pid=GamePid;k.owner=HostPid;k.match=7;k.serial=1;k.tick=100;k.scenario=Scenario;k.cells=Cells;k.house=House;k.cellCount=4;k.frame=frame;k.session=0;return k;}
 void setup(Memory&m){
  m.put(0xA8B230,Scenario);m.put(0xA8B238,int(0));m.put(0x87F924,Cells);m.put(0x87F928,int(4));m.put(0xA8ED84,int(50));m.put(0xA8E9A0,uint8_t(1));m.put(0xA83D4C,House);
  m.vector(0xA8EC78,TechnoList,{ActorA,ActorB,ActorA});m.vector(0xA8EB40,BuildingList,{ActorB});m.vector(0x8B4108,UnitList,{ActorA});m.vector(0xA80228,HouseList,{House});m.vector(0xA8ED40,BulletList,{Bullet});
  for(uint32_t p:{ActorA,ActorB,Passenger}){m.put(p,0x7F5C70u);m.put(p+0x6C4,Type);m.put(p+0x21C,House);m.put(p+0x10,p+5);m.put(p+0x6C,100);}
+ m.vector(0xA83DE8,InfantryList,{InactiveInfantry});
+ m.put(InactiveInfantry,0x7EB058u);m.put(InactiveInfantry+0x10,43u);
+ m.put(InactiveInfantry+0x6C0,Type);m.put(InactiveInfantry+0x11C,ActorA);
  m.put(ActorA+0x30,Passenger);m.put(Passenger+0x118,ActorA);m.put(ActorA+0x218,ActorB);m.put(ActorA+0x274,Temporal);m.put(Temporal+0x44,Temporal);
  m.put(ActorA+0xE4,Radio);m.put(ActorA+0xE8,2);m.put(Radio,ActorB);m.put(Radio+4,Passenger);
  m.put(Type+0x60,0x700100u);m.put(Type+0x898,Weapon);m.put(Type+0xA94,Weapon);m.put(Weapon+0xA0,Warhead);m.put(Weapon+0xAC,Projectile);
@@ -189,12 +192,26 @@ GraphStats graph(uint32_t demand){
  CHECK(bool(s.find(Bullet&~4095u))==bool(demand&(worldframe::Bullets|worldframe::Visual)));
  CHECK(bool(s.find(Temporal&~4095u))==bool(demand&(worldframe::Combat|worldframe::Visual)));
  CHECK(bool(s.find(Passenger&~4095u))==bool(demand&(worldframe::Combat|worldframe::Passengers|worldframe::Ore|worldframe::Visual)));
+ uint32_t infantry=0,uid=0;
+ if(demand&worldframe::Passengers){
+  CHECK(s.read(InfantryList,&infantry,4)&&infantry==InactiveInfantry);
+  CHECK(s.read(infantry+0x10,&uid,4)&&uid==43);
+ }else CHECK(!s.read(InfantryList,&infantry,4));
  if(demand==worldframe::Base)CHECK(s.counters.rosterCaptures==3);
  return {s.counters.calls,s.counters.bytes,s.counters.rosterCaptures};
 }
 void graphs(){
  const auto base=graph(worldframe::Base),combat=graph(worldframe::Combat),passengers=graph(worldframe::Passengers),ore=graph(worldframe::Ore),visual=graph(worldframe::Visual);
  CHECK(base.calls<combat.calls&&base.calls<visual.calls&&passengers.calls<combat.calls&&base.rosters<ore.rosters);
+ {Memory m;setup(m);constexpr uint32_t factory=0x606100,product=0x212100,type=0x302100;
+  m.put(House+0x53BC,factory);m.put(factory+0x6C,House);m.put(factory+0x58,product);
+  m.put(product+0x10,61u);m.put(product+0x520,type);m.put(type+0xDF8,11);
+  worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});
+  CHECK(g.capture(worldframe::Resources,{}));CHECK(s.seal());
+  uint32_t uid=0;int index=-1;
+  CHECK(s.read(product+0x10,&uid,4)&&uid==61);
+  CHECK(s.read(type+0xDF8,&index,4)&&index==11);
+ }
  std::printf("GRAPH Base %u reads/%u bytes/%u rosters; Combat %u/%u/%u; Passengers %u/%u/%u; Ore %u/%u/%u; Visual %u/%u/%u\n",base.calls,base.bytes,base.rosters,combat.calls,combat.bytes,combat.rosters,passengers.calls,passengers.bytes,passengers.rosters,ore.calls,ore.bytes,ore.rosters,visual.calls,visual.bytes,visual.rosters);
  for(int bad:{-1,16385}){Memory m;setup(m);m.put(0xA8EC78+16,bad);worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});CHECK(!g.capture(worldframe::Base,{}));}
  {Memory m;setup(m);m.put(0xA8EC78+8,2);worldframe::Snapshot s;s.reset(key());worldframe::CaptureGraph<Read>g(s,Read{&m});CHECK(!g.capture(worldframe::Base,{}));}

@@ -45,15 +45,16 @@ static uint32_t item(Vec v,int n){return (v.address==0xA83DE8?infantry:selectedC
 // Extracted function fixture: the synthetic roster is already a complete
 // immutable vector; production uses SampleReadScope + sampleRoster from
 // tactical_frame_read.h and the real sealed Runtime world sample.
+static bool sampleComplete=true;
 struct SampleReadScope {
  explicit operator bool() const{return true;}
- bool complete() const{return true;}
+ bool complete() const{return sampleComplete;}
 };
 static bool sampleRoster(uint32_t address,Vec&out){out=vec(address);return out.count>=0;}
 
 static unloadadmission::Queue queuedUnload;
 struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;int frame;};
-static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;
+static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;static DWORD lastUnloadHistoryTick;
 struct UnloadPassenger {uint32_t job,p,id,carrier,carrierID,carrierType;int frame;uint32_t manualToken;};
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount;static uint32_t unloadJobSerial;
 namespace taskarbiter {enum class Owner {Unload};}
@@ -77,8 +78,16 @@ static bool unloadCarrierEligible(uint32_t p,uint32_t house);
 static bool unloadCarrierEligible(uint32_t p,uint32_t house){return worldObjects.contains(p)&&own(p,house)&&kind(p)==2;}
 #endif
 static void check(bool v,const char*why){if(!v)throw std::runtime_error(why);}
-static void reset(){objects.clear();infantry={passenger};selectedCarriers={transport};objects[transport]={10,1,0,44,2};objects[transport].passengers=1;objects[transport].head=passenger;objects[passenger]={11,1,transport};objects[passenger].limbo=true;objects[passenger].onMap=false;queuedUnload.clear();queuedUnload.begin(1,1,1000);queuedUnload.add({transport,10,0});recentPassengerCount=unloadCount=0;deployments=cancellations=0;manualVersions.token=manualVersions.carrierMove=0;}
+static void reset(){lastUnloadHistoryTick=0;objects.clear();infantry={passenger};selectedCarriers={transport};objects[transport]={10,1,0,44,2};objects[transport].passengers=1;objects[transport].head=passenger;objects[passenger]={11,1,transport};objects[passenger].limbo=true;objects[passenger].onMap=false;queuedUnload.clear();queuedUnload.begin(1,1,1000);queuedUnload.add({transport,10,0});recentPassengerCount=unloadCount=0;deployments=cancellations=0;manualVersions.token=manualVersions.carrierMove=0;}
 int main(){try{
+#ifdef USE_PRODUCTION_CARRIER_AND_COMMAND
+ reset();sampleComplete=false;
+ check(!buildUnloadAdmissionRoster(1)&&unloadRosterCount==0&&deployments==0,
+       "incomplete passenger sample cannot be used for admission");
+ sampleComplete=true;
+ check(buildUnloadAdmissionRoster(1)&&unloadRosterCount==1,
+       "next complete sample restores passenger admission");
+#endif
  reset();check(!own(passenger,1),"production own must reject loaded off-map passenger");buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1,"loaded carrier admission");check(unloadCount==1,"loaded passenger lost before Deploy");check(deployments==1&&unloadPassengers[0].id==11&&unloadPassengers[0].carrier==transport,"job must exist before unload");
  reset();objects[transport].passengers=0;objects[passenger].carrier=0;objects[passenger].limbo=false;objects[passenger].onMap=true;recentPassengers[0]={passenger,11,transport,10,44,0,1000,10};recentPassengerCount=1;buildUnloadAdmissionRoster(1);check(smartUnloadNow(1,transport)==1&&unloadCount==1&&deployments==0,"native-first history must still enrol");
  for(int cause=0;cause<7;++cause){reset();switch(cause){case 0:objects[passenger].owner=2;break;case 1:objects[passenger].hp=0;break;case 2:objects[passenger].active=false;objects[passenger].carrier=0;break;case 3:objects[passenger].allowed=false;break;case 4:objects[passenger].carrier=0;break;case 5:objects[passenger].k=3;break;case 6:objects[passenger].carrier=0x30000;objects[0x30000]={30,1,0,44,2};break;}buildUnloadAdmissionRoster(1);smartUnloadNow(1,transport);check(unloadCount==0,"invalid passenger enrolled");}

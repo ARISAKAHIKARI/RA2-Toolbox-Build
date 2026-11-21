@@ -40,6 +40,7 @@ struct Control {
     std::string type, label, text, group, hint, presentation;
     bool enabled = true, visible = true, readonly = false, checked = false;
     bool runtimeError = false, groupHeader = false, collapsible = false, collapsedDefault = false, immediate = false;
+    int nativeId = 0; // Presentation metadata only; actions use id.
     int selected = -1, min = 0, max = 100, step = 1, row = 0, column = 0;
     std::vector<std::string> options;
     DebugEntry debug;
@@ -83,6 +84,7 @@ struct ShellCommand {
     MessageKind kind = MessageKind::Ready;
     unsigned module = 0;
     int category = 0;
+    int pageIndex = -1;
     bool enabled = false;
     std::uint64_t seq = 0;
     unsigned width = 0, height = 0;
@@ -358,13 +360,19 @@ public:
                 if (!allowed({"kind","protocol","seq"})) return false;
                 s.kind = parsed.kind = MessageKind::ConfigRetry;
             } else if (kind->text == "navigate") {
-                if (!allowed({"kind","protocol","module","category","seq","width","height"})) return false;
+                if (!allowed({"kind","protocol","module","category","pageIndex","seq","width","height"})) return false;
                 s.kind = parsed.kind = MessageKind::Navigate;
                 if (!integer("module", 0, 2, n)) return false;
                 s.module = static_cast<unsigned>(n);
                 if (!integer("category", 0, 5, n)) return false;
                 s.category = static_cast<int>(n);
                 if (s.category == 5 && s.module != 2) return fail("Debug category requires tactical module");
+                if (field("pageIndex")) {
+                    if (!integer("pageIndex", 0, 9, n)) return false;
+                    s.pageIndex = static_cast<int>(n);
+                    if ((s.module == 0 && s.pageIndex > 1) || (s.module == 1 && s.pageIndex != 2 && s.pageIndex != 9) ||
+                        (s.module == 2 && (s.category < 1 || (s.pageIndex != s.category + 2 && !(s.pageIndex == 8 && s.category == 2))))) return fail("Page index and module disagree");
+                }
                 n = 0; if (!integer("width", 320, 16384, n, false)) return false; s.width = static_cast<unsigned>(n);
                 n = 0; if (!integer("height", 200, 16384, n, false)) return false; s.height = static_cast<unsigned>(n);
             } else if (kind->text == "module") {
@@ -408,7 +416,7 @@ inline std::string encodeSnapshot(const Snapshot& s) {
     for (const auto& c : s.controls) {
         if (!first) out.push_back(',');
         first = false;
-        out += "{\"id\":" + std::to_string(c.id) + ",\"type\":" + detail::quote(c.type) +
+        out += "{\"id\":" + std::to_string(c.id) + ",\"nativeId\":" + std::to_string(c.nativeId) + ",\"type\":" + detail::quote(c.type) +
             ",\"label\":" + detail::quote(c.label) + ",\"text\":" + detail::quote(c.text) +
             ",\"group\":" + detail::quote(c.group) + ",\"hint\":" + detail::quote(c.hint) +
             ",\"presentation\":" + detail::quote(c.presentation) +

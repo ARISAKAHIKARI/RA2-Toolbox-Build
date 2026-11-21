@@ -10,6 +10,7 @@ namespace buildreserve {
 struct Choice {int slot=0,index=0,tab=0;uint32_t type=0;bool future=false;};
 static construction::Book books[4];static std::vector<Choice> choices;static HWND window;
 static uint32_t current[4],currentID[4],lastPID=0,house,refreshed=0,nextToken=0;static int choicesTab=-1;
+static uint32_t productionMatch=0,productionHouse=0;
 static uint32_t choicesMatch=0,choicesHouse=0;static bool choicesIncomplete=false;
 static int nativeSidebarCount[4]={-1,-1,-1,-1};
 static int activeTab=-1,selectedTab=-1,lastNativeTab=-1,scroll=0,hoverChoice=-1,hoverQueue=-1;static um::IconCache& icons=um::sharedIconCache();static construction::Layout layout;
@@ -55,13 +56,45 @@ static bool unitRoom(int lane){
 }
 static uint32_t factory(int tab){return get<uint32_t>(house+(tab?0x53CC:0x53BC));}
 static uint32_t product(int tab){uint32_t f=factory(tab);return f>=0x10000&&get<uint32_t>(f+0x6C)==house?get<uint32_t>(f+0x58):0;}
-static bool nativeCameo(int index,int tab){uint32_t strip=0x87F7E8+0x1544+tab*3988;int n=get<int>(strip+84,-1);if(n<0||n>75)return false;for(int i=0;i<n;++i)if(get<int>(strip+88+i*52)==typeIndex(index)&&get<int>(strip+92+i*52)==absKind(index))return true;return false;}
+static bool readNativeCameo(int index,int tab,bool&present){
+ const uint32_t strip=0x87F7E8+0x1544+tab*3988;
+ int count=-1,cameos[75*13]{};
+ if(!externalReader.readFresh(strip+84,&count,4)||count<0||count>75||
+    (count&&!externalReader.readFresh(strip+88,cameos,size_t(count)*52)))return false;
+ present=false;
+ for(int i=0;i<count;++i)if(cameos[i*13]==typeIndex(index)&&cameos[i*13+1]==absKind(index)){present=true;break;}
+ return true;
+}
+static bool nativeCameo(int index,int tab){bool present=false;return readNativeCameo(index,tab,present)&&present;}
 static bool factoryState(int tab,uint32_t&f,uint32_t&p){
  f=p=0;if(!externalReader.readFresh(house+(tab?0x53CC:0x53BC),&f,4))return false;if(!f)return true;
  if(f<0x10000)return false;uint32_t owner=0;
  uint32_t after=0,productAfter=0;
  return externalReader.readFresh(f+0x6C,&owner,4)&&owner==house&&externalReader.readFresh(f+0x58,&p,4)&&
   externalReader.readFresh(house+(tab?0x53CC:0x53BC),&after,4)&&after==f&&externalReader.readFresh(f+0x58,&productAfter,4)&&productAfter==p;
+}
+static void observeProductionDisplay(){
+ const uint32_t match=commandMatch();
+ if(productionMatch!=match||productionHouse!=house){
+  current[0]=current[1]=currentID[0]=currentID[1]=0;
+  productionMatch=match;productionHouse=house;
+ }
+ externalReader.setWorldDemand(worldframe::Resources);
+ external::WorldFrameScope source(externalReader,match);
+ if(!source||externalReader.worldFrameToken()->key.house!=house)return;
+ const auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};
+ uint32_t products[2]{},identities[2]{};
+ for(int tab=0;tab<2;++tab){
+  uint32_t f=0,owner=0;
+  if(!read(house+(tab?0x53CC:0x53BC),&f,4))return;
+  if(!f)continue;
+  if(f<0x10000||!read(f+0x6C,&owner,4)||owner!=house||!read(f+0x58,&products[tab],4))return;
+  const uint32_t p=products[tab];
+  if(p&&(p<0x10000||!read(p+0x10,&identities[tab],4)||!identities[tab]))return;
+ }
+ if(!source.complete())return;
+ std::copy_n(products,2,current);
+ std::copy_n(identities,2,currentID);
 }
 static void queueLog(int tab,const wchar_t*reason){const auto&b=books[tab];critical(L"Construction queue: "+std::wstring(reason)+L" tab="+std::to_wstring(tab)+L" match="+std::to_wstring(b.match)+L" parent="+std::to_wstring(b.id)+L" stage="+std::to_wstring(b.stage)+L" head="+std::to_wstring(b.head())+L" count="+std::to_wstring(b.items.size()));}
 static bool placed(uint32_t p){return !get<uint8_t>(p+0x81,1)&&get<uint8_t>(p+0x90)&&get<uint8_t>(p+0x74);}
@@ -91,7 +124,7 @@ static void result(int status,int count,uint32_t id,uint32_t token){for(int tab=
 }}
 template<class C>static bool loadForecast(C&catalogue){
  std::vector<int> building;
- for(int tab=0;tab<2;++tab){uint32_t p=current[tab];if(p&&!placed(p)){int i=get<int>(get<uint32_t>(p+0x520)+0xDF8,-1);if(i>=0)building.push_back(i);}}
+ for(int tab=0;tab<2;++tab){uint32_t p=product(tab);if(p&&!placed(p)){int i=get<int>(get<uint32_t>(p+0x520)+0xDF8,-1);if(i>=0)building.push_back(i);}}
  if(!catalogue.load(house,building))return false;
  // FIFO prerequisites may cross building/defense tabs; only extend reachable
  // chains. Never count a blocked reservation as its own prerequisite.
@@ -134,7 +167,7 @@ static void collectChoices(){
  auto previous=std::move(choices);choices.clear();
  construction::Catalogue<decltype(read)> catalogue(read,true);
  bool forecastAttempted=false,previewReady=false;auto&b=books[activeTab];
- const bool busyBuilding=activeTab<2&&current[activeTab]&&get<int>(factory(activeTab)+0x24)==54;
+ const bool busyBuilding=activeTab<2&&product(activeTab)&&get<int>(factory(activeTab)+0x24)==54;
  for(int slot=0;slot<snap.typeCount;++slot){const auto&t=snap.types[slot];
   if((activeTab<2&&t.kind!=7)||(activeTab==2&&t.kind!=16)||(activeTab==3&&t.kind!=3&&t.kind!=40))continue;
   int index=encode(t.kind,t.index);uint32_t type=typePointer(index);if(type<0x10000)continue;
@@ -241,30 +274,38 @@ static std::vector<construction::NativeBadge> nativeBadges(){
 }
 static void validatePendingForecast(uint32_t now){
  if(!usable())return;
- std::array<bool,4> pending{},possible{};
+ std::array<bool,4> pending{},possible{},needsForecast{};
  for(int tab=0;tab<4;++tab){
   auto&b=books[tab];if(b.items.empty()||b.stage||b.source)continue;
-  if(nativeCameo(b.head(),tab)){b.missing=0;continue;}
   pending[tab]=true;
  }
  if(std::none_of(pending.begin(),pending.end(),[](bool item){return item;}))return;
  externalReader.setWorldDemand(worldframe::Resources);
  external::WorldFrameScope source(externalReader,commandMatch());if(!source)return;
  if(externalReader.worldFrameToken()->key.house!=house)return;
+ const uint32_t observedAt=externalReader.worldFrameToken()->key.tick;
+ if(uint32_t(now-observedAt)>500)return;
  auto read=[](uint32_t at,void*out,size_t n){return externalReader.readFresh(at,out,n);};
- construction::Catalogue<decltype(read)> forecast(read,true);
- if(!loadForecast(forecast))return;
  for(int tab=0;tab<4;++tab)if(pending[tab]){
-  const int head=books[tab].head(),slot=typeSlot(head);const uint32_t type=typePointer(head);
-  possible[tab]=slot>=0&&(nativeCameo(head,tab)||(type>=0x10000&&
-   forecast.possible(type,absKind(head),get<uint8_t>(type+0xCCE)!=0,true,technologyRequested(head,slot))));
+  if(!readNativeCameo(books[tab].head(),tab,possible[tab]))return;
+  needsForecast[tab]=!possible[tab];
  }
  if(!source.complete())return;
- for(int tab=0;tab<4;++tab)if(pending[tab]){
+ for(int tab=0;tab<4;++tab)if(possible[tab])books[tab].missing=0;
+ if(std::none_of(needsForecast.begin(),needsForecast.end(),[](bool item){return item;}))return;
+ construction::Catalogue<decltype(read)> forecast(read,true);
+ if(!loadForecast(forecast))return;
+ for(int tab=0;tab<4;++tab)if(needsForecast[tab]){
+  const int head=books[tab].head(),slot=typeSlot(head);const uint32_t type=typePointer(head);
+  possible[tab]=slot>=0&&type>=0x10000&&
+   forecast.possible(type,absKind(head),get<uint8_t>(type+0xCCE)!=0,true,technologyRequested(head,slot));
+ }
+ if(!source.complete())return;
+ for(int tab=0;tab<4;++tab)if(needsForecast[tab]){
   auto&b=books[tab];
   if(possible[tab])b.missing=0;
-  else if(!b.missing)b.missing=now;
-  else if(uint32_t(now-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
+  else if(!b.missing)b.missing=observedAt;
+  else if(int32_t(observedAt-b.missing)>=500){queueLog(tab,L"future-prerequisite-canceled");cancel(tab);notify(L"前置科技已取消或失效，对应预定已取消。");}
  }
 }
 static external::ReadSession paintReader;static external::cameraassets::Context<external::ReadSession> paintAssets(paintReader);
@@ -469,19 +510,18 @@ static void service(){
  if(!constructionDisplayFresh()||snap.renderStatus!=1){publishReservationPolicy({});return;}
  house=get<uint32_t>(0xA83D4C);if(house<0x10000){hide();return;}
  if(lastPID!=pid){reset();lastPID=pid;wchar_t image[32768]{};DWORD length=32768;if(externalReader.imagePath(image,&length))icons.open(image,std::filesystem::path(root)/L"cache"/L"icons");}
+ observeProductionDisplay();
  for(int tab=0;tab<4;++tab){auto&b=books[tab];
   if(!b.items.empty()&&(b.match!=commandMatch()||b.house!=house)){queueLog(tab,L"match-or-owner-changed");cancel(tab);}
-  uint32_t f=0,p=0;
-  if(tab<2){if(!factoryState(tab,f,p))continue;}
-  else if(!b.items.empty()){f=get<uint32_t>(house+factoryOffset(b.head(),tab));if(f>=0x10000&&get<uint32_t>(f+0x6C)==house)p=get<uint32_t>(f+0x58);}
-
-  uint32_t identity=0;if(p&&!externalReader.readFresh(p+0x10,&identity,4))continue;
-  current[tab]=p;currentID[tab]=identity;
   // Display follows read-only state. Command suspension closes input policy
   // and freezes submission/timeout handling without hiding the existing FIFO.
   if(b.items.empty()||!usable())continue;
-  if(tab<2&&current[tab]&&currentID[tab]!=b.id){int made=get<int>(get<uint32_t>(current[tab]+0x520)+0xDF8,-1);
-   if(b.stage==2&&made==b.head()){b.consume(current[tab],currentID[tab]);if(b.items.empty())cancel(tab);continue;}
+  // Recheck the live factory only when the queue can advance. The sampled
+  // display observation never authorizes a submission or cancellation.
+  uint32_t f=0,p=0,identity=0;
+  if(tab<2&&(!factoryState(tab,f,p)||(p&&!externalReader.readFresh(p+0x10,&identity,4))))continue;
+  if(tab<2&&p&&identity!=b.id){int made=get<int>(get<uint32_t>(p+0x520)+0xDF8,-1);
+   if(b.stage==2&&made==b.head()){b.consume(p,identity);if(b.items.empty())cancel(tab);continue;}
    if(b.stage!=1&&b.source){queueLog(tab,L"native-product-replaced");cancel(tab);notify(L"原生新生产已接管，后续预定已取消。");continue;}
   }
   if(b.stage==2){if(uint32_t(now-b.sent)>5000){queueLog(tab,L"acceptance-observation-timeout");cancel(tab);notify(L"预定已提交但尚未观察到生产，已停止跟踪，避免重复下单。");}continue;}
@@ -489,7 +529,7 @@ static void service(){
   if(!b.source){
    if(int32_t(now-b.retry)<0)continue;
    if(!nativeCameo(b.head(),tab)){b.streaming=false;continue;}
-   if(tab<2){if(current[tab]||!b.afterPlacement(get<int>(0xA8ED84,-1),true))continue;}
+   if(tab<2){if(p||!b.afterPlacement(get<int>(0xA8ED84,-1),true))continue;}
    else{b.unitLane=unitLane(b.head());if(!unitRoom(b.unitLane)){
     if(b.unitLane<0||unitBudgets[b.unitLane].observed+unitBudgets[b.unitLane].pending>=construction::UnitCapacity)b.streaming=false;
     continue;
@@ -506,12 +546,12 @@ static void service(){
   if(sourceID!=b.id||owner!=house){queueLog(tab,L"parent-identity-changed");cancel(tab);continue;}
   // Factory products are in limbo, not live map objects. Do not cancel a
   // future prerequisite reservation because IsAlive/Health is not yet live.
-  const bool inFactory=current[tab]==b.source&&currentID[tab]==b.id;
+  const bool inFactory=p==b.source&&identity==b.id;
   const bool onMap=!state[0x81]&&state[0x90]&&state[0x74]&&health>0;
   // A paused/completed product stays in its factory. Cancellation removes it.
   // Allow a short placement transition; never replay the canceled chain.
   if(!inFactory&&!onMap){if(!b.missing)b.missing=now;else if(uint32_t(now-b.missing)>=250){queueLog(tab,L"parent-canceled-or-lost");cancel(tab);notify(L"当前建筑已取消，后续预定已自动取消。");}continue;}b.missing=0;
-  if(!b.afterPlacement(get<int>(0xA8ED84,-1),onMap&&!current[tab]))continue;
+  if(!b.afterPlacement(get<int>(0xA8ED84,-1),onMap&&!p))continue;
   if(int32_t(now-b.retry)<0||!nativeCameo(b.head(),tab))continue;
   int slot=typeSlot(b.head());if(slot<0){queueLog(tab,L"type-removed");cancel(tab);continue;}
   if(!b.token){if(!++nextToken)++nextToken;b.token=nextToken;}

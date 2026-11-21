@@ -1286,7 +1286,8 @@ static int namedSuper(uint32_t house,int command){const char* id=command==Select
 #include "native_placement_bridge.h"
 #include "superweapon_sidebar_bridge.h"
 #include "superweapon_grant_bridge.h"
-static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==sh->ack||(pendingAckReady&&req==pendingAck)||(repairAckPending&&req==repairAckRequest)||(loadAckPending&&req==loadAckRequest)||(ownground::job.pending&&req==ownground::job.request))return;MemoryBarrier();int c=sh->command,arg=sh->arg;int result=1,n=0;
+static void command(uint32_t house,DWORD now,bool candidateOnly=false){uint32_t req=sh->request;if(req==sh->ack||(pendingAckReady&&req==pendingAck)||(repairAckPending&&req==repairAckRequest)||(loadAckPending&&req==loadAckRequest)||(ownground::job.pending&&req==ownground::job.request))return;MemoryBarrier();int c=sh->command,arg=sh->arg;int result=1,n=0;
+ if(candidateOnly&&c!=SmartUnload)return;
  if(sh->requestMatch!=match||DWORD(now-sh->requestTick)>3500){result=-7;}
  else if(c==AttackOwnGround&&DWORD(now-sh->requestTick)>150){result=-7;}
  else if((enhancementChangedCatalogue||sh->requestTypeHash)&&typeIndexedCommand(c,arg)&&sh->requestTypeHash!=typeListHash(snap.types,snap.typeCount)){result=-7;}
@@ -1304,7 +1305,7 @@ static void command(uint32_t house,DWORD now){uint32_t req=sh->request;if(req==s
  else if(c==SwitchPlayer||c==RestorePlayer){result=-4;n=0;} // unavailable in this release, including stale commands
  else if(c==SelectType){n=selectType(house,arg,sh->arg2!=0);if(n<0){result=n;n=0;}}
  else if(c==SelectVariant){n=selectVariant(house,sh->arg2!=0);if(n<0){result=n;n=0;}}
- else if(c==SmartUnload){int sent=smartUnload(house);if(sent<0)result=sent;else n=sent;}
+ else if(c==SmartUnload){int sent=smartUnload(house,candidateOnly);if(sent==-30)return;if(sent<0)result=sent;else n=sent;}
  else if(c==StickyGuard){n=stickyCommand(house);if(n<0){result=n;n=0;}}
  else if(c==AttackOwnGround){attackOwnGroundCommand(house,now,req);return;}
  else if(selectedmode::index(c)>=0){n=selectedModeCommand(house,selectedmode::mission(selectedmode::index(c)));if(n==-30)return;if(n<0){result=n;n=0;}}
@@ -1862,7 +1863,25 @@ static void tick(){
  // Only tick consumes feature requests; neither Hook callback can bypass
  // the shared game-thread intent/validation/event pipeline.
  if(!deferIndexedWork){superweaponGrantTick(house,frame,now);consumeSubmittedIntents(house,frame,now);}
- else uiSoundCommand(now);
+ else{
+  uiSoundCommand(now);
+  // Missing the exact frame at high FPS only delays work that needs a
+  // complete current view. An already proposed local attack can be proved
+  // against the two live objects, with the original manual revision.
+  if(eventdelivery::isSingleplayer(sessionMode)&&candidateRosterReady()){
+   command(house,now,true);
+   if(queuedUnload.count||unloadCount){
+    int budget=recurringBudget(EventLane::Unload);
+    smartUnloadAdmissionTick(house,frame,budget,true);smartUnloadTick(house,frame,budget,true);
+   }
+   if(loadLedger.count)autoLoadTick(house,frame,true);
+   if(sh->planRequest!=sh->planAck){
+    if(snap.nativeHookStatus!=1)nativeHooksTick(sh->flags);
+    externalOrdersTick(house,frame,now,true);
+   }
+   serviceCooperativePlan(house,frame,now,true,preciseNow);
+  }
+ }
  nativePlacementTick(now);
  if(playerContextChanged){playerContextChanged=false;snap.commandStatus=activation::HouseChanged;publishSnapshot(now);return;}
  QueryPerformanceCounter(&controlEnd);snap.controlMicros=micros(start,controlEnd,frequency);
@@ -1885,7 +1904,7 @@ static void tick(){
  const bool dodgeChanged=!deferIndexedWork&&dodgeControlTick(house,frame,now);
  resetBurstControl(); // Removed feature: old shared flags never produce commands.
  const bool burstChanged=false;
- captureCooperativeFrame(now,observationFrame,!deferIndexedWork);
+ captureCooperativeFrame(now,!deferIndexedWork);
  const bool planningChanged=publishPlanningWorld(house,frame,now,!deferIndexedWork);
  const bool minerDefenseChanged=!deferIndexedWork&&minerDefenseTick(house,frame,now);
  oreHarvestTick(house,frame,now,!deferIndexedWork);
@@ -1898,7 +1917,8 @@ static void tick(){
  // Render cadence is independent of world scans. Scan at most about 60 Hz;
  // unchanged frames reuse their scene, and camera-only changes shift it.
  static uint32_t selectedStamp;bool selectionChanged=false;
- if(!deferIndexedWork){
+ // Host overlays already track selection on their own input path.
+ if(!sh->externalDisplay&&!deferIndexedWork){
   uint32_t stamp=2166136261u;Vec selected=vec(0xA8ECB8);for(int i=0;i<selected.count;++i)stamp=(stamp^item(selected,i))*16777619u;
   selectionChanged=stamp!=selectedStamp;selectedStamp=stamp;
  }

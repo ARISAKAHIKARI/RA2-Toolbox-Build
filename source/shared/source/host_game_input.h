@@ -10,6 +10,7 @@
 #include "frame_signal_client.h"
 #include "message_query.h"
 #include "input_transport_recovery.h"
+#include "sampling_cadence.h"
 #include "../../external_reader/source/shared_reader.h"
 #ifdef _WIN64
 #include "runtime_broker_client.h"
@@ -32,7 +33,7 @@ struct Health {
 inline bool heldBinding(uint32_t binding);
 struct PointerPress {DWORD tick=0,serial=0;uint32_t match=0,viewportGeneration=0;int operation=0;POINT point{};int width=0,height=0;uint8_t keys[256]{};};
 struct PointerQueue {PointerPress items[128]{};unsigned head=0,count=0;DWORD dropped=0,cancelSerial=0;bool enabled=false,focused=false,rightArmed=false,leftArmed=false,rightDragged=false;POINT rightOrigin{};uint32_t match=0,viewportGeneration=0;DWORD contextAt=0;uint32_t down=0;uint8_t rightKeys[256]{},leftKeys[256]{};};
-struct Target {inputtransport::Recovery recovery;bool repairTransport=false;keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr,process=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false,frameSampling=false,diagnosticFrame=false;std::shared_ptr<framesignal::Client> frameSignal;
+struct Target {inputtransport::Recovery recovery;bool repairTransport=false;keygesture::Tracker keys;PointerQueue pointer{};Health lastDiagnostic{};DWORD pid=0,thread=0;HWND window=nullptr;HHOOK message=nullptr,post=nullptr;HANDLE mapping=nullptr,process=nullptr;runtime::Control*control=nullptr;uint64_t cursorAt=0,tacticalAt=0;DWORD lastPost=0,lastPostError=0;bool fastTactical=false,frameSampling=false,diagnosticFrame=false,fastLocalSampling=false;std::shared_ptr<framesignal::Client> frameSignal;
 #ifdef _WIN64
  uint32_t brokerToken=0,brokerGeneration=0;DWORD brokerRetry=0;uint64_t brokerIntent=0;bool brokerPending=false;
 #endif
@@ -223,24 +224,28 @@ inline bool takePointer(Subscription id,PointerPress&out,DWORD&dropped){
  for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&q=h.targets[l.target].pointer;dropped=q.dropped;q.dropped=0;if(!q.count)return false;out=q.items[q.head];q.head=(q.head+1)%128;--q.count;return true;}return false;
 }
 inline void updateTimer(){
- auto&h=host();bool fast=false,active=false;
- for(auto&t:h.targets)if(t.pid){active=true;if(t.fastTactical&&t.pointer.enabled&&t.pointer.focused)fast=true;}
+ auto&h=host();bool fast=false,active=false,fastLocal=false;
+ for(auto&t:h.targets)if(t.pid){active=true;if(t.fastTactical&&t.pointer.enabled&&t.pointer.focused)fast=true;if(t.fastLocalSampling)fastLocal=true;}
  // Retained failed-unhook/broker cleanup targets keep the active cadence.
  // Only an empty manager keeps a 1 s housekeeping cadence; attach resumes
  // before its first post. Keep the queue timer periodic so it is rearmable.
- const DWORD period=active?(fast?1:4):1000;
- if(!h.timer||(fast==h.preciseTimer&&period==h.timerPeriod))return;
- const bool acquired=fast&&!h.preciseTimer;
+ const DWORD period=active?(fast?1:fastLocal?samplingcadence::FastLocalPulseMs:samplingcadence::NormalPulseMs):1000;
+ const bool precise=fast||fastLocal;
+ if(!h.timer||(precise==h.preciseTimer&&period==h.timerPeriod))return;
+ const bool acquired=precise&&!h.preciseTimer;
  if(acquired&&timeBeginPeriod(1)!=TIMERR_NOERROR)return;
  if(!ChangeTimerQueueTimer(nullptr,h.timer,period,period)){if(acquired)timeEndPeriod(1);return;}
- if(!fast&&h.preciseTimer)timeEndPeriod(1);h.preciseTimer=fast;h.timerPeriod=period;
+ if(!precise&&h.preciseTimer)timeEndPeriod(1);h.preciseTimer=precise;h.timerPeriod=period;
 }
 inline void setFastTactical(Subscription id,bool enabled){
  auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);
  for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){h.targets[l.target].fastTactical=enabled;updateTimer();return;}
 }
 inline bool nativeFrameSampling(Subscription id){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id){auto&t=h.targets[l.target];framesignal::Stamp stamp;if(t.frameSignal&&t.frameSignal->current(stamp)&&stamp.state==framesignal::Native&&stamp.serial>0&&stamp.frequency>0){LARGE_INTEGER q{};QueryPerformanceCounter(&q);return double(q.QuadPart-stamp.qpc)*1000./stamp.frequency<100.;}}return false;}
-inline void setFrameSampling(Subscription id,bool enabled,bool diagnostic=false){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&t=h.targets[l.target];if(!enabled||t.diagnosticFrame!=diagnostic)t.frameSignal.reset();t.frameSampling=enabled;t.diagnosticFrame=enabled&&diagnostic;return;}}
+inline void setFrameSampling(Subscription id,bool enabled,bool diagnostic=false,bool fastLocal=false){auto&h=host();std::lock_guard<std::recursive_mutex>lock(h.mutex);for(auto&l:h.leases)if(id&&l.id==id&&l.client==gameentry::Client::Assist){auto&t=h.targets[l.target];if(!enabled||t.diagnosticFrame!=diagnostic)t.frameSignal.reset();t.frameSampling=enabled;t.diagnosticFrame=enabled&&diagnostic;
+ const bool faster=enabled&&!diagnostic&&fastLocal;
+ if(t.fastLocalSampling!=faster){t.fastLocalSampling=faster;updateTimer();}
+ return;}}
 inline bool serviceTransportRepair(Target&t,uint32_t enabled,DWORD now){
 #ifdef _WIN64
  if(!t.repairTransport)return false;
@@ -299,7 +304,7 @@ inline void CALLBACK pulse(void*,BOOLEAN){
   t.control->heartbeat=now;
   if(enabled&runtime::Tactical)pollPointer(t,now);
   uint32_t ready=0;if((enabled&runtime::Cursor)&&precise-t.cursorAt>=4000){t.cursorAt=precise;ready|=runtime::Cursor;}
-  const uint64_t tacticalPeriod=nativeFrames?100000:t.frameSampling?4000:t.fastTactical&&t.pointer.enabled&&t.pointer.focused?1000:16000;
+  const uint64_t tacticalPeriod=nativeFrames?100000:t.frameSampling?1000*(t.fastLocalSampling?samplingcadence::FastLocalPulseMs:samplingcadence::NormalPulseMs):t.fastTactical&&t.pointer.enabled&&t.pointer.focused?1000:16000;
   if((enabled&runtime::Tactical)&&precise-t.tacticalAt>=tacticalPeriod){t.tacticalAt=precise;ready|=runtime::Tactical;}
   if(ready)post(t,ready);
  }

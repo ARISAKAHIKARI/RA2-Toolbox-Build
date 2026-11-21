@@ -13,7 +13,7 @@ parser.add_argument('--out', type=Path, required=True)
 a = parser.parse_args()
 a.out.mkdir(parents=True, exist_ok=True)
 text = source.read_text()
-signature = 'static void smartUnloadTick(uint32_t house,int frame,int&budget){'
+signature = 'static void smartUnloadTick('
 start = text.index(signature)
 at = text.index('{', start)
 end, depth = at + 1, 1

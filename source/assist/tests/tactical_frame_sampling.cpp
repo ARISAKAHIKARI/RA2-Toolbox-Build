@@ -64,7 +64,8 @@ static worldframe::CommandRoster worldFrameCommandRoster;
 // and are never treated as current command authority.
 static worldframe::CommandRoster worldFrameCandidateRoster;
 static uint32_t worldFrameCandidateVersion=0;
-static bool candidateRosterReady(){return false;}
+static bool candidateReadyForCooperative=false;
+static bool candidateRosterReady(){return candidateReadyForCooperative;}
 static bool verifyCandidateID(uint32_t,uint32_t){return false;}
 static bool verifyCandidatePointer(uint32_t){return false;}
 static bool commandRosterReady(){
@@ -140,6 +141,23 @@ static bool loadInterfaces(){assert(!sampleReadDepth);return interfacesReady;}
 enum class EventLane {Boarding};
 static int recurringBudget(EventLane){return 4;}
 static bool outgoingRoom(){return true;}
+static int planningRoom(int){return 64;}
+static bool nativeReady(){return true;}
+static int cooperativeSubmitted=0;
+static uint32_t cooperativeUnreadable=0;
+static int admitCooperative(const cooperative::Assignment&o,int,uint32_t house,int,DWORD now,const executionproof::Ticket*proof){
+ assert(!sampleReadDepth&&proof&&proof->actor.id==o.id&&proof->target.id==o.target);
+ if(o.id==cooperativeUnreadable)return -2;
+ const auto result=executionproof::verify(*proof,{match,house,now},
+   [](uint32_t id){return worldByID(id);},
+   [](uint32_t id){return manualVersions.get(id);},
+   [](uint32_t p,uint32_t h){return get<uint32_t>(p+0x21C)==h;});
+ if(result!=executionproof::Failure::None)return -1;
+ ++cooperativeSubmitted;return 1;
+}
+static bool pendingAckReady=false;
+static uint32_t pendingAck=0;
+static int loadingSubmitResult=1;
 static bool enterEvent(uint32_t,uint32_t,uint32_t,const executionproof::Ticket&,uint32_t*ticket){++loadingResends;if(ticket)*ticket=1234;return true;}
 static loading::Ledger<> loadLedger;
 static repairdelivery::Pending<> pendingRepairs;
@@ -148,6 +166,7 @@ static uint32_t repairIDs[8192],repairTaskSeen;static int repairCount,repairAt,r
 static bool repairCalculationPending;static DWORD repairCalculationStarted;
 static void finishLoadingReservation(const loading::Reservation&,uint32_t,int,bool boarded){assert(!sampleReadDepth);++loadingFinished;if(boarded)++loadingBoarded;}
 static int submitLoading(uint32_t,const loading::Infantry*soldiers,int ns,const loading::Vehicle*vehicles,int nv,const int*assignment,const uint32_t*tokens){
+ if(loadingSubmitResult==-30)return -30;
  assert(!sampleReadDepth);++submissions;assignments.clear();
  for(int n=0;n<ns;++n){const int target=assignment[n];if(target>=0&&target<nv&&worldByID(soldiers[n].id)==soldiers[n].object&&manualVersions.get(soldiers[n].id)==tokens[n])assignments.emplace_back(soldiers[n].id,vehicles[target].id);}
  return 1;
@@ -213,18 +232,76 @@ static void testCooperative(){
  cooperative::Input input;check(collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets.size()==1,"cooperative complete capture");
  set<int>(p+0x6C,0);std::memcpy(memory.data()+bt+0x24,"LIVE",5);check(collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets[0].quota.first==7,"cooperative shares frozen objects and quota type bytes");check(liveReads==0,"cooperative pure converter made a live read");
  set<int>(p+0x6C,100);advance(bt);check(!collectCooperativeInput(request,quotas,input)&&input.units.size()==1&&input.targets[0].quota.first==7,"cooperative missing page must preserve input");check(!missingLiveReads,"cooperative missing page fell back live");
- seal();request.tick=clockNow;sh->cooperativeRequest=request;sh->quotaConfig=quotas;
+ std::memcpy(memory.data()+bt+0x24,"TEST",5);seal();
+ request.tick=clockNow;sh->cooperativeRequest=request;sh->quotaConfig=quotas;
  worldFrameCandidate.swap(worldFrame);worldFrameCandidateAvailable=true;worldFrameReady=false;
  ++snap.frame;clockNow+=16;set<int>(0xA8ED84,snap.frame);
- captureCooperativeFrame(clockNow,true,false);
+ captureCooperativeFrame(clockNow,false);
  auto&frame=sh->cooperativeInputFrame;
  check(frame.request.serial==request.serial&&frame.frame==snap.frame-1&&frame.tick==request.tick,
        "cooperative candidate lost its source age during publication");
- seal();sh->cooperativeFrameWanted=request.serial;
- captureCooperativeFrame(clockNow,false,true);
+ sh->cooperativeFrameWanted=request.serial;
+ const auto readsAfterPublication=readRequests;
+ for(int i=0;i<12;++i){
+  ++snap.frame;++clockNow;set<int>(0xA8ED84,snap.frame);
+  captureCooperativeFrame(clockNow,false);
+ }
+ check(readRequests==readsAfterPublication&&frame.frame==snap.frame-13&&frame.tick==request.tick,
+       "unsampled game frames rebuilt or retimestamped the cooperative graph");
+ sh->quotaConfig.entries[0].quota.first=9;sh->quotaConfigSeq+=2;
+ captureCooperativeFrame(clockNow,false);
+ check(frame.targets[0].quota.first==9&&frame.tick==request.tick,
+       "revised quota did not update the graph from the same sealed observation");
+ ++snap.frame;++clockNow;set<int>(0xA8ED84,snap.frame);seal();
+ const int secondSample=snap.frame;const DWORD secondTick=clockNow;
+ worldFrameCandidate.swap(worldFrame);worldFrameReady=false;
+ snap.frame+=9;clockNow+=10;set<int>(0xA8ED84,snap.frame);
+ captureCooperativeFrame(clockNow,false);
+ check(frame.frame==secondSample&&frame.tick==secondTick,
+       "a newer delayed observation could not advance cooperative input");
+ seal();
+ captureCooperativeFrame(clockNow,true);
  check(frame.frame==snap.frame&&frame.tick==clockNow,
        "same-frame strict capture could not replace the pending cooperative observation");
+ cooperative::CapturedIdentities identities;
+ check(collectCooperativeInput(request,quotas,input,nullptr,&identities)&&
+       identities.house==lastHouse&&identities.actors.front().pointer==p&&identities.targets.front().pointer==target,
+       "capture identities did not come from the same sealed graph as the assignments");
  std::puts("PASS cooperative sealed fields, quota bytes and missing-frame retention");
+}
+static void testDelayedAircraftPlan(){
+ reset();cooperativeCaptures={};cooperativePlanSeen=cooperativeAt=0;cooperativeCandidateAt=0;cooperativeSubmitted=0;
+ uint32_t type=makeType(),target=object(type,2,30,0x30000);
+ cooperative::CapturedIdentities identities;
+ identities.stamp={1,match,clockNow,snap.frame};identities.house=lastHouse;
+ identities.targets.push_back({30,target});
+ for(uint32_t id=16;id>=10;--id){uint32_t p=object(type,0,id);identities.actors.push_back({id,p,0});}
+ cooperativeCaptures.keep(std::move(identities));
+ sh->flags=AircraftSpread;sh->cooperativeRequest.serial=1;sh->cooperativeRequest.match=match;sh->cooperativeRequest.tick=clockNow;
+ sh->cooperativeRequest.mode=sh->cooperativeMode=cooperative::AirDamage;
+ sh->cooperativeSerial=1;sh->cooperativeMatch=match;sh->cooperativeFrame=snap.frame;sh->cooperativeTick=clockNow;
+ sh->cooperativeCount=7;for(int i=0;i<7;++i)sh->cooperativeOrders[i]={uint32_t(10+i),0,30,type,20};
+ sh->cooperativePlan=1;candidateReadyForCooperative=true;
+ snap.frame+=24;clockNow+=30;set<int>(0xA8ED84,snap.frame);
+ const uint64_t start=uint64_t(clockNow)*1000;
+ serviceCooperativePlan(lastHouse,snap.frame,clockNow,true,start);
+ serviceCooperativePlan(lastHouse,snap.frame,clockNow,true,start);
+ serviceCooperativePlan(lastHouse,snap.frame,clockNow,true,start+3999);
+ check(cooperativeSubmitted==4&&sh->cooperativeProcessed==4&&!sh->cooperativeAck,
+       "cross-frame plan exceeded its budget or acknowledged before completion");
+ manualVersions.change(14);
+ cooperativeUnreadable=15;worldFrameCandidate.key.frame=snap.frame;
+ clockNow+=4;
+ serviceCooperativePlan(lastHouse,snap.frame,clockNow,true,start+4000);
+ check(cooperativeSubmitted==4&&sh->cooperativeAcceptedBits[0]==15&&sh->cooperativeProcessed==5&&
+       sh->cooperativeResult==-7&&sh->cooperativeAck==1,
+       "same-frame continuation stalled or lost the committed prefix or the retry suffix");
+ sh->cooperativePlan=2;sh->cooperativeMode=cooperative::Enter;
+ ++snap.frame;set<int>(0xA8ED84,snap.frame);
+ serviceCooperativePlan(lastHouse,snap.frame,clockNow,true,start+8000);
+ check(sh->cooperativeAck==1,"capacity-dependent boarding used an aircraft-only candidate");
+ cooperativeUnreadable=0;candidateReadyForCooperative=false;
+ std::puts("PASS delayed aircraft admission uses frozen identity, preserves the retry suffix and drains in bounded 4ms passes within one game frame");
 }
 static void setupLoad(int variant){
  reset();sh->computeApplied=compute::All;sh->loadMode=variant%2;sh->loadRadius=30;
@@ -247,6 +324,17 @@ static void testLoad(){
  check(autoLoad(lastHouse)==-30&&loadCaptureWaiting&&!submissions,"load combined a new click identity with old sealed facts");
  advance();check(autoLoad(lastHouse,&cohort)==1&&submissions==1&&!assignments.empty()&&assignments[0].first==replacement,"load replacement identity did not retry on its own frame");
  setupLoad(0);leaseAllowed=false;const auto beforeQueries=nativeCalls;check(autoLoad(lastHouse)==-12&&nativeCalls==beforeQueries&&!submissions,"load queried native engine without a lease");leaseAllowed=true;
+ setupLoad(0);sh->computeApplied=0;
+ check(autoLoad(lastHouse)==-30&&loadCalculationPending,"load did not stage the external calculation");
+ static loading::Workspace workspace;
+ sh->loadResult=compute::load(sh->loadInput,workspace);sh->loadComputed=sh->loadTask;
+ loadAckPending=true;loadAckRequest=19;pendingAckReady=false;loadingSubmitResult=-30;
+ loadingCalculationTick(lastHouse,clockNow);
+ check(loadCalculationPending&&loadAckPending&&!pendingAckReady&&loadTaskSeen!=sh->loadComputed,
+       "load consumed a result before capacity pages were complete");
+ loadingSubmitResult=1;advance();loadingCalculationTick(lastHouse,clockNow);
+ check(!loadCalculationPending&&pendingAckReady&&pendingAck==19&&submissions==1,
+       "load did not resume the same result after capacity pages became available");
  std::puts("PASS 32 load assignment variants, shared roster, native matrix boundary and frozen-cohort retry");
 }
 static void testBoardingLedgerUnknown(){
@@ -553,5 +641,5 @@ static void testDefenseIndex(){
  std::puts("PASS harvester-defense shared refinery/radio index, missing retention and frame identity");
 }
 #ifndef TACTICAL_FRAME_NO_MAIN
-int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
+int main(int argc,char**){sh=new Shared{};if(argc>1){testIdentitySampleFailure();return 0;}testCooperative();testDelayedAircraftPlan();testLoad();testBoardingLedgerUnknown();testDodge();testDodgeLeaseMissing();testReverse();testMissile();testCapturedRosterIndex();testIdentitySampleFailure();testMissionReceiptIncomplete();testLeasesNeedCompleteIdentityNotSecondLiveRead();testUnload();testPlanning();testRepair();testOre();testDelayedPlanning();testDefenseIndex();check(!sampleReadDepth,"final scope leaked");delete sh;std::puts("PASS all tactical sampling production-path checks (synthetic CPU fixture)");}
 #endif

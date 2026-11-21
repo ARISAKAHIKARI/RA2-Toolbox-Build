@@ -125,6 +125,20 @@ int main(){
  preciseOverride=uint64_t(clockMs)*1000+1000;block.wakePending=0;block.ready=0;pulse(nullptr,0);assert(block.ready==runtime::Tactical); // coarse GetTickCount unchanged
  preciseOverride=0;
  setFastTactical(a,false);assert(timerBalance==0&&timerPeriod==4);block.wakePending=0;block.ready=0;clockMs+=4;pulse(nullptr,0);assert(block.ready==2);
+ samplingcadence::LocalRate rate;
+ assert(!rate.update(true,1,0,1000));
+ assert(!rate.update(true,1,15,1250)); // 60 FPS
+ assert(rate.update(true,1,215,1500)); // 800 FPS
+ assert(rate.update(true,1,245,1750)); // 120 FPS holds the faster cadence
+ assert(!rate.update(true,1,269,2000)); // 96 FPS restores the normal cadence
+ assert(rate.update(true,1,469,2250));
+ assert(!rate.update(true,2,0,2251)); // new match cannot inherit turbo
+ assert(rate.update(true,2,200,2501));
+ assert(!rate.update(false,2,200,2502)); // inactive/remote immediately drops it
+ setFrameSampling(a,true,false,true);assert(timerBalance==1&&timerPeriod==2);
+ block.wakePending=0;block.ready=0;clockMs+=16;pulse(nullptr,0);assert(block.ready==3);
+ block.wakePending=0;block.ready=0;clockMs+=2;pulse(nullptr,0);assert(block.ready==runtime::Tactical);
+ setFrameSampling(a,false);assert(timerBalance==0&&timerPeriod==4);
  keyDown[VK_MBUTTON]=true;pulse(nullptr,0);assert(takePointer(a,press,dropped)&&press.operation==1&&press.serial==pointerCancelSerial(a));
  pulse(nullptr,0);assert(!takePointer(a,press,dropped)); // held button never repeats
  keyDown[VK_MBUTTON]=false;pulse(nullptr,0);

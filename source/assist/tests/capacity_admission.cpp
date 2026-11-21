@@ -70,9 +70,21 @@ static void check(bool v,const char*label){++checks;if(!v){++failures;std::fprin
 static void reset(){queuedUnload.clear();queuedUnload.epoch=queuedUnload.house=queuedUnload.lastProgress=0;memory.clear();ids.clear();kinds.clear();types.clear();byID.clear();manualVersions.values.clear();selectedObjects.clear();infantry.clear();allObjects.clear();selectedResult.clear();sent.clear();recentPassengerCount=unloadCount=0;match=1;clockNow=100;shared={};ready=interfaces=true;eventRoom=24;cancelled=weaponCalls=0;unreadableField=0;indexedFrame=-1;memory[0xA8ED84]=1;}
 static uint32_t carrier(int n,bool passenger=true){uint32_t p=0x100000+n*0x1000,id=n+1;ids[p]=id;byID[id]=p;kinds[p]=2;types[p]=0x80000;memory[p]=0x7F5C70;memory[p+0x10]=id;memory[p+0x21C]=9;memory[p+0x6C]=100;memory[p+0x74]=1;memory[p+0x90]=1;memory[p+0x81]=0;memory[p+0x1C8]=0;memory[p+0x114]=passenger?1:0;selectedObjects.push_back(p);allObjects.push_back(p);
  if(passenger){uint32_t q=0x5000000+n*0x1000,qid=100000+n;ids[q]=qid;byID[qid]=q;kinds[q]=1;types[q]=0x90000;memory[q]=0x7EB058;memory[q+0x10]=qid;memory[q+0x21C]=9;memory[q+0x6C]=100;memory[q+0x74]=1;memory[q+0x90]=1;memory[q+0x81]=0;memory[q+0x11C]=p;memory[p+0x118]=q;memory[q+0x30]=0;infantry.push_back(q);allObjects.push_back(q);}return p;}
-static void tick(int frame,int room=24){indexedFrame=frame;memory[0xA8ED84]=frame;clockNow=100+uint32_t(frame)*16;eventRoom=room;int budget=64;smartUnloadAdmissionTick(9,frame,budget);}
+static void tick(int frame,int room=24,bool candidate=false){indexedFrame=frame;memory[0xA8ED84]=frame;clockNow=100+uint32_t(frame)*16;eventRoom=room;int budget=64;smartUnloadAdmissionTick(9,frame,budget,candidate);}
 int main(int argc,char**argv){std::string mode=argc>1?argv[1]:"all";
  if(mode!="variant"){
+ reset();const uint32_t localCarrier=carrier(0),localPassenger=memory[localCarrier+0x118];
+ check(smartUnload(9,true)==1&&queuedUnload.count==1,"candidate click freezes selected carrier without scanning infantry");
+ unreadableField=localPassenger+0x30;
+ tick(2,24,true);
+ check(sent.empty()&&!unloadCount&&queuedUnload.count==1,"partial native cargo chain never deploys a partial cohort");
+ unreadableField=0;tick(3,24,true);
+ check(sent.size()==1&&unloadCount==1&&!queuedUnload.count,"complete native cargo chain admits between captures");
+ tick(3);check(sent.size()==1,"strict path never replays candidate deploy");
+ reset();const uint32_t alreadyUnloading=carrier(0);memory[alreadyUnloading+0xAC]=16;
+ check(smartUnload(9,true)==1,"candidate keeps selected already-unloading carrier pending");
+ tick(4,24,true);
+ check(sent.empty()&&!unloadCount&&queuedUnload.count==1,"candidate does not treat a shrinking chain as the original cohort");
  reset();for(int n=0;n<1000;++n)carrier(n);eventRoom=0;
  check(smartUnload(9)==1000&&queuedUnload.count==1000&&sent.empty(),"full 1000-carrier cohort accepted while outgoing queue is full");
  selectedObjects.clear();carrier(4000); // later selection cannot join the original cohort

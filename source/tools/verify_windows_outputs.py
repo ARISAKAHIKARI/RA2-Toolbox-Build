@@ -44,7 +44,7 @@ ASSIST_PROTOCOL = 112
 # 32*(3*4) bytes. Aircraft per-click settings add 8 bytes to Request,
 # 8 more to its embedded FrameInput request, and 8 to Shared settings.
 # Both Host and Game Runtime must agree on the same ABI.
-ASSIST_SHARED_BYTES = 23228768  # v112: append 100B diagnostic tail + 4B alignment padding
+ASSIST_SHARED_BYTES = 23228768  # v112: 104-byte diagnostic tail, including worker microseconds
 ASSIST_MAPPING = f'Local\\RA2Assist_v{ASSIST_PROTOCOL}_'
 ENTRY_PROTOCOL = 3
 ENTRY_REQUEST_BYTES = 108

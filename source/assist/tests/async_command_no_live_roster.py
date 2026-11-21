@@ -149,7 +149,7 @@ assert "if(deferIndexedWork){++sh->worldSampleFailures;++sh->sampling.indexUnava
 assert "externalInputFrame=!deferIndexedWork&&" in dispatcher
 assert "if(externalInputFrame){indexedInputMatch=match;indexedInputFrame=frame;}" in dispatcher
 assert "if(!deferIndexedWork){superweaponGrantTick(house,frame,now);consumeSubmittedIntents(house,frame,now);}" in dispatcher
-assert "captureCooperativeFrame(now,observationFrame,!deferIndexedWork);" in dispatcher
+assert "captureCooperativeFrame(now,!deferIndexedWork);" in dispatcher
 assert "publishPlanningWorld(house,frame,now,!deferIndexedWork);" in dispatcher
 
 
@@ -159,6 +159,31 @@ proof = (root / "execution_proof.h").read_text()
 autoload = (root / "autoload_bridge.h").read_text()
 unload = (root / "unload_compute_bridge.h").read_text()
 external = (root / "external_orders_bridge.h").read_text()
+local_fallback = between(dispatcher, "else{\n  uiSoundCommand(now);", "nativePlacementTick(now);")
+assert "eventdelivery::isSingleplayer(sessionMode)" in local_fallback
+assert "candidateRosterReady()" in local_fallback
+assert "externalOrdersTick(house,frame,now,true);" in local_fallback
+assert "serviceCooperativePlan(house,frame,now,true,preciseNow);" in local_fallback
+coop = (root / "cooperative_bridge.h").read_text()
+coop_plan = between(coop, "static void serviceCooperativePlan(", "static void cooperativeTick(")
+assert "if(sh->cooperativeMode==cooperative::Enter)return;" in coop_plan
+assert "int budget=candidateOnly?4:cooperative::MaxSources" in coop_plan
+assert "preciseNow-cooperativeCandidateAt<CooperativeCandidateIntervalUs" in coop_plan
+assert "identities->attack(order.id,order.target)" in coop_plan
+assert "mode==cooperative::AirSingle,false,proof" in coop
+assert "if(result==-30)return;\n     loadTaskSeen=completed;finish(result);" in autoload
+candidate = between(external, "else if(crossFrame){", "else {\n  while")
+assert "candidateRosterReady()||sampleReadDepth||!simulationReady()" in candidate
+assert "planBatch.candidatePass(count,4,preciseclock::micros(),worldFrameCandidateVersion" in candidate
+assert "manualVersions.get(o.unit)!=o.token" in candidate
+assert "actorID!=o.unit||targetID!=o.target" in candidate
+assert "worldByID(o.unit)!=o.unitPointer||worldByID(o.target)!=o.targetPointer)return 0;" in candidate
+assert "admitPlannerOrder(o,house,sh->planMatch,sh->planTick,true)" in candidate
+assert "planningWorld.frame<=sh->planFrame" in candidate
+assert "result=outgoing::ReplanFromNewObservation;" in candidate
+assert "if(result<0)while(!planBatch.done(count)" in external
+assert "if(accepted&(1u<<i))kind=planner::Receipt::Accepted;" in main
+assert "else if((rejected&(1u<<i))&&shared->planResult!=-7)kind=planner::Receipt::Rejected;" in main
 assert 'executionproof::verify(*proof' in bridge
 assert 'executionproof::ordered(*proof' in bridge
 assert 'static bool submitProvenMission(' in bridge

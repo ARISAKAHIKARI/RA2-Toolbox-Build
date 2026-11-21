@@ -51,6 +51,7 @@ struct MissionTicket {
  Receipt receipt{};uint32_t target=0;int requested=-1,frame=0;MissionState before{};
 };
 template<int Capacity=128> struct MissionObserver {
+ static constexpr uint32_t ObservationMs=5000;
  MissionTicket tickets[Capacity]{};int count=0,head=0;uint32_t nextSerial=0;
  void clear(){count=head=0;nextSerial=0;}
  bool pending()const{return count>0;}
@@ -79,7 +80,7 @@ template<int Capacity=128> struct MissionObserver {
    int i=head++;auto&t=tickets[i];bool remove=false;
    if(t.receipt.match!=match||frame<t.frame){cancelled(t.receipt,Failure::WrongMatch);remove=true;}
    else if(frame==t.frame)continue;
-   else if(frame-t.frame>300){t.receipt.phase=Phase::Expired;t.receipt.failure=Failure::Stale;remove=true;}
+   else if(uint32_t(now-t.receipt.queuedAt)>ObservationMs){t.receipt.phase=Phase::Expired;t.receipt.failure=Failure::Stale;remove=true;}
    else {
     MissionState seen=sample(t.receipt.unit);
     if(seen.valid){

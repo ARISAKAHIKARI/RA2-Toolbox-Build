@@ -89,7 +89,7 @@ static bool collectUnloadTargets(uint32_t house,int frame){
  memcpy(unloadSampleTargets,next,size_t(count)*sizeof(next[0]));unloadSampleTargetCount=count;
  unloadSampleTargetMatch=match;unloadSampleTargetHouse=house;unloadSampleTargetFrame=frame;return true;
 }
-static bool collectUnloadSource(unloadcompute::Input&input,const UnloadPassenger&r,uint32_t house,int frame){
+static bool collectUnloadSource(unloadcompute::Input&input,const UnloadPassenger&r,uint32_t house,int frame,bool deployerOnly=false){
  if(input.count<0||input.count>=unloadcompute::MaxSources)return false;
  unloadcompute::Source next{};static uint8_t actions[unloadcompute::MaxTargets],queries[unloadcompute::MaxTargets];
  memset(actions,0,sizeof actions);memset(queries,0,sizeof queries);bool targets=false;
@@ -98,6 +98,7 @@ static bool collectUnloadSource(unloadcompute::Input&input,const UnloadPassenger
   if(get<uint32_t>(r.p+0x10)!=r.id||kind(r.p)!=1)return false;
   next.job=r.job;next.id=r.id;next.pointer=r.p;next.type=typeOf(r.p,1);next.token=manualVersions.get(r.id);
   next.state=static_cast<const unloadcompute::State&>(r);next.view=unloadView(r,frame,false);
+  if(deployerOnly&&!next.view.deployer)return false;
   if(!next.view.deployer&&frame>=r.sentFrame){
    if(!collectUnloadTargets(house,frame))return false;targets=true;
    planner::Actor source{};rawCombatInfo(r.p,next.type,1,source,true);

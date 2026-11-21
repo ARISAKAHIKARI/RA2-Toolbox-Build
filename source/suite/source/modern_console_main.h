@@ -55,7 +55,7 @@ static std::string error,lastShell;
 static std::wstring configRetryNotice;
 static uint64_t configRetrySequence=0;
 static bool appReady=false,bootReady=false,servicesStarted=false,userNavigated=false,closeAsked=false,storeClosing=false;
-static int selectedCategory=0,videoSection=0,closePhase=0;
+static int selectedCategory=0,videoSection=0,selectedPageIndex=0,closePhase=0;
 static unsigned closePreparedMask=0,closeRequestedMask=0;
 static ULONGLONG closePreparingAt=0;
 static bool closePromptActive=false;
@@ -64,7 +64,7 @@ static uint64_t closeQuerySequence=0;
 static ULONGLONG closeQueryAt=0;
 static HFONT errorFont=nullptr;
 static void onError(const std::wstring& text);
-struct BootSettings {bool ok=false,cursor=false,monitor=false;int category=0,video=0;};
+struct BootSettings {bool ok=false,cursor=false,monitor=false;int category=0,video=0,pageIndex=0;};
 static BootSettings bootSettings;
 static std::mutex bootMutex;
 
@@ -131,7 +131,7 @@ static void publishShell(){
  const bool canRetry=storage.failed&&storage.accepting&&!storage.pending&&!storage.busy&&closePhase<3;
  auto storageError=storageFailureText(storage);if(storage.failed&&!configRetryNotice.empty())storageError+=L"\n"+configRetryNotice;
  std::string json="{\"kind\":\"shell\",\"protocol\":1,\"version\":"+quote(utf8(RA2_RELEASE_VERSION_W))+",\"servicesReady\":"+(servicesStarted?"true":"false")+
-  ",\"selectedCategory\":"+std::to_string(selectedCategory)+",\"videoSection\":"+std::to_string(videoSection)+",\"closing\":"+(closePhase?"true":"false")+",\"error\":"+quote(error)+",\"modules\":[";
+  ",\"selectedCategory\":"+std::to_string(selectedCategory)+",\"videoSection\":"+std::to_string(videoSection)+",\"pageIndex\":"+std::to_string(selectedPageIndex)+",\"closing\":"+(closePhase?"true":"false")+",\"error\":"+quote(error)+",\"modules\":[";
  for(unsigned i=0;i<3;++i){if(i)json+=',';json+="{\"module\":"+std::to_string(i)+",\"ready\":"+(suite::frontend.window(i)?"true":"false")+",\"enabled\":"+(active[i]?"true":"false")+"}";}
  json+="],\"config\":{\"pending\":"+std::to_string(storage.pending)+",\"busy\":"+(storage.busy?"true":"false")+",\"failed\":"+(storage.failed?"true":"false")+
   ",\"canRetry\":"+(canRetry?"true":"false")+",\"retrySeq\":"+std::to_string(configRetrySequence)+",\"errorCode\":"+std::to_string(storage.errorCode)+
@@ -162,7 +162,7 @@ static void publishModels(){
 static void selectPage(bool persist){
  const unsigned module=selectedCategory==0?unsigned(videoSection):2u;
  suite::frontend.navigate(module,selectedCategory==0?0:selectedCategory,selectedCategory==0?(videoSection?"monitor":"cursor"):"tactical/"+std::to_string(selectedCategory));
- if(persist&&bootReady){asyncini::write(L"UI",L"Category5",std::to_wstring(selectedCategory).c_str(),config.c_str());asyncini::write(L"UI",L"VideoSection",std::to_wstring(videoSection).c_str(),config.c_str());}
+ if(persist&&bootReady){asyncini::write(L"UI",L"Category5",std::to_wstring(selectedCategory).c_str(),config.c_str());asyncini::write(L"UI",L"VideoSection",std::to_wstring(videoSection).c_str(),config.c_str());asyncini::write(L"UI",L"PageIndex",std::to_wstring(selectedPageIndex).c_str(),config.c_str());}
 }
 static DWORD WINAPI runModule(void* context){
  const unsigned i=unsigned(reinterpret_cast<uintptr_t>(context));auto command=const_cast<LPWSTR>(args.c_str());
@@ -174,8 +174,8 @@ static void startServices(){
  BootSettings settings;{std::lock_guard<std::mutex> lock(bootMutex);settings=bootSettings;}
  if(!settings.ok){error=utf8(L"无法建立默认配置，请将工具箱放到可写入的文件夹后重试。");publishShell();return;}
  active[0]=settings.cursor;active[1]=settings.monitor;active[2]=true;
- if(!userNavigated){selectedCategory=settings.category;videoSection=settings.video;}
- servicesStarted=true;selectPage(false);
+ if(!userNavigated){selectedCategory=settings.category;videoSection=settings.video;selectedPageIndex=settings.pageIndex;}
+ servicesStarted=true;selectPage(userNavigated);
  for(unsigned i=0;i<3;++i){workers[i]=CreateThread(nullptr,0,runModule,reinterpret_cast<void*>(uintptr_t(i)),0,nullptr);if(!workers[i]){active[i]=false;error=utf8(L"部分功能服务未能启动，请重新打开工具箱。");}}
  publishShell();
 }
@@ -187,6 +187,12 @@ static DWORD WINAPI prepareSettings(void*){
   result.cursor=read(L"Video",L"CursorEnabled",read(L"Modules",L"Cursor",cursorDefault))!=0;
   result.monitor=read(L"Video",L"MonitorEnabled",read(L"Modules",L"Units",0))!=0;
   result.category=std::clamp(read(L"UI",L"Category5",0),0,5);result.video=std::clamp(read(L"UI",L"VideoSection",0),0,1);
+  const int legacyPage=result.category?result.category+2:(result.video?2:0);
+  result.pageIndex=read(L"UI",L"PageIndex",legacyPage);
+  if(result.pageIndex<0||result.pageIndex>9)result.pageIndex=legacyPage;
+  if(result.pageIndex<3){result.category=0;result.video=result.pageIndex==2?1:0;}
+  else if(result.pageIndex==9){result.category=0;result.video=1;}
+  else result.category=result.pageIndex==8?2:result.pageIndex-2;
  }
  {std::lock_guard<std::mutex> lock(bootMutex);bootSettings=result;}
  if(auto w=notificationWindow.load())PostMessageW(w,BootReady,0,0);return 0;
@@ -271,7 +277,9 @@ static void onMessage(const std::string& json){
  if(closePhase)return;
  if(message.kind==consolemodel::MessageKind::Navigate){
   userNavigated=true;selectedCategory=message.shell.module==2?message.shell.category:0;
-  if(message.shell.module<2)videoSection=int(message.shell.module);error.clear();selectPage(servicesStarted);publishShell();return;
+  if(message.shell.module<2)videoSection=int(message.shell.module);
+  selectedPageIndex=message.shell.pageIndex>=0?message.shell.pageIndex:(selectedCategory?selectedCategory+2:(videoSection?2:0));
+  error.clear();selectPage(servicesStarted);publishShell();return;
  }
  if(message.kind==consolemodel::MessageKind::Module){
   const unsigned i=message.shell.module;

@@ -128,11 +128,15 @@ static void loadingCalculationTick(uint32_t house,DWORD now){
  const uint32_t completed=sh->loadComputed;
  if(compute::newer(completed,loadTaskSeen)){
   long seq=sh->loadResultSeq;if(!(seq&1)){MemoryBarrier();loadResultCopy=sh->loadResult;MemoryBarrier();
-   if(seq==sh->loadResultSeq&&completed==sh->loadComputed){loadTaskSeen=completed;const auto*source=loadFrames.find(completed);const auto&r=loadResultCopy;
+   if(seq==sh->loadResultSeq&&completed==sh->loadComputed){const auto*source=loadFrames.find(completed);const auto&r=loadResultCopy;
     if(source&&compute::valid(*source)&&source->mode==int(sh->loadMode==1)&&source->radius==std::clamp(sh->loadRadius,1,512)&&r.count==source->ns&&r.match==source->match&&r.tick==source->tick&&r.frame==source->frame&&
        freshness::valid(source->match,match,source->tick,source->frame,now,get<int>(0xA8ED84),freshness::Cooperative)&&!get<bool>(0xA8BC60+25)){
-     finish(submitLoading(house,source->soldiers,source->ns,source->vehicles,source->nv,r.assignment,source->tokens));return;
+     const int result=submitLoading(house,source->soldiers,source->ns,source->vehicles,source->nv,r.assignment,source->tokens);
+     // A partial capacity sample leaves the same assignment and click pending.
+     if(result==-30)return;
+     loadTaskSeen=completed;finish(result);return;
     }
+    loadTaskSeen=completed;
    }
   }
  }
@@ -255,7 +259,9 @@ static int autoLoad(uint32_t house,const compute::LoadInput*cohort){
  }
  static int assignment[MaxInfantry];static Workspace workspace;
  assign(in.soldiers,in.ns,in.vehicles,in.nv,in.mode,in.radius,in.composition,workspace,assignment,[&](const Infantry&p,const Vehicle&v){return in.compatible[&p-in.soldiers][&v-in.vehicles]!=0;});
- return submitLoading(house,in.soldiers,in.ns,in.vehicles,in.nv,assignment,in.tokens);
+ const int result=submitLoading(house,in.soldiers,in.ns,in.vehicles,in.nv,assignment,in.tokens);
+ if(result==-30){loadCaptureWaiting=true;loadCalculationPending=true;}
+ return result;
 }
 
 static void cancelLoadingJobs(uint32_t p){
@@ -264,18 +270,26 @@ static void cancelLoadingJobs(uint32_t p){
   else ++i;
  }
 }
-static void autoLoadTick(uint32_t house,int frame){
+static void autoLoadTick(uint32_t house,int frame,bool candidateOnly=false){
  FaultPhase phase(runtimefault::LoadRetry);loadQueryFailed=false;
- static int processed=-1;static uint32_t processedMatch;if(frame==processed&&match==processedMatch)return;processed=frame;processedMatch=match;
+ static int processed[2]={-1,-1};static uint32_t processedMatch[2];
+ const int lane=candidateOnly?1:0;
+ if(frame==processed[lane]&&match==processedMatch[lane])return;
+ processed[lane]=frame;processedMatch[lane]=match;
  if(!loadLedger.count)return;
  if(!loadInterfaces()){
   // Missing gateway evidence is UNKNOWN. Keep same selected UID/manual token.
   snap.loadWaiting=loadLedger.count;return;
  }
  int budget=outgoingRoom()?recurringBudget(EventLane::Boarding):0;
- for(int i=0;i<loadLedger.count;){auto&r=loadLedger.records[i];
+ static int candidateCursor=0;
+ int i=candidateOnly?candidateCursor:0;
+ int budgeted=candidateOnly?std::min(loadLedger.count,4):loadLedger.count;
+ while(budgeted--&&loadLedger.count){
+  if(i>=loadLedger.count)i=0;auto&r=loadLedger.records[i];
   // A player order cancels the original AutoLoad permission.
   if(manualVersions.get(r.id)!=r.manualToken){finishLoadingReservation(r,match,frame,false);loadLedger.erase(i);continue;}
+  if(candidateOnly&&(!worldObjects.contains(r.object)||!worldObjects.contains(r.vehicle))){++i;continue;}
   const auto view=loadingReservationView(r,house,frame);
   if(view.state==loading::ReservationState::Unknown){++i;continue;}
   const bool boarded=view.state==loading::ReservationState::Boarded;
@@ -309,6 +323,7 @@ static void autoLoadTick(uint32_t house,int frame){
   }
   ++i;
  }
+ if(candidateOnly)candidateCursor=i;
  snap.loadWaiting=loadLedger.count;
 }
 

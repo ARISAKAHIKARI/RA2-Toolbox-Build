@@ -104,6 +104,10 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .module-toggle > input, .toggle input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; z-index: 1; cursor: inherit; }
 .module-toggle:has(input:focus-visible), .toggle:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--control-radius); }
 .page-tools { display: flex; align-items: center; justify-content: flex-end; margin: 0 var(--gutter); padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.production-views { display: flex; flex-wrap: wrap; gap: 4px; margin-right: auto; }
+.production-views button { padding: 5px 10px; border: 1px solid transparent; border-radius: var(--control-radius); background: transparent; color: var(--soft); }
+.production-views button[aria-pressed="true"] { border-color: var(--blush-border); background: var(--blush-surface); color: var(--blush-ink); }
+.page-tools:has(.production-views:not([hidden])) { flex-wrap: wrap; gap: 6px 12px; }
 .search-wrap { position: relative; display: flex; align-items: center; min-width: 0; }
 .search-wrap svg { position: absolute; left: 10px; width: 15px; height: 15px; stroke: var(--muted); stroke-width: 1.8; fill: none; pointer-events: none; }
 .search-wrap input { width: 238px; max-width: 100%; min-height: var(--control-height); padding: 5px 58px 5px 32px; border: 1px solid var(--border); border-radius: var(--control-radius); background: var(--field); font-size: var(--text-control); line-height: 1.5; }

@@ -57,7 +57,9 @@ def production():
     coop = source["cooperative_bridge.h"]
     add(function(coop, "struct CooperativeFrameRead") + ";")
     add(function(coop, "static bool collectCooperativeInput("))
+    add(coop[coop.index("static uint32_t clickSerial,"):coop.index("static uint32_t singleDamageSerial=")])
     add(function(coop, "static void captureCooperativeFrame("))
+    add(function(coop, "static void serviceCooperativePlan("))
     load = source["autoload_bridge.h"]
     add(load[load.index("static bool loadCalculationPending,"):load.index("static int submitLoading(")])
     for signature in ("static bool loadingObject(", "static uint32_t incomingVehicle(",
@@ -69,7 +71,7 @@ def production():
     add(function(load, "static bool canEnter("))
     for signature in ("static bool captureLoadSelection(", "static bool collectLoadFacts(",
                       "static int autoLoad(uint32_t house,const compute::LoadInput*cohort){",
-                      "static void autoLoadTick("):
+                      "static void autoLoadTick(", "static void loadingCalculationTick("):
         add(function(load, signature))
     unload = source["unload_compute_bridge.h"]
     add(function(source["native_orders_bridge.h"], "struct UnloadPassenger") + ";")

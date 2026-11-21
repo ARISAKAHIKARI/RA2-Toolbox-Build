@@ -513,6 +513,7 @@ static void logSamplingHealth(DWORD now){
   L" workerGraphIncomplete="+std::to_wstring(delta(16))+
   L" workerRejected="+std::to_wstring(delta(17))+
   L" lastWorkerMs="+std::to_wstring(d.workerLastDurationMs)+
+  L" lastWorkerUs="+std::to_wstring(d.workerLastDurationUs)+
   L" maxWorkerMs="+std::to_wstring(d.workerMaxDurationMs)+
   L" lastWorkerCalls="+std::to_wstring(d.workerLastCalls)+
   L" lastWorkerBytes="+std::to_wstring(d.workerLastBytes)+
@@ -792,7 +793,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(extra.watchEnabled||extra.watchSecondary)for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
  if(LOBYTE(idleAircraftKey)&&!registerKey(1701,idleAircraftKey))++failures;
  for(int i=0;i<9;++i)if(LOBYTE(socialKeys[i])&&!registerKey(1710+i,socialKeys[i]))++failures;
- // VariantKey remains in the INI but is not registered until sampling migration is complete.
+ if(featureavailability::VariantSelection&&LOBYTE(extra.variantKey)&&!registerKey(1700,WORD(extra.variantKey)))++failures;
  // Destruction never joins a colliding/fanout group, including later edits.
  if(extra.destructSelectedOwner&&LOBYTE(extra.destructSelectedOwnerKey)){
   if(destructOwnerKeyConflict(WORD(extra.destructSelectedOwnerKey))||!destructownerhost::exclusive(hotkeyRegistry,extra.destructSelectedOwnerKey)||
@@ -2708,6 +2709,7 @@ static void tick(){
  bool needsBridge=(enabled&&externalReader.canRead())||debugPageActive||runtimeFeatureDemand(configured,extra,techMode,buildTimeTooltipEnabled)||(shared&&shared->minerDefenseActive)||(externalData&&externalData->status==1)||commandQueue.size||hasSelection||externalSampler.flashCount;
  if(needsBridge&&!shared)ensureBridge();
  now=GetTickCount(); // ensureBridge may have created attachAt after tick entry.
+ static samplingcadence::LocalRate simulationRate;
  if(shared){
   shared->heartbeat=now;shared->foreground=foregroundGame();shared->flags=configured;syncAdditional();shared->scanMs=8;shared->repairMs=repairMs;
   // Settings are published while the Runtime fence is still closed.
@@ -2719,8 +2721,11 @@ static void tick(){
   DWORD wakePeriod=shared->foreground?16:(shared->bombBoardEnabled||shared->minerDefenseEnabled||shared->minerDefenseActive||shared->dodgeEnabled||shared->dodgeActive||shared->missileEnabled||shared->missileHeld||((configured|shared->plannerTracking)&(AdvancedInput|MagnetronInput|AutoOreReturn|AirWaypoints|AntiTheft))?64:500);
   if(DWORD(now-lastPulse)>=wakePeriod)wakeGame();
   readSnapshot();schedulerDiagnostic();performanceDiagnostic();serviceSelection();result();serviceCommandQueue(GetTickCount());serviceCalculationTasks();servicePlanner();serviceCooperative();servicePointer();serviceCommandCursorHint();serviceHotkeyBatch();serviceConstruction();serviceAirPath();
-  gameinput::setFrameSampling(hook,enabled&&(shared->superweaponGrant||shared->externalDisplay||shared->computeApplied!=compute::All));
   now=GetTickCount(); // snapshot/queue services may have advanced lastData/sentAt.
+  const bool frameSampling=enabled&&(shared->superweaponGrant||shared->externalDisplay||shared->computeApplied!=compute::All);
+  const bool fastLocal=simulationRate.update(frameSampling&&shared->foreground&&commandFresh(now)&&eventdelivery::isSingleplayer(snap.session),
+    uint32_t(snap.match),snap.frame,now);
+  gameinput::setFrameSampling(hook,frameSampling,false,fastLocal);
   if(uninitializedBridgeTimedOut()){
    critical(L"uninitialized command bridge timeout; retry before any match is authenticated");logBridgeHealth(true);logLoadedGameModules();releaseBridge();
   }else if(lastData&&DWORD(now-lastData)>8000){
@@ -2728,7 +2733,7 @@ static void tick(){
    // outstanding serial and job state; never replay an unacknowledged request.
    wakeGame();
   }
- }
+ }else simulationRate={};
  updateModeStatus(now);
  // A responsive overlay is not proof that a command was consumed.
  // Re-wake the game queue and log the stall; never re-submit an unacknowledged order.

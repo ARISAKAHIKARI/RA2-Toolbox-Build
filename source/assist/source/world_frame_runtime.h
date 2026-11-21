@@ -225,6 +225,7 @@ static void publishSamplingWorkerDiagnostics(uint32_t now){
  v.workerBudget=d.budget;v.workerRosterFailed=d.rosterFailed;
  v.workerGraphIncomplete=d.incomplete;v.workerRejected=d.rejected;
  v.workerLastDurationMs=d.lastDurationMs;v.workerMaxDurationMs=d.maxDurationMs;
+ v.workerLastDurationUs=d.lastDurationUs;
  v.workerLastCalls=d.lastCalls;v.workerLastBytes=d.lastBytes;
  v.workerLastPages=d.lastPages;
  v.workerFirstFrame=d.firstFrame;v.workerLastFrame=d.lastFrame;

@@ -239,6 +239,19 @@ int main(){
         program = program.replace('\n if(std::getenv("RA2_PASSENGER_MODES_TEST")){', r'''
  ++scenarios;sharedDisplay.values[suite::RenderUpgrade]=1;render.sync(true);
  const auto upgrade=visible[12000+suite::RenderUpgrade];check(IsWindowEnabled(upgrade)&&controls[upgrade].value==1,"saved-on renderer can be closed through visible control");
+ const auto quality=visible[12000+suite::RenderProcessing];
+ const auto sampling=visible[12000+suite::RenderScale];
+ check(quality&&IsWindowEnabled(quality),"saved-on renderer exposes the restored quality controls");
+ check(sampling&&!IsWindowEnabled(sampling),"xBRZ mode is disabled until both prerequisite switches are on");
+ for (auto option:{suite::RenderPalette,suite::RenderPrecision,suite::RenderDetail,suite::RenderXbrz}){
+  auto control=visible[12000+option];check(control&&!IsWindowEnabled(control),"quality option exists and starts disabled");
+ }
+ sharedDisplay.values[suite::RenderProcessing]=1;render.sync(true);
+ check(IsWindowEnabled(visible[12000+suite::RenderXbrz])&&!IsWindowEnabled(sampling),"quality alone enables xBRZ but leaves its mode disabled");
+ sharedDisplay.values[suite::RenderXbrz]=1;render.sync(true);
+ check(IsWindowEnabled(sampling),"both prerequisite switches enable the xBRZ mode");
+ sharedDisplay.values[suite::RenderProcessing]=sharedDisplay.values[suite::RenderXbrz]=0;
+
  controls[upgrade].value=0;render.command(MAKEWPARAM(12000+suite::RenderUpgrade,BN_CLICKED));
  check(posted.size()==1&&posted[0].option==suite::RenderUpgrade&&posted[0].value==0,"renderer close reaches original owner option");posted.clear();
  sharedDisplay.values[suite::RenderUpgrade]=0;render.sync(true);check(!IsWindowEnabled(upgrade)&&!controls[upgrade].value,"closed renderer is disabled and unchecked");

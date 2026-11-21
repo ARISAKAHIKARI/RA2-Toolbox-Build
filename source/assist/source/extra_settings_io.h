@@ -381,6 +381,10 @@ static void serviceCooperative(){
  if(!cooperative::copyFrame(*captured,shared->cooperativeInputFrame))return;MemoryBarrier();
  if(batch!=shared->computeFrameSeq||captured->request.serial!=request.serial||captured->match!=uint32_t(snap.match)||captured->match!=shared->computeFrameMatch||captured->frame>shared->computeFrame){wakeGame();return;}
  const DWORD acquired=captured->tick;const int frameBefore=captured->frame;const bool candidate=frameBefore<shared->computeFrame;
+ // A missing execution proof asks for a newer observation. Do not
+ // spend another trip through the same already-unresolved plan.
+ if(retry&&shared->cooperativeResult==-7&&(frameBefore<shared->cooperativeFrame||
+    (frameBefore==shared->cooperativeFrame&&acquired==shared->cooperativeTick))){wakeGame();return;}
  if(!freshness::valid(captured->match,snap.match,acquired,frameBefore,now,shared->computeFrame,freshness::Cooperative)){wakeGame();return;}
  auto input=cooperative::unpack(*captured);cooperative::restrictSources(input,request);
  if(retry)cooperative::reserveAccepted(input,acceptedCooperative);

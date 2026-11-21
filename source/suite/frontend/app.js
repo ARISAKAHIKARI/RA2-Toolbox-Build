@@ -89,9 +89,10 @@
     }
     emit(message) { this.send({ ...message, protocol: PROTOCOL }); }
     ready() { this.emit({ kind: 'ready' }); }
-    navigate(module, category = 0) {
+    navigate(module, category = 0, pageIndex = null) {
       if (!Number.isInteger(module) || module < 0 || module > 2 || (module === 2 && (!Number.isInteger(category) || category < 1 || category > 5))) return false;
-      this.current = { module, category: module === 2 ? category : 0 }; this.emit({ kind: 'navigate', ...this.current }); this.changed('navigate'); return true;
+      this.current = { module, category: module === 2 ? category : 0 };
+      this.emit({ kind: 'navigate', ...this.current, ...(Number.isInteger(pageIndex) ? {pageIndex} : {}) }); this.changed('navigate'); return true;
     }
     get state() { return this.pages.get(pageKey(this.current.module, this.current.category)) || null; }
     getControl(id) { return this.state?.controls.find(control => control.id === id) || null; }
@@ -278,7 +279,7 @@
   const AUTOMATIC_SECTIONS=['采矿、倒矿与防蜘蛛','维修与自动救援','自动战斗与防空','适用单位清单','其他自动功能'];
   function semanticSection(name,controls,navigationIndex){
     const hint=[name,...controls.map(c=>c.label||c.text||'')].join(' ').toLocaleLowerCase();
-    const ids=new Set(controls.map(item=>item.id));
+    const ids=new Set(controls.map(item=>item.nativeId));
     const has=(...values)=>values.some(v=>ids.has(v));
     if(navigationIndex===3){
       if(/选兵|编组|轮选|同类/.test(hint)||has(9608,441,443,444,445,449,467,724,853))return 0;
@@ -312,15 +313,17 @@
     }
     return new Map(names.filter(name=>combined.has(name)).map(name=>[name,combined.get(name)]));
   }
-  const displayPageControls=(controls,index)=>index<2?controls.filter(control=>(control.group==='渲染')===(index===1)):controls;
-  const targetFor=index=>index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:index-2};
-  const restoredIndex=(category,section)=>category===0?(section===1?2:0):category+2;
-  const pageStorageKey='RA2Toolbox.console.page.v1';
-  function rememberedPage(){
-    try{const raw=global.localStorage?.getItem(pageStorageKey),value=Number(raw);return raw!==null&&Number.isInteger(value)&&value>=0&&value<8?value:-1;}catch{return -1;}
+  const PRODUCTION_PAGE=8, PRODUCTION_NOTICES=9;
+  function displayPageControls(controls,index){
+    if(index<2)return controls.filter(control=>(control.group==='渲染')===(index===1));
+    if(index===2||index===PRODUCTION_NOTICES)
+      return controls.filter(control=>(control.group==='生产提醒')===(index===PRODUCTION_NOTICES));
+    if(index===4||index===PRODUCTION_PAGE)
+      return controls.filter(control=>(control.group==='生产预定')===(index===PRODUCTION_PAGE));
+    return controls;
   }
-  function rememberPage(index){try{global.localStorage?.setItem(pageStorageKey,String(index));}catch{}}
-
+  const targetFor=index=>index===PRODUCTION_PAGE?{module:2,category:2}:index===PRODUCTION_NOTICES?{module:1,category:0}:index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:index-2};
+  const restoredIndex=(category,section)=>category===0?(section===1?2:0):category+2;
   // The adapter already exports the original logical row. Keep its related
   // editors together instead of turning every native widget into a full row.
   // Missing/default coordinates must never combine unrelated settings.
@@ -355,7 +358,10 @@
     ['游戏规则','科技、地图与游戏规则。','<path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"></circle><circle cx="8" cy="18" r="2" fill="currentColor" stroke="none"></circle>'],
     ['实验功能','尚在完善中的功能。','<path d="M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 14h8"></path>'],
     ['调试','运行状态与平台兼容性。','<path d="M8 3v3m8-3v3M4 10H1m22 0h-3M4 16H1m22 0h-3M8 21v-3m8 3v-3"></path><rect x="4" y="6" width="16" height="12" rx="3"></rect>']
+    ,['生产','设置生产预定、批量队列和面板大小。','<path d="M3 20V9l6 3V7l6 4V4h4l2 16H3Zm4-4h2m3 0h2m3 0h2"></path>'],
+    ['生产','设置各类生产队列提醒和建造时间提示。','']
   ];
+  const navigationButtons=new Map();
   let selectedCategory = 0, search = '', scheduled = false, renderedPage = '', toastTimer = null, capture = null, userNavigated = false, restoredNavigation = false;
   let debugGroup = '', debugFilter = '', debugGroupSignature = '';
   const debugRows = new Map();
@@ -368,24 +374,25 @@
   function setSearch(value) { if(search!==value)searchFeatureFolds.clear();search=value; }
   function navigate(index,restored=false){
     if(!Number.isInteger(index)||index<0||index>=CATEGORIES.length)return;
-    if(!restored){userNavigated=true;rememberPage(index);}
+    if(!restored)userNavigated=true;
     selectedCategory=index;setSearch('');$('search').value='';capture=null;
     const target=targetFor(index);
     if(restored){store.current=target;schedule();}
-    else if(restoredNavigation&&store.current.module===target.module&&store.current.category===target.category)schedule();
-    else store.navigate(target.module,target.category);
+    else store.navigate(target.module,target.category,index);
     $('contentScroll').scrollTop=0;
   }
   const navGroups={0:'显示',3:'对局工具',5:'高级'};
   // Product-first ordering without changing the backend module/category IDs.
-  const navOrder=[3,4,0,1,2,5,6,7];
+  const navOrder=[3,4,PRODUCTION_PAGE,0,1,2,5,6,7];
   for(const index of navOrder){
     if(navGroups[index]){const group=document.createElement('div');group.className='nav-group-label';group.textContent=navGroups[index];$('navigation').append(group);}
     const button=document.createElement('button');button.className='nav-button';button.type='button';button.dataset.pageIndex=String(index);
     button.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true">${CATEGORIES[index][2]}</svg><span></span>`;
     button.querySelector('span').textContent=CATEGORIES[index][0];button.setAttribute('aria-label',CATEGORIES[index][0]);button.title=CATEGORIES[index][0];
-    button.addEventListener('click',()=>navigate(index));$('navigation').append(button);
+    button.addEventListener('click',()=>navigate(index));$('navigation').append(button);navigationButtons.set(index,button);
   }
+  $('productionQueue').addEventListener('click',()=>navigate(PRODUCTION_PAGE));
+  $('productionNotices').addEventListener('click',()=>navigate(PRODUCTION_NOTICES));
   $('search').setAttribute('aria-keyshortcuts','Control+f');
   $('search').addEventListener('input', event => { setSearch(event.target.value); schedule(); });
   $('search').addEventListener('keydown', event => { if (!composingKey(event) && event.key === 'Escape' && !capture) { event.preventDefault(); $('search').value = ''; setSearch(''); schedule(); } });
@@ -735,7 +742,11 @@
       for(const row of debugRows.values())row.element.remove();
       debugRows.clear();renderedPage=currentPage;
     }
-    [...$('navigation').querySelectorAll('.nav-button')].forEach(button => { if (Number(button.dataset.pageIndex) === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
+    const navIndex=selectedCategory===PRODUCTION_NOTICES?PRODUCTION_PAGE:selectedCategory;
+    $('productionViews').hidden=navIndex!==PRODUCTION_PAGE;
+    $('productionQueue').setAttribute('aria-pressed',String(selectedCategory===PRODUCTION_PAGE));
+    $('productionNotices').setAttribute('aria-pressed',String(selectedCategory===PRODUCTION_NOTICES));
+    navigationButtons.forEach((button,index) => { if (index === navIndex) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
     $('breadcrumb').textContent=category[0];$('pageTitle').textContent=category[0];
     $('pageDescription').textContent=category[1];
     $('version').textContent=store.shell.version||'正在连接…';
@@ -783,7 +794,8 @@
       restoredNavigation=true;
       if(!userNavigated){
         const native=Number.isInteger(message.selectedCategory)?Math.max(0,Math.min(5,message.selectedCategory)):0;
-        const saved=rememberedPage();navigate(saved>=0?saved:restoredIndex(native,message.videoSection),true);
+        navigate(Number.isInteger(message.pageIndex) && message.pageIndex>=0 && message.pageIndex<CATEGORIES.length
+          ? message.pageIndex : restoredIndex(native,message.videoSection),true);
       }
     }
   });

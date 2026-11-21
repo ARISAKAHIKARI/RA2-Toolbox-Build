@@ -40,7 +40,7 @@ class CommandCaptureWorker {
  // loads atomics at most 4x/s, never locks gate_, waits, or touches RPM.
  std::atomic<uint32_t>jobsStarted_{0},jobsPublished_{0},jobsExact_{0},jobsCandidate_{0};
  std::atomic<uint32_t>stale_{0},worldChanged_{0},budget_{0},rosterFailed_{0},incomplete_{0};
- std::atomic<uint32_t>lastDurationMs_{0},maxDurationMs_{0},lastCalls_{0},lastBytes_{0},lastPages_{0};
+ std::atomic<uint32_t>lastDurationMs_{0},maxDurationMs_{0},lastDurationUs_{0},lastCalls_{0},lastBytes_{0},lastPages_{0};
  std::atomic<int32_t>lastFirstFrame_{-1},lastLastFrame_{-1};
  // One worker also publishes sealed full graphs directly into the existing
  // Host shared-memory transport. No 3MB copy, RPM, or page traversal occurs
@@ -75,6 +75,8 @@ class CommandCaptureWorker {
  static DWORD WINAPI run(void*opaque){
   auto*self=static_cast<CommandCaptureWorker*>(opaque);
   SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);
+  LARGE_INTEGER frequency{};
+  QueryPerformanceFrequency(&frequency);
   // PublicationOnly never retires the control-side observed identity. It
   // shares the existing double-buffer data channel with Host readers.
   // In async mode the old exact-frame publisher does not write this channel.
@@ -105,6 +107,9 @@ class CommandCaptureWorker {
    } running{self,found};
    if(!found||job.epoch!=self->epoch_.load(std::memory_order_acquire)||
       job.ticket!=self->latestTicket_.load(std::memory_order_acquire))continue;
+   const DWORD workTick=GetTickCount();
+   LARGE_INTEGER workStart{};
+   const bool precise=frequency.QuadPart>0&&QueryPerformanceCounter(&workStart);
    // All requested page sorting, dedup, real RPM and graph traversal happen
    // exclusively here. No worker ever reads Runtime Shared/House structures.
    // Equivalent ascending page set, O(4N), retained worker-only buffer.
@@ -212,7 +217,12 @@ class CommandCaptureWorker {
     self->completedExact_=exact;self->completedReady_=true;
     ++self->jobsPublished_;
     if(exact)++self->jobsExact_;else ++self->jobsCandidate_;
-    const uint32_t ms=uint32_t(GetTickCount()-began);
+    LARGE_INTEGER workEnd{};
+    const uint64_t elapsedUs=precise&&QueryPerformanceCounter(&workEnd)&&workEnd.QuadPart>=workStart.QuadPart
+     ? uint64_t(workEnd.QuadPart-workStart.QuadPart)*1000000ull/uint64_t(frequency.QuadPart)
+     : uint64_t(uint32_t(GetTickCount()-workTick))*1000ull;
+    const uint32_t ms=uint32_t(std::min<uint64_t>((elapsedUs+500)/1000,UINT32_MAX));
+    self->lastDurationUs_.store(uint32_t(std::min<uint64_t>(elapsedUs,UINT32_MAX)),std::memory_order_relaxed);
     self->lastDurationMs_.store(ms,std::memory_order_relaxed);
     self->maxDurationMs_.store(std::max(ms,self->maxDurationMs_.load(std::memory_order_relaxed)),
                                std::memory_order_relaxed);
@@ -410,7 +420,7 @@ public:
  struct Diagnostics {
   uint32_t started=0,published=0,exact=0,candidate=0;
   uint32_t stale=0,worldChanged=0,budget=0,rosterFailed=0,incomplete=0,rejected=0;
-  uint32_t lastDurationMs=0,maxDurationMs=0,lastCalls=0,lastBytes=0,lastPages=0;
+  uint32_t lastDurationMs=0,maxDurationMs=0,lastDurationUs=0,lastCalls=0,lastBytes=0,lastPages=0;
   int32_t firstFrame=-1,lastFrame=-1;
  };
  Diagnostics diagnostics()const{
@@ -418,7 +428,7 @@ public:
   return {jobsStarted_.load(order),jobsPublished_.load(order),jobsExact_.load(order),
    jobsCandidate_.load(order),stale_.load(order),worldChanged_.load(order),
    budget_.load(order),rosterFailed_.load(order),incomplete_.load(order),
-   rejected_.load(order),lastDurationMs_.load(order),maxDurationMs_.load(order),
+   rejected_.load(order),lastDurationMs_.load(order),maxDurationMs_.load(order),lastDurationUs_.load(order),
    lastCalls_.load(order),lastBytes_.load(order),lastPages_.load(order),
    lastFirstFrame_.load(order),lastLastFrame_.load(order)};
  }

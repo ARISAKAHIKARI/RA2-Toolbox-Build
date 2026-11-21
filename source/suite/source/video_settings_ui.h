@@ -21,16 +21,15 @@ struct VideoEntry {DisplayOption option;VideoGroup group;const wchar_t*label;con
 inline constexpr VideoEntry videoEntries[]={
  {OverlayToggleKey,VideoGroup::Render,L"覆盖层显示快捷键",L"",VideoSection::Render,true},
  {RenderUpgrade,VideoGroup::Render,L"增强渲染",L"",VideoSection::Render,true},
- {RenderProcessing,VideoGroup::Render,L"额外画质处理（基础快速绘制可关闭）",L"",VideoSection::Render,true},
- {RenderPalette,VideoGroup::Render,L"256 色素材输出",L"原始 DAC（6-bit）|完整 24-bit RGB",VideoSection::Render},
- {RenderPrecision,VideoGroup::Render,L"色彩计算精度",L"兼容色阶|增强 RGB 连续光照",VideoSection::Render},
- {RenderDetail,VideoGroup::Render,L"场景精细度",L"原生像素合成|精细 VXL 自适应采样",VideoSection::Render},
- {RenderXbrz,VideoGroup::Render,L"启用 xBRZ 边缘重建",L"",VideoSection::Render,true},
- {RenderScale,VideoGroup::Render,L"素材边缘重建倍率",L"面积采样|最近邻|xBRZ|自适应 1–4× xBRZ",VideoSection::Render},
- // SinglePlayerFPS is presented by its original tactical setting in 游戏规则.
- // It still uses its existing setting owner; do not expose a second editor in Render.
+ // Simulation speed is edited in the tactical Rules page.
  {RenderHighRefresh,VideoGroup::Render,L"高刷新率补帧",L"",VideoSection::Render,true},
  {RenderPhysical,VideoGroup::Render,L"按物理像素绘制",L"",VideoSection::Render,true},
+ {RenderProcessing,VideoGroup::Render,L"额外画质处理",L"",VideoSection::Render,true},
+ {RenderPalette,VideoGroup::Render,L"256 色素材输出",L"原始 DAC（6-bit ×4，对照）|完整 24-bit RGB（6-bit→8-bit）",VideoSection::Render},
+ {RenderPrecision,VideoGroup::Render,L"颜色计算精度",L"兼容色阶（原有光照计算）|增强 RGB（连续光照＋匹配原色盘恢复）",VideoSection::Render},
+ {RenderDetail,VideoGroup::Render,L"场景精细度",L"原生像素合成（对照）|精细：VXL 自适应采样＋256 向转动＋物理像素合成",VideoSection::Render},
+ {RenderXbrz,VideoGroup::Render,L"xBRZ 边缘重建",L"",VideoSection::Render},
+ {RenderScale,VideoGroup::Render,L"素材边缘重建",L"面积采样（不使用 xBRZ）|最近邻（实际倍率）|xBRZ（实际倍率）|自适应 1–4× xBRZ",VideoSection::Render},
  {RenderUnified,VideoGroup::Render,L"统一覆盖层",L"",VideoSection::Render,true},
  {RenderGPU,VideoGroup::Render,L"GPU 加速渲染",L"",VideoSection::Render,true},
  {RenderParticles,VideoGroup::Render,L"粒子与动画",L"",VideoSection::Render,true},
@@ -64,11 +63,11 @@ inline constexpr VideoEntry videoEntries[]={
  {ReminderVehicle,VideoGroup::Monitor,L"载具队列",L"",VideoSection::Production},
  {ReminderShip,VideoGroup::Monitor,L"舰船队列",L"",VideoSection::Production},
  {ReminderAircraft,VideoGroup::Monitor,L"飞机队列",L"",VideoSection::Production},
+ {BuildTimeTooltip,VideoGroup::Monitor,L"显示建造时间",L"",VideoSection::Production,true},
  {TextMargin,VideoGroup::Monitor,L"文字提示上边距 / 像素",L"",VideoSection::Information},
  {ToastDuration,VideoGroup::Monitor,L"提示持续时间 / 毫秒",L"",VideoSection::Information},
  {HarvesterCounter,VideoGroup::Monitor,L"矿车计数",L"",VideoSection::Information,true},
  {PowerDelta,VideoGroup::Monitor,L"电力余量",L"",VideoSection::Information,true},
- {BuildTimeTooltip,VideoGroup::Monitor,L"显示建造时间",L"",VideoSection::Information,true},
  {PsychicHints,VideoGroup::Monitor,L"敌方索敌信息",L"",VideoSection::Information,true},
  {CrateHints,VideoGroup::Monitor,L"箱子信息",L"",VideoSection::Information,true},
  {TextHints,VideoGroup::Monitor,L"战术文字提示",L"",VideoSection::Information,true},
@@ -120,9 +119,12 @@ public:
     else if(type==DisplayControl::Hotkey){h=ctl(HOTKEY_CLASSW,L"",WS_TABSTOP,left,y,w,28,Base+e.option);modernui::pressKey(h);}
     else{h=ctl(L"EDIT",L"",WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL|WS_TABSTOP,left,y,w,28,Base+e.option);SendMessageW(h,EM_SETLIMITTEXT,5,0);}
    }
-   metadata(h,e.section,e.groupHeader);controls_[e.option]=h;EnableWindow(h,FALSE);if(e.option==OverlayToggleKey)modernui::tip(h,L"使用同一个快捷键显示或隐藏所有覆盖层。");
-   if(e.option==PassengerBubbles)modernui::tip(h,L"悬停或选中载具时显示乘员类型与数量，己方和常驻显示可单独配置。");
-   if(e.option==DangerPassengers)modernui::tip(h,L"敌方载具内含工程师、间谍或爆破单位时持续显示危险乘员提醒。");y+=42;
+   metadata(h,e.section,e.groupHeader);controls_[e.option]=h;EnableWindow(h,FALSE);
+   if(e.option==OverlayToggleKey)modernui::tip(h,L"使用同一个快捷键显示或隐藏所有覆盖层。");
+   if(e.option==RenderProcessing)modernui::tip(h,L"增强渲染开启时可启用额外画质。扩色、精细场景和 xBRZ 等选项随此项启用。");
+   if(e.option==PassengerBubbles)modernui::tip(h,L"悬停或选中载具时，在车顶显示乘员类型与数量。可另选己方载具和常驻显示。");
+   if(e.option==DangerPassengers)modernui::tip(h,L"敌方载具内含工程师、间谍或爆破单位时，在战场上常驻提示。");
+   y+=42;
   }
   if(group==VideoGroup::Render){status_=ctl(L"STATIC",L"正在同步渲染设置…",0,x,y,width,180,0);metadata(status_,VideoSection::Render);y+=194;modernui::tip(controls_[RenderGPU],L"GPU 不可用时会自动切换到 CPU 渲染。");}
   sync();return y;

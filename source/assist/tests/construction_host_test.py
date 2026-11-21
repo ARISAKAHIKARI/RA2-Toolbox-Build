@@ -50,7 +50,7 @@ struct Reader:fixtureframe::SealedHostReader<Reader>{std::vector<uint8_t>bytes=s
  void capture(uint32_t epoch){
   int frame=-1;uint32_t owner=0;if(!readLive(0xA8ED84,&frame,4)||frame<0){available.reset();return;}
   if(available&&available->key.match==epoch&&available->key.frame==frame)return;
-  auto next=std::make_shared<worldframe::Snapshot>();worldframe::Key key{};key.match=epoch;key.frame=frame;
+  auto next=std::make_shared<worldframe::Snapshot>();worldframe::Key key{};key.match=epoch;key.frame=frame;key.tick=now;
   readLive(0xA83D4C,&owner,4);key.house=owner;next->reset(key);
   auto read=[&](uint32_t at,void*out,size_t n){return readLive(at,out,n);};for(uint32_t page:pages)next->prefetch(read,page,4096);
   if(readLive(0xA83D4C,&owner,4)&&owner>=0x10000)next->prefetch(read,owner,0x5800);
@@ -96,6 +96,11 @@ static void tick(int ms=110,bool advance=true){now+=ms;if(advance)w(0xA8ED84,bui
 static void place(){byte(P+0x81,0);byte(P+0x90,1);w(F+0x58,0);w(0x87F7E8+0x1544+84,3);for(int i=0;i<3;++i){w(0x87F7E8+0x1544+88+i*52,i);w(0x87F7E8+0x1544+92+i*52,7);}tick();assert(commandQueue.size==0);tick();}
 int main(){
  using namespace buildreserve;
+ setup();assert(current[0]==P&&currentID[0]==100);
+ w(F+0x58,0);tick(110,false);assert(current[0]==P&&currentID[0]==100);
+ externalReader.fail=F+0x58;tick();assert(current[0]==P&&currentID[0]==100);
+ externalReader.fail=0;tick();assert(current[0]==0&&currentID[0]==0);
+ std::cout<<"PASS: production display uses sealed factory identity, retains on missing pages and accepts confirmed empty\n";
  setup();w(F+0x24,54);tick();assert(choice(0)>=0);reserve(choice(0));assert(books[0].items==std::vector<int>({0})&&commandQueue.size==0);
  setup();nativekeyhost::bindings.keys[nativekeys::Infantry][0]='I';nativekeyhost::keys['I']=1;tick();assert(activeTab==2&&get<int>(0x87F7E8+0x539C)==0);nativekeyhost::keys['I']=0;tick();assert(activeTab==2);snap.chat=1;nativekeyhost::keys['I']=1;tick();snap.chat=0;nativekeyhost::keys['I']=0;nativekeyhost::bindings={};
 
@@ -344,7 +349,8 @@ int main(){
  w(T+0x2000+0x634,-1);uint32_t strip=0x87F7E8+0x1544;
  w(strip+84,2);w(strip+88+52,1);w(strip+92+52,7);tick();tick(700);
  assert(books[0].items==std::vector<int>({1})&&commandQueue.size==0);
- w(strip+84,1);tick();tick(700);assert(books[0].items.empty());
+ w(strip+84,1);tick();tick(700,false);assert(books[0].items.size()==1);
+ tick();assert(books[0].items.empty());
  std::cout<<"PASS: "<<exactCases<<" exact-enhancement forecast cases, original/full distinctions, signed optional comparison, country/prerequisite/factory/identity failures; native cameo preserves FIFO until removal\n";
  assert(!l.set(0,0,3840,2160));
  std::cout<<"PASS: actual host service FIFO32/128/duplicates/future unlock/cancel parent/right cancel/round/token ACK/retry/busy/menu; catalogue sentinels/parent/stolen flags/read failure; six resolution transforms and hit regions\n";

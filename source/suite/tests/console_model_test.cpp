@@ -131,6 +131,9 @@ void parser() {
     CHECK(navigate.message.shell.module == 2 && navigate.message.shell.category == 4);
     CHECK(navigate.message.shell.width == 1200 && navigate.message.shell.height == 700);
     CHECK(parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":0,\"category\":0}").ok);
+    CHECK(parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":0,\"category\":0,\"pageIndex\":1}").message.shell.pageIndex == 1);
+    CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":0,\"category\":0,\"pageIndex\":2}"));
+    CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":2,\"category\":2,\"pageIndex\":3}"));
     CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":0,\"category\":5}"));
     CHECK(!parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":1,\"category\":5}"));
     const auto debug = parseMessage("{\"kind\":\"navigate\",\"protocol\":1,\"module\":2,\"category\":5}");

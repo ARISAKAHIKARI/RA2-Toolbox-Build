@@ -37,6 +37,13 @@ assert old in prefix
 prefix=prefix.replace(old,'static unsigned LOBYTE(uintptr_t k){return k&255;}\nstatic std::vector<Binding>typeBindings;\nstatic WORD comparableKey'+conflict)
 boundaries=r'''
 static bool buildTimeTooltipEnabled=false,harvesterCounterEnabled=false,powerDeltaEnabled=false,renderHighRefresh=true;
+static bool revealCloakedUnits=false,revealMirageUnits=false,revealEnemySpies=false;
+static void SendDlgItemMessageW(HWND window,int id,int message,intptr_t wparam,intptr_t lparam){
+ SendMessageW(GetDlgItem(window,id),message,wparam,lparam);
+}
+static void EnableWindow(HWND,bool){}
+static void requestNativePipPin(){}
+
 static struct {bool detached=false,collapsed=false;int x=20,y=150,scale=100,rows=8;}superweaponOptions;
 static void setConsoleFeedback(HWND,const std::wstring&){}static void wakeGame(){}
 static void resetPlacementEvent(){}static void updatePlacementEventUI(){}static void selectPlacementEvent(){}
@@ -176,6 +183,12 @@ int main(){
   check(commands.empty(),"automatic switches must not dispatch a selected-unit order");
   auto before=automaticEvents.size();focused=false;++now;messageAt=now;handleHotkey(1813,LPARAM(('N'<<16)|MOD_CONTROL|MOD_ALT));check(automaticEvents.size()==before,"no action outside game focus");
  }
+ // A suspended variant binding is retained in settings without a registration.
+ reset();hotkeys[11]=0;extra.variantKey=0x641;registerKeys();
+ check(!hotkeyRegistry.find(1700),"suspended variant binding is not registered");
+ const auto beforeSelection=shared->selectRequest;
+ executeHotkey(1700,false);
+ check(shared->selectRequest==beforeSelection,"stale variant hotkey does not dispatch");
  // Preserve the ordinary selected-unit action with the real command sink.
  reset();registerKeys();message();expectOneAutoBoard("AutoBoard remains one selected-unit command");
  std::cout<<"PASS automatic hotkey registration/context checks="<<checks<<"\n";
@@ -227,7 +240,7 @@ layout=r'''
 using namespace assist;unsigned checks=0;
 #define CHECK(x) do{++checks;if(!(x))std::abort();}while(0)
 int main(){for(const auto&e:autofeatures::Entries){int ids[]={e.control,e.keyControl};int section=e.feature==autofeatures::MagnetronGlobal?1:e.feature==autofeatures::AutoCS?4:2;CHECK(suite::categories::row(section,ids,2)==suite::categories::Automatic);}
-int repair[]={100,200},interval[]={312},autoBoard[]={111,211},repairRule[]={780};CHECK(suite::categories::row(0,repair,2)==suite::categories::Automatic);CHECK(suite::categories::row(2,interval,1)==suite::categories::Automatic);CHECK(suite::categories::row(0,autoBoard,2)==suite::categories::Control);CHECK(suite::categories::row(2,repairRule,1)==suite::categories::Rules);std::cout<<"PASS automatic category checks="<<checks<<"\n";}
+int repair[]={100,200},interval[]={312},autoBoard[]={111,211},repairRule[]={780},nativeFilter[]={9183};CHECK(suite::categories::row(0,repair,2)==suite::categories::Automatic);CHECK(suite::categories::row(2,interval,1)==suite::categories::Automatic);CHECK(suite::categories::row(0,autoBoard,2)==suite::categories::Control);CHECK(suite::categories::row(2,repairRule,1)==suite::categories::Automatic);CHECK(suite::categories::row(2,nativeFilter,1)==suite::categories::Automatic);std::cout<<"PASS automatic category checks="<<checks<<"\n";}
 '''
 results['categories']=run('automatic-categories',layout)
 tactical=(production/'tactical_controls.h').read_text()

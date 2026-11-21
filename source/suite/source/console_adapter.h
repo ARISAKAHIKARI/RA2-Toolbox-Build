@@ -144,7 +144,7 @@ class Host {
  static bool numericText(const std::wstring& text){if(text.empty())return true;size_t at=text[0]==L'-'||text[0]==L'+'?1:0;for(;at<text.size();++at)if(text[at]<L'0'||text[at]>L'9')return false;return true;}
  NativeControl read(Port& p,Entry& entry) {
   NativeControl out;out.window=entry.window;auto& c=out.control;HWND w=entry.window;const auto& cls=entry.cls;
-  c.id=entry.token;c.enabled=detail::enabled(w,p.window.load());c.visible=detail::visibleStyle(w,p.window.load());c.text=detail::utf8(detail::text(w));c.label=c.text;
+  c.id=entry.token;c.nativeId=std::max(0,GetDlgCtrlID(w));c.enabled=detail::enabled(w,p.window.load());c.visible=detail::visibleStyle(w,p.window.load());c.text=detail::utf8(detail::text(w));c.label=c.text;
   GetWindowRect(w,&out.rect);MapWindowPoints(nullptr,p.window.load(),reinterpret_cast<POINT*>(&out.rect),2);c.row=out.rect.top;c.column=out.rect.left;
   // These are lifetime-stable metadata supplied on the owning module thread.
   // The compatibility tree's old folds/scroll offsets do not own DOM layout.

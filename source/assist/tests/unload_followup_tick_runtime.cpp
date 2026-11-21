@@ -77,7 +77,7 @@ static bool nativeMember(uint32_t p){return worldObjects.contains(p);}
 static void watchEjections(uint32_t,int){}
 static void serviceUnloadCalculation(uint32_t,int,int&){}
 static void publishUnloadCalculation(){}
-static bool collectUnloadSource(unloadcompute::Input&,const UnloadPassenger&,uint32_t,int){return false;}
+static bool collectUnloadSource(unloadcompute::Input&,const UnloadPassenger&,uint32_t,int,bool=false){return false;}
 static bool applyUnloadDecision(UnloadPassenger&,const unloadcompute::Input&,int,const unloadcompute::Decision&,uint32_t,int,int&,bool){return false;}
 #include UNLOAD_TICK_HEADER
 static void check(bool pass,const char*label){

@@ -304,6 +304,7 @@ struct Shared {
   volatile uint32_t workerLastDurationMs=0,workerMaxDurationMs=0;
   volatile uint32_t workerLastCalls=0,workerLastBytes=0,workerLastPages=0;
   volatile int32_t workerFirstFrame=-1,workerLastFrame=-1;
+  volatile uint32_t workerLastDurationUs=0; // Uses the former 4-byte tail padding.
  } sampling{};
 };
 inline int remaining(int start,int duration,int frame){

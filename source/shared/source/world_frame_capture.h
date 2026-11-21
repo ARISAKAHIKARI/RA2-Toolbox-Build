@@ -192,7 +192,22 @@ public:
   block(0x87F7E8,0x1500);block(frame_.key.scenario,0x1300);house(frame_.key.house);
   // Resource consumers share the native sidebar's four cameo strips with
   // Runtime instead of faulting these pages into an independent Host scan.
-  if(demand_&Resources)block(0x87F7E8+0x1500,0x53A0-0x1500);
+  if(demand_&Resources){
+   block(0x87F7E8+0x1500,0x53A0-0x1500);
+   // Local building and defense factories own their current products even
+   // when those products are in limbo and absent from the Techno vector.
+   for(uint32_t offset:{0x53BCu,0x53CCu}){
+    const uint32_t factory=value<uint32_t>(frame_.key.house+offset);
+    if(!range(factory,0x70))continue;
+    block(factory,0x70);
+    if(value<uint32_t>(factory+0x6C)!=frame_.key.house)continue;
+    const uint32_t product=value<uint32_t>(factory+0x58);
+    if(range(product,0x524)){
+     block(product,0x524);
+     type(value<uint32_t>(product+0x520));
+    }
+   }
+  }
   auxiliary(value<uint32_t>(0x887324),0xD0);auxiliary(value<uint32_t>(0x8871E0),0x1000);
   if(!working())return false;auto&list=scratch_->list;
   for(uint32_t table:{0xA8EC78u,0xA8EB40u,0x8B4108u}){
@@ -210,6 +225,10 @@ public:
     for(uint32_t p:scratch_->technoRoster)enqueue(p);
    }else for(uint32_t p:list)enqueue(p);
   }
+  // Passenger consumers also need the infantry roster, including inactive
+  // loaded infantry. A missing roster leaves passenger admission unknown.
+  if((demand_&Passengers)&&vector(0xA83DE8,16384,list))
+   for(uint32_t p:list)enqueue(p);
   if(!vector(0xA80228,32,list))return false;for(uint32_t p:list)house(p);
   if(demand_&(Bullets|Visual)){
    if(!vector(0xA8ED40,16384,list))return false;

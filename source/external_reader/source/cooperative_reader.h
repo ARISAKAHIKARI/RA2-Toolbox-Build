@@ -2,11 +2,12 @@
 #include "game_view.h"
 #include "projection.h"
 #include "../../assist/source/cooperative_plan.h"
+#include "../../assist/source/cooperative_capture_identity.h"
 #include "cooperative_damage.h"
 #include <unordered_map>
 #include <unordered_set>
 namespace external {
-template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Read read,const assist::cooperative::Request&r,Quotas quota){
+template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Read read,const assist::cooperative::Request&r,Quotas quota,assist::cooperative::CapturedIdentities*identities=nullptr){
  using namespace assist;cooperative::Input out;out.mode=r.mode;out.clicked=r.target;out.centerX=r.cameraX;out.centerY=r.cameraY;out.radiusCells=cooperative::radiusCells(r.airRadiusCells);out.coveragePercent=cooperative::damagePercent(r.airDamagePercent);if(!cooperative::valid(r))return out;
  GameView<Read> game(read);uint32_t house=game.template get<uint32_t>(0xA83D4C);int frame=game.template get<int>(0xA8ED84,-1);
  if(house<0x10000||frame<0||!game.template get<uint8_t>(0xA8E9A0))return out;
@@ -65,6 +66,12 @@ template<class Read,class Quotas> assist::cooperative::Input cooperativeInput(Re
  }
  // House changes invalidate this whole read; commands will also be checked late.
  if(house!=game.template get<uint32_t>(0xA83D4C))return cooperative::Input{};
+ if(identities){
+  identities->house=house;
+  identities->actors.reserve(sources.size());identities->targets.reserve(targets.size());
+  for(size_t i=0;i<sources.size();++i)identities->actors.push_back({out.units[i].source.id,sources[i],out.units[i].source.token});
+  for(size_t i=0;i<targets.size();++i)identities->targets.push_back({out.targets[i].id,targets[i]});
+ }
  return out;
 }
 }

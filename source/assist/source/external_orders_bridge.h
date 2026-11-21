@@ -305,10 +305,10 @@ static bool externalOrderValid(const planner::Order&o,uint32_t house){
 static outgoing::Batch planBatch;
 // Shared admission for host and Runtime decisions. Neither planner owns a
 // constructor, RNG, mission write, private hook or alternative event channel.
-static int admitPlannerOrder(const planner::Order&o,uint32_t house,uint32_t sourceMatch,uint32_t sourceTick){
- // Native orders require a strict same-frame worker roster. A candidate or
- // unavailable index is not evidence that a unit/target/refinery disappeared.
- if(indexedFrame!=snap.frame||!commandRosterReady())return 0;
+static int admitPlannerOrder(const planner::Order&o,uint32_t house,uint32_t sourceMatch,uint32_t sourceTick,bool liveProvenAttack=false){
+ // Exact input is the normal route. The explicit local attack route already
+ // proved both frozen identities live; it still runs every native check below.
+ if(indexedFrame!=snap.frame||(!commandRosterReady()&&!liveProvenAttack))return 0;
  // A fresh in-range target takes precedence over any delayed movement proposal.
  // Reject an obsolete movement proposal immediately so an external planner can
  // receive its receipt and use the next world; do not block its whole batch
@@ -359,18 +359,58 @@ static int admitPlannerOrder(const planner::Order&o,uint32_t house,uint32_t sour
 static int admitPlannerOrder(const planner::Order&o,uint32_t house){
  return o.purpose==planner::OreHarvestOrder?admitPlannerOrder(o,house,match,0):-1;
 }
-static void externalOrdersTick(uint32_t house,int frame,DWORD now){
+static bool individualAttackCandidate(const planner::Order&o){
+ return o.mission==1&&(o.purpose==planner::CombatOrder||o.purpose==planner::DefenseOrder||o.purpose==planner::MagnetronOrder)&&
+  o.unit&&o.target&&o.unitPointer>=0x10000&&o.targetPointer>=0x10000&&
+  !o.pursuit&&!o.refinery&&!o.destination&&!o.destinationTag;
+}
+static void externalOrdersTick(uint32_t house,int,DWORD now,bool crossFrame=false){
  uint32_t request=sh->planRequest;
  if(request==sh->planAck)return;
  MemoryBarrier();
  if(request!=planBatch.request)planBatch.begin(request);
  const int count=sh->planCount;
  int result=1;
- // Every unsent order retains the original source deadline, including a
- // partially admitted batch. Admission never grants a longer drain window.
+ // Every unsent order retains the original match and source frame, also
+ // when another part of the batch has already committed.
  auto fresh=[&](){return freshness::valid(sh->planMatch,match,sh->planTick,sh->planFrame,sampleClock(sh),get<int>(0xA8ED84),freshness::Tactical);};
  if(count<0||count>planner::MaxOrders||!fresh())result=-7;
  else if(get<bool>(0xA8BC60+25))result=-8;
+ else if(crossFrame){
+  if(!eventdelivery::isSingleplayer(snap.session)||!candidateRosterReady()||sampleReadDepth||!simulationReady()||
+     !planningRoom(0)||!outgoingRoom())return;
+  const bool inspected=planBatch.candidatePass(count,4,preciseclock::micros(),worldFrameCandidateVersion,[&](int i){
+   const auto&order=sh->plan[i];
+   if(!individualAttackCandidate(order))return false;
+   for(int earlier=planBatch.next;earlier<i;++earlier)
+    if(!planBatch.settled(earlier)&&sh->plan[earlier].unit==order.unit)return false;
+   return true;
+  },[&](int i){
+   const auto o=sh->plan[i];
+   if(manualVersions.get(o.unit)!=o.token)return -1;
+   uint32_t actorID=0,targetID=0;
+   if(!readObjectIdentity(o.unitPointer,actorID)||!readObjectIdentity(o.targetPointer,targetID))return 0;
+   if(actorID!=o.unit||targetID!=o.target)return -1;
+   // A gap in the old census is unknown. Wait for the next publication;
+   // do not use it to reject a live actor or to infer a whole-world fact.
+   if(worldByID(o.unit)!=o.unitPointer||worldByID(o.target)!=o.targetPointer)return 0;
+   const int index=o.purpose==planner::MagnetronOrder?orderIndex(o.unitPointer):-1;
+   const auto family=o.purpose==planner::CombatOrder?compute::Advanced:
+     o.purpose==planner::DefenseOrder?compute::Defense:
+     (index>=0&&nativeOrders[index].global?compute::MagnetronGlobal:compute::Magnetron);
+   if(compute::inside(sh->computeApplied,family))return -1;
+   if(!fresh())return 0;
+   return admitPlannerOrder(o,house,sh->planMatch,sh->planTick,true);
+  });
+  if(!planBatch.done(count)){
+   // An exact frame may never arrive at this speed. Once a newer planning
+   // observation has actually been published, return unresolved proposals to
+   // the Host. Its next step retains the tasks and only retries uncommitted work.
+   if(!inspected||planningWorld.match!=match||planningWorld.frame<=sh->planFrame||
+      !planningRoom(0)||!outgoingRoom())return;
+   result=outgoing::ReplanFromNewObservation;
+  }
+ }
  else {
   while(!planBatch.done(count)){
    if(!fresh()){result=-7;break;}
@@ -386,7 +426,7 @@ static void externalOrdersTick(uint32_t house,int frame,DWORD now){
   }
  }
  // On invalidation/restart, all remaining items are explicitly rejected.
- if(result!=1)while(!planBatch.done(count)&&count>=0&&count<=planner::MaxOrders)planBatch.reject();
+ if(result<0)while(!planBatch.done(count)&&count>=0&&count<=planner::MaxOrders)planBatch.reject();
  sh->planAccepted=planBatch.accepted;
  sh->planAcceptedMask=planBatch.acceptedMask;
  sh->planRejectedMask=planBatch.rejectedMask;

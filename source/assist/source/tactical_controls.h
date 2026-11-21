@@ -10,6 +10,10 @@ auto columnHeading=[&](const wchar_t*text,int x,int width){
 auto next=[&](int height=26){rowY+=height+12;};
 auto note=[&](const wchar_t* text,int=26){if(pageControls.empty())return;const int y=pageControls.back().rect.y;for(auto i=pageControls.rbegin();i!=pageControls.rend()&&i->page==section&&i->rect.y==y;++i)i->help=text;};
 auto heading=[&](int page,int id,const wchar_t* title,const wchar_t* hint){section=page;rowY=0;item(L"STATIC",title,20,605,id,0,30);next(30);note(hint,44);};
+auto consoleFeature=[&](size_t first,const wchar_t* name,HWND master){
+ for(size_t i=first;i<pageControls.size();++i)SetPropW(pageControls[i].hwnd,L"RA2.Console.Group",const_cast<wchar_t*>(name));
+ if(master)SetPropW(master,L"RA2.Console.GroupHeader",reinterpret_cast<HANDLE>(1));
+};
 auto toggle=[&](int id,const wchar_t* text,bool checked,int x=20,int width=605){auto h=item(L"BUTTON",text,x,width,id,BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(h,BM_SETCHECK,checked?BST_CHECKED:BST_UNCHECKED,0);return h;};
 auto button=[&](int id,const wchar_t* text,int x=20,int width=605){return item(L"BUTTON",text,x,width,id,BS_PUSHBUTTON|WS_TABSTOP);};
 auto key=[&](int id,uint32_t binding,int x=345,int width=280,bool hold=false){auto h=item(HOTKEY_CLASSW,L"",x,width,id,WS_TABSTOP);if(hold){modernui::mouseOnly(h);modernui::holdKey(h);}SendMessageW(h,HKM_SETHOTKEY,binding,0);return h;};
@@ -37,9 +41,10 @@ for(int i=1;i<9;++i){auto text=L"嘲讽 "+std::to_wstring(i);label(text.c_str(),
 note(L"绑定后由工具箱接管该组合；聊天和菜单中不接管。嘲讽仍遵循原版冷却与接收方设置。",44);
 activeFoldGroup=0;
 label(L"轮选空闲飞机",20,306);key(853,idleAircraftKey);next();
-label(L"按当前武器选择同类单位（暂不可用，保留原绑定）",20,306);
-extraControls[VariantKey]=key(724,extra.variantKey);EnableWindow(extraControls[VariantKey],FALSE);next();
-note(L"该功能等待统一采样迁移；暂停期间不注册此快捷键、不参与冲突判定、不响应旧消息。",44);
+label(featureavailability::VariantSelection?L"按当前武器选择同类单位":L"按当前武器选择同类单位（暂不可用）",20,306);
+extraControls[VariantKey]=key(724,extra.variantKey);
+EnableWindow(extraControls[VariantKey],featureavailability::VariantSelection);
+note(L"当前武器变体尚未接入统一采样。已有绑定会保留；普通同类选择可用。");next();
 button(454,L"停止所选单位的自动任务");next();
 label(L"组合选兵绑定",20,455);button(9608,L"展开设置",500,125);next();
 note(L"组合选兵：多个单位类型可使用同一快捷键；单按选屏幕内，双按选全图。",44);
@@ -129,17 +134,21 @@ activeFoldGroup=0;
 
 heading(2,902,L"自动功能",L"每项功能可独立设置开关快捷键；新快捷键默认留空。参数修改后自动保存并生效。");
 columnHeading(L"功能开关",20,306);columnHeading(L"开关快捷键",345,280);next();
+const size_t repairRows=pageControls.size();
 repairCheck=toggle(100,labels[0],value(L"Modes",L"AutoRepair",0)!=0,20,306);keys[0]=key(200,hotkeys[0]);next();
 repairEdit=number(312,L"自动维修间隔 / 毫秒",repairMs,L"500–30000 · 默认 2000");
 note(L"检查受损建筑并发出维修请求的间隔；数值越小检查越频繁，不改变游戏内维修速度。",44);
+toggle(780,L"允许维修通常不可维修的建筑",repairUnrepairable);next();
+consoleFeature(repairRows,L"自动维修",repairCheck);
 ejectCheck=toggle(455,L"载员自动逃生",ejectMode,20,306);ejectKeyEdit=key(456,ejectKey);next();
 automaticToggle(899,L"磁电全局自动摔落",extra.magnetronDrop);next();
 note(L"检测己方磁电吸起的载具，在建筑、地面单位、树木、矿柱、悬崖或不适合的水陆落点上方自动松开。包含手动强制吸起的己方、盟友与敌方载具；两栖和悬浮按各自通行类型处理，桥面和空中单位不计作障碍。",76);
-automaticToggle(799,L"生产预定",extra.constructionQueue);next();
+const size_t productionRows=pageControls.size();
+const auto productionMaster=automaticToggle(799,L"生产预定",extra.constructionQueue);next();
 toggle(9796,L"显示已可生产单位（批量预定）",extra.constructionShowNativeUnits);next();
 note(L"默认仅显示未来可造的步兵/载具和已有预定，隐藏原生生产栏已经能造的单位；勾选后可把已可生产单位加入工具箱 128 项批量队列。已预定项目始终可见。建筑/防御保留原逻辑。",60);
 number(817,L"建筑预定面板缩放 / %",constructionScalePercent,L"50–250 · 默认 100");
-toggle(780,L"允许维修通常不可维修的建筑",repairUnrepairable);next();
+consoleFeature(productionRows,L"生产预定",productionMaster);
 oreCheck=toggle(470,L"矿车自动卸矿",oreMode,20,245);key(9504,extra.automaticKeys[autofeatures::OreReturn],280,205);button(9605,L"展开设置",500,125);next();
 activeFoldGroup=9605;
 oreStatus=item(L"STATIC",L"等待对局",20,605,0,0,44);next(44);
@@ -175,10 +184,12 @@ automaticToggle(9181,L"提前休眠留枪",extra.missileReserve);next();
 number(881,L"火控检测频率 / 次每秒",extra.missileScanHz,L"1–60 · 默认 10");
 note(L"智能分配以预计 120% 血量为覆盖线。提前休眠留枪：建筑、战车、步兵先 Sleep 等待已分配目标进入原生射程，冷却或多余火力继续等待；无候选时恢复 Guard。关闭留枪则沿用原版攻击接近。手动命令和队形优先。",60);
 activeFoldGroup=0;
-automaticToggle(9182,L"过滤低伤害自动目标",extra.lowDamageFilter);next();
+const size_t filterRows=pageControls.size();
+const auto filterMaster=automaticToggle(9182,L"过滤低伤害自动目标",extra.lowDamageFilter);next();
 toggle(9183,L"高危：修改原生索敌",extra.lowDamageNetwork);next();
-note(L"需先开启“自动功能”页的“过滤低伤害自动目标”。默认仅过滤工具箱自动命令，单机与联机均不修改原生索敌。另开高危选项会改写原生判断：单机影响己方，联机影响全部阵营，可能不同步。",60);
+note(L"需先开启“过滤低伤害自动目标”。默认仅过滤工具箱自动命令，单机与联机均不修改原生索敌。另开高危选项会改写原生判断：单机影响己方，联机影响全部阵营，可能不同步。",60);
 item(L"STATIC",L"",20,605,9184);pageControls.back().feedbackHidden=true;next();
+consoleFeature(filterRows,L"低伤害过滤",filterMaster);
 
 // One visible Auto CS switch represents the previous two enable flags.
 hookChecks[3]=placedControl({-3,{0,0,1,1}},L"BUTTON",L"",466,BS_AUTOCHECKBOX);

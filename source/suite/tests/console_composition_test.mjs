@@ -78,12 +78,14 @@ function setup(){
  ];
  return {context,document,store,elements,sent,dispatch,row,edit,actions,render,receive,find};
 }
+const navButton=(root,index)=>root.children.find(child=>child.dataset.pageIndex===String(index));
 const cases=[];
 const test=(name,run)=>cases.push({name,run});
 
 test('top-level display pages route, restore and show only their controls',()=>{
  const f=setup(),node=id=>f.document.getElementById(id);
- const nav=node('navigation').children;
+ const nav=Array.from({length:8},(_,i)=>navButton(node('navigation'),i));
+ assert.deepEqual(node('navigation').children.filter(child=>child.className==='nav-group-label').map(child=>child.textContent),['对局工具','显示','高级']);
  assert.deepEqual(nav.map(b=>b.attributes.get('aria-label')),['光标','渲染','监控视图','控制','自动功能','游戏规则','实验功能','调试']);
  const state=(module,revision,controls)=>({kind:'state',protocol:1,module,generation:1,revision,controls,page:module?'monitor':'cursor'});
  f.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:0,videoSection:1});
@@ -100,17 +102,23 @@ test('top-level display pages route, restore and show only their controls',()=>{
  assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['光标补帧']);
  const sent=f.sent.length;
  f.dispatch(nav[1],'click');f.render();
- assert.equal(f.sent.length,sent);
+ assert.equal(f.sent.length,sent+1);
+ assert.equal(f.sent.at(-1).pageIndex,1);
  assert.equal(node('pageTitle').textContent,'渲染');
  assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['画质选项']);
  const early=setup();
- early.dispatch(early.document.getElementById('navigation').children[1],'click');
+ early.dispatch(navButton(early.document.getElementById('navigation'),1),'click');
  assert.equal(early.sent.at(-1).kind,'navigate');
  assert.equal(early.sent.at(-1).module,0);
+ const restored=setup();
+ restored.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:0,videoSection:0,pageIndex:1});
+ restored.render();
+ assert.equal(restored.document.getElementById('pageTitle').textContent,'渲染');
+ assert.equal(navButton(restored.document.getElementById('navigation'),1).attributes.get('aria-current'),'page');
 });
 
 test('automatic features have one level of expansion and no empty fold',()=>{
- const f=setup(),node=id=>f.document.getElementById(id),select=f.document.getElementById('navigation').children[4];
+ const f=setup(),node=id=>f.document.getElementById(id),select=navButton(f.document.getElementById('navigation'),4);
  f.dispatch(select,'click');
  assert.equal(f.sent.at(-1).category,2);
  const controls=[
@@ -123,29 +131,65 @@ test('automatic features have one level of expansion and no empty fold',()=>{
  ];
  const state=revision=>({kind:'state',protocol:1,module:2,generation:1,revision,page:'tactical/2',controls});
  f.receive(state(1));f.render();
- assert.equal(f.find('group-summary').length,1);
+ assert.equal(f.find('group-summary').length,2);
  assert.equal(f.find('group-summary')[0].tagName,'DIV');
- assert.equal(f.find('group-summary')[0].hidden,true);
+ assert.equal(f.find('group-summary')[0].hidden,false);
+ assert.equal(f.find('group-summary')[1].hidden,false);
  const buttons=f.find('feature-config-toggle');
  assert.equal(buttons.length,2);
- assert.equal(buttons[0].hidden,true);
- assert.equal(buttons[1].attributes.get('aria-expanded'),'false');
+ assert.equal(buttons[1].hidden,true);
+ assert.equal(buttons[0].attributes.get('aria-expanded'),'false');
  assert.ok(f.find('group-status')[0].textContent.includes('维修范围暂不可用'));
- f.dispatch(buttons[1],'click');
- assert.equal(buttons[1].attributes.get('aria-expanded'),'true');
+ f.dispatch(buttons[0],'click');
+ assert.equal(buttons[0].attributes.get('aria-expanded'),'true');
  assert.ok(f.find('setting-label').some(label=>label.textContent==='血量阈值'));
- f.dispatch(buttons[1],'click');
+ f.dispatch(buttons[0],'click');
  const search=node('search');search.value='血量阈值';f.dispatch(search,'input');f.render();
  assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'true');
  f.dispatch(node('foldAll'),'click');f.receive(state(2));f.render();
  assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'false');
  search.value='';f.dispatch(search,'input');f.render();
- assert.equal(f.find('feature-config-toggle')[1].attributes.get('aria-expanded'),'false');
+ assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'false');
+});
+
+test('production settings have a single page and keep their tactical owner',()=>{
+ const f=setup(),node=id=>f.document.getElementById(id);
+ f.receive({kind:'shell',protocol:1,servicesReady:true,selectedCategory:2,pageIndex:8});
+ f.receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/2',controls:[
+  {id:71,nativeId:799,type:'toggle',label:'生产预定',group:'生产预定',groupHeader:true},
+  {id:72,nativeId:817,type:'number',label:'预定面板缩放',group:'生产预定',text:'100'},
+  {id:73,nativeId:100,type:'toggle',label:'自动维修',group:'自动维修',groupHeader:true}
+ ]});
+ f.render();
+ assert.equal(node('pageTitle').textContent,'生产');
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['生产预定']);
+ assert.equal(f.store.act(71,'toggle',true),true);
+ assert.equal(f.actions().at(-1).module,2);
+ assert.equal(f.actions().at(-1).id,71);
+ f.dispatch(navButton(node('navigation'),4),'click');f.render();
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['自动维修']);
+ f.dispatch(navButton(node('navigation'),8),'click');
+ assert.equal(f.sent.at(-1).pageIndex,8);
+ assert.equal(f.sent.at(-1).category,2);
+ f.dispatch(node('productionNotices'),'click');
+ assert.equal(f.sent.at(-1).module,1);
+ assert.equal(f.sent.at(-1).pageIndex,9);
+ f.receive({kind:'state',protocol:1,module:1,generation:1,revision:1,page:'monitor',controls:[
+  {id:74,type:'toggle',label:'显示建造时间',group:'生产提醒'},
+  {id:75,type:'toggle',label:'副相机',group:'副相机'}
+ ]});
+ f.render();
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['显示建造时间']);
+ assert.equal(navButton(node('navigation'),8).attributes.get('aria-current'),'page');
+ assert.equal(f.store.act(74,'toggle',true),true);
+ assert.equal(f.actions().at(-1).module,1);
+ f.dispatch(navButton(node('navigation'),2),'click');f.render();
+ assert.deepEqual(f.find('setting-label').map(label=>label.textContent),['副相机']);
 });
 
 test('native shared rows and status notes have no redundant configuration title',()=>{
  const f=setup(),nav=f.document.getElementById('navigation');
- f.dispatch(nav.children[4],'click');
+ f.dispatch(navButton(nav,4),'click');
  f.receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/2',controls:[
   {id:1,type:'toggle',group:'自动功能',label:'磁电全局无限吸',row:80,column:20},
   {id:2,type:'hotkey',group:'自动功能',label:'磁电全局无限吸',row:80,column:345},
