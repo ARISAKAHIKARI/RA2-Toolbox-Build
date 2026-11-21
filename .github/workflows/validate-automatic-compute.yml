@@ -24,6 +24,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Test source-extracted cross-feature capacity and identity conservation
+        run: |
+          set -euo pipefail
+          python3 source/assist/tests/shared_enter_capacity.py --out /tmp/ra2-shared-enter
       - name: Check sealed world pages and consumer recovery
         run: |
           set -euo pipefail
@@ -132,7 +136,7 @@ jobs:
         run: |
           set -euo pipefail
           export ZIG="$(cygpath -u "$ZIG_EXE")"
-          python source/assist/tests/smartarea_capacity.py --zig "$ZIG" --out diagnostics/entry-capacity
+          python source/assist/tests/shared_enter_capacity.py --zig "$ZIG" --out diagnostics/entry-capacity
       - name: Compile paired Windows x86 Runtime and x64 Host
         shell: bash
         run: |
