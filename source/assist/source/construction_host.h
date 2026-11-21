@@ -113,7 +113,16 @@ static void collectChoices(){
  uint32_t strip=0x87F7E8+0x1544+activeTab*3988;int count=-1,cameos[75*13]{};
  const bool nativeReady=read(strip+84,&count,4)&&count>=0&&count<=75&&(!count||read(strip+88,cameos,size_t(count)*52));
  if(!nativeReady)return;
- auto nativeHere=[&](int kind,int index){for(int i=0;i<count;++i)if(cameos[i*13]==index&&cameos[i*13+1]==kind)return true;return false;};
+ // Index native cameos once; repeated O(typeCount * 75) lookups made each
+ // forecast redraw more expensive than the sealed catalogue traversal.
+ // Fixed 75-slot array avoids heap work during 32ms incomplete-page retries.
+ std::array<uint64_t,75> nativeKeys{};
+ auto nativeKey=[](int kind,int index){return (uint64_t(uint32_t(kind))<<32)|uint32_t(index);};
+ for(int i=0;i<count;++i)nativeKeys[i]=nativeKey(cameos[i*13+1],cameos[i*13]);
+ std::sort(nativeKeys.begin(),nativeKeys.begin()+count);
+ auto nativeHere=[&](int kind,int index){
+  return std::binary_search(nativeKeys.begin(),nativeKeys.begin()+count,nativeKey(kind,index));
+ };
  if(activeTab>=2&&!extra.constructionShowNativeUnits){
   // Never suppress a user's queued reservation, even after its native cameo appears.
   const auto&book=books[activeTab];

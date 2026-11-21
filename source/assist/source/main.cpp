@@ -792,7 +792,7 @@ static void registerKeys(){for(int id:registeredKeyIDs)UnregisterHotKey(ui,id);r
  if(extra.watchEnabled||extra.watchSecondary)for(int i=0;i<3;++i)if(external::watch::firstBinding(extra.watchKeys,i)&&!registerKey(1730+i,WORD(extra.watchKeys[i])))++failures;
  if(LOBYTE(idleAircraftKey)&&!registerKey(1701,idleAircraftKey))++failures;
  for(int i=0;i<9;++i)if(LOBYTE(socialKeys[i])&&!registerKey(1710+i,socialKeys[i]))++failures;
- if(LOBYTE(extra.variantKey)&&!registerKey(1700,WORD(extra.variantKey)))++failures;
+ // VariantKey remains in the INI but is not registered until sampling migration is complete.
  // Destruction never joins a colliding/fanout group, including later edits.
  if(extra.destructSelectedOwner&&LOBYTE(extra.destructSelectedOwnerKey)){
   if(destructOwnerKeyConflict(WORD(extra.destructSelectedOwnerKey))||!destructownerhost::exclusive(hotkeyRegistry,extra.destructSelectedOwnerKey)||

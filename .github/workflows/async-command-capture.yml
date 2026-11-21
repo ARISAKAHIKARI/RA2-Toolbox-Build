@@ -19,6 +19,8 @@ on:
       - "source/assist/tests/unified_gateway_contract.py"
       - "source/assist/tests/ore_harvest_handoff.cpp"
       - "source/assist/tests/ore_harvest_handoff.py"
+      - "source/assist/tests/capacity_admission.cpp"
+      - "source/assist/tests/tactical_frame_sampling.cpp"
       - "source/assist/tests/async_command_no_live_roster.py"
       - "source/assist/tests/async_command_policy.cpp"
       - "source/assist/source/global_vehicle_scan_policy.h"
@@ -56,6 +58,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p checks
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Wno-error=misleading-indentation -Wno-error=missing-field-initializers source/assist/tests/plan_freshness.cpp -o checks/plan-freshness
+          checks/plan-freshness | tee checks/plan-freshness.log
+          python source/assist/tests/automation_no_deadline_contract.py | tee checks/automation-no-deadline.log
+          python source/assist/tests/ui_recovery_contract.py | tee checks/ui-recovery.log
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/assist/tests/construction_cameo_index.cpp -o checks/cameo-index
+          checks/cameo-index | tee checks/cameo-index.log
+          node source/suite/tests/console_store_test.mjs | tee checks/console-store.log
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/suite/tests/semantic_category_contract.cpp -o checks/category-routing
+          checks/category-routing | tee checks/category-routing.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/async_command_policy.cpp -o checks/command-policy
           checks/command-policy | tee checks/command-policy.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/execution_proof.cpp -o checks/execution-proof
@@ -119,6 +130,17 @@ jobs:
           export RA2_OUTPUT_DIR="$PWD/async-command-build"
           bash source/build-zig-x64.sh > checks/build.log 2>&1 || { tail -120 checks/build.log; exit 1; }
           python source/tools/verify_windows_outputs.py --root async-command-build --host-arch x64 --webview2 | tee checks/pe.log
+      - name: Package paired Update from this exact Windows build
+        shell: bash
+        run: |
+          set -euo pipefail
+          python source/tools/package_automation_no_deadlines.py --root async-command-build --sha "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-PR71-NoFixedDeadline-x64-Update
+          retention-days: 30
+          if-no-files-found: error
+          path: async-command-build/RA2Toolbox-PR71-NoFixedDeadline-x64-Update.zip
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -21,7 +21,14 @@ struct VideoEntry {DisplayOption option;VideoGroup group;const wchar_t*label;con
 inline constexpr VideoEntry videoEntries[]={
  {OverlayToggleKey,VideoGroup::Render,L"覆盖层显示快捷键",L"",VideoSection::Render,true},
  {RenderUpgrade,VideoGroup::Render,L"增强渲染",L"",VideoSection::Render,true},
- {SinglePlayerFPS,VideoGroup::Render,L"单机帧率（FPS，0 恢复原版）",L"",VideoSection::Render,true},
+ {RenderProcessing,VideoGroup::Render,L"额外画质处理（基础快速绘制可关闭）",L"",VideoSection::Render,true},
+ {RenderPalette,VideoGroup::Render,L"256 色素材输出",L"原始 DAC（6-bit）|完整 24-bit RGB",VideoSection::Render},
+ {RenderPrecision,VideoGroup::Render,L"色彩计算精度",L"兼容色阶|增强 RGB 连续光照",VideoSection::Render},
+ {RenderDetail,VideoGroup::Render,L"场景精细度",L"原生像素合成|精细 VXL 自适应采样",VideoSection::Render},
+ {RenderXbrz,VideoGroup::Render,L"启用 xBRZ 边缘重建",L"",VideoSection::Render,true},
+ {RenderScale,VideoGroup::Render,L"素材边缘重建倍率",L"面积采样|最近邻|xBRZ|自适应 1–4× xBRZ",VideoSection::Render},
+ // SinglePlayerFPS is presented by its original tactical setting in 游戏规则.
+ // It still uses its existing setting owner; do not expose a second editor in Render.
  {RenderHighRefresh,VideoGroup::Render,L"高刷新率补帧",L"",VideoSection::Render,true},
  {RenderPhysical,VideoGroup::Render,L"按物理像素绘制",L"",VideoSection::Render,true},
  {RenderUnified,VideoGroup::Render,L"统一覆盖层",L"",VideoSection::Render,true},
@@ -113,7 +120,9 @@ public:
     else if(type==DisplayControl::Hotkey){h=ctl(HOTKEY_CLASSW,L"",WS_TABSTOP,left,y,w,28,Base+e.option);modernui::pressKey(h);}
     else{h=ctl(L"EDIT",L"",WS_BORDER|ES_NUMBER|ES_AUTOHSCROLL|WS_TABSTOP,left,y,w,28,Base+e.option);SendMessageW(h,EM_SETLIMITTEXT,5,0);}
    }
-   metadata(h,e.section,e.groupHeader);controls_[e.option]=h;EnableWindow(h,FALSE);if(e.option==OverlayToggleKey)modernui::tip(h,L"使用同一个快捷键显示或隐藏所有覆盖层。");y+=42;
+   metadata(h,e.section,e.groupHeader);controls_[e.option]=h;EnableWindow(h,FALSE);if(e.option==OverlayToggleKey)modernui::tip(h,L"使用同一个快捷键显示或隐藏所有覆盖层。");
+   if(e.option==PassengerBubbles)modernui::tip(h,L"悬停或选中载具时显示乘员类型与数量，己方和常驻显示可单独配置。");
+   if(e.option==DangerPassengers)modernui::tip(h,L"敌方载具内含工程师、间谍或爆破单位时持续显示危险乘员提醒。");y+=42;
   }
   if(group==VideoGroup::Render){status_=ctl(L"STATIC",L"正在同步渲染设置…",0,x,y,width,180,0);metadata(status_,VideoSection::Render);y+=194;modernui::tip(controls_[RenderGPU],L"GPU 不可用时会自动切换到 CPU 渲染。");}
   sync();return y;

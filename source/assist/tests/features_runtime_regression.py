@@ -59,8 +59,8 @@ with tempfile.TemporaryDirectory(prefix='ra2-feature-') as tmp:
   def expiry(mode=mode):
    m=fixture();s=prepare(m,mode);raw=host(m,s);assert struct.unpack_from('<I',raw)[0]==1
    s.planRequest+=1;s.planMatch=s.world.match;s.planTick=s.world.tick;s.planFrame=s.world.frame;s.planCount=1;s.plan[0]=m.Order.from_buffer_copy(raw[4:]);save(m,s)
-   m.w(0xa8ed84,107);m.clock+=20;s=m.hook();assert C.c_int32(s.planResult).value==-7 and s.planAccepted==0
-  check('six_frame_deadline_retained_'+str(mode),expiry)
+   m.w(0xa8ed84,107);m.clock+=20;s=m.hook();assert C.c_int32(s.planResult).value==1 and s.planAccepted==1
+  check('late_source_validated_live_'+str(mode),expiry)
 
 # Hook function to stop exactly at cleanup before side effects.
 from unicorn import UC_HOOK_CODE

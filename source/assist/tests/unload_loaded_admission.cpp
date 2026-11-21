@@ -42,6 +42,15 @@ static bool featureObjectAllowed(int,uint32_t p){return objects.at(p).allowed;}
 static std::vector<uint32_t> selectedCarriers{transport};
 struct Vec {int count;uint32_t address;};static Vec vec(uint32_t address){if(address!=0xA83DE8&&address!=0xA8ECB8)throw std::runtime_error("unexpected vector");return {int(address==0xA83DE8?infantry.size():selectedCarriers.size()),address};}
 static uint32_t item(Vec v,int n){return (v.address==0xA83DE8?infantry:selectedCarriers).at(n);}
+// Extracted function fixture: the synthetic roster is already a complete
+// immutable vector; production uses SampleReadScope + sampleRoster from
+// tactical_frame_read.h and the real sealed Runtime world sample.
+struct SampleReadScope {
+ explicit operator bool() const{return true;}
+ bool complete() const{return true;}
+};
+static bool sampleRoster(uint32_t address,Vec&out){out=vec(address);return out.count>=0;}
+
 static unloadadmission::Queue queuedUnload;
 struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;int frame;};
 static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;

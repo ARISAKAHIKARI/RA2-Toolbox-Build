@@ -36,24 +36,27 @@ static void pruneMagnetronPauses(int frame){
  if(globalMagnetronPauseOverflow>=0&&(frame<globalMagnetronPauseOverflow||frame-globalMagnetronPauseOverflow>=90))globalMagnetronPauseOverflow=-1;
 }
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount,unloadCursor;
-// Read-only roster history bridges a native D that executes before Ctrl+D's
-// WM_HOTKEY reaches the host. It never starts a job without an explicit command.
+// Read-only roster history bridges native D before Ctrl+D's WM_HOTKEY.
+// Bound the unconsumed click history by real milliseconds, NEVER logic frames:
+// high-FPS sessions can advance >90 frames in less than a normal key latency.
+// It never creates a task without the explicit original Ctrl+D.
 struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;int frame;};
 static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;
+static DWORD lastUnloadHistoryTick=0; // wall-clock cadence independent of game FPS
 static ObjectIndex watchedPassengers;
 static void restoreNativeHooks();
-static void clearNativeOrders(bool retireHooks){queuedUnload.clear();globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;if(retireHooks)restoreNativeHooks();resetUnloadCalculation();}
+static void clearNativeOrders(bool retireHooks){queuedUnload.clear();globalMagnetronPauseCount=0;globalMagnetronPauseOverflow=-1;globalMagnetronPauseIndex.clear();nativeCount=nativeCursor=unloadCount=unloadCursor=recentPassengerCount=0;nativeFrame=-1;lastUnloadHistoryTick=0;advancedObjects.clear();snap.advancedUnits=snap.unloadPending=0;if(retireHooks)restoreNativeHooks();resetUnloadCalculation();}
 static bool nativeMember(uint32_t p){return worldObjects.contains(p);}
 static bool nativeReady(){return simulationReady()&&sh->foreground&&!get<bool>(0xA8BC60+25);}
 
 static int orderIndex(uint32_t p){uint32_t slot=advancedObjects.byId(get<uint32_t>(p+0x10));if(!slot||slot>uint32_t(nativeCount))return -1;int i=int(slot-1);return nativeOrders[i].p==p&&nativeOrders[i].id==get<uint32_t>(p+0x10)?i:-1;}
 static void removeOrder(int i){nativeOrders[i]=nativeOrders[--nativeCount];if(i<nativeCount)advancedObjects.add(nativeOrders[i].p,nativeOrders[i].id,uint32_t(i+1));}
 static void finishUnloadFollowup(const UnloadPassenger&r,int frame){
+ (void)frame; // Receipt cancellation is state-driven, not frame-age-driven.
  if(!r.followTicket)return;
  gateway::Receipt rec{};gateway::Intent intent{match,r.followQueuedAt,r.id,r.followTarget,0};
  gateway::planned(rec,r.followTicket,intent);rec.queuedAt=r.followQueuedAt;rec.owner=taskarbiter::Owner::Unload;
  if(r.followObserved){rec.phase=gateway::Phase::Observed;rec.observedAt=sampleClock(sh);}
- else if(frame>=r.frame&&frame-r.frame>900){rec.phase=gateway::Phase::Expired;rec.failure=gateway::Failure::Stale;++snap.receiptExpired;}
  else {rec.phase=gateway::Phase::Cancelled;rec.failure=gateway::Failure::Superseded;++snap.receiptCancelled;}
  missionObserver.dismissTicket(match,r.followTicket);recordReceipt(rec);
  actorLeaseArbiter.release(match,r.id,r.followTicket);
@@ -111,17 +114,24 @@ static bool unloadExit(const UnloadPassenger&r,int mission,int frame){
 static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  if(!(sh->flags&SmartUnloadOrders)||snap.chat){recentPassengerCount=0;return;}
  if(indexedFrame!=frame)return; // incomplete identity sample: retain history until retry
- for(int n=0;n<recentPassengerCount;){auto&r=recentPassengers[n];
-  const bool expired=DWORD(now-r.tick)>1500||frame<r.frame||frame-r.frame>90;
+ // No 16K passenger walk on every game frame (which can exceed 800Hz).
+ // The explicit Ctrl+D command independently gathers its own latest cohort.
+ if(lastUnloadHistoryTick&&DWORD(now-lastUnloadHistoryTick)<33)return;
+ SampleReadScope sample;if(!sample)return;
+ Vec inf{};if(!sampleRoster(0xA83DE8,inf))return;
+ static RecentPassenger staged[nativeorders::MaxPassengers];
+ int stagedCount=recentPassengerCount;
+ std::memcpy(staged,recentPassengers,sizeof(RecentPassenger)*stagedCount);
+ for(int n=0;n<stagedCount;){auto&r=staged[n];
+  const bool expired=DWORD(now-r.tick)>1500||frame<r.frame;
   const bool present=worldObjects.contains(r.p);
   uint32_t uid=0;const bool known=present&&read(r.p+0x10,&uid,sizeof uid);
   if(expired||!present||manualVersions.get(r.id)!=r.token||(known&&uid!=r.id))
-   r=recentPassengers[--recentPassengerCount];
+   r=staged[--stagedCount];
   else ++n; // Unreadable UID is not proof the prior Ctrl+D passenger vanished.
  }
  static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> history;history.clear();
- for(int n=0;n<recentPassengerCount;++n)history.add(recentPassengers[n].p,n);
- Vec inf=vec(0xA83DE8);
+ for(int n=0;n<stagedCount;++n)history.add(staged[n].p,n);
  for(int n=0;n<inf.count;++n){uint32_t p=item(inf,n);if(!p)continue;uint32_t carrier=get<uint32_t>(p+0x11C);
   // Normal loaded passengers must be remembered too. 0x83 is an
   // exceptional vehicle state used by EjectAssist; requiring it here
@@ -132,9 +142,13 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
   uint32_t uid=0,carrierUID=0;
   if(!read(p+0x10,&uid,sizeof uid)||!read(carrier+0x10,&carrierUID,sizeof carrierUID)||!uid||!carrierUID)continue;
   int at=history.find(p);
-  if(at<0){if(recentPassengerCount==nativeorders::MaxPassengers)continue;at=recentPassengerCount++;history.add(p,at);}
-  recentPassengers[at]={p,uid,carrier,carrierUID,typeOf(carrier,2),manualVersions.get(uid),now,frame};
+  if(at<0){if(stagedCount==nativeorders::MaxPassengers)continue;at=stagedCount++;history.add(p,at);}
+  staged[at]={p,uid,carrier,carrierUID,typeOf(carrier,2),manualVersions.get(uid),now,frame};
  }
+ if(!sample.complete())return;
+ recentPassengerCount=stagedCount;
+ std::memcpy(recentPassengers,staged,sizeof(RecentPassenger)*stagedCount);
+ lastUnloadHistoryTick=now;
 }
 // Build one carrier-keyed roster per admission tick. A large selected cohort
 // must not rescan every infantry object once for each selected transport.
@@ -165,7 +179,9 @@ static int unloadPassengerKnowledge(uint32_t p,uint32_t house,uint32_t&id,uint32
 struct UnloadRosterEntry {uint32_t carrier,pointer,id,token;int history=-1;};
 static UnloadRosterEntry unloadRoster[nativeorders::MaxPassengers*2];static UnloadRosterEntry unloadRosterScratch[nativeorders::MaxPassengers*2];static int unloadRosterCount;
 static void buildUnloadAdmissionRoster(uint32_t house){
- unloadRosterCount=0;Vec inf=vec(0xA83DE8);
+ unloadRosterCount=0;
+ SampleReadScope sample;if(!sample)return;
+ Vec inf{};if(!sampleRoster(0xA83DE8,inf))return;
  for(int n=0;n<inf.count&&unloadRosterCount<nativeorders::MaxPassengers;++n){uint32_t p=item(inf,n),carrier=p?get<uint32_t>(p+0x11C):0;
   if(!carrier||!worldObjects.contains(carrier)||queuedUnload.find(carrier,get<uint32_t>(carrier+0x10))<0||!unloadPassengerEligible(p,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,p))continue;
   unloadRoster[unloadRosterCount++]={carrier,p,get<uint32_t>(p+0x10),manualVersions.get(get<uint32_t>(p+0x10)),-1};
@@ -173,7 +189,8 @@ static void buildUnloadAdmissionRoster(uint32_t house){
  for(int n=0;n<recentPassengerCount&&unloadRosterCount<nativeorders::MaxPassengers*2;++n){const auto&r=recentPassengers[n];
   if(queuedUnload.find(r.carrier,r.carrierID)>=0)unloadRoster[unloadRosterCount++]={r.carrier,r.p,r.id,r.token,n};
  }
- if(!unloadpolicy::radixSortRoster(unloadRoster,unloadRosterScratch,unloadRosterCount))unloadRosterCount=0; // Invalid candidate batch is UNKNOWN, never partially admitted.
+ if(!sample.complete()||!unloadpolicy::radixSortRoster(unloadRoster,unloadRosterScratch,unloadRosterCount))
+  unloadRosterCount=0; // A missing page is UNKNOWN, never a partial batch.
 }
 // A Ctrl+D command may arrive after the game's native D began deploying.
 // Reject stale/foreign carriers, not the transport's own unload-in-progress
@@ -216,7 +233,7 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
   if(known<0||uid!=at->id||manualVersions.get(at->id)!=at->token||
      !featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
   if(at->history>=0){const auto&old=recentPassengers[at->history];
-   if(old.carrierID!=nativeCarrierID||old.carrierType!=typeOf(p,2)||DWORD(now-old.tick)>1500||frame<old.frame||frame-old.frame>90||carrier)continue;
+   if(old.carrierID!=nativeCarrierID||old.carrierType!=typeOf(p,2)||DWORD(now-old.tick)>1500||frame<old.frame||carrier)continue;
   }else if(carrier!=p)continue;
   if(count==nativeorders::MaxPassengers)return -6;
   previous=q;roster[count++]=q;
@@ -300,7 +317,7 @@ static int smartUnload(uint32_t house){
  static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> recent;recent.clear();
  const int frame=get<int>(0xA8ED84);
  for(int n=0;n<recentPassengerCount;++n){const auto&r=recentPassengers[n];
-  if(DWORD(now-r.tick)<=1500&&frame>=r.frame&&frame-r.frame<=90)recent.add(r.carrier,n);
+  if(DWORD(now-r.tick)<=1500&&frame>=r.frame)recent.add(r.carrier,n);
  }
  int count=0,added=0;Vec v=vec(0xA8ECB8);
  for(int n=0;n<v.count;++n){uint32_t p=item(v,n);if(!unloadCarrierEligible(p,house)||selected.find(p)>=0)continue;
@@ -318,23 +335,32 @@ static int smartUnload(uint32_t house){
  // This only remembers members of the explicitly selected own transports;
  // all UID/manual-command/owner/filter checks still run at admission.
  if(count){
-  static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> tracked;tracked.clear();
-  for(int n=0;n<recentPassengerCount;++n)tracked.add(recentPassengers[n].p,n);
-  Vec inf=vec(0xA83DE8);
-  for(int n=0;n<inf.count;++n){uint32_t q=item(inf,n);if(!q)continue;
+  SampleReadScope sample;Vec inf{};
+  if(sample&&sampleRoster(0xA83DE8,inf)){
+   static RecentPassenger staged[nativeorders::MaxPassengers];
+   int stagedCount=recentPassengerCount;
+   std::memcpy(staged,recentPassengers,sizeof(RecentPassenger)*stagedCount);
+   static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> tracked;tracked.clear();
+   for(int n=0;n<stagedCount;++n)tracked.add(staged[n].p,n);
+   for(int n=0;n<inf.count;++n){uint32_t q=item(inf,n);if(!q)continue;
    uint32_t carrier=get<uint32_t>(q+0x11C);
    if(selected.find(carrier)<0||!unloadPassengerEligible(q,house)||!featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
    const uint32_t id=get<uint32_t>(q+0x10),carrierID=get<uint32_t>(carrier+0x10);
    int at=tracked.find(q);
-   if(at<0){if(recentPassengerCount==nativeorders::MaxPassengers)continue;at=recentPassengerCount++;tracked.add(q,at);}
-   recentPassengers[at]={q,id,carrier,carrierID,typeOf(carrier,2),manualVersions.get(id),now,frame};
+   if(at<0){if(stagedCount==nativeorders::MaxPassengers)continue;at=stagedCount++;tracked.add(q,at);}
+   staged[at]={q,id,carrier,carrierID,typeOf(carrier,2),manualVersions.get(id),now,frame};
+   }
+   if(sample.complete()){
+    recentPassengerCount=stagedCount;
+    std::memcpy(recentPassengers,staged,sizeof(RecentPassenger)*stagedCount);
+   }
   }
  }
  return count; // acknowledgement means arranged, not physically unloaded
 }
 static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
  const DWORD now=sampleClock(sh);
- if(!(sh->flags&SmartUnloadOrders)||queuedUnload.epoch!=match||queuedUnload.house!=house||DWORD(now-queuedUnload.lastProgress)>12000){queuedUnload.clear();return;}
+ if(!(sh->flags&SmartUnloadOrders)||queuedUnload.epoch!=match||queuedUnload.house!=house){queuedUnload.clear();return;}
  // Failed UID/page capture means unknown, never an empty cargo roster.
  if(!unloadpolicy::completeIdentityIndex(indexedFrame,frame))return;
  if(!queuedUnload.count||queuedUnload.frame==frame||!loadInterfaces()||!simulationReady()||get<bool>(0xA8BC60+25))return;
@@ -349,7 +375,6 @@ static void smartUnloadAdmissionTick(uint32_t house,int frame,int&budget){
  while(todo--&&queuedUnload.count&&budget>0&&admissionBudget>0&&outgoingRoom()){
   if(queuedUnload.cursor>=queuedUnload.count)queuedUnload.cursor=0;
   int at=queuedUnload.cursor++;auto task=queuedUnload.carriers[at];
-  if(task.attempted&&DWORD(now-task.attemptedAt)>3500){queuedUnload.remove(at);continue;}
   const int knowledge=unloadCarrierKnowledge(task,house);
   if(knowledge<0){queuedUnload.remove(at);continue;}
   if(!knowledge)continue; // Missing page is not a completed Ctrl+D.
@@ -478,7 +503,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    else if(r.stage==1&&mission==0)r.sleepObserved=true;
   }
   bool release=!done&&(r.cancelled||(r.mode==0&&!(sh->flags&SmartUnloadOrders))||
-      (r.mode!=0&&!(sh->flags&EjectAssist))||(r.mode!=1&&frame-r.frame>900));
+      (r.mode!=0&&!(sh->flags&EjectAssist)));
   if(!done&&!release&&r.stage==3&&onFoot){
    // Missing worker roster is UNKNOWN; keep the follow task pending rather
    // than interpreting an unavailable target index as target destruction.
@@ -506,7 +531,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    else if(carrierValid&&carrierOwner!=house)done=true;
    else {r.mode=2;r.frame=frame;}
   }
-  release=!done&&(release||((r.mode!=0&&!(sh->flags&EjectAssist))||(r.mode!=1&&frame-r.frame>900)));
+  release=!done&&(release||((r.mode!=0&&!(sh->flags&EjectAssist))));
   if(release){
    // Repair a genuine idle Sleep, not a fabricated mission=0 from a bad page.
    if((r.stage==1||r.stage==2||r.stage==3)&&live.mission==0&&onFoot){
@@ -521,7 +546,7 @@ static void smartUnloadTick(uint32_t house,int frame,int&budget){
    const int currentMission=live.mission;
    if(r.mode==0&&currentMission==7&&unloadfollowup::unloadExit(live,r.carrier,r.mode,r.landedFrame,frame))continue;
    const bool earlySpecialist=!ejectDeployer&&(live.engineer||live.spy);
-   if(r.mode==0&&!earlySpecialist&&(currentMission==2||live.queued==2)&&frame-r.frame<=900){
+   if(r.mode==0&&!earlySpecialist&&(currentMission==2||live.queued==2)){
     r.x=live.x;r.y=live.y;r.stableSince=frame;continue;
    }
    if(!r.landedFrame)r.landedFrame=frame;

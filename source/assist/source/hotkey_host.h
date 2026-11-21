@@ -49,7 +49,7 @@ static void executeHotkey(WPARAM wp,bool fanout){
  if(wp>=1730&&wp<=1732){watchhost::pin(extra.watchKeys[wp-1730]);return;}
  if(wp>=1710&&wp<=1718){send(wp==1710?Cheer:Taunt,int(wp-1710));return;}
  if(wp==1701){selectNextIdleAircraft();return;}
- if(wp==1700){bool legacy=keygesture::mode(extra.variantKey)==keygesture::Mode::Legacy;bool global=(extra.variantKey&0x8000)||(legacy&&variantTap.press(1700,GetTickCount(),snap.match,doubleMs));if(!legacy)variantTap.clear();sendSelection(-2,global);return;}
+ if(wp==1700)return; // Retire in-flight legacy variant keys; never select from incomplete sampling.
  if(wp>=1100&&wp<1100+typeBindings.size()){auto&binding=typeBindings[wp-1100];uint8_t mask[MaxTypes]{};
   if(!typekeys::groupMask(typeBindings,binding.key,snap.types,snap.typeCount,mask,MaxTypes)){notify(L"本局没有此组合中的单位类型。");return;}
   bool legacy=typekeys::implicitDouble(typeBindings,binding.key);bool global=(binding.key&0x8000)||(legacy&&typeTap.press(int(wp),GetTickCount(),snap.match,doubleMs));if(!legacy)typeTap.clear();

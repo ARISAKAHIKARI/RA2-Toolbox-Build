@@ -29,6 +29,15 @@ static int indexedFrame=-1;
 struct Vec{int count;const std::vector<uint32_t>*values;};
 static Vec vec(uint32_t p,int maximum=16384){auto*v=p==0xA8ECB8?&selectedObjects:p==0xA83DE8?&infantry:&allObjects;return {v->size()<=unsigned(maximum)?int(v->size()):0,v};}
 static uint32_t item(Vec v,int n){return v.values->at(n);}
+// Extracted function fixture: the synthetic roster is already a complete
+// immutable vector; production uses SampleReadScope + sampleRoster from
+// tactical_frame_read.h and the real sealed Runtime world sample.
+struct SampleReadScope {
+ explicit operator bool() const{return true;}
+ bool complete() const{return true;}
+};
+static bool sampleRoster(uint32_t address,Vec&out){out=vec(address);return out.count>=0;}
+
 template<class T>static T get(uint32_t p){return T(memory[p]);}
 static uint32_t unreadableField=0;
 static bool read(uint32_t p,void*out,size_t size){
@@ -96,7 +105,9 @@ int main(int argc,char**argv){std::string mode=argc>1?argv[1]:"all";
  unreadableField=probePassenger+0x30;tick(2);
  check(sent.empty()&&queuedUnload.count==1&&unloadCount==0,"missing cargo next link committed incomplete roster");
  unreadableField=0;tick(3);check(sent.size()==1&&unloadCount==1,"recovered cargo link did not resume Ctrl+D");
- reset();carrier(0);smartUnload(9);clockNow+=12001;int budget=64;smartUnloadAdmissionTick(9,2,budget);check(sent.empty()&&!queuedUnload.count,"stalled queue has bounded idle expiry");
+ reset();carrier(0);smartUnload(9);interfaces=false;clockNow+=12001;int budget=64;smartUnloadAdmissionTick(9,2,budget);
+ check(sent.empty()&&queuedUnload.count==1,"temporarily unavailable entry must preserve original Ctrl+D despite elapsed time");
+ interfaces=true;tick(3);check(sent.size()==1&&unloadCount==1,"recovered entry must deliver retained Ctrl+D");
  reset();p=carrier(0);smartUnload(9);check(smartUnload(9)==1&&queuedUnload.count==1,"repeated explicit request replaces duplicate identity");tick(2);check(sent.size()==1,"repeated request does not double Deploy");
  reset();p=carrier(0);memory[p+0xAC]=16;memory[p+0x1C8]=1;smartUnload(9);tick(2);check(sent.empty()&&unloadCount==1,"active native unload gains follow-up without another Deploy");
  reset();p=carrier(0,false);uint32_t q=0x5000000;ids[q]=100000;byID[100000]=q;kinds[q]=1;memory[q]=0x7EB058;memory[q+0x10]=100000;memory[q+0x21C]=9;memory[q+0x6C]=100;memory[q+0x74]=1;memory[q+0x90]=1;recentPassengers[0]={q,100000,p,1,0x80000,0,100,1};recentPassengerCount=1;smartUnload(9);tick(2);check(sent.empty()&&unloadCount==1,"already unloaded roster gains follow-up without empty-carrier Deploy");

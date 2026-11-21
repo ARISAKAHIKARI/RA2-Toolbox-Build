@@ -289,10 +289,7 @@ static bool autoSettingChanged(int id,int notification){
   // Editing a binding configures the feature; only its explicit switch enables it.
   *target=next;typeTap.clear();registerKeys();changedSetting();return true;
  }
- if(id==724){WORD next=WORD(SendMessageW(widget,HKM_GETHOTKEY,0,0));uint32_t old=extra.variantKey;extra.variantKey=0;
-  bool conflict=keyConflict(next,"",false);extra.variantKey=old;
-  if(conflict){ControlUpdate guard;SendMessageW(widget,HKM_SETHOTKEY,old,0);notify(L"快捷键冲突；已保留原按键，请换一个组合。");return true;}
-  extra.variantKey=next;registerKeys();changedSetting();return true;}
+ if(id==724){ControlUpdate guard;SendMessageW(widget,HKM_SETHOTKEY,WORD(extra.variantKey),0);return true;} // Suspended: preserve saved key.
  if(id==411){ControlUpdate guard;
   std::string type=selectedSuperID();
   if(type.empty()){notify(L"进入对局并获得超武后即可绑定。");return true;}

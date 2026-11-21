@@ -16,7 +16,7 @@ static unloadcompute::View unloadView(const UnloadPassenger&r,int frame,bool que
  return v;
 }
 static bool unloadSourceCurrent(const UnloadPassenger&r,const unloadcompute::Source&s,uint32_t house,int frame){
- if(r.job!=s.job||r.id!=s.id||r.p!=s.pointer||r.cancelled||frame-r.frame>900||
+ if(r.job!=s.job||r.id!=s.id||r.p!=s.pointer||r.cancelled||
     !worldObjects.contains(r.p)||manualVersions.get(r.id)!=s.token||
     !(sh->flags&(r.mode==0?SmartUnloadOrders:EjectAssist))||
     memcmp(static_cast<const unloadcompute::State*>(&r),&s.state,sizeof(s.state)))return false;
