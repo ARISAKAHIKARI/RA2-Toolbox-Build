@@ -33,7 +33,7 @@ def main() -> None:
     assert len(names) == len(specs), "production video metadata changed"
     by_name = {name: (index, *values) for index, (name, values) in enumerate(zip(names, specs))}
     sections = dict(re.findall(r'case VideoSection::(\w+):return L"([^"]+)"', video))
-    sections["Render"] = "渲染与效果"
+    sections["Render"] = re.search(r'default:return L"([^"]+)"', video)[1]
     video_controls = {"0": [], "1": []}
     entries = re.findall(r'\{(\w+),VideoGroup::(\w+),L"([^"]*)",L"([^"]*)",VideoSection::(\w+)(,true)?\}', video)
     assert len(entries) >= 40, "review requires the production video entries"
