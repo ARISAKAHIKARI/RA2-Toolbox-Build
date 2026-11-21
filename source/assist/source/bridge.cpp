@@ -1796,7 +1796,7 @@ static void tick(){
  }
  commandDormant=false;
  techEnhancementTick(now);techEnhanceParametersTick(house,now);mapVisibilityParametersTick(house);
- const bool catalogueDue=newMatch||!catalogueAt||DWORD(now-catalogueAt)>=DWORD(catalogueReady?500:100);
+ const bool catalogueDue=newMatch||!worldFrameCatalogueProbeAt||DWORD(now-worldFrameCatalogueProbeAt)>=DWORD(catalogueReady?500:100);
  uint32_t worldDemand=worldframe::Base;
  if(catalogueDue)worldDemand|=worldframe::TypeCatalogue;
  if(sharedWorldWanted)worldDemand|=worldFrameServer.demandMask();
@@ -1830,7 +1830,7 @@ static void tick(){
  // carried by the canonical Runtime snapshot; do not spend a full graph read.
  if(!hostDisplayOnly&&(sharedWorldWanted||frameDue||cmd||resultsDue||fastDue||newMatch||hostFrameCaptureWanted(now)))
   captureWorldFrame(readLiveWorld,worldSample,house,now,worldDemand,false);
- if(catalogueDue){
+ if(worldFrame.catalogue.attempted||worldFrameCandidate.catalogue.attempted){
   ObservationReadScope sample;
   if(sample&&sampleWorldSource->catalogue.attempted){
    const auto sourceTick=sampleWorldSource->key.tick;

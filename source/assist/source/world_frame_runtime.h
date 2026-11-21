@@ -98,6 +98,7 @@ static std::array<worldframe::RequestedSpan,256>runtimeMissingSpans{};
 static uint32_t lastRecoverySubmitAt=0;
 #endif
 static bool worldFrameReady=false;
+static DWORD worldFrameCatalogueProbeAt=0;
 // Boundary-only sources are retained for isolated regression fixtures only.
 // Product builds suspend HostDisplayOnly until its fields join the canonical
 // complete Runtime snapshot.
@@ -247,7 +248,7 @@ static void publishSamplingWorkerDiagnostics(uint32_t now){
  }
 }
 #endif
-static void retireWorldFrame(){worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
+static void retireWorldFrame(){worldFrameCatalogueProbeAt=0;worldFrameCommandWorker.invalidate();commandRequestGate.reset();worldFrameCommandRoster.invalidate();worldFrameCandidateRoster.invalidate();worldFrameCandidateAvailable=false;worldFrameShadow.invalidate();worldFrameCapturedDemand=0;worldFrameCapturedRevision=0;worldFramePublication.invalidate();worldFrameBoundaryOnly=false;if(worldProducerGeneration&&++worldProducerGeneration==0)++worldProducerGeneration;worldFrameReady=false;haveCaptureAttempt=false;captureRetryDelay=0;worldFrameServer.retire();runtimeWorldDemands.clear();runtimeDemandLeases.clear();worldFrameCaptureRequests.clear();runtimeDemandBits.fill(0);worldFrameRequestBits.fill(0);runtimeDemandOverflow=false;
 #if defined(WORLD_FRAME_TEST_SYNC_CAPTURE) || defined(WORLD_FRAME_PLATFORM_FIXTURE)
  runtimeMissingSpans.fill({});lastRecoverySubmitAt=0;
 #endif
@@ -440,6 +441,7 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   const uint64_t assembledRevision=
       (uint64_t(worldFrameServer.demandRevision())<<32)|runtimeDemandRevision;
   if(worldFrameCommandWorker.request(key,graphDemand,assembledRevision,requests,globalVehicles)){
+   if(graphDemand&worldframe::TypeCatalogue)worldFrameCatalogueProbeAt=key.tick;
    commandRequestGate.submitted(key,graphDemand,assembledRevision,globalVehicles);
 #if !defined(WORLD_FRAME_PLATFORM_FIXTURE) && !defined(WORLD_FRAME_FIXTURE_ONLY)
    if(sh)++sh->sampling.requestsQueued;
@@ -536,6 +538,10 @@ template<class Live>static bool captureWorldFrame(Live live,const worldlife::Sam
   if(sh)++sh->worldSampleFailures;return false;
  }
  captureRetryDelay=0;
+ if(graphDemand&worldframe::TypeCatalogue){
+  worldFrameCatalogueProbeAt=key.tick;
+  worldframe::stampTypeCatalogue(worldFrame); // synchronous test fixture only
+ }
  // Remove confirmed exact misses from the hint ring. Otherwise an old
  // successful worker result would cause extra live reads on every frame.
  for(size_t i=0;i<verifiedCount;++i){

@@ -120,6 +120,8 @@ assert "catalogueReady=false;scanTypes();" not in bridge
 assert "external::catalogue::capture(" not in bridge
 assert "if(observed.complete)" in bridge
 assert "stampTypeCatalogue(self->staging_)" in worker
+assert "now-worldFrameCatalogueProbeAt" in bridge
+assert "if(graphDemand&worldframe::TypeCatalogue)worldFrameCatalogueProbeAt=key.tick;" in runtime
 # Large Host repair results are staged in a bounded verifier, not sorted
 # and authorized to issue native orders in one callback.
 assert "std::sort(knownIDs" not in bridge
