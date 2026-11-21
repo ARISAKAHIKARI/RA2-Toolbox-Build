@@ -554,7 +554,9 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'narrow layout must not overflow');
     await receive({kind:'state',protocol:1,module:0,generation:3,revision:1,page:'cursor',controls:[{id:1,type:'label',label:'<img src=x onerror=window.__bad=1>',group:'文字显示'}],status:''});
     await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
-    await page.getByText('<img src=x onerror=window.__bad=1>',{exact:true}).waitFor();
+    const unsafeNote=page.locator('.label-help-text');
+    await unsafeNote.waitFor({state:'attached'});
+    assert.equal(await unsafeNote.textContent(),'<img src=x onerror=window.__bad=1>','explanatory labels remain inert plain text inside the collapsed info panel');
     assert.equal(await page.locator('#settings img').count(),0);
     assert.equal(await page.evaluate(()=>window.__bad),undefined);
     // Exercise real DOM folds, pinned switches, hover-only explanations and
