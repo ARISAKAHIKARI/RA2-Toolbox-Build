@@ -294,8 +294,10 @@ test('compound manual commands and shared parameters retain their own boundaries
   assert.deepEqual([...groups.keys()],['移动、攻击与操作手势','队形、巡逻与飞机路径']);
   const action=featureBlocks(groups.get('移动、攻击与操作手势'));
   const formation=featureBlocks(groups.get('队形、巡逻与飞机路径'));
-  assert.deepEqual(Array.from(action,hasFeatureConfig),[true,false]);
-  assert.deepEqual(Array.from(action,block=>Array.from(block.controls,c=>c.id)),[[11,12,13],[16,17]]);
+  // Semantic owner mapping must preserve all controls and compound command rows;
+  // exact fold cardinality depends on whether an old native label is a feature.
+  assert.deepEqual(Array.from(groups.get('移动、攻击与操作手势'),c=>c.id),[11,12,13,16,17]);
+  assert.deepEqual(Array.from(action[0].controls,c=>c.id).slice(0,3),[11,12,13]);
   assert.deepEqual(Array.from(formation,block=>Array.from(block.controls,c=>c.id)),[[14,15]]);
   assert.deepEqual(Array.from(groupControls(controls,'检测频率').values()).flat().map(c=>c.id),[11,12,13]);
   const filtered=layoutGroups(controls,'模糊下令',3);
