@@ -114,11 +114,13 @@ static bool unloadExit(const UnloadPassenger&r,int mission,int frame){
 static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  if(!(sh->flags&SmartUnloadOrders)||snap.chat){recentPassengerCount=0;return;}
  if(indexedFrame!=frame)return; // incomplete identity sample: retain history until retry
- // No 16K passenger walk on every game frame (which can exceed 800Hz).
- // The explicit Ctrl+D command independently gathers its own latest cohort.
- if(lastUnloadHistoryTick&&DWORD(now-lastUnloadHistoryTick)<33)return;
+ // Recheck the active UID/manual-command tokens every callback, but throttle
+ // only the expensive full infantry enumeration to 33ms. A recycled UID or
+ // manual command must retire its pending job immediately, even at 800+ FPS.
+ const bool scanDue=!lastUnloadHistoryTick||DWORD(now-lastUnloadHistoryTick)>=33;
  SampleReadScope sample;if(!sample)return;
- Vec inf{};if(!sampleRoster(0xA83DE8,inf))return;
+ Vec inf{};
+ if(scanDue&&!sampleRoster(0xA83DE8,inf))return;
  static RecentPassenger staged[nativeorders::MaxPassengers];
  int stagedCount=recentPassengerCount;
  std::memcpy(staged,recentPassengers,sizeof(RecentPassenger)*stagedCount);
@@ -132,7 +134,7 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  }
  static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> history;history.clear();
  for(int n=0;n<stagedCount;++n)history.add(staged[n].p,n);
- for(int n=0;n<inf.count;++n){uint32_t p=item(inf,n);if(!p)continue;uint32_t carrier=get<uint32_t>(p+0x11C);
+ if(scanDue)for(int n=0;n<inf.count;++n){uint32_t p=item(inf,n);if(!p)continue;uint32_t carrier=get<uint32_t>(p+0x11C);
   // Normal loaded passengers must be remembered too. 0x83 is an
   // exceptional vehicle state used by EjectAssist; requiring it here
   // left ordinary Ctrl+D with no pre-ejection passenger history.
@@ -148,7 +150,7 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  if(!sample.complete())return;
  recentPassengerCount=stagedCount;
  std::memcpy(recentPassengers,staged,sizeof(RecentPassenger)*stagedCount);
- lastUnloadHistoryTick=now;
+ if(scanDue)lastUnloadHistoryTick=now;
 }
 // Build one carrier-keyed roster per admission tick. A large selected cohort
 // must not rescan every infantry object once for each selected transport.
