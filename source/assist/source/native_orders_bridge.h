@@ -36,8 +36,10 @@ static void pruneMagnetronPauses(int frame){
  if(globalMagnetronPauseOverflow>=0&&(frame<globalMagnetronPauseOverflow||frame-globalMagnetronPauseOverflow>=90))globalMagnetronPauseOverflow=-1;
 }
 static UnloadPassenger unloadPassengers[nativeorders::MaxPassengers];static int unloadCount,unloadCursor;
-// Read-only roster history bridges a native D that executes before Ctrl+D's
-// WM_HOTKEY reaches the host. It never starts a job without an explicit command.
+// Read-only roster history bridges native D before Ctrl+D's WM_HOTKEY.
+// Bound the unconsumed click history by real milliseconds, NEVER logic frames:
+// high-FPS sessions can advance >90 frames in less than a normal key latency.
+// It never creates a task without the explicit original Ctrl+D.
 struct RecentPassenger {uint32_t p,id,carrier,carrierID,carrierType,token,tick;int frame;};
 static RecentPassenger recentPassengers[nativeorders::MaxPassengers];static int recentPassengerCount;
 static ObjectIndex watchedPassengers;
@@ -117,7 +119,7 @@ static void observeUnloadRoster(uint32_t house,int frame,DWORD now){
  int stagedCount=recentPassengerCount;
  std::memcpy(staged,recentPassengers,sizeof(RecentPassenger)*stagedCount);
  for(int n=0;n<stagedCount;){auto&r=staged[n];
-  const bool expired=DWORD(now-r.tick)>1500||frame<r.frame||frame-r.frame>90;
+  const bool expired=DWORD(now-r.tick)>1500||frame<r.frame;
   const bool present=worldObjects.contains(r.p);
   uint32_t uid=0;const bool known=present&&read(r.p+0x10,&uid,sizeof uid);
   if(expired||!present||manualVersions.get(r.id)!=r.token||(known&&uid!=r.id))
@@ -226,7 +228,7 @@ static int smartUnloadNow(uint32_t house,uint32_t p,bool firstAttempt=true){
   if(known<0||uid!=at->id||manualVersions.get(at->id)!=at->token||
      !featureObjectAllowed(featuretypes::UnloadPassenger,q))continue;
   if(at->history>=0){const auto&old=recentPassengers[at->history];
-   if(old.carrierID!=nativeCarrierID||old.carrierType!=typeOf(p,2)||DWORD(now-old.tick)>1500||frame<old.frame||frame-old.frame>90||carrier)continue;
+   if(old.carrierID!=nativeCarrierID||old.carrierType!=typeOf(p,2)||DWORD(now-old.tick)>1500||frame<old.frame||carrier)continue;
   }else if(carrier!=p)continue;
   if(count==nativeorders::MaxPassengers)return -6;
   previous=q;roster[count++]=q;
@@ -310,7 +312,7 @@ static int smartUnload(uint32_t house){
  static unloadpolicy::RosterLookup<nativeorders::MaxPassengers> recent;recent.clear();
  const int frame=get<int>(0xA8ED84);
  for(int n=0;n<recentPassengerCount;++n){const auto&r=recentPassengers[n];
-  if(DWORD(now-r.tick)<=1500&&frame>=r.frame&&frame-r.frame<=90)recent.add(r.carrier,n);
+  if(DWORD(now-r.tick)<=1500&&frame>=r.frame)recent.add(r.carrier,n);
  }
  int count=0,added=0;Vec v=vec(0xA8ECB8);
  for(int n=0;n<v.count;++n){uint32_t p=item(v,n);if(!unloadCarrierEligible(p,house)||selected.find(p)>=0)continue;
