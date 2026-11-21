@@ -62,13 +62,14 @@ def run(ROOT, OUT, old_header=None):
     static DWORD observedNow=1008;
     static int observedFrame=100;
     static unsigned submissions=0,collects=0,failures=0,checks=0;
+    static int admissionResult=1;
     static void MemoryBarrier(){}
     template<class T>static T get(uint32_t a){return a==0xA8ED84?T(observedFrame):T(0);}
     static DWORD sampleClock(Shared*){return observedNow;}
     static int planningRoom(int){return 8;}
     static int outgoingRoom(){return 8;}
     static void notifyHost(){}
-    static int admitCooperative(const cooperative::Assignment&,int,uint32_t,int,DWORD){++submissions;return 1;}
+    static int admitCooperative(const cooperative::Assignment&,int,uint32_t,int,DWORD){++submissions;return admissionResult;}
     static bool collectCooperativeInput(const cooperative::Request&r,const compute::QuotaConfig&,cooperative::Input&out){
      ++collects;out.mode=r.mode;out.clicked=r.target;
      out.units.push_back({r.sources[0],10,0,0,1});
@@ -77,7 +78,7 @@ def run(ROOT, OUT, old_header=None):
     ''' + body + r'''
     static void check(bool v,const char*text){++checks;if(!v){++failures;std::cout<<"FAIL "<<text<<'\n';}}
     static void init(){
-     state=std::make_unique<Shared>();sh=state.get();resetRuntimeCooperative();submissions=collects=0;
+     state=std::make_unique<Shared>();sh=state.get();resetRuntimeCooperative();submissions=collects=0;admissionResult=1;
      sh->computeApplied=compute::All;sh->flags=AdvancedEnter;
      auto&r=sh->cooperativeRequest;r.serial=5;r.match=match;r.tick=1000;r.target=20;r.type=30;
      r.frame=100;r.mode=cooperative::Enter;r.count=1;r.viewWidth=1024;r.viewHeight=768;r.sources[0]={10,0};
@@ -111,6 +112,12 @@ def run(ROOT, OUT, old_header=None):
      sh->cooperativeRequest=freshRequest;sh->cooperativeRequest.serial=6;sh->cooperativeRequest.tick=observedNow;
      runtimeCooperativeTick(0x10000,observedFrame,observedNow);
      check(sh->runtimeCoopDone==6,"new explicit click after resume remains admissible");
+     init();admissionResult=-2;runtimeCooperativeTick(0x10000,observedFrame,observedNow);
+     check(submissions==1&&sh->runtimeCoopDone==0,"unknown destination capacity must not complete cooperative request");
+     check(sh->runtimeCoopRejected==0&&sh->runtimeCoopAccepted==0,"missing page must not become a rejected unit");
+     admissionResult=1;observedNow+=20;++observedFrame;runtimeCooperativeTick(0x10000,observedFrame,observedNow);
+     check(submissions==2&&sh->runtimeCoopDone==5&&sh->runtimeCoopAccepted==1,
+       "next complete capacity observation delivers original entry exactly once");
      std::cout<<"{\"checks\":"<<checks<<",\"failures\":"<<failures<<",\"submissions\":"<<submissions<<"}\n";
      return failures?1:0;
     }
@@ -140,7 +147,7 @@ def main():
     current=run(args.root.resolve(),args.out/'current')
     report={'schema':1,'suite':'cooperative_read_only_recovery','scope':current['scope'],
             'current':current,'sources':dict(current['sources'])}
-    report['passed']=current['compile_exit']==0 and current.get('run_exit')==0 and current.get('execution',{}).get('checks')==11 and current['execution']['failures']==0
+    report['passed']=current['compile_exit']==0 and current.get('run_exit')==0 and current.get('execution',{}).get('checks')==14 and current['execution']['failures']==0
     if args.negative_control:
         data=FIXTURE.read_bytes()
         if hashlib.sha256(data).hexdigest()!=FIXTURE_SHA:
@@ -148,7 +155,7 @@ def main():
         negative=run(args.root.resolve(),args.out/'negative-control',data)
         log=(args.out/'negative-control/run.log').read_text() if negative['compile_exit']==0 else ''
         observed=[line for line in log.splitlines() if line.startswith('FAIL ')]
-        ok=negative['compile_exit']==0 and negative.get('run_exit')==1 and negative.get('execution',{}).get('checks')==11 and negative['execution']['failures']==2 and observed==EXPECTED
+        ok=negative['compile_exit']==0 and negative.get('run_exit')==1 and negative.get('execution',{}).get('checks')==14 and negative['execution']['failures']==2 and observed==EXPECTED
         report['negative_control']={'passed':ok,'fixture_sha256':FIXTURE_SHA,'fixture_provenance':'Public read-only helper captured before cooperative request retirement was added, 2026-11-09; not a released pre.5 source.', 'expected_failures':EXPECTED,'observed_failures':observed,'result':negative}
         report['sources'][str(FIXTURE.relative_to(args.root.resolve()))]=FIXTURE_SHA
         report['passed']=report['passed'] and ok
