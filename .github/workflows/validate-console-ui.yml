@@ -1,5 +1,14 @@
 name: Validate console UI consistency
 on:
+  push:
+    branches: [work/latest-ra2-integration]
+    paths:
+      - 'source/suite/frontend/**'
+      - 'source/suite/source/console_adapter.h'
+      - 'source/suite/source/choice_descriptions.h'
+      - 'source/suite/tests/console_*'
+      - 'source/suite/tests/choice_help_test.mjs'
+      - '.github/workflows/validate-console-ui.yml'
   pull_request:
     paths:
       - 'source/suite/frontend/**'

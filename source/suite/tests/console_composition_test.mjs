@@ -203,12 +203,12 @@ test('native shared rows and status notes have no redundant configuration title'
  f.render();
  assert.ok(f.find('feature-subheading').every(title=>title.hidden));
  assert.ok(f.find('feature-config-toggle').every(button=>button.hidden));
- const noteLabel=f.find('setting-label').find(label=>label.textContent==='等待对局');
- assert.ok(noteLabel?.hidden,'standalone explanatory text is hidden rather than occupying the settings list');
+ assert.ok(!f.find('setting-label').some(label=>label.textContent==='等待对局'),'no explanatory row is mounted');
  assert.equal(f.find('label-help').length,1);
- assert.equal(f.find('label-help')[0].open,false);
- assert.equal(f.find('label-help')[0].children[0].textContent,'ⓘ');
- assert.ok(f.find('label-help')[0].children[1].children[0].textContent.includes('等待对局'));
+ const [featureHelp]=f.find('label-help',f.find('feature-header-actions')[0]);
+ assert.ok(!featureHelp.open);
+ assert.equal(featureHelp.children[0].attributes.get('aria-label'),'查看防御状态的说明');
+ assert.equal(featureHelp.children[1].textContent,'等待对局');
  const groupLabel=f.find('setting-label').find(label=>label.textContent==='防御选项');
  assert.ok(groupLabel&&!groupLabel.hidden,'semantic group labels remain visible; only explanatory notes are tucked away');
 });

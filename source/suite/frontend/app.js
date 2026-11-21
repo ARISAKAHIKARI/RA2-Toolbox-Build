@@ -251,6 +251,7 @@
     return groups;
   }
   const isFeatureHeader=control=>control.groupHeader&&!['label','heading'].includes(control.type);
+  const isExplanation=control=>control.type==='label'&&!control.groupHeader;
   const hasFeatureConfig=block=>Boolean(block.headers.length)&&block.details.some(control=>!['label','heading'].includes(control.type));
   // Keep compound command rows intact and give each marked feature its own settings.
   function featureBlocks(controls) {
@@ -431,6 +432,26 @@
   function featureFoldKey(group,key){return renderedPage+'/'+group.name+'/'+key;}
   function featureExpanded(group,key){const foldKey=featureFoldKey(group,key);return group.searching?!searchFeatureFolds.get(foldKey):expandedFeatures.has(foldKey);}
   function setFeatureExpanded(group,key,value){const foldKey=featureFoldKey(group,key);if(group.searching)searchFeatureFolds.set(foldKey,!value);else if(value)expandedFeatures.add(foldKey);else expandedFeatures.delete(foldKey);}
+  function updateNoteHelp(owner, name, notes, before=null) {
+    const lines=notes.filter(note=>!note.runtimeError)
+      .flatMap(note=>[note.text||note.label,note.hint]).filter(Boolean);
+    const text=[...new Set(lines)].join('\n');
+    if(text&&!owner.noteHelp){
+      const help=document.createElement('details'),summary=document.createElement('summary'),body=document.createElement('p');
+      help.className='label-help';summary.className='info-summary';summary.textContent='ⓘ';
+      body.className='label-help-text';help.append(summary,body);
+      owner.insertBefore(help,before);owner.noteHelp={help,summary,body};
+    }
+    if(owner.noteHelp){
+      const {help,summary,body}=owner.noteHelp;
+      const caption='查看'+name+'的说明';
+      help.hidden=!text;
+      if(!text)help.open=false;
+      summary.title=caption;summary.setAttribute('aria-label',caption);
+      if(body.textContent!==text)body.textContent=text;
+    }
+    return Boolean(text);
+  }
   function makeGroup(name){
     const section=document.createElement('section'),summary=document.createElement('div'),title=document.createElement('h2'),body=document.createElement('div'),status=document.createElement('div');
     section.className='settings-group';summary.className='group-summary';title.className='group-title';title.textContent=name;
@@ -498,37 +519,41 @@
         const element=document.createElement('section'),header=document.createElement('div'),main=document.createElement('div'),button=document.createElement('button'),details=document.createElement('div');
         element.className=hasHeader?'feature-card':'feature-common';
         header.className='feature-header';main.className='feature-main-control';button.className='feature-config-toggle';button.type='button';
-        details.className='feature-details';header.append(main,button);if(hasHeader)element.append(header);element.append(details);
+        const actions=document.createElement('div');actions.className='feature-header-actions';actions.append(button);
+        details.className='feature-details';header.append(main,actions);if(hasHeader)element.append(header);element.append(details);
         const params=makeFeatureSection('参数','feature-config'),hotkeys=makeFeatureSection('快捷键','feature-hotkeys');
         details.append(params.section,hotkeys.section);
-        feature={key,element,header,main,button,details,mainRows:new Map(),params,hotkeys,paramsChunks:{items:[],signature:''},hotkeysChunks:{items:[],signature:''}};
+        feature={key,element,header,main,actions,button,details,mainRows:new Map(),params,hotkeys,paramsChunks:{items:[],signature:''},hotkeysChunks:{items:[],signature:''}};
         group.features.set(key,feature);
         if(hasHeader)button.addEventListener('click',()=>{
           setFeatureExpanded(group,key,!featureExpanded(group,key));
           updateGroup(group);updateFoldAction();
         });
       }
-      if(hasHeader)updateRows(feature.main,feature.mainRows,block.headers);
+      if(hasHeader)updateRows(feature.main,feature.mainRows,block.headers.filter(control=>!isExplanation(control)));
       const hasConfig=hasFeatureConfig(block);
       const expanded=!hasConfig||featureExpanded(group,key);
       feature.button.hidden=!hasConfig;
       if(hasHeader){
         const head=block.headers.find(isFeatureHeader);
         const label=head.label||head.text||'功能';
+        const hasNote=updateNoteHelp(feature.actions,label,block.controls.filter(isExplanation),feature.button);
+        feature.actions.hidden=!hasConfig&&!hasNote;
         feature.button.textContent=expanded?'收起':'展开';
         feature.button.setAttribute('aria-expanded',String(expanded));
         feature.button.setAttribute('aria-label',(expanded?'收起 ':'展开 ')+label+' 的设置');
         feature.button.title=(expanded?'收起 ':'展开 ')+label+' 的设置';
       }
-      const lines=settingLines(block.details);
+      const settings=block.details.filter(control=>!isExplanation(control));
+      const lines=settingLines(settings);
       const hotkeys=hasHeader?lines.filter(line=>line.every(c=>c.type==='hotkey')).flat():[];
       const hotkeyIds=new Set(hotkeys.map(c=>c.id));
-      const params=block.details.filter(c=>!hotkeyIds.has(c.id));
+      const params=settings.filter(c=>!hotkeyIds.has(c.id));
       const hasParameters=params.some(control=>control.type!=='label');
       feature.params.section.hidden=!params.length;feature.hotkeys.section.hidden=!hotkeys.length;
       feature.params.title.hidden=!hasHeader||!hasParameters||!hotkeys.length;
       feature.hotkeys.title.hidden=!hasParameters||!hotkeys.length;
-      feature.details.hidden=!expanded||!block.details.length;
+      feature.details.hidden=!expanded||!settings.length;
       feature.element.classList.toggle('is-expanded',expanded&&hasConfig);
       // Render only mounted details. Avoid work on hundreds of collapsed cards.
       if(expanded){
@@ -575,7 +600,10 @@
     const hasError=group.controls.some(control=>control.runtimeError||store.error(control.id));
     group.section.classList.toggle('has-runtime-error',hasError);
     const single=blocks.length===1&&blocks[0].headers.some(control=>isFeatureHeader(control)&&(control.label||control.text)===group.name);
-    group.summary.hidden=!group.name||group.name===CATEGORIES[selectedCategory][0]||single;
+    const commonNotes=blocks.flatMap(block=>block.headers.length?[]:block.details.filter(isExplanation));
+    const hasNote=updateNoteHelp(group.summary,group.name,commonNotes);
+    group.summary.hidden=!hasNote&&(!group.name||group.name===CATEGORIES[selectedCategory][0]||single);
+    group.body.hidden=blocks.every(block=>block.controls.every(isExplanation));
     const errors=hasError?group.controls.flatMap(control=>{
       const error=store.error(control.id),label=control.label||control.text||'设置';
       if(error)return [label+'：'+error];
@@ -614,12 +642,7 @@
     else if (control.type === 'text' || control.type === 'number') { const input = document.createElement('input'); input.className = 'field'; input.type = control.type === 'number' ? 'number' : 'text'; bindText(row,input); editor.append(input); row.input = input; }
     else if (control.type === 'range') { editor.classList.add('range-editor'); const input = document.createElement('input'), output = document.createElement('output'); input.type = 'range'; output.className = 'range-value'; input.addEventListener('input',event => { store.draft(row.control.id,Number(event.target.value)); output.textContent = event.target.value; }); input.addEventListener('change',event => { store.drafts.delete(controlKey(store.current.module,row.control.id)); send('range',Number(event.target.value)); }); editor.append(input,output); row.input = input; row.output = output; }
     else if (control.type === 'hotkey') { editor.classList.add('hotkey-editor'); const button = document.createElement('button'), mode = document.createElement('select'), double = document.createElement('label'), check = document.createElement('input'), clear = document.createElement('button'), special = document.createElement('select'); button.type = 'button'; button.className = 'hotkey-capture'; button.addEventListener('click',() => { if (capture?.row === row) stopCapture(); else startCapture(row); }); check.type = 'checkbox'; double.className = 'hotkey-double'; double.append(check,document.createTextNode('双击')); clear.type = 'button'; clear.className = 'icon-button'; clear.textContent = '×'; clear.title = '清除快捷键'; clear.setAttribute('aria-label','清除快捷键'); clear.addEventListener('click',() => send('hotkey',0)); mode.setAttribute('aria-label','触发方式'); mode.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x3000) | Number(mode.value))); check.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x8000) | (check.checked ? 0x8000 : 0))); special.setAttribute('aria-label','选择特殊按键'); special.addEventListener('change',() => { const vk = Number(special.value); if (vk) send('hotkey',(Number(store.value(row.control,'hotkey')) & 0xb700) | vk); special.value = '0'; }); editor.append(button,mode,double,clear,special); row.input = button; row.mode = mode; row.double = check; row.doubleLabel = double; row.clear = clear; row.special = special; }
-    else if(control.type==='label'&&control.groupHeader){ element.classList.add('label-row','label-heading'); editor.remove(); }
-    else {
-      element.classList.add('label-row'); editor.remove();
-      const help=document.createElement('details'),summary=document.createElement('summary'),body=document.createElement('div'),text=document.createElement('p');
-      help.className='label-help';help.open=false;summary.className='info-summary';summary.textContent='ⓘ';summary.title='查看说明';summary.setAttribute('aria-label','查看说明');body.className='label-help-content';text.className='label-help-text';body.append(text);help.append(summary,body);copy.append(help);row.noteHelp=help;row.noteText=text;
-    }
+    else if(control.type==='label'){ element.classList.add('label-row'); editor.remove(); }
     const inputId = `control-${store.current.module}-${control.id}`; if (row.input) { row.input.id = inputId; label.htmlFor = inputId; } return row;
   }
   function bindText(row,input) { input.autocomplete = 'off'; input.spellcheck = false; input.addEventListener('focus',() => { store.beginEdit(row.control.id); store.draft(row.control.id,input.value); }); input.addEventListener('input',() => store.draft(row.control.id,input.value)); input.addEventListener('blur',() => store.commit(row.control.id)); input.addEventListener('keydown',event => { if (composingKey(event)) return; if (event.key === 'Enter') { event.preventDefault(); store.commit(row.control.id); input.blur(); } else if (event.key === 'Escape') { event.preventDefault(); store.cancelEdit(row.control.id); input.blur(); } }); }
@@ -640,15 +663,7 @@
     row.element.title=control.type==='label'||optionHelp?'':control.hint;
     if(control.type==='label'){
       row.description.hidden=true;
-      if(control.groupHeader){
-        row.label.hidden=!labelText;row.copy.hidden=!labelText;row.element.hidden=!labelText;
-        return;
-      }
-      row.label.hidden=true;
-      const note=String(control.text||control.label||'');
-      row.noteText.textContent=[note,control.hint].filter(Boolean).join('\n');
-      row.noteHelp.hidden=!note||Boolean(control.runtimeError);
-      row.copy.hidden=row.noteHelp.hidden;row.element.hidden=row.noteHelp.hidden;
+      row.label.hidden=!labelText;row.copy.hidden=!labelText;row.element.hidden=!labelText;
       return;
     }
     row.element.hidden=false;

@@ -463,8 +463,9 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),1,'Monitor remains the separate native service module');
     await openPage('光标');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),0);
-    const noteHelp=page.locator('.label-help').first();
+    const noteHelp=page.locator('.group-summary .label-help').first();
     assert.equal(await noteHelp.locator('summary').textContent(),'ⓘ');
+    assert.equal(await page.locator('.settings-line .label-help').count(),0,'group help shares the heading instead of adding a settings row');
     assert.equal(await noteHelp.evaluate(element=>element.open),false,'standalone explanations are hidden until requested');
     assert.equal(await noteHelp.locator('.label-help-text').isVisible(),false);
     await noteHelp.locator('summary').click();
@@ -692,6 +693,12 @@ if (!failed && process.argv.includes('--browser')) {
     await receive({kind:'ack',protocol:1,module:2,generation:2,id:705,seq:action.seq,ok:true,revision:2});
     await receive(controlPage(2,hierarchyControls.map(control=>control.id===705?{...control,checked:true}:control)));
     await page.waitForFunction(()=>!window.RA2Console.store.pending.size && !window.RA2Console.store.drafts.size && document.getElementById('saveState').dataset.state==='saved' && document.getElementById('globalNotice').hidden);
+    const aircraftHelp=page.getByLabel('查看飞机分配攻击的说明',{exact:true});
+    assert.equal(await aircraftHelp.isVisible(),true);
+    assert.equal(await page.getByText('设置已保存 · 进入对局后生效',{exact:true}).isVisible(),false);
+    await aircraftHelp.click();
+    assert.equal(await page.getByText('设置已保存 · 进入对局后生效',{exact:true}).isVisible(),true);
+    await aircraftHelp.click();
     await page.locator('#toast').waitFor({state:'hidden',timeout:10000});
     assert.equal(await page.getByRole('button',{name:'控制',exact:true}).getAttribute('aria-current'),'page');
     await page.locator('.settings-group').filter({hasText:'飞机分配攻击'}).locator('.feature-config-toggle').first().click();
