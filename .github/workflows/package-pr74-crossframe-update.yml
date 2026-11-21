@@ -1,0 +1,59 @@
+name: Package PR74 Update candidate (paired Windows build)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/package-pr74-update-candidate.yml'
+      - 'source/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: package-pr74-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  paired-windows-update:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned cross compiler
+        shell: pwsh
+        run: |
+          $ProgressPreference='SilentlyContinue'
+          Invoke-WebRequest 'https://ziglang.org/download/0.13.0/zig-windows-x86_64-0.13.0.zip' -OutFile zig.zip
+          Expand-Archive zig.zip zig
+          Add-Content $env:GITHUB_ENV "ZIG_EXE=$((Resolve-Path 'zig/zig-windows-x86_64-0.13.0/zig.exe').Path)"
+          python -m pip install Pillow==11.3.0
+      - name: Compile x64 Host and matched x86 Runtime and Broker
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checks
+          export ZIG="$(cygpath -u "$ZIG_EXE")"
+          export RA2_CONSOLE_UI=webview2
+          export RA2_OUTPUT_DIR="$PWD/update-candidate"
+          bash source/build-zig-x64.sh > checks/compile.log 2>&1 || { tail -120 checks/compile.log; exit 1; }
+          python source/tools/verify_windows_outputs.py --root update-candidate --host-arch x64 --webview2 | tee checks/pe.log
+      - name: Package and verify candidate ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          python source/tools/package_automation_no_deadlines.py --root update-candidate --sha "$GITHUB_SHA" \
+            --output-name RA2Toolbox-PR74-CrossFrame-Update-Candidate.zip \
+            --label "PR74 cross-frame boarding and Ctrl+D passenger cohort" | tee checks/package.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RA2Toolbox-PR74-Update-Candidate
+          retention-days: 30
+          if-no-files-found: error
+          path: update-candidate/RA2Toolbox-PR74-CrossFrame-Update-Candidate.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PR74-Update-Compile-Evidence
+          path: checks/
