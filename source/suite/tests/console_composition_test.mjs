@@ -139,11 +139,14 @@ test('automatic features have one level of expansion and no empty fold',()=>{
  assert.equal(buttons.length,2);
  assert.equal(buttons[1].hidden,true);
  assert.equal(buttons[0].attributes.get('aria-expanded'),'false');
+ assert.equal(buttons[0].textContent,'展开','inline child settings use the same expand action everywhere');
  assert.ok(f.find('group-status')[0].textContent.includes('维修范围暂不可用'));
  f.dispatch(buttons[0],'click');
  assert.equal(buttons[0].attributes.get('aria-expanded'),'true');
+ assert.equal(buttons[0].textContent,'收起');
  assert.ok(f.find('setting-label').some(label=>label.textContent==='血量阈值'));
  f.dispatch(buttons[0],'click');
+ assert.equal(buttons[0].textContent,'展开');
  const search=node('search');search.value='血量阈值';f.dispatch(search,'input');f.render();
  assert.equal(f.find('feature-config-toggle')[0].attributes.get('aria-expanded'),'true');
  f.dispatch(node('foldAll'),'click');f.receive(state(2));f.render();
@@ -199,7 +202,11 @@ test('native shared rows and status notes have no redundant configuration title'
  f.render();
  assert.ok(f.find('feature-subheading').every(title=>title.hidden));
  assert.ok(f.find('feature-config-toggle').every(button=>button.hidden));
- assert.ok(f.find('setting-label').some(label=>label.textContent==='等待对局'));
+ assert.equal(f.find('setting-label').some(label=>label.textContent==='等待对局'),false,'standalone explanatory labels are not printed into the settings list');
+ assert.equal(f.find('label-help').length,1);
+ assert.equal(f.find('label-help')[0].open,false);
+ assert.equal(f.find('label-help')[0].children[0].textContent,'ⓘ');
+ assert.ok(f.find('label-help')[0].children[1].children[0].textContent.includes('等待对局'));
 });
 test('unbound shortcuts show the capture and special-key picker only',()=>{
  const f=setup(),row=f.row(3);
