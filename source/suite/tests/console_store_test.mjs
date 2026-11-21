@@ -410,7 +410,7 @@ if (!failed && process.argv.includes('--browser')) {
     const controls=[
       {id:100,type:'heading',label:'画面与性能'},
       {id:1,type:'toggle',label:'增强渲染',group:'渲染',groupHeader:true,hint:'使用独立画面输出，保留原有游戏节奏。',checked:true},
-      {id:2,type:'choice',label:'绘制方式',group:'渲染',hint:'按设备与画面负载选择输出方式。',selected:0,options:['GPU 优先','CPU 绘制'],readonly:true},
+      {id:2,type:'choice',label:'绘制方式',group:'渲染',hint:'按设备与画面负载选择输出方式。',selected:0,options:['GPU 优先','CPU 绘制'],optionDescriptions:['优先使用可用的图形设备。','使用处理器绘制作为兼容回退。'],readonly:true},
       {id:3,type:'choice',label:'目标刷新率',group:'渲染',hint:'选择预设，或输入自定义刷新率。',text:'170',selected:2,options:['60','120','170','240','500'],readonly:false,presentation:'editable'},
       {id:4,type:'number',label:'内存预算（MB）',group:'渲染',hint:'限制渲染缓存的最大内存使用量。',text:'8192'},
       {id:5,type:'range',label:'覆盖层透明度',group:'渲染',text:'80',selected:80,min:0,max:100,step:1},
@@ -437,8 +437,18 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.getByRole('tab').count(),0);
     await openPage('渲染');
     await page.getByLabel('增强渲染',{exact:true}).waitFor();
+    assert.equal(await page.locator('.feature-config-toggle').first().textContent(),'展开','feature children use one consistent expand label');
     await page.locator('.feature-config-toggle').first().click();
     await page.getByLabel('绘制方式',{exact:true}).waitFor();
+    assert.equal(await page.locator('.feature-config-toggle').first().textContent(),'收起');
+    const modeHelp=page.locator('.choice-help').first();
+    assert.equal(await modeHelp.locator('summary').textContent(),'ⓘ');
+    assert.equal(await modeHelp.evaluate(element=>element.open),false,'mode explanations stay hidden by default');
+    assert.equal(await modeHelp.locator('section p').first().isVisible(),false,'option explanations do not occupy the settings panel');
+    await modeHelp.locator('summary').click();
+    assert.equal(await modeHelp.evaluate(element=>element.open),true);
+    assert.equal(await modeHelp.locator('section p').first().isVisible(),true);
+    await modeHelp.locator('summary').click();
     assert.equal(await page.getByLabel('绘制方式',{exact:true}).evaluate(element=>element.closest('.setting-row').dataset.settingLevel),'secondary','feature parameters must read below their master switch');
     await page.screenshot({path:screenshotPath,fullPage:false});
     const assertFits = async () => {
@@ -453,6 +463,18 @@ if (!failed && process.argv.includes('--browser')) {
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),1,'Monitor remains the separate native service module');
     await openPage('光标');
     assert.equal(await page.evaluate(()=>window.__sent.at(-1).module),0);
+    const noteHelp=page.locator('.label-help').first();
+    assert.equal(await noteHelp.locator('summary').textContent(),'ⓘ');
+    assert.equal(await noteHelp.evaluate(element=>element.open),false,'standalone explanations are hidden until requested');
+    assert.equal(await page.getByText('设置会自动保存；每项功能独立启用。',{exact:true}).isVisible(),false);
+    await noteHelp.locator('summary').click();
+    assert.equal(await page.getByText('设置会自动保存；每项功能独立启用。',{exact:true}).isVisible(),true);
+    await noteHelp.locator('summary').click();
+    const shortcutRow=page.locator('.setting-row[data-type="hotkey"]').first();
+    const shortcutLayout=await shortcutRow.evaluate(element=>({display:getComputedStyle(element).display,row:element.getBoundingClientRect(),label:element.querySelector('.setting-label').getBoundingClientRect(),editor:element.querySelector('.setting-editor').getBoundingClientRect()}));
+    assert.equal(shortcutLayout.display,'grid','all shortcut rows use the same two-column alignment');
+    assert.ok(Math.abs(shortcutLayout.row.right-shortcutLayout.editor.right)<2,'shortcut editors align to the same right edge');
+    assert.ok(shortcutLayout.label.right<=shortcutLayout.editor.left,'shortcut label never overlaps its editor');
     await openPage('渲染');
     await page.keyboard.press('Control+f');await page.keyboard.type('绘制方式');
     await page.waitForFunction(()=>document.getElementById('resultCount').textContent==='找到 2 项设置');
@@ -586,6 +608,10 @@ if (!failed && process.argv.includes('--browser')) {
     await receive(compactState());await page.setViewportSize({width:1240,height:880});await page.locator('#contentScroll').evaluate(element=>{element.scrollTop=0;});
     const line=page.locator('.compound-row');await line.waitFor();
     assert.equal(await line.count(),1);assert.equal(await line.locator('.setting-row').count(),4);
+    const compoundHotkey=line.locator('.setting-row[data-type="hotkey"]');
+    const compoundHotkeyLayout=await compoundHotkey.evaluate(element=>({basis:getComputedStyle(element).flexBasis,row:element.getBoundingClientRect(),editor:element.querySelector('.setting-editor').getBoundingClientRect()}));
+    assert.equal(compoundHotkeyLayout.basis,'100%','a shortcut in a compound row moves to the same dedicated line');
+    assert.ok(Math.abs(compoundHotkeyLayout.row.right-compoundHotkeyLayout.editor.right)<2,'compound shortcut editors share the right alignment');
     assert.equal(await line.locator('.setting-label').filter({hasText:/^高级进驻$/}).count(),1);
     assert.equal(await line.locator('[data-setting-level="primary"]').count(),1);
     assert.equal(await line.locator('[data-setting-level="secondary"]').count(),3);
