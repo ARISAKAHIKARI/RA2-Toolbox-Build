@@ -143,6 +143,33 @@ test('automatic features have one level of expansion and no empty fold',()=>{
  assert.equal(f.find('feature-config-toggle')[1].attributes.get('aria-expanded'),'false');
 });
 
+test('native shared rows and status notes have no redundant configuration title',()=>{
+ const f=setup(),nav=f.document.getElementById('navigation');
+ f.dispatch(nav.children[4],'click');
+ f.receive({kind:'state',protocol:1,module:2,generation:1,revision:1,page:'tactical/2',controls:[
+  {id:1,type:'toggle',group:'自动功能',label:'磁电全局无限吸',row:80,column:20},
+  {id:2,type:'hotkey',group:'自动功能',label:'磁电全局无限吸',row:80,column:345},
+  {id:3,type:'toggle',group:'防御',label:'防御状态',groupHeader:true},
+  {id:4,type:'label',group:'防御',label:'等待对局'}
+ ]});
+ f.render();
+ assert.ok(f.find('feature-subheading').every(title=>title.hidden));
+ assert.ok(f.find('feature-config-toggle').every(button=>button.hidden));
+ assert.ok(f.find('setting-label').some(label=>label.textContent==='等待对局'));
+});
+test('unbound shortcuts show the capture and special-key picker only',()=>{
+ const f=setup(),row=f.row(3);
+ assert.equal(row.input.textContent,'未绑定');
+ assert.equal(row.mode.hidden,true);assert.equal(row.doubleLabel.hidden,true);assert.equal(row.clear.hidden,true);
+ assert.equal(row.special.disabled,false);
+ f.receive({kind:'state',protocol:1,module:0,generation:1,revision:2,page:'cursor',controls:[
+  {id:3,type:'hotkey',label:'快捷键',selected:0x124b,options:['press','release']}
+ ]});
+ row.control=f.store.getControl(3);f.context.__consoleDomFixture.patchRow(row);
+ assert.equal(row.mode.hidden,false);assert.equal(row.doubleLabel.hidden,false);assert.equal(row.clear.hidden,false);
+ assert.equal(row.input.textContent,'Ctrl + K');
+});
+
 test('feature settings and shortcuts stay attached to their master switch',()=>{
  const core=setup().context.RA2ConsoleCore;
  const controls=[

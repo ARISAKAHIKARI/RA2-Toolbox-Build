@@ -54,7 +54,8 @@ def main():
              "feature_type_config.h", "feature_type_bridge.h", "world_frame_runtime.h"]
     paths = [SRC / name for name in names] + [HERE / "harvester_defense_runtime.cpp", Path(__file__),
              HERE / "runtime_sample_fixture.py", HERE / "fixtures/tactical_frame/runtime_sample_fixture.h",
-             SRC.parents[1] / "shared/source/world_frame.h", SRC.parents[1] / "shared/source/world_frame_capture.h"]
+             SRC.parents[1] / "shared/source/world_frame.h", SRC.parents[1] / "shared/source/world_frame_capture.h",
+             SRC.parents[1] / "shared/source/world_frame_command_index.h"]
     hashes = {str(path.relative_to(HERE.parents[1])): hashlib.sha256(path.read_bytes()).hexdigest()
               for path in paths}
     exe = args.out / "harvester_defense_runtime"

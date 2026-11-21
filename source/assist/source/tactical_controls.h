@@ -3,6 +3,10 @@
 int section=0,rowY=0;
 auto item=[&](const wchar_t* cls,const wchar_t* text,int x,int width,int id,DWORD style=0,int height=26){return pageControl(section,cls,text,x,rowY,width,height,id,style);};
 auto label=[&](const wchar_t* text,int x=20,int width=605){return item(L"STATIC",text,x,width,0);};
+// The legacy Win32 columns have their own headings. Web rows name each editor.
+auto columnHeading=[&](const wchar_t*text,int x,int width){
+ if(auto h=label(text,x,width))SetPropW(h,L"RA2.Console.Skip",reinterpret_cast<HANDLE>(1));
+};
 auto next=[&](int height=26){rowY+=height+12;};
 auto note=[&](const wchar_t* text,int=26){if(pageControls.empty())return;const int y=pageControls.back().rect.y;for(auto i=pageControls.rbegin();i!=pageControls.rend()&&i->page==section&&i->rect.y==y;++i)i->help=text;};
 auto heading=[&](int page,int id,const wchar_t* title,const wchar_t* hint){section=page;rowY=0;item(L"STATIC",title,20,605,id,0,30);next(30);note(hint,44);};
@@ -21,7 +25,7 @@ auto mouse=[&](int slot){auto h=extraControls[MouseFirst+slot]=combo(729+slot,51
 auto holdPresetControl=[&](int preset,int custom,uint32_t binding){extraControls[preset]=combo(700+preset,240,100,180);choices(extraControls[preset],{L"仅鼠标",L"Alt",L"Ctrl",L"Shift",L"自定义"},holdPreset(binding));extraControls[custom]=key(700+custom,binding,350,148,true);};
 
 heading(0,900,L"键盘快捷操作",L"按一次快捷键执行或切换；选择单位后可直接装车、卸载或启用逃生。 ");
-label(L"操作 / 功能开关",20,306);label(L"快捷键",345,280);next();
+columnHeading(L"操作 / 功能开关",20,306);columnHeading(L"快捷键",345,280);next();
 for(int i:{11,1,2,3,4,5,6,7}){
  button(100+i,labels[i],20,306);keys[i]=key(200+i,hotkeys[i]);next();
 }
@@ -47,7 +51,7 @@ toggle(786,L"快捷键冲突时执行所有匹配功能",extra.allHotkeys);next(
 note(L"同时执行多项功能时，同一单位后收到的命令可能替代前一条命令。",44);
 
 heading(1,901,L"键鼠组合操作",L"按住配置键并点击目标；配置键留空时仅用鼠标。每项鼠标键可独立设置。");
-label(L"功能开关",20,210);label(L"按住键 / 自定义组合",240,258);label(L"鼠标键",510,115);next();
+columnHeading(L"功能开关",20,210);columnHeading(L"按住键 / 自定义组合",240,258);columnHeading(L"鼠标键",510,115);next();
 hookChecks[0]=toggle(458,L"高级移动攻击",hookAdvanced,20,455);button(9606,L"展开设置",500,125);next();
 activeFoldGroup=9606;
 label(L"按住键 / 鼠标键",20,210);advancedKeyEdit=key(450,advancedKey,240,258,true);mouse(pointerinput::MouseAdvanced);next();
@@ -115,14 +119,14 @@ toggle(795,L"Shift 五连点",shiftClickEnabled,20,270);choices(combo(796),{L"�
 number(797,L"连续点击间隔 / 毫秒",shiftClickGap,L"0–250");
 label(L"超级武器目标选择",20,455);button(9611,L"展开设置",500,125);next();
 activeFoldGroup=9611;
-label(L"超级武器",20,306);label(L"启用快捷键",345,280);next();
+columnHeading(L"超级武器",20,306);columnHeading(L"启用快捷键",345,280);next();
 for(int i:{9,10}){button(100+i,labels[i],20,306);keys[i]=key(200+i,hotkeys[i]);next();}
 swList=combo(410,20,315,260);swHotkey=key(411,0,345,280);next();
 note(L"启用超级武器后，使用游戏内目标光标选择位置。",26);
 activeFoldGroup=0;
 
 heading(2,902,L"自动功能",L"每项功能可独立设置开关快捷键；新快捷键默认留空。参数修改后自动保存并生效。");
-label(L"功能开关",20,306);label(L"开关快捷键",345,280);next();
+columnHeading(L"功能开关",20,306);columnHeading(L"开关快捷键",345,280);next();
 repairCheck=toggle(100,labels[0],value(L"Modes",L"AutoRepair",0)!=0,20,306);keys[0]=key(200,hotkeys[0]);next();
 repairEdit=number(312,L"自动维修间隔 / 毫秒",repairMs,L"500–30000 · 默认 2000");
 note(L"检查受损建筑并发出维修请求的间隔；数值越小检查越频繁，不改变游戏内维修速度。",44);

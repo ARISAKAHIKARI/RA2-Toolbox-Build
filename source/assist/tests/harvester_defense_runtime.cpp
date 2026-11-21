@@ -18,6 +18,7 @@
 #include "../source/protocol.h"
 #include "../source/ore_queue.h"
 #include "../source/object_index.h"
+#include "../../shared/source/world_frame_command_index.h"
 #include "../source/planner_index.h"
 #include "../source/unit_task_arbiter.h"
 #include "../source/command_intent.h"
@@ -62,6 +63,16 @@ static void*memory(uint32_t at,size_t n){
 template<class T>static void set(uint32_t at,T value){void*p=memory(at,sizeof value);assert(p);memcpy(p,&value,sizeof value);}
 static uint32_t cellPointer(int x,int y){return CellBase+uint32_t(y*512+x)*0x200;}
 #include "fixtures/tactical_frame/runtime_sample_fixture.h"
+static worldframe::CommandRoster worldFrameCommandRoster;
+static std::vector<uint32_t> rosterScratch;
+static bool commandRosterReady(){
+ return worldFrameReady&&worldFrameCommandRoster.current(worldFrame.key);
+}
+static void captureRoster(){
+ fixtureCaptureWorld(clockNow);
+ if(worldFrameReady)worldFrameCommandRoster.build(worldFrame,false,rosterScratch);
+ else worldFrameCommandRoster.invalidate();
+}
 static bool readFixtureLive(uint32_t at,void*out,size_t n){
  assert(!sampleReadDepth);
  ++reads;
@@ -133,7 +144,7 @@ static void sampleWorld(){
   if(vt==0x7F5C70u){assert(unitCount<16384);set<uint32_t>(NativeUnitItems+uint32_t(unitCount++)*4,p);}
  }vectorAt(0x8B4108,NativeUnitItems,unitCount);
  for(size_t n=0;n<actors.size();++n)set<uint32_t>(NativeTechnoItems+uint32_t(n)*4,actors[n]);vectorAt(0xA8EC78,NativeTechnoItems,int(actors.size()));
- fixtureCaptureWorld(clockNow);SampleReadScope frameRead;if(!frameRead)return;
+ captureRoster();SampleReadScope frameRead;if(!frameRead)return;
  static planner::World candidate;candidate.match=match;candidate.frame=snap.frame;candidate.tick=clockNow;candidate.inputSerial=inputSerial;candidate.count=0;
  for(uint32_t p:actors){
   if(!live(p))continue;
@@ -182,7 +193,7 @@ static void reset(){
  resource(56,62);resource(80,62);refreshOreConfig();sampleWorld();
 }
 static bool step(int frames=1,DWORD elapsed=16,bool refresh=true){
- snap.frame+=frames;clockNow+=elapsed;set<int>(0xA8ED84,snap.frame);if(refresh)sampleWorld();else fixtureCaptureWorld(clockNow);
+ snap.frame+=frames;clockNow+=elapsed;set<int>(0xA8ED84,snap.frame);if(refresh)sampleWorld();else captureRoster();
  return minerDefenseTick(House,snap.frame,clockNow);
 }
 static void observeAttack(uint32_t target=Drone){set<int>(Miner+0xAC,1);set<int>(Miner+0xB4,-1);set<uint32_t>(Miner+0x2B4,target);set<uint32_t>(Miner+0x5A4,0);}
@@ -694,7 +705,7 @@ int main(int argc,char**argv){
     if(mode==0)memset(memory(Drone,0x800),0,0x800);
     if(mode==1)failRead=Drone;
     // mode 3 leaves stale live-looking bytes and an old worldObjects entry.
-    // Only the complete native roster establishes that the target is gone.
+    // Only the sealed worker roster establishes that the target is gone.
    }
    observeGuard();step(12,350);CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
    CHECK(get<int>(Miner+0xAC)==5);step();CHECK(events.size()==2&&minerDefensePending());
@@ -702,13 +713,23 @@ int main(int argc,char**argv){
    for(const auto&e:events)CHECK(e.mission!=1||e.b==DroneID);
   }
  });
+ run("post_kill_worker_identity_proof_is_exact_frame_and_does_not_read_live",[]{
+  reset();attackStarted();const auto job=minerDefenseJobs.at(MinerID);
+  const auto before=reads;
+  CHECK(minerDefenseVictimRetired(job)==-1 && reads==before);
+  ++minerDefenseWorld.frame;
+  CHECK(minerDefenseVictimRetired(job)==0 && reads==before);
+  --minerDefenseWorld.frame;
+  worldFrameCommandRoster.invalidate();
+  CHECK(minerDefenseVictimRetired(job)==0 && reads==before);
+ });
  run("post_kill_partial_roster_does_not_invent_retirement",[]{
   for(int mode:{0,1}){reset();attackStarted();actors.erase(std::remove(actors.begin(),actors.end(),Drone),actors.end());memset(memory(Drone,0x800),0,0x800);
-   if(mode==0)failRead=NativeUnitItems;
+   if(mode==0)failRead=NativeTechnoItems;
    else{object(Drone2,0x7F5C70,999,MinerType,EnemyHouse);position(Drone2,90*256,90*256);actors.push_back(Drone2);failRead=Drone2+0x10;}
    observeGuard();step(12,350);CHECK(events.size()==1&&minerDefensePending());
    step();CHECK(events.size()==1&&minerDefensePending());
-   // A later complete read can establish retirement and recover the work.
+   // A later complete roster can establish retirement and recover the work.
    failRead=0;step();CHECK(events.size()==2&&minerDefensePending());harvestTuple(events.back());
    observe(events.back());step();CHECK(!minerDefensePending()&&get<int>(Miner+0xAC)==10);
   }

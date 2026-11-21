@@ -449,7 +449,7 @@
         element.className=hasHeader?'feature-card':'feature-common';
         header.className='feature-header';main.className='feature-main-control';button.className='feature-config-toggle';button.type='button';
         details.className='feature-details';header.append(main,button);if(hasHeader)element.append(header);element.append(details);
-        const params=makeFeatureSection('子配置','feature-config'),hotkeys=makeFeatureSection('快捷键','feature-hotkeys');
+        const params=makeFeatureSection('参数','feature-config'),hotkeys=makeFeatureSection('快捷键','feature-hotkeys');
         details.append(params.section,hotkeys.section);
         feature={key,element,header,main,button,details,mainRows:new Map(),params,hotkeys,paramsChunks:{items:[],signature:''},hotkeysChunks:{items:[],signature:''}};
         group.features.set(key,feature);
@@ -473,7 +473,10 @@
       const hotkeys=hasHeader?lines.filter(line=>line.every(c=>c.type==='hotkey')).flat():[];
       const hotkeyIds=new Set(hotkeys.map(c=>c.id));
       const params=block.details.filter(c=>!hotkeyIds.has(c.id));
+      const hasParameters=params.some(control=>control.type!=='label');
       feature.params.section.hidden=!params.length;feature.hotkeys.section.hidden=!hotkeys.length;
+      feature.params.title.hidden=!hasHeader||!hasParameters||!hotkeys.length;
+      feature.hotkeys.title.hidden=!hasParameters||!hotkeys.length;
       feature.details.hidden=!expanded||!block.details.length;
       feature.element.classList.toggle('is-expanded',expanded&&hasConfig);
       // Render only mounted details. Avoid work on hundreds of collapsed cards.
@@ -559,7 +562,7 @@
     }
     else if (control.type === 'text' || control.type === 'number') { const input = document.createElement('input'); input.className = 'field'; input.type = control.type === 'number' ? 'number' : 'text'; bindText(row,input); editor.append(input); row.input = input; }
     else if (control.type === 'range') { editor.classList.add('range-editor'); const input = document.createElement('input'), output = document.createElement('output'); input.type = 'range'; output.className = 'range-value'; input.addEventListener('input',event => { store.draft(row.control.id,Number(event.target.value)); output.textContent = event.target.value; }); input.addEventListener('change',event => { store.drafts.delete(controlKey(store.current.module,row.control.id)); send('range',Number(event.target.value)); }); editor.append(input,output); row.input = input; row.output = output; }
-    else if (control.type === 'hotkey') { editor.classList.add('hotkey-editor'); const button = document.createElement('button'), mode = document.createElement('select'), double = document.createElement('label'), check = document.createElement('input'), clear = document.createElement('button'), special = document.createElement('select'); button.type = 'button'; button.className = 'hotkey-capture'; button.addEventListener('click',() => { if (capture?.row === row) stopCapture(); else startCapture(row); }); check.type = 'checkbox'; double.className = 'hotkey-double'; double.append(check,document.createTextNode('双击')); clear.type = 'button'; clear.className = 'icon-button'; clear.textContent = '×'; clear.title = '清除快捷键'; clear.setAttribute('aria-label','清除快捷键'); clear.addEventListener('click',() => send('hotkey',0)); mode.setAttribute('aria-label','触发方式'); mode.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x3000) | Number(mode.value))); check.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x8000) | (check.checked ? 0x8000 : 0))); special.setAttribute('aria-label','选择特殊按键'); special.addEventListener('change',() => { const vk = Number(special.value); if (vk) send('hotkey',(Number(store.value(row.control,'hotkey')) & 0xb700) | vk); special.value = '0'; }); editor.append(button,mode,double,clear,special); row.input = button; row.mode = mode; row.double = check; row.clear = clear; row.special = special; }
+    else if (control.type === 'hotkey') { editor.classList.add('hotkey-editor'); const button = document.createElement('button'), mode = document.createElement('select'), double = document.createElement('label'), check = document.createElement('input'), clear = document.createElement('button'), special = document.createElement('select'); button.type = 'button'; button.className = 'hotkey-capture'; button.addEventListener('click',() => { if (capture?.row === row) stopCapture(); else startCapture(row); }); check.type = 'checkbox'; double.className = 'hotkey-double'; double.append(check,document.createTextNode('双击')); clear.type = 'button'; clear.className = 'icon-button'; clear.textContent = '×'; clear.title = '清除快捷键'; clear.setAttribute('aria-label','清除快捷键'); clear.addEventListener('click',() => send('hotkey',0)); mode.setAttribute('aria-label','触发方式'); mode.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x3000) | Number(mode.value))); check.addEventListener('change',() => send('hotkey',(Number(store.value(row.control,'hotkey')) & ~0x8000) | (check.checked ? 0x8000 : 0))); special.setAttribute('aria-label','选择特殊按键'); special.addEventListener('change',() => { const vk = Number(special.value); if (vk) send('hotkey',(Number(store.value(row.control,'hotkey')) & 0xb700) | vk); special.value = '0'; }); editor.append(button,mode,double,clear,special); row.input = button; row.mode = mode; row.double = check; row.doubleLabel = double; row.clear = clear; row.special = special; }
     else { element.classList.add('label-row'); editor.remove(); }
     const inputId = `control-${store.current.module}-${control.id}`; if (row.input) { row.input.id = inputId; label.htmlFor = inputId; } return row;
   }
@@ -587,7 +590,43 @@
     else if (control.type === 'choice') { const optionSignature = JSON.stringify([control.options,control.optionEnabled,control.optionDescriptions]); if (row.optionSignature !== optionSignature) { row.optionSignature = optionSignature; row.input.replaceChildren(...control.options.map((text,index) => { const option = document.createElement('option'); option.value = String(index); option.textContent = text; option.title = control.optionDescriptions[index] || ''; option.disabled = control.optionEnabled[index] === false; return option; })); } const index = Number(store.value(control,'select')); if (row.input.selectedIndex !== index) row.input.selectedIndex = index; patchChoiceHelp(row,index); if (row.textInput) { row.textInput.disabled = disabled; if (document.activeElement !== row.textInput) row.textInput.value = String(store.value(control,'text')); } }
     else if (control.type === 'text' || control.type === 'number') { row.input.readOnly = control.readonly; if (document.activeElement !== row.input || control.readonly) row.input.value = String(store.value(control,'text')); }
     else if (control.type === 'range') { row.input.min = control.min; row.input.max = control.max; row.input.step = control.step; const value = store.value(control,'range'); if (document.activeElement !== row.input) row.input.value = value; row.output.textContent = String(value); }
-    else if (control.type === 'hotkey') { const value = Math.max(0,Number(store.value(control,'hotkey')) || 0), modes = control.options.filter(option => ['press','release','hold'].includes(option)); const allowed = modes.length ? modes : ['press','release','hold']; const signature = allowed.join(','); if (signature !== row.modeSignature) { row.modeSignature = signature; row.mode.replaceChildren(...allowed.map(name => { const option = document.createElement('option'); option.value = String(MODES[name]); option.textContent = {press:'按下触发',release:'松开触发',hold:'持续按住'}[name]; return option; })); }row.mode.hidden=allowed.length===1; const keyboardOnly = control.options.includes('keyboardOnly'); if (row.keyboardOnly !== keyboardOnly) { row.keyboardOnly = keyboardOnly; row.special.replaceChildren(...[['特殊按键…',0],['Esc',27],['Enter',13],['Tab',9],...(!keyboardOnly ? [['鼠标左键',1],['鼠标右键',2],['鼠标中键',4],['鼠标侧键 1',5],['鼠标侧键 2',6]] : [])].map(([text,vk]) => { const option = document.createElement('option'); option.textContent = text; option.value = String(vk); return option; })); } const mode = value & 0x3000 || (allowed.includes('hold') && allowed.length === 1 ? MODES.hold : MODES.press); row.mode.value = String(mode); row.double.checked = Boolean(value & 0x8000); row.mode.disabled = row.double.disabled = row.clear.disabled = disabled || !(value & 255); row.special.disabled = disabled; row.input.textContent = capture?.row === row ? '请按下组合键…' : keyName(value); row.input.classList.toggle('capturing',capture?.row === row); }
+    else if (control.type === 'hotkey') {
+      const value = Math.max(0, Number(store.value(control,'hotkey')) || 0);
+      const bound = Boolean(value & 255);
+      const modes = control.options.filter(option => ['press','release','hold'].includes(option));
+      const allowed = modes.length ? modes : ['press','release','hold'];
+      const signature = allowed.join(',');
+      if (signature !== row.modeSignature) {
+        row.modeSignature = signature;
+        row.mode.replaceChildren(...allowed.map(name => {
+          const option = document.createElement('option');
+          option.value = String(MODES[name]);
+          option.textContent = {press:'按下触发',release:'松开触发',hold:'持续按住'}[name];
+          return option;
+        }));
+      }
+      row.mode.hidden = !bound || allowed.length === 1;
+      row.doubleLabel.hidden = row.clear.hidden = !bound;
+      const keyboardOnly = control.options.includes('keyboardOnly');
+      if (row.keyboardOnly !== keyboardOnly) {
+        row.keyboardOnly = keyboardOnly;
+        const keys = [['特殊按键…',0],['Esc',27],['Enter',13],['Tab',9]];
+        if (!keyboardOnly) keys.push(['鼠标左键',1],['鼠标右键',2],['鼠标中键',4],['鼠标侧键 1',5],['鼠标侧键 2',6]);
+        row.special.replaceChildren(...keys.map(([text,vk]) => {
+          const option = document.createElement('option');
+          option.textContent = text;
+          option.value = String(vk);
+          return option;
+        }));
+      }
+      const mode = value & 0x3000 || (allowed.length === 1 && allowed.includes("hold") ? MODES.hold : MODES.press);
+      row.mode.value = String(mode);
+      row.double.checked = Boolean(value & 0x8000);
+      row.mode.disabled = row.double.disabled = row.clear.disabled = disabled || !bound;
+      row.special.disabled = disabled;
+      row.input.textContent = capture?.row === row ? '请按下组合键…' : keyName(value);
+      row.input.classList.toggle('capturing',capture?.row === row);
+    }
   }
   function startCapture(row) { stopCapture(); capture = { row, modifier: null, usedModifier: false }; row.input.focus(); patchRow(row); }
   function stopCapture() { const previous = capture?.row; capture = null; if (previous) patchRow(previous); }

@@ -20,6 +20,9 @@
   --accent-border: #95b7ce;
   --border-hover: #859fb6;
   --blush: #c887a3;
+  --blush-surface: #f9edf4;
+  --blush-border: #d8b4c6;
+  --blush-ink: #75445e;
   --primary: #34688e;
   --primary-hover: #285778;
   --primary-border: #2d6086;
@@ -57,7 +60,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Shell and navigation */
 .app-shell { display: grid; grid-template-columns: 188px minmax(0, 1fr); height: 100vh; }
-.sidebar { min-height: 0; display: flex; flex-direction: column; padding: 18px 12px 12px; background: linear-gradient(155deg, var(--surface), var(--sidebar) 72%); border-right: 1px solid var(--border); }
+.sidebar { min-height: 0; display: flex; flex-direction: column; padding: 18px 12px 12px; background: linear-gradient(158deg, var(--surface) 5%, var(--sidebar) 62%, var(--blush-surface)); border-right: 1px solid var(--border); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
 .brand-mark { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; }
 .brand strong { display: block; font-size: 15px; font-weight: 650; }
@@ -68,8 +71,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .nav-button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; padding: 8px 12px; border: 1px solid transparent; border-radius: var(--radius); background: transparent; text-align: left; color: var(--soft); font-size: var(--text-label); transition: background .12s, color .12s; }
 .nav-button svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .nav-button:hover { color: var(--text); background: var(--surface-hover); }
-.nav-button[aria-current="page"] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-border); }
-.nav-button[aria-current="page"]::before { content: ""; position: absolute; left: -13px; width: 3px; height: 22px; background: var(--blush); border-radius: 0 3px 3px 0; }
+.nav-button[aria-current="page"] { color: var(--blush-ink); background: linear-gradient(90deg, var(--blush-surface), var(--surface)); border-color: var(--blush-border); box-shadow: inset 0 0 0 1px var(--surface); }
+.nav-button[aria-current="page"]::before { content: ""; position: absolute; inset-inline-start: 3px; width: 3px; height: 20px; background: var(--blush); border-radius: 3px; }
 .nav-button:focus-visible { outline-offset: -2px; }
 .sidebar-bottom { display: flex; align-items: center; gap: 8px; margin: auto 8px 0; padding: 16px 2px 2px; border-top: 1px solid var(--border); color: var(--muted); font-size: var(--text-small); }
 .connection-dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--disabled); }
@@ -158,19 +161,20 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .group-title { margin: 0; color: var(--text); font-size: var(--text-label); font-weight: 650; line-height: 1.6; overflow-wrap: anywhere; }
 .group-body { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
 .feature-card { min-width: 0; padding: 0 var(--space-2); border: 1px solid var(--divider); border-radius: var(--control-radius); }
-.feature-card.is-expanded { border-color: var(--accent-border); }
+.feature-card.is-expanded { border-color: var(--blush-border); }
 .feature-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); }
 .feature-main-control { min-width: 0; grid-column: 1; }
 .feature-main-control .setting-row { justify-content: flex-start; min-height: 38px; }
 .feature-main-control .setting-copy, .feature-common .compound-row > .setting-row:first-child .setting-copy { flex: 0 1 auto; }
 .feature-main-control .setting-editor { max-width: 100%; }
 .feature-common .compound-row > .setting-row:first-child { min-width: 0; padding-right: 0; }
-.feature-config-toggle { min-height: 28px; padding: 4px 8px; border: 1px solid var(--border); border-radius: var(--control-radius); background: var(--field); color: var(--accent); font-size: var(--text-small); }
-.feature-config-toggle:hover, .feature-config-toggle[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent-border); }
+.feature-config-toggle { min-height: 28px; padding: 4px 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--field); color: var(--accent); font-size: var(--text-small); }
+.feature-config-toggle:hover, .feature-config-toggle[aria-expanded="true"] { background: var(--blush-surface); border-color: var(--blush-border); color: var(--blush-ink); }
 .feature-card .feature-details { margin-bottom: var(--space-2); }
 .feature-card .feature-config, .feature-hotkeys { padding: var(--space-2); border-left: 2px solid var(--accent-border); border-radius: 0 var(--control-radius) var(--control-radius) 0; background: var(--field); }
-.feature-hotkeys { border-left-color: var(--blush); }
-.feature-config:not([hidden]) + .feature-hotkeys { margin-top: var(--space-2); }
+.feature-hotkeys { border-left-color: var(--blush); background: var(--blush-surface); box-shadow: inset 0 0 0 1px var(--surface); }
+.feature-hotkeys .feature-subheading { color: var(--blush-ink); }
+.feature-config:not([hidden]) + .feature-hotkeys:not([hidden]) { margin-top: var(--space-2); }
 .feature-subheading { margin: 0; color: var(--soft); font-size: var(--text-small); font-weight: 650; }
 .group-status { min-width: 0; padding: 6px var(--space-3); border-top: 1px solid var(--divider); border-radius: 0 0 var(--radius) var(--radius); color: var(--error); background: var(--error-bg); font-size: var(--text-small); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .settings-group.has-runtime-error { border-color: var(--error-border); }
@@ -206,9 +210,9 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .label-row { min-height: 32px; align-items: flex-start; }
 .label-row .setting-copy { flex: 1; }
 .label-row .setting-label { color: var(--muted); font-size: var(--text-small); font-weight: 400; line-height: 1.65; white-space: pre-wrap; }
-.hotkey-editor { flex-wrap: wrap; max-width: 460px; gap: 4px; }
+.hotkey-editor { flex-wrap: wrap; align-content: center; max-width: 460px; gap: 4px 6px; }
 .hotkey-editor select { min-width: 96px; width: 100px; padding: 5px 4px; font-size: var(--text-small); color: var(--soft); }
-.hotkey-editor > select:last-child { width: 108px; max-width: 150px; }
+.hotkey-editor > select:last-child { width: 112px; max-width: 100%; }
 .hotkey-double { display: flex; align-items: center; gap: 4px; min-height: var(--control-height); color: var(--muted); font-size: var(--text-small); }
 .hotkey-double input { margin: 0; width: 14px; height: 14px; accent-color: var(--accent); }
 .keyhint { width: 100%; color: var(--muted); font-size: var(--text-small); text-align: right; }
@@ -292,7 +296,6 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
   .brand { gap: 8px; padding-inline: 4px; }
   .brand strong { font-size: 14px; }
   .brand-mark { width: 33px; height: 33px; }
-  .nav-button[aria-current="page"]::before { left: -11px; }
   .quiet-pill { display: none; }
   .search-wrap { flex: 1; min-width: 180px; }
   .search-wrap input { width: 100%; }
@@ -317,7 +320,7 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
   .page-heading { align-items: flex-start; gap: 12px; }
   h1 { font-size: 21px; }
   .compound-row > .setting-row:first-child, .compound-row > .setting-row[data-type="hotkey"] { flex-basis: 100%; }
-  .compound-row .hotkey-editor { flex: 1 1 0; min-width: 0; }
+  .compound-row .hotkey-editor { flex: 1 1 180px; min-width: 0; }
   .compound-row .setting-copy { max-width: 100%; }
   .compound-row > .setting-row[data-type="text"], .compound-row > .setting-row[data-type="choice"] { flex-wrap: wrap; }
   .debug-row { grid-template-columns: minmax(0, 1fr) 74px; }
@@ -335,7 +338,6 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
   .brand { justify-content: center; padding: 0; }
   .navigation { margin-top: 20px; }
   .nav-button { justify-content: center; min-height: 40px; padding: 8px; }
-  .nav-button[aria-current="page"]::before { left: -8px; }
   .sidebar-bottom { justify-content: center; margin-inline: 0; }
   .module-toggle > span:first-child { display: none; }
   .module-toggle { min-height: 36px; padding: 3px 6px; }
