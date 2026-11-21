@@ -433,7 +433,7 @@ if (!failed && process.argv.includes('--browser')) {
       await item.click();
       await page.waitForFunction(name=>document.querySelector('#navigation [aria-current="page"]')?.getAttribute('aria-label')===name,name);
     };
-    assert.deepEqual(await nav.getByRole('button').evaluateAll(buttons=>buttons.slice(0,3).map(button=>button.getAttribute('aria-label'))),['光标','渲染','监控视图']);
+    assert.deepEqual(await nav.getByRole('button').evaluateAll(buttons=>buttons.slice(0,3).map(button=>button.getAttribute('aria-label'))),['控制','自动功能','生产'],'navigation retains the current product-first section order');
     assert.equal(await page.getByRole('tab').count(),0);
     await openPage('渲染');
     await page.getByLabel('增强渲染',{exact:true}).waitFor();
