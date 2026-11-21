@@ -199,7 +199,7 @@ static int entryReserved(uint32_t target,uint32_t ignore,uint32_t house,bool* ev
   reserved+=slots;if(reserved>=1024)return 1024;
  }
  const uint32_t targetID=get<uint32_t>(target+0x10);
- for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];uint32_t p=worldByID(r.id);if(r.target==targetID&&r.id!=ignore&&p&&clickView.entryDestination(p)!=target&&!(facility&&clickView.radioLinked(target,p)))reserved+=r.slots;}
+ for(int i=0;i<entryReservationCount;++i){auto&r=entryReservations[i];uint32_t p=worldByID(r.id);if(r.target==targetID&&r.id!=ignore&&p&&get<uint32_t>(p+0x11C)!=target&&clickView.entryDestination(p)!=target&&!(facility&&clickView.radioLinked(target,p)))reserved+=r.slots;}
  // AutoLoad's pending EventClass may not yet be represented by a native
  // destination. Avoid re-counting actors already in a cooperative reservation.
  for(int i=0;i<loadLedger.count;++i){const auto&r=loadLedger.records[i];
