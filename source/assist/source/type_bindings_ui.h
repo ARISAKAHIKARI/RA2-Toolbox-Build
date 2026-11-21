@@ -28,7 +28,6 @@ static bool keyConflict(WORD key,const std::string& ignore,bool toggle){
  for(auto binding:extra.missionModeKeys)if(comparableKey(WORD(binding))==key)return true;
  if(extra.watchEnabled||extra.watchSecondary)for(auto binding:extra.watchKeys)if(comparableKey(WORD(binding))==key)return true;
  for(auto social:socialKeys)if(comparableKey(social)==key)return true;
- if(comparableKey(WORD(extra.variantKey))==key)return true;
  if(comparableKey(WORD(extra.placementEventKey))==key)return true;
  return (!toggle&&comparableKey(csKey)==key)||comparableKey(advancedKey)==key||comparableKey(unloadKey)==key||comparableKey(ejectKey)==key||comparableKey(csHoldKey)==key||comparableKey(magnetronKey)==key;
 }
@@ -45,7 +44,7 @@ static bool destructOwnerKeyConflict(WORD key){
  for(auto chord:extra.missionModeKeys)if(same(chord))return true;
  for(auto chord:extra.formationKeys)if(same(chord))return true;
  for(auto chord:extra.pauseKeys)if(same(chord))return true;
- for(uint32_t chord:{uint32_t(idleAircraftKey),uint32_t(csKey),uint32_t(advancedKey),uint32_t(unloadKey),uint32_t(ejectKey),uint32_t(csHoldKey),uint32_t(magnetronKey),extra.variantKey,extra.placementEventKey,extra.stickyKey,extra.sidebarKey,extra.overlayKey})if(same(chord))return true;
+ for(uint32_t chord:{uint32_t(idleAircraftKey),uint32_t(csKey),uint32_t(advancedKey),uint32_t(unloadKey),uint32_t(ejectKey),uint32_t(csHoldKey),uint32_t(magnetronKey),extra.placementEventKey,extra.stickyKey,extra.sidebarKey,extra.overlayKey})if(same(chord))return true;
  return false;
 }
 static void syncTypeConfig(){

@@ -68,6 +68,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .brand b { font-weight: 400; white-space: nowrap; }
 .nav-label { margin: 24px 12px 8px; font-size: var(--text-small); color: var(--muted); }
 .navigation { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.navigation .nav-group-label { font-size: var(--text-small); color: var(--muted); font-weight: 650; letter-spacing: .04em; margin: 15px 12px 4px; padding-top: 9px; border-top: 1px solid var(--border); }
+.navigation .nav-group-label:first-child { margin-top: 2px; padding-top: 0; border-top: 0; }
 .nav-button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; padding: 8px 12px; border: 1px solid transparent; border-radius: var(--radius); background: transparent; text-align: left; color: var(--soft); font-size: var(--text-label); transition: background .12s, color .12s; }
 .nav-button svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .nav-button:hover { color: var(--text); background: var(--surface-hover); }
@@ -334,7 +336,7 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
   :root { --gutter: 12px; }
   .app-shell { grid-template-columns: 60px minmax(0, 1fr); }
   .sidebar { padding: 16px 7px 12px; }
-  .brand div, .nav-label, .nav-button span, .sidebar-bottom #connectionText { display: none; }
+  .brand div, .nav-label, .nav-group-label, .nav-button span, .sidebar-bottom #connectionText { display: none; }
   .brand { justify-content: center; padding: 0; }
   .navigation { margin-top: 20px; }
   .nav-button { justify-content: center; min-height: 40px; padding: 8px; }

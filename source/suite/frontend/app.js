@@ -282,6 +282,12 @@
   const displayPageControls=(controls,index)=>index<2?controls.filter(control=>(control.group==='渲染')===(index===1)):controls;
   const targetFor=index=>index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:index-2};
   const restoredIndex=(category,section)=>category===0?(section===1?2:0):category+2;
+  const pageStorageKey='RA2Toolbox.console.page.v1';
+  function rememberedPage(){
+    try{const raw=global.localStorage?.getItem(pageStorageKey),value=Number(raw);return raw!==null&&Number.isInteger(value)&&value>=0&&value<8?value:-1;}catch{return -1;}
+  }
+  function rememberPage(index){try{global.localStorage?.setItem(pageStorageKey,String(index));}catch{}}
+
   // The adapter already exports the original logical row. Keep its related
   // editors together instead of turning every native widget into a full row.
   // Missing/default coordinates must never combine unrelated settings.
@@ -329,7 +335,7 @@
   function setSearch(value) { if(search!==value)searchFeatureFolds.clear();search=value; }
   function navigate(index,restored=false){
     if(!Number.isInteger(index)||index<0||index>=CATEGORIES.length)return;
-    if(!restored)userNavigated=true;
+    if(!restored){userNavigated=true;rememberPage(index);}
     selectedCategory=index;setSearch('');$('search').value='';capture=null;
     const target=targetFor(index);
     if(restored){store.current=target;schedule();}
@@ -337,7 +343,9 @@
     else store.navigate(target.module,target.category);
     $('contentScroll').scrollTop=0;
   }
+  const navGroups={0:'显示',3:'对局工具',5:'高级'};
   for(let index=0;index<CATEGORIES.length;index++){
+    if(navGroups[index]){const group=document.createElement('div');group.className='nav-group-label';group.textContent=navGroups[index];$('navigation').append(group);}
     const button=document.createElement('button');button.className='nav-button';button.type='button';
     button.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true">${CATEGORIES[index][2]}</svg><span></span>`;
     button.querySelector('span').textContent=CATEGORIES[index][0];button.setAttribute('aria-label',CATEGORIES[index][0]);button.title=CATEGORIES[index][0];
@@ -692,7 +700,7 @@
       for(const row of debugRows.values())row.element.remove();
       debugRows.clear();renderedPage=currentPage;
     }
-    [...$('navigation').children].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
+    [...$('navigation').querySelectorAll('.nav-button')].forEach((button,index) => { if (index === selectedCategory) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current'); });
     $('breadcrumb').textContent=category[0];$('pageTitle').textContent=category[0];
     $('pageDescription').textContent=category[1];
     $('version').textContent=store.shell.version||'正在连接…';
@@ -740,7 +748,7 @@
       restoredNavigation=true;
       if(!userNavigated){
         const native=Number.isInteger(message.selectedCategory)?Math.max(0,Math.min(5,message.selectedCategory)):0;
-        navigate(restoredIndex(native,message.videoSection),true);
+        const saved=rememberedPage();navigate(saved>=0?saved:restoredIndex(native,message.videoSection),true);
       }
     }
   });
