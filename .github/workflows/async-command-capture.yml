@@ -62,6 +62,9 @@ jobs:
           checks/plan-freshness | tee checks/plan-freshness.log
           python source/assist/tests/automation_no_deadline_contract.py | tee checks/automation-no-deadline.log
           python source/assist/tests/ui_recovery_contract.py | tee checks/ui-recovery.log
+          node source/suite/tests/console_store_test.mjs | tee checks/console-store.log
+          g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror source/suite/tests/semantic_category_contract.cpp -o checks/category-routing
+          checks/category-routing | tee checks/category-routing.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -Wno-error=misleading-indentation -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/async_command_policy.cpp -o checks/command-policy
           checks/command-policy | tee checks/command-policy.log
           g++ -std=c++17 -O2 -UNDEBUG -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all source/assist/tests/execution_proof.cpp -o checks/execution-proof

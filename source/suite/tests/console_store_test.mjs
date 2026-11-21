@@ -291,13 +291,31 @@ test('compound manual commands and shared parameters retain their own boundaries
     {id:17,type:'number',label:'巡逻范围',row:184,column:20,group:'键鼠操作'}
   ].map(canonical);
   const groups=layoutGroups(controls,'',3);
-  assert.deepEqual([...groups.keys()],['控制']);
-  const blocks=featureBlocks(groups.get('控制'));
+  assert.deepEqual([...groups.keys()],['移动、攻击与操作手势']);
+  const blocks=featureBlocks(groups.get('移动、攻击与操作手势'));
   assert.deepEqual(Array.from(blocks,hasFeatureConfig),[true,false,false]);
   assert.deepEqual(Array.from(blocks,block=>Array.from(block.controls,c=>c.id)),[[11,12,13],[14,15],[16,17]]);
   assert.deepEqual(Array.from(groupControls(controls,'检测频率').values()).flat().map(c=>c.id),[11,12,13]);
   const filtered=layoutGroups(controls,'模糊下令',3);
-  assert.deepEqual(Array.from(filtered.get('控制'),c=>c.id),[14,15]);
+  assert.deepEqual(Array.from(filtered.get('移动、攻击与操作手势'),c=>c.id),[14,15]);
+});
+
+test('named semantic sections retain stable feature boundaries and do not depend on row ordering',()=>{
+  const input=[
+    canonical({id:9608,type:'toggle',group:'组合选兵绑定',label:'组合选兵绑定',groupHeader:true}),
+    canonical({id:441,type:'hotkey',group:'组合选兵绑定',label:'快捷键'}),
+    canonical({id:705,type:'toggle',group:'飞机分配攻击',label:'飞机分配攻击',groupHeader:true}),
+    canonical({id:750,type:'number',group:'飞机分配攻击',label:'数量'}),
+    canonical({id:9182,type:'toggle',group:'低伤害自动过滤',label:'过滤低伤害自动目标'}),
+    canonical({id:9183,type:'toggle',group:'低伤害自动过滤',label:'原生索敌'})
+  ];
+  const control=layoutGroups(input.slice(0,4),'',3);
+  assert.deepEqual([...control.keys()],['选兵与编组','移动、攻击与操作手势']);
+  assert.deepEqual([...control.get('选兵与编组')].map(x=>x.id),[9608,441]);
+  assert.deepEqual([...control.get('移动、攻击与操作手势')].map(x=>x.id),[705,750]);
+  const automatic=layoutGroups(input.slice(4),'',4);
+  assert.deepEqual([...automatic.keys()],['自动战斗与防空']);
+  assert.deepEqual([...automatic.values()][0].map(x=>x.id),[9182,9183]);
 });
 
 test('action hierarchy accepts explicit semantic roles and defaults unknown legacy metadata to secondary',()=>{

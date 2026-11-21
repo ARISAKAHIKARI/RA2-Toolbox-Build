@@ -27,7 +27,8 @@ inline constexpr VideoEntry videoEntries[]={
  {RenderDetail,VideoGroup::Render,L"场景精细度",L"原生像素合成|精细 VXL 自适应采样",VideoSection::Render},
  {RenderXbrz,VideoGroup::Render,L"启用 xBRZ 边缘重建",L"",VideoSection::Render,true},
  {RenderScale,VideoGroup::Render,L"素材边缘重建倍率",L"面积采样|最近邻|xBRZ|自适应 1–4× xBRZ",VideoSection::Render},
- {SinglePlayerFPS,VideoGroup::Render,L"单机帧率（FPS，0 恢复原版）",L"",VideoSection::Render,true},
+ // SinglePlayerFPS is presented by its original tactical setting in 游戏规则.
+ // It still uses its existing setting owner; do not expose a second editor in Render.
  {RenderHighRefresh,VideoGroup::Render,L"高刷新率补帧",L"",VideoSection::Render,true},
  {RenderPhysical,VideoGroup::Render,L"按物理像素绘制",L"",VideoSection::Render,true},
  {RenderUnified,VideoGroup::Render,L"统一覆盖层",L"",VideoSection::Render,true},

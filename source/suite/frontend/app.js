@@ -271,13 +271,39 @@
     }
     flush();return blocks;
   }
+  // Each native feature group is assigned to one stable semantic section.
+  // Never flatten every control/automatic feature into one enormous group:
+  // doing so loses the original feature boundary and doubles the fold layer.
+  const CONTROL_SECTIONS=['选兵与编组','移动、攻击与操作手势','队形、巡逻与飞机路径','进驻、装卸与超武目标选择','其他快捷操作'];
+  const AUTOMATIC_SECTIONS=['采矿、倒矿与防蜘蛛','维修与自动救援','自动战斗与防空','适用单位清单','其他自动功能'];
+  function semanticSection(name,controls,navigationIndex){
+    const hint=String(name||'').toLocaleLowerCase();
+    const ids=new Set(controls.map(item=>item.id));
+    const has=(...values)=>values.some(v=>ids.has(v));
+    if(navigationIndex===3){
+      if(/选兵|编组|快捷操作|轮选|同类/.test(hint)||has(9608,441,443,444,445,449,467,724,853))return 0;
+      if(/队形|巡逻|路径|模糊下令|区域目标|快速占位/.test(hint)||has(9602,9615,9400,9401,9402))return 2;
+      if(/进驻|卸载|装车|超武目标/.test(hint)||has(9604+7,453,459,451))return 3;
+      if(/键鼠|高级移动|磁电|飞机分配|操作手势|攻击/.test(hint)||has(9601,9606,458,477,478,705))return 1;
+      return 4;
+    }
+    if(/清单|单位类型/.test(hint)||has(9610))return 3;
+    if(/采矿|矿车|倒矿|蜘蛛|矿厂/.test(hint)||has(9605,832,833))return 0;
+    if(/维修|救援|炸弹|寄生/.test(hint)||has(312,780,9184))return 1;
+    if(/防空|战斗|攻击|低伤害|磁电|躲弹|索敌/.test(hint)||has(9182,9183,9042))return 2;
+    return 4;
+  }
   function layoutGroups(controls,query='',navigationIndex=0){
     const groups=groupControls(controls,query);
     if(navigationIndex!==3&&navigationIndex!==4)return groups;
-    const merged=[...groups.values()].flatMap(items=>
-      items.map((control,index)=>({...control,layoutBreak:index===0}))
-    );
-    return merged.length?new Map([[navigationIndex===3?'控制':'自动功能',merged]]):new Map();
+    const names=navigationIndex===3?CONTROL_SECTIONS:AUTOMATIC_SECTIONS;
+    const combined=new Map();
+    for(const [name,items] of groups){
+      const section=names[semanticSection(name,items,navigationIndex)];
+      if(!combined.has(section))combined.set(section,[]);
+      combined.get(section).push(...items.map((control,i)=>({...control,layoutBreak:i===0})));
+    }
+    return new Map(names.filter(name=>combined.has(name)).map(name=>[name,combined.get(name)]));
   }
   const displayPageControls=(controls,index)=>index<2?controls.filter(control=>(control.group==='渲染')===(index===1)):controls;
   const targetFor=index=>index<2?{module:0,category:0}:index===2?{module:1,category:0}:{module:2,category:index-2};
