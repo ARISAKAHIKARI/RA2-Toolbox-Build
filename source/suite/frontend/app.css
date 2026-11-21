@@ -225,11 +225,11 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .setting-row[data-type="hotkey"] { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; }
 .setting-row[data-type="hotkey"] .setting-copy { flex:1 1 auto; }
 .setting-row[data-type="hotkey"] .setting-editor { flex:0 0 auto; width:auto; max-width:none; justify-content:flex-end; }
-.hotkey-editor { display:grid; grid-template-columns:minmax(108px,auto) 104px auto 32px 112px; align-items:center; justify-content:end; flex-wrap:nowrap; max-width:none; gap:4px; }
+.hotkey-editor { display:grid; grid-template-columns:minmax(100px,auto) 96px auto 30px 104px; align-items:center; justify-content:end; flex-wrap:nowrap; max-width:none; gap:4px; }
 .hotkey-editor > * { min-width:0; }
-.hotkey-capture { min-width:108px; white-space:nowrap; }
-.hotkey-editor select { min-width:0; width:104px; padding:5px 4px; font-size:var(--text-small); color:var(--soft); }
-.hotkey-editor > select:last-child { width:112px; max-width:100%; }
+.hotkey-capture { min-width:100px; white-space:nowrap; }
+.hotkey-editor select { min-width:0; width:96px; padding:5px 4px; font-size:var(--text-small); color:var(--soft); }
+.hotkey-editor > select:last-child { width:104px; max-width:100%; }
 .hotkey-double { display: flex; align-items: center; gap: 4px; min-height: var(--control-height); color: var(--muted); font-size: var(--text-small); }
 .hotkey-double input { margin: 0; width: 14px; height: 14px; accent-color: var(--accent); }
 .keyhint { width: 100%; color: var(--muted); font-size: var(--text-small); text-align: right; }
@@ -237,9 +237,9 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.3px; line-h
 .compound-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; min-width: 0; padding: 6px 0; }
 .compound-row > .setting-row { flex: 0 1 auto; min-width: 0; max-width: 100%; min-height: var(--control-height); padding: 0; gap: 6px; flex-direction: row; align-items: center; }
 .compound-row > .setting-row:first-child { min-width:min(164px,100%); padding-right:4px; justify-content:flex-start; }
-.compound-row > .setting-row[data-type="hotkey"] { flex:1 1 100%; }
+.compound-row > .setting-row[data-type="hotkey"] { flex:0 1 auto; }
 .compound-row .setting-row[data-type="hotkey"] .setting-editor { justify-content:flex-end; }
-.compound-row .hotkey-editor { max-width:none; }
+.compound-row .hotkey-editor { max-width:410px; }
 .subsettings-line.compound-row { padding-left: var(--space-4); }
 .compound-row .setting-copy { flex: 0 1 auto; }
 .compound-row .setting-label, .compound-row > .setting-row[data-setting-level="secondary"] .setting-label { color: var(--muted); font-size: var(--text-small); font-weight: 400; }
